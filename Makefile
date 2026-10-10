@@ -21,6 +21,17 @@
 # Use bash for all shell commands (needed for [[ ]] and read -n)
 SHELL := /bin/bash
 
+# GNU make >= 4.2 (the $(file ...) function). An older make parses this file
+# without complaint and silently skips every $(file) call: the test-link
+# response file is never written, so a link either dies on a missing @-file or
+# runs against the manifest the last 4.2+ build left behind. macOS ships
+# /usr/bin/make as GNU 3.81 and Homebrew installs 4.x only as `gmake`, so this
+# is the loud version of a failure that is otherwise indistinguishable from a
+# stale build.
+ifneq ($(shell test "$(firstword $(subst ., ,$(MAKE_VERSION)))" -gt 4 -o \( "$(firstword $(subst ., ,$(MAKE_VERSION)))" -eq 4 -a "$(word 2,$(subst ., ,$(MAKE_VERSION)))" -ge 2 \) && echo ok),ok)
+$(error GNU make >= 4.2 required, this is $(MAKE_VERSION). On macOS use `gmake`.)
+endif
+
 # Delete a target if its recipe fails. Without this, a failed link can leave a
 # truncated/0-byte output (e.g. helix-tests) on disk with a newer mtime than its
 # prerequisites — the next `make` then treats the broken artifact as up-to-date
@@ -1230,7 +1241,9 @@ endif
 # inherit it and see no need to go lower. HELIX_NICE=0 opts out.
 HELIX_NICE ?= 10
 ifneq ($(HELIX_NICE),0)
-    $(shell [ "$$(nice)" -lt $(HELIX_NICE) ] 2>/dev/null && renice -n $(HELIX_NICE) -p $$PPID >/dev/null 2>&1)
+    # `nice` with no command prints its priority on GNU coreutils but only a
+    # usage error on macOS, so its stderr stays inside the substitution.
+    $(shell [ "$$(nice 2>/dev/null)" -lt $(HELIX_NICE) ] 2>/dev/null && renice -n $(HELIX_NICE) -p $$PPID >/dev/null 2>&1)
 endif
 
 # Binaries

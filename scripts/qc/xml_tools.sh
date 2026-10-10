@@ -26,7 +26,7 @@ qc_xml_tools() {
   TOOL_JOBS=$(qc_build_jobs)
 echo "🔧 Building XML validator tools..."
 
-if make SKIP_COMPILE_COMMANDS=1 -j"$TOOL_JOBS" validate-xml-attrs >/tmp/qc_xml_tools.out 2>&1; then
+if "$(qc_make)" SKIP_COMPILE_COMMANDS=1 -j"$TOOL_JOBS" validate-xml-attrs >/tmp/qc_xml_tools.out 2>&1; then
   echo "✅ XML validator tools ready"
 else
   echo ""
