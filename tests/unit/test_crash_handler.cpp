@@ -30,6 +30,7 @@
 #include <filesystem>
 #include <fstream>
 #include <string>
+#include <sys/mman.h>
 #include <sys/resource.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -1419,6 +1420,26 @@ namespace {
     frame[0] = static_cast<char>(depth);
     return overflow_stack(depth + 1) + frame[0];
 }
+
+#if defined(__APPLE__)
+// macOS does not carry the parent's signal stack into a fork()ed child, while
+// helix::install_thread_altstack() returns early on the record the parent left
+// in its thread-local. Without a stack of its own the child's SIGSEGV cannot
+// be delivered and the process dies before the handler writes anything.
+void give_forked_child_signal_stack() {
+    void* mem = mmap(nullptr, helix::kAltStackSize, PROT_READ | PROT_WRITE,
+                     MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    if (mem == MAP_FAILED) {
+        _exit(96);
+    }
+    stack_t ss{};
+    ss.ss_sp = mem;
+    ss.ss_size = helix::kAltStackSize;
+    if (sigaltstack(&ss, nullptr) != 0) {
+        _exit(95);
+    }
+}
+#endif
 } // namespace
 
 TEST_CASE_METHOD(CrashTestFixture, "Crash: a stack overflow still writes the crash file",
@@ -1432,6 +1453,9 @@ TEST_CASE_METHOD(CrashTestFixture, "Crash: a stack overflow still writes the cra
         rl.rlim_cur = 256 * 1024;
         rl.rlim_max = RLIM_INFINITY;
         setrlimit(RLIMIT_STACK, &rl);
+#if defined(__APPLE__)
+        give_forked_child_signal_stack();
+#endif
         crash_handler::install(crash_path());
         _exit(overflow_stack(0) == 0 ? 97 : 99);
     }
@@ -1445,6 +1469,11 @@ TEST_CASE_METHOD(CrashTestFixture, "Crash: a stack overflow still writes the cra
     auto result = crash_handler::read_crash_file(crash_path());
     REQUIRE_FALSE(result.is_null());
     REQUIRE(result["signal"] == SIGSEGV);
+#if defined(__APPLE__)
+    // The stack dump and the memory map are written only by the Linux handler
+    // (ucontext stack reads through process_vm_readv, /proc/self/maps).
+    SKIP("stack_dump and memory_map are Linux-only; the macOS record ends at the signal");
+#endif
     // SP sits in the guard region below the stack. The stack dump starts
     // there, so a handler that reads it unchecked faults again and the record
     // stops before the dump and the memory map that follow it.
@@ -1480,7 +1509,13 @@ TEST_CASE_METHOD(CrashTestFixture,
     REQUIRE(crash_handler::has_crash_file(crash_path()));
     auto result = crash_handler::read_crash_file(crash_path());
     REQUIRE_FALSE(result.is_null());
+    // macOS delivers a guard-page hit on a secondary thread's stack as SIGBUS.
+#if defined(__APPLE__)
+    REQUIRE(result["signal"] == SIGBUS);
+    SKIP("stack_dump and memory_map are Linux-only; the macOS record ends at the signal");
+#else
     REQUIRE(result["signal"] == SIGSEGV);
+#endif
     REQUIRE(result.contains("stack_dump"));
     REQUIRE(result.contains("memory_map"));
 }
