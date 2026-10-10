@@ -27,10 +27,12 @@ constexpr size_t kMaxCanvases = 8;
 constexpr int32_t kMaxStroke = 64;
 constexpr int32_t kMaxOpaPercent = 100; // opa is authored 0-100; stored as 0-255
 constexpr size_t kMaxTextBytes = 256;
-// Left uncharged so the luaL_error that reports a refused call has Lua memory
-// to raise into; on a completely full heap the error would surface as a
-// different message.
-constexpr size_t kRaiseRoom = 256;
+// Left uncharged so a plugin whose list has reached the cap can still run: the
+// luaL_error that reports the refused call needs Lua memory to raise into, and
+// the host's next entry into the plugin (compiling a chunk, starting a thread)
+// is how it gets the chance to clear the list. On a full heap that entry fails
+// out of memory and the runtime disables the plugin.
+constexpr size_t kRaiseRoom = 4096;
 
 struct CanvasEntry {
     std::string full;

@@ -130,12 +130,17 @@ class ScrollBlitFixture : public LVGLTestFixture {
     }
 
     /// Pixels where the retained frame differs from a full redraw, with the first one.
+    /// Only the bytes the panel reads are compared. In a 32-bit pixel the top byte
+    /// is padding on an XRGB panel, and LVGL's partial-alpha blends leave it at
+    /// whatever the destination held, which differs between the blit and a redraw
+    /// without changing any colour.
     std::string mismatch() {
         const std::vector<uint8_t> full = full_render();
+        const size_t visible_bytes = capture_.px_bytes == 4 ? 3 : capture_.px_bytes;
         int count = 0;
         size_t x1 = SIZE_MAX, y1 = SIZE_MAX, x2 = 0, y2 = 0;
         for (size_t i = 0; i < full.size(); i += capture_.px_bytes) {
-            if (std::memcmp(&full[i], &capture_.frame[i], capture_.px_bytes) != 0) {
+            if (std::memcmp(&full[i], &capture_.frame[i], visible_bytes) != 0) {
                 count++;
                 const size_t x = (i % capture_.stride) / capture_.px_bytes, y = i / capture_.stride;
                 x1 = std::min(x1, x), x2 = std::max(x2, x), y1 = std::min(y1, y),
