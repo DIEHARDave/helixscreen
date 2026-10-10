@@ -87,9 +87,12 @@ std::string snapshot(int32_t w, int32_t h, bool dark) {
     }
     // Mode-aware resolution: the base names themselves are first-wins, so the
     // light/dark difference is only visible through the accessor.
+    // Sorted: the parser returns an unordered_map, whose iteration order differs
+    // between standard libraries, and the snapshot must be byte-stable.
+    const auto light_parsed = theme_manager_parse_all_xml_for_suffix("ui_xml", "color", "_light");
+    const std::map<std::string, std::string> light_colors(light_parsed.begin(), light_parsed.end());
     char hex[16];
-    for (const auto& [base, v] :
-         theme_manager_parse_all_xml_for_suffix("ui_xml", "color", "_light")) {
+    for (const auto& [base, v] : light_colors) {
         snprintf(hex, sizeof(hex), "%06x",
                  lv_color_to_u32(theme_manager_get_color(base.c_str())) & 0xFFFFFF);
         out << "color:" << base << "=" << hex << "\n";
