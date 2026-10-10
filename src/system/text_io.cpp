@@ -9,6 +9,7 @@
 #include <atomic>
 #include <cctype>
 #include <cerrno>
+#include <clocale>
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
@@ -198,15 +199,23 @@ std::optional<double> parse_double(std::string_view s) {
     }
     return value;
 #else
-    // libc++ without floating-point from_chars (macOS dev builds). strtod reads
-    // LC_NUMERIC, which the app never changes from "C"; the checks below hold it
-    // to the same strict whole-view contract.
+    // libc++ without floating-point from_chars (macOS dev builds). strtod reads the
+    // active LC_NUMERIC decimal point, so the input's '.' is mapped onto that point,
+    // and a ',' is refused outright: this grammar has no ',' decimal form, in any locale.
+    // The checks below hold it to the same strict whole-view contract.
     if (std::isspace(static_cast<unsigned char>(s[0]))) {
+        return std::nullopt;
+    }
+    if (s.find(',') != std::string_view::npos) {
         return std::nullopt;
     }
     std::string buf(s);
     if (buf.find_first_of("xX") != std::string::npos) {
         return std::nullopt;
+    }
+    const char locale_point = *std::localeconv()->decimal_point;
+    if (locale_point != '.') {
+        std::replace(buf.begin(), buf.end(), '.', locale_point);
     }
     char* end = nullptr;
     errno = 0;

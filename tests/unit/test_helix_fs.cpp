@@ -86,15 +86,49 @@ const std::vector<std::string> kPaths = {
 
 } // namespace
 
+namespace {
+// POSIX leaves a leading run of two or more slashes implementation-defined, and libc++
+// and libstdc++ disagree on these inputs (libc++ keeps the run in parent_path and
+// collapses it in lexically_normal). helix::fs follows libstdc++, the Linux target, so
+// these inputs are pinned to literal values instead of compared against the std::
+// result of whichever library builds the test.
+struct LeadingSlashRunCase {
+    const char* path;
+    const char* parent;
+    const char* normal;
+};
+const LeadingSlashRunCase kLeadingSlashRuns[] = {
+    {"//", "//", "//"},
+    {"///", "///", "///"},
+    {"///a", "/", "/a"},
+    {"//a", "/", "/a"},
+};
+
+bool has_leading_slash_run(std::string_view p) {
+    return p.size() >= 2 && p[0] == '/' && p[1] == '/';
+}
+} // namespace
+
 TEST_CASE("helix::fs path helpers agree with std::filesystem::path", "[helix_fs]") {
     for (const std::string& p : kPaths) {
         CAPTURE(p);
         const sfs::path sp(p);
         CHECK(hfs::filename(p) == sp.filename().string());
-        CHECK(hfs::parent_path(p) == sp.parent_path().string());
         CHECK(hfs::stem(p) == sp.stem().string());
         CHECK(hfs::extension(p) == sp.extension().string());
+        if (has_leading_slash_run(p)) {
+            continue; // pinned in the next case
+        }
+        CHECK(hfs::parent_path(p) == sp.parent_path().string());
         CHECK(hfs::lexically_normal(p) == sp.lexically_normal().string());
+    }
+}
+
+TEST_CASE("helix::fs parent_path and lexically_normal pin leading slash runs", "[helix_fs]") {
+    for (const LeadingSlashRunCase& c : kLeadingSlashRuns) {
+        CAPTURE(c.path);
+        CHECK(hfs::parent_path(c.path) == c.parent);
+        CHECK(hfs::lexically_normal(c.path) == c.normal);
     }
 }
 
