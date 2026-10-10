@@ -9,6 +9,7 @@
 
 namespace helix {
 class AmsBackend;
+struct AmsSystemInfo;
 } // namespace helix
 
 namespace helix::ui {
@@ -54,6 +55,10 @@ namespace helix::ui {
 /// Gather bypass_node_visible()'s inputs from the live backend and settings.
 /// Returns false when no backend is attached.
 [[nodiscard]] bool bypass_node_visible_for(const AmsBackend* backend);
+
+/// The same answer from a system reading the caller already holds, which saves the copy of
+/// the whole system the one-argument form takes. @p info must be @p backend's own reading.
+[[nodiscard]] bool bypass_node_visible_for(const AmsBackend* backend, const AmsSystemInfo& info);
 
 /// Bag of widget pointers that make up the bypass-spool overlay: a small card
 /// containing the spool icon, with a material label above and "Bypass" label

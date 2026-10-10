@@ -20,10 +20,16 @@ bool bypass_node_visible_for(const AmsBackend* backend) {
     if (backend == nullptr) {
         return false;
     }
-    return bypass_node_visible(
-        helix::bypass_available_for(backend->get_system_info().supports_bypass),
-        backend->is_bypass_active(), backend->bypass_is_virtual(),
-        SettingsManager::instance().get_ams_always_show_bypass_spool());
+    return bypass_node_visible_for(backend, backend->get_system_info());
+}
+
+bool bypass_node_visible_for(const AmsBackend* backend, const AmsSystemInfo& info) {
+    if (backend == nullptr) {
+        return false;
+    }
+    return bypass_node_visible(helix::bypass_available_for(info.supports_bypass),
+                               backend->is_bypass_active(), backend->bypass_is_virtual(),
+                               SettingsManager::instance().get_ams_always_show_bypass_spool());
 }
 
 void bypass_spool_sync_from_state(BypassSpoolWidgets& w) {

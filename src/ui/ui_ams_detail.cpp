@@ -805,7 +805,8 @@ void ams_detail_setup_path_canvas(lv_obj_t* canvas, lv_obj_t* slot_grid, int uni
     // Hide the bypass path for backends that don't support it (e.g. tool
     // changers) — and on AFC while bypass is disengaged, since AFC reports a
     // virtual bypass whether or not one is wired (#1229).
-    ui_filament_path_canvas_set_show_bypass(canvas, helix::ui::bypass_node_visible_for(backend));
+    ui_filament_path_canvas_set_show_bypass(canvas,
+                                            helix::ui::bypass_node_visible_for(backend, info));
 
     // Determine slot count and offset for this unit
     int slot_count = info.total_slots;
@@ -953,7 +954,7 @@ void ams_detail_setup_path_canvas(lv_obj_t* canvas, lv_obj_t* slot_grid, int uni
     // on the bypass node (#1229 defect 5).
     auto ext_spool = helix::AmsState::instance().get_external_spool_info();
     const bool show_bypass_spool =
-        ext_spool.has_value() && helix::ui::bypass_node_visible_for(backend);
+        ext_spool.has_value() && helix::ui::bypass_node_visible_for(backend, info);
     ui_filament_path_canvas_set_bypass_has_spool(canvas, show_bypass_spool);
     if (show_bypass_spool) {
         ui_filament_path_canvas_set_bypass_color(canvas, ext_spool->color_rgb);
