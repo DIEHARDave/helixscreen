@@ -1264,6 +1264,8 @@
   <translation tag="Fix: chown {} {}, then restart" ja="修正：chown {} {} を実行して再起動してください"/>
   <translation tag="FlashForge Adventurer 5M" ja="FlashForge Adventurer 5M"/>
   <translation tag="FlashForge Adventurer 5X" ja="FlashForge Adventurer 5X"/>
+  <translation tag="FlashForge Creator 5" ja="FlashForge Creator 5"/>
+  <translation tag="FlashForge Creator 5 Pro" ja="FlashForge Creator 5 Pro"/>
   <translation tag="FlashForge IFS" ja="FlashForge IFS"/>
   <translation tag="Flip" ja="反転"/>
   <translation tag="Flip the spools" ja="スプールを裏返す"/>
