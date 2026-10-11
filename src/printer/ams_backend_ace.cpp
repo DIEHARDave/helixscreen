@@ -90,6 +90,7 @@ void AmsBackendAce::on_started() {
     {
         std::lock_guard<std::mutex> lock(mutex_);
         prev_slot_status_.clear();
+        park_states_.clear();
         last_spool_evidence_.clear();
         pending_insert_reads_.clear();
     }
@@ -323,10 +324,51 @@ PathSegment AmsBackendAce::get_slot_filament_segment(int slot_index) const {
     }
 
     if (slot.status == SlotStatus::AVAILABLE || slot.status == SlotStatus::LOADED) {
+        if (slot_parked_at_hub_locked(slot_index)) {
+            // The segment the hub sensor places a strand at in get_filament_segment.
+            return PathSegment::OUTPUT;
+        }
         return PathSegment::SPOOL;
     }
 
     return PathSegment::NONE;
+}
+
+AmsBackendAce::ParkState AmsBackendAce::park_state_from_json(const json& slot_json) {
+    if (slot_json.contains("park_state") && slot_json["park_state"].is_string()) {
+        const auto& text = slot_json["park_state"].get_ref<const std::string&>();
+        if (text == "parked") {
+            return ParkState::Parked;
+        }
+        if (text == "loaded") {
+            return ParkState::Loaded;
+        }
+    }
+    return ParkState::Unknown;
+}
+
+bool AmsBackendAce::note_park_state_locked(int index, const json& slot_json) {
+    const ParkState state = park_state_from_json(slot_json);
+    auto it = park_states_.find(index);
+    const ParkState before = it == park_states_.end() ? ParkState::Unknown : it->second;
+    if (state == ParkState::Unknown) {
+        park_states_.erase(index);
+    } else {
+        park_states_[index] = state;
+    }
+    return state != before;
+}
+
+bool AmsBackendAce::slot_parked_at_hub_locked(int slot_index) const {
+    // Caller holds mutex_. Anything the driver is doing, and the seated slot,
+    // are placed by the action, the seat and the sensors, never by a remembered
+    // park.
+    if (driver_action_ || target_index_ >= 0 || system_info_.action != AmsAction::IDLE ||
+        system_info_.current_slot == slot_index) {
+        return false;
+    }
+    auto it = park_states_.find(slot_index);
+    return it != park_states_.end() && it->second == ParkState::Parked;
 }
 
 PathSegment AmsBackendAce::infer_error_segment() const {
@@ -1043,6 +1085,7 @@ void AmsBackendAce::parse_ace_object(const json& data) {
                 auto& slot = unit.slots[i];
                 slot.slot_index = static_cast<int>(i);
                 slot.global_index = static_cast<int>(i);
+                note_park_state_locked(static_cast<int>(i), slot_json);
 
                 // Parse status via the shared vocabulary map so the object path
                 // and the REST fallback path can't drift.
@@ -1812,6 +1855,8 @@ bool AmsBackendAce::parse_slots_response(const json& data) {
 
         slot.slot_index = static_cast<int>(i);
         slot.global_index = static_cast<int>(i);
+
+        changed |= note_park_state_locked(static_cast<int>(i), slot_json);
 
         const bool states_status = slot_json.contains("status") && slot_json["status"].is_string();
         std::optional<bool> observed_present;

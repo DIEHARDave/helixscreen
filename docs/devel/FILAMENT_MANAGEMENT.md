@@ -254,6 +254,15 @@ fallback needs both ends of the stamp because `/status` owns `loaded_slot` while
 owns the slot vector: without it, each `/slots` poll would demote the seated slot and
 report a spurious change every 500 ms.
 
+ACE's Kobra-S1 driver also states a per-slot `park_state` (`unknown` / `parked` / `loaded`).
+It drives one thing: an idle slot (not the seat, no toolchange or load in flight) the driver
+calls `parked` draws its filament staged at the hub (`PathSegment::OUTPUT`, what the hub
+sensor shows) instead of at the spool. `parked` means an RDM-verified park just short of the
+hub or a fixed-length toolhead-only unload, which is not necessarily at the hub; until the
+driver separates them both draw at the hub. A missing field or unknown string draws as before,
+and the seat, the path sensors and the toolchange phases outrank it
+(`docs/devel/FILAMENT_BACKEND_ACE.md`).
+
 `slot_has_filament_at_toolhead()` stays at its `false` default unless the sensor genuinely
 exists *and* is attributable to one slot. AFC's `AFC_extruder` carries
 `tool_start_status` / `tool_end_status` plus the `lane_loaded` that owns them; a trip with
