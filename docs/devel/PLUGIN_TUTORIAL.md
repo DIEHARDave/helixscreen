@@ -408,6 +408,10 @@ The ladder, and the reasoning behind each rung:
 
 ![The 2x1 tier adds one row per meter](../images/mm-2x1-medium.png)
 
+![A 2x1 tile at micro resolution drops to the narrower layout](../images/mm-2x1-micro.png)
+
+![The 2x2 tier puts a bar per meter below the dial](../images/mm-2x2-medium.png)
+
 ## Step 6: the overlay
 
 The tap opens one of the plugin's own components full-screen:
@@ -417,6 +421,8 @@ helix.ui.on("open", function()
     helix.ui.overlay("maintenance-meter__detail", { title = "Maintenance" })
 end)
 ```
+
+![The detail overlay](../images/mm-overlay-medium.png)
 
 The overlay component is a stack of `ui_card` rows, one per meter. Each
 card repeats the dial pattern at a fixed size - a 56x56 zone with the ring
