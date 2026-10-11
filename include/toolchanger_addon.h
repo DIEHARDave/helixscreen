@@ -144,6 +144,8 @@ struct ToolSensor {
 struct SlotMaterial {
     std::string material;             ///< Empty when the firmware has none set
     std::optional<std::uint32_t> rgb; ///< nullopt when unset or unparseable
+    /// Per-head filament presence, nullopt when the frame did not say.
+    std::optional<bool> filament_present;
 };
 
 /// What a firmware material source said in one status frame. Each field is
@@ -199,6 +201,37 @@ inline constexpr const char* kZmodC5ProviderName = "Creator 5 Pro";
 /// build does not echo the markers, nothing matches and the operation step bar
 /// stays suppressed — a marker that never arrives cannot paint a wrong step.
 std::optional<ToolReading> parse_zmod_marker(const std::string& line);
+
+/// Classify one line of Z-Mod's T_INFO output (`T_INFO` is read-only: it
+/// answers state, it moves nothing). Each tool row is one dock/carriage fact —
+/// "T1: HEAD" puts tool 1 on the carriage, "T0: home" seats it in its dock,
+/// "ERROR (both)" is a sensor fault, "?" is no news for that tool — so each
+/// line applies on its own and no block buffering is needed. The `Offset:`
+/// line closes the block (it is always last), which is the only place the
+/// answer "nothing is on the carriage" can be stated: every tool row said
+/// `home` and none said HEAD. nullopt for every other console line.
+std::optional<ToolReading> parse_zmod_tinfo_line(const std::string& line, bool& block_ended_out);
+
+/// What Z-Mod's afclite shim said in one status frame. The object is the
+/// firmware's own AFC compat surface; the fields read here are the ones whose
+/// semantics a boolean or the bundle evidence fixes. `current_state` is
+/// deliberately carried as an opaque word: its vocabulary beyond "idle" is
+/// unverified, so callers log it rather than act on it.
+struct AfcStateReading {
+    std::string current_state; ///< As published; empty when the frame did not say
+    bool error_state = false;  ///< The shim's own fault flag
+    std::string message;       ///< Its fault text, when it sent one
+    /// `lanes[].map` verbatim ("T0", "T2", ...), indexed by lane; empty when
+    /// the frame carried no lane table. Read-only visibility: the lane→tool
+    /// relation is the firmware's own, and what it means for head indices is
+    /// exactly what a field capture has to settle before anything acts on it.
+    std::vector<std::string> lane_maps;
+};
+
+/// Pull an AfcStateReading out of a Moonraker status frame carrying the
+/// `zmod_afclite` (or its `AFC` alias) object. nullopt when the frame carried
+/// neither object.
+std::optional<AfcStateReading> read_afc_state(const nlohmann::json& status);
 
 /// The dock sensor this printer exposes, or an absent capability.
 ToolSensor resolve_tool_sensor(const PrinterDiscovery& hw);

@@ -1264,6 +1264,8 @@
   <translation tag="Fix: chown {} {}, then restart" es="Solución: chown {} {}, luego reinicie"/>
   <translation tag="FlashForge Adventurer 5M" es="FlashForge Adventurer 5M"/>
   <translation tag="FlashForge Adventurer 5X" es="FlashForge Adventurer 5X"/>
+  <translation tag="FlashForge Creator 5" es="FlashForge Creator 5"/>
+  <translation tag="FlashForge Creator 5 Pro" es="FlashForge Creator 5 Pro"/>
   <translation tag="FlashForge IFS" es="FlashForge IFS"/>
   <translation tag="Flip" es="Voltear"/>
   <translation tag="Flip the spools" es="Dar la vuelta a las bobinas"/>
