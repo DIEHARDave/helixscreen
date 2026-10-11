@@ -3347,6 +3347,7 @@ translations:
     skipping bed mesh for quick reprints.
   : Das HelixPrint-Plugin ermöglicht schnelle G-Code-Modifikationen direkt auf Ihrem
     Drucker – wie das Überspringen des Bettnetzes für schnelle Neudrucke.
+  The Creator 5 has no automatic unload. Cut the filament at the head and pull it out by hand.: The Creator 5 has no automatic unload. Cut the filament at the head and pull it out by hand.
   The Spoolman spool currently loaded: Aktuell geladene Spoolman-Spule
   ? The animated screensaver has been turned off on this device to prevent it from
     interfering with prints. You can re-enable it in Settings > Display.
@@ -3668,6 +3669,7 @@ translations:
   Unload from toolhead first: 'Entladen Sie zuerst aus dem Werkzeugkopf'
   Unload macro not configured: Entlade-Makro nicht konfiguriert
   Unload the CFS filament before enabling bypass: 'Entladen Sie das CFS-Filament, bevor Sie den Bypass aktivieren'
+  Unload {}: Unload {}
   Unload...: Entladen...
   Unloaded: 'Entladen'
   Unloading: Entladen

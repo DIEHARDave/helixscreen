@@ -3,12 +3,20 @@
 #include "ui_manual_pull_prompt.h"
 
 #include "ui_error_reporting.h"
+#include "ui_modal.h"
 
+#include "ams_backend.h"
+#include "ams_state.h"
+#include "config.h"
+#include "display_numbering.h"
 #include "filament_sensor_manager.h"
 #include "observer_factory.h"
 #include "static_subject_registry.h"
 
+#include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
+
+#include <string>
 
 namespace {
 
@@ -18,6 +26,8 @@ namespace {
 ObserverGuard s_toolhead_observer;
 bool s_armed = false;
 bool s_registered = false;
+/// The open manual-unload notice, so a second tap replaces it.
+lv_obj_t* s_manual_unload_notice = nullptr;
 
 /// Toolhead-detected subject values. -1 is "this printer has no such sensor",
 /// which is a third answer and not a synonym for 0.
@@ -83,6 +93,48 @@ void manual_pull_unload_finished() {
         return;
     }
     fire("unload complete");
+}
+
+bool is_creator5_printer() {
+    auto* cfg = Config::get_instance();
+    return cfg && cfg->get_preset().rfind("creator5", 0) == 0;
+}
+
+void dispatch_creator5_load(int slot) {
+    AmsBackend* backend = AmsState::instance().get_backend();
+    if (!backend || slot < 0) {
+        NOTIFY_WARNING(lv_tr("Multi-Filament System not available"));
+        return;
+    }
+    spdlog::info("[ManualPull] Creator 5 load of slot {} - firmware heats and feeds", slot);
+    if (AmsError error = backend->load_filament(slot); !error.success()) {
+        notify_ams_error(error);
+    }
+}
+
+void show_manual_unload_notice(int tool) {
+    if (s_manual_unload_notice) {
+        modal_hide(s_manual_unload_notice);
+        s_manual_unload_notice = nullptr;
+    }
+
+    const std::string title = tool >= 0
+                                  ? fmt::format(fmt::runtime(lv_tr("Unload {}")), tool_label(tool))
+                                  : std::string(lv_tr("Unload Filament"));
+
+    AlertOptions opts;
+    opts.on_dismiss = [] { s_manual_unload_notice = nullptr; };
+    s_manual_unload_notice = modal_alert(
+        title.c_str(),
+        lv_tr("The Creator 5 has no automatic unload. "
+              "Cut the filament at the head and pull it out by hand."),
+        ModalSeverity::Info, lv_tr("OK"), [] { s_manual_unload_notice = nullptr; }, opts);
+
+    if (!s_manual_unload_notice) {
+        spdlog::error("[ManualPull] Failed to create manual unload notice");
+        return;
+    }
+    spdlog::info("[ManualPull] Creator 5 manual unload notice shown ({})", title);
 }
 
 } // namespace helix::ui

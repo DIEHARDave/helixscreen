@@ -3310,6 +3310,7 @@ translations:
     skipping bed mesh for quick reprints.
   : Плагин HelixPrint позволяет быстро модифицировать G-code прямо на принтере — например,
     пропускать сетку стола для быстрых перепечаток.
+  The Creator 5 has no automatic unload. Cut the filament at the head and pull it out by hand.: The Creator 5 has no automatic unload. Cut the filament at the head and pull it out by hand.
   The Spoolman spool currently loaded: Текущая катушка Spoolman
   ? The animated screensaver has been turned off on this device to prevent it from
     interfering with prints. You can re-enable it in Settings > Display.
@@ -3620,6 +3621,7 @@ translations:
   Unload from toolhead first: 'Сначала выгрузите из печатающей головки'
   Unload macro not configured: Макрос выгрузки не настроен
   Unload the CFS filament before enabling bypass: 'Выгрузите филамент CFS перед включением обхода'
+  Unload {}: Unload {}
   Unload...: Выгрузить...
   Unloaded: 'Выгружен'
   Unloading: Выгрузка

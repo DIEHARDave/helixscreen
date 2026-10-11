@@ -3245,6 +3245,7 @@ translations:
     skipping bed mesh for quick reprints.
   : The HelixPrint plugin enables fast G-code modifications directly on your printer—like
     skipping bed mesh for quick reprints.
+  The Creator 5 has no automatic unload. Cut the filament at the head and pull it out by hand.: The Creator 5 has no automatic unload. Cut the filament at the head and pull it out by hand.
   The Spoolman spool currently loaded: The Spoolman spool currently loaded
   ? The animated screensaver has been turned off on this device to prevent it from
     interfering with prints. You can re-enable it in Settings > Display.
@@ -3549,6 +3550,7 @@ translations:
   Unload from toolhead first: Unload from toolhead first
   Unload macro not configured: Unload macro not configured
   Unload the CFS filament before enabling bypass: Unload the CFS filament before enabling bypass
+  Unload {}: Unload {}
   Unload...: Unload...
   Unloaded: Unloaded
   Unloading: Unloading

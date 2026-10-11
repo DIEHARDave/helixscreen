@@ -68,4 +68,36 @@ void manual_pull_unload_finished();
  */
 void disarm_manual_pull_prompt();
 
+/**
+ * @brief Whether this is a Creator 5, whose filament ops the firmware owns.
+ *
+ * The Creator 5 / 5 Pro presets (stock and Z-Mod) all start with "creator5" -
+ * the same test PrinterDetector uses to pick the Z-Mod variant. On it:
+ *
+ *   - Unload is manual: the filament is cut at the head and pulled out by hand,
+ *     so every Unload entry point shows show_manual_unload_notice() instead of
+ *     heating or moving.
+ *   - Load is always offered while a head's sensor sees filament: the printer
+ *     cannot tell an inserted strand from one already fed to the nozzle, so a
+ *     "loaded" lane must not grey Load out. dispatch_creator5_load() sends it
+ *     straight to the firmware, which heats the right head itself.
+ */
+[[nodiscard]] bool is_creator5_printer();
+
+/**
+ * @brief Run a Creator 5 load for @p slot through the AMS backend, with no UI
+ *        preheat, swap planning or already-loaded refusal.
+ *
+ * Busy / printing refusals stay with the caller. Errors are toasted here.
+ */
+void dispatch_creator5_load(int slot);
+
+/**
+ * @brief Tell the user the unload is a manual cut-and-pull.
+ *
+ * @param tool 0-based tool the unload was for, or -1 when unknown. A second
+ *        call replaces the open notice rather than stacking another.
+ */
+void show_manual_unload_notice(int tool);
+
 } // namespace helix::ui

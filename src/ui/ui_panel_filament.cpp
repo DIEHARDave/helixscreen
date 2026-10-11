@@ -1537,6 +1537,13 @@ void FilamentPanel::handle_load_button() {
         return;
     }
 
+    // Creator 5: the firmware load heats the selected head itself and must run
+    // even when the lane already reads loaded - see is_creator5_printer().
+    if (helix::ui::is_creator5_printer() && AmsState::instance().get_backend()) {
+        helix::ui::dispatch_creator5_load(selected_op_slot());
+        return;
+    }
+
     snapshot_prior_heater_target();
 
     // One plan for both questions: they are about the same dispatch, and a
@@ -1588,6 +1595,13 @@ void FilamentPanel::handle_unload_button() {
     // Cancel existing preheat if user taps again
     if (pending_preheat_op_ != PreheatOp::NONE) {
         cancel_pending_preheat();
+        return;
+    }
+
+    // The Creator 5 has no automatic unload: the filament is cut at the head and
+    // pulled out by hand. Say so before anything preheats or moves.
+    if (helix::ui::is_creator5_printer()) {
+        show_manual_unload_notice();
         return;
     }
 
@@ -2137,7 +2151,14 @@ void FilamentPanel::update_filament_op_buttons() {
                               backend->toolhead_filament_unaccounted().value_or(false));
     state.unload_is_cold_lane_op = false;
 
-    const auto gating = helix::ui::compute_op_button_gating(state);
+    auto gating = helix::ui::compute_op_button_gating(state);
+    // The Creator 5 cannot tell an inserted strand from a loaded one, so a lane
+    // reading "loaded" keeps Load available there. Unload keeps its own answer.
+    if (helix::ui::is_creator5_printer()) {
+        helix::ui::OpButtonState load_state = state;
+        load_state.slot_is_loaded = false;
+        gating.load_disabled = helix::ui::compute_op_button_gating(load_state).load_disabled;
+    }
     lv_subject_set_int(&load_disabled_subject_, gating.load_disabled ? 1 : 0);
     lv_subject_set_int(&unload_disabled_subject_, gating.unload_disabled ? 1 : 0);
     spdlog::debug("[FilamentPanel] Op buttons: slot={} loaded={} has_filament={} busy={} "
@@ -3087,6 +3108,14 @@ void FilamentPanel::show_unload_warning() {
     }
 
     spdlog::debug("[{}] Unload warning dialog shown", get_name());
+}
+
+void FilamentPanel::show_manual_unload_notice() {
+    int tool = helix::ToolState::instance().active_tool_index();
+    if (extruder_dropdown_) {
+        tool = static_cast<int>(lv_dropdown_get_selected(extruder_dropdown_));
+    }
+    helix::ui::show_manual_unload_notice(tool);
 }
 
 // ============================================================================

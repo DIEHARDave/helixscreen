@@ -1307,6 +1307,10 @@ void AmsOperationSidebar::handle_unload() {
     // so the title, prefill and primary button all name Unload. The busy/print
     // refusal runs first: the picker must not open over a running op.
     AmsBackend* backend = AmsState::instance().get_backend();
+    if (helix::ui::is_creator5_printer()) {
+        handle_unload(-1); // shows the manual-unload notice before anything runs
+        return;
+    }
     if (backend && backend->supports_batch_filament_ops()) {
         if (refuse_if_busy_or_printing()) {
             return;
@@ -1331,6 +1335,18 @@ void AmsOperationSidebar::handle_unload(int slot_index) {
     // here rather than forwarding a guaranteed backend rejection, which the
     // backend raises for a paused print as well as a printing one.
     if (refuse_if_busy_or_printing()) {
+        return;
+    }
+
+    // The Creator 5 has no automatic unload: the filament is cut at the head and
+    // pulled out by hand. Say so before the stepper starts or anything heats -
+    // the backend's own reply (zmod_afclite's TOOL_UNLOAD prompt) only arrives
+    // after the preheat.
+    if (helix::ui::is_creator5_printer()) {
+        AmsBackend* backend = AmsState::instance().get_backend();
+        const int tool =
+            (slot_index >= 0 || !backend) ? slot_index : backend->get_system_info().current_slot;
+        helix::ui::show_manual_unload_notice(tool);
         return;
     }
 

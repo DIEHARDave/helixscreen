@@ -719,6 +719,9 @@ class FilamentPanel : public PanelBase {
     // Filament sensor warning helpers
     void show_load_warning();
     void show_unload_warning();
+    /// Creator 5: unloading is a manual cut-and-pull, so Unload explains that
+    /// instead of running anything.
+    void show_manual_unload_notice();
     /// The Load / Unload plan for the current dropdown selection, against live
     /// backend state. Computed rather than stashed: the preheat decision and the
     /// dispatch are separated by a heat cycle the firmware can change state

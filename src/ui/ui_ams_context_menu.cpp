@@ -9,6 +9,7 @@
 #include "ui_button.h"
 #include "ui_callback_helpers.h"
 #include "ui_error_reporting.h"
+#include "ui_manual_pull_prompt.h"
 #include "ui_overlay_qr_scanner.h"
 #include "ui_toast_manager.h"
 
@@ -682,7 +683,11 @@ AmsContextMenu::decide_slot_ops(const AmsBackend* backend, int slot_index, bool 
     // the firmware's seated channel whether or not filament reached the head. A
     // cold-lane-eject lane - filament parked in the lane but NOT at the toolhead
     // - is a valid Load target and has to stay enabled.
-    d.can_load = decide_can_load(system_busy, d.toolhead_unload, d.presence, print_blocks_op);
+    //
+    // Except on the Creator 5, which cannot tell an inserted strand from one fed
+    // to the nozzle: a "loaded" lane there must keep Load available.
+    d.can_load = decide_can_load(system_busy, d.toolhead_unload && !is_creator5_printer(),
+                                 d.presence, print_blocks_op);
     return d;
 }
 
@@ -1270,6 +1275,12 @@ void dispatch_slot_menu_action(const SlotMenuHost& host, AmsContextMenu::MenuAct
                            ams_action_to_string(info.action));
             return;
         }
+        // Creator 5: the firmware load heats the right head itself, and a lane
+        // reading "loaded" must not be refused - see is_creator5_printer().
+        if (is_creator5_printer()) {
+            dispatch_creator5_load(slot);
+            break;
+        }
         // Preheat-aware load goes through the sidebar rather than a direct load.
         if (sidebar) {
             sidebar->handle_load_with_preheat(slot);
@@ -1285,6 +1296,8 @@ void dispatch_slot_menu_action(const SlotMenuHost& host, AmsContextMenu::MenuAct
         // (mirrors how LOAD routes via handle_load_with_preheat).
         if (sidebar) {
             sidebar->handle_unload(slot);
+        } else if (is_creator5_printer()) {
+            show_manual_unload_notice(slot);
         } else if (AmsError error = backend->unload_filament(slot);
                    error.result != AmsResult::SUCCESS) {
             notify_ams_error(error);
