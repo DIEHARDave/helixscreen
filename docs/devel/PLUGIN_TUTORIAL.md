@@ -565,6 +565,9 @@ in `examples/plugins/temp-spark` is the canvas deep-dive; and
 overlay that controls its own settings through `helix.settings.set`, and a
 translation pack under `i18n/`. `examples/plugins/ambient-tile` shows the
 reading side of `http`: polling an endpoint, resolving values out of
-untrusted JSON, and drawing them as a canvas sparkline. Beyond that:
+untrusted JSON, and drawing them as a canvas sparkline.
+`examples/plugins/calibration-bridge` goes further: no home tile at all, its
+whole UI an overlay driven by Moonraker agent events from a companion
+process (a proof of concept today - no companion exists yet). Beyond that:
 `helix.moonraker.on_agent_event` is the channel to a companion process on
 the printer itself.

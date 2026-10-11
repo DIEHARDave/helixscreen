@@ -6,7 +6,6 @@
                de="Raumtemperatur und Luftfeuchtigkeit von Home Assistant oder einem beliebigen JSON-Endpunkt, als anpassbare Startkachel mit Verlaufsansicht."/>
   <translation tag="Room conditions; adds a history sparkline as the tile grows"
                de="Raumklima; wächst die Kachel, erscheint eine Verlaufskurve"/>
-  <translation tag="Source" de="Quelle"/>
   <translation tag="Home Assistant URL" de="Home-Assistant-URL"/>
   <translation tag="Access token" de="Zugriffstoken"/>
   <translation tag="Temperature entity" de="Temperatur-Entität"/>
@@ -16,11 +15,8 @@
   <translation tag="Poll interval (s)" de="Abfrageintervall (s)"/>
   <!-- Tile and overlay -->
   <translation tag="Room" de="Raum"/>
-  <translation tag="Temperature" de="Temperatur"/>
-  <translation tag="Humidity" de="Luftfeuchtigkeit"/>
   <translation tag="Last hour" de="Letzte Stunde"/>
   <!-- Age line -->
-  <translation tag="Never" de="Nie"/>
   <translation tag="Updated just now" de="Soeben aktualisiert"/>
   <translation tag="Updated 1m ago" de="Vor 1 Min. aktualisiert"/>
   <translation tag="Updated %dm ago" de="Vor %d Min. aktualisiert"/>

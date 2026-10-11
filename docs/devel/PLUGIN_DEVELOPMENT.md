@@ -5,7 +5,7 @@ add home-panel tiles, overlays and settings without compiling anything: an autho
 text editor and the plugin folder, nothing else. This guide is the contract; every rule in
 it is enforced by code, cited so it can be verified against the source.
 
-Five complete plugins ship in the repository:
+Six complete plugins ship in the repository:
 
 - `examples/plugins/temp-spark` - a heater sparkline tile. No permissions.
 - `examples/plugins/led-effects` - an LED effect toggle. The `gcode` permission.
@@ -20,6 +20,13 @@ Five complete plugins ship in the repository:
   Assistant or any JSON endpoint. The `http` reading example: `http.get`
   against untrusted JSON, pointer resolution, a poll cadence, and a canvas
   sparkline from a plugin-side window.
+- `examples/plugins/calibration-bridge` - slicer-side filament calibration at
+  the printer, over Moonraker agent events. A proof of concept: no companion
+  ships yet, the plugin implements the proposed contract alone. The first
+  **overlay-only** example (`widgets: []`): the companion event is the front
+  door, a settings action row the manual one; also the `moonraker_write`
+  example (`printer.print.start`) and the worked use of an event-fed dropdown
+  with `bind_value`.
 
 ## 1. What a plugin is
 
@@ -227,6 +234,14 @@ Attribute rules (`src/plugin/plugin_xml_policy.cpp#check_plugin_attr`):
 Because every `bind_*` attribute value must be an owned subject name, `bind_text-fmt` is
 rejected: a plugin-supplied printf format bound to a subject is a format-string hazard.
 Format in Lua and set a string subject.
+
+A component prop must be declared inside an `<api>` block to exist, and
+`helix.ui.overlay(component, attrs)` fills those props at open time - the way
+data rides into an overlay that XML cannot build dynamically (the options of
+a dropdown, for instance: `examples/plugins/calibration-bridge`). A
+dropdown's `bind_value` is the way a selection comes back: it is a two-way
+subject binding, so the pick lands on a plugin-owned int subject without any
+widget access.
 
 Styling uses the app's design tokens, for example `style_pad_all="#space_sm"`,
 `style_text_color="#text"`, `style_text_font="#font_heading"`
@@ -715,7 +730,12 @@ translates it, so an English-only plugin ships no `i18n/` at all, and a pack
 with a missing entry simply falls back. Lookup order is the plugin's pack, then
 the app's own catalog - words the app already says (`Started`, `Paused`,
 `Completed`, `Cancelled`, `Failed`, common settings vocabulary) translate for
-free and should not be duplicated in a plugin pack.
+free and **must not be duplicated in a plugin pack**: the pack is consulted
+first, so a duplicate tag does not "also translate" that string, it silently
+overrides the system's translation for the whole UI while the plugin is
+loaded. `scripts/check_plugin_i18n_shadow.py` (run from quality-checks) fails
+on any example or fixture pack entry whose tag exists in
+`translations/<lang>.yml`.
 
 Where strings resolve:
 
