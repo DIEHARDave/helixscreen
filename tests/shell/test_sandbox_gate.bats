@@ -50,6 +50,35 @@ escape() {
         || fail "setup_suite lists [$declared], this test lists [$SANDBOX_COMMANDS_DOC]"
 }
 
+@test "sandbox: a suite-run make is GNU make 4.2+ whenever gmake exists" {
+    # macOS ships GNU make 3.81 as /usr/bin/make (Homebrew's 4.x installs as
+    # gmake), and the repo Makefile hard-errors below 4.2, so install tests
+    # that run make would fail on the environment alone. setup_suite forwards
+    # make to gmake on such a host; a Linux make (or the jobpool shim, which
+    # execs a modern make) parses as 4.2+ and takes the passthrough.
+    command -v gmake >/dev/null 2>&1 || skip "no gmake on this host"
+    local ver major minor
+    ver="$(make --version 2>/dev/null | head -1)"
+    major="$(printf '%s\n' "$ver" | sed -n 's/^GNU Make \([0-9]*\)\..*$/\1/p')"
+    minor="$(printf '%s\n' "$ver" | sed -n 's/^GNU Make [0-9]*\.\([0-9]*\).*$/\1/p')"
+    [ -n "$major" ] || fail "make --version unreadable: $ver"
+    if [ "$major" -eq 4 ]; then
+        [ "${minor:-0}" -ge 2 ] || fail "suite make is $ver; the gmake forwarder did not engage"
+    elif [ "$major" -lt 4 ]; then
+        fail "suite make is $ver; the gmake forwarder did not engage"
+    fi
+}
+
+@test "sandbox: a test's own make mock wins over the gmake forwarder" {
+    # The forwarder also installs a bash function, and a function outranks
+    # PATH; several tests script make through a mock, so the forwarder must
+    # hand control back to it.
+    command -v gmake >/dev/null 2>&1 || skip "no gmake on this host"
+    mock_command_script make 'echo MOCK-MAKE "$@"'
+    run make install PLATFORM_TARGET=pi
+    [ "$output" = "MOCK-MAKE install PLATFORM_TARGET=pi" ]
+}
+
 # --- the deliberate escapes -------------------------------------------------
 
 @test "sandbox: a bare killall is blocked and recorded" {

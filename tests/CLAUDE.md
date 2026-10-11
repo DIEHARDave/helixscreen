@@ -413,6 +413,12 @@ passes straight through the host's jobpool shim and no test draws from or reads 
 machine's build pool. A test of pool handling names a fake through `HELIX_JOBPOOL` and
 unsets `JOBPOOL` (`test_helix_claim_jobs.bats`).
 
+On a host whose bare `make` is older than the Makefile's GNU make 4.2 floor (Apple's
+/usr/bin/make is 3.81; Homebrew's 4.x installs as `gmake`), the sandbox also forwards
+`make` to `gmake` for the whole run — shim plus exported function, like the blocked
+commands, and deferring to a test's own make mock. A Linux make, and the jobpool shim,
+parse as 4.2+ and are left untouched (`test_sandbox_gate.bats`).
+
 To use one of those commands, mock it: `mock_command_script "killall" 'exit 0'` in
 `setup()`. A mock is found first, so the sandbox never sees the call.
 
