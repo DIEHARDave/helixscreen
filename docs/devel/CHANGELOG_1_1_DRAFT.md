@@ -349,6 +349,14 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
   stock unit.
 - **Chamber temperature per material** (#1263) - Material Temperatures has a chamber column,
   editable on printers with a chamber heater.
+- **A chamber target set to the printer's own resting temperature is no longer hidden** - on
+  printers whose M141 splits the setpoint across a heater and a cooling fan (the K2), a
+  chamber target of 35°C or below parks on the fan with the heater target reading 0. A target
+  that equals the fan's configured resting value (35°C on a stock K2) is byte-identical to
+  "off" on the wire, and the print screen used to show it as unset. That state now shows the
+  number with a circled-A auto glyph beside it: the printer's standing behavior, not a
+  deliberate set. Deliberate targets that differ from resting keep the checkmark, and the
+  print screen's chamber status now follows the real setpoint while a print runs.
 
 **Printing**
 

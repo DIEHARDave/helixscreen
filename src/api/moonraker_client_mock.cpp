@@ -2828,12 +2828,21 @@ void MoonrakerClientMock::populate_hardware() {
 
     case PrinterType::CREALITY_K2_PLUS:
         // Creality K2 Plus. Names mirror tests/fixtures/printers/creality_k2_plus.json
-        // and assets/config/presets/k2.json hardware/expected.
+        // and assets/config/presets/k2.json hardware/expected. `temperature_fan
+        // chamber_fan` is the M141 thermostat half of the chamber pair (its
+        // PTC-fan twin is the heater_fan of the same bare name).
         discovery_.heaters() = {"heater_bed", "extruder", "heater_generic chamber_heater"};
         discovery_.sensors() = {"heater_bed", // Bed thermistor (Klipper naming: bare heater name)
                                 "extruder", // Hotend thermistor (Klipper naming: bare heater name)
-                                "temperature_sensor chamber_temp"};
-        discovery_.fans() = {"fan", "heater_fan chamber_fan", "output_pin fan0", "output_pin fan1",
+                                "temperature_sensor chamber_temp",
+                                // The thermostat is a sensor too (subscription and
+                                // status emission key on the sensors list)
+                                "temperature_fan chamber_fan"};
+        discovery_.fans() = {"fan",
+                             "heater_fan chamber_fan",
+                             "temperature_fan chamber_fan",
+                             "output_pin fan0",
+                             "output_pin fan1",
                              "output_pin fan2"};
         discovery_.leds() = {"output_pin LED"};
         break;
@@ -4143,7 +4152,14 @@ void MoonrakerClientMock::dispatch_initial_state() {
             }
             initial_status[s] = {{"temperature", temp}};
         } else if (s.rfind("temperature_fan ", 0) == 0) {
-            initial_status[s] = {{"temperature", 35.0}, {"target", 40.0}, {"speed", 0.0}};
+            // A chamber-named thermostat parks at its configured resting target
+            // (the K2's stock 35C); every other temperature_fan carries the
+            // K1C-style spin-up threshold 40C.
+            const bool is_chamber_fan = s.find("chamber") != std::string::npos;
+            initial_status[s] = {
+                {"temperature", 35.0},
+                {"target", is_chamber_fan ? mock_internal::MOCK_K2_CHAMBER_FAN_RESTING_C : 40.0},
+                {"speed", 0.0}};
         } else if (s.rfind("tmc2240 ", 0) == 0 || s.rfind("tmc5160 ", 0) == 0) {
             // TMC stepper drivers with built-in temperature
             double temp = 55.0 + (std::hash<std::string>{}(s) % 20);
@@ -4471,7 +4487,12 @@ void MoonrakerClientMock::dispatch_historical_temperatures() {
                 status_obj[s] = {{"temperature", temp + noise}};
             } else if (s.rfind("temperature_fan ", 0) == 0) {
                 double temp = 35.0 + 3.0 * std::sin(2.0 * M_PI * timestamp_sec / 80.0);
-                status_obj[s] = {{"temperature", temp}, {"target", 40.0}, {"speed", 0.5}};
+                const bool is_chamber_fan = s.find("chamber") != std::string::npos;
+                status_obj[s] = {{"temperature", temp},
+                                 {"target", is_chamber_fan
+                                                ? mock_internal::MOCK_K2_CHAMBER_FAN_RESTING_C
+                                                : 40.0},
+                                 {"speed", 0.5}};
             }
         }
 
@@ -5213,7 +5234,10 @@ void MoonrakerClientMock::temperature_simulation_loop() {
                 double target;
                 if (s.find("chamber") != std::string::npos) {
                     temp = chamber_temp_.load();
-                    target = chamber_target_.load();
+                    // A chamber thermostat parks at its configured resting
+                    // target whenever no M141 set is live.
+                    const double set = chamber_target_.load();
+                    target = set > 0.0 ? set : mock_internal::MOCK_K2_CHAMBER_FAN_RESTING_C;
                 } else {
                     temp = 35.0 + 3.0 * std::sin(2.0 * M_PI * sim_time / 80.0);
                     target = 40.0;

@@ -37,11 +37,21 @@ static bool is_mock_kalico() {
 // configfile ceiling is part of that vendor simulation (mirror of the schema
 // knowledge in chamber_heater_backend_dragonbreath.cpp). Empty when the
 // resolved chamber heater runs no backend that reports one.
+//
+// A chamber cooling-fan thermostat carries its configured resting target, the
+// value M141 S0 parks the fan at and the marker the live resting-read keys on:
+// 35 C is the K2's stock chamber_fan target_temp (captured live in
+// docs/devel/CHAMBER_HEATER.md's verification log).
 static json chamber_heater_configfile_sections(const MoonrakerClientMock* self) {
     json sections = json::object();
     const auto hw = self->hardware();
     if (hw.has_chamber_heater() && hw.chamber_heater_backend_id() == "dragonbreath") {
         sections[hw.chamber_heater_name()] = {{"max_temp", 75.0}};
+    }
+    const auto& objects = hw.printer_objects();
+    const std::string chamber_fan = "temperature_fan chamber_fan";
+    if (std::find(objects.begin(), objects.end(), chamber_fan) != objects.end()) {
+        sections[chamber_fan] = {{"target_temp", mock_internal::MOCK_K2_CHAMBER_FAN_RESTING_C}};
     }
     return sections;
 }

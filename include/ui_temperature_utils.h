@@ -494,7 +494,9 @@ enum class HeaterStatusState {
     None,    ///< heater off, or nothing to say
     Heating, ///< below target: flame glyph, duty in warning color
     Ready,   ///< at target (or chamber holding at/below its ceiling): check glyph
-    Cooling  ///< above target (or above the chamber ceiling): snowflake glyph
+    Cooling, ///< above target (or above the chamber ceiling): snowflake glyph
+    Auto     ///< chamber at/below its standing (resting) setpoint: circled-A glyph, the
+             ///< machine's own behavior rather than a deliberate set
 };
 
 /**
