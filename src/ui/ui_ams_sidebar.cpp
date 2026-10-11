@@ -1307,6 +1307,12 @@ void AmsOperationSidebar::handle_unload() {
     // so the title, prefill and primary button all name Unload. The busy/print
     // refusal runs first: the picker must not open over a running op.
     AmsBackend* backend = AmsState::instance().get_backend();
+    // This is the "Unload" button: filament intent. The slot overload below is
+    // the context menu's explicit dispatch, which on a tool changer is labelled
+    // Unmount and parks the tool, so it is deliberately not gated.
+    if (helix::ui::notify_if_unload_is_manual(backend)) {
+        return;
+    }
     if (backend && backend->supports_batch_filament_ops()) {
         if (refuse_if_busy_or_printing()) {
             return;

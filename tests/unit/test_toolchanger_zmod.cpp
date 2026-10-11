@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include "ui_manual_pull_prompt.h"
+
 #include "../test_helpers/toolchanger_test_helper.h"
+#include "../ui_test_utils.h"
+#include "filament_op_execute.h"
 #include "lane_source_store.h"
 #include "printer_discovery.h"
 #include "test_helpers/registered_backend.h"
@@ -649,4 +653,83 @@ TEST_CASE("An unknown afclite activity word changes nothing", "[toolchanger][zmo
     tc.feed(json{{"zmod_afclite", {{"current_state", "loading"}, {"error_state", false}}}});
     CHECK(tc.get_system_info().action == AmsAction::IDLE);
     CHECK(tc.get_current_tool() == 1);
+}
+
+// ---------------------------------------------------------------------------
+// No automatic unload: the user cuts the filament at the head and pulls it out.
+// ---------------------------------------------------------------------------
+
+namespace {
+
+/// Collects the info toasts raised while it lives.
+struct InfoToasts {
+    std::vector<std::string> seen;
+    InfoToasts() {
+        helix::ui::set_test_notification_info_hook(
+            [this](const std::string& msg) { seen.push_back(msg); });
+    }
+    ~InfoToasts() {
+        helix::ui::set_test_notification_info_hook(nullptr);
+    }
+};
+
+} // namespace
+
+TEST_CASE("Z-Mod's Creator 5 row has a manual unload", "[toolchanger][zmod][manual_unload]") {
+    ToolChangerHelper zmod(4);
+    wire_zmod(zmod);
+    CHECK(zmod.unload_is_manual());
+
+    ToolChangerHelper plain(4);
+    CHECK_FALSE(plain.unload_is_manual());
+}
+
+TEST_CASE("The manual-unload notice is raised once per tap and sends nothing",
+          "[toolchanger][zmod][manual_unload]") {
+    InfoToasts toasts;
+    ToolChangerHelper tc(4);
+    wire_zmod(tc);
+    tc.feed(json{{"zmod_color", {{"active_tool_id", 2}}}});
+    const size_t sent_before = tc.sent().size();
+
+    CHECK(helix::ui::notify_if_unload_is_manual(&tc));
+    CHECK(helix::ui::notify_if_unload_is_manual(&tc));
+
+    REQUIRE(toasts.seen.size() == 2);
+    CHECK(toasts.seen[0] == toasts.seen[1]); // identical text, which the toast stack folds
+    CHECK(toasts.seen[0].find("no automatic unload") != std::string::npos);
+    CHECK(tc.sent().size() == sent_before);
+}
+
+TEST_CASE("A tool changer with an automatic unload gets no notice",
+          "[toolchanger][zmod][manual_unload]") {
+    InfoToasts toasts;
+    ToolChangerHelper tc(4);
+    CHECK_FALSE(helix::ui::notify_if_unload_is_manual(&tc));
+    CHECK_FALSE(helix::ui::notify_if_unload_is_manual(nullptr));
+    CHECK(toasts.seen.empty());
+}
+
+TEST_CASE("Every filament-unload dispatch stops at the notice on a manual-unload backend",
+          "[toolchanger][zmod][manual_unload]") {
+    InfoToasts toasts;
+    ToolChangerHelper tc(4);
+    wire_zmod(tc);
+    tc.feed(json{{"zmod_color", {{"active_tool_id", 2}}}});
+    const size_t sent_before = tc.sent().size();
+
+    helix::ui::execute_filament_unload(&tc, 2, /*target_is_loaded=*/true, "[Test]");
+
+    CHECK(toasts.seen.size() == 1);
+    CHECK(tc.sent().size() == sent_before);
+}
+
+TEST_CASE("An explicit park still unmounts on Z-Mod", "[toolchanger][zmod][manual_unload]") {
+    // The unmount control calls the backend directly and must not be swallowed
+    // by the filament-unload notice.
+    ToolChangerHelper tc(4);
+    wire_zmod(tc);
+    tc.feed(json{{"zmod_color", {{"active_tool_id", 1}}}});
+    REQUIRE(tc.unload_filament(1).success());
+    CHECK(tc.sent().back() == "_T_OUT");
 }

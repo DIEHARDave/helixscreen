@@ -2797,6 +2797,21 @@ class AmsBackend {
     }
 
     /**
+     * @brief Whether the machine has no automatic filament unload.
+     *
+     * True when removing filament is the user's job: they cut it at the head and
+     * pull it out by hand, and nothing the backend can send changes that. A UI
+     * surface whose intent is "take the filament out" asks this first and, when
+     * true, tells the user instead of heating or dispatching. That is distinct
+     * from unload_filament(), which may still mean something else on the same
+     * backend (a tool changer's unload is an unmount, and stays available as one).
+     * A discovery-dependent answer, so a virtual rather than a BackendTraits field.
+     */
+    [[nodiscard]] virtual bool unload_is_manual() const {
+        return false;
+    }
+
+    /**
      * @brief Whether the backend assigns one spool per tool (tool-changer model).
      *
      * Drives the auto-assign-active-spool-to-tool path and the runout-guidance

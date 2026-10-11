@@ -1591,6 +1591,12 @@ void FilamentPanel::handle_unload_button() {
         return;
     }
 
+    // Before the preheat: a machine with no automatic unload must not warm up
+    // for an operation that will not happen.
+    if (helix::ui::notify_if_unload_is_manual(AmsState::instance().get_backend())) {
+        return;
+    }
+
     snapshot_prior_heater_target();
 
     if (needs_ui_preheat(current_unload_plan(), StandardMacroSlot::UnloadFilament)) {

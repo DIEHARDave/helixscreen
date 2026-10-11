@@ -200,14 +200,24 @@ its activity word and lane map are logged for field visibility and acted on for 
 (vocabulary unverified — a debug bundle captured during a real load shows both); and
 `zmod_color.slots[].hasFilament` stamps a docked head without filament as Empty.
 
-**The filament-feed macros are deliberately not wired.** `LOAD_FILAMENT`,
+**The filament-feed macros are still not wired; manual unload is.** `LOAD_FILAMENT`,
 `UNLOAD_FILAMENT`, `LOAD_MATERIAL`, `TOOL_UNLOAD` and `LANE_UNLOAD` all exist on this
-firmware and all move hardware (heat, feed, cut, wipe), but no capture shows their
-parameter shapes — which of `T=`, `SLOT=`, `LANE=` or bare-operates-on-active each takes —
-and a guessed parameter can drive the wrong head's feed motor. The afclite state logging
-above is the instrument that settles it: once a capture shows the words and the
-parameters, wiring them is a provider-row change. Until then the macros remain reachable
-through the Macros panel, which is where they are safe.
+firmware and all move hardware (heat, feed, cut, wipe). A contributor's on-device capture
+(prestonbrown/helixscreen#1779, Z-Mod 1.7.4) reports that Z-Mod's own Load for head `n`
+is `CHANGE_TOOL LANE=E<n>`, run by the afclite shim as `_T_IN_ZCOLOR SLOT=<n> NAPR=1`, and
+that it heats and feeds only the selected head. The public source cannot confirm the shape:
+`_T_IN_ZCOLOR` is defined in the unpublished `zmod_color` plugin, the C5 configs only call
+it as `_T_IN_ZCOLOR SLOT={t+1} NAPR=0 NOCOLOR=1` (ghzserg/z_c5pro
+`translate/en/c5pro_display_off.cfg`, `_T_USE`) with a 1-based slot, and the AD5X
+`zmod_color.py#cmd_IN_ZCOLOR` treats `NAPR=0` as load and `NAPR=1` as unload. A wrong
+`SLOT` or `NAPR` can feed the wrong head, so Load stays a tool mount until a capture or
+source settles both. The macros remain reachable through the Macros panel.
+
+**There is no automatic unload on the Creator 5.** The user cuts the filament at the head
+and pulls it out by hand; the firmware's `TOOL_UNLOAD` says so only after heating. The
+Z-Mod row answers `AmsBackend::unload_is_manual()` true, so the filament panel and AMS
+sidebar Unload controls show a notice up front and send and heat nothing. Unmount in the
+slot menu remains a `_T_OUT` tool park.
 
 One upstream dependency: [ghzserg/z_c5pro#1](https://github.com/ghzserg/z_c5pro/pull/1)
 adds `slots`, `palette` and a live `active_tool_id` to `zmod_color.get_status()`. Without
