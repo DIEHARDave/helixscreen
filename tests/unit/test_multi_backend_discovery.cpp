@@ -300,6 +300,77 @@ TEST_CASE_METHOD(MultiBackendFixture,
     REQUIRE(systems[0].type == helix::AmsType::AFC);
 }
 
+// ----------------------------------------------------------------------------
+// Z-Mod's AFC shim on the FlashForge Creator 5
+//
+// Z-Mod 1.7.4 publishes an AFC-shaped surface (the `zmod_afclite` extra
+// registering `AFC`, `AFC_lane E0..E3` and `AFC_unit C5`) so Fluidd and
+// Mainsail draw their AFC panel for the C5's four heads. The machine is a
+// head changer: the shim reports no extruders and no hubs, so an AFC backend
+// infers a hub topology for heads that are each their own path, and most of
+// the op macros it would send (AFC_RESET, AFC_LANE_RESET, SET_SPOOL_ID, ...)
+// do not exist on this firmware. The `zmod_afclite` object plus the changer
+// fingerprint (`zmod_color` + the carriage grab buttons, the same predicate
+// the toolchanger provider rows use) names the machine, and the toolchanger
+// backend keeps it. Object names from field bundle 5WSPTZBL.
+// ----------------------------------------------------------------------------
+
+TEST_CASE_METHOD(MultiBackendFixture,
+                 "PrinterDiscovery: Z-Mod's AFC shim on a Creator 5 keeps the tool changer",
+                 "[ams][afc][toolchanger][multi-backend]") {
+    helix::PrinterDiscovery hw;
+    // The C5's object list under Z-Mod 1.7.4: the four heads, the changer's
+    // dock/grab buttons, zmod_color, and the afclite shim's AFC objects.
+    nlohmann::json objects = nlohmann::json::array(
+        {"AFC", "AFC_unit C5", "AFC_lane E0", "AFC_lane E1", "AFC_lane E2", "AFC_lane E3",
+         "zmod_afclite", "zmod_color", "gcode_button extruder_pos1", "gcode_button extruder_grab1",
+         "gcode_button extruder_pos2", "gcode_button extruder_grab2", "gcode_button extruder_pos3",
+         "gcode_button extruder_grab3", "gcode_button extruder_pos4", "gcode_button extruder_grab4",
+         "extruder", "extruder1", "extruder2", "extruder3", "heater_bed",
+         "heater_generic chamber_heater", "filament_switch_sensor fd_ex0",
+         "filament_switch_sensor fd_ex1", "filament_switch_sensor fd_ex2",
+         "filament_switch_sensor fd_ex3", "filament_motion_sensor fm_ex0",
+         "filament_motion_sensor fm_ex1", "filament_motion_sensor fm_ex2",
+         "filament_motion_sensor fm_ex3"});
+    hw.parse_objects(objects);
+
+    // The shim's own marker was seen. Its `AFC_unit C5` also trips the
+    // has_afc_lite fact exactly like PAXX's named stub (`AFC_unit U1`), and the
+    // C5 yields through the zmod rule below rather than the PAXX one: there is
+    // no filament_detect here, so the Snapmaker-scoped rule cannot fire.
+    REQUIRE(hw.has_zmod_afclite());
+    REQUIRE(hw.has_afc_lite());
+
+    // The shim yielded: four heads with no filament system above them register
+    // the tool changer, and nothing else.
+    REQUIRE_FALSE(hw.has_mmu());
+    const auto& systems = hw.detected_ams_systems();
+    REQUIRE(systems.size() == 1);
+    REQUIRE(systems[0].type == helix::AmsType::TOOL_CHANGER);
+    REQUIRE(hw.mmu_type() == helix::AmsType::TOOL_CHANGER);
+}
+
+TEST_CASE_METHOD(MultiBackendFixture,
+                 "PrinterDiscovery: zmod_afclite without the C5 changer fingerprint keeps AFC",
+                 "[ams][afc][multi-backend]") {
+    helix::PrinterDiscovery hw;
+    // An afclite shim on a machine without the carriage grab buttons: the
+    // changer fingerprint does not match, so nothing better is identified and
+    // the AFC claim stands.
+    nlohmann::json objects =
+        nlohmann::json::array({"AFC", "AFC_unit C5", "AFC_lane E0", "zmod_afclite", "extruder",
+                               "heater_bed", "gcode_move"});
+    hw.parse_objects(objects);
+
+    REQUIRE(hw.has_zmod_afclite());
+
+    REQUIRE(hw.has_mmu());
+    REQUIRE(hw.mmu_type() == helix::AmsType::AFC);
+    const auto& systems = hw.detected_ams_systems();
+    REQUIRE(systems.size() == 1);
+    REQUIRE(systems[0].type == helix::AmsType::AFC);
+}
+
 // A Snapmaker U1 running a filament system we CAN read keeps that system. The
 // yield is scoped to ACE, not to "any MMU on a U1".
 TEST_CASE_METHOD(MultiBackendFixture,

@@ -146,7 +146,7 @@ const std::vector<Provider>& providers() {
         // this table.
         {"MedusaHC", medusa_detect, medusa_status_objects, medusa_open_gcode, medusa_close_gcode,
          "T", "DROP_TOOL", nullptr},
-        {"Creator 5 Pro", zmod_c5_detect, zmod_c5_status_objects, nullptr, nullptr,
+        {kZmodC5ProviderName, zmod_c5_detect, zmod_c5_status_objects, nullptr, nullptr,
          "_T_IN T=", "_T_OUT", zmod_c5_material_write},
     };
     return table;
@@ -349,6 +349,31 @@ std::optional<ToolReading> read_zmod_color(const nlohmann::json& obj) {
 
 bool present(const PrinterDiscovery& hw) {
     return match(hw) != nullptr;
+}
+
+bool zmod_c5_present(const PrinterDiscovery& hw) {
+    return zmod_c5_detect(hw);
+}
+
+std::optional<ToolReading> parse_zmod_marker(const std::string& line) {
+    // Both spellings are respond_info output, so on the wire each arrives with
+    // whatever console framing the host adds; the tokens themselves are unique
+    // to the swap macros. A change runs the dropping markers first (the parked
+    // head's echoes) and the picking markers second, which is the order the
+    // step bar wants.
+    ToolReading r;
+    r.phase_names_direction = true;
+    if (line.find("Grab attempt for T") != std::string::npos ||
+        line.find("_T_IN") != std::string::npos) {
+        r.operation = "picking";
+        return r;
+    }
+    if (line.find("Unload attempt for T") != std::string::npos ||
+        line.find("_T_OUT") != std::string::npos) {
+        r.operation = "dropping";
+        return r;
+    }
+    return std::nullopt;
 }
 
 std::string machine_name(const PrinterDiscovery& hw) {

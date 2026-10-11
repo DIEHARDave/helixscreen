@@ -401,3 +401,124 @@ TEST_CASE("A slots-only frame keeps the latched palette and types",
     REQUIRE(types.has_value());
     CHECK(*types == std::vector<std::string>{"PLA", "PETG", "ABS"});
 }
+
+namespace {
+
+std::vector<std::string> step_labels(const AmsBackend::OperationStepModel& model) {
+    std::vector<std::string> out;
+    out.reserve(model.steps.size());
+    for (const auto& s : model.steps) {
+        out.push_back(s.label);
+    }
+    return out;
+}
+
+} // namespace
+
+TEST_CASE("Z-Mod's swap narration classifies into phase words", "[toolchanger][zmod][steps]") {
+    // Marker text is verbatim from field bundle 5WSPTZBL's klippy log, with the
+    // respond_info framing the wire adds.
+    auto grab = toolchanger_addon::parse_zmod_marker("// Grab attempt for T0: 1 of 5...");
+    REQUIRE(grab.has_value());
+    CHECK(grab->operation == "picking");
+    CHECK(grab->phase_names_direction);
+
+    auto unload = toolchanger_addon::parse_zmod_marker("// Unload attempt for T2: 3 of 5...");
+    REQUIRE(unload.has_value());
+    CHECK(unload->operation == "dropping");
+    CHECK(unload->phase_names_direction);
+
+    auto t_in = toolchanger_addon::parse_zmod_marker("X-Offset: 0.0000 _T_IN");
+    REQUIRE(t_in.has_value());
+    CHECK(t_in->operation == "picking");
+
+    auto t_out = toolchanger_addon::parse_zmod_marker("Z-Offset: 0.0000 _T_OUT");
+    REQUIRE(t_out.has_value());
+    CHECK(t_out->operation == "dropping");
+
+    // Console lines the swap macros never emit, including T_INFO's own tool
+    // table: without a marker token there is no phase to report.
+    CHECK_FALSE(toolchanger_addon::parse_zmod_marker("ok").has_value());
+    CHECK_FALSE(toolchanger_addon::parse_zmod_marker("// T0: home").has_value());
+    CHECK_FALSE(toolchanger_addon::parse_zmod_marker("// Slot 1 Config (PLA):").has_value());
+    CHECK_FALSE(toolchanger_addon::parse_zmod_marker("// Door: Close").has_value());
+}
+
+TEST_CASE("Z-Mod's markers light the swap step bar", "[toolchanger][zmod][steps]") {
+    ToolChangerHelper tc(4);
+    wire_zmod(tc);
+    tc.feed(json{{"zmod_color", {{"active_tool_id", 1}}}});
+
+    // The direction capability is known from the provider row (the dialect's
+    // markers are directional by construction), so the bar exists the moment a
+    // swap is dispatched — before the first marker lands. Nothing to dock on a
+    // fresh mount, nothing to pick up on an unmount.
+    CHECK(step_labels(tc.get_operation_step_model(StepOperationType::LOAD_SWAP)) ==
+          std::vector<std::string>{"Dock tool", "Pick up tool"});
+    CHECK(step_labels(tc.get_operation_step_model(StepOperationType::LOAD_FRESH)) ==
+          std::vector<std::string>{"Pick up tool"});
+    CHECK(step_labels(tc.get_operation_step_model(StepOperationType::UNLOAD)) ==
+          std::vector<std::string>{"Dock tool"});
+    // But at rest there is no step to be on.
+    CHECK(tc.get_system_info().operation_phase < 0);
+
+    // The active step operation is process-wide; restore the default for later
+    // cases in other files.
+    struct RestoreStepOperation {
+        ~RestoreStepOperation() {
+            AmsState::instance().set_active_step_operation(StepOperationType::LOAD_SWAP);
+        }
+    } restore_step_operation;
+
+    ToolChangerTestAccess::feed_zmod_marker(tc, "// Unload attempt for T1: 1 of 5...");
+    CHECK(tc.get_system_info().action == AmsAction::UNLOADING);
+    // Default active operation is LOAD_SWAP: docking is its first step.
+    REQUIRE(tc.get_system_info().operation_phase == 0);
+
+    ToolChangerTestAccess::feed_zmod_marker(tc, "// Grab attempt for T2: 1 of 5...");
+    CHECK(tc.get_system_info().action == AmsAction::SELECTING);
+    CHECK(tc.get_system_info().operation_phase == 1); // Pick up tool
+
+    // The markers are a phase source, not a tool sensor: the carriage reading
+    // is still zmod_color's alone.
+    CHECK(tc.get_current_tool() == 1);
+}
+
+TEST_CASE("A Z-Mod marker with no operation running still names a real swap",
+          "[toolchanger][zmod][steps]") {
+    // An _T_IN typed into Mainsail is a genuine swap the screen did not start;
+    // the marker reports it the same way.
+    ToolChangerHelper tc(4);
+    wire_zmod(tc);
+    tc.feed(json{{"zmod_color", {{"active_tool_id", -1}}}});
+
+    struct RestoreStepOperation {
+        ~RestoreStepOperation() {
+            AmsState::instance().set_active_step_operation(StepOperationType::LOAD_SWAP);
+        }
+    } restore_step_operation;
+    AmsState::instance().set_active_step_operation(StepOperationType::LOAD_FRESH);
+
+    ToolChangerTestAccess::feed_zmod_marker(tc, "// Grab attempt for T0: 1 of 5...");
+    CHECK(tc.get_system_info().action == AmsAction::SELECTING);
+    // Fresh mount: picking is the only step.
+    CHECK(tc.get_system_info().operation_phase == 0);
+}
+
+TEST_CASE("Z-Mod's endless spool is firmware-managed and always on",
+          "[toolchanger][zmod]") {
+    using namespace helix::printer;
+    ToolChangerHelper zmod_tc(4);
+    wire_zmod(zmod_tc);
+    const auto caps = zmod_tc.get_endless_spool_capabilities();
+    CHECK(caps.available());
+    CHECK(caps.provider == "zmod");
+    CHECK(caps.enabled == EndlessSpoolEnabled::On);
+    CHECK(caps.editability == EndlessSpoolEditability::ReadOnly);
+    CHECK(caps.restriction == EndlessSpoolRestriction::FirmwareManaged);
+
+    // Any other tool changer keeps the base default: nothing to switch to when
+    // every tool is its own path and no firmware speaks for them.
+    ToolChangerHelper plain(2);
+    CHECK_FALSE(plain.get_endless_spool_capabilities().available());
+}

@@ -3182,6 +3182,46 @@ TEST_CASE_METHOD(PrinterDetectorFixture,
 }
 
 TEST_CASE_METHOD(PrinterDetectorFixture,
+                 "PrinterDetector: Creator 5 Pro on Z-Mod 1.7.4 publishes the afclite AFC shim",
+                 "[printer][heuristics][creator5]") {
+    // Field shape from bundle 5WSPTZBL: Z-Mod 1.7.4 registers an AFC-shaped
+    // surface (zmod_afclite plus the AFC/AFC_lane/AFC_unit objects an AFC panel
+    // wants) for the C5's four heads. The hostname names the machine itself,
+    // not "flashforge", so the identification has to stand on the objects
+    // alone — and the AD5X must self-exclude on the same object list.
+    PrinterHardwareData hardware{
+        .heaters = {"extruder", "extruder1", "extruder2", "extruder3", "heater_bed"},
+        .sensors = {},
+        .fans = {"fan_generic chamber_fan", "fan_generic chamber_heat_fan",
+                 "fan_generic chamber_loop_fan", "fan_generic chamber_cool_fan"},
+        .leds = {"led chamber_led"},
+        .hostname = "creator5pro",
+        .printer_objects = {"zmod", "zmod_color", "zmod_afclite", "AFC", "AFC_lane E0",
+                            "AFC_lane E1", "AFC_lane E2", "AFC_lane E3", "AFC_unit C5",
+                            "heater_generic chamber_heater",
+                            "gcode_button extruder_pos1", "gcode_button extruder_grab1",
+                            "gcode_button extruder_pos2", "gcode_button extruder_grab2",
+                            "gcode_button extruder_pos3", "gcode_button extruder_grab3",
+                            "gcode_button extruder_pos4", "gcode_button extruder_grab4",
+                            "filament_switch_sensor fd_ex0", "filament_switch_sensor fd_ex1",
+                            "filament_switch_sensor fd_ex2", "filament_switch_sensor fd_ex3",
+                            "filament_motion_sensor fm_ex0", "filament_motion_sensor fm_ex1",
+                            "filament_motion_sensor fm_ex2", "filament_motion_sensor fm_ex3"},
+        .steppers = {},
+        .kinematics = "corexy",
+        .cpu_arch = "mips",
+        .objects_reported = true};
+
+    auto result = PrinterDetector::detect(hardware);
+    CAPTURE(result.type_name, result.confidence, result.runner_up_type_name,
+            result.runner_up_confidence, result.margin(), result.tied_count);
+
+    REQUIRE(result.detected());
+    REQUIRE(result.type_name == "FlashForge Creator 5 Pro");
+    REQUIRE(result.margin() >= PrinterDetector::DETECT_MIN_MARGIN);
+}
+
+TEST_CASE_METHOD(PrinterDetectorFixture,
                  "PrinterDetector: Creator 5 on Z-Mod firmware (no chamber heater)",
                  "[printer][heuristics][creator5]") {
     // The Creator 5 is the heater-free model: same Z-Mod objects as the Pro

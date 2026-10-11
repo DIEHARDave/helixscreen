@@ -176,6 +176,30 @@ std::optional<MaterialReading> read_materials(const nlohmann::json& status, int 
 /// Whether any provider claims this printer.
 bool present(const PrinterDiscovery& hw);
 
+/// Whether the Z-Mod Creator 5 changer row claims this printer: `zmod_color`
+/// plus the carriage grab buttons. The AD5X Z-Mod also publishes `zmod_color`
+/// but has no carriage buttons, so it cannot match. Backend selection asks this
+/// to tell Z-Mod's afclite AFC shim (which publishes the `AFC` objects an AFC
+/// panel wants) from a machine that is really a head changer.
+bool zmod_c5_present(const PrinterDiscovery& hw);
+
+/// The Z-Mod Creator 5 provider row's name, so callers holding machine_name()
+/// or a ToolSensor's provider_name can ask whether the active row speaks the
+/// Z-Mod dialect — whose swap phases arrive as gcode-response markers rather
+/// than a status object's phase word.
+inline constexpr const char* kZmodC5ProviderName = "Creator 5 Pro";
+
+/// Classify one gcode-response line from Z-Mod's Creator 5 changer macros into
+/// the phase word the changer state machine consumes. Z-Mod narrates a swap
+/// through respond_info lines — the grab/unload retry loops ("Grab attempt for
+/// T0: 1 of 5...") and the per-head offset echoes that bracket `_T_IN` /
+/// `_T_OUT` ("X-Offset: 0.0000 _T_IN") — and each marker spells the swap
+/// direction, so each maps onto the picking/dropping vocabulary the MedusaHC
+/// controllers publish. nullopt for every other console line. If a firmware
+/// build does not echo the markers, nothing matches and the operation step bar
+/// stays suppressed — a marker that never arrives cannot paint a wrong step.
+std::optional<ToolReading> parse_zmod_marker(const std::string& line);
+
 /// The dock sensor this printer exposes, or an absent capability.
 ToolSensor resolve_tool_sensor(const PrinterDiscovery& hw);
 

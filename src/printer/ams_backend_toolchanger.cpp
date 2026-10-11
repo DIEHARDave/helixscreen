@@ -118,6 +118,76 @@ void AmsBackendToolChanger::on_started() {
             }
         }
     }
+
+    register_zmod_marker_listener();
+}
+
+void AmsBackendToolChanger::on_stopping() {
+    unregister_zmod_marker_listener();
+}
+
+void AmsBackendToolChanger::register_zmod_marker_listener() {
+    if (!client_ || !zmod_c5_row_active()) {
+        return;
+    }
+
+    static const std::string handler_name = "toolchanger_zmod_marker_watcher";
+    auto token = lifetime_.token();
+
+    client_->register_method_callback(
+        "notify_gcode_response", handler_name, [this, token](const json& msg) {
+            // BG THREAD: extract the line into a local; no `this` access here.
+            std::string line;
+            if (msg.contains("params") && msg["params"].is_array() && !msg["params"].empty() &&
+                msg["params"][0].is_string()) {
+                line = msg["params"][0].get<std::string>();
+            } else if (msg.is_array() && !msg.empty() && msg[0].is_string()) {
+                line = msg[0].get<std::string>();
+            } else {
+                return;
+            }
+
+            // BG-side pre-filter (queue-pressure economy): notify_gcode_response
+            // fires for EVERY gcode console line — hundreds per second on a busy
+            // print. parse_zmod_marker only acts on the swap narration tokens,
+            // so anything without one never hits the UpdateQueue.
+            if (line.find("Grab attempt for T") == std::string::npos &&
+                line.find("Unload attempt for T") == std::string::npos &&
+                line.find("_T_IN") == std::string::npos &&
+                line.find("_T_OUT") == std::string::npos) {
+                return;
+            }
+
+            // MAIN THREAD: on_zmod_marker_line takes mutex_ and writes backend
+            // state.
+            token.defer("AmsBackendToolChanger::zmod_marker_apply",
+                        [this, line = std::move(line)]() mutable {
+                            on_zmod_marker_line(line);
+                        });
+        });
+}
+
+void AmsBackendToolChanger::unregister_zmod_marker_listener() {
+    if (!client_) {
+        return;
+    }
+    client_->unregister_method_callback("notify_gcode_response",
+                                        "toolchanger_zmod_marker_watcher");
+}
+
+void AmsBackendToolChanger::on_zmod_marker_line(const std::string& line) {
+    auto reading = helix::toolchanger_addon::parse_zmod_marker(line);
+    if (!reading) {
+        return;
+    }
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        // Same path a status frame takes: the marker's phase word drives the
+        // action, the direction latch and the step bar's index, while its
+        // absent fields leave the tool and dock state the object carries alone.
+        apply_tool_sensor_locked(*reading);
+    }
+    emit_event(EVENT_STATE_CHANGED);
 }
 
 // stop(), release_subscriptions(), is_running() provided by AmsSubscriptionBackend
@@ -405,6 +475,26 @@ AmsBackendToolChanger::resolve_step_locked(const std::string& operation, bool mi
 
 PathTopology AmsBackendToolChanger::get_topology() const {
     return PathTopology::PARALLEL; // Each tool has its own independent path
+}
+
+helix::printer::EndlessSpoolCapabilities
+AmsBackendToolChanger::get_endless_spool_capabilities() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    using namespace helix::printer;
+    if (!zmod_c5_row_active()) {
+        return {};
+    }
+    // Z-Mod's C5 "endless spool mode" (zmod docs, C5PRO.md): when a head runs
+    // out, the firmware switches to the next spool whose colour AND type both
+    // match. Always on, no toggle to write — the same answer the AD5X IFS
+    // backend gives stock zMod.
+    EndlessSpoolCapabilities caps;
+    caps.availability = EndlessSpoolAvailability::Available;
+    caps.provider = "zmod";
+    caps.enabled = EndlessSpoolEnabled::On;
+    caps.editability = EndlessSpoolEditability::ReadOnly;
+    caps.restriction = EndlessSpoolRestriction::FirmwareManaged;
+    return caps;
 }
 
 PathSegment AmsBackendToolChanger::get_filament_segment() const {
