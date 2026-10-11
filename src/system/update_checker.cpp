@@ -934,7 +934,17 @@ std::string UpdateChecker::install_failure_detail(const std::vector<std::string>
         // run_logged's "<command> failed (exit N):" carries no [ERROR] tag.
         if (line.find("[ERROR]") != std::string::npos ||
             line.find(" failed (exit ") != std::string::npos) {
-            bracket_error = line;
+            // A refusal block is cause-first, advice-after; the first
+            // substantive line is the cause, and a bare "[ERROR]" separator
+            // names nothing.
+            const auto tag = line.find("[ERROR]");
+            const bool substantive =
+                line.find(" failed (exit ") != std::string::npos ||
+                (tag != std::string::npos &&
+                 line.find_first_not_of(" \t", tag + 7) != std::string::npos);
+            if (substantive && bracket_error.empty()) {
+                bracket_error = line;
+            }
         }
         if (line.find("ERROR") != std::string::npos || line.find("FAILED") != std::string::npos) {
             error = line;
@@ -946,6 +956,48 @@ std::string UpdateChecker::install_failure_detail(const std::vector<std::string>
         !bracket_error.empty() ? bracket_error : (!error.empty() ? error : warning);
     detail.erase(0, detail.find_first_not_of(" \t"));
     return detail;
+}
+
+std::string UpdateChecker::service_dest_probe_error(const std::string& init_dir) {
+    if (init_dir.empty()) {
+        return "";
+    }
+    // A NEW file per attempt: an in-place overwrite of an existing file needs
+    // no fresh blocks and succeeds on a full filesystem, which would read as
+    // "has room". Unique name so a crashed probe's leftover never satisfies a
+    // later existence check.
+    const std::string probe =
+        init_dir + "/.helixscreen-space-probe." + std::to_string(getpid());
+    FILE* f = std::fopen(probe.c_str(), "wb");
+    if (f == nullptr) {
+        spdlog::warn("[UpdateChecker] Service destination probe could not create {}: {}",
+                     probe, strerror(errno));
+        return fmt::format(lv_tr("Error: cannot write the service file in {}"), init_dir);
+    }
+    std::fputs("probe\n", f);
+    const bool clean = std::ferror(f) == 0;
+    const bool closed = std::fclose(f) == 0;
+    std::remove(probe.c_str());
+    if (clean && closed) {
+        return "";
+    }
+    spdlog::warn("[UpdateChecker] Service destination probe failed to write {}", probe);
+    return fmt::format(lv_tr("Error: cannot write the service file in {}"), init_dir);
+}
+
+std::string UpdateChecker::init_service_dest_dir() {
+    // Same resolution order as install.sh's detect_init_system: systemd when
+    // it is running, else SysV. Empty means this host has no init destination
+    // we know (a dev machine) and the installer's own pre-flight decides.
+    struct stat st {};
+    if (stat("/run/systemd/system", &st) == 0 && S_ISDIR(st.st_mode) &&
+        stat("/etc/systemd/system", &st) == 0 && S_ISDIR(st.st_mode)) {
+        return "/etc/systemd/system";
+    }
+    if (stat("/etc/init.d", &st) == 0 && S_ISDIR(st.st_mode)) {
+        return "/etc/init.d";
+    }
+    return "";
 }
 
 std::string UpdateChecker::download_filename_for_url(const std::string& url) {
@@ -1281,6 +1333,28 @@ void UpdateChecker::start_download() {
         TelemetryManager::instance().record_update_failure("print_in_progress", "",
                                                            helix::platform::current_key());
         return;
+    }
+
+    // Fail fast where the installer would refuse anyway: the service
+    // definition is the one payload piece that lands on the root filesystem,
+    // and on boards whose root overlay is full the installer refuses only
+    // AFTER the app has downloaded the whole archive. Root only — a non-root
+    // app never installs directly, and install.sh's pre-flight under sudo
+    // remains the authority.
+    {
+        auto* rc = get_runtime_config();
+        if (geteuid() == 0 && !(rc && rc->test_mode)) {
+            const std::string failure = service_dest_probe_error(init_service_dest_dir());
+            if (!failure.empty()) {
+                spdlog::error("[UpdateChecker] Service destination unwritable, not "
+                              "downloading: {}", failure);
+                report_download_status(DownloadStatus::Error, 0, failure,
+                                       "Service destination unwritable before download");
+                TelemetryManager::instance().record_update_failure(
+                    "service_dest_unwritable", "", helix::platform::current_key());
+                return;
+            }
+        }
     }
 
     // Must have a cached update to download
