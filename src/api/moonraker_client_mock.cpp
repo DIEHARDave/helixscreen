@@ -2390,6 +2390,19 @@ MoonrakerClientMock::GcodeResult MoonrakerClientMock::gcode_zmod(const std::stri
         return 1;
     };
 
+    if (cmd == "T_INFO") {
+        // Z-Mod's read-only tool-state query: one row per head, then the
+        // trailing block the carriage-empty answer hangs off.
+        const int active = zmod_active_tool_.load();
+        for (int i = 0; i < 4; ++i) {
+            dispatch_gcode_response("// T" + std::to_string(i) + ": " +
+                                    (i == active ? "HEAD" : "home"));
+        }
+        dispatch_gcode_response("// Door: Close");
+        dispatch_gcode_response("// Top: Close");
+        dispatch_gcode_response("// Offset: X=0.0000 Y=0.0000 Z=0.0000 (0.000)");
+        return 0;
+    }
     if (cmd == "_T_IN") {
         int tool = -1;
         try {

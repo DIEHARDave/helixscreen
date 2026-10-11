@@ -205,6 +205,37 @@ suppressed sequence forever. A firmware build that stops echoing the markers deg
 no step bar, never a wrong one; the marker text on a live swap is the one piece still
 pending hardware verification (prestonbrown/helixscreen#1714).
 
+### The afclite shim's status, and what is acted on
+
+Z-Mod 1.7.4+ publishes `zmod_afclite` (aliased `AFC`), and the provider row subscribes
+it. Of its fields, exactly two are acted on, both with semantics a boolean or the
+firmware's own string fixes:
+
+| Field | Treatment |
+|-------|-----------|
+| `error_state` + `message` | A fault the firmware itself reports: raises the ERROR action and surfaces through `current_error()` with the firmware's own wording; clears when the flag clears |
+| `current_state` | **Logged, not acted on.** The vocabulary beyond "idle" is unverified on this firmware; the log line is what a field capture during a real load/unload reads, and the mapping that follows is written against that evidence |
+| `lanes[].map` (via the `AFC_lane` objects) | Logged when it is not identity — a `SET_MAP` remap is exactly what a bundle should show. Nothing acts on it until a capture says what lane→tool means for head indices |
+
+### T_INFO: the read-only carriage query
+
+`T_INFO` answers where every tool sits and moves nothing (zmod's own doc). The backend
+sends it once at start and again on `notify_klippy_ready`, and parses its rows through
+the same console listener as the swap markers: `T<n>: HEAD` names the carriage tool,
+`T<n>: home` seats a dock, `ERROR (both)` is the disagreeing-sensors fault, and the
+trailing `Offset:` row closes the block — the only place "nothing is on the carriage"
+can be stated, which is what clears the stale boot reading on firmware whose
+`active_tool_id` only recomputes inside its own commands (the pre-1.7.4 condition).
+
+### Per-head filament presence (Z-Mod 1.7.4+)
+
+`zmod_color.slots[].hasFilament` says whether each head physically holds filament. It
+stamps the slot EMPTY only in the docked arm — a docked head whose slot says no filament
+reads Empty — and deliberately cannot outrank the carriage (a mounted head that ran dry
+is the runout flow's question) or a dock-reported vacancy (the head itself is out of the
+machine). `slot_status_tracks_filament()` stays false: the per-head `fd_ex` sensors keep
+driving pre-print checks as before.
+
 ### Firmware material source
 
 Z-Mod stores each head's material and colour in firmwareRes/config/filament.json on the

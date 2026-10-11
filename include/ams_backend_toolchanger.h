@@ -419,6 +419,13 @@ class AmsBackendToolChanger : public AmsSubscriptionBackend {
         return tool_sensor_.present &&
                tool_sensor_.provider_name == toolchanger_addon::kZmodC5ProviderName;
     }
+    /// Fold one afclite status frame in: fault flag to the error surface,
+    /// activity word and lane map to the log.
+    void apply_afc_state_locked(const helix::toolchanger_addon::AfcStateReading& afc);
+    /// Ask Z-Mod where every tool sits (T_INFO is read-only). Its answer fixes
+    /// the boot state on firmware whose active_tool_id only recomputes inside
+    /// its own commands.
+    void query_zmod_tool_state();
 
   private:
     /// Feeder this machine exposes; absent unless set_feeder() said otherwise.
@@ -440,6 +447,26 @@ class AmsBackendToolChanger : public AmsSubscriptionBackend {
     /// Moonraker republishes only what CHANGED and a frame carrying just the
     /// tool number says nothing about the docks.
     std::vector<std::optional<bool>> dock_seated_;
+    /// Per-head filament presence from the firmware's own slots (Z-Mod 1.7.4+
+    /// hasFilament), nullopt never reported. Kept beside dock_seated_ because
+    /// it answers a different question: docked says where the HEAD is, this
+    /// says whether there is filament in it.
+    std::vector<std::optional<bool>> head_filament_;
+    /// The afclite shim's standing fault text, set while its error_state flag
+    /// reads true. Empty when the shim reports healthy (or is absent).
+    std::string afclite_fault_message_;
+    /// Last afclite activity word logged, so a frame repeating it stays silent.
+    std::string last_afc_state_logged_;
+    /// Last lane→tool map logged verbatim; identity is the expected answer, and
+    /// a firmware that remaps is exactly what a field capture needs to see.
+    std::string last_lane_map_logged_;
+    /// Whether the printer's macro list carries T_INFO (the read-only tool
+    /// state query Z-Mod ships on the C5).
+    bool tinfo_macro_present_ = false;
+    /// Whether the T_INFO block currently in flight on the console has named a
+    /// HEAD row; the block-end line is what turns "no HEAD row" into "the
+    /// carriage is empty".
+    bool tinfo_block_saw_head_ = false;
     /// Frame-side gripper, and whether this machine reports it AT ALL. The
     /// second flag is what get_operation_step_model() keys on: a controller that
     /// publishes feeder_open earns the release/grip steps, and a machine that

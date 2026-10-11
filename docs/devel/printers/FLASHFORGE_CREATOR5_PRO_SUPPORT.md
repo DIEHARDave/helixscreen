@@ -191,6 +191,24 @@ both match) is firmware-managed and always on; the backend reports it the same w
 AD5X IFS backend reports stock zMod (Available / FirmwareManaged / ReadOnly, provider
 "zmod").
 
+**Beyond the swap itself, three more Z-Mod surfaces are consumed** (details in the
+toolchanger backend doc's Z-Mod section): `T_INFO` — the firmware's read-only tool-state
+query — is sent at connect and after `FIRMWARE_RESTART`, and its answer clears the stale
+boot carriage reading on firmware older than the `zmod_color` export; the afclite shim's
+fault flag (`error_state` + `message`) surfaces as this backend's own fault dialog, while
+its activity word and lane map are logged for field visibility and acted on for nothing
+(vocabulary unverified — a debug bundle captured during a real load shows both); and
+`zmod_color.slots[].hasFilament` stamps a docked head without filament as Empty.
+
+**The filament-feed macros are deliberately not wired.** `LOAD_FILAMENT`,
+`UNLOAD_FILAMENT`, `LOAD_MATERIAL`, `TOOL_UNLOAD` and `LANE_UNLOAD` all exist on this
+firmware and all move hardware (heat, feed, cut, wipe), but no capture shows their
+parameter shapes — which of `T=`, `SLOT=`, `LANE=` or bare-operates-on-active each takes —
+and a guessed parameter can drive the wrong head's feed motor. The afclite state logging
+above is the instrument that settles it: once a capture shows the words and the
+parameters, wiring them is a provider-row change. Until then the macros remain reachable
+through the Macros panel, which is where they are safe.
+
 One upstream dependency: [ghzserg/z_c5pro#1](https://github.com/ghzserg/z_c5pro/pull/1)
 adds `slots`, `palette` and a live `active_tool_id` to `zmod_color.get_status()`. Without
 it a Z-Mod C5 boots showing a dock sensor error until the first `_T_IN` / `_T_OUT` /
