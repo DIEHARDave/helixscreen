@@ -241,9 +241,9 @@ void TemperatureService::recompute_chamber_target() {
     auto& chamber = heaters_[idx(HeaterType::Chamber)];
 
     // Derive both the effective target and the control mode from the data-layer
-    // subjects, which fold in the cooling-fan resting target so M141 S0 reads as
-    // Off (effective 0) rather than a deliberate "Maintaining" set at the resting
-    // temperature.
+    // subjects, which fold in the cooling-fan resting target so M141 S0 (and a
+    // deliberate set equal to it) reads as Resting (Auto) rather than a
+    // deliberate "Maintaining" set.
     chamber.target = lv_subject_get_int(
         printer_state_.temperature_state().get_chamber_effective_target_subject());
     chamber.chamber_mode =

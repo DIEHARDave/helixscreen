@@ -302,8 +302,9 @@ bool chamber_uses_m141(const std::string& heater_full_name, const std::string& c
 
 ChamberSetpoint chamber_effective_setpoint(int heater_target_deci, int fan_target_deci,
                                            int fan_resting_deci) {
-    // Mirrors the live computation in PrinterTemperatureState::update_chamber_setpoint()
-    // exactly: heater wins; the fan target is always the effective setpoint when
+    // The one rule for the effective setpoint, applied by
+    // PrinterTemperatureState on every status frame:
+    // heater wins; the fan target is always the effective setpoint when
     // it holds one, and is labeled Resting when it equals the configured resting
     // target — the state M141 S0 parks the fan at on the K2 and that a deliberate
     // set equal to resting is byte-identical to. The number is displayed either
