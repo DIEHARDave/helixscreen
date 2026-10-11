@@ -2,9 +2,9 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 # The plugin-i18n-shadow gate's two halves: it fires on a pack entry whose
-# tag matches a system string (that entry would override the app's own
-# translation app-wide while the plugin is loaded), and it stays silent on
-# plugin-only strings the catalog does not carry.
+# tag matches a system string (that entry is dead weight: the app's own
+# translation always wins), and it stays silent on plugin-only strings the
+# catalog does not carry.
 
 setup() {
     load helpers

@@ -83,6 +83,7 @@ Applied in order by `mk/patches.mk`. Grouped by subsystem.
 | Patch | File(s) | Purpose |
 |-------|---------|---------|
 | `lvgl_label_text_transform.patch` | `lv_label.c`, `lv_label.h`, `lv_label_private.h` | text_transform_upper flag for i18n-safe uppercase at text-set time |
+| `lvgl_translation_tail_packs.patch` | `lv_translation.c`, `.h` (after `lvgl_translation_threadsafe.patch`) | `lv_translation_set_new_packs_at_tail()`: while set, dynamic packs are appended to the END of the lookup order, so plugin packs only supply tags the app does not translate | Project-specific |
 | `lvgl_sdl_window.patch` | `lv_sdl_window.c` | Multi-display positioning, Android support, macOS crash fix |
 | `lvgl_sdl_sw_android_debug.patch` | SDL files | SDL software renderer Android debug support |
 | `lvgl_theme_breakpoints.patch` | `lv_theme_default.c` | Custom breakpoint tuning for 480-800px |

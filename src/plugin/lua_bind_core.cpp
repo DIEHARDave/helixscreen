@@ -377,7 +377,11 @@ int i18n_on_change(lua_State* L) {
     I18nState& st = i18n_state(L);
     if (st.listener == 0) {
         st.listener = helix::ui::locale_add_language_listener([&st](const std::string& code) {
-            for (int ref : st.on_change) {
+            // A handler may register another handler mid-notification, which
+            // reallocates the vector this loop would otherwise read. A handler
+            // registered during a change is first called on the next one.
+            std::vector<int> refs = st.on_change;
+            for (int ref : refs) {
                 st.rt->invoke(ref, [&code](lua_State* co) {
                     lua_pushlstring(co, code.data(), code.size());
                     return 1;
