@@ -614,8 +614,8 @@ json DebugBundleCollector::collect_printer_info(const PrinterSnapshot& snap) {
             if (auto machine = helix::flashforge_machine_id()) {
                 display = helix::flashforge_machine_display_name(*machine);
             } else {
-                display = helix::platform::display_name(
-                    helix::ad5x_mod_layout_present() ? "ad5x" : "k1");
+                display =
+                    helix::platform::display_name(helix::ad5x_mod_layout_present() ? "ad5x" : "k1");
             }
         }
         const auto* row = helix::platform::find(platform);

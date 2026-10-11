@@ -2403,8 +2403,7 @@ MoonrakerClientMock::GcodeResult MoonrakerClientMock::gcode_zmod(const std::stri
         // retry loop and the offset echoes that close the pickup. These are
         // what the toolchanger backend's marker listener lights its step bar
         // from, so the mock must speak them too.
-        dispatch_gcode_response("// Grab attempt for T" + std::to_string(tool) +
-                                 ": 1 of 5...");
+        dispatch_gcode_response("// Grab attempt for T" + std::to_string(tool) + ": 1 of 5...");
         dispatch_gcode_response("// X-Offset: 0.0000 _T_IN");
         zmod_active_tool_.store(tool);
         dispatch_status_update({{"zmod_color", {{"active_tool_id", tool}}}});
@@ -2414,7 +2413,7 @@ MoonrakerClientMock::GcodeResult MoonrakerClientMock::gcode_zmod(const std::stri
         const int parked = zmod_active_tool_.load();
         if (parked >= 0) {
             dispatch_gcode_response("// Unload attempt for T" + std::to_string(parked) +
-                                     ": 1 of 5...");
+                                    ": 1 of 5...");
         }
         dispatch_gcode_response("// X-Offset: 0.0000 _T_OUT");
         zmod_active_tool_.store(-1);

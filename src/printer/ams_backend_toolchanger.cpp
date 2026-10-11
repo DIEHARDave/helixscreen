@@ -161,9 +161,7 @@ void AmsBackendToolChanger::register_zmod_marker_listener() {
             // MAIN THREAD: on_zmod_marker_line takes mutex_ and writes backend
             // state.
             token.defer("AmsBackendToolChanger::zmod_marker_apply",
-                        [this, line = std::move(line)]() mutable {
-                            on_zmod_marker_line(line);
-                        });
+                        [this, line = std::move(line)]() mutable { on_zmod_marker_line(line); });
         });
 }
 
@@ -171,8 +169,7 @@ void AmsBackendToolChanger::unregister_zmod_marker_listener() {
     if (!client_) {
         return;
     }
-    client_->unregister_method_callback("notify_gcode_response",
-                                        "toolchanger_zmod_marker_watcher");
+    client_->unregister_method_callback("notify_gcode_response", "toolchanger_zmod_marker_watcher");
 }
 
 void AmsBackendToolChanger::on_zmod_marker_line(const std::string& line) {

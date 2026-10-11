@@ -4,7 +4,6 @@
 #include <spdlog/spdlog.h>
 
 #include <fstream>
-
 #include <string>
 #include <sys/stat.h>
 #include <sys/utsname.h>
@@ -173,9 +172,8 @@ std::optional<FlashForgeMachine> machine_from_name(const std::string& name) {
 } // namespace
 
 std::optional<FlashForgeMachine> flashforge_machine_id(const std::string& probe_root) {
-    if (auto machine =
-            machine_from_name(last_assignment_value(
-                rooted(probe_root, "/usr/prog/app_startup.sh"), "MACHINE", false))) {
+    if (auto machine = machine_from_name(last_assignment_value(
+            rooted(probe_root, "/usr/prog/app_startup.sh"), "MACHINE", false))) {
         return machine;
     }
     return machine_from_name(
