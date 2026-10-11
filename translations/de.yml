@@ -1405,6 +1405,8 @@ translations:
   'Fix: chown {} {}, then restart': 'Beheben: chown {} {}, dann neu starten'
   FlashForge Adventurer 5M: FlashForge Adventurer 5M
   FlashForge Adventurer 5X: FlashForge Adventurer 5X
+  FlashForge Creator 5: FlashForge Creator 5
+  FlashForge Creator 5 Pro: FlashForge Creator 5 Pro
   FlashForge IFS: FlashForge IFS
   Flip: Spiegeln
   Flip the spools: Spulen wenden

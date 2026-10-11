@@ -1306,6 +1306,8 @@ translations:
   'Fix: chown {} {}, then restart': '修正：chown {} {} を実行して再起動してください'
   FlashForge Adventurer 5M: FlashForge Adventurer 5M
   FlashForge Adventurer 5X: FlashForge Adventurer 5X
+  FlashForge Creator 5: FlashForge Creator 5
+  FlashForge Creator 5 Pro: FlashForge Creator 5 Pro
   FlashForge IFS: FlashForge IFS
   Flip: 反転
   Flip the spools: スプールを裏返す

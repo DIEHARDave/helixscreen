@@ -1409,6 +1409,8 @@ translations:
   'Fix: chown {} {}, then restart': 'Solution : chown {} {}, puis redémarrez'
   FlashForge Adventurer 5M: FlashForge Adventurer 5M
   FlashForge Adventurer 5X: FlashForge Adventurer 5X
+  FlashForge Creator 5: FlashForge Creator 5
+  FlashForge Creator 5 Pro: FlashForge Creator 5 Pro
   FlashForge IFS: FlashForge IFS
   Flip: Retourner
   Flip the spools: Retourner les bobines
