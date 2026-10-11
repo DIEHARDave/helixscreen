@@ -5,6 +5,7 @@
 
 #include "ui_update_queue.h"
 
+#include "../api/moonraker_gcode_guards.h"
 #include "app_globals.h"
 #include "config.h"
 #include "helix_version.h"
@@ -227,6 +228,11 @@ PluginBackend make_app_backend() {
         auto* client = get_moonraker_client();
         if (!client)
             return cb(failure(kNotConnected));
+        // The same refusals the app's own print, restart and G-code paths apply.
+        if (helix::api::reject_plugin_rpc(
+                get_printer_state(), method, params,
+                [cb](const MoonrakerError& e) { cb(failure(e.message)); }))
+            return;
         client->send_jsonrpc(
             method, params, [cb](const json& result) { cb(success(result)); },
             [cb](const MoonrakerError& e) { cb(failure(e.message)); });
