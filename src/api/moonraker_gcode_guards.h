@@ -24,6 +24,8 @@
 #include <functional>
 #include <string>
 
+#include "hv/json.hpp"
+
 namespace helix {
 class PrinterState;
 }
@@ -59,5 +61,13 @@ bool reject_restart_while_spools_on_bed(const helix::PrinterState* state, const 
 /// @p state may be null (a sub-API built without one), which refuses nothing.
 bool reject_job_while_spools_on_bed(const helix::PrinterState* state, const char* method,
                                     const std::function<void(const MoonrakerError&)>& on_error);
+
+/// Apply the refusals the app's own send paths enforce to a raw JSON-RPC request issued on a
+/// plugin's behalf. Covers print start (path and spool latch), resume, queue start, modified
+/// print, Klipper restarts and `printer.gcode.script`; every other method passes. Returns true
+/// when refused, with @p on_error already called and nothing to send.
+bool reject_plugin_rpc(helix::PrinterState& state, const std::string& method,
+                       const nlohmann::json& params,
+                       const std::function<void(const MoonrakerError&)>& on_error);
 
 } // namespace helix::api
