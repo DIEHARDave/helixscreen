@@ -275,7 +275,7 @@ Load on this row still means "mount the tool" (`_T_IN T=<n>`). A filament feed i
 wired: Z-Mod's own Load for a head is `CHANGE_TOOL LANE=E<n>`, reported to run
 `_T_IN_ZCOLOR SLOT=<n> NAPR=1` (prestonbrown/helixscreen#1779), but `_T_IN_ZCOLOR` is not in
 the public ghzserg/z_c5pro tree (the C5 `zmod_color` plugin is not published), and the
-only public `NAPR` source, the AD5X `zmod_color.py`, reads `NAPR=0` as load. Until the C5
+only public `NAPR` source, Z-Mod's AD5X zmod_color.py plugin, reads `NAPR=0` as load. Until the C5
 side is confirmed, a guessed argument could drive the wrong head's feed motor.
 
 There is **no automatic unload** on the Creator 5: the user cuts the filament at the head

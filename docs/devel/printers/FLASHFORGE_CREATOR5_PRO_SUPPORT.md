@@ -209,7 +209,7 @@ that it heats and feeds only the selected head. The public source cannot confirm
 `_T_IN_ZCOLOR` is defined in the unpublished `zmod_color` plugin, the C5 configs only call
 it as `_T_IN_ZCOLOR SLOT={t+1} NAPR=0 NOCOLOR=1` (ghzserg/z_c5pro
 `translate/en/c5pro_display_off.cfg`, `_T_USE`) with a 1-based slot, and the AD5X
-`zmod_color.py#cmd_IN_ZCOLOR` treats `NAPR=0` as load and `NAPR=1` as unload. A wrong
+zmod_color.py plugin (its cmd_IN_ZCOLOR handler) treats `NAPR=0` as load and `NAPR=1` as unload. A wrong
 `SLOT` or `NAPR` can feed the wrong head, so Load stays a tool mount until a capture or
 source settles both. The macros remain reachable through the Macros panel.
 
