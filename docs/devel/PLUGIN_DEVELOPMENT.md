@@ -122,8 +122,8 @@ proves a name belongs to a plugin, and a plugin can reach only its own names.
 Parsed by `src/plugin/plugin_manifest.cpp#parse_manifest`. Any error in one field rejects
 the whole manifest; Settings > Plugins shows the reasons.
 
-Every user-facing string in the manifest - `name`, `description`, settings
-`label`s, widget `name`/`description` - is English source: the file stays
+Every user-facing string in the manifest - `name`, settings `label`s, widget
+`name`/`description` - is English source: the file stays
 English and the render sites translate it through the plugin's `i18n/` pack
 (§13 Translations), falling back to the literal text.
 
@@ -133,7 +133,7 @@ English and the render sites translate it through the plugin's `i18n/` pack
 | `name` | string | required | single line, at most 48 bytes; shown in the UI |
 | `version` | string | required | single line, at most 32 bytes |
 | `author` | string | empty | single line, at most 64 bytes |
-| `description` | string | empty | shown in the Plugins screen |
+| `description` | string | empty | parsed and kept, but no screen displays it; the Plugins screen shows `name` and the plugin's status |
 | `helix_version` | string | empty | a HelixScreen version constraint; a plugin whose constraint fails the running version shows as *incompatible* |
 | `permissions` | array | `[]` | zero or more of `gcode`, `moonraker_write`, `http`, `storage` (§9) |
 | `memory_mb` | integer | `2` | 1 to 64; the plugin's share of the plugin memory budget |
@@ -422,7 +422,7 @@ Read-only methods callable through `helix.moonraker.call` without any permission
 `true` or a field-name list, and `fn(status)` receives a table `{[object] = {field = value}}`.
 The first delivery carries the queried current values; later ones carry each change, so
 the tile always shows what Klipper reports, including changes made elsewhere. The
-returned handle's `cancel()` stops it. Limits, each raising an error that names it: at
+returned handle's `cancel` method (`handle:cancel()`) stops it. Limits, each raising an error that names it: at
 most 8 subscriptions per plugin totalling 16 objects, 32 fields per object, object names
 at most 64 bytes of printable ASCII.
 
@@ -467,8 +467,8 @@ memory cap comes back as an error.
 
 | Call | Returns | Notes |
 |---|---|---|
-| `helix.timer.after(ms, fn)` | handle | one shot; `handle.cancel()` |
-| `helix.timer.every(ms, fn)` | handle | repeating; `handle.cancel()` |
+| `helix.timer.after(ms, fn)` | handle | one shot; `handle:cancel()` |
+| `helix.timer.every(ms, fn)` | handle | repeating; `handle:cancel()` |
 | `helix.sleep(ms)` | | async; yields the entry and resumes after the delay |
 
 Intervals are 1 ms to 24 h; a plugin holds at most 64 live timers.
@@ -739,9 +739,10 @@ on any example or fixture pack entry whose tag exists in
 
 Where strings resolve:
 
-- **manifest.json** `name`, `description`, settings `label`s and widget
-  `name`/`description` translate at render time (the Plugins screen, the
-  generated settings rows, the widget catalog). The file stays English.
+- **manifest.json** `name`, settings `label`s and widget `name`/`description`
+  translate at render time (the Plugins screen, the generated settings rows,
+  the widget catalog). The top-level `description` is not displayed. The file
+  stays English.
 - **XML** static text: add `translation_tag="English text"` to a widget; the
   engine resolves and hot-reloads it on a language change like any app string.
 - **Lua**: `helix.i18n.t("English text")` resolves through the same table.
