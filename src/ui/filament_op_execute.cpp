@@ -4,6 +4,7 @@
 #include "filament_op_execute.h"
 
 #include "ui_error_reporting.h"
+#include "ui_manual_pull_prompt.h"
 #include "ui_temperature_utils.h"
 #include "ui_update_queue.h"
 
@@ -432,6 +433,11 @@ void execute_filament_unload(AmsBackend* backend, int slot, bool target_is_loade
 void execute_filament_unload(AmsBackend* backend, int slot, bool target_is_loaded,
                              const FilamentOpSurface& surface) {
     const char* log_tag = surface.log_tag;
+    // Every caller here means "take the filament out". Where that is manual,
+    // saying so is the whole operation: no plan, no spinner, nothing sent.
+    if (helix::ui::notify_if_unload_is_manual(backend)) {
+        return;
+    }
     // plan_unload() reads only `present` and `toolhead_unaccounted`, so the full
     // read_backend_caps() call (whose needs_unload_before_load() is a per-lane
     // backend query) buys nothing here.

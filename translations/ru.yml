@@ -3452,6 +3452,7 @@ translations:
   This printer cannot calibrate tool offsets automatically: Этот принтер не может калибровать смещения инструментов автоматически
   This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman.: Этот принтер берёт данные шлюзов из Spoolman. HelixScreen очистил свою копию; удалите катушку в Spoolman.
   This printer fills its gates from Spoolman. Make colour, material and spool changes in Spoolman.: Этот принтер берёт данные шлюзов из Spoolman. Меняйте цвет, материал и катушку в Spoolman.
+  This printer has no automatic unload. Cut the filament at the head and pull it out by hand.: У этого принтера нет автоматической выгрузки. Отрежьте филамент у головки и вытащите его вручную.
   ? This printer looks like a {} ({}% confidence), but it is set up as a {}. A wrong type applies incorrect pre-print options and presets.
   : Этот принтер похож на {} (уверенность {}%), но настроен как {}. Неверный тип применяет неправильные параметры перед печатью и пресеты.
   This printer's network service controls the WiFi radio: WiFi-модулем управляет сетевая служба этого принтера

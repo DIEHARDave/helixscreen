@@ -117,6 +117,12 @@ class AmsBackendToolChanger : public AmsSubscriptionBackend {
         return kTraits;
     }
 
+    /// Z-Mod's Creator 5 has no automatic unload: the user cuts the filament at
+    /// the head and pulls it out by hand.
+    [[nodiscard]] bool unload_is_manual() const override {
+        return zmod_c5_row_active();
+    }
+
     // Marker for tool-changer expected-hardware recording during wizard setup.
     [[nodiscard]] const char* get_klipper_object_name() const override {
         return "toolchanger";

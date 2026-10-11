@@ -4,6 +4,7 @@
 
 #include "ui_error_reporting.h"
 
+#include "ams_backend.h"
 #include "filament_sensor_manager.h"
 #include "observer_factory.h"
 #include "static_subject_registry.h"
@@ -83,6 +84,17 @@ void manual_pull_unload_finished() {
         return;
     }
     fire("unload complete");
+}
+
+bool notify_if_unload_is_manual(const AmsBackend* backend) {
+    if (!backend || !backend->unload_is_manual()) {
+        return false;
+    }
+    spdlog::info(
+        "[ManualPull] Backend has no automatic unload — telling the user, sending nothing");
+    NOTIFY_INFO(lv_tr("This printer has no automatic unload. Cut the filament at the head and "
+                      "pull it out by hand."));
+    return true;
 }
 
 } // namespace helix::ui

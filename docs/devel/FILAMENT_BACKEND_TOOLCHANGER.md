@@ -269,6 +269,23 @@ edits stay local, as on any tool changer.
   needs both `HEX` and `TYPE` to write without a prompt, so a colour-only edit sends the
   slot's current type and a material-only edit sends its current (snapped) colour.
 
+### Filament feed and unload
+
+Load on this row still means "mount the tool" (`_T_IN T=<n>`). A filament feed is not
+wired: Z-Mod's own Load for a head is `CHANGE_TOOL LANE=E<n>`, reported to run
+`_T_IN_ZCOLOR SLOT=<n> NAPR=1` (prestonbrown/helixscreen#1779), but `_T_IN_ZCOLOR` is not in
+the public ghzserg/z_c5pro tree (the C5 `zmod_color` plugin is not published), and the
+only public `NAPR` source, the AD5X `zmod_color.py`, reads `NAPR=0` as load. Until the C5
+side is confirmed, a guessed argument could drive the wrong head's feed motor.
+
+There is **no automatic unload** on the Creator 5: the user cuts the filament at the head
+and pulls it out. The row answers `AmsBackend::unload_is_manual()` true, and every UI
+control that means "take the filament out" (the filament panel's Unload, the AMS sidebar's
+Unload button, the runout and sensor-widget unload actions, all through
+`notify_if_unload_is_manual`) shows one info toast saying so and sends nothing, heating
+included. The context menu's **Unmount** and the tool-change flow are explicit tool
+operations: they still send `_T_OUT` and are not gated.
+
 ### Mock
 
 `HELIX_MOCK_PRINTER=creator5_zmod` exercises this path against mock hardware: the persona

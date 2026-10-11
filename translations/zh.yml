@@ -3251,6 +3251,7 @@ translations:
   This printer cannot calibrate tool offsets automatically: 此打印机无法自动校准工具偏移
   This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman.: 此打印机的通道信息来自 Spoolman。HelixScreen 已清除本地副本；请在 Spoolman 中移除该线轴。
   This printer fills its gates from Spoolman. Make colour, material and spool changes in Spoolman.: 此打印机的通道信息来自 Spoolman。请在 Spoolman 中更改颜色、材料和线轴。
+  This printer has no automatic unload. Cut the filament at the head and pull it out by hand.: 此打印机没有自动退料功能。请在工具头处剪断耗材，然后用手拉出。
   ? This printer looks like a {} ({}% confidence), but it is set up as a {}. A wrong type applies incorrect pre-print options and presets.
   : 此打印机看起来是 {}（置信度 {}%），但当前设置为 {}。错误的类型会应用不正确的打印前选项和预设。
   This printer's network service controls the WiFi radio: 此打印机的网络服务控制 WiFi 无线模块

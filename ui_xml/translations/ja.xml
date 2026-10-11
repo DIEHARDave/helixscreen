@@ -3114,6 +3114,7 @@
   <translation tag="This printer cannot calibrate tool offsets automatically" ja="このプリンターはツールオフセットを自動でキャリブレートできません"/>
   <translation tag="This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman." ja="このプリンターのゲートは Spoolman から設定されます。HelixScreen 側のコピーはクリアしました。Spoolman でスプールを削除してください。"/>
   <translation tag="This printer fills its gates from Spoolman. Make colour, material and spool changes in Spoolman." ja="このプリンターのゲートは Spoolman から設定されます。色・素材・スプールの変更は Spoolman で行ってください。"/>
+  <translation tag="This printer has no automatic unload. Cut the filament at the head and pull it out by hand." ja="このプリンターには自動アンロード機能がありません。ヘッド部分でフィラメントを切り、手で引き抜いてください。"/>
   <translation tag="This printer looks like a {} ({}% confidence), but it is set up as a {}. A wrong type applies incorrect pre-print options and presets." ja="このプリンターは {} のようです（信頼度 {}%）が、{} として設定されています。誤ったタイプでは不正確な印刷前オプションとプリセットが適用されます。"/>
   <translation tag="This printer&apos;s network service controls the WiFi radio" ja="このプリンターのネットワークサービスが WiFi 無線を制御しています"/>
   <translation tag="This printer&apos;s network service manages saved WiFi networks" ja="このプリンターのネットワークサービスが保存済みの WiFi ネットワークを管理しています"/>

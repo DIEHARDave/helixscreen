@@ -3496,6 +3496,7 @@ translations:
   This printer cannot calibrate tool offsets automatically: Dieser Drucker kann Werkzeug-Offsets nicht automatisch kalibrieren
   This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman.: Dieser Drucker füllt seine Gates aus Spoolman. HelixScreen hat seine eigene Kopie gelöscht; entferne die Spule in Spoolman.
   This printer fills its gates from Spoolman. Make colour, material and spool changes in Spoolman.: Dieser Drucker füllt seine Gates aus Spoolman. Ändere Farbe, Material und Spule in Spoolman.
+  This printer has no automatic unload. Cut the filament at the head and pull it out by hand.: Dieser Drucker hat kein automatisches Entladen. Schneiden Sie das Filament am Werkzeugkopf ab und ziehen Sie es von Hand heraus.
   ? This printer looks like a {} ({}% confidence), but it is set up as a {}. A wrong type applies incorrect pre-print options and presets.
   : Dieser Drucker sieht aus wie ein {} ({}% Konfidenz), ist aber als {} eingerichtet. Ein falscher Typ wendet falsche Optionen und Voreinstellungen für die Druckvorbereitung an.
   This printer's network service controls the WiFi radio: Der Netzwerkdienst dieses Druckers steuert das WiFi-Funkmodul

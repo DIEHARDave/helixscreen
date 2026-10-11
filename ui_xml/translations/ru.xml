@@ -3114,6 +3114,7 @@
   <translation tag="This printer cannot calibrate tool offsets automatically" ru="Этот принтер не может калибровать смещения инструментов автоматически"/>
   <translation tag="This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman." ru="Этот принтер берёт данные шлюзов из Spoolman. HelixScreen очистил свою копию; удалите катушку в Spoolman."/>
   <translation tag="This printer fills its gates from Spoolman. Make colour, material and spool changes in Spoolman." ru="Этот принтер берёт данные шлюзов из Spoolman. Меняйте цвет, материал и катушку в Spoolman."/>
+  <translation tag="This printer has no automatic unload. Cut the filament at the head and pull it out by hand." ru="У этого принтера нет автоматической выгрузки. Отрежьте филамент у головки и вытащите его вручную."/>
   <translation tag="This printer looks like a {} ({}% confidence), but it is set up as a {}. A wrong type applies incorrect pre-print options and presets." ru="Этот принтер похож на {} (уверенность {}%), но настроен как {}. Неверный тип применяет неправильные параметры перед печатью и пресеты."/>
   <translation tag="This printer&apos;s network service controls the WiFi radio" ru="WiFi-модулем управляет сетевая служба этого принтера"/>
   <translation tag="This printer&apos;s network service manages saved WiFi networks" ru="Сохранёнными сетями WiFi управляет сетевая служба этого принтера"/>
