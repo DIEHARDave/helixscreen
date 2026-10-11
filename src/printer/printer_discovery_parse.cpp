@@ -8,6 +8,7 @@
 #include "macro_patterns.h"
 #include "printer_discovery.h"
 #include "text_io.h"
+#include "toolchanger_addon.h" // zmod_c5_present
 
 #include <spdlog/spdlog.h>
 
@@ -287,6 +288,13 @@ void PrinterDiscovery::parse_objects(const nlohmann::json& objects) {
         } else if (name == "AFC") {
             has_mmu_ = true;
             mmu_type_ = AmsType::AFC;
+        }
+        // Z-Mod's afclite extra for the Creator 5 line registers the `AFC`
+        // object above through its own name; recorded separately so backend
+        // selection can tell the shim from real Happy Hare AFC, which never
+        // publishes this object.
+        else if (name == "zmod_afclite") {
+            has_zmod_afclite_ = true;
         }
         // klipper_openams. The name alone cannot claim the printer: a
         // manager that predates its versioned API publishes only
@@ -701,6 +709,23 @@ void PrinterDiscovery::parse_objects(const nlohmann::json& objects) {
                      "the printer and its four toolheads.");
     }
 
+    // Z-Mod's afclite shim impersonates AFC so Fluidd and Mainsail draw an AFC
+    // panel for the Creator 5's four heads. It reports no extruders and no
+    // hubs, so an AFC backend infers a hub topology for heads that are each
+    // their own path, and most of the AFC op macros do not exist on this
+    // firmware. The changer fingerprint is what names the machine (the AD5X
+    // Z-Mod publishes zmod_color but has no carriage grab buttons), so the
+    // toolchanger backend keeps the printer. Scoped to that fingerprint for the
+    // same reason the PAXX rule is scoped to filament_detect: a bare
+    // zmod_afclite on some other machine is displacing nothing better.
+    if (has_mmu_ && mmu_type_ == AmsType::AFC && has_zmod_afclite_ &&
+        toolchanger_addon::zmod_c5_present(*this)) {
+        has_mmu_ = false;
+        spdlog::info("[PrinterDiscovery] zmod_afclite alongside the Creator 5 changer "
+                     "fingerprint: Z-Mod's AFC shim on a head changer. The toolchanger "
+                     "backend keeps the printer and its four toolheads.");
+    }
+
     register_detected_ams_systems();
 }
 
@@ -973,6 +998,7 @@ void PrinterDiscovery::clear() {
     has_openams_manager_ = false;
     has_snapmaker_ = false;
     has_afc_lite_ = false;
+    has_zmod_afclite_ = false;
     has_tool_changer_ = false;
     has_pin_watch_ = false;
     pin_watch_object_name_.clear();

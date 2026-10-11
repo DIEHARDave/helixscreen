@@ -53,6 +53,14 @@ class ToolChangerTestAccess {
         return b.pending_dispatch_action_.has_value();
     }
 
+    /// Deliver one gcode-response line to the Z-Mod marker handler, the
+    /// main-thread half the notify_gcode_response listener drives on a real
+    /// client. The listener itself needs a client, which the unit-test helper
+    /// does not wire.
+    static void feed_zmod_marker(AmsBackendToolChanger& b, const std::string& line) {
+        b.on_zmod_marker_line(line);
+    }
+
     /// Run the REAL on_started(), which is where the backend builds its
     /// FilamentSlotOverrideStore and does the blocking load. start() is final on
     /// AmsSubscriptionBackend and drags in subscription setup a store

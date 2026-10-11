@@ -1105,6 +1105,18 @@ void MoonrakerClientMock::populate_capabilities() {
         mock_objects.push_back("zmod");
         mock_objects.push_back("zmod_color");
         mock_objects.push_back("save_variables");
+        // Z-Mod 1.7.4's afclite shim: the AFC-shaped objects it registers so
+        // Fluidd/Mainsail draw an AFC panel for the C5's heads (names from
+        // field bundle 5WSPTZBL). Discovery must yield the AFC claim these
+        // would otherwise raise to the tool changer.
+        mock_objects.push_back("zmod_afclite");
+        mock_objects.push_back("AFC");
+        mock_objects.push_back("AFC_unit C5");
+        for (int i = 0; i < 4; ++i) {
+            mock_objects.push_back("AFC_lane E" + std::to_string(i));
+            mock_objects.push_back("filament_switch_sensor fd_ex" + std::to_string(i));
+            mock_objects.push_back("filament_motion_sensor fm_ex" + std::to_string(i));
+        }
         for (int i = 1; i <= 4; ++i) {
             mock_objects.push_back("gcode_button extruder_pos" + std::to_string(i));
             mock_objects.push_back("gcode_button extruder_grab" + std::to_string(i));
@@ -2337,9 +2349,12 @@ json MoonrakerClientMock::zmod_color_status() const {
     std::lock_guard<std::mutex> lock(zmod_mutex_);
     json slots = json::array();
     for (std::size_t i = 0; i < zmod_slots_.size(); ++i) {
+        // hasFilament is part of the real firmware's slot schema (field bundle
+        // 5WSPTZBL); nothing reads it yet, but the mock keeps the wire shape.
         slots.push_back({{"ID", std::to_string(i + 1)},
                          {"Material", zmod_slots_[i].first},
-                         {"HEX", zmod_slots_[i].second}});
+                         {"HEX", zmod_slots_[i].second},
+                         {"hasFilament", true}});
     }
     return json{{"active_tool_id", zmod_active_tool_.load()},
                 {"total_tools", 4},
@@ -2384,11 +2399,24 @@ MoonrakerClientMock::GcodeResult MoonrakerClientMock::gcode_zmod(const std::stri
         if (tool < 0 || tool > 3) {
             return refuse("T out of range: " + param("T"));
         }
+        // The swap narration the real macro emits (bundle 5WSPTZBL): the grab
+        // retry loop and the offset echoes that close the pickup. These are
+        // what the toolchanger backend's marker listener lights its step bar
+        // from, so the mock must speak them too.
+        dispatch_gcode_response("// Grab attempt for T" + std::to_string(tool) +
+                                 ": 1 of 5...");
+        dispatch_gcode_response("// X-Offset: 0.0000 _T_IN");
         zmod_active_tool_.store(tool);
         dispatch_status_update({{"zmod_color", {{"active_tool_id", tool}}}});
         return 0;
     }
     if (cmd == "_T_OUT") {
+        const int parked = zmod_active_tool_.load();
+        if (parked >= 0) {
+            dispatch_gcode_response("// Unload attempt for T" + std::to_string(parked) +
+                                     ": 1 of 5...");
+        }
+        dispatch_gcode_response("// X-Offset: 0.0000 _T_OUT");
         zmod_active_tool_.store(-1);
         dispatch_status_update({{"zmod_color", {{"active_tool_id", -1}}}});
         return 0;

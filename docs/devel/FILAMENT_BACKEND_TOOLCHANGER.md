@@ -138,11 +138,20 @@ is what supplies everything below.
 ### Detection
 
 `zmod_color` **and** `gcode_button extruder_grab1` in `printer.objects.list`
-(`src/printer/toolchanger_addon.cpp#zmod_c5_detect`). Both halves are required: the AD5X
-Z-Mod also publishes `zmod_color` but has no carriage grab buttons, so it cannot match,
-and `zmod_color` alone would not say which machine this is. Reforge, the other C5 Pro
-firmware, needs none of this: it matches no provider row and takes the plain
-klipper-toolchanger path described above.
+(`src/printer/toolchanger_addon.cpp#zmod_c5_detect`, exported as `zmod_c5_present`). Both
+halves are required: the AD5X Z-Mod also publishes `zmod_color` but has no carriage grab
+buttons, so it cannot match, and `zmod_color` alone would not say which machine this is.
+Reforge, the other C5 Pro firmware, needs none of this: it matches no provider row and
+takes the plain klipper-toolchanger path described above.
+
+Z-Mod 1.7.4 additionally publishes an **AFC shim** (`zmod_afclite` registering `AFC`,
+`AFC_lane E0..E3`, `AFC_unit C5`) so Fluidd and Mainsail draw their AFC panel for the C5's
+heads. Discovery keys on the bare `AFC` object, so `PrinterDiscovery::parse_objects`
+yields that claim to this row whenever the shim's own object and the changer fingerprint
+coexist — the same carve-out shape as the PAXX AFC-Lite rule, and for the same reason:
+the shim reports no extruders and no hubs, so an AFC backend would infer a hub topology
+for heads that are each their own path, and its op macros (`AFC_RESET`,
+`AFC_LANE_RESET`, `SET_SPOOL_ID`, ...) do not exist on this firmware.
 
 ### Tool reading
 
@@ -171,6 +180,30 @@ button rule here.
 Completion is the gcode ack plus the next `active_tool_id`, as for MedusaHC. A refused
 `_T_IN` / `_T_OUT` (Z-Mod raises `gcmd.error`) surfaces like a failed `SELECT_TOOL`; tool
 state does not move because `active_tool_id` does not.
+
+### Swap phases from console markers
+
+Z-Mod publishes no phase word on a status object; its macros narrate the swap through
+respond_info lines instead. The backend subscribes `notify_gcode_response` for this row
+alone and classifies the lines (`toolchanger_addon::parse_zmod_marker`, marker text
+field-verified in bundle `5WSPTZBL`):
+
+| Marker | Phase word |
+|--------|------------|
+| `Grab attempt for T<n>: i of N...` | `picking` |
+| `X/Y/Z-Offset: ... _T_IN` | `picking` |
+| `Unload attempt for T<n>: i of N...` | `dropping` |
+| `X/Y/Z-Offset: ... _T_OUT` | `dropping` |
+
+Each maps onto the same picking/dropping vocabulary the MedusaHC controllers publish, so
+the action, the direction latch and the step bar ride the existing machinery: a mount is
+[Pick up tool], an unmount is [Dock tool], a change is [Dock tool, Pick up tool]. The
+direction capability is latched from the provider row itself (`set_tool_sensor`), not
+from a first marker, because the step bar snapshots the latch when it is built and a bar
+built at dispatch time — before the macro's first marker — would otherwise pin a
+suppressed sequence forever. A firmware build that stops echoing the markers degrades to
+no step bar, never a wrong one; the marker text on a live swap is the one piece still
+pending hardware verification (prestonbrown/helixscreen#1714).
 
 ### Firmware material source
 
@@ -208,10 +241,19 @@ edits stay local, as on any tool changer.
 ### Mock
 
 `HELIX_MOCK_PRINTER=creator5_zmod` exercises this path against mock hardware: the persona
-publishes Z-Mod's objects and status and implies `--real-ams`, so real discovery builds
-this backend under `--test` (see `docs/devel/MOCK_ENVIRONMENT_VARIABLES.md`). Hardware
-verification on a real Z-Mod C5 is tracked as prestonbrown/helixscreen#1714 follow-up
-work.
+publishes Z-Mod's objects and status (1.7.4 shape, afclite shim included), answers
+`_T_IN` / `_T_OUT` by narrating the swap markers, and implies `--real-ams`, so real
+discovery builds this backend under `--test` (see
+`docs/devel/MOCK_ENVIRONMENT_VARIABLES.md`). Hardware verification on a real Z-Mod C5 is
+tracked as prestonbrown/helixscreen#1714 follow-up work.
+
+### Endless spool
+
+Z-Mod's C5 firmware switches to the next head whose colour AND type both match on runout
+(its docs call this "endless spool mode"), always on with no flag to write. The backend
+reports it exactly as the AD5X IFS backend reports stock zMod: Available /
+FirmwareManaged / ReadOnly, provider `"zmod"` (`get_endless_spool_capabilities`, gated on
+this provider row). Every other tool changer keeps the base default (Unsupported).
 
 Part of the filament system - see [FILAMENT_MANAGEMENT.md](FILAMENT_MANAGEMENT.md) for the shared architecture, slot metadata, and endless spool model.
 

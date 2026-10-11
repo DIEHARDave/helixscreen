@@ -703,6 +703,13 @@
           "pattern": "gcode_button extruder_grab1",
           "confidence": 0,
           "reason": "Exclude FlashForge Creator 5 Pro (head-dock grab sensors on both its firmwares; separate entry)"
+        },
+        {
+          "type": "object_exclude",
+          "field": "printer_objects",
+          "pattern": "zmod_afclite",
+          "confidence": 0,
+          "reason": "Exclude FlashForge Creator 5 on Z-Mod 1.7.4+ (the afclite shim serves its four heads; an AD5X's lanes run through zmod_ifs)"
         }
       ]
     },
@@ -750,6 +757,14 @@
           "confidence": 60,
           "corroborating": true,
           "reason": "Z-Mod firmware lineage (also on AD5X Z-Mod - support, never establish)"
+        },
+        {
+          "type": "object_exists",
+          "field": "printer_objects",
+          "pattern": "zmod_afclite",
+          "confidence": 60,
+          "corroborating": true,
+          "reason": "Z-Mod 1.7.4+ publishes the afclite AFC shim for the C5's four heads (bundle 5WSPTZBL); the AD5X Z-Mod carries zmod_ifs instead, so this supports a Creator 5 identification - version-dependent, never an establisher"
         },
         {
           "type": "object_exclude",
@@ -812,6 +827,14 @@
           "confidence": 60,
           "corroborating": true,
           "reason": "Z-Mod firmware lineage (also on AD5X Z-Mod - support, never establish)"
+        },
+        {
+          "type": "object_exists",
+          "field": "printer_objects",
+          "pattern": "zmod_afclite",
+          "confidence": 60,
+          "corroborating": true,
+          "reason": "Z-Mod 1.7.4+ publishes the afclite AFC shim for the C5's four heads (bundle 5WSPTZBL); the AD5X Z-Mod carries zmod_ifs instead, so this supports a Creator 5 identification - version-dependent, never an establisher"
         },
         {
           "type": "object_exclude",

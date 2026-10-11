@@ -164,6 +164,14 @@ class AmsBackendToolChanger : public AmsSubscriptionBackend {
     [[nodiscard]] PathSegment get_filament_segment() const override;
     [[nodiscard]] PathSegment get_slot_filament_segment(int slot_index) const override;
 
+    /// Z-Mod's Creator 5 carries the same firmware-managed "endless spool
+    /// mode" the AD5X IFS backend reports for stock zMod: on runout the
+    /// firmware switches to the next head whose colour AND type both match,
+    /// with no flag for HelixScreen to write. Every other tool changer
+    /// answers the base default (Unsupported).
+    [[nodiscard]] helix::printer::EndlessSpoolCapabilities
+    get_endless_spool_capabilities() const override;
+
     /// A dock-sensor fault is not a loading failure: nothing is being loaded and
     /// a hot end changer has no filament path for the user to check. Publishing
     /// it here routes it to AmsErrorBridge with this backend's own wording,
@@ -345,8 +353,17 @@ class AmsBackendToolChanger : public AmsSubscriptionBackend {
     /// Dock-sensor reader. When set, its answer overrides toolchanger.tool_number.
     void set_tool_sensor(helix::toolchanger_addon::ToolSensor sensor) {
         tool_sensor_ = std::move(sensor);
+        // The Z-Mod row's phase source is gcode-response markers, and its
+        // markers name the direction by construction (Grab/_T_IN is a pick,
+        // Unload/_T_OUT is a dock). The direction capability is therefore known
+        // from the provider row itself, not only once a marker arrives — which
+        // matters because the step bar snapshots this latch when it is built,
+        // and a bar built at dispatch time (before the macro's first marker)
+        // would otherwise pin a direction-less, suppressed sequence forever.
+        if (zmod_c5_row_active()) {
+            direction_reported_ = true;
+        }
     }
-
     /// Swap commands for a machine without klipper-toolchanger. Absent leaves
     /// SELECT_TOOL/UNSELECT_TOOL in place.
     void set_tool_commands(helix::toolchanger_addon::ToolCommands commands) {
@@ -384,6 +401,23 @@ class AmsBackendToolChanger : public AmsSubscriptionBackend {
     SlotInfo* cached_slot_locked(int slot_index) override;
     [[nodiscard]] std::optional<AmsAction> step_action_locked() const override {
         return step_action_;
+    }
+    void on_stopping() override;
+
+  private:
+    /// Z-Mod's Creator 5 row narrates its swaps through gcode-response markers
+    /// (toolchanger_addon::parse_zmod_marker) rather than a status object, so
+    /// on_started() subscribes notify_gcode_response for that row alone and
+    /// on_stopping() tears the subscription down.
+    void register_zmod_marker_listener();
+    void unregister_zmod_marker_listener();
+    /// Main-thread half of the marker listener: classifies the line and folds a
+    /// matching marker into the same phase machinery a status frame drives.
+    void on_zmod_marker_line(const std::string& line);
+    /// Whether the active provider row is Z-Mod's Creator 5 changer.
+    [[nodiscard]] bool zmod_c5_row_active() const {
+        return tool_sensor_.present &&
+               tool_sensor_.provider_name == toolchanger_addon::kZmodC5ProviderName;
     }
 
   private:
