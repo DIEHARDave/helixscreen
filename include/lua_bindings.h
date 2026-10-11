@@ -31,6 +31,9 @@ struct PluginContext {
     /// Set while on_unload runs: the plugin is leaving (at shutdown navigation is
     /// already down), so it may not open overlays or dialogs.
     bool unloading = false;
+    /// Called after a setting changed through set_plugin_setting, before its on_change
+    /// handlers run; the host uses it to refresh an open generated settings screen.
+    std::function<void(const std::string& key, const json& value)> setting_changed;
 };
 
 using Installer = void (*)(PluginContext&);
