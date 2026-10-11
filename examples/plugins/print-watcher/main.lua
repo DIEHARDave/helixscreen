@@ -274,9 +274,15 @@ local settling = false
 local settle_timer = nil
 
 helix.printer.watch("connected", function(up)
-    if settle_timer then settle_timer.cancel() end
+    if settle_timer then settle_timer:cancel() end
     settling = up
-    settle_timer = up and helix.timer.after(SETTLE_MS, function() settling = false end) or nil
+    settle_timer = nil
+    if up then
+        settle_timer = helix.timer.after(SETTLE_MS, function()
+            settling = false
+            settle_timer = nil
+        end)
+    end
 end)
 
 local prev_state = helix.printer.get("print_state")

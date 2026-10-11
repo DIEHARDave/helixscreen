@@ -505,6 +505,42 @@ TEST_CASE_METHOD(XMLTestFixture, "a connect mid-print is silent until the print 
     CHECK(last_http(rig)->c == "Completed: benchy.gcode (100%)");
 }
 
+TEST_CASE_METHOD(XMLTestFixture,
+                 "reconnecting raises no plugin error and re-opens the settle window",
+                 "[plugin][example]") {
+    reset_printer("benchy.gcode");
+    helix::TextLogCapture log;
+    HostRig rig(watcher_block(ntfy_settings()));
+    rig.host->load_from("examples/plugins");
+    size_t next = 0;
+
+    // Drop and reconnect while the first settle timer is still pending, then
+    // again after it has fired.
+    set_connection(helix::ConnectionState::CONNECTED);
+    set_connection(helix::ConnectionState::DISCONNECTED);
+    set_connection(helix::ConnectionState::CONNECTED);
+    process_lvgl(5100);
+    set_connection(helix::ConnectionState::DISCONNECTED);
+    set_connection(helix::ConnectionState::CONNECTED);
+
+    // The second connect is settling: a state reported now is a baseline.
+    edge("printing");
+    CHECK(http_count(rig) == 0);
+    process_lvgl(5100);
+    edge("paused");
+    REQUIRE(http_count(rig) == 1);
+    answer_http(rig, next, 200);
+    edge("printing");
+    answer_http(rig, next, 200);
+    edge("complete");
+    CHECK(last_http(rig)->c == "Completed: benchy.gcode (43%)");
+
+    REQUIRE(rig.info("print-watcher"));
+    CHECK(rig.info("print-watcher")->status == PluginStatus::Loaded);
+    CHECK_FALSE(log.contains("bad argument"));
+    CHECK_FALSE(log.contains("fault"));
+}
+
 TEST_CASE_METHOD(XMLTestFixture, "a state that was never a running print posts no ending",
                  "[plugin][example]") {
     reset_printer("benchy.gcode");
