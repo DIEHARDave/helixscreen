@@ -135,6 +135,10 @@ void bypass_spool_set_position(BypassSpoolWidgets& w, int32_t cx, int32_t cy);
 /// material label's visibility changes what sits above the box.
 void bypass_spool_sync_from_state(BypassSpoolWidgets& w);
 
+/// The same, for a caller that has already decided whether the node belongs on the path
+/// (bypass_node_visible_for) and so avoids a second read of the system info.
+void bypass_spool_sync_from_state(BypassSpoolWidgets& w, bool node_visible);
+
 /// Show or hide the whole bypass overlay — card, spool and both labels. Used
 /// when the bypass node does not belong on the path at all; see
 /// bypass_node_visible().

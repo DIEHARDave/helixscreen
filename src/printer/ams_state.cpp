@@ -978,6 +978,10 @@ bool AmsState::sync_tool_spools(AmsBackend* backend, const AmsSystemInfo& info) 
 
 void AmsState::set_viewed_unit(int unit_index) {
     assert_main_thread("set_viewed_unit");
+    // The flag follows the unit's data, which every sync_from_backend() republishes, so
+    // naming the unit already viewed leaves it right and costs no read of the system info.
+    if (viewed_unit_ == unit_index)
+        return;
     viewed_unit_ = unit_index;
     if (auto* backend = get_backend(0)) {
         const AmsSystemInfo info = backend->get_system_info();

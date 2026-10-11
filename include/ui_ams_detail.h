@@ -111,6 +111,12 @@ void ams_detail_update_badges(AmsDetailWidgets& w, lv_obj_t* slot_widgets[], int
  */
 void ams_detail_setup_path_canvas(lv_obj_t* canvas, lv_obj_t* slot_grid, int unit_index);
 
+/// The same, for a caller that already holds the system info it just read from @p backend.
+// NAMESPACE_OK: an overload of the global three-argument ams_detail_setup_path_canvas
+void ams_detail_setup_path_canvas(lv_obj_t* canvas, lv_obj_t* slot_grid, int unit_index,
+                                  const helix::AmsBackend* backend,
+                                  const helix::AmsSystemInfo& info);
+
 /**
  * @brief Pre-show environment indicator if backend has environment sensors
  *
@@ -172,6 +178,10 @@ BufferBoxState ams_detail_buffer_box(const AmsSystemInfo& info, int unit_index);
  * slot count, so no rebuild would otherwise pick it up.
  */
 void ams_detail_sync_slot_states(lv_obj_t* slot_widgets[], int slot_count);
+
+/// The same, for a caller that already holds the system info.
+void ams_detail_sync_slot_states(lv_obj_t* slot_widgets[], int slot_count,
+                                 const AmsSystemInfo& info);
 
 /**
  * @brief Dispatch the context-menu actions that are pure backend calls

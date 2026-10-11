@@ -31,6 +31,7 @@
 #include "theme_manager.h"
 
 #include <array>
+#include <chrono>
 #include <cstdlib>
 #include <memory>
 #include <string>
@@ -75,6 +76,7 @@ class PagedFleet : public AmsBackendMock {
     }
 
     AmsSystemInfo get_system_info() const override {
+        ++info_reads;
         AmsSystemInfo info = AmsBackendMock::get_system_info();
         info.units.clear();
         int first_slot = 0;
@@ -125,6 +127,7 @@ class PagedFleet : public AmsBackendMock {
     }
 
     std::vector<UnitSpec> specs;
+    mutable int info_reads = 0;              ///< get_system_info() calls, a full copy each
     int loaded_slot = 2 * kSlotsPerUnit + 1; ///< a bay of unit 2
     int drying_unit = kOwnNumberBase + 6;    ///< by the unit's own number
 };
@@ -169,6 +172,12 @@ class PagingFixture : public LVGLUITestFixture {
 
     static void drain() {
         helix::ui::UpdateQueue::instance().drain();
+    }
+
+    /// A drain, then the callbacks that drain deferred (a unit-view sync waits one tick).
+    static void settle() {
+        drain();
+        drain();
     }
 
     /// Open the panel: the overview.
@@ -671,7 +680,7 @@ TEST_CASE_METHOD(PagingFixture, "Unit view: the canvas is told the units on othe
         auto* fleet = static_cast<PagedFleet*>(AmsState::instance().get_backend());
         fleet->drying_unit = kOwnNumberBase + 1;
         AmsState::instance().sync_from_backend();
-        drain();
+        settle();
         CHECK(data->offpage_before_drying);
         CHECK_FALSE(data->offpage_after_drying);
         CHECK(page_current() == 2);
@@ -1052,4 +1061,81 @@ TEST_CASE_METHOD(LVGLTestFixture,
     CHECK(lv_obj_has_flag(w.box, LV_OBJ_FLAG_HIDDEN));
 
     helix::ui::bypass_spool_destroy(w);
+}
+
+TEST_CASE_METHOD(PagingFixture, "Unit view: subjects that fire in one tick sync the pages once",
+                 "[ams][pages][panel]") {
+    open_at(2);
+    auto& ams = AmsState::instance();
+    auto bump = [](lv_subject_t* subject) {
+        lv_subject_set_int(subject, lv_subject_get_int(subject) + 1);
+    };
+    settle();
+    const int base = AmsPanelTestAccess::pages_refreshes(panel());
+
+    SECTION("a dryer change and the slots bump that rides with it") {
+        bump(ams.get_units_dryer_version_subject());
+        bump(ams.get_slots_version_subject());
+        // Nothing runs inside the observers: the sync waits for the tick.
+        CHECK(AmsPanelTestAccess::pages_refreshes(panel()) == base);
+        settle();
+        CHECK(AmsPanelTestAccess::pages_refreshes(panel()) == base + 1);
+    }
+
+    SECTION("the active slot moving as well") {
+        bump(ams.get_units_dryer_version_subject());
+        bump(ams.get_slots_version_subject());
+        lv_subject_set_int(ams.get_current_slot_subject(),
+                           lv_subject_get_int(ams.get_current_slot_subject()) == 0 ? 1 : 0);
+        settle();
+        CHECK(AmsPanelTestAccess::pages_refreshes(panel()) == base + 1);
+    }
+
+    SECTION("a sync reads the system info once") {
+        auto* fleet = static_cast<PagedFleet*>(ams.get_backend());
+        const int reads = fleet->info_reads;
+        AmsPanelTestAccess::resync(panel());
+        CHECK(fleet->info_reads == reads + 1);
+    }
+
+    SECTION("a later tick syncs again") {
+        bump(ams.get_slots_version_subject());
+        settle();
+        bump(ams.get_slots_version_subject());
+        settle();
+        CHECK(AmsPanelTestAccess::pages_refreshes(panel()) == base + 2);
+    }
+}
+
+TEST_CASE_METHOD(PagingFixture, "Unit view: refresh cost bench", "[.][bench][ams][pages]") {
+    open_at(2);
+    auto& ams = AmsState::instance();
+    constexpr int kRuns = 1000;
+    using Clock = std::chrono::steady_clock;
+    auto bump = [](lv_subject_t* s) { lv_subject_set_int(s, lv_subject_get_int(s) + 1); };
+
+    for (int i = 0; i < 50; ++i) {
+        bump(ams.get_slots_version_subject());
+        settle();
+    }
+    auto t0 = Clock::now();
+    for (int i = 0; i < kRuns; ++i) {
+        bump(ams.get_slots_version_subject());
+        settle();
+    }
+    auto t1 = Clock::now();
+    const int before = AmsPanelTestAccess::pages_refreshes(panel());
+    for (int i = 0; i < kRuns; ++i) {
+        bump(ams.get_units_dryer_version_subject());
+        bump(ams.get_slots_version_subject());
+        settle();
+    }
+    auto t2 = Clock::now();
+    const int after = AmsPanelTestAccess::pages_refreshes(panel());
+    auto us = [](auto a, auto b) {
+        return std::chrono::duration<double, std::micro>(b - a).count() / kRuns;
+    };
+    WARN("BENCH slots bump: " << us(t0, t1) << " us/tick");
+    WARN("BENCH dryer+slots bump: " << us(t1, t2) << " us/tick, sync_pages runs/tick "
+                                    << (after - before) / double(kRuns));
 }

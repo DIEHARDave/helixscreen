@@ -147,7 +147,7 @@ void AmsOverviewPanel::init_subjects() {
             AmsState::instance().get_units_dryer_version_subject(), this,
             [](AmsOverviewPanel* self, int) {
                 if (self->open_ && self->panel_ && self->unit_view_active_)
-                    self->sync_pages(/*reopen=*/false);
+                    self->request_pages_sync();
             },
             AmsState::instance().get_subjects_lifetime());
 
@@ -182,7 +182,7 @@ void AmsOverviewPanel::on_state_changed(const char* tag) {
     if (!open_ || !panel_)
         return;
     if (unit_view_active_) {
-        sync_pages(/*reopen=*/false);
+        request_pages_sync();
         return;
     }
     // Defer rebuild (#80) AND use safe_clean_children in refresh_units callees (#776):
@@ -197,6 +197,19 @@ void AmsOverviewPanel::on_state_changed(const char* tag) {
                 refresh_units();
         });
     }
+}
+
+void AmsOverviewPanel::request_pages_sync() {
+    // slots_version, current_slot and the dryer version often move inside one backend sync;
+    // one deferred pass shows the state they settle on.
+    if (pages_sync_pending_)
+        return;
+    pages_sync_pending_ = true;
+    object_lifetime_.defer("AmsOverviewPanel::sync_pages", [this]() {
+        pages_sync_pending_ = false;
+        if (open_ && panel_ && unit_view_active_)
+            sync_pages(/*reopen=*/false);
+    });
 }
 
 void AmsOverviewPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
@@ -287,6 +300,7 @@ void AmsOverviewPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
 void AmsOverviewPanel::on_activate() {
     // Reset coalescing flag to prevent stale state from a previous deactivation
     units_rebuild_pending_ = false;
+    pages_sync_pending_ = false;
 
     spdlog::debug("[{}] Activated - syncing from backend", get_name());
 
@@ -1003,7 +1017,7 @@ void AmsOverviewPanel::show_current_page(const AmsSystemInfo& info, bool relayou
     if (relayout || new_unit || detail_slot_count_ != std::min(unit.slot_count, MAX_DETAIL_SLOTS)) {
         create_detail_slots(info, page.unit_index);
     }
-    helix::ui::ams_detail_sync_slot_states(detail_slot_widgets_, detail_slot_count_);
+    helix::ui::ams_detail_sync_slot_states(detail_slot_widgets_, detail_slot_count_, info);
 
     if (detail_path_canvas_) {
         // The hub box is sized for the widest unit of this hub, at the lane pitch that
@@ -1026,7 +1040,7 @@ void AmsOverviewPanel::show_current_page(const AmsSystemInfo& info, bool relayou
                                                   page.drying_before, page.same_hub_after,
                                                   page.drying_after);
     }
-    update_path_canvas();
+    update_path_canvas(info);
     layout_paging_controls();
     scroll_current_dot_into_view();
 }
@@ -1259,12 +1273,16 @@ void AmsOverviewPanel::destroy_detail_slots() {
     ams_detail_destroy_slots(detail_widgets_, detail_slot_widgets_, detail_slot_count_);
 }
 
-void AmsOverviewPanel::update_path_canvas() {
+void AmsOverviewPanel::update_path_canvas(const AmsSystemInfo& info) {
     if (!detail_path_canvas_ || shown_unit_pos_ < 0)
         return;
+    const AmsBackend* backend = AmsState::instance().get_backend();
+    if (!backend)
+        return;
     // The whole path: lanes, hub, buffer, toolhead and bypass, as AmsPanel draws it.
-    ams_detail_setup_path_canvas(detail_path_canvas_, detail_widgets_.slot_grid, shown_unit_pos_);
-    refresh_page_bypass();
+    ams_detail_setup_path_canvas(detail_path_canvas_, detail_widgets_.slot_grid, shown_unit_pos_,
+                                 backend, info);
+    refresh_page_bypass(helix::ui::bypass_node_visible_for(backend, info));
 }
 
 void AmsOverviewPanel::layout_paging_controls() {
@@ -1655,11 +1673,17 @@ void AmsOverviewPanel::refresh_page_bypass() {
     if (!page_bypass_widgets_.valid() || !unit_view_active_) {
         return;
     }
-    helix::ui::bypass_spool_sync_from_state(page_bypass_widgets_);
+    refresh_page_bypass(helix::ui::bypass_node_visible_for(AmsState::instance().get_backend()));
+}
+
+void AmsOverviewPanel::refresh_page_bypass(bool node) {
+    if (!page_bypass_widgets_.valid() || !unit_view_active_) {
+        return;
+    }
+    helix::ui::bypass_spool_sync_from_state(page_bypass_widgets_, node);
     // The canvas draws the tube to the spool; its own state follows the same subjects.
     if (detail_path_canvas_ && shown_unit_pos_ >= 0) {
         auto ext = AmsState::instance().get_external_spool_info();
-        const bool node = helix::ui::bypass_node_visible_for(AmsState::instance().get_backend());
         ui_filament_path_canvas_set_bypass_has_spool(detail_path_canvas_, ext.has_value() && node);
         if (ext && node)
             ui_filament_path_canvas_set_bypass_color(detail_path_canvas_, ext->color_rgb);

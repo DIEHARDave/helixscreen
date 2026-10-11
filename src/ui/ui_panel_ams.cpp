@@ -977,8 +977,10 @@ void AmsPanel::update_bypass_spool_from_state() {
         return;
     }
 
-    helix::ui::bypass_spool_sync_from_state(bypass_widgets_);
-    if (!helix::ui::bypass_node_visible_for(AmsState::instance().get_backend())) {
+    const bool node_visible =
+        helix::ui::bypass_node_visible_for(AmsState::instance().get_backend());
+    helix::ui::bypass_spool_sync_from_state(bypass_widgets_, node_visible);
+    if (!node_visible) {
         return;
     }
 
@@ -1090,7 +1092,11 @@ void AmsPanel::refresh_slots() {
     }
 
     update_slot_colors();
-    helix::ui::ams_detail_sync_slot_states(slot_widgets_, current_slot_count_);
+    // One read of the system info serves both the bay states and the path canvas.
+    const AmsBackend* backend = AmsState::instance().get_backend();
+    const AmsSystemInfo info = backend ? backend->get_system_info() : AmsSystemInfo{};
+    if (backend)
+        helix::ui::ams_detail_sync_slot_states(slot_widgets_, current_slot_count_, info);
 
     int current_slot = lv_subject_get_int(AmsState::instance().get_current_slot_subject());
     update_current_slot_highlight(current_slot);
@@ -1102,7 +1108,8 @@ void AmsPanel::refresh_slots() {
     // guards against a missing canvas (ams_detail_setup_path_canvas() returns
     // early when canvas/backend is null) and never writes slot subjects, so it
     // can't recurse back into a slots_version bump.
-    update_path_canvas_from_backend();
+    if (backend)
+        ams_detail_setup_path_canvas(path_canvas_, slot_grid_, ALL_UNITS, backend, info);
 }
 
 // ============================================================================

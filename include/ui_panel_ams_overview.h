@@ -203,6 +203,7 @@ class AmsOverviewPanel : public PanelBase {
     ObserverGuard dryer_version_observer_;  ///< The stubs' drying glyph follows other units' dryers
     ObserverGuard page_count_observer_;     ///< The dots refit when pages come or go
     bool units_rebuild_pending_ = false; ///< Coalesces rapid slots_version observer notifications
+    bool pages_sync_pending_ = false;    ///< One deferred sync_pages for every subject that fired
     bool open_ = false;       ///< Pushed and not yet closed; a closed panel's card observers wait
     int units_refreshes_ = 0; ///< refresh_units() runs, for tests
 
@@ -238,6 +239,8 @@ class AmsOverviewPanel : public PanelBase {
     /// number is clamped when it does not. Every call repoints the screen at the chosen page
     /// through show_current_page() and redraws it.
     void sync_pages(bool reopen, int focus_unit = -1);
+    /// Schedule one sync_pages(false) for the next tick, however many subjects fired.
+    void request_pages_sync();
     /// Point the screen at pages_[page_]: header, spool box, path canvas, viewed unit.
     /// @p relayout rebuilds the spool box even when the unit and its slot count are unchanged.
     void show_current_page(const helix::AmsSystemInfo& info, bool relayout);
@@ -246,7 +249,7 @@ class AmsOverviewPanel : public PanelBase {
     void reset_to_overview();
     void create_detail_slots(const helix::AmsSystemInfo& info, int unit_pos);
     void destroy_detail_slots();
-    void update_path_canvas();
+    void update_path_canvas(const helix::AmsSystemInfo& info);
     /// Level the paging arrows with the hub box and tell the canvas how much edge to leave.
     void layout_paging_controls();
     /// Fit the page dots into their row: the nominal pitch, closing to a floor.
@@ -271,6 +274,8 @@ class AmsOverviewPanel : public PanelBase {
     void refresh_bypass_display();
     void refresh_system_bypass();
     void refresh_page_bypass();
+    /// @p node is whether the bypass node belongs on the path (bypass_node_visible_for).
+    void refresh_page_bypass(bool node);
     static void on_bypass_spool_clicked(lv_event_t* e);
 
     // === Sidebar ===

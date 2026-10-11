@@ -477,7 +477,11 @@ void helix::ui::ams_detail_sync_slot_states(lv_obj_t* slot_widgets[], int slot_c
     if (!backend) {
         return;
     }
-    const helix::AmsSystemInfo info = backend->get_system_info();
+    ams_detail_sync_slot_states(slot_widgets, slot_count, backend->get_system_info());
+}
+
+void helix::ui::ams_detail_sync_slot_states(lv_obj_t* slot_widgets[], int slot_count,
+                                            const helix::AmsSystemInfo& info) {
     for (int i = 0; i < slot_count; ++i) {
         lv_obj_t* slot = slot_widgets[i];
         if (!slot) {
@@ -786,7 +790,16 @@ void ams_detail_setup_path_canvas(lv_obj_t* canvas, lv_obj_t* slot_grid, int uni
     if (!backend)
         return;
 
-    helix::AmsSystemInfo info = backend->get_system_info();
+    ams_detail_setup_path_canvas(canvas, slot_grid, unit_index, backend,
+                                 backend->get_system_info());
+}
+
+// NAMESPACE_OK: an overload of the global three-argument ams_detail_setup_path_canvas
+void ams_detail_setup_path_canvas(lv_obj_t* canvas, lv_obj_t* slot_grid, int unit_index,
+                                  const helix::AmsBackend* backend,
+                                  const helix::AmsSystemInfo& info) {
+    if (!canvas || !backend)
+        return;
 
     // A unit-scoped view asks its own unit; the all-units view any unit.
     if (unit_index >= 0 && unit_index < static_cast<int>(info.units.size())) {

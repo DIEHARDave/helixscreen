@@ -36,9 +36,15 @@ void bypass_spool_sync_from_state(BypassSpoolWidgets& w) {
     if (!w.valid()) {
         return;
     }
+    bypass_spool_sync_from_state(w, bypass_node_visible_for(AmsState::instance().get_backend()));
+}
+
+void bypass_spool_sync_from_state(BypassSpoolWidgets& w, bool show) {
+    if (!w.valid()) {
+        return;
+    }
     auto& ams = AmsState::instance();
     // On AFC the node is removed entirely while bypass is disengaged (#1229).
-    const bool show = bypass_node_visible_for(ams.get_backend());
     bypass_spool_set_visible(w, show);
     if (!show) {
         return;
