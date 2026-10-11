@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """Fail when a plugin translation pack shadows a system string.
 
-Packs are consulted BEFORE the app catalog, so a pack entry whose tag matches
-a catalog key does not "also translate" that string - it overrides the
-system's translation for the whole UI while the plugin is loaded (a plugin
-pack's "Start" relabels every Start button). The rule: a pack may only carry
-strings the app does not already say. Checked against translations/<lang>.yml
-(the source of truth, per qc_base_locale), not the generated XML.
+Packs are consulted AFTER the app catalog, so a pack entry whose tag matches
+a catalog key is never used: the app's own translation wins. The entry is dead
+weight and usually a sign the author expected to relabel the string. The rule:
+a pack may only carry strings the app does not already say. Checked against
+translations/<lang>.yml (the source of truth, per qc_base_locale), not the
+generated XML.
 
 Usage: check_plugin_i18n_shadow.py [--root DIR] [--staged-only]
 With --root, scan plugin packs under DIR/i18n instead of the repository's
@@ -90,9 +90,9 @@ def main() -> int:
         print("Plugin packs must not shadow system strings:", file=sys.stderr)
         for s in shadows:
             print(f"  {s}", file=sys.stderr)
-        print("Packs are looked up before the catalog, so a duplicate tag overrides "
-              "the app's translation app-wide while the plugin is loaded. Remove the "
-              "entry; the catalog already translates it.", file=sys.stderr)
+        print("Packs are looked up after the catalog, so a duplicate tag is never "
+              "used. Remove the entry; the catalog already translates it.",
+              file=sys.stderr)
         return 1
     return 0
 
