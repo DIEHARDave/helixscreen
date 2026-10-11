@@ -675,12 +675,18 @@ class BuildUnavailable(RuntimeError):
     """
 
 
+def make_bin():
+    """GNU make by its local name: Homebrew installs it as gmake, and Apple's
+    /usr/bin/make is 3.81, which the Makefile hard-errors below 4.2."""
+    return 'gmake' if shutil.which('gmake') else 'make'
+
+
 def build(root, jobs, log):
     t = time.time()
     # Under an inherited jobserver (a jobpool) make leaves the pool when its
     # command line carries any -j, so the pool bounds the build instead.
     jflag = [] if '--jobserver-auth=' in os.environ.get('MAKEFLAGS', '') else [f'-j{jobs}']
-    r = run(['make', *jflag, 'test-build'], cwd=root)
+    r = run([make_bin(), *jflag, 'test-build'], cwd=root)
     log.write(r.stdout or '')
     return r.returncode == 0, time.time() - t
 
