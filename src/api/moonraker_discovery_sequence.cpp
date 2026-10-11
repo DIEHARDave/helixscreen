@@ -940,12 +940,14 @@ void MoonrakerDiscoverySequence::continue_discovery_objects(uint64_t seq) {
 
                                 // Record the chamber cooling fan's configured resting/off
                                 // target. M141 S0 resets the cooling fan to this value (35°C
-                                // on the K2); recognizing it lets the chamber report Off
-                                // instead of misreading the resting fan target as a deliberate
-                                // "Maintaining" set. Klipper lowercases section names in
-                                // configfile.settings, so lowercase the fan's object name for
-                                // the lookup. Stored on hardware_ and read in
-                                // PrinterState::set_hardware (same path as the cooling-fan name).
+                                // on the K2), and a deliberate set equal to it is
+                                // wire-identical; recognizing it lets the chamber label that
+                                // state Resting (auto) rather than misreading the fan target
+                                // as a deliberate "Maintaining" set. Klipper lowercases
+                                // section names in configfile.settings, so lowercase the
+                                // fan's object name for the lookup. Stored on hardware_ and
+                                // read in PrinterState::set_hardware (same path as the
+                                // cooling-fan name).
                                 {
                                     std::lock_guard<std::mutex> lock(hardware_mutex_);
                                     std::string fan = hardware_.chamber_cooling_fan_name();

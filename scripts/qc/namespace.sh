@@ -81,10 +81,12 @@ echo -n "📛 Checking namespace compliance (declarations outside helix::)..."
 # redeclaration of get_global_motion_panel() leaves (its header defines it
 # inline), and the bed mesh and spoolman accessors are counted as .cpp
 # definitions, kept out of line because the ESP32 build supplies its own.
+# 2101 -> 2102 is MOCK_K2_CHAMBER_FAN_RESTING_C, beside the other mock_internal
+# constants in moonraker_client_mock_internal.h.
 #
 # tests/shell/test_namespace_gate.bats carries this same number and fails if
 # the two disagree or if the tree drifts under it.
-if python3 scripts/check_namespace_compliance.py --max-allowed 2101 --summary >/tmp/namespace_check.out 2>&1; then
+if python3 scripts/check_namespace_compliance.py --max-allowed 2102 --summary >/tmp/namespace_check.out 2>&1; then
   section_time $SECTION_START
   echo ""
   tail -1 /tmp/namespace_check.out

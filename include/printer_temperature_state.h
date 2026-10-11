@@ -24,9 +24,12 @@ namespace helix {
  * rather than misread as a deliberate "Maintaining" set.
  */
 enum ChamberMode {
-    Off = 0,        ///< Heater 0 AND (fan 0 OR fan == resting): effective target 0
-    Heating = 1,    ///< Heater target > 0: effective target = heater target
-    Maintaining = 2 ///< Heater 0, fan > 0 and fan != resting: effective target = fan target
+    Off = 0,         ///< Heater 0 AND fan 0: effective target 0, nothing displayed
+    Heating = 1,     ///< Heater target > 0: effective target = heater target
+    Maintaining = 2, ///< Heater 0, fan > 0 and fan != resting: effective target = fan target
+    Resting = 3      ///< Heater 0, fan target == its configured resting value: the standing
+                     ///< auto setpoint (M141 S0 parks here; a deliberate set equal to resting
+                     ///< is byte-identical). Target displayed, auto glyph instead of the check.
 };
 
 /**

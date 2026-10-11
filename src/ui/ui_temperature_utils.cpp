@@ -165,8 +165,10 @@ HeatState classify_heat_state(int current, int target, int tolerance) {
 
 HeatState classify_heat_state_with_mode(int current, int target, helix::ChamberMode mode,
                                         int tolerance) {
-    if (mode == helix::ChamberMode::Maintaining) {
+    if (mode == helix::ChamberMode::Maintaining || mode == helix::ChamberMode::Resting) {
         // Target is a cooling ceiling, not a heat goal — Heating never applies.
+        // Resting (the standing setpoint) is the same ceiling with a different
+        // owner: the machine, not the user.
         if (current > target + tolerance) {
             return HeatState::Cooling;
         }
@@ -301,12 +303,18 @@ bool chamber_uses_m141(const std::string& heater_full_name, const std::string& c
 ChamberSetpoint chamber_effective_setpoint(int heater_target_deci, int fan_target_deci,
                                            int fan_resting_deci) {
     // Mirrors the live computation in PrinterTemperatureState::update_chamber_setpoint()
-    // exactly: heater wins; fan wins only when it is above 0 and not at the
-    // configured resting target (which M141 S0 parks the fan at on the K2).
+    // exactly: heater wins; the fan target is always the effective setpoint when
+    // it holds one, and is labeled Resting when it equals the configured resting
+    // target — the state M141 S0 parks the fan at on the K2 and that a deliberate
+    // set equal to resting is byte-identical to. The number is displayed either
+    // way; Resting only changes which glyph sits beside it.
     if (heater_target_deci > 0)
         return {heater_target_deci, helix::ChamberMode::Heating};
-    if (fan_target_deci > 0 && fan_target_deci != fan_resting_deci)
-        return {fan_target_deci, helix::ChamberMode::Maintaining};
+    if (fan_target_deci > 0) {
+        return {fan_target_deci, fan_target_deci == fan_resting_deci
+                                     ? helix::ChamberMode::Resting
+                                     : helix::ChamberMode::Maintaining};
+    }
     return {0, helix::ChamberMode::Off};
 }
 
@@ -316,6 +324,8 @@ const char* chamber_mode_word(helix::ChamberMode mode) {
         return "Heating";
     case helix::ChamberMode::Maintaining:
         return "Maintaining";
+    case helix::ChamberMode::Resting:
+        return "Auto";
     default:
         return "Off";
     }
@@ -344,6 +354,12 @@ HeaterStatus classify_heater_status(int current_deci, int target_deci, int power
     HeaterStatus status;
     status.state = status_state_of(classify_heat_state_with_mode(
         displayed_deci(current_deci), target_deci, mode, DEFAULT_AT_TEMP_TOLERANCE_DECI));
+    // Resting holds at its ceiling as Neutral, which reads Ready — but the
+    // check glyph means "your deliberate setpoint is satisfied". The standing
+    // setpoint is the machine's own behavior, so it takes the auto glyph.
+    if (mode == helix::ChamberMode::Resting && status.state == HeaterStatusState::Ready) {
+        status.state = HeaterStatusState::Auto;
+    }
     if (power_pct > 0) {
         status.duty = std::to_string(power_pct) + "%";
     }

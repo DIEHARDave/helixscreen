@@ -798,10 +798,11 @@ TEST_CASE("build_heater_gcode generates correct gcode for all heater types", "[c
 
 // Resting-aware chamber mode + effective target. `M141 S0` ("Off") resets the
 // cooling fan to its CONFIGURED RESTING target (35°C on the K2) with the heater
-// at 0; without resting-awareness the fan target of 35 reads back as a deliberate
-// "Maintaining 35°" set (and reddens the display). The mode subject is computed
-// WITH the resting value so the resting state is recognized as Off → effective 0.
-TEST_CASE("chamber mode + effective target treat the cooling-fan resting target as Off",
+// at 0, and a deliberate set that HAPPENS to equal the resting target produces
+// byte-identical Klipper state. Both surface as Resting: the target number is
+// displayed (the fan genuinely enforces it) while the auto glyph, not the
+// Maintaining check, marks it standing behavior rather than a deliberate set.
+TEST_CASE("chamber mode + effective target treat the cooling-fan resting target as Resting",
           "[temperature][m141]") {
     LVGLTestFixture fixture;
 
@@ -809,13 +810,13 @@ TEST_CASE("chamber mode + effective target treat the cooling-fan resting target 
     ts.init_subjects(false);
     ts.set_chamber_heater_name("heater_generic chamber_heater");
     ts.set_chamber_cooling_fan_name("temperature_fan chamber_fan");
-    ts.set_chamber_fan_resting(350); // 35°C ×10 (resting/off value from config)
+    ts.set_chamber_fan_resting(350); // 35°C ×10 (resting value from config)
 
-    // Off: M141 S0 → heater 0, fan at resting 35 → Off, effective 0
+    // Resting: M141 S0 (or a deliberate S35) → heater 0, fan at resting 35
     ts.update_from_status({{"heater_generic chamber_heater", {{"target", 0.0}}},
                            {"temperature_fan chamber_fan", {{"target", 35.0}}}});
-    REQUIRE(lv_subject_get_int(ts.get_chamber_effective_target_subject()) == 0);
-    REQUIRE(lv_subject_get_int(ts.get_chamber_mode_subject()) == helix::ChamberMode::Off);
+    REQUIRE(lv_subject_get_int(ts.get_chamber_effective_target_subject()) == 350);
+    REQUIRE(lv_subject_get_int(ts.get_chamber_mode_subject()) == helix::ChamberMode::Resting);
 
     // Maintaining: deliberate 30 (≠ resting) → Maintaining, effective 300
     ts.update_from_status({{"temperature_fan chamber_fan", {{"target", 30.0}}}});
@@ -826,6 +827,12 @@ TEST_CASE("chamber mode + effective target treat the cooling-fan resting target 
     ts.update_from_status({{"heater_generic chamber_heater", {{"target", 60.0}}}});
     REQUIRE(lv_subject_get_int(ts.get_chamber_effective_target_subject()) == 600);
     REQUIRE(lv_subject_get_int(ts.get_chamber_mode_subject()) == helix::ChamberMode::Heating);
+
+    // Off: only when nothing holds a target at all (fan absent/0)
+    ts.update_from_status({{"heater_generic chamber_heater", {{"target", 0.0}}},
+                           {"temperature_fan chamber_fan", {{"target", 0.0}}}});
+    REQUIRE(lv_subject_get_int(ts.get_chamber_effective_target_subject()) == 0);
+    REQUIRE(lv_subject_get_int(ts.get_chamber_mode_subject()) == helix::ChamberMode::Off);
 }
 
 // Pre-config-fetch fallback: when the resting target hasn't been read from config
@@ -853,8 +860,9 @@ TEST_CASE("chamber mode without resting config treats any fan target as Maintain
 // status always carries `target` - on the K1C the default target_temp 40, the
 // fan spin-up threshold - even at speed 0. That target must not enter the heater
 // slot's chamber_target_: it flows through the cooling-fan branch and the
-// resting-target comparison, so an idle K1C chamber reads Off, not Heating to 40.
-TEST_CASE("K1C chamber temperature_fan in the heater slot reads idle as Off",
+// resting-target comparison, so an idle K1C chamber reads Resting (auto 40),
+// never Heating to 40.
+TEST_CASE("K1C chamber temperature_fan in the heater slot reads idle as Resting",
           "[temperature][chamber][k1c]") {
     LVGLTestFixture fixture;
 
@@ -868,9 +876,9 @@ TEST_CASE("K1C chamber temperature_fan in the heater slot reads idle as Off",
         {{"temperature_fan chamber_fan", {{"temperature", 30.3}, {"target", 40.0}}}});
     // Temperature still ingests from the heater-slot object.
     REQUIRE(lv_subject_get_int(ts.get_chamber_temp_subject()) == 303);
-    // Fan target 400 == resting 400 -> Off, effective 0 (no target shown).
-    REQUIRE(lv_subject_get_int(ts.get_chamber_mode_subject()) == helix::ChamberMode::Off);
-    REQUIRE(lv_subject_get_int(ts.get_chamber_effective_target_subject()) == 0);
+    // Fan target 400 == resting 400 -> Resting, target shown as standing auto.
+    REQUIRE(lv_subject_get_int(ts.get_chamber_mode_subject()) == helix::ChamberMode::Resting);
+    REQUIRE(lv_subject_get_int(ts.get_chamber_effective_target_subject()) == 400);
 }
 
 // Same K1C single-object chamber after `M141 S35`: the thermostat target moves to
@@ -922,12 +930,14 @@ TEST_CASE("chamber_effective_setpoint picks the active control", "[temperature][
     REQUIRE(off.deci == 0);
     REQUIRE(off.mode == helix::ChamberMode::Off);
 
-    // Resting-edge: fan == resting → Off (M141 S0 parks fan here, not a deliberate set).
+    // Resting-edge: fan == resting → Resting, the standing auto setpoint
+    // (M141 S0 parks the fan here, and a deliberate set equal to resting is
+    // byte-identical to it).
     auto at_resting = chamber_effective_setpoint(0, 350, 350);
-    REQUIRE(at_resting.deci == 0);
-    REQUIRE(at_resting.mode == helix::ChamberMode::Off);
+    REQUIRE(at_resting.deci == 350);
+    REQUIRE(at_resting.mode == helix::ChamberMode::Resting);
 
-    // Fan above resting → Maintaining.
+    // Fan off resting → Maintaining.
     auto above_resting = chamber_effective_setpoint(0, 360, 350);
     REQUIRE(above_resting.deci == 360);
     REQUIRE(above_resting.mode == helix::ChamberMode::Maintaining);
@@ -942,6 +952,7 @@ TEST_CASE("chamber_mode_word maps enum to untranslated string", "[temperature][m
     using helix::ui::temperature::chamber_mode_word;
     REQUIRE(std::string(chamber_mode_word(helix::ChamberMode::Heating)) == "Heating");
     REQUIRE(std::string(chamber_mode_word(helix::ChamberMode::Maintaining)) == "Maintaining");
+    REQUIRE(std::string(chamber_mode_word(helix::ChamberMode::Resting)) == "Auto");
     REQUIRE(std::string(chamber_mode_word(helix::ChamberMode::Off)) == "Off");
 }
 
@@ -967,11 +978,12 @@ TEST_CASE("PrinterTemperatureState chamber subjects match chamber_effective_setp
     REQUIRE(lv_subject_get_int(ts.get_chamber_mode_subject()) == helix::ChamberMode::Maintaining);
     REQUIRE(lv_subject_get_int(ts.get_chamber_effective_target_subject()) == 360);
 
-    // Case 3: heater 0, fan == resting (M141 S0 state) → Off.
+    // Case 3: heater 0, fan == resting (M141 S0 state, or a deliberate set
+    // equal to resting) → Resting at the resting target.
     ts.update_from_status({{"heater_generic chamber_heater", {{"target", 0.0}}},
                            {"temperature_fan chamber_fan", {{"target", 35.0}}}});
-    REQUIRE(lv_subject_get_int(ts.get_chamber_mode_subject()) == helix::ChamberMode::Off);
-    REQUIRE(lv_subject_get_int(ts.get_chamber_effective_target_subject()) == 0);
+    REQUIRE(lv_subject_get_int(ts.get_chamber_mode_subject()) == helix::ChamberMode::Resting);
+    REQUIRE(lv_subject_get_int(ts.get_chamber_effective_target_subject()) == 350);
 }
 
 TEST_CASE("chamber_uses_m141 gates only the chamber heater + M141 present", "[temperature][m141]") {

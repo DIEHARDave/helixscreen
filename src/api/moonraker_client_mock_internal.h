@@ -37,6 +37,13 @@ constexpr double MOCK_PROBE_MARGIN = 15.0;
 // the mock's SCREWS_TILT_CALCULATE output agrees with the config it reports.
 constexpr const char* MOCK_SCREW_THREAD = "CW-M3";
 
+// The K2 chamber thermostat's configured resting target (its configfile
+// target_temp, captured live in docs/devel/CHAMBER_HEATER.md's verification
+// log). The fan reports this target whenever no M141 set is live, and the
+// configfile answer names it so the discovery-side resting read resolves the
+// same value the frames carry.
+constexpr double MOCK_K2_CHAMBER_FAN_RESTING_C = 35.0;
+
 /// Area a probe can reach: the persona's bed inset by MOCK_PROBE_MARGIN.
 struct MeshBounds {
     double x_min;
