@@ -1264,6 +1264,8 @@
   <translation tag="Fix: chown {} {}, then restart" de="Beheben: chown {} {}, dann neu starten"/>
   <translation tag="FlashForge Adventurer 5M" de="FlashForge Adventurer 5M"/>
   <translation tag="FlashForge Adventurer 5X" de="FlashForge Adventurer 5X"/>
+  <translation tag="FlashForge Creator 5" de="FlashForge Creator 5"/>
+  <translation tag="FlashForge Creator 5 Pro" de="FlashForge Creator 5 Pro"/>
   <translation tag="FlashForge IFS" de="FlashForge IFS"/>
   <translation tag="Flip" de="Spiegeln"/>
   <translation tag="Flip the spools" de="Spulen wenden"/>

@@ -458,9 +458,10 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
   parking a head is driven from the screen, and the swap shows its steps (dock / pick up)
   as Z-Mod narrates them; Z-Mod's always-on endless-spool switching is reported. On Z-Mod
   1.7.4+ the four heads read their material and colour straight from the printer, which
-  also names itself correctly in debug bundles instead of reading as an Adventurer 5X.
-  Older Z-Mod builds keep the degraded boot and edit behaviour until the printer's status
-  update reaches them. All of this is verified against a simulated printer and a field
+  also names itself correctly in debug bundles instead of reading as an Adventurer 5X. The
+  firmware's own filament-system faults surface with their own wording, a head without
+  filament reads Empty, and a read-only tool-state query replaces the stale boot state on
+  older Z-Mod builds. All of this is verified against a simulated printer and a field
   debug bundle; the swap-step wording on a live print is the one piece still pending
   hardware verification.
 - **Snapmaker U1 firmware settings** - the pre-print toggles (bed mesh, input shaper,

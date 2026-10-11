@@ -21,6 +21,10 @@ struct Slot {
     /// literal "?" in the UI.
     std::string material;
     std::string hex; ///< As published, no '#'; may be empty
+    /// Per-head filament presence, nullopt when the entry did not say (older
+    /// firmware publishes slots without it; a frame silent about it is not a
+    /// frame reporting an empty head).
+    std::optional<bool> filament_present;
 };
 
 /// `slots[]`, indexed by 1-based `ID` minus one and sized @p max_slots. Entries

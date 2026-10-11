@@ -505,8 +505,7 @@ TEST_CASE("A Z-Mod marker with no operation running still names a real swap",
     CHECK(tc.get_system_info().operation_phase == 0);
 }
 
-TEST_CASE("Z-Mod's endless spool is firmware-managed and always on",
-          "[toolchanger][zmod]") {
+TEST_CASE("Z-Mod's endless spool is firmware-managed and always on", "[toolchanger][zmod]") {
     using namespace helix::printer;
     ToolChangerHelper zmod_tc(4);
     wire_zmod(zmod_tc);
@@ -521,4 +520,133 @@ TEST_CASE("Z-Mod's endless spool is firmware-managed and always on",
     // every tool is its own path and no firmware speaks for them.
     ToolChangerHelper plain(2);
     CHECK_FALSE(plain.get_endless_spool_capabilities().available());
+}
+
+TEST_CASE("T_INFO rows classify into dock and carriage facts", "[toolchanger][zmod][tinfo]") {
+    bool ended = true;
+    auto head = toolchanger_addon::parse_zmod_tinfo_line("// T1: HEAD", ended);
+    REQUIRE(head.has_value());
+    CHECK(head->current_tool == 1);
+    CHECK_FALSE(ended);
+
+    auto home = toolchanger_addon::parse_zmod_tinfo_line("// T0: home", ended);
+    REQUIRE(home.has_value());
+    REQUIRE(home->docks.size() == 1);
+    CHECK(home->docks[0].has_value());
+    CHECK(*home->docks[0]);
+
+    auto both = toolchanger_addon::parse_zmod_tinfo_line("// T2: ERROR (both)", ended);
+    REQUIRE(both.has_value());
+    CHECK(both->sensor_error);
+
+    // Undefined state says nothing for that tool; other console lines say
+    // nothing at all.
+    CHECK_FALSE(toolchanger_addon::parse_zmod_tinfo_line("// T3: ?", ended).has_value());
+    CHECK_FALSE(toolchanger_addon::parse_zmod_tinfo_line("// Door: Close", ended).has_value());
+    CHECK_FALSE(toolchanger_addon::parse_zmod_tinfo_line("ok", ended).has_value());
+
+    // The Offset row closes the block.
+    auto offset = toolchanger_addon::parse_zmod_tinfo_line(
+        "// Offset: X=0.0000 Y=0.0000 Z=0.061 (0.000)", ended);
+    CHECK_FALSE(offset.has_value());
+    CHECK(ended);
+}
+
+TEST_CASE("A T_INFO answer clears a stale carriage reading at boot", "[toolchanger][zmod][tinfo]") {
+    ToolChangerHelper tc(4);
+    wire_zmod(tc);
+    // Firmware that only recomputes active_tool_id inside its own commands
+    // boots with the dock and carriage buttons disagreeing.
+    tc.feed(json{{"zmod_color", {{"active_tool_id", -2}}}});
+    REQUIRE(tc.get_system_info().action == AmsAction::ERROR);
+
+    for (int i = 0; i < 4; ++i) {
+        ToolChangerTestAccess::feed_zmod_marker(tc, "// T" + std::to_string(i) + ": home");
+    }
+    ToolChangerTestAccess::feed_zmod_marker(tc, "// Offset: X=0.0000 Y=0.0000 Z=0.0000 (0.000)");
+    CHECK(tc.get_current_tool() == -1);
+    CHECK(tc.get_system_info().action == AmsAction::IDLE);
+
+    // A stale POSITIVE carriage reading is the case only the block end can
+    // clear: the agreeing home rows withdrew the fault above without touching
+    // current_tool, and nothing else says the carriage is empty.
+    tc.feed(json{{"zmod_color", {{"active_tool_id", 2}}}});
+    REQUIRE(tc.get_current_tool() == 2);
+    for (int i = 0; i < 4; ++i) {
+        ToolChangerTestAccess::feed_zmod_marker(tc, "// T" + std::to_string(i) + ": home");
+    }
+    ToolChangerTestAccess::feed_zmod_marker(tc, "// Offset: X=0.0000 Y=0.0000 Z=0.0000 (0.000)");
+    CHECK(tc.get_current_tool() == -1);
+
+    // And a HEAD row names the carriage tool.
+    ToolChangerTestAccess::feed_zmod_marker(tc, "// T2: HEAD");
+    ToolChangerTestAccess::feed_zmod_marker(tc, "// Offset: X=0.0000 Y=0.0000 Z=0.0000 (0.000)");
+    CHECK(tc.get_current_tool() == 2);
+}
+
+TEST_CASE("A T_INFO block that names a HEAD keeps its reading at block end",
+          "[toolchanger][zmod][tinfo]") {
+    ToolChangerHelper tc(4);
+    wire_zmod(tc);
+    tc.feed(json{{"zmod_color", {{"active_tool_id", 1}}}});
+    REQUIRE(tc.get_current_tool() == 1);
+
+    ToolChangerTestAccess::feed_zmod_marker(tc, "// T1: HEAD");
+    ToolChangerTestAccess::feed_zmod_marker(tc, "// Offset: X=0.0000 Y=0.0000 Z=0.0000 (0.000)");
+    CHECK(tc.get_current_tool() == 1);
+}
+
+TEST_CASE("The firmware's per-head filament presence stamps the slot",
+          "[toolchanger][zmod][filament]") {
+    ToolChangerHelper tc(4);
+    wire_zmod(tc);
+    wire_material_source(tc);
+    tc.feed(json{{"zmod_color", {{"active_tool_id", -1}}}});
+    REQUIRE(tc.get_system_info().units[0].slots[0].status == SlotStatus::AVAILABLE);
+
+    json frame = full_zmod_color_frame();
+    auto& slots = frame["zmod_color"]["slots"];
+    slots[0]["hasFilament"] = false;
+    slots[1]["hasFilament"] = true;
+    tc.feed(frame);
+
+    // By value: get_system_info() returns a copy, and a reference bound into
+    // that temporary dangles.
+    const auto stamped = tc.get_system_info().units[0].slots;
+    CHECK(stamped[0].status == SlotStatus::EMPTY);
+    CHECK(stamped[1].status == SlotStatus::AVAILABLE);
+    // A head the frame said nothing about keeps its answer.
+    CHECK(stamped[2].status == SlotStatus::AVAILABLE);
+    CHECK(stamped[3].status == SlotStatus::AVAILABLE);
+}
+
+TEST_CASE("The afclite shim's fault flag surfaces and clears", "[toolchanger][zmod][afclite]") {
+    ToolChangerHelper tc(4);
+    wire_zmod(tc);
+    tc.feed(json{{"zmod_color", {{"active_tool_id", 1}}}});
+    REQUIRE(tc.get_system_info().action == AmsAction::IDLE);
+
+    tc.feed(json{{"zmod_afclite",
+                  {{"current_state", "error"}, {"error_state", true}, {"message", "Lane jam"}}}});
+    REQUIRE(tc.get_system_info().action == AmsAction::ERROR);
+    auto fault = tc.current_error();
+    REQUIRE(fault.has_value());
+    CHECK(fault->detail == "Lane jam");
+
+    tc.feed(json{{"zmod_afclite", {{"current_state", "idle"}, {"error_state", false}}}});
+    CHECK(tc.get_system_info().action == AmsAction::IDLE);
+    CHECK_FALSE(tc.current_error().has_value());
+}
+
+TEST_CASE("An unknown afclite activity word changes nothing", "[toolchanger][zmod][afclite]") {
+    ToolChangerHelper tc(4);
+    wire_zmod(tc);
+    tc.feed(json{{"zmod_color", {{"active_tool_id", 1}}}});
+    REQUIRE(tc.get_system_info().action == AmsAction::IDLE);
+
+    // "loading" is plausible vocabulary but unverified on this firmware: it is
+    // logged, and the action stays whatever the verified sources said.
+    tc.feed(json{{"zmod_afclite", {{"current_state", "loading"}, {"error_state", false}}}});
+    CHECK(tc.get_system_info().action == AmsAction::IDLE);
+    CHECK(tc.get_current_tool() == 1);
 }

@@ -181,14 +181,12 @@ class MarkerLines {
     std::vector<std::string> lines_;
 };
 
-TEST_CASE("The Z-Mod C5 persona narrates its swaps for the step bar",
-          "[mock][creator5][zmod]") {
+TEST_CASE("The Z-Mod C5 persona narrates its swaps for the step bar", "[mock][creator5][zmod]") {
     MockTopologyGuards guards;
 
     MoonrakerClientMock mock(MoonrakerClientMock::PrinterType::FLASHFORGE_CREATOR5_ZMOD);
     MarkerLines markers;
-    mock.register_method_callback("notify_gcode_response", "zmod_marker_test",
-                                  markers.callback());
+    mock.register_method_callback("notify_gcode_response", "zmod_marker_test", markers.callback());
 
     mock.gcode_script("_T_IN T=1");
     CHECK(markers.wait_for_line_containing("Grab attempt for T1"));
@@ -230,4 +228,23 @@ TEST_CASE("A mock-hardware persona declines the mock AMS backend", "[mock][creat
     // so with mock AMS on and no HELIX_MOCK_AMS the factory must defer to real
     // discovery instead of standing a generic mock in front of it.
     CHECK(helix::AmsBackend::create(helix::AmsType::NONE, nullptr, nullptr) == nullptr);
+}
+
+TEST_CASE("The Z-Mod C5 persona answers T_INFO with the tool-state block",
+          "[mock][creator5][zmod]") {
+    MockTopologyGuards guards;
+
+    MoonrakerClientMock mock(MoonrakerClientMock::PrinterType::FLASHFORGE_CREATOR5_ZMOD);
+    MarkerLines markers;
+    mock.register_method_callback("notify_gcode_response", "zmod_tinfo_test", markers.callback());
+
+    mock.gcode_script("T_INFO");
+    CHECK(markers.wait_for_line_containing("T0: home"));
+    mock.gcode_script("_T_IN T=3");
+    CHECK(markers.wait_for_line_containing("Grab attempt for T3"));
+    mock.gcode_script("T_INFO");
+    // The mounted head's row flips to HEAD, and the block still ends with the
+    // Offset line the carriage-empty answer hangs off.
+    CHECK(markers.wait_for_line_containing("T3: HEAD"));
+    CHECK(markers.wait_for_line_containing("Offset: X=0.0000"));
 }
