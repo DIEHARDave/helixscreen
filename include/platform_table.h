@@ -25,6 +25,13 @@ struct Info {
 /// all use it.
 std::string current_key();
 
+/// Asset keys a release may list the @p key build under, best match first.
+/// Releases cut before the unified MIPS build carry no "mips" asset, only the
+/// board's own ("ad5x" when @p ad5x_board, else "k1"), so a MIPS build moving
+/// back to one of those releases needs that key too. Every other key maps to
+/// itself alone.
+std::vector<std::string> release_asset_keys(const std::string& key, bool ad5x_board);
+
 /// Table row for @p key, or nullptr for an unknown key.
 const Info* find(const std::string& key);
 

@@ -848,6 +848,27 @@ namespace helix {
 bool parse_github_release(const std::string& json_str, UpdateChecker::ReleaseInfo& info,
                           std::string& error);
 
+/// parse_github_release() for a build whose asset may sit under any of
+/// @p asset_keys, tried in order (helix::platform::release_asset_keys()).
+bool parse_github_release(const std::string& json_str, UpdateChecker::ReleaseInfo& info,
+                          std::string& error, const std::vector<std::string>& asset_keys);
+
+/**
+ * @brief Parse a release manifest (R2 and dev channel schema) into ReleaseInfo
+ *
+ * The asset is the entry under the first of @p asset_keys the manifest lists.
+ * A manifest listing none of them is an error: offering a version with nothing
+ * to download leaves Install failing with "No update available".
+ *
+ * @param json_str Manifest body
+ * @param info Parsed release info, download URLs included on success
+ * @param error Failure reason
+ * @param asset_keys Keys this build's asset may sit under, best match first
+ * @return true when the manifest names a version and an asset for this build
+ */
+bool parse_release_manifest(const std::string& json_str, UpdateChecker::ReleaseInfo& info,
+                            std::string& error, const std::vector<std::string>& asset_keys);
+
 /**
  * @brief Strip a leading 'v' or 'V' from a GitHub release tag
  *

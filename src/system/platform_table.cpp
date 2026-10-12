@@ -45,6 +45,13 @@ const Info* find(const std::string& key) {
     return nullptr;
 }
 
+std::vector<std::string> release_asset_keys(const std::string& key, bool ad5x_board) {
+    if (key == "mips") {
+        return {key, ad5x_board ? "ad5x" : "k1"};
+    }
+    return {key};
+}
+
 std::string display_name(const std::string& key) {
     const auto* p = find(key);
     return p ? p->display_name : key;

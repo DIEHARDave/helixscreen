@@ -256,6 +256,110 @@ TEST_CASE("GitHub release JSON parsing", "[update_checker][json]") {
 }
 
 // ============================================================================
+// Release Asset Keys (prestonbrown/helixscreen#1789)
+// ============================================================================
+
+TEST_CASE("Unified MIPS build also answers to its board's pre-unification key",
+          "[update_checker][platform][1789]") {
+    using helix::platform::release_asset_keys;
+    CHECK(release_asset_keys("mips", false) == std::vector<std::string>{"mips", "k1"});
+    CHECK(release_asset_keys("mips", true) == std::vector<std::string>{"mips", "ad5x"});
+    CHECK(release_asset_keys("pi", true) == std::vector<std::string>{"pi"});
+    CHECK(release_asset_keys("k1", false) == std::vector<std::string>{"k1"});
+}
+
+TEST_CASE("Release manifest takes the first asset key it lists", "[update_checker][json][1789]") {
+    UpdateChecker::ReleaseInfo release;
+    std::string error;
+
+    // The shape of a release cut before the unified MIPS build: per-board
+    // entries only, tar.gz with no zip.
+    const std::string board_only = R"({
+        "version": "1.0.4", "tag": "v1.0.4",
+        "assets": {
+            "ad5x": {"url": "https://r/ad5x.tar.gz", "sha256": "aa", "size": 1},
+            "k1":   {"url": "https://r/k1.tar.gz",   "sha256": "kk", "size": 2},
+            "pi":   {"url": "https://r/pi.tar.gz",   "sha256": "pp", "size": 3}
+        }
+    })";
+
+    SECTION("a MIPS build on a K1 falls back to the k1 entry") {
+        REQUIRE(helix::parse_release_manifest(board_only, release, error, {"mips", "k1"}));
+        CHECK(release.version == "1.0.4");
+        CHECK(release.download_url == "https://r/k1.tar.gz");
+        CHECK(release.sha256 == "kk");
+    }
+
+    SECTION("a MIPS build on an AD5X falls back to the ad5x entry") {
+        REQUIRE(helix::parse_release_manifest(board_only, release, error, {"mips", "ad5x"}));
+        CHECK(release.download_url == "https://r/ad5x.tar.gz");
+        CHECK(release.sha256 == "aa");
+    }
+
+    SECTION("the unified key wins when the manifest carries it beside the aliases") {
+        const std::string unified = R"({
+            "version": "1.1.0-beta.8",
+            "assets": {
+                "k1":   {"url": "https://r/k1.tar", "sha256": "kk"},
+                "mips": {"url": "https://r/mips.tar", "sha256": "mm",
+                         "zip_url": "https://r/mips.zip", "zip_sha256": "mz"}
+            }
+        })";
+        REQUIRE(helix::parse_release_manifest(unified, release, error, {"mips", "k1"}));
+        CHECK(release.download_url == "https://r/mips.zip");
+        CHECK(release.sha256 == "mz");
+    }
+
+    SECTION("no listed key is an error naming every key tried") {
+        REQUIRE_FALSE(helix::parse_release_manifest(board_only, release, error, {"mips"}));
+        CHECK(error.find("'mips'") != std::string::npos);
+        CHECK(release.download_url.empty());
+
+        REQUIRE_FALSE(helix::parse_release_manifest(board_only, release, error, {"k2", "x86"}));
+        CHECK(error.find("'k2' or 'x86'") != std::string::npos);
+    }
+
+    SECTION("a manifest without a version is refused") {
+        REQUIRE_FALSE(helix::parse_release_manifest(R"({"assets": {"k1": {"url": "u"}}})", release,
+                                                    error, {"k1"}));
+        CHECK(error.find("version") != std::string::npos);
+    }
+}
+
+TEST_CASE("GitHub release takes the first asset key it carries", "[update_checker][json][1789]") {
+    UpdateChecker::ReleaseInfo release;
+    std::string error;
+
+    const std::string board_only = R"({"tag_name": "v1.0.4", "assets": [)" +
+                                   asset_json("helixscreen-ad5x-v1.0.4.tar.gz") + "," +
+                                   asset_json("helixscreen-k1-v1.0.4.tar.gz") + R"(]})";
+
+    SECTION("a MIPS build on a K1 selects the k1 tarball") {
+        REQUIRE(helix::parse_github_release(board_only, release, error, {"mips", "k1"}));
+        CHECK(release.download_url == "https://x/helixscreen-k1-v1.0.4.tar.gz");
+    }
+
+    SECTION("a MIPS build on an AD5X selects the ad5x tarball") {
+        REQUIRE(helix::parse_github_release(board_only, release, error, {"mips", "ad5x"}));
+        CHECK(release.download_url == "https://x/helixscreen-ad5x-v1.0.4.tar.gz");
+    }
+
+    SECTION("the unified key's zip beats an alias tarball listed first") {
+        const std::string unified = R"({"tag_name": "v1.1.0", "assets": [)" +
+                                    asset_json("helixscreen-k1-v1.1.0.tar.gz") + "," +
+                                    asset_json("helixscreen-mips.zip") + R"(]})";
+        REQUIRE(helix::parse_github_release(unified, release, error, {"mips", "k1"}));
+        CHECK(release.download_url == "https://x/helixscreen-mips.zip");
+    }
+
+    SECTION("no matching key leaves the download empty") {
+        REQUIRE(helix::parse_github_release(board_only, release, error, {"mips"}));
+        CHECK(release.version == "1.0.4");
+        CHECK(release.download_url.empty());
+    }
+}
+
+// ============================================================================
 // Version Prefix Stripping
 // ============================================================================
 
