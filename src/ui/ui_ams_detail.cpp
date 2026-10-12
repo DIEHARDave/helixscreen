@@ -681,7 +681,7 @@ void ams_detail_update_tray(AmsDetailWidgets& w, lv_obj_t* const slot_widgets[],
     // front-plane centre, whose flange bottom sits SPOOL_FLOOR_GAP above FB.
     box.fb = cy_sum / n + flange_ry + tray::SPOOL_FLOOR_GAP + box.rise / 2;
     lv_obj_update_layout(w.slot_grid);
-    const float front_h = std::max(20.0f, lv_obj_get_height(w.slot_grid) / 4.0f);
+    const float front_h = std::max(20.0f, lv_obj_get_height(w.slot_grid) / 6.0f);
     box.ft = box.fb - front_h;
     box.fl = s_tray.lane_x[0] - half;
     box.fr = s_tray.lane_x[n - 1] + half;

@@ -65,7 +65,7 @@
         <!-- Slots created dynamically by ams_detail_create_slots() -->
       </lv_obj>
       <!-- Labels Layer - renders on top of overlapping slots for 5+ gates -->
-      <lv_obj name="labels_layer" width="100%" height="80" style_pad_all="0" scrollable="false" clickable="false"/>
+      <lv_obj name="labels_layer" width="100%" height="content" style_pad_all="0" scrollable="false" clickable="false"/>
       <!-- Tray - the box's front wall, right side and glass lid, drawn in front of the
            spools. Covers the whole container; ams_detail_update_tray() places the faces. -->
       <lv_obj name="slot_tray"
