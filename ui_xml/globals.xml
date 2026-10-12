@@ -498,6 +498,10 @@
     <px name="button_height_sm_xlarge" value="48"/>
     <px name="button_height_sm_xxlarge" value="56"/>
 
+    <!-- touch_target_min: the least height a tappable control may have, whatever
+         the breakpoint; a compact layout trades width or rows, never this. -->
+    <px name="touch_target_min" value="48"/>
+
     <!-- button_height is responsive: _small/_medium/_large registered as button_height based on screen size -->
     <px name="button_height_micro" value="26"/>
     <px name="button_height_tiny" value="32"/>

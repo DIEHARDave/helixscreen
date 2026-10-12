@@ -43,6 +43,12 @@
     <!-- Beside the name the buffer column is capped so it never squeezes the
          name; in its own row below the name it has the room. -->
     <style name="buffer_beside" max_width="22%"/>
+    <!-- Beside the name the reading sits under the slider; in the row below the name
+         it sits beside it, so the row is only as tall as the slider. -->
+    <style name="buffer_column"
+           layout="flex" flex_flow="column" flex_main_place="center" flex_cross_place="center" pad_column="0"/>
+    <style name="buffer_row"
+           layout="flex" flex_flow="row" flex_main_place="center" flex_cross_place="center" pad_column="#space_xxs"/>
   </styles>
   <view name="ams_loaded_card"
         extends="ui_card" width="100%" height="content" style_radius="#border_radius" style_bg_color="#elevated_bg"
@@ -117,11 +123,11 @@
            slider shows only with a set point to centre on; the number always. The
            number is the short form, so the column stays as narrow as the slider
            and never squeezes the material name. -->
-      <lv_obj name="buffer_mini"
-              width="content" height="content" style_pad_all="0" scrollable="false" flex_flow="column"
-              style_flex_main_place="center" style_flex_cross_place="center" style_pad_gap="0">
+      <lv_obj name="buffer_mini" width="content" height="content" style_pad_all="0" scrollable="false" style_pad_row="0">
         <bind_flag_if_eq subject="buffer_present" flag="hidden" ref_value="0"/>
         <bind_style_if_ge name="buffer_beside" subject="ui_breakpoint" ref_value="3"/>
+        <bind_style_if_ge name="buffer_column" subject="ui_breakpoint" ref_value="3"/>
+        <bind_style_if_lt name="buffer_row" subject="ui_breakpoint" ref_value="3"/>
         <lv_obj name="buffer_mini_slider"
                 width="#buffer_slider_w" height="#buffer_mini_h" style_pad_all="0" scrollable="false" clickable="false">
           <bind_flag_if_eq subject="buffer_slider" flag="hidden" ref_value="0"/>
