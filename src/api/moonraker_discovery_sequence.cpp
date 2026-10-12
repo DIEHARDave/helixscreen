@@ -30,6 +30,7 @@
 #include "moonraker_api.h"
 #include "moonraker_client.h"
 #include "moonraker_subscription_merge.h"
+#include "platform_info.h"
 #include "plr_backend.h"
 #include "power_device_state.h"
 #include "power_loss_sensor.h"
@@ -722,23 +723,23 @@ void MoonrakerDiscoverySequence::continue_discovery_objects(uint64_t seq) {
                 // Fire-and-forget webcam detection - independent of components list.
                 // Runs on every build: a platform without a camera widget still
                 // reads the registered snapshot URL for the QR scanner's snapshot
-                // polling (prestonbrown/helixscreen#1788). Only the loopback
-                // fallback probes are skipped there.
+                // polling, and a stock K1 serves its camera on loopback without
+                // registering it (prestonbrown/helixscreen#1788).
                 //
                 // machine.system_info is fetched first because it feeds two
                 // consumers: the OS/CPU hardware fields, and the camera
                 // service_state the webcam decision cross-checks (#1351). A failed
                 // query is fatal for neither — webcam detection still runs, with an
                 // empty service_state that reads as "assume available".
-                constexpr bool probe_local_cameras = HELIX_HAS_CAMERA != 0;
+                const bool probe_local_cameras = helix::local_camera_probe_safe();
                 client_.send_jsonrpc(
                     "machine.system_info", json::object(),
-                    [this](const json& sys_response) {
+                    [this, probe_local_cameras](const json& sys_response) {
                         parse_system_info(sys_response);
                         detect_webcam(webcam::extract_service_state(sys_response),
                                       probe_local_cameras);
                     },
-                    [this](const MoonrakerError& err) {
+                    [this, probe_local_cameras](const MoonrakerError& err) {
                         spdlog::debug("[Moonraker Client] machine.system_info query failed, "
                                       "continuing: {}",
                                       err.message);
