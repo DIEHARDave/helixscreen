@@ -2022,6 +2022,43 @@ TEST_CASE_METHOD(PrinterDetectorFixture,
     CHECK(full.confidence > without.confidence);
 }
 
+// ============================================================================
+// A real FLSUN T1 Pro on stock FLSUN OS
+// ============================================================================
+
+TEST_CASE_METHOD(PrinterDetectorFixture,
+                 "PrinterDetector: a stock FLSUN T1 Pro identifies as itself",
+                 "[printer][real_world][flsun]") {
+    auto result = PrinterDetector::detect(printer_capture("flsun_t1_pro"));
+
+    REQUIRE(result.detected());
+    CAPTURE(result.type_name, result.confidence, result.runner_up_type_name,
+            result.runner_up_confidence, result.margin());
+    CHECK(result.type_name == "FLSUN T1 Pro");
+    CHECK(result.margin() >= PrinterDetector::DETECT_MIN_MARGIN);
+    CHECK(PrinterDetector::meets_autosave_threshold(result));
+}
+
+TEST_CASE_METHOD(PrinterDetectorFixture,
+                 "PrinterDetector: _START_PRINT_VARS off corexy is not a k2-improvements K2",
+                 "[printer][real_world][flsun][k2][macros]") {
+    // The T1 Pro's macros.cfg carries a user _START_PRINT_VARS, the macro the
+    // k2-improvements entry reads as definitive. A neutral hostname leaves only the
+    // macro and the hardware to decide.
+    auto hardware = printer_capture("flsun_t1_pro");
+    hardware.hostname = "mainsailos";
+    REQUIRE(std::find(hardware.printer_objects.begin(), hardware.printer_objects.end(),
+                      "gcode_macro _START_PRINT_VARS") != hardware.printer_objects.end());
+
+    for (const char* kinematics : {"delta", "cartesian"}) {
+        hardware.kinematics = kinematics;
+        auto result = PrinterDetector::detect(hardware);
+        CAPTURE(kinematics, result.type_name, result.confidence, result.runner_up_type_name);
+        CHECK(result.type_name.find("k2-improvements") == std::string::npos);
+        CHECK(result.runner_up_type_name.find("k2-improvements") == std::string::npos);
+    }
+}
+
 TEST_CASE_METHOD(PrinterDetectorFixture,
                  "PrinterDetector: M191 alone cannot identify a printer as a Qidi",
                  "[printer][qidi][macro]") {
@@ -3196,17 +3233,32 @@ TEST_CASE_METHOD(PrinterDetectorFixture,
                  "fan_generic chamber_loop_fan", "fan_generic chamber_cool_fan"},
         .leds = {"led chamber_led"},
         .hostname = "creator5pro",
-        .printer_objects = {"zmod", "zmod_color", "zmod_afclite", "AFC", "AFC_lane E0",
-                            "AFC_lane E1", "AFC_lane E2", "AFC_lane E3", "AFC_unit C5",
+        .printer_objects = {"zmod",
+                            "zmod_color",
+                            "zmod_afclite",
+                            "AFC",
+                            "AFC_lane E0",
+                            "AFC_lane E1",
+                            "AFC_lane E2",
+                            "AFC_lane E3",
+                            "AFC_unit C5",
                             "heater_generic chamber_heater",
-                            "gcode_button extruder_pos1", "gcode_button extruder_grab1",
-                            "gcode_button extruder_pos2", "gcode_button extruder_grab2",
-                            "gcode_button extruder_pos3", "gcode_button extruder_grab3",
-                            "gcode_button extruder_pos4", "gcode_button extruder_grab4",
-                            "filament_switch_sensor fd_ex0", "filament_switch_sensor fd_ex1",
-                            "filament_switch_sensor fd_ex2", "filament_switch_sensor fd_ex3",
-                            "filament_motion_sensor fm_ex0", "filament_motion_sensor fm_ex1",
-                            "filament_motion_sensor fm_ex2", "filament_motion_sensor fm_ex3"},
+                            "gcode_button extruder_pos1",
+                            "gcode_button extruder_grab1",
+                            "gcode_button extruder_pos2",
+                            "gcode_button extruder_grab2",
+                            "gcode_button extruder_pos3",
+                            "gcode_button extruder_grab3",
+                            "gcode_button extruder_pos4",
+                            "gcode_button extruder_grab4",
+                            "filament_switch_sensor fd_ex0",
+                            "filament_switch_sensor fd_ex1",
+                            "filament_switch_sensor fd_ex2",
+                            "filament_switch_sensor fd_ex3",
+                            "filament_motion_sensor fm_ex0",
+                            "filament_motion_sensor fm_ex1",
+                            "filament_motion_sensor fm_ex2",
+                            "filament_motion_sensor fm_ex3"},
         .steppers = {},
         .kinematics = "corexy",
         .cpu_arch = "mips",

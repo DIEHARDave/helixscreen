@@ -1887,6 +1887,20 @@
       },
       "heuristics": [
         {
+          "type": "kinematics_exclude",
+          "field": "kinematics",
+          "pattern": "delta",
+          "confidence": 0,
+          "reason": "Every K2 is corexy. _START_PRINT_VARS is a common user-macro name too (FLSUN T1 Pro configs carry it), so it cannot be definitive on another kinematics"
+        },
+        {
+          "type": "kinematics_exclude",
+          "field": "kinematics",
+          "pattern": "cartesian",
+          "confidence": 0,
+          "reason": "Every K2 is corexy"
+        },
+        {
           "type": "macro_match",
           "field": "macros",
           "pattern": "_START_PRINT_VARS",
@@ -4370,6 +4384,51 @@
           "pattern": "flsuns1",
           "confidence": 95,
           "reason": "Hostname contains 'flsuns1'"
+        }
+      ]
+    },
+    {
+      "id": "flsun_t1_pro",
+      "name": "FLSUN T1 Pro",
+      "manufacturer": "FLSUN",
+      "image": "flsun-delta.png",
+      "preset": "flsun_t1",
+      "heuristics": [
+        {
+          "type": "kinematics_match",
+          "field": "kinematics",
+          "pattern": "delta",
+          "confidence": 90,
+          "reason": "Delta kinematics"
+        },
+        {
+          "type": "hostname_match",
+          "field": "hostname",
+          "pattern": "flsunt1pro",
+          "confidence": 100,
+          "reason": "Stock FLSUN OS names the host FLSunT1Pro"
+        },
+        {
+          "type": "object_exists",
+          "field": "printer_objects",
+          "pattern": "^box_light$",
+          "confidence": 95,
+          "reason": "FLSUN's box_light Klipper module (T1 enclosure light)"
+        },
+        {
+          "type": "object_exists",
+          "field": "printer_objects",
+          "pattern": "^locate_printing_gcode$",
+          "confidence": 95,
+          "reason": "FLSUN's locate_printing_gcode Klipper module (power-loss resume)"
+        },
+        {
+          "type": "hostname_match",
+          "field": "hostname",
+          "pattern": "flsun",
+          "confidence": 90,
+          "reason": "Hostname contains 'flsun'",
+          "corroborating": true
         }
       ]
     },
