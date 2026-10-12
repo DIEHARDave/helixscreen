@@ -5,10 +5,28 @@ add home-panel tiles, overlays and settings without compiling anything: an autho
 text editor and the plugin folder, nothing else. This guide is the contract; every rule in
 it is enforced by code, cited so it can be verified against the source.
 
-Two complete plugins ship in the repository:
+Six complete plugins ship in the repository:
 
 - `examples/plugins/temp-spark` - a heater sparkline tile. No permissions.
 - `examples/plugins/led-effects` - an LED effect toggle. The `gcode` permission.
+- `examples/plugins/maintenance-meter` - consumable hour meters as an adaptive
+  tile. The `storage` permission; the step-by-step build of it is
+  `docs/devel/PLUGIN_TUTORIAL.md`.
+- `examples/plugins/print-watcher` - print-event notifications to ntfy,
+  Discord, Telegram or a webhook. The `http` permission; the worked example
+  for `helix.settings.set` as a control surface and for `i18n/` translation
+  packs.
+- `examples/plugins/ambient-tile` - room temperature and humidity from Home
+  Assistant or any JSON endpoint. The `http` reading example: `http.get`
+  against untrusted JSON, pointer resolution, a poll cadence, and a canvas
+  sparkline from a plugin-side window.
+- `examples/plugins/calibration-bridge` - slicer-side filament calibration at
+  the printer, over Moonraker agent events. A proof of concept: no companion
+  ships yet, the plugin implements the proposed contract alone. The first
+  **overlay-only** example (`widgets: []`): the companion event is the front
+  door, a settings action row the manual one; also the `moonraker_write`
+  example (`printer.print.start`) and the worked use of an event-fed dropdown
+  with `bind_value`.
 
 ## 1. What a plugin is
 
@@ -52,7 +70,9 @@ The `--test` flag runs a mock printer, so nothing touches a real machine. Then:
 
 Saving any file of the plugin reloads it within about a second in native dev builds (the
 same `HELIX_HOT_RELOAD` gate as XML hot reload; `HELIX_PLUGIN_DIR` documents it in
-`ENVIRONMENT_VARIABLES.md`). Cross-compiled release builds do not poll.
+`ENVIRONMENT_VARIABLES.md`). Cross-compiled release builds do not poll. The one exception
+is `i18n/*.xml`: a pack registers once per path, so an edited pack needs an app restart
+(§13 Translations).
 
 `HELIX_PLUGIN_DIR` replaces the printer's plugin source with your directory while it is
 set, so the fastest loop is: edit, save, watch the log line naming your plugin reload.
@@ -104,13 +124,18 @@ proves a name belongs to a plugin, and a plugin can reach only its own names.
 Parsed by `src/plugin/plugin_manifest.cpp#parse_manifest`. Any error in one field rejects
 the whole manifest; Settings > Plugins shows the reasons.
 
+Every user-facing string in the manifest - `name`, settings `label`s, widget
+`name`/`description` - is English source: the file stays
+English and the render sites translate it through the plugin's `i18n/` pack
+(§13 Translations), falling back to the literal text.
+
 | Field | Type | Default | Rules |
 |---|---|---|---|
 | `id` | string | required | the id pattern above; must match the folder name |
 | `name` | string | required | single line, at most 48 bytes; shown in the UI |
 | `version` | string | required | single line, at most 32 bytes |
 | `author` | string | empty | single line, at most 64 bytes |
-| `description` | string | empty | shown in the Plugins screen |
+| `description` | string | empty | parsed and kept, but no screen displays it; the Plugins screen shows `name` and the plugin's status |
 | `helix_version` | string | empty | a HelixScreen version constraint; a plugin whose constraint fails the running version shows as *incompatible* |
 | `permissions` | array | `[]` | zero or more of `gcode`, `moonraker_write`, `http`, `storage` (§9) |
 | `memory_mb` | integer | `2` | 1 to 64; the plugin's share of the plugin memory budget |
@@ -153,9 +178,14 @@ becomes one row of the plugin's settings screen
 
 In Lua, `helix.settings.get(key)` returns the stored value if it still fits the
 declaration, else the default (`src/plugin/lua_bind_io.cpp#effective_setting`).
-`helix.settings.on_change(key, fn)` calls `fn(value)` after each accepted change; several
-handlers per key are allowed. An `action` row reaches its handler through the same path
-as a `plugin_event`.
+`helix.settings.set(key, value)` writes one of the plugin's own declared settings
+through the same validation, persistence and `on_change` notification the generated
+settings screen uses, so a plugin's own overlay can be the control surface; an
+undeclared key, a read-only `action`/`info` row, or a value the declaration rejects
+(min/max, enum membership, string size) raises.
+`helix.settings.on_change(key, fn)` calls `fn(value)` after each accepted change, from
+either path; several handlers per key are allowed. An `action` row reaches its handler
+through the same path as a `plugin_event`.
 
 Enable state and settings are shared across printers: enabling a plugin once enables it
 on every printer that ships it, under the same permission check.
@@ -206,6 +236,14 @@ Attribute rules (`src/plugin/plugin_xml_policy.cpp#check_plugin_attr`):
 Because every `bind_*` attribute value must be an owned subject name, `bind_text-fmt` is
 rejected: a plugin-supplied printf format bound to a subject is a format-string hazard.
 Format in Lua and set a string subject.
+
+A component prop must be declared inside an `<api>` block to exist, and
+`helix.ui.overlay(component, attrs)` fills those props at open time - the way
+data rides into an overlay that XML cannot build dynamically (the options of
+a dropdown, for instance: `examples/plugins/calibration-bridge`). A
+dropdown's `bind_value` is the way a selection comes back: it is a two-way
+subject binding, so the pick lands on a plugin-owned int subject without any
+widget access.
 
 Styling uses the app's design tokens, for example `style_pad_all="#space_sm"`,
 `style_text_color="#text"`, `style_text_font="#font_heading"`
@@ -386,7 +424,7 @@ Read-only methods callable through `helix.moonraker.call` without any permission
 `true` or a field-name list, and `fn(status)` receives a table `{[object] = {field = value}}`.
 The first delivery carries the queried current values; later ones carry each change, so
 the tile always shows what Klipper reports, including changes made elsewhere. The
-returned handle's `cancel()` stops it. Limits, each raising an error that names it: at
+returned handle's `cancel` method (`handle:cancel()`) stops it. Limits, each raising an error that names it: at
 most 8 subscriptions per plugin totalling 16 objects, 32 fields per object, object names
 at most 64 bytes of printable ASCII.
 
@@ -416,14 +454,23 @@ memory cap comes back as an error.
 | Call | Returns | Notes |
 |---|---|---|
 | `helix.settings.get(key)` | value | the key must be declared in the manifest; returns the stored value if it fits the declaration, else the default |
-| `helix.settings.on_change(key, fn)` | | `fn(value)` after each accepted change |
+| `helix.settings.set(key, value)` | | writes one of the plugin's own declared keys through the same validation, persistence and `on_change` path as the generated settings screen; undeclared keys, `action`/`info` rows and rejected values raise |
+| `helix.settings.on_change(key, fn)` | | `fn(value)` after each accepted change, from either path |
+
+### helix.i18n (`src/plugin/lua_bind_core.cpp`)
+
+| Call | Returns | Notes |
+|---|---|---|
+| `helix.i18n.t(s)` | string | resolves the English source through the app's own catalog first, then the plugin's `i18n/` pack for strings the app does not translate, then returns `s` unchanged |
+| `helix.i18n.locale()` | string | the active language code (`"en"`, `"de"`, ...) |
+| `helix.i18n.on_change(fn)` | | `fn(code)` after a language change, once the formatting tables are updated; several handlers allowed |
 
 ### helix.timer, helix.sleep, helix.json (`src/plugin/lua_bind_core.cpp`)
 
 | Call | Returns | Notes |
 |---|---|---|
-| `helix.timer.after(ms, fn)` | handle | one shot; `handle.cancel()` |
-| `helix.timer.every(ms, fn)` | handle | repeating; `handle.cancel()` |
+| `helix.timer.after(ms, fn)` | handle | one shot; `handle:cancel()` |
+| `helix.timer.every(ms, fn)` | handle | repeating; `handle:cancel()` |
 | `helix.sleep(ms)` | | async; yields the entry and resumes after the delay |
 
 Intervals are 1 ms to 24 h; a plugin holds at most 64 live timers.
@@ -661,3 +708,59 @@ helix.widget("tile", { on_size = function(cols) wide:set(cols >= 2 and 1 or 0) e
 
 The maintainer's view of the same system - the sync pipeline, the sandbox internals, the
 subscription union - is `docs/devel/architecture/12-system-services.md`.
+
+## 13. Translations
+
+A plugin's user-facing strings are English by default and translate through the
+same machinery the app uses. Ship an optional `i18n/` folder beside `main.lua`
+with one or more LVGL translation packs:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<translations languages="de">
+  <translation tag="No events yet" de="Noch keine Ereignisse"/>
+</translations>
+```
+
+The host registers every `i18n/*.xml` when the plugin loads. Packs cannot be
+unregistered (LVGL keeps them until the app exits), so a path registers once: a
+reload reuses what is already loaded, and an edited pack takes effect on the
+next app start (plugin hot reload does not re-read it). A pack file over 256 KiB
+is skipped with a warning.
+
+English is the identity locale: `lv_tr()` returns the key itself when nothing
+translates it, so an English-only plugin ships no `i18n/` at all. A pack
+declaring `en` is refused, because the English text is the tag.
+
+Lookup order is the app's own catalog first, then plugin packs. A plugin pack
+only supplies tags the app does not translate: a pack entry for a tag the app
+already translates (`Cancel`, `Started`, `Paused`, common settings vocabulary)
+is never used in a language whose app pack translates it, and an empty slot in
+a multi-language pack cannot hide an app string. That holds whether the
+language was the boot language or was switched to later. Such an entry is dead
+weight, so `scripts/check_plugin_i18n_shadow.py` (run from quality-checks) fails
+on any example or fixture pack entry whose tag exists in
+`translations/<lang>.yml`. Two plugins mapping the same English string
+differently is first-registered-wins among plugin packs - keep translations
+faithful to the source.
+
+Where strings resolve:
+
+- **manifest.json** `name`, settings `label`s and widget `name`/`description`
+  translate at render time (the Plugins screen, the generated settings rows,
+  the widget catalog). The top-level `description` is not displayed. The file
+  stays English.
+- **XML** static text: add `translation_tag="English text"` to a widget; the
+  engine resolves and hot-reloads it on a language change like any app string.
+- **Lua**: `helix.i18n.t("English text")` resolves through the same table.
+  `helix.i18n.locale()` returns the active code (`"en"`, `"de"`, ...), and
+  `helix.i18n.on_change(fn)` calls `fn(code)` after a language change so
+  subject-carried strings re-render. Anything the plugin sends outward (a
+  notification payload, a toast) follows the screen's language by translating
+  through `t()` at send time.
+
+`print-watcher` is the worked example: its `i18n/de.xml` carries only the
+strings the app catalog does not already say. `ambient-tile` ships one too,
+including a `%d` format specifier its German entry preserves in place.
+
+

@@ -645,6 +645,8 @@ class PrintStatusPanel : public OverlayBase {
     ObserverGuard tool_map_version_observer_; ///< Refreshes gcode viewer colors on tool remap
     ObserverGuard active_tool_observer_;    ///< Refreshes nozzle temp display with tool name prefix
     ObserverGuard chamber_temp_observer_;   ///< Updates chamber status text
+    ObserverGuard chamber_target_observer_; ///< Effective setpoint moved (fan-parked M141 sets)
+    ObserverGuard chamber_mode_observer_;   ///< Control mode moved (Heating/Maintaining/Resting)
     ObserverGuard print_identity_observer_; ///< Reconciles when the print's identity changes
     ObserverGuard print_thumbnail_path_observer_; ///< Updates print_thumbnail_ from shared subject
 #if defined(HELIX_PLATFORM_ESP32)

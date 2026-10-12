@@ -15,6 +15,7 @@
   <translation tag="%d slots" zh="%d 个槽位"/>
   <translation tag="%d toolheads" zh="%d 个工具头"/>
   <translation tag="%d tools" zh="%d 个工具"/>
+  <translation tag="%d units" zh="%d 个单元"/>
   <translation tag="%d-%d" zh="%d-%d"/>
   <translation tag="%d-%d°C" zh="%d-%d°C"/>
   <translation tag="%d:%02d left" zh="剩余 %d:%02d"/>
@@ -72,6 +73,7 @@
   <translation tag="1 min ago" zh="1分钟前"/>
   <translation tag="1 minute" zh="1 分钟"/>
   <translation tag="1 more tap to {} beta features" zh="再点击 1 次以{}测试功能"/>
+  <translation tag="1 unit" zh="1 个单元"/>
   <translation tag="1. Printer homes all axes (~1 minute)" zh="1. 打印机全部轴归零（约1分钟）"/>
   <translation tag="1. Printer homes and probes the bed" zh="1. 打印机归位并探测热床"/>
   <translation tag="1. Printer will home and probe each screw" zh="1. 打印机将归位并探测每个螺丝位置"/>
@@ -159,6 +161,7 @@
   <translation tag="Aborting AFC operation..." zh="正在中止AFC操作..."/>
   <translation tag="Aborting..." zh="正在中止..."/>
   <translation tag="About" zh="关于"/>
+  <translation tag="Above target" zh="高于目标"/>
   <translation tag="Accel to Decel" zh="加速到减速"/>
   <translation tag="Acceleration to deceleration limit (mm/s²)" zh="加速到减速限制 (mm/s²)"/>
   <translation tag="Accelerometer" zh="加速度传感器"/>
@@ -252,6 +255,7 @@
   <translation tag="Assisted Retract" zh="辅助回抽"/>
   <translation tag="Assisting" zh="辅助中"/>
   <translation tag="At least {} lines in helixscreen.env were ignored" zh="helixscreen.env 中至少有 {} 行被忽略"/>
+  <translation tag="At target" zh="在目标值"/>
   <translation tag="At {}°C, about {} minutes." zh="在 {}°C 下约需 {} 分钟。"/>
   <translation tag="Authentication failed" zh="认证失败"/>
   <translation tag="Auto" zh="自动"/>
@@ -329,6 +333,7 @@
   <translation tag="Bed temp must be 0-%d°C" zh="热床温度必须为 0-%d°C"/>
   <translation tag="Bed warming timed out" zh="热床加热超时"/>
   <translation tag="Before starting" zh="开始之前"/>
+  <translation tag="Below target" zh="低于目标"/>
   <translation tag="Belt Tension" zh="皮带张力"/>
   <translation tag="Belt Tension Check" zh="皮带张力检查"/>
   <translation tag="Belt Tension needs a CoreXY printer. This one is {}." zh="皮带张力需要 CoreXY 打印机。此打印机为{}。"/>
@@ -885,6 +890,8 @@
   <translation tag="Dry Filament" zh="烘干耗材"/>
   <translation tag="Dry Filament on the Bed" zh="在热床上烘干耗材"/>
   <translation tag="Dry spools on the heated bed" zh="在热床上烘干料盘"/>
+  <translation tag="Dryer already running" zh="烘干机已在运行"/>
+  <translation tag="Dryer is not running" zh="烘干机未在运行"/>
   <translation tag="Drying" zh="烘干中"/>
   <translation tag="Drying is already running" zh="烘干已在进行中"/>
   <translation tag="Drying on the bed" zh="正在热床上烘干"/>
@@ -994,6 +1001,7 @@
   <translation tag="Error: Verification failed" zh="错误: 验证失败"/>
   <translation tag="Error: Wrong architecture" zh="错误: 架构错误"/>
   <translation tag="Error: `unzip` not installed" zh="错误: 未安装 `unzip`"/>
+  <translation tag="Error: cannot write the service file in {}" zh="错误: 无法将服务文件写入 {}"/>
   <translation tag="Errors only" zh="仅错误"/>
   <translation tag="Escalate to emergency stop if cancel doesn&apos;t respond" zh="如果取消无响应则升级为紧急停止"/>
   <translation tag="Escalation Timeout" zh="升级超时"/>
@@ -1256,6 +1264,8 @@
   <translation tag="Fix: chown {} {}, then restart" zh="修复：chown {} {}，然后重启"/>
   <translation tag="FlashForge Adventurer 5M" zh="FlashForge Adventurer 5M"/>
   <translation tag="FlashForge Adventurer 5X" zh="FlashForge Adventurer 5X"/>
+  <translation tag="FlashForge Creator 5" zh="FlashForge Creator 5"/>
+  <translation tag="FlashForge Creator 5 Pro" zh="FlashForge Creator 5 Pro"/>
   <translation tag="FlashForge IFS" zh="FlashForge IFS"/>
   <translation tag="Flip" zh="翻转"/>
   <translation tag="Flip the spools" zh="翻转料盘"/>
@@ -1798,7 +1808,9 @@
   <translation tag="More points = more accurate, but takes longer." zh="点数越多越精确，但耗时更长。"/>
   <translation tag="Motion" zh="运动"/>
   <translation tag="Motion sensor stuck: filament is still at the feeder. Resume to feed it." zh="运动传感器卡住：耗材仍在送料器中。继续即可送入。"/>
+  <translation tag="Motion timed out" zh="运动超时"/>
   <translation tag="Motor controller error" zh="电机控制器错误"/>
+  <translation tag="Motor drive fault" zh="电机驱动器故障"/>
   <translation tag="Motor parameter setup failed" zh="电机参数设置失败"/>
   <translation tag="Motor speeds and acceleration" zh="电机速度与加速度"/>
   <translation tag="Motors" zh="电机"/>
@@ -2893,6 +2905,7 @@
   <translation tag="Stop failed" zh="停止失败"/>
   <translation tag="Stop printing &quot;{}&quot;?&#10;&#10;This cannot be undone after 5 seconds." zh="停止打印 &quot;{}&quot;？&#10;&#10;5秒后将无法撤销。"/>
   <translation tag="Stop the check?" zh="停止检查？"/>
+  <translation tag="Stop the running cycle before starting another" zh="请先停止当前周期，再启动新的周期"/>
   <translation tag="Stopped" zh="已停止"/>
   <translation tag="Stopped between Hub and Toolhead" zh="停在集线器与工具头之间"/>
   <translation tag="Stopped between Lane and Hub" zh="停在耗材通道与集线器之间"/>
@@ -3064,6 +3077,7 @@
   <translation tag="Theme changes apply after restart." zh="主题更改在重启后生效。"/>
   <translation tag="Theme reset to defaults" zh="主题已重置为默认值"/>
   <translation tag="Theme: " zh="主题: "/>
+  <translation tag="There is no cycle to stop" zh="没有可停止的周期"/>
   <translation tag="There is not enough free memory to run this test. Klipper&apos;s analysis would run out of memory and leave the printer stuck until it is power-cycled." zh="可用内存不足，无法运行此测试。Klipper 的分析会耗尽内存，使打印机卡住，直到断电重启。"/>
   <translation tag="These tools have a different filament grade loaded:" zh="以下工具装载的耗材等级不同："/>
   <translation tag="These tools have incompatible materials loaded:" zh="这些工具加载了不兼容的材料："/>
@@ -3082,6 +3096,7 @@
   <translation tag="This device has only {} MB of RAM. Resonance calibration is memory-intensive and can make the printer firmware report a &quot;Timer Too Close&quot; error or restart mid-test. Continue anyway?" zh="此设备仅有 {} MB 内存。共振校准会占用大量内存，可能导致打印机固件报告 &quot;Timer Too Close&quot; 错误或在测试中途重启。仍要继续吗？"/>
   <translation tag="This device has very little RAM. Resonance calibration is memory-intensive and may cause a &quot;Timer Too Close&quot; error. Continue anyway?" zh="此设备内存极少。共振校准会占用大量内存，可能导致 &quot;Timer Too Close&quot; 错误。仍要继续吗？"/>
   <translation tag="This doesn&apos;t match the linked Spoolman spool. Add it as a new spool, or update the linked one to match?" zh="这与关联的 Spoolman 料盘不匹配。是否添加为新料盘，或更新关联料盘以匹配？"/>
+  <translation tag="This dryer cannot run while filament from the unit is loaded" zh="此单元的耗材处于装载状态时，烘干机无法运行"/>
   <translation tag="This feature requires different hardware or configuration" zh="此功能需要不同的硬件或配置"/>
   <translation tag="This filament system does not report buffer or flow data." zh="此耗材系统不报告缓冲区或流量数据。"/>
   <translation tag="This file was sliced for {} but {} is loaded." zh="此文件为 {} 切片，但当前加载的是 {}。"/>
@@ -3099,6 +3114,7 @@
   <translation tag="This printer cannot calibrate tool offsets automatically" zh="此打印机无法自动校准工具偏移"/>
   <translation tag="This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman." zh="此打印机的通道信息来自 Spoolman。HelixScreen 已清除本地副本；请在 Spoolman 中移除该线轴。"/>
   <translation tag="This printer fills its gates from Spoolman. Make colour, material and spool changes in Spoolman." zh="此打印机的通道信息来自 Spoolman。请在 Spoolman 中更改颜色、材料和线轴。"/>
+  <translation tag="This printer has no automatic unload. Cut the filament at the head and pull it out by hand." zh="此打印机没有自动退料功能。请在工具头处剪断耗材，然后用手拉出。"/>
   <translation tag="This printer looks like a {} ({}% confidence), but it is set up as a {}. A wrong type applies incorrect pre-print options and presets." zh="此打印机看起来是 {}（置信度 {}%），但当前设置为 {}。错误的类型会应用不正确的打印前选项和预设。"/>
   <translation tag="This printer&apos;s network service controls the WiFi radio" zh="此打印机的网络服务控制 WiFi 无线模块"/>
   <translation tag="This printer&apos;s network service manages saved WiFi networks" zh="此打印机的网络服务管理已保存的 WiFi 网络"/>
@@ -3258,6 +3274,7 @@
   <translation tag="Unload from toolhead first" zh="请先从工具头卸载"/>
   <translation tag="Unload macro not configured" zh="卸载宏未配置"/>
   <translation tag="Unload the CFS filament before enabling bypass" zh="启用旁通前请先卸载 CFS 耗材"/>
+  <translation tag="Unload this unit first" zh="请先卸载此单元"/>
   <translation tag="Unload..." zh="卸载..."/>
   <translation tag="Unloaded" zh="已卸载"/>
   <translation tag="Unloading" zh="卸载中"/>
@@ -3510,6 +3527,7 @@
   <translation tag="invalid" zh="无效"/>
   <translation tag="just now" zh="刚刚"/>
   <translation tag="last 60 s · LOOSE up, TIGHT down" zh="最近 60 秒 · 上松下紧"/>
+  <translation tag="last 60 s · pressure, target dashed" zh="最近 60 秒 · 压力，目标为虚线"/>
   <translation tag="layers" zh="层"/>
   <translation tag="left" zh="剩余"/>
   <translation tag="loaded" zh="已加载"/>

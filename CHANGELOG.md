@@ -5,6 +5,137 @@ All notable changes to HelixScreen will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0-beta.8] - 2026-10-11
+
+<!-- whatsnew
+The eighth beta of 1.1.
+
+- Four new example plugins and a plugin tutorial
+- Plugin translations and plugin-controlled settings
+- Creator 5 on Z-Mod: Load feeds the head, plus an unload notice
+- OpenAMS dryer, environment readings and fault recovery
+- AMS unit view pages through every unit
+- K2 chamber targets at the resting value show as Auto
+-->
+
+The eighth beta of 1.1. Plugin authors get four new example plugins, a step-by-step
+tutorial, per-plugin translations and a way for a plugin to drive its own settings, and
+plugin calls to Moonraker now go through the same safety checks as the app's own. The
+Creator 5 on Z-Mod can feed a head from the screen, ACE parked slots are drawn at the hub,
+OpenAMS units show their own temperature, humidity and dryer, and a K2 chamber target that
+matches the resting value now displays instead of vanishing.
+
+**Upgrading from beta.7?**
+
+- **Plugin authors:** a translation pack can no longer replace a string the app already
+  translates, and a pack that declares `en` is skipped (the English text is the tag). An
+  edited pack takes effect on the next app start.
+- **Creator 5 on Z-Mod:** Unload shows a cut-and-pull notice instead of running. Mounting a
+  head without feeding is Select slot in the slot menu.
+
+### Added
+
+**Plugins**
+
+- **Four new example plugins and a build tutorial** - Maintenance Meter (consumable hour
+  meters on a Home tile, with confirm-guarded resets), Print Watcher (print start, finish and
+  failure notifications to ntfy, Discord, Telegram or a webhook), Ambient Tile (room
+  conditions from Home Assistant or any JSON endpoint, with a sparkline) and Calibration
+  Bridge, a proof of concept for a slicer calibration companion that asks you to pick a
+  result on screen. A step-by-step plugin tutorial walks through building the first one.
+  Plugins can be shared in the Discord #plugin-showcase channel (#1771).
+- **Plugin translations** - a plugin can ship an `i18n/` folder with translation packs, and
+  its manifest text, XML labels and Lua code (`helix.i18n`) follow the app language. A pack
+  only supplies words the app does not already translate, so a plugin cannot change the
+  app's own labels; English packs are refused and a pack over 256 KiB is skipped. An edited
+  pack needs an app restart.
+- **Plugins can drive their own settings** - `helix.settings.set` lets a plugin's own screen
+  act as the control surface for the settings it declares. The generated settings screen
+  stays in step, and setting a key to the value it already holds saves nothing.
+
+**Filament systems**
+
+- **Z-Mod on the FlashForge Creator 5** (#1779) - Load on a head now feeds that head through
+  Z-Mod's afclite shim (`CHANGE_TOOL LANE=E<n>`), heating only that head. The Creator 5 has
+  no automatic unload, so Unload shows a notice telling you to cut and pull the filament at
+  the head and sends nothing. The firmware's tool-state query is read at connect, a docked
+  head without filament shows as Empty, and a fault from the shim opens a dialog in the
+  firmware's own words.
+- **ACE parked slots** (#1678) - on a Kobra S1 an idle slot the driver reports as parked is
+  drawn staged at the hub instead of on its spool.
+- **OpenAMS temperature, humidity and dryer** - each unit shows its own temperature and
+  humidity, and the dryer can be started and stopped per unit from the environment screen.
+  A running dryer stays stoppable.
+- **OpenAMS fault recovery** - a latched stop or pause fault on a unit puts the system in an
+  error state, marks the unit's slots and opens the recovery dialog, translated. Reset and
+  the dialog clear the fault on each unit that offers it. The FPS pressure sensor is drawn as
+  a one-sided gauge.
+- **Unit view pages through the units** - on the AMS overview, tapping a unit card zooms into
+  that unit with arrows, swipe and page dots, and dashed stubs show the rest of its hub. The
+  overview draws units, hub, buffer and toolhead for every printer, and up to 16 units.
+
+### Fixed
+
+**Plugins**
+
+- **Plugin Moonraker calls get the app's safety checks** - a plugin with write access could
+  start a print while the spool latch was up, or with an unsafe path, and could send restarts
+  and G-code the app itself refuses. Plugin calls now get the same refusals as the app's own.
+- **Plugin runtime** - a plugin's settings save no longer counts against its time budget, a
+  language-change handler can register another handler, and a plugin drawing at its memory
+  cap no longer gets disabled on its next start.
+- **Example plugin fixes** - Maintenance Meter counts a print already running when it loads
+  and stops counting while offline. Print Watcher never shows the destination's secret, and
+  ignores boot-time states. Ambient Tile masks credentials, shows dashes for missing
+  readings and skips overlapping polls. Calibration Bridge keeps its picker on screen when a new calibration
+  arrives, asks before Cancel stops a print, and only resets once the cancel succeeds.
+
+**Filament systems**
+
+- **Creator 5 Pro on Z-Mod** - the printer no longer gets the wrong filament system (which
+  sent macros the firmware does not have), the swap steps read as Pick up tool and Dock
+  tool, and the debug bundle names the board. A four-head FlashForge with no recognised
+  firmware is no longer named an AD5X.
+- **ACE** (#1678, #1679) - a paused failed feed is no longer drawn loaded to the nozzle, a
+  seated tool reads as loaded at the nozzle once the toolhead sensor is made, Endless Spool
+  mode changes made at runtime reach the screen, and the tip-handling step label follows the
+  language.
+- **OpenAMS** - units on one lane share a hub and toolhead, unload no longer refuses with
+  several lanes loaded, a spool link written by openams_spoolman after an edit here wins over
+  it, and extra slots in a filament group show as endless-spool backups instead of the tool.
+  Loading a backup slot loads that slot. Unit fault descriptions are translated.
+- **AMS overview** - hub boxes no longer overlap, units past the eighth keep their hub and
+  buffer, a unit with no logo shows none, and a ninth unit shows its own humidity.
+- **CFS auto-refill** - the toggle sends the setter the fork's firmware accepts, only counts
+  as sent once Klipper completes it, and endless spool no longer reads Off after boot.
+
+**Temperatures**
+
+- **Chamber target equal to the resting value on K2** - a deliberate chamber target such as
+  35 no longer vanishes; the number displays with an Auto indicator, and the print status
+  screen shows chamber status for these targets too. The chamber card also uses the bed
+  card's large header when it has no diagnostics rows.
+- **Cool Down on toolchangers** (#1768) - turns off every extruder heater, and the chamber
+  heater, instead of leaving the active tool at its target while the toast said heaters off.
+
+**Updates**
+
+- **Update refusals say why** (#1778) - a full root overlay now shows the first real error
+  instead of its closing advice, and the app refuses before downloading ~60 MB it cannot
+  install.
+
+**Stability and speed**
+
+- **Crashes after leaving Print Files and Print Status** - several screens could touch widgets
+  freed after a deleted view, including the file detail view, its thumbnail after Back, the
+  exclude-object viewer, the clog bar and fan dial, and the print-prep option count.
+- **Sound** - the tracker no longer gets freed mid-tick, and a tick callback cannot deadlock
+  the sequencer.
+- **Faster AMS screens** - the unit view and filament path read the system once per refresh.
+- **Faster screen switches and Print Files on ESP32** - Print Files builds at the first idle
+  moment after connect, the new screen shows before it activates, the file detail view shows
+  its thumbnail, and the first Moonraker connect waits for the boot Wi-Fi thread to exit.
+
 ## [1.1.0-beta.7] - 2026-10-08
 
 <!-- whatsnew
@@ -8903,6 +9034,7 @@ Initial tagged release. Foundation for all subsequent development.
 - Automated GitHub Actions release pipeline
 - One-liner installation script with platform auto-detection
 
+[1.1.0-beta.8]: https://github.com/prestonbrown/helixscreen/compare/v1.1.0-beta.7...v1.1.0-beta.8
 [1.1.0-beta.7]: https://github.com/prestonbrown/helixscreen/compare/v1.1.0-beta.6...v1.1.0-beta.7
 [1.1.0-beta.6]: https://github.com/prestonbrown/helixscreen/compare/v1.1.0-beta.5...v1.1.0-beta.6
 [1.1.0-beta.5]: https://github.com/prestonbrown/helixscreen/compare/v1.1.0-beta.4...v1.1.0-beta.5

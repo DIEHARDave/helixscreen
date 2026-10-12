@@ -615,6 +615,24 @@ class AmsBackendAce : public AmsSubscriptionBackend {
     std::string bypass_on_macro_;
     std::string bypass_off_macro_;
 
+    /// The driver's per-slot `park_state`. "parked" is a strand the driver left
+    /// staged short of the hub: after a sensor-verified unload or smart load, but
+    /// also after a fixed-length toolhead-only unload, which need not reach the
+    /// hub. "loaded" and "unknown" (also a missing field, and any string this
+    /// backend does not know) carry no staging claim.
+    enum class ParkState { Unknown, Parked, Loaded };
+    static ParkState park_state_from_json(const nlohmann::json& slot_json);
+
+    /// Records slot `index`'s park_state from a slot object. Returns whether it
+    /// changed. A slot that states none is Unknown.
+    bool note_park_state_locked(int index, const nlohmann::json& slot_json);
+
+    /// An idle slot the driver parked draws staged at the hub: not the seated
+    /// slot, no toolchange or load under way, filament present.
+    [[nodiscard]] bool slot_parked_at_hub_locked(int slot_index) const;
+
+    std::map<int, ParkState> park_states_;
+
     /// The two path sensors, when the driver publishes them. An unloaded strand
     /// parks just short of the hub rather than back at the spool, so these are
     /// what say where filament actually sits between slot and nozzle

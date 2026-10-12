@@ -17,6 +17,7 @@ translations:
   '%d slots': '%d slots'
   '%d toolheads': '%d cabeçotes'
   '%d tools': '%d ferramentas'
+  '%d units': '%d unidades'
   '%d:%02d left': 'restam %d:%02d'
   '%dh': '%d h'
   '%dh %02dm': '%d h %02d min'
@@ -73,6 +74,7 @@ translations:
   1 min ago: há 1 min
   1 minute: 1 minuto
   1 more tap to {} beta features: Mais 1 toque para {} recursos beta
+  '1 unit': '1 unidade'
   1. Printer homes all axes (~1 minute): 1. A impressora referencia todos os eixos (~1 minuto)
   1. Printer homes and probes the bed: 1. A impressora faz home e sonda a mesa
   1. Printer will home and probe each screw: 1. A impressora fará home e sondará cada
@@ -166,6 +168,7 @@ translations:
   Aborting AFC operation...: Abortando operação AFC...
   Aborting...: Abortando...
   About: Sobre
+  Above target: Acima do alvo
   Accel to Decel: Aceleração para Desaceleração
   Acceleration to deceleration limit (mm/s²): Limite de aceleração para desaceleração
     (mm/s²)
@@ -277,6 +280,7 @@ translations:
   Assisted Retract: 'Retração assistida'
   Assisting: Assistindo
   At least {} lines in helixscreen.env were ignored: 'Pelo menos {} linhas do helixscreen.env foram ignoradas'
+  At target: No alvo
   At {}°C, about {} minutes.: 'A {}°C, cerca de {} minutos.'
   Authentication failed: Falha na autenticação
   Auto: Automático
@@ -358,6 +362,7 @@ translations:
   Bed temp must be 0-%d°C: A temperatura da mesa deve ser 0-%d°C
   Bed warming timed out: Aquecimento da mesa — tempo esgotado
   Before starting: 'Antes de começar'
+  Below target: Abaixo do alvo
   Belt Tension: Tensão da correia
   Belt Tension Check: Verificação de tensão da correia
   Belt Tension needs a CoreXY printer. This one is {}.: 'A tensão da correia precisa de uma impressora CoreXY. Esta é {}.'
@@ -984,6 +989,8 @@ translations:
 
   Dry spools on the heated bed: Secar carretéis na mesa aquecida
 
+  Dryer already running: 'O secador já está em funcionamento'
+  Dryer is not running: 'O secador não está em funcionamento'
   Drying: Secando
   Drying is already running: A secagem já está em andamento
 
@@ -1102,6 +1109,7 @@ translations:
   'Error: Verification failed': 'Erro: Verificação falhou'
   'Error: Wrong architecture': 'Erro: Arquitetura incorreta'
   'Error: `unzip` not installed': 'Erro: `unzip` não instalado'
+  'Error: cannot write the service file in {}': 'Erro: não é possível gravar o arquivo de serviço em {}'
   Errors only: 'Apenas erros'
   Escalate to emergency stop if cancel doesn't respond: Escalar para parada de emergência
     se cancelar não responder
@@ -1387,6 +1395,8 @@ translations:
   'Fix: chown {} {}, then restart': 'Correção: chown {} {}, depois reinicie'
   FlashForge Adventurer 5M: FlashForge Adventurer 5M
   FlashForge Adventurer 5X: FlashForge Adventurer 5X
+  FlashForge Creator 5: FlashForge Creator 5
+  FlashForge Creator 5 Pro: FlashForge Creator 5 Pro
   FlashForge IFS: FlashForge IFS
   Flip: Inverter
   Flip the spools: Vire os carretéis
@@ -1993,7 +2003,9 @@ translations:
     demora mais.
   Motion: Movimento
   'Motion sensor stuck: filament is still at the feeder. Resume to feed it.': 'Sensor de movimento travado: o filamento ainda está no alimentador. Retome para alimentá-lo.'
+  Motion timed out: Tempo limite do movimento esgotado
   Motor controller error: Erro do controlador do motor
+  Motor drive fault: Falha do driver do motor
   Motor parameter setup failed: Falha na configuração dos parâmetros do motor
   Motor speeds and acceleration: 'Velocidades do motor e aceleração'
   Motors: Motores
@@ -3216,6 +3228,7 @@ translations:
   ? "Stop printing \"{}\"?\n\nThis cannot be undone after 5 seconds."
   : "Parar a impressão de \"{}\"?\n\nIsso não pode ser desfeito após 5 segundos."
   Stop the check?: Parar a verificação?
+  Stop the running cycle before starting another: 'Pare o ciclo em andamento antes de iniciar outro'
   Stopped: Parado
   Stopped between Hub and Toolhead: Parado entre o Hub e o cabeçote
   Stopped between Lane and Hub: Parado entre a Lane e o Hub
@@ -3430,6 +3443,7 @@ translations:
   Theme changes apply after restart.: Alterações de tema aplicam após reiniciar.
   Theme reset to defaults: Tema redefinido para os padrões
   'Theme: ': 'Tema: '
+  There is no cycle to stop: 'Não há ciclo para parar'
   ? There is not enough free memory to run this test. Klipper's analysis would run out of memory and leave the printer stuck until it is power-cycled.
   : "Não há memória livre suficiente para este teste. A análise do Klipper ficaria sem memória e deixaria a impressora travada até ser desligada e ligada."
   'These tools have a different filament grade loaded:': 'Estas ferramentas têm um grau de filamento diferente carregado:'
@@ -3455,6 +3469,7 @@ translations:
   ? This device has very little RAM. Resonance calibration is memory-intensive and may cause a "Timer Too Close" error. Continue anyway?
   : Este dispositivo tem muito pouca RAM. A calibração de ressonância consome muita memória e pode causar um erro "Timer Too Close". Continuar mesmo assim?
   This doesn't match the linked Spoolman spool. Add it as a new spool, or update the linked one to match?: Isto não corresponde ao carretel do Spoolman vinculado. Adicionar como um novo carretel ou atualizar o vinculado para corresponder?
+  This dryer cannot run while filament from the unit is loaded: 'Este secador não pode funcionar enquanto houver filamento da unidade carregado'
   This feature requires different hardware or configuration: Este recurso requer hardware ou configuração diferentes
   This filament system does not report buffer or flow data.: Este sistema de filamento não reporta dados de buffer ou de fluxo.
   This file was sliced for {} but {} is loaded.: Este arquivo foi fatiado para {}
@@ -3478,6 +3493,7 @@ translations:
   This printer cannot calibrate tool offsets automatically: Esta impressora não consegue calibrar os offsets de ferramenta automaticamente
   This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman.: Esta impressora preenche seus gates a partir do Spoolman. O HelixScreen limpou a própria cópia; remova a bobina no Spoolman.
   This printer fills its gates from Spoolman. Make colour, material and spool changes in Spoolman.: Esta impressora preenche seus gates a partir do Spoolman. Faça alterações de cor, material e bobina no Spoolman.
+  This printer has no automatic unload. Cut the filament at the head and pull it out by hand.: Esta impressora não tem descarga automática. Corte o filamento no cabeçote e retire-o à mão.
   ? This printer looks like a {} ({}% confidence), but it is set up as a {}. A wrong type applies incorrect pre-print options and presets.
   : Esta impressora parece ser uma {} ({}% de confiança), mas está configurada como {}. Um tipo errado aplica opções de pré-impressão e predefinições incorretas.
   This printer's network service controls the WiFi radio: O serviço de rede desta impressora controla o rádio WiFi
@@ -3665,6 +3681,7 @@ translations:
   Unload from toolhead first: 'Descarregue primeiro do cabeçote'
   Unload macro not configured: Macro de descarga não configurado
   Unload the CFS filament before enabling bypass: 'Descarregue o filamento do CFS antes de ativar o bypass'
+  Unload this unit first: 'Descarregue primeiro esta unidade'
   Unload...: Descarregar...
   Unloaded: 'Descarregado'
   Unloading: Descarregando
@@ -3935,6 +3952,7 @@ translations:
   invalid: inválido
   just now: agora mesmo
   last 60 s · LOOSE up, TIGHT down: 'últimos 60 s · SOLTO em cima, TENSO em baixo'
+  last 60 s · pressure, target dashed: últimos 60 s · pressão, alvo tracejado
   layers: camadas
   left: restante
   loaded: 'carregado'

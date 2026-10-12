@@ -13,6 +13,7 @@
 #include "../../include/lvgl_image_writer.h"
 #include "../../include/prerendered_images.h"
 #include "../../include/printer_image_manager.h"
+#include "helix_fs.h"
 
 #include <array>
 #include <cstdint>
@@ -578,8 +579,20 @@ TEST_CASE("Printer cache names carry libstdc++'s file_clock tick count", "[asset
         std::ofstream out(src, std::ios::binary);
         out << "twelve bytes";
     }
-    const auto ticks = std::filesystem::last_write_time(src).time_since_epoch().count();
-    const std::string expected = "-" + std::to_string(static_cast<unsigned long long>(ticks)) +
+    // Unix nanoseconds shifted to libstdc++'s file_clock epoch (2174-01-01). The shift is
+    // fixed by the on-disk naming, not by whichever std library builds the test: libc++'s
+    // file_clock counts from the Unix epoch, so std::filesystem's own tick count differs there.
+    constexpr long long kLibstdcxxEpochDiffNs = 6'437'664'000LL * 1'000'000'000LL;
+    const auto unix_ns = helix::fs::mtime_ns(src);
+    REQUIRE(unix_ns.has_value());
+    const long long libstdcxx_ticks = *unix_ns - kLibstdcxxEpochDiffNs;
+#if defined(_GLIBCXX_RELEASE)
+    // Where the build's std library is libstdc++, its own clock must agree with the shift.
+    CHECK(static_cast<long long>(
+              std::filesystem::last_write_time(src).time_since_epoch().count()) == libstdcxx_ticks);
+#endif
+    const std::string expected = "-" +
+                                 std::to_string(static_cast<unsigned long long>(libstdcxx_ticks)) +
                                  "-" + std::to_string(std::filesystem::file_size(src)) + ".bin";
 
     const std::string name = get_cached_printer_image_path(src, 10, 10);

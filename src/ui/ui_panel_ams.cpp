@@ -345,6 +345,10 @@ void AmsPanel::init_subjects() {
                                            path_handler, ams_state.get_subjects_lifetime());
     buffer_bias_observer_ = observe<int>(ams_state.get_buffer_bias_pct_subject(), this,
                                          path_handler, ams_state.get_subjects_lifetime());
+    buffer_status_observer_ = observe<int>(ams_state.get_buffer_status_subject(), this,
+                                           path_handler, ams_state.get_subjects_lifetime());
+    buffer_gauge_observer_ = observe<int>(ams_state.get_buffer_gauge_subject(), this, path_handler,
+                                          ams_state.get_subjects_lifetime());
 
     // Backend count observer for multi-backend selector
     backend_count_observer_ = observe<int>(
@@ -666,6 +670,8 @@ void AmsPanel::clear_panel_reference() {
     buffer_present_observer_.reset();
     buffer_slider_observer_.reset();
     buffer_bias_observer_.reset();
+    buffer_status_observer_.reset();
+    buffer_gauge_observer_.reset();
     slot_path_observers_.clear();
     print_state_observer_.reset();
     backend_count_observer_.reset();
@@ -897,13 +903,13 @@ void AmsPanel::setup_path_canvas() {
     ui_filament_path_canvas_set_buffer_callback(path_canvas_, on_buffer_clicked, this);
 
     // Configure from backend using shared helper
-    ams_detail_setup_path_canvas(path_canvas_, slot_grid_, ALL_UNITS, false);
+    ams_detail_setup_path_canvas(path_canvas_, slot_grid_, ALL_UNITS);
 
     spdlog::debug("[{}] Path canvas setup complete", get_name());
 }
 
 void AmsPanel::update_path_canvas_from_backend() {
-    ams_detail_setup_path_canvas(path_canvas_, slot_grid_, ALL_UNITS, false);
+    ams_detail_setup_path_canvas(path_canvas_, slot_grid_, ALL_UNITS);
 }
 
 void AmsPanel::setup_bypass_spool() {
@@ -971,27 +977,12 @@ void AmsPanel::update_bypass_spool_from_state() {
         return;
     }
 
-    // On AFC the node is removed entirely while bypass is disengaged (#1229).
-    const bool show_bypass = helix::ui::bypass_node_visible_for(AmsState::instance().get_backend());
-    helix::ui::bypass_spool_set_visible(bypass_widgets_, show_bypass);
-    if (!show_bypass) {
+    const bool node_visible =
+        helix::ui::bypass_node_visible_for(AmsState::instance().get_backend());
+    helix::ui::bypass_spool_sync_from_state(bypass_widgets_, node_visible);
+    if (!node_visible) {
         return;
     }
-
-    auto ext = AmsState::instance().get_external_spool_info();
-    if (ext.has_value()) {
-        helix::ui::bypass_spool_set_color(bypass_widgets_, ext->color_rgb);
-        helix::ui::bypass_spool_set_has_spool(bypass_widgets_, true);
-        helix::ui::bypass_spool_set_material(bypass_widgets_, ext->material.c_str());
-    } else {
-        helix::ui::bypass_spool_set_color(bypass_widgets_, 0x505050);
-        helix::ui::bypass_spool_set_has_spool(bypass_widgets_, false);
-        helix::ui::bypass_spool_set_material(bypass_widgets_, "");
-    }
-    // Same ring a lane slot wears when it is the active node - bypass IS a node
-    // on the path, and while it is engaged it is the one feeding the toolhead.
-    helix::ui::bypass_spool_set_active(
-        bypass_widgets_, lv_subject_get_int(AmsState::instance().get_bypass_active_subject()) != 0);
 
     // Reposition because the material label visibility may have changed,
     // which affects the layout above the spool box.
@@ -1101,7 +1092,11 @@ void AmsPanel::refresh_slots() {
     }
 
     update_slot_colors();
-    helix::ui::ams_detail_sync_slot_states(slot_widgets_, current_slot_count_);
+    // One read of the system info serves both the bay states and the path canvas.
+    const AmsBackend* backend = AmsState::instance().get_backend();
+    const AmsSystemInfo info = backend ? backend->get_system_info() : AmsSystemInfo{};
+    if (backend)
+        helix::ui::ams_detail_sync_slot_states(slot_widgets_, current_slot_count_, info);
 
     int current_slot = lv_subject_get_int(AmsState::instance().get_current_slot_subject());
     update_current_slot_highlight(current_slot);
@@ -1113,7 +1108,8 @@ void AmsPanel::refresh_slots() {
     // guards against a missing canvas (ams_detail_setup_path_canvas() returns
     // early when canvas/backend is null) and never writes slot subjects, so it
     // can't recurse back into a slots_version bump.
-    update_path_canvas_from_backend();
+    if (backend)
+        ams_detail_setup_path_canvas(path_canvas_, slot_grid_, ALL_UNITS, backend, info);
 }
 
 // ============================================================================

@@ -41,6 +41,10 @@ struct Provider {
     /// Stores a slot's material and colour in firmware, or nullptr when the
     /// firmware keeps no such record.
     std::string (*material_write_gcode)(int slot_index, const std::string& type, std::uint32_t rgb);
+    /// Feeds filament into one head, or nullptr when the firmware has no such
+    /// command. Returns empty when this printer does not offer it for @p head
+    /// (the shim that owns it is absent, or published no lane for the head).
+    std::string (*feed_gcode)(const PrinterDiscovery& hw, int head);
 };
 
 // --- MedusaHC ---------------------------------------------------------------
@@ -122,8 +126,15 @@ bool zmod_c5_detect(const PrinterDiscovery& hw) {
            printer_has_object(hw, "gcode_button extruder_grab1");
 }
 
-std::vector<std::string> zmod_c5_status_objects(const PrinterDiscovery& /*hw*/) {
-    return {kZmodColorObject};
+std::vector<std::string> zmod_c5_status_objects(const PrinterDiscovery& hw) {
+    // The afclite shim carries the firmware's own fault flag and activity word
+    // on zmod 1.7.4+; subscribing it on a build that does not publish the
+    // object is harmless (the frame simply never arrives).
+    std::vector<std::string> objects = {kZmodColorObject};
+    if (hw.has_zmod_afclite()) {
+        objects.emplace_back("zmod_afclite");
+    }
+    return objects;
 }
 
 /// HEX and TYPE together write without opening a prompt; SILENT=1 keeps the
@@ -133,6 +144,24 @@ std::string zmod_c5_material_write(int slot_index, const std::string& type, std:
     return fmt::format("CHANGE_ZCOLOR SLOT={} HEX={:06X} TYPE={} SILENT=1",
                        slot_index + 1, // DISPLAY_NUMBERING_OK: gcode wire, not a label
                        rgb & 0xFFFFFFu, type);
+}
+
+/// Z-Mod's afclite shim runs `CHANGE_TOOL LANE=<lane>` as the same load the
+/// COLOR dialog starts: it heats only that head and feeds it. The lane is named
+/// by the shim's own `AFC_lane` object, which is the only thing sent, so
+/// `_T_IN_ZCOLOR` and its SLOT/NAPR arguments stay the shim's business. The
+/// head-to-lane relation is the lane name: head n is lane `E<n>`, and a lane
+/// the shim did not publish yields no command.
+std::string zmod_c5_feed_gcode(const PrinterDiscovery& hw, int head) {
+    if (!hw.has_zmod_afclite() || head < 0) {
+        return {};
+    }
+    const std::string lane = fmt::format("E{}", head);
+    const auto& lanes = hw.afc_lane_names();
+    if (std::find(lanes.begin(), lanes.end(), lane) == lanes.end()) {
+        return {};
+    }
+    return "CHANGE_TOOL LANE=" + lane;
 }
 
 const std::vector<Provider>& providers() {
@@ -145,9 +174,9 @@ const std::vector<Provider>& providers() {
         // the way the feeder macros are, and naming it here is the whole point of
         // this table.
         {"MedusaHC", medusa_detect, medusa_status_objects, medusa_open_gcode, medusa_close_gcode,
-         "T", "DROP_TOOL", nullptr},
-        {"Creator 5 Pro", zmod_c5_detect, zmod_c5_status_objects, nullptr, nullptr,
-         "_T_IN T=", "_T_OUT", zmod_c5_material_write},
+         "T", "DROP_TOOL", nullptr, nullptr},
+        {kZmodC5ProviderName, zmod_c5_detect, zmod_c5_status_objects, nullptr, nullptr,
+         "_T_IN T=", "_T_OUT", zmod_c5_material_write, zmod_c5_feed_gcode},
     };
     return table;
 }
@@ -351,6 +380,123 @@ bool present(const PrinterDiscovery& hw) {
     return match(hw) != nullptr;
 }
 
+bool zmod_c5_present(const PrinterDiscovery& hw) {
+    return zmod_c5_detect(hw);
+}
+
+std::optional<ToolReading> parse_zmod_marker(const std::string& line) {
+    // Both spellings are respond_info output, so on the wire each arrives with
+    // whatever console framing the host adds; the tokens themselves are unique
+    // to the swap macros. A change runs the dropping markers first (the parked
+    // head's echoes) and the picking markers second, which is the order the
+    // step bar wants.
+    ToolReading r;
+    r.phase_names_direction = true;
+    if (line.find("Grab attempt for T") != std::string::npos ||
+        line.find("_T_IN") != std::string::npos) {
+        r.operation = "picking";
+        return r;
+    }
+    if (line.find("Unload attempt for T") != std::string::npos ||
+        line.find("_T_OUT") != std::string::npos) {
+        r.operation = "dropping";
+        return r;
+    }
+    return std::nullopt;
+}
+
+std::optional<ToolReading> parse_zmod_tinfo_line(const std::string& line, bool& block_ended_out) {
+    block_ended_out = false;
+    // T_INFO's rows are `T<n>: home|HEAD|?|ERROR (both)`; the trailing block is
+    // Door/Top/Offset, and `Offset:` is documented last, so it is the block
+    // end the "no HEAD anywhere" answer hangs off.
+    std::string_view view = line;
+    while (!view.empty() && (view.front() == ' ' || view.front() == '/')) {
+        view.remove_prefix(1);
+    }
+    if (view.rfind("Offset:", 0) == 0) {
+        block_ended_out = true;
+        return std::nullopt;
+    }
+    if (view.empty() || view.front() != 'T') {
+        return std::nullopt;
+    }
+    const std::size_t colon = view.find(':');
+    if (colon == std::string_view::npos || colon < 2) {
+        return std::nullopt;
+    }
+    const auto index = helix::text_io::parse_leading<int>(std::string(view.substr(1, colon - 1)));
+    if (!index || *index < 0) {
+        return std::nullopt;
+    }
+    const std::size_t word = view.find_first_not_of(" \t", colon + 1);
+    if (word == std::string_view::npos) {
+        return std::nullopt;
+    }
+    ToolReading r;
+    if (view.compare(word, 4, "HEAD") == 0) {
+        r.current_tool = *index;
+    } else if (view.compare(word, 4, "home") == 0) {
+        r.docks.resize(static_cast<size_t>(*index) + 1);
+        r.docks[static_cast<size_t>(*index)] = true;
+    } else if (view.compare(word, 5, "ERROR") == 0) {
+        // "ERROR (both)": the tool reads home AND on the head, which is the
+        // same disagreeing-sensors fault a -2 active_tool_id is.
+        r.sensor_error = true;
+    } else {
+        // "?" (undefined) says nothing for this tool; anything unrecognised is
+        // treated the same way rather than guessed at.
+        return std::nullopt;
+    }
+    return r;
+}
+
+std::optional<AfcStateReading> read_afc_state(const nlohmann::json& status) {
+    if (!status.is_object()) {
+        return std::nullopt;
+    }
+    // The extra registers itself as `zmod_afclite` and aliases `AFC`; either
+    // can carry a delta.
+    const auto it = status.find("zmod_afclite");
+    const auto alias = status.find("AFC");
+    const nlohmann::json* obj = nullptr;
+    if (it != status.end() && it->is_object()) {
+        obj = &*it;
+    } else if (alias != status.end() && alias->is_object()) {
+        obj = &*alias;
+    }
+    if (obj == nullptr) {
+        return std::nullopt;
+    }
+    AfcStateReading r;
+    if (auto state = obj->find("current_state"); state != obj->end() && state->is_string()) {
+        r.current_state = state->get<std::string>();
+    }
+    if (auto err = obj->find("error_state"); err != obj->end() && err->is_boolean()) {
+        r.error_state = err->get<bool>();
+    }
+    if (auto msg = obj->find("message"); msg != obj->end() && msg->is_string()) {
+        r.message = msg->get<std::string>();
+    }
+    if (auto lanes = obj->find("lanes"); lanes != obj->end() && lanes->is_array()) {
+        for (const auto& lane_name : *lanes) {
+            if (!lane_name.is_string()) {
+                continue;
+            }
+            const std::string key = "AFC_lane " + lane_name.get<std::string>();
+            const auto lane = status.find(key);
+            if (lane == status.end() || !lane->is_object()) {
+                continue;
+            }
+            const auto map = lane->find("map");
+            if (map != lane->end() && map->is_string()) {
+                r.lane_maps.push_back(map->get<std::string>());
+            }
+        }
+    }
+    return r;
+}
+
 std::string machine_name(const PrinterDiscovery& hw) {
     const Provider* p = match(hw);
     return p ? p->name : std::string();
@@ -440,6 +586,22 @@ std::vector<std::string> required_status_objects(const PrinterDiscovery& hw) {
     return p ? p->status_objects(hw) : std::vector<std::string>{};
 }
 
+ToolFeed resolve_tool_feed(const PrinterDiscovery& hw) {
+    const Provider* p = match(hw);
+    if (!p || !p->feed_gcode) {
+        return {};
+    }
+    ToolFeed feed;
+    feed.provider_name = p->name;
+    const int heads = static_cast<int>(hw.afc_lane_names().size());
+    for (int head = 0; head < heads; ++head) {
+        feed.head_gcode.push_back(p->feed_gcode(hw, head));
+    }
+    feed.present = std::any_of(feed.head_gcode.begin(), feed.head_gcode.end(),
+                               [](const std::string& g) { return !g.empty(); });
+    return feed;
+}
+
 MaterialSource resolve_material_source(const PrinterDiscovery& hw) {
     const Provider* p = match(hw);
     if (!p || !p->material_write_gcode) {
@@ -470,6 +632,7 @@ std::optional<MaterialReading> read_materials(const nlohmann::json& status, int 
             SlotMaterial m;
             m.material = (*slots)[i]->material;
             m.rgb = parse_hex_color((*slots)[i]->hex);
+            m.filament_present = (*slots)[i]->filament_present;
             out[i] = std::move(m);
         }
         r.slots = std::move(out);

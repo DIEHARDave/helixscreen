@@ -6,10 +6,13 @@
 #include "ui_insert_notice.h"
 #include "ui_update_queue.h"
 
+#include "ams_fault_event.h"
 #include "i_moonraker_api.h"
 #include "lane_apply.h"
 #include "lane_legacy_migration.h"
 #include "lane_source_store.h"
+#include "lane_translation.h"
+#include "lvgl/src/others/translation/lv_translation.h"
 #include "openams_api.h"
 #include "printer_discovery.h"
 
@@ -17,6 +20,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cstdlib>
 #include <set>
 #include <utility>
 
@@ -27,6 +31,8 @@ namespace {
 
 using json = nlohmann::json;
 
+constexpr const char* kSpoolmanStatusMethod = "notify_openams_spoolman_status";
+constexpr const char* kSpoolmanStatusHandler = "helix_openams_spoolman_status";
 constexpr const char* kLoad = "load";
 constexpr const char* kUnload = "unload";
 constexpr const char* kCancel = "cancel";
@@ -58,11 +64,52 @@ int int_member(const json& object, const char* key, int fallback) {
     return it != object.end() && it->is_number_integer() ? it->get<int>() : fallback;
 }
 
+std::optional<double> number_member(const json& object, const char* key) {
+    auto it = object.find(key);
+    if (it == object.end() || !it->is_number()) {
+        return std::nullopt;
+    }
+    return it->get<double>();
+}
+
+bool advertises_action(const json& device, const char* action) {
+    for (const auto& entry : array_member(device, "supported_actions")) {
+        if (entry.is_string() && entry.get<std::string>() == action) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/// The dryer states in which a cycle is under way. Anything the unit does not
+/// name as idle or failed counts as running, so a state a newer firmware adds
+/// still shows the cycle and offers Stop.
+bool dryer_state_is_running(const std::string& state) {
+    const std::string token = ams_normalize_state_token(state);
+    return !token.empty() && token != "off" && token != "idle" && token != "fault" &&
+           token != "none";
+}
+
+/// OAMS_DRYER_START takes its duration in whole seconds, 1 s to 7 days.
+constexpr int kMaxDryerSeconds = 604800;
+
 /// A command name is sent verbatim, so it must be one G-code word.
 bool command_name_is_safe(const std::string& command) {
     return !command.empty() && std::all_of(command.begin(), command.end(), [](unsigned char ch) {
         return std::isalnum(ch) != 0 || ch == '_';
     });
+}
+
+/// A fault code in plain words; an unfamiliar code reads as the unit's own text.
+std::string describe_fault(const std::string& code, const std::string& text) {
+    if (code == "motor_drive_fault") {
+        return lv_tr("Motor drive fault");
+    }
+    if (code == "motion_timeout") {
+        return lv_tr("Motion timed out");
+    }
+    return !text.empty() ? text
+                         : (!code.empty() ? code : std::string(lv_tr("Filament System Error")));
 }
 
 /// Tool number a `T<n>` group stands for, or -1 for any other group name.
@@ -107,7 +154,8 @@ json AmsBackendOpenAms::required_status_objects(const PrinterDiscovery& hw) {
     json objects = json::object();
     if (hw.mmu_type() == AmsType::OPENAMS) {
         objects[openams::kManagerObject] =
-            json::array({"api_version", "schema", "ready", "commands", "lanes", "units", "groups"});
+            json::array({"api_version", "schema", "ready", "commands", "lanes", "units", "groups",
+                         "devices", "lanes_by_fps"});
     }
     return objects;
 }
@@ -143,6 +191,72 @@ void AmsBackendOpenAms::on_started() {
         parse_snapshot_locked();
     }
     emit_event(EVENT_STATE_CHANGED);
+
+    // The openams_spoolman component rewrites lane_data whenever a spool link
+    // changes and announces it with this notification. A manager without the
+    // component never sends it, and its links live in the override store.
+    if (client_) {
+        client_->register_method_callback(kSpoolmanStatusMethod, kSpoolmanStatusHandler,
+                                          [this, token = lifetime_.token()](const json&) {
+                                              token.defer("AmsBackendOpenAms::spoolman_status",
+                                                          [this]() { refresh_lane_records(); });
+                                          });
+    }
+}
+
+void AmsBackendOpenAms::on_stopping() {
+    if (client_) {
+        client_->unregister_method_callback(kSpoolmanStatusMethod, kSpoolmanStatusHandler);
+    }
+}
+
+void AmsBackendOpenAms::refresh_lane_records() {
+    helix::ams::FilamentSlotOverrideStore* store = nullptr;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        store = override_store_.get();
+    }
+    if (!store) {
+        return;
+    }
+    const int block = backend_index();
+    store->reload_async([this, block, token = lifetime_.token()](
+                            std::unordered_map<int, helix::ams::LaneDataRecord> records) {
+        token.defer(
+            "AmsBackendOpenAms::apply_lane_records",
+            [this, block, records = std::move(records)]() { apply_lane_records(block, records); });
+    });
+}
+
+void AmsBackendOpenAms::apply_lane_records(
+    int backend_block, const std::unordered_map<int, helix::ams::LaneDataRecord>& records) {
+    for (const auto& [slot_index, entry] : records) {
+        const helix::ams::LaneId lane = helix::ams::lane_id_for(backend_block, slot_index);
+        helix::ams::LaneSources sources = helix::ams::sources_from_record(
+            entry.record, entry.wire, helix::ams::LegacyLockKeys::LaneData);
+        // A re-read never re-files a LocalUser statement out of our own record:
+        // that would forge an edit. A spool link openams_spoolman wrote after
+        // the last edit made here is the newer statement, and takes the user's
+        // rung over it.
+        sources.local_user.reset();
+        bool write_in_flight = false;
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            write_in_flight = own_write_echoes_.standing(slot_index);
+        }
+        helix::ams::file_lane_sources(lane, sources);
+        helix::ams::file_outside_edit_if_newer(
+            lane, entry, helix::ams::declared_from_record(entry.record), write_in_flight);
+    }
+    int total = 0;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        total = system_info_.total_slots;
+    }
+    for (int slot = 0; slot < total; ++slot) {
+        repaint_slot_from_lane(slot);
+    }
+    emit_event(EVENT_STATE_CHANGED);
 }
 
 void AmsBackendOpenAms::handle_status(const json& status) {
@@ -166,6 +280,14 @@ void AmsBackendOpenAms::present_nothing_locked() {
     manager_ready_ = false;
     reported_action_ = AmsAction::IDLE;
     lane_states_.clear();
+    lane_ids_.clear();
+    lane_loaded_slots_.clear();
+    slot_lanes_.clear();
+    unit_faults_.clear();
+    unit_dryers_.clear();
+    has_unit_climate_ = false;
+    requested_dry_min_.clear();
+    unit_oams_idx_.clear();
     present_by_slot_id_.clear();
     remote_slot_ids_.clear();
     slot_groups_.clear();
@@ -176,6 +298,9 @@ void AmsBackendOpenAms::present_nothing_locked() {
     system_info_.units.clear();
     system_info_.total_slots = 0;
     system_info_.tool_to_slot_map.clear();
+    system_info_.endless_spool_group_ids.clear();
+    system_info_.endless_spool_groups_reported = false;
+    system_info_.endless_spool_enabled = false;
     system_info_.current_slot = -1;
     system_info_.current_tool = -1;
     system_info_.filament_loaded = false;
@@ -220,6 +345,7 @@ void AmsBackendOpenAms::parse_snapshot_locked() {
     std::unordered_map<int, int> remote_to_global;
     std::set<PathTopology> topologies;
     std::vector<std::string> unit_lanes;
+    std::vector<int> next_unit_idx;
 
     for (const auto& unit_json : array_member(snapshot_, "units")) {
         if (!unit_json.is_object()) {
@@ -270,8 +396,32 @@ void AmsBackendOpenAms::parse_snapshot_locked() {
             unit.slots.push_back(std::move(slot));
         }
         unit.slot_count = static_cast<int>(unit.slots.size());
-        unit_lanes.push_back(string_member(unit_json, "lane"));
+        unit.hub_id = string_member(unit_json, "lane");
+        {
+            const std::string id = string_member(unit_json, "id");
+            char* end = nullptr;
+            const long idx = id.empty() ? -1 : std::strtol(id.c_str(), &end, 10);
+            next_unit_idx.push_back(end && *end == '\0' ? static_cast<int>(idx) : -1);
+        }
+        unit_lanes.push_back(unit.hub_id);
         next.units.push_back(std::move(unit));
+    }
+
+    std::vector<std::string> next_slot_lanes;
+    for (std::size_t u = 0; u < next.units.size(); ++u) {
+        next_slot_lanes.insert(next_slot_lanes.end(), next.units[u].slots.size(), unit_lanes[u]);
+    }
+
+    // The extruder a lane feeds, when the openams plugin publishes it. It names the
+    // toolhead of every slot on that lane.
+    if (const json* by_fps = object_member(snapshot_, "lanes_by_fps")) {
+        for (std::size_t u = 0; u < next.units.size(); ++u) {
+            const json* lane = object_member(*by_fps, unit_lanes[u].c_str());
+            const std::string extruder = lane ? string_member(*lane, "extruder") : std::string();
+            for (auto& slot : next.units[u].slots) {
+                slot.extruder_name = extruder;
+            }
+        }
     }
 
     std::vector<std::string> next_slot_groups(next_remote_ids.size());
@@ -286,7 +436,6 @@ void AmsBackendOpenAms::parse_snapshot_locked() {
         if (group.name.empty()) {
             continue;
         }
-        const int tool = tool_from_group(group.name);
         for (const auto& member : array_member(group_json, "slots")) {
             if (!member.is_number_integer()) {
                 continue;
@@ -297,15 +446,14 @@ void AmsBackendOpenAms::parse_snapshot_locked() {
             }
             group.slots.push_back(global->second);
             next_slot_groups[static_cast<std::size_t>(global->second)] = group.name;
-            if (SlotInfo* slot = next.get_slot_global(global->second)) {
-                slot->mapped_tool = tool;
-            }
         }
         next_groups.push_back(std::move(group));
     }
 
     reported_action_ = AmsAction::IDLE;
     lane_states_.clear();
+    lane_ids_.clear();
+    lane_loaded_slots_.clear();
     std::set<int> current_slots;
     std::string current_group;
     std::unordered_map<std::string, BufferHealth> lane_fps;
@@ -313,15 +461,19 @@ void AmsBackendOpenAms::parse_snapshot_locked() {
         if (!lane_json.is_object()) {
             continue;
         }
-        // The lane's filament pressure sensor, 0 to 1. Below set_point the
-        // extruder pulls harder than the hub feeds; above it the hub overfeeds.
-        // A manager that publishes no pressure leaves the lane with no buffer
-        // rather than a made-up reading.
+        // The lane's filament pressure sensor, 0 (no pressure) to 1 (fully
+        // compressed). It has one spring: it measures compression and never
+        // tension, so a reading under set_point is less compression, not slack
+        // or pull. A manager that publishes no pressure leaves the lane with no
+        // buffer rather than a made-up reading.
         auto pressure = lane_json.find("pressure");
         if (pressure != lane_json.end() && pressure->is_number()) {
             BufferHealth fps;
             fps.fps_value = fps.smoothed_fps = pressure->get<float>();
             fps.fps_reported = true;
+            fps.compression_only = true;
+            fps.filament_loaded =
+                remote_to_global.count(int_member(lane_json, "current_slot", -1)) != 0;
             auto set_point = lane_json.find("set_point");
             if (set_point != lane_json.end() && set_point->is_number()) {
                 fps.fps_set_point = set_point->get<float>();
@@ -335,7 +487,9 @@ void AmsBackendOpenAms::parse_snapshot_locked() {
             (reported_action_ != AmsAction::ERROR && action != AmsAction::IDLE)) {
             reported_action_ = action;
         }
+        lane_ids_.push_back(string_member(lane_json, "id"));
         auto global = remote_to_global.find(int_member(lane_json, "current_slot", -1));
+        lane_loaded_slots_.push_back(global != remote_to_global.end() ? global->second : -1);
         if (global != remote_to_global.end()) {
             current_slots.insert(global->second);
             if (SlotInfo* slot = next.get_slot_global(global->second)) {
@@ -343,6 +497,136 @@ void AmsBackendOpenAms::parse_snapshot_locked() {
             }
             current_group = string_member(lane_json, "current_group");
         }
+    }
+
+    // Faults the units publish (openams only; klipper_openams publishes no
+    // `devices`, so nothing is ever raised there).
+    std::vector<std::vector<UnitFault>> next_faults(next.units.size());
+    if (const json* devices = object_member(snapshot_, "devices")) {
+        for (std::size_t u = 0; u < next.units.size(); ++u) {
+            const json* device = object_member(*devices, next.units[u].display_name.c_str());
+            if (!device) {
+                continue;
+            }
+            for (const auto& fault_json : array_member(*device, "faults")) {
+                if (!fault_json.is_object()) {
+                    continue;
+                }
+                UnitFault fault;
+                fault.severity = string_member(fault_json, "severity");
+                fault.code = string_member(fault_json, "code");
+                fault.text = string_member(fault_json, "text");
+                fault.bay = int_member(fault_json, "bay", -1);
+                for (const auto& action : array_member(fault_json, "actions")) {
+                    if (action.is_string() && action.get<std::string>() == "clear_fault") {
+                        fault.clearable = true;
+                    }
+                }
+                if (fault.severity == "stop" || fault.severity == "pause") {
+                    next_faults[u].push_back(std::move(fault));
+                }
+            }
+        }
+    }
+
+    // Environment and dryer, per unit (openams only, like the faults above).
+    std::vector<UnitDryer> next_dryers(next.units.size());
+    if (const json* devices = object_member(snapshot_, "devices")) {
+        for (std::size_t u = 0; u < next.units.size(); ++u) {
+            const json* device = object_member(*devices, next.units[u].display_name.c_str());
+            if (!device) {
+                continue;
+            }
+            UnitDryer& dryer = next_dryers[u];
+            if (const json* env = object_member(*device, "environment")) {
+                const auto temp = number_member(*env, "temp_c");
+                const auto humidity = number_member(*env, "rh_pct");
+                if (temp || humidity) {
+                    EnvironmentData reading;
+                    reading.temperature_c = temp ? static_cast<float>(*temp) : 0.0f;
+                    reading.humidity_pct = humidity ? static_cast<float>(*humidity) : 0.0f;
+                    reading.has_humidity = humidity.has_value();
+                    dryer.environment = reading;
+                    next.units[u].environment = reading;
+                }
+            }
+
+            const json* capabilities = object_member(*device, "capabilities");
+            // A running cycle withdraws dryer_start and keeps dryer_stop, so each
+            // action is permitted on its own and the dryer stays offered while either
+            // is advertised.
+            dryer.can_start = advertises_action(*device, "dryer_start");
+            dryer.can_stop = advertises_action(*device, "dryer_stop");
+            dryer.offered = capabilities && bool_member(*capabilities, "dryer", false) &&
+                            (dryer.can_start || dryer.can_stop);
+            if (!dryer.offered) {
+                continue;
+            }
+            dryer.requires_unloaded = bool_member(*capabilities, "dryer_requires_unloaded", false);
+            DryerInfo& info = dryer.info;
+            info.supported = true;
+            info.supports_fan_control = false;
+            info.min_temp_c = static_cast<float>(
+                number_member(*capabilities, "dryer_target_min_c").value_or(info.min_temp_c));
+            info.max_temp_c = static_cast<float>(
+                number_member(*capabilities, "dryer_target_max_c").value_or(info.max_temp_c));
+            info.max_duration_min = kMaxDryerSeconds / 60;
+            if (const json* state = object_member(*device, "dryer")) {
+                info.active = dryer_state_is_running(string_member(*state, "state"));
+                info.target_temp_c =
+                    info.active
+                        ? static_cast<float>(number_member(*state, "target_c").value_or(0.0))
+                        : 0.0f;
+                info.remaining_min =
+                    info.active
+                        ? static_cast<int>(
+                              (number_member(*state, "remaining_s").value_or(0.0) + 59.0) / 60.0)
+                        : 0;
+                info.fan_pct = static_cast<int>(number_member(*state, "fan_pct").value_or(0.0));
+            }
+            // The chamber probe is the reading that matters for a cycle; fall back to
+            // the unit's environment sensor when the dryer telemetry has none.
+            if (dryer.environment) {
+                info.current_temp_c = dryer.environment->temperature_c;
+            }
+            if (const json* telemetry = object_member(*device, "telemetry")) {
+                if (const json* td = object_member(*telemetry, "dryer")) {
+                    if (const auto chamber = number_member(*td, "chamber_c")) {
+                        info.current_temp_c = static_cast<float>(*chamber);
+                    }
+                }
+            }
+            const auto requested = requested_dry_min_.find(static_cast<int>(u));
+            if (info.active) {
+                info.duration_min =
+                    std::max(info.remaining_min,
+                             requested != requested_dry_min_.end() ? requested->second : 0);
+            }
+        }
+    }
+    for (auto it = requested_dry_min_.begin(); it != requested_dry_min_.end();) {
+        const auto u = static_cast<std::size_t>(it->first);
+        it = (u < next_dryers.size() && next_dryers[u].info.active) ? std::next(it)
+                                                                    : requested_dry_min_.erase(it);
+    }
+
+    bool any_fault = false;
+    for (std::size_t u = 0; u < next.units.size(); ++u) {
+        AmsUnit& unit = next.units[u];
+        for (const UnitFault& fault : next_faults[u]) {
+            any_fault = true;
+            SlotError error;
+            error.message = describe_fault(fault.code, fault.text);
+            error.severity = SlotError::ERROR;
+            for (auto& slot : unit.slots) {
+                if (fault.bay < 0 || fault.bay == slot.slot_index) {
+                    slot.error = error;
+                }
+            }
+        }
+    }
+    if (any_fault && reported_action_ != AmsAction::ERROR) {
+        reported_action_ = AmsAction::ERROR;
     }
 
     for (std::size_t u = 0; u < next.units.size(); ++u) {
@@ -360,6 +644,12 @@ void AmsBackendOpenAms::parse_snapshot_locked() {
 
     remote_slot_ids_ = std::move(next_remote_ids);
     slot_groups_ = std::move(next_slot_groups);
+    slot_lanes_ = std::move(next_slot_lanes);
+    unit_faults_ = std::move(next_faults);
+    unit_dryers_ = std::move(next_dryers);
+    has_unit_climate_ = std::any_of(unit_dryers_.begin(), unit_dryers_.end(),
+                                    [](const UnitDryer& d) { return d.environment || d.offered; });
+    unit_oams_idx_ = std::move(next_unit_idx);
     groups_ = std::move(next_groups);
     commands_ = std::move(next_commands);
     manager_ready_ = bool_member(snapshot_, "ready", false);
@@ -368,33 +658,48 @@ void AmsBackendOpenAms::parse_snapshot_locked() {
                     ? PathTopology::MIXED
                     : (topologies.empty() ? PathTopology::HUB : *topologies.begin());
 
-    // A T<n> group names the slots that can serve tool n. The one the map
-    // shows is the slot that would serve it now.
+    // A T<n> group names the slots that can serve tool n. Exactly one of them
+    // serves it now and carries the tool. The others are its runout backups and
+    // carry none, so a Load on a backup dispatches that exact slot, not a tool
+    // change that would load the serving slot instead.
     for (const auto& group : groups_) {
         const int tool = tool_from_group(group.name);
         if (tool < 0 || group.slots.empty()) {
             continue;
         }
-        int chosen = group.slots.front();
-        for (int slot : group.slots) {
-            if (current_slots.count(slot) != 0) {
-                chosen = slot;
-                break;
-            }
-        }
-        if (current_slots.count(chosen) == 0) {
-            for (int slot : group.slots) {
-                const SlotInfo* info = next.get_slot_global(slot);
-                if (info && info->status == SlotStatus::AVAILABLE) {
-                    chosen = slot;
-                    break;
-                }
-            }
-        }
+        const int serving = serving_slot_locked(group, next);
         if (tool >= static_cast<int>(next.tool_to_slot_map.size())) {
             next.tool_to_slot_map.resize(static_cast<std::size_t>(tool) + 1, -1);
         }
-        next.tool_to_slot_map[static_cast<std::size_t>(tool)] = chosen;
+        next.tool_to_slot_map[static_cast<std::size_t>(tool)] = serving;
+        for (int member : group.slots) {
+            if (SlotInfo* slot = next.get_slot_global(member)) {
+                slot->mapped_tool = member == serving ? tool : -1;
+            }
+        }
+    }
+
+    // A group of two or more slots is OpenAMS's runout backup, which the app
+    // calls endless spool. The firmware config defines these groups, so they
+    // are reported read-only. Held back until the manager is ready, so until
+    // then the endless-spool defaults stand.
+    if (manager_ready_) {
+        std::vector<int> endless_ids(static_cast<std::size_t>(next.total_slots), -1);
+        int endless_ordinal = 0;
+        for (const auto& group : groups_) {
+            if (group.slots.size() < 2) {
+                continue;
+            }
+            for (int member : group.slots) {
+                if (member >= 0 && member < next.total_slots) {
+                    endless_ids[static_cast<std::size_t>(member)] = endless_ordinal;
+                }
+            }
+            ++endless_ordinal;
+        }
+        next.endless_spool_group_ids = std::move(endless_ids);
+        next.endless_spool_groups_reported = true;
+        next.endless_spool_enabled = endless_ordinal > 0;
     }
 
     // OpenAMS reads nothing off a spool, so every insert is one the hardware
@@ -437,6 +742,9 @@ void AmsBackendOpenAms::parse_snapshot_locked() {
     next.action = pending_action_ != AmsAction::IDLE ? pending_action_ : reported_action_;
     next.operation_detail = failure_detail_;
     system_info_ = std::move(next);
+    if (system_info_.operation_detail.empty() && any_fault) {
+        system_info_.operation_detail = fault_detail_locked();
+    }
 }
 
 AmsAction AmsBackendOpenAms::action_from_lane_state(const std::string& state) {
@@ -561,8 +869,59 @@ bool AmsBackendOpenAms::slot_loadable_locked(int slot_index) const {
     return slot && (slot->status == SlotStatus::AVAILABLE || slot->status == SlotStatus::LOADED);
 }
 
+int AmsBackendOpenAms::serving_slot_locked(const Group& group, const AmsSystemInfo& info) const {
+    // The loaded member first, so a tool change to the active tool stays on its
+    // spool; otherwise the first member with a spool ready to feed.
+    for (int member : group.slots) {
+        const SlotInfo* slot = info.get_slot_global(member);
+        if (slot && slot->status == SlotStatus::LOADED) {
+            return member;
+        }
+    }
+    for (int member : group.slots) {
+        const SlotInfo* slot = info.get_slot_global(member);
+        if (slot && slot->status == SlotStatus::AVAILABLE) {
+            return member;
+        }
+    }
+    // Nothing can feed: the first member names the slot a refusal reports.
+    return group.slots.empty() ? -1 : group.slots.front();
+}
+
 int AmsBackendOpenAms::loaded_lane_count_locked() const {
     return static_cast<int>(std::count(lane_states_.begin(), lane_states_.end(), "loaded"));
+}
+
+std::string AmsBackendOpenAms::loaded_lane_of_slot_locked(int slot_index) const {
+    if (slot_index < 0) {
+        return {};
+    }
+    for (std::size_t i = 0; i < lane_loaded_slots_.size(); ++i) {
+        if (lane_loaded_slots_[i] == slot_index) {
+            return lane_ids_[i];
+        }
+    }
+    return {};
+}
+
+int AmsBackendOpenAms::loaded_slot_on_lane_locked(const std::string& lane) const {
+    for (std::size_t i = 0; i < lane_ids_.size(); ++i) {
+        if (lane_ids_[i] == lane) {
+            return lane_loaded_slots_[i];
+        }
+    }
+    return -1;
+}
+
+bool AmsBackendOpenAms::needs_unload_before_load(const AmsSystemInfo& info, int target_slot) const {
+    (void)info;
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (target_slot < 0 || static_cast<std::size_t>(target_slot) >= slot_lanes_.size()) {
+        return false;
+    }
+    const int loaded =
+        loaded_slot_on_lane_locked(slot_lanes_[static_cast<std::size_t>(target_slot)]);
+    return loaded >= 0 && loaded != target_slot;
 }
 
 AmsError AmsBackendOpenAms::load_gcode_locked(int slot_index, std::string& gcode) const {
@@ -571,8 +930,8 @@ AmsError AmsBackendOpenAms::load_gcode_locked(int slot_index, std::string& gcode
     }
     const std::string command = command_locked(kLoad);
     if (command.empty()) {
-        return AmsErrorHelper::not_supported("OpenAMS load (install OPENAMS_LOAD from "
-                                             "oams_macros.cfg)");
+        return AmsErrorHelper::not_supported("OpenAMS load: this manager advertises no load "
+                                             "command");
     }
     if (AmsError valid = validate_slot_index_locked(slot_index); !valid.success()) {
         return valid;
@@ -587,6 +946,23 @@ AmsError AmsBackendOpenAms::load_gcode_locked(int slot_index, std::string& gcode
     }
     gcode = command + " GROUP=" + IMoonrakerAPI::gcode_param_value(group) +
             " SLOT=" + std::to_string(remote_slot_ids_[static_cast<std::size_t>(slot_index)]);
+
+    // The manager's load does not clear a lane that already holds another
+    // slot, so that lane is unloaded first, in the same script.
+    const std::string& lane = slot_lanes_[static_cast<std::size_t>(slot_index)];
+    const int loaded = lane.empty() ? -1 : loaded_slot_on_lane_locked(lane);
+    if (loaded >= 0 && loaded != slot_index) {
+        const std::string unload = command_locked(kUnload);
+        if (unload.empty()) {
+            return AmsErrorHelper::not_supported(
+                "OpenAMS swap: this manager advertises no unload command");
+        }
+        if (!IMoonrakerAPI::is_safe_gcode_param(lane)) {
+            return AmsErrorHelper::invalid_parameter("OpenAMS lane '" + lane +
+                                                     "' is not a usable gcode parameter");
+        }
+        gcode = unload + " FPS=" + IMoonrakerAPI::gcode_param_value(lane) + "\n" + gcode;
+    }
     return AmsErrorHelper::success();
 }
 
@@ -692,9 +1068,8 @@ AmsError AmsBackendOpenAms::do_load_filament(int slot_index) {
 }
 
 AmsError AmsBackendOpenAms::do_unload_filament(int slot_index) {
-    (void)slot_index;
     std::string command;
-    int current_slot = -1;
+    int unload_slot = -1;
     {
         std::lock_guard<std::mutex> lock(mutex_);
         if (AmsError accepts = manager_accepts_locked(); !accepts.success()) {
@@ -702,17 +1077,33 @@ AmsError AmsBackendOpenAms::do_unload_filament(int slot_index) {
         }
         command = command_locked(kUnload);
         if (command.empty()) {
-            return AmsErrorHelper::not_supported("OpenAMS unload (install OPENAMS_UNLOAD from "
-                                                 "oams_macros.cfg)");
+            return AmsErrorHelper::not_supported("OpenAMS unload: this manager advertises no "
+                                                 "unload command");
         }
-        // The v1 unload takes no lane, so with two lanes loaded it cannot say
-        // which one it empties.
-        if (loaded_lane_count_locked() > 1) {
-            return AmsErrorHelper::not_supported("OpenAMS unload with several lanes loaded");
+        // The unload names the lane the loaded slot sits on, so it empties
+        // that lane even when several are loaded. A caller that names no
+        // loaded slot gets the one lane that is loaded, if there is only one.
+        unload_slot = slot_index;
+        std::string lane = loaded_lane_of_slot_locked(unload_slot);
+        if (lane.empty()) {
+            unload_slot = system_info_.current_slot;
+            lane = loaded_lane_of_slot_locked(unload_slot);
         }
-        current_slot = system_info_.current_slot;
+        if (lane.empty() && loaded_lane_count_locked() == 1) {
+            auto loaded = std::find_if(lane_loaded_slots_.begin(), lane_loaded_slots_.end(),
+                                       [](int s) { return s >= 0; });
+            if (loaded != lane_loaded_slots_.end()) {
+                unload_slot = *loaded;
+                lane = loaded_lane_of_slot_locked(unload_slot);
+            }
+        }
+        if (lane.empty() || !IMoonrakerAPI::is_safe_gcode_param(lane)) {
+            return AmsErrorHelper::invalid_parameter(
+                "OpenAMS unload: no loaded slot names a usable lane");
+        }
+        command += " FPS=" + IMoonrakerAPI::gcode_param_value(lane);
     }
-    return begin_operation(AmsAction::UNLOADING, current_slot, command, EVENT_UNLOAD_COMPLETE);
+    return begin_operation(AmsAction::UNLOADING, unload_slot, command, EVENT_UNLOAD_COMPLETE);
 }
 
 AmsError AmsBackendOpenAms::do_select_slot(int slot_index) {
@@ -734,24 +1125,8 @@ AmsError AmsBackendOpenAms::do_change_tool(int tool_number) {
         if (tool_number < 0 || group == groups_.end() || group->slots.empty()) {
             return AmsErrorHelper::tool_out_of_range(tool_number);
         }
-        // The loaded member first, so a tool change to the active tool stays
-        // on its spool; otherwise the first member with a spool ready to feed.
-        for (int member : group->slots) {
-            const SlotInfo* info = system_info_.get_slot_global(member);
-            if (info && info->status == SlotStatus::LOADED) {
-                slot = member;
-                break;
-            }
-        }
-        if (slot < 0) {
-            for (int member : group->slots) {
-                if (slot_loadable_locked(member)) {
-                    slot = member;
-                    break;
-                }
-            }
-        }
-        if (slot < 0) {
+        slot = serving_slot_locked(*group, system_info_);
+        if (!slot_loadable_locked(slot)) {
             return AmsErrorHelper::slot_not_available(lane_noun(), group->slots.front());
         }
         if (AmsError ready = load_gcode_locked(slot, gcode); !ready.success()) {
@@ -765,19 +1140,77 @@ AmsError AmsBackendOpenAms::do_change_tool(int tool_number) {
 // Recovery
 // ============================================================================
 
+std::string AmsBackendOpenAms::clear_script_locked() const {
+    std::string script;
+    for (std::size_t u = 0; u < unit_faults_.size() && u < unit_oams_idx_.size(); ++u) {
+        const bool clearable = std::any_of(unit_faults_[u].begin(), unit_faults_[u].end(),
+                                           [](const UnitFault& f) { return f.clearable; });
+        if (clearable && unit_oams_idx_[u] >= 0) {
+            script += "OAMS_CLEAR_FAULT OAMS=" + std::to_string(unit_oams_idx_[u]) + "\n";
+        }
+    }
+    const std::string reset = command_locked(kReset);
+    script += reset;
+    if (reset.empty() && !script.empty()) {
+        script.pop_back(); // the trailing newline
+    }
+    return script;
+}
+
+bool AmsBackendOpenAms::has_clearable_fault_locked() const {
+    return std::any_of(unit_faults_.begin(), unit_faults_.end(), [](const auto& faults) {
+        return std::any_of(faults.begin(), faults.end(),
+                           [](const UnitFault& f) { return f.clearable; });
+    });
+}
+
+std::string AmsBackendOpenAms::fault_detail_locked() const {
+    std::string detail;
+    for (std::size_t u = 0; u < unit_faults_.size() && u < system_info_.units.size(); ++u) {
+        for (const UnitFault& fault : unit_faults_[u]) {
+            if (!detail.empty()) {
+                detail += "; ";
+            }
+            const AmsUnit& unit = system_info_.units[u];
+            detail += (unit.display_name.empty() ? unit.name : unit.display_name) + ": " +
+                      describe_fault(fault.code, fault.text);
+        }
+    }
+    return detail;
+}
+
+std::optional<helix::ErrorEvent> AmsBackendOpenAms::current_error() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    const std::string detail = fault_detail_locked();
+    if (detail.empty()) {
+        return std::nullopt;
+    }
+    std::vector<helix::RecoveryAction> actions;
+    const std::string script = clear_script_locked();
+    if (!script.empty()) {
+        actions.push_back({lv_tr("Reset"), script, "openams::clear_fault", "primary"});
+    } else {
+        // A critical event with no action is a button-less dialog the user
+        // cannot close; an empty gcode is the dismiss spelling.
+        actions.push_back({lv_tr("OK"), "", "openams::dismiss", ""});
+    }
+    return helix::make_ams_fault_event(helix::ErrorSource::OPENAMS, lv_tr("Filament System Error"),
+                                       detail, std::move(actions));
+}
+
 AmsError AmsBackendOpenAms::reset() {
-    std::string command;
+    std::string script;
     {
         std::lock_guard<std::mutex> lock(mutex_);
         if (!api_supported_) {
             return AmsErrorHelper::not_supported("OpenAMS without its UI API");
         }
-        command = command_locked(kReset);
+        script = clear_script_locked();
     }
-    if (command.empty()) {
+    if (script.empty()) {
         return AmsErrorHelper::not_supported("OpenAMS reset");
     }
-    return execute_gcode(command);
+    return execute_gcode(script);
 }
 
 AmsError AmsBackendOpenAms::recover() {
@@ -812,18 +1245,94 @@ bool AmsBackendOpenAms::can_cancel_operation() const {
 
 AmsError AmsBackendOpenAms::clear_fault(int slot_index) {
     (void)slot_index;
+    std::string script;
     {
         std::lock_guard<std::mutex> lock(mutex_);
         failure_detail_.clear();
         system_info_.operation_detail.clear();
+        // Only a latched unit fault is cleared from here; lane errors stay
+        // with Reset.
+        if (has_clearable_fault_locked()) {
+            script = clear_script_locked();
+        }
     }
     emit_event(EVENT_STATE_CHANGED);
+    if (!script.empty()) {
+        return execute_gcode(script);
+    }
     return AmsErrorHelper::success();
 }
 
 // ============================================================================
 // Slot identity
 // ============================================================================
+
+// ============================================================================
+// Dryer
+// ============================================================================
+
+DryerInfo AmsBackendOpenAms::get_dryer_info(int unit) const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (unit < 0 || static_cast<std::size_t>(unit) >= unit_dryers_.size() ||
+        !unit_dryers_[static_cast<std::size_t>(unit)].offered) {
+        return DryerInfo{.supported = false};
+    }
+    return unit_dryers_[static_cast<std::size_t>(unit)].info;
+}
+
+AmsError AmsBackendOpenAms::start_drying(float temp_c, int duration_min, int fan_pct, int unit) {
+    (void)fan_pct;
+    std::string gcode;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        const auto u = static_cast<std::size_t>(unit);
+        if (unit < 0 || u >= unit_dryers_.size() || !unit_dryers_[u].offered ||
+            unit_oams_idx_.size() <= u || unit_oams_idx_[u] < 0) {
+            return AmsErrorHelper::not_supported("Dryer");
+        }
+        const UnitDryer& dryer = unit_dryers_[u];
+        if (!dryer.can_start) {
+            return AmsError(AmsResult::WRONG_STATE, "Dryer is not accepting a start",
+                            lv_tr("Dryer already running"),
+                            lv_tr("Stop the running cycle before starting another"));
+        }
+        if (dryer.requires_unloaded && u < system_info_.units.size()) {
+            for (const SlotInfo& slot : system_info_.units[u].slots) {
+                if (slot.status == SlotStatus::LOADED) {
+                    return AmsError(
+                        AmsResult::WRONG_STATE, "Dryer needs every bay of this unit unloaded",
+                        lv_tr("Unload this unit first"),
+                        lv_tr("This dryer cannot run while filament from the unit is loaded"));
+                }
+            }
+        }
+        const float target = dryer.info.clamp_temp(temp_c);
+        const int seconds = std::clamp(duration_min, 1, kMaxDryerSeconds / 60) * 60;
+        gcode = fmt::format("OAMS_DRYER_START OAMS={} TARGET={:g} DURATION={}", unit_oams_idx_[u],
+                            target, seconds);
+        requested_dry_min_[unit] = seconds / 60;
+    }
+    return execute_gcode(gcode);
+}
+
+AmsError AmsBackendOpenAms::stop_drying(int unit) {
+    std::string gcode;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        const auto u = static_cast<std::size_t>(unit);
+        if (unit < 0 || u >= unit_dryers_.size() || !unit_dryers_[u].offered ||
+            unit_oams_idx_.size() <= u || unit_oams_idx_[u] < 0) {
+            return AmsErrorHelper::not_supported("Dryer");
+        }
+        if (!unit_dryers_[u].can_stop) {
+            return AmsError(AmsResult::WRONG_STATE, "Dryer is not accepting a stop",
+                            lv_tr("Dryer is not running"), lv_tr("There is no cycle to stop"));
+        }
+        gcode = fmt::format("OAMS_DRYER_STOP OAMS={}", unit_oams_idx_[u]);
+        requested_dry_min_.erase(unit);
+    }
+    return execute_gcode(gcode);
+}
 
 AmsError AmsBackendOpenAms::apply_user_edit(int slot_index, const SlotInfo& info,
                                             const helix::ams::Observation& declared) {
@@ -905,6 +1414,26 @@ AmsError AmsBackendOpenAms::set_tool_mapping_impl(int tool_number, int slot_inde
 std::vector<int> AmsBackendOpenAms::get_tool_mapping() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return system_info_.tool_to_slot_map;
+}
+
+helix::printer::EndlessSpoolCapabilities AmsBackendOpenAms::get_endless_spool_capabilities() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    using namespace helix::printer;
+    // No groups reported yet (manager not ready, or API unsupported): the
+    // base defaults, Unsupported and nothing enabled.
+    if (!system_info_.endless_spool_groups_reported) {
+        return {};
+    }
+    return {.availability = EndlessSpoolAvailability::Available,
+            .enabled = system_info_.endless_spool_enabled ? EndlessSpoolEnabled::On
+                                                          : EndlessSpoolEnabled::Off,
+            .editability = EndlessSpoolEditability::ReadOnly,
+            .restriction = EndlessSpoolRestriction::FirmwareManaged};
+}
+
+helix::printer::EndlessSpoolConfig AmsBackendOpenAms::get_endless_spool_config() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return helix::printer::endless_spool_config_from_groups(system_info_.endless_spool_group_ids);
 }
 
 AmsError AmsBackendOpenAms::enable_bypass() {

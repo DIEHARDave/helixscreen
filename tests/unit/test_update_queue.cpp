@@ -114,6 +114,12 @@ namespace {
 struct FakePanel {
     int observed_value = -1;
 };
+
+// The demangled name of a std type depends on the standard library's inline
+// namespace: libc++ names it std::__1::X, libstdc++ names it std::X.
+bool logs_std_type(const helix::TextLogCapture& capture, const std::string& name) {
+    return capture.contains("std::" + name) || capture.contains("std::__1::" + name);
+}
 } // namespace
 
 TEST_CASE_METHOD(LVGLTestFixture, "observe<int> initial callback is buffered during ScopedFreeze",
@@ -299,7 +305,7 @@ TEST_CASE_METHOD(LVGLTestFixture,
 
     const auto logged = capture.get_captured();
     CHECK(capture.contains("[ThrowingProducer::boom]"));
-    CHECK(capture.contains("std::system_error"));
+    CHECK(logs_std_type(capture, "system_error"));
     CHECK(capture.contains("-1288124992"));
     CHECK(capture.contains("b338c5c0"));
     CHECK(capture.contains("Unknown error -1288124992"));

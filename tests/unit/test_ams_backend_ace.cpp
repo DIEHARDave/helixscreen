@@ -3186,3 +3186,153 @@ TEST_CASE("ACE endless spool matches the driver's ready and material rules",
         CHECK(endless_groups(helper).size() == 2);
     }
 }
+
+// ============================================================================
+// Per-slot park_state (prestonbrown/helixscreen#1678)
+//
+// The driver marks a slot "parked" after a sensor-verified unload or smart
+// load. An idle parked slot draws its strand staged at the hub; every in-flight
+// and sensor rule still outranks it.
+// ============================================================================
+
+namespace {
+
+json kobra_instance_with_park_states(const std::vector<std::optional<std::string>>& states) {
+    json instance = make_kobra_instance_object();
+    for (size_t i = 0; i < states.size(); ++i) {
+        if (states[i]) {
+            instance["slots"][i]["park_state"] = *states[i];
+        }
+    }
+    return instance;
+}
+
+json kobra_idle_manager() {
+    json mgr = make_kobra_manager_object(-1);
+    mgr["rdm_sensor"] = false;
+    mgr["toolhead_sensor"] = false;
+    return mgr;
+}
+
+} // namespace
+
+TEST_CASE("ACE idle parked slot draws staged at the hub", "[ams][ace][segment][park][1678]") {
+    AmsBackendAceTestHelper helper;
+    helper.set_running(true);
+    AceTestAccess::parse_ace(
+        helper, kobra_instance_with_park_states({"unknown", "parked", "unknown", std::nullopt}));
+    AceTestAccess::parse_ace(helper, kobra_idle_manager());
+
+    CHECK(helper.get_slot_filament_segment(1) == PathSegment::OUTPUT);
+    CHECK(helper.get_slot_filament_segment(0) == PathSegment::SPOOL);
+    // a missing field reads as unknown
+    CHECK(helper.get_slot_filament_segment(3) == PathSegment::SPOOL);
+    CHECK(helper.get_filament_segment() == PathSegment::NONE);
+
+    SECTION("an empty bay stays empty whatever the driver remembers") {
+        json instance = kobra_instance_with_park_states({"parked"});
+        instance["slots"][0]["status"] = "empty";
+        AceTestAccess::parse_ace(helper, instance);
+        CHECK(helper.get_slot_filament_segment(0) == PathSegment::NONE);
+    }
+
+    SECTION("a later frame that clears the park returns the slot to the spool") {
+        AceTestAccess::parse_ace(
+            helper, kobra_instance_with_park_states({"unknown", "unknown", "unknown", "unknown"}));
+        CHECK(helper.get_slot_filament_segment(1) == PathSegment::SPOOL);
+    }
+}
+
+TEST_CASE("ACE park_state absent, unknown or unrecognised draws at the spool",
+          "[ams][ace][segment][park][1678]") {
+    AmsBackendAceTestHelper helper;
+    helper.set_running(true);
+
+    SECTION("older driver: no field anywhere") {
+        AceTestAccess::parse_ace(helper, make_kobra_instance_object());
+    }
+    SECTION("restart: every slot unknown") {
+        AceTestAccess::parse_ace(
+            helper, kobra_instance_with_park_states({"unknown", "unknown", "unknown", "unknown"}));
+    }
+    SECTION("a string the backend does not know") {
+        AceTestAccess::parse_ace(
+            helper, kobra_instance_with_park_states({"retracted", "PARKED", "", "staged"}));
+    }
+    AceTestAccess::parse_ace(helper, kobra_idle_manager());
+
+    for (int slot = 0; slot < 4; ++slot) {
+        CHECK(helper.get_slot_filament_segment(slot) == PathSegment::SPOOL);
+    }
+}
+
+TEST_CASE("ACE loaded park_state defers to the seat and the sensors",
+          "[ams][ace][segment][park][1678]") {
+    AmsBackendAceTestHelper helper;
+    helper.set_running(true);
+    AceTestAccess::parse_ace(
+        helper, kobra_instance_with_park_states({"parked", "loaded", "parked", "parked"}));
+
+    SECTION("loaded with nothing seated and the path empty reads as today") {
+        AceTestAccess::parse_ace(helper, kobra_idle_manager());
+        CHECK(helper.get_slot_filament_segment(1) == PathSegment::SPOOL);
+    }
+
+    SECTION("a seated slot answers NOZZLE even though the driver says parked") {
+        json seated = make_kobra_manager_object(0);
+        AceTestAccess::parse_ace(helper, seated);
+        CHECK(helper.get_slot_filament_segment(0) == PathSegment::NOZZLE);
+        CHECK(helper.get_filament_segment() == PathSegment::NOZZLE);
+    }
+
+    SECTION("a seat with the path clear is not drawn at the hub by its park_state") {
+        json seated = make_kobra_manager_object(0);
+        seated["rdm_sensor"] = false;
+        seated["toolhead_sensor"] = false;
+        AceTestAccess::parse_ace(helper, seated);
+        CHECK(helper.get_filament_segment() == PathSegment::NONE);
+        CHECK(helper.get_slot_filament_segment(0) == PathSegment::SPOOL);
+    }
+}
+
+TEST_CASE("ACE parked slot that becomes a toolchange target follows the in-flight rules",
+          "[ams][ace][segment][park][1678]") {
+    AmsBackendAceTestHelper helper;
+    helper.set_running(true);
+    AceTestAccess::parse_ace(
+        helper, kobra_instance_with_park_states({"unknown", "parked", "parked", "unknown"}));
+    AceTestAccess::parse_ace(helper, kobra_idle_manager());
+    REQUIRE(helper.get_slot_filament_segment(1) == PathSegment::OUTPUT);
+    REQUIRE(helper.get_slot_filament_segment(2) == PathSegment::OUTPUT);
+
+    // The driver raises the swap toward T1 with nothing seated: a load.
+    notify_ace(helper, {{"target_index", 1}});
+    auto info = helper.get_test_system_info();
+    CHECK(info.action == AmsAction::LOADING);
+    CHECK(info.path_active_slot() == 1);
+    CHECK(helper.get_slot_filament_segment(1) == PathSegment::SPOOL);
+    CHECK(helper.get_slot_filament_segment(2) == PathSegment::SPOOL);
+    CHECK(helper.get_filament_segment() == PathSegment::NONE);
+
+    notify_ace(helper, {{"rdm_sensor", true}});
+    CHECK(helper.get_filament_segment() == PathSegment::OUTPUT);
+
+    notify_ace(helper, {{"toolhead_sensor", true}});
+    CHECK(helper.get_filament_segment() == PathSegment::TOOLHEAD);
+
+    notify_ace(helper, {{"current_index", 1}, {"target_index", -1}});
+    CHECK(helper.get_filament_segment() == PathSegment::NOZZLE);
+    CHECK(helper.get_slot_filament_segment(1) == PathSegment::NOZZLE);
+}
+
+TEST_CASE("ACE REST slots bridge carries park_state", "[ams][ace][segment][park][1678]") {
+    AmsBackendAceTestHelper helper;
+    json slots = make_kobra_slots_array();
+    slots[2]["park_state"] = "parked";
+    slots[3]["park_state"] = "loaded";
+    REQUIRE(helper.test_parse_slots_response({{"slots", slots}}));
+
+    CHECK(helper.get_slot_filament_segment(2) == PathSegment::OUTPUT);
+    CHECK(helper.get_slot_filament_segment(3) == PathSegment::SPOOL);
+    CHECK(helper.get_slot_filament_segment(0) == PathSegment::SPOOL);
+}

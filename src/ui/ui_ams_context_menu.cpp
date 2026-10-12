@@ -378,7 +378,9 @@ void AmsContextMenu::on_created(lv_obj_t* menu_obj) {
     // whose load DOES feed filament and keeps the default labels.
     const bool mounts_tool = backend_ && backend_->load_mounts_tool();
     lv_subject_set_int(&slot_mounts_tool_subject_, mounts_tool ? 1 : 0);
-    if (mounts_tool) {
+    // A changer with a firmware feed keeps Load as a feed; mounting is then the
+    // separate Select slot action.
+    if (mounts_tool && !backend_->load_feeds_filament()) {
         if (lv_obj_t* btn_load = helix::ui::find_required(menu_obj, "btn_load", "AmsContextMenu")) {
             ui_button_set_text(btn_load, lv_tr("Mount"));
         }
@@ -682,13 +684,16 @@ AmsContextMenu::decide_slot_ops(const AmsBackend* backend, int slot_index, bool 
     // the firmware's seated channel whether or not filament reached the head. A
     // cold-lane-eject lane - filament parked in the lane but NOT at the toolhead
     // - is a valid Load target and has to stay enabled.
-    d.can_load = decide_can_load(system_busy, d.toolhead_unload, d.presence, print_blocks_op);
+    d.can_load = decide_can_load(system_busy, d.toolhead_unload, d.presence, print_blocks_op,
+                                 backend && backend->load_feeds_filament());
     return d;
 }
 
 bool AmsContextMenu::decide_can_load(bool system_busy, bool toolhead_unload,
-                                     std::optional<bool> slot_has_filament, bool print_blocks_op) {
+                                     std::optional<bool> slot_has_filament, bool print_blocks_op,
+                                     bool load_feeds_filament) {
     helix::ui::OpButtonState state;
+    state.load_feeds_filament = load_feeds_filament;
     state.system_busy = system_busy;
     state.print_blocks_op = print_blocks_op;
     state.slot_is_loaded = toolhead_unload;

@@ -344,6 +344,7 @@ void SpoolmanManager::fetch_linked_slot(int backend_index, int slot_index, int s
                     // early-returns below would otherwise swallow it
                     // whenever the weight happens not to move, which
                     // is every poll once a spool settles (#1264).
+                    ams.refresh_slot_names();
                     ams.bump_slots_version();
                 }
                 AmsBackend* owner =
@@ -628,6 +629,8 @@ void SpoolmanManager::refresh_spoolman_weights() {
 
                     AmsState& state = AmsState::instance();
                     if (identity_is_new) {
+                        // One spool can be linked on a lane as well as here.
+                        state.refresh_slot_names();
                         state.bump_slots_version();
                     }
                     auto ext = state.raw_external_spool_info();

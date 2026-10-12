@@ -17,6 +17,7 @@ translations:
   '%d slots': '%d スロット'
   '%d toolheads': '%d ツールヘッド'
   '%d tools': '%d ツール'
+  '%d units': '%dユニット'
   '%d:%02d left': '残り %d:%02d'
   '%dh': '%d時間'
   '%dh %02dm': '%d時間%02d分'
@@ -73,6 +74,7 @@ translations:
   1 min ago: 1分前
   1 minute: 1分
   1 more tap to {} beta features: あと1回タップでベータ機能を{}
+  '1 unit': '1ユニット'
   1. Printer homes all axes (~1 minute): 1. プリンターが全軸の原点復帰を行います（約1分）
   1. Printer homes and probes the bed: 1. プリンターがホーミングしてベッドをプローブします
   1. Printer will home and probe each screw: 1. プリンターがホーミングして各ネジをプローブします
@@ -160,6 +162,7 @@ translations:
   Aborting AFC operation...: AFC操作を中止中...
   Aborting...: 中止中...
   About: バージョン情報
+  Above target: 目標より高い
   Accel to Decel: 加速から減速
   Acceleration to deceleration limit (mm/s²): 加速から減速の制限値 (mm/s²)
   Accelerometer: 加速度センサー
@@ -256,6 +259,7 @@ translations:
   Assisted Retract: 'アシスト付き引き戻し'
   Assisting: アシスト中
   At least {} lines in helixscreen.env were ignored: 'helixscreen.env の少なくとも{}行が無視されました'
+  At target: 目標どおり
   At {}°C, about {} minutes.: '{}°C で約{}分です。'
   Authentication failed: 認証に失敗しました
   Auto: 自動
@@ -334,6 +338,7 @@ translations:
   Bed temp must be 0-%d°C: ベッド温度は 0〜%d°C にしてください
   Bed warming timed out: ベッド加熱がタイムアウトしました
   Before starting: '開始前に'
+  Below target: 目標より低い
   Belt Tension: ベルトテンション
   Belt Tension Check: ベルトテンション確認
   Belt Tension needs a CoreXY printer. This one is {}.: 'ベルトテンションには CoreXY プリンターが必要です。このプリンターは{}です。'
@@ -914,6 +919,8 @@ translations:
 
   Dry spools on the heated bed: 加熱ベッドでスプールを乾燥
 
+  Dryer already running: '乾燥機はすでに動作中です'
+  Dryer is not running: '乾燥機は動作していません'
   Drying: 乾燥中
   Drying is already running: 乾燥はすでに実行中です
 
@@ -1028,6 +1035,7 @@ translations:
   'Error: Verification failed': 'エラー: 検証に失敗しました'
   'Error: Wrong architecture': 'エラー: アーキテクチャが正しくありません'
   'Error: `unzip` not installed': 'エラー: `unzip` がインストールされていません'
+  'Error: cannot write the service file in {}': 'エラー: {} にサービスファイルを書き込めません'
   Errors only: 'エラーのみ'
   Escalate to emergency stop if cancel doesn't respond: キャンセルが応答しない場合は緊急停止にエスカレート
   Escalation Timeout: エスカレーションタイムアウト
@@ -1298,6 +1306,8 @@ translations:
   'Fix: chown {} {}, then restart': '修正：chown {} {} を実行して再起動してください'
   FlashForge Adventurer 5M: FlashForge Adventurer 5M
   FlashForge Adventurer 5X: FlashForge Adventurer 5X
+  FlashForge Creator 5: FlashForge Creator 5
+  FlashForge Creator 5 Pro: FlashForge Creator 5 Pro
   FlashForge IFS: FlashForge IFS
   Flip: 反転
   Flip the spools: スプールを裏返す
@@ -1864,7 +1874,9 @@ translations:
   More points = more accurate, but takes longer.: ポイント数が多いほど精度が上がりますが、時間がかかります。
   Motion: 動作
   'Motion sensor stuck: filament is still at the feeder. Resume to feed it.': 'モーションセンサーが固着: フィラメントはまだフィーダーにあります。再開すると送り込みます。'
+  Motion timed out: 動作がタイムアウトしました
   Motor controller error: モーターコントローラーのエラー
+  Motor drive fault: モータードライバーの異常
   Motor parameter setup failed: モーターパラメーターの設定に失敗しました
   Motor speeds and acceleration: 'モーター速度と加速度'
   Motors: モーター
@@ -3011,6 +3023,7 @@ translations:
   ? "Stop printing \"{}\"?\n\nThis cannot be undone after 5 seconds."
   : "\"{}\" の印刷を停止しますか？\n\n5秒後は取り消せません。"
   Stop the check?: チェックを停止しますか？
+  Stop the running cycle before starting another: '新しく開始する前に、実行中のサイクルを停止してください'
   Stopped: 停止しました
   Stopped between Hub and Toolhead: ハブとツールヘッドの間で停止
   Stopped between Lane and Hub: レーンとハブの間で停止
@@ -3203,6 +3216,7 @@ translations:
   Theme changes apply after restart.: テーマの変更は再起動後に適用されます。
   Theme reset to defaults: テーマをデフォルトにリセットしました
   'Theme: ': 'テーマ: '
+  There is no cycle to stop: '停止するサイクルがありません'
   ? There is not enough free memory to run this test. Klipper's analysis would run out of memory and leave the printer stuck until it is power-cycled.
   : "このテストを実行するための空きメモリが足りません。Klipperの解析でメモリが不足し、電源を入れ直すまでプリンターが停止したままになります。"
   'These tools have a different filament grade loaded:': '次のツールには異なるフィラメントグレードが装填されています:'
@@ -3226,6 +3240,7 @@ translations:
   ? This device has very little RAM. Resonance calibration is memory-intensive and may cause a "Timer Too Close" error. Continue anyway?
   : このデバイスの RAM は非常に少ないです。共振キャリブレーションはメモリを大量に消費し、"Timer Too Close" エラーを引き起こす可能性があります。それでも続行しますか？
   This doesn't match the linked Spoolman spool. Add it as a new spool, or update the linked one to match?: リンクされた Spoolman のスプールと一致しません。新しいスプールとして追加しますか、それともリンク先を一致するよう更新しますか？
+  This dryer cannot run while filament from the unit is loaded: 'このユニットのフィラメントが装填されている間は乾燥機を動作できません'
   This feature requires different hardware or configuration: この機能には別のハードウェアまたは設定が必要です
   This filament system does not report buffer or flow data.: このフィラメントシステムはバッファーやフローのデータを報告しません。
   This file was sliced for {} but {} is loaded.: このファイルは {} 用にスライスされていますが、{} がロードされています。
@@ -3245,6 +3260,7 @@ translations:
   This printer cannot calibrate tool offsets automatically: このプリンターはツールオフセットを自動でキャリブレートできません
   This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman.: このプリンターのゲートは Spoolman から設定されます。HelixScreen 側のコピーはクリアしました。Spoolman でスプールを削除してください。
   This printer fills its gates from Spoolman. Make colour, material and spool changes in Spoolman.: このプリンターのゲートは Spoolman から設定されます。色・素材・スプールの変更は Spoolman で行ってください。
+  This printer has no automatic unload. Cut the filament at the head and pull it out by hand.: このプリンターには自動アンロード機能がありません。ヘッド部分でフィラメントを切り、手で引き抜いてください。
   ? This printer looks like a {} ({}% confidence), but it is set up as a {}. A wrong type applies incorrect pre-print options and presets.
   : このプリンターは {} のようです（信頼度 {}%）が、{} として設定されています。誤ったタイプでは不正確な印刷前オプションとプリセットが適用されます。
   This printer's network service controls the WiFi radio: このプリンターのネットワークサービスが WiFi 無線を制御しています
@@ -3417,6 +3433,7 @@ translations:
   Unload from toolhead first: '先にツールヘッドから取り出してください'
   Unload macro not configured: アンロードマクロが未設定です
   Unload the CFS filament before enabling bypass: 'バイパスを有効にする前に CFS のフィラメントを取り出してください'
+  Unload this unit first: '先にこのユニットを排出してください'
   Unload...: 排出...
   Unloaded: '排出済み'
   Unloading: アンロード中
@@ -3675,6 +3692,7 @@ translations:
   invalid: 不正
   just now: たった今
   last 60 s · LOOSE up, TIGHT down: '直近60秒 · 上が緩み、下が張り'
+  last 60 s · pressure, target dashed: 直近60秒 · 圧力、目標は破線
   layers: レイヤー
   left: 残り
   loaded: '装填済み'

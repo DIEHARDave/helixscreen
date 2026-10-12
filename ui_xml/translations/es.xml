@@ -15,6 +15,7 @@
   <translation tag="%d slots" es="%d ranuras"/>
   <translation tag="%d toolheads" es="%d cabezales"/>
   <translation tag="%d tools" es="%d herramientas"/>
+  <translation tag="%d units" es="%d unidades"/>
   <translation tag="%d-%d" es="%d-%d"/>
   <translation tag="%d-%d°C" es="%d-%d°C"/>
   <translation tag="%d:%02d left" es="quedan %d:%02d"/>
@@ -72,6 +73,7 @@
   <translation tag="1 min ago" es="hace 1 min"/>
   <translation tag="1 minute" es="1 minuto"/>
   <translation tag="1 more tap to {} beta features" es="1 toque más para {} funciones beta"/>
+  <translation tag="1 unit" es="1 unidad"/>
   <translation tag="1. Printer homes all axes (~1 minute)" es="1. La impresora referencia todos los ejes (~1 minuto)"/>
   <translation tag="1. Printer homes and probes the bed" es="1. La impresora hace origen y sondea la cama"/>
   <translation tag="1. Printer will home and probe each screw" es="1. La impresora hará origen y sondeará cada tornillo"/>
@@ -159,6 +161,7 @@
   <translation tag="Aborting AFC operation..." es="Cancelando operación AFC..."/>
   <translation tag="Aborting..." es="Cancelando..."/>
   <translation tag="About" es="Acerca de"/>
+  <translation tag="Above target" es="Por encima del objetivo"/>
   <translation tag="Accel to Decel" es="Acel a Desacel"/>
   <translation tag="Acceleration to deceleration limit (mm/s²)" es="Límite de aceleración a desaceleración (mm/s²)"/>
   <translation tag="Accelerometer" es="Acelerómetro"/>
@@ -252,6 +255,7 @@
   <translation tag="Assisted Retract" es="Retracción asistida"/>
   <translation tag="Assisting" es="Asistiendo"/>
   <translation tag="At least {} lines in helixscreen.env were ignored" es="Al menos {} líneas de helixscreen.env fueron ignoradas"/>
+  <translation tag="At target" es="En el objetivo"/>
   <translation tag="At {}°C, about {} minutes." es="A {}°C, unos {} minutos."/>
   <translation tag="Authentication failed" es="Error de autenticación"/>
   <translation tag="Auto" es="Automático"/>
@@ -329,6 +333,7 @@
   <translation tag="Bed temp must be 0-%d°C" es="La temperatura de la cama debe ser 0-%d°C"/>
   <translation tag="Bed warming timed out" es="Calentamiento de cama — tiempo de espera agotado"/>
   <translation tag="Before starting" es="Antes de empezar"/>
+  <translation tag="Below target" es="Por debajo del objetivo"/>
   <translation tag="Belt Tension" es="Tensión de correa"/>
   <translation tag="Belt Tension Check" es="Verificación de tensión de correa"/>
   <translation tag="Belt Tension needs a CoreXY printer. This one is {}." es="La tensión de correa necesita una impresora CoreXY. Esta es {}."/>
@@ -885,6 +890,8 @@
   <translation tag="Dry Filament" es="Secar filamento"/>
   <translation tag="Dry Filament on the Bed" es="Secar filamento en la cama"/>
   <translation tag="Dry spools on the heated bed" es="Secar bobinas en la cama caliente"/>
+  <translation tag="Dryer already running" es="El secador ya está en marcha"/>
+  <translation tag="Dryer is not running" es="El secador no está en marcha"/>
   <translation tag="Drying" es="Secando"/>
   <translation tag="Drying is already running" es="El secado ya está en marcha"/>
   <translation tag="Drying on the bed" es="Secando en la cama"/>
@@ -994,6 +1001,7 @@
   <translation tag="Error: Verification failed" es="Error: Verificación fallida"/>
   <translation tag="Error: Wrong architecture" es="Error: Arquitectura incorrecta"/>
   <translation tag="Error: `unzip` not installed" es="Error: `unzip` no está instalado"/>
+  <translation tag="Error: cannot write the service file in {}" es="Error: no se puede escribir el archivo de servicio en {}"/>
   <translation tag="Errors only" es="Solo errores"/>
   <translation tag="Escalate to emergency stop if cancel doesn&apos;t respond" es="Escalar a parada de emergencia si cancelar no responde"/>
   <translation tag="Escalation Timeout" es="Tiempo de Espera de Escalado"/>
@@ -1256,6 +1264,8 @@
   <translation tag="Fix: chown {} {}, then restart" es="Solución: chown {} {}, luego reinicie"/>
   <translation tag="FlashForge Adventurer 5M" es="FlashForge Adventurer 5M"/>
   <translation tag="FlashForge Adventurer 5X" es="FlashForge Adventurer 5X"/>
+  <translation tag="FlashForge Creator 5" es="FlashForge Creator 5"/>
+  <translation tag="FlashForge Creator 5 Pro" es="FlashForge Creator 5 Pro"/>
   <translation tag="FlashForge IFS" es="FlashForge IFS"/>
   <translation tag="Flip" es="Voltear"/>
   <translation tag="Flip the spools" es="Dar la vuelta a las bobinas"/>
@@ -1798,7 +1808,9 @@
   <translation tag="More points = more accurate, but takes longer." es="Más puntos = más preciso, pero tarda más."/>
   <translation tag="Motion" es="Movimiento"/>
   <translation tag="Motion sensor stuck: filament is still at the feeder. Resume to feed it." es="Sensor de movimiento atascado: el filamento sigue en el alimentador. Reanuda para alimentarlo."/>
+  <translation tag="Motion timed out" es="Tiempo de espera del movimiento agotado"/>
   <translation tag="Motor controller error" es="Error del controlador del motor"/>
+  <translation tag="Motor drive fault" es="Fallo del controlador del motor"/>
   <translation tag="Motor parameter setup failed" es="Falló la configuración de los parámetros del motor"/>
   <translation tag="Motor speeds and acceleration" es="Velocidades del motor y aceleración"/>
   <translation tag="Motors" es="Motores"/>
@@ -2893,6 +2905,7 @@
   <translation tag="Stop failed" es="Detención fallida"/>
   <translation tag="Stop printing &quot;{}&quot;?&#10;&#10;This cannot be undone after 5 seconds." es="¿Detener la impresión de &quot;{}&quot;?&#10;&#10;Esto no se puede deshacer después de 5 segundos."/>
   <translation tag="Stop the check?" es="¿Detener la comprobación?"/>
+  <translation tag="Stop the running cycle before starting another" es="Detenga el ciclo en curso antes de iniciar otro"/>
   <translation tag="Stopped" es="Detenido"/>
   <translation tag="Stopped between Hub and Toolhead" es="Detenido entre el Hub y el cabezal"/>
   <translation tag="Stopped between Lane and Hub" es="Detenido entre el carril y el Hub"/>
@@ -3064,6 +3077,7 @@
   <translation tag="Theme changes apply after restart." es="Los cambios de tema se aplican después de reiniciar."/>
   <translation tag="Theme reset to defaults" es="Tema restablecido a valores predeterminados"/>
   <translation tag="Theme: " es="Tema: "/>
+  <translation tag="There is no cycle to stop" es="No hay ningún ciclo que detener"/>
   <translation tag="There is not enough free memory to run this test. Klipper&apos;s analysis would run out of memory and leave the printer stuck until it is power-cycled." es="No hay suficiente memoria libre para esta prueba. El análisis de Klipper se quedaría sin memoria y dejaría la impresora bloqueada hasta apagarla y encenderla."/>
   <translation tag="These tools have a different filament grade loaded:" es="Estas herramientas tienen cargado un filamento de grado diferente:"/>
   <translation tag="These tools have incompatible materials loaded:" es="Estas herramientas tienen materiales incompatibles cargados:"/>
@@ -3082,6 +3096,7 @@
   <translation tag="This device has only {} MB of RAM. Resonance calibration is memory-intensive and can make the printer firmware report a &quot;Timer Too Close&quot; error or restart mid-test. Continue anyway?" es="Este dispositivo solo tiene {} MB de RAM. La calibración de resonancia consume mucha memoria y puede hacer que el firmware de la impresora informe un error &quot;Timer Too Close&quot; o se reinicie a mitad de la prueba. ¿Continuar de todos modos?"/>
   <translation tag="This device has very little RAM. Resonance calibration is memory-intensive and may cause a &quot;Timer Too Close&quot; error. Continue anyway?" es="Este dispositivo tiene muy poca RAM. La calibración de resonancia consume mucha memoria y puede causar un error &quot;Timer Too Close&quot;. ¿Continuar de todos modos?"/>
   <translation tag="This doesn&apos;t match the linked Spoolman spool. Add it as a new spool, or update the linked one to match?" es="Esto no coincide con la bobina de Spoolman vinculada. ¿Añadirla como bobina nueva o actualizar la vinculada para que coincida?"/>
+  <translation tag="This dryer cannot run while filament from the unit is loaded" es="Este secador no puede funcionar mientras haya filamento de la unidad cargado"/>
   <translation tag="This feature requires different hardware or configuration" es="Esta función requiere otro hardware u otra configuración"/>
   <translation tag="This filament system does not report buffer or flow data." es="Este sistema de filamento no informa datos de búfer ni de flujo."/>
   <translation tag="This file was sliced for {} but {} is loaded." es="Este archivo fue laminado para {} pero se ha cargado {}."/>
@@ -3099,6 +3114,7 @@
   <translation tag="This printer cannot calibrate tool offsets automatically" es="Esta impresora no puede calibrar los offsets de herramienta automáticamente"/>
   <translation tag="This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman." es="Esta impresora llena sus gates desde Spoolman. HelixScreen borró su propia copia; quita la bobina en Spoolman."/>
   <translation tag="This printer fills its gates from Spoolman. Make colour, material and spool changes in Spoolman." es="Esta impresora llena sus gates desde Spoolman. Haz los cambios de color, material y bobina en Spoolman."/>
+  <translation tag="This printer has no automatic unload. Cut the filament at the head and pull it out by hand." es="Esta impresora no tiene descarga automática. Corte el filamento en el cabezal y sáquelo a mano."/>
   <translation tag="This printer looks like a {} ({}% confidence), but it is set up as a {}. A wrong type applies incorrect pre-print options and presets." es="Esta impresora parece una {} ({}% de confianza), pero está configurada como {}. Un tipo erróneo aplica opciones y preajustes de preimpresión incorrectos."/>
   <translation tag="This printer&apos;s network service controls the WiFi radio" es="El servicio de red de esta impresora controla la radio WiFi"/>
   <translation tag="This printer&apos;s network service manages saved WiFi networks" es="El servicio de red de esta impresora gestiona las redes WiFi guardadas"/>
@@ -3258,6 +3274,7 @@
   <translation tag="Unload from toolhead first" es="Descargue primero desde el cabezal"/>
   <translation tag="Unload macro not configured" es="Macro de descarga no configurado"/>
   <translation tag="Unload the CFS filament before enabling bypass" es="Descargue el filamento del CFS antes de activar el bypass"/>
+  <translation tag="Unload this unit first" es="Descargue primero esta unidad"/>
   <translation tag="Unload..." es="Descargar..."/>
   <translation tag="Unloaded" es="Descargado"/>
   <translation tag="Unloading" es="Descargando"/>
@@ -3510,6 +3527,7 @@
   <translation tag="invalid" es="no válido"/>
   <translation tag="just now" es="justo ahora"/>
   <translation tag="last 60 s · LOOSE up, TIGHT down" es="últimos 60 s · SUELTO arriba, TENSO abajo"/>
+  <translation tag="last 60 s · pressure, target dashed" es="últimos 60 s · presión, objetivo discontinuo"/>
   <translation tag="layers" es="capas"/>
   <translation tag="left" es="restante"/>
   <translation tag="loaded" es="cargado"/>

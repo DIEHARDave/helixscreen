@@ -73,6 +73,7 @@ namespace helix {
  */
 struct BackendTraits {
     bool load_mounts_tool = false;
+    bool load_feeds_filament = false;
     bool tracks_consumption_natively = false;
     bool hub_on_toolhead = false;
     bool has_per_slot_loaded_authority = false;
@@ -635,6 +636,20 @@ class AmsBackend {
      */
     [[nodiscard]] bool load_mounts_tool() const {
         return traits().load_mounts_tool;
+    }
+
+    /**
+     * @brief True when Load feeds filament into a head on a machine whose heads are
+     *        otherwise mounted and unmounted.
+     *
+     * A changer whose firmware offers a feed command (see
+     * toolchanger_addon::ToolFeed) answers Load with that feed, and mounting a
+     * tool becomes the separate select-slot action. Such a machine cannot tell
+     * an inserted strand from a fed one, so a head that reads loaded still
+     * accepts Load, and the firmware heats the right head itself.
+     */
+    [[nodiscard]] bool load_feeds_filament() const {
+        return traits().load_feeds_filament;
     }
 
     /**
@@ -2794,6 +2809,21 @@ class AmsBackend {
      */
     [[nodiscard]] virtual helix::ui::LaneNoun tool_noun() const {
         return helix::ui::LaneNoun::Tool;
+    }
+
+    /**
+     * @brief Whether the machine has no automatic filament unload.
+     *
+     * True when removing filament is the user's job: they cut it at the head and
+     * pull it out by hand, and nothing the backend can send changes that. A UI
+     * surface whose intent is "take the filament out" asks this first and, when
+     * true, tells the user instead of heating or dispatching. That is distinct
+     * from unload_filament(), which may still mean something else on the same
+     * backend (a tool changer's unload is an unmount, and stays available as one).
+     * A discovery-dependent answer, so a virtual rather than a BackendTraits field.
+     */
+    [[nodiscard]] virtual bool unload_is_manual() const {
+        return false;
     }
 
     /**

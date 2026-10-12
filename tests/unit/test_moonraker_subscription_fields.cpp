@@ -871,8 +871,8 @@ TEST_CASE("Subscription: OpenAMS subscribes every oams_manager field its backend
             json{{"oams_manager", {{"api_version", 1}, {"schema", "openams.manager"}}}});
         json subs = fx.build(hw);
 
-        for (const char* field :
-             {"api_version", "schema", "ready", "commands", "lanes", "units", "groups"}) {
+        for (const char* field : {"api_version", "schema", "ready", "commands", "lanes", "units",
+                                  "groups", "devices", "lanes_by_fps"}) {
             INFO(field);
             CHECK(has_field(subs, "oams_manager", field));
         }

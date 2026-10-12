@@ -20,10 +20,13 @@ ENOEXEC (see "NaN encoding").
 **Status: the toolchanger is implemented and verified against the `creator5_zmod` mock**:
 the four heads are driven by the tool changer backend through Z-Mod's own objects, with
 mount/unmount and per-head colour and material (see "Z-Mod tool changer support" below).
-No toolchanger behaviour has run on a real Creator 5 Pro: hardware verification is pending
-[ghzserg/z_c5pro#1](https://github.com/ghzserg/z_c5pro/pull/1)
-(prestonbrown/helixscreen#1714), the same upstream export that gates boot-time tool state
-and write-through; the section below names it.
+A field bundle from a real Creator 5 Pro on Z-Mod 1.7.4 (`5WSPTZBL`, Oct 2026) confirms the
+wire contract end to end: `zmod_color.get_status()` publishes `slots` (with per-head
+`hasFilament`), `palette` and a live `active_tool_id` — the export
+[ghzserg/z_c5pro#1](https://github.com/ghzserg/z_c5pro/pull/1) was upstreamed for, so the
+#1714 boot-time and write-through dependencies are satisfied on zmod ≥ 1.7.4. Still open on
+hardware: the swap-marker text the step bar parses (below) — if a build echoes different
+wording, the bar stays silently suppressed until the parser learns it.
 
 ## Hardware (from the stock `firmwareExe` ELF and the device rootfs)
 
@@ -137,9 +140,11 @@ with `ff_*` printer objects) and Z-Mod (`ghzserg/z_c5pro`, no `ff_*` objects but
 `gcode_button extruder_grab1..4`). The family fingerprints are shared across both
 entries: `ff_toolchange` names the K4C5 firmware, `gcode_button extruder_grab1` names
 the changer on either firmware, and `zmod_color` is corroborating-only because AD5X
-Z-Mod carries it too. The disambiguation against the AD5X runs both ways: both Creator 5
+Z-Mod carries it too. Z-Mod 1.7.4+ adds a second corroborator, the `zmod_afclite`
+object (the AFC shim's own extra, field-confirmed in bundle `5WSPTZBL`), which the AD5X
+never carries. The disambiguation against the AD5X runs both ways: both Creator 5
 entries exclude on `zmod_ifs`/`SET_EXTRUDER_SLOT` (AD5X IFS), and the AD5X entry
-excludes on `gcode_button extruder_grab1`. The directional pairs are pinned in
+excludes on `gcode_button extruder_grab1` and `zmod_afclite`. The directional pairs are pinned in
 `tests/unit/test_printer_detector.cpp` (`[creator5]`).
 
 Preset macro buttons for macros a firmware does not ship (e.g. `TOOLCHANGE_PARK` on Z-Mod)
@@ -157,21 +162,86 @@ SILENT=1`, the colour snapped to Z-Mod's palette first. The full contract, inclu
 sensor-error and write-through rules, lives in
 [`FILAMENT_BACKEND_TOOLCHANGER.md`](../FILAMENT_BACKEND_TOOLCHANGER.md#z-mod-on-the-creator-5-pro).
 
+**Z-Mod 1.7.4's AFC shim must not win the machine.** The firmware publishes an
+AFC-shaped surface (`zmod_afclite` registering `AFC`, `AFC_lane E0..E3`, `AFC_unit C5`) so
+Fluidd and Mainsail draw their AFC panel for the C5's heads. Discovery yields that claim to
+the tool changer (`PrinterDiscovery::parse_objects`, the carve-out beside the PAXX AFC-Lite
+rule): the shim reports no extruders and no hubs, so an AFC backend would draw a hub
+topology for four independent heads and send Happy Hare macros the firmware does not have.
+The `zmod_afclite` object also corroborates both Creator 5 database entries and is an
+exclude on the AD5X entry.
+
+**The swap routine and its step bar.** A tool change cuts the filament at a station and
+wipes the nozzle on rubber instead of purging bulk filament (FlashForge's own wiki: the
+cutter "eliminates purging during filament switches"; a small prime tower still catches
+ooze). Z-Mod's per-material numbers live in zmod's /mod_data/filament.json: `temp` /
+`temp_manual` / `temp_wait` (load-heat / manual-purge / idle), `filament_drop_length`
+(50 mm purge into the trash), `filament_tube_length` (295 mm feed), with the trash bin at
+`trash 275/254/10` and the rubber wiper at `wiper 266.5/13.8/1`. Grab and unload retry up
+to 5 times (`[zmod_color] retry:`). The macros narrate the swap through respond_info lines
+— `Grab attempt for T<n>: i of N...`, `Unload attempt for T<n>: ...`, and the per-head
+`X/Y/Z-Offset: ... _T_IN` / `_T_OUT` echoes — and the tool changer backend parses exactly
+those markers (`toolchanger_addon::parse_zmod_marker`) to drive the operation step bar:
+a mount is [Pick up tool], an unmount is [Dock tool], a change is [Dock tool, Pick up
+tool]. The marker text is field-verified (bundle `5WSPTZBL`); a firmware build that stops
+echoing it degrades to no step bar, never a wrong one.
+
+Z-Mod's C5 "endless spool mode" (on runout, switch to the next head whose colour AND type
+both match) is firmware-managed and always on; the backend reports it the same way the
+AD5X IFS backend reports stock zMod (Available / FirmwareManaged / ReadOnly, provider
+"zmod").
+
+**Beyond the swap itself, three more Z-Mod surfaces are consumed** (details in the
+toolchanger backend doc's Z-Mod section): `T_INFO` — the firmware's read-only tool-state
+query — is sent at connect and after `FIRMWARE_RESTART`, and its answer clears the stale
+boot carriage reading on firmware older than the `zmod_color` export; the afclite shim's
+fault flag (`error_state` + `message`) surfaces as this backend's own fault dialog, while
+its activity word and lane map are logged for field visibility and acted on for nothing
+(vocabulary unverified — a debug bundle captured during a real load shows both); and
+`zmod_color.slots[].hasFilament` stamps a docked head without filament as Empty.
+
+**Load feeds through the afclite shim's `CHANGE_TOOL`.** `LOAD_FILAMENT`,
+`UNLOAD_FILAMENT`, `LOAD_MATERIAL`, `TOOL_UNLOAD` and `LANE_UNLOAD` all exist on this
+firmware and all move hardware (heat, feed, cut, wipe), and none of them is called. A
+contributor's on-device test (prestonbrown/helixscreen#1779, Z-Mod 1.7.4) showed that
+`CHANGE_TOOL LANE=E<n>` is Z-Mod's own Load for head `n`: the afclite shim heats only the
+selected head and feeds it. With `zmod_afclite` present, the UI's Load for head `n` sends
+exactly that command and nothing else. `_T_IN_ZCOLOR` is not called directly: it is defined
+in the unpublished `zmod_color` plugin, the C5 configs call it with a 1-based `SLOT`
+(ghzserg/z_c5pro `translate/en/c5pro_display_off.cfg`, `_T_USE`), and the AD5X
+zmod_color.py plugin (its cmd_IN_ZCOLOR handler) reads `NAPR=0` as load, so a guessed `SLOT` or `NAPR` could
+feed the wrong head. The shim owns that mapping. Head `n` maps to the shim's lane `E<n>` by
+name only; no published field ties a lane to a head, and a lane the shim did not publish
+gets no command. Without the shim (Z-Mod older than 1.7.4) Load stays a tool mount.
+
+Load stays enabled while a head reads loaded, since the printer cannot tell an inserted
+strand from a fed one, and the UI does not preheat (the shim heats the head it feeds).
+Mounting a head is the slot menu's **Select slot**, which sends `_T_IN T=<n>`.
+
+**There is no automatic unload on the Creator 5.** The user cuts the filament at the head
+and pulls it out by hand; the firmware's `TOOL_UNLOAD` says so only after heating. The
+Z-Mod row answers `AmsBackend::unload_is_manual()` true, so the filament panel and AMS
+sidebar Unload controls show a notice up front and send and heat nothing. Unmount in the
+slot menu remains a `_T_OUT` tool park.
+
 One upstream dependency: [ghzserg/z_c5pro#1](https://github.com/ghzserg/z_c5pro/pull/1)
 adds `slots`, `palette` and a live `active_tool_id` to `zmod_color.get_status()`. Without
 it a Z-Mod C5 boots showing a dock sensor error until the first `_T_IN` / `_T_OUT` /
 `GET_ZCOLOR`, and colour or material edits stay local to HelixScreen instead of reaching
-filament.json on the printer. Hardware verification of the Z-Mod behaviour once that export lands is
-open (prestonbrown/helixscreen#1714).
+filament.json on the printer. **zmod ≥ 1.7.4 ships the export** (field-confirmed in bundle
+`5WSPTZBL`); older Z-Mod builds keep the degraded behaviour. Hardware verification of the
+step-bar markers on a live swap remains open (prestonbrown/helixscreen#1714).
 
 ### The `creator5_zmod` mock persona
 
 `HELIX_MOCK_PRINTER=creator5_zmod ./build/bin/helix-screen --test` runs the real
 `AmsBackendToolChanger` against mock Z-Mod hardware: the persona publishes `zmod`,
-`zmod_color`, `save_variables` and the 1-based `gcode_button extruder_pos1..4` /
-`extruder_grab1..4`, answers `_T_IN` / `_T_OUT` / `CHANGE_ZCOLOR`, and implies
-`--real-ams` so the mock AMS gate does not stand a mock backend in front of it. The
-`creator5` persona models the Reforge side only. Details in
+`zmod_color`, `save_variables`, the 1-based `gcode_button extruder_pos1..4` /
+`extruder_grab1..4`, Z-Mod 1.7.4's afclite shim objects (`zmod_afclite`, `AFC`,
+`AFC_lane E0..E3`, `AFC_unit C5`) and the `fd_ex`/`fm_ex` sensor pairs, answers
+`_T_IN` / `_T_OUT` / `CHANGE_ZCOLOR` — narrating the swap markers the step bar parses —
+and implies `--real-ams` so the mock AMS gate does not stand a mock backend in front of
+it. The `creator5` persona models the Reforge side only. Details in
 [`MOCK_ENVIRONMENT_VARIABLES.md`](../MOCK_ENVIRONMENT_VARIABLES.md).
 
 ## On-device bring-up

@@ -134,21 +134,24 @@ class AmsState {
      * Systems with more slots will only have subjects for the first MAX_SLOTS.
      */
     static constexpr int MAX_SLOTS = 16;
+    /// Bytes held per slot-name subject, NUL included. Names longer than a
+    /// card can show are cut on a codepoint boundary; the label ellipsizes.
+    static constexpr size_t SLOT_NAME_BUF_SIZE = 64;
 
     /**
      * @brief Maximum number of AMS units supported for per-unit subjects
      *
      * Per-unit subjects (temperature, humidity, environment indicator) are
      * allocated statically, one set per unit, and registered under
-     * ams_unit_<i>_* / ams_env_ind_<i>_* names. Eight matches the widest rig the
-     * AMS system-path canvas draws, so every unit the path shows also has a
-     * badge to bind.
+     * ams_unit_<i>_* / ams_env_ind_<i>_* names. The cap is AMS_MAX_UNITS, the same
+     * constant that bounds the AMS system-path canvas, so every unit the path
+     * shows also has a badge to bind.
      *
      * A unit past the cap still gets a card; its environment indicator binds the
      * always-off placeholders below instead of names nothing registered — see
      * env_indicator_subject_names().
      */
-    static constexpr int MAX_UNITS = 8;
+    static constexpr int MAX_UNITS = AMS_MAX_UNITS;
 
     /// Always-0 int subject bound by unit cards past MAX_UNITS. Keeps the
     /// environment badge hidden rather than naming a subject that does not exist
@@ -193,8 +196,46 @@ class AmsState {
     [[nodiscard]] static std::string unit_disconnected_subject_name(int unit_index);
 
     /// Name the unit a per-unit view is showing (-1: none), so
-    /// `ams_viewed_unit_disconnected` describes it. Main thread only.
+    /// `ams_viewed_unit_disconnected` describes it. Works for any unit index,
+    /// not only those below MAX_UNITS. Main thread only.
     void set_viewed_unit(int unit_index);
+
+    /// @name Unit paging
+    /// What the overview's unit view shows: which page of how many, and the unit on it.
+    /// Published for its XML as ams_unit_view_active (1 while the unit view is on screen),
+    /// ams_page_count, ams_page_current (0-based), ams_page_has_prev / ams_page_has_next
+    /// (1 only when a neighboring page exists), ams_page_unit_name, ams_page_unit_logo and
+    /// ams_page_has_logo (1 while the shown unit has a logo; XML hides the image on 0).
+    /// Main thread only.
+    /// @{
+    /// @p current is clamped into [0, count - 1]; with no pages everything reads 0.
+    void set_unit_page(int count, int current);
+    /// The shown unit's display name and logo image path (null or empty: no logo).
+    void set_unit_page_header(const std::string& name, const char* logo_path);
+    /// Whether the overview shows its unit view instead of its unit cards.
+    void set_unit_view_active(bool active);
+    lv_subject_t* get_ams_unit_view_active_subject() {
+        return &ams_unit_view_active_;
+    }
+    lv_subject_t* get_ams_page_count_subject() {
+        return &ams_page_count_;
+    }
+    lv_subject_t* get_ams_page_current_subject() {
+        return &ams_page_current_;
+    }
+    lv_subject_t* get_ams_page_has_prev_subject() {
+        return &ams_page_has_prev_;
+    }
+    lv_subject_t* get_ams_page_has_next_subject() {
+        return &ams_page_has_next_;
+    }
+    lv_subject_t* get_ams_page_unit_name_subject() {
+        return &ams_page_unit_name_;
+    }
+    lv_subject_t* get_ams_page_has_logo_subject() {
+        return &ams_page_has_logo_;
+    }
+    /// @}
 
     /// @name Dryer Constants
     /// @{
@@ -1068,6 +1109,18 @@ class AmsState {
     lv_subject_t* get_buffer_status_subject() {
         return &buffer_status_;
     }
+    /// BufferGauge of the reading: 0 two-ended bias, 1 one-sided fill.
+    lv_subject_t* get_buffer_gauge_subject() {
+        return &buffer_gauge_;
+    }
+    /// Pressure 0..100 of a fill reading; 0 for a bias reading.
+    lv_subject_t* get_buffer_value_pct_subject() {
+        return &buffer_value_pct_;
+    }
+    /// Set point 0..100 of a fill reading; -1 without one or for a bias reading.
+    lv_subject_t* get_buffer_target_pct_subject() {
+        return &buffer_target_pct_;
+    }
     lv_subject_t* get_buffer_label_subject() {
         return &buffer_label_;
     }
@@ -1076,6 +1129,9 @@ class AmsState {
     }
     lv_subject_t* get_buffer_short_text_subject() {
         return &buffer_short_text_;
+    }
+    lv_subject_t* get_buffer_lean_text_subject() {
+        return &buffer_lean_text_;
     }
     lv_subject_t* get_buffer_target_text_subject() {
         return &buffer_target_text_;
@@ -1360,6 +1416,42 @@ class AmsState {
                                                           SubjectLifetime& lifetime);
 
     /**
+     * @brief Get per-slot spool-name subject (primary backend's flat array).
+     *
+     * Holds the name the slot card shows above its material
+     * (helix::slot_card_name(): spool name, then the cached Spoolman filament
+     * name, then the colour name), or "" when nothing names the spool. Written
+     * wherever the material subject is, and re-derived by refresh_slot_names()
+     * when a Spoolman identity arrives.
+     *
+     * @param slot_index Slot index (0 to MAX_SLOTS-1)
+     * @return Subject pointer or nullptr if out of range
+     */
+    [[nodiscard]] lv_subject_t* get_slot_name_subject(int slot_index);
+
+    /**
+     * @brief Get per-slot spool-name subject for a specific backend and slot
+     * @see get_slot_material_subject(int, int)
+     */
+    [[nodiscard]] lv_subject_t* get_slot_name_subject(int backend_index, int slot_index);
+
+    /**
+     * @brief Token'd overload of get_slot_name_subject for observer safety.
+     * @see get_slot_color_subject(int, int, SubjectLifetime&)
+     */
+    [[nodiscard]] lv_subject_t* get_slot_name_subject(int backend_index, int slot_index,
+                                                      SubjectLifetime& lifetime);
+
+    /**
+     * @brief Re-derive every backend's per-slot name subjects
+     *
+     * A Spoolman identity changes what a slot is called without changing the
+     * slot, so no backend event carries it. SpoolmanManager calls this when it
+     * caches a new identity. Main thread only.
+     */
+    void refresh_slot_names();
+
+    /**
      * @brief Get per-slot fill-level subject (primary backend).
      *
      * Holds the fill percent as an int using the SlotInfo::display_fill_pct
@@ -1489,6 +1581,15 @@ class AmsState {
     }
     [[nodiscard]] lv_subject_t* get_env_ind_detail_temp_text_subject() {
         return &env_ind_detail_temp_text_;
+    }
+    [[nodiscard]] lv_subject_t* get_env_ind_detail_humidity_text_subject() {
+        return &env_ind_detail_humidity_text_;
+    }
+
+    /// Bumps whenever the set of units with a running dryer changes. The unit view's
+    /// off-page stubs read it: a unit on another page has no subject of its own to watch.
+    [[nodiscard]] lv_subject_t* get_units_dryer_version_subject() {
+        return &ams_units_dryer_version_;
     }
 
     // ========================================================================
@@ -1867,6 +1968,11 @@ class AmsState {
      */
     bool write_slot_subjects(AmsBackend& backend, int slot_index, const SlotInfo& slot);
 
+    /// Publish @p slot's card name (helix::slot_card_name() with the cached
+    /// Spoolman identity) into @p subject, cut on a UTF-8 boundary to fit.
+    /// @return whether the subject changed
+    static bool write_slot_name(lv_subject_t* subject, size_t buf_size, const SlotInfo& slot);
+
     /**
      * @brief Probe for ACE via REST endpoint
      *
@@ -1902,6 +2008,8 @@ class AmsState {
         static constexpr int MATERIAL_BUF_SIZE = 24;
         std::vector<lv_subject_t> materials; // string: "PLA", "PETG", … or ""
         std::vector<std::array<char, MATERIAL_BUF_SIZE>> material_bufs;
+        std::vector<lv_subject_t> names; // string: slot card spool name, or ""
+        std::vector<std::array<char, SLOT_NAME_BUF_SIZE>> name_bufs;
         int slot_count = 0;
         /// Lifetime token shared by every subject in this struct. These subjects
         /// are DYNAMIC (destroyed in deinit() on backend rediscovery), so any
@@ -2152,17 +2260,21 @@ class AmsState {
     /// Buffer reading traces, keyed by unit position, -1 for the system-level reading.
     std::map<int, BufferTrace> buffer_traces_;
 
-    lv_subject_t buffer_present_{};  // 0/1: a proportional reading exists (widget gate)
-    lv_subject_t buffer_slider_{};   // 0/1: it has a set point, so the slider draws
-    lv_subject_t buffer_bias_pct_{}; // -100 tight .. +100 loose
-    lv_subject_t buffer_status_{};   // ClogMeterStatus of the bias
-    lv_subject_t buffer_label_{};    // "FPS" / "Sync"
+    lv_subject_t buffer_present_{};    // 0/1: a proportional reading exists (widget gate)
+    lv_subject_t buffer_slider_{};     // 0/1: it has a set point, so the slider draws
+    lv_subject_t buffer_bias_pct_{};   // -100 tight .. +100 loose; 0 for a fill gauge
+    lv_subject_t buffer_status_{};     // ClogMeterStatus of the reading
+    lv_subject_t buffer_gauge_{};      // BufferGauge: 0 bias, 1 fill
+    lv_subject_t buffer_value_pct_{};  // fill gauge: the pressure, 0..100
+    lv_subject_t buffer_target_pct_{}; // fill gauge: the set point, -1 without one
+    lv_subject_t buffer_label_{};      // "FPS" / "Sync"
     char buffer_label_buf_[16]{};
     lv_subject_t buffer_value_text_{}; // "32%", "-45%", "Pressure: 32%"
     char buffer_value_text_buf_[48]{};
     lv_subject_t buffer_short_text_{}; // "32%", "-45%": the number alone, for narrow surfaces
     char buffer_short_text_buf_[16]{};
-    lv_subject_t buffer_lean_text_{}; // "Running tight" / "Running loose" / "Balanced"
+    lv_subject_t
+        buffer_lean_text_{}; // "Running tight" / "Balanced", or "At target" / "Above target"
     char buffer_lean_text_buf_[48]{};
     lv_subject_t buffer_target_text_{}; // "target 50%" where a set point is known
     char buffer_target_text_buf_[48]{};
@@ -2210,8 +2322,10 @@ class AmsState {
     char slot_remaining_buf_[MAX_SLOTS][16];   // buffers for remaining strings
     lv_subject_t slot_materials_[MAX_SLOTS]{}; // string: "PLA", "PETG", … or "" (last synced type)
     char slot_materials_buf_[MAX_SLOTS][24]; // buffers for material strings (holds "PETG-CF" etc.)
-    lv_subject_t slot_fills_[MAX_SLOTS]{};   // int: fill percent 0-100, -1 = unknown/no-data
-                                             // (SlotInfo::display_fill_pct encoding)
+    lv_subject_t slot_names_[MAX_SLOTS]{};   // string: slot card spool name, or ""
+    char slot_names_buf_[MAX_SLOTS][SLOT_NAME_BUF_SIZE];
+    lv_subject_t slot_fills_[MAX_SLOTS]{}; // int: fill percent 0-100, -1 = unknown/no-data
+                                           // (SlotInfo::display_fill_pct encoding)
 
     // Per-slot LIVE state subjects — the panel observes these to redraw the path
     // and active-lane highlight in real time as Moonraker sensor data arrives.
@@ -2233,7 +2347,23 @@ class AmsState {
     // int: 1 = units exist and every present one is disconnected
     lv_subject_t all_units_disconnected_{};
     int viewed_unit_ = -1;
-    void publish_viewed_unit_disconnected();
+    void publish_viewed_unit_disconnected(const AmsSystemInfo* info);
+
+    // Unit paging (set_unit_page)
+    lv_subject_t ams_unit_view_active_{};
+    lv_subject_t ams_page_count_{};
+    lv_subject_t ams_page_current_{};
+    lv_subject_t ams_page_has_prev_{};
+    lv_subject_t ams_page_has_next_{};
+    lv_subject_t ams_page_unit_name_{};
+    char page_unit_name_buf_[48]{};
+    lv_subject_t ams_page_unit_logo_{};
+    char page_unit_logo_buf_[64]{};
+    lv_subject_t ams_page_has_logo_{};
+
+    /// Which units' dryers ran at the last sync, one character per unit position.
+    std::string units_drying_signature_;
+    lv_subject_t ams_units_dryer_version_{};
 
     // Per-unit environment indicator display subjects (formatted text for XML binding)
     static constexpr int ENV_IND_TEXT_BUF_SIZE = 16;
@@ -2269,10 +2399,26 @@ class AmsState {
     char env_ind_detail_drying_text_buf_[ENV_IND_DRYING_BUF_SIZE]{};
     int detail_env_unit_ = 0;
 
-    /// Mirror the detail_env_unit_'s per-unit env indicator subjects into the
-    /// dedicated ams_env_ind_detail_* subjects consumed by the statically
-    /// embedded detail-view indicator (see Task 9 brief).
-    void mirror_detail_env_subjects();
+    /// One unit's environment indicator, ready to publish.
+    struct UnitEnvIndicator {
+        std::string temp_text;
+        std::string humidity_text;
+        int humidity_status = 0; // 0=ok, 1=warn, 2=danger
+        bool humidity_visible = false;
+        bool visible = false;
+        bool drying_active = false;
+        std::string drying_text;
+    };
+
+    /// The single computation behind both the per-unit ams_env_ind_<n>_* subjects
+    /// and the detail mirror.
+    static UnitEnvIndicator compute_unit_env_indicator(AmsBackend* backend, const AmsUnit& unit);
+    void publish_unit_env_indicator(int idx, const UnitEnvIndicator& indicator);
+
+    /// Publish the detail_env_unit_'s indicator into the ams_env_ind_detail_*
+    /// subjects, computed from @p info directly so any unit index works. A null
+    /// backend or info publishes the empty indicator.
+    void mirror_detail_env_subjects(AmsBackend* backend, const AmsSystemInfo* info);
 };
 
 } // namespace helix

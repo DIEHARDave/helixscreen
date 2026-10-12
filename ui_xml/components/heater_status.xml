@@ -4,8 +4,9 @@
 <component>
   <api>
     <!-- Int subject carrying HeaterStatusState: 0 none, 1 heating, 2 ready,
-         3 cooling. The engine skips a binding whose subject resolves to "",
-         so with the default the markup's hidden="true" is what sticks. -->
+         3 cooling, 4 auto (the chamber's standing setpoint). The engine skips
+         a binding whose subject resolves to "", so with the default the
+         markup's hidden="true" is what sticks. -->
     <prop name="state_subject" type="string" default=""/>
     <prop name="duty_subject" type="string" default=""/>
   </api>
@@ -15,11 +16,13 @@
     The status area is a state glyph plus duty text: a status word's length
     overflows narrow heater rows. The state subject picks the
     glyph: flame while heating (warning amber), check at target (success),
-    snowflake while cooling (info), nothing when off. The duty text renders
+    snowflake while cooling (info), circled-A while the chamber holds its
+    standing auto setpoint (secondary - the machine's behavior, not a
+    deliberate set), nothing when off. The duty text renders
     amber while heating and muted otherwise, and is empty when there is no
     duty to show.
 
-    All three glyphs stay in the tree and only flip visibility, so a state
+    All four glyphs stay in the tree and only flip visibility, so a state
     change never rebuilds the row.
   -->
   <view name="heater_status"
@@ -36,6 +39,10 @@
     <icon name="status_cooling"
           src="cooldown" size="xs" style_text_color="#info" hidden="true" clickable="false" event_bubble="true">
       <bind_flag_if_not_eq subject="$state_subject" flag="hidden" ref_value="3"/>
+    </icon>
+    <icon name="status_auto"
+          src="alpha_a_circle" size="xs" variant="secondary" hidden="true" clickable="false" event_bubble="true">
+      <bind_flag_if_not_eq subject="$state_subject" flag="hidden" ref_value="4"/>
     </icon>
     <!-- Duty color is bound, not inline: an inline style_text_color would
          outrank both bound styles, leaving the amber unreachable. -->

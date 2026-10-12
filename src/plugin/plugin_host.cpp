@@ -13,6 +13,7 @@
 #include "grid_layout.h"
 #include "helix-xml/src/xml/lv_xml.h"
 #include "helix-xml/src/xml/lv_xml_component.h"
+#include "helix-xml/src/xml/lv_xml_translation.h"
 #include "lua_panel_widget.h"
 #include "lvgl/lvgl.h"
 #include "panel_widget_manager.h"
@@ -20,6 +21,7 @@
 #include "plugin_canvas.h"
 #include "plugin_settings_overlay.h"
 #include "plugin_xml_policy.h"
+#include "text_io.h"
 #include "translation_loader.h"
 #include "version.h"
 
@@ -249,6 +251,66 @@ void PluginHost::consider(PluginInfo& info) {
     info.status = load(info) ? PluginStatus::Loaded : info.status;
 }
 
+namespace {
+
+// An i18n/ folder of LVGL translation packs registers into the global table
+// LVGL already resolves every string through. Plugin packs sit at the END of
+// the lookup order, behind every app pack whenever it was loaded, so a pack
+// supplies only the tags the app does not translate and an empty slot in it
+// cannot hide an app string. English is the tag itself and has no app pack to
+// win against, so a pack declaring `en` is refused. Packs cannot be removed,
+// so a path registers once: a plugin re-enable or hot reload reuses what is
+// loaded, and an edited pack takes effect on the next app start.
+constexpr std::uintmax_t kMaxI18nPackBytes = 256 * 1024;
+
+bool declares_english(const std::string& xml) {
+    size_t at = xml.find("languages=\"");
+    if (at == std::string::npos)
+        return false;
+    at += 11;
+    std::string langs = " " + xml.substr(at, xml.find('"', at) - at) + " ";
+    return langs.find(" en ") != std::string::npos;
+}
+
+void register_plugin_translations(const std::filesystem::path& root) {
+    std::error_code ec;
+    std::vector<std::filesystem::path> files;
+    for (const auto& e : std::filesystem::directory_iterator(root / "i18n", ec)) {
+        if (e.is_regular_file(ec) && e.path().extension() == ".xml")
+            files.push_back(e.path());
+    }
+    std::sort(files.begin(), files.end());
+    static std::set<std::string> registered;
+    for (const auto& path : files) {
+        if (registered.count(path.string()))
+            continue;
+        std::uintmax_t size = std::filesystem::file_size(path, ec);
+        if (ec || size > kMaxI18nPackBytes) {
+            spdlog::warn("[PluginHost] translation pack {} skipped: over {} bytes", path.string(),
+                         kMaxI18nPackBytes);
+            continue;
+        }
+        auto xml = helix::text_io::read_file(path.string(), kMaxI18nPackBytes);
+        if (!xml)
+            continue;
+        if (declares_english(*xml)) {
+            spdlog::warn("[PluginHost] translation pack {} skipped: English is the tag itself, "
+                         "drop 'en' from its languages",
+                         path.string());
+            continue;
+        }
+        lv_translation_set_new_packs_at_tail(true);
+        lv_result_t res = lv_xml_register_translation_from_data(xml->c_str());
+        lv_translation_set_new_packs_at_tail(false);
+        if (res == LV_RESULT_OK) {
+            registered.insert(path.string());
+            spdlog::info("[PluginHost] translations registered: {}", path.string());
+        }
+    }
+}
+
+} // namespace
+
 bool PluginHost::load(PluginInfo& info) {
     sweep_retired_subjects();
     const Manifest& m = *info.manifest;
@@ -343,6 +405,12 @@ bool PluginHost::load(PluginInfo& info) {
     l.ctx = std::make_unique<PluginContext>(
         PluginContext{*l.rt, deps_.backend, m, &l.settings, [this, id] { save_settings(id); },
                       plugin_storage_path(deps_.settings_path, id)});
+    l.ctx->setting_changed = [this, id, gen = l.gen](const std::string& key, const json& value) {
+        for (auto& screen : settings_screens_) {
+            if (screen->plugin_id() == id && screen->load_gen() == gen)
+                screen->show_setting(key, value);
+        }
+    };
     l.ui.open = [this, id](const std::string& component, std::function<void()> on_closed,
                            const PluginUi::Attrs& attrs) {
         return overlays_.open(id, component, std::move(on_closed), attrs);
@@ -352,6 +420,7 @@ bool PluginHost::load(PluginInfo& info) {
     };
     l.ui.close = [this](int handle) { overlays_.close(handle); };
     l.ctx->ui = &l.ui;
+    register_plugin_translations(root);
     for (Installer install :
          {&install_core_bindings, &install_ui_bindings, &install_printer_bindings,
           &install_moonraker_bindings, &install_io_bindings, &install_widget_bindings,

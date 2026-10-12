@@ -15,6 +15,7 @@
   <translation tag="%d slots" ja="%d スロット"/>
   <translation tag="%d toolheads" ja="%d ツールヘッド"/>
   <translation tag="%d tools" ja="%d ツール"/>
+  <translation tag="%d units" ja="%dユニット"/>
   <translation tag="%d-%d" ja="%d〜%d"/>
   <translation tag="%d-%d°C" ja="%d〜%d°C"/>
   <translation tag="%d:%02d left" ja="残り %d:%02d"/>
@@ -72,6 +73,7 @@
   <translation tag="1 min ago" ja="1分前"/>
   <translation tag="1 minute" ja="1分"/>
   <translation tag="1 more tap to {} beta features" ja="あと1回タップでベータ機能を{}"/>
+  <translation tag="1 unit" ja="1ユニット"/>
   <translation tag="1. Printer homes all axes (~1 minute)" ja="1. プリンターが全軸の原点復帰を行います（約1分）"/>
   <translation tag="1. Printer homes and probes the bed" ja="1. プリンターがホーミングしてベッドをプローブします"/>
   <translation tag="1. Printer will home and probe each screw" ja="1. プリンターがホーミングして各ネジをプローブします"/>
@@ -159,6 +161,7 @@
   <translation tag="Aborting AFC operation..." ja="AFC操作を中止中..."/>
   <translation tag="Aborting..." ja="中止中..."/>
   <translation tag="About" ja="バージョン情報"/>
+  <translation tag="Above target" ja="目標より高い"/>
   <translation tag="Accel to Decel" ja="加速から減速"/>
   <translation tag="Acceleration to deceleration limit (mm/s²)" ja="加速から減速の制限値 (mm/s²)"/>
   <translation tag="Accelerometer" ja="加速度センサー"/>
@@ -252,6 +255,7 @@
   <translation tag="Assisted Retract" ja="アシスト付き引き戻し"/>
   <translation tag="Assisting" ja="アシスト中"/>
   <translation tag="At least {} lines in helixscreen.env were ignored" ja="helixscreen.env の少なくとも{}行が無視されました"/>
+  <translation tag="At target" ja="目標どおり"/>
   <translation tag="At {}°C, about {} minutes." ja="{}°C で約{}分です。"/>
   <translation tag="Authentication failed" ja="認証に失敗しました"/>
   <translation tag="Auto" ja="自動"/>
@@ -329,6 +333,7 @@
   <translation tag="Bed temp must be 0-%d°C" ja="ベッド温度は 0〜%d°C にしてください"/>
   <translation tag="Bed warming timed out" ja="ベッド加熱がタイムアウトしました"/>
   <translation tag="Before starting" ja="開始前に"/>
+  <translation tag="Below target" ja="目標より低い"/>
   <translation tag="Belt Tension" ja="ベルトテンション"/>
   <translation tag="Belt Tension Check" ja="ベルトテンション確認"/>
   <translation tag="Belt Tension needs a CoreXY printer. This one is {}." ja="ベルトテンションには CoreXY プリンターが必要です。このプリンターは{}です。"/>
@@ -885,6 +890,8 @@
   <translation tag="Dry Filament" ja="フィラメントを乾燥"/>
   <translation tag="Dry Filament on the Bed" ja="ベッドでフィラメントを乾燥"/>
   <translation tag="Dry spools on the heated bed" ja="加熱ベッドでスプールを乾燥"/>
+  <translation tag="Dryer already running" ja="乾燥機はすでに動作中です"/>
+  <translation tag="Dryer is not running" ja="乾燥機は動作していません"/>
   <translation tag="Drying" ja="乾燥中"/>
   <translation tag="Drying is already running" ja="乾燥はすでに実行中です"/>
   <translation tag="Drying on the bed" ja="ベッドで乾燥中"/>
@@ -994,6 +1001,7 @@
   <translation tag="Error: Verification failed" ja="エラー: 検証に失敗しました"/>
   <translation tag="Error: Wrong architecture" ja="エラー: アーキテクチャが正しくありません"/>
   <translation tag="Error: `unzip` not installed" ja="エラー: `unzip` がインストールされていません"/>
+  <translation tag="Error: cannot write the service file in {}" ja="エラー: {} にサービスファイルを書き込めません"/>
   <translation tag="Errors only" ja="エラーのみ"/>
   <translation tag="Escalate to emergency stop if cancel doesn&apos;t respond" ja="キャンセルが応答しない場合は緊急停止にエスカレート"/>
   <translation tag="Escalation Timeout" ja="エスカレーションタイムアウト"/>
@@ -1256,6 +1264,8 @@
   <translation tag="Fix: chown {} {}, then restart" ja="修正：chown {} {} を実行して再起動してください"/>
   <translation tag="FlashForge Adventurer 5M" ja="FlashForge Adventurer 5M"/>
   <translation tag="FlashForge Adventurer 5X" ja="FlashForge Adventurer 5X"/>
+  <translation tag="FlashForge Creator 5" ja="FlashForge Creator 5"/>
+  <translation tag="FlashForge Creator 5 Pro" ja="FlashForge Creator 5 Pro"/>
   <translation tag="FlashForge IFS" ja="FlashForge IFS"/>
   <translation tag="Flip" ja="反転"/>
   <translation tag="Flip the spools" ja="スプールを裏返す"/>
@@ -1798,7 +1808,9 @@
   <translation tag="More points = more accurate, but takes longer." ja="ポイント数が多いほど精度が上がりますが、時間がかかります。"/>
   <translation tag="Motion" ja="動作"/>
   <translation tag="Motion sensor stuck: filament is still at the feeder. Resume to feed it." ja="モーションセンサーが固着: フィラメントはまだフィーダーにあります。再開すると送り込みます。"/>
+  <translation tag="Motion timed out" ja="動作がタイムアウトしました"/>
   <translation tag="Motor controller error" ja="モーターコントローラーのエラー"/>
+  <translation tag="Motor drive fault" ja="モータードライバーの異常"/>
   <translation tag="Motor parameter setup failed" ja="モーターパラメーターの設定に失敗しました"/>
   <translation tag="Motor speeds and acceleration" ja="モーター速度と加速度"/>
   <translation tag="Motors" ja="モーター"/>
@@ -2893,6 +2905,7 @@
   <translation tag="Stop failed" ja="停止に失敗"/>
   <translation tag="Stop printing &quot;{}&quot;?&#10;&#10;This cannot be undone after 5 seconds." ja="&quot;{}&quot; の印刷を停止しますか？&#10;&#10;5秒後は取り消せません。"/>
   <translation tag="Stop the check?" ja="チェックを停止しますか？"/>
+  <translation tag="Stop the running cycle before starting another" ja="新しく開始する前に、実行中のサイクルを停止してください"/>
   <translation tag="Stopped" ja="停止しました"/>
   <translation tag="Stopped between Hub and Toolhead" ja="ハブとツールヘッドの間で停止"/>
   <translation tag="Stopped between Lane and Hub" ja="レーンとハブの間で停止"/>
@@ -3064,6 +3077,7 @@
   <translation tag="Theme changes apply after restart." ja="テーマの変更は再起動後に適用されます。"/>
   <translation tag="Theme reset to defaults" ja="テーマをデフォルトにリセットしました"/>
   <translation tag="Theme: " ja="テーマ: "/>
+  <translation tag="There is no cycle to stop" ja="停止するサイクルがありません"/>
   <translation tag="There is not enough free memory to run this test. Klipper&apos;s analysis would run out of memory and leave the printer stuck until it is power-cycled." ja="このテストを実行するための空きメモリが足りません。Klipperの解析でメモリが不足し、電源を入れ直すまでプリンターが停止したままになります。"/>
   <translation tag="These tools have a different filament grade loaded:" ja="次のツールには異なるフィラメントグレードが装填されています:"/>
   <translation tag="These tools have incompatible materials loaded:" ja="これらのツールには互換性のない素材がロードされています:"/>
@@ -3082,6 +3096,7 @@
   <translation tag="This device has only {} MB of RAM. Resonance calibration is memory-intensive and can make the printer firmware report a &quot;Timer Too Close&quot; error or restart mid-test. Continue anyway?" ja="このデバイスの RAM は {} MB しかありません。共振キャリブレーションはメモリを大量に消費し、プリンターのファームウェアが &quot;Timer Too Close&quot; エラーを報告したり、テスト中に再起動したりする可能性があります。それでも続行しますか？"/>
   <translation tag="This device has very little RAM. Resonance calibration is memory-intensive and may cause a &quot;Timer Too Close&quot; error. Continue anyway?" ja="このデバイスの RAM は非常に少ないです。共振キャリブレーションはメモリを大量に消費し、&quot;Timer Too Close&quot; エラーを引き起こす可能性があります。それでも続行しますか？"/>
   <translation tag="This doesn&apos;t match the linked Spoolman spool. Add it as a new spool, or update the linked one to match?" ja="リンクされた Spoolman のスプールと一致しません。新しいスプールとして追加しますか、それともリンク先を一致するよう更新しますか？"/>
+  <translation tag="This dryer cannot run while filament from the unit is loaded" ja="このユニットのフィラメントが装填されている間は乾燥機を動作できません"/>
   <translation tag="This feature requires different hardware or configuration" ja="この機能には別のハードウェアまたは設定が必要です"/>
   <translation tag="This filament system does not report buffer or flow data." ja="このフィラメントシステムはバッファーやフローのデータを報告しません。"/>
   <translation tag="This file was sliced for {} but {} is loaded." ja="このファイルは {} 用にスライスされていますが、{} がロードされています。"/>
@@ -3099,6 +3114,7 @@
   <translation tag="This printer cannot calibrate tool offsets automatically" ja="このプリンターはツールオフセットを自動でキャリブレートできません"/>
   <translation tag="This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman." ja="このプリンターのゲートは Spoolman から設定されます。HelixScreen 側のコピーはクリアしました。Spoolman でスプールを削除してください。"/>
   <translation tag="This printer fills its gates from Spoolman. Make colour, material and spool changes in Spoolman." ja="このプリンターのゲートは Spoolman から設定されます。色・素材・スプールの変更は Spoolman で行ってください。"/>
+  <translation tag="This printer has no automatic unload. Cut the filament at the head and pull it out by hand." ja="このプリンターには自動アンロード機能がありません。ヘッド部分でフィラメントを切り、手で引き抜いてください。"/>
   <translation tag="This printer looks like a {} ({}% confidence), but it is set up as a {}. A wrong type applies incorrect pre-print options and presets." ja="このプリンターは {} のようです（信頼度 {}%）が、{} として設定されています。誤ったタイプでは不正確な印刷前オプションとプリセットが適用されます。"/>
   <translation tag="This printer&apos;s network service controls the WiFi radio" ja="このプリンターのネットワークサービスが WiFi 無線を制御しています"/>
   <translation tag="This printer&apos;s network service manages saved WiFi networks" ja="このプリンターのネットワークサービスが保存済みの WiFi ネットワークを管理しています"/>
@@ -3258,6 +3274,7 @@
   <translation tag="Unload from toolhead first" ja="先にツールヘッドから取り出してください"/>
   <translation tag="Unload macro not configured" ja="アンロードマクロが未設定です"/>
   <translation tag="Unload the CFS filament before enabling bypass" ja="バイパスを有効にする前に CFS のフィラメントを取り出してください"/>
+  <translation tag="Unload this unit first" ja="先にこのユニットを排出してください"/>
   <translation tag="Unload..." ja="排出..."/>
   <translation tag="Unloaded" ja="排出済み"/>
   <translation tag="Unloading" ja="アンロード中"/>
@@ -3510,6 +3527,7 @@
   <translation tag="invalid" ja="不正"/>
   <translation tag="just now" ja="たった今"/>
   <translation tag="last 60 s · LOOSE up, TIGHT down" ja="直近60秒 · 上が緩み、下が張り"/>
+  <translation tag="last 60 s · pressure, target dashed" ja="直近60秒 · 圧力、目標は破線"/>
   <translation tag="layers" ja="レイヤー"/>
   <translation tag="left" ja="残り"/>
   <translation tag="loaded" ja="装填済み"/>

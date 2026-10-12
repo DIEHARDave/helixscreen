@@ -76,6 +76,10 @@ struct BackendCaps {
     /// claims, which is what makes the active-head sentinel a resolvable
     /// unload target.
     bool toolhead_unaccounted = false;
+    /// AmsBackend::load_feeds_filament(). A Load on a tool changer is then a
+    /// feed into the named head: the head being the mounted one is no reason to
+    /// refuse, and no other tool needs swapping in first.
+    bool load_feeds_filament = false;
 };
 
 /**
@@ -144,6 +148,9 @@ struct BackendCaps {
     if (caps.present && caps.requires_slot_selection_for_load) {
         if (target_slot < 0) {
             return {FilamentTier::Refused, FilamentRefusal::SelectSlot, AmsCall::None, -1};
+        }
+        if (caps.load_feeds_filament) {
+            return {FilamentTier::AmsBackend, FilamentRefusal::None, AmsCall::Load, target_slot};
         }
         if (caps.is_tool_changer && sys.current_slot >= 0 && sys.current_slot == target_slot) {
             return {FilamentTier::Refused, FilamentRefusal::AlreadyMounted, AmsCall::None, -1};

@@ -225,6 +225,19 @@ inline std::string_view trim(std::string_view s) {
     return s.substr(first, s.find_last_not_of(ws) - first + 1);
 }
 
+/// The longest prefix of `s` that fits in @p max_bytes without ending inside a
+/// multi-byte UTF-8 codepoint. The view points into `s`.
+inline std::string_view utf8_prefix(std::string_view s, size_t max_bytes) {
+    if (s.size() <= max_bytes) {
+        return s;
+    }
+    size_t end = max_bytes;
+    while (end > 0 && (static_cast<unsigned char>(s[end]) & 0xC0) == 0x80) {
+        --end;
+    }
+    return s.substr(0, end);
+}
+
 /// ASCII-only case mapping: bytes outside A-Z / a-z pass through untouched,
 /// whatever the process locale.
 inline std::string to_lower(std::string_view s) {

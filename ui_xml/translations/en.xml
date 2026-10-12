@@ -15,6 +15,7 @@
   <translation tag="%d slots" en="%d slots"/>
   <translation tag="%d toolheads" en="%d toolheads"/>
   <translation tag="%d tools" en="%d tools"/>
+  <translation tag="%d units" en="%d units"/>
   <translation tag="%d-%d" en="%d-%d"/>
   <translation tag="%d-%d°C" en="%d-%d°C"/>
   <translation tag="%d:%02d left" en="%d:%02d left"/>
@@ -72,6 +73,7 @@
   <translation tag="1 min ago" en="1 min ago"/>
   <translation tag="1 minute" en="1 minute"/>
   <translation tag="1 more tap to {} beta features" en="1 more tap to {} beta features"/>
+  <translation tag="1 unit" en="1 unit"/>
   <translation tag="1. Printer homes all axes (~1 minute)" en="1. Printer homes all axes (~1 minute)"/>
   <translation tag="1. Printer homes and probes the bed" en="1. Printer homes and probes the bed"/>
   <translation tag="1. Printer will home and probe each screw" en="1. Printer will home and probe each screw"/>
@@ -159,6 +161,7 @@
   <translation tag="Aborting AFC operation..." en="Aborting AFC operation..."/>
   <translation tag="Aborting..." en="Aborting..."/>
   <translation tag="About" en="About"/>
+  <translation tag="Above target" en="Above target"/>
   <translation tag="Accel to Decel" en="Accel to Decel"/>
   <translation tag="Acceleration to deceleration limit (mm/s²)" en="Acceleration to deceleration limit (mm/s²)"/>
   <translation tag="Accelerometer" en="Accelerometer"/>
@@ -252,6 +255,7 @@
   <translation tag="Assisted Retract" en="Assisted Retract"/>
   <translation tag="Assisting" en="Assisting"/>
   <translation tag="At least {} lines in helixscreen.env were ignored" en="At least {} lines in helixscreen.env were ignored"/>
+  <translation tag="At target" en="At target"/>
   <translation tag="At {}°C, about {} minutes." en="At {}°C, about {} minutes."/>
   <translation tag="Authentication failed" en="Authentication failed"/>
   <translation tag="Auto" en="Auto"/>
@@ -329,6 +333,7 @@
   <translation tag="Bed temp must be 0-%d°C" en="Bed temp must be 0-%d°C"/>
   <translation tag="Bed warming timed out" en="Bed warming timed out"/>
   <translation tag="Before starting" en="Before starting"/>
+  <translation tag="Below target" en="Below target"/>
   <translation tag="Belt Tension" en="Belt Tension"/>
   <translation tag="Belt Tension Check" en="Belt Tension Check"/>
   <translation tag="Belt Tension needs a CoreXY printer. This one is {}." en="Belt Tension needs a CoreXY printer. This one is {}."/>
@@ -885,6 +890,8 @@
   <translation tag="Dry Filament" en="Dry Filament"/>
   <translation tag="Dry Filament on the Bed" en="Dry Filament on the Bed"/>
   <translation tag="Dry spools on the heated bed" en="Dry spools on the heated bed"/>
+  <translation tag="Dryer already running" en="Dryer already running"/>
+  <translation tag="Dryer is not running" en="Dryer is not running"/>
   <translation tag="Drying" en="Drying"/>
   <translation tag="Drying is already running" en="Drying is already running"/>
   <translation tag="Drying on the bed" en="Drying on the bed"/>
@@ -994,6 +1001,7 @@
   <translation tag="Error: Verification failed" en="Error: Verification failed"/>
   <translation tag="Error: Wrong architecture" en="Error: Wrong architecture"/>
   <translation tag="Error: `unzip` not installed" en="Error: `unzip` not installed"/>
+  <translation tag="Error: cannot write the service file in {}" en="Error: cannot write the service file in {}"/>
   <translation tag="Errors only" en="Errors only"/>
   <translation tag="Escalate to emergency stop if cancel doesn&apos;t respond" en="Escalate to emergency stop if cancel doesn&apos;t respond"/>
   <translation tag="Escalation Timeout" en="Escalation Timeout"/>
@@ -1256,6 +1264,8 @@
   <translation tag="Fix: chown {} {}, then restart" en="Fix: chown {} {}, then restart"/>
   <translation tag="FlashForge Adventurer 5M" en="FlashForge Adventurer 5M"/>
   <translation tag="FlashForge Adventurer 5X" en="FlashForge Adventurer 5X"/>
+  <translation tag="FlashForge Creator 5" en="FlashForge Creator 5"/>
+  <translation tag="FlashForge Creator 5 Pro" en="FlashForge Creator 5 Pro"/>
   <translation tag="FlashForge IFS" en="FlashForge IFS"/>
   <translation tag="Flip" en="Flip"/>
   <translation tag="Flip the spools" en="Flip the spools"/>
@@ -1798,7 +1808,9 @@
   <translation tag="More points = more accurate, but takes longer." en="More points = more accurate, but takes longer."/>
   <translation tag="Motion" en="Motion"/>
   <translation tag="Motion sensor stuck: filament is still at the feeder. Resume to feed it." en="Motion sensor stuck: filament is still at the feeder. Resume to feed it."/>
+  <translation tag="Motion timed out" en="Motion timed out"/>
   <translation tag="Motor controller error" en="Motor controller error"/>
+  <translation tag="Motor drive fault" en="Motor drive fault"/>
   <translation tag="Motor parameter setup failed" en="Motor parameter setup failed"/>
   <translation tag="Motor speeds and acceleration" en="Motor speeds and acceleration"/>
   <translation tag="Motors" en="Motors"/>
@@ -2893,6 +2905,7 @@
   <translation tag="Stop failed" en="Stop failed"/>
   <translation tag="Stop printing &quot;{}&quot;?&#10;&#10;This cannot be undone after 5 seconds." en="Stop printing &quot;{}&quot;?&#10;&#10;This cannot be undone after 5 seconds."/>
   <translation tag="Stop the check?" en="Stop the check?"/>
+  <translation tag="Stop the running cycle before starting another" en="Stop the running cycle before starting another"/>
   <translation tag="Stopped" en="Stopped"/>
   <translation tag="Stopped between Hub and Toolhead" en="Stopped between Hub and Toolhead"/>
   <translation tag="Stopped between Lane and Hub" en="Stopped between Lane and Hub"/>
@@ -3064,6 +3077,7 @@
   <translation tag="Theme changes apply after restart." en="Theme changes apply after restart."/>
   <translation tag="Theme reset to defaults" en="Theme reset to defaults"/>
   <translation tag="Theme: " en="Theme: "/>
+  <translation tag="There is no cycle to stop" en="There is no cycle to stop"/>
   <translation tag="There is not enough free memory to run this test. Klipper&apos;s analysis would run out of memory and leave the printer stuck until it is power-cycled." en="There is not enough free memory to run this test. Klipper&apos;s analysis would run out of memory and leave the printer stuck until it is power-cycled."/>
   <translation tag="These tools have a different filament grade loaded:" en="These tools have a different filament grade loaded:"/>
   <translation tag="These tools have incompatible materials loaded:" en="These tools have incompatible materials loaded:"/>
@@ -3082,6 +3096,7 @@
   <translation tag="This device has only {} MB of RAM. Resonance calibration is memory-intensive and can make the printer firmware report a &quot;Timer Too Close&quot; error or restart mid-test. Continue anyway?" en="This device has only {} MB of RAM. Resonance calibration is memory-intensive and can make the printer firmware report a &quot;Timer Too Close&quot; error or restart mid-test. Continue anyway?"/>
   <translation tag="This device has very little RAM. Resonance calibration is memory-intensive and may cause a &quot;Timer Too Close&quot; error. Continue anyway?" en="This device has very little RAM. Resonance calibration is memory-intensive and may cause a &quot;Timer Too Close&quot; error. Continue anyway?"/>
   <translation tag="This doesn&apos;t match the linked Spoolman spool. Add it as a new spool, or update the linked one to match?" en="This doesn&apos;t match the linked Spoolman spool. Add it as a new spool, or update the linked one to match?"/>
+  <translation tag="This dryer cannot run while filament from the unit is loaded" en="This dryer cannot run while filament from the unit is loaded"/>
   <translation tag="This feature requires different hardware or configuration" en="This feature requires different hardware or configuration"/>
   <translation tag="This filament system does not report buffer or flow data." en="This filament system does not report buffer or flow data."/>
   <translation tag="This file was sliced for {} but {} is loaded." en="This file was sliced for {} but {} is loaded."/>
@@ -3099,6 +3114,7 @@
   <translation tag="This printer cannot calibrate tool offsets automatically" en="This printer cannot calibrate tool offsets automatically"/>
   <translation tag="This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman." en="This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman."/>
   <translation tag="This printer fills its gates from Spoolman. Make colour, material and spool changes in Spoolman." en="This printer fills its gates from Spoolman. Make colour, material and spool changes in Spoolman."/>
+  <translation tag="This printer has no automatic unload. Cut the filament at the head and pull it out by hand." en="This printer has no automatic unload. Cut the filament at the head and pull it out by hand."/>
   <translation tag="This printer looks like a {} ({}% confidence), but it is set up as a {}. A wrong type applies incorrect pre-print options and presets." en="This printer looks like a {} ({}% confidence), but it is set up as a {}. A wrong type applies incorrect pre-print options and presets."/>
   <translation tag="This printer&apos;s network service controls the WiFi radio" en="This printer&apos;s network service controls the WiFi radio"/>
   <translation tag="This printer&apos;s network service manages saved WiFi networks" en="This printer&apos;s network service manages saved WiFi networks"/>
@@ -3258,6 +3274,7 @@
   <translation tag="Unload from toolhead first" en="Unload from toolhead first"/>
   <translation tag="Unload macro not configured" en="Unload macro not configured"/>
   <translation tag="Unload the CFS filament before enabling bypass" en="Unload the CFS filament before enabling bypass"/>
+  <translation tag="Unload this unit first" en="Unload this unit first"/>
   <translation tag="Unload..." en="Unload..."/>
   <translation tag="Unloaded" en="Unloaded"/>
   <translation tag="Unloading" en="Unloading"/>
@@ -3510,6 +3527,7 @@
   <translation tag="invalid" en="invalid"/>
   <translation tag="just now" en="just now"/>
   <translation tag="last 60 s · LOOSE up, TIGHT down" en="last 60 s · LOOSE up, TIGHT down"/>
+  <translation tag="last 60 s · pressure, target dashed" en="last 60 s · pressure, target dashed"/>
   <translation tag="layers" en="layers"/>
   <translation tag="left" en="left"/>
   <translation tag="loaded" en="loaded"/>

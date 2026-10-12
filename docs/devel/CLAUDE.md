@@ -44,6 +44,7 @@ All developer documentation lives here. When working on features, look up the re
 | `HOME_EDIT_MODE.md` | Home-grid edit mode: the session over a page, the selection, grab and click rules, the event shield and the events that end a gesture (release, press lost, indev reset), the carousel swipe policy, cross-page drag and the next-page slot, page creation and pruning. Read before touching `GridEditMode` or HomePanel's edit handlers |
 | `PANEL_WIDGET_GUIDE.md` | Home widget authoring: registry def, widget class, XML; the measured-layout reference pattern (pure decision fn, subjects, binds) with nozzle_temps as exemplar |
 | `PLUGIN_DEVELOPMENT.md` | Writing a Lua plugin: manifest, XML rules, the helix.* API, permissions, limits, debugging |
+| `PLUGIN_TUTORIAL.md` | Step-by-step build of the maintenance-meter widget plugin: annotated code, the why of each decision, the adaptive size ladder |
 | `PAGE_SCROLL_BUTTONS.md` | Chevron page-scroll gutter: where it auto-attaches and why it stops at a home widget tile. On by default on ESP32 only |
 | `TRANSLATION_SYSTEM.md` | i18n: YAML strings -> code generation -> runtime lookups |
 | `TRANSLATION_CONTRIBUTOR_GUIDE.md` | For **translators** — how to improve existing translations or add a new language. No code needed. |

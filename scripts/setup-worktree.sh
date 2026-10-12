@@ -1514,7 +1514,10 @@ if [[ "$NO_BUILD" == "false" ]]; then
     echo ""
     echo -e "${BOLD}${CYAN}Running initial build...${RESET}"
     cd "$WORKTREE_PATH"
-    if make -j; then
+    # Homebrew installs GNU make as gmake; Apple's /usr/bin/make is 3.81 and
+    # the Makefile hard-errors below 4.2.
+    MAKE_BIN="$(command -v gmake || command -v make)"
+    if "$MAKE_BIN" -j; then
         echo ""
         echo -e "${GREEN}${BOLD}✓ Build successful!${RESET}"
     else

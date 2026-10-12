@@ -174,7 +174,13 @@ TEST_CASE("reserve_allocation_bytes predicts what reserve() really allocates",
     // from 128 KB allocates 256 KB: the probe has to cover that, not 200 KB.
     const size_t predicted = reserve_allocation_bytes(before, 200 * 1024, s.max_size());
     s.reserve(200 * 1024);
+#if defined(_GLIBCXX_RELEASE)
     CHECK(predicted == s.capacity());
+#else
+    // The prediction models libstdc++, which the firmware links. libc++ grows to
+    // the request instead, so here the probe only has to cover what it allocated.
+    CHECK(predicted >= s.capacity());
+#endif
     CHECK(predicted > 200 * 1024);
 }
 

@@ -17,6 +17,7 @@ translations:
   '%d slots': '%d слотов'
   '%d toolheads': '%d печатающих головок'
   '%d tools': '%d инструментов'
+  '%d units': '%d ед.'
   '%d:%02d left': 'осталось %d:%02d'
   '%dh': '%d ч'
   '%dh %02dm': '%d ч %02d мин'
@@ -73,6 +74,7 @@ translations:
   1 min ago: 1 мин. назад
   1 minute: 1 минута
   1 more tap to {} beta features: 1 нажатие до {} бета-функций
+  '1 unit': '1 ед.'
   1. Printer homes all axes (~1 minute): 1. Принтер ищет ноль по всем осям (~1 минута)
   1. Printer homes and probes the bed: 1. Принтер паркуется и зондирует стол
   1. Printer will home and probe each screw: 1. Принтер запаркуется и проверит каждый
@@ -164,6 +166,7 @@ translations:
   Aborting AFC operation...: Прерывание операции AFC...
   Aborting...: Прерывание...
   About: О программе
+  Above target: Выше цели
   Accel to Decel: Ускорение к торможению
   Acceleration to deceleration limit (mm/s²): Предел ускорения к торможению (мм/с²)
   Accelerometer: Акселерометр
@@ -272,6 +275,7 @@ translations:
   Assisted Retract: 'Ретракция с поддержкой'
   Assisting: Помощь
   At least {} lines in helixscreen.env were ignored: 'В helixscreen.env проигнорировано не менее {} строк'
+  At target: Цель достигнута
   At {}°C, about {} minutes.: 'При {}°C около {} минут.'
   Authentication failed: Ошибка аутентификации
   Auto: Авто
@@ -353,6 +357,7 @@ translations:
   Bed temp must be 0-%d°C: Температура стола должна быть 0-%d°C
   Bed warming timed out: Нагрев стола — время ожидания истекло
   Before starting: 'Перед началом'
+  Below target: Ниже цели
   Belt Tension: Натяжение ремня
   Belt Tension Check: Проверка натяжения ремня
   Belt Tension needs a CoreXY printer. This one is {}.: 'Для натяжения ремня нужен принтер CoreXY. Этот принтер: {}.'
@@ -971,6 +976,8 @@ translations:
 
   Dry spools on the heated bed: Сушка катушек на нагреваемом столе
 
+  Dryer already running: 'Сушилка уже работает'
+  Dryer is not running: 'Сушилка не работает'
   Drying: Сушка
   Drying is already running: Сушка уже идёт
 
@@ -1088,6 +1095,7 @@ translations:
   'Error: Verification failed': 'Ошибка: проверка не удалась'
   'Error: Wrong architecture': 'Ошибка: неверная архитектура'
   'Error: `unzip` not installed': 'Ошибка: `unzip` не установлен'
+  'Error: cannot write the service file in {}': 'Ошибка: не удалось записать файл службы в {}'
   Errors only: 'Только ошибки'
   Escalate to emergency stop if cancel doesn't respond: Эскалация до аварийной остановки,
     если отмена не отвечает
@@ -1371,6 +1379,8 @@ translations:
   'Fix: chown {} {}, then restart': 'Исправление: chown {} {}, затем перезапустите'
   FlashForge Adventurer 5M: FlashForge Adventurer 5M
   FlashForge Adventurer 5X: FlashForge Adventurer 5X
+  FlashForge Creator 5: FlashForge Creator 5
+  FlashForge Creator 5 Pro: FlashForge Creator 5 Pro
   FlashForge IFS: FlashForge IFS
   Flip: Отразить
   Flip the spools: Переверните катушки
@@ -1972,7 +1982,9 @@ translations:
   More points = more accurate, but takes longer.: Больше точек — точнее, но дольше.
   Motion: Движение
   'Motion sensor stuck: filament is still at the feeder. Resume to feed it.': 'Датчик движения застрял: филамент всё ещё в фидере. Продолжите, чтобы подать его.'
+  Motion timed out: Время ожидания движения истекло
   Motor controller error: Ошибка контроллера двигателя
+  Motor drive fault: Неисправность драйвера двигателя
   Motor parameter setup failed: Не удалась настройка параметров двигателя
   Motor speeds and acceleration: 'Скорости моторов и ускорение'
   Motors: Двигатели
@@ -3181,6 +3193,7 @@ translations:
   ? "Stop printing \"{}\"?\n\nThis cannot be undone after 5 seconds."
   : "Остановить печать \"{}\"?\n\nЭто нельзя будет отменить через 5 секунд."
   Stop the check?: Остановить проверку?
+  Stop the running cycle before starting another: 'Остановите текущий цикл, прежде чем запускать новый'
   Stopped: Остановлено
   Stopped between Hub and Toolhead: Остановка между хабом и печатающей головкой
   Stopped between Lane and Hub: Остановка между каналом и хабом
@@ -3391,6 +3404,7 @@ translations:
   Theme changes apply after restart.: Изменения темы применяются после перезапуска.
   Theme reset to defaults: Тема сброшена к настройкам по умолчанию
   'Theme: ': 'Тема: '
+  There is no cycle to stop: 'Нет цикла для остановки'
   ? There is not enough free memory to run this test. Klipper's analysis would run out of memory and leave the printer stuck until it is power-cycled.
   : "Для этого теста недостаточно свободной памяти. Анализу Klipper не хватит памяти, и принтер зависнет, пока его не выключат и снова не включат."
   'These tools have a different filament grade loaded:': 'В этих инструментах загружен филамент другой марки:'
@@ -3416,6 +3430,7 @@ translations:
   ? This device has very little RAM. Resonance calibration is memory-intensive and may cause a "Timer Too Close" error. Continue anyway?
   : На этом устройстве очень мало ОЗУ. Калибровка резонансов требует много памяти и может вызвать ошибку "Timer Too Close". Всё равно продолжить?
   This doesn't match the linked Spoolman spool. Add it as a new spool, or update the linked one to match?: Это не совпадает с привязанной катушкой Spoolman. Добавить как новую катушку или обновить привязанную?
+  This dryer cannot run while filament from the unit is loaded: 'Сушилка не может работать, пока загружен филамент из этого узла'
   This feature requires different hardware or configuration: Для этой функции требуется другое оборудование или конфигурация
   This filament system does not report buffer or flow data.: Эта система филамента не сообщает данные буфера и потока.
   This file was sliced for {} but {} is loaded.: Файл нарезан для {}, но загружен
@@ -3437,6 +3452,7 @@ translations:
   This printer cannot calibrate tool offsets automatically: Этот принтер не может калибровать смещения инструментов автоматически
   This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman.: Этот принтер берёт данные шлюзов из Spoolman. HelixScreen очистил свою копию; удалите катушку в Spoolman.
   This printer fills its gates from Spoolman. Make colour, material and spool changes in Spoolman.: Этот принтер берёт данные шлюзов из Spoolman. Меняйте цвет, материал и катушку в Spoolman.
+  This printer has no automatic unload. Cut the filament at the head and pull it out by hand.: У этого принтера нет автоматической выгрузки. Отрежьте филамент у головки и вытащите его вручную.
   ? This printer looks like a {} ({}% confidence), but it is set up as a {}. A wrong type applies incorrect pre-print options and presets.
   : Этот принтер похож на {} (уверенность {}%), но настроен как {}. Неверный тип применяет неправильные параметры перед печатью и пресеты.
   This printer's network service controls the WiFi radio: WiFi-модулем управляет сетевая служба этого принтера
@@ -3622,6 +3638,7 @@ translations:
   Unload from toolhead first: 'Сначала выгрузите из печатающей головки'
   Unload macro not configured: Макрос выгрузки не настроен
   Unload the CFS filament before enabling bypass: 'Выгрузите филамент CFS перед включением обхода'
+  Unload this unit first: 'Сначала выгрузите этот узел'
   Unload...: Выгрузить...
   Unloaded: 'Выгружен'
   Unloading: Выгрузка
@@ -3890,6 +3907,7 @@ translations:
   invalid: недопустим
   just now: только что
   last 60 s · LOOSE up, TIGHT down: 'последние 60 с · вверху ОСЛАБЛЕН, внизу НАТЯНУТ'
+  last 60 s · pressure, target dashed: последние 60 с · давление, цель пунктиром
   layers: слои
   left: осталось
   loaded: 'загружен'

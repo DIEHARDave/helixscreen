@@ -49,7 +49,9 @@ void AmsBackendToolChanger::set_discovery(const helix::PrinterDiscovery& discove
                                      helix::SettingsManager::instance().get_feeder_close_macro()));
     set_tool_sensor(addon::resolve_tool_sensor(discovery));
     set_tool_commands(addon::resolve_tool_commands(discovery));
+    set_tool_feed(addon::resolve_tool_feed(discovery));
     set_material_source(addon::resolve_material_source(discovery));
+    tinfo_macro_present_ = discovery.has_macro("T_INFO");
 }
 
 void AmsBackendToolChanger::set_discovered_tools(std::vector<std::string> tool_names) {
@@ -117,6 +119,137 @@ void AmsBackendToolChanger::on_started() {
                 apply_resolved_lane(slots[i], static_cast<int>(i));
             }
         }
+    }
+
+    register_zmod_marker_listener();
+    query_zmod_tool_state();
+}
+
+void AmsBackendToolChanger::query_zmod_tool_state() {
+    // T_INFO answers state and moves nothing, so the query is safe to fire
+    // whenever the changer row is Z-Mod's. Its value is the boot case: on
+    // firmware whose zmod_color only recomputes active_tool_id inside its own
+    // commands, this is what replaces the stale dock-sensor-error boot state
+    // with where the tools actually sit.
+    if (!api_ || !zmod_c5_row_active() || !tinfo_macro_present_) {
+        return;
+    }
+    // Captureless callbacks only: the query is fire-and-forget (its answer
+    // arrives on the console listener), and a failed probe is log-only —
+    // claiming error ownership here would mute Klipper's own `!!` line.
+    api_->execute_gcode(
+        "T_INFO", nullptr,
+        [](const MoonrakerError& err) {
+            spdlog::debug("[AMS ToolChanger] T_INFO query refused: {}", err.message);
+        },
+        0, false, nullptr, /*caller_surfaces_errors=*/false);
+}
+
+void AmsBackendToolChanger::on_stopping() {
+    unregister_zmod_marker_listener();
+}
+
+void AmsBackendToolChanger::register_zmod_marker_listener() {
+    if (!client_ || !zmod_c5_row_active()) {
+        return;
+    }
+
+    static const std::string handler_name = "toolchanger_zmod_marker_watcher";
+    auto token = lifetime_.token();
+
+    client_->register_method_callback(
+        "notify_gcode_response", handler_name, [this, token](const json& msg) {
+            // BG THREAD: extract the line into a local; no `this` access here.
+            std::string line;
+            if (msg.contains("params") && msg["params"].is_array() && !msg["params"].empty() &&
+                msg["params"][0].is_string()) {
+                line = msg["params"][0].get<std::string>();
+            } else if (msg.is_array() && !msg.empty() && msg[0].is_string()) {
+                line = msg[0].get<std::string>();
+            } else {
+                return;
+            }
+
+            // BG-side pre-filter (queue-pressure economy): notify_gcode_response
+            // fires for EVERY gcode console line — hundreds per second on a busy
+            // print. The parsers only act on the swap narration tokens and
+            // T_INFO's rows, so anything without one never hits the UpdateQueue.
+            if (line.find("Grab attempt for T") == std::string::npos &&
+                line.find("Unload attempt for T") == std::string::npos &&
+                line.find("_T_IN") == std::string::npos &&
+                line.find("_T_OUT") == std::string::npos &&
+                line.find(": home") == std::string::npos &&
+                line.find(": HEAD") == std::string::npos &&
+                line.find("ERROR (both)") == std::string::npos &&
+                line.find("Offset:") == std::string::npos) {
+                return;
+            }
+
+            // MAIN THREAD: on_zmod_marker_line takes mutex_ and writes backend
+            // state.
+            token.defer("AmsBackendToolChanger::zmod_marker_apply",
+                        [this, line = std::move(line)]() mutable { on_zmod_marker_line(line); });
+        });
+
+    // FIRMWARE_RESTART reloads the macros; the tool-state query is what
+    // re-seeds the carriage reading after klippy comes back.
+    client_->register_method_callback(
+        "notify_klippy_ready", handler_name, [this, token](const json& /*msg*/) {
+            token.defer("AmsBackendToolChanger::zmod_klippy_ready_apply",
+                        [this]() { query_zmod_tool_state(); });
+        });
+}
+
+void AmsBackendToolChanger::unregister_zmod_marker_listener() {
+    if (!client_) {
+        return;
+    }
+    client_->unregister_method_callback("notify_gcode_response", "toolchanger_zmod_marker_watcher");
+    client_->unregister_method_callback("notify_klippy_ready", "toolchanger_zmod_marker_watcher");
+}
+
+void AmsBackendToolChanger::on_zmod_marker_line(const std::string& line) {
+    if (auto reading = helix::toolchanger_addon::parse_zmod_marker(line)) {
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            // Same path a status frame takes: the marker's phase word drives the
+            // action, the direction latch and the step bar's index, while its
+            // absent fields leave the tool and dock state the object carries alone.
+            apply_tool_sensor_locked(*reading);
+        }
+        emit_event(EVENT_STATE_CHANGED);
+        return;
+    }
+
+    // T_INFO's rows: one dock/carriage fact per line, and the block-end line is
+    // the only place "nothing on the carriage" can be stated.
+    bool block_ended = false;
+    auto reading = helix::toolchanger_addon::parse_zmod_tinfo_line(line, block_ended);
+    bool changed = false;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (reading) {
+            if (reading->current_tool.has_value()) {
+                tinfo_block_saw_head_ = true;
+            }
+            apply_tool_sensor_locked(*reading);
+            changed = true;
+        } else if (block_ended) {
+            if (!tinfo_block_saw_head_) {
+                // Every tool row said home and none said HEAD: the carriage is
+                // empty. Reading it here is the point of the query — firmware
+                // that only recomputes active_tool_id inside its own commands
+                // clears a stale carriage reading through nothing else.
+                helix::toolchanger_addon::ToolReading empty;
+                empty.current_tool = -1;
+                apply_tool_sensor_locked(empty);
+                changed = true;
+            }
+            tinfo_block_saw_head_ = false;
+        }
+    }
+    if (changed) {
+        emit_event(EVENT_STATE_CHANGED);
     }
 }
 
@@ -407,6 +540,26 @@ PathTopology AmsBackendToolChanger::get_topology() const {
     return PathTopology::PARALLEL; // Each tool has its own independent path
 }
 
+helix::printer::EndlessSpoolCapabilities
+AmsBackendToolChanger::get_endless_spool_capabilities() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    using namespace helix::printer;
+    if (!zmod_c5_row_active()) {
+        return {};
+    }
+    // Z-Mod's C5 "endless spool mode" (zmod docs, C5PRO.md): when a head runs
+    // out, the firmware switches to the next spool whose colour AND type both
+    // match. Always on, no toggle to write — the same answer the AD5X IFS
+    // backend gives stock zMod.
+    EndlessSpoolCapabilities caps;
+    caps.availability = EndlessSpoolAvailability::Available;
+    caps.provider = "zmod";
+    caps.enabled = EndlessSpoolEnabled::On;
+    caps.editability = EndlessSpoolEditability::ReadOnly;
+    caps.restriction = EndlessSpoolRestriction::FirmwareManaged;
+    return caps;
+}
+
 PathSegment AmsBackendToolChanger::get_filament_segment() const {
     std::lock_guard<std::mutex> lock(mutex_);
 
@@ -442,17 +595,26 @@ PathSegment AmsBackendToolChanger::get_slot_filament_segment(int slot_index) con
 
 std::optional<helix::ErrorEvent> AmsBackendToolChanger::current_error() const {
     std::lock_guard<std::mutex> lock(mutex_);
-    // Only the dock-sensor fault. Every other ERROR this backend raises comes
-    // from klipper-toolchanger's own status and reads correctly in the generic
+    // Only the faults this backend owns. Every other ERROR comes from
+    // klipper-toolchanger's own status and reads correctly in the generic
     // dialog, so it stays there.
-    if (!sensor_error_) {
-        return std::nullopt;
+    if (sensor_error_) {
+        // Same sentence unload_blocked_reason() returns, so the dialog and the
+        // greyed-out Unmount beside it explain the fault in one wording.
+        return helix::make_ams_fault_event(
+            helix::ErrorSource::TOOLCHANGER, lv_tr("Dock sensors disagree"),
+            lv_tr("Dock sensors cannot tell which tool is mounted"), build_recovery_actions());
     }
-    // Same sentence unload_blocked_reason() returns, so the dialog and the
-    // greyed-out Unmount beside it explain the fault in one wording.
-    return helix::make_ams_fault_event(
-        helix::ErrorSource::TOOLCHANGER, lv_tr("Dock sensors disagree"),
-        lv_tr("Dock sensors cannot tell which tool is mounted"), build_recovery_actions());
+    if (!afclite_fault_message_.empty()) {
+        // The shim's own fault, with the firmware's own wording: a message the
+        // printer wrote is the most accurate text the dialog can show. Title is
+        // the shared string the Happy Hare and QIDI backends use for the same
+        // class of fault.
+        return helix::make_ams_fault_event(helix::ErrorSource::TOOLCHANGER,
+                                           lv_tr("Filament System Error"), afclite_fault_message_,
+                                           build_recovery_actions());
+    }
+    return std::nullopt;
 }
 
 PathSegment AmsBackendToolChanger::infer_error_segment() const {
@@ -504,6 +666,14 @@ void AmsBackendToolChanger::handle_status(const nlohmann::json& params) {
                 apply_material_reading_locked(*reading);
                 state_changed = true;
             }
+        }
+
+        // Z-Mod's afclite shim: the firmware's own fault flag (a boolean, not a
+        // vocabulary to guess at) and its activity word, which is logged for
+        // field visibility and acted on for nothing but the fault.
+        if (auto afc = helix::toolchanger_addon::read_afc_state(params)) {
+            apply_afc_state_locked(*afc);
+            state_changed = true;
         }
 
         // Check for individual tool updates (e.g., "tool T0", "tool T1")
@@ -711,6 +881,7 @@ void AmsBackendToolChanger::apply_material_reading_locked(
         return;
     }
     firmware_slots_seen_ = true;
+    bool filament_changed = false;
     for (size_t i = 0; i < reading.slots->size(); ++i) {
         const auto& slot = (*reading.slots)[i];
         if (!slot) {
@@ -726,6 +897,63 @@ void AmsBackendToolChanger::apply_material_reading_locked(
             vendor.color_rgb = *slot->rgb;
         }
         helix::ams::ingest(lane_id(static_cast<int>(i)), vendor);
+        if (slot->filament_present) {
+            if (i >= head_filament_.size()) {
+                head_filament_.resize(i + 1);
+            }
+            head_filament_[i] = *slot->filament_present;
+            filament_changed = true;
+        }
+    }
+    if (filament_changed) {
+        refresh_slot_statuses_locked();
+    }
+}
+
+void AmsBackendToolChanger::apply_afc_state_locked(
+    const helix::toolchanger_addon::AfcStateReading& afc) {
+    // The fault flag is the one field whose semantics need no vocabulary:
+    // true is a fault the firmware itself reports, with its own text.
+    if (afc.error_state) {
+        const std::string text = afc.message.empty() ? "filament system fault" : afc.message;
+        if (afclite_fault_message_ != text) {
+            spdlog::warn("{} afclite reports a fault: {}", backend_log_tag(), text);
+            afclite_fault_message_ = text;
+        }
+        system_info_.action = AmsAction::ERROR;
+        system_info_.operation_detail = text;
+        return;
+    }
+    if (!afclite_fault_message_.empty()) {
+        spdlog::info("{} afclite fault cleared", backend_log_tag());
+        afclite_fault_message_.clear();
+        if (system_info_.action == AmsAction::ERROR) {
+            system_info_.action = AmsAction::IDLE;
+            system_info_.operation_detail.clear();
+        }
+    }
+    // The activity word's vocabulary beyond "idle" is unverified, so it is
+    // logged rather than acted on: the next field bundle captured during a
+    // real load/unload shows the vocabulary here, and the mapping that follows
+    // is then written against evidence.
+    if (afc.current_state != last_afc_state_logged_) {
+        spdlog::info("{} afclite state: {}", backend_log_tag(), afc.current_state);
+        last_afc_state_logged_ = afc.current_state;
+    }
+    // The lane map is the firmware's own tool routing (SET_MAP can change it).
+    // Logged when it is not identity so a remap is visible in every bundle;
+    // nothing acts on it until a capture says what it means for head indices.
+    if (!afc.lane_maps.empty()) {
+        std::string joined;
+        for (size_t i = 0; i < afc.lane_maps.size(); ++i) {
+            if (!afc.lane_maps[i].empty() && afc.lane_maps[i] != "T" + std::to_string(i)) {
+                joined += (joined.empty() ? "" : " ") + afc.lane_maps[i];
+            }
+        }
+        if (!joined.empty() && joined != last_lane_map_logged_) {
+            spdlog::info("{} afclite lane map is not identity: {}", backend_log_tag(), joined);
+            last_lane_map_logged_ = joined;
+        }
     }
 }
 
@@ -862,6 +1090,18 @@ void AmsBackendToolChanger::refresh_slot_statuses_locked() {
                                      dock_seated_[static_cast<size_t>(i)].has_value() &&
                                      !*dock_seated_[static_cast<size_t>(i)];
             stamped = dock_vacant ? SlotStatus::EMPTY : SlotStatus::AVAILABLE;
+            // A firmware that reports per-head filament (Z-Mod 1.7.4+) upgrades
+            // the AVAILABLE branch: a docked head whose slot says it holds no
+            // filament reads Empty. It cannot outrank the carriage arm — a
+            // mounted head that ran dry is the runout flow's question, not this
+            // stamp's — nor a dock-reported vacancy, which says the head itself
+            // is out of the machine.
+            const bool no_filament = !dock_vacant && i < static_cast<int>(head_filament_.size()) &&
+                                     head_filament_[static_cast<size_t>(i)].has_value() &&
+                                     !*head_filament_[static_cast<size_t>(i)];
+            if (no_filament) {
+                stamped = SlotStatus::EMPTY;
+            }
         }
         slots[i].status = stamped;
 
@@ -1133,6 +1373,25 @@ AmsError AmsBackendToolChanger::dispatch_operation(std::string gcode, AmsAction 
 // ============================================================================
 
 AmsError AmsBackendToolChanger::do_load_filament(int slot_index) {
+    if (tool_feed_.present) {
+        // The firmware feeds the head itself, and heats it. Only a command the
+        // printer published is sent, so a head with no lane is refused.
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            AmsError slot_valid = validate_slot_index_locked(slot_index);
+            if (!slot_valid) {
+                return slot_valid;
+            }
+        }
+        const auto head = static_cast<size_t>(slot_index);
+        if (head >= tool_feed_.head_gcode.size() || tool_feed_.head_gcode[head].empty()) {
+            return AmsErrorHelper::not_supported("filament feed for this tool");
+        }
+        std::string cmd = tool_feed_.head_gcode[head];
+        spdlog::info("[AMS ToolChanger] Feeding tool {} via {}: {}", slot_index,
+                     tool_feed_.provider_name, cmd);
+        return dispatch_operation(std::move(cmd), AmsAction::LOADING);
+    }
     // For tool changers, "load filament" means "mount tool"
     return do_change_tool(slot_index);
 }

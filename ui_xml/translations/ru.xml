@@ -15,6 +15,7 @@
   <translation tag="%d slots" ru="%d слотов"/>
   <translation tag="%d toolheads" ru="%d печатающих головок"/>
   <translation tag="%d tools" ru="%d инструментов"/>
+  <translation tag="%d units" ru="%d ед."/>
   <translation tag="%d-%d" ru="%d-%d"/>
   <translation tag="%d-%d°C" ru="%d-%d°C"/>
   <translation tag="%d:%02d left" ru="осталось %d:%02d"/>
@@ -72,6 +73,7 @@
   <translation tag="1 min ago" ru="1 мин. назад"/>
   <translation tag="1 minute" ru="1 минута"/>
   <translation tag="1 more tap to {} beta features" ru="1 нажатие до {} бета-функций"/>
+  <translation tag="1 unit" ru="1 ед."/>
   <translation tag="1. Printer homes all axes (~1 minute)" ru="1. Принтер ищет ноль по всем осям (~1 минута)"/>
   <translation tag="1. Printer homes and probes the bed" ru="1. Принтер паркуется и зондирует стол"/>
   <translation tag="1. Printer will home and probe each screw" ru="1. Принтер запаркуется и проверит каждый винт"/>
@@ -159,6 +161,7 @@
   <translation tag="Aborting AFC operation..." ru="Прерывание операции AFC..."/>
   <translation tag="Aborting..." ru="Прерывание..."/>
   <translation tag="About" ru="О программе"/>
+  <translation tag="Above target" ru="Выше цели"/>
   <translation tag="Accel to Decel" ru="Ускорение к торможению"/>
   <translation tag="Acceleration to deceleration limit (mm/s²)" ru="Предел ускорения к торможению (мм/с²)"/>
   <translation tag="Accelerometer" ru="Акселерометр"/>
@@ -252,6 +255,7 @@
   <translation tag="Assisted Retract" ru="Ретракция с поддержкой"/>
   <translation tag="Assisting" ru="Помощь"/>
   <translation tag="At least {} lines in helixscreen.env were ignored" ru="В helixscreen.env проигнорировано не менее {} строк"/>
+  <translation tag="At target" ru="Цель достигнута"/>
   <translation tag="At {}°C, about {} minutes." ru="При {}°C около {} минут."/>
   <translation tag="Authentication failed" ru="Ошибка аутентификации"/>
   <translation tag="Auto" ru="Авто"/>
@@ -329,6 +333,7 @@
   <translation tag="Bed temp must be 0-%d°C" ru="Температура стола должна быть 0-%d°C"/>
   <translation tag="Bed warming timed out" ru="Нагрев стола — время ожидания истекло"/>
   <translation tag="Before starting" ru="Перед началом"/>
+  <translation tag="Below target" ru="Ниже цели"/>
   <translation tag="Belt Tension" ru="Натяжение ремня"/>
   <translation tag="Belt Tension Check" ru="Проверка натяжения ремня"/>
   <translation tag="Belt Tension needs a CoreXY printer. This one is {}." ru="Для натяжения ремня нужен принтер CoreXY. Этот принтер: {}."/>
@@ -885,6 +890,8 @@
   <translation tag="Dry Filament" ru="Сушка филамента"/>
   <translation tag="Dry Filament on the Bed" ru="Сушка филамента на столе"/>
   <translation tag="Dry spools on the heated bed" ru="Сушка катушек на нагреваемом столе"/>
+  <translation tag="Dryer already running" ru="Сушилка уже работает"/>
+  <translation tag="Dryer is not running" ru="Сушилка не работает"/>
   <translation tag="Drying" ru="Сушка"/>
   <translation tag="Drying is already running" ru="Сушка уже идёт"/>
   <translation tag="Drying on the bed" ru="Сушка на столе"/>
@@ -994,6 +1001,7 @@
   <translation tag="Error: Verification failed" ru="Ошибка: проверка не удалась"/>
   <translation tag="Error: Wrong architecture" ru="Ошибка: неверная архитектура"/>
   <translation tag="Error: `unzip` not installed" ru="Ошибка: `unzip` не установлен"/>
+  <translation tag="Error: cannot write the service file in {}" ru="Ошибка: не удалось записать файл службы в {}"/>
   <translation tag="Errors only" ru="Только ошибки"/>
   <translation tag="Escalate to emergency stop if cancel doesn&apos;t respond" ru="Эскалация до аварийной остановки, если отмена не отвечает"/>
   <translation tag="Escalation Timeout" ru="Тайм-аут эскалации"/>
@@ -1256,6 +1264,8 @@
   <translation tag="Fix: chown {} {}, then restart" ru="Исправление: chown {} {}, затем перезапустите"/>
   <translation tag="FlashForge Adventurer 5M" ru="FlashForge Adventurer 5M"/>
   <translation tag="FlashForge Adventurer 5X" ru="FlashForge Adventurer 5X"/>
+  <translation tag="FlashForge Creator 5" ru="FlashForge Creator 5"/>
+  <translation tag="FlashForge Creator 5 Pro" ru="FlashForge Creator 5 Pro"/>
   <translation tag="FlashForge IFS" ru="FlashForge IFS"/>
   <translation tag="Flip" ru="Отразить"/>
   <translation tag="Flip the spools" ru="Переверните катушки"/>
@@ -1798,7 +1808,9 @@
   <translation tag="More points = more accurate, but takes longer." ru="Больше точек — точнее, но дольше."/>
   <translation tag="Motion" ru="Движение"/>
   <translation tag="Motion sensor stuck: filament is still at the feeder. Resume to feed it." ru="Датчик движения застрял: филамент всё ещё в фидере. Продолжите, чтобы подать его."/>
+  <translation tag="Motion timed out" ru="Время ожидания движения истекло"/>
   <translation tag="Motor controller error" ru="Ошибка контроллера двигателя"/>
+  <translation tag="Motor drive fault" ru="Неисправность драйвера двигателя"/>
   <translation tag="Motor parameter setup failed" ru="Не удалась настройка параметров двигателя"/>
   <translation tag="Motor speeds and acceleration" ru="Скорости моторов и ускорение"/>
   <translation tag="Motors" ru="Двигатели"/>
@@ -2893,6 +2905,7 @@
   <translation tag="Stop failed" ru="Ошибка остановки"/>
   <translation tag="Stop printing &quot;{}&quot;?&#10;&#10;This cannot be undone after 5 seconds." ru="Остановить печать &quot;{}&quot;?&#10;&#10;Это нельзя будет отменить через 5 секунд."/>
   <translation tag="Stop the check?" ru="Остановить проверку?"/>
+  <translation tag="Stop the running cycle before starting another" ru="Остановите текущий цикл, прежде чем запускать новый"/>
   <translation tag="Stopped" ru="Остановлено"/>
   <translation tag="Stopped between Hub and Toolhead" ru="Остановка между хабом и печатающей головкой"/>
   <translation tag="Stopped between Lane and Hub" ru="Остановка между каналом и хабом"/>
@@ -3064,6 +3077,7 @@
   <translation tag="Theme changes apply after restart." ru="Изменения темы применяются после перезапуска."/>
   <translation tag="Theme reset to defaults" ru="Тема сброшена к настройкам по умолчанию"/>
   <translation tag="Theme: " ru="Тема: "/>
+  <translation tag="There is no cycle to stop" ru="Нет цикла для остановки"/>
   <translation tag="There is not enough free memory to run this test. Klipper&apos;s analysis would run out of memory and leave the printer stuck until it is power-cycled." ru="Для этого теста недостаточно свободной памяти. Анализу Klipper не хватит памяти, и принтер зависнет, пока его не выключат и снова не включат."/>
   <translation tag="These tools have a different filament grade loaded:" ru="В этих инструментах загружен филамент другой марки:"/>
   <translation tag="These tools have incompatible materials loaded:" ru="В этих инструментах загружены несовместимые материалы:"/>
@@ -3082,6 +3096,7 @@
   <translation tag="This device has only {} MB of RAM. Resonance calibration is memory-intensive and can make the printer firmware report a &quot;Timer Too Close&quot; error or restart mid-test. Continue anyway?" ru="На этом устройстве всего {} МБ ОЗУ. Калибровка резонансов требует много памяти и может привести к тому, что прошивка принтера сообщит об ошибке &quot;Timer Too Close&quot; или перезапустится во время теста. Всё равно продолжить?"/>
   <translation tag="This device has very little RAM. Resonance calibration is memory-intensive and may cause a &quot;Timer Too Close&quot; error. Continue anyway?" ru="На этом устройстве очень мало ОЗУ. Калибровка резонансов требует много памяти и может вызвать ошибку &quot;Timer Too Close&quot;. Всё равно продолжить?"/>
   <translation tag="This doesn&apos;t match the linked Spoolman spool. Add it as a new spool, or update the linked one to match?" ru="Это не совпадает с привязанной катушкой Spoolman. Добавить как новую катушку или обновить привязанную?"/>
+  <translation tag="This dryer cannot run while filament from the unit is loaded" ru="Сушилка не может работать, пока загружен филамент из этого узла"/>
   <translation tag="This feature requires different hardware or configuration" ru="Для этой функции требуется другое оборудование или конфигурация"/>
   <translation tag="This filament system does not report buffer or flow data." ru="Эта система филамента не сообщает данные буфера и потока."/>
   <translation tag="This file was sliced for {} but {} is loaded." ru="Файл нарезан для {}, но загружен {}."/>
@@ -3099,6 +3114,7 @@
   <translation tag="This printer cannot calibrate tool offsets automatically" ru="Этот принтер не может калибровать смещения инструментов автоматически"/>
   <translation tag="This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman." ru="Этот принтер берёт данные шлюзов из Spoolman. HelixScreen очистил свою копию; удалите катушку в Spoolman."/>
   <translation tag="This printer fills its gates from Spoolman. Make colour, material and spool changes in Spoolman." ru="Этот принтер берёт данные шлюзов из Spoolman. Меняйте цвет, материал и катушку в Spoolman."/>
+  <translation tag="This printer has no automatic unload. Cut the filament at the head and pull it out by hand." ru="У этого принтера нет автоматической выгрузки. Отрежьте филамент у головки и вытащите его вручную."/>
   <translation tag="This printer looks like a {} ({}% confidence), but it is set up as a {}. A wrong type applies incorrect pre-print options and presets." ru="Этот принтер похож на {} (уверенность {}%), но настроен как {}. Неверный тип применяет неправильные параметры перед печатью и пресеты."/>
   <translation tag="This printer&apos;s network service controls the WiFi radio" ru="WiFi-модулем управляет сетевая служба этого принтера"/>
   <translation tag="This printer&apos;s network service manages saved WiFi networks" ru="Сохранёнными сетями WiFi управляет сетевая служба этого принтера"/>
@@ -3258,6 +3274,7 @@
   <translation tag="Unload from toolhead first" ru="Сначала выгрузите из печатающей головки"/>
   <translation tag="Unload macro not configured" ru="Макрос выгрузки не настроен"/>
   <translation tag="Unload the CFS filament before enabling bypass" ru="Выгрузите филамент CFS перед включением обхода"/>
+  <translation tag="Unload this unit first" ru="Сначала выгрузите этот узел"/>
   <translation tag="Unload..." ru="Выгрузить..."/>
   <translation tag="Unloaded" ru="Выгружен"/>
   <translation tag="Unloading" ru="Выгрузка"/>
@@ -3510,6 +3527,7 @@
   <translation tag="invalid" ru="недопустим"/>
   <translation tag="just now" ru="только что"/>
   <translation tag="last 60 s · LOOSE up, TIGHT down" ru="последние 60 с · вверху ОСЛАБЛЕН, внизу НАТЯНУТ"/>
+  <translation tag="last 60 s · pressure, target dashed" ru="последние 60 с · давление, цель пунктиром"/>
   <translation tag="layers" ru="слои"/>
   <translation tag="left" ru="осталось"/>
   <translation tag="loaded" ru="загружен"/>

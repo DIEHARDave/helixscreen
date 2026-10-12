@@ -393,7 +393,8 @@ if [ "$STAGED_ONLY" = true ]; then
     #
     # Bounded -j (qc_build_jobs): this build runs from a commit hook.
     QC_JOBS=$(qc_build_jobs)
-    if make SKIP_COMPILE_COMMANDS=1 -j"$QC_JOBS" >/dev/null 2>&1; then
+    QC_MAKE=$(qc_make)
+    if "$QC_MAKE" SKIP_COMPILE_COMMANDS=1 -j"$QC_JOBS" >/dev/null 2>&1; then
       section_time $SECTION_START
       echo ""
       echo "✅ Build successful"

@@ -67,13 +67,6 @@ class CountingWorkerStub {
         REQUIRE(getsockname(listen_fd_, reinterpret_cast<sockaddr*>(&bound), &len) == 0);
         url_ = "http://127.0.0.1:" + std::to_string(ntohs(bound.sin_port)) + "/";
 
-        // Bound receive timeout so the accept loop re-checks stop_ instead of
-        // blocking forever.
-        struct timeval tv {};
-        tv.tv_sec = 0;
-        tv.tv_usec = 50 * 1000;
-        setsockopt(listen_fd_, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
-
         thread_ = std::thread([this] { serve(); });
     }
 
@@ -105,9 +98,16 @@ class CountingWorkerStub {
   private:
     void serve() {
         while (!stopped_) {
+            // Wait for a connection with a bounded poll so the loop re-checks
+            // stopped_. SO_RCVTIMEO cannot do this: macOS accept() ignores it
+            // and would block until a client connected, hanging stop().
+            pollfd pfd{listen_fd_, POLLIN, 0};
+            if (poll(&pfd, 1, 50) <= 0) {
+                continue;
+            }
             int fd = accept(listen_fd_, nullptr, nullptr);
             if (fd < 0) {
-                continue; // SO_RCVTIMEO expiry or a spurious wakeup
+                continue; // spurious wakeup
             }
 
             // Accepted sockets do not inherit SO_RCVTIMEO on Linux; without

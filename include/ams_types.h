@@ -38,6 +38,11 @@ namespace helix {
 /// Default color for slots without filament info (medium gray)
 constexpr uint32_t AMS_DEFAULT_SLOT_COLOR = 0x808080;
 
+/// Units the AMS UI addresses. The overview's path canvas draws this many and
+/// AmsState allocates this many sets of per-unit subjects, so a unit the path
+/// shows always has a badge to bind; both caps derive from this one constant.
+constexpr int AMS_MAX_UNITS = 16;
+
 /**
  * @brief Type of AMS system detected
  *
@@ -889,13 +894,24 @@ struct BufferHealth {
     /// meter exactly then.
     bool fps_reported = false;
 
+    /// The sensor has one spring and measures compression only: 0 is no
+    /// pressure, 1 is fully compressed, and a reading below the set point is
+    /// less compression rather than tension. Such a sensor is shown as a
+    /// one-sided gauge, never through fps_to_bias()'s two-ended scale.
+    bool compression_only = false;
+
+    /// Filament is loaded on the lane this sensor serves. A compression-only
+    /// sensor near zero only means the feed is not engaging while there is
+    /// filament to feed.
+    bool filament_loaded = false;
+
     /// Whether this buffer publishes a proportional pressure reading at all.
     /// False for the switched TurtleNeck every BoxTurtle ships with.
     [[nodiscard]] bool has_fps() const {
         return fps_reported && fps_set_point > 0.0f;
     }
 
-    /// Map a filament-pressure reading onto the -1..+1 sync-feedback bias
+    /// Map a two-ended filament-pressure reading onto the -1..+1 sync-feedback bias
     /// Happy Hare publishes directly, so one bias feeds every buffer surface.
     ///
     /// Sign follows the existing convention: negative is tension (filament
@@ -1300,6 +1316,12 @@ struct AmsUnit {
     /// Physical tool label for HUB units (e.g., 4 for extruder4/T4, 5 for extruder5/T5).
     /// -1 means "use min(mapped_tool) from lanes" (the default/PARALLEL behavior).
     int hub_tool_label = -1;
+
+    /// Identity of the hub (and so the filament lane and nozzle) this unit
+    /// feeds, when the backend knows it. Units that name the same non-empty
+    /// hub converge into ONE hub and feed ONE toolhead; empty means the unit's
+    /// hub is its own as far as the backend can tell.
+    std::string hub_id;
 
     /// Per-lane hub routing flag. true = lane routes through hub, false = direct to extruder.
     /// Empty vector means routing info unavailable (treat as uniform topology).
@@ -1834,10 +1856,13 @@ struct AmsSystemInfo {
     }
 
     /// System-level bias from feeding_pressure_unit(): -1.5 when that sensor has no set
-    /// point, or when no unit reports pressure.
+    /// point, measures compression only, or when no unit reports pressure.
     [[nodiscard]] float pressure_sensor_bias() const {
         const int pos = feeding_pressure_unit();
-        return pos >= 0 ? units[static_cast<size_t>(pos)].buffer_health->fps_to_bias() : -1.5f;
+        if (pos < 0 || units[static_cast<size_t>(pos)].buffer_health->compression_only) {
+            return -1.5f; // a one-sided gauge has no place on the two-ended scale
+        }
+        return units[static_cast<size_t>(pos)].buffer_health->fps_to_bias();
     }
 
     /// Which clog-meter sources this snapshot can feed. The meter's source

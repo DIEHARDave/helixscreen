@@ -24,7 +24,9 @@ using fpath::PathPlan;
 
 struct SystemPathData {
     int unit_count = 0;
-    static constexpr int MAX_UNITS = 8;
+    // Unit cards the overview can draw (AMS_MAX_UNITS, shared with AmsState); a unit past this has
+    // no stem, no hub, and a hub group made only of such units is missing from the plan.
+    static constexpr int MAX_UNITS = helix::AMS_MAX_UNITS;
     static constexpr int MAX_TOOLS = 16;
     // X centre of each unit's card, relative to this canvas's left edge. Pushed
     // by the panel and re-pushed whenever the card row scrolls, so a stem stays
@@ -56,6 +58,21 @@ struct SystemPathData {
 
     // Toolhead sensor state
     bool has_toolhead_sensor = false; // System has a toolhead entry sensor
+
+    // The buffer between the hub and the nozzle (single-toolhead layout): the same
+    // box the unit view draws for the system reading, so its label and severity
+    // come from ams_detail_buffer_box().
+    bool has_buffer = false;
+    int buffer_fault = 0; // severity: -1 untinted, 0 neutral, 1 warning, 2 danger
+    char buffer_label[8] = {};
+
+    // Per-unit hub (several-toolhead layout). Units carrying the same non-zero
+    // group join one hub box; 0 is a unit on a hub of its own.
+    int unit_hub_group[MAX_UNITS] = {};
+    // Per-unit buffer under that unit's hub, in the same terms as buffer_*.
+    bool unit_has_buffer[MAX_UNITS] = {};
+    int unit_buffer_fault[MAX_UNITS] = {};
+    char unit_buffer_label[MAX_UNITS][8] = {};
 
     // Per-unit tool routing (mixed topology support)
     int unit_tool_count[MAX_UNITS] = {};     // Tools per unit (BT=4, OpenAMS=1)
@@ -126,7 +143,8 @@ int32_t calc_tool_x(int tool_index, int total_tools, int32_t x_off, int32_t widt
 /// Scale of the toolhead glyphs in the multi-tool row.
 int32_t small_tool_scale(const SystemPathData& data);
 
-// One box the canvas draws over the tubes: a multi-tool mini hub.
+// One box the canvas draws over the tubes: a multi-tool hub. A hub shared by
+// several units is recorded once, at its lowest unit index.
 struct HubInfo {
     int32_t hub_x;  // centre of the hub box
     int32_t tool_x; // nozzle the hub feeds (== hub_x when nothing is shared)
@@ -136,6 +154,11 @@ struct HubInfo {
     lv_color_t hub_bg_color;
     int first_tool;
     bool valid;
+    // The hub's buffer box on its outlet; buffer_h == 0 when the hub has none.
+    int32_t buffer_y = 0;
+    int32_t buffer_w = 0;
+    int32_t buffer_h = 0;
+    bool short_label = false; // too narrow for "Hub": draw "H"
 };
 
 // What the canvas draws on top of the planned tubes.

@@ -250,9 +250,17 @@ PrintStatusPanel::PrintStatusPanel(PrinterState& printer_state, IMoonrakerAPI* a
         [](PrintStatusPanel* self, int) { self->on_temperature_changed(); },
         helix::ToolState::instance().get_subjects_lifetime());
 
-    // Chamber status text: observe chamber temp to compute Heating/Cooling/Holding status
+    // Chamber status text: observe chamber temp, the effective setpoint and the
+    // control mode — a set that lands without the temperature moving (M141
+    // parking ≤40°C targets on the cooling fan) still changes the status.
     chamber_temp_observer_ = observe<int>(
         printer_state_.temperature_state().get_chamber_temp_subject(), this,
+        [](PrintStatusPanel* self, int) { self->update_chamber_status(); }, ps_subjects);
+    chamber_target_observer_ = observe<int>(
+        printer_state_.temperature_state().get_chamber_effective_target_subject(), this,
+        [](PrintStatusPanel* self, int) { self->update_chamber_status(); }, ps_subjects);
+    chamber_mode_observer_ = observe<int>(
+        printer_state_.temperature_state().get_chamber_mode_subject(), this,
         [](PrintStatusPanel* self, int) { self->update_chamber_status(); }, ps_subjects);
 
     // Subscribe to print progress and state
@@ -2196,8 +2204,10 @@ void PrintStatusPanel::update_chamber_status() {
     bool has_heater = lv_subject_get_int(printer_state_.capabilities_state().subject(
                           Capability::HasChamberHeater)) != 0;
     int current = lv_subject_get_int(printer_state_.temperature_state().get_chamber_temp_subject());
-    int target =
-        lv_subject_get_int(printer_state_.temperature_state().get_chamber_target_subject());
+    // Effective setpoint, not the raw heater target: in Maintaining/Resting mode
+    // the real setpoint lives on the cooling fan and the heater target is 0.
+    int target = lv_subject_get_int(
+        printer_state_.temperature_state().get_chamber_effective_target_subject());
 
     if (!has_heater || target == 0) {
         // Sensor-only or heater off: no status text
@@ -2207,8 +2217,9 @@ void PrintStatusPanel::update_chamber_status() {
     } else {
         auto chamber = helix::ui::temperature::classify_heater_status(
             current, target,
-            lv_subject_get_int(
-                printer_state_.get_heater_power_subject(helix::HeaterType::Chamber)));
+            lv_subject_get_int(printer_state_.get_heater_power_subject(helix::HeaterType::Chamber)),
+            static_cast<helix::ChamberMode>(
+                lv_subject_get_int(printer_state_.temperature_state().get_chamber_mode_subject())));
         lv_subject_set_int(&chamber_status_state_subject_, static_cast<int>(chamber.state));
         std::snprintf(chamber_status_buf_, sizeof(chamber_status_buf_), "%s", chamber.duty.c_str());
     }

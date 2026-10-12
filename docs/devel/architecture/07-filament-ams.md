@@ -130,7 +130,7 @@ Event coarsening is deliberate: `STATE_CHANGED`, op completions, errors and atte
 
 Every per-slot accessor with a `SubjectLifetime&` out-param hands out a live token for the subject it returns (#1700). Backend 0 and the single-slot overloads return `get_subjects_lifetime()` (`include/ams_state.h#get_subjects_lifetime`), which `deinit_subjects()` flips; a secondary backend returns its `BackendSlotSubjects` token, which `clear_backends()` flips; a nullptr return comes with an empty token. Everything else registered with `subjects_` (per-unit subjects, the rest of the fixed set) dies in `deinit_subjects()`, so its long-lived observers pass `get_subjects_lifetime()` directly: `PrintStatusPanel` watching `get_current_color_subject()` and `get_tool_map_version_subject()` to recolor the gcode preview is the usual case.
 
-Writes are change-gated: every value is compared before `lv_subject_set_*` fires, and a material-name delta additionally bumps `slots_version_`, because container-level consumers re-read material through `refresh_slots()` (#1065). The fixed set (about a hundred members, capped at `MAX_SLOTS = 16` and `MAX_UNITS = 8`) splits into families:
+Writes are change-gated: every value is compared before `lv_subject_set_*` fires, and a material-name delta additionally bumps `slots_version_`, because container-level consumers re-read material through `refresh_slots()` (#1065). The fixed set (about a hundred members, capped at `MAX_SLOTS = 16` and `MAX_UNITS = 16`) splits into families:
 
 | Family | Members (subject names) | Consumed by |
 |--------|--------------------------|-------------|
@@ -142,6 +142,7 @@ Writes are change-gated: every value is compared before `lv_subject_set_*` fires
 | Toolchange narration | `toolchange_visible`, `ams_current_toolchange`, `ams_number_of_toolchanges`, `toolchange_text` | Print-status toolchange banner |
 | Path canvas feed | `path_topology`, `path_filament_segment` | Filament-path canvas ([`../FILAMENT_PATH_CANVAS.md`](../FILAMENT_PATH_CANVAS.md)) |
 | Dryer / environment | `dryer_*`, per-unit `ams_unit_<i>_*` and `ams_env_ind_<i>_*` | AMS unit card badges, environment detail overlay |
+| Unit paging | `ams_unit_view_active`, `ams_page_count`, `ams_page_current`, `ams_page_has_prev`, `ams_page_has_next`, `ams_page_unit_name`, `ams_page_unit_logo`; `ams_units_dryer_version` | The overview's unit view: header, arrows and dots |
 | Buffer / clog | `buffer_*`, `clog_meter_*` | Filament Buffer widget and modal, clog bar |
 | Endless spool | `ams_endless_state`, `ams_endless_text` | Endless-spool status line |
 
@@ -166,6 +167,10 @@ Whether the user can *change* the routing is three separate questions, each with
 | Does this backend own a tool->slot table for `ToolState` to adopt? | `backend.owns_tool_mapping_table()` | that virtual |
 
 `remap_ready()` is the one to understand: a backend can be built to remap and not be able to yet. AD5X IFS declares `RemapStrategy::Native` unconditionally, but until the `_IFS_VARS` macro is discovered, `set_tool_mapping()` writes local state the firmware replays nothing from. The U1 shows why the third question is separate: it carries out every pick through its pre-print `SET_PRINT_EXTRUDER_MAP` send and owns no tool->slot table, so `build_ams_topology()` asks about the table, never about remap capability. `requires_preprint_send()` stays out of all three: it is a print-start sequencing question. A new firmware declares `get_remap_strategy()`, adds `remap_ready()` only if discovery gates it, and `owns_tool_mapping_table()` only if it owns a table; [`tests/unit/test_remap_strategy.cpp`](../../../tests/unit/test_remap_strategy.cpp) pins every backend's answers.
+
+### The overview draws one model: units, hub, buffer, toolhead
+
+Every multi-filament overview is one or more chains `units -> hub -> buffer -> toolhead`. A hub joins the paths of every unit sharing a non-empty `AmsUnit::hub_id` (an OpenAMS lane); a unit without one is its own hub. Buffer and hub are 1:1, and a buffer box is what `ams_detail_buffer_box(info, unit)` gives the hub's first unit, so overview and unit view agree. `ams_draw::compute_system_tool_layout()` (`src/ui/ams_drawing_utils.cpp`) derives `hub_groups`; `src/ui/ui_system_path_plan.cpp` plans one hub box per group for several toolheads and one combiner for a single toolhead. Toolhead badges name the extruder, never a filament group.
 
 ### Spool assignment: identity is durable, weight is cache
 
@@ -250,7 +255,7 @@ For debugging, every class here logs under a stable tag: `[AMS State]` for the c
 - **Save and load are deliberately asymmetric.** Save writes the local JSON first and fire-and-forgets the DB POST; load prefers the DB and falls back to the file, seeding the DB (`src/printer/tool_state.cpp#save_spool_assignments_if_dirty`). The file is the recovery path, not the primary.
 - **`tools_version_` (ToolState) and `slots_version_` (AmsState) are different clocks.** The first bumps on tool/spool data changes (including weight-only); the second on slot card data. Binding a rebuild to the wrong one yields twitchy or stale UI.
 - **Clearing a spool assignment is a question of OWNERSHIP.** The gate is `supports_per_tool_spool_assignment()`, not `has_firmware_spool_persistence()`: CFS and AD5X IFS answer no to firmware persistence while keeping identity in our own `lane_data` store, and gating the clear on it would refill a lane the user cleared from ToolState on the next poll.
-- **Slot and unit subjects are capped**: `MAX_SLOTS = 16`, `MAX_UNITS = 8` ([`include/ams_state.h#MAX_SLOTS`](../../../include/ams_state.h), `include/ams_state.h#MAX_UNITS`). Units past the cap bind to always-off placeholder subjects; extend the constants consciously.
+- **Slot and unit subjects are capped**: `MAX_SLOTS = 16`, `MAX_UNITS = 16` ([`include/ams_state.h#MAX_SLOTS`](../../../include/ams_state.h), `include/ams_state.h#MAX_UNITS`, taken from `AMS_MAX_UNITS` in `include/ams_types.h`, which also bounds the path canvas). Units past the cap bind to always-off placeholder subjects; extend the constants consciously.
 - **`AmsState` init is discovery-driven and idempotent.** `init_backends_from_hardware()` self-guards against double init and mock mode; don't add a second construction path or hand-register backends. Mock AMS (`--test`) is `AmsBackendMock`, driven by `RuntimeConfig::should_mock_ams()`.
 - **Backend ops go through the NVI entry points, never `do_*` directly.** The entry point enforces the print-active gate and the one-in-flight claim; calling a `do_*` hook bypasses both.
 - **Event names are plain strings, so a typo compiles.** `EVENT_*` are `constexpr const char*` and `on_backend_event()` is an if/else chain; a misspelled name falls through every branch with nothing but the entry trace log.

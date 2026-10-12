@@ -17,6 +17,7 @@ translations:
   '%d slots': '%d slots'
   '%d toolheads': '%d toolheads'
   '%d tools': '%d tools'
+  '%d units': '%d units'
   '%d:%02d left': '%d:%02d left'
   '%dh': '%dh'
   '%dh %02dm': '%dh %02dm'
@@ -72,6 +73,7 @@ translations:
   1 min ago: 1 min ago
   1 minute: 1 minute
   1 more tap to {} beta features: 1 more tap to {} beta features
+  1 unit: 1 unit
   1. Printer homes all axes (~1 minute): 1. Printer homes all axes (~1 minute)
   1. Printer homes and probes the bed: 1. Printer homes and probes the bed
   1. Printer will home and probe each screw: 1. Printer will home and probe each screw
@@ -161,6 +163,7 @@ translations:
   Aborting AFC operation...: Aborting AFC operation...
   Aborting...: Aborting...
   About: About
+  Above target: Above target
   Accel to Decel: Accel to Decel
   Acceleration to deceleration limit (mm/s²): Acceleration to deceleration limit (mm/s²)
   Accelerometer: Accelerometer
@@ -268,6 +271,7 @@ translations:
   Assisted Retract: Assisted Retract
   Assisting: Assisting
   At least {} lines in helixscreen.env were ignored: At least {} lines in helixscreen.env were ignored
+  At target: At target
   At {}°C, about {} minutes.: 'At {}°C, about {} minutes.'
   Authentication failed: Authentication failed
   Auto: Auto
@@ -346,6 +350,7 @@ translations:
   Bed temp must be 0-%d°C: Bed temp must be 0-%d°C
   Bed warming timed out: Bed warming timed out
   Before starting: Before starting
+  Below target: Below target
   Belt Tension: Belt Tension
   Belt Tension Check: Belt Tension Check
   Belt Tension needs a CoreXY printer. This one is {}.: Belt Tension needs a CoreXY printer. This one is {}.
@@ -948,6 +953,8 @@ translations:
   Dry Filament: Dry Filament
   Dry Filament on the Bed: Dry Filament on the Bed
   Dry spools on the heated bed: Dry spools on the heated bed
+  Dryer already running: Dryer already running
+  Dryer is not running: Dryer is not running
   Drying: Drying
   Drying is already running: Drying is already running
   Drying on the bed: Drying on the bed
@@ -1060,6 +1067,7 @@ translations:
   'Error: Verification failed': 'Error: Verification failed'
   'Error: Wrong architecture': 'Error: Wrong architecture'
   'Error: `unzip` not installed': 'Error: `unzip` not installed'
+  'Error: cannot write the service file in {}': 'Error: cannot write the service file in {}'
   Errors only: Errors only
   Escalate to emergency stop if cancel doesn't respond: Escalate to emergency stop
     if cancel doesn't respond
@@ -1340,6 +1348,8 @@ translations:
   'Fix: chown {} {}, then restart': 'Fix: chown {} {}, then restart'
   FlashForge Adventurer 5M: FlashForge Adventurer 5M
   FlashForge Adventurer 5X: FlashForge Adventurer 5X
+  FlashForge Creator 5: FlashForge Creator 5
+  FlashForge Creator 5 Pro: FlashForge Creator 5 Pro
   FlashForge IFS: FlashForge IFS
   Flip: Flip
   Flip the spools: Flip the spools
@@ -1932,7 +1942,9 @@ translations:
     takes longer.
   Motion: Motion
   'Motion sensor stuck: filament is still at the feeder. Resume to feed it.': 'Motion sensor stuck: filament is still at the feeder. Resume to feed it.'
+  Motion timed out: Motion timed out
   Motor controller error: Motor controller error
+  Motor drive fault: Motor drive fault
   Motor parameter setup failed: Motor parameter setup failed
   Motor speeds and acceleration: Motor speeds and acceleration
   Motors: Motors
@@ -3116,6 +3128,7 @@ translations:
   ? "Stop printing \"{}\"?\n\nThis cannot be undone after 5 seconds."
   : "Stop printing \"{}\"?\n\nThis cannot be undone after 5 seconds."
   Stop the check?: Stop the check?
+  Stop the running cycle before starting another: Stop the running cycle before starting another
   Stopped: Stopped
   Stopped between Hub and Toolhead: Stopped between Hub and Toolhead
   Stopped between Lane and Hub: Stopped between Lane and Hub
@@ -3319,6 +3332,7 @@ translations:
   Theme changes apply after restart.: Theme changes apply after restart.
   Theme reset to defaults: Theme reset to defaults
   'Theme: ': 'Theme: '
+  There is no cycle to stop: There is no cycle to stop
   ? There is not enough free memory to run this test. Klipper's analysis would run out of memory and leave the printer stuck until it is power-cycled.
   : There is not enough free memory to run this test. Klipper's analysis would run out of memory and leave the printer stuck until it is power-cycled.
   'These tools have a different filament grade loaded:': 'These tools have a different filament grade loaded:'
@@ -3344,6 +3358,7 @@ translations:
   ? This device has very little RAM. Resonance calibration is memory-intensive and may cause a "Timer Too Close" error. Continue anyway?
   : This device has very little RAM. Resonance calibration is memory-intensive and may cause a "Timer Too Close" error. Continue anyway?
   This doesn't match the linked Spoolman spool. Add it as a new spool, or update the linked one to match?: This doesn't match the linked Spoolman spool. Add it as a new spool, or update the linked one to match?
+  This dryer cannot run while filament from the unit is loaded: This dryer cannot run while filament from the unit is loaded
   This feature requires different hardware or configuration: This feature requires different hardware or configuration
   This filament system does not report buffer or flow data.: This filament system does not report buffer or flow data.
   This file was sliced for {} but {} is loaded.: This file was sliced for {} but {}
@@ -3365,6 +3380,7 @@ translations:
   This printer cannot calibrate tool offsets automatically: This printer cannot calibrate tool offsets automatically
   This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman.: This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman.
   This printer fills its gates from Spoolman. Make colour, material and spool changes in Spoolman.: This printer fills its gates from Spoolman. Make colour, material and spool changes in Spoolman.
+  This printer has no automatic unload. Cut the filament at the head and pull it out by hand.: This printer has no automatic unload. Cut the filament at the head and pull it out by hand.
   ? This printer looks like a {} ({}% confidence), but it is set up as a {}. A wrong type applies incorrect pre-print options and presets.
   : This printer looks like a {} ({}% confidence), but it is set up as a {}. A wrong type applies incorrect pre-print options and presets.
   This printer's network service controls the WiFi radio: This printer's network service controls the WiFi radio
@@ -3551,6 +3567,7 @@ translations:
   Unload from toolhead first: Unload from toolhead first
   Unload macro not configured: Unload macro not configured
   Unload the CFS filament before enabling bypass: Unload the CFS filament before enabling bypass
+  Unload this unit first: Unload this unit first
   Unload...: Unload...
   Unloaded: Unloaded
   Unloading: Unloading
@@ -3819,6 +3836,7 @@ translations:
   invalid: invalid
   just now: just now
   last 60 s · LOOSE up, TIGHT down: last 60 s · LOOSE up, TIGHT down
+  last 60 s · pressure, target dashed: last 60 s · pressure, target dashed
   layers: layers
   left: left
   loaded: loaded

@@ -375,7 +375,7 @@ Select the mock AMS topology/type.
 
 | Property | Value |
 |----------|-------|
-| **Values** | `none`, `afc`, `toolchanger` / `tc`, `mixed`, `multi`, `torture`, `vivid`, `ifs`, `htlf`, `snapmaker`, `medusahc` / `medusahc-fork`, `ifs-module`, `cfs`, `openams` |
+| **Values** | `none`, `afc`, `toolchanger` / `tc`, `mixed`, `multi`, `torture`, `stealth`, `vivid`, `ifs`, `htlf`, `snapmaker`, `medusahc` / `medusahc-fork`, `ifs-module`, `cfs`, `openams` |
 | **Default** | The persona's own (`helix::mock::effective_mock_ams`): `toolchanger` on `creator5`, `ifs` on `ad5x`, `cfs` on `k2`, `snapmaker` on `snapmaker_u1`; Happy Hare, LINEAR, 4 slots on every other persona |
 | **File** | `src/printer/ams_backend.cpp` |
 
@@ -387,7 +387,8 @@ Select the mock AMS topology/type.
 | `toolchanger` / `tc` | 1 | Tool Changer, PARALLEL topology. Alias: `tool_changer` |
 | `mixed` | 3 | Box Turtle + 2x OpenAMS, 6 tools |
 | `multi` | 2 | Box Turtle (4 slots) + Night Owl (2 slots), single toolhead |
-| `torture` | **5** | **The only profile whose unit-card row overflows.** See below |
+| `torture` | **5** | **Its unit-card row overflows.** See below |
+| `stealth` | 5 | StealthChanger-style AFC toolchanger: ACE straight to T0-T3, four hub units on T4-T6 (two share T6), 7 toolheads close together. Exercises the overview's mini-hub row |
 | `vivid` | 3 | 2x Box Turtle + ViViD, 12 slots |
 | `ifs` | 1 | AD5X IFS, 4 slots, LINEAR. Aliases: `ad5x`, `ad5x_ifs` |
 | `htlf_toolchanger` | 2 | AFC HTLF + Toolchanger: 4 HTLF lanes (2 direct, 2 hub→shared extruder) + 3 standalone toolheads. Tests MIXED topology. Aliases: `htlf_tc`, `htlf` |
@@ -398,7 +399,26 @@ Select the mock AMS topology/type.
 | `cfs` | 1 | **Creality CFS, K1 stock dialect - mock HARDWARE, real backend.** The stock `box` status object plus the calibration command surface. Alias: `cfs-k1`. See below |
 | `openams` | 1 | **OpenAMS hub - mock HARDWARE, real backend.** Lists and pushes the `oams_manager` status object (4-bay hub unit, FPS lane, groups T0/T1/T2, slot 4 loaded) so real discovery claims OpenAMS and the production `AmsBackendOpenAms` runs. Slots 3 and 4 get ASA identity seeded into `lane_data`; `OPENAMS_UNLOAD` / `OPENAMS_LOAD GROUP=Tn` flip the loaded slot |
 
+`HELIX_MOCK_AMS=openams` takes more knobs (all read by `MoonrakerClientMock`):
+
+| Variable | Value | Effect |
+|----------|-------|--------|
+| `HELIX_MOCK_OPENAMS_UNITS` | `fleet` | Twelve units: one AMS HT (1 bay) then eleven AMS 2 Pro (4 bays), 45 bays, groups `T0`-`T44` one bay each. Units 1-10 feed lane `fps`, units 11-12 feed `fps2`, which names `extruder1` (two hubs, two toolheads). Every unit publishes its own `devices.<unit>` environment (varied temperature and humidity), unit 6 is mid dryer cycle (55 C, 3 h 25 min left), and the first bay of unit 3 (slot 5) is loaded. `OAMS_DRYER_START OAMS=<1-12>` works on every unit. Same `HELIX_MOCK_OPENAMS_API` / `HELIX_MOCK_OPENAMS_FAULT` behavior as `shared` |
+| `HELIX_MOCK_OPENAMS_UNITS` | `shared` | An AMS HT (1 bay, slot 0) and an AMS 2 Pro (4 bays, slots 1-4) on ONE `fps` lane, groups `T0`-`T4` one slot each, slot 0 loaded: the shape of the reference printer. The overview draws one hub, one FPS and one toolhead. Advertises `OAMSM_LOAD_TO_TOOLHEAD` / `OAMSM_UNLOAD_FROM_TOOLHEAD` and adds the openams plugin's `lanes_by_fps` and `topology` |
+| `HELIX_MOCK_OPENAMS_UNITS` | `two_lanes` | `shared`'s pair on lane `fps` (extruder), plus two AMS 2 Pro (`ams2b`, `ams2c`, slots 5-12) on lane `fps2` (`extruder1`, which the mock printer also reports). Groups `T0`-`T12`, one slot each; slot 0 loaded. The overview draws two chains, each a hub, an FPS and a toolhead. Takes the same `HELIX_MOCK_OPENAMS_API` / fault / dryer behavior as `shared` |
+| `HELIX_MOCK_OPENAMS_API` | `legacy` | With `shared`: the klipper_openams shape. Only `api_version`, `schema`, `ready`, `commands` (`OPENAMS_LOAD` / `OPENAMS_UNLOAD`), `lanes`, `units`, `groups` |
+| `HELIX_MOCK_OPENAMS_FAULT` | fault code, e.g. `motor_drive_fault` | With `shared` (not `legacy`): the AMS HT publishes that unit fault in `devices.ams_ht.faults[]` until `OAMS_CLEAR_FAULT OAMS=1` is sent |
+| (no variable) | with `shared`, not `legacy` | Both units publish `devices.<unit>.environment` (temperature, humidity), `capabilities` (dryer range: AMS HT 45-80 C, AMS 2 Pro 45-65 C and `dryer_requires_unloaded`), `dryer` and `supported_actions`. `OAMS_DRYER_START OAMS=<1\|2> TARGET=<C> DURATION=<s>` heats the unit (state `heating`, then `holding`, counting down) and `OAMS_DRYER_STOP OAMS=<n>` returns it to `off`; both clamp like the plugin. `legacy` publishes none of it |
+| `HELIX_MOCK_OPENAMS_LATE_LINKS` | any | With `shared`: ~10s after start, the spool links of slots 3 and 4 are written to `lane_data` and `notify_openams_spoolman_status` is sent, exercising the late refresh |
+
 ```bash
+# Two OpenAMS units on one lane, klipper_openams shape
+HELIX_MOCK_AMS=openams HELIX_MOCK_OPENAMS_UNITS=shared HELIX_MOCK_OPENAMS_API=legacy ./build/bin/helix-screen --test
+
+# Twelve OpenAMS units on two hubs: the overview's cards row scrolls, and a tapped card opens
+# the unit view on that unit's page (both hubs' stubs, the drying glyph)
+HELIX_MOCK_AMS=openams HELIX_MOCK_OPENAMS_UNITS=fleet ./build/bin/helix-screen --test
+
 # Simulate AFC Box Turtle
 HELIX_MOCK_AMS=afc ./build/bin/helix-screen --test
 
@@ -426,11 +446,11 @@ Klipper extruders:
 | Claymore HTLF_claymore_1 | lane11-14 | HUB | **e0** |
 
 Two pairs of HUB units share a nozzle, two lanes are unmapped, and the AFC tool
-aliases are neither dense nor unit-ordered (T0 and T10 are absent). Every other
-profile tops out at 3 units, and unit cards shrink to `#ams_card_min_width`, so
-in every other profile `unit_cards_row` measures `scroll.right == 0` even at
+aliases are neither dense nor unit-ordered (T0 and T10 are absent). Only
+`torture` and `stealth` have more than 3 units. In the profiles with 3 or fewer, unit cards
+shrink to `#ams_card_min_width`, so there `unit_cards_row` measures `scroll.right == 0` even at
 `-s tiny`. Anything that only misbehaves once that row can scroll is
-unreproducible without this profile.
+unreproducible without `torture`.
 
 ```bash
 HELIX_MOCK_AMS=torture ./build/bin/helix-screen --test -vv
@@ -1233,12 +1253,19 @@ Mock scenarios that put a filament buffer reading on the Filament Buffer widget,
 
 | Scenario | Reading |
 |----------|---------|
-| `buffer_fps` | Pressure 32%, below the set point: running tight, amber |
+| `buffer_fps` | Two-ended pressure (as an AFC `FPS_PSF` reports) 32%, below the set point: running tight, amber |
 | `buffer_fps_loose` | Pressure 71%, above the set point: running loose, red |
 | `buffer_fps_on_target` | Pressure 52%: balanced, neutral grey |
 | `buffer_fps_danger` | Pressure 8%, pinned near the tight end: red |
 | `buffer_fps_no_target` | Pressure 32% with no set point: "Pressure: 32%" as text, no slider |
 | `buffer_fps_with_clog` | Pressure 32% plus AFC fault detection reporting, so the buffer reading and the clog arc show together |
+| `buffer_pressure_on_target` | One-sided pressure 52% (compression only, as OpenAMS reports): "At target", neutral |
+| `buffer_pressure_below` | One-sided pressure 32%: "Below target", neutral (less compression is not a fault) |
+| `buffer_pressure_above` | One-sided pressure 71%: "Above target", neutral |
+| `buffer_pressure_full` | One-sided pressure 97%: danger (jammed or the toolhead is not taking it) |
+| `buffer_pressure_empty_loaded` | One-sided pressure 3% with filament loaded: warning (feed not engaging) |
+| `buffer_pressure_empty_unloaded` | One-sided pressure 3% with no filament: neutral |
+| `buffer_pressure_no_target` | One-sided pressure 53% with no set point: the gauge with no tick, "Pressure: 53%" |
 | `sync_feedback_tight` | Happy Hare sync feedback at -45%, leaning to tension; labelled "Sync" |
 
 The trace holds each reading as a step, so a scenario change shows as a step in the last minute.

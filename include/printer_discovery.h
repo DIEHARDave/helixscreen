@@ -214,6 +214,15 @@ class PrinterDiscovery {
         return has_afc_lite_;
     }
 
+    /// The `zmod_afclite` object is present: Z-Mod's AFC shim for the Creator 5
+    /// line, which publishes the `AFC` / `AFC_lane` / `AFC_unit` objects an AFC
+    /// panel wants. A plain fact about the object list; what it means for
+    /// backend selection is decided alongside the changer fingerprint
+    /// (toolchanger_addon::zmod_c5_present).
+    [[nodiscard]] bool has_zmod_afclite() const {
+        return has_zmod_afclite_;
+    }
+
     /// Full Klipper object name of the pin_watch section (e.g. "pin_watch io"),
     /// for subscribing to it. Empty when there is none.
     /// The [medusahc] object exists. A plain fact about the object list; what
@@ -953,6 +962,7 @@ class PrinterDiscovery {
     bool has_openams_manager_ = false; ///< oams_manager listed; claim settled from its status
     bool has_snapmaker_ = false;
     bool has_afc_lite_ = false;
+    bool has_zmod_afclite_ = false;
     bool has_tool_changer_ = false;
     bool has_auto_feeding_batch_ = false;
     bool has_pin_watch_ = false;

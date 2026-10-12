@@ -13,12 +13,17 @@
 #include "../test_helpers/scope_exit.h"
 #include "config.h"
 #include "helix-xml/src/xml/lv_xml_component.h"
+#include "helix-xml/src/xml/lv_xml_translation.h"
 #include "misc/lv_timer_private.h"
 #include "panel_widget.h"
 #include "panel_widget_config.h"
 #include "panel_widget_manager.h"
 #include "panel_widget_registry.h"
 #include "plugin_host.h"
+#include "translation_loader.h"
+
+#include <filesystem>
+#include <fstream>
 
 #include "../catch_amalgamated.hpp"
 
@@ -38,6 +43,100 @@ TEST_CASE_METHOD(LVGLTestFixture, "plugins are disabled until enabled", "[plugin
     CHECK(rig.info("hello")->status == PluginStatus::Disabled);
     CHECK(rig.info("require-test") == nullptr); // no manifest: not a plugin
     CHECK(lv_xml_get_subject(nullptr, "hello__status") == nullptr);
+}
+
+TEST_CASE_METHOD(LVGLTestFixture, "a plugin i18n pack registers on load", "[plugin][host]") {
+    HostRig rig(enabled("i18n-demo", {}));
+    rig.host->load_from("tests/fixtures/plugins");
+    REQUIRE(rig.info("i18n-demo"));
+    REQUIRE(rig.info("i18n-demo")->status == PluginStatus::Loaded);
+
+    // The pack is global from load on; the unique tag cannot collide with any
+    // app string, so its German value is proof the plugin's file registered.
+    lv_translation_set_language("de");
+    CHECK(std::string(lv_tr("i18n-demo only string")) == "Nur auf Deutsch");
+    lv_translation_set_language("en");
+    CHECK(std::string(lv_tr("i18n-demo only string")) == "i18n-demo only string");
+}
+
+namespace {
+
+/// A loadable plugin whose i18n/ folder holds the given (file name, contents) packs.
+void write_i18n_plugin(const std::filesystem::path& root, const std::string& id,
+                       const std::vector<std::pair<std::string, std::string>>& packs) {
+    std::filesystem::create_directories(root / id / "i18n");
+    std::ofstream(root / id / "manifest.json")
+        << R"({"id":")" << id
+        << R"(","name":"I18n Pack","version":"1.0.0","description":"x","settings":[]})";
+    std::ofstream(root / id / "main.lua") << "-- no code\n";
+    for (const auto& [name, text] : packs)
+        std::ofstream(root / id / "i18n" / name) << text;
+}
+
+} // namespace
+
+TEST_CASE_METHOD(LVGLTestFixture, "a plugin pack never overrides the app's own translation",
+                 "[plugin][host][i18n]") {
+    helix::test::ScopeExit restore([] { lv_translation_set_language("en"); });
+    // The boot language: the app's pack is registered before any plugin loads.
+    helix::ui::ensure_translation_loaded("de");
+    lv_translation_set_language("de");
+    const std::string app_cancel = lv_tr("Cancel");
+    REQUIRE(app_cancel != "Cancel"); // the app translates it
+
+    TempDir tmp;
+    // "fr" has an empty slot for Cancel: a head-of-list pack would answer with the English
+    // tag and hide the app's French string.
+    write_i18n_plugin(
+        tmp.path, "i18n-shadow",
+        {{"de.xml",
+          "<translations languages=\"de fr\">"
+          "<translation tag=\"Cancel\" de=\"PLUGIN-ABBRUCH\"/>"
+          "<translation tag=\"i18n-shadow only string\" de=\"Nur Plugin\" fr=\"Seulement\"/>"
+          "</translations>"},
+         {"en.xml", "<translations languages=\"en\">"
+                    "<translation tag=\"Cancel\" en=\"PLUGIN-CANCEL\"/>"
+                    "</translations>"}});
+    HostRig rig(enabled("i18n-shadow", {}));
+    rig.host->load_from(tmp.path.string());
+    REQUIRE(rig.info("i18n-shadow")->status == PluginStatus::Loaded);
+
+    CHECK(std::string(lv_tr("Cancel")) == app_cancel);
+    CHECK(std::string(lv_tr("i18n-shadow only string")) == "Nur Plugin");
+
+    // A language switched to at run time loads its app pack after the plugin's.
+    helix::ui::ensure_translation_loaded("fr");
+    lv_translation_set_language("fr");
+    const std::string fr_cancel = lv_tr("Cancel");
+    CHECK(fr_cancel != "Cancel");
+    CHECK(fr_cancel != "PLUGIN-ABBRUCH");
+    CHECK(std::string(lv_tr("i18n-shadow only string")) == "Seulement");
+
+    // English is the tag itself, so a pack cannot relabel it.
+    lv_translation_set_language("en");
+    CHECK(std::string(lv_tr("Cancel")) == "Cancel");
+}
+
+TEST_CASE_METHOD(LVGLTestFixture, "a plugin pack past the size cap is not registered",
+                 "[plugin][host][i18n]") {
+    helix::test::ScopeExit restore([] { lv_translation_set_language("en"); });
+    TempDir tmp;
+    const std::string body = "<translation tag=\"i18n-big only string\" de=\"Gross\"/>";
+    const std::string pad(300 * 1024, ' ');
+    write_i18n_plugin(tmp.path, "i18n-big",
+                      {{"big.xml", "<translations languages=\"de\"><!--" + pad + "-->" + body +
+                                       "</translations>"}});
+    write_i18n_plugin(tmp.path, "i18n-small",
+                      {{"small.xml", "<translations languages=\"de\">"
+                                     "<translation tag=\"i18n-small only string\" de=\"Klein\"/>"
+                                     "</translations>"}});
+    HostRig rig(enabled_all({{"i18n-big", {}}, {"i18n-small", {}}}));
+    rig.host->load_from(tmp.path.string());
+    REQUIRE(rig.info("i18n-big")->status == PluginStatus::Loaded);
+
+    lv_translation_set_language("de");
+    CHECK(std::string(lv_tr("i18n-big only string")) == "i18n-big only string");
+    CHECK(std::string(lv_tr("i18n-small only string")) == "Klein");
 }
 
 TEST_CASE_METHOD(LVGLTestFixture, "an enabled plugin loads, binds and reacts", "[plugin][host]") {

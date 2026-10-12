@@ -29,6 +29,23 @@ SettingDecl step_decl() {
     d.default_value = 5;
     return d;
 }
+
+SettingDecl flag_decl() {
+    SettingDecl d;
+    d.key = "flag";
+    d.label = "Flag";
+    d.type = SettingType::Bool;
+    d.default_value = false;
+    return d;
+}
+
+SettingDecl act_decl() {
+    SettingDecl d;
+    d.key = "fire";
+    d.label = "Fire";
+    d.type = SettingType::Action;
+    return d;
+}
 } // namespace
 
 TEST_CASE("storage path sits beside settings.json", "[plugin][bindings][io]") {
@@ -224,6 +241,97 @@ TEST_CASE_METHOD(LVGLTestFixture, "set_plugin_setting validates, saves and notif
     REQUIRE(b.t.run(R"(v = helix.settings.get("step"); c = table.concat(changes, ","))"));
     CHECK(b.t.global("v") == "9");
     CHECK(b.t.global("c") == "9");
+    process_lvgl(600);
+    CHECK(b.saves == 1);
+}
+
+TEST_CASE_METHOD(LVGLTestFixture,
+                 "helix.settings.set writes through, notifies and refuses bad values",
+                 "[plugin][bindings][io]") {
+    BoundRuntime b({&install_io_bindings}, {}, {step_decl(), flag_decl(), act_decl()});
+    REQUIRE(b.t.run(R"(
+        changes = {}
+        helix.settings.on_change("step", function(v) changes[#changes + 1] = v end)
+        helix.settings.set("step", 7)
+        v = helix.settings.get("step")
+        c = table.concat(changes, ",")
+    )"));
+    CHECK(b.t.global("v") == "7");
+    CHECK(b.t.global("c") == "7");
+    CHECK(b.saves == 0); // the write waits for the timer
+    process_lvgl(600);
+    CHECK(b.saves == 1);
+
+    // Out of range, wrong type, undeclared key and a read-only action row all
+    // refuse; a refusal neither saves nor notifies. Each refusal is a Lua
+    // error, so they run under pcall: the third uncaught error in 60 s would
+    // fault the runtime, which is not what this case is about.
+    REQUIRE(b.t.run(R"(
+        r1 = pcall(helix.settings.set, "step", 99)
+        r2 = pcall(helix.settings.set, "step", "9")
+        r3 = pcall(helix.settings.set, "nope", 1)
+        r4 = pcall(helix.settings.set, "fire", nil)
+        v = helix.settings.get("step")
+        c = table.concat(changes, ",")
+    )"));
+    CHECK(b.t.global("r1") == "false");
+    CHECK(b.t.global("r2") == "false");
+    CHECK(b.t.global("r3") == "false");
+    CHECK(b.t.global("r4") == "false");
+    CHECK(b.saves == 1);
+    CHECK(b.t.global("v") == "7");
+    CHECK(b.t.global("c") == "7");
+
+    // A bool row takes true and false, and each accepted write saves.
+    REQUIRE(b.t.run(R"(helix.settings.set("flag", true); v2 = helix.settings.get("flag"))"));
+    CHECK(b.t.global("v2") == "true");
+    process_lvgl(600);
+    CHECK(b.saves == 2);
+}
+
+TEST_CASE_METHOD(LVGLTestFixture,
+                 "helix.settings.set to the stored value neither saves nor notifies",
+                 "[plugin][bindings][io]") {
+    BoundRuntime b({&install_io_bindings}, {}, {step_decl()});
+    REQUIRE(b.t.run(R"(
+        n = 0
+        helix.settings.on_change("step", function(v) n = n + 1 end)
+        helix.settings.set("step", 7)
+        helix.settings.set("step", 7)
+    )"));
+    process_lvgl(600);
+    CHECK(b.t.global("n") == "1");
+    CHECK(b.saves == 1);
+
+    // Restating it later, after the write landed, is still not a change.
+    REQUIRE(b.t.run(R"(helix.settings.set("step", 7); m = n)"));
+    process_lvgl(600);
+    CHECK(b.t.global("m") == "1");
+    CHECK(b.saves == 1);
+
+    // A different value still notifies and saves.
+    REQUIRE(b.t.run(R"(helix.settings.set("step", 8); m = n)"));
+    process_lvgl(600);
+    CHECK(b.t.global("m") == "2");
+    CHECK(b.saves == 2);
+}
+
+TEST_CASE_METHOD(LVGLTestFixture, "a burst of settings sets is saved once, after the entry",
+                 "[plugin][bindings][io]") {
+    BoundRuntime b({&install_io_bindings}, {}, {step_decl()});
+    REQUIRE(b.t.run(R"(for i = 1, 20 do helix.settings.set("step", i) end)"));
+    CHECK(b.saves == 0);
+    process_lvgl(600);
+    CHECK(b.saves == 1);
+    CHECK(b.settings["step"] == 20);
+}
+
+TEST_CASE_METHOD(LVGLTestFixture, "closing the runtime saves a pending settings change",
+                 "[plugin][bindings][io]") {
+    BoundRuntime b({&install_io_bindings}, {}, {step_decl()});
+    REQUIRE(b.t.run(R"(helix.settings.set("step", 9))"));
+    REQUIRE(b.saves == 0);
+    b.t.rt.reset(); // what unload and shutdown do
     CHECK(b.saves == 1);
 }
 

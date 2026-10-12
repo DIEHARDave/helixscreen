@@ -180,6 +180,21 @@ TEST_CASE("classify_heater_status: chamber Maintaining above the ceiling is Cool
             HeaterStatusState::Cooling);
 }
 
+// The Resting target is the machine's standing behavior, not a deliberate set:
+// at/below it nothing is being held by the user, so the status area shows the
+// auto glyph rather than the Maintaining check. Above it the fan is genuinely
+// shedding heat, which is the snowflake like any ceiling.
+TEST_CASE("classify_heater_status: chamber Resting renders Auto below the ceiling, Cooling above",
+          "[temperature][heater_status][chamber_mode]") {
+    using helix::ChamberMode;
+    REQUIRE(classify_heater_status(1500, 2000, 0, ChamberMode::Resting).state ==
+            HeaterStatusState::Auto);
+    REQUIRE(classify_heater_status(2000, 2000, 0, ChamberMode::Resting).state ==
+            HeaterStatusState::Auto);
+    REQUIRE(classify_heater_status(2100, 2000, 0, ChamberMode::Resting).state ==
+            HeaterStatusState::Cooling);
+}
+
 // ============================================================================
 // heater_display() - Percentage clamping
 // ============================================================================

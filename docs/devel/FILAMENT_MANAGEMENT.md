@@ -254,6 +254,15 @@ fallback needs both ends of the stamp because `/status` owns `loaded_slot` while
 owns the slot vector: without it, each `/slots` poll would demote the seated slot and
 report a spurious change every 500 ms.
 
+ACE's Kobra-S1 driver also states a per-slot `park_state` (`unknown` / `parked` / `loaded`).
+It drives one thing: an idle slot (not the seat, no toolchange or load in flight) the driver
+calls `parked` draws its filament staged at the hub (`PathSegment::OUTPUT`, what the hub
+sensor shows) instead of at the spool. `parked` means an RDM-verified park just short of the
+hub or a fixed-length toolhead-only unload, which is not necessarily at the hub; until the
+driver separates them both draw at the hub. A missing field or unknown string draws as before,
+and the seat, the path sensors and the toolchange phases outrank it
+(`docs/devel/FILAMENT_BACKEND_ACE.md`).
+
 `slot_has_filament_at_toolhead()` stays at its `false` default unless the sensor genuinely
 exists *and* is attributable to one slot. AFC's `AFC_extruder` carries
 `tool_start_status` / `tool_end_status` plus the `lane_loaded` that owns them; a trip with
@@ -1148,15 +1157,19 @@ drawing is `src/ui/ui_ams_detail.cpp`.
 
 ### AMS Overview Panel (`ui_panel_ams_overview`)
 
-Grid of unit cards showing all units across the system. Each card is a miniature visualization of the unit's slots. Clicking a card transitions inline to a detail view of that unit's slots.
+Grid of unit cards showing all units across the system, above the system path canvas. Each card is a miniature visualization of the unit's slots. Clicking a card zooms inline into the **unit view**, which pages through the units starting on the tapped one (see "The unit view" below). Back from the unit view returns to the cards; Back from the cards leaves the panel, and reopening the panel opens the cards.
 
 Key files:
 | File | Purpose |
 |------|---------|
-| `include/ui_panel_ams_overview.h` | Class with detail view state |
-| `src/ui/ui_panel_ams_overview.cpp` | Card creation, inline detail view, slot layout |
-| `ui_xml/ams_overview_panel.xml` | Two-column layout: cards/detail left, loaded info right |
+| `include/ui_panel_ams_overview.h` | Class with the overview's cards and the unit view's page state |
+| `src/ui/ui_panel_ams_overview.cpp` | Card creation, the unit view, paging, slot layout |
+| `ui_xml/ams_overview_panel.xml` | Two-column layout: cards and system path, or the unit view, on the left; loaded info right |
 | `ui_xml/ams_unit_card.xml` | Mini unit card with slot bars and hub sensor dot |
+| `include/ams_unit_pages.h`, `src/ui/ams_unit_pages.cpp` | The page model: `build_unit_pages()`, `page_of_unit()`, `initial_unit_page()`. Pure data, no LVGL |
+| `src/ui/ui_filament_path_plan.cpp` | Off-page stub geometry (`layout_offpage_stub`), widened hub |
+
+**The one model**: every overview draws chains of `units -> hub -> buffer -> toolhead`. A hub joins the paths of every unit on it (units naming the same non-empty `AmsUnit::hub_id`; a unit with none is a hub of its own). A hub has at most one buffer (the FPS of an OpenAMS lane), and a buffer belongs to exactly one hub. `ams_draw::compute_system_tool_layout()` computes `SystemToolLayout::hub_groups` (each hub's units and toolhead). The one-toolhead drawing is the one-chain case: every unit joins one combiner hub. The several-toolhead drawing places one hub box per hub group, with its buffer box between the hub and its toolhead. A hub's buffer box is the box the unit view shows for the hub's first unit (`ams_detail_buffer_box()`, same label and tint); the one-toolhead drawing shows the system reading's box the same way. A toolhead badge names the extruder (`E<n>`), or its position when the backend publishes no extruder, never a filament group. Bypass stays system-level in the one-toolhead drawing.
 
 **Current scope**: The overview panel queries `get_backend(0)` and displays all units from that single backend's `AmsSystemInfo`. This covers the common case of a single multi-unit AMS system (e.g., AFC with multiple Box Turtle units).
 
@@ -1167,9 +1180,10 @@ Key files:
 Every unit card binds its temperature/humidity badge to a set of seven per-unit
 subjects named `ams_env_ind_<unit>_{temp_text, humidity_text, humidity_status,
 humidity_visible, visible, drying_active, drying_text}`. `AmsState` allocates
-those statically, one set per unit, up to `AmsState::MAX_UNITS` - **8**, matching
-the widest rig the AMS system-path canvas draws, so every unit the path shows also
-has a badge to bind.
+those statically, one set per unit, up to `AmsState::MAX_UNITS` - **16**. That value is
+`helix::AMS_MAX_UNITS` (`include/ams_types.h`), which also sizes
+`SystemPathData::MAX_UNITS`, so the widest rig the path canvas draws always has a
+badge to bind. Each unit adds 11 registered subjects and 64 bytes of text buffers.
 
 Cards are created for **every** unit the backend reports, cap or no cap.
 `AmsState::env_indicator_subject_names(unit_index)` is the single place that
@@ -1182,13 +1196,113 @@ all still render - and `create_unit_cards()` logs one line naming the cap.
 the cap would then bind seven names nothing has registered: seven `No subject was
 found` parser warnings each, plus a permanently dark badge with nothing in the log
 explaining it. `AmsState` owns the cap and the registrations, so it owns the naming
-as well; raising `MAX_UNITS` stays a one-constant change.
+as well; raising the cap stays a one-constant change (`AMS_MAX_UNITS`).
 
 The badge is per **unit** because a unit card is; what it opens is not. Tapping it
 calls `open_environment_for_unit(unit)`, which resolves that unit's environment
 **zones** and picks the detail view, a tab strip or the list from their shape - a unit
 whose lanes each have their own box opens a list of boxes, not one card.
 [FILAMENT_ENVIRONMENT_ZONES.md](FILAMENT_ENVIRONMENT_ZONES.md) has the model.
+
+#### The unit view: one unit per page
+
+Tapping a unit card zooms into the unit view (the container `unit_detail_container`; the
+cards row and the system path hide while it shows). It shows **one unit per page**: the
+unit's spool box above the filament path drawn the whole way, lanes through the hub and
+buffer to the toolhead, as `AmsPanel` draws it. Paging swaps the unit and its lanes and
+leaves everything downstream where it is. The overview itself is unchanged by it:
+`AmsState::set_unit_view_active()` (`ams_unit_view_active`) is the one switch between
+the two, and the header, the cards row, the system path area and the unit view bind it.
+
+**Pages.** `build_unit_pages(info, is_drying)` turns the backend's units into pages. Units
+naming the same non-empty `AmsUnit::hub_id` are consecutive pages (one group per hub, in
+the order of each group's first unit); a unit with no `hub_id` is a group of one. Only
+`AmsBackendOpenAms` publishes a `hub_id` (from the unit's FPS lane), so every other
+backend gets one page per unit and no stubs: that is the honest picture, and generic code
+never invents a hub. Absent units (an address held for a box not on the bus) get no page.
+So the cards (in nozzle order) and the pages (grouped by hub) can list the units
+differently; a card names its unit, and the view opens on that unit's page.
+`UnitPage::unit_index` is the unit's **position** in `AmsSystemInfo::units`; the unit's own
+number (`AmsUnit::unit_index`, which some backends never assign) is what
+`AmsState::set_viewed_unit()` and `set_detail_env_unit()` are keyed on, so the panel
+converts explicitly. A page is recognised across a rebuild by its unit's name (its first
+slot when it has none), since neither a unit's position nor its first slot survives a
+backend that sorts its units.
+
+**Opening and updating.** The view opens on the page of the tapped card's unit and never
+jumps pages on later state changes: when the system changes shape (units appear late, one
+goes absent) the pages are rebuilt, the shown unit stays shown while it still has a page,
+and the page number is clamped when it does not. A panel covered by an overlay and
+reactivated keeps its page; closing the panel returns it to the overview. A closed panel's
+observers skip everything; the next open syncs once. The drying flag on the stubs follows
+`AmsState::get_units_dryer_version_subject()`, which bumps whenever the *set* of units with
+a running dryer changes (a unit on another page has no subject of its own to watch).
+
+**Declarative surface.** `AmsState` publishes `ams_page_count`, `ams_page_current`
+(0-based), `ams_page_has_prev`, `ams_page_has_next` (1 only when a neighboring page
+exists), `ams_page_unit_name` and `ams_page_unit_logo` through `set_unit_page()` and
+`set_unit_page_header()`. The arrows hide with `bind_flag_if_eq` on the has-prev/has-next
+subjects and click through `on_ams_page_prev_clicked` / `on_ams_page_next_clicked`; the
+dots are `<repeat count="ams_page_count">` in their own container, each styled by
+`bind_style_if_eq ... ref_value="$i"` against `ams_page_current` (white from the text
+token, the current page's in the accent). An action that is unavailable is hidden, never
+disabled. The header reads "Multi-Filament", a colon, the unit's logo and its name; below
+the SMALL breakpoint the title and the colon give way to the logo and name.
+
+**A hub that holds still.** `ui_filament_path_canvas_set_fixed_hub(canvas, lanes)` stands
+the hub, buffer and toolhead on the canvas's own center line instead of the center of the
+shown unit's spools, and sizes the hub box for the widest unit of the hub (the panel passes
+the largest `slot_count` in the page's group), so a one-bay unit and a four-bay unit sit
+over the same hub. The env chip beside the box has a floor width (`ams_env_chip_min_w`, its
+passive reading at each breakpoint), so a dryer starting or a page with a longer reading does
+not shift the spool box. The hub box's *width* still follows the lanes' geometry (a unit
+with fewer lanes leaves it narrower); its position does not move.
+
+**Measured layout (C++).** The arrows are 48 px touch targets at every breakpoint
+(`ams_page_arrow_hit`, with a smaller disc drawn inside where room is tight). They float
+over the path canvas's left and right edges, level with the hub box, which only the canvas
+knows (`ui_filament_path_canvas_get_hub_box()`); the panel repositions them on every page
+and whenever the canvas resizes. On a canvas so narrow that the hub box leaves no room for
+an arrow beside it (480x272 and 480x320, where the hub spans the spools) they sit just
+below the box, either side of the trunk, and the stubs get the room the arrows no longer
+claim. The dot pitch starts at `space_sm` and closes toward a
+floor of `space_xxs` as pages are added, so the row keeps fitting. Past the floor the row
+keeps that pitch and scrolls to keep the current page's dot in view.
+
+**Swipe.** A horizontal swipe anywhere over the unit view pages: left is next, right is
+previous, ignored where that arrow is hidden. `unit_detail_container` is declared
+`gesture_bubble="false"` because LVGL sends a gesture to the first ancestor that does not
+bubble it; every child bubbles by default, so taps on spools, the env chip and the canvas
+are untouched. Only the unit view listens: a swipe over the overview pages nothing, and the
+cards row scrolls as before. The plain swipe direction (`lv_indev_get_gesture_dir`) does not need
+`LV_USE_GESTURE_RECOGNITION`, which gates only the multi-touch recognizers. The handler
+calls `lv_indev_wait_release()` so the release that ends a swipe is not a click on the spool
+it began on.
+
+**Off-page stubs.** When other units of the shown unit's hub lie on earlier pages the hub
+draws one dashed stub on its left; units on later pages draw one on its right. Each stub is
+a lane that is only suggested: a short run outward (about 5/6 of the hub width, shrinking to
+a floor so it and its label stay clear of the arrows), a diagonal at the slope of the
+outermost real lane on that side, and a drop into the top of the hub box like the lanes'.
+It ends in a label, `N units` (`1 unit`), with the dryer glyph the env chip uses before it
+while one of those units is drying. A canvas with no room for the label beside the diagonal
+(the smallest screens) draws the stub bare, a dashed hint without its count. The canvas takes the counts through
+`ui_filament_path_canvas_set_offpage_units()`. While either stub exists the merge fan
+reserves one entry beside its outermost lanes on **both** sides (`reserve_each_side` in
+`pathgeo::build_merge_fan()`), so the hub box is a fixed width across a hub's pages and the
+real lanes do not move when a page has one stub or two. LINEAR, MIXED, PARALLEL and
+on-toolhead hubs draw no stub.
+
+**Bypass.** The bypass spool floats beside the path as on `AmsPanel`
+(`bypass_spool_sync_from_state()` is the shared state push); the canvas draws the
+connecting tube. The overview keeps its own overlay on the system path canvas.
+
+**The environment chip follows the unit on screen.** The chip beside the spool box binds
+the `ams_env_ind_detail_*` subjects, which `AmsState::set_detail_env_unit()` points at one
+unit and re-mirrors on every sync. The mirror is computed straight from that unit's data
+(`compute_unit_env_indicator`), so it is right for any unit number, including those past
+`AmsState::MAX_UNITS` that have no per-unit subjects. The environment overlay watches the
+unit's per-unit subjects and, for a unit without them, the same mirror.
 
 ### Filament Mapping Card (`ui_filament_mapping_card`)
 
@@ -1335,21 +1449,26 @@ or FlowGuard, clog detection.
 
 | Piece | Where |
 |---|---|
-| FPS to bias | `BufferHealth::fps_to_bias()` (`include/ams_types.h`): AFC `FPS_PSF` and OpenAMS carry their sensor as `AmsUnit::buffer_health` and nothing else; no backend writes `sync_feedback_bias` for them |
+| FPS to bias | `BufferHealth::fps_to_bias()` (`include/ams_types.h`): AFC `FPS_PSF` carries its sensor as `AmsUnit::buffer_health` and nothing else; no backend writes `sync_feedback_bias` for it. A sensor with `BufferHealth::compression_only` (OpenAMS: 0 none .. 1 full, never tension) never goes through it: `buffer_reading()` makes it a fill reading |
+| Gauge kind | `BufferReading::gauge`: `BufferGauge::Bias` (two-ended, tight/loose: Happy Hare, AFC `FPS_PSF`) or `BufferGauge::Fill` (one-sided pressure, `compression_only`). A fill reading has `bias` 0, a `value_pct`, a `target_pct` (or -1) and a rail-based `status`; every consumer branches on `gauge`, never on a backend |
 | Which sensor | `buffer_reading(info, unit)` (`include/buffer_reading.h`): a unit's own pressure sensor; a unit with a switched buffer reads nothing; any other unit, and -1, reads the system: the sensor feeding the toolhead (`AmsSystemInfo::feeding_pressure_unit()`), else Happy Hare's `sync_feedback_bias` (only Happy Hare writes it) |
 | Which unit's rows | `buffer_view_unit(info, unit)`: the unit itself, else the unit the system reading came from, else 0. The path box and the modal both use it, so they name the same unit's AFC rows |
-| Bands and colour | `pressure_status()`, `pressure_status_of_bias()` and `buffer_status_token()` in `include/clog_meter_geometry.h`; `buffer_lean()` for the words |
-| Subjects | `AmsState` publishes the system-level reading as `buffer_present`, `buffer_slider`, `buffer_bias_pct`, `buffer_status`, `buffer_label`, `buffer_value_text`, `buffer_short_text`, `buffer_target_text`, `buffer_lean_text` (`src/printer/ams_state_buffer.cpp`) |
+| Bands and color | `pressure_status()`, `pressure_status_of_bias()` and `buffer_status_token()` in `include/clog_meter_geometry.h`; `buffer_lean()` for the words. A fill reading uses `fill_pressure_status()` (`kPressureFullWarningPct` 85, `kPressureFullFaultPct` 95, `kPressureEmptyWarningPct` 5 while loaded) and `pressure_target_side()` (`kPressureTargetDeadbandPct` 5) for "At / Above / Below target" |
+| Subjects | `AmsState` publishes the system-level reading as `buffer_present`, `buffer_slider`, `buffer_bias_pct`, `buffer_status`, `buffer_gauge` (0 bias, 1 fill), `buffer_value_pct` and `buffer_target_pct` (a fill reading's pressure and set point; -1 target without one), `buffer_label`, `buffer_value_text`, `buffer_short_text`, `buffer_target_text`, `buffer_lean_text` (`src/printer/ams_state_buffer.cpp`). `buffer_bias_pct` is 0 for a fill reading |
 | Text | `buffer_label()` ("FPS" for a pressure sensor, "Sync" for Happy Hare), `buffer_value_text()` / `buffer_short_text()` / `buffer_target_text()` ("target N%"), `buffer_lean_text()` |
 | History | `AmsState::buffer_trace(unit)`: a `BufferTrace` per unit and for -1, about 60 s stamped on `buffer_clock_ms()` (monotonic). Readings arrive on change, so each point holds until the next (a step line); a reading that never changes still draws across the window. A sensorless unit records the system reading, or a gap when there is none. Main thread only; dropped with the unit |
-| Renderer | `UiBufferSlider` (`include/ui_buffer_slider.h`) paints the slider, and optionally the trace, into XML-authored objects. Layout is pure: `buffer_slider_geometry()`, `buffer_trace_polylines()` and `buffer_trace_unrecorded_x()` in `include/buffer_slider_geometry.h`, tested without LVGL. The trace redraws once a second so it scrolls with no new reading |
+| Renderer | `UiBufferSlider` (`include/ui_buffer_slider.h`) paints the slider (a bias reading) or the fill gauge (a fill reading), and optionally the trace, into XML-authored objects. Layout is pure: `buffer_slider_geometry()`, `buffer_fill_geometry()`, `buffer_fill_trace_y()`, `buffer_trace_polylines()` and `buffer_trace_unrecorded_x()` in `include/buffer_slider_geometry.h`, tested without LVGL. The trace redraws once a second so it scrolls with no new reading |
 
 **Colour rule.** From the bias (-1 tight .. +1 loose around the set point), one rule on
 every surface: below 0.3 neutral grey (`text_muted`), 0.3 up to 0.7 `warning`, 0.7 and
 above `danger`. A switched AFC buffer keeps its own two states, drawn in the `warning` and `success` tokens. A pressure reading
-with no set point (OpenAMS publishes `set_point: null` when no unit reports `fps_target`)
-has nothing to centre on: every surface shows the pressure as text ("Pressure: N%"), with
-no slider, no trace and no tint.
+with no set point has nothing to center on: a bias reading shows the pressure as text
+("Pressure: N%"), with no slider, no trace and no tint. The rule above is the **bias**
+rule. A **fill** reading (OpenAMS, `compression_only`) is not judged against its target at
+all: it is neutral until the pressure nears a rail (85% warning, 95% danger, 5% or under
+warning while the lane has filament loaded), and the words are "At target" (within 5
+points), "Above target" or "Below target"; with no set point it keeps the gauge and the
+rail colors and shows "Pressure: N%" with no word.
 
 **The number.** For a pressure sensor (AFC `FPS_PSF`, OpenAMS, source "FPS") it is the
 pressure as a percentage, `smoothed_fps * 100` rounded and clamped to 0..100, and the
@@ -1384,10 +1503,12 @@ with no history yet is a dotted baseline.
 
 | Surface | Content |
 |---|---|
-| **Filament Buffer** home widget (`filament_buffer`, `src/ui/panel_widgets/filament_buffer_widget.cpp`) | 1x1: the slider beside a big status-coloured number over its label. 2x1: the number with "target N%", the trace, then the label and the lean in words ("Running tight", "Running loose", "Balanced"). No set point: 1x1 keeps the number over the label, 2x1 says "Pressure: N%". Tap opens the modal. Padding is the `buffer_tile_pad` token, so the tile keeps its padding at 480x320 |
+| **Filament Buffer** home widget (`filament_buffer`, `src/ui/panel_widgets/filament_buffer_widget.cpp`) | 1x1: the slider beside a big status-coloured number over its label. 2x1: the number with "target N%", the trace, then the label and the lean in words ("Running tight", "Running loose", "Balanced"; a compression-only fill reads "At target", "Above target" or "Below target"). No set point: 1x1 keeps the number over the label, 2x1 says "Pressure: N%". Tap opens the modal. Padding is the `buffer_tile_pad` token, so the tile keeps its padding at 480x320 |
 | Loaded-spool card (`ams_loaded_card.xml`) | A small slider (`buffer_mini_h`, taller at larger breakpoints) with the short number; the FPS/Sync label hides below the medium breakpoint, as the clog arc's mode label does, so the material name keeps the width. The colour swatch narrows to `loaded_swatch_narrow_w` (14 px) below medium |
-| Path canvas buffer box (`ams_detail_buffer_box()`) | The existing labelled FPS/BUF box, tinted live by the colour rule as the reading moves; a pressure with no set point is untinted. Tap opens the modal on the buffer feeding the toolhead |
+| Path canvas buffer box (`ams_detail_buffer_box()`) | The existing labeled FPS/BUF box, tinted live by the color rule as the reading moves; a pressure with no set point is untinted. A fill reading passes no bias and tints only at a rail. Tap opens the modal on the buffer feeding the toolhead |
 | Buffer Status modal (`BufferStatusModal::show_for`, `buffer_status_modal.xml`) | The clog bar (hidden with no detector), then the tall slider with the reading, target and lean in words beside it, the trace and its caption ("last 60 s"), and the backend's own rows (Happy Hare spool motor, gear sync, flow; AFC state, distance to fault). Live while open; closes only with its X |
+
+A fill reading's tall gauge in the modal and the mini gauge on the card and widget share the slider's footprint; the modal's trace caption becomes "last 60 s · pressure, target dashed".
 
 The Clog Detection widget never shows a buffer reading. `show_for(-1)` opens the modal on
 the buffer feeding the toolhead.
@@ -1400,8 +1521,11 @@ live when a reading appears. See [09-home-widgets.md](architecture/09-home-widge
 **Mock scenarios** (`src/remote/mock_scenarios.cpp`; `helix-screen ctl scenario <name>`),
 catalogued in [MOCK_ENVIRONMENT_VARIABLES.md](MOCK_ENVIRONMENT_VARIABLES.md#buffer-reading-scenarios):
 `buffer_fps`, `buffer_fps_loose`, `buffer_fps_on_target`, `buffer_fps_danger`,
-`buffer_fps_no_target`, `buffer_fps_with_clog` (any mock type but Happy Hare) and
-`sync_feedback_tight` (Happy Hare).
+`buffer_fps_no_target`, `buffer_fps_with_clog` (any mock type but Happy Hare; the
+two-ended AFC `FPS_PSF` path), the one-sided `buffer_pressure_on_target`,
+`buffer_pressure_below`, `buffer_pressure_above`, `buffer_pressure_full`,
+`buffer_pressure_empty_loaded`, `buffer_pressure_empty_unloaded`,
+`buffer_pressure_no_target` and `sync_feedback_tight` (Happy Hare).
 
 ### Two error channels
 
@@ -2515,7 +2639,7 @@ The seed dispatches `handle_status` from the main thread (inside an `UpdateQueue
 | Variable | Values | Default | Description |
 |----------|--------|---------|-------------|
 | `HELIX_AMS_GATES` | 1-16 | 4 | Number of simulated slots |
-| `HELIX_MOCK_AMS` | `afc`, `box_turtle`, `boxturtle`, `toolchanger`, `tool_changer`, `tc`, `mixed`, `multi`, `torture`, `vivid`, `ifs`, `ad5x`, `ad5x_ifs`, `htlf_toolchanger`, `htlf_tc`, `htlf`, `snapmaker`, `snapswap`, `u1` | Happy Hare | AMS type to simulate |
+| `HELIX_MOCK_AMS` | `afc`, `box_turtle`, `boxturtle`, `toolchanger`, `tool_changer`, `tc`, `mixed`, `multi`, `torture`, `stealth`, `vivid`, `ifs`, `ad5x`, `ad5x_ifs`, `htlf_toolchanger`, `htlf_tc`, `htlf`, `snapmaker`, `snapswap`, `u1` | Happy Hare | AMS type to simulate |
 | `HELIX_MOCK_AMS_STATE` | `idle`, `loading`, `error`, `bypass`, `unaccounted`, `grade` | `idle` | Visual scenario to simulate |
 | `HELIX_MOCK_DRYER` | `1`, `true` | Disabled | Simulate integrated dryer |
 | `HELIX_MOCK_DRYER_SPEED` | Integer | 60 | Dryer speed multiplier (60 = 1 real sec = 1 sim min) |

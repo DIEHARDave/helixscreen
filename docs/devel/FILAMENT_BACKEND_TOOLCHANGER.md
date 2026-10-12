@@ -138,11 +138,20 @@ is what supplies everything below.
 ### Detection
 
 `zmod_color` **and** `gcode_button extruder_grab1` in `printer.objects.list`
-(`src/printer/toolchanger_addon.cpp#zmod_c5_detect`). Both halves are required: the AD5X
-Z-Mod also publishes `zmod_color` but has no carriage grab buttons, so it cannot match,
-and `zmod_color` alone would not say which machine this is. Reforge, the other C5 Pro
-firmware, needs none of this: it matches no provider row and takes the plain
-klipper-toolchanger path described above.
+(`src/printer/toolchanger_addon.cpp#zmod_c5_detect`, exported as `zmod_c5_present`). Both
+halves are required: the AD5X Z-Mod also publishes `zmod_color` but has no carriage grab
+buttons, so it cannot match, and `zmod_color` alone would not say which machine this is.
+Reforge, the other C5 Pro firmware, needs none of this: it matches no provider row and
+takes the plain klipper-toolchanger path described above.
+
+Z-Mod 1.7.4 additionally publishes an **AFC shim** (`zmod_afclite` registering `AFC`,
+`AFC_lane E0..E3`, `AFC_unit C5`) so Fluidd and Mainsail draw their AFC panel for the C5's
+heads. Discovery keys on the bare `AFC` object, so `PrinterDiscovery::parse_objects`
+yields that claim to this row whenever the shim's own object and the changer fingerprint
+coexist — the same carve-out shape as the PAXX AFC-Lite rule, and for the same reason:
+the shim reports no extruders and no hubs, so an AFC backend would infer a hub topology
+for heads that are each their own path, and its op macros (`AFC_RESET`,
+`AFC_LANE_RESET`, `SET_SPOOL_ID`, ...) do not exist on this firmware.
 
 ### Tool reading
 
@@ -171,6 +180,61 @@ button rule here.
 Completion is the gcode ack plus the next `active_tool_id`, as for MedusaHC. A refused
 `_T_IN` / `_T_OUT` (Z-Mod raises `gcmd.error`) surfaces like a failed `SELECT_TOOL`; tool
 state does not move because `active_tool_id` does not.
+
+### Swap phases from console markers
+
+Z-Mod publishes no phase word on a status object; its macros narrate the swap through
+respond_info lines instead. The backend subscribes `notify_gcode_response` for this row
+alone and classifies the lines (`toolchanger_addon::parse_zmod_marker`, marker text
+field-verified in bundle `5WSPTZBL`):
+
+| Marker | Phase word |
+|--------|------------|
+| `Grab attempt for T<n>: i of N...` | `picking` |
+| `X/Y/Z-Offset: ... _T_IN` | `picking` |
+| `Unload attempt for T<n>: i of N...` | `dropping` |
+| `X/Y/Z-Offset: ... _T_OUT` | `dropping` |
+
+Each maps onto the same picking/dropping vocabulary the MedusaHC controllers publish, so
+the action, the direction latch and the step bar ride the existing machinery: a mount is
+[Pick up tool], an unmount is [Dock tool], a change is [Dock tool, Pick up tool]. The
+direction capability is latched from the provider row itself (`set_tool_sensor`), not
+from a first marker, because the step bar snapshots the latch when it is built and a bar
+built at dispatch time — before the macro's first marker — would otherwise pin a
+suppressed sequence forever. A firmware build that stops echoing the markers degrades to
+no step bar, never a wrong one; the marker text on a live swap is the one piece still
+pending hardware verification (prestonbrown/helixscreen#1714).
+
+### The afclite shim's status, and what is acted on
+
+Z-Mod 1.7.4+ publishes `zmod_afclite` (aliased `AFC`), and the provider row subscribes
+it. Of its fields, exactly two are acted on, both with semantics a boolean or the
+firmware's own string fixes:
+
+| Field | Treatment |
+|-------|-----------|
+| `error_state` + `message` | A fault the firmware itself reports: raises the ERROR action and surfaces through `current_error()` with the firmware's own wording; clears when the flag clears |
+| `current_state` | **Logged, not acted on.** The vocabulary beyond "idle" is unverified on this firmware; the log line is what a field capture during a real load/unload reads, and the mapping that follows is written against that evidence |
+| `lanes[].map` (via the `AFC_lane` objects) | Logged when it is not identity — a `SET_MAP` remap is exactly what a bundle should show. Nothing acts on it until a capture says what lane→tool means for head indices |
+
+### T_INFO: the read-only carriage query
+
+`T_INFO` answers where every tool sits and moves nothing (zmod's own doc). The backend
+sends it once at start and again on `notify_klippy_ready`, and parses its rows through
+the same console listener as the swap markers: `T<n>: HEAD` names the carriage tool,
+`T<n>: home` seats a dock, `ERROR (both)` is the disagreeing-sensors fault, and the
+trailing `Offset:` row closes the block — the only place "nothing is on the carriage"
+can be stated, which is what clears the stale boot reading on firmware whose
+`active_tool_id` only recomputes inside its own commands (the pre-1.7.4 condition).
+
+### Per-head filament presence (Z-Mod 1.7.4+)
+
+`zmod_color.slots[].hasFilament` says whether each head physically holds filament. It
+stamps the slot EMPTY only in the docked arm — a docked head whose slot says no filament
+reads Empty — and deliberately cannot outrank the carriage (a mounted head that ran dry
+is the runout flow's question) or a dock-reported vacancy (the head itself is out of the
+machine). `slot_status_tracks_filament()` stays false: the per-head `fd_ex` sensors keep
+driving pre-print checks as before.
 
 ### Firmware material source
 
@@ -205,13 +269,59 @@ edits stay local, as on any tool changer.
   needs both `HEX` and `TYPE` to write without a prompt, so a colour-only edit sends the
   slot's current type and a material-only edit sends its current (snapped) colour.
 
+### Filament feed and unload
+
+Z-Mod's own Load for a head is `CHANGE_TOOL LANE=E<n>`: with the afclite shim present
+(Z-Mod 1.7.4+, `zmod_afclite`) that command heats only the selected head and feeds it,
+verified on a Creator 5 Pro by a contributor (prestonbrown/helixscreen#1779). The Z-Mod
+row builds exactly that command through `toolchanger_addon::resolve_tool_feed()`, and
+`AmsBackendToolChanger::do_load_filament()` sends it. The shim runs `_T_IN_ZCOLOR` itself;
+HelixScreen never calls `_T_IN_ZCOLOR` directly, because its `SLOT` base and `NAPR`
+polarity are not confirmed for the C5 (the plugin is not published, and the AD5X source
+reads the opposite way).
+
+The head-to-lane relation is the **lane name**: head `n` is the shim's `AFC_lane E<n>`.
+Discovery does not read any field that ties a lane to a head (the `lanes[].map` word is
+logged only), so the name is the whole basis. A lane the shim did not publish yields no
+command and the Load is refused; a lane name is never constructed for an object the
+printer lacks.
+
+Without the shim (Z-Mod older than 1.7.4, or no `zmod_afclite` object) there is no feed:
+Load stays a tool mount, `_T_IN T=<n>`.
+
+With the feed present the backend answers capability questions the generic code asks:
+`load_feeds_filament()` (Load is a feed, so a head that reads loaded still accepts it and
+the planner does not refuse the mounted tool or swap another in first),
+`supports_auto_heat_on_load()` (the shim heats the right head, so the UI does not
+preheat, which would heat the active head), and `supports_gate_select()`. Mounting a tool
+is then the context menu's **Select slot**, which sends `_T_IN T=<n>` like every
+other explicit tool change. Busy and printing refusals are unchanged. Other tool changers
+keep Load as a mount.
+
+There is **no automatic unload** on the Creator 5: the user cuts the filament at the head
+and pulls it out. The row answers `AmsBackend::unload_is_manual()` true, and every UI
+control that means "take the filament out" (the filament panel's Unload, the AMS sidebar's
+Unload button, the runout and sensor-widget unload actions, all through
+`notify_if_unload_is_manual`) shows one info toast saying so and sends nothing, heating
+included. The context menu's **Unmount** and the tool-change flow are explicit tool
+operations: they still send `_T_OUT` and are not gated.
+
 ### Mock
 
 `HELIX_MOCK_PRINTER=creator5_zmod` exercises this path against mock hardware: the persona
-publishes Z-Mod's objects and status and implies `--real-ams`, so real discovery builds
-this backend under `--test` (see `docs/devel/MOCK_ENVIRONMENT_VARIABLES.md`). Hardware
-verification on a real Z-Mod C5 is tracked as prestonbrown/helixscreen#1714 follow-up
-work.
+publishes Z-Mod's objects and status (1.7.4 shape, afclite shim included), answers
+`_T_IN` / `_T_OUT` by narrating the swap markers, and implies `--real-ams`, so real
+discovery builds this backend under `--test` (see
+`docs/devel/MOCK_ENVIRONMENT_VARIABLES.md`). Hardware verification on a real Z-Mod C5 is
+tracked as prestonbrown/helixscreen#1714 follow-up work.
+
+### Endless spool
+
+Z-Mod's C5 firmware switches to the next head whose colour AND type both match on runout
+(its docs call this "endless spool mode"), always on with no flag to write. The backend
+reports it exactly as the AD5X IFS backend reports stock zMod: Available /
+FirmwareManaged / ReadOnly, provider `"zmod"` (`get_endless_spool_capabilities`, gated on
+this provider row). Every other tool changer keeps the base default (Unsupported).
 
 Part of the filament system - see [FILAMENT_MANAGEMENT.md](FILAMENT_MANAGEMENT.md) for the shared architecture, slot metadata, and endless spool model.
 

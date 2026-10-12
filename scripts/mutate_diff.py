@@ -675,12 +675,35 @@ class BuildUnavailable(RuntimeError):
     """
 
 
-def build(root, jobs, log):
+def make_bin():
+    """A `make` this tree's Makefile accepts, by the name to invoke it as.
+
+    Plain `make` is preferred whenever it is GNU make 4.2+ — including when
+    PATH resolves it to the jobpool shim, whose whole point is that builds go
+    through the pool. Only when the resolved make is too old (Apple's
+    /usr/bin/make is 3.81; the Makefile hard-errors below 4.2) does a gmake
+    take over.
+    """
+    probe = shutil.which('make')
+    if probe:
+        r = run([probe, '--version'], cwd=None)
+        m = re.search(r'GNU Make (\d+)\.(\d+)', r.stdout or '')
+        if r.returncode == 0 and m:
+            major, minor = int(m.group(1)), int(m.group(2))
+            if major > 4 or (major == 4 and minor >= 2):
+                return 'make'
+    return shutil.which('gmake') or 'make'
+
+
+def build(root, jobs, log, make=None):
     t = time.time()
     # Under an inherited jobserver (a jobpool) make leaves the pool when its
     # command line carries any -j, so the pool bounds the build instead.
     jflag = [] if '--jobserver-auth=' in os.environ.get('MAKEFLAGS', '') else [f'-j{jobs}']
-    r = run(['make', *jflag, 'test-build'], cwd=root)
+    # `make` is injectable because the bats tests drive this through a PATH
+    # mock named `make`; make_bin()'s own probe would sidestep the mock on any
+    # host that also has a gmake.
+    r = run([make or make_bin(), *jflag, 'test-build'], cwd=root)
     log.write(r.stdout or '')
     return r.returncode == 0, time.time() - t
 

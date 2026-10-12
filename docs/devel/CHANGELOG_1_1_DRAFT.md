@@ -349,6 +349,14 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
   stock unit.
 - **Chamber temperature per material** (#1263) - Material Temperatures has a chamber column,
   editable on printers with a chamber heater.
+- **A chamber target set to the printer's own resting temperature is no longer hidden** - on
+  printers whose M141 splits the setpoint across a heater and a cooling fan (the K2), a
+  chamber target of 35°C or below parks on the fan with the heater target reading 0. A target
+  that equals the fan's configured resting value (35°C on a stock K2) is byte-identical to
+  "off" on the wire, and the print screen used to show it as unset. That state now shows the
+  number with a circled-A auto glyph beside it: the printer's standing behavior, not a
+  deliberate set. Deliberate targets that differ from resting keep the checkmark, and the
+  print screen's chamber status now follows the real setpoint while a print runs.
 
 **Printing**
 
@@ -455,11 +463,15 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
 - **FlashForge Creator 5 and Creator 5 Pro are supported printers (#1714)** - both models of
   FlashForge's four-head tool changer are recognized and given their own settings, on either
   of the two firmwares that replace its stock software: Z-Mod and Reforge. Mounting and
-  parking a head is driven from the screen. Reading each head's material and colour from the
-  printer, and showing the mounted head at boot, both need Z-Mod's pending status update:
-  until it ships, a Z-Mod machine reports a dock sensor error at boot until its first tool
-  change, and colour or material edits stay on the screen instead of being saved to the
-  printer. All of this is verified against a simulated printer, not yet on the hardware.
+  parking a head is driven from the screen, and the swap shows its steps (dock / pick up)
+  as Z-Mod narrates them; Z-Mod's always-on endless-spool switching is reported. On Z-Mod
+  1.7.4+ the four heads read their material and colour straight from the printer, which
+  also names itself correctly in debug bundles instead of reading as an Adventurer 5X. The
+  firmware's own filament-system faults surface with their own wording, a head without
+  filament reads Empty, and a read-only tool-state query replaces the stale boot state on
+  older Z-Mod builds. All of this is verified against a simulated printer and a field
+  debug bundle; the swap-step wording on a live print is the one piece still pending
+  hardware verification.
 - **Snapmaker U1 firmware settings** - the pre-print toggles (bed mesh, input shaper,
   pressure advance, timelapse) read and set the firmware's stored values instead of always
   reading off. Tangle sensitivity, end-of-print unload per toolhead, and manual bed levelling

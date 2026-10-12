@@ -20,6 +20,7 @@
 #include <spdlog/spdlog.h>
 
 #include <cmath>
+#include <lvgl.h>
 #include <string>
 #include <vector>
 
@@ -91,14 +92,17 @@ void slider_value_changed_cb(lv_event_t* e) {
 SettingRowSpec setting_row_spec(const std::string& /*plugin_id*/, const SettingDecl& d,
                                 const json& current) {
     SettingRowSpec spec;
+    // The declared label is English-source; a plugin translation pack resolves
+    // it, else the label passes through unchanged.
+    const std::string label = lv_tr(d.label.c_str());
     switch (d.type) {
     case SettingType::Bool:
         spec.component = "setting_toggle_row";
-        spec.attrs = {{"label", d.label}, {"callback", "plugin_setting_changed"}};
+        spec.attrs = {{"label", label}, {"callback", "plugin_setting_changed"}};
         break;
     case SettingType::Int:
         spec.component = "setting_slider_row";
-        spec.attrs = {{"label", d.label},
+        spec.attrs = {{"label", label},
                       {"min", int_text(static_cast<long long>(d.min))},
                       {"max", int_text(static_cast<long long>(d.max))},
                       {"value", int_text(int_of(current))},
@@ -107,7 +111,7 @@ SettingRowSpec setting_row_spec(const std::string& /*plugin_id*/, const SettingD
         break;
     case SettingType::Float:
         spec.component = "setting_slider_row";
-        spec.attrs = {{"label", d.label},
+        spec.attrs = {{"label", label},
                       {"min", int_text(scaled(d.min))},
                       {"max", int_text(scaled(d.max))},
                       {"value", int_text(scaled(current.is_number() ? current.get<double>() : 0))},
@@ -123,22 +127,22 @@ SettingRowSpec setting_row_spec(const std::string& /*plugin_id*/, const SettingD
             options += o;
         }
         spec.attrs = {
-            {"label", d.label}, {"options", options}, {"callback", "plugin_setting_changed"}};
+            {"label", label}, {"options", options}, {"callback", "plugin_setting_changed"}};
         break;
     }
     case SettingType::String:
         spec.component = "setting_text_row";
-        spec.attrs = {{"label", d.label},
+        spec.attrs = {{"label", label},
                       {"value", current.is_string() ? current.get_ref<const std::string&>() : ""},
                       {"callback", "plugin_setting_changed"}};
         break;
     case SettingType::Action:
         spec.component = "setting_action_row";
-        spec.attrs = {{"label", d.label}, {"callback", "plugin_setting_action"}};
+        spec.attrs = {{"label", label}, {"callback", "plugin_setting_action"}};
         break;
     case SettingType::Info:
         spec.component = "setting_info_row";
-        spec.attrs = {{"label", d.label}, {"bind_value", d.subject}};
+        spec.attrs = {{"label", label}, {"bind_value", d.subject}};
         break;
     }
     return spec;
@@ -146,8 +150,8 @@ SettingRowSpec setting_row_spec(const std::string& /*plugin_id*/, const SettingD
 
 PluginSettingsOverlay::PluginSettingsOverlay(std::string plugin_id, const Manifest& manifest,
                                              const json& settings, uint64_t load_gen)
-    : plugin_id_(std::move(plugin_id)), title_(manifest.name), settings_decls_(manifest.settings),
-      load_gen_(load_gen), settings_(settings) {}
+    : plugin_id_(std::move(plugin_id)), title_(lv_tr(manifest.name.c_str())),
+      settings_decls_(manifest.settings), load_gen_(load_gen), settings_(settings) {}
 
 PluginSettingsOverlay::~PluginSettingsOverlay() {
     // Still open when the host is destroyed (a printer switch drops the queued
@@ -314,13 +318,22 @@ void PluginSettingsOverlay::on_row_changed(RowBinding& b, lv_obj_t* target) {
     if (value == b.stored)
         return;
     PluginHost* host = PluginHost::live();
-    if (host && host->set_setting(plugin_id_, b.key, value)) {
-        b.stored = std::move(value);
+    // On success b.stored already follows the write: set_setting reports it through
+    // show_setting, including a handler that rewrote the value.
+    if (host && host->set_setting(plugin_id_, b.key, value))
         return;
-    }
     spdlog::warn("[PluginSettings] {}: refused write to '{}'; restoring the row", plugin_id_,
                  b.key);
     apply_row_state(b);
+}
+
+void PluginSettingsOverlay::show_setting(const std::string& key, const json& value) {
+    for (auto& b : bindings_) {
+        if (b.key != key || b.stored == value)
+            continue;
+        b.stored = value;
+        apply_row_state(b);
+    }
 }
 
 void PluginSettingsOverlay::on_row_action(const RowBinding& b) {

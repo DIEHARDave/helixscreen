@@ -14,12 +14,15 @@ setup() {
 }
 
 build_once() {
+    # The make binary is injected: these tests pin the -j handling through the
+    # `make` PATH mock above, and make_bin()'s own probe would sidestep the
+    # mock on any host that also has a gmake.
     python3 -c '
 import importlib.util, io, sys
 spec = importlib.util.spec_from_file_location("mutate_diff", sys.argv[1])
 m = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(m)
-ok, _ = m.build(sys.argv[2], 7, io.StringIO())
+ok, _ = m.build(sys.argv[2], 7, io.StringIO(), make="make")
 sys.exit(0 if ok else 1)' "$SCRIPT" "$BATS_TEST_TMPDIR"
 }
 

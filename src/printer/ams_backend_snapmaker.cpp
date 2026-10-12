@@ -2510,10 +2510,13 @@ std::vector<helix::printer::DeviceAction> AmsBackendSnapmaker::get_device_action
                    *p.end_led_turn_off);
     }
     for (size_t t = 0; t < p.end_unload_filament.size(); ++t) {
+        // Copy out as bool: indexing a const vector<bool> yields a standard-library
+        // proxy type on some platforms, not bool, and the UI casts the value back to bool.
+        const bool unload = p.end_unload_filament[t];
         DeviceAction a =
             DeviceAction::toggle("snapmaker_end_unload_t" + std::to_string(t),
                                  std::string(lv_tr("Unload at end")) + " - T" + std::to_string(t),
-                                 "snapmaker_print_prefs", p.end_unload_filament[t]);
+                                 "snapmaker_print_prefs", unload);
         a.slot_index = static_cast<int>(t);
         out.push_back(std::move(a));
     }

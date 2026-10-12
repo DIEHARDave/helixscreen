@@ -477,7 +477,11 @@ void helix::ui::ams_detail_sync_slot_states(lv_obj_t* slot_widgets[], int slot_c
     if (!backend) {
         return;
     }
-    const helix::AmsSystemInfo info = backend->get_system_info();
+    ams_detail_sync_slot_states(slot_widgets, slot_count, backend->get_system_info());
+}
+
+void helix::ui::ams_detail_sync_slot_states(lv_obj_t* slot_widgets[], int slot_count,
+                                            const helix::AmsSystemInfo& info) {
     for (int i = 0; i < slot_count; ++i) {
         lv_obj_t* slot = slot_widgets[i];
         if (!slot) {
@@ -677,7 +681,7 @@ void ams_detail_update_tray(AmsDetailWidgets& w, lv_obj_t* const slot_widgets[],
     // front-plane centre, whose flange bottom sits SPOOL_FLOOR_GAP above FB.
     box.fb = cy_sum / n + flange_ry + tray::SPOOL_FLOOR_GAP + box.rise / 2;
     lv_obj_update_layout(w.slot_grid);
-    const float front_h = std::max(20.0f, lv_obj_get_height(w.slot_grid) / 4.0f);
+    const float front_h = std::max(20.0f, lv_obj_get_height(w.slot_grid) / 6.0f);
     box.ft = box.fb - front_h;
     box.fl = s_tray.lane_x[0] - half;
     box.fr = s_tray.lane_x[n - 1] + half;
@@ -708,6 +712,8 @@ void ams_detail_update_tray(AmsDetailWidgets& w, lv_obj_t* const slot_widgets[],
             lv_area_t la;
             lv_obj_get_coords(label, &la);
             lv_obj_set_style_translate_y(label, label_bottom - la.y2, LV_PART_MAIN);
+            if (lv_obj_t* name = lv_obj_find_by_name(slot_widgets[i], "name_label"))
+                lv_obj_set_style_translate_y(name, label_bottom - la.y2, LV_PART_MAIN);
             if (lv_obj_t* row = ui_ams_slot_get_lane_humidity(slot_widgets[i]))
                 lv_obj_set_style_translate_y(row, label_bottom - la.y2, LV_PART_MAIN);
         }
@@ -778,8 +784,7 @@ void ams_detail_update_badges(AmsDetailWidgets& w, lv_obj_t* slot_widgets[], int
     spdlog::debug("[AmsDetail] Moved {} badges to overlay layer", slot_count);
 }
 
-void ams_detail_setup_path_canvas(lv_obj_t* canvas, lv_obj_t* slot_grid, int unit_index,
-                                  bool hub_only) {
+void ams_detail_setup_path_canvas(lv_obj_t* canvas, lv_obj_t* slot_grid, int unit_index) {
     if (!canvas)
         return;
 
@@ -787,10 +792,17 @@ void ams_detail_setup_path_canvas(lv_obj_t* canvas, lv_obj_t* slot_grid, int uni
     if (!backend)
         return;
 
-    helix::AmsSystemInfo info = backend->get_system_info();
+    ams_detail_setup_path_canvas(canvas, slot_grid, unit_index, backend,
+                                 backend->get_system_info());
+}
 
-    // Hub-only mode: slots -> hub and its output stub, skip downstream
-    ui_filament_path_canvas_set_hub_only(canvas, hub_only);
+// NAMESPACE_OK: an overload of the global three-argument ams_detail_setup_path_canvas
+void ams_detail_setup_path_canvas(lv_obj_t* canvas, lv_obj_t* slot_grid, int unit_index,
+                                  const helix::AmsBackend* backend,
+                                  const helix::AmsSystemInfo& info) {
+    if (!canvas || !backend)
+        return;
+
     // A unit-scoped view asks its own unit; the all-units view any unit.
     if (unit_index >= 0 && unit_index < static_cast<int>(info.units.size())) {
         const auto& unit = info.units[unit_index];
@@ -808,7 +820,8 @@ void ams_detail_setup_path_canvas(lv_obj_t* canvas, lv_obj_t* slot_grid, int uni
     // Hide the bypass path for backends that don't support it (e.g. tool
     // changers) — and on AFC while bypass is disengaged, since AFC reports a
     // virtual bypass whether or not one is wired (#1229).
-    ui_filament_path_canvas_set_show_bypass(canvas, helix::ui::bypass_node_visible_for(backend));
+    ui_filament_path_canvas_set_show_bypass(canvas,
+                                            helix::ui::bypass_node_visible_for(backend, info));
 
     // Determine slot count and offset for this unit
     int slot_count = info.total_slots;
@@ -956,14 +969,13 @@ void ams_detail_setup_path_canvas(lv_obj_t* canvas, lv_obj_t* slot_grid, int uni
     // on the bypass node (#1229 defect 5).
     auto ext_spool = helix::AmsState::instance().get_external_spool_info();
     const bool show_bypass_spool =
-        ext_spool.has_value() && helix::ui::bypass_node_visible_for(backend);
+        ext_spool.has_value() && helix::ui::bypass_node_visible_for(backend, info);
     ui_filament_path_canvas_set_bypass_has_spool(canvas, show_bypass_spool);
     if (show_bypass_spool) {
         ui_filament_path_canvas_set_bypass_color(canvas, ext_spool->color_rgb);
     }
 
-    spdlog::debug("[AmsDetail] Path canvas configured: slots={}, unit={}, hub_only={}", slot_count,
-                  unit_index, hub_only);
+    spdlog::debug("[AmsDetail] Path canvas configured: slots={}, unit={}", slot_count, unit_index);
 }
 
 void ams_detail_pre_show_env_indicator(AmsDetailWidgets& w, int unit_index) {
@@ -1029,7 +1041,14 @@ BufferBoxState ams_detail_buffer_box(const AmsSystemInfo& info, int unit_index) 
         box.present = true;
         box.label = "FPS"; // i18n: do not translate - hardware abbreviation
     }
-    if (reading.has_slider) {
+    if (reading.is_fill()) {
+        // One-sided pressure: only the rails tint, and there is no bias to
+        // interpolate a color from.
+        box.fault = std::max(box.fault, static_cast<int>(reading.status));
+        if (box.fault == 0) {
+            box.fault = -1; // regulating: nothing to color
+        }
+    } else if (reading.has_slider) {
         box.bias = reading.bias;
         box.fault = std::max(box.fault, static_cast<int>(reading.status));
     } else if (reading.source == BufferSource::Fps && box.fault == 0) {

@@ -78,6 +78,42 @@ SHIM
 
     export PATH="$HELIX_TEST_SANDBOX_BIN:$PATH"
 
+    # A macOS host's /usr/bin/make is GNU make 3.81 (Homebrew's 4.x installs
+    # as gmake), and the repo Makefile hard-errors below 4.2, so every test
+    # that runs make would fail on the environment alone. Forward make to
+    # gmake for the whole suite when bare make is too old and gmake exists.
+    # A Linux make, and the jobpool shim (which execs a modern make), parse as
+    # 4.2+ and are left untouched.
+    local mk_ver mk_major mk_minor gmake_bin
+    mk_ver="$(make --version 2>/dev/null | head -1)"
+    mk_major="$(printf '%s\n' "$mk_ver" | sed -n 's/^GNU Make \([0-9]*\)\..*$/\1/p')"
+    mk_minor="$(printf '%s\n' "$mk_ver" | sed -n 's/^GNU Make [0-9]*\.\([0-9]*\).*$/\1/p')"
+    if { [ -z "$mk_major" ] || [ "$mk_major" -lt 4 ] ||
+         { [ "$mk_major" -eq 4 ] && [ "${mk_minor:-0}" -lt 2 ]; }; } &&
+        gmake_bin="$(command -v gmake)"; then
+        cat > "$HELIX_TEST_SANDBOX_BIN/make" <<SHIM
+#!/bin/sh
+exec '$gmake_bin' "\$@"
+SHIM
+        chmod +x "$HELIX_TEST_SANDBOX_BIN/make"
+        # The function layer, for the same reason as the blocked commands: a
+        # callee that REPLACES PATH loses the shim. A function outranks PATH,
+        # so it must hand control back to a test's own make mock, which is
+        # whatever PATH resolves to under the bats run directory.
+        eval "make() {
+            local resolved
+            resolved=\"\$(type -P make 2>/dev/null)\"
+            if [ -n \"\$resolved\" ] && [ \"\$resolved\" != \"\$HELIX_TEST_SANDBOX_BIN/make\" ] &&
+               [ \"\${resolved#\"\$BATS_RUN_TMPDIR\"/}\" != \"\$resolved\" ]; then
+                \"\$resolved\" \"\$@\"
+            else
+                '$gmake_bin' \"\$@\"
+            fi
+        }"
+        # shellcheck disable=SC2163  # the name is fixed, by design
+        export -f make
+    fi
+
     # The host's build pool is shared with every other session on the box. A
     # make the suite runs bypasses it (JOBPOOL=0 turns the shim into a plain
     # passthrough), and jobpool itself is blocked above; a test that exercises

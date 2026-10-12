@@ -17,6 +17,7 @@ translations:
   '%d slots': '%d 个槽位'
   '%d toolheads': '%d 个工具头'
   '%d tools': '%d 个工具'
+  '%d units': '%d 个单元'
   '%d:%02d left': '剩余 %d:%02d'
   '%dh': '%d小时'
   '%dh %02dm': '%d小时%02d分'
@@ -72,6 +73,7 @@ translations:
   1 min ago: 1分钟前
   1 minute: 1 分钟
   1 more tap to {} beta features: 再点击 1 次以{}测试功能
+  '1 unit': '1 个单元'
   1. Printer homes all axes (~1 minute): 1. 打印机全部轴归零（约1分钟）
   1. Printer homes and probes the bed: 1. 打印机归位并探测热床
   1. Printer will home and probe each screw: 1. 打印机将归位并探测每个螺丝位置
@@ -159,6 +161,7 @@ translations:
   Aborting AFC operation...: 正在中止AFC操作...
   Aborting...: 正在中止...
   About: 关于
+  Above target: 高于目标
   Accel to Decel: 加速到减速
   Acceleration to deceleration limit (mm/s²): 加速到减速限制 (mm/s²)
   Accelerometer: 加速度传感器
@@ -255,6 +258,7 @@ translations:
   Assisted Retract: '辅助回抽'
   Assisting: 辅助中
   At least {} lines in helixscreen.env were ignored: 'helixscreen.env 中至少有 {} 行被忽略'
+  At target: 在目标值
   At {}°C, about {} minutes.: '在 {}°C 下约需 {} 分钟。'
   Authentication failed: 认证失败
   Auto: 自动
@@ -333,6 +337,7 @@ translations:
   Bed temp must be 0-%d°C: 热床温度必须为 0-%d°C
   Bed warming timed out: 热床加热超时
   Before starting: '开始之前'
+  Below target: 低于目标
   Belt Tension: 皮带张力
   Belt Tension Check: 皮带张力检查
   Belt Tension needs a CoreXY printer. This one is {}.: '皮带张力需要 CoreXY 打印机。此打印机为{}。'
@@ -911,6 +916,8 @@ translations:
 
   Dry spools on the heated bed: 在热床上烘干料盘
 
+  Dryer already running: '烘干机已在运行'
+  Dryer is not running: '烘干机未在运行'
   Drying: 烘干中
   Drying is already running: 烘干已在进行中
 
@@ -1024,6 +1031,7 @@ translations:
   'Error: Verification failed': '错误: 验证失败'
   'Error: Wrong architecture': '错误: 架构错误'
   'Error: `unzip` not installed': '错误: 未安装 `unzip`'
+  'Error: cannot write the service file in {}': '错误: 无法将服务文件写入 {}'
   Errors only: '仅错误'
   Escalate to emergency stop if cancel doesn't respond: 如果取消无响应则升级为紧急停止
   Escalation Timeout: 升级超时
@@ -1294,6 +1302,8 @@ translations:
   'Fix: chown {} {}, then restart': '修复：chown {} {}，然后重启'
   FlashForge Adventurer 5M: FlashForge Adventurer 5M
   FlashForge Adventurer 5X: FlashForge Adventurer 5X
+  FlashForge Creator 5: FlashForge Creator 5
+  FlashForge Creator 5 Pro: FlashForge Creator 5 Pro
   FlashForge IFS: FlashForge IFS
   Flip: 翻转
   Flip the spools: 翻转料盘
@@ -1858,7 +1868,9 @@ translations:
   More points = more accurate, but takes longer.: 点数越多越精确，但耗时更长。
   Motion: 运动
   'Motion sensor stuck: filament is still at the feeder. Resume to feed it.': '运动传感器卡住：耗材仍在送料器中。继续即可送入。'
+  Motion timed out: 运动超时
   Motor controller error: 电机控制器错误
+  Motor drive fault: 电机驱动器故障
   Motor parameter setup failed: 电机参数设置失败
   Motor speeds and acceleration: '电机速度与加速度'
   Motors: 电机
@@ -3002,6 +3014,7 @@ translations:
   ? "Stop printing \"{}\"?\n\nThis cannot be undone after 5 seconds."
   : "停止打印 \"{}\"？\n\n5秒后将无法撤销。"
   Stop the check?: 停止检查？
+  Stop the running cycle before starting another: '请先停止当前周期，再启动新的周期'
   Stopped: 已停止
   Stopped between Hub and Toolhead: 停在集线器与工具头之间
   Stopped between Lane and Hub: 停在耗材通道与集线器之间
@@ -3194,6 +3207,7 @@ translations:
   Theme changes apply after restart.: 主题更改在重启后生效。
   Theme reset to defaults: 主题已重置为默认值
   'Theme: ': '主题: '
+  There is no cycle to stop: '没有可停止的周期'
   ? There is not enough free memory to run this test. Klipper's analysis would run out of memory and leave the printer stuck until it is power-cycled.
   : "可用内存不足，无法运行此测试。Klipper 的分析会耗尽内存，使打印机卡住，直到断电重启。"
   'These tools have a different filament grade loaded:': 以下工具装载的耗材等级不同：
@@ -3217,6 +3231,7 @@ translations:
   ? This device has very little RAM. Resonance calibration is memory-intensive and may cause a "Timer Too Close" error. Continue anyway?
   : 此设备内存极少。共振校准会占用大量内存，可能导致 "Timer Too Close" 错误。仍要继续吗？
   This doesn't match the linked Spoolman spool. Add it as a new spool, or update the linked one to match?: 这与关联的 Spoolman 料盘不匹配。是否添加为新料盘，或更新关联料盘以匹配？
+  This dryer cannot run while filament from the unit is loaded: '此单元的耗材处于装载状态时，烘干机无法运行'
   This feature requires different hardware or configuration: 此功能需要不同的硬件或配置
   This filament system does not report buffer or flow data.: 此耗材系统不报告缓冲区或流量数据。
   This file was sliced for {} but {} is loaded.: 此文件为 {} 切片，但当前加载的是 {}。
@@ -3236,6 +3251,7 @@ translations:
   This printer cannot calibrate tool offsets automatically: 此打印机无法自动校准工具偏移
   This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman.: 此打印机的通道信息来自 Spoolman。HelixScreen 已清除本地副本；请在 Spoolman 中移除该线轴。
   This printer fills its gates from Spoolman. Make colour, material and spool changes in Spoolman.: 此打印机的通道信息来自 Spoolman。请在 Spoolman 中更改颜色、材料和线轴。
+  This printer has no automatic unload. Cut the filament at the head and pull it out by hand.: 此打印机没有自动退料功能。请在工具头处剪断耗材，然后用手拉出。
   ? This printer looks like a {} ({}% confidence), but it is set up as a {}. A wrong type applies incorrect pre-print options and presets.
   : 此打印机看起来是 {}（置信度 {}%），但当前设置为 {}。错误的类型会应用不正确的打印前选项和预设。
   This printer's network service controls the WiFi radio: 此打印机的网络服务控制 WiFi 无线模块
@@ -3408,6 +3424,7 @@ translations:
   Unload from toolhead first: '请先从工具头卸载'
   Unload macro not configured: 卸载宏未配置
   Unload the CFS filament before enabling bypass: '启用旁通前请先卸载 CFS 耗材'
+  Unload this unit first: '请先卸载此单元'
   Unload...: 卸载...
   Unloaded: '已卸载'
   Unloading: 卸载中
@@ -3665,6 +3682,7 @@ translations:
   invalid: 无效
   just now: 刚刚
   last 60 s · LOOSE up, TIGHT down: '最近 60 秒 · 上松下紧'
+  last 60 s · pressure, target dashed: 最近 60 秒 · 压力，目标为虚线
   layers: 层
   left: 剩余
   loaded: '已加载'

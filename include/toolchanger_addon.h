@@ -144,6 +144,8 @@ struct ToolSensor {
 struct SlotMaterial {
     std::string material;             ///< Empty when the firmware has none set
     std::optional<std::uint32_t> rgb; ///< nullopt when unset or unparseable
+    /// Per-head filament presence, nullopt when the frame did not say.
+    std::optional<bool> filament_present;
 };
 
 /// What a firmware material source said in one status frame. Each field is
@@ -167,6 +169,20 @@ struct MaterialSource {
                                std::uint32_t rgb) = nullptr;
 };
 
+/// Filament feed through a changer's own shim, where the firmware offers one.
+/// Default-constructed means a head's Load is only a tool mount.
+struct ToolFeed {
+    bool present = false;
+    std::string provider_name; ///< Machine it came from, for logs
+    /// The gcode that feeds head n, indexed by head. An empty entry means the
+    /// printer published nothing to feed that head with; callers refuse rather
+    /// than build a command of their own.
+    std::vector<std::string> head_gcode;
+};
+
+/// The feed this printer offers, or an absent capability.
+ToolFeed resolve_tool_feed(const PrinterDiscovery& hw);
+
 /// The firmware material source this printer has, or an absent capability.
 MaterialSource resolve_material_source(const PrinterDiscovery& hw);
 
@@ -175,6 +191,61 @@ std::optional<MaterialReading> read_materials(const nlohmann::json& status, int 
 
 /// Whether any provider claims this printer.
 bool present(const PrinterDiscovery& hw);
+
+/// Whether the Z-Mod Creator 5 changer row claims this printer: `zmod_color`
+/// plus the carriage grab buttons. The AD5X Z-Mod also publishes `zmod_color`
+/// but has no carriage buttons, so it cannot match. Backend selection asks this
+/// to tell Z-Mod's afclite AFC shim (which publishes the `AFC` objects an AFC
+/// panel wants) from a machine that is really a head changer.
+bool zmod_c5_present(const PrinterDiscovery& hw);
+
+/// The Z-Mod Creator 5 provider row's name, so callers holding machine_name()
+/// or a ToolSensor's provider_name can ask whether the active row speaks the
+/// Z-Mod dialect — whose swap phases arrive as gcode-response markers rather
+/// than a status object's phase word.
+inline constexpr const char* kZmodC5ProviderName = "Creator 5 Pro";
+
+/// Classify one gcode-response line from Z-Mod's Creator 5 changer macros into
+/// the phase word the changer state machine consumes. Z-Mod narrates a swap
+/// through respond_info lines — the grab/unload retry loops ("Grab attempt for
+/// T0: 1 of 5...") and the per-head offset echoes that bracket `_T_IN` /
+/// `_T_OUT` ("X-Offset: 0.0000 _T_IN") — and each marker spells the swap
+/// direction, so each maps onto the picking/dropping vocabulary the MedusaHC
+/// controllers publish. nullopt for every other console line. If a firmware
+/// build does not echo the markers, nothing matches and the operation step bar
+/// stays suppressed — a marker that never arrives cannot paint a wrong step.
+std::optional<ToolReading> parse_zmod_marker(const std::string& line);
+
+/// Classify one line of Z-Mod's T_INFO output (`T_INFO` is read-only: it
+/// answers state, it moves nothing). Each tool row is one dock/carriage fact —
+/// "T1: HEAD" puts tool 1 on the carriage, "T0: home" seats it in its dock,
+/// "ERROR (both)" is a sensor fault, "?" is no news for that tool — so each
+/// line applies on its own and no block buffering is needed. The `Offset:`
+/// line closes the block (it is always last), which is the only place the
+/// answer "nothing is on the carriage" can be stated: every tool row said
+/// `home` and none said HEAD. nullopt for every other console line.
+std::optional<ToolReading> parse_zmod_tinfo_line(const std::string& line, bool& block_ended_out);
+
+/// What Z-Mod's afclite shim said in one status frame. The object is the
+/// firmware's own AFC compat surface; the fields read here are the ones whose
+/// semantics a boolean or the bundle evidence fixes. `current_state` is
+/// deliberately carried as an opaque word: its vocabulary beyond "idle" is
+/// unverified, so callers log it rather than act on it.
+struct AfcStateReading {
+    std::string current_state; ///< As published; empty when the frame did not say
+    bool error_state = false;  ///< The shim's own fault flag
+    std::string message;       ///< Its fault text, when it sent one
+    /// `lanes[].map` verbatim ("T0", "T2", ...), indexed by lane; empty when
+    /// the frame carried no lane table. Read-only visibility: the lane→tool
+    /// relation is the firmware's own, and what it means for head indices is
+    /// exactly what a field capture has to settle before anything acts on it.
+    std::vector<std::string> lane_maps;
+};
+
+/// Pull an AfcStateReading out of a Moonraker status frame carrying the
+/// `zmod_afclite` (or its `AFC` alias) object. nullopt when the frame carried
+/// neither object.
+std::optional<AfcStateReading> read_afc_state(const nlohmann::json& status);
 
 /// The dock sensor this printer exposes, or an absent capability.
 ToolSensor resolve_tool_sensor(const PrinterDiscovery& hw);

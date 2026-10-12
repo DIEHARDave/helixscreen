@@ -268,6 +268,12 @@ void AmsState::init_subjects(bool register_xml) {
                      register_xml); // SUBJECT_OK: UiBufferSlider::follow_system_reading observes it
     INIT_SUBJECT_INT(buffer_status, 0, subjects_,
                      register_xml); // SUBJECT_OK: UiBufferSlider::follow_system_reading observes it
+    INIT_SUBJECT_INT(buffer_gauge, 0, subjects_,
+                     register_xml); // SUBJECT_OK: UiBufferSlider::follow_system_reading observes it
+    INIT_SUBJECT_INT(buffer_value_pct, 0, subjects_,
+                     register_xml); // SUBJECT_OK: UiBufferSlider::follow_system_reading observes it
+    INIT_SUBJECT_INT(buffer_target_pct, -1, subjects_,
+                     register_xml); // SUBJECT_OK: UiBufferSlider::follow_system_reading observes it
     INIT_SUBJECT_STRING(buffer_label, "", subjects_, register_xml);
     INIT_SUBJECT_STRING(buffer_value_text, "", subjects_,
                         register_xml); // SUBJECT_OK: the 2x1 widget binds it
@@ -303,6 +309,13 @@ void AmsState::init_subjects(bool register_xml) {
         subjects_.register_subject(&slot_materials_[i], register_xml ? name_buf : nullptr);
         if (register_xml)
             helix::xml::register_subject_in_current_scope(name_buf, &slot_materials_[i]);
+
+        lv_subject_init_string(&slot_names_[i], slot_names_buf_[i], nullptr,
+                               sizeof(slot_names_buf_[i]), "");
+        snprintf(name_buf, sizeof(name_buf), "ams_slot_%d_name", i);
+        subjects_.register_subject(&slot_names_[i], register_xml ? name_buf : nullptr);
+        if (register_xml)
+            helix::xml::register_subject_in_current_scope(name_buf, &slot_names_[i]);
 
         // Per-slot fill percent (SlotInfo::display_fill_pct encoding: 0-100, -1
         // = unknown). Observed by the ams_slot widget so spool fill renders from
@@ -431,6 +444,24 @@ void AmsState::init_subjects(bool register_xml) {
         if (register_xml)
             helix::xml::register_subject_in_current_scope(name_buf, &env_ind_drying_text_[i]);
     }
+
+    INIT_SUBJECT_INT(ams_unit_view_active, 0, subjects_, register_xml);
+    INIT_SUBJECT_INT(ams_page_count, 0, subjects_, register_xml);
+    INIT_SUBJECT_INT(ams_page_current, 0, subjects_, register_xml);
+    INIT_SUBJECT_INT(ams_page_has_prev, 0, subjects_, register_xml);
+    INIT_SUBJECT_INT(ams_page_has_next, 0, subjects_, register_xml);
+    INIT_SUBJECT_INT(ams_page_has_logo, 0, subjects_, register_xml);
+    lv_subject_init_string(&ams_page_unit_name_, page_unit_name_buf_, nullptr,
+                           sizeof(page_unit_name_buf_), "");
+    subjects_.register_subject(&ams_page_unit_name_, register_xml ? "ams_page_unit_name" : nullptr);
+    if (register_xml)
+        helix::xml::register_subject_in_current_scope("ams_page_unit_name", &ams_page_unit_name_);
+    // Pointer subject like ams_system_logo: null until a unit with a logo is shown.
+    lv_subject_init_pointer(&ams_page_unit_logo_, nullptr);
+    subjects_.register_subject(&ams_page_unit_logo_, register_xml ? "ams_page_unit_logo" : nullptr);
+    if (register_xml)
+        helix::xml::register_subject_in_current_scope("ams_page_unit_logo", &ams_page_unit_logo_);
+    INIT_SUBJECT_INT(ams_units_dryer_version, 0, subjects_, register_xml);
 
     lv_subject_init_int(&viewed_unit_disconnected_, 0);
     subjects_.register_subject(&viewed_unit_disconnected_,
@@ -694,6 +725,15 @@ void AmsState::register_xml_subject_names() {
     helix::xml::register_subject_in_current_scope(
         "buffer_status",
         &buffer_status_); // SUBJECT_OK: UiBufferSlider::follow_system_reading observes it
+    helix::xml::register_subject_in_current_scope(
+        "buffer_gauge",
+        &buffer_gauge_); // SUBJECT_OK: UiBufferSlider::follow_system_reading observes it
+    helix::xml::register_subject_in_current_scope(
+        "buffer_value_pct",
+        &buffer_value_pct_); // SUBJECT_OK: UiBufferSlider::follow_system_reading observes it
+    helix::xml::register_subject_in_current_scope(
+        "buffer_target_pct",
+        &buffer_target_pct_); // SUBJECT_OK: UiBufferSlider::follow_system_reading observes it
     helix::xml::register_subject_in_current_scope("buffer_label", &buffer_label_);
     helix::xml::register_subject_in_current_scope(
         "buffer_value_text",
@@ -713,6 +753,8 @@ void AmsState::register_xml_subject_names() {
         helix::xml::register_subject_in_current_scope(name_buf, &slot_remaining_[i]);
         snprintf(name_buf, sizeof(name_buf), "ams_slot_%d_material", i);
         helix::xml::register_subject_in_current_scope(name_buf, &slot_materials_[i]);
+        snprintf(name_buf, sizeof(name_buf), "ams_slot_%d_name", i);
+        helix::xml::register_subject_in_current_scope(name_buf, &slot_names_[i]);
         snprintf(name_buf, sizeof(name_buf), "ams_slot_%d_fill", i);
         helix::xml::register_subject_in_current_scope(name_buf, &slot_fills_[i]);
         snprintf(name_buf, sizeof(name_buf), "ams_slot_%d_segment", i);
@@ -742,6 +784,16 @@ void AmsState::register_xml_subject_names() {
     }
     helix::xml::register_subject_in_current_scope("ams_viewed_unit_disconnected",
                                                   &viewed_unit_disconnected_);
+    helix::xml::register_subject_in_current_scope("ams_unit_view_active", &ams_unit_view_active_);
+    helix::xml::register_subject_in_current_scope("ams_page_count", &ams_page_count_);
+    helix::xml::register_subject_in_current_scope("ams_page_current", &ams_page_current_);
+    helix::xml::register_subject_in_current_scope("ams_page_has_prev", &ams_page_has_prev_);
+    helix::xml::register_subject_in_current_scope("ams_page_has_next", &ams_page_has_next_);
+    helix::xml::register_subject_in_current_scope("ams_page_has_logo", &ams_page_has_logo_);
+    helix::xml::register_subject_in_current_scope("ams_page_unit_name", &ams_page_unit_name_);
+    helix::xml::register_subject_in_current_scope("ams_page_unit_logo", &ams_page_unit_logo_);
+    helix::xml::register_subject_in_current_scope("ams_units_dryer_version",
+                                                  &ams_units_dryer_version_);
     helix::xml::register_subject_in_current_scope("ams_all_units_disconnected",
                                                   &all_units_disconnected_);
 
@@ -864,6 +916,13 @@ lv_subject_t* AmsState::get_slot_material_subject(int slot_index) {
         return nullptr;
     }
     return &slot_materials_[slot_index];
+}
+
+lv_subject_t* AmsState::get_slot_name_subject(int slot_index) {
+    if (slot_index < 0 || slot_index >= MAX_SLOTS) {
+        return nullptr;
+    }
+    return &slot_names_[slot_index];
 }
 
 lv_subject_t* AmsState::get_slot_fill_subject(int slot_index) {
@@ -1062,6 +1121,11 @@ lv_subject_t* AmsState::get_slot_material_subject(int backend_index, int slot_in
     return get_slot_material_subject(backend_index, slot_index, unused);
 }
 
+lv_subject_t* AmsState::get_slot_name_subject(int backend_index, int slot_index) {
+    SubjectLifetime unused;
+    return get_slot_name_subject(backend_index, slot_index, unused);
+}
+
 lv_subject_t* AmsState::get_slot_color_subject(int backend_index, int slot_index,
                                                SubjectLifetime& lifetime) {
     return backend_slot_subject(backend_index, slot_index, lifetime, &BackendSlotSubjects::colors,
@@ -1084,6 +1148,12 @@ lv_subject_t* AmsState::get_slot_material_subject(int backend_index, int slot_in
                                                   SubjectLifetime& lifetime) {
     return backend_slot_subject(backend_index, slot_index, lifetime,
                                 &BackendSlotSubjects::materials, slot_materials_);
+}
+
+lv_subject_t* AmsState::get_slot_name_subject(int backend_index, int slot_index,
+                                              SubjectLifetime& lifetime) {
+    return backend_slot_subject(backend_index, slot_index, lifetime, &BackendSlotSubjects::names,
+                                slot_names_);
 }
 
 lv_subject_t* AmsState::get_slot_lane_state_subject(int backend_index, int slot_index,
@@ -1114,6 +1184,8 @@ void AmsState::BackendSlotSubjects::init(int count) {
     severities.resize(count);
     material_bufs.resize(count);
     materials.resize(count);
+    name_bufs.resize(count);
+    names.resize(count);
     for (int i = 0; i < count; ++i) {
         lv_subject_init_int(&colors[i], static_cast<int>(AMS_DEFAULT_SLOT_COLOR));
         lv_subject_init_int(&statuses[i], static_cast<int>(SlotStatus::UNKNOWN));
@@ -1123,6 +1195,7 @@ void AmsState::BackendSlotSubjects::init(int count) {
         lv_subject_init_int(&severities[i], static_cast<int>(SlotError::Severity::INFO));
         lv_subject_init_string(&materials[i], material_bufs[i].data(), nullptr,
                                BackendSlotSubjects::MATERIAL_BUF_SIZE, "");
+        lv_subject_init_string(&names[i], name_bufs[i].data(), nullptr, SLOT_NAME_BUF_SIZE, "");
     }
     // Fresh lifetime token: observers bound via the token'd accessors expire
     // when deinit() invalidates it on backend rediscovery.
@@ -1140,7 +1213,7 @@ void AmsState::BackendSlotSubjects::deinit() {
         lv_subject_deinit(&c);
     for (auto& s : statuses)
         lv_subject_deinit(&s);
-    for (auto* group : {&fills, &lane_states, &has_errors, &severities, &materials})
+    for (auto* group : {&fills, &lane_states, &has_errors, &severities, &materials, &names})
         for (auto& subj : *group)
             lv_subject_deinit(&subj);
     colors.clear();
@@ -1151,6 +1224,8 @@ void AmsState::BackendSlotSubjects::deinit() {
     severities.clear();
     materials.clear();
     material_bufs.clear();
+    names.clear();
+    name_bufs.clear();
     slot_count = 0;
 }
 
@@ -1162,6 +1237,7 @@ void AmsState::BackendSlotSubjects::write(int i, const SlotInfo& slot) {
     // No prev buffer, so LVGL notifies on every copy; compare here instead.
     if (strcmp(lv_subject_get_string(&materials[i]), slot.material.c_str()) != 0)
         lv_subject_copy_string(&materials[i], slot.material.c_str());
+    write_slot_name(&names[i], SLOT_NAME_BUF_SIZE, slot);
     bool has_error = false;
     int severity = 0;
     slot_error_state(slot, has_error, severity);

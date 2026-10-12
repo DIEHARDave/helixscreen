@@ -5,9 +5,12 @@
 
 #include "ui_update_queue.h"
 
+#include "../lvgl_test_fixture.h"
 #include "app_globals.h"
 #include "http_executor.h"
+#include "moonraker_client_mock.h"
 #include "plugin_backend.h"
+#include "printer_state.h"
 
 #include <chrono>
 #include <future>
@@ -98,6 +101,99 @@ TEST_CASE("app backend http refuses the printer's own host", "[plugin][backend]"
     CHECK_FALSE(r.ok);
     CHECK(r.error.find("printer host") != std::string::npos);
     helix::http::HttpExecutor::slow().stop();
+}
+
+namespace {
+
+/// A mock client installed as the app's client, so the backend's `call` reaches a recorder.
+class PluginCallFixture : public LVGLTestFixture {
+  public:
+    PluginCallFixture() : mock(MoonrakerClientMock::PrinterType::VORON_24) {
+        get_printer_state().init_subjects(false);
+        get_printer_state().print_state().set_spool_latch(false);
+        previous = get_moonraker_client();
+        set_moonraker_client(&mock);
+    }
+    ~PluginCallFixture() override {
+        set_moonraker_client(previous);
+        get_printer_state().print_state().set_spool_latch(false);
+    }
+
+    RpcResult call(const std::string& method, const json& params) {
+        RpcResult out;
+        make_app_backend().call(method, params, [&](RpcResult r) { out = std::move(r); });
+        return out;
+    }
+
+    MoonrakerClientMock mock;
+    helix::IMoonrakerClient* previous = nullptr;
+};
+
+} // namespace
+
+TEST_CASE_METHOD(PluginCallFixture, "plugin call refuses a print start while spools are on the bed",
+                 "[plugin][backend][spool_latch]") {
+    get_printer_state().print_state().set_spool_latch(true);
+    mock.clear_gcode_script_history();
+
+    const RpcResult r = call("printer.print.start", {{"filename", "benchy.gcode"}});
+    CHECK_FALSE(r.ok);
+    CHECK(r.error.find("Spools are on the bed") != std::string::npos);
+    CHECK(mock.last_send_method() != "printer.print.start");
+}
+
+TEST_CASE_METHOD(PluginCallFixture, "plugin call refuses every job method while the latch is up",
+                 "[plugin][backend][spool_latch]") {
+    get_printer_state().print_state().set_spool_latch(true);
+
+    for (const char* method : {"printer.print.resume", "server.job_queue.start", "printer.restart",
+                               "printer.firmware_restart"}) {
+        INFO(method);
+        const RpcResult r = call(method, json::object());
+        CHECK_FALSE(r.ok);
+        CHECK(mock.last_send_method() != method);
+    }
+    const RpcResult modified =
+        call("server.helix.print_modified",
+             {{"original_filename", "a.gcode"}, {"temp_file_path", "b.gcode"}});
+    CHECK_FALSE(modified.ok);
+    CHECK(mock.last_send_method() != "server.helix.print_modified");
+
+    const RpcResult klipper = call("machine.services.restart", {{"service", "klipper"}});
+    CHECK_FALSE(klipper.ok);
+    CHECK(mock.last_send_method() != "machine.services.restart");
+}
+
+TEST_CASE_METHOD(PluginCallFixture, "plugin call applies the gcode guards to printer.gcode.script",
+                 "[plugin][backend][spool_latch]") {
+    get_printer_state().print_state().set_spool_latch(true);
+    CHECK_FALSE(call("printer.gcode.script", {{"script", "G28"}}).ok);
+    CHECK(mock.last_send_method() != "printer.gcode.script");
+}
+
+TEST_CASE_METHOD(PluginCallFixture, "plugin call refuses an unsafe print start path",
+                 "[plugin][backend]") {
+    for (const char* name :
+         {"a.gcode\nM104 S300", "../etc/passwd", "/abs.gcode", "", "a\rb.gcode"}) {
+        INFO(name);
+        const RpcResult r = call("printer.print.start", {{"filename", name}});
+        CHECK_FALSE(r.ok);
+        CHECK(r.error.find("Invalid path") != std::string::npos);
+        CHECK(mock.last_send_method() != "printer.print.start");
+    }
+    CHECK_FALSE(call("printer.print.start", json::object()).ok);
+    CHECK_FALSE(call("printer.print.start", {{"filename", 7}}).ok);
+}
+
+TEST_CASE_METHOD(PluginCallFixture, "plugin call still sends a normal print start",
+                 "[plugin][backend][spool_latch]") {
+    const RpcResult r = call("printer.print.start", {{"filename", "sub/benchy.gcode"}});
+    CHECK(mock.last_send_method() == "printer.print.start");
+    CHECK(r.error.find("Spools") == std::string::npos);
+    CHECK(r.error.find("Invalid path") == std::string::npos);
+
+    call("server.info", json::object());
+    CHECK(mock.last_send_method() == "server.info");
 }
 
 #endif // HELIX_HAS_PLUGINS

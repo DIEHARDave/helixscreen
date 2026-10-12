@@ -16,6 +16,7 @@
 #include "data_root_resolver.h"
 #include "display_numbering.h"
 #include "display_settings_manager.h"
+#include "filament_display_name.h"
 #include "helix-xml/src/xml/lv_xml.h"
 #include "helix-xml/src/xml/lv_xml_parser.h"
 #include "helix-xml/src/xml/lv_xml_widget.h"
@@ -33,6 +34,7 @@
 #include <cmath>
 #include <cstdio>
 #include <cstring>
+#include <initializer_list>
 #include <memory>
 #include <unordered_map>
 
@@ -54,7 +56,7 @@ struct AmsSlotData {
 
     /// Backend whose subjects the observers below are bound to (captured at
     /// setup_slot_observers time from the active backend). Kept so later
-    /// re-reads (refresh_slot_material_label) hit the same backend the
+    /// re-reads (apply_slot_label) hit the same backend the
     /// observers are bound to, even if the active backend moved on.
     int backend_index = 0;
 
@@ -70,6 +72,7 @@ struct AmsSlotData {
     ObserverGuard status_observer;     ///< Per-slot status -> badge color
     ObserverGuard lane_state_observer; ///< Per-slot lane_state -> label text + ghost
     ObserverGuard material_observer;   ///< Per-slot material type label (static subject)
+    ObserverGuard name_observer;       ///< Per-slot spool name line
     ObserverGuard remaining_observer;  ///< Per-slot remaining length (primary backend)
     ObserverGuard current_slot_observer;
     ObserverGuard filament_loaded_observer;
@@ -78,7 +81,7 @@ struct AmsSlotData {
     ObserverGuard target_slot_observer;
 
     // Lifetime tokens paired with the observers that bind per-backend subjects
-    // (status, lane_state, material). Secondary-backend (index > 0) subjects
+    // (status, lane_state, material, name). Secondary-backend (index > 0) subjects
     // are DYNAMIC - recreated on backend rediscovery - so those observers need
     // tokens that expire when AmsState tears the subject down (L084). For
     // backend 0 the accessors return AmsState's subjects lifetime. Each MUST be
@@ -86,6 +89,7 @@ struct AmsSlotData {
     SubjectLifetime status_lifetime;
     SubjectLifetime lane_state_lifetime;
     SubjectLifetime material_lifetime;
+    SubjectLifetime name_lifetime;
 
     lv_obj_t* spool_container = nullptr; // Container for the lane spool + badges
 
@@ -94,6 +98,7 @@ struct AmsSlotData {
     lv_obj_t* lane_spool = nullptr;
 
     // Other UI elements
+    lv_obj_t* name_label = nullptr; // Spool name, above the material
     lv_obj_t* material_label = nullptr;
     lv_obj_t* leader_line = nullptr;     // Dotted line connecting label to spool (when staggered)
     lv_point_precise_t leader_points[2]; // Points for leader line (per-slot storage)
@@ -157,9 +162,11 @@ static void unregister_slot_data(lv_obj_t* obj) {
             data->status_lifetime.reset();
             data->lane_state_lifetime.reset();
             data->material_lifetime.reset();
+            data->name_lifetime.reset();
             data->status_observer.reset();
             data->lane_state_observer.reset();
             data->material_observer.reset();
+            data->name_observer.reset();
             data->remaining_observer.reset();
             data->current_slot_observer.reset();
             data->filament_loaded_observer.reset();
@@ -188,9 +195,11 @@ static void cleanup_all_slot_data() {
         data->status_lifetime.reset();
         data->lane_state_lifetime.reset();
         data->material_lifetime.reset();
+        data->name_lifetime.reset();
         data->status_observer.release();
         data->lane_state_observer.release();
         data->material_observer.release();
+        data->name_observer.release();
         data->remaining_observer.release();
         data->current_slot_observer.release();
         data->filament_loaded_observer.release();
@@ -205,32 +214,48 @@ static void cleanup_all_slot_data() {
 }
 
 // ============================================================================
-// Material Label
+// Name and Material Labels
 // ============================================================================
 
 /**
- * @brief Apply the material-type label from the per-slot material subject.
+ * @brief Paint the name and material lines from the per-slot subjects.
  *
- * The widget owns its own material rendering so every ams_slot consumer -
- * AmsPanel, AmsOverviewPanel, AmsDetail - repaints on a material-only change
- * without any container re-reading it imperatively (#1065). The text itself
- * comes from the spool family's shared rule, helix::ui::lane_material_text(),
- * keyed on the same lane_state subject that drives the embedded spool widget
- * so the label and the graphic cannot reach opposite conclusions about one
- * lane. What is ams_slot's own: long names truncate to 4 chars when 5+ slots
- * share a row (overlap guard; the mini strip ellipsizes instead).
+ * The widget owns its own label rendering so every ams_slot consumer -
+ * AmsPanel, AmsOverviewPanel, AmsDetail - repaints on a name-only or
+ * material-only change without any container re-reading it imperatively
+ * (#1065). The material text comes from the spool family's shared rule,
+ * helix::ui::lane_material_text(), keyed on the same lane_state subject that
+ * drives the embedded spool widget so the label and the graphic cannot reach
+ * opposite conclusions about one lane. helix::slot_card_lines() decides what
+ * the two lines read; this only puts that on screen.
+ *
+ * Reads both subjects rather than taking an observer's value, because either
+ * one changing changes what both lines read.
  */
-static void apply_material_label(AmsSlotData* data, const char* material) {
-    if (!data || !data->material_label)
+static void apply_slot_label(AmsSlotData* data) {
+    if (!data || data->slot_index < 0)
         return;
-    const char* text = helix::ui::lane_material_text(data->last_lane_state, material);
-    if (data->last_lane_state != helix::ui::LaneState::Empty && data->total_count > 4 &&
-        std::strlen(text) > 4) {
-        std::string truncated(text, 4);
-        lv_label_set_text(data->material_label, truncated.c_str());
-        return;
+    AmsState& state = AmsState::instance();
+    lv_subject_t* material_subject =
+        state.get_slot_material_subject(data->backend_index, data->slot_index);
+    lv_subject_t* name_subject = state.get_slot_name_subject(data->backend_index, data->slot_index);
+    const char* material = material_subject ? lv_subject_get_string(material_subject) : "";
+    const char* name = name_subject ? lv_subject_get_string(name_subject) : "";
+
+    const helix::SlotCardLines lines = helix::slot_card_lines(
+        name, material, helix::ui::lane_material_text(data->last_lane_state, material),
+        data->total_count, data->last_lane_state == helix::ui::LaneState::Empty);
+
+    if (data->material_label)
+        lv_label_set_text(data->material_label, lines.lower.c_str());
+    if (data->name_label) {
+        // DECLARATIVE_OK: per-slot subjects whose index arrives after view creation
+        lv_label_set_text(data->name_label, lines.name.c_str());
+        if (lines.name.empty())
+            lv_obj_add_flag(data->name_label, LV_OBJ_FLAG_HIDDEN);
+        else
+            lv_obj_remove_flag(data->name_label, LV_OBJ_FLAG_HIDDEN);
     }
-    lv_label_set_text(data->material_label, text);
 }
 
 /// The measured remaining length ("212m"), hidden while the lane has none.
@@ -276,20 +301,6 @@ static void apply_lane_humidity(AmsSlotData* data, AmsBackend* backend) {
         lv_obj_remove_flag(data->lane_temp_row, LV_OBJ_FLAG_HIDDEN);
     else
         lv_obj_add_flag(data->lane_temp_row, LV_OBJ_FLAG_HIDDEN);
-}
-
-/// Re-apply the material label from the live per-slot material subject.
-///
-/// Used by apply_lane_state(), whose outcome changes what the label should
-/// read. Goes through apply_material_label() rather than writing text itself,
-/// so the rule above has exactly one implementation.
-static void refresh_slot_material_label(AmsSlotData* data) {
-    if (!data || !data->material_label)
-        return;
-    lv_subject_t* material_subject =
-        AmsState::instance().get_slot_material_subject(data->backend_index, data->slot_index);
-    apply_material_label(data,
-                         material_subject ? lv_subject_get_string(material_subject) : nullptr);
 }
 
 // ============================================================================
@@ -358,16 +369,15 @@ static void apply_lane_state(AmsSlotData* data, int state_int) {
     if (!data)
         return;
     data->last_lane_state = static_cast<helix::ui::LaneState>(state_int);
-    if (data->material_label) {
-        lv_obj_set_style_text_opa(data->material_label,
-                                  data->last_lane_state == helix::ui::LaneState::Ghosted
-                                      ? ams_draw::GHOST_OPA
-                                      : LV_OPA_COVER,
-                                  LV_PART_MAIN);
+    const lv_opa_t text_opa =
+        data->last_lane_state == helix::ui::LaneState::Ghosted ? ams_draw::GHOST_OPA : LV_OPA_COVER;
+    for (lv_obj_t* label : {data->name_label, data->material_label}) {
+        if (label)
+            lv_obj_set_style_text_opa(label, text_opa, LV_PART_MAIN);
     }
-    // The label's TEXT depends on the classification just recorded, so
+    // The labels' TEXT depends on the classification just recorded, so
     // re-derive it from the one rule now that last_lane_state is current.
-    refresh_slot_material_label(data);
+    apply_slot_label(data);
 }
 
 // The current lane is marked by the spool's own glow, never a box on the slot.
@@ -585,17 +595,27 @@ static void setup_slot_observers(AmsSlotData* data) {
     if (material_subject) {
         data->material_observer = helix::ui::observe<const char*>(
             material_subject, obj,
-            [](lv_obj_t* o, const char* mat) {
+            [](lv_obj_t* o, const char* /*mat*/) {
                 auto* d = get_slot_data(o);
                 if (!d)
                     return;
-                apply_material_label(d, mat);
+                apply_slot_label(d);
                 // No spool re-derive on an identity-only change: AmsState
                 // recomputes the lane classification on the same update, so the
                 // lane_state subject fires and the embedded ams_lane_spool
                 // ghosts (or un-ghosts) itself.
             },
             data->material_lifetime);
+    }
+    // Per-slot spool name: a different spool of the same material, or a
+    // Spoolman identity arriving after first paint, changes only this.
+    lv_subject_t* name_subject =
+        state.get_slot_name_subject(backend_idx, data->slot_index, data->name_lifetime);
+    if (name_subject) {
+        data->name_observer = helix::ui::observe<const char*>(
+            name_subject, obj,
+            [](lv_obj_t* o, const char* /*name*/) { apply_slot_label(get_slot_data(o)); },
+            data->name_lifetime);
     }
 
     // Only the primary backend publishes the per-slot remaining subject.
@@ -701,7 +721,7 @@ static void setup_slot_observers(AmsSlotData* data) {
         apply_current_slot_highlight(data, lv_subject_get_int(current_slot_subject));
     }
     if (material_subject && data->material_observer) {
-        apply_material_label(data, lv_subject_get_string(material_subject));
+        apply_slot_label(data);
     }
     apply_lane_remaining(data, remaining_subject && data->remaining_observer
                                    ? lv_subject_get_string(remaining_subject)
@@ -751,6 +771,7 @@ static void* ams_slot_xml_create(lv_xml_parser_state_t* state, const char** attr
     data->container = obj;
 
     // Find XML-created children by name
+    data->name_label = helix::ui::find_required(obj, "name_label", "AmsSlot");
     data->material_label = helix::ui::find_required(obj, "material_label", "AmsSlot");
     data->spool_container = helix::ui::find_required(obj, "spool_container", "AmsSlot");
     data->lane_spool = helix::ui::find_required(obj, "lane_spool", "AmsSlot");
@@ -776,6 +797,15 @@ static void* ams_slot_xml_create(lv_xml_parser_state_t* state, const char** attr
     // Set initial text on labels (direct imperative updates, no subject indirection)
     if (data->material_label) {
         lv_label_set_text(data->material_label, "--");
+    }
+    // A dotted label ellipsizes only at a fixed height; at content height it
+    // wraps into the spool instead. One line of its own font is that height.
+    for (lv_obj_t* label : {data->name_label, data->material_label}) {
+        if (!label)
+            continue;
+        // DECLARATIVE_OK: measured from the label's computed font, which XML cannot name
+        lv_obj_set_height(label,
+                          lv_font_get_line_height(lv_obj_get_style_text_font(label, LV_PART_MAIN)));
     }
     if (data->slot_badge) {
         lv_label_set_text(data->slot_badge, "?");
@@ -829,9 +859,11 @@ static void ams_slot_xml_apply(lv_xml_parser_state_t* state, const char** attrs)
                 data->status_lifetime.reset();
                 data->lane_state_lifetime.reset();
                 data->material_lifetime.reset();
+                data->name_lifetime.reset();
                 data->status_observer.reset();
                 data->lane_state_observer.reset();
                 data->material_observer.reset();
+                data->name_observer.reset();
                 data->current_slot_observer.reset();
                 data->filament_loaded_observer.reset();
 
@@ -912,9 +944,11 @@ void ui_ams_slot_set_index(lv_obj_t* obj, int slot_index) {
     data->status_lifetime.reset();
     data->lane_state_lifetime.reset();
     data->material_lifetime.reset();
+    data->name_lifetime.reset();
     data->status_observer.reset();
     data->lane_state_observer.reset();
     data->material_observer.reset();
+    data->name_observer.reset();
     data->current_slot_observer.reset();
     data->filament_loaded_observer.reset();
 
@@ -1113,6 +1147,9 @@ void ui_ams_slot_set_layout_info(lv_obj_t* obj, int slot_index, int total_count)
 
         spdlog::debug("[AmsSlot] Slot {} layout: no stagger (count={})", slot_index, total_count);
     }
+
+    // The slot count decides whether the card has room for a name line.
+    apply_slot_label(data);
 }
 
 void ui_ams_slot_move_label_to_layer(lv_obj_t* obj, lv_obj_t* labels_layer, int32_t slot_center_x) {
@@ -1234,8 +1271,10 @@ void ui_ams_slot_move_badge_to_layer(lv_obj_t* obj, lv_obj_t* badge_layer, int32
     int32_t label_h = data->material_label ? lv_obj_get_height(data->material_label) : 0;
     int32_t pad_row = lv_obj_get_style_pad_row(obj, LV_PART_MAIN);
 
-    // Spool container top Y = slot padding + label height + row gap
+    // Spool container top Y = slot padding + label lines + row gaps
     int32_t container_top_y = slot_pad_top + label_h + pad_row;
+    if (data->name_label && !lv_obj_has_flag(data->name_label, LV_OBJ_FLAG_HIDDEN))
+        container_top_y += lv_obj_get_height(data->name_label) + pad_row;
     int32_t badge_x = slot_center_x + container_w / 2 - badge_w - 2; // -2 from translate_x
     int32_t badge_y = container_top_y + container_h - badge_h - 2;   // -2 from translate_y
 

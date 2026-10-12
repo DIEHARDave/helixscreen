@@ -32,7 +32,7 @@ setup() {
 # the CI quality step a cold full build that overruns its time limit. Its check
 # runs in the unit suite instead (#1698).
 @test "tool-build gate does not build the constants validator" {
-    run bash -c "sed -n '/^qc_xml_tools() {/,/^}/p' scripts/qc/xml_tools.sh | grep '^if make'"
+    run bash -c "sed -n '/^qc_xml_tools() {/,/^}/p' scripts/qc/xml_tools.sh | grep '^if .*make'"
     [ "$status" -eq 0 ] || fail "qc_xml_tools make line not found"
     lacks "validate-xml-constants" "$output"
 }
