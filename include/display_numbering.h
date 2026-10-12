@@ -5,6 +5,7 @@
 
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace helix::ui {
 
@@ -70,6 +71,20 @@ int lane_number(int index);
 
 /// @brief lane_number() as text, or empty when @p index is negative.
 std::string lane_number_text(int index);
+
+/**
+ * @brief Whether per-lane tool badges tell the user anything the lane numbers do not.
+ *
+ * When every tool feeds the lane of its own index (T0 into lane 1, T1 into
+ * lane 2, ...) a tool badge only repeats the lane number beside it. Badges
+ * earn their place once a tool feeds a different lane, or names no lane this
+ * system has.
+ *
+ * @param tool_to_slot tool_to_slot[tool] = global slot index, negative = unmapped
+ * @param slot_count   number of slots in the system
+ * @return false only for a non-empty identity map; an empty map proves nothing
+ */
+bool tool_badges_add_information(const std::vector<int>& tool_to_slot, int slot_count);
 
 /// @brief The translated word for @p noun ("Slot", "Lane", "Gate", "Tool").
 std::string noun_text(LaneNoun noun);

@@ -175,4 +175,15 @@ LaneNoun active_tool_noun() {
     return backend ? backend->tool_noun() : LaneNoun::Tool;
 }
 
+bool tool_badges_add_information(const std::vector<int>& tool_to_slot, int slot_count) {
+    if (tool_to_slot.empty())
+        return true;
+    for (size_t tool = 0; tool < tool_to_slot.size(); ++tool) {
+        const int slot = tool_to_slot[tool];
+        if (slot < 0 || slot >= slot_count || slot != static_cast<int>(tool))
+            return true;
+    }
+    return false;
+}
+
 } // namespace helix::ui

@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "ui_breakpoint.h"
+
 #include <cstdint>
 
 /**
@@ -61,3 +63,18 @@ inline AmsSlotLayout calculate_ams_slot_layout(int32_t available_width, int slot
 
     return layout;
 }
+
+/**
+ * @brief Height of one row of staggered slot labels, for a label font of @p line_height.
+ *
+ * From the medium breakpoint up a row is 1.5 lines. Below it a row is about 1.1
+ * lines (rounded up, so a row always clears its own line), and the height the
+ * label band gives up goes to the unit and the filament tubes on a short panel.
+ */
+namespace helix::ui {
+inline int32_t ams_stagger_row_height(int32_t line_height, UiBreakpoint bp) {
+    if (bp >= UiBreakpoint::Medium)
+        return line_height * 3 / 2;
+    return (line_height * 11 + 9) / 10;
+}
+} // namespace helix::ui

@@ -4,6 +4,7 @@
 #include "ui_ams_slot.h"
 
 #include "ui_ams_lane_spool.h"
+#include "ui_ams_slot_layout.h"
 #include "ui_fonts.h"
 #include "ui_observer_guard.h"
 #include "ui_toolhead_badge.h"
@@ -23,6 +24,7 @@
 #include "helix-xml/src/xml/parsers/lv_xml_obj_parser.h"
 #include "lvgl/lvgl.h"
 #include "observer_factory.h"
+#include "panel_widget_size.h"
 #include "static_subject_registry.h"
 #include "theme_manager.h"
 #include "ui/ams_drawing_utils.h"
@@ -473,7 +475,8 @@ static void evaluate_pulse_state(AmsSlotData* data) {
  * @brief Update tool badge based on slot's mapped_tool value
  *
  * Shows "T0", "T1", etc. when a tool is mapped to this slot.
- * Hidden when mapped_tool == -1 (no tool assigned). The hide policy is the
+ * Hidden when mapped_tool == -1 (no tool assigned), and when every tool feeds
+ * the lane of its own number (tool_badges_add_information()). The hide policy is the
  * slot's own backend's: a mixed rig can pair a tool changer with a lane-based
  * system, and only the changer's slots get the redundant badge.
  */
@@ -487,6 +490,15 @@ static void apply_tool_badge(AmsSlotData* data, int mapped_tool, bool is_overrid
     if (backend && backend->should_hide_slot_tool_badge()) {
         lv_obj_add_flag(data->tool_badge_bg, LV_OBJ_FLAG_HIDDEN);
         return;
+    }
+
+    // A tool feeding the lane of its own number only repeats the lane badge.
+    if (backend) {
+        const AmsSystemInfo info = backend->get_system_info();
+        if (!helix::ui::tool_badges_add_information(info.tool_to_slot_map, info.total_slots)) {
+            lv_obj_add_flag(data->tool_badge_bg, LV_OBJ_FLAG_HIDDEN);
+            return;
+        }
     }
 
     if (mapped_tool >= 0) {
@@ -1065,8 +1077,8 @@ void ui_ams_slot_set_layout_info(lv_obj_t* obj, int slot_index, int total_count)
         font_small_name ? lv_xml_get_font(NULL, font_small_name) : &noto_sans_16;
     int32_t line_height = lv_font_get_line_height(font_small);
 
-    // Row height with comfortable spacing (1.5x line height)
-    int32_t row_height = (line_height * 3) / 2;
+    const int32_t row_height =
+        helix::ui::ams_stagger_row_height(line_height, helix::widget_size::current_breakpoint());
 
     // For staggered labels, we use absolute positioning
     // Remove label from flex flow and position it at the correct stagger row
@@ -1119,7 +1131,8 @@ void ui_ams_slot_set_layout_info(lv_obj_t* obj, int slot_index, int total_count)
         int32_t label_gap = 3; // Small gap between label and line
         int32_t line_start_y = label_y + line_height + label_gap; // Negative (in content coords)
         int32_t line_end_y = 0;                                   // Spool top
-        int32_t leader_length = line_end_y - line_start_y;        // Positive length
+        // A row-0 label sits right on its spool when rows are tight: no leader.
+        int32_t leader_length = std::max<int32_t>(0, line_end_y - line_start_y);
 
         // Set line points (relative to line object position)
         data->leader_points[0].x = 0;
@@ -1206,7 +1219,7 @@ void ui_ams_slot_move_label_to_layer(lv_obj_t* obj, lv_obj_t* labels_layer, int3
         int32_t line_end_y = slot_pad_top; // Spool top in labels_layer coords
 
         // Update line points for new length
-        int32_t leader_length = line_end_y - line_start_y;
+        int32_t leader_length = std::max<int32_t>(0, line_end_y - line_start_y);
         data->leader_points[0].x = 0;
         data->leader_points[0].y = 0;
         data->leader_points[1].x = 0;

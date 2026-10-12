@@ -807,8 +807,7 @@ void AmsPanel::create_slots(int count) {
     // Destroy existing
     ams_detail_destroy_slots(detail_widgets_, slot_widgets_, current_slot_count_);
 
-    // Pre-show environment indicator so flex layout accounts for its width
-    // when calculating slot sizes. Must happen BEFORE slot creation.
+    // Show the environment chip for this unit; update_tray places it on the lid.
     ams_detail_pre_show_env_indicator(detail_widgets_, ALL_UNITS);
 
     // Create new slots

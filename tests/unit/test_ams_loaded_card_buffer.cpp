@@ -64,3 +64,59 @@ TEST_CASE_METHOD(LVGLUITestFixture, "loaded card draws the buffer beside the mat
     AmsStateTestAccess::sync_buffer(ams, AmsSystemInfo{}, 0);
     AmsStateTestAccess::clear_buffer_traces(ams);
 }
+
+namespace {
+lv_area_t coords_of(lv_obj_t* card, const char* name) {
+    lv_obj_t* obj = lv_obj_find_by_name(card, name);
+    REQUIRE(obj != nullptr);
+    lv_area_t a;
+    lv_obj_get_coords(obj, &a);
+    return a;
+}
+} // namespace
+
+TEST_CASE_METHOD(
+    LVGLUITestFixture,
+    "loaded card: the meters stand beside the name from medium up, below it under medium",
+    "[ams][buffer][loaded_card]") {
+    auto& ams = AmsState::instance();
+    ams.init_subjects(true);
+    ensure_ams_widgets_registered();
+    lv_subject_t* bp = lv_xml_get_subject(nullptr, "ui_breakpoint");
+    REQUIRE(bp != nullptr);
+    const int original = lv_subject_get_int(bp);
+
+    auto* card = static_cast<lv_obj_t*>(lv_xml_create(test_screen(), "ams_loaded_card", nullptr));
+    REQUIRE(card != nullptr);
+    lv_obj_set_width(card, 137);
+    AmsStateTestAccess::sync_buffer(ams, test::fps_units({0.32f}), 0);
+    lv_subject_copy_string(ams.get_current_material_text_subject(),
+                           "Polymaker Jet Black PLA Galaxy Sparkle Edition");
+
+    for (int breakpoint = 0; breakpoint <= 4; ++breakpoint) {
+        CAPTURE(breakpoint);
+        lv_subject_set_int(bp, breakpoint);
+        process_lvgl(20);
+        lv_obj_update_layout(card);
+        REQUIRE_FALSE(hidden(card, "buffer_mini"));
+        const lv_area_t name = coords_of(card, "loaded_material");
+        const lv_area_t details = coords_of(card, "loaded_details");
+        const lv_area_t body = coords_of(card, "loaded_body");
+        const lv_area_t buffer = coords_of(card, "buffer_mini");
+        if (breakpoint >= 3) {
+            CHECK(buffer.x1 > details.x2);
+        } else {
+            // The name takes the body's width; the meters drop below it.
+            CHECK(lv_area_get_width(&details) == lv_area_get_width(&body));
+            CHECK(buffer.y1 > details.y2);
+            // Two lines at most, ellipsized beyond.
+            const lv_font_t* font = lv_obj_get_style_text_font(
+                lv_obj_find_by_name(card, "loaded_material"), LV_PART_MAIN);
+            CHECK(lv_area_get_height(&name) <= 2 * lv_font_get_line_height(font));
+        }
+    }
+
+    lv_subject_set_int(bp, original);
+    AmsStateTestAccess::sync_buffer(ams, AmsSystemInfo{}, 0);
+    AmsStateTestAccess::clear_buffer_traces(ams);
+}

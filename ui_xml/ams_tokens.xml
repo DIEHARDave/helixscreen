@@ -45,10 +45,10 @@
     <px name="ams_page_dot_size_medium" value="10"/>
     <px name="ams_page_dot_size_large" value="12"/>
 
-    <!-- Least width of the environment chip beside a spool box: its passive reading (icon
-         and "30C" over icon and "25%") at each size. The drying readout is narrower, and
-         without this floor the box beside it moves by the difference as the dryer starts
-         and stops, or as a screen pages from one unit to the next. -->
+    <!-- Least width of the environment chip on a spool box's lid: its passive reading
+         at each size. The drying readout is narrower, and without this floor the chip
+         changes size as the dryer starts and stops, or as a screen pages from one unit
+         to the next. -->
     <px name="ams_env_chip_min_w_micro" value="42"/>
     <px name="ams_env_chip_min_w_tiny" value="52"/>
     <px name="ams_env_chip_min_w_small" value="58"/>
@@ -56,6 +56,14 @@
     <px name="ams_env_chip_min_w_large" value="78"/>
     <px name="ams_env_chip_min_w_xlarge" value="90"/>
     <px name="ams_env_chip_min_w_xxlarge" value="110"/>
+
+    <!-- Two lines of font_small: the most the loaded-spool card's material name shows
+         below the medium breakpoint before it ellipsizes. -->
+    <px name="ams_loaded_name_max_h_micro" value="30"/>
+    <px name="ams_loaded_name_max_h_tiny" value="30"/>
+    <px name="ams_loaded_name_max_h_small" value="36"/>
+    <px name="ams_loaded_name_max_h_medium" value="44"/>
+    <px name="ams_loaded_name_max_h_large" value="48"/>
 
     <!-- Unit / system logo in the AMS screens' headers -->
     <px name="ams_header_logo_size_small" value="20"/>

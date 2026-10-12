@@ -22,6 +22,11 @@
     Both meters drop their text label (mode name, FPS/Sync) below the medium
     breakpoint, so the material name keeps the width on a small card.
 
+    From the medium breakpoint up, loaded_body is one row: the name column, then
+    the meters beside it. Below it the body wraps: the name takes the body's full
+    width (two lines at most, then ellipsized) and the meters sit in a compact
+    row underneath.
+
     Slot info is shown in the section header above (bound to ams_current_slot_text).
     Color swatch updated by C++ via lv_obj_find_by_name(sidebar, "loaded_swatch").
     Clog arc size/stroke/color dynamically set by UiClogMeter C++ class via
@@ -30,6 +35,14 @@
   <styles>
     <style name="swatch_wide" width="15%"/>
     <style name="swatch_narrow" width="#loaded_swatch_narrow_w"/>
+    <style name="body_beside" layout="flex" flex_flow="row"/>
+    <style name="body_stacked" layout="flex" flex_flow="row_wrap"/>
+    <style name="details_beside" width="1" flex_grow="1"/>
+    <style name="details_stacked" width="100%" flex_grow="0"/>
+    <style name="name_two_lines" max_height="#ams_loaded_name_max_h"/>
+    <!-- Beside the name the buffer column is capped so it never squeezes the
+         name; in its own row below the name it has the room. -->
+    <style name="buffer_beside" max_width="22%"/>
   </styles>
   <view name="ams_loaded_card"
         extends="ui_card" width="100%" height="content" style_radius="#border_radius" style_bg_color="#elevated_bg"
@@ -43,72 +56,87 @@
       <bind_style_if_lt name="swatch_narrow" subject="ui_breakpoint" ref_value="3"/>
       <bind_style_if_ge name="swatch_wide" subject="ui_breakpoint" ref_value="3"/>
     </lv_obj>
-    <!-- Details column (center, flex-grows to fill) -->
-    <lv_obj width="1"
-            height="content" style_pad_all="0" flex_flow="column" style_flex_main_place="center"
-            style_flex_cross_place="start" style_pad_gap="0" scrollable="false" flex_grow="1">
-      <!-- Material name -->
-      <!-- Wrapped, not marquee'd: the whole name is readable at once instead of
-           on a delay, and a card that animates forever never settles for a
-           screenshot. The card is height="content", so it grows to fit. -->
-      <text_small name="loaded_material" width="100%" bind_text="ams_current_material_text" long_mode="wrap"/>
-      <!-- Weight (hidden when not available) -->
-      <text_tiny name="loaded_weight" bind_text="ams_current_weight_text" style_text_color="#text_muted">
-        <bind_flag_if_eq subject="ams_current_has_weight" flag="hidden" ref_value="0"/>
-      </text_tiny>
-    </lv_obj>
-    <!-- Clog detection mini-meter (right side, auto-hides when mode=0).
-         Arc size set dynamically by UiClogMeter C++ SIZE_CHANGED callback. -->
-    <lv_obj name="clog_meter"
-            width="content" height="content" style_pad_all="0" scrollable="false" flex_flow="column"
-            style_flex_main_place="center" style_flex_cross_place="center" style_pad_gap="0">
-      <bind_flag_if_eq subject="clog_meter_mode" flag="hidden" ref_value="0"/>
-      <!-- Mini arc (sized by C++) -->
-      <lv_obj name="clog_arc_container" style_pad_all="0" scrollable="false">
-        <!-- Main arc: helix_progress_arc handles common styling and the
-             diameter-driven stroke tier. UiClogMeter syncs the danger/peak
-             overlay arcs (created in C++) to match. -->
-        <helix_progress_arc name="clog_arc" align="center"/>
-        <!-- Stands in for the arc when there is nothing to report. UiClogMeter
-             swaps the two, finding this by name under its parent. -->
-        <lv_label name="clog_safe_icon"
-                  hidden="true" align="center" text="#icon_check_circle" style_text_font="mdi_icons_16"
-                  style_text_color="#primary" clickable="false"/>
+    <!-- Body: the name column and the meters, beside each other or stacked -->
+    <lv_obj name="loaded_body"
+            width="1" height="content" flex_grow="1" style_pad_all="0" style_pad_column="#space_sm"
+            style_pad_row="#space_xs" style_flex_main_place="start" style_flex_cross_place="center"
+            style_flex_track_place="start" scrollable="false">
+      <bind_style_if_ge name="body_beside" subject="ui_breakpoint" ref_value="3"/>
+      <bind_style_if_lt name="body_stacked" subject="ui_breakpoint" ref_value="3"/>
+      <!-- Details column -->
+      <lv_obj name="loaded_details"
+              height="content" style_pad_all="0" flex_flow="column" style_flex_main_place="center"
+              style_flex_cross_place="start" style_pad_gap="0" scrollable="false">
+        <bind_style_if_ge name="details_beside" subject="ui_breakpoint" ref_value="3"/>
+        <bind_style_if_lt name="details_stacked" subject="ui_breakpoint" ref_value="3"/>
+        <!-- Material name -->
+        <!-- Wrapped, not marquee'd: the whole name is readable at once instead of
+             on a delay, and a card that animates forever never settles for a
+             screenshot. The card is height="content", so it grows to fit; below
+             the medium breakpoint the height caps at two lines and the rest
+             ellipsizes. -->
+        <text_small name="loaded_material" width="100%" bind_text="ams_current_material_text" long_mode="dots">
+          <bind_style_if_lt name="name_two_lines" subject="ui_breakpoint" ref_value="3"/>
+        </text_small>
+        <!-- Weight (hidden when not available) -->
+        <text_tiny name="loaded_weight" bind_text="ams_current_weight_text" style_text_color="#text_muted">
+          <bind_flag_if_eq subject="ams_current_has_weight" flag="hidden" ref_value="0"/>
+        </text_tiny>
       </lv_obj>
-      <!-- The reading sits under the arc rather than inside it: this arc is
-           sized off the card width and lands around 36px, which "11.8mm" does
-           not fit in — it drew clipped to "1.8mm", a wrong number rather than
-           an ugly one. -->
-      <text_tiny name="clog_value_text" bind_text="clog_meter_center_text" style_text_align="center"/>
-      <!-- Mode label below arc -->
-      <text_tiny name="clog_mode_text"
-                 width="100%" bind_text="clog_meter_mode_text" style_text_color="#text_muted" style_text_align="center"
-                 long_mode="wrap">
-        <bind_flag_if_lt subject="ui_breakpoint" flag="hidden" ref_value="3"/>
-      </text_tiny>
-    </lv_obj>
-    <!-- Filament buffer mini slider (right side, hidden without a reading). The
-         slider shows only with a set point to centre on; the number always. The
-         number is the short form, so the column stays as narrow as the slider
-         and never squeezes the material name. -->
-    <lv_obj name="buffer_mini"
-            width="content" height="content" style_max_width="22%" style_pad_all="0" scrollable="false"
-            flex_flow="column" style_flex_main_place="center" style_flex_cross_place="center" style_pad_gap="0">
-      <bind_flag_if_eq subject="buffer_present" flag="hidden" ref_value="0"/>
-      <lv_obj name="buffer_mini_slider"
-              width="#buffer_slider_w" height="#buffer_mini_h" style_pad_all="0" scrollable="false" clickable="false">
-        <bind_flag_if_eq subject="buffer_slider" flag="hidden" ref_value="0"/>
+      <!-- Clog detection mini-meter (right side, auto-hides when mode=0).
+           Arc size set dynamically by UiClogMeter C++ SIZE_CHANGED callback. -->
+      <lv_obj name="clog_meter"
+              width="content" height="content" style_pad_all="0" scrollable="false" flex_flow="column"
+              style_flex_main_place="center" style_flex_cross_place="center" style_pad_gap="0">
+        <bind_flag_if_eq subject="clog_meter_mode" flag="hidden" ref_value="0"/>
+        <!-- Mini arc (sized by C++) -->
+        <lv_obj name="clog_arc_container" style_pad_all="0" scrollable="false">
+          <!-- Main arc: helix_progress_arc handles common styling and the
+               diameter-driven stroke tier. UiClogMeter syncs the danger/peak
+               overlay arcs (created in C++) to match. -->
+          <helix_progress_arc name="clog_arc" align="center"/>
+          <!-- Stands in for the arc when there is nothing to report. UiClogMeter
+               swaps the two, finding this by name under its parent. -->
+          <lv_label name="clog_safe_icon"
+                    hidden="true" align="center" text="#icon_check_circle" style_text_font="mdi_icons_16"
+                    style_text_color="#primary" clickable="false"/>
+        </lv_obj>
+        <!-- The reading sits under the arc rather than inside it: this arc is
+             sized off the card width and lands around 36px, which "11.8mm" does
+             not fit in — it drew clipped to "1.8mm", a wrong number rather than
+             an ugly one. -->
+        <text_tiny name="clog_value_text" bind_text="clog_meter_center_text" style_text_align="center"/>
+        <!-- Mode label below arc -->
+        <text_tiny name="clog_mode_text"
+                   width="100%" bind_text="clog_meter_mode_text" style_text_color="#text_muted"
+                   style_text_align="center" long_mode="wrap">
+          <bind_flag_if_lt subject="ui_breakpoint" flag="hidden" ref_value="3"/>
+        </text_tiny>
       </lv_obj>
-      <text_tiny name="buffer_mini_value"
-                 width="content" bind_text="buffer_short_text" style_text_align="center" long_mode="wrap">
-        <bind_style_if_eq name="styles.buffer_ok" subject="buffer_status" ref_value="0"/>
-        <bind_style_if_eq name="styles.buffer_warning" subject="buffer_status" ref_value="1"/>
-        <bind_style_if_eq name="styles.buffer_danger" subject="buffer_status" ref_value="2"/>
-      </text_tiny>
-      <text_tiny name="buffer_mini_label"
-                 width="content" bind_text="buffer_label" style_text_color="#text_muted" style_text_align="center">
-        <bind_flag_if_lt subject="ui_breakpoint" flag="hidden" ref_value="3"/>
-      </text_tiny>
+      <!-- Filament buffer mini slider (right side, hidden without a reading). The
+           slider shows only with a set point to centre on; the number always. The
+           number is the short form, so the column stays as narrow as the slider
+           and never squeezes the material name. -->
+      <lv_obj name="buffer_mini"
+              width="content" height="content" style_pad_all="0" scrollable="false" flex_flow="column"
+              style_flex_main_place="center" style_flex_cross_place="center" style_pad_gap="0">
+        <bind_flag_if_eq subject="buffer_present" flag="hidden" ref_value="0"/>
+        <bind_style_if_ge name="buffer_beside" subject="ui_breakpoint" ref_value="3"/>
+        <lv_obj name="buffer_mini_slider"
+                width="#buffer_slider_w" height="#buffer_mini_h" style_pad_all="0" scrollable="false" clickable="false">
+          <bind_flag_if_eq subject="buffer_slider" flag="hidden" ref_value="0"/>
+        </lv_obj>
+        <text_tiny name="buffer_mini_value"
+                   width="content" bind_text="buffer_short_text" style_text_align="center" long_mode="wrap">
+          <bind_style_if_eq name="styles.buffer_ok" subject="buffer_status" ref_value="0"/>
+          <bind_style_if_eq name="styles.buffer_warning" subject="buffer_status" ref_value="1"/>
+          <bind_style_if_eq name="styles.buffer_danger" subject="buffer_status" ref_value="2"/>
+        </text_tiny>
+        <text_tiny name="buffer_mini_label"
+                   width="content" bind_text="buffer_label" style_text_color="#text_muted" style_text_align="center">
+          <bind_flag_if_lt subject="ui_breakpoint" flag="hidden" ref_value="3"/>
+        </text_tiny>
+      </lv_obj>
     </lv_obj>
   </view>
 </component>

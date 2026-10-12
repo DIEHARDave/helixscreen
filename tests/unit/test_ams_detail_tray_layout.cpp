@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The AMS panel's dry-box unit as laid out: spools stand in the box, labels sit
-// above its lid (or back wall), the readout stands beside the drum, and under
+// above its lid (or back wall), the readout is a chip on the lid, and under
 // per-lane lids each lane shows its own humidity behind a droplet.
 
 #include "ui_ams_detail.h"
@@ -152,13 +152,25 @@ TEST_CASE_METHOD(AmsTrayPanelFixture, "AMS unit with a reading: spools in the bo
     CHECK(box_.fl == Catch::Approx(first_x - half_).margin(0.01));
     CHECK(box_.fr == Catch::Approx(last_x + half_).margin(0.01));
 
+    // The readout is a chip on the lid's top-right corner, inside the unit, and
+    // costs the row no width.
     lv_obj_t* readout = lv_obj_find_by_name(panel_obj_, "env_indicator");
     REQUIRE(readout != nullptr);
     REQUIRE_FALSE(lv_obj_has_flag(readout, LV_OBJ_FLAG_HIDDEN));
     lv_area_t ra;
     lv_obj_get_coords(readout, &ra);
-    const tray::PointF br_t = tray::tray_faces(box_).back_wall[1];
-    CHECK(std::fabs((float)(ra.x1 - origin_.x) - (br_t.x + space_md)) <= 1);
+    const tray::PointF crest = tray::cap_point(box_, lid_h_, box_.fr, 1.5707963f);
+    CHECK(std::fabs((float)(ra.x2 - origin_.x) - crest.x) <= 1);
+    CHECK(std::fabs((float)(ra.y1 - origin_.y) - (top() + 1)) <= 1);
+    CHECK((float)(ra.x1 - origin_.x) >= box_.fl);
+    for (int i = 0; i < 4; ++i) {
+        CAPTURE(i);
+        lv_area_t la;
+        lv_obj_get_coords(lv_obj_find_by_name(slot(i), "material_label"), &la);
+        CHECK(la.y2 < ra.y1);
+    }
+    lv_obj_t* unit = lv_obj_get_parent(container_);
+    CHECK(lv_obj_get_width(container_) == lv_obj_get_content_width(unit));
 }
 
 TEST_CASE_METHOD(AmsTrayPanelFixture,

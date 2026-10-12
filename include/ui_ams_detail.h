@@ -31,7 +31,7 @@ struct AmsDetailWidgets {
     lv_obj_t* slot_tray = nullptr;     ///< Visual "holder" in front of spool bottoms
     lv_obj_t* labels_layer = nullptr;  ///< Overlay for material labels (5+ slots)
     lv_obj_t* badge_layer = nullptr;   ///< Overlay for slot badges (in front of tray)
-    lv_obj_t* env_indicator = nullptr; ///< Environment indicator (temp/humidity, right side)
+    lv_obj_t* env_indicator = nullptr; ///< Environment chip (temp/humidity) on the lid
 };
 
 /**
@@ -120,10 +120,8 @@ void ams_detail_setup_path_canvas(lv_obj_t* canvas, lv_obj_t* slot_grid, int uni
 /**
  * @brief Pre-show environment indicator if backend has environment sensors
  *
- * Must be called BEFORE ams_detail_create_slots() so the flex layout
- * accounts for the indicator's width when calculating slot sizes.
- * Without this, slots are sized for full width, then the indicator
- * appears on top of the last spool.
+ * The chip floats on the lid and takes no row width; ams_detail_update_tray()
+ * places it once the box is laid out.
  *
  * Also selects which unit's env indicator subjects the statically-embedded
  * detail-view indicator mirrors (see AmsState::set_detail_env_unit) and

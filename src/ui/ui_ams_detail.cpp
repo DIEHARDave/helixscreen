@@ -334,17 +334,21 @@ bool spool_centre(lv_obj_t* slot, lv_point_t origin, float& x, float& y, int32_t
     return true;
 }
 
-/// Lay a widget's top-left at (x, y) in absolute coords by translation, so the
-/// flex layout around it is untouched.
-void translate_to(lv_obj_t* obj, int32_t x, int32_t y, bool move_x) {
+void clear_translate(lv_obj_t* obj) {
     lv_obj_set_style_translate_x(obj, 0, LV_PART_MAIN);
     lv_obj_set_style_translate_y(obj, 0, LV_PART_MAIN);
-    lv_obj_update_layout(obj);
+}
+
+/// Put the environment chip's top-right corner at absolute (right, top). The
+/// chip is aligned to its container's top-right, so its right edge stays put
+/// when a reading changes the chip's width.
+void place_env_chip(lv_obj_t* chip, int32_t right, int32_t top) {
+    clear_translate(chip);
+    lv_obj_update_layout(chip);
     lv_area_t a;
-    lv_obj_get_coords(obj, &a);
-    if (move_x)
-        lv_obj_set_style_translate_x(obj, x - a.x1, LV_PART_MAIN);
-    lv_obj_set_style_translate_y(obj, y - a.y1, LV_PART_MAIN);
+    lv_obj_get_coords(chip, &a);
+    lv_obj_set_style_translate_x(chip, right - a.x2, LV_PART_MAIN);
+    lv_obj_set_style_translate_y(chip, top - a.y1, LV_PART_MAIN);
 }
 
 } // namespace
@@ -580,8 +584,8 @@ AmsSlotLayout helix::ui::ams_detail_slot_layout(int32_t available_width, int slo
         return calculate_ams_slot_layout(available_width, slot_count);
     // The box reaches past the outer slots: its first lid starts S/4 - 1 left of
     // the row (for any pitch), and its right side face ends S/4 right of it.
-    // The readout's gap is its own margin in the row. Spools stand at the
-    // tray's pitch rather than spreading across the width, centered with the box.
+    // Spools stand at the tray's pitch rather than spreading across the width,
+    // centered with the box.
     const float skew = tray::DEPTH_SKEW * tray::box_depth(spool);
     const int32_t lead = (int32_t)std::ceil(std::max(0.0f, skew / 4 - 1));
     const int32_t tail = (int32_t)std::ceil(skew / 4);
@@ -613,6 +617,9 @@ void ams_detail_update_tray(AmsDetailWidgets& w, lv_obj_t* const slot_widgets[],
     auto* backend = helix::AmsState::instance().get_backend(0);
     if (backend && !backend->has_physical_tray()) {
         lv_obj_add_flag(w.slot_tray, LV_OBJ_FLAG_HIDDEN);
+        // No lid to sit on: the chip keeps its top-right anchor.
+        if (w.env_indicator)
+            clear_translate(w.env_indicator);
         return;
     }
     lv_obj_remove_flag(w.slot_tray, LV_OBJ_FLAG_HIDDEN);
@@ -729,11 +736,15 @@ void ams_detail_update_tray(AmsDetailWidgets& w, lv_obj_t* const slot_widgets[],
         if (lowest != INT32_MIN)
             lv_obj_set_style_translate_y(w.labels_layer, label_bottom - lowest, LV_PART_MAIN);
     }
-    // The unit readout stands beside the drum, right of the back-right corner.
-    if (w.env_indicator && !lv_obj_has_flag(w.env_indicator, LV_OBJ_FLAG_HIDDEN)) {
-        const tray::PointF br_t = tray::tray_faces(box).back_wall[1];
-        translate_to(w.env_indicator, origin.x + (int32_t)std::lround(br_t.x) + gap,
-                     origin.y + (int32_t)std::lround(top) - 4, true);
+    // The environment chip sits on the lid's top-right corner: its right edge
+    // at the right cap's crest, its top just under the unit's top, so it stays
+    // below the labels and inside the unit's footprint.
+    if (w.env_indicator) {
+        constexpr float CREST_THETA = 1.5707963f; // the cap profile's mid-depth
+        const float crest_x = has_lid ? tray::cap_point(box, s_tray.lid_h, box.fr, CREST_THETA).x
+                                      : tray::tray_faces(box).back_wall[1].x;
+        place_env_chip(w.env_indicator, origin.x + (int32_t)std::lround(crest_x),
+                       origin.y + (int32_t)std::lround(top) + 1);
     }
 
     lv_obj_invalidate(container);
@@ -989,14 +1000,7 @@ void ams_detail_pre_show_env_indicator(AmsDetailWidgets& w, int unit_index) {
     auto* backend = helix::AmsState::instance().get_backend();
     if (backend && backend->has_environment_sensors()) {
         lv_obj_remove_flag(w.env_indicator, LV_OBJ_FLAG_HIDDEN);
-        // Force layout on the root (flex row container) so the indicator's
-        // content width is resolved before slot creation reads available_width.
-        if (w.root) {
-            lv_obj_update_layout(w.root);
-            int32_t indicator_w = lv_obj_get_width(w.env_indicator);
-            spdlog::debug("[AmsDetail] Pre-showed env indicator (width={}px) for flex layout",
-                          indicator_w);
-        }
+        spdlog::debug("[AmsDetail] Pre-showed env indicator for unit {}", u);
     } else {
         lv_obj_add_flag(w.env_indicator, LV_OBJ_FLAG_HIDDEN);
     }

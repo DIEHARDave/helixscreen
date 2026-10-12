@@ -14,6 +14,7 @@
 
 using namespace helix::ui::tray;
 using Catch::Approx;
+using helix::ui::ams_stagger_row_height;
 
 namespace {
 
@@ -221,4 +222,23 @@ TEST_CASE("slot layout: a pitch cap holds up to four slots, centered", "[ams][tr
     // Five or more overlap as before; the cap does not apply.
     CHECK(calculate_ams_slot_layout(470, 8, 72).slot_width ==
           calculate_ams_slot_layout(470, 8).slot_width);
+}
+
+TEST_CASE("stagger rows: 1.5 lines from the medium breakpoint up", "[ams][tray][stagger]") {
+    CHECK(ams_stagger_row_height(22, UiBreakpoint::Medium) == 33);
+    CHECK(ams_stagger_row_height(22, UiBreakpoint::Large) == 33);
+    CHECK(ams_stagger_row_height(26, UiBreakpoint::XXLarge) == 39);
+}
+
+TEST_CASE("stagger rows: about 1.1 lines below the medium breakpoint", "[ams][tray][stagger]") {
+    CHECK(ams_stagger_row_height(15, UiBreakpoint::Micro) == 17);
+    CHECK(ams_stagger_row_height(15, UiBreakpoint::Tiny) == 17);
+    CHECK(ams_stagger_row_height(18, UiBreakpoint::Small) == 20);
+}
+
+TEST_CASE("stagger rows never overlap their own line", "[ams][tray][stagger]") {
+    for (int lh = 8; lh <= 40; ++lh) {
+        for (int bp = 0; bp <= 6; ++bp)
+            CHECK(ams_stagger_row_height(lh, as_breakpoint(bp)) > lh);
+    }
 }

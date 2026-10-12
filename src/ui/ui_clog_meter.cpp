@@ -19,6 +19,15 @@ namespace helix::ui {
 constexpr int32_t ARC_WIDTH_PCT = 18; // arc is 18% of card width
 constexpr int32_t MIN_ARC_SIZE = 24;
 
+namespace {
+/// The loaded card the meter sizes against: clog_meter sits in the card's
+/// loaded_body, which lays the meters beside or below the material name.
+lv_obj_t* card_of(lv_obj_t* meter_root) {
+    lv_obj_t* body = lv_obj_get_parent(meter_root);
+    return body ? lv_obj_get_parent(body) : nullptr;
+}
+} // namespace
+
 UiClogMeter::UiClogMeter(lv_obj_t* parent) {
     if (!parent) {
         spdlog::error("[ClogMeter] NULL parent");
@@ -48,9 +57,9 @@ UiClogMeter::UiClogMeter(lv_obj_t* parent) {
     // would leave dangling bind_style observers on the still-live arc.
     helix::ui::attach_progress_arc_owned(arc_, arc_container_);
 
-    // Attach SIZE_CHANGED callback on the loaded card (root_'s parent)
+    // Attach SIZE_CHANGED callback on the loaded card
     // to dynamically size the arc container to fill available height
-    lv_obj_t* card = lv_obj_get_parent(root_);
+    lv_obj_t* card = card_of(root_);
     if (card) {
         // SIZE_CHANGED is a layout event — cannot be registered via XML <event_cb>
         lv_obj_add_event_cb(card, on_card_size_changed, LV_EVENT_SIZE_CHANGED, this);
@@ -75,7 +84,7 @@ UiClogMeter::~UiClogMeter() {
     // Remove SIZE_CHANGED callback to prevent dangling this pointer
     // The card is reached through root_, so root_ must still be alive to ask.
     if (root_ && lv_is_initialized() && lv_obj_is_valid(root_)) {
-        helix::ui::remove_event_cb_if_alive(lv_obj_get_parent(root_), on_card_size_changed, this);
+        helix::ui::remove_event_cb_if_alive(card_of(root_), on_card_size_changed, this);
     }
 
     // Before the widget pointers below are cleared: its callback calls apply(),
@@ -170,7 +179,7 @@ void UiClogMeter::resize_arc() {
         return;
     in_resize_ = true;
 
-    lv_obj_t* card = lv_obj_get_parent(root_);
+    lv_obj_t* card = card_of(root_);
     if (!card) {
         in_resize_ = false;
         return;

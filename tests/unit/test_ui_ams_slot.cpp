@@ -1085,6 +1085,51 @@ TEST_CASE_METHOD(LVGLUITestFixture, "ams_slot: a secondary backend's slot shows 
     ams.clear_backends();
 }
 
+// The tool badge repeats the lane number while every tool feeds its own lane,
+// so it shows only once the map is remapped.
+TEST_CASE_METHOD(LVGLUITestFixture, "ams_slot: tool badges show only for a remapped tool map",
+                 "[ui][ams_slot][tool_badge]") {
+    ui_ams_slot_register();
+    auto& ams = AmsState::instance();
+    ams.init_subjects(true);
+
+    auto backend = AmsBackend::create_mock(4);
+    auto* mock = static_cast<AmsBackendMock*>(backend.get());
+    ams.set_backend(std::move(backend));
+    ams.sync_from_backend();
+
+    const std::vector<int> identity = {0, 1, 2, 3};
+    REQUIRE(mock->get_system_info().tool_to_slot_map == identity);
+
+    lv_obj_t* slot = create_ams_slot(test_screen(), 0);
+    REQUIRE(slot != nullptr);
+    process_lvgl(50);
+    lv_obj_t* badge_bg = UITest::find_by_name(slot, "tool_badge");
+    REQUIRE(badge_bg != nullptr);
+    // Identity is decided on indices: T0 feeds slot 0 even though the lane
+    // badge beside it reads "1".
+    lv_obj_t* lane_badge = UITest::find_by_name(slot, "slot_badge_label");
+    REQUIRE(lane_badge != nullptr);
+    REQUIRE(std::string(UITest::get_text(lane_badge)) == "1");
+    CHECK(lv_obj_has_flag(badge_bg, LV_OBJ_FLAG_HIDDEN));
+
+    SlotInfo remapped = mock->get_slot_info(0);
+    remapped.mapped_tool = 3;
+    helix::test::apply_edit(*mock, 0, remapped);
+    ams.sync_from_backend();
+    REQUIRE(mock->get_system_info().tool_to_slot_map != identity);
+    ui_ams_slot_refresh(slot);
+    process_lvgl(50);
+
+    CHECK_FALSE(lv_obj_has_flag(badge_bg, LV_OBJ_FLAG_HIDDEN));
+    lv_obj_t* badge_label = UITest::find_by_name(slot, "tool_badge_label");
+    REQUIRE(badge_label != nullptr);
+    CHECK(std::string(UITest::get_text(badge_label)) == "T3");
+
+    lv_obj_delete(slot);
+    ams.clear_backends();
+}
+
 // ============================================================================
 // Current-slot highlight - the spool glows; the slot draws no box
 // ============================================================================

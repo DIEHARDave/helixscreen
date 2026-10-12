@@ -167,3 +167,33 @@ TEST_CASE("Feeder and Toolhead compose like every other noun", "[numbering]") {
     CHECK(lane_label(LaneNoun::Feeder, 3) == "Feeder 4");
     CHECK(lane_label(LaneNoun::Toolhead, 3) == "Toolhead 4");
 }
+
+TEST_CASE("tool badges hide when every tool feeds the lane of its own number",
+          "[numbering][tool_badge]") {
+    // Index space: T0 -> slot 0 is identity, though slot 0 displays as lane 1.
+    CHECK(lane_number(0) == 1);
+    CHECK_FALSE(tool_badges_add_information({0, 1, 2, 3}, 4));
+    CHECK_FALSE(tool_badges_add_information({0, 1, 2, 3, 4, 5, 6, 7}, 8));
+    // Fewer tools than lanes: the spare lanes carry no tool, so no badge repeats anything.
+    CHECK_FALSE(tool_badges_add_information({0, 1}, 4));
+}
+
+TEST_CASE("tool badges show when a tool feeds another lane", "[numbering][tool_badge]") {
+    CHECK(tool_badges_add_information({1, 0, 2, 3}, 4));
+    // Off by one in display terms (T0 -> lane 1 shifted to T0 -> slot 1) is a remap.
+    CHECK(tool_badges_add_information({1, 2, 3, 0}, 4));
+    CHECK(tool_badges_add_information({0, 1, 2, 2}, 4));
+    // Only the last tool moved: every entry is checked, not just the first.
+    CHECK(tool_badges_add_information({0, 1, 2, 3, 4, 5, 6, 0}, 8));
+}
+
+TEST_CASE("tool badges show when a tool has no lane", "[numbering][tool_badge]") {
+    CHECK(tool_badges_add_information({0, -1, 2, 3}, 4));
+    // T4 names a lane this system does not have.
+    CHECK(tool_badges_add_information({0, 1, 2, 3, 4}, 4));
+}
+
+TEST_CASE("an empty tool map is not proof of identity", "[numbering][tool_badge]") {
+    CHECK(tool_badges_add_information({}, 4));
+    CHECK(tool_badges_add_information({}, 0));
+}
