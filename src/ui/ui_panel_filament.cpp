@@ -2057,8 +2057,9 @@ int FilamentPanel::selected_op_slot() const {
     if (extruder_dropdown_) {
         selected_tool = static_cast<int>(lv_dropdown_get_selected(extruder_dropdown_));
     }
-    return helix::ui::resolve_op_button_slot(sys, selected_tool,
-                                             helix::ToolState::instance().tool_count());
+    return helix::ui::resolve_op_button_slot(
+        sys, selected_tool, helix::ToolState::instance().tool_count(),
+        backend->toolhead_filament_unaccounted().value_or(false));
 }
 
 void FilamentPanel::update_filament_op_buttons() {

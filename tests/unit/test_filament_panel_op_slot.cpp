@@ -129,6 +129,12 @@ class RecordingBackend : public helix::AmsBackendMock {
         }
         return info;
     }
+    /// AmsBackend::toolhead_filament_unaccounted(): filament at the nozzle that
+    /// no lane claims. nullopt = no observation, the base contract's default.
+    std::optional<bool> unaccounted_;
+    [[nodiscard]] std::optional<bool> toolhead_filament_unaccounted() const override {
+        return unaccounted_;
+    }
     [[nodiscard]] helix::BackendTraits traits() const override {
         helix::BackendTraits t = helix::AmsBackendMock::traits();
         t.filament_ops_self_home = self_homes_;
@@ -629,6 +635,34 @@ TEST_CASE_METHOD(LVGLUITestFixture,
 // Mutation check: drop `print_blocks_op` from the compute_op_button_gating()
 // call in update_filament_op_buttons(), OR delete the print-state observer
 // registration, and this test fails at the post-start assertions.
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "AD5X: an unaccounted toolhead enables Unload and unloads the active head",
+                 "[filament][op_slot][panel][1324]") {
+    // The live AD5X IFS module shape: four virtual tools with an identity map,
+    // filament at the toolhead, no lane claiming it. Whatever tool the dropdown
+    // names, the button must act on the active head, not that tool's lane.
+    AmsSystemInfo sys = boxturtle_sys();
+    sys.type = AmsType::AD5X_IFS;
+    sys.current_slot = -1;
+    ToolTopology topo = identity_topo();
+    topo.active_tool = -1;
+
+    OpSlotHarness h(*this, sys, /*loaded_slot=*/-1, topo);
+    h.mock->unaccounted_ = true;
+    h.select_tool(1);
+    TA::handle_extruder_changed(*h.panel);
+    process_lvgl(10);
+
+    CHECK(TA::selected_op_slot(*h.panel) == helix::ui::ACTIVE_HEAD_SLOT);
+    lv_subject_t* unload_disabled = lv_xml_get_subject(nullptr, "filament_unload_disabled");
+    REQUIRE(unload_disabled != nullptr);
+    CHECK(lv_subject_get_int(unload_disabled) == 0);
+
+    TA::execute_unload(*h.panel);
+    REQUIRE(h.mock->unload_calls == 1);
+    CHECK(h.mock->last_unload_slot == helix::ui::ACTIVE_HEAD_SLOT);
+}
+
 TEST_CASE_METHOD(LVGLUITestFixture,
                  "Filament panel greys Load/Unload when a print owns the toolhead",
                  "[filament][op_slot][panel][print_guard]") {

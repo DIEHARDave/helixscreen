@@ -21,7 +21,7 @@
 #include "active_material_provider.h"
 #include "ams_types.h"
 #include "filament_database.h"
-#include "filament_op_dispatch.h" // EXTERNAL_SPOOL_SLOT — the bypass sentinel both headers key on
+#include "filament_op_dispatch.h" // EXTERNAL_SPOOL_SLOT / ACTIVE_HEAD_SLOT, the sentinels both headers key on
 #include "print_lifecycle_state.h"
 
 #include <algorithm>
@@ -44,14 +44,22 @@ namespace helix::ui {
  *        index. Using the tool index there collapses to slot 0 and wrongly greys
  *        Unload while another lane is loaded (prestonbrown/helixscreen#1065).
  *
- * @param sys           Backend system info (tool_to_slot_map, current_slot).
- * @param selected_tool Dropdown/active tool index (>= 0).
- * @param tool_count    Number of tools the printer exposes (>1 == toolchanger).
+ * An unaccounted toolhead (filament at the nozzle that no lane claims) resolves
+ * to ACTIVE_HEAD_SLOT before the map is consulted: the selected tool's lane is
+ * not what is in the nozzle, and the AD5X IFS module publishes four virtual
+ * tools with an identity map, so a dropdown that always names a tool would
+ * otherwise never reach the active head (prestonbrown/helixscreen#1324).
+ *
+ * @param sys                  Backend system info (tool_to_slot_map, current_slot).
+ * @param selected_tool        Dropdown/active tool index (>= 0).
+ * @param tool_count           Number of tools the printer exposes (>1 == toolchanger).
+ * @param toolhead_unaccounted The backend's confident toolhead_filament_unaccounted().
  * @return Global slot index whose load-state gates the buttons,
- *         EXTERNAL_SPOOL_SLOT when bypass is engaged, or -1 if none.
+ *         EXTERNAL_SPOOL_SLOT when bypass is engaged, ACTIVE_HEAD_SLOT for an
+ *         unaccounted toolhead, or -1 if none.
  */
 [[nodiscard]] inline int resolve_op_button_slot(const AmsSystemInfo& sys, int selected_tool,
-                                                int tool_count) {
+                                                int tool_count, bool toolhead_unaccounted = false) {
     // Bypass is not a lane, so no tool->slot map entry can describe it. While
     // the external spool feeds the toolhead it IS what these buttons act on:
     // CFS publishes a tool->slot map from the box's own `map` (identity fallback
@@ -60,6 +68,9 @@ namespace helix::ui {
     // Happy Hare land on the same sentinel from bypass_state / the selector.
     if (sys.current_slot == EXTERNAL_SPOOL_SLOT) {
         return EXTERNAL_SPOOL_SLOT;
+    }
+    if (toolhead_unaccounted) {
+        return ACTIVE_HEAD_SLOT;
     }
 
     int slot = -1;
