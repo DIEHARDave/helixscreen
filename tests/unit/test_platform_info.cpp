@@ -144,7 +144,6 @@ TEST_CASE("helix::flashforge_machine_display_name matches the printer DB spellin
           "FlashForge Adventurer 5X");
     CHECK(std::string(helix::flashforge_machine_display_name(helix::FlashForgeMachine::Creator5)) ==
           "FlashForge Creator 5");
-    CHECK(std::string(
-              helix::flashforge_machine_display_name(helix::FlashForgeMachine::Creator5Pro)) ==
-          "FlashForge Creator 5 Pro");
+    CHECK(std::string(helix::flashforge_machine_display_name(
+              helix::FlashForgeMachine::Creator5Pro)) == "FlashForge Creator 5 Pro");
 }

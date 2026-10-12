@@ -858,8 +858,7 @@ TEST_CASE("UpdateChecker service_dest_probe_error mirrors the installer's write 
           "[update_checker][1778]") {
     using UC = UpdateChecker;
     namespace fs = std::filesystem;
-    const fs::path base =
-        fs::temp_directory_path() / ("helix-probe-" + std::to_string(getpid()));
+    const fs::path base = fs::temp_directory_path() / ("helix-probe-" + std::to_string(getpid()));
     fs::remove_all(base);
     fs::create_directories(base);
 
@@ -880,7 +879,10 @@ TEST_CASE("UpdateChecker service_dest_probe_error mirrors the installer's write 
 
     SECTION("a path under a non-directory fails for any uid") {
         const fs::path blocker = base / "blocker";
-        { std::ofstream out(blocker); out << "x"; }
+        {
+            std::ofstream out(blocker);
+            out << "x";
+        }
         REQUIRE_FALSE(UC::service_dest_probe_error((blocker / "init.d").string()).empty());
     }
 
