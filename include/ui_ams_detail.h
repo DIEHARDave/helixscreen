@@ -145,16 +145,6 @@ bool ams_detail_error_in_view(const AmsSystemInfo& info, int unit_index);
 /// entry row.
 void ams_detail_sync_lane_entry(lv_obj_t* canvas, lv_obj_t* slot_grid);
 
-/// Stand the environment chip under the box: right of the last lane's tube, above
-/// the selector, no further right than the unit or @p right_limit (absolute,
-/// INT32_MAX for none). With @p open_gap it opens the least gap under the box the chip
-/// needs; without (from inside a layout event, where the layout cannot be re-run) it
-/// only re-places the chip in the gap it has. Hidden chips and
-/// views with no box are left alone. Call after ams_detail_update_tray() and
-/// whenever the path canvas moves. Returns the room it measured.
-tray::EnvChipSpot ams_detail_place_env_chip(lv_obj_t* chip, lv_obj_t* canvas, lv_obj_t* slot_grid,
-                                            int slot_count, int32_t right_limit, bool open_gap);
-
 /// Slot sizing for the detail view: in a box, spools stand at the tray pitch
 /// (ams_tray_projection.h) instead of spreading across the width.
 AmsSlotLayout ams_detail_slot_layout(int32_t available_width, int slot_count);

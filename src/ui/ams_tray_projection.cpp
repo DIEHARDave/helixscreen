@@ -101,14 +101,8 @@ PointF lane_badge_origin(const TrayBox& b, float lane_x, float lane_half, float 
     return {x, y};
 }
 
-EnvChipSpot env_chip_below_box(int32_t tube_right, int32_t box_bottom, int32_t selector_top,
-                               int32_t right_limit, int32_t gap) {
-    EnvChipSpot spot{};
-    spot.x = tube_right + gap;
-    spot.y = box_bottom + gap;
-    spot.room_w = std::max<int32_t>(0, right_limit - spot.x + 1);
-    spot.room_h = std::max<int32_t>(0, selector_top - gap - spot.y);
-    return spot;
+float pill_left_x(const TrayBox& b) {
+    return proj(b, b.fr, b.ft, b.depth).x;
 }
 
 LidMode lid_mode(const AmsUnit& unit, bool has_physical_tray, bool dryer_supported) {

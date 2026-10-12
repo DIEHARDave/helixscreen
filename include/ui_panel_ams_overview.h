@@ -252,8 +252,6 @@ class AmsOverviewPanel : public PanelBase {
     void update_path_canvas(const helix::AmsSystemInfo& info);
     /// Level the paging arrows with the hub box and tell the canvas how much edge to leave.
     void layout_paging_controls();
-    /// Stand the environment chip under the box, left of the page arrow.
-    void place_env_chip(bool open_gap);
     /// Fit the page dots into their row: the nominal pitch, closing to a floor.
     void layout_page_dots();
     void scroll_current_dot_into_view();

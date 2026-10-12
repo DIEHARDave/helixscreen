@@ -1029,6 +1029,8 @@ void ensure_ams_env_indicator_registered() {
 
     lv_xml_register_component_from_file(
         helix::asset_component_uri("ui_xml/components/ams_environment_indicator.xml").c_str());
+    lv_xml_register_component_from_file(
+        helix::asset_component_uri("ui_xml/components/ams_env_pill.xml").c_str());
 
     s_registered = true;
 }

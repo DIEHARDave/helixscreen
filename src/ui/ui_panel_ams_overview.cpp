@@ -256,8 +256,6 @@ void AmsOverviewPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
     detail_widgets_ = ams_detail_find_widgets(detail_unit);
     detail_path_canvas_ = helix::ui::find_required(panel_, "detail_path_canvas", get_name());
     path_container_ = helix::ui::find_required(panel_, "detail_path_container", get_name());
-    // The environment chip floats over the path canvas, outside the unit component.
-    detail_widgets_.env_indicator = lv_obj_find_by_name(path_container_, "env_indicator");
     prev_button_ = helix::ui::find_required(panel_, "page_prev_button", get_name());
     next_button_ = helix::ui::find_required(panel_, "page_next_button", get_name());
     page_dots_ = helix::ui::find_required(panel_, "page_dots", get_name());
@@ -1262,7 +1260,6 @@ void AmsOverviewPanel::create_detail_slots(const AmsSystemInfo& info, int unit_p
                              result.layout);
     ams_detail_update_tray(detail_widgets_, detail_slot_widgets_, result.slot_count, unit_pos);
     helix::ui::ams_detail_sync_lane_entry(detail_path_canvas_, detail_widgets_.slot_grid);
-    place_env_chip(true);
 
     spdlog::debug("[{}] Created {} detail slots via shared helpers", get_name(), result.slot_count);
 }
@@ -1319,19 +1316,6 @@ void AmsOverviewPanel::layout_paging_controls() {
     lv_obj_set_pos(next_button_, lv_area_get_width(&content) - hit, y);
 }
 
-void AmsOverviewPanel::place_env_chip(bool open_gap) {
-    // The page arrow floats over the canvas's right edge; the chip stays left of it.
-    int32_t right_limit = INT32_MAX;
-    if (next_button_ && !lv_obj_has_flag(next_button_, LV_OBJ_FLAG_HIDDEN)) {
-        lv_area_t arrow;
-        lv_obj_get_coords(next_button_, &arrow);
-        right_limit = arrow.x1 - theme_manager_get_spacing("space_xs");
-    }
-    helix::ui::ams_detail_place_env_chip(detail_widgets_.env_indicator, detail_path_canvas_,
-                                         detail_widgets_.slot_grid, detail_slot_count_, right_limit,
-                                         open_gap);
-}
-
 void AmsOverviewPanel::layout_page_dots() {
     if (!page_dots_)
         return;
@@ -1385,7 +1369,6 @@ void AmsOverviewPanel::on_path_layout_changed(lv_event_t* e) {
     if (auto* self = static_cast<AmsOverviewPanel*>(lv_event_get_user_data(e))) {
         self->layout_paging_controls();
         self->update_page_bypass_widgets_position();
-        self->place_env_chip(false);
     }
 }
 

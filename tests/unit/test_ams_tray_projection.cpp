@@ -265,29 +265,8 @@ TEST_CASE("lane badge: on the front face, inside the lane's lid edge", "[ams][tr
     }
 }
 
-TEST_CASE("env chip: right of the last tube, below the box", "[ams][tray][env_chip]") {
-    const EnvChipSpot spot = env_chip_below_box(230, 140, 170, 276, 4);
-    CHECK(spot.x == 234);
-    CHECK(spot.y == 144);
-    // Columns 234..276 inclusive; rows 144 up to 4px above the selector at 170.
-    CHECK(spot.room_w == 43);
-    CHECK(spot.room_h == 22);
-    CHECK(spot.fits(43, 22));
-    CHECK_FALSE(spot.fits(44, 22));
-    CHECK_FALSE(spot.fits(43, 23));
-}
-
-TEST_CASE("env chip: the height it lacks, and none it cannot use", "[ams][tray][env_chip]") {
-    const EnvChipSpot spot = env_chip_below_box(230, 140, 170, 276, 4); // room 43x22
-    CHECK(spot.lacking_h(24, 22) == 0);
-    CHECK(spot.lacking_h(24, 35) == 13);
-    // Too wide: more height would not make it fit.
-    CHECK(spot.lacking_h(44, 35) == 0);
-}
-
-TEST_CASE("env chip: no room is zero, never negative", "[ams][tray][env_chip]") {
-    const EnvChipSpot spot = env_chip_below_box(300, 160, 150, 276, 4);
-    CHECK(spot.room_w == 0);
-    CHECK(spot.room_h == 0);
-    CHECK_FALSE(spot.fits(1, 1));
+TEST_CASE("env pill: stands at the box's back-right corner", "[ams][tray][env_chip]") {
+    const TrayBox b = reference_box();
+    CHECK(pill_left_x(b) == Approx(b.fr + DEPTH_SKEW * b.depth));
+    CHECK(pill_left_x(b) == Approx(tray_faces(b).back_wall[1].x));
 }

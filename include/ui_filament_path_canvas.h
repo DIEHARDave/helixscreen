@@ -381,16 +381,6 @@ void ui_filament_path_canvas_set_edge_reserve(lv_obj_t* obj, int32_t px, int32_t
 bool ui_filament_path_canvas_get_hub_box(lv_obj_t* obj, lv_area_t* area_out);
 
 /**
- * @brief Horizontal extent of a lane's tube, its sensor dots included, in absolute
- *        display coordinates
- *
- * The same lane X the renderer draws from. False for an out-of-range lane or before
- * the widget has a size.
- */
-bool ui_filament_path_canvas_get_lane_span(lv_obj_t* obj, int slot_index, int32_t* x1_out,
-                                           int32_t* x2_out);
-
-/**
  * @brief Set the unit's hub (or selector) output sensor
  *
  * With the sensor the hub's output edge carries a clamp band, and filament the sensor

@@ -109,19 +109,6 @@
                Uses flex_grow="1" so canvas height scales with screen size.
                All vertical segments scale proportionally via Y ratios. -->
           <filament_path_canvas name="path_canvas" width="100%" flex_grow="1"/>
-          <!-- Environment chip (temp/humidity), hidden when there are no sensors. It floats
-               under the spool box, right of the last lane's tube and above the selector;
-               ams_detail_place_env_chip() puts it there. Last child, so it draws over the
-               canvas and takes its own taps. -->
-          <ams_environment_indicator name="env_indicator"
-                                     floating="true" icons_below="7" chip_bg_opa="220" style_margin_top="0"
-                                     temp_text="ams_env_ind_detail_temp_text"
-                                     humidity_text="ams_env_ind_detail_humidity_text"
-                                     humidity_status="ams_env_ind_detail_humidity_status"
-                                     humidity_visible="ams_env_ind_detail_humidity_visible"
-                                     visible="ams_env_ind_detail_visible"
-                                     drying_active="ams_env_ind_detail_drying_active"
-                                     drying_text="ams_env_ind_detail_drying_text"/>
         </lv_obj>
         <!-- Endless-spool status: the sentence that explains the arrows above
              (or their absence). Last child of the left column so it sits at the
