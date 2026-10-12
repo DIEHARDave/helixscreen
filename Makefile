@@ -1398,14 +1398,16 @@ else
 	@echo "STRIP_BINARY not set — skipping symbol extraction"
 endif
 
+STRIP_AUX_BINS = $(if $(SPLASH_BUILD),$(SPLASH_BIN)) $(if $(WATCHDOG_BUILD),$(WATCHDOG_BIN))
+
 # strip must wait for the aux binaries it strips: under -j, splash/watchdog can
-# still be linking when strip runs. Depend on them (only when actually built).
-strip: symbols $(if $(filter yes,$(STRIP_BINARY)),$(SPLASH_BIN) $(WATCHDOG_BIN))
+# still be linking when strip runs. Those prerequisites are declared after
+# mk/splash.mk and mk/watchdog.mk define them; named here they expand empty.
+strip: symbols
 ifeq ($(STRIP_BINARY),yes)
-	$(STRIP_CMD) $(TARGET)
-	$(STRIP_CMD) $(SPLASH_BIN)
-	$(STRIP_CMD) $(WATCHDOG_BIN)
-	@echo "Stripped: $(TARGET) $(SPLASH_BIN) $(WATCHDOG_BIN)"
+	@# SDL builds have no splash or watchdog: they exist to own a framebuffer.
+	$(STRIP_CMD) $(TARGET) $(STRIP_AUX_BINS)
+	@echo "Stripped: $(TARGET) $(STRIP_AUX_BINS)"
 else
 	@echo "STRIP_BINARY not set — skipping strip"
 endif
@@ -1483,6 +1485,9 @@ include mk/bluetooth.mk
 include mk/splash.mk
 include mk/filaments.mk
 include mk/watchdog.mk
+ifeq ($(STRIP_BINARY),yes)
+strip: $(STRIP_AUX_BINS)
+endif
 ifdef PI_DUAL_LINK
 include mk/pi-dual-link.mk
 endif
