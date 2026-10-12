@@ -29,6 +29,7 @@ check_permissions() {
         ;;
     x86-desktop)
         desktop_refuse_root
+        [ "${uninstall_mode:-false}" = true ] || desktop_refuse_foreign_root
         SUDO=""
         ;;
     *)

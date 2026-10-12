@@ -462,6 +462,7 @@ guard_self_delete() {
 # Main uninstall
 main() {
     force=false
+    X86_FLAVOUR_FLAG=""
 
     # Parse arguments
     while [ $# -gt 0 ]; do
@@ -491,6 +492,11 @@ main() {
                 MOD_PAYLOAD_ROOT="$2"
                 shift 2
                 ;;
+            --desktop|--kiosk)
+                # x86 with both flavours installed: which one this run removes.
+                X86_FLAVOUR_FLAG="${1#--}"
+                shift
+                ;;
             --help|-h)
                 echo "HelixScreen Uninstaller"
                 echo ""
@@ -505,6 +511,9 @@ main() {
                 echo "                The payload root to remove (default: the root"
                 echo "                the install recorded, else the probed default)"
                 echo "                Requires --mod-payload to do anything"
+                echo "  --desktop, --kiosk"
+                echo "                x86_64 Linux with both installed: remove the"
+                echo "                desktop-window install or the kiosk install"
                 echo "  --help, -h    Show this help message"
                 exit 0
                 ;;

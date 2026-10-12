@@ -23,6 +23,8 @@ setup() {
     PATH="$STUBBIN:$PATH"
     # systemctl answers nothing active or enabled unless a test says so.
     set_systemctl ''
+    # An ordinary user unless a test says root, whoever runs the suite.
+    set_uid 1000
 
     export HOME="$BATS_TEST_TMPDIR/home/alice"
     mkdir -p "$HOME"
@@ -63,6 +65,12 @@ case \"\$1\" in
     is-enabled) case '$1' in \"\$2=\"*) echo '${1#*=}'; exit 0 ;; esac; exit 1 ;;
     *) exit 1 ;;
 esac"
+}
+
+# `id -u` answers UID; every other form of id runs the real one.
+set_uid() {
+    mock_command_script id "[ \"\$1\" = -u ] && [ \$# -eq 1 ] && { echo $1; exit 0; }
+exec /usr/bin/id \"\$@\""
 }
 
 # A desktop payload: binary plus the release_info.json the release bakes.
@@ -260,6 +268,36 @@ called() { grep -qs "^$1" "$BATS_TEST_TMPDIR/calls.log"; }
     grep -q "Run HelixScreen in a window on this desktop?" "$BATS_TEST_TMPDIR/err"
 }
 
+@test "end of input at the flavour question changes nothing" {
+    export DISPLAY=:0
+    : > "$BATS_TEST_TMPDIR/tty"
+    HELIX_TTY_DEVICE="$BATS_TEST_TMPDIR/tty"
+    run resolve_x86_flavour < /dev/null
+    [ "$status" -eq 1 ]
+    contains "Nothing changed" "$output"
+    [ "$platform" = x86 ]
+}
+
+@test "a root run on a desktop box with no install is the kiosk, unasked" {
+    set_uid 0
+    set_systemctl 'gdm3=enabled'
+    export DISPLAY=:0
+    ASSUME_YES=true
+    resolve_x86_flavour
+    [ "$platform" = x86 ]
+    [ "$X86_FLAVOUR_REASON" = "running as root" ]
+}
+
+@test "a root run still finds an existing desktop install, and is refused" {
+    make_desktop_install
+    set_uid 0
+    resolve_x86_flavour
+    [ "$platform" = x86-desktop ]
+    run check_permissions x86-desktop
+    [ "$status" -eq 1 ]
+    contains "without sudo" "$output"
+}
+
 @test "an empty answer takes the window" {
     export DISPLAY=:0
     printf '\n' > "$BATS_TEST_TMPDIR/tty"
@@ -357,12 +395,12 @@ called() { grep -qs "^$1" "$BATS_TEST_TMPDIR/calls.log"; }
 }
 
 @test "a desktop run as root is refused; as a user it needs no sudo" {
-    mock_command_script id 'echo 0'
+    set_uid 0
     run check_permissions x86-desktop
     [ "$status" -eq 1 ]
     contains "without sudo" "$output"
     contains "--kiosk" "$output"
-    mock_command_script id 'echo 1000'
+    set_uid 1000
     SUDO=sudo
     check_permissions x86-desktop
     [ -z "$SUDO" ]
@@ -449,6 +487,18 @@ make_archive() { # asset name
     lacks "/4] Set up service" "$output"
     contains "--moonraker ws://PRINTER_IP:7125" "$output"
     contains "re-running this installer" "$output"
+}
+
+@test "a desktop install refuses a foreign directory at its root, before changing anything" {
+    mkdir -p "$DESK/notes"
+    echo keep > "$DESK/notes/mine.txt"
+    make_archive helixscreen-x86-desktop.zip helixscreen-x86-desktop-v1.2.3.tar.gz
+    run_main --desktop --local "$BATS_TEST_TMPDIR/helixscreen-x86-desktop-v1.2.3.tar.gz"
+    [ "$status" -eq 1 ]
+    contains "is not a HelixScreen desktop install" "$output"
+    [ "$(cat "$DESK/notes/mine.txt")" = keep ]
+    [ ! -e "$DESK.old" ]
+    [ ! -e "$HOME/.local/share/applications/helixscreen.desktop" ]
 }
 
 @test "an --update with no flag finds the desktop install and keeps its settings" {
@@ -567,4 +617,17 @@ make_archive() { # asset name
     [ ! -e "$DESK" ]
     [ ! -e "$HOME/.local/share/applications/helixscreen.desktop" ]
     if called systemctl; then fail "the standalone desktop uninstall ran systemctl"; fi
+}
+
+@test "the standalone uninstaller takes --desktop when both flavours are installed" {
+    make_desktop_install
+    make_kiosk_install "$HOME/helixscreen"
+    mock_command_script uname 'case "$1" in -m) echo x86_64 ;; *) echo 6.1.0 ;; esac'
+    run sh "$UNINSTALL_BUNDLE" --force
+    [ "$status" -eq 1 ]
+    contains "--desktop or --kiosk" "$output"
+    run sh "$UNINSTALL_BUNDLE" --force --desktop
+    [ "$status" -eq 0 ] || fail "standalone --desktop uninstall failed ($status): $output"
+    [ ! -e "$DESK" ]
+    [ -x "$HOME/helixscreen/bin/helix-screen" ]
 }

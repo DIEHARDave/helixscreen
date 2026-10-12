@@ -309,21 +309,30 @@ tty_can_ask() {
 
 # Ask a yes/no question. Under `curl | sh` stdin is the script, so the answer
 # comes from the controlling terminal; with neither, the default stands. An
-# empty line takes the default; end of input (Ctrl-D) is a no.
-tty_confirm() { # question default(y|n)
+# empty line takes the default; end of input (Ctrl-D) is a no, or with
+# on_eof=abort returns 2: for a question where neither answer is the safe one.
+tty_confirm() { # question default(y|n) [on_eof(abort)]
     [ "${ASSUME_YES:-false}" = true ] && return 0
     _tc_dev="${HELIX_TTY_DEVICE:-/dev/tty}"
     _tc_hint="[y/N]"; [ "$2" = y ] && _tc_hint="[Y/n]"
     _tc_ans=""
+    _tc_eof=""
     # shellcheck disable=SC2217  # open probe, see tty_can_ask
     if { true < "$_tc_dev"; } 2>/dev/null; then
         printf '%s %s ' "$1" "$_tc_hint" >&2
-        IFS= read -r _tc_ans < "$_tc_dev" || [ -n "$_tc_ans" ] || _tc_ans=n
+        IFS= read -r _tc_ans < "$_tc_dev" || [ -n "$_tc_ans" ] || _tc_eof=1
     elif [ -t 0 ]; then
         printf '%s %s ' "$1" "$_tc_hint" >&2
-        IFS= read -r _tc_ans || [ -n "$_tc_ans" ] || _tc_ans=n
+        IFS= read -r _tc_ans || [ -n "$_tc_ans" ] || _tc_eof=1
     else
         _tc_ans="$2"
+    fi
+    if [ -n "$_tc_eof" ]; then
+        if [ "${3:-}" = abort ]; then
+            _log_write "ASK $1 -> (end of input)"
+            return 2
+        fi
+        _tc_ans=n
     fi
     _log_write "ASK $1 -> ${_tc_ans:-$2}"
     case "${_tc_ans:-$2}" in [yY]|[yY][eE][sS]) return 0 ;; *) return 1 ;; esac

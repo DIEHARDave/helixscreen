@@ -167,6 +167,11 @@ resolve_x86_flavour() {
         # every root a kiosk install could have used.
         _rxf_choice=kiosk
         X86_FLAVOUR_REASON="no desktop install found"
+    elif [ "$(id -u)" = "0" ]; then
+        # A desktop install belongs to a user and refuses root, so a root run
+        # (sudo, a root shell, provisioning) is the kiosk it always was.
+        _rxf_choice=kiosk
+        X86_FLAVOUR_REASON="running as root"
     elif ! x86_desktop_present; then
         _rxf_choice=kiosk
         X86_FLAVOUR_REASON="no desktop session found"
@@ -180,11 +185,17 @@ resolve_x86_flavour() {
         printf '%s\n' "This computer has a desktop. HelixScreen can:" >&2
         printf '%s\n' "  - run in a window on this desktop (default), or" >&2
         printf '%s\n' "  - take over the screen as a kiosk, replacing the desktop at boot." >&2
-        if tty_confirm "Run HelixScreen in a window on this desktop?" y; then
-            _rxf_choice=desktop
-        else
-            _rxf_choice=kiosk
-        fi
+        # End of input is no answer, not a no: "no" here takes over the screen.
+        _rxf_rc=0
+        tty_confirm "Run HelixScreen in a window on this desktop?" y abort || _rxf_rc=$?
+        case "$_rxf_rc" in
+            0) _rxf_choice=desktop ;;
+            1) _rxf_choice=kiosk ;;
+            *)
+                log_error "No answer given. Nothing changed."
+                exit 1
+                ;;
+        esac
         X86_FLAVOUR_REASON="you chose"
     fi
 
@@ -214,6 +225,17 @@ desktop_refuse_root() {
     log_error "The desktop install runs as your own user and needs no root."
     log_error "Run the installer again without sudo, as the user whose desktop it opens on."
     log_error "To take over the screen as a kiosk instead, add --kiosk."
+    exit 1
+}
+
+# Refuse to install over a directory at the desktop root that is not a
+# desktop install: the install swaps it aside and deletes it. Read-only, so it
+# runs before the confirm point.
+desktop_refuse_foreign_root() {
+    [ -e "$INSTALL_DIR" ] || [ -L "$INSTALL_DIR" ] || return 0
+    desktop_root_is_ours "$INSTALL_DIR" && return 0
+    log_error "$INSTALL_DIR already exists and is not a HelixScreen desktop install."
+    log_error "Move it away (or remove it) and run the installer again. Nothing changed."
     exit 1
 }
 
