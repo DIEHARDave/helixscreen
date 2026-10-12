@@ -315,3 +315,54 @@ TEST_CASE_METHOD(AmsTrayPanelFixture,
         CHECK(std::abs(lane_x - (a.x1 + a.x2) / 2) <= 2);
     }
 }
+
+TEST_CASE_METHOD(AmsTrayPanelFixture, "AMS unit: a spool name stacks directly over its material",
+                 "[ams][tray][ui_integration][slot_name]") {
+    build("passive");
+    int named = 0;
+    for (int i = 0; i < 4; ++i) {
+        CAPTURE(i);
+        lv_obj_t* name = lv_obj_find_by_name(slot(i), "name_label");
+        lv_obj_t* material = lv_obj_find_by_name(slot(i), "material_label");
+        REQUIRE(name != nullptr);
+        REQUIRE(material != nullptr);
+        if (lv_obj_has_flag(name, LV_OBJ_FLAG_HIDDEN))
+            continue;
+        ++named;
+        lv_area_t na, ma;
+        lv_obj_get_coords(name, &na);
+        lv_obj_get_coords(material, &ma);
+        // The tray lifts the material above the unit; the name rides with it.
+        const int32_t gap = ma.y1 - na.y2 - 1;
+        CHECK(gap >= 0);
+        CHECK(gap <= lv_obj_get_style_pad_row(slot(i), LV_PART_MAIN));
+    }
+    REQUIRE(named > 0);
+}
+
+TEST_CASE_METHOD(AmsTrayPanelFixture, "AMS unit: a named slot's badge stays on its spool",
+                 "[ams][tray][ui_integration][slot_name]") {
+    build("passive");
+    lv_obj_t* badge_layer = lv_obj_find_by_name(panel_obj_, "badge_layer");
+    REQUIRE(badge_layer != nullptr);
+    int named = 0;
+    for (int i = 0; i < 4; ++i) {
+        CAPTURE(i);
+        lv_obj_t* name = lv_obj_find_by_name(slot(i), "name_label");
+        REQUIRE(name != nullptr);
+        if (lv_obj_has_flag(name, LV_OBJ_FLAG_HIDDEN))
+            continue;
+        ++named;
+        lv_obj_t* spool = lv_obj_find_by_name(slot(i), "spool_container");
+        lv_obj_t* badge = lv_obj_get_child(badge_layer, i);
+        REQUIRE(spool != nullptr);
+        REQUIRE(badge != nullptr);
+        lv_area_t sa, ba;
+        lv_obj_get_coords(spool, &sa);
+        lv_obj_get_coords(badge, &ba);
+        // At the spool container's bottom edge (a few px of inset), not a name
+        // line's height away from it.
+        CHECK(std::abs(ba.y2 - sa.y2) <= 4);
+    }
+    REQUIRE(named > 0);
+}

@@ -134,6 +134,9 @@ class AmsState {
      * Systems with more slots will only have subjects for the first MAX_SLOTS.
      */
     static constexpr int MAX_SLOTS = 16;
+    /// Bytes held per slot-name subject, NUL included. Names longer than a
+    /// card can show are cut on a codepoint boundary; the label ellipsizes.
+    static constexpr size_t SLOT_NAME_BUF_SIZE = 64;
 
     /**
      * @brief Maximum number of AMS units supported for per-unit subjects
@@ -1413,6 +1416,42 @@ class AmsState {
                                                           SubjectLifetime& lifetime);
 
     /**
+     * @brief Get per-slot spool-name subject (primary backend's flat array).
+     *
+     * Holds the name the slot card shows above its material
+     * (helix::slot_card_name(): spool name, then the cached Spoolman filament
+     * name, then the colour name), or "" when nothing names the spool. Written
+     * wherever the material subject is, and re-derived by refresh_slot_names()
+     * when a Spoolman identity arrives.
+     *
+     * @param slot_index Slot index (0 to MAX_SLOTS-1)
+     * @return Subject pointer or nullptr if out of range
+     */
+    [[nodiscard]] lv_subject_t* get_slot_name_subject(int slot_index);
+
+    /**
+     * @brief Get per-slot spool-name subject for a specific backend and slot
+     * @see get_slot_material_subject(int, int)
+     */
+    [[nodiscard]] lv_subject_t* get_slot_name_subject(int backend_index, int slot_index);
+
+    /**
+     * @brief Token'd overload of get_slot_name_subject for observer safety.
+     * @see get_slot_color_subject(int, int, SubjectLifetime&)
+     */
+    [[nodiscard]] lv_subject_t* get_slot_name_subject(int backend_index, int slot_index,
+                                                      SubjectLifetime& lifetime);
+
+    /**
+     * @brief Re-derive every backend's per-slot name subjects
+     *
+     * A Spoolman identity changes what a slot is called without changing the
+     * slot, so no backend event carries it. SpoolmanManager calls this when it
+     * caches a new identity. Main thread only.
+     */
+    void refresh_slot_names();
+
+    /**
      * @brief Get per-slot fill-level subject (primary backend).
      *
      * Holds the fill percent as an int using the SlotInfo::display_fill_pct
@@ -1929,6 +1968,11 @@ class AmsState {
      */
     bool write_slot_subjects(AmsBackend& backend, int slot_index, const SlotInfo& slot);
 
+    /// Publish @p slot's card name (helix::slot_card_name() with the cached
+    /// Spoolman identity) into @p subject, cut on a UTF-8 boundary to fit.
+    /// @return whether the subject changed
+    static bool write_slot_name(lv_subject_t* subject, size_t buf_size, const SlotInfo& slot);
+
     /**
      * @brief Probe for ACE via REST endpoint
      *
@@ -1964,6 +2008,8 @@ class AmsState {
         static constexpr int MATERIAL_BUF_SIZE = 24;
         std::vector<lv_subject_t> materials; // string: "PLA", "PETG", … or ""
         std::vector<std::array<char, MATERIAL_BUF_SIZE>> material_bufs;
+        std::vector<lv_subject_t> names; // string: slot card spool name, or ""
+        std::vector<std::array<char, SLOT_NAME_BUF_SIZE>> name_bufs;
         int slot_count = 0;
         /// Lifetime token shared by every subject in this struct. These subjects
         /// are DYNAMIC (destroyed in deinit() on backend rediscovery), so any
@@ -2276,8 +2322,10 @@ class AmsState {
     char slot_remaining_buf_[MAX_SLOTS][16];   // buffers for remaining strings
     lv_subject_t slot_materials_[MAX_SLOTS]{}; // string: "PLA", "PETG", … or "" (last synced type)
     char slot_materials_buf_[MAX_SLOTS][24]; // buffers for material strings (holds "PETG-CF" etc.)
-    lv_subject_t slot_fills_[MAX_SLOTS]{};   // int: fill percent 0-100, -1 = unknown/no-data
-                                             // (SlotInfo::display_fill_pct encoding)
+    lv_subject_t slot_names_[MAX_SLOTS]{};   // string: slot card spool name, or ""
+    char slot_names_buf_[MAX_SLOTS][SLOT_NAME_BUF_SIZE];
+    lv_subject_t slot_fills_[MAX_SLOTS]{}; // int: fill percent 0-100, -1 = unknown/no-data
+                                           // (SlotInfo::display_fill_pct encoding)
 
     // Per-slot LIVE state subjects — the panel observes these to redraw the path
     // and active-lane highlight in real time as Moonraker sensor data arrives.

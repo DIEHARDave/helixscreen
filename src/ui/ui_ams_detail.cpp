@@ -712,6 +712,8 @@ void ams_detail_update_tray(AmsDetailWidgets& w, lv_obj_t* const slot_widgets[],
             lv_area_t la;
             lv_obj_get_coords(label, &la);
             lv_obj_set_style_translate_y(label, label_bottom - la.y2, LV_PART_MAIN);
+            if (lv_obj_t* name = lv_obj_find_by_name(slot_widgets[i], "name_label"))
+                lv_obj_set_style_translate_y(name, label_bottom - la.y2, LV_PART_MAIN);
             if (lv_obj_t* row = ui_ams_slot_get_lane_humidity(slot_widgets[i]))
                 lv_obj_set_style_translate_y(row, label_bottom - la.y2, LV_PART_MAIN);
         }
