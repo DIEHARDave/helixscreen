@@ -82,7 +82,7 @@ HEADER
     # host_profile.sh provides the mod-ownership guard behind uninstall.sh's
     # HELIX_INSTALL_DIRS sweeps and moonraker.sh's stanza writer; main() below
     # probes it before set_install_paths' install-dir gate calls it.
-    for module in common.sh host_profile.sh platform.sh permissions.sh requirements.sh forgex.sh competing_uis.sh service.sh moonraker.sh camera.sh uninstall.sh; do
+    for module in common.sh host_profile.sh platform.sh permissions.sh requirements.sh forgex.sh competing_uis.sh desktop.sh service.sh moonraker.sh camera.sh uninstall.sh; do
         module_path="$LIB_DIR/$module"
         if [ ! -f "$module_path" ]; then
             echo "ERROR: Module not found: $module_path" >&2
@@ -522,8 +522,12 @@ main() {
     # its mod-ownership guard needs HOST_MOD_ROOT already probed.
     host_profile_probe
 
-    # Detect platform and firmware to set correct paths
+    # Detect platform and firmware to set correct paths. On x86 a desktop
+    # install found on disk makes the platform x86-desktop, whose removal
+    # touches nothing outside the user's home.
     platform=$(detect_platform)
+    uninstall_mode=true
+    resolve_x86_flavour
     if [ "$platform" = "ad5x" ]; then
         ad5x_check_chroot_context
     fi
@@ -542,6 +546,26 @@ main() {
 
     # Check for root
     check_permissions "$platform"
+
+    # A desktop install has no service and touched nothing outside the
+    # user's home, so nothing below this point applies to it.
+    if [ "$platform" = "x86-desktop" ]; then
+        if [ "$force" = false ]; then
+            echo "This will:"
+            echo "  - Remove $INSTALL_DIR"
+            echo "  - Remove the HelixScreen app menu entry"
+            echo ""
+            printf "Are you sure you want to continue? [y/N] "
+            read -r response
+            case "$response" in
+                [yY][eE][sS]|[yY]) ;;
+                *) log_note "Uninstall cancelled"; exit 0 ;;
+            esac
+            echo ""
+        fi
+        uninstall_desktop
+        exit 0
+    fi
 
     # Detect init system
     detect_init_system

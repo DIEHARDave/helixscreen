@@ -478,11 +478,14 @@ file_size_text() {
     fi
 }
 
-# Where the install log is kept: Moonraker's logs root, which Mainsail and
-# Fluidd show, else the logs/ of a state root outside the payload, which an
-# update replaces whole.
+# Where the install log is kept: the platform's own log dir when it names one
+# (set_install_paths), else Moonraker's logs root, which Mainsail and Fluidd
+# show, else the logs/ of a state root outside the payload, which an update
+# replaces whole.
 install_log_dest() {
-    if [ -n "${KLIPPER_HOME:-}" ] && [ -d "$KLIPPER_HOME/printer_data" ]; then
+    if [ -n "${INSTALL_LOG_DIR:-}" ]; then
+        printf '%s/helixscreen-install.log' "$INSTALL_LOG_DIR"
+    elif [ -n "${KLIPPER_HOME:-}" ] && [ -d "$KLIPPER_HOME/printer_data" ]; then
         printf '%s' "$KLIPPER_HOME/printer_data/logs/helixscreen-install.log"
     else
         printf '%s/logs/helixscreen-install.log' "$(install_state_root)"

@@ -157,6 +157,12 @@ usage() {
     echo "                 still carries an older standalone install is"
     echo "                 offered adoption of that root; declining leaves it"
     echo "                 untouched, with the migration steps printed"
+    echo "  --desktop      x86_64 Linux: run HelixScreen in a window on this desktop,"
+    echo "                 installed for your user only (no root, no service)"
+    echo "  --kiosk        x86_64 Linux: take over the screen as a kiosk service."
+    echo "                 Without either, a fresh install on a computer with a"
+    echo "                 desktop asks (no terminal: desktop), and an existing"
+    echo "                 install keeps its flavour"
     echo "  --auto-update  Also write the [update_manager helixscreen] stanza"
     echo "                 into the mod's user.moonraker.conf (opt-in: a stanza"
     echo "                 is a real side effect)"
@@ -170,6 +176,7 @@ usage() {
     echo "  $0 --version v1.1.0   # Install specific version"
     echo "  $0 --local /tmp/helixscreen-ad5m.tar.gz  # Install from local file"
     echo "  $0 --standalone       # Self-managed install beside the mod (mod hosts)"
+    echo "  $0 --desktop          # x86_64: a window on your desktop, for your user"
 }
 
 # Parse the command line into the mode globals main() reads. Split out of
@@ -190,6 +197,8 @@ parse_installer_args() {
     HELIX_MOD_PAYLOAD_UPDATES=""
     STANDALONE_INSTALL=""
     MOD_PAYLOAD_FLAG_GIVEN=""
+    # shellcheck disable=SC2034  # consumed by desktop.sh (resolve_x86_flavour)
+    X86_FLAVOUR_FLAG=""
 
     while [ $# -gt 0 ]; do
         case $1 in
@@ -255,6 +264,14 @@ parse_installer_args() {
                 fi
                 MOD_PAYLOAD_ROOT="$2"
                 shift 2
+                ;;
+            --desktop|--kiosk)
+                if [ -n "$X86_FLAVOUR_FLAG" ] && [ "$X86_FLAVOUR_FLAG" != "${1#--}" ]; then
+                    log_error "--desktop and --kiosk cannot be combined"
+                    exit 1
+                fi
+                X86_FLAVOUR_FLAG="${1#--}"
+                shift
                 ;;
             --auto-update)
                 # shellcheck disable=SC2034  # consumed by moonraker.sh (configure_moonraker_updates)
@@ -767,13 +784,15 @@ main() {
         _refuse_if_firmware_managed
     fi
 
-    # Detect platform
+    # Detect platform. On x86 the flavour is part of the answer: a desktop
+    # install is platform x86-desktop from here on, with its own download.
     platform=$(detect_platform)
+    print_platform_banner "$platform"
+    resolve_x86_flavour
     # For platforms that share a binary with pi/pi32 (e.g. m1), the download
     # URL uses the donor platform key while $platform stays put so hooks,
     # banner, and competing-UI shutdown still target the real device.
     download_platform=$(get_download_platform "$platform")
-    print_platform_banner "$platform"
 
     # AD5X: refuse to run outside the ZMOD chroot — applies to fresh install,
     # --update, --uninstall, and --local. Inside the chroot the check is a
@@ -910,11 +929,33 @@ install_libraries_step() {
     fi
 }
 
+# The Downloading step: fetch (or stage the --local) archive into TMP_DIR.
+download_step() {
+    local detail
+    if [ -n "$local_tarball" ]; then
+        step "Unpacking local archive" "Unpacked local archive"
+        use_local_tarball "$local_tarball"
+    else
+        step "Downloading" "Downloaded"
+        download_release "$version" "$download_platform"
+    fi
+    detail=$(file_size_text "$(_archive_tmp_path)")
+    if [ -n "${ARCHIVE_SHA256_VERIFIED:-}" ]; then
+        detail="${detail:+$detail$(_plan_sep)}SHA256 verified"
+    fi
+    step_done "$detail"
+}
+
 # Everything after the confirm point, as the steps plan_count_steps counted:
 # a step with nothing to do is skipped only under the same conditions that
 # left it out of the count, or the [n/N] numbering is wrong.
 apply_install() {
-    local uis seed_pid detail
+    local uis seed_pid
+
+    if [ "${platform:-}" = "x86-desktop" ]; then
+        apply_desktop_install
+        return 0
+    fi
 
     # The machine changes from here on.
     if [ "$platform" = "ad5m" ]; then
@@ -935,18 +976,7 @@ apply_install() {
     # download also needs the network, and stopping UIs can take it away
     # (e.g. Snapmaker U1's stock GUI owns wpa_supplicant, so restarting it
     # drops WiFi/SSH mid-update).
-    if [ -n "$local_tarball" ]; then
-        step "Unpacking local archive" "Unpacked local archive"
-        use_local_tarball "$local_tarball"
-    else
-        step "Downloading" "Downloaded"
-        download_release "$version" "$download_platform"
-    fi
-    detail=$(file_size_text "$(_archive_tmp_path)")
-    if [ -n "${ARCHIVE_SHA256_VERIFIED:-}" ]; then
-        detail="${detail:+$detail$(_plan_sep)}SHA256 verified"
-    fi
-    step_done "$detail"
+    download_step
 
     # Configure platform-specific settings before stopping UIs. The title
     # names what detection found; without a find the step stays hidden
@@ -1140,4 +1170,35 @@ apply_install() {
 
     # Last thing on screen: the safety feature this install took away.
     print_k2_stock_ai_notice "$platform"
+}
+
+# The desktop flavour's steps after the confirm point. A separate list rather
+# than skips threaded through apply_install: a desktop install shares the
+# screen and the machine, so of the kiosk steps (libraries, competing UIs,
+# service, permission rules, Moonraker, KIAUH, recovery, ALSA, printer seeding)
+# none applies, and plan_count_steps counts exactly these four.
+apply_desktop_install() {
+    download_step
+
+    step "Installing files" "Installed files"
+    if [ "$clean_mode" = true ]; then
+        INSTALL_REMOVED_OLD=1
+        remove_desktop_root "$INSTALL_DIR" || exit 1
+    fi
+    extract_release "$platform"
+    verify_binary_deps "$platform"
+    step_done "$(display_path "$INSTALL_DIR")"
+
+    step "Adding HelixScreen to the app menu" "Added HelixScreen to the app menu"
+    if write_desktop_entry; then
+        step_done "$(display_path "$(desktop_entry_path)")"
+    else
+        step_fail "launch it from $(display_path "$INSTALL_DIR/bin/helix-screen")"
+    fi
+    INSTALL_COMPLETE=1
+
+    cleanup_old_install
+    finalize_install_log
+    cleanup_on_success
+    print_summary "$version"
 }

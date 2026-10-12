@@ -1372,7 +1372,7 @@ validate_binary_architecture() {
             expected_machine_lo="b7"
             expected_desc="AARCH64 64-bit"
             ;;
-        x86)
+        x86|x86-desktop)
             expected_class="02"
             expected_machine_lo="3e"
             expected_desc="x86_64 64-bit"
@@ -1821,6 +1821,16 @@ extract_release() {
     # Phase 3: Validate architecture
     if ! validate_binary_architecture "${new_install}/bin/helix-screen" "$platform"; then
         log_error "Aborting installation due to architecture mismatch."
+        rm -rf "$extract_dir"
+        exit 1
+    fi
+
+    # The desktop flavour is recognised, updated and uninstalled by the
+    # release_info.json its payload ships, so an archive that is not the
+    # desktop build (a kiosk x86 zip handed to --local) must not land there.
+    if [ "$platform" = "x86-desktop" ] && ! desktop_payload_is_ours "$new_install"; then
+        log_error "This archive is not the x86 desktop build: its release_info.json does not"
+        log_error "name $(helix_self_update_asset x86-desktop). Existing installation is untouched."
         rm -rf "$extract_dir"
         exit 1
     fi

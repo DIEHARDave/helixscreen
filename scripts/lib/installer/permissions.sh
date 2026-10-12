@@ -27,6 +27,10 @@ check_permissions() {
         fi
         SUDO=""
         ;;
+    x86-desktop)
+        desktop_refuse_root
+        SUDO=""
+        ;;
     *)
         # Pi: warn if not root but allow sudo
         if [ "$(id -u)" != "0" ]; then
