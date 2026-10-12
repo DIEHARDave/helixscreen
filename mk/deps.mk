@@ -522,9 +522,8 @@ sdl2-build:
 	$(ECHO) "$(CYAN)Building SDL2 from submodule...$(RESET)"
 	$(Q)mkdir -p $(SDL2_BUILD_DIR)
 ifeq ($(UNAME_S),Darwin)
-	$(Q)cd $(SDL2_BUILD_DIR) && \
-		MACOSX_DEPLOYMENT_TARGET=$(MACOS_MIN_VERSION) \
-		cmake .. \
+	$(Q)MACOSX_DEPLOYMENT_TARGET=$(MACOS_MIN_VERSION) \
+		cmake -S $(SDL2_DIR) -B $(SDL2_BUILD_DIR) \
 			-DCMAKE_BUILD_TYPE=Release \
 			-DCMAKE_OSX_DEPLOYMENT_TARGET=$(MACOS_MIN_VERSION) \
 			-DSDL_SHARED=OFF \
@@ -533,8 +532,7 @@ ifeq ($(UNAME_S),Darwin)
 			-DSDL_TESTS=OFF
 	$(Q)MACOSX_DEPLOYMENT_TARGET=$(MACOS_MIN_VERSION) cmake --build $(SDL2_BUILD_DIR) --config Release
 else
-	$(Q)cd $(SDL2_BUILD_DIR) && \
-		cmake .. \
+	$(Q)cmake -S $(SDL2_DIR) -B $(SDL2_BUILD_DIR) \
 			-DCMAKE_BUILD_TYPE=Release \
 			-DSDL_SHARED=OFF \
 			-DSDL_STATIC=ON \

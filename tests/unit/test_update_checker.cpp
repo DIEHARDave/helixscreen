@@ -1681,8 +1681,9 @@ TEST_CASE("current_key returns a known platform", "[update_checker][platform]") 
     // here — AND a matching #elif in current_key — silently bricks
     // in-app updates for that platform (falls through to "pi", so the device
     // downloads the Pi tarball and ends up with missing shared libs).
-    std::vector<std::string> known_platforms = {"pi",   "pi32", "x86", "ad5m",  "k1",          "k2",
-                                                "ad5x", "mips", "cc1", "esp32", "snapmaker-u1"};
+    std::vector<std::string> known_platforms = {"pi",   "pi32", "x86",   "x86-desktop",
+                                                "ad5m", "k1",   "k2",    "ad5x",
+                                                "mips", "cc1",  "esp32", "snapmaker-u1"};
     bool found = false;
     for (const auto& p : known_platforms) {
         if (platform == p) {
@@ -1730,8 +1731,9 @@ TEST_CASE("display_name returns non-empty string for all known platforms",
           "[update_checker][platform]") {
     // Mirror the known_platforms list from "current_key returns a known platform".
     // Every key that helix::platform::current_key() can return MUST have a display name.
-    std::vector<std::string> known_platforms = {"pi",   "pi32", "x86", "ad5m",  "k1",          "k2",
-                                                "ad5x", "mips", "cc1", "esp32", "snapmaker-u1"};
+    std::vector<std::string> known_platforms = {"pi",   "pi32", "x86",   "x86-desktop",
+                                                "ad5m", "k1",   "k2",    "ad5x",
+                                                "mips", "cc1",  "esp32", "snapmaker-u1"};
 
     for (const auto& key : known_platforms) {
         INFO("platform key: " << key);
@@ -1746,8 +1748,8 @@ TEST_CASE("display_name returns non-empty string for all known platforms",
 TEST_CASE("platform table gives every Linux platform an ELF expectation",
           "[update_checker][platform]") {
     // esp32 ships a firmware image, not an ELF release zip.
-    for (const char* key :
-         {"pi", "pi32", "x86", "ad5m", "k1", "k2", "ad5x", "mips", "cc1", "snapmaker-u1"}) {
+    for (const char* key : {"pi", "pi32", "x86", "x86-desktop", "ad5m", "k1", "k2", "ad5x", "mips",
+                            "cc1", "snapmaker-u1"}) {
         INFO("platform key: " << key);
         const auto* p = helix::platform::find(key);
         REQUIRE(p != nullptr);
@@ -1759,7 +1761,7 @@ TEST_CASE("platform table marks which platforms name printer hardware",
           "[update_checker][platform]") {
     // Debug bundles compare this platform's display name against the user's
     // printer pick; generic hosts have no hardware name to compare.
-    for (const char* key : {"pi", "pi32", "x86", "esp32"}) {
+    for (const char* key : {"pi", "pi32", "x86", "x86-desktop", "esp32"}) {
         INFO("platform key: " << key);
         REQUIRE_FALSE(helix::platform::find(key)->has_printer_hardware);
     }
@@ -1814,6 +1816,7 @@ TEST_CASE("display_name returns correct strings for known platforms",
     REQUIRE(helix::platform::display_name("pi") == "Raspberry Pi");
     REQUIRE(helix::platform::display_name("pi32") == "Raspberry Pi (32-bit)");
     REQUIRE(helix::platform::display_name("x86") == "x86 Desktop");
+    REQUIRE(helix::platform::display_name("x86-desktop") == "x86 Linux Desktop (windowed)");
     REQUIRE(helix::platform::display_name("ad5m") == "FlashForge Adventurer 5M");
     REQUIRE(helix::platform::display_name("ad5x") == "FlashForge Adventurer 5X");
     REQUIRE(helix::platform::display_name("mips") == "MIPS (K1 series / AD5X)");

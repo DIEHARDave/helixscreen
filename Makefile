@@ -649,12 +649,19 @@ ifeq ($(ENABLE_SDL),yes)
         SDL2_LIBS := $(shell sdl2-config --libs)
         SDL2_LIB :=
     else
-        # No system SDL2 - build from submodule
+        # No system SDL2 - build from submodule. The build dir lives under
+        # BUILD_DIR: lib/sdl2 is one checkout shared by every worktree, and the
+        # desktop release and a native build configure SDL differently.
         SDL2_DIR := lib/sdl2
-        SDL2_BUILD_DIR := $(SDL2_DIR)/build
+        SDL2_BUILD_DIR := $(BUILD_DIR)/sdl2
         SDL2_LIB := $(SDL2_BUILD_DIR)/libSDL2.a
         SDL2_INC := -I$(SDL2_DIR)/include -I$(SDL2_BUILD_DIR)/include -I$(SDL2_BUILD_DIR)/include-config-release
         SDL2_LIBS := $(SDL2_LIB)
+        # A static libSDL2 leaves its own system dependencies to the final link;
+        # glibc before 2.34 keeps shm_open and clock_* in librt.
+        ifeq ($(UNAME_S),Linux)
+            SDL2_LIBS += -lrt
+        endif
     endif
 else
     # Embedded target - no SDL2
@@ -766,8 +773,10 @@ ifneq ($(UNAME_S),Darwin)
             SYSTEMD_CXXFLAGS := -DHELIX_HAS_SYSTEMD
             SYSTEMD_LIBS := -lsystemd
         endif
-    else
-        # Native Linux build: use pkg-config
+    else ifneq ($(PLATFORM_TARGET),x86-desktop)
+        # Native Linux build: use pkg-config. The released desktop build stays
+        # off libsystemd: it runs as a window, not a service, and a desktop
+        # distro without systemd would otherwise refuse to load the binary.
         SYSTEMD_PKG_CONFIG := $(shell pkg-config --exists libsystemd 2>/dev/null && echo "yes")
         ifeq ($(SYSTEMD_PKG_CONFIG),yes)
             SYSTEMD_CXXFLAGS := -DHELIX_HAS_SYSTEMD
@@ -974,12 +983,20 @@ else
     # Linux native build - Include libwpa_client.a for WiFi control
     NPROC := $(shell nproc 2>/dev/null || echo 4)
     # Note: -lstdc++fs needed for std::experimental::filesystem on GCC < 9
-    LDFLAGS := $(LDFLAGS_COMMON) $(WPA_CLIENT_LIB) $(SYSTEMD_LIBS) -lusb-1.0 -lssl -lcrypto -ldl -lstdc++fs
-    CXXFLAGS += -isystem /usr/include/libusb-1.0 -DHELIX_HAS_LIBUSB=1
-    # GPU-accelerated 3D G-code rendering via OpenGL ES 2.0 (SDL GL context on desktop)
-    ifeq ($(ENABLE_GLES_3D),yes)
-        LDFLAGS += -lGLESv2
+    ifeq ($(PLATFORM_TARGET),x86-desktop)
+        # Static OpenSSL, as for x86: Bullseye ships libssl.so.1.1, newer
+        # distros libssl.so.3.
+        LINUX_SSL_LIBS := -Wl,-Bstatic -lssl -lcrypto -Wl,-Bdynamic
+        # A release binary: extract symbols, then strip, like every cross target.
+        STRIP_CMD := strip
+        NM_CMD := nm
+    else
+        LINUX_SSL_LIBS := -lssl -lcrypto
     endif
+    LDFLAGS := $(LDFLAGS_COMMON) $(WPA_CLIENT_LIB) $(SYSTEMD_LIBS) -lusb-1.0 $(LINUX_SSL_LIBS) -ldl -lstdc++fs
+    CXXFLAGS += -isystem /usr/include/libusb-1.0 -DHELIX_HAS_LIBUSB=1
+    # The 3D G-code renderer gets GLES2 from the context SDL creates
+    # (gles2_sdl_loader.h), so no -lGLESv2: a desktop without it still starts.
     PLATFORM := Linux
     WPA_DEPS := $(WPA_CLIENT_LIB)
 endif
@@ -1105,9 +1122,10 @@ endif
 # Sound system — synth, sequencer, backends (PWM/M300/SDL/ALSA), themes
 # Tracker player — MOD/MED file playback with PCM samples (requires HELIX_HAS_SOUND)
 #
-# HELIX_HAS_SOUND:   Pi, x86, AD5M family, unified MIPS, native — any platform
-#                    with audio output
-# HELIX_HAS_TRACKER: Pi, x86, native, unified MIPS — platforms cleared for tracker playback
+# HELIX_HAS_SOUND:   Pi, x86, x86-desktop, AD5M family, unified MIPS, native —
+#                    any platform with audio output
+# HELIX_HAS_TRACKER: Pi, x86, x86-desktop, native, unified MIPS — platforms
+#                    cleared for tracker playback
 # ad5m/ad5m-br: tone-only. The PWM backend answers supports_render_source() false —
 #   the piezo demodulates a duty-modulated carrier as static — so tracker playback
 #   falls back to the set_voice note path on the sequencer thread: SCHED_OTHER, a
@@ -1132,7 +1150,7 @@ else ifneq (,$(filter ad5m ad5m-br mips k1 ad5x,$(PLATFORM_TARGET)))
         # (synth fallback) path — per-note buffers, no PCM render loop involved.
         TRACKER_CXXFLAGS := -DHELIX_HAS_TRACKER
     endif
-else ifeq ($(PLATFORM_TARGET),native)
+else ifneq (,$(filter native x86-desktop,$(PLATFORM_TARGET)))
     SOUND_CXXFLAGS := -DHELIX_HAS_SOUND
     TRACKER_CXXFLAGS := -DHELIX_HAS_TRACKER
 endif

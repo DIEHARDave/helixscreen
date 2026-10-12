@@ -114,6 +114,7 @@ jobs:
             {"platform": "mips", "display_name": "Unified MIPS (K1 Series + AD5X)", "build_target": "mips", "build_dir": "mips"},
             {"platform": "k2", "display_name": "Creality K2 Series"},
             {"platform": "x86", "display_name": "x86_64 Debian", "build_target": "x86-both"},
+            {"platform": "x86-desktop", "display_name": "x86_64 Linux Desktop", "build_target": "x86-desktop", "docker_image": "x86"},
             {"platform": "snapmaker-u1", "display_name": "Snapmaker U1"}
           ]
       run: |
@@ -928,6 +929,16 @@ jobs:
 
         # Run
         ./helix-screen
+        ```
+
+        ### x86_64 Linux Desktop (runs in a window)
+        ```bash
+        # Install for your user (no sudo), or download and run in place
+        curl -sSL https://releases.helixscreen.org/install.sh | sh -s -- --desktop
+        # ...or:
+        wget https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/helixscreen-x86-desktop-${{ steps.version.outputs.version }}.tar.gz
+        tar -xzf helixscreen-x86-desktop-${{ steps.version.outputs.version }}.tar.gz
+        ./helixscreen/bin/helix-screen --moonraker ws://PRINTER_IP:7125
         ```
 
         ### Snapmaker U1

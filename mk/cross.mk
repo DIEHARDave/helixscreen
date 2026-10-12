@@ -22,6 +22,7 @@
 #   make PLATFORM_TARGET=x86   # Build for x86_64 Debian SBCs (DRM+GLES)
 #   make PLATFORM_TARGET=x86-fbdev  # Build for x86_64 Debian SBCs (fbdev fallback)
 #   make PLATFORM_TARGET=x86-both   # x86_64: compile once, link DRM + fbdev
+#   make PLATFORM_TARGET=x86-desktop # x86_64 Linux desktop: SDL window
 #   make pi-docker             # Docker-based Pi build (64-bit, DRM+GLES)
 #   make pi-fbdev-docker       # Docker-based Pi build (64-bit, fbdev fallback)
 #   make pi-all-docker         # Docker-based Pi build (both variants)
@@ -38,6 +39,7 @@
 #   make x86-docker            # Docker-based x86_64 build (DRM+GLES)
 #   make x86-fbdev-docker      # Docker-based x86_64 build (fbdev fallback)
 #   make x86-all-docker        # Docker-based x86_64 build (both variants)
+#   make x86-desktop-docker    # Docker-based x86_64 desktop build (SDL window)
 
 # =============================================================================
 # Docker Build Configuration
@@ -701,6 +703,32 @@ else ifeq ($(PLATFORM_TARGET),x86-both)
     FONT_TIERS := all
     PI_DUAL_LINK := yes
 
+else ifeq ($(PLATFORM_TARGET),x86-desktop)
+    # -------------------------------------------------------------------------
+    # x86_64 Linux desktops - the app in an SDL window beside the user's desktop
+    # -------------------------------------------------------------------------
+    # Its own compile, never a relink of x86-both: HELIX_DISPLAY_SDL selects
+    # LV_USE_SDL in lv_conf.h, so every LVGL object differs from the DRM build.
+    # Built in the same Bullseye container as x86. SDL2 comes from lib/sdl2 and
+    # links statically; it dlopens the system's X11/Wayland/PulseAudio/ALSA
+    # libraries at runtime, so the binary needs no SDL package installed. The
+    # 3D G-code renderer resolves GLES2 the same way (gles2_sdl_loader.h): with
+    # no GLES on the machine it fails init and the viewer draws in 2D.
+    CROSS_COMPILE :=
+    TARGET_ARCH := x86_64
+    TARGET_TRIPLE := x86_64-linux-gnu
+    TARGET_CFLAGS := -march=x86-64 -funwind-tables -Wno-error=conversion -Wno-error=sign-conversion -DHELIX_RELEASE_BUILD -DHELIX_PLATFORM_X86_DESKTOP -DHELIX_BINARY_VARIANT=\"sdl\"
+    DISPLAY_BACKEND := sdl
+    ENABLE_OPENGLES := no
+    ENABLE_SDL := yes
+    ENABLE_GLES_3D := yes
+    ENABLE_SCREENSAVER := yes
+    ENABLE_EVDEV := no
+    ENABLE_SSL := yes
+    BUILD_SUBDIR := x86-desktop
+    STRIP_BINARY := yes
+    FONT_TIERS := all
+
 else ifeq ($(PLATFORM_TARGET),yocto)
     # -------------------------------------------------------------------------
     # Yocto / BitBake cross-build (OpenCentauri COSMOS → Centauri Carbon 1 today;
@@ -752,7 +780,7 @@ else ifeq ($(PLATFORM_TARGET),native)
     BUILD_SUBDIR :=
 
 else
-    $(error Unknown PLATFORM_TARGET: $(PLATFORM_TARGET). Valid options: native, pi, pi32, x86, ad5m, ad5m-br, cc1, mips, k1, ad5x, k1-dynamic, k2, snapmaker-u1, yocto)
+    $(error Unknown PLATFORM_TARGET: $(PLATFORM_TARGET). Valid options: native, pi, pi32, x86, x86-desktop, ad5m, ad5m-br, cc1, mips, k1, ad5x, k1-dynamic, k2, snapmaker-u1, yocto)
 endif
 
 # pi32 compiles against Debian armhf (armv7) headers, whose shared_ptr uses the
@@ -1028,7 +1056,7 @@ endif
 # Cross-Compilation Build Targets
 # =============================================================================
 
-.PHONY: pi pi-both pi32 pi32-both ad5m ad5m-br cc1 mips k1 ad5x creator5 k1-dynamic k2 snapmaker-u1 x86 x86-both pi-docker pi32-docker ad5m-docker cc1-docker mips-docker k1-docker ad5x-docker creator5-docker k1-dynamic-docker k2-docker ustreamer-k2 snapmaker-u1-docker x86-docker x86-fbdev-docker x86-all-docker docker-toolchains docker-toolchain-snapmaker-u1 docker-toolchain-x86 cross-info ensure-docker ensure-buildx maybe-stop-colima
+.PHONY: pi pi-both pi32 pi32-both ad5m ad5m-br cc1 mips k1 ad5x creator5 k1-dynamic k2 snapmaker-u1 x86 x86-both pi-docker pi32-docker ad5m-docker cc1-docker mips-docker k1-docker ad5x-docker creator5-docker k1-dynamic-docker k2-docker ustreamer-k2 snapmaker-u1-docker x86-docker x86-fbdev-docker x86-all-docker x86-desktop-docker docker-toolchains docker-toolchain-snapmaker-u1 docker-toolchain-x86 cross-info ensure-docker ensure-buildx maybe-stop-colima
 
 # Persistent ccache for Docker builds — bind-mounts a host directory so the
 # cache survives across container runs (the container is --rm).  Per-platform
@@ -1448,38 +1476,31 @@ snapmaker-u1-docker: ensure-docker
 	$(call extract-ca-certs,snapmaker-u1)
 	@$(MAKE) --no-print-directory maybe-stop-colima
 
-x86-docker: ensure-docker
-	@echo "$(CYAN)$(BOLD)Building for x86_64 Debian via Docker...$(RESET)"
+# One recipe for every build in the x86 toolchain image.
+# $(1) = banner, $(2) = ccache dir, $(3) = PLATFORM_TARGET.
+define x86-docker-build
+	@echo "$(CYAN)$(BOLD)$(1)$(RESET)"
 	@if ! docker image inspect helixscreen/toolchain-x86 >/dev/null 2>&1; then \
 		echo "$(YELLOW)Docker image not found. Building toolchain first...$(RESET)"; \
 		$(MAKE) docker-toolchain-x86; \
 	fi
-	$(call ensure-ccache-dir,x86)
-	$(Q)scripts/pool-docker.sh docker run --platform linux/amd64 --rm --user $$(id -u):$$(id -g) -v "$(CURDIR)":/src $(DOCKER_HOST_CONTEXT) -w /src $(call docker-ccache-args,x86) helixscreen/toolchain-x86 \
-		make PLATFORM_TARGET=x86 SKIP_OPTIONAL_DEPS=1 $(DOCKER_REMOTE_CONTROL) $(DOCKER_DIAG_UPLOADS) $(DOCKER_MOCKS) -j$(NPROC_DOCKER_RUN)
+	$(call ensure-ccache-dir,$(2))
+	$(Q)scripts/pool-docker.sh docker run --platform linux/amd64 --rm --user $$(id -u):$$(id -g) -v "$(CURDIR)":/src $(DOCKER_HOST_CONTEXT) -w /src $(call docker-ccache-args,$(2)) helixscreen/toolchain-x86 \
+		make PLATFORM_TARGET=$(3) SKIP_OPTIONAL_DEPS=1 $(DOCKER_REMOTE_CONTROL) $(DOCKER_DIAG_UPLOADS) $(DOCKER_MOCKS) -j$(NPROC_DOCKER_RUN)
 	@$(MAKE) --no-print-directory maybe-stop-colima
+endef
+
+x86-docker: ensure-docker
+	$(call x86-docker-build,Building for x86_64 Debian via Docker...,x86,x86)
 
 x86-fbdev-docker: ensure-docker
-	@echo "$(CYAN)$(BOLD)Building x86_64 fbdev fallback via Docker...$(RESET)"
-	@if ! docker image inspect helixscreen/toolchain-x86 >/dev/null 2>&1; then \
-		echo "$(YELLOW)Docker image not found. Building toolchain first...$(RESET)"; \
-		$(MAKE) docker-toolchain-x86; \
-	fi
-	$(call ensure-ccache-dir,x86-fbdev)
-	$(Q)scripts/pool-docker.sh docker run --platform linux/amd64 --rm --user $$(id -u):$$(id -g) -v "$(CURDIR)":/src $(DOCKER_HOST_CONTEXT) -w /src $(call docker-ccache-args,x86-fbdev) helixscreen/toolchain-x86 \
-		make PLATFORM_TARGET=x86-fbdev SKIP_OPTIONAL_DEPS=1 $(DOCKER_REMOTE_CONTROL) $(DOCKER_DIAG_UPLOADS) $(DOCKER_MOCKS) -j$(NPROC_DOCKER_RUN)
-	@$(MAKE) --no-print-directory maybe-stop-colima
+	$(call x86-docker-build,Building x86_64 fbdev fallback via Docker...,x86-fbdev,x86-fbdev)
 
 x86-all-docker: ensure-docker
-	@echo "$(CYAN)$(BOLD)Building x86_64 (DRM + fbdev) via Docker...$(RESET)"
-	@if ! docker image inspect helixscreen/toolchain-x86 >/dev/null 2>&1; then \
-		echo "$(YELLOW)Docker image not found. Building toolchain first...$(RESET)"; \
-		$(MAKE) docker-toolchain-x86; \
-	fi
-	$(call ensure-ccache-dir,x86)
-	$(Q)scripts/pool-docker.sh docker run --platform linux/amd64 --rm --user $$(id -u):$$(id -g) -v "$(CURDIR)":/src $(DOCKER_HOST_CONTEXT) -w /src $(call docker-ccache-args,x86) helixscreen/toolchain-x86 \
-		make PLATFORM_TARGET=x86-both SKIP_OPTIONAL_DEPS=1 $(DOCKER_REMOTE_CONTROL) $(DOCKER_DIAG_UPLOADS) $(DOCKER_MOCKS) -j$(NPROC_DOCKER_RUN)
-	@$(MAKE) --no-print-directory maybe-stop-colima
+	$(call x86-docker-build,Building x86_64 (DRM + fbdev) via Docker...,x86,x86-both)
+
+x86-desktop-docker: ensure-docker
+	$(call x86-docker-build,Building x86_64 Linux desktop (SDL) via Docker...,x86-desktop,x86-desktop)
 
 # Stop Colima after build to free up RAM (macOS only)
 # Only stops if Colima is running and we're on macOS
@@ -2980,7 +3001,7 @@ $(UNINSTALLER_BUNDLE): scripts/bundle-uninstaller.sh $(INSTALLER_SOURCES)
 deploy-pi deploy-pi-fg deploy-pi-asan deploy-pi32 deploy-pi32-fg deploy-pi32-asan \
 deploy-ad5m deploy-ad5m-fg deploy-cc1 deploy-cc1-fg deploy-k1-fg deploy-k1-dynamic-fg: $(INSTALLER_BUNDLES)
 
-.PHONY: release-pi release-pi32 release-ad5m release-cc1 release-mips release-k1 release-ad5x release-k1-dynamic release-k2 release-snapmaker-u1 release-x86 release-all release-clean pi-fbdev-docker pi32-fbdev-docker pi-all-docker pi32-all-docker x86-fbdev-docker x86-all-docker
+.PHONY: release-pi release-pi32 release-ad5m release-cc1 release-mips release-k1 release-ad5x release-k1-dynamic release-k2 release-snapmaker-u1 release-x86 release-x86-desktop release-all release-clean pi-fbdev-docker pi32-fbdev-docker pi-all-docker pi32-all-docker x86-fbdev-docker x86-all-docker
 
 # Host CA bundle packaged when a platform has no toolchain-extracted one.
 CA_BUNDLE ?= /etc/ssl/certs/ca-certificates.crt
@@ -2996,6 +3017,7 @@ REL_LABEL.k1-dynamic := K1 Dynamic
 REL_LABEL.k2 := K2
 REL_LABEL.snapmaker-u1 := Snapmaker U1
 REL_LABEL.x86 := x86
+REL_LABEL.x86-desktop := x86 Linux desktop
 
 # Platforms that also ship a framebuffer-only build/<plat>-fbdev binary, which
 # becomes bin/helix-screen-fbdev.
@@ -3157,8 +3179,13 @@ release-snapmaker-u1: $(INSTALLER_BUNDLES) | build/snapmaker-u1/bin/helix-screen
 release-x86: $(INSTALLER_BUNDLES) | build/x86/bin/helix-screen build/x86/bin/helix-splash build/x86-fbdev/bin/helix-screen
 	$(call release-package,x86)
 
+# Package the x86_64 Linux desktop release: one SDL binary that opens a window,
+# and no splash or watchdog, which exist to own a framebuffer.
+release-x86-desktop: $(INSTALLER_BUNDLES) | build/x86-desktop/bin/helix-screen
+	$(call release-package,x86-desktop)
+
 # Package all releases
-release-all: release-pi release-pi32 release-ad5m release-cc1 release-mips release-k1-dynamic release-k2 release-snapmaker-u1 release-x86
+release-all: release-pi release-pi32 release-ad5m release-cc1 release-mips release-k1-dynamic release-k2 release-snapmaker-u1 release-x86 release-x86-desktop
 	@echo "$(GREEN)$(BOLD)✓ All releases packaged in $(RELEASE_DIR)/$(RESET)"
 	@ls -lh $(RELEASE_DIR)/*.tar.gz $(RELEASE_DIR)/*.zip
 
@@ -3170,7 +3197,7 @@ release-clean:
 # Aliases for package-* — trigger the full build + package workflow.
 # The legacy scripts/package.sh wrapper was deleted; these targets are now
 # the single entry point for building release artifacts.
-.PHONY: package-ad5m package-cc1 package-pi package-pi32 package-mips package-k1 package-ad5x package-k1-dynamic package-k2 package-snapmaker-u1 package-x86 package-all
+.PHONY: package-ad5m package-cc1 package-pi package-pi32 package-mips package-k1 package-ad5x package-k1-dynamic package-k2 package-snapmaker-u1 package-x86 package-x86-desktop package-all
 
 # THE marker that separates a production build from a developer one. Everything
 # a developer builds gets the helixctl server (see the ENABLE_REMOTE_CONTROL
@@ -3201,7 +3228,8 @@ package-k1-dynamic: k1-dynamic-docker gen-images gen-splash-3d-k1-dynamic gen-pr
 package-k2: k2-docker gen-images gen-splash-3d-k2 gen-printer-images release-k2
 package-snapmaker-u1: snapmaker-u1-docker gen-images gen-splash-3d-snapmaker-u1 gen-printer-images release-snapmaker-u1
 package-x86: x86-all-docker gen-images gen-splash-3d-x86 gen-printer-images release-x86
-package-all: package-ad5m package-cc1 package-pi package-pi32 package-mips package-k1-dynamic package-k2 package-snapmaker-u1 package-x86
+package-x86-desktop: x86-desktop-docker gen-images gen-splash-3d-x86-desktop gen-printer-images release-x86-desktop
+package-all: package-ad5m package-cc1 package-pi package-pi32 package-mips package-k1-dynamic package-k2 package-snapmaker-u1 package-x86 package-x86-desktop
 
 # Convenience alias (verb-target → target-verb)
 .PHONY: ad5m-deploy

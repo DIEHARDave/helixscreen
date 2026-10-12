@@ -802,6 +802,7 @@ translations:
   Could not load printer database: Не удалось загрузить базу данных принтеров
   Could not move the plate: Не удалось переместить стол
 
+  Could not open a browser for the update: Не удалось открыть браузер для обновления
   Could not parse tips database: Не удалось разобрать базу данных советов
   Could not reach Spoolman at: Не удалось связаться со Spoolman по адресу
   Could not read the screw adjustments from the printer: Не удалось получить данные регулировки винтов от принтера
