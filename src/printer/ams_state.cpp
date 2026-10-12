@@ -102,21 +102,6 @@ struct AsyncSyncData {
     int slot_index; // Only used if full_sync == false
 };
 
-// Shortens a UTF-8 string to at most max_bytes bytes without splitting a
-// multi-byte codepoint. A raw firmware message (AFC's message.message) has no
-// length bound at all, so a composition can still overrun a subject buffer
-// sized for the longest known translated producer.
-std::string truncate_utf8(const std::string& s, size_t max_bytes) {
-    if (s.size() <= max_bytes) {
-        return s;
-    }
-    size_t end = max_bytes;
-    while (end > 0 && (static_cast<unsigned char>(s[end]) & 0xC0) == 0x80) {
-        --end;
-    }
-    return s.substr(0, end);
-}
-
 } // namespace
 
 AmsState& AmsState::instance() {
@@ -1235,6 +1220,10 @@ bool AmsState::clear_unused_slot_subjects(int total_slots) {
             lv_subject_copy_string(&slot_materials_[i], "");
             any_slot_changed = true;
         }
+        if (strcmp(lv_subject_get_string(&slot_names_[i]), "") != 0) {
+            lv_subject_copy_string(&slot_names_[i], "");
+            any_slot_changed = true;
+        }
         // Reset per-slot LIVE state subjects for unused slots
         if (lv_subject_get_int(&slot_segments_[i]) != static_cast<int>(PathSegment::NONE)) {
             lv_subject_set_int(&slot_segments_[i], static_cast<int>(PathSegment::NONE));
@@ -1250,6 +1239,50 @@ bool AmsState::clear_unused_slot_subjects(int total_slots) {
         }
     }
     return any_slot_changed;
+}
+
+bool AmsState::write_slot_name(lv_subject_t* subject, size_t buf_size, const SlotInfo& slot) {
+    const auto identity = SpoolmanManager::find_identity(slot.spoolman_id);
+    const std::string name = helix::slot_card_name(slot, identity ? &*identity : nullptr);
+    // buf_size - 1 leaves room for the NUL; cutting here keeps a long name on a
+    // codepoint boundary instead of letting the copy split one.
+    const std::string bounded(helix::text_io::utf8_prefix(name, buf_size - 1));
+    if (strcmp(lv_subject_get_string(subject), bounded.c_str()) == 0) {
+        return false;
+    }
+    lv_subject_copy_string(subject, bounded.c_str());
+    return true;
+}
+
+void AmsState::refresh_slot_names() {
+    assert_main_thread();
+    bool changed = false;
+    if (auto* backend = get_backend(0)) {
+        const AmsSystemInfo info = backend->get_system_info();
+        for (int i = 0; i < std::min(info.total_slots, MAX_SLOTS); ++i) {
+            const SlotInfo* slot = info.get_slot_global(i);
+            if (slot && write_slot_name(&slot_names_[i], sizeof(slot_names_buf_[i]), *slot)) {
+                changed = true;
+            }
+        }
+    }
+    for (size_t sec = 0; sec < secondary_slot_subjects_.size(); ++sec) {
+        auto* backend = get_backend(static_cast<int>(sec) + 1);
+        if (!backend) {
+            continue;
+        }
+        auto& subs = secondary_slot_subjects_[sec];
+        const AmsSystemInfo info = backend->get_system_info();
+        for (int i = 0; i < std::min(info.total_slots, subs.slot_count); ++i) {
+            const SlotInfo* slot = info.get_slot_global(i);
+            if (slot && write_slot_name(&subs.names[i], SLOT_NAME_BUF_SIZE, *slot)) {
+                changed = true;
+            }
+        }
+    }
+    if (changed) {
+        spdlog::debug("[AmsState] Slot names re-derived from new Spoolman identity");
+    }
 }
 
 bool AmsState::write_slot_subjects(AmsBackend& backend, int slot_index, const SlotInfo& slot) {
@@ -1308,6 +1341,11 @@ bool AmsState::write_slot_subjects(AmsBackend& backend, int slot_index, const Sl
     // material delta still bumps the version (#1065).
     if (strcmp(lv_subject_get_string(&slot_materials_[slot_index]), slot.material.c_str()) != 0) {
         lv_subject_copy_string(&slot_materials_[slot_index], slot.material.c_str());
+        changed = true;
+    }
+    // The name the card shows above the material. A different spool of the
+    // same material changes only this.
+    if (write_slot_name(&slot_names_[slot_index], sizeof(slot_names_buf_[slot_index]), slot)) {
         changed = true;
     }
 
@@ -1569,7 +1607,8 @@ void AmsState::recompute_action_detail() {
     // sizeof(action_detail_buf_) - 1 leaves room for the NUL lv_subject_copy_string
     // writes; truncating here first (rather than letting it truncate) keeps the
     // cut on a codepoint boundary regardless of which producer overran it.
-    const std::string bounded_detail = truncate_utf8(new_detail, sizeof(action_detail_buf_) - 1);
+    const std::string bounded_detail(
+        helix::text_io::utf8_prefix(new_detail, sizeof(action_detail_buf_) - 1));
     if (strcmp(lv_subject_get_string(&ams_action_detail_), bounded_detail.c_str()) != 0) {
         lv_subject_copy_string(&ams_action_detail_, bounded_detail.c_str());
     }

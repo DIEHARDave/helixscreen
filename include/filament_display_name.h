@@ -151,4 +151,68 @@ std::string resolve_filament_label(const SlotInfo& slot, const SpoolIdentity* id
                                    std::string_view color_fallback,
                                    std::string_view last_resort = "Filament");
 
+/**
+ * @brief Does @p name already say what @p material says?
+ *
+ * The material half of compose_filament_label()'s deduplication, for callers
+ * that place the name and the material on separate lines and must decide
+ * whether the material line repeats the name. Case-insensitive; "PLA+ Bone
+ * White" states "PLA+", "Silk Blue ePLA" states "Silk PLA", "Bone White" states
+ * nothing. A blank material is never stated.
+ */
+bool name_states_material(std::string_view name, std::string_view material);
+
+/**
+ * @brief The spool name an AMS slot card shows above its material
+ *
+ * `slot.spool_name` -> `identity->filament_name` -> `slot.color_name`, the name
+ * precedence of resolve_filament_label_parts() with no algorithmic colour
+ * layer: a lane nothing names (AFC never fills color_name) shows its material
+ * alone, not a guessed "Light Pink".
+ *
+ * @param slot     Slot to name
+ * @param identity Cached Spoolman identity, or nullptr on a miss
+ * @return Whitespace-normalized name; empty when nothing names the spool
+ */
+std::string slot_card_name(const SlotInfo& slot, const SpoolIdentity* identity);
+
+/// Slot counts above this share the row too tightly for a name line; the card
+/// keeps its single, truncated material line.
+inline constexpr int SLOT_CARD_MAX_TWO_LINE_COUNT = 4;
+
+/// Bytes a material keeps when more than SLOT_CARD_MAX_TWO_LINE_COUNT slots
+/// share the row.
+inline constexpr size_t SLOT_CARD_CROWDED_MATERIAL_BYTES = 4;
+
+/**
+ * @brief The two lines of an AMS slot card's filament label
+ *
+ * `lower` is the line that is always there; `name` sits above it and is blank
+ * when the card shows one line.
+ */
+struct SlotCardLines {
+    std::string name;  ///< Upper line; empty = no upper line
+    std::string lower; ///< The material, or the name when the name already states it
+};
+
+/**
+ * @brief Decide what an AMS slot card's filament label reads
+ *
+ * - Empty lane, more than SLOT_CARD_MAX_TWO_LINE_COUNT slots, or no name: one
+ *   line, @p material_text. A crowded row cuts a non-Empty material to
+ *   SLOT_CARD_CROWDED_MATERIAL_BYTES bytes.
+ * - A name that already states the material, or a lane with no material: one
+ *   line, the name.
+ * - Otherwise the name over @p material_text.
+ *
+ * @param name          Resolved name (slot_card_name()), may be empty
+ * @param material      Raw material type, may be empty
+ * @param material_text What a material-only label reads for this lane
+ *                      ("Empty", "--" or the material)
+ * @param total_count   Slots shown side by side
+ * @param lane_empty    The lane is classified Empty
+ */
+SlotCardLines slot_card_lines(std::string_view name, std::string_view material,
+                              std::string_view material_text, int total_count, bool lane_empty);
+
 } // namespace helix
