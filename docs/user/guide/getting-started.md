@@ -222,9 +222,9 @@ To find your device path, run `cat /proc/bus/input/devices` and look for your de
 
 ---
 
-## Simulator Shortcuts
+## Desktop Shortcuts
 
-When using the SDL2 desktop simulator:
+When HelixScreen runs in a window on a desktop PC (see [Run HelixScreen in a Window on a Linux Desktop](install-linux-desktop.md)), these keys work while no text field is selected:
 
 | Key | Action |
 |-----|--------|
