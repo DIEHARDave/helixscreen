@@ -1,734 +1,637 @@
 # Seven new home-panel widgets
 
 Date: 2026-08-12
-Status: approved design. Batch 0 (the DRY refactors) is on main; none of the seven widgets
-(batches 1-3) is built, and no branch carries them.
+Status: approved design; size ladders ruled 2026-10-12. Batch 0 (the DRY extractions) is on
+main. None of the seven widgets is built, and no branch carries them.
 
 ## Goal
 
-Surface seven families of printer data that are already live in subjects but have
-never reached the home screen, and consolidate the duplicated logic those widgets
-would otherwise have to copy.
-
-The widgets, in build order:
+Surface seven families of printer data that are live in subjects but have never reached
+the home screen. Every widget has a size ladder from half a cell to two cells and beyond,
+adapts to print state, and decides its rung with a pure function the tests pin at the real
+pixel boundaries.
 
 | # | Widget | Kind | Batch |
 |---|--------|------|-------|
-| 1 | Speed / flow override | binding | 1 |
-| 2 | Live Z-offset (baby-stepping) | binding | 1 |
-| 3 | Filament dryer | binding | 1 |
-| 4 | Host health + sparklines | canvas (reuse) | 2 |
-| 5 | Toolhead position / homing | canvas (new draw) | 2 |
-| 6 | Bed mesh heightmap | canvas (reuse) | 2 |
-| 7 | Exclude-objects mini-map | canvas (reuse + mini mode) | 3 |
+| 1 | `speed_flow`: speed / flow override | binding | 1 |
+| 2 | `z_offset`: live Z-offset (baby-stepping) | binding | 1 |
+| 3 | `dryer`: filament drying | binding | 1 |
+| 4 | `host_health`: host and MCU health + sparklines | canvas (reuse) | 2 |
+| 5 | `toolhead`: position / homing | canvas (new draw) | 2 |
+| 6 | `bed_mesh_tile`: bed mesh heightmap | canvas (reuse) | 2 |
+| 7 | `exclude_map`: exclude-objects mini-map | canvas (reuse + mini mode) | 3 |
 
-Plus one bug fix carried along: pre-print phase is invisible in the print-status
-widget's *detailed* layout.
+Plus one carried fix: the pre-print phase is invisible in the print-status widget's
+detailed layout.
 
-## Why this branch
+## Size ladders and state
 
-`fix/grid-cell-metrics` reworked home-grid sizing to square cells with half-cell
-tracks. Authoring seven widgets against `main`'s contract would produce seven rows
-that all need rewriting at merge. The contract deltas that matter:
+### Rulings that apply to every widget
 
-- **Spans are in grid tracks; a track is half a cell** (`GridLayout::TRACKS_PER_CELL == 2`).
-  Contract documented at `src/ui/panel_widget_registry.cpp:55-64`. The field comments in
-  `include/panel_widget_registry.h:29-34` still read as cells and are stale.
-- **A widget without `supports_half_col` / `supports_half_row` must span an even
-  number of tracks on that axis** - default, min, and max alike. Enforced by
-  `tests/unit/test_registry_span_bands.cpp:128`.
-- **`effective_min_colspan() <= 8` and `effective_min_rowspan() <= 12`**, the
-  272x480 micro-portrait grid. Exceeding it means the widget is disabled at boot
-  with a `TooLargeForGrid` toast. Enforced at `test_registry_span_bands.cpp:110`.
-- **`on_size_changed(colspan, rowspan, width_px, height_px)` now receives tracks**
-  in the first two arguments (`src/ui/panel_widget_manager.cpp:891-894`). Branch on
-  `width_px` / `height_px` against the bands in `include/panel_widget_size.h`
-  (`W_NORMAL=135`, `W_WIDE=205`, `H_TALL=131`, `H_TALLER=197`), never on span counts.
+- **The floor is half a cell on both axes where the grid offers half cells.** Every
+  widget offers the 0.5x0.5, 1x0.5 and 0.5x1 rungs: the registry minimum is `1x1` in
+  tracks and each def sets `supports_half_col` and `supports_half_row` (the `half_c` /
+  `half_r` columns of `s_widget_defs`, fields in `include/panel_widget_registry.h`). The
+  grid honours half-cell spans at medium and large and declines them at micro and tiny,
+  where a half-cell placement comes back as 1x1, so on those tiers every ladder starts
+  at 1x1.
+- **Too small for controls means read-only.** A rung without room for a control draws
+  values only, and a tap anywhere opens the widget's full overlay or panel. Controls
+  (steppers, Save, Home All, Calibrate) appear only at the rungs named below.
+- **Content adapts to print state.** "Printing" is `print_active` (1 while printing or
+  paused). Where a widget's idle and printing columns differ, a change in `print_active`
+  re-runs the decision, because the content being measured changed.
+- **Larger than the top rung adds spacing, not content**, unless a widget's table names a
+  rung above 2x2.
 
-None of the seven widgets sets a half-cell flag, so every authored span below is even.
+### Pixel budgets
 
-## Batch 0: DRY refactors
+Tile sizes the decision functions are designed and tested against, measured with
+`ctl geom` on a live grid (the content box is smaller by the widget's chrome):
 
-These land first because each is a duplication the new widgets would otherwise
-become the next copy of. Each is independently reviewable and independently
-revertible.
+| Screen | 0.5x0.5 | 0.5x1 | 1x0.5 | 1x1 |
+|--------|---------|-------|-------|-----|
+| 800x480 (medium) | 55 x 54 | 55 x 113 | 114 x 54 | 114 x 113 |
+| 1024x600 (large) | 51 x 53 | 51 x 112 | 108 x 53 | 108 x 112 |
+| 480x272 (micro) | n/a | n/a | n/a | 70 x 64 |
 
-### D1. One authority for speed / flow sends
+The large tier's half cells are smaller than medium's, so every half-cell rung is sized to
+fit 51 x 53 / 51 x 112 / 108 x 53. The shipped tiles already set the shape of these rungs:
+a 0.5-wide tile draws its glyph alone, and a 1x0.5 tile lays icon and value in a row
+(`TileDirection::Row`, `src/ui/panel_widgets/tile_layout.h`).
 
-There is no `SpeedFlowController` analogous to `TemperatureController`. Two call
-sites format their own gcode with disagreeing clamps:
+### Spans in the registry
 
-- `src/ui/ui_print_tune_overlay.cpp:405-435` - speed `[50,200]` via `M220 S<n>`,
-  flow `[75,125]` via `M221 S<n>`. Live and reachable.
-- `src/ui/ui_panel_controls.cpp:1555-1650` - speed `[10,200]`, flow `[50,150]`.
-  **Dead code**: the callbacks are registered at `:272-275` but no XML references
-  `on_controls_speed_up` / `on_controls_flow_*`. Its flow handler tracks a
-  function-local `static int current_flow = 100` (`:1603`, `:1633`) instead of
-  reading `flow_factor`, and `update_flow_display()` (`:1546-1552`) hardcodes 100%.
+Registry spans are in tracks (`GridLayout::TRACKS_PER_CELL == 2`; `LAYOUT_SYSTEM.md`
+§ "Widget span authoring"): one track is half a cell, so 0.5x0.5 is `1x1` and a 2x1-cell
+widget is `4x2`. Every widget below has `min_colspan = min_rowspan = 1`.
 
-**Change:** add `helix::tune::set_speed_percent(api, int)` and
-`set_flow_percent(api, int)` carrying the single agreed clamp - **speed `[50,200]`,
-flow `[75,125]`** (PrintTuneOverlay's, the range that actually ships). Convert
-PrintTuneOverlay to call it. **Delete** the dead ControlsPanel handlers, their
-registrations, and `update_flow_display()` rather than leave a stale trap for the
-next reader.
+| Widget | Default | Min | Max |
+|--------|---------|-----|-----|
+| `speed_flow` | 4x2 | 1x1 | 8x4 |
+| `z_offset` | 4x2 | 1x1 | 8x4 |
+| `dryer` | 2x2 | 1x1 | 6x8 |
+| `host_health` | 4x2 | 1x1 | 8x8 |
+| `toolhead` | 4x4 | 1x1 | 8x8 |
+| `bed_mesh_tile` | 4x4 | 1x1 | 12x8 |
+| `exclude_map` | 4x4 | 1x1 | 8x6 |
 
-Subjects are plain int percent, 100 = 100% (`src/printer/printer_motion_state.cpp:43-44`);
-Klipper's `extrude_factor` is renamed `flow_factor` on the way in (`:168-180`).
+Defaults are whole cells, so auto-placement seats each widget on cell boundaries.
 
-### D2. One authority for Z-offset baby-steps
+### Measure, decide, publish, bind
 
-`z_offset_utils.h` already shares formatting, `apply_and_save`, and the restart
-latch. The *adjust* path is not shared - clamping, micron rounding,
-`pending_z_offset_delta` bookkeeping, the optimistic subject write, and the
-homed-axes `MOVE=1` decision all live inline in
-`PrintTuneOverlay::handle_z_offset_changed` (`src/ui/ui_print_tune_overlay.cpp:458-524`).
+Every widget follows `PANEL_WIDGET_GUIDE.md` § "The reference pattern: measure, decide,
+publish, bind":
 
-**Change:** extract `helix::zoffset::adjust(api, printer_state, delta_mm)` into
-`z_offset_utils`, carrying the `+/-2.0 mm` clamp
-(`include/ui_print_tune_overlay.h:229-230`), micron rounding, pending-delta
-accumulation, optimistic write, and the `MOVE=1` gate that fires only when x/y/z
-are all homed (`:507-512`). PrintTuneOverlay and the new widget both call it.
+1. **A pure decision function, no LVGL**, header-only beside the widget
+   (`src/ui/panel_widgets/<id>_layout.h`). Input: the measured content box (width,
+   height), the widths of the strings the rung would draw, and the state that changes
+   content (`print_active`, plus each widget's own inputs listed below). Output: a verdict
+   struct carrying the rung, `fits`, and the widget's own flags.
+2. **Measurement in the widget.** `on_size_changed()` measures the content box with the
+   chrome subtracted the way `TileSizing::set_content_root()` does it
+   (`src/ui/panel_widgets/tile_sizing.h#set_content_root`); if that measurement is private to
+   TileSizing, lift it into a shared helper rather than copying it. Strings are measured
+   from the same composer the labels render.
+3. **Publish the verdict as subjects**, one int per axis of the verdict. These widgets are
+   single-instance, so subjects register through `register_widget_subjects()` at
+   registration; a widget that becomes multi-instance registers per-instance subjects in
+   its constructor (never `attach()`), as `TiledPanelWidget` does.
+4. **XML binds everything else**: visibility, fonts, flow and colour off the verdict
+   subjects (`bind_flag_if_*`, `bind_style_if_*`). Enum values are the subject ints.
 
-**Also fix, while here:** `pending_z_offset_delta` is never reset in production.
-`PrinterMotionState::clear_pending_z_offset_delta` (`src/printer/printer_motion_state.cpp:230`)
-has zero non-test callers - not on save, not on print end, not on disconnect. The
-delta banner in ControlsPanel therefore accumulates across the whole session.
-Reset it in `apply_and_save` on success and on print completion.
+**One rung chooser.** The rung enum and the chooser live once, in
+`src/ui/panel_widgets/size_rung.h`:
 
-**Also:** persist the step size. `Z_STEP_AMOUNTS[] = {0.05, 0.025, 0.01, 0.005}`
-with default index 2 lives in RAM only (`include/ui_print_tune_overlay.h:227-233`)
-and resets to 0.01 mm every launch. Move it to a `Config` key so the overlay and
-the new widget share one persisted step.
+```cpp
+enum class SizeRung : int { Glance = 0, Strip = 1, Column = 2, Cell = 3, Wide = 4, Full = 5, Large = 6 };
+```
 
-### D3. Lift the bed coordinate mapper
+| Rung | Nominal size (cells) |
+|------|----------------------|
+| `Glance` | 0.5x0.5 |
+| `Strip` | 1x0.5 (wide, short) |
+| `Column` | 0.5x1 (narrow, tall) |
+| `Cell` | 1x1 |
+| `Wide` | 2x1 |
+| `Full` | 2x2 and larger |
+| `Large` | 3x3 and larger (`bed_mesh_tile` only) |
 
-`ExcludeObjectMapView::CoordMapper` (`include/ui_exclude_object_map_view.h:33-50`,
-impl `ui_exclude_object_map_view.cpp:27-45`) is aspect-preserving mm->px with
-centering, Y-flip, and center-origin support for delta/Voron beds. It has no LVGL
-dependency and is exactly what the toolhead tile needs.
+`helix::choose_size_rung(content_w, content_h, const RungNeeds& needs)` takes, per rung
+the widget offers, the minimum box that rung's content needs (measured, per state) and
+returns the largest rung whose box fits on both axes, in the order Large, Full, Wide,
+Cell, then Strip or Column, then Glance. A box between rungs (1.5x1, 1x2) takes the largest
+rung it holds and spends the rest on spacing. Each widget's decision function calls the
+chooser and adds its own flags.
 
-**Change:** move it to its own `include/bed_coord_mapper.h` as
-`helix::BedCoordMapper`. `ExcludeObjectMapView` and the toolhead widget both use it.
+Rung needs come from measured content. Where a boundary is a size class rather than a
+content fit (how many MCU or dryer rows a tall tile holds, whether the bed mesh has room
+for a colour scale), decide it from the per-tier bands in `include/panel_widget_size.h`
+(`w_normal()`, `w_wide()`, `h_tall()`, `h_taller()`; 174 / 264 / 168 / 253 px at
+medium, scaled per tier) rather than new constants.
 
-### D4. One bed-dimension resolver
+**`fits_at()` refuses what the widget cannot draw.** Each widget overrides
+`PanelWidget::fits_at()` with its decision's `fits`: false when the `Glance` content does
+not fit the content box. It must be monotonic (fits at a size means fits at every larger
+size); `helix::grow_span_to_fit()` (`include/grid_layout.h`) then lifts the span to the
+nearest size that draws, in edit mode and on load.
 
-The "what size is the bed" fallback chain is written twice today and the toolhead
-widget would be the third:
+### Status colour
 
-- `src/ui/ui_panel_print_status.cpp:1431-1441` - `build_volume()`, else `235x235`
-- `src/ui/ui_exclude_object_map_view.cpp:105-106` - same fallback
+Widgets that judge a value share one classification, in `include/value_status.h`
+(namespace `helix::status`, pure functions, no LVGL):
 
-**Change:** add `helix::bed_dimensions(api)` returning `{w_mm, h_mm, origin}` with
-the documented chain: `api->hardware().build_volume()`
-(`include/printer_detector.h:47-53`, populated from Klipper
-`configfile.settings.stepper_x/y/z` at `src/api/moonraker_api_controls.cpp:796-849`)
--> `PrinterState::get_axis_bounds()` (`include/printer_motion_state.h:18-25`, the
-lower-latency kinematic envelope) -> `235x235`. Convert both existing call sites.
+```cpp
+enum class ValueStatus : int { Normal = 0, Warn = 1, Danger = 2 };
+```
 
-Do **not** read `build_volume_range` from `assets/config/printer_database.json` -
-that field is a detection heuristic (`src/printer/printer_detector.cpp:346`), not an
-authoritative bed size.
+The ints match the existing `ams_env_ind_<n>_humidity_status` encoding (0 ok, 1 warn,
+2 danger). Each function returns a classification; each caller maps it to its own
+appearance through `bind_style_if_eq` (`#warning` for Warn, `#danger` for Danger, and for
+Normal either the default text colour or `#success` where the ruling asks for green).
 
-### D5. Do not add a fourth homing derivation
+| Function | Rule |
+|----------|------|
+| `override_status(int pct)` | Warn when `pct != 100`, else Normal |
+| `z_offset_status(bool save_available)` | Warn when `z_offset_save_available`, else Normal |
+| `mesh_flatness_status(float range_mm)` | Normal below 0.15, Warn below 0.30, else Danger (Normal draws `#success`) |
+| `host_health_status(const HostHealthInput&)` | Worst of the host and MCU rules below; returns the status and the metric that caused it |
 
-`homed_axes` is the raw Klipper string (`printer_motion_state.cpp:126-132`). It is
-already decoded three ways: ControlsPanel owns `x_homed`/`y_homed`/`xy_homed`/
-`z_homed`/`all_homed` (`src/ui/ui_panel_controls.cpp:164-168`, `:207-245`),
-MotionPanel makes prefixed copies to avoid collision (`src/ui/ui_panel_motion.cpp:178-180`),
-and `helix::toolhead_is_homed()` exists in `include/toolhead_homing.h`.
+`host_health_status` rules, as fixed defaults:
 
-**Change:** the toolhead widget derives per-axis homing through
-`toolhead_homing.h`, extended with a per-axis accessor if one is missing. It does
-**not** bind ControlsPanel's subjects (another panel's `SubjectManager` owns them)
-and does **not** add a fourth private copy.
+| Metric | Warn | Danger |
+|--------|------|--------|
+| Host CPU load | >= 70% | >= 90% |
+| Each MCU load | >= 70% | >= 90% |
+| Host CPU temperature | >= 70 C | >= 80 C |
+| Throttle (`perf_host_throttle_state`, Pi bitmask) | an "occurred since boot" bit set (bits 16-19) | a "now" bit set (bits 0-3) |
+| MCU retransmits | count rose since the previous sample | |
+| Disk free | below `kDiskLowFreeMb` (500 MB) | |
 
-### D6. Give the dryer text subjects a writer, or remove them
+The Performance overlay can adopt the same function later; this design does not change
+the overlay.
 
-`dryer_target_temp_text`, `dryer_time_text`, and `dryer_current_temp_text` are
-declared (`include/ams_state.h:1492-1504`, init `src/printer/ams_state.cpp:340-358`)
-and **never written**. `src/printer/ams_state.cpp:2080-2081` says formatting "is
-handled by observers in `AmsDryerCard::setup()`"; `AmsDryerCard` no longer exists
-anywhere in the tree. No XML binds them. Binding them yields permanent empty strings.
+## Batch 0: DRY extractions (done)
 
-**Change:** write them in `sync_dryer_from_backend()`
-(`src/printer/ams_state.cpp:2038-2093`), reusing the formatting that the maintained
-`env_ind_drying_text_[unit]` path already uses (`:1740-1751`). Delete the stale
-comment and the dangling doc reference at `include/ui_ams_sidebar.h:40`.
+On main, under these names:
 
-**Also fix the mirror unit.** The scalar `dryer_*` subjects mirror
-`dryer_mirror_unit_`, which is set to whichever unit's detail overlay the user last
-opened (`src/ui/ui_ams_environment_overlay.cpp:198`). A home tile bound to them
-would silently follow the user's browsing history. Change the mirror to track **the
-actively-drying unit, falling back to unit 0** when nothing is drying.
-
-### D7. Documentation (coordinate before doing)
-
-`docs/devel/ARCHITECTURE.md:452-540` documents 8 widgets against 37 shipped, and its
-`register_widget_factory` example shows a zero-arg lambda while the real
-`WidgetFactory` takes `const std::string& instance_id`
-(`include/panel_widget_registry.h:17`). The wrong signature is actively misleading
-to anyone adding a widget, so fix that example.
-
-`docs/devel/LAYOUT_SYSTEM.md:462-500` "Widget span authoring" is still written in
-cell units and says "`tips` is the honest example: authored 4 wide, minimum 2" when
-it is now 8/4 in tracks. **That section is squarely Task 13's scope on this branch.**
-Flag it to the branch owner rather than rewriting it here.
+- **D1.** `helix::tune::set_speed_percent` / `set_flow_percent` (`include/tune_controller.h`),
+  clamps speed 50..200 and flow 75..125; `volumetric_flow_mm3_s` and
+  `status_speed_flow_text` share the readout.
+- **D2.** `helix::zoffset::adjust(api, ps, session_base_mm, current_offset_mm, delta_mm)`
+  (`include/z_offset_utils.h#"AdjustResult adjust("`), +/-2 mm session travel, absolute `Z=` where the
+  firmware persists the offset; step table `kZStepAmountsMm` with
+  `persisted_step_index()` / `set_persisted_step_index()`, persisted per printer.
+- **D3.** `helix::BedCoordMapper` (`include/bed_coord_mapper.h`).
+- **D4.** `helix::bed_dimensions(api, ps)` (`include/bed_dimensions.h#bed_dimensions`),
+  centre-origin beds included.
+- **D5.** `helix::axis_is_homed(ps, Axis)` and `toolhead_is_homed(ps)`
+  (`include/toolhead_homing.h`).
+- **D6 (open, not on the widget path).** `dryer_current_temp_text`,
+  `dryer_target_temp_text` and `dryer_time_text` have no writer, and the scalar `dryer_*`
+  subjects follow `dryer_mirror_unit_`, which tracks whichever unit the environment overlay
+  last browsed. The `dryer` widget does not read them: it reads the per-unit
+  `ams_env_ind_<i>_*` subjects and `get_environment_zones()`. D6 is cleanup for whoever
+  next touches `src/printer/ams_state_dryer.cpp`: write or delete the three text subjects
+  and the stale `AmsDryerCard` comment.
 
 ## Batch 1: binding widgets
 
 ### 1. Speed / flow override (`speed_flow`)
 
-Two rows, speed and flow, each with a value readout and `-`/`+` steppers at 5%.
-Long-press either row resets that axis to 100%. Reads `speed_factor` / `flow_factor`
-directly; writes through `helix::tune` (D1). No hardware gate.
+| Rung | Idle | Printing |
+|------|------|----------|
+| 0.5x0.5 | Speedometer icon + speed % | Same; with physical units on, the measured speed replaces the % |
+| 1x0.5 / 0.5x1 | Speed and flow percentages, "%" dropped | Same; with physical units on, measured values replace the percentages |
+| 1x1 | Speed and flow percentages | Percentages, each with its measured value under it (mm/s, mm³/s) |
+| 2x1 | Labelled rows: "Speed" / "Flow" + % | % primary, measured value at the right |
+| 2x2+ | Read-only labelled values, no steppers | Inline `-`/`+` steppers at 5% per row; long-press a value resets that axis to 100%; measured value in the row header |
 
-Spans (tracks): default `4x2`, min `4x2`, max `8x4`. The steppers need horizontal
-room, so the minimum is two cells wide rather than one.
+- **Colour:** each percentage draws through `override_status(pct)`: amber when off 100,
+  at every rung.
+- **Physical units.** `DisplaySettingsManager::get_speed_flow_physical_units()`
+  (`include/display_settings_manager.h`) applies only to the rungs below 1x1-printing,
+  and only while printing: those show the measured value instead of the %. Rungs with
+  room show both, % primary, whatever the setting.
+- **Data:** `speed_factor` and `flow_factor` (int %, default 100, from
+  `src/printer/printer_motion_state.cpp#update_from_status`; flow is Klipper's
+  `extrude_factor`). Measured speed is `live_velocity` (mm/s); volumetric flow is
+  `helix::tune::volumetric_flow_mm3_s(live_extruder_velocity, filament diameter)` with the
+  diameter from `PrinterDiscovery::filament_diameter_mm()`. Text composes through
+  `helix::tune::status_speed_flow_text()`, the composer the print-status readout uses
+  (`PrintProgressText::refresh_speed_flow`). Measured values are drawn only while printing,
+  where a 0 means stopped rather than unknown.
+- **Actions:** steppers call `helix::tune::set_speed_percent` / `set_flow_percent` with
+  the current value +/-5; long-press calls them with 100.
+- **Tap** outside the steppers: `get_print_tune_overlay().show(parent_screen, api,
+  printer_state)` (`include/ui_print_tune_overlay.h#get_print_tune_overlay`), idle or
+  printing.
+- **Gate:** none.
+- **Verdict:** rung, `show_measured` (printing and the rung has room
+  or physical units apply), `show_steppers` (Full and printing).
 
 ### 2. Live Z-offset (`z_offset`)
 
-Large current-offset readout (`gcode_z_offset`, microns, formatted via the existing
-`z_offset_utils::format_offset_compact`), `-`/`+` at the persisted step, and a Save
-button. Save is gated exactly as the Controls card is today
-(`ui_xml/controls_panel.xml:98-103`): visible only when `z_offset_can_save`, hidden
-when the offset is zero, disabled during `print_active`. Adjust goes through
-`helix::zoffset::adjust` (D2); Save through the existing
-`helix::zoffset::apply_and_save`. Tapping the readout opens the tune overlay for
-step selection.
+| Rung | Idle and printing |
+|------|-------------------|
+| 0.5x0.5 | Icon + value, 2 decimals |
+| 1x0.5 / 0.5x1 | Icon + value, 3 decimals |
+| 1x1 | Icon, value, and a caption: "mm Z-offset", or "<delta> unsaved" while a session delta is pending |
+| 2x1 | 1x1 content + a `<z_offset_indicator>` cross-section, and a Save button |
+| 2x2+ | Up/down steppers at the persisted step, a step chip, Save under the steppers; "Tool N" label on a tool changer |
 
-`z_offset_can_save` is 0 only for `ZOffsetCalibrationStrategy::FIRMWARE_MANAGED`
-(`src/printer/printer_state.cpp:1015-1019`), so no separate hardware gate is needed.
+- **Value:** `helix::zoffset::displayed_z_offset_microns(PrinterState&)`
+  (`include/z_offset_utils.h#displayed_z_offset_microns`), published into a widget-owned
+  subject. Never bind `gcode_z_offset`: firmware that persists the offset outside
+  `gcode_move` reads 0 there at idle (`Z_OFFSET_PERSISTENCE.md`). On a tool changer the
+  value is the active tool's offset.
+- **Caption delta:** `pending_z_offset_delta`.
+- **Colour:** the value draws through `z_offset_status(z_offset_save_available)`: amber
+  while there is something to save.
+- **Save:** from 2x1 up. Hidden unless `z_offset_save_available`
+  (`helix::zoffset::init_save_available_subject`, the whole save rule including dirty
+  per-tool offsets), disabled while `print_active`. Calls
+  `helix::zoffset::save_dirty_offsets_shared()`.
+- **Steppers:** 2x2+, live both idle and printing. Each press calls
+  `helix::zoffset::adjust(api, ps, session_base_mm, current_offset_mm, +/-step)`. The step
+  is `kZStepAmountsMm[persisted_step_index()]`; the chip cycles the table and writes
+  `set_persisted_step_index()`, shared with the tune overlay.
+- **Indicator:** `<z_offset_indicator>` (`include/ui_z_offset_indicator.h`), auto-ranging.
+  Microns convert with `std::lround(mm * 1000.0)`; the tune overlay's indicator feed in
+  `src/ui/ui_print_tune_overlay.cpp` truncates with `static_cast<int>`, and this widget
+  fixes that call site rather than copying it.
+- **Tap** outside the steppers and Save: the tune overlay.
+- **Gate:** none; adjusting works on any Klipper printer.
+- **Verdict:** rung, decimals (2 or 3), `show_save_row`,
+  `show_steppers`, `show_tool_label`.
 
-Spans (tracks): default `4x2`, min `4x2`, max `8x4`.
+### 3. Filament drying (`dryer`)
 
-### 3. Filament dryer (`dryer`)
+Three independent drying sources, read per source:
 
-Progress arc plus target temp and remaining time. **`dryer_progress_pct` is -1 when
-not drying** (`include/ams_types.h:1533-1543`, and the subject default is also -1 at
-`src/printer/ams_state.cpp:345`) - the arc must special-case negative rather than
-render it as 0. Idle state shows "Not drying" with the arc empty.
+| Source | Availability | Live state | Opens |
+|--------|--------------|------------|-------|
+| Box dryers, per unit | a zone with `dryer.supported` in `backend->get_environment_zones(unit)` | per-unit `ams_env_ind_<i>_*` (`AmsState::get_env_ind_drying_active_subject(unit)`, `_drying_text_`, `_temp_text_`, `_humidity_text_`); `ams_units_dryer_version` bumps when the set of running dryers changes; `EnvironmentZone::dryer` (`DryerInfo`) carries remaining and duration minutes and temps | `open_environment_for_unit(unit)` (`include/ui_ams_environment_overlay.h`) |
+| Chamber-heater drying | `printer_has_chamber_dryer` | `chamber_dryer_active`, `chamber_dryer_text`; `TemperatureController::chamber_dryer()` returns its `DryerInfo` | `ChamberDryerModal::show_owned()` |
+| Bed drying | `printer_can_bed_dry` | `bed_drying_state` (0 idle), `bed_drying_text`, from `BedDryingController` | `BedDryingModal::show_owned()` |
 
-Tapping opens the existing `AmsEnvironmentOverlay`
-(`src/ui/ui_ams_environment_overlay.cpp:762-769`), which already owns presets,
-temp/duration entry, start/stop, and clamping to
-`DryerInfo::min_temp_c/max_temp_c/max_duration_min`. The widget does not implement
-its own start/stop.
+The widget never reads the scalar `dryer_*` subjects (D6): they follow the overlay's
+browsing.
 
-Hardware gate: `dryer_supported` (`src/printer/ams_state.cpp:340`). Prefer it over
-`dryer_info_visible`, which is a display-intent flag that happens to carry the same
-value today.
+| Rung | Nothing drying | Drying |
+|------|----------------|--------|
+| 0.5x0.5 | Icon + highest box RH | Progress ring + time left |
+| 1x0.5 / 0.5x1 | Highest RH | Time left + temperature |
+| 1x1 | "NN% RH" / "Not drying" | Ring + time left + current/target temperature |
+| 2x1 | "NN% RH" / "Not drying" | One source: ring + source name (+ material) + temps + RH + end time. Two or more: "N drying" with each source's time left |
+| 2x2+ | One row per source (idle boxes included): name, progress bar, time, temperature, RH; more rows when taller | Same rows |
 
-**Backend coverage is narrow.** `get_dryer_info` is implemented by ACE
-(`ams_backend_ace.cpp:581-647`), QIDI Box (`ams_backend_qidi.cpp:1464-1560`),
-Happy Hare (`ams_backend_happy_hare.cpp:2889-2960`), and Mock
-(`ams_backend_mock.cpp:1318-1470`). CFS, AFC, Snapmaker, AD5X/IFS, and Toolchanger
-inherit `DryerInfo{.supported=false}` (`include/ams_backend.h:1421-1423`) and will
-not show the tile. **The AFC/BoxTurtle rig cannot exercise this widget** - verify
-against `HELIX_MOCK_DRYER` (`docs/devel/FILAMENT_MANAGEMENT.md:3130`).
+Print state does not change this layout.
 
-Spans (tracks): default `2x2`, min `2x2`, max `6x4`.
+- **Highest RH** is the maximum `EnvironmentData::humidity_pct` across every unit's zones
+  that report humidity. A tile on a printer with no humidity source shows "Not drying"
+  alone.
+- **Progress** is `1 - remaining / duration` from each source's `DryerInfo`. A source
+  whose progress is unknown publishes -1 (the convention `dryer_progress_pct` uses) and
+  draws its time text with no ring, never a ring at 0.
+- **No start or stop on the tile.** Below 2x2 a tap opens the environment overlay
+  (`open_environment_for_unit`, which picks the zone overview when there are several);
+  with only chamber or bed drying available it opens that source's modal. At 2x2+ tapping
+  a row opens that row's source.
+- **New prerequisites:**
+  - `helix::DryerSummary`, a pure function over the box zones, the chamber `DryerInfo`
+    and active flag, and the bed state, returning the source rows, the drying count, the
+    highest RH and availability. A small model observes the three sources'
+    subjects and `ams_units_dryer_version`, runs it, and publishes the widget's subjects.
+  - `home_dryer_available`, published by that model (any box zone with a dryer, or
+    `printer_has_chamber_dryer`, or `printer_can_bed_dry`), as the registry's
+    `hardware_gate_subject`. It registers before the panel widget manager resolves gates.
+  - A bed drying progress value: `BedDryingController` tracks the run in `tick()` but
+    publishes only state and text. It gains a remaining/duration accessor (or a
+    `bed_drying_progress_pct` subject) so the bed row can draw a ring.
+- **Verify** with `HELIX_MOCK_DRYER` for box dryers, and a mock persona with a chamber
+  dryer and with bed drying for the other two sources (`MOCK_ENVIRONMENT_VARIABLES.md`).
+- **Verdict:** rung, `show_ring`, `row_count` (rows that fit at 2x2+).
 
 ## Batch 2: canvas widgets
 
 ### 4. Host health (`host_health`)
 
-Reuses `<helix_sparkline>` wholesale - it is already an XML-registered widget
-(`src/ui/helix_sparkline.cpp:141-145`, registered from
-`src/application/application.cpp:1696`) drawing on `LV_EVENT_DRAW_MAIN_END` with no
-canvas buffer, auto-scaling to the window, taking its color from
-`lv_obj_get_style_line_color` so `bind_style` can drive thresholds.
+| Rung | Idle | Printing |
+|------|------|----------|
+| 0.5x0.5 | Chip icon tinted by the worst status + the metric that caused it (CPU % when Normal) | Same |
+| 1x0.5 | CPU %, temperature | Same |
+| 0.5x1 | CPU %, temperature, memory | Same |
+| 1x1 | CPU % + 60 s sparkline, "temp · mem" line | Same |
+| 2x1 | CPU and Mem sparkline rows | CPU row + busiest MCU (load, retransmits) |
+| 2x2+ | Throttle warning line (hidden when clear); host block: CPU and Mem sparklines, temperature, memory free, disk free; then one row per MCU (sparkline, load, retransmits); more MCUs when taller | Same |
 
-History is real: a 60-sample ring at 1 Hz (`include/performance_state.h:22`,
-`:118-127`), read via `PerformanceState::read_history(name)`
-(`src/system/performance_state.cpp:113-126`), populated for `host_cpu_pct`,
-`host_mem_pct_used`, and per-MCU load. **There is no ring for CPU temperature** -
-add one `push_history("host_cpu_temp_c", ...)` line in `apply_sample`
-(`performance_state.cpp:135-150`); the ring map is keyed by string so no struct
-change is needed.
-
-Throttle state is a raw Pi bitmask, already decoded into `perf_host_throttle_text`
-by `MoonrakerPerformanceSource::format_throttle_text`
-(`src/system/moonraker_performance_source.cpp:286-317`). Bind the text; do not
-re-decode. Hide the row with
-`<bind_flag_if_eq subject="perf_host_throttle_state" flag="hidden" ref_value="0"/>`,
-the idiom already used at `ui_xml/performance_overlay.xml:20`.
-
-Progressive disclosure, keyed off pixel bands in `on_size_changed`:
-
-| Condition | Shows |
-|---|---|
-| below `W_NORMAL` | CPU% + sparkline |
-| `width_px >= W_NORMAL` | adds memory % + sparkline |
-| `height_px >= H_TALL` | adds CPU temp + sparkline, and the throttle row |
-
-Tapping opens the existing Performance overlay (`src/ui/ui_overlay_performance.cpp`).
-
-**Lifetime trap:** the `perf_*` subjects are torn down and recreated on reconnect
-and printer switch. Every observer must pass
-`PerformanceState::instance().subjects_lifetime()`, as `helix_sparkline.cpp:36-42`
-and `ui_overlay_performance.cpp:37-52` do.
-
-Hardware gate: `perf_available`.
-
-Spans (tracks): default `4x2`, min `2x2`, max `8x6`.
+- **Data** (`include/performance_state.h`, namespace `helix::perf`):
+  `perf_host_cpu_pct`, `perf_host_mem_pct_used`, `perf_host_cpu_temp_c10` with
+  `perf_host_cpu_temp_present`, `perf_host_mem_free_mb`, `perf_host_throttle_state`,
+  `perf_host_throttle_text`, `perf_host_cpu_pct_text`, `perf_host_mem_free_text`,
+  `perf_mcu_names` and per-MCU `perf_mcu_<name>_{load_pct,retrans,present,text}`. Source:
+  `MoonrakerPerformanceSource` at about 1 Hz; the mock source in `--test`.
+- **History:** `PerformanceState::read_history(name)`, 60 samples, for `host_cpu_pct`,
+  `host_mem_pct_used` and `mcu_<name>_load_pct`.
+- **Throttle:** bind `perf_host_throttle_text`; never re-decode the bitmask.
+- **Status colour:** `host_health_status()` over the latest sample plus the previous MCU
+  retransmit counts. The verdict publishes the status and a cause enum; the glance binds
+  the cause to pick which value it shows.
+- **Sparklines:** `<helix_sparkline>` (`src/ui/helix_sparkline.cpp`), which draws on
+  `LV_EVENT_DRAW_MAIN_END` with no buffer and takes its colour from the line style, so
+  `bind_style` drives the tint.
+- **Lifetime:** the `perf_*` subjects are torn down and recreated on reconnect and printer
+  switch. Every observer passes `PerformanceState::instance().subjects_lifetime()`.
+- **New prerequisite: disk free.** `PerfSample` (`include/performance_source.h`) gains
+  disk total and free; `apply_sample` publishes `perf_host_disk_free_mb` and
+  `perf_host_disk_free_text`. Moonraker's `/machine/system_info` carries no free-space
+  figure; the source is the `disk_usage` block of `server.files.get_directory` on the
+  `gcodes` root, fetched at a slow cadence (once a minute), not per sample. The mock
+  source synthesizes it.
+- **Gate:** `perf_available`. It reads 0 until the first sample, so the widget can appear
+  a second after connect.
+- **Tap:** the Performance overlay, via `get_system_settings_overlay().open_performance()`
+  (`include/ui_settings_system.h`).
+- **Verdict:** rung, `show_mcu_row` (2x1 printing), `mcu_rows`
+  (2x2+).
 
 ### 5. Toolhead position / homing (`toolhead`)
 
-The only genuinely new drawing in this design. A top-down plate rectangle with a
-crosshair at the current X/Y, a Z bar down one side, and unhomed axes drawn in the
-error color.
+| Rung | Idle | Printing |
+|------|------|----------|
+| 0.5x0.5 | Homed letters XYZ, green when homed, red when not | Z height |
+| 1x0.5 | Homed letters | Z height |
+| 0.5x1 | X / Y / Z values, a dash placeholder for an unhomed axis | Same |
+| 1x1 | Three axis rows with a homed dot (the Controls card's language) | Same |
+| 2x1 | Top-down plate + crosshair + Z bar + XYZ values | Same |
+| 2x2+ | Homed: plate, crosshair, Z bar, XYZ. Unhomed: dashed plate, "Position unknown", red letters, Home All button | Larger plate, XYZ row, active tool + live speed |
 
-Pattern: `LV_EVENT_DRAW_MAIN_END` on a plain `lv_obj`, following
-`src/ui/helix_sparkline.cpp:22-121` - impl pointer passed as *per-callback*
-`user_data` and retrieved with `lv_event_get_user_data`, `LV_EVENT_DELETE` callback
-deleting the impl, drawing with `lv_draw_*` into `lv_event_get_layer(e)` in absolute
-coords. Not an `lv_canvas`; no buffer to own or tear down.
-
-**Use `DRAW_MAIN_END` or `DRAW_POST`, never `LV_EVENT_DRAW_TASK_ADDED`.** In LVGL
-9.5 `DRAW_TASK_ADDED` fires *after* those two, so `lv_draw_*` calls from it silently
-draw nothing - this broke chart gradient fills that worked pre-9.5. The constraint is
-already noted in `src/ui/helix_sparkline.cpp:30-32`.
-
-Note no panel widget currently draws custom graphics - they all compose XML. The
-proven route is TempGraphWidget's: the widget owns a C++ component instantiated in
-`attach()` (`src/ui/panel_widgets/temp_graph_widget.cpp:69-113`).
-
-- **Coordinates:** `helix::BedCoordMapper` (D3).
-- **Bed size:** `helix::bed_dimensions(api)` (D4), re-resolved when
-  `api->get_build_volume_version_subject()` bumps
-  (`include/i_moonraker_api.h:305`), observed the way
-  `src/ui/ui_panel_bed_mesh.cpp:917-930` does it.
-- **Homing:** through `toolhead_homing.h` (D5).
-- **Units:** `position_x/y/z` are centimillimetres, mm x 100
-  (`printer_motion_state.cpp:79-92`). `gcode_z_offset` is microns - different scale,
-  do not mix.
-- **Redraw:** positions fire ~4-10 Hz during a print with no client-side rate
-  limiting, and three separate observers would each invalidate. All observers funnel
-  into one `CoalescedTimer{0}` member calling `schedule_once([this]{ lv_obj_invalidate(obj_); })`.
-  `schedule()` is the trailing-edge debounce and would starve under a continuous
-  producer; `schedule_once` is leading-edge and fires at a bounded rate
-  (`src/ui/ui_coalesced_timer.cpp:53-62`). Never `lv_async_call` from a draw path -
-  it mallocs and creates a one-shot timer per call, which is the bug commit
-  `0f145b14c` fixed. Do not `memset` any struct holding a `CoalescedTimer`.
-
-Spans (tracks): default `4x4`, min `2x2`, max `8x8`.
+- **Positions** (`PrinterMotionState`, centimillimetres): `live_position_*` while the
+  toolhead moves, `position_*` otherwise. `gcode_z_offset` is microns; never mix scales.
+- **Homing:** `helix::axis_is_homed(ps, Axis)` / `toolhead_is_homed(ps)`
+  (`include/toolhead_homing.h`). Never bind ControlsPanel's `x_homed` family; another
+  panel's `SubjectManager` owns those.
+- **Plate geometry:** `helix::bed_dimensions(api, ps)` mapped through
+  `helix::BedCoordMapper`, re-resolved when `api->get_build_volume_version_subject()`
+  bumps. `get_axis_bounds()` bounds the Z bar. Kinematics decide the drawing:
+  `printer_bed_moves` (bed vs gantry Z), and a delta draws a round plate.
+- **Home All:** 2x2+ only, hidden when homed and while printing; sends `G28` with no
+  confirmation prompt.
+- **Live speed** (2x2+ printing): `live_velocity`. **Active tool:** `ToolState`.
+- **Tap:** `get_global_motion_panel().show(...)`, as `MotionWidget::handle_click` does.
+- **Gate:** none.
+- **Drawing.** A plain `lv_obj` with an `LV_EVENT_DRAW_MAIN_END` handler, following
+  `src/ui/helix_sparkline.cpp`: the impl pointer as per-callback `user_data`, an
+  `LV_EVENT_DELETE` callback freeing it, `lv_draw_*` into `lv_event_get_layer(e)` in
+  absolute coordinates. Not an `lv_canvas`. Use `DRAW_MAIN_END` or `DRAW_POST`, never
+  `LV_EVENT_DRAW_TASK_ADDED`: in LVGL 9.5 it fires after those, and `lv_draw_*` calls from
+  it draw nothing.
+- **Redraw cap, about 4 Hz.** Position subjects can update far faster than that during a
+  move. Every position and homing observer funnels into one `CoalescedTimer` member
+  calling `schedule_once([this]{ lv_obj_invalidate(obj_); })` with a 250 ms period.
+  `schedule_once` is leading-edge and bounded; `schedule()` is trailing-edge and starves
+  under a continuous producer (`include/ui_coalesced_timer.h`). Never `lv_async_call`
+  from a draw path, and never `memset` a struct holding a `CoalescedTimer`.
+- **Verdict:** rung, `show_plate`, `show_home_button`.
 
 ### 6. Bed mesh heightmap (`bed_mesh_tile`)
 
-No new rendering. `<bed_mesh>` is already an XML-registered widget
-(`src/ui/ui_bed_mesh.cpp:606-609`) that renders on `LV_EVENT_DRAW_POST` and has a 2D
-heatmap fast path (`BedMeshRenderMode`, `include/bed_mesh_renderer.h:16-20`). At tile
-size: force `Force2D`, leave async mode **off** (the render thread plus a 600x400
-blit buffer is far too heavy for a dashboard cell), skip the touch-drag handlers
-(`ui_bed_mesh.cpp:571-578`).
+| Rung | Idle and printing (static during a print) |
+|------|-------------------------------------------|
+| 0.5x0.5 | Grid icon + range, tinted; grid-off icon when no mesh is loaded |
+| 1x0.5 / 0.5x1 | Small heatmap + range |
+| 1x1 | Heatmap + range, or "No mesh loaded" |
+| 2x1 | Heatmap + profile name, range, min..max, grid size |
+| 2x2 | 2D heatmap + colour scale + profile name + profile count. No mesh and idle: Calibrate and Load profile buttons |
+| 3x3+ (`Large`) | Static, non-interactive 3D render on full-tier boards; 2D elsewhere |
 
-Feed it through the public C API - `ui_bed_mesh_set_data(canvas, mesh, rows, cols)`
-and `ui_bed_mesh_set_bounds(...)` - copying the panel's feed path
-(`src/ui/ui_panel_bed_mesh.cpp:846-878`, `:938-953`).
-
-**Data trap:** do not bind `bed_mesh_available`. That subject and its siblings are
-declared globally (`src/ui/ui_panel_bed_mesh.cpp:159-228`, run at boot from
-`subject_initializer.cpp:456-458`) but only *written* from the panel's create path
-(`:288`, `:291`), so a home tile reads a stale 0 until the user opens the Bed Mesh
-panel. Read `api->advanced().has_bed_mesh()` / `get_active_bed_mesh()`
-(`include/moonraker_advanced_api.h:122`, `:152`) instead - that cache is warm from
-connect because `bed_mesh` rides the union subscription
-(`src/api/moonraker_discovery_sequence.cpp:1172-1175`).
-
-Do not re-call `ui_bed_mesh_set_data` on every notification; gate on profile name or
-matrix change. The renderer has its own FPS governance, so do not wrap it in an
-additional timer.
-
-Tapping opens the Bed Mesh panel. Hardware gate: `printer_has_bed_mesh`.
-
-Spans (tracks): default `4x4`, min `4x4`, max `12x8`. A heatmap below two cells
-square is unreadable, so the minimum is deliberately larger than the others.
+- **Colour:** the range draws through `mesh_flatness_status(range_mm)`: green below
+  0.15 mm, amber below 0.30 mm, red above.
+- **New prerequisite: mesh stats in shared state.** The `bed_mesh_*` subjects
+  (`bed_mesh_available`, `_profile_name`, `_dimensions`, `_max_value`, `_min_value`,
+  `_variance`, `_profile_count`) are owned by `BedMeshPanel` and written only from
+  `BedMeshPanel::on_mesh_update_internal`, whose subscription starts when the panel is
+  created, so a home tile reads stale values until the user opens the panel. Move them
+  into a state owner that exists from connect:
+  - A pure `helix::compute_mesh_stats(const BedMeshProfile&)` returning min, max, range,
+    grid size and whether a mesh is loaded (`probed_matrix_has_mesh()`,
+    `include/bed_mesh_presence.h`, since Klipper reports `[[]]` for none). The panel's
+    update path calls the same function.
+  - The state owner subscribes to `bed_mesh` notifications through the API (the cache
+    behind `api->advanced().get_active_bed_mesh()` is warm from connect because
+    `bed_mesh` rides the union subscription), publishes the subjects, and bumps a
+    `bed_mesh_version` subject on every profile or matrix change. The panel binds the
+    moved subjects unchanged.
+- **Rendering.** `<bed_mesh>` (`include/ui_bed_mesh.h`) renders on
+  `LV_EVENT_DRAW_POST` and has a 2D heatmap path. Below `Large`, and on boards that are
+  not full-tier, the tile sets `BedMeshRenderMode::Force2D` through
+  `ui_bed_mesh_set_render_mode`, leaves `ui_bed_mesh_set_async_mode` off, and installs no
+  touch-drag handlers. Feed it with `ui_bed_mesh_set_data` and `ui_bed_mesh_set_bounds`,
+  mean-normalized and offset with `ui_bed_mesh_set_z_display_offset` as the panel does,
+  and only when `bed_mesh_version` bumps. The renderer governs its own frame rate; wrap it
+  in no extra timer.
+- **3D cost.** The 3D rung renders synchronously. Measure its frame time on a full-tier
+  board before enabling it; if the synchronous render does not hold the frame rate, the
+  rung draws 2D and the async render thread stays off the tile.
+- **Calibrate** homes first through `helix::ensure_homed_then()`
+  (`include/toolhead_homing.h`), no prompt, then sends `BED_MESH_CALIBRATE`. **Load
+  profile** opens the Bed Mesh panel's profile list. Both hidden while printing.
+- **Tap:** `get_global_bed_mesh_panel().show(screen)`.
+- **Gate:** `printer_has_bed_mesh` (a configured `[bed_mesh]`, not a loaded mesh).
+- **Verdict:** rung, `has_mesh`, `show_actions`, `render_3d`.
 
 ## Batch 3: exclude-objects mini-map (`exclude_map`)
 
-**Read-only tile.** It renders first-layer outlines with excluded objects shown as
-excluded; tapping anywhere opens the existing full map view in print status, where
-the destructive action stays behind its existing guards. Those guards are good -
-a confirmation modal ("Stop printing X? This cannot be undone after 5 seconds")
-plus a 5-second undo window with a toast action button, and the RPC only fires when
-the undo timer expires (`src/ui/ui_print_exclude_object_manager.cpp:135-243`,
-`:290-340`). At tile size the 28 px minimum touch rects
-(`ui_exclude_object_map_view.h:MIN_TOUCH_TARGET_PX`) inflate and overlap, making
-per-object hit testing ambiguous - which is exactly the wrong property for an
-irreversible action.
+| Rung | Printing, two or more objects |
+|------|-------------------------------|
+| 0.5x0.5 | Icon + remaining/total ("5/6") |
+| 1x0.5 | "N objects · M skipped" |
+| 0.5x1 | Tiny map + count |
+| 1x1 | Outlines only (current object bright, excluded hatched) + "5 of 6 printing" |
+| 2x1 | Map + "Now printing <name>" + counts |
+| 2x2+ | Larger map + name + count + a "Skip objects..." button that navigates only |
 
-The renderer is genuinely panel-independent: `create()` takes a parent, a
-`PrinterExcludedObjectsState*`, bed dimensions, and a `PrintExcludeObjectManager*`
-(`include/ui_exclude_object_map_view.h:26-79`). Polygon data is global state -
-parsed from the `exclude_object` subscription
-(`src/api/moonraker_discovery_sequence.cpp:1178`) into
-`PrinterExcludedObjectsState::object_geometry_`
-(`include/printer_excluded_objects_state.h:36-43`, `:228`).
+Not printing, or fewer than two objects (`defined_objects_count < 2`): a quiet
+placeholder at every rung, icon + "No objects" or "Single object".
 
-Four things must change for it to work as a tile:
-
-1. **`static ExcludeObjectMapView* g_active_map_view`** (`ui_exclude_object_map_view.cpp:21`)
-   makes the class single-instance; with a tile and the print-status view both live,
-   the close button routes to whichever was created last. Replace the global with
-   per-instance routing.
-2. **No resize path.** `create()` reads `lv_obj_get_width/height(plate_area_)`
-   immediately after `lv_obj_update_layout` (`:218-238`) to build the mapper and the
-   canvas buffer, and there is no `LV_EVENT_SIZE_CHANGED` handler anywhere in the
-   class. A tile whose real size arrives later via `on_size_changed` would build a
-   0x0 mapper (scale 0, every rect collapsed to the 28 px floor) and no canvas. Add
-   a rebuild-on-resize path.
-3. **`ignore_layout="true"` with a 100%/100% root** (`ui_xml/components/exclude_object_map.xml:6-8`)
-   assumes it covers its parent. The mini mode must take a normal layout slot.
-4. **A mini render mode**: outlines only - no key bar (`style_max_height="48"`), no
-   dims label, no close button, no 22x22 number badges. Those are fixed-size and
-   dominate a small tile.
-
-Availability: bind `defined_objects_count`, which is state-owned and global
-(`src/printer/printer_excluded_objects_state.cpp:32`, written at `:72`) and
-currently bound by no XML. Do **not** use `exclude_objects_available` or
-`exclude_map_active` - both are `PrintStatusPanel`-owned
-(`src/ui/ui_panel_print_status.cpp:142`, `:475`), and `exclude_map_active` exists
-purely to hide that panel's own thumbnail.
-
-Spans (tracks): default `4x4`, min `4x4`, max `8x6`.
+- **Read-only at every size.** The tile never excludes anything. A tap, or "Skip
+  objects...", opens the full map in print status, where the confirmation modal and the
+  5-second undo window guard the irreversible RPC
+  (`src/ui/ui_print_exclude_object_manager.cpp`). At tile size the minimum touch rects
+  (`BedCoordMapper::MIN_TOUCH_TARGET_PX`) inflate and overlap, so per-object hit testing
+  would be ambiguous, which is the wrong property for an irreversible action.
+- **Data:** `PrinterExcludedObjectsState` via `excluded_objects_state()`:
+  `defined_objects_count`, `defined_objects_version`, `excluded_objects_version`,
+  `get_defined_objects()`, `get_excluded_objects()`, `get_current_object()` (no subject;
+  read on a version bump and on each status update), `get_object_geometry(name)`.
+  Remaining = defined minus excluded.
+- **Outlines:** parsed G-code first-layer outlines when the active print has a parse,
+  else Klipper's polygon, else its bbox: the same rule as the full map.
+- **Gate:** `printer_has_exclude_object`. Never `exclude_objects_available` or
+  `exclude_map_active`: both are `PrintStatusPanel`-owned.
+- **New prerequisites:**
+  1. **A public entry into the full map.** `PrintStatusPanel::show_exclude_map_view()` is
+     private. Add a public method that navigates to print status and opens exclude mode
+     through its `ExcludeModeController`, and call it from the tile.
+  2. **An outline source independent of print status.** The parse reaches the map today
+     only through print status's G-code viewer (`ui_gcode_viewer_get_parsed_file`). The
+     tile needs an accessor for the active print's parse that does not require the print
+     status panel to exist; without one it draws Klipper geometry.
+  3. **A resize path in `ExcludeObjectMapView`.** `create()` sizes the mapper and canvas
+     from the plate area once; there is no `LV_EVENT_SIZE_CHANGED` handling. A tile whose
+     size arrives through `on_size_changed` needs a rebuild on resize.
+  4. **A normal layout slot.** `ui_xml/components/exclude_object_map.xml` roots the view
+     with `ignore_layout="true"` at 100%/100% to cover the print-status card. The mini
+     mode takes a normal slot in the tile.
+  5. **A mini render mode:** outlines only, no number badges, no dims label, no close
+     button, hatching for excluded objects.
+- **Verdict:** rung, `placeholder` (not printing or fewer than two
+  objects), `show_skip_button`.
 
 ## Carried fix: pre-print in the detailed layout
 
-`ui_xml/components/panel_widget_print_status.xml:162-175` binds `print_start_phase`,
-`print_start_progress`, `print_start_message`, and `print_start_time_left` in a
-`print_card_preparing_info` block, and `PrintStartCollector` drives those subjects
-app-globally (`src/print/print_start_collector.cpp`, owned by `MoonrakerManager`),
-so they populate whether or not any panel exists.
-
-But that block lives in `print_card_layout`, hidden unless `print_status_view == 3`
-(`:152`). `update_view_subject()` (`src/ui/panel_widgets/print_status_widget.cpp:637-646`)
-selects view `4` for the detailed non-compact layout, and
-`ui_xml/components/print_status_detailed_active.xml` contains **no** `print_start_*`
-bindings at all. During the ~95 s preparing window the detailed card therefore shows
-an arc at ~0% and `"0h 00m / 0h 00m"` with no phase indication.
-
-**Change:** add the preparing block to `print_status_detailed_active.xml`, bound to
-the same subjects and hidden on `print_start_phase == 0` (IDLE). Phases are
-enumerated at `include/printer_state.h:156-168`.
+`ui_xml/components/panel_widget_print_status.xml` binds `print_start_phase`,
+`print_start_progress`, `print_start_message` and `print_start_time_left` in the compact
+card's preparing block, and `PrintStartCollector` drives those subjects app-globally. The
+detailed active layout, `ui_xml/components/print_status_detailed_active.xml`, binds none
+of them, so during the preparing window it shows an arc near 0% and zero times with no
+phase. Add the preparing block there, bound to the same subjects and hidden on
+`print_start_phase == 0`.
 
 ## Per-widget authoring checklist
 
-For each of the seven, in this order:
+1. `src/ui/panel_widgets/<id>_layout.h`: the pure decision function and verdict struct,
+   calling `choose_size_rung()`. Its tests come first (see Testing).
+2. `src/ui/panel_widgets/<id>_widget.{h,cpp}`: subclass `PanelWidget`; `attach()`,
+   `detach()`, `on_size_changed()` (measure and publish only), `fits_at()`. Instances are
+   recycled across rebuilds, so the publish runs from `attach()` too.
+3. `register_<id>_widget()`: forward-declare it in `src/ui/panel_widget_registry.cpp` and
+   call it from `init_widget_registrations()`; register the verdict subjects there.
+4. Registry row in `s_widget_defs` with the spans from the table above, both half-cell
+   flags set, and the gate subject.
+5. `ui_xml/components/panel_widget_<id>.xml` (the name must be exactly
+   `panel_widget_<id>`), registered in `src/xml_registration.cpp`. Mark every
+   non-scrolling container `scrollable="false"`.
+6. A row for the id in `expected` in `tests/unit/test_registry_span_bands.cpp`. Add it
+   with placeholder bands, run, read the `INFO` output, pin the real values.
+7. `make t F='[content_fits]'`. The sweep picks up the registry row on its own. A widget
+   that clips at a size `fits_at()` accepts is a bug in the decision function; a
+   `kKnownClipping` entry needs a written reason.
+8. Regenerate derived artifacts: `make regen-tokens` for every new or edited `ui_xml`
+   file; `make translation-sync` then `make translations` for new strings (wrap them in
+   `lv_tr()` or `label_tag`); `make regen-fonts` only for a new icon codepoint, added to
+   both `include/ui_icon_codepoints.h` and `scripts/regen_mdi_fonts.sh`.
+9. Docs and screenshots (below).
 
-1. `src/ui/panel_widgets/<name>_widget.{h,cpp}` - subclass `PanelWidget`, implement
-   `attach()`, `detach()`, `id()`. Branch on `width_px`/`height_px`, never spans.
-   Instances are recycled across rebuilds, so any imperative apply must also run
-   from `attach()`, not only from `on_size_changed()`.
-2. Forward-declare `register_<name>_widget()` in the block at
-   `src/ui/panel_widget_registry.cpp:15-49` and call it in
-   `init_widget_registrations()` (`:165-199`). There is no static self-registration.
-3. Registry row in `s_widget_defs` (`:66-108`), spans in tracks, all even.
-4. `ui_xml/components/panel_widget_<id>.xml` - the component name must be exactly
-   `panel_widget_<id>` unless `get_component_name()` is overridden.
-5. Register it in `src/xml_registration.cpp:495-545`. Skipping this fails the
-   content-fit sweep's `unbuildable == 0` assertion, not just runtime.
-6. Add an 8-entry row to `expected` in `tests/unit/test_registry_span_bands.cpp:173-211`,
-   keyed by the widget id. Non-optional - `REQUIRE` at `:226` fails a missing key.
-   Practical method: add the row with placeholder bands, run, read the `INFO`
-   output, pin the real values.
-7. Run `./build/bin/helix-tests "[content_fits]"`. `RegistryWidgetHarness` sweeps the
-   registry automatically - nothing to register. If the widget clips at its own
-   minimum, fix it; only add a `kKnownClipping` entry
-   (`tests/unit/test_widget_content_fits.cpp:135-185`) with a written reason if the
-   clipping is legitimate.
-8. Seed layouts are optional. An absent span now falls back to the registry
-   (`src/system/panel_widget_config.cpp:99-111`). **Avoid editing
-   `assets/config/default_layout.json` and the preset anchor tables** - three layout
-   design questions about those are parked awaiting Preston on this branch.
-9. **Regenerate derived artifacts.** These gates fail *after* the widget looks
-   finished, in shards unrelated to the tag being iterated on, so a green
-   `[content_fits]` run proves nothing about them:
-   - `make regen-tokens` - **required for every new or edited `ui_xml` file.** Seven
-     new components change the design-token set and stale
-     `src/generated/theme_token_table.cpp`; the failure surfaces as
-     `REQUIRE(table == scanned)` full of `{?}` placeholders under `[theme][tokens]`,
-     roughly shard 83.
-   - `make translation-sync` then `make translations` for any new user-facing string,
-     staging the YAMLs **and** the regenerated `ui_xml/translations/*.xml`. Wrap new
-     strings in `lv_tr("...")` in C++ or `label_tag="<literal>"` in XML. Every one of
-     these seven widgets introduces labels, so this applies to all of them.
-   - `make regen-fonts` only if a widget introduces a new icon codepoint in
-     `include/ui_icon_codepoints.h`.
-   - `make regen-xml-schema` is **not** needed here. The XML linter schema tracks
-     widgets registered through `lv_xml_register_widget`; all seven of these are
-     `PanelWidget` subclasses composing existing components, not new XML widgets.
-     (It *would* be needed if the toolhead draw surface were promoted to a
-     registered widget rather than kept private to its panel widget.)
-
-Registry-wide tests a new row enters automatically: `test_grid_layout.cpp:420`
-(min<=max, default in range), `test_panel_widget_config.cpp` sweeps,
-`test_default_layout.cpp:600` (every non-multi-instance def appears exactly once in
-the default grid), `test_panel_widget_manager.cpp:189` (every `hardware_gate_subject`
-must be XML-registered - relevant for `dryer_supported`, `perf_available`,
-`printer_has_bed_mesh`).
+`test_panel_widget_manager.cpp` requires every `hardware_gate_subject` to be
+XML-registered, which covers `home_dryer_available`, `perf_available`,
+`printer_has_bed_mesh` and `printer_has_exclude_object`.
 
 ## Sequencing
 
-All seven widgets touch the same three shared files - `panel_widget_registry.cpp`,
-`xml_registration.cpp`, and the band table in `test_registry_span_bands.cpp`.
-**Implement them serially in this one worktree.** Parallel agents would collide on
-every one of those files, and the registry table in particular is a single
-contiguous array where concurrent edits produce silent merge damage.
+1. **Shared pieces first**, one commit each with their tests: `size_rung.h` with
+   `choose_size_rung()`, `value_status.h`, and the content-box measurement helper if it
+   has to be lifted out of TileSizing.
+2. **Batch 1:** `speed_flow`, `z_offset`, then `dryer` (after `DryerSummary`,
+   `home_dryer_available` and the bed drying progress value).
+3. **Batch 2:** `host_health` (after disk free), `toolhead`, then `bed_mesh_tile` (after
+   the mesh-stats move, which is the largest prerequisite and lands as its own commit with
+   the panel converted).
+4. **Batch 3:** `exclude_map`, after its five map-view prerequisites.
+5. **Default layout** as the last task, below.
 
-Batch 0 lands first and is verified before any widget is written, because five of
-the seven depend on one of its extractions.
+Every widget edits the same three shared files (`panel_widget_registry.cpp`,
+`xml_registration.cpp`, `test_registry_span_bands.cpp`), so widgets are implemented
+serially in one worktree. Prerequisites that touch none of those (disk free, mesh stats,
+`DryerSummary`, the map-view changes) can run in parallel worktrees and merge ahead of the
+widget that needs them.
+
+Before Batch 1, run `[content_fits]` unfiltered and confirm it reports no
+`[ISOLATION-LEAK]` thread leak: all seven widgets enter that sweep.
 
 ## Testing
 
-- **Gates per batch:** `./build/bin/helix-tests "[span_bands]" "[content_fits]"
-  "[widget_def]" "[default_layout]" "[panel_widget_config]" "[panel_widget_manager]"
-  "[grid_edit]" "[card_merge]"`.
-- **Full suite:** `make test-run` (sharded). Never pipe it through `tail` - that
-  reports the filter's exit code and red reads as green. Redirect to a file and grep.
-- **Unit tests for Batch 0**, written before the extractions: clamp behavior at both
-  ends for `helix::tune`; `helix::zoffset::adjust` rounding, clamping, pending-delta
-  accumulation, and the `MOVE=1` gate flipping with `homed_axes`;
-  `helix::bed_dimensions` fallback chain with each source absent in turn;
-  `BedCoordMapper` Y-flip and center-origin math.
-- **Per-widget size tests** using the typed `PanelWidgetHarness<W>`
-  (`tests/test_helpers/panel_widget_size_harness.h:115-147`) for any widget with
-  progressive disclosure - `host_health` at minimum, since its content changes across
-  three pixel bands.
-- **Mutation-verify one new test per batch**, not all of them; each relink is ~90 s.
-- **Runtime verification** with `--test` and a pinned socket and config dir, driven
-  by `helix-screen ctl` with `SDL_VIDEODRIVER=dummy`. The dryer widget needs
-  `HELIX_MOCK_DRYER`. Widgets needing an active print use `--sim-speed 4-10`.
+- **Decision functions, table-driven,** one `[<id>][layout]` case set per widget. Each
+  rung boundary is pinned exactly (one pixel either side) at the measured content boxes of
+  the medium tier (the four sizes in the pixel-budget table), the large tier's half cells
+  (51x53, 51x112, 108x53) and the micro 1x1 (70x64),
+  for each state the ladder distinguishes (idle, printing, physical units, mesh or no
+  mesh, nothing drying / one / several, placeholder). Each also pins `fits = false` below
+  the `Glance` content and monotonic `fits` across a sweep of sizes.
+- **`choose_size_rung()` and every `helix::status` function**, table-driven at their
+  thresholds (`[size_rung]`, `[value_status]`).
+- **Widget tests** with `PanelWidgetHarness<W>` (`tests/test_helpers/panel_widget_size_harness.h`)
+  asserting the bound outcome per rung (which parts carry HIDDEN, which style is bound),
+  and a `print_active` transition re-deciding the rung.
+- **Prerequisite tests:** `compute_mesh_stats` on a real matrix and on `[[]]`; the stats
+  owner publishing before the panel exists; `DryerSummary` across the three sources;
+  disk-free parsing of a `get_directory` response; the map view rebuilding on resize.
+- **Gates per widget:** `make t F='[span_bands]'`, `[content_fits]`, `[widget_def]`,
+  `[panel_widget_config]`, `[panel_widget_manager]`, `[grid_edit]`, `[card_merge]`.
+  `make mutate-diff` once per branch. `make full-test-run` once, on the batch landing.
+- **Screenshots per rung.** In a `--test` run with a pinned socket and config dir and
+  `SDL_VIDEODRIVER=dummy`, place the widget at each rung's span, capture with
+  `ctl screenshot`, crop with `ctl geom`, at 800x480 and 480x272, idle and printing
+  (`--sim-speed 4-10`). The dryer needs `HELIX_MOCK_DRYER`.
+- **Expected red:** `test_default_layout.cpp`'s "every non-multi-instance def appears once
+  in the default grid" fails from the first widget row until the default layout task.
+  Record it in the batch ledger.
+
+## Documentation and screenshots
+
+**User docs** go in `docs/user/guide/home-panel.md`, one guide page for every home
+widget. Per widget:
+
+1. A row in the right `## Available Widgets` category table. Sizes there are whole cells,
+   so the registry's track spans are halved (a `1x1` track minimum is "0.5x0.5").
+2. A row in `## Widget Interactions` (tap action).
+3. A row in `### Hardware-Gated Widgets` for the gated four: `dryer`, `host_health`,
+   `bed_mesh_tile`, `exclude_map`.
+4. An optional deep-dive `##` section with its own screenshot, as `## Clog Detection
+   Widget` has, for widgets with non-obvious state: `speed_flow`, `z_offset`, `dryer`,
+   `exclude_map`.
+
+Cross-link both ways with the existing feature sections: `guide/printing.md` § "Print
+Tune Overlay", § "Z-Offset / Baby Steps", § "Exclude Object"; `guide/filament.md`
+§ "Filament Drying and Humidity"; `guide/settings/system.md` § "Performance";
+`guide/calibration.md` § "Bed Mesh"; `guide/motion.md` for the toolhead. User-doc style
+rules apply (`docs/user/CLAUDE.md`): no source files or class names, exact UI paths.
+
+**Screenshots:** 800x480, dark mode, `helixscreen` theme, committed to
+`docs/images/user/<name>.png`. A widget is illustrated by the overlay it opens (a recipe in
+`scripts/screenshot-recipes.sh` plus a `PANELS` entry in `scripts/screenshot-all.sh`), by
+the home screen when the widget is in the default grid, or by a hand-crop of that shot.
+No gate checks doc screenshots, and `home-panel.md` HTML-comment placeholders let the
+docs land ahead of the images.
+
+**Other artefacts:** `CHANGELOG.md` `## [Unreleased] / ### Added`; the widget-ID list in
+`docs/user/CONFIGURATION.md` ("Available widget IDs"); the "30+ widgets" counts in
+`README.md`; `docs/devel/PANEL_WIDGET_GUIDE.md` gains a section on `SizeRung`,
+`choose_size_rung()` and `helix::status`, since they become the
+pattern for new widgets. The widget catalog's `display_name` / `description` /
+`hardware_gate_hint` strings go through `lv_tr()` but the extractor scans only XML, so
+the catalog stays English-only; these seven inherit that.
+
+## Default layout
+
+Ruling (Preston, 2026-08-12): a new default layout is authored once all seven widgets
+exist.
+
+- Do not edit `assets/config/default_layout.json` per widget.
+- The default-layout test is red from the first widget row until this task (see Testing).
+- As the final task of Batch 3, author the default layout with all seven, the anchor
+  tables for every breakpoint tier, and the per-printer preset seeds
+  (`assets/config/panel_widgets/{cc1,ad5x,ad5x_zmod}/home.json`). Spans are in tracks;
+  `check_anchor_table()` enforces per-tier budgets and non-overlap.
 
 ## Out of scope
 
-- The calibration-status tile (originally item 8) - dropped.
-- Half-cell support for any new widget. No new widget sets `supports_half_col` or
-  `supports_half_row`; `test_grid_layout.cpp:438-470` pins the current set of five
-  and adding a sixth is a separate decision.
-  *(Superseded by prestonbrown/helixscreen#1559: the eighteen centred-icon tiles set
-  both flags; see `LAYOUT_SYSTEM.md` § "Widget span authoring".)*
-- The three parked layout design questions and the known-red
-  `test_grid_edit_drag_path.cpp:285-286`, both owned by the square-cell work.
-- Task 12 (AMS mini-status) and the `LAYOUT_SYSTEM.md` span-authoring rewrite
-  (Task 13), both open on `fix/grid-cell-metrics`.
-
----
-
-# Batch 0 outcome and inputs to later batches
-
-Batch 0 (the DRY refactors) is complete and on main.
-
-## What Batch 0 delivered
-
-| Consolidation | Result |
-|---|---|
-| `helix::BedCoordMapper` (mm→px, Y-flip, center-origin) | one implementation tree-wide |
-| `helix::bed_dimensions()` (build_volume → axis_bounds → 235x235) | one fallback chain |
-| `helix::tune::set_speed_percent/set_flow_percent` | one M220/M221 formatter, one clamp |
-| `helix::zoffset::adjust()` | one baby-step path; ±2.0mm clamp has one definition |
-| `kZStepAmountsMm` / persisted step index | one step table, now persisted per printer |
-| `helix::axis_is_homed()` | **added, but NOT yet consumed — see below** |
-
-Bug fixed along the way: `pending_z_offset_delta` was never cleared in production,
-so the "unsaved Z-offset" banner lied for the rest of the session after a save. Now
-cleared on both success paths (`FIRMWARE_MANAGED` and `APPLY`→`SAVE_CONFIG`) across
-all three call sites.
-
-## Must be resolved before or during Batch 1
-
-1. **`test_widget_content_fits` leaks a thread.** The "every home widget renders its
-   content at its authored minimum" sweep prints
-   `[ISOLATION-LEAK] ... leaked 1 thread(s): 8 -> 9 (likely an unjoined
-   hv::EventLoopThread → later UAF crash)`, which is why an unfiltered
-   single-process `helix-tests` run SIGSEGVs. Pre-existing on
-   `fix/grid-cell-metrics`, not caused by Batch 0. **Own this before Batch 1**: all
-   seven new widgets enter that same sweep, and the leak becomes far harder to
-   attribute once they are stacked on top of it. Use sharded `make test-run` until
-   it is fixed.
-2. **`SAVE_CONFIG` mock defect.** `src/api/moonraker_client_mock.cpp:2011-2015`
-   returns 1 where sibling handlers (`BED_MESH_CALIBRATE`, `PID_CALIBRATE`) return 0
-   with the comment "Success - results come asynchronously via gcode_response";
-   `moonraker_client_mock_print.cpp` treats any nonzero as an RPC failure. Effect: no
-   test can drive `apply_and_save` to success through the real
-   `Z_OFFSET_APPLY_PROBE`→`SAVE_CONFIG` chain, so the primary Z-offset save path is
-   untestable and Task 6's fix is verified only on the firmware-managed path. A grep
-   of all 30 `SAVE_CONFIG` hits in `tests/` found **zero assertions** depending on
-   the current failure behaviour, so the blast radius appears to be nil — but it is
-   shared test infrastructure, so it needs its own change plus one sharded run.
-3. **No unit test file exists for `PrintTuneOverlay`.** `[print_tune]` matches
-   nothing. The new `[z_offset]` tests cover the extracted core, which is the part
-   the widget consumes, but the overlay itself is uncovered.
-
-## Carried to Batch 2 — finish the `homed_axes` consolidation
-
-`axis_is_homed()` and `toolhead_is_homed()` exist and are tested, but
-`axis_is_homed()` has **no production callers yet** and five sites still open-code
-the decode:
-
-- `src/ui/ui_panel_controls.cpp:206-208` — publishes `x_homed`/`y_homed`/`xy_homed`/`z_homed`/`all_homed`
-- `src/ui/ui_panel_motion.cpp:465-467` — publishes prefixed `motion_*` copies
-- `src/ui/ui_panel_motion.cpp:686-687` — gates jog soft-stop
-- `src/ui/ui_overlay_qr_scanner.cpp:266` — gates a bed-lowering move
-- `src/print/print_start_collector.cpp:467-468` — full XYZ, equivalent to `toolhead_is_homed()`
-
-The first two own **published subjects that XML binds**, so converting them means
-changing how the subjects are computed, not deleting them. This wants its own task
-with its own tests, not a drive-by during widget work.
-
-## Smaller items worth folding into the batch that touches them
-
-- `ui_print_tune_overlay.cpp` computes the Z-offset indicator's micron value with a
-  truncating `static_cast<int>(mm * 1000.0)` instead of `std::lround`, so it can drop
-  a micron on floating-point edges. Pre-existing; the Batch 1 Z-offset widget will
-  copy this line, so fix it there.
-- `ControlsPanel::speed_override_subject_` / `update_speed_display()` are now
-  write-only — no `ui_xml/` file binds `controls_speed_pct`. Batch 0 removed the flow
-  twin for exactly this reason but kept the speed one because `update_speed_display()`
-  still writes it from two live call sites.
-- `docs/devel/ARCHITECTURE.md`'s "HomePanel Integration" sample still shows a
-  single-page `populate_widgets()` while the real one loops over `populate_page()`.
-- `tests/unit/test_print_controls_char.cpp:167-181` re-encodes the M220/M221 format
-  and the 50-200 / 75-125 ranges in local mirror helpers, so it stays green if
-  `helix::tune`'s constants change.
-- `docs/devel/LAYOUT_SYSTEM.md` § "Widget span authoring" is still written in whole
-  cells rather than half-cell tracks. Owned by Task 13 on `fix/grid-cell-metrics` —
-  coordinate rather than editing it.
-
----
-
-# Documentation and screenshots (missing from the original scope)
-
-The seven-widget scope covered code, XML, and tests but **not docs or screenshots**.
-Both are required. None of what follows is written down anywhere in the repo today —
-it is all convention-by-example, inferred from what shipped widgets did. Writing the
-convention down is itself a task (see the last item).
-
-## User docs — all seven go in `docs/user/guide/home-panel.md`
-
-The established convention is **one guide page per navigable panel, never per widget**.
-Every home widget that has ever shipped is a section inside `home-panel.md`. Do not
-create new guide pages; if you did, `docs/CLAUDE.md` requires updating that file,
-`docs/README.md`, and `docs/user/CLAUDE.md`'s index.
-
-Per widget, that file needs:
-
-1. **A row in the right `## Available Widgets` category table** (`:205-297`) —
-   columns are `Widget | Description | Default | Min | Max | Resizable | Hardware Required`.
-2. **A row in `## Widget Interactions`** (`:328-370`) — `Widget | Tap Action`, or
-   `— (display only)`.
-3. **A row in `### Hardware-Gated Widgets`** (`:280-301`) only if the widget sets a
-   `hardware_gate_subject` — that is dryer (`dryer_supported`), bed mesh
-   (`printer_has_bed_mesh`), and host health (`perf_available`).
-4. **An optional `##` deep-dive section** with its own screenshot. Precedent is that a
-   widget earns one when it has non-obvious state or its own config UI — see
-   `## Clog Detection Widget` (`:408`) as the template. Likely candidates: speed/flow
-   tuner, Z-offset, dryer, exclude-objects map.
-
-> **Unit trap.** `home-panel.md`'s size columns are in **whole cells** with an explicit
-> note at `:207` ("2x1 means 2 columns wide and 1 row tall"), while `s_widget_defs` now
-> stores **half-cell tracks**. Divide the registry values by 2 when writing these rows,
-> or the new rows will silently contradict every existing one. The square-cell plan
-> already flagged that the existing columns need doubling — coordinate rather than
-> fixing it twice.
-
-**Cross-link bidirectionally** to the existing feature docs rather than duplicating
-them. The pattern already exists twice (`docs/user/guide/sensors.md:78` and
-`docs/user/guide/settings/led-settings.md:5`). Targets:
-
-| Widget | Existing coverage to link |
-|---|---|
-| Speed / flow | `guide/printing.md:145` § Print Tune Overlay |
-| Z-offset | `guide/printing.md:169` § Z-Offset / Baby Steps (also `calibration.md:125`) |
-| Dryer | `guide/filament.md:364` § Filament Drying |
-| Host health | `guide/settings/system.md` § Performance |
-| Bed mesh | `guide/calibration.md:9` § Bed Mesh |
-| Exclude objects | `guide/printing.md:196` § Exclude Object |
-| Toolhead position | none — the only genuinely new ground; nearest is `guide/motion.md` |
-
-Style rules bind here (`docs/user/CLAUDE.md`): end-user voice, **never** reference
-source files or class names, exact UI paths, and *"screenshots are better than
-descriptions"*.
-
-## Screenshots
-
-- **Convention:** 800x480, dark mode, `helixscreen` theme. Every committed doc
-  screenshot is that size. Not documented anywhere — inferred from
-  `scripts/screenshot-all.sh`, which hardcodes `--dark` and the theme.
-- **Committed to** `docs/images/user/<name>.png` (58 tracked files), referenced from
-  guide pages as `![Alt](../../images/user/foo.png)`.
-- **There is no token or recipe concept for an individual widget.** Recipes in
-  `scripts/screenshot-recipes.sh` address panels and overlays; a widget is just part of
-  the home screen, and there is no flag to seed which widgets are on the grid. So each
-  widget is illustrated by one of three routes, all convention-by-example:
-  1. **The overlay it opens** — preferred where applicable, because it is reproducible:
-     add a `"<token>  navigate home; click <node>"` line to `SCREENSHOT_RECIPES`, add
-     `"output-name:token"` to `PANELS` in `screenshot-all.sh`, then
-     `HELIX_THEME=helixscreen ./scripts/screenshot.sh helix-screen <name> <token> --dark --test`
-     and move `/tmp/ui-screenshot-<name>.png` to `docs/images/user/`.
-  2. **The whole home screen** — only works if the widget is in the default grid.
-  3. **A hand-crop** of that shot. Precedent: `home-carousel-modes.png` (237x237),
-     `home-job-queue.png` (306x168), `home-widget-trash.png` (239x262), all committed in
-     `ef268139b`, none scripted. No tooling exists for the crop step.
-- **No gate anywhere.** No CI job regenerates, verifies, or diffs doc screenshots, and
-  `scripts/check_doc_refs.py` does not check `.png` or Markdown image links, so a broken
-  image reference is invisible. Nothing fails if a screenshot is missing or stale.
-- `home-panel.md` uses HTML-comment placeholders for shots not yet taken (e.g. `:7`) —
-  a usable way to land docs ahead of images.
-- **Golden tests are not a concern:** `home` is deliberately excluded from
-  `tests/ui/goldens/` because the mock's simulation thread drifts temperatures. New home
-  widgets cannot break the golden suite unless one alters the `bed-mesh` or `zoffset`
-  screens.
-
-## Other artefacts that go stale when a widget is added
-
-- **`CHANGELOG.md`** `## [Unreleased] / ### Added` — feeds `scripts/generate-whatsnew.sh`.
-- **`docs/user/CONFIGURATION.md:1156-1175`** — a *second* widget-ID enumeration, listing
-  14 IDs against 37 shipped. Already rotten; seven more widens it. Either refresh it or
-  give it the same treatment `ARCHITECTURE.md` got and replace it with a registry
-  pointer. Also `:1153` names which widgets use the `config` key.
-- **`README.md:33` and `:102`** — "30+ widgets", twice. 37→44 makes "40+" honest.
-- **`docs/user/FAQ.md:284`** — claims "up to 10 widgets" (no such cap) and
-  "Settings → Home Widgets" (it is long-press Edit Mode). Both already wrong.
-- **`docs/devel/ARCHITECTURE.md:458`** — hardcoded "it currently holds 37 entries", the
-  one count left after the table became a pointer. Bump it or drop the number.
-- **Translations.** XML labels are obligatory: `make translation-sync` then
-  `make translations`, staging both `translations/*.yml` (9 languages) and the
-  regenerated `ui_xml/translations/*.xml`. Separately, and pre-existing: the widget
-  catalog's `display_name` / `description` / `hardware_gate_hint` go through `lv_tr()`
-  at runtime but the extractor only scans XML, so **the entire Widget Catalog is
-  English-only today**. The seven will inherit that. Not this work's job to fix, but do
-  not perpetuate it silently.
-- **`docs/devel/480x320_UI_AUDIT.md`** — sanity-check the seven at the smallest tier.
-
-## Default layout — ruling
-
-`tests/unit/test_default_layout.cpp:600` asserts every non-multi-instance registry def
-appears **exactly once** in the default grid, so each new widget row would otherwise
-fail that test the moment it lands, and this spec's step 8 says to avoid editing
-`assets/config/default_layout.json` while three layout questions sit parked.
-
-**Ruling (Preston, 2026-08-12): a new default layout will be authored once all seven
-widgets exist.** So:
-
-- Do **not** re-author `default_layout.json` per widget as Batches 1-3 proceed.
-- Expect `test_default_layout.cpp:600` to go red as soon as the first
-  non-multi-instance widget row lands, and treat that as **known and accepted**, not a
-  regression to chase. Record it in the batch ledger so it is not rediscovered.
-- Author the new default layout as the final task of Batch 3, covering all seven at
-  once, and land it together with the anchor tables for every breakpoint tier plus the
-  per-printer preset seeds (`assets/config/panel_widgets/{cc1,ad5x,ad5x_zmod}/home.json`).
-  `test_default_layout.cpp` goes green again there, and the three parked layout
-  questions get answered in the same pass rather than piecemeal.
-- Every span written into those tables is in **half-cell tracks**, and
-  `check_anchor_table()` enforces per-tier column/row budgets and pairwise
-  non-overlap — so this is a real task, not a formality.
-
-## Write the convention down
-
-The 9-step authoring checklist in this spec contains zero documentation or screenshot
-steps, and nothing in `docs/devel/` states them either. Add a "Documentation and
-screenshot obligations" step to the checklist and mirror it into
-`docs/devel/ARCHITECTURE.md` § Panel Widget System. If instead you create a new
-`docs/devel/*.md`, it **must** be listed in `docs/devel/CLAUDE.md` or
-`scripts/check_doc_refs.py --index` fails in `scripts/quality-checks.sh`.
+- The calibration-status tile.
+- A history rung for `speed_flow` (no 4x2 rung; larger tiles add spacing).
+- Start or stop drying from the tile.
+- Excluding an object from the tile.
+- Moving the Performance overlay onto `host_health_status()`.
+- Finishing the `homed_axes` consolidation: ControlsPanel and MotionPanel still decode
+  `homed_axes` into subjects that XML binds, which is its own task with its own tests.
+- The write-only `controls_speed_pct` subject in `src/ui/ui_panel_controls.cpp`.
