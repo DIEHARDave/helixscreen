@@ -23,6 +23,7 @@ These docs are **end-user facing**. They must be written for people who are NOT 
 | `guide/install-ad5m.md` | End-to-end Adventurer 5M / 5M Pro setup: firmware image or Forge-X / Klipper Mod install, service control, updating, uninstall |
 | `guide/install-ad5x.md` | Adventurer 5X (ZMOD) setup: ZMOD prerequisite, chroot install, updating, uninstall |
 | `guide/install-cc1.md` | Centauri Carbon setup: COSMOS firmware flash, HelixScreen install, gui-switcher, updating, uninstall |
+| `guide/install-flsun-t1.md` | FLSUN T1 Pro manual install on stock FLSUN OS: build, unpack as root, startboot.sh hook, switching back, touch quirk |
 | `guide/install-k2.md` | End-to-end K2 / K2 Plus / K2 Pro setup: stock-firmware install, service control, updating, uninstall |
 | `guide/install-sonicpad.md` | Sonic Pad setup: SonicPad-Debian requirement, install, updating, uninstall |
 | `guide/install-u1.md` | Snapmaker U1 setup: SSH paths, install, firmware upgrades, blank-screen recovery, uninstall |

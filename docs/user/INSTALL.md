@@ -56,6 +56,7 @@ The one-liner above works on every supported platform, but each printer family h
 | FlashForge Adventurer 5X | [Adventurer 5X Install (ZMOD)](guide/install-ad5x.md) - the ZMOD firmware mod manages install and updates |
 | FlashForge Creator 5 / Creator 5 Pro | [Z-Mod wiki](https://wiki.zmod.link/C5PRO/) - Z-Mod installs and updates HelixScreen itself; on [Reforge](https://github.com/Klipper4FlashForge/firmware), HelixScreen ships with the firmware |
 | Elegoo Centauri Carbon | [Centauri Carbon Install](guide/install-cc1.md) - requires the OpenCentauri COSMOS firmware, 26.07.0 or newer |
+| FLSUN T1 Pro | [FLSUN T1 Pro Install](guide/install-flsun-t1.md) - stock FLSUN OS, manual install (no installer support yet) |
 | Creality Sonic Pad | [Sonic Pad Install](guide/install-sonicpad.md) - requires the SonicPad-Debian firmware |
 | Snapmaker U1 | [Snapmaker U1 Install](guide/install-u1.md) - stock firmware 1.2+ with Root access, or PAXX Extended Firmware |
 | BigTreeTech K-Touch (standalone ESP32 screen) | [K-Touch Install](guide/install-esp32.md) - alpha firmware, flashed from your browser or over USB; 1.1 betas and newer |
