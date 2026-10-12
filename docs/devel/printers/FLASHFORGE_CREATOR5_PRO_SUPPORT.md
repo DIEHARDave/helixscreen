@@ -209,7 +209,7 @@ selected head and feeds it. With `zmod_afclite` present, the UI's Load for head 
 exactly that command and nothing else. `_T_IN_ZCOLOR` is not called directly: it is defined
 in the unpublished `zmod_color` plugin, the C5 configs call it with a 1-based `SLOT`
 (ghzserg/z_c5pro `translate/en/c5pro_display_off.cfg`, `_T_USE`), and the AD5X
-`zmod_color.py#cmd_IN_ZCOLOR` reads `NAPR=0` as load, so a guessed `SLOT` or `NAPR` could
+zmod_color.py plugin (its cmd_IN_ZCOLOR handler) reads `NAPR=0` as load, so a guessed `SLOT` or `NAPR` could
 feed the wrong head. The shim owns that mapping. Head `n` maps to the shim's lane `E<n>` by
 name only; no published field ties a lane to a head, and a lane the shim did not publish
 gets no command. Without the shim (Z-Mod older than 1.7.4) Load stays a tool mount.
