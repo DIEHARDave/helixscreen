@@ -5,6 +5,12 @@
     "rotate": 0,
     "rotation_probed": true
   },
+  "standard_macros": {
+    "_comment": "Stock FLSUN macros have no clean-nozzle or HELIX_* helpers, so the default quick buttons would run missing macros. Bed Level is FLSUN's delta calibration (BED_LEVEL_1, ends in SAVE_CONFIG). bed_mesh is left to detection: the Bed Mesh panel calibrates named profiles through it, which BED_LEVEL_2 cannot do.",
+    "bed_level": "BED_LEVEL_1",
+    "quick_button_1": "bed_level",
+    "quick_button_2": ""
+  },
   "input": {
     "_touch_comment": "tlsc6x_touch declares X 0..480 / Y 0..272 but reports a 272x480 portrait panel: X runs 0..~268 and Y 0..~487. lv_evdev clamps to the declared range before any affine runs, so FLSUN's tslib matrix (/etc/pointercal) cannot be used as input.calibration - it never reaches the right ~200px. The same mapping as a stored range: swap, then X -19..486, Y 267..-3 (inverted).",
     "touch_device": "/dev/input/event1",
