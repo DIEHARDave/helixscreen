@@ -2022,6 +2022,42 @@ TEST_CASE_METHOD(PrinterDetectorFixture,
     CHECK(full.confidence > without.confidence);
 }
 
+// ============================================================================
+// A real FLSUN T1 Pro on stock FLSUN OS
+// ============================================================================
+
+TEST_CASE_METHOD(PrinterDetectorFixture,
+                 "PrinterDetector: a stock FLSUN T1 Pro identifies as itself",
+                 "[printer][real_world][flsun]") {
+    auto result = PrinterDetector::detect(printer_capture("flsun_t1_pro"));
+
+    REQUIRE(result.detected());
+    CAPTURE(result.type_name, result.confidence, result.runner_up_type_name,
+            result.runner_up_confidence, result.margin());
+    CHECK(result.type_name == "FLSUN T1 Pro");
+    CHECK(result.margin() >= PrinterDetector::DETECT_MIN_MARGIN);
+    CHECK(PrinterDetector::meets_autosave_threshold(result));
+}
+
+TEST_CASE_METHOD(PrinterDetectorFixture,
+                 "PrinterDetector: _START_PRINT_VARS on a delta is not a k2-improvements K2",
+                 "[printer][real_world][flsun][k2][macros][regression]") {
+    // The T1 Pro's macros.cfg carries a user _START_PRINT_VARS, the macro the
+    // k2-improvements entry reads as definitive. Before the delta exclusion the
+    // stock T1 Pro detected as a K2 Plus at 99% and took the K2 preset, which
+    // rotated the screen 270 degrees. Rename the host so only the macro and the
+    // hardware are left to decide.
+    auto hardware = printer_capture("flsun_t1_pro");
+    hardware.hostname = "mainsailos";
+    REQUIRE(std::find(hardware.printer_objects.begin(), hardware.printer_objects.end(),
+                      "gcode_macro _START_PRINT_VARS") != hardware.printer_objects.end());
+
+    auto result = PrinterDetector::detect(hardware);
+    CAPTURE(result.type_name, result.confidence, result.runner_up_type_name);
+    CHECK(result.type_name.find("k2-improvements") == std::string::npos);
+    CHECK(result.runner_up_type_name.find("k2-improvements") == std::string::npos);
+}
+
 TEST_CASE_METHOD(PrinterDetectorFixture,
                  "PrinterDetector: M191 alone cannot identify a printer as a Qidi",
                  "[printer][qidi][macro]") {

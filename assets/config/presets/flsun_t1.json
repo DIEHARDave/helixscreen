@@ -1,0 +1,70 @@
+{
+  "preset": "flsun_t1",
+  "wizard_completed": false,
+  "display": {
+    "rotate": 0,
+    "rotation_probed": true
+  },
+  "input": {
+    "_touch_comment": "tlsc6x_touch declares X 0..480 / Y 0..272 but reports a 272x480 portrait panel: X runs 0..~268 and Y 0..~487. lv_evdev clamps to the declared range before any affine runs, so FLSUN's tslib matrix (/etc/pointercal) cannot be used as input.calibration - it never reaches the right ~200px. The same mapping as a stored range: swap, then X -19..486, Y 267..-3 (inverted).",
+    "touch_device": "/dev/input/event1",
+    "calibration": {
+      "a": 1.0,
+      "b": 0.0,
+      "c": 0.0,
+      "d": 0.0,
+      "e": 1.0,
+      "f": 0.0,
+      "valid": false
+    },
+    "touch_range": {
+      "valid": true,
+      "swap_axes": true,
+      "min_x": -19,
+      "max_x": 486,
+      "min_y": 267,
+      "max_y": -3,
+      "rotation": 0
+    }
+  },
+  "printer": {
+    "heaters": {
+      "bed": "heater_bed",
+      "hotend": "extruder"
+    },
+    "temp_sensors": {
+      "bed": "heater_bed",
+      "hotend": "extruder"
+    },
+    "fans": {
+      "part": "fan",
+      "hotend": "heater_fan heat_sink_fan"
+    },
+    "filament_sensors": {
+      "master_enabled": true,
+      "sensors": [
+        {
+          "enabled": true,
+          "klipper_name": "filament_switch_sensor filament_sensor",
+          "role": "runout",
+          "type": "switch"
+        }
+      ]
+    },
+    "hardware": {
+      "expected": [
+        "heater_bed",
+        "extruder",
+        "fan",
+        "heater_fan heat_sink_fan",
+        "probe",
+        "filament_switch_sensor filament_sensor"
+      ]
+    },
+    "default_macros": {
+      "cooldown": "SET_HEATER_TEMPERATURE HEATER=extruder TARGET=0\nSET_HEATER_TEMPERATURE HEATER=heater_bed TARGET=0",
+      "load_filament": { "label": "Load", "gcode": "LOAD_FILAMENT" },
+      "unload_filament": { "label": "Unload", "gcode": "UNLOAD_FILAMENT" }
+    }
+  }
+}
