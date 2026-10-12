@@ -40,6 +40,18 @@
       "part": "fan",
       "hotend": "heater_fan heat_sink_fan"
     },
+    "leds": {
+      "_comment": "The enclosure light is FLSUN's box_light module, not a Klipper LED object: F106 S1 / F106 S0 switch it (box_light.value follows).",
+      "macro_devices": [
+        {
+          "name": "Enclosure Light",
+          "type": "on_off",
+          "on_macro": "F106 S1",
+          "off_macro": "F106 S0"
+        }
+      ],
+      "selected_strips": ["macro:Enclosure Light"]
+    },
     "filament_sensors": {
       "master_enabled": true,
       "sensors": [
