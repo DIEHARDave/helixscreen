@@ -292,11 +292,7 @@ SlotColumn create_slot_column(lv_obj_t* parent, int32_t bar_width, int32_t bar_h
 // ============================================================================
 
 const char* unit_logo_path(const helix::AmsUnit& unit, const helix::AmsSystemInfo& info) {
-    const char* path = helix::AmsState::get_logo_path(unit.name);
-    if (!path || !path[0]) {
-        path = helix::AmsState::get_logo_path(info.type_name);
-    }
-    return path;
+    return helix::ui::unit_logo(unit, info).path;
 }
 
 void apply_logo(lv_obj_t* image, const helix::AmsUnit& unit, const helix::AmsSystemInfo& info) {
@@ -756,6 +752,18 @@ void set_lane_badge_active(lv_obj_t* badge, bool active) {
 }
 
 } // namespace ams_draw
+
+namespace helix::ui {
+
+helix::LogoArt unit_logo(const helix::AmsUnit& unit, const helix::AmsSystemInfo& info) {
+    helix::LogoArt art = helix::AmsState::get_logo(unit.name);
+    if (!art.path || !art.path[0]) {
+        art = helix::AmsState::get_logo(info.type_name);
+    }
+    return art;
+}
+
+} // namespace helix::ui
 
 namespace helix::ui {
 

@@ -1011,8 +1011,9 @@ void AmsOverviewPanel::show_current_page(const AmsSystemInfo& info, bool relayou
     // The unit's own number, not its position: that is what the viewed-unit flag and the
     // environment mirror are keyed on.
     ams.set_viewed_unit(unit.unit_index);
-    ams.set_unit_page_header(ams_draw::get_unit_display_name(unit, page.unit_index),
-                             ams_draw::unit_logo_path(unit, info));
+    const helix::LogoArt logo = helix::ui::unit_logo(unit, info);
+    ams.set_unit_page_header(ams_draw::get_unit_display_name(unit, page.unit_index), logo.path,
+                             logo.color);
 
     if (relayout || new_unit || detail_slot_count_ != std::min(unit.slot_count, MAX_DETAIL_SLOTS)) {
         create_detail_slots(info, page.unit_index);

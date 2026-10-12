@@ -327,6 +327,14 @@ SystemToolLayout compute_system_tool_layout(const helix::AmsSystemInfo& info,
 
 namespace helix::ui {
 
+/** The logo for a unit, with how it is drawn: its own name first, then the system's type name.
+ *  A null path when neither has one. */
+helix::LogoArt unit_logo(const helix::AmsUnit& unit, const helix::AmsSystemInfo& info);
+
+} // namespace helix::ui
+
+namespace helix::ui {
+
 /// The number the overview canvas tags @p unit's hub with: 0 for a unit on a hub
 /// of its own (or none), else 1 + its index in SystemToolLayout::hub_groups for a
 /// hub shared by several units.

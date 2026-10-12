@@ -1275,6 +1275,14 @@ struct SlotInfo {
  * Supports multi-unit configurations (e.g., 2x Box Turtles = 16 slots).
  * Most setups have a single unit with 4-8 slots.
  */
+/// A logo image and how the UI draws it.
+struct LogoArt {
+    const char* path = nullptr; ///< Asset path; null when the type has no logo
+    /// True for full-color art, drawn as is. False for a white mono mark, which the
+    /// UI tints to the text color.
+    bool color = false;
+};
+
 struct AmsUnit {
     int unit_index = 0;              ///< Unit number (0-based)
     std::string name;                ///< Internal name for matching (e.g., "Box_Turtle Turtle_1")

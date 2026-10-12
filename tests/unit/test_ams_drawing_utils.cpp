@@ -9,6 +9,9 @@
 #include "theme_manager.h"
 #include "ui/ams_drawing_utils.h"
 
+#include <fstream>
+#include <string>
+
 #include "../catch_amalgamated.hpp"
 
 using helix::AmsSystemInfo;
@@ -391,12 +394,19 @@ TEST_CASE("AmsState::get_logo_path resolves AFC's composite unit names", "[ams][
     CHECK(std::string(box_turtle).find("box_turtle_64") != std::string::npos);
 
     // Unit types with no artwork of their own still resolve, to the AFC mark.
-    for (const char* unit_name :
-         {"HTLF HTLF_1", "OpenAMS OAMS_1", "Claymore Clay_1", "EMU EMU_1"}) {
+    for (const char* unit_name : {"HTLF HTLF_1", "Claymore Clay_1", "EMU EMU_1"}) {
         INFO(unit_name);
         const char* path = helix::AmsState::get_logo_path(unit_name);
         REQUIRE(path != nullptr);
         CHECK(std::string(path).find("afc_64") != std::string::npos);
+    }
+
+    // OpenAMS has its own mark, never the AFC or Box Turtle one.
+    for (const char* unit_name : {"OpenAMS OAMS_1", "OpenAMS AMS_2", "open_ams", "OpenAMS"}) {
+        INFO(unit_name);
+        const char* path = helix::AmsState::get_logo_path(unit_name);
+        REQUIRE(path != nullptr);
+        CHECK(std::string(path).find("openams_64") != std::string::npos);
     }
 
     // A leading token that means nothing still yields no logo at all.
@@ -496,4 +506,67 @@ TEST_CASE_METHOD(LVGLTestFixture, "create_lane_badge: number is readable on its 
         }
     }
     lv_obj_delete(host);
+}
+
+TEST_CASE("AmsState::get_logo: only full-color art skips the text-color tint", "[ams][logo]") {
+    for (const char* name : {"openams", "open ams", "open_ams", "OpenAMS OAMS_1"}) {
+        INFO(name);
+        const auto art = helix::AmsState::get_logo(name);
+        REQUIRE(art.path != nullptr);
+        CHECK(std::string(art.path).find("openams_64.png") != std::string::npos);
+        CHECK(art.color);
+    }
+    // Everything else is a white mono mark.
+    for (const char* name : {"afc", "Box_Turtle Turtle_1", "happy hare", "ercf", "btt vivid",
+                             "HTLF HTLF_1", "Claymore Clay_1", "EMU EMU_1", "kms"}) {
+        INFO(name);
+        const auto art = helix::AmsState::get_logo(name);
+        REQUIRE(art.path != nullptr);
+        CHECK_FALSE(art.color);
+    }
+    // The AFC-fallback types still draw the AFC mark.
+    for (const char* name : {"htlf", "claymore", "emu"}) {
+        INFO(name);
+        CHECK(std::string(helix::AmsState::get_logo(name).path).find("afc_64.png") !=
+              std::string::npos);
+    }
+    CHECK(helix::AmsState::get_logo("Nonexistent Thing").path == nullptr);
+    CHECK_FALSE(helix::AmsState::get_logo("Nonexistent Thing").color);
+}
+
+TEST_CASE("ams_draw::unit_logo: an OpenAMS unit named for its hardware takes the system's logo",
+          "[ams_draw][logo]") {
+    helix::AmsSystemInfo info;
+    info.type_name = "OpenAMS";
+    for (const char* hardware : {"ams_ht", "ams2", "AMS 2 Pro"}) {
+        INFO(hardware);
+        helix::AmsUnit unit;
+        unit.name = hardware;
+        const auto art = helix::ui::unit_logo(unit, info);
+        REQUIRE(art.path != nullptr);
+        CHECK(std::string(art.path).find("openams_64.png") != std::string::npos);
+        CHECK(art.color);
+    }
+
+    helix::AmsSystemInfo afc;
+    afc.type_name = "AFC";
+    helix::AmsUnit turtle;
+    turtle.name = "Box_Turtle Turtle_1";
+    const auto art = helix::ui::unit_logo(turtle, afc);
+    CHECK(std::string(art.path).find("box_turtle_64.png") != std::string::npos);
+    CHECK_FALSE(art.color);
+}
+
+TEST_CASE("The OpenAMS logo asset is a 64x64 PNG", "[ams][logo]") {
+    std::ifstream png("assets/images/ams/openams_64.png", std::ios::binary);
+    REQUIRE(png.good());
+    unsigned char header[24] = {};
+    png.read(reinterpret_cast<char*>(header), sizeof(header));
+    REQUIRE(png.gcount() == 24);
+    CHECK(std::string(reinterpret_cast<char*>(header + 1), 3) == "PNG");
+    const auto be32 = [&](int at) {
+        return (header[at] << 24) | (header[at + 1] << 16) | (header[at + 2] << 8) | header[at + 3];
+    };
+    CHECK(be32(16) == 64);
+    CHECK(be32(20) == 64);
 }

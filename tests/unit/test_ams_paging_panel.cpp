@@ -1020,6 +1020,22 @@ TEST_CASE_METHOD(LVGLTestFixture, "AmsState: the header's has-logo flag follows 
     ams.set_unit_page_header("", nullptr);
 }
 
+TEST_CASE_METHOD(LVGLTestFixture, "AmsState: the header's logo-color flag follows the shown unit",
+                 "[ams][pages][subjects][logo]") {
+    auto& ams = AmsState::instance();
+    ams.init_subjects(true);
+    auto is_color = [&] { return subject_value(ams.get_ams_page_unit_logo_color_subject()); };
+
+    ams.set_unit_page_header("OpenAMS 1", "A:/openams.png", true);
+    CHECK(is_color() == 1);
+    // The next unit's mono mark is tinted again.
+    ams.set_unit_page_header("Box 7", "A:/mono.png", false);
+    CHECK(is_color() == 0);
+    ams.set_unit_page_header("OpenAMS 1", "A:/openams.png", true);
+    ams.set_unit_page_header("", nullptr);
+    CHECK(is_color() == 0);
+}
+
 TEST_CASE_METHOD(LVGLTestFixture,
                  "Bypass spool follows AmsState: hidden with the node, painted with the spool",
                  "[ams][bypass][spool_widget]") {
