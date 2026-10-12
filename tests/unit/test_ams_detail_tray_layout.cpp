@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // The AMS panel's dry-box unit as laid out: spools stand in the box, labels sit
-// above its lid (or back wall), the readout is a chip on the lid, and under
+// above its lid (or back wall), the readout is a chip under the box, and under
 // per-lane lids each lane shows its own humidity behind a droplet.
 
 #include "ui_ams_detail.h"
@@ -14,6 +14,7 @@
 #include "ui_spool_canvas.h"
 
 #include "../test_fixtures.h"
+#include "../test_helpers/ams_panel_test_access.h"
 #include "ams_backend_mock.h"
 #include "ams_state.h"
 #include "ams_tray_projection.h"
@@ -106,43 +107,51 @@ class AmsTrayPanelFixture : public XMLTestFixture {
         return tray::unit_top_y(box_, lid_h_, lid_ != tray::LidMode::None);
     }
 
-    /// The environment chip stands above the lid at the unit's right end and
-    /// covers no label, leader line, spool or lane badge.
+    /// The environment chip stands under the box, right of the last lane's tube,
+    /// above the selector and inside the unit, clear of every lane badge and spool.
     void check_env_chip_clear(int gates) {
         lv_obj_t* chip = lv_obj_find_by_name(panel_obj_, "env_indicator");
+        lv_obj_t* canvas = lv_obj_find_by_name(panel_obj_, "path_canvas");
         REQUIRE(chip != nullptr);
+        REQUIRE(canvas != nullptr);
         REQUIRE_FALSE(lv_obj_has_flag(chip, LV_OBJ_FLAG_HIDDEN));
-        lv_area_t ca;
+        lv_obj_update_layout(test_screen());
+        lv_area_t ca, unit, hub;
         lv_obj_get_coords(chip, &ca);
-        CHECK(std::fabs((float)(ca.x2 - origin_.x) - tray::unit_right_x(box_)) <= 1);
-        // Above the lid and the spools under it.
-        CHECK((float)(ca.y2 - origin_.y) < top());
-        CHECK(ca.y1 >= origin_.y - 1);
-        std::vector<lv_obj_t*> obstacles;
-        lv_obj_t* labels = lv_obj_find_by_name(panel_obj_, "labels_layer");
-        lv_obj_t* badges = lv_obj_find_by_name(panel_obj_, "badge_layer");
-        for (lv_obj_t* layer : {labels, badges}) {
-            for (uint32_t i = 0; layer && i < lv_obj_get_child_count(layer); ++i)
-                obstacles.push_back(lv_obj_get_child(layer, (int32_t)i));
-        }
-        for (int i = 0; i < gates; ++i) {
-            for (const char* n : {"material_label", "name_label", "spool_graphic", "tool_badge"})
-                if (lv_obj_t* o = lv_obj_find_by_name(slot(i), n))
-                    obstacles.push_back(o);
-        }
+        lv_obj_get_coords(container_, &unit);
+        int32_t tube_x1 = 0, tube_x2 = 0;
+        REQUIRE(ui_filament_path_canvas_get_lane_span(canvas, gates - 1, &tube_x1, &tube_x2));
+        REQUIRE(ui_filament_path_canvas_get_hub_box(canvas, &hub));
+        CAPTURE(ca.x1, ca.y1, ca.x2, ca.y2, tube_x2, hub.y1, unit.x2);
+        CHECK(ca.x1 > tube_x2);
+        // The tube's span reaches past the lane's centre by the tube's own half width.
+        lv_obj_t* last_spool = lv_obj_find_by_name(slot(gates - 1), "spool_container");
+        REQUIRE(last_spool != nullptr);
+        lv_area_t sa;
+        lv_obj_get_coords(last_spool, &sa);
+        const int32_t lane_x = (sa.x1 + sa.x2) / 2;
+        const auto* data = helix::ui::fpath::get_data(canvas);
+        REQUIRE(data != nullptr);
+        CHECK(tube_x2 - lane_x >= data->theme.tube_gauge / 2);
+        CHECK((float)(ca.y1 - origin_.y) > box_.fb);
+        CHECK(ca.y2 < hub.y1);
+        CHECK(ca.x2 <= unit.x2);
         int checked = 0;
+        lv_obj_t* badges = lv_obj_find_by_name(panel_obj_, "badge_layer");
+        std::vector<lv_obj_t*> obstacles;
+        for (uint32_t i = 0; badges && i < lv_obj_get_child_count(badges); ++i)
+            obstacles.push_back(lv_obj_get_child(badges, (int32_t)i));
+        for (int i = 0; i < gates; ++i)
+            if (lv_obj_t* o = lv_obj_find_by_name(slot(i), "spool_graphic"))
+                obstacles.push_back(o);
         for (lv_obj_t* o : obstacles) {
-            if (lv_obj_has_flag(o, LV_OBJ_FLAG_HIDDEN))
-                continue;
             lv_area_t oa;
             lv_obj_get_coords(o, &oa);
-            CAPTURE(oa.x1, oa.y1, oa.x2, oa.y2, ca.x1, ca.y1, ca.x2, ca.y2);
-            const bool overlap =
-                oa.x1 <= ca.x2 && oa.x2 >= ca.x1 && oa.y1 <= ca.y2 && oa.y2 >= ca.y1;
-            CHECK_FALSE(overlap);
+            CAPTURE(oa.x1, oa.y1, oa.x2, oa.y2);
+            CHECK_FALSE((oa.x1 <= ca.x2 && oa.x2 >= ca.x1 && oa.y1 <= ca.y2 && oa.y2 >= ca.y1));
             ++checked;
         }
-        REQUIRE(checked >= gates);
+        REQUIRE(checked >= 2 * gates);
     }
 
     /// Every lane's number badge lies on the box front.
@@ -206,8 +215,8 @@ TEST_CASE_METHOD(AmsTrayPanelFixture, "AMS unit with a reading: spools in the bo
     CHECK(box_.fl == Catch::Approx(first_x - half_).margin(0.01));
     CHECK(box_.fr == Catch::Approx(last_x + half_).margin(0.01));
 
-    // The readout is a chip above the lid at the unit's right end, clear of the
-    // labels, and costs the row no width.
+    // The readout is a chip under the box beside the last tube, and costs the row
+    // no width.
     check_env_chip_clear(4);
     check_badges_on_front(4);
     lv_obj_t* unit = lv_obj_get_parent(container_);
@@ -327,7 +336,7 @@ TEST_CASE_METHOD(AmsTrayPanelFixture,
     CAPTURE(mode);
     build(mode);
 
-    // The unit: the box's faces, plus the readout standing beside it.
+    // The unit: the box's faces.
     const tray::TrayFaces f = tray::tray_faces(box_);
     float lo = 1e9f, hi = -1e9f;
     for (const auto* face : {f.back_wall, f.floor, f.left_wall, f.front, f.right_side}) {
@@ -338,13 +347,6 @@ TEST_CASE_METHOD(AmsTrayPanelFixture,
     }
     int32_t left = origin_.x + (int32_t)std::lround(lo);
     int32_t right = origin_.x + (int32_t)std::lround(hi);
-    lv_obj_t* readout = lv_obj_find_by_name(panel_obj_, "env_indicator");
-    REQUIRE(readout != nullptr);
-    if (!lv_obj_has_flag(readout, LV_OBJ_FLAG_HIDDEN)) {
-        lv_area_t ra;
-        lv_obj_get_coords(readout, &ra);
-        right = std::max(right, (int32_t)ra.x2);
-    }
     lv_obj_t* row = lv_obj_get_parent(container_);
     lv_area_t rc;
     lv_obj_get_content_coords(row, &rc);
@@ -408,8 +410,35 @@ TEST_CASE_METHOD(AmsTrayPanelFixture, "AMS unit: a named slot's badge sits on th
 }
 
 TEST_CASE_METHOD(AmsTrayPanelFixture,
-                 "AMS unit with staggered labels: the chip clears them and badges stay on the box",
+                 "AMS unit: a chip taller than the room opens the least gap under the box",
                  "[ams][tray][ui_integration][env_chip]") {
+    build("passive");
+    lv_obj_t* chip = lv_obj_find_by_name(panel_obj_, "env_indicator");
+    REQUIRE(chip != nullptr);
+    lv_obj_update_layout(chip);
+    // Taller than any room the box leaves above the selector at the test size.
+    lv_obj_set_style_min_height(chip, lv_obj_get_height(chip) + 60, LV_PART_MAIN);
+    AmsPanelTestAccess::create_slots(*panel_, 4);
+    lv_obj_update_layout(test_screen());
+    process_lvgl(50);
+    REQUIRE(helix::ui::ams_detail_tray_geometry(box_, lid_, lid_h_, half_));
+    const int32_t gap = lv_obj_get_style_pad_bottom(container_, LV_PART_MAIN);
+    CHECK(gap > 0);
+    check_env_chip_clear(4);
+
+    // The least such gap: one pixel less and the chip no longer fits.
+    lv_obj_t* canvas = lv_obj_find_by_name(panel_obj_, "path_canvas");
+    lv_obj_set_style_pad_bottom(container_, gap - 1, LV_PART_MAIN);
+    lv_obj_update_layout(test_screen());
+    const tray::EnvChipSpot tighter =
+        helix::ui::ams_detail_place_env_chip(chip, canvas, slot_grid_, 4, INT32_MAX, false);
+    CHECK_FALSE(tighter.fits(lv_obj_get_width(chip), lv_obj_get_height(chip)));
+}
+
+TEST_CASE_METHOD(
+    AmsTrayPanelFixture,
+    "AMS unit at 5, 7 and 8 lanes: the chip clears the tubes and badges stay on the box",
+    "[ams][tray][ui_integration][env_chip]") {
     for (int gates : {5, 7, 8}) {
         CAPTURE(gates);
         build("passive", gates);

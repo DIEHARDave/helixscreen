@@ -19,6 +19,9 @@ class AmsPanelTestAccess {
     static helix::ui::AmsOperationSidebar* sidebar(AmsPanel& p) {
         return p.sidebar_.get();
     }
+    static void create_slots(AmsPanel& p, int count) {
+        p.create_slots(count);
+    }
     static lv_obj_t* path_canvas(const AmsPanel& p) {
         return p.path_canvas_;
     }

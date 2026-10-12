@@ -1060,6 +1060,24 @@ void ui_filament_path_canvas_set_edge_reserve(lv_obj_t* obj, int32_t px, int32_t
 }
 
 // NAMESPACE_OK: the widget's C getter API, beside its siblings
+bool ui_filament_path_canvas_get_lane_span(lv_obj_t* obj, int slot_index, int32_t* x1_out,
+                                           int32_t* x2_out) {
+    auto* data = get_data(obj);
+    if (!data || !x1_out || !x2_out || slot_index < 0 || slot_index >= data->slot_count ||
+        slot_index >= FilamentPathData::MAX_SLOTS)
+        return false;
+    lv_obj_update_layout(obj);
+    const BaseGeometry g = compute_base_geometry(obj, data);
+    if (g.width <= 0 || g.height <= 0)
+        return false;
+    refresh_theme_colors(data);
+    const int32_t half = LV_MAX(data->theme.sensor_radius, (data->theme.tube_gauge + 1) / 2);
+    *x1_out = g.slot_x[slot_index] - half;
+    *x2_out = g.slot_x[slot_index] + half;
+    return true;
+}
+
+// NAMESPACE_OK: the widget's C getter API, beside its siblings
 bool ui_filament_path_canvas_get_hub_box(lv_obj_t* obj, lv_area_t* area_out) {
     auto* data = get_data(obj);
     if (!data || !area_out)

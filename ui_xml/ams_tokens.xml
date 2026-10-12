@@ -45,18 +45,6 @@
     <px name="ams_page_dot_size_medium" value="10"/>
     <px name="ams_page_dot_size_large" value="12"/>
 
-    <!-- Least width of the environment chip on a spool box's lid: its passive reading
-         at each size. The drying readout is narrower, and without this floor the chip
-         changes size as the dryer starts and stops, or as a screen pages from one unit
-         to the next. -->
-    <px name="ams_env_chip_min_w_micro" value="42"/>
-    <px name="ams_env_chip_min_w_tiny" value="52"/>
-    <px name="ams_env_chip_min_w_small" value="58"/>
-    <px name="ams_env_chip_min_w_medium" value="68"/>
-    <px name="ams_env_chip_min_w_large" value="78"/>
-    <px name="ams_env_chip_min_w_xlarge" value="90"/>
-    <px name="ams_env_chip_min_w_xxlarge" value="110"/>
-
     <!-- Two lines of font_small: the most the loaded-spool card's material name shows
          below the medium breakpoint before it ellipsizes. -->
     <px name="ams_loaded_name_max_h_micro" value="30"/>

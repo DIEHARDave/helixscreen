@@ -339,18 +339,6 @@ void clear_translate(lv_obj_t* obj) {
     lv_obj_set_style_translate_y(obj, 0, LV_PART_MAIN);
 }
 
-/// Put the environment chip's top-right corner at absolute (right, top). The
-/// chip is aligned to its container's top-right, so its right edge stays put
-/// when a reading changes the chip's width.
-void place_env_chip(lv_obj_t* chip, int32_t right, int32_t top) {
-    clear_translate(chip);
-    lv_obj_update_layout(chip);
-    lv_area_t a;
-    lv_obj_get_coords(chip, &a);
-    lv_obj_set_style_translate_x(chip, right - a.x2, LV_PART_MAIN);
-    lv_obj_set_style_translate_y(chip, top - a.y1, LV_PART_MAIN);
-}
-
 } // namespace
 
 AmsDetailWidgets ams_detail_find_widgets(lv_obj_t* root) {
@@ -575,6 +563,66 @@ bool helix::ui::ams_detail_error_in_view(const helix::AmsSystemInfo& info, int u
     return false;
 }
 
+tray::EnvChipSpot helix::ui::ams_detail_place_env_chip(lv_obj_t* chip, lv_obj_t* canvas,
+                                                       lv_obj_t* slot_grid, int slot_count,
+                                                       int32_t right_limit, bool open_gap) {
+    tray::EnvChipSpot spot{};
+    if (!chip || !canvas || !slot_grid || slot_count <= 0 ||
+        lv_obj_has_flag(chip, LV_OBJ_FLAG_HIDDEN) || !s_tray.valid ||
+        s_tray.container != lv_obj_get_parent(slot_grid))
+        return spot;
+    // The canvas reads lane X from the grid's current slots; hand it this grid's.
+    ui_filament_path_canvas_set_slot_count(canvas, slot_count);
+    ui_filament_path_canvas_set_slot_grid(canvas, slot_grid);
+    lv_obj_update_layout(chip);
+    const int32_t chip_w = lv_obj_get_width(chip), chip_h = lv_obj_get_height(chip);
+
+    // Measure the room under the box with @p extra px opened under it.
+    lv_obj_t* container = s_tray.container;
+    auto measure = [&](int32_t extra, tray::EnvChipSpot& out) {
+        if (open_gap) {
+            // DECLARATIVE_OK: measured layout; the gap under the box is the env chip's
+            lv_obj_set_style_pad_bottom(container, extra, LV_PART_MAIN);
+            lv_obj_update_layout(lv_obj_get_screen(canvas));
+        }
+        spdlog::trace("[AmsDetail] Env chip probe: gap {}", extra);
+        int32_t tube_x1 = 0, tube_x2 = 0;
+        if (!ui_filament_path_canvas_get_lane_span(canvas, slot_count - 1, &tube_x1, &tube_x2))
+            return false;
+        lv_area_t c;
+        lv_obj_get_coords(container, &c);
+        const int32_t box_bottom = c.y1 + (int32_t)std::ceil(s_tray.box.fb);
+        lv_area_t hub;
+        if (!ui_filament_path_canvas_get_hub_box(canvas, &hub))
+            lv_obj_get_coords(canvas, &hub);
+        out = tray::env_chip_below_box(tube_x2, box_bottom, hub.y1, std::min(c.x2, right_limit),
+                                       theme_manager_get_spacing("space_xs"));
+        return true;
+    };
+
+    // The selector moves down with the canvas, but less than one for one, so
+    // opening the gap by what the chip lacks never overshoots: repeat until it
+    // fits, and the gap is the least that does.
+    int32_t extra = lv_obj_get_style_pad_bottom(container, LV_PART_MAIN);
+    if (!measure(extra, spot))
+        return spot;
+    for (int pass = 0; open_gap && pass < 8 && spot.lacking_h(chip_w, chip_h) > 0; ++pass) {
+        extra += spot.lacking_h(chip_w, chip_h);
+        measure(extra, spot);
+    }
+
+    clear_translate(chip);
+    lv_obj_update_layout(chip);
+    lv_area_t a;
+    lv_obj_get_coords(chip, &a);
+    lv_obj_set_style_translate_x(chip, spot.x - a.x1, LV_PART_MAIN);
+    lv_obj_set_style_translate_y(chip, spot.y - a.y1, LV_PART_MAIN);
+    spdlog::debug("[AmsDetail] Env chip {}x{} at ({}, {}): room {}x{}, extra gap {}{}", chip_w,
+                  chip_h, spot.x, spot.y, spot.room_w, spot.room_h, extra,
+                  spot.fits(chip_w, chip_h) ? "" : " (does not fit)");
+    return spot;
+}
+
 AmsSlotLayout helix::ui::ams_detail_slot_layout(int32_t available_width, int slot_count) {
     auto* backend = helix::AmsState::instance().get_backend(0);
     if (backend && !backend->has_physical_tray())
@@ -607,59 +655,23 @@ bool helix::ui::ams_detail_tray_geometry(tray::TrayBox& box, tray::LidMode& lid,
     return true;
 }
 
-namespace {
-
-/// Reserve @p px above the unit for the environment chip.
-void set_chip_reserve(lv_obj_t* container, int32_t px) {
-    // DECLARATIVE_OK: measured layout; the reserve is whatever the chip lacks above the labels
-    lv_obj_set_style_pad_top(container, px, LV_PART_MAIN);
-}
-
-/// Everything in the label band the environment chip must not cover, in
-/// coordinates relative to @p origin: labels, leader lines, lane readings and
-/// tool badges.
-int collect_chip_obstacles(const AmsDetailWidgets& w, lv_obj_t* const slot_widgets[], int n,
-                           lv_point_t origin, tray::Rect* out, int max) {
-    int count = 0;
-    auto add = [&](lv_obj_t* obj) {
-        if (!obj || count >= max || lv_obj_has_flag(obj, LV_OBJ_FLAG_HIDDEN))
-            return;
-        lv_area_t a;
-        lv_obj_get_coords(obj, &a);
-        out[count++] = {a.x1 - origin.x, a.y1 - origin.y, a.x2 - origin.x, a.y2 - origin.y};
-    };
-    for (int i = 0; i < n; ++i) {
-        if (!slot_widgets[i])
-            continue;
-        add(lv_obj_find_by_name(slot_widgets[i], "material_label"));
-        add(lv_obj_find_by_name(slot_widgets[i], "name_label"));
-        add(lv_obj_find_by_name(slot_widgets[i], "tool_badge"));
-        add(ui_ams_slot_get_lane_humidity(slot_widgets[i]));
-    }
-    if (w.labels_layer) {
-        for (uint32_t i = 0; i < lv_obj_get_child_count(w.labels_layer); ++i)
-            add(lv_obj_get_child(w.labels_layer, (int32_t)i));
-    }
-    return count;
-}
-
-/// One layout of the unit with @p reserve px kept free above it. Returns how
-/// much more the environment chip needs to clear the labels it spans.
-int32_t update_tray_pass(AmsDetailWidgets& w, lv_obj_t* const slot_widgets[], int slot_count,
-                         int unit_index, int32_t reserve) {
+void ams_detail_update_tray(AmsDetailWidgets& w, lv_obj_t* const slot_widgets[], int slot_count,
+                            int unit_index) {
+    if (!w.slot_tray || !w.slot_grid)
+        return;
     s_tray.valid = false;
     lv_obj_t* container = lv_obj_get_parent(w.slot_grid);
-    if (container)
-        set_chip_reserve(container, reserve);
+    // ams_detail_place_env_chip() opens the gap under the box again if its chip needs it.
+    if (container) {
+        // DECLARATIVE_OK: measured layout; the gap under the box is the env chip's
+        lv_obj_set_style_pad_bottom(container, 0, LV_PART_MAIN);
+    }
 
     // Tool changers don't have a physical tray/housing
     auto* backend = helix::AmsState::instance().get_backend(0);
     if (backend && !backend->has_physical_tray()) {
         lv_obj_add_flag(w.slot_tray, LV_OBJ_FLAG_HIDDEN);
-        // No lid to sit on: the chip keeps its top-right anchor.
-        if (w.env_indicator)
-            clear_translate(w.env_indicator);
-        return 0;
+        return;
     }
     lv_obj_remove_flag(w.slot_tray, LV_OBJ_FLAG_HIDDEN);
 
@@ -675,7 +687,7 @@ int32_t update_tray_pass(AmsDetailWidgets& w, lv_obj_t* const slot_widgets[], in
     lv_obj_add_event_cb(w.slot_tray, tray_front_draw_cb, LV_EVENT_DRAW_POST, nullptr);
 
     if (!container || !slot_widgets || slot_count <= 0)
-        return 0;
+        return;
     const int n = std::min(slot_count, AMS_DETAIL_MAX_SLOTS);
 
     // Any climate data gets glass.
@@ -707,7 +719,7 @@ int32_t update_tray_pass(AmsDetailWidgets& w, lv_obj_t* const slot_widgets[], in
     for (int i = 0; i < n; ++i) {
         float y = 0;
         if (!slot_widgets[i] || !spool_centre(slot_widgets[i], origin, cx[i], y, spool_size))
-            return 0;
+            return;
         cy_sum += y;
     }
     const float size = (float)spool_size;
@@ -796,45 +808,9 @@ int32_t update_tray_pass(AmsDetailWidgets& w, lv_obj_t* const slot_widgets[], in
         }
     }
 
-    // The environment chip stands in the label band above the lid, its right
-    // edge at the unit's right end, above every label and leader it spans.
-    int32_t lacking = 0;
-    if (w.env_indicator && !lv_obj_has_flag(w.env_indicator, LV_OBJ_FLAG_HIDDEN)) {
-        lv_obj_update_layout(container);
-        tray::Rect obstacles[AMS_DETAIL_MAX_SLOTS * 5 + 8];
-        const int count = collect_chip_obstacles(w, slot_widgets, n, origin, obstacles,
-                                                 (int)(sizeof(obstacles) / sizeof(obstacles[0])));
-        clear_translate(w.env_indicator);
-        lv_obj_update_layout(w.env_indicator);
-        const int32_t chip_w = lv_obj_get_width(w.env_indicator);
-        const int32_t chip_h = lv_obj_get_height(w.env_indicator);
-        const int32_t right = (int32_t)std::lround(tray::unit_right_x(box));
-        const int32_t chip_gap = theme_manager_get_spacing("space_xs");
-        const int32_t chip_top = tray::env_chip_top(obstacles, count, right - chip_w, right, chip_h,
-                                                    label_bottom - origin.y, chip_gap);
-        place_env_chip(w.env_indicator, origin.x + right, origin.y + chip_top);
-        lacking = std::max<int32_t>(0, -chip_top);
-    }
-
     lv_obj_invalidate(container);
-    spdlog::debug("[AmsDetail] Tray: box x {:.1f}..{:.1f} y {:.1f}..{:.1f}, depth {:.1f}, lid {}, "
-                  "chip reserve {} lacking {}",
-                  box.fl, box.fr, box.ft, box.fb, box.depth, static_cast<int>(s_tray.lid), reserve,
-                  lacking);
-    return lacking;
-}
-
-} // namespace
-
-void ams_detail_update_tray(AmsDetailWidgets& w, lv_obj_t* const slot_widgets[], int slot_count,
-                            int unit_index) {
-    if (!w.slot_tray || !w.slot_grid)
-        return;
-    // A second pass with the room the chip lacked above the labels; the labels
-    // and the unit move down with the reserve, so the chip then fits.
-    const int32_t lacking = update_tray_pass(w, slot_widgets, slot_count, unit_index, 0);
-    if (lacking > 0)
-        update_tray_pass(w, slot_widgets, slot_count, unit_index, lacking);
+    spdlog::debug("[AmsDetail] Tray: box x {:.1f}..{:.1f} y {:.1f}..{:.1f}, depth {:.1f}, lid {}",
+                  box.fl, box.fr, box.ft, box.fb, box.depth, static_cast<int>(s_tray.lid));
 }
 
 void ams_detail_update_labels(AmsDetailWidgets& w, lv_obj_t* slot_widgets[], int slot_count,

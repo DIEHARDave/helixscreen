@@ -243,12 +243,6 @@ TEST_CASE("stagger rows never overlap their own line", "[ams][tray][stagger]") {
     }
 }
 
-TEST_CASE("tray projection: the unit ends at the back-right corner", "[ams][tray]") {
-    const TrayBox b = reference_box();
-    CHECK(unit_right_x(b) == Approx(b.fr + DEPTH_SKEW * b.depth));
-    CHECK(unit_right_x(b) == Approx(tray_faces(b).back_wall[1].x));
-}
-
 TEST_CASE("lane badge: on the front face, inside the lane's lid edge", "[ams][tray][badge]") {
     const TrayBox b = reference_box(); // front face y 101..126
     SECTION("a wide pitch puts it at the lane's front bottom-right") {
@@ -271,30 +265,29 @@ TEST_CASE("lane badge: on the front face, inside the lane's lid edge", "[ams][tr
     }
 }
 
-TEST_CASE("env chip: on the band's floor when nothing is under its span", "[ams][tray][env_chip]") {
-    const Rect labels[] = {{0, 10, 30, 24}, {40, 30, 70, 44}};
-    CHECK(env_chip_top(labels, 2, 100, 160, 20, 60, 4) == 40);
-    CHECK(env_chip_top(nullptr, 0, 100, 160, 20, 60, 4) == 40);
+TEST_CASE("env chip: right of the last tube, below the box", "[ams][tray][env_chip]") {
+    const EnvChipSpot spot = env_chip_below_box(230, 140, 170, 276, 4);
+    CHECK(spot.x == 234);
+    CHECK(spot.y == 144);
+    // Columns 234..276 inclusive; rows 144 up to 4px above the selector at 170.
+    CHECK(spot.room_w == 43);
+    CHECK(spot.room_h == 22);
+    CHECK(spot.fits(43, 22));
+    CHECK_FALSE(spot.fits(44, 22));
+    CHECK_FALSE(spot.fits(43, 23));
 }
 
-TEST_CASE("env chip: rises above every label and leader it spans", "[ams][tray][env_chip]") {
-    const Rect obstacles[] = {
-        {90, 30, 120, 44},  // label under the chip's left end
-        {150, 10, 170, 24}, // label under its right end, higher
-        {160, 45, 160, 58}, // that label's leader
-        {10, 0, 40, 14},    // a label clear of the span
-    };
-    const int32_t top = env_chip_top(obstacles, 4, 100, 160, 20, 60, 4);
-    CHECK(top == 10 - 4 - 20);
-    for (int i = 0; i < 3; ++i) {
-        CAPTURE(i);
-        CHECK(top + 20 < obstacles[i].y1);
-    }
+TEST_CASE("env chip: the height it lacks, and none it cannot use", "[ams][tray][env_chip]") {
+    const EnvChipSpot spot = env_chip_below_box(230, 140, 170, 276, 4); // room 43x22
+    CHECK(spot.lacking_h(24, 22) == 0);
+    CHECK(spot.lacking_h(24, 35) == 13);
+    // Too wide: more height would not make it fit.
+    CHECK(spot.lacking_h(44, 35) == 0);
 }
 
-TEST_CASE("env chip: an obstacle within the gap of its span counts", "[ams][tray][env_chip]") {
-    const Rect near_left[] = {{80, 30, 97, 44}};
-    CHECK(env_chip_top(near_left, 1, 100, 160, 20, 60, 4) == 6);
-    const Rect clear[] = {{80, 30, 95, 44}};
-    CHECK(env_chip_top(clear, 1, 100, 160, 20, 60, 4) == 40);
+TEST_CASE("env chip: no room is zero, never negative", "[ams][tray][env_chip]") {
+    const EnvChipSpot spot = env_chip_below_box(300, 160, 150, 276, 4);
+    CHECK(spot.room_w == 0);
+    CHECK(spot.room_h == 0);
+    CHECK_FALSE(spot.fits(1, 1));
 }

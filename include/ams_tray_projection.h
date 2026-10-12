@@ -15,6 +15,7 @@
 
 #include "ams_types.h"
 
+#include <algorithm>
 #include <cstdint>
 
 namespace helix::ui::tray {
@@ -65,9 +66,6 @@ int cap_polyline(const TrayBox& b, float lid_h, float x_end, PointF* out, int n)
 /// Highest drawn y of the unit: the lid silhouette's top, or the back-wall top.
 float unit_top_y(const TrayBox& b, float lid_h, bool has_lid);
 
-/// Right end of the unit: the back-right corner, where the right side face ends.
-float unit_right_x(const TrayBox& b);
-
 /// Top-left of lane @p lane_x's number badge on the box front. It sits inside the
 /// front face, @p inset above its bottom edge, with its right edge @p inset inside
 /// the lane's lid edge (lane_x + @p lane_half); where the pitch is too tight for
@@ -75,22 +73,32 @@ float unit_right_x(const TrayBox& b);
 PointF lane_badge_origin(const TrayBox& b, float lane_x, float lane_half, float badge_w,
                          float badge_h, float inset);
 
-/// An axis-aligned screen rectangle, edges inclusive.
-struct Rect {
-    int32_t x1, y1, x2, y2;
+/// Where the environment chip can stand under the box, in one coordinate frame.
+struct EnvChipSpot {
+    int32_t x, y;   ///< top-left
+    int32_t room_w; ///< width up to the right limit
+    int32_t room_h; ///< height down to @p gap above the selector
+    /// Whether a @p w x @p h chip fits the room.
+    [[nodiscard]] bool fits(int32_t w, int32_t h) const {
+        return w <= room_w && h <= room_h;
+    }
+    /// Height to add under the box so a @p w x @p h chip fits: 0 when it already
+    /// does, and 0 when it is too wide, since height cannot buy width.
+    [[nodiscard]] int32_t lacking_h(int32_t w, int32_t h) const {
+        return w <= room_w ? std::max<int32_t>(0, h - room_h) : 0;
+    }
 };
 
 /**
- * @brief Top y of the environment chip in the label band.
+ * @brief The environment chip's place below the box.
  *
- * The chip spans [chip_x1, chip_x2] and stands at most at @p floor_y (the
- * band's bottom, above the lid). It rises above every obstacle (a label, a
- * leader line, a lane reading) that comes within @p gap of its span, so it
- * never overlaps one and every label keeps its lane. The caller grows the band
- * when the answer lands above the band's top.
+ * Its left edge stands @p gap right of the last lane's tube (@p tube_right, sensor
+ * dots included) and its top @p gap below the box's front-bottom edge, so it
+ * covers neither the box, the lane badges on its front, nor any tube. The room
+ * runs right to @p right_limit and down to @p gap above @p selector_top.
  */
-int32_t env_chip_top(const Rect* obstacles, int count, int32_t chip_x1, int32_t chip_x2,
-                     int32_t chip_h, int32_t floor_y, int32_t gap);
+EnvChipSpot env_chip_below_box(int32_t tube_right, int32_t box_bottom, int32_t selector_top,
+                               int32_t right_limit, int32_t gap);
 
 enum class LidMode : uint8_t { None, Unit, PerLane };
 /// Any climate data gets glass: a unit reading or a dryer covers the row, per-lane

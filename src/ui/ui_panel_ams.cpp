@@ -619,8 +619,10 @@ bool AmsPanel::rebuild() {
 }
 
 void AmsPanel::on_path_canvas_size_changed(lv_event_t* e) {
-    if (auto* self = static_cast<AmsPanel*>(lv_event_get_user_data(e)))
+    if (auto* self = static_cast<AmsPanel*>(lv_event_get_user_data(e))) {
         self->update_bypass_spool_position();
+        self->place_env_chip(false);
+    }
 }
 
 void AmsPanel::detach_path_canvas_hooks() {
@@ -795,6 +797,8 @@ void AmsPanel::setup_slots() {
     }
 
     detail_widgets_ = ams_detail_find_widgets(unit_detail);
+    // The environment chip floats over the path canvas, outside the unit component.
+    detail_widgets_.env_indicator = lv_obj_find_by_name(panel_, "env_indicator");
     slot_grid_ = detail_widgets_.slot_grid; // Keep for path canvas sync
 
     spdlog::debug("[{}] setup_slots: widgets resolved, slot creation deferred to on_activate()",
@@ -837,6 +841,12 @@ void AmsPanel::create_slots(int count) {
     // Update tray
     ams_detail_update_tray(detail_widgets_, slot_widgets_, result.slot_count, ALL_UNITS);
     helix::ui::ams_detail_sync_lane_entry(path_canvas_, slot_grid_);
+    place_env_chip(true);
+}
+
+void AmsPanel::place_env_chip(bool open_gap) {
+    helix::ui::ams_detail_place_env_chip(detail_widgets_.env_indicator, path_canvas_, slot_grid_,
+                                         current_slot_count_, INT32_MAX, open_gap);
 }
 
 void AmsPanel::setup_slot_path_observers(int slot_count) {

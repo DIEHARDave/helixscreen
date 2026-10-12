@@ -94,10 +94,6 @@ float unit_top_y(const TrayBox& b, float lid_h, bool has_lid) {
     return top;
 }
 
-float unit_right_x(const TrayBox& b) {
-    return proj(b, b.fr, b.ft, b.depth).x;
-}
-
 PointF lane_badge_origin(const TrayBox& b, float lane_x, float lane_half, float badge_w,
                          float badge_h, float inset) {
     const float x = std::max(lane_x - badge_w / 2.0f, lane_x + lane_half - badge_w - inset);
@@ -105,16 +101,14 @@ PointF lane_badge_origin(const TrayBox& b, float lane_x, float lane_half, float 
     return {x, y};
 }
 
-int32_t env_chip_top(const Rect* obstacles, int count, int32_t chip_x1, int32_t chip_x2,
-                     int32_t chip_h, int32_t floor_y, int32_t gap) {
-    int32_t bottom = floor_y;
-    for (int i = 0; i < count; ++i) {
-        const Rect& o = obstacles[i];
-        if (o.x2 + gap < chip_x1 || o.x1 - gap > chip_x2)
-            continue;
-        bottom = std::min(bottom, o.y1 - gap);
-    }
-    return bottom - chip_h;
+EnvChipSpot env_chip_below_box(int32_t tube_right, int32_t box_bottom, int32_t selector_top,
+                               int32_t right_limit, int32_t gap) {
+    EnvChipSpot spot{};
+    spot.x = tube_right + gap;
+    spot.y = box_bottom + gap;
+    spot.room_w = std::max<int32_t>(0, right_limit - spot.x + 1);
+    spot.room_h = std::max<int32_t>(0, selector_top - gap - spot.y);
+    return spot;
 }
 
 LidMode lid_mode(const AmsUnit& unit, bool has_physical_tray, bool dryer_supported) {
