@@ -27,6 +27,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <memory>
+#include <vector>
 
 #include "../catch_amalgamated.hpp"
 
@@ -54,8 +55,8 @@ void register_ams_xml_once() {
 
 class AmsTrayPanelFixture : public XMLTestFixture {
   public:
-    void build(const char* env_mode) {
-        auto mock = std::make_unique<AmsBackendMock>(4);
+    void build(const char* env_mode, int gates = 4) {
+        auto mock = std::make_unique<AmsBackendMock>(gates);
         mock->set_afc_mode(true);
         mock->set_environment_mode(env_mode);
         REQUIRE(mock->start().success());
@@ -105,6 +106,59 @@ class AmsTrayPanelFixture : public XMLTestFixture {
         return tray::unit_top_y(box_, lid_h_, lid_ != tray::LidMode::None);
     }
 
+    /// The environment chip stands above the lid at the unit's right end and
+    /// covers no label, leader line, spool or lane badge.
+    void check_env_chip_clear(int gates) {
+        lv_obj_t* chip = lv_obj_find_by_name(panel_obj_, "env_indicator");
+        REQUIRE(chip != nullptr);
+        REQUIRE_FALSE(lv_obj_has_flag(chip, LV_OBJ_FLAG_HIDDEN));
+        lv_area_t ca;
+        lv_obj_get_coords(chip, &ca);
+        CHECK(std::fabs((float)(ca.x2 - origin_.x) - tray::unit_right_x(box_)) <= 1);
+        // Above the lid and the spools under it.
+        CHECK((float)(ca.y2 - origin_.y) < top());
+        CHECK(ca.y1 >= origin_.y - 1);
+        std::vector<lv_obj_t*> obstacles;
+        lv_obj_t* labels = lv_obj_find_by_name(panel_obj_, "labels_layer");
+        lv_obj_t* badges = lv_obj_find_by_name(panel_obj_, "badge_layer");
+        for (lv_obj_t* layer : {labels, badges}) {
+            for (uint32_t i = 0; layer && i < lv_obj_get_child_count(layer); ++i)
+                obstacles.push_back(lv_obj_get_child(layer, (int32_t)i));
+        }
+        for (int i = 0; i < gates; ++i) {
+            for (const char* n : {"material_label", "name_label", "spool_graphic", "tool_badge"})
+                if (lv_obj_t* o = lv_obj_find_by_name(slot(i), n))
+                    obstacles.push_back(o);
+        }
+        int checked = 0;
+        for (lv_obj_t* o : obstacles) {
+            if (lv_obj_has_flag(o, LV_OBJ_FLAG_HIDDEN))
+                continue;
+            lv_area_t oa;
+            lv_obj_get_coords(o, &oa);
+            CAPTURE(oa.x1, oa.y1, oa.x2, oa.y2, ca.x1, ca.y1, ca.x2, ca.y2);
+            const bool overlap =
+                oa.x1 <= ca.x2 && oa.x2 >= ca.x1 && oa.y1 <= ca.y2 && oa.y2 >= ca.y1;
+            CHECK_FALSE(overlap);
+            ++checked;
+        }
+        REQUIRE(checked >= gates);
+    }
+
+    /// Every lane's number badge lies on the box front.
+    void check_badges_on_front(int gates) {
+        lv_obj_t* badges = lv_obj_find_by_name(panel_obj_, "badge_layer");
+        REQUIRE(badges != nullptr);
+        REQUIRE(lv_obj_get_child_count(badges) == (uint32_t)gates);
+        for (int i = 0; i < gates; ++i) {
+            CAPTURE(i);
+            lv_area_t ba;
+            lv_obj_get_coords(lv_obj_get_child(badges, i), &ba);
+            CHECK((float)(ba.y1 - origin_.y) >= box_.ft - 1);
+            CHECK((float)(ba.y2 - origin_.y) <= box_.fb + 1);
+        }
+    }
+
     std::unique_ptr<AmsPanel> panel_;
     lv_obj_t* panel_obj_ = nullptr;
     lv_obj_t* container_ = nullptr;
@@ -152,23 +206,10 @@ TEST_CASE_METHOD(AmsTrayPanelFixture, "AMS unit with a reading: spools in the bo
     CHECK(box_.fl == Catch::Approx(first_x - half_).margin(0.01));
     CHECK(box_.fr == Catch::Approx(last_x + half_).margin(0.01));
 
-    // The readout is a chip on the lid's top-right corner, inside the unit, and
-    // costs the row no width.
-    lv_obj_t* readout = lv_obj_find_by_name(panel_obj_, "env_indicator");
-    REQUIRE(readout != nullptr);
-    REQUIRE_FALSE(lv_obj_has_flag(readout, LV_OBJ_FLAG_HIDDEN));
-    lv_area_t ra;
-    lv_obj_get_coords(readout, &ra);
-    const tray::PointF crest = tray::cap_point(box_, lid_h_, box_.fr, 1.5707963f);
-    CHECK(std::fabs((float)(ra.x2 - origin_.x) - crest.x) <= 1);
-    CHECK(std::fabs((float)(ra.y1 - origin_.y) - (top() + 1)) <= 1);
-    CHECK((float)(ra.x1 - origin_.x) >= box_.fl);
-    for (int i = 0; i < 4; ++i) {
-        CAPTURE(i);
-        lv_area_t la;
-        lv_obj_get_coords(lv_obj_find_by_name(slot(i), "material_label"), &la);
-        CHECK(la.y2 < ra.y1);
-    }
+    // The readout is a chip above the lid at the unit's right end, clear of the
+    // labels, and costs the row no width.
+    check_env_chip_clear(4);
+    check_badges_on_front(4);
     lv_obj_t* unit = lv_obj_get_parent(container_);
     CHECK(lv_obj_get_width(container_) == lv_obj_get_content_width(unit));
 }
@@ -352,29 +393,34 @@ TEST_CASE_METHOD(AmsTrayPanelFixture, "AMS unit: a spool name stacks directly ov
     REQUIRE(named > 0);
 }
 
-TEST_CASE_METHOD(AmsTrayPanelFixture, "AMS unit: a named slot's badge stays on its spool",
+TEST_CASE_METHOD(AmsTrayPanelFixture, "AMS unit: a named slot's badge sits on the box front",
                  "[ams][tray][ui_integration][slot_name]") {
     build("passive");
-    lv_obj_t* badge_layer = lv_obj_find_by_name(panel_obj_, "badge_layer");
-    REQUIRE(badge_layer != nullptr);
     int named = 0;
     for (int i = 0; i < 4; ++i) {
-        CAPTURE(i);
         lv_obj_t* name = lv_obj_find_by_name(slot(i), "name_label");
         REQUIRE(name != nullptr);
-        if (lv_obj_has_flag(name, LV_OBJ_FLAG_HIDDEN))
-            continue;
-        ++named;
-        lv_obj_t* spool = lv_obj_find_by_name(slot(i), "spool_container");
-        lv_obj_t* badge = lv_obj_get_child(badge_layer, i);
-        REQUIRE(spool != nullptr);
-        REQUIRE(badge != nullptr);
-        lv_area_t sa, ba;
-        lv_obj_get_coords(spool, &sa);
-        lv_obj_get_coords(badge, &ba);
-        // At the spool container's bottom edge (a few px of inset), not a name
-        // line's height away from it.
-        CHECK(std::abs(ba.y2 - sa.y2) <= 4);
+        if (!lv_obj_has_flag(name, LV_OBJ_FLAG_HIDDEN))
+            ++named;
     }
     REQUIRE(named > 0);
+    check_badges_on_front(4);
+}
+
+TEST_CASE_METHOD(AmsTrayPanelFixture,
+                 "AMS unit with staggered labels: the chip clears them and badges stay on the box",
+                 "[ams][tray][ui_integration][env_chip]") {
+    for (int gates : {5, 7, 8}) {
+        CAPTURE(gates);
+        build("passive", gates);
+        REQUIRE(lid_ == tray::LidMode::Unit);
+        check_env_chip_clear(gates);
+        check_badges_on_front(gates);
+        panel_->on_deactivate(DeactivateReason::NavigateAway);
+        panel_->clear_panel_reference();
+        lv_obj_delete(panel_obj_);
+        panel_obj_ = nullptr;
+        panel_.reset();
+        process_lvgl(10);
+    }
 }

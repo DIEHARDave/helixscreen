@@ -242,3 +242,59 @@ TEST_CASE("stagger rows never overlap their own line", "[ams][tray][stagger]") {
             CHECK(ams_stagger_row_height(lh, as_breakpoint(bp)) > lh);
     }
 }
+
+TEST_CASE("tray projection: the unit ends at the back-right corner", "[ams][tray]") {
+    const TrayBox b = reference_box();
+    CHECK(unit_right_x(b) == Approx(b.fr + DEPTH_SKEW * b.depth));
+    CHECK(unit_right_x(b) == Approx(tray_faces(b).back_wall[1].x));
+}
+
+TEST_CASE("lane badge: on the front face, inside the lane's lid edge", "[ams][tray][badge]") {
+    const TrayBox b = reference_box(); // front face y 101..126
+    SECTION("a wide pitch puts it at the lane's front bottom-right") {
+        const PointF p = lane_badge_origin(b, 100, 40, 20, 20, 2);
+        CHECK(p.x == Approx(118));
+        CHECK(p.y == Approx(104));
+        CHECK(p.y + 20 <= b.fb);
+        CHECK(p.y >= b.ft);
+    }
+    SECTION("a tight pitch centers it on the lane") {
+        const PointF p = lane_badge_origin(b, 100, 6, 16, 16, 2);
+        CHECK(p.x == Approx(92));
+        CHECK(p.y == Approx(108));
+    }
+    SECTION("a badge taller than the face keeps to its top, never below the box") {
+        TrayBox low = b;
+        low.ft = low.fb - 12;
+        const PointF p = lane_badge_origin(low, 100, 40, 16, 16, 2);
+        CHECK(p.y == Approx(low.ft));
+    }
+}
+
+TEST_CASE("env chip: on the band's floor when nothing is under its span", "[ams][tray][env_chip]") {
+    const Rect labels[] = {{0, 10, 30, 24}, {40, 30, 70, 44}};
+    CHECK(env_chip_top(labels, 2, 100, 160, 20, 60, 4) == 40);
+    CHECK(env_chip_top(nullptr, 0, 100, 160, 20, 60, 4) == 40);
+}
+
+TEST_CASE("env chip: rises above every label and leader it spans", "[ams][tray][env_chip]") {
+    const Rect obstacles[] = {
+        {90, 30, 120, 44},  // label under the chip's left end
+        {150, 10, 170, 24}, // label under its right end, higher
+        {160, 45, 160, 58}, // that label's leader
+        {10, 0, 40, 14},    // a label clear of the span
+    };
+    const int32_t top = env_chip_top(obstacles, 4, 100, 160, 20, 60, 4);
+    CHECK(top == 10 - 4 - 20);
+    for (int i = 0; i < 3; ++i) {
+        CAPTURE(i);
+        CHECK(top + 20 < obstacles[i].y1);
+    }
+}
+
+TEST_CASE("env chip: an obstacle within the gap of its span counts", "[ams][tray][env_chip]") {
+    const Rect near_left[] = {{80, 30, 97, 44}};
+    CHECK(env_chip_top(near_left, 1, 100, 160, 20, 60, 4) == 6);
+    const Rect clear[] = {{80, 30, 95, 44}};
+    CHECK(env_chip_top(clear, 1, 100, 160, 20, 60, 4) == 40);
+}

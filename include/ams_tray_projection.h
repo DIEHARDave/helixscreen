@@ -65,6 +65,33 @@ int cap_polyline(const TrayBox& b, float lid_h, float x_end, PointF* out, int n)
 /// Highest drawn y of the unit: the lid silhouette's top, or the back-wall top.
 float unit_top_y(const TrayBox& b, float lid_h, bool has_lid);
 
+/// Right end of the unit: the back-right corner, where the right side face ends.
+float unit_right_x(const TrayBox& b);
+
+/// Top-left of lane @p lane_x's number badge on the box front. It sits inside the
+/// front face, @p inset above its bottom edge, with its right edge @p inset inside
+/// the lane's lid edge (lane_x + @p lane_half); where the pitch is too tight for
+/// that, centered on the lane instead.
+PointF lane_badge_origin(const TrayBox& b, float lane_x, float lane_half, float badge_w,
+                         float badge_h, float inset);
+
+/// An axis-aligned screen rectangle, edges inclusive.
+struct Rect {
+    int32_t x1, y1, x2, y2;
+};
+
+/**
+ * @brief Top y of the environment chip in the label band.
+ *
+ * The chip spans [chip_x1, chip_x2] and stands at most at @p floor_y (the
+ * band's bottom, above the lid). It rises above every obstacle (a label, a
+ * leader line, a lane reading) that comes within @p gap of its span, so it
+ * never overlaps one and every label keeps its lane. The caller grows the band
+ * when the answer lands above the band's top.
+ */
+int32_t env_chip_top(const Rect* obstacles, int count, int32_t chip_x1, int32_t chip_x2,
+                     int32_t chip_h, int32_t floor_y, int32_t gap);
+
 enum class LidMode : uint8_t { None, Unit, PerLane };
 /// Any climate data gets glass: a unit reading or a dryer covers the row, per-lane
 /// readings get a lid per lane. No physical tray, no lid.

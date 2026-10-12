@@ -1020,6 +1020,12 @@ lv_obj_t* ui_ams_slot_get_lane_humidity(lv_obj_t* obj) {
     return data ? data->lane_humidity : nullptr;
 }
 
+// NAMESPACE_OK: the widget's C API, beside its siblings
+lv_obj_t* ui_ams_slot_get_status_badge(lv_obj_t* obj) {
+    auto* data = get_slot_data(obj);
+    return data ? data->status_badge_bg : nullptr;
+}
+
 float ui_ams_slot_get_fill_level(lv_obj_t* obj) {
     if (!obj) {
         return 1.0f; // Default to full
