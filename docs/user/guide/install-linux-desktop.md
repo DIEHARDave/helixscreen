@@ -12,7 +12,9 @@ This is a different package from the x86 kiosk install, which takes over a mini 
 - **Debian 11, Ubuntu 20.04, Fedora 34, or anything newer.** The app needs glibc 2.31 or later. Check yours with `ldd --version | head -1`.
 - **Network access to your printer's Moonraker** (port `7125` by default). Your printer needs to be running Klipper and Moonraker; the Mainsail or Fluidd web interface is not required.
 
-Everything else the app needs is already on a normal desktop install. The 3D G-code preview uses your graphics driver's OpenGL ES support when it has it; without it, the preview draws in 2D and everything else works the same.
+- **libusb**, which nearly every desktop install already has. If HelixScreen will not start and complains about `libusb-1.0.so.0`, install it: `sudo apt install libusb-1.0-0` on Debian and Ubuntu, `sudo dnf install libusb1` on Fedora.
+
+Nothing else needs installing. The 3D G-code preview uses your graphics driver's OpenGL ES support when it has it; without it, the preview draws in 2D and everything else works the same.
 
 ---
 
@@ -89,7 +91,9 @@ The installer finds your desktop install by itself and keeps your settings.
 curl -sSL https://releases.helixscreen.org/install.sh | sh -s -- --uninstall
 ```
 
-This removes `~/.local/share/helixscreen` and the applications-menu entry, and nothing else.
+This removes `~/.local/share/helixscreen`, its applications-menu entry and the installer's log, and touches nothing outside your home directory.
+
+HelixScreen also keeps a backup of its settings in `~/.helixscreen`, and a later install picks your old settings back up from it. To start completely fresh, delete that folder too: `rm -rf ~/.helixscreen`.
 
 ---
 
