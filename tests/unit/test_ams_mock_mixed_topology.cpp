@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "ams_backend_mock.h"
+#include "ui/ams_drawing_utils.h"
 #include "ams_types.h"
 
 #include "../catch_amalgamated.hpp"
@@ -32,9 +33,9 @@ TEST_CASE("Mixed topology mock creates 3 units", "[ams][mock][mixed]") {
     REQUIRE(info.units.size() == 3);
     REQUIRE(info.total_slots == 12);
 
-    CHECK(info.units[0].name == "Turtle_1");
-    CHECK(info.units[1].name == "AMS_1");
-    CHECK(info.units[2].name == "AMS_2");
+    CHECK(info.units[0].name == "Box_Turtle Turtle_1");
+    CHECK(info.units[1].name == "OpenAMS AMS_1");
+    CHECK(info.units[2].name == "OpenAMS AMS_2");
 }
 
 TEST_CASE("Mixed topology unit 0 is Box Turtle with PARALLEL topology", "[ams][mock][mixed]") {
@@ -718,7 +719,7 @@ TEST_CASE("Production: Box Turtle with PARALLEL topology", "[ams][production]") 
 
     // Unit 0 is the Box Turtle
     const auto& bt = info.units[0];
-    CHECK(bt.name == "Turtle_1");
+    CHECK(bt.name == "Box_Turtle Turtle_1");
     CHECK(bt.has_hub_sensor == false);
     CHECK(bt.hub_sensor_triggered == false);
     CHECK(bt.topology == PathTopology::PARALLEL);
@@ -751,16 +752,16 @@ TEST_CASE("Production: OpenAMS per-lane hub naming", "[ams][production]") {
     // OpenAMS units should have hub sensors despite hub names not matching
     // unit names (Hub_1 != AMS_1, Hub_5 != AMS_2)
     CHECK(info.units[1].has_hub_sensor == true);
-    CHECK(info.units[1].name == "AMS_1");
+    CHECK(info.units[1].name == "OpenAMS AMS_1");
     CHECK(info.units[1].topology == PathTopology::HUB);
 
     CHECK(info.units[2].has_hub_sensor == true);
-    CHECK(info.units[2].name == "AMS_2");
+    CHECK(info.units[2].name == "OpenAMS AMS_2");
     CHECK(info.units[2].topology == PathTopology::HUB);
 
     // Box Turtle has no hub sensor (PARALLEL mode, no shared hub)
     CHECK(info.units[0].has_hub_sensor == false);
-    CHECK(info.units[0].name == "Turtle_1");
+    CHECK(info.units[0].name == "Box_Turtle Turtle_1");
 }
 
 /**
@@ -1070,4 +1071,27 @@ TEST_CASE("Production: dist_hub values differ between unit types", "[ams][produc
     CHECK(info.units[1].slot_count == 4); // OpenAMS 1
     CHECK(info.units[2].slot_count == 4); // OpenAMS 2
     CHECK(info.total_slots == 12);
+}
+
+TEST_CASE("Mixed topology names its units the way AFC does, so each resolves to its own logo",
+          "[ams][mock][mixed][logo]") {
+    AmsBackendMock backend(4);
+    backend.set_mixed_topology_mode(true);
+    const auto info = backend.get_system_info();
+    REQUIRE(info.units.size() == 3);
+
+    CHECK(info.units[0].display_name == "Turtle_1");
+    CHECK(info.units[1].display_name == "AMS_1");
+    CHECK(info.units[2].display_name == "AMS_2");
+
+    const auto turtle = helix::ui::unit_logo(info.units[0], info);
+    REQUIRE(turtle.path != nullptr);
+    CHECK(std::string(turtle.path).find("box_turtle_64.png") != std::string::npos);
+    CHECK_FALSE(turtle.color);
+    for (int u : {1, 2}) {
+        const auto art = helix::ui::unit_logo(info.units[u], info);
+        REQUIRE(art.path != nullptr);
+        CHECK(std::string(art.path).find("openams_64.png") != std::string::npos);
+        CHECK(art.color);
+    }
 }
