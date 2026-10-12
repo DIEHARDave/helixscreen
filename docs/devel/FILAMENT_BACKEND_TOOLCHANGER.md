@@ -271,12 +271,32 @@ edits stay local, as on any tool changer.
 
 ### Filament feed and unload
 
-Load on this row still means "mount the tool" (`_T_IN T=<n>`). A filament feed is not
-wired: Z-Mod's own Load for a head is `CHANGE_TOOL LANE=E<n>`, reported to run
-`_T_IN_ZCOLOR SLOT=<n> NAPR=1` (prestonbrown/helixscreen#1779), but `_T_IN_ZCOLOR` is not in
-the public ghzserg/z_c5pro tree (the C5 `zmod_color` plugin is not published), and the
-only public `NAPR` source, Z-Mod's AD5X zmod_color.py plugin, reads `NAPR=0` as load. Until the C5
-side is confirmed, a guessed argument could drive the wrong head's feed motor.
+Z-Mod's own Load for a head is `CHANGE_TOOL LANE=E<n>`: with the afclite shim present
+(Z-Mod 1.7.4+, `zmod_afclite`) that command heats only the selected head and feeds it,
+verified on a Creator 5 Pro by a contributor (prestonbrown/helixscreen#1779). The Z-Mod
+row builds exactly that command through `toolchanger_addon::resolve_tool_feed()`, and
+`AmsBackendToolChanger::do_load_filament()` sends it. The shim runs `_T_IN_ZCOLOR` itself;
+HelixScreen never calls `_T_IN_ZCOLOR` directly, because its `SLOT` base and `NAPR`
+polarity are not confirmed for the C5 (the plugin is not published, and the AD5X source
+reads the opposite way).
+
+The head-to-lane relation is the **lane name**: head `n` is the shim's `AFC_lane E<n>`.
+Discovery does not read any field that ties a lane to a head (the `lanes[].map` word is
+logged only), so the name is the whole basis. A lane the shim did not publish yields no
+command and the Load is refused; a lane name is never constructed for an object the
+printer lacks.
+
+Without the shim (Z-Mod older than 1.7.4, or no `zmod_afclite` object) there is no feed:
+Load stays a tool mount, `_T_IN T=<n>`.
+
+With the feed present the backend answers capability questions the generic code asks:
+`load_feeds_filament()` (Load is a feed, so a head that reads loaded still accepts it and
+the planner does not refuse the mounted tool or swap another in first),
+`supports_auto_heat_on_load()` (the shim heats the right head, so the UI does not
+preheat, which would heat the active head), and `supports_gate_select()`. Mounting a tool
+is then the context menu's **Select slot**, which sends `_T_IN T=<n>` like every
+other explicit tool change. Busy and printing refusals are unchanged. Other tool changers
+keep Load as a mount.
 
 There is **no automatic unload** on the Creator 5: the user cuts the filament at the head
 and pulls it out. The row answers `AmsBackend::unload_is_manual()` true, and every UI

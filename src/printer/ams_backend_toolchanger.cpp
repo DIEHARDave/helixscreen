@@ -49,6 +49,7 @@ void AmsBackendToolChanger::set_discovery(const helix::PrinterDiscovery& discove
                                      helix::SettingsManager::instance().get_feeder_close_macro()));
     set_tool_sensor(addon::resolve_tool_sensor(discovery));
     set_tool_commands(addon::resolve_tool_commands(discovery));
+    set_tool_feed(addon::resolve_tool_feed(discovery));
     set_material_source(addon::resolve_material_source(discovery));
     tinfo_macro_present_ = discovery.has_macro("T_INFO");
 }
@@ -1372,6 +1373,25 @@ AmsError AmsBackendToolChanger::dispatch_operation(std::string gcode, AmsAction 
 // ============================================================================
 
 AmsError AmsBackendToolChanger::do_load_filament(int slot_index) {
+    if (tool_feed_.present) {
+        // The firmware feeds the head itself, and heats it. Only a command the
+        // printer published is sent, so a head with no lane is refused.
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            AmsError slot_valid = validate_slot_index_locked(slot_index);
+            if (!slot_valid) {
+                return slot_valid;
+            }
+        }
+        const auto head = static_cast<size_t>(slot_index);
+        if (head >= tool_feed_.head_gcode.size() || tool_feed_.head_gcode[head].empty()) {
+            return AmsErrorHelper::not_supported("filament feed for this tool");
+        }
+        std::string cmd = tool_feed_.head_gcode[head];
+        spdlog::info("[AMS ToolChanger] Feeding tool {} via {}: {}", slot_index,
+                     tool_feed_.provider_name, cmd);
+        return dispatch_operation(std::move(cmd), AmsAction::LOADING);
+    }
     // For tool changers, "load filament" means "mount tool"
     return do_change_tool(slot_index);
 }

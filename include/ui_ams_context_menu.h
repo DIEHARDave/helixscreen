@@ -401,7 +401,8 @@ class AmsContextMenu : public ContextMenu {
     // (bundle JX2FVRB9), and refusing what the backend accepts hides the
     // pause-then-swap recovery Klipper just told them to perform.
     static bool decide_can_load(bool system_busy, bool toolhead_unload,
-                                std::optional<bool> slot_has_filament, bool print_blocks_op);
+                                std::optional<bool> slot_has_filament, bool print_blocks_op,
+                                bool load_feeds_filament = false);
 
     // Pure: whether the Unload button is offered for the open slot.
     //

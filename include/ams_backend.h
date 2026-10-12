@@ -73,6 +73,7 @@ namespace helix {
  */
 struct BackendTraits {
     bool load_mounts_tool = false;
+    bool load_feeds_filament = false;
     bool tracks_consumption_natively = false;
     bool hub_on_toolhead = false;
     bool has_per_slot_loaded_authority = false;
@@ -635,6 +636,20 @@ class AmsBackend {
      */
     [[nodiscard]] bool load_mounts_tool() const {
         return traits().load_mounts_tool;
+    }
+
+    /**
+     * @brief True when Load feeds filament into a head on a machine whose heads are
+     *        otherwise mounted and unmounted.
+     *
+     * A changer whose firmware offers a feed command (see
+     * toolchanger_addon::ToolFeed) answers Load with that feed, and mounting a
+     * tool becomes the separate select-slot action. Such a machine cannot tell
+     * an inserted strand from a fed one, so a head that reads loaded still
+     * accepts Load, and the firmware heats the right head itself.
+     */
+    [[nodiscard]] bool load_feeds_filament() const {
+        return traits().load_feeds_filament;
     }
 
     /**

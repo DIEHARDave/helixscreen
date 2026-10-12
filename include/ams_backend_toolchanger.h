@@ -113,8 +113,24 @@ class AmsBackendToolChanger : public AmsSubscriptionBackend {
         t.load_mounts_tool = true;
         return t;
     }();
+    /// With a firmware feed command (Z-Mod's afclite shim), Load feeds filament
+    /// and the firmware heats the head it feeds. The carriage semantics (a tool
+    /// can be mounted or parked, Unmount) stay those of kTraits.
+    static constexpr BackendTraits kTraitsWithFeed = [] {
+        BackendTraits t = kTraits;
+        t.load_feeds_filament = true;
+        t.supports_auto_heat_on_load = true;
+        // Mounting a tool is the select-slot action once Load is a feed.
+        t.supports_gate_select = true;
+        return t;
+    }();
     [[nodiscard]] BackendTraits traits() const override {
-        return kTraits;
+        return tool_feed_.present ? kTraitsWithFeed : kTraits;
+    }
+
+    /// Mounts the tool; Load is a feed on a machine that has one.
+    AmsError select_gate(int slot_index) override {
+        return tool_feed_.present ? select_slot(slot_index) : AmsBackend::select_gate(slot_index);
     }
 
     /// Z-Mod's Creator 5 has no automatic unload: the user cuts the filament at
@@ -376,6 +392,12 @@ class AmsBackendToolChanger : public AmsSubscriptionBackend {
         tool_commands_ = std::move(commands);
     }
 
+    /// Filament feed through the firmware's own shim. Absent leaves Load as a
+    /// tool mount.
+    void set_tool_feed(helix::toolchanger_addon::ToolFeed feed) {
+        tool_feed_ = std::move(feed);
+    }
+
     /// The firmware material store this machine keeps. Absent means
     /// HelixScreen's own store is the only one.
     void set_material_source(helix::toolchanger_addon::MaterialSource source) {
@@ -440,6 +462,7 @@ class AmsBackendToolChanger : public AmsSubscriptionBackend {
     helix::toolchanger_addon::ToolSensor tool_sensor_;
     /// Absent whenever klipper-toolchanger owns the swap.
     helix::toolchanger_addon::ToolCommands tool_commands_;
+    helix::toolchanger_addon::ToolFeed tool_feed_;
     /// Firmware material store this machine keeps; absent unless
     /// set_material_source() said otherwise.
     helix::toolchanger_addon::MaterialSource material_source_;
