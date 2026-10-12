@@ -23,14 +23,14 @@ _HELIX_COMMON_SOURCED=1
 # CC1 (COSMOS): /user-resource/helixscreen (/ is RO squashfs)
 # Snapmaker U1: /userdata/helixscreen
 # shellcheck disable=SC2034  # consumed by uninstall.sh (sweep of all known install locations)
-HELIX_INSTALL_DIRS="/root/printer_software/helixscreen /opt/helixscreen /mnt/UDISK/helixscreen /usr/data/helixscreen /srv/helixscreen /user-resource/helixscreen /userdata/helixscreen"
+HELIX_INSTALL_DIRS="/root/printer_software/helixscreen /opt/helixscreen /mnt/UDISK/helixscreen /usr/data/helixscreen /srv/helixscreen /user-resource/helixscreen /userdata/helixscreen /home/pi/helixscreen"
 
 # Where cache/ and logs/ live. Deliberately NOT inside an install root: the
 # payload is what an update replaces, and Moonraker's type:web entry rmtree()s
 # it first. Swept on uninstall, since nothing else ever removes them.
 # Mirrors kStateRoots in include/helix_install_roots.h.
 # shellcheck disable=SC2034  # consumed by uninstall.sh
-HELIX_STATE_DIRS="/mnt/UDISK/helixscreen-state /mnt/UDISK/helixscreen /data/.helixscreen /data/helixscreen /usr/data/helixscreen-state /user-resource/helixscreen-state /userdata/helixscreen-state /srv/helixscreen-state /opt/config/mod_data/helixscreen-state"
+HELIX_STATE_DIRS="/mnt/UDISK/helixscreen-state /mnt/UDISK/helixscreen /data/.helixscreen /data/helixscreen /usr/data/helixscreen-state /user-resource/helixscreen-state /home/pi/helixscreen-state /userdata/helixscreen-state /srv/helixscreen-state /opt/config/mod_data/helixscreen-state"
 
 # Mounts release.sh's detect_rollback_dir() tries, in order, for an
 # off-partition update-backup when the install filesystem is too tight to

@@ -93,6 +93,12 @@ static std::vector<CacheCandidate> cache_path_candidates(const std::string& subd
     // no /opt, so anything rooted there falls through to RAM-backed /tmp. The
     // -state sibling keeps the cache off the payload, which every update deletes.
     out.push_back({"/user-resource/helixscreen-state/cache/" + subdir, "CC1", true});
+#elif defined(HELIX_PLATFORM_FLSUN_T1)
+    // FLSUN OS is plain Debian with the stock UI under /home/pi, and its
+    // rc.local starts the screen as root with no HOME, so the XDG rungs would
+    // land on /. The -state sibling keeps the cache off the payload, which an
+    // update replaces.
+    out.push_back({"/home/pi/helixscreen-state/cache/" + subdir, "FLSUN T1", true});
 #elif defined(HELIX_PLATFORM_K2)
     // /mnt/UDISK is the 27.5GB user partition and carries both the payload and
     // its state; the cache sits in the -state sibling because the payload is

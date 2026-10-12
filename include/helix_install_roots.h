@@ -31,6 +31,7 @@ inline constexpr const char* kInstallRoots[] = {
     "/usr/data/helixscreen",              // K1, K1C
     "/userdata/helixscreen",              // Snapmaker U1
     "/user-resource/helixscreen",         // CC1 (COSMOS)
+    "/home/pi/helixscreen",               // FLSUN T1 (stock FLSUN OS)
     "/root/printer_software/helixscreen", // AD5M KMod v00.05 and earlier
     "/srv/helixscreen",                   // AD5M ZMOD, AD5X
 };
@@ -54,6 +55,7 @@ inline constexpr const char* kStateRoots[] = {
     "/data/helixscreen",                // AD5M state root before the dot rename
     "/usr/data/helixscreen-state",      // K1, K1C
     "/user-resource/helixscreen-state", // CC1
+    "/home/pi/helixscreen-state",       // FLSUN T1
     "/userdata/helixscreen-state",      // Snapmaker U1
     "/srv/helixscreen-state",           // AD5X
 };

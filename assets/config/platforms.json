@@ -487,6 +487,57 @@
         "detectable": true
       }
     },
+    "flsun-t1": {
+      "display_name": "FLSUN T1",
+      "panel": {
+        "width": 480,
+        "height": 272,
+        "rotate": 0,
+        "verified": true,
+        "source": "hardware: FLSUN T1 Pro /sys/class/graphics/fb0 2026-10-11 (480x272, 32bpp, DRM card0-DPI-1 480x272)",
+        "notes": "The tlsc6x touch digitizer is mounted portrait (272x480) while declaring the display's 480x272 range; the flsun_t1 preset maps it as a swapped, inverted stored touch range."
+      },
+      "storage": {
+        "root": "/home/pi/helixscreen",
+        "state_root": "/home/pi/helixscreen-state",
+        "cache_dir": "/home/pi/helixscreen-state/cache",
+        "log_file": "/home/pi/helixscreen-state/logs/helix.log",
+        "notes": "Stock FLSUN OS is a writable Debian 10 root with the vendor screen app under /home/pi/qt. Logs go to the systemd journal by default; log_file is the file-sink location if one is asked for."
+      },
+      "service": {
+        "init_system": "sysv",
+        "init_system_pinned": true,
+        "init_script": "/home/pi/qt/out_linux/startboot.sh",
+        "start_order": null,
+        "needs_procd_shim": false,
+        "previous_ui_script": "/home/pi/qt/out_linux/startboot.sh.flsun",
+        "notes": "No init script of its own: /etc/rc.local runs /home/pi/qt/out_linux/startboot.sh when /home/pi/qt/qt_start is 1, so the manual install replaces that script and keeps FLSUN's as startboot.sh.flsun. systemd runs underneath, but rc.local is what starts the screen."
+      },
+      "klipper": {
+        "home": "/home/pi",
+        "user": "pi",
+        "group": "pi",
+        "config_dir": "/home/pi/printer_data/config"
+      },
+      "moonraker": {
+        "update_manager": false
+      },
+      "sound": {
+        "has_sound": false,
+        "has_tracker": false,
+        "source": "Makefile sound section (SOUND_CXXFLAGS / TRACKER_CXXFLAGS by PLATFORM_TARGET)"
+      },
+      "package": {
+        "asset_name": "helixscreen-flsun-t1.zip",
+        "docker_target": "flsun-t1-docker",
+        "build_dir": "build/flsun-t1",
+        "splash_3d_target": "gen-splash-3d-cc1",
+        "gen_images_target": "gen-images",
+        "in_release_matrix": false,
+        "detectable": false,
+        "notes": "Manual install only (docs/user/guide/install-flsun-t1.md): no installer detection and no release asset yet. Same 480x272 panel class as the cc1, so it shares that splash target."
+      }
+    },
     "snapmaker-u1": {
       "display_name": "Snapmaker U1",
       "panel": {

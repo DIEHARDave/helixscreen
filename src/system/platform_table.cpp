@@ -29,6 +29,7 @@ const std::vector<Info> kPlatforms = {
     // One build serves the K2, K2 Pro and K2 Plus, so the name covers all three.
     {"k2", "Creality K2", true, ELF32, LE, EM_ARM_, {}},
     {"cc1", "Elegoo Centauri Carbon", true, ELF32, LE, EM_ARM_, {}},
+    {"flsun-t1", "FLSUN T1", true, ELF32, LE, EM_ARM_, {}},
     {"snapmaker-u1", "Snapmaker U1", true, ELF64, LE, EM_AARCH64_, {}},
     // The K-Touch ships a firmware image, never an ELF release zip.
     {"esp32", "BTT K-Touch", false, 0, 0, 0, {}},
@@ -66,6 +67,8 @@ std::string current_key() {
     return "ad5m";
 #elif defined(HELIX_PLATFORM_CC1)
     return "cc1";
+#elif defined(HELIX_PLATFORM_FLSUN_T1)
+    return "flsun-t1";
 #elif defined(HELIX_PLATFORM_MIPS)
     // One binary serves the K1 series and the AD5X, so one platform key and
     // one self-update asset. Which board the binary is ON is a separate

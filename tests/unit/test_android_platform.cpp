@@ -278,7 +278,8 @@ TEST_CASE("is_printer_embedded matches this build's platform", "[platform]") {
 
 #if defined(HELIX_PLATFORM_AD5M) || defined(HELIX_PLATFORM_AD5X) || defined(HELIX_PLATFORM_K1) ||  \
     defined(HELIX_PLATFORM_CC1) || defined(HELIX_PLATFORM_SNAPMAKER_U1) ||                         \
-    defined(HELIX_PLATFORM_K2) || defined(HELIX_PLATFORM_MIPS)
+    defined(HELIX_PLATFORM_K2) || defined(HELIX_PLATFORM_MIPS) ||                                  \
+    defined(HELIX_PLATFORM_FLSUN_T1)
     CHECK(is_printer_embedded());
 #else
     // Desktop, x86 and Pi builds: the printer may be anywhere on the network.

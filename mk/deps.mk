@@ -377,7 +377,7 @@ ifneq ($(CROSS_COMPILE),)
 	OPENSSL_LIB_DIR=""; \
 	if [ "$(ENABLE_SSL)" = "yes" ]; then \
 		case "$(PLATFORM_TARGET)" in \
-			ad5m|cc1) OPENSSL_PREFIX="/opt/arm-toolchain/arm-none-linux-gnueabihf" ;; \
+			ad5m|cc1|flsun-t1) OPENSSL_PREFIX="/opt/arm-toolchain/arm-none-linux-gnueabihf" ;; \
 			mips|k1|ad5x) OPENSSL_PREFIX="/opt/k1-toolchain/mipsel-k1-linux-musl/sysroot/usr" ;; \
 			k2) OPENSSL_PREFIX="/opt/arm-musl-toolchain/arm-buildroot-linux-musleabihf/sysroot/usr" ;; \
 		esac; \

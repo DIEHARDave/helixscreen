@@ -14,6 +14,7 @@
 #   make PLATFORM_TARGET=ad5m  # Cross-compile for Adventurer 5M (armv7-a, bundled toolchain)
 #   make PLATFORM_TARGET=ad5m-br # Adventurer 5M via buildroot-provided toolchain (kmod)
 #   make PLATFORM_TARGET=cc1   # Cross-compile for Centauri Carbon 1 (armv7-a)
+#   make PLATFORM_TARGET=flsun-t1 # Cross-compile for FLSUN T1 / T1 Pro stock board (armv7-a)
 #   make PLATFORM_TARGET=mips  # Cross-compile for MIPS32 devices (K1)
 #   make PLATFORM_TARGET=k1    # Alias for mips (Creality K1 series)
 #   make PLATFORM_TARGET=ad5x  # Cross-compile for FlashForge AD5X (mips)
@@ -30,6 +31,7 @@
 #   make pi32-all-docker       # Docker-based Pi build (both 32-bit variants)
 #   make ad5m-docker           # Docker-based AD5M build
 #   make cc1-docker            # Docker-based CC1 build
+#   make flsun-t1-docker       # Docker-based FLSUN T1 build (reuses the CC1 toolchain)
 #   make k1-docker             # Docker-based K1/MIPS build
 #   make ad5x-docker           # Docker-based AD5X/MIPS build
 #   make creator5-docker       # Docker-based Creator 5 Pro/MIPS build (unified mips image)
@@ -405,6 +407,41 @@ else ifeq ($(PLATFORM_TARGET),cc1)
     # the runtime-loaded translation .bin infrastructure lands, we can ship
     # English compiled-in + all others on disk and get the ~500 KB win back.
 
+else ifeq ($(PLATFORM_TARGET),flsun-t1)
+    # -------------------------------------------------------------------------
+    # FLSUN T1 / T1 Pro stock board - Rockchip RV1126 (armv7-a Cortex-A7)
+    # Specs: 480x272 DPI panel (fbdev, 32bpp), ~715MB RAM, Debian 10 (glibc 2.28)
+    # -------------------------------------------------------------------------
+    # Same CPU class as the CC1, so it borrows the CC1 toolchain image and its
+    # fully static link: that toolchain's sysroot wants glibc 2.33, the board
+    # has 2.28. Unlike the CC1 there is RAM to spare, so it keeps -O2, 32bpp
+    # color, gesture recognition and the camera (the T1 ships a USB camera).
+    CROSS_COMPILE ?= arm-none-linux-gnueabihf-
+    TARGET_ARCH := armv7-a
+    TARGET_TRIPLE := arm-none-linux-gnueabihf
+    TARGET_CFLAGS := -march=armv7-a -mfpu=neon-vfpv4 -mfloat-abi=hard -mtune=cortex-a7 \
+        -flto -ffunction-sections -fdata-sections -funwind-tables -fno-omit-frame-pointer \
+        -Wno-error=conversion -Wno-error=sign-conversion -DHELIX_RELEASE_BUILD -DHELIX_PLATFORM_FLSUN_T1
+    # AMS: no vendor AMS on the T1. AFC/Happy Hare stay ON (user-installable).
+    HELIX_HAS_CFS := 0
+    HELIX_HAS_IFS := 0
+    HELIX_HAS_ACE := 0
+    HELIX_HAS_QIDI := 0
+    HELIX_HAS_SNAPMAKER := 0
+    # -u pthread_join/-u pthread_detach: see the cc1 block above.
+    TARGET_LDFLAGS := -Wl,--gc-sections -flto -static -lstdc++fs \
+                      -Wl,-u,pthread_join -Wl,-u,pthread_detach
+    ENABLE_SSL := yes
+    DISPLAY_BACKEND := fbdev
+    ENABLE_SDL := no
+    ENABLE_GLES_3D := no
+    ENABLE_SCREENSAVER := yes
+    ENABLE_EVDEV := yes
+    BUILD_SUBDIR := flsun-t1
+    ENABLE_MOCKS := no
+    STRIP_BINARY := yes
+    FONT_TIERS := micro tiny
+
 else ifneq ($(filter mips k1 ad5x,$(PLATFORM_TARGET)),)
     # -------------------------------------------------------------------------
     # Unified MIPS32 build - ONE binary for the Creality K1 series, the
@@ -752,7 +789,7 @@ else ifeq ($(PLATFORM_TARGET),native)
     BUILD_SUBDIR :=
 
 else
-    $(error Unknown PLATFORM_TARGET: $(PLATFORM_TARGET). Valid options: native, pi, pi32, x86, ad5m, ad5m-br, cc1, mips, k1, ad5x, k1-dynamic, k2, snapmaker-u1, yocto)
+    $(error Unknown PLATFORM_TARGET: $(PLATFORM_TARGET). Valid options: native, pi, pi32, x86, ad5m, ad5m-br, cc1, flsun-t1, mips, k1, ad5x, k1-dynamic, k2, snapmaker-u1, yocto)
 endif
 
 # pi32 compiles against Debian armhf (armv7) headers, whose shared_ptr uses the
@@ -1028,7 +1065,7 @@ endif
 # Cross-Compilation Build Targets
 # =============================================================================
 
-.PHONY: pi pi-both pi32 pi32-both ad5m ad5m-br cc1 mips k1 ad5x creator5 k1-dynamic k2 snapmaker-u1 x86 x86-both pi-docker pi32-docker ad5m-docker cc1-docker mips-docker k1-docker ad5x-docker creator5-docker k1-dynamic-docker k2-docker ustreamer-k2 snapmaker-u1-docker x86-docker x86-fbdev-docker x86-all-docker docker-toolchains docker-toolchain-snapmaker-u1 docker-toolchain-x86 cross-info ensure-docker ensure-buildx maybe-stop-colima
+.PHONY: pi pi-both pi32 pi32-both ad5m ad5m-br cc1 flsun-t1 flsun-t1-docker mips k1 ad5x creator5 k1-dynamic k2 snapmaker-u1 x86 x86-both pi-docker pi32-docker ad5m-docker cc1-docker mips-docker k1-docker ad5x-docker creator5-docker k1-dynamic-docker k2-docker ustreamer-k2 snapmaker-u1-docker x86-docker x86-fbdev-docker x86-all-docker docker-toolchains docker-toolchain-snapmaker-u1 docker-toolchain-x86 cross-info ensure-docker ensure-buildx maybe-stop-colima
 
 # Persistent ccache for Docker builds — bind-mounts a host directory so the
 # cache survives across container runs (the container is --rm).  Per-platform
@@ -1135,6 +1172,10 @@ ad5x:
 cc1:
 	@echo "$(CYAN)$(BOLD)Cross-compiling for Centauri Carbon 1 (armv7-a)...$(RESET)"
 	$(Q)$(MAKE) PLATFORM_TARGET=cc1 $(SUBMAKE_J) all
+
+flsun-t1:
+	@echo "$(CYAN)$(BOLD)Cross-compiling for FLSUN T1 (armv7-a)...$(RESET)"
+	$(Q)$(MAKE) PLATFORM_TARGET=flsun-t1 $(SUBMAKE_J) all
 
 mips:
 	@echo "$(CYAN)$(BOLD)Cross-compiling the unified MIPS32 binary (K1 series + AD5X)...$(RESET)"
@@ -1375,6 +1416,17 @@ cc1-docker: ensure-docker
 	@$(MAKE) --no-print-directory $(TRANS_XML) >/dev/null 2>&1 \
 		&& echo "$(DIM)✓ Restored full translation packs (repo clean)$(RESET)" \
 		|| echo "$(YELLOW)⚠ Could not restore full translation packs — run 'make translations'$(RESET)"
+	@$(MAKE) --no-print-directory maybe-stop-colima
+
+# FLSUN T1: same armv7-a static toolchain as the CC1, so it runs in that image.
+flsun-t1-docker: ensure-docker
+	@echo "$(CYAN)$(BOLD)Cross-compiling for FLSUN T1 via Docker (CC1 toolchain)...$(RESET)"
+	@if ! docker image inspect helixscreen/toolchain-cc1 >/dev/null 2>&1; then 		echo "$(YELLOW)Docker image not found. Building toolchain first...$(RESET)"; 		$(MAKE) docker-toolchain-cc1; 	fi
+	@$(MAKE) --no-print-directory PLATFORM_TARGET=flsun-t1 $(TRANS_XML)
+	$(call ensure-ccache-dir,flsun-t1)
+	$(Q)scripts/pool-docker.sh docker run --rm --user $$(id -u):$$(id -g) -v "$(CURDIR)":/src $(DOCKER_HOST_CONTEXT) -w /src $(call docker-ccache-args,flsun-t1) helixscreen/toolchain-cc1 		make PLATFORM_TARGET=flsun-t1 SKIP_OPTIONAL_DEPS=1 $(DOCKER_REMOTE_CONTROL) $(DOCKER_DIAG_UPLOADS) $(DOCKER_MOCKS) $(DOCKER_SCREENSAVER) -j$(NPROC_DOCKER_RUN)
+	@mkdir -p build/flsun-t1/certs
+	@docker run --rm helixscreen/toolchain-cc1 cat /etc/ssl/certs/ca-certificates.crt > build/flsun-t1/certs/ca-certificates.crt 2>/dev/null 		&& echo "$(GREEN)✓ CA certificates extracted$(RESET)" 		|| echo "$(YELLOW)⚠ Could not extract CA certificates (HTTPS may rely on device certs)$(RESET)"
 	@$(MAKE) --no-print-directory maybe-stop-colima
 
 mips-docker: ensure-docker
@@ -2980,7 +3032,7 @@ $(UNINSTALLER_BUNDLE): scripts/bundle-uninstaller.sh $(INSTALLER_SOURCES)
 deploy-pi deploy-pi-fg deploy-pi-asan deploy-pi32 deploy-pi32-fg deploy-pi32-asan \
 deploy-ad5m deploy-ad5m-fg deploy-cc1 deploy-cc1-fg deploy-k1-fg deploy-k1-dynamic-fg: $(INSTALLER_BUNDLES)
 
-.PHONY: release-pi release-pi32 release-ad5m release-cc1 release-mips release-k1 release-ad5x release-k1-dynamic release-k2 release-snapmaker-u1 release-x86 release-all release-clean pi-fbdev-docker pi32-fbdev-docker pi-all-docker pi32-all-docker x86-fbdev-docker x86-all-docker
+.PHONY: release-pi release-pi32 release-ad5m release-cc1 release-flsun-t1 release-mips release-k1 release-ad5x release-k1-dynamic release-k2 release-snapmaker-u1 release-x86 release-all release-clean pi-fbdev-docker pi32-fbdev-docker pi-all-docker pi32-all-docker x86-fbdev-docker x86-all-docker
 
 # Host CA bundle packaged when a platform has no toolchain-extracted one.
 CA_BUNDLE ?= /etc/ssl/certs/ca-certificates.crt
@@ -2991,6 +3043,7 @@ REL_LABEL.pi := Pi
 REL_LABEL.pi32 := Pi 32-bit
 REL_LABEL.ad5m := AD5M
 REL_LABEL.cc1 := CC1
+REL_LABEL.flsun-t1 := FLSUN T1
 REL_LABEL.mips := unified MIPS (K1 + AD5X)
 REL_LABEL.k1-dynamic := K1 Dynamic
 REL_LABEL.k2 := K2
@@ -3007,6 +3060,7 @@ REL_FBDEV := pi pi32 x86
 # detection and refines it to the matching AD5M Pro variant preset.
 REL_PRESET.ad5m := ad5m
 REL_PRESET.cc1 := cc1
+REL_PRESET.flsun-t1 := flsun_t1
 REL_PRESET.k2 := k2
 REL_PRESET.snapmaker-u1 := snapmaker_u1
 
@@ -3127,6 +3181,10 @@ release-ad5m: $(INSTALLER_BUNDLES) | build/ad5m/bin/helix-screen build/ad5m/bin/
 # Package CC1 release
 release-cc1: $(INSTALLER_BUNDLES) | build/cc1/bin/helix-screen build/cc1/bin/helix-splash
 	$(call release-package,cc1)
+
+# Package FLSUN T1 release
+release-flsun-t1: $(INSTALLER_BUNDLES) | build/flsun-t1/bin/helix-screen build/flsun-t1/bin/helix-splash
+	$(call release-package,flsun-t1)
 
 # Package the unified MIPS release: one binary serving the Creality K1 series
 # and the FlashForge AD5X. No config/settings.json is baked in - the payload
