@@ -13,6 +13,7 @@
 #include "../lvgl_ui_test_fixture.h"
 #include "ams_backend_mock.h"
 #include "ams_state.h"
+#include "theme_manager.h"
 #include "ams_types.h"
 #include "helix-xml/src/xml/lv_xml.h"
 
@@ -45,7 +46,8 @@ class ConnectionMock : public AmsBackendMock {
         for (size_t u = 0; u < shapes_.size(); ++u) {
             AmsUnit unit;
             unit.unit_index = static_cast<int>(u);
-            unit.name = "conn_unit_" + std::to_string(u);
+            // Unit 0 is named the way AFC names an OpenAMS unit, so its logo is color art.
+            unit.name = u == 0 ? "OpenAMS AMS_1" : "conn_unit_" + std::to_string(u);
             unit.slot_count = 4;
             unit.first_slot_global_index = static_cast<int>(u) * 4;
             unit.connected = shapes_[u].connected;
@@ -162,4 +164,42 @@ TEST_CASE_METHOD(LVGLUITestFixture, "Every present unit offline is the whole sys
                  "[ams][disconnected]") {
     install({{false, false}, {false, true}});
     CHECK(subject_int("ams_all_units_disconnected") == 1);
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture, "A unit card tints a mono logo and draws a color logo as is",
+                 "[ams][logo]") {
+    install({{true, false}, {true, false}});
+    const std::string absent = AmsState::unit_absent_subject_name(0);
+    const std::string disc = AmsState::unit_disconnected_subject_name(0);
+
+    // The card follows its unit's logo subject: 0 is a mono mark, 1 is color art.
+    for (int color : {0, 1}) {
+        INFO("logo_color=" << color);
+        const std::string logo_color = AmsState::unit_logo_color_subject_name(0);
+        lv_subject_set_int(lv_xml_get_subject(nullptr, logo_color.c_str()), color);
+        const char* attrs[] = {"absent",     absent.c_str(),     "disconnected", disc.c_str(),
+                               "logo_color", logo_color.c_str(), nullptr,        nullptr};
+        auto* card = static_cast<lv_obj_t*>(lv_xml_create(test_screen(), "ams_unit_card", attrs));
+        REQUIRE(card != nullptr);
+        lv_obj_t* logo = lv_obj_find_by_name(card, "unit_logo");
+        REQUIRE(logo != nullptr);
+        const auto opa = lv_obj_get_style_image_recolor_opa(logo, LV_PART_MAIN);
+        if (color == 0) {
+            CHECK(opa == LV_OPA_COVER);
+            CHECK(lv_color_eq(lv_obj_get_style_image_recolor(logo, LV_PART_MAIN),
+                              theme_manager_get_color("text")));
+        } else {
+            CHECK(opa == LV_OPA_TRANSP);
+        }
+        lv_obj_delete(card);
+    }
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture, "The per-unit logo subject follows the unit's logo",
+                 "[ams][logo]") {
+    install({{true, false}, {true, false}});
+    CHECK(subject_int(AmsState::unit_logo_color_subject_name(0)) == 1); // OpenAMS: color
+    CHECK(subject_int(AmsState::unit_logo_color_subject_name(1)) == 0); // no color art
+    // Past the cap the placeholder reads 0, a tinted mono mark.
+    CHECK(subject_int(AmsState::unit_logo_color_subject_name(AmsState::MAX_UNITS)) == 0);
 }

@@ -216,6 +216,14 @@ LogoArt AmsState::get_logo(const std::string& type_name) {
     return {};
 }
 
+LogoArt AmsState::get_unit_logo(const AmsUnit& unit, const AmsSystemInfo& info) {
+    LogoArt art = get_logo(unit.name);
+    if (!art.path || !art.path[0]) {
+        art = get_logo(info.type_name);
+    }
+    return art;
+}
+
 const char* AmsState::get_logo_path(const std::string& type_name) {
     return get_logo(type_name).path;
 }
@@ -443,6 +451,7 @@ void AmsState::reset_backend_subjects() {
         lv_subject_set_int(&unit_humidity_[i], 0);
         lv_subject_set_int(&unit_absent_[i], 0);
         lv_subject_set_int(&unit_disconnected_[i], 0);
+        lv_subject_set_int(&unit_logo_color_[i], 0);
         lv_subject_copy_string(&env_ind_temp_text_[i], "");
         lv_subject_copy_string(&env_ind_humidity_text_[i], "");
         lv_subject_set_int(&env_ind_humidity_status_[i], 0);
@@ -1077,6 +1086,7 @@ void AmsState::sync_unit_environment(AmsBackend* backend, const AmsSystemInfo& i
         int idx = unit.unit_index;
         if (idx >= 0 && idx < MAX_UNITS) {
             lv_subject_set_int(&unit_absent_[idx], unit.absent ? 1 : 0);
+            lv_subject_set_int(&unit_logo_color_[idx], get_unit_logo(unit, info).color ? 1 : 0);
             lv_subject_set_int(&unit_disconnected_[idx], (!unit.absent && !unit.connected) ? 1 : 0);
             if (unit.environment.has_value()) {
                 int temp_tenths = static_cast<int>(unit.environment->temperature_c * 10.0f);
@@ -1096,6 +1106,7 @@ void AmsState::sync_unit_environment(AmsBackend* backend, const AmsSystemInfo& i
         lv_subject_set_int(&unit_humidity_[i], 0);
         lv_subject_set_int(&unit_absent_[i], 0);
         lv_subject_set_int(&unit_disconnected_[i], 0);
+        lv_subject_set_int(&unit_logo_color_[i], 0);
     }
     publish_viewed_unit_disconnected(&info);
 

@@ -756,11 +756,7 @@ void set_lane_badge_active(lv_obj_t* badge, bool active) {
 namespace helix::ui {
 
 helix::LogoArt unit_logo(const helix::AmsUnit& unit, const helix::AmsSystemInfo& info) {
-    helix::LogoArt art = helix::AmsState::get_logo(unit.name);
-    if (!art.path || !art.path[0]) {
-        art = helix::AmsState::get_logo(info.type_name);
-    }
-    return art;
+    return helix::AmsState::get_unit_logo(unit, info);
 }
 
 } // namespace helix::ui

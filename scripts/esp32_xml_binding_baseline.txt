@@ -387,6 +387,7 @@ subject:wifi_ip
 subject:wifi_mac
 subject:wifi_status
 subject:wizard_ams_details
+subject:wizard_ams_logo_mono
 subject:wizard_ams_type
 subject:wizard_input_shaper_active
 subject:wizard_input_shaper_indeterminate

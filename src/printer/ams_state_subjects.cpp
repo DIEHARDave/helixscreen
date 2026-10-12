@@ -386,6 +386,12 @@ void AmsState::init_subjects(bool register_xml) {
         subjects_.register_subject(&unit_disconnected_[i], register_xml ? name_buf : nullptr);
         if (register_xml)
             helix::xml::register_subject_in_current_scope(name_buf, &unit_disconnected_[i]);
+
+        lv_subject_init_int(&unit_logo_color_[i], 0);
+        snprintf(name_buf, sizeof(name_buf), "ams_unit_%d_logo_color", i);
+        subjects_.register_subject(&unit_logo_color_[i], register_xml ? name_buf : nullptr);
+        if (register_xml)
+            helix::xml::register_subject_in_current_scope(name_buf, &unit_logo_color_[i]);
     }
 
     // Per-unit environment indicator display subjects (formatted text for XML binding)
@@ -775,6 +781,8 @@ void AmsState::register_xml_subject_names() {
         helix::xml::register_subject_in_current_scope(name_buf, &unit_absent_[i]);
         snprintf(name_buf, sizeof(name_buf), "ams_unit_%d_disconnected", i);
         helix::xml::register_subject_in_current_scope(name_buf, &unit_disconnected_[i]);
+        snprintf(name_buf, sizeof(name_buf), "ams_unit_%d_logo_color", i);
+        helix::xml::register_subject_in_current_scope(name_buf, &unit_logo_color_[i]);
     }
     helix::xml::register_subject_in_current_scope("ams_viewed_unit_disconnected",
                                                   &viewed_unit_disconnected_);
@@ -1058,6 +1066,15 @@ std::string AmsState::unit_disconnected_subject_name(int unit_index) {
     }
     char buf[40];
     snprintf(buf, sizeof(buf), "ams_unit_%d_disconnected", unit_index);
+    return buf;
+}
+
+std::string AmsState::unit_logo_color_subject_name(int unit_index) {
+    if (unit_index < 0 || unit_index >= MAX_UNITS) {
+        return ENV_IND_OFF_FLAG_SUBJECT;
+    }
+    char buf[40];
+    snprintf(buf, sizeof(buf), "ams_unit_%d_logo_color", unit_index);
     return buf;
 }
 

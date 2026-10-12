@@ -452,8 +452,11 @@ void AmsOverviewPanel::create_unit_cards(const AmsSystemInfo& info, helix::ui::L
         const AmsState::EnvIndicatorSubjectNames s = AmsState::env_indicator_subject_names(i);
         const std::string absent = AmsState::unit_absent_subject_name(i);
         const std::string disconnected = AmsState::unit_disconnected_subject_name(i);
+        const std::string logo_color = AmsState::unit_logo_color_subject_name(i);
         const char* attrs[] = {"absent",
                                absent.c_str(),
+                               "logo_color",
+                               logo_color.c_str(),
                                "disconnected",
                                disconnected.c_str(),
                                "temp_text",
