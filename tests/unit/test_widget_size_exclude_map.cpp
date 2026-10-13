@@ -15,6 +15,7 @@
  * Run with: ./build/bin/helix-tests "[widget_size][exclude_map]"
  */
 
+#include "ui_language_refresh.h"
 #include "ui_modal.h"
 #include "ui_nav_manager.h"
 #include "ui_panel_print_status.h"
@@ -27,10 +28,12 @@
 #include "../test_helpers/update_queue_test_access.h"
 #include "app_globals.h"
 #include "display_settings_manager.h"
+#include "lvgl/src/others/translation/lv_translation.h"
 #include "panel_widget_manager.h"
 #include "printer_excluded_objects_state.h"
 #include "printer_state.h"
 #include "src/ui/panel_widgets/exclude_map_widget.h"
+#include "system_settings_manager.h"
 
 #include "../catch_amalgamated.hpp"
 
@@ -587,4 +590,107 @@ TEST_CASE_METHOD(ExcludeMapFixture, "exclude_map: a placeholder tap goes nowhere
     process_lvgl(20);
     drain();
     CHECK(PrintStatusPanel::get_cached_overlay() == nullptr);
+}
+
+TEST_CASE_METHOD(ExcludeMapFixture, "exclude_map: a size fits_at accepts holds a three-digit count",
+                 "[widget_size][exclude_map]") {
+    ExcludeMapWidget probe(state());
+    define_objects(120);
+    objects().set_excluded_objects({"OBJ_1"});
+    set_print_active(true);
+    int accepted = 0;
+    for (const auto& b : {kGlance, kStrip, kColumn, kCell, kWide, kFull}) {
+        if (!probe.fits_at(b.w, b.h))
+            continue;
+        ++accepted;
+        INFO(b.w << "x" << b.h);
+        PanelWidgetHarness<ExcludeMapWidget> h(test_screen(), state());
+        h.resize(1, 1, b.w, b.h);
+        lv_area_t tile;
+        lv_obj_get_coords(h.root(), &tile);
+        for (const char* name :
+             {"exclude_map_glance", "exclude_map_strip", "exclude_map_content"}) {
+            lv_obj_t* block = part(h, name);
+            if (!shown(block))
+                continue;
+            lv_area_t a;
+            lv_obj_get_coords(block, &a);
+            CHECK(a.x1 >= tile.x1);
+            CHECK(a.x2 <= tile.x2);
+            for (uint32_t i = 0; i < lv_obj_get_child_count(block); ++i) {
+                lv_obj_t* child = lv_obj_get_child(block, i);
+                if (hidden(child))
+                    continue;
+                lv_obj_update_layout(child);
+                lv_obj_refr_size(child);
+                CHECK(lv_obj_get_self_width(child) <= lv_obj_get_width(block) + 1);
+            }
+        }
+    }
+    CHECK(accepted >= 4);
+}
+
+TEST_CASE_METHOD(ExcludeMapFixture, "exclude_map: a language switch re-composes the object texts",
+                 "[widget_size][exclude_map][i18n]") {
+    helix::ui::init_language_refresh();
+    auto& settings = SystemSettingsManager::instance();
+    settings.set_language("en");
+    drain();
+    print_six();
+    PanelWidgetHarness<ExcludeMapWidget> h(test_screen(), state());
+
+    h.resize(1, 1, kStrip.w, kStrip.h);
+    REQUIRE(subject_text("exclude_map_objects_text") == "6 objects");
+    h.resize(1, 1, kWide.w, kWide.h);
+    REQUIRE(subject_text("exclude_map_printing_text") == "5 of 6 printing");
+    REQUIRE(std::string(lv_tr("Now printing")) == "Now printing");
+
+    settings.set_language("ru");
+    drain();
+    REQUIRE(std::string(lv_tr("%d of %d printing")) != "%d of %d printing");
+    char want[64];
+    std::snprintf(want, sizeof(want), lv_tr("%d of %d printing"), 5, 6);
+    CHECK(subject_text("exclude_map_printing_text") == want);
+    std::snprintf(want, sizeof(want), lv_tr("%d skipped"), 1);
+    CHECK(subject_text("exclude_map_skipped_text") == want);
+
+    h.resize(1, 1, kStrip.w, kStrip.h);
+    std::snprintf(want, sizeof(want), lv_tr("%d objects"), 6);
+    CHECK(subject_text("exclude_map_objects_text") == want);
+
+    h.resize(1, 1, kWide.w, kWide.h);
+    lv_obj_t* caption = part(h, "exclude_map_now_caption");
+    CHECK(std::string(lv_label_get_text(caption)) == lv_tr("Now printing"));
+
+    settings.set_language("en");
+    drain();
+}
+
+TEST_CASE_METHOD(ExcludeMapFixture, "exclude_map: the tree can be deleted under a live map",
+                 "[widget_size][exclude_map]") {
+    print_six();
+    SECTION("detach first, then the tree") {
+        {
+            PanelWidgetHarness<ExcludeMapWidget> h(test_screen(), state());
+            h.widget().on_activate();
+            h.resize(1, 1, kFull.w, kFull.h);
+            REQUIRE(map_children(h) == 1);
+        }
+        lv_obj_delete(lv_obj_get_child(test_screen(), -1));
+        process_lvgl(30);
+        drain();
+    }
+    SECTION("the tree first, with the map still built") {
+        auto h = std::make_unique<PanelWidgetHarness<ExcludeMapWidget>>(test_screen(), state());
+        h->widget().on_activate();
+        h->resize(1, 1, kFull.w, kFull.h);
+        REQUIRE(map_children(*h) == 1);
+        lv_obj_delete(h->root());
+        process_lvgl(30);
+        objects().set_excluded_objects({"OBJ_0"});
+        drain();
+        h.reset();
+        process_lvgl(30);
+    }
+    CHECK(true);
 }

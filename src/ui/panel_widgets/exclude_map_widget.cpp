@@ -132,6 +132,9 @@ const char* placeholder_text(helix::ExcludeMapState state) {
                                                          : lv_tr("No objects");
 }
 
+/// Digits in the largest object count a tile is accepted for.
+constexpr int kWidestCountDigits = 3;
+
 /// The widest counts a print with `digits` digits in its object count can show.
 helix::ExcludeCounts widest_counts(int digits) {
     int nines = 0;
@@ -360,8 +363,10 @@ void ExcludeMapWidget::on_size_changed(int /*colspan*/, int /*rowspan*/, int wid
 }
 
 bool ExcludeMapWidget::fits_at(int width_px, int height_px) const {
-    // Refuse a size that cannot draw the Glance content in either state.
-    return decide(width_px, height_px, ExcludeMapState::Objects, 1).fits &&
+    // Refuse a size that cannot draw the Glance content in either state, with the widest
+    // object count the counts are budgeted for: a tile accepted for 5 objects must still
+    // hold a print of a hundred.
+    return decide(width_px, height_px, ExcludeMapState::Objects, kWidestCountDigits).fits &&
            decide(width_px, height_px, ExcludeMapState::NoObjects, 1).fits;
 }
 

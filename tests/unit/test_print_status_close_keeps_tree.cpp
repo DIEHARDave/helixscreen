@@ -509,3 +509,20 @@ TEST_CASE_METHOD(PrintStatusCloseFixture,
     settle();
     CHECK_FALSE(PrintStatusPanelTestAccess::exclude_open(panel()));
 }
+
+TEST_CASE_METHOD(PrintStatusCloseFixture,
+                 "An exclude-map request does not outlive its push when the tree is destroyed",
+                 "[print_status][exclude]") {
+    set_wire_state(PrintJobState::PRINTING);
+
+    // Armed by a push, then the tree goes before the panel ever activates for it.
+    REQUIRE(PrintStatusPanel::push_overlay_with_exclude_map(test_screen()));
+    PrintStatusPanel::destroy_cached_overlay(
+        helix::ui::PrintStatusTreeDestroyCause::PanelRegistryTeardown);
+    settle();
+
+    open_print_status();
+    settle();
+    CHECK(PrintStatusPanelTestAccess::is_active(panel()));
+    CHECK_FALSE(PrintStatusPanelTestAccess::exclude_open(panel()));
+}
