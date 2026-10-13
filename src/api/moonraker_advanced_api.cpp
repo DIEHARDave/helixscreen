@@ -1987,9 +1987,10 @@ class BeltResonanceCollector : public std::enable_shared_from_this<BeltResonance
     BeltResonanceCollector(IMoonrakerClient& client,
                            MoonrakerAdvancedAPI::BeltSweepProgressCallback on_progress,
                            MoonrakerAdvancedAPI::BeltCurveCallback on_success,
-                           MoonrakerAdvancedAPI::ErrorCallback on_error)
+                           MoonrakerAdvancedAPI::ErrorCallback on_error,
+                           std::optional<calibration::BeltSweepWindow> window = std::nullopt)
         : core_(client, "belt_resonance_collector_"), on_progress_(std::move(on_progress)),
-          on_success_(std::move(on_success)), on_error_(std::move(on_error)) {}
+          on_success_(std::move(on_success)), on_error_(std::move(on_error)), window_(window) {}
 
     void start() {
         auto self = shared_from_this();
@@ -2003,6 +2004,10 @@ class BeltResonanceCollector : public std::enable_shared_from_this<BeltResonance
     /// against the default range would misreport the sweep's start.
     void set_config(const calibration::ResonanceTesterConfig& cfg) {
         cfg_ = cfg;
+        if (window_) {
+            cfg_.min_freq = window_->freq_start_hz;
+            cfg_.max_freq = window_->freq_end_hz;
+        }
         config_received_.store(true);
     }
 
@@ -2107,6 +2112,8 @@ class BeltResonanceCollector : public std::enable_shared_from_this<BeltResonance
     MoonrakerAdvancedAPI::BeltSweepProgressCallback on_progress_;
     MoonrakerAdvancedAPI::BeltCurveCallback on_success_;
     MoonrakerAdvancedAPI::ErrorCallback on_error_;
+    /// Progress scales against this instead of the printer's range when set.
+    std::optional<calibration::BeltSweepWindow> window_;
 
     /// Written once by set_config() on the RPC path, read on the notification
     /// path; the seq-cst flag below orders the two.
@@ -3272,12 +3279,13 @@ void MoonrakerAdvancedAPI::detect_belt_hardware(BeltHardwareCallback on_complete
 
 MoonrakerAdvancedAPI::BeltRunCancel MoonrakerAdvancedAPI::test_belt_resonance(
     const std::string& axis_param, const std::string& output_name,
-    BeltSweepProgressCallback on_progress, BeltCurveCallback on_complete, ErrorCallback on_error) {
+    BeltSweepProgressCallback on_progress, BeltCurveCallback on_complete, ErrorCallback on_error,
+    std::optional<calibration::BeltSweepWindow> window) {
     spdlog::info("[MoonrakerAPI] Starting belt resonance test: axis={}, name={}", axis_param,
                  output_name);
 
     auto collector = std::make_shared<BeltResonanceCollector>(
-        client_, std::move(on_progress), std::move(on_complete), std::move(on_error));
+        client_, std::move(on_progress), std::move(on_complete), std::move(on_error), window);
     collector->start();
 
     // Ask the printer what range it will sweep, so progress is scaled by the
@@ -3291,9 +3299,14 @@ MoonrakerAdvancedAPI::BeltRunCancel MoonrakerAdvancedAPI::test_belt_resonance(
     // [resonance_tester] defaults to sweeping: the slow sweep smooths over the
     // mechanical faults a belt comparison looks for. Firmware without the
     // parameter ignores it.
+    std::string freq_range;
+    if (window) {
+        freq_range = fmt::format(" FREQ_START={:.0f} FREQ_END={:.0f}",
+                                 std::floor(window->freq_start_hz), std::ceil(window->freq_end_hz));
+    }
     const std::string gcode =
-        fmt::format("TEST_RESONANCES AXIS={} OUTPUT=resonances NAME={} SWEEPING_PERIOD=0",
-                    axis_param, output_name);
+        fmt::format("TEST_RESONANCES AXIS={}{} OUTPUT=resonances NAME={} SWEEPING_PERIOD=0",
+                    axis_param, freq_range, output_name);
     // A sweep takes minutes, so the request rides the long calibration timeout
     // rather than the tracker default. A transport loss only means the RPC
     // reply vanished - Klipper keeps sweeping and the console lines keep

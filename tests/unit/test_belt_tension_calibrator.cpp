@@ -454,6 +454,20 @@ TEST_CASE_METHOD(BeltCalibratorFixture, "measure_path sweeps its path and report
     CHECK(calibrator_->get_state() == BeltTensionCalibrator::State::IDLE);
 }
 
+TEST_CASE_METHOD(BeltCalibratorFixture, "measure_path forwards its window",
+                 "[belt_tension][calibrator]") {
+    mock_client_.clear_gcode_script_history();
+    std::atomic<bool> done{false};
+    calibrator_->measure_path(
+        BeltPath::PATH_A, nullptr, [&](BeltCurve) { done = true; },
+        [&](const std::string& msg) { FAIL(msg); }, BeltSweepWindow{88.4f, 119.6f});
+    REQUIRE(pump_until(done));
+    const auto history = mock_client_.gcode_script_history();
+    CHECK(std::any_of(history.begin(), history.end(), [](const std::string& g) {
+        return g.find("TEST_RESONANCES AXIS=1,-1 FREQ_START=88 FREQ_END=120 ") == 0;
+    }));
+}
+
 TEST_CASE_METHOD(BeltCalibratorFixture, "cancel while homing never starts the sweep",
                  "[belt_tension][calibrator]") {
     lv_subject_copy_string(get_printer_state().motion_state().get_homed_axes_subject(), "");

@@ -124,6 +124,80 @@ TEST_CASE_METHOD(BeltApiFixture, "the sweep is sent pulse-only", "[belt][api]") 
                     "SWEEPING_PERIOD=0") != history.end());
 }
 
+TEST_CASE_METHOD(BeltApiFixture, "a windowed sweep sends FREQ_START and FREQ_END", "[belt][api]") {
+    mock_client_.clear_gcode_script_history();
+    std::atomic<bool> done{false};
+    auto cancel = api_->advanced().test_belt_resonance(
+        "1,-1", "helix_belt_a", nullptr, [&](const calibration::BeltCurve&) { done = true; },
+        [&](const MoonrakerError& e) { FAIL(e.message); },
+        calibration::BeltSweepWindow{88.4f, 119.6f});
+    pump_until(done);
+    const auto history = mock_client_.gcode_script_history();
+    CHECK(std::find(history.begin(), history.end(),
+                    "TEST_RESONANCES AXIS=1,-1 FREQ_START=88 FREQ_END=120 OUTPUT=resonances "
+                    "NAME=helix_belt_a SWEEPING_PERIOD=0") != history.end());
+}
+
+TEST_CASE_METHOD(BeltApiFixture, "a sweep without a window sends today's G-code", "[belt][api]") {
+    mock_client_.clear_gcode_script_history();
+    std::atomic<bool> done{false};
+    auto cancel = api_->advanced().test_belt_resonance(
+        "1,1", "helix_belt_b", nullptr, [&](const calibration::BeltCurve&) { done = true; },
+        [&](const MoonrakerError& e) { FAIL(e.message); });
+    pump_until(done);
+    const auto history = mock_client_.gcode_script_history();
+    CHECK(std::find(history.begin(), history.end(),
+                    "TEST_RESONANCES AXIS=1,1 OUTPUT=resonances NAME=helix_belt_b "
+                    "SWEEPING_PERIOD=0") != history.end());
+    CHECK(std::none_of(history.begin(), history.end(), [](const std::string& g) {
+        return g.find("FREQ_START") != std::string::npos;
+    }));
+}
+
+TEST_CASE_METHOD(BeltApiFixture, "windowed progress scales against the window", "[belt][api]") {
+    // The printer's range runs to 152 Hz, so 104 Hz reads 50% only against the window.
+    mock_client_.set_resonance_sweep_range(88.0, 152.0, 16.0);
+    std::vector<std::pair<float, int>> seen;
+    std::atomic<bool> done{false};
+    auto cancel = api_->advanced().test_belt_resonance(
+        "1,-1", "helix_belt_a", [&](int pct, float f) { seen.emplace_back(f, pct); },
+        [&](const calibration::BeltCurve&) { done = true; },
+        [&](const MoonrakerError& e) { FAIL(e.message); },
+        calibration::BeltSweepWindow{88.0f, 120.0f});
+    pump_until(done);
+    REQUIRE(seen.size() >= 3);
+    for (const auto& [freq, pct] : seen) {
+        if (freq == Catch::Approx(88.0f))
+            CHECK(pct == 0);
+        if (freq == Catch::Approx(104.0f))
+            CHECK(pct == 50);
+        if (freq == Catch::Approx(120.0f))
+            CHECK(pct == 100);
+    }
+    CHECK(std::any_of(seen.begin(), seen.end(),
+                      [](const auto& s) { return s.first == Catch::Approx(104.0f); }));
+    CHECK(seen.front().second == 0);
+    CHECK(seen.back().second == 100);
+}
+
+TEST_CASE_METHOD(BeltApiFixture, "progress stays clamped when firmware ignores the window",
+                 "[belt][api]") {
+    // The mock sweeps 5..135 Hz regardless of the window.
+    mock_client_.set_resonance_sweep_range(5.0, 135.0, 130.0);
+    std::vector<int> percents;
+    std::atomic<bool> done{false};
+    auto cancel = api_->advanced().test_belt_resonance(
+        "1,-1", "helix_belt_a", [&](int pct, float) { percents.push_back(pct); },
+        [&](const calibration::BeltCurve&) { done = true; },
+        [&](const MoonrakerError& e) { FAIL(e.message); },
+        calibration::BeltSweepWindow{88.0f, 120.0f});
+    pump_until(done);
+    REQUIRE(percents.size() >= 2);
+    CHECK(percents.front() == 0);
+    CHECK(percents.back() == 100);
+    CHECK(std::all_of(percents.begin(), percents.end(), [](int p) { return p >= 0 && p <= 100; }));
+}
+
 TEST_CASE_METHOD(BeltApiFixture, "an error line fails the run", "[belt][api]") {
     mock_client_.set_belt_failure(BeltMockFailure::ERROR);
     std::atomic<bool> failed{false};

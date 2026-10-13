@@ -85,7 +85,8 @@ void BeltTensionCalibrator::detect_hardware(BeltHardwareDetectCallback on_comple
 
 void BeltTensionCalibrator::measure_path(
     BeltPath path, std::function<void(int percent, float freq_hz)> on_progress,
-    std::function<void(BeltCurve)> on_complete, BeltErrorCallback on_error) {
+    std::function<void(BeltCurve)> on_complete, BeltErrorCallback on_error,
+    std::optional<BeltSweepWindow> window) {
     if (!api_) {
         spdlog::warn("[BeltTension] measure_path called without API");
         if (on_error) {
@@ -103,7 +104,7 @@ void BeltTensionCalibrator::measure_path(
 
     ensure_homed_then(
         api_, lifetime_,
-        [this, generation, path, on_progress, on_complete, on_error]() {
+        [this, generation, path, window, on_progress, on_complete, on_error]() {
             if (generation != run_generation_) {
                 spdlog::debug("[BeltTension] Cancelled while homing; not starting the sweep");
                 return;
@@ -134,7 +135,8 @@ void BeltTensionCalibrator::measure_path(
                                     spdlog::error("[BeltTension] Sweep failed: {}", err.message);
                                     if (on_error)
                                         on_error(err.message);
-                                }));
+                                }),
+                window);
         },
         [this, generation, on_error](const MoonrakerError& err) {
             if (generation != run_generation_)

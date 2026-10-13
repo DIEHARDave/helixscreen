@@ -523,13 +523,14 @@ class MoonrakerAdvancedAPI : public helix::IAdvancedAPI {
      * @param on_progress Called with progress percentage (0-100) and current frequency
      * @param on_complete Called with the parsed curve on success
      * @param on_error Called on failure
+     * @param window Optional frequency range to limit the sweep to
      * @return Cancel handle; stops listening and suppresses every later callback
      */
-    [[nodiscard]] BeltRunCancel test_belt_resonance(const std::string& axis_param,
-                                                    const std::string& output_name,
-                                                    BeltSweepProgressCallback on_progress,
-                                                    BeltCurveCallback on_complete,
-                                                    ErrorCallback on_error) override;
+    [[nodiscard]] BeltRunCancel test_belt_resonance(
+        const std::string& axis_param, const std::string& output_name,
+        BeltSweepProgressCallback on_progress, BeltCurveCallback on_complete,
+        ErrorCallback on_error,
+        std::optional<helix::calibration::BeltSweepWindow> window = std::nullopt) override;
 
   protected:
     helix::IMoonrakerClient& client_;

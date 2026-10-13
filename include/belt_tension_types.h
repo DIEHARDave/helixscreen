@@ -33,6 +33,20 @@ enum class BeltPath {
     PATH_B, ///< CoreXY diagonal B (1,1)
 };
 
+/// What kind of tensioner a belt path uses.
+enum class BeltTensionerKind {
+    UNKNOWN,
+    SCREW,
+    SPRING,
+};
+
+/// Frequency range a TEST_RESONANCES sweep is limited to. Both zero means the
+/// printer's own [resonance_tester] range.
+struct BeltSweepWindow {
+    float freq_start_hz = 0.0f;
+    float freq_end_hz = 0.0f;
+};
+
 /// Kinematics type detected from printer
 enum class KinematicsType {
     UNKNOWN,
