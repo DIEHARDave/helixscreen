@@ -613,3 +613,86 @@ TEST_CASE_METHOD(ToolheadFixture, "toolhead: the default 2x2 span lands on its r
         CHECK(rung_subject() == static_cast<int>(t.rung));
     }
 }
+
+TEST_CASE_METHOD(ToolheadFixture,
+                 "toolhead: several tools on one extruder still name the active tool",
+                 "[widget_size][toolhead]") {
+    PrinterDiscovery hw;
+    hw.parse_objects(
+        json::array({"gcode_move", "toolhead", "extruder", "toolchanger", "tool T0", "tool T1"}));
+    state().set_hardware(hw);
+    ToolState::instance().init_tools(hw);
+    drain();
+    REQUIRE(ToolState::instance().is_multi_tool());
+    REQUIRE_FALSE(ToolState::instance().has_multiple_extruders());
+    set_homed("xyz");
+    set_print_active(true);
+    PanelWidgetHarness<ToolheadWidget> h(test_screen(), state());
+    h.resize(1, 1, kFull.w, kFull.h);
+    settle();
+    CHECK_FALSE(subject_text("toolhead_tool_text").empty());
+}
+
+TEST_CASE_METHOD(ToolheadFixture, "toolhead: AMS slots on one extruder name no tool",
+                 "[widget_size][toolhead]") {
+    helix::ToolTopology topo;
+    topo.tool_count = 4;
+    topo.active_tool = 0;
+    topo.tool_to_slot = {0, 1, 2, 3};
+    ToolState::instance().set_ams_topology(topo);
+    drain();
+    REQUIRE(ToolState::instance().is_multi_tool());
+    set_homed("xyz");
+    set_print_active(true);
+    PanelWidgetHarness<ToolheadWidget> h(test_screen(), state());
+    h.resize(1, 1, kFull.w, kFull.h);
+    settle();
+    CHECK(subject_text("toolhead_tool_text").empty());
+    ToolState::instance().clear_ams_topology();
+    drain();
+}
+
+TEST_CASE_METHOD(ToolheadFixture,
+                 "toolhead: a new rung redraws from live state without a position event",
+                 "[widget_size][toolhead]") {
+    set_homed("xyz");
+    set_position(10000, 5000, 1000);
+    PanelWidgetHarness<ToolheadWidget> h(test_screen(), state());
+    h.resize(1, 1, 114, 113);
+    settle();
+
+    h.resize(1, 1, kWide.w, kWide.h);
+    settle();
+    auto in = h.widget().drawn_plate_input();
+    REQUIRE(in.has_value());
+    CHECK(in->homed);
+    CHECK(in->align_start);
+    CHECK(in->x_mm == Catch::Approx(100.0f));
+    CHECK(in->y_mm == Catch::Approx(50.0f));
+
+    h.resize(1, 1, kFull.w, kFull.h);
+    settle();
+    in = h.widget().drawn_plate_input();
+    REQUIRE(in.has_value());
+    CHECK_FALSE(in->align_start);
+}
+
+TEST_CASE_METHOD(ToolheadFixture,
+                 "toolhead: an offscreen panel does no redraw work until it returns",
+                 "[widget_size][toolhead]") {
+    set_homed("xyz");
+    set_position(10000, 5000, 1000);
+    PanelWidgetHarness<ToolheadWidget> h(test_screen(), state());
+    h.resize(1, 1, kWide.w, kWide.h);
+    settle();
+    REQUIRE(h.widget().drawn_plate_input()->x_mm == Catch::Approx(100.0f));
+
+    h.widget().on_deactivate();
+    set_position(15000, 5000, 1000);
+    settle();
+    CHECK(h.widget().drawn_plate_input()->x_mm == Catch::Approx(100.0f));
+
+    h.widget().on_activate();
+    settle();
+    CHECK(h.widget().drawn_plate_input()->x_mm == Catch::Approx(150.0f));
+}

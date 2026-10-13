@@ -40,8 +40,14 @@ class ToolheadWidget : public PanelWidget {
     /// idle with an axis not homed.
     void home_all();
 
+    void on_activate() override;
+    void on_deactivate() override;
+
     /// The plate the canvas would draw now, or nullopt while it is not on screen.
     [[nodiscard]] std::optional<ToolheadPlateGeometry> plate_geometry() const;
+
+    /// What the plate's draw hook will draw from, or nullopt before the canvas exists.
+    [[nodiscard]] std::optional<ToolheadPlateInput> drawn_plate_input() const;
 
   private:
     struct LiveState;
@@ -69,6 +75,8 @@ class ToolheadWidget : public PanelWidget {
     bool decided_printing_ = false;
     bool decided_homed_ = false;
     bool moving_ = false;
+    /// The owning panel is offscreen: nothing redraws until it returns.
+    bool panel_hidden_ = false;
     BedDimensions bed_{};
     bool circular_ = false;
 

@@ -199,7 +199,7 @@ helix::RungNeeds measure_needs() {
 }
 
 /// What the plate last drew, so an unchanged position costs no redraw.
-using DrawKey = std::array<int, 9>;
+using DrawKey = std::array<int, 10>;
 
 DrawKey draw_key(const helix::ToolheadPlateGeometry& g) {
     return {g.show_crosshair ? 1 : 0,
@@ -210,7 +210,8 @@ DrawKey draw_key(const helix::ToolheadPlateGeometry& g) {
             g.circular ? 1 : 0,
             static_cast<int>(std::lround(g.plate.w)),
             static_cast<int>(std::lround(g.plate.h)),
-            g.has_room ? 1 : 0};
+            g.has_room ? 1 : 0,
+            static_cast<int>(std::lround(g.plate.x))};
 }
 
 /// The draw state owned by the plate object: freed with it, so the draw hook never
@@ -406,7 +407,9 @@ ToolheadWidget::LiveState ToolheadWidget::read_live() const {
                                                  lv_subject_get_int(resting[i]));
     }
     auto& tools = ToolState::instance();
-    if (tools.has_multiple_extruders()) {
+    // Several tools name a tool changer's active tool; AMS slots feeding one hotend are
+    // tools too and need no label.
+    if (tools.is_multi_tool() && (tools.has_multiple_extruders() || !tools.ams_topology_active())) {
         const auto* active = tools.active_tool();
         s.tool_label = active ? active->display_label
                               : ui::lane_label(ui::active_tool_noun(),
@@ -576,6 +579,9 @@ void ToolheadWidget::on_size_changed(int /*colspan*/, int /*rowspan*/, int width
     if (!s_tile.is_owner(this))
         return;
     publish_state(live);
+    // The canvas draws from state captured at refresh time; a new rung or size needs it.
+    if (verdict_.show_plate)
+        schedule_refresh();
 
     spdlog::debug("[ToolheadWidget] on_size_changed {}x{} rung={} letters={} z_only={} rows={} "
                   "plate={} home={} status={} fits={} printing={} homed={}",
@@ -648,13 +654,13 @@ void ToolheadWidget::on_state_changed() {
 }
 
 void ToolheadWidget::schedule_refresh() {
-    if (!s_tile.is_owner(this))
+    if (!s_tile.is_owner(this) || panel_hidden_)
         return;
     refresh_timer_.schedule_once([this]() { refresh(); });
 }
 
 void ToolheadWidget::refresh() {
-    if (!s_tile.is_owner(this))
+    if (!s_tile.is_owner(this) || panel_hidden_)
         return;
     const LiveState live = read_live();
     publish_values(live);
@@ -692,6 +698,29 @@ ToolheadPlateInput ToolheadWidget::plate_input(const LiveState& live, int box_w,
     in.z_min_mm = bounds.z_min;
     in.z_max_mm = bounds.z_max;
     return in;
+}
+
+std::optional<ToolheadPlateInput> ToolheadWidget::drawn_plate_input() const {
+    if (!plate_)
+        return std::nullopt;
+    const auto* view = static_cast<const PlateView*>(lv_obj_get_user_data(plate_));
+    if (!view)
+        return std::nullopt;
+    return view->input;
+}
+
+void ToolheadWidget::on_activate() {
+    panel_hidden_ = false;
+    schedule_refresh();
+}
+
+void ToolheadWidget::on_deactivate() {
+    panel_hidden_ = true;
+    if (plate_) {
+        if (auto* view = static_cast<PlateView*>(lv_obj_get_user_data(plate_)))
+            view->drawn.reset();
+    }
+    refresh_timer_.cancel();
 }
 
 std::optional<ToolheadPlateGeometry> ToolheadWidget::plate_geometry() const {
