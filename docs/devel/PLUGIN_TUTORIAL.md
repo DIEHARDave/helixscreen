@@ -346,9 +346,10 @@ local big_name = helix.subject.string("big_name", "")
 
 Two rules:
 
-- **Centered text is a label.** Canvas text is positioned by pixel offset
-  against a font the sandbox cannot measure; a label with `align="center"`
-  is positioned by the layout engine that owns the font. The ring center
+- **Centered text is a label.** Canvas text sits at the pixel offset the
+  list was staged with; `helix.ui.text_width` can compute that offset, but
+  a label with `align="center"` is positioned by the layout engine that owns
+  the font and follows it when the font changes. The ring center
   and the label center are the same point because the canvas fills the
   zone and both center on it.
 - **When the number does not fit, drop it; never relocate it.** Below a
