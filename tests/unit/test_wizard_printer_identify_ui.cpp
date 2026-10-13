@@ -342,7 +342,10 @@ TEST_CASE_METHOD(WizardPrinterIdentifyUIFixture,
     // restore them AND land inside the machine's vendor bucket.
     auto* step = get_wizard_printer_identify_step();
     step->cleanup();
+    // Screen-sized, as the wizard content area is: the vendor title holds one
+    // dotted line and would ellipsize in a default-sized box.
     lv_obj_t* parent = lv_obj_create(test_screen());
+    lv_obj_set_size(parent, lv_pct(100), lv_pct(100));
     REQUIRE(step->create(parent) != nullptr);
     step_root = parent;
 
