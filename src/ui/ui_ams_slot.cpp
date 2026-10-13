@@ -1052,39 +1052,24 @@ void ui_ams_slot_set_layout_info(lv_obj_t* obj, int slot_index, int total_count)
 
     data->total_count = total_count;
 
-    // Calculate stagger parameters based on total gate count
-    // Pattern: Low → Medium → High → Low... (cycling)
-    int stagger_rows = 1;
-    if (total_count >= 7) {
-        stagger_rows = 3; // Low, Medium, High
-    } else if (total_count >= 5) {
-        stagger_rows = 2; // Low, Medium
+    const UiBreakpoint bp = helix::widget_size::current_breakpoint();
+    const helix::ui::AmsLabelRow placement =
+        helix::ui::ams_stagger_row(slot_index, total_count, bp);
+    const int stagger_rows = placement.rows;
+    const int row = placement.row;
+
+    // Staggered labels below the medium breakpoint take the extra-small font, so
+    // their rows stay one short line apart.
+    const char* font_name = lv_xml_get_const(
+        NULL, stagger_rows > 1 && bp < UiBreakpoint::Medium ? "font_xs" : "font_small");
+    const lv_font_t* label_font = font_name ? lv_xml_get_font(NULL, font_name) : &noto_sans_16;
+    int32_t line_height = lv_font_get_line_height(label_font);
+    const int32_t row_height = helix::ui::ams_stagger_row_height(line_height, bp);
+    if (data->material_label && stagger_rows > 1) {
+        // DECLARATIVE_OK: computed font; the stagger rows are sized from it
+        lv_obj_set_style_text_font(data->material_label, label_font, LV_PART_MAIN);
+        lv_obj_set_height(data->material_label, line_height);
     }
-
-    // Calculate which row this slot belongs to using triangle wave pattern
-    // Pattern: High → Mid → Low → Mid → High → Mid → Low...
-    // This creates a more balanced visual distribution of labels
-    int row = 0;
-    if (stagger_rows > 1) {
-        int period = (stagger_rows - 1) * 2; // 4 for 3 rows, 2 for 2 rows
-        int pos = slot_index % period;
-        if (pos < stagger_rows) {
-            // Descending: High(2) → Mid(1) → Low(0)
-            row = stagger_rows - 1 - pos;
-        } else {
-            // Ascending: Mid(1) back up
-            row = pos - stagger_rows + 1;
-        }
-    }
-
-    // Get font for dynamic row height calculation
-    const char* font_small_name = lv_xml_get_const(NULL, "font_small");
-    const lv_font_t* font_small =
-        font_small_name ? lv_xml_get_font(NULL, font_small_name) : &noto_sans_16;
-    int32_t line_height = lv_font_get_line_height(font_small);
-
-    const int32_t row_height =
-        helix::ui::ams_stagger_row_height(line_height, helix::widget_size::current_breakpoint());
 
     // For staggered labels, we use absolute positioning
     // Remove label from flex flow and position it at the correct stagger row
@@ -1171,7 +1156,8 @@ void ui_ams_slot_set_layout_info(lv_obj_t* obj, int slot_index, int total_count)
     apply_slot_label(data);
 }
 
-void ui_ams_slot_move_label_to_layer(lv_obj_t* obj, lv_obj_t* labels_layer, int32_t slot_center_x) {
+void ui_ams_slot_move_label_to_layer(lv_obj_t* obj, lv_obj_t* labels_layer, int32_t slot_center_x,
+                                     int32_t max_width) {
     auto* data = get_slot_data(obj);
     if (!data || !labels_layer) {
         return;
@@ -1199,6 +1185,10 @@ void ui_ams_slot_move_label_to_layer(lv_obj_t* obj, lv_obj_t* labels_layer, int3
 
     // Reparent label to labels_layer
     lv_obj_set_parent(data->material_label, labels_layer);
+
+    // A label sharing its row with near neighbours keeps to its span and ellipsizes.
+    if (max_width > 0)
+        lv_obj_set_width(data->material_label, max_width);
 
     // Get label width for centering
     lv_obj_update_layout(data->material_label);

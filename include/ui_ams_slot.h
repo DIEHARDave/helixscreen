@@ -97,8 +97,10 @@ void ui_ams_slot_set_layout_info(lv_obj_t* obj, int slot_index, int total_count)
  * @param obj           The ams_slot widget
  * @param labels_layer  Target container for label/leader (should be above slots in z-order)
  * @param slot_center_x X position of slot center in labels_layer coords
+ * @param max_width     Label width in px, centered on the slot; 0 keeps its own
  */
-void ui_ams_slot_move_label_to_layer(lv_obj_t* obj, lv_obj_t* labels_layer, int32_t slot_center_x);
+void ui_ams_slot_move_label_to_layer(lv_obj_t* obj, lv_obj_t* labels_layer, int32_t slot_center_x,
+                                     int32_t max_width);
 
 /**
  * @brief Move status badge to an external container for z-ordering

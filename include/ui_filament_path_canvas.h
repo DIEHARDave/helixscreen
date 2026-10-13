@@ -381,6 +381,14 @@ void ui_filament_path_canvas_set_edge_reserve(lv_obj_t* obj, int32_t px, int32_t
 bool ui_filament_path_canvas_get_hub_box(lv_obj_t* obj, lv_area_t* area_out);
 
 /**
+ * @brief Where the toolhead glyph is drawn, in absolute display coordinates
+ *
+ * The same frame and glyph bounds the renderer draws (LINEAR and HUB layouts).
+ * False for other layouts or before the widget has a size.
+ */
+bool ui_filament_path_canvas_get_toolhead_box(lv_obj_t* obj, lv_area_t* area_out);
+
+/**
  * @brief Set the unit's hub (or selector) output sensor
  *
  * With the sensor the hub's output edge carries a clamp band, and filament the sensor

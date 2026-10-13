@@ -300,7 +300,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "ams_slot: move_label_to_layer reparents lab
     REQUIRE(material_label != nullptr);
 
     // Move label to the layer
-    ui_ams_slot_move_label_to_layer(slot, labels_layer, 100);
+    ui_ams_slot_move_label_to_layer(slot, labels_layer, 100, 0);
 
     // The label should now be a child of the labels_layer
     // (This may require looking for it in the layer instead of the slot)

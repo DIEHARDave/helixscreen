@@ -1060,6 +1060,28 @@ void ui_filament_path_canvas_set_edge_reserve(lv_obj_t* obj, int32_t px, int32_t
 }
 
 // NAMESPACE_OK: the widget's C getter API, beside its siblings
+bool ui_filament_path_canvas_get_toolhead_box(lv_obj_t* obj, lv_area_t* area_out) {
+    auto* data = get_data(obj);
+    if (!data || !area_out)
+        return false;
+    if (data->topology != static_cast<int>(helix::PathTopology::HUB) &&
+        data->topology != static_cast<int>(helix::PathTopology::LINEAR))
+        return false;
+    lv_obj_update_layout(obj);
+    const BaseGeometry g = compute_base_geometry(obj, data);
+    if (g.width <= 0 || g.height <= 0)
+        return false;
+    refresh_theme_colors(data);
+    const int32_t nozzle_y = g.y_off + (int32_t)(g.height * NOZZLE_Y_RATIO);
+    const LinearHubFrame f =
+        compute_linear_hub_frame(*data, g, toolhead_top_y(nozzle_y, data->theme.extruder_scale));
+    const helix::ui::GlyphBounds b =
+        toolhead_glyph_bounds(f.center_x, f.nozzle_y, data->theme.extruder_scale);
+    *area_out = {b.left, b.top, b.right, b.bottom};
+    return true;
+}
+
+// NAMESPACE_OK: the widget's C getter API, beside its siblings
 bool ui_filament_path_canvas_get_hub_box(lv_obj_t* obj, lv_area_t* area_out) {
     auto* data = get_data(obj);
     if (!data || !area_out)

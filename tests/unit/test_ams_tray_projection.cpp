@@ -14,7 +14,10 @@
 
 using namespace helix::ui::tray;
 using Catch::Approx;
+using helix::ui::ams_stagger_label_width;
+using helix::ui::ams_stagger_row;
 using helix::ui::ams_stagger_row_height;
+using helix::ui::AmsLabelRow;
 
 namespace {
 
@@ -230,17 +233,63 @@ TEST_CASE("stagger rows: 1.5 lines from the medium breakpoint up", "[ams][tray][
     CHECK(ams_stagger_row_height(26, UiBreakpoint::XXLarge) == 39);
 }
 
-TEST_CASE("stagger rows: about 1.1 lines below the medium breakpoint", "[ams][tray][stagger]") {
-    CHECK(ams_stagger_row_height(15, UiBreakpoint::Micro) == 17);
-    CHECK(ams_stagger_row_height(15, UiBreakpoint::Tiny) == 17);
-    CHECK(ams_stagger_row_height(18, UiBreakpoint::Small) == 20);
+TEST_CASE("stagger rows: one line apart below the medium breakpoint", "[ams][tray][stagger]") {
+    CHECK(ams_stagger_row_height(15, UiBreakpoint::Micro) == 15);
+    CHECK(ams_stagger_row_height(15, UiBreakpoint::Tiny) == 15);
+    CHECK(ams_stagger_row_height(18, UiBreakpoint::Small) == 18);
 }
 
 TEST_CASE("stagger rows never overlap their own line", "[ams][tray][stagger]") {
     for (int lh = 8; lh <= 40; ++lh) {
         for (int bp = 0; bp <= 6; ++bp)
-            CHECK(ams_stagger_row_height(lh, as_breakpoint(bp)) > lh);
+            CHECK(ams_stagger_row_height(lh, as_breakpoint(bp)) >= lh);
     }
+}
+
+TEST_CASE("stagger rows: below medium the lanes alternate between two rows",
+          "[ams][tray][stagger]") {
+    for (int bp = 0; bp <= 2; ++bp) {
+        for (int count : {5, 7, 8}) {
+            CAPTURE(bp, count);
+            for (int i = 0; i < count; ++i) {
+                const AmsLabelRow r = ams_stagger_row(i, count, as_breakpoint(bp));
+                CHECK(r.rows == 2);
+                CHECK(r.row == i % 2);
+            }
+        }
+    }
+}
+
+TEST_CASE("stagger rows: from medium up, three rows from seven lanes, two from five",
+          "[ams][tray][stagger]") {
+    // High, mid, low, mid, high...
+    const int three[] = {2, 1, 0, 1, 2, 1, 0, 1};
+    for (int i = 0; i < 8; ++i) {
+        CAPTURE(i);
+        const AmsLabelRow r = ams_stagger_row(i, 8, UiBreakpoint::Medium);
+        CHECK(r.rows == 3);
+        CHECK(r.row == three[i]);
+    }
+    CHECK(ams_stagger_row(0, 5, UiBreakpoint::Large).rows == 2);
+    CHECK(ams_stagger_row(0, 5, UiBreakpoint::Large).row == 1);
+    CHECK(ams_stagger_row(1, 5, UiBreakpoint::Large).row == 0);
+}
+
+TEST_CASE("stagger rows: four lanes or fewer stand in one row", "[ams][tray][stagger]") {
+    for (int bp = 0; bp <= 6; ++bp) {
+        const AmsLabelRow r = ams_stagger_row(3, 4, as_breakpoint(bp));
+        CHECK(r.rows == 1);
+        CHECK(r.row == 0);
+    }
+}
+
+TEST_CASE("stagger labels: below medium a label keeps to its two-lane span",
+          "[ams][tray][stagger]") {
+    CHECK(ams_stagger_label_width(30, UiBreakpoint::Micro, 4) == 56);
+    CHECK(ams_stagger_label_width(30, UiBreakpoint::Small, 4) == 56);
+    // From medium up labels are not narrowed.
+    CHECK(ams_stagger_label_width(30, UiBreakpoint::Medium, 4) == 0);
+    CHECK(ams_stagger_label_width(0, UiBreakpoint::Micro, 4) == 0);
 }
 
 TEST_CASE("lane badge: on the front face, inside the lane's lid edge", "[ams][tray][badge]") {

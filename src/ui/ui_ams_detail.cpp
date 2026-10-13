@@ -20,6 +20,7 @@
 #include "filament_op_dispatch.h"      // EXTERNAL_SPOOL_SLOT: the bypass sentinel
 #include "filament_op_slot_resolver.h" // clear_spool_blocked_by_print: the print guard
 #include "filament_tube_stroker.h"
+#include "panel_widget_size.h"
 #include "printer_detector.h"
 #include "printer_state.h" // PrinterState, complete for get_print_lifecycle()
 #include "theme_manager.h"
@@ -771,13 +772,17 @@ void ams_detail_update_labels(AmsDetailWidgets& w, lv_obj_t* slot_widgets[], int
     helix::ui::safe_clean_children(w.labels_layer);
 
     int32_t slot_spacing = layout.slot_width - layout.overlap;
+    const int32_t label_width =
+        helix::ui::ams_stagger_label_width(slot_spacing, helix::widget_size::current_breakpoint(),
+                                           theme_manager_get_spacing("space_xs"));
 
     for (int i = 0; i < slot_count; ++i) {
         if (slot_widgets[i]) {
             // Formula matches slot_grid flex positions, plus centering offset
             int32_t slot_center_x =
                 layout.centering_offset + layout.slot_width / 2 + i * slot_spacing;
-            ui_ams_slot_move_label_to_layer(slot_widgets[i], w.labels_layer, slot_center_x);
+            ui_ams_slot_move_label_to_layer(slot_widgets[i], w.labels_layer, slot_center_x,
+                                            label_width);
         }
     }
 
@@ -997,7 +1002,13 @@ void ams_detail_setup_path_canvas(lv_obj_t* canvas, lv_obj_t* slot_grid, int uni
         ui_filament_path_canvas_set_bypass_color(canvas, ext_spool->color_rgb);
     }
 
-    spdlog::debug("[AmsDetail] Path canvas configured: slots={}, unit={}", slot_count, unit_index);
+    lv_area_t toolhead{}, canvas_area{};
+    const bool has_toolhead = ui_filament_path_canvas_get_toolhead_box(canvas, &toolhead);
+    lv_obj_get_coords(canvas, &canvas_area);
+    spdlog::debug("[AmsDetail] Path canvas configured: slots={}, unit={}, canvas y {}..{}, "
+                  "toolhead y {}..{}",
+                  slot_count, unit_index, canvas_area.y1, canvas_area.y2,
+                  has_toolhead ? toolhead.y1 : -1, has_toolhead ? toolhead.y2 : -1);
 }
 
 void ams_detail_pre_show_env_indicator(AmsDetailWidgets& w, int unit_index) {

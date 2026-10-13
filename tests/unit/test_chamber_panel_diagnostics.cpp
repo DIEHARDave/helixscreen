@@ -27,6 +27,7 @@
 #include "ui_update_queue.h"
 
 #include "../test_fixtures.h"
+#include "../test_helpers/scoped_geometry.h"
 #include "app_globals.h"
 #include "chamber_heater_backend.h"
 #include "lvgl/src/widgets/label/lv_label_private.h" // lv_label_t::dot_begin: the ellipsization signal
@@ -48,6 +49,8 @@
 
 #include "../catch_amalgamated.hpp"
 #include "hv/json.hpp"
+
+using helix::test::ScopedGeometry;
 
 using helix::PrinterTemperatureState;
 using helix::TemperatureController;
@@ -193,34 +196,6 @@ nlohmann::json faulted_dragonbreath_status() {
         "mode": "off", "source": "device", "lease_owned": false},
       "output_pin dragonbreath_filter": {"value": 1.0}})");
 }
-
-/// Drives the fixture display to a geometry and refreshes the derived layout
-/// state (ui_breakpoint / ui_is_portrait / token tiers), restoring both on the
-/// way out: the same discipline as test_is_portrait_subject.cpp's
-/// RestoreDisplayConsts: theme_manager writes into a SHARED XML scope, so a
-/// stale tier would decide layout for every later test in this binary.
-class ScopedGeometry {
-  public:
-    ScopedGeometry(int32_t w, int32_t h)
-        : disp_(lv_display_get_default()), w0_(lv_display_get_horizontal_resolution(disp_)),
-          h0_(lv_display_get_vertical_resolution(disp_)) {
-        lv_display_set_resolution(disp_, w, h);
-        theme_manager_refresh_layout_constants(disp_);
-    }
-
-    ~ScopedGeometry() {
-        lv_display_set_resolution(disp_, w0_, h0_);
-        theme_manager_refresh_layout_constants(disp_);
-    }
-
-    ScopedGeometry(const ScopedGeometry&) = delete;
-    ScopedGeometry& operator=(const ScopedGeometry&) = delete;
-
-  private:
-    lv_display_t* disp_;
-    int32_t w0_;
-    int32_t h0_;
-};
 
 /// Builds the real temp_graph_overlay.xml with its component dependencies,
 /// in the same shape production's xml_registration.cpp uses. temp_graph_mode

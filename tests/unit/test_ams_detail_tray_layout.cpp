@@ -14,6 +14,7 @@
 #include "ui_spool_canvas.h"
 
 #include "../test_fixtures.h"
+#include "../test_helpers/scoped_geometry.h"
 #include "ams_backend_mock.h"
 #include "ams_state.h"
 #include "ams_tray_projection.h"
@@ -434,4 +435,47 @@ TEST_CASE_METHOD(
         panel_.reset();
         process_lvgl(10);
     }
+}
+
+TEST_CASE_METHOD(AmsTrayPanelFixture,
+                 "AMS unit at 480x272 with 8 lanes: two label rows and the whole toolhead",
+                 "[ams][tray][ui_integration][stagger]") {
+    helix::test::ScopedGeometry micro(480, 272);
+    build("passive", 8);
+    lv_obj_t* canvas = lv_obj_find_by_name(panel_obj_, "path_canvas");
+    REQUIRE(canvas != nullptr);
+    lv_obj_update_layout(test_screen());
+
+    // Labels alternate between two rows, each keeping to its two-lane span.
+    lv_obj_t* layer = lv_obj_find_by_name(panel_obj_, "labels_layer");
+    REQUIRE(layer != nullptr);
+    std::vector<lv_obj_t*> labels;
+    for (uint32_t k = 0; k < lv_obj_get_child_count(layer); ++k) {
+        lv_obj_t* c = lv_obj_get_child(layer, (int32_t)k);
+        const char* name = lv_obj_get_name(c);
+        if (name && std::strcmp(name, "material_label") == 0)
+            labels.push_back(c);
+    }
+    REQUIRE(labels.size() == 8);
+    const int32_t spacing = lv_obj_get_x(slot(1)) - lv_obj_get_x(slot(0));
+    int32_t row_y[2] = {INT32_MIN, INT32_MIN};
+    for (int i = 0; i < 8; ++i) {
+        CAPTURE(i);
+        lv_area_t la;
+        lv_obj_get_coords(labels[(size_t)i], &la);
+        CHECK(lv_area_get_width(&la) < 2 * spacing);
+        int32_t& y = row_y[i % 2];
+        if (y == INT32_MIN)
+            y = la.y1;
+        CHECK(la.y1 == y);
+    }
+    CHECK(row_y[0] != row_y[1]);
+
+    // The nozzle is drawn inside the canvas, not cut off by its bottom.
+    lv_area_t toolhead, cc;
+    REQUIRE(ui_filament_path_canvas_get_toolhead_box(canvas, &toolhead));
+    lv_obj_get_coords(canvas, &cc);
+    CAPTURE(toolhead.y1, toolhead.y2, cc.y1, cc.y2);
+    CHECK(toolhead.y2 <= cc.y2);
+    CHECK(toolhead.y1 >= cc.y1);
 }
