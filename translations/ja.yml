@@ -2933,7 +2933,9 @@ translations:
   Spaghetti detected (%d%%): スパゲッティを検出しました（%d%%）
   Speaker: スピーカー
   Speed: 速度
+  Speed / Flow: '速度 / フロー'
   Speed Settings: '速度設定'
+  Speed and flow overrides, with a tap to tune: '速度とフロー。タップして調整'
   Speed multiplier for forward moves: '順方向移動の速度倍率'
   Speed multiplier for reverse moves: '逆方向移動の速度倍率'
   Speed of prime movement: プライム動作の速度

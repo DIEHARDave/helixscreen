@@ -3041,7 +3041,9 @@ translations:
   Spaghetti detected (%d%%): Spaghetti detected (%d%%)
   Speaker: Speaker
   Speed: Speed
+  Speed / Flow: Speed / Flow
   Speed Settings: Speed Settings
+  Speed and flow overrides, with a tap to tune: Speed and flow overrides, with a tap to tune
   Speed multiplier for forward moves: Speed multiplier for forward moves
   Speed multiplier for reverse moves: Speed multiplier for reverse moves
   Speed of prime movement: Speed of prime movement

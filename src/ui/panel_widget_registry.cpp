@@ -52,6 +52,7 @@ void register_fan_widget();
 void register_temp_graph_widget();
 void register_tool_switcher_widget();
 void register_nozzle_temps_widget();
+void register_speed_flow_widget();
 void register_active_spool_widget();
 void register_bypass_widget();
 #if HELIX_HAS_CAMERA
@@ -125,6 +126,7 @@ static std::vector<PanelWidgetDef> s_widget_defs = {
     {"clock",            TR_NOOP("Digital Clock"),     "clock",            TR_NOOP("The time, date, and system uptime"),    nullptr,              nullptr,                               CAT_SYSTEM,   false, 4, 2, 2, 2, 6, 6, false, true, true},
     {"control_buttons",  TR_NOOP("Print Controls"),    "pause",            TR_NOOP("Pause, resume, or stop the print"),   nullptr,              nullptr,                               CAT_PRINT,    false, 4, 2, 2, 2, 8, 4},
     {"job_queue",        TR_NOOP("Job Queue"),         "progress_clock",   TR_NOOP("Print jobs waiting to run"),        nullptr,              nullptr,                               CAT_PRINT,    false, 4, 4, 4, 4, 8, 6, false, true, true},
+    {"speed_flow",       TR_NOOP("Speed / Flow"),      "speed",            TR_NOOP("Speed and flow overrides, with a tap to tune"), nullptr,           nullptr,                               CAT_PRINT,    false, 4, 2, 1, 1, 8, 4, false, true, true},
     //                                                                                                                                          hint                                cat              en  col row min_c min_r max_c max_r  multi  half_c half_r merges_card
     {"tips",             TR_NOOP("Tips"),              "help_circle",      TR_NOOP("Rotating tips for using your printer"),             nullptr,              nullptr,                               CAT_SYSTEM,   true,  8, 4, 4, 2, BAND_COLSPAN, 4, false, true, true, false},
     // Two cells wide by one tall: the FlowGuard scale is horizontal, and it
@@ -375,6 +377,7 @@ void init_widget_registrations() {
     register_bypass_widget();
     register_tool_switcher_widget();
     register_nozzle_temps_widget();
+    register_speed_flow_widget();
 #if HELIX_HAS_CAMERA
     register_camera_widget();
 #endif

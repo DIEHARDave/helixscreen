@@ -106,6 +106,11 @@ class TestableModuleBackend : public AmsBackendAd5xIfs {
         captured_gcodes.push_back(gcode);
         return helix::AmsErrorHelper::success();
     }
+    helix::AmsError execute_gcode(const std::string& gcode, std::function<void()>,
+                                  std::function<void(const MoonrakerError&)>, bool) override {
+        captured_gcodes.push_back(gcode);
+        return helix::AmsErrorHelper::success();
+    }
     bool toolhead_homed() const override {
         return homed;
     }

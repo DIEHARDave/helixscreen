@@ -478,6 +478,7 @@ TEST_CASE("PanelWidgetDef: half-cell capability is classified per widget",
         {"ams", {true, true}},               // lane slots side by side
         {"active_spool", {true, true}},      // measured compact/wide switch
         {"nozzle_temps", {true, true}},      // decide_nozzle_layout() is measured
+        {"speed_flow", {true, true}},        // decide_speed_flow_layout() is measured
         {"temp_stack", {true, true}},        // 2-3 stacked readout rows
         {"fan_stack", {true, true}},         // 2-3 stacked readout rows
         {"tool_switcher", {true, true}},     // horizontal chip strip

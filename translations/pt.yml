@@ -3133,7 +3133,9 @@ translations:
   Spaghetti detected (%d%%): Espaguete detectado (%d%%)
   Speaker: Alto-falante
   Speed: Velocidade
+  Speed / Flow: 'Velocidade / Fluxo'
   Speed Settings: 'Configurações de velocidade'
+  Speed and flow overrides, with a tap to tune: 'Velocidade e fluxo; toque para ajustar'
   Speed multiplier for forward moves: 'Multiplicador de velocidade para movimentos de avanço'
   Speed multiplier for reverse moves: 'Multiplicador de velocidade para movimentos de retrocesso'
   Speed of prime movement: Velocidade do movimento de prime

@@ -665,6 +665,31 @@ AmsSubscriptionBackend::dispatch_payload(std::string gcode, std::function<void()
         return on_complete ? execute_gcode(gcode, std::move(on_complete)) : execute_gcode(gcode);
     }
 
+    const char* tag = backend_log_tag();
+    auto token = lifetime_.token();
+
+    // An error callback that only unwinds state, at the standard timeout, is
+    // exactly the 4-arg execute_gcode() virtual's contract, so it goes through
+    // that virtual: fixtures capture it there the way they capture the shapes
+    // above. Its callbacks land on a background thread; marshal them to main
+    // like the direct path below does.
+    if (timeout_ms == IMoonrakerAPI::AMS_OPERATION_TIMEOUT_MS &&
+        !caller_surfaces_errors.value_or(on_error != nullptr)) {
+        return execute_gcode(
+            gcode,
+            [token, on_complete = std::move(on_complete)]() {
+                if (on_complete) {
+                    token.defer("AmsSubscriptionBackend::dispatch_payload_complete",
+                                [on_complete]() { on_complete(); });
+                }
+            },
+            [this, token, on_error](const MoonrakerError& err) {
+                token.defer("AmsSubscriptionBackend::dispatch_payload_error",
+                            [this, err, on_error]() { handle_dispatch_error(err, on_error); });
+            },
+            silent);
+    }
+
     // A caller asked for its own error/timeout/toast policy -- the hardcoded
     // virtuals above can't carry that (they fix AMS_OPERATION_TIMEOUT_MS and
     // silent=true, and their error handling only logs). Talk to IMoonrakerAPI
@@ -673,9 +698,6 @@ AmsSubscriptionBackend::dispatch_payload(std::string gcode, std::function<void()
     if (!api_) {
         return refuse_dispatch_no_api(on_error);
     }
-
-    const char* tag = backend_log_tag();
-    auto token = lifetime_.token();
 
     // Captured from the CALLER's on_error, before the wrapper below makes the
     // callback we hand to IMoonrakerAPI unconditionally non-null. A caller that

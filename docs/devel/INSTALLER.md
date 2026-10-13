@@ -588,7 +588,7 @@ prints it):
 | 11 | Otherwise | asks `Run HelixScreen in a window on this desktop? [Y/n]`; end of input exits with nothing changed, since "no" takes over the screen |
 
 **Proof of ownership.** A desktop install is recognised by its payload, not its path:
-`desktop_payload_is_ours` needs `bin/helix-screen` and a `release_info.json` naming
+`desktop_payload_is_ours` needs `bin/helix-screen` and a release_info.json naming
 `helixscreen-x86-desktop.zip`; `desktop_root_is_ours` adds a real directory named
 `helixscreen`, reached through no symlink and not `$HOME`. Every removal (`--uninstall`,
 `--clean`) goes through it, and a fresh install refuses a directory at the root that fails it.
@@ -774,7 +774,7 @@ After extraction, `validate_binary_architecture()` reads the ELF header (first 2
 - ELF class (32-bit vs 64-bit)
 - Machine type (ARM vs AARCH64)
 
-This prevents installing a Pi binary on AD5M or vice versa. `x86` and `x86-desktop` share the x86_64 expectation; what tells the two payloads apart is `release_info.json`, checked in `extract_release` for a desktop install.
+This prevents installing a Pi binary on AD5M or vice versa. `x86` and `x86-desktop` share the x86_64 expectation; what tells the two payloads apart is the payload's release_info.json, checked in `extract_release` for a desktop install.
 
 ---
 

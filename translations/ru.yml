@@ -3101,7 +3101,9 @@ translations:
   Spaghetti detected (%d%%): Обнаружены «спагетти» (%d%%)
   Speaker: Динамик
   Speed: Скорость
+  Speed / Flow: 'Скорость / Поток'
   Speed Settings: 'Настройки скорости'
+  Speed and flow overrides, with a tap to tune: 'Скорость и поток; нажмите для настройки'
   Speed multiplier for forward moves: 'Множитель скорости для прямых перемещений'
   Speed multiplier for reverse moves: 'Множитель скорости для обратных перемещений'
   Speed of prime movement: Скорость движения подачи
