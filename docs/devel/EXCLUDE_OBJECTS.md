@@ -326,7 +326,9 @@ object is faded to the badge's excluded opacity and hatched. `hatch_polygon()`
 (a pure, LVGL-free header under `include/`) is the geometry: lines running up and to the right, one every
 `spacing` pixels along the x + y axis, clipped to the polygon by the even-odd rule so a concave
 outline hatches only its material. The drawing surface is rebuilt by `resize()` only when the plate
-area's size differs from the one it was built for.
+area's size differs from the one it was built for. Both modes draw the bed's 50 mm grid and its edge
+under the outlines (`ExcludeObjectMapView::draw_bed_reference`), from the `helix::BedDimensions` the
+host passes to `create()`.
 
 `PrintStatusPanel::push_overlay_with_exclude_map()` is the tile's way in: it pushes print status
 and opens the full map over its preview once the panel is active, so the canvas is sized against a

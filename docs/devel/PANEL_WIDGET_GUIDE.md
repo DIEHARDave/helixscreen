@@ -226,6 +226,24 @@ The shared decisions around them:
 
 These are the checks a new widget in this family has to pass. The ones with a gate say so.
 
+- **Design each ladder against measured boxes.** The tile sizes the family's decision
+  functions are tested at, from `ctl geom` on a live grid (the content box is smaller by the
+  chrome): at 800x480, 55x54 (0.5x0.5), 114x54 (1x0.5), 55x113 (0.5x1) and 114x113 (1x1);
+  at 1024x600 the half cells are smaller, 51x53, 108x53 and 51x112, so every half-cell rung
+  has to fit those; at 480x272 a 1x1 is 70x64. The micro and tiny tiers decline half-cell
+  spans, so there every ladder starts at 1x1. Where a boundary is a size class rather than
+  a content fit (how many rows a tall tile holds), decide it from the per-tier bands in
+  `include/panel_widget_size.h` (`w_normal()`, `w_wide()`, `h_tall()`, `h_taller()`), not
+  a new constant.
+- **Too small for a control means read-only.** A rung without room for a control draws
+  values only, and a tap anywhere opens the widget's overlay or panel. Controls (steppers,
+  Save, Home All, Calibrate) appear only at the rungs the family table names.
+- **Above the top rung, add spacing, not content.** A box larger than the widget's highest
+  rung spends the extra on spacing unless the widget offers a rung for it (`Large` on the
+  bed mesh tile).
+- **Re-decide on `print_active`.** It is 1 while printing or paused. Where idle and printing
+  content differ, a change re-runs the decision, because what is measured changed.
+
 - **Centre vertically with `flex_track_place`.** Inside a row flow, `flex_cross_place="center"`
   centres children within their track, and the track is only as tall as its tallest child,
   so it sits at the top of a taller box. Add `flex_track_place="center"` to the container

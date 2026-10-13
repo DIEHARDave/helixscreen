@@ -834,7 +834,7 @@ The Exclude Objects widget keeps the objects of a multi-object print in view fro
 
 On the map the object being printed is drawn in the accent color with a heavier outline, the others a little dimmer, and a skipped object faded and hatched. Behind them sit the bed's 50 mm grid and its edge, wherever they fall in view.
 
-When nothing is printing the widget shows "No objects", and a print with a single object shows "Single object", since there is nothing to skip. A tap does nothing in either case.
+When nothing is printing, or the print has a single object and so nothing to skip, the widget shows a quiet icon, captioned "No objects" or "Single object" from 1x0.5 up. A tap does nothing then.
 
 **Tap** the widget, or **Skip objects...**, to open the Print Status screen with its objects map. Only one Exclude Objects widget can be placed.
 

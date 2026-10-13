@@ -1378,6 +1378,7 @@ For what each widget does and how big it can get, see the [Home Panel guide](gui
 | `print_stats` | Print Stats | No | No |
 | `speed_flow` | Speed / Flow | No | No |
 | `z_offset` | Z-Offset | No | No |
+| `exclude_map` | Exclude Objects | No | Klipper `[exclude_object]` |
 | `job_queue` | Job Queue | No | No |
 | `camera` | Camera | No | Webcam configured |
 | `temperature` | Nozzle Temperature | Yes | No |
