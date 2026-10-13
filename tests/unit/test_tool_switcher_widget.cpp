@@ -282,7 +282,6 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     const lv_font_t* body = theme_manager_get_font("font_body");
     const lv_font_t* small = theme_manager_get_font("font_small");
     const int lines = lv_font_get_line_height(body) + lv_font_get_line_height(small);
-    const int strip = resolve_px("space_xs", 4);
     lv_subject_t* two_line = lv_xml_get_subject(nullptr, "tool_switcher_two_line");
     REQUIRE(two_line != nullptr);
     auto cell_h = [] {
@@ -292,7 +291,7 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     // Tall cells: the label and its sub both show.
     resize_content(h, 214, 93);
     process_lvgl(30);
-    REQUIRE(cell_h() - strip >= lines);
+    REQUIRE(cell_h() - tool_switcher_strip_px(cell_h()) >= lines);
     CHECK(lv_subject_get_int(two_line) == 1);
     lv_obj_t* sub = lv_obj_find_by_name(h.child("tool_switcher_seg_0"), "tool_switcher_seg_sub");
     REQUIRE(sub != nullptr);
@@ -303,7 +302,7 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     resize_content(h, 3 * floor + 2 * 2, floor);
     process_lvgl(30);
     REQUIRE(mode() == static_cast<int>(ToolSwitcherMode::RailWithPark));
-    REQUIRE(cell_h() - strip < lines);
+    REQUIRE(cell_h() - tool_switcher_strip_px(cell_h()) < lines);
     CHECK(lv_subject_get_int(two_line) == 0);
     CHECK(lv_obj_has_flag(sub, LV_OBJ_FLAG_HIDDEN));
 }
@@ -507,4 +506,119 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     }
     helix::test::set_wire_state(state(), PrintJobState::STANDBY);
     process_lvgl(30);
+}
+
+namespace {
+
+/// Each head sources its own lane, which is where its colour comes from.
+void map_heads_to_lanes(int heads) {
+    ToolTopology topo;
+    topo.tool_count = heads;
+    topo.active_tool = 0;
+    for (int i = 0; i < heads; ++i) {
+        topo.tool_to_slot.push_back(i);
+    }
+    ToolState::instance().set_ams_topology(topo);
+}
+
+} // namespace
+
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "tool_switcher: sheet rows past the per-head pools show no other head's data",
+                 "[tool_switcher][1784]") {
+    constexpr int kHeads = ToolSwitcherWidget::kPoolSize + 2;
+    ToolChangerRig rig(kHeads);
+    map_heads_to_lanes(kHeads);
+    state().temperature_state().init_extruders({"extruder"});
+    process_lvgl(30);
+    PanelWidgetHarness<ToolSwitcherWidget> h(test_screen(), state());
+    process_lvgl(30);
+    state().update_from_status(nlohmann::json{{"extruder", {{"temperature", 215.0}}}});
+    process_lvgl(30);
+    h.resize(2, 2, 160, 60);
+    process_lvgl(30);
+
+    ToolSwitcherTestAccess::show_picker(h.widget());
+    lv_obj_t* list = ToolSwitcherTestAccess::picker_list(h.widget());
+    REQUIRE(list != nullptr);
+    REQUIRE(lv_obj_get_child_count(list) == static_cast<uint32_t>(kHeads));
+    auto temp_of = [&](int row) {
+        return std::string(
+            lv_label_get_text(lv_obj_find_by_name(lv_obj_get_child(list, row), "tool_btn_temp")));
+    };
+    auto strip_of = [&](int row) {
+        return lv_obj_find_by_name(lv_obj_get_child(list, row), "tool_btn_strip");
+    };
+
+    // Head 0 has a temperature and a colour, so a row that borrowed its
+    // subjects would show them.
+    REQUIRE(temp_of(0) == "215°C");
+    REQUIRE(strip_of(0) != nullptr);
+    REQUIRE_FALSE(lv_obj_has_flag(strip_of(0), LV_OBJ_FLAG_HIDDEN));
+    for (int row = ToolSwitcherWidget::kPoolSize; row < kHeads; ++row) {
+        CAPTURE(row);
+        CHECK(temp_of(row).empty());
+        REQUIRE(strip_of(row) != nullptr);
+        CHECK(lv_obj_has_flag(strip_of(row), LV_OBJ_FLAG_HIDDEN));
+    }
+    ToolSwitcherTestAccess::hide_picker(h.widget());
+    process_lvgl(30);
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "tool_switcher: colour strips are about 9% of their cell and at least 3 px",
+                 "[tool_switcher][1784]") {
+    lv_display_t* disp = lv_display_get_default();
+    for (const auto& [w, hpx] : {std::pair{480, 272}, std::pair{800, 480}}) {
+        CAPTURE(w, hpx);
+        ScopedResolution res(disp, w, hpx);
+        theme_manager_refresh_layout_constants(disp);
+        // The small panel's spacing tokens run below the 3 px floor, so no
+        // spacing token sizes a strip.
+        if (w == 480) {
+            REQUIRE(resolve_px("space_xs", 4) < 3);
+        }
+        ToolChangerRig rig(4);
+        map_heads_to_lanes(4);
+        PanelWidgetHarness<ToolSwitcherWidget> h(test_screen(), state());
+        process_lvgl(30);
+        auto check_strip = [](lv_obj_t* strip, int cell) {
+            REQUIRE(strip != nullptr);
+            REQUIRE_FALSE(lv_obj_has_flag(strip, LV_OBJ_FLAG_HIDDEN));
+            const int px = lv_obj_get_height(strip);
+            CAPTURE(cell, px);
+            CHECK(px >= 3);
+            CHECK(px == tool_switcher_strip_px(cell));
+        };
+
+        // A rail of tall segments, then one on the touch floor.
+        for (const auto& [cw, ch] : {std::pair{214, 93}, std::pair{4 * 48 + 3 * 2, 48}}) {
+            resize_content(h, cw, ch);
+            process_lvgl(30);
+            REQUIRE(mode() == static_cast<int>(ToolSwitcherMode::Rail));
+            lv_obj_update_layout(h.root());
+            lv_obj_t* seg = named(h, "tool_switcher_seg_1");
+            check_strip(lv_obj_find_by_name(seg, "tool_switcher_seg_strip"),
+                        lv_obj_get_height(seg));
+        }
+
+        // The face, alone in its box.
+        resize_content(h, 90, 90);
+        process_lvgl(30);
+        REQUIRE(mode() == static_cast<int>(ToolSwitcherMode::Single));
+        lv_obj_update_layout(h.root());
+        lv_obj_t* face = named(h, "tool_switcher_face");
+        check_strip(lv_obj_find_by_name(face, "tool_switcher_face_strip"), lv_obj_get_height(face));
+
+        // A sheet row.
+        ToolSwitcherTestAccess::show_picker(h.widget());
+        lv_obj_t* list = ToolSwitcherTestAccess::picker_list(h.widget());
+        REQUIRE(list != nullptr);
+        lv_obj_update_layout(lv_obj_get_parent(list));
+        lv_obj_t* row = lv_obj_find_by_name(lv_obj_get_child(list, 1), "tool_btn");
+        check_strip(lv_obj_find_by_name(row, "tool_btn_strip"), lv_obj_get_height(row));
+        ToolSwitcherTestAccess::hide_picker(h.widget());
+        process_lvgl(30);
+    }
+    theme_manager_refresh_layout_constants(disp);
 }

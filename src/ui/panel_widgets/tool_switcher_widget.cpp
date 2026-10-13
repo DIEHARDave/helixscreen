@@ -60,6 +60,9 @@ lv_subject_t s_face_sub_subject{};
 char s_face_sub_buf[16] = {};
 lv_subject_t s_face_color_subject{};
 lv_subject_t s_face_has_color_subject{};
+// The colour strip's height on a cell (segment or face) and on a sheet row.
+lv_subject_t s_strip_h_subject{};
+lv_subject_t s_row_strip_h_subject{};
 // 1 where every cell shown holds its second line (a segment's sub, the face's
 // temperature) below its label, on both axes.
 lv_subject_t s_two_line_subject{};
@@ -135,6 +138,10 @@ void tool_switcher_widget_init_subjects() {
     s_subjects.publish("tool_switcher_face_color", &s_face_color_subject);
     lv_subject_init_int(&s_face_has_color_subject, 0);
     s_subjects.publish("tool_switcher_face_has_color", &s_face_has_color_subject);
+    lv_subject_init_int(&s_strip_h_subject, helix::tool_switcher_strip_px(0));
+    s_subjects.publish("tool_switcher_strip_h", &s_strip_h_subject);
+    lv_subject_init_int(&s_row_strip_h_subject, helix::tool_switcher_strip_px(0));
+    s_subjects.publish("tool_switcher_row_strip_h", &s_row_strip_h_subject);
     lv_subject_init_int(&s_two_line_subject, 0);
     s_subjects.publish("tool_switcher_two_line", &s_two_line_subject);
     // Every slot exists before a row can bind it, whatever the head count.
@@ -461,6 +468,7 @@ void ToolSwitcherWidget::publish_layout() {
     set_int_if_changed(&s_cell_h_subject, layout_.cell_h);
     set_int_if_changed(&s_rail_h_subject, layout_.rail_h);
     set_int_if_changed(&s_detail_subject, layout_.detail ? 1 : 0);
+    set_int_if_changed(&s_strip_h_subject, tool_switcher_strip_px(layout_.cell_h));
     set_int_if_changed(&s_label_form_subject, static_cast<int>(label_form_));
 
     spdlog::debug("[ToolSwitcher] {}x{} box, {} heads: mode {} {}x{} cells {}x{} rail_h {} "
@@ -615,7 +623,7 @@ void ToolSwitcherWidget::publish_heads() {
 
     // A second line shows only where the cell is tall enough for both lines
     // over its colour strip, and every shown second line is narrow enough.
-    bool two_line = layout_.cell_h - resolve_px_token("space_xs", 4) >= body_px + small_px;
+    bool two_line = layout_.cell_h - tool_switcher_strip_px(layout_.cell_h) >= body_px + small_px;
     const bool rail =
         layout_.mode == ToolSwitcherMode::RailWithPark || layout_.mode == ToolSwitcherMode::Rail;
     auto fits = [&](const char* text) { return ui::text_width(text, small) <= room; };
@@ -697,8 +705,8 @@ void ToolSwitcherWidget::ToolPicker::on_created(lv_obj_t* backdrop) {
         // Create picker button from XML template
         const std::string full = tool_text(tools[i], ui::ToolLabelForm::Full);
         const std::string code = tool_text(tools[i], ui::ToolLabelForm::Code);
-        // Heads past the pools have no per-head subjects; their rows show the
-        // name alone.
+        // Heads past the pools have no per-head subjects; their rows take the
+        // prop's default, which names none, and show the name alone.
         const std::string index = std::to_string(i);
         const char* btn_attrs[] = {"tool_text",
                                    full.c_str(),
@@ -774,6 +782,10 @@ void ToolSwitcherWidget::ToolPicker::on_created(lv_obj_t* backdrop) {
         return true;
     });
     lv_subject_set_int(&s_picker_code_form_subject, form == ui::ToolLabelForm::Code ? 1 : 0);
+    if (!row_buttons.empty()) {
+        set_int_if_changed(&s_row_strip_h_subject,
+                           tool_switcher_strip_px(lv_obj_get_height(row_buttons.front())));
+    }
 
     // Scroll the active tool into view inside the capped list.
     if (active_btn_in_picker) {

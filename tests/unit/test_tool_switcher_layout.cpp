@@ -361,3 +361,14 @@ TEST_CASE("Tool switcher detail rows: a body line, then small lines, dropped who
     // Never more rows than there are.
     CHECK(tool_switcher_detail_rows_that_fit(2, 500, 20, 16) == 2);
 }
+
+TEST_CASE("Tool switcher strip: about 9% of the cell, never under 3 px", "[tool_switcher][1784]") {
+    using helix::tool_switcher_strip_px;
+    CHECK(tool_switcher_strip_px(48) == 4);  // 4.32
+    CHECK(tool_switcher_strip_px(93) == 8);  // 8.37
+    CHECK(tool_switcher_strip_px(100) == 9); // 9.0
+    CHECK(tool_switcher_strip_px(50) == 5);  // 4.5 rounds up
+    CHECK(tool_switcher_strip_px(33) == 3);  // 2.97
+    CHECK(tool_switcher_strip_px(20) == 3);  // 1.8, held at the floor
+    CHECK(tool_switcher_strip_px(0) == 3);
+}

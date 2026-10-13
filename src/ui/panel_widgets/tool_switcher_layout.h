@@ -137,6 +137,13 @@ decide_tool_switcher_layout(int tool_count, int content_w, int content_h, int mi
     return out;
 }
 
+/// The filament-colour strip along the foot of a cell @p cell_h tall: about 9%
+/// of it, rounded, and never under 3 px so it reads on the smallest cells.
+[[nodiscard]] inline int tool_switcher_strip_px(int cell_h) {
+    const int px = (cell_h * 9 + 50) / 100;
+    return px < 3 ? 3 : px;
+}
+
 /// A detail row that is the empty-carriage line rather than a head.
 inline constexpr int kToolSwitcherEmptyCarriageRow = -1;
 

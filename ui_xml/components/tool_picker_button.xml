@@ -6,8 +6,10 @@
          for tool_text. -->
     <prop name="tool_code_text" type="string" default="T0"/>
     <!-- The head's index into the tool switcher's per-head subjects
-         (tool_switcher_seg_<index>_*), for its temperature and colour. -->
-    <prop name="index" type="string" default="0"/>
+         (tool_switcher_seg_<index>_*), for its temperature and colour. The
+         default names no subject, so a head past the pools binds nothing and
+         its row shows the name alone. -->
+    <prop name="index" type="string" default="none"/>
   </api>
   <view name="tool_picker_btn_root"
         extends="lv_obj" width="100%" height="content" style_pad_all="0" style_bg_opa="0" style_border_width="0"
@@ -27,15 +29,17 @@
         <text_small name="tool_btn_code_label" text="$tool_code_text" clickable="false" event_bubble="true">
           <bind_flag_if_eq subject="tool_switcher_picker_code_form" flag="hidden" ref_value="0"/>
         </text_small>
+        <!-- Empty, not the label's placeholder, where the bind names no subject. -->
         <text_small name="tool_btn_temp"
-                    bind_text="tool_switcher_seg_${index}_temp" style_text_color="#text_muted" clickable="false"
+                    text="" bind_text="tool_switcher_seg_${index}_temp" style_text_color="#text_muted" clickable="false"
                     event_bubble="true"/>
       </lv_obj>
       <!-- The head's filament colour along the foot, as on its segment;
            omitted when unknown. -->
       <lv_obj name="tool_btn_strip"
-              width="100%" height="#space_xs" align="bottom_mid" floating="true" hidden="true" style_radius="0"
-              style_border_width="0" style_bg_opa="255" clickable="false" event_bubble="true" scrollable="false">
+              width="100%" align="bottom_mid" floating="true" hidden="true" style_radius="0" style_border_width="0"
+              style_bg_opa="255" clickable="false" event_bubble="true" scrollable="false">
+        <bind_style_prop prop="height" subject="tool_switcher_row_strip_h"/>
         <bind_style_prop prop="bg_color" subject="tool_switcher_seg_${index}_color"/>
         <bind_flag_if_eq subject="tool_switcher_seg_${index}_has_color" flag="hidden" ref_value="0"/>
       </lv_obj>
