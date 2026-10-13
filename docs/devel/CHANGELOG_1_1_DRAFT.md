@@ -518,8 +518,8 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
   costs a fraction of what Flying Toasters does; on AD5M-class hardware the corner
   celebration is a backdrop flash rather than confetti, to stay clear of the print loop.
   Select it under Settings > Display > Screensaver. (thanks @Tintef)
-- **Bouncing Logo screensaver** - the same bounce with the HelixScreen logo instead of your
-  printer, for anyone whose printer image is not much to look at. Select it under Settings >
+- **Bouncing Logo screensaver** - the HelixScreen logo bouncing around a black screen in its
+  own colors, for anyone whose printer image is not much to look at. Select it under Settings >
   Display > Screensaver.
 - **Fireworks screensaver** - shells rise from behind a line of hills under a starry night
   sky, trail sparks, and burst as peonies, chrysanthemums, willows or rings, each spark

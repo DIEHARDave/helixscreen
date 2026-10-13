@@ -1260,6 +1260,25 @@ TEST_CASE_METHOD(LVGLTestFixture, "BouncingLogoScreensaver bounces the HelixScre
     CHECK_FALSE(ss.is_active());
 }
 
+TEST_CASE_METHOD(LVGLTestFixture, "Bouncing logo keeps its own colors; the printer is tinted",
+                 "[screensaver]") {
+    BouncingPrinterScreensaver printer;
+    printer.start();
+    REQUIRE(printer.is_active());
+    REQUIRE(BounceTestAccess::sprite(printer) != nullptr);
+    CHECK(lv_obj_get_style_image_recolor_opa(BounceTestAccess::sprite(printer), LV_PART_MAIN) >
+          LV_OPA_TRANSP);
+    printer.stop();
+
+    BouncingLogoScreensaver logo;
+    logo.start();
+    REQUIRE(logo.is_active());
+    REQUIRE(BounceTestAccess::sprite(logo) != nullptr);
+    CHECK(lv_obj_get_style_image_recolor_opa(BounceTestAccess::sprite(logo), LV_PART_MAIN) ==
+          LV_OPA_TRANSP);
+    logo.stop();
+}
+
 TEST_CASE_METHOD(LVGLTestFixture, "BouncingPrinterScreensaver creates overlay on lv_layer_top",
                  "[screensaver]") {
     BouncingPrinterScreensaver ss;
