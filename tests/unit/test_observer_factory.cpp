@@ -89,7 +89,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "Factory: observe<int> stores value", "[factor
     drain();
     REQUIRE(panel.int_value == 100);
 
-    guard.release();
+    guard.reset();
     lv_subject_deinit(&subject);
 }
 
@@ -115,7 +115,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "Factory: observe<int> with transformation",
     drain();
     REQUIRE(panel.int_value == 245);
 
-    guard.release();
+    guard.reset();
     lv_subject_deinit(&subject);
 }
 
@@ -165,7 +165,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "Factory: observe<int> fires synchronously",
     lv_subject_set_int(&subject, 42);
     REQUIRE(panel.int_value == 42);
 
-    guard.release();
+    guard.reset();
     lv_subject_deinit(&subject);
 }
 
@@ -199,7 +199,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "Factory: observe<const char*> handles string 
     drain();
     REQUIRE(panel.string_value == "hello world");
 
-    guard.release();
+    guard.reset();
     lv_subject_deinit(&subject);
 }
 
@@ -245,7 +245,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "Factory: observe<const char*> parses axes lik
     REQUIRE(state.z == false);
     REQUIRE(state.all == false);
 
-    guard.release();
+    guard.reset();
     lv_subject_deinit(&subject);
 }
 
@@ -271,7 +271,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "Factory: observe<const char*> fires synchrono
     lv_subject_copy_string(&subject, "test");
     REQUIRE(panel.string_value == "test");
 
-    guard.release();
+    guard.reset();
     lv_subject_deinit(&subject);
 }
 
@@ -341,7 +341,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "Factory: LVGL optimizes unchanged values",
     drain();
     REQUIRE(callback_count == 1);
 
-    guard.release();
+    guard.reset();
     lv_subject_deinit(&subject);
 }
 
@@ -388,8 +388,8 @@ TEST_CASE_METHOD(LVGLTestFixture, "Factory: observe<int> safe under observer rea
     drain();
     REQUIRE(panel.int_value == 100); // 50 * 2
 
-    outer_guard.release();
-    inner_guard.release();
+    outer_guard.reset();
+    inner_guard.reset();
     lv_subject_deinit(&subject_a);
     lv_subject_deinit(&subject_b);
 }

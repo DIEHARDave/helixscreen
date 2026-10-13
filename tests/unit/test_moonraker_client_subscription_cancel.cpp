@@ -37,6 +37,7 @@
 #include "../../include/moonraker_client.h"
 #include "../../include/moonraker_client_mock.h"
 
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
@@ -575,6 +576,12 @@ TEST_CASE_METHOD(MoonrakerClientLifecycleFixture, "MoonrakerClientMock force_rec
 TEST_CASE_METHOD(MoonrakerClientLifecycleFixture,
                  "MoonrakerClient force_reconnect state transitions",
                  "[connection][eventloop][slow]") {
+    // The state callback runs on the loop thread until the guard below joins
+    // it, so what it writes must outlive the guard: declared first, destroyed
+    // last.
+    std::vector<ConnectionState> state_history;
+    std::mutex state_mutex;
+
     auto loop_thread = std::make_shared<hv::EventLoopThread>();
     loop_thread->start();
 
@@ -582,9 +589,6 @@ TEST_CASE_METHOD(MoonrakerClientLifecycleFixture,
     BorrowedEventLoopGuard guard{&client, loop_thread};
 
     SECTION("force_reconnect transitions through DISCONNECTED state") {
-        std::vector<ConnectionState> state_history;
-        std::mutex state_mutex;
-
         client.set_state_change_callback(
             [&state_history, &state_mutex]([[maybe_unused]] ConnectionState old_state,
                                            ConnectionState new_state) {
@@ -606,21 +610,18 @@ TEST_CASE_METHOD(MoonrakerClientLifecycleFixture,
 
         client.force_reconnect();
 
-        // Wait for state transitions
-        std::this_thread::sleep_for(std::chrono::milliseconds(200));
-
-        // Should have gone through DISCONNECTED state
-        {
+        // Should go through DISCONNECTED. Polled against a deadline rather than
+        // one fixed sleep, which a loaded sanitizer run outlasts.
+        auto saw_disconnected = [&state_history, &state_mutex] {
             std::lock_guard<std::mutex> lock(state_mutex);
-            bool found_disconnected = false;
-            for (const auto& state : state_history) {
-                if (state == ConnectionState::DISCONNECTED) {
-                    found_disconnected = true;
-                    break;
-                }
-            }
-            REQUIRE(found_disconnected);
+            return std::find(state_history.begin(), state_history.end(),
+                             ConnectionState::DISCONNECTED) != state_history.end();
+        };
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+        while (!saw_disconnected() && std::chrono::steady_clock::now() < deadline) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
+        REQUIRE(saw_disconnected());
     }
 
     // force_reconnect() above scheduled a reconnect timer; BorrowedEventLoopGuard
