@@ -299,9 +299,11 @@ void dropdown_value_changed_cb(lv_event_t* e) {
  * @brief Delete callback — clean up user data
  */
 void split_button_delete_cb(lv_event_t* e) {
-    lv_obj_t* sb = lv_event_get_target_obj(e);
-    auto* data = get_data(sb);
-    if (!data)
+    // The hook's own user_data owns the allocation, not get_data()'s slot on
+    // main_btn: a closing modal nulls every user_data in its tree to stop
+    // dispatch, and reading ownership back from that slot would strand it.
+    auto* data = static_cast<SplitButtonData*>(lv_event_get_user_data(e));
+    if (!data || data->magic != SplitButtonData::MAGIC)
         return;
 
     if (data->click_overlay) {
@@ -586,7 +588,7 @@ void* ui_split_button_create(lv_xml_parser_state_t* state, const char** attrs) {
     // Register event handlers on container
     lv_obj_add_event_cb(sb, split_button_style_changed_cb, LV_EVENT_STYLE_CHANGED, nullptr);
     lv_obj_add_event_cb(sb, split_button_style_changed_cb, LV_EVENT_STATE_CHANGED, nullptr);
-    lv_obj_add_event_cb(sb, split_button_delete_cb, LV_EVENT_DELETE, nullptr);
+    lv_obj_add_event_cb(sb, split_button_delete_cb, LV_EVENT_DELETE, data);
 
     // Apply initial contrast
     update_split_button_contrast(sb);
