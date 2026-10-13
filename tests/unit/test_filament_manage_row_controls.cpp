@@ -154,17 +154,16 @@ TEST_CASE_METHOD(LVGLUITestFixture, "Cool Down keeps its grid cell while nothing
     CHECK_FALSE(lv_obj_has_state(cooldown, LV_STATE_DISABLED));
 }
 
-TEST_CASE_METHOD(LVGLUITestFixture, "Closed tool dropdown spells the 1-based tool number",
-                 "[filament][ui][tool]") {
+TEST_CASE_METHOD(LVGLUITestFixture, "Closed tool dropdown names the tool as G-code does",
+                 "[filament][ui][tool][1769]") {
     ManageRowHarness h(*this, {"extruder", "extruder1"}, AmsType::NONE);
 
     lv_obj_t* dd = TA::extruder_dropdown(*h.panel);
     REQUIRE(dd != nullptr);
 
-    // A generated tool name collapses to the lane number in the closed text.
     const char* closed = lv_dropdown_get_text(dd);
     REQUIRE(closed != nullptr);
-    CHECK(std::string(closed) == "1");
+    CHECK(std::string(closed) == "T0");
 
     // The active tool moving to the second head moves the closed text with it.
     lv_subject_set_int(ToolState::instance().get_active_tool_subject(), 1);
@@ -172,13 +171,30 @@ TEST_CASE_METHOD(LVGLUITestFixture, "Closed tool dropdown spells the 1-based too
     REQUIRE(lv_dropdown_get_selected(dd) == 1);
     closed = lv_dropdown_get_text(dd);
     REQUIRE(closed != nullptr);
-    CHECK(std::string(closed) == "2");
+    CHECK(std::string(closed) == "T1");
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture, "Closed tool dropdown keeps T<n> for a configured tool name",
+                 "[filament][ui][tool][1769]") {
+    // The closed control is as narrow as a tool switcher segment, so a chosen
+    // name stays in the open list and the closed text is the G-code name.
+    ManageRowHarness h(*this, {"toolchanger", "tool Left", "tool Right", "extruder", "extruder1"},
+                       AmsType::NONE);
+
+    lv_obj_t* dd = TA::extruder_dropdown(*h.panel);
+    REQUIRE(dd != nullptr);
+    REQUIRE(ToolState::instance().tool_count() == 2);
+    REQUIRE(ToolState::instance().tools()[0].name == "Left");
+
+    const char* closed = lv_dropdown_get_text(dd);
+    REQUIRE(closed != nullptr);
+    CHECK(std::string(closed) == "T0");
 }
 
 TEST_CASE_METHOD(LVGLUITestFixture, "Open tool list names each tool's G-code name beside it",
                  "[filament][ui][tool][1769]") {
     // The open list sizes itself to its widest option, so it always has room
-    // for the full form; the closed control stays the bare number above.
+    // for the full form; the closed control stays the G-code name above.
     ManageRowHarness h(*this, {"extruder", "extruder1"}, AmsType::NONE);
 
     lv_obj_t* dd = TA::extruder_dropdown(*h.panel);

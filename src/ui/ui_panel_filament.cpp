@@ -947,16 +947,16 @@ void FilamentPanel::update_tool_noun() {
 }
 
 void FilamentPanel::sync_tool_dropdown_text() {
-    // The closed dropdown shows the short label, not the full option string the
-    // open list carries; every selection change routes through here so the two
-    // can never disagree.
+    // The closed dropdown shows the G-code name ("T0"), not the full option
+    // string the open list carries; every selection change routes through here
+    // so the two can never disagree.
     if (!extruder_dropdown_)
         return;
     const auto& tools = helix::ToolState::instance().tools();
     const int selected = static_cast<int>(lv_dropdown_get_selected(extruder_dropdown_));
     std::string label;
     if (selected >= 0 && selected < static_cast<int>(tools.size())) {
-        label = helix::ui::tool_short_label(tools[selected].name, selected);
+        label = helix::ui::tool_label(tools[selected].index);
     }
     lv_dropdown_set_text(extruder_dropdown_, label.c_str());
 }
@@ -2023,7 +2023,7 @@ void FilamentPanel::populate_extruder_dropdown() {
 
     // Build options string ("Tool 1 (T0)\nTool 2 (T1)\n..."). The open list
     // sizes itself to its widest option, so it always has room for the full
-    // form; the closed control keeps tool_short_label().
+    // form; the closed control shows only the G-code name.
     const auto noun = helix::ui::active_tool_noun();
     std::string options;
     for (const auto& tool : ts.tools()) {

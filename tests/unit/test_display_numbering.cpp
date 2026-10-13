@@ -149,19 +149,6 @@ TEST_CASE("is_generated_tool_name separates a gcode identity from a chosen name"
     CHECK_FALSE(is_generated_tool_name("Tool 1"));
 }
 
-TEST_CASE("tool_short_label spells the closed-dropdown tool text", "[numbering]") {
-    // A generated T<n> counts from 1 for display (the gcode spelling stays in
-    // tool_label); a configured name is shown exactly as its owner wrote it.
-    CHECK(tool_short_label("T0", 0) == "1");
-    CHECK(tool_short_label("T15", 14) == "15");
-    CHECK(tool_short_label(tool_label(7), 7) == "8");
-    CHECK(tool_short_label("Left Extruder", 0) == "Left Extruder");
-    CHECK(tool_short_label("t0", 0) == "t0");
-    // No lane selected means no text, whatever the name says.
-    CHECK(tool_short_label("T0", -1).empty());
-    CHECK(tool_short_label("Left Extruder", -1).empty());
-}
-
 TEST_CASE("Feeder and Toolhead compose like every other noun", "[numbering]") {
     // Snapmaker U1 is the one backend where the filament-entry noun and the
     // printing-end noun differ, so both need the ordinary lane_label() path.
