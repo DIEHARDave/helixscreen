@@ -170,7 +170,7 @@ Widgets place and resize in half-cell steps. What varies is which axes a widget 
 
 | Widget | What it can do |
 |--------|----------------|
-| **Print Status**, **Camera**, **Printer Image**, **Temperature Graph**, **Tips**, **Job Queue**, **Print Stats**, **Multi-Filament System Status**, **Active Spool**, **Nozzle Temperatures**, **Temperatures**, **Fan Speeds**, **Tool Switcher**, **Clog Detection**, **Digital Clock** | Move **and resize** in half-cell steps on **both** axes - so 1.5x1 and 2x2.5 are real sizes |
+| **Print Status**, **Camera**, **Printer Image**, **Temperature Graph**, **Tips**, **Job Queue**, **Print Stats**, **Speed / Flow**, **Multi-Filament System Status**, **Active Spool**, **Nozzle Temperatures**, **Temperatures**, **Fan Speeds**, **Tool Switcher**, **Clog Detection**, **Digital Clock** | Move **and resize** in half-cell steps on **both** axes - so 1.5x1 and 2x2.5 are real sizes |
 | **Preheat**, **Macro Button** | Half-cell steps **across** only - useful when a long macro name is getting cut off |
 | **Network**, **LED Light**, **LED Controls**, **Filament Sensor**, **Notifications**, **G-code Console**, **Macros**, **Motion**, **Bypass**, **Fan**, **Temperature Sensors**, the single **Nozzle**, **Bed** and **Chamber** temperature tiles, **Shutdown/Reboot**, **Lock Screen**, **Firmware Restart** | Move **and resize** in half-cell steps on both axes. These are the centred-icon tiles: they start at half a cell wide by one cell tall and grow as large as you like, stepping their icon and text up to whatever the new size carries |
 | **Power** | Resizes in half-cell steps like the tiles above, but never below one whole cell - its round device badge does not shrink |
@@ -287,6 +287,7 @@ These are the same 5 groups the Widget Catalog uses on the device.
 | **Print Controls** | Pause, resume, and stop buttons for the running print, right on the dashboard. | 2x1 | 2x1 | 2x1 | No | — |
 | **Print Stats** | Print history statistics — total prints, success rate, and total print time. Tap to open the full print history overlay. | 2x2 | 2x1 | 3x2 | Yes | — |
 | **Job Queue** | Shows the number of queued print jobs. Tap to open the Job Queue Manager modal (see [Job Queue Manager](#job-queue-manager) below). | 2x2 | 2x2 | 4x3 | Yes | — |
+| **Speed / Flow** | The speed and flow override percentages, each shown in the warning color whenever it is not 100%. During a print it adds the live toolhead speed (mm/s) and volumetric flow (mm³/s) wherever there is room for them. At its smallest size, 0.5x0.5, it shows speed alone. Below 1x1 there is room for only one number per reading: if you chose mm/s in the Print Tune overlay (see [Percent or mm/s](printing.md#print-tune-overlay)), the live readings take the percentages' place there. At its largest sizes during a print, **-** and **+** buttons change each value by 5%, and a long press on a value sets it back to 100%. Tap anywhere else on the widget to open the Print Tune overlay. | 2x1 | 0.5x0.5 | 4x2 | Yes | — |
 
 ![The Print Status widget during pre-print: current step, progress bar and ETA](../../images/screenshot-preparing-card.png)
 | **Camera** | Live webcam feed from your MJPEG stream. Tap to go fullscreen. Automatically detects webcams configured in Moonraker. See [Camera Widget](#camera-widget) below for setup tips. | 2x2 | 1x1 | 4x3 | Yes | Webcam configured |
@@ -411,6 +412,7 @@ While **not** in Edit Mode, widgets respond to taps and other gestures:
 | Print Controls | Pauses, resumes, or stops the print — one button each |
 | Print Stats | Opens print history overlay |
 | Job Queue | Opens Job Queue Manager modal |
+| Speed / Flow | Opens the Print Tune overlay. At its largest sizes during a print, the **-** and **+** buttons change speed or flow by 5% without opening anything, and a long press on a value sets it back to 100% |
 | Digital Clock | — (display only) |
 | Notifications | Opens notification history |
 | Tips | Opens the full tip article |

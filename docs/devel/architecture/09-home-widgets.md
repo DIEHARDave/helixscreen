@@ -108,6 +108,7 @@ The built-in catalog (gate subjects from the def table; "-" means always availab
 | `clock` | `ClockWidget` | - |
 | `control_buttons` | `ControlButtonsWidget` | - |
 | `job_queue` | `JobQueueWidget` | - |
+| `speed_flow` | `SpeedFlowWidget` | - |
 | `tips` | `TipsWidget` | - |
 | `clog_detection` | `ClogDetectionWidget` (the FlowGuard bar) | `clog_meter_mode` |
 | `filament_buffer` | `FilamentBufferWidget` | `buffer_present` |

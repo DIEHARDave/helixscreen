@@ -145,7 +145,8 @@ See [docs/devel/GALLERY.md](docs/devel/GALLERY.md) for the full gallery.
 | Sovol SV06 / SV08 | Pi build | Tested |
 | Elegoo Centauri Carbon | armv7-a | Tested² |
 | x86 Mini PC (Debian) | x86_64 | Tested |
-| macOS / Linux desktop | x86_64 / ARM64 | Development / CI |
+| Linux desktop or laptop, in a window ([guide](docs/user/guide/install-linux-desktop.md)) | x86_64 | Beta, from the next 1.1 release |
+| macOS / Linux, built from source | x86_64 / ARM64 | Development / CI |
 | Android phone / tablet | arm64 / x86_64 | Experimental⁴ |
 
 ¹ QIDI models with Linux framebuffer displays (Q2, Max 4) only. Stock firmware runs standard Moonraker and works directly; community firmware like [FreeDi](https://github.com/Phil1988/FreeDi), [53Aries/Q2-Firmware](https://github.com/53Aries/Q2-Firmware), or [FreeQIDI](https://github.com/Phil1988/FreeQIDI) is optional. Older models (X-Smart 3, X-Plus 3, X-Max 3, Q1 Pro, Plus 4) ship with QIDI's MKS PI smart-panel (a TJC serial HMI that *is* the UI; TJC is the Chinese OEM that Nextion licenses globally) and are **not compatible for on-device install** without a screen replacement — see [QIDI_SUPPORT.md → Display Compatibility](docs/devel/printers/QIDI_SUPPORT.md#display-compatibility) for why. Remote-control mode works on all six QIDI models regardless.
