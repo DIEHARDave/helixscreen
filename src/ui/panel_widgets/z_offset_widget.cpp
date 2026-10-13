@@ -148,7 +148,7 @@ helix::RungNeeds measure_needs(bool tool_changer) {
     // budgeted to the last one.
     const int comfort = theme_manager_get_spacing("space_xs");
     // The small rungs hold one short number under a glyph; they get the least margin.
-    const int tight = std::max(2, theme_manager_get_spacing("space_xxs") / 2);
+    const int tight = std::max<int>(2, theme_manager_get_spacing("space_xxs") / 2);
     const int button_px = theme_manager_get_spacing("button_height_sm");
 
     const int icon_w = text_px(helix::ui::icon::lookup_codepoint("axis_z_arrow"), f.icon);
