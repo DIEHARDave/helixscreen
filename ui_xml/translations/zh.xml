@@ -2821,7 +2821,9 @@
   <translation tag="Spaghetti detected (%d%%)" zh="检测到拉丝故障（%d%%）"/>
   <translation tag="Speaker" zh="扬声器"/>
   <translation tag="Speed" zh="速度"/>
+  <translation tag="Speed / Flow" zh="速度 / 流量"/>
   <translation tag="Speed Settings" zh="速度设置"/>
+  <translation tag="Speed and flow overrides, with a tap to tune" zh="速度与流量,点按即可调整"/>
   <translation tag="Speed multiplier for forward moves" zh="正向移动速度倍率"/>
   <translation tag="Speed multiplier for reverse moves" zh="反向移动速度倍率"/>
   <translation tag="Speed of prime movement" zh="预挤移动速度"/>

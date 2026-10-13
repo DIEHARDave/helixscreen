@@ -2821,7 +2821,9 @@
   <translation tag="Spaghetti detected (%d%%)" ja="スパゲッティを検出しました（%d%%）"/>
   <translation tag="Speaker" ja="スピーカー"/>
   <translation tag="Speed" ja="速度"/>
+  <translation tag="Speed / Flow" ja="速度 / フロー"/>
   <translation tag="Speed Settings" ja="速度設定"/>
+  <translation tag="Speed and flow overrides, with a tap to tune" ja="速度とフロー。タップして調整"/>
   <translation tag="Speed multiplier for forward moves" ja="順方向移動の速度倍率"/>
   <translation tag="Speed multiplier for reverse moves" ja="逆方向移動の速度倍率"/>
   <translation tag="Speed of prime movement" ja="プライム動作の速度"/>

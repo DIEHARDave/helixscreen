@@ -2821,7 +2821,9 @@
   <translation tag="Spaghetti detected (%d%%)" en="Spaghetti detected (%d%%)"/>
   <translation tag="Speaker" en="Speaker"/>
   <translation tag="Speed" en="Speed"/>
+  <translation tag="Speed / Flow" en="Speed / Flow"/>
   <translation tag="Speed Settings" en="Speed Settings"/>
+  <translation tag="Speed and flow overrides, with a tap to tune" en="Speed and flow overrides, with a tap to tune"/>
   <translation tag="Speed multiplier for forward moves" en="Speed multiplier for forward moves"/>
   <translation tag="Speed multiplier for reverse moves" en="Speed multiplier for reverse moves"/>
   <translation tag="Speed of prime movement" en="Speed of prime movement"/>

@@ -2821,7 +2821,9 @@
   <translation tag="Spaghetti detected (%d%%)" it="Spaghetti rilevati (%d%%)"/>
   <translation tag="Speaker" it="Altoparlante"/>
   <translation tag="Speed" it="Velocità"/>
+  <translation tag="Speed / Flow" it="Velocità / Flusso"/>
   <translation tag="Speed Settings" it="Impostazioni di velocità"/>
+  <translation tag="Speed and flow overrides, with a tap to tune" it="Velocità e flusso; tocca per regolare"/>
   <translation tag="Speed multiplier for forward moves" it="Moltiplicatore di velocità per i movimenti in avanti"/>
   <translation tag="Speed multiplier for reverse moves" it="Moltiplicatore di velocità per i movimenti all&apos;indietro"/>
   <translation tag="Speed of prime movement" it="Velocità movimento priming"/>

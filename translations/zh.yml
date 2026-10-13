@@ -2924,7 +2924,9 @@ translations:
   Spaghetti detected (%d%%): 检测到拉丝故障（%d%%）
   Speaker: 扬声器
   Speed: 速度
+  Speed / Flow: '速度 / 流量'
   Speed Settings: '速度设置'
+  Speed and flow overrides, with a tap to tune: '速度与流量,点按即可调整'
   Speed multiplier for forward moves: '正向移动速度倍率'
   Speed multiplier for reverse moves: '反向移动速度倍率'
   Speed of prime movement: 预挤移动速度

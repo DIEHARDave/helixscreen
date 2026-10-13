@@ -3138,7 +3138,9 @@ translations:
   Spaghetti detected (%d%%): Spaghetti erkannt (%d%%)
   Speaker: Lautsprecher
   Speed: Geschwindigkeit
+  Speed / Flow: 'Geschwindigkeit / Fluss'
   Speed Settings: 'Geschwindigkeitseinstellungen'
+  Speed and flow overrides, with a tap to tune: 'Geschwindigkeit und Fluss, zum Abstimmen antippen'
   Speed multiplier for forward moves: 'Geschwindigkeitsmultiplikator für Vorwärtsbewegungen'
   Speed multiplier for reverse moves: 'Geschwindigkeitsmultiplikator für Rückwärtsbewegungen'
   Speed of prime movement: Geschwindigkeit der Prime-Bewegung

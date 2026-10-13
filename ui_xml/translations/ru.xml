@@ -2821,7 +2821,9 @@
   <translation tag="Spaghetti detected (%d%%)" ru="Обнаружены «спагетти» (%d%%)"/>
   <translation tag="Speaker" ru="Динамик"/>
   <translation tag="Speed" ru="Скорость"/>
+  <translation tag="Speed / Flow" ru="Скорость / Поток"/>
   <translation tag="Speed Settings" ru="Настройки скорости"/>
+  <translation tag="Speed and flow overrides, with a tap to tune" ru="Скорость и поток; нажмите для настройки"/>
   <translation tag="Speed multiplier for forward moves" ru="Множитель скорости для прямых перемещений"/>
   <translation tag="Speed multiplier for reverse moves" ru="Множитель скорости для обратных перемещений"/>
   <translation tag="Speed of prime movement" ru="Скорость движения подачи"/>

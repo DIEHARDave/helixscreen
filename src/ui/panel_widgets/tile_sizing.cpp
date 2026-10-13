@@ -11,6 +11,7 @@
 #include "observer_factory.h"
 #include "panel_widget_size.h"
 #include "settings_manager.h"
+#include "src/ui/panel_widgets/content_chrome.h"
 #include "theme_manager.h"
 
 #include <spdlog/spdlog.h>
@@ -146,16 +147,9 @@ TileVerdict TileSizing::decide(int width_px, int height_px) const {
 
     const int gap = theme_manager_get_spacing("space_xs");
 
-    // The chrome between the tile's outer box and the box its content draws in:
-    // the padding of every container between them, and the flex gap of the one
-    // that holds the content. A container with a single child draws no gap, so
-    // its gap is not chrome.
-    // Measured from the tree wherever there is one, because container padding
-    // is a theme value that varies by widget and by breakpoint; a constant
-    // guess is either too small, and the glyph spills out of its container, or
-    // too large, and the tile draws smaller than it needs to. Before the tree
-    // exists (the load path asks fits_at then) a gap on each side is the
-    // conservative stand-in.
+    // The chrome between the tile's outer box and the box its content draws in
+    // (measure_content_chrome). Before the tree exists (the load path asks fits_at
+    // then) a gap on each side is the conservative stand-in.
     // A gap on each side on top of whatever is measured. A measured-exact fit
     // renders as an overlap by a pixel or two, and the walk cannot see a
     // container that is not on the single-child chain, so the reservation is
@@ -166,23 +160,9 @@ TileVerdict TileSizing::decide(int width_px, int height_px) const {
     int chrome_w = 2 * gap;
     int chrome_h = 2 * gap;
     if (content_root_) {
-        for (lv_obj_t* o = content_root_; o != nullptr; o = lv_obj_get_child(o, 0)) {
-            int side_pads = static_cast<int>(lv_obj_get_style_pad_left(o, LV_PART_MAIN)) +
-                            static_cast<int>(lv_obj_get_style_pad_right(o, LV_PART_MAIN));
-            // A row's side inset is charged to row candidates alone (row_inset
-            // below), so it counts the same whichever direction is drawn now.
-            if (lv_obj_get_style_flex_flow(o, LV_PART_MAIN) == LV_FLEX_FLOW_ROW) {
-                side_pads -= std::min(side_pads, row_inset);
-            }
-            chrome_w += side_pads;
-            chrome_h += static_cast<int>(lv_obj_get_style_pad_top(o, LV_PART_MAIN)) +
-                        static_cast<int>(lv_obj_get_style_pad_bottom(o, LV_PART_MAIN));
-            if (lv_obj_get_child_count(o) != 1) {
-                chrome_w += static_cast<int>(lv_obj_get_style_pad_column(o, LV_PART_MAIN));
-                chrome_h += static_cast<int>(lv_obj_get_style_pad_row(o, LV_PART_MAIN));
-                break; // past the single-child chrome and into the content
-            }
-        }
+        const ContentChrome chrome = measure_content_chrome(content_root_, gap, row_inset);
+        chrome_w = chrome.w;
+        chrome_h = chrome.h;
     }
 
     const int avail_w = std::max(width_px - chrome_w, 1);
