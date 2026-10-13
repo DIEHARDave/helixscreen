@@ -1545,6 +1545,12 @@
         },
         "stacked_if_bp_lte": {
           "type": "int"
+        },
+        "stacked_subject": {
+          "type": "string"
+        },
+        "stacked_if_eq": {
+          "type": "string"
         }
       },
       "inherits": "lv_obj"

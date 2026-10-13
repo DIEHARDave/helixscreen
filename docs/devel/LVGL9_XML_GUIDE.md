@@ -1130,10 +1130,11 @@ button outgrows a small panel. Both need the button to carry an icon and a label
 | Attr | Effect |
 |------|--------|
 | `stacked_if_bp_lte="N"` | While `ui_breakpoint <= N`, restacks the button icon-over-label - the create-time `icon_position="top"` recipe - and sets its height to 100% of its parent, so a stacked button fills the growable row it lives in. Above `N` the button returns to the row layout and fixed `button_height` it declared at create time. |
+| `stacked_subject="S"` + `stacked_if_eq="N"` | Stacks the button as above while int subject `S` equals `N`, and returns it to the row layout otherwise, following `S` live. The subject spelling of `stacked_if_bp_lte`, for a condition the breakpoint alone does not express: point it at a `<subject_expr>`. An empty `S` installs no binding. From ui_xml/components/ams_sidebar.xml, whose `ams_actions_stacked` stacks the action buttons in landscape and in narrow portrait cells and lays them icon-beside-label in a portrait 2x2 cell. |
 | `label_hidden_if_bp_eq="N"` | Hides the button's label while `ui_breakpoint == N`, collapsing it to icon-only; every other rung shows the label. The `ui_breakpoint` spelling of the pair below. |
 | `label_hidden_subject="S"` + `label_hidden_if_eq="N"` | Hides the label while int subject `S` equals `N`. An empty `S` installs no binding. From ui_xml/components/panel_widget_control_buttons.xml, where the widget folds the breakpoint rule into its own measured subject. |
 
-Give each label one writer: a widget that measures whether its label fits should fold the breakpoint rule into its own subject rather than set both attributes.
+Give each label one writer: a widget that measures whether its label fits should fold the breakpoint rule into its own subject rather than set both attributes. The same holds for stacking: set `stacked_if_bp_lte` or `stacked_subject`, never both, or the two observers fight over the layout.
 
 #### divider_vertical / divider_horizontal
 

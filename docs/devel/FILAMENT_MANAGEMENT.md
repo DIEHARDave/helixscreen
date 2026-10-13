@@ -1200,8 +1200,9 @@ The right column, shared by the AMS panel and the overview's unit view
 - **Step progress** (`progress_stepper_container`): shown during an operation, in the room
   the hidden meters and action buttons leave. A four-step swap load fits without scrolling
   at 480x272.
-- **Actions** (`action_buttons_container`): the bypass row, then the buttons two to a row,
-  icon over label (`stacked_if_bp_lte`), at every size. The grid is `styles.action_grid` on
+- **Actions** (`action_buttons_container`): the bypass row, then the buttons two to a row
+  at every size, icon over label in landscape (`stacked_subject="ams_actions_stacked"`,
+  a `<subject_expr>` in the sidebar). The grid is `styles.action_grid` on
   the container and `styles.action_cell` on each button (48% wide, height pinned to
   `touch_target_min`: a stacked `ui_button` asks for 100% of a content-height parent, which
   in a wrapping row never settles). The whole action area hides during any operation.
@@ -1222,13 +1223,16 @@ section, taking the rest of the height for the sidebar.
 
 The full-width box takes the same rules as landscape at the same breakpoint: two label rows
 below medium, three from medium up; the environment pill still costs the row its width.
-The sidebar tightens for portrait: its gaps drop to `space_xxs` and the status line's
+The portrait 2x2 cells (480x800 and up) lay each button's icon beside its label: the
+longest, "Check slots", takes 126 px of a 223 px cell at 480x800. The sidebar tightens for
+portrait: its gaps drop to `space_xxs` and the status line's
 vertical padding to 0, the Bypass toggle rides at the end of the status line
 (`bypass_inline`, hidden during any operation like the landscape `bypass_row` it stands in
 for), and the strip's meters take their small row at every size (the clog arc's growth is
 capped by `ams_clog_arc_max`, at or above the landscape strip's own size). Below medium,
 where the bottom section is about 120 px, the strip drops its meters, the four actions sit
-in one row (`styles.action_cell_quarter`), and the step progress is a row instead of a
+in one row (`styles.action_cell_quarter`, stacked icon over label: a 60 px cell has no room
+for both side by side), and the step progress is a row instead of a
 list (`include/ui_ams_slot_layout.h#ams_stepper_horizontal`): a four-step list needs about
 90 px there, the row 56. `[portrait]` pins the 272x480 panel: the bottom section under the
 diagram, the capped canvas with the toolhead whole, no sidebar scroll, eight lane badges

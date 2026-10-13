@@ -1203,6 +1203,32 @@ void ui_button_apply(lv_xml_parser_state_t* state, const char** attrs) {
                          "not found");
         }
     }
+
+    // The subject spelling of stacked_if_bp_lte, as label_hidden_subject is of
+    // label_hidden_if_bp_eq: stacked while the subject equals stacked_if_eq. A
+    // <subject_expr> lets a layout stack on any condition (orientation and tier).
+    const char* stacked_subject = lv_xml_get_value_of(attrs, "stacked_subject");
+    const char* stacked_ref = lv_xml_get_value_of(attrs, "stacked_if_eq");
+    if (stacked_subject && stacked_subject[0] != '\0' && data &&
+        data->magic == UiButtonData::MAGIC && data->icon && data->label) {
+        lv_subject_t* subject = lv_xml_get_subject(&state->scope, stacked_subject);
+        if (subject && stacked_ref) {
+            intptr_t ref_val = static_cast<intptr_t>(atoi(stacked_ref));
+            lv_subject_add_observer_obj(
+                subject,
+                [](lv_observer_t* o, lv_subject_t* s) {
+                    auto* target = static_cast<lv_obj_t*>(lv_observer_get_target_obj(o));
+                    intptr_t ref = reinterpret_cast<intptr_t>(lv_observer_get_user_data(o));
+                    ui_button_set_stacked(target, lv_subject_get_int(s) == ref);
+                },
+                btn, reinterpret_cast<void*>(ref_val));
+            spdlog::trace("[ui_button] stacked while {} == {}", stacked_subject,
+                          static_cast<int>(ref_val));
+        } else {
+            spdlog::warn("[ui_button] stacked_subject '{}' {}", stacked_subject,
+                         subject ? "has no stacked_if_eq" : "not found");
+        }
+    }
 }
 
 } // namespace
