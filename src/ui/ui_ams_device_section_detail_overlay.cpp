@@ -11,6 +11,7 @@
 #include "ui_error_reporting.h"
 #include "ui_event_safety.h"
 #include "ui_keyboard_manager.h"
+#include "ui_text.h"
 #include "ui_text_input.h"
 #include "ui_utils.h"
 
@@ -289,6 +290,7 @@ void AmsDeviceSectionDetailOverlay::create_action_control(
         lv_obj_set_style_text_color(label, theme_manager_get_color("text"), 0);
         lv_obj_set_width(label, LV_PCT(30));
         lv_label_set_long_mode(label, LV_LABEL_LONG_DOT);
+        helix::ui::label_hold_one_line(label);
         lv_obj_set_name(label, fmt::format("{}_label", action.id).c_str());
 
         // Slider in the middle with flex-grow

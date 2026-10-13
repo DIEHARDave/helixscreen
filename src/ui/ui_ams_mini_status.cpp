@@ -9,6 +9,7 @@
 #include "ui_observer_guard.h"
 #include "ui_panel_ams.h"
 #include "ui_panel_ams_overview.h"
+#include "ui_text.h"
 #include "ui_update_queue.h"
 #include "ui_utils.h"
 
@@ -1020,16 +1021,11 @@ static void rebuild_spools(AmsMiniStatusData* data) {
         if (mat) {
             lv_obj_set_width(mat, text_w);
             // A squeezed column is sized for a shortened name, not the widest one,
-            // so it ellipsizes rather than wrapping a name across lines the row has
-            // no height for. LV_LABEL_LONG_DOT only cuts a line once the label's
-            // height stops it wrapping, so the height has to be pinned to one line
-            // for the dots to ever appear.
+            // so it ellipsizes on one line rather than wrapping a name across lines
+            // the row has no height for.
             lv_label_set_long_mode(mat, ellipsize ? LV_LABEL_LONG_DOT : LV_LABEL_LONG_WRAP);
-            if (ellipsize) {
-                const lv_font_t* mf = theme_manager_get_font("font_small");
-                if (mf)
-                    lv_obj_set_height(mat, lv_font_get_line_height(mf));
-            }
+            if (ellipsize)
+                helix::ui::label_hold_one_line(mat);
             lv_obj_set_style_text_opa(mat, text_opa, LV_PART_MAIN);
             // Same helper measure_widest_material() sized text_w from, so the
             // string drawn here is the one the column was reserved for.

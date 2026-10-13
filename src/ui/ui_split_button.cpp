@@ -5,6 +5,7 @@
 
 #include "ui_fonts.h"
 #include "ui_icon_codepoints.h"
+#include "ui_text.h"
 #include "ui_update_queue.h"
 
 #include "helix-xml/src/xml/lv_xml.h"
@@ -462,13 +463,12 @@ void* ui_split_button_create(lv_xml_parser_state_t* state, const char** attrs) {
     }
 
     // Label — width=1 so flex doesn't expand main_btn to content size.
-    // Height = 1 line so DOTS mode truncates (DOTS needs height overflow to trigger).
+    // Held to one line so DOTS truncates instead of wrapping.
     // Correct width is set by async callback after layout resolves.
     data->label = lv_label_create(data->main_btn);
     lv_obj_set_width(data->label, 1);
-    const lv_font_t* text_font = lv_obj_get_style_text_font(data->label, LV_PART_MAIN);
-    lv_obj_set_height(data->label, lv_font_get_line_height(text_font));
     lv_label_set_long_mode(data->label, LV_LABEL_LONG_MODE_DOTS);
+    helix::ui::label_hold_one_line(data->label);
     lv_label_set_text(data->label, text);
 
     // Main button click handler
