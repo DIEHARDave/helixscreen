@@ -234,6 +234,19 @@ TEST_CASE("Tool switcher layout: a detail block fits under a tall rail", "[tool_
         CHECK(l.rail_h == l.rows * l.cell_h + (l.rows - 1) * kGap);
         CHECK(l.cell_h >= kMin);
         CHECK(k800_2x2.h - l.rail_h >= 2.5 * kFonts800.small);
+        // Two rows within half of 211 px: (105 - 2) / 2 = 51, under the
+        // 18 * 3.4 = 61 cap.
+        CHECK(l.cell_h == 51);
+        CHECK(l.rail_h == 104);
+    }
+    SECTION("2x2 at 800x480 with one head: the row stops at body * 3.4") {
+        // Half the box would allow 105 px; the body font caps the row at 61.
+        const ToolSwitcherLayout l = layout_for(1, k800_2x2);
+        REQUIRE(l.mode == ToolSwitcherMode::RailWithPark);
+        REQUIRE(l.rows == 1);
+        CHECK(l.detail);
+        CHECK(l.cell_h == kFonts800.body * 34 / 10);
+        CHECK(l.rail_h == 61);
     }
     SECTION("2x1 at 800x480 with five heads") {
         const ToolSwitcherLayout l = layout_for(5, k800_2x1);
