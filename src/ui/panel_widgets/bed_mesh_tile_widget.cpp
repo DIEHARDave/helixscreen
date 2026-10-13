@@ -206,9 +206,9 @@ helix::RungNeeds measure_needs(const MeasureState& m, const helix::ContentChrome
     const int empty_w = text_px(empty_text, f.small);
     int widest_word_w = 0;
     for (size_t pos = 0; pos < empty_text.size();) {
-        const size_t end = std::min(empty_text.find(' ', pos), empty_text.size());
+        const size_t end = std::min<size_t>(empty_text.find(' ', pos), empty_text.size());
         widest_word_w =
-            std::max(widest_word_w, text_px(empty_text.substr(pos, end - pos), f.small));
+            std::max<int>(widest_word_w, text_px(empty_text.substr(pos, end - pos), f.small));
         pos = end + 1;
     }
 
@@ -218,10 +218,10 @@ helix::RungNeeds measure_needs(const MeasureState& m, const helix::ContentChrome
         needs.glance = rung_box(icon_w + tight, icon_h + kSlackPx);
         // Strip and Column would draw what Glance does, so they stay unoffered.
         // The text wraps at a Cell, so it needs its widest word across and two lines down.
-        needs.cell = rung_box(std::max(icon_lg_w, widest_word_w) + comfort,
+        needs.cell = rung_box(std::max<int>(icon_lg_w, widest_word_w) + comfort,
                               icon_lg_h + row_gap + 2 * small_h + comfort + kSlackPx);
         needs.wide = rung_box(icon_lg_w + col_gap + empty_w + comfort,
-                              std::max(icon_lg_h, small_h) + comfort + kSlackPx);
+                              std::max<int>(icon_lg_h, small_h) + comfort + kSlackPx);
         int full_w = needs.cell.w;
         int full_h = needs.cell.h;
         if (!m.print_active) {
@@ -230,18 +230,18 @@ helix::RungNeeds measure_needs(const MeasureState& m, const helix::ContentChrome
             const int calibrate_w = text_px(lv_tr("Calibrate"), f.body) + button_label_pad;
             const int load_w = text_px(lv_tr("Load profile"), f.body) + button_label_pad;
             const int buttons = m.profile_count > 0 ? 2 : 1;
-            full_w = std::max(
+            full_w = std::max<int>(
                 {full_w, calibrate_w + comfort, m.profile_count > 0 ? load_w + comfort : 0});
             full_h += buttons * (row_gap + button_px);
         }
         needs.full = rung_box(full_w, full_h);
     } else {
         needs.glance =
-            rung_box(std::max(icon_w, range2_w) + tight, icon_h + row_gap + xs_h + kSlackPx);
-        needs.strip =
-            rung_box(map_min + col_gap + range3_xs_w + tight, std::max(map_min, xs_h) + kSlackPx);
-        needs.column =
-            rung_box(std::max(map_min, range3_xs_w) + tight, map_min + row_gap + xs_h + kSlackPx);
+            rung_box(std::max<int>(icon_w, range2_w) + tight, icon_h + row_gap + xs_h + kSlackPx);
+        needs.strip = rung_box(map_min + col_gap + range3_xs_w + tight,
+                               std::max<int>(map_min, xs_h) + kSlackPx);
+        needs.column = rung_box(std::max<int>(map_min, range3_xs_w) + tight,
+                                map_min + row_gap + xs_h + kSlackPx);
         // A square-ish cell holds a wider heatmap than a half-cell column does, which is
         // what separates Cell from Column.
         needs.cell =
@@ -249,21 +249,22 @@ helix::RungNeeds measure_needs(const MeasureState& m, const helix::ContentChrome
 
         const std::string range_unit = helix::format_mesh_range(8.888f, 3) + " mm";
         const int name_cap_w = text_px("MMMMMMMM", f.small);
-        const int name_w = std::min(text_px(m.profile_name, f.small), name_cap_w);
-        const int details_w = std::max({name_w, text_px(range_unit, f.body),
-                                        text_px(helix::format_mesh_extent(-8.88f, 8.88f), f.xs),
-                                        text_px("88x88 points", f.xs)});
+        const int name_w = std::min<int>(text_px(m.profile_name, f.small), name_cap_w);
+        const int details_w =
+            std::max<int>({name_w, text_px(range_unit, f.body),
+                           text_px(helix::format_mesh_extent(-8.88f, 8.88f), f.xs),
+                           text_px("88x88 points", f.xs)});
         const int details_h = small_h + body_h + 2 * xs_h + 3 * row_gap;
         needs.wide = rung_box(map_min + col_gap + details_w + comfort,
-                              std::max(map_min, details_h) + comfort + kSlackPx);
+                              std::max<int>(map_min, details_h) + comfort + kSlackPx);
 
-        const int scale_h = std::max(theme_manager_get_spacing("space_xs"), xs_h);
+        const int scale_h = std::max<int>(theme_manager_get_spacing("space_xs"), xs_h);
         const int footer_h = small_h + xs_h;
         const int footer_w = name_w + col_gap + text_px(range_unit, f.small);
         const int scale_w =
             2 * text_px(helix::format_mesh_extent(-8.88f, 8.88f), f.xs) / 2 + 6 * col_gap;
         needs.full =
-            rung_box(std::max(footer_w, scale_w) + comfort,
+            rung_box(std::max<int>(footer_w, scale_w) + comfort,
                      2 * map_min + 2 * row_gap + (kCanvasAvailable ? scale_h + row_gap : 0) +
                          footer_h + comfort + kSlackPx);
     }
@@ -273,12 +274,13 @@ helix::RungNeeds measure_needs(const MeasureState& m, const helix::ContentChrome
     const int w_wide = helix::widget_size::w_wide() - chrome.w;
     const int h_tall = helix::widget_size::h_tall() - chrome.h;
     const int h_taller = helix::widget_size::h_taller() - chrome.h;
-    needs.wide.w = std::max(needs.wide.w, w_normal);
-    needs.full.w = std::max(needs.full.w, w_normal);
-    needs.full.h = std::max(needs.full.h, h_tall);
+    needs.wide.w = std::max<int>(needs.wide.w, w_normal);
+    needs.full.w = std::max<int>(needs.full.w, w_normal);
+    needs.full.h = std::max<int>(needs.full.h, h_tall);
     // The Large rung differs from Full only by the 3D render on a full-tier board, so it
     // is offered at 3x3 and up regardless of tier.
-    needs.large = rung_box(std::max(needs.full.w, w_wide), std::max(needs.full.h, h_taller));
+    needs.large =
+        rung_box(std::max<int>(needs.full.w, w_wide), std::max<int>(needs.full.h, h_taller));
     return needs;
 }
 
