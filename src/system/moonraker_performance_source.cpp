@@ -101,7 +101,62 @@ void MoonrakerPerformanceSource::start() {
         }));
 }
 
+std::optional<MoonrakerPerformanceSource::DiskUsageMb>
+MoonrakerPerformanceSource::parse_disk_usage(const json& response) {
+    if (!response.is_object() || !response.contains("result") || !response["result"].is_object())
+        return std::nullopt;
+    const json& result = response["result"];
+    if (!result.contains("disk_usage") || !result["disk_usage"].is_object())
+        return std::nullopt;
+    const json& du = result["disk_usage"];
+    if (!du.contains("total") || !du["total"].is_number() || !du.contains("free") ||
+        !du["free"].is_number())
+        return std::nullopt;
+    const double total = du["total"].get<double>();
+    const double free_bytes = du["free"].get<double>();
+    if (total <= 0.0 || free_bytes < 0.0)
+        return std::nullopt;
+    constexpr double kBytesPerMb = 1024.0 * 1024.0;
+    constexpr double kMaxMb = 4294967295.0;
+    return DiskUsageMb{static_cast<uint32_t>(std::min(total / kBytesPerMb, kMaxMb)),
+                       static_cast<uint32_t>(std::min(free_bytes / kBytesPerMb, kMaxMb))};
+}
+
+void MoonrakerPerformanceSource::fetch_disk_usage() {
+    const auto now = std::chrono::steady_clock::now();
+    if (disk_request_in_flight_ && now - last_disk_request_ < kDiskPollInterval)
+        return;
+    disk_request_in_flight_ = true;
+    last_disk_request_ = now;
+    api_->get_client().send_jsonrpc(
+        "server.files.get_directory", json{{"path", "gcodes"}},
+        lifetime_.bg_cb("MoonrakerPerformanceSource::disk_usage",
+                        [this](const json& response) {
+                            // Runs on main thread via bg_cb defer.
+                            disk_request_in_flight_ = false;
+                            const auto usage = parse_disk_usage(response);
+                            if (!usage) {
+                                spdlog::debug("[perf] get_directory carried no disk_usage");
+                                return;
+                            }
+                            latest_.host_disk_total_mb = usage->total_mb;
+                            latest_.host_disk_free_mb = usage->free_mb;
+                            if (cb_)
+                                cb_(latest_);
+                        }),
+        lifetime_.bg_cb("MoonrakerPerformanceSource::disk_usage_error",
+                        [this](const MoonrakerError& err) {
+                            // Runs on main thread via bg_cb defer.
+                            disk_request_in_flight_ = false;
+                            spdlog::debug("[perf] disk usage read failed: {}", err.message);
+                        }));
+}
+
 void MoonrakerPerformanceSource::run_initial_handshake() {
+    // A read sent before a disconnect never answers; a new connection starts clean.
+    disk_request_in_flight_ = false;
+    fetch_disk_usage();
+
     // Initial host-stats snapshot via REST GET /machine/proc_stats.
     // RestResponse.data contains the full JSON-RPC-like body; the actual
     // payload is under resp.data["result"].
@@ -144,6 +199,8 @@ void MoonrakerPerformanceSource::stop() {
 
     mcu_state_.clear();
     latest_ = {};
+    disk_request_in_flight_ = false;
+    last_disk_request_ = {};
 }
 
 // ----------------------------------------------------------------------------
@@ -195,6 +252,9 @@ void MoonrakerPerformanceSource::on_proc_stat_payload(const json& body) {
         latest_.host_throttle_bits = bits;
         latest_.host_throttle_text = format_throttle_text(bits, flags);
     }
+
+    if (std::chrono::steady_clock::now() - last_disk_request_ >= kDiskPollInterval)
+        fetch_disk_usage();
 
     if (cb_)
         cb_(latest_);

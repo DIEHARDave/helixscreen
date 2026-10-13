@@ -13,6 +13,21 @@
 namespace helix {
 namespace perf {
 
+namespace {
+
+/// "812 MB free" below a gigabyte, "18.4 GB free" from there up.
+std::string format_disk_free_text(uint32_t free_mb) {
+    char tmp[48];
+    if (free_mb >= 1024) {
+        snprintf(tmp, sizeof(tmp), "%.1f GB free", static_cast<double>(free_mb) / 1024.0);
+    } else {
+        snprintf(tmp, sizeof(tmp), "%u MB free", free_mb);
+    }
+    return tmp;
+}
+
+} // namespace
+
 PerformanceState& PerformanceState::instance() {
     static PerformanceState s;
     return s;
@@ -30,6 +45,11 @@ void PerformanceState::init_subjects() {
     UI_MANAGED_SUBJECT_INT(s_host_mem_free_mb_, 0, "perf_host_mem_free_mb", subjects_);
     UI_MANAGED_SUBJECT_INT(s_host_mem_pct_used_, 0, "perf_host_mem_pct_used", subjects_);
     UI_MANAGED_SUBJECT_INT(s_host_mem_present_, 0, "perf_host_mem_present", subjects_);
+    UI_MANAGED_SUBJECT_INT(s_host_disk_free_mb_, 0, "perf_host_disk_free_mb",
+                           subjects_); // SUBJECT_OK: read by name in HostHealthWidget
+    UI_MANAGED_SUBJECT_INT(s_host_disk_present_, 0, "perf_host_disk_present", subjects_);
+    UI_MANAGED_SUBJECT_STRING(s_host_disk_free_text_, buf_disk_text_, "\xe2\x80\x94",
+                              "perf_host_disk_free_text", subjects_);
     UI_MANAGED_SUBJECT_INT(s_host_throttle_state_, 0, "perf_host_throttle_state", subjects_);
     UI_MANAGED_SUBJECT_STRING(s_host_throttle_text_, buf_throttle_text_, "",
                               "perf_host_throttle_text", subjects_);
@@ -137,6 +157,13 @@ void PerformanceState::apply_sample(const PerfSample& s) {
     }
     set_present(s_host_mem_present_,
                 s.host_mem_free_mb.has_value() && s.host_mem_pct_used.has_value());
+
+    if (s.host_disk_free_mb) {
+        lv_subject_set_int(&s_host_disk_free_mb_, static_cast<int>(*s.host_disk_free_mb));
+        lv_subject_copy_string(&s_host_disk_free_text_,
+                               format_disk_free_text(*s.host_disk_free_mb).c_str());
+    }
+    set_present(s_host_disk_present_, s.host_disk_free_mb.has_value());
 
     lv_subject_set_int(&s_host_throttle_state_, static_cast<int>(s.host_throttle_bits));
     if (!s.host_throttle_text.empty()) {

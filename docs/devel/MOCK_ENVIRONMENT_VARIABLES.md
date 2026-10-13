@@ -1295,6 +1295,20 @@ HELIX_MOCK_THROTTLE=freq_capped_prev ./build/bin/helix-screen --test -vv
 
 Applied on every sampler tick, so the flags persist for the whole run rather than firing once.
 
+### `HELIX_MOCK_DISK_FREE_MB`
+
+Set the free space the mock reports for the gcodes disk, so the host-health widget's low-disk warning (below 500 MB) can be seen without filling a disk. Both the mock performance sampler and the mock Moonraker client's `server.files.get_directory` answer read it.
+
+| Property | Value |
+|----------|-------|
+| **Values** | A whole number of megabytes, capped at the 29 GB mock disk |
+| **Default** | Unset: 18 GB free of 29 GB |
+| **Files** | `include/mock_disk_usage.h`, `src/system/mock_performance_source.cpp`, `src/api/moonraker_client_mock_files.cpp` |
+
+```bash
+HELIX_MOCK_DISK_FREE_MB=300 ./build/bin/helix-screen --test -vv
+```
+
 ### `INPUT_SHAPER_DEMO_KALICO`
 
 Swap the input-shaper panel's injected demo results for a Kalico-shaped shaper list. Kalico reports smooth shapers (`smooth_zv`, `smooth_mzv`, `smooth_ei`, `smooth_2hump_ei`, `smooth_zvd_ei`, `smooth_si`) alongside the discrete ones; stock Klipper reports five discrete shapers only. Used for screenshots and for checking that the recommendation UI handles the longer list.

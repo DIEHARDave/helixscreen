@@ -1478,6 +1478,8 @@ translations:
   Homing...: 正在归零...
   Horizontal: 水平
   Host: 主机
+  Host Health: 主机状态
+  Host and MCU load, temperature, and memory: 主机和 MCU 的负载、温度和内存
   'Host: ': '主机: '
   Hotend: 热端
   Hotend Fan: 热端风扇
@@ -2464,6 +2466,7 @@ translations:
   Quick Button 4: 快捷按钮 4
   Quick actions, calibration, speed: 快捷操作、校准、速度
   Quiet: '安静'
+  RAM: RAM
   RFCOMM connect failed: RFCOMM 连接失败
   'RFCOMM connect failed: ': 'RFCOMM 连接失败: '
   RFID reader malfunction (left): RFID 读取器故障（左）

@@ -1582,6 +1582,8 @@ translations:
   Homing...: Posicionando...
   Horizontal: Horizontal
   Host: Host
+  Host Health: Estado do host
+  Host and MCU load, temperature, and memory: Carga, temperatura e memória do host e da MCU
   'Host: ': 'Host: '
   Hotend: Hotend
   Hotend Fan: Ventoinha do Hotend
@@ -2629,6 +2631,7 @@ translations:
   Quick Button 4: Botão Rápido 4
   Quick actions, calibration, speed: Ações rápidas, calibração, velocidade
   Quiet: 'Silencioso'
+  RAM: RAM
   RFCOMM connect failed: Falha ao conectar RFCOMM
   'RFCOMM connect failed: ': 'Falha ao conectar RFCOMM: '
   RFID reader malfunction (left): Falha do leitor RFID (esquerdo)
