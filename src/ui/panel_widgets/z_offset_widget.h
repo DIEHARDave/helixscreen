@@ -46,7 +46,8 @@ class ZOffsetWidget : public PanelWidget {
     struct LiveState;
     LiveState read_live() const;
     ZOffsetVerdict decide(int width_px, int height_px, bool tool_changer) const;
-    void publish();
+    void publish(const LiveState& live);
+    lv_obj_t* find_indicator() const;
     void on_live_changed();
     void open_tune_overlay();
 
@@ -60,6 +61,8 @@ class ZOffsetWidget : public PanelWidget {
     bool decided_tool_changer_ = false;
     /// The offset a run of baby steps started from; travel is bounded from it.
     double session_base_mm_ = 0.0;
+    /// What the indicator last drew, so an unchanged reading costs no redraw.
+    std::optional<int> indicator_microns_;
 
     ObserverGuard offset_observer_;
     ObserverGuard persisted_observer_;

@@ -17,6 +17,7 @@
 #include "panel_widget_registry.h"
 #include "printer_state.h"
 #include "src/ui/panel_widgets/content_chrome.h"
+#include "src/ui/panel_widgets/live_tile_owner.h"
 #include "static_subject_registry.h"
 #include "subject_managed_panel.h"
 #include "text_measure.h"
@@ -59,7 +60,7 @@ SubjectManager s_subjects;
 // The instance bound to the live tile. Only it publishes and acts: a transient
 // instance (a fits_at probe, a rebuild's outgoing widget) must not overwrite the
 // tile's verdict.
-helix::ZOffsetWidget* s_owner = nullptr;
+helix::LiveTileOwner<helix::ZOffsetWidget> s_tile;
 
 void z_offset_init_subjects() {
     if (s_subjects_initialized)
@@ -149,6 +150,8 @@ helix::RungNeeds measure_needs(bool tool_changer) {
     const int comfort = theme_manager_get_spacing("space_xs");
     // The small rungs hold one short number under a glyph; they get the least margin.
     const int tight = std::max<int>(2, theme_manager_get_spacing("space_xxs") / 2);
+    // A box measured exactly renders as an overlap by a pixel.
+    constexpr int kSlackPx = 1;
     const int button_px = theme_manager_get_spacing("button_height_sm");
 
     const int icon_w = text_px(helix::ui::icon::lookup_codepoint("axis_z_arrow"), f.icon);
@@ -169,26 +172,27 @@ helix::RungNeeds measure_needs(bool tool_changer) {
     const int caption_w = std::max(text_px(unit_caption, f.xs), text_px(delta_caption, f.xs));
     // The indicator draws proportionally and survives shrinking; this is the least
     // width at which its tick labels still read.
-    const int indicator_w = button_px * 3 / 2;
+    const int indicator_w = 3 * theme_manager_get_spacing("space_xl");
 
     helix::RungNeeds needs;
-    needs.glance = rung_box(std::max(icon_w, text_px(wide2, f.xs)) + tight, icon_h + xs_h + 1);
-    needs.strip =
-        rung_box(icon_w + col_gap + text_px(wide3, f.xs) + tight, std::max(icon_h, xs_h) + 1);
+    needs.glance =
+        rung_box(std::max(icon_w, text_px(wide2, f.xs)) + tight, icon_h + xs_h + kSlackPx);
+    needs.strip = rung_box(icon_w + col_gap + text_px(wide3, f.xs) + tight,
+                           std::max(icon_h, xs_h) + kSlackPx);
     // A tall half cell has the height for the unit under the value, which a short one
     // does not; that is what separates Column from Glance.
     needs.column = rung_box(std::max(icon_w, text_px(wide3, f.xs)) + tight,
-                            icon_h + 2 * xs_h + 2 * row_gap + comfort + 1);
+                            icon_h + 2 * xs_h + 2 * row_gap + comfort + kSlackPx);
 
     const int cell_row_w = icon_w + col_gap + text_px(wide3, f.body);
     const int cell_w = std::max(cell_row_w, caption_w);
     const int cell_h = std::max(icon_h, body_h) + row_gap + xs_h;
     // Height gets the same margin: a 1x0.5 tile is one pixel short of this box, and
     // must stay the Strip.
-    needs.cell = rung_box(cell_w + comfort, cell_h + comfort + 1);
+    needs.cell = rung_box(cell_w + comfort, cell_h + comfort + kSlackPx);
 
     needs.wide = rung_box(cell_w + col_gap + indicator_w + col_gap + button_px + comfort,
-                          std::max(cell_h, button_px) + comfort + 1);
+                          std::max(cell_h, button_px) + comfort + kSlackPx);
 
     const int full_row_w = icon_w + col_gap + text_px(wide3, f.heading);
     const std::string tool_label = helix::ui::lane_label(helix::ui::active_tool_noun(), 88);
@@ -198,7 +202,7 @@ helix::RungNeeds measure_needs(bool tool_changer) {
         std::max(icon_h, heading_h) + row_gap + xs_h + (tool_changer ? row_gap + small_h : 0);
     const int stepper_w = 2 * button_px + text_px(step_text(0), f.small) + 2 * col_gap + comfort;
     needs.full = rung_box(std::max(block_w + col_gap + indicator_w, stepper_w) + comfort,
-                          block_h + 2 * (row_gap + button_px) + 1);
+                          block_h + 2 * (row_gap + button_px) + kSlackPx);
     return needs;
 }
 
@@ -268,7 +272,7 @@ ZOffsetVerdict ZOffsetWidget::decide(int width_px, int height_px, bool tool_chan
 void ZOffsetWidget::attach(lv_obj_t* widget_obj, lv_obj_t* parent_screen) {
     widget_obj_ = widget_obj;
     parent_screen_ = parent_screen;
-    s_owner = this;
+    s_tile.claim(this);
     install_delete_hook(widget_obj);
 
     auto& motion = printer_state_.motion_state();
@@ -289,9 +293,14 @@ void ZOffsetWidget::attach(lv_obj_t* widget_obj, lv_obj_t* parent_screen) {
         ui::observe<int>(motion.get_pending_z_offset_delta_subject(), this, on_change, lifetime);
     print_active_observer_ = ui::observe<int>(
         printer_state_.print_state().get_print_active_subject(), this, on_change, lifetime);
+    // SubjectInitializer publishes this before any panel XML is created, so it exists
+    // here in the app; a missing one means the init order broke.
     if (lv_subject_t* save = zoffset::get_save_available_subject()) {
         save_available_observer_ =
             ui::observe<int>(save, this, on_change, zoffset::get_save_available_lifetime());
+    } else {
+        spdlog::warn("[ZOffsetWidget] z_offset_save_available is not published; the value "
+                     "will not follow unsaved offsets");
     }
     auto& tools = ToolState::instance();
     const auto tools_lifetime = tools.get_subjects_lifetime();
@@ -302,9 +311,14 @@ void ZOffsetWidget::attach(lv_obj_t* widget_obj, lv_obj_t* parent_screen) {
     per_tool_observer_ = ui::observe<int>(tools.get_per_tool_axis_supported_subject(Axis::Z), this,
                                           on_change, tools_lifetime);
 
+    // A run of baby steps is bounded from where the tile began, as the Tune overlay's is
+    // from the offset it opened on.
+    session_base_mm_ = read_live().readings.microns.value_or(0) / 1000.0;
+    indicator_microns_.reset();
+
     // Instances are recycled across rebuilds: the verdict is republished here too.
     relayout_for_granted_size();
-    publish();
+    publish(read_live());
 }
 
 void ZOffsetWidget::detach() {
@@ -318,24 +332,28 @@ void ZOffsetWidget::detach() {
     tools_version_observer_.reset();
     active_tool_observer_.reset();
     per_tool_observer_.reset();
-    if (s_owner == this)
-        s_owner = nullptr;
+    if (ZOffsetWidget* displaced = s_tile.release(this)) {
+        displaced->indicator_microns_.reset();
+        displaced->relayout_for_granted_size();
+        displaced->publish(displaced->read_live());
+    }
     widget_obj_ = nullptr;
     parent_screen_ = nullptr;
 }
 
 void ZOffsetWidget::on_size_changed(int /*colspan*/, int /*rowspan*/, int width_px, int height_px) {
-    const bool tool_changer = read_live().readings.tool_changer;
+    const LiveState live = read_live();
+    const bool tool_changer = live.readings.tool_changer;
     verdict_ = decide(width_px, height_px, tool_changer);
     decided_tool_changer_ = tool_changer;
-    if (s_owner != this)
+    if (!s_tile.is_owner(this))
         return;
 
     lv_subject_set_int(&s_rung_subject, static_cast<int>(verdict_.rung));
     lv_subject_set_int(&s_show_save_subject, verdict_.show_save_row ? 1 : 0);
     lv_subject_set_int(&s_show_steppers_subject, verdict_.show_steppers ? 1 : 0);
     lv_subject_set_int(&s_show_tool_label_subject, verdict_.show_tool_label ? 1 : 0);
-    publish();
+    publish(live);
 
     spdlog::debug("[ZOffsetWidget] on_size_changed {}x{} rung={} decimals={} save={} steppers={} "
                   "tool_label={} fits={} tool_changer={}",
@@ -350,10 +368,9 @@ bool ZOffsetWidget::fits_at(int width_px, int height_px) const {
     return decide(width_px, height_px, false).fits;
 }
 
-void ZOffsetWidget::publish() {
-    if (s_owner != this)
+void ZOffsetWidget::publish(const LiveState& live) {
+    if (!s_tile.is_owner(this))
         return;
-    const LiveState live = read_live();
     const auto set = [](lv_subject_t* subject, const std::string& text) {
         if (text != lv_subject_get_string(subject))
             lv_subject_copy_string(subject, text.c_str());
@@ -365,21 +382,30 @@ void ZOffsetWidget::publish() {
     lv_subject_set_int(&s_status_subject,
                        static_cast<int>(status::z_offset_status(live.save_available)));
 
-    if (lv_obj_t* indicator =
-            root() ? lv_obj_find_by_name(root(), "z_offset_indicator") : nullptr) {
-        ui_z_offset_indicator_set_value(indicator, live.readings.microns.value_or(0));
+    // A tool that has reported nothing leaves the indicator where it was: 0 would draw
+    // a measurement it does not have.
+    if (live.readings.microns && indicator_microns_ != live.readings.microns) {
+        if (lv_obj_t* indicator = find_indicator()) {
+            ui_z_offset_indicator_set_value(indicator, *live.readings.microns);
+            indicator_microns_ = live.readings.microns;
+        }
     }
+}
+
+lv_obj_t* ZOffsetWidget::find_indicator() const {
+    return root() ? lv_obj_find_by_name(root(), "z_offset_indicator") : nullptr;
 }
 
 void ZOffsetWidget::on_live_changed() {
-    if (read_live().readings.tool_changer != decided_tool_changer_) {
+    const LiveState live = read_live();
+    if (live.readings.tool_changer != decided_tool_changer_) {
         relayout_for_granted_size();
     }
-    publish();
+    publish(live);
 }
 
 void ZOffsetWidget::step(int direction) {
-    if (!verdict_.show_steppers || s_owner != this)
+    if (!verdict_.show_steppers || !s_tile.is_owner(this))
         return;
     const double amount = zoffset::kZStepAmountsMm[zoffset::persisted_step_index()];
     const double delta = direction * amount;
@@ -398,24 +424,22 @@ void ZOffsetWidget::step(int direction) {
         moved = !r.clamped_to_noop;
     }
     if (moved) {
-        publish();
-        if (lv_obj_t* indicator =
-                root() ? lv_obj_find_by_name(root(), "z_offset_indicator") : nullptr) {
+        publish(read_live());
+        if (lv_obj_t* indicator = find_indicator())
             ui_z_offset_indicator_flash_direction(indicator, direction);
-        }
     }
 }
 
 void ZOffsetWidget::cycle_step() {
-    if (!verdict_.show_steppers || s_owner != this)
+    if (!verdict_.show_steppers || !s_tile.is_owner(this))
         return;
     const int count = static_cast<int>(std::size(zoffset::kZStepAmountsMm));
     zoffset::set_persisted_step_index((zoffset::persisted_step_index() + 1) % count);
-    publish();
+    publish(read_live());
 }
 
 void ZOffsetWidget::save() {
-    if (!verdict_.show_save_row || s_owner != this)
+    if (!verdict_.show_save_row || !s_tile.is_owner(this))
         return;
     const bool blocked =
         lv_subject_get_int(printer_state_.print_state().get_machine_motion_blocked_subject()) != 0;
@@ -448,22 +472,22 @@ void register_z_offset_widget() {
         LVGL_SAFE_EVENT_CB_BEGIN("[ZOffsetWidget] step_cb");
         // A button tap is not a tap on the tile, which opens the Tune overlay.
         lv_event_stop_bubbling(e);
-        if (auto direction = ui::event_user_int(e); direction && s_owner)
-            s_owner->step(*direction);
+        if (auto direction = ui::event_user_int(e); direction && s_tile.owner())
+            s_tile.owner()->step(*direction);
         LVGL_SAFE_EVENT_CB_END();
     });
     lv_xml_register_event_cb(nullptr, "z_offset_chip_cb", [](lv_event_t* e) {
         LVGL_SAFE_EVENT_CB_BEGIN("[ZOffsetWidget] chip_cb");
         lv_event_stop_bubbling(e);
-        if (s_owner)
-            s_owner->cycle_step();
+        if (auto* owner = s_tile.owner())
+            owner->cycle_step();
         LVGL_SAFE_EVENT_CB_END();
     });
     lv_xml_register_event_cb(nullptr, "z_offset_save_cb", [](lv_event_t* e) {
         LVGL_SAFE_EVENT_CB_BEGIN("[ZOffsetWidget] save_cb");
         lv_event_stop_bubbling(e);
-        if (s_owner)
-            s_owner->save();
+        if (auto* owner = s_tile.owner())
+            owner->save();
         LVGL_SAFE_EVENT_CB_END();
     });
 }

@@ -584,3 +584,36 @@ TEST_CASE_METHOD(ZOffsetFixture,
     process_lvgl(500);
     CHECK(get_print_tune_overlay().is_visible());
 }
+
+TEST_CASE_METHOD(ZOffsetFixture,
+                 "z_offset: a tile built over a pending delta bounds travel from its offset",
+                 "[widget_size][z_offset][actions]") {
+    // A delta left pending by an earlier surface must not leave the base at zero: the
+    // 2mm window would then sit around zero and clamp a step taken at 1.98mm.
+    state().motion_state().add_pending_z_offset_delta(50);
+    set_offset_microns(1980);
+    PanelWidgetHarness<ZOffsetWidget> h(test_screen(), state());
+    h.resize(1, 1, kFull.w, kFull.h);
+    zoffset::set_persisted_step_index(0);
+
+    tap(part(h, "z_offset_farther"));
+    CHECK(last_sent().find("SET_GCODE_OFFSET Z_ADJUST=0.050") == 0);
+}
+
+TEST_CASE_METHOD(ZOffsetFixture, "z_offset: a transient instance leaving hands the tile back",
+                 "[widget_size][z_offset][actions]") {
+    PanelWidgetHarness<ZOffsetWidget> live(test_screen(), state());
+    live.resize(1, 1, kFull.w, kFull.h);
+    {
+        PanelWidgetHarness<ZOffsetWidget> transient(test_screen(), state());
+        transient.resize(1, 1, 55, 54);
+        REQUIRE(rung_subject() == static_cast<int>(SizeRung::Glance));
+    }
+
+    // The live tile owns its subjects again and still acts.
+    CHECK(rung_subject() == static_cast<int>(SizeRung::Full));
+    set_offset_microns(-100);
+    CHECK(subject_text("z_offset_value_text") == "-0.100");
+    tap(part(live, "z_offset_farther"));
+    CHECK(last_sent().find("SET_GCODE_OFFSET Z_ADJUST=0.010") == 0);
+}
