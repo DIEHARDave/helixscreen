@@ -32,6 +32,7 @@
   <translation tag="%s has about %.0fg but %s needs about %.0fg. Start anyway?" en="%s has about %.0fg but %s needs about %.0fg. Start anyway?"/>
   <translation tag="%s has no filament loaded — this print will run out." en="%s has no filament loaded — this print will run out."/>
   <translation tag="%s needs filament in %s, which is empty — this print will run out." en="%s needs filament in %s, which is empty — this print will run out."/>
+  <translation tag="%s unsaved" en="%s unsaved"/>
   <translation tag="%s uses %s, which has filament but no material set — the printer will not start until you set it." en="%s uses %s, which has filament but no material set — the printer will not start until you set it."/>
   <translation tag="%s: %.0fg of %.0fg needed" en="%s: %.0fg of %.0fg needed"/>
   <translation tag="%u layers" en="%u layers"/>
@@ -567,6 +568,7 @@
   <translation tag="Choose sound style" en="Choose sound style"/>
   <translation tag="Choose the model that matches your printer. This sets the print macros, fan roles and calibration behaviour HelixScreen uses." en="Choose the model that matches your printer. This sets the print macros, fan roles and calibration behaviour HelixScreen uses."/>
   <translation tag="Choose what to power off or restart." en="Choose what to power off or restart."/>
+  <translation tag="Choose which lane is in the toolhead to unload it" en="Choose which lane is in the toolhead to unload it"/>
   <translation tag="Chute position: X {:.1f}, Y {:.1f}" en="Chute position: X {:.1f}, Y {:.1f}"/>
   <translation tag="Clean Brush" en="Clean Brush"/>
   <translation tag="Clean Nozzle" en="Clean Nozzle"/>
@@ -1640,6 +1642,7 @@
   <translation tag="Line the nozzle up with the purge chute so purged filament drops straight in." en="Line the nozzle up with the purge chute so purged filament drops straight in."/>
   <translation tag="Line {} calls {}, which this printer treats as an emergency stop. Re-slice the file with a profile made for this printer." en="Line {} calls {}, which this printer treats as an emergency stop. Re-slice the file with a profile made for this printer."/>
   <translation tag="Listen to all theme sounds" en="Listen to all theme sounds"/>
+  <translation tag="Live Z-offset, with baby steps and Save" en="Live Z-offset, with baby steps and Save"/>
   <translation tag="Live view from your webcam" en="Live view from your webcam"/>
   <translation tag="Load" en="Load"/>
   <translation tag="Load Cell" en="Load Cell"/>
@@ -3400,6 +3403,7 @@
   <translation tag="When enabled, only the macro runs. When disabled, temperatures are set first, then the macro runs." en="When enabled, only the macro runs. When disabled, temperatures are set first, then the macro runs."/>
   <translation tag="Where UI sounds play" en="Where UI sounds play"/>
   <translation tag="Whether filament is loaded" en="Whether filament is loaded"/>
+  <translation tag="Which lane is in the toolhead?" en="Which lane is in the toolhead?"/>
   <translation tag="Which macro the Close feeder button sends" en="Which macro the Close feeder button sends"/>
   <translation tag="Which macro the Open feeder button sends" en="Which macro the Open feeder button sends"/>
   <translation tag="White" en="White"/>
@@ -3542,6 +3546,8 @@
   <translation tag="loaded" en="loaded"/>
   <translation tag="locked" en="locked"/>
   <translation tag="matched" en="matched"/>
+  <translation tag="mm" en="mm"/>
+  <translation tag="mm Z-offset" en="mm Z-offset"/>
   <translation tag="mm before clog" en="mm before clog"/>
   <translation tag="needs" en="needs"/>
   <translation tag="needs approval" en="needs approval"/>

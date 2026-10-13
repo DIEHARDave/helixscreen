@@ -1140,7 +1140,7 @@ drawing is `src/ui/ui_ams_detail.cpp`.
   (`lane_lid_half_width`) meet its corners. Spools stand on the floor, flange bottom
   `SPOOL_FLOOR_GAP` above the floor's front edge, drawn at mid-depth; up to four slots
   stand at `spool_pitch()` (72 px at 800x480) from the left, and the slot layout
-  (`ams_detail_slot_layout`) reserves the box's overhang and the readout gap.
+  (`ams_detail_slot_layout`) reserves the box's overhang.
 - **Lid.** `lid_mode()`: no physical tray, no lid; a unit reading or a supported dryer
   gets one lid over the row; per-lane readings get one lid per lane, and each lane
   shows its humidity behind a droplet above its material label instead of the unit
@@ -1150,10 +1150,121 @@ drawing is `src/ui/ui_ams_detail.cpp`.
   cap, one diffuse sheen (`sheen_rows`: a blurred 7 px band at profile angle 112°,
   fading in from the left cap and out before the right), the silhouette edge and the
   cap rims. `reduced_effects()` keeps outlines only.
-- **Labels and readout.** Material labels sit `space_md` above `unit_top_y()` (the lid's
-  top) or, without a lid, above the back-wall top and the spool tops; the readout stands `space_md` right of the back-right
-  corner. Face and glass colors are `ams_unit_detail.xml` tokens (`tray_*_dark` and
+- **Labels.** Material labels sit `space_md` above `unit_top_y()` (the lid's top) or,
+  without a lid, above the back-wall top and the spool tops. Up to four lanes share one
+  row. Five or more stagger so neighbours never share a row
+  (`include/ui_ams_slot_layout.h#ams_stagger_row`): below the medium breakpoint they
+  alternate between two rows (odd lanes nearest the spools) in `font_xs`, one line
+  apart (`ams_stagger_row_height`), each ellipsized to its two-lane span
+  (`ams_stagger_label_width`); from medium up seven or more lanes take three rows and
+  five or six two, 1.5 lines apart, running high, mid, low, mid. A dashed leader runs
+  from a raised label down to its spool. The narrow label band is what keeps the
+  toolhead whole at 480x272 with eight lanes: the path canvas reports the glyph's drawn
+  box (`ui_filament_path_canvas_get_toolhead_box()`), and `[ams][tray]` pins it inside
+  the canvas there.
+- **Badges.** Each lane's number badge stands on the box's front face
+  (`tray::lane_badge_origin`): its right edge inside the lane's lid edge, or centred on
+  the lane when the pitch is too tight, never below the box. The per-slot tool badges
+  (T0, T1, ...) show only when they add something to the lane numbers
+  (`include/display_numbering.h#tool_badges_add_information`): an identity map in index
+  space (tool N feeds slot N, which displays as lane N+1) hides them; a remap, a tool
+  with no lane, or an empty map shows them.
+- **Environment pill.** `ams_env_pill.xml` (instance `env_indicator` in
+  `ams_unit_detail.xml`) is a flex sibling of the slot container, so it takes its width
+  from the unit's row: the box narrows to make room and box and pill centre as one.
+  `ams_detail_update_tray()` stands it against the box's right end
+  (`tray::pill_left_x`, the back-right corner) at the box's height, unit top to front
+  bottom. It holds two rows, a thermometer beside the temperature over a droplet beside
+  the humidity (colour-coded by the material comfort range); the box is too short at
+  the small sizes to stack each icon over its value. While the unit dries the
+  temperature row turns to the heat icon and the dryer's short status (time left) in the
+  warning colour. It hides with no environment data, and the box gets the width back.
+  Tapping it opens the environment overlay for its unit.
+- Face and glass colors are `ams_unit_detail.xml` tokens (`tray_*_dark` and
   `tray_*_light`).
+
+#### The operation sidebar (`ams_sidebar.xml`)
+
+The right column, shared by the AMS panel and the overview's unit view
+(`AmsOperationSidebar`), top to bottom:
+
+- **Loaded strip** (`ams_loaded_card.xml`), a ghost card (the plain `ui_card` on the panel
+  background, like the print status temperature card): a colour bar (`loaded_swatch_narrow_w`) beside
+  two lines, `ams_current_slot_text` ("Current: Gate 1") with the remaining weight, then the
+  filament's name on one line (`ams_loaded_name_line_h`), ellipsized. The clog and buffer
+  meters sit under the lines in landscape and on their right in portrait while the unit is
+  idle, and hide during any operation (`ams_action ne 0`). From the medium breakpoint up they keep their full form (arc over
+  reading over source; slider over reading over label); below it they shrink to one small
+  row (a small arc beside its reading, the `swap_vertical` icon beside the buffer reading).
+- **Status** (`status_section`): the action detail in `text_body`, on its own line at every
+  size. While the sidebar preheats for a load it reads "Heating nozzle"
+  (`preheat_status_text`): the step list's heat step carries the live "current / target"
+  reading, so the reading appears once. Only with no step list does the status carry it.
+- **Step progress** (`progress_stepper_container`): shown during an operation, in the room
+  the hidden meters and action buttons leave. A four-step swap load fits without scrolling
+  at 480x272.
+- **Actions** (`action_buttons_container`): the bypass row, then the buttons two to a row
+  at every size, icon over label in landscape (`stacked_subject="ams_actions_stacked"`,
+  a `<subject_expr>` in the sidebar). The grid is `styles.action_grid` on
+  the container and `styles.action_cell` on each button (48% wide, height pinned to
+  `touch_target_min`: a stacked `ui_button` asks for 100% of a content-height parent, which
+  in a wrapping row never settles). Each row is centred, so a row the buttons do not fill
+  (AFC's Unload, Home, Settings leaves Settings alone) keeps the cell width and stands in
+  the middle. The whole action area hides during any operation.
+
+With the bypass row and four buttons (Unload, Home, Check slots, Settings, the most any
+mock backend shows) the column does not scroll at 480x272, 480x320 or 800x480. A backend
+that shows a fifth button adds a third row, which scrolls at 480x272.
+
+#### Portrait
+
+`ams_panel.xml` and `ams_overview_panel.xml` are one tree each, restyled on `ui_is_portrait`
+(`bind_style_if_eq` pairs on the panel, its content column, the left column, the path
+containers and the right column). In portrait the panel is a column, top to bottom: the
+header; the loaded strip and the status line (with the Bypass toggle at its end); the
+diagram full width, its tube run capped at `ams_portrait_path_h` (125 px at 272x480 and
+320x480, 170 at 480x800, 300 at 600x1024) so it ends at the toolhead, the canvas tucking
+12 px under the box instead of 8; and the right column as the bottom section, holding the
+actions and, during an operation, the step progress.
+
+The strip and the status line are one instance each. They live at the top of the sidebar,
+and `AmsOperationSidebar` moves them into the panel's `portrait_summary_slot` in portrait
+and back on rotation (`src/ui/ui_ams_sidebar.cpp#place_summary`). The
+meters are constructed from the strip itself and the swatch is looked up in it, so they
+follow it; the slot carries the sidebar instance in its user data, so the Bypass toggle's
+callback (`bypass_inline`, shown only in portrait, hidden during any operation like the
+landscape `bypass_row`) routes from either place.
+
+The portrait header names the system instead of the screen: [back] [logo] NAME on both
+panels (the AMS panel's `ams_system_name`/`ams_system_logo`, the unit view's
+`ams_page_unit_name`/`ams_page_unit_logo`), the "Multi-Filament" title and ":" hidden, the
+logo and name centred in the header's height (`flex_track_place` center, the name at
+content height). The logo hides when the system has none (`ams_system_has_logo`,
+`ams_page_has_logo`). The name is the backend's type name, else its type, so it is never
+empty while a backend exists. Landscape keeps its rule: title, then ":" + logo + name from
+SMALL up.
+
+The full-width box takes the same rules as landscape at the same breakpoint: two label rows
+below medium, three from medium up; the environment pill still costs the row its width.
+The sidebar tightens for portrait: its gaps drop to `space_xxs` and the status line's
+vertical padding to 0. The strip's meters stand on the right of its two lines and follow
+the breakpoint like landscape: the small row below medium (the strip stays 37 px), the full
+form from medium up (the clog arc's growth is capped by `ams_clog_arc_max`). From medium up
+the text column is wide, so the weight follows the position (`position_hug`, at most 70% of
+the column) instead of ending the line beside the meters; below medium it ends the line.
+Below medium, where the bottom section is about 70 px, the four
+actions sit in one row (`styles.action_cell_quarter`, stacked icon over label: a 60 px cell
+has no room for both side by side), and the step progress is a row instead of a list
+(`include/ui_ams_slot_layout.h#ams_stepper_horizontal`): a four-step list needs about 90 px
+there. The row shows only the current step's label, centred under its dots
+(`ui_step_progress_set_current_label_only`), because a label under each of four 66 px steps
+collides; the row is 39 px. The portrait 2x2 cells (480x800 and up) lay each button's icon beside its
+label: the longest, "Check slots", takes 126 px of a 223 px cell at 480x800. In the overview's unit view the page dots float
+over the canvas's empty bottom-left corner in portrait (`dots_portrait`, half the width,
+`floating`), and the unit view's row gap is `space_xxs`, so the unit view fits 272x480 and
+320x480 without scrolling. `[portrait]`
+pins the 272x480 panel: the strip and status above the diagram, the bottom section under
+it, the capped canvas with the toolhead whole, eight lane badges apart.
 
 ### AMS Overview Panel (`ui_panel_ams_overview`)
 
@@ -1253,10 +1364,8 @@ the SMALL breakpoint the title and the colon give way to the logo and name.
 the hub, buffer and toolhead on the canvas's own center line instead of the center of the
 shown unit's spools, and sizes the hub box for the widest unit of the hub (the panel passes
 the largest `slot_count` in the page's group), so a one-bay unit and a four-bay unit sit
-over the same hub. The env chip beside the box has a floor width (`ams_env_chip_min_w`, its
-passive reading at each breakpoint), so a dryer starting or a page with a longer reading does
-not shift the spool box. The hub box's *width* still follows the lanes' geometry (a unit
-with fewer lanes leaves it narrower); its position does not move.
+over the same hub. The hub box's *width* still follows the lanes' geometry (a unit with
+fewer lanes leaves it narrower); its position does not move.
 
 **Measured layout (C++).** The arrows are 48 px touch targets at every breakpoint
 (`ams_page_arrow_hit`, with a smaller disc drawn inside where room is tight). They float
@@ -1272,8 +1381,8 @@ keeps that pitch and scrolls to keep the current page's dot in view.
 **Swipe.** A horizontal swipe anywhere over the unit view pages: left is next, right is
 previous, ignored where that arrow is hidden. `unit_detail_container` is declared
 `gesture_bubble="false"` because LVGL sends a gesture to the first ancestor that does not
-bubble it; every child bubbles by default, so taps on spools, the env chip and the canvas
-are untouched. Only the unit view listens: a swipe over the overview pages nothing, and the
+bubble it; every child bubbles by default, so taps on spools, the environment pill and the
+canvas are untouched. Only the unit view listens: a swipe over the overview pages nothing, and the
 cards row scrolls as before. The plain swipe direction (`lv_indev_get_gesture_dir`) does not need
 `LV_USE_GESTURE_RECOGNITION`, which gates only the multi-touch recognizers. The handler
 calls `lv_indev_wait_release()` so the release that ends a swipe is not a click on the spool
@@ -1284,8 +1393,8 @@ draws one dashed stub on its left; units on later pages draw one on its right. E
 a lane that is only suggested: a short run outward (about 5/6 of the hub width, shrinking to
 a floor so it and its label stay clear of the arrows), a diagonal at the slope of the
 outermost real lane on that side, and a drop into the top of the hub box like the lanes'.
-It ends in a label, `N units` (`1 unit`), with the dryer glyph the env chip uses before it
-while one of those units is drying. A canvas with no room for the label beside the diagonal
+It ends in a label, `N units` (`1 unit`), with the heat glyph the environment pill shows
+while drying before it, while one of those units is drying. A canvas with no room for the label beside the diagonal
 (the smallest screens) draws the stub bare, a dashed hint without its count. The canvas takes the counts through
 `ui_filament_path_canvas_set_offpage_units()`. While either stub exists the merge fan
 reserves one entry beside its outermost lanes on **both** sides (`reserve_each_side` in
@@ -1297,7 +1406,7 @@ on-toolhead hubs draw no stub.
 (`bypass_spool_sync_from_state()` is the shared state push); the canvas draws the
 connecting tube. The overview keeps its own overlay on the system path canvas.
 
-**The environment chip follows the unit on screen.** The chip beside the spool box binds
+**The environment pill follows the unit on screen.** The pill on the spool box's end binds
 the `ams_env_ind_detail_*` subjects, which `AmsState::set_detail_env_unit()` points at one
 unit and re-mirrors on every sync. The mirror is computed straight from that unit's data
 (`compute_unit_env_indicator`), so it is right for any unit number, including those past
@@ -1381,9 +1490,10 @@ number, `clog_meter_label_{left,right}` are the axis ends and are **empty in the
 linear modes** (only Flowguard's two directions mean different faults).
 `clog_meter_status` is an int driving a glyph, not a status word.
 
-> `clog_meter_mode_text` is drawn in `ams_loaded_card.xml` beside the material
-> name in a content-sized flex column. Anything appended to it steals width and
-> clips the filament name. Keep it to the source's name.
+> `clog_meter_mode_text` is drawn in `ams_loaded_card.xml` under the arc, in a
+> content-sized meter column, from the medium breakpoint up (hidden below it).
+> Anything appended to it widens the meter row under the strip's lines. Keep it to
+> the source's name.
 
 **Where it renders:** `clog_bar_body.xml` is the bar itself at content height;
 `panel_widget_clog_detection.xml` and `buffer_status_modal.xml` embed it directly. The arc lives in
@@ -1504,7 +1614,7 @@ with no history yet is a dotted baseline.
 | Surface | Content |
 |---|---|
 | **Filament Buffer** home widget (`filament_buffer`, `src/ui/panel_widgets/filament_buffer_widget.cpp`) | 1x1: the slider beside a big status-coloured number over its label. 2x1: the number with "target N%", the trace, then the label and the lean in words ("Running tight", "Running loose", "Balanced"; a compression-only fill reads "At target", "Above target" or "Below target"). No set point: 1x1 keeps the number over the label, 2x1 says "Pressure: N%". Tap opens the modal. Padding is the `buffer_tile_pad` token, so the tile keeps its padding at 480x320 |
-| Loaded-spool card (`ams_loaded_card.xml`) | A small slider (`buffer_mini_h`, taller at larger breakpoints) with the short number; the FPS/Sync label hides below the medium breakpoint, as the clog arc's mode label does, so the material name keeps the width. The colour swatch narrows to `loaded_swatch_narrow_w` (14 px) below medium |
+| Loaded strip (`ams_loaded_card.xml`) | Under the strip's two lines, while idle. From the medium breakpoint up a small slider (`buffer_mini_h`) over the short number and the FPS/Sync label; below medium the `swap_vertical` icon beside the short number, slider and label hidden. Hidden during any operation. The colour bar is `loaded_swatch_narrow_w` wide |
 | Path canvas buffer box (`ams_detail_buffer_box()`) | The existing labeled FPS/BUF box, tinted live by the color rule as the reading moves; a pressure with no set point is untinted. A fill reading passes no bias and tints only at a rail. Tap opens the modal on the buffer feeding the toolhead |
 | Buffer Status modal (`BufferStatusModal::show_for`, `buffer_status_modal.xml`) | The clog bar (hidden with no detector), then the tall slider with the reading, target and lean in words beside it, the trace and its caption ("last 60 s"), and the backend's own rows (Happy Hare spool motor, gear sync, flow; AFC state, distance to fault). Live while open; closes only with its X |
 

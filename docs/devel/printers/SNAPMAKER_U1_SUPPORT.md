@@ -194,22 +194,17 @@ HelixScreen can be deployed to the U1 without modifying the read-only base firmw
 
 This is the current deployment method used by `make deploy-snapmaker-u1`:
 
-1. Install [PAXX Extended Firmware](https://github.com/paxx12-snapmaker-u1/SnapmakerU1-Extended-Firmware) for SSH access
-2. Enable SSH via firmware config web UI
-3. Deploy via `make deploy-snapmaker-u1 SNAPMAKER_U1_HOST=<ip>`
-4. The installer disables the stock UI binary (`chmod -x /usr/bin/gui`) and installs a HelixScreen launcher at `/etc/init.d/S99screen` (in the writable overlay); HelixScreen starts on `/dev/fb0`. `lmd` (camera/timelapse supervisor) keeps running.
+1. Enable SSH: the **Root access** option on stock firmware 1.2+, or [PAXX Extended Firmware](https://github.com/paxx12-snapmaker-u1/SnapmakerU1-Extended-Firmware) (SSH on by default). See [Firmware Requirements](#firmware-requirements)
+2. Deploy via `make deploy-snapmaker-u1 SNAPMAKER_U1_HOST=<ip>`
+3. The installer disables the stock UI binary (`chmod -x /usr/bin/gui`) and hooks the firmware's own boot launcher (`S99screen`, `S99fb-http` or `S99input-event-daemon`, preserved as `*.stock`; see [How HelixScreen takes over the display](#how-helixscreen-takes-over-the-display)); HelixScreen starts on `/dev/fb0`. `lmd` (camera/timelapse supervisor) keeps running.
 
 **To revert**: run the uninstaller (re-enables `/usr/bin/gui` and restores the launcher), or manually `chmod +x /usr/bin/gui && rm -rf /userdata/helixscreen`, then reboot. The stock UI binary is on the read-only SquashFS rootfs and is only disabled, never deleted — but note that the init-script changes and the binary's exec bit **are** modified (in the reversible overlay), so a plain reboot alone will not bring the stock UI back.
 
 ### Level 2: SysV Init Override (Persistent, Reversible)
 
-The U1 uses SysV init (not systemd). A persistent override would:
+Level 1 is already persistent: the boot-launcher hook it installs lives in the `/oem/.debug` overlay and survives reboot. A standalone HelixScreen init script in `/etc/init.d/` does **not** work on its own, because the boot glob is frozen from the SquashFS before the overlay mounts (see the boot-glob trap under [How HelixScreen takes over the display](#how-helixscreen-takes-over-the-display)), which is why the installer delegates from a script the SquashFS already ships.
 
-1. Create a HelixScreen init script in `/etc/init.d/` (writable overlay)
-2. Optionally chmod -x the stock `S99screen` script (reversible since overlay)
-3. HelixScreen starts on boot; stock UI stays dormant
-
-**To revert**: Remove the init script override and reboot. Stock UI resumes from the read-only base.
+**To revert**: run the uninstaller, which restores each hooked launcher from its `*.stock` copy and the exec bit on `/usr/bin/gui`, then reboot.
 
 ### Level 3: Extended Firmware Overlay (Cleanest, Reversible)
 
@@ -529,7 +524,7 @@ We welcome additional testers with Snapmaker U1 hardware — **especially anyone
 3. **Stock testers:** after install, **reboot** and confirm HelixScreen comes back up on its own (this exercises the `S99input-event-daemon` boot hook) — please report success/failure.
    - Or build from source: `make snapmaker-u1-docker` then `make deploy-snapmaker-u1-fg SNAPMAKER_U1_HOST=<ip>`
 4. Report: Does the wizard appear? Does touch work? Can you connect to Moonraker? Do tool changes work?
-5. File issues at the HelixScreen GitHub repository
+5. Report in a [new issue](https://github.com/prestonbrown/helixscreen/issues/new), stating the firmware (stock or PAXX) and its version
 
 ## Related Resources
 

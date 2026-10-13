@@ -165,6 +165,7 @@ void AmsState::init_subjects(bool register_xml) {
     subjects_.register_subject(&ams_system_logo_, register_xml ? "ams_system_logo" : nullptr);
     if (register_xml)
         helix::xml::register_subject_in_current_scope("ams_system_logo", &ams_system_logo_);
+    INIT_SUBJECT_INT(ams_system_has_logo, 0, subjects_, register_xml);
 
     INIT_SUBJECT_STRING(ams_current_tool_text, "---", subjects_, register_xml);
 
@@ -650,6 +651,7 @@ void AmsState::register_xml_subject_names() {
     helix::xml::register_subject_in_current_scope("ams_action_detail", &ams_action_detail_);
     helix::xml::register_subject_in_current_scope("ams_system_name", &ams_system_name_);
     helix::xml::register_subject_in_current_scope("ams_system_logo", &ams_system_logo_);
+    helix::xml::register_subject_in_current_scope("ams_system_has_logo", &ams_system_has_logo_);
     helix::xml::register_subject_in_current_scope("ams_current_tool_text", &ams_current_tool_text_);
     helix::xml::register_subject_in_current_scope("ams_endless_state", &ams_endless_state_);
     helix::xml::register_subject_in_current_scope("ams_endless_text", &ams_endless_text_);

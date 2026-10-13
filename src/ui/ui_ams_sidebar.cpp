@@ -4,6 +4,7 @@
 #include "ui_ams_sidebar.h"
 
 #include "ui_ams_device_operations_overlay.h"
+#include "ui_ams_slot_layout.h"
 #include "ui_batch_filament_modal.h"
 #include "ui_button.h"
 #include "ui_callback_helpers.h"
@@ -12,6 +13,7 @@
 #include "ui_manual_pull_prompt.h"
 #include "ui_step_progress.h"
 #include "ui_temperature_utils.h"
+#include "ui_unload_lane_choice.h"
 #include "ui_utils.h"
 
 #include "active_material_provider.h"
@@ -28,6 +30,7 @@
 #include "lvgl/src/others/translation/lv_translation.h"
 #include "moonraker_api.h"
 #include "observer_factory.h"
+#include "panel_widget_size.h"
 #include "post_op_cooldown_manager.h"
 #include "printer_state.h"
 #include "standard_macros.h"
@@ -156,6 +159,20 @@ void AmsOperationSidebar::register_callbacks_static() {
     });
 }
 
+void AmsOperationSidebar::place_summary(bool portrait) {
+    if (!loaded_card_ || !status_section_ || !sidebar_root_)
+        return;
+    lv_obj_t* home = portrait && summary_slot_ ? summary_slot_ : sidebar_root_;
+    if (lv_obj_get_parent(loaded_card_) == home)
+        return;
+    // DECLARATIVE_OK: one strip and status line, placed by orientation; the
+    // widgets keep their bindings and the meters wired to them
+    lv_obj_set_parent(loaded_card_, home);
+    lv_obj_set_parent(status_section_, home);
+    lv_obj_move_to_index(loaded_card_, 0);
+    lv_obj_move_to_index(status_section_, 1);
+}
+
 // ============================================================================
 // Static Callback Routing (parent chain traversal)
 // ============================================================================
@@ -163,13 +180,15 @@ void AmsOperationSidebar::register_callbacks_static() {
 AmsOperationSidebar* AmsOperationSidebar::get_instance_from_event(lv_event_t* e) {
     auto* target = static_cast<lv_obj_t*>(lv_event_get_target(e));
 
-    // Find the ams_sidebar component root by name, then get our instance from its user_data.
+    // Find the ams_sidebar component root by name (or the portrait slot the strip and
+    // status line move into), then get our instance from its user_data.
     // Cannot walk parents checking any user_data — ui_button and other widgets set their own
     // user_data, which would be miscast as AmsOperationSidebar* (L069).
     lv_obj_t* obj = target;
     while (obj) {
         const char* name = lv_obj_get_name(obj);
-        if (name && strcmp(name, "ams_operation_sidebar") == 0) {
+        if (name && (strcmp(name, "ams_operation_sidebar") == 0 ||
+                     strcmp(name, "portrait_summary_slot") == 0)) {
             void* user_data = lv_obj_get_user_data(obj);
             if (user_data) {
                 return static_cast<AmsOperationSidebar*>(user_data);
@@ -239,16 +258,37 @@ bool AmsOperationSidebar::setup(lv_obj_t* panel) {
     // Store this pointer for static callback routing
     lv_obj_set_user_data(sidebar_root_, this);
 
+    // In portrait the strip and status stand above the diagram, in the panel's
+    // summary slot; they follow the orientation live.
+    loaded_card_ = lv_obj_find_by_name(sidebar_root_, "current_loaded_card");
+    status_section_ = lv_obj_find_by_name(sidebar_root_, "status_section");
+    summary_slot_ = lv_obj_find_by_name(panel, "portrait_summary_slot");
+    if (summary_slot_)
+        lv_obj_set_user_data(summary_slot_, this);
+    if (lv_subject_t* portrait = lv_xml_get_subject(nullptr, "ui_is_portrait")) {
+        portrait_observer_ = observe<int>(
+            portrait, this,
+            [](AmsOperationSidebar* self, int is_portrait) {
+                if (self->active_)
+                    self->place_summary(is_portrait != 0);
+            },
+            subject_never_freed());
+    }
+
     // Setup step progress
     setup_step_progress();
 
-    // Setup clog detection meter
-    clog_meter_ = std::make_unique<UiClogMeter>(sidebar_root_);
+    // Setup clog detection meter (in the loaded strip, wherever it stands)
+    lv_obj_t* strip = loaded_card_ ? loaded_card_ : sidebar_root_;
+    clog_meter_ = std::make_unique<UiClogMeter>(strip);
 
     // The loaded card's buffer slider follows the system-level reading
     buffer_slider_ =
-        std::make_unique<UiBufferSlider>(lv_obj_find_by_name(sidebar_root_, "buffer_mini_slider"));
+        std::make_unique<UiBufferSlider>(lv_obj_find_by_name(strip, "buffer_mini_slider"));
     buffer_slider_->follow_system_reading();
+
+    if (lv_subject_t* portrait = lv_xml_get_subject(nullptr, "ui_is_portrait"))
+        place_summary(lv_subject_get_int(portrait) != 0);
 
     // Hide settings button if no device sections
     update_settings_visibility();
@@ -418,7 +458,9 @@ void AmsOperationSidebar::init_observers() {
         [](AmsOperationSidebar* self, int color_int) {
             if (!self->active_ || !self->sidebar_root_)
                 return;
-            lv_obj_t* swatch = lv_obj_find_by_name(self->sidebar_root_, "loaded_swatch");
+            lv_obj_t* swatch = self->loaded_card_
+                                   ? lv_obj_find_by_name(self->loaded_card_, "loaded_swatch")
+                                   : nullptr;
             if (swatch) {
                 lv_color_t color = lv_color_hex(static_cast<uint32_t>(color_int));
                 lv_obj_set_style_bg_color(swatch, color, 0);
@@ -492,7 +534,13 @@ void AmsOperationSidebar::cleanup() {
     if (sidebar_root_) {
         lv_obj_set_user_data(sidebar_root_, nullptr);
     }
+    portrait_observer_.reset();
+    if (summary_slot_)
+        lv_obj_set_user_data(summary_slot_, nullptr);
     sidebar_root_ = nullptr;
+    loaded_card_ = nullptr;
+    status_section_ = nullptr;
+    summary_slot_ = nullptr;
     step_progress_ = nullptr;
     step_progress_container_ = nullptr;
 
@@ -661,6 +709,12 @@ void AmsOperationSidebar::recreate_step_progress_for_operation(StepOperationType
 
     current_operation_type_ = op_type;
 
+    // A row where the sidebar has no height for a list (a narrow portrait panel).
+    lv_subject_t* portrait_subject = lv_xml_get_subject(nullptr, "ui_is_portrait");
+    const bool horizontal = helix::ui::ams_stepper_horizontal(
+        portrait_subject && lv_subject_get_int(portrait_subject) != 0,
+        helix::widget_size::current_breakpoint());
+
     // Reset the backend-driven step driver; re-established below if the backend
     // supplies a specialized step model. Drop the old observer first.
     step_index_observer_.reset();
@@ -706,7 +760,9 @@ void AmsOperationSidebar::recreate_step_progress_for_operation(StepOperationType
             current_step_count_ = static_cast<int>(steps.size());
             step_progress_ =
                 ui_step_progress_create(step_progress_container_, steps.data(), current_step_count_,
-                                        false, "ams_step_progress");
+                                        horizontal, "ams_step_progress");
+            if (step_progress_ && horizontal)
+                ui_step_progress_set_current_label_only(step_progress_, true);
             if (step_progress_) {
                 // Observe the backend-supplied current-step subject. Every
                 // backend shipping today routes it through AmsState (narration
@@ -788,7 +844,7 @@ void AmsOperationSidebar::recreate_step_progress_for_operation(StepOperationType
                 {lv_tr("Purge"), StepState::Pending},
             };
             current_step_count_ = 3;
-            step_progress_ = ui_step_progress_create(step_progress_container_, steps, 3, false,
+            step_progress_ = ui_step_progress_create(step_progress_container_, steps, 3, horizontal,
                                                      "ams_step_progress");
         } else {
             ui_step_t steps[] = {
@@ -796,7 +852,7 @@ void AmsOperationSidebar::recreate_step_progress_for_operation(StepOperationType
                 {lv_tr("Feed filament"), StepState::Pending},
             };
             current_step_count_ = 2;
-            step_progress_ = ui_step_progress_create(step_progress_container_, steps, 2, false,
+            step_progress_ = ui_step_progress_create(step_progress_container_, steps, 2, horizontal,
                                                      "ams_step_progress");
         }
         break;
@@ -811,8 +867,8 @@ void AmsOperationSidebar::recreate_step_progress_for_operation(StepOperationType
         if (supports_purge)
             steps[n++] = {lv_tr("Purge"), StepState::Pending};
         current_step_count_ = n;
-        step_progress_ =
-            ui_step_progress_create(step_progress_container_, steps, n, false, "ams_step_progress");
+        step_progress_ = ui_step_progress_create(step_progress_container_, steps, n, horizontal,
+                                                 "ams_step_progress");
         break;
     }
     case StepOperationType::UNLOAD: {
@@ -823,8 +879,8 @@ void AmsOperationSidebar::recreate_step_progress_for_operation(StepOperationType
             steps[n++] = {tip_step_label, StepState::Pending};
         steps[n++] = {lv_tr("Retract"), StepState::Pending};
         current_step_count_ = n;
-        step_progress_ =
-            ui_step_progress_create(step_progress_container_, steps, n, false, "ams_step_progress");
+        step_progress_ = ui_step_progress_create(step_progress_container_, steps, n, horizontal,
+                                                 "ams_step_progress");
         break;
     }
     }
@@ -833,6 +889,9 @@ void AmsOperationSidebar::recreate_step_progress_for_operation(StepOperationType
         spdlog::error("[AmsSidebar] Failed to create step progress for op_type={}",
                       static_cast<int>(op_type));
     } else {
+        // A row has no width for a label under every step: name the current one.
+        if (horizontal)
+            ui_step_progress_set_current_label_only(step_progress_, true);
         spdlog::debug("[AmsSidebar] Created step progress: {} steps for op_type={}",
                       current_step_count_, static_cast<int>(op_type));
     }
@@ -1321,14 +1380,29 @@ void AmsOperationSidebar::handle_unload() {
         return;
     }
 
+    // A backend that cannot name the lane in the toolhead asks for it first,
+    // and the chosen lane takes the slot overload below.
+    if (refuse_if_busy_or_printing()) {
+        return;
+    }
+    auto token = lifetime_.token();
+    if (helix::ui::choose_unload_lane(backend, lv_obj_find_by_name(sidebar_root_, "btn_unload"),
+                                      [this, token](int slot) {
+                                          if (token.expired()) {
+                                              return;
+                                          }
+                                          handle_unload(slot, /*lane_in_toolhead=*/true);
+                                      })) {
+        return;
+    }
+
     // Active-slot unload (per-toolhead backends). Delegate to the slot overload
     // with slot_index = -1 so the stepper-build + backend-call path lives in one
-    // place. The IFS backend's unload_filament() ignores the slot index and
-    // sends the current-channel toolhead unload (IFS_REMOVE_CURRENT_PRUTOK).
+    // place.
     handle_unload(-1);
 }
 
-void AmsOperationSidebar::handle_unload(int slot_index) {
+void AmsOperationSidebar::handle_unload(int slot_index, bool lane_in_toolhead) {
     spdlog::info("[AmsSidebar] Unload requested (slot={})", slot_index);
 
     // The button is bound to ams_sidebar_unload_disabled, but a tap can still
@@ -1354,6 +1428,7 @@ void AmsOperationSidebar::handle_unload(int slot_index) {
     // AFC calls the user's unload macro itself when bypass is enabled, and
     // routing it to tier 2 here would run that macro twice.
     const bool loaded =
+        lane_in_toolhead ||
         helix::ui::read_unload_target_loaded(AmsState::instance().get_backend(), info, target_slot);
 
     const helix::ui::FilamentOpPlan plan = helix::ui::plan_live_unload(caps, target_slot, loaded);
@@ -1660,11 +1735,8 @@ void AmsOperationSidebar::check_pending_load() {
         lv_subject_get_int(printer_state_.temperature_state().get_active_extruder_temp_subject());
     int current = temperature::deci_to_degrees(current_deci);
 
-    // Update display with current temperature while waiting
-    char temp_buf[32];
-    temperature::format_temperature_pair(current, pending_load_target_temp_, temp_buf,
-                                         sizeof(temp_buf));
-    AmsState::instance().set_action_detail(temp_buf);
+    AmsState::instance().set_action_detail(
+        preheat_status_text(step_progress_ != nullptr, current, pending_load_target_temp_));
 
     if (current >= (pending_load_target_temp_ - PREHEAT_MARGIN_C)) {
         int slot = pending_load_slot_;
@@ -1848,6 +1920,14 @@ void AmsOperationSidebar::handle_load_complete() {
     }
 }
 
+std::string preheat_status_text(bool step_list_shows_temp, int current_c, int target_c) {
+    if (step_list_shows_temp)
+        return lv_tr("Heating nozzle");
+    char temp_buf[32];
+    temperature::format_temperature_pair(current_c, target_c, temp_buf, sizeof(temp_buf));
+    return temp_buf;
+}
+
 void AmsOperationSidebar::show_preheat_feedback(int slot_index, int target_temp) {
     LV_UNUSED(slot_index);
 
@@ -1855,9 +1935,9 @@ void AmsOperationSidebar::show_preheat_feedback(int slot_index, int target_temp)
         lv_subject_get_int(printer_state_.temperature_state().get_active_extruder_temp_subject());
     int current_temp = temperature::deci_to_degrees(current_deci);
 
-    char temp_buf[32];
-    temperature::format_temperature_pair(current_temp, target_temp, temp_buf, sizeof(temp_buf));
-    AmsState::instance().set_action_detail(temp_buf);
+    const std::string status =
+        preheat_status_text(step_progress_ != nullptr, current_temp, target_temp);
+    AmsState::instance().set_action_detail(status);
 
     if (step_progress_container_) {
         lv_obj_remove_flag(step_progress_container_, LV_OBJ_FLAG_HIDDEN);
@@ -1866,7 +1946,7 @@ void AmsOperationSidebar::show_preheat_feedback(int slot_index, int target_temp)
         ui_step_progress_set_current(step_progress_, 0);
     }
 
-    spdlog::debug("[AmsSidebar] Showing preheat feedback: {}", temp_buf);
+    spdlog::debug("[AmsSidebar] Showing preheat feedback: {}", status);
 }
 
 } // namespace helix::ui

@@ -16,6 +16,7 @@
 #include "panel_widget_registry.h"
 #include "printer_state.h"
 #include "src/ui/panel_widgets/content_chrome.h"
+#include "src/ui/panel_widgets/live_tile_owner.h"
 #include "static_subject_registry.h"
 #include "subject_managed_panel.h"
 #include "text_measure.h"
@@ -54,8 +55,8 @@ char s_flow_measured_buf[32];
 bool s_subjects_initialized = false;
 SubjectManager s_subjects;
 // The instance bound to the live tile. Only it publishes: a transient instance (a
-// fits_at probe, a rebuild's outgoing widget) must not overwrite the tile's verdict.
-const void* s_owner = nullptr;
+// rebuild's outgoing widget) must not overwrite the tile's verdict.
+helix::LiveTileOwner<helix::SpeedFlowWidget> s_tile;
 
 void speed_flow_init_subjects() {
     if (s_subjects_initialized)
@@ -304,7 +305,7 @@ SpeedFlowVerdict SpeedFlowWidget::decide(int width_px, int height_px, bool print
 void SpeedFlowWidget::attach(lv_obj_t* widget_obj, lv_obj_t* parent_screen) {
     widget_obj_ = widget_obj;
     parent_screen_ = parent_screen;
-    s_owner = this;
+    s_tile.claim(this);
     install_delete_hook(widget_obj);
 
     auto& motion = printer_state_.motion_state();
@@ -349,8 +350,10 @@ void SpeedFlowWidget::detach() {
     extruder_velocity_observer_.reset();
     print_active_observer_.reset();
     units_observer_.reset();
-    if (s_owner == this)
-        s_owner = nullptr;
+    if (SpeedFlowWidget* displaced = s_tile.release(this)) {
+        displaced->relayout_for_granted_size();
+        displaced->publish_texts();
+    }
     widget_obj_ = nullptr;
     parent_screen_ = nullptr;
 }
@@ -361,7 +364,7 @@ void SpeedFlowWidget::on_size_changed(int /*colspan*/, int /*rowspan*/, int widt
     verdict_ = decide(width_px, height_px, live.printing, live.physical);
     decided_printing_ = live.printing;
     decided_physical_ = live.physical;
-    if (s_owner != this)
+    if (!s_tile.is_owner(this))
         return;
 
     lv_subject_set_int(&s_rung_subject, static_cast<int>(verdict_.rung));
@@ -385,7 +388,7 @@ bool SpeedFlowWidget::fits_at(int width_px, int height_px) const {
 }
 
 void SpeedFlowWidget::publish_texts() {
-    if (s_owner != this)
+    if (!s_tile.is_owner(this))
         return;
     const LiveState live = read_live();
     const Texts t = compose_texts(live.readings, verdict_.rung, verdict_.value_is_measured);

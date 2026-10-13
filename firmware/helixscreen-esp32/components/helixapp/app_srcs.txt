@@ -375,6 +375,7 @@ src/ui/panel_widgets/shutdown_widget.cpp
 src/ui/panel_widgets/speed_flow_widget.cpp
 src/ui/panel_widgets/tile_sizing.cpp
 src/ui/panel_widgets/tile_widget.cpp
+src/ui/panel_widgets/z_offset_widget.cpp
 src/ui/panel_widgets/temp_graph_widget.cpp
 src/ui/panel_widgets/temp_stack_widget.cpp
 src/ui/panel_widgets/thermistor_widget.cpp
@@ -614,6 +615,7 @@ src/ui/ui_text_input.cpp
 src/ui/ui_theme_editor_overlay.cpp
 src/ui/ui_toast_manager.cpp
 src/ui/ui_touch_calibration_overlay.cpp
+src/ui/ui_unload_lane_choice.cpp
 src/ui/ui_utils.cpp
 src/ui/ui_variant.cpp
 src/ui/ui_widget_catalog_overlay.cpp

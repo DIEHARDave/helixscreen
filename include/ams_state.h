@@ -731,6 +731,11 @@ class AmsState {
         return &ams_system_logo_;
     }
 
+    /// 1 while the system has a logo for ams_system_logo; XML hides the image on 0.
+    lv_subject_t* get_ams_system_has_logo_subject() {
+        return &ams_system_has_logo_;
+    }
+
     /**
      * @brief Get current slot subject
      * @return Subject holding current slot index (-1 if none)
@@ -2206,6 +2211,7 @@ class AmsState {
     char system_name_buf_[32];
     lv_subject_t ams_system_logo_{};
     char system_logo_buf_[64];
+    lv_subject_t ams_system_has_logo_{};
     lv_subject_t ams_current_tool_text_{};
     // Holds a translated position label ("Tool 1", "Инструмент 16", "Печатающая
     // головка 16") or "---". Sized like current_slot_text_buf_/system_logo_buf_:

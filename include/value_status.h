@@ -20,4 +20,9 @@ constexpr ValueStatus override_status(int pct) {
     return pct != 100 ? ValueStatus::Warn : ValueStatus::Normal;
 }
 
+/// A Z-offset is Warn while there is an unsaved one to save.
+constexpr ValueStatus z_offset_status(bool save_available) {
+    return save_available ? ValueStatus::Warn : ValueStatus::Normal;
+}
+
 } // namespace helix::status

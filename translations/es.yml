@@ -32,6 +32,7 @@ translations:
   '%s has about %.0fg but %s needs about %.0fg. Start anyway?': '%s tiene aproximadamente %.0fg pero %s necesita aproximadamente %.0fg. ¿Iniciar de todos modos?'
   '%s has no filament loaded — this print will run out.': '%s no tiene filamento cargado — esta impresión se quedará sin filamento.'
   '%s needs filament in %s, which is empty — this print will run out.': '%s necesita filamento y %s no lo tiene — esta impresión se quedará sin filamento.'
+  '%s unsaved': '%s sin guardar'
   '%s uses %s, which has filament but no material set — the printer will not start until you set it.': '%s usa %s, que tiene filamento pero ningún material asignado — la impresora no empezará hasta que lo asignes.'
   '%s: %.0fg of %.0fg needed': '%s: %.0fg de %.0fg necesarios'
   '%u layers': '%u capas'
@@ -1825,6 +1826,7 @@ translations:
 
   Line {} calls {}, which this printer treats as an emergency stop. Re-slice the file with a profile made for this printer.: 'La línea {} llama a {}, que esta impresora trata como una parada de emergencia. Vuelva a laminar el archivo con un perfil hecho para esta impresora.'
   Listen to all theme sounds: Escucha todos los sonidos del tema
+  Live Z-offset, with baby steps and Save: Z-Offset en vivo, con pasos finos y Guardar
   Live view from your webcam: Vista en vivo de tu webcam
   Load: Cargar
   Load Cell: 'Celda de carga'
@@ -2208,6 +2210,8 @@ translations:
   Nothing starred yet. Tap the star on a filament to add it here.: 'Nada marcado aún. Toca la estrella de un filamento para añadirlo aquí.'
   Nothing to remap: Nada que reasignar
   'Nothing to unload: no filament at the nozzle': 'Nada que descargar: no hay filamento en la boquilla'
+  'Which lane is in the toolhead?': '¿Qué carril está en el cabezal?'
+  'Choose which lane is in the toolhead to unload it': 'Elige qué carril está en el cabezal para descargarlo'
   Nothing was changed. Temperature and material are kept, so a retry is one tap.: 'No se cambió nada. La temperatura y el material se conservan, reintentar es un toque.'
   Notification: Notificación
   Notifications: Notificaciones
@@ -3963,6 +3967,8 @@ translations:
   loaded: 'cargado'
   locked: 'bloqueado'
   matched: igualadas
+  mm: mm
+  mm Z-offset: mm Z-Offset
   mm before clog: mm antes de obstrucción
   needs: necesita
   needs approval: requiere aprobación

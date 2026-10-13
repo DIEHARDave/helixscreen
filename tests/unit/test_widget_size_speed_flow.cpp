@@ -483,3 +483,21 @@ TEST_CASE_METHOD(SpeedFlowFixture, "speed_flow: half-cell boxes at large and mic
         CHECK(rung_subject() == static_cast<int>(SizeRung::Cell));
     }
 }
+
+TEST_CASE_METHOD(SpeedFlowActionFixture,
+                 "speed_flow: a transient instance leaving hands the tile back",
+                 "[widget_size][speed_flow][actions]") {
+    PanelWidgetHarness<SpeedFlowWidget> live(test_screen(), state());
+    live.resize(1, 1, 234, 232);
+    {
+        PanelWidgetHarness<SpeedFlowWidget> transient(test_screen(), state());
+        transient.resize(1, 1, 55, 54);
+        REQUIRE(rung_subject() == static_cast<int>(SizeRung::Glance));
+    }
+
+    CHECK(rung_subject() == static_cast<int>(SizeRung::Full));
+    set_percentages(120, 100);
+    CHECK(subject_text("speed_flow_speed_text") == "120%");
+    tap(part(live, "speed", "speed_flow_plus"));
+    CHECK(last_sent() == "M220 S125");
+}

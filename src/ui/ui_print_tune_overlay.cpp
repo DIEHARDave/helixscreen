@@ -14,7 +14,6 @@
 #include "lvgl/src/others/translation/lv_translation.h"
 #include "observer_factory.h"
 #include "printer_state.h"
-#include "tool_offsets.h"
 #include "tool_state.h"
 #include "tune_controller.h"
 #include "ui/ui_widget_helpers.h"
@@ -401,7 +400,8 @@ void PrintTuneOverlay::handle_z_offset_changed(double delta) {
 
     if (lv_obj_t* indicator =
             helix::ui::find_required(overlay_root_, "z_offset_indicator", get_name())) {
-        ui_z_offset_indicator_set_value(indicator, static_cast<int>(current_z_offset_ * 1000.0));
+        ui_z_offset_indicator_set_value(indicator,
+                                        static_cast<int>(std::lround(current_z_offset_ * 1000.0)));
         ui_z_offset_indicator_flash_direction(indicator, r.applied_delta_mm > 0 ? 1 : -1);
     }
 }
@@ -502,38 +502,11 @@ void PrintTuneOverlay::handle_z_adjust(int direction) {
 }
 
 void PrintTuneOverlay::handle_tool_z_offset_changed(double delta) {
-    if (!api_ || !printer_state_) {
+    const int tool_index =
+        lv_subject_get_int(helix::ToolState::instance().get_active_tool_subject());
+    if (!helix::zoffset::adjust_tool_offset(api_, printer_state_, tool_index, delta)) {
         return;
     }
-    auto& ts = helix::ToolState::instance();
-    const int tool_index = lv_subject_get_int(ts.get_active_tool_subject());
-
-    // Adjust from the value we DISPLAYED, same rule the machine-wide path
-    // follows: the firmware takes an absolute offset, so a delta applied to
-    // anything else would land somewhere the user did not ask for. Without a
-    // reported value there is no base to adjust from, so refuse rather than
-    // assume zero and overwrite whatever the tool actually holds.
-    if (!ts.tool_offset_known(tool_index, helix::Axis::Z)) {
-        spdlog::warn("[PrintTuneOverlay] No reported offset for T{} — refusing to adjust",
-                     tool_index);
-        return;
-    }
-    const int base_microns =
-        static_cast<int>(std::lround(ts.tool_offset_mm(tool_index, helix::Axis::Z) * 1000.0));
-    const int new_microns = base_microns + static_cast<int>(std::lround(delta * 1000.0));
-
-    const std::string gcode = helix::tool_offsets::set_tool_offset_gcode(
-        printer_state_->get_discovery(), helix::Axis::Z, tool_index, new_microns);
-    if (gcode.empty()) {
-        return;
-    }
-    api_->execute_gcode(gcode, nullptr, nullptr);
-
-    // Through ToolState, not straight at the subject: tools_ is what
-    // dirty_tool_indices() and the save path read, so poking only the
-    // published subject left this adjustment invisible to Save until the
-    // firmware echoed back — and a save in that window discarded it silently.
-    ts.set_tool_offset_local(tool_index, helix::Axis::Z, new_microns);
     update_tool_z_displays();
 
     if (lv_obj_t* indicator =

@@ -9,6 +9,7 @@
 
 #include "clog_meter_geometry.h"
 #include "lvgl/lvgl.h"
+#include "theme_manager.h"
 
 #include <spdlog/spdlog.h>
 
@@ -187,9 +188,14 @@ void UiClogMeter::resize_arc() {
 
     lv_obj_update_layout(card);
 
-    // Arc size = percentage of card width (responsive to breakpoint)
+    // Arc size = percentage of card width, capped so a full-width card (a portrait
+    // panel) keeps a small arc
     const int32_t card_w = lv_obj_get_content_width(card);
-    const int32_t arc_size = LV_MAX(card_w * ARC_WIDTH_PCT / 100, MIN_ARC_SIZE);
+    const int32_t arc_max = theme_manager_get_spacing("ams_clog_arc_max");
+    int32_t arc_size = card_w * ARC_WIDTH_PCT / 100;
+    if (arc_max > 0)
+        arc_size = LV_MIN(arc_size, arc_max);
+    arc_size = LV_MAX(arc_size, MIN_ARC_SIZE);
 
     // Skip if already at target size
     if (lv_obj_get_width(arc_) == arc_size && lv_obj_get_height(arc_) == arc_size) {

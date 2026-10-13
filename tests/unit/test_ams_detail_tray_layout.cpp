@@ -69,7 +69,8 @@ class AmsTrayPanelFixture : public XMLTestFixture {
 
         panel_ = std::make_unique<AmsPanel>(state(), &api());
         panel_->init_subjects();
-        panel_obj_ = static_cast<lv_obj_t*>(lv_xml_create(test_screen(), "ams_panel", nullptr));
+        lv_obj_t* parent = host_ ? host_ : test_screen();
+        panel_obj_ = static_cast<lv_obj_t*>(lv_xml_create(parent, "ams_panel", nullptr));
         REQUIRE(panel_obj_ != nullptr);
         panel_->setup(panel_obj_, test_screen());
         panel_->on_activate();
@@ -170,6 +171,8 @@ class AmsTrayPanelFixture : public XMLTestFixture {
 
     std::unique_ptr<AmsPanel> panel_;
     lv_obj_t* panel_obj_ = nullptr;
+    /// Where build() puts the panel; the screen when null.
+    lv_obj_t* host_ = nullptr;
     lv_obj_t* container_ = nullptr;
     lv_obj_t* slot_grid_ = nullptr;
     lv_point_t origin_{};
@@ -218,6 +221,10 @@ TEST_CASE_METHOD(AmsTrayPanelFixture, "AMS unit with a reading: spools in the bo
     // The readout is a pill against the box's right end.
     check_env_chip_clear(4);
     check_badges_on_front(4);
+    // In landscape the strip stays at the top of the sidebar.
+    lv_obj_t* strip = lv_obj_find_by_name(panel_obj_, "current_loaded_card");
+    REQUIRE(strip != nullptr);
+    CHECK(lv_obj_get_parent(strip) == lv_obj_find_by_name(panel_obj_, "ams_operation_sidebar"));
     // The pill takes its width from the box's row.
     lv_obj_t* pill = lv_obj_find_by_name(panel_obj_, "env_indicator");
     lv_obj_t* unit = lv_obj_get_parent(container_);
@@ -478,4 +485,133 @@ TEST_CASE_METHOD(AmsTrayPanelFixture,
     CAPTURE(toolhead.y1, toolhead.y2, cc.y1, cc.y2);
     CHECK(toolhead.y2 <= cc.y2);
     CHECK(toolhead.y1 >= cc.y1);
+}
+
+TEST_CASE_METHOD(AmsTrayPanelFixture,
+                 "AMS panel in portrait at 272x480: diagram on top, the sidebar below it",
+                 "[ams][tray][ui_integration][portrait]") {
+    helix::test::ScopedGeometry portrait(272, 480);
+    lv_subject_t* is_portrait = lv_xml_get_subject(nullptr, "ui_is_portrait");
+    REQUIRE(is_portrait != nullptr);
+    REQUIRE(lv_subject_get_int(is_portrait) == 1);
+    // The app's panel area: the screen less the bottom navigation bar.
+    host_ = lv_obj_create(test_screen());
+    lv_obj_set_size(host_, 272, 410);
+    lv_obj_set_style_pad_all(host_, 0, LV_PART_MAIN);
+    lv_obj_set_style_border_width(host_, 0, LV_PART_MAIN);
+    build("passive", 8);
+    lv_obj_update_layout(test_screen());
+
+    lv_obj_t* content = lv_obj_find_by_name(panel_obj_, "overlay_content");
+    lv_obj_t* right = lv_obj_find_by_name(panel_obj_, "right_column");
+    lv_obj_t* sidebar = lv_obj_find_by_name(panel_obj_, "ams_operation_sidebar");
+    lv_obj_t* canvas = lv_obj_find_by_name(panel_obj_, "path_canvas");
+    REQUIRE(content != nullptr);
+    REQUIRE(right != nullptr);
+    REQUIRE(sidebar != nullptr);
+    REQUIRE(canvas != nullptr);
+
+    // The sidebar is a full-width bottom section under the diagram.
+    lv_area_t ca, ra;
+    lv_obj_get_coords(content, &ca);
+    lv_obj_get_coords(right, &ra);
+    CHECK(ra.y1 >= ca.y2);
+    CHECK(lv_area_get_width(&ra) == lv_obj_get_width(panel_obj_));
+    // The tube run is capped rather than grown to fill, and the toolhead is drawn
+    // whole inside it. The cap's value is resolved when the panel's XML registers,
+    // which in this binary may be at another tier, so only the shape is pinned;
+    // the no-scroll budget is measured on the running app (ctl geom).
+    lv_obj_t* path = lv_obj_find_by_name(panel_obj_, "path_container");
+    REQUIRE(path != nullptr);
+    CHECK(lv_obj_get_style_flex_grow(path, LV_PART_MAIN) == 0);
+    CHECK(lv_obj_get_style_height(path, LV_PART_MAIN) > 0);
+    CHECK(lv_obj_get_style_flex_grow(right, LV_PART_MAIN) == 1);
+    lv_area_t toolhead, cc;
+    REQUIRE(ui_filament_path_canvas_get_toolhead_box(canvas, &toolhead));
+    lv_obj_get_coords(canvas, &cc);
+    CHECK(toolhead.y2 <= cc.y2);
+    // The loaded strip and the status line stand above the diagram, in that order.
+    lv_obj_t* strip = lv_obj_find_by_name(panel_obj_, "current_loaded_card");
+    lv_obj_t* status = lv_obj_find_by_name(panel_obj_, "status_section");
+    lv_obj_t* slot_parent = lv_obj_find_by_name(panel_obj_, "portrait_summary_slot");
+    REQUIRE(strip != nullptr);
+    REQUIRE(status != nullptr);
+    REQUIRE(slot_parent != nullptr);
+    CHECK(lv_obj_get_parent(strip) == slot_parent);
+    CHECK(lv_obj_get_parent(status) == slot_parent);
+    lv_area_t sa, sta, ua;
+    lv_obj_get_coords(strip, &sa);
+    lv_obj_get_coords(status, &sta);
+    lv_obj_get_coords(lv_obj_find_by_name(panel_obj_, "ams_unit_card"), &ua);
+    CHECK(sa.y2 < sta.y1);
+    CHECK(sta.y2 < ua.y1);
+    // The strip is one row: its meters stand right of the lines, not under them.
+    lv_obj_t* details = lv_obj_find_by_name(panel_obj_, "loaded_details");
+    REQUIRE(details != nullptr);
+    lv_area_t da;
+    lv_obj_get_coords(details, &da);
+    int meters_seen = 0;
+    for (const char* meter : {"clog_meter", "buffer_mini"}) {
+        lv_obj_t* m = lv_obj_find_by_name(panel_obj_, meter);
+        REQUIRE(m != nullptr);
+        if (lv_obj_has_flag(m, LV_OBJ_FLAG_HIDDEN))
+            continue;
+        ++meters_seen;
+        lv_area_t ma;
+        lv_obj_get_coords(m, &ma);
+        CAPTURE(meter, ma.x1, ma.y1, ma.y2, da.x2, da.y1, da.y2);
+        CHECK(ma.x1 > da.x2);
+        CHECK(ma.y1 <= da.y2);
+        CHECK(ma.y2 >= da.y1);
+    }
+    REQUIRE(meters_seen > 0);
+    // In a narrow text column the weight ends the position line.
+    lv_area_t wa;
+    lv_obj_get_coords(lv_obj_find_by_name(panel_obj_, "loaded_weight"), &wa);
+    CHECK(wa.x2 == da.x2);
+    // Lane badges stay apart at eight lanes.
+    lv_obj_t* badges = lv_obj_find_by_name(panel_obj_, "badge_layer");
+    REQUIRE(badges != nullptr);
+    REQUIRE(lv_obj_get_child_count(badges) == 8);
+    for (int i = 0; i + 1 < 8; ++i) {
+        CAPTURE(i);
+        lv_area_t a, b;
+        lv_obj_get_coords(lv_obj_get_child(badges, i), &a);
+        lv_obj_get_coords(lv_obj_get_child(badges, i + 1), &b);
+        CHECK(a.x2 < b.x1);
+    }
+}
+
+TEST_CASE_METHOD(AmsTrayPanelFixture,
+                 "AMS panel in portrait at 480x800: the weight follows the position",
+                 "[ams][tray][ui_integration][portrait]") {
+    helix::test::ScopedGeometry portrait(480, 800);
+    REQUIRE(lv_subject_get_int(lv_xml_get_subject(nullptr, "ui_breakpoint")) >= 3);
+    host_ = lv_obj_create(test_screen());
+    lv_obj_set_size(host_, 480, 730);
+    lv_obj_set_style_pad_all(host_, 0, LV_PART_MAIN);
+    lv_obj_set_style_border_width(host_, 0, LV_PART_MAIN);
+    build("passive", 8);
+    lv_obj_update_layout(test_screen());
+
+    lv_obj_t* details = lv_obj_find_by_name(panel_obj_, "loaded_details");
+    lv_obj_t* position = lv_obj_find_by_name(panel_obj_, "loaded_position");
+    lv_obj_t* weight = lv_obj_find_by_name(panel_obj_, "loaded_weight");
+    REQUIRE(details != nullptr);
+    REQUIRE(position != nullptr);
+    REQUIRE(weight != nullptr);
+    REQUIRE_FALSE(lv_obj_has_flag(weight, LV_OBJ_FLAG_HIDDEN));
+    lv_area_t da, pa, wa;
+    lv_obj_get_coords(details, &da);
+    lv_obj_get_coords(position, &pa);
+    lv_obj_get_coords(weight, &wa);
+    CAPTURE(da.x1, da.x2, pa.x1, pa.x2, wa.x1, wa.x2);
+    // The text column is wide, so the weight sits right after the position
+    // rather than at the column's far end beside the meters.
+    REQUIRE(lv_area_get_width(&da) > 3 * (lv_area_get_width(&pa) + lv_area_get_width(&wa)) / 2);
+    CHECK(wa.x1 > pa.x2);
+    CHECK(wa.x1 - pa.x2 <= 16);
+    CHECK(wa.x2 < da.x2 - lv_area_get_width(&wa));
+    CHECK(wa.y1 < pa.y2);
+    CHECK(wa.y2 > pa.y1);
 }
