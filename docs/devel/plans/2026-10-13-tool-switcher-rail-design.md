@@ -145,11 +145,28 @@ ToolSwitcherLayout tool_switcher_layout(int tool_count, int content_w, int conte
 }
 ```
 
-The widget measures its content box in `on_size_changed()` and `attach()` (widgets are
-recycled), asks `tool_switcher_layout()`, and builds that mode. `fits_at()` becomes true
-for every size: every box has a mode. Segment creation follows the declarative rules: a
-`tool_switcher_segment.xml` component, event callbacks via XML, mounted/disabled state
-via subjects; measured sizes and the label form are the permitted C++ (measured layout).
+The widget follows the four-layer measured-layout pattern in
+`docs/devel/PANEL_WIDGET_GUIDE.md` (nozzle-temps is the working instance):
+
+1. **Decide (pure C++, no LVGL):** `tool_switcher_layout()` above. Responsive XML alone
+   cannot make this call: breakpoints describe the screen, not the tile (the same screen
+   holds a 1x1 and a 2x2), and the fit search over rows, head count and the 48 px floor
+   needs loops the integer-only XML evaluator does not have.
+2. **Measure (C++):** `on_size_changed()` and `attach()` (widgets are recycled) measure
+   the content box and, for the label rung, the segment width against the strings the
+   segments actually render.
+3. **Publish (C++):** the verdict as int subjects `tool_switcher_mode` (enum value =
+   subject int), `tool_switcher_cols`, `tool_switcher_rows`, `tool_switcher_detail`,
+   `tool_switcher_label_form`, registered with `register_widget_subjects()` so they
+   exist before any XML binds them. After that, `on_size_changed()` makes no widget
+   calls.
+4. **Draw (XML only):** the four modes as branches bound to `tool_switcher_mode`;
+   segments from `<repeat count="tool_count">` over a `tool_switcher_segment` component
+   (grid columns from `tool_switcher_cols`); mounted, disabled and greyed-Park states
+   via `bind_state`; the detail list as a second `<repeat>` gated on
+   `tool_switcher_detail`; events via `<event_cb>`. C++ creates no widgets in a loop.
+
+`fits_at()` becomes true for every size: every box has a mode.
 
 ## Tests
 
