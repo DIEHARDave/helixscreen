@@ -22,6 +22,7 @@
 
 #include "../lvgl_ui_test_fixture.h"
 #include "../test_helpers/ams_panel_test_access.h"
+#include "../test_helpers/scoped_geometry.h"
 #include "../ui_test_utils.h"
 #include "ams_backend_mock.h"
 #include "ams_state.h"
@@ -1138,4 +1139,27 @@ TEST_CASE_METHOD(PagingFixture, "Unit view: refresh cost bench", "[.][bench][ams
     WARN("BENCH slots bump: " << us(t0, t1) << " us/tick");
     WARN("BENCH dryer+slots bump: " << us(t1, t2) << " us/tick, sync_pages runs/tick "
                                     << (after - before) / double(kRuns));
+}
+
+TEST_CASE_METHOD(PagingFixture, "Unit view in portrait: the page dots float over the canvas",
+                 "[ams][pages][panel][portrait]") {
+    helix::test::ScopedGeometry portrait(272, 480);
+    lv_subject_t* is_portrait = lv_xml_get_subject(nullptr, "ui_is_portrait");
+    REQUIRE(is_portrait != nullptr);
+    REQUIRE(lv_subject_get_int(is_portrait) == 1);
+    open_at(1);
+    lv_obj_update_layout(lv_screen_active());
+    lv_obj_t* dots = named("page_dots");
+    lv_obj_t* canvas = named("detail_path_canvas");
+    REQUIRE_FALSE(lv_obj_has_flag(dots, LV_OBJ_FLAG_HIDDEN));
+    // Floating, so the dots take no row of the unit view's height...
+    CHECK(lv_obj_has_flag(dots, LV_OBJ_FLAG_FLOATING));
+    // ...and they sit inside the canvas's bottom-left quarter.
+    lv_area_t da, ca;
+    lv_obj_get_coords(dots, &da);
+    lv_obj_get_coords(canvas, &ca);
+    CAPTURE(da.x1, da.y1, da.x2, da.y2, ca.x1, ca.y1, ca.x2, ca.y2);
+    CHECK(da.y2 <= ca.y2);
+    CHECK(da.y1 >= (ca.y1 + ca.y2) / 2);
+    CHECK(da.x2 <= (ca.x1 + ca.x2) / 2 + 1);
 }

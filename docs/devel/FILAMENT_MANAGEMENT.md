@@ -1192,8 +1192,8 @@ The right column, shared by the AMS panel and the overview's unit view
   background, like the print status temperature card): a colour bar (`loaded_swatch_narrow_w`) beside
   two lines, `ams_current_slot_text` ("Current: Gate 1") with the remaining weight, then the
   filament's name on one line (`ams_loaded_name_line_h`), ellipsized. The clog and buffer
-  meters sit under the lines while the unit is idle and hide during any operation
-  (`ams_action ne 0`). From the medium breakpoint up they keep their full form (arc over
+  meters sit under the lines in landscape and on their right in portrait while the unit is
+  idle, and hide during any operation (`ams_action ne 0`). From the medium breakpoint up they keep their full form (arc over
   reading over source; slider over reading over label); below it they shrink to one small
   row (a small arc beside its reading, the `swap_vertical` icon beside the buffer reading).
 - **Status** (`status_section`): the action detail in `text_body`, on its own line at every
@@ -1243,16 +1243,20 @@ SMALL up.
 The full-width box takes the same rules as landscape at the same breakpoint: two label rows
 below medium, three from medium up; the environment pill still costs the row its width.
 The sidebar tightens for portrait: its gaps drop to `space_xxs` and the status line's
-vertical padding to 0, and the strip's meters take their small row at every size (the clog
-arc's growth is capped by `ams_clog_arc_max`, at or above the landscape strip's own size).
-Below medium, where the bottom section is about 70 px, the strip drops its meters, the four
+vertical padding to 0. The strip's meters stand on the right of its two lines and follow
+the breakpoint like landscape: the small row below medium (the strip stays 37 px), the full
+form from medium up (the clog arc's growth is capped by `ams_clog_arc_max`).
+Below medium, where the bottom section is about 70 px, the four
 actions sit in one row (`styles.action_cell_quarter`, stacked icon over label: a 60 px cell
 has no room for both side by side), and the step progress is a row instead of a list
 (`include/ui_ams_slot_layout.h#ams_stepper_horizontal`): a four-step list needs about 90 px
 there. The row shows only the current step's label, centred under its dots
 (`ui_step_progress_set_current_label_only`), because a label under each of four 66 px steps
 collides; the row is 39 px. The portrait 2x2 cells (480x800 and up) lay each button's icon beside its
-label: the longest, "Check slots", takes 126 px of a 223 px cell at 480x800. `[portrait]`
+label: the longest, "Check slots", takes 126 px of a 223 px cell at 480x800. In the overview's unit view the page dots float
+over the canvas's empty bottom-left corner in portrait (`dots_portrait`, half the width,
+`floating`), and the unit view's row gap is `space_xxs`, so the unit view fits 272x480 and
+320x480 without scrolling. `[portrait]`
 pins the 272x480 panel: the strip and status above the diagram, the bottom section under
 it, the capped canvas with the toolhead whole, eight lane badges apart.
 
