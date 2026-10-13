@@ -273,7 +273,7 @@ TEST_CASE_METHOD(ToolSwitcherFixture,
 }
 
 TEST_CASE_METHOD(ToolSwitcherFixture,
-                 "tool_switcher: configured names in 48 px segments read the G-code name",
+                 "tool_switcher: configured names read the G-code name where they do not fit",
                  "[widget_size][tool_switcher][1784][1769]") {
     // A backend that can dock a head, so the Park modes are open.
     ParkingBackend parking(/*tool_changer=*/true);
@@ -287,22 +287,37 @@ TEST_CASE_METHOD(ToolSwitcherFixture,
     REQUIRE(mode() == static_cast<int>(ToolSwitcherMode::RailWithPark));
     REQUIRE(subject_int("tool_switcher_cell_w") == 48);
 
-    // "Tool 1" does not fit, so every segment reads the G-code name its head
-    // answers to, configured name or not, and that name fits the segment.
+    // "Left Extruder" does not fit, so every segment reads the G-code name its
+    // head answers to, and that name fits the segment.
     const lv_font_t* body = theme_manager_get_font("font_body");
-    const int room = subject_int("tool_switcher_cell_w") - 2 * resolve_px("space_xs", 4);
-    REQUIRE(ui::text_width("Tool 1", body) > room);
+    const int pad = 2 * resolve_px("space_xs", 4);
+    int room = subject_int("tool_switcher_cell_w") - pad;
+    REQUIRE(ui::text_width("Left Extruder", body) > room);
     CHECK(subject_int("tool_switcher_label_form") == static_cast<int>(ui::ToolLabelForm::Code));
     CHECK(subject_string(seg(0, "label")) == "T0");
     CHECK(subject_string(seg(1, "label")) == "T1");
     CHECK(ui::text_width(subject_string(seg(0, "label")).c_str(), body) <= room);
     CHECK(ui::text_width(subject_string(seg(1, "label")).c_str(), body) <= room);
 
-    // Where the full label fits, a configured name keeps its physical label.
+    // Room for "Tool 1" is not room for the name the head is labeled with: the
+    // widget measures the configured name, so the segments stay on the code.
+    resize_content(h, 3 * 80 + 2 * 2, 60);
+    process_lvgl(30);
+    REQUIRE(mode() == static_cast<int>(ToolSwitcherMode::RailWithPark));
+    room = subject_int("tool_switcher_cell_w") - pad;
+    REQUIRE(ui::text_width("Tool 1", body) <= room);
+    REQUIRE(ui::text_width("Right Extruder", body) > room);
+    CHECK(subject_int("tool_switcher_label_form") == static_cast<int>(ui::ToolLabelForm::Code));
+    CHECK(subject_string(seg(1, "label")) == "T1");
+
+    // Where the name fits, the segment reads it over its G-code name.
     resize_content(h, 600, 60);
     process_lvgl(30);
+    REQUIRE(ui::text_width("Right Extruder", body) <= subject_int("tool_switcher_cell_w") - pad);
     CHECK(subject_int("tool_switcher_label_form") == static_cast<int>(ui::ToolLabelForm::Full));
-    CHECK(subject_string(seg(0, "label")) == "Tool 1");
+    CHECK(subject_string(seg(0, "label")) == "Left Extruder");
+    CHECK(subject_string(seg(0, "sub")) == "T0");
+    CHECK(subject_string(seg(1, "label")) == "Right Extruder");
 }
 
 TEST_CASE_METHOD(ToolSwitcherFixture,
@@ -566,27 +581,36 @@ TEST_CASE_METHOD(ToolSwitcherFixture,
     CHECK(std::string(lv_label_get_text(label)) == "Tool 2 (T1)");
 }
 
-TEST_CASE_METHOD(ToolSwitcherFixture,
-                 "tool_switcher: a configured tool name keeps its physical label",
+TEST_CASE_METHOD(ToolSwitcherFixture, "tool_switcher: a configured tool name is the head's label",
                  "[widget_size][tool_switcher][1769]") {
     configure_named_tools({"Left", "Right"});
     REQUIRE(ToolState::instance().tools()[0].name == "Left");
 
     PanelWidgetHarness<ToolSwitcherWidget> h(test_screen(), state());
     process_lvgl(30);
+    const lv_font_t* body = theme_manager_get_font("font_body");
+    const int pad = 2 * resolve_px("space_xs", 4);
 
-    // A wide rail: "Tool 1" over the G-code name the head answers to.
+    // A wide rail: the name over the G-code name the head answers to.
     resize_content(h, 600, 60);
     process_lvgl(30);
     REQUIRE(subject_int("tool_switcher_label_form") == static_cast<int>(ui::ToolLabelForm::Full));
-    CHECK(subject_string(seg(0, "label")) == "Tool 1");
+    CHECK(subject_string(seg(0, "label")) == "Left");
     CHECK(subject_string(seg(0, "sub")) == "T0");
+    CHECK(subject_string(seg(1, "label")) == "Right");
     CHECK(subject_string(seg(1, "sub")) == "T1");
 
-    // A face too narrow for "Tool 1 (T0)" reads the G-code name, configured
-    // name or not.
+    // A face with room reads both names.
+    resize_content(h, 280, 40);
+    process_lvgl(30);
+    REQUIRE(mode() == static_cast<int>(ToolSwitcherMode::Single));
+    REQUIRE(ui::text_width("Left (T0)", body) <= subject_int("tool_switcher_cell_w") - pad);
+    CHECK(subject_string("tool_switcher_face_label") == "Left (T0)");
+
+    // A face too narrow for "Left (T0)" reads the G-code name.
     h.resize(2, 2, 60, 60);
     process_lvgl(30);
+    REQUIRE(ui::text_width("Left (T0)", body) > subject_int("tool_switcher_cell_w") - pad);
     CHECK(subject_string("tool_switcher_face_label") == "T0");
 }
 

@@ -176,8 +176,8 @@ TEST_CASE_METHOD(LVGLUITestFixture, "Closed tool dropdown names the tool as G-co
 
 TEST_CASE_METHOD(LVGLUITestFixture, "Closed tool dropdown keeps T<n> for a configured tool name",
                  "[filament][ui][tool][1769]") {
-    // The closed control is as narrow as a tool switcher segment, so a chosen
-    // name stays in the open list and the closed text is the G-code name.
+    // The closed control is as narrow as a tool switcher segment, so it reads
+    // the G-code name; the open list carries each configured name beside it.
     ManageRowHarness h(*this, {"toolchanger", "tool Left", "tool Right", "extruder", "extruder1"},
                        AmsType::NONE);
 
@@ -189,6 +189,9 @@ TEST_CASE_METHOD(LVGLUITestFixture, "Closed tool dropdown keeps T<n> for a confi
     const char* closed = lv_dropdown_get_text(dd);
     REQUIRE(closed != nullptr);
     CHECK(std::string(closed) == "T0");
+    const char* options = lv_dropdown_get_options(dd);
+    REQUIRE(options != nullptr);
+    CHECK(std::string(options) == "Left (T0)\nRight (T1)");
 }
 
 TEST_CASE_METHOD(LVGLUITestFixture, "Open tool list names each tool's G-code name beside it",

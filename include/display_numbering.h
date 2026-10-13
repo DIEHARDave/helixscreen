@@ -47,6 +47,18 @@ std::string tool_label(int gcode_tool);
 bool is_generated_tool_name(std::string_view name);
 
 /**
+ * @brief What the tool at @p index is called on the machine.
+ *
+ * A configured name ("Left") is the machine's physical label and is returned
+ * verbatim; a generated "T<n>" name gets the physical position ("Tool 1").
+ * Neither carries the G-code name: tool_label_in_form() adds that.
+ *
+ * @param noun what the printer calls a tool (active_tool_noun()): "Toolhead 1" on a U1
+ * @return empty when @p index is negative
+ */
+std::string tool_name_label(LaneNoun noun, std::string_view name, int index);
+
+/**
  * @brief How much of a tool's identity a label spells.
  *
  * Klipper and every slicer count tools from T0, while the machine is labeled
@@ -65,9 +77,9 @@ inline constexpr ToolLabelForm kToolLabelForms[] = {ToolLabelForm::Full, ToolLab
 /**
  * @brief The label for the tool at @p index in @p form.
  *
- * Only a generated "T<n>" name changes with the form. A configured name
- * ("Left") reads as the physical label ("Tool 1") in every form, as it always
- * has: the G-code name it answers to is not a number to confuse with it.
+ * Full is tool_name_label() beside the G-code name: "Tool 1 (T0)" for a
+ * generated name, "Left (T0)" for a configured one. Code is the G-code name
+ * alone ("T0"), configured name or not.
  *
  * @param noun what the printer calls a tool (active_tool_noun()): "Toolhead 1 (T0)" on a U1
  * @return empty when @p index is negative

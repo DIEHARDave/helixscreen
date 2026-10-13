@@ -58,14 +58,22 @@ bool is_generated_tool_name(std::string_view name) {
     return true;
 }
 
+std::string tool_name_label(LaneNoun noun, std::string_view name, int index) {
+    if (index < 0)
+        return {};
+    if (is_generated_tool_name(name))
+        return lane_label(noun, index);
+    return std::string(name);
+}
+
 std::string tool_label_in_form(LaneNoun noun, std::string_view name, int index,
                                ToolLabelForm form) {
-    std::string label = lane_label(noun, index);
-    if (label.empty() || !is_generated_tool_name(name))
-        return label;
+    if (index < 0)
+        return {};
+    const std::string code = is_generated_tool_name(name) ? std::string(name) : tool_label(index);
     if (form == ToolLabelForm::Code)
-        return std::string(name);
-    return fmt::format(lv_tr("{} ({})"), label, name);
+        return code;
+    return fmt::format(lv_tr("{} ({})"), tool_name_label(noun, name, index), code);
 }
 
 ToolLabelForm pick_tool_label_form(const std::function<bool(ToolLabelForm)>& fits) {

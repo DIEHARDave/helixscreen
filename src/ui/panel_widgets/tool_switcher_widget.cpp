@@ -259,6 +259,10 @@ std::string ToolSwitcherWidget::tool_text(const ToolInfo& tool, ui::ToolLabelFor
     return ui::tool_label_in_form(ui::active_tool_noun(), tool.name, tool.index, form);
 }
 
+std::string ToolSwitcherWidget::name_text(const ToolInfo& tool) {
+    return ui::tool_name_label(ui::active_tool_noun(), tool.name, tool.index);
+}
+
 std::string ToolSwitcherWidget::short_text(const ToolInfo& tool) {
     return ui::tool_label(tool.index);
 }
@@ -440,8 +444,9 @@ void ToolSwitcherWidget::publish_layout() {
         layout_.mode == ToolSwitcherMode::RailWithPark || layout_.mode == ToolSwitcherMode::Rail;
 
     // A segment's label has its cell less space_xs on each side. Rail
-    // segments read "Tool 1" over "T0" where every head's two lines fit, else
-    // "T0"; the face reads "Tool 1 (T0)" where every head's fits, else "T0".
+    // segments read "Tool 1" (or the configured name) over "T0" where every
+    // head's two lines fit, else "T0"; the face reads "Tool 1 (T0)" where
+    // every head's fits, else "T0".
     const int label_room = layout_.cell_w - 2 * resolve_px_token("space_xs", 4);
     label_form_ = ui::pick_tool_label_form([&](ui::ToolLabelForm form) {
         for (const auto& tool : tools) {
@@ -450,7 +455,7 @@ void ToolSwitcherWidget::publish_layout() {
             if (form == ui::ToolLabelForm::Code) {
                 widest = ui::text_width(code.c_str(), body);
             } else if (rail) {
-                widest = std::max(ui::text_width(tool.display_label.c_str(), body),
+                widest = std::max(ui::text_width(name_text(tool).c_str(), body),
                                   ui::text_width(code.c_str(), body));
             } else {
                 widest = ui::text_width(tool_text(tool, form).c_str(), body);
@@ -531,12 +536,12 @@ void ToolSwitcherWidget::publish_heads() {
     for (int i = 0; i < heads; ++i) {
         filament[i] = head_filament(tools[i]);
 
-        // Full: the physical label over "T0", configured name or not. Code:
-        // "T0" over the temperature, shown where the segment is tall enough.
+        // Full: the configured name or "Tool 1", over "T0". Code: "T0" over
+        // the temperature, shown where the segment is tall enough.
         std::string label = short_text(tools[i]);
         std::string sub = temp_text(i);
         if (label_form_ == ui::ToolLabelForm::Full) {
-            label = tools[i].display_label;
+            label = name_text(tools[i]);
             sub = short_text(tools[i]);
         }
         ui::copy_string_if_changed(s_seg_label.at(i), label.c_str());
