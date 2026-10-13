@@ -63,6 +63,13 @@ TEST_CASE_METHOD(LVGLTestFixture, "mock jog rejection surfaces exactly one reada
                  "[api][movement][errors][mock_fidelity][e2e]") {
     rpc_error_correlation::clear_for_test();
 
+    // The capture swaps the process-wide default logger, which the mock's
+    // simulation thread reads without a lock on every log call. Installing it
+    // before connect() starts that thread, and keeping it until the thread has
+    // been joined below, orders the swap both ways. Exclusive: pushing a sink
+    // onto the shared logger instead would race that thread's sink_it_.
+    ExclusiveLogCapture log(512);
+
     MoonrakerClientMock mock(MoonrakerClientMock::PrinterType::VORON_24);
     PrinterState state;
     state.init_subjects(false);
@@ -85,10 +92,6 @@ TEST_CASE_METHOD(LVGLTestFixture, "mock jog rejection surfaces exactly one reada
 
     std::string rendered_toast;
     {
-        // Exclusive: the mock's simulation threads log concurrently, and
-        // pushing a sink onto the shared logger races their sink_it_ iteration.
-        ExclusiveLogCapture log(512);
-
         // The MotionPanel jog error handler, verbatim (ui_panel_motion.cpp).
         api.motion().move_relative(50.0, 0.0, 0.0, 6000.0, 600.0, nullptr,
                                    [&](const MoonrakerError& err) {
