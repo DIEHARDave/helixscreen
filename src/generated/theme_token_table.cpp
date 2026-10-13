@@ -58,7 +58,7 @@ const TokenEntry k_token_table[] = {
     {"px", "ams_portrait_path_h_micro", "125"},
     {"px", "ams_portrait_path_h_tiny", "125"},
     {"px", "ams_portrait_path_h_small", "200"},
-    {"px", "ams_portrait_path_h_medium", "170"},
+    {"px", "ams_portrait_path_h_medium", "166"},
     {"px", "ams_portrait_path_h_large", "300"},
     {"px", "ams_loaded_name_line_h_micro", "15"},
     {"px", "ams_loaded_name_line_h_tiny", "15"},

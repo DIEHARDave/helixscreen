@@ -545,6 +545,26 @@ TEST_CASE_METHOD(AmsTrayPanelFixture,
     lv_obj_get_coords(lv_obj_find_by_name(panel_obj_, "ams_unit_card"), &ua);
     CHECK(sa.y2 < sta.y1);
     CHECK(sta.y2 < ua.y1);
+    // The strip is one row: its meters stand right of the lines, not under them.
+    lv_obj_t* details = lv_obj_find_by_name(panel_obj_, "loaded_details");
+    REQUIRE(details != nullptr);
+    lv_area_t da;
+    lv_obj_get_coords(details, &da);
+    int meters_seen = 0;
+    for (const char* meter : {"clog_meter", "buffer_mini"}) {
+        lv_obj_t* m = lv_obj_find_by_name(panel_obj_, meter);
+        REQUIRE(m != nullptr);
+        if (lv_obj_has_flag(m, LV_OBJ_FLAG_HIDDEN))
+            continue;
+        ++meters_seen;
+        lv_area_t ma;
+        lv_obj_get_coords(m, &ma);
+        CAPTURE(meter, ma.x1, ma.y1, ma.y2, da.x2, da.y1, da.y2);
+        CHECK(ma.x1 > da.x2);
+        CHECK(ma.y1 <= da.y2);
+        CHECK(ma.y2 >= da.y1);
+    }
+    REQUIRE(meters_seen > 0);
     // Lane badges stay apart at eight lanes.
     lv_obj_t* badges = lv_obj_find_by_name(panel_obj_, "badge_layer");
     REQUIRE(badges != nullptr);

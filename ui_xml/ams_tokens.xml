@@ -61,7 +61,7 @@
     <px name="ams_portrait_path_h_micro" value="125"/>
     <px name="ams_portrait_path_h_tiny" value="125"/>
     <px name="ams_portrait_path_h_small" value="200"/>
-    <px name="ams_portrait_path_h_medium" value="170"/>
+    <px name="ams_portrait_path_h_medium" value="166"/>
     <px name="ams_portrait_path_h_large" value="300"/>
 
     <!-- One line of font_small: the loaded strip's position and name lines. -->
