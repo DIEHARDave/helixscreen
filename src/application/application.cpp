@@ -680,9 +680,7 @@ int Application::run(int argc, char** argv) {
     // Backend detection (PWM, ALSA, SDL) is checked by PrinterCapabilitiesState
     // to show sound settings even without a Klipper beeper output_pin.
     SoundManager::instance().initialize();
-    if (SoundManager::plays_startup_sound(get_runtime_config()->is_test_mode())) {
-        SoundManager::instance().play("startup", SoundPriority::EVENT);
-    }
+    SoundManager::instance().play_startup(*get_runtime_config());
 
     // Backend is now picked: seed the backend subjects so the Sound overlay's
     // device-row and Test Tracker bindings resolve correctly. Subjects init

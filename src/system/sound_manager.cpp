@@ -519,8 +519,10 @@ void SoundManager::load_theme(const std::string& name) {
     }
 }
 
-bool SoundManager::plays_startup_sound(bool test_mode) {
-    return !test_mode;
+void SoundManager::play_startup(const RuntimeConfig& config) {
+    if (config.should_play_startup_sound()) {
+        play("startup", SoundPriority::EVENT);
+    }
 }
 
 bool SoundManager::is_ui_sound(const std::string& name) {
