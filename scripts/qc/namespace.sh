@@ -85,10 +85,12 @@ echo -n "📛 Checking namespace compliance (declarations outside helix::)..."
 # constants in moonraker_client_mock_internal.h.
 # 2102 -> 2016 is IMoonrakerAPI, the ten sub-API interfaces and their value
 # types moving into helix::, with every forward declaration that named them.
+# 2016 -> 1965 is AppConstants, PrinterImages and RecoverySuppression becoming
+# helix::app_constants, helix::printer_images and helix::recovery_suppression.
 #
 # tests/shell/test_namespace_gate.bats carries this same number and fails if
 # the two disagree or if the tree drifts under it.
-if python3 scripts/check_namespace_compliance.py --max-allowed 2016 --summary >/tmp/namespace_check.out 2>&1; then
+if python3 scripts/check_namespace_compliance.py --max-allowed 1965 --summary >/tmp/namespace_check.out 2>&1; then
   section_time $SECTION_START
   echo ""
   tail -1 /tmp/namespace_check.out
