@@ -417,6 +417,29 @@ helpers in `helix::ui::`, sensor managers in `helix::sensors`):
 - Enums are `enum class` within `helix::` (e.g., `helix::PanelId`, `helix::PrintState`)
 - JSON forward declarations come from `#include "json_fwd.h"`
 
+**Comments** (prestonbrown/helixscreen#1363): a comment earns its place when the code
+alone would leave a competent reader short of something they need. Keep:
+- the non-obvious *why*: ordering constraints, thread affinity, LVGL / Klipper /
+  Moonraker quirks, workarounds for upstream bugs
+- contracts the signature cannot show: ownership, nullability, units, lifetime,
+  which thread may call it
+- copyright/SPDX headers and tool directives (`clang-format off`, `NOLINT`,
+  `fallthrough`, the gates' `*_OK:` markers)
+
+Do not write:
+- Doxygen ceremony. Nothing builds documentation from it, so `@brief`, `@param`,
+  `@return` and `@file` are not used in new code. Write a plain `//` line when the
+  name does not already say it, and nothing when it does
+- prose that restates the signature, or a convention (decidegrees, ownership)
+  repeated on every function instead of stated once for the header or namespace
+- `// ===== Section =====` banners. Declarations and namespaces carry the structure
+- commented-out code. Git has it
+- history: what the code used to do and which bug changed it belong in the commit
+  message (CLAUDE.md § "Comments describe the code, not its past")
+
+Existing `@brief`/`@param` blocks are trimmed per subsystem when that code is next
+being reworked, not in a tree-wide sweep.
+
 **Critical patterns:**
 ```cpp
 // Widget lookup: use names, not indices
