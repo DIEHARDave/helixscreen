@@ -24,7 +24,9 @@
 #include <string>
 #include <vector>
 
+namespace helix {
 class IMoonrakerAPI;
+}
 
 // Forward declaration - see ui_frequency_response_chart.h
 struct ui_frequency_response_chart_t;
@@ -110,7 +112,7 @@ class BeltTensionPanel : public OverlayBase {
 
     using OverlayBase::show;
     void show();
-    void set_api(helix::IMoonrakerClient* client, IMoonrakerAPI* api);
+    void set_api(helix::IMoonrakerClient* client, helix::IMoonrakerAPI* api);
 
     /// Pin the platform tier the chart decision uses, so tests can force
     /// EMBEDDED (no chart at all). Call before create(); production reads
@@ -272,7 +274,7 @@ class BeltTensionPanel : public OverlayBase {
 
     // Calibrator
     std::unique_ptr<helix::calibration::BeltTensionCalibrator> calibrator_;
-    IMoonrakerAPI* api_ = nullptr;
+    helix::IMoonrakerAPI* api_ = nullptr;
     helix::IMoonrakerClient* client_ = nullptr;
 
     // Chart. One chart, re-parented between the RUNNING and RESULTS hosts.

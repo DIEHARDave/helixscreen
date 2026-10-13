@@ -40,7 +40,7 @@ class IMoonrakerClient;
  *       [](const std::string& content) { ... },
  *       [](const auto& err) { ... });
  */
-class MoonrakerFileTransferAPI : public ITransfersAPI {
+class MoonrakerFileTransferAPI : public helix::ITransfersAPI {
   public:
     using SuccessCallback = std::function<void()>;
     using ErrorCallback = std::function<void(const MoonrakerError&)>;

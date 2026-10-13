@@ -61,8 +61,8 @@ ChannelVersionRelation compare_channel_version(const std::string& installed,
 
 namespace helix {
 class IMoonrakerClient;
-}
-class IMoonrakerAPI; // NAMESPACE_OK: forward-declares the global interface
+class IMoonrakerAPI;
+} // namespace helix
 
 /**
  * @brief Async update checker for HelixScreen
@@ -677,7 +677,7 @@ class UpdateChecker {
 
     /// Last hop of sync_moonraker_channel(): restart Moonraker unless a job holds the
     /// machine or update_manager is busy. @p gen is the sync's moonraker_sync_generation_.
-    void restart_moonraker_for_channel(IMoonrakerAPI& api, uint64_t gen);
+    void restart_moonraker_for_channel(helix::IMoonrakerAPI& api, uint64_t gen);
     /// sync_moonraker_channel() with this install's directory supplied; the stanza's
     /// `path:` must resolve to it.
     void sync_moonraker_channel_for(const std::string& install_root);

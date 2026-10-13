@@ -13,9 +13,8 @@
 
 #include "hv/json.hpp"
 
-class IMoonrakerAPI;
-
 namespace helix {
+class IMoonrakerAPI;
 
 /**
  * @brief Describes what changed between original and edited SlotInfo

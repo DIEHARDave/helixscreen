@@ -5,9 +5,8 @@
 
 #include <memory>
 
-class IMoonrakerAPI; // NAMESPACE_OK: the interface is declared at global scope
-
 namespace helix {
+class IMoonrakerAPI;
 class ActionPromptManager;
 class AmsErrorBridge;
 class FilamentInsertWatcher;

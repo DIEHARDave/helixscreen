@@ -45,7 +45,7 @@ class IMoonrakerClient;
  *   rest.call_rest_get("/server/ace/status",
  *       [](const RestResponse& resp) { ... });
  */
-class MoonrakerRestAPI : public IRestAPI {
+class MoonrakerRestAPI : public helix::IRestAPI {
   public:
     using SuccessCallback = std::function<void()>;
     using ErrorCallback = std::function<void(const MoonrakerError&)>;

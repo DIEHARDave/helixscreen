@@ -21,11 +21,10 @@
 
 #include "hv/json.hpp"
 
-class IMoonrakerAPI;
-
 namespace helix {
+class IMoonrakerAPI;
 class IMoonrakerClient;
-}
+} // namespace helix
 using helix::IMoonrakerClient;
 
 namespace helix {

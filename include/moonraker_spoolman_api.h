@@ -57,7 +57,7 @@ std::optional<ExternalFilament> parse_external_filament(const nlohmann::json& fi
  *       [](const auto& spools) { ... },
  *       [](const auto& err) { ... });
  */
-class MoonrakerSpoolmanAPI : public ISpoolmanAPI {
+class MoonrakerSpoolmanAPI : public helix::ISpoolmanAPI {
   public:
     using SuccessCallback = std::function<void()>;
     using ErrorCallback = std::function<void(const MoonrakerError&)>;

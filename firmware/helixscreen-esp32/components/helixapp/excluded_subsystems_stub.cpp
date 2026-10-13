@@ -85,7 +85,7 @@ TimelapseVideosOverlay& get_global_timelapse_videos() {
 // ===========================================================================
 
 // src/ui/ui_overlay_timelapse_videos.cpp
-void init_global_timelapse_videos(IMoonrakerAPI*) {}
+void init_global_timelapse_videos(helix::IMoonrakerAPI*) {}
 void open_timelapse_videos() {}
 
 // src/ui/ui_overlay_timelapse_videos.cpp, helix::ui entry points. Kept code calls
@@ -119,7 +119,7 @@ bool timelapse_viewer_available() {
 // the no-op bodies leave no binding unsatisfied.
 //
 // src/ui/ui_overlay_timelapse_install.cpp
-TimelapseInstallOverlay::TimelapseInstallOverlay(IMoonrakerAPI* api) : api_(api) {}
+TimelapseInstallOverlay::TimelapseInstallOverlay(helix::IMoonrakerAPI* api) : api_(api) {}
 void TimelapseInstallOverlay::register_callbacks() {}
 lv_obj_t* TimelapseInstallOverlay::create(lv_obj_t*) {
     return nullptr;
@@ -132,11 +132,11 @@ TimelapseInstallOverlay& get_global_timelapse_install() {
     static TimelapseInstallOverlay overlay(nullptr);
     return overlay;
 }
-void init_global_timelapse_install(IMoonrakerAPI*) {}
+void init_global_timelapse_install(helix::IMoonrakerAPI*) {}
 void open_timelapse_install() {}
 
 // src/ui/ui_overlay_timelapse_settings.cpp
-TimelapseSettingsOverlay::TimelapseSettingsOverlay(IMoonrakerAPI* api) : api_(api) {}
+TimelapseSettingsOverlay::TimelapseSettingsOverlay(helix::IMoonrakerAPI* api) : api_(api) {}
 void TimelapseSettingsOverlay::register_callbacks() {}
 lv_obj_t* TimelapseSettingsOverlay::create(lv_obj_t*) {
     return nullptr;
@@ -147,7 +147,7 @@ TimelapseSettingsOverlay& get_global_timelapse_settings() {
     static TimelapseSettingsOverlay overlay(nullptr);
     return overlay;
 }
-void init_global_timelapse_settings(IMoonrakerAPI*) {}
+void init_global_timelapse_settings(helix::IMoonrakerAPI*) {}
 void open_timelapse_settings() {}
 
 // src/printer/timelapse_state.cpp — the four subjects it registers are bound

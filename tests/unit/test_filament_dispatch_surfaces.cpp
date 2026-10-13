@@ -225,7 +225,7 @@ class DispatchSurfaceFixture : public LVGLTestFixture {
     MacroExecuteCallback pending_execute;
 
   private:
-    IMoonrakerAPI* previous_api_ = nullptr;
+    helix::IMoonrakerAPI* previous_api_ = nullptr;
 };
 
 } // namespace

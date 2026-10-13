@@ -43,6 +43,8 @@
 #include <string>
 #include <vector>
 
+namespace helix {
+
 /**
  * @brief A single entry in the Moonraker job queue
  */
@@ -649,3 +651,5 @@ class ITimelapseAPI {
 
     virtual void get_webcam_list(WebcamListCallback on_success, ErrorCallback on_error) = 0;
 };
+
+} // namespace helix

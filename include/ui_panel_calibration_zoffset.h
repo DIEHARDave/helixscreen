@@ -15,10 +15,10 @@
 
 #include <string>
 
-class IMoonrakerAPI;
 namespace helix {
+class IMoonrakerAPI;
 class PrinterState;
-}
+} // namespace helix
 
 /**
  * @file ui_panel_calibration_zoffset.h
@@ -127,7 +127,7 @@ class ZOffsetCalibrationPanel : public OverlayBase {
      *
      * @param api IMoonrakerAPI for sending commands
      */
-    void set_api(IMoonrakerAPI* api) {
+    void set_api(helix::IMoonrakerAPI* api) {
         api_ = api;
     }
 
@@ -157,7 +157,7 @@ class ZOffsetCalibrationPanel : public OverlayBase {
 
     // API reference
     // Note: overlay_root_ inherited from OverlayBase
-    IMoonrakerAPI* api_ = nullptr;
+    helix::IMoonrakerAPI* api_ = nullptr;
 
     // State management
     State state_ = State::IDLE;

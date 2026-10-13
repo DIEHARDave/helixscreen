@@ -40,7 +40,7 @@ class PrinterState;
  *       []() { ... },
  *       [](const auto& err) { ... });
  */
-class MoonrakerJobAPI : public IJobAPI {
+class MoonrakerJobAPI : public helix::IJobAPI {
   public:
     using SuccessCallback = std::function<void()>;
     using ErrorCallback = std::function<void(const MoonrakerError&)>;

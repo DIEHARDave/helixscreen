@@ -21,7 +21,9 @@
 #include <string>
 
 // Forward declaration
+namespace helix {
 class IMoonrakerAPI;
+}
 
 namespace helix::calibration {
 

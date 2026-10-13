@@ -42,7 +42,7 @@ class PrinterState;
  *       []() { ... },
  *       [](const auto& err) { ... });
  */
-class MoonrakerMotionAPI : public IMotionAPI {
+class MoonrakerMotionAPI : public helix::IMotionAPI {
   public:
     using SuccessCallback = std::function<void()>;
     using ErrorCallback = std::function<void(const MoonrakerError&)>;

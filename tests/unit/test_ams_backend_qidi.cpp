@@ -50,7 +50,8 @@ using json = nlohmann::json;
 // can assert the exact gcode emitted without needing a real Moonraker.
 class RecordingQidiBackend : public AmsBackendQidi {
   public:
-    explicit RecordingQidiBackend(IMoonrakerAPI* api = nullptr) : AmsBackendQidi(api, nullptr) {}
+    explicit RecordingQidiBackend(helix::IMoonrakerAPI* api = nullptr)
+        : AmsBackendQidi(api, nullptr) {}
     helix::AmsError execute_gcode(const std::string& gcode) override {
         if (fail_dispatch) {
             return helix::AmsErrorHelper::not_supported("fixture dispatch failure");

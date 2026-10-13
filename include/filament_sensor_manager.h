@@ -14,10 +14,10 @@
 
 #include "hv/json.hpp"
 
-// Forward declarations — IMoonrakerAPI is a GLOBAL-scope interface (see
-// i_moonraker_api.h); declaring it inside namespace helix would create a
-// distinct phantom type.
+// Forward declarations
+namespace helix {
 class IMoonrakerAPI;
+}
 
 #include <chrono>
 #include <functional>

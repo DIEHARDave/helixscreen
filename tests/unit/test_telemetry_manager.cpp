@@ -1988,7 +1988,7 @@ class StubUrlClient : public MoonrakerClientMock {
 /// Installs a global Moonraker API for a scope and restores the previous one.
 class ScopedMoonrakerApi {
   public:
-    explicit ScopedMoonrakerApi(IMoonrakerAPI* api) : previous_(get_moonraker_api()) {
+    explicit ScopedMoonrakerApi(helix::IMoonrakerAPI* api) : previous_(get_moonraker_api()) {
         set_moonraker_api(api);
     }
     ~ScopedMoonrakerApi() {
@@ -1999,7 +1999,7 @@ class ScopedMoonrakerApi {
     ScopedMoonrakerApi& operator=(const ScopedMoonrakerApi&) = delete;
 
   private:
-    IMoonrakerAPI* previous_;
+    helix::IMoonrakerAPI* previous_;
 };
 
 /// Record a hardware_profile with `websocket_url` in place and return the event.

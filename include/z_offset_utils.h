@@ -10,11 +10,10 @@
 #include <optional>
 #include <string>
 
-class IMoonrakerAPI;
-
 namespace helix {
+class IMoonrakerAPI;
 class PrinterDiscovery;
-}
+} // namespace helix
 
 namespace helix::ui {
 class SaveConfigWatch;

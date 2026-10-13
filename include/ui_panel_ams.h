@@ -67,7 +67,7 @@ class AmsPanel : public PanelBase {
      * @param printer_state Reference to global helix::PrinterState
      * @param api Pointer to IMoonrakerAPI (may be nullptr)
      */
-    AmsPanel(helix::PrinterState& printer_state, IMoonrakerAPI* api);
+    AmsPanel(helix::PrinterState& printer_state, helix::IMoonrakerAPI* api);
     ~AmsPanel() override;
 
     // === PanelBase Interface ===

@@ -27,7 +27,9 @@
 #include "async_lifetime_guard.h"
 
 // Forward declarations
+namespace helix {
 class IMoonrakerAPI;
+}
 
 // Forward declare the global PrintState enum (defined in ui_panel_print_status.h)
 enum class PrintState;
