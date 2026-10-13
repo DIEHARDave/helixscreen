@@ -195,6 +195,12 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
   highest point and grid size, then a color scale and the profile count, and a 3x3 tile draws the
   mesh in 3D on screens that can. With no mesh loaded and nothing printing, a 2x2 tile offers
   Calibrate and Load profile. Only offered on printers with bed mesh support.
+- **An Exclude Objects widget** - during a multi-object print, how many objects are still
+  printing and how many are skipped, with a small map from 0.5x1 up: the object printing now
+  in the accent color, skipped ones faded and hatched, over the bed's 50 mm grid. Wider tiles
+  name the current object, and a 2x2 tile adds Skip objects. A tap opens the full objects map
+  in Print Status, so skipping keeps its confirmation and undo. Only offered on printers with
+  `[exclude_object]`.
 - **Scheduled pauses are marked on the progress indicator (#1509)** - filament changes (`M600`),
   explicit `PAUSE`/`M601`, and slicer pause-at-layer stops each draw a tick where they sit in
   the print, on both the home print-status card's bar and arc and the print panel's bar. The

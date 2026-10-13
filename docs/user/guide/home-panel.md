@@ -170,7 +170,7 @@ Widgets place and resize in half-cell steps. What varies is which axes a widget 
 
 | Widget | What it can do |
 |--------|----------------|
-| **Print Status**, **Camera**, **Printer Image**, **Temperature Graph**, **Tips**, **Job Queue**, **Print Stats**, **Speed / Flow**, **Multi-Filament System Status**, **Active Spool**, **Nozzle Temperatures**, **Temperatures**, **Fan Speeds**, **Tool Switcher**, **Clog Detection**, **Digital Clock**, **Z-Offset**, **Filament Dryer**, **Host Health**, **Toolhead**, **Bed Mesh** | Move **and resize** in half-cell steps on **both** axes - so 1.5x1 and 2x2.5 are real sizes |
+| **Print Status**, **Camera**, **Printer Image**, **Temperature Graph**, **Tips**, **Job Queue**, **Print Stats**, **Speed / Flow**, **Multi-Filament System Status**, **Active Spool**, **Nozzle Temperatures**, **Temperatures**, **Fan Speeds**, **Tool Switcher**, **Clog Detection**, **Digital Clock**, **Z-Offset**, **Filament Dryer**, **Host Health**, **Toolhead**, **Bed Mesh**, **Exclude Objects** | Move **and resize** in half-cell steps on **both** axes - so 1.5x1 and 2x2.5 are real sizes |
 | **Preheat**, **Macro Button** | Half-cell steps **across** only - useful when a long macro name is getting cut off |
 | **Network**, **LED Light**, **LED Controls**, **Filament Sensor**, **Notifications**, **G-code Console**, **Macros**, **Motion**, **Bypass**, **Fan**, **Temperature Sensors**, the single **Nozzle**, **Bed** and **Chamber** temperature tiles, **Shutdown/Reboot**, **Lock Screen**, **Firmware Restart** | Move **and resize** in half-cell steps on both axes. These are the centred-icon tiles: they start at half a cell wide by one cell tall and grow as large as you like, stepping their icon and text up to whatever the new size carries |
 | **Power** | Resizes in half-cell steps like the tiles above, but never below one whole cell - its round device badge does not shrink |
@@ -289,6 +289,7 @@ These are the same 5 groups the Widget Catalog uses on the device.
 | **Print Stats** | Print history statistics — total prints, success rate, and total print time. Tap to open the full print history overlay. | 2x2 | 2x1 | 3x2 | Yes | — |
 | **Job Queue** | Shows the number of queued print jobs. Tap to open the Job Queue Manager modal (see [Job Queue Manager](#job-queue-manager) below). | 2x2 | 2x2 | 4x3 | Yes | — |
 | **Speed / Flow** | The speed and flow override percentages, each shown in the warning color whenever it is not 100%. During a print it adds the live toolhead speed (mm/s) and volumetric flow (mm³/s) wherever there is room for them. At its smallest size, 0.5x0.5, it shows speed alone. Below 1x1 there is room for only one number per reading: if you chose mm/s in the Print Tune overlay (see [Percent or mm/s](printing.md#print-tune-overlay)), the live readings take the percentages' place there. At its largest sizes during a print, **-** and **+** buttons change each value by 5%, and a long press on a value sets it back to 100%. Tap anywhere else on the widget to open the Print Tune overlay. | 2x1 | 0.5x0.5 | 4x2 | Yes | — |
+| **Exclude Objects** | During a print with two or more objects, how many are still printing and how many you have skipped. From 0.5x1 up it draws a small map of the objects: the one printing now in the accent color, skipped ones faded and hatched. Wider sizes name the object printing now, and 2x2 adds a **Skip objects...** button. The widget never skips anything itself: a tap opens the full objects map on the Print Status screen, where you confirm. See [Exclude Objects Widget](#exclude-objects-widget) below. | 2x2 | 0.5x0.5 | 4x3 | Yes | Klipper `[exclude_object]` |
 
 | **Camera** | Live webcam feed from your MJPEG stream. Tap to go fullscreen. Automatically detects webcams configured in Moonraker. See [Camera Widget](#camera-widget) below for setup tips. | 2x2 | 1x1 | 4x3 | Yes | Webcam configured |
 
@@ -377,13 +378,12 @@ Some widgets depend on specific hardware being detected by Klipper. If the hardw
 | Power | Moonraker power devices (PSU control, smart plugs) |
 | Filament Sensor | `[filament_switch_sensor]` or `[filament_motion_sensor]` in Klipper |
 | Humidity | `[temperature_sensor]` with humidity capability |
-| Filament Dryer | Opens the dryer's screen: the environment screen for a filament box, or the chamber or bed drying dialog when that is all the printer has. At 2x2 and larger, tap a row to open that dryer |
 | Width Sensor | `[hall_filament_width_sensor]` in Klipper |
 | Temperature Sensors | Extra `[temperature_sensor]`, `[temperature_fan]` or `[heater_generic]` entries beyond nozzle and bed |
 | Filament Dryer | A dryer HelixScreen can see: a heated filament box with a dryer, a chamber heater with a drying cycle, or a heated bed that can dry filament |
 | Host Health | Performance readings from Moonraker (the same ones behind **Settings > System > Performance**) |
 | Bed Mesh | A printer with bed mesh support in Klipper (`[bed_mesh]`) |
-<!-- Exclude Object (exclude_map): gate row goes here when the widget ships -->
+| Exclude Objects | `[exclude_object]` in Klipper, with a slicer that labels objects |
 
 ---
 
@@ -425,11 +425,13 @@ While **not** in Edit Mode, widgets respond to taps and other gestures:
 | Job Queue | Opens Job Queue Manager modal |
 | Speed / Flow | Opens the Print Tune overlay. At its largest sizes during a print, the **-** and **+** buttons change speed or flow by 5% without opening anything, and a long press on a value sets it back to 100% |
 | Z-Offset | Opens the Print Tune overlay. At 2x2 and larger, the arrow buttons nudge the offset and the step button cycles the step size. From 2x1 up, **Save** appears while there is an unsaved offset |
+| Exclude Objects | Opens the Print Status screen with its objects map. Does nothing when there is no print or only one object |
 | Digital Clock | — (display only) |
 | Notifications | Opens notification history |
 | Tips | Opens the full tip article |
 | Network | — (display only) |
 | Host Health | Opens the Performance screen |
+| Filament Dryer | Opens the dryer's screen: the environment screen for a filament box, or the chamber or bed drying dialog when that is all the printer has. At 2x2 and larger, tap a row to open that dryer |
 | Camera | Opens fullscreen camera view |
 | Nozzle Temperature | Opens temperature graph overlay |
 | Nozzle Temperatures | Tap a nozzle row opens the nozzle graph; tap the bed row opens the bed graph |
@@ -813,7 +815,28 @@ With no mesh loaded the heatmap gives way to "No mesh loaded". At 2x2 and larger
 
 Both are unavailable while a print is running. **Tap** anywhere else on the widget to open the Bed Mesh screen.
 
-<!-- Exclude Object widget (exclude_map): deep-dive section goes here when the widget ships -->
+---
+
+## Exclude Objects Widget
+
+The Exclude Objects widget keeps the objects of a multi-object print in view from the home screen, so you can spot a failing part and get to it in one tap. It is a shortcut, not a control: skipping an object still happens on the Print Status screen, with the same confirmation and undo as always. See [Exclude Object](printing.md#exclude-object) for how skipping works.
+
+![Exclude Objects at 2x2 during a six-object print with one skipped: the map, the object printing now, the counts and Skip objects](../../images/user/home-widget-exclude-map.png)
+
+| Size | What you see |
+|------|--------------|
+| 0.5x0.5 | An icon over how many objects are left out of the total, for example "5/6" |
+| 1x0.5 | The number of objects and the number skipped, on two lines |
+| 0.5x1 | A small map over the objects left out of the total |
+| 1x1 | The map over "5 of 6 printing" |
+| 2x1 | The map beside the name of the object printing now and the counts |
+| 2x2 and larger | The map over the object's name and the counts, with a **Skip objects...** button |
+
+On the map the object being printed is drawn in the accent color with a heavier outline, the others a little dimmer, and a skipped object faded and hatched. Behind them sit the bed's 50 mm grid and its edge, wherever they fall in view.
+
+When nothing is printing the widget shows "No objects", and a print with a single object shows "Single object", since there is nothing to skip. A tap does nothing in either case.
+
+**Tap** the widget, or **Skip objects...**, to open the Print Status screen with its objects map. Only one Exclude Objects widget can be placed.
 
 ---
 
