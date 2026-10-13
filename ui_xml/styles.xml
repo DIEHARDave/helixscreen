@@ -121,19 +121,16 @@
     <!-- The inset a buffer trace draws into: no fill, so only the line shows. -->
     <style name="buffer_trace_area" bg_opa="0" border_width="0" pad_all="#space_xxs"/>
 
-    <!-- Action buttons, as a full-width column (action_list + action_cell) or as a
-         grid two to a row (action_grid + action_cell_half). Bind the pair by
-         breakpoint on the container and on each button; a button with
-         stacked_if_bp_lte stacks its icon over its label to fit its half. -->
-    <style name="action_list"
-           layout="flex" flex_flow="column" flex_main_place="start" flex_cross_place="center" flex_track_place="start"/>
+    <!-- Action buttons in a grid, two to a row: action_grid on the container,
+         action_cell on each button, which stacks its icon over its label
+         (stacked_if_bp_lte). A stacked ui_button asks for 100% of a
+         content-height parent, which inside a wrapping row never settles, so the
+         cell pins its height to the touch target. No flex_grow on a cell: a
+         growing item counts as zero width when the row wraps, which puts every
+         button on one row. -->
     <style name="action_grid"
            layout="flex" flex_flow="row_wrap" flex_main_place="start" flex_cross_place="center" flex_track_place="start"/>
-    <style name="action_cell" width="100%"/>
-    <!-- No flex_grow: a growing item counts as zero width when the row wraps,
-         which puts every button on one row. The height is pinned because a
-         stacked ui_button asks for 100% of a content-height parent. -->
-    <style name="action_cell_half" width="48%" min_height="#touch_target_min" max_height="#touch_target_min"/>
+    <style name="action_cell" width="48%" min_height="#touch_target_min" max_height="#touch_target_min"/>
   </styles>
   <!-- Registration requires a <view>; nothing ever instantiates this
        component, so an empty lv_obj keeps it harmless. -->

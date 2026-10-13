@@ -75,10 +75,9 @@ lv_area_t coords_of(lv_obj_t* card, const char* name) {
 }
 } // namespace
 
-TEST_CASE_METHOD(
-    LVGLUITestFixture,
-    "loaded card: the meters stand beside the name from medium up, below it under medium",
-    "[ams][buffer][loaded_card]") {
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "loaded strip: one line each for position and name, meters below while idle",
+                 "[ams][buffer][loaded_card]") {
     auto& ams = AmsState::instance();
     ams.init_subjects(true);
     ensure_ams_widgets_registered();
@@ -99,22 +98,37 @@ TEST_CASE_METHOD(
         process_lvgl(20);
         lv_obj_update_layout(card);
         REQUIRE_FALSE(hidden(card, "buffer_mini"));
+        const lv_area_t position = coords_of(card, "loaded_position");
         const lv_area_t name = coords_of(card, "loaded_material");
         const lv_area_t details = coords_of(card, "loaded_details");
         const lv_area_t body = coords_of(card, "loaded_body");
         const lv_area_t buffer = coords_of(card, "buffer_mini");
-        if (breakpoint >= 3) {
-            CHECK(buffer.x1 > details.x2);
-        } else {
-            // The name takes the body's width; the meters drop below it.
-            CHECK(lv_area_get_width(&details) == lv_area_get_width(&body));
-            CHECK(buffer.y1 > details.y2);
-            // Two lines at most, ellipsized beyond.
-            const lv_font_t* font = lv_obj_get_style_text_font(
-                lv_obj_find_by_name(card, "loaded_material"), LV_PART_MAIN);
-            CHECK(lv_area_get_height(&name) <= 2 * lv_font_get_line_height(font));
-        }
+        // Both lines take the body's width, one line each, ellipsized beyond.
+        CHECK(lv_area_get_width(&details) == lv_area_get_width(&body));
+        CHECK(name.y1 > position.y1);
+        const lv_font_t* font =
+            lv_obj_get_style_text_font(lv_obj_find_by_name(card, "loaded_material"), LV_PART_MAIN);
+        CHECK(lv_area_get_height(&name) <= lv_font_get_line_height(font));
+        // The meters sit below the lines.
+        CHECK(buffer.y1 > details.y2);
     }
+
+    // During any operation the meters give their room to the step progress.
+    lv_subject_t* clog_mode = lv_xml_get_subject(nullptr, "clog_meter_mode");
+    REQUIRE(clog_mode != nullptr);
+    const int clog_mode_before = lv_subject_get_int(clog_mode);
+    lv_subject_set_int(clog_mode, 1);
+    process_lvgl(20);
+    REQUIRE_FALSE(hidden(card, "clog_meter"));
+    lv_subject_set_int(ams.get_ams_action_subject(), static_cast<int>(AmsAction::LOADING));
+    process_lvgl(20);
+    CHECK(hidden(card, "buffer_mini"));
+    CHECK(hidden(card, "clog_meter"));
+    lv_subject_set_int(ams.get_ams_action_subject(), static_cast<int>(AmsAction::IDLE));
+    process_lvgl(20);
+    CHECK_FALSE(hidden(card, "buffer_mini"));
+    CHECK_FALSE(hidden(card, "clog_meter"));
+    lv_subject_set_int(clog_mode, clog_mode_before);
 
     lv_subject_set_int(bp, original);
     AmsStateTestAccess::sync_buffer(ams, AmsSystemInfo{}, 0);

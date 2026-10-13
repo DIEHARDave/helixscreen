@@ -3,9 +3,8 @@
 
 /**
  * @file test_ams_sidebar_action_grid.cpp
- * @brief The AMS sidebar's actions: one full-width column from the medium
- *        breakpoint up, a grid two to a row below it, and the status line moving
- *        onto the header so the column keeps room for the grid.
+ * @brief The AMS sidebar's actions sit two to a row at every size, under the
+ *        loaded strip and its status line.
  */
 
 #include "ui_ams_sidebar.h"
@@ -81,9 +80,9 @@ constexpr const char* kActions[] = {"btn_unload", "btn_reset", "btn_check_gates"
 
 } // namespace
 
-TEST_CASE_METHOD(SidebarGridFixture, "AMS sidebar: below medium the actions sit two to a row",
+TEST_CASE_METHOD(SidebarGridFixture, "AMS sidebar: the actions sit two to a row at every size",
                  "[ams][sidebar][action_grid]") {
-    for (int breakpoint = 0; breakpoint <= 2; ++breakpoint) {
+    for (int breakpoint = 0; breakpoint <= 4; ++breakpoint) {
         CAPTURE(breakpoint);
         use_breakpoint(breakpoint);
         const lv_area_t unload = at("btn_unload");
@@ -102,27 +101,8 @@ TEST_CASE_METHOD(SidebarGridFixture, "AMS sidebar: below medium the actions sit 
             CHECK(lv_area_get_height(&a) >= 48);
             CHECK(lv_area_get_width(&a) * 2 <= lv_obj_get_width(root_));
         }
-        // The status rides on the header line instead of its own row.
-        CHECK(lv_obj_has_flag(named("status_section"), LV_OBJ_FLAG_HIDDEN));
-        CHECK_FALSE(lv_obj_has_flag(named("status_label_compact"), LV_OBJ_FLAG_HIDDEN));
-    }
-}
-
-TEST_CASE_METHOD(SidebarGridFixture, "AMS sidebar: from medium up the actions are one column",
-                 "[ams][sidebar][action_grid]") {
-    for (int breakpoint = 3; breakpoint <= 4; ++breakpoint) {
-        CAPTURE(breakpoint);
-        use_breakpoint(breakpoint);
-        int32_t last_y = INT32_MIN;
-        for (const char* name : kActions) {
-            CAPTURE(name);
-            const lv_area_t a = at(name);
-            CHECK(lv_area_get_width(&a) ==
-                  lv_obj_get_content_width(named("action_buttons_container")));
-            CHECK(a.y1 > last_y);
-            last_y = a.y2;
-        }
+        // The status keeps its own line under the strip.
         CHECK_FALSE(lv_obj_has_flag(named("status_section"), LV_OBJ_FLAG_HIDDEN));
-        CHECK(lv_obj_has_flag(named("status_label_compact"), LV_OBJ_FLAG_HIDDEN));
+        CHECK(at("status_section").y1 > at("current_loaded_card").y2);
     }
 }
