@@ -70,18 +70,6 @@ void ui_step_progress_set_label(lv_obj_t* widget, int step_index, const char* ne
 // NAMESPACE_OK: the widget's C API, beside its siblings
 void ui_step_progress_set_current_label_only(lv_obj_t* widget, bool on);
 
-/**
- * Size a vertical list to its widest step instead of its parent's full width,
- * so the parent can place the list as a block (a flex parent's cross_place
- * centres it). Labels stay left-aligned within the block and wrap at the
- * parent's width. No effect on a horizontal row.
- *
- * @param widget Step progress widget
- * @param on true to hug the steps, false to fill the parent's width
- */
-// NAMESPACE_OK: the widget's C API, beside its siblings
-void ui_step_progress_set_hug_content(lv_obj_t* widget, bool on);
-
 /// The caption label in current-label-only mode, or nullptr.
 // NAMESPACE_OK: the widget's C API, beside its siblings
 lv_obj_t* ui_step_progress_get_caption(lv_obj_t* widget);

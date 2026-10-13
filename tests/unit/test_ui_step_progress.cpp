@@ -19,7 +19,6 @@
 #include "../lvgl_test_fixture.h"
 #include "lvgl/lvgl.h"
 
-#include <algorithm>
 #include <array>
 #include <cstdlib>
 #include <string>
@@ -168,64 +167,4 @@ TEST_CASE_METHOD(LVGLTestFixture,
 
     ui_step_progress_set_current(widget, 3);
     CHECK(std::string(lv_label_get_text(caption)) == "Clean");
-}
-
-TEST_CASE_METHOD(LVGLTestFixture,
-                 "step progress hug mode: a vertical list as wide as its widest step",
-                 "[ui][step][step_hug]") {
-    lv_obj_t* parent = make_sized_parent(test_screen());
-    lv_obj_set_flex_flow(parent, LV_FLEX_FLOW_COLUMN);
-    lv_obj_set_flex_align(parent, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    auto steps = make_vertical_steps();
-    lv_obj_t* widget = ui_step_progress_create(parent, steps.data(), static_cast<int>(steps.size()),
-                                               /*horizontal=*/false, nullptr);
-    REQUIRE(widget != nullptr);
-    ui_step_progress_set_hug_content(widget, true);
-    lv_obj_update_layout(parent);
-
-    lv_area_t pa, wa;
-    lv_obj_get_coords(parent, &pa);
-    lv_obj_get_coords(widget, &wa);
-    CAPTURE(pa.x1, pa.x2, wa.x1, wa.x2);
-    // The block is narrower than its parent, which centres it.
-    REQUIRE(lv_area_get_width(&wa) < lv_area_get_width(&pa) / 2);
-    CHECK(std::abs((wa.x1 - pa.x1) - (pa.x2 - wa.x2)) <= 1);
-    // Its widest step sets its width, and every label starts at the same x.
-    int32_t widest = 0;
-    int32_t label_x = -1;
-    for (uint32_t i = 0; i < lv_obj_get_child_count(widget); ++i) {
-        lv_obj_t* item = lv_obj_get_child(widget, (int32_t)i);
-        if (lv_obj_get_child_count(item) < 2)
-            continue; // a connector
-        widest = std::max(widest, lv_obj_get_width(item));
-        lv_area_t la;
-        lv_obj_get_coords(lv_obj_get_child(item, 1), &la);
-        if (label_x < 0)
-            label_x = la.x1;
-        CHECK(la.x1 == label_x);
-    }
-    CHECK(widest == lv_area_get_width(&wa));
-
-    // A label longer than the parent wraps inside it rather than running past.
-    ui_step_progress_set_label(widget, 1,
-                               "Feed filament through the buffer and the bowden tube to the "
-                               "extruder gears, then on to the nozzle");
-    lv_obj_update_layout(parent);
-    lv_obj_get_coords(widget, &wa);
-    CHECK(wa.x1 >= pa.x1);
-    CHECK(wa.x2 <= pa.x2);
-    lv_obj_t* long_label = nullptr;
-    for (uint32_t i = 0, seen = 0; i < lv_obj_get_child_count(widget); ++i) {
-        lv_obj_t* item = lv_obj_get_child(widget, (int32_t)i);
-        if (lv_obj_get_child_count(item) < 2)
-            continue;
-        if (seen++ == 1)
-            long_label = lv_obj_get_child(item, 1);
-    }
-    REQUIRE(long_label != nullptr);
-    lv_area_t ll;
-    lv_obj_get_coords(long_label, &ll);
-    CHECK(ll.x2 <= pa.x2);
-    CHECK(lv_obj_get_height(long_label) >
-          2 * lv_font_get_line_height(lv_obj_get_style_text_font(long_label, LV_PART_MAIN)) - 1);
 }

@@ -1199,8 +1199,7 @@ The right column, shared by the AMS panel and the overview's unit view
 - **Status** (`status_section`): the action detail in `text_body`, on its own line at every
   size.
 - **Step progress** (`progress_stepper_container`): shown during an operation, in the room
-  the hidden meters and action buttons leave. The vertical list hugs its steps
-  (`ui_step_progress_set_hug_content`) and stands centred in the column. A four-step swap load fits without scrolling
+  the hidden meters and action buttons leave. A four-step swap load fits without scrolling
   at 480x272.
 - **Actions** (`action_buttons_container`): the bypass row, then the buttons two to a row
   at every size, icon over label in landscape (`stacked_subject="ams_actions_stacked"`,
