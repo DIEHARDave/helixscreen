@@ -8,10 +8,13 @@ All K1 models use the Ingenic X2000E MIPS32r2 dual-core processor running Creali
 
 | Model | Build Volume | Display | Notable Features | Status |
 |-------|-------------|---------|------------------|--------|
-| K1 | 220 x 220 x 250 mm | 4.3" 480x800 | Standard | Untested |
+| K1 | 220 x 220 x 250 mm | 4.3" 480x800 | Standard | Community-confirmed running (#1401) |
 | K1C | 220 x 220 x 250 mm | 4.3" 480x800 | Tri-metal "Unicorn" nozzle | **Tested** |
 | K1 Max | 300 x 300 x 300 mm | 4.3" 480x800 | AI camera, LiDAR, ethernet | **Tested** |
 | K1 SE | 220 x 220 x 250 mm | 4.3" 480x800 | Budget model | Untested |
+| K2 SE | 220x215x245 mm | Unknown | K1-family MIPS board despite the K2 name; runs the K1 firmware image and installs the mips package | User-confirmed install (wget) |
+
+Running HelixScreen on a K1 SE? Report what works and what does not in a [new issue](https://github.com/prestonbrown/helixscreen/issues/new), with the firmware version.
 
 ## Hardware (Confirmed on K1C and K1 Max — 2026-03)
 
