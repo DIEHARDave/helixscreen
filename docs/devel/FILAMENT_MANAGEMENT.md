@@ -1206,7 +1206,9 @@ The right column, shared by the AMS panel and the overview's unit view
   a `<subject_expr>` in the sidebar). The grid is `styles.action_grid` on
   the container and `styles.action_cell` on each button (48% wide, height pinned to
   `touch_target_min`: a stacked `ui_button` asks for 100% of a content-height parent, which
-  in a wrapping row never settles). The whole action area hides during any operation.
+  in a wrapping row never settles). Each row is centred, so a row the buttons do not fill
+  (AFC's Unload, Home, Settings leaves Settings alone) keeps the cell width and stands in
+  the middle. The whole action area hides during any operation.
 
 With the bypass row and four buttons (Unload, Home, Check slots, Settings, the most any
 mock backend shows) the column does not scroll at 480x272, 480x320 or 800x480. A backend
