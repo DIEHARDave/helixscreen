@@ -344,18 +344,23 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     CHECK_FALSE(lit());
 }
 
-TEST_CASE_METHOD(LVGLUITestFixture, "callouts: no light to switch shows no light chip",
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "callouts: no light to switch shows no light chip and budgets none",
                  "[printer_image][callouts]") {
+    // At this size the chamber and light chips together pin the callouts
+    // (see the capability relayout case); the chamber alone does not.
     const auto regions = prepare_tagged_widget();
     auto& ctrl = helix::led::LedController::instance();
     ctrl.deinit();
     ctrl.init(nullptr, nullptr);
-    PanelWidgetHarness<PrinterImageWidget> h(test_screen());
-    h.resize(4, 4, 160, 160);
     lv_subject_set_int(lv_xml_get_subject(nullptr, "printer_has_led"), 1);
+    lv_subject_set_int(state().capabilities_state().subject(Capability::HasChamberHeater), 1);
+    PanelWidgetHarness<PrinterImageWidget> h(test_screen());
+    h.resize(8, 4, 480, 160);
     settle();
     REQUIRE(ctrl.chamber_light().empty());
     CHECK_FALSE(shown(h, "callout_chip_light"));
+    CHECK(mode_now() == static_cast<int>(CalloutMode::BothSides));
     ctrl.deinit();
 }
 
