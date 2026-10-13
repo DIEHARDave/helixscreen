@@ -194,7 +194,7 @@ is pure and has a boundary test; the widget measures, decides and publishes.
 | `host_health` | `host_health_layout.h` | `perf_available` | a status chip with the reading that set it; sparklines and MCU rows by rung; the busiest MCU in the memory row's place while printing at Wide |
 | `toolhead` | `toolhead_layout.h`, `toolhead_plate.h` | - | homed letters (Z height while printing) at Glance and Strip; axis rows at Column and Cell; a top-down plate with crosshair and Z bar from Wide; Home All at Full while idle with an axis unhomed |
 | `bed_mesh_tile` | `bed_mesh_tile_layout.h` | `printer_has_bed_mesh` | a grid glyph and Z range at Glance; the heatmap from Strip; profile details at Wide; colour scale, footer, Calibrate and Load profile from Full; a static 3D render at Large on a full-tier board |
-| `exclude_map` | `decide_exclude_map_layout()` | `printer_has_exclude_object` | counts of skipped and remaining objects; the mini exclude-object map from Column up; the object printing now at Wide and above; a "Skip objects..." button at Full |
+| `exclude_map` | `exclude_map_layout.h` | `printer_has_exclude_object` | counts of skipped and remaining objects; the mini exclude-object map from Column up; the object printing now at Wide and above; a "Skip objects..." button at Full |
 
 All seven offer half-cell spans: their registry rows in `src/ui/panel_widget_registry.cpp`
 set `supports_half_col` and `supports_half_row` and a one-track minimum, which is the
@@ -211,7 +211,8 @@ The shared decisions around them:
 - **Full is a size class as well as a fit.** `host_health` and `exclude_map` carry a
   `full_min_h` in their input and raise the Full box's height to it, because a 2x1 tile
   can hold the Full content but the rung is for 2x2 and up
-  (`src/ui/panel_widgets/host_health_layout.h#decide_host_health_layout`).
+  (`src/ui/panel_widgets/host_health_layout.h#decide_host_health_layout`,
+  `src/ui/panel_widgets/exclude_map_layout.h#decide_exclude_map_layout`).
 - **Re-decide when what is measured changes.** Each widget stores the state its verdict was
   decided for (`decided_printing_`, `decided_loaded_`, `decided_mcu_count_`, ...) and calls
   `relayout_for_granted_size()` when the live state differs, so a print starting never
