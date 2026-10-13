@@ -11,6 +11,7 @@
 #include "ui_icon.h"
 #include "ui_icon_codepoints.h"
 
+#include "display_numbering.h"
 #include "display_settings_manager.h"
 #include "format_utils.h"
 #include "lvgl/src/others/translation/lv_translation.h"
@@ -182,8 +183,9 @@ std::string source_name(const helix::DryerSource& s) {
     }
     if (!s.name.empty())
         return s.name;
-    return s.unit_index >= 0 ? fmt::format("{} {}", lv_tr("Box"), s.unit_index + 1)
-                             : std::string(lv_tr("Box"));
+    return s.unit_index >= 0
+               ? fmt::format("{} {}", lv_tr("Box"), helix::ui::lane_number(s.unit_index))
+               : std::string(lv_tr("Box"));
 }
 
 // "47/55°C", or the one temperature known. `current_only` drops the target for a rung too
