@@ -959,11 +959,9 @@ jobs:
         # can name the case it stopped in.
         SUITE_REPORT_MAX_SECS: 2400
       run: |
-        # ~[subprocess] and ~[socket_discovery] fork; the child shares the
-        # report file description and its writes interleave with the XML,
-        # producing a structurally corrupt report. See mk/tests.mk. The filter
-        # comes from the makefile so this job cannot hold a different one from
-        # `make test-vacuous`, and the script exits non-zero if no report lands.
+        # The filter comes from the makefile so this job cannot hold a
+        # different one from `make test-vacuous`, and the script exits non-zero
+        # if no report lands.
         scripts/run_suite_report.sh ./build/bin/helix-tests \
           "$(make -s print-vacuous-filter | tail -1)" build/suite-report.xml
 
