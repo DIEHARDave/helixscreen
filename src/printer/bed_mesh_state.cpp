@@ -90,6 +90,13 @@ void BedMeshState::refresh_from_api(IMoonrakerAPI* api) {
     apply(active, static_cast<int>(api->advanced().get_bed_mesh_profiles().size()));
 }
 
+void BedMeshState::retranslate() {
+    if (!subjects_initialized_ || stats_.loaded) {
+        return;
+    }
+    lv_subject_copy_string(&dimensions_, lv_tr("No mesh data"));
+}
+
 void BedMeshState::apply(const BedMeshProfile* active, int profile_count) {
     if (!subjects_initialized_) {
         return;

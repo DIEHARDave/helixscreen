@@ -35,6 +35,9 @@ class BedMeshState {
     /// Publish @p active (null: no mesh loaded) and @p profile_count. Main thread.
     void apply(const BedMeshProfile* active, int profile_count);
 
+    /// Re-render the translated text of the current state after a language switch.
+    void retranslate();
+
     [[nodiscard]] const MeshStats& stats() const {
         return stats_;
     }

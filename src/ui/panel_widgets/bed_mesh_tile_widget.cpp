@@ -18,6 +18,7 @@
 #include "bed_mesh_stats.h"
 #include "lvgl/src/others/translation/lv_translation.h"
 #include "moonraker_error.h"
+#include "observe_language.h"
 #include "observer_factory.h"
 #include "panel_widget_registry.h"
 #include "panel_widget_size.h"
@@ -385,6 +386,12 @@ void BedMeshTileWidget::attach(lv_obj_t* widget_obj, lv_obj_t* parent_screen) {
                          printer_state_.get_subjects_lifetime());
     profile_count_observer_ = ui::observe<int>(mesh_state.get_profile_count_subject(), this,
                                                on_live, mesh_state.get_subjects_lifetime());
+    // The tile's text is measured in C++, so a new language re-takes the verdict.
+    language_observer_ = ui::observe_language_change(this, [](BedMeshTileWidget* self) {
+        BedMeshState::instance().retranslate();
+        self->relayout_for_granted_size();
+        self->publish_texts(self->read_live());
+    });
     // The bed bounds arrive after connect; a mesh fed before them is fed again then.
     if (IMoonrakerAPI* api = get_moonraker_api()) {
         bounds_version_ = lv_subject_get_int(api->get_build_volume_version_subject());
@@ -420,6 +427,7 @@ void BedMeshTileWidget::detach() {
     print_active_observer_.reset();
     profile_count_observer_.reset();
     build_volume_observer_.reset();
+    language_observer_.reset();
     if (BedMeshTileWidget* displaced = s_tile.release(this)) {
         displaced->fed_version_.reset();
         displaced->applied_3d_.reset();

@@ -93,6 +93,7 @@ class BedMeshTileWidget : public PanelWidget {
     ObserverGuard print_active_observer_;
     ObserverGuard profile_count_observer_;
     ObserverGuard build_volume_observer_;
+    ObserverGuard language_observer_;
 
     // Declared last so it is torn down first, expiring every token the observers
     // captured before any of them is destroyed.
