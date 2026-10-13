@@ -933,6 +933,38 @@ TEST_CASE_METHOD(BackendActiveToolFixture,
     CHECK(ToolState::instance().active_tool_index() == 1);
 }
 
+TEST_CASE_METHOD(BackendActiveToolFixture,
+                 "A backend whose carriage cannot be empty reporting no tool leaves T0 mounted",
+                 "[tool-state][tool_switcher][1784]") {
+    init_tools_from({"extruder", "extruder1", "toolhead", "heater_bed"});
+    helix::test::RegisteredBackend<helix::AmsBackendAce> backend(nullptr, nullptr);
+    REQUIRE_FALSE(backend->carriage_can_be_empty());
+    REQUIRE(backend->get_current_tool() == -1);
+
+    helix::AmsState::instance().sync_from_backend();
+    UpdateQueue::instance().drain();
+    CHECK(ToolState::instance().active_tool_index() == 0);
+    CHECK(lv_subject_get_int(ToolState::instance().get_active_tool_subject()) == 0);
+    CHECK_FALSE(ToolState::instance().backend_owns_active_tool());
+}
+
+TEST_CASE_METHOD(BackendActiveToolFixture,
+                 "A park split across two frames empties the carriage in ToolState",
+                 "[tool-state][tool_switcher][1784]") {
+    init_tools_from({"extruder", "extruder1", "extruder2", "extruder3", "toolchanger",
+                     "filament_detect", "toolhead", "heater_bed", "print_task_config"});
+    helix::test::RegisteredBackend<helix::AmsBackendSnapmaker> backend(nullptr, nullptr);
+
+    deliver(*backend, nlohmann::json{{"extruder2", {{"state", "ACTIVE"}, {"active_pin", true}}},
+                                     {"toolhead", {{"extruder", "extruder2"}}}});
+    REQUIRE(ToolState::instance().active_tool_index() == 2);
+
+    deliver(*backend, nlohmann::json{{"extruder2", {{"state", "PARKED"}, {"active_pin", true}}}});
+    REQUIRE(ToolState::instance().active_tool_index() == 2);
+    deliver(*backend, nlohmann::json{{"extruder2", {{"active_pin", false}}}});
+    CHECK(ToolState::instance().active_tool_index() == -1);
+}
+
 TEST_CASE("A lane backend's topology does not allow an empty carriage",
           "[tool-state][ams-topology][tool_switcher][1784]") {
     helix::AmsBackendAfc afc(nullptr, nullptr);

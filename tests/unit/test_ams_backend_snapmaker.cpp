@@ -4201,6 +4201,27 @@ TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker parking the mounted head empties t
     CHECK(backend.get_system_info().current_slot == -1);
 }
 
+TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker a park split across two frames empties the carriage",
+                 "[ams][snapmaker][tool_switcher][1784]") {
+    // The head can report PARKED before its active pin drops, and the frame
+    // that drops the pin repeats no state.
+    helix::test::RegisteredBackend<AmsBackendSnapmaker> backend_reg(nullptr, nullptr);
+    AmsBackendSnapmaker& backend = *backend_reg;
+
+    SnapmakerTestAccess::handle_status(
+        backend, json{{"extruder2", json{{"state", "ACTIVE"}, {"active_pin", true}}},
+                      {"toolhead", json{{"extruder", "extruder2"}}}});
+    REQUIRE(backend.get_system_info().current_tool == 2);
+
+    SnapmakerTestAccess::handle_status(
+        backend, json{{"extruder2", json{{"state", "PARKED"}, {"active_pin", true}}}});
+    REQUIRE(backend.get_system_info().current_tool == 2);
+
+    SnapmakerTestAccess::handle_status(backend, json{{"extruder2", json{{"active_pin", false}}}});
+    CHECK(backend.get_system_info().current_tool == -1);
+    CHECK(backend.get_system_info().current_slot == -1);
+}
+
 TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker parking another head leaves the mounted one",
                  "[ams][snapmaker][tool_switcher][1784]") {
     helix::test::RegisteredBackend<AmsBackendSnapmaker> backend_reg(nullptr, nullptr);
