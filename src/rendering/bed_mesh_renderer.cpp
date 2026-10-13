@@ -125,6 +125,7 @@ bed_mesh_renderer_t* bed_mesh_renderer_create(void) {
     renderer->bed_center_y = 0.0;
     renderer->coord_scale = 1.0;
     renderer->geometry_computed = false;
+    renderer->circular_bed = false;
 
     // Default view state (Mainsail-style: looking from front-right toward back-left)
     renderer->view_state.angle_x = BED_MESH_DEFAULT_ANGLE_X;
@@ -286,10 +287,12 @@ void bed_mesh_renderer_apply_two_finger(bed_mesh_renderer_t* renderer, double pa
 
 void bed_mesh_renderer_set_bounds(bed_mesh_renderer_t* renderer, double bed_x_min, double bed_x_max,
                                   double bed_y_min, double bed_y_max, double mesh_x_min,
-                                  double mesh_x_max, double mesh_y_min, double mesh_y_max) {
+                                  double mesh_x_max, double mesh_y_min, double mesh_y_max,
+                                  bool circular_bed) {
     if (!renderer) {
         return;
     }
+    renderer->circular_bed = circular_bed;
 
     // Set bed bounds (full print bed area - used for grid/walls)
     renderer->bed_min_x = bed_x_min;

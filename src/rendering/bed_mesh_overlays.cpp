@@ -7,6 +7,7 @@
 
 #include "ui_fonts.h"
 
+#include "bed_grid.h"
 #include "bed_mesh_buffer.h"
 #include "bed_mesh_coordinate_transform.h"
 #include "bed_mesh_internal.h"
@@ -35,8 +36,10 @@ constexpr int VISIBILITY_MARGIN_PX = 10;
 // Label positioning
 constexpr double Z_LABEL_ABOVE_CEILING = 32.0; // Z label offset above ceiling
 
-// Grid spacing in millimeters for reference grids
-constexpr double GRID_SPACING_MM = 50.0;
+constexpr double GRID_SPACING_MM = helix::kBedGridSpacingMm;
+
+// Straight segments approximating a round bed's floor outline
+constexpr int CIRCLE_OUTLINE_SEGMENTS = 72;
 
 // Number of segments for Z-axis grid divisions
 constexpr int Z_AXIS_SEGMENT_COUNT = 5;
@@ -155,7 +158,28 @@ BedExtent compute_bed_extent(const bed_mesh_renderer_t* renderer) {
     double z_max_world = mesh_z_to_world_z(renderer->mesh_max_z, renderer->cached_z_center,
                                            renderer->view_state.z_scale);
     ext.walls = compute_wall_bounds(z_min_world, z_max_world, ext.half_width, ext.half_height);
+    ext.circular = renderer->circular_bed;
     return ext;
+}
+
+ReferenceGridFrame reference_grid_frame(const BedExtent& ext) {
+    ReferenceGridFrame f{};
+    f.line_x_first = std::ceil(ext.x_min_mm / GRID_SPACING_MM) * GRID_SPACING_MM;
+    f.line_x_last = std::floor(ext.x_max_mm / GRID_SPACING_MM) * GRID_SPACING_MM;
+    f.line_y_first = std::ceil(ext.y_min_mm / GRID_SPACING_MM) * GRID_SPACING_MM;
+    f.line_y_last = std::floor(ext.y_max_mm / GRID_SPACING_MM) * GRID_SPACING_MM;
+    if (ext.circular) {
+        f.edge_x_min = ext.x_min_mm;
+        f.edge_x_max = ext.x_max_mm;
+        f.edge_y_min = ext.y_min_mm;
+        f.edge_y_max = ext.y_max_mm;
+    } else {
+        f.edge_x_min = f.line_x_first;
+        f.edge_x_max = f.line_x_last;
+        f.edge_y_min = f.line_y_first;
+        f.edge_y_max = f.line_y_last;
+    }
+    return f;
 }
 
 HeatmapLayout compute_heatmap_layout(int rows, int cols, int canvas_width, int canvas_height) {
@@ -265,17 +289,13 @@ void render_axis_labels(lv_layer_t* layer, const bed_mesh_renderer_t* renderer, 
     }
 
     const BedExtent ext = compute_bed_extent(renderer);
+    const ReferenceGridFrame frame = reference_grid_frame(ext);
 
-    // Round to first/last grid line positions (must match wall positions)
-    double x_grid_start = std::ceil(ext.x_min_mm / GRID_SPACING_MM) * GRID_SPACING_MM;
-    double x_grid_end = std::floor(ext.x_max_mm / GRID_SPACING_MM) * GRID_SPACING_MM;
-    double y_grid_start = std::ceil(ext.y_min_mm / GRID_SPACING_MM) * GRID_SPACING_MM;
-
-    // Convert grid bounds to world coordinates (must match wall positioning)
-    double x_min_world = printer_x_to_world_x(x_grid_start, ext.center_x, ext.coord_scale);
-    double x_max_world = printer_x_to_world_x(x_grid_end, ext.center_x, ext.coord_scale);
+    // Wall positions in world coordinates
+    double x_min_world = printer_x_to_world_x(frame.edge_x_min, ext.center_x, ext.coord_scale);
+    double x_max_world = printer_x_to_world_x(frame.edge_x_max, ext.center_x, ext.coord_scale);
     double y_max_world =
-        printer_y_to_world_y(y_grid_start, ext.center_y, ext.coord_scale); // Y inverted
+        printer_y_to_world_y(frame.edge_y_min, ext.center_y, ext.coord_scale); // Y inverted
     double floor_z = ext.walls.floor_z;
 
     // Configure label drawing style. On a small canvas the letters drop to the
@@ -392,18 +412,19 @@ void render_numeric_axis_ticks(lv_layer_t* layer, const bed_mesh_renderer_t* ren
     const double coord_scale = ext.coord_scale;
     const WallBounds& bounds = ext.walls;
 
-    // Round to first/last grid line positions (must match wall positions from
-    // render_reference_grids)
-    double x_grid_start = std::ceil(ext.x_min_mm / GRID_SPACING_MM) * GRID_SPACING_MM;
-    double x_grid_end = std::floor(ext.x_max_mm / GRID_SPACING_MM) * GRID_SPACING_MM;
-    double y_grid_start = std::ceil(ext.y_min_mm / GRID_SPACING_MM) * GRID_SPACING_MM;
-    double y_grid_end = std::floor(ext.y_max_mm / GRID_SPACING_MM) * GRID_SPACING_MM;
+    const ReferenceGridFrame frame = reference_grid_frame(ext);
+    const double x_grid_start = frame.line_x_first;
+    const double x_grid_end = frame.line_x_last;
+    const double y_grid_start = frame.line_y_first;
+    const double y_grid_end = frame.line_y_last;
 
-    // Convert grid bounds to world coordinates (must match wall positioning)
-    double x_min_world = helix::mesh::printer_x_to_world_x(x_grid_start, bed_center_x, coord_scale);
-    double x_max_world = helix::mesh::printer_x_to_world_x(x_grid_end, bed_center_x, coord_scale);
-    double y_max_world =
-        helix::mesh::printer_y_to_world_y(y_grid_start, bed_center_y, coord_scale); // Y inverted
+    // Wall positions in world coordinates
+    double x_min_world =
+        helix::mesh::printer_x_to_world_x(frame.edge_x_min, bed_center_x, coord_scale);
+    double x_max_world =
+        helix::mesh::printer_x_to_world_x(frame.edge_x_max, bed_center_x, coord_scale);
+    double y_max_world = helix::mesh::printer_y_to_world_y(frame.edge_y_min, bed_center_y,
+                                                           coord_scale); // Y inverted
     double floor_z = bounds.floor_z;
 
     // Configure label drawing style (smaller font than axis letters)
@@ -540,42 +561,60 @@ void render_reference_grids(PixelBuffer& buf, const bed_mesh_renderer_t* rendere
 
     // Printer-bed extent, not mesh extent: the mesh floats inside the walls
     const BedExtent ext = compute_bed_extent(renderer);
-    const double x_max_mm = ext.x_max_mm;
-    const double y_max_mm = ext.y_max_mm;
+    const ReferenceGridFrame frame = reference_grid_frame(ext);
     const double bed_center_x = ext.center_x;
     const double bed_center_y = ext.center_y;
     const double coord_scale = ext.coord_scale;
+    const double x_grid_start = frame.line_x_first;
+    const double x_grid_end = frame.line_x_last;
+    const double y_grid_start = frame.line_y_first;
+    const double y_grid_end = frame.line_y_last;
 
-    // Round to first/last grid line positions (aligned to GRID_SPACING_MM)
-    double x_grid_start = std::ceil(ext.x_min_mm / GRID_SPACING_MM) * GRID_SPACING_MM;
-    double x_grid_end = std::floor(x_max_mm / GRID_SPACING_MM) * GRID_SPACING_MM;
-    double y_grid_start = std::ceil(ext.y_min_mm / GRID_SPACING_MM) * GRID_SPACING_MM;
-    double y_grid_end = std::floor(y_max_mm / GRID_SPACING_MM) * GRID_SPACING_MM;
-
-    // Convert grid bounds to world coordinates for wall positioning
-    double x_min = printer_x_to_world_x(x_grid_start, bed_center_x, coord_scale);
-    double x_max = printer_x_to_world_x(x_grid_end, bed_center_x, coord_scale);
-    double y_min = printer_y_to_world_y(y_grid_end, bed_center_y, coord_scale);   // Y inverted
-    double y_max = printer_y_to_world_y(y_grid_start, bed_center_y, coord_scale); // Y inverted
+    // Wall positions in world coordinates
+    double x_min = printer_x_to_world_x(frame.edge_x_min, bed_center_x, coord_scale);
+    double x_max = printer_x_to_world_x(frame.edge_x_max, bed_center_x, coord_scale);
+    double y_min = printer_y_to_world_y(frame.edge_y_max, bed_center_y, coord_scale); // Y inverted
+    double y_max = printer_y_to_world_y(frame.edge_y_min, bed_center_y, coord_scale); // Y inverted
     double z_floor = ext.walls.floor_z;
     double z_ceiling = ext.walls.ceiling_z;
 
+    auto floor_line = [&](double x1_mm, double y1_mm, double x2_mm, double y2_mm) {
+        draw_axis_line_to_buffer(buf, line_r, line_g, line_b, ref_alpha,
+                                 printer_x_to_world_x(x1_mm, bed_center_x, coord_scale),
+                                 printer_y_to_world_y(y1_mm, bed_center_y, coord_scale), z_floor,
+                                 printer_x_to_world_x(x2_mm, bed_center_x, coord_scale),
+                                 printer_y_to_world_y(y2_mm, bed_center_y, coord_scale), z_floor,
+                                 canvas_width, canvas_height, &renderer->view_state);
+    };
+
     // ========== 1. BOTTOM GRID (XY plane at Z=z_floor) ==========
-    for (double x_mm = x_grid_start; x_mm <= x_max_mm + 0.001; x_mm += GRID_SPACING_MM) {
-        double x_world = helix::mesh::printer_x_to_world_x(x_mm, bed_center_x, coord_scale);
-        draw_axis_line_to_buffer(buf, line_r, line_g, line_b, ref_alpha, x_world, y_min, z_floor,
-                                 x_world, y_max, z_floor, canvas_width, canvas_height,
-                                 &renderer->view_state);
+    // Outline: the floor rectangle, or the circle inscribed in the bed.
+    if (ext.circular) {
+        const double cx = (frame.edge_x_min + frame.edge_x_max) / 2.0;
+        const double cy = (frame.edge_y_min + frame.edge_y_max) / 2.0;
+        const double r =
+            std::min(frame.edge_x_max - frame.edge_x_min, frame.edge_y_max - frame.edge_y_min) /
+            2.0;
+        for (int i = 0; i < CIRCLE_OUTLINE_SEGMENTS; i++) {
+            const double a1 = 2.0 * M_PI * i / CIRCLE_OUTLINE_SEGMENTS;
+            const double a2 = 2.0 * M_PI * (i + 1) / CIRCLE_OUTLINE_SEGMENTS;
+            floor_line(cx + r * std::cos(a1), cy + r * std::sin(a1), cx + r * std::cos(a2),
+                       cy + r * std::sin(a2));
+        }
+    } else {
+        floor_line(frame.edge_x_min, frame.edge_y_min, frame.edge_x_max, frame.edge_y_min);
+        floor_line(frame.edge_x_min, frame.edge_y_max, frame.edge_x_max, frame.edge_y_max);
+        floor_line(frame.edge_x_min, frame.edge_y_min, frame.edge_x_min, frame.edge_y_max);
+        floor_line(frame.edge_x_max, frame.edge_y_min, frame.edge_x_max, frame.edge_y_max);
     }
-    for (double y_mm = y_grid_start; y_mm <= y_max_mm + 0.001; y_mm += GRID_SPACING_MM) {
-        double y_world = helix::mesh::printer_y_to_world_y(y_mm, bed_center_y, coord_scale);
-        draw_axis_line_to_buffer(buf, line_r, line_g, line_b, ref_alpha, x_min, y_world, z_floor,
-                                 x_max, y_world, z_floor, canvas_width, canvas_height,
-                                 &renderer->view_state);
+    for (const auto& seg :
+         helix::bed_grid_lines(frame.edge_x_min, frame.edge_x_max, frame.edge_y_min,
+                               frame.edge_y_max, GRID_SPACING_MM, ext.circular)) {
+        floor_line(seg.x1, seg.y1, seg.x2, seg.y2);
     }
 
     // ========== 2. BACK WALL GRID (XZ plane at Y=y_min) ==========
-    for (double x_mm = x_grid_start; x_mm <= x_max_mm + 0.001; x_mm += GRID_SPACING_MM) {
+    for (double x_mm = x_grid_start; x_mm <= x_grid_end + 0.001; x_mm += GRID_SPACING_MM) {
         double x_world = helix::mesh::printer_x_to_world_x(x_mm, bed_center_x, coord_scale);
         draw_axis_line_to_buffer(buf, line_r, line_g, line_b, ref_alpha, x_world, y_min, z_floor,
                                  x_world, y_min, z_ceiling, canvas_width, canvas_height,
@@ -591,7 +630,7 @@ void render_reference_grids(PixelBuffer& buf, const bed_mesh_renderer_t* rendere
     }
 
     // ========== 3. LEFT WALL GRID (YZ plane at X=x_min) ==========
-    for (double y_mm = y_grid_start; y_mm <= y_max_mm + 0.001; y_mm += GRID_SPACING_MM) {
+    for (double y_mm = y_grid_start; y_mm <= y_grid_end + 0.001; y_mm += GRID_SPACING_MM) {
         double y_world = helix::mesh::printer_y_to_world_y(y_mm, bed_center_y, coord_scale);
         draw_axis_line_to_buffer(buf, line_r, line_g, line_b, ref_alpha, x_min, y_world, z_floor,
                                  x_min, y_world, z_ceiling, canvas_width, canvas_height,

@@ -158,4 +158,43 @@ TEST_CASE("Bed extent follows the bed bounds once set, the mesh grid before", "[
     REQUIRE(after.half_width == Approx(150.0 * m.r->coord_scale));
     REQUIRE(after.half_height == Approx(100.0 * m.r->coord_scale));
 }
+TEST_CASE("Rectangular reference grid ends on the outermost grid line", "[bed_mesh][bed_grid]") {
+    Renderer m;
+    bed_mesh_renderer_set_bounds(m.r, 0, 235, -10, 220, 20, 215, 20, 200);
+    const auto ext = helix::mesh::compute_bed_extent(m.r);
+    REQUIRE_FALSE(ext.circular);
+    const auto f = helix::mesh::reference_grid_frame(ext);
+    CHECK(f.line_x_first == 0.0);
+    CHECK(f.line_x_last == 200.0);
+    CHECK(f.line_y_first == 0.0);
+    CHECK(f.line_y_last == 200.0);
+    CHECK(f.edge_x_min == f.line_x_first);
+    CHECK(f.edge_x_max == f.line_x_last);
+    CHECK(f.edge_y_min == f.line_y_first);
+    CHECK(f.edge_y_max == f.line_y_last);
+}
+
+TEST_CASE("Round reference grid stands its walls at the bed edges", "[bed_mesh][bed_grid]") {
+    Renderer m;
+    bed_mesh_renderer_set_bounds(m.r, -125, 125, -125, 125, -100, 100, -100, 100, true);
+    const auto ext = helix::mesh::compute_bed_extent(m.r);
+    REQUIRE(ext.circular);
+    const auto f = helix::mesh::reference_grid_frame(ext);
+    CHECK(f.edge_x_min == -125.0);
+    CHECK(f.edge_x_max == 125.0);
+    CHECK(f.edge_y_min == -125.0);
+    CHECK(f.edge_y_max == 125.0);
+    // Ticks stay on the grid multiples inside the bed.
+    CHECK(f.line_x_first == -100.0);
+    CHECK(f.line_x_last == 100.0);
+}
+
+TEST_CASE("A round bed draws a different floor than a rectangular one", "[bed_mesh][bed_grid]") {
+    Renderer square, round;
+    bed_mesh_renderer_set_bounds(square.r, -125, 125, -125, 125, -100, 100, -100, 100);
+    bed_mesh_renderer_set_bounds(round.r, -125, 125, -125, 125, -100, 100, -100, 100, true);
+    PixelBuffer a = render(square.r);
+    PixelBuffer b = render(round.r);
+    REQUIRE(std::memcmp(a.data(), b.data(), a.stride() * H) != 0);
+}
 #endif
