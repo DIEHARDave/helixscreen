@@ -2458,7 +2458,7 @@ void Application::shutdown() {
     helix::WifiLinkMonitor::instance().stop();
 
     // Clean shutdown means no crash loop -- remove the marker file
-    std::filesystem::remove(crash_marker_path());
+    helix::clear_crash_marker(crash_marker_path());
 
     // Crash handler stays installed through teardown so any SIGBUS/SIGSEGV
     // during widget deletion, observer cleanup, or lv_deinit still produces

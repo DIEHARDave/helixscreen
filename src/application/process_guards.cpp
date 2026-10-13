@@ -103,6 +103,14 @@ void clear_crash_marker_signal_safe() {
     (void)::unlink(s_crash_marker_path);
 }
 
+void clear_crash_marker(const std::string& path) noexcept {
+    std::error_code ec;
+    std::filesystem::remove(path, ec);
+    if (ec && ec != std::errc::no_such_file_or_directory) {
+        spdlog::warn("[Application] Could not remove crash marker {}: {}", path, ec.message());
+    }
+}
+
 bool record_start_and_check_crash_loop(const std::string& marker_path, long long now_epoch) {
     constexpr size_t MAX_CRASH_RESTARTS = 3;
     constexpr long long CRASH_WINDOW_SEC = 120;
@@ -123,7 +131,7 @@ bool record_start_and_check_crash_loop(const std::string& marker_path, long long
         spdlog::error("[Application] Crash loop detected: {} restarts within {}s - "
                       "booting in safe mode (no plugins, default home layout)",
                       recent_timestamps.size(), CRASH_WINDOW_SEC);
-        std::filesystem::remove(marker_path);
+        clear_crash_marker(marker_path);
         get_runtime_config()->crash_loop_safe_mode = true;
         return true;
     }
