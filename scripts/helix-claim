@@ -61,11 +61,58 @@ EOF
 die() { printf 'helix-claim: %s\n' "$1" >&2; exit 2; }
 slug() { printf '%s' "$1" | tr '/:' '__' | tr -cd '[:alnum:]_.-'; }
 
-# Field 22 of /proc/PID/stat. comm can contain spaces and parens, so count from
-# the last ')' rather than splitting the whole line.
+# Process facts come from /proc where the box has one and from ps(1) where it
+# does not (a Mac). HELIX_CLAIM_PROC points the /proc reads elsewhere, so the
+# ps path runs under test on Linux too.
+PROC_ROOT=${HELIX_CLAIM_PROC:-/proc}
+if [ -r "$PROC_ROOT/$$/stat" ]; then HAVE_PROC=1; else HAVE_PROC=0; fi
+
+# The fields of /proc/PID/stat after comm, which can contain spaces and parens,
+# so cut through the last ") ": state is $1, ppid $2, starttime $20.
+proc_stat_tail() {
+    local stat; stat=$(cat "$PROC_ROOT/$1/stat" 2>/dev/null) || return 1
+    printf '%s' "${stat##*) }"
+}
+
+# The kernel's start time, which tells a process from a later one reusing its
+# pid. ps reports it to the second, which is as fine as pid reuse ever gets.
 pid_starttime() {
-    local stat; stat=$(cat "/proc/$1/stat" 2>/dev/null) || return 1
-    printf '%s' "${stat##*) }" | awk '{print $20}'
+    if [ "$HAVE_PROC" = 1 ]; then
+        proc_stat_tail "$1" | awk '{print $20}'
+        return "${PIPESTATUS[0]}"
+    fi
+    local st; st=$(LC_ALL=C ps -o lstart= -p "$1" 2>/dev/null | tr -s ' ')
+    st=${st# }; st=${st% }
+    [ -n "$st" ] || return 1
+    printf '%s' "$st"
+}
+
+pid_ppid() {
+    if [ "$HAVE_PROC" = 1 ]; then
+        proc_stat_tail "$1" | awk '{print $2}'
+    else
+        ps -o ppid= -p "$1" 2>/dev/null | tr -d ' '
+    fi
+}
+
+# One letter: R, S, T (stopped), Z...
+pid_state() {
+    if [ "$HAVE_PROC" = 1 ]; then
+        proc_stat_tail "$1" | cut -c1
+    else
+        ps -o stat= -p "$1" 2>/dev/null | tr -d ' ' | cut -c1
+    fi
+}
+
+# ps prints comm as the executable's path on a Mac.
+pid_comm() {
+    if [ "$HAVE_PROC" = 1 ]; then
+        cat "$PROC_ROOT/$1/comm" 2>/dev/null
+    else
+        local c; c=$(ps -o comm= -p "$1" 2>/dev/null) || return 1
+        [ -n "$c" ] || return 1
+        basename "$c"
+    fi
 }
 
 # A Bash tool call is a transient shell, so its own pid is useless as an owner.
@@ -73,11 +120,9 @@ pid_starttime() {
 session_pid() {
     local p=$$ ppid comm hops=0 pgid
     while [ "$p" -gt 1 ] && [ "$hops" -lt 40 ]; do
-        comm=$(cat "/proc/$p/comm" 2>/dev/null) || break
+        comm=$(pid_comm "$p") || break
         [ "$comm" = "claude" ] && { printf '%s' "$p"; return 0; }
-        # /proc/PID/stat: comm may hold spaces and parens, so cut through the
-        # final ") "; the remaining fields begin at state, making ppid $2.
-        ppid=$(sed 's/.*) //' "/proc/$p/stat" 2>/dev/null | awk '{print $2}')
+        ppid=$(pid_ppid "$p")
         case "$ppid" in ''|*[!0-9]*) break;; esac
         [ "$ppid" = "$p" ] && break
         p=$ppid; hops=$((hops+1))
@@ -89,7 +134,7 @@ session_pid() {
     # with a start time, so liveness is derived exactly as before.
     pgid=$(ps -o pgid= -p $$ 2>/dev/null | tr -d ' ')
     case "$pgid" in ''|*[!0-9]*) printf '%s' "$PPID"; return 0;; esac
-    [ -e "/proc/$pgid" ] || [ "$(uname -s)" != Linux ] || { printf '%s' "$PPID"; return 0; }
+    pid_starttime "$pgid" >/dev/null || { printf '%s' "$PPID"; return 0; }
     printf '%s' "$pgid"
 }
 
@@ -161,7 +206,7 @@ tree_pids() {
 # RSS of a pid plus all its descendants, in KB. A heavy job is a make or a
 # shard runner whose own RSS is nothing next to its children's.
 tree_rss_kb() {
-    ps -o rss= -p "$(tree_pids "$1" | paste -sd,)" 2>/dev/null | awk '{ t += $1 } END { print t + 0 }'
+    ps -o rss= -p "$(tree_pids "$1" | paste -sd, -)" 2>/dev/null | awk '{ t += $1 } END { print t + 0 }'
 }
 
 # Only a LIVE heavy: claim has a job behind it worth measuring.
@@ -439,9 +484,10 @@ run)
     ( kill -STOP "$BASHPID"; exec "$@" <&3 3<&- ) &
     child=$!
     exec 3<&-
+    # CONT before the child's own STOP lands would leave it stopped for good.
     for _ in $(seq 500); do
-        st=$(cat "/proc/$child/stat" 2>/dev/null) || break
-        st=${st##*) }; [ "${st%% *}" = T ] && break
+        st=$(pid_state "$child") && [ -n "$st" ] || break
+        [ "$st" = T ] && break
         sleep 0.01
     done
     "$self" take "$res" "$op" --note "$note" --pid "$child" >&2
@@ -466,12 +512,21 @@ resources)
     # A snapshot to read before starting heavy work. Read-only.
     remote=1
     [ "${1:-}" = "--no-test-host" ] && remote=0
-    avail_kb=$(awk '/^MemAvailable:/{print $2}' /proc/meminfo)
-    read -r l1 l5 l15 _ < /proc/loadavg
+    if [ -r /proc/meminfo ]; then
+        avail_kb=$(awk '/^MemAvailable:/{print $2}' /proc/meminfo)
+        read -r l1 l5 l15 _ < /proc/loadavg
+    else
+        # macOS: free, inactive and speculative pages are what it hands out
+        # without swapping, the nearest it has to MemAvailable.
+        avail_kb=$(vm_stat 2>/dev/null | awk '/page size of/ {ps = $8}
+            /^Pages (free|inactive|speculative):/ {gsub(/\./, "", $NF); n += $NF}
+            END {if (ps) printf "%d", n * ps / 1024}')
+        read -r l1 l5 l15 _ <<<"$(sysctl -n vm.loadavg 2>/dev/null | tr -d '{}')"
+    fi
     if j=$(pool_target); then jl="jobpool target $j"; else jl="build -j$("${BASH_SOURCE[0]}" jobs)"; fi
     printf '%s: %.1fGB available, load %s %s %s on %s cpus, %s\n' \
-        "$(hostname -s)" "$(awk -v kb="$avail_kb" 'BEGIN{print kb/1048576}')" \
-        "$l1" "$l5" "$l15" "$(nproc)" "$jl"
+        "$(hostname -s)" "$(awk -v kb="${avail_kb:-0}" 'BEGIN{print kb/1048576}')" \
+        "${l1:-?}" "${l5:-?}" "${l15:-?}" "$(nproc 2>/dev/null || sysctl -n hw.ncpu)" "$jl"
     shopt -s nullglob
     live=0
     for f in "$CLAIM_DIR"/*.json; do
@@ -501,7 +556,15 @@ resources)
     # The named groups always show when present; clangd in particular grows
     # without bound per session. The rest fill in by size.
     printf 'memory by command (count, total RSS, largest):\n'
-    ps -eo rss=,pid=,etimes=,comm= 2>/dev/null | awk '
+    # etime ([[dd-]hh:]mm:ss), not etimes, which a Mac lacks. comm runs to the
+    # end of the line: on a Mac it is the executable's path, spaces and all.
+    ps -eo rss=,pid=,etime=,comm= 2>/dev/null | awk '
+        function secs(e,    d, t, n) {
+            d = 0
+            if (index(e, "-")) { d = substr(e, 1, index(e, "-") - 1); e = substr(e, index(e, "-") + 1) }
+            n = split(e, t, ":")
+            return d * 86400 + (n == 3 ? t[1] * 3600 + t[2] * 60 + t[3] : t[1] * 60 + t[2])
+        }
         function age(s) {
             if (s >= 86400) return sprintf("%dd%02dh", s/86400, s%86400/3600)
             if (s >= 3600)  return sprintf("%dh%02dm", s/3600, s%3600/60)
@@ -513,12 +576,14 @@ resources)
         }
         {
             g = $4
+            for (i = 5; i <= NF; i++) g = g " " $i
+            if (g ~ /^\//) sub(/.*\//, "", g)
             if (g ~ /^clangd/) g = "clangd"   # its worker threads rename the process
             else if (g ~ /^(cc1plus|clang\+\+|clang|g\+\+)$/) g = "cc1plus/clang++"
             else if (g ~ /^(addr2line|eu-addr2line|llvm-symbolizer|llvm-addr2line|gdb)$/) g = "addr2line/gdb"
             else if (g ~ /^(docker|containerd)/) g = "docker"
             n[g]++; tot[g] += $1
-            if ($1 > big[g]) { big[g] = $1; bpid[g] = $2; bage[g] = $3 }
+            if ($1 > big[g]) { big[g] = $1; bpid[g] = $2; bage[g] = secs($3) }
         }
         END {
             for (g in tot)
