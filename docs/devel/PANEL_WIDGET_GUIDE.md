@@ -273,7 +273,11 @@ draws a target a finger cannot hit. The widget publishes the verdict as
 `_cell_h`, `_rail_h`, `_detail` and `_two_line`, plus per-head pools (`tool_switcher_seg_<i>_*`)
 and the face's text (`tool_switcher_face_label`, `_sub`, `_color`, `_has_color`), and the
 XML (`ui_xml/components/panel_widget_tool_switcher.xml`) sizes segments with
-`bind_style_prop` off `_cell_w`/`_cell_h`. The sheet (`ToolSwitcherWidget::ToolPicker`,
+`bind_style_prop` off `_cell_w`/`_cell_h`. The face sizes itself off `tool_switcher_face_w`
+and `tool_switcher_face_h`: its cell along a `Pair`'s long axis, the whole view across it.
+Colour strips are `tool_switcher_strip_h` on a segment or the face, from the cell height,
+and `tool_switcher_row_strip_h` on a sheet row, from the 48 px `#touch_target_min` floor
+every row clears. The sheet (`ToolSwitcherWidget::ToolPicker`,
 `ui_xml/tool_switcher_picker.xml`) is the fallback for whatever the tile does not show:
 it lists every head and Park in rows at least `#touch_target_min` tall, opens from the face or from
 the mounted segment, and is the only way to Park in `Rail` or `Single`. A printer with

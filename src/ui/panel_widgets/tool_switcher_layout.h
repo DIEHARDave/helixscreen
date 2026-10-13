@@ -14,8 +14,8 @@
 
 namespace helix {
 
-/// The values are the widget's published mode subject ints, so XML ref_values
-/// and this enum stay in lockstep by construction.
+/// The values are the widget's published mode subject ints. The XML compares
+/// that subject against literal ref_values, which must match these values.
 enum class ToolSwitcherMode : int { RailWithPark = 0, Rail = 1, Pair = 2, Single = 3 };
 
 struct ToolSwitcherLayout {

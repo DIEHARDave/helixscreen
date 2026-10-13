@@ -17,7 +17,6 @@
 
 #include "src/ui/panel_widgets/tool_switcher_layout.h"
 
-#include <string>
 #include <vector>
 
 #include "../catch_amalgamated.hpp"
@@ -291,7 +290,8 @@ TEST_CASE("Tool switcher layout: a detail block fits under a tall rail", "[tool_
         CHECK(l.rail_h == k800_2x1.h);
     }
     SECTION("a rail with no room left under it fills the box") {
-        // 4 heads at 480x272 2x2 need two rows of 58 px: nothing is left.
+        // 4 heads at 480x272 2x2 need two rows: even 48 px rows leave 20 px,
+        // under the 25 px of 2.5 small lines.
         const ToolSwitcherLayout l = layout_for(4, k480_2x2, kFonts480);
         REQUIRE(l.mode == ToolSwitcherMode::Rail);
         CHECK_FALSE(l.detail);
