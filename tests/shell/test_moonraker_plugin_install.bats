@@ -399,3 +399,53 @@ setup_instrumented_home() {
     contains "Could not back up moonraker.conf" "$output"
     [ ! -e "$home/moonraker/moonraker/components/helix_print.py" ]
 }
+
+# A Creality K1-series box: HOME is /root with no Moonraker in it, the Moonraker
+# repo is nested inside /usr/data/moonraker, and printer_data is under
+# /usr/data. Only the running process says where any of it is.
+setup_creality_k1_layout() {
+    local root="$1"
+    local pkg="$root/usr/data/moonraker/moonraker/moonraker"
+    local data="$root/usr/data/printer_data"
+    mkdir -p "$pkg/components" "$data/config" "$root/home" "$root/proc/1444"
+    : > "$pkg/moonraker.py"
+    printf '[server]\nhost: 0.0.0.0\n' > "$data/config/moonraker.conf"
+    printf '%s\0' "$root/usr/data/moonraker/moonraker-env/bin/python" "$pkg/moonraker.py" \
+        -d "$data" > "$root/proc/1444/cmdline"
+    for cmd in sudo service curl; do
+        mock_command_script "$cmd" 'exit 0'
+    done
+}
+
+@test "auto install finds a Creality K1 Moonraker from its running process" {
+    local root="$BATS_TEST_TMPDIR/k1"
+    setup_creality_k1_layout "$root"
+
+    run env HOME="$root/home" HELIX_PROC_ROOT="$root/proc" sh "$SCRIPT" --no-restart --auto
+    [ "$status" -eq 0 ] || fail "install failed: $output"
+    [ -L "$root/usr/data/moonraker/moonraker/moonraker/components/helix_print.py" ]
+    grep -q '^\[helix_print\]' "$root/usr/data/printer_data/config/moonraker.conf"
+}
+
+@test "auto uninstall finds a Creality K1 Moonraker from its running process" {
+    local root="$BATS_TEST_TMPDIR/k1"
+    setup_creality_k1_layout "$root"
+    local target="$root/usr/data/moonraker/moonraker/moonraker/components/helix_print.py"
+    ln -s "$REPO_ROOT/moonraker-plugin/helix_print.py" "$target"
+
+    run env HOME="$root/home" HELIX_PROC_ROOT="$root/proc" sh "$SCRIPT" --no-restart --uninstall-auto
+    [ "$status" -eq 0 ] || fail "uninstall failed: $output"
+    [ ! -e "$target" ]
+}
+
+@test "plugin installer searches every Moonraker root the main installer knows" {
+    local roots
+    roots=$(sed -n '/^MOONRAKER_SRC_PATHS="/,/^"/p' "$REPO_ROOT/scripts/lib/installer/moonraker.sh" | grep '^/')
+    [ -n "$roots" ] || fail "no roots parsed from scripts/lib/installer/moonraker.sh"
+    local plugin_roots
+    plugin_roots=$(sed -n '/^MOONRAKER_SRC_PATHS="/,/^"/p' "$SCRIPT" | grep '^/')
+    local r
+    for r in $roots; do
+        printf '%s\n' "$plugin_roots" | grep -qx "$r" || fail "plugin install.sh misses Moonraker root $r"
+    done
+}
