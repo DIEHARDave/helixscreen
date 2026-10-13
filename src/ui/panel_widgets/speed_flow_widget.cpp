@@ -53,6 +53,9 @@ char s_speed_measured_buf[32];
 char s_flow_measured_buf[32];
 bool s_subjects_initialized = false;
 SubjectManager s_subjects;
+// The instance bound to the live tile. Only it publishes: a transient instance (a
+// fits_at probe, a rebuild's outgoing widget) must not overwrite the tile's verdict.
+const void* s_owner = nullptr;
 
 void speed_flow_init_subjects() {
     if (s_subjects_initialized)
@@ -97,17 +100,16 @@ struct Texts {
     std::string flow_measured;
 };
 
-/// The number with its unit and percent sign dropped, for rungs too narrow for them.
-std::string bare_number(const std::string& text) {
-    const auto end = text.find_first_of(" %");
-    return end == std::string::npos ? text : text.substr(0, end);
+/// The percent sign dropped, for the rungs too narrow to carry it. Measured readings
+/// keep their unit: a bare number would not say which axis it measures.
+std::string without_percent(const std::string& text) {
+    return text.empty() || text.back() != '%' ? text : text.substr(0, text.size() - 1);
 }
 
 /// Everything the labels show at `rung`, composed once for the widget to render and to
-/// measure, so the ladder never decides on widths the labels do not draw. Below Cell
-/// there is no room for both readings: with physical units on and a print running the
-/// measured reading takes the percentage's place.
-Texts compose_texts(const Readings& r, helix::SizeRung rung, bool printing, bool physical) {
+/// measure, so the ladder never decides on widths the labels do not draw.
+/// `value_is_measured` puts the measured readings where the percentages go.
+Texts compose_texts(const Readings& r, helix::SizeRung rung, bool value_is_measured) {
     using helix::SizeRung;
     const auto percent =
         helix::tune::status_speed_flow_text(false, r.speed_pct, r.flow_pct, r.live_velocity_mm_s,
@@ -115,18 +117,14 @@ Texts compose_texts(const Readings& r, helix::SizeRung rung, bool printing, bool
     const auto measured =
         helix::tune::status_speed_flow_text(true, r.speed_pct, r.flow_pct, r.live_velocity_mm_s,
                                             r.extruder_velocity_centimm_s, r.filament_diameter_mm);
-    const bool small_rung = static_cast<int>(rung) < static_cast<int>(SizeRung::Cell);
-    const bool replaced = printing && physical && small_rung;
-
     Texts t;
-    t.speed = replaced ? measured.speed : percent.speed;
-    t.flow = replaced ? measured.flow : percent.flow;
+    t.speed = value_is_measured ? measured.speed : percent.speed;
+    t.flow = value_is_measured ? measured.flow : percent.flow;
     t.speed_measured = measured.speed;
     t.flow_measured = measured.flow;
-    if (rung == SizeRung::Strip || rung == SizeRung::Column ||
-        (replaced && rung == SizeRung::Glance)) {
-        t.speed = bare_number(t.speed);
-        t.flow = bare_number(t.flow);
+    if (!value_is_measured && (rung == SizeRung::Strip || rung == SizeRung::Column)) {
+        t.speed = without_percent(t.speed);
+        t.flow = without_percent(t.flow);
     }
     return t;
 }
@@ -157,7 +155,7 @@ int widest(const std::string& a, const std::string& b, const lv_font_t* font) {
 /// speed_flow_part.xml: spacing is the XML's pad_row (space_xxs) and pad_column
 /// (space_xs); the gap between the two axes is the body's, which the content-box
 /// chrome already holds back.
-helix::RungNeeds measure_needs(const Readings& worst, bool printing, bool physical) {
+helix::RungNeeds measure_needs(const Readings& worst, bool printing, bool measured_values) {
     using helix::rung_box;
     using helix::SizeRung;
     const Fonts f = load_fonts();
@@ -180,7 +178,9 @@ helix::RungNeeds measure_needs(const Readings& worst, bool printing, bool physic
     const int heading_h = line_px(f.heading);
 
     const auto texts_at = [&](SizeRung rung) {
-        return compose_texts(worst, rung, printing, physical);
+        return compose_texts(worst, rung,
+                             measured_values &&
+                                 static_cast<int>(rung) < static_cast<int>(SizeRung::Cell));
     };
     const std::string speed_label = lv_tr("Speed");
     const std::string flow_label = lv_tr("Flow");
@@ -285,19 +285,26 @@ SpeedFlowVerdict SpeedFlowWidget::decide(int width_px, int height_px, bool print
     widest_readings.live_velocity_mm_s = 300;
     widest_readings.extruder_velocity_centimm_s = 3000;
     widest_readings.filament_diameter_mm = printer_state_.get_discovery().filament_diameter_mm();
-    in.needs = measure_needs(widest_readings, printing, physical);
+    in.needs = measure_needs(widest_readings, printing, false);
+    if (printing && physical) {
+        in.measured_needs = measure_needs(widest_readings, printing, true);
+    }
     const auto& n = in.needs;
     spdlog::trace("[SpeedFlowWidget] box {}x{} chrome {}x{} needs g{}x{} s{}x{} c{}x{} cell{}x{} "
                   "w{}x{} f{}x{} printing={} physical={}",
                   width_px, height_px, chrome.w, chrome.h, n.glance.w, n.glance.h, n.strip.w,
                   n.strip.h, n.column.w, n.column.h, n.cell.w, n.cell.h, n.wide.w, n.wide.h,
                   n.full.w, n.full.h, printing, physical);
+    const auto& m = in.measured_needs;
+    spdlog::trace("[SpeedFlowWidget] measured needs g{}x{} s{}x{} c{}x{}", m.glance.w, m.glance.h,
+                  m.strip.w, m.strip.h, m.column.w, m.column.h);
     return decide_speed_flow_layout(in);
 }
 
 void SpeedFlowWidget::attach(lv_obj_t* widget_obj, lv_obj_t* parent_screen) {
     widget_obj_ = widget_obj;
     parent_screen_ = parent_screen;
+    s_owner = this;
     install_delete_hook(widget_obj);
 
     auto& motion = printer_state_.motion_state();
@@ -311,10 +318,18 @@ void SpeedFlowWidget::attach(lv_obj_t* widget_obj, lv_obj_t* parent_screen) {
     speed_observer_ =
         ui::observe<int>(motion.get_speed_factor_subject(), this, on_change, lifetime);
     flow_observer_ = ui::observe<int>(motion.get_flow_factor_subject(), this, on_change, lifetime);
+    // Velocity ticks arrive several times a second and only matter while a measured
+    // reading is on screen.
+    const auto on_velocity = [token](SpeedFlowWidget* self, int) {
+        if (token.expired())
+            return;
+        if (self->verdict_.show_measured || self->verdict_.value_is_measured)
+            self->publish_texts();
+    };
     velocity_observer_ =
-        ui::observe<int>(motion.get_live_velocity_subject(), this, on_change, lifetime);
+        ui::observe<int>(motion.get_live_velocity_subject(), this, on_velocity, lifetime);
     extruder_velocity_observer_ =
-        ui::observe<int>(motion.get_live_extruder_velocity_subject(), this, on_change, lifetime);
+        ui::observe<int>(motion.get_live_extruder_velocity_subject(), this, on_velocity, lifetime);
     print_active_observer_ = ui::observe<int>(
         printer_state_.print_state().get_print_active_subject(), this, on_change, lifetime);
     units_observer_ = ui::observe<int>(
@@ -334,6 +349,8 @@ void SpeedFlowWidget::detach() {
     extruder_velocity_observer_.reset();
     print_active_observer_.reset();
     units_observer_.reset();
+    if (s_owner == this)
+        s_owner = nullptr;
     widget_obj_ = nullptr;
     parent_screen_ = nullptr;
 }
@@ -344,6 +361,8 @@ void SpeedFlowWidget::on_size_changed(int /*colspan*/, int /*rowspan*/, int widt
     verdict_ = decide(width_px, height_px, live.printing, live.physical);
     decided_printing_ = live.printing;
     decided_physical_ = live.physical;
+    if (s_owner != this)
+        return;
 
     lv_subject_set_int(&s_rung_subject, static_cast<int>(verdict_.rung));
     lv_subject_set_int(&s_show_measured_subject, verdict_.show_measured ? 1 : 0);
@@ -358,15 +377,18 @@ void SpeedFlowWidget::on_size_changed(int /*colspan*/, int /*rowspan*/, int widt
 }
 
 bool SpeedFlowWidget::fits_at(int width_px, int height_px) const {
-    // Refuse a size that cannot draw the Glance content in either state.
+    // Refuse a size that cannot draw the Glance content in either state. The
+    // physical-units setting never refuses one: the measured readings only take the
+    // percentages' place where they fit.
     return decide(width_px, height_px, false, false).fits &&
-           decide(width_px, height_px, true, false).fits &&
-           decide(width_px, height_px, true, true).fits;
+           decide(width_px, height_px, true, false).fits;
 }
 
 void SpeedFlowWidget::publish_texts() {
+    if (s_owner != this)
+        return;
     const LiveState live = read_live();
-    const Texts t = compose_texts(live.readings, verdict_.rung, live.printing, live.physical);
+    const Texts t = compose_texts(live.readings, verdict_.rung, verdict_.value_is_measured);
     const auto set = [](lv_subject_t* subject, const std::string& text) {
         if (text != lv_subject_get_string(subject))
             lv_subject_copy_string(subject, text.c_str());

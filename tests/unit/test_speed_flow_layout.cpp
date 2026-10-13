@@ -25,16 +25,15 @@ constexpr RungNeeds kIdle{rung_box(33, 37), rung_box(86, 19),  rung_box(23, 73),
                           rung_box(71, 49), rung_box(107, 49), rung_box(72, 119)};
 constexpr RungNeeds kPrinting{rung_box(33, 37), rung_box(86, 19),  rung_box(23, 73),
                               rung_box(71, 91), rung_box(194, 49), rung_box(162, 131)};
-/// Printing with physical units: the measured number replaces the percentage, so the
-/// three small rungs measure that instead.
-constexpr RungNeeds kPrintingPhysical{rung_box(23, 37), rung_box(92, 19),  rung_box(26, 73),
-                                      rung_box(71, 91), rung_box(194, 49), rung_box(162, 131)};
+/// The measured readings, units included, standing in for the percentages on the three
+/// small rungs. They are wider, so they cost a rung's width where the percentages fit.
+constexpr RungNeeds kMeasured{rung_box(58, 37), rung_box(170, 19), rung_box(65, 73)};
 
 constexpr int kChrome = 9;
 
 SpeedFlowVerdict verdict_for(int w, int h, bool printing, bool physical = false) {
-    const RungNeeds& needs = !printing ? kIdle : (physical ? kPrintingPhysical : kPrinting);
-    return decide_speed_flow_layout({w, h, printing, physical, needs});
+    return decide_speed_flow_layout(
+        {w, h, printing, physical, printing ? kPrinting : kIdle, kMeasured});
 }
 
 /// The verdict for a tile box of the design's budget table.
@@ -149,9 +148,12 @@ TEST_CASE("speed_flow layout: flags follow rung and state", "[speed_flow][layout
         {33, 37, false, true, SizeRung::Glance, false, false, false},
         // printing, small rungs: only the physical-units setting swaps the value
         {33, 37, true, false, SizeRung::Glance, false, false, false},
-        {23, 37, true, true, SizeRung::Glance, false, true, false},
-        {92, 19, true, true, SizeRung::Strip, false, true, false},
-        {26, 73, true, true, SizeRung::Column, false, true, false},
+        {58, 37, true, true, SizeRung::Glance, false, true, false},
+        {57, 37, true, true, SizeRung::Glance, false, false, false},
+        {170, 19, true, true, SizeRung::Strip, false, true, false},
+        {169, 19, true, true, SizeRung::Strip, false, false, false},
+        {65, 73, true, true, SizeRung::Column, false, true, false},
+        {64, 73, true, true, SizeRung::Column, false, false, false},
         // printing at Cell and up: both shown, whatever the setting
         {71, 91, true, false, SizeRung::Cell, true, false, false},
         {71, 91, true, true, SizeRung::Cell, true, false, false},

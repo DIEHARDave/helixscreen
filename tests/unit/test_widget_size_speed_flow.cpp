@@ -14,14 +14,20 @@
  * Run with: ./build/bin/helix-tests "[widget_size][speed_flow]"
  */
 
+#include "ui_print_tune_overlay.h"
+
 #include "../lvgl_ui_test_fixture.h"
 #include "../test_helpers/panel_widget_size_harness.h"
 #include "../test_helpers/scoped_breakpoint.h"
 #include "../test_helpers/update_queue_test_access.h"
+#include "app_globals.h"
 #include "display_settings_manager.h"
+#include "moonraker_api.h"
+#include "moonraker_client_mock.h"
 #include "panel_widget_manager.h"
 #include "printer_state.h"
 #include "src/ui/panel_widgets/speed_flow_widget.h"
+#include "tune_controller.h"
 
 #include "../catch_amalgamated.hpp"
 
@@ -203,22 +209,28 @@ TEST_CASE_METHOD(SpeedFlowFixture, "speed_flow: print_active re-decides the rung
     CHECK(subject_int("speed_flow_show_steppers") == 0);
 }
 
-TEST_CASE_METHOD(SpeedFlowFixture, "speed_flow: physical units swap the value only below Cell",
+TEST_CASE_METHOD(SpeedFlowFixture,
+                 "speed_flow: physical units swap the value only below Cell, where it fits",
                  "[widget_size][speed_flow]") {
     set_print_active(true);
     set_live(45, 300);
+    set_physical_units(true);
     PanelWidgetHarness<SpeedFlowWidget> h(test_screen(), state());
 
+    // The measured reading keeps its unit, so it needs more width than the percentage:
+    // a half cell keeps the percentage rather than give up its rung.
     h.resize(1, 1, 55, 54);
     REQUIRE(rung_subject() == static_cast<int>(SizeRung::Glance));
     CHECK(subject_text("speed_flow_speed_text") == "100%");
-
-    set_physical_units(true);
-    CHECK(subject_text("speed_flow_speed_text") == "45");
-
     h.resize(1, 1, 114, 54);
     REQUIRE(rung_subject() == static_cast<int>(SizeRung::Strip));
-    CHECK(subject_text("speed_flow_speed_text") == "45");
+    CHECK(subject_text("speed_flow_speed_text") == "100");
+
+    // A strip wide enough for both readings swaps, units included.
+    h.resize(1, 1, 233, 53);
+    REQUIRE(rung_subject() == static_cast<int>(SizeRung::Strip));
+    CHECK(subject_text("speed_flow_speed_text") == "45 mm/s");
+    CHECK(subject_text("speed_flow_flow_text").find("mm\xC2\xB3/s") != std::string::npos);
 
     // With room, the percentage stays primary whatever the setting.
     h.resize(1, 1, 114, 113);
@@ -227,8 +239,163 @@ TEST_CASE_METHOD(SpeedFlowFixture, "speed_flow: physical units swap the value on
 
     // Idle never swaps.
     set_print_active(false);
-    h.resize(1, 1, 55, 54);
-    CHECK(subject_text("speed_flow_speed_text") == "100%");
+    h.resize(1, 1, 233, 53);
+    CHECK(subject_text("speed_flow_speed_text") == "100");
+}
+
+TEST_CASE_METHOD(SpeedFlowFixture, "speed_flow: the physical-units setting never moves fits_at",
+                 "[widget_size][speed_flow]") {
+    SpeedFlowWidget widget(state());
+    std::vector<bool> without;
+    for (int w = 20; w <= 120; w += 4)
+        without.push_back(widget.fits_at(w, 50));
+    set_physical_units(true);
+    set_print_active(true);
+    std::vector<bool> with;
+    for (int w = 20; w <= 120; w += 4)
+        with.push_back(widget.fits_at(w, 50));
+    CHECK(with == without);
+}
+
+TEST_CASE_METHOD(SpeedFlowFixture,
+                 "speed_flow: a transient instance does not publish over the live tile",
+                 "[widget_size][speed_flow]") {
+    PanelWidgetHarness<SpeedFlowWidget> h(test_screen(), state());
+    h.resize(1, 1, 234, 232);
+    REQUIRE(rung_subject() == static_cast<int>(SizeRung::Full));
+
+    SpeedFlowWidget transient(state());
+    transient.notify_size_changed(1, 1, 55, 54);
+    CHECK(rung_subject() == static_cast<int>(SizeRung::Full));
+}
+
+TEST_CASE_METHOD(SpeedFlowFixture,
+                 "speed_flow: velocity ticks only reformat while a measured reading shows",
+                 "[widget_size][speed_flow]") {
+    PanelWidgetHarness<SpeedFlowWidget> h(test_screen(), state());
+    h.resize(1, 1, 114, 113);
+    REQUIRE(rung_subject() == static_cast<int>(SizeRung::Cell));
+    drain(); // the observers' initial notifications
+    const std::string idle_text = subject_text("speed_flow_speed_measured");
+
+    set_live(77, 400); // idle: nothing measured is drawn
+    CHECK(subject_text("speed_flow_speed_measured") == idle_text);
+
+    set_print_active(true);
+    set_live(78, 400);
+    CHECK(subject_text("speed_flow_speed_measured") == "78 mm/s");
+}
+
+namespace {
+
+/// The speed_flow fixture with a mock API installed as the app's, so a stepper tap's
+/// gcode can be read back.
+struct SpeedFlowActionFixture : public SpeedFlowFixture {
+    SpeedFlowActionFixture()
+        : mock(MoonrakerClientMock::PrinterType::VORON_24), mock_api(mock, state()) {
+        state().set_klippy_state_sync(KlippyState::READY);
+        mock.connect("ws://mock/websocket", []() {}, []() {});
+        previous_api = get_moonraker_api();
+        set_moonraker_api(&mock_api);
+        set_print_active(true);
+        sentinel();
+    }
+    ~SpeedFlowActionFixture() override {
+        set_moonraker_api(previous_api);
+        mock.stop_temperature_simulation();
+        mock.disconnect();
+    }
+
+    /// A gcode no action sends, so "nothing was sent" is distinguishable.
+    void sentinel() {
+        helix::tune::set_speed_percent(&mock_api, 77);
+        REQUIRE(last_sent() == "M220 S77");
+    }
+    const std::string& last_sent() const {
+        return mock.last_send_script();
+    }
+    void tap(lv_obj_t* obj) {
+        lv_obj_send_event(obj, LV_EVENT_CLICKED, nullptr);
+    }
+
+    MoonrakerClientMock mock;
+    MoonrakerAPI mock_api;
+    IMoonrakerAPI* previous_api = nullptr;
+};
+
+} // namespace
+
+TEST_CASE_METHOD(SpeedFlowActionFixture, "speed_flow: steppers send 5 percent steps, clamped",
+                 "[widget_size][speed_flow][actions]") {
+    PanelWidgetHarness<SpeedFlowWidget> h(test_screen(), state());
+    h.resize(1, 1, 234, 232);
+    REQUIRE(subject_int("speed_flow_show_steppers") == 1);
+
+    set_percentages(100, 100);
+    tap(part(h, "speed", "speed_flow_plus"));
+    CHECK(last_sent() == "M220 S105");
+    tap(part(h, "speed", "speed_flow_minus"));
+    CHECK(last_sent() == "M220 S95");
+    tap(part(h, "flow", "speed_flow_plus"));
+    CHECK(last_sent() == "M221 S105");
+    tap(part(h, "flow", "speed_flow_minus"));
+    CHECK(last_sent() == "M221 S95");
+
+    set_percentages(helix::tune::kSpeedMaxPct, helix::tune::kFlowMaxPct);
+    tap(part(h, "speed", "speed_flow_plus"));
+    CHECK(last_sent() == "M220 S200");
+    tap(part(h, "flow", "speed_flow_plus"));
+    CHECK(last_sent() == "M221 S125");
+
+    set_percentages(helix::tune::kSpeedMinPct, helix::tune::kFlowMinPct);
+    tap(part(h, "speed", "speed_flow_minus"));
+    CHECK(last_sent() == "M220 S50");
+    tap(part(h, "flow", "speed_flow_minus"));
+    CHECK(last_sent() == "M221 S75");
+}
+
+TEST_CASE_METHOD(SpeedFlowActionFixture, "speed_flow: long-press resets that axis to 100",
+                 "[widget_size][speed_flow][actions]") {
+    PanelWidgetHarness<SpeedFlowWidget> h(test_screen(), state());
+    h.resize(1, 1, 234, 232);
+    set_percentages(130, 80);
+
+    lv_obj_send_event(part(h, "speed", "speed_flow_full_value"), LV_EVENT_LONG_PRESSED, nullptr);
+    CHECK(last_sent() == "M220 S100");
+    lv_obj_send_event(part(h, "flow", "speed_flow_full_value"), LV_EVENT_LONG_PRESSED, nullptr);
+    CHECK(last_sent() == "M221 S100");
+}
+
+TEST_CASE_METHOD(SpeedFlowActionFixture,
+                 "speed_flow: a long-press while the steppers are hidden sends nothing",
+                 "[widget_size][speed_flow][actions]") {
+    set_print_active(false);
+    PanelWidgetHarness<SpeedFlowWidget> h(test_screen(), state());
+    h.resize(1, 1, 234, 232);
+    REQUIRE(rung_subject() == static_cast<int>(SizeRung::Full));
+    REQUIRE(subject_int("speed_flow_show_steppers") == 0);
+    set_percentages(130, 80);
+    sentinel();
+
+    lv_obj_send_event(part(h, "speed", "speed_flow_full_value"), LV_EVENT_LONG_PRESSED, nullptr);
+    lv_obj_send_event(part(h, "flow", "speed_flow_full_value"), LV_EVENT_LONG_PRESSED, nullptr);
+    CHECK(last_sent() == "M220 S77");
+}
+
+TEST_CASE_METHOD(SpeedFlowActionFixture,
+                 "speed_flow: a stepper tap does not open the Tune overlay, a tile tap does",
+                 "[widget_size][speed_flow][actions]") {
+    PanelWidgetHarness<SpeedFlowWidget> h(test_screen(), state());
+    h.resize(1, 1, 234, 232);
+    set_percentages(100, 100);
+
+    tap(part(h, "speed", "speed_flow_plus"));
+    process_lvgl(50);
+    CHECK_FALSE(get_print_tune_overlay().is_visible());
+
+    tap(h.root());
+    process_lvgl(500);
+    CHECK(get_print_tune_overlay().is_visible());
 }
 
 TEST_CASE_METHOD(SpeedFlowFixture, "speed_flow: an override off 100 draws amber at every rung",

@@ -41,6 +41,26 @@ struct RungNeeds {
     RungBox wide;
     RungBox full;
     RungBox large;
+
+    constexpr const RungBox& at(SizeRung rung) const {
+        switch (rung) {
+        case SizeRung::Glance:
+            return glance;
+        case SizeRung::Strip:
+            return strip;
+        case SizeRung::Column:
+            return column;
+        case SizeRung::Cell:
+            return cell;
+        case SizeRung::Wide:
+            return wide;
+        case SizeRung::Full:
+            return full;
+        case SizeRung::Large:
+            return large;
+        }
+        return glance;
+    }
 };
 
 constexpr bool rung_box_fits(int content_w, int content_h, const RungBox& box) {
