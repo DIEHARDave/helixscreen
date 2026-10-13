@@ -3,9 +3,11 @@
 
 #include "env_knobs.h"
 #include "moonraker_client_mock_internal.h"
+#include "text_io.h"
 
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
 #include <cctype>
 #include <chrono>
 #include <string>
@@ -833,8 +835,30 @@ void register_object_handlers(std::unordered_map<std::string, MethodHandler>& re
             // Toolchanger + per-tool objects — emit when discovered so
             // ToolState parsers can populate AmsState.
             if (objects.contains("toolchanger")) {
-                status_obj["toolchanger"] = {
-                    {"status", "ready"}, {"tool_number", 0}, {"tool_numbers", json::array({0})}};
+                // klipper-toolchanger lists every numbered tool, tool_numbers
+                // ascending and tool_names ("tool T0") in the same order. The
+                // mock's tools are "T<n>", numbered n.
+                std::vector<std::pair<int, std::string>> numbered;
+                for (auto it = objects.begin(); it != objects.end(); ++it) {
+                    const std::string& key = it.key();
+                    if (key.rfind("tool T", 0) != 0) {
+                        continue;
+                    }
+                    if (auto n = helix::text_io::parse_leading<int>(key.substr(6))) {
+                        numbered.emplace_back(*n, key);
+                    }
+                }
+                std::sort(numbered.begin(), numbered.end());
+                json tool_numbers = json::array();
+                json tool_names = json::array();
+                for (const auto& [number, name] : numbered) {
+                    tool_numbers.push_back(number);
+                    tool_names.push_back(name);
+                }
+                status_obj["toolchanger"] = {{"status", "ready"},
+                                             {"tool_number", 0},
+                                             {"tool_numbers", tool_numbers},
+                                             {"tool_names", tool_names}};
             }
             for (auto it = objects.begin(); it != objects.end(); ++it) {
                 if (it.key().rfind("tool ", 0) == 0) {
