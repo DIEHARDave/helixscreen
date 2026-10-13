@@ -66,6 +66,15 @@ TEST_CASE("compute_mesh_stats: a flat mesh has no range", "[bed_mesh][mesh_stats
     CHECK(s.range == 0.0f);
 }
 
+TEST_CASE("compute_mesh_stats: equal extremes report the first point probed",
+          "[bed_mesh][mesh_stats]") {
+    const MeshStats s = compute_mesh_stats(make_profile({{0.3f, 0.0f, 0.3f}, {0.0f, 0.3f, 0.0f}}));
+    CHECK(s.max_x == Catch::Approx(10.0f));
+    CHECK(s.max_y == Catch::Approx(20.0f));
+    CHECK(s.min_x == Catch::Approx(60.0f));
+    CHECK(s.min_y == Catch::Approx(20.0f));
+}
+
 TEST_CASE("compute_mesh_stats: Klipper's empty mesh reads as not loaded",
           "[bed_mesh][mesh_stats]") {
     CHECK_FALSE(compute_mesh_stats(BedMeshProfile{}).loaded);
