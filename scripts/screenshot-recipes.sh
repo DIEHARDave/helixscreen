@@ -56,6 +56,18 @@ callouts-2x2       navigate home
 callouts-4x2       navigate home; set settings_long_press_time 10000; long_press 200 111; press 379 63; release 379 63; press 424 5; release 424 5; press 498 63; release 498 63; press 531 5; release 531 5; press 379 181; release 379 181; press 412 123; release 412 123; press 498 181; release 498 181; press 531 123; release 531 123; press 200 111; release 200 111; press 317 111; move 790 111; release 790 111; click nav_btn_edit_done
 callouts-untagged  navigate home
 
+# Home widget catalog (docs/user/guide/home-panel.md). A long press on the grid
+# enters Edit Mode, then the nav bar plus button (nav_btn_edit_add) opens the
+# catalog; a second long press would grab the selected tile instead
+# (docs/devel/HELIXCTL.md, section Home-grid Edit Mode and the widget catalog).
+# The category rows share the name action_row, so the Filament category is
+# picked by its index, which follows the WidgetCategory order in
+# include/panel_widget_registry.h. The default 800x480 layout leaves no free
+# cell, which dims every row with a needs-space note, so the category shot
+# removes fan_stack first.
+widget-catalog           navigate home; long_press 200 111; click nav_btn_edit_add
+widget-catalog-category  navigate home; home remove fan_stack; wait_idle; long_press 200 111; click nav_btn_edit_add; wait_idle; click action_row[2]
+
 # Control overlays
 motion             navigate controls; click btn_motion
 nozzle-temp        navigate controls; click btn_nozzle_temp
