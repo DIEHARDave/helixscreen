@@ -56,6 +56,7 @@ void register_speed_flow_widget();
 void register_dryer_widget();
 void register_z_offset_widget();
 void register_host_health_widget();
+void register_exclude_map_widget();
 void register_active_spool_widget();
 void register_bypass_widget();
 #if HELIX_HAS_CAMERA
@@ -131,6 +132,7 @@ static std::vector<PanelWidgetDef> s_widget_defs = {
     {"control_buttons",  TR_NOOP("Print Controls"),    "pause",            TR_NOOP("Pause, resume, or stop the print"),   nullptr,              nullptr,                               CAT_PRINT,    false, 4, 2, 2, 2, 8, 4},
     {"job_queue",        TR_NOOP("Job Queue"),         "progress_clock",   TR_NOOP("Print jobs waiting to run"),        nullptr,              nullptr,                               CAT_PRINT,    false, 4, 4, 4, 4, 8, 6, false, true, true},
     {"speed_flow",       TR_NOOP("Speed / Flow"),      "speed",            TR_NOOP("Speed and flow overrides, with a tap to tune"), nullptr,           nullptr,                               CAT_PRINT,    false, 4, 2, 1, 1, 8, 4, false, true, true},
+    {"exclude_map",      TR_NOOP("Exclude Objects"),   "debug_step_over",  TR_NOOP("Objects in the print, with a tap to open the skip map"), "printer_has_exclude_object", "Requires Klipper exclude_object", CAT_PRINT,    false, 4, 4, 1, 1, 8, 6, false, true, true},
     {"dryer",            TR_NOOP("Filament Dryer"),    "heat_wave",        TR_NOOP("Drying progress and humidity for boxes, the chamber, and the bed"), "home_dryer_available", "No filament dryer detected",         CAT_FILAMENT, false, 2, 2, 1, 1, 6, 8, false, true, true},
     {"z_offset",         TR_NOOP("Z-Offset"),          "axis_z_arrow",     TR_NOOP("Live Z-offset, with baby steps and Save"), nullptr,           nullptr,                               CAT_PRINT,    false, 4, 2, 1, 1, 8, 4, false, true, true},
     //                                                                                                                                          hint                                cat              en  col row min_c min_r max_c max_r  multi  half_c half_r merges_card
@@ -387,6 +389,7 @@ void init_widget_registrations() {
     register_dryer_widget();
     register_z_offset_widget();
     register_host_health_widget();
+    register_exclude_map_widget();
 #if HELIX_HAS_CAMERA
     register_camera_widget();
 #endif

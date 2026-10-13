@@ -66,6 +66,9 @@ UI entry points:
 | `src/ui/ui_exclude_object_side_list.cpp` | List population, tap-to-exclude |
 | `include/ui_exclude_object_map_view.h` | Object map view with 3D selection brackets |
 | `src/ui/ui_exclude_object_map_view.cpp` | Map rendering and hit-testing |
+| `include/exclude_map_hatch.h` | `hatch_polygon()`: the diagonal hatching the mini map draws over an excluded object |
+| `ui_xml/components/exclude_object_map_mini.xml` | The mini map's component: a plate in a normal layout slot, no close button or dims label |
+| `src/ui/panel_widgets/exclude_map_widget.cpp` | The home tile: counts by rung, the mini map from Column up, a tap or "Skip objects..." opens the full map in print status (`PrintStatusPanel::push_overlay_with_exclude_map`) and never excludes |
 | `include/ui_exclude_object_badges.h` | `compute_object_badges()`: each object's number, colour, excluded flag and anchor, plus the shared badge styling and draw call |
 | `src/ui/ui_exclude_object_badges.cpp` | Badge decision (pure) and the disc drawn on the map and the 2D/3D render |
 | `src/api/moonraker_api_controls.cpp` | `MoonrakerAPI::exclude_object()` with input validation |

@@ -14,6 +14,9 @@ translations:
   '%d min': '%d分钟'
   '%d min left': '剩余 %d 分钟'
   '%d more sensors': 还有%d个传感器
+  '%d objects': '%d 个对象'
+  '%d of %d printing': '%d / %d 正在打印'
+  '%d skipped': '已跳过 %d 个'
   '%d slots': '%d 个槽位'
   '%d toolheads': '%d 个工具头'
   '%d tools': '%d 个工具'
@@ -1052,6 +1055,7 @@ translations:
   'Exception: {}': '异常: {}'
   Exclude: 排除
   Exclude Object?: '排除对象？'
+  Exclude Objects: '排除对象'
   Excluded: 已排除
   Exclusion cancelled: 排除已取消
   Execute printer macros: 执行打印机宏
@@ -2004,6 +2008,7 @@ translations:
   No networks found: 未找到网络
   No new mesh was stored as '{}': "没有新的网格保存为 '{}'"
   No notifications: 无通知
+  No objects: '无对象'
   No objects defined for this print: 此次打印未定义对象
   No output yet: 暂无输出
   No presets configured: 未配置预设
@@ -2075,6 +2080,7 @@ translations:
   Notification: 通知
   Notifications: 通知
   Notify when print finishes: 打印完成时通知
+  Now printing: '正在打印'
   Noz max: 喷嘴最高
   Noz min: 喷嘴最低
   Noz rec: 喷嘴推荐
@@ -2108,6 +2114,7 @@ translations:
   Object picks apply only to prints started now: '对象选择仅适用于现在开始的打印'
   Object positions unavailable: 对象位置不可用
   Objects: 对象
+  Objects in the print, with a tap to open the skip map: '打印中的对象，点按打开跳过地图'
   'Off': 关
   'Off:': '关:'
   'Off: runs with these values without asking': '关: 不询问,直接以这些值运行'
@@ -2899,9 +2906,11 @@ translations:
   Signal: 信号
   'Signal #': '信号 #'
   Similarity: "相似度"
+  Single object: '单个对象'
   Single toggle macro. State is not tracked.: 单个切换宏。不跟踪状态。
   Size: 大小
   Skip: 跳过
+  Skip objects...: '跳过对象...'
   Skipped: '已跳过'
   Sleep While Printing: 打印时休眠
   Sleep adjusted to match dim timeout: 休眠超时已调整

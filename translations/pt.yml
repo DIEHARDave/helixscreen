@@ -14,6 +14,9 @@ translations:
   '%d min': '%d min'
   '%d min left': 'restam %d min'
   '%d more sensors': '%d sensores adicionais'
+  '%d objects': '%d objetos'
+  '%d of %d printing': '%d de %d imprimindo'
+  '%d skipped': '%d ignorados'
   '%d slots': '%d slots'
   '%d toolheads': '%d cabeçotes'
   '%d tools': '%d ferramentas'
@@ -1132,6 +1135,7 @@ translations:
   'Exception: {}': 'Exceção: {}'
   Exclude: Excluir
   Exclude Object?: 'Excluir objeto?'
+  Exclude Objects: 'Excluir objetos'
   Excluded: Excluído
   Exclusion cancelled: Exclusão cancelada
   Execute printer macros: Executar macros da impressora
@@ -2148,6 +2152,7 @@ translations:
   No networks found: Nenhuma rede encontrada
   No new mesh was stored as '{}': "Nenhuma malha nova foi salva como '{}'"
   No notifications: Sem notificações
+  No objects: 'Sem objetos'
   No objects defined for this print: Nenhum objeto definido para esta impressão
   No output yet: Sem saída ainda
   No presets configured: Nenhuma predefinição configurada
@@ -2220,6 +2225,7 @@ translations:
   Notification: Notificação
   Notifications: Notificações
   Notify when print finishes: Notificar quando a impressão terminar
+  Now printing: 'Imprimindo agora'
   Noz max: Bico máx
   Noz min: Bico mín
   Noz rec: Bico rec
@@ -2253,6 +2259,7 @@ translations:
   Object picks apply only to prints started now: 'A seleção de objetos vale apenas para impressões iniciadas agora'
   Object positions unavailable: Posições dos objetos indisponíveis
   Objects: Objetos
+  Objects in the print, with a tap to open the skip map: 'Objetos da impressão, toque para abrir o mapa de exclusão'
   'Off': Desligado
   'Off:': 'Desligado:'
   'Off: runs with these values without asking': 'Desativado: executa com estes valores sem perguntar'
@@ -3104,10 +3111,12 @@ translations:
   Signal: Sinal
   'Signal #': 'Sinal #'
   Similarity: "Similaridade"
+  Single object: 'Objeto único'
   Single toggle macro. State is not tracked.: Macro de alternância única. O estado
     não é rastreado.
   Size: Tamanho
   Skip: Pular
+  Skip objects...: 'Pular objetos...'
   Skipped: 'Ignorado'
   Sleep While Printing: Suspender Durante Impressão
   Sleep adjusted to match dim timeout: Tempo de suspensão ajustado

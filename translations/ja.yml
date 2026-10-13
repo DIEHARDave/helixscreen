@@ -14,6 +14,9 @@ translations:
   '%d min': '%d分'
   '%d min left': '残り %d 分'
   '%d more sensors': 他%d個のセンサー
+  '%d objects': '%d個のオブジェクト'
+  '%d of %d printing': '%d/%d 印刷中'
+  '%d skipped': '%d個スキップ'
   '%d slots': '%d スロット'
   '%d toolheads': '%d ツールヘッド'
   '%d tools': '%d ツール'
@@ -1056,6 +1059,7 @@ translations:
   'Exception: {}': '例外: {}'
   Exclude: 除外
   Exclude Object?: 'オブジェクトを除外しますか？'
+  Exclude Objects: 'オブジェクトの除外'
   Excluded: 除外
   Exclusion cancelled: 除外がキャンセルされました
   Execute printer macros: プリンターマクロを実行
@@ -2011,6 +2015,7 @@ translations:
   No networks found: ネットワークが見つかりません
   No new mesh was stored as '{}': "新しいメッシュは '{}' として保存されませんでした"
   No notifications: 通知なし
+  No objects: 'オブジェクトなし'
   No objects defined for this print: この印刷にはオブジェクトが定義されていません
   No output yet: 出力なし
   No presets configured: プリセットが設定されていません
@@ -2082,6 +2087,7 @@ translations:
   Notification: 通知
   Notifications: 通知
   Notify when print finishes: 印刷完了時に通知
+  Now printing: '印刷中'
   Noz max: ノズル最大
   Noz min: ノズル最小
   Noz rec: ノズル推奨
@@ -2115,6 +2121,7 @@ translations:
   Object picks apply only to prints started now: 'オブジェクトの選択は今すぐ開始する印刷にのみ適用されます'
   Object positions unavailable: オブジェクト位置が利用できません
   Objects: オブジェクト
+  Objects in the print, with a tap to open the skip map: '印刷中のオブジェクト。タップでスキップマップを開きます'
   'Off': オフ
   'Off:': 'オフ:'
   'Off: runs with these values without asking': 'オフ: これらの値で確認なしに実行'
@@ -2908,9 +2915,11 @@ translations:
   Signal: 信号
   'Signal #': 信号番号
   Similarity: "類似度"
+  Single object: 'オブジェクト1個'
   Single toggle macro. State is not tracked.: 単一のトグルマクロ。状態は追跡されません。
   Size: サイズ
   Skip: スキップ
+  Skip objects...: 'オブジェクトをスキップ...'
   Skipped: 'スキップ'
   Sleep While Printing: 印刷中のスリープ
   Sleep adjusted to match dim timeout: スリープタイムアウトを調整しました
