@@ -19,10 +19,11 @@
     - buffer_present / buffer_slider / buffer_short_text / buffer_label: the
       filament buffer, drawn by UiBufferSlider into buffer_mini_slider
 
-    The meters sit under the lines. From the medium breakpoint up they keep their
-    full form (arc over reading over source; slider over reading over label);
-    below it they are one small row: a small arc beside its reading, the buffer
-    icon beside its reading.
+    The meters sit under the lines (not at all on a narrow portrait screen, which
+    has no height for them). In landscape from the medium breakpoint up they keep
+    their full form (arc over reading over source; slider over reading over
+    label); below it, and in portrait, they are one small row: a small arc beside
+    its reading, the buffer icon beside its reading.
 
     Color swatch updated by C++ via lv_obj_find_by_name(sidebar, "loaded_swatch").
     Clog arc size/stroke/color dynamically set by UiClogMeter C++ class via
@@ -70,9 +71,10 @@
       <!-- Clog detection meter: hidden with no source, and during any operation.
            Arc size set dynamically by UiClogMeter C++ SIZE_CHANGED callback. -->
       <lv_obj name="clog_meter" width="content" height="content" style_pad_all="0" scrollable="false" style_pad_row="0">
-        <bind_flag_if cond="clog_meter_mode eq 0 or ams_action ne 0" flag="hidden"/>
-        <bind_style_if_ge name="meter_column" subject="ui_breakpoint" ref_value="3"/>
-        <bind_style_if_lt name="meter_row" subject="ui_breakpoint" ref_value="3"/>
+        <bind_flag_if cond="clog_meter_mode eq 0 or ams_action ne 0 or (ui_is_portrait eq 1 and ui_breakpoint lt 3)"
+                      flag="hidden"/>
+        <bind_style_if name="meter_column" cond="ui_is_portrait eq 0 and ui_breakpoint ge 3"/>
+        <bind_style_if name="meter_row" cond="ui_is_portrait eq 1 or ui_breakpoint lt 3"/>
         <!-- Mini arc (sized by C++) -->
         <lv_obj name="clog_arc_container" style_pad_all="0" scrollable="false">
           <!-- Main arc: helix_progress_arc handles common styling and the
@@ -92,7 +94,7 @@
         <text_tiny name="clog_mode_text"
                    width="100%" bind_text="clog_meter_mode_text" style_text_color="#text_muted"
                    style_text_align="center" long_mode="wrap">
-          <bind_flag_if_lt subject="ui_breakpoint" flag="hidden" ref_value="3"/>
+          <bind_flag_if cond="ui_breakpoint lt 3 or ui_is_portrait eq 1" flag="hidden"/>
         </text_tiny>
       </lv_obj>
       <!-- Filament buffer meter: hidden without a reading, and during any
@@ -100,15 +102,16 @@
            centre on; below medium the buffer icon stands in for it. The number is
            the short form, so the meter stays narrow. -->
       <lv_obj name="buffer_mini" width="content" height="content" style_pad_all="0" scrollable="false" style_pad_row="0">
-        <bind_flag_if cond="buffer_present eq 0 or ams_action ne 0" flag="hidden"/>
-        <bind_style_if_ge name="meter_column" subject="ui_breakpoint" ref_value="3"/>
-        <bind_style_if_lt name="meter_row" subject="ui_breakpoint" ref_value="3"/>
+        <bind_flag_if cond="buffer_present eq 0 or ams_action ne 0 or (ui_is_portrait eq 1 and ui_breakpoint lt 3)"
+                      flag="hidden"/>
+        <bind_style_if name="meter_column" cond="ui_is_portrait eq 0 and ui_breakpoint ge 3"/>
+        <bind_style_if name="meter_row" cond="ui_is_portrait eq 1 or ui_breakpoint lt 3"/>
         <icon src="swap_vertical" size="xs" variant="secondary" clickable="false">
-          <bind_flag_if_ge subject="ui_breakpoint" flag="hidden" ref_value="3"/>
+          <bind_flag_if cond="ui_breakpoint ge 3 and ui_is_portrait eq 0" flag="hidden"/>
         </icon>
         <lv_obj name="buffer_mini_slider"
                 width="#buffer_slider_w" height="#buffer_mini_h" style_pad_all="0" scrollable="false" clickable="false">
-          <bind_flag_if cond="buffer_slider eq 0 or ui_breakpoint lt 3" flag="hidden"/>
+          <bind_flag_if cond="buffer_slider eq 0 or ui_breakpoint lt 3 or ui_is_portrait eq 1" flag="hidden"/>
         </lv_obj>
         <text_tiny name="buffer_mini_value"
                    width="content" bind_text="buffer_short_text" style_text_align="center" long_mode="wrap">
@@ -118,7 +121,7 @@
         </text_tiny>
         <text_tiny name="buffer_mini_label"
                    width="content" bind_text="buffer_label" style_text_color="#text_muted" style_text_align="center">
-          <bind_flag_if_lt subject="ui_breakpoint" flag="hidden" ref_value="3"/>
+          <bind_flag_if cond="ui_breakpoint lt 3 or ui_is_portrait eq 1" flag="hidden"/>
         </text_tiny>
       </lv_obj>
     </lv_obj>

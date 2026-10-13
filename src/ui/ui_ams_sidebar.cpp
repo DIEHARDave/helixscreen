@@ -4,6 +4,7 @@
 #include "ui_ams_sidebar.h"
 
 #include "ui_ams_device_operations_overlay.h"
+#include "ui_ams_slot_layout.h"
 #include "ui_batch_filament_modal.h"
 #include "ui_button.h"
 #include "ui_callback_helpers.h"
@@ -28,6 +29,7 @@
 #include "lvgl/src/others/translation/lv_translation.h"
 #include "moonraker_api.h"
 #include "observer_factory.h"
+#include "panel_widget_size.h"
 #include "post_op_cooldown_manager.h"
 #include "printer_state.h"
 #include "standard_macros.h"
@@ -661,6 +663,12 @@ void AmsOperationSidebar::recreate_step_progress_for_operation(StepOperationType
 
     current_operation_type_ = op_type;
 
+    // A row where the sidebar has no height for a list (a narrow portrait panel).
+    lv_subject_t* portrait_subject = lv_xml_get_subject(nullptr, "ui_is_portrait");
+    const bool horizontal = helix::ui::ams_stepper_horizontal(
+        portrait_subject && lv_subject_get_int(portrait_subject) != 0,
+        helix::widget_size::current_breakpoint());
+
     // Reset the backend-driven step driver; re-established below if the backend
     // supplies a specialized step model. Drop the old observer first.
     step_index_observer_.reset();
@@ -706,7 +714,7 @@ void AmsOperationSidebar::recreate_step_progress_for_operation(StepOperationType
             current_step_count_ = static_cast<int>(steps.size());
             step_progress_ =
                 ui_step_progress_create(step_progress_container_, steps.data(), current_step_count_,
-                                        false, "ams_step_progress");
+                                        horizontal, "ams_step_progress");
             if (step_progress_) {
                 // Observe the backend-supplied current-step subject. Every
                 // backend shipping today routes it through AmsState (narration
@@ -788,7 +796,7 @@ void AmsOperationSidebar::recreate_step_progress_for_operation(StepOperationType
                 {lv_tr("Purge"), StepState::Pending},
             };
             current_step_count_ = 3;
-            step_progress_ = ui_step_progress_create(step_progress_container_, steps, 3, false,
+            step_progress_ = ui_step_progress_create(step_progress_container_, steps, 3, horizontal,
                                                      "ams_step_progress");
         } else {
             ui_step_t steps[] = {
@@ -796,7 +804,7 @@ void AmsOperationSidebar::recreate_step_progress_for_operation(StepOperationType
                 {lv_tr("Feed filament"), StepState::Pending},
             };
             current_step_count_ = 2;
-            step_progress_ = ui_step_progress_create(step_progress_container_, steps, 2, false,
+            step_progress_ = ui_step_progress_create(step_progress_container_, steps, 2, horizontal,
                                                      "ams_step_progress");
         }
         break;
@@ -811,8 +819,8 @@ void AmsOperationSidebar::recreate_step_progress_for_operation(StepOperationType
         if (supports_purge)
             steps[n++] = {lv_tr("Purge"), StepState::Pending};
         current_step_count_ = n;
-        step_progress_ =
-            ui_step_progress_create(step_progress_container_, steps, n, false, "ams_step_progress");
+        step_progress_ = ui_step_progress_create(step_progress_container_, steps, n, horizontal,
+                                                 "ams_step_progress");
         break;
     }
     case StepOperationType::UNLOAD: {
@@ -823,8 +831,8 @@ void AmsOperationSidebar::recreate_step_progress_for_operation(StepOperationType
             steps[n++] = {tip_step_label, StepState::Pending};
         steps[n++] = {lv_tr("Retract"), StepState::Pending};
         current_step_count_ = n;
-        step_progress_ =
-            ui_step_progress_create(step_progress_container_, steps, n, false, "ams_step_progress");
+        step_progress_ = ui_step_progress_create(step_progress_container_, steps, n, horizontal,
+                                                 "ams_step_progress");
         break;
     }
     }

@@ -17,6 +17,7 @@ using Catch::Approx;
 using helix::ui::ams_stagger_label_width;
 using helix::ui::ams_stagger_row;
 using helix::ui::ams_stagger_row_height;
+using helix::ui::ams_stepper_horizontal;
 using helix::ui::AmsLabelRow;
 
 namespace {
@@ -318,4 +319,16 @@ TEST_CASE("env pill: stands at the box's back-right corner", "[ams][tray][env_ch
     const TrayBox b = reference_box();
     CHECK(pill_left_x(b) == Approx(b.fr + DEPTH_SKEW * b.depth));
     CHECK(pill_left_x(b) == Approx(tray_faces(b).back_wall[1].x));
+}
+
+TEST_CASE("step progress: horizontal only on a narrow portrait screen", "[ams][tray][stepper]") {
+    // Landscape keeps the vertical list at every size.
+    for (int bp = 0; bp <= 6; ++bp)
+        CHECK_FALSE(ams_stepper_horizontal(false, as_breakpoint(bp)));
+    // Portrait below medium has no height for a vertical list under the strip.
+    CHECK(ams_stepper_horizontal(true, UiBreakpoint::Micro));
+    CHECK(ams_stepper_horizontal(true, UiBreakpoint::Tiny));
+    CHECK(ams_stepper_horizontal(true, UiBreakpoint::Small));
+    CHECK_FALSE(ams_stepper_horizontal(true, UiBreakpoint::Medium));
+    CHECK_FALSE(ams_stepper_horizontal(true, UiBreakpoint::Large));
 }

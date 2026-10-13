@@ -1210,6 +1210,30 @@ With the bypass row and four buttons (Unload, Home, Check slots, Settings, the m
 mock backend shows) the column does not scroll at 480x272, 480x320 or 800x480. A backend
 that shows a fifth button adds a third row, which scrolls at 480x272.
 
+#### Portrait
+
+`ams_panel.xml` and `ams_overview_panel.xml` are one tree each, restyled on `ui_is_portrait`
+(`bind_style_if_eq` pairs on the panel, its content column, the left column, the path
+containers and the right column). In portrait the panel is a column: the header and the
+diagram full width on top, the tube run capped at `ams_portrait_path_h` (125 px at 272x480
+and 320x480, 170 at 480x800, 300 at 600x1024) so the diagram ends at the toolhead and the
+canvas tucks 12 px under the box instead of 8, and the right column becomes the bottom
+section, taking the rest of the height for the sidebar.
+
+The full-width box takes the same rules as landscape at the same breakpoint: two label rows
+below medium, three from medium up; the environment pill still costs the row its width.
+The sidebar tightens for portrait: its gaps drop to `space_xxs` and the status line's
+vertical padding to 0, the Bypass toggle rides at the end of the status line
+(`bypass_inline`, hidden during any operation like the landscape `bypass_row` it stands in
+for), and the strip's meters take their small row at every size (the clog arc's growth is
+capped by `ams_clog_arc_max`, at or above the landscape strip's own size). Below medium,
+where the bottom section is about 120 px, the strip drops its meters, the four actions sit
+in one row (`styles.action_cell_quarter`), and the step progress is a row instead of a
+list (`include/ui_ams_slot_layout.h#ams_stepper_horizontal`): a four-step list needs about
+90 px there, the row 56. `[portrait]` pins the 272x480 panel: the bottom section under the
+diagram, the capped canvas with the toolhead whole, no sidebar scroll, eight lane badges
+apart.
+
 ### AMS Overview Panel (`ui_panel_ams_overview`)
 
 Grid of unit cards showing all units across the system, above the system path canvas. Each card is a miniature visualization of the unit's slots. Clicking a card zooms inline into the **unit view**, which pages through the units starting on the tapped one (see "The unit view" below). Back from the unit view returns to the cards; Back from the cards leaves the panel, and reopening the panel opens the cards.

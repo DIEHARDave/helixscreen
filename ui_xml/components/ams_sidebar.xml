@@ -17,17 +17,43 @@
   -->
   <!-- Scrolls vertically: with every action a backend offers, the buttons
        outgrow a MEDIUM screen's column. -->
+  <!-- A portrait panel gives the sidebar only what the diagram leaves, so there the
+       gaps and the status line's padding tighten. -->
+  <styles>
+    <style name="gap_landscape" pad_row="#space_sm"/>
+    <style name="gap_portrait" pad_row="#space_xxs"/>
+    <style name="status_landscape" pad_all="#space_sm"/>
+    <style name="status_portrait" pad_left="#space_sm" pad_right="#space_sm" pad_top="0" pad_bottom="0"/>
+  </styles>
   <view name="ams_sidebar"
         extends="lv_obj" width="100%" height="100%" style_pad_all="0" scrollable="true" scroll_dir="ver"
-        flex_flow="column" style_flex_main_place="start" style_flex_cross_place="center" style_pad_gap="#space_sm">
+        flex_flow="column" style_flex_main_place="start" style_flex_cross_place="center" style_pad_column="#space_sm">
+    <bind_style_if_eq name="gap_landscape" subject="ui_is_portrait" ref_value="0"/>
+    <bind_style_if_eq name="gap_portrait" subject="ui_is_portrait" ref_value="1"/>
     <!-- What is loaded: the strip names the position and the filament -->
     <ams_loaded_card name="current_loaded_card"/>
     <!-- Status Section -->
     <lv_obj name="status_section"
-            width="100%" height="content" style_pad_all="#space_sm" flex_flow="row" style_flex_main_place="center"
-            style_flex_cross_place="center" style_pad_gap="#space_sm" scrollable="false">
+            width="100%" height="content" flex_flow="row" style_flex_main_place="center" style_flex_cross_place="center"
+            style_pad_gap="#space_sm" scrollable="false">
+      <bind_style_if_eq name="status_landscape" subject="ui_is_portrait" ref_value="0"/>
+      <bind_style_if_eq name="status_portrait" subject="ui_is_portrait" ref_value="1"/>
       <!-- Status label - bound to ams_action_detail subject -->
       <text_body name="status_label" bind_text="ams_action_detail" style_text_align="center" flex_grow="1"/>
+      <!-- In portrait the Bypass toggle rides at the end of the status line, so the
+           bottom section keeps a row for the actions. Hidden during any operation,
+           like the landscape bypass_row it stands in for. -->
+      <lv_obj name="bypass_inline"
+              width="content" height="content" style_pad_all="0" flex_flow="row" style_flex_cross_place="center"
+              style_pad_gap="#space_xs" scrollable="false">
+        <bind_flag_if cond="ui_is_portrait eq 0 or ams_supports_bypass eq 0 or ams_action ne 0" flag="hidden"/>
+        <icon src="source_branch" size="sm"/>
+        <text_body text="Bypass"/>
+        <ui_switch name="bypass_switch_inline" size="small" moves_machine="true">
+          <bind_state_if_eq subject="ams_bypass_active" state="checked" ref_value="1"/>
+          <event_cb trigger="value_changed" callback="ams_sidebar_bypass_toggled"/>
+        </ui_switch>
+      </lv_obj>
     </lv_obj>
     <!-- Step Progress Stepper (shown during load operations) -->
     <lv_obj name="progress_stepper_container"
@@ -38,8 +64,8 @@
     <!-- Flex spacer - pushes action buttons to bottom of column -->
     <lv_obj width="1" style_pad_all="0" scrollable="false" flex_grow="1"/>
     <!-- Action Buttons Container - hidden during ANY operation (ams_action != IDLE) -->
-    <!-- Two buttons to a row at every size (styles.action_*), so every action
-         stays on screen. -->
+    <!-- Two buttons to a row (styles.action_*), so every action stays on screen;
+         a narrow portrait screen puts all four in one row. -->
     <lv_obj name="action_buttons_container"
             width="100%" height="content" style_pad_all="0" style_pad_gap="#space_sm" scrollable="false">
       <style name="styles.action_grid"/>
@@ -48,7 +74,7 @@
       <lv_obj name="bypass_row"
               width="100%" height="#button_height" style_pad_all="0" flex_flow="row"
               style_flex_main_place="space_between" style_flex_cross_place="center" scrollable="false">
-        <bind_flag_if_eq subject="ams_supports_bypass" flag="hidden" ref_value="0"/>
+        <bind_flag_if cond="ams_supports_bypass eq 0 or ui_is_portrait eq 1" flag="hidden"/>
         <!-- Left side: icon + label -->
         <lv_obj height="content"
                 style_pad_all="0" flex_flow="row" style_flex_cross_place="center" style_pad_gap="#space_xs"
@@ -74,6 +100,7 @@
            the toolhead disables it like every other filament op. -->
       <ui_button name="btn_batch_load" variant="secondary" icon="arrow_down" text="Load..." stacked_if_bp_lte="6">
         <style name="styles.action_cell"/>
+        <bind_style_if name="styles.action_cell_quarter" cond="ui_is_portrait eq 1 and ui_breakpoint lt 3"/>
         <bind_flag_if_eq subject="ams_sidebar_supports_batch" flag="hidden" ref_value="0"/>
         <bind_state_if_eq subject="ams_sidebar_load_disabled" state="disabled" ref_value="1"/>
         <event_cb trigger="clicked" callback="ams_sidebar_batch_load_clicked"/>
@@ -93,12 +120,14 @@
            a print owning the toolhead. -->
       <ui_button name="btn_unload" variant="secondary" icon="tray_arrow_up" text="Unload" stacked_if_bp_lte="6">
         <style name="styles.action_cell"/>
+        <bind_style_if name="styles.action_cell_quarter" cond="ui_is_portrait eq 1 and ui_breakpoint lt 3"/>
         <bind_flag_if cond="ams_is_filament_system eq 0 or ams_sidebar_supports_batch eq 1" flag="hidden"/>
         <bind_state_if_eq subject="ams_sidebar_unload_disabled" state="disabled" ref_value="1"/>
         <event_cb trigger="clicked" callback="ams_sidebar_unload_clicked"/>
       </ui_button>
       <ui_button name="btn_batch_unload" variant="secondary" icon="tray_arrow_up" text="Unload..." stacked_if_bp_lte="6">
         <style name="styles.action_cell"/>
+        <bind_style_if name="styles.action_cell_quarter" cond="ui_is_portrait eq 1 and ui_breakpoint lt 3"/>
         <bind_flag_if_eq subject="ams_sidebar_supports_batch" flag="hidden" ref_value="0"/>
         <bind_state_if_eq subject="ams_sidebar_unload_disabled" state="disabled" ref_value="1"/>
         <event_cb trigger="clicked" callback="ams_sidebar_unload_clicked"/>
@@ -111,6 +140,7 @@
            greys only where reset_moves_filament() is true. -->
       <ui_button name="btn_reset" variant="secondary" icon="refresh" text="Reset" stacked_if_bp_lte="6">
         <style name="styles.action_cell"/>
+        <bind_style_if name="styles.action_cell_quarter" cond="ui_is_portrait eq 1 and ui_breakpoint lt 3"/>
         <bind_flag_if_eq subject="ams_is_tool_changer" flag="hidden" ref_value="1"/>
         <bind_state_if_eq subject="ams_sidebar_reset_disabled" state="disabled" ref_value="1"/>
         <event_cb trigger="clicked" callback="ams_sidebar_reset_clicked"/>
@@ -122,12 +152,14 @@
       <ui_button name="btn_check_gates"
                  variant="secondary" icon="refresh" text="Check slots" hidden="true" stacked_if_bp_lte="6">
         <style name="styles.action_cell"/>
+        <bind_style_if name="styles.action_cell_quarter" cond="ui_is_portrait eq 1 and ui_breakpoint lt 3"/>
         <bind_state_if_eq subject="ams_sidebar_check_gates_disabled" state="disabled" ref_value="1"/>
         <event_cb trigger="clicked" callback="ams_sidebar_check_gates_clicked"/>
       </ui_button>
       <!-- Settings Button (full width) -->
       <ui_button name="btn_settings" icon="settings" text="Settings" stacked_if_bp_lte="6">
         <style name="styles.action_cell"/>
+        <bind_style_if name="styles.action_cell_quarter" cond="ui_is_portrait eq 1 and ui_breakpoint lt 3"/>
         <event_cb trigger="clicked" callback="ams_sidebar_settings_clicked"/>
       </ui_button>
     </lv_obj>

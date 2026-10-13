@@ -45,6 +45,25 @@
     <px name="ams_page_dot_size_medium" value="10"/>
     <px name="ams_page_dot_size_large" value="12"/>
 
+    <!-- Largest the loaded strip's clog arc grows: 18% of the strip's width up to
+         this, so a full-width portrait strip keeps a small arc. At or above the
+         landscape strip's own 18% at each size. -->
+    <px name="ams_clog_arc_max_micro" value="24"/>
+    <px name="ams_clog_arc_max_tiny" value="24"/>
+    <px name="ams_clog_arc_max_small" value="40"/>
+    <px name="ams_clog_arc_max_medium" value="40"/>
+    <px name="ams_clog_arc_max_large" value="48"/>
+
+    <!-- Portrait AMS panels: the path canvas's height under the spool box. Capped so
+         the diagram ends at the toolhead and the rest of the screen goes to the
+         sidebar below it. Keyed on the narrow axis: micro 272x480, tiny 320x480,
+         medium 480x800, large 600x1024. -->
+    <px name="ams_portrait_path_h_micro" value="125"/>
+    <px name="ams_portrait_path_h_tiny" value="125"/>
+    <px name="ams_portrait_path_h_small" value="200"/>
+    <px name="ams_portrait_path_h_medium" value="170"/>
+    <px name="ams_portrait_path_h_large" value="300"/>
+
     <!-- One line of font_small: the loaded strip's position and name lines. -->
     <px name="ams_loaded_name_line_h_micro" value="15"/>
     <px name="ams_loaded_name_line_h_tiny" value="15"/>
