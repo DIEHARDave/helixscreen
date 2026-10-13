@@ -270,13 +270,12 @@ void PowerDeviceState::deinit_subjects() {
 
     lifetime_.invalidate();
 
-    // [L073] The observer watches PrinterState's print_lifecycle_ subject —
-    // an external subject whose lifecycle we don't control. During test runs,
-    // PrinterState may have been deinit'd and reinit'd, destroying the original
-    // subject while are_subjects_initialized() returns true (for the new one).
-    // Always release() to avoid SIGSEGV on the stale subject pointer.
-    // The zombie observer is harmless: callback hits empty devices_ map.
-    print_state_observer_.release();
+    // The observer watches PrinterState's print_lifecycle_ subject, which
+    // outlives this teardown. It carries PrinterState's subjects lifetime, so
+    // reset() detaches it from a live subject and skips the removal when
+    // PrinterState has already freed that subject; either way its context is
+    // freed. Leaving it attached would keep calling back into torn-down state.
+    print_state_observer_.reset();
 
     // Signal death then expire lifetime tokens (#816)
     for (auto& [name, info] : devices_) {
