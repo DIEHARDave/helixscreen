@@ -109,11 +109,22 @@ void PerformanceState::set_source(std::unique_ptr<IPerformanceSource> source) {
     if (!source_)
         return;
 
+    source_->set_disk_wanted(disk_consumers_ > 0);
     auto tok = lifetime_.token();
     source_->set_callback([this, tok](const PerfSample& s) {
         tok.defer("PerformanceState::apply_sample", [this, s]() { apply_sample(s); });
     });
     source_->start();
+}
+
+void PerformanceState::add_disk_consumer() {
+    if (++disk_consumers_ == 1 && source_)
+        source_->set_disk_wanted(true);
+}
+
+void PerformanceState::remove_disk_consumer() {
+    if (disk_consumers_ > 0 && --disk_consumers_ == 0 && source_)
+        source_->set_disk_wanted(false);
 }
 
 std::vector<float> PerformanceState::read_history(const std::string& name) const {

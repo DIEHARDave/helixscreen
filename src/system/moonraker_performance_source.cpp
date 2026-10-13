@@ -122,9 +122,28 @@ MoonrakerPerformanceSource::parse_disk_usage(const json& response) {
                        static_cast<uint32_t>(std::min(free_bytes / kBytesPerMb, kMaxMb))};
 }
 
-void MoonrakerPerformanceSource::fetch_disk_usage() {
+void MoonrakerPerformanceSource::set_disk_wanted(bool wanted) {
+    if (wanted == disk_wanted_)
+        return;
+    disk_wanted_ = wanted;
+    if (wanted && running_)
+        fetch_disk_usage(true);
+}
+
+void MoonrakerPerformanceSource::note_disk_read(bool ok) {
+    if (!disk_misses_.record(ok))
+        return;
+    // The listing keeps answering without a disk_usage block, or not at all: stop
+    // showing a figure that is no longer being refreshed.
+    latest_.host_disk_total_mb.reset();
+    latest_.host_disk_free_mb.reset();
+    if (cb_)
+        cb_(latest_);
+}
+
+void MoonrakerPerformanceSource::fetch_disk_usage(bool force) {
     const auto now = std::chrono::steady_clock::now();
-    if (disk_request_in_flight_ && now - last_disk_request_ < kDiskPollInterval)
+    if (!disk_read_due(disk_wanted_, disk_request_in_flight_, now - last_disk_request_, force))
         return;
     disk_request_in_flight_ = true;
     last_disk_request_ = now;
@@ -135,6 +154,7 @@ void MoonrakerPerformanceSource::fetch_disk_usage() {
                             // Runs on main thread via bg_cb defer.
                             disk_request_in_flight_ = false;
                             const auto usage = parse_disk_usage(response);
+                            note_disk_read(usage.has_value());
                             if (!usage) {
                                 spdlog::debug("[perf] get_directory carried no disk_usage");
                                 return;
@@ -149,13 +169,14 @@ void MoonrakerPerformanceSource::fetch_disk_usage() {
                             // Runs on main thread via bg_cb defer.
                             disk_request_in_flight_ = false;
                             spdlog::debug("[perf] disk usage read failed: {}", err.message);
+                            note_disk_read(false);
                         }));
 }
 
 void MoonrakerPerformanceSource::run_initial_handshake() {
     // A read sent before a disconnect never answers; a new connection starts clean.
     disk_request_in_flight_ = false;
-    fetch_disk_usage();
+    fetch_disk_usage(true);
 
     // Initial host-stats snapshot via REST GET /machine/proc_stats.
     // RestResponse.data contains the full JSON-RPC-like body; the actual
@@ -200,6 +221,7 @@ void MoonrakerPerformanceSource::stop() {
     mcu_state_.clear();
     latest_ = {};
     disk_request_in_flight_ = false;
+    disk_misses_ = {};
     last_disk_request_ = {};
 }
 
@@ -253,8 +275,7 @@ void MoonrakerPerformanceSource::on_proc_stat_payload(const json& body) {
         latest_.host_throttle_text = format_throttle_text(bits, flags);
     }
 
-    if (std::chrono::steady_clock::now() - last_disk_request_ >= kDiskPollInterval)
-        fetch_disk_usage();
+    fetch_disk_usage(false);
 
     if (cb_)
         cb_(latest_);

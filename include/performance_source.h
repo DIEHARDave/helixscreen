@@ -45,6 +45,10 @@ class IPerformanceSource {
     /// Stop and tear down (idempotent). Must be safe to call from main thread.
     virtual void stop() = 0;
 
+    /// Whether anything on screen shows the gcodes disk's free space. A source that must
+    /// spend a request to learn it reads it only while this is true.
+    virtual void set_disk_wanted(bool /*wanted*/) {}
+
     /// Set the on-main-thread callback that receives each sample.
     /// Sources are responsible for deferring bg-thread work to main via
     /// AsyncLifetimeGuard before invoking this callback.

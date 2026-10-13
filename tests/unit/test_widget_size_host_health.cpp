@@ -318,6 +318,75 @@ TEST_CASE_METHOD(HostHealthFixture, "host_health: an MCU load rise or a retransm
     CHECK(subject_int("host_health_status") == 0);
 }
 
+TEST_CASE_METHOD(HostHealthFixture,
+                 "host_health: a re-decide between samples does not consume a retransmit rise",
+                 "[widget_size][host_health]") {
+    PanelWidgetHarness<HostHealthWidget> h(test_screen(), state());
+    h.resize(1, 1, 55, 54);
+
+    PerfSample s = HostHealthFixture::sample();
+    s.mcus[0].retransmits = 5;
+    feed(s);
+    REQUIRE(subject_int("host_health_cause") == 5);
+
+    // print_active, a resize and a rung change all re-run the decision without a sample.
+    set_print_active(true);
+    CHECK(subject_int("host_health_status") == 1);
+    h.resize(1, 1, 114, 113);
+    CHECK(subject_int("host_health_status") == 1);
+    h.resize(1, 1, 55, 54);
+    set_print_active(false);
+    CHECK(subject_int("host_health_status") == 1);
+    CHECK(subject_int("host_health_cause") == 5);
+
+    // The next sample with the same count is the end of the rise.
+    feed(s);
+    CHECK(subject_int("host_health_status") == 0);
+}
+
+namespace {
+
+/// A source that records whether the disk is wanted and sends nothing.
+class WantSource : public perf::IPerformanceSource {
+  public:
+    void start() override {}
+    void stop() override {}
+    void set_callback(SampleCallback) override {}
+    void set_disk_wanted(bool wanted) override {
+        wanted_ = wanted;
+    }
+    bool wanted_ = false;
+};
+
+} // namespace
+
+TEST_CASE_METHOD(HostHealthFixture, "host_health: the disk is wanted only while a tile is attached",
+                 "[widget_size][host_health]") {
+    auto source = std::make_unique<WantSource>();
+    WantSource* probe = source.get();
+    PerformanceState::instance().set_source(std::move(source));
+    REQUIRE_FALSE(probe->wanted_);
+    {
+        PanelWidgetHarness<HostHealthWidget> h(test_screen(), state());
+        CHECK(probe->wanted_);
+        {
+            PanelWidgetHarness<HostHealthWidget> second(test_screen(), state());
+            CHECK(probe->wanted_);
+        }
+        CHECK(probe->wanted_); // the first tile still shows it
+    }
+    CHECK_FALSE(probe->wanted_);
+}
+
+TEST_CASE_METHOD(HostHealthFixture, "host_health: a source installed after a tile still hears it",
+                 "[widget_size][host_health]") {
+    PanelWidgetHarness<HostHealthWidget> h(test_screen(), state());
+    auto source = std::make_unique<WantSource>();
+    WantSource* probe = source.get();
+    PerformanceState::instance().set_source(std::move(source));
+    CHECK(probe->wanted_);
+}
+
 TEST_CASE_METHOD(HostHealthFixture, "host_health: the first retransmit count seen is a baseline",
                  "[widget_size][host_health]") {
     PerfSample s = HostHealthFixture::sample();

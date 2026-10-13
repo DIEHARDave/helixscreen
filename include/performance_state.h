@@ -37,6 +37,11 @@ class PerformanceState {
     /// Owns the source. Safe to call multiple times (re-init for reconnect).
     void set_source(std::unique_ptr<IPerformanceSource> source);
 
+    /// A widget that shows the gcodes disk's free space registers for as long as it does,
+    /// so the source spends its disk request only while someone looks at the answer.
+    void add_disk_consumer();
+    void remove_disk_consumer();
+
     /// Read a snapshot of a ring buffer (for sparkline paint). Returns the
     /// buffer in chronological order (oldest first). Returns empty when the
     /// named buffer doesn't exist.
@@ -127,6 +132,7 @@ class PerformanceState {
     // ---- Source ----
     std::unique_ptr<IPerformanceSource> source_;
     AsyncLifetimeGuard lifetime_;
+    int disk_consumers_ = 0;
     bool initialized_ = false;
 };
 

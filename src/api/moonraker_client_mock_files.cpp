@@ -407,7 +407,8 @@ void register_file_handlers(std::unordered_map<std::string, MethodHandler>& regi
         json response = build_mock_file_list_response(root, path);
         // Moonraker's own get_directory result is an object that carries the disk's
         // usage beside the entries; the gcodes root answers in that shape.
-        if (is_gcodes_root(path) && response["result"].is_array()) {
+        if ((root.empty() || root == "gcodes") && is_gcodes_root(path) &&
+            response["result"].is_array()) {
             json files = json::array();
             for (const auto& entry : response["result"]) {
                 json file = entry;

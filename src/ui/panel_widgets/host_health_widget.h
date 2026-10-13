@@ -61,6 +61,13 @@ class HostHealthWidget : public PanelWidget {
     std::vector<std::string> mcu_names_;
     /// Each MCU's cumulative retransmit count at the previous sample.
     std::unordered_map<std::string, int> prev_retransmits_;
+    /// The perf_history_tick the retransmit baseline was last advanced for, and whether that
+    /// sample saw a rise. Only a new tick advances the baseline, so a re-decide for a size
+    /// or print_active change between ticks reads the same answer instead of consuming it.
+    int baseline_tick_ = -2;
+    bool retransmits_rose_ = false;
+    /// Whether this instance is counted in PerformanceState as showing the disk.
+    bool disk_consumer_ = false;
     /// The MCU rows currently built into the Full rung's list, by names joined.
     std::string built_rows_key_;
 

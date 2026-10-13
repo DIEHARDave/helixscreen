@@ -8,6 +8,7 @@
 #include "moonraker_performance_source.h"
 #include "performance_state.h"
 
+#include <chrono>
 #include <lvgl.h>
 
 #include "../catch_amalgamated.hpp"
@@ -327,4 +328,39 @@ TEST_CASE("parse_disk_usage reads the get_directory disk_usage block in whole MB
     CHECK_FALSE(MoonrakerPerformanceSource::parse_disk_usage(
         json{{"result", {{"disk_usage", {{"total", 0}, {"free", 0}}}}}}));
     CHECK_FALSE(MoonrakerPerformanceSource::parse_disk_usage(json::array()));
+}
+
+TEST_CASE("disk reads go out only with a consumer, and not while one is recent", "[performance]") {
+    using helix::perf::MoonrakerPerformanceSource;
+    using std::chrono::seconds;
+    const auto due = MoonrakerPerformanceSource::disk_read_due;
+    constexpr auto kInterval = MoonrakerPerformanceSource::kDiskPollInterval;
+
+    // No consumer, no request, whatever else is true.
+    CHECK_FALSE(due(false, false, seconds(1000), true));
+    CHECK_FALSE(due(false, false, seconds(1000), false));
+    // A consumer: due once the interval has passed, or at once when forced.
+    CHECK(due(true, false, kInterval, false));
+    CHECK_FALSE(due(true, false, kInterval - seconds(1), false));
+    CHECK(due(true, false, seconds(0), true));
+    // An unanswered request blocks a repeat until the interval, even forced.
+    CHECK_FALSE(due(true, true, seconds(5), true));
+    CHECK(due(true, true, kInterval, false));
+}
+
+TEST_CASE("three misses in a row clear the disk figure, a hit restarts the count",
+          "[performance]") {
+    using Counter = helix::perf::MoonrakerPerformanceSource::DiskMissCounter;
+    Counter c;
+    CHECK_FALSE(c.record(false));
+    CHECK_FALSE(c.record(false));
+    CHECK(c.record(false));
+    CHECK_FALSE(c.record(false)); // already cleared: no second clear
+    CHECK_FALSE(c.record(true));
+    CHECK_FALSE(c.record(false));
+    CHECK_FALSE(c.record(false));
+    CHECK_FALSE(c.record(true));
+    CHECK_FALSE(c.record(false));
+    CHECK_FALSE(c.record(false));
+    CHECK(c.record(false));
 }

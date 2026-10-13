@@ -163,10 +163,13 @@ int text_px(const char* text, const lv_font_t* font) {
 int row_spark_px() {
     return theme_manager_get_spacing("space_lg");
 }
+/// The least width a row gives its sparkline.
+int spark_min_px() {
+    return theme_manager_get_spacing("space_xl");
+}
 int cell_spark_px() {
     return theme_manager_get_spacing("button_height_sm");
 }
-constexpr int kSparkMinWidth = 24;
 
 /// The widest a retransmit-carrying MCU reading gets in practice: "100% . 9999 retx".
 const char* const kWidestMcuText = "100% \xc2\xb7 9999 retx";
@@ -190,6 +193,7 @@ helix::RungNeeds measure_needs(bool printing, int* mcu_row_pitch) {
     const int xs_h = line_px(f.xs);
     const int body_h = line_px(f.body);
     const int spark_h = row_spark_px();
+    const int spark_min = spark_min_px();
 
     const int pct_xs = text_px("100%", f.xs);
     const int temp_xs = text_px("100\xc2\xb0"
@@ -216,7 +220,7 @@ helix::RungNeeds measure_needs(bool printing, int* mcu_row_pitch) {
         const int detail_w = text_px("100\xc2\xb0"
                                      "C \xc2\xb7 100%",
                                      f.xs);
-        const int first_w = text_px("100%", f.body) + col_gap + kSparkMinWidth;
+        const int first_w = text_px("100%", f.body) + col_gap + spark_min;
         needs.cell = rung_box(std::max(detail_w, first_w) + comfort,
                               std::max(body_h, cell_spark_px()) + row_gap + xs_h + 1);
     }
@@ -227,12 +231,12 @@ helix::RungNeeds measure_needs(bool printing, int* mcu_row_pitch) {
         const int value_w = printing ? text_px(kWidestMcuText, f.xs) : text_px("100%", f.xs);
         // The label column is a quarter of the row, so the row is at least four labels wide.
         needs.wide = rung_box(
-            std::max(label_w + col_gap + kSparkMinWidth + col_gap + value_w + comfort, 4 * label_w),
+            std::max(label_w + col_gap + spark_min + col_gap + value_w + comfort, 4 * label_w),
             2 * row_h + row_gap + 1);
     }
     {
         const int value_w = std::max(text_px(kWidestMcuText, f.xs), text_px("9999 MB free", f.xs));
-        const int row_w = label_w + col_gap + kSparkMinWidth + col_gap + value_w;
+        const int row_w = label_w + col_gap + spark_min + col_gap + value_w;
         const int detail_w = text_px("100.0\xc2\xb0"
                                      "C",
                                      f.xs) +
@@ -303,6 +307,9 @@ HostHealthWidget::Sample HostHealthWidget::read_sample() {
 
     refresh_mcu_names();
 
+    const int tick = perf_int(kTickSubject, -1);
+    const bool new_tick = tick != baseline_tick_;
+    bool rose = false;
     for (const auto& name : mcu_names_) {
         Sample::Mcu mcu;
         mcu.name = name;
@@ -310,11 +317,13 @@ HostHealthWidget::Sample HostHealthWidget::read_sample() {
         const std::string base = "perf_mcu_" + mcu.safe;
         mcu.load = perf_reading((base + "_load_pct").c_str(), (base + "_present").c_str());
 
-        const int retrans = perf_int(base + "_retrans", 0);
-        auto prev = prev_retransmits_.find(name);
-        if (prev != prev_retransmits_.end() && retrans > prev->second)
-            s.retransmits_rose = true;
-        prev_retransmits_[name] = retrans;
+        if (new_tick) {
+            const int retrans = perf_int(base + "_retrans", 0);
+            auto prev = prev_retransmits_.find(name);
+            if (prev != prev_retransmits_.end() && retrans > prev->second)
+                rose = true;
+            prev_retransmits_[name] = retrans;
+        }
 
         if (mcu.load > s.mcu_max_load) {
             s.mcu_max_load = mcu.load;
@@ -322,6 +331,11 @@ HostHealthWidget::Sample HostHealthWidget::read_sample() {
         }
         s.mcus.push_back(std::move(mcu));
     }
+    if (new_tick) {
+        baseline_tick_ = tick;
+        retransmits_rose_ = rose;
+    }
+    s.retransmits_rose = retransmits_rose_;
     return s;
 }
 
@@ -356,6 +370,10 @@ void HostHealthWidget::attach(lv_obj_t* widget_obj, lv_obj_t* /*parent_screen*/)
     widget_obj_ = widget_obj;
     s_tile.claim(this);
     install_delete_hook(widget_obj);
+    if (!disk_consumer_) {
+        disk_consumer_ = true;
+        perf::PerformanceState::instance().add_disk_consumer();
+    }
 
     const auto token = lifetime_.token();
     print_active_observer_ = ui::observe<int>(
@@ -392,6 +410,10 @@ void HostHealthWidget::attach(lv_obj_t* widget_obj, lv_obj_t* /*parent_screen*/)
 
 void HostHealthWidget::detach() {
     lifetime_.invalidate();
+    if (disk_consumer_) {
+        disk_consumer_ = false;
+        perf::PerformanceState::instance().remove_disk_consumer();
+    }
     sample_observer_.reset();
     print_active_observer_.reset();
     if (HostHealthWidget* displaced = s_tile.release(this)) {
