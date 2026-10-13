@@ -20,7 +20,9 @@
 #include "http_executor.h"
 #include "led/led_controller.h"
 #include "led/ui_led_control_overlay.h"
+#include "led_widget.h"
 #include "light_button_config.h"
+#include "lock_manager.h"
 #include "observer_factory.h"
 #include "panel_widget_registry.h"
 #include "prerendered_images.h"
@@ -654,6 +656,19 @@ void PrinterImageWidget::printer_manager_clicked_cb(lv_event_t* e) {
     LVGL_SAFE_EVENT_CB_END();
 }
 
+namespace {
+
+/// The light chip switches a real light, so a touch that reaches it behind the
+/// lock screen (a resting finger on wake) does nothing.
+bool light_chip_locked() {
+    if (!helix::LockManager::instance().is_locked())
+        return false;
+    spdlog::debug("[PrinterImageWidget] light chip touch ignored: screen locked");
+    return true;
+}
+
+} // namespace
+
 PrinterImageWidget* PrinterImageWidget::widget_from_chip(lv_event_t* e) {
     // chip -> callout_layer -> printer_container, whose user_data attach() set.
     auto* chip = static_cast<lv_obj_t*>(lv_event_get_current_target(e));
@@ -718,6 +733,8 @@ void PrinterImageWidget::printer_callout_light_hold_cb(lv_event_t* e) {
     auto* self = widget_from_chip(e);
     if (lv_indev_t* indev = lv_indev_active())
         lv_indev_reset(indev, nullptr);
+    if (light_chip_locked())
+        return; // inside the SAFE_EVENT_CB try block; END closes it below
     if (self) {
         self->record_interaction();
         open_led_control_overlay(self->parent_screen_,
@@ -741,9 +758,16 @@ void PrinterImageWidget::handle_callout_clicked(CalloutKind kind) {
     case CalloutKind::Fan:
         open_fan_control_overlay(parent_screen_);
         break;
-    case CalloutKind::Light:
-        toggle_lights(helix::led::LedController::instance().light_targets(std::string()));
+    case CalloutKind::Light: {
+        if (light_chip_locked())
+            break;
+        const auto result = toggle_lights(
+            helix::led::LedController::instance().light_targets(std::string()), "PrinterImage");
+        // The dark bulb shows while the state is unknown, so it takes the flash.
+        if (result.unconfirmed && widget_obj_)
+            flash_light_icon(lv_obj_find_by_name(widget_obj_, "callout_light_dark"));
         break;
+    }
     }
 }
 

@@ -34,9 +34,17 @@ enum class LightToggle {
     Off,      ///< switched off
 };
 
+struct LightToggleResult {
+    LightToggle outcome = LightToggle::NoTarget;
+    /// Switched, but no device in the ids reports its power, so no state change
+    /// will follow to acknowledge the tap.
+    bool unconfirmed = false;
+};
+
 /// Toggle @p ids as every light button does: refused with a toast while any
-/// light command is in flight, and nothing when @p ids is empty.
-LightToggle toggle_lights(const std::vector<std::string>& ids);
+/// light command is in flight, and nothing when @p ids is empty. @p caller
+/// names the button in the log.
+LightToggleResult toggle_lights(const std::vector<std::string>& ids, const char* caller);
 
 /// Resolve leds/light_button_pending against the home layout, clearing it even
 /// when no light button is placed, then offer LED on at Start the targets the

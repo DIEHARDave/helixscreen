@@ -11,6 +11,7 @@
 #include "../test_helpers/panel_widget_size_harness.h"
 #include "../test_helpers/printer_image_regions_test_access.h"
 #include "../test_helpers/process_async_timers.h"
+#include "../test_helpers/scoped_pointer_indev.h"
 #include "../test_helpers/update_queue_test_access.h"
 #include "app_globals.h"
 #include "config.h"
@@ -19,6 +20,7 @@
 #include "led/led_controller.h"
 #include "led/ui_led_control_overlay.h"
 #include "light_button_config.h"
+#include "lock_manager.h"
 #include "lvgl_image_writer.h"
 #include "moonraker_api_mock.h"
 #include "moonraker_client_mock.h"
@@ -754,32 +756,159 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     }
     NavigationManager::instance().set_panels(panels.data());
 
-    PanelWidgetHarness<PrinterImageWidget> h(test_screen());
-    h.resize(4, 4, 160, 160);
-    lv_subject_set_int(lv_xml_get_subject(nullptr, "printer_has_led"), 1);
+    // The overlay otherwise reopens on the last focused device. Opened and
+    // closed before the widget exists: closing hides every screen child that
+    // is not a main panel, the widget's tree included.
     ScopedLedStrips::report("neopixel sb_leds", true);
-    ScopedLedStrips::report("neopixel chamber_light", true);
-    settle();
-    REQUIRE(shown(h, "callout_chip_light"));
-    // The overlay otherwise reopens on the last focused device.
     REQUIRE(helix::open_led_control_overlay(test_screen(), "neopixel sb_leds") != nullptr);
     settle();
     NavigationManager::instance().go_back();
     settle();
     REQUIRE(get_led_control_overlay().focused_device() == "neopixel sb_leds");
 
+    PanelWidgetHarness<PrinterImageWidget> h(test_screen());
+    h.resize(4, 4, 160, 160);
+    lv_subject_set_int(lv_xml_get_subject(nullptr, "printer_has_led"), 1);
+    ScopedLedStrips::report("neopixel chamber_light", true);
+    settle();
+    REQUIRE(shown(h, "callout_chip_light"));
+
     int long_presses_reaching_grid = 0;
     lv_obj_add_event_cb(h.root(), count_event_cb, LV_EVENT_LONG_PRESSED,
                         &long_presses_reaching_grid);
     bubble_like_home_panel(h.root());
+    lv_obj_update_layout(test_screen());
+    lv_area_t box;
+    lv_obj_get_coords(h.child("callout_chip_light"), &box);
+    const int x = (box.x1 + box.x2) / 2;
+    const int y = (box.y1 + box.y2) / 2;
+    lv_point_t centre{x, y};
+    lv_obj_t* hit = lv_indev_search_obj(test_screen(), &centre);
+    REQUIRE(hit == h.child("callout_chip_light"));
+
+    // A real press, held past the long-press time, then lifted: the lift
+    // must not also toggle the light.
     rig.client.clear_gcode_script_history();
-    lv_obj_send_event(h.child("callout_chip_light"), LV_EVENT_LONG_PRESSED, nullptr);
+    helix_test::ScopedPointerIndev finger;
+    finger.press(x, y);
+    finger.hold(finger.long_press_hold_ms());
+    finger.release(x, y);
     settle();
     CHECK(get_led_control_overlay().focused_device() == "neopixel chamber_light");
     CHECK(long_presses_reaching_grid == 0);
     CHECK(scripts_naming(rig.client, "chamber_light") == 0);
     NavigationManager::instance().go_back();
     settle();
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "callouts: tapping a light with no readable state flashes the dark bulb",
+                 "[printer_image][callouts]") {
+    // With no API nothing ever reports the strips' state.
+    const auto regions = prepare_tagged_widget();
+    const ScopedLedStrips leds;
+    PanelWidgetHarness<PrinterImageWidget> h(test_screen());
+    h.resize(4, 4, 160, 160);
+    lv_subject_set_int(lv_xml_get_subject(nullptr, "printer_has_led"), 1);
+    settle();
+    REQUIRE(shown(h, "callout_chip_light"));
+    lv_obj_t* dark = lv_obj_find_by_name(h.child("callout_chip_light"), "callout_light_dark");
+    REQUIRE(dark);
+    REQUIRE_FALSE(lv_obj_has_flag(dark, LV_OBJ_FLAG_HIDDEN));
+    const lv_color_t resting = lv_obj_get_style_text_color(dark, LV_PART_MAIN);
+    const lv_color_t lamp = theme_manager_get_color("light_icon_on");
+    REQUIRE_FALSE(lv_color_eq(resting, lamp));
+
+    lv_obj_send_event(h.child("callout_chip_light"), LV_EVENT_CLICKED, nullptr);
+    CHECK(lv_color_eq(lv_obj_get_style_text_color(dark, LV_PART_MAIN), lamp));
+
+    // The flash ends back on the chip's own muted color.
+    for (int i = 0; i < 20; ++i) {
+        lv_tick_inc(50);
+        lv_timer_handler_safe();
+    }
+    CHECK(lv_color_eq(lv_obj_get_style_text_color(dark, LV_PART_MAIN), resting));
+    CHECK(lv_obj_get_style_opa(dark, LV_PART_MAIN) == LV_OPA_COVER);
+    settle();
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "callouts: a light with a readable state gets no flash on a tap",
+                 "[printer_image][callouts]") {
+    const auto regions = prepare_tagged_widget();
+    LightChipRig rig(state());
+    PanelWidgetHarness<PrinterImageWidget> h(test_screen());
+    h.resize(4, 4, 160, 160);
+    lv_subject_set_int(lv_xml_get_subject(nullptr, "printer_has_led"), 1);
+    ScopedLedStrips::report("neopixel chamber_light", false);
+    settle();
+    lv_obj_t* dark = lv_obj_find_by_name(h.child("callout_chip_light"), "callout_light_dark");
+    REQUIRE_FALSE(lv_obj_has_flag(dark, LV_OBJ_FLAG_HIDDEN));
+    const lv_color_t resting = lv_obj_get_style_text_color(dark, LV_PART_MAIN);
+
+    lv_obj_send_event(h.child("callout_chip_light"), LV_EVENT_CLICKED, nullptr);
+    CHECK(lv_color_eq(lv_obj_get_style_text_color(dark, LV_PART_MAIN), resting));
+    settle();
+}
+
+namespace {
+
+/// A PIN set and the screen locked while the guard lives.
+struct ScopedScreenLock {
+    ScopedScreenLock() {
+        auto& lock = helix::LockManager::instance();
+        lock.remove_pin();
+        REQUIRE(lock.set_pin("1234"));
+        lock.lock();
+        REQUIRE(lock.is_locked());
+    }
+    ~ScopedScreenLock() {
+        helix::LockManager::instance().remove_pin();
+    }
+    ScopedScreenLock(const ScopedScreenLock&) = delete;
+    ScopedScreenLock& operator=(const ScopedScreenLock&) = delete;
+};
+
+} // namespace
+
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "callouts: the light chip neither switches nor opens anything while locked",
+                 "[printer_image][callouts][lock]") {
+    const auto regions = prepare_tagged_widget();
+    LightChipRig rig(state());
+    std::array<lv_obj_t*, UI_PANEL_COUNT> panels{};
+    for (auto& p : panels) {
+        p = lv_obj_create(test_screen());
+    }
+    NavigationManager::instance().set_panels(panels.data());
+    PanelWidgetHarness<PrinterImageWidget> h(test_screen());
+    h.resize(4, 4, 160, 160);
+    lv_subject_set_int(lv_xml_get_subject(nullptr, "printer_has_led"), 1);
+    ScopedLedStrips::report("neopixel chamber_light", true);
+    settle();
+    REQUIRE(shown(h, "callout_chip_light"));
+    lv_obj_t* overlay_root = helix::open_led_control_overlay(test_screen(), "neopixel sb_leds");
+    REQUIRE(overlay_root != nullptr);
+    settle();
+    NavigationManager::instance().go_back();
+    settle();
+    REQUIRE_FALSE(NavigationManager::instance().is_panel_in_stack(overlay_root));
+
+    {
+        const ScopedScreenLock locked;
+        rig.client.clear_gcode_script_history();
+        lv_obj_send_event(h.child("callout_chip_light"), LV_EVENT_CLICKED, nullptr);
+        lv_obj_send_event(h.child("callout_chip_light"), LV_EVENT_LONG_PRESSED, nullptr);
+        settle();
+        CHECK(rig.client.gcode_script_history().empty());
+        CHECK_FALSE(NavigationManager::instance().is_panel_in_stack(overlay_root));
+        CHECK(get_led_control_overlay().focused_device() == "neopixel sb_leds");
+    }
+
+    // Unlocked, the same tap switches the light: the guard is the lock, not a latch.
+    lv_obj_send_event(h.child("callout_chip_light"), LV_EVENT_CLICKED, nullptr);
+    settle();
+    CHECK(scripts_naming(rig.client, "chamber_light") == 1);
 }
 
 TEST_CASE_METHOD(LVGLUITestFixture,

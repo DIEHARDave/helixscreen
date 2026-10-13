@@ -117,7 +117,7 @@ void PrintLightTimelapseControls::handle_light_button() {
     // Drives what the home light buttons drive (the light the user picked), or
     // the chamber light when none is placed. The icon updates when its state
     // does, via refresh_light_state().
-    helix::toggle_lights(helix::home_light_button_targets());
+    helix::toggle_lights(helix::home_light_button_targets(), "PrintStatus");
 }
 
 void PrintLightTimelapseControls::refresh_timelapse_display() {

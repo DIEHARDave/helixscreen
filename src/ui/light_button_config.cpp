@@ -15,6 +15,7 @@
 
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
 #include <cstring>
 
 namespace helix {
@@ -94,21 +95,25 @@ bool home_light_buttons_lit() {
     return light_icon_look(states).brightness > 0;
 }
 
-LightToggle toggle_lights(const std::vector<std::string>& ids) {
+LightToggleResult toggle_lights(const std::vector<std::string>& ids, const char* caller) {
     auto& ctrl = led::LedController::instance();
     if (ctrl.light_command_in_flight()) {
-        spdlog::debug("[LightButtons] Ignoring toggle - LED command already in flight");
+        spdlog::debug("[LightButtons] {}: ignoring toggle - LED command already in flight", caller);
         ToastManager::instance().show(
             ToastSeverity::INFO, lv_tr("Light will switch when the current operation finishes"));
-        return LightToggle::Busy;
+        return {LightToggle::Busy, false};
     }
     if (ids.empty()) {
-        spdlog::warn("[LightButtons] Light toggle with no light to switch");
-        return LightToggle::NoTarget;
+        spdlog::warn("[LightButtons] {}: light toggle with no light to switch", caller);
+        return {LightToggle::NoTarget, false};
     }
     const bool on = ctrl.toggle_power(ids);
-    spdlog::info("[LightButtons] Toggled {} device(s) {}", ids.size(), on ? "ON" : "OFF");
-    return on ? LightToggle::On : LightToggle::Off;
+    spdlog::info("[LightButtons] {}: toggled {} device(s) {}", caller, ids.size(),
+                 on ? "ON" : "OFF");
+    const bool unconfirmed = std::all_of(ids.begin(), ids.end(), [&](const std::string& id) {
+        return ctrl.device_state(id).power == led::PowerState::Unknown;
+    });
+    return {on ? LightToggle::On : LightToggle::Off, unconfirmed};
 }
 
 void settle_light_buttons() {

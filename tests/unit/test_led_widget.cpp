@@ -475,13 +475,32 @@ TEST_CASE_METHOD(LedWidgetFixture,
 TEST_CASE_METHOD(LedWidgetFixture, "toggle_lights: switches its ids and reports the state sent",
                  "[led][light_button]") {
     client.clear_gcode_script_history();
-    CHECK(toggle_lights({}) == LightToggle::NoTarget);
+    CHECK(toggle_lights({}, "test").outcome == LightToggle::NoTarget);
     CHECK(client.gcode_script_history().empty());
 
-    CHECK(toggle_lights({"neopixel sb_leds"}) == LightToggle::On);
+    CHECK(toggle_lights({"neopixel sb_leds"}, "test").outcome == LightToggle::On);
     helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
     CHECK(scripts_naming(client, "sb_leds") == 1);
     CHECK(scripts_naming(client, "chamber_light") == 0);
+}
+
+TEST_CASE_METHOD(LedWidgetFixture,
+                 "toggle_lights: unconfirmed only when no target reports its power",
+                 "[led][light_button]") {
+    auto& ctrl = LedController::instance();
+    // A TOGGLE macro has no readable state; a native strip has none until Klipper reports it.
+    const auto lamp = toggle_lights({"macro:Lamp"}, "test");
+    helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
+    CHECK(lamp.outcome == LightToggle::On);
+    CHECK(lamp.unconfirmed);
+
+    ctrl.update_from_status({{"neopixel sb_leds", {{"color_data", {{0.0, 0.0, 0.0, 0.0}}}}}});
+    REQUIRE(ctrl.device_state("neopixel sb_leds").power == PowerState::Off);
+    const auto mixed = toggle_lights({"macro:Lamp", "neopixel sb_leds"}, "test");
+    helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
+    CHECK_FALSE(mixed.unconfirmed);
+
+    CHECK_FALSE(toggle_lights({}, "test").unconfirmed);
 }
 
 TEST_CASE_METHOD(LedWidgetFixture,
@@ -498,7 +517,7 @@ TEST_CASE_METHOD(LedWidgetFixture,
     LedController::instance().set_power({"neopixel sb_leds"}, true);
     REQUIRE(LedController::instance().light_command_in_flight());
     client.clear_gcode_script_history();
-    CHECK(toggle_lights({"neopixel chamber_light"}) == LightToggle::Busy);
+    CHECK(toggle_lights({"neopixel chamber_light"}, "test").outcome == LightToggle::Busy);
     lv_obj_send_event(button, LV_EVENT_CLICKED, nullptr);
     CHECK(client.gcode_script_history().empty());
 
