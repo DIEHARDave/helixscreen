@@ -22,6 +22,7 @@
 #include <array>
 #include <cstdlib>
 #include <string>
+#include <vector>
 
 #include "../catch_amalgamated.hpp"
 
@@ -167,4 +168,54 @@ TEST_CASE_METHOD(LVGLTestFixture,
 
     ui_step_progress_set_current(widget, 3);
     CHECK(std::string(lv_label_get_text(caption)) == "Clean");
+}
+
+TEST_CASE_METHOD(LVGLTestFixture, "step progress horizontal: the row of dots is centred",
+                 "[ui][step][step_caption]") {
+    const char* names[] = {"Heat nozzle", "Cut & retract", "Feed filament", "Purge"};
+    for (int n = 2; n <= 4; ++n) {
+        for (bool caption_only : {true, false}) {
+            CAPTURE(n, caption_only);
+            lv_obj_t* parent = make_sized_parent(test_screen());
+            lv_obj_set_width(parent, 264);
+            std::vector<ui_step_t> steps;
+            for (int i = 0; i < n; ++i)
+                steps.push_back({names[i], helix::StepState::Pending});
+            lv_obj_t* widget =
+                ui_step_progress_create(parent, steps.data(), n, /*horizontal=*/true, nullptr);
+            REQUIRE(widget != nullptr);
+            if (caption_only)
+                ui_step_progress_set_current_label_only(widget, true);
+            ui_step_progress_set_current(widget, 1);
+            lv_obj_update_layout(parent);
+
+            std::vector<lv_area_t> circles;
+            for (uint32_t i = 0; i < lv_obj_get_child_count(widget); ++i) {
+                lv_obj_t* item = lv_obj_get_child(widget, (int32_t)i);
+                if (lv_obj_get_child_count(item) < 2)
+                    continue; // a connector or the caption
+                lv_area_t a;
+                lv_obj_get_coords(lv_obj_get_child(lv_obj_get_child(item, 0), 0), &a);
+                circles.push_back(a);
+            }
+            REQUIRE(circles.size() == static_cast<size_t>(n));
+            lv_area_t wa;
+            lv_obj_get_coords(widget, &wa);
+            const int32_t left_gap = circles.front().x1 - wa.x1;
+            const int32_t right_gap = wa.x2 - circles.back().x2;
+            CAPTURE(wa.x1, wa.x2, circles.front().x1, circles.back().x2);
+            CHECK(left_gap > 0);
+            CHECK(std::abs(left_gap - right_gap) <= 1);
+            // The connectors still join neighbouring dots.
+            for (int i = 0; i + 1 < n; ++i) {
+                lv_obj_t* conn = ui_step_progress_test_get_connector(widget, i);
+                REQUIRE(conn != nullptr);
+                lv_area_t ca;
+                lv_obj_get_coords(conn, &ca);
+                CHECK(std::abs(ca.x1 - circles[i].x2) <= 1);
+                CHECK(std::abs(ca.x2 - circles[i + 1].x1) <= 1);
+            }
+            lv_obj_delete(parent);
+        }
+    }
 }

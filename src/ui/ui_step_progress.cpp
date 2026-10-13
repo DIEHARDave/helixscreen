@@ -434,9 +434,12 @@ lv_obj_t* ui_step_progress_create(lv_obj_t* parent, const ui_step_t* steps, int 
         lv_obj_remove_flag(step_item, LV_OBJ_FLAG_SCROLLABLE);
         // Horizontal: column layout (circle + label stacked), Vertical: row layout
         lv_obj_set_flex_flow(step_item, horizontal ? LV_FLEX_FLOW_COLUMN : LV_FLEX_FLOW_ROW);
+        // A horizontal step is one column track, which flex_track_place positions
+        // in the step's width: CENTER puts the dot in the middle of its slot, so
+        // the row of dots is centred however many steps it has.
         lv_obj_set_flex_align(step_item, LV_FLEX_ALIGN_START,
                               LV_FLEX_ALIGN_CENTER, // Center cross-axis for both orientations
-                              LV_FLEX_ALIGN_START);
+                              horizontal ? LV_FLEX_ALIGN_CENTER : LV_FLEX_ALIGN_START);
 
         // Create indicator column (just wraps the circle)
         lv_obj_t* indicator_column = lv_obj_create(step_item);
@@ -580,6 +583,10 @@ void ui_step_progress_set_current_label_only(lv_obj_t* widget, bool on) {
         lv_obj_set_style_pad_bottom(widget, 0, 0);
     }
     refresh_caption(data);
+    // Hiding or showing the labels moves the dots without resizing the row, so
+    // no SIZE_CHANGED arrives to re-run the connectors.
+    lv_obj_update_layout(widget);
+    relayout_connectors(data, widget);
 }
 
 // NAMESPACE_OK: the widget's C API, beside its siblings
