@@ -21,7 +21,7 @@
 #include <cstdio>
 #include <cstring>
 
-JobQueueState::JobQueueState(IMoonrakerAPI* api, helix::IMoonrakerClient* client)
+JobQueueState::JobQueueState(helix::IMoonrakerAPI* api, helix::IMoonrakerClient* client)
     : api_(api), client_(client) {
     std::memset(state_buffer_, 0, sizeof(state_buffer_));
     std::memset(summary_buffer_, 0, sizeof(summary_buffer_));
@@ -148,7 +148,7 @@ void JobQueueState::fetch() {
 
     auto token = lifetime_.token();
     api_->queue().get_queue_status(
-        [this, token](const JobQueueStatus& status) {
+        [this, token](const helix::JobQueueStatus& status) {
             is_fetching_.store(false);
             token.defer("JobQueueState::on_queue_fetched",
                         [this, status]() { on_queue_fetched(status); });
@@ -163,7 +163,7 @@ void JobQueueState::fetch() {
         });
 }
 
-void JobQueueState::on_queue_fetched(const JobQueueStatus& status) {
+void JobQueueState::on_queue_fetched(const helix::JobQueueStatus& status) {
     // Main-thread only: fetch()'s success callback wraps this call in
     // tok.defer(), so everything below may touch subjects and LVGL state.
     cached_jobs_ = status.queued_jobs;

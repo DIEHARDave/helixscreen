@@ -1288,6 +1288,10 @@ TSAN_SHARD_JOBS ?= $(shell n=$$(nproc 2>/dev/null || echo 4); if [ $$n -gt 16 ];
 # A shard that dies on the upstream reporter abort is re-run, but ONLY when its
 # log carries the CHECK and no sanitizer report at all. A shard that found a
 # genuine race is never retried, so this cannot turn a real finding green.
+# The abort is tied to which tests share a process, so an identical re-run
+# repeats it: scripts/tsan_resplit_shard.sh re-runs the shard's tests split in
+# two, then four, then eight pieces (one round per retry), and only the pieces
+# that abort again go unchecked.
 TSAN_SHARD_RETRIES ?= 3
 
 test-tsan: test-tsan-build
@@ -1304,19 +1308,16 @@ test-tsan: test-tsan-build
 		if [ "$$ec" = "0" ]; then continue; fi; \
 		if grep -q 'CHECK failed' "$$shard_dir/$$i.log" 2>/dev/null && \
 		   ! grep -qE '$(TSAN_REPORT_RE)' "$$shard_dir/$$i.log" 2>/dev/null; then \
-			recovered=0; \
-			for attempt in $$(seq 1 $(TSAN_SHARD_RETRIES)); do \
-				echo "$(YELLOW)⚠ TSAN shard $$i hit the upstream reporter abort (no findings); retry $$attempt/$(TSAN_SHARD_RETRIES)$(RESET)"; \
-				if TSAN_OPTIONS="$(TSAN_RUN_OPTIONS)" $(TEST_TSAN_BIN) "$(TSAN_FILTER)" \
-					--shard-count $(TSAN_SHARDS) --shard-index $$i > "$$shard_dir/$$i.log" 2>&1; then \
-					recovered=1; break; \
-				fi; \
-				if grep -qE '$(TSAN_REPORT_RE)' "$$shard_dir/$$i.log" 2>/dev/null; then break; fi; \
-			done; \
-			if [ $$recovered -eq 1 ]; then continue; fi; \
-			inconclusive="$$inconclusive $$i"; \
-			echo "$(YELLOW)$(BOLD)⚠ TSAN shard $$i still aborting after $(TSAN_SHARD_RETRIES) retries; its tests went UNCHECKED$(RESET)"; \
-			continue; \
+			echo "$(YELLOW)⚠ TSAN shard $$i hit the upstream reporter abort (no findings); re-running it in smaller pieces$(RESET)"; \
+			TSAN_OPTIONS="$(TSAN_RUN_OPTIONS)" scripts/tsan_resplit_shard.sh $(TEST_TSAN_BIN) "$(TSAN_FILTER)" \
+				$(TSAN_SHARDS) $$i "$$shard_dir/$$i.log" $(TSAN_SHARD_RETRIES); \
+			case $$? in \
+				0) continue ;; \
+				4) inconclusive="$$inconclusive $$i"; \
+				   echo "$(YELLOW)$(BOLD)⚠ TSAN shard $$i: pieces still aborting after $(TSAN_SHARD_RETRIES) rounds; their tests went UNCHECKED (named in the log)$(RESET)"; \
+				   continue ;; \
+			esac; \
+			echo "$(RED)$(BOLD)✗ TSAN shard $$i failed when re-run in pieces$(RESET)"; rc=1; continue; \
 		fi; \
 		echo "$(RED)$(BOLD)✗ TSAN shard $$i exited $$ec$(RESET)"; rc=$$ec; \
 	done; \
@@ -1324,8 +1325,8 @@ test-tsan: test-tsan-build
 	rm -rf "$$shard_dir"; \
 	if [ -n "$$inconclusive" ]; then \
 		echo "$(YELLOW)$(BOLD)⚠ TSAN: shard(s)$$inconclusive were INCONCLUSIVE (upstream reporter abort, see #1293).$(RESET)"; \
-		echo "$(YELLOW)  Those shards reported no race before dying, so nothing is being hidden -$(RESET)"; \
-		echo "$(YELLOW)  but their tests were not checked. Set TSAN_STRICT=1 to fail on this.$(RESET)"; \
+		echo "$(YELLOW)  The aborting pieces reported no race before dying, so nothing is being hidden -$(RESET)"; \
+		echo "$(YELLOW)  but the tests the log names as UNCHECKED were not checked. Set TSAN_STRICT=1 to fail on this.$(RESET)"; \
 		if [ -n "$(TSAN_STRICT)" ]; then rc=1; fi; \
 	fi; \
 	( exit $$rc ); \
@@ -1547,16 +1548,11 @@ help-test:
 # it costs a whole suite pass, so test-vacuous and test-order-dependence both
 # consume this file rather than each producing their own.
 SUITE_REPORT ?= $(BUILD_DIR)/suite-report.xml
-# ~[subprocess] and ~[socket_discovery] are not about speed: those cases fork,
-# and the child shares the parent's report file description. Their writes
-# interleave with Catch2's XML mid-element, so the report comes out structurally
-# corrupt ("not well-formed (invalid token)") even though the run passes and
-# even though --out keeps test stdout away from it. Verified per-tag: a report
-# of [subprocess] alone is malformed, [socket_discovery] alone is malformed,
-# [splash] (which also forks) is clean. Every gate that reads a report is
-# blocked by this, so the report excludes them and they are judged by the suite
-# itself. See prestonbrown/helixscreen#1375.
-VACUOUS_FILTER ?= ~[.]~[slow]~[subprocess]~[socket_discovery]
+# The report is one file description shared with every child a test forks, and
+# Catch2's XML writer flushes after each element. A Catch2 assertion evaluated in
+# a forked child therefore writes into the parent's report mid-element, so tests
+# keep every assertion on the parent side of the fork (tests/CLAUDE.md).
+VACUOUS_FILTER ?= ~[.]~[slow]
 # Ratchet. May fall, never rise. Crash canaries and compile-time-only cases are
 # exempted by name in scripts/vacuous_test_baseline.txt, not counted here.
 # The nightly reads this through print-vacuous-max rather than repeating the

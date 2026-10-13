@@ -135,8 +135,8 @@ static std::pair<int, std::string> do_http_get(const std::string& url,
 }
 
 /// Pre-update backup paths (fallback tier, defined in app_constants.h)
-using AppConstants::Update::config_backup_fallback;
-using AppConstants::Update::env_backup_fallback;
+using app_constants::update::config_backup_fallback;
+using app_constants::update::env_backup_fallback;
 
 /**
  * @brief Safely get string value from JSON, handling null
@@ -2020,7 +2020,7 @@ void UpdateChecker::do_install(const std::string& tarball_path) {
             const std::string env_bak = env_backup_fallback();
 
             // Ensure fallback dir exists
-            std::string fallback_dir = AppConstants::Update::backup_fallback_dir();
+            std::string fallback_dir = app_constants::update::backup_fallback_dir();
             safe_exec({mkdir_bin, "-p", fallback_dir});
 
             struct stat st {};
@@ -2354,7 +2354,7 @@ void UpdateChecker::do_install(const std::string& tarball_path) {
     // Safety net: even if _exit(0) below doesn't execute (e.g., SIGABRT from
     // stale CWD), the watchdog sees the marker and skips the crash dialog.
     {
-        std::string marker = AppConstants::Update::update_restart_marker_path();
+        std::string marker = app_constants::update::update_restart_marker_path();
         std::ofstream ofs(marker);
         if (ofs) {
             spdlog::info("[UpdateChecker] Wrote update restart marker: {}", marker);
@@ -2485,7 +2485,7 @@ void UpdateChecker::handle_external_update_complete() {
 
     // Write restart marker so watchdog knows this exit is expected
     {
-        std::string marker = AppConstants::Update::update_restart_marker_path();
+        std::string marker = app_constants::update::update_restart_marker_path();
         std::ofstream ofs(marker);
         if (ofs) {
             spdlog::info("[UpdateChecker] Wrote update restart marker: {}", marker);
@@ -2533,7 +2533,7 @@ void UpdateChecker::handle_external_update_complete() {
 // ============================================================================
 
 bool UpdateChecker::write_self_restart_sentinel() {
-    const std::string dir = AppConstants::Update::backup_fallback_dir();
+    const std::string dir = app_constants::update::backup_fallback_dir();
     const std::string sentinel = dir + "/self_restart_sentinel";
     std::error_code ec;
     std::filesystem::create_directories(dir, ec);
@@ -2656,7 +2656,7 @@ void warn_legacy_update_url_keys(Config* config) {
         warned = true;
         spdlog::warn("[UpdateChecker] ignoring /update/dev_url and /update/r2_url in settings.json"
                      " - set r2_url/dev_url in {} instead (owned by root, mode 0644)",
-                     AppConstants::Update::state_dir() + "/update_urls.json");
+                     app_constants::update::state_dir() + "/update_urls.json");
     }
 }
 
@@ -3068,7 +3068,7 @@ void UpdateChecker::restart_moonraker_for_channel(IMoonrakerAPI& api, uint64_t g
                 // The app's websocket drops with it and reconnects on its own; that
                 // rediscovery syncs again, finds the stanza matching, and stops.
                 EmergencyStopOverlay::instance().suppress_recovery_dialog(
-                    RecoverySuppression::LONG);
+                    recovery_suppression::LONG);
                 api_ptr->restart_moonraker(
                     []() {
                         spdlog::info(
@@ -3244,7 +3244,7 @@ void UpdateChecker::on_connected(helix::IMoonrakerClient& client) {
         namespace fs = std::filesystem;
         std::error_code ec;
         std::string sentinel =
-            AppConstants::Update::backup_fallback_dir() + "/self_restart_sentinel";
+            app_constants::update::backup_fallback_dir() + "/self_restart_sentinel";
         if (fs::remove(sentinel, ec)) {
             spdlog::info("[UpdateChecker] Cleaned up self-restart sentinel");
             // Moonraker re-reads release_info.json only on a refresh, and its

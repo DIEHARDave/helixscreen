@@ -65,7 +65,7 @@ class AmsOverviewPanel : public PanelBase {
     friend class helix::AmsPanelTestAccess;
 
   public:
-    AmsOverviewPanel(helix::PrinterState& printer_state, IMoonrakerAPI* api);
+    AmsOverviewPanel(helix::PrinterState& printer_state, helix::IMoonrakerAPI* api);
     ~AmsOverviewPanel() override;
 
     // === PanelBase Interface ===

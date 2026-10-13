@@ -521,7 +521,7 @@ void mock_push_temps() {
 // blocks boot or the shell, and a failure at any step just logs and stops
 // (no retry — this is a manual verification aid, not production behavior).
 void run_http_hil_probe(MoonrakerManager* mgr) {
-    IMoonrakerAPI* api = mgr->api();
+    helix::IMoonrakerAPI* api = mgr->api();
     if (!api) {
         ESP_LOGW(TAG, "[http_hil] no API available — skipping probe");
         return;
@@ -589,7 +589,7 @@ void run_http_hil_probe(MoonrakerManager* mgr) {
 // Spoolman.
 void setup_discovery_callbacks_esp(MoonrakerManager& manager) {
     helix::IMoonrakerClient* client = manager.client();
-    IMoonrakerAPI* api = manager.api();
+    helix::IMoonrakerAPI* api = manager.api();
     if (!client || !api) {
         spdlog::error("app_boot: no Moonraker client or API — discovery callbacks not registered");
         return;

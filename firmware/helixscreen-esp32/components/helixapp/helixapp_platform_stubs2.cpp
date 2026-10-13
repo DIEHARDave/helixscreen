@@ -111,11 +111,11 @@ bool is_wizard_active() {
 // wires them via set_moonraker_api/client, and consumers read them back here
 // (the audit slice returned nullptr because nothing set them). set_moonraker_
 // manager lives in helixapp_platform_stubs.cpp next to get_moonraker_manager.
-static IMoonrakerAPI* g_moonraker_api = nullptr;
-IMoonrakerAPI* get_moonraker_api() {
+static helix::IMoonrakerAPI* g_moonraker_api = nullptr;
+helix::IMoonrakerAPI* get_moonraker_api() {
     return g_moonraker_api;
 }
-void set_moonraker_api(IMoonrakerAPI* api) {
+void set_moonraker_api(helix::IMoonrakerAPI* api) {
     g_moonraker_api = api;
 }
 std::string app_get_runtime_dir() {
@@ -141,7 +141,7 @@ void SpoolmanOverlay::on_activate() {}
 void SpoolmanOverlay::on_deactivating(DeactivateReason) {}
 void SpoolmanOverlay::before_show() {}
 SpoolmanOverlay& get_spoolman_overlay() {
-    static SpoolmanOverlay overlay;
+    static HELIX_PSRAM_BSS SpoolmanOverlay overlay;
     return overlay;
 }
 } // namespace ui
@@ -195,7 +195,7 @@ void SpoolmanPanel::on_activate() {}
 void SpoolmanPanel::on_deactivating(DeactivateReason) {}
 
 SpoolmanPanel& get_global_spoolman_panel() {
-    static SpoolmanPanel panel;
+    static HELIX_PSRAM_BSS SpoolmanPanel panel;
     return panel;
 }
 
@@ -243,7 +243,7 @@ SpoolmanManager& SpoolmanManager::instance() {
     return *reinterpret_cast<SpoolmanManager*>(storage);
 }
 void SpoolmanManager::init_subjects() {}
-void SpoolmanManager::set_api(IMoonrakerAPI*) {}
+void SpoolmanManager::set_api(helix::IMoonrakerAPI*) {}
 void SpoolmanManager::start_spoolman_polling() {}
 void SpoolmanManager::stop_spoolman_polling() {}
 // Called by the KEPT ams_state.cpp commit_slot_edit() when an edit drops a

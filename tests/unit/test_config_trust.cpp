@@ -22,16 +22,16 @@ namespace {
 class StateDirGuard {
   public:
     StateDirGuard()
-        : prev_(AppConstants::Update::detail::state_dir_ref()),
+        : prev_(helix::app_constants::update::detail::state_dir_ref()),
           dir_(helix::test::unique_temp_dir("helix_ct_state")) {
         std::filesystem::create_directories(dir_);
         // The trust gate refuses update_urls.json in a group/world-writable
         // directory, so pin the mode rather than trusting the umask.
         REQUIRE(::chmod(dir_.c_str(), 0755) == 0);
-        AppConstants::Update::detail::state_dir_ref() = dir_;
+        helix::app_constants::update::detail::state_dir_ref() = dir_;
     }
     ~StateDirGuard() {
-        AppConstants::Update::detail::state_dir_ref() = prev_;
+        helix::app_constants::update::detail::state_dir_ref() = prev_;
         std::error_code ec;
         std::filesystem::remove_all(dir_, ec);
     }

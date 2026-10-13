@@ -1341,7 +1341,7 @@ void SpoolmanOverlay::restart_and_verify() {
     lifetime_.defer("SpoolmanOverlay::restart_status",
                     [this]() { set_setup_status(lv_tr("Restarting Moonraker...")); });
 
-    EmergencyStopOverlay::instance().suppress_recovery_dialog(RecoverySuppression::LONG);
+    EmergencyStopOverlay::instance().suppress_recovery_dialog(recovery_suppression::LONG);
 
     auto token = lifetime_.token();
     api_->restart_moonraker(
@@ -1499,7 +1499,7 @@ void SpoolmanOverlay::remove_spoolman_config() {
                 tok.defer("SpoolmanOverlay::remove_uploaded", [this]() {
                     set_setup_status(lv_tr("Restarting Moonraker..."));
                     EmergencyStopOverlay::instance().suppress_recovery_dialog(
-                        RecoverySuppression::LONG);
+                        recovery_suppression::LONG);
                     auto tok2 = lifetime_.token();
                     api_->restart_moonraker(
                         [this, tok2]() {

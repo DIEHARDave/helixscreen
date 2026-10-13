@@ -268,10 +268,10 @@ TEST_CASE_METHOD(InputSettingsFixture, "InputSettingsManager long_press_time def
     SECTION("defaults to the documented 500ms") {
         // Pin both the constant and the wiring: a change to either is a change
         // to how easily a resting finger opens edit mode.
-        CHECK(static_cast<int>(AppConstants::Input::LONG_PRESS_MS) == 500);
+        CHECK(static_cast<int>(app_constants::input::LONG_PRESS_MS) == 500);
         CHECK(input().get_long_press_time() == 500);
         CHECK(input().get_long_press_time() ==
-              static_cast<int>(AppConstants::Input::LONG_PRESS_MS));
+              static_cast<int>(app_constants::input::LONG_PRESS_MS));
     }
 
     SECTION("setter clamps below the 300ms minimum") {

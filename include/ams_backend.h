@@ -26,8 +26,8 @@
 #include "tool_mapping_origin.h"
 #include "toolchanger_addon.h"
 
-class IMoonrakerAPI;
 namespace helix {
+class IMoonrakerAPI;
 #ifdef HELIX_ENABLE_MOCKS
 class AmsBackendMock;
 #endif
@@ -705,6 +705,20 @@ class AmsBackend {
      */
     [[nodiscard]] virtual std::optional<bool> toolhead_filament_unaccounted() const {
         return std::nullopt;
+    }
+
+    /**
+     * @brief Lanes the user must choose from before a slotless toolhead unload.
+     *
+     * Non-empty only when filament sits in the toolhead, the backend cannot name
+     * the lane it came from, and its unload command needs one. The caller asks
+     * which lane is in the head and passes it to unload_filament(); an empty
+     * list means unload_filament(-1) resolves the lane itself.
+     *
+     * @return 0-based slot indices to offer, empty when no choice is needed
+     */
+    [[nodiscard]] virtual std::vector<int> unload_lane_candidates() const {
+        return {};
     }
 
     // ========================================================================

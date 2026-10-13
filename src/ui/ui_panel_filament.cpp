@@ -16,6 +16,7 @@
 #include "ui_spool_canvas.h"
 #include "ui_subject_registry.h"
 #include "ui_temperature_utils.h"
+#include "ui_unload_lane_choice.h"
 #include "ui_update_queue.h"
 #include "ui_utils.h"
 
@@ -1579,7 +1580,8 @@ void FilamentPanel::continue_load_after_checks() {
     execute_load();
 }
 
-void FilamentPanel::handle_unload_button() {
+void FilamentPanel::handle_unload_button(std::optional<int> chosen_lane) {
+    chosen_unload_lane_ = chosen_lane;
     if (operation_guard_.is_active()) {
         NOTIFY_WARNING(lv_tr("Operation already in progress"));
         return;
@@ -1595,6 +1597,22 @@ void FilamentPanel::handle_unload_button() {
     // for an operation that will not happen.
     if (helix::ui::notify_if_unload_is_manual(AmsState::instance().get_backend())) {
         return;
+    }
+
+    // A backend that cannot name the lane in the toolhead asks for it before
+    // anything heats; the answer comes back through this handler.
+    if (!chosen_unload_lane_ && selected_op_slot() < 0) {
+        auto token = lifetime_.token();
+        if (helix::ui::choose_unload_lane(AmsState::instance().get_backend(),
+                                          lv_obj_find_by_name(panel_, "btn_unload"),
+                                          [this, token](int slot) {
+                                              if (token.expired()) {
+                                                  return;
+                                              }
+                                              handle_unload_button(slot);
+                                          })) {
+            return;
+        }
     }
 
     snapshot_prior_heater_target();
@@ -2931,7 +2949,8 @@ void FilamentPanel::execute_unload() {
     printer_state_.temperature_state().clear_load_latch();
 
     AmsBackend* backend = AmsState::instance().get_backend();
-    const int slot = selected_op_slot();
+    const int slot = chosen_unload_lane_.value_or(selected_op_slot());
+    chosen_unload_lane_.reset();
     // One system-info read for the whole dispatch: the plan, the loaded answer
     // and the manual-pull question are all about the same instant.
     const UnloadContext ctx = current_unload_context();

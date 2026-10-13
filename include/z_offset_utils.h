@@ -10,11 +10,10 @@
 #include <optional>
 #include <string>
 
-class IMoonrakerAPI;
-
 namespace helix {
+class IMoonrakerAPI;
 class PrinterDiscovery;
-}
+} // namespace helix
 
 namespace helix::ui {
 class SaveConfigWatch;
@@ -143,6 +142,12 @@ struct AdjustResult {
 AdjustResult adjust(IMoonrakerAPI* api, PrinterState* ps, double session_base_mm,
                     double current_offset_mm, double delta_mm);
 
+/// Baby-step tool @p tool_index's own Z offset by @p delta_mm: the absolute
+/// per-tool command the firmware takes, applied locally so Save sees it at once.
+/// Returns false, sending nothing, when there is no api, no reported offset to
+/// adjust from, or no command for this firmware.
+bool adjust_tool_offset(IMoonrakerAPI* api, PrinterState* ps, int tool_index, double delta_mm);
+
 /// Execute strategy-aware save sequence:
 ///   PROBE_CALIBRATE -> Z_OFFSET_APPLY_PROBE -> SAVE_CONFIG
 ///   ENDSTOP -> Z_OFFSET_APPLY_ENDSTOP -> SAVE_CONFIG
@@ -211,6 +216,11 @@ void deinit_save_available_subject();
 /// The published subject, or nullptr before init_save_available_subject().
 lv_subject_t* get_save_available_subject();
 
+/// The lifetime token an observer of get_save_available_subject() must carry, so a
+/// deinit of the subject cannot leave it pointing at freed memory. Empty (expired)
+/// before init_save_available_subject().
+[[nodiscard]] SubjectLifetime get_save_available_lifetime();
+
 /// Persist EVERY unsaved z-offset: the machine-wide one and each tool's.
 ///
 /// One entry point because two surfaces offer the save (the header button and
@@ -259,7 +269,7 @@ void save_dirty_offsets(IMoonrakerAPI* api, helix::ui::SaveConfigWatch& save_wat
 /// Tracks Klipper restart activity observed while a SAVE_CONFIG is in flight.
 ///
 /// Sampling "is a restart expected right now" at the moment a save timeout fires
-/// is useless: the recovery-suppression window (RecoverySuppression::LONG, 15s)
+/// is useless: the recovery-suppression window (recovery_suppression::LONG, 15s)
 /// closes long before a 30s save guard first fires, so the instantaneous check
 /// is always false by then. This latches the restart instead — "was a restart
 /// seen at any point since this save began" — which is the question the timeout

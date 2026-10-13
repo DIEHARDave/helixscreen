@@ -145,8 +145,20 @@ class BedDryingController {
     lv_subject_t* get_state_subject() {
         return &bed_drying_state_;
     }
+    /// Death signal for every subject above, for observers outside the controller.
+    [[nodiscard]] SubjectLifetime get_subjects_lifetime() const {
+        return subjects_.get_subjects_lifetime();
+    }
     lv_subject_t* get_text_subject() {
         return &bed_drying_text_;
+    }
+    /// Whole minutes left in a running cycle, rounded up; -1 outside one.
+    lv_subject_t* get_remaining_min_subject() {
+        return &bed_drying_remaining_min_;
+    }
+    /// 0..100 through a running cycle; -1 outside one.
+    lv_subject_t* get_progress_pct_subject() {
+        return &bed_drying_progress_pct_;
     }
     /// The start modal's "I understand" checkbox; Start enables on 1.
     lv_subject_t* get_ack_subject() {
@@ -194,6 +206,8 @@ class BedDryingController {
     bool subjects_initialized_ = false;
     lv_subject_t bed_drying_state_{};
     lv_subject_t bed_drying_text_{};
+    lv_subject_t bed_drying_remaining_min_{};
+    lv_subject_t bed_drying_progress_pct_{};
     lv_subject_t bed_drying_ack_{};
     lv_subject_t bed_drying_chamber_assist_{};
     lv_subject_t bed_drying_chamber_text_{};

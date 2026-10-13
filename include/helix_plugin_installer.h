@@ -21,9 +21,9 @@
 #include <vector>
 
 // Forward declaration
-class IMoonrakerAPI;
 
 namespace helix {
+class IMoonrakerAPI;
 
 // ============================================================================
 // Plugin Install State

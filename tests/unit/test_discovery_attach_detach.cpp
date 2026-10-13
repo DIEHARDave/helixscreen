@@ -53,15 +53,15 @@ void detach_connection_features(FakeMoonrakerClient& client) {
 
 /// Points the self-restart sentinel at a scratch dir for one test.
 struct ScratchSentinelDir {
-    std::string previous = AppConstants::Update::detail::backup_fallback_dir_ref();
+    std::string previous = helix::app_constants::update::detail::backup_fallback_dir_ref();
     fs::path root = fs::temp_directory_path() / ("helix-attach-" + std::to_string(getpid()));
     ScratchSentinelDir() {
         fs::remove_all(root);
         fs::create_directories(root);
-        AppConstants::Update::detail::backup_fallback_dir_ref() = root.string();
+        helix::app_constants::update::detail::backup_fallback_dir_ref() = root.string();
     }
     ~ScratchSentinelDir() {
-        AppConstants::Update::detail::backup_fallback_dir_ref() = previous;
+        helix::app_constants::update::detail::backup_fallback_dir_ref() = previous;
         fs::remove_all(root);
     }
     fs::path sentinel() const {

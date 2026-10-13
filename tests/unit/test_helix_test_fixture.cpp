@@ -40,7 +40,7 @@ TEST_CASE_METHOD(HelixTestFixture,
     REQUIRE_FALSE(estop.is_recovery_suppressed());
     REQUIRE_FALSE(estop.is_expected_restart());
 
-    estop.suppress_recovery_dialog(RecoverySuppression::EXTRA);
+    estop.suppress_recovery_dialog(recovery_suppression::EXTRA);
     EmergencyStopOverlayTestAccess::set_restart_in_progress(estop, true);
     REQUIRE(estop.is_recovery_suppressed());
     REQUIRE(estop.is_expected_restart());

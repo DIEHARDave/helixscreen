@@ -25,19 +25,7 @@
 namespace helix {
 
 ScreensaverType screensaver_type_from_env(const std::string& value, ScreensaverType configured) {
-    if (value == "toasters") {
-        return ScreensaverType::FLYING_TOASTERS;
-    }
-    if (value == "starfield") {
-        return ScreensaverType::STARFIELD;
-    }
-    if (value == "pipes") {
-        return ScreensaverType::PIPES_3D;
-    }
-    if (value == "bounce") {
-        return ScreensaverType::BOUNCING_PRINTER;
-    }
-    return (configured != ScreensaverType::OFF) ? configured : ScreensaverType::FLYING_TOASTERS;
+    return helix::ui::resolve_screensaver_now(value, configured);
 }
 
 } // namespace helix
@@ -56,6 +44,7 @@ ScreensaverManager::ScreensaverManager() : cpu_clock_(helix::ui::read_process_cp
     screensavers_.push_back(std::make_unique<PipesScreensaver>());
     screensavers_.push_back(std::make_unique<StarfieldScreensaver>());
     screensavers_.push_back(std::make_unique<helix::BouncingPrinterScreensaver>());
+    screensavers_.push_back(std::make_unique<helix::BouncingLogoScreensaver>());
     screensavers_.push_back(std::make_unique<helix::ui::FireworksScreensaver>());
 
     for (const char* name : savers_missing_for_build_depth()) {

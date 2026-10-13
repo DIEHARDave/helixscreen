@@ -506,6 +506,11 @@ registry), with the result published on the next status notification:
 HELIX_MOCK_AMS=ifs-module ./build/bin/helix-screen --test -vv
 ```
 
+`HELIX_MOCK_IFS_UNACCOUNTED=1` starts it with filament at the toolhead switch and no lane
+in `ifs_loaded`: the state a firmware that lost its loaded-lane record leaves behind. The
+head switch is tracked apart from `ifs_loaded` (`IFS_LOAD`/`T<n>` set it, `IFS_UNLOAD` and
+ejecting the loaded lane clear it), so Unload has to ask which lane is in the head.
+
 #### `cfs` - mock hardware, real backend
 
 Same rule as the modes above: no `AmsBackendMock` is built. The mock publishes the
@@ -1289,6 +1294,20 @@ HELIX_MOCK_THROTTLE=freq_capped_prev ./build/bin/helix-screen --test -vv
 ```
 
 Applied on every sampler tick, so the flags persist for the whole run rather than firing once.
+
+### `HELIX_MOCK_DISK_FREE_MB`
+
+Set the free space the mock reports for the gcodes disk, so the host-health widget's low-disk warning (below 500 MB) can be seen without filling a disk. Both the mock performance sampler and the mock Moonraker client's `server.files.get_directory` answer read it.
+
+| Property | Value |
+|----------|-------|
+| **Values** | A whole number of megabytes, capped at the 29 GB mock disk |
+| **Default** | Unset: 18 GB free of 29 GB |
+| **Files** | `include/mock_disk_usage.h`, `src/system/mock_performance_source.cpp`, `src/api/moonraker_client_mock_files.cpp` |
+
+```bash
+HELIX_MOCK_DISK_FREE_MB=300 ./build/bin/helix-screen --test -vv
+```
 
 ### `INPUT_SHAPER_DEMO_KALICO`
 

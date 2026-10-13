@@ -120,4 +120,15 @@ inline int32_t ams_stagger_label_width(int32_t slot_spacing, UiBreakpoint bp, in
     return 2 * slot_spacing - gap;
 }
 
+/**
+ * @brief Whether the operation sidebar lays its step progress out in a row.
+ *
+ * A portrait panel below the medium breakpoint gives the sidebar about 120 px
+ * under the diagram; a four-step vertical list (about 90 px) does not fit there
+ * under the strip and status, a row does. Everywhere else the vertical list fits.
+ */
+inline bool ams_stepper_horizontal(bool portrait, UiBreakpoint bp) {
+    return portrait && bp < UiBreakpoint::Medium;
+}
+
 } // namespace helix::ui

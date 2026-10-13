@@ -29,10 +29,10 @@
 #include <vector>
 
 // Forward declarations
-class IMoonrakerAPI;
 namespace helix {
+class IMoonrakerAPI;
 class IMoonrakerClient;
-}
+} // namespace helix
 
 namespace helix {
 class PrinterDiscovery;
@@ -406,6 +406,26 @@ class AmsState {
      */
     [[nodiscard]] std::vector<helix::AvailableSlot> collect_available_slots() const;
 
+    /**
+     * @brief A backend's system info, read once and shared by every reader until
+     *        it changes.
+     *
+     * One slots_version bump wakes many observers. Each one reading
+     * get_system_info() itself would copy the whole unit tree per bump; through
+     * this they share a single read. The reading is dropped when the backend
+     * raises an event, slots_version is bumped, or a backend is added or
+     * cleared, and a sync replaces it with the sync's own read.
+     *
+     * The pointer owns an immutable copy, so it stays valid across any later
+     * sync: a holder keeps the reading it was handed and never sees it change.
+     *
+     * Main thread only. Code about to act on a backend (start a load, clear a
+     * fault) reads get_system_info() for the live answer instead.
+     *
+     * @return nullptr when no backend is registered at @p backend_index
+     */
+    [[nodiscard]] std::shared_ptr<const AmsSystemInfo> system_info(int backend_index = 0) const;
+
     /// The primary backend's firmware DEFAULT tool -> head map, for the mapper.
     /// Identity when no backend is present, which is also the majority shape.
     /// NOT the live map - see AmsBackend::firmware_default_routing().
@@ -729,6 +749,11 @@ class AmsState {
      */
     lv_subject_t* get_ams_system_logo_subject() {
         return &ams_system_logo_;
+    }
+
+    /// 1 while the system has a logo for ams_system_logo; XML hides the image on 0.
+    lv_subject_t* get_ams_system_has_logo_subject() {
+        return &ams_system_has_logo_;
     }
 
     /**
@@ -1662,8 +1687,8 @@ class AmsState {
     void sync_current_loaded_from_backend(const AmsSystemInfo& primary_info);
 
     /// Writes the "Current: ..." header for @p slot_index on @p backend, with
-    /// the unit name on multi-unit systems.
-    void set_current_slot_header(AmsBackend& backend, int slot_index);
+    /// the unit name on multi-unit systems. @p info is @p backend's system info.
+    void set_current_slot_header(AmsBackend& backend, const AmsSystemInfo& info, int slot_index);
 
     /**
      * @brief Set action detail text directly (for UI-managed states)
@@ -1886,12 +1911,37 @@ class AmsState {
      * @brief Bump the slots version counter to trigger UI refresh
      *
      * Call after modifying slot data (weights, endless spool config, etc.)
-     * to notify observers and redraw the AMS panel.
+     * to notify observers and redraw the AMS panel. Drops every system_info()
+     * reading, so the observers it wakes see the modified data.
      */
     void bump_slots_version();
 
   private:
     friend class AmsStateTestAccess;
+
+    /// One backend's system_info() reading and the generation it was read at.
+    struct SystemInfoSnapshot {
+        std::shared_ptr<const AmsSystemInfo> info;
+        uint64_t generation = 0;
+    };
+
+    /// Read @p backend_index's system info from the backend and keep it as that
+    /// backend's system_info() reading. nullptr when no backend is registered there.
+    std::shared_ptr<const AmsSystemInfo> read_system_info(int backend_index) const;
+
+    /// Drop every system_info() reading. Safe from any thread.
+    void invalidate_system_info() {
+        system_info_generation_.fetch_add(1, std::memory_order_acq_rel);
+    }
+
+    /// bump_slots_version() without dropping the readings, for the sync paths
+    /// whose bump announces the reading they just took.
+    void bump_slots_version_from_sync();
+
+    /// Per backend index; an entry is current while its generation matches.
+    mutable std::vector<SystemInfoSnapshot> system_info_snapshots_;
+    /// Advanced by every invalidation, including backend events on their own thread.
+    std::atomic<uint64_t> system_info_generation_{1};
 
     /** @brief Fire external_spool_color_ subject to notify observers of spool changes */
     void notify_external_spool_changed(const SlotInfo& info);
@@ -2206,6 +2256,7 @@ class AmsState {
     char system_name_buf_[32];
     lv_subject_t ams_system_logo_{};
     char system_logo_buf_[64];
+    lv_subject_t ams_system_has_logo_{};
     lv_subject_t ams_current_tool_text_{};
     // Holds a translated position label ("Tool 1", "Инструмент 16", "Печатающая
     // головка 16") or "---". Sized like current_slot_text_buf_/system_logo_buf_:

@@ -44,6 +44,7 @@
 #include "ams_state.h"
 #include "app_globals.h"
 #include "bed_drying_controller.h"
+#include "bed_mesh_state.h"
 #include "filament_catalog.h"
 #include "filament_database.h"
 #include "filament_variants.h"
@@ -117,6 +118,10 @@ void SubjectInitializer::init_core_and_state() {
     // after all three, and before any panel XML binds the name.
     helix::zoffset::init_save_available_subject();
 
+    // The active bed mesh's stats, read by BedMeshPanel's XML and the home tile. They
+    // exist from here, so neither depends on the panel having been opened.
+    helix::BedMeshState::instance().init_subjects();
+
     // Phase 4: Navigation subjects — MUST register AFTER PrinterState/AmsState
     // so that in reverse deinit order, NavigationManager cleans up its observers
     // on PrinterState subjects BEFORE PrinterState deinits those subjects.
@@ -125,7 +130,7 @@ void SubjectInitializer::init_core_and_state() {
     spdlog::debug("[SubjectInitializer] Core and state subjects initialized");
 }
 
-void SubjectInitializer::init_panels(IMoonrakerAPI* api,
+void SubjectInitializer::init_panels(helix::IMoonrakerAPI* api,
                                      const RuntimeConfig& /* runtime_config */) {
     spdlog::debug("[SubjectInitializer] Initializing panel subjects (api={})...",
                   api ? "valid" : "nullptr");
@@ -205,7 +210,7 @@ void SubjectInitializer::init_ams_subjects() {
     helix::sensors::for_each_sensor_manager([](auto& m) { m.init_subjects(); });
 }
 
-void SubjectInitializer::init_panel_subjects(IMoonrakerAPI* api) {
+void SubjectInitializer::init_panel_subjects(helix::IMoonrakerAPI* api) {
     spdlog::trace("[SubjectInitializer] Initializing panel subjects");
 
     // Initialize widget-owned subjects before any panel XML is created.
@@ -369,7 +374,7 @@ void SubjectInitializer::init_panel_subjects(IMoonrakerAPI* api) {
     helix::PanelWidgetManager::instance().register_shared_resource<TemperatureService>(
         m_temp_control_panel.get());
     if (api) {
-        helix::PanelWidgetManager::instance().register_shared_resource<IMoonrakerAPI>(api);
+        helix::PanelWidgetManager::instance().register_shared_resource<helix::IMoonrakerAPI>(api);
     }
 
     // E-Stop overlay — cleanup self-registered inside init_subjects()

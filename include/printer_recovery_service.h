@@ -8,9 +8,8 @@
 #include <functional>
 #include <string>
 
-class IMoonrakerAPI;
-
 namespace helix {
+class IMoonrakerAPI;
 
 /// Platform-blind printer recovery orchestrator.
 ///

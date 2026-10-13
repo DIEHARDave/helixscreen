@@ -12,7 +12,9 @@
 
 // Forward declarations
 struct PrintFileData;
+namespace helix {
 class IMoonrakerAPI;
+}
 
 namespace helix::ui {
 

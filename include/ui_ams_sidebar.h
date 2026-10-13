@@ -36,6 +36,14 @@ class PrinterState;
 namespace helix::ui {
 
 /**
+ * What the status line says while the sidebar preheats the nozzle for a load.
+ * The step list's heat step carries the live "current / target" reading whenever
+ * there is a step list, so the status names the action and the reading appears
+ * once; with no step list the status is the only place left for the reading.
+ */
+std::string preheat_status_text(bool step_list_shows_temp, int current_c, int target_c);
+
+/**
  * @brief Shared AMS sidebar component for operation status and controls
  *
  * Manages the right-column sidebar used by both AmsPanel and AmsOverviewPanel.
@@ -122,8 +130,11 @@ class AmsOperationSidebar {
      * built correctly (mirrors how handle_load_with_preheat routes LOAD).
      * Without this the context-menu UNLOAD path called the backend directly,
      * leaving auto-detect to mis-build the stepper as LOAD_SWAP.
+     *
+     * @param lane_in_toolhead the user named @p slot_index as the lane in the
+     *        toolhead, which no live state claims, so it counts as loaded
      */
-    void handle_unload(int slot_index);
+    void handle_unload(int slot_index, bool lane_in_toolhead = false);
 
     /// This sidebar's bypass controller, for the external-spool menu to drive.
     /// One controller per surface: a second would own half of the #1229
@@ -174,6 +185,13 @@ class AmsOperationSidebar {
 
     // Widget references
     lv_obj_t* sidebar_root_ = nullptr;
+    // The loaded strip and status line: in the sidebar in landscape, moved into
+    // the panel's portrait_summary_slot (above the diagram) in portrait.
+    lv_obj_t* loaded_card_ = nullptr;
+    lv_obj_t* status_section_ = nullptr;
+    lv_obj_t* summary_slot_ = nullptr;
+    ObserverGuard portrait_observer_;
+    void place_summary(bool portrait);
     lv_obj_t* step_progress_ = nullptr;
     lv_obj_t* step_progress_container_ = nullptr;
 

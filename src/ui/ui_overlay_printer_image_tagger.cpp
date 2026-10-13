@@ -29,7 +29,7 @@ using helix::ui::find_required;
 std::optional<ImageTagTarget> displayed_image_tag_target() {
     ImageTagTarget t;
     t.path = PrinterImageManager::instance().get_displayed_image_path(
-        PrinterImages::current_screen_width());
+        printer_images::current_screen_width());
     t.key = printer_image_region_key(t.path);
     lv_image_header_t hdr;
     if (t.key.empty() || lv_image_decoder_get_info(t.path.c_str(), &hdr) != LV_RESULT_OK)

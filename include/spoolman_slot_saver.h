@@ -13,9 +13,8 @@
 
 #include "hv/json.hpp"
 
-class IMoonrakerAPI;
-
 namespace helix {
+class IMoonrakerAPI;
 
 /**
  * @brief Describes what changed between original and edited SlotInfo
@@ -252,8 +251,3 @@ class SpoolmanSlotSaver {
 };
 
 } // namespace helix
-
-// Bring SpoolmanSlotSaver into global scope for convenience (matches project convention)
-using helix::ChangeSet;
-using helix::SaveResult;
-using helix::SpoolmanSlotSaver;

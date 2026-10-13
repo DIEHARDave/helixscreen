@@ -88,7 +88,7 @@ A `Flat` box whose module we cannot identify still has its control paths refused
 | Load slot N | `CR_BOX_PRE_OPT` → `CR_BOX_EXTRUDE TNN=…` → `CR_BOX_WASTE` → `CR_BOX_FLUSH TNN=…` → `CR_BOX_END_OPT` | `BOX_EXTRUDE_MATERIAL TNN=…` → `BOX_EXTRUDER_EXTRUDE TNN=…` → `BOX_MATERIAL_FLUSH` |
 | Unload current | `CR_BOX_PRE_OPT` → `BOX_CUT_MATERIAL` → `BOX_MODE_WAIT` → `CR_BOX_RETRUDE` → `CR_BOX_END_OPT` | `BOX_CUT_MATERIAL` → `BOX_RETRUDE_MATERIAL` |
 | Envelope close (with wipe) | `BOX_NOZZLE_CLEAN` → `BOX_RESTORE_FAN` → `BOX_MOVE_TO_SAFE_POS` → `RESTORE_GCODE_STATE` | `BOX_NOZZLE_CLEAN` → `BOX_RESTORE_FAN` → `BOX_MOVE_TO_SAFE_POS` → `RESTORE_GCODE_STATE` |
-| Tool remap | `BOX_MODIFY_TN T<src>=T<dst>` | (same syntax — but **inert as we use it**, see below) |
+| Tool remap | `BOX_MODIFY_TN T<src>=T<dst>` | (same syntax; persists silently and no `map` echo follows, see below) |
 | Color sync | `BOX_MODIFY_TN_DATA ADDR=… NUM=… PART=color_value DATA=0RRGGBB` + `BOX_UPDATE_SAME_MATERIAL_LIST` | (same — `PART` names match the tn_data.json fields; the same-material refresh follows on both families because group membership requires exact color equality) |
 
 Both dialects cut with `BOX_CUT_MATERIAL`, the firmware's positioned cut. The K2's
@@ -101,14 +101,16 @@ The K1 envelope is shorter only because `BOX_MODE_WAIT` does not exist on K1 —
 symbol grep, which finds it nowhere in the extension. `BOX_SAVE_FAN`/`BOX_RESTORE_FAN` are
 present on both families and are now emitted on both.
 
-> **`BOX_MODIFY_TN` is not broken on K1 — our use of it is.** The command writes the remap
-> table and persists all 16 keys to tn_data.json exactly as documented; it just prints
-> nothing, which is why the #968 reporter read it as a no-op. The real problem is that
-> **only the firmware's own `T0`–`T15` / `T1A`–`T4D` entrypoints read `Tnn_map`.** We emit
-> `BOX_EXTRUDE_MATERIAL TNN=<physical>` directly, bypassing the mapping layer, so a remap we
-> write can never take effect. Whether K2's module behaves the same way is unverified — our
-> K2 remap may be inert for the same reason. Mechanism and options:
-> [CREALITY_CFS_K1_INTERNALS.md § Tool remap](printer-research/CREALITY_CFS_K1_INTERNALS.md#tool-remap-box_modify_tn).
+> **`BOX_MODIFY_TN` works on K1.** The command writes the remap table and persists all 16
+> keys to tn_data.json; it just prints nothing, which is why the #968 reporter read it as a
+> no-op. The remap applies where it is meant to: the slicer's in-print `T0`-`T15` changes
+> resolve through `Tnn_map`. Our manual load and swap emit `BOX_EXTRUDE_MATERIAL
+> TNN=<physical>` and bypass the table by design, since they already name the physical slot.
+> What is K1-specific is the missing echo: the K1 box status has no `map` field, so
+> `reports_firmware_tool_mapping()` is false there and the optimistic local update is the only
+> confirmation (`src/printer/ams_backend_cfs.cpp#set_tool_mapping_impl`).
+> On K2 the box echoes a remap back in `map`. Mechanism:
+> [CREALITY_CFS_K1_INTERNALS.md § Tool remap](printer-research/CREALITY_CFS_K1_INTERNALS.md#tool-remap-box_modify_tn---corrected-no-defect).
 
 ### Implementation
 

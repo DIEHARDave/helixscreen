@@ -38,7 +38,7 @@ class IMoonrakerClient;
  *       [](const auto& jobs, uint64_t total) { ... },
  *       [](const auto& err) { ... });
  */
-class MoonrakerHistoryAPI : public IHistoryAPI {
+class MoonrakerHistoryAPI : public helix::IHistoryAPI {
   public:
     using SuccessCallback = std::function<void()>;
     using ErrorCallback = std::function<void(const MoonrakerError&)>;

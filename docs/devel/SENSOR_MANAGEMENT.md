@@ -231,7 +231,7 @@ There are three runout queries, from coarse to fine:
 
 ### State defaults and the grace period
 
-`FilamentSensorState::filament_detected` defaults to `true`, so a read before the first status frame never looks like a runout. On top of that, `discover_sensors()` restarts a stabilization window (`AppConstants::Startup::SENSOR_STABILIZATION_PERIOD`, 5 s) during which toasts are suppressed and `filament_any_runout` is held at 0. `has_any_runout()` itself ignores the window, so a print status panel opened right after a restart on an already-paused print still sees the runout.
+`FilamentSensorState::filament_detected` defaults to `true`, so a read before the first status frame never looks like a runout. On top of that, `discover_sensors()` restarts a stabilization window (`helix::app_constants::startup::SENSOR_STABILIZATION_PERIOD`, 5 s) during which toasts are suppressed and `filament_any_runout` is held at 0. `has_any_runout()` itself ignores the window, so a print status panel opened right after a restart on an already-paused print still sees the runout.
 
 ### Toasts
 

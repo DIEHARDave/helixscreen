@@ -434,6 +434,11 @@ Variants: `primary`, `secondary`, `danger`, `success`, `warning`, `tertiary`, `g
 <ui_button icon="settings"/>  <!-- Icon only, no text -->
 ```
 
+A button with an icon and a label can restack icon-over-label where a row of them runs out
+of width: `stacked_if_bp_lte="N"` on the breakpoint, or `stacked_subject` + `stacked_if_eq`
+on any int subject (a `<subject_expr>` for conditions like orientation and tier together).
+The full attribute table is in [LVGL9_XML_GUIDE.md](LVGL9_XML_GUIDE.md) under `ui_button`.
+
 ### icon
 
 Material Design Icons with size and color variants.

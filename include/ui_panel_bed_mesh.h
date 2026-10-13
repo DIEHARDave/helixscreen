@@ -165,34 +165,15 @@ class BedMeshPanel : public OverlayBase {
     void save_profile_as(const std::string& name, std::function<void()> on_saved,
                          std::function<void(const std::string&)> on_failed);
 
-    void launch_calibration(IMoonrakerAPI* api, int expected_probes, int probe_samples = 1);
+    void launch_calibration(helix::IMoonrakerAPI* api, int expected_probes, int probe_samples = 1);
     // ========== Subject Manager (RAII cleanup) ==========
     SubjectManager subjects_;
 
-    // ========== Current Mesh Stats Subjects ==========
-    lv_subject_t bed_mesh_available_{};
-    lv_subject_t bed_mesh_profile_name_{};
-    lv_subject_t bed_mesh_dimensions_{};
-    // "Max"/"Min" labels are plain static text="Max" translation_tag="Max" in
-    // bed_mesh_current_mesh_card.xml (like Name/Size/Z Range) - they never
-    // change at runtime, so no subject needed. Only the coordinates change.
-    lv_subject_t bed_mesh_max_value_{}; // "z mm"
-    lv_subject_t bed_mesh_max_coord_{}; // "[x, y]" muted sub-line, empty when no mesh
-    lv_subject_t bed_mesh_min_value_{}; // "z mm"
-    lv_subject_t bed_mesh_min_coord_{}; // "[x, y]" muted sub-line, empty when no mesh
-    lv_subject_t bed_mesh_variance_{};
-
-    char profile_name_buf_[64];
-    char dimensions_buf_[64];
-    char max_value_buf_[32];
-    char max_coord_buf_[24];
-    char min_value_buf_[32];
-    char min_coord_buf_[24];
-    char variance_buf_[64];
+    // The current-mesh stats subjects (bed_mesh_available, _profile_name, _dimensions,
+    // _max_value, _min_value, _variance and their coordinates, _profile_count) belong to
+    // helix::BedMeshState, which exists from connect; the panel's XML binds them there.
 
     // ========== Profile List Subjects (5 profiles max) ==========
-    lv_subject_t bed_mesh_profile_count_{};
-
     std::array<lv_subject_t, BED_MESH_MAX_PROFILES> profile_name_subjects_{};
     std::array<lv_subject_t, BED_MESH_MAX_PROFILES> profile_range_subjects_{};
     std::array<lv_subject_t, BED_MESH_MAX_PROFILES> profile_active_subjects_{};
@@ -345,7 +326,6 @@ class BedMeshPanel : public OverlayBase {
     void rewire_after_orientation_flip();
     void on_mesh_update_internal(const BedMeshProfile& mesh);
     void update_profile_list_subjects();
-    void update_info_subjects(const std::vector<std::vector<float>>& mesh_data, int cols, int rows);
     void ensure_async_rendering();
 
     // Calculate range (variance) for a profile

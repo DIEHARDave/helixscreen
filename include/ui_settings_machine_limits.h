@@ -29,7 +29,9 @@
 #include "subject_managed_panel.h"
 
 // Forward declarations
+namespace helix {
 class IMoonrakerAPI;
+}
 
 namespace helix::settings {
 

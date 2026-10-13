@@ -30,7 +30,7 @@ struct HomePanelTestAccess; // test-only friend (tests/test_helpers/)
 
 class HomePanel : public PanelBase {
   public:
-    HomePanel(helix::PrinterState& printer_state, IMoonrakerAPI* api);
+    HomePanel(helix::PrinterState& printer_state, helix::IMoonrakerAPI* api);
     ~HomePanel() override;
 
     void init_subjects() override;

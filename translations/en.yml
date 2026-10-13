@@ -13,7 +13,9 @@ translations:
   '%d lanes': '%d lanes'
   '%d min': '%d min'
   '%d min left': '%d min left'
+  '%d mm/s': '%d mm/s'
   '%d more sensors': '%d more sensors'
+  '%d profiles': '%d profiles'
   '%d slots': '%d slots'
   '%d toolheads': '%d toolheads'
   '%d tools': '%d tools'
@@ -32,6 +34,7 @@ translations:
   '%s has about %.0fg but %s needs about %.0fg. Start anyway?': '%s has about %.0fg but %s needs about %.0fg. Start anyway?'
   '%s has no filament loaded — this print will run out.': '%s has no filament loaded — this print will run out.'
   '%s needs filament in %s, which is empty — this print will run out.': '%s needs filament in %s, which is empty — this print will run out.'
+  '%s unsaved': '%s unsaved'
   '%s uses %s, which has filament but no material set — the printer will not start until you set it.': '%s uses %s, which has filament but no material set — the printer will not start until you set it.'
   '%s: %.0fg of %.0fg needed': '%s: %.0fg of %.0fg needed'
   '%u layers': '%u layers'
@@ -73,6 +76,7 @@ translations:
   1 min ago: 1 min ago
   1 minute: 1 minute
   1 more tap to {} beta features: 1 more tap to {} beta features
+  1 profile: 1 profile
   1 unit: 1 unit
   1. Printer homes all axes (~1 minute): 1. Printer homes all axes (~1 minute)
   1. Printer homes and probes the bed: 1. Printer homes and probes the bed
@@ -343,6 +347,7 @@ translations:
   Bed Temperature: Bed Temperature
   'Bed cooling, spools still on the bed:': 'Bed cooling, spools still on the bed:'
   Bed is Level!: Bed is Level!
+  'Bed mesh calibration failed: {}': 'Bed mesh calibration failed: {}'
   Bed mesh operation timed out: Bed mesh operation timed out
   'Bed mesh...': 'Bed mesh...'
   Bed tab moves lift to this height first: Bed tab moves lift to this height first
@@ -377,9 +382,11 @@ translations:
   Border transparency (0 = invisible, 255 = solid): Border transparency (0 = invisible,
     255 = solid)
   Both: Both
+  Bouncing Logo: Bouncing Logo
   Bouncing Printer: Bouncing Printer
   Bowden Length: Bowden Length
   Bowden tube length from hub to toolhead: Bowden tube length from hub to toolhead
+  Box: Box
   Brand: Brand
   Brand and material come from Spoolman: Brand and material come from Spoolman
   Brightness: Brightness
@@ -963,6 +970,7 @@ translations:
   Drying: Drying
   Drying is already running: Drying is already running
   Drying on the bed: Drying on the bed
+  Drying progress and humidity for boxes, the chamber, and the bed: Drying progress and humidity for boxes, the chamber, and the bed
   Drying started: Drying started
   Drying stopped: Drying stopped
   Duplicate: Duplicate
@@ -1266,6 +1274,7 @@ translations:
   Filament Buffer: 'Filament Buffer'
   Filament Control: Filament Control
   Filament Detected: Filament Detected
+  Filament Dryer: Filament Dryer
   Filament Grade Mismatch: Filament Grade Mismatch
   Filament Humidity: Filament Humidity
   Filament In The Toolhead: Filament In The Toolhead
@@ -1482,6 +1491,7 @@ translations:
   Heating to {}°C...: Heating to {}°C...
   Heating...: Heating...
   'Heating: %d / %d°C': 'Heating: %d / %d°C'
+  Heightmap and flatness of the active bed mesh: Heightmap and flatness of the active bed mesh
   HelixScreen: HelixScreen
   HelixScreen Crashed: HelixScreen Crashed
   HelixScreen is detecting your display orientation: HelixScreen is detecting your
@@ -1504,6 +1514,7 @@ translations:
   Holding nozzle at {}°C to purge previous filament.: Holding nozzle at {}°C to purge previous filament.
   Home: Home
   Home & Continue: Home & Continue
+  Home All: Home All
   Home all axes to use the map: Home all axes to use the map
   Home and sweep the cutter to re-find its position: Home and sweep the cutter to re-find its position
   Home failed: Home failed
@@ -1532,6 +1543,8 @@ translations:
   Homing...: Homing...
   Horizontal: Horizontal
   Host: Host
+  Host Health: Host Health
+  Host and MCU load, temperature, and memory: Host and MCU load, temperature, and memory
   'Host: ': 'Host: '
   Hotend: Hotend
   Hotend Fan: Hotend Fan
@@ -1768,6 +1781,7 @@ translations:
   Line the nozzle up with the purge chute so purged filament drops straight in.: Line the nozzle up with the purge chute so purged filament drops straight in.
   Line {} calls {}, which this printer treats as an emergency stop. Re-slice the file with a profile made for this printer.: Line {} calls {}, which this printer treats as an emergency stop. Re-slice the file with a profile made for this printer.
   Listen to all theme sounds: Listen to all theme sounds
+  Live Z-offset, with baby steps and Save: Live Z-offset, with baby steps and Save
   Live view from your webcam: Live view from your webcam
   Load: Load
   Load Cell: Load Cell
@@ -1783,6 +1797,7 @@ translations:
   Load filament: Load filament
   Load filament first: Load filament first
   Load or unload filament.: Load or unload filament.
+  Load profile: Load profile
   Load the required filaments or start anyway?: Load the required filaments or start
     anyway?
   'Load, unload, and swap spools. View your multi-filament system at a glance, map colors to slots, and monitor runout sensors.': 'Load, unload, and swap spools. View your multi-filament system at a glance, map colors to slots, and monitor runout sensors.'
@@ -2131,6 +2146,7 @@ translations:
   Not connected to printer.: Not connected to printer.
   Not connected to the printer: Not connected to the printer
   Not detected: Not detected
+  Not drying: Not drying
   Not enough frequency data from the sweeps. Try again.: 'Not enough frequency data from the sweeps. Try again.'
   Not enough room for this widget. Rearrange or remove widgets to make space.: Not enough room for this widget. Rearrange or remove widgets to make space.
   Not in your spools? Set it up: Not in your spools? Set it up
@@ -2143,6 +2159,8 @@ translations:
   Nothing starred yet. Tap the star on a filament to add it here.: Nothing starred yet. Tap the star on a filament to add it here.
   Nothing to remap: Nothing to remap
   'Nothing to unload: no filament at the nozzle': 'Nothing to unload: no filament at the nozzle'
+  'Which lane is in the toolhead?': 'Which lane is in the toolhead?'
+  'Choose which lane is in the toolhead to unload it': 'Choose which lane is in the toolhead to unload it'
   Nothing was changed. Temperature and material are kept, so a retry is one tap.: Nothing was changed. Temperature and material are kept, so a retry is one tap.
   Notification: Notification
   Notifications: Notifications
@@ -2337,6 +2355,7 @@ translations:
   Poor match: Poor match
   Port: Port
   Position: Position
+  Position unknown: Position unknown
   Post-Sensor Clear: Post-Sensor Clear
   Power: Power
   Power Devices: Power Devices
@@ -2554,11 +2573,13 @@ translations:
   Quick Button 4: Quick Button 4
   Quick actions, calibration, speed: Quick actions, calibration, speed
   Quiet: Quiet
+  RAM: RAM
   RFCOMM connect failed: RFCOMM connect failed
   'RFCOMM connect failed: ': 'RFCOMM connect failed: '
   RFID reader malfunction (left): RFID reader malfunction (left)
   RFID reader malfunction (right): RFID reader malfunction (right)
   RFID, auto-refill, nozzle and link care: RFID, auto-refill, nozzle and link care
+  RH: RH
   RSS: RSS
   'RSS:': 'RSS:'
   Ramming Volume: Ramming Volume
@@ -3046,7 +3067,9 @@ translations:
   Spaghetti detected (%d%%): Spaghetti detected (%d%%)
   Speaker: Speaker
   Speed: Speed
+  Speed / Flow: Speed / Flow
   Speed Settings: Speed Settings
+  Speed and flow overrides, with a tap to tune: Speed and flow overrides, with a tap to tune
   Speed multiplier for forward moves: Speed multiplier for forward moves
   Speed multiplier for reverse moves: Speed multiplier for reverse moves
   Speed of prime movement: Speed of prime movement
@@ -3485,6 +3508,7 @@ translations:
   Toolhead Style: Toolhead Style
   Toolhead Y: Toolhead Y
   Toolhead jam: Toolhead jam
+  Toolhead position and homing, with a plate view and Home All: Toolhead position and homing, with a plate view and Home All
   Toolhead position unknown: Toolhead position unknown
   Toolheads: Toolheads
   Tools: Tools
@@ -3812,6 +3836,7 @@ translations:
   direct drive: direct drive
   disable: disable
   disabled: disabled
+  drying: drying
   e.g. Jet Black: e.g. Jet Black
   e.g. NAME=my_var VALUE=123: e.g. NAME=my_var VALUE=123
   e.g. Polymaker: e.g. Polymaker
@@ -3848,6 +3873,8 @@ translations:
   loaded: loaded
   locked: locked
   matched: matched
+  mm: mm
+  mm Z-offset: mm Z-offset
   mm before clog: mm before clog
   needs: needs
   needs approval: needs approval

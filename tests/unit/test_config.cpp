@@ -1523,16 +1523,16 @@ struct BackupGuard {
 
     BackupGuard()
         : temp_dir(helix::test::unique_temp_dir("helix_nobackup")),
-          prev_state_dir(AppConstants::Update::detail::state_dir_ref()),
-          prev_fallback_dir(AppConstants::Update::detail::backup_fallback_dir_ref()),
+          prev_state_dir(app_constants::update::detail::state_dir_ref()),
+          prev_fallback_dir(app_constants::update::detail::backup_fallback_dir_ref()),
           had_home(std::getenv("HOME") != nullptr) {
         if (had_home)
             original_home = std::getenv("HOME");
         std::filesystem::create_directories(temp_dir);
         setenv("HOME", temp_dir.c_str(), 1);
-        AppConstants::Update::detail::backup_fallback_dir_ref() =
-            AppConstants::Update::sanitize_home(std::getenv("HOME")) + "/.helixscreen";
-        AppConstants::Update::detail::state_dir_ref() = temp_dir + "/var-lib";
+        app_constants::update::detail::backup_fallback_dir_ref() =
+            app_constants::update::sanitize_home(std::getenv("HOME")) + "/.helixscreen";
+        app_constants::update::detail::state_dir_ref() = temp_dir + "/var-lib";
     }
     ~BackupGuard() {
         if (had_home)
@@ -1542,8 +1542,8 @@ struct BackupGuard {
         // Restore the SAVED value, never a freshly-computed $HOME/.helixscreen:
         // the test sandbox points this at a temp dir, and recomputing it here
         // un-sandboxes every later test in the shard onto the real backup.
-        AppConstants::Update::detail::backup_fallback_dir_ref() = prev_fallback_dir;
-        AppConstants::Update::detail::state_dir_ref() = prev_state_dir;
+        app_constants::update::detail::backup_fallback_dir_ref() = prev_fallback_dir;
+        app_constants::update::detail::state_dir_ref() = prev_state_dir;
         std::error_code ec;
         std::filesystem::remove_all(temp_dir, ec);
     }
@@ -1687,14 +1687,14 @@ TEST_CASE_METHOD(ConfigTestFixture, "Config: factory reset removes rolling backu
     }
 
     const std::vector<std::string> config_tiers = {
-        AppConstants::Update::config_backup_primary(),
-        AppConstants::Update::config_backup_fallback(),
-        AppConstants::Update::legacy_config_backup_primary(),
-        AppConstants::Update::legacy_config_backup_fallback(),
+        app_constants::update::config_backup_primary(),
+        app_constants::update::config_backup_fallback(),
+        app_constants::update::legacy_config_backup_primary(),
+        app_constants::update::legacy_config_backup_fallback(),
     };
     const std::vector<std::string> env_tiers = {
-        AppConstants::Update::env_backup_primary(),
-        AppConstants::Update::env_backup_fallback(),
+        app_constants::update::env_backup_primary(),
+        app_constants::update::env_backup_fallback(),
     };
 
     // Seed every tier the restore path reads, so the assertions below prove
@@ -3170,15 +3170,15 @@ struct HomeGuard {
     std::string prev_fallback_dir;
     bool had_home;
     explicit HomeGuard(const std::string& new_home)
-        : prev_state_dir(AppConstants::Update::detail::state_dir_ref()),
-          prev_fallback_dir(AppConstants::Update::detail::backup_fallback_dir_ref()),
+        : prev_state_dir(app_constants::update::detail::state_dir_ref()),
+          prev_fallback_dir(app_constants::update::detail::backup_fallback_dir_ref()),
           had_home(std::getenv("HOME") != nullptr) {
         if (had_home)
             original = std::getenv("HOME");
         setenv("HOME", new_home.c_str(), 1);
-        AppConstants::Update::detail::backup_fallback_dir_ref() =
-            AppConstants::Update::sanitize_home(std::getenv("HOME")) + "/.helixscreen";
-        AppConstants::Update::detail::state_dir_ref() = new_home + "/var-lib";
+        app_constants::update::detail::backup_fallback_dir_ref() =
+            app_constants::update::sanitize_home(std::getenv("HOME")) + "/.helixscreen";
+        app_constants::update::detail::state_dir_ref() = new_home + "/var-lib";
     }
     ~HomeGuard() {
         if (had_home)
@@ -3186,8 +3186,8 @@ struct HomeGuard {
         else
             unsetenv("HOME");
         // Restore the SAVED value — see the note in ~BackupGuard().
-        AppConstants::Update::detail::backup_fallback_dir_ref() = prev_fallback_dir;
-        AppConstants::Update::detail::state_dir_ref() = prev_state_dir;
+        app_constants::update::detail::backup_fallback_dir_ref() = prev_fallback_dir;
+        app_constants::update::detail::state_dir_ref() = prev_state_dir;
     }
 };
 
@@ -3384,7 +3384,7 @@ struct TarballTestEnv {
     /// The installer's "this packaged config is here on purpose" marker,
     /// written beside settings.json.
     std::filesystem::path fresh_marker() const {
-        return dir / AppConstants::Update::FRESH_INSTALL_MARKER;
+        return dir / app_constants::update::FRESH_INSTALL_MARKER;
     }
 
     void write_fresh_marker() {
@@ -4358,16 +4358,16 @@ struct BackupSandbox {
 
     explicit BackupSandbox(const std::string& name)
         : dir(helix::test::unique_temp_dir("helix_test_" + name)),
-          prev_state_dir(AppConstants::Update::detail::state_dir_ref()),
-          prev_fallback_dir(AppConstants::Update::detail::backup_fallback_dir_ref()),
+          prev_state_dir(app_constants::update::detail::state_dir_ref()),
+          prev_fallback_dir(app_constants::update::detail::backup_fallback_dir_ref()),
           had_home(std::getenv("HOME") != nullptr) {
         if (had_home)
             original_home = std::getenv("HOME");
         std::filesystem::remove_all(dir);
         std::filesystem::create_directories(dir);
         setenv("HOME", dir.string().c_str(), 1);
-        AppConstants::Update::detail::state_dir_ref() = (dir / "var-lib").string();
-        AppConstants::Update::detail::backup_fallback_dir_ref() = (dir / ".helixscreen").string();
+        app_constants::update::detail::state_dir_ref() = (dir / "var-lib").string();
+        app_constants::update::detail::backup_fallback_dir_ref() = (dir / ".helixscreen").string();
     }
 
     ~BackupSandbox() {
@@ -4375,8 +4375,8 @@ struct BackupSandbox {
             setenv("HOME", original_home.c_str(), 1);
         else
             unsetenv("HOME");
-        AppConstants::Update::detail::state_dir_ref() = prev_state_dir;
-        AppConstants::Update::detail::backup_fallback_dir_ref() = prev_fallback_dir;
+        app_constants::update::detail::state_dir_ref() = prev_state_dir;
+        app_constants::update::detail::backup_fallback_dir_ref() = prev_fallback_dir;
         std::error_code ec;
         std::filesystem::remove_all(dir, ec);
     }
@@ -4387,17 +4387,17 @@ struct BackupSandbox {
 
     /// Write a backup at the primary (StateDirectory) tier.
     void write_primary_backup(const json& j) {
-        std::filesystem::create_directories(AppConstants::Update::state_dir());
-        std::ofstream o(AppConstants::Update::config_backup_primary());
+        std::filesystem::create_directories(app_constants::update::state_dir());
+        std::ofstream o(app_constants::update::config_backup_primary());
         o << j.dump(2);
     }
 
     bool primary_backup_exists() const {
-        return std::filesystem::exists(AppConstants::Update::config_backup_primary());
+        return std::filesystem::exists(app_constants::update::config_backup_primary());
     }
 
     json read_primary_backup() const {
-        return json::parse(std::fstream(AppConstants::Update::config_backup_primary()));
+        return json::parse(std::fstream(app_constants::update::config_backup_primary()));
     }
 };
 
@@ -4502,7 +4502,7 @@ TEST_CASE("Config::init() in test mode does not write a production rolling backu
     test_config.save();
 
     REQUIRE_FALSE(env.primary_backup_exists());
-    REQUIRE_FALSE(std::filesystem::exists(AppConstants::Update::config_backup_fallback()));
+    REQUIRE_FALSE(std::filesystem::exists(app_constants::update::config_backup_fallback()));
 }
 
 TEST_CASE("Config::save() outside test mode still writes a rolling backup",
@@ -4603,7 +4603,7 @@ TEST_CASE("Config::save() does not overwrite the rolling backup while the wizard
     REQUIRE(env.read_primary_backup().value("brightness", 0) == 42);
     REQUIRE(env.read_primary_backup().value("active_printer_id", "") == "real-production-printer");
     // ...and the setup-in-progress config must not have leaked into the fallback tier either.
-    REQUIRE_FALSE(std::filesystem::exists(AppConstants::Update::config_backup_fallback()));
+    REQUIRE_FALSE(std::filesystem::exists(app_constants::update::config_backup_fallback()));
 }
 
 TEST_CASE("Config::save() does refresh the rolling backup once the wizard is complete",

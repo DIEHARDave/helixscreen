@@ -83,7 +83,7 @@ struct ThumbnailRequest {
     helix::ThumbnailSource source = helix::ThumbnailSource::Moonraker;
     helix::ThumbnailTarget target;
     time_t source_modified = 0;
-    IMoonrakerAPI* api = nullptr;
+    helix::IMoonrakerAPI* api = nullptr;
     ThumbnailFormat format = ThumbnailFormat::Prescaled;
 };
 
@@ -218,8 +218,8 @@ class ThumbnailCache {
      *
      * @note Callbacks may be invoked from background thread - use ui_queue_update() for UI updates
      */
-    void fetch(IMoonrakerAPI* api, const std::string& relative_path, SuccessCallback on_success,
-               ErrorCallback on_error, time_t source_modified = 0);
+    void fetch(helix::IMoonrakerAPI* api, const std::string& relative_path,
+               SuccessCallback on_success, ErrorCallback on_error, time_t source_modified = 0);
 
     /**
      * @brief Fetch a thumbnail described by a request, guarded by a load context
@@ -423,7 +423,7 @@ class ThumbnailCache {
      *
      * @note Falls back to PNG on pre-scaling failure - display still works, just slower
      */
-    void fetch_optimized(IMoonrakerAPI* api, const std::string& relative_path,
+    void fetch_optimized(helix::IMoonrakerAPI* api, const std::string& relative_path,
                          const helix::ThumbnailTarget& target, SuccessCallback on_success,
                          ErrorCallback on_error, time_t source_modified = 0);
 

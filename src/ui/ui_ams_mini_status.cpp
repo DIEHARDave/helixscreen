@@ -1382,7 +1382,8 @@ static void sync_from_ams_state(AmsMiniStatusData* data) {
     data->slot_count = slot_count;
 
     // Get multi-unit info from system info
-    helix::AmsSystemInfo info = backend->get_system_info();
+    const auto snapshot = helix::AmsState::instance().system_info();
+    const helix::AmsSystemInfo& info = *snapshot;
     data->unit_count = static_cast<int>(info.units.size());
     data->absent_slots.clear();
     for (int u = 0; u < data->unit_count && u < 8; ++u) {

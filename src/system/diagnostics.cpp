@@ -134,7 +134,7 @@ Diagnostics collect() {
     }
     d.paths.cache_tier = cache_tier != nullptr ? cache_tier : "";
 
-    d.paths.state_dir = AppConstants::Update::state_dir();
+    d.paths.state_dir = app_constants::update::state_dir();
     d.paths.log_file = logging::effective_log_file_path();
 
     d.paths.updater_staging_dir = staging_dir_for(d.paths.install_root);

@@ -1122,7 +1122,7 @@ static int run_watchdog(WatchdogArgs args) {
         // Written by UpdateChecker before _exit(0) after a successful update install.
         bool was_update_restart = false;
         {
-            std::string marker = AppConstants::Update::update_restart_marker_path();
+            std::string marker = app_constants::update::update_restart_marker_path();
             namespace fs = std::filesystem;
             std::error_code ec;
             if (fs::exists(marker, ec) && !ec) {

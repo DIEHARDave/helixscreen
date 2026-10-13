@@ -22,6 +22,7 @@
 
 #include "../lvgl_ui_test_fixture.h"
 #include "../test_helpers/ams_panel_test_access.h"
+#include "../test_helpers/scoped_geometry.h"
 #include "../ui_test_utils.h"
 #include "ams_backend_mock.h"
 #include "ams_state.h"
@@ -733,8 +734,7 @@ TEST_CASE_METHOD(PagingFixture, "Unit view: a change in the system keeps the sho
 
     SECTION("a unit appearing late does not move the page") {
         fleet->specs.push_back({"unit_new", "fps2", false});
-        lv_subject_t* version = AmsState::instance().get_slots_version_subject();
-        lv_subject_set_int(version, lv_subject_get_int(version) + 1);
+        AmsState::instance().bump_slots_version();
         drain();
         process_lvgl(30);
         CHECK(page_count() == 13);
@@ -744,6 +744,7 @@ TEST_CASE_METHOD(PagingFixture, "Unit view: a change in the system keeps the sho
 
     SECTION("a unit inserted ahead of the shown one moves its page, not the screen") {
         fleet->specs.insert(fleet->specs.begin(), {"unit_first", "fps", false});
+        AmsState::instance().sync_from_backend();
         AmsPanelTestAccess::resync(panel());
         CHECK(page_count() == 13);
         CHECK(page_current() == 5);
@@ -752,6 +753,7 @@ TEST_CASE_METHOD(PagingFixture, "Unit view: a change in the system keeps the sho
 
     SECTION("the shown unit going absent clamps to a page that remains") {
         fleet->specs[4].absent = true;
+        AmsState::instance().sync_from_backend();
         AmsPanelTestAccess::resync(panel());
         CHECK(page_count() == 11);
         CHECK(page_current() == 4);
@@ -762,6 +764,7 @@ TEST_CASE_METHOD(PagingFixture, "Unit view: a change in the system keeps the sho
     SECTION("the last unit going absent while shown clamps to the new last page") {
         go_to(11);
         fleet->specs[11].absent = true;
+        AmsState::instance().sync_from_backend();
         AmsPanelTestAccess::resync(panel());
         CHECK(page_count() == 11);
         CHECK(page_current() == 10);
@@ -1093,8 +1096,23 @@ TEST_CASE_METHOD(PagingFixture, "Unit view: subjects that fire in one tick sync 
 
     SECTION("a sync reads the system info once") {
         auto* fleet = static_cast<PagedFleet*>(ams.get_backend());
+        ams.bump_slots_version();
         const int reads = fleet->info_reads;
         AmsPanelTestAccess::resync(panel());
+        CHECK(fleet->info_reads == reads + 1);
+    }
+
+    SECTION("a backend change reaching the open unit view costs one read") {
+        // AmsState's sync and every observer it wakes share one reading
+        // (prestonbrown/helixscreen#1777).
+        auto* fleet = static_cast<PagedFleet*>(ams.get_backend());
+        fleet->loaded_slot = 3 * kSlotsPerUnit;
+        const int version = lv_subject_get_int(ams.get_slots_version_subject());
+        const int reads = fleet->info_reads;
+        ams.sync_from_backend();
+        settle();
+        REQUIRE(lv_subject_get_int(ams.get_slots_version_subject()) != version);
+        REQUIRE(AmsPanelTestAccess::pages_refreshes(panel()) == base + 1);
         CHECK(fleet->info_reads == reads + 1);
     }
 
@@ -1115,19 +1133,22 @@ TEST_CASE_METHOD(PagingFixture, "Unit view: refresh cost bench", "[.][bench][ams
     auto bump = [](lv_subject_t* s) { lv_subject_set_int(s, lv_subject_get_int(s) + 1); };
 
     for (int i = 0; i < 50; ++i) {
-        bump(ams.get_slots_version_subject());
+        ams.bump_slots_version();
         settle();
     }
+    auto* fleet = static_cast<PagedFleet*>(ams.get_backend());
+    const int reads = fleet->info_reads;
     auto t0 = Clock::now();
     for (int i = 0; i < kRuns; ++i) {
-        bump(ams.get_slots_version_subject());
+        ams.bump_slots_version();
         settle();
     }
     auto t1 = Clock::now();
+    const double reads_per_tick = (fleet->info_reads - reads) / double(kRuns);
     const int before = AmsPanelTestAccess::pages_refreshes(panel());
     for (int i = 0; i < kRuns; ++i) {
         bump(ams.get_units_dryer_version_subject());
-        bump(ams.get_slots_version_subject());
+        ams.bump_slots_version();
         settle();
     }
     auto t2 = Clock::now();
@@ -1135,7 +1156,30 @@ TEST_CASE_METHOD(PagingFixture, "Unit view: refresh cost bench", "[.][bench][ams
     auto us = [](auto a, auto b) {
         return std::chrono::duration<double, std::micro>(b - a).count() / kRuns;
     };
-    WARN("BENCH slots bump: " << us(t0, t1) << " us/tick");
+    WARN("BENCH slots bump: " << us(t0, t1) << " us/tick, backend reads/tick " << reads_per_tick);
     WARN("BENCH dryer+slots bump: " << us(t1, t2) << " us/tick, sync_pages runs/tick "
                                     << (after - before) / double(kRuns));
+}
+
+TEST_CASE_METHOD(PagingFixture, "Unit view in portrait: the page dots float over the canvas",
+                 "[ams][pages][panel][portrait]") {
+    helix::test::ScopedGeometry portrait(272, 480);
+    lv_subject_t* is_portrait = lv_xml_get_subject(nullptr, "ui_is_portrait");
+    REQUIRE(is_portrait != nullptr);
+    REQUIRE(lv_subject_get_int(is_portrait) == 1);
+    open_at(1);
+    lv_obj_update_layout(lv_screen_active());
+    lv_obj_t* dots = named("page_dots");
+    lv_obj_t* canvas = named("detail_path_canvas");
+    REQUIRE_FALSE(lv_obj_has_flag(dots, LV_OBJ_FLAG_HIDDEN));
+    // Floating, so the dots take no row of the unit view's height...
+    CHECK(lv_obj_has_flag(dots, LV_OBJ_FLAG_FLOATING));
+    // ...and they sit inside the canvas's bottom-left quarter.
+    lv_area_t da, ca;
+    lv_obj_get_coords(dots, &da);
+    lv_obj_get_coords(canvas, &ca);
+    CAPTURE(da.x1, da.y1, da.x2, da.y2, ca.x1, ca.y1, ca.x2, ca.y2);
+    CHECK(da.y2 <= ca.y2);
+    CHECK(da.y1 >= (ca.y1 + ca.y2) / 2);
+    CHECK(da.x2 <= (ca.x1 + ca.x2) / 2 + 1);
 }

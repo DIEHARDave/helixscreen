@@ -22,7 +22,9 @@
 
 #include "hv/json.hpp"
 
+namespace helix {
 class IMoonrakerAPI;
+}
 class AmsEditOverlayTestAccess;
 class AmsEditOverlayViewTestAccess;
 

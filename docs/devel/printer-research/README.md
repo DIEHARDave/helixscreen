@@ -17,12 +17,12 @@ config, not hardware-verified. Build targets are `PLATFORM_TARGET` values in `mk
 |---------|-----------|-------|-----------------|----------------|--------|--------|
 | FlashForge Adventurer 5M / Pro | Allwinner, Cortex-A7 armv7 | 800x480 fbdev | Forge-X, Klipper Mod or ZMOD | none | `ad5m`, `ad5m-br` | Tested |
 | FlashForge Adventurer 5X | Ingenic X2600, MIPS32 (nan2008) | 800x480 fbdev | ZMOD 1.7.0+ | IFS (4) | `mips` (alias `ad5x`) | Tested |
-| FlashForge Creator 5 / 5 Pro | Ingenic X2000, MIPS32 | 800x480 (portrait fb, rotated) | Z-Mod or Reforge | 4-head toolchanger | `mips` (`make creator5`) | UI runs on device; toolchanger verified in mock only |
-| Creality K1 / K1C / K1 Max / K1 SE | Ingenic X2000E, MIPS32r2 | 480x800 portrait fbdev | Guilouz, Simple AF or Guppy Mod (Moonraker) | optional CFS upgrade | `mips` (alias `k1`), `k1-dynamic` | Supported (K1C, K1 Max tested) |
-| Creality K2 / K2 Plus / K2 Pro | Allwinner T113, Cortex-A7 armv7 | 480x800 portrait, rotated | stock | CFS (up to 16) | `k2` | Tested |
+| FlashForge Creator 5 / 5 Pro | Ingenic X2000, MIPS32 | 800x480 (portrait fb, rotated) | Z-Mod or Reforge | 4-head toolchanger | `mips` (`make creator5`) | UI runs on device; Load/Unload tested on a Creator 5 Pro (Z-Mod 1.7.4 + afclite, #1779); live-swap step bar open (#1714) |
+| Creality K1 / K1C / K1 Max / K1 SE | Ingenic X2000E, MIPS32r2 | 480x800 portrait fbdev | Guilouz, Simple AF or Guppy Mod (Moonraker) | optional CFS upgrade | `mips` (alias `k1`), `k1-dynamic` | Supported (K1C, K1 Max tested; K1 community) |
+| Creality K2 / K2 Plus / K2 Pro | Allwinner T113, Cortex-A7 armv7 | 480x800 portrait, rotated | stock | CFS (up to 16) | `k2` | Tested (K2 Plus); Community (K2 Pro); base K2 not captured |
 | Snapmaker U1 | Rockchip RK3562, aarch64 | 480x320 DRM | stock 1.2+ with Root access, or PAXX | SnapSwap 4-head | `snapmaker-u1` | Tested on PAXX; stock unverified |
 | Elegoo Centauri Carbon 1 | Allwinner R528, Cortex-A7 armv7 | 480x272 fbdev | OpenCentauri COSMOS 26.07.0+ | none | `cc1`, `yocto` | Tested |
-| QIDI Q2 / Max 4 | Cortex-A35, aarch64 | 480x272 / 800x480 fbdev | stock, FreeDi, FreeQIDI | QIDI Box | `pi` | Supported (Q2 community-validated) |
+| QIDI Q2 / Max 4 | Cortex-A35, aarch64 | 480x272 / 800x480 fbdev | stock, FreeDi, FreeQIDI | QIDI Box | `pi` | Supported (Q2 community-validated; Max 4 community-run, box eject unverified) |
 | QIDI Plus 4 and 3-series | RK3328, aarch64 | TJC serial HMI | stock | QIDI Box (Plus 4) | remote only | Supported as a remote target |
 | Creality Sonic Pad | Allwinner R818, armv7 userspace | 1024x600 | SonicPad-Debian | n/a | `pi32` | Supported |
 | Anycubic Kobra 2 Pro / 3 / S1, Sovol SV06 ACE | various | n/a | Rinkhals or community Klipper | ACE Pro | remote | Community |
@@ -57,7 +57,7 @@ documents below record which.
 
 | Device | Display | CPU | OS |
 |--------|---------|-----|-----|
-| Creality Nebula Pad | 4.3" 480x272 resistive | Allwinner T113 | Creality OS (closed) |
+| Creality Nebula Pad | 4.3" 480x272 resistive | Dual-core ARM, likely Allwinner T113 (unconfirmed) | Creality OS (closed) |
 | Creality Sonic Pad | 7" 1024x600 capacitive | Allwinner R818 | Klipper-based; HelixScreen runs on it under SonicPad-Debian |
 | BTT Pad 7 | 7" 1024x600 capacitive | Allwinner H616 | Klipper + KlipperScreen |
 

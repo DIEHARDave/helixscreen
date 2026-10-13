@@ -25,8 +25,7 @@ struct ExcludeModeTargets {
     lv_obj_t* gcode_viewer = nullptr;    ///< May be null
     lv_subject_t* map_active = nullptr;  ///< 1 while the map covers the card; may be null
     bool thumbnail_mode = true;          ///< Map + list; otherwise render badges + list
-    float bed_w_mm = 0.0f;
-    float bed_h_mm = 0.0f;
+    helix::BedDimensions bed{0.0f, 0.0f, 0.0f, 0.0f}; ///< helix::bed_dimensions()
 };
 
 /// Exclude mode over a preview: the object list, plus the top-down map in

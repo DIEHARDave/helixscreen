@@ -13,7 +13,9 @@ translations:
   '%d lanes': '%d 个耗材通道'
   '%d min': '%d分钟'
   '%d min left': '剩余 %d 分钟'
+  '%d mm/s': '%d mm/s'
   '%d more sensors': 还有%d个传感器
+  '%d profiles': '%d 个配置'
   '%d slots': '%d 个槽位'
   '%d toolheads': '%d 个工具头'
   '%d tools': '%d 个工具'
@@ -32,6 +34,7 @@ translations:
   '%s has about %.0fg but %s needs about %.0fg. Start anyway?': '%s 约剩 %.0fg，但%s 需要约 %.0fg。仍要开始吗？'
   '%s has no filament loaded — this print will run out.': '%s 未加载耗材 —— 此次打印将会耗尽耗材。'
   '%s needs filament in %s, which is empty — this print will run out.': '%s 需要耗材，但 %s 为空 —— 此次打印将会耗尽耗材。'
+  '%s unsaved': '%s 未保存'
   '%s uses %s, which has filament but no material set — the printer will not start until you set it.': '%s 使用 %s，该位置有耗材但未设置材料 — 设置后打印机才会开始。'
   '%s: %.0fg of %.0fg needed': '%s：%.0fg / 需要 %.0fg'
   '%u layers': '%u 层'
@@ -73,6 +76,7 @@ translations:
   1 min ago: 1分钟前
   1 minute: 1 分钟
   1 more tap to {} beta features: 再点击 1 次以{}测试功能
+  1 profile: '1 个配置'
   '1 unit': '1 个单元'
   1. Printer homes all axes (~1 minute): 1. 打印机全部轴归零（约1分钟）
   1. Printer homes and probes the bed: 1. 打印机归位并探测热床
@@ -330,6 +334,7 @@ translations:
   'Bed cooling, spools still on the bed:': '热床正在冷却,料盘仍在上面:'
 
   Bed is Level!: 热床已水平！
+  'Bed mesh calibration failed: {}': '热床网格校准失败：{}'
   Bed mesh operation timed out: 热床网格操作超时
   Bed mesh...: 热床网格...
   Bed tab moves lift to this height first: 热床标签页的移动会先抬升到此高度
@@ -362,9 +367,11 @@ translations:
   Border Width: 边框宽度
   Border transparency (0 = invisible, 255 = solid): 边框透明度（0 = 不可见，255 = 实心）
   Both: 两者
+  Bouncing Logo: 弹跳标志
   Bouncing Printer: 弹跳打印机
   Bowden Length: '波顿管长度'
   Bowden tube length from hub to toolhead: '从集线器到工具头的波顿管长度'
+  Box: 料盒
   Brand: 品牌
   Brand and material come from Spoolman: 品牌和材料来自 Spoolman
   Brightness: 亮度
@@ -928,6 +935,7 @@ translations:
 
   Drying on the bed: 正在热床上烘干
 
+  Drying progress and humidity for boxes, the chamber, and the bed: 料盒、腔体和热床的烘干进度与湿度
   Drying started: 已开始烘干
   Drying stopped: 已停止烘干
   Duplicate: 复制
@@ -1222,6 +1230,7 @@ translations:
   Filament Buffer: '耗材缓冲区'
   Filament Control: 耗材控制
   Filament Detected: 检测到耗材
+  Filament Dryer: 耗材烘干
   Filament Grade Mismatch: 耗材等级不匹配
   Filament Humidity: 耗材湿度
   Filament In The Toolhead: 工具头处有耗材
@@ -1434,6 +1443,7 @@ translations:
   Heating to {}°C...: 正在加热至{}°C...
   Heating...: 正在加热...
   'Heating: %d / %d°C': 加热中：%d / %d°C
+  Heightmap and flatness of the active bed mesh: '当前热床网格的高度图和平整度'
   HelixScreen: HelixScreen
   HelixScreen Crashed: HelixScreen 崩溃
   HelixScreen is detecting your display orientation: HelixScreen正在检测显示屏方向
@@ -1455,6 +1465,7 @@ translations:
   Holding nozzle at {}°C to purge previous filament.: 将喷嘴保持在 {}°C 以清洗之前的耗材。
   Home: 归位
   Home & Continue: 归位并继续
+  Home All: "全部归位"
   Home all axes to use the map: 请先归位所有轴以使用地图
   Home and sweep the cutter to re-find its position: 归零并扫过切刀以重新找到其位置
   Home failed: 归位失败
@@ -1481,6 +1492,8 @@ translations:
   Homing...: 正在归零...
   Horizontal: 水平
   Host: 主机
+  Host Health: 主机状态
+  Host and MCU load, temperature, and memory: 主机和 MCU 的负载、温度和内存
   'Host: ': '主机: '
   Hotend: 热端
   Hotend Fan: 热端风扇
@@ -1701,6 +1714,7 @@ translations:
 
   Line {} calls {}, which this printer treats as an emergency stop. Re-slice the file with a profile made for this printer.: '第 {} 行调用 {}，此打印机将其视为紧急停止。请使用为此打印机制作的配置重新切片该文件。'
   Listen to all theme sounds: 试听所有主题声音
+  Live Z-offset, with baby steps and Save: 实时 Z 偏移，支持微调与保存
   Live view from your webcam: 摄像头实时画面
   Load: 加载
   Load Cell: '称重传感器'
@@ -1716,6 +1730,7 @@ translations:
   Load filament: '装载耗材'
   Load filament first: 请先装载耗材
   Load or unload filament.: 装载或卸载耗材。
+  Load profile: '加载配置'
   Load the required filaments or start anyway?: 加载所需耗材还是直接开始？
   'Load, unload, and swap spools. View your multi-filament system at a glance, map colors to slots, and monitor runout sensors.': 加载、卸载和更换料盘。一目了然地查看您的多耗材系统、将颜色映射到槽位，并监控耗材用尽传感器。
   Load...: 加载...
@@ -2053,6 +2068,7 @@ translations:
   Not connected to printer.: 未连接到打印机。
   Not connected to the printer: 未连接到打印机
   Not detected: 未检测到
+  Not drying: 未在烘干
   Not enough frequency data from the sweeps. Try again.: '扫频得到的频率数据不足，请重试。'
   Not enough room for this widget. Rearrange or remove widgets to make space.: 没有足够的空间放置此小组件。请重新排列或移除小组件以腾出空间。
   'Not in your spools? Set it up': 不在您的料盘中？立即设置
@@ -2065,6 +2081,8 @@ translations:
   Nothing starred yet. Tap the star on a filament to add it here.: '还没有收藏。点击耗材行的星标即可收藏到这里。'
   Nothing to remap: 没有可重新映射的内容
   'Nothing to unload: no filament at the nozzle': '没有可卸载的耗材: 喷嘴处没有耗材'
+  'Which lane is in the toolhead?': '哪个料道在打印头里？'
+  'Choose which lane is in the toolhead to unload it': '请选择打印头里的料道以卸载'
   Nothing was changed. Temperature and material are kept, so a retry is one tap.: '没有更改任何内容。温度和材料保持不变，重试只需轻点一下。'
   Notification: 通知
   Notifications: 通知
@@ -2254,6 +2272,7 @@ translations:
   Poor match: "匹配较差"
   Port: 端口
   Position: 位置
+  Position unknown: "位置未知"
   Post-Sensor Clear: '传感器触发后额外移动'
   Power: 电源
   Power Devices: 电源设备
@@ -2465,11 +2484,13 @@ translations:
   Quick Button 4: 快捷按钮 4
   Quick actions, calibration, speed: 快捷操作、校准、速度
   Quiet: '安静'
+  RAM: RAM
   RFCOMM connect failed: RFCOMM 连接失败
   'RFCOMM connect failed: ': 'RFCOMM 连接失败: '
   RFID reader malfunction (left): RFID 读取器故障（左）
   RFID reader malfunction (right): RFID 读取器故障（右）
   RFID, auto-refill, nozzle and link care: RFID、自动续料、喷嘴与链路维护
+  RH: RH
   RSS: RSS
   'RSS:': RSS：
   Ramming Volume: '填充体积'
@@ -2929,7 +2950,9 @@ translations:
   Spaghetti detected (%d%%): 检测到拉丝故障（%d%%）
   Speaker: 扬声器
   Speed: 速度
+  Speed / Flow: '速度 / 流量'
   Speed Settings: '速度设置'
+  Speed and flow overrides, with a tap to tune: '速度与流量,点按即可调整'
   Speed multiplier for forward moves: '正向移动速度倍率'
   Speed multiplier for reverse moves: '反向移动速度倍率'
   Speed of prime movement: 预挤移动速度
@@ -3345,6 +3368,7 @@ translations:
   Toolhead Style: 工具头样式
   Toolhead Y: 工具头 Y
   Toolhead jam: 工具头堵塞
+  Toolhead position and homing, with a plate view and Home All: "工具头位置与归位，含热床视图和全部归位"
   Toolhead position unknown: 工具头位置未知
   Toolheads: 工具头
   Tools: 工具
@@ -3658,6 +3682,7 @@ translations:
   direct drive: 直驱
   disable: 禁用
   disabled: 已禁用
+  drying: 烘干中
   e.g. Jet Black: 例如 炭黑
   e.g. NAME=my_var VALUE=123: 例如 NAME=my_var VALUE=123
   e.g. Polymaker: 例如 Polymaker
@@ -3694,6 +3719,8 @@ translations:
   loaded: '已加载'
   locked: '已锁定'
   matched: 匹配
+  mm: mm
+  mm Z-offset: mm Z 偏移
   mm before clog: 毫米后堵料
   needs: 需要
   needs approval: 需要批准

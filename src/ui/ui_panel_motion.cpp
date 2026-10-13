@@ -16,6 +16,7 @@
 #include "ui_utils.h"
 
 #include "app_globals.h"
+#include "bed_grid.h"
 #include "config.h"
 #include "format_utils.h"
 #include "i_moonraker_api.h"
@@ -441,6 +442,8 @@ void MotionPanel::register_callbacks() {
         {"on_motion_bed_size_changed",
          [](lv_event_t*) { get_global_motion_panel().layout_bed_map(); }},
         {"on_motion_bed_home", [](lv_event_t*) { get_global_motion_panel().home('A'); }},
+        {"on_motion_bed_plate_draw",
+         [](lv_event_t* e) { get_global_motion_panel().draw_bed_grid(e); }},
     });
 }
 
@@ -1504,6 +1507,44 @@ void MotionPanel::layout_bed_map() {
     lv_obj_set_size(plate_obj, rect.w, rect.h);
     lv_subject_set_int(&motion_bed_circular_, plate->circular ? 1 : 0);
     update_bed_marker();
+}
+
+void MotionPanel::draw_bed_grid(lv_event_t* e) const {
+    lv_obj_t* plate_obj = lv_event_get_current_target_obj(e);
+    lv_obj_t* area = plate_obj ? lv_obj_get_parent(plate_obj) : nullptr;
+    const auto plate = bed_plate();
+    if (!area || !plate) {
+        return;
+    }
+    const auto mapper = bed_surface_mapper(area, plate->area);
+    lv_area_t coords;
+    lv_obj_get_coords(area, &coords);
+    const float left =
+        static_cast<float>(coords.x1 + lv_obj_get_style_pad_left(area, LV_PART_MAIN));
+    const float top = static_cast<float>(coords.y1 + lv_obj_get_style_pad_top(area, LV_PART_MAIN));
+
+    // The plate's own border color, faded: the grid follows the live/dim
+    // styling the XML gives the plate.
+    constexpr lv_opa_t GRID_OPA_FRACTION = LV_OPA_30;
+    lv_draw_line_dsc_t dsc;
+    lv_draw_line_dsc_init(&dsc);
+    dsc.color = lv_obj_get_style_border_color(plate_obj, LV_PART_MAIN);
+    dsc.opa = static_cast<lv_opa_t>(lv_obj_get_style_border_opa(plate_obj, LV_PART_MAIN) *
+                                    GRID_OPA_FRACTION / LV_OPA_COVER);
+    dsc.width = 1;
+
+    lv_layer_t* layer = lv_event_get_layer(e);
+    const auto& a = plate->area;
+    for (const auto& seg : helix::bed_grid_lines(a.x_min, a.x_max, a.y_min, a.y_max,
+                                                 helix::kBedGridSpacingMm, plate->circular)) {
+        const auto [x1, y1] =
+            mapper.mm_to_px(static_cast<float>(seg.x1), static_cast<float>(seg.y1));
+        const auto [x2, y2] =
+            mapper.mm_to_px(static_cast<float>(seg.x2), static_cast<float>(seg.y2));
+        dsc.p1 = {left + x1, top + y1};
+        dsc.p2 = {left + x2, top + y2};
+        lv_draw_line(layer, &dsc);
+    }
 }
 
 void MotionPanel::update_bed_marker() {

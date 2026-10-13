@@ -19,7 +19,9 @@
 #include "led/led_controller.h"
 #include "panel_widget_manager.h"
 #include "panel_widget_registry.h"
+#include "performance_state.h"
 #include "printer_state.h"
+#include "src/ui/panel_widgets/dryer_model.h"
 #include "static_subject_registry.h"
 #include "temperature_sensor_manager.h"
 #include "width_sensor_manager.h"
@@ -69,9 +71,16 @@ const std::vector<std::pair<std::string, Owner>>& owners() {
         t.emplace_back(
             "platform_host_power_supported",
             Owner{[] { app_globals_init_subjects(); }, [] { app_globals_deinit_subjects(); }});
+        t.emplace_back(
+            "home_dryer_available",
+            Owner{[] { dryer_model::init_subjects(); },
+                  [] { StaticSubjectRegistry::instance().deinit_one("DryerModelSubjects"); }});
+        t.emplace_back("perf_available",
+                       Owner{[] { perf::PerformanceState::instance().init_subjects(); },
+                             [] { perf::PerformanceState::instance().deinit_subjects(); }});
         const Owner printer{[] { get_printer_state().init_subjects(true); },
                             [] { get_printer_state().deinit_subjects(); }};
-        for (const char* n : {"power_device_count", "printer_has_chamber"})
+        for (const char* n : {"power_device_count", "printer_has_chamber", "printer_has_bed_mesh"})
             t.emplace_back(n, printer);
         return t;
     }();

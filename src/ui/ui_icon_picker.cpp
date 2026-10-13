@@ -71,7 +71,11 @@ void populate_icon_grid(lv_obj_t* grid, const char* const* icons, size_t count,
             lv_obj_add_flag(glyph, LV_OBJ_FLAG_EVENT_BUBBLE);
         }
 
-        lv_obj_set_user_data(cell, new IconCell{icons[i], on_pick});
+        // The DELETE hook owns the allocation through its own user_data. The
+        // object's user_data slot is only the lookup the click and refresh paths
+        // use, and a closing modal nulls every slot in its tree to stop dispatch.
+        auto* data = new IconCell{icons[i], on_pick};
+        lv_obj_set_user_data(cell, data);
         lv_obj_add_event_cb(
             cell,
             [](lv_event_t* e) {
@@ -85,11 +89,10 @@ void populate_icon_grid(lv_obj_t* grid, const char* const* icons, size_t count,
         lv_obj_add_event_cb(
             cell,
             [](lv_event_t* e) {
-                auto* cell = lv_event_get_current_target_obj(e);
-                delete cell_data(cell);
-                lv_obj_set_user_data(cell, nullptr);
+                lv_obj_set_user_data(lv_event_get_current_target_obj(e), nullptr);
+                delete static_cast<IconCell*>(lv_event_get_user_data(e));
             },
-            LV_EVENT_DELETE, nullptr);
+            LV_EVENT_DELETE, data);
     }
 }
 

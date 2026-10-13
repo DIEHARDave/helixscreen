@@ -395,7 +395,7 @@ void PrinterManagerOverlay::refresh_printer_info() {
         auto& pim = helix::PrinterImageManager::instance();
         std::string new_path = pim.get_active_image_path(screen_width);
         if (new_path.empty()) {
-            new_path = PrinterImages::get_best_printer_image(model);
+            new_path = printer_images::get_best_printer_image(model);
         }
 
         // LVGL keys its decoded copy on the path alone, and an import can rewrite an

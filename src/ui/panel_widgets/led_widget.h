@@ -18,11 +18,10 @@
 #include <unordered_set>
 #include <vector>
 
-class IMoonrakerAPI;
-
 namespace helix {
+class IMoonrakerAPI;
 class PrinterState;
-}
+} // namespace helix
 
 namespace helix {
 

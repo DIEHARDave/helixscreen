@@ -70,6 +70,11 @@ TEST_CASE_METHOD(LVGLTestFixture, "Screensaver type set/get round trip",
         REQUIRE(DisplaySettingsManager::instance().get_screensaver_type() == 4);
     }
 
+    SECTION("set to Bouncing Logo") {
+        DisplaySettingsManager::instance().set_screensaver_type(6);
+        REQUIRE(DisplaySettingsManager::instance().get_screensaver_type() == 6);
+    }
+
     SECTION("set back to Flying Toasters") {
         DisplaySettingsManager::instance().set_screensaver_type(0);
         DisplaySettingsManager::instance().set_screensaver_type(1);
@@ -496,6 +501,10 @@ TEST_CASE("HELIX_SCREENSAVER_NOW names a screensaver", "[screensaver]") {
                 ScreensaverType::PIPES_3D);
         REQUIRE(screensaver_type_from_env("bounce", ScreensaverType::OFF) ==
                 ScreensaverType::BOUNCING_PRINTER);
+        REQUIRE(screensaver_type_from_env("fireworks", ScreensaverType::OFF) ==
+                ScreensaverType::FIREWORKS);
+        REQUIRE(screensaver_type_from_env("logo", ScreensaverType::OFF) ==
+                ScreensaverType::BOUNCING_LOGO);
     }
 
     SECTION("a name wins over what is configured") {
@@ -546,6 +555,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "ScreensaverManager routes the configured sett
     REQUIRE(configured_for(2) == ScreensaverType::STARFIELD);
     REQUIRE(configured_for(3) == ScreensaverType::PIPES_3D);
     REQUIRE(configured_for(4) == ScreensaverType::BOUNCING_PRINTER);
+    REQUIRE(configured_for(6) == ScreensaverType::BOUNCING_LOGO);
 
     DisplaySettingsManager::instance().set_screensaver_type(0);
 }
@@ -581,6 +591,13 @@ TEST_CASE_METHOD(LVGLTestFixture, "ScreensaverManager start/stop lifecycle", "[s
 
     SECTION("start and stop Bouncing Printer") {
         mgr.start(ScreensaverType::BOUNCING_PRINTER);
+        REQUIRE(mgr.is_active() == true);
+        mgr.stop();
+        REQUIRE(mgr.is_active() == false);
+    }
+
+    SECTION("start and stop Bouncing Logo") {
+        mgr.start(ScreensaverType::BOUNCING_LOGO);
         REQUIRE(mgr.is_active() == true);
         mgr.stop();
         REQUIRE(mgr.is_active() == false);
@@ -1225,6 +1242,41 @@ TEST_CASE_METHOD(LVGLTestFixture, "BouncingPrinterScreensaver start/stop lifecyc
         ss.stop();
         REQUIRE(ss.is_active() == false);
     }
+}
+
+TEST_CASE_METHOD(LVGLTestFixture, "BouncingLogoScreensaver bounces the HelixScreen logo",
+                 "[screensaver]") {
+    lv_image_header_t logo{};
+    REQUIRE(lv_image_decoder_get_info("A:assets/images/helixscreen-logo-bounce.png", &logo) ==
+            LV_RESULT_OK);
+
+    BouncingLogoScreensaver ss;
+    CHECK(ss.type() == ScreensaverType::BOUNCING_LOGO);
+    ss.start();
+    REQUIRE(ss.is_active());
+    CHECK(BounceTestAccess::source_w(ss) == static_cast<int32_t>(logo.w));
+    CHECK(BounceTestAccess::source_h(ss) == static_cast<int32_t>(logo.h));
+    ss.stop();
+    CHECK_FALSE(ss.is_active());
+}
+
+TEST_CASE_METHOD(LVGLTestFixture, "Bouncing logo keeps its own colors; the printer is tinted",
+                 "[screensaver]") {
+    BouncingPrinterScreensaver printer;
+    printer.start();
+    REQUIRE(printer.is_active());
+    REQUIRE(BounceTestAccess::sprite(printer) != nullptr);
+    CHECK(lv_obj_get_style_image_recolor_opa(BounceTestAccess::sprite(printer), LV_PART_MAIN) >
+          LV_OPA_TRANSP);
+    printer.stop();
+
+    BouncingLogoScreensaver logo;
+    logo.start();
+    REQUIRE(logo.is_active());
+    REQUIRE(BounceTestAccess::sprite(logo) != nullptr);
+    CHECK(lv_obj_get_style_image_recolor_opa(BounceTestAccess::sprite(logo), LV_PART_MAIN) ==
+          LV_OPA_TRANSP);
+    logo.stop();
 }
 
 TEST_CASE_METHOD(LVGLTestFixture, "BouncingPrinterScreensaver creates overlay on lv_layer_top",

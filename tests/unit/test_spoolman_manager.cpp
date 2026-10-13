@@ -1262,7 +1262,7 @@ TEST_CASE_METHOD(SpoolmanLaneFixture,
     // saves and nothing the Spoolman fetches do.
     MoonrakerAPIMock tool_api(client, get_printer_state());
     struct AppApiScope {
-        IMoonrakerAPI* previous = get_moonraker_api();
+        helix::IMoonrakerAPI* previous = get_moonraker_api();
         ~AppApiScope() {
             set_moonraker_api(previous);
         }

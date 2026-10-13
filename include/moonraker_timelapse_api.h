@@ -38,7 +38,7 @@ class IMoonrakerClient;
  *       [](const auto& settings) { ... },
  *       [](const auto& err) { ... });
  */
-class MoonrakerTimelapseAPI : public ITimelapseAPI {
+class MoonrakerTimelapseAPI : public helix::ITimelapseAPI {
   public:
     using SuccessCallback = std::function<void()>;
     using ErrorCallback = std::function<void(const MoonrakerError&)>;

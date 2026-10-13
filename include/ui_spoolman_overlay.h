@@ -32,7 +32,9 @@
 #include <vector>
 
 // Forward declarations
+namespace helix {
 class IMoonrakerAPI;
+}
 class SpoolmanOverlayTestAccess;
 
 namespace helix::ui {

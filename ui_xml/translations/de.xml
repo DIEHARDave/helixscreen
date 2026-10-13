@@ -11,7 +11,9 @@
   <translation tag="%d lanes" de="%d Spuren"/>
   <translation tag="%d min" de="%d Min"/>
   <translation tag="%d min left" de="noch %d Min"/>
+  <translation tag="%d mm/s" de="%d mm/s"/>
   <translation tag="%d more sensors" de="%d weitere Sensoren"/>
+  <translation tag="%d profiles" de="%d Profile"/>
   <translation tag="%d slots" de="%d Slots"/>
   <translation tag="%d toolheads" de="%d Werkzeugköpfe"/>
   <translation tag="%d tools" de="%d Werkzeuge"/>
@@ -32,6 +34,7 @@
   <translation tag="%s has about %.0fg but %s needs about %.0fg. Start anyway?" de="%s hat etwa %.0fg, aber %s benötigt etwa %.0fg. Trotzdem starten?"/>
   <translation tag="%s has no filament loaded — this print will run out." de="Bei %s ist kein Filament geladen — bei diesem Druck geht das Filament aus."/>
   <translation tag="%s needs filament in %s, which is empty — this print will run out." de="%s benötigt Filament, aber %s ist leer — bei diesem Druck geht das Filament aus."/>
+  <translation tag="%s unsaved" de="%s ungespeichert"/>
   <translation tag="%s uses %s, which has filament but no material set — the printer will not start until you set it." de="%s verwendet %s: dort liegt Filament, aber kein Material ist gesetzt — der Drucker startet erst, wenn Sie es setzen."/>
   <translation tag="%s: %.0fg of %.0fg needed" de="%s: %.0fg von %.0fg benötigt"/>
   <translation tag="%u layers" de="%u Schichten"/>
@@ -73,6 +76,7 @@
   <translation tag="1 min ago" de="vor 1 Min."/>
   <translation tag="1 minute" de="1 Minute"/>
   <translation tag="1 more tap to {} beta features" de="1 weiteres Mal tippen, um Beta-Funktionen zu {}"/>
+  <translation tag="1 profile" de="1 Profil"/>
   <translation tag="1 unit" de="1 Einheit"/>
   <translation tag="1. Printer homes all axes (~1 minute)" de="1. Drucker referenziert alle Achsen (~1 Minute)"/>
   <translation tag="1. Printer homes and probes the bed" de="1. Drucker referenziert und prüft das Bett"/>
@@ -326,6 +330,7 @@
   <translation tag="Bed Temperature" de="Betttemperatur"/>
   <translation tag="Bed cooling, spools still on the bed:" de="Heizbett kühlt ab, Spulen liegen noch darauf:"/>
   <translation tag="Bed is Level!" de="Bett ist nivelliert!"/>
+  <translation tag="Bed mesh calibration failed: {}" de="Bettnetz-Kalibrierung fehlgeschlagen: {}"/>
   <translation tag="Bed mesh operation timed out" de="Bettnetz-Vorgang Zeitüberschreitung"/>
   <translation tag="Bed mesh..." de="Bettnetz..."/>
   <translation tag="Bed tab moves lift to this height first" de="Bewegungen im Heizbett-Tab heben zuerst auf diese Höhe an"/>
@@ -358,9 +363,11 @@
   <translation tag="Border Width" de="Rahmenbreite"/>
   <translation tag="Border transparency (0 = invisible, 255 = solid)" de="Rahmentransparenz (0 = unsichtbar, 255 = solid)"/>
   <translation tag="Both" de="Beide"/>
+  <translation tag="Bouncing Logo" de="Bouncing Logo"/>
   <translation tag="Bouncing Printer" de="Bouncing Printer"/>
   <translation tag="Bowden Length" de="Bowden-Länge"/>
   <translation tag="Bowden tube length from hub to toolhead" de="Länge des Bowdenschlauchs vom Hub zum Werkzeugkopf"/>
+  <translation tag="Box" de="Box"/>
   <translation tag="Brand" de="Marke"/>
   <translation tag="Brand and material come from Spoolman" de="Marke und Material stammen aus Spoolman"/>
   <translation tag="Brightness" de="Helligkeit"/>
@@ -570,6 +577,7 @@
   <translation tag="Choose sound style" de="Klangstil auswählen"/>
   <translation tag="Choose the model that matches your printer. This sets the print macros, fan roles and calibration behaviour HelixScreen uses." de="Wählen Sie das Modell, das zu Ihrem Drucker passt. Dies legt fest, welche Druckmakros, Lüfterrollen und welches Kalibrierungsverhalten HelixScreen verwendet."/>
   <translation tag="Choose what to power off or restart." de="Wählen Sie, was ausgeschaltet oder neu gestartet werden soll."/>
+  <translation tag="Choose which lane is in the toolhead to unload it" de="Wähle, welche Spur im Druckkopf steckt, um sie zu entladen"/>
   <translation tag="Chute position: X {:.1f}, Y {:.1f}" de="Position der Entlüftungsrinne: X {:.1f}, Y {:.1f}"/>
   <translation tag="Clean Brush" de="Bürste reinigen"/>
   <translation tag="Clean Nozzle" de="Düse reinigen"/>
@@ -900,6 +908,7 @@
   <translation tag="Drying" de="Trocknen"/>
   <translation tag="Drying is already running" de="Trocknung läuft bereits"/>
   <translation tag="Drying on the bed" de="Trocknung auf dem Heizbett"/>
+  <translation tag="Drying progress and humidity for boxes, the chamber, and the bed" de="Trocknungsfortschritt und Feuchtigkeit für Boxen, Kammer und Heizbett"/>
   <translation tag="Drying started" de="Trocknung gestartet"/>
   <translation tag="Drying stopped" de="Trocknung gestoppt"/>
   <translation tag="Duplicate" de="Duplizieren"/>
@@ -1188,6 +1197,7 @@
   <translation tag="Filament Buffer" de="Filamentpuffer"/>
   <translation tag="Filament Control" de="Filamentsteuerung"/>
   <translation tag="Filament Detected" de="Filament erkannt"/>
+  <translation tag="Filament Dryer" de="Filamenttrockner"/>
   <translation tag="Filament Grade Mismatch" de="Filamentklassenabweichung"/>
   <translation tag="Filament Humidity" de="Filamentfeuchtigkeit"/>
   <translation tag="Filament In The Toolhead" de="Filament im Werkzeugkopf"/>
@@ -1390,6 +1400,7 @@
   <translation tag="Heating to {}°C..." de="Aufheizen auf {}°C..."/>
   <translation tag="Heating..." de="Heizt..."/>
   <translation tag="Heating: %d / %d°C" de="Aufheizen: %d / %d°C"/>
+  <translation tag="Heightmap and flatness of the active bed mesh" de="Höhenkarte und Ebenheit des aktiven Bettnetzes"/>
   <translation tag="HelixScreen" de="HelixScreen"/>
   <translation tag="HelixScreen Crashed" de="HelixScreen abgestürzt"/>
   <translation tag="HelixScreen is detecting your display orientation" de="HelixScreen erkennt Ihre Display-Ausrichtung"/>
@@ -1410,6 +1421,7 @@
   <translation tag="Holding nozzle at {}°C to purge previous filament." de="Düse wird bei {}°C gehalten, um vorheriges Filament auszuspülen."/>
   <translation tag="Home" de="Home"/>
   <translation tag="Home &amp; Continue" de="Referenzieren &amp; Fortfahren"/>
+  <translation tag="Home All" de="Alle referenzieren"/>
   <translation tag="Home all axes to use the map" de="Alle Achsen referenzieren, um die Karte zu nutzen"/>
   <translation tag="Home and sweep the cutter to re-find its position" de="Referenzfahrt und Messfahrt des Schneiders, um seine Position neu zu ermitteln"/>
   <translation tag="Home failed" de="Referenzfahrt fehlgeschlagen"/>
@@ -1436,6 +1448,8 @@
   <translation tag="Homing..." de="Referenzfahrt..."/>
   <translation tag="Horizontal" de="Horizontal"/>
   <translation tag="Host" de="Host"/>
+  <translation tag="Host Health" de="Host-Zustand"/>
+  <translation tag="Host and MCU load, temperature, and memory" de="Last, Temperatur und Speicher von Host und MCU"/>
   <translation tag="Host: " de="Host: "/>
   <translation tag="Hotend" de="Hotend"/>
   <translation tag="Hotend Fan" de="Hotend-Lüfter"/>
@@ -1641,6 +1655,7 @@
   <translation tag="Line the nozzle up with the purge chute so purged filament drops straight in." de="Richten Sie die Düse über der Entlüftungsrinne aus, damit das entlüftete Filament direkt hineinfällt."/>
   <translation tag="Line {} calls {}, which this printer treats as an emergency stop. Re-slice the file with a profile made for this printer." de="Zeile {} ruft {} auf, das dieser Drucker als Notaus behandelt. Slicen Sie die Datei mit einem Profil für diesen Drucker neu."/>
   <translation tag="Listen to all theme sounds" de="Alle Themensounds anhören"/>
+  <translation tag="Live Z-offset, with baby steps and Save" de="Live-Z-Offset mit Feinjustierung und Speichern"/>
   <translation tag="Live view from your webcam" de="Livebild Ihrer Webcam"/>
   <translation tag="Load" de="Laden"/>
   <translation tag="Load Cell" de="Wägezelle"/>
@@ -1656,6 +1671,7 @@
   <translation tag="Load filament" de="Filament laden"/>
   <translation tag="Load filament first" de="Laden Sie zuerst Filament"/>
   <translation tag="Load or unload filament." de="Filament laden oder entladen."/>
+  <translation tag="Load profile" de="Profil laden"/>
   <translation tag="Load the required filaments or start anyway?" de="Benötigte Filamente laden oder trotzdem starten?"/>
   <translation tag="Load, unload, and swap spools. View your multi-filament system at a glance, map colors to slots, and monitor runout sensors." de="Spulen laden, entladen und wechseln. Ihr Multi-Filament-System auf einen Blick sehen, Farben den Slots zuordnen und Filamentsensoren überwachen."/>
   <translation tag="Load..." de="Laden..."/>
@@ -1985,6 +2001,7 @@
   <translation tag="Not connected to printer." de="Nicht mit Drucker verbunden."/>
   <translation tag="Not connected to the printer" de="Nicht mit dem Drucker verbunden"/>
   <translation tag="Not detected" de="Nicht erkannt"/>
+  <translation tag="Not drying" de="Trocknet nicht"/>
   <translation tag="Not enough frequency data from the sweeps. Try again." de="Nicht genügend Frequenzdaten aus den Messungen. Versuchen Sie es erneut."/>
   <translation tag="Not enough room for this widget. Rearrange or remove widgets to make space." de="Nicht genug Platz für dieses Widget. Ordnen Sie Widgets neu an oder entfernen Sie welche, um Platz zu schaffen."/>
   <translation tag="Not in your spools? Set it up" de="Nicht in Ihren Spulen? Einrichten"/>
@@ -2177,6 +2194,7 @@
   <translation tag="Poor match" de="Schlechte Übereinstimmung"/>
   <translation tag="Port" de="Port"/>
   <translation tag="Position" de="Position"/>
+  <translation tag="Position unknown" de="Position unbekannt"/>
   <translation tag="Post-Sensor Clear" de="Nachlauf nach Sensor"/>
   <translation tag="Power" de="Strom"/>
   <translation tag="Power Devices" de="Stromgeräte"/>
@@ -2383,11 +2401,13 @@
   <translation tag="Quick Button 4" de="Schnelltaste 4"/>
   <translation tag="Quick actions, calibration, speed" de="Schnellaktionen, Kalibrierung, Geschwindigkeit"/>
   <translation tag="Quiet" de="Leise"/>
+  <translation tag="RAM" de="RAM"/>
   <translation tag="RFCOMM connect failed" de="RFCOMM-Verbindung fehlgeschlagen"/>
   <translation tag="RFCOMM connect failed: " de="RFCOMM-Verbindung fehlgeschlagen: "/>
   <translation tag="RFID reader malfunction (left)" de="Fehlfunktion des RFID-Lesers (links)"/>
   <translation tag="RFID reader malfunction (right)" de="Fehlfunktion des RFID-Lesers (rechts)"/>
   <translation tag="RFID, auto-refill, nozzle and link care" de="RFID, automatisches Nachfüllen, Düsen- und Verbindungspflege"/>
+  <translation tag="RH" de="rF"/>
   <translation tag="RSS" de="RSS"/>
   <translation tag="RSS:" de="RSS:"/>
   <translation tag="Ramming Volume" de="Ramming-Volumen"/>
@@ -2826,7 +2846,9 @@
   <translation tag="Spaghetti detected (%d%%)" de="Spaghetti erkannt (%d%%)"/>
   <translation tag="Speaker" de="Lautsprecher"/>
   <translation tag="Speed" de="Geschwindigkeit"/>
+  <translation tag="Speed / Flow" de="Geschwindigkeit / Fluss"/>
   <translation tag="Speed Settings" de="Geschwindigkeitseinstellungen"/>
+  <translation tag="Speed and flow overrides, with a tap to tune" de="Geschwindigkeit und Fluss, zum Abstimmen antippen"/>
   <translation tag="Speed multiplier for forward moves" de="Geschwindigkeitsmultiplikator für Vorwärtsbewegungen"/>
   <translation tag="Speed multiplier for reverse moves" de="Geschwindigkeitsmultiplikator für Rückwärtsbewegungen"/>
   <translation tag="Speed of prime movement" de="Geschwindigkeit der Prime-Bewegung"/>
@@ -3197,6 +3219,7 @@
   <translation tag="Toolhead Style" de="Toolhead-Stil"/>
   <translation tag="Toolhead Y" de="Werkzeugkopf Y"/>
   <translation tag="Toolhead jam" de="Werkzeugkopf-Stau"/>
+  <translation tag="Toolhead position and homing, with a plate view and Home All" de="Position und Referenzfahrt des Werkzeugkopfs, mit Plattenansicht und Alle referenzieren"/>
   <translation tag="Toolhead position unknown" de="Werkzeugkopfposition unbekannt"/>
   <translation tag="Toolheads" de="Werkzeugköpfe"/>
   <translation tag="Tools" de="Werkzeuge"/>
@@ -3398,6 +3421,7 @@
   <translation tag="When enabled, only the macro runs. When disabled, temperatures are set first, then the macro runs." de="Wenn aktiviert, wird nur das Makro ausgeführt. Wenn deaktiviert, werden zuerst die Temperaturen gesetzt, dann das Makro."/>
   <translation tag="Where UI sounds play" de="Wo UI-Töne abgespielt werden"/>
   <translation tag="Whether filament is loaded" de="Ob Filament geladen ist"/>
+  <translation tag="Which lane is in the toolhead?" de="Welche Spur steckt im Druckkopf?"/>
   <translation tag="Which macro the Close feeder button sends" de="Welches Makro die Schaltfläche zum Schließen der Zuführung sendet"/>
   <translation tag="Which macro the Open feeder button sends" de="Welches Makro die Schaltfläche zum Öffnen der Zuführung sendet"/>
   <translation tag="White" de="Weiß"/>
@@ -3503,6 +3527,7 @@
   <translation tag="direct drive" de="Direct-Drive"/>
   <translation tag="disable" de="deaktivieren"/>
   <translation tag="disabled" de="deaktiviert"/>
+  <translation tag="drying" de="trocknen"/>
   <translation tag="e.g. Jet Black" de="z.B. Tiefschwarz"/>
   <translation tag="e.g. NAME=my_var VALUE=123" de="z. B. NAME=my_var VALUE=123"/>
   <translation tag="e.g. Polymaker" de="z.B. Polymaker"/>
@@ -3539,6 +3564,8 @@
   <translation tag="loaded" de="geladen"/>
   <translation tag="locked" de="gesperrt"/>
   <translation tag="matched" de="abgestimmt"/>
+  <translation tag="mm" de="mm"/>
+  <translation tag="mm Z-offset" de="mm Z-Offset"/>
   <translation tag="mm before clog" de="mm vor Verstopfung"/>
   <translation tag="needs" de="benötigt"/>
   <translation tag="needs approval" de="Genehmigung erforderlich"/>

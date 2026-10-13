@@ -3,7 +3,11 @@
 How home-dashboard widgets are built, and the reference pattern for making
 one size itself responsively. The nozzle-temps widget is the exemplar to copy:
 `src/ui/panel_widgets/nozzle_temps_widget.{h,cpp}`,
-`src/ui/panel_widgets/nozzle_layout.h`, and its three XML components. The eighteen
+`src/ui/panel_widgets/nozzle_layout.h`, and its three XML components. The
+speed/flow widget is a second exemplar, built on the shared size ladder:
+`src/ui/panel_widgets/speed_flow_widget.{h,cpp}`,
+`src/ui/panel_widgets/speed_flow_layout.h`, and its two XML components (see
+[Shared helpers: the size ladder and value status](#shared-helpers-the-size-ladder-and-value-status)). The eighteen
 centred-icon tiles run the same pattern one instance deeper; see
 [The tile instance of the pattern](#the-tile-instance-of-the-pattern) below, and the
 printer image's live callouts are a third instance
@@ -88,6 +92,60 @@ ACTUALLY draws at that rung — the target-hiding rungs measure the
 current-only value. Re-decide when the value's width class changes (a
 target setting or clearing), so a tile sized under idle values never draws
 the wide value in the narrow rung.
+
+### Shared helpers: the size ladder and value status
+
+Two pure headers, no LVGL, carry the parts of the pattern that more than one widget
+needs. `SpeedFlowWidget` is built on both.
+
+**`src/ui/panel_widgets/size_rung.h`** is the size ladder and its one chooser.
+`helix::SizeRung` names the rungs a widget can draw at: `Glance` (0.5x0.5), `Strip`
+(1x0.5), `Column` (0.5x1), `Cell` (1x1), `Wide` (2x1), `Full` (2x2 and larger) and
+`Large` (3x3 and larger). The enum values are the subject ints, so the XML `ref_value`s
+cannot drift from C++. A widget fills a `RungNeeds`, one `RungBox` per rung it offers
+(`rung_box(w, h)` marks a rung offered; one left default is never chosen), with the
+minimum content box that rung draws in for the state being decided.
+`helix::choose_size_rung(content_w, content_h, needs)` returns the largest offered rung
+whose box fits on both axes, in the order Large, Full, Wide, Cell, then Strip or Column
+(a box that holds both takes the one matching its aspect), then Glance.
+`helix::holds_any_rung()` says whether the box holds any offered rung at all, which is
+what `fits_at()` reports; it is monotonic because every comparison is `>=`. The nominal
+sizes are names only: a box between rungs takes the largest rung it holds, and the
+boxes themselves come from measurement.
+
+**`include/value_status.h`** is the one classification for a reading a widget colours.
+`helix::ValueStatus` is `Normal = 0`, `Warn = 1`, `Danger = 2`, the same ints as the
+`ams_env_ind_<n>_humidity_status` subjects. Each function in `helix::status` returns a
+classification and never an appearance: the caller publishes the int and its XML maps
+it with `bind_style_if_eq` to whatever that widget draws. `status::override_status(pct)`
+is Warn whenever a speed or flow override is off 100%.
+
+How speed/flow uses them (`src/ui/panel_widgets/speed_flow_widget.cpp`):
+
+- **Decide.** `helix::decide_speed_flow_layout()`
+  (`src/ui/panel_widgets/speed_flow_layout.h#decide_speed_flow_layout`) calls
+  `choose_size_rung()` and derives the widget's flags from the rung and the state: the
+  measured mm/s and mm³/s readings show beside or under the percentages from `Cell` up
+  while printing, the -/+ steppers show at `Full` while printing, and below `Cell` the
+  "physical units" setting puts the measured reading in the percentage's place, only
+  where it fits the rung the percentages already chose.
+- **Measure.** `SpeedFlowWidget::decide` measures each rung's box with the same
+  composer the labels render (`compose_texts`), against the content box that
+  `helix::measure_content_chrome()` (`src/ui/panel_widgets/content_chrome.h`) leaves
+  after the tree's padding. Unlike nozzle-temps it budgets the widest readings the
+  labels can show (the percentages' clamp maximums and fixed ceilings for
+  the measured readings), so the rung holds still while the numbers
+  move; it re-decides when the print starts or ends or the units setting flips,
+  because those change what each rung draws.
+- **Publish.** The widget is single-instance, so its subjects are module-level and
+  registered through `register_widget_subjects()`. Only the instance attached to the
+  live tile publishes (`s_owner`): a transient instance, such as a `fits_at()` probe or
+  a rebuild's outgoing widget, must not overwrite the tile's verdict.
+- **Refuse.** `fits_at()` accepts a size only when the `Glance` content fits both idle
+  and printing; the units setting never refuses a size.
+- **Bind.** `speed_flow_part.xml` binds every part's visibility, flow and font off
+  `speed_flow_rung`, `speed_flow_show_measured` and `speed_flow_show_steppers`, and
+  the value colour off `speed_flow_speed_status` / `speed_flow_flow_status`.
 
 ### The tile instance of the pattern
 
@@ -313,6 +371,9 @@ unrailable and gets the face and the sheet.
   resolved width/flow/layout, distinct cell positions — not cached decisions
   (`[widget_size][nozzle_temps]`). Drive value-shape transitions through the
   real subjects to pin the re-decide.
+- The shared helpers have their own boundary tests (`[size_rung]`,
+  `[value_status]`); the speed/flow instance pins its decision in
+  `[speed_flow][layout]` and its bound outcome in `[widget_size][speed_flow]`.
 - `test_widget_content_fits.cpp` sweeps every widget at every shipping
   geometry at its authored minimum; its baseline entries are the honest
   record of which tiles sit below a widget's floor.

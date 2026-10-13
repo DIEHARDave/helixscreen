@@ -11,7 +11,9 @@
   <translation tag="%d lanes" ja="%d レーン"/>
   <translation tag="%d min" ja="%d分"/>
   <translation tag="%d min left" ja="残り %d 分"/>
+  <translation tag="%d mm/s" ja="%d mm/s"/>
   <translation tag="%d more sensors" ja="他%d個のセンサー"/>
+  <translation tag="%d profiles" ja="%d 個のプロファイル"/>
   <translation tag="%d slots" ja="%d スロット"/>
   <translation tag="%d toolheads" ja="%d ツールヘッド"/>
   <translation tag="%d tools" ja="%d ツール"/>
@@ -32,6 +34,7 @@
   <translation tag="%s has about %.0fg but %s needs about %.0fg. Start anyway?" ja="%s の残量は約 %.0fg ですが、%s には約 %.0fg 必要です。それでも開始しますか？"/>
   <translation tag="%s has no filament loaded — this print will run out." ja="%s にフィラメントが装填されていません — この印刷は途中で切れます。"/>
   <translation tag="%s needs filament in %s, which is empty — this print will run out." ja="%s は %s のフィラメントを必要としますが、空です — この印刷は途中で切れます。"/>
+  <translation tag="%s unsaved" ja="%s 未保存"/>
   <translation tag="%s uses %s, which has filament but no material set — the printer will not start until you set it." ja="%s は %s を使用しますが、フィラメントはあるのに材料が設定されていません。設定するまでプリンターは開始しません。"/>
   <translation tag="%s: %.0fg of %.0fg needed" ja="%s: %.0fg（必要 %.0fg）"/>
   <translation tag="%u layers" ja="%uレイヤー"/>
@@ -73,6 +76,7 @@
   <translation tag="1 min ago" ja="1分前"/>
   <translation tag="1 minute" ja="1分"/>
   <translation tag="1 more tap to {} beta features" ja="あと1回タップでベータ機能を{}"/>
+  <translation tag="1 profile" ja="1 個のプロファイル"/>
   <translation tag="1 unit" ja="1ユニット"/>
   <translation tag="1. Printer homes all axes (~1 minute)" ja="1. プリンターが全軸の原点復帰を行います（約1分）"/>
   <translation tag="1. Printer homes and probes the bed" ja="1. プリンターがホーミングしてベッドをプローブします"/>
@@ -326,6 +330,7 @@
   <translation tag="Bed Temperature" ja="ベッド温度"/>
   <translation tag="Bed cooling, spools still on the bed:" ja="ベッド冷却中、スプールはまだベッドの上です:"/>
   <translation tag="Bed is Level!" ja="ベッドが水平です！"/>
+  <translation tag="Bed mesh calibration failed: {}" ja="ベッドメッシュのキャリブレーションに失敗しました: {}"/>
   <translation tag="Bed mesh operation timed out" ja="ベッドメッシュ操作がタイムアウトしました"/>
   <translation tag="Bed mesh..." ja="ベッドメッシュ..."/>
   <translation tag="Bed tab moves lift to this height first" ja="ベッドタブの移動はまずこの高さまで上昇します"/>
@@ -358,9 +363,11 @@
   <translation tag="Border Width" ja="境界線の幅"/>
   <translation tag="Border transparency (0 = invisible, 255 = solid)" ja="境界線の透明度 (0 = 透明、255 = 不透明)"/>
   <translation tag="Both" ja="両方"/>
+  <translation tag="Bouncing Logo" ja="バウンドロゴ"/>
   <translation tag="Bouncing Printer" ja="バウンドプリンター"/>
   <translation tag="Bowden Length" ja="ボーデン長"/>
   <translation tag="Bowden tube length from hub to toolhead" ja="ハブからツールヘッドまでのボーデンチューブ長"/>
+  <translation tag="Box" ja="ボックス"/>
   <translation tag="Brand" ja="ブランド"/>
   <translation tag="Brand and material come from Spoolman" ja="ブランドと素材は Spoolman から取得されます"/>
   <translation tag="Brightness" ja="明るさ"/>
@@ -570,6 +577,7 @@
   <translation tag="Choose sound style" ja="サウンドスタイルを選択"/>
   <translation tag="Choose the model that matches your printer. This sets the print macros, fan roles and calibration behaviour HelixScreen uses." ja="お使いのプリンターに一致するモデルを選択してください。これにより、HelixScreenが使用する印刷マクロ、ファンの役割、キャリブレーション動作が設定されます。"/>
   <translation tag="Choose what to power off or restart." ja="電源オフまたは再起動する対象を選択してください。"/>
+  <translation tag="Choose which lane is in the toolhead to unload it" ja="取り出すには、ツールヘッドに入っているレーンを選んでください"/>
   <translation tag="Chute position: X {:.1f}, Y {:.1f}" ja="パージシュート位置: X {:.1f}, Y {:.1f}"/>
   <translation tag="Clean Brush" ja="ブラシを清掃"/>
   <translation tag="Clean Nozzle" ja="ノズル清掃"/>
@@ -900,6 +908,7 @@
   <translation tag="Drying" ja="乾燥中"/>
   <translation tag="Drying is already running" ja="乾燥はすでに実行中です"/>
   <translation tag="Drying on the bed" ja="ベッドで乾燥中"/>
+  <translation tag="Drying progress and humidity for boxes, the chamber, and the bed" ja="ボックス、チャンバー、ベッドの乾燥の進捗と湿度"/>
   <translation tag="Drying started" ja="乾燥を開始しました"/>
   <translation tag="Drying stopped" ja="乾燥を停止しました"/>
   <translation tag="Duplicate" ja="複製"/>
@@ -1188,6 +1197,7 @@
   <translation tag="Filament Buffer" ja="フィラメントバッファー"/>
   <translation tag="Filament Control" ja="フィラメント制御"/>
   <translation tag="Filament Detected" ja="フィラメント検出"/>
+  <translation tag="Filament Dryer" ja="フィラメントドライヤー"/>
   <translation tag="Filament Grade Mismatch" ja="フィラメントグレード不一致"/>
   <translation tag="Filament Humidity" ja="フィラメント湿度"/>
   <translation tag="Filament In The Toolhead" ja="ツールヘッドにフィラメントがあります"/>
@@ -1390,6 +1400,7 @@
   <translation tag="Heating to {}°C..." ja="{}°Cに加熱中..."/>
   <translation tag="Heating..." ja="加熱中..."/>
   <translation tag="Heating: %d / %d°C" ja="加熱中: %d / %d°C"/>
+  <translation tag="Heightmap and flatness of the active bed mesh" ja="有効なベッドメッシュの高さマップと平面度"/>
   <translation tag="HelixScreen" ja="HelixScreen"/>
   <translation tag="HelixScreen Crashed" ja="HelixScreen がクラッシュしました"/>
   <translation tag="HelixScreen is detecting your display orientation" ja="HelixScreenがディスプレイの向きを検出しています"/>
@@ -1410,6 +1421,7 @@
   <translation tag="Holding nozzle at {}°C to purge previous filament." ja="前のフィラメントをパージするためノズルを {}°C に保持しています。"/>
   <translation tag="Home" ja="ホーム"/>
   <translation tag="Home &amp; Continue" ja="ホーミングして続行"/>
+  <translation tag="Home All" ja="全軸ホーミング"/>
   <translation tag="Home all axes to use the map" ja="マップを使うには全軸をホーミングしてください"/>
   <translation tag="Home and sweep the cutter to re-find its position" ja="原点復帰後にカッターを走査して位置を再検出します"/>
   <translation tag="Home failed" ja="ホーミング失敗"/>
@@ -1436,6 +1448,8 @@
   <translation tag="Homing..." ja="ホーミング中..."/>
   <translation tag="Horizontal" ja="水平"/>
   <translation tag="Host" ja="ホスト"/>
+  <translation tag="Host Health" ja="ホストの状態"/>
+  <translation tag="Host and MCU load, temperature, and memory" ja="ホストと MCU の負荷、温度、メモリ"/>
   <translation tag="Host: " ja="ホスト: "/>
   <translation tag="Hotend" ja="ホットエンド"/>
   <translation tag="Hotend Fan" ja="ホットエンドファン"/>
@@ -1641,6 +1655,7 @@
   <translation tag="Line the nozzle up with the purge chute so purged filament drops straight in." ja="パージシュートにノズルを合わせ、パージされたフィラメントがまっすぐ落ちるようにします。"/>
   <translation tag="Line {} calls {}, which this printer treats as an emergency stop. Re-slice the file with a profile made for this printer." ja="{} 行目で {} を実行します。このプリンターでは緊急停止とみなされます。このプリンター用のプロファイルでファイルを再スライスしてください。"/>
   <translation tag="Listen to all theme sounds" ja="すべてのテーマサウンドを試聴"/>
+  <translation tag="Live Z-offset, with baby steps and Save" ja="ライブ Z-Offset、微調整と保存つき"/>
   <translation tag="Live view from your webcam" ja="ウェブカメラのライブ表示"/>
   <translation tag="Load" ja="装填"/>
   <translation tag="Load Cell" ja="ロードセル"/>
@@ -1656,6 +1671,7 @@
   <translation tag="Load filament" ja="フィラメントをロード"/>
   <translation tag="Load filament first" ja="先にフィラメントを装填してください"/>
   <translation tag="Load or unload filament." ja="フィラメントを装填または排出します。"/>
+  <translation tag="Load profile" ja="プロファイルを読み込む"/>
   <translation tag="Load the required filaments or start anyway?" ja="必要なフィラメントを装填しますか？それともこのまま開始しますか？"/>
   <translation tag="Load, unload, and swap spools. View your multi-filament system at a glance, map colors to slots, and monitor runout sensors." ja="スプールのロード、アンロード、交換を行います。マルチフィラメントシステムを一目で確認し、色をスロットにマッピングし、ランアウトセンサーを監視できます。"/>
   <translation tag="Load..." ja="装填..."/>
@@ -1985,6 +2001,7 @@
   <translation tag="Not connected to printer." ja="プリンターに未接続です。"/>
   <translation tag="Not connected to the printer" ja="プリンターに未接続"/>
   <translation tag="Not detected" ja="検出されません"/>
+  <translation tag="Not drying" ja="乾燥していません"/>
   <translation tag="Not enough frequency data from the sweeps. Try again." ja="測定から十分な周波数データが得られませんでした。再試行してください。"/>
   <translation tag="Not enough room for this widget. Rearrange or remove widgets to make space." ja="このウィジェットを配置するスペースが足りません。スペースを確保するためにウィジェットを整理または削除してください。"/>
   <translation tag="Not in your spools? Set it up" ja="スプールにない？登録する"/>
@@ -2177,6 +2194,7 @@
   <translation tag="Poor match" ja="不十分な一致"/>
   <translation tag="Port" ja="ポート"/>
   <translation tag="Position" ja="位置"/>
+  <translation tag="Position unknown" ja="位置が不明です"/>
   <translation tag="Post-Sensor Clear" ja="センサー通過後の追加移動"/>
   <translation tag="Power" ja="電源"/>
   <translation tag="Power Devices" ja="電源デバイス"/>
@@ -2383,11 +2401,13 @@
   <translation tag="Quick Button 4" ja="クイックボタン4"/>
   <translation tag="Quick actions, calibration, speed" ja="クイックアクション、キャリブレーション、速度"/>
   <translation tag="Quiet" ja="静音"/>
+  <translation tag="RAM" ja="RAM"/>
   <translation tag="RFCOMM connect failed" ja="RFCOMM 接続に失敗しました"/>
   <translation tag="RFCOMM connect failed: " ja="RFCOMM 接続に失敗しました: "/>
   <translation tag="RFID reader malfunction (left)" ja="RFID リーダーの異常（左）"/>
   <translation tag="RFID reader malfunction (right)" ja="RFID リーダーの異常（右）"/>
   <translation tag="RFID, auto-refill, nozzle and link care" ja="RFID、自動補充、ノズルと接続のメンテナンス"/>
+  <translation tag="RH" ja="RH"/>
   <translation tag="RSS" ja="RSS"/>
   <translation tag="RSS:" ja="RSS:"/>
   <translation tag="Ramming Volume" ja="ラミング量"/>
@@ -2826,7 +2846,9 @@
   <translation tag="Spaghetti detected (%d%%)" ja="スパゲッティを検出しました（%d%%）"/>
   <translation tag="Speaker" ja="スピーカー"/>
   <translation tag="Speed" ja="速度"/>
+  <translation tag="Speed / Flow" ja="速度 / フロー"/>
   <translation tag="Speed Settings" ja="速度設定"/>
+  <translation tag="Speed and flow overrides, with a tap to tune" ja="速度とフロー。タップして調整"/>
   <translation tag="Speed multiplier for forward moves" ja="順方向移動の速度倍率"/>
   <translation tag="Speed multiplier for reverse moves" ja="逆方向移動の速度倍率"/>
   <translation tag="Speed of prime movement" ja="プライム動作の速度"/>
@@ -3197,6 +3219,7 @@
   <translation tag="Toolhead Style" ja="ツールヘッドスタイル"/>
   <translation tag="Toolhead Y" ja="ツールヘッド Y"/>
   <translation tag="Toolhead jam" ja="ツールヘッドの詰まり"/>
+  <translation tag="Toolhead position and homing, with a plate view and Home All" ja="ツールヘッドの位置とホーミング。プレート表示と全軸ホーミング付き"/>
   <translation tag="Toolhead position unknown" ja="ツールヘッドの位置が不明です"/>
   <translation tag="Toolheads" ja="ツールヘッド"/>
   <translation tag="Tools" ja="ツール"/>
@@ -3398,6 +3421,7 @@
   <translation tag="When enabled, only the macro runs. When disabled, temperatures are set first, then the macro runs." ja="有効時はマクロのみ実行されます。無効時は先に温度を設定してからマクロが実行されます。"/>
   <translation tag="Where UI sounds play" ja="UIサウンドの再生先"/>
   <translation tag="Whether filament is loaded" ja="フィラメントの装填状態"/>
+  <translation tag="Which lane is in the toolhead?" ja="ツールヘッドに入っているのはどのレーンですか？"/>
   <translation tag="Which macro the Close feeder button sends" ja="「フィーダーを閉じる」ボタンが送信するマクロ"/>
   <translation tag="Which macro the Open feeder button sends" ja="「フィーダーを開く」ボタンが送信するマクロ"/>
   <translation tag="White" ja="ホワイト"/>
@@ -3503,6 +3527,7 @@
   <translation tag="direct drive" ja="ダイレクトドライブ"/>
   <translation tag="disable" ja="無効化"/>
   <translation tag="disabled" ja="無効"/>
+  <translation tag="drying" ja="乾燥中"/>
   <translation tag="e.g. Jet Black" ja="例：ジェットブラック"/>
   <translation tag="e.g. NAME=my_var VALUE=123" ja="例: NAME=my_var VALUE=123"/>
   <translation tag="e.g. Polymaker" ja="例：Polymaker"/>
@@ -3539,6 +3564,8 @@
   <translation tag="loaded" ja="装填済み"/>
   <translation tag="locked" ja="ロック中"/>
   <translation tag="matched" ja="一致"/>
+  <translation tag="mm" ja="mm"/>
+  <translation tag="mm Z-offset" ja="mm Z-Offset"/>
   <translation tag="mm before clog" ja="詰まりまでの距離 (mm)"/>
   <translation tag="needs" ja="必要"/>
   <translation tag="needs approval" ja="承認が必要"/>

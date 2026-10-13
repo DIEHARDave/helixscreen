@@ -718,6 +718,34 @@ TEST_CASE_METHOD(UiButtonTestFixture, "ui_button label_hidden_if_bp_eq follows u
     lv_subject_set_int(bp, saved);
 }
 
+// stacked_subject + stacked_if_eq: stacked while an int subject equals the ref,
+// row layout otherwise, following the subject live.
+TEST_CASE_METHOD(UiButtonTestFixture,
+                 "ui_button stacked_subject restacks while the subject equals the ref",
+                 "[ui_button][xml][quick]") {
+    static lv_subject_t stack_when;
+    lv_subject_init_int(&stack_when, 1);
+    lv_xml_register_subject(nullptr, "test_button_stack_when", &stack_when);
+    const char* attrs[] = {
+        "icon",          "tune", "text", "Tune", "stacked_subject", "test_button_stack_when",
+        "stacked_if_eq", "1",    nullptr};
+    lv_obj_t* btn = create_button(attrs);
+    REQUIRE(btn != nullptr);
+    lv_obj_t* label = UITest::button_label(btn);
+    REQUIRE(label != nullptr);
+    CHECK(lv_obj_get_style_flex_flow(btn, LV_PART_MAIN) == LV_FLEX_FLOW_COLUMN);
+    CHECK(lv_obj_get_index(label) == 1);
+
+    lv_subject_set_int(&stack_when, 0);
+    CHECK(lv_obj_get_style_flex_flow(btn, LV_PART_MAIN) == LV_FLEX_FLOW_ROW);
+    CHECK(lv_obj_get_style_height(btn, LV_PART_MAIN) == theme_manager_get_spacing("button_height"));
+
+    lv_subject_set_int(&stack_when, 1);
+    CHECK(lv_obj_get_style_flex_flow(btn, LV_PART_MAIN) == LV_FLEX_FLOW_COLUMN);
+    lv_obj_delete(btn);
+    lv_subject_deinit(&stack_when);
+}
+
 // stacked_if_bp_lte: at ui_breakpoint <= N the button restacks icon-over-label
 // and fills its parent's height; above N it keeps the row layout it declared at
 // create time. Pinned by the print status action grid at 480x320, where the

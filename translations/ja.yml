@@ -13,7 +13,9 @@ translations:
   '%d lanes': '%d レーン'
   '%d min': '%d分'
   '%d min left': '残り %d 分'
+  '%d mm/s': '%d mm/s'
   '%d more sensors': 他%d個のセンサー
+  '%d profiles': '%d 個のプロファイル'
   '%d slots': '%d スロット'
   '%d toolheads': '%d ツールヘッド'
   '%d tools': '%d ツール'
@@ -32,6 +34,7 @@ translations:
   '%s has about %.0fg but %s needs about %.0fg. Start anyway?': '%s の残量は約 %.0fg ですが、%s には約 %.0fg 必要です。それでも開始しますか？'
   '%s has no filament loaded — this print will run out.': '%s にフィラメントが装填されていません — この印刷は途中で切れます。'
   '%s needs filament in %s, which is empty — this print will run out.': '%s は %s のフィラメントを必要としますが、空です — この印刷は途中で切れます。'
+  '%s unsaved': '%s 未保存'
   '%s uses %s, which has filament but no material set — the printer will not start until you set it.': '%s は %s を使用しますが、フィラメントはあるのに材料が設定されていません。設定するまでプリンターは開始しません。'
   '%s: %.0fg of %.0fg needed': '%s: %.0fg（必要 %.0fg）'
   '%u layers': '%uレイヤー'
@@ -74,6 +77,7 @@ translations:
   1 min ago: 1分前
   1 minute: 1分
   1 more tap to {} beta features: あと1回タップでベータ機能を{}
+  1 profile: '1 個のプロファイル'
   '1 unit': '1ユニット'
   1. Printer homes all axes (~1 minute): 1. プリンターが全軸の原点復帰を行います（約1分）
   1. Printer homes and probes the bed: 1. プリンターがホーミングしてベッドをプローブします
@@ -331,6 +335,7 @@ translations:
   'Bed cooling, spools still on the bed:': 'ベッド冷却中、スプールはまだベッドの上です:'
 
   Bed is Level!: ベッドが水平です！
+  'Bed mesh calibration failed: {}': 'ベッドメッシュのキャリブレーションに失敗しました: {}'
   Bed mesh operation timed out: ベッドメッシュ操作がタイムアウトしました
   Bed mesh...: ベッドメッシュ...
   Bed tab moves lift to this height first: ベッドタブの移動はまずこの高さまで上昇します
@@ -363,9 +368,11 @@ translations:
   Border Width: 境界線の幅
   Border transparency (0 = invisible, 255 = solid): 境界線の透明度 (0 = 透明、255 = 不透明)
   Both: 両方
+  Bouncing Logo: バウンドロゴ
   Bouncing Printer: バウンドプリンター
   Bowden Length: 'ボーデン長'
   Bowden tube length from hub to toolhead: 'ハブからツールヘッドまでのボーデンチューブ長'
+  Box: ボックス
   Brand: ブランド
   Brand and material come from Spoolman: ブランドと素材は Spoolman から取得されます
   Brightness: 明るさ
@@ -931,6 +938,7 @@ translations:
 
   Drying on the bed: ベッドで乾燥中
 
+  Drying progress and humidity for boxes, the chamber, and the bed: ボックス、チャンバー、ベッドの乾燥の進捗と湿度
   Drying started: 乾燥を開始しました
   Drying stopped: 乾燥を停止しました
   Duplicate: 複製
@@ -1226,6 +1234,7 @@ translations:
   Filament Buffer: 'フィラメントバッファー'
   Filament Control: フィラメント制御
   Filament Detected: フィラメント検出
+  Filament Dryer: フィラメントドライヤー
   Filament Grade Mismatch: フィラメントグレード不一致
   Filament Humidity: フィラメント湿度
   Filament In The Toolhead: ツールヘッドにフィラメントがあります
@@ -1438,6 +1447,7 @@ translations:
   Heating to {}°C...: '{}°Cに加熱中...'
   Heating...: 加熱中...
   'Heating: %d / %d°C': '加熱中: %d / %d°C'
+  Heightmap and flatness of the active bed mesh: '有効なベッドメッシュの高さマップと平面度'
   HelixScreen: HelixScreen
   HelixScreen Crashed: HelixScreen がクラッシュしました
   HelixScreen is detecting your display orientation: HelixScreenがディスプレイの向きを検出しています
@@ -1459,6 +1469,7 @@ translations:
   Holding nozzle at {}°C to purge previous filament.: 前のフィラメントをパージするためノズルを {}°C に保持しています。
   Home: ホーム
   Home & Continue: ホーミングして続行
+  Home All: "全軸ホーミング"
   Home all axes to use the map: マップを使うには全軸をホーミングしてください
   Home and sweep the cutter to re-find its position: 原点復帰後にカッターを走査して位置を再検出します
   Home failed: ホーミング失敗
@@ -1485,6 +1496,8 @@ translations:
   Homing...: ホーミング中...
   Horizontal: 水平
   Host: ホスト
+  Host Health: ホストの状態
+  Host and MCU load, temperature, and memory: ホストと MCU の負荷、温度、メモリ
   'Host: ': 'ホスト: '
   Hotend: ホットエンド
   Hotend Fan: ホットエンドファン
@@ -1707,6 +1720,7 @@ translations:
 
   Line {} calls {}, which this printer treats as an emergency stop. Re-slice the file with a profile made for this printer.: '{} 行目で {} を実行します。このプリンターでは緊急停止とみなされます。このプリンター用のプロファイルでファイルを再スライスしてください。'
   Listen to all theme sounds: すべてのテーマサウンドを試聴
+  Live Z-offset, with baby steps and Save: ライブ Z-Offset、微調整と保存つき
   Live view from your webcam: ウェブカメラのライブ表示
   Load: 装填
   Load Cell: 'ロードセル'
@@ -1722,6 +1736,7 @@ translations:
   Load filament: 'フィラメントをロード'
   Load filament first: 先にフィラメントを装填してください
   Load or unload filament.: フィラメントを装填または排出します。
+  Load profile: 'プロファイルを読み込む'
   Load the required filaments or start anyway?: 必要なフィラメントを装填しますか？それともこのまま開始しますか？
   'Load, unload, and swap spools. View your multi-filament system at a glance, map colors to slots, and monitor runout sensors.': スプールのロード、アンロード、交換を行います。マルチフィラメントシステムを一目で確認し、色をスロットにマッピングし、ランアウトセンサーを監視できます。
   Load...: 装填...
@@ -2060,6 +2075,7 @@ translations:
   Not connected to printer.: プリンターに未接続です。
   Not connected to the printer: プリンターに未接続
   Not detected: 検出されません
+  Not drying: 乾燥していません
   Not enough frequency data from the sweeps. Try again.: '測定から十分な周波数データが得られませんでした。再試行してください。'
   Not enough room for this widget. Rearrange or remove widgets to make space.: このウィジェットを配置するスペースが足りません。スペースを確保するためにウィジェットを整理または削除してください。
   Not in your spools? Set it up: スプールにない？登録する
@@ -2072,6 +2088,8 @@ translations:
   Nothing starred yet. Tap the star on a filament to add it here.: 'まだ何も登録されていません。フィラメントの星をタップしてここに追加してください。'
   Nothing to remap: リマップするものがありません
   'Nothing to unload: no filament at the nozzle': '取り出すものがありません: ノズルにフィラメントがありません'
+  'Which lane is in the toolhead?': 'ツールヘッドに入っているのはどのレーンですか？'
+  'Choose which lane is in the toolhead to unload it': '取り出すには、ツールヘッドに入っているレーンを選んでください'
   Nothing was changed. Temperature and material are kept, so a retry is one tap.: '何も変更されていません。温度と材料は保持されるので、再試行はワンタップです。'
   Notification: 通知
   Notifications: 通知
@@ -2262,6 +2280,7 @@ translations:
   Poor match: "不十分な一致"
   Port: ポート
   Position: 位置
+  Position unknown: "位置が不明です"
   Post-Sensor Clear: 'センサー通過後の追加移動'
   Power: 電源
   Power Devices: 電源デバイス
@@ -2474,11 +2493,13 @@ translations:
   Quick Button 4: クイックボタン4
   Quick actions, calibration, speed: クイックアクション、キャリブレーション、速度
   Quiet: '静音'
+  RAM: RAM
   RFCOMM connect failed: RFCOMM 接続に失敗しました
   'RFCOMM connect failed: ': 'RFCOMM 接続に失敗しました: '
   RFID reader malfunction (left): RFID リーダーの異常（左）
   RFID reader malfunction (right): RFID リーダーの異常（右）
   RFID, auto-refill, nozzle and link care: RFID、自動補充、ノズルと接続のメンテナンス
+  RH: RH
   RSS: RSS
   'RSS:': 'RSS:'
   Ramming Volume: 'ラミング量'
@@ -2938,7 +2959,9 @@ translations:
   Spaghetti detected (%d%%): スパゲッティを検出しました（%d%%）
   Speaker: スピーカー
   Speed: 速度
+  Speed / Flow: '速度 / フロー'
   Speed Settings: '速度設定'
+  Speed and flow overrides, with a tap to tune: '速度とフロー。タップして調整'
   Speed multiplier for forward moves: '順方向移動の速度倍率'
   Speed multiplier for reverse moves: '逆方向移動の速度倍率'
   Speed of prime movement: プライム動作の速度
@@ -3354,6 +3377,7 @@ translations:
   Toolhead Style: ツールヘッドスタイル
   Toolhead Y: ツールヘッド Y
   Toolhead jam: ツールヘッドの詰まり
+  Toolhead position and homing, with a plate view and Home All: "ツールヘッドの位置とホーミング。プレート表示と全軸ホーミング付き"
   Toolhead position unknown: ツールヘッドの位置が不明です
   Toolheads: ツールヘッド
   Tools: ツール
@@ -3668,6 +3692,7 @@ translations:
   direct drive: ダイレクトドライブ
   disable: 無効化
   disabled: 無効
+  drying: 乾燥中
   e.g. Jet Black: 例：ジェットブラック
   e.g. NAME=my_var VALUE=123: '例: NAME=my_var VALUE=123'
   e.g. Polymaker: 例：Polymaker
@@ -3704,6 +3729,8 @@ translations:
   loaded: '装填済み'
   locked: 'ロック中'
   matched: 一致
+  mm: mm
+  mm Z-offset: mm Z-Offset
   mm before clog: 詰まりまでの距離 (mm)
   needs: 必要
   needs approval: 承認が必要

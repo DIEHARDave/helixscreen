@@ -1086,7 +1086,7 @@ bool HomePanel::finger_drifted_since_press() const {
     lv_indev_get_point(indev, &now);
     const int dx = now.x - press_start_point_.x;
     const int dy = now.y - press_start_point_.y;
-    const int limit = lv_dpx(AppConstants::Input::EDIT_MODE_MOVE_CANCEL_DPX);
+    const int limit = lv_dpx(app_constants::input::EDIT_MODE_MOVE_CANCEL_DPX);
     return (dx * dx + dy * dy) > (limit * limit);
 }
 

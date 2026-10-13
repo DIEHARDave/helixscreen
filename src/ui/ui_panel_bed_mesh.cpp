@@ -31,6 +31,7 @@
 #include "bed_mesh_portrait_layout.h"
 #include "bed_mesh_probe_temp.h"
 #include "bed_mesh_profile_name.h"
+#include "bed_mesh_stats.h"
 #include "display_settings_manager.h"
 #include "format_utils.h"
 #include "i_moonraker_api.h"
@@ -71,11 +72,6 @@ static void on_profile_delete_cb(lv_event_t* e);
 
 BedMeshPanel::BedMeshPanel() {
     // Initialize buffer contents
-    std::memset(profile_name_buf_, 0, sizeof(profile_name_buf_));
-    std::strncpy(dimensions_buf_, "No mesh data", sizeof(dimensions_buf_) - 1);
-    std::memset(max_value_buf_, 0, sizeof(max_value_buf_));
-    std::memset(min_value_buf_, 0, sizeof(min_value_buf_));
-    std::memset(variance_buf_, 0, sizeof(variance_buf_));
     std::memset(rename_old_name_buf_, 0, sizeof(rename_old_name_buf_));
     std::memset(probe_text_buf_, 0, sizeof(probe_text_buf_));
     std::memset(error_message_buf_, 0, sizeof(error_message_buf_));
@@ -138,26 +134,6 @@ BedMeshPanel::~BedMeshPanel() {
 
 void BedMeshPanel::init_subjects() {
     init_subjects_guarded([this]() {
-        // Current mesh stats subjects
-        UI_MANAGED_SUBJECT_INT(bed_mesh_available_, 0, "bed_mesh_available", subjects_);
-        UI_MANAGED_SUBJECT_STRING(bed_mesh_profile_name_, profile_name_buf_, "",
-                                  "bed_mesh_profile_name", subjects_);
-        UI_MANAGED_SUBJECT_STRING(bed_mesh_dimensions_, dimensions_buf_, "No mesh data",
-                                  "bed_mesh_dimensions", subjects_);
-        UI_MANAGED_SUBJECT_STRING(bed_mesh_max_value_, max_value_buf_, "--", "bed_mesh_max_value",
-                                  subjects_);
-        UI_MANAGED_SUBJECT_STRING(bed_mesh_max_coord_, max_coord_buf_, "", "bed_mesh_max_coord",
-                                  subjects_);
-        UI_MANAGED_SUBJECT_STRING(bed_mesh_min_value_, min_value_buf_, "--", "bed_mesh_min_value",
-                                  subjects_);
-        UI_MANAGED_SUBJECT_STRING(bed_mesh_min_coord_, min_coord_buf_, "", "bed_mesh_min_coord",
-                                  subjects_);
-        UI_MANAGED_SUBJECT_STRING(bed_mesh_variance_, variance_buf_, "", "bed_mesh_variance",
-                                  subjects_);
-
-        // Profile count
-        UI_MANAGED_SUBJECT_INT(bed_mesh_profile_count_, 0, "bed_mesh_profile_count", subjects_);
-
         // Profile list subjects (5 profiles)
         for (int i = 0; i < BED_MESH_MAX_PROFILES; i++) {
             std::string name_key = "bed_mesh_profile_" + std::to_string(i) + "_name";
@@ -670,7 +646,6 @@ void BedMeshPanel::on_ui_destroyed() {
 void BedMeshPanel::update_profile_list_subjects() {
     IMoonrakerAPI* api = get_moonraker_api();
     if (!api) {
-        lv_subject_set_int(&bed_mesh_profile_count_, 0);
         return;
     }
 
@@ -684,7 +659,6 @@ void BedMeshPanel::update_profile_list_subjects() {
                   profiles.size(), active_name);
 
     int count = std::min(static_cast<int>(profiles.size()), BED_MESH_MAX_PROFILES);
-    lv_subject_set_int(&bed_mesh_profile_count_, count);
 
     for (int i = 0; i < BED_MESH_MAX_PROFILES; i++) {
         size_t idx = static_cast<size_t>(i);
@@ -721,21 +695,7 @@ float BedMeshPanel::calculate_profile_range(const std::string& profile_name) {
 
     // Get mesh data for this profile (supports both active and stored profiles)
     const BedMeshProfile* mesh = api->advanced().get_bed_mesh_profile(profile_name);
-    if (!mesh || mesh->probed_matrix.empty()) {
-        return 0.0f;
-    }
-
-    float min_z = std::numeric_limits<float>::max();
-    float max_z = std::numeric_limits<float>::lowest();
-
-    for (const auto& row : mesh->probed_matrix) {
-        for (float z : row) {
-            min_z = std::min(min_z, z);
-            max_z = std::max(max_z, z);
-        }
-    }
-
-    return max_z - min_z;
+    return mesh ? helix::compute_mesh_stats(*mesh).range : 0.0f;
 }
 
 // ============================================================================
@@ -765,8 +725,6 @@ void BedMeshPanel::set_mesh_data(const std::vector<std::vector<float>>& mesh_dat
         spdlog::error("[{}] Failed to set mesh data in widget", get_name());
         return;
     }
-
-    update_info_subjects(mesh_data, cols, rows);
 }
 
 void BedMeshPanel::redraw() {
@@ -855,7 +813,8 @@ void BedMeshPanel::refresh_bed_bounds() {
                   get_name(), bed_x_min, bed_x_max, bed_y_min, bed_y_max);
 
     ui_bed_mesh_set_bounds(canvas_, bed_x_min, bed_x_max, bed_y_min, bed_y_max, cached_mesh_min_x_,
-                           cached_mesh_max_x_, cached_mesh_min_y_, cached_mesh_max_y_);
+                           cached_mesh_max_x_, cached_mesh_min_y_, cached_mesh_max_y_,
+                           api && helix::circular_bed_kinematics(api->hardware().kinematics()));
 
     // If we have pending mesh data, render it now that bounds are valid
     if (has_pending_mesh_data_) {
@@ -872,108 +831,23 @@ void BedMeshPanel::on_mesh_update_internal(const BedMeshProfile& mesh) {
     spdlog::debug("[{}] on_mesh_update_internal called, probed_matrix.size={}", get_name(),
                   mesh.probed_matrix.size());
 
-    if (mesh.probed_matrix.empty()) {
-        lv_subject_set_int(&bed_mesh_available_, 0);
-        lv_subject_copy_string(&bed_mesh_dimensions_, lv_tr("No mesh data"));
-        lv_subject_copy_string(&bed_mesh_max_value_, "--");
-        // Empty, not "[]" - no coordinates exist without a probed mesh.
-        lv_subject_copy_string(&bed_mesh_max_coord_, "");
-        lv_subject_copy_string(&bed_mesh_min_value_, "--");
-        lv_subject_copy_string(&bed_mesh_min_coord_, "");
-        lv_subject_copy_string(&bed_mesh_variance_, "");
+    // The stats subjects are BedMeshState's; the panel needs the same numbers to
+    // normalize what it hands the renderer.
+    const helix::MeshStats stats = helix::compute_mesh_stats(mesh);
+    if (!stats.loaded) {
         spdlog::warn("[{}] No mesh data available", get_name());
         return;
-    }
-
-    lv_subject_set_int(&bed_mesh_available_, 1);
-    lv_subject_copy_string(&bed_mesh_profile_name_, mesh.name.c_str());
-
-    std::snprintf(dimensions_buf_, sizeof(dimensions_buf_), "%dx%d", mesh.x_count, mesh.y_count);
-    lv_subject_copy_string(&bed_mesh_dimensions_, dimensions_buf_);
-
-    // Calculate Z range, mean, and coordinates of min/max points
-    float min_z = std::numeric_limits<float>::max();
-    float max_z = std::numeric_limits<float>::lowest();
-    double z_sum = 0.0;
-    int z_count = 0;
-    int min_row = 0, min_col = 0;
-    int max_row = 0, max_col = 0;
-
-    for (size_t row = 0; row < mesh.probed_matrix.size(); row++) {
-        for (size_t col = 0; col < mesh.probed_matrix[row].size(); col++) {
-            float z = mesh.probed_matrix[row][col];
-            z_sum += z;
-            z_count++;
-            if (z < min_z) {
-                min_z = z;
-                min_row = static_cast<int>(row);
-                min_col = static_cast<int>(col);
-            }
-            if (z > max_z) {
-                max_z = z;
-                max_row = static_cast<int>(row);
-                max_col = static_cast<int>(col);
-            }
-        }
     }
 
     // Normalize mesh data: subtract mean so deviations are centered around zero.
     // This makes the 3D visualization show bed flatness (what users care about)
     // rather than absolute probe heights (which depend on Z calibration).
-    float z_mean = (z_count > 0) ? static_cast<float>(z_sum / z_count) : 0.0f;
-    float norm_min_z = min_z - z_mean;
-    float norm_max_z = max_z - z_mean;
-
-    std::vector<std::vector<float>> normalized_matrix;
-    normalized_matrix.reserve(mesh.probed_matrix.size());
-    for (const auto& row : mesh.probed_matrix) {
-        std::vector<float> norm_row;
-        norm_row.reserve(row.size());
-        for (float z : row) {
-            norm_row.push_back(z - z_mean);
-        }
-        normalized_matrix.push_back(std::move(norm_row));
-    }
+    const float z_mean = stats.mean_z;
+    std::vector<std::vector<float>> normalized_matrix = helix::mean_normalized_matrix(mesh, stats);
 
     spdlog::debug(
         "[{}] Normalized mesh: mean={:.4f}, raw range [{:.3f}, {:.3f}] -> [{:.3f}, {:.3f}]",
-        get_name(), z_mean, min_z, max_z, norm_min_z, norm_max_z);
-
-    // Convert mesh indices to actual printer coordinates using mesh_min/mesh_max
-    // Klipper's probed_matrix: row 0 = mesh_min[1], row N-1 = mesh_max[1]
-    float x_step =
-        (mesh.x_count > 1) ? (mesh.mesh_max[0] - mesh.mesh_min[0]) / (mesh.x_count - 1) : 0.0f;
-    float y_step =
-        (mesh.y_count > 1) ? (mesh.mesh_max[1] - mesh.mesh_min[1]) / (mesh.y_count - 1) : 0.0f;
-    float min_x = mesh.mesh_min[0] + min_col * x_step;
-    float min_y = mesh.mesh_min[1] + min_row * y_step;
-    float max_x = mesh.mesh_min[0] + max_col * x_step;
-    float max_y = mesh.mesh_min[1] + max_row * y_step;
-
-    // Display raw Z values in stats (what Klipper actually measured). The
-    // label itself stays a static "Max"/"Min" (set at init and in the
-    // no-mesh fallback above) - only the coordinate sub-line and the
-    // measured value change per update.
-    //
-    // Coordinates are rounded to whole mm (%.0f, not %.1f): with a 7x7 mesh
-    // over a ~110mm span, probe points land on fractional coordinates like
-    // [33.3, 51.7], and 0.1mm precision on WHERE the high/low spot sits is
-    // not actionable for a human looking at a bed. The measured Z VALUE
-    // keeps its 3-decimal precision below - only the location rounds.
-    std::snprintf(max_coord_buf_, sizeof(max_coord_buf_), "[%.0f, %.0f]", max_x, max_y);
-    lv_subject_copy_string(&bed_mesh_max_coord_, max_coord_buf_);
-    helix::format::format_distance_mm(max_z, 3, max_value_buf_, sizeof(max_value_buf_));
-    lv_subject_copy_string(&bed_mesh_max_value_, max_value_buf_);
-
-    std::snprintf(min_coord_buf_, sizeof(min_coord_buf_), "[%.0f, %.0f]", min_x, min_y);
-    lv_subject_copy_string(&bed_mesh_min_coord_, min_coord_buf_);
-    helix::format::format_distance_mm(min_z, 3, min_value_buf_, sizeof(min_value_buf_));
-    lv_subject_copy_string(&bed_mesh_min_value_, min_value_buf_);
-
-    // Variance (range) is the same whether normalized or not
-    float variance = max_z - min_z;
-    helix::format::format_distance_mm(variance, 3, variance_buf_, sizeof(variance_buf_));
-    lv_subject_copy_string(&bed_mesh_variance_, variance_buf_);
+        get_name(), z_mean, stats.min_z, stats.max_z, stats.min_z - z_mean, stats.max_z - z_mean);
 
     // Cache mesh bounds
     if ((mesh.mesh_max[0] > mesh.mesh_min[0]) && (mesh.mesh_max[1] > mesh.mesh_min[1])) {
@@ -1016,27 +890,8 @@ void BedMeshPanel::on_mesh_update_internal(const BedMeshProfile& mesh) {
 
     spdlog::info("[{}] Mesh updated: {} ({}x{}, raw Z: [{:.3f}, {:.3f}], normalized: [{:.3f}, "
                  "{:.3f}])",
-                 get_name(), mesh.name, mesh.x_count, mesh.y_count, min_z, max_z, norm_min_z,
-                 norm_max_z);
-}
-
-void BedMeshPanel::update_info_subjects(const std::vector<std::vector<float>>& mesh_data, int cols,
-                                        int rows) {
-    std::snprintf(dimensions_buf_, sizeof(dimensions_buf_), "%dx%d points", cols, rows);
-    lv_subject_copy_string(&bed_mesh_dimensions_, dimensions_buf_);
-
-    float min_z = std::numeric_limits<float>::max();
-    float max_z = std::numeric_limits<float>::lowest();
-    for (const auto& row : mesh_data) {
-        for (float val : row) {
-            min_z = std::min(min_z, val);
-            max_z = std::max(max_z, val);
-        }
-    }
-
-    float variance = max_z - min_z;
-    std::snprintf(variance_buf_, sizeof(variance_buf_), "%.3f mm", variance);
-    lv_subject_copy_string(&bed_mesh_variance_, variance_buf_);
+                 get_name(), mesh.name, mesh.x_count, mesh.y_count, stats.min_z, stats.max_z,
+                 stats.min_z - z_mean, stats.max_z - z_mean);
 }
 
 // ============================================================================
@@ -1918,7 +1773,7 @@ void BedMeshPanel::handle_emergency_stop() {
     preheat_turned_on_bed_ = false;
 
     // Suppress recovery dialog — user intentionally triggered E-Stop from this modal
-    EmergencyStopOverlay::instance().suppress_recovery_dialog(RecoverySuppression::LONG);
+    EmergencyStopOverlay::instance().suppress_recovery_dialog(recovery_suppression::LONG);
 
     IMoonrakerAPI* api = get_moonraker_api();
     if (api) {

@@ -13,7 +13,9 @@ translations:
   '%d lanes': '%d voies'
   '%d min': '%d min'
   '%d min left': '%d min restantes'
+  '%d mm/s': '%d mm/s'
   '%d more sensors': '%d capteurs supplémentaires'
+  '%d profiles': '%d profils'
   '%d slots': '%d emplacements'
   '%d toolheads': '%d têtes d''outil'
   '%d tools': '%d outils'
@@ -32,6 +34,7 @@ translations:
   '%s has about %.0fg but %s needs about %.0fg. Start anyway?': '%s contient environ %.0fg mais %s nécessite environ %.0fg. Démarrer quand même ?'
   '%s has no filament loaded — this print will run out.': '%s n''a pas de filament chargé — cette impression manquera de filament.'
   '%s needs filament in %s, which is empty — this print will run out.': '%s nécessite du filament dans %s, qui est vide — cette impression manquera de filament.'
+  '%s unsaved': '%s non enregistré'
   '%s uses %s, which has filament but no material set — the printer will not start until you set it.': '%s utilise %s, qui contient du filament mais aucun matériau défini — l''imprimante ne démarrera pas tant qu''il n''est pas défini.'
   '%s: %.0fg of %.0fg needed': '%s : %.0fg sur %.0fg requis'
   '%u layers': '%u couches'
@@ -75,6 +78,7 @@ translations:
   1 minute: 1 minute
   1 more tap to {} beta features: 1 appui supplémentaire pour {} les fonctionnalités
     bêta
+  1 profile: '1 profil'
   '1 unit': '1 unité'
   1. Printer homes all axes (~1 minute): 1. L'imprimante prend l'origine de tous les axes (~1 minute)
   1. Printer homes and probes the bed: 1. L'imprimante fait l'origine et palpe le
@@ -360,6 +364,7 @@ translations:
   'Bed cooling, spools still on the bed:': 'Le plateau refroidit, les bobines sont toujours dessus :'
 
   Bed is Level!: Le plateau est niveau !
+  'Bed mesh calibration failed: {}': 'Échec du calibrage du maillage du plateau : {}'
   Bed mesh operation timed out: Maillage du plateau — délai dépassé
   Bed mesh...: Maillage du plateau...
   Bed tab moves lift to this height first: 'Les déplacements de l''onglet Plateau montent d''abord à cette hauteur'
@@ -395,9 +400,11 @@ translations:
   Border transparency (0 = invisible, 255 = solid): Transparence de la bordure (0
     = invisible, 255 = solide)
   Both: Les deux
+  Bouncing Logo: Bouncing Logo
   Bouncing Printer: Bouncing Printer
   Bowden Length: 'Longueur du bowden'
   Bowden tube length from hub to toolhead: 'Longueur du tube bowden du hub à la tête d''outil'
+  Box: Boîte
   Brand: Marque
   Brand and material come from Spoolman: La marque et le matériau proviennent de Spoolman
   Brightness: Luminosité
@@ -1008,6 +1015,7 @@ translations:
 
   Drying on the bed: Séchage sur le plateau
 
+  Drying progress and humidity for boxes, the chamber, and the bed: 'Progression du séchage et humidité des boîtes, de l''enceinte et du plateau'
   Drying started: Séchage démarré
   Drying stopped: Séchage arrêté
   Duplicate: Dupliquer
@@ -1326,6 +1334,7 @@ translations:
   Filament Buffer: 'Tampon de filament'
   Filament Control: Contrôle du filament
   Filament Detected: Filament détecté
+  Filament Dryer: Sécheur de filament
   Filament Grade Mismatch: Grade de filament incompatible
   Filament Humidity: Humidité du filament
   Filament In The Toolhead: Filament dans la tête d'outil
@@ -1545,6 +1554,7 @@ translations:
   Heating to {}°C...: Chauffe à {}°C...
   Heating...: Chauffage...
   'Heating: %d / %d°C': 'Chauffage : %d / %d°C'
+  Heightmap and flatness of the active bed mesh: 'Carte des hauteurs et planéité du maillage du plateau actif'
   HelixScreen: HelixScreen
   HelixScreen Crashed: HelixScreen a planté
   HelixScreen is detecting your display orientation: HelixScreen détecte l'orientation
@@ -1569,6 +1579,7 @@ translations:
     purger le filament précédent.
   Home: Origine
   Home & Continue: Référencer et continuer
+  Home All: "Tout référencer"
   Home all axes to use the map: Référencez tous les axes pour utiliser la carte
   Home and sweep the cutter to re-find its position: Prend l'origine et balaie le coupeur pour retrouver sa position
   Home failed: Échec de la référence
@@ -1597,6 +1608,8 @@ translations:
   Homing...: Mise à l'origine...
   Horizontal: Horizontal
   Host: Hôte
+  Host Health: 'État de l''hôte'
+  Host and MCU load, temperature, and memory: 'Charge, température et mémoire de l''hôte et du MCU'
   'Host: ': 'Hôte : '
   Hotend: Hotend
   Hotend Fan: Ventilateur du hotend
@@ -1841,6 +1854,7 @@ translations:
 
   Line {} calls {}, which this printer treats as an emergency stop. Re-slice the file with a profile made for this printer.: 'La ligne {} appelle {}, que cette imprimante traite comme un arrêt d''urgence. Retranchez le fichier avec un profil conçu pour cette imprimante.'
   Listen to all theme sounds: Écouter tous les sons du thème
+  Live Z-offset, with baby steps and Save: Z-Offset en direct, avec micro-pas et Enregistrer
   Live view from your webcam: Vue en direct de votre webcam
   Load: Charger
   Load Cell: 'Cellule de charge'
@@ -1856,6 +1870,7 @@ translations:
   Load filament: 'Charger le filament'
   Load filament first: Chargez d'abord du filament
   Load or unload filament.: Chargez ou déchargez du filament.
+  Load profile: 'Charger un profil'
   Load the required filaments or start anyway?: Charger les filaments requis ou démarrer
     quand même ?
   'Load, unload, and swap spools. View your multi-filament system at a glance, map colors to slots, and monitor runout sensors.': 'Chargez, déchargez et changez les bobines. Visualisez votre système multi-filaments en un coup d''œil, associez les couleurs aux emplacements et surveillez les capteurs de fin de filament.'
@@ -2211,6 +2226,7 @@ translations:
   Not connected to printer.: Non connecté à l'imprimante.
   Not connected to the printer: Non connecté à l'imprimante
   Not detected: Non détecté
+  Not drying: Pas de séchage
   Not enough frequency data from the sweeps. Try again.: 'Pas assez de données de fréquence après les balayages. Réessayez.'
   Not enough room for this widget. Rearrange or remove widgets to make space.: Pas assez de place pour ce widget. Réorganisez ou supprimez des widgets pour libérer de l'espace.
   Not in your spools? Set it up: Pas dans vos bobines ? Configurez-la
@@ -2223,6 +2239,8 @@ translations:
   Nothing starred yet. Tap the star on a filament to add it here.: 'Rien d''étoilé pour le moment. Touchez l''étoile d''un filament pour l''ajouter ici.'
   Nothing to remap: Rien à réaffecter
   'Nothing to unload: no filament at the nozzle': 'Rien à décharger : pas de filament à la buse'
+  'Which lane is in the toolhead?': 'Quelle voie est dans la tête ?'
+  'Choose which lane is in the toolhead to unload it': 'Choisissez quelle voie est dans la tête pour la décharger'
   Nothing was changed. Temperature and material are kept, so a retry is one tap.: 'Rien n''a été modifié. La température et le matériau sont conservés, réessayer ne demande qu''un appui.'
   Notification: Notification
   Notifications: Notifications
@@ -2421,6 +2439,7 @@ translations:
   Poor match: "Mauvaise correspondance"
   Port: Port
   Position: Position
+  Position unknown: "Position inconnue"
   Post-Sensor Clear: 'Dégagement après capteur'
   Power: Alimentation
   Power Devices: Appareils électriques
@@ -2646,11 +2665,13 @@ translations:
   Quick Button 4: Bouton rapide 4
   Quick actions, calibration, speed: Actions rapides, calibration, vitesse
   Quiet: 'Silencieux'
+  RAM: RAM
   RFCOMM connect failed: Échec de la connexion RFCOMM
   'RFCOMM connect failed: ': 'Échec de la connexion RFCOMM : '
   RFID reader malfunction (left): Dysfonctionnement du lecteur RFID (gauche)
   RFID reader malfunction (right): Dysfonctionnement du lecteur RFID (droit)
   RFID, auto-refill, nozzle and link care: RFID, rechargement automatique, entretien de la buse et de la liaison
+  RH: HR
   RSS: RSS
   'RSS:': 'RSS :'
   Ramming Volume: 'Volume de bourrage'
@@ -3157,7 +3178,9 @@ translations:
   Spaghetti detected (%d%%): Spaghetti détecté (%d%%)
   Speaker: Haut-parleur
   Speed: Vitesse
+  Speed / Flow: 'Vitesse / Débit'
   Speed Settings: 'Paramètres de vitesse'
+  Speed and flow overrides, with a tap to tune: 'Vitesse et débit ; touchez pour régler'
   Speed multiplier for forward moves: 'Multiplicateur de vitesse pour les déplacements avant'
   Speed multiplier for reverse moves: 'Multiplicateur de vitesse pour les déplacements arrière'
   Speed of prime movement: Vitesse du mouvement d'amorçage
@@ -3625,6 +3648,7 @@ translations:
   Toolhead Style: Style de tête d'outil
   Toolhead Y: Tête d'outil Y
   Toolhead jam: Bourrage de la tête d'outil
+  Toolhead position and homing, with a plate view and Home All: "Position et référence de la tête d'outil, avec vue du plateau et Tout référencer"
   Toolhead position unknown: 'Position de la tête d''outil inconnue'
   Toolheads: 'Têtes d''outil'
   Tools: Outils
@@ -3959,6 +3983,7 @@ translations:
   direct drive: 'à entraînement direct'
   disable: désactiver
   disabled: désactivé
+  drying: en séchage
   e.g. Jet Black: p. ex. Noir profond
   e.g. NAME=my_var VALUE=123: ex. NAME=ma_var VALUE=123
   e.g. Polymaker: p. ex. Polymaker
@@ -3995,6 +4020,8 @@ translations:
   loaded: 'chargé'
   locked: 'verrouillé'
   matched: équilibrées
+  mm: mm
+  mm Z-offset: mm Z-Offset
   mm before clog: mm avant bouchon
   needs: nécessite
   needs approval: approbation requise

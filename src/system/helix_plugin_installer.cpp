@@ -47,6 +47,7 @@ struct WaitResult {
     std::string output;
 };
 
+#if !defined(ESP_PLATFORM)
 // install.sh prints a handful of lines; anything past this is noise.
 constexpr size_t MAX_SCRIPT_OUTPUT_BYTES = 16 * 1024;
 
@@ -153,6 +154,8 @@ static WaitResult wait_for_child_with_timeout(pid_t pid, int timeout_seconds,
     }
 }
 
+#endif // !ESP_PLATFORM
+
 /**
  * @brief Run install.sh in the given mode, capturing and logging its output.
  *
@@ -166,6 +169,16 @@ static WaitResult wait_for_child_with_timeout(pid_t pid, int timeout_seconds,
 static WaitResult run_install_script(const std::string& script_path, const char* mode_flag,
                                      int timeout_seconds, const char* operation_name) {
     WaitResult result;
+#if defined(ESP_PLATFORM)
+    // No shell and no processes to spawn: the firmware cannot run install.sh.
+    (void)script_path;
+    (void)mode_flag;
+    (void)timeout_seconds;
+    (void)operation_name;
+    result.error = result.spawn_failed = true;
+    result.error_message = "not supported on this device";
+    return result;
+#else
     int fds[2];
     if (pipe(fds) != 0) {
         result.error = result.spawn_failed = true;
@@ -200,6 +213,7 @@ static WaitResult run_install_script(const std::string& script_path, const char*
     close(fds[0]);
     log_script_output(result.output, !result.timed_out && !result.error && result.exit_code == 0);
     return result;
+#endif
 }
 
 std::vector<std::string> script_output_lines(const std::string& output) {

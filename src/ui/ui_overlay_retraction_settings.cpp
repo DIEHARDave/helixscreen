@@ -49,7 +49,7 @@ bool field_in_range(int raw) {
 
 } // namespace
 
-RetractionSettingsOverlay::RetractionSettingsOverlay(IMoonrakerAPI* api) : api_(api) {}
+RetractionSettingsOverlay::RetractionSettingsOverlay(helix::IMoonrakerAPI* api) : api_(api) {}
 
 RetractionSettingsOverlay::~RetractionSettingsOverlay() {
     // SubjectManager handles LVGL initialization check and cleanup

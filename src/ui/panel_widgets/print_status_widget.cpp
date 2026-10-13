@@ -704,12 +704,12 @@ void PrintStatusWidget::update_active_layout_mode() {
 
 void PrintStatusWidget::handle_print_card_clicked() {
     // Startup grace period: reject phantom clicks during early boot
-    auto elapsed = std::chrono::steady_clock::now() - AppConstants::Startup::PROCESS_START_TIME;
-    if (elapsed < AppConstants::Startup::PRINT_START_GRACE_PERIOD) {
+    auto elapsed = std::chrono::steady_clock::now() - app_constants::startup::PROCESS_START_TIME;
+    if (elapsed < app_constants::startup::PRINT_START_GRACE_PERIOD) {
         auto secs = std::chrono::duration_cast<std::chrono::seconds>(elapsed).count();
         spdlog::warn("[PrintStatusWidget] Rejected print card click during startup grace period "
                      "({}s < {}s)",
-                     secs, AppConstants::Startup::PRINT_START_GRACE_PERIOD.count());
+                     secs, app_constants::startup::PRINT_START_GRACE_PERIOD.count());
         return;
     }
 

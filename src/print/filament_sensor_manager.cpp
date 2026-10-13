@@ -939,7 +939,7 @@ void FilamentSensorManager::update_from_status(const json& status) {
     // (similar to USB manager - users don't need to be told filament is present)
     auto now = std::chrono::steady_clock::now();
     bool within_grace_period =
-        (now - startup_time_) < AppConstants::Startup::SENSOR_STABILIZATION_PERIOD;
+        (now - startup_time_) < app_constants::startup::SENSOR_STABILIZATION_PERIOD;
 
     // Collect notifications to send after releasing lock (avoid deadlock)
     struct Notification {
@@ -1386,7 +1386,7 @@ bool FilamentSensorManager::is_probe_triggered() const {
 
 bool FilamentSensorManager::is_in_startup_grace_period() const {
     auto now = std::chrono::steady_clock::now();
-    return (now - startup_time_) < AppConstants::Startup::SENSOR_STABILIZATION_PERIOD;
+    return (now - startup_time_) < app_constants::startup::SENSOR_STABILIZATION_PERIOD;
 }
 
 // ============================================================================

@@ -168,6 +168,11 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
   plus every webcam the printer has, noting snapshot-only feeds and cameras that were ruled
   out. The choice is remembered by camera name, so it survives an address change, and falls
   back to Automatic if that camera goes away.
+- **A Speed / Flow widget** - the speed and flow overrides on the home screen, tinted when
+  either is off 100%. During a print it adds the live toolhead speed and volumetric flow,
+  following the percent or mm/s choice the print screen uses. At its largest size it gains
+  - and + buttons in 5% steps while printing, and a long press on a value puts it back to
+  100%. Tap anywhere else on the tile to open Tune.
 - **Scheduled pauses are marked on the progress indicator (#1509)** - filament changes (`M600`),
   explicit `PAUSE`/`M601`, and slicer pause-at-layer stops each draw a tick where they sit in
   the print, on both the home print-status card's bar and arc and the print panel's bar. The
@@ -297,7 +302,8 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
   gains **Refresh Spoolman**.
 - **ACE shows where the filament actually is** (#1677, #1678) - the path reads the ACE's hub
   and toolhead sensors, so a strand parked short of the hub is drawn there rather than back
-  at the spool. An ACE Pro with a fifth spool on its bypass switch gets a working bypass
+  at the spool, and on a Kobra S1 an idle slot the driver reports as parked is drawn staged
+  at the hub. An ACE Pro with a fifth spool on its bypass switch gets a working bypass
   control.
 - **A new Filament Buffer widget shows where your filament buffer sits** (#1724) - an upright
   slider with loose filament up and tight down, beside a big reading that is grey on target,
@@ -313,6 +319,25 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
 - **Spool labels lead with the spool number** (#1491) - on every label layout the spool number
   is the first and largest line, and weight moves to its own line so a narrow tape truncates
   that rather than the number.
+- **The filament system screen fits small and portrait screens** - the loaded spool is a
+  compact strip: a colour bar beside the slot and its remaining weight, the filament name on
+  one line, and the clog and buffer meters underneath, which step aside during a load or
+  unload so its progress has the room. The action buttons sit two to a row, so the side
+  column no longer scrolls at 480x272, 480x320 or 800x480. Temperature and humidity stand in
+  a pill at the end of each box, showing the dryer's time left while it runs. On small
+  screens with five or more lanes, the slot labels alternate between two rows so each keeps
+  to its own space, and the tool badges stay hidden while every tool feeds its own slot,
+  appearing only when tools are remapped. In portrait the diagram runs the full width, with
+  the loaded strip and status above it and the actions and load progress below.
+- **Slot labels name the spool** (#1687) - each slot reads the spool's name above its
+  material ("Bone White" over "PLA+"). A slot shows only the material when nothing names the
+  spool, when it is empty, or when five or more slots share the row, and only the name when
+  the name already says the material.
+- **Creator 5 on Z-Mod: Load feeds the head** (#1779) - Load on a head feeds it through
+  Z-Mod's afclite (`CHANGE_TOOL LANE=E<n>`), heating only that head. The Creator 5 has no
+  automatic unload, so Unload shows a notice telling you to cut and pull the filament at the
+  head, and sends nothing; to mount a head without feeding it, use Select slot in the slot
+  menu. A fault from Z-Mod opens a dialog in the firmware's own words.
 
 **Drying filament**
 
@@ -458,8 +483,9 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
 **Printers**
 
 - **VzBot 330 and 235** (#1689), **FLSUN S1 and S1 Pro**, and the **base Creality K2**
-  (#1606), each with artwork. The base K2 is now told apart from the K2 Plus and Pro, and its
-  camera option no longer claims the Plus's AI model.
+  (#1606), each with artwork, and the **FLSUN T1 Pro** (#1781), which comes set up with its
+  fans, its enclosure light and a bed levelling button. The base K2 is now told apart from
+  the K2 Plus and Pro, and its camera option no longer claims the Plus's AI model.
 - **FlashForge Creator 5 and Creator 5 Pro are supported printers (#1714)** - both models of
   FlashForge's four-head tool changer are recognized and given their own settings, on either
   of the two firmwares that replace its stock software: Z-Mod and Reforge. Mounting and
@@ -492,6 +518,9 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
   costs a fraction of what Flying Toasters does; on AD5M-class hardware the corner
   celebration is a backdrop flash rather than confetti, to stay clear of the print loop.
   Select it under Settings > Display > Screensaver. (thanks @Tintef)
+- **Bouncing Logo screensaver** - the HelixScreen logo bouncing around a black screen in its
+  own colors, for anyone whose printer image is not much to look at. Select it under Settings >
+  Display > Screensaver.
 - **Fireworks screensaver** - shells rise from behind a line of hills under a starry night
   sky, trail sparks, and burst as peonies, chrysanthemums, willows or rings, each spark
   fading from white through its shell's colour to an ember. It adjusts how many sparks and
@@ -527,6 +556,32 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
 - **Hardware Health shows its status** - the Settings row carries the live result with a
   severity-coloured icon, and critical problems get their own alert icon.
 
+**Plugins**
+
+- **Lua plugins** - drop a plugin into `helixscreen/plugins` in your printer's config folder
+  and HelixScreen picks it up, on every printer you connect to. A plugin can add home screen
+  tiles, its own screens and a settings page, and draw charts. Each one runs in a sandbox with
+  its own memory and time limits, and asks before it gets access to G-code, Moonraker or the
+  network; its Moonraker calls get the same refusals as the app's own, so a plugin cannot
+  start a print or send a restart the screen itself would refuse. Settings > Plugins lists
+  them, and nothing runs until you enable it there. A plugin that changes on the printer
+  reloads in place.
+- **Six example plugins and a build tutorial** - a temperature sparkline, an LED effects
+  tile, Maintenance Meter (consumable hour meters on a home tile, with confirm-guarded
+  resets), Print Watcher (print start, finish and failure notifications to ntfy, Discord,
+  Telegram or a webhook), Ambient Tile (room conditions from Home Assistant or any JSON
+  endpoint, with a sparkline) and Calibration Bridge, a proof of concept for a slicer
+  calibration companion that asks you to pick a result on screen. A step-by-step tutorial
+  walks through building the first of the new four. Plugins can be shared in the Discord
+  #plugin-showcase channel (#1771).
+- **Plugin translations** - a plugin can ship an `i18n/` folder with translation packs, and
+  its manifest text, screens and code follow the app language. A pack only supplies words the
+  app does not already translate, so a plugin cannot change the app's own labels; English
+  packs are refused, a pack over 256 KiB is skipped, and an edited pack needs an app restart.
+- **Plugins can drive their own settings** - a plugin's own screen can act as the control
+  surface for the settings it declares (`helix.settings.set`). The generated settings page
+  stays in step, and setting a value it already holds saves nothing.
+
 **Files, USB and installing**
 
 - **USB sticks mount on boards that do not mount them** - where nothing else mounts a USB
@@ -542,6 +597,14 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
 - **Logs and caches survive an update** - on the K1, Centauri Carbon, U1 and AD5X, a web
   update used to delete the logs you needed and throw away the thumbnail cache. Both now
   live beside the install instead of inside it.
+- **Run HelixScreen in a window on a Linux desktop** - a new package for x86_64 Linux PCs
+  (Debian 11, Ubuntu 20.04, Fedora 34 or newer, on X11 or Wayland) runs HelixScreen as an
+  ordinary app window that connects to your printer over the network. Install it with
+  `install.sh --desktop`: no `sudo`, it goes into your home folder, and HelixScreen appears in
+  your applications menu. Without the flag, on a PC with a desktop the installer asks
+  whether you want a window or a full-screen kiosk, and suggests the window. Install Update
+  opens the release page in your browser instead of updating in place. The 3D G-code preview
+  uses your graphics driver's OpenGL ES when it has it, and draws in 2D otherwise.
 
 ### Changed
 
@@ -765,6 +828,14 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
   dark. It now gives up and hands over to the system.
 - A whole class of crash when leaving a screen, where a screen reacted to a value that had
   already been freed, is closed off across the app.
+- **Opening a file's details could crash the app on some boards** (#1742) - on a screen
+  drawn through the GPU (seen on an H616 board with Mesa 25), the 3D G-code preview loaded
+  the graphics driver a second time and crashed. It now uses the display's own graphics
+  connection, and a driver crash while the preview starts is remembered, so the next start
+  shows the 2D preview instead of crashing on every open.
+- **A read-only install could abort at exit, or at startup after a crash** - failing to
+  remove the app's crash-restart counter is now logged and passed over instead of stopping
+  the app.
 
 **Network**
 
@@ -779,7 +850,20 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
 - **Filament stuck in the toolhead with no slot claiming it could not be unloaded** (#1324) - on
   the AD5X and the other systems that can tell, the filament sidebar's and Filament panel's
   Unload now pulls it out of the active head, and a slot's own Unload greys
-  out in that state, since the slot it names may not be the one holding the filament.
+  out in that state, since the slot it names may not be the one holding the filament. On an
+  AD5X with the standalone IFS module, which has to be told a lane, Unload uses the lane it
+  remembers loading when that lane still holds filament, and otherwise asks "Which lane is in
+  the toolhead?" before heating.
+- **AD5X IFS: a failed load or unload left the screen busy for 90 seconds** - when the IFS
+  macro fails (a filament stalled in the IFS, say), the operation now stops at once with the
+  firmware's own message.
+- **Loading showed the nozzle temperature twice** - during the filament screen's own
+  preheat, the status line names the action ("Heating nozzle") and the step list carries the
+  reading.
+- **The Spoolman QR scanner found no camera on most printer builds** (#1788) - on the K1
+  series, Ender 3 V3 KE, AD5M, AD5X, Centauri Carbon, K2 and Snapmaker U1 it always said "No
+  camera", even with a webcam set up in Moonraker. It now uses the printer's webcam, and on a
+  stock K1 it also finds the camera the printer serves without telling Moonraker.
 - **A Happy Hare fault often showed no recovery popup (#1323)** - a fault during a print, or a
   load or home that failed outside one, now always opens the popup with Happy Hare's own reason,
   and Happy Hare's own error notice closes behind it. Outside a print it offers no Resume and
@@ -999,6 +1083,13 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
 - **Uninstall** now removes HelixScreen's leftover folder instead of only emptying it.
 - **Mainsail kept showing the old version after an update** (#1727) - the first start after an
   update asks Moonraker to refresh it.
+- **K1 series and AD5X: switching back to Stable could not install 1.0** (#1789) - the
+  update offered "Switch to v1.0.4" and then failed with "No update available", because 1.0
+  releases name their download after the printer rather than the shared build. Both names
+  are now looked for.
+- **Installing the HelixPrint plugin from the screen failed on the K1 series** (#1790) - the
+  install could not find Moonraker where Creality puts it. It now finds the running Moonraker
+  wherever it lives, and the reason for a failed install is written to the log.
 
 **Translations**
 

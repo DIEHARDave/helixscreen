@@ -83,10 +83,15 @@ echo -n "📛 Checking namespace compliance (declarations outside helix::)..."
 # definitions, kept out of line because the ESP32 build supplies its own.
 # 2101 -> 2102 is MOCK_K2_CHAMBER_FAN_RESTING_C, beside the other mock_internal
 # constants in moonraker_client_mock_internal.h.
+# 2102 -> 2016 is IMoonrakerAPI, the ten sub-API interfaces and their value
+# types moving into helix::, with every forward declaration that named them.
+# 2016 -> 1965 is AppConstants, PrinterImages and RecoverySuppression becoming
+# helix::app_constants, helix::printer_images and helix::recovery_suppression.
+# 1965 -> 1964 is main's own slack of one, picked up by the merge.
 #
 # tests/shell/test_namespace_gate.bats carries this same number and fails if
 # the two disagree or if the tree drifts under it.
-if python3 scripts/check_namespace_compliance.py --max-allowed 2102 --summary >/tmp/namespace_check.out 2>&1; then
+if python3 scripts/check_namespace_compliance.py --max-allowed 1964 --summary >/tmp/namespace_check.out 2>&1; then
   section_time $SECTION_START
   echo ""
   tail -1 /tmp/namespace_check.out
