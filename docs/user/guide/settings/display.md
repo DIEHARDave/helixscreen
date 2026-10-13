@@ -78,7 +78,7 @@ An animation that plays while the screen is idle. It starts when the screen woul
 | **3D Pipes** | Pipes growing across the screen |
 | **Bouncing Printer** | Your printer drifts around and bounces off the edges, changing color at every wall. Land a corner and it celebrates |
 | **Fireworks** | Fireworks over hills at night |
-| **Bouncing Logo** | The same bounce with the HelixScreen logo instead of your printer |
+| **Bouncing Logo** | The HelixScreen logo drifts around a black screen and bounces off the edges, in its own colors |
 
 Each screensaver checks how much processor time it takes on your printer. If it would slow the printer down, it lowers its frame rate or detail. If that's still too much, it shows a black screen instead. It remembers the result and checks again after an update.
 

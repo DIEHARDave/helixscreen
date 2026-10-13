@@ -35,7 +35,7 @@ Every ladder starts at 16 ms (`SAVER_FAST_PERIOD`, one refresh of a 60 Hz panel)
 `HELIX_SCREENSAVER_REFR_PERIOD_MS` when that is set for manual testing
 (`SaverBase::level_period_ms`); levels 1 and up keep their declared periods either way. Starfield
 and pipes then run at 33 ms; toasters at 33 ms with every sprite, then 33 ms with ten; the
-bouncing printer and bouncing logo (one class, `BouncingLogoScreensaver` swaps the sprite) at 33 ms, then 33 ms with the corner flash but no confetti; fireworks per
+bouncing printer and bouncing logo (one class; `BouncingLogoScreensaver` swaps the sprite and drops the tint and corner celebration) at 33 ms, then 33 ms with the corner flash but no confetti; fireworks per
 `FIREWORKS_LEVELS`. While a saver runs, `helix::RefreshPeriodHold` refreshes the display at
 the saver's current period (`follow`), so the display and the saver stay equal at every level. Device measurements assume the pacing that keeps 16 ms even: EGL vsync and a 1 ms
 main-loop floor, which every device run sets explicitly (`scripts/screensaver-perf/arm_measure.sh`).

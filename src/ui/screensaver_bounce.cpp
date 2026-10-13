@@ -250,7 +250,7 @@ void BouncingPrinterScreensaver::rebase(int screen_w, int screen_h) {
 }
 
 void BouncingPrinterScreensaver::apply_tint() {
-    if (!img_) {
+    if (!img_ || !decorated()) {
         return;
     }
     lv_obj_set_style_image_recolor(img_, BOUNCE_TINTS[color_index_], 0);
@@ -299,7 +299,8 @@ void BouncingPrinterScreensaver::on_frame(uint32_t dt_ms,
     // frames at whatever period the running level allows, tight enough that a
     // plain wall hit is not mistaken for one.
     const float tol = std::max(4.0f, speed_ * static_cast<float>(dt_ms) / 2000.0f);
-    const bool corner = is_corner_hit(bounced_x, bounced_y, x, y, range_x_, range_y_, tol);
+    const bool corner =
+        decorated() && is_corner_hit(bounced_x, bounced_y, x, y, range_x_, range_y_, tol);
     if (corner) {
         spdlog::info("[Screensaver] Bouncing {} hit the corner", subject_name());
         corner_flash_ticks_ = CORNER_FLASH_TICKS;
