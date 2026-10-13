@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "performance_state.h"
 
+#include "helix_psram_attr.h"
 #include "static_subject_registry.h"
 #include "subject_managed_panel.h"
 
@@ -29,7 +30,7 @@ std::string format_disk_free_text(uint32_t free_mb) {
 } // namespace
 
 PerformanceState& PerformanceState::instance() {
-    static PerformanceState s;
+    static HELIX_PSRAM_BSS PerformanceState s;
     return s;
 }
 

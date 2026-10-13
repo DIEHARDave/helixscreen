@@ -11,6 +11,7 @@
 
 #include "app_globals.h"
 #include "display_numbering.h"
+#include "helix_psram_attr.h"
 #include "i_moonraker_api.h"
 #include "lvgl/src/others/translation/lv_translation.h"
 #include "moonraker_error.h"
@@ -44,24 +45,24 @@ namespace {
 // Module-level because the widget is single-instance and registration rides
 // SubjectInitializer's panel-subject phase, so the subjects exist before any XML that
 // binds them is parsed.
-lv_subject_t s_rung_subject{};
-lv_subject_t s_show_letters_subject{};
-lv_subject_t s_z_only_subject{};
-lv_subject_t s_show_rows_subject{};
-lv_subject_t s_show_plate_subject{};
-lv_subject_t s_show_home_subject{};
-lv_subject_t s_show_status_subject{};
-lv_subject_t s_homed_subjects[3]{};
-lv_subject_t s_x_text_subject{};
-lv_subject_t s_y_text_subject{};
-lv_subject_t s_z_text_subject{};
-lv_subject_t s_tool_text_subject{};
-lv_subject_t s_speed_text_subject{};
-char s_x_text_buf[16];
-char s_y_text_buf[16];
-char s_z_text_buf[16];
-char s_tool_text_buf[32];
-char s_speed_text_buf[24];
+HELIX_PSRAM_BSS lv_subject_t s_rung_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_show_letters_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_z_only_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_show_rows_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_show_plate_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_show_home_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_show_status_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_homed_subjects[3]{};
+HELIX_PSRAM_BSS lv_subject_t s_x_text_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_y_text_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_z_text_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_tool_text_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_speed_text_subject{};
+HELIX_PSRAM_BSS char s_x_text_buf[16];
+HELIX_PSRAM_BSS char s_y_text_buf[16];
+HELIX_PSRAM_BSS char s_z_text_buf[16];
+HELIX_PSRAM_BSS char s_tool_text_buf[32];
+HELIX_PSRAM_BSS char s_speed_text_buf[24];
 bool s_subjects_initialized = false;
 SubjectManager s_subjects;
 // The instance bound to the live tile. Only it publishes and acts: a transient

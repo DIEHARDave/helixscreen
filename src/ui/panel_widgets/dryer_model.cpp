@@ -9,6 +9,7 @@
 #include "ams_state.h"
 #include "app_globals.h"
 #include "bed_drying_controller.h"
+#include "helix_psram_attr.h"
 #include "observer_factory.h"
 #include "printer_state.h"
 #include "static_subject_registry.h"
@@ -23,8 +24,8 @@
 namespace helix::dryer_model {
 namespace {
 
-lv_subject_t s_available_subject{};
-lv_subject_t s_version_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_available_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_version_subject{};
 bool s_subjects_initialized = false;
 SubjectManager s_subjects;
 
