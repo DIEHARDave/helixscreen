@@ -622,6 +622,7 @@ translations:
   Choose an existing filament, or tap + New to create one.: Elige un filamento o toca
     + Nuevo para crear uno.
   Choose display language: Elija el idioma de visualización
+  Choose head: Elegir cabezal
   Choose how frames are captured during printing: Elija cómo se capturan los cuadros
     durante la impresión
   Choose rendering mode for G-code visualization: Elija el modo de renderizado para

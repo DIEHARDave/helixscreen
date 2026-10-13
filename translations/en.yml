@@ -602,6 +602,7 @@ translations:
   Choose an existing filament, or tap + New to create one.: Choose an existing filament,
     or tap + New to create one.
   Choose display language: Choose display language
+  Choose head: Choose head
   Choose how frames are captured during printing: Choose how frames are captured during
     printing
   Choose rendering mode for G-code visualization: Choose rendering mode for G-code

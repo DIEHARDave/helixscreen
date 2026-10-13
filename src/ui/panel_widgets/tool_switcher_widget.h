@@ -50,8 +50,9 @@ class ToolSwitcherWidget : public TiledPanelWidget {
   private:
     friend class ToolSwitcherTestAccess;
 
-    /// Single-select list of the printer's tools, raised by a tap on the compact
-    /// tile. Picking a row issues the change; a tap outside it chooses nothing.
+    /// Single-select list of the printer's tools and Park, raised by a tap on
+    /// the face or the mounted segment. Picking a row issues the change; a tap
+    /// outside it chooses nothing.
     class ToolPicker : public helix::ui::ContextMenu {
         HELIX_CONTEXT_MENU_KIND(ToolPicker)
 
@@ -112,6 +113,9 @@ class ToolSwitcherWidget : public TiledPanelWidget {
 
     void show_tool_picker();
     void handle_tool_selected(int tool_index);
+    /// A rail segment's tap: mount that head, or raise the sheet when it is
+    /// the mounted one.
+    void handle_segment_tapped(int tool_index);
 
     /// Null every cached widget pointer without touching observers or the
     /// widget tree. Shared by detach() and the raw-delete hook.
@@ -124,8 +128,9 @@ class ToolSwitcherWidget : public TiledPanelWidget {
     /// The mode and geometry for the cached box, and the label form the
     /// segments or face have room for.
     void publish_layout();
-    /// Every head's segment text and colour, the detail rows and the compact
-    /// readout, from ToolState, the filament system and the temperatures.
+    /// Every head's segment text and colour, the detail rows, the face and
+    /// whether the cells hold a second line, from ToolState, the filament
+    /// system and the temperatures.
     void publish_heads();
     /// Observe each head's extruder temperature; the set follows the tools.
     void rebuild_head_temps();
@@ -136,8 +141,6 @@ class ToolSwitcherWidget : public TiledPanelWidget {
     /// in G-code and in the slicer, configured name or not. Wider surfaces keep
     /// tool_text()'s physical label for a configured name.
     static std::string short_text(const ToolInfo& tool);
-    /// Budget the compact value at the widest label any tool carries.
-    void refresh_label_budget();
     void on_active_tool_changed(int tool_index);
 
     /**
@@ -174,7 +177,8 @@ class ToolSwitcherWidget : public TiledPanelWidget {
     void handle_park_requested();
 
   public:
-    static void tool_compact_cb(lv_event_t* e);
+    static void tool_segment_cb(lv_event_t* e);
+    static void tool_face_cb(lv_event_t* e);
     static void tool_park_cb(lv_event_t* e);
 };
 

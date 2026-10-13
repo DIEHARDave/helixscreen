@@ -614,6 +614,7 @@ translations:
   Choose an existing filament, or tap + New to create one.: Выберите существующий
     филамент или нажмите + Новый, чтобы создать.
   Choose display language: Выберите язык интерфейса
+  Choose head: Выберите головку
   Choose how frames are captured during printing: Выберите способ захвата кадров во
     время печати
   Choose rendering mode for G-code visualization: Выберите режим рендеринга для визуализации

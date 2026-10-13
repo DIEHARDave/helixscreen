@@ -22,6 +22,7 @@
 
 #include "../lvgl_ui_test_fixture.h"
 #include "../test_helpers/panel_widget_size_harness.h"
+#include "../test_helpers/tool_switcher_rig.h"
 #include "../test_helpers/tool_switcher_test_access.h"
 #include "../test_helpers/update_queue_test_access.h"
 #include "ams_backend_mock.h"
@@ -79,25 +80,6 @@ void update_tools(int count, int active_index) {
     topo.tool_count = count;
     topo.active_tool = active_index;
     ToolState::instance().set_ams_topology(topo);
-}
-
-/// A responsive token as this run's breakpoint resolves it, so the boxes below
-/// are built from the same numbers the widget reads.
-int resolve_px(const char* name, int fallback) {
-    const char* s = lv_xml_get_const(nullptr, name);
-    return s ? std::atoi(s) : fallback;
-}
-
-/// The tile size whose content box (the tile less space_md each side) is
-/// content_w x content_h: the widget decides on the content box.
-std::pair<int, int> tile_for_content(int content_w, int content_h) {
-    const int inset = resolve_px("space_md", 10);
-    return {content_w + 2 * inset, content_h + 2 * inset};
-}
-
-void resize_content(PanelWidgetHarness<ToolSwitcherWidget>& h, int content_w, int content_h) {
-    const auto [w, hpx] = tile_for_content(content_w, content_h);
-    h.resize(1, 1, w, hpx);
 }
 
 int subject_int(const char* name) {
@@ -506,10 +488,10 @@ TEST_CASE_METHOD(ToolSwitcherFixture,
 }
 
 // ============================================================================
-// The compact readout and the picker
+// The face and the picker
 // ============================================================================
 
-TEST_CASE_METHOD(ToolSwitcherFixture, "tool_switcher: compact mode marks an unknown active tool",
+TEST_CASE_METHOD(ToolSwitcherFixture, "tool_switcher: the face marks an unknown mounted head",
                  "[widget_size][tool_switcher]") {
     // Klipper's toolchanger.tool_number is taken as reported, so a printer that
     // names a tool the discovery never listed leaves active_tool_index() past
@@ -521,85 +503,16 @@ TEST_CASE_METHOD(ToolSwitcherFixture, "tool_switcher: compact mode marks an unkn
     process_lvgl(30);
     h.resize(2, 2, 60, 60);
     process_lvgl(30);
-    REQUIRE(subject_string("tool_switcher_active_label") == "T0");
+    REQUIRE(subject_string("tool_switcher_face_label") == "T0");
 
     ts.update_from_status(nlohmann::json{{"toolchanger", {{"tool_number", 7}}}});
     process_lvgl(30);
     REQUIRE(ts.active_tool_index() == 7);
-    CHECK(subject_string("tool_switcher_active_label") == "?");
-}
-
-TEST_CASE_METHOD(ToolSwitcherFixture,
-                 "tool_switcher: the compact form draws in the faces its box earns",
-                 "[widget_size][tool_switcher][tile]") {
-    // The compact glyph and tool label follow the tile's rung like every other
-    // sized tile, so a bigger compact box draws a bigger glyph and label.
-    configure_tools(3);
-    PanelWidgetHarness<ToolSwitcherWidget> h(test_screen(), state());
-    process_lvgl(30);
-    lv_obj_t* icon = h.child("tool_switcher_compact_icon");
-    lv_obj_t* label = h.child("tool_switcher_compact_label");
-    REQUIRE(icon != nullptr);
-    REQUIRE(label != nullptr);
-    lv_subject_t* rung = lv_xml_get_subject(nullptr, "tool_switcher_tile_icon");
-    REQUIRE(rung != nullptr);
-
-    h.resize(2, 2, 60, 60);
-    process_lvgl(30);
-    const int small = lv_subject_get_int(rung);
-    const lv_font_t* small_face = lv_obj_get_style_text_font(icon, LV_PART_MAIN);
-    h.resize(2, 2, w_normal() - 1, h_tall() - 1);
-    process_lvgl(30);
-    const int large = lv_subject_get_int(rung);
-
-    INFO("rung " << small << " at 60x60, " << large << " at the compact ceiling");
-    REQUIRE(large > small);
-    CHECK(lv_obj_get_style_text_font(icon, LV_PART_MAIN) != small_face);
-    CHECK(lv_obj_get_style_text_font(label, LV_PART_MAIN) ==
-          ui::tile_rung_face(ui::TileLadder::Value, large).font);
-    CHECK(std::string(lv_label_get_text(label)) == "T0");
-}
-
-TEST_CASE_METHOD(ToolSwitcherFixture,
-                 "tool_switcher: tools arriving after the last size change re-measure the tile",
-                 "[widget_size][tool_switcher][tile]") {
-    // The compact label is budgeted at the widest tool label. Tools discovered
-    // after the tile was sized must re-budget it, or the tile keeps a rung sized
-    // for labels it no longer draws.
-    // Narrow and tall, so the label's width is what limits the rung.
-    auto rung_for = [&](int tools, int px) {
-        configure_tools(tools);
-        PanelWidgetHarness<ToolSwitcherWidget> h(test_screen(), state());
-        process_lvgl(30);
-        h.resize(1, 1, px, 60);
-        process_lvgl(30);
-        return lv_subject_get_int(lv_xml_get_subject(nullptr, "tool_switcher_tile_icon"));
-    };
-    // A box where one short label and a dozen tools' widest label pick
-    // different rungs; its existence is the premise, the size is this tier's.
-    int px = -1;
-    for (int p = 20; p <= 160 && px < 0; ++p) {
-        if (rung_for(1, p) != rung_for(12, p)) {
-            px = p;
-        }
-    }
-    INFO("no box where one tool and twelve pick different compact rungs");
-    REQUIRE(px > 0);
-    const int expected = rung_for(12, px);
-
-    // Sized with one tool, then eleven more arrive with no size change.
-    configure_tools(1);
-    PanelWidgetHarness<ToolSwitcherWidget> h(test_screen(), state());
-    process_lvgl(30);
-    h.resize(1, 1, px, 60);
-    process_lvgl(30);
-    update_tools(12, 0);
-    process_lvgl(30);
-    CHECK(lv_subject_get_int(lv_xml_get_subject(nullptr, "tool_switcher_tile_icon")) == expected);
+    CHECK(subject_string("tool_switcher_face_label") == "?");
 }
 
 // ============================================================================
-// #1769: the compact readout and the picker name the tool the way G-code does
+// #1769: the face and the picker name the tool the way G-code does
 // ============================================================================
 
 namespace {
@@ -617,20 +530,32 @@ std::string picker_row_text(lv_obj_t* row) {
 
 } // namespace
 
-TEST_CASE_METHOD(ToolSwitcherFixture, "tool_switcher: the compact readout names the G-code tool",
+TEST_CASE_METHOD(ToolSwitcherFixture,
+                 "tool_switcher: a face too narrow for the full name reads the G-code name",
                  "[widget_size][tool_switcher][1769]") {
-    // The compact form exists because there is no room, so it reads in the
-    // shortest form: the T-number Klipper and the slicer use.
+    // A face with no room for "Tool 2 (T1)" reads the T-number Klipper and
+    // the slicer use; one with room reads both.
     configure_tools(3, /*active_index=*/1);
     PanelWidgetHarness<ToolSwitcherWidget> h(test_screen(), state());
     process_lvgl(30);
+    const lv_font_t* body = theme_manager_get_font("font_body");
+    const int pad = 2 * resolve_px("space_xs", 4);
+    lv_obj_t* label = h.child("tool_switcher_face_label");
+    REQUIRE(label != nullptr);
+
     h.resize(2, 2, 60, 60);
     process_lvgl(30);
-
-    CHECK(subject_string("tool_switcher_active_label") == "T1");
-    lv_obj_t* label = h.child("tool_switcher_compact_label");
-    REQUIRE(label != nullptr);
+    REQUIRE(mode() == static_cast<int>(ToolSwitcherMode::Single));
+    REQUIRE(ui::text_width("Tool 2 (T1)", body) > subject_int("tool_switcher_cell_w") - pad);
+    CHECK(subject_string("tool_switcher_face_label") == "T1");
     CHECK(std::string(lv_label_get_text(label)) == "T1");
+
+    // Too short for a rail or a Pair, wide enough for the full name.
+    resize_content(h, 280, 40);
+    process_lvgl(30);
+    REQUIRE(mode() == static_cast<int>(ToolSwitcherMode::Single));
+    REQUIRE(ui::text_width("Tool 2 (T1)", body) <= subject_int("tool_switcher_cell_w") - pad);
+    CHECK(std::string(lv_label_get_text(label)) == "Tool 2 (T1)");
 }
 
 TEST_CASE_METHOD(ToolSwitcherFixture,
@@ -650,9 +575,11 @@ TEST_CASE_METHOD(ToolSwitcherFixture,
     CHECK(subject_string(seg(0, "sub")) == "T0");
     CHECK(subject_string(seg(1, "sub")) == "T1");
 
+    // A face too narrow for "Tool 1 (T0)" reads the G-code name, configured
+    // name or not.
     h.resize(2, 2, 60, 60);
     process_lvgl(30);
-    CHECK(subject_string("tool_switcher_active_label") == "Tool 1");
+    CHECK(subject_string("tool_switcher_face_label") == "T0");
 }
 
 TEST_CASE_METHOD(ToolSwitcherFixture,
@@ -665,8 +592,8 @@ TEST_CASE_METHOD(ToolSwitcherFixture,
     auto rows_after_opening_at = [&](int w, int hpx) {
         h.resize(1, 1, w, hpx);
         process_lvgl(30);
-        REQUIRE(h.child("tool_switcher_compact") != nullptr);
-        REQUIRE_FALSE(lv_obj_has_flag(h.child("tool_switcher_compact"), LV_OBJ_FLAG_HIDDEN));
+        REQUIRE(h.child("tool_switcher_face_view") != nullptr);
+        REQUIRE_FALSE(lv_obj_has_flag(h.child("tool_switcher_face_view"), LV_OBJ_FLAG_HIDDEN));
         ToolSwitcherTestAccess::show_picker(h.widget());
         lv_obj_t* list = ToolSwitcherTestAccess::picker_list(h.widget());
         REQUIRE(list != nullptr);

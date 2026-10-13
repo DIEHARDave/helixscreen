@@ -28,6 +28,7 @@
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
+#include <cstdlib>
 
 namespace {
 
@@ -51,8 +52,16 @@ lv_subject_t s_label_form_subject{};
 lv_subject_t s_park_supported_subject{};
 lv_subject_t s_change_blocked_subject{};
 lv_subject_t s_picker_code_form_subject{};
-lv_subject_t s_active_label_subject{};
-char s_active_label_buf[32] = {};
+// The mounted head as the Pair and Single faces read it.
+lv_subject_t s_face_label_subject{};
+char s_face_label_buf[48] = {};
+lv_subject_t s_face_sub_subject{};
+char s_face_sub_buf[16] = {};
+lv_subject_t s_face_color_subject{};
+lv_subject_t s_face_has_color_subject{};
+// 1 where every cell shown holds its second line (a segment's sub, the face's
+// temperature) below its label, on both axes.
+lv_subject_t s_two_line_subject{};
 bool s_subjects_initialized = false;
 SubjectManager s_subjects;
 
@@ -113,9 +122,18 @@ void tool_switcher_widget_init_subjects() {
     s_subjects.publish("tool_switcher_change_blocked", &s_change_blocked_subject);
     lv_subject_init_int(&s_picker_code_form_subject, 0);
     s_subjects.publish("tool_switcher_picker_code_form", &s_picker_code_form_subject);
-    lv_subject_init_string(&s_active_label_subject, s_active_label_buf, nullptr,
-                           sizeof(s_active_label_buf), "");
-    s_subjects.publish("tool_switcher_active_label", &s_active_label_subject);
+    lv_subject_init_string(&s_face_label_subject, s_face_label_buf, nullptr,
+                           sizeof(s_face_label_buf), "");
+    s_subjects.publish("tool_switcher_face_label", &s_face_label_subject);
+    lv_subject_init_string(&s_face_sub_subject, s_face_sub_buf, nullptr, sizeof(s_face_sub_buf),
+                           "");
+    s_subjects.publish("tool_switcher_face_sub", &s_face_sub_subject);
+    lv_subject_init_color(&s_face_color_subject, lv_color_hex(0));
+    s_subjects.publish("tool_switcher_face_color", &s_face_color_subject);
+    lv_subject_init_int(&s_face_has_color_subject, 0);
+    s_subjects.publish("tool_switcher_face_has_color", &s_face_has_color_subject);
+    lv_subject_init_int(&s_two_line_subject, 0);
+    s_subjects.publish("tool_switcher_two_line", &s_two_line_subject);
     // Every slot exists before a row can bind it, whatever the head count.
     for (IndexedSubjectPool* pool : s_pools) {
         pool->ensure_size(helix::ToolSwitcherWidget::kPoolSize);
@@ -213,7 +231,9 @@ void register_tool_switcher_widget() {
     register_widget_subjects("tool_switcher", tool_switcher_widget_init_subjects);
 
     // Register XML event callbacks at startup (before any XML is parsed)
-    lv_xml_register_event_cb(nullptr, "tool_compact_cb", ToolSwitcherWidget::tool_compact_cb);
+    lv_xml_register_event_cb(nullptr, "tool_switcher_segment_cb",
+                             ToolSwitcherWidget::tool_segment_cb);
+    lv_xml_register_event_cb(nullptr, "tool_switcher_face_cb", ToolSwitcherWidget::tool_face_cb);
     lv_xml_register_event_cb(nullptr, "tool_switcher_park_cb", ToolSwitcherWidget::tool_park_cb);
 }
 
@@ -223,7 +243,6 @@ ToolSwitcherWidget::ToolSwitcherWidget(PrinterState& printer_state)
     // A widget built outside the panel-subject phase still publishes into live
     // subjects. A no-op once they exist.
     tool_switcher_widget_init_subjects();
-    refresh_label_budget();
 }
 
 std::string ToolSwitcherWidget::tool_text(const ToolInfo& tool, ui::ToolLabelForm form) {
@@ -232,19 +251,6 @@ std::string ToolSwitcherWidget::tool_text(const ToolInfo& tool, ui::ToolLabelFor
 
 std::string ToolSwitcherWidget::short_text(const ToolInfo& tool) {
     return ui::tool_label(tool.index);
-}
-
-void ToolSwitcherWidget::refresh_label_budget() {
-    // The compact readout is the form for a box with no room, so it always
-    // reads in the shortest one.
-    std::string widest;
-    for (const auto& tool : ToolState::instance().tools()) {
-        std::string text = tool_text(tool, ui::ToolLabelForm::Code);
-        if (text.size() > widest.size()) {
-            widest = std::move(text);
-        }
-    }
-    sizing_.set_content({widest, widest, "", true});
 }
 
 ToolSwitcherWidget::~ToolSwitcherWidget() {
@@ -371,7 +377,6 @@ void ToolSwitcherWidget::on_size_changed(int /*colspan*/, int /*rowspan*/, int w
     current_width_px_ = width_px;
     current_height_px_ = height_px;
 
-    refresh_label_budget();
     sizing_.measure_and_publish(width_px, height_px);
     publish();
 }
@@ -517,6 +522,9 @@ void ToolSwitcherWidget::publish_heads() {
     const int rows = std::min(static_cast<int>(order.size()), kPoolSize);
     const int content_w = current_width_px_ - 2 * resolve_px_token("space_md", 10);
     const lv_font_t* body = theme_manager_get_font("font_body");
+    const lv_font_t* small = theme_manager_get_font("font_small");
+    const int body_px = body ? lv_font_get_line_height(body) : 0;
+    const int small_px = small ? lv_font_get_line_height(small) : 0;
     auto line = [&](int i, ui::ToolLabelForm form) {
         const std::string head =
             form == ui::ToolLabelForm::Full ? tool_text(tools[i], form) : short_text(tools[i]);
@@ -547,20 +555,53 @@ void ToolSwitcherWidget::publish_heads() {
 
     int fit = 0;
     if (layout_.detail) {
-        const lv_font_t* small = theme_manager_get_font("font_small");
         const int content_h = current_height_px_ - 2 * resolve_px_token("space_md", 10);
         fit = tool_switcher_detail_rows_that_fit(rows, content_h - layout_.rail_h - kRailGap,
-                                                 body ? lv_font_get_line_height(body) : 0,
-                                                 small ? lv_font_get_line_height(small) : 0);
+                                                 body_px, small_px);
     }
     set_int_if_changed(&s_detail_rows_subject, fit);
 
-    // An out-of-range active index has no position to name. "?" keeps the one
-    // line the compact readout carries visibly occupied, where an empty label
-    // reads as a widget that failed to draw.
-    const std::string compact =
-        (active >= 0 && active < count) ? tool_text(tools[active], ui::ToolLabelForm::Code) : "?";
-    ui::copy_string_if_changed(&s_active_label_subject, compact.c_str());
+    // The face: the mounted head by its full name where the cell has room,
+    // else the G-code name. An out-of-range active index has no head to name;
+    // "?" keeps the face visibly occupied.
+    const int room = layout_.cell_w - 2 * resolve_px_token("space_xs", 4);
+    std::string face;
+    std::string face_sub;
+    HeadFilament face_filament;
+    if (active >= 0 && active < count) {
+        face = tool_text(tools[active], ui::ToolLabelForm::Full);
+        if (ui::text_width(face.c_str(), body) > room)
+            face = short_text(tools[active]);
+        face_sub = temp_text(active);
+        face_filament = active < heads ? filament[active] : head_filament(tools[active]);
+    } else if (active == -1) {
+        face = lv_tr("Choose head");
+        if (ui::text_width(face.c_str(), body) > room)
+            face = lv_tr("None");
+    } else {
+        face = "?";
+    }
+    ui::copy_string_if_changed(&s_face_label_subject, face.c_str());
+    ui::copy_string_if_changed(&s_face_sub_subject, face_sub.c_str());
+    set_int_if_changed(&s_face_has_color_subject, face_filament.has_color ? 1 : 0);
+    if (face_filament.has_color) {
+        set_color_if_changed(&s_face_color_subject, face_filament.color_rgb);
+    }
+
+    // A second line shows only where the cell is tall enough for both lines
+    // over its colour strip, and every shown second line is narrow enough.
+    bool two_line = layout_.cell_h - resolve_px_token("space_xs", 4) >= body_px + small_px;
+    const bool rail =
+        layout_.mode == ToolSwitcherMode::RailWithPark || layout_.mode == ToolSwitcherMode::Rail;
+    auto fits = [&](const char* text) { return ui::text_width(text, small) <= room; };
+    if (rail) {
+        for (int i = 0; i < heads && two_line; ++i) {
+            two_line = fits(lv_subject_get_string(s_seg_sub.at(i)));
+        }
+    } else {
+        two_line = two_line && fits(face_sub.c_str());
+    }
+    set_int_if_changed(&s_two_line_subject, two_line ? 1 : 0);
 }
 
 void ToolSwitcherWidget::on_active_tool_changed(int tool_index) {
@@ -569,7 +610,7 @@ void ToolSwitcherWidget::on_active_tool_changed(int tool_index) {
 }
 
 // ============================================================================
-// Tool picker popup (for compact mode)
+// The sheet: every head and Park, raised from the face or the mounted segment
 // ============================================================================
 
 void ToolSwitcherWidget::show_tool_picker() {
@@ -577,8 +618,8 @@ void ToolSwitcherWidget::show_tool_picker() {
         return;
     }
 
-    // Compact mode's only affordance is this picker, so refuse before opening a
-    // list in which every entry is a guaranteed-failure dead end.
+    // Refuse before opening a list in which every entry is a guaranteed-failure
+    // dead end.
     const AmsError refusal = tool_change_refusal();
     if (!refusal.success()) {
         spdlog::info("[ToolSwitcher] Picker refused: {}", refusal.technical_msg);
@@ -592,8 +633,7 @@ void ToolSwitcherWidget::show_tool_picker() {
 
     refresh_park_support();
 
-    // The card hangs off the widget tile's left edge, so the tool names line up
-    // with the compact readout they replace.
+    // The card hangs off the widget tile's left edge, as wide as the tile.
     picker_.show_below_widget(parent_screen_, widget_obj_,
                               helix::ui::ContextMenu::AnchorAlign::Left);
 }
@@ -605,9 +645,9 @@ void ToolSwitcherWidget::ToolPicker::on_created(lv_obj_t* backdrop) {
         return;
     }
 
-    // The card is as wide as the widget tile it hangs off, so the buttons inside
-    // it line up with the compact readout. Set before the rows are built: they are
-    // width="100%" and cannot resolve against a width="content" card.
+    // The card is as wide as the widget tile it hangs off. Set before the rows
+    // are built: they are width="100%" and cannot resolve against a
+    // width="content" card.
     if (lv_obj_t* menu_card = card()) {
         lv_obj_set_width(menu_card, lv_obj_get_width(owner_.widget_obj_));
     }
@@ -861,9 +901,28 @@ void ToolSwitcherWidget::tool_park_cb(lv_event_t* e) {
     LVGL_SAFE_EVENT_CB_END();
 }
 
-void ToolSwitcherWidget::tool_compact_cb(lv_event_t* e) {
+void ToolSwitcherWidget::handle_segment_tapped(int tool_index) {
+    // The mounted head's segment raises the sheet, where Park is in Rail mode.
+    if (tool_index == ToolState::instance().active_tool_index()) {
+        show_tool_picker();
+        return;
+    }
+    handle_tool_selected(tool_index);
+}
+
+void ToolSwitcherWidget::tool_segment_cb(lv_event_t* e) {
+    LVGL_SAFE_EVENT_CB_BEGIN("[ToolSwitcher] tool_segment_cb");
+    // XML event user_data is the segment's index as a string.
+    const char* index = static_cast<const char*>(lv_event_get_user_data(e));
+    if (s_active_instance && index) {
+        s_active_instance->handle_segment_tapped(std::atoi(index));
+    }
+    LVGL_SAFE_EVENT_CB_END();
+}
+
+void ToolSwitcherWidget::tool_face_cb(lv_event_t* e) {
     (void)e;
-    LVGL_SAFE_EVENT_CB_BEGIN("[ToolSwitcher] tool_compact_cb");
+    LVGL_SAFE_EVENT_CB_BEGIN("[ToolSwitcher] tool_face_cb");
     if (s_active_instance) {
         s_active_instance->show_tool_picker();
     }

@@ -570,6 +570,7 @@ translations:
   Choose Model: 选择型号
   Choose an existing filament, or tap + New to create one.: 选择已有耗材，或点击 + 新建来创建。
   Choose display language: 选择显示语言
+  Choose head: 选择打印头
   Choose how frames are captured during printing: 选择打印期间的帧捕获方式
   Choose rendering mode for G-code visualization: 选择 G-code 可视化的渲染模式
   Choose rendering mode for bed mesh visualization: 选择热床网格可视化的渲染模式
