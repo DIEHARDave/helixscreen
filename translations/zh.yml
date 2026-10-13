@@ -14,6 +14,7 @@ translations:
   '%d min': '%d分钟'
   '%d min left': '剩余 %d 分钟'
   '%d more sensors': 还有%d个传感器
+  '%d profiles': '%d 个配置'
   '%d slots': '%d 个槽位'
   '%d toolheads': '%d 个工具头'
   '%d tools': '%d 个工具'
@@ -74,6 +75,7 @@ translations:
   1 min ago: 1分钟前
   1 minute: 1 分钟
   1 more tap to {} beta features: 再点击 1 次以{}测试功能
+  1 profile: '1 个配置'
   '1 unit': '1 个单元'
   1. Printer homes all axes (~1 minute): 1. 打印机全部轴归零（约1分钟）
   1. Printer homes and probes the bed: 1. 打印机归位并探测热床
@@ -331,6 +333,7 @@ translations:
   'Bed cooling, spools still on the bed:': '热床正在冷却,料盘仍在上面:'
 
   Bed is Level!: 热床已水平！
+  'Bed mesh calibration failed: {}': '热床网格校准失败：{}'
   Bed mesh operation timed out: 热床网格操作超时
   Bed mesh...: 热床网格...
   Bed tab moves lift to this height first: 热床标签页的移动会先抬升到此高度
@@ -1434,6 +1437,7 @@ translations:
   Heating to {}°C...: 正在加热至{}°C...
   Heating...: 正在加热...
   'Heating: %d / %d°C': 加热中：%d / %d°C
+  Heightmap and flatness of the active bed mesh: '当前热床网格的高度图和平整度'
   HelixScreen: HelixScreen
   HelixScreen Crashed: HelixScreen 崩溃
   HelixScreen is detecting your display orientation: HelixScreen正在检测显示屏方向
@@ -1717,6 +1721,7 @@ translations:
   Load filament: '装载耗材'
   Load filament first: 请先装载耗材
   Load or unload filament.: 装载或卸载耗材。
+  Load profile: '加载配置'
   Load the required filaments or start anyway?: 加载所需耗材还是直接开始？
   'Load, unload, and swap spools. View your multi-filament system at a glance, map colors to slots, and monitor runout sensors.': 加载、卸载和更换料盘。一目了然地查看您的多耗材系统、将颜色映射到槽位，并监控耗材用尽传感器。
   Load...: 加载...

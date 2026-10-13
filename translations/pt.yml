@@ -14,6 +14,7 @@ translations:
   '%d min': '%d min'
   '%d min left': 'restam %d min'
   '%d more sensors': '%d sensores adicionais'
+  '%d profiles': '%d perfis'
   '%d slots': '%d slots'
   '%d toolheads': '%d cabeçotes'
   '%d tools': '%d ferramentas'
@@ -75,6 +76,7 @@ translations:
   1 min ago: há 1 min
   1 minute: 1 minuto
   1 more tap to {} beta features: Mais 1 toque para {} recursos beta
+  1 profile: '1 perfil'
   '1 unit': '1 unidade'
   1. Printer homes all axes (~1 minute): 1. A impressora referencia todos os eixos (~1 minuto)
   1. Printer homes and probes the bed: 1. A impressora faz home e sonda a mesa
@@ -356,6 +358,7 @@ translations:
   'Bed cooling, spools still on the bed:': 'A mesa está esfriando, os carretéis ainda estão sobre ela:'
 
   Bed is Level!: Mesa Nivelada!
+  'Bed mesh calibration failed: {}': 'Falha na calibração da malha da mesa: {}'
   Bed mesh operation timed out: Malha da mesa — tempo esgotado
   Bed mesh...: Malha da mesa...
   Bed tab moves lift to this height first: Os movimentos da aba Mesa sobem primeiro até esta altura
@@ -1532,6 +1535,7 @@ translations:
   Heating to {}°C...: Aquecendo a {}°C...
   Heating...: Aquecendo...
   'Heating: %d / %d°C': 'Aquecendo: %d / %d°C'
+  Heightmap and flatness of the active bed mesh: 'Mapa de alturas e planicidade da malha da mesa ativa'
   HelixScreen: HelixScreen
   HelixScreen Crashed: HelixScreen Travou
   HelixScreen is detecting your display orientation: HelixScreen está detectando a
@@ -1845,6 +1849,7 @@ translations:
   Load filament: 'Carregar filamento'
   Load filament first: Carregue filamento primeiro
   Load or unload filament.: Carregue ou descarregue o filamento.
+  Load profile: 'Carregar perfil'
   Load the required filaments or start anyway?: Carregar os filamentos necessários
     ou iniciar mesmo assim?
   'Load, unload, and swap spools. View your multi-filament system at a glance, map colors to slots, and monitor runout sensors.': 'Carregue, descarregue e troque carretéis. Visualize seu sistema de múltiplos filamentos rapidamente, mapeie cores para slots e monitore sensores de fim de filamento.'

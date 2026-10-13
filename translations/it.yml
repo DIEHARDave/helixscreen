@@ -14,6 +14,7 @@ translations:
   '%d min': '%d min'
   '%d min left': '%d min rimanenti'
   '%d more sensors': '%d altri sensori'
+  '%d profiles': '%d profili'
   '%d slots': '%d slot'
   '%d toolheads': '%d testine'
   '%d tools': '%d strumenti'
@@ -75,6 +76,7 @@ translations:
   1 min ago: 1 min fa
   1 minute: 1 minuto
   1 more tap to {} beta features: 1 tocco per {} funzioni beta
+  1 profile: '1 profilo'
   '1 unit': '1 unità'
   1. Printer homes all axes (~1 minute): 1. La stampante azzererà tutti gli assi (~1 minuto)
   1. Printer homes and probes the bed: 1. La stampante esegue homing e sonda il piano
@@ -357,6 +359,7 @@ translations:
   'Bed cooling, spools still on the bed:': 'Il piano si sta raffreddando, le bobine sono ancora sopra:'
 
   Bed is Level!: Piano livellato!
+  'Bed mesh calibration failed: {}': 'Calibrazione della mesh del piano non riuscita: {}'
   Bed mesh operation timed out: Mesh piano — tempo scaduto
   Bed mesh...: Mesh piano...
   Bed tab moves lift to this height first: I movimenti della scheda Piano salgono prima a questa altezza
@@ -1530,6 +1533,7 @@ translations:
   Heating to {}°C...: Riscaldamento a {}°C...
   Heating...: Riscaldamento...
   'Heating: %d / %d°C': 'Riscaldamento: %d / %d°C'
+  Heightmap and flatness of the active bed mesh: 'Mappa delle altezze e planarità della mesh del piano attiva'
   HelixScreen: HelixScreen
   HelixScreen Crashed: HelixScreen si è arrestato
   HelixScreen is detecting your display orientation: HelixScreen sta rilevando l'orientamento
@@ -1843,6 +1847,7 @@ translations:
   Load filament: 'Carica il filamento'
   Load filament first: Prima carica il filamento
   Load or unload filament.: Carica o scarica il filamento.
+  Load profile: 'Carica profilo'
   Load the required filaments or start anyway?: Caricare i filamenti richiesti o avviare
     comunque?
   'Load, unload, and swap spools. View your multi-filament system at a glance, map colors to slots, and monitor runout sensors.': 'Carica, scarica e sostituisci le bobine. Visualizza a colpo d''occhio il tuo sistema multi-filamento, abbina i colori agli slot e monitora i sensori di esaurimento.'

@@ -764,9 +764,6 @@ class MoonrakerAPIMock : public MoonrakerAPI {
     // Mock power device states (for toggle testing)
     std::map<std::string, bool> mock_power_states_;
 
-    // Mock subscription ID counter
-    helix::SubscriptionId mock_next_subscription_id_ = 100;
-
     // Test spy state for suppress_disconnect_modal()
     size_t suppress_disconnect_modal_calls_ = 0;
     uint32_t last_suppress_disconnect_modal_ms_ = 0;
