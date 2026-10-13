@@ -25,10 +25,6 @@ class IMoonrakerAPI;
 
 namespace helix {
 class IMoonrakerClient;
-}
-using helix::IMoonrakerClient;
-
-namespace helix {
 
 // Forward declaration
 class PrinterDiscovery;

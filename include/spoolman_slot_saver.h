@@ -252,8 +252,3 @@ class SpoolmanSlotSaver {
 };
 
 } // namespace helix
-
-// Bring SpoolmanSlotSaver into global scope for convenience (matches project convention)
-using helix::ChangeSet;
-using helix::SaveResult;
-using helix::SpoolmanSlotSaver;
