@@ -51,6 +51,9 @@ struct DryerModelFixture : public LVGLUITestFixture {
         state().capabilities_state().set_has_chamber_dryer(false);
         state().capabilities_state().set_bed_drying(false, false);
         PanelWidgetManager::instance().unregister_shared_resource<BedDryingController>();
+        // A restored bed run latches the spools on the shared printer state, and the
+        // latch refuses every later test's gcode until something clears it.
+        state().print_state().set_spool_latch(false, {});
     }
     void drain() {
         helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
