@@ -530,6 +530,8 @@ class FilamentPanel : public PanelBase {
     enum class PreheatOp { NONE, LOAD, UNLOAD, EXTRUDE, RETRACT, PURGE };
     static const char* preheat_op_name(PreheatOp op);
     PreheatOp pending_preheat_op_ = PreheatOp::NONE;
+    /// The lane the user named for this unload; consumed by execute_unload().
+    std::optional<int> chosen_unload_lane_;
     int pending_preheat_target_ = 0; ///< Target temp in °C for pending preheat
     int prior_nozzle_target_ = 0; ///< Nozzle target before preheat (0 = was off → cool down after)
 
@@ -703,7 +705,9 @@ class FilamentPanel : public PanelBase {
     void handle_custom_nozzle_confirmed(float value);
     void handle_custom_bed_confirmed(float value);
     void handle_load_button();
-    void handle_unload_button();
+    /// @param chosen_lane the lane the user named as the one in the toolhead,
+    ///        when the backend could not (see helix::ui::choose_unload_lane)
+    void handle_unload_button(std::optional<int> chosen_lane = std::nullopt);
     void handle_extrude_button();
     void handle_purge_button();
     void handle_retract_button();

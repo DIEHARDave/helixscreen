@@ -342,6 +342,10 @@ class AmsBackendAd5xIfs : public AmsSubscriptionBackend {
     /// nullopt until the switch has ever published a reading.
     [[nodiscard]] std::optional<bool> toolhead_filament_unaccounted() const override;
 
+    /// The standalone module's IFS_UNLOAD needs a lane number; native ZMOD's
+    /// toolhead unload resolves the channel itself and never asks.
+    [[nodiscard]] std::vector<int> unload_lane_candidates() const override;
+
     /// Which auto-switchover plugin the live printer has, from the same two
     /// signals apply_user_edit()/parse_save_variables() already trust: the
     /// detected variable prefix and the `gcode_macro _ifs_vars` existence latch.
@@ -693,6 +697,11 @@ class AmsBackendAd5xIfs : public AmsSubscriptionBackend {
     /// published, and we have neither hardware nor an `ad5x` mock profile.
     /// Caller MUST hold mutex_.
     [[nodiscard]] bool head_empty_for_unload_routing_locked() const;
+
+    /// The 0-based lane a slotless toolhead unload acts on when neither the live
+    /// pointer nor the seated channel names one: the remembered seated lane, if
+    /// that lane still holds filament.
+    [[nodiscard]] std::optional<int> remembered_unload_lane_locked() const;
     // One-shot fetch of /mod_data/user.cfg. Parses the [zmod_ifs] section for
     // `filament_<NAME>: <TEMP>` entries — zmod's mechanism for user-defined
     // material types beyond the AD5X firmware whitelist (e.g., PLA+, RPLA,

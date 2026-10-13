@@ -2373,6 +2373,9 @@ class MoonrakerClientMock : public helix::MoonrakerClient {
     GcodeResult gcode_stop_led_effects(const std::string& gcode);
     /// Lane in the nozzle (1-4, 0 = none) — the module's `ifs_loaded` record.
     std::atomic<int> ifs_module_loaded_{0};
+    /// Whether the toolhead switch reads filament. Separate from ifs_loaded,
+    /// which the firmware can lose while filament stays in the head.
+    std::atomic<bool> ifs_module_head_loaded_{false};
     /// Per-lane silk presence bitmask, bit i = lane i+1.
     std::atomic<uint8_t> ifs_module_presence_{0x0F};
     /// Slot -> {type, bare-hex colour}; IFS_SET_MATERIAL writes land here.

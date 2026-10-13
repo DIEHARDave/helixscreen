@@ -226,6 +226,12 @@ MoonrakerClientMock::MoonrakerClientMock(PrinterType type, double speedup_factor
         }
     }
 
+    // Filament in the head that no lane claims: what a firmware that lost its
+    // loaded-lane record leaves behind.
+    if (is_mock_ifs_module() && std::getenv("HELIX_MOCK_IFS_UNACCOUNTED") != nullptr) {
+        ifs_module_head_loaded_.store(true);
+    }
+
     // OpenAMS reads no identity off its spools: color and material come from the
     // override store, which reads the shared lane_data namespace (laneN keys,
     // N = 1-based global slot; inner "lane" is 0-based).
@@ -2296,12 +2302,14 @@ bool MoonrakerClientMock::apply_ifs_module_gcode(const std::string& cmd, const s
         const int slot = slot_param();
         if (slot >= 1 && slot <= 4) {
             ifs_module_loaded_.store(slot);
+            ifs_module_head_loaded_.store(true);
             spdlog::info("[MoonrakerClientMock] IFS module: loaded slot {}", slot);
         }
         return true;
     }
     if (cmd == "IFS_UNLOAD") {
         ifs_module_loaded_.store(0);
+        ifs_module_head_loaded_.store(false);
         spdlog::info("[MoonrakerClientMock] IFS module: unloaded");
         return true;
     }
@@ -2311,6 +2319,7 @@ bool MoonrakerClientMock::apply_ifs_module_gcode(const std::string& cmd, const s
             ifs_module_presence_.fetch_and(static_cast<uint8_t>(~(1u << (slot - 1))));
             if (ifs_module_loaded_.load() == slot) {
                 ifs_module_loaded_.store(0);
+                ifs_module_head_loaded_.store(false);
             }
             spdlog::info("[MoonrakerClientMock] IFS module: ejected slot {}", slot);
         }
@@ -2323,6 +2332,7 @@ bool MoonrakerClientMock::apply_ifs_module_gcode(const std::string& cmd, const s
         const int tool = std::stoi(cmd.substr(1));
         if (tool >= 0 && tool < 4) {
             ifs_module_loaded_.store(tool + 1);
+            ifs_module_head_loaded_.store(true);
             spdlog::info("[MoonrakerClientMock] IFS module: T{} -> slot {}", tool, tool + 1);
         }
         return true;
@@ -5107,13 +5117,13 @@ void MoonrakerClientMock::temperature_simulation_loop() {
             status_obj["ifs"] = ifs_module_status_json();
             status_obj["ifs_materials"] = ifs_module_materials_json();
             status_obj["save_variables"] = ifs_module_vars_json();
-            const int loaded = ifs_module_loaded_.load();
             const uint8_t presence = ifs_module_presence_.load();
             for (int i = 0; i < 4; ++i) {
                 status_obj["filament_switch_sensor lane" + std::to_string(i + 1)] = {
                     {"filament_detected", (presence & (1u << i)) != 0}};
             }
-            status_obj["filament_switch_sensor toolhead"] = {{"filament_detected", loaded > 0}};
+            status_obj["filament_switch_sensor toolhead"] = {
+                {"filament_detected", ifs_module_head_loaded_.load()}};
         }
 
         // CFS mock: the stock `box` frame AmsBackendCfs parses (bay states,

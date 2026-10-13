@@ -2061,6 +2061,8 @@ translations:
   Nothing starred yet. Tap the star on a filament to add it here.: '还没有收藏。点击耗材行的星标即可收藏到这里。'
   Nothing to remap: 没有可重新映射的内容
   'Nothing to unload: no filament at the nozzle': '没有可卸载的耗材: 喷嘴处没有耗材'
+  'Which lane is in the toolhead?': '哪个料道在打印头里？'
+  'Choose which lane is in the toolhead to unload it': '请选择打印头里的料道以卸载'
   Nothing was changed. Temperature and material are kept, so a retry is one tap.: '没有更改任何内容。温度和材料保持不变，重试只需轻点一下。'
   Notification: 通知
   Notifications: 通知

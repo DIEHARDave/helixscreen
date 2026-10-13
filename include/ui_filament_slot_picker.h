@@ -51,6 +51,21 @@ class FilamentSlotPicker {
               const std::string& expected_material, const std::vector<helix::AvailableSlot>& slots,
               const Selection& current, SelectCallback on_select);
 
+    /// How the card presents itself beyond the slot rows.
+    struct Options {
+        /// Heading above the rows; empty shows none.
+        std::string title;
+        /// Outline the trigger while open. Meant for a swatch trigger, whose
+        /// resting border hide() restores; leave it off for a button.
+        bool highlight_trigger = true;
+    };
+
+    /// @copydoc show(lv_obj_t*, lv_obj_t*, int, const std::string&, const
+    /// std::vector<helix::AvailableSlot>&, const Selection&, SelectCallback)
+    /// @param options Heading and trigger highlight
+    void show(lv_obj_t* parent, lv_obj_t* trigger, const std::vector<helix::AvailableSlot>& slots,
+              const Selection& current, SelectCallback on_select, const Options& options);
+
     void hide();
     [[nodiscard]] bool is_visible() const {
         return backdrop_ != nullptr;
@@ -64,6 +79,7 @@ class FilamentSlotPicker {
 
     lv_obj_t* backdrop_ = nullptr;
     lv_obj_t* trigger_ = nullptr;
+    bool trigger_highlighted_ = false;
     SelectCallback on_select_;
     std::vector<helix::AvailableSlot> slots_;
     std::string expected_material_;

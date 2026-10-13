@@ -1961,6 +1961,7 @@ AmsError AmsBackendAd5xIfs::do_unload_filament(int slot_index) {
     bool head_empty;
     int current_slot;
     int seated_slot; // 0-based slot of the IFS_STATUS-seated port (-1 = none)
+    std::optional<int> remembered_slot;
     {
         std::lock_guard<std::mutex> lock(mutex_);
         // Stamp here, at the top, and not in the heated-unload branch below:
@@ -1977,6 +1978,7 @@ AmsError AmsBackendAd5xIfs::do_unload_filament(int slot_index) {
         head_empty = head_empty_for_unload_routing_locked();
         current_slot = system_info_.current_slot;
         seated_slot = seated_chan_ > 0 ? seated_chan_ - 1 : -1;
+        remembered_slot = remembered_unload_lane_locked();
     }
 
     // A specific slot that is NOT the firmware's active slot is never seated at
@@ -2051,6 +2053,24 @@ AmsError AmsBackendAd5xIfs::do_unload_filament(int slot_index) {
         return eject_lane(eject_slot);
     }
 
+    // The standalone module's IFS_UNLOAD retracts a numbered lane and refuses
+    // without one, defaulting only to its own ifs_loaded record. When nothing
+    // live names the lane, fall back to the remembered seated lane; with no
+    // lane at all, refuse here, before anything heats, and let the caller ask
+    // the user (unload_lane_candidates()).
+    int module_slot = slot_index;
+    if (ifs_module_live_.load() && module_slot < 0 && current_slot < 0) {
+        module_slot = seated_slot >= 0 ? seated_slot : remembered_slot.value_or(-1);
+        if (module_slot < 0) {
+            spdlog::info("{} Toolhead unload with no active, seated or remembered lane -> "
+                         "refused, the lane must be chosen",
+                         backend_log_tag());
+            return AmsError(AmsResult::WRONG_STATE,
+                            "unload_filament: no lane names the filament in the toolhead",
+                            lv_tr("Choose which lane is in the toolhead to unload it"));
+        }
+    }
+
     {
         std::lock_guard<std::mutex> lock(mutex_);
         system_info_.action = AmsAction::HEATING;
@@ -2101,13 +2121,13 @@ AmsError AmsBackendAd5xIfs::do_unload_filament(int slot_index) {
     if (ifs_module_live_.load()) {
         // Standalone module: IFS_UNLOAD takes the nozzle contents back into the
         // lane and leaves it threaded (70 mm), resolving the heat from the
-        // slot's material. slot_index < 0 ("unload whatever is active") sends
-        // it bare - the macro defaults SLOT= from its own ifs_loaded record,
-        // exactly the "current channel" the zmod macro resolves internally.
+        // slot's material. With a live active slot, "unload whatever is
+        // active" sends it bare and the macro defaults SLOT= from its own
+        // ifs_loaded record; otherwise module_slot names the lane.
         std::string cmd = "IFS_UNLOAD";
-        if (slot_index >= 0) {
+        if (module_slot >= 0) {
             cmd += " SLOT=";
-            cmd += std::to_string(slot_index + 1); // DISPLAY_NUMBERING_OK: gcode wire, not a label
+            cmd += std::to_string(module_slot + 1); // DISPLAY_NUMBERING_OK: gcode wire, not a label
         }
         result = execute_gcode(std::move(cmd), on_complete, on_error);
     } else {
@@ -2641,6 +2661,35 @@ std::optional<bool> AmsBackendAd5xIfs::toolhead_filament_unaccounted() const {
         return std::nullopt;
     }
     return head_switch_present_ && system_info_.current_slot < 0;
+}
+
+std::optional<int> AmsBackendAd5xIfs::remembered_unload_lane_locked() const {
+    if (!persisted_seated_slot_.has_value()) {
+        return std::nullopt;
+    }
+    const int slot = *persisted_seated_slot_;
+    if (slot < 0 || slot >= NUM_PORTS || !port_presence_[static_cast<size_t>(slot)]) {
+        return std::nullopt;
+    }
+    return slot;
+}
+
+std::vector<int> AmsBackendAd5xIfs::unload_lane_candidates() const {
+    if (!ifs_module_live_.load()) {
+        return {};
+    }
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (system_info_.current_slot >= 0 || seated_chan_ > 0 ||
+        head_empty_for_unload_routing_locked() || remembered_unload_lane_locked().has_value()) {
+        return {};
+    }
+    std::vector<int> lanes;
+    for (int i = 0; i < NUM_PORTS; ++i) {
+        if (port_presence_[static_cast<size_t>(i)]) {
+            lanes.push_back(i);
+        }
+    }
+    return lanes;
 }
 
 // --- Plugin visibility (lessWaste / bambufy auto switchover) ---
