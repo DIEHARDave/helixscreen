@@ -625,20 +625,10 @@ void render_reference_grids(PixelBuffer& buf, const bed_mesh_renderer_t* rendere
 
     // ========== 1. BOTTOM GRID (XY plane at Z=z_floor) ==========
     // Outline: the floor rectangle, or the circle inscribed in the bed.
-    if (ext.circular) {
-        const auto [cx, cy, r] = helix::inscribed_round_bed(frame.edge_x_min, frame.edge_x_max,
-                                                            frame.edge_y_min, frame.edge_y_max);
-        for (int i = 0; i < helix::kRoundBedSegments; i++) {
-            const double a1 = 2.0 * M_PI * i / helix::kRoundBedSegments;
-            const double a2 = 2.0 * M_PI * (i + 1) / helix::kRoundBedSegments;
-            floor_line(cx + r * std::cos(a1), cy + r * std::sin(a1), cx + r * std::cos(a2),
-                       cy + r * std::sin(a2));
-        }
-    } else {
-        floor_line(frame.edge_x_min, frame.edge_y_min, frame.edge_x_max, frame.edge_y_min);
-        floor_line(frame.edge_x_min, frame.edge_y_max, frame.edge_x_max, frame.edge_y_max);
-        floor_line(frame.edge_x_min, frame.edge_y_min, frame.edge_x_min, frame.edge_y_max);
-        floor_line(frame.edge_x_max, frame.edge_y_min, frame.edge_x_max, frame.edge_y_max);
+    for (const auto& seg :
+         helix::bed_outline_segments(frame.edge_x_min, frame.edge_x_max, frame.edge_y_min,
+                                     frame.edge_y_max, ext.circular)) {
+        floor_line(seg.x1, seg.y1, seg.x2, seg.y2);
     }
     for (const auto& seg :
          helix::bed_grid_lines(frame.edge_x_min, frame.edge_x_max, frame.edge_y_min,

@@ -52,6 +52,30 @@ std::vector<BedGridSegment> bed_grid_lines(double x_min, double x_max, double y_
     return lines;
 }
 
+std::vector<BedGridSegment> bed_outline_segments(double x_min, double x_max, double y_min,
+                                                 double y_max, bool circular) {
+    std::vector<BedGridSegment> out;
+    if (!(x_max > x_min) || !(y_max > y_min)) {
+        return out;
+    }
+    if (!circular) {
+        out.push_back({x_min, y_min, x_max, y_min});
+        out.push_back({x_max, y_min, x_max, y_max});
+        out.push_back({x_max, y_max, x_min, y_max});
+        out.push_back({x_min, y_max, x_min, y_min});
+        return out;
+    }
+    constexpr double PI = 3.14159265358979323846;
+    const auto [cx, cy, r] = inscribed_round_bed(x_min, x_max, y_min, y_max);
+    for (int i = 0; i < kRoundBedSegments; i++) {
+        const double a1 = 2.0 * PI * i / kRoundBedSegments;
+        const double a2 = 2.0 * PI * (i + 1) / kRoundBedSegments;
+        out.push_back({cx + r * std::cos(a1), cy + r * std::sin(a1), cx + r * std::cos(a2),
+                       cy + r * std::sin(a2)});
+    }
+    return out;
+}
+
 RoundBed inscribed_round_bed(double x_min, double x_max, double y_min, double y_max) {
     return {(x_min + x_max) / 2.0, (y_min + y_max) / 2.0,
             std::min(x_max - x_min, y_max - y_min) / 2.0};

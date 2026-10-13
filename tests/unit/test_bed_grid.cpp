@@ -204,3 +204,26 @@ TEST_CASE("segment in round bed", "[bed_grid]") {
         CHECK_FALSE(segment_in_round_bed({-200, 150}, {200, 150}, bed));
     }
 }
+
+TEST_CASE("bed outline: four edges, or a polygon on the inscribed circle", "[bed_grid]") {
+    const auto rect = helix::bed_outline_segments(0, 300, -20, 200, false);
+    REQUIRE(rect.size() == 4);
+    for (const auto& s : rect) {
+        // Every edge runs along the box.
+        const bool on_x_edge = (s.x1 == 0 || s.x1 == 300) && s.x1 == s.x2;
+        const bool on_y_edge = (s.y1 == -20 || s.y1 == 200) && s.y1 == s.y2;
+        CHECK((on_x_edge || on_y_edge));
+    }
+
+    const auto round = helix::bed_outline_segments(-125, 125, -125, 125, true);
+    REQUIRE(round.size() == static_cast<size_t>(helix::kRoundBedSegments));
+    for (size_t i = 0; i < round.size(); i++) {
+        CHECK(std::hypot(round[i].x1, round[i].y1) == Approx(125.0));
+        // Closed: each segment starts where the previous ended.
+        const auto& prev = round[(i + round.size() - 1) % round.size()];
+        CHECK(round[i].x1 == Approx(prev.x2).margin(1e-9));
+        CHECK(round[i].y1 == Approx(prev.y2).margin(1e-9));
+    }
+
+    CHECK(helix::bed_outline_segments(0, 0, 0, 100, true).empty());
+}

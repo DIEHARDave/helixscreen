@@ -31,6 +31,15 @@ struct BedGridSegment {
 std::vector<BedGridSegment> bed_grid_lines(double x_min, double x_max, double y_min, double y_max,
                                            double spacing_mm, bool circular);
 
+/**
+ * @brief A bed's outline: its four edges, or the kRoundBedSegments-gon on the
+ *        circle inscribed in the box for a round bed
+ *
+ * Empty for a degenerate box.
+ */
+std::vector<BedGridSegment> bed_outline_segments(double x_min, double x_max, double y_min,
+                                                 double y_max, bool circular);
+
 /// A point in printer mm.
 struct BedPoint {
     double x, y;
