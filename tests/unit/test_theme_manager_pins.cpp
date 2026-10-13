@@ -159,6 +159,20 @@ TEST_CASE_METHOD(LVGLUITestFixture, "theme constants match the golden snapshot",
     }
 }
 
+// theme_manager_init scans every top-level ui_xml file, component-local <consts> included,
+// and the global scope is first-registration-wins. A case that inits the theme without
+// globals.xml loaded would otherwise let timelapse_video_card's px card_height (220)
+// shadow globals.xml's 80% for the rest of the process.
+TEST_CASE_METHOD(LVGLTestFixture, "theme init on a bare fixture leaves globals.xml consts winning",
+                 "[theme_pins][theme]") {
+    const bool original_dark = theme_manager_is_dark_mode();
+    theme_manager_init(lv_display_get_default(), original_dark);
+
+    const char* card_height = lv_xml_get_const_silent(nullptr, "card_height");
+    REQUIRE(card_height != nullptr);
+    CHECK(std::string(card_height) == "80%");
+}
+
 TEST_CASE_METHOD(LVGLUITestFixture, "theme_changed generation bumps on apply and toggle",
                  "[theme_pins][theme]") {
     RestoreTheme restore;
