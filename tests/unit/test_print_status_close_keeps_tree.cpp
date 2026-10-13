@@ -473,3 +473,39 @@ TEST_CASE_METHOD(PrintStatusCloseFixture,
     CHECK(capture.count_containing(expected) == 1);
     CHECK(capture.count_containing("[warning] [PrintStatusPanel] Print status tree #") == 0);
 }
+
+TEST_CASE_METHOD(PrintStatusCloseFixture,
+                 "Pushing print status with the exclude map opens the map once the panel is active",
+                 "[print_status][exclude]") {
+    set_wire_state(PrintJobState::PRINTING);
+
+    REQUIRE(PrintStatusPanel::push_overlay_with_exclude_map(test_screen()));
+    settle();
+    lv_obj_t* tree = PrintStatusPanel::get_cached_overlay();
+    REQUIRE(tree != nullptr);
+    REQUIRE(in_stack(tree));
+    CHECK(PrintStatusPanelTestAccess::is_active(panel()));
+    CHECK(PrintStatusPanelTestAccess::exclude_open(panel()));
+}
+
+TEST_CASE_METHOD(PrintStatusCloseFixture, "A plain print status push leaves the exclude map closed",
+                 "[print_status][exclude]") {
+    set_wire_state(PrintJobState::PRINTING);
+
+    lv_obj_t* tree = open_print_status();
+    settle();
+    CHECK(PrintStatusPanelTestAccess::is_active(panel()));
+    CHECK_FALSE(PrintStatusPanelTestAccess::exclude_open(panel()));
+    close_print_status(tree);
+}
+
+TEST_CASE_METHOD(PrintStatusCloseFixture,
+                 "A refused exclude-map push does not open the map on a later plain push",
+                 "[print_status][exclude]") {
+    set_wire_state(PrintJobState::PRINTING);
+
+    CHECK_FALSE(PrintStatusPanel::push_overlay_with_exclude_map(nullptr));
+    open_print_status();
+    settle();
+    CHECK_FALSE(PrintStatusPanelTestAccess::exclude_open(panel()));
+}

@@ -1284,6 +1284,8 @@ void PrintStatusPanel::on_activate() {
     // segment at re-entry.
     layout_fitter_.resume_temp_graph();
 
+    open_pending_exclude_map();
+
     crash_handler::breadcrumb::note("pstat_act", "exit");
 }
 
@@ -1587,6 +1589,18 @@ bool PrintStatusPanel::push_overlay(lv_obj_t* parent_screen) {
     return true;
 }
 
+bool PrintStatusPanel::push_overlay_with_exclude_map(lv_obj_t* parent_screen) {
+    auto& panel = get_global_print_status_panel();
+    panel.exclude_map_requested_ = true;
+    if (!push_overlay(parent_screen)) {
+        panel.exclude_map_requested_ = false;
+        return false;
+    }
+    // A push that lands synchronously has already activated the panel.
+    panel.open_pending_exclude_map();
+    return true;
+}
+
 // ============================================================================
 // PRIVATE HELPERS
 // ============================================================================
@@ -1665,6 +1679,16 @@ void PrintStatusPanel::show_exclude_map_view() {
 
 void PrintStatusPanel::hide_exclude_map_view() {
     exclude_mode_.hide();
+}
+
+void PrintStatusPanel::open_pending_exclude_map() {
+    if (!exclude_map_requested_ || !is_active_) {
+        return;
+    }
+    exclude_map_requested_ = false;
+    if (!exclude_mode_.is_open()) {
+        show_exclude_map_view();
+    }
 }
 
 void PrintStatusPanel::update_heater_status_rows() {
