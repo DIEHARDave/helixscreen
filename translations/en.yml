@@ -2141,6 +2141,8 @@ translations:
   Nothing starred yet. Tap the star on a filament to add it here.: Nothing starred yet. Tap the star on a filament to add it here.
   Nothing to remap: Nothing to remap
   'Nothing to unload: no filament at the nozzle': 'Nothing to unload: no filament at the nozzle'
+  'Which lane is in the toolhead?': 'Which lane is in the toolhead?'
+  'Choose which lane is in the toolhead to unload it': 'Choose which lane is in the toolhead to unload it'
   Nothing was changed. Temperature and material are kept, so a retry is one tap.: Nothing was changed. Temperature and material are kept, so a retry is one tap.
   Notification: Notification
   Notifications: Notifications

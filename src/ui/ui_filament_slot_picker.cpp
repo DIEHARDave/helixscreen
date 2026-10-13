@@ -41,6 +41,15 @@ void FilamentSlotPicker::show(lv_obj_t* parent, lv_obj_t* trigger, int tool_inde
                               const std::string& expected_material,
                               const std::vector<helix::AvailableSlot>& slots,
                               const Selection& current, SelectCallback on_select) {
+    (void)tool_index; // kept in API for caller compatibility; header removed in this redesign
+    expected_material_ = expected_material;
+    show(parent, trigger, slots, current, std::move(on_select), Options{});
+}
+
+void FilamentSlotPicker::show(lv_obj_t* parent, lv_obj_t* trigger,
+                              const std::vector<helix::AvailableSlot>& slots,
+                              const Selection& current, SelectCallback on_select,
+                              const Options& options) {
     hide();
 
     if (!parent || !trigger) {
@@ -48,8 +57,7 @@ void FilamentSlotPicker::show(lv_obj_t* parent, lv_obj_t* trigger, int tool_inde
     }
 
     trigger_ = trigger;
-    (void)tool_index; // kept in API for caller compatibility; header removed in this redesign
-    expected_material_ = expected_material;
+    trigger_highlighted_ = options.highlight_trigger;
     slots_ = slots;
     current_selection_ = current;
     on_select_ = std::move(on_select);
@@ -91,6 +99,11 @@ void FilamentSlotPicker::show(lv_obj_t* parent, lv_obj_t* trigger, int tool_inde
     lv_obj_set_scrollbar_mode(card, LV_SCROLLBAR_MODE_ACTIVE);
     lv_obj_add_flag(card, LV_OBJ_FLAG_CLICKABLE);
 
+    if (!options.title.empty()) {
+        const char* attrs[] = {"text", options.title.c_str(), nullptr};
+        lv_xml_create(card, "text_body", attrs);
+    }
+
     // Slot rows (no Auto option — user is manually selecting)
     for (size_t i = 0; i < slots_.size(); ++i) {
         create_slot_row(card, static_cast<int>(i), slots_[i]);
@@ -100,8 +113,10 @@ void FilamentSlotPicker::show(lv_obj_t* parent, lv_obj_t* trigger, int tool_inde
     position_card(card);
 
     // Highlight the trigger to show it's active
-    lv_obj_set_style_border_color(trigger_, theme_manager_get_color("primary"), 0);
-    lv_obj_set_style_border_opa(trigger_, LV_OPA_50, 0);
+    if (trigger_highlighted_) {
+        lv_obj_set_style_border_color(trigger_, theme_manager_get_color("primary"), 0);
+        lv_obj_set_style_border_opa(trigger_, LV_OPA_50, 0);
+    }
 
     spdlog::debug("[FilamentSlotPicker] Shown with {} slots", slots_.size());
 }
@@ -112,7 +127,7 @@ void FilamentSlotPicker::hide() {
     }
 
     // Restore trigger border before clearing reference
-    if (trigger_) {
+    if (trigger_ && trigger_highlighted_) {
         lv_obj_set_style_border_color(trigger_, theme_manager_get_color("text_muted"), 0);
         lv_obj_set_style_border_opa(trigger_, SWATCH_BORDER_OPA, 0);
     }

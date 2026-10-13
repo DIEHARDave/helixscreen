@@ -130,8 +130,11 @@ class AmsOperationSidebar {
      * built correctly (mirrors how handle_load_with_preheat routes LOAD).
      * Without this the context-menu UNLOAD path called the backend directly,
      * leaving auto-detect to mis-build the stepper as LOAD_SWAP.
+     *
+     * @param lane_in_toolhead the user named @p slot_index as the lane in the
+     *        toolhead, which no live state claims, so it counts as loaded
      */
-    void handle_unload(int slot_index);
+    void handle_unload(int slot_index, bool lane_in_toolhead = false);
 
     /// This sidebar's bypass controller, for the external-spool menu to drive.
     /// One controller per surface: a second would own half of the #1229

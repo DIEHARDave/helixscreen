@@ -2215,6 +2215,8 @@ translations:
   Nothing starred yet. Tap the star on a filament to add it here.: 'Noch nichts markiert. Tippe auf den Stern eines Filaments, um es hier hinzuzufügen.'
   Nothing to remap: Nichts neu zuzuordnen
   'Nothing to unload: no filament at the nozzle': 'Nichts zu entladen: kein Filament an der Düse'
+  'Which lane is in the toolhead?': 'Welche Spur steckt im Druckkopf?'
+  'Choose which lane is in the toolhead to unload it': 'Wähle, welche Spur im Druckkopf steckt, um sie zu entladen'
   Nothing was changed. Temperature and material are kept, so a retry is one tap.: 'Es wurde nichts geändert. Temperatur und Material bleiben erhalten, ein erneuter Versuch ist ein Tipp.'
   Notification: Benachrichtigung
   Notifications: Benachrichtigungen

@@ -13,6 +13,7 @@
 #include "ui_manual_pull_prompt.h"
 #include "ui_step_progress.h"
 #include "ui_temperature_utils.h"
+#include "ui_unload_lane_choice.h"
 #include "ui_utils.h"
 
 #include "active_material_provider.h"
@@ -1379,14 +1380,29 @@ void AmsOperationSidebar::handle_unload() {
         return;
     }
 
+    // A backend that cannot name the lane in the toolhead asks for it first,
+    // and the chosen lane takes the slot overload below.
+    if (refuse_if_busy_or_printing()) {
+        return;
+    }
+    auto token = lifetime_.token();
+    if (helix::ui::choose_unload_lane(backend, lv_obj_find_by_name(sidebar_root_, "btn_unload"),
+                                      [this, token](int slot) {
+                                          if (token.expired()) {
+                                              return;
+                                          }
+                                          handle_unload(slot, /*lane_in_toolhead=*/true);
+                                      })) {
+        return;
+    }
+
     // Active-slot unload (per-toolhead backends). Delegate to the slot overload
     // with slot_index = -1 so the stepper-build + backend-call path lives in one
-    // place. The IFS backend's unload_filament() ignores the slot index and
-    // sends the current-channel toolhead unload (IFS_REMOVE_CURRENT_PRUTOK).
+    // place.
     handle_unload(-1);
 }
 
-void AmsOperationSidebar::handle_unload(int slot_index) {
+void AmsOperationSidebar::handle_unload(int slot_index, bool lane_in_toolhead) {
     spdlog::info("[AmsSidebar] Unload requested (slot={})", slot_index);
 
     // The button is bound to ams_sidebar_unload_disabled, but a tap can still
@@ -1412,6 +1428,7 @@ void AmsOperationSidebar::handle_unload(int slot_index) {
     // AFC calls the user's unload macro itself when bypass is enabled, and
     // routing it to tier 2 here would run that macro twice.
     const bool loaded =
+        lane_in_toolhead ||
         helix::ui::read_unload_target_loaded(AmsState::instance().get_backend(), info, target_slot);
 
     const helix::ui::FilamentOpPlan plan = helix::ui::plan_live_unload(caps, target_slot, loaded);
