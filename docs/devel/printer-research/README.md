@@ -22,7 +22,7 @@ config, not hardware-verified. Build targets are `PLATFORM_TARGET` values in `mk
 | Creality K2 / K2 Plus / K2 Pro | Allwinner T113, Cortex-A7 armv7 | 480x800 portrait, rotated | stock | CFS (up to 16) | `k2` | Tested |
 | Snapmaker U1 | Rockchip RK3562, aarch64 | 480x320 DRM | stock 1.2+ with Root access, or PAXX | SnapSwap 4-head | `snapmaker-u1` | Tested on PAXX; stock unverified |
 | Elegoo Centauri Carbon 1 | Allwinner R528, Cortex-A7 armv7 | 480x272 fbdev | OpenCentauri COSMOS 26.07.0+ | none | `cc1`, `yocto` | Tested |
-| QIDI Q2 / Max 4 | Cortex-A35, aarch64 | 480x272 / 800x480 fbdev | stock, FreeDi, FreeQIDI | QIDI Box | `pi` | Supported (Q2 community-validated) |
+| QIDI Q2 / Max 4 | Cortex-A35, aarch64 | 480x272 / 800x480 fbdev | stock, FreeDi, FreeQIDI | QIDI Box | `pi` | Supported (Q2 community-validated; Max 4 community-run, box eject unverified) |
 | QIDI Plus 4 and 3-series | RK3328, aarch64 | TJC serial HMI | stock | QIDI Box (Plus 4) | remote only | Supported as a remote target |
 | Creality Sonic Pad | Allwinner R818, armv7 userspace | 1024x600 | SonicPad-Debian | n/a | `pi32` | Supported |
 | Anycubic Kobra 2 Pro / 3 / S1, Sovol SV06 ACE | various | n/a | Rinkhals or community Klipper | ACE Pro | remote | Community |
