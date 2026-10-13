@@ -13,6 +13,7 @@ translations:
   '%d lanes': '%d corsie'
   '%d min': '%d min'
   '%d min left': '%d min rimanenti'
+  '%d mm/s': '%d mm/s'
   '%d more sensors': '%d altri sensori'
   '%d slots': '%d slot'
   '%d toolheads': '%d testine'
@@ -1553,6 +1554,7 @@ translations:
     spurgare il filamento precedente.
   Home: Home
   Home & Continue: Homing e continua
+  Home All: "Homing tutto"
   Home all axes to use the map: Porta tutti gli assi in posizione per usare la mappa
   Home and sweep the cutter to re-find its position: Azzera e fa scorrevolare la taglierina per ritrovare la sua posizione
   Home failed: Homing fallito
@@ -2408,6 +2410,7 @@ translations:
   Poor match: "Scarsa corrispondenza"
   Port: Porta
   Position: Posizione
+  Position unknown: "Posizione sconosciuta"
   Post-Sensor Clear: 'Avanzamento dopo il sensore'
   Power: Alimentazione
   Power Devices: Dispositivi di alimentazione
@@ -3600,6 +3603,7 @@ translations:
   Toolhead Style: Stile testina
   Toolhead Y: Testina Y
   Toolhead jam: Inceppamento testina
+  Toolhead position and homing, with a plate view and Home All: "Posizione e homing della testina, con vista del piatto e Homing tutto"
   Toolhead position unknown: Posizione della testina sconosciuta
   Toolheads: Testine
   Tools: Strumenti

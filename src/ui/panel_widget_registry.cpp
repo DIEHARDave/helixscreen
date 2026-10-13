@@ -55,6 +55,7 @@ void register_nozzle_temps_widget();
 void register_speed_flow_widget();
 void register_dryer_widget();
 void register_z_offset_widget();
+void register_toolhead_widget();
 void register_active_spool_widget();
 void register_bypass_widget();
 #if HELIX_HAS_CAMERA
@@ -131,6 +132,7 @@ static std::vector<PanelWidgetDef> s_widget_defs = {
     {"speed_flow",       TR_NOOP("Speed / Flow"),      "speed",            TR_NOOP("Speed and flow overrides, with a tap to tune"), nullptr,           nullptr,                               CAT_PRINT,    false, 4, 2, 1, 1, 8, 4, false, true, true},
     {"dryer",            TR_NOOP("Filament Dryer"),    "heat_wave",        TR_NOOP("Drying progress and humidity for boxes, the chamber, and the bed"), "home_dryer_available", "No filament dryer detected",         CAT_FILAMENT, false, 2, 2, 1, 1, 6, 8, false, true, true},
     {"z_offset",         TR_NOOP("Z-Offset"),          "axis_z_arrow",     TR_NOOP("Live Z-offset, with baby steps and Save"), nullptr,           nullptr,                               CAT_PRINT,    false, 4, 2, 1, 1, 8, 4, false, true, true},
+    {"toolhead",         TR_NOOP("Toolhead"),          "axis_arrow",       TR_NOOP("Toolhead position and homing, with a plate view and Home All"), nullptr,           nullptr,                               CAT_CONTROLS, false, 4, 4, 1, 1, 8, 8, false, true, true},
     //                                                                                                                                          hint                                cat              en  col row min_c min_r max_c max_r  multi  half_c half_r merges_card
     {"tips",             TR_NOOP("Tips"),              "help_circle",      TR_NOOP("Rotating tips for using your printer"),             nullptr,              nullptr,                               CAT_SYSTEM,   true,  8, 4, 4, 2, BAND_COLSPAN, 4, false, true, true, false},
     // Two cells wide by one tall: the FlowGuard scale is horizontal, and it
@@ -384,6 +386,7 @@ void init_widget_registrations() {
     register_speed_flow_widget();
     register_dryer_widget();
     register_z_offset_widget();
+    register_toolhead_widget();
 #if HELIX_HAS_CAMERA
     register_camera_widget();
 #endif

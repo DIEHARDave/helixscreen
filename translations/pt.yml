@@ -13,6 +13,7 @@ translations:
   '%d lanes': '%d lanes'
   '%d min': '%d min'
   '%d min left': 'restam %d min'
+  '%d mm/s': '%d mm/s'
   '%d more sensors': '%d sensores adicionais'
   '%d slots': '%d slots'
   '%d toolheads': '%d cabeçotes'
@@ -1557,6 +1558,7 @@ translations:
     o filamento anterior.
   Home: Início
   Home & Continue: Fazer home e continuar
+  Home All: "Posicionar tudo"
   Home all axes to use the map: Referencie todos os eixos para usar o mapa
   Home and sweep the cutter to re-find its position: Referencia e varre o cortador para reencontrar sua posição
   Home failed: Homing falhou
@@ -2409,6 +2411,7 @@ translations:
   Poor match: "Correspondência fraca"
   Port: Porta
   Position: Posição
+  Position unknown: "Posição desconhecida"
   Post-Sensor Clear: 'Avanço após o sensor'
   Power: Energia
   Power Devices: Dispositivos de energia
@@ -3604,6 +3607,7 @@ translations:
   Toolhead Style: Estilo do Cabeçote
   Toolhead Y: Cabeçote Y
   Toolhead jam: Atolamento do cabeçote
+  Toolhead position and homing, with a plate view and Home All: "Posição e posicionamento do cabeçote, com vista da mesa e Posicionar tudo"
   Toolhead position unknown: Posição do cabeçote desconhecida
   Toolheads: Cabeçotes
   Tools: Ferramentas

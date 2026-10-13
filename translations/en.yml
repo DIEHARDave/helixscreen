@@ -13,6 +13,7 @@ translations:
   '%d lanes': '%d lanes'
   '%d min': '%d min'
   '%d min left': '%d min left'
+  '%d mm/s': '%d mm/s'
   '%d more sensors': '%d more sensors'
   '%d slots': '%d slots'
   '%d toolheads': '%d toolheads'
@@ -1504,6 +1505,7 @@ translations:
   Holding nozzle at {}°C to purge previous filament.: Holding nozzle at {}°C to purge previous filament.
   Home: Home
   Home & Continue: Home & Continue
+  Home All: Home All
   Home all axes to use the map: Home all axes to use the map
   Home and sweep the cutter to re-find its position: Home and sweep the cutter to re-find its position
   Home failed: Home failed
@@ -2340,6 +2342,7 @@ translations:
   Poor match: Poor match
   Port: Port
   Position: Position
+  Position unknown: Position unknown
   Post-Sensor Clear: Post-Sensor Clear
   Power: Power
   Power Devices: Power Devices
@@ -3491,6 +3494,7 @@ translations:
   Toolhead Style: Toolhead Style
   Toolhead Y: Toolhead Y
   Toolhead jam: Toolhead jam
+  Toolhead position and homing, with a plate view and Home All: Toolhead position and homing, with a plate view and Home All
   Toolhead position unknown: Toolhead position unknown
   Toolheads: Toolheads
   Tools: Tools

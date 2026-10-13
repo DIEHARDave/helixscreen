@@ -13,6 +13,7 @@ translations:
   '%d lanes': '%d 个耗材通道'
   '%d min': '%d分钟'
   '%d min left': '剩余 %d 分钟'
+  '%d mm/s': '%d mm/s'
   '%d more sensors': 还有%d个传感器
   '%d slots': '%d 个槽位'
   '%d toolheads': '%d 个工具头'
@@ -1455,6 +1456,7 @@ translations:
   Holding nozzle at {}°C to purge previous filament.: 将喷嘴保持在 {}°C 以清洗之前的耗材。
   Home: 归位
   Home & Continue: 归位并继续
+  Home All: "全部归位"
   Home all axes to use the map: 请先归位所有轴以使用地图
   Home and sweep the cutter to re-find its position: 归零并扫过切刀以重新找到其位置
   Home failed: 归位失败
@@ -2257,6 +2259,7 @@ translations:
   Poor match: "匹配较差"
   Port: 端口
   Position: 位置
+  Position unknown: "位置未知"
   Post-Sensor Clear: '传感器触发后额外移动'
   Power: 电源
   Power Devices: 电源设备
@@ -3351,6 +3354,7 @@ translations:
   Toolhead Style: 工具头样式
   Toolhead Y: 工具头 Y
   Toolhead jam: 工具头堵塞
+  Toolhead position and homing, with a plate view and Home All: "工具头位置与归位，含热床视图和全部归位"
   Toolhead position unknown: 工具头位置未知
   Toolheads: 工具头
   Tools: 工具

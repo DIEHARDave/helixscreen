@@ -11,6 +11,7 @@
   <translation tag="%d lanes" it="%d corsie"/>
   <translation tag="%d min" it="%d min"/>
   <translation tag="%d min left" it="%d min rimanenti"/>
+  <translation tag="%d mm/s" it="%d mm/s"/>
   <translation tag="%d more sensors" it="%d altri sensori"/>
   <translation tag="%d slots" it="%d slot"/>
   <translation tag="%d toolheads" it="%d testine"/>
@@ -1411,6 +1412,7 @@
   <translation tag="Holding nozzle at {}°C to purge previous filament." it="Mantenimento ugello a {}°C per spurgare il filamento precedente."/>
   <translation tag="Home" it="Home"/>
   <translation tag="Home &amp; Continue" it="Homing e continua"/>
+  <translation tag="Home All" it="Homing tutto"/>
   <translation tag="Home all axes to use the map" it="Porta tutti gli assi in posizione per usare la mappa"/>
   <translation tag="Home and sweep the cutter to re-find its position" it="Azzera e fa scorrevolare la taglierina per ritrovare la sua posizione"/>
   <translation tag="Home failed" it="Homing fallito"/>
@@ -2179,6 +2181,7 @@
   <translation tag="Poor match" it="Scarsa corrispondenza"/>
   <translation tag="Port" it="Porta"/>
   <translation tag="Position" it="Posizione"/>
+  <translation tag="Position unknown" it="Posizione sconosciuta"/>
   <translation tag="Post-Sensor Clear" it="Avanzamento dopo il sensore"/>
   <translation tag="Power" it="Alimentazione"/>
   <translation tag="Power Devices" it="Dispositivi di alimentazione"/>
@@ -3202,6 +3205,7 @@
   <translation tag="Toolhead Style" it="Stile testina"/>
   <translation tag="Toolhead Y" it="Testina Y"/>
   <translation tag="Toolhead jam" it="Inceppamento testina"/>
+  <translation tag="Toolhead position and homing, with a plate view and Home All" it="Posizione e homing della testina, con vista del piatto e Homing tutto"/>
   <translation tag="Toolhead position unknown" it="Posizione della testina sconosciuta"/>
   <translation tag="Toolheads" it="Testine"/>
   <translation tag="Tools" it="Strumenti"/>

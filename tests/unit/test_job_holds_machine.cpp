@@ -335,6 +335,7 @@ constexpr GuardedFile kGuardedFiles[] = {
     {"ui_xml/components/ams_sidebar.xml", 2},
     {"ui_xml/components/chamber_dryer_row.xml", 1},
     {"ui_xml/components/panel_widget_bypass.xml", 1},
+    {"ui_xml/components/panel_widget_toolhead.xml", 1},
     {"ui_xml/components/panel_widget_z_offset.xml", 2},
     {"ui_xml/calibration_pa_panel.xml", 2},
     {"ui_xml/controls_panel.xml", 17},

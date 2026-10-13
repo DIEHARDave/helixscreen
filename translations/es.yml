@@ -13,6 +13,7 @@ translations:
   '%d lanes': '%d carriles'
   '%d min': '%d min'
   '%d min left': 'quedan %d min'
+  '%d mm/s': '%d mm/s'
   '%d more sensors': '%d sensores más'
   '%d slots': '%d ranuras'
   '%d toolheads': '%d cabezales'
@@ -1556,6 +1557,7 @@ translations:
     para purgar el filamento anterior.
   Home: Inicio
   Home & Continue: Referenciar y continuar
+  Home All: "Posicionar todo"
   Home all axes to use the map: Lleva todos los ejes al origen para usar el mapa
   Home and sweep the cutter to re-find its position: Referencia y barrido del cortador para volver a encontrar su posición
   Home failed: Error en referencia
@@ -2408,6 +2410,7 @@ translations:
   Poor match: "Mala coincidencia"
   Port: Puerto
   Position: Posición
+  Position unknown: "Posición desconocida"
   Post-Sensor Clear: 'Avance tras el sensor'
   Power: Energía
   Power Devices: Dispositivos de energía
@@ -3600,6 +3603,7 @@ translations:
   Toolhead Style: Estilo de Cabezal
   Toolhead Y: Cabezal Y
   Toolhead jam: Atasco del cabezal
+  Toolhead position and homing, with a plate view and Home All: "Posición y posicionamiento del cabezal, con vista de la placa y Posicionar todo"
   Toolhead position unknown: Posición del cabezal desconocida
   Toolheads: Cabezales
   Tools: Herramientas

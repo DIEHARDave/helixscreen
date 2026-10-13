@@ -11,6 +11,7 @@
   <translation tag="%d lanes" de="%d Spuren"/>
   <translation tag="%d min" de="%d Min"/>
   <translation tag="%d min left" de="noch %d Min"/>
+  <translation tag="%d mm/s" de="%d mm/s"/>
   <translation tag="%d more sensors" de="%d weitere Sensoren"/>
   <translation tag="%d slots" de="%d Slots"/>
   <translation tag="%d toolheads" de="%d Werkzeugköpfe"/>
@@ -1411,6 +1412,7 @@
   <translation tag="Holding nozzle at {}°C to purge previous filament." de="Düse wird bei {}°C gehalten, um vorheriges Filament auszuspülen."/>
   <translation tag="Home" de="Home"/>
   <translation tag="Home &amp; Continue" de="Referenzieren &amp; Fortfahren"/>
+  <translation tag="Home All" de="Alle referenzieren"/>
   <translation tag="Home all axes to use the map" de="Alle Achsen referenzieren, um die Karte zu nutzen"/>
   <translation tag="Home and sweep the cutter to re-find its position" de="Referenzfahrt und Messfahrt des Schneiders, um seine Position neu zu ermitteln"/>
   <translation tag="Home failed" de="Referenzfahrt fehlgeschlagen"/>
@@ -2179,6 +2181,7 @@
   <translation tag="Poor match" de="Schlechte Übereinstimmung"/>
   <translation tag="Port" de="Port"/>
   <translation tag="Position" de="Position"/>
+  <translation tag="Position unknown" de="Position unbekannt"/>
   <translation tag="Post-Sensor Clear" de="Nachlauf nach Sensor"/>
   <translation tag="Power" de="Strom"/>
   <translation tag="Power Devices" de="Stromgeräte"/>
@@ -3202,6 +3205,7 @@
   <translation tag="Toolhead Style" de="Toolhead-Stil"/>
   <translation tag="Toolhead Y" de="Werkzeugkopf Y"/>
   <translation tag="Toolhead jam" de="Werkzeugkopf-Stau"/>
+  <translation tag="Toolhead position and homing, with a plate view and Home All" de="Position und Referenzfahrt des Werkzeugkopfs, mit Plattenansicht und Alle referenzieren"/>
   <translation tag="Toolhead position unknown" de="Werkzeugkopfposition unbekannt"/>
   <translation tag="Toolheads" de="Werkzeugköpfe"/>
   <translation tag="Tools" de="Werkzeuge"/>
