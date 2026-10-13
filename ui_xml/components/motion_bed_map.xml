@@ -10,6 +10,9 @@
     <style name="bed_plate_live" bg_color="#card_bg" bg_opa="255" border_color="#primary" border_opa="255"/>
     <!-- Unhomed, printing or not ready: the plate greys out. -->
     <style name="bed_plate_dim" bg_color="#card_bg" bg_opa="120" border_color="#text_muted" border_opa="120"/>
+    <!-- Shape lives in styles, not a local style_radius: a local property
+         outranks every added style, so it would square off a round plate. -->
+    <style name="bed_plate_square" radius="#border_radius"/>
     <style name="bed_plate_round" radius="9999"/>
     <!-- A warning wash under the finger; keeps the circle's radius. -->
     <style name="bed_home_pressed" bg_color="#warning" bg_opa="60"/>
@@ -33,14 +36,15 @@
       <event_cb trigger="released" callback="on_motion_bed_released"/>
       <event_cb trigger="press_lost" callback="on_motion_bed_press_lost"/>
       <event_cb trigger="size_changed" callback="on_motion_bed_size_changed"/>
-      <lv_obj name="bed_map_plate"
-              style_border_width="2" style_radius="#border_radius" style_pad_all="0" scrollable="false"
-              clickable="false">
+      <lv_obj name="bed_map_plate" style_border_width="2" style_pad_all="0" scrollable="false" clickable="false">
         <bind_style_if name="bed_plate_live"
                        cond="motion_x_homed eq 1 and motion_y_homed eq 1 and motion_z_homed eq 1 and nav_buttons_enabled eq 1 and machine_motion_blocked eq 0"/>
         <bind_style_if name="bed_plate_dim"
                        cond="motion_x_homed eq 0 or motion_y_homed eq 0 or motion_z_homed eq 0 or nav_buttons_enabled eq 0 or machine_motion_blocked eq 1"/>
+        <bind_style_if name="bed_plate_square" cond="motion_bed_circular eq 0"/>
         <bind_style_if name="bed_plate_round" cond="motion_bed_circular eq 1"/>
+        <!-- Reference grid at 50mm multiples, chords on a round plate. -->
+        <event_cb trigger="draw_main" callback="on_motion_bed_plate_draw"/>
         <!-- Crosshair guides through the marker, edge to edge: thin and faint
              so they place the head without competing with the marker.
              MotionPanel sets their position and length (a chord on a round

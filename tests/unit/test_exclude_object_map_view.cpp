@@ -232,7 +232,8 @@ TEST_CASE_METHOD(XMLTestFixture, "ExcludeObjectMapView create/destroy roundtrip 
     seed_objects(state().excluded_objects_state());
 
     auto view = std::make_unique<ExcludeObjectMapView>();
-    view->create(test_screen(), &state().excluded_objects_state(), 235.0f, 235.0f, {},
+    view->create(test_screen(), &state().excluded_objects_state(),
+                 helix::bed_dimensions_from_volume(0.0f, 235.0f, 0.0f, 235.0f), {},
                  ExcludeTapMode::ExcludeOnly, nullptr);
     REQUIRE(view->is_active());
 
@@ -268,7 +269,8 @@ TEST_CASE_METHOD(XMLTestFixture,
 
     {
         ExcludeObjectMapView view;
-        view.create(test_screen(), &state().excluded_objects_state(), 200.0f, 200.0f, {},
+        view.create(test_screen(), &state().excluded_objects_state(),
+                    helix::bed_dimensions_from_volume(0.0f, 200.0f, 0.0f, 200.0f), {},
                     ExcludeTapMode::ExcludeOnly, nullptr);
         REQUIRE(view.is_active());
         REQUIRE(lv_obj_get_child_count(test_screen()) > baseline_children);
@@ -331,8 +333,8 @@ TEST_CASE_METHOD(
 
     ExcludeObjectMapView view;
     view.create(
-        test_screen(), &st, 235.0f, 235.0f, [&](const std::string& name) { taps.push_back(name); },
-        ExcludeTapMode::Toggle, nullptr);
+        test_screen(), &st, helix::bed_dimensions_from_volume(0.0f, 235.0f, 0.0f, 235.0f),
+        [&](const std::string& name) { taps.push_back(name); }, ExcludeTapMode::Toggle, nullptr);
     process_lvgl(50);
     st.set_excluded_objects({"OBJ_1"});
     helix::ui::UpdateQueue::instance().drain();
@@ -356,7 +358,8 @@ TEST_CASE_METHOD(XMLTestFixture, "Map view in exclude-only mode drops an exclude
     seed_objects(st);
 
     ExcludeObjectMapView view;
-    view.create(test_screen(), &st, 235.0f, 235.0f, {}, ExcludeTapMode::ExcludeOnly, nullptr);
+    view.create(test_screen(), &st, helix::bed_dimensions_from_volume(0.0f, 235.0f, 0.0f, 235.0f),
+                {}, ExcludeTapMode::ExcludeOnly, nullptr);
     process_lvgl(50);
     st.set_excluded_objects({"OBJ_1"});
     helix::ui::UpdateQueue::instance().drain();
@@ -383,8 +386,12 @@ TEST_CASE_METHOD(XMLTestFixture, "Each open map view's close button closes only 
         ExcludeObjectMapView second;
         first.set_close_callback([&] { ++first_closed; });
         second.set_close_callback([&] { ++second_closed; });
-        first.create(test_screen(), &st, 235.0f, 235.0f, {}, ExcludeTapMode::ExcludeOnly, nullptr);
-        second.create(test_screen(), &st, 235.0f, 235.0f, {}, ExcludeTapMode::ExcludeOnly, nullptr);
+        first.create(test_screen(), &st,
+                     helix::bed_dimensions_from_volume(0.0f, 235.0f, 0.0f, 235.0f), {},
+                     ExcludeTapMode::ExcludeOnly, nullptr);
+        second.create(test_screen(), &st,
+                      helix::bed_dimensions_from_volume(0.0f, 235.0f, 0.0f, 235.0f), {},
+                      ExcludeTapMode::ExcludeOnly, nullptr);
         process_lvgl(20);
 
         lv_obj_send_event(lv_obj_find_by_name(first.root(), "close_btn"), LV_EVENT_CLICKED,
@@ -409,7 +416,8 @@ TEST_CASE_METHOD(XMLTestFixture, "A picked object's outline fades on the map lik
     seed_objects(st);
 
     ExcludeObjectMapView view;
-    view.create(test_screen(), &st, 235.0f, 235.0f, {}, ExcludeTapMode::Toggle, nullptr);
+    view.create(test_screen(), &st, helix::bed_dimensions_from_volume(0.0f, 235.0f, 0.0f, 235.0f),
+                {}, ExcludeTapMode::Toggle, nullptr);
     process_lvgl(50);
 
     // Midpoint of OBJ_1's bottom edge, (60,60)-(90,60).
@@ -466,7 +474,8 @@ TEST_CASE_METHOD(XMLTestFixture,
     parsed->layers.push_back(std::move(layer0));
 
     ExcludeObjectMapView view;
-    view.create(test_screen(), &st, 235.0f, 235.0f, {}, ExcludeTapMode::Toggle, parsed.get());
+    view.create(test_screen(), &st, helix::bed_dimensions_from_volume(0.0f, 235.0f, 0.0f, 235.0f),
+                {}, ExcludeTapMode::Toggle, parsed.get());
     process_lvgl(50);
     // Midpoint of the hull's bottom edge, (60,60)-(90,60).
     REQUIRE(ExcludeObjectMapViewTestAccess::outline_alpha_near(view, 75.0f, 60.0f) > 0);
@@ -517,7 +526,8 @@ TEST_CASE_METHOD(XMLTestFixture, "Every object rect and its badge fit inside the
             lv_obj_set_size(card, shape.w, shape.h);
 
             ExcludeObjectMapView view;
-            view.create(card, &st, 235.0f, 235.0f, {}, ExcludeTapMode::Toggle, nullptr);
+            view.create(card, &st, helix::bed_dimensions_from_volume(0.0f, 235.0f, 0.0f, 235.0f),
+                        {}, ExcludeTapMode::Toggle, nullptr);
             REQUIRE(view.is_active());
             process_lvgl(30);
 

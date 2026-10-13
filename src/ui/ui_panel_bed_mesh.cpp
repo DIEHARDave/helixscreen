@@ -855,7 +855,8 @@ void BedMeshPanel::refresh_bed_bounds() {
                   get_name(), bed_x_min, bed_x_max, bed_y_min, bed_y_max);
 
     ui_bed_mesh_set_bounds(canvas_, bed_x_min, bed_x_max, bed_y_min, bed_y_max, cached_mesh_min_x_,
-                           cached_mesh_max_x_, cached_mesh_min_y_, cached_mesh_max_y_);
+                           cached_mesh_max_x_, cached_mesh_min_y_, cached_mesh_max_y_,
+                           api && helix::circular_bed_kinematics(api->hardware().kinematics()));
 
     // If we have pending mesh data, render it now that bounds are valid
     if (has_pending_mesh_data_) {
