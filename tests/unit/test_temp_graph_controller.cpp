@@ -1,6 +1,7 @@
 // Copyright (C) 2025-2026 356C LLC
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include "ui_next_tick.h"
 #include "ui_update_queue.h"
 
 #include "../../include/temp_graph_controller.h"
@@ -546,6 +547,7 @@ TEST_CASE_METHOD(TempGraphControllerFixture,
     controller->detach();
     TempGraphController* raw = controller.release();
     REQUIRE(raw != nullptr);
+    helix::ui::run_next_tick([raw]() { delete raw; });
 
     // Drain the UpdateQueue — pending reconnect callback must no-op against
     // the detached controller (tearing_down_ flag + lifetime token).
