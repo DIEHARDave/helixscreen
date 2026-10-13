@@ -881,6 +881,20 @@ TEST_CASE_METHOD(BackendActiveToolFixture,
 }
 
 TEST_CASE_METHOD(BackendActiveToolFixture,
+                 "Parking the mounted head on its own empties the carriage in ToolState",
+                 "[tool-state][tool_switcher][1784]") {
+    init_tools_from({"extruder", "extruder1", "extruder2", "extruder3", "toolchanger",
+                     "filament_detect", "toolhead", "heater_bed", "print_task_config"});
+    helix::test::RegisteredBackend<helix::AmsBackendSnapmaker> backend(nullptr, nullptr);
+
+    deliver(*backend, nlohmann::json{{"toolhead", {{"extruder", "extruder2"}}}});
+    REQUIRE(ToolState::instance().active_tool_index() == 2);
+
+    deliver(*backend, nlohmann::json{{"extruder2", {{"state", "PARKED"}}}});
+    CHECK(ToolState::instance().active_tool_index() == -1);
+}
+
+TEST_CASE_METHOD(BackendActiveToolFixture,
                  "Dropping the backend hands the active tool back to toolhead.extruder",
                  "[tool-state][tool_switcher][1784]") {
     init_tools_from({"extruder", "extruder1", "extruder2", "extruder3", "toolchanger",

@@ -4185,6 +4185,35 @@ TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker mounting a head after an empty car
     CHECK(backend.get_system_info().current_slot == 1);
 }
 
+TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker parking the mounted head empties the carriage",
+                 "[ams][snapmaker][tool_switcher][1784]") {
+    // Parking does not change toolhead.extruder, so the park arrives as a
+    // delta naming only the head's own state.
+    helix::test::RegisteredBackend<AmsBackendSnapmaker> backend_reg(nullptr, nullptr);
+    AmsBackendSnapmaker& backend = *backend_reg;
+
+    SnapmakerTestAccess::handle_status(backend,
+                                       json{{"toolhead", json{{"extruder", "extruder2"}}}});
+    REQUIRE(backend.get_system_info().current_tool == 2);
+
+    SnapmakerTestAccess::handle_status(backend, json{{"extruder2", json{{"state", "PARKED"}}}});
+    CHECK(backend.get_system_info().current_tool == -1);
+    CHECK(backend.get_system_info().current_slot == -1);
+}
+
+TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker parking another head leaves the mounted one",
+                 "[ams][snapmaker][tool_switcher][1784]") {
+    helix::test::RegisteredBackend<AmsBackendSnapmaker> backend_reg(nullptr, nullptr);
+    AmsBackendSnapmaker& backend = *backend_reg;
+
+    SnapmakerTestAccess::handle_status(backend,
+                                       json{{"toolhead", json{{"extruder", "extruder2"}}}});
+    REQUIRE(backend.get_system_info().current_tool == 2);
+
+    SnapmakerTestAccess::handle_status(backend, json{{"extruder1", json{{"state", "PARKED"}}}});
+    CHECK(backend.get_system_info().current_tool == 2);
+}
+
 TEST_CASE("Only a backend whose carriage can be empty says so",
           "[ams][snapmaker][tool_switcher][1784]") {
     AmsBackendSnapmaker snapmaker(nullptr, nullptr);

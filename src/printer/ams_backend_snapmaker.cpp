@@ -1254,6 +1254,18 @@ void AmsBackendSnapmaker::apply_active_tool_locked(const snapmaker::StatusDelta&
             }
         }
         has_extruder_data = true;
+    } else {
+        // Parking leaves toolhead.extruder as it was, so a park arrives as a
+        // delta carrying only the head's own state. The mounted head reporting
+        // PARKED with no active pin is evidence on its own.
+        const bool frame_has_head_state =
+            std::any_of(delta.extruders.begin(), delta.extruders.end(),
+                        [](const auto& e) { return e && e->state; });
+        const int current = system_info_.current_tool;
+        if (frame_has_head_state && current >= 0 && current < NUM_TOOLS &&
+            extruder_states_[current].state == "PARKED" && !extruder_states_[current].active_pin) {
+            has_extruder_data = true;
+        }
     }
     if (has_extruder_data && active != system_info_.current_tool) {
         // Demote previous active tool from LOADED to AVAILABLE
