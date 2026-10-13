@@ -204,47 +204,64 @@ TEST_CASE("dryer summary: with no box the tile opens the chamber, then the bed",
 
 TEST_CASE("chamber cycle: a cycle seen beginning keeps the longest remaining time",
           "[dryer][summary][chamber]") {
-    ChamberCycle c = next_chamber_cycle({}, false, -1);
-    c = next_chamber_cycle(c, true, 120);
+    ChamberCycle c = next_chamber_cycle({}, true, false, -1);
+    c = next_chamber_cycle(c, true, true, 120);
     CHECK(c.counted);
     CHECK(c.total_min == 120);
-    c = next_chamber_cycle(c, true, 90);
+    c = next_chamber_cycle(c, true, true, 90);
     CHECK(c.total_min == 120);
-    c = next_chamber_cycle(c, true, 130); // the device extended it
+    c = next_chamber_cycle(c, true, true, 130); // the device extended it
     CHECK(c.total_min == 130);
     CHECK(progress_pct_from(65, c.total_min) == 50);
 }
 
 TEST_CASE("chamber cycle: a cycle already running at the first reading has no total",
           "[dryer][summary][chamber]") {
-    ChamberCycle c = next_chamber_cycle({}, true, 80);
+    ChamberCycle c = next_chamber_cycle({}, true, true, 80);
     CHECK_FALSE(c.counted);
     CHECK(c.total_min == -1);
-    c = next_chamber_cycle(c, true, 70);
+    c = next_chamber_cycle(c, true, true, 70);
     CHECK_FALSE(c.counted);
     CHECK(c.total_min == -1);
 }
 
 TEST_CASE("chamber cycle: the end resets, and a shorter second cycle starts from its own total",
           "[dryer][summary][chamber]") {
-    ChamberCycle c = next_chamber_cycle({}, false, -1);
-    c = next_chamber_cycle(c, true, 240);
-    c = next_chamber_cycle(c, true, 100);
-    c = next_chamber_cycle(c, false, -1);
+    ChamberCycle c = next_chamber_cycle({}, true, false, -1);
+    c = next_chamber_cycle(c, true, true, 240);
+    c = next_chamber_cycle(c, true, true, 100);
+    c = next_chamber_cycle(c, true, false, -1);
     CHECK_FALSE(c.counted);
     CHECK(c.total_min == -1);
-    c = next_chamber_cycle(c, true, 60);
+    c = next_chamber_cycle(c, true, true, 60);
     CHECK(c.counted);
     CHECK(c.total_min == 60);
 }
 
+TEST_CASE(
+    "chamber cycle: before a real reading nothing is learned, then the first one is the baseline",
+    "[dryer][summary][chamber]") {
+    ChamberCycle c = next_chamber_cycle({}, false, false, -1);
+    CHECK_FALSE(c.seen);
+    // The default idle never counted as a baseline, so a cycle the first real frame
+    // reports as running was not seen starting.
+    c = next_chamber_cycle(c, true, true, 80);
+    CHECK_FALSE(c.counted);
+    CHECK(c.total_min == -1);
+
+    ChamberCycle idle = next_chamber_cycle({}, false, false, -1);
+    idle = next_chamber_cycle(idle, true, false, -1);
+    idle = next_chamber_cycle(idle, true, true, 60);
+    CHECK(idle.counted);
+}
+
 TEST_CASE("chamber cycle: a remaining time reported late still sets the total",
           "[dryer][summary][chamber]") {
-    ChamberCycle c = next_chamber_cycle({}, false, -1);
-    c = next_chamber_cycle(c, true, -1);
+    ChamberCycle c = next_chamber_cycle({}, true, false, -1);
+    c = next_chamber_cycle(c, true, true, -1);
     CHECK(c.counted);
     CHECK(c.total_min == -1);
-    c = next_chamber_cycle(c, true, 100);
+    c = next_chamber_cycle(c, true, true, 100);
     CHECK(c.total_min == 100);
 }
 

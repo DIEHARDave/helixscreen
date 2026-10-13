@@ -12,6 +12,7 @@
 
 #include "../lvgl_ui_test_fixture.h"
 #include "../test_helpers/configfile_mock_client.h"
+#include "../test_helpers/panel_widget_size_harness.h"
 #include "../test_helpers/qidi_box_test_access.h"
 #include "../test_helpers/update_queue_test_access.h"
 #include "ams_backend_qidi.h"
@@ -22,6 +23,7 @@
 #include "printer_state.h"
 #include "settings_manager.h"
 #include "src/ui/panel_widgets/dryer_model.h"
+#include "src/ui/panel_widgets/dryer_widget.h"
 #include "temperature_controller.h"
 
 #include <ctime>
@@ -63,9 +65,9 @@ struct DryerModelFixture : public LVGLUITestFixture {
     }
 };
 
-std::unique_ptr<AmsBackendQidi> two_boxes_one_drying(std::time_t end_time_s) {
+std::unique_ptr<AmsBackendQidi> boxes_one_drying(int boxes, std::time_t end_time_s) {
     auto backend = std::make_unique<AmsBackendQidi>(nullptr, nullptr);
-    QidiBoxTestAccess::parse_vars(*backend, json{{"box_count", 2}});
+    QidiBoxTestAccess::parse_vars(*backend, json{{"box_count", boxes}});
     QidiBoxTestAccess::set_clock(*backend, [] { return std::time_t{1'000'000}; });
     QidiBoxTestAccess::set_drying_timer_supported(*backend, true);
     QidiBoxTestAccess::handle_status(
@@ -76,6 +78,10 @@ std::unique_ptr<AmsBackendQidi> two_boxes_one_drying(std::time_t end_time_s) {
         *backend, json{{"box_drying_state", json{{"box1", json{{"end_time", end_time_s}}},
                                                  {"box2", json{{"end_time", 0}}}}}});
     return backend;
+}
+
+std::unique_ptr<AmsBackendQidi> two_boxes_one_drying(std::time_t end_time_s) {
+    return boxes_one_drying(2, end_time_s);
 }
 
 } // namespace
@@ -190,9 +196,11 @@ TEST_CASE_METHOD(DryerModelFixture,
                  "[dryer][model][chamber]") {
     auto& temps = state().temperature_state();
     state().capabilities_state().set_has_chamber_dryer(true);
+    // Before any frame the default 0 says nothing; the first real frame reports a cycle
+    // that was already under way.
     lv_subject_set_int(temps.get_chamber_dryer_active_subject(), 1);
+    lv_subject_set_int(temps.get_chamber_dryer_reported_subject(), 1);
     drain();
-    dryer_model::refresh();
     const DryerSummary& s = dryer_model::summary();
     REQUIRE(s.sources.size() == 1);
     CHECK(s.sources[0].drying);
@@ -201,6 +209,7 @@ TEST_CASE_METHOD(DryerModelFixture,
     lv_subject_set_int(temps.get_chamber_dryer_active_subject(), 0);
     drain();
     CHECK_FALSE(dryer_model::summary().sources[0].drying);
+    lv_subject_set_int(temps.get_chamber_dryer_reported_subject(), 0);
 }
 
 TEST_CASE_METHOD(DryerModelFixture, "dryer model: idle rows follow the bed and chamber temperature",
@@ -244,6 +253,32 @@ TEST_CASE_METHOD(DryerModelFixture, "dryer model: units that come up after attac
     ams.sync_from_backend();
     drain();
     CHECK(dryer_model::summary().drying_count == 0);
+
+    ams.deinit_subjects();
+}
+
+TEST_CASE_METHOD(DryerModelFixture,
+                 "dryer model: a unit added while a tile is attached gets its row",
+                 "[dryer][model][ams]") {
+    auto& ams = AmsState::instance();
+    ams.init_subjects(false);
+    ams.set_backend(boxes_one_drying(1, 1'000'000 + 30 * 60));
+    ams.sync_from_backend();
+    PanelWidgetManager::instance().init_widget_subjects();
+    drain();
+
+    PanelWidgetHarness<DryerWidget> tile(test_screen());
+    tile.resize(1, 1, 234, 232);
+    drain();
+    lv_subject_t* rows = lv_xml_get_subject(nullptr, "home_dryer_row_count");
+    REQUIRE(rows != nullptr);
+    CHECK(lv_subject_get_int(rows) == 1);
+
+    ams.set_backend(boxes_one_drying(2, 1'000'000 + 30 * 60));
+    ams.sync_from_backend();
+    drain();
+    CHECK(dryer_model::summary().sources.size() == 2);
+    CHECK(lv_subject_get_int(rows) == 2);
 
     ams.deinit_subjects();
 }

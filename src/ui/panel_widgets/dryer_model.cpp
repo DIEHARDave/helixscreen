@@ -114,6 +114,7 @@ void attach_sources() {
     watch(ps.capabilities_state().subject(Capability::HasChamberDryer), printer_life);
     watch(ps.capabilities_state().subject(Capability::CanBedDry), printer_life);
     watch(ps.temperature_state().get_chamber_dryer_active_subject(), printer_life);
+    watch(ps.temperature_state().get_chamber_dryer_reported_subject(), printer_life);
     watch_text(ps.temperature_state().get_chamber_dryer_text_subject(), printer_life);
     if (auto* chamber = ps.temperature_state().get_chamber_temp_subject(); subject_ready(chamber))
         s_observers.push_back(ui::observe<int>(chamber, &s_anchor, on_chamber_temp, printer_life,
@@ -151,6 +152,11 @@ int deci_to_c(lv_subject_t* subject) {
     return subject_ready(subject)
                ? static_cast<int>(std::lround(lv_subject_get_int(subject) / 10.0))
                : -1;
+}
+
+bool chamber_reported() {
+    return ready_int_or_zero(
+               get_printer_state().temperature_state().get_chamber_dryer_reported_subject()) != 0;
 }
 
 DryerSummaryInput read_sources() {
@@ -231,8 +237,8 @@ void refresh_now() {
     if (!s_bed_watched && get_bed_drying_controller())
         attach_sources();
     DryerSummaryInput in = read_sources();
-    s_chamber_cycle =
-        next_chamber_cycle(s_chamber_cycle, in.chamber.active, in.chamber.remaining_min);
+    s_chamber_cycle = next_chamber_cycle(s_chamber_cycle, chamber_reported(), in.chamber.active,
+                                         in.chamber.remaining_min);
     in.chamber.total_min = s_chamber_cycle.counted ? s_chamber_cycle.total_min : -1;
     publish(summarize_dryers(in));
 }

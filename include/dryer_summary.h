@@ -54,8 +54,12 @@ struct ChamberCycle {
     int total_min = -1;
 };
 
-[[nodiscard]] constexpr ChamberCycle next_chamber_cycle(const ChamberCycle& prev, bool active,
-                                                        int remaining_min) {
+/// @param reported a status frame from the printer has reported the state; before one the
+///        "idle" reading is only the default, and the first real reading is the baseline.
+[[nodiscard]] constexpr ChamberCycle next_chamber_cycle(const ChamberCycle& prev, bool reported,
+                                                        bool active, int remaining_min) {
+    if (!reported)
+        return prev;
     ChamberCycle next;
     next.seen = true;
     if (!active)

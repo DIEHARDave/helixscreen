@@ -310,6 +310,11 @@ class PrinterTemperatureState {
     lv_subject_t* get_chamber_dryer_text_subject() {
         return &chamber_dryer_text_;
     }
+    /// 1 once a status frame from the printer has reported the cycle's state, so the
+    /// default 0 of `chamber_dryer_active` before that is not read as "idle".
+    lv_subject_t* get_chamber_dryer_reported_subject() {
+        return &chamber_dryer_reported_;
+    }
     /// Minutes left in the running cycle, rounded up; 0 once the device reports none left,
     /// -1 until it reports anything.
     int chamber_dryer_remaining_min() const {
@@ -404,6 +409,7 @@ class PrinterTemperatureState {
         chamber_dryer_remaining_reported_ = false;
         chamber_dryer_target_c_ = 0;
         if (subjects_initialized_) {
+            lv_subject_set_int(&chamber_dryer_reported_, 0);
             publish_chamber_dryer();
         }
     }
@@ -545,7 +551,8 @@ class PrinterTemperatureState {
     char chamber_heater_element_temp_text_buf_[32] = {};
     char chamber_filter_fan_percent_text_buf_[32] = {};
     lv_subject_t chamber_dryer_active_{}; ///< XML: 0/1
-    lv_subject_t chamber_dryer_text_{};   ///< XML: countdown string, "" when idle
+    lv_subject_t chamber_dryer_reported_{};
+    lv_subject_t chamber_dryer_text_{}; ///< XML: countdown string, "" when idle
     char chamber_dryer_text_buf_[64] = {};
     /// Last reported drying state; frames name only what changed.
     bool chamber_dryer_running_ = false;
