@@ -834,6 +834,9 @@ detect_moonraker_integration() {
     local conf asvc
     MOONRAKER_ADDS=""
     [ "${1:-}" = "ad5m" ] && return 0
+    # A desktop install talks to a printer elsewhere; this box's Moonraker,
+    # if it has one, does not manage it.
+    [ "${1:-}" = "x86-desktop" ] && return 0
     [ "${HELIX_MOD_PAYLOAD:-}" = "1" ] && return 0
 
     conf=$(find_moonraker_conf)

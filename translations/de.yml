@@ -817,6 +817,7 @@ translations:
   Could not load printer database: Druckerdatenbank konnte nicht geladen werden
   Could not move the plate: Heizbett konnte nicht bewegt werden
 
+  Could not open a browser for the update: Browser für das Update konnte nicht geöffnet werden
   Could not parse tips database: Tipps-Datenbank konnte nicht ausgelesen werden
   Could not reach Spoolman at: 'Spoolman nicht erreichbar unter:'
   Could not read the screw adjustments from the printer: Schraubeneinstellungen konnten nicht vom Drucker gelesen werden

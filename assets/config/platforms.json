@@ -722,6 +722,54 @@
         "in_release_matrix": true,
         "detectable": true
       }
+    },
+    "x86-desktop": {
+      "display_name": "x86-64 Linux desktop",
+      "panel": {
+        "variable": true,
+        "verified": false,
+        "source": "An SDL window on the user's desktop, sized by -s or the window manager; unknown until runtime."
+      },
+      "storage": {
+        "root": "${XDG_DATA_HOME:-$HOME/.local/share}/helixscreen",
+        "cache_dir": null,
+        "log_file": null,
+        "notes": "Per-user root from desktop_install_root (scripts/lib/installer/desktop.sh); never in HELIX_INSTALL_DIRS, so no uninstall sweep reaches a home directory. The installer's log goes to ${XDG_STATE_HOME:-$HOME/.local/state}/helixscreen."
+      },
+      "service": {
+        "init_system": "none",
+        "init_system_pinned": true,
+        "init_script": null,
+        "start_order": null,
+        "needs_procd_shim": false,
+        "previous_ui_script": "",
+        "notes": "No service: the user launches it from the app menu entry the installer writes (${XDG_DATA_HOME:-$HOME/.local/share}/applications/helixscreen.desktop). No autostart entry."
+      },
+      "klipper": {
+        "home": null,
+        "user": null,
+        "group": null,
+        "config_dir": null,
+        "notes": "Connects to a Moonraker on another machine, named in the first-run wizard or with --moonraker."
+      },
+      "moonraker": {
+        "update_manager": false
+      },
+      "sound": {
+        "has_sound": true,
+        "has_tracker": true,
+        "source": "Makefile sound section (SOUND_CXXFLAGS / TRACKER_CXXFLAGS by PLATFORM_TARGET)"
+      },
+      "package": {
+        "asset_name": "helixscreen-x86-desktop.zip",
+        "docker_target": "x86-desktop-docker",
+        "build_dir": "build/x86-desktop",
+        "splash_3d_target": "gen-splash-3d",
+        "gen_images_target": "gen-images",
+        "in_release_matrix": true,
+        "detectable": false,
+        "notes": "detect_platform answers x86; resolve_x86_flavour (scripts/lib/installer/desktop.sh) turns it into x86-desktop by flag, existing install, prompt or a desktop session found."
+      }
     }
   }
 }

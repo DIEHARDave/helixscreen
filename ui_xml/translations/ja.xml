@@ -726,6 +726,7 @@
   <translation tag="Could not initialize WiFi hardware. Check system configuration." ja="WiFi ハードウェアを初期化できませんでした。システム設定を確認してください。"/>
   <translation tag="Could not load printer database" ja="プリンターデータベースを読み込めませんでした"/>
   <translation tag="Could not move the plate" ja="ベッドを動かせませんでした"/>
+  <translation tag="Could not open a browser for the update" ja="更新用のブラウザを開けませんでした"/>
   <translation tag="Could not parse tips database" ja="ヒントデータベースを解析できませんでした"/>
   <translation tag="Could not reach Spoolman at" ja="Spoolman に接続できません:"/>
   <translation tag="Could not read the screw adjustments from the printer" ja="プリンターからネジ調整を読み取れませんでした"/>

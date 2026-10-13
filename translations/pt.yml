@@ -814,6 +814,7 @@ translations:
   Could not load printer database: Não foi possível carregar o banco de dados de impressoras
   Could not move the plate: Não foi possível mover a mesa
 
+  Could not open a browser for the update: Não foi possível abrir um navegador para a atualização
   Could not parse tips database: Não foi possível analisar o banco de dados de dicas
   Could not reach Spoolman at: Não foi possível alcançar o Spoolman em
   Could not read the screw adjustments from the printer: Não foi possível ler os ajustes dos parafusos da impressora

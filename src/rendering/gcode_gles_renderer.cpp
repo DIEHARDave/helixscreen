@@ -30,9 +30,14 @@
 #include <unistd.h>
 #endif
 
-// GLES2 function declarations and common headers (both paths)
+// GLES2: resolved at runtime on SDL (no libGLESv2 link), linked on EGL
+#if LV_USE_SDL
+#include "gles2_sdl_loader.h"
+using namespace helix::gles2;
+#else
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
+#endif
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -529,6 +534,15 @@ bool GCodeGLESRenderer::init_gl() {
     auto gl_ctx = SDL_GL_CreateContext(window);
     if (!gl_ctx) {
         spdlog::warn("[GCode GLES] SDL_GL_CreateContext failed: {}", SDL_GetError());
+        SDL_DestroyWindow(window);
+        gl_init_failed_ = true;
+        return false;
+    }
+
+    // SDL_GL_CreateContext left the context current, which resolving needs.
+    if (!helix::gles2::load(SDL_GL_GetProcAddress)) {
+        SDL_GL_MakeCurrent(window, nullptr);
+        SDL_GL_DeleteContext(gl_ctx);
         SDL_DestroyWindow(window);
         gl_init_failed_ = true;
         return false;

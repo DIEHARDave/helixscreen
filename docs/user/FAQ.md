@@ -48,7 +48,7 @@ HelixScreen works with any Klipper-based printer running Moonraker. Tested and s
 
 ### Can I run HelixScreen on a separate device instead of on my printer?
 
-Yes. HelixScreen is a Moonraker client — it only needs network access to your printer's Moonraker instance, so it doesn't have to run on the printer itself. Install it on any supported Linux device (a spare Raspberry Pi with a touchscreen, a mini PC with an HDMI touchscreen, even your desktop) and enter your **printer's IP address** in the wizard's Moonraker step instead of `localhost`. This is ideal when the printer is on the floor and you want the screen at your desk.
+Yes. HelixScreen is a Moonraker client — it only needs network access to your printer's Moonraker instance, so it doesn't have to run on the printer itself. Install it on any supported Linux device (a spare Raspberry Pi with a touchscreen, a mini PC with an HDMI touchscreen, even [a window on your Linux desktop](guide/install-linux-desktop.md)) and enter your **printer's IP address** in the wizard's Moonraker step instead of `localhost`. This is ideal when the printer is on the floor and you want the screen at your desk.
 
 Point it at Moonraker (port `7125`), not the Mainsail/Fluidd web interface — you don't need Mainsail or Fluidd on the screen device at all. See [Remote Screen Setup](INSTALL.md#remote-screen-setup-run-on-a-separate-device) for step-by-step instructions.
 
@@ -189,6 +189,8 @@ If you have two displays, you could theoretically run both (advanced configurati
 - Display manager (LightDM, GDM, etc.)
 
 This is why it uses less memory than alternatives.
+
+The one exception is by choice: if you *want* HelixScreen in a window on a Linux desktop PC, there is a separate desktop package that runs under X11 or Wayland. See [Run HelixScreen in a Window on a Linux Desktop](guide/install-linux-desktop.md).
 
 ### Does this work with MainsailOS, FluiddPi, or other Klipper distros?
 

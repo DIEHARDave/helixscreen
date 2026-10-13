@@ -1023,6 +1023,7 @@ set_install_paths() {
     STATE_ROOT=""
     PREVIOUS_STATE_ROOT=""
     MIGRATE_FROM_DIR=""
+    INSTALL_LOG_DIR=""
 
     if [ "$platform" = "ad5m" ]; then
         # AD5M runs the helix-screen service as root on all three firmwares
@@ -1156,6 +1157,28 @@ set_install_paths() {
         # shellcheck disable=SC2034  # consumed by release.sh (stale cache reclaim)
         STALE_CACHE_DIRS="/usr/data/helixscreen/cache /usr/data/helixscreen-install /opt/.helixscreen-install"
         log_info "Platform: Creality K2 series"
+        log_info "Install directory: ${INSTALL_DIR}"
+    elif [ "$platform" = "x86-desktop" ]; then
+        # Per-user install beside the desktop: no service, no Klipper user, and
+        # nothing outside the user's home. The root comes from the XDG data
+        # dir, never from an existing kiosk install or INSTALL_DIR, so the
+        # detection below must not move it.
+        if ! INSTALL_DIR=$(desktop_install_root); then
+            log_error "Cannot place the desktop install: HOME or XDG_DATA_HOME is unset, or"
+            log_error "holds a space, quote or other character this install refuses."
+            exit 1
+        fi
+        if [ -n "${_USER_INSTALL_DIR:-}" ] && [ "$_USER_INSTALL_DIR" != "$INSTALL_DIR" ]; then
+            log_warn "Ignoring INSTALL_DIR=${_USER_INSTALL_DIR}: the desktop install lives at its own root"
+        fi
+        _install_dir_from_detection=1
+        INIT_SCRIPT_DEST=""
+        PREVIOUS_UI_SCRIPT=""
+        KLIPPER_USER=""
+        KLIPPER_GROUP=""
+        KLIPPER_HOME=""
+        # shellcheck disable=SC2034  # consumed by common.sh (install_log_dest)
+        INSTALL_LOG_DIR=$(desktop_state_dir) || INSTALL_LOG_DIR=""
         log_info "Install directory: ${INSTALL_DIR}"
     elif [ "$platform" = "cc1" ]; then
         # Elegoo Centauri Carbon running OpenCentauri COSMOS.

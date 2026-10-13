@@ -1377,6 +1377,18 @@ void UpdateChecker::start_download() {
     if (shutting_down_.load())
         return;
 
+#ifdef HELIX_PLATFORM_X86_DESKTOP
+    // The desktop build never rewrites its own install: Install Update opens the
+    // release page (UpdatesSettingsOverlay), and the installer it would run here
+    // treats every in-app update as the kiosk flavour.
+    spdlog::warn("[UpdateChecker] Download refused: the desktop build updates through its "
+                 "installer, not in-app");
+    report_download_status(DownloadStatus::Error, 0,
+                           lv_tr("Error: This install can't update itself"),
+                           "desktop build: install updates with the installer");
+    return;
+#endif
+
     // Firmware-managed devices own updates via their own package pipeline, and a
     // read-only / non-writable install tree can't be swapped at all. Never
     // self-download/install in either case — it would fight the firmware's setup

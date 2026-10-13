@@ -35,6 +35,9 @@ Navigation basics, touch gestures, connection status, first-time setup wizard, W
 
 ![Setup Wizard](../images/user/wizard-wifi.png)
 
+### [Run in a Window on a Linux Desktop](guide/install-linux-desktop.md)
+Run HelixScreen as an app window on your Linux PC or laptop, connected to your printer over the network. No sudo, nothing installed on the printer.
+
 ### [Supported Printers](guide/supported-printers.md)
 Which printers get deep, model-specific integration — and exactly what works on each. Covers the FlashForge Adventurer 5M/5X (IFS), Creality K1/K2 (CFS), QIDI Box, Snapmaker U1, Anycubic ACE, and how every other Klipper printer is auto-detected.
 

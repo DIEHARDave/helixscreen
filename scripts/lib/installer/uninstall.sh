@@ -686,6 +686,13 @@ uninstall() {
     printf '%b\n' "${BOLD}HelixScreen uninstaller${NC}" >&2
     log_info "Uninstalling HelixScreen..."
 
+    # A desktop install touched nothing system-wide, so its removal touches
+    # nothing either: no service, sentinel, Moonraker or sweep of other roots.
+    if [ "$platform" = "x86-desktop" ]; then
+        uninstall_desktop
+        return 0
+    fi
+
     # Drop sentinel BEFORE any destructive work.  helixscreen-update.service
     # checks for it and refuses to fire while uninstall is running, closing
     # the race where Moonraker's path unit could re-trigger a restart between

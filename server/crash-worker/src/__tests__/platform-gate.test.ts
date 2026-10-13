@@ -26,6 +26,7 @@ const RELEASE_PLATFORMS = [
   "pi32",
   "snapmaker-u1",
   "x86",
+  "x86-desktop",
 ];
 
 /** Keys no current build returns but deployed binaries still report. */

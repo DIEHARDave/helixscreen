@@ -68,6 +68,8 @@ check_requirements() {
 detect_missing_unzip() {
     MISSING_UNZIP_PKG=""
     command -v unzip >/dev/null 2>&1 && return 0
+    # A desktop install runs without root, so apt is not an option there.
+    [ "${platform:-}" = "x86-desktop" ] && return 0
     if command -v apt-get >/dev/null 2>&1 && ! _has_no_new_privs; then
         MISSING_UNZIP_PKG=unzip
     fi
@@ -321,6 +323,8 @@ _overlay_upperdir() {
 # Runs at pre-flight -- before any UI is stopped and before the ~58MB download
 # -- so a refusal here leaves the printer exactly as it was found.
 check_service_dest_space() {
+    # A desktop install writes no service definition.
+    [ "${platform:-}" = "x86-desktop" ] && return 0
     # set_install_paths() has already run, so INIT_SCRIPT_DEST is known. It is
     # empty on systemd platforms, where install_service_systemd writes the unit
     # to /etc/systemd/system instead.

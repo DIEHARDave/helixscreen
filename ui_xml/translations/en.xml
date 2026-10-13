@@ -726,6 +726,7 @@
   <translation tag="Could not initialize WiFi hardware. Check system configuration." en="Could not initialize WiFi hardware. Check system configuration."/>
   <translation tag="Could not load printer database" en="Could not load printer database"/>
   <translation tag="Could not move the plate" en="Could not move the plate"/>
+  <translation tag="Could not open a browser for the update" en="Could not open a browser for the update"/>
   <translation tag="Could not parse tips database" en="Could not parse tips database"/>
   <translation tag="Could not reach Spoolman at" en="Could not reach Spoolman at"/>
   <translation tag="Could not read the screw adjustments from the printer" en="Could not read the screw adjustments from the printer"/>

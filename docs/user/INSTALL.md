@@ -78,7 +78,7 @@ Common screen devices:
 - A spare Raspberry Pi (3/4/5, Zero 2 W, CM4) with a touchscreen
 - A repurposed Klipper pad or a small self-built touchscreen PC
 - A mini PC or x86 box with an HDMI touchscreen
-- Your desktop, running the app in a window (macOS or Linux) for monitoring
+- Your Linux desktop or laptop, running the app in a window: see [Run HelixScreen in a Window on a Linux Desktop](guide/install-linux-desktop.md)
 - A BigTreeTech K-Touch, with the [ESP32 firmware](guide/install-esp32.md) (alpha)
 
 **How it works:** HelixScreen is a Moonraker client. It only needs network access to your printer's Moonraker instance (port `7125` by default); it does **not** need to run on the same machine as Klipper.
@@ -143,6 +143,8 @@ Ignore the `.aab` file on the release page. That one is only for publishing to G
 ---
 
 ## Generic Linux Install (Raspberry Pi, BTT, x86)
+
+> **Want HelixScreen in a window on your desktop PC instead?** That is a separate package that leaves your desktop alone; see [Run HelixScreen in a Window on a Linux Desktop](guide/install-linux-desktop.md).
 
 This covers any Klipper printer with a Raspberry Pi running MainsailOS (or similar), including SOVOL SV06, SOVOL SV08, Voron, RatRig, and other printers where Klipper runs on a separate Pi. Also works on x86 Linux PCs (e.g., mini ITX) running Debian/Ubuntu with Klipper and a touchscreen, and on BTT CB1/CB2/Manta host boards.
 
