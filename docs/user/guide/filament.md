@@ -90,6 +90,8 @@ How the two are arranged depends on the shape of your screen:
 - **Landscape screens** put the slot view on the left and the sidebar on the right.
 - **Portrait screens** (taller than wide) stack everything in one column. From the top: the header, with the back button, your filament system's logo and its name; the loaded-filament strip and the status line, with the **Bypass** switch at the end of the status line when your system has one; the slot view and filament path at full width; and the action buttons, or the step progress while an operation runs, across the bottom.
 
+![AMS panel on a portrait screen](../../images/user/ams-portrait.png)
+
 ### Slot View
 
 The slot view shows all your filament slots in a visual tray layout:
