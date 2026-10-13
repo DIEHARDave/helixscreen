@@ -2277,8 +2277,8 @@ void AmsBackendMock::set_multi_unit_mode(bool enabled) {
         // Reinitialize registry with 2 units
         slots_.clear();
         slots_.initialize_units({
-            {"Box Turtle 1", {"0", "1", "2", "3"}},
-            {"Night Owl", {"0", "1"}},
+            {"Box_Turtle Turtle_1", {"0", "1", "2", "3"}},
+            {"Night_Owl Night_Owl_1", {"0", "1"}},
         });
 
         // Unit 0 is a heated enclosure, unit 1 a passive box: the shape that puts
@@ -2367,7 +2367,8 @@ void AmsBackendMock::set_multi_unit_mode(bool enabled) {
         {
             AmsUnit u;
             u.unit_index = 0;
-            u.name = "Box Turtle 1";
+            u.name = "Box_Turtle Turtle_1";
+            u.display_name = "Turtle_1";
             u.slot_count = 4;
             u.first_slot_global_index = 0;
             u.connected = true;
@@ -2383,7 +2384,8 @@ void AmsBackendMock::set_multi_unit_mode(bool enabled) {
         {
             AmsUnit u;
             u.unit_index = 1;
-            u.name = "Night Owl";
+            u.name = "Night_Owl Night_Owl_1";
+            u.display_name = "Night_Owl_1";
             u.slot_count = 2;
             u.first_slot_global_index = 4;
             u.connected = true;
@@ -2464,9 +2466,9 @@ void AmsBackendMock::set_mixed_topology_mode(bool enabled) {
         // Reinitialize registry with 3 units (4+4+4=12 slots)
         slots_.clear();
         slots_.initialize_units({
-            {"Turtle_1", {"0", "1", "2", "3"}},
-            {"AMS_1", {"0", "1", "2", "3"}},
-            {"AMS_2", {"0", "1", "2", "3"}},
+            {"Box_Turtle Turtle_1", {"0", "1", "2", "3"}},
+            {"OpenAMS AMS_1", {"0", "1", "2", "3"}},
+            {"OpenAMS AMS_2", {"0", "1", "2", "3"}},
         });
 
         // Helper to populate a slot
@@ -2519,7 +2521,8 @@ void AmsBackendMock::set_mixed_topology_mode(bool enabled) {
         {
             AmsUnit u;
             u.unit_index = 0;
-            u.name = "Turtle_1";
+            u.name = "Box_Turtle Turtle_1";
+            u.display_name = "Turtle_1";
             u.slot_count = 4;
             u.first_slot_global_index = 0;
             u.connected = true;
@@ -2540,7 +2543,8 @@ void AmsBackendMock::set_mixed_topology_mode(bool enabled) {
         {
             AmsUnit u;
             u.unit_index = 1;
-            u.name = "AMS_1";
+            u.name = "OpenAMS AMS_1";
+            u.display_name = "AMS_1";
             u.slot_count = 4;
             u.first_slot_global_index = 4;
             u.connected = true;
@@ -2557,7 +2561,8 @@ void AmsBackendMock::set_mixed_topology_mode(bool enabled) {
         {
             AmsUnit u;
             u.unit_index = 2;
-            u.name = "AMS_2";
+            u.name = "OpenAMS AMS_2";
+            u.display_name = "AMS_2";
             u.slot_count = 4;
             u.first_slot_global_index = 8;
             u.connected = true;
@@ -2654,12 +2659,12 @@ void AmsBackendMock::set_vivid_mixed_mode(bool enabled) {
         unit_topologies_.push_back(PathTopology::HUB);
 
         // Reinitialize registry with 3 units (4+4+4=12 slots)
-        // Turtle_1 lanes 1-4, Turtle_2 lanes 5-8, vivid_1 lanes 13-16
+        // Turtle_1 lanes 1-4, Turtle_2 lanes 5-8, Vivid_1 lanes 13-16
         slots_.clear();
         slots_.initialize_units({
-            {"Turtle_1", {"lane1", "lane2", "lane3", "lane4"}},
-            {"Turtle_2", {"lane5", "lane6", "lane7", "lane8"}},
-            {"vivid_1", {"lane13", "lane14", "lane15", "lane16"}},
+            {"Box_Turtle Turtle_1", {"lane1", "lane2", "lane3", "lane4"}},
+            {"Box_Turtle Turtle_2", {"lane5", "lane6", "lane7", "lane8"}},
+            {"ViViD Vivid_1", {"lane13", "lane14", "lane15", "lane16"}},
         });
 
         // Helper to populate a slot
@@ -2699,7 +2704,7 @@ void AmsBackendMock::set_vivid_mixed_mode(bool enabled) {
         populate_slot(6, 2, "PETG", 0x8E24AA, "Purple", SlotStatus::AVAILABLE, 412, 500.0f);
         populate_slot(7, 3, "ASA", 0xFF6F00, "Orange", SlotStatus::AVAILABLE, 413, 650.0f);
 
-        // Unit 2: vivid_1 (ViViD) — lanes 13-16, HUB (own hub)
+        // Unit 2: Vivid_1 (ViViD) — lanes 13-16, HUB (own hub)
         populate_slot(8, 0, "PLA", 0xE53935, "Red", SlotStatus::AVAILABLE, 420, 1000.0f);
         populate_slot(9, 1, "PLA-CF", 0x424242, "Carbon", SlotStatus::AVAILABLE, 421, 900.0f);
         populate_slot(10, 2, "PETG", 0x90CAF9, "Sky Blue", SlotStatus::AVAILABLE, 422, 800.0f);
@@ -2713,7 +2718,8 @@ void AmsBackendMock::set_vivid_mixed_mode(bool enabled) {
         {
             AmsUnit u;
             u.unit_index = 0;
-            u.name = "Turtle_1";
+            u.name = "Box_Turtle Turtle_1";
+            u.display_name = "Turtle_1";
             u.slot_count = 4;
             u.first_slot_global_index = 0;
             u.connected = true;
@@ -2730,7 +2736,8 @@ void AmsBackendMock::set_vivid_mixed_mode(bool enabled) {
         {
             AmsUnit u;
             u.unit_index = 1;
-            u.name = "Turtle_2";
+            u.name = "Box_Turtle Turtle_2";
+            u.display_name = "Turtle_2";
             u.slot_count = 4;
             u.first_slot_global_index = 4;
             u.connected = true;
@@ -2747,7 +2754,8 @@ void AmsBackendMock::set_vivid_mixed_mode(bool enabled) {
         {
             AmsUnit u;
             u.unit_index = 2;
-            u.name = "vivid_1";
+            u.name = "ViViD Vivid_1";
+            u.display_name = "Vivid_1";
             u.slot_count = 4;
             u.first_slot_global_index = 8;
             u.connected = true;
@@ -2778,7 +2786,7 @@ void AmsBackendMock::set_vivid_mixed_mode(bool enabled) {
             }
         }
 
-        spdlog::info("[AmsBackendMock] ViViD mixed mode: Turtle_1 (4) + Turtle_2 (4) + vivid_1 "
+        spdlog::info("[AmsBackendMock] ViViD mixed mode: Turtle_1 (4) + Turtle_2 (4) + Vivid_1 "
                      "(4) = 12 slots");
     } else {
         vivid_mixed_mode_ = false;
@@ -3279,8 +3287,8 @@ constexpr AfcMockLane kStealthLanes[] = {
 
 constexpr AfcMockUnit kStealthUnits[] = {
     {"Ace Ace2_1", "Ace2 1", PathTopology::PARALLEL, false, false, 0, 4},
-    {"AMS AMS_1", "AMS 1", PathTopology::HUB, true, false, 4, 4},
-    {"Turtle Turtle_1", "Turtle 1", PathTopology::HUB, true, true, 8, 4},
+    {"OpenAMS AMS_1", "AMS 1", PathTopology::HUB, true, false, 4, 4},
+    {"Box_Turtle Turtle_1", "Turtle 1", PathTopology::HUB, true, true, 8, 4},
     {"Bambu Bambu_1", "Bambu 1", PathTopology::HUB, true, false, 12, 4},
     {"Bambu Bambu_2", "Bambu 2", PathTopology::HUB, true, false, 16, 2},
 };
