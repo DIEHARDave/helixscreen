@@ -3627,6 +3627,8 @@
   <translation tag="{} updated" ru="{}: обновлено"/>
   <translation tag="{} widgets" ru="Виджетов: {}"/>
   <translation tag="{} will switch to a slot whose filament type AND colour both match the active spool and whose own port sensor reads filament present." ru="{} переключится на слот, у которого тип филамента И цвет совпадают с активной катушкой, а собственный датчик порта видит филамент."/>
+  <translation tag="{} · {}" ru="{} · {}"/>
+  <translation tag="{} · {} · {}" ru="{} · {} · {}"/>
   <translation tag="{} — response timed out" ru="{} — время ожидания ответа истекло"/>
   <translation tag="{} → {}: no filament loaded." ru="{} → {}: филамент не загружен."/>
   <translation tag="{}:{:02} elapsed" ru="прошло {}:{:02}"/>

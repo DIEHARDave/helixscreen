@@ -3627,6 +3627,8 @@
   <translation tag="{} updated" es="Se actualizó {}"/>
   <translation tag="{} widgets" es="{} widgets"/>
   <translation tag="{} will switch to a slot whose filament type AND colour both match the active spool and whose own port sensor reads filament present." es="{} cambiará a una ranura cuyo tipo de filamento Y color coincidan con la bobina activa y cuyo propio sensor de puerto detecte filamento."/>
+  <translation tag="{} · {}" es="{} · {}"/>
+  <translation tag="{} · {} · {}" es="{} · {} · {}"/>
   <translation tag="{} — response timed out" es="{} — tiempo de espera agotado"/>
   <translation tag="{} → {}: no filament loaded." es="{} → {}: no hay filamento cargado."/>
   <translation tag="{}:{:02} elapsed" es="{}:{:02} transcurrido"/>

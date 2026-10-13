@@ -133,6 +133,10 @@ class ToolSwitcherWidget : public TiledPanelWidget {
 
     /// @p tool's label in @p form, in the connected printer's tool noun.
     static std::string tool_text(const ToolInfo& tool, ui::ToolLabelForm form);
+    /// What a narrow segment calls @p tool: "T<index>", the name it answers to
+    /// in G-code and in the slicer, configured name or not. Wider surfaces keep
+    /// tool_text()'s physical label for a configured name.
+    static std::string short_text(const ToolInfo& tool);
     /// Budget the compact value at the widest label any tool carries.
     void refresh_label_budget();
     void on_active_tool_changed(int tool_index);

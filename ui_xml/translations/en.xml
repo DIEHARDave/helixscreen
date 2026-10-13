@@ -3627,6 +3627,8 @@
   <translation tag="{} updated" en="{} updated"/>
   <translation tag="{} widgets" en="{} widgets"/>
   <translation tag="{} will switch to a slot whose filament type AND colour both match the active spool and whose own port sensor reads filament present." en="{} will switch to a slot whose filament type AND colour both match the active spool and whose own port sensor reads filament present."/>
+  <translation tag="{} · {}" en="{} · {}"/>
+  <translation tag="{} · {} · {}" en="{} · {} · {}"/>
   <translation tag="{} — response timed out" en="{} — response timed out"/>
   <translation tag="{} → {}: no filament loaded." en="{} → {}: no filament loaded."/>
   <translation tag="{}:{:02} elapsed" en="{}:{:02} elapsed"/>

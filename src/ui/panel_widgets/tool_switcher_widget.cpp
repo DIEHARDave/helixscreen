@@ -172,6 +172,17 @@ HeadFilament head_filament(const helix::ToolInfo& tool) {
 /// Heads at or above this read hot (decidegrees).
 constexpr int kHotDeci = 1500;
 
+/// A detail line: the head, then what it is loaded with and how hot it is,
+/// leaving out whichever of the two is unknown.
+std::string detail_line(const std::string& head, const std::string& material,
+                        const std::string& temp) {
+    if (!material.empty() && !temp.empty())
+        return fmt::format(lv_tr("{} · {} · {}"), head, material, temp);
+    if (!material.empty() || !temp.empty())
+        return fmt::format(lv_tr("{} · {}"), head, material.empty() ? temp : material);
+    return head;
+}
+
 } // namespace
 
 namespace helix {
@@ -202,6 +213,10 @@ ToolSwitcherWidget::ToolSwitcherWidget(PrinterState& printer_state)
 
 std::string ToolSwitcherWidget::tool_text(const ToolInfo& tool, ui::ToolLabelForm form) {
     return ui::tool_label_in_form(ui::active_tool_noun(), tool.name, tool.index, form);
+}
+
+std::string ToolSwitcherWidget::short_text(const ToolInfo& tool) {
+    return ui::tool_label(tool.index);
 }
 
 void ToolSwitcherWidget::refresh_label_budget() {
@@ -375,7 +390,7 @@ void ToolSwitcherWidget::publish_layout() {
             const std::string code = tool_text(tool, ui::ToolLabelForm::Code);
             int widest = 0;
             if (form == ui::ToolLabelForm::Code) {
-                widest = ui::text_width(code.c_str(), body);
+                widest = ui::text_width(short_text(tool).c_str(), body);
             } else if (rail) {
                 widest = std::max(ui::text_width(tool.display_label.c_str(), body),
                                   ui::text_width(code.c_str(), body));
@@ -458,12 +473,12 @@ void ToolSwitcherWidget::publish_heads() {
         filament[i] = head_filament(tools[i]);
 
         // Full: the physical label over the G-code name, which a configured
-        // name ("Left") does not have. Code: the G-code name over the
-        // temperature, shown where the segment is tall enough.
-        const std::string code = tool_text(tools[i], ui::ToolLabelForm::Code);
-        std::string label = code;
+        // name ("Left") does not have. Code: "T0" over the temperature, shown
+        // where the segment is tall enough.
+        std::string label = short_text(tools[i]);
         std::string sub = temp_text(i);
         if (label_form_ == ui::ToolLabelForm::Full) {
+            const std::string code = tool_text(tools[i], ui::ToolLabelForm::Code);
             label = tools[i].display_label;
             sub = code == label ? std::string() : code;
         }
@@ -483,12 +498,9 @@ void ToolSwitcherWidget::publish_heads() {
     const int content_w = current_width_px_ - 2 * resolve_px_token("space_md", 10);
     const lv_font_t* body = theme_manager_get_font("font_body");
     auto line = [&](int i, ui::ToolLabelForm form) {
-        std::string text = tool_text(tools[i], form);
-        for (const std::string& part : {filament[i].material, temp_text(i)}) {
-            if (!part.empty())
-                text += " · " + part;
-        }
-        return text;
+        const std::string head =
+            form == ui::ToolLabelForm::Full ? tool_text(tools[i], form) : short_text(tools[i]);
+        return detail_line(head, filament[i].material, temp_text(i));
     };
     for (int r = 0; r < rows; ++r) {
         const int i = order[r];

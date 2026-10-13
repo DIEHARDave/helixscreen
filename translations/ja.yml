@@ -3799,6 +3799,8 @@ translations:
   '{} widgets': ウィジェット {} 個
   ? '{} will switch to a slot whose filament type AND colour both match the active spool and whose own port sensor reads filament present.'
   : '{} は、フィラメントの種類と色の両方がアクティブなスプールと一致し、かつ自身のポートセンサーがフィラメントを検知しているスロットに切り替えます。'
+  '{} · {}': '{} · {}'
+  '{} · {} · {}': '{} · {} · {}'
   '{} — response timed out': '{} — 応答タイムアウト'
   '{} → {}: no filament loaded.': '{} → {}: フィラメントが装填されていません。'
   '{}:{:02} elapsed': 経過 {}:{:02}

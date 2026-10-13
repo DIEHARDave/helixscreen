@@ -3627,6 +3627,8 @@
   <translation tag="{} updated" ja="{} を更新しました"/>
   <translation tag="{} widgets" ja="ウィジェット {} 個"/>
   <translation tag="{} will switch to a slot whose filament type AND colour both match the active spool and whose own port sensor reads filament present." ja="{} は、フィラメントの種類と色の両方がアクティブなスプールと一致し、かつ自身のポートセンサーがフィラメントを検知しているスロットに切り替えます。"/>
+  <translation tag="{} · {}" ja="{} · {}"/>
+  <translation tag="{} · {} · {}" ja="{} · {} · {}"/>
   <translation tag="{} — response timed out" ja="{} — 応答タイムアウト"/>
   <translation tag="{} → {}: no filament loaded." ja="{} → {}: フィラメントが装填されていません。"/>
   <translation tag="{}:{:02} elapsed" ja="経過 {}:{:02}"/>

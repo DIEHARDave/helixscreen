@@ -3627,6 +3627,8 @@
   <translation tag="{} updated" zh="{} 已更新"/>
   <translation tag="{} widgets" zh="{} 个小组件"/>
   <translation tag="{} will switch to a slot whose filament type AND colour both match the active spool and whose own port sensor reads filament present." zh="{} 将切换到耗材类型与颜色都与当前料盘一致、且其端口传感器检测到有耗材的槽位。"/>
+  <translation tag="{} · {}" zh="{} · {}"/>
+  <translation tag="{} · {} · {}" zh="{} · {} · {}"/>
   <translation tag="{} — response timed out" zh="{} — 响应超时"/>
   <translation tag="{} → {}: no filament loaded." zh="{} → {}: 未加载耗材。"/>
   <translation tag="{}:{:02} elapsed" zh="已用时 {}:{:02}"/>

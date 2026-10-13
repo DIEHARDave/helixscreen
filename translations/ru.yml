@@ -4015,6 +4015,8 @@ translations:
   '{} widgets': 'Виджетов: {}'
   ? '{} will switch to a slot whose filament type AND colour both match the active spool and whose own port sensor reads filament present.'
   : '{} переключится на слот, у которого тип филамента И цвет совпадают с активной катушкой, а собственный датчик порта видит филамент.'
+  '{} · {}': '{} · {}'
+  '{} · {} · {}': '{} · {} · {}'
   '{} — response timed out': '{} — время ожидания ответа истекло'
   '{} → {}: no filament loaded.': '{} → {}: филамент не загружен.'
   '{}:{:02} elapsed': прошло {}:{:02}

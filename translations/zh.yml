@@ -3789,6 +3789,8 @@ translations:
   '{} widgets': '{} 个小组件'
   ? '{} will switch to a slot whose filament type AND colour both match the active spool and whose own port sensor reads filament present.'
   : '{} 将切换到耗材类型与颜色都与当前料盘一致、且其端口传感器检测到有耗材的槽位。'
+  '{} · {}': '{} · {}'
+  '{} · {} · {}': '{} · {} · {}'
   '{} — response timed out': '{} — 响应超时'
   '{} → {}: no filament loaded.': '{} → {}: 未加载耗材。'
   '{}:{:02} elapsed': 已用时 {}:{:02}

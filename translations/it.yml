@@ -4058,6 +4058,8 @@ translations:
   '{} widgets': '{} widget'
   ? '{} will switch to a slot whose filament type AND colour both match the active spool and whose own port sensor reads filament present.'
   : '{} passerà a uno slot il cui tipo di filamento E colore corrispondono entrambi alla bobina attiva e il cui sensore di porta rileva filamento presente.'
+  '{} · {}': '{} · {}'
+  '{} · {} · {}': '{} · {} · {}'
   '{} — response timed out': '{} — tempo scaduto'
   '{} → {}: no filament loaded.': '{} → {}: nessun filamento caricato.'
   '{}:{:02} elapsed': '{}:{:02} trascorso'

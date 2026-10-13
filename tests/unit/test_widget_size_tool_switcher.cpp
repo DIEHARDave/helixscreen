@@ -276,7 +276,7 @@ TEST_CASE_METHOD(ToolSwitcherFixture,
 }
 
 TEST_CASE_METHOD(ToolSwitcherFixture,
-                 "tool_switcher: configured names in 48 px segments fall back to the short form",
+                 "tool_switcher: configured names in 48 px segments read the G-code name",
                  "[widget_size][tool_switcher][1784][1769]") {
     configure_named_tools({"Left Extruder", "Right Extruder"});
     PanelWidgetHarness<ToolSwitcherWidget> h(test_screen(), state());
@@ -288,12 +288,22 @@ TEST_CASE_METHOD(ToolSwitcherFixture,
     REQUIRE(mode() == static_cast<int>(ToolSwitcherMode::RailWithPark));
     REQUIRE(subject_int("tool_switcher_cell_w") == 48);
 
-    // "Tool 1" over the configured name does not fit, so the form falls back.
-    // A configured name reads as its physical label in every form; where that
-    // is wider than the segment the label ellipsizes in the segment.
+    // "Tool 1" does not fit, so every segment reads the G-code name its head
+    // answers to, configured name or not, and that name fits the segment.
+    const lv_font_t* body = theme_manager_get_font("font_body");
+    const int room = subject_int("tool_switcher_cell_w") - 2 * resolve_px("space_xs", 4);
+    REQUIRE(ui::text_width("Tool 1", body) > room);
     CHECK(subject_int("tool_switcher_label_form") == static_cast<int>(ui::ToolLabelForm::Code));
+    CHECK(subject_string(seg(0, "label")) == "T0");
+    CHECK(subject_string(seg(1, "label")) == "T1");
+    CHECK(ui::text_width(subject_string(seg(0, "label")).c_str(), body) <= room);
+    CHECK(ui::text_width(subject_string(seg(1, "label")).c_str(), body) <= room);
+
+    // Where the full label fits, a configured name keeps its physical label.
+    resize_content(h, 600, 60);
+    process_lvgl(30);
+    CHECK(subject_int("tool_switcher_label_form") == static_cast<int>(ui::ToolLabelForm::Full));
     CHECK(subject_string(seg(0, "label")) == "Tool 1");
-    CHECK(subject_string(seg(1, "label")) == "Tool 2");
 }
 
 TEST_CASE_METHOD(ToolSwitcherFixture,
@@ -324,6 +334,16 @@ TEST_CASE_METHOD(ToolSwitcherFixture,
     CHECK(subject_int(seg(0, "has_color").c_str()) == 1);
     CHECK(subject_rgb(seg(0, "color")) == slot0.color_rgb);
     CHECK(subject_int(seg(3, "has_color").c_str()) == 0);
+
+    // The mounted head's detail line names what it is loaded with.
+    resize_content(h, 600, 400);
+    process_lvgl(30);
+    REQUIRE(subject_int("tool_switcher_detail") == 1);
+    REQUIRE_FALSE(slot0.material.empty());
+    CHECK(subject_string(detail(0, "text")) ==
+          fmt::format(lv_tr("{} · {}"), "Tool 1 (T0)", slot0.material));
+    CHECK(subject_int(detail(0, "has_color").c_str()) == 1);
+    CHECK(subject_rgb(detail(0, "color")) == slot0.color_rgb);
 
     // A slot that runs empty keeps reporting its old colour; the head reads
     // as unknown, and the change reaches the published head on its own.

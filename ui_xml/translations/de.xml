@@ -3627,6 +3627,8 @@
   <translation tag="{} updated" de="{} aktualisiert"/>
   <translation tag="{} widgets" de="{} Widgets"/>
   <translation tag="{} will switch to a slot whose filament type AND colour both match the active spool and whose own port sensor reads filament present." de="{} wechselt zu einem Slot, dessen Filamenttyp UND Farbe beide zur aktiven Spule passen und dessen eigener Port-Sensor Filament erkennt."/>
+  <translation tag="{} · {}" de="{} · {}"/>
+  <translation tag="{} · {} · {}" de="{} · {} · {}"/>
   <translation tag="{} — response timed out" de="{} – Antwort-Zeitüberschreitung"/>
   <translation tag="{} → {}: no filament loaded." de="{} → {}: kein Filament geladen."/>
   <translation tag="{}:{:02} elapsed" de="{}:{:02} vergangen"/>
