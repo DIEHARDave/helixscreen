@@ -466,11 +466,11 @@ AmsDetailSlotResult ams_detail_create_slots(AmsDetailWidgets& w, lv_obj_t* slot_
 }
 
 void helix::ui::ams_detail_sync_slot_states(lv_obj_t* slot_widgets[], int slot_count) {
-    auto* backend = helix::AmsState::instance().get_backend();
-    if (!backend) {
+    const auto info = helix::AmsState::instance().system_info();
+    if (!info) {
         return;
     }
-    ams_detail_sync_slot_states(slot_widgets, slot_count, backend->get_system_info());
+    ams_detail_sync_slot_states(slot_widgets, slot_count, *info);
 }
 
 void helix::ui::ams_detail_sync_slot_states(lv_obj_t* slot_widgets[], int slot_count,
@@ -816,11 +816,11 @@ void ams_detail_setup_path_canvas(lv_obj_t* canvas, lv_obj_t* slot_grid, int uni
         return;
 
     auto* backend = helix::AmsState::instance().get_backend();
-    if (!backend)
+    const auto info = helix::AmsState::instance().system_info();
+    if (!backend || !info)
         return;
 
-    ams_detail_setup_path_canvas(canvas, slot_grid, unit_index, backend,
-                                 backend->get_system_info());
+    ams_detail_setup_path_canvas(canvas, slot_grid, unit_index, backend, *info);
 }
 
 // NAMESPACE_OK: an overload of the global three-argument ams_detail_setup_path_canvas

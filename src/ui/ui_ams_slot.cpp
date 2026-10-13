@@ -280,8 +280,8 @@ static void apply_lane_humidity(AmsSlotData* data, AmsBackend* backend) {
     if (!data->show_lane_humidity || !data->lane_humidity_text || !backend)
         return;
     char text[16] = "--";
-    const AmsSystemInfo info = backend->get_system_info();
-    const SlotInfo* slot = info.get_slot_global(data->slot_index);
+    const auto info = AmsState::instance().system_info(data->backend_index);
+    const SlotInfo* slot = info ? info->get_slot_global(data->slot_index) : nullptr;
     const EnvironmentData* env = (slot && slot->environment) ? &*slot->environment : nullptr;
     if (env && env->has_humidity)
         snprintf(text, sizeof(text), "%d%%", (int)std::lround(env->humidity_pct));
@@ -493,9 +493,8 @@ static void apply_tool_badge(AmsSlotData* data, int mapped_tool, bool is_overrid
     }
 
     // A tool feeding the lane of its own number only repeats the lane badge.
-    if (backend) {
-        const AmsSystemInfo info = backend->get_system_info();
-        if (!helix::ui::tool_badges_add_information(info.tool_to_slot_map, info.total_slots)) {
+    if (const auto info = AmsState::instance().system_info(data->backend_index)) {
+        if (!helix::ui::tool_badges_add_information(info->tool_to_slot_map, info->total_slots)) {
             lv_obj_add_flag(data->tool_badge_bg, LV_OBJ_FLAG_HIDDEN);
             return;
         }
