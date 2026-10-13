@@ -76,28 +76,43 @@ IndexedSubjectPool* const s_pools[] = {&s_seg_label,        &s_seg_sub,     &s_s
                                        &s_seg_has_color,    &s_detail_text, &s_detail_color,
                                        &s_detail_has_color, &s_detail_hot,  &s_detail_main};
 
-void init_int(lv_subject_t& subject, const char* name) {
-    lv_subject_init_int(&subject, 0);
-    s_subjects.publish(name, &subject);
-}
-
 void tool_switcher_widget_init_subjects() {
     if (s_subjects_initialized)
         return;
 
-    init_int(s_mode_subject, "tool_switcher_mode");
-    lv_subject_set_int(&s_mode_subject, static_cast<int>(helix::ToolSwitcherMode::Single));
-    init_int(s_cols_subject, "tool_switcher_cols");
-    init_int(s_rows_subject, "tool_switcher_rows");
-    init_int(s_cell_w_subject, "tool_switcher_cell_w");
-    init_int(s_cell_h_subject, "tool_switcher_cell_h");
-    init_int(s_rail_h_subject, "tool_switcher_rail_h");
-    init_int(s_detail_subject, "tool_switcher_detail");
-    init_int(s_detail_rows_subject, "tool_switcher_detail_rows");
-    init_int(s_label_form_subject, "tool_switcher_label_form");
-    init_int(s_park_supported_subject, "tool_switcher_park_supported");
-    init_int(s_change_blocked_subject, "tool_switcher_change_blocked");
-    init_int(s_picker_code_form_subject, "tool_switcher_picker_code_form");
+    lv_subject_init_int(&s_mode_subject, static_cast<int>(helix::ToolSwitcherMode::Single));
+    s_subjects.publish("tool_switcher_mode",
+                       &s_mode_subject); // SUBJECT_OK: published for the rail XML (#1784)
+    lv_subject_init_int(&s_cols_subject, 0);
+    s_subjects.publish("tool_switcher_cols",
+                       &s_cols_subject); // SUBJECT_OK: published for the rail XML (#1784)
+    lv_subject_init_int(&s_rows_subject, 0);
+    s_subjects.publish("tool_switcher_rows",
+                       &s_rows_subject); // SUBJECT_OK: published for the rail XML (#1784)
+    lv_subject_init_int(&s_cell_w_subject, 0);
+    s_subjects.publish("tool_switcher_cell_w",
+                       &s_cell_w_subject); // SUBJECT_OK: published for the rail XML (#1784)
+    lv_subject_init_int(&s_cell_h_subject, 0);
+    s_subjects.publish("tool_switcher_cell_h",
+                       &s_cell_h_subject); // SUBJECT_OK: published for the rail XML (#1784)
+    lv_subject_init_int(&s_rail_h_subject, 0);
+    s_subjects.publish("tool_switcher_rail_h",
+                       &s_rail_h_subject); // SUBJECT_OK: published for the rail XML (#1784)
+    lv_subject_init_int(&s_detail_subject, 0);
+    s_subjects.publish("tool_switcher_detail",
+                       &s_detail_subject); // SUBJECT_OK: published for the rail XML (#1784)
+    lv_subject_init_int(&s_detail_rows_subject, 0);
+    s_subjects.publish("tool_switcher_detail_rows",
+                       &s_detail_rows_subject); // SUBJECT_OK: published for the rail XML (#1784)
+    lv_subject_init_int(&s_label_form_subject, 0);
+    s_subjects.publish("tool_switcher_label_form",
+                       &s_label_form_subject); // SUBJECT_OK: published for the rail XML (#1784)
+    lv_subject_init_int(&s_park_supported_subject, 0);
+    s_subjects.publish("tool_switcher_park_supported", &s_park_supported_subject);
+    lv_subject_init_int(&s_change_blocked_subject, 0);
+    s_subjects.publish("tool_switcher_change_blocked", &s_change_blocked_subject);
+    lv_subject_init_int(&s_picker_code_form_subject, 0);
+    s_subjects.publish("tool_switcher_picker_code_form", &s_picker_code_form_subject);
     lv_subject_init_string(&s_active_label_subject, s_active_label_buf, nullptr,
                            sizeof(s_active_label_buf), "");
     s_subjects.publish("tool_switcher_active_label", &s_active_label_subject);
@@ -344,6 +359,13 @@ void ToolSwitcherWidget::forget_tile_widgets() {
     parent_screen_ = nullptr;
 }
 
+bool ToolSwitcherWidget::fits_at(int width_px, int height_px) const {
+    // The smallest mode is one face, which must hold a touch target.
+    const int inset = resolve_px_token("space_md", 10);
+    const int min_target = resolve_px_token("touch_target_min", 48);
+    return width_px - 2 * inset >= min_target && height_px - 2 * inset >= min_target;
+}
+
 void ToolSwitcherWidget::on_size_changed(int /*colspan*/, int /*rowspan*/, int width_px,
                                          int height_px) {
     current_width_px_ = width_px;
@@ -387,10 +409,10 @@ void ToolSwitcherWidget::publish_layout() {
     const int label_room = layout_.cell_w - 2 * resolve_px_token("space_xs", 4);
     label_form_ = ui::pick_tool_label_form([&](ui::ToolLabelForm form) {
         for (const auto& tool : tools) {
-            const std::string code = tool_text(tool, ui::ToolLabelForm::Code);
+            const std::string code = short_text(tool);
             int widest = 0;
             if (form == ui::ToolLabelForm::Code) {
-                widest = ui::text_width(short_text(tool).c_str(), body);
+                widest = ui::text_width(code.c_str(), body);
             } else if (rail) {
                 widest = std::max(ui::text_width(tool.display_label.c_str(), body),
                                   ui::text_width(code.c_str(), body));
@@ -472,15 +494,13 @@ void ToolSwitcherWidget::publish_heads() {
     for (int i = 0; i < heads; ++i) {
         filament[i] = head_filament(tools[i]);
 
-        // Full: the physical label over the G-code name, which a configured
-        // name ("Left") does not have. Code: "T0" over the temperature, shown
-        // where the segment is tall enough.
+        // Full: the physical label over "T0", configured name or not. Code:
+        // "T0" over the temperature, shown where the segment is tall enough.
         std::string label = short_text(tools[i]);
         std::string sub = temp_text(i);
         if (label_form_ == ui::ToolLabelForm::Full) {
-            const std::string code = tool_text(tools[i], ui::ToolLabelForm::Code);
             label = tools[i].display_label;
-            sub = code == label ? std::string() : code;
+            sub = short_text(tools[i]);
         }
         ui::copy_string_if_changed(s_seg_label.at(i), label.c_str());
         ui::copy_string_if_changed(s_seg_sub.at(i), sub.c_str());

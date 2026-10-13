@@ -37,10 +37,9 @@ class ToolSwitcherWidget : public TiledPanelWidget {
         return "tool_switcher";
     }
     void on_size_changed(int colspan, int rowspan, int width_px, int height_px) override;
-    /// Every box has a mode: the mounted head's face takes whatever is left.
-    bool fits_at(int /*width_px*/, int /*height_px*/) const override {
-        return true;
-    }
+    /// Whether the content box (the tile less space_md each side) holds one
+    /// touch target on both axes: the face every smaller box would fall to.
+    bool fits_at(int width_px, int height_px) const override;
     bool has_overlay_open() const override {
         return picker_.is_visible();
     }

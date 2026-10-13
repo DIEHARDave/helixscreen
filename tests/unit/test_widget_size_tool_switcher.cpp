@@ -208,9 +208,20 @@ TEST_CASE_METHOD(ToolSwitcherFixture,
     process_lvgl(30);
     CHECK(mode() == static_cast<int>(ToolSwitcherMode::Single));
 
-    // Every box has a mode, so no size is refused.
-    CHECK(h.widget().fits_at(4, 4));
     CHECK(h.widget().fits_at(800, 480));
+}
+
+TEST_CASE_METHOD(ToolSwitcherFixture,
+                 "tool_switcher: a tile fits only where its content box holds one touch target",
+                 "[widget_size][tool_switcher][1784]") {
+    configure_tools(4);
+    PanelWidgetHarness<ToolSwitcherWidget> h(test_screen(), state());
+    const int floor = resolve_px("touch_target_min", 48);
+    const auto [w, hpx] = tile_for_content(floor, floor);
+    CHECK(h.widget().fits_at(w, hpx));
+    CHECK_FALSE(h.widget().fits_at(w - 1, hpx));
+    CHECK_FALSE(h.widget().fits_at(w, hpx - 1));
+    CHECK_FALSE(h.widget().fits_at(4, 4));
 }
 
 TEST_CASE_METHOD(ToolSwitcherFixture,
@@ -631,11 +642,13 @@ TEST_CASE_METHOD(ToolSwitcherFixture,
     PanelWidgetHarness<ToolSwitcherWidget> h(test_screen(), state());
     process_lvgl(30);
 
-    // A wide rail: "Tool 1", with no G-code name under it.
+    // A wide rail: "Tool 1" over the G-code name the head answers to.
     resize_content(h, 600, 60);
     process_lvgl(30);
+    REQUIRE(subject_int("tool_switcher_label_form") == static_cast<int>(ui::ToolLabelForm::Full));
     CHECK(subject_string(seg(0, "label")) == "Tool 1");
-    CHECK(subject_string(seg(0, "sub")).empty());
+    CHECK(subject_string(seg(0, "sub")) == "T0");
+    CHECK(subject_string(seg(1, "sub")) == "T1");
 
     h.resize(2, 2, 60, 60);
     process_lvgl(30);

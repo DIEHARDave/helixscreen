@@ -195,10 +195,6 @@ const std::vector<KnownClip> kKnownClipping = {
 
     // Geometry-specific.
     {"ams",              "272x480"},
-    // Every box has a tool switcher mode, so one track is accepted; on the
-    // smallest panels that track is narrower than the compact readout.
-    {"tool_switcher",    "272x480"},
-    {"tool_switcher",    "480x272"},
 
     // The #icon_size cluster that used to live here - bed_temperature,
     // chamber_temperature, gcode_console, led, macros, motion, network at
