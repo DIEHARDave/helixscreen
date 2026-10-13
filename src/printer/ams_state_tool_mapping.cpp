@@ -95,8 +95,8 @@ std::vector<helix::AvailableSlot> AmsState::collect_available_slots() const {
         const AmsSystemInfo& info = *snapshot;
         bool multi_unit = info.units.size() > 1;
 
-        for (size_t ui = 0; ui < info.units.size(); ++ui) {
-            const AmsUnit& unit = info.units[ui];
+        for (size_t pos = 0; pos < info.units.size(); ++pos) {
+            const AmsUnit& unit = info.units[pos];
             if (unit.absent) {
                 continue;
             }
@@ -117,7 +117,7 @@ std::vector<helix::AvailableSlot> AmsState::collect_available_slots() const {
                 if (multi_unit) {
                     // The name the overview's unit card shows, so both surfaces agree.
                     as.unit_display_name =
-                        ams_draw::get_unit_display_name(unit, static_cast<int>(ui));
+                        ams_draw::get_unit_display_name(unit, static_cast<int>(pos));
                 }
                 slots.push_back(std::move(as));
             }
