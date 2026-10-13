@@ -364,6 +364,7 @@ void AmsState::clear_backends() {
     // Drop AMS-derived tool topology so the UI doesn't show stale tool pills
     // between backend disappearance and the next reconnect's init_tools().
     helix::ToolState::instance().clear_ams_topology();
+    helix::ToolState::instance().clear_backend_active_tool();
 
     // Clean up secondary slot subjects
     for (auto& subs : secondary_slot_subjects_) {
@@ -734,12 +735,24 @@ void AmsState::sync_system_subjects(const AmsSystemInfo& info) {
 void AmsState::sync_tool_topology(AmsBackend* backend) {
     // Push tool topology to ToolState when the active backend multiplexes tools.
     // Otherwise leave ToolState in its extruder-enumerated state.
+    auto& tool_state = helix::ToolState::instance();
     if (auto topo = helix::build_ams_topology(backend, 0)) {
-        helix::ToolState::instance().set_ams_topology(*topo);
-    } else if (helix::ToolState::instance().ams_topology_active()) {
+        tool_state.clear_backend_active_tool();
+        tool_state.set_ams_topology(*topo);
+        return;
+    }
+    if (tool_state.ams_topology_active()) {
         // Backend stopped multiplexing (e.g., AMS removed). Drop the override
         // so callers can rebuild tools_ from extruders.
-        helix::ToolState::instance().clear_ams_topology();
+        tool_state.clear_ams_topology();
+    }
+    // With no table the extruder enumeration stands, but a carriage that can
+    // be empty still needs the backend to say which head is mounted: the
+    // status frame names the last head used.
+    if (backend && backend->carriage_can_be_empty()) {
+        tool_state.set_backend_active_tool(backend->get_current_tool());
+    } else {
+        tool_state.clear_backend_active_tool();
     }
 }
 

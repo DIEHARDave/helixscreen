@@ -5,13 +5,19 @@
 #include "ui_update_queue.h"
 
 #include "ams_backend.h"
+#include "ams_backend_ace.h"
+#include "ams_backend_afc.h"
+#include "ams_backend_snapmaker.h"
 #include "ams_backend_toolchanger.h"
 #include "ams_state.h"
 #include "ams_tool_topology.h"
 #include "display_numbering.h"
 #include "lvgl_test_fixture.h"
+#include "printer_discovery.h"
 #include "static_subject_registry.h"
 #include "test_helpers/log_capture.h"
+#include "test_helpers/registered_backend.h"
+#include "test_helpers/snapmaker_test_access.h"
 #include "tool_state.h"
 
 #include <string>
@@ -798,4 +804,172 @@ TEST_CASE("A tool changer's topology allows an empty carriage",
     REQUIRE(topo.has_value());
     CHECK(topo->allows_empty_carriage);
     CHECK(topo->active_tool == -1);
+}
+
+// ============================================================================
+// A backend-owned active tool. A backend whose carriage can be empty but owns
+// no tool table still decides which head is mounted, because toolhead.extruder
+// names the last head used rather than a mounted one
+// (prestonbrown/helixscreen#1784).
+// ============================================================================
+
+namespace {
+
+struct BackendActiveToolFixture : public ToolStateFixture {
+    BackendActiveToolFixture() {
+        helix::AmsState::instance().init_subjects(/*register_xml=*/false);
+    }
+    ~BackendActiveToolFixture() override {
+        UpdateQueue::instance().drain();
+        helix::AmsState::instance().clear_backends();
+        helix::AmsState::instance().deinit_subjects();
+    }
+
+    static void init_tools_from(std::initializer_list<const char*> objects) {
+        helix::PrinterDiscovery hw;
+        hw.parse_objects(nlohmann::json(objects));
+        ToolState::instance().init_tools(hw);
+    }
+
+    // Production delivers one status frame to ToolState and to the backend,
+    // and AmsState syncs from the backend afterwards.
+    static void deliver(helix::AmsBackendSnapmaker& backend, const nlohmann::json& frame) {
+        ToolState::instance().update_from_status(frame);
+        helix::SnapmakerTestAccess::handle_status(backend, frame);
+        UpdateQueue::instance().drain();
+        helix::AmsState::instance().sync_from_backend();
+        UpdateQueue::instance().drain();
+    }
+};
+
+nlohmann::json u1_all_parked_frame() {
+    return {{"extruder", {{"state", "PARKED"}}},
+            {"extruder1", {{"state", "PARKED"}}},
+            {"extruder2", {{"state", "PARKED"}}},
+            {"extruder3", {{"state", "PARKED"}}},
+            {"toolhead", {{"extruder", "extruder2"}}}};
+}
+
+} // namespace
+
+TEST_CASE_METHOD(BackendActiveToolFixture,
+                 "An empty carriage reported by a table-less backend reaches ToolState",
+                 "[tool-state][tool_switcher][1784]") {
+    init_tools_from({"extruder", "extruder1", "extruder2", "extruder3", "toolchanger",
+                     "filament_detect", "toolhead", "heater_bed", "print_task_config"});
+    REQUIRE(ToolState::instance().tool_count() == 4);
+
+    helix::test::RegisteredBackend<helix::AmsBackendSnapmaker> backend(nullptr, nullptr);
+    REQUIRE_FALSE(backend->owns_tool_mapping_table());
+
+    deliver(*backend, nlohmann::json{{"toolhead", {{"extruder", "extruder2"}}}});
+    REQUIRE(ToolState::instance().active_tool_index() == 2);
+
+    deliver(*backend, u1_all_parked_frame());
+    CHECK(ToolState::instance().active_tool_index() == -1);
+    CHECK(lv_subject_get_int(ToolState::instance().get_active_tool_subject()) == -1);
+    CHECK(ToolState::instance().active_tool() == nullptr);
+
+    // toolhead.extruder arriving again on its own does not remount T2.
+    ToolState::instance().update_from_status(
+        nlohmann::json{{"toolhead", {{"extruder", "extruder2"}}}});
+    CHECK(ToolState::instance().active_tool_index() == -1);
+
+    deliver(*backend, nlohmann::json{{"extruder1", {{"state", "ACTIVE"}, {"active_pin", true}}},
+                                     {"toolhead", {{"extruder", "extruder1"}}}});
+    CHECK(ToolState::instance().active_tool_index() == 1);
+}
+
+TEST_CASE_METHOD(BackendActiveToolFixture,
+                 "Parking the mounted head on its own empties the carriage in ToolState",
+                 "[tool-state][tool_switcher][1784]") {
+    init_tools_from({"extruder", "extruder1", "extruder2", "extruder3", "toolchanger",
+                     "filament_detect", "toolhead", "heater_bed", "print_task_config"});
+    helix::test::RegisteredBackend<helix::AmsBackendSnapmaker> backend(nullptr, nullptr);
+
+    deliver(*backend, nlohmann::json{{"toolhead", {{"extruder", "extruder2"}}}});
+    REQUIRE(ToolState::instance().active_tool_index() == 2);
+
+    deliver(*backend, nlohmann::json{{"extruder2", {{"state", "PARKED"}}}});
+    CHECK(ToolState::instance().active_tool_index() == -1);
+}
+
+TEST_CASE_METHOD(BackendActiveToolFixture,
+                 "Dropping the backend hands the active tool back to toolhead.extruder",
+                 "[tool-state][tool_switcher][1784]") {
+    init_tools_from({"extruder", "extruder1", "extruder2", "extruder3", "toolchanger",
+                     "filament_detect", "toolhead", "heater_bed", "print_task_config"});
+    {
+        helix::test::RegisteredBackend<helix::AmsBackendSnapmaker> backend(nullptr, nullptr);
+        deliver(*backend, u1_all_parked_frame());
+        REQUIRE(ToolState::instance().active_tool_index() == -1);
+    }
+    // No backend reports an empty carriage now, so T0 holds the head until a
+    // frame names one.
+    CHECK_FALSE(ToolState::instance().backend_owns_active_tool());
+    CHECK(ToolState::instance().active_tool_index() == 0);
+
+    ToolState::instance().update_from_status(
+        nlohmann::json{{"toolhead", {{"extruder", "extruder3"}}}});
+    CHECK(ToolState::instance().active_tool_index() == 3);
+}
+
+TEST_CASE_METHOD(BackendActiveToolFixture,
+                 "A table-less backend whose carriage cannot be empty leaves toolhead.extruder "
+                 "in charge",
+                 "[tool-state][tool_switcher][1784]") {
+    init_tools_from({"extruder", "extruder1", "toolhead", "heater_bed"});
+    REQUIRE(ToolState::instance().tool_count() == 2);
+
+    helix::test::RegisteredBackend<helix::AmsBackendAce> backend(nullptr, nullptr);
+    REQUIRE_FALSE(backend->owns_tool_mapping_table());
+    REQUIRE_FALSE(backend->carriage_can_be_empty());
+    REQUIRE(backend->get_current_tool() == -1);
+
+    ToolState::instance().update_from_status(
+        nlohmann::json{{"toolhead", {{"extruder", "extruder1"}}}});
+    helix::AmsState::instance().sync_from_backend();
+    UpdateQueue::instance().drain();
+    CHECK(ToolState::instance().active_tool_index() == 1);
+}
+
+TEST_CASE_METHOD(BackendActiveToolFixture,
+                 "A backend whose carriage cannot be empty reporting no tool leaves T0 mounted",
+                 "[tool-state][tool_switcher][1784]") {
+    init_tools_from({"extruder", "extruder1", "toolhead", "heater_bed"});
+    helix::test::RegisteredBackend<helix::AmsBackendAce> backend(nullptr, nullptr);
+    REQUIRE_FALSE(backend->carriage_can_be_empty());
+    REQUIRE(backend->get_current_tool() == -1);
+
+    helix::AmsState::instance().sync_from_backend();
+    UpdateQueue::instance().drain();
+    CHECK(ToolState::instance().active_tool_index() == 0);
+    CHECK(lv_subject_get_int(ToolState::instance().get_active_tool_subject()) == 0);
+    CHECK_FALSE(ToolState::instance().backend_owns_active_tool());
+}
+
+TEST_CASE_METHOD(BackendActiveToolFixture,
+                 "A park split across two frames empties the carriage in ToolState",
+                 "[tool-state][tool_switcher][1784]") {
+    init_tools_from({"extruder", "extruder1", "extruder2", "extruder3", "toolchanger",
+                     "filament_detect", "toolhead", "heater_bed", "print_task_config"});
+    helix::test::RegisteredBackend<helix::AmsBackendSnapmaker> backend(nullptr, nullptr);
+
+    deliver(*backend, nlohmann::json{{"extruder2", {{"state", "ACTIVE"}, {"active_pin", true}}},
+                                     {"toolhead", {{"extruder", "extruder2"}}}});
+    REQUIRE(ToolState::instance().active_tool_index() == 2);
+
+    deliver(*backend, nlohmann::json{{"extruder2", {{"state", "PARKED"}, {"active_pin", true}}}});
+    REQUIRE(ToolState::instance().active_tool_index() == 2);
+    deliver(*backend, nlohmann::json{{"extruder2", {{"active_pin", false}}}});
+    CHECK(ToolState::instance().active_tool_index() == -1);
+}
+
+TEST_CASE("A lane backend's topology does not allow an empty carriage",
+          "[tool-state][ams-topology][tool_switcher][1784]") {
+    helix::AmsBackendAfc afc(nullptr, nullptr);
+    REQUIRE(afc.owns_tool_mapping_table());
+    auto topo = helix::build_ams_topology(&afc, 0);
+    REQUIRE(topo.has_value());
+    CHECK_FALSE(topo->allows_empty_carriage);
 }

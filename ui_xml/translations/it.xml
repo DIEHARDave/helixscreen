@@ -479,6 +479,7 @@
   <translation tag="Cannot delete file: printer not connected" it="Impossibile eliminare file: stampante non connessa"/>
   <translation tag="Cannot modify G-code: no temp directory available" it="Impossibile modificare G-code: directory temporanea non disponibile"/>
   <translation tag="Cannot modify G-code: scan result not available" it="Impossibile modificare G-code: risultato scansione non disponibile"/>
+  <translation tag="Cannot park while a print is active" it="Impossibile parcheggiare durante una stampa in corso"/>
   <translation tag="Cannot perform this action now" it="Impossibile eseguire questa azione ora"/>
   <translation tag="Cannot remap G-code: no temp directory available" it="Impossibile rimappare G-code: directory temporanea non disponibile"/>
   <translation tag="Cannot remap: internal error" it="Impossibile rimappare: errore interno"/>
@@ -491,6 +492,8 @@
   <translation tag="Cannot start print: printer is {}" it="Impossibile avviare stampa: stampante è {}"/>
   <translation tag="Cannot unload while a print is active" it="Impossibile scaricare durante una stampa in corso"/>
   <translation tag="Capabilities: " it="Funzionalità: "/>
+  <translation tag="Carriage empty" it="Carrello vuoto"/>
+  <translation tag="Carriage empty · tap a head" it="Carrello vuoto · tocca una testina"/>
   <translation tag="Cartographer scan calibrate sent — use Z-Offset panel to adjust" it="Cartographer calibrazione scansione inviata — usa il pannello Z-Offset per regolare"/>
   <translation tag="Cartographer touch calibrate sent" it="Cartographer calibrazione touch inviata"/>
   <translation tag="Category" it="Categoria"/>
@@ -567,6 +570,7 @@
   <translation tag="Choose Model" it="Scegli modello"/>
   <translation tag="Choose an existing filament, or tap + New to create one." it="Scegli un filamento esistente, o tocca + Nuovo per crearne uno."/>
   <translation tag="Choose display language" it="Scegli lingua di visualizzazione"/>
+  <translation tag="Choose head" it="Scegli testina"/>
   <translation tag="Choose how frames are captured during printing" it="Scegli come vengono catturati i fotogrammi durante la stampa"/>
   <translation tag="Choose rendering mode for G-code visualization" it="Scegli modalità di rendering per visualizzazione G-code"/>
   <translation tag="Choose rendering mode for bed mesh visualization" it="Scegli modalità di rendering per visualizzazione mesh piano"/>
@@ -2126,6 +2130,7 @@
   <translation tag="Park" it="Parcheggia"/>
   <translation tag="Park Toolhead" it="Parcheggia la testina"/>
   <translation tag="Park the AFC system" it="Parcheggia il sistema AFC"/>
+  <translation tag="Parking toolhead" it="Parcheggio della testina"/>
   <translation tag="Part" it="Pezzo"/>
   <translation tag="Part Cooling Fan" it="Ventola raffreddamento pezzo"/>
   <translation tag="Part Fan" it="Ventola pezzo"/>
@@ -3596,6 +3601,7 @@
   <translation tag="wpa_supplicant is not running. WiFi features unavailable." it="wpa_supplicant non è in esecuzione. Le funzioni WiFi non sono disponibili."/>
   <translation tag="you have" it="hai"/>
   <translation tag="{:.0f}-{:.0f} Hz · about {} min" it="{:.0f}-{:.0f} Hz · circa {} min"/>
+  <translation tag="{} ({})" it="{} ({})"/>
   <translation tag="{} Hardware Issues" it="{} problemi hardware"/>
   <translation tag="{} Issues Detected" it="{} problemi rilevati"/>
   <translation tag="{} LED strips available" it="{} strisce LED disponibili"/>
@@ -3650,6 +3656,8 @@
   <translation tag="{} updated" it="Aggiornamento di {}"/>
   <translation tag="{} widgets" it="{} widget"/>
   <translation tag="{} will switch to a slot whose filament type AND colour both match the active spool and whose own port sensor reads filament present." it="{} passerà a uno slot il cui tipo di filamento E colore corrispondono entrambi alla bobina attiva e il cui sensore di porta rileva filamento presente."/>
+  <translation tag="{} · {}" it="{} · {}"/>
+  <translation tag="{} · {} · {}" it="{} · {} · {}"/>
   <translation tag="{} — response timed out" it="{} — tempo scaduto"/>
   <translation tag="{} → {}: no filament loaded." it="{} → {}: nessun filamento caricato."/>
   <translation tag="{}:{:02} elapsed" it="{}:{:02} trascorso"/>

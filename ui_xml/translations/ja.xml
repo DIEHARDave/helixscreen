@@ -479,6 +479,7 @@
   <translation tag="Cannot delete file: printer not connected" ja="ファイルを削除できません: プリンター未接続"/>
   <translation tag="Cannot modify G-code: no temp directory available" ja="G-code を変更できません: 一時ディレクトリがありません"/>
   <translation tag="Cannot modify G-code: scan result not available" ja="G-code を変更できません: スキャン結果がありません"/>
+  <translation tag="Cannot park while a print is active" ja="印刷中はパーキングできません"/>
   <translation tag="Cannot perform this action now" ja="現在この操作は実行できません"/>
   <translation tag="Cannot remap G-code: no temp directory available" ja="G-codeをリマップできません: 一時ディレクトリが利用できません"/>
   <translation tag="Cannot remap: internal error" ja="リマップできません: 内部エラー"/>
@@ -491,6 +492,8 @@
   <translation tag="Cannot start print: printer is {}" ja="印刷を開始できません: プリンターは {} 状態です"/>
   <translation tag="Cannot unload while a print is active" ja="印刷中は排出できません"/>
   <translation tag="Capabilities: " ja="機能: "/>
+  <translation tag="Carriage empty" ja="キャリッジが空"/>
+  <translation tag="Carriage empty · tap a head" ja="キャリッジが空 · ヘッドをタップ"/>
   <translation tag="Cartographer scan calibrate sent — use Z-Offset panel to adjust" ja="Cartographerスキャンキャリブレーション送信済み — Z-Offsetパネルで調整してください"/>
   <translation tag="Cartographer touch calibrate sent" ja="Cartographerタッチキャリブレーション送信済み"/>
   <translation tag="Category" ja="カテゴリー"/>
@@ -567,6 +570,7 @@
   <translation tag="Choose Model" ja="モデルを選択"/>
   <translation tag="Choose an existing filament, or tap + New to create one." ja="既存のフィラメントを選択するか、+ 新規をタップして作成してください。"/>
   <translation tag="Choose display language" ja="表示言語を選択"/>
+  <translation tag="Choose head" ja="ヘッドを選択"/>
   <translation tag="Choose how frames are captured during printing" ja="印刷中のフレームキャプチャ方法を選択"/>
   <translation tag="Choose rendering mode for G-code visualization" ja="G-codeの視覚化レンダリングモードを選択"/>
   <translation tag="Choose rendering mode for bed mesh visualization" ja="ベッドメッシュの視覚化レンダリングモードを選択"/>
@@ -2126,6 +2130,7 @@
   <translation tag="Park" ja="パーキング"/>
   <translation tag="Park Toolhead" ja="ツールヘッドをパーキング"/>
   <translation tag="Park the AFC system" ja="AFCシステムをパーキング"/>
+  <translation tag="Parking toolhead" ja="ツールヘッドをパーキング中"/>
   <translation tag="Part" ja="パーツ"/>
   <translation tag="Part Cooling Fan" ja="パーツ冷却ファン"/>
   <translation tag="Part Fan" ja="パーツファン"/>
@@ -3596,6 +3601,7 @@
   <translation tag="wpa_supplicant is not running. WiFi features unavailable." ja="wpa_supplicant が動作していません。WiFi 機能は利用できません。"/>
   <translation tag="you have" ja="現在は"/>
   <translation tag="{:.0f}-{:.0f} Hz · about {} min" ja="{:.0f}-{:.0f} Hz · 約{}分"/>
+  <translation tag="{} ({})" ja="{}（{}）"/>
   <translation tag="{} Hardware Issues" ja="ハードウェアの問題 {} 件"/>
   <translation tag="{} Issues Detected" ja="問題を {} 件検出"/>
   <translation tag="{} LED strips available" ja="{} 個の LED ストリップが利用可能です"/>
@@ -3650,6 +3656,8 @@
   <translation tag="{} updated" ja="{} を更新しました"/>
   <translation tag="{} widgets" ja="ウィジェット {} 個"/>
   <translation tag="{} will switch to a slot whose filament type AND colour both match the active spool and whose own port sensor reads filament present." ja="{} は、フィラメントの種類と色の両方がアクティブなスプールと一致し、かつ自身のポートセンサーがフィラメントを検知しているスロットに切り替えます。"/>
+  <translation tag="{} · {}" ja="{} · {}"/>
+  <translation tag="{} · {} · {}" ja="{} · {} · {}"/>
   <translation tag="{} — response timed out" ja="{} — 応答タイムアウト"/>
   <translation tag="{} → {}: no filament loaded." ja="{} → {}: フィラメントが装填されていません。"/>
   <translation tag="{}:{:02} elapsed" ja="経過 {}:{:02}"/>

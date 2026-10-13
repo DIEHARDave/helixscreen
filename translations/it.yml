@@ -525,6 +525,7 @@ translations:
     directory temporanea non disponibile'
   'Cannot modify G-code: scan result not available': 'Impossibile modificare G-code:
     risultato scansione non disponibile'
+  Cannot park while a print is active: 'Impossibile parcheggiare durante una stampa in corso'
   Cannot perform this action now: Impossibile eseguire questa azione ora
   'Cannot remap G-code: no temp directory available': 'Impossibile rimappare G-code:
     directory temporanea non disponibile'
@@ -540,6 +541,8 @@ translations:
   Cannot save offsets while printing: Impossibile salvare gli offset durante la stampa
   Cannot unload while a print is active: Impossibile scaricare durante una stampa in corso
   'Capabilities: ': 'Funzionalità: '
+  Carriage empty: Carrello vuoto
+  Carriage empty · tap a head: 'Carrello vuoto · tocca una testina'
   Cartographer scan calibrate sent — use Z-Offset panel to adjust: Cartographer calibrazione
     scansione inviata — usa il pannello Z-Offset per regolare
   Cartographer touch calibrate sent: Cartographer calibrazione touch inviata
@@ -624,6 +627,7 @@ translations:
   Choose an existing filament, or tap + New to create one.: Scegli un filamento esistente,
     o tocca + Nuovo per crearne uno.
   Choose display language: Scegli lingua di visualizzazione
+  Choose head: Scegli testina
   Choose how frames are captured during printing: Scegli come vengono catturati i
     fotogrammi durante la stampa
   Choose rendering mode for G-code visualization: Scegli modalità di rendering per
@@ -2346,6 +2350,7 @@ translations:
   Park: 'Parcheggia'
   Park the AFC system: 'Parcheggia il sistema AFC'
   Park Toolhead: 'Parcheggia la testina'
+  Parking toolhead: 'Parcheggio della testina'
   Part: Pezzo
   Part Cooling Fan: Ventola raffreddamento pezzo
   Part Fan: Ventola pezzo
@@ -4025,6 +4030,7 @@ translations:
   wpa_supplicant is not running. WiFi features unavailable.: wpa_supplicant non è in esecuzione. Le funzioni WiFi non sono disponibili.
   you have: hai
   '{:.0f}-{:.0f} Hz · about {} min': '{:.0f}-{:.0f} Hz · circa {} min'
+  '{} ({})': '{} ({})'
   '{} Hardware Issues': '{} problemi hardware'
   '{} Issues Detected': '{} problemi rilevati'
   '{} LED strips available': '{} strisce LED disponibili'
@@ -4081,6 +4087,8 @@ translations:
   '{} widgets': '{} widget'
   ? '{} will switch to a slot whose filament type AND colour both match the active spool and whose own port sensor reads filament present.'
   : '{} passerà a uno slot il cui tipo di filamento E colore corrispondono entrambi alla bobina attiva e il cui sensore di porta rileva filamento presente.'
+  '{} · {}': '{} · {}'
+  '{} · {} · {}': '{} · {} · {}'
   '{} — response timed out': '{} — tempo scaduto'
   '{} → {}: no filament loaded.': '{} → {}: nessun filamento caricato.'
   '{}:{:02} elapsed': '{}:{:02} trascorso'

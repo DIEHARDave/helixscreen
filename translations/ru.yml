@@ -520,6 +520,7 @@ translations:
     временная директория недоступна'
   'Cannot modify G-code: scan result not available': 'Невозможно изменить G-code:
     результат сканирования недоступен'
+  Cannot park while a print is active: 'Нельзя припарковать во время печати'
   Cannot perform this action now: Сейчас это действие выполнить нельзя
   'Cannot remap G-code: no temp directory available': 'Не удалось переназначить G-code:
     нет доступной временной директории'
@@ -535,6 +536,8 @@ translations:
   Cannot save offsets while printing: Нельзя сохранить смещения во время печати
   Cannot unload while a print is active: Нельзя выгрузить во время печати
   'Capabilities: ': 'Возможности: '
+  Carriage empty: Каретка пуста
+  Carriage empty · tap a head: 'Каретка пуста · выберите головку'
   Cartographer scan calibrate sent — use Z-Offset panel to adjust: Cartographer сканирующая
     калибровка отправлена — используйте панель Z-Offset для настройки
   Cartographer touch calibrate sent: Cartographer тактильная калибровка отправлена
@@ -619,6 +622,7 @@ translations:
   Choose an existing filament, or tap + New to create one.: Выберите существующий
     филамент или нажмите + Новый, чтобы создать.
   Choose display language: Выберите язык интерфейса
+  Choose head: Выберите головку
   Choose how frames are captured during printing: Выберите способ захвата кадров во
     время печати
   Choose rendering mode for G-code visualization: Выберите режим рендеринга для визуализации
@@ -2325,6 +2329,7 @@ translations:
   Park: 'Парковка'
   Park the AFC system: 'Припарковать систему AFC'
   Park Toolhead: 'Припарковать печатающую головку'
+  Parking toolhead: 'Парковка печатающей головки'
   Part: Деталь
   Part Cooling Fan: Вентилятор охлаждения детали
   Part Fan: Вент. детали
@@ -3982,6 +3987,7 @@ translations:
   wpa_supplicant is not running. WiFi features unavailable.: wpa_supplicant не запущен. Функции WiFi недоступны.
   you have: у вас
   '{:.0f}-{:.0f} Hz · about {} min': '{:.0f}-{:.0f} Гц · примерно {} мин'
+  '{} ({})': '{} ({})'
   '{} Hardware Issues': 'Проблем с оборудованием: {}'
   '{} Issues Detected': 'Обнаружено проблем: {}'
   '{} LED strips available': 'Доступно светодиодных лент: {}'
@@ -4038,6 +4044,8 @@ translations:
   '{} widgets': 'Виджетов: {}'
   ? '{} will switch to a slot whose filament type AND colour both match the active spool and whose own port sensor reads filament present.'
   : '{} переключится на слот, у которого тип филамента И цвет совпадают с активной катушкой, а собственный датчик порта видит филамент.'
+  '{} · {}': '{} · {}'
+  '{} · {} · {}': '{} · {} · {}'
   '{} — response timed out': '{} — время ожидания ответа истекло'
   '{} → {}: no filament loaded.': '{} → {}: филамент не загружен.'
   '{}:{:02} elapsed': прошло {}:{:02}

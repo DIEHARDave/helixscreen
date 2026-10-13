@@ -6,20 +6,28 @@
 
 #include "ams_error.h"
 #include "async_lifetime_guard.h"
+#include "display_numbering.h"
 #include "src/ui/panel_widgets/tiled_panel_widget.h"
+#include "src/ui/panel_widgets/tool_switcher_layout.h"
 #include "subject_managed_panel.h"
 
-#include <cstdint>
 #include <memory>
+#include <string>
 #include <vector>
 
 namespace helix {
 
 class PrinterState;
 class ToolSwitcherTestAccess;
+struct ToolInfo;
 
 class ToolSwitcherWidget : public TiledPanelWidget {
   public:
+    /// Heads the per-head subject pools hold. Every pool is sized to this
+    /// when the subjects are registered, before any XML binds a row; a printer
+    /// with more heads reaches the rest through the picker.
+    static constexpr int kPoolSize = 16;
+
     explicit ToolSwitcherWidget(PrinterState& printer_state);
     ~ToolSwitcherWidget() override;
 
@@ -29,11 +37,9 @@ class ToolSwitcherWidget : public TiledPanelWidget {
         return "tool_switcher";
     }
     void on_size_changed(int colspan, int rowspan, int width_px, int height_px) override;
-    /// Pills lay themselves out in any box they are given; the compact form
-    /// is a sized tile and refuses what TileSizing cannot draw.
-    bool fits_at(int width_px, int height_px) const override {
-        return !is_compact_at(width_px, height_px) || sizing_.fits(width_px, height_px);
-    }
+    /// Whether the content box (the tile less space_md each side) holds one
+    /// touch target on both axes: the face every smaller box would fall to.
+    bool fits_at(int width_px, int height_px) const override;
     bool has_overlay_open() const override {
         return picker_.is_visible();
     }
@@ -44,8 +50,9 @@ class ToolSwitcherWidget : public TiledPanelWidget {
   private:
     friend class ToolSwitcherTestAccess;
 
-    /// Single-select list of the printer's tools, raised by a tap on the compact
-    /// tile. Picking a row issues the change; a tap outside it chooses nothing.
+    /// Single-select list of the printer's tools and Park, raised by a tap on
+    /// the face or the mounted segment. Picking a row issues the change; a tap
+    /// outside it chooses nothing.
     class ToolPicker : public helix::ui::ContextMenu {
         HELIX_CONTEXT_MENU_KIND(ToolPicker)
 
@@ -62,40 +69,43 @@ class ToolSwitcherWidget : public TiledPanelWidget {
         ToolSwitcherWidget& owner_;
     };
 
+    /// One head's extruder temperature, observed for the segment and detail text.
+    struct HeadTemp {
+        // The lifetime is declared before the observer so the observer is
+        // destroyed first, while the subject it removes itself from still lives.
+        SubjectLifetime lifetime;
+        ObserverGuard observer;
+        int deci = 0;
+        bool known = false;
+    };
+
     PrinterState& printer_state_;
     lv_obj_t* widget_obj_ = nullptr;
     lv_obj_t* parent_screen_ = nullptr;
     ToolPicker picker_{*this};
-    /// Compact-mode tool label. Held so the print gate can grey it without
-    /// re-running the whole rebuild; nulled by rebuild_pills() and detach().
-    lv_obj_t* compact_label_ = nullptr;
 
     // Physical size the widget was last granted, cached for observer paths
     // (tool_count_observer_, on_active_tool_changed()) that fire later and
-    // need to know which layout is currently built without a size to read.
+    // need to re-decide without a size to read.
     int current_width_px_ = 0;
     int current_height_px_ = 0;
+
+    /// The verdict last published, and the label form the segments read in.
+    ToolSwitcherLayout layout_{};
+    ui::ToolLabelForm label_form_ = ui::ToolLabelForm::Full;
+
+    /// Indexed by tool, sized to the tool count; rebuilt when it changes.
+    std::vector<HeadTemp> head_temps_;
+    /// Each head's material as publish_heads() last read it from its slot, so
+    /// a temperature change rewrites a detail line without reading the slots.
+    std::vector<std::string> head_materials_;
 
     ObserverGuard active_tool_observer_;
     ObserverGuard tool_count_observer_;
     ObserverGuard print_state_observer_;
-
-    std::vector<lv_obj_t*> pill_buttons_;
-
-    // Grid layout descriptors for multi-row pill layout. LVGL stores these
-    // pointers (no copy), so the backing arrays must outlive the layout.
-    std::vector<int32_t> grid_col_dsc_;
-    std::vector<int32_t> grid_row_dsc_;
-
-    // tool_switcher_container, cached so teardown can strip its grid layout:
-    // LVGL keeps pointers into grid_col_dsc_/grid_row_dsc_ rather than copies.
-    lv_obj_t* pill_container_ = nullptr;
-
-    /// 1 while the compact form is shown; XML hides the other form.
-    lv_subject_t compact_subject_{};
-    lv_subject_t active_label_subject_{};
-    char active_label_buf_[32] = {};
-    SubjectManager subjects_;
+    ObserverGuard spool_latch_observer_;
+    ObserverGuard slots_observer_;
+    ObserverGuard extruders_observer_;
 
     // MUST stay declared LAST: reverse-declaration destruction makes this the
     // first member torn down, invalidating every captured token before any
@@ -105,39 +115,52 @@ class ToolSwitcherWidget : public TiledPanelWidget {
     // (commit 45abc8c2a, bundle AX3CKAKB).
     helix::AsyncLifetimeGuard lifetime_;
 
-    void rebuild_pills();
-    void rebuild_compact();
     void show_tool_picker();
     void handle_tool_selected(int tool_index);
+    /// A rail segment's tap: mount that head, or raise the sheet when it is
+    /// the mounted one.
+    void handle_segment_tapped(int tool_index);
 
-    /// Null every cached widget pointer (pills, compact label, container
-    /// hooks, tile root) without touching observers or the widget tree.
-    /// Shared by detach() and the raw-delete hook.
+    /// Null every cached widget pointer without touching observers or the
+    /// widget tree. Shared by detach() and the raw-delete hook.
     void forget_tile_widgets();
 
     void on_hooked_root_deleted() override;
 
-    // Layout predicates over the cached granted size — shared by the readers
-    // that fire from on_size_changed() itself and the ones that fire later
-    // from observers (tool_count_observer_, on_active_tool_changed()).
-    bool is_compact_size() const;
-    /// Pills show only when every pill fits legibly in this box; otherwise the
-    /// compact form does.
-    static bool is_compact_at(int width_px, int height_px);
+    /// Measure the cached box, decide, and publish everything the XML binds.
+    void publish();
+    /// The mode and geometry for the cached box, and the label form the
+    /// segments or face have room for.
+    void publish_layout();
+    /// Every head's segment text and colour, the detail rows, the face and
+    /// whether the cells hold a second line, from ToolState, the filament
+    /// system and the temperatures.
+    void publish_heads();
+    /// Head @p i's new temperature: its segment's temperature (and second
+    /// line in the Code form), its detail line, the face's second line when
+    /// it is mounted, and whether the second lines still fit. Labels, colours
+    /// and materials keep what publish_heads() last published.
+    void publish_head_temp(int i);
+    /// Whether every cell shown holds its second line.
+    void publish_two_line();
+    /// Observe each head's extruder temperature; the set follows the tools.
+    void rebuild_head_temps();
+    /// Head @p i's temperature, empty while unknown.
+    std::string head_temp_text(int i) const;
+    /// Whether head @p i reads hot.
+    bool head_hot(int i) const;
+    /// @p tool's detail line: its name, material and temperature, in the full
+    /// form for the @p main line where the content box has room for it.
+    std::string detail_head_text(const ToolInfo& tool, bool main) const;
 
-    /// Columns and rows of equal pill cells; zero when no arrangement fits.
-    struct PillGrid {
-        int cols = 0;
-        int rows = 0;
-        bool fits() const {
-            return cols > 0;
-        }
-    };
-    /// The arrangement of equal cells, each holding the widest tool label
-    /// legibly in a width_px x height_px tile, whose cells are squarest.
-    static PillGrid pill_grid_at(int width_px, int height_px);
-    /// Budget the compact value at the widest label any tool carries.
-    void refresh_label_budget();
+    /// @p tool's label in @p form, in the connected printer's tool noun.
+    static std::string tool_text(const ToolInfo& tool, ui::ToolLabelForm form);
+    /// What a wide segment calls @p tool: its configured name, else "Tool 1".
+    static std::string name_text(const ToolInfo& tool);
+    /// What a narrow segment calls @p tool: the name it answers to in G-code
+    /// and in the slicer, configured name or not. The sheet's G-code form, so
+    /// the rail and the sheet never name one head two ways.
+    static std::string short_text(const ToolInfo& tool);
     void on_active_tool_changed(int tool_index);
 
     /**
@@ -155,17 +178,34 @@ class ToolSwitcherWidget : public TiledPanelWidget {
      */
     [[nodiscard]] AmsError tool_change_refusal() const;
 
-    /// Grey the pills / compact label whenever tool_change_refusal() refuses.
-    /// Called from both rebuild paths and from the print-state observer, so a
-    /// recycled instance re-applies it on attach as well as on state change.
+    /// Publish tool_switcher_change_blocked: tool_change_refusal(), or spools
+    /// on the bed. Called from publish() and the print-state and latch
+    /// observers, so a recycled instance re-applies it on attach as well as on
+    /// state change.
     void refresh_print_gating();
 
     /// Issue the change and report any refusal. Static so the confirmation
     /// modal's stateless event callback shares the one on_error path.
     static void dispatch_tool_change(int tool_index);
 
+    /// Whether spools lying on the bed refuse every move, telling the user so
+    /// when they do. The tile is disabled then too; this catches the tap that
+    /// lands first.
+    [[nodiscard]] bool refuse_while_spools_on_bed() const;
+
+    /// Whether the connected backend can dock the mounted tool, which is what
+    /// puts a Park action beside the tools.
+    static bool park_offered();
+    /// Publish park_offered() for the picker's Park row.
+    void refresh_park_support();
+    /// Dock the mounted tool, refusing while a print holds the machine or
+    /// nothing is mounted. Every Park tap lands here.
+    void handle_park_requested();
+
   public:
-    static void tool_compact_cb(lv_event_t* e);
+    static void tool_segment_cb(lv_event_t* e);
+    static void tool_face_cb(lv_event_t* e);
+    static void tool_park_cb(lv_event_t* e);
 };
 
 void register_tool_switcher_widget();

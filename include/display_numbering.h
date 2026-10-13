@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <functional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -46,16 +47,56 @@ std::string tool_label(int gcode_tool);
 bool is_generated_tool_name(std::string_view name);
 
 /**
- * @brief The closed tool dropdown's label for the tool at @p index.
+ * @brief What the tool at @p index is called on the machine.
  *
- * A generated "T<n>" name collapses to its 1-based display number ("4"); a
- * configured name is the machine's physical label and is shown verbatim
- * ("Left"). The open list keeps the full display_label ("Tool 4 · Left"), so
- * the closed control stays narrow without losing the chosen name.
+ * A configured name ("Left") is the machine's physical label and is returned
+ * verbatim; a generated "T<n>" name gets the physical position ("Tool 1").
+ * Neither carries the G-code name: tool_label_in_form() adds that.
  *
+ * @param noun what the printer calls a tool (active_tool_noun()): "Toolhead 1" on a U1
  * @return empty when @p index is negative
  */
-std::string tool_short_label(std::string_view name, int index);
+std::string tool_name_label(LaneNoun noun, std::string_view name, int index);
+
+/**
+ * @brief How much of a tool's identity a label spells.
+ *
+ * Klipper and every slicer count tools from T0, while the machine is labeled
+ * from 1. A generated name gets both when there is room, so neither number
+ * reads as the other's mistake; a narrow box gets the G-code name alone, the
+ * one a user can type.
+ */
+enum class ToolLabelForm {
+    Full, ///< "Tool 1 (T0)": the physical label with the G-code name it answers to
+    Code, ///< "T0": the G-code name alone
+};
+
+/// Every ToolLabelForm, most informative first: the order a caller tries them in.
+inline constexpr ToolLabelForm kToolLabelForms[] = {ToolLabelForm::Full, ToolLabelForm::Code};
+
+/**
+ * @brief The label for the tool at @p index in @p form.
+ *
+ * Full is tool_name_label() beside the G-code name: "Tool 1 (T0)" for a
+ * generated name, "Left (T0)" for a configured one. Code is the G-code name
+ * alone ("T0"), configured name or not.
+ *
+ * @param noun what the printer calls a tool (active_tool_noun()): "Toolhead 1 (T0)" on a U1
+ * @return empty when @p index is negative
+ */
+std::string tool_label_in_form(LaneNoun noun, std::string_view name, int index, ToolLabelForm form);
+
+/**
+ * @brief The most informative form @p fits accepts.
+ *
+ * Callers measure differently (a pill grid, a list row), so each supplies its
+ * own fit test and this owns the preference order. Every caller labels all its
+ * tools in one form, so a row of pills never mixes "Tool 1 (T0)" with "T1".
+ *
+ * @return the first form in kToolLabelForms that @p fits accepts, else Code:
+ *         a label has to say something, and Code is the shortest
+ */
+ToolLabelForm pick_tool_label_form(const std::function<bool(ToolLabelForm)>& fits);
 
 /**
  * @brief Convert a storage index to the number a user sees.

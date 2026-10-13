@@ -314,6 +314,34 @@ which returns a `CalloutMode`, the image rect, and each chip's rect and leader l
   one that cannot be read, or moved, is never written over. Save and Reset tags bump
   `PrinterImageManager::notify_image_changed()`, which relayouts the widget.
 
+### The tool switcher instance
+
+`ToolSwitcherWidget` (`src/ui/panel_widgets/tool_switcher_widget.{h,cpp}`) runs the
+pattern with touch size as the constraint instead of text width
+(prestonbrown/helixscreen#1784). The pure decision is `helix::decide_tool_switcher_layout()`
+(`src/ui/panel_widgets/tool_switcher_layout.h`): from the content box (the tile less
+`#space_md` each side), the head count, the `#touch_target_min` floor (48 px), the 2 px
+cell gap, the body and small line heights and whether the backend can park, it returns a
+`ToolSwitcherLayout` whose mode is the first that fits: a segment per head plus Park
+(`RailWithPark`), a segment per head (`Rail`), the mounted head's face beside Park
+(`Pair`), or the face alone (`Single`). Every cell it hands back clears the floor on both
+axes, and `fits_at()` refuses a tile whose content box cannot hold one face, so no size
+draws a target a finger cannot hit. The widget publishes the verdict as
+`tool_switcher_mode` (the `ToolSwitcherMode` ints), `_cols`, `_rows`, `_cell_w`,
+`_cell_h`, `_rail_h`, `_detail` and `_two_line`, plus per-head pools (`tool_switcher_seg_<i>_*`)
+and the face's text (`tool_switcher_face_label`, `_sub`, `_color`, `_has_color`), and the
+XML (`ui_xml/components/panel_widget_tool_switcher.xml`) sizes segments with
+`bind_style_prop` off `_cell_w`/`_cell_h`. The face sizes itself off `tool_switcher_face_w`
+and `tool_switcher_face_h`: its cell along a `Pair`'s long axis, the whole view across it.
+Colour strips are `tool_switcher_strip_h` on a segment or the face, from the cell height,
+and `tool_switcher_row_strip_h` on a sheet row, from the 48 px `#touch_target_min` floor
+every row clears. The sheet (`ToolSwitcherWidget::ToolPicker`,
+`ui_xml/tool_switcher_picker.xml`) is the fallback for whatever the tile does not show:
+it lists every head and Park in rows at least `#touch_target_min` tall, opens from the face or from
+the mounted segment, and is the only way to Park in `Rail` or `Single`. A printer with
+more heads than the segment pools hold (`ToolSwitcherWidget::kPoolSize`) is decided as
+unrailable and gets the face and the sheet.
+
 ### Engine contracts this pattern relies on
 
 - A `<style>` carrying `flex_flow` must ALSO carry `layout="flex"` — the

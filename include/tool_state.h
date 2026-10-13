@@ -139,6 +139,22 @@ class ToolState {
         return ams_topology_active_;
     }
 
+    /// A backend whose carriage can be empty and which owns no tool table
+    /// decides which head is mounted; -1 is an empty carriage. While set,
+    /// update_from_status() no longer derives the active tool from
+    /// toolhead.extruder or toolchanger.tool_number, which name the last head
+    /// used rather than a mounted one. An index naming no listed tool reads as
+    /// an empty carriage. Must be called from the LVGL/UI thread.
+    void set_backend_active_tool(int index);
+
+    /// Hand the active tool back to the status frame. A no-op when no backend
+    /// owns it. Must be called from the LVGL/UI thread.
+    void clear_backend_active_tool();
+
+    [[nodiscard]] bool backend_owns_active_tool() const {
+        return backend_owns_active_tool_;
+    }
+
     [[nodiscard]] const std::vector<ToolInfo>& tools() const {
         return tools_;
     }
@@ -392,6 +408,10 @@ class ToolState {
     bool ams_topology_active_ = false;
     int ams_topology_tool_count_ = 0;
     std::vector<int> ams_topology_tool_to_slot_;
+
+    // Set by set_backend_active_tool(): the backend, not the status frame,
+    // says which head is mounted.
+    bool backend_owns_active_tool_ = false;
 
     /// Save spool assignments to local JSON file
     void save_spool_json() const;

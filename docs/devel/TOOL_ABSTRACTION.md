@@ -183,14 +183,32 @@ Updates `active_tool_index_` and the `active_tool` subject.
 Whether `-1` is a real active-tool value depends on the topology. When an AMS
 backend owns the tool list, `build_ams_topology()`
 (`src/printer/ams_state_tool_mapping.cpp#build_ams_topology`) fills
-`ToolTopology::allows_empty_carriage` from `AmsBackend::load_mounts_tool()`
-(`include/ams_backend.h#BackendTraits/load_mounts_tool`): true where selecting a slot physically
-mounts a tool, so the carriage can also hold nothing, as on a tool changer like
-the FlashForge Creator 5. `ToolState::set_ams_topology()`
-(`src/printer/tool_state.cpp#set_ams_topology`) then publishes `active_tool` = -1
-and the UI shows no head as active. Lane-based systems (AFC, AMS) leave the flag
-false and keep the fallback: an out-of-range report maps to T0, because a lane
-feeder always has a tool behind it.
+`ToolTopology::allows_empty_carriage` from `AmsBackend::carriage_can_be_empty()`
+(`include/ams_backend.h#AmsBackend/carriage_can_be_empty`). By default that answers
+`load_mounts_tool()`: true where selecting a slot physically mounts a tool, so the
+carriage can also hold nothing, as on a tool changer like the FlashForge Creator 5.
+`ToolState::set_ams_topology()` (`src/printer/tool_state.cpp#set_ams_topology`) then
+publishes `active_tool` = -1 and the UI shows no head as active. Lane-based systems
+(AFC, AMS) leave the flag false and keep the fallback: an out-of-range report maps to
+T0, because a lane feeder always has a tool behind it.
+
+A tool changer whose load feeds filament rather than mounting a head can still dock
+every head. The Snapmaker U1 is one: `load_mounts_tool()` is false there, but
+`AmsBackendSnapmaker` overrides `carriage_can_be_empty()` to true, because
+`PARK_EXTRUDER` leaves the carriage empty. The U1's backend owns no tool table, so no
+topology is built and `ToolState` keeps the tools it enumerated from the extruders. The
+active tool cannot come from the status frame either: `toolhead.extruder` and
+`toolchanger.tool_number` keep naming the last head used after it is parked. So
+`AmsState::sync_tool_topology()` (`src/printer/ams_state.cpp#sync_tool_topology`)
+hands the decision to the backend with `ToolState::set_backend_active_tool()`
+(`src/printer/tool_state.cpp#set_backend_active_tool`), passing
+`get_current_tool()`. While the backend owns it, `update_from_status()` stops deriving
+the active tool from the frame, and an index naming no listed tool reads as -1. A
+PARKED head is therefore not the active tool: after Park, `active_tool` reads -1 and the
+home tool switcher's face reads "Choose head" ("None" where that does not fit), with its
+Park cell disabled. `clear_backend_active_tool()` hands the active tool back to the
+frame whenever the backend builds a topology, cannot empty its carriage, or is gone, and
+maps a held -1 to T0.
 
 ### Per-Tool Objects
 
@@ -259,7 +277,7 @@ This allows a tool changer where T0 feeds from an AFC (backend 0) and T1 feeds f
 
 | Subject Name | Type | Description |
 |--------------|------|-------------|
-| `active_tool` | int | Index of the currently active tool; -1 = empty carriage (tool changer topologies only, see [The Empty Carriage](#the-empty-carriage)) |
+| `active_tool` | int | Index of the currently active tool; -1 = empty carriage (only where the carriage can be empty, see [The Empty Carriage](#the-empty-carriage)) |
 | `tool_count` | int | Total number of tools |
 | `tools_version` | int | Monotonically increasing counter, bumped on any tool data change |
 

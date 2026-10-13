@@ -352,6 +352,8 @@ constexpr GuardedFile kGuardedFiles[] = {
     {"ui_xml/probe_bltouch_panel.xml", 2},
     {"ui_xml/probe_beacon_panel.xml", 2},
     {"ui_xml/temp_graph_overlay.xml", 2},
+    {"ui_xml/tool_switcher_picker.xml", 1},
+    {"ui_xml/components/tool_switcher_park_segment.xml", 1},
 };
 
 /// Control-bearing files that command nothing on the printer. A guard appearing
@@ -457,7 +459,6 @@ constexpr const char* kNoMachineControlFiles[] = {
     "ui_xml/components/panel_widget_temperature.xml",
     "ui_xml/components/panel_widget_thermistor.xml",
     "ui_xml/components/panel_widget_tips.xml",
-    "ui_xml/components/panel_widget_tool_switcher.xml",
     "ui_xml/components/speed_flow_part.xml",
     "ui_xml/components/picker_chip.xml",
     "ui_xml/components/picker_option_row.xml",
@@ -473,7 +474,13 @@ constexpr const char* kNoMachineControlFiles[] = {
     "ui_xml/components/temp_card_unified.xml",
     "ui_xml/components/temp_graph_config_modal.xml",
     "ui_xml/components/theme_swatch_grid.xml",
+    // Head changes: guarded by tool_switcher_change_blocked (a print that
+    // refuses the change, or spools on the bed) rather than moves_machine,
+    // which also holds through a pause, where the change is offered behind a
+    // confirmation.
     "ui_xml/components/tool_picker_button.xml",
+    "ui_xml/components/tool_switcher_face.xml",
+    "ui_xml/components/tool_switcher_segment.xml",
     "ui_xml/components/upgrade_banner.xml",
     "ui_xml/components/zone_row.xml",
     "ui_xml/components/zone_tab.xml",

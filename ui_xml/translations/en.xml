@@ -479,6 +479,7 @@
   <translation tag="Cannot delete file: printer not connected" en="Cannot delete file: printer not connected"/>
   <translation tag="Cannot modify G-code: no temp directory available" en="Cannot modify G-code: no temp directory available"/>
   <translation tag="Cannot modify G-code: scan result not available" en="Cannot modify G-code: scan result not available"/>
+  <translation tag="Cannot park while a print is active" en="Cannot park while a print is active"/>
   <translation tag="Cannot perform this action now" en="Cannot perform this action now"/>
   <translation tag="Cannot remap G-code: no temp directory available" en="Cannot remap G-code: no temp directory available"/>
   <translation tag="Cannot remap: internal error" en="Cannot remap: internal error"/>
@@ -491,6 +492,8 @@
   <translation tag="Cannot start print: printer is {}" en="Cannot start print: printer is {}"/>
   <translation tag="Cannot unload while a print is active" en="Cannot unload while a print is active"/>
   <translation tag="Capabilities: " en="Capabilities: "/>
+  <translation tag="Carriage empty" en="Carriage empty"/>
+  <translation tag="Carriage empty · tap a head" en="Carriage empty · tap a head"/>
   <translation tag="Cartographer scan calibrate sent — use Z-Offset panel to adjust" en="Cartographer scan calibrate sent — use Z-Offset panel to adjust"/>
   <translation tag="Cartographer touch calibrate sent" en="Cartographer touch calibrate sent"/>
   <translation tag="Category" en="Category"/>
@@ -567,6 +570,7 @@
   <translation tag="Choose Model" en="Choose Model"/>
   <translation tag="Choose an existing filament, or tap + New to create one." en="Choose an existing filament, or tap + New to create one."/>
   <translation tag="Choose display language" en="Choose display language"/>
+  <translation tag="Choose head" en="Choose head"/>
   <translation tag="Choose how frames are captured during printing" en="Choose how frames are captured during printing"/>
   <translation tag="Choose rendering mode for G-code visualization" en="Choose rendering mode for G-code visualization"/>
   <translation tag="Choose rendering mode for bed mesh visualization" en="Choose rendering mode for bed mesh visualization"/>
@@ -2126,6 +2130,7 @@
   <translation tag="Park" en="Park"/>
   <translation tag="Park Toolhead" en="Park Toolhead"/>
   <translation tag="Park the AFC system" en="Park the AFC system"/>
+  <translation tag="Parking toolhead" en="Parking toolhead"/>
   <translation tag="Part" en="Part"/>
   <translation tag="Part Cooling Fan" en="Part Cooling Fan"/>
   <translation tag="Part Fan" en="Part Fan"/>
@@ -3596,6 +3601,7 @@
   <translation tag="wpa_supplicant is not running. WiFi features unavailable." en="wpa_supplicant is not running. WiFi features unavailable."/>
   <translation tag="you have" en="you have"/>
   <translation tag="{:.0f}-{:.0f} Hz · about {} min" en="{:.0f}-{:.0f} Hz · about {} min"/>
+  <translation tag="{} ({})" en="{} ({})"/>
   <translation tag="{} Hardware Issues" en="{} Hardware Issues"/>
   <translation tag="{} Issues Detected" en="{} Issues Detected"/>
   <translation tag="{} LED strips available" en="{} LED strips available"/>
@@ -3650,6 +3656,8 @@
   <translation tag="{} updated" en="{} updated"/>
   <translation tag="{} widgets" en="{} widgets"/>
   <translation tag="{} will switch to a slot whose filament type AND colour both match the active spool and whose own port sensor reads filament present." en="{} will switch to a slot whose filament type AND colour both match the active spool and whose own port sensor reads filament present."/>
+  <translation tag="{} · {}" en="{} · {}"/>
+  <translation tag="{} · {} · {}" en="{} · {} · {}"/>
   <translation tag="{} — response timed out" en="{} — response timed out"/>
   <translation tag="{} → {}: no filament loaded." en="{} → {}: no filament loaded."/>
   <translation tag="{}:{:02} elapsed" en="{}:{:02} elapsed"/>
