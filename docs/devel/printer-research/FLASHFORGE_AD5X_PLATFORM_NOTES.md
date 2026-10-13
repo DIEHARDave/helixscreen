@@ -520,14 +520,14 @@ There is no setting to point the handoff path at a different profile name;
 hardcodes `auto`. Creating the profile is the only user-side fix, which is why
 this is worth an upstream report rather than a local workaround.
 
-**UNVERIFIED, and it decides how much this matters.** The macro runs
+**Hypothesis, tested in the next section.** The macro runs
 `BED_MESH_CLEAR` *before* `BED_MESH_PROFILE LOAD=auto`. If the clear succeeds and
 the load fails, the printer may be left with no active mesh after every screen
 handover — which happens on every boot in alt-screen mode. Mitigating: `_START_PRINT`
 issues its own `BED_MESH_PROFILE LOAD={mesh}` from a configured variable, so the
 print path probably reloads something, and `PRINT_LEVELING` defaults to 0 (no
-re-mesh per print) meaning it leans on that saved profile. Nobody has checked
-`printer.bed_mesh.profile_name` after a handoff. Two red lines in the error UI and
+re-mesh per print) meaning it leans on that saved profile. Reading
+`printer.bed_mesh.profile_name` after a handoff settles it. Two red lines in the error UI and
 a silently unmeshed bed are very different bugs; this one query separates them.
 
 **VERIFIED 2026-08-24 (rig, read-only + one handover): the handover itself is
@@ -593,9 +593,11 @@ surfacing a raw gcode error. It is currently vendor-free (no zmod/forge/creality
 mentions anywhere in `ui_panel_bed_mesh.cpp` or `ui_bed_mesh.cpp`) and this would
 keep it that way.
 
-Not built, for three reasons: the consequence above is unverified and only one
-version of it justifies the machinery; an upstream fix would make it dead code
-encoding a convention that no longer exists; and it is one printer's observation.
+Not built, for three reasons: the verified consequence is narrow (only a fresh
+install with no persisted `auto` profile is affected, see RESOLVED below), which
+does not justify the machinery; upstream ZMOD 1.7.3 and later end
+`AUTO_FULL_BED_LEVEL` in `_SAVE_CONFIG` (#1345), so the bootstrap closes on its own
+and the table would encode a dead convention; and it is one printer's observation.
 Trigger for revisiting: upstream declines, or a second reporter hits it.
 
 ### RESOLVED (2026-08-24): the missing step is `SAVE_CONFIG`, and `LOAD=auto` is not a bug
