@@ -46,12 +46,12 @@ namespace tio = helix::text_io;
 
 using namespace helix::config_detail;
 
-using AppConstants::Update::config_backup_fallback;
-using AppConstants::Update::config_backup_primary;
-using AppConstants::Update::env_backup_fallback;
-using AppConstants::Update::env_backup_primary;
-using AppConstants::Update::legacy_config_backup_fallback;
-using AppConstants::Update::legacy_config_backup_primary;
+using app_constants::update::config_backup_fallback;
+using app_constants::update::config_backup_primary;
+using app_constants::update::env_backup_fallback;
+using app_constants::update::env_backup_primary;
+using app_constants::update::legacy_config_backup_fallback;
+using app_constants::update::legacy_config_backup_primary;
 
 Config* Config::instance{NULL};
 
@@ -854,7 +854,7 @@ void Config::init(const std::string& config_path) {
             // config it shipped beside.
             if (helix::json_util::safe_int(data, "config_version", 0) == 0) {
                 const std::string fresh_marker = hfs::join_path(
-                    hfs::parent_path(path), AppConstants::Update::FRESH_INSTALL_MARKER);
+                    hfs::parent_path(path), app_constants::update::FRESH_INSTALL_MARKER);
                 const bool installer_kept_it = hfs::exists(fresh_marker);
                 if (installer_kept_it) {
                     spdlog::info("[Config] Packaged config kept - installer marked a fresh "

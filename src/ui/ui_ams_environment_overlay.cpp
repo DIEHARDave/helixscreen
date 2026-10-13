@@ -344,7 +344,8 @@ void AmsEnvironmentOverlay::rebuild_tabs() {
     tab_active_pool_.ensure_size(n);
 
     AmsBackend* backend = AmsState::instance().get_backend();
-    const std::string type_name = backend ? backend->get_system_info().type_name : std::string{};
+    const auto info = backend ? AmsState::instance().system_info() : nullptr;
+    const std::string type_name = info ? info->type_name : std::string{};
     const LaneNoun slot_noun = backend ? backend->lane_noun() : active_lane_noun();
 
     for (size_t i = 0; i < n; ++i) {
@@ -519,7 +520,8 @@ void AmsEnvironmentOverlay::publish_selected_zone() {
     // a correct display. The type name only feeds zone_display_label()'s last-resort
     // fallback form.
     AmsBackend* backend = AmsState::instance().get_backend();
-    const std::string type_name = backend ? backend->get_system_info().type_name : std::string{};
+    const auto info = backend ? AmsState::instance().system_info() : nullptr;
+    const std::string type_name = info ? info->type_name : std::string{};
     const LaneNoun slot_noun = backend ? backend->lane_noun() : active_lane_noun();
 
     // Title prefers what the zone calls itself. A rig with several boxes names them
@@ -696,8 +698,8 @@ void AmsEnvironmentOverlay::update_comfort_text(float humidity_pct) {
     // Collect unique materials loaded in slots
     std::vector<std::string> loaded_materials;
     AmsBackend* backend = AmsState::instance().get_backend();
-    if (backend) {
-        auto info = backend->get_system_info();
+    if (const auto snapshot = backend ? AmsState::instance().system_info() : nullptr) {
+        const AmsSystemInfo& info = *snapshot;
         const int unit_index = acting_unit_index();
         if (unit_index >= 0 && unit_index < static_cast<int>(info.units.size())) {
             const auto& unit = info.units[unit_index];
@@ -846,7 +848,11 @@ void AmsEnvironmentOverlay::auto_select_preset() {
     }
 
     // Collect loaded materials and find the most conservative drying preset
-    auto info = backend->get_system_info();
+    const auto snapshot = AmsState::instance().system_info();
+    if (!snapshot) {
+        return;
+    }
+    const AmsSystemInfo& info = *snapshot;
     const int unit_index = acting_unit_index();
     if (unit_index < 0 || unit_index >= static_cast<int>(info.units.size())) {
         return;

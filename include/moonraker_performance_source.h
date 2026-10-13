@@ -12,9 +12,8 @@
 #include <unordered_map>
 #include <vector>
 
-class IMoonrakerAPI;
-
 namespace helix {
+class IMoonrakerAPI;
 namespace perf {
 
 /**

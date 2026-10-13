@@ -822,10 +822,9 @@ void AmsOperationSidebar::recreate_step_progress_for_operation(StepOperationType
     // Get capabilities from backend for dynamic labels
     TipMethod tip_method = TipMethod::CUT;
     bool supports_purge = false;
-    if (backend) {
-        AmsSystemInfo info = backend->get_system_info();
-        tip_method = info.tip_method;
-        supports_purge = info.supports_purge;
+    if (const auto info = backend ? AmsState::instance().system_info() : nullptr) {
+        tip_method = info->tip_method;
+        supports_purge = info->supports_purge;
     }
     const char* tip_step_label = lv_tr(tip_method_step_label(tip_method));
 
@@ -1136,9 +1135,8 @@ void AmsOperationSidebar::update_step_progress(AmsAction action) {
     // Heuristic detection for externally-started operations
     bool is_external = (target_load_slot_ < 0);
     bool filament_loaded = false;
-    if (is_external && backend) {
-        AmsSystemInfo info = backend->get_system_info();
-        filament_loaded = (info.current_slot >= 0);
+    if (const auto info = is_external && backend ? AmsState::instance().system_info() : nullptr) {
+        filament_loaded = (info->current_slot >= 0);
     }
 
     auto detection = detect_step_operation(action, prev_ams_action_, current_operation_type_,
@@ -1271,9 +1269,10 @@ helix::ui::OpButtonState AmsOperationSidebar::read_unload_gating_state() const {
 
 AmsOperationSidebar::OpInputs AmsOperationSidebar::read_op_inputs() const {
     AmsBackend* backend = AmsState::instance().get_backend();
+    const auto info = AmsState::instance().system_info();
     // AmsSystemInfo::is_busy(): the same predicate check_preconditions()
     // refuses on, instead of a fourth open-coded `action != IDLE && != ERROR`.
-    return {/*system_busy=*/backend && backend->get_system_info().is_busy(),
+    return {/*system_busy=*/info && info->is_busy(),
             printer_state_.print_state().get_print_lifecycle(),
             /*backend_self_homes=*/backend && backend->filament_ops_self_home()};
 }
@@ -1587,7 +1586,7 @@ std::optional<int> AmsOperationSidebar::material_load_temp_for_slot(int slot_ind
 
 int AmsOperationSidebar::get_load_temp_for_slot(int slot_index) {
     return material_load_temp_for_slot(slot_index)
-        .value_or(AppConstants::Ams::DEFAULT_LOAD_PREHEAT_TEMP);
+        .value_or(app_constants::ams::DEFAULT_LOAD_PREHEAT_TEMP);
 }
 
 std::map<std::string, std::string>

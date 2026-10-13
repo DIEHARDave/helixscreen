@@ -48,7 +48,7 @@ class ReadyToastFixture : public XMLTestFixture {
         // Burning with an unsuppressed ERROR/SHUTDOWN instead would build a
         // recovery dialog, and every READY below would take the dialog
         // branch rather than the path under test.
-        estop.suppress_recovery_dialog(RecoverySuppression::LONG);
+        estop.suppress_recovery_dialog(recovery_suppression::LONG);
         state().set_klippy_state_sync(KlippyState::SHUTDOWN);
         settle();
         settle();
@@ -98,7 +98,7 @@ TEST_CASE_METHOD(ReadyToastFixture,
                  "[recovery][readytoast]") {
     // A SAVE_CONFIG-style flow: dialog suppressed for the restart, klippy
     // bounces and comes back with no dialog ever shown.
-    EmergencyStopOverlay::instance().suppress_recovery_dialog(RecoverySuppression::LONG);
+    EmergencyStopOverlay::instance().suppress_recovery_dialog(recovery_suppression::LONG);
     go_ready();
 
     REQUIRE(shown.size() == 1);

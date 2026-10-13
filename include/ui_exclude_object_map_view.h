@@ -6,6 +6,7 @@
 #include "ui_widget_ref.h"
 
 #include "bed_coord_mapper.h"
+#include "bed_dimensions.h"
 #include "gcode_parser.h"
 
 #include <cmath>
@@ -44,8 +45,9 @@ class ExcludeObjectMapView {
     ExcludeObjectMapView(const ExcludeObjectMapView&) = delete;
     ExcludeObjectMapView& operator=(const ExcludeObjectMapView&) = delete;
 
-    void create(lv_obj_t* parent, helix::PrinterExcludedObjectsState* state, float bed_w_mm,
-                float bed_h_mm, ObjectTapFn on_object_tapped, ExcludeTapMode tap_mode,
+    void create(lv_obj_t* parent, helix::PrinterExcludedObjectsState* state,
+                const helix::BedDimensions& bed, ObjectTapFn on_object_tapped,
+                ExcludeTapMode tap_mode,
                 const helix::gcode::ParsedGCodeFile* parsed_file = nullptr);
     void destroy();
 
@@ -66,6 +68,8 @@ class ExcludeObjectMapView {
     void build_object_rects();
     void update_visual_states();
     void draw_first_layer_outlines();
+    /// The bed's 50mm grid and edge, whatever of them falls in view.
+    void draw_bed_reference(lv_layer_t* layer) const;
     void copy_parsed_geometry(const helix::gcode::ParsedGCodeFile* parsed);
     lv_obj_t* create_object_rect(lv_obj_t* parent, const ObjectBadge& badge, const PixelRect& rect);
 
@@ -89,6 +93,9 @@ class ExcludeObjectMapView {
     std::unique_ptr<helix::gcode::ParsedGCodeFile> parsed_objects_;
     std::unordered_map<std::string, std::vector<glm::vec2>> parsed_outlines_;
 
+    // The printer's bed, and the extent the map shows (the objects plus a
+    // margin, else the bed).
+    helix::BedDimensions bed_{helix::kDefaultBedSizeMm, helix::kDefaultBedSizeMm, 0.0f, 0.0f};
     float bed_w_mm_{235.0f};
     float bed_h_mm_{235.0f};
 

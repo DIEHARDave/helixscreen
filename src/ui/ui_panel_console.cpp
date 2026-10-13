@@ -330,7 +330,7 @@ void ConsolePanel::fetch_history() {
         return;
     }
 
-    IMoonrakerAPI* api = get_moonraker_api();
+    helix::IMoonrakerAPI* api = get_moonraker_api();
     if (!api) {
         spdlog::warn("[{}] No IMoonrakerAPI available", get_name());
         std::snprintf(status_buf_, sizeof(status_buf_), "%s", lv_tr("Not connected to printer"));
@@ -618,7 +618,7 @@ void ConsolePanel::subscribe_to_gcode_responses() {
         return;
     }
 
-    IMoonrakerAPI* api = get_moonraker_api();
+    helix::IMoonrakerAPI* api = get_moonraker_api();
     if (!api) {
         spdlog::debug("[{}] Cannot subscribe - no API", get_name());
         return;
@@ -657,7 +657,7 @@ void ConsolePanel::unsubscribe_from_gcode_responses() {
         return;
     }
 
-    IMoonrakerAPI* api = get_moonraker_api();
+    helix::IMoonrakerAPI* api = get_moonraker_api();
     if (api) {
         api->unregister_method_callback("notify_gcode_response", gcode_handler_name_);
         spdlog::debug("[{}] Unsubscribed from notify_gcode_response", get_name());
@@ -733,7 +733,7 @@ void ConsolePanel::send_gcode_command() {
     add_entry(cmd_entry);
 
     // Send via IMoonrakerAPI with error feedback
-    IMoonrakerAPI* api = get_moonraker_api();
+    helix::IMoonrakerAPI* api = get_moonraker_api();
     if (api) {
         api->execute_gcode(command, nullptr, // success: no-op, response comes via WS subscription
                            [token = lifetime_.token()](const MoonrakerError& err) {

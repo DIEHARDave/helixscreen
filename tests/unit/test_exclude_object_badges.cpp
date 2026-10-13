@@ -217,7 +217,8 @@ TEST_CASE_METHOD(XMLTestFixture,
     });
 
     helix::ui::ExcludeObjectMapView view;
-    view.create(test_screen(), &state().excluded_objects_state(), 235.0f, 235.0f, {},
+    view.create(test_screen(), &state().excluded_objects_state(),
+                helix::bed_dimensions_from_volume(0.0f, 235.0f, 0.0f, 235.0f), {},
                 helix::ui::ExcludeTapMode::ExcludeOnly, nullptr);
     REQUIRE(view.is_active());
     process_lvgl(30);

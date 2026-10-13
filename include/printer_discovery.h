@@ -1028,8 +1028,8 @@ class PrinterDiscovery {
 } // namespace helix
 
 // Forward declarations for init_subsystems_from_hardware (global scope)
-class IMoonrakerAPI;
 namespace helix {
+class IMoonrakerAPI;
 class IMoonrakerClient;
 class PrinterState;
 } // namespace helix

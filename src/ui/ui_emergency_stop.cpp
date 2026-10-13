@@ -97,7 +97,7 @@ constexpr uint32_t RECOVERY_RECHECK_RETRY_MS = 2000;
 /// the rest of the process is not a useful way to say so. The reason stays
 /// latched past the cap, so a later suppression window still hands it back. The
 /// restart guard is bounded separately by
-/// RecoverySuppression::RESTART_FLAG_TIMEOUT, which expires inside this budget.
+/// recovery_suppression::RESTART_FLAG_TIMEOUT, which expires inside this budget.
 constexpr int RECOVERY_RECHECK_MAX_RETRIES = 15;
 
 } // namespace
@@ -746,10 +746,10 @@ bool EmergencyStopOverlay::is_recovery_suppressed() const {
 void EmergencyStopOverlay::begin_restart_window() {
     // Callable from any thread for the same reason suppress_recovery_dialog()
     // is: one atomic store of a deadline.
-    restart_expires_at_.store(lv_tick_get() + RecoverySuppression::RESTART_FLAG_TIMEOUT,
+    restart_expires_at_.store(lv_tick_get() + recovery_suppression::RESTART_FLAG_TIMEOUT,
                               std::memory_order_relaxed);
     spdlog::debug("[KlipperRecovery] Restart in flight for up to {}ms",
-                  RecoverySuppression::RESTART_FLAG_TIMEOUT);
+                  recovery_suppression::RESTART_FLAG_TIMEOUT);
 }
 
 bool EmergencyStopOverlay::restart_in_progress() const {
@@ -972,7 +972,7 @@ namespace ui {
 void begin_expected_klippy_restart(std::string message) {
     // The suppression writes are atomic deadline stores, safe right here on
     // any thread; the toast is LVGL-facing so it hops to the main thread.
-    EmergencyStopOverlay::instance().suppress_recovery_dialog(RecoverySuppression::LONG);
+    EmergencyStopOverlay::instance().suppress_recovery_dialog(recovery_suppression::LONG);
     if (auto* api = get_moonraker_api()) {
         api->suppress_disconnect_modal(EXPECTED_RESTART_DISCONNECT_MODAL_MS);
     }

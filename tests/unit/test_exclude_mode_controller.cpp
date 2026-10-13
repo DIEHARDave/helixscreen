@@ -43,8 +43,7 @@ class ExcludeModeFixture : public LVGLUITestFixture {
         targets.controls_name = "controls_section";
         targets.map_active = &map_active;
         targets.thumbnail_mode = true;
-        targets.bed_w_mm = 235.0f;
-        targets.bed_h_mm = 235.0f;
+        targets.bed = helix::bed_dimensions_from_volume(0.0f, 235.0f, 0.0f, 235.0f);
     }
 
     ~ExcludeModeFixture() override {
@@ -233,7 +232,8 @@ TEST_CASE_METHOD(ExcludeModeFixture,
                  "Destroying a map view whose root was deleted leaves a widget at its address",
                  "[exclude_map][pre_start_exclude]") {
     ExcludeObjectMapView map;
-    map.create(card, &objects, 235.0f, 235.0f, nullptr, ExcludeTapMode::ExcludeOnly);
+    map.create(card, &objects, helix::bed_dimensions_from_volume(0.0f, 235.0f, 0.0f, 235.0f),
+               nullptr, ExcludeTapMode::ExcludeOnly);
     lv_obj_t* root = map.root();
     REQUIRE(root != nullptr);
 

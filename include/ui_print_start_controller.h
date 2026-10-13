@@ -23,8 +23,8 @@
 namespace helix {
 class AmsBackend;
 class PrinterState;
-} // namespace helix
 class IMoonrakerAPI;
+} // namespace helix
 struct PrintFileData;
 class PrintStartControllerTestAccess; // test-only friend (global scope)
 

@@ -84,7 +84,7 @@ struct PlrDetectResult; // plr_backend.h — check_continue_print_state() result
  * Provides simplified, domain-specific operations on top of MoonrakerClient.
  * All methods are asynchronous with success/error callbacks.
  */
-class MoonrakerAPI : public IMoonrakerAPI {
+class MoonrakerAPI : public helix::IMoonrakerAPI {
   public:
     // G-code execute_gcode timeout constants (HOMING_TIMEOUT_MS,
     // AMS_OPERATION_TIMEOUT_MS, EXTRUSION_TIMEOUT_MS, MACRO_TIMEOUT_MS) and

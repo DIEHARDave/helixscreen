@@ -11,10 +11,10 @@
 #include "z_offset_utils.h"
 
 // Forward declarations
-class IMoonrakerAPI;
 namespace helix {
+class IMoonrakerAPI;
 class PrinterState;
-}
+} // namespace helix
 
 /**
  * @file ui_print_tune_overlay.h
@@ -45,7 +45,8 @@ class PrintTuneOverlay : public OverlayBase {
      * @param api IMoonrakerAPI for sending G-code commands
      * @param printer_state Reference to helix::PrinterState for kinematics/values
      */
-    void show(lv_obj_t* parent_screen, IMoonrakerAPI* api, helix::PrinterState& printer_state);
+    void show(lv_obj_t* parent_screen, helix::IMoonrakerAPI* api,
+              helix::PrinterState& printer_state);
 
     /**
      * @brief Handle reset button click - resets speed/flow to 100%
@@ -172,7 +173,7 @@ class PrintTuneOverlay : public OverlayBase {
     // === Dependencies ===
     //
 
-    IMoonrakerAPI* api_ = nullptr;
+    helix::IMoonrakerAPI* api_ = nullptr;
 
     helix::PrinterState* printer_state_ = nullptr;
 

@@ -14,7 +14,9 @@
 
 #include "hv/json.hpp"
 
+namespace helix {
 class IMoonrakerAPI;
+}
 struct MoonrakerError;
 
 namespace helix {

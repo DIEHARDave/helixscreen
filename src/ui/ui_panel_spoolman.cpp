@@ -257,7 +257,7 @@ void SpoolmanPanel::refresh_spools() {
         return;
     }
 
-    IMoonrakerAPI* api = get_moonraker_api();
+    helix::IMoonrakerAPI* api = get_moonraker_api();
     if (!api) {
         spdlog::warn("[{}] No API available, cannot refresh", get_name());
         show_empty_state();
@@ -287,7 +287,7 @@ void SpoolmanPanel::refresh_spools() {
             spdlog::info("[{}] Received {} spools from Spoolman", name, spools.size());
 
             // Also get active spool ID before updating UI
-            IMoonrakerAPI* api_inner = get_moonraker_api();
+            helix::IMoonrakerAPI* api_inner = get_moonraker_api();
             if (!api_inner) {
                 spdlog::warn("[{}] API unavailable for status check", name);
                 apply_spools(spools, -1);
@@ -615,7 +615,7 @@ void SpoolmanPanel::show_edit_modal(int spool_id) {
         return;
     }
 
-    IMoonrakerAPI* api = get_moonraker_api();
+    helix::IMoonrakerAPI* api = get_moonraker_api();
 
     edit_modal_.set_completion_callback([this](bool saved) {
         if (saved) {
@@ -632,7 +632,7 @@ void SpoolmanPanel::show_edit_modal(int spool_id) {
 // ============================================================================
 
 void SpoolmanPanel::duplicate_spool(int spool_id) {
-    IMoonrakerAPI* api = get_moonraker_api();
+    helix::IMoonrakerAPI* api = get_moonraker_api();
     if (!api) {
         spdlog::warn("[{}] No API, cannot duplicate spool", get_name());
         return;
@@ -700,7 +700,7 @@ void SpoolmanPanel::archive_spool(int spool_id) {
         [spool_id] {
             spdlog::info("[Spoolman] Confirmed archive of spool {}", spool_id);
 
-            IMoonrakerAPI* api = get_moonraker_api();
+            helix::IMoonrakerAPI* api = get_moonraker_api();
             if (!api) {
                 ToastManager::instance().show(ToastSeverity::ERROR, lv_tr("API not available"),
                                               3000);
@@ -741,7 +741,7 @@ void SpoolmanPanel::delete_spool(int spool_id) {
         [spool_id] {
             spdlog::info("[Spoolman] Confirmed delete of spool {}", spool_id);
 
-            IMoonrakerAPI* api = get_moonraker_api();
+            helix::IMoonrakerAPI* api = get_moonraker_api();
             if (!api) {
                 ToastManager::instance().show(ToastSeverity::ERROR, lv_tr("API not available"),
                                               3000);

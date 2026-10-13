@@ -164,7 +164,7 @@ class RetractionSettingsOverlay : public OverlayBase {
 // (IMoonrakerAPI is the consumer-facing interface — panels never name the
 // concrete MoonrakerAPI class)
 RetractionSettingsOverlay& get_global_retraction_settings();
-void init_global_retraction_settings(IMoonrakerAPI* api);
+void init_global_retraction_settings(helix::IMoonrakerAPI* api);
 ```
 
 Patterns to internalize:

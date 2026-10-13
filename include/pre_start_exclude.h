@@ -9,11 +9,10 @@
 #include <unordered_set>
 #include <vector>
 
-class IMoonrakerAPI; // NAMESPACE_OK: forward declaration of the global API interface
-
 namespace helix {
+class IMoonrakerAPI;
 class PrinterState;
-}
+} // namespace helix
 
 namespace helix::ui {
 

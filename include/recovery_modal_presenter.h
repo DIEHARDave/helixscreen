@@ -12,7 +12,9 @@
 #include <string>
 #include <vector>
 
+namespace helix {
 class IMoonrakerAPI;
+}
 
 // Forward declaration so the presenter can grant white-box test access.
 struct RecoveryModalPresenterTestAccess;

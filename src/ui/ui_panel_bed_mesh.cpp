@@ -813,7 +813,8 @@ void BedMeshPanel::refresh_bed_bounds() {
                   get_name(), bed_x_min, bed_x_max, bed_y_min, bed_y_max);
 
     ui_bed_mesh_set_bounds(canvas_, bed_x_min, bed_x_max, bed_y_min, bed_y_max, cached_mesh_min_x_,
-                           cached_mesh_max_x_, cached_mesh_min_y_, cached_mesh_max_y_);
+                           cached_mesh_max_x_, cached_mesh_min_y_, cached_mesh_max_y_,
+                           api && helix::circular_bed_kinematics(api->hardware().kinematics()));
 
     // If we have pending mesh data, render it now that bounds are valid
     if (has_pending_mesh_data_) {
@@ -1772,7 +1773,7 @@ void BedMeshPanel::handle_emergency_stop() {
     preheat_turned_on_bed_ = false;
 
     // Suppress recovery dialog — user intentionally triggered E-Stop from this modal
-    EmergencyStopOverlay::instance().suppress_recovery_dialog(RecoverySuppression::LONG);
+    EmergencyStopOverlay::instance().suppress_recovery_dialog(recovery_suppression::LONG);
 
     IMoonrakerAPI* api = get_moonraker_api();
     if (api) {

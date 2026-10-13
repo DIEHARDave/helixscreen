@@ -50,7 +50,7 @@ namespace {
 
 /// Records the Spoolman calls the sync makes and keeps their callbacks so a test
 /// decides when, and with what, the server answers.
-class RecordingSpoolman : public ISpoolmanAPI {
+class RecordingSpoolman : public helix::ISpoolmanAPI {
   public:
     struct SpoolRequest {
         int id;
@@ -110,9 +110,9 @@ struct SyncFixture : LVGLTestFixture {
 
     SyncFixture() {
         fs::create_directories(temp_dir);
-        fs::remove(AppConstants::Update::config_backup_fallback());
-        fs::remove(AppConstants::Update::legacy_config_backup_fallback());
-        fs::remove(AppConstants::Update::env_backup_fallback());
+        fs::remove(helix::app_constants::update::config_backup_fallback());
+        fs::remove(helix::app_constants::update::legacy_config_backup_fallback());
+        fs::remove(helix::app_constants::update::env_backup_fallback());
         Config::get_instance()->init(temp_dir + "/settings.json");
         AmsState::instance().clear_backends();
         AmsState::instance().clear_external_spool_info();

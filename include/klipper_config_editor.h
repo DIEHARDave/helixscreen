@@ -14,7 +14,9 @@
 #include <string>
 #include <vector>
 
+namespace helix {
 class IMoonrakerAPI;
+}
 struct MoonrakerError;
 
 namespace helix::system {

@@ -14,7 +14,7 @@
 /// (or mocked end-to-end) connection.
 class JobQueueStateTestAccess {
   public:
-    static void set_jobs(JobQueueState& state, std::vector<JobQueueEntry> jobs) {
+    static void set_jobs(JobQueueState& state, std::vector<helix::JobQueueEntry> jobs) {
         state.cached_jobs_ = std::move(jobs);
         state.is_loaded_ = true;
     }
@@ -28,7 +28,7 @@ class JobQueueStateTestAccess {
     /// In production this is only ever reached from fetch()'s success callback
     /// via tok.defer(), i.e. on the main thread — call it on the main thread
     /// here too.
-    static void deliver_status(JobQueueState& state, const JobQueueStatus& status) {
+    static void deliver_status(JobQueueState& state, const helix::JobQueueStatus& status) {
         state.on_queue_fetched(status);
     }
 };

@@ -12,7 +12,9 @@
 #include <memory>
 #include <string>
 
+namespace helix {
 class IMoonrakerAPI;
+}
 
 namespace helix::ui {
 

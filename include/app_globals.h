@@ -13,8 +13,8 @@
 namespace helix {
 class IMoonrakerClient;
 class TemperatureController;
-} // namespace helix
 class IMoonrakerAPI;
+} // namespace helix
 class MoonrakerManager;
 #ifdef HELIX_ENABLE_MOCKS
 class MoonrakerClientMock;
@@ -64,13 +64,13 @@ void set_moonraker_client_mock(MoonrakerClientMock* client);
  * @brief Get global IMoonrakerAPI instance
  * @return Pointer to global IMoonrakerAPI (may be nullptr if not initialized)
  */
-IMoonrakerAPI* get_moonraker_api();
+helix::IMoonrakerAPI* get_moonraker_api();
 
 /**
  * @brief Set global IMoonrakerAPI instance (called by main.cpp during init)
  * @param api Pointer to IMoonrakerAPI instance
  */
-void set_moonraker_api(IMoonrakerAPI* api);
+void set_moonraker_api(helix::IMoonrakerAPI* api);
 
 /**
  * @brief Get the global TemperatureController (shared resource registered by SubjectInitializer)

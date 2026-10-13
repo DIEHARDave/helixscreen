@@ -11,7 +11,9 @@
 #include <memory>
 #include <utility>
 
+namespace helix {
 class IMoonrakerAPI;
+}
 
 /**
  * @brief RAII wrapper for Moonraker subscriptions - auto-unsubscribes on destruction
@@ -54,7 +56,7 @@ class SubscriptionGuard {
      * @param api IMoonrakerAPI that owns the subscription
      * @param id Subscription ID from subscribe_notifications()
      */
-    SubscriptionGuard(IMoonrakerAPI* api, helix::SubscriptionId id);
+    SubscriptionGuard(helix::IMoonrakerAPI* api, helix::SubscriptionId id);
 
     ~SubscriptionGuard() {
         reset();

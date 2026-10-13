@@ -86,7 +86,7 @@ inline std::string moonraker_path_leaf(const std::string& name) {
  *       [](const auto& files) { ... },
  *       [](const auto& err) { ... });
  */
-class MoonrakerFileAPI : public IFilesAPI {
+class MoonrakerFileAPI : public helix::IFilesAPI {
   public:
     using SuccessCallback = std::function<void()>;
     using ErrorCallback = std::function<void(const MoonrakerError&)>;

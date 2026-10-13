@@ -165,7 +165,7 @@ std::string PrinterImageManager::get_displayed_image_path(int screen_width) {
     Config* config = Config::get_instance();
     const std::string printer_type =
         config->get<std::string>(config->df() + helix::wizard::PRINTER_TYPE, "");
-    return PrinterImages::get_best_printer_image(printer_type);
+    return printer_images::get_best_printer_image(printer_type);
 }
 
 // =============================================================================

@@ -385,7 +385,8 @@ void AmsOverviewPanel::refresh_units() {
         return;
     }
 
-    AmsSystemInfo info = backend->get_system_info();
+    const auto snapshot = AmsState::instance().system_info();
+    const AmsSystemInfo& info = *snapshot;
     int current_slot = lv_subject_get_int(AmsState::instance().get_current_slot_subject());
 
     int new_unit_count = static_cast<int>(info.units.size());
@@ -948,7 +949,8 @@ void AmsOverviewPanel::sync_pages(bool reopen, int focus_unit) {
         return;
     }
 
-    const AmsSystemInfo info = backend->get_system_info();
+    const auto snapshot = AmsState::instance().system_info();
+    const AmsSystemInfo& info = *snapshot;
     auto pages = helix::ui::build_unit_pages(info, [&](int pos) {
         const DryerInfo dryer = backend->get_dryer_info(info.units[pos].unit_index);
         return dryer.supported && dryer.active;

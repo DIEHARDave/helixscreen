@@ -31,7 +31,9 @@
 #include <vector>
 
 // Forward declarations
+namespace helix {
 class IMoonrakerAPI;
+}
 struct MoonrakerError;
 
 namespace helix {
@@ -467,7 +469,7 @@ class StandardMacros {
      * @return true if macro was found and execution attempted,
      *         false if slot is empty (no callbacks called)
      */
-    bool execute(StandardMacroSlot slot, IMoonrakerAPI* api, SuccessCallback on_success,
+    bool execute(StandardMacroSlot slot, helix::IMoonrakerAPI* api, SuccessCallback on_success,
                  ErrorCallback on_error, uint32_t timeout_ms = 0, bool suppress_auto_toast = false);
 
     /**
@@ -489,7 +491,7 @@ class StandardMacros {
      *        rpc_error_policy.h and rpc_error_correlation.h).
      * @return true if macro was found and execution attempted
      */
-    bool execute(StandardMacroSlot slot, IMoonrakerAPI* api,
+    bool execute(StandardMacroSlot slot, helix::IMoonrakerAPI* api,
                  const std::map<std::string, std::string>& params, SuccessCallback on_success,
                  ErrorCallback on_error, uint32_t timeout_ms = 0, bool suppress_auto_toast = false);
 

@@ -25,8 +25,8 @@
 
 namespace helix {
 class IMoonrakerClient;
-}
 class IMoonrakerAPI;
+} // namespace helix
 
 class InputShaperPanelTestAccess; // test-only friend (tests/test_helpers/)
 
@@ -169,7 +169,7 @@ class InputShaperPanel : public OverlayBase {
      * @param client helix::IMoonrakerClient (kept for potential future use)
      * @param api IMoonrakerAPI for G-code execution
      */
-    void set_api(helix::IMoonrakerClient* client, IMoonrakerAPI* api);
+    void set_api(helix::IMoonrakerClient* client, helix::IMoonrakerAPI* api);
 
     /**
      * @brief Get current panel state
@@ -292,7 +292,7 @@ class InputShaperPanel : public OverlayBase {
 
     // Widget/client references (overlay_root_ inherited from OverlayBase)
     helix::IMoonrakerClient* client_ = nullptr;
-    IMoonrakerAPI* api_ = nullptr;
+    helix::IMoonrakerAPI* api_ = nullptr;
 
     // Private setup helper (called by create())
     void setup_widgets();

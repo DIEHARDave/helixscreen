@@ -16,8 +16,8 @@
 #include <unordered_map>
 #include <vector>
 
-class IMoonrakerAPI;
 namespace helix {
+class IMoonrakerAPI;
 class IMoonrakerClient;
 class PrintHistoryManagerTestAccess;
 } // namespace helix
@@ -124,7 +124,7 @@ class PrintHistoryManager {
      * @param api IMoonrakerAPI for fetching history
      * @param client helix::IMoonrakerClient for notification subscription
      */
-    PrintHistoryManager(IMoonrakerAPI* api, helix::IMoonrakerClient* client);
+    PrintHistoryManager(helix::IMoonrakerAPI* api, helix::IMoonrakerClient* client);
 
     ~PrintHistoryManager();
 
@@ -535,7 +535,7 @@ class PrintHistoryManager {
     void watch_connection_state();
 
     // Dependencies
-    IMoonrakerAPI* api_;
+    helix::IMoonrakerAPI* api_;
     helix::IMoonrakerClient* client_;
 
     // Cached data

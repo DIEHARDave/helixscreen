@@ -25,7 +25,9 @@
 #include <string>
 
 // Forward declaration
+namespace helix {
 class IMoonrakerAPI;
+}
 struct MoonrakerError;
 
 namespace helix {

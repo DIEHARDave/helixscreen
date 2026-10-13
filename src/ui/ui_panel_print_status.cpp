@@ -1652,9 +1652,7 @@ void PrintStatusPanel::show_exclude_map_view() {
     targets.gcode_viewer = gcode_viewer_;
     targets.map_active = &exclude_map_active_subject_;
     targets.thumbnail_mode = lv_subject_get_int(&gcode_viewer_mode_subject_) == 0;
-    const auto bed = helix::bed_dimensions(api_, &printer_state_);
-    targets.bed_w_mm = bed.w_mm;
-    targets.bed_h_mm = bed.h_mm;
+    targets.bed = helix::bed_dimensions(api_, &printer_state_);
     exclude_mode_.show(targets, &printer_state_.excluded_objects_state(),
                        helix::ui::ExcludeTapMode::ExcludeOnly, [this](const std::string& name) {
                            if (exclude_manager_) {
@@ -1750,11 +1748,11 @@ std::string PrintStatusPanel::reprint_filename() const {
 
 void PrintStatusPanel::handle_reprint_button() {
     // Startup grace period: reject phantom clicks during early boot
-    auto elapsed = std::chrono::steady_clock::now() - AppConstants::Startup::PROCESS_START_TIME;
-    if (elapsed < AppConstants::Startup::PRINT_START_GRACE_PERIOD) {
+    auto elapsed = std::chrono::steady_clock::now() - app_constants::startup::PROCESS_START_TIME;
+    if (elapsed < app_constants::startup::PRINT_START_GRACE_PERIOD) {
         auto secs = std::chrono::duration_cast<std::chrono::seconds>(elapsed).count();
         spdlog::warn("[{}] Rejected reprint during startup grace period ({}s < {}s)", get_name(),
-                     secs, AppConstants::Startup::PRINT_START_GRACE_PERIOD.count());
+                     secs, app_constants::startup::PRINT_START_GRACE_PERIOD.count());
         return;
     }
 

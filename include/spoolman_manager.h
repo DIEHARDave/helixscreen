@@ -19,9 +19,8 @@
 
 namespace helix {
 class AmsBackend;
-} // namespace helix
-
 class IMoonrakerAPI;
+} // namespace helix
 
 /**
  * @brief Centralized Spoolman weight polling, circuit breaker, and identity cache
@@ -78,7 +77,7 @@ class SpoolmanManager {
     void init_subjects();
     void deinit_subjects();
 
-    void set_api(IMoonrakerAPI* api);
+    void set_api(helix::IMoonrakerAPI* api);
 
     void refresh_spoolman_weights();
 
@@ -222,7 +221,7 @@ class SpoolmanManager {
     static std::atomic<bool> s_shutdown_flag;
 
     mutable std::recursive_mutex mutex_;
-    IMoonrakerAPI* api_ = nullptr;
+    helix::IMoonrakerAPI* api_ = nullptr;
     bool initialized_ = false;
 
     // Polling
