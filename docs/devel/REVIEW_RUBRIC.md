@@ -79,6 +79,7 @@ reasonable, and the reason adversarial reading matters.
 | **Design tokens** | `theme_manager_get_color("token")` and `#space_md`, not raw hex or pixel counts. |
 | **Pattern reuse** | Does an existing helper already do this? Check the exemplars in CLAUDE.md § Patterns before accepting a hand-rolled version. |
 | **Tests that would fail if the feature were removed** | Not `REQUIRE(true)`, not happy-path only. Edge cases and error conditions. |
+| **Comments that earn their place** | New `@brief`/`@param` ceremony, a comment restating the signature, `// ====` banners, commented-out code, or history in a comment. Keep the why, the thread/lifetime/units contract, and the quirk workaround. Rule: DEVELOPMENT.md § Code Standards, "Comments". |
 | **Docs updated with behaviour** | If the change alters behaviour or architecture, the relevant `docs/devel/` doc moves with it. |
 
 ---

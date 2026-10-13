@@ -521,7 +521,7 @@ class FilamentSensorManager {
      * Used to suppress notifications and modals while sensor states
      * are being synchronized after Moonraker connection.
      *
-     * @return true within AppConstants::Startup::SENSOR_STABILIZATION_PERIOD of sensor discovery
+     * @return true within app_constants::startup::SENSOR_STABILIZATION_PERIOD of sensor discovery
      */
     [[nodiscard]] bool is_in_startup_grace_period() const;
 

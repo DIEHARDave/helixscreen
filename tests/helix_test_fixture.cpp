@@ -171,8 +171,8 @@ struct ConfigSandbox {
     // back what was there, which would otherwise silently un-sandbox every
     // later test in the shard.
     void apply() const {
-        AppConstants::Update::detail::state_dir_ref() = dir + "/state";
-        AppConstants::Update::detail::backup_fallback_dir_ref() = dir + "/backup";
+        app_constants::update::detail::state_dir_ref() = dir + "/state";
+        app_constants::update::detail::backup_fallback_dir_ref() = dir + "/backup";
     }
 
     ~ConfigSandbox() {

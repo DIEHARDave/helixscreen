@@ -76,7 +76,7 @@ bool finger_drifted_since_press(const FanRenameData* data) {
     lv_indev_get_point(indev, &now);
     const int dx = now.x - data->press_start_point.x;
     const int dy = now.y - data->press_start_point.y;
-    const int limit = lv_dpx(AppConstants::Input::EDIT_MODE_MOVE_CANCEL_DPX);
+    const int limit = lv_dpx(app_constants::input::EDIT_MODE_MOVE_CANCEL_DPX);
     return (dx * dx + dy * dy) > (limit * limit);
 }
 

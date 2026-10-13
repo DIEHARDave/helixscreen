@@ -136,7 +136,7 @@ void PrinterImageOverlay::on_activate() {
         Config* config = Config::get_instance();
         std::string printer_type =
             config->get<std::string>(config->df() + helix::wizard::PRINTER_TYPE, "");
-        auto_path = PrinterImages::get_best_printer_image(printer_type);
+        auto_path = printer_images::get_best_printer_image(printer_type);
 
         update_preview("", lv_tr("Auto-Detect"), auto_path);
     }
@@ -240,7 +240,7 @@ std::string PrinterImageOverlay::get_preview_path_for_id(const std::string& imag
         std::string name = image_id.substr(8);
         // Sized off the real display: only the tier this width selects is
         // shipped, so a fixed size names a file the device does not have.
-        return get_prerendered_printer_path(name, PrinterImages::current_screen_width());
+        return get_prerendered_printer_path(name, printer_images::current_screen_width());
     }
     if (image_id.rfind("custom:", 0) == 0) {
         auto custom_images = helix::PrinterImageManager::instance().get_custom_images();
@@ -269,7 +269,7 @@ void PrinterImageOverlay::populate_shipped_images() {
     lv_obj_clean(list);
 
     auto images = helix::PrinterImageManager::instance().get_shipped_images(
-        PrinterImages::current_screen_width());
+        printer_images::current_screen_width());
     spdlog::debug("[{}] Populating {} shipped images", get_name(), images.size());
 
     for (const auto& img : images) {
@@ -446,7 +446,7 @@ void PrinterImageOverlay::handle_auto_detect() {
     Config* config = Config::get_instance();
     std::string printer_type =
         config->get<std::string>(config->df() + helix::wizard::PRINTER_TYPE, "");
-    auto_path = PrinterImages::get_best_printer_image(printer_type);
+    auto_path = printer_images::get_best_printer_image(printer_type);
 
     update_preview("", "Auto-Detect", auto_path);
     NOTIFY_INFO(lv_tr("Printer image set to auto-detect"));

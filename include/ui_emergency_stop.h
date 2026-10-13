@@ -29,7 +29,7 @@ enum class RecoveryReason {
 };
 
 /// Recovery dialog suppression durations (milliseconds)
-namespace RecoverySuppression {
+namespace helix::recovery_suppression {
 static constexpr uint32_t SHORT = 5000;   ///< Brief operations (settings switch)
 static constexpr uint32_t NORMAL = 10000; ///< Standard restarts (firmware restart, power toggle)
 /// Extended operations (calibration, service install).
@@ -75,7 +75,7 @@ static constexpr uint32_t EXTRA = 30000; ///< Multi-step operations (PID→MPC m
 /// preference as the LONG comment above: a spurious dialog over a silently-eaten
 /// shutdown.
 static constexpr uint32_t RESTART_FLAG_TIMEOUT = EXTRA;
-} // namespace RecoverySuppression
+} // namespace helix::recovery_suppression
 
 /**
  * @brief Emergency stop visibility coordinator
@@ -188,7 +188,7 @@ class EmergencyStopOverlay {
      *
      * @param duration_ms How long to suppress (default LONG)
      */
-    void suppress_recovery_dialog(uint32_t duration_ms = RecoverySuppression::LONG);
+    void suppress_recovery_dialog(uint32_t duration_ms = helix::recovery_suppression::LONG);
 
     /**
      * @brief Check if recovery dialog suppression is active
@@ -280,7 +280,7 @@ class EmergencyStopOverlay {
     // observer fires on a transition and MoonrakerEventRoute::RecoveryShutdown
     // on an event. A host that goes down and STAYS down produces exactly one of
     // each, so a suppression window covering them did not delay the dialog, it
-    // removed it - which is the "silently-eaten shutdown" RecoverySuppression's
+    // removed it - which is the "silently-eaten shutdown" recovery_suppression's
     // own comment says to prefer a spurious dialog over. Atomic for the same
     // reason as suppress_recovery_until_: latched from whichever thread called
     // show_recovery_for(), read on the main thread.
@@ -336,7 +336,7 @@ class EmergencyStopOverlay {
     void show_recovery_dialog();
 
     /// Start treating klippy's next SHUTDOWN as a user-initiated restart, for
-    /// RecoverySuppression::RESTART_FLAG_TIMEOUT or until klippy reports READY,
+    /// recovery_suppression::RESTART_FLAG_TIMEOUT or until klippy reports READY,
     /// whichever comes first. Safe from any thread - one atomic store.
     void begin_restart_window();
 
@@ -394,7 +394,7 @@ namespace helix {
 namespace ui {
 
 /// Disconnect-modal suppression window armed by begin_expected_klippy_restart().
-/// Mirrors RecoverySuppression::LONG - the reconnect blip from a klippy restart
+/// Mirrors recovery_suppression::LONG - the reconnect blip from a klippy restart
 /// resolves in roughly the same span as the recovery-dialog window. 15 s is the
 /// value input-shaper armed before the helper existed; it is uniform now.
 constexpr uint32_t EXPECTED_RESTART_DISCONNECT_MODAL_MS = 15000;

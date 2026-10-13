@@ -79,7 +79,7 @@ std::string resolve_sprite_path(int screen_w) {
     if (!path.empty()) {
         return path;
     }
-    return PrinterImages::get_best_printer_image(helix::get_saved_printer_type());
+    return helix::printer_images::get_best_printer_image(helix::get_saved_printer_type());
 }
 
 } // namespace

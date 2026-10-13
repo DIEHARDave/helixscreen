@@ -445,20 +445,20 @@ TEST_CASE("sleep_backlight_off config controls backlight behavior during sleep",
         bool had;
         // Put back the ref we found, not a recomputed $HOME/.helixscreen — the
         // test binary sandboxes this deliberately (see helix_test_fixture.cpp).
-        std::string prev_ref = AppConstants::Update::detail::backup_fallback_dir_ref();
+        std::string prev_ref = helix::app_constants::update::detail::backup_fallback_dir_ref();
         explicit HomeRedirect(const std::string& dir) : had(std::getenv("HOME") != nullptr) {
             if (had)
                 orig = std::getenv("HOME");
             setenv("HOME", dir.c_str(), 1);
-            AppConstants::Update::detail::backup_fallback_dir_ref() =
-                AppConstants::Update::sanitize_home(std::getenv("HOME")) + "/.helixscreen";
+            helix::app_constants::update::detail::backup_fallback_dir_ref() =
+                helix::app_constants::update::sanitize_home(std::getenv("HOME")) + "/.helixscreen";
         }
         ~HomeRedirect() {
             if (had)
                 setenv("HOME", orig.c_str(), 1);
             else
                 unsetenv("HOME");
-            AppConstants::Update::detail::backup_fallback_dir_ref() = prev_ref;
+            helix::app_constants::update::detail::backup_fallback_dir_ref() = prev_ref;
         }
     } home_guard(tmp_dir.string());
 

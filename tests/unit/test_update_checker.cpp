@@ -95,17 +95,17 @@ std::string platform_tarball(const std::string& version) {
 
 TEST_CASE("Self-restart sentinel creates a missing fallback dir", "[update_checker][sentinel]") {
     namespace fs = std::filesystem;
-    const std::string prev = AppConstants::Update::detail::backup_fallback_dir_ref();
+    const std::string prev = helix::app_constants::update::detail::backup_fallback_dir_ref();
     const fs::path root =
         fs::temp_directory_path() / ("helix-sentinel-" + std::to_string(getpid()));
     const fs::path dir = root / ".helixscreen";
     fs::remove_all(root);
-    AppConstants::Update::detail::backup_fallback_dir_ref() = dir.string();
+    helix::app_constants::update::detail::backup_fallback_dir_ref() = dir.string();
 
     CHECK(UpdateChecker::write_self_restart_sentinel());
     CHECK(fs::exists(dir / "self_restart_sentinel"));
 
-    AppConstants::Update::detail::backup_fallback_dir_ref() = prev;
+    helix::app_constants::update::detail::backup_fallback_dir_ref() = prev;
     fs::remove_all(root);
 }
 

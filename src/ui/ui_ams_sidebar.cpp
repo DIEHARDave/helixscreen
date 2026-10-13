@@ -1587,7 +1587,7 @@ std::optional<int> AmsOperationSidebar::material_load_temp_for_slot(int slot_ind
 
 int AmsOperationSidebar::get_load_temp_for_slot(int slot_index) {
     return material_load_temp_for_slot(slot_index)
-        .value_or(AppConstants::Ams::DEFAULT_LOAD_PREHEAT_TEMP);
+        .value_or(app_constants::ams::DEFAULT_LOAD_PREHEAT_TEMP);
 }
 
 std::map<std::string, std::string>

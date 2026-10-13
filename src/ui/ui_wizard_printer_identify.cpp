@@ -478,7 +478,7 @@ lv_obj_t* WizardPrinterIdentifyStep::create(lv_obj_t* parent) {
         int selected = lv_subject_get_int(&printer_type_selected_);
         // Resolve name from filtered list, then look up image by name
         std::string name = PrinterDetector::get_list_name_at(selected, detected_kinematics_);
-        std::string image_path = PrinterImages::get_image_path_for_name(name);
+        std::string image_path = printer_images::get_image_path_for_name(name);
         lv_image_set_src(printer_preview_image_, image_path.c_str());
         spdlog::debug("[{}] Preview image configured: {}", get_name(), image_path);
     } else {
@@ -958,7 +958,7 @@ void WizardPrinterIdentifyStep::on_printer_type_item_clicked(lv_event_t* e) {
 
         // Update printer preview image (resolve name from filtered list)
         if (self->printer_preview_image_) {
-            std::string image_path = PrinterImages::get_image_path_for_name(names[index]);
+            std::string image_path = printer_images::get_image_path_for_name(names[index]);
             lv_image_set_src(self->printer_preview_image_, image_path.c_str());
             spdlog::debug("[{}] Preview image updated: {}", self->get_name(), image_path);
         }

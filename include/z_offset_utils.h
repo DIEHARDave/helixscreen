@@ -270,7 +270,7 @@ void save_dirty_offsets(IMoonrakerAPI* api, helix::ui::SaveConfigWatch& save_wat
 /// Tracks Klipper restart activity observed while a SAVE_CONFIG is in flight.
 ///
 /// Sampling "is a restart expected right now" at the moment a save timeout fires
-/// is useless: the recovery-suppression window (RecoverySuppression::LONG, 15s)
+/// is useless: the recovery-suppression window (recovery_suppression::LONG, 15s)
 /// closes long before a 30s save guard first fires, so the instantaneous check
 /// is always false by then. This latches the restart instead — "was a restart
 /// seen at any point since this save began" — which is the question the timeout

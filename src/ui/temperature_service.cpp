@@ -88,8 +88,8 @@ TemperatureService::TemperatureService(PrinterState& printer_state, IMoonrakerAP
                      .keypad_range = {0.0f, 350.0f}};
     nozzle.cooling_threshold_deci = 400; // 40°C
     nozzle.klipper_name = "extruder";    // Updated dynamically for multi-extruder
-    nozzle.min_temp = AppConstants::Temperature::DEFAULT_MIN_TEMP;
-    nozzle.max_temp = AppConstants::Temperature::DEFAULT_NOZZLE_MAX;
+    nozzle.min_temp = app_constants::temperature::DEFAULT_MIN_TEMP;
+    nozzle.max_temp = app_constants::temperature::DEFAULT_NOZZLE_MAX;
 
     // ── Bed config ──────────────────────────────────────────────────────
     auto& bed = heaters_[idx(HeaterType::Bed)];
@@ -102,8 +102,8 @@ TemperatureService::TemperatureService(PrinterState& printer_state, IMoonrakerAP
                   .keypad_range = {0.0f, 150.0f}};
     bed.cooling_threshold_deci = 350; // 35°C
     bed.klipper_name = "heater_bed";
-    bed.min_temp = AppConstants::Temperature::DEFAULT_MIN_TEMP;
-    bed.max_temp = AppConstants::Temperature::DEFAULT_BED_MAX;
+    bed.min_temp = app_constants::temperature::DEFAULT_MIN_TEMP;
+    bed.max_temp = app_constants::temperature::DEFAULT_BED_MAX;
 
     // ── Chamber config ──────────────────────────────────────────────────
     auto& chamber = heaters_[idx(HeaterType::Chamber)];

@@ -372,7 +372,8 @@ void PIDCalibrationPanel::on_deactivating(DeactivateReason reason) {
     // If calibration is in progress, abort it
     if (state_ == State::CALIBRATING) {
         spdlog::info("[PIDCal] Aborting calibration on deactivate");
-        EmergencyStopOverlay::instance().suppress_recovery_dialog(RecoverySuppression::LONG);
+        EmergencyStopOverlay::instance().suppress_recovery_dialog(
+            helix::recovery_suppression::LONG);
         if (api_) {
             api_->execute_gcode("TURN_OFF_HEATERS", nullptr, nullptr);
         }
@@ -1343,7 +1344,7 @@ void PIDCalibrationPanel::start_migration(CalibMethod target) {
         spdlog::info("[PIDCal] Starting MPC->PID migration for '{}'", section);
     }
 
-    EmergencyStopOverlay::instance().suppress_recovery_dialog(RecoverySuppression::EXTRA);
+    EmergencyStopOverlay::instance().suppress_recovery_dialog(helix::recovery_suppression::EXTRA);
 
     auto token = lifetime_.token();
     config_editor_.safe_multi_edit(
