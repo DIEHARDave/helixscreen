@@ -29,6 +29,11 @@ TEST_CASE("override_status: Warn whenever the override is off 100", "[value_stat
     }
 }
 
+TEST_CASE("z_offset_status: Warn exactly while a save is available", "[value_status]") {
+    CHECK(status::z_offset_status(true) == ValueStatus::Warn);
+    CHECK(status::z_offset_status(false) == ValueStatus::Normal);
+}
+
 TEST_CASE("ValueStatus ints match the humidity status encoding", "[value_status]") {
     CHECK(static_cast<int>(ValueStatus::Normal) == 0);
     CHECK(static_cast<int>(ValueStatus::Warn) == 1);

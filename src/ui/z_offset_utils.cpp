@@ -101,6 +101,37 @@ std::string build_z_adjust_gcode(int base_microns, int live_microns, int delta_m
                        static_cast<double>(base_microns + delta_microns) / 1000.0, move);
 }
 
+bool adjust_tool_offset(IMoonrakerAPI* api, PrinterState* ps, int tool_index, double delta_mm) {
+    if (!api || !ps) {
+        return false;
+    }
+    auto& ts = ToolState::instance();
+    // Adjust from the value we DISPLAYED: the firmware takes an absolute offset, so a
+    // delta applied to anything else would land somewhere the user did not ask for.
+    // Without a reported value there is no base, so refuse rather than assume zero
+    // and overwrite whatever the tool actually holds.
+    if (!ts.tool_offset_known(tool_index, Axis::Z)) {
+        spdlog::warn("[zoffset] No reported offset for tool {} - refusing to adjust", tool_index);
+        return false;
+    }
+    const int base_microns =
+        static_cast<int>(std::lround(ts.tool_offset_mm(tool_index, Axis::Z) * 1000.0));
+    const int new_microns = base_microns + static_cast<int>(std::lround(delta_mm * 1000.0));
+
+    const std::string gcode =
+        tool_offsets::set_tool_offset_gcode(ps->get_discovery(), Axis::Z, tool_index, new_microns);
+    if (gcode.empty()) {
+        return false;
+    }
+    api->execute_gcode(gcode, nullptr, nullptr);
+
+    // Through ToolState, not straight at the subject: tools_ is what
+    // dirty_tool_indices() and the save path read, so a save that starts before the
+    // firmware echoes this back must still see it.
+    ts.set_tool_offset_local(tool_index, Axis::Z, new_microns);
+    return true;
+}
+
 void apply_and_save(IMoonrakerAPI* api, helix::ui::SaveConfigWatch& save_watch,
                     ZOffsetCalibrationStrategy strategy, std::function<void()> on_success,
                     std::function<void(const std::string& error)> on_error, PrinterState* ps) {
@@ -422,6 +453,11 @@ void deinit_save_available_subject() {
 lv_subject_t* get_save_available_subject() {
     auto& storage = save_available_storage();
     return storage ? &storage->z_offset_save_available_ : nullptr;
+}
+
+SubjectLifetime get_save_available_lifetime() {
+    auto& storage = save_available_storage();
+    return storage ? storage->subjects.get_subjects_lifetime() : SubjectLifetime{};
 }
 
 namespace {
