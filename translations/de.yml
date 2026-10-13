@@ -399,6 +399,7 @@ translations:
   Bouncing Printer: Bouncing Printer
   Bowden Length: 'Bowden-Länge'
   Bowden tube length from hub to toolhead: 'Länge des Bowdenschlauchs vom Hub zum Werkzeugkopf'
+  Box: Box
   Brand: Marke
   Brand and material come from Spoolman: Marke und Material stammen aus Spoolman
   Brightness: Helligkeit
@@ -1002,6 +1003,7 @@ translations:
 
   Drying on the bed: Trocknung auf dem Heizbett
 
+  Drying progress and humidity for boxes, the chamber, and the bed: Trocknungsfortschritt und Feuchtigkeit für Boxen, Kammer und Heizbett
   Drying started: Trocknung gestartet
   Drying stopped: Trocknung gestoppt
   Duplicate: Duplizieren
@@ -1319,6 +1321,7 @@ translations:
   Filament Buffer: 'Filamentpuffer'
   Filament Control: Filamentsteuerung
   Filament Detected: Filament erkannt
+  Filament Dryer: Filamenttrockner
   Filament Grade Mismatch: Filamentklassenabweichung
   Filament Humidity: Filamentfeuchtigkeit
   Filament In The Toolhead: Filament im Werkzeugkopf
@@ -2201,6 +2204,7 @@ translations:
   Not connected to printer.: Nicht mit Drucker verbunden.
   Not connected to the printer: Nicht mit dem Drucker verbunden
   Not detected: Nicht erkannt
+  Not drying: Trocknet nicht
   Not enough frequency data from the sweeps. Try again.: 'Nicht genügend Frequenzdaten aus den Messungen. Versuchen Sie es erneut.'
   Not enough room for this widget. Rearrange or remove widgets to make space.: Nicht genug Platz für dieses Widget. Ordnen Sie Widgets neu an oder entfernen Sie welche, um Platz zu schaffen.
   Not in your spools? Set it up: Nicht in Ihren Spulen? Einrichten
@@ -2637,6 +2641,7 @@ translations:
   RFID reader malfunction (left): Fehlfunktion des RFID-Lesers (links)
   RFID reader malfunction (right): Fehlfunktion des RFID-Lesers (rechts)
   RFID, auto-refill, nozzle and link care: RFID, automatisches Nachfüllen, Düsen- und Verbindungspflege
+  RH: rF
   RSS: RSS
   'RSS:': 'RSS:'
   Ramming Volume: 'Ramming-Volumen'
@@ -3931,6 +3936,7 @@ translations:
   direct drive: Direct-Drive
   disable: deaktivieren
   disabled: deaktiviert
+  drying: trocknen
   e.g. Jet Black: z.B. Tiefschwarz
   e.g. NAME=my_var VALUE=123: z. B. NAME=my_var VALUE=123
   e.g. Polymaker: z.B. Polymaker

@@ -366,6 +366,7 @@ translations:
   Bouncing Printer: バウンドプリンター
   Bowden Length: 'ボーデン長'
   Bowden tube length from hub to toolhead: 'ハブからツールヘッドまでのボーデンチューブ長'
+  Box: ボックス
   Brand: ブランド
   Brand and material come from Spoolman: ブランドと素材は Spoolman から取得されます
   Brightness: 明るさ
@@ -927,6 +928,7 @@ translations:
 
   Drying on the bed: ベッドで乾燥中
 
+  Drying progress and humidity for boxes, the chamber, and the bed: ボックス、チャンバー、ベッドの乾燥の進捗と湿度
   Drying started: 乾燥を開始しました
   Drying stopped: 乾燥を停止しました
   Duplicate: 複製
@@ -1222,6 +1224,7 @@ translations:
   Filament Buffer: 'フィラメントバッファー'
   Filament Control: フィラメント制御
   Filament Detected: フィラメント検出
+  Filament Dryer: フィラメントドライヤー
   Filament Grade Mismatch: フィラメントグレード不一致
   Filament Humidity: フィラメント湿度
   Filament In The Toolhead: ツールヘッドにフィラメントがあります
@@ -2056,6 +2059,7 @@ translations:
   Not connected to printer.: プリンターに未接続です。
   Not connected to the printer: プリンターに未接続
   Not detected: 検出されません
+  Not drying: 乾燥していません
   Not enough frequency data from the sweeps. Try again.: '測定から十分な周波数データが得られませんでした。再試行してください。'
   Not enough room for this widget. Rearrange or remove widgets to make space.: このウィジェットを配置するスペースが足りません。スペースを確保するためにウィジェットを整理または削除してください。
   Not in your spools? Set it up: スプールにない？登録する
@@ -2474,6 +2478,7 @@ translations:
   RFID reader malfunction (left): RFID リーダーの異常（左）
   RFID reader malfunction (right): RFID リーダーの異常（右）
   RFID, auto-refill, nozzle and link care: RFID、自動補充、ノズルと接続のメンテナンス
+  RH: RH
   RSS: RSS
   'RSS:': 'RSS:'
   Ramming Volume: 'ラミング量'
@@ -3665,6 +3670,7 @@ translations:
   direct drive: ダイレクトドライブ
   disable: 無効化
   disabled: 無効
+  drying: 乾燥中
   e.g. Jet Black: 例：ジェットブラック
   e.g. NAME=my_var VALUE=123: '例: NAME=my_var VALUE=123'
   e.g. Polymaker: 例：Polymaker

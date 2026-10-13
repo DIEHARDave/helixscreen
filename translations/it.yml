@@ -393,6 +393,7 @@ translations:
   Bouncing Printer: Stampante rimbalzante
   Bowden Length: 'Lunghezza del bowden'
   Bowden tube length from hub to toolhead: 'Lunghezza del tubo bowden dall''hub alla testina'
+  Box: Box
   Brand: Marca
   Brand and material come from Spoolman: Marca e materiale provengono da Spoolman
   Brightness: Luminosità
@@ -994,6 +995,7 @@ translations:
 
   Drying on the bed: Essiccazione sul piano
 
+  Drying progress and humidity for boxes, the chamber, and the bed: 'Avanzamento dell''essiccazione e umidità di box, camera e piano'
   Drying started: Essiccazione avviata
   Drying stopped: Essiccazione interrotta
   Duplicate: Duplica
@@ -1306,6 +1308,7 @@ translations:
   Filament Buffer: 'Buffer filamento'
   Filament Control: Controllo filamento
   Filament Detected: Filamento rilevato
+  Filament Dryer: Essiccatore filamento
   Filament Grade Mismatch: Grado filamento non corrispondente
   Filament Humidity: Umidità del filamento
   Filament In The Toolhead: Filamento nella testina
@@ -2192,6 +2195,7 @@ translations:
   Not connected to printer.: Non connesso alla stampante.
   Not connected to the printer: Non connesso alla stampante
   Not detected: Non rilevato
+  Not drying: Non in essiccazione
   Not enough frequency data from the sweeps. Try again.: 'Dati di frequenza insufficienti dalle misurazioni. Riprovare.'
   Not enough room for this widget. Rearrange or remove widgets to make space.: Non c'è abbastanza spazio per questo widget. Riorganizza o rimuovi widget per fare spazio.
   Not in your spools? Set it up: Non è tra le tue bobine? Configuralo
@@ -2627,6 +2631,7 @@ translations:
   RFID reader malfunction (left): Malfunzionamento del lettore RFID (sinistro)
   RFID reader malfunction (right): Malfunzionamento del lettore RFID (destro)
   RFID, auto-refill, nozzle and link care: RFID, rifornimento automatico, cura di ugello e collegamento
+  RH: UR
   RSS: RSS
   'RSS:': 'RSS:'
   Ramming Volume: 'Volume di compattazione'
@@ -3922,6 +3927,7 @@ translations:
   direct drive: direct drive
   disable: disabilita
   disabled: disabilitato
+  drying: in essiccazione
   e.g. Jet Black: es. Nero intenso
   e.g. NAME=my_var VALUE=123: es. NAME=mia_var VALUE=123
   e.g. Polymaker: es. Polymaker

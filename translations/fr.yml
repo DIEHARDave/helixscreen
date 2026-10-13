@@ -398,6 +398,7 @@ translations:
   Bouncing Printer: Bouncing Printer
   Bowden Length: 'Longueur du bowden'
   Bowden tube length from hub to toolhead: 'Longueur du tube bowden du hub à la tête d''outil'
+  Box: Boîte
   Brand: Marque
   Brand and material come from Spoolman: La marque et le matériau proviennent de Spoolman
   Brightness: Luminosité
@@ -1004,6 +1005,7 @@ translations:
 
   Drying on the bed: Séchage sur le plateau
 
+  Drying progress and humidity for boxes, the chamber, and the bed: 'Progression du séchage et humidité des boîtes, de l''enceinte et du plateau'
   Drying started: Séchage démarré
   Drying stopped: Séchage arrêté
   Duplicate: Dupliquer
@@ -1322,6 +1324,7 @@ translations:
   Filament Buffer: 'Tampon de filament'
   Filament Control: Contrôle du filament
   Filament Detected: Filament détecté
+  Filament Dryer: Sécheur de filament
   Filament Grade Mismatch: Grade de filament incompatible
   Filament Humidity: Humidité du filament
   Filament In The Toolhead: Filament dans la tête d'outil
@@ -2207,6 +2210,7 @@ translations:
   Not connected to printer.: Non connecté à l'imprimante.
   Not connected to the printer: Non connecté à l'imprimante
   Not detected: Non détecté
+  Not drying: Pas de séchage
   Not enough frequency data from the sweeps. Try again.: 'Pas assez de données de fréquence après les balayages. Réessayez.'
   Not enough room for this widget. Rearrange or remove widgets to make space.: Pas assez de place pour ce widget. Réorganisez ou supprimez des widgets pour libérer de l'espace.
   Not in your spools? Set it up: Pas dans vos bobines ? Configurez-la
@@ -2646,6 +2650,7 @@ translations:
   RFID reader malfunction (left): Dysfonctionnement du lecteur RFID (gauche)
   RFID reader malfunction (right): Dysfonctionnement du lecteur RFID (droit)
   RFID, auto-refill, nozzle and link care: RFID, rechargement automatique, entretien de la buse et de la liaison
+  RH: HR
   RSS: RSS
   'RSS:': 'RSS :'
   Ramming Volume: 'Volume de bourrage'
@@ -3956,6 +3961,7 @@ translations:
   direct drive: 'à entraînement direct'
   disable: désactiver
   disabled: désactivé
+  drying: en séchage
   e.g. Jet Black: p. ex. Noir profond
   e.g. NAME=my_var VALUE=123: ex. NAME=ma_var VALUE=123
   e.g. Polymaker: p. ex. Polymaker

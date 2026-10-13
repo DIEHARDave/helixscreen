@@ -289,6 +289,34 @@ TEST_CASE_METHOD(BedDryingFixture, "the flip reminder fires once, at the midpoin
     CHECK(SettingsManager::instance().get_bed_drying_record().flip_notified);
 }
 
+TEST_CASE_METHOD(BedDryingFixture, "a running cycle publishes minutes left and progress",
+                 "[bed_drying][1730][progress]") {
+    CHECK(lv_subject_get_int(ctrl->get_remaining_min_subject()) == -1);
+    CHECK(lv_subject_get_int(ctrl->get_progress_pct_subject()) == -1);
+
+    start_pla();
+    bed(70, 70);
+    ctrl->tick(kStart);
+    CHECK(lv_subject_get_int(ctrl->get_remaining_min_subject()) == 12 * 60);
+    CHECK(lv_subject_get_int(ctrl->get_progress_pct_subject()) == 0);
+
+    now = kStart + kHours12 / 4;
+    ctrl->tick(now);
+    CHECK(lv_subject_get_int(ctrl->get_remaining_min_subject()) == 9 * 60);
+    CHECK(lv_subject_get_int(ctrl->get_progress_pct_subject()) == 25);
+
+    // A partial minute left still reads as a minute.
+    now = kStart + kHours12 - 30;
+    ctrl->tick(now);
+    CHECK(lv_subject_get_int(ctrl->get_remaining_min_subject()) == 1);
+
+    now = kStart + kHours12;
+    ctrl->tick(now);
+    drain();
+    CHECK(lv_subject_get_int(ctrl->get_remaining_min_subject()) == -1);
+    CHECK(lv_subject_get_int(ctrl->get_progress_pct_subject()) == -1);
+}
+
 TEST_CASE_METHOD(BedDryingFixture, "the run ends at its planned end and the latch stays",
                  "[bed_drying][1730]") {
     start_pla();

@@ -310,6 +310,14 @@ class PrinterTemperatureState {
     lv_subject_t* get_chamber_dryer_text_subject() {
         return &chamber_dryer_text_;
     }
+    /// Minutes left in the running cycle, rounded up; -1 until the device reports one.
+    int chamber_dryer_remaining_min() const {
+        return chamber_dryer_remaining_s_ > 0 ? (chamber_dryer_remaining_s_ + 59) / 60 : -1;
+    }
+    /// The running cycle's target in C; 0 when the device reports none.
+    int chamber_dryer_target_c() const {
+        return chamber_dryer_target_c_;
+    }
 
     /// Number of tracked extruders
     int extruder_count() const {
