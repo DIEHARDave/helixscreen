@@ -90,6 +90,14 @@
         <!-- Outside the back button so a long unit name cannot push it off the header -->
         <ams_disconnected_chip name="detail_disconnected_chip" disconnected="ams_viewed_unit_disconnected"/>
       </lv_obj>
+      <!-- Portrait: the loaded strip and the status line stand here, above the diagram.
+           AmsOperationSidebar moves them in from the sidebar and back on rotation. -->
+      <lv_obj name="portrait_summary_slot"
+              width="100%" height="content" style_pad_left="#space_sm" style_pad_right="#space_sm" style_pad_top="0"
+              style_pad_bottom="#space_xxs" style_pad_row="#space_xxs" flex_flow="column"
+              style_flex_cross_place="center" scrollable="false">
+        <bind_flag_if_eq subject="ui_is_portrait" flag="hidden" ref_value="0"/>
+      </lv_obj>
       <!-- Left column content (cards + canvas OR the unit view) -->
       <lv_obj name="left_column"
               width="100%" style_pad_all="#space_sm" style_pad_top="0" style_pad_gap="#space_sm" flex_flow="column"

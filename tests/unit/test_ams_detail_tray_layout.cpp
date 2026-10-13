@@ -221,6 +221,10 @@ TEST_CASE_METHOD(AmsTrayPanelFixture, "AMS unit with a reading: spools in the bo
     // The readout is a pill against the box's right end.
     check_env_chip_clear(4);
     check_badges_on_front(4);
+    // In landscape the strip stays at the top of the sidebar.
+    lv_obj_t* strip = lv_obj_find_by_name(panel_obj_, "current_loaded_card");
+    REQUIRE(strip != nullptr);
+    CHECK(lv_obj_get_parent(strip) == lv_obj_find_by_name(panel_obj_, "ams_operation_sidebar"));
     // The pill takes its width from the box's row.
     lv_obj_t* pill = lv_obj_find_by_name(panel_obj_, "env_indicator");
     lv_obj_t* unit = lv_obj_get_parent(container_);
@@ -526,6 +530,21 @@ TEST_CASE_METHOD(AmsTrayPanelFixture,
     REQUIRE(ui_filament_path_canvas_get_toolhead_box(canvas, &toolhead));
     lv_obj_get_coords(canvas, &cc);
     CHECK(toolhead.y2 <= cc.y2);
+    // The loaded strip and the status line stand above the diagram, in that order.
+    lv_obj_t* strip = lv_obj_find_by_name(panel_obj_, "current_loaded_card");
+    lv_obj_t* status = lv_obj_find_by_name(panel_obj_, "status_section");
+    lv_obj_t* slot_parent = lv_obj_find_by_name(panel_obj_, "portrait_summary_slot");
+    REQUIRE(strip != nullptr);
+    REQUIRE(status != nullptr);
+    REQUIRE(slot_parent != nullptr);
+    CHECK(lv_obj_get_parent(strip) == slot_parent);
+    CHECK(lv_obj_get_parent(status) == slot_parent);
+    lv_area_t sa, sta, ua;
+    lv_obj_get_coords(strip, &sa);
+    lv_obj_get_coords(status, &sta);
+    lv_obj_get_coords(lv_obj_find_by_name(panel_obj_, "ams_unit_card"), &ua);
+    CHECK(sa.y2 < sta.y1);
+    CHECK(sta.y2 < ua.y1);
     // Lane badges stay apart at eight lanes.
     lv_obj_t* badges = lv_obj_find_by_name(panel_obj_, "badge_layer");
     REQUIRE(badges != nullptr);

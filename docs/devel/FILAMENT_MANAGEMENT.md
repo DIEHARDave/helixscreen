@@ -1188,7 +1188,8 @@ drawing is `src/ui/ui_ams_detail.cpp`.
 The right column, shared by the AMS panel and the overview's unit view
 (`AmsOperationSidebar`), top to bottom:
 
-- **Loaded strip** (`ams_loaded_card.xml`): a colour bar (`loaded_swatch_narrow_w`) beside
+- **Loaded strip** (`ams_loaded_card.xml`), a ghost card (the plain `ui_card` on the panel
+  background, like the print status temperature card): a colour bar (`loaded_swatch_narrow_w`) beside
   two lines, `ams_current_slot_text` ("Current: Gate 1") with the remaining weight, then the
   filament's name on one line (`ams_loaded_name_line_h`), ellipsized. The clog and buffer
   meters sit under the lines while the unit is idle and hide during any operation
@@ -1215,28 +1216,34 @@ that shows a fifth button adds a third row, which scrolls at 480x272.
 
 `ams_panel.xml` and `ams_overview_panel.xml` are one tree each, restyled on `ui_is_portrait`
 (`bind_style_if_eq` pairs on the panel, its content column, the left column, the path
-containers and the right column). In portrait the panel is a column: the header and the
-diagram full width on top, the tube run capped at `ams_portrait_path_h` (125 px at 272x480
-and 320x480, 170 at 480x800, 300 at 600x1024) so the diagram ends at the toolhead and the
-canvas tucks 12 px under the box instead of 8, and the right column becomes the bottom
-section, taking the rest of the height for the sidebar.
+containers and the right column). In portrait the panel is a column, top to bottom: the
+header; the loaded strip and the status line (with the Bypass toggle at its end); the
+diagram full width, its tube run capped at `ams_portrait_path_h` (125 px at 272x480 and
+320x480, 170 at 480x800, 300 at 600x1024) so it ends at the toolhead, the canvas tucking
+12 px under the box instead of 8; and the right column as the bottom section, holding the
+actions and, during an operation, the step progress.
+
+The strip and the status line are one instance each. They live at the top of the sidebar,
+and `AmsOperationSidebar` moves them into the panel's `portrait_summary_slot` in portrait
+and back on rotation (`src/ui/ui_ams_sidebar.cpp#place_summary`). The
+meters are constructed from the strip itself and the swatch is looked up in it, so they
+follow it; the slot carries the sidebar instance in its user data, so the Bypass toggle's
+callback (`bypass_inline`, shown only in portrait, hidden during any operation like the
+landscape `bypass_row`) routes from either place.
 
 The full-width box takes the same rules as landscape at the same breakpoint: two label rows
 below medium, three from medium up; the environment pill still costs the row its width.
-The portrait 2x2 cells (480x800 and up) lay each button's icon beside its label: the
-longest, "Check slots", takes 126 px of a 223 px cell at 480x800. The sidebar tightens for
-portrait: its gaps drop to `space_xxs` and the status line's
-vertical padding to 0, the Bypass toggle rides at the end of the status line
-(`bypass_inline`, hidden during any operation like the landscape `bypass_row` it stands in
-for), and the strip's meters take their small row at every size (the clog arc's growth is
-capped by `ams_clog_arc_max`, at or above the landscape strip's own size). Below medium,
-where the bottom section is about 120 px, the strip drops its meters, the four actions sit
-in one row (`styles.action_cell_quarter`, stacked icon over label: a 60 px cell has no room
-for both side by side), and the step progress is a row instead of a
-list (`include/ui_ams_slot_layout.h#ams_stepper_horizontal`): a four-step list needs about
-90 px there, the row 56. `[portrait]` pins the 272x480 panel: the bottom section under the
-diagram, the capped canvas with the toolhead whole, no sidebar scroll, eight lane badges
-apart.
+The sidebar tightens for portrait: its gaps drop to `space_xxs` and the status line's
+vertical padding to 0, and the strip's meters take their small row at every size (the clog
+arc's growth is capped by `ams_clog_arc_max`, at or above the landscape strip's own size).
+Below medium, where the bottom section is about 70 px, the strip drops its meters, the four
+actions sit in one row (`styles.action_cell_quarter`, stacked icon over label: a 60 px cell
+has no room for both side by side), and the step progress is a row instead of a list
+(`include/ui_ams_slot_layout.h#ams_stepper_horizontal`): a four-step list needs about 90 px
+there, the row 56. The portrait 2x2 cells (480x800 and up) lay each button's icon beside its
+label: the longest, "Check slots", takes 126 px of a 223 px cell at 480x800. `[portrait]`
+pins the 272x480 panel: the strip and status above the diagram, the bottom section under
+it, the capped canvas with the toolhead whole, eight lane badges apart.
 
 ### AMS Overview Panel (`ui_panel_ams_overview`)
 

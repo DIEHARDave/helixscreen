@@ -174,6 +174,13 @@ class AmsOperationSidebar {
 
     // Widget references
     lv_obj_t* sidebar_root_ = nullptr;
+    // The loaded strip and status line: in the sidebar in landscape, moved into
+    // the panel's portrait_summary_slot (above the diagram) in portrait.
+    lv_obj_t* loaded_card_ = nullptr;
+    lv_obj_t* status_section_ = nullptr;
+    lv_obj_t* summary_slot_ = nullptr;
+    ObserverGuard portrait_observer_;
+    void place_summary(bool portrait);
     lv_obj_t* step_progress_ = nullptr;
     lv_obj_t* step_progress_container_ = nullptr;
 

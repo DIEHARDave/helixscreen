@@ -158,6 +158,20 @@ void AmsOperationSidebar::register_callbacks_static() {
     });
 }
 
+void AmsOperationSidebar::place_summary(bool portrait) {
+    if (!loaded_card_ || !status_section_ || !sidebar_root_)
+        return;
+    lv_obj_t* home = portrait && summary_slot_ ? summary_slot_ : sidebar_root_;
+    if (lv_obj_get_parent(loaded_card_) == home)
+        return;
+    // DECLARATIVE_OK: one strip and status line, placed by orientation; the
+    // widgets keep their bindings and the meters wired to them
+    lv_obj_set_parent(loaded_card_, home);
+    lv_obj_set_parent(status_section_, home);
+    lv_obj_move_to_index(loaded_card_, 0);
+    lv_obj_move_to_index(status_section_, 1);
+}
+
 // ============================================================================
 // Static Callback Routing (parent chain traversal)
 // ============================================================================
@@ -165,13 +179,15 @@ void AmsOperationSidebar::register_callbacks_static() {
 AmsOperationSidebar* AmsOperationSidebar::get_instance_from_event(lv_event_t* e) {
     auto* target = static_cast<lv_obj_t*>(lv_event_get_target(e));
 
-    // Find the ams_sidebar component root by name, then get our instance from its user_data.
+    // Find the ams_sidebar component root by name (or the portrait slot the strip and
+    // status line move into), then get our instance from its user_data.
     // Cannot walk parents checking any user_data — ui_button and other widgets set their own
     // user_data, which would be miscast as AmsOperationSidebar* (L069).
     lv_obj_t* obj = target;
     while (obj) {
         const char* name = lv_obj_get_name(obj);
-        if (name && strcmp(name, "ams_operation_sidebar") == 0) {
+        if (name && (strcmp(name, "ams_operation_sidebar") == 0 ||
+                     strcmp(name, "portrait_summary_slot") == 0)) {
             void* user_data = lv_obj_get_user_data(obj);
             if (user_data) {
                 return static_cast<AmsOperationSidebar*>(user_data);
@@ -241,16 +257,37 @@ bool AmsOperationSidebar::setup(lv_obj_t* panel) {
     // Store this pointer for static callback routing
     lv_obj_set_user_data(sidebar_root_, this);
 
+    // In portrait the strip and status stand above the diagram, in the panel's
+    // summary slot; they follow the orientation live.
+    loaded_card_ = lv_obj_find_by_name(sidebar_root_, "current_loaded_card");
+    status_section_ = lv_obj_find_by_name(sidebar_root_, "status_section");
+    summary_slot_ = lv_obj_find_by_name(panel, "portrait_summary_slot");
+    if (summary_slot_)
+        lv_obj_set_user_data(summary_slot_, this);
+    if (lv_subject_t* portrait = lv_xml_get_subject(nullptr, "ui_is_portrait")) {
+        portrait_observer_ = observe<int>(
+            portrait, this,
+            [](AmsOperationSidebar* self, int is_portrait) {
+                if (self->active_)
+                    self->place_summary(is_portrait != 0);
+            },
+            subject_never_freed());
+    }
+
     // Setup step progress
     setup_step_progress();
 
-    // Setup clog detection meter
-    clog_meter_ = std::make_unique<UiClogMeter>(sidebar_root_);
+    // Setup clog detection meter (in the loaded strip, wherever it stands)
+    lv_obj_t* strip = loaded_card_ ? loaded_card_ : sidebar_root_;
+    clog_meter_ = std::make_unique<UiClogMeter>(strip);
 
     // The loaded card's buffer slider follows the system-level reading
     buffer_slider_ =
-        std::make_unique<UiBufferSlider>(lv_obj_find_by_name(sidebar_root_, "buffer_mini_slider"));
+        std::make_unique<UiBufferSlider>(lv_obj_find_by_name(strip, "buffer_mini_slider"));
     buffer_slider_->follow_system_reading();
+
+    if (lv_subject_t* portrait = lv_xml_get_subject(nullptr, "ui_is_portrait"))
+        place_summary(lv_subject_get_int(portrait) != 0);
 
     // Hide settings button if no device sections
     update_settings_visibility();
@@ -420,7 +457,9 @@ void AmsOperationSidebar::init_observers() {
         [](AmsOperationSidebar* self, int color_int) {
             if (!self->active_ || !self->sidebar_root_)
                 return;
-            lv_obj_t* swatch = lv_obj_find_by_name(self->sidebar_root_, "loaded_swatch");
+            lv_obj_t* swatch = self->loaded_card_
+                                   ? lv_obj_find_by_name(self->loaded_card_, "loaded_swatch")
+                                   : nullptr;
             if (swatch) {
                 lv_color_t color = lv_color_hex(static_cast<uint32_t>(color_int));
                 lv_obj_set_style_bg_color(swatch, color, 0);
@@ -494,7 +533,13 @@ void AmsOperationSidebar::cleanup() {
     if (sidebar_root_) {
         lv_obj_set_user_data(sidebar_root_, nullptr);
     }
+    portrait_observer_.reset();
+    if (summary_slot_)
+        lv_obj_set_user_data(summary_slot_, nullptr);
     sidebar_root_ = nullptr;
+    loaded_card_ = nullptr;
+    status_section_ = nullptr;
+    summary_slot_ = nullptr;
     step_progress_ = nullptr;
     step_progress_container_ = nullptr;
 

@@ -4,6 +4,8 @@
 <component>
   <!--
     AMS Currently Loaded Strip - what is loaded, and its clog/buffer meters.
+    A ghost card: the plain ui_card on the panel background, like the print
+    status temperature card.
 
     A color bar beside two lines: "Current: Gate 1" with the remaining weight,
     then the filament's name, one line, ellipsized. The meters follow while the
@@ -36,9 +38,8 @@
            layout="flex" flex_flow="row" flex_main_place="center" flex_cross_place="center" pad_column="#space_xxs"/>
   </styles>
   <view name="ams_loaded_card"
-        extends="ui_card" width="100%" height="content" style_radius="#border_radius" style_bg_color="#elevated_bg"
-        style_pad_all="#space_xs" flex_flow="row" style_flex_main_place="start" style_flex_cross_place="center"
-        style_pad_gap="#space_sm">
+        extends="ui_card" width="100%" height="content" style_radius="#border_radius" style_pad_all="#space_xs"
+        flex_flow="row" style_flex_main_place="start" style_flex_cross_place="center" style_pad_gap="#space_sm">
     <!-- Color bar (left side, stretches to the strip's height) -->
     <lv_obj name="loaded_swatch"
             width="#loaded_swatch_narrow_w" height="100%" style_radius="#border_radius" style_bg_color="#text_muted"
