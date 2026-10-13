@@ -17,12 +17,17 @@
     <!-- A finger-sized row, disabled while tool_switcher_change_blocked: a
          print that refuses the switch, or spools on the bed. A paused print
          still offers it, behind its confirmation. -->
-    <ui_button name="tool_btn" width="100%" height="content" variant="ghost" style_min_height="#touch_target_min">
+    <!-- A column: the name and temperature, then the strip at the foot.
+         space_between keeps the strip at the foot when the touch floor makes
+         the row taller than its content. -->
+    <ui_button name="tool_btn"
+               width="100%" height="content" variant="ghost" style_min_height="#touch_target_min" layout="column"
+               style_flex_main_place="space_between" style_flex_cross_place="center" style_pad_row="#space_xxs">
       <bind_state_if_eq subject="tool_switcher_change_blocked" state="disabled" ref_value="1"/>
       <lv_obj name="tool_btn_text"
-              width="content" height="content" align="center" flex_flow="column" style_flex_cross_place="center"
-              style_pad_all="0" style_pad_gap="0" style_bg_opa="0" style_border_width="0" clickable="false"
-              event_bubble="true" scrollable="false">
+              width="content" height="content" flex_flow="column" style_flex_cross_place="center" style_pad_all="0"
+              style_pad_gap="0" style_bg_opa="0" style_border_width="0" clickable="false" event_bubble="true"
+              scrollable="false">
         <text_small name="tool_btn_label" text="$tool_text" clickable="false" event_bubble="true">
           <bind_flag_if_eq subject="tool_switcher_picker_code_form" flag="hidden" ref_value="1"/>
         </text_small>
@@ -37,8 +42,8 @@
       <!-- The head's filament colour along the foot, as on its segment;
            omitted when unknown. -->
       <lv_obj name="tool_btn_strip"
-              width="100%" align="bottom_mid" floating="true" hidden="true" style_radius="0" style_border_width="0"
-              style_bg_opa="255" clickable="false" event_bubble="true" scrollable="false">
+              width="100%" hidden="true" style_radius="0" style_border_width="0" style_bg_opa="255" clickable="false"
+              event_bubble="true" scrollable="false">
         <bind_style_prop prop="height" subject="tool_switcher_row_strip_h"/>
         <bind_style_prop prop="bg_color" subject="tool_switcher_seg_${index}_color"/>
         <bind_flag_if_eq subject="tool_switcher_seg_${index}_has_color" flag="hidden" ref_value="0"/>

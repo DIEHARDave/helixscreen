@@ -60,6 +60,9 @@ lv_subject_t s_face_sub_subject{};
 char s_face_sub_buf[16] = {};
 lv_subject_t s_face_color_subject{};
 lv_subject_t s_face_has_color_subject{};
+// The face's size: its cell along the long axis, the whole view across it.
+lv_subject_t s_face_w_subject{};
+lv_subject_t s_face_h_subject{};
 // The colour strip's height on a cell (segment or face) and on a sheet row.
 lv_subject_t s_strip_h_subject{};
 lv_subject_t s_row_strip_h_subject{};
@@ -138,6 +141,10 @@ void tool_switcher_widget_init_subjects() {
     s_subjects.publish("tool_switcher_face_color", &s_face_color_subject);
     lv_subject_init_int(&s_face_has_color_subject, 0);
     s_subjects.publish("tool_switcher_face_has_color", &s_face_has_color_subject);
+    lv_subject_init_int(&s_face_w_subject, LV_PCT(100));
+    s_subjects.publish("tool_switcher_face_w", &s_face_w_subject);
+    lv_subject_init_int(&s_face_h_subject, LV_PCT(100));
+    s_subjects.publish("tool_switcher_face_h", &s_face_h_subject);
     lv_subject_init_int(&s_strip_h_subject, helix::tool_switcher_strip_px(0));
     s_subjects.publish("tool_switcher_strip_h", &s_strip_h_subject);
     lv_subject_init_int(&s_row_strip_h_subject, helix::tool_switcher_strip_px(0));
@@ -474,6 +481,16 @@ void ToolSwitcherWidget::publish_layout() {
     set_int_if_changed(&s_rail_h_subject, layout_.rail_h);
     set_int_if_changed(&s_detail_subject, layout_.detail ? 1 : 0);
     set_int_if_changed(&s_strip_h_subject, tool_switcher_strip_px(layout_.cell_h));
+    set_int_if_changed(&s_row_strip_h_subject, tool_switcher_strip_px(min_target));
+
+    // The face takes its cell along a Pair's long axis and fills the view
+    // across it, so it matches Park even where the box the tile was told
+    // differs from the one it lays out by a pixel.
+    const bool pair = layout_.mode == ToolSwitcherMode::Pair;
+    set_int_if_changed(&s_face_w_subject,
+                       pair && layout_.pair_horizontal ? layout_.cell_w : LV_PCT(100));
+    set_int_if_changed(&s_face_h_subject,
+                       pair && !layout_.pair_horizontal ? layout_.cell_h : LV_PCT(100));
     set_int_if_changed(&s_label_form_subject, static_cast<int>(label_form_));
 
     spdlog::debug("[ToolSwitcher] {}x{} box, {} heads: mode {} {}x{} cells {}x{} rail_h {} "
@@ -573,7 +590,10 @@ void ToolSwitcherWidget::publish_heads() {
         const bool main = r == 0 && (i == active || i == kToolSwitcherEmptyCarriageRow);
         std::string text;
         if (i == kToolSwitcherEmptyCarriageRow) {
+            // The hint goes where the block is too narrow for it.
             text = lv_tr("Carriage empty · tap a head");
+            if (ui::text_width(text.c_str(), body) > content_w)
+                text = lv_tr("Carriage empty");
         } else if (main) {
             text = line(i, ui::ToolLabelForm::Full);
             if (ui::text_width(text.c_str(), body) > content_w)
@@ -787,10 +807,6 @@ void ToolSwitcherWidget::ToolPicker::on_created(lv_obj_t* backdrop) {
         return true;
     });
     lv_subject_set_int(&s_picker_code_form_subject, form == ui::ToolLabelForm::Code ? 1 : 0);
-    if (!row_buttons.empty()) {
-        set_int_if_changed(&s_row_strip_h_subject,
-                           tool_switcher_strip_px(lv_obj_get_height(row_buttons.front())));
-    }
 
     // Scroll the active tool into view inside the capped list.
     if (active_btn_in_picker) {

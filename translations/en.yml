@@ -518,6 +518,7 @@ translations:
   Cannot save offsets while printing: Cannot save offsets while printing
   Cannot unload while a print is active: Cannot unload while a print is active
   'Capabilities: ': 'Capabilities: '
+  Carriage empty: Carriage empty
   Carriage empty · tap a head: Carriage empty · tap a head
   Cartographer scan calibrate sent — use Z-Offset panel to adjust: Cartographer scan
     calibrate sent — use Z-Offset panel to adjust

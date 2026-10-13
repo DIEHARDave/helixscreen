@@ -492,6 +492,7 @@ translations:
   Cannot save offsets while printing: 印刷中はオフセットを保存できません
   Cannot unload while a print is active: 印刷中は排出できません
   'Capabilities: ': '機能: '
+  Carriage empty: キャリッジが空
   Carriage empty · tap a head: 'キャリッジが空 · ヘッドをタップ'
   Cartographer scan calibrate sent — use Z-Offset panel to adjust: Cartographerスキャンキャリブレーション送信済み
     — Z-Offsetパネルで調整してください

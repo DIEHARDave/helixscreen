@@ -20,8 +20,8 @@
         flex_flow="column" style_flex_main_place="center" style_flex_cross_place="center"
         style_flex_track_place="center" style_pad_all="0" style_pad_gap="0" style_radius="0" style_border_width="0"
         clickable="true" scrollable="false">
-    <bind_style_prop prop="width" subject="tool_switcher_cell_w"/>
-    <bind_style_prop prop="height" subject="tool_switcher_cell_h"/>
+    <bind_style_prop prop="width" subject="tool_switcher_face_w"/>
+    <bind_style_prop prop="height" subject="tool_switcher_face_h"/>
     <style name="face_idle"/>
     <style name="styles.press_wash" selector="pressed"/>
     <style name="face_disabled" selector="disabled"/>

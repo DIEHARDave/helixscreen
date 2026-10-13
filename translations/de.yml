@@ -543,6 +543,7 @@ translations:
   Cannot save offsets while printing: Offsets können während des Drucks nicht gespeichert werden
   Cannot unload while a print is active: Entladen während eines aktiven Drucks nicht möglich
   'Capabilities: ': 'Fähigkeiten: '
+  Carriage empty: Wagen leer
   Carriage empty · tap a head: 'Wagen leer · Kopf antippen'
   Cartographer scan calibrate sent — use Z-Offset panel to adjust: Cartographer Scan-Kalibrierung
     gesendet — Z-Offset-Panel zum Anpassen verwenden

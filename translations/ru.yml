@@ -529,6 +529,7 @@ translations:
   Cannot save offsets while printing: Нельзя сохранить смещения во время печати
   Cannot unload while a print is active: Нельзя выгрузить во время печати
   'Capabilities: ': 'Возможности: '
+  Carriage empty: Каретка пуста
   Carriage empty · tap a head: 'Каретка пуста · выберите головку'
   Cartographer scan calibrate sent — use Z-Offset panel to adjust: Cartographer сканирующая
     калибровка отправлена — используйте панель Z-Offset для настройки

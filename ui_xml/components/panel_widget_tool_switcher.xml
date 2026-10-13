@@ -13,6 +13,7 @@
     <!-- A Pair stacked along a tall tile. layout="flex" is load-bearing: a
          style carrying flex_flow alone activates no layout. -->
     <style name="tool_switcher_stacked" layout="flex" flex_flow="column"/>
+    <style name="tool_switcher_side_by_side" layout="flex" flex_flow="row"/>
     <style name="tool_switcher_detail_other" text_color="#text_muted"/>
     <style name="tool_switcher_detail_main" text_font="#font_body" text_color="#text"/>
     <style name="tool_switcher_detail_hot" text_color="#danger"/>
@@ -84,10 +85,13 @@
          cell beside it along the tile's long axis. -->
     <!-- SIZE_OK: kRailGap -->
     <lv_obj name="tool_switcher_face_view"
-            width="100%" height="100%" flex_flow="row" style_pad_all="0" style_pad_gap="2" style_radius="#border_radius"
+            width="100%" height="100%" style_pad_all="0" style_pad_gap="2" style_radius="#border_radius"
             style_clip_corner="true" style_bg_opa="0" style_border_width="0" scrollable="false">
       <bind_flag_if_lt subject="tool_switcher_mode" flag="hidden" ref_value="2"/>
+      <!-- Two bound flows, no inline one: an inline flex_flow would outrank
+           the stacked style. -->
       <bind_style_if_eq name="tool_switcher_stacked" subject="tool_switcher_rows" ref_value="2"/>
+      <bind_style_if name="tool_switcher_side_by_side" cond="tool_switcher_rows ne 2"/>
       <tool_switcher_face name="tool_switcher_face"/>
       <lv_obj name="tool_switcher_face_park"
               width="100%" height="100%" flex_grow="1" style_pad_all="0" style_bg_opa="0" style_border_width="0"

@@ -485,6 +485,7 @@
   <translation tag="Cannot start print: printer is {}" zh="无法开始打印: 打印机状态为 {}"/>
   <translation tag="Cannot unload while a print is active" zh="打印时无法卸载"/>
   <translation tag="Capabilities: " zh="功能: "/>
+  <translation tag="Carriage empty" zh="未装载打印头"/>
   <translation tag="Carriage empty · tap a head" zh="未装载打印头 · 点击一个打印头"/>
   <translation tag="Cartographer scan calibrate sent — use Z-Offset panel to adjust" zh="Cartographer扫描校准已发送 — 使用Z偏移面板进行调整"/>
   <translation tag="Cartographer touch calibrate sent" zh="Cartographer触摸校准已发送"/>

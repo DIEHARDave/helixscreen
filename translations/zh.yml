@@ -491,6 +491,7 @@ translations:
   Cannot save offsets while printing: 打印时无法保存偏移
   Cannot unload while a print is active: 打印时无法卸载
   'Capabilities: ': '功能: '
+  Carriage empty: 未装载打印头
   Carriage empty · tap a head: '未装载打印头 · 点击一个打印头'
   Cartographer scan calibrate sent — use Z-Offset panel to adjust: Cartographer扫描校准已发送
     — 使用Z偏移面板进行调整

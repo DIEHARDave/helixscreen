@@ -17,6 +17,7 @@
 #include "../test_helpers/print_state_test_drivers.h"
 #include "../test_helpers/tool_switcher_rig.h"
 #include "../test_helpers/tool_switcher_test_access.h"
+#include "helix/ui/text_metrics.h"
 #include "panel_widget_registry.h"
 #include "printer_state.h"
 #include "spool_latch_gate.h"
@@ -610,15 +611,153 @@ TEST_CASE_METHOD(LVGLUITestFixture,
         lv_obj_t* face = named(h, "tool_switcher_face");
         check_strip(lv_obj_find_by_name(face, "tool_switcher_face_strip"), lv_obj_get_height(face));
 
-        // A sheet row.
+        // A sheet row: 9% of the row's touch-floor height, which the row
+        // never draws under.
         ToolSwitcherTestAccess::show_picker(h.widget());
         lv_obj_t* list = ToolSwitcherTestAccess::picker_list(h.widget());
         REQUIRE(list != nullptr);
         lv_obj_update_layout(lv_obj_get_parent(list));
         lv_obj_t* row = lv_obj_find_by_name(lv_obj_get_child(list, 1), "tool_btn");
-        check_strip(lv_obj_find_by_name(row, "tool_btn_strip"), lv_obj_get_height(row));
+        REQUIRE(lv_obj_get_height(row) >= resolve_px("touch_target_min", 48));
+        check_strip(lv_obj_find_by_name(row, "tool_btn_strip"), resolve_px("touch_target_min", 48));
         ToolSwitcherTestAccess::hide_picker(h.widget());
         process_lvgl(30);
     }
     theme_manager_refresh_layout_constants(disp);
+}
+
+namespace {
+
+lv_area_t coords_of(lv_obj_t* obj) {
+    lv_area_t a;
+    lv_obj_get_coords(obj, &a);
+    return a;
+}
+
+} // namespace
+
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "tool_switcher: a stacked Pair puts a finger-sized Park under the face",
+                 "[tool_switcher][1784]") {
+    ToolChangerRig rig(5);
+    PanelWidgetHarness<ToolSwitcherWidget> h(test_screen(), state());
+    process_lvgl(30);
+    const int floor = resolve_px("touch_target_min", 48);
+
+    // 95x211 is the 1x2 content box at 800x480: too narrow for a rail of five.
+    resize_content(h, 95, 211);
+    process_lvgl(30);
+    REQUIRE(mode() == static_cast<int>(ToolSwitcherMode::Pair));
+    REQUIRE(lv_subject_get_int(lv_xml_get_subject(nullptr, "tool_switcher_rows")) == 2);
+    lv_obj_update_layout(h.root());
+
+    const lv_area_t tile = coords_of(h.root());
+    const lv_area_t face = coords_of(named(h, "tool_switcher_face"));
+    lv_obj_t* park_btn = named(h, "tool_switcher_face_park_btn");
+    REQUIRE(shown(named(h, "tool_switcher_face_park")));
+    const lv_area_t park = coords_of(park_btn);
+    CAPTURE(face.x1, face.y1, face.x2, face.y2, park.x1, park.y1, park.x2, park.y2);
+    CHECK(lv_obj_get_width(park_btn) >= floor);
+    CHECK(lv_obj_get_height(park_btn) >= floor);
+    CHECK(park.x1 >= tile.x1);
+    CHECK(park.x2 <= tile.x2);
+    CHECK(park.y2 <= tile.y2);
+    CHECK(park.y1 > face.y2);
+    // Face and Park share the column's width.
+    CHECK(lv_obj_get_width(named(h, "tool_switcher_face")) == lv_obj_get_width(park_btn));
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "tool_switcher: the face and Park fill the same cross axis whatever box the "
+                 "tile was told",
+                 "[tool_switcher][1784]") {
+    ToolChangerRig rig(5);
+    PanelWidgetHarness<ToolSwitcherWidget> h(test_screen(), state());
+    process_lvgl(30);
+    resize_content(h, 214, 93);
+    process_lvgl(30);
+    REQUIRE(mode() == static_cast<int>(ToolSwitcherMode::Pair));
+
+    // The grid can report a box a pixel smaller than the tile it lays out.
+    const auto [w, hpx] = tile_for_content(214, 93);
+    h.widget().notify_size_changed(1, 1, w - 1, hpx - 1);
+    process_lvgl(30);
+    REQUIRE(mode() == static_cast<int>(ToolSwitcherMode::Pair));
+    lv_obj_update_layout(h.root());
+    CHECK(lv_obj_get_height(named(h, "tool_switcher_face")) ==
+          lv_obj_get_height(named(h, "tool_switcher_face_park_btn")));
+    CHECK(lv_obj_get_height(named(h, "tool_switcher_face")) == lv_obj_get_content_height(h.root()));
+    // Stacked, the cross axis is the width.
+    resize_content(h, 95, 211);
+    process_lvgl(30);
+    const auto [sw, sh] = tile_for_content(95, 211);
+    h.widget().notify_size_changed(1, 1, sw - 1, sh - 1);
+    process_lvgl(30);
+    REQUIRE(mode() == static_cast<int>(ToolSwitcherMode::Pair));
+    REQUIRE(lv_subject_get_int(lv_xml_get_subject(nullptr, "tool_switcher_rows")) == 2);
+    lv_obj_update_layout(h.root());
+    CHECK(lv_obj_get_width(named(h, "tool_switcher_face")) ==
+          lv_obj_get_width(named(h, "tool_switcher_face_park_btn")));
+    CHECK(lv_obj_get_width(named(h, "tool_switcher_face")) == lv_obj_get_content_width(h.root()));
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "tool_switcher: a sheet row's colour strip sits below its temperature",
+                 "[tool_switcher][1784]") {
+    ToolChangerRig rig(3);
+    map_heads_to_lanes(3);
+    state().temperature_state().init_extruders({"extruder", "extruder1", "extruder2"});
+    process_lvgl(30);
+    PanelWidgetHarness<ToolSwitcherWidget> h(test_screen(), state());
+    process_lvgl(30);
+    state().update_from_status(nlohmann::json{{"extruder1", {{"temperature", 150.0}}}});
+    process_lvgl(30);
+    h.resize(2, 2, 160, 60);
+    process_lvgl(30);
+
+    ToolSwitcherTestAccess::show_picker(h.widget());
+    lv_obj_t* list = ToolSwitcherTestAccess::picker_list(h.widget());
+    REQUIRE(list != nullptr);
+    lv_obj_update_layout(lv_obj_get_parent(list));
+    lv_obj_t* row = lv_obj_get_child(list, 1);
+    lv_obj_t* temp = lv_obj_find_by_name(row, "tool_btn_temp");
+    lv_obj_t* strip = lv_obj_find_by_name(row, "tool_btn_strip");
+    lv_obj_t* btn = lv_obj_find_by_name(row, "tool_btn");
+    REQUIRE(std::string(lv_label_get_text(temp)) == "150°C");
+    REQUIRE_FALSE(lv_obj_has_flag(strip, LV_OBJ_FLAG_HIDDEN));
+    const lv_area_t t = coords_of(temp);
+    const lv_area_t s = coords_of(strip);
+    const lv_area_t b = coords_of(btn);
+    CAPTURE(t.y1, t.y2, s.y1, s.y2, b.y1, b.y2);
+    CHECK(s.y1 > t.y2);
+    CHECK(s.y2 <= b.y2);
+    ToolSwitcherTestAccess::hide_picker(h.widget());
+    process_lvgl(30);
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture, "tool_switcher: the empty-carriage detail line fits its block",
+                 "[tool_switcher][1784]") {
+    ToolChangerRig rig(5);
+    PanelWidgetHarness<ToolSwitcherWidget> h(test_screen(), state());
+    process_lvgl(30);
+    ToolChangerRig::unmount();
+    process_lvgl(30);
+    REQUIRE(ToolState::instance().active_tool_index() == -1);
+
+    // The 2x2 content box at 800x480.
+    resize_content(h, 214, 211);
+    process_lvgl(30);
+    REQUIRE(lv_subject_get_int(lv_xml_get_subject(nullptr, "tool_switcher_detail")) == 1);
+    const lv_font_t* body = theme_manager_get_font("font_body");
+    REQUIRE(ui::text_width(lv_tr("Carriage empty · tap a head"), body) > 214);
+    const std::string line =
+        lv_subject_get_string(lv_xml_get_subject(nullptr, "tool_switcher_detail_0_text"));
+    CHECK(line == lv_tr("Carriage empty"));
+    CHECK(ui::text_width(line.c_str(), body) <= 214);
+
+    // Where the whole line fits, it is kept.
+    resize_content(h, 600, 211);
+    process_lvgl(30);
+    CHECK(std::string(lv_subject_get_string(lv_xml_get_subject(
+              nullptr, "tool_switcher_detail_0_text"))) == lv_tr("Carriage empty · tap a head"));
 }
