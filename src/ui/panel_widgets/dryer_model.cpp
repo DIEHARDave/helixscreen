@@ -33,9 +33,9 @@ std::vector<ObserverGuard> s_observers;
 // The observers' owner argument; the handlers use no instance state.
 int s_anchor = 0;
 
-// The longest remaining time seen this chamber cycle. The appliance reports minutes left
-// and no duration, so the total is inferred from the first reading of a cycle.
-int s_chamber_total_min = -1;
+ChamberCycle s_chamber_cycle;
+// A test published a summary; refreshing would replace it with the live sources.
+bool s_pinned = false;
 
 // The controller is built after the widget subjects are, so its observers attach on the
 // first refresh that finds it.
@@ -48,6 +48,7 @@ bool subject_ready(const lv_subject_t* subject) {
 // Sources notify far more often than the summary changes (every unit's humidity and
 // countdown, the initial value of each observer), so a burst becomes one refresh.
 bool s_refresh_queued = false;
+void refresh_now();
 // Adding an observer notifies it once with the current value; attach_sources() is
 // followed by a refresh of its own, so those are not requests.
 bool s_attaching = false;
@@ -61,7 +62,7 @@ void request_refresh() {
     s_refresh_queued = true;
     ui::queue_update("DryerModel::refresh", [] {
         s_refresh_queued = false;
-        refresh();
+        refresh_now();
     });
 }
 
@@ -70,6 +71,25 @@ void on_int(int*, int) {
 }
 void on_text(int*, const char*) {
     request_refresh();
+}
+
+// A temperature moves every status frame; the rows show whole degrees.
+int s_chamber_shown_c = -1;
+int s_bed_shown_c = -1;
+
+void on_chamber_temp(int*, int deci) {
+    const int c = static_cast<int>(std::lround(deci / 10.0));
+    if (c != s_chamber_shown_c) {
+        s_chamber_shown_c = c;
+        request_refresh();
+    }
+}
+void on_bed_temp(int*, int deci) {
+    const int c = static_cast<int>(std::lround(deci / 10.0));
+    if (c != s_bed_shown_c) {
+        s_bed_shown_c = c;
+        request_refresh();
+    }
 }
 
 void watch(lv_subject_t* subject, const SubjectLifetime& life) {
@@ -95,6 +115,12 @@ void attach_sources() {
     watch(ps.capabilities_state().subject(Capability::CanBedDry), printer_life);
     watch(ps.temperature_state().get_chamber_dryer_active_subject(), printer_life);
     watch_text(ps.temperature_state().get_chamber_dryer_text_subject(), printer_life);
+    if (auto* chamber = ps.temperature_state().get_chamber_temp_subject(); subject_ready(chamber))
+        s_observers.push_back(ui::observe<int>(chamber, &s_anchor, on_chamber_temp, printer_life,
+                                               ui::Dispatch::Immediate));
+    if (auto* bed_temp = ps.temperature_state().get_bed_temp_subject(); subject_ready(bed_temp))
+        s_observers.push_back(ui::observe<int>(bed_temp, &s_anchor, on_bed_temp, printer_life,
+                                               ui::Dispatch::Immediate));
 
     auto& ams = AmsState::instance();
     const SubjectLifetime ams_life = ams.get_subjects_lifetime();
@@ -141,12 +167,8 @@ DryerSummaryInput read_sources() {
         in.chamber.available && ready_int_or_zero(temps.get_chamber_dryer_active_subject()) != 0;
     if (in.chamber.active) {
         in.chamber.remaining_min = temps.chamber_dryer_remaining_min();
-        s_chamber_total_min = std::max(s_chamber_total_min, in.chamber.remaining_min);
-        in.chamber.total_min = s_chamber_total_min;
         in.chamber.target_c =
             temps.chamber_dryer_target_c() > 0 ? temps.chamber_dryer_target_c() : -1;
-    } else {
-        s_chamber_total_min = -1;
     }
     in.chamber.current_c = deci_to_c(temps.get_chamber_temp_subject());
 
@@ -178,15 +200,16 @@ void init_subjects() {
                 s_subjects_initialized = false;
             }
             s_summary = {};
-            s_chamber_total_min = -1;
+            s_chamber_cycle = {};
             s_bed_watched = false;
             s_refresh_queued = false;
         });
     }
     // A queue that was discarded under a pending request would otherwise block every later one.
     s_refresh_queued = false;
+    s_pinned = false;
     attach_sources();
-    refresh();
+    refresh_now();
 }
 
 namespace {
@@ -202,19 +225,39 @@ void publish(DryerSummary fresh) {
     }
 }
 
+void refresh_now() {
+    if (!s_subjects_initialized || s_pinned)
+        return;
+    if (!s_bed_watched && get_bed_drying_controller())
+        attach_sources();
+    DryerSummaryInput in = read_sources();
+    s_chamber_cycle =
+        next_chamber_cycle(s_chamber_cycle, in.chamber.active, in.chamber.remaining_min);
+    in.chamber.total_min = s_chamber_cycle.counted ? s_chamber_cycle.total_min : -1;
+    publish(summarize_dryers(in));
+}
+
 } // namespace
 
 void refresh() {
     if (!s_subjects_initialized)
         return;
-    if (!s_bed_watched && get_bed_drying_controller())
+    // Sources that were deinited and brought back since the observers attached are not
+    // the ones those observers hold.
+    if (!s_pinned)
         attach_sources();
-    publish(summarize_dryers(read_sources()));
+    refresh_now();
 }
 
 void publish_for_test(DryerSummary summary) {
-    if (s_subjects_initialized)
-        publish(std::move(summary));
+    if (!s_subjects_initialized)
+        return;
+    s_pinned = true;
+    publish(std::move(summary));
+}
+
+void release_for_test() {
+    s_pinned = false;
 }
 
 const DryerSummary& summary() {

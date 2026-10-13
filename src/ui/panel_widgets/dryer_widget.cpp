@@ -19,6 +19,7 @@
 #include "panel_widget_registry.h"
 #include "src/ui/panel_widgets/content_chrome.h"
 #include "src/ui/panel_widgets/dryer_model.h"
+#include "src/ui/panel_widgets/live_tile_owner.h"
 #include "static_subject_registry.h"
 #include "subject_managed_panel.h"
 #include "text_measure.h"
@@ -78,9 +79,8 @@ bool s_subjects_initialized = false;
 SubjectManager s_subjects;
 bool s_rows_composed = false;
 
-// The attached instances, oldest first. The newest is the live tile and the only one that
-// publishes; when it detaches, the one before it takes over.
-std::vector<helix::DryerWidget*> s_attached;
+// The instance bound to the live tile is the only one that publishes.
+helix::LiveTileOwner<helix::DryerWidget> s_tile;
 std::function<void(const helix::DryerTap&)> s_open_hook;
 
 void init_int(lv_subject_t& subject, int value, const char* name) {
@@ -469,7 +469,9 @@ DryerWidget::SummaryState DryerWidget::read_state() {
 
 void DryerWidget::attach(lv_obj_t* widget_obj, lv_obj_t* /*parent_screen*/) {
     install_delete_hook(widget_obj);
-    s_attached.push_back(this);
+    s_tile.claim(this);
+    // Sources that came up since the model last looked.
+    dryer_model::refresh();
 
     const auto token = lifetime_.token();
     version_observer_ = ui::observe<int>(
@@ -496,15 +498,10 @@ void DryerWidget::detach() {
     lifetime_.invalidate();
     version_observer_.reset();
     language_observer_.reset();
-    const auto it = std::find(s_attached.begin(), s_attached.end(), this);
-    if (it != s_attached.end()) {
-        const bool was_live = (it + 1 == s_attached.end());
-        s_attached.erase(it);
+    if (DryerWidget* displaced = s_tile.release(this)) {
         // The tile beneath a transient one is still on screen and publishes again.
-        if (was_live && !s_attached.empty()) {
-            s_attached.back()->publish_verdict();
-            s_attached.back()->publish_texts();
-        }
+        displaced->publish_verdict();
+        displaced->publish_texts();
     }
 }
 
@@ -515,7 +512,7 @@ void DryerWidget::on_size_changed(int /*colspan*/, int /*rowspan*/, int width_px
     decided_multi_ = state.multi;
     decided_progress_known_ = state.progress_known;
     decided_sources_ = state.sources;
-    if (s_attached.empty() || s_attached.back() != this)
+    if (!s_tile.is_owner(this))
         return;
     publish_verdict();
     publish_texts();
@@ -542,7 +539,7 @@ void DryerWidget::publish_verdict() {
 }
 
 void DryerWidget::publish_texts() {
-    if (s_attached.empty() || s_attached.back() != this)
+    if (!s_tile.is_owner(this))
         return;
     const DryerSummary& summary = dryer_model::summary();
     const SizeRung rung = verdict_.rung;

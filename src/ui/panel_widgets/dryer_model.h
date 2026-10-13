@@ -31,7 +31,11 @@ lv_subject_t* version_subject();
 SubjectLifetime lifetime();
 
 /// Publishes @p summary as though refresh() had computed it, so a widget test can set the
-/// drying state without building every source.
+/// drying state without building every source. Refreshes leave it alone until
+/// release_for_test().
 void publish_for_test(DryerSummary summary);
+
+/// Ends publish_for_test(): the next refresh reads the live sources again.
+void release_for_test();
 
 } // namespace helix::dryer_model

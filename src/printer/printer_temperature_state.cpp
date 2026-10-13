@@ -675,6 +675,7 @@ void PrinterTemperatureState::update_from_status(const nlohmann::json& status) {
                 }
                 if (d->drying_remaining_s.has_value()) {
                     chamber_dryer_remaining_s_ = *d->drying_remaining_s;
+                    chamber_dryer_remaining_reported_ = true;
                 }
                 if (d->drying_target_c.has_value()) {
                     chamber_dryer_target_c_ = *d->drying_target_c;

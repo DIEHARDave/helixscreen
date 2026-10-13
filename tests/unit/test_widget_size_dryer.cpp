@@ -40,6 +40,7 @@ struct DryerFixture : public LVGLUITestFixture {
     ~DryerFixture() override {
         set_dryer_open_hook_for_test({});
         publish({});
+        dryer_model::release_for_test();
         drain();
     }
 
@@ -328,12 +329,21 @@ TEST_CASE_METHOD(DryerFixture, "dryer: only the live tile publishes, even after 
         transient.resize(1, 1, 55, 54);
         CHECK(rung_subject() == static_cast<int>(SizeRung::Glance));
     }
-    // It detaches; the tile that is still on screen publishes again.
+    // It detaches; the tile that is still on screen publishes again, texts included.
     CHECK(rung_subject() == static_cast<int>(SizeRung::Full));
+    CHECK(subject_text("home_dryer_row_0_name") == "Box 1");
+    CHECK(subject_int("home_dryer_row_count") >= 1);
 
     publish(two_drying());
     CHECK(subject_int("home_dryer_row_count") == 2);
     CHECK(subject_text("home_dryer_row_1_name") == "Chamber");
+
+    // The rows still take taps.
+    std::vector<DryerTap> taps;
+    set_dryer_open_hook_for_test([&taps](const DryerTap& tap) { taps.push_back(tap); });
+    lv_obj_send_event(part(live, "dryer_row_0"), LV_EVENT_CLICKED, nullptr);
+    REQUIRE(taps.size() == 1);
+    CHECK(taps[0].target == DryerTapTarget::Environment);
 
     // An instance that was never attached does not publish at all.
     DryerWidget probe;

@@ -201,3 +201,58 @@ TEST_CASE("dryer summary: with no box the tile opens the chamber, then the bed",
     CHECK(tap_for_tile(summarize_dryers(in)).target == DryerTapTarget::ChamberModal);
     CHECK(tap_for_tile(summarize_dryers({})).target == DryerTapTarget::None);
 }
+
+TEST_CASE("chamber cycle: a cycle seen beginning keeps the longest remaining time",
+          "[dryer][summary][chamber]") {
+    ChamberCycle c = next_chamber_cycle({}, false, -1);
+    c = next_chamber_cycle(c, true, 120);
+    CHECK(c.counted);
+    CHECK(c.total_min == 120);
+    c = next_chamber_cycle(c, true, 90);
+    CHECK(c.total_min == 120);
+    c = next_chamber_cycle(c, true, 130); // the device extended it
+    CHECK(c.total_min == 130);
+    CHECK(progress_pct_from(65, c.total_min) == 50);
+}
+
+TEST_CASE("chamber cycle: a cycle already running at the first reading has no total",
+          "[dryer][summary][chamber]") {
+    ChamberCycle c = next_chamber_cycle({}, true, 80);
+    CHECK_FALSE(c.counted);
+    CHECK(c.total_min == -1);
+    c = next_chamber_cycle(c, true, 70);
+    CHECK_FALSE(c.counted);
+    CHECK(c.total_min == -1);
+}
+
+TEST_CASE("chamber cycle: the end resets, and a shorter second cycle starts from its own total",
+          "[dryer][summary][chamber]") {
+    ChamberCycle c = next_chamber_cycle({}, false, -1);
+    c = next_chamber_cycle(c, true, 240);
+    c = next_chamber_cycle(c, true, 100);
+    c = next_chamber_cycle(c, false, -1);
+    CHECK_FALSE(c.counted);
+    CHECK(c.total_min == -1);
+    c = next_chamber_cycle(c, true, 60);
+    CHECK(c.counted);
+    CHECK(c.total_min == 60);
+}
+
+TEST_CASE("chamber cycle: a remaining time reported late still sets the total",
+          "[dryer][summary][chamber]") {
+    ChamberCycle c = next_chamber_cycle({}, false, -1);
+    c = next_chamber_cycle(c, true, -1);
+    CHECK(c.counted);
+    CHECK(c.total_min == -1);
+    c = next_chamber_cycle(c, true, 100);
+    CHECK(c.total_min == 100);
+}
+
+TEST_CASE("dryer summary: a chamber cycle with nothing left reads 0 and 100 percent",
+          "[dryer][summary][chamber]") {
+    DryerSummaryInput in;
+    in.chamber = {true, true, 0, 120, 50, 55};
+    const DryerSummary s = summarize_dryers(in);
+    CHECK(s.sources[0].remaining_min == 0);
+    CHECK(s.sources[0].progress_pct == 100);
+}

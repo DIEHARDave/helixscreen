@@ -184,3 +184,66 @@ TEST_CASE_METHOD(DryerModelFixture, "dryer model: the version moves only when th
     drain();
     CHECK(version() > with_chamber);
 }
+
+TEST_CASE_METHOD(DryerModelFixture,
+                 "dryer model: a chamber cycle running at the first reading draws no ring",
+                 "[dryer][model][chamber]") {
+    auto& temps = state().temperature_state();
+    state().capabilities_state().set_has_chamber_dryer(true);
+    lv_subject_set_int(temps.get_chamber_dryer_active_subject(), 1);
+    drain();
+    dryer_model::refresh();
+    const DryerSummary& s = dryer_model::summary();
+    REQUIRE(s.sources.size() == 1);
+    CHECK(s.sources[0].drying);
+    CHECK(s.sources[0].progress_pct == -1);
+
+    lv_subject_set_int(temps.get_chamber_dryer_active_subject(), 0);
+    drain();
+    CHECK_FALSE(dryer_model::summary().sources[0].drying);
+}
+
+TEST_CASE_METHOD(DryerModelFixture, "dryer model: idle rows follow the bed and chamber temperature",
+                 "[dryer][model][temps]") {
+    auto& temps = state().temperature_state();
+    state().capabilities_state().set_bed_drying(true, true);
+    lv_subject_set_int(temps.get_bed_temp_subject(), 250);
+    drain();
+    REQUIRE(dryer_model::summary().sources.size() == 1);
+    CHECK(dryer_model::summary().sources[0].current_c == 25);
+
+    lv_subject_set_int(temps.get_bed_temp_subject(), 612);
+    drain();
+    CHECK(dryer_model::summary().sources[0].current_c == 61);
+
+    // Less than a whole degree is not worth a refresh.
+    const int before = version();
+    lv_subject_set_int(temps.get_bed_temp_subject(), 614);
+    drain();
+    CHECK(version() == before);
+}
+
+TEST_CASE_METHOD(DryerModelFixture, "dryer model: units that come up after attach are watched",
+                 "[dryer][model][ams]") {
+    auto& ams = AmsState::instance();
+    ams.deinit_subjects();
+    dryer_model::init_subjects(); // no filament system yet
+    drain();
+    CHECK_FALSE(gate());
+
+    ams.init_subjects(false);
+    ams.set_backend(two_boxes_one_drying(1'000'000 + 30 * 60));
+    ams.sync_from_backend();
+    dryer_model::refresh(); // whatever brings the model back: a widget attaching
+    drain();
+    REQUIRE(dryer_model::summary().sources.size() == 2);
+    CHECK(dryer_model::summary().drying_count == 1);
+
+    // From here the per-unit subjects are watched without another init.
+    ams.set_backend(two_boxes_one_drying(0));
+    ams.sync_from_backend();
+    drain();
+    CHECK(dryer_model::summary().drying_count == 0);
+
+    ams.deinit_subjects();
+}

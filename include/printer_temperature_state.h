@@ -310,9 +310,10 @@ class PrinterTemperatureState {
     lv_subject_t* get_chamber_dryer_text_subject() {
         return &chamber_dryer_text_;
     }
-    /// Minutes left in the running cycle, rounded up; -1 until the device reports one.
+    /// Minutes left in the running cycle, rounded up; 0 once the device reports none left,
+    /// -1 until it reports anything.
     int chamber_dryer_remaining_min() const {
-        return chamber_dryer_remaining_s_ > 0 ? (chamber_dryer_remaining_s_ + 59) / 60 : -1;
+        return chamber_dryer_remaining_reported_ ? (chamber_dryer_remaining_s_ + 59) / 60 : -1;
     }
     /// The running cycle's target in C; 0 when the device reports none.
     int chamber_dryer_target_c() const {
@@ -400,6 +401,7 @@ class PrinterTemperatureState {
         chamber_filter_fan_pin_ = filter_fan_pin;
         chamber_dryer_running_ = false;
         chamber_dryer_remaining_s_ = 0;
+        chamber_dryer_remaining_reported_ = false;
         chamber_dryer_target_c_ = 0;
         if (subjects_initialized_) {
             publish_chamber_dryer();
@@ -548,6 +550,7 @@ class PrinterTemperatureState {
     /// Last reported drying state; frames name only what changed.
     bool chamber_dryer_running_ = false;
     int chamber_dryer_remaining_s_ = 0;
+    bool chamber_dryer_remaining_reported_ = false;
     int chamber_dryer_target_c_ = 0; ///< 0 = not reported
     void publish_chamber_dryer();
     SubjectLifetime chamber_heater_fault_lifetime_;

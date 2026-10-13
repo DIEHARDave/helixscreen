@@ -38,10 +38,36 @@ struct ChamberDryerReading {
     bool available = false;
     bool active = false;
     int remaining_min = -1;
-    int total_min = -1; ///< the longest remaining seen this cycle; the device reports no duration
+    int total_min = -1; ///< ChamberCycle::total_min; -1 draws no ring
     int current_c = -1;
     int target_c = -1;
 };
+
+/// What the model has watched of the chamber's cycle. The appliance reports minutes left
+/// and no duration, so a progress is only known for a cycle this session saw begin: its
+/// total is the longest remaining time seen since. A cycle already running when the first
+/// reading arrives has no known total and draws no ring.
+struct ChamberCycle {
+    bool seen = false;       ///< a reading has been taken
+    bool was_active = false; ///< the previous reading was active
+    bool counted = false;    ///< this cycle began under observation
+    int total_min = -1;
+};
+
+[[nodiscard]] constexpr ChamberCycle next_chamber_cycle(const ChamberCycle& prev, bool active,
+                                                        int remaining_min) {
+    ChamberCycle next;
+    next.seen = true;
+    if (!active)
+        return next;
+    next.was_active = true;
+    next.counted = prev.counted || (prev.seen && !prev.was_active);
+    if (next.counted) {
+        const int before = prev.counted ? prev.total_min : -1;
+        next.total_min = remaining_min > before ? remaining_min : before;
+    }
+    return next;
+}
 
 struct BedDryerReading {
     bool available = false;
