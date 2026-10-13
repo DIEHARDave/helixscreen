@@ -94,9 +94,10 @@ struct ToolSwitcherGrid {
         out.cell_w = g.cell_w;
         out.cell_h = g.cell_h;
 
-        // A tall box sizes the rail's rows to their content, up to half the
-        // box, and gives what is left to a detail block when that holds
-        // two and a half lines of small text.
+        // A tall box (two touch rows or more) sizes the rail's rows to their
+        // content, up to half the box, and gives what is left to a detail
+        // block when that holds two and a half lines of small text. A
+        // one-row-tall tile keeps its full-height segments.
         const int gaps_h = gap * (g.rows - 1);
         int row_h = (content_h / 2 - gaps_h) / g.rows;
         if (row_h > body_px * 34 / 10)
@@ -104,7 +105,7 @@ struct ToolSwitcherGrid {
         if (row_h < min_target)
             row_h = min_target;
         const int rail_h = row_h * g.rows + gaps_h;
-        if ((content_h - rail_h) * 2 >= small_px * 5) {
+        if (content_h >= 2 * min_target && (content_h - rail_h) * 2 >= small_px * 5) {
             out.detail = true;
             out.cell_h = row_h;
             out.rail_h = rail_h;

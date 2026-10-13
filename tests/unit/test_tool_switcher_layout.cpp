@@ -52,7 +52,7 @@ constexpr Box k480_2x1{"480x272 2x1", 130, 52};
 constexpr Box k480_1x2{"480x272 1x2", 58, 118};
 constexpr Box k480_2x2{"480x272 2x2", 130, 118};
 
-ToolSwitcherLayout decide(int heads, Box box, Fonts f = kFonts800) {
+ToolSwitcherLayout layout_for(int heads, Box box, Fonts f = kFonts800) {
     return decide_tool_switcher_layout(heads, box.w, box.h, kMin, kGap, f.body, f.small);
 }
 
@@ -91,7 +91,7 @@ TEST_CASE("Tool switcher layout: mode per measured box and head count", "[tool_s
     for (const Fonts f : {kFonts800, kFonts480}) {
         for (const Row& row : table) {
             for (int i = 0; i < 8; i++) {
-                const ToolSwitcherLayout l = decide(row.heads, boxes[i], f);
+                const ToolSwitcherLayout l = layout_for(row.heads, boxes[i], f);
                 INFO(row.heads << " heads, " << boxes[i].name << ", body " << f.body << ": got "
                                << mode_name(l.mode) << ", want " << mode_name(row.modes[i]));
                 CHECK(l.mode == row.modes[i]);
@@ -107,14 +107,14 @@ TEST_CASE("Tool switcher layout: 2x1 at 800x480 holds four 48 px segments but no
     REQUIRE(4 * kMin + 3 * kGap <= k800_2x1.w);
     REQUIRE(5 * kMin + 4 * kGap > k800_2x1.w);
 
-    const ToolSwitcherLayout four = decide(4, k800_2x1);
+    const ToolSwitcherLayout four = layout_for(4, k800_2x1);
     CHECK(four.mode == ToolSwitcherMode::Rail);
     CHECK(four.cols == 4);
     CHECK(four.rows == 1);
     CHECK(four.cell_w == (214 - 3 * kGap) / 4);
     CHECK(four.cell_w >= kMin);
 
-    const ToolSwitcherLayout five = decide(5, k800_2x1);
+    const ToolSwitcherLayout five = layout_for(5, k800_2x1);
     CHECK(five.mode == ToolSwitcherMode::Pair);
 }
 
@@ -122,7 +122,7 @@ TEST_CASE("Tool switcher layout: rail grid wraps to the first row count that fit
           "[tool_switcher][1784]") {
     // 5 heads + Park on 214x211: one row of six is 34 px wide, two rows of
     // three are 70x104.
-    const ToolSwitcherLayout l = decide(5, k800_2x2);
+    const ToolSwitcherLayout l = layout_for(5, k800_2x2);
     REQUIRE(l.mode == ToolSwitcherMode::RailWithPark);
     CHECK(l.cols == 3);
     CHECK(l.rows == 2);
@@ -131,13 +131,13 @@ TEST_CASE("Tool switcher layout: rail grid wraps to the first row count that fit
 
 TEST_CASE("Tool switcher layout: one head and sixteen heads on a 2x2 box",
           "[tool_switcher][1784]") {
-    const ToolSwitcherLayout one = decide(1, k800_2x2);
+    const ToolSwitcherLayout one = layout_for(1, k800_2x2);
     CHECK(one.mode == ToolSwitcherMode::RailWithPark);
     CHECK(one.cols == 2);
     CHECK(one.rows == 1);
 
     // Seventeen cells do not fit; sixteen do as a 4x4 grid.
-    const ToolSwitcherLayout sixteen = decide(16, k800_2x2);
+    const ToolSwitcherLayout sixteen = layout_for(16, k800_2x2);
     CHECK(sixteen.mode == ToolSwitcherMode::Rail);
     CHECK(sixteen.cols == 4);
     CHECK(sixteen.rows == 4);
@@ -154,7 +154,7 @@ TEST_CASE("Tool switcher layout: degenerate inputs fall back to Single", "[tool_
         CHECK_FALSE(l.detail);
     }
     SECTION("no heads at all") {
-        const ToolSwitcherLayout l = decide(0, k800_2x2);
+        const ToolSwitcherLayout l = layout_for(0, k800_2x2);
         CHECK(l.mode == ToolSwitcherMode::Single);
         CHECK(l.cell_w == k800_2x2.w);
         CHECK(l.cell_h == k800_2x2.h);
@@ -164,7 +164,7 @@ TEST_CASE("Tool switcher layout: degenerate inputs fall back to Single", "[tool_
 TEST_CASE("Tool switcher layout: Pair lies along the long axis with a 30% Park cell",
           "[tool_switcher][1784]") {
     SECTION("wide box: face and Park side by side") {
-        const ToolSwitcherLayout l = decide(5, k800_2x1);
+        const ToolSwitcherLayout l = layout_for(5, k800_2x1);
         REQUIRE(l.mode == ToolSwitcherMode::Pair);
         CHECK(l.pair_horizontal);
         CHECK(l.cols == 2);
@@ -176,7 +176,7 @@ TEST_CASE("Tool switcher layout: Pair lies along the long axis with a 30% Park c
         CHECK_FALSE(l.detail);
     }
     SECTION("tall box: face over Park") {
-        const ToolSwitcherLayout l = decide(5, k800_1x2);
+        const ToolSwitcherLayout l = layout_for(5, k800_1x2);
         REQUIRE(l.mode == ToolSwitcherMode::Pair);
         CHECK_FALSE(l.pair_horizontal);
         CHECK(l.cols == 1);
@@ -186,14 +186,14 @@ TEST_CASE("Tool switcher layout: Pair lies along the long axis with a 30% Park c
     }
     SECTION("a short long axis still gives Park the 48 px floor") {
         // 30% of 130 is 39, so Park takes 48 and the face 80.
-        const ToolSwitcherLayout l = decide(5, k480_2x1, kFonts480);
+        const ToolSwitcherLayout l = layout_for(5, k480_2x1, kFonts480);
         REQUIRE(l.mode == ToolSwitcherMode::Pair);
         CHECK(l.cell_w == 130 - kGap - kMin);
     }
 }
 
 TEST_CASE("Tool switcher layout: Single fills the whole box", "[tool_switcher][1784]") {
-    const ToolSwitcherLayout l = decide(5, k800_1x1);
+    const ToolSwitcherLayout l = layout_for(5, k800_1x1);
     REQUIRE(l.mode == ToolSwitcherMode::Single);
     CHECK(l.cols == 1);
     CHECK(l.rows == 1);
@@ -227,7 +227,7 @@ TEST_CASE("Tool switcher layout: no mode yields a cell under the touch floor",
 
 TEST_CASE("Tool switcher layout: a detail block fits under a tall rail", "[tool_switcher][1784]") {
     SECTION("2x2 at 800x480 with five heads") {
-        const ToolSwitcherLayout l = decide(5, k800_2x2);
+        const ToolSwitcherLayout l = layout_for(5, k800_2x2);
         REQUIRE(l.mode == ToolSwitcherMode::RailWithPark);
         CHECK(l.detail);
         CHECK(l.rail_h < k800_2x2.h);
@@ -236,16 +236,53 @@ TEST_CASE("Tool switcher layout: a detail block fits under a tall rail", "[tool_
         CHECK(k800_2x2.h - l.rail_h >= 2.5 * kFonts800.small);
     }
     SECTION("2x1 at 800x480 with five heads") {
-        const ToolSwitcherLayout l = decide(5, k800_2x1);
+        const ToolSwitcherLayout l = layout_for(5, k800_2x1);
         CHECK_FALSE(l.detail);
         CHECK(l.rail_h == k800_2x1.h);
     }
     SECTION("a rail with no room left under it fills the box") {
         // 4 heads at 480x272 2x2 need two rows of 58 px: nothing is left.
-        const ToolSwitcherLayout l = decide(4, k480_2x2, kFonts480);
+        const ToolSwitcherLayout l = layout_for(4, k480_2x2, kFonts480);
         REQUIRE(l.mode == ToolSwitcherMode::Rail);
         CHECK_FALSE(l.detail);
         CHECK(l.rail_h == k480_2x2.h);
         CHECK(l.cell_h == (118 - kGap) / 2);
+    }
+    SECTION("a one-row-tall tile never shows detail, however much the rail could shrink") {
+        // 2 heads + Park at 214x93: 48 px rows would leave 45 px, enough for
+        // 2.5 lines of 16 px text, but 93 px is under two touch rows.
+        const ToolSwitcherLayout l = layout_for(2, k800_2x1);
+        REQUIRE(l.mode == ToolSwitcherMode::RailWithPark);
+        CHECK_FALSE(l.detail);
+        CHECK(l.rail_h == k800_2x1.h);
+        CHECK(l.cell_h == k800_2x1.h);
+    }
+    SECTION("the tall-box gate sits at two touch rows") {
+        // One head + Park on a 130 px wide box: a single 48 px rail row.
+        const ToolSwitcherLayout at = decide_tool_switcher_layout(1, 130, 2 * kMin, kMin, kGap,
+                                                                  kFonts480.body, kFonts480.small);
+        REQUIRE(at.mode == ToolSwitcherMode::RailWithPark);
+        CHECK(at.detail);
+        CHECK(at.rail_h == kMin);
+        const ToolSwitcherLayout below = decide_tool_switcher_layout(
+            1, 130, 2 * kMin - 1, kMin, kGap, kFonts480.body, kFonts480.small);
+        REQUIRE(below.mode == ToolSwitcherMode::RailWithPark);
+        CHECK_FALSE(below.detail);
+        CHECK(below.rail_h == 2 * kMin - 1);
+    }
+    SECTION("480x272 2x2: detail exactly when the leftover holds 2.5 small lines") {
+        // One head + Park on 130x118 is one 48 px row, leaving 70 px.
+        const int leftover = k480_2x2.h - kMin;
+        REQUIRE(leftover == 70);
+        const ToolSwitcherLayout fits =
+            decide_tool_switcher_layout(1, k480_2x2.w, k480_2x2.h, kMin, kGap, 12, 28);
+        REQUIRE(fits.mode == ToolSwitcherMode::RailWithPark);
+        CHECK(fits.detail); // 2.5 * 28 = 70
+        CHECK(fits.rail_h == kMin);
+        const ToolSwitcherLayout short_by_one =
+            decide_tool_switcher_layout(1, k480_2x2.w, k480_2x2.h, kMin, kGap, 12, 29);
+        CHECK_FALSE(short_by_one.detail); // 2.5 * 29 = 72.5
+        CHECK(short_by_one.rail_h == k480_2x2.h);
+        CHECK(layout_for(1, k480_2x2, kFonts480).detail);
     }
 }
