@@ -15,6 +15,7 @@
 #include "helix-xml/src/xml/lv_xml.h"
 #include "test_helpers/ams_sidebar_xml.h"
 
+#include <cstdlib>
 #include <lvgl.h>
 #include <memory>
 
@@ -104,5 +105,26 @@ TEST_CASE_METHOD(SidebarGridFixture, "AMS sidebar: the actions sit two to a row 
         // The status keeps its own line under the strip.
         CHECK_FALSE(lv_obj_has_flag(named("status_section"), LV_OBJ_FLAG_HIDDEN));
         CHECK(at("status_section").y1 > at("current_loaded_card").y2);
+    }
+}
+
+TEST_CASE_METHOD(SidebarGridFixture, "AMS sidebar: a row the actions do not fill is centred",
+                 "[ams][sidebar][action_grid]") {
+    // Three actions: Unload | Home, then Settings alone on the second row.
+    lv_obj_add_flag(named("btn_check_gates"), LV_OBJ_FLAG_HIDDEN);
+    for (int breakpoint = 0; breakpoint <= 4; ++breakpoint) {
+        CAPTURE(breakpoint);
+        use_breakpoint(breakpoint);
+        const lv_area_t grid = at("action_buttons_container");
+        const lv_area_t unload = at("btn_unload");
+        const lv_area_t reset = at("btn_reset");
+        const lv_area_t settings = at("btn_settings");
+        REQUIRE(settings.y1 > unload.y2);
+        CAPTURE(grid.x1, grid.x2, unload.x1, reset.x2, settings.x1, settings.x2);
+        // The lone button keeps its cell width and stands in the middle.
+        CHECK(lv_area_get_width(&settings) == lv_area_get_width(&unload));
+        CHECK(std::abs((settings.x1 - grid.x1) - (grid.x2 - settings.x2)) <= 1);
+        // A full row leaves its slack evenly on both sides.
+        CHECK(std::abs((unload.x1 - grid.x1) - (grid.x2 - reset.x2)) <= 1);
     }
 }

@@ -4,6 +4,8 @@
 <component>
   <!--
     AMS Currently Loaded Strip - what is loaded, and its clog/buffer meters.
+    A ghost card: the plain ui_card on the panel background, like the print
+    status temperature card.
 
     A color bar beside two lines: "Current: Gate 1" with the remaining weight,
     then the filament's name, one line, ellipsized. The meters follow while the
@@ -19,25 +21,33 @@
     - buffer_present / buffer_slider / buffer_short_text / buffer_label: the
       filament buffer, drawn by UiBufferSlider into buffer_mini_slider
 
-    The meters sit under the lines. From the medium breakpoint up they keep their
-    full form (arc over reading over source; slider over reading over label);
-    below it they are one small row: a small arc beside its reading, the buffer
-    icon beside its reading.
+    The meters sit under the lines in landscape and on the right of them in
+    portrait. From the medium breakpoint up they keep their full form (arc over
+    reading over source; slider over reading over label); below it they are one
+    small row: a small arc beside its reading, the buffer icon beside its reading.
 
     Color swatch updated by C++ via lv_obj_find_by_name(sidebar, "loaded_swatch").
     Clog arc size/stroke/color dynamically set by UiClogMeter C++ class via
     SIZE_CHANGED callback — no fixed pixel sizes in XML.
   -->
   <styles>
+    <!-- Landscape: the lines take the full width and the meters wrap below them.
+         Portrait: the lines grow beside the meters, which stand on the right. -->
+    <style name="details_landscape" width="100%" flex_grow="0"/>
+    <style name="details_portrait" width="1" flex_grow="1"/>
+    <!-- The position line: the position takes the line and the weight ends it.
+         A portrait text column from medium up is wide enough to strand the weight
+         beside the meters, so there the weight follows the position instead. -->
+    <style name="position_fill" width="1" flex_grow="1"/>
+    <style name="position_hug" width="content" flex_grow="0" max_width="70%"/>
     <style name="meter_column"
            layout="flex" flex_flow="column" flex_main_place="center" flex_cross_place="center" pad_column="0"/>
     <style name="meter_row"
            layout="flex" flex_flow="row" flex_main_place="center" flex_cross_place="center" pad_column="#space_xxs"/>
   </styles>
   <view name="ams_loaded_card"
-        extends="ui_card" width="100%" height="content" style_radius="#border_radius" style_bg_color="#elevated_bg"
-        style_pad_all="#space_xs" flex_flow="row" style_flex_main_place="start" style_flex_cross_place="center"
-        style_pad_gap="#space_sm">
+        extends="ui_card" width="100%" height="content" style_radius="#border_radius" style_pad_all="#space_xs"
+        flex_flow="row" style_flex_main_place="start" style_flex_cross_place="center" style_pad_gap="#space_sm">
     <!-- Color bar (left side, stretches to the strip's height) -->
     <lv_obj name="loaded_swatch"
             width="#loaded_swatch_narrow_w" height="100%" style_radius="#border_radius" style_bg_color="#text_muted"
@@ -49,15 +59,19 @@
             style_pad_row="#space_xxs" flex_flow="row_wrap" style_flex_main_place="start"
             style_flex_cross_place="center" style_flex_track_place="start" scrollable="false">
       <lv_obj name="loaded_details"
-              width="100%" height="content" style_pad_all="0" flex_flow="column" style_flex_main_place="center"
+              height="content" style_pad_all="0" flex_flow="column" style_flex_main_place="center"
               style_flex_cross_place="start" style_pad_gap="0" scrollable="false">
+        <bind_style_if_eq name="details_landscape" subject="ui_is_portrait" ref_value="0"/>
+        <bind_style_if_eq name="details_portrait" subject="ui_is_portrait" ref_value="1"/>
         <!-- Line 1: where it is loaded from, and how much is left -->
         <lv_obj name="loaded_position_row"
                 width="100%" height="content" style_pad_all="0" flex_flow="row" style_flex_cross_place="center"
                 style_pad_gap="#space_xs" scrollable="false">
           <text_small name="loaded_position"
-                      width="1" height="#ams_loaded_name_line_h" flex_grow="1" bind_text="ams_current_slot_text"
-                      long_mode="dots"/>
+                      height="#ams_loaded_name_line_h" bind_text="ams_current_slot_text" long_mode="dots">
+            <bind_style_if name="position_fill" cond="ui_is_portrait eq 0 or ui_breakpoint lt 3"/>
+            <bind_style_if name="position_hug" cond="ui_is_portrait eq 1 and ui_breakpoint ge 3"/>
+          </text_small>
           <text_tiny name="loaded_weight" bind_text="ams_current_weight_text" style_text_color="#text_muted">
             <bind_flag_if_eq subject="ams_current_has_weight" flag="hidden" ref_value="0"/>
           </text_tiny>
@@ -71,8 +85,8 @@
            Arc size set dynamically by UiClogMeter C++ SIZE_CHANGED callback. -->
       <lv_obj name="clog_meter" width="content" height="content" style_pad_all="0" scrollable="false" style_pad_row="0">
         <bind_flag_if cond="clog_meter_mode eq 0 or ams_action ne 0" flag="hidden"/>
-        <bind_style_if_ge name="meter_column" subject="ui_breakpoint" ref_value="3"/>
-        <bind_style_if_lt name="meter_row" subject="ui_breakpoint" ref_value="3"/>
+        <bind_style_if name="meter_column" cond="ui_breakpoint ge 3"/>
+        <bind_style_if name="meter_row" cond="ui_breakpoint lt 3"/>
         <!-- Mini arc (sized by C++) -->
         <lv_obj name="clog_arc_container" style_pad_all="0" scrollable="false">
           <!-- Main arc: helix_progress_arc handles common styling and the
@@ -92,7 +106,7 @@
         <text_tiny name="clog_mode_text"
                    width="100%" bind_text="clog_meter_mode_text" style_text_color="#text_muted"
                    style_text_align="center" long_mode="wrap">
-          <bind_flag_if_lt subject="ui_breakpoint" flag="hidden" ref_value="3"/>
+          <bind_flag_if cond="ui_breakpoint lt 3" flag="hidden"/>
         </text_tiny>
       </lv_obj>
       <!-- Filament buffer meter: hidden without a reading, and during any
@@ -101,10 +115,10 @@
            the short form, so the meter stays narrow. -->
       <lv_obj name="buffer_mini" width="content" height="content" style_pad_all="0" scrollable="false" style_pad_row="0">
         <bind_flag_if cond="buffer_present eq 0 or ams_action ne 0" flag="hidden"/>
-        <bind_style_if_ge name="meter_column" subject="ui_breakpoint" ref_value="3"/>
-        <bind_style_if_lt name="meter_row" subject="ui_breakpoint" ref_value="3"/>
+        <bind_style_if name="meter_column" cond="ui_breakpoint ge 3"/>
+        <bind_style_if name="meter_row" cond="ui_breakpoint lt 3"/>
         <icon src="swap_vertical" size="xs" variant="secondary" clickable="false">
-          <bind_flag_if_ge subject="ui_breakpoint" flag="hidden" ref_value="3"/>
+          <bind_flag_if cond="ui_breakpoint ge 3" flag="hidden"/>
         </icon>
         <lv_obj name="buffer_mini_slider"
                 width="#buffer_slider_w" height="#buffer_mini_h" style_pad_all="0" scrollable="false" clickable="false">
@@ -118,7 +132,7 @@
         </text_tiny>
         <text_tiny name="buffer_mini_label"
                    width="content" bind_text="buffer_label" style_text_color="#text_muted" style_text_align="center">
-          <bind_flag_if_lt subject="ui_breakpoint" flag="hidden" ref_value="3"/>
+          <bind_flag_if cond="ui_breakpoint lt 3" flag="hidden"/>
         </text_tiny>
       </lv_obj>
     </lv_obj>
