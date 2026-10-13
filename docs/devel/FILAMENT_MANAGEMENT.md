@@ -1150,9 +1150,20 @@ drawing is `src/ui/ui_ams_detail.cpp`.
   cap, one diffuse sheen (`sheen_rows`: a blurred 7 px band at profile angle 112°,
   fading in from the left cap and out before the right), the silhouette edge and the
   cap rims. `reduced_effects()` keeps outlines only.
-- **Labels.** Material labels sit `space_md` above `unit_top_y()` (the lid's top) or,
-  without a lid, above the back-wall top and the spool tops. Up to four lanes share one
-  row. Five or more stagger so neighbours never share a row
+- **Labels.** Lane labels sit `space_md` above `unit_top_y()` (the lid's top) or,
+  without a lid, above the back-wall top and the spool tops. What a label reads is
+  `src/printer/filament_display_name.cpp#slot_card_lines`, applied by
+  `src/ui/ui_ams_slot.cpp#apply_slot_label`. With up to four lanes
+  (`SLOT_CARD_MAX_TWO_LINE_COUNT`) a named spool shows its name over its material: the name
+  is `slot_card_name()` (`spool_name`, then the Spoolman identity's `filament_name`, then
+  `color_name`, with no algorithmic colour fallback), and the lower line is
+  `ui::lane_material_text()` ("Empty", "--" or the material). The label drops to one line
+  for an empty lane or a lane nothing names (the material text), and for a name that
+  already states the material (`helix::name_states_material`: case-insensitive, every
+  material token contained in the name, so "PLA+ Bone White" states "PLA+") or a lane with
+  no material (the name). With five or more lanes the label is always the material line
+  alone, and a non-Empty material is cut to `SLOT_CARD_CROWDED_MATERIAL_BYTES` (4) bytes.
+  Up to four lanes share one row. Five or more stagger so neighbours never share a row
   (`include/ui_ams_slot_layout.h#ams_stagger_row`): below the medium breakpoint they
   alternate between two rows (odd lanes nearest the spools) in `font_xs`, one line
   apart (`ams_stagger_row_height`), each ellipsized to its two-lane span
@@ -1594,7 +1605,7 @@ reading while open. When the backend goes away it reads an empty snapshot and fa
 to the "does not report buffer or flow data" message instead of the last backend's rows.
 
 **Known gap.** The CFS clog source reads only the fork's `active` flag
-(`src/printer/ams_backend_cfs.cpp#AmsBackendCfs::parse_flat_box_status`'s buffer block), because the other
+(`src/printer/ams_backend_cfs.cpp#parse_flat_box_status`'s buffer block), because the other
 buffer fields are undocumented. The Clog Detection widget can therefore appear with no
 distance data behind it.
 

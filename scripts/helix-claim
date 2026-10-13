@@ -296,7 +296,8 @@ take)
   "pid": $pid,
   "pid_start": "$(pid_starttime "$pid")",
   "cwd": "$PWD",
-  "started": "$(date -Is)",
+  "started": "$(date +%Y-%m-%dT%H:%M:%S%z)",
+  "started_epoch": $(date +%s),
   "note": "$note"
 }
 EOF
@@ -477,8 +478,12 @@ resources)
         [ "$(state_of "$f")" = LIVE ] || continue
         [ "$live" = 0 ] && printf 'live claims:\n'; live=$((live+1))
         body=$(tr -d '\n' < "$f")
-        since=$(date -d "$(json_get "$body" started)" +%s 2>/dev/null) &&
-            age=$(fmt_age $(( $(date +%s) - since ))) || age='?'
+        # started_epoch is portable; parsing the ISO stamp needs GNU date -d.
+        since=$(json_get "$body" started_epoch)
+        case "$since" in
+            ''|*[!0-9]*) since=$(date -d "$(json_get "$body" started)" +%s 2>/dev/null) ;;
+        esac
+        [ -n "$since" ] && age=$(fmt_age $(( $(date +%s) - since ))) || age='?'
         rss=$(heavy_rss "$f") && rss=" rss=$rss" || rss=""
         printf '  %-30s %-16s %6s%s  %s\n' "$(json_get "$body" resource)" \
             "$(json_get "$body" session)" "$age" "$rss" "$(json_get "$body" note)"

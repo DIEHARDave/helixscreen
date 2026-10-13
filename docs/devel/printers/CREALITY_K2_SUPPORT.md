@@ -17,7 +17,7 @@ The K2, K2 Pro and K2 Plus use Allwinner ARM Cortex-A7 dual-core processors runn
 **K2 SE is a K1-family board despite the name.** It runs Creality's K1 MIPS firmware image
 (Ingenic, Buildroot), so it installs the mips package and its CFS speaks the K1 dialect. It is
 covered by [K1 Series Support](CREALITY_K1_SUPPORT.md), where its user-confirmed install is
-recorded. The routing trap is described in `src/printer/ams_backend_cfs.cpp#AmsBackendCfs::AmsBackendCfs`.
+recorded. The routing trap is described in `src/printer/ams_backend_cfs.cpp#"AmsBackendCfs::AmsBackendCfs("`.
 
 Detection has an entry for the K2, K2 Pro and K2 Plus (plus the K2 Plus k2-improvements variant),
 all sharing the `k2` preset. They are told apart by the model hostname or by the bed size the

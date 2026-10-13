@@ -148,7 +148,7 @@ Writes are change-gated: every value is compared before `lv_subject_set_*` fires
 
 The AMS panel itself is nothing but bindings over those subjects:
 
-<img src="../../images/screenshot-ams-panel.png" alt="AMS panel (Happy Hare): slot diagram with per-slot colors and materials on the left, the current slot's card with fill percentage, temperature and humidity on the right" width="800"/>
+<img src="../../images/screenshot-ams-panel.png" alt="AMS panel (Happy Hare), landscape: on the left the slot diagram, each spool labelled with its name over its material, the unit's temperature and humidity in a pill at the box's right end, and the filament path to the toolhead below; on the right the loaded strip (a colour bar beside the position and remaining weight, then the filament name), the status line, and the action buttons two to a row" width="800"/>
 
 One end-to-end sequence ties the pieces together. The user taps a slot; a dispatch surface lands on a backend op. The NVI entry point, say `change_tool(n)`, passes the print-active gate, claims the in-flight slot, and calls the backend's `do_change_tool`, which sends G-code through the API (chapter 04). The firmware acts; the backend's subscription fires on libhv, and the backend emits `EVENT_TOOL_CHANGED`. `on_backend_event()` posts; the queued body runs `sync_backend(0)` on the main thread, change-gating every subject write, bumping `ams_data_revision`, and, if the tool-to-slot mapping moved, `tool_map_version` so the gcode preview recolors. No panel code ran; the subjects did the work.
 

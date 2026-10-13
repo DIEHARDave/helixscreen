@@ -367,6 +367,8 @@ src/ui/panel_widgets/motion_widget.cpp
 src/ui/panel_widgets/network_widget.cpp
 src/ui/panel_widgets/nozzle_temps_widget.cpp
 src/ui/panel_widgets/preheat_widget.cpp
+src/ui/panel_widgets/dryer_model.cpp
+src/ui/panel_widgets/dryer_widget.cpp
 src/ui/panel_widgets/print_stats_widget.cpp
 src/ui/panel_widgets/print_status_widget.cpp
 src/ui/panel_widgets/printer_image_widget.cpp

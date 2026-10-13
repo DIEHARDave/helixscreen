@@ -362,6 +362,7 @@
   <translation tag="Bouncing Printer" ja="バウンドプリンター"/>
   <translation tag="Bowden Length" ja="ボーデン長"/>
   <translation tag="Bowden tube length from hub to toolhead" ja="ハブからツールヘッドまでのボーデンチューブ長"/>
+  <translation tag="Box" ja="ボックス"/>
   <translation tag="Brand" ja="ブランド"/>
   <translation tag="Brand and material come from Spoolman" ja="ブランドと素材は Spoolman から取得されます"/>
   <translation tag="Brightness" ja="明るさ"/>
@@ -898,6 +899,7 @@
   <translation tag="Drying" ja="乾燥中"/>
   <translation tag="Drying is already running" ja="乾燥はすでに実行中です"/>
   <translation tag="Drying on the bed" ja="ベッドで乾燥中"/>
+  <translation tag="Drying progress and humidity for boxes, the chamber, and the bed" ja="ボックス、チャンバー、ベッドの乾燥の進捗と湿度"/>
   <translation tag="Drying started" ja="乾燥を開始しました"/>
   <translation tag="Drying stopped" ja="乾燥を停止しました"/>
   <translation tag="Duplicate" ja="複製"/>
@@ -1186,6 +1188,7 @@
   <translation tag="Filament Buffer" ja="フィラメントバッファー"/>
   <translation tag="Filament Control" ja="フィラメント制御"/>
   <translation tag="Filament Detected" ja="フィラメント検出"/>
+  <translation tag="Filament Dryer" ja="フィラメントドライヤー"/>
   <translation tag="Filament Grade Mismatch" ja="フィラメントグレード不一致"/>
   <translation tag="Filament Humidity" ja="フィラメント湿度"/>
   <translation tag="Filament In The Toolhead" ja="ツールヘッドにフィラメントがあります"/>
@@ -1986,6 +1989,7 @@
   <translation tag="Not connected to printer." ja="プリンターに未接続です。"/>
   <translation tag="Not connected to the printer" ja="プリンターに未接続"/>
   <translation tag="Not detected" ja="検出されません"/>
+  <translation tag="Not drying" ja="乾燥していません"/>
   <translation tag="Not enough frequency data from the sweeps. Try again." ja="測定から十分な周波数データが得られませんでした。再試行してください。"/>
   <translation tag="Not enough room for this widget. Rearrange or remove widgets to make space." ja="このウィジェットを配置するスペースが足りません。スペースを確保するためにウィジェットを整理または削除してください。"/>
   <translation tag="Not in your spools? Set it up" ja="スプールにない？登録する"/>
@@ -2389,6 +2393,7 @@
   <translation tag="RFID reader malfunction (left)" ja="RFID リーダーの異常（左）"/>
   <translation tag="RFID reader malfunction (right)" ja="RFID リーダーの異常（右）"/>
   <translation tag="RFID, auto-refill, nozzle and link care" ja="RFID、自動補充、ノズルと接続のメンテナンス"/>
+  <translation tag="RH" ja="RH"/>
   <translation tag="RSS" ja="RSS"/>
   <translation tag="RSS:" ja="RSS:"/>
   <translation tag="Ramming Volume" ja="ラミング量"/>
@@ -3507,6 +3512,7 @@
   <translation tag="direct drive" ja="ダイレクトドライブ"/>
   <translation tag="disable" ja="無効化"/>
   <translation tag="disabled" ja="無効"/>
+  <translation tag="drying" ja="乾燥中"/>
   <translation tag="e.g. Jet Black" ja="例：ジェットブラック"/>
   <translation tag="e.g. NAME=my_var VALUE=123" ja="例: NAME=my_var VALUE=123"/>
   <translation tag="e.g. Polymaker" ja="例：Polymaker"/>

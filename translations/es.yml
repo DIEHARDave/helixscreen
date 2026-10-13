@@ -394,6 +394,7 @@ translations:
   Bouncing Printer: Bouncing Printer
   Bowden Length: 'Longitud del bowden'
   Bowden tube length from hub to toolhead: 'Longitud del tubo bowden del hub al cabezal'
+  Box: Caja
   Brand: Marca
   Brand and material come from Spoolman: La marca y el material provienen de Spoolman
   Brightness: Brillo
@@ -998,6 +999,7 @@ translations:
 
   Drying on the bed: Secando en la cama
 
+  Drying progress and humidity for boxes, the chamber, and the bed: Progreso de secado y humedad de las cajas, la cámara y la cama
   Drying started: Secado iniciado
   Drying stopped: Secado detenido
   Duplicate: Duplicar
@@ -1309,6 +1311,7 @@ translations:
   Filament Buffer: 'Búfer de filamento'
   Filament Control: Control de filamento
   Filament Detected: Filamento Detectado
+  Filament Dryer: Secador de filamento
   Filament Grade Mismatch: El grado del filamento no coincide
   Filament Humidity: Humedad del Filamento
   Filament In The Toolhead: Filamento en el cabezal
@@ -2196,6 +2199,7 @@ translations:
   Not connected to printer.: No conectado a la impresora.
   Not connected to the printer: No conectado a la impresora
   Not detected: No detectado
+  Not drying: Sin secar
   Not enough frequency data from the sweeps. Try again.: 'No hay suficientes datos de frecuencia de los barridos. Intente de nuevo.'
   Not enough room for this widget. Rearrange or remove widgets to make space.: No hay espacio suficiente para este widget. Reorganiza o elimina widgets para hacer espacio.
   Not in your spools? Set it up: ¿No está en tus bobinas? Configúralo
@@ -2636,6 +2640,7 @@ translations:
   RFID reader malfunction (left): Fallo del lector RFID (izquierdo)
   RFID reader malfunction (right): Fallo del lector RFID (derecho)
   RFID, auto-refill, nozzle and link care: RFID, rellenado automático, cuidado de boquilla y enlace
+  RH: HR
   RSS: RSS
   'RSS:': 'RSS:'
   Ramming Volume: 'Volumen de compactación'
@@ -3928,6 +3933,7 @@ translations:
   direct drive: de accionamiento directo
   disable: deshabilitar
   disabled: desactivado
+  drying: secando
   e.g. Jet Black: p. ej. Negro Azabache
   e.g. NAME=my_var VALUE=123: p. ej. NAME=mi_var VALUE=123
   e.g. Polymaker: p. ej. Polymaker

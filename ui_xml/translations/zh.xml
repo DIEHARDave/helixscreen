@@ -362,6 +362,7 @@
   <translation tag="Bouncing Printer" zh="弹跳打印机"/>
   <translation tag="Bowden Length" zh="波顿管长度"/>
   <translation tag="Bowden tube length from hub to toolhead" zh="从集线器到工具头的波顿管长度"/>
+  <translation tag="Box" zh="料盒"/>
   <translation tag="Brand" zh="品牌"/>
   <translation tag="Brand and material come from Spoolman" zh="品牌和材料来自 Spoolman"/>
   <translation tag="Brightness" zh="亮度"/>
@@ -898,6 +899,7 @@
   <translation tag="Drying" zh="烘干中"/>
   <translation tag="Drying is already running" zh="烘干已在进行中"/>
   <translation tag="Drying on the bed" zh="正在热床上烘干"/>
+  <translation tag="Drying progress and humidity for boxes, the chamber, and the bed" zh="料盒、腔体和热床的烘干进度与湿度"/>
   <translation tag="Drying started" zh="已开始烘干"/>
   <translation tag="Drying stopped" zh="已停止烘干"/>
   <translation tag="Duplicate" zh="复制"/>
@@ -1186,6 +1188,7 @@
   <translation tag="Filament Buffer" zh="耗材缓冲区"/>
   <translation tag="Filament Control" zh="耗材控制"/>
   <translation tag="Filament Detected" zh="检测到耗材"/>
+  <translation tag="Filament Dryer" zh="耗材烘干"/>
   <translation tag="Filament Grade Mismatch" zh="耗材等级不匹配"/>
   <translation tag="Filament Humidity" zh="耗材湿度"/>
   <translation tag="Filament In The Toolhead" zh="工具头处有耗材"/>
@@ -1986,6 +1989,7 @@
   <translation tag="Not connected to printer." zh="未连接到打印机。"/>
   <translation tag="Not connected to the printer" zh="未连接到打印机"/>
   <translation tag="Not detected" zh="未检测到"/>
+  <translation tag="Not drying" zh="未在烘干"/>
   <translation tag="Not enough frequency data from the sweeps. Try again." zh="扫频得到的频率数据不足，请重试。"/>
   <translation tag="Not enough room for this widget. Rearrange or remove widgets to make space." zh="没有足够的空间放置此小组件。请重新排列或移除小组件以腾出空间。"/>
   <translation tag="Not in your spools? Set it up" zh="不在您的料盘中？立即设置"/>
@@ -2389,6 +2393,7 @@
   <translation tag="RFID reader malfunction (left)" zh="RFID 读取器故障（左）"/>
   <translation tag="RFID reader malfunction (right)" zh="RFID 读取器故障（右）"/>
   <translation tag="RFID, auto-refill, nozzle and link care" zh="RFID、自动续料、喷嘴与链路维护"/>
+  <translation tag="RH" zh="RH"/>
   <translation tag="RSS" zh="RSS"/>
   <translation tag="RSS:" zh="RSS："/>
   <translation tag="Ramming Volume" zh="填充体积"/>
@@ -3507,6 +3512,7 @@
   <translation tag="direct drive" zh="直驱"/>
   <translation tag="disable" zh="禁用"/>
   <translation tag="disabled" zh="已禁用"/>
+  <translation tag="drying" zh="烘干中"/>
   <translation tag="e.g. Jet Black" zh="例如 炭黑"/>
   <translation tag="e.g. NAME=my_var VALUE=123" zh="例如 NAME=my_var VALUE=123"/>
   <translation tag="e.g. Polymaker" zh="例如 Polymaker"/>

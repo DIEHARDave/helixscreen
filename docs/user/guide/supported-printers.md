@@ -133,7 +133,7 @@ A true 4-toolhead changer, running on the U1's built-in 3.5" screen. Each of the
 - **Per-slot filament data** — material type and sub-type, brand, and color, read from the print job even when the RFID reader is off
 - **RFID filament recognition** via the built-in reader
 - **Per-extruder feed/load state and runout handling** with automatic resume
-- **Batch load and unload**: the AMS panel's Load and Unload buttons open a picker covering several heads at once; the U1 runs its own batch command, preheating the next head while the current one finishes. See [Filament](filament.md#sidebar-right)
+- **Batch load and unload**: the AMS panel's Load and Unload buttons open a picker covering several heads at once; the U1 runs its own batch command, preheating the next head while the current one finishes. See [Filament](filament.md#sidebar)
 - **The firmware's print preferences**: under the AMS panel's **Settings** button, in the **Print Behaviour** section: auto-replenish (and whether replenish ignores color), filament tangle detection with a low/medium/high sensitivity, per-head **Unload at end** toggles, and turning the LED off when the print ends. The toggles show the firmware's stored values and write changes back to the firmware
 - **Pre-print options that stick**: the toggles offered before a print starts (bed mesh, input shaper, pressure advance, timelapse) read the firmware's stored settings and write your choice back to them, instead of resetting to a default every print
 - **Per-filament temperatures**: the U1 keeps its own load/unload temperature table per filament, and HelixScreen reads it: a load preheats to the temperature the firmware measured for that filament rather than a generic default

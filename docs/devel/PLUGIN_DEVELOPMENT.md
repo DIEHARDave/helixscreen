@@ -183,6 +183,11 @@ through the same validation, persistence and `on_change` notification the genera
 settings screen uses, so a plugin's own overlay can be the control surface; an
 undeclared key, a read-only `action`/`info` row, or a value the declaration rejects
 (min/max, enum membership, string size) raises.
+Setting the value a key already holds is no change: nothing is saved and no
+`on_change` handler runs, so a handler that sets its own key back does not recurse.
+An accepted change reaches its handlers before `set` returns, but the disk write is
+deferred: about 0.5 s later, one write per burst, and on unload or shutdown, the same
+schedule as `helix.storage.set` (`src/plugin/lua_bind_io.cpp#set_plugin_setting`).
 `helix.settings.on_change(key, fn)` calls `fn(value)` after each accepted change, from
 either path; several handlers per key are allowed. An `action` row reaches its handler
 through the same path as a `plugin_event`.
@@ -408,7 +413,7 @@ change. No permission is needed for either call.
 | Call | Permission | Returns | Notes |
 |---|---|---|---|
 | `helix.moonraker.query(objects)` | none | table or `nil, err` | `objects` maps a status object name to `true` (every field) or a list of field names |
-| `helix.moonraker.call(method[, params])` | none for the seven read-only methods below, else `moonraker_write` | value or `nil, err` | |
+| `helix.moonraker.call(method[, params])` | none for the seven read-only methods below, else `moonraker_write` | value or `nil, err` | the app's print, restart and G-code guards can refuse a write with `nil, err` (below) |
 | `helix.moonraker.upload(root, path, content)` | `moonraker_write` | `true` or `nil, err` | writes a file through Moonraker; `root` is `"gcodes"` or `"config"` |
 | `helix.moonraker.download(root, path)` | `moonraker_write` | string or `nil, err` | `root` is `"gcodes"` or `"config"`; a body over the memory cap comes back as an error, not a fault |
 | `helix.moonraker.on_agent_event(event, fn)` | none | | `fn(agent, data)` when Moonraker posts that agent event; the channel to a companion process on the printer (a slicer-side calibration wizard, an OrcaSlicer plugin); at most 16 handlers per plugin |
@@ -419,6 +424,19 @@ Read-only methods callable through `helix.moonraker.call` without any permission
 (`src/plugin/plugin_permissions.cpp#is_readonly_moonraker_method`):
 `printer.objects.query`, `printer.objects.list`, `server.info`, `server.files.list`,
 `server.files.metadata`, `server.temperature_store`, `machine.system_info`.
+
+A write the permission allows can still come back as `nil, err`: `helix.moonraker.call`
+applies the refusals the app's own print, restart and G-code paths apply, before
+anything is sent (`src/api/moonraker_gcode_guards.cpp#reject_plugin_rpc`).
+`printer.print.start` and `server.helix.print_modified` refuse a file path with
+directory traversal or illegal characters. While spools lie on the bed (the drying
+latch), print start, `printer.print.resume`, `server.job_queue.start`, the modified-print
+start, `printer.restart`, `printer.firmware_restart` and a `machine.services.restart` of a
+Klipper service are refused, and so is `printer.gcode.script` with any G-code the latch
+does not allow. `printer.gcode.script` with homing G-code is refused while a print is
+printing or paused. `helix.gcode` goes through the app's own G-code path, so the homing
+and spools-on-bed refusals apply to it too. `err` is the refusal's English message, for
+example `Homing is disabled while a print is in progress`.
 
 `subscribe` mirrors Klipper's status subscription: `objects` maps an object name to
 `true` or a field-name list, and `fn(status)` receives a table `{[object] = {field = value}}`.
@@ -454,7 +472,7 @@ memory cap comes back as an error.
 | Call | Returns | Notes |
 |---|---|---|
 | `helix.settings.get(key)` | value | the key must be declared in the manifest; returns the stored value if it fits the declaration, else the default |
-| `helix.settings.set(key, value)` | | writes one of the plugin's own declared keys through the same validation, persistence and `on_change` path as the generated settings screen; undeclared keys, `action`/`info` rows and rejected values raise |
+| `helix.settings.set(key, value)` | | writes one of the plugin's own declared keys through the same validation, persistence and `on_change` path as the generated settings screen; undeclared keys, `action`/`info` rows and rejected values raise. The value already held is a no-op (no save, no `on_change`); the disk write is deferred about 0.5 s, like `helix.storage.set` |
 | `helix.settings.on_change(key, fn)` | | `fn(value)` after each accepted change, from either path |
 
 ### helix.i18n (`src/plugin/lua_bind_core.cpp`)

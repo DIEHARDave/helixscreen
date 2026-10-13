@@ -362,6 +362,7 @@
   <translation tag="Bouncing Printer" en="Bouncing Printer"/>
   <translation tag="Bowden Length" en="Bowden Length"/>
   <translation tag="Bowden tube length from hub to toolhead" en="Bowden tube length from hub to toolhead"/>
+  <translation tag="Box" en="Box"/>
   <translation tag="Brand" en="Brand"/>
   <translation tag="Brand and material come from Spoolman" en="Brand and material come from Spoolman"/>
   <translation tag="Brightness" en="Brightness"/>
@@ -898,6 +899,7 @@
   <translation tag="Drying" en="Drying"/>
   <translation tag="Drying is already running" en="Drying is already running"/>
   <translation tag="Drying on the bed" en="Drying on the bed"/>
+  <translation tag="Drying progress and humidity for boxes, the chamber, and the bed" en="Drying progress and humidity for boxes, the chamber, and the bed"/>
   <translation tag="Drying started" en="Drying started"/>
   <translation tag="Drying stopped" en="Drying stopped"/>
   <translation tag="Duplicate" en="Duplicate"/>
@@ -1186,6 +1188,7 @@
   <translation tag="Filament Buffer" en="Filament Buffer"/>
   <translation tag="Filament Control" en="Filament Control"/>
   <translation tag="Filament Detected" en="Filament Detected"/>
+  <translation tag="Filament Dryer" en="Filament Dryer"/>
   <translation tag="Filament Grade Mismatch" en="Filament Grade Mismatch"/>
   <translation tag="Filament Humidity" en="Filament Humidity"/>
   <translation tag="Filament In The Toolhead" en="Filament In The Toolhead"/>
@@ -1986,6 +1989,7 @@
   <translation tag="Not connected to printer." en="Not connected to printer."/>
   <translation tag="Not connected to the printer" en="Not connected to the printer"/>
   <translation tag="Not detected" en="Not detected"/>
+  <translation tag="Not drying" en="Not drying"/>
   <translation tag="Not enough frequency data from the sweeps. Try again." en="Not enough frequency data from the sweeps. Try again."/>
   <translation tag="Not enough room for this widget. Rearrange or remove widgets to make space." en="Not enough room for this widget. Rearrange or remove widgets to make space."/>
   <translation tag="Not in your spools? Set it up" en="Not in your spools? Set it up"/>
@@ -2389,6 +2393,7 @@
   <translation tag="RFID reader malfunction (left)" en="RFID reader malfunction (left)"/>
   <translation tag="RFID reader malfunction (right)" en="RFID reader malfunction (right)"/>
   <translation tag="RFID, auto-refill, nozzle and link care" en="RFID, auto-refill, nozzle and link care"/>
+  <translation tag="RH" en="RH"/>
   <translation tag="RSS" en="RSS"/>
   <translation tag="RSS:" en="RSS:"/>
   <translation tag="Ramming Volume" en="Ramming Volume"/>
@@ -3507,6 +3512,7 @@
   <translation tag="direct drive" en="direct drive"/>
   <translation tag="disable" en="disable"/>
   <translation tag="disabled" en="disabled"/>
+  <translation tag="drying" en="drying"/>
   <translation tag="e.g. Jet Black" en="e.g. Jet Black"/>
   <translation tag="e.g. NAME=my_var VALUE=123" en="e.g. NAME=my_var VALUE=123"/>
   <translation tag="e.g. Polymaker" en="e.g. Polymaker"/>

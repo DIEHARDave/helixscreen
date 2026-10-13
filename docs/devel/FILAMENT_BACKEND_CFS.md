@@ -108,7 +108,7 @@ present on both families and are now emitted on both.
 > TNN=<physical>` and bypass the table by design, since they already name the physical slot.
 > What is K1-specific is the missing echo: the K1 box status has no `map` field, so
 > `reports_firmware_tool_mapping()` is false there and the optimistic local update is the only
-> confirmation (`src/printer/ams_backend_cfs.cpp#AmsBackendCfs::set_tool_mapping_impl`).
+> confirmation (`src/printer/ams_backend_cfs.cpp#set_tool_mapping_impl`).
 > On K2 the box echoes a remap back in `map`. Mechanism:
 > [CREALITY_CFS_K1_INTERNALS.md § Tool remap](printer-research/CREALITY_CFS_K1_INTERNALS.md#tool-remap-box_modify_tn---corrected-no-defect).
 
