@@ -13,6 +13,7 @@
 
 #include "../lvgl_ui_test_fixture.h"
 #include "helix-xml/src/xml/lv_xml.h"
+#include "theme_manager.h"
 
 #include <vector>
 
@@ -113,6 +114,39 @@ TEST_CASE_METHOD(StaticModeFixture, "static mode renders nothing without mesh da
     draw();
     CHECK_FALSE(ui_bed_mesh_has_data(canvas));
     CHECK(ui_bed_mesh_static_render_count(canvas) == 0);
+}
+
+TEST_CASE_METHOD(StaticModeFixture, "static mode renders again when the theme changes",
+                 "[bed_mesh][static_mode]") {
+    make_canvas(200, 200);
+    ui_bed_mesh_set_render_mode(canvas, BedMeshRenderMode::Force2D);
+    ui_bed_mesh_set_static_mode(canvas, true);
+    draw();
+    draw();
+    REQUIRE(ui_bed_mesh_static_render_count(canvas) == 1);
+
+    theme_manager_notify_change();
+    draw();
+    CHECK(ui_bed_mesh_static_render_count(canvas) == 2);
+    draw();
+    CHECK(ui_bed_mesh_static_render_count(canvas) == 2);
+}
+
+TEST_CASE_METHOD(StaticModeFixture, "a static 3D render over budget keeps the widget on 2D",
+                 "[bed_mesh][static_mode]") {
+    make_canvas(200, 200);
+    ui_bed_mesh_set_static_mode(canvas, true);
+    ui_bed_mesh_set_render_mode(canvas, BedMeshRenderMode::Force3D);
+    REQUIRE_FALSE(ui_bed_mesh_static_3d_banned(canvas));
+
+    ui_bed_mesh_set_static_render_budget_ms_for_test(0.0001f);
+    draw();
+    ui_bed_mesh_set_static_render_budget_ms_for_test(0.0f);
+    REQUIRE(ui_bed_mesh_static_3d_banned(canvas));
+    CHECK(ui_bed_mesh_get_render_mode(canvas) == BedMeshRenderMode::Force2D);
+
+    ui_bed_mesh_set_render_mode(canvas, BedMeshRenderMode::Force3D);
+    CHECK(ui_bed_mesh_get_render_mode(canvas) == BedMeshRenderMode::Force2D);
 }
 
 #endif // HELIX_HAS_BED_MESH_3D

@@ -44,6 +44,7 @@ struct Scenario {
     bool full_tier = true;
     bool canvas = true;
     int profiles = 2;
+    bool panel = true;
 };
 
 BedMeshTileVerdict verdict_for(int w, int h, const Scenario& s = {}) {
@@ -54,6 +55,7 @@ BedMeshTileVerdict verdict_for(int w, int h, const Scenario& s = {}) {
     in.print_active = s.printing;
     in.full_tier = s.full_tier;
     in.canvas_available = s.canvas;
+    in.panel_available = s.panel;
     in.profile_count = s.profiles;
     in.needs = s.loaded ? kLoaded : (s.printing ? kEmptyPrinting : kEmptyIdle);
     return decide_bed_mesh_tile_layout(in);
@@ -275,4 +277,15 @@ TEST_CASE("bed_mesh_tile text: range, extent and the unit-free forms", "[bed_mes
     CHECK(format_mesh_range(1.5f, 3) == "1.500");
     CHECK(format_mesh_extent(-0.104f, 0.296f) == "-0.10..0.30");
     CHECK(format_mesh_extent(0.0f, 0.1f) == "0.00..0.10");
+}
+
+TEST_CASE("bed_mesh_tile layout: Load profile needs the Bed Mesh panel, Calibrate does not",
+          "[bed_mesh_tile][layout]") {
+    auto v = verdict_for(163, 187, {false, false, true, true, 2, false});
+    CHECK(v.rung == SizeRung::Full);
+    CHECK(v.show_calibrate);
+    CHECK_FALSE(v.show_load_profile);
+
+    v = verdict_for(163, 187, {false, false, true, true, 2, true});
+    CHECK(v.show_load_profile);
 }

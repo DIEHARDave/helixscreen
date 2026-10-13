@@ -5,8 +5,8 @@
   <!--
     Bed mesh home widget. BedMeshTileWidget publishes bed_mesh_tile_rung (SizeRung) and the
     flags the verdict sets (show_map, show_range, show_empty, show_details, show_scale,
-    show_footer, show_calibrate, show_load), the flatness status and the texts below; the
-    stats themselves are BedMeshState's bed_mesh_* subjects. A tap anywhere that is not a
+    show_footer, show_calibrate, show_load, calibrating), the flatness status and the texts
+    below; the stats themselves are BedMeshState's bed_mesh_* subjects. A tap anywhere that is not a
     button opens the Bed Mesh panel.
 
     Rungs: 0 glance (grid glyph over the range), 1 strip (small heatmap beside the range),
@@ -163,6 +163,7 @@
         <bind_flag_if_eq subject="bed_mesh_tile_show_calibrate" flag="hidden" ref_value="0"/>
         <ui_button name="bed_mesh_tile_calibrate"
                    width="content" height="#button_height_sm" variant="primary" text="Calibrate" moves_machine="true">
+          <bind_flag_if_eq subject="bed_mesh_tile_calibrating" flag="hidden" ref_value="1"/>
           <event_cb trigger="clicked" callback="bed_mesh_tile_calibrate_cb"/>
         </ui_button>
         <ui_button name="bed_mesh_tile_load" width="content" height="#button_height_sm" text="Load profile">

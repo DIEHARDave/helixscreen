@@ -645,3 +645,92 @@ TEST_CASE_METHOD(BedMeshTileFixture, "bed_mesh_tile: hidden buttons send nothing
     CHECK(last_sent() == "M117 sentinel");
     CHECK(opened == 0);
 }
+
+TEST_CASE_METHOD(BedMeshTileFixture,
+                 "bed_mesh_tile: Calibrate sends once while the probe runs and is hidden meanwhile",
+                 "[widget_size][bed_mesh_tile][actions]") {
+    clear_mesh(0);
+    Harness h(test_screen(), state());
+    h.resize(1, 1, kFull.w, kFull.h);
+    REQUIRE(shown(part(h, "bed_mesh_tile_calibrate")));
+
+    tap(part(h, "bed_mesh_tile_calibrate"));
+    REQUIRE(last_sent().find("BED_MESH_CALIBRATE") != std::string::npos);
+    CHECK(h.widget().calibrating());
+    CHECK(subject_int("bed_mesh_tile_calibrating") == 1);
+    CHECK_FALSE(shown(part(h, "bed_mesh_tile_calibrate")));
+
+    sentinel();
+    tap(part(h, "bed_mesh_tile_calibrate"));
+    CHECK(last_sent() == "M117 sentinel");
+
+    // The finished mesh ends the wait.
+    load_mesh(0.10f);
+    CHECK_FALSE(h.widget().calibrating());
+    CHECK(subject_int("bed_mesh_tile_calibrating") == 0);
+}
+
+TEST_CASE_METHOD(
+    BedMeshTileFixture,
+    "bed_mesh_tile: without the Bed Mesh panel Load profile is gone and taps do nothing",
+    "[widget_size][bed_mesh_tile][actions]") {
+    set_bed_mesh_tile_panel_available_for_test(false);
+    clear_mesh(2);
+    Harness h(test_screen(), state());
+    h.resize(1, 1, kFull.w, kFull.h);
+
+    CHECK(shown(part(h, "bed_mesh_tile_calibrate")));
+    CHECK_FALSE(shown(part(h, "bed_mesh_tile_load")));
+    tap(part(h, "bed_mesh_tile_load"));
+    tap(h.root());
+    CHECK(opened == 0);
+
+    set_bed_mesh_tile_panel_available_for_test(std::nullopt);
+}
+
+TEST_CASE_METHOD(BedMeshTileFixture,
+                 "bed_mesh_tile: a covered home panel skips mesh updates until it returns",
+                 "[widget_size][bed_mesh_tile]") {
+    load_mesh(0.10f);
+    Harness h(test_screen(), state());
+    h.resize(1, 1, kFull.w, kFull.h);
+    lv_obj_t* map = part(h, "bed_mesh_tile_map");
+    lv_refr_now(nullptr);
+    REQUIRE(ui_bed_mesh_static_render_count(map) == 1);
+    const std::string before = subject_text("bed_mesh_tile_range_text");
+
+    h.widget().on_deactivate();
+    load_mesh(0.30f, 2, "cold");
+    lv_obj_invalidate(map);
+    lv_refr_now(nullptr);
+    CHECK(ui_bed_mesh_static_render_count(map) == 1);
+    CHECK(subject_text("bed_mesh_tile_range_text") == before);
+
+    h.widget().on_activate();
+    lv_obj_invalidate(map);
+    lv_refr_now(nullptr);
+    CHECK(ui_bed_mesh_static_render_count(map) == 2);
+    CHECK(subject_text("bed_mesh_tile_range_text") != before);
+}
+
+#if HELIX_HAS_BED_MESH_3D
+TEST_CASE_METHOD(BedMeshTileFixture,
+                 "bed_mesh_tile: after a slow 3D render a rung change does not bring 3D back",
+                 "[widget_size][bed_mesh_tile]") {
+    load_mesh(0.10f);
+    Harness h(test_screen(), state());
+    h.resize(1, 1, kLarge.w, kLarge.h);
+    lv_obj_t* map = part(h, "bed_mesh_tile_map");
+    REQUIRE(ui_bed_mesh_get_render_mode(map) == BedMeshRenderMode::Force3D);
+
+    ui_bed_mesh_set_static_render_budget_ms_for_test(0.0001f);
+    lv_obj_invalidate(map);
+    lv_refr_now(nullptr);
+    ui_bed_mesh_set_static_render_budget_ms_for_test(0.0f);
+    REQUIRE(ui_bed_mesh_static_3d_banned(map));
+
+    h.resize(1, 1, kFull.w, kFull.h);
+    h.resize(1, 1, kLarge.w, kLarge.h);
+    CHECK(ui_bed_mesh_get_render_mode(map) == BedMeshRenderMode::Force2D);
+}
+#endif

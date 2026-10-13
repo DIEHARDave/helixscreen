@@ -58,6 +58,7 @@ lv_subject_t s_show_scale_subject{};
 lv_subject_t s_show_footer_subject{};
 lv_subject_t s_show_calibrate_subject{};
 lv_subject_t s_show_load_subject{};
+lv_subject_t s_calibrating_subject{};
 lv_subject_t s_status_subject{};
 lv_subject_t s_range_text_subject{};
 lv_subject_t s_extent_text_subject{};
@@ -75,6 +76,7 @@ SubjectManager s_subjects;
 // (a fits_at probe, a rebuild's outgoing widget) must not overwrite the tile's verdict.
 helix::LiveTileOwner<helix::BedMeshTileWidget> s_tile;
 std::optional<bool> s_full_tier_override;
+std::optional<bool> s_panel_available_override;
 std::function<void()> s_open_hook;
 
 void bed_mesh_tile_init_subjects() {
@@ -90,6 +92,7 @@ void bed_mesh_tile_init_subjects() {
     UI_MANAGED_SUBJECT_INT(s_show_footer_subject, 0, "bed_mesh_tile_show_footer", s_subjects);
     UI_MANAGED_SUBJECT_INT(s_show_calibrate_subject, 0, "bed_mesh_tile_show_calibrate", s_subjects);
     UI_MANAGED_SUBJECT_INT(s_show_load_subject, 0, "bed_mesh_tile_show_load", s_subjects);
+    UI_MANAGED_SUBJECT_INT(s_calibrating_subject, 0, "bed_mesh_tile_calibrating", s_subjects);
     UI_MANAGED_SUBJECT_INT(s_status_subject, 0, "bed_mesh_tile_status", s_subjects);
     UI_MANAGED_SUBJECT_STRING(s_range_text_subject, s_range_text_buf, "",
                               "bed_mesh_tile_range_text", s_subjects);
@@ -140,6 +143,16 @@ bool platform_is_full_tier() {
 
 constexpr bool kCanvasAvailable = HELIX_HAS_BED_MESH_3D != 0;
 
+#if defined(HELIX_PLATFORM_ESP32)
+constexpr bool kPanelBuilt = false;
+#else
+constexpr bool kPanelBuilt = true;
+#endif
+
+bool panel_is_available() {
+    return s_panel_available_override.value_or(kPanelBuilt);
+}
+
 struct Fonts {
     const lv_font_t* xs;
     const lv_font_t* small;
@@ -166,6 +179,7 @@ int text_px(const std::string& text, const lv_font_t* font) {
 struct MeasureState {
     bool loaded = false;
     bool print_active = false;
+    bool panel_available = true;
     int profile_count = 0;
     std::string profile_name;
 };
@@ -229,9 +243,10 @@ helix::RungNeeds measure_needs(const MeasureState& m, const helix::ContentChrome
             const int button_label_pad = 2 * theme_manager_get_spacing("space_lg");
             const int calibrate_w = text_px(lv_tr("Calibrate"), f.body) + button_label_pad;
             const int load_w = text_px(lv_tr("Load profile"), f.body) + button_label_pad;
-            const int buttons = m.profile_count > 0 ? 2 : 1;
-            full_w = std::max<int>(
-                {full_w, calibrate_w + comfort, m.profile_count > 0 ? load_w + comfort : 0});
+            const bool offers_load = m.profile_count > 0 && m.panel_available;
+            const int buttons = offers_load ? 2 : 1;
+            full_w =
+                std::max<int>({full_w, calibrate_w + comfort, offers_load ? load_w + comfort : 0});
             full_h += buttons * (row_gap + button_px);
         }
         needs.full = rung_box(full_w, full_h);
@@ -307,6 +322,7 @@ BedMeshTileWidget::LiveState BedMeshTileWidget::read_live() const {
     s.measure.loaded = s.stats.loaded;
     s.measure.print_active =
         lv_subject_get_int(printer_state_.print_state().get_print_active_subject()) != 0;
+    s.measure.panel_available = panel_is_available();
     s.measure.profile_count = state.profile_count();
     s.measure.profile_name = state.profile().name;
     s.full_tier = platform_is_full_tier();
@@ -331,6 +347,7 @@ BedMeshTileVerdict BedMeshTileWidget::decide(int width_px, int height_px,
     in.print_active = live.measure.print_active;
     in.full_tier = live.full_tier;
     in.canvas_available = kCanvasAvailable;
+    in.panel_available = live.measure.panel_available;
     in.profile_count = live.measure.profile_count;
     in.needs = measure_needs(live.measure, chrome);
     const auto& n = in.needs;
@@ -389,6 +406,8 @@ void BedMeshTileWidget::attach(lv_obj_t* widget_obj, lv_obj_t* parent_screen) {
     }
     fed_version_.reset();
     applied_3d_.reset();
+    panel_hidden_ = false;
+    set_calibrating(false);
 
     // Instances are recycled across rebuilds: the verdict is republished here too.
     relayout_for_granted_size();
@@ -479,16 +498,39 @@ void BedMeshTileWidget::publish_texts(const LiveState& live) {
 }
 
 void BedMeshTileWidget::on_live_changed() {
+    if (panel_hidden_)
+        return;
     const LiveState live = read_live();
-    if (live.measure.loaded != decided_loaded_ ||
-        live.measure.print_active != decided_print_active_ ||
-        live.measure.profile_count != decided_profile_count_) {
+    if (!panel_hidden_ && (live.measure.loaded != decided_loaded_ ||
+                           live.measure.print_active != decided_print_active_ ||
+                           live.measure.profile_count != decided_profile_count_)) {
         relayout_for_granted_size();
     }
     publish_texts(live);
 }
 
+void BedMeshTileWidget::on_activate() {
+    panel_hidden_ = false;
+    // Whatever changed while the panel was covered is applied once, now.
+    relayout_for_granted_size();
+    publish_texts(read_live());
+}
+
+void BedMeshTileWidget::on_deactivate() {
+    panel_hidden_ = true;
+}
+
+void BedMeshTileWidget::set_calibrating(bool on) {
+    calibrating_ = on;
+    if (s_tile.is_owner(this))
+        set_flag(&s_calibrating_subject, on);
+}
+
 void BedMeshTileWidget::on_mesh_changed() {
+    // A new mesh is the calibration's result.
+    set_calibrating(false);
+    if (panel_hidden_)
+        return;
     // A different mesh can change what the rungs need (loaded or not, the profile name's
     // width), so the verdict is decided again before the canvas is fed.
     relayout_for_granted_size();
@@ -505,10 +547,16 @@ void BedMeshTileWidget::feed_map(const LiveState& live) {
     if (!map)
         return;
 
-    if (applied_3d_ != verdict_.render_3d) {
-        ui_bed_mesh_set_render_mode(map, verdict_.render_3d ? BedMeshRenderMode::Force3D
-                                                            : BedMeshRenderMode::Force2D);
-        applied_3d_ = verdict_.render_3d;
+    // The canvas drops to 2D for good after a slow 3D render; the tile stops asking for 3D.
+    if (!static_3d_banned_ && ui_bed_mesh_static_3d_banned(map)) {
+        static_3d_banned_ = true;
+        spdlog::info("[BedMeshTileWidget] Static 3D render overran its budget; drawing 2D");
+    }
+    const bool want_3d = verdict_.render_3d && !static_3d_banned_;
+    if (applied_3d_ != want_3d) {
+        ui_bed_mesh_set_render_mode(map, want_3d ? BedMeshRenderMode::Force3D
+                                                 : BedMeshRenderMode::Force2D);
+        applied_3d_ = want_3d;
         fed_version_.reset();
     }
     auto& mesh_state = BedMeshState::instance();
@@ -545,6 +593,8 @@ void BedMeshTileWidget::feed_map(const LiveState& live) {
 }
 
 void BedMeshTileWidget::open_panel() {
+    if (!panel_is_available())
+        return;
     if (s_open_hook) {
         s_open_hook();
         return;
@@ -555,7 +605,7 @@ void BedMeshTileWidget::open_panel() {
 }
 
 void BedMeshTileWidget::calibrate() {
-    if (!verdict_.show_calibrate || !s_tile.is_owner(this))
+    if (!verdict_.show_calibrate || !s_tile.is_owner(this) || calibrating_)
         return;
     const bool blocked =
         lv_subject_get_int(printer_state_.print_state().get_machine_motion_blocked_subject()) != 0;
@@ -571,6 +621,7 @@ void BedMeshTileWidget::calibrate() {
         lv_subject_get_int(printer_state_.temperature_state().get_bed_temp_subject()));
     const auto plan = bed_mesh::plan_calibration(info, bed_mesh::DEFAULT_PROFILE, bed_temp_c);
 
+    set_calibrating(true);
     ensure_homed_then(
         api, lifetime_,
         [this, api, plan]() {
@@ -580,12 +631,14 @@ void BedMeshTileWidget::calibrate() {
                 IAdvancedAPI::BedMeshCommand{plan.command, plan.self_prepares, plan.shipped},
                 [](int, int) {}, []() {},
                 lifetime_.bg_cb(
-                    "BedMeshTileWidget::calibrate_error", [](const MoonrakerError& err) {
+                    "BedMeshTileWidget::calibrate_error", [this](const MoonrakerError& err) {
+                        set_calibrating(false);
                         spdlog::warn("[BedMeshTileWidget] Calibration failed: {}", err.message);
                         NOTIFY_ERROR(lv_tr("Bed mesh calibration failed: {}"), err.message);
                     }));
         },
-        [](const MoonrakerError& err) {
+        [this](const MoonrakerError& err) {
+            set_calibrating(false);
             spdlog::warn("[BedMeshTileWidget] Homing before calibration failed: {}", err.message);
             NOTIFY_ERROR(lv_tr("Homing failed: {}"), err.message);
         });
@@ -626,6 +679,10 @@ void register_bed_mesh_tile_widget() {
 
 void set_bed_mesh_tile_open_hook_for_test(std::function<void()> hook) {
     s_open_hook = std::move(hook);
+}
+
+void set_bed_mesh_tile_panel_available_for_test(std::optional<bool> available) {
+    s_panel_available_override = available;
 }
 
 void set_bed_mesh_tile_full_tier_for_test(std::optional<bool> full_tier) {

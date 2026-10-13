@@ -179,6 +179,16 @@ float ui_bed_mesh_static_render_ms(lv_obj_t* widget);
  */
 int ui_bed_mesh_static_render_count(lv_obj_t* widget);
 
+/**
+ * @brief A static 3D render overran its budget, so this widget draws 2D for good
+ *
+ * ui_bed_mesh_set_render_mode() keeps answering 2D afterwards, whatever mode is asked for.
+ */
+bool ui_bed_mesh_static_3d_banned(lv_obj_t* widget);
+
+/// Overrides the static 3D render budget (150 ms); a value <= 0 restores it.
+void ui_bed_mesh_set_static_render_budget_ms_for_test(float budget_ms);
+
 #ifdef __cplusplus
 }
 #endif

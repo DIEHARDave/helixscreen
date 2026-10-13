@@ -26,6 +26,8 @@ struct BedMeshTileInput {
     bool full_tier = false;
     /// The build links the heatmap renderer; without it the tile is text and glyphs only.
     bool canvas_available = true;
+    /// The build links the Bed Mesh panel. Without it Load profile has nowhere to go.
+    bool panel_available = true;
     int profile_count = 0;
     /// Minimum box per rung for the state above.
     RungNeeds needs;
@@ -44,7 +46,7 @@ struct BedMeshTileVerdict {
     bool show_scale = false;      ///< Full and up: the colour scale under the map
     bool show_footer = false;     ///< Full and up: profile name and profile count
     bool show_calibrate = false;  ///< Full and up, no mesh, idle
-    bool show_load_profile = false; ///< as Calibrate, and a stored profile exists
+    bool show_load_profile = false; ///< as Calibrate, a stored profile exists, the panel is built
     bool render_3d = false;         ///< Large on a full-tier board: static 3D instead of 2D
 };
 
@@ -66,7 +68,7 @@ struct BedMeshTileVerdict {
     v.show_footer = in.mesh_loaded && at_least_full;
     const bool offers_actions = !in.mesh_loaded && !in.print_active && at_least_full;
     v.show_calibrate = offers_actions;
-    v.show_load_profile = offers_actions && in.profile_count > 0;
+    v.show_load_profile = offers_actions && in.profile_count > 0 && in.panel_available;
     v.render_3d = v.show_map && v.rung == SizeRung::Large && in.full_tier;
     return v;
 }

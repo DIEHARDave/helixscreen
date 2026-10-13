@@ -73,6 +73,11 @@ typedef struct {
     bool static_dirty = false;
     float static_render_ms = 0.0f; // cost of the last static render
     int static_render_count = 0;   // static renders so far
+    // A 3D render overran the budget; this widget draws 2D from then on.
+    bool static_3d_banned = false;
+    // theme_manager_get_changed_subject() when the frame was rendered; the frame bakes the
+    // theme colours in.
+    int static_theme_gen = -1;
     std::unique_ptr<helix::mesh::PixelBuffer> static_frame;
 } bed_mesh_widget_data_t;
 
@@ -183,7 +188,13 @@ static void draw_async_placeholder(lv_layer_t* layer, const lv_area_t* coords, i
  * 2D heatmap for good, so a slow board pays that stall once rather than on every change.
  * Returns false when there is nothing to show (no mesh data yet).
  */
-static constexpr float kStaticRenderBudgetMs = 150.0f;
+static constexpr float kDefaultStaticRenderBudgetMs = 150.0f;
+static float s_static_render_budget_ms = kDefaultStaticRenderBudgetMs;
+
+static int current_theme_generation() {
+    lv_subject_t* changed = theme_manager_get_changed_subject();
+    return changed ? lv_subject_get_int(changed) : 0;
+}
 
 static bool refresh_static_frame(bed_mesh_widget_data_t* data, int width, int height) {
     if (!bed_mesh_renderer_has_data(data->renderer)) {
@@ -194,8 +205,12 @@ static bool refresh_static_frame(bed_mesh_widget_data_t* data, int width, int he
         data->static_frame = std::make_unique<helix::mesh::PixelBuffer>(width, height);
         data->static_dirty = true;
     }
+    if (data->static_theme_gen != current_theme_generation()) {
+        data->static_dirty = true;
+    }
     if (data->static_dirty) {
         data->static_dirty = false;
+        data->static_theme_gen = current_theme_generation();
         ++data->static_render_count;
         const auto t0 = std::chrono::steady_clock::now();
         bool ok = bed_mesh_renderer_render_to_buffer(data->renderer, *data->static_frame,
@@ -205,10 +220,11 @@ static bool refresh_static_frame(bed_mesh_widget_data_t* data, int width, int he
         spdlog::debug("[bed_mesh] Static render {}x{}: {:.1f}ms ({})", width, height,
                       data->static_render_ms, data->static_frame->info.heatmap ? "2D" : "3D");
         if (ok && !data->static_frame->info.heatmap &&
-            data->static_render_ms > kStaticRenderBudgetMs) {
+            data->static_render_ms > s_static_render_budget_ms) {
             spdlog::warn("[bed_mesh] Static 3D render took {:.0f}ms (budget {:.0f}ms); "
                          "falling back to the 2D heatmap",
-                         data->static_render_ms, kStaticRenderBudgetMs);
+                         data->static_render_ms, s_static_render_budget_ms);
+            data->static_3d_banned = true;
             bed_mesh_renderer_set_render_mode(data->renderer, BedMeshRenderMode::Force2D);
             ok = bed_mesh_renderer_render_to_buffer(data->renderer, *data->static_frame,
                                                     fetch_theme_colors());
@@ -857,6 +873,9 @@ void ui_bed_mesh_set_render_mode(lv_obj_t* widget, BedMeshRenderMode mode) {
         return;
     }
 
+    if (data->static_mode && data->static_3d_banned && mode != BedMeshRenderMode::Force2D) {
+        mode = BedMeshRenderMode::Force2D;
+    }
     with_renderer(data, [&]() { bed_mesh_renderer_set_render_mode(data->renderer, mode); });
     data->static_dirty = true;
     ui_bed_mesh_redraw(widget);
@@ -1012,6 +1031,20 @@ int ui_bed_mesh_static_render_count(lv_obj_t* widget) {
     return data ? data->static_render_count : 0;
 }
 
+// NAMESPACE_OK: joins the <bed_mesh> widget's global ui_bed_mesh_* C API
+bool ui_bed_mesh_static_3d_banned(lv_obj_t* widget) {
+    if (!widget) {
+        return false;
+    }
+    bed_mesh_widget_data_t* data = (bed_mesh_widget_data_t*)lv_obj_get_user_data(widget);
+    return data && data->static_3d_banned;
+}
+
+// NAMESPACE_OK: joins the <bed_mesh> widget's global ui_bed_mesh_* C API
+void ui_bed_mesh_set_static_render_budget_ms_for_test(float budget_ms) {
+    s_static_render_budget_ms = budget_ms > 0.0f ? budget_ms : kDefaultStaticRenderBudgetMs;
+}
+
 bool ui_bed_mesh_has_data(lv_obj_t* widget) {
     if (!widget) {
         return false;
@@ -1100,5 +1133,13 @@ float ui_bed_mesh_static_render_ms(lv_obj_t*) {
 int ui_bed_mesh_static_render_count(lv_obj_t*) {
     return 0;
 }
+
+// NAMESPACE_OK: joins the <bed_mesh> widget's global ui_bed_mesh_* C API
+bool ui_bed_mesh_static_3d_banned(lv_obj_t*) {
+    return false;
+}
+
+// NAMESPACE_OK: joins the <bed_mesh> widget's global ui_bed_mesh_* C API
+void ui_bed_mesh_set_static_render_budget_ms_for_test(float) {}
 
 #endif // HELIX_HAS_BED_MESH_3D

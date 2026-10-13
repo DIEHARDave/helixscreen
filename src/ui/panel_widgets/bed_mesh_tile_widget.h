@@ -28,6 +28,8 @@ class BedMeshTileWidget : public PanelWidget {
 
     void attach(lv_obj_t* widget_obj, lv_obj_t* parent_screen) override;
     void detach() override;
+    void on_activate() override;
+    void on_deactivate() override;
     void on_size_changed(int colspan, int rowspan, int width_px, int height_px) override;
     bool fits_at(int width_px, int height_px) const override;
     const char* id() const override {
@@ -40,7 +42,12 @@ class BedMeshTileWidget : public PanelWidget {
     /// profile. Does nothing unless the Calibrate button is on screen and no job holds
     /// the machine.
     void calibrate();
-    /// Open the Bed Mesh panel (the tile's tap, and Load profile's).
+    /// A calibration was sent and neither finished, failed nor produced a new mesh yet.
+    [[nodiscard]] bool calibrating() const {
+        return calibrating_;
+    }
+    /// Open the Bed Mesh panel (the tile's tap, and Load profile's). Does nothing in a build
+    /// without the panel.
     void open_panel();
 
     /// The last verdict, for tests.
@@ -56,6 +63,7 @@ class BedMeshTileWidget : public PanelWidget {
     void publish_texts(const LiveState& live);
     void on_live_changed();
     void on_mesh_changed();
+    void set_calibrating(bool on);
     void feed_map(const LiveState& live);
     lv_obj_t* find_map() const;
 
@@ -75,6 +83,11 @@ class BedMeshTileWidget : public PanelWidget {
     std::optional<int> bounds_version_;
     /// The render mode last applied to the canvas.
     std::optional<bool> applied_3d_;
+    /// The canvas dropped its static 3D render for 2D after an overrun and stays there.
+    bool static_3d_banned_ = false;
+    bool calibrating_ = false;
+    /// The home panel is covered; mesh updates wait for it to come back.
+    bool panel_hidden_ = false;
 
     ObserverGuard version_observer_;
     ObserverGuard print_active_observer_;
@@ -91,6 +104,9 @@ void register_bed_mesh_tile_widget();
 /// Replaces what a tap opens, so a test can see that one happened. Pass an empty function to
 /// restore the real panel.
 void set_bed_mesh_tile_open_hook_for_test(std::function<void()> hook);
+
+/// Forces whether the Bed Mesh panel counts as built; pass nullopt to read the build.
+void set_bed_mesh_tile_panel_available_for_test(std::optional<bool> available);
 
 /// Forces the full-tier answer a test cares about; pass nullopt to read the platform tier.
 void set_bed_mesh_tile_full_tier_for_test(std::optional<bool> full_tier);
