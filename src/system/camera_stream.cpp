@@ -113,10 +113,14 @@ CameraFrame CameraStream::latest_running_frame(const WebcamInfo& feed, int max_w
 
 CameraStream::~CameraStream() {
     stop();
-    // Only clean up turbojpeg if stop() successfully joined the thread.
-    // If the thread was detached (join timeout), it may still be calling
-    // turbojpeg functions — dlclose would unmap the code and crash.
+    // Only clean up buffers and turbojpeg if stop() successfully joined the
+    // thread. If the thread was detached (join timeout), it may still be
+    // writing frames and calling turbojpeg functions — dlclose would unmap
+    // the code and crash.
     if (!thread_detached_) {
+        // stop() frees only what a stream thread left behind. A decoder that
+        // never ran one (decode_snapshot()'s throwaway) owns its frames too.
+        free_buffers();
         if (tj_ && fn_destroy_) {
             fn_destroy_(tj_);
             tj_ = nullptr;
