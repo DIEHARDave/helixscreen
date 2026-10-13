@@ -3,11 +3,14 @@
 How home-dashboard widgets are built, and the reference pattern for making
 one size itself responsively. The nozzle-temps widget is the exemplar to copy:
 `src/ui/panel_widgets/nozzle_temps_widget.{h,cpp}`,
-`src/ui/panel_widgets/nozzle_layout.h`, and its three XML components. The
-speed/flow widget is a second exemplar, built on the shared size ladder:
+`src/ui/panel_widgets/nozzle_layout.h`, and its three XML components. Seven widgets
+are built on the shared size ladder (`speed_flow`, `z_offset`, `dryer`, `host_health`,
+`toolhead`, `bed_mesh_tile`, `exclude_map`); `speed_flow` is the smallest worked example:
 `src/ui/panel_widgets/speed_flow_widget.{h,cpp}`,
-`src/ui/panel_widgets/speed_flow_layout.h`, and its two XML components (see
-[Shared helpers: the size ladder and value status](#shared-helpers-the-size-ladder-and-value-status)). The eighteen
+`src/ui/panel_widgets/speed_flow_layout.h`, and its two XML components. The ladder,
+the helpers around it and the checklist every one of them satisfies are in
+[Shared helpers: the size ladder, content chrome, tile ownership and value status](#shared-helpers-the-size-ladder-content-chrome-tile-ownership-and-value-status)
+and [The sized-widget family](#the-sized-widget-family). The eighteen
 centred-icon tiles run the same pattern one instance deeper; see
 [The tile instance of the pattern](#the-tile-instance-of-the-pattern) below, and the
 printer image's live callouts are a third instance
@@ -93,10 +96,10 @@ current-only value. Re-decide when the value's width class changes (a
 target setting or clearing), so a tile sized under idle values never draws
 the wide value in the narrow rung.
 
-### Shared helpers: the size ladder and value status
+### Shared helpers: the size ladder, content chrome, tile ownership and value status
 
-Two pure headers, no LVGL, carry the parts of the pattern that more than one widget
-needs. `SpeedFlowWidget` is built on both.
+Four small headers carry the parts of the pattern that more than one widget needs.
+`SpeedFlowWidget` is built on all four.
 
 **`src/ui/panel_widgets/size_rung.h`** is the size ladder and its one chooser.
 `helix::SizeRung` names the rungs a widget can draw at: `Glance` (0.5x0.5), `Strip`
@@ -111,14 +114,48 @@ whose box fits on both axes, in the order Large, Full, Wide, Cell, then Strip or
 `helix::holds_any_rung()` says whether the box holds any offered rung at all, which is
 what `fits_at()` reports; it is monotonic because every comparison is `>=`. The nominal
 sizes are names only: a box between rungs takes the largest rung it holds, and the
-boxes themselves come from measurement.
+boxes themselves come from measurement. A widget may offer different rungs in different
+states: the bed mesh tile with no mesh loaded offers Glance, Cell, Wide and Full only,
+and the state is part of what `needs` was measured for.
+
+**`src/ui/panel_widgets/content_chrome.h`** measures the box the content really draws in.
+`helix::measure_content_chrome(root, reserve_px)` walks the single-child chain from the
+widget's root down to the first container that holds more than one child and sums the
+padding of every container on the way, plus the flex gap of that branching container. The
+widget subtracts the result from the span's pixel size and decides on what is left, so a
+theme or breakpoint that changes the tile's padding moves the boundaries with it. The
+tree does not exist yet when the load path asks `fits_at()`, so each widget's `decide()`
+falls back to the root's padding from `theme_manager_get_spacing()` until `root()` is
+set (`src/ui/panel_widgets/speed_flow_widget.cpp#decide`).
+
+**`src/ui/panel_widgets/live_tile_owner.h`** says which instance of a single-instance
+widget publishes. These widgets keep their subjects at module level, so only the instance
+bound to the tile on screen may write them. A second instance exists briefly: a
+`fits_at()` probe is never attached and so never claims, and a rebuild's incoming and
+outgoing instances can overlap.
+`helix::LiveTileOwner<W>` is a stack: `claim()` in `attach()`, `release()` in `detach()`.
+When the releasing instance was the owner and another is still attached, `release()`
+returns that instance and the caller has it republish, so the tile beneath a transient one
+does not go dead (`src/ui/panel_widgets/speed_flow_widget.cpp#detach`). A method that
+publishes opens with `if (!s_tile.is_owner(this)) return;`, and `on_size_changed()` stores
+its verdict first and publishes only when it owns.
 
 **`include/value_status.h`** is the one classification for a reading a widget colours.
 `helix::ValueStatus` is `Normal = 0`, `Warn = 1`, `Danger = 2`, the same ints as the
 `ams_env_ind_<n>_humidity_status` subjects. Each function in `helix::status` returns a
 classification and never an appearance: the caller publishes the int and its XML maps
-it with `bind_style_if_eq` to whatever that widget draws. `status::override_status(pct)`
-is Warn whenever a speed or flow override is off 100%.
+it with `bind_style_if_eq` to whatever that widget draws.
+
+| Function | Reads | Result |
+|----------|-------|--------|
+| `status::override_status(pct)` | a speed or flow override | Warn whenever it is off 100% |
+| `status::z_offset_status(save_available)` | whether an unsaved offset exists | Warn while there is one to save |
+| `status::mesh_flatness_status(range_mm)` | a bed mesh's Z range | Normal below 0.15 mm, Warn below 0.30, Danger above |
+| `status::host_health_status(HostHealthInput)` | host CPU, CPU temperature, Pi throttle bits, busiest MCU load, MCU retransmits, gcodes disk free | the worst status, with the `HealthCause` that set it |
+
+A metric the printer does not report stays at its `-1` default in `HostHealthInput` and is
+never judged. When metrics tie at the worst status, the one earlier in `HealthCause` wins,
+so the cause does not flicker.
 
 How speed/flow uses them (`src/ui/panel_widgets/speed_flow_widget.cpp`):
 
@@ -131,21 +168,122 @@ How speed/flow uses them (`src/ui/panel_widgets/speed_flow_widget.cpp`):
   where it fits the rung the percentages already chose.
 - **Measure.** `SpeedFlowWidget::decide` measures each rung's box with the same
   composer the labels render (`compose_texts`), against the content box that
-  `helix::measure_content_chrome()` (`src/ui/panel_widgets/content_chrome.h`) leaves
-  after the tree's padding. Unlike nozzle-temps it budgets the widest readings the
-  labels can show (the percentages' clamp maximums and fixed ceilings for
-  the measured readings), so the rung holds still while the numbers
-  move; it re-decides when the print starts or ends or the units setting flips,
-  because those change what each rung draws.
-- **Publish.** The widget is single-instance, so its subjects are module-level and
-  registered through `register_widget_subjects()`. Only the instance attached to the
-  live tile publishes (`s_owner`): a transient instance, such as a `fits_at()` probe or
-  a rebuild's outgoing widget, must not overwrite the tile's verdict.
+  `helix::measure_content_chrome()` leaves after the tree's padding. Unlike nozzle-temps
+  it budgets the widest readings the labels can show (the percentages' clamp maximums and
+  fixed ceilings for the measured readings), so the rung holds still while the numbers
+  move; it re-decides when the print starts or ends or the units setting flips, because
+  those change what each rung draws.
+- **Publish.** Module-level subjects registered through `register_widget_subjects()`,
+  written only by the `LiveTileOwner`'s owner.
 - **Refuse.** `fits_at()` accepts a size only when the `Glance` content fits both idle
   and printing; the units setting never refuses a size.
 - **Bind.** `speed_flow_part.xml` binds every part's visibility, flow and font off
   `speed_flow_rung`, `speed_flow_show_measured` and `speed_flow_show_steppers`, and
   the value colour off `speed_flow_speed_status` / `speed_flow_flow_status`.
+
+### The sized-widget family
+
+Each widget below is the same four layers over its own header pair. The decision header
+is pure and has a boundary test; the widget measures, decides and publishes.
+
+| Widget | Decision header | Gate subject | What it draws, by rung |
+|--------|-----------------|--------------|------------------------|
+| `speed_flow` | `speed_flow_layout.h` | - | override percentages; measured mm/s and mm³/s from Cell while printing; -/+ steppers at Full while printing |
+| `z_offset` | `z_offset_layout.h` | - | the live offset (two decimals at Glance, three above); Save from Wide; baby-step buttons at Full; the tool name at Full on a tool changer |
+| `dryer` | `dryer_layout.h`, `dryer_model.h`, `include/dryer_summary.h` | `home_dryer_available` | a time-left readout with a progress ring where progress is known; one row per source at Full |
+| `host_health` | `host_health_layout.h` | `perf_available` | a status chip with the reading that set it; sparklines and MCU rows by rung; the busiest MCU in the memory row's place while printing at Wide |
+| `toolhead` | `toolhead_layout.h`, `toolhead_plate.h` | - | homed letters (Z height while printing) at Glance and Strip; axis rows at Column and Cell; a top-down plate with crosshair and Z bar from Wide; Home All at Full while idle with an axis unhomed |
+| `bed_mesh_tile` | `bed_mesh_tile_layout.h` | `printer_has_bed_mesh` | a grid glyph and Z range at Glance; the heatmap from Strip; profile details at Wide; colour scale, footer, Calibrate and Load profile from Full; a static 3D render at Large on a full-tier board |
+| `exclude_map` | `decide_exclude_map_layout()` | `printer_has_exclude_object` | counts of skipped and remaining objects; the mini exclude-object map from Column up; the object printing now at Wide and above; a "Skip objects..." button at Full |
+
+All seven offer half-cell spans: their registry rows in `src/ui/panel_widget_registry.cpp`
+set `supports_half_col` and `supports_half_row` and a one-track minimum, which is the
+combination `PanelWidgetDef` requires for a minimum below a whole cell (the flag on that
+axis AND a `fits_at()` that can refuse). A Glance tile is therefore a legal 0.5x0.5
+placement, and `fits_at()` is what stops a drag from shrinking below the content.
+
+The shared decisions around them:
+
+- **Verdict structs carry `fits`.** `fits = holds_any_rung(...)` is what `fits_at()` reads.
+  A widget whose content differs by state (idle and printing, mesh loaded or not) asks
+  `decide()` for every state and refuses a size unless the Glance content fits in all of
+  them (`src/ui/panel_widgets/dryer_widget.cpp#fits_at`).
+- **Full is a size class as well as a fit.** `host_health` and `exclude_map` carry a
+  `full_min_h` in their input and raise the Full box's height to it, because a 2x1 tile
+  can hold the Full content but the rung is for 2x2 and up
+  (`src/ui/panel_widgets/host_health_layout.h#decide_host_health_layout`).
+- **Re-decide when what is measured changes.** Each widget stores the state its verdict was
+  decided for (`decided_printing_`, `decided_loaded_`, `decided_mcu_count_`, ...) and calls
+  `relayout_for_granted_size()` when the live state differs, so a print starting never
+  leaves a tile sized for idle content.
+- **Aggregation lives in a pure header, rendering in the widget.** The dryer widget reads
+  `helix::DryerSummary` from `helix::dryer_model::summary()`
+  (`src/ui/panel_widgets/dryer_model.h`), and `summarize_dryers()` in
+  `include/dryer_summary.h` is the only place box, chamber and bed drying are folded
+  together. See [FILAMENT_ENVIRONMENT_ZONES.md](FILAMENT_ENVIRONMENT_ZONES.md#the-dryer-summary).
+
+### Rules every sized widget follows
+
+These are the checks a new widget in this family has to pass. The ones with a gate say so.
+
+- **Centre vertically with `flex_track_place`.** Inside a row flow, `flex_cross_place="center"`
+  centres children within their track, and the track is only as tall as its tallest child,
+  so it sits at the top of a taller box. Add `flex_track_place="center"` to the container
+  (`ui_xml/components/panel_widget_speed_flow.xml`, `sf_body_row`;
+  `ui_xml/components/panel_widget_z_offset.xml`, `z_offset_top`).
+- **A `<style>` that sets `flex_flow` or `flex_main_place` also sets `layout="flex"`.** The
+  style path, unlike the inline attribute, does not switch the layout on, and the children
+  pile onto the first one. The bats test "home-widget styles that set flex_flow or
+  flex_main_place also set layout flex" in `tests/shell/test_code_lint.bats` covers
+  `panel_widget_*.xml` plus `speed_flow_part.xml`, `chamber_dryer_row.xml` and
+  `host_health_mcu_row.xml`; a new component file that carries such styles is added to that
+  list.
+- **Stop redrawing while the home panel is covered.** `HomePanel` fans `on_deactivate()` and
+  `on_activate()` out to the active page's widgets when the panel is covered or revealed and
+  when the page changes (`src/ui/ui_panel_home.cpp#on_deactivating`). A widget
+  that draws a canvas or refreshes on a timer keeps a `panel_hidden_` flag, skips every
+  update while it is set, and applies whatever changed once in `on_activate()`:
+  `ToolheadWidget` cancels its 250 ms `CoalescedTimer` and forgets the drawn plate key
+  (`src/ui/panel_widgets/toolhead_widget.cpp#on_deactivate`), and `BedMeshTileWidget` skips
+  live and mesh updates until the panel returns
+  (`src/ui/panel_widgets/bed_mesh_tile_widget.cpp#on_activate`).
+- **Re-compose translated text on a language switch.** XML re-translates what it binds
+  through `translation_tag`; text C++ formatted with `lv_tr()` stays in the old language,
+  and the rung was chosen on widths measured in it. A widget that composes such text holds
+  `ui::observe_language_change()` (`include/observe_language.h`) from `attach()`, resets it
+  in `detach()`, and re-decides in the handler
+  (`src/ui/panel_widgets/dryer_widget.cpp#attach`). A state singleton that owns translated
+  text, such as `BedMeshState`, exposes `retranslate()` for the same purpose.
+- **Classify every control against the toolhead-safety census.** A control that commands
+  the toolhead or starts a print carries `moves_machine="true"` (see
+  [LVGL9_XML_GUIDE.md](LVGL9_XML_GUIDE.md#moves_machine)). `tests/unit/test_job_holds_machine.cpp`
+  walks every XML file that declares a control and fails unless the file is a row of
+  `kGuardedFiles` (with the guard count) or `kNoMachineControlFiles`. The family's rows:
+  `panel_widget_z_offset.xml` has two guards (Save and the steppers),
+  `panel_widget_toolhead.xml` one (Home All), `panel_widget_bed_mesh_tile.xml` one
+  (Calibrate); `panel_widget_speed_flow.xml`, `speed_flow_part.xml`,
+  `panel_widget_host_health.xml` and `panel_widget_dryer.xml` command no motion and are in
+  `kNoMachineControlFiles`. The send layer is the
+  guarantee; the disabled state is the courtesy.
+- **Give a gate subject an owner row.** A widget with a `hardware_gate_subject` needs that
+  name in `gate_subject_lifetime()` (`src/ui/panel_widget_manager.cpp#gate_subject_lifetime`),
+  which hands the gate observer the death token of the object that registers the
+  subject. `tests/unit/test_gate_subject_lifetime.cpp` has one `owners()` row per gate name,
+  proves behaviourally that the token flips when the owner tears down, and fails a registry
+  def whose gate has no row. `home_dryer_available` is owned by `dryer_model`, which the
+  dryer widget initialises from its `register_widget_subjects()` hook so the gate exists
+  before the manager resolves gates.
+- **Put module-level subjects and text buffers in PSRAM on the ESP32.** Every `lv_subject_t`
+  and `char` buffer at namespace scope in these widgets is declared
+  `HELIX_PSRAM_BSS` (`include/helix_psram_attr.h`), as are the state singletons they read
+  (`src/printer/bed_mesh_state.cpp#instance`, `src/system/performance_state.cpp#instance`).
+  The macro is empty off the firmware. It is for statics first touched after boot and never
+  reached by DMA or an ISR, which describes all of them. Without it, a handful of widgets
+  moves `.dram0.bss` past its ceiling and WiFi stops associating; see
+  [ESP32_PORT.md](ESP32_PORT.md#changing-shared-code).
+- **Register the widget's source with the firmware manifest.** A new `.cpp` is a line in
+  `firmware/helixscreen-esp32/components/helixapp/app_srcs.txt` (or the excluded list with a
+  reason), or the commit gate fails.
 
 ### The tile instance of the pattern
 
@@ -373,7 +511,11 @@ unrailable and gets the face and the sheet.
   real subjects to pin the re-decide.
 - The shared helpers have their own boundary tests (`[size_rung]`,
   `[value_status]`); the speed/flow instance pins its decision in
-  `[speed_flow][layout]` and its bound outcome in `[widget_size][speed_flow]`.
+  `[speed_flow][layout]` and its bound outcome in `[widget_size][speed_flow]`. The
+  other family members follow the same two-tag shape: `[z_offset][layout]`,
+  `[dryer][layout]`, `[host_health][layout]`, `[toolhead][layout]`,
+  `[bed_mesh_tile][layout]` for the decision, and `[widget_size][<id>]` for the bound
+  outcome. `[dryer][summary]` pins the aggregation in `include/dryer_summary.h`.
 - `test_widget_content_fits.cpp` sweeps every widget at every shipping
   geometry at its authored minimum; its baseline entries are the honest
   record of which tiles sit below a widget's floor.
