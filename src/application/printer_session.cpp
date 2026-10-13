@@ -28,6 +28,7 @@
 #include "active_print_media_manager.h"
 #include "ams_state.h"
 #include "app_globals.h"
+#include "bed_mesh_state.h"
 #include "cjk_font_manager.h"
 #include "cli_args.h"
 #include "config.h"
@@ -219,6 +220,10 @@ bool PrinterSession::init_panel_subjects() {
             std::make_unique<helix::perf::MoonrakerPerformanceSource>(m_moonraker->api()));
     }
     spdlog::debug("[Application] PerformanceState initialized");
+
+    // Follow the active bed mesh from here on, so the stats are current before any
+    // panel or home tile that reads them exists.
+    helix::BedMeshState::instance().attach(m_moonraker->api());
 
     spdlog::debug("[Application] Panel subjects initialized");
     helix::MemoryMonitor::log_now("after_panel_subjects_init");
@@ -755,6 +760,7 @@ void PrinterSession::teardown_printer_scope(TeardownScope scope, DisplayManager*
     }
 
     // Unsubscribe power device and sensor state
+    helix::BedMeshState::instance().detach();
     if (m_moonraker && m_moonraker->api()) {
         helix::PowerDeviceState::instance().unsubscribe(*m_moonraker->api());
         helix::SensorState::instance().unsubscribe(*m_moonraker->api());
