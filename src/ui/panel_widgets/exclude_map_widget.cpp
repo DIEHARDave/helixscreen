@@ -12,6 +12,7 @@
 
 #include "app_globals.h"
 #include "bed_dimensions.h"
+#include "helix_psram_attr.h"
 #include "lvgl/src/others/translation/lv_translation.h"
 #include "observe_language.h"
 #include "observer_factory.h"
@@ -40,24 +41,24 @@ namespace {
 // Module-level because the widget is single-instance and registration rides
 // SubjectInitializer's panel-subject phase, so the subjects exist before any XML that
 // binds them is parsed.
-lv_subject_t s_rung_subject{};
-lv_subject_t s_placeholder_subject{};
-lv_subject_t s_show_map_subject{};
-lv_subject_t s_show_skip_subject{};
-lv_subject_t s_show_name_subject{};
-lv_subject_t s_has_current_subject{};
-lv_subject_t s_count_text_subject{};
-lv_subject_t s_objects_text_subject{};
-lv_subject_t s_skipped_text_subject{};
-lv_subject_t s_printing_text_subject{};
-lv_subject_t s_current_name_subject{};
-lv_subject_t s_placeholder_text_subject{};
-char s_count_text_buf[16];
-char s_objects_text_buf[32];
-char s_skipped_text_buf[32];
-char s_printing_text_buf[48];
-char s_current_name_buf[96];
-char s_placeholder_text_buf[32];
+HELIX_PSRAM_BSS lv_subject_t s_rung_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_placeholder_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_show_map_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_show_skip_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_show_name_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_has_current_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_count_text_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_objects_text_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_skipped_text_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_printing_text_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_current_name_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_placeholder_text_subject{};
+HELIX_PSRAM_BSS char s_count_text_buf[16];
+HELIX_PSRAM_BSS char s_objects_text_buf[32];
+HELIX_PSRAM_BSS char s_skipped_text_buf[32];
+HELIX_PSRAM_BSS char s_printing_text_buf[48];
+HELIX_PSRAM_BSS char s_current_name_buf[96];
+HELIX_PSRAM_BSS char s_placeholder_text_buf[32];
 bool s_subjects_initialized = false;
 SubjectManager s_subjects;
 // The instance bound to the live tile. Only it publishes and acts: a transient instance
