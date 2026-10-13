@@ -566,6 +566,7 @@
   <translation tag="Choose sound style" zh="选择声音风格"/>
   <translation tag="Choose the model that matches your printer. This sets the print macros, fan roles and calibration behaviour HelixScreen uses." zh="选择与您的打印机相符的型号。这将决定 HelixScreen 使用的打印宏、风扇角色和校准行为。"/>
   <translation tag="Choose what to power off or restart." zh="选择要关闭或重启的对象。"/>
+  <translation tag="Choose which lane is in the toolhead to unload it" zh="请选择打印头里的料道以卸载"/>
   <translation tag="Chute position: X {:.1f}, Y {:.1f}" zh="排料口位置: X {:.1f}, Y {:.1f}"/>
   <translation tag="Clean Brush" zh="清洁刷子"/>
   <translation tag="Clean Nozzle" zh="清洁喷嘴"/>
@@ -3395,6 +3396,7 @@
   <translation tag="When enabled, only the macro runs. When disabled, temperatures are set first, then the macro runs." zh="启用时仅运行宏。禁用时先设置温度，然后运行宏。"/>
   <translation tag="Where UI sounds play" zh="界面声音的播放位置"/>
   <translation tag="Whether filament is loaded" zh="耗材是否已装载"/>
+  <translation tag="Which lane is in the toolhead?" zh="哪个料道在打印头里？"/>
   <translation tag="Which macro the Close feeder button sends" zh="“关闭送料器”按钮发送的宏"/>
   <translation tag="Which macro the Open feeder button sends" zh="“打开送料器”按钮发送的宏"/>
   <translation tag="White" zh="白色"/>

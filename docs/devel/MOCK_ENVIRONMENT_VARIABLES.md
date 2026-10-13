@@ -506,6 +506,11 @@ registry), with the result published on the next status notification:
 HELIX_MOCK_AMS=ifs-module ./build/bin/helix-screen --test -vv
 ```
 
+`HELIX_MOCK_IFS_UNACCOUNTED=1` starts it with filament at the toolhead switch and no lane
+in `ifs_loaded`: the state a firmware that lost its loaded-lane record leaves behind. The
+head switch is tracked apart from `ifs_loaded` (`IFS_LOAD`/`T<n>` set it, `IFS_UNLOAD` and
+ejecting the loaded lane clear it), so Unload has to ask which lane is in the head.
+
 #### `cfs` - mock hardware, real backend
 
 Same rule as the modes above: no `AmsBackendMock` is built. The mock publishes the
