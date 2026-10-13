@@ -92,7 +92,8 @@ is roughly 50 MiB of shared, file-backed library text.
 
 **The base DRM binary links the same three GL libraries** - `ENABLE_GLES_3D=yes`
 builds the 3D gcode viewer into it, so `libEGL`, `libGLESv2` and `libgbm` are on
-both binaries' `ldd` output, and the two files differ by 56 bytes. Whether it
+both binaries' `ldd` output (SDL builds, `x86-desktop` included, link none of
+them: the renderer resolves GLES2 from SDL's context at runtime), and the two files differ by 56 bytes. Whether it
 pays Mesa's residency therefore depends only on whether GL initialises. On the
 Pi 5 it does, unprompted, within 100 s of boot: the DRM process already holds
 `libLLVM` resident and maps `/dev/dri/card1`. On the Pi 3B it does not, with

@@ -396,15 +396,22 @@ R2 manifests may have sparse release notes. After a successful R2 fetch, the che
 
 ## Platform Detection
 
-The platform key is determined at compile time via preprocessor defines:
+The platform key is determined at compile time via preprocessor defines, in
+`helix::platform::current_key()` (`src/system/platform_table.cpp#current_key`):
 
 | Define | Platform Key | Devices |
 |--------|-------------|---------|
 | `HELIX_PLATFORM_AD5M` | `ad5m` | Flashforge Adventurer 5M |
-| `HELIX_PLATFORM_MIPS` | `k1` or `ad5x` | MIPS32 devices (Creality K1, FlashForge AD5X). Runtime detection via `/usr/prog` presence. |
-| `HELIX_PLATFORM_K2` | `k2` | Creality K2 series. **Note:** K2 is supported in the UpdateChecker code but is not yet included in `generate-manifest.sh`. R2 manifests do not currently include K2 binaries. |
+| `HELIX_PLATFORM_CC1` | `cc1` | Elegoo Centauri Carbon |
+| `HELIX_PLATFORM_MIPS` | `mips` | The unified MIPS build: Creality K1 series, FlashForge AD5X, Creator 5 Pro. A release cut before that build has no `mips` asset, so `release_asset_keys()` also tries the board's old key (`ad5x` or `k1`) |
+| `HELIX_PLATFORM_K1` | `k1` | The `k1-dynamic` variant |
+| `HELIX_PLATFORM_K2` | `k2` | Creality K2 series |
+| `HELIX_PLATFORM_X86` | `x86` | x86_64 kiosk (DRM/fbdev) |
+| `HELIX_PLATFORM_X86_DESKTOP` | `x86-desktop` | x86_64 Linux desktop window (SDL). Announces updates but never installs them: see [Builds that open the release page](#builds-that-open-the-release-page) |
+| `HELIX_PLATFORM_SNAPMAKER_U1` | `snapmaker-u1` | Snapmaker U1 |
 | `HELIX_PLATFORM_PI32` | `pi32` | Raspberry Pi (32-bit) |
-| (default) | `pi` | Raspberry Pi (64-bit) |
+| `HELIX_PLATFORM_ESP32` | `esp32` | BTT K-Touch firmware (no tarball updater) |
+| (default) | `pi` | Raspberry Pi (64-bit), and native dev builds |
 
 Asset name format: `helixscreen-{platform}.zip` (preferred, e.g., `helixscreen-pi.zip`). The legacy `helixscreen-{platform}-{tag}.tar.gz` form is still published during the bridge release for backwards compatibility with older installed versions.
 
@@ -564,6 +571,23 @@ Shown automatically by auto-check when an update is found:
 - "View Changelog" toggle button that reveals a scrollable markdown area (`ui_markdown` bound to `update_release_notes`)
 - "Ignore" button (dismisses this version) and "Install" button (opens download modal)
 
+### Builds that open the release page
+
+Two builds never run the tarball updater. Every install intent, the Updates overlay's Install
+Update row and the notification's Install button alike, reaches
+`UpdatesSettingsOverlay::show_update_download_modal()`, which on these builds opens a page with
+`SDL_OpenURL` instead of the download modal:
+
+| Build | Opens |
+|-------|-------|
+| Android | The Play listing for a Play install, else the GitHub release page (`helix::android::update_url`) |
+| `x86-desktop` | The GitHub release page for the offered release (`helix::release_page_url`, `include/system/release_page.h`); a toast says so when no browser opens. The user installs with `install.sh --update` |
+
+`release_page_url()` falls back to the latest release when the channel is not on GitHub (dev)
+or the manifest's version is not a safe tag. On `x86-desktop`, `UpdateChecker::start_download()`
+also refuses outright, so no future path into it can run the installer, which would treat an
+in-app update as the kiosk flavour.
+
 ### Download Modal (`update_download_modal.xml`)
 
 Multi-state modal driven by `download_status` subject:
@@ -614,11 +638,21 @@ overrides live in the root-owned `/var/lib/helixscreen/update_urls.json` (see
 
 ### Adding a New Platform
 
-1. Add a `HELIX_PLATFORM_*` define and update `current_key()` and add a row in `src/system/platform_table.cpp`
-2. Add the platform to the `PLATFORMS` array in `scripts/generate-manifest.sh`
-3. Add a build job in `.github/workflows/release.yml`
-4. Add a `release-{platform}` target in the Makefile
-5. Update `write_release_info()` in `scripts/lib/installer/moonraker.sh`
+1. `mk/cross.mk`: the `PLATFORM_TARGET` block (with a `HELIX_PLATFORM_*` define in its
+   `TARGET_CFLAGS`), a `<platform>-docker` target, `REL_LABEL.<platform>`, and
+   `release-<platform>` / `package-<platform>` targets
+2. `src/system/platform_table.cpp`: an `#elif` in `current_key()` and a row in `kPlatforms`; then
+   the known-platform lists in `tests/unit/test_update_checker.cpp`
+3. `assets/config/platforms.json`: the platform's entry (`scripts/check_platform_manifest.py --strict`
+   cross-checks it against the package targets)
+4. `.github/workflows/release.yml`: an entry in the build matrix. `scripts/generate-manifest.sh`
+   discovers platforms from the uploaded file names, so it needs nothing
+5. `server/crash-worker/src/index.ts`: `KNOWN_PLATFORMS` (and its test), then **deploy the
+   worker**, or it refuses the new platform's crash reports
+   (`tests/shell/test_update_platform_coverage.bats` fails until the list matches)
+6. The installer: `detect_platform` / `get_download_platform` in `scripts/lib/installer/platform.sh`
+   if the installer should pick it, and `validate_tarball`'s ELF expectation in `release.sh`
+7. `firmware/helixscreen-esp32/components/helixapp/app_srcs_excluded.txt` for any new source file
 
 ### Testing Update Checks
 

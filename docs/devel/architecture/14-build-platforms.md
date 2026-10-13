@@ -29,7 +29,7 @@ flowchart TB
     BIN["build/TARGET/bin/helix-screen<br/>DRM / fbdev / SDL auto-detect at runtime"]
     TESTBIN["build/bin/helix-tests"]
     DEPLOY["deploy-pi / deploy-ad5m / deploy-cc1 / ..."]
-    DEVICES["Ships on: K1 series, K2, AD5M, AD5X, Creator 5 Pro, CC1,<br/>Snapmaker U1, Pi, QIDI Q2/Max 4, Sonic Pad,<br/>x86 SBCs; Yocto recipe; Android APK"]
+    DEVICES["Ships on: K1 series, K2, AD5M, AD5X, Creator 5 Pro, CC1,<br/>Snapmaker U1, Pi, QIDI Q2/Max 4, Sonic Pad,<br/>x86 SBCs, Linux desktops; Yocto recipe; Android APK"]
     ESP["firmware/helixscreen-esp32<br/>ESP-IDF build, BTT K-Touch"]
 
     DEV --> CROSS
@@ -114,6 +114,7 @@ font tiers, and `-DHELIX_HAS_*` / `-DHELIX_PLATFORM_*` gates that code checks at
 | `pi`, `pi-fbdev`, `pi-both` | Raspberry Pi aarch64 | DRM / fbdev | `-both` compiles once, links DRM + fbdev ([`mk/pi-dual-link.mk`](../../../mk/pi-dual-link.mk)) |
 | `pi32` (+`-fbdev`/`-both`) | Pi armhf, **Sonic Pad** | DRM / fbdev | Same binary serves any armhf Debian-ish box |
 | `x86`, `x86-fbdev`, `x86-both` | x86_64 Debian SBCs | DRM / fbdev | Built in a Bullseye container for glibc 2.31 compat |
+| `x86-desktop` | x86_64 Linux desktops | SDL | A window beside the user's desktop, released and installed per user; same Bullseye container, static SDL2 from `lib/sdl2`, its own compile since `LV_USE_SDL` changes every LVGL object ([`../BUILD_SYSTEM.md`](../BUILD_SYSTEM.md#x86_64-linux-desktop-x86-desktop)) |
 | `ad5m`, `ad5m-br` | FlashForge AD5M (armv7) | fbdev | Fully static; ships as a ready-made firmware image (Forge-X fork); `-br` is the buildroot variant built inside AD5M Klipper Mod ([`printers/FLASHFORGE_AD5M_SUPPORT.md`](../printers/FLASHFORGE_AD5M_SUPPORT.md)) |
 | `cc1` | Elegoo Centauri Carbon (armv7) | fbdev | Static, tested; also the fallback binary for old-glibc armv7 boxes generally |
 | `mips` (also spelled `k1`, `ad5x`; `make creator5` builds it) | Creality K1 series, FlashForge AD5X, FlashForge Creator 5 Pro (Ingenic MIPS32) | fbdev | One static musl binary for all three boards, built at the shared `mips32r2` + `-mnan=2008 -mfp64` ABI; the board is told apart at runtime |
@@ -135,7 +136,7 @@ which is what lets one binary cover a device family.
 The per-target gates are where devices differ in features, not just flags: font tiers scale the
 compiled font payload from `micro tiny` (cc1, yocto, both 112MB RAM) to `all` (pi, x86); the label-printer,
 CFS, and IFS gates are off on AD5M ([`mk/cross.mk`](../../../mk/cross.mk)). Sound is gated in the top-level `Makefile`
-(`Makefile#"HELIX_HAS_SOUND:   Pi"`): full, with the tracker player, on Pi, x86, native and the unified MIPS build;
+(`Makefile#"HELIX_HAS_SOUND:   Pi"`): full, with the tracker player, on Pi, x86, x86-desktop, native and the unified MIPS build;
 tone-only on AD5M; compiled out on K2, CC1, k1-dynamic, the Snapmaker U1 and Yocto. The camera gate,
 `HELIX_HAS_CAMERA`, is derived from the platform defines in `lv_conf.h` rather than set in `mk/cross.mk`.
 
@@ -169,7 +170,10 @@ Two independent choices, easy to conflate:
 **Every target draws with `lv_draw_sw`.** No GPU draw unit is compiled in on any platform, so
 rasterization is CPU work everywhere, including the Pi. GLES on Pi and x86 belongs to the 3D
 G-code viewer ([`src/rendering/gcode_gles_renderer.cpp`](../../../src/rendering/gcode_gles_renderer.cpp)),
-which owns a private EGL context and no part of the LVGL pipeline. The EGL display backend accelerates
+which owns a private GL context (EGL on DRM builds, SDL's on SDL builds) and no part of the LVGL
+pipeline. SDL builds resolve its GLES2 entry points at runtime
+([`include/gles2_sdl_loader.h`](../../../include/gles2_sdl_loader.h)) rather than linking `libGLESv2`,
+so a desktop without GLES still starts and the viewer draws in 2D. The EGL display backend accelerates
 only *presentation*; drawing follows the draw unit, not the backend. [`../GPU_ACCELERATION.md`](../GPU_ACCELERATION.md) has the measured
 numbers per board.
 
