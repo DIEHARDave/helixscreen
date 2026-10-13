@@ -1594,7 +1594,6 @@ TEST_CASE("do_install never runs the installer in test mode",
     // A child process makes the install: past the installer, do_install()
     // ends the process to restart it, which would take the assertions with it.
     const pid_t pid = fork();
-    REQUIRE(pid >= 0);
     if (pid == 0) {
         ScopedRuntimeConfig scoped_config;
         get_runtime_config()->test_mode = true;
@@ -1604,6 +1603,7 @@ TEST_CASE("do_install never runs the installer in test mode",
         UpdateCheckerTestAccess::do_install(checker, tarball);
         _exit(0);
     }
+    REQUIRE(pid > 0);
     int wstatus = 0;
     for (int i = 0; i < 3000 && waitpid(pid, &wstatus, WNOHANG) == 0; ++i)
         usleep(10 * 1000);

@@ -405,7 +405,6 @@ TEST_CASE_METHOD(CrashTestFixture,
     }
 
     pid_t pid = fork();
-    REQUIRE(pid >= 0);
 
     if (pid == 0) {
         // Child. Pre-populate __abort_msg in glibc's real struct layout, the
@@ -424,6 +423,7 @@ TEST_CASE_METHOD(CrashTestFixture,
         raise(SIGABRT);
         _exit(99); // unreachable
     }
+    REQUIRE(pid > 0);
 
     int status = 0;
     REQUIRE(waitpid(pid, &status, 0) == pid);
@@ -456,7 +456,6 @@ TEST_CASE_METHOD(CrashTestFixture,
     }
 
     pid_t pid = fork();
-    REQUIRE(pid >= 0);
 
     if (pid == 0) {
         // Embedded \n and \r must flatten to spaces — the crash file format
@@ -470,6 +469,7 @@ TEST_CASE_METHOD(CrashTestFixture,
         raise(SIGABRT);
         _exit(99);
     }
+    REQUIRE(pid > 0);
 
     int status = 0;
     REQUIRE(waitpid(pid, &status, 0) == pid);
@@ -490,7 +490,6 @@ TEST_CASE_METHOD(CrashTestFixture, "Crash: SIGABRT handler truncates oversized _
     }
 
     pid_t pid = fork();
-    REQUIRE(pid >= 0);
 
     if (pid == 0) {
         // 500 'a's followed by a tail marker the bounded copy MUST NOT
@@ -511,6 +510,7 @@ TEST_CASE_METHOD(CrashTestFixture, "Crash: SIGABRT handler truncates oversized _
         raise(SIGABRT);
         _exit(99);
     }
+    REQUIRE(pid > 0);
 
     int status = 0;
     REQUIRE(waitpid(pid, &status, 0) == pid);
@@ -537,7 +537,6 @@ TEST_CASE_METHOD(CrashTestFixture,
     }
 
     pid_t pid = fork();
-    REQUIRE(pid >= 0);
 
     if (pid == 0) {
         void** abort_msg_slot = static_cast<void**>(dlsym(RTLD_DEFAULT, "__abort_msg"));
@@ -552,6 +551,7 @@ TEST_CASE_METHOD(CrashTestFixture,
         raise(SIGABRT);
         _exit(99);
     }
+    REQUIRE(pid > 0);
 
     int status = 0;
     REQUIRE(waitpid(pid, &status, 0) == pid);
@@ -578,7 +578,6 @@ TEST_CASE_METHOD(CrashTestFixture,
     }
 
     pid_t pid = fork();
-    REQUIRE(pid >= 0);
 
     if (pid == 0) {
         if (!publish_abort_msg("")) {
@@ -588,6 +587,7 @@ TEST_CASE_METHOD(CrashTestFixture,
         raise(SIGABRT);
         _exit(99);
     }
+    REQUIRE(pid > 0);
 
     int status = 0;
     REQUIRE(waitpid(pid, &status, 0) == pid);
@@ -629,7 +629,6 @@ TEST_CASE_METHOD(CrashTestFixture,
     }
 
     pid_t pid = fork();
-    REQUIRE(pid >= 0);
 
     if (pid == 0) {
         crash_handler::install(crash_path());
@@ -665,6 +664,7 @@ TEST_CASE_METHOD(CrashTestFixture,
         free(const_cast<void*>(p)); // NOLINT — deliberate corruption, this is the test
         _exit(99);                  // glibc failed to detect it — parent's exit-code check fails
     }
+    REQUIRE(pid > 0);
 
     int status = 0;
     REQUIRE(waitpid(pid, &status, 0) == pid);
@@ -722,7 +722,6 @@ TEST_CASE_METHOD(CrashTestFixture, "Crash: heap_snapshot_age_ms is an age, not a
     }
 
     pid_t pid = fork();
-    REQUIRE(pid >= 0);
 
     if (pid == 0) {
         crash_handler::install(crash_path());
@@ -730,6 +729,7 @@ TEST_CASE_METHOD(CrashTestFixture, "Crash: heap_snapshot_age_ms is an age, not a
         raise(SIGABRT);
         _exit(99);
     }
+    REQUIRE(pid > 0);
 
     int status = 0;
     REQUIRE(waitpid(pid, &status, 0) == pid);
@@ -754,7 +754,6 @@ TEST_CASE_METHOD(CrashTestFixture, "Crash: heap_snapshot_age_ms is an age, not a
 TEST_CASE_METHOD(CrashTestFixture, "Crash: heap snapshot emits self-consistent raw clock stamps",
                  "[telemetry][crash][subprocess]") {
     pid_t pid = fork();
-    REQUIRE(pid >= 0);
 
     if (pid == 0) {
         crash_handler::install(crash_path());
@@ -762,6 +761,7 @@ TEST_CASE_METHOD(CrashTestFixture, "Crash: heap snapshot emits self-consistent r
         raise(SIGABRT);
         _exit(99);
     }
+    REQUIRE(pid > 0);
 
     int status = 0;
     REQUIRE(waitpid(pid, &status, 0) == pid);
@@ -802,7 +802,6 @@ TEST_CASE_METHOD(CrashTestFixture, "Crash: heap snapshot emits self-consistent r
 TEST_CASE_METHOD(CrashTestFixture, "Crash: recent ERROR log lines captured into crash file",
                  "[telemetry][crash][subprocess]") {
     pid_t pid = fork();
-    REQUIRE(pid >= 0);
 
     if (pid == 0) {
         crash_handler::install(crash_path());
@@ -820,6 +819,7 @@ TEST_CASE_METHOD(CrashTestFixture, "Crash: recent ERROR log lines captured into 
         raise(SIGABRT);
         _exit(99); // unreachable
     }
+    REQUIRE(pid > 0);
 
     int status = 0;
     REQUIRE(waitpid(pid, &status, 0) == pid);
@@ -1445,7 +1445,6 @@ void give_forked_child_signal_stack() {
 TEST_CASE_METHOD(CrashTestFixture, "Crash: a stack overflow still writes the crash file",
                  "[telemetry][crash][subprocess]") {
     pid_t pid = fork();
-    REQUIRE(pid >= 0);
 
     if (pid == 0) {
         // A small stack makes the overflow quick and deterministic.
@@ -1459,6 +1458,7 @@ TEST_CASE_METHOD(CrashTestFixture, "Crash: a stack overflow still writes the cra
         crash_handler::install(crash_path());
         _exit(overflow_stack(0) == 0 ? 97 : 99);
     }
+    REQUIRE(pid > 0);
 
     int status = 0;
     REQUIRE(waitpid(pid, &status, 0) == pid);
@@ -1489,7 +1489,6 @@ TEST_CASE_METHOD(CrashTestFixture,
                  "Crash: a stack overflow on a make_thread worker still writes the crash file",
                  "[telemetry][crash][subprocess]") {
     pid_t pid = fork();
-    REQUIRE(pid >= 0);
 
     if (pid == 0) {
         crash_handler::install(crash_path());
@@ -1497,6 +1496,7 @@ TEST_CASE_METHOD(CrashTestFixture,
         worker.join();
         _exit(99);
     }
+    REQUIRE(pid > 0);
 
     int status = 0;
     REQUIRE(waitpid(pid, &status, 0) == pid);
@@ -1562,7 +1562,6 @@ TEST_CASE_METHOD(CrashTestFixture, "Crash: the stack dump holds the real stack w
     const bool deny = GENERATE(false, true);
     CAPTURE(deny);
     pid_t pid = fork();
-    REQUIRE(pid >= 0);
 
     if (pid == 0) {
         if (deny && !deny_process_vm_readv()) {
@@ -1572,6 +1571,7 @@ TEST_CASE_METHOD(CrashTestFixture, "Crash: the stack dump holds the real stack w
         raise(SIGABRT);
         _exit(99);
     }
+    REQUIRE(pid > 0);
 
     int status = 0;
     REQUIRE(waitpid(pid, &status, 0) == pid);
@@ -1588,7 +1588,6 @@ TEST_CASE_METHOD(CrashTestFixture,
                  "Crash: a stack overflow completes the record when process_vm_readv is refused",
                  "[telemetry][crash][subprocess]") {
     pid_t pid = fork();
-    REQUIRE(pid >= 0);
 
     if (pid == 0) {
         if (!deny_process_vm_readv()) {
@@ -1601,6 +1600,7 @@ TEST_CASE_METHOD(CrashTestFixture,
         crash_handler::install(crash_path());
         _exit(overflow_stack(0) == 0 ? 97 : 99);
     }
+    REQUIRE(pid > 0);
 
     int status = 0;
     REQUIRE(waitpid(pid, &status, 0) == pid);

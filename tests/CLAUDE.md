@@ -446,6 +446,13 @@ Fixture ctor **and** dtor call `reset_all()`. Cross-test leaks through `UpdateQu
 ratcheted by `scripts/check_update_queue_leaks.py` — if you add a test that queues callbacks
 without draining, the nightly leak gate will name it.
 
+A test that forks keeps every Catch2 macro on the parent side: fork, run the child block
+to `_exit()`, and only then `REQUIRE(pid > 0)`. A macro evaluated in the child is
+reported by the child, and Catch2's XML writer flushes each element into the report file
+description the child shares, so a `--success` report (`make suite-report`) comes out
+with the child's elements spliced into the parent's. `tests/shell/test_fork_assertion_gate.bats`
+enforces it.
+
 XML subjects still register into LVGL's **global** scope (per-test scopes are blocked by LVGL
 internals). Each test refreshes them with `init_subjects(true)`.
 

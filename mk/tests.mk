@@ -1547,16 +1547,11 @@ help-test:
 # it costs a whole suite pass, so test-vacuous and test-order-dependence both
 # consume this file rather than each producing their own.
 SUITE_REPORT ?= $(BUILD_DIR)/suite-report.xml
-# ~[subprocess] and ~[socket_discovery] are not about speed: those cases fork,
-# and the child shares the parent's report file description. Their writes
-# interleave with Catch2's XML mid-element, so the report comes out structurally
-# corrupt ("not well-formed (invalid token)") even though the run passes and
-# even though --out keeps test stdout away from it. Verified per-tag: a report
-# of [subprocess] alone is malformed, [socket_discovery] alone is malformed,
-# [splash] (which also forks) is clean. Every gate that reads a report is
-# blocked by this, so the report excludes them and they are judged by the suite
-# itself. See prestonbrown/helixscreen#1375.
-VACUOUS_FILTER ?= ~[.]~[slow]~[subprocess]~[socket_discovery]
+# The report is one file description shared with every child a test forks, and
+# Catch2's XML writer flushes after each element. A Catch2 assertion evaluated in
+# a forked child therefore writes into the parent's report mid-element, so tests
+# keep every assertion on the parent side of the fork (tests/CLAUDE.md).
+VACUOUS_FILTER ?= ~[.]~[slow]
 # Ratchet. May fall, never rise. Crash canaries and compile-time-only cases are
 # exempted by name in scripts/vacuous_test_baseline.txt, not counted here.
 # The nightly reads this through print-vacuous-max rather than repeating the
