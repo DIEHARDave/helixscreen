@@ -41,6 +41,8 @@
         <bind_style_if name="bed_plate_dim"
                        cond="motion_x_homed eq 0 or motion_y_homed eq 0 or motion_z_homed eq 0 or nav_buttons_enabled eq 0 or machine_motion_blocked eq 1"/>
         <bind_style_if name="bed_plate_round" cond="motion_bed_circular eq 1"/>
+        <!-- Reference grid at 50mm multiples, chords on a round plate. -->
+        <event_cb trigger="draw_main" callback="on_motion_bed_plate_draw"/>
         <!-- Crosshair guides through the marker, edge to edge: thin and faint
              so they place the head without competing with the marker.
              MotionPanel sets their position and length (a chord on a round
