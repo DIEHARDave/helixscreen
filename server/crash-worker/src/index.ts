@@ -265,6 +265,7 @@ const KNOWN_PLATFORMS = new Set([
   "pi32",
   "snapmaker-u1",
   "x86",
+  "x86-desktop",
   // Retired keys, accepted while pre-unify binaries remain deployed.
   "k1", // k1 -> mips (unified MIPS package); k1-series builds report it
   "ad5x", // ad5x -> mips (unified MIPS package); AD5X builds report it

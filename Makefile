@@ -1398,6 +1398,7 @@ else
 	@echo "STRIP_BINARY not set — skipping symbol extraction"
 endif
 
+# SDL builds have no splash or watchdog: they exist to own a framebuffer.
 STRIP_AUX_BINS = $(if $(SPLASH_BUILD),$(SPLASH_BIN)) $(if $(WATCHDOG_BUILD),$(WATCHDOG_BIN))
 
 # strip must wait for the aux binaries it strips: under -j, splash/watchdog can
@@ -1405,7 +1406,6 @@ STRIP_AUX_BINS = $(if $(SPLASH_BUILD),$(SPLASH_BIN)) $(if $(WATCHDOG_BUILD),$(WA
 # mk/splash.mk and mk/watchdog.mk define them; named here they expand empty.
 strip: symbols
 ifeq ($(STRIP_BINARY),yes)
-	@# SDL builds have no splash or watchdog: they exist to own a framebuffer.
 	$(STRIP_CMD) $(TARGET) $(STRIP_AUX_BINS)
 	@echo "Stripped: $(TARGET) $(STRIP_AUX_BINS)"
 else
