@@ -22,6 +22,7 @@
 #include "panel_widget.h"
 #include "panel_widget_config.h"
 #include "panel_widget_registry.h"
+#include "performance_state.h"
 #include "printer_cache_registry.h"
 #include "printer_state.h"
 #include "runtime_config.h"
@@ -1788,6 +1789,9 @@ SubjectLifetime gate_subject_lifetime(const char* name) {
     }
     if (std::strcmp(name, "home_dryer_available") == 0) {
         return dryer_model::lifetime();
+    }
+    if (std::strcmp(name, "perf_available") == 0) {
+        return perf::PerformanceState::instance().subjects_lifetime();
     }
     return nullptr;
 }

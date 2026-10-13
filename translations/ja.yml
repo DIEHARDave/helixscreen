@@ -13,6 +13,7 @@ translations:
   '%d lanes': '%d レーン'
   '%d min': '%d分'
   '%d min left': '残り %d 分'
+  '%d mm/s': '%d mm/s'
   '%d more sensors': 他%d個のセンサー
   '%d profiles': '%d 個のプロファイル'
   '%d slots': '%d スロット'
@@ -1463,6 +1464,7 @@ translations:
   Holding nozzle at {}°C to purge previous filament.: 前のフィラメントをパージするためノズルを {}°C に保持しています。
   Home: ホーム
   Home & Continue: ホーミングして続行
+  Home All: "全軸ホーミング"
   Home all axes to use the map: マップを使うには全軸をホーミングしてください
   Home and sweep the cutter to re-find its position: 原点復帰後にカッターを走査して位置を再検出します
   Home failed: ホーミング失敗
@@ -1489,6 +1491,8 @@ translations:
   Homing...: ホーミング中...
   Horizontal: 水平
   Host: ホスト
+  Host Health: ホストの状態
+  Host and MCU load, temperature, and memory: ホストと MCU の負荷、温度、メモリ
   'Host: ': 'ホスト: '
   Hotend: ホットエンド
   Hotend Fan: ホットエンドファン
@@ -2270,6 +2274,7 @@ translations:
   Poor match: "不十分な一致"
   Port: ポート
   Position: 位置
+  Position unknown: "位置が不明です"
   Post-Sensor Clear: 'センサー通過後の追加移動'
   Power: 電源
   Power Devices: 電源デバイス
@@ -2482,6 +2487,7 @@ translations:
   Quick Button 4: クイックボタン4
   Quick actions, calibration, speed: クイックアクション、キャリブレーション、速度
   Quiet: '静音'
+  RAM: RAM
   RFCOMM connect failed: RFCOMM 接続に失敗しました
   'RFCOMM connect failed: ': 'RFCOMM 接続に失敗しました: '
   RFID reader malfunction (left): RFID リーダーの異常（左）
@@ -3365,6 +3371,7 @@ translations:
   Toolhead Style: ツールヘッドスタイル
   Toolhead Y: ツールヘッド Y
   Toolhead jam: ツールヘッドの詰まり
+  Toolhead position and homing, with a plate view and Home All: "ツールヘッドの位置とホーミング。プレート表示と全軸ホーミング付き"
   Toolhead position unknown: ツールヘッドの位置が不明です
   Toolheads: ツールヘッド
   Tools: ツール

@@ -11,6 +11,7 @@
   <translation tag="%d lanes" zh="%d 个耗材通道"/>
   <translation tag="%d min" zh="%d分钟"/>
   <translation tag="%d min left" zh="剩余 %d 分钟"/>
+  <translation tag="%d mm/s" zh="%d mm/s"/>
   <translation tag="%d more sensors" zh="还有%d个传感器"/>
   <translation tag="%d profiles" zh="%d 个配置"/>
   <translation tag="%d slots" zh="%d 个槽位"/>
@@ -1415,6 +1416,7 @@
   <translation tag="Holding nozzle at {}°C to purge previous filament." zh="将喷嘴保持在 {}°C 以清洗之前的耗材。"/>
   <translation tag="Home" zh="归位"/>
   <translation tag="Home &amp; Continue" zh="归位并继续"/>
+  <translation tag="Home All" zh="全部归位"/>
   <translation tag="Home all axes to use the map" zh="请先归位所有轴以使用地图"/>
   <translation tag="Home and sweep the cutter to re-find its position" zh="归零并扫过切刀以重新找到其位置"/>
   <translation tag="Home failed" zh="归位失败"/>
@@ -1441,6 +1443,8 @@
   <translation tag="Homing..." zh="正在归零..."/>
   <translation tag="Horizontal" zh="水平"/>
   <translation tag="Host" zh="主机"/>
+  <translation tag="Host Health" zh="主机状态"/>
+  <translation tag="Host and MCU load, temperature, and memory" zh="主机和 MCU 的负载、温度和内存"/>
   <translation tag="Host: " zh="主机: "/>
   <translation tag="Hotend" zh="热端"/>
   <translation tag="Hotend Fan" zh="热端风扇"/>
@@ -2184,6 +2188,7 @@
   <translation tag="Poor match" zh="匹配较差"/>
   <translation tag="Port" zh="端口"/>
   <translation tag="Position" zh="位置"/>
+  <translation tag="Position unknown" zh="位置未知"/>
   <translation tag="Post-Sensor Clear" zh="传感器触发后额外移动"/>
   <translation tag="Power" zh="电源"/>
   <translation tag="Power Devices" zh="电源设备"/>
@@ -2390,6 +2395,7 @@
   <translation tag="Quick Button 4" zh="快捷按钮 4"/>
   <translation tag="Quick actions, calibration, speed" zh="快捷操作、校准、速度"/>
   <translation tag="Quiet" zh="安静"/>
+  <translation tag="RAM" zh="RAM"/>
   <translation tag="RFCOMM connect failed" zh="RFCOMM 连接失败"/>
   <translation tag="RFCOMM connect failed: " zh="RFCOMM 连接失败: "/>
   <translation tag="RFID reader malfunction (left)" zh="RFID 读取器故障（左）"/>
@@ -3207,6 +3213,7 @@
   <translation tag="Toolhead Style" zh="工具头样式"/>
   <translation tag="Toolhead Y" zh="工具头 Y"/>
   <translation tag="Toolhead jam" zh="工具头堵塞"/>
+  <translation tag="Toolhead position and homing, with a plate view and Home All" zh="工具头位置与归位，含热床视图和全部归位"/>
   <translation tag="Toolhead position unknown" zh="工具头位置未知"/>
   <translation tag="Toolheads" zh="工具头"/>
   <translation tag="Tools" zh="工具"/>

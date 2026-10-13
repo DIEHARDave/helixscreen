@@ -3,6 +3,7 @@
 
 #include "env_knobs.h"
 #include "gcode_parser.h"
+#include "mock_disk_usage.h"
 #include "mock_planted_gcodes.h"
 #include "moonraker_client_mock_internal.h"
 #include "runtime_config.h"
@@ -231,6 +232,19 @@ static json build_mock_file_list_response(const std::string& root, const std::st
     return response;
 }
 
+static bool is_gcodes_root(const std::string& path) {
+    return path.empty() || path == "gcodes" || path == "gcodes/";
+}
+
+/// The gcodes disk as Moonraker reports it, in bytes.
+static json mock_gcodes_disk_usage() {
+    constexpr uint64_t kMb = 1024ULL * 1024ULL;
+    const helix::mock::DiskMb disk = helix::mock::gcodes_disk_mb();
+    return {{"total", disk.total * kMb},
+            {"used", (disk.total - disk.free) * kMb},
+            {"free", disk.free * kMb}};
+}
+
 /**
  * @brief Build mock JSON response for server.files.metadata
  * @param filename Filename to get metadata for
@@ -391,6 +405,20 @@ void register_file_handlers(std::unordered_map<std::string, MethodHandler>& regi
             path = params["path"].get<std::string>();
         }
         json response = build_mock_file_list_response(root, path);
+        // Moonraker's own get_directory result is an object that carries the disk's
+        // usage beside the entries; the gcodes root answers in that shape.
+        if ((root.empty() || root == "gcodes") && is_gcodes_root(path) &&
+            response["result"].is_array()) {
+            json files = json::array();
+            for (const auto& entry : response["result"]) {
+                json file = entry;
+                file["filename"] = entry.value("path", "");
+                files.push_back(std::move(file));
+            }
+            response["result"] = {{"dirs", json::array()},
+                                  {"files", std::move(files)},
+                                  {"disk_usage", mock_gcodes_disk_usage()}};
+        }
         spdlog::debug(
             "[MoonrakerClientMock] Returning mock directory listing for root='{}' path='{}'", root,
             path.empty() ? "/" : path);

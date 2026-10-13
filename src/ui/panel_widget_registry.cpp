@@ -56,6 +56,8 @@ void register_speed_flow_widget();
 void register_dryer_widget();
 void register_z_offset_widget();
 void register_bed_mesh_tile_widget();
+void register_toolhead_widget();
+void register_host_health_widget();
 void register_active_spool_widget();
 void register_bypass_widget();
 #if HELIX_HAS_CAMERA
@@ -127,12 +129,14 @@ static std::vector<PanelWidgetDef> s_widget_defs = {
     {"macros",           TR_NOOP("Macros"),            "script_text",      TR_NOOP("Browse and run your Klipper macros"),           nullptr,              nullptr,                               CAT_CONTROLS, false, 2, 2, 1, 1, BAND_COLSPAN, BAND_COLSPAN, false, true, true},
     {"motion",           TR_NOOP("Motion"),            "cursor_move",      TR_NOOP("Open motion controls for jogging"),           nullptr,              nullptr,                               CAT_CONTROLS, false, 2, 2, 1, 1, BAND_COLSPAN, BAND_COLSPAN, false, true, true},
     {"clock",            TR_NOOP("Digital Clock"),     "clock",            TR_NOOP("The time, date, and system uptime"),    nullptr,              nullptr,                               CAT_SYSTEM,   false, 4, 2, 2, 2, 6, 6, false, true, true},
+    {"host_health",      TR_NOOP("Host Health"),       "gauge",            TR_NOOP("Host and MCU load, temperature, and memory"), "perf_available",   "Requires Moonraker performance data", CAT_SYSTEM,   false, 4, 2, 1, 1, 8, 8, false, true, true},
     {"control_buttons",  TR_NOOP("Print Controls"),    "pause",            TR_NOOP("Pause, resume, or stop the print"),   nullptr,              nullptr,                               CAT_PRINT,    false, 4, 2, 2, 2, 8, 4},
     {"job_queue",        TR_NOOP("Job Queue"),         "progress_clock",   TR_NOOP("Print jobs waiting to run"),        nullptr,              nullptr,                               CAT_PRINT,    false, 4, 4, 4, 4, 8, 6, false, true, true},
     {"speed_flow",       TR_NOOP("Speed / Flow"),      "speed",            TR_NOOP("Speed and flow overrides, with a tap to tune"), nullptr,           nullptr,                               CAT_PRINT,    false, 4, 2, 1, 1, 8, 4, false, true, true},
     {"dryer",            TR_NOOP("Filament Dryer"),    "heat_wave",        TR_NOOP("Drying progress and humidity for boxes, the chamber, and the bed"), "home_dryer_available", "No filament dryer detected",         CAT_FILAMENT, false, 2, 2, 1, 1, 6, 8, false, true, true},
     {"z_offset",         TR_NOOP("Z-Offset"),          "axis_z_arrow",     TR_NOOP("Live Z-offset, with baby steps and Save"), nullptr,           nullptr,                               CAT_PRINT,    false, 4, 2, 1, 1, 8, 4, false, true, true},
     {"bed_mesh_tile",    TR_NOOP("Bed Mesh"),          "grid_large",       TR_NOOP("Heightmap and flatness of the active bed mesh"), "printer_has_bed_mesh", "No bed mesh support detected",      CAT_CONTROLS, false, 4, 4, 1, 1, 12, 8, false, true, true},
+    {"toolhead",         TR_NOOP("Toolhead"),          "axis_arrow",       TR_NOOP("Toolhead position and homing, with a plate view and Home All"), nullptr,           nullptr,                               CAT_CONTROLS, false, 4, 4, 1, 1, 8, 8, false, true, true},
     //                                                                                                                                          hint                                cat              en  col row min_c min_r max_c max_r  multi  half_c half_r merges_card
     {"tips",             TR_NOOP("Tips"),              "help_circle",      TR_NOOP("Rotating tips for using your printer"),             nullptr,              nullptr,                               CAT_SYSTEM,   true,  8, 4, 4, 2, BAND_COLSPAN, 4, false, true, true, false},
     // Two cells wide by one tall: the FlowGuard scale is horizontal, and it
@@ -387,6 +391,8 @@ void init_widget_registrations() {
     register_dryer_widget();
     register_z_offset_widget();
     register_bed_mesh_tile_widget();
+    register_toolhead_widget();
+    register_host_health_widget();
 #if HELIX_HAS_CAMERA
     register_camera_widget();
 #endif

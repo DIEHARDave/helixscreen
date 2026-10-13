@@ -13,6 +13,7 @@ translations:
   '%d lanes': '%d corsie'
   '%d min': '%d min'
   '%d min left': '%d min rimanenti'
+  '%d mm/s': '%d mm/s'
   '%d more sensors': '%d altri sensori'
   '%d profiles': '%d profili'
   '%d slots': '%d slot'
@@ -1557,6 +1558,7 @@ translations:
     spurgare il filamento precedente.
   Home: Home
   Home & Continue: Homing e continua
+  Home All: "Homing tutto"
   Home all axes to use the map: Porta tutti gli assi in posizione per usare la mappa
   Home and sweep the cutter to re-find its position: Azzera e fa scorrevolare la taglierina per ritrovare la sua posizione
   Home failed: Homing fallito
@@ -1585,6 +1587,8 @@ translations:
   Homing...: Azzeramento...
   Horizontal: Orizzontale
   Host: Host
+  Host Health: 'Stato dell''host'
+  Host and MCU load, temperature, and memory: Carico, temperatura e memoria di host e MCU
   'Host: ': 'Host: '
   Hotend: Hotend
   Hotend Fan: Ventola hotend
@@ -2413,6 +2417,7 @@ translations:
   Poor match: "Scarsa corrispondenza"
   Port: Porta
   Position: Posizione
+  Position unknown: "Posizione sconosciuta"
   Post-Sensor Clear: 'Avanzamento dopo il sensore'
   Power: Alimentazione
   Power Devices: Dispositivi di alimentazione
@@ -2635,6 +2640,7 @@ translations:
   Quick Button 4: Pulsante rapido 4
   Quick actions, calibration, speed: Azioni rapide, calibrazione, velocità
   Quiet: 'Silenzioso'
+  RAM: RAM
   RFCOMM connect failed: Connessione RFCOMM fallita
   'RFCOMM connect failed: ': 'Connessione RFCOMM fallita: '
   RFID reader malfunction (left): Malfunzionamento del lettore RFID (sinistro)
@@ -3605,6 +3611,7 @@ translations:
   Toolhead Style: Stile testina
   Toolhead Y: Testina Y
   Toolhead jam: Inceppamento testina
+  Toolhead position and homing, with a plate view and Home All: "Posizione e homing della testina, con vista del piatto e Homing tutto"
   Toolhead position unknown: Posizione della testina sconosciuta
   Toolheads: Testine
   Tools: Strumenti

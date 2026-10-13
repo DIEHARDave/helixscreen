@@ -15,6 +15,7 @@
 
 #include "moonraker_api_mock.h"
 #include "moonraker_client_mock.h"
+#include "moonraker_performance_source.h"
 #include "printer_state.h"
 
 #include <atomic>
@@ -482,8 +483,48 @@ TEST_CASE_METHOD(MoonrakerAPIMockTestFixture,
 
     REQUIRE(success_called.load());
     REQUIRE(received_response.contains("result"));
-    // Result should be an array of files
-    REQUIRE(received_response["result"].is_array());
+    // Moonraker's own shape: entries beside the disk's usage in bytes
+    const json& result = received_response["result"];
+    REQUIRE(result.is_object());
+    REQUIRE(result["files"].is_array());
+    REQUIRE(result["dirs"].is_array());
+    REQUIRE(result["disk_usage"]["total"].get<uint64_t>() > 0);
+    REQUIRE(result["disk_usage"]["free"].get<uint64_t>() <=
+            result["disk_usage"]["total"].get<uint64_t>());
+}
+
+TEST_CASE_METHOD(MoonrakerAPIMockTestFixture,
+                 "MoonrakerClientMock disk usage follows HELIX_MOCK_DISK_FREE_MB and parses",
+                 "[mock][api][files][performance]") {
+    setenv("HELIX_MOCK_DISK_FREE_MB", "300", 1);
+    json response;
+    client_.send_jsonrpc(
+        "server.files.get_directory", {{"path", "gcodes"}}, [&](json r) { response = r; },
+        [](const MoonrakerError&) {});
+    unsetenv("HELIX_MOCK_DISK_FREE_MB");
+
+    const auto usage = helix::perf::MoonrakerPerformanceSource::parse_disk_usage(response);
+    REQUIRE(usage.has_value());
+    CHECK(usage->free_mb == 300);
+    CHECK(usage->total_mb == 29 * 1024);
+}
+
+TEST_CASE_METHOD(MoonrakerAPIMockTestFixture, "MoonrakerClientMock file list keeps its entries",
+                 "[mock][api][files]") {
+    // The gcodes listing the file browser reads must survive the object shape.
+    std::vector<FileInfo> files;
+    bool done = false;
+    api_->files().get_directory(
+        "gcodes", "",
+        [&](const std::vector<FileInfo>& f) {
+            files = f;
+            done = true;
+        },
+        [](const MoonrakerError&) {});
+    REQUIRE(done);
+    for (const auto& f : files) {
+        CHECK_FALSE(f.filename.empty());
+    }
 }
 
 TEST_CASE_METHOD(MoonrakerAPIMockTestFixture,

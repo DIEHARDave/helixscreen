@@ -11,6 +11,7 @@
   <translation tag="%d lanes" es="%d carriles"/>
   <translation tag="%d min" es="%d min"/>
   <translation tag="%d min left" es="quedan %d min"/>
+  <translation tag="%d mm/s" es="%d mm/s"/>
   <translation tag="%d more sensors" es="%d sensores más"/>
   <translation tag="%d profiles" es="%d perfiles"/>
   <translation tag="%d slots" es="%d ranuras"/>
@@ -1415,6 +1416,7 @@
   <translation tag="Holding nozzle at {}°C to purge previous filament." es="Manteniendo la boquilla a {}°C para purgar el filamento anterior."/>
   <translation tag="Home" es="Inicio"/>
   <translation tag="Home &amp; Continue" es="Referenciar y continuar"/>
+  <translation tag="Home All" es="Posicionar todo"/>
   <translation tag="Home all axes to use the map" es="Lleva todos los ejes al origen para usar el mapa"/>
   <translation tag="Home and sweep the cutter to re-find its position" es="Referencia y barrido del cortador para volver a encontrar su posición"/>
   <translation tag="Home failed" es="Error en referencia"/>
@@ -1441,6 +1443,8 @@
   <translation tag="Homing..." es="Posicionando..."/>
   <translation tag="Horizontal" es="Horizontal"/>
   <translation tag="Host" es="Host"/>
+  <translation tag="Host Health" es="Estado del host"/>
+  <translation tag="Host and MCU load, temperature, and memory" es="Carga, temperatura y memoria del host y la MCU"/>
   <translation tag="Host: " es="Host: "/>
   <translation tag="Hotend" es="Hotend"/>
   <translation tag="Hotend Fan" es="Ventilador de Hotend"/>
@@ -2184,6 +2188,7 @@
   <translation tag="Poor match" es="Mala coincidencia"/>
   <translation tag="Port" es="Puerto"/>
   <translation tag="Position" es="Posición"/>
+  <translation tag="Position unknown" es="Posición desconocida"/>
   <translation tag="Post-Sensor Clear" es="Avance tras el sensor"/>
   <translation tag="Power" es="Energía"/>
   <translation tag="Power Devices" es="Dispositivos de energía"/>
@@ -2390,6 +2395,7 @@
   <translation tag="Quick Button 4" es="Botón Rápido 4"/>
   <translation tag="Quick actions, calibration, speed" es="Acciones rápidas, calibración, velocidad"/>
   <translation tag="Quiet" es="Silencioso"/>
+  <translation tag="RAM" es="RAM"/>
   <translation tag="RFCOMM connect failed" es="Error al conectar RFCOMM"/>
   <translation tag="RFCOMM connect failed: " es="Error al conectar RFCOMM: "/>
   <translation tag="RFID reader malfunction (left)" es="Fallo del lector RFID (izquierdo)"/>
@@ -3207,6 +3213,7 @@
   <translation tag="Toolhead Style" es="Estilo de Cabezal"/>
   <translation tag="Toolhead Y" es="Cabezal Y"/>
   <translation tag="Toolhead jam" es="Atasco del cabezal"/>
+  <translation tag="Toolhead position and homing, with a plate view and Home All" es="Posición y posicionamiento del cabezal, con vista de la placa y Posicionar todo"/>
   <translation tag="Toolhead position unknown" es="Posición del cabezal desconocida"/>
   <translation tag="Toolheads" es="Cabezales"/>
   <translation tag="Tools" es="Herramientas"/>

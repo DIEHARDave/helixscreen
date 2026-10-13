@@ -13,6 +13,7 @@ translations:
   '%d lanes': '%d каналов'
   '%d min': '%d мин'
   '%d min left': 'осталось %d мин'
+  '%d mm/s': '%d mm/s'
   '%d more sensors': Ещё %d датчиков
   '%d profiles': 'Профилей: %d'
   '%d slots': '%d слотов'
@@ -1541,6 +1542,7 @@ translations:
   Holding nozzle at {}°C to purge previous filament.: Удержание сопла при {}°C для очистки от предыдущего филамента.
   Home: Главная
   Home & Continue: Запарковать и продолжить
+  Home All: "Парковка всех осей"
   Home all axes to use the map: Выполните парковку всех осей, чтобы использовать карту
   Home and sweep the cutter to re-find its position: Ищет ноль и прощупывает резак, чтобы заново найти его позицию
   Home failed: Парковка не удалась
@@ -1569,6 +1571,8 @@ translations:
   Homing...: Парковка...
   Horizontal: Горизонтально
   Host: Хост
+  Host Health: Состояние хоста
+  Host and MCU load, temperature, and memory: Нагрузка, температура и память хоста и MCU
   'Host: ': 'Хост: '
   Hotend: Хотенд
   Hotend Fan: Вентилятор хотенда
@@ -2391,6 +2395,7 @@ translations:
   Poor match: "Плохое совпадение"
   Port: Порт
   Position: Позиция
+  Position unknown: "Положение неизвестно"
   Post-Sensor Clear: 'Догон после датчика'
   Power: Питание
   Power Devices: Устройства питания
@@ -2613,6 +2618,7 @@ translations:
   Quick Button 4: Быстрая кнопка 4
   Quick actions, calibration, speed: Быстрые действия, калибровка, скорость
   Quiet: 'Тихий'
+  RAM: RAM
   RFCOMM connect failed: Не удалось подключиться по RFCOMM
   'RFCOMM connect failed: ': 'Не удалось подключиться по RFCOMM: '
   RFID reader malfunction (left): Неисправность RFID-считывателя (левый)
@@ -3566,6 +3572,7 @@ translations:
   Toolhead Style: Стиль печатающей головки
   Toolhead Y: Печатающая головка Y
   Toolhead jam: Замятие в печатающей головке
+  Toolhead position and homing, with a plate view and Home All: "Положение и парковка печатающей головки, с видом стола и кнопкой «Парковка всех осей»"
   Toolhead position unknown: Положение печатающей головки неизвестно
   Toolheads: Печатающие головки
   Tools: Инструменты

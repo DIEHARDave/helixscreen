@@ -13,6 +13,7 @@ translations:
   '%d lanes': '%d carriles'
   '%d min': '%d min'
   '%d min left': 'quedan %d min'
+  '%d mm/s': '%d mm/s'
   '%d more sensors': '%d sensores más'
   '%d profiles': '%d perfiles'
   '%d slots': '%d ranuras'
@@ -1560,6 +1561,7 @@ translations:
     para purgar el filamento anterior.
   Home: Inicio
   Home & Continue: Referenciar y continuar
+  Home All: "Posicionar todo"
   Home all axes to use the map: Lleva todos los ejes al origen para usar el mapa
   Home and sweep the cutter to re-find its position: Referencia y barrido del cortador para volver a encontrar su posición
   Home failed: Error en referencia
@@ -1588,6 +1590,8 @@ translations:
   Homing...: Posicionando...
   Horizontal: Horizontal
   Host: Host
+  Host Health: Estado del host
+  Host and MCU load, temperature, and memory: Carga, temperatura y memoria del host y la MCU
   'Host: ': 'Host: '
   Hotend: Hotend
   Hotend Fan: Ventilador de Hotend
@@ -2413,6 +2417,7 @@ translations:
   Poor match: "Mala coincidencia"
   Port: Puerto
   Position: Posición
+  Position unknown: "Posición desconocida"
   Post-Sensor Clear: 'Avance tras el sensor'
   Power: Energía
   Power Devices: Dispositivos de energía
@@ -2637,6 +2642,7 @@ translations:
   Quick Button 4: Botón Rápido 4
   Quick actions, calibration, speed: Acciones rápidas, calibración, velocidad
   Quiet: 'Silencioso'
+  RAM: RAM
   RFCOMM connect failed: Error al conectar RFCOMM
   'RFCOMM connect failed: ': 'Error al conectar RFCOMM: '
   RFID reader malfunction (left): Fallo del lector RFID (izquierdo)
@@ -3605,6 +3611,7 @@ translations:
   Toolhead Style: Estilo de Cabezal
   Toolhead Y: Cabezal Y
   Toolhead jam: Atasco del cabezal
+  Toolhead position and homing, with a plate view and Home All: "Posición y posicionamiento del cabezal, con vista de la placa y Posicionar todo"
   Toolhead position unknown: Posición del cabezal desconocida
   Toolheads: Cabezales
   Tools: Herramientas

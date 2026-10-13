@@ -13,6 +13,7 @@ translations:
   '%d lanes': '%d voies'
   '%d min': '%d min'
   '%d min left': '%d min restantes'
+  '%d mm/s': '%d mm/s'
   '%d more sensors': '%d capteurs supplémentaires'
   '%d profiles': '%d profils'
   '%d slots': '%d emplacements'
@@ -1573,6 +1574,7 @@ translations:
     purger le filament précédent.
   Home: Origine
   Home & Continue: Référencer et continuer
+  Home All: "Tout référencer"
   Home all axes to use the map: Référencez tous les axes pour utiliser la carte
   Home and sweep the cutter to re-find its position: Prend l'origine et balaie le coupeur pour retrouver sa position
   Home failed: Échec de la référence
@@ -1601,6 +1603,8 @@ translations:
   Homing...: Mise à l'origine...
   Horizontal: Horizontal
   Host: Hôte
+  Host Health: 'État de l''hôte'
+  Host and MCU load, temperature, and memory: 'Charge, température et mémoire de l''hôte et du MCU'
   'Host: ': 'Hôte : '
   Hotend: Hotend
   Hotend Fan: Ventilateur du hotend
@@ -2429,6 +2433,7 @@ translations:
   Poor match: "Mauvaise correspondance"
   Port: Port
   Position: Position
+  Position unknown: "Position inconnue"
   Post-Sensor Clear: 'Dégagement après capteur'
   Power: Alimentation
   Power Devices: Appareils électriques
@@ -2654,6 +2659,7 @@ translations:
   Quick Button 4: Bouton rapide 4
   Quick actions, calibration, speed: Actions rapides, calibration, vitesse
   Quiet: 'Silencieux'
+  RAM: RAM
   RFCOMM connect failed: Échec de la connexion RFCOMM
   'RFCOMM connect failed: ': 'Échec de la connexion RFCOMM : '
   RFID reader malfunction (left): Dysfonctionnement du lecteur RFID (gauche)
@@ -3636,6 +3642,7 @@ translations:
   Toolhead Style: Style de tête d'outil
   Toolhead Y: Tête d'outil Y
   Toolhead jam: Bourrage de la tête d'outil
+  Toolhead position and homing, with a plate view and Home All: "Position et référence de la tête d'outil, avec vue du plateau et Tout référencer"
   Toolhead position unknown: 'Position de la tête d''outil inconnue'
   Toolheads: 'Têtes d''outil'
   Tools: Outils
