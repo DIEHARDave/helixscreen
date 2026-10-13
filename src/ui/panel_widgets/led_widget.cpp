@@ -6,7 +6,6 @@
 #include "ui_event_safety.h"
 #include "ui_icon.h"
 #include "ui_tile_rung.h"
-#include "ui_toast_manager.h"
 #include "ui_utils.h"
 
 #include "app_globals.h"
@@ -275,25 +274,15 @@ void LedWidget::select_light(const std::string& key) {
 }
 
 void LedWidget::handle_light_toggle() {
-    auto& led_ctrl = led::LedController::instance();
-    if (led_ctrl.light_command_in_flight()) {
-        spdlog::debug("[LedWidget] Ignoring toggle — LED command already in flight");
-        ToastManager::instance().show(
-            ToastSeverity::INFO, lv_tr("Light will switch when the current operation finishes"));
-        return;
-    }
     const auto ids = targets();
-    if (ids.empty()) {
-        spdlog::warn("[LedWidget] Light toggle called but no light resolves");
+    const LightToggle result = toggle_lights(ids);
+    if (result != LightToggle::On && result != LightToggle::Off) {
         return;
     }
-
-    const bool on = led_ctrl.toggle_power(ids);
-    spdlog::info("[LedWidget] {} toggled {} device(s) {}", instance_id_, ids.size(),
-                 on ? "ON" : "OFF");
 
     // Nothing will report back for devices with no readable state, so the
     // flash is the only acknowledgement the tap gets.
+    auto& led_ctrl = led::LedController::instance();
     const bool all_unknown = std::all_of(ids.begin(), ids.end(), [&](const std::string& id) {
         return led_ctrl.device_state(id).power == led::PowerState::Unknown;
     });

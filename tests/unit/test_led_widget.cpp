@@ -471,3 +471,41 @@ TEST_CASE_METHOD(LedWidgetFixture,
     CHECK(look.brightness > 0);
     CHECK_FALSE(look.has_rgb);
 }
+
+TEST_CASE_METHOD(LedWidgetFixture, "toggle_lights: switches its ids and reports the state sent",
+                 "[led][light_button]") {
+    client.clear_gcode_script_history();
+    CHECK(toggle_lights({}) == LightToggle::NoTarget);
+    CHECK(client.gcode_script_history().empty());
+
+    CHECK(toggle_lights({"neopixel sb_leds"}) == LightToggle::On);
+    helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
+    CHECK(scripts_naming(client, "sb_leds") == 1);
+    CHECK(scripts_naming(client, "chamber_light") == 0);
+}
+
+TEST_CASE_METHOD(LedWidgetFixture,
+                 "toggle_lights: refuses while a light command awaits its ACK, for every button",
+                 "[led][light_button]") {
+    LedWidget w("led", ps, api.get());
+    w.set_config(nlohmann::json::object());
+    lv_obj_t* root = lv_obj_create(test_screen());
+    lv_obj_t* button = lv_obj_create(root);
+    lv_obj_add_event_cb(button, LedWidget::light_toggle_cb, LV_EVENT_CLICKED, nullptr);
+    w.attach_tile(root, test_screen());
+
+    // Not drained: its ACK has not landed.
+    LedController::instance().set_power({"neopixel sb_leds"}, true);
+    REQUIRE(LedController::instance().light_command_in_flight());
+    client.clear_gcode_script_history();
+    CHECK(toggle_lights({"neopixel chamber_light"}) == LightToggle::Busy);
+    lv_obj_send_event(button, LV_EVENT_CLICKED, nullptr);
+    CHECK(client.gcode_script_history().empty());
+
+    helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
+    REQUIRE_FALSE(LedController::instance().light_command_in_flight());
+    lv_obj_send_event(button, LV_EVENT_CLICKED, nullptr);
+    helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
+    CHECK(scripts_naming(client, "chamber_light") > 0);
+    w.detach_tile();
+}

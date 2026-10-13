@@ -2,6 +2,8 @@
 
 #include "light_button_config.h"
 
+#include "ui_toast_manager.h"
+
 #include "config.h"
 #include "json_utils.h"
 #include "led/led_controller.h"
@@ -90,6 +92,23 @@ bool home_light_buttons_lit() {
         states.push_back(ctrl.device_state(id));
     }
     return light_icon_look(states).brightness > 0;
+}
+
+LightToggle toggle_lights(const std::vector<std::string>& ids) {
+    auto& ctrl = led::LedController::instance();
+    if (ctrl.light_command_in_flight()) {
+        spdlog::debug("[LightButtons] Ignoring toggle - LED command already in flight");
+        ToastManager::instance().show(
+            ToastSeverity::INFO, lv_tr("Light will switch when the current operation finishes"));
+        return LightToggle::Busy;
+    }
+    if (ids.empty()) {
+        spdlog::warn("[LightButtons] Light toggle with no light to switch");
+        return LightToggle::NoTarget;
+    }
+    const bool on = ctrl.toggle_power(ids);
+    spdlog::info("[LightButtons] Toggled {} device(s) {}", ids.size(), on ? "ON" : "OFF");
+    return on ? LightToggle::On : LightToggle::Off;
 }
 
 void settle_light_buttons() {

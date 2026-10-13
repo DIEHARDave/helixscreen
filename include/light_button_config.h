@@ -26,6 +26,18 @@ std::vector<std::string> home_light_button_targets();
 /// print-status Light button drives and shows.
 bool home_light_buttons_lit();
 
+/// What a light button tap did.
+enum class LightToggle {
+    Busy,     ///< a light command awaits its ACK; a toast says the tap waits for it
+    NoTarget, ///< nothing to switch
+    On,       ///< switched on
+    Off,      ///< switched off
+};
+
+/// Toggle @p ids as every light button does: refused with a toast while any
+/// light command is in flight, and nothing when @p ids is empty.
+LightToggle toggle_lights(const std::vector<std::string>& ids);
+
 /// Resolve leds/light_button_pending against the home layout, clearing it even
 /// when no light button is placed, then offer LED on at Start the targets the
 /// home light buttons drive. Runs at discovery-complete and when a WLED
