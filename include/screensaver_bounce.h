@@ -13,6 +13,7 @@
 #include <lvgl.h>
 #include <optional>
 #include <random>
+#include <string>
 #include <vector>
 
 namespace helix::screensaver_bounce {
@@ -95,6 +96,13 @@ class BouncingPrinterScreensaver : public helix::ui::SaverBase {
     }
 
   protected:
+    /// LVGL path of the image that bounces on a screen `screen_w` pixels wide
+    virtual std::string sprite_path(int screen_w) const;
+    /// What bounces, for log lines
+    virtual const char* subject_name() const {
+        return "printer";
+    }
+
     /// The sprite is an LVGL image on the overlay; there is no canvas.
     std::optional<lv_color_format_t> canvas_format() const override {
         return std::nullopt;
@@ -163,6 +171,25 @@ class BouncingPrinterScreensaver : public helix::ui::SaverBase {
 
     int color_index_ = 0;
     int corner_flash_ticks_ = 0;
+};
+
+/**
+ * @brief Bouncing Logo screensaver
+ *
+ * The bouncing printer's motion, tint and corner celebration with the HelixScreen
+ * logo as the sprite, for a printer whose own image is not worth watching.
+ */
+class BouncingLogoScreensaver : public BouncingPrinterScreensaver {
+  public:
+    ScreensaverType type() const override {
+        return ScreensaverType::BOUNCING_LOGO;
+    }
+
+  protected:
+    std::string sprite_path(int screen_w) const override;
+    const char* subject_name() const override {
+        return "logo";
+    }
 };
 
 } // namespace helix

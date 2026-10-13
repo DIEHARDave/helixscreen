@@ -44,7 +44,7 @@ constexpr float RATIONAL_EPS = 0.02f;
 constexpr int SEED_ATTEMPTS = 16;
 
 // Tint strength. At LV_OPA_COVER the recolor replaces every channel and the
-// printer collapses to a flat silhouette; this leaves the render readable.
+// sprite collapses to a flat silhouette; this leaves the render readable.
 constexpr lv_opa_t RECOLOR_OPA = 110;
 
 constexpr int CORNER_FLASH_TICKS = 3;
@@ -71,8 +71,15 @@ const lv_color_t BOUNCE_TINTS[] = {
 };
 constexpr int NUM_TINTS = sizeof(BOUNCE_TINTS) / sizeof(BOUNCE_TINTS[0]);
 
-/// LVGL path of the image this printer should be represented by.
-std::string resolve_sprite_path(int screen_w) {
+/// Logo art cropped to its opaque bounds, so the walls meet the artwork itself, and
+/// sized to the largest box sprite_size_for() hands out.
+constexpr const char* LOGO_SPRITE_PATH = "A:assets/images/helixscreen-logo-bounce.png";
+
+} // namespace
+
+namespace helix {
+
+std::string BouncingPrinterScreensaver::sprite_path(int screen_w) const {
     // An image the user picked by hand outranks whatever auto-detection settled
     // on, the same precedence the home screen widget applies.
     std::string path = helix::PrinterImageManager::instance().get_active_image_path(screen_w);
@@ -82,12 +89,12 @@ std::string resolve_sprite_path(int screen_w) {
     return PrinterImages::get_best_printer_image(helix::get_saved_printer_type());
 }
 
-} // namespace
-
-namespace helix {
+std::string BouncingLogoScreensaver::sprite_path(int /*screen_w*/) const {
+    return LOGO_SPRITE_PATH;
+}
 
 bool BouncingPrinterScreensaver::on_start() {
-    spdlog::info("[Screensaver] Starting bouncing printer");
+    spdlog::info("[Screensaver] Starting bouncing {}", subject_name());
 
     screen_w_ = screen_w();
     screen_h_ = screen_h();
@@ -104,8 +111,8 @@ bool BouncingPrinterScreensaver::on_start() {
     }
     apply_geometry(box);
 
-    spdlog::debug("[Screensaver] Bouncing printer sprite ready ({}x{}, {}x{} sprite)", screen_w_,
-                  screen_h_, sprite_w_, sprite_h_);
+    spdlog::debug("[Screensaver] Bouncing {} sprite ready ({}x{}, {}x{} sprite)", subject_name(),
+                  screen_w_, screen_h_, sprite_w_, sprite_h_);
 
     elapsed_ms_ = 0;
 
@@ -134,7 +141,7 @@ void BouncingPrinterScreensaver::on_stop() {
 }
 
 bool BouncingPrinterScreensaver::decode_sprite() {
-    const std::string path = resolve_sprite_path(screen_w_);
+    const std::string path = sprite_path(screen_w_);
 
     // LV_CACHE_DEF_SIZE is 0, so an image handed to LVGL as a path is decoded
     // again on every redraw. Decoding once into a draw buffer makes each frame a
@@ -142,7 +149,7 @@ bool BouncingPrinterScreensaver::decode_sprite() {
     lv_image_decoder_dsc_t dsc;
     lv_result_t res = lv_image_decoder_open(&dsc, path.c_str(), nullptr);
     if (res != LV_RESULT_OK || !dsc.decoded) {
-        spdlog::warn("[Screensaver] Failed to decode printer image '{}'", path);
+        spdlog::warn("[Screensaver] Failed to decode {} image '{}'", subject_name(), path);
         if (res == LV_RESULT_OK) {
             lv_image_decoder_close(&dsc);
         }
@@ -155,14 +162,14 @@ bool BouncingPrinterScreensaver::decode_sprite() {
     lv_image_decoder_close(&dsc);
 
     if (!decoded_) {
-        spdlog::warn("[Screensaver] Failed to copy decoded printer image '{}'", path);
+        spdlog::warn("[Screensaver] Failed to copy decoded {} image '{}'", subject_name(), path);
         return false;
     }
 
     // A device reads the pre-rendered variant here; a source tree without
     // `make gen-images` behind it holds the full-size art instead.
-    spdlog::debug("[Screensaver] Bouncing printer sprite '{}' decoded at {}x{}", path, src_w_,
-                  src_h_);
+    spdlog::debug("[Screensaver] Bouncing {} sprite '{}' decoded at {}x{}", subject_name(), path,
+                  src_w_, src_h_);
     return true;
 }
 
@@ -238,8 +245,8 @@ void BouncingPrinterScreensaver::rebase(int screen_w, int screen_h) {
     prev_x_ = INT32_MIN;
     prev_y_ = INT32_MIN;
 
-    spdlog::debug("[Screensaver] Bouncing printer rebased to {}x{} ({}x{} sprite)", screen_w_,
-                  screen_h_, sprite_w_, sprite_h_);
+    spdlog::debug("[Screensaver] Bouncing {} rebased to {}x{} ({}x{} sprite)", subject_name(),
+                  screen_w_, screen_h_, sprite_w_, sprite_h_);
 }
 
 void BouncingPrinterScreensaver::apply_tint() {
@@ -294,7 +301,7 @@ void BouncingPrinterScreensaver::on_frame(uint32_t dt_ms,
     const float tol = std::max(4.0f, speed_ * static_cast<float>(dt_ms) / 2000.0f);
     const bool corner = is_corner_hit(bounced_x, bounced_y, x, y, range_x_, range_y_, tol);
     if (corner) {
-        spdlog::info("[Screensaver] Bouncing printer hit the corner");
+        spdlog::info("[Screensaver] Bouncing {} hit the corner", subject_name());
         corner_flash_ticks_ = CORNER_FLASH_TICKS;
         lv_obj_set_style_bg_color(
             overlay().obj(),
