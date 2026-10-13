@@ -554,6 +554,10 @@ class Ad5xIfsTestAccess {
     static void finalize_op_after_macro(AmsBackendAd5xIfs& b, bool is_unload) {
         b.finalize_op_after_macro(is_unload);
     }
+    static void fail_op_after_macro(AmsBackendAd5xIfs& b, bool is_unload,
+                                    const MoonrakerError& err) {
+        b.fail_op_after_macro(is_unload, err);
+    }
 
     // --- Unattended runout detection (#1250 / #1247) ---
 

@@ -1928,22 +1928,33 @@ AmsError AmsBackendAd5xIfs::do_load_filament(int slot_index) {
     // ensure_homed_then() WITHOUT skip_homing does not double-home (#1248): the
     // macro's leading _G28 is conditional on homed_axes, so once our G28 has
     // run it falls through - one home either way.
-    auto token = lifetime_.token();
     if (ifs_module_live_.load()) {
         // Standalone module: IFS_LOAD SLOT=n is the whole choreography - heat
         // to the slot material's own handling temperature (no TEMP= needed),
         // unload whichever lane is seated, feed to the toolhead sensor, then
         // the colour-distance-scaled purge. Same ack-finalize contract as the
         // zmod macro below: the ack fires only after the purge fully ran.
-        return ensure_homed_then("IFS_LOAD SLOT=" + std::to_string(port), [this, token]() {
+        return dispatch_load_macro("IFS_LOAD SLOT=" + std::to_string(port));
+    }
+    return dispatch_load_macro("INSERT_PRUTOK_IFS PRUTOK=" + std::to_string(port));
+}
+
+AmsError AmsBackendAd5xIfs::dispatch_load_macro(std::string gcode) {
+    auto token = lifetime_.token();
+    return ensure_homed_then(
+        std::move(gcode),
+        [this, token]() {
             token.defer("Ad5xIfsBackend::load_macro_complete",
                         [this]() { finalize_op_after_macro(/*is_unload=*/false); });
-        });
-    }
-    return ensure_homed_then("INSERT_PRUTOK_IFS PRUTOK=" + std::to_string(port), [this, token]() {
-        token.defer("Ad5xIfsBackend::load_macro_complete",
-                    [this]() { finalize_op_after_macro(/*is_unload=*/false); });
-    });
+        },
+        [this, token](const MoonrakerError& err) {
+            token.defer("Ad5xIfsBackend::load_macro_failed",
+                        [this, err]() { fail_op_after_macro(/*is_unload=*/false, err); });
+        },
+        IMoonrakerAPI::AMS_OPERATION_TIMEOUT_MS, /*skip_homing=*/false, /*silent=*/true,
+        // The firmware's own `!!` error is the user-facing report; this
+        // callback only moves the op to ERROR.
+        /*caller_surfaces_errors=*/false);
 }
 
 AmsError AmsBackendAd5xIfs::do_unload_filament(int slot_index) {
@@ -2078,6 +2089,14 @@ AmsError AmsBackendAd5xIfs::do_unload_filament(int slot_index) {
     // macro ack is the reliable "unload fully ran" signal. on_complete fires on a
     // bg thread, so hop to the main thread before touching state.
     auto token = lifetime_.token();
+    auto on_complete = [this, token]() {
+        token.defer("Ad5xIfsBackend::unload_macro_complete",
+                    [this]() { finalize_op_after_macro(/*is_unload=*/true); });
+    };
+    auto on_error = [this, token](const MoonrakerError& err) {
+        token.defer("Ad5xIfsBackend::unload_macro_failed",
+                    [this, err]() { fail_op_after_macro(/*is_unload=*/true, err); });
+    };
     AmsError result;
     if (ifs_module_live_.load()) {
         // Standalone module: IFS_UNLOAD takes the nozzle contents back into the
@@ -2090,15 +2109,9 @@ AmsError AmsBackendAd5xIfs::do_unload_filament(int slot_index) {
             cmd += " SLOT=";
             cmd += std::to_string(slot_index + 1); // DISPLAY_NUMBERING_OK: gcode wire, not a label
         }
-        result = execute_gcode(std::move(cmd), [this, token]() {
-            token.defer("Ad5xIfsBackend::unload_macro_complete",
-                        [this]() { finalize_op_after_macro(/*is_unload=*/true); });
-        });
+        result = execute_gcode(std::move(cmd), on_complete, on_error);
     } else {
-        result = execute_gcode("_IFS_REMOVE_CURRENT_PRUTOK", [this, token]() {
-            token.defer("Ad5xIfsBackend::unload_macro_complete",
-                        [this]() { finalize_op_after_macro(/*is_unload=*/true); });
-        });
+        result = execute_gcode("_IFS_REMOVE_CURRENT_PRUTOK", on_complete, on_error);
     }
     // Backup re-query: for inactive-slot unloads on native ZMOD the head
     // sensor never changes, so detect_load_unload_completion() won't fire.
@@ -2164,6 +2177,31 @@ void AmsBackendAd5xIfs::finalize_op_after_macro(bool is_unload) {
         // Reconcile presence/colours now that the lane state changed (drives the
         // present<->absent override-clear via GET_ZCOLOR / IFS_STATUS Ports).
         schedule_zcolor_query(is_unload ? "unload_macro_complete" : "load_macro_complete");
+        emit_event(EVENT_STATE_CHANGED);
+    }
+}
+
+void AmsBackendAd5xIfs::fail_op_after_macro(bool is_unload, const MoonrakerError& err) {
+    if (err.type == MoonrakerErrorType::TIMEOUT) {
+        return;
+    }
+    bool changed = false;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (phase_tracker_.active && phase_tracker_.is_unload == is_unload) {
+            spdlog::warn("{} {} macro failed -> ERROR: {}", backend_log_tag(),
+                         is_unload ? "Unload" : "Load", err.message);
+            system_info_.action = AmsAction::ERROR;
+            system_info_.operation_indeterminate = false;
+            end_phase_tracking_locked();
+            if (!err.message.empty()) {
+                set_operation_detail_locked(err.message);
+            }
+            changed = true;
+        }
+    }
+    if (changed) {
+        schedule_zcolor_query(is_unload ? "unload_macro_failed" : "load_macro_failed");
         emit_event(EVENT_STATE_CHANGED);
     }
 }

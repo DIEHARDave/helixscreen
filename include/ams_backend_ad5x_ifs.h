@@ -1132,6 +1132,16 @@ class AmsBackendAd5xIfs : public AmsSubscriptionBackend {
     // mutex_ internally; no-op if the op already finalized or a different op is
     // now in flight.
     void finalize_op_after_macro(bool is_unload);
+    // The failure half of finalize_op_after_macro(): the zmod macro errored
+    // (e.g. "Filament 2 stalled in IFS"), so the op will never finish and goes
+    // to ERROR now with the firmware's message, instead of holding the panel
+    // busy until the action timeout. An RPC timeout is not a failure - the macro
+    // may still be running - so it leaves the op to the timeout. Same ownership
+    // rule and locking as finalize_op_after_macro().
+    void fail_op_after_macro(bool is_unload, const MoonrakerError& err);
+    // Home if needed, then send a load macro that finalizes or fails the op on
+    // its own answer.
+    AmsError dispatch_load_macro(std::string gcode);
 
     int find_first_tool_for_port(int port_1based) const;
 

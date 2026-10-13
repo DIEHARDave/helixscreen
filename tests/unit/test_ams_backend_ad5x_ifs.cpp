@@ -98,6 +98,12 @@ class GcodeCapturingBackend : public AmsBackendAd5xIfs {
         captured_gcodes.push_back(gcode);
         return AmsErrorHelper::success();
     }
+    AmsError execute_gcode(const std::string& gcode, std::function<void()> /*on_complete*/,
+                           std::function<void(const MoonrakerError&)> /*on_error*/,
+                           bool /*silent*/) override {
+        captured_gcodes.push_back(gcode);
+        return AmsErrorHelper::success();
+    }
     bool any_gcode_starts_with(const std::string& prefix) const {
         for (const auto& g : captured_gcodes) {
             if (g.rfind(prefix, 0) == 0)
@@ -7318,7 +7324,8 @@ class TestableAd5xIfsBackend : public AmsBackendAd5xIfs {
     TestableAd5xIfsBackend() : AmsBackendAd5xIfs(nullptr, nullptr) {}
 
     std::vector<std::string> captured_gcodes;
-    std::function<void()> captured_completion; // on_complete from the 2-arg form
+    std::function<void()> captured_completion;                 // on_complete of the last dispatch
+    std::function<void(const MoonrakerError&)> captured_error; // on_error, 4-arg form only
 
     AmsError execute_gcode(const std::string& gcode) override {
         captured_gcodes.push_back(gcode);
@@ -7327,6 +7334,14 @@ class TestableAd5xIfsBackend : public AmsBackendAd5xIfs {
     AmsError execute_gcode(const std::string& gcode, std::function<void()> on_complete) override {
         captured_gcodes.push_back(gcode);
         captured_completion = std::move(on_complete);
+        return AmsErrorHelper::success();
+    }
+    AmsError execute_gcode(const std::string& gcode, std::function<void()> on_complete,
+                           std::function<void(const MoonrakerError&)> on_error,
+                           bool /*silent*/) override {
+        captured_gcodes.push_back(gcode);
+        captured_completion = std::move(on_complete);
+        captured_error = std::move(on_error);
         return AmsErrorHelper::success();
     }
     bool toolhead_homed() const override {
@@ -7757,6 +7772,87 @@ TEST_CASE("AD5X IFS load finalizes to IDLE on the macro completion ack (raza616 
     Ad5xIfsTestAccess::finalize_op_after_macro(backend, /*is_unload=*/true); // wrong direction
     REQUIRE(Ad5xIfsTestAccess::phase_active(backend));                       // still in flight
     REQUIRE(backend.get_system_info().action != AmsAction::IDLE);
+}
+
+namespace {
+MoonrakerError macro_error(MoonrakerErrorType type, const std::string& message) {
+    MoonrakerError err;
+    err.type = type;
+    err.message = message;
+    return err;
+}
+
+/// The failure reaches the backend through two main-thread hops: the dispatch
+/// marshals it off the response thread, and the backend's own callback defers
+/// again before taking the lock.
+void drain_queue() {
+    helix::ui::UpdateQueue::instance().drain();
+    helix::ui::UpdateQueue::instance().drain();
+}
+} // namespace
+
+TEST_CASE("AD5X IFS load goes to ERROR with the firmware's message when its macro fails",
+          "[ams][ad5x_ifs][macro_failure]") {
+    TestableAd5xIfsBackend backend;
+    Ad5xIfsTestAccess::set_running(backend, true);
+    Ad5xIfsTestAccess::set_zcolor_supported(backend, false);
+
+    REQUIRE(backend.load_filament(1).success());
+    REQUIRE(backend.has_gcode("INSERT_PRUTOK_IFS PRUTOK=2"));
+    REQUIRE(backend.captured_error != nullptr);
+    REQUIRE(Ad5xIfsTestAccess::phase_active(backend));
+
+    backend.captured_error(
+        macro_error(MoonrakerErrorType::JSON_RPC_ERROR, "Filament 2 stalled in IFS"));
+    drain_queue();
+
+    CHECK(backend.get_system_info().action == AmsAction::ERROR);
+    CHECK(backend.get_system_info().operation_detail == "Filament 2 stalled in IFS");
+    CHECK_FALSE(Ad5xIfsTestAccess::phase_active(backend));
+}
+
+TEST_CASE("AD5X IFS unload goes to ERROR with the firmware's message when its macro fails",
+          "[ams][ad5x_ifs][macro_failure]") {
+    TestableAd5xIfsBackend backend;
+    Ad5xIfsTestAccess::set_running(backend, true);
+    Ad5xIfsTestAccess::set_zcolor_supported(backend, false);
+    Ad5xIfsTestAccess::set_current_slot(backend, 0, /*filament_loaded=*/true);
+    Ad5xIfsTestAccess::set_head_filament(backend, true);
+
+    REQUIRE(backend.unload_filament(0).success());
+    REQUIRE(backend.has_gcode("_IFS_REMOVE_CURRENT_PRUTOK"));
+    REQUIRE(backend.captured_error != nullptr);
+    REQUIRE(Ad5xIfsTestAccess::phase_active(backend));
+
+    backend.captured_error(macro_error(MoonrakerErrorType::JSON_RPC_ERROR, "Cutter jammed"));
+    drain_queue();
+
+    CHECK(backend.get_system_info().action == AmsAction::ERROR);
+    CHECK(backend.get_system_info().operation_detail == "Cutter jammed");
+    CHECK_FALSE(Ad5xIfsTestAccess::phase_active(backend));
+}
+
+TEST_CASE("AD5X IFS macro failure leaves an op it does not own alone",
+          "[ams][ad5x_ifs][macro_failure]") {
+    TestableAd5xIfsBackend backend;
+    Ad5xIfsTestAccess::set_running(backend, true);
+    Ad5xIfsTestAccess::set_zcolor_supported(backend, false);
+    REQUIRE(backend.load_filament(1).success());
+    REQUIRE(Ad5xIfsTestAccess::phase_active(backend));
+    const AmsAction in_flight = backend.get_system_info().action;
+
+    SECTION("an RPC timeout: the macro may still be running") {
+        backend.captured_error(macro_error(MoonrakerErrorType::TIMEOUT, "timed out"));
+        drain_queue();
+    }
+    SECTION("an unload's failure arriving during a load") {
+        Ad5xIfsTestAccess::fail_op_after_macro(
+            backend, /*is_unload=*/true,
+            macro_error(MoonrakerErrorType::JSON_RPC_ERROR, "Cutter jammed"));
+    }
+
+    CHECK(Ad5xIfsTestAccess::phase_active(backend));
+    CHECK(backend.get_system_info().action == in_flight);
 }
 
 TEST_CASE("AD5X IFS load_filament sets swap_expected when another lane is seated (#1065)",
@@ -10184,6 +10280,12 @@ class Ad5xHomingGuardBackend : public AmsBackendAd5xIfs {
         (void)on_complete;
         return AmsErrorHelper::success();
     }
+    AmsError execute_gcode(const std::string& gcode, std::function<void()> /*on_complete*/,
+                           std::function<void(const MoonrakerError&)> /*on_error*/,
+                           bool /*silent*/) override {
+        captured_gcodes.push_back(gcode);
+        return AmsErrorHelper::success();
+    }
 };
 
 struct Ad5xHomingGuardFixture : public LVGLTestFixture {
@@ -10622,6 +10724,12 @@ class Ad5xRunoutOpBackend : public AmsBackendAd5xIfs {
     AmsError execute_gcode(const std::string& gcode, std::function<void()> on_complete) override {
         captured_gcodes.push_back(gcode);
         (void)on_complete;
+        return AmsErrorHelper::success();
+    }
+    AmsError execute_gcode(const std::string& gcode, std::function<void()> /*on_complete*/,
+                           std::function<void(const MoonrakerError&)> /*on_error*/,
+                           bool /*silent*/) override {
+        captured_gcodes.push_back(gcode);
         return AmsErrorHelper::success();
     }
     bool toolhead_homed() const override {
