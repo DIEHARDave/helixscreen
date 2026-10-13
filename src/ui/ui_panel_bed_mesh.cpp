@@ -1918,7 +1918,7 @@ void BedMeshPanel::handle_emergency_stop() {
     preheat_turned_on_bed_ = false;
 
     // Suppress recovery dialog — user intentionally triggered E-Stop from this modal
-    EmergencyStopOverlay::instance().suppress_recovery_dialog(RecoverySuppression::LONG);
+    EmergencyStopOverlay::instance().suppress_recovery_dialog(recovery_suppression::LONG);
 
     IMoonrakerAPI* api = get_moonraker_api();
     if (api) {

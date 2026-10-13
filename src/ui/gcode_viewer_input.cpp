@@ -34,7 +34,7 @@ static bool has_gcode_data(const gcode_viewer_state_t* st) {
 static const char* ui_gcode_viewer_pick_object(lv_obj_t* obj, int x, int y);
 
 // Long-press threshold in milliseconds. Deliberately longer than the app-wide
-// gesture timeout (AppConstants::Input::LONG_PRESS_MS, 500ms): a hold here fires
+// gesture timeout (app_constants::input::LONG_PRESS_MS, 500ms): a hold here fires
 // EXCLUDE_OBJECT and cancels printing the object under the finger, so the gesture
 // is tuned to demand a deliberate hold and resist accidental cancels.
 constexpr uint32_t LONG_PRESS_THRESHOLD_MS = 1000;

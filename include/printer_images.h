@@ -24,7 +24,7 @@
  * This header adds the full LVGL path prefix "A:assets/images/printers/".
  */
 
-namespace PrinterImages {
+namespace helix::printer_images {
 
 /// Base path for printer images (LVGL filesystem prefix)
 inline constexpr const char* IMAGE_BASE_PATH = "A:assets/images/printers/";
@@ -235,4 +235,4 @@ inline std::string get_validated_image_path(int printer_type_index) {
     return get_image_path(printer_type_index);
 }
 
-} // namespace PrinterImages
+} // namespace helix::printer_images

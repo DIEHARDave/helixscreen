@@ -300,7 +300,7 @@ void PowerPanel::handle_device_toggle(const std::string& device, bool power_on) 
     // Suppress "Printer Firmware Disconnected" modal when turning off a power device.
     // The device may have bound_services: klipper, causing an expected Klipper disconnect.
     if (!power_on) {
-        EmergencyStopOverlay::instance().suppress_recovery_dialog(RecoverySuppression::NORMAL);
+        EmergencyStopOverlay::instance().suppress_recovery_dialog(recovery_suppression::NORMAL);
     }
 
     auto token = object_lifetime_.token();

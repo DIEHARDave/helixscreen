@@ -669,11 +669,11 @@ void DisplayManager::configure_pointer(int scroll_throw, int scroll_limit) {
     watch_pointer();
     configure_scroll(scroll_throw, scroll_limit);
     // Long-press threshold — user-configurable global setting (#1245), default
-    // AppConstants::Input::LONG_PRESS_MS. InputSettingsManager::set_long_press_time
+    // app_constants::input::LONG_PRESS_MS. InputSettingsManager::set_long_press_time
     // live-applies changes.
     auto* cfg = helix::Config::get_instance();
     const int long_press_ms = cfg->get<int>("/input/long_press_time",
-                                            static_cast<int>(AppConstants::Input::LONG_PRESS_MS));
+                                            static_cast<int>(app_constants::input::LONG_PRESS_MS));
     lv_indev_set_long_press_time(m_pointer, long_press_ms);
 
     // Config rather than InputSettingsManager: this runs before its subjects exist.

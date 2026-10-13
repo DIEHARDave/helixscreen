@@ -45,9 +45,9 @@ struct TempConfigFixture : public HelixTestFixture {
         // Remove backup files to prevent cross-test contamination.
         // Config::init() restores from backups when the config file is missing,
         // so stale backup data from a previous test run can leak into this test.
-        std::filesystem::remove(AppConstants::Update::config_backup_fallback());
-        std::filesystem::remove(AppConstants::Update::legacy_config_backup_fallback());
-        std::filesystem::remove(AppConstants::Update::env_backup_fallback());
+        std::filesystem::remove(app_constants::update::config_backup_fallback());
+        std::filesystem::remove(app_constants::update::legacy_config_backup_fallback());
+        std::filesystem::remove(app_constants::update::env_backup_fallback());
 
         // Initialize Config singleton with temp path
         Config::get_instance()->init(config_path);
@@ -86,9 +86,9 @@ struct ExternalSpoolCommitFixture : LVGLTestFixture {
         config_path = temp_dir + "/settings.json";
 
         // Same cross-test contamination guard as TempConfigFixture.
-        std::filesystem::remove(AppConstants::Update::config_backup_fallback());
-        std::filesystem::remove(AppConstants::Update::legacy_config_backup_fallback());
-        std::filesystem::remove(AppConstants::Update::env_backup_fallback());
+        std::filesystem::remove(app_constants::update::config_backup_fallback());
+        std::filesystem::remove(app_constants::update::legacy_config_backup_fallback());
+        std::filesystem::remove(app_constants::update::env_backup_fallback());
 
         Config::get_instance()->init(config_path);
         // AmsState's clear resets the in-memory override too, not just the

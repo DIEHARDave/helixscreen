@@ -55,7 +55,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "Recovery suppression - basic timing", "[recov
 // and STAYS down produces exactly one of each. Land both inside the window and
 // the dialog is not delayed, it is gone: nothing ever re-raises it.
 //
-// RecoverySuppression::LONG's own comment already states the rule this
+// recovery_suppression::LONG's own comment already states the rule this
 // restores - "Prefer a spurious dialog over a silently-eaten shutdown" - and
 // every caller of the suppression is exposed to it, not just the macro path
 // that made it reachable from a home-screen button.
@@ -189,7 +189,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "The restart guard suppresses a shutdown insid
 
     CHECK(EmergencyStopOverlayTestAccess::recovery_reason(estop) == RecoveryReason::NONE);
     // Well inside the window it is still in flight, so the dialog stays away.
-    lv_tick_inc(RecoverySuppression::RESTART_FLAG_TIMEOUT / 2);
+    lv_tick_inc(recovery_suppression::RESTART_FLAG_TIMEOUT / 2);
     CHECK(estop.is_expected_restart());
 
     estop.show_recovery_for(RecoveryReason::SHUTDOWN);
@@ -210,7 +210,7 @@ TEST_CASE_METHOD(LVGLTestFixture,
 
     // No klippy READY is ever delivered here, so nothing in production clears
     // the window - the backstop is the only thing that can end it.
-    lv_tick_inc(RecoverySuppression::RESTART_FLAG_TIMEOUT + 1000);
+    lv_tick_inc(recovery_suppression::RESTART_FLAG_TIMEOUT + 1000);
     CHECK_FALSE(estop.is_expected_restart());
 
     // And the printer is still down, which the user now has to be told.
@@ -265,17 +265,17 @@ TEST_CASE_METHOD(LVGLTestFixture,
                  "[recovery][suppress]") {
     auto& estop = EmergencyStopOverlay::instance();
 
-    estop.suppress_recovery_dialog(RecoverySuppression::LONG);
+    estop.suppress_recovery_dialog(recovery_suppression::LONG);
     REQUIRE(estop.is_recovery_suppressed());
 
     // Still suppressed across the immediate SAVE_CONFIG restart it exists for.
-    lv_tick_inc(RecoverySuppression::LONG / 2);
+    lv_tick_inc(recovery_suppression::LONG / 2);
     REQUIRE(estop.is_recovery_suppressed());
 
     // A genuine shutdown at ~57s (the observed real-world case) MUST reach the
     // user. This assertion fails if LONG is widened to cover chained restarts.
-    lv_tick_inc(57000 - (RecoverySuppression::LONG / 2));
-    INFO("RecoverySuppression::LONG = " << RecoverySuppression::LONG);
+    lv_tick_inc(57000 - (recovery_suppression::LONG / 2));
+    INFO("recovery_suppression::LONG = " << recovery_suppression::LONG);
     REQUIRE_FALSE(estop.is_recovery_suppressed());
     REQUIRE_FALSE(estop.is_expected_restart());
 }
@@ -283,14 +283,14 @@ TEST_CASE_METHOD(LVGLTestFixture,
 TEST_CASE("Recovery suppression - LONG stays short enough to surface a real shutdown",
           "[recovery][suppress]") {
     // Ordering invariant across the tiers.
-    REQUIRE(RecoverySuppression::SHORT < RecoverySuppression::NORMAL);
-    REQUIRE(RecoverySuppression::NORMAL < RecoverySuppression::LONG);
+    REQUIRE(recovery_suppression::SHORT < recovery_suppression::NORMAL);
+    REQUIRE(recovery_suppression::NORMAL < recovery_suppression::LONG);
 
     // Hard ceiling: a real unrecoverable shutdown was seen 57s after
     // SAVE_CONFIG. The window must close comfortably before that, or the
     // edge-triggered check swallows it. Do NOT raise this to chase chained
     // config writes — that regression is why this bound exists.
-    REQUIRE(RecoverySuppression::LONG < 30000);
+    REQUIRE(recovery_suppression::LONG < 30000);
 }
 
 // ============================================================================

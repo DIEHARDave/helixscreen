@@ -894,7 +894,7 @@ TEST_CASE_METHOD(LVGLUITestFixture,
                  "callouts: a copy generated for the old rect does not land on a moved image",
                  "[printer_image][callouts]") {
     const auto regions = prepare_tagged_widget();
-    const std::string source = PrinterImages::get_best_printer_image("");
+    const std::string source = printer_images::get_best_printer_image("");
 
     PanelWidgetHarness<PrinterImageWidget> h(test_screen());
     h.resize(8, 4, 480, 160);
@@ -947,7 +947,7 @@ TEST_CASE_METHOD(LVGLUITestFixture,
                  "callouts: a one-side image draws the source contain-fit into its rect",
                  "[printer_image][callouts]") {
     const auto regions = prepare_tagged_widget();
-    const std::string source = PrinterImages::get_best_printer_image("");
+    const std::string source = printer_images::get_best_printer_image("");
     PanelWidgetHarness<PrinterImageWidget> h(test_screen());
     h.resize(8, 4, 400, 160);
     lv_obj_t* img = h.child("printer_image");
@@ -1177,7 +1177,7 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     const ConfigDirGuard cfg("callouts_user_entry");
     const auto regions = prepare_tagged_widget();
     const std::string shown = PrinterImageManager::instance().get_displayed_image_path(
-        PrinterImages::current_screen_width());
+        printer_images::current_screen_width());
     REQUIRE(printer_image_region_key(shown) == "generic-corexy");
     lv_image_header_t hdr;
     REQUIRE(lv_image_decoder_get_info(shown.c_str(), &hdr) == LV_RESULT_OK);

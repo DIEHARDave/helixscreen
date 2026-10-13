@@ -197,7 +197,7 @@ void PowerDeviceState::on_power_changed(const nlohmann::json& msg) {
         // Must set BEFORE queue_update() — notify_klippy_disconnected arrives on the same
         // WebSocket thread and checks suppression synchronously.
         if (new_raw == 0) {
-            EmergencyStopOverlay::instance().suppress_recovery_dialog(RecoverySuppression::NORMAL);
+            EmergencyStopOverlay::instance().suppress_recovery_dialog(recovery_suppression::NORMAL);
         }
 
         tok.defer("PowerDeviceState::on_power_changed", [this, device_name, new_raw]() {

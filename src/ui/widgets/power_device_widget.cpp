@@ -319,7 +319,7 @@ void PowerDeviceWidget::handle_clicked() {
         lv_subject_t* status_subj =
             PowerDeviceState::instance().get_status_subject(device_name_, lt);
         if (status_subj && lv_subject_get_int(status_subj) == 1) {
-            EmergencyStopOverlay::instance().suppress_recovery_dialog(RecoverySuppression::NORMAL);
+            EmergencyStopOverlay::instance().suppress_recovery_dialog(recovery_suppression::NORMAL);
         }
     }
 
@@ -634,7 +634,7 @@ void PowerDeviceWidget::handle_all_devices_toggle() {
 
     // Suppress recovery dialog when turning off (devices may have bound_services: klipper)
     if (!new_state) {
-        EmergencyStopOverlay::instance().suppress_recovery_dialog(RecoverySuppression::NORMAL);
+        EmergencyStopOverlay::instance().suppress_recovery_dialog(recovery_suppression::NORMAL);
     }
 
     spdlog::info("[PowerDeviceWidget] {} toggling all selected devices {}", instance_id_, action);

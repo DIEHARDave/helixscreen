@@ -117,7 +117,7 @@ on_activate()                     // Called each time overlay becomes visible
 1. Reads printer name from `Config` (key: `/wizard/printer_name`)
 2. Reads printer model from `Config` (key: `/wizard/printer_type`)
 3. Reads HelixScreen version from `helix_version()`
-4. Resolves the printer image: checks `PrinterImageManager` for a user-selected image first, falls back to auto-detection via `PrinterImages::get_best_printer_image()`
+4. Resolves the printer image: checks `PrinterImageManager` for a user-selected image first, falls back to auto-detection via `helix::printer_images::get_best_printer_image()`
 
 ---
 
@@ -271,7 +271,7 @@ The XML also uses responsive consts for the image container:
 When displaying the printer image in the Printer Manager:
 
 1. **User-selected image** -- `PrinterImageManager::get_active_image_path()` checks config for `shipped:` or `custom:` ID
-2. **Auto-detected image** -- `PrinterImages::get_best_printer_image()` looks up the printer type in `printer_database.json`
+2. **Auto-detected image** -- `helix::printer_images::get_best_printer_image()` looks up the printer type in `printer_database.json`
 3. **Fallback** -- `generic-corexy.png` if nothing else matches
 
 ### Auto-Import
@@ -347,7 +347,7 @@ Detection scores are combined across multiple heuristics. A confidence of >= 70 
 
 ### Image Lookup
 
-`PrinterDetector::get_image_for_printer(name)` returns the `image` field for a given printer name. Note: there is no `PrinterDatabase` class -- the printer database is a JSON file (`config/printer_database.json`) accessed through `PrinterDetector` static methods. `PrinterImages::get_best_printer_image()` then resolves this to an LVGL path, preferring pre-rendered `.bin` files.
+`PrinterDetector::get_image_for_printer(name)` returns the `image` field for a given printer name. Note: there is no `PrinterDatabase` class -- the printer database is a JSON file (`config/printer_database.json`) accessed through `PrinterDetector` static methods. `helix::printer_images::get_best_printer_image()` then resolves this to an LVGL path, preferring pre-rendered `.bin` files.
 
 ---
 

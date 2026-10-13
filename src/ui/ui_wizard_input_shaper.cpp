@@ -494,7 +494,7 @@ bool WizardInputShaperStep::abort_in_progress_calibration() {
     spdlog::info("[{}] Aborting in-progress calibration (M112 + firmware_restart)", get_name());
 
     // Suppress shutdown/disconnect modals — M112 + restart triggers expected reconnect
-    EmergencyStopOverlay::instance().suppress_recovery_dialog(RecoverySuppression::LONG);
+    EmergencyStopOverlay::instance().suppress_recovery_dialog(helix::recovery_suppression::LONG);
     if (auto* api = get_moonraker_api()) {
         api->suppress_disconnect_modal(15000);
     }

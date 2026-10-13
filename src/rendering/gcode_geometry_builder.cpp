@@ -62,14 +62,14 @@ void PackedVertex::encode_color(uint32_t rgb, uint8_t out[4]) {
 // Debug Face Colors
 // ============================================================================
 
-namespace DebugColors {
+namespace debug_colors {
 constexpr uint32_t TOP = 0xFF0000;       // Bright Red
 constexpr uint32_t BOTTOM = 0x0000FF;    // Bright Blue
 constexpr uint32_t LEFT = 0x00FF00;      // Bright Green
 constexpr uint32_t RIGHT = 0xFFFF00;     // Bright Yellow
 constexpr uint32_t START_CAP = 0xFF00FF; // Bright Magenta
 constexpr uint32_t END_CAP = 0x00FFFF;   // Bright Cyan
-} // namespace DebugColors
+} // namespace debug_colors
 
 // ============================================================================
 // QuantizationParams Implementation
@@ -1201,10 +1201,10 @@ GeometryBuilder::generate_ribbon_vertices(const ToolpathSegment& segment, Ribbon
     if (debug_face_colors_) {
         // Cycle through 4 debug colors for N faces
         constexpr uint32_t DEBUG_COLORS[] = {
-            DebugColors::TOP,    // Red
-            DebugColors::RIGHT,  // Yellow
-            DebugColors::BOTTOM, // Blue
-            DebugColors::LEFT    // Green
+            debug_colors::TOP,    // Red
+            debug_colors::RIGHT,  // Yellow
+            debug_colors::BOTTOM, // Blue
+            debug_colors::LEFT    // Green
         };
 
         for (int i = 0; i < N; i++) {
@@ -1286,7 +1286,7 @@ GeometryBuilder::generate_ribbon_vertices(const ToolpathSegment& segment, Ribbon
     if (is_first_segment) {
         // Use unique START_CAP color for debug visualization
         start_cap_color_idx = debug_face_colors_
-                                  ? add_to_color_palette(geometry, DebugColors::START_CAP)
+                                  ? add_to_color_palette(geometry, debug_colors::START_CAP)
                                   : face_colors[0]; // Use first face color if not debugging
 
         // Generate N start cap vertices
@@ -1396,7 +1396,7 @@ GeometryBuilder::generate_ribbon_vertices(const ToolpathSegment& segment, Ribbon
     // ========== END CAP VERTICES ==========
     // Create N new vertices at the SAME POSITIONS as end_cap vertices but with axial normals
     uint8_t end_cap_color_idx =
-        debug_face_colors_ ? add_to_color_palette(geometry, DebugColors::END_CAP) : face_colors[0];
+        debug_face_colors_ ? add_to_color_palette(geometry, debug_colors::END_CAP) : face_colors[0];
 
     uint32_t idx_end_cap_start = idx_start;
 

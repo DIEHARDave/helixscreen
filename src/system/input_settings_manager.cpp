@@ -18,7 +18,7 @@ static constexpr settings::PersistedSetting INPUT_SETTINGS[] = {
      InputSettingsManager::DEFAULT_SCROLL_THROW, 5, 50, nullptr},
     {"settings_scroll_limit", "/input/scroll_limit", Scope::Global, false, 10, 1, 20, nullptr},
     {"settings_long_press_time", "/input/long_press_time", Scope::Global, false,
-     static_cast<int>(AppConstants::Input::LONG_PRESS_MS), 300, 1500, nullptr},
+     static_cast<int>(app_constants::input::LONG_PRESS_MS), 300, 1500, nullptr},
     // AD5M/AD5X presets enable the scroll guard via the hardware preset.
     {"settings_scroll_guard", "/input/scroll_guard", Scope::Global, true, 0, 0, 1, nullptr},
     {"settings_debug_touches", "/input/debug_touches", Scope::Global, true, 0, 0, 1, nullptr},
