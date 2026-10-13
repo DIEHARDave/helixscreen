@@ -260,4 +260,28 @@ TEST_CASE("A rectangular bed's mesh keeps one quad per cell, corners included",
     CHECK(surface == 36);
     CHECK(reach == Approx(100.0 * std::sqrt(2.0)));
 }
+TEST_CASE("A round bed's 2D heatmap leaves the padded corners blank", "[bed_mesh][bed_grid]") {
+    DeltaMesh round(true), square(false);
+    for (auto* r : {round.r, square.r}) {
+        bed_mesh_renderer_set_render_mode(r, BedMeshRenderMode::Force2D);
+    }
+    PixelBuffer rb = render(round.r);
+    PixelBuffer sb = render(square.r);
+    const auto l = helix::mesh::compute_heatmap_layout(7, 7, W, H);
+    REQUIRE(l.valid);
+    const int corner_x = l.grid_x + 2;
+    const int corner_y = l.grid_y + 2;
+    const int mid_x = l.grid_x + l.cells_x * l.cell_w / 2;
+    const int mid_y = l.grid_y + l.cells_y * l.cell_h / 2;
+
+    // The square heatmap draws the corner; the round one does not.
+    REQUIRE_FALSE(is_bg(sb, corner_x, corner_y));
+    CHECK(is_bg(rb, corner_x, corner_y));
+    CHECK_FALSE(is_bg(rb, mid_x, mid_y));
+
+    // No reading for a tap on the blank corner; the centre still reads.
+    CHECK(bed_mesh_renderer_handle_touch(square.r, corner_x, corner_y, l));
+    CHECK_FALSE(bed_mesh_renderer_handle_touch(round.r, corner_x, corner_y, l));
+    CHECK(bed_mesh_renderer_handle_touch(round.r, mid_x, mid_y, l));
+}
 #endif

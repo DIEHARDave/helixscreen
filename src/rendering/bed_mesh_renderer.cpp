@@ -5,6 +5,7 @@
 
 #include "bed_mesh_renderer.h"
 
+#include "bed_grid.h"
 #include "bed_mesh_buffer.h"
 #include "bed_mesh_coordinate_transform.h"
 #include "bed_mesh_geometry.h"
@@ -1057,6 +1058,42 @@ static bool is_fps_below_threshold(const bed_mesh_renderer_t* renderer, float mi
  * The border and touch tooltip are drawn on the main thread
  * (helix::mesh::render_heatmap_overlay).
  */
+namespace {
+
+/// Heatmap pixels <-> printer mm over the mesh area, for a round bed's circle.
+struct HeatmapBedMap {
+    const bed_mesh_renderer_t* r;
+    const helix::mesh::HeatmapLayout& l;
+    double mm_per_px_x() const {
+        return (r->mesh_area_max_x - r->mesh_area_min_x) / (l.cells_x * l.cell_w);
+    }
+    double mm_per_px_y() const {
+        return (r->mesh_area_max_y - r->mesh_area_min_y) / (l.cells_y * l.cell_h);
+    }
+    helix::BedPoint to_mm(double px, double py) const {
+        return {r->mesh_area_min_x + (px - l.grid_x) * mm_per_px_x(),
+                r->mesh_area_min_y + (py - l.grid_y) * mm_per_px_y()};
+    }
+    std::pair<int, int> to_px(const helix::BedPoint& p) const {
+        return {
+            static_cast<int>(std::lround(l.grid_x + (p.x - r->mesh_area_min_x) / mm_per_px_x())),
+            static_cast<int>(std::lround(l.grid_y + (p.y - r->mesh_area_min_y) / mm_per_px_y()))};
+    }
+    helix::RoundBed circle() const {
+        return helix::inscribed_round_bed(r->mesh_area_min_x, r->mesh_area_max_x,
+                                          r->mesh_area_min_y, r->mesh_area_max_y);
+    }
+};
+
+/// The 2D heatmap shows a round bed's mesh only inside its circle.
+bool heatmap_is_round(const bed_mesh_renderer_t* renderer) {
+    return renderer->circular_bed && renderer->has_mesh_bounds &&
+           renderer->mesh_area_max_x > renderer->mesh_area_min_x &&
+           renderer->mesh_area_max_y > renderer->mesh_area_min_y;
+}
+
+} // namespace
+
 static void render_2d_heatmap_to_buffer(helix::mesh::PixelBuffer& buf,
                                         const bed_mesh_renderer_t* renderer) {
     const auto l = helix::mesh::compute_heatmap_layout(renderer->rows, renderer->cols, buf.width(),
@@ -1073,6 +1110,24 @@ static void render_2d_heatmap_to_buffer(helix::mesh::PixelBuffer& buf,
     auto blend = [](lv_color_t c1, lv_color_t c2, lv_color_t c3) -> lv_color_t {
         return lv_color_make((c1.red + c2.red + c3.red) / 3, (c1.green + c2.green + c3.green) / 3,
                              (c1.blue + c2.blue + c3.blue) / 3);
+    };
+
+    const bool round = heatmap_is_round(renderer);
+    const HeatmapBedMap map{renderer, l};
+    const helix::RoundBed circle = round ? map.circle() : helix::RoundBed{};
+    auto fill = [&](int x1, int y1, int x2, int y2, int x3, int y3, lv_color_t color) {
+        if (!round) {
+            helix::mesh::fill_triangle_solid(buf, x1, y1, x2, y2, x3, y3, color);
+            return;
+        }
+        const auto poly = helix::clip_to_round_bed(
+            {map.to_mm(x1, y1), map.to_mm(x2, y2), map.to_mm(x3, y3)}, circle);
+        for (size_t i = 1; i + 1 < poly.size(); i++) {
+            const auto [ax, ay] = map.to_px(poly[0]);
+            const auto [bx, by] = map.to_px(poly[i]);
+            const auto [cx, cy] = map.to_px(poly[i + 1]);
+            helix::mesh::fill_triangle_solid(buf, ax, ay, bx, by, cx, cy, color);
+        }
     };
 
     for (int row = 0; row < l.cells_y; row++) {
@@ -1097,14 +1152,10 @@ static void render_2d_heatmap_to_buffer(helix::mesh::PixelBuffer& buf,
             int x_mid = (x_left + x_right) / 2;
             int y_mid = (y_top + y_bottom) / 2;
 
-            helix::mesh::fill_triangle_solid(buf, x_left, y_top, x_right, y_top, x_mid, y_mid,
-                                             blend(c_tl, c_tr, c_center));
-            helix::mesh::fill_triangle_solid(buf, x_right, y_top, x_right, y_bottom, x_mid, y_mid,
-                                             blend(c_tr, c_br, c_center));
-            helix::mesh::fill_triangle_solid(buf, x_right, y_bottom, x_left, y_bottom, x_mid, y_mid,
-                                             blend(c_br, c_bl, c_center));
-            helix::mesh::fill_triangle_solid(buf, x_left, y_bottom, x_left, y_top, x_mid, y_mid,
-                                             blend(c_bl, c_tl, c_center));
+            fill(x_left, y_top, x_right, y_top, x_mid, y_mid, blend(c_tl, c_tr, c_center));
+            fill(x_right, y_top, x_right, y_bottom, x_mid, y_mid, blend(c_tr, c_br, c_center));
+            fill(x_right, y_bottom, x_left, y_bottom, x_mid, y_mid, blend(c_br, c_bl, c_center));
+            fill(x_left, y_bottom, x_left, y_top, x_mid, y_mid, blend(c_bl, c_tl, c_center));
         }
     }
 }
@@ -1195,6 +1246,17 @@ bool bed_mesh_renderer_handle_touch(bed_mesh_renderer_t* renderer, int touch_x, 
         col >= renderer->cols) {
         renderer->touch_valid = false;
         return false;
+    }
+
+    // A round bed has no reading outside its circle.
+    if (heatmap_is_round(renderer)) {
+        const HeatmapBedMap map{renderer, l};
+        const auto p = map.to_mm(touch_x, touch_y);
+        const auto c = map.circle();
+        if (std::hypot(p.x - c.cx, p.y - c.cy) > c.r) {
+            renderer->touch_valid = false;
+            return false;
+        }
     }
 
     // Store touched cell info
