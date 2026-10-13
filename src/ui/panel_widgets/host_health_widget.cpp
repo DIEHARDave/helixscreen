@@ -11,6 +11,7 @@
 #include "ui_utils.h"
 
 #include "app_globals.h"
+#include "helix_psram_attr.h"
 #include "lvgl/src/others/translation/lv_translation.h"
 #include "observer_factory.h"
 #include "panel_widget_registry.h"
@@ -42,30 +43,30 @@ constexpr const char* kDotSep = " \xc2\xb7 ";
 // Module-level because the widget is single-instance and registration rides
 // SubjectInitializer's panel-subject phase, so the subjects exist before any XML that
 // binds them is parsed.
-lv_subject_t s_rung_subject{};
-lv_subject_t s_show_mcu_row_subject{};
-lv_subject_t s_mcu_rows_subject{};
-lv_subject_t s_status_subject{};
-lv_subject_t s_cause_subject{};
-lv_subject_t s_cpu_status_subject{};
-lv_subject_t s_temp_status_subject{};
-lv_subject_t s_throttle_status_subject{};
-lv_subject_t s_disk_status_subject{};
-lv_subject_t s_busiest_load_subject{};
-lv_subject_t s_glance_text_subject{};
-lv_subject_t s_cpu_text_subject{};
-lv_subject_t s_temp_text_subject{};
-lv_subject_t s_mem_text_subject{};
-lv_subject_t s_detail_text_subject{};
-lv_subject_t s_busiest_name_subject{};
-lv_subject_t s_busiest_text_subject{};
-char s_glance_text_buf[16];
-char s_cpu_text_buf[16];
-char s_temp_text_buf[24];
-char s_mem_text_buf[16];
-char s_detail_text_buf[48];
-char s_busiest_name_buf[48];
-char s_busiest_text_buf[64];
+HELIX_PSRAM_BSS lv_subject_t s_rung_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_show_mcu_row_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_mcu_rows_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_status_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_cause_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_cpu_status_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_temp_status_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_throttle_status_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_disk_status_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_busiest_load_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_glance_text_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_cpu_text_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_temp_text_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_mem_text_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_detail_text_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_busiest_name_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_busiest_text_subject{};
+HELIX_PSRAM_BSS char s_glance_text_buf[16];
+HELIX_PSRAM_BSS char s_cpu_text_buf[16];
+HELIX_PSRAM_BSS char s_temp_text_buf[24];
+HELIX_PSRAM_BSS char s_mem_text_buf[16];
+HELIX_PSRAM_BSS char s_detail_text_buf[48];
+HELIX_PSRAM_BSS char s_busiest_name_buf[48];
+HELIX_PSRAM_BSS char s_busiest_text_buf[64];
 bool s_subjects_initialized = false;
 SubjectManager s_subjects;
 // The instance bound to the live tile. Only it publishes: a transient instance (a

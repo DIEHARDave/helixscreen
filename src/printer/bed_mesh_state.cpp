@@ -4,6 +4,7 @@
 #include "bed_mesh_state.h"
 
 #include "format_utils.h"
+#include "helix_psram_attr.h"
 #include "i_moonraker_api.h"
 #include "lvgl/src/others/translation/lv_translation.h"
 #include "static_subject_registry.h"
@@ -16,7 +17,7 @@
 namespace helix {
 
 BedMeshState& BedMeshState::instance() {
-    static BedMeshState state;
+    static HELIX_PSRAM_BSS BedMeshState state;
     return state;
 }
 

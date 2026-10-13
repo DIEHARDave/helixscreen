@@ -16,6 +16,7 @@
 #include "bed_mesh_probe_temp.h"
 #include "bed_mesh_state.h"
 #include "bed_mesh_stats.h"
+#include "helix_psram_attr.h"
 #include "lvgl/src/others/translation/lv_translation.h"
 #include "moonraker_error.h"
 #include "observe_language.h"
@@ -50,27 +51,27 @@ namespace {
 // Module-level because the widget is single-instance and registration rides
 // SubjectInitializer's panel-subject phase, so the subjects exist before any XML that
 // binds them is parsed.
-lv_subject_t s_rung_subject{};
-lv_subject_t s_show_map_subject{};
-lv_subject_t s_show_range_subject{};
-lv_subject_t s_show_empty_subject{};
-lv_subject_t s_show_details_subject{};
-lv_subject_t s_show_scale_subject{};
-lv_subject_t s_show_footer_subject{};
-lv_subject_t s_show_calibrate_subject{};
-lv_subject_t s_show_load_subject{};
-lv_subject_t s_calibrating_subject{};
-lv_subject_t s_status_subject{};
-lv_subject_t s_range_text_subject{};
-lv_subject_t s_extent_text_subject{};
-lv_subject_t s_scale_low_text_subject{};
-lv_subject_t s_scale_high_text_subject{};
-lv_subject_t s_count_text_subject{};
-char s_range_text_buf[16];
-char s_extent_text_buf[32];
-char s_scale_low_text_buf[16];
-char s_scale_high_text_buf[16];
-char s_count_text_buf[32];
+HELIX_PSRAM_BSS lv_subject_t s_rung_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_show_map_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_show_range_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_show_empty_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_show_details_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_show_scale_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_show_footer_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_show_calibrate_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_show_load_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_calibrating_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_status_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_range_text_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_extent_text_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_scale_low_text_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_scale_high_text_subject{};
+HELIX_PSRAM_BSS lv_subject_t s_count_text_subject{};
+HELIX_PSRAM_BSS char s_range_text_buf[16];
+HELIX_PSRAM_BSS char s_extent_text_buf[32];
+HELIX_PSRAM_BSS char s_scale_low_text_buf[16];
+HELIX_PSRAM_BSS char s_scale_high_text_buf[16];
+HELIX_PSRAM_BSS char s_count_text_buf[32];
 bool s_subjects_initialized = false;
 SubjectManager s_subjects;
 // The instance bound to the live tile. Only it publishes and acts: a transient instance
