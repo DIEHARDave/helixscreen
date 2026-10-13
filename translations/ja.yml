@@ -479,6 +479,7 @@ translations:
   'Cannot delete file: printer not connected': 'ファイルを削除できません: プリンター未接続'
   'Cannot modify G-code: no temp directory available': 'G-code を変更できません: 一時ディレクトリがありません'
   'Cannot modify G-code: scan result not available': 'G-code を変更できません: スキャン結果がありません'
+  Cannot park while a print is active: '印刷中はパーキングできません'
   Cannot perform this action now: 現在この操作は実行できません
   'Cannot remap G-code: no temp directory available': 'G-codeをリマップできません: 一時ディレクトリが利用できません'
   'Cannot remap: internal error': 'リマップできません: 内部エラー'
@@ -2189,6 +2190,7 @@ translations:
   Park: 'パーキング'
   Park the AFC system: 'AFCシステムをパーキング'
   Park Toolhead: 'ツールヘッドをパーキング'
+  Parking toolhead: 'ツールヘッドをパーキング中'
   Part: パーツ
   Part Cooling Fan: パーツ冷却ファン
   Part Fan: パーツファン

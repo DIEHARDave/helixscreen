@@ -503,6 +503,7 @@ translations:
     directory available'
   'Cannot modify G-code: scan result not available': 'Cannot modify G-code: scan result
     not available'
+  Cannot park while a print is active: Cannot park while a print is active
   Cannot perform this action now: Cannot perform this action now
   'Cannot remap G-code: no temp directory available': 'Cannot remap G-code: no temp
     directory available'
@@ -2261,6 +2262,7 @@ translations:
   Park: Park
   Park the AFC system: Park the AFC system
   Park Toolhead: Park Toolhead
+  Parking toolhead: Parking toolhead
   Part: Part
   Part Cooling Fan: Part Cooling Fan
   Part Fan: Part Fan

@@ -42,6 +42,16 @@ class ToolSwitcherTestAccess {
         return widget.compact_label_;
     }
 
+    /// Whether a box this size gets the compact readout instead of pills.
+    static bool is_compact_at(int width_px, int height_px) {
+        return ToolSwitcherWidget::is_compact_at(width_px, height_px);
+    }
+
+    /// The funnel every Park tap reaches.
+    static void park(ToolSwitcherWidget& widget) {
+        widget.handle_park_requested();
+    }
+
     /// Raise the compact form's tool picker, as a tap on the compact tile does.
     static void show_picker(ToolSwitcherWidget& widget) {
         widget.show_tool_picker();

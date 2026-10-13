@@ -209,11 +209,17 @@ MoonrakerClientMock::GcodeResult MoonrakerClientMock::gcode_openams_line(const s
     return std::nullopt;
 }
 
-// Snapmaker U1 feeder commands. Unconditional: AUTO_FEEDING is U1-only
-// vocabulary, so no mock printer mode needs to arm it, and no other printer's
-// script can contain the token.
+// Snapmaker U1 commands. Unconditional: AUTO_FEEDING and PARK_EXTRUDER are
+// U1-only vocabulary, so no mock printer mode needs to arm them, and no other
+// printer's script can contain the tokens.
 MoonrakerClientMock::GcodeResult MoonrakerClientMock::gcode_u1_feeding(const std::string& gcode) {
     if (apply_u1_feeding_gcode(gcode)) {
+        return 0;
+    }
+    // "Detach Toolhead": the head goes back to its dock and nothing is
+    // published about it here, since the mock carries no U1 extruder pins.
+    if (is_command(gcode, "PARK_EXTRUDER")) {
+        spdlog::info("[MoonrakerClientMock] U1 PARK_EXTRUDER: active toolhead docked");
         return 0;
     }
     return std::nullopt;

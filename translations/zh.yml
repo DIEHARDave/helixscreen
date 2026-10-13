@@ -478,6 +478,7 @@ translations:
   'Cannot delete file: printer not connected': '无法删除文件: 打印机未连接'
   'Cannot modify G-code: no temp directory available': '无法修改 G-code: 无可用临时目录'
   'Cannot modify G-code: scan result not available': '无法修改 G-code: 扫描结果不可用'
+  Cannot park while a print is active: '打印时无法停放'
   Cannot perform this action now: 当前无法执行此操作
   'Cannot remap G-code: no temp directory available': 无法重新映射 G-code：没有可用的临时目录
   'Cannot remap: internal error': 无法重新映射：内部错误
@@ -2182,6 +2183,7 @@ translations:
   Park: '停放'
   Park the AFC system: '停放 AFC 系统'
   Park Toolhead: '停放工具头'
+  Parking toolhead: '正在停放工具头'
   Part: 零件
   Part Cooling Fan: 零件冷却风扇
   Part Fan: 零件风扇

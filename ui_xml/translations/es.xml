@@ -472,6 +472,7 @@
   <translation tag="Cannot delete file: printer not connected" es="No se puede eliminar archivo: impresora no conectada"/>
   <translation tag="Cannot modify G-code: no temp directory available" es="No se puede modificar G-code: directorio temporal no disponible"/>
   <translation tag="Cannot modify G-code: scan result not available" es="No se puede modificar G-code: resultado de escaneo no disponible"/>
+  <translation tag="Cannot park while a print is active" es="No se puede aparcar mientras hay una impresión activa"/>
   <translation tag="Cannot perform this action now" es="Esta acción no se puede realizar ahora"/>
   <translation tag="Cannot remap G-code: no temp directory available" es="No se puede reasignar G-code: directorio temporal no disponible"/>
   <translation tag="Cannot remap: internal error" es="No se puede reasignar: error interno"/>
@@ -2109,6 +2110,7 @@
   <translation tag="Park" es="Aparcar"/>
   <translation tag="Park Toolhead" es="Aparcar el cabezal"/>
   <translation tag="Park the AFC system" es="Aparcar el sistema AFC"/>
+  <translation tag="Parking toolhead" es="Aparcando el cabezal"/>
   <translation tag="Part" es="Pieza"/>
   <translation tag="Part Cooling Fan" es="Ventilador de Enfriamiento de Pieza"/>
   <translation tag="Part Fan" es="Ventilador de Pieza"/>

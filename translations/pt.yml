@@ -519,6 +519,7 @@ translations:
     diretório temporário indisponível'
   'Cannot modify G-code: scan result not available': 'Não é possível modificar G-code:
     resultado da análise indisponível'
+  Cannot park while a print is active: 'Não é possível estacionar enquanto uma impressão está ativa'
   Cannot perform this action now: Não é possível executar esta ação agora
   'Cannot remap G-code: no temp directory available': 'Não é possível remapear o G-code:
     nenhum diretório temporário disponível'
@@ -2330,6 +2331,7 @@ translations:
   Park: 'Estacionar'
   Park the AFC system: 'Estacionar o sistema AFC'
   Park Toolhead: 'Estacionar o cabeçote'
+  Parking toolhead: 'Estacionando o cabeçote'
   Part: Peça
   Part Cooling Fan: Ventoinha de Resfriamento da Peça
   Part Fan: Ventoinha da Peça

@@ -228,7 +228,15 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     AmsError do_unload_filament(int slot_index) override;
     AmsError do_select_slot(int slot_index) override;
     AmsError do_change_tool(int tool_number) override;
+    /// PARK_EXTRUDER: the firmware's "Detach Toolhead", back to its dock.
+    AmsError do_park_active_tool() override;
 
+  public:
+    [[nodiscard]] bool supports_tool_park() const override {
+        return true;
+    }
+
+  protected:
     /// Batch load/unload as ONE AUTO_FEEDING script. The firmware serializes
     /// channels itself (FEED_AUTO's process-wide channel_active gate) and
     /// Moonraker holds the script response until every line has run, so the

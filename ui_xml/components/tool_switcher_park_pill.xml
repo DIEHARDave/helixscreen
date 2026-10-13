@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<!-- Copyright (C) 2025-2026 356C LLC -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<component>
+  <!-- Docks the mounted tool. Created in the tool switcher's pill grid only on
+       a backend that can park; its size and cell come from the grid. Disabled
+       while nothing is mounted (active_tool is -1) and, through moves_machine,
+       while a job holds the machine. -->
+  <view name="tool_park_pill" extends="ui_button" variant="secondary" text="Park" moves_machine="true">
+    <bind_state_if_lt subject="active_tool" state="disabled" ref_value="0"/>
+    <event_cb trigger="clicked" callback="tool_switcher_park_cb"/>
+  </view>
+</component>

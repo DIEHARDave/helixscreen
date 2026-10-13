@@ -15,6 +15,7 @@
 #include "observer_factory.h"
 #include "panel_widget_registry.h"
 #include "panel_widget_size.h"
+#include "print_lifecycle_state.h"
 #include "printer_state.h"
 #include "theme_manager.h"
 #include "tool_state.h"
@@ -41,6 +42,7 @@ void register_tool_switcher_widget() {
 
     // Register XML event callbacks at startup (before any XML is parsed)
     lv_xml_register_event_cb(nullptr, "tool_compact_cb", ToolSwitcherWidget::tool_compact_cb);
+    lv_xml_register_event_cb(nullptr, "tool_switcher_park_cb", ToolSwitcherWidget::tool_park_cb);
 }
 
 ToolSwitcherWidget::ToolSwitcherWidget(PrinterState& printer_state)
@@ -53,6 +55,7 @@ ToolSwitcherWidget::ToolSwitcherWidget(PrinterState& printer_state)
                               "tool_switcher_active_label", subjects_);
     UI_MANAGED_SUBJECT_INT(picker_code_form_subject_, 0, "tool_switcher_picker_code_form",
                            subjects_);
+    UI_MANAGED_SUBJECT_INT(park_supported_subject_, 0, "tool_switcher_park_supported", subjects_);
     refresh_label_budget();
 }
 
@@ -85,16 +88,19 @@ bool ToolSwitcherWidget::is_compact_size() const {
 
 // Compact when the box is small on both axes; the pills need room on one.
 ToolSwitcherWidget::PillGrid ToolSwitcherWidget::pill_grid_at(int width_px, int height_px,
-                                                              const LabelOf& label_of) {
+                                                              const LabelOf& label_of,
+                                                              bool with_park) {
     const auto& tools = ToolState::instance().tools();
-    const int count = static_cast<int>(tools.size());
-    if (count == 0) {
+    if (tools.empty()) {
         return {};
     }
+    // Park takes a cell of its own, after the tools.
+    const bool park = with_park;
+    const int count = static_cast<int>(tools.size()) + (park ? 1 : 0);
     // A pill is legible when its label fits on one line inside the button's
     // padding, in the face a pill label inherits: the screen's base font.
     const lv_font_t* face = lv_obj_get_style_text_font(lv_screen_active(), LV_PART_MAIN);
-    int label_w = 0;
+    int label_w = park ? ui::text_width(lv_tr("Park"), face) : 0;
     for (const auto& tool : tools) {
         label_w = std::max<int>(label_w, ui::text_width(label_of(tool).c_str(), face));
     }
@@ -130,19 +136,27 @@ ToolSwitcherWidget::LabelOf ToolSwitcherWidget::label_in(ui::ToolLabelForm form)
     return [form](const ToolInfo& tool) { return tool_text(tool, form); };
 }
 
-ui::ToolLabelForm ToolSwitcherWidget::pill_label_form_at(int width_px, int height_px) {
-    return ui::pick_tool_label_form([width_px, height_px](ui::ToolLabelForm form) {
-        return pill_grid_at(width_px, height_px, label_in(form)).fits();
+ToolSwitcherWidget::PillLayout ToolSwitcherWidget::pill_layout_at(int width_px, int height_px) {
+    const bool park = park_offered();
+    PillLayout layout;
+    layout.form = ui::pick_tool_label_form([width_px, height_px, park](ui::ToolLabelForm form) {
+        return pill_grid_at(width_px, height_px, label_in(form), park).fits();
     });
+    // A box that holds the tools but not one more cell drops Park rather than
+    // giving up the pills.
+    layout.with_park =
+        park && pill_grid_at(width_px, height_px, label_in(layout.form), true).fits();
+    return layout;
 }
 
 bool ToolSwitcherWidget::is_compact_at(int width_px, int height_px) {
-    // Pills earn the tile where the physical label ("Tool 1") fits, whichever
-    // form they then draw in, so the label forms never move the line between
-    // pills and the compact readout.
-    return !pill_grid_at(width_px, height_px, [](const ToolInfo& tool) {
-                return tool.display_label;
-            }).fits();
+    // Pills earn the tile where the tools' physical labels ("Tool 1") fit,
+    // whichever form they then draw in and whether or not Park joins them, so
+    // neither moves the line between pills and the compact readout.
+    return !pill_grid_at(
+                width_px, height_px, [](const ToolInfo& tool) { return tool.display_label; },
+                /*with_park=*/false)
+                .fits();
 }
 
 void ToolSwitcherWidget::attach(lv_obj_t* widget_obj, lv_obj_t* parent_screen) {
@@ -259,6 +273,7 @@ void ToolSwitcherWidget::on_size_changed(int /*colspan*/, int /*rowspan*/, int w
     current_height_px_ = height_px;
 
     refresh_label_budget();
+    refresh_park_support();
     sizing_.measure_and_publish(width_px, height_px);
 
     if (!widget_obj_)
@@ -320,9 +335,9 @@ void ToolSwitcherWidget::rebuild_pills() {
     // An even grid of equal pills from the granted size: every pill fills its
     // cell's width and as much of its height as a large button takes, and the
     // grid sits centred in the tile.
-    pill_label_form_ = pill_label_form_at(current_width_px_, current_height_px_);
-    const PillGrid grid =
-        pill_grid_at(current_width_px_, current_height_px_, label_in(pill_label_form_));
+    const PillLayout layout = pill_layout_at(current_width_px_, current_height_px_);
+    const PillGrid grid = pill_grid_at(current_width_px_, current_height_px_, label_in(layout.form),
+                                       layout.with_park);
     const int cols = std::max(grid.cols, 1);
     const int rows = std::max(grid.rows, 1);
     const int inset = resolve_space_token("space_md", 10);
@@ -342,7 +357,7 @@ void ToolSwitcherWidget::rebuild_pills() {
         // Equal buttons, the active one highlighted; the variant carries the look
         const char* variant = is_active ? "primary" : "secondary";
         const std::string name = "tool_pill_" + std::to_string(i);
-        const std::string text = tool_text(tools[i], pill_label_form_);
+        const std::string text = tool_text(tools[i], layout.form);
         const char* attrs[] = {"name", name.c_str(), "variant", variant,
                                "text", text.c_str(), nullptr};
         lv_obj_t* btn = static_cast<lv_obj_t*>(lv_xml_create(container, "ui_button", attrs));
@@ -373,6 +388,24 @@ void ToolSwitcherWidget::rebuild_pills() {
             LV_EVENT_CLICKED, reinterpret_cast<void*>(static_cast<intptr_t>(i)));
 
         pill_buttons_.push_back(btn);
+    }
+
+    // Park, in the cell after the last tool. Its enabled state is bound in its
+    // XML (a mounted tool, no job holding the machine), so it stays out of
+    // pill_buttons_ and refresh_print_gating() never overrides that binding.
+    if (layout.with_park) {
+        const int cell = static_cast<int>(tools.size());
+        if (auto* park = static_cast<lv_obj_t*>(
+                lv_xml_create(container, "tool_switcher_park_pill", nullptr))) {
+            lv_obj_set_grid_cell(park, LV_GRID_ALIGN_STRETCH, cell % cols, 1, LV_GRID_ALIGN_CENTER,
+                                 cell / cols, 1);
+            lv_obj_set_height(park, pill_h);
+            lv_obj_set_style_radius(park, pill_h / 2, 0);
+            lv_obj_set_style_pad_ver(park, resolve_space_token("space_xxs", 4), 0);
+            lv_obj_set_style_pad_hor(park, resolve_space_token("space_sm", 8), 0);
+        } else {
+            spdlog::error("[ToolSwitcher] lv_xml_create('tool_switcher_park_pill') returned NULL");
+        }
     }
 
     // Every pill now carries its grid cell (set in the loop above). Activate the
@@ -475,6 +508,8 @@ void ToolSwitcherWidget::show_tool_picker() {
     if (ToolState::instance().tools().empty()) {
         return;
     }
+
+    refresh_park_support();
 
     // The card hangs off the widget tile's left edge, so the tool names line up
     // with the compact readout they replace.
@@ -660,6 +695,45 @@ void ToolSwitcherWidget::dispatch_tool_change(int tool_index) {
         });
 }
 
+bool ToolSwitcherWidget::park_offered() {
+    const AmsBackend* backend = AmsState::instance().get_backend();
+    return backend && backend->supports_tool_park();
+}
+
+void ToolSwitcherWidget::refresh_park_support() {
+    lv_subject_set_int(&park_supported_subject_, park_offered() ? 1 : 0);
+}
+
+void ToolSwitcherWidget::handle_park_requested() {
+    AmsBackend* backend = AmsState::instance().get_backend();
+    if (!backend || !backend->supports_tool_park()) {
+        return;
+    }
+
+    // Park is disabled while a job holds the machine, paused included: a
+    // print resumed with its tool docked prints nothing. A tap can still land
+    // between the job starting and the binding catching up.
+    if (job_holds_machine(printer_state_.print_state().get_print_lifecycle())) {
+        spdlog::info("[ToolSwitcher] Park refused: a print holds the machine");
+        helix::ui::notify_ams_warning(AmsError(AmsResult::WRONG_STATE,
+                                               "Tool park blocked: print in progress",
+                                               lv_tr("Cannot park while a print is active"), ""));
+        return;
+    }
+
+    const int active = ToolState::instance().active_tool_index();
+    if (active < 0) {
+        spdlog::debug("[ToolSwitcher] Park ignored: no tool mounted");
+        return;
+    }
+
+    spdlog::info("[ToolSwitcher] Parking T{}", active);
+    const AmsError err = backend->park_active_tool();
+    if (!err.success()) {
+        helix::ui::notify_ams_error(err);
+    }
+}
+
 void ToolSwitcherWidget::handle_tool_selected(int tool_index) {
     auto& tool_state = ToolState::instance();
 
@@ -707,6 +781,19 @@ void ToolSwitcherWidget::handle_tool_selected(int tool_index) {
 // ============================================================================
 // Static XML event callbacks (registered at startup, used in XML if needed)
 // ============================================================================
+
+void ToolSwitcherWidget::tool_park_cb(lv_event_t* e) {
+    (void)e;
+    LVGL_SAFE_EVENT_CB_BEGIN("[ToolSwitcher] tool_park_cb");
+    // The picker's Park row closes the picker like any other row.
+    if (auto* picker = helix::ui::ContextMenu::active_as<ToolPicker>()) {
+        picker->hide();
+    }
+    if (s_active_instance) {
+        s_active_instance->handle_park_requested();
+    }
+    LVGL_SAFE_EVENT_CB_END();
+}
 
 void ToolSwitcherWidget::tool_compact_cb(lv_event_t* e) {
     (void)e;

@@ -13,6 +13,16 @@
       <lv_obj name="tool_list"
               width="100%" height="content" flex_flow="column" style_pad_all="0" style_pad_gap="#space_xs"
               scrollable="true" clickable="false"/>
+      <!-- Docks the mounted tool, on a backend that can. Disabled while
+           nothing is mounted and, through moves_machine, while a job holds
+           the machine. -->
+      <ui_button name="tool_park_btn"
+                 width="100%" height="content" variant="ghost" style_min_height="#button_height_sm" moves_machine="true">
+        <bind_flag_if_eq subject="tool_switcher_park_supported" flag="hidden" ref_value="0"/>
+        <bind_state_if_lt subject="active_tool" state="disabled" ref_value="0"/>
+        <event_cb trigger="clicked" callback="tool_switcher_park_cb"/>
+        <text_small name="tool_park_label" text="Park" align="center"/>
+      </ui_button>
     </context_menu_card>
   </view>
 </component>

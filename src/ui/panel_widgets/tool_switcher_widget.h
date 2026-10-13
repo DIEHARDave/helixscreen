@@ -79,8 +79,6 @@ class ToolSwitcherWidget : public TiledPanelWidget {
     // need to know which layout is currently built without a size to read.
     int current_width_px_ = 0;
     int current_height_px_ = 0;
-    /// The form the pills were last labeled in, chosen at the granted size.
-    ui::ToolLabelForm pill_label_form_ = ui::ToolLabelForm::Full;
 
     ObserverGuard active_tool_observer_;
     ObserverGuard tool_count_observer_;
@@ -101,6 +99,8 @@ class ToolSwitcherWidget : public TiledPanelWidget {
     lv_subject_t compact_subject_{};
     /// 1 while the picker rows read in ToolLabelForm::Code; XML shows that label.
     lv_subject_t picker_code_form_subject_{};
+    /// 1 while the backend can park the mounted tool; XML shows Park.
+    lv_subject_t park_supported_subject_{};
     lv_subject_t active_label_subject_{};
     char active_label_buf_[32] = {};
     SubjectManager subjects_;
@@ -144,12 +144,21 @@ class ToolSwitcherWidget : public TiledPanelWidget {
     /// What a pill reads for one tool.
     using LabelOf = std::function<std::string(const ToolInfo&)>;
     /// The arrangement of equal cells, each holding the widest label_of(tool)
-    /// legibly in a width_px x height_px tile, whose cells are squarest.
-    static PillGrid pill_grid_at(int width_px, int height_px, const LabelOf& label_of);
+    /// legibly in a width_px x height_px tile, whose cells are squarest. With
+    /// @p with_park, one more cell holds Park after the tools.
+    static PillGrid pill_grid_at(int width_px, int height_px, const LabelOf& label_of,
+                                 bool with_park);
     /// Pill text in @p form.
     static LabelOf label_in(ui::ToolLabelForm form);
-    /// The most informative label form whose pills fit this box.
-    static ui::ToolLabelForm pill_label_form_at(int width_px, int height_px);
+
+    /// What the pills draw in a box: the label form, and whether Park gets a cell.
+    struct PillLayout {
+        ui::ToolLabelForm form = ui::ToolLabelForm::Full;
+        bool with_park = false;
+    };
+    /// The most informative label form whose pills fit this box, with a Park
+    /// cell where the backend can park and the box has room for one.
+    static PillLayout pill_layout_at(int width_px, int height_px);
     /// @p tool's label in @p form, in the connected printer's tool noun.
     static std::string tool_text(const ToolInfo& tool, ui::ToolLabelForm form);
     /// Budget the compact value at the widest label any tool carries.
@@ -180,8 +189,18 @@ class ToolSwitcherWidget : public TiledPanelWidget {
     /// modal's stateless event callback shares the one on_error path.
     static void dispatch_tool_change(int tool_index);
 
+    /// Whether the connected backend can dock the mounted tool, which is what
+    /// puts a Park action beside the tools.
+    static bool park_offered();
+    /// Publish park_offered() for the picker's Park row.
+    void refresh_park_support();
+    /// Dock the mounted tool, refusing while a print holds the machine or
+    /// nothing is mounted. Every Park tap lands here.
+    void handle_park_requested();
+
   public:
     static void tool_compact_cb(lv_event_t* e);
+    static void tool_park_cb(lv_event_t* e);
 };
 
 void register_tool_switcher_widget();

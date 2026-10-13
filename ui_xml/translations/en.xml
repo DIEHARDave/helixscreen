@@ -472,6 +472,7 @@
   <translation tag="Cannot delete file: printer not connected" en="Cannot delete file: printer not connected"/>
   <translation tag="Cannot modify G-code: no temp directory available" en="Cannot modify G-code: no temp directory available"/>
   <translation tag="Cannot modify G-code: scan result not available" en="Cannot modify G-code: scan result not available"/>
+  <translation tag="Cannot park while a print is active" en="Cannot park while a print is active"/>
   <translation tag="Cannot perform this action now" en="Cannot perform this action now"/>
   <translation tag="Cannot remap G-code: no temp directory available" en="Cannot remap G-code: no temp directory available"/>
   <translation tag="Cannot remap: internal error" en="Cannot remap: internal error"/>
@@ -2109,6 +2110,7 @@
   <translation tag="Park" en="Park"/>
   <translation tag="Park Toolhead" en="Park Toolhead"/>
   <translation tag="Park the AFC system" en="Park the AFC system"/>
+  <translation tag="Parking toolhead" en="Parking toolhead"/>
   <translation tag="Part" en="Part"/>
   <translation tag="Part Cooling Fan" en="Part Cooling Fan"/>
   <translation tag="Part Fan" en="Part Fan"/>

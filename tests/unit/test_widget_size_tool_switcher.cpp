@@ -31,13 +31,17 @@
 #include "../test_helpers/panel_widget_size_harness.h"
 #include "../test_helpers/tool_switcher_test_access.h"
 #include "../test_helpers/update_queue_test_access.h"
+#include "ams_backend_mock.h"
+#include "ams_state.h"
 #include "grid_layout.h"
 #include "panel_widget_size.h"
 #include "printer_discovery.h"
 #include "src/ui/panel_widgets/tool_switcher_widget.h"
 #include "tool_state.h"
 
+#include <algorithm>
 #include <cstdlib>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -515,4 +519,178 @@ TEST_CASE_METHOD(ToolSwitcherFixture,
           std::vector<std::string>{"Tool 1 (T0)", "Tool 2 (T1)", "Tool 3 (T2)"});
     // A one-cell tile: the card is too narrow, so every row reads the G-code name.
     CHECK(rows_after_opening_at(60, 60) == std::vector<std::string>{"T0", "T1", "T2"});
+}
+
+// ============================================================================
+// #1784: Park sits beside the tools only where the backend can dock one
+// ============================================================================
+
+namespace {
+
+/// A tool-changer mock as the connected backend, for as long as it lives.
+struct ParkingBackend {
+    AmsBackendMock* backend = nullptr;
+    explicit ParkingBackend(bool tool_changer) {
+        auto owned = std::make_unique<AmsBackendMock>(3);
+        owned->set_tool_changer_mode(tool_changer);
+        owned->set_operation_delay(0);
+        REQUIRE(owned->start());
+        backend = owned.get();
+        AmsState::instance().deinit_subjects();
+        AmsState::instance().init_subjects(true);
+        AmsState::instance().set_backend(std::move(owned));
+    }
+    ~ParkingBackend() {
+        backend->wait_for_operation_thread();
+        backend->stop();
+        AmsState::instance().deinit_subjects();
+        helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
+    }
+};
+
+} // namespace
+
+TEST_CASE_METHOD(ToolSwitcherFixture,
+                 "tool_switcher: a backend that can park adds a Park pill after the tools",
+                 "[widget_size][tool_switcher][1784]") {
+    ParkingBackend parking(/*tool_changer=*/true);
+    configure_tools(3);
+    PanelWidgetHarness<ToolSwitcherWidget> h(test_screen(), state());
+    lv_obj_t* container = h.child("tool_switcher_container");
+    REQUIRE(container != nullptr);
+    process_lvgl(30);
+
+    h.resize(1, 1, 800, 60);
+    process_lvgl(30);
+    REQUIRE(lv_obj_get_child_count(container) == 4);
+    lv_obj_t* park = lv_obj_get_child(container, 3);
+    CHECK(std::string(lv_obj_get_name(park)) == "tool_park_pill");
+    CHECK(pill_text(park) == "Park");
+    // The Park cell is part of the grid the pills are measured into.
+    CHECK(pill_tracks(container) == std::make_pair(4, 1));
+}
+
+TEST_CASE_METHOD(ToolSwitcherFixture, "tool_switcher: no Park pill where the backend cannot park",
+                 "[widget_size][tool_switcher][1784]") {
+    ParkingBackend parking(/*tool_changer=*/false);
+    configure_tools(3);
+    PanelWidgetHarness<ToolSwitcherWidget> h(test_screen(), state());
+    lv_obj_t* container = h.child("tool_switcher_container");
+    REQUIRE(container != nullptr);
+    process_lvgl(30);
+
+    h.resize(1, 1, 800, 60);
+    process_lvgl(30);
+    CHECK(lv_obj_get_child_count(container) == 3);
+    CHECK(lv_obj_find_by_name(container, "tool_park_pill") == nullptr);
+}
+
+TEST_CASE_METHOD(ToolSwitcherFixture,
+                 "tool_switcher: the picker shows Park only where the backend can park",
+                 "[widget_size][tool_switcher][1784]") {
+    const bool tool_changer = GENERATE(true, false);
+    ParkingBackend parking(tool_changer);
+    configure_tools(3);
+    PanelWidgetHarness<ToolSwitcherWidget> h(test_screen(), state());
+    process_lvgl(30);
+    h.resize(2, 2, 60, 60);
+    process_lvgl(30);
+
+    ToolSwitcherTestAccess::show_picker(h.widget());
+    lv_obj_t* list = ToolSwitcherTestAccess::picker_list(h.widget());
+    REQUIRE(list != nullptr);
+    lv_obj_t* park = lv_obj_find_by_name(lv_obj_get_parent(list), "tool_park_btn");
+    REQUIRE(park != nullptr);
+    CHECK(lv_obj_has_flag(park, LV_OBJ_FLAG_HIDDEN) == !tool_changer);
+    ToolSwitcherTestAccess::hide_picker(h.widget());
+    process_lvgl(30);
+}
+
+TEST_CASE_METHOD(ToolSwitcherFixture, "tool_switcher: Park is disabled with no tool mounted",
+                 "[widget_size][tool_switcher][1784]") {
+    ParkingBackend parking(/*tool_changer=*/true);
+    // Registered in XML, as production registers it, so the pill's binding
+    // to active_tool resolves.
+    ToolState& ts = ToolState::instance();
+    ts.deinit_subjects();
+    ts.init_subjects(true);
+    ToolTopology topo;
+    topo.tool_count = 3;
+    topo.active_tool = 0;
+    topo.allows_empty_carriage = true;
+    ts.set_ams_topology(topo);
+
+    PanelWidgetHarness<ToolSwitcherWidget> h(test_screen(), state());
+    lv_obj_t* container = h.child("tool_switcher_container");
+    REQUIRE(container != nullptr);
+    process_lvgl(30);
+    h.resize(1, 1, 800, 60);
+    process_lvgl(30);
+
+    lv_obj_t* park = lv_obj_find_by_name(container, "tool_park_pill");
+    REQUIRE(park != nullptr);
+    CHECK_FALSE(lv_obj_has_state(park, LV_STATE_DISABLED));
+
+    topo.active_tool = -1;
+    ts.set_ams_topology(topo);
+    process_lvgl(30);
+    park = lv_obj_find_by_name(container, "tool_park_pill");
+    REQUIRE(park != nullptr);
+    CHECK(lv_obj_has_state(park, LV_STATE_DISABLED));
+}
+
+TEST_CASE_METHOD(ToolSwitcherFixture,
+                 "tool_switcher: Park never turns the pills into the compact readout",
+                 "[widget_size][tool_switcher][1784]") {
+    // A Park cell joins the pills only where there is room for it; the line
+    // between pills and the compact form is the tools' alone.
+    auto compact_map = [&](bool tool_changer) {
+        ParkingBackend parking(tool_changer);
+        configure_tools(4);
+        std::vector<bool> compact;
+        for (int w = 40; w <= 400; w += 10) {
+            for (int hpx = 40; hpx <= 240; hpx += 10) {
+                compact.push_back(ToolSwitcherTestAccess::is_compact_at(w, hpx));
+            }
+        }
+        return compact;
+    };
+    const std::vector<bool> without_park = compact_map(false);
+    const std::vector<bool> with_park = compact_map(true);
+    REQUIRE(std::count(without_park.begin(), without_park.end(), false) > 0);
+    CHECK(with_park == without_park);
+}
+
+TEST_CASE_METHOD(ToolSwitcherFixture,
+                 "tool_switcher: every pill, Park included, gets a cell of its own at any size",
+                 "[widget_size][tool_switcher][1784]") {
+    // Where the tools fit but one more cell does not, Park is left out rather
+    // than stacked into a cell another pill already holds.
+    ParkingBackend parking(/*tool_changer=*/true);
+    configure_tools(4);
+    PanelWidgetHarness<ToolSwitcherWidget> h(test_screen(), state());
+    lv_obj_t* container = h.child("tool_switcher_container");
+    REQUIRE(container != nullptr);
+    process_lvgl(30);
+
+    int pill_sizes = 0;
+    int without_park = 0;
+    for (int w = 40; w <= 300; w += 20) {
+        for (int hpx = 40; hpx <= 240; hpx += 20) {
+            h.resize(1, 1, w, hpx);
+            if (lv_obj_has_flag(container, LV_OBJ_FLAG_HIDDEN)) {
+                continue;
+            }
+            ++pill_sizes;
+            const auto [cols, rows] = pill_tracks(container);
+            INFO(w << "x" << hpx << ": " << cols << "x" << rows << " for "
+                   << lv_obj_get_child_count(container) << " pills");
+            CHECK(cols * rows >= static_cast<int>(lv_obj_get_child_count(container)));
+            if (lv_obj_find_by_name(container, "tool_park_pill") == nullptr) {
+                ++without_park;
+            }
+        }
+    }
+    INFO(pill_sizes << " pill sizes, " << without_park << " without Park");
+    REQUIRE(pill_sizes > 0);
 }

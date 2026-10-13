@@ -349,6 +349,8 @@ constexpr GuardedFile kGuardedFiles[] = {
     {"ui_xml/probe_bltouch_panel.xml", 2},
     {"ui_xml/probe_beacon_panel.xml", 2},
     {"ui_xml/temp_graph_overlay.xml", 2},
+    {"ui_xml/tool_switcher_picker.xml", 1},
+    {"ui_xml/components/tool_switcher_park_pill.xml", 1},
 };
 
 /// Control-bearing files that command nothing on the printer. A guard appearing

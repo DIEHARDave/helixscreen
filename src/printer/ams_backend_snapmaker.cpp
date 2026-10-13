@@ -683,6 +683,16 @@ AmsError AmsBackendSnapmaker::do_change_tool(int tool_number) {
     return execute_gcode(fmt::format("T{}", tool_number));
 }
 
+AmsError AmsBackendSnapmaker::do_park_active_tool() {
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (system_info_.current_tool < 0) {
+            return AmsErrorHelper::not_loaded();
+        }
+    }
+    return execute_gcode("PARK_EXTRUDER");
+}
+
 // ============================================================================
 // Recovery (not supported)
 // ============================================================================

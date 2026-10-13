@@ -513,6 +513,7 @@ translations:
     временная директория недоступна'
   'Cannot modify G-code: scan result not available': 'Невозможно изменить G-code:
     результат сканирования недоступен'
+  Cannot park while a print is active: 'Нельзя припарковать во время печати'
   Cannot perform this action now: Сейчас это действие выполнить нельзя
   'Cannot remap G-code: no temp directory available': 'Не удалось переназначить G-code:
     нет доступной временной директории'
@@ -2307,6 +2308,7 @@ translations:
   Park: 'Парковка'
   Park the AFC system: 'Припарковать систему AFC'
   Park Toolhead: 'Припарковать печатающую головку'
+  Parking toolhead: 'Парковка печатающей головки'
   Part: Деталь
   Part Cooling Fan: Вентилятор охлаждения детали
   Part Fan: Вент. детали

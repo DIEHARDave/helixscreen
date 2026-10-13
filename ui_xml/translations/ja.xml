@@ -472,6 +472,7 @@
   <translation tag="Cannot delete file: printer not connected" ja="ファイルを削除できません: プリンター未接続"/>
   <translation tag="Cannot modify G-code: no temp directory available" ja="G-code を変更できません: 一時ディレクトリがありません"/>
   <translation tag="Cannot modify G-code: scan result not available" ja="G-code を変更できません: スキャン結果がありません"/>
+  <translation tag="Cannot park while a print is active" ja="印刷中はパーキングできません"/>
   <translation tag="Cannot perform this action now" ja="現在この操作は実行できません"/>
   <translation tag="Cannot remap G-code: no temp directory available" ja="G-codeをリマップできません: 一時ディレクトリが利用できません"/>
   <translation tag="Cannot remap: internal error" ja="リマップできません: 内部エラー"/>
@@ -2109,6 +2110,7 @@
   <translation tag="Park" ja="パーキング"/>
   <translation tag="Park Toolhead" ja="ツールヘッドをパーキング"/>
   <translation tag="Park the AFC system" ja="AFCシステムをパーキング"/>
+  <translation tag="Parking toolhead" ja="ツールヘッドをパーキング中"/>
   <translation tag="Part" ja="パーツ"/>
   <translation tag="Part Cooling Fan" ja="パーツ冷却ファン"/>
   <translation tag="Part Fan" ja="パーツファン"/>

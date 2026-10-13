@@ -62,11 +62,22 @@ class GateBackend : public AmsBackendMock {
     bool self_homes = false;
     bool tool_change_should_fail = false;
     int change_tool_calls = 0;
+    bool can_park = true;
+    int park_calls = 0;
 
     BackendTraits traits() const override {
         BackendTraits t = AmsBackendMock::traits();
         t.filament_ops_self_home = self_homes;
         return t;
+    }
+
+    bool supports_tool_park() const override {
+        return can_park;
+    }
+
+    AmsError park_active_tool() override {
+        ++park_calls;
+        return AmsErrorHelper::success();
     }
 
     AmsError change_tool(int /*tool_number*/) override {
@@ -308,4 +319,61 @@ TEST_CASE_METHOD(ToolSwitcherGateFixture, "inactive print states never block a t
         CAPTURE(static_cast<int>(s));
         CHECK(ToolSwitcherTestAccess::refusal(widget).success());
     }
+}
+
+// ============================================================================
+// Park (prestonbrown/helixscreen#1784)
+// ============================================================================
+
+TEST_CASE_METHOD(ToolSwitcherGateFixture, "Park docks the mounted tool when the machine is free",
+                 "[ams][tool-switcher][1784]") {
+    set_print_state(helix::PrintJobState::STANDBY);
+    REQUIRE(ToolState::instance().active_tool_index() >= 0);
+
+    ToolSwitcherWidget widget(printer_state);
+    ToolSwitcherTestAccess::park(widget);
+
+    CHECK(backend->park_calls == 1);
+    CHECK(warnings.empty());
+    CHECK(errors.empty());
+}
+
+TEST_CASE_METHOD(ToolSwitcherGateFixture,
+                 "Park is refused, with a reason, while a job holds the machine",
+                 "[ams][tool-switcher][1784]") {
+    // PAUSED too, unlike a tool change: resuming with the tool docked prints
+    // nothing.
+    auto state = GENERATE(helix::PrintJobState::PRINTING, helix::PrintJobState::PAUSED);
+    set_print_state(state);
+
+    ToolSwitcherWidget widget(printer_state);
+    ToolSwitcherTestAccess::park(widget);
+
+    CHECK(backend->park_calls == 0);
+    REQUIRE(warnings.size() == 1);
+    CHECK(warnings[0].find("Cannot park while a print is active") != std::string::npos);
+}
+
+TEST_CASE_METHOD(ToolSwitcherGateFixture, "Park does nothing with the carriage already empty",
+                 "[ams][tool-switcher][1784]") {
+    set_print_state(helix::PrintJobState::STANDBY);
+    ToolState::instance().update_from_status(
+        nlohmann::json{{"toolchanger", {{"tool_number", -1}}}});
+    REQUIRE(ToolState::instance().active_tool_index() == -1);
+
+    ToolSwitcherWidget widget(printer_state);
+    ToolSwitcherTestAccess::park(widget);
+
+    CHECK(backend->park_calls == 0);
+}
+
+TEST_CASE_METHOD(ToolSwitcherGateFixture, "Park is never sent to a backend that cannot park",
+                 "[ams][tool-switcher][1784]") {
+    set_print_state(helix::PrintJobState::STANDBY);
+    backend->can_park = false;
+
+    ToolSwitcherWidget widget(printer_state);
+    ToolSwitcherTestAccess::park(widget);
+
+    CHECK(backend->park_calls == 0);
 }
