@@ -42,7 +42,7 @@ All developer documentation lives here. When working on features, look up the re
 | `THEME_CONTRIBUTOR_GUIDE.md` | For people **creating themes** — JSON schema, palette design, testing. No C++ needed. |
 | `LAYOUT_SYSTEM.md` | Layout system internals: LayoutManager C++ API, auto-detection logic, and the home widget grid (`GridLayout` sizing, `assets/config/default_layout.json` anchors, widget span/`min_colspan` authoring) |
 | `HOME_EDIT_MODE.md` | Home-grid edit mode: the session over a page, the selection, grab and click rules, the event shield and the events that end a gesture (release, press lost, indev reset), the carousel swipe policy, cross-page drag and the next-page slot, page creation and pruning. Read before touching `GridEditMode` or HomePanel's edit handlers |
-| `PANEL_WIDGET_GUIDE.md` | Home widget authoring: registry def, widget class, XML; the measured-layout reference pattern (pure decision fn, subjects, binds) with nozzle_temps as exemplar |
+| `PANEL_WIDGET_GUIDE.md` | Home widget authoring: registry def, widget class, XML; the measured-layout reference pattern (pure decision fn, subjects, binds) with nozzle_temps as exemplar; the shared size ladder (`SizeRung`, content chrome, `LiveTileOwner`, `value_status`), the seven sized widgets built on it and the checklist they pass (centring, covered-panel gate, language switch, toolhead-safety census, gate owner row, ESP32 PSRAM statics) |
 | `PLUGIN_DEVELOPMENT.md` | Writing a Lua plugin: manifest, XML rules, the helix.* API, permissions, limits, debugging |
 | `PLUGIN_TUTORIAL.md` | Step-by-step build of the maintenance-meter widget plugin: annotated code, the why of each decision, the adaptive size ladder |
 | `PAGE_SCROLL_BUTTONS.md` | Chevron page-scroll gutter: where it auto-attaches and why it stops at a home widget tile. On by default on ESP32 only |
@@ -51,7 +51,7 @@ All developer documentation lives here. When working on features, look up the re
 | `UI_TESTING.md` | Headless LVGL testing, UITest utilities |
 | `architecture/16-gcode-pipeline.md` | G-code from file to screen: parse/scan paths, footer fast path, tools-used cache, render modes, object picking. Start here for viewer work |
 | `GCODE_VIEWER_CONFIG.md` | GCode viewer configuration |
-| `BED_MESH_RENDERING_INTERNALS.md` | Bed mesh 3D rendering internals |
+| `BED_MESH_RENDERING_INTERNALS.md` | Bed mesh 3D rendering internals, the thread-free static mode with its sticky 2D fallback, and `BedMeshState` / `compute_mesh_stats` |
 | `GPU_ACCELERATION.md` | What the GPU is worth on real boards: measured EGL vs software CPU/throughput/RSS per board, the four draw-unit rungs, why nanovg is unusable upstream, and the `LV_DRAW_BUF_STRIDE_ALIGN` invariant. Read before proposing rendering-path work |
 | `FILAMENT_PATH_CANVAS.md` | Filament-path canvas: 3-layer model, pathgeo arc-fillet routing, shared tube stroker, RenderCtx phases, topology renderers (linear/hub/parallel/mixed) |
 | `PRE_RENDERED_IMAGES.md` | Pre-rendered image pipeline |
@@ -64,7 +64,7 @@ All developer documentation lives here. When working on features, look up the re
 |-----|-------------|
 | `LABEL_PRINTER_SYSTEM.md` | Label printing: Brother QL, Phomemo, Niimbot, MakeID protocols; USB/TCP/Bluetooth transports |
 | `FILAMENT_MANAGEMENT.md` | Filament system hub: multi-backend architecture, slot metadata, filament-op dispatch, endless spool, UI panels, dryer commands, device ops, mock mode, add-a-backend guide |
-| `FILAMENT_ENVIRONMENT_ZONES.md` | Filament boxes (heated and passive): the `EnvironmentZone` model, the three discovery paths, drying-state folding and the concurrency cap, the tabs-vs-list presentation rule, and what a backend must publish to get a box on screen |
+| `FILAMENT_ENVIRONMENT_ZONES.md` | Filament boxes (heated and passive): the `EnvironmentZone` model, the three discovery paths, drying-state folding and the concurrency cap, the tabs-vs-list presentation rule, what a backend must publish to get a box on screen, and the `DryerSummary` that folds box, chamber and bed drying for the Dryer home widget |
 | `FILAMENT_BACKEND_AFC.md`, `FILAMENT_BACKEND_OPENAMS.md`, `FILAMENT_BACKEND_HAPPY_HARE.md`, `FILAMENT_BACKEND_ACE.md`, `FILAMENT_BACKEND_TOOLCHANGER.md`, `FILAMENT_BACKEND_AD5X_IFS.md`, `FILAMENT_BACKEND_CFS.md`, `FILAMENT_BACKEND_QIDI_BOX.md`, `FILAMENT_BACKEND_SNAPMAKER_U1.md` | One leaf per filament backend: protocol, data sources, G-code commands, topology, capability table |
 | `FILAMENT_BACKEND_MEDUSAHC.md` | MedusaHC hotend changer. NOT its own backend: it is a klipper-toolchanger printer plus two add-ons (dock sensors that outrank `toolchanger.tool_number`, and a servo feeder). Read with `FILAMENT_BACKEND_TOOLCHANGER.md` |
 | `printer-research/QIDI_BOX_HEATER.md` | QIDI Box PTC heater RE reference: Klipper objects, G-code commands, firmware variants, HelixScreen integration |
@@ -77,7 +77,7 @@ All developer documentation lives here. When working on features, look up the re
 | `BELT_TUNER.md` | Pluck-based belt tension tuner: Klipper UDS accel stream, pluck detection, harmonic pitch estimation. **Read its Validation status section first - the feature is green in CI and has never measured a real belt, and its thresholds are circular** |
 | `BELT_TENSION.md` | Belt Tension check: two `TEST_RESONANCES` sweeps compared as curves, the Start gate, provisional verdict constants, mock knobs |
 | `PREPRINT_PREDICTION.md` | ETA prediction engine, phase timing, weighted history |
-| `EXCLUDE_OBJECTS.md` | Object exclusion, per-object thumbnails, slicer setup |
+| `EXCLUDE_OBJECTS.md` | Object exclusion, per-object thumbnails, slicer setup, the read-only home tile and the map's Mini mode |
 | `PRINT_STATE_MACHINE.md` | Print lifecycle state machine: states, transitions, guards, resource lifecycle |
 | `PRINT_CONTROL_BUTTONS.md` | PrintControlButtons controller: owned subjects, pure view function, optimistic pending-action machine, 2x1 home widget, panel delegation |
 | `PRINT_START_PROFILES.md` | Print start phase detection, developer guide: the observer pipeline, arming, the five signal sources (console, probe lines, bed-mesh flap, toolhead position, fallbacks), evidence kinds, JSON profile schema, authoring a profile for a new printer, threading/lifetime rules, and which tests pin what |

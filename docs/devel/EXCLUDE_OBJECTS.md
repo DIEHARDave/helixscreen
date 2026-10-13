@@ -292,6 +292,50 @@ The side list is built from `ui_xml/components/exclude_object_side_list.xml`, th
 
 ---
 
+## The home tile and Mini mode
+
+The `exclude_map` home widget (`ExcludeMapWidget`, in `src/ui/panel_widgets/`) shows the objects of
+a multi-object print on the dashboard. It is one of the sized widgets in
+[PANEL_WIDGET_GUIDE.md](PANEL_WIDGET_GUIDE.md#the-sized-widget-family): its gate is
+`printer_has_exclude_object`, and `decide_exclude_map_layout()`
+picks the rung.
+
+- **It is read-only.** A tap anywhere on the tile, or the Full rung's "Skip objects..." button,
+  calls `ExcludeMapWidget::open_full_map()`; nothing on the tile excludes an object. The map it
+  holds is created with an empty tap callback, and the Mini component's XML is not
+  clickable, so the tile keeps the touch. An exclusion still goes through the confirmation
+  modal and the undo window above.
+- **Three states.** `classify_exclude_map()` returns `Objects` (printing, two or more objects:
+  the map and the counts), `SingleObject` (nothing to skip) or `NoObjects`. The last two draw a
+  placeholder at Glance and Strip only. Two objects is `kExcludeMapMinObjects`, the same
+  threshold the print status objects button needs.
+- **Counts.** `count_objects()` reports defined, skipped and remaining; a name the print no
+  longer defines is not counted as skipped, because the excluded set outlives a file change for
+  a moment. The rung is measured against the widest counts the object count's digit width can
+  show, so the layout holds still as numbers change.
+- **The map is built only while it is seen.** `ExcludeMapWidget` creates its `ExcludeObjectMapView`
+  when it owns the tile, the home panel is active and the verdict shows the map, destroys it on
+  deactivate, and calls `resize()` when its slot changes.
+
+`ExcludeObjectMapView::create()` takes an `ExcludeMapMode`. **Interactive** is the original view:
+numbered, tappable objects over a preview card, with a close button. **Mini**
+(the `exclude_object_map_mini` component) takes a normal slot in a tile and draws outlines
+alone, with nothing to tap. In Mini the object printing now is drawn in the primary colour,
+heavier and at full strength; every other live object sits back at 70% opacity; an excluded
+object is faded to the badge's excluded opacity and hatched. `hatch_polygon()`
+(a pure, LVGL-free header under `include/`) is the geometry: lines running up and to the right, one every
+`spacing` pixels along the x + y axis, clipped to the polygon by the even-odd rule so a concave
+outline hatches only its material. The drawing surface is rebuilt by `resize()` only when the plate
+area's size differs from the one it was built for.
+
+`PrintStatusPanel::push_overlay_with_exclude_map()` is the tile's way in: it pushes print status
+and opens the full map over its preview once the panel is active, so the canvas is sized against a
+laid-out card. The request lives in `exclude_map_requested_`, is armed after the push (an ordinary
+`push_overlay()` clears it, so a request belongs to the push that made it), and is dropped when the
+panel deactivates or its tree is destroyed.
+
+---
+
 ## Choosing objects before a print starts
 
 Print details lets the user pick objects to skip before tapping Print. There is no
