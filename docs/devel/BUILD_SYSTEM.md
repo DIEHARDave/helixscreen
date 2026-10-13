@@ -268,7 +268,6 @@ docker/
 ├── Dockerfile.k1          # K1 static toolchain (Bootlin mips32el-musl, GCC 12)
 ├── Dockerfile.k1-dynamic  # K1 dynamic toolchain (crosstool-NG, GCC 7.5, glibc 2.29)
 ├── Dockerfile.k2          # K2 toolchain (Bootlin armv7-eabihf-musl, GCC 12)
-├── Dockerfile.ad5x        # AD5X toolchain (MIPS, ZMOD)
 ├── Dockerfile.snapmaker-u1 # Snapmaker U1 toolchain
 └── Dockerfile.x86         # x86 native/container build
 ```
