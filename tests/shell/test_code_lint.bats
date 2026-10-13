@@ -183,7 +183,7 @@ setup() {
 
 # --- Concrete Moonraker types must not leak outside the network layer (Plan 3) ---
 # Every consumer of the Moonraker network layer now depends on the interfaces
-# (helix::IMoonrakerClient, IMoonrakerAPI, and the ten IXxxAPI sub-API
+# (helix::IMoonrakerClient, helix::IMoonrakerAPI, and the ten helix::IXxxAPI sub-API
 # interfaces in include/i_moonraker_sub_apis.h), not the concrete classes. The
 # concretes live behind MoonrakerManager, which owns them via
 # std::unique_ptr<MoonrakerAPI> (the concrete facade; the mock inherits it) /
@@ -241,7 +241,7 @@ moonraker_concrete_pattern() {
     echo "Concrete Moonraker types referenced outside the network layer:"
     printf '%s\n' "$offenders"
     echo
-    echo "Consumers depend on the interfaces only: IMoonrakerAPI (include/i_moonraker_api.h),"
+    echo "Consumers depend on the interfaces only: helix::IMoonrakerAPI (include/i_moonraker_api.h),"
     echo "helix::IMoonrakerClient (include/i_moonraker_client.h), and the ten sub-API"
     echo "interfaces in include/i_moonraker_sub_apis.h. The concretes live behind"
     echo "MoonrakerManager (include/moonraker_manager.h), which constructs them."

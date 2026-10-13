@@ -61,12 +61,12 @@ TEST_CASE_METHOD(HelixTestFixture, "Config singleton is sandboxed and reset per 
         // Config::init()/save() write rolling backups through these, and two
         // fixtures delete the fallback outright. Before the sandbox that meant
         // the developer's real $HOME/.helixscreen/*.backup, every test run.
-        REQUIRE(under_sandbox(AppConstants::Update::state_dir()));
-        REQUIRE(under_sandbox(AppConstants::Update::backup_fallback_dir()));
-        REQUIRE(under_sandbox(AppConstants::Update::config_backup_fallback()));
-        REQUIRE(under_sandbox(AppConstants::Update::env_backup_fallback()));
-        REQUIRE(under_sandbox(AppConstants::Update::config_backup_primary()));
-        REQUIRE(under_sandbox(AppConstants::Update::env_backup_primary()));
+        REQUIRE(under_sandbox(helix::app_constants::update::state_dir()));
+        REQUIRE(under_sandbox(helix::app_constants::update::backup_fallback_dir()));
+        REQUIRE(under_sandbox(helix::app_constants::update::config_backup_fallback()));
+        REQUIRE(under_sandbox(helix::app_constants::update::env_backup_fallback()));
+        REQUIRE(under_sandbox(helix::app_constants::update::config_backup_primary()));
+        REQUIRE(under_sandbox(helix::app_constants::update::env_backup_primary()));
     }
 
     SECTION("ToolState persists tool_spools.json inside the sandbox, not the repo") {

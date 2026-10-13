@@ -197,6 +197,9 @@ class MotionPanel : public OverlayBase {
     /// and place the marker. No-op while another tab is showing.
     void layout_bed_map();
 
+    /// Bed tab: draw the reference grid on the plate (its DRAW_MAIN hook).
+    void draw_bed_grid(lv_event_t* e) const;
+
     /// Clamp one axis against its bounds. Partial travel is silent; a fully
     /// clamped FRESH press (anything but a hold repeat tick) warns every time
     /// with the limit it hit. Returns the permitted delta, 0.0 when blocked.

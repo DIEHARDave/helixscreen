@@ -97,7 +97,7 @@ class ScopedWakeIndev {
         lv_indev_set_read_cb(indev_, wake_indev_read_cb);
         // Production value, applied in DisplayManager::init()
         // (src/application/display_manager.cpp) — LVGL's own default is 400ms.
-        lv_indev_set_long_press_time(indev_, AppConstants::Input::LONG_PRESS_MS);
+        lv_indev_set_long_press_time(indev_, helix::app_constants::input::LONG_PRESS_MS);
     }
     ~ScopedWakeIndev() {
         g_wake_indev_state.state = LV_INDEV_STATE_RELEASED;

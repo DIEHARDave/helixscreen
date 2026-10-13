@@ -2064,9 +2064,7 @@ void PrintSelectDetailView::toggle_exclude_mode() {
     targets.controls_name = "options_section";
     targets.gcode_viewer = gcode_viewer_;
     targets.thumbnail_mode = lv_subject_get_int(&detail_viewer_hidden_) == 1;
-    const auto bed = helix::bed_dimensions(api_, printer_state_);
-    targets.bed_w_mm = bed.w_mm;
-    targets.bed_h_mm = bed.h_mm;
+    targets.bed = helix::bed_dimensions(api_, printer_state_);
     exclude_mode_.show(targets, &exclude_objects_, helix::ui::ExcludeTapMode::Toggle,
                        [this](const std::string& name) { toggle_exclude_pick(name); });
 }

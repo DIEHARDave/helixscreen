@@ -165,7 +165,7 @@ class BedMeshPanel : public OverlayBase {
     void save_profile_as(const std::string& name, std::function<void()> on_saved,
                          std::function<void(const std::string&)> on_failed);
 
-    void launch_calibration(IMoonrakerAPI* api, int expected_probes, int probe_samples = 1);
+    void launch_calibration(helix::IMoonrakerAPI* api, int expected_probes, int probe_samples = 1);
     // ========== Subject Manager (RAII cleanup) ==========
     SubjectManager subjects_;
 

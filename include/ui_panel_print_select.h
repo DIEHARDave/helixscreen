@@ -248,7 +248,7 @@ class PrintSelectPanel : public PanelBase {
      * @param printer_state Reference to helix::PrinterState for mock detection
      * @param api Pointer to IMoonrakerAPI for file operations
      */
-    PrintSelectPanel(helix::PrinterState& printer_state, IMoonrakerAPI* api);
+    PrintSelectPanel(helix::PrinterState& printer_state, helix::IMoonrakerAPI* api);
 
     /**
      * @brief Destructor - cleanup observers
@@ -429,7 +429,7 @@ class PrintSelectPanel : public PanelBase {
      *
      * @param api Pointer to IMoonrakerAPI (may be nullptr to disconnect)
      */
-    void set_api(IMoonrakerAPI* api);
+    void set_api(helix::IMoonrakerAPI* api);
 
     /**
      * @brief Set selected file data and update subjects
@@ -608,7 +608,7 @@ class PrintSelectPanel : public PanelBase {
      *
      * @param job The queue entry to start (job_id + queued filename)
      */
-    void start_queued_job(const JobQueueEntry& job);
+    void start_queued_job(const helix::JobQueueEntry& job);
 
     /**
      * @brief Show the enriched pre-flight filament check modal.
@@ -1182,7 +1182,8 @@ class PrintSelectPanel : public PanelBase {
  * @param api Pointer to IMoonrakerAPI (may be nullptr)
  * @return Pointer to the global instance
  */
-PrintSelectPanel* get_print_select_panel(helix::PrinterState& printer_state, IMoonrakerAPI* api);
+PrintSelectPanel* get_print_select_panel(helix::PrinterState& printer_state,
+                                         helix::IMoonrakerAPI* api);
 
 /**
  * @brief Get reference to the global PrintSelectPanel instance

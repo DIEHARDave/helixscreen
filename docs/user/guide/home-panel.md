@@ -328,7 +328,7 @@ These are the same 5 groups the Widget Catalog uses on the device.
 | **Macros** | One-tap shortcut to open the [Macros](advanced.md#macro-execution) panel for browsing and executing Klipper macros. | 1x1 | 0.5x1 | Full grid | Yes | — |
 | **G-code Console** | One-tap shortcut to open the [G-code Console](advanced.md#g-code-console) overlay for sending commands and viewing Klipper responses. See [G-code Console Widget](#g-code-console-widget) below. | 1x1 | 0.5x1 | Full grid | Yes | — |
 | **Motion** | One-tap shortcut to open the [Motion](motion.md) panel for jogging the toolhead and homing. | 1x1 | 0.5x1 | Full grid | Yes | — |
-| **Tool Switcher** | Quick tool switching for multi-tool printers (IDEX, toolchangers, multi-head). Shows the available tools and lets you switch the active tool with one tap. See [Tool Switcher Widget](#tool-switcher-widget) below. | 1x1 | 1x1 | 2x2 | Yes | Multi-tool printer |
+| **Tool Switcher** | Quick tool switching for multi-tool printers (IDEX, toolchangers, multi-head). Shows each tool with its loaded filament color, lets you switch the active tool with one tap, and parks the mounted tool on printers that support it. See [Tool Switcher Widget](#tool-switcher-widget) below. | 1x1 | 1x1 | 2x2 | Yes | Multi-tool printer |
 | **Power** | Toggle a Moonraker power device (PSU, lights, etc.) with one tap. You can add multiple instances, each bound to a different device. Shows the device name, state, and a customizable icon. | 1x1 | 1x1 | Full grid | Yes | Power devices |
 | **LED Light** | Turns one light on or off — pick which one, or **All lights**, from the gear icon in Edit Mode; defaults to the chamber light. At 2x1 or wider, an arrow next to the bulb opens full color, brightness, and effects for it in the LEDs overlay. You can add more than one, each controlling a different light. | 1x1 | 0.5x1 | Full grid | Yes | A light HelixScreen can switch |
 | **LED Controls** | One-tap shortcut to open the LEDs overlay directly, on whichever light you last looked at (or the chamber light). | 1x1 | 0.5x1 | Full grid | Yes | Any LED device |
@@ -441,7 +441,7 @@ While **not** in Edit Mode, widgets respond to taps and other gestures:
 | Macros | Opens the Macros panel overlay |
 | G-code Console | Opens the G-code Console overlay |
 | Motion | Opens the Motion panel overlay |
-| Tool Switcher | Switches the active tool (compact size opens a tool picker; larger sizes show tappable tool pills) |
+| Tool Switcher | Switches to the tapped tool; tapping the mounted tool, or the single large button on small widgets, opens the tool picker. **Park** docks the mounted tool |
 | Power | Toggles the bound power device |
 | Shutdown/Reboot | Shows confirmation, then shuts down/reboots |
 | Firmware Restart | Restarts Klipper firmware |
@@ -645,21 +645,27 @@ The Tool Switcher widget lets you change the active tool on multi-tool printers 
 
 ### How It Looks
 
-The widget adapts to its size:
+Each tool gets its own button, sized so a fingertip can always hit it. How much the widget shows depends on how big you make it:
 
-- **Compact (1x1)** - shows a swap icon above the current tool's label (e.g., "Tool 1"). Tap it to open a **tool picker** popup listing every tool. The active tool is highlighted; tap any other tool to switch to it.
-- **Larger sizes** — shows a row (or two rows) of tappable **tool pills**, one per tool. The active tool's pill is highlighted. If there are more tools than fit, the row scrolls horizontally and keeps the active tool in view.
+- **A row of tool buttons** when every tool fits: one button per tool, with the mounted tool highlighted. Each button shows the tool's friendly name over its G-code number ("Tool 1" over "T0"), or just "T0" when the button is narrow. A strip along the bottom of the button shows the color of the filament loaded in that tool.
+- **One large button** when the tools do not all fit at a usable size. It shows the mounted tool, for example "Tool 2 (T1)", and its temperature when there is room. Tap it to open a **tool picker** listing every tool.
+- **A detail list** under the row on tall widgets: the mounted tool's material and temperature first, then the other tools in smaller text. Temperatures of 150°C and up show in the hot color.
 
-The widget updates automatically when the active tool changes — whether you switch it here, run a tool-change macro, or it changes during a print.
+On a Snapmaker U1 the tools are called toolheads ("Toolhead 1"). If your Klipper config gives a tool its own name, such as `[tool Left]` with klipper-toolchanger, that name appears instead of "Tool N": "Left (T0)", or "T0" where space is tight.
+
+The widget updates automatically when the active tool changes, whether you switch it here, run a tool-change macro, or it changes during a print.
 
 ### Switching Tools
 
-Tap a tool (or pick one from the popup) to make it active.
+Tap a tool that is not mounted to switch to it. Tapping the tool that is already mounted opens the tool picker instead.
 
-- **When idle**, the tool change happens immediately.
-- **When printing or paused**, a confirmation dialog appears first — changing tools mid-print can cause issues, so you have to confirm before it proceeds.
+- **When idle**, the tool change happens right away.
+- **When paused**, a confirmation dialog appears first, because changing tools mid-print can cause problems.
+- **While printing**, and while spools are [drying on the bed](temperature.md#drying-filament-on-the-bed), switching is unavailable.
 
-Tapping the tool that's already active does nothing.
+### Parking the Tool
+
+On printers that can leave the carriage empty (Snapmaker U1 and klipper-toolchanger setups) the widget also has a **Park** button, which puts the mounted tool back in its dock. It sits at the end of the row when there is room, beside the large button on smaller widgets, and otherwise in the tool picker. Park is greyed out when no tool is mounted, and unavailable while a print is running or paused.
 
 > **Tool Switcher vs. Active Tool Badge:** The Tool Switcher is an optional, interactive widget you add to your dashboard. The [Active Tool Badge](#active-tool-badge) is a small read-only indicator that always appears in the top bar on multi-tool printers. The badge shows the current tool; the widget lets you change it.
 

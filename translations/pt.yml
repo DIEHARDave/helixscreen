@@ -397,6 +397,7 @@ translations:
   Border transparency (0 = invisible, 255 = solid): Transparência da borda (0 = invisível,
     255 = sólido)
   Both: Ambos
+  Bouncing Logo: Logo Saltitante
   Bouncing Printer: Impressora Saltitante
   Bowden Length: 'Comprimento do bowden'
   Bowden tube length from hub to toolhead: 'Comprimento do tubo bowden do hub ao cabeçote'
@@ -528,6 +529,7 @@ translations:
     diretório temporário indisponível'
   'Cannot modify G-code: scan result not available': 'Não é possível modificar G-code:
     resultado da análise indisponível'
+  Cannot park while a print is active: 'Não é possível estacionar enquanto uma impressão está ativa'
   Cannot perform this action now: Não é possível executar esta ação agora
   'Cannot remap G-code: no temp directory available': 'Não é possível remapear o G-code:
     nenhum diretório temporário disponível'
@@ -544,6 +546,8 @@ translations:
   Cannot save offsets while printing: Não é possível salvar offsets durante a impressão
   Cannot unload while a print is active: Não é possível descarregar enquanto uma impressão está ativa
   'Capabilities: ': 'Capacidades: '
+  Carriage empty: Carro vazio
+  Carriage empty · tap a head: 'Carro vazio · toque numa cabeça'
   Cartographer scan calibrate sent — use Z-Offset panel to adjust: Cartographer calibração
     de varredura enviada — use o painel Z-Offset para ajustar
   Cartographer touch calibrate sent: Cartographer calibração por toque enviada
@@ -628,6 +632,7 @@ translations:
   Choose an existing filament, or tap + New to create one.: Escolha um filamento existente
     ou toque em + Novo para criar um.
   Choose display language: Escolha o idioma de exibição
+  Choose head: Escolher cabeça
   Choose how frames are captured during printing: Escolha como os quadros são capturados
     durante a impressão
   Choose rendering mode for G-code visualization: Escolha o modo de renderização para
@@ -2354,6 +2359,7 @@ translations:
   Park: 'Estacionar'
   Park the AFC system: 'Estacionar o sistema AFC'
   Park Toolhead: 'Estacionar o cabeçote'
+  Parking toolhead: 'Estacionando o cabeçote'
   Part: Peça
   Part Cooling Fan: Ventoinha de Resfriamento da Peça
   Part Fan: Ventoinha da Peça
@@ -4036,6 +4042,7 @@ translations:
   wpa_supplicant is not running. WiFi features unavailable.: wpa_supplicant não está em execução. Os recursos de WiFi estão indisponíveis.
   you have: você tem
   '{:.0f}-{:.0f} Hz · about {} min': '{:.0f}-{:.0f} Hz · cerca de {} min'
+  '{} ({})': '{} ({})'
   '{} Hardware Issues': '{} problemas de hardware'
   '{} Issues Detected': '{} problemas detectados'
   '{} LED strips available': '{} fitas de LED disponíveis'
@@ -4092,6 +4099,8 @@ translations:
   '{} widgets': '{} widgets'
   ? '{} will switch to a slot whose filament type AND colour both match the active spool and whose own port sensor reads filament present.'
   : '{} mudará para um slot cujo tipo de filamento E cor correspondam ao carretel ativo e cujo próprio sensor de porta detecte filamento presente.'
+  '{} · {}': '{} · {}'
+  '{} · {} · {}': '{} · {} · {}'
   '{} — response timed out': '{} — tempo esgotado'
   '{} → {}: no filament loaded.': '{} → {}: nenhum filamento carregado.'
   '{}:{:02} elapsed': '{}:{:02} decorrido'

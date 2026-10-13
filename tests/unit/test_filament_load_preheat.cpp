@@ -75,7 +75,7 @@ int db_min(const std::string& material) {
 /// AmsOperationSidebar::get_load_temp_for_slot()
 int sidebar_load_temp(int target_slot, const SlotInfo* slot, const SlotInfo* ext) {
     auto resolved = resolve_load_preheat_material(target_slot, slot, ext);
-    return resolved ? resolved->temp_c : AppConstants::Ams::DEFAULT_LOAD_PREHEAT_TEMP;
+    return resolved ? resolved->temp_c : helix::app_constants::ams::DEFAULT_LOAD_PREHEAT_TEMP;
 }
 
 /// FilamentPanel::resolve_preheat_temp(). @p preset is the panel's selected
@@ -272,7 +272,8 @@ TEST_CASE("Only where nothing is named do the surfaces diverge, and deliberately
           "[filament][preheat][parity]") {
     const SlotInfo nameless = lane("");
 
-    CHECK(sidebar_load_temp(0, &nameless, nullptr) == AppConstants::Ams::DEFAULT_LOAD_PREHEAT_TEMP);
+    CHECK(sidebar_load_temp(0, &nameless, nullptr) ==
+          helix::app_constants::ams::DEFAULT_LOAD_PREHEAT_TEMP);
 
     const PreheatTarget with_preset =
         panel_preheat(0, &nameless, nullptr, /*preset=*/"PETG", /*min_extrude=*/170);

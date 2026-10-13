@@ -95,17 +95,17 @@ std::string platform_tarball(const std::string& version) {
 
 TEST_CASE("Self-restart sentinel creates a missing fallback dir", "[update_checker][sentinel]") {
     namespace fs = std::filesystem;
-    const std::string prev = AppConstants::Update::detail::backup_fallback_dir_ref();
+    const std::string prev = helix::app_constants::update::detail::backup_fallback_dir_ref();
     const fs::path root =
         fs::temp_directory_path() / ("helix-sentinel-" + std::to_string(getpid()));
     const fs::path dir = root / ".helixscreen";
     fs::remove_all(root);
-    AppConstants::Update::detail::backup_fallback_dir_ref() = dir.string();
+    helix::app_constants::update::detail::backup_fallback_dir_ref() = dir.string();
 
     CHECK(UpdateChecker::write_self_restart_sentinel());
     CHECK(fs::exists(dir / "self_restart_sentinel"));
 
-    AppConstants::Update::detail::backup_fallback_dir_ref() = prev;
+    helix::app_constants::update::detail::backup_fallback_dir_ref() = prev;
     fs::remove_all(root);
 }
 
@@ -1594,7 +1594,6 @@ TEST_CASE("do_install never runs the installer in test mode",
     // A child process makes the install: past the installer, do_install()
     // ends the process to restart it, which would take the assertions with it.
     const pid_t pid = fork();
-    REQUIRE(pid >= 0);
     if (pid == 0) {
         ScopedRuntimeConfig scoped_config;
         get_runtime_config()->test_mode = true;
@@ -1604,6 +1603,7 @@ TEST_CASE("do_install never runs the installer in test mode",
         UpdateCheckerTestAccess::do_install(checker, tarball);
         _exit(0);
     }
+    REQUIRE(pid > 0);
     int wstatus = 0;
     for (int i = 0; i < 3000 && waitpid(pid, &wstatus, WNOHANG) == 0; ++i)
         usleep(10 * 1000);

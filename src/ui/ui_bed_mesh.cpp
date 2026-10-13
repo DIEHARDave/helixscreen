@@ -799,7 +799,7 @@ bool ui_bed_mesh_set_data(lv_obj_t* widget, const float* const* mesh, int rows, 
  */
 void ui_bed_mesh_set_bounds(lv_obj_t* widget, double bed_x_min, double bed_x_max, double bed_y_min,
                             double bed_y_max, double mesh_x_min, double mesh_x_max,
-                            double mesh_y_min, double mesh_y_max) {
+                            double mesh_y_min, double mesh_y_max, bool circular_bed) {
     if (!widget) {
         spdlog::error("[bed_mesh] ui_bed_mesh_set_bounds: NULL widget");
         return;
@@ -813,7 +813,7 @@ void ui_bed_mesh_set_bounds(lv_obj_t* widget, double bed_x_min, double bed_x_max
 
     with_renderer(data, [&]() {
         bed_mesh_renderer_set_bounds(data->renderer, bed_x_min, bed_x_max, bed_y_min, bed_y_max,
-                                     mesh_x_min, mesh_x_max, mesh_y_min, mesh_y_max);
+                                     mesh_x_min, mesh_x_max, mesh_y_min, mesh_y_max, circular_bed);
     });
     data->static_dirty = true;
 
@@ -1092,7 +1092,7 @@ bool ui_bed_mesh_set_data(lv_obj_t*, const float* const*, int, int) {
 }
 
 void ui_bed_mesh_set_bounds(lv_obj_t*, double, double, double, double, double, double, double,
-                            double) {}
+                            double, bool) {}
 
 void ui_bed_mesh_set_rotation(lv_obj_t*, int, int) {}
 

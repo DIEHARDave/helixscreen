@@ -10,9 +10,9 @@
 #include <string>
 
 // Forward declarations
-class IMoonrakerAPI;
 
 namespace helix {
+class IMoonrakerAPI;
 
 /**
  * @brief Initialize print completion notification system

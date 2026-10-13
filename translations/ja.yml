@@ -371,6 +371,7 @@ translations:
   Border Width: 境界線の幅
   Border transparency (0 = invisible, 255 = solid): 境界線の透明度 (0 = 透明、255 = 不透明)
   Both: 両方
+  Bouncing Logo: バウンドロゴ
   Bouncing Printer: バウンドプリンター
   Bowden Length: 'ボーデン長'
   Bowden tube length from hub to toolhead: 'ハブからツールヘッドまでのボーデンチューブ長'
@@ -488,6 +489,7 @@ translations:
   'Cannot delete file: printer not connected': 'ファイルを削除できません: プリンター未接続'
   'Cannot modify G-code: no temp directory available': 'G-code を変更できません: 一時ディレクトリがありません'
   'Cannot modify G-code: scan result not available': 'G-code を変更できません: スキャン結果がありません'
+  Cannot park while a print is active: '印刷中はパーキングできません'
   Cannot perform this action now: 現在この操作は実行できません
   'Cannot remap G-code: no temp directory available': 'G-codeをリマップできません: 一時ディレクトリが利用できません'
   'Cannot remap: internal error': 'リマップできません: 内部エラー'
@@ -500,6 +502,8 @@ translations:
   Cannot save offsets while printing: 印刷中はオフセットを保存できません
   Cannot unload while a print is active: 印刷中は排出できません
   'Capabilities: ': '機能: '
+  Carriage empty: キャリッジが空
+  Carriage empty · tap a head: 'キャリッジが空 · ヘッドをタップ'
   Cartographer scan calibrate sent — use Z-Offset panel to adjust: Cartographerスキャンキャリブレーション送信済み
     — Z-Offsetパネルで調整してください
   Cartographer touch calibrate sent: Cartographerタッチキャリブレーション送信済み
@@ -578,6 +582,7 @@ translations:
   Choose Model: モデルを選択
   Choose an existing filament, or tap + New to create one.: 既存のフィラメントを選択するか、+ 新規をタップして作成してください。
   Choose display language: 表示言語を選択
+  Choose head: ヘッドを選択
   Choose how frames are captured during printing: 印刷中のフレームキャプチャ方法を選択
   Choose rendering mode for G-code visualization: G-codeの視覚化レンダリングモードを選択
   Choose rendering mode for bed mesh visualization: ベッドメッシュの視覚化レンダリングモードを選択
@@ -2213,6 +2218,7 @@ translations:
   Park: 'パーキング'
   Park the AFC system: 'AFCシステムをパーキング'
   Park Toolhead: 'ツールヘッドをパーキング'
+  Parking toolhead: 'ツールヘッドをパーキング中'
   Part: パーツ
   Part Cooling Fan: パーツ冷却ファン
   Part Fan: パーツファン
@@ -3775,6 +3781,7 @@ translations:
   wpa_supplicant is not running. WiFi features unavailable.: wpa_supplicant が動作していません。WiFi 機能は利用できません。
   you have: 現在は
   '{:.0f}-{:.0f} Hz · about {} min': '{:.0f}-{:.0f} Hz · 約{}分'
+  '{} ({})': '{}（{}）'
   '{} Hardware Issues': 'ハードウェアの問題 {} 件'
   '{} Issues Detected': '問題を {} 件検出'
   '{} LED strips available': '{} 個の LED ストリップが利用可能です'
@@ -3830,6 +3837,8 @@ translations:
   '{} widgets': ウィジェット {} 個
   ? '{} will switch to a slot whose filament type AND colour both match the active spool and whose own port sensor reads filament present.'
   : '{} は、フィラメントの種類と色の両方がアクティブなスプールと一致し、かつ自身のポートセンサーがフィラメントを検知しているスロットに切り替えます。'
+  '{} · {}': '{} · {}'
+  '{} · {} · {}': '{} · {} · {}'
   '{} — response timed out': '{} — 応答タイムアウト'
   '{} → {}: no filament loaded.': '{} → {}: フィラメントが装填されていません。'
   '{}:{:02} elapsed': 経過 {}:{:02}

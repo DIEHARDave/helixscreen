@@ -38,9 +38,9 @@ class PrinterState;
  *       [](const JobQueueStatus& status) { ... },
  *       [](const auto& err) { ... });
  */
-class MoonrakerQueueAPI : public IQueueAPI {
+class MoonrakerQueueAPI : public helix::IQueueAPI {
   public:
-    using StatusCallback = std::function<void(const JobQueueStatus&)>;
+    using StatusCallback = std::function<void(const helix::JobQueueStatus&)>;
     using SuccessCallback = std::function<void()>;
     using ErrorCallback = std::function<void(const MoonrakerError&)>;
 

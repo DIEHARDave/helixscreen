@@ -370,6 +370,7 @@ translations:
   Border Width: 边框宽度
   Border transparency (0 = invisible, 255 = solid): 边框透明度（0 = 不可见，255 = 实心）
   Both: 两者
+  Bouncing Logo: 弹跳标志
   Bouncing Printer: 弹跳打印机
   Bowden Length: '波顿管长度'
   Bowden tube length from hub to toolhead: '从集线器到工具头的波顿管长度'
@@ -487,6 +488,7 @@ translations:
   'Cannot delete file: printer not connected': '无法删除文件: 打印机未连接'
   'Cannot modify G-code: no temp directory available': '无法修改 G-code: 无可用临时目录'
   'Cannot modify G-code: scan result not available': '无法修改 G-code: 扫描结果不可用'
+  Cannot park while a print is active: '打印时无法停放'
   Cannot perform this action now: 当前无法执行此操作
   'Cannot remap G-code: no temp directory available': 无法重新映射 G-code：没有可用的临时目录
   'Cannot remap: internal error': 无法重新映射：内部错误
@@ -499,6 +501,8 @@ translations:
   Cannot save offsets while printing: 打印时无法保存偏移
   Cannot unload while a print is active: 打印时无法卸载
   'Capabilities: ': '功能: '
+  Carriage empty: 未装载打印头
+  Carriage empty · tap a head: '未装载打印头 · 点击一个打印头'
   Cartographer scan calibrate sent — use Z-Offset panel to adjust: Cartographer扫描校准已发送
     — 使用Z偏移面板进行调整
   Cartographer touch calibrate sent: Cartographer触摸校准已发送
@@ -577,6 +581,7 @@ translations:
   Choose Model: 选择型号
   Choose an existing filament, or tap + New to create one.: 选择已有耗材，或点击 + 新建来创建。
   Choose display language: 选择显示语言
+  Choose head: 选择打印头
   Choose how frames are captured during printing: 选择打印期间的帧捕获方式
   Choose rendering mode for G-code visualization: 选择 G-code 可视化的渲染模式
   Choose rendering mode for bed mesh visualization: 选择热床网格可视化的渲染模式
@@ -2206,6 +2211,7 @@ translations:
   Park: '停放'
   Park the AFC system: '停放 AFC 系统'
   Park Toolhead: '停放工具头'
+  Parking toolhead: '正在停放工具头'
   Part: 零件
   Part Cooling Fan: 零件冷却风扇
   Part Fan: 零件风扇
@@ -3765,6 +3771,7 @@ translations:
   wpa_supplicant is not running. WiFi features unavailable.: wpa_supplicant 未运行。WiFi 功能不可用。
   you have: 您有
   '{:.0f}-{:.0f} Hz · about {} min': '{:.0f}-{:.0f} Hz · 约 {} 分钟'
+  '{} ({})': '{}（{}）'
   '{} Hardware Issues': '{} 个硬件问题'
   '{} Issues Detected': '检测到 {} 个问题'
   '{} LED strips available': '{} 条 LED 灯带可用'
@@ -3820,6 +3827,8 @@ translations:
   '{} widgets': '{} 个小组件'
   ? '{} will switch to a slot whose filament type AND colour both match the active spool and whose own port sensor reads filament present.'
   : '{} 将切换到耗材类型与颜色都与当前料盘一致、且其端口传感器检测到有耗材的槽位。'
+  '{} · {}': '{} · {}'
+  '{} · {} · {}': '{} · {} · {}'
   '{} — response timed out': '{} — 响应超时'
   '{} → {}: no filament loaded.': '{} → {}: 未加载耗材。'
   '{}:{:02} elapsed': 已用时 {}:{:02}

@@ -306,7 +306,7 @@ int RecoveryModalPresenter::resolve_preheat_target() const {
     // 3. Still nothing known: the shared load-preheat default rather than a new
     //    number invented here.
     if (target <= 0) {
-        target = AppConstants::Ams::DEFAULT_LOAD_PREHEAT_TEMP;
+        target = app_constants::ams::DEFAULT_LOAD_PREHEAT_TEMP;
     }
 
     // A latch or material temp below min_extrude_temp would heat to a nozzle

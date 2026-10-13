@@ -24,6 +24,19 @@ class BounceTestAccess {
     static float speed(const BouncingPrinterScreensaver& saver) {
         return saver.speed_;
     }
+
+    /// Dimensions of the decoded sprite source, or 0x0 before a start.
+    static int32_t source_w(const BouncingPrinterScreensaver& saver) {
+        return saver.src_w_;
+    }
+    static int32_t source_h(const BouncingPrinterScreensaver& saver) {
+        return saver.src_h_;
+    }
+
+    /// The bouncing image object, or nullptr while stopped.
+    static lv_obj_t* sprite(const BouncingPrinterScreensaver& saver) {
+        return saver.img_;
+    }
 };
 
 } // namespace helix

@@ -8,10 +8,6 @@
 
 namespace helix::label {
 
-// Import types from parent namespace for convenience
-using helix::LabelBitmap;
-using helix::LabelSize;
-
 // BLE UUIDs
 inline constexpr const char* MAKEID_SERVICE_UUID = "0000abf0-0000-1000-8000-00805f9b34fb";
 inline constexpr const char* MAKEID_WRITE_CHAR_UUID = "0000abf1-0000-1000-8000-00805f9b34fb";

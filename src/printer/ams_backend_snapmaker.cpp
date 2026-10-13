@@ -683,6 +683,16 @@ AmsError AmsBackendSnapmaker::do_change_tool(int tool_number) {
     return execute_gcode(fmt::format("T{}", tool_number));
 }
 
+AmsError AmsBackendSnapmaker::do_park_active_tool() {
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (system_info_.current_tool < 0) {
+            return AmsErrorHelper::not_loaded();
+        }
+    }
+    return execute_gcode("PARK_EXTRUDER");
+}
+
 // ============================================================================
 // Recovery (not supported)
 // ============================================================================
@@ -1232,11 +1242,30 @@ void AmsBackendSnapmaker::apply_active_tool_locked(const snapmaker::StatusDelta&
     }
     if (delta.toolhead_extruder) {
         // "extruder" = 0, "extruder1" = 1, etc. An unparseable name leaves
-        // whatever the per-extruder state decided above.
+        // whatever the per-extruder state decided above. toolhead.extruder names
+        // the last head used, not a mounted one: a head reporting PARKED is on
+        // its dock, so the per-extruder answer stands, -1 when every head is
+        // parked (prestonbrown/helixscreen#1784).
         if (const auto tool_number = helix::tool_number_for_extruder(*delta.toolhead_extruder)) {
-            active = *tool_number;
+            const bool named_head_parked = *tool_number >= 0 && *tool_number < NUM_TOOLS &&
+                                           extruder_states_[*tool_number].state == "PARKED";
+            if (!named_head_parked) {
+                active = *tool_number;
+            }
         }
         has_extruder_data = true;
+    } else {
+        // Parking leaves toolhead.extruder as it was, so a park arrives as
+        // deltas carrying only the head's own fields: its state, and its active
+        // pin, which can drop a frame later with no state beside it. The mounted
+        // head reporting PARKED with no active pin is evidence on its own.
+        const bool frame_has_head_data = std::any_of(delta.extruders.begin(), delta.extruders.end(),
+                                                     [](const auto& e) { return e.has_value(); });
+        const int current = system_info_.current_tool;
+        if (frame_has_head_data && current >= 0 && current < NUM_TOOLS &&
+            extruder_states_[current].state == "PARKED" && !extruder_states_[current].active_pin) {
+            has_extruder_data = true;
+        }
     }
     if (has_extruder_data && active != system_info_.current_tool) {
         // Demote previous active tool from LOADED to AVAILABLE

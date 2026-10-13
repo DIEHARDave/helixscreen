@@ -366,6 +366,7 @@
   <translation tag="Border Width" ru="Толщина границы"/>
   <translation tag="Border transparency (0 = invisible, 255 = solid)" ru="Прозрачность границы (0 = невидимая, 255 = сплошная)"/>
   <translation tag="Both" ru="Оба"/>
+  <translation tag="Bouncing Logo" ru="Прыгающий логотип"/>
   <translation tag="Bouncing Printer" ru="Прыгающий принтер"/>
   <translation tag="Bowden Length" ru="Длина боудена"/>
   <translation tag="Bowden tube length from hub to toolhead" ru="Длина боуден-трубки от хаба до печатающей головки"/>
@@ -481,6 +482,7 @@
   <translation tag="Cannot delete file: printer not connected" ru="Невозможно удалить файл: принтер не подключён"/>
   <translation tag="Cannot modify G-code: no temp directory available" ru="Невозможно изменить G-code: временная директория недоступна"/>
   <translation tag="Cannot modify G-code: scan result not available" ru="Невозможно изменить G-code: результат сканирования недоступен"/>
+  <translation tag="Cannot park while a print is active" ru="Нельзя припарковать во время печати"/>
   <translation tag="Cannot perform this action now" ru="Сейчас это действие выполнить нельзя"/>
   <translation tag="Cannot remap G-code: no temp directory available" ru="Не удалось переназначить G-code: нет доступной временной директории"/>
   <translation tag="Cannot remap: internal error" ru="Не удалось переназначить: внутренняя ошибка"/>
@@ -493,6 +495,8 @@
   <translation tag="Cannot start print: printer is {}" ru="Невозможно начать печать: принтер {}"/>
   <translation tag="Cannot unload while a print is active" ru="Нельзя выгрузить во время печати"/>
   <translation tag="Capabilities: " ru="Возможности: "/>
+  <translation tag="Carriage empty" ru="Каретка пуста"/>
+  <translation tag="Carriage empty · tap a head" ru="Каретка пуста · выберите головку"/>
   <translation tag="Cartographer scan calibrate sent — use Z-Offset panel to adjust" ru="Cartographer сканирующая калибровка отправлена — используйте панель Z-Offset для настройки"/>
   <translation tag="Cartographer touch calibrate sent" ru="Cartographer тактильная калибровка отправлена"/>
   <translation tag="Category" ru="Категория"/>
@@ -569,6 +573,7 @@
   <translation tag="Choose Model" ru="Выберите модель"/>
   <translation tag="Choose an existing filament, or tap + New to create one." ru="Выберите существующий филамент или нажмите + Новый, чтобы создать."/>
   <translation tag="Choose display language" ru="Выберите язык интерфейса"/>
+  <translation tag="Choose head" ru="Выберите головку"/>
   <translation tag="Choose how frames are captured during printing" ru="Выберите способ захвата кадров во время печати"/>
   <translation tag="Choose rendering mode for G-code visualization" ru="Выберите режим рендеринга для визуализации G-code"/>
   <translation tag="Choose rendering mode for bed mesh visualization" ru="Выберите режим рендеринга для визуализации сетки стола"/>
@@ -2132,6 +2137,7 @@
   <translation tag="Park" ru="Парковка"/>
   <translation tag="Park Toolhead" ru="Припарковать печатающую головку"/>
   <translation tag="Park the AFC system" ru="Припарковать систему AFC"/>
+  <translation tag="Parking toolhead" ru="Парковка печатающей головки"/>
   <translation tag="Part" ru="Деталь"/>
   <translation tag="Part Cooling Fan" ru="Вентилятор охлаждения детали"/>
   <translation tag="Part Fan" ru="Вент. детали"/>
@@ -3604,6 +3610,7 @@
   <translation tag="wpa_supplicant is not running. WiFi features unavailable." ru="wpa_supplicant не запущен. Функции WiFi недоступны."/>
   <translation tag="you have" ru="у вас"/>
   <translation tag="{:.0f}-{:.0f} Hz · about {} min" ru="{:.0f}-{:.0f} Гц · примерно {} мин"/>
+  <translation tag="{} ({})" ru="{} ({})"/>
   <translation tag="{} Hardware Issues" ru="Проблем с оборудованием: {}"/>
   <translation tag="{} Issues Detected" ru="Обнаружено проблем: {}"/>
   <translation tag="{} LED strips available" ru="Доступно светодиодных лент: {}"/>
@@ -3658,6 +3665,8 @@
   <translation tag="{} updated" ru="{}: обновлено"/>
   <translation tag="{} widgets" ru="Виджетов: {}"/>
   <translation tag="{} will switch to a slot whose filament type AND colour both match the active spool and whose own port sensor reads filament present." ru="{} переключится на слот, у которого тип филамента И цвет совпадают с активной катушкой, а собственный датчик порта видит филамент."/>
+  <translation tag="{} · {}" ru="{} · {}"/>
+  <translation tag="{} · {} · {}" ru="{} · {} · {}"/>
   <translation tag="{} — response timed out" ru="{} — время ожидания ответа истекло"/>
   <translation tag="{} → {}: no filament loaded." ru="{} → {}: филамент не загружен."/>
   <translation tag="{}:{:02} elapsed" ru="прошло {}:{:02}"/>

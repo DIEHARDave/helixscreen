@@ -366,6 +366,7 @@
   <translation tag="Border Width" zh="边框宽度"/>
   <translation tag="Border transparency (0 = invisible, 255 = solid)" zh="边框透明度（0 = 不可见，255 = 实心）"/>
   <translation tag="Both" zh="两者"/>
+  <translation tag="Bouncing Logo" zh="弹跳标志"/>
   <translation tag="Bouncing Printer" zh="弹跳打印机"/>
   <translation tag="Bowden Length" zh="波顿管长度"/>
   <translation tag="Bowden tube length from hub to toolhead" zh="从集线器到工具头的波顿管长度"/>
@@ -481,6 +482,7 @@
   <translation tag="Cannot delete file: printer not connected" zh="无法删除文件: 打印机未连接"/>
   <translation tag="Cannot modify G-code: no temp directory available" zh="无法修改 G-code: 无可用临时目录"/>
   <translation tag="Cannot modify G-code: scan result not available" zh="无法修改 G-code: 扫描结果不可用"/>
+  <translation tag="Cannot park while a print is active" zh="打印时无法停放"/>
   <translation tag="Cannot perform this action now" zh="当前无法执行此操作"/>
   <translation tag="Cannot remap G-code: no temp directory available" zh="无法重新映射 G-code：没有可用的临时目录"/>
   <translation tag="Cannot remap: internal error" zh="无法重新映射：内部错误"/>
@@ -493,6 +495,8 @@
   <translation tag="Cannot start print: printer is {}" zh="无法开始打印: 打印机状态为 {}"/>
   <translation tag="Cannot unload while a print is active" zh="打印时无法卸载"/>
   <translation tag="Capabilities: " zh="功能: "/>
+  <translation tag="Carriage empty" zh="未装载打印头"/>
+  <translation tag="Carriage empty · tap a head" zh="未装载打印头 · 点击一个打印头"/>
   <translation tag="Cartographer scan calibrate sent — use Z-Offset panel to adjust" zh="Cartographer扫描校准已发送 — 使用Z偏移面板进行调整"/>
   <translation tag="Cartographer touch calibrate sent" zh="Cartographer触摸校准已发送"/>
   <translation tag="Category" zh="类别"/>
@@ -569,6 +573,7 @@
   <translation tag="Choose Model" zh="选择型号"/>
   <translation tag="Choose an existing filament, or tap + New to create one." zh="选择已有耗材，或点击 + 新建来创建。"/>
   <translation tag="Choose display language" zh="选择显示语言"/>
+  <translation tag="Choose head" zh="选择打印头"/>
   <translation tag="Choose how frames are captured during printing" zh="选择打印期间的帧捕获方式"/>
   <translation tag="Choose rendering mode for G-code visualization" zh="选择 G-code 可视化的渲染模式"/>
   <translation tag="Choose rendering mode for bed mesh visualization" zh="选择热床网格可视化的渲染模式"/>
@@ -2132,6 +2137,7 @@
   <translation tag="Park" zh="停放"/>
   <translation tag="Park Toolhead" zh="停放工具头"/>
   <translation tag="Park the AFC system" zh="停放 AFC 系统"/>
+  <translation tag="Parking toolhead" zh="正在停放工具头"/>
   <translation tag="Part" zh="零件"/>
   <translation tag="Part Cooling Fan" zh="零件冷却风扇"/>
   <translation tag="Part Fan" zh="零件风扇"/>
@@ -3604,6 +3610,7 @@
   <translation tag="wpa_supplicant is not running. WiFi features unavailable." zh="wpa_supplicant 未运行。WiFi 功能不可用。"/>
   <translation tag="you have" zh="您有"/>
   <translation tag="{:.0f}-{:.0f} Hz · about {} min" zh="{:.0f}-{:.0f} Hz · 约 {} 分钟"/>
+  <translation tag="{} ({})" zh="{}（{}）"/>
   <translation tag="{} Hardware Issues" zh="{} 个硬件问题"/>
   <translation tag="{} Issues Detected" zh="检测到 {} 个问题"/>
   <translation tag="{} LED strips available" zh="{} 条 LED 灯带可用"/>
@@ -3658,6 +3665,8 @@
   <translation tag="{} updated" zh="{} 已更新"/>
   <translation tag="{} widgets" zh="{} 个小组件"/>
   <translation tag="{} will switch to a slot whose filament type AND colour both match the active spool and whose own port sensor reads filament present." zh="{} 将切换到耗材类型与颜色都与当前料盘一致、且其端口传感器检测到有耗材的槽位。"/>
+  <translation tag="{} · {}" zh="{} · {}"/>
+  <translation tag="{} · {} · {}" zh="{} · {} · {}"/>
   <translation tag="{} — response timed out" zh="{} — 响应超时"/>
   <translation tag="{} → {}: no filament loaded." zh="{} → {}: 未加载耗材。"/>
   <translation tag="{}:{:02} elapsed" zh="已用时 {}:{:02}"/>

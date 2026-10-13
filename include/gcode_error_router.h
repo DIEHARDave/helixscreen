@@ -19,7 +19,9 @@
 
 #include "hv/json.hpp"
 
+namespace helix {
 class IMoonrakerAPI;
+}
 
 // Test-only accessor (tests/test_helpers/gcode_error_router_test_access.h),
 // forward-declared here so the friend grant below can name it explicitly.

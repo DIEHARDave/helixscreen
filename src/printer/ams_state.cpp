@@ -299,6 +299,7 @@ int AmsState::add_backend(std::unique_ptr<AmsBackend> backend) {
         std::move(backend), [this](int i, const std::string& event, const std::string& data) {
             on_backend_event(i, event, data);
         });
+    invalidate_system_info();
 
     // Per-backend slot subjects for secondary backends
     if (index > 0) {
@@ -333,6 +334,8 @@ void AmsState::clear_backends() {
     assert_main_thread();
 
     registry_.clear();
+    invalidate_system_info();
+    system_info_snapshots_.clear();
 
     // Registration stamps indices from 0 again, so the next set of backends
     // takes these blocks of lane ids. A declaration left behind would be
@@ -361,6 +364,7 @@ void AmsState::clear_backends() {
     // Drop AMS-derived tool topology so the UI doesn't show stale tool pills
     // between backend disappearance and the next reconnect's init_tools().
     helix::ToolState::instance().clear_ams_topology();
+    helix::ToolState::instance().clear_backend_active_tool();
 
     // Clean up secondary slot subjects
     for (auto& subs : secondary_slot_subjects_) {
@@ -504,7 +508,8 @@ void AmsState::sync_backend(int backend_index) {
         return;
     }
 
-    AmsSystemInfo info = backend->get_system_info();
+    const auto snapshot = read_system_info(backend_index);
+    const AmsSystemInfo& info = *snapshot;
     auto& subs = secondary_slot_subjects_[sec_idx];
 
     for (int i = 0; i < std::min(info.total_slots, subs.slot_count); ++i) {
@@ -563,7 +568,8 @@ void AmsState::sync_from_backend() {
         return;
     }
 
-    AmsSystemInfo info = backend->get_system_info();
+    const auto snapshot = read_system_info(0);
+    const AmsSystemInfo& info = *snapshot;
 
     sync_system_subjects(info);
     sync_tool_topology(backend);
@@ -614,7 +620,7 @@ void AmsState::sync_from_backend() {
 
     if (any_slot_changed) {
         spdlog::trace("[AmsState] Slot data changed, bumping version");
-        bump_slots_version();
+        bump_slots_version_from_sync();
     }
 
     // Sync dryer state (for systems with integrated drying like ACE)
@@ -729,12 +735,24 @@ void AmsState::sync_system_subjects(const AmsSystemInfo& info) {
 void AmsState::sync_tool_topology(AmsBackend* backend) {
     // Push tool topology to ToolState when the active backend multiplexes tools.
     // Otherwise leave ToolState in its extruder-enumerated state.
+    auto& tool_state = helix::ToolState::instance();
     if (auto topo = helix::build_ams_topology(backend, 0)) {
-        helix::ToolState::instance().set_ams_topology(*topo);
-    } else if (helix::ToolState::instance().ams_topology_active()) {
+        tool_state.clear_backend_active_tool();
+        tool_state.set_ams_topology(*topo);
+        return;
+    }
+    if (tool_state.ams_topology_active()) {
         // Backend stopped multiplexing (e.g., AMS removed). Drop the override
         // so callers can rebuild tools_ from extruders.
-        helix::ToolState::instance().clear_ams_topology();
+        tool_state.clear_ams_topology();
+    }
+    // With no table the extruder enumeration stands, but a carriage that can
+    // be empty still needs the backend to say which head is mounted: the
+    // status frame names the last head used.
+    if (backend && backend->carriage_can_be_empty()) {
+        tool_state.set_backend_active_tool(backend->get_current_tool());
+    } else {
+        tool_state.clear_backend_active_tool();
     }
 }
 
@@ -833,7 +851,7 @@ void AmsState::sync_bypass(AmsBackend* backend, const AmsSystemInfo& info) {
         last_bypass_active_ = bypass_now;
         spdlog::debug("[AmsState] Bypass -> {}, bumping slots_version for the pre-print check",
                       bypass_now);
-        bump_slots_version();
+        bump_slots_version_from_sync();
         // Notification only — the bypass⇄sensor policy (arm/restore runout
         // sensors at the firmware level) lives entirely in
         // FilamentSensorManager, the sensor abstraction layer.
@@ -1414,6 +1432,10 @@ void AmsState::on_backend_event(int backend_index, const std::string& event,
     spdlog::trace("[AMS State] Received event '{}' data='{}' from backend {}", event, data,
                   backend_index);
 
+    // The backend's data has moved; readers between here and the queued sync
+    // read it again rather than serve the reading from before the event.
+    invalidate_system_info();
+
     auto queue_sync = [backend_index](bool full_sync, int slot_index, bool ends_operation = false) {
         helix::ui::queue_update(
             "AmsState::on_backend_event", [backend_index, full_sync, slot_index, ends_operation]() {
@@ -1499,8 +1521,46 @@ void AmsState::sync_endless_spool_from_backend(AmsBackend* backend) {
 }
 
 void AmsState::bump_slots_version() {
+    invalidate_system_info();
+    bump_slots_version_from_sync();
+}
+
+void AmsState::bump_slots_version_from_sync() {
     int current = lv_subject_get_int(&slots_version_);
     lv_subject_set_int(&slots_version_, current + 1);
+}
+
+std::shared_ptr<const AmsSystemInfo> AmsState::read_system_info(int backend_index) const {
+    assert_main_thread();
+    auto* backend = get_backend(backend_index);
+    if (!backend) {
+        return nullptr;
+    }
+    // Taken before the read: an event raised while the backend is copied
+    // advances the generation, and the next system_info() reads again.
+    const uint64_t generation = system_info_generation_.load(std::memory_order_acquire);
+    auto info = std::make_shared<const AmsSystemInfo>(backend->get_system_info());
+    if (system_info_snapshots_.size() <= static_cast<size_t>(backend_index)) {
+        system_info_snapshots_.resize(static_cast<size_t>(backend_index) + 1);
+    }
+    system_info_snapshots_[static_cast<size_t>(backend_index)] = {info, generation};
+    return info;
+}
+
+std::shared_ptr<const AmsSystemInfo> AmsState::system_info(int backend_index) const {
+    assert_main_thread();
+    if (backend_index < 0) {
+        return nullptr;
+    }
+    const size_t i = static_cast<size_t>(backend_index);
+    if (i < system_info_snapshots_.size()) {
+        const auto& snapshot = system_info_snapshots_[i];
+        if (snapshot.info &&
+            snapshot.generation == system_info_generation_.load(std::memory_order_acquire)) {
+            return snapshot.info;
+        }
+    }
+    return read_system_info(backend_index);
 }
 
 void AmsState::set_detail_env_unit(int unit) {
@@ -1781,15 +1841,13 @@ void AmsState::sync_current_loaded_from_backend() {
         return;
     }
 
-    auto* backend = get_backend(0);
-    if (backend) {
-        sync_current_loaded_from_backend(backend->get_system_info());
+    if (const auto snapshot = read_system_info(0)) {
+        sync_current_loaded_from_backend(*snapshot);
     }
 }
 
-void AmsState::set_current_slot_header(AmsBackend& backend, int slot_index) {
-    AmsSystemInfo sys = backend.get_system_info();
-
+void AmsState::set_current_slot_header(AmsBackend& backend, const AmsSystemInfo& sys,
+                                       int slot_index) {
     char tmp[64];
     if (is_tool_changer(sys.type) && sys.units.empty()) {
         // Pure tool changer with no AMS units: show the physical toolhead position
@@ -1831,8 +1889,11 @@ void AmsState::sync_current_loaded_from_backend(const AmsSystemInfo& primary_inf
     // Search ALL backends to find the one with filament loaded.
     // In multi-backend setups (e.g., AMS_1 + AMS_2), only one backend
     // will have filament actively loaded at a time.
-    // Use pre-fetched primary_info for backend 0 to avoid redundant get_system_info().
+    // primary_info stands for backend 0; the others are read through system_info(),
+    // and the *_hold pointers keep a secondary reading alive while *_info points at it.
     AmsBackend* loaded_backend = nullptr;
+    const AmsSystemInfo* loaded_info = &primary_info;
+    std::shared_ptr<const AmsSystemInfo> loaded_hold;
     int slot_index = -1;
     bool filament_loaded = false;
     // While a load/unload works a head, the header names THAT head. Only the
@@ -1840,6 +1901,8 @@ void AmsState::sync_current_loaded_from_backend(const AmsSystemInfo& primary_inf
     // the carriage, so they read the loaded lane below. The backend owns the
     // classification (operation_working_slot); this side only formats it.
     AmsBackend* working_backend = nullptr;
+    const AmsSystemInfo* working_info = nullptr;
+    std::shared_ptr<const AmsSystemInfo> working_hold;
     int working_slot = -1;
 
     const auto& backends = registry_.backends();
@@ -1847,12 +1910,17 @@ void AmsState::sync_current_loaded_from_backend(const AmsSystemInfo& primary_inf
         auto& b = backends[idx];
         if (!b)
             continue;
-        AmsSystemInfo secondary_info;
-        if (idx != 0)
-            secondary_info = b->get_system_info();
-        const AmsSystemInfo& info = (idx == 0) ? primary_info : secondary_info;
+        std::shared_ptr<const AmsSystemInfo> secondary;
+        if (idx != 0) {
+            secondary = system_info(static_cast<int>(idx));
+            if (!secondary)
+                continue;
+        }
+        const AmsSystemInfo& info = (idx == 0) ? primary_info : *secondary;
         if (!working_backend && info.operation_working_slot >= 0) {
             working_backend = b.get();
+            working_info = &info;
+            working_hold = secondary;
             working_slot = info.operation_working_slot;
         }
         if (loaded_backend) {
@@ -1860,6 +1928,8 @@ void AmsState::sync_current_loaded_from_backend(const AmsSystemInfo& primary_inf
         }
         if (info.filament_loaded) {
             loaded_backend = b.get();
+            loaded_info = &info;
+            loaded_hold = secondary;
             slot_index = info.current_slot;
             filament_loaded = true;
             continue;
@@ -1867,6 +1937,8 @@ void AmsState::sync_current_loaded_from_backend(const AmsSystemInfo& primary_inf
         // Also check bypass on each backend
         if (info.current_slot == -2 && b->is_bypass_active()) {
             loaded_backend = b.get();
+            loaded_info = &info;
+            loaded_hold = secondary;
             slot_index = -2;
         }
     }
@@ -1989,7 +2061,7 @@ void AmsState::sync_current_loaded_from_backend(const AmsSystemInfo& primary_inf
         // The header is written once per sync: an operation's working head
         // below takes it, so the carriage slot does not flash in first.
         if (!working_backend) {
-            set_current_slot_header(*loaded_backend, slot_index);
+            set_current_slot_header(*loaded_backend, *loaded_info, slot_index);
         }
 
         // Remaining weight (Spoolman or backend) and measured length, either or both
@@ -2011,7 +2083,7 @@ void AmsState::sync_current_loaded_from_backend(const AmsSystemInfo& primary_inf
     }
 
     if (working_backend) {
-        set_current_slot_header(*working_backend, working_slot);
+        set_current_slot_header(*working_backend, *working_info, working_slot);
     }
 
     spdlog::trace("[AMS State] Synced current loaded - slot={}, has_weight={}", slot_index,

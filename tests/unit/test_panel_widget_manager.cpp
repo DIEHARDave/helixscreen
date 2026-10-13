@@ -163,8 +163,10 @@ TEST_CASE("PanelWidgetManager coalesces multiple gate firings into one rebuild",
 
     // Static so registrations persist across SECTION re-entries; otherwise the
     // second SECTION sees the global registrations from the first but its
-    // local vector is empty and we can't iterate to set values.
-    static std::vector<std::pair<std::string, lv_subject_t*>> all_gate_subjs = []() {
+    // local vector is empty and we can't iterate to set values. Never destroyed:
+    // the subjects it owns stay registered in the global XML scope for the rest
+    // of the process.
+    static auto& all_gate_subjs = *new std::vector<std::pair<std::string, lv_subject_t*>>([]() {
         std::vector<std::pair<std::string, lv_subject_t*>> out;
         for (const auto& def : helix::get_all_widget_defs()) {
             if (!def.hardware_gate_subject)
@@ -190,7 +192,7 @@ TEST_CASE("PanelWidgetManager coalesces multiple gate firings into one rebuild",
             }
         }
         return out;
-    }();
+    }());
     REQUIRE(all_gate_subjs.size() >= 2); // need at least 2 to test coalescing
 
     int rebuild_count = 0;

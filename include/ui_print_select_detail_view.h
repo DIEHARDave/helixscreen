@@ -29,7 +29,9 @@
 #include <string>
 
 // Forward declarations
+namespace helix {
 class IMoonrakerAPI;
+}
 class PrintSelectDetailViewTestAccess; // NAMESPACE_OK: test seam befriended below, defined in the
                                        // unit test
 namespace helix {

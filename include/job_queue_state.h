@@ -14,8 +14,8 @@
 #include <string>
 #include <vector>
 
-class IMoonrakerAPI;
 namespace helix {
+class IMoonrakerAPI;
 class IMoonrakerClient;
 
 /// Parse Moonraker's `job_queue.automatic_transition` out of a `server.config`
@@ -45,7 +45,7 @@ std::string format_start_next_text(const std::string& display_name, int queued_c
  */
 class JobQueueState {
   public:
-    JobQueueState(IMoonrakerAPI* api, helix::IMoonrakerClient* client);
+    JobQueueState(helix::IMoonrakerAPI* api, helix::IMoonrakerClient* client);
     ~JobQueueState();
 
     // Non-copyable
@@ -74,7 +74,7 @@ class JobQueueState {
     void invalidate();
 
     /// Get cached jobs
-    const std::vector<JobQueueEntry>& get_jobs() const {
+    const std::vector<helix::JobQueueEntry>& get_jobs() const {
         return cached_jobs_;
     }
 
@@ -110,7 +110,7 @@ class JobQueueState {
   private:
     friend class JobQueueStateTestAccess;
 
-    void on_queue_fetched(const JobQueueStatus& status);
+    void on_queue_fetched(const helix::JobQueueStatus& status);
     void subscribe_to_notifications();
 
     /**
@@ -137,11 +137,11 @@ class JobQueueState {
     void update_subjects();
     void deinit_subjects();
 
-    IMoonrakerAPI* api_;
+    helix::IMoonrakerAPI* api_;
     helix::IMoonrakerClient* client_;
 
     // Cached data
-    std::vector<JobQueueEntry> cached_jobs_;
+    std::vector<helix::JobQueueEntry> cached_jobs_;
     std::string queue_state_ = "ready";
 
     /// Watches printer connection state so a dropped socket stales the queue.

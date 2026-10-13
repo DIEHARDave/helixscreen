@@ -16,7 +16,9 @@
 
 #include "hv/json.hpp"
 
+namespace helix {
 class IMoonrakerAPI;
+}
 class FilamentSlotOverrideStoreTestAccess;
 
 namespace helix::ams {
@@ -112,7 +114,7 @@ parse_namespace_document(const nlohmann::json& namespace_doc, LaneKeyStyle key_s
 /// backends, and thus real stores, without pinning a dir — cannot write
 /// filament_slot_overrides.json into the repo's config/ dir. Same role
 /// ToolState::set_config_dir() plays for tool_spools.json, and mutable for
-/// the same reason AppConstants::Update::detail::state_dir_ref() is.
+/// the same reason app_constants::update::detail::state_dir_ref() is.
 /// Write it before threads exist; afterwards it is read-only.
 namespace detail {
 inline std::string& slot_override_cache_dir_ref() {

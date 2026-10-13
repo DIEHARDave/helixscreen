@@ -1091,11 +1091,11 @@ void AmsPanel::refresh_slots() {
     }
 
     update_slot_colors();
-    // One read of the system info serves both the bay states and the path canvas.
+    // One reading of the system info serves both the bay states and the path canvas.
     const AmsBackend* backend = AmsState::instance().get_backend();
-    const AmsSystemInfo info = backend ? backend->get_system_info() : AmsSystemInfo{};
-    if (backend)
-        helix::ui::ams_detail_sync_slot_states(slot_widgets_, current_slot_count_, info);
+    const auto info = AmsState::instance().system_info();
+    if (backend && info)
+        helix::ui::ams_detail_sync_slot_states(slot_widgets_, current_slot_count_, *info);
 
     int current_slot = lv_subject_get_int(AmsState::instance().get_current_slot_subject());
     update_current_slot_highlight(current_slot);
@@ -1107,8 +1107,8 @@ void AmsPanel::refresh_slots() {
     // guards against a missing canvas (ams_detail_setup_path_canvas() returns
     // early when canvas/backend is null) and never writes slot subjects, so it
     // can't recurse back into a slots_version bump.
-    if (backend)
-        ams_detail_setup_path_canvas(path_canvas_, slot_grid_, ALL_UNITS, backend, info);
+    if (backend && info)
+        ams_detail_setup_path_canvas(path_canvas_, slot_grid_, ALL_UNITS, backend, *info);
 }
 
 // ============================================================================

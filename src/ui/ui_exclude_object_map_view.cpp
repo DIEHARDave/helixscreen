@@ -6,6 +6,7 @@
 #include "ui_utils.h"
 
 #include "bed_dimensions.h"
+#include "bed_grid.h"
 #include "exclude_map_hatch.h"
 #include "lv_draw_buf_guard.h"
 #include "observer_factory.h"
@@ -49,7 +50,7 @@ ExcludeObjectMapView::~ExcludeObjectMapView() {
 // ============================================================================
 
 void ExcludeObjectMapView::create(lv_obj_t* parent, helix::PrinterExcludedObjectsState* state,
-                                  float bed_w_mm, float bed_h_mm, ObjectTapFn on_object_tapped,
+                                  const helix::BedDimensions& bed, ObjectTapFn on_object_tapped,
                                   ExcludeTapMode tap_mode,
                                   const helix::gcode::ParsedGCodeFile* parsed_file,
                                   ExcludeMapMode mode) {
@@ -58,16 +59,19 @@ void ExcludeObjectMapView::create(lv_obj_t* parent, helix::PrinterExcludedObject
         return;
     }
 
-    spdlog::debug("[ExcludeObjectMapView] create() bed={}x{}", bed_w_mm, bed_h_mm);
+    spdlog::debug("[ExcludeObjectMapView] create() bed={}x{} at ({},{}){}", bed.w_mm, bed.h_mm,
+                  bed.origin_x, bed.origin_y, bed.circular ? " round" : "");
 
     state_ = state;
     on_object_tapped_ = std::move(on_object_tapped);
     tap_mode_ = tap_mode;
     mode_ = mode;
     copy_parsed_geometry(parsed_file);
-    const auto bed = helix::bed_dimensions_from_volume(0.0f, bed_w_mm, 0.0f, bed_h_mm);
-    requested_bed_w_mm_ = bed.w_mm;
-    requested_bed_h_mm_ = bed.h_mm;
+    bed_ = helix::bed_dimensions_from_volume(bed.origin_x, bed.origin_x + bed.w_mm, bed.origin_y,
+                                             bed.origin_y + bed.h_mm);
+    bed_.circular = bed.circular;
+    bed_w_mm_ = bed_.w_mm;
+    bed_h_mm_ = bed_.h_mm;
 
     // Register XML event callback once (idempotent — registration only takes
     // effect the first time; subsequent calls are harmless no-ops).
@@ -162,8 +166,8 @@ void ExcludeObjectMapView::build_surface() {
 
     // Compute actual coordinate extents from all object geometry.
     // Objects may have negative coordinates (e.g., bed centered at 0,0).
-    float coord_min_x = 0.0f, coord_min_y = 0.0f;
-    float coord_max_x = requested_bed_w_mm_, coord_max_y = requested_bed_h_mm_;
+    float coord_min_x = bed_.origin_x, coord_min_y = bed_.origin_y;
+    float coord_max_x = bed_.origin_x + bed_.w_mm, coord_max_y = bed_.origin_y + bed_.h_mm;
     bool have_extents = false;
 
     if (state_) {
@@ -505,6 +509,10 @@ void ExcludeObjectMapView::draw_first_layer_outlines() {
     // Clear canvas to transparent
     lv_canvas_fill_bg(canvas_, lv_color_black(), LV_OPA_TRANSP);
 
+    lv_layer_t layer;
+    lv_canvas_init_layer(canvas_, &layer);
+    draw_bed_reference(&layer);
+
     // Outline per object: the parsed first-layer hull, else Klipper's polygon.
     std::unordered_map<std::string, std::vector<glm::vec2>> object_polygons = parsed_outlines_;
 
@@ -523,8 +531,10 @@ void ExcludeObjectMapView::draw_first_layer_outlines() {
         }
     }
 
-    if (object_polygons.empty())
+    if (object_polygons.empty()) {
+        lv_canvas_finish_layer(canvas_, &layer);
         return;
+    }
 
     for (const auto& [name, poly] : object_polygons) {
         spdlog::trace("[ExcludeObjectMapView] Object '{}' polygon has {} points", name,
@@ -544,9 +554,6 @@ void ExcludeObjectMapView::draw_first_layer_outlines() {
     const int hatch_px = std::max<int>(4, theme_manager_get_spacing("space_xs"));
 
     // Draw polygon outlines on canvas
-    lv_layer_t layer;
-    lv_canvas_init_layer(canvas_, &layer);
-
     const auto draw_line = [&](float x1, float y1, float x2, float y2, lv_color_t color,
                                int32_t width, lv_opa_t opa) {
         lv_draw_line_dsc_t dsc;
@@ -602,6 +609,43 @@ void ExcludeObjectMapView::draw_first_layer_outlines() {
 
     spdlog::debug("[ExcludeObjectMapView] Drew polygon outlines for {} objects",
                   object_polygons.size());
+}
+
+void ExcludeObjectMapView::draw_bed_reference(lv_layer_t* layer) const {
+    if (!mapper_ || !plate_area_) {
+        return;
+    }
+    const double x_min = bed_.origin_x;
+    const double x_max = bed_.origin_x + bed_.w_mm;
+    const double y_min = bed_.origin_y;
+    const double y_max = bed_.origin_y + bed_.h_mm;
+
+    // The plate's own border color: the grid faint, the bed edge solid. The
+    // canvas clips whatever lies outside the zoomed view.
+    lv_draw_line_dsc_t dsc;
+    lv_draw_line_dsc_init(&dsc);
+    dsc.color = lv_obj_get_style_border_color(plate_area_, LV_PART_MAIN);
+    auto draw = [&](const helix::BedGridSegment& seg) {
+        const auto [x1, y1] =
+            mapper_->mm_to_px(static_cast<float>(seg.x1), static_cast<float>(seg.y1));
+        const auto [x2, y2] =
+            mapper_->mm_to_px(static_cast<float>(seg.x2), static_cast<float>(seg.y2));
+        dsc.p1 = {static_cast<lv_value_precise_t>(x1), static_cast<lv_value_precise_t>(y1)};
+        dsc.p2 = {static_cast<lv_value_precise_t>(x2), static_cast<lv_value_precise_t>(y2)};
+        lv_draw_line(layer, &dsc);
+    };
+
+    dsc.width = 1;
+    dsc.opa = LV_OPA_40;
+    for (const auto& seg : helix::bed_grid_lines(x_min, x_max, y_min, y_max,
+                                                 helix::kBedGridSpacingMm, bed_.circular)) {
+        draw(seg);
+    }
+    dsc.width = 2;
+    dsc.opa = LV_OPA_COVER;
+    for (const auto& seg : helix::bed_outline_segments(x_min, x_max, y_min, y_max, bed_.circular)) {
+        draw(seg);
+    }
 }
 
 // ============================================================================

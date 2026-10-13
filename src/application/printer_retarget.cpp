@@ -33,7 +33,7 @@ IMoonrakerClient* disconnect_for_retarget() {
         spdlog::error("[PrinterRetarget] Cannot reconnect - client or manager unavailable");
         return nullptr;
     }
-    EmergencyStopOverlay::instance().suppress_recovery_dialog(RecoverySuppression::SHORT);
+    EmergencyStopOverlay::instance().suppress_recovery_dialog(recovery_suppression::SHORT);
     client->disconnect();
     return client;
 }

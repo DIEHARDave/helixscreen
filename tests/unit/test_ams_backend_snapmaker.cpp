@@ -11,6 +11,7 @@
 #include "../test_helpers/snapmaker_test_access.h"
 #include "../test_helpers/update_queue_test_access.h"
 #include "../ui_test_utils.h"
+#include "ams_backend_afc.h"
 #include "ams_backend_snapmaker.h"
 #include "ams_state.h"
 #include "ams_step_operation.h"
@@ -4122,4 +4123,124 @@ TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker extruder delta frames keep the fie
     CHECK(held.state == "ACTIVE");
     CHECK_FALSE(held.park_pin);
     CHECK(held.switch_count == 7);
+}
+
+// ============================================================================
+// Empty carriage: toolhead.extruder names the last head used, not a mounted
+// one, so a head reporting PARKED is never the active tool
+// (prestonbrown/helixscreen#1784).
+// ============================================================================
+
+namespace {
+// The frame read from the U1 idle after a print: every head parked while
+// toolhead.extruder still names extruder2.
+json u1_all_parked_frame() {
+    return json{{"extruder", json{{"state", "PARKED"}}},
+                {"extruder1", json{{"state", "PARKED"}}},
+                {"extruder2", json{{"state", "PARKED"}}},
+                {"extruder3", json{{"state", "PARKED"}}},
+                {"toolhead", json{{"extruder", "extruder2"}}}};
+}
+} // namespace
+
+TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker all heads parked reads as an empty carriage",
+                 "[ams][snapmaker][tool_switcher][1784]") {
+    helix::test::RegisteredBackend<AmsBackendSnapmaker> backend_reg(nullptr, nullptr);
+    AmsBackendSnapmaker& backend = *backend_reg;
+
+    SnapmakerTestAccess::handle_status(backend,
+                                       json{{"toolhead", json{{"extruder", "extruder2"}}}});
+    REQUIRE(backend.get_system_info().current_tool == 2);
+
+    SnapmakerTestAccess::handle_status(backend, u1_all_parked_frame());
+    CHECK(backend.get_system_info().current_tool == -1);
+    CHECK(backend.get_system_info().current_slot == -1);
+}
+
+TEST_CASE_METHOD(SnapmakerFixture,
+                 "Snapmaker a head with no reported state follows toolhead.extruder",
+                 "[ams][snapmaker][tool_switcher][1784]") {
+    helix::test::RegisteredBackend<AmsBackendSnapmaker> backend_reg(nullptr, nullptr);
+    AmsBackendSnapmaker& backend = *backend_reg;
+
+    json frame = u1_all_parked_frame();
+    frame.erase("extruder2");
+    SnapmakerTestAccess::handle_status(backend, frame);
+    CHECK(backend.get_system_info().current_tool == 2);
+    CHECK(backend.get_system_info().current_slot == 2);
+}
+
+TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker mounting a head after an empty carriage reads it",
+                 "[ams][snapmaker][tool_switcher][1784]") {
+    helix::test::RegisteredBackend<AmsBackendSnapmaker> backend_reg(nullptr, nullptr);
+    AmsBackendSnapmaker& backend = *backend_reg;
+
+    SnapmakerTestAccess::handle_status(backend, u1_all_parked_frame());
+    REQUIRE(backend.get_system_info().current_tool == -1);
+
+    SnapmakerTestAccess::handle_status(
+        backend, json{{"extruder1", json{{"state", "ACTIVE"}, {"active_pin", true}}},
+                      {"toolhead", json{{"extruder", "extruder1"}}}});
+    CHECK(backend.get_system_info().current_tool == 1);
+    CHECK(backend.get_system_info().current_slot == 1);
+}
+
+TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker parking the mounted head empties the carriage",
+                 "[ams][snapmaker][tool_switcher][1784]") {
+    // Parking does not change toolhead.extruder, so the park arrives as a
+    // delta naming only the head's own state.
+    helix::test::RegisteredBackend<AmsBackendSnapmaker> backend_reg(nullptr, nullptr);
+    AmsBackendSnapmaker& backend = *backend_reg;
+
+    SnapmakerTestAccess::handle_status(backend,
+                                       json{{"toolhead", json{{"extruder", "extruder2"}}}});
+    REQUIRE(backend.get_system_info().current_tool == 2);
+
+    SnapmakerTestAccess::handle_status(backend, json{{"extruder2", json{{"state", "PARKED"}}}});
+    CHECK(backend.get_system_info().current_tool == -1);
+    CHECK(backend.get_system_info().current_slot == -1);
+}
+
+TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker a park split across two frames empties the carriage",
+                 "[ams][snapmaker][tool_switcher][1784]") {
+    // The head can report PARKED before its active pin drops, and the frame
+    // that drops the pin repeats no state.
+    helix::test::RegisteredBackend<AmsBackendSnapmaker> backend_reg(nullptr, nullptr);
+    AmsBackendSnapmaker& backend = *backend_reg;
+
+    SnapmakerTestAccess::handle_status(
+        backend, json{{"extruder2", json{{"state", "ACTIVE"}, {"active_pin", true}}},
+                      {"toolhead", json{{"extruder", "extruder2"}}}});
+    REQUIRE(backend.get_system_info().current_tool == 2);
+
+    SnapmakerTestAccess::handle_status(
+        backend, json{{"extruder2", json{{"state", "PARKED"}, {"active_pin", true}}}});
+    REQUIRE(backend.get_system_info().current_tool == 2);
+
+    SnapmakerTestAccess::handle_status(backend, json{{"extruder2", json{{"active_pin", false}}}});
+    CHECK(backend.get_system_info().current_tool == -1);
+    CHECK(backend.get_system_info().current_slot == -1);
+}
+
+TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker parking another head leaves the mounted one",
+                 "[ams][snapmaker][tool_switcher][1784]") {
+    helix::test::RegisteredBackend<AmsBackendSnapmaker> backend_reg(nullptr, nullptr);
+    AmsBackendSnapmaker& backend = *backend_reg;
+
+    SnapmakerTestAccess::handle_status(backend,
+                                       json{{"toolhead", json{{"extruder", "extruder2"}}}});
+    REQUIRE(backend.get_system_info().current_tool == 2);
+
+    SnapmakerTestAccess::handle_status(backend, json{{"extruder1", json{{"state", "PARKED"}}}});
+    CHECK(backend.get_system_info().current_tool == 2);
+}
+
+TEST_CASE("Only a backend whose carriage can be empty says so",
+          "[ams][snapmaker][tool_switcher][1784]") {
+    AmsBackendSnapmaker snapmaker(nullptr, nullptr);
+    CHECK(snapmaker.carriage_can_be_empty());
+
+    AmsBackendAfc afc(nullptr, nullptr);
+    REQUIRE_FALSE(afc.load_mounts_tool());
+    CHECK_FALSE(afc.carriage_can_be_empty());
 }

@@ -366,6 +366,7 @@
   <translation tag="Border Width" de="Rahmenbreite"/>
   <translation tag="Border transparency (0 = invisible, 255 = solid)" de="Rahmentransparenz (0 = unsichtbar, 255 = solid)"/>
   <translation tag="Both" de="Beide"/>
+  <translation tag="Bouncing Logo" de="Bouncing Logo"/>
   <translation tag="Bouncing Printer" de="Bouncing Printer"/>
   <translation tag="Bowden Length" de="Bowden-Länge"/>
   <translation tag="Bowden tube length from hub to toolhead" de="Länge des Bowdenschlauchs vom Hub zum Werkzeugkopf"/>
@@ -481,6 +482,7 @@
   <translation tag="Cannot delete file: printer not connected" de="Datei kann nicht gelöscht werden: Drucker nicht verbunden"/>
   <translation tag="Cannot modify G-code: no temp directory available" de="G-Code kann nicht geändert werden: kein temporäres Verzeichnis verfügbar"/>
   <translation tag="Cannot modify G-code: scan result not available" de="G-Code kann nicht geändert werden: Scan-Ergebnis nicht verfügbar"/>
+  <translation tag="Cannot park while a print is active" de="Parken während eines aktiven Drucks nicht möglich"/>
   <translation tag="Cannot perform this action now" de="Diese Aktion ist derzeit nicht möglich"/>
   <translation tag="Cannot remap G-code: no temp directory available" de="G-code kann nicht neu zugeordnet werden: kein temporäres Verzeichnis verfügbar"/>
   <translation tag="Cannot remap: internal error" de="Neuzuordnung nicht möglich: interner Fehler"/>
@@ -493,6 +495,8 @@
   <translation tag="Cannot start print: printer is {}" de="Druck kann nicht gestartet werden: Drucker ist {}"/>
   <translation tag="Cannot unload while a print is active" de="Entladen während eines aktiven Drucks nicht möglich"/>
   <translation tag="Capabilities: " de="Fähigkeiten: "/>
+  <translation tag="Carriage empty" de="Wagen leer"/>
+  <translation tag="Carriage empty · tap a head" de="Wagen leer · Kopf antippen"/>
   <translation tag="Cartographer scan calibrate sent — use Z-Offset panel to adjust" de="Cartographer Scan-Kalibrierung gesendet — Z-Offset-Panel zum Anpassen verwenden"/>
   <translation tag="Cartographer touch calibrate sent" de="Cartographer Touch-Kalibrierung gesendet"/>
   <translation tag="Category" de="Kategorie"/>
@@ -569,6 +573,7 @@
   <translation tag="Choose Model" de="Modell auswählen"/>
   <translation tag="Choose an existing filament, or tap + New to create one." de="Vorhandenes Filament wählen oder + Neu tippen."/>
   <translation tag="Choose display language" de="Anzeigesprache wählen"/>
+  <translation tag="Choose head" de="Kopf wählen"/>
   <translation tag="Choose how frames are captured during printing" de="Wählen Sie, wie Bilder während des Drucks aufgenommen werden"/>
   <translation tag="Choose rendering mode for G-code visualization" de="Darstellungsmodus für G-Code-Visualisierung wählen"/>
   <translation tag="Choose rendering mode for bed mesh visualization" de="Darstellungsmodus für Bettnetz-Visualisierung wählen"/>
@@ -2132,6 +2137,7 @@
   <translation tag="Park" de="Parken"/>
   <translation tag="Park Toolhead" de="Werkzeugkopf parken"/>
   <translation tag="Park the AFC system" de="Das AFC-System parken"/>
+  <translation tag="Parking toolhead" de="Werkzeugkopf wird geparkt"/>
   <translation tag="Part" de="Teile"/>
   <translation tag="Part Cooling Fan" de="Teile-Kühllüfter"/>
   <translation tag="Part Fan" de="Teile-Lüfter"/>
@@ -3604,6 +3610,7 @@
   <translation tag="wpa_supplicant is not running. WiFi features unavailable." de="wpa_supplicant läuft nicht. WiFi-Funktionen sind nicht verfügbar."/>
   <translation tag="you have" de="Sie haben"/>
   <translation tag="{:.0f}-{:.0f} Hz · about {} min" de="{:.0f}-{:.0f} Hz · ca. {} Min."/>
+  <translation tag="{} ({})" de="{} ({})"/>
   <translation tag="{} Hardware Issues" de="{} Hardware-Probleme"/>
   <translation tag="{} Issues Detected" de="{} Probleme erkannt"/>
   <translation tag="{} LED strips available" de="{} LED-Streifen verfügbar"/>
@@ -3658,6 +3665,8 @@
   <translation tag="{} updated" de="{} aktualisiert"/>
   <translation tag="{} widgets" de="{} Widgets"/>
   <translation tag="{} will switch to a slot whose filament type AND colour both match the active spool and whose own port sensor reads filament present." de="{} wechselt zu einem Slot, dessen Filamenttyp UND Farbe beide zur aktiven Spule passen und dessen eigener Port-Sensor Filament erkennt."/>
+  <translation tag="{} · {}" de="{} · {}"/>
+  <translation tag="{} · {} · {}" de="{} · {} · {}"/>
   <translation tag="{} — response timed out" de="{} – Antwort-Zeitüberschreitung"/>
   <translation tag="{} → {}: no filament loaded." de="{} → {}: kein Filament geladen."/>
   <translation tag="{}:{:02} elapsed" de="{}:{:02} vergangen"/>

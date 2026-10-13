@@ -366,6 +366,7 @@
   <translation tag="Border Width" fr="Largeur de la bordure"/>
   <translation tag="Border transparency (0 = invisible, 255 = solid)" fr="Transparence de la bordure (0 = invisible, 255 = solide)"/>
   <translation tag="Both" fr="Les deux"/>
+  <translation tag="Bouncing Logo" fr="Bouncing Logo"/>
   <translation tag="Bouncing Printer" fr="Bouncing Printer"/>
   <translation tag="Bowden Length" fr="Longueur du bowden"/>
   <translation tag="Bowden tube length from hub to toolhead" fr="Longueur du tube bowden du hub à la tête d&apos;outil"/>
@@ -481,6 +482,7 @@
   <translation tag="Cannot delete file: printer not connected" fr="Impossible de supprimer le fichier : imprimante non connectée"/>
   <translation tag="Cannot modify G-code: no temp directory available" fr="Impossible de modifier le G-Code : aucun répertoire temporaire disponible"/>
   <translation tag="Cannot modify G-code: scan result not available" fr="Impossible de modifier le G-Code : résultat du scan non disponible"/>
+  <translation tag="Cannot park while a print is active" fr="Impossible de parquer : une impression est en cours"/>
   <translation tag="Cannot perform this action now" fr="Impossible d&apos;effectuer cette action maintenant"/>
   <translation tag="Cannot remap G-code: no temp directory available" fr="Impossible de remapper le G-Code : aucun répertoire temporaire disponible"/>
   <translation tag="Cannot remap: internal error" fr="Impossible de remapper : erreur interne"/>
@@ -493,6 +495,8 @@
   <translation tag="Cannot start print: printer is {}" fr="Impossible de démarrer l&apos;impression : l&apos;imprimante est {}"/>
   <translation tag="Cannot unload while a print is active" fr="Impossible de décharger : une impression est en cours"/>
   <translation tag="Capabilities: " fr="Capacités : "/>
+  <translation tag="Carriage empty" fr="Chariot vide"/>
+  <translation tag="Carriage empty · tap a head" fr="Chariot vide · touchez une tête"/>
   <translation tag="Cartographer scan calibrate sent — use Z-Offset panel to adjust" fr="Cartographer calibrage scan envoyé — utilisez le panneau Z-Offset pour ajuster"/>
   <translation tag="Cartographer touch calibrate sent" fr="Cartographer calibrage tactile envoyé"/>
   <translation tag="Category" fr="Catégorie"/>
@@ -569,6 +573,7 @@
   <translation tag="Choose Model" fr="Choisir le modèle"/>
   <translation tag="Choose an existing filament, or tap + New to create one." fr="Choisissez un filament existant, ou appuyez sur + Nouveau pour en créer un."/>
   <translation tag="Choose display language" fr="Choisir la langue d&apos;affichage"/>
+  <translation tag="Choose head" fr="Choisir une tête"/>
   <translation tag="Choose how frames are captured during printing" fr="Choisir comment les images sont capturées pendant l&apos;impression"/>
   <translation tag="Choose rendering mode for G-code visualization" fr="Choisir le mode de rendu pour la visualisation du G-code"/>
   <translation tag="Choose rendering mode for bed mesh visualization" fr="Choisir le mode de rendu pour la visualisation du maillage du plateau"/>
@@ -2132,6 +2137,7 @@
   <translation tag="Park" fr="Parquer"/>
   <translation tag="Park Toolhead" fr="Parquer la tête d&apos;outil"/>
   <translation tag="Park the AFC system" fr="Parquer le système AFC"/>
+  <translation tag="Parking toolhead" fr="Parcage de la tête d&apos;outil"/>
   <translation tag="Part" fr="Pièce"/>
   <translation tag="Part Cooling Fan" fr="Ventilateur de refroidissement pièce"/>
   <translation tag="Part Fan" fr="Ventilateur pièce"/>
@@ -3604,6 +3610,7 @@
   <translation tag="wpa_supplicant is not running. WiFi features unavailable." fr="wpa_supplicant ne fonctionne pas. Les fonctions WiFi sont indisponibles."/>
   <translation tag="you have" fr="vous avez"/>
   <translation tag="{:.0f}-{:.0f} Hz · about {} min" fr="{:.0f}-{:.0f} Hz · environ {} min"/>
+  <translation tag="{} ({})" fr="{} ({})"/>
   <translation tag="{} Hardware Issues" fr="{} problèmes matériels"/>
   <translation tag="{} Issues Detected" fr="{} problèmes détectés"/>
   <translation tag="{} LED strips available" fr="{} bandeaux LED disponibles"/>
@@ -3658,6 +3665,8 @@
   <translation tag="{} updated" fr="{} : mise à jour"/>
   <translation tag="{} widgets" fr="{} widgets"/>
   <translation tag="{} will switch to a slot whose filament type AND colour both match the active spool and whose own port sensor reads filament present." fr="{} basculera vers un slot dont le type de filament ET la couleur correspondent à la bobine active et dont le capteur de port détecte du filament."/>
+  <translation tag="{} · {}" fr="{} · {}"/>
+  <translation tag="{} · {} · {}" fr="{} · {} · {}"/>
   <translation tag="{} — response timed out" fr="{} — réponse expirée"/>
   <translation tag="{} → {}: no filament loaded." fr="{} → {} : aucun filament chargé."/>
   <translation tag="{}:{:02} elapsed" fr="{}:{:02} écoulé"/>

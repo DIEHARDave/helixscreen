@@ -73,7 +73,7 @@ OperationTimeoutGuard* armed_idle_grace();
  *   MoonrakerAdvancedAPI advanced(client, api);
  *   advanced.start_bed_mesh_calibrate(command, on_progress, on_complete, on_error);
  */
-class MoonrakerAdvancedAPI : public IAdvancedAPI {
+class MoonrakerAdvancedAPI : public helix::IAdvancedAPI {
   public:
     using SuccessCallback = std::function<void()>;
     using ErrorCallback = std::function<void(const MoonrakerError&)>;

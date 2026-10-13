@@ -14,6 +14,7 @@
 #include "display_numbering.h"
 #include "display_settings_manager.h"
 #include "format_utils.h"
+#include "helix_psram_attr.h"
 #include "lvgl/src/others/translation/lv_translation.h"
 #include "observe_language.h"
 #include "observer_factory.h"
@@ -60,7 +61,8 @@ struct Flags {
     lv_subject_t show_count{};
     lv_subject_t show_times{};
     lv_subject_t row_count{};
-} s_flags;
+};
+HELIX_PSRAM_BSS Flags s_flags;
 
 struct TextSubject {
     lv_subject_t subject{};
@@ -68,13 +70,14 @@ struct TextSubject {
 };
 struct Texts {
     TextSubject time, name, temp, rh_detail, rh, status, end, count, times;
-} s_texts;
+};
+HELIX_PSRAM_BSS Texts s_texts;
 
 struct RowSubjects {
     TextSubject name, time, detail;
     lv_subject_t pct{};
 };
-RowSubjects s_rows[kMaxRows];
+HELIX_PSRAM_BSS RowSubjects s_rows[kMaxRows];
 
 bool s_subjects_initialized = false;
 SubjectManager s_subjects;
@@ -130,7 +133,7 @@ void dryer_init_subjects() {
     init_text(s_texts.times, "home_dryer_times_text");
     for (int i = 0; i < kMaxRows; ++i) {
         // The names must outlive the registration, so they live in a static table.
-        static char names[kMaxRows][4][32];
+        static HELIX_PSRAM_BSS char names[kMaxRows][4][32];
         snprintf(names[i][0], sizeof(names[i][0]), "home_dryer_row_%d_name", i);
         snprintf(names[i][1], sizeof(names[i][1]), "home_dryer_row_%d_time", i);
         snprintf(names[i][2], sizeof(names[i][2]), "home_dryer_row_%d_detail", i);

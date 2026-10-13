@@ -22,7 +22,6 @@ struct PlrDetectResult; // plr_backend.h — check_continue_print_state() result
 class IMoonrakerClient; // returned by get_client()
 class PrinterState;     // returned by printer_state()
 class PrinterDiscovery; // returned by hardware()
-} // namespace helix
 
 /**
  * @brief Abstract interface for the high-level Moonraker API façade.
@@ -356,3 +355,5 @@ class IMoonrakerAPI {
     virtual IFilesAPI& files() = 0;
     virtual IQueueAPI& queue() = 0;
 };
+
+} // namespace helix

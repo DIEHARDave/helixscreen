@@ -426,7 +426,7 @@ void ExcludeMapWidget::sync_map() {
     }
     const auto bed = bed_dimensions(get_moonraker_api(), &printer_state_);
     map_view_ = std::make_unique<ui::ExcludeObjectMapView>();
-    map_view_->create(host, &printer_state_.excluded_objects_state(), bed.w_mm, bed.h_mm, {},
+    map_view_->create(host, &printer_state_.excluded_objects_state(), bed, {},
                       ui::ExcludeTapMode::ExcludeOnly, nullptr, ui::ExcludeMapMode::Mini);
 }
 

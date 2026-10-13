@@ -24,14 +24,14 @@
 /**
  * @brief Application-wide constants shared between UI and backend
  */
-namespace AppConstants {
+namespace helix::app_constants {
 /**
  * @brief Temperature-related constants
  *
  * Safety limits and default values for temperature control.
  * Used by both UI panels and backend temperature management.
  */
-namespace Temperature {
+namespace temperature {
 /// Minimum safe temperature for extrusion operations (Klipper default)
 constexpr int MIN_EXTRUSION_TEMP = 170;
 
@@ -43,7 +43,7 @@ constexpr int DEFAULT_BED_MAX = 150;
 
 /// Default minimum temperature (ambient)
 constexpr int DEFAULT_MIN_TEMP = 0;
-} // namespace Temperature
+} // namespace temperature
 
 /**
  * @brief Responsive layout breakpoints
@@ -51,7 +51,7 @@ constexpr int DEFAULT_MIN_TEMP = 0;
  * These define the screen height thresholds for different UI layouts.
  * Use these consistently across all panels for uniform responsive behavior.
  */
-namespace Responsive {
+namespace responsive {
 /// Tiny screens: <= 479px height
 constexpr lv_coord_t BREAKPOINT_TINY_MAX = 479;
 
@@ -63,22 +63,22 @@ constexpr lv_coord_t BREAKPOINT_MEDIUM_MAX = 1023;
 
 /// Large screens: >= 1024px height
 // (No max defined - anything above MEDIUM is large)
-} // namespace Responsive
+} // namespace responsive
 
 /**
  * @brief AMS/Filament loading constants
  */
-namespace Ams {
+namespace ams {
 /// Default preheat temperature when no material-specific temp is known (°C)
 constexpr int DEFAULT_LOAD_PREHEAT_TEMP = 220;
-} // namespace Ams
+} // namespace ams
 
 /**
  * @brief Startup timing constants
  *
  * Grace periods for behavior that must settle during initial boot.
  */
-namespace Startup {
+namespace startup {
 /// Grace period for filament sensor state stabilization after Moonraker connects
 /// Allows time for initial sensor state to arrive after discovery
 constexpr std::chrono::seconds SENSOR_STABILIZATION_PERIOD{5};
@@ -90,7 +90,7 @@ constexpr std::chrono::seconds PRINT_START_GRACE_PERIOD{1};
 /// Process start timestamp for grace period calculations.
 /// Initialized at static init time (before main), shared across all TUs.
 inline const auto PROCESS_START_TIME = std::chrono::steady_clock::now();
-} // namespace Startup
+} // namespace startup
 
 /**
  * @brief Animation timing constants for UI micro-animations
@@ -98,7 +98,7 @@ inline const auto PROCESS_START_TIME = std::chrono::steady_clock::now();
  * These provide consistent animation durations across the UI.
  * Used by AnimatedValue and other animation utilities.
  */
-namespace Animation {
+namespace animation {
 /// Default animation duration for value changes (ms)
 constexpr uint32_t DEFAULT_DURATION_MS = 300;
 
@@ -112,7 +112,7 @@ constexpr int TEMPERATURE_THRESHOLD_DECI = 5;
 
 /// Fast animation for quick feedback (button presses, toggles)
 constexpr uint32_t FAST_DURATION_MS = 150;
-} // namespace Animation
+} // namespace animation
 
 /**
  * @brief Touch input gesture tuning
@@ -120,7 +120,7 @@ constexpr uint32_t FAST_DURATION_MS = 150;
  * Shared so every long-press gesture (home-screen edit mode, gcode viewer,
  * context menus) flips at one consistent, deliberate threshold.
  */
-namespace Input {
+namespace input {
 /// Hold duration before a press registers as a long-press (ms).
 /// Overrides LVGL's 400ms default; matches Android's launcher widget-edit
 /// gesture (500ms) so mode-switching holds feel deliberate, not twitchy.
@@ -131,7 +131,7 @@ constexpr uint32_t LONG_PRESS_MS = 500;
 /// a press that drifts past this is treated as an accidental rest-then-linger
 /// rather than a deliberate hold, and does not enter edit mode.
 constexpr int EDIT_MODE_MOVE_CANCEL_DPX = 12;
-} // namespace Input
+} // namespace input
 
 /**
  * @brief Rolling config backup paths (two-tier: primary + fallback)
@@ -146,7 +146,7 @@ constexpr int EDIT_MODE_MOVE_CANCEL_DPX = 12;
  * Config::save() maintains rolling backups; Config::init() restores from
  * them if the config directory is missing after an update.
  */
-namespace Update {
+namespace update {
 
 /// Default primary backup directory — systemd StateDirectory (/var/lib/helixscreen/)
 constexpr const char* STATE_DIR_DEFAULT = "/var/lib/helixscreen";
@@ -243,5 +243,5 @@ inline std::string update_restart_marker_path() {
     // Fallback to $HOME/.helixscreen/
     return backup_fallback_dir() + "/update_restart";
 }
-} // namespace Update
-} // namespace AppConstants
+} // namespace update
+} // namespace helix::app_constants

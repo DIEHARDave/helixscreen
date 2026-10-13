@@ -66,7 +66,7 @@ TimelapseVideosOverlay& get_global_timelapse_videos() {
     return *instance;
 }
 
-void init_global_timelapse_videos(IMoonrakerAPI* api) {
+void init_global_timelapse_videos(helix::IMoonrakerAPI* api) {
     helix::lazy_global<TimelapseVideosOverlay>("TimelapseVideosOverlay", api);
     spdlog::trace("[Timelapse Videos] TimelapseVideosOverlay initialized");
 }
@@ -103,7 +103,7 @@ bool helix::ui::timelapse_viewer_available() {
 // CONSTRUCTOR
 // ============================================================================
 
-TimelapseVideosOverlay::TimelapseVideosOverlay(IMoonrakerAPI* api) : api_(api) {}
+TimelapseVideosOverlay::TimelapseVideosOverlay(helix::IMoonrakerAPI* api) : api_(api) {}
 
 // ============================================================================
 // LIFECYCLE

@@ -43,7 +43,7 @@ std::optional<helix::ToolTopology> build_ams_topology(AmsBackend* backend, int b
     topo.tool_count = static_cast<int>(mapping.size());
     topo.tool_to_slot = std::move(mapping);
     topo.active_tool = backend->get_current_tool();
-    topo.allows_empty_carriage = backend->load_mounts_tool();
+    topo.allows_empty_carriage = backend->carriage_can_be_empty();
     topo.backend_index = backend_index;
     return topo;
 }
@@ -66,7 +66,7 @@ std::vector<uint32_t> AmsState::routed_tool_colors() const {
     // which slot each head owns, never which head prints a tool, and letting it
     // stand in silently converts "no opinion" into a confident identity answer.
     std::vector<int> routing = helix::FilamentMapper::effective_routing(
-        backend->get_tool_mapping(), backend->get_system_info().tool_to_slot_map,
+        backend->get_tool_mapping(), system_info()->tool_to_slot_map,
         /*attachment_is_routing=*/!is_tool_changer(backend->get_type()));
 
     auto colors = helix::FilamentMapper::routed_tool_colors(routing, collect_available_slots(),
@@ -87,7 +87,11 @@ std::vector<helix::AvailableSlot> AmsState::collect_available_slots() const {
             continue;
         }
 
-        auto info = backend->get_system_info();
+        const auto snapshot = system_info(static_cast<int>(bi));
+        if (!snapshot) {
+            continue;
+        }
+        const AmsSystemInfo& info = *snapshot;
         bool multi_unit = info.units.size() > 1;
 
         for (const auto& unit : info.units) {

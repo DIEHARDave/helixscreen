@@ -25,7 +25,9 @@
 #include "subject_managed_panel.h"
 
 // Forward declarations
-class IMoonrakerAPI; // NAMESPACE_OK: matches the global-namespace interface in i_moonraker_api.h
+namespace helix {
+class IMoonrakerAPI;
+}
 
 namespace helix::settings {
 

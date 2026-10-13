@@ -12,7 +12,9 @@
 #include <vector>
 
 // Forward declarations
+namespace helix {
 class IMoonrakerAPI;
+}
 class PrintSelectPanel;
 class PrintStatusPanel;
 class MotionPanel;
@@ -74,7 +76,7 @@ class SubjectInitializer {
      * Creates all panels with the API injected at construction time.
      * Must be called after MoonrakerManager::init().
      */
-    void init_panels(IMoonrakerAPI* api, const RuntimeConfig& runtime_config);
+    void init_panels(helix::IMoonrakerAPI* api, const RuntimeConfig& runtime_config);
 
     /**
      * @brief Initialize observers and utility subjects (phases 5-7)
@@ -132,7 +134,7 @@ class SubjectInitializer {
     void init_core_subjects();
     void init_printer_state_subjects();
     void init_ams_subjects();
-    void init_panel_subjects(IMoonrakerAPI* api);
+    void init_panel_subjects(helix::IMoonrakerAPI* api);
     void init_observers();
     void init_utility_subjects();
     void init_usb_manager(const RuntimeConfig& runtime_config);

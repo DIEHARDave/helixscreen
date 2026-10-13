@@ -219,7 +219,7 @@ void ChangeHostModal::handle_test_connection() {
         return;
     }
 
-    EmergencyStopOverlay::instance().suppress_recovery_dialog(RecoverySuppression::NORMAL);
+    EmergencyStopOverlay::instance().suppress_recovery_dialog(recovery_suppression::NORMAL);
     client->disconnect();
     client_borrowed_ = true;
 
