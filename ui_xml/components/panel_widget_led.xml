@@ -32,7 +32,7 @@
                  width="100%" bind_text="$name_subject" style_text_color="#text_muted" style_text_align="center"
                  long_mode="dots" clickable="false" event_bubble="true">
         <bind_flag_if_eq subject="show_widget_labels" flag="hidden" ref_value="0"/>
-        <bind_tile_rung ladder="label" subject="$tile_icon_subject"/>
+        <bind_tile_rung ladder="label" subject="$tile_icon_subject" one_line="true"/>
         <bind_flag_if_eq subject="$tile_label_subject" flag="hidden" ref_value="0"/>
       </text_tiny>
       <event_cb trigger="clicked" callback="light_toggle_cb"/>

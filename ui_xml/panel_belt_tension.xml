@@ -198,11 +198,9 @@
         </lv_obj>
         <!-- Paired peaks (numbered on the chart), then peaks only one path has -->
         <text_small name="bt_facts_label"
-                    width="100%" bind_text="bt_facts" style_text_align="center" style_text_color="#text_muted"
-                    long_mode="dots"/>
+                    width="100%" bind_text="bt_facts" style_text_align="center" style_text_color="#text_muted"/>
         <text_small name="bt_unpaired_label"
-                    width="100%" bind_text="bt_unpaired" style_text_align="center" style_text_color="#text_muted"
-                    long_mode="dots">
+                    width="100%" bind_text="bt_unpaired" style_text_align="center" style_text_color="#text_muted">
           <bind_flag_if_eq subject="bt_has_unpaired" flag="hidden" ref_value="0"/>
         </text_small>
         <lv_obj width="100%"

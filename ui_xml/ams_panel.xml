@@ -20,10 +20,6 @@
          deeper in portrait, where every pixel of height goes to the sidebar. -->
     <style name="path_landscape" flex_grow="1" margin_top="-8"/>
     <style name="path_portrait" height="#ams_portrait_path_h" flex_grow="0" margin_top="-12"/>
-    <!-- The header's unit name: centred on the logo in portrait; landscape keeps its
-         full-height box. -->
-    <style name="name_landscape" max_height="100%"/>
-    <style name="name_portrait" height="content"/>
     <!-- Portrait centres the logo and name in the header's height. -->
     <style name="suffix_portrait" flex_track_place="center"/>
     <style name="right_landscape" width="#ams_right_col_w" height="100%" flex_grow="0" pad_all="#space_sm"/>
@@ -84,10 +80,7 @@
             <!-- System name (bound to ams_system_name subject) -->
             <text_heading name="system_name_label"
                           width="1" flex_grow="1" bind_text="ams_system_name" text_transform="uppercase"
-                          long_mode="dots" clickable="false" event_bubble="true" scrollable="false">
-              <bind_style_if_eq name="name_landscape" subject="ui_is_portrait" ref_value="0"/>
-              <bind_style_if_eq name="name_portrait" subject="ui_is_portrait" ref_value="1"/>
-            </text_heading>
+                          long_mode="dots" clickable="false" event_bubble="true" scrollable="false"/>
           </lv_obj>
         </lv_obj>
         <!-- Outside the back button so a long system name cannot push it off the header -->

@@ -66,7 +66,7 @@
                      width="100%" height="content" layout="column" state_trickle="true" style_pad_ver="#space_sm"
                      style_pad_gap="#temp_preset_btn_spacing" hidden="true">
             <event_cb trigger="clicked" callback="on_filament_preset_spool"/>
-            <text_body name="spool_preset_label" text="" long_mode="dots"/>
+            <text_body name="spool_preset_label" width="100%" text="" style_text_align="center" long_mode="dots"/>
             <text_small name="spool_preset_temps" text="" style_text_align="center" style_text_color="#text_muted"/>
           </ui_button>
         </lv_obj>
