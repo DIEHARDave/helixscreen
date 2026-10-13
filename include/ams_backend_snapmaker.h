@@ -158,6 +158,12 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
         return kTraits;
     }
 
+    // PARK_EXTRUDER docks every head, so the carriage can be empty even though
+    // a load feeds filament rather than mounting a tool.
+    [[nodiscard]] bool carriage_can_be_empty() const override {
+        return true;
+    }
+
     // FEED_AUTO homes and sets its own nozzle target from the lane's material:
     // a load reports load_homing then load_heating, an unload unload_homing then
     // unload_heating. A G28 or UI preheat in front of it is a second wait.

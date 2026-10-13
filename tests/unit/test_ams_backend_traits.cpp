@@ -66,6 +66,28 @@ TEST_CASE("Mock personas answer their real backend's traits", "[ams][mock][trait
     }
 }
 
+TEST_CASE("Mock personas answer whether the carriage can be empty as their real backend does",
+          "[ams][mock][traits][tool_switcher][1784]") {
+    SECTION("Snapmaker U1") {
+        AmsBackendMock mock(4);
+        mock.set_snapmaker_mode(true);
+        AmsBackendSnapmaker real(nullptr, nullptr);
+        CHECK(mock.carriage_can_be_empty() == real.carriage_can_be_empty());
+    }
+    SECTION("Tool changer") {
+        AmsBackendMock mock(4);
+        mock.set_tool_changer_mode(true);
+        AmsBackendToolChanger real(nullptr, nullptr);
+        CHECK(mock.carriage_can_be_empty() == real.carriage_can_be_empty());
+    }
+    SECTION("AFC") {
+        AmsBackendMock mock(4);
+        mock.set_afc_mode(true);
+        AmsBackendAfc real(nullptr, nullptr);
+        CHECK(mock.carriage_can_be_empty() == real.carriage_can_be_empty());
+    }
+}
+
 TEST_CASE("Mock environment sensors follow the configured environment mode",
           "[ams][mock][traits]") {
     AmsBackendMock mock(4);

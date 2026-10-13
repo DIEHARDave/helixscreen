@@ -3918,6 +3918,17 @@ bool AmsBackendMock::owns_tool_mapping_table() const {
     return !snapmaker_mode_;
 }
 
+bool AmsBackendMock::carriage_can_be_empty() const {
+    bool snapmaker = false;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        snapmaker = snapmaker_mode_;
+    }
+    // AmsBackendSnapmaker parks its heads; every other mode answers what the
+    // backend it stands in for answers. traits() takes mutex_ itself.
+    return snapmaker || load_mounts_tool();
+}
+
 void AmsBackendMock::set_remap_strategy(RemapStrategy strategy) {
     std::lock_guard<std::mutex> lock(mutex_);
     remap_strategy_ = strategy;

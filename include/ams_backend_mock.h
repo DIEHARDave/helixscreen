@@ -272,6 +272,7 @@ class AmsBackendMock : public AmsBackend {
     [[nodiscard]] RemapStrategy get_remap_strategy() const override;
     [[nodiscard]] bool remap_ready() const override;
     [[nodiscard]] bool owns_tool_mapping_table() const override;
+    [[nodiscard]] bool carriage_can_be_empty() const override;
 
     /// Emulate a backend that declares a different route. The shape worth
     /// reaching for is RemapStrategy::None — ACE, or a single-extruder printer

@@ -639,6 +639,18 @@ class AmsBackend {
     }
 
     /**
+     * @brief True when the carriage can hold no tool at all, so a current tool
+     *        of -1 means "nothing mounted" rather than "nothing loaded".
+     *
+     * Every machine whose load mounts a tool can park it. A tool changer whose
+     * load feeds filament (the Snapmaker U1) parks its heads too, so it
+     * overrides this while load_mounts_tool() stays false.
+     */
+    [[nodiscard]] virtual bool carriage_can_be_empty() const {
+        return load_mounts_tool();
+    }
+
+    /**
      * @brief True when Load feeds filament into a head on a machine whose heads are
      *        otherwise mounted and unmounted.
      *

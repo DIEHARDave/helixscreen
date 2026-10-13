@@ -157,6 +157,7 @@ void ToolState::deinit_subjects() {
     // (and reconnect paths) inherit stale ams_topology_active_=true, which then
     // causes sync_from_backend() on a non-multiplexing backend to wipe tools_.
     ams_topology_active_ = false;
+    backend_owns_active_tool_ = false;
     ams_topology_tool_count_ = 0;
     ams_topology_tool_to_slot_.clear();
 
@@ -427,6 +428,35 @@ void ToolState::clear_ams_topology() {
     spdlog::info("[ToolState] AMS topology cleared");
 }
 
+void ToolState::set_backend_active_tool(int index) {
+    if (!subjects_ready(subjects_initialized_, "set_backend_active_tool()")) {
+        return;
+    }
+    backend_owns_active_tool_ = true;
+    if (index < 0 || index >= static_cast<int>(tools_.size())) {
+        index = -1;
+    }
+    if (index != active_tool_index_) {
+        active_tool_index_ = index;
+        lv_subject_set_int(&active_tool_, active_tool_index_);
+        spdlog::debug("[ToolState] Backend active tool: {}", active_tool_index_);
+    }
+}
+
+void ToolState::clear_backend_active_tool() {
+    if (!backend_owns_active_tool_) {
+        return;
+    }
+    backend_owns_active_tool_ = false;
+    // Without a backend an empty carriage is not a state this printer reports,
+    // so T0 holds the head until a status frame says otherwise.
+    if (active_tool_index_ < 0 && subjects_initialized_) {
+        active_tool_index_ = 0;
+        lv_subject_set_int(&active_tool_, active_tool_index_);
+    }
+    spdlog::debug("[ToolState] Backend released the active tool");
+}
+
 void ToolState::update_from_status(const nlohmann::json& status) {
     if (tools_.empty()) {
         return;
@@ -437,7 +467,8 @@ void ToolState::update_from_status(const nlohmann::json& status) {
     // Parse active tool from toolchanger object.
     // When AMS owns the active tool (e.g., AFC), ignore Klipper's toolchanger
     // view — the logical T-number is driven by the backend, not the printer.
-    if (!ams_topology_active_) {
+    const bool frame_owns_active_tool = !ams_topology_active_ && !backend_owns_active_tool_;
+    if (frame_owns_active_tool) {
         if (status.contains("toolchanger") && status["toolchanger"].is_object()) {
             const auto& tc = status["toolchanger"];
             if (tc.contains("tool_number") && tc["tool_number"].is_number_integer()) {
@@ -457,7 +488,7 @@ void ToolState::update_from_status(const nlohmann::json& status) {
     // extruder changes but there's no "toolchanger" object in status.
     // When AMS owns the active tool, ignore this too — the backend's tool index
     // is the source of truth, not Klipper's view of the physical extruder.
-    if (!ams_topology_active_) {
+    if (frame_owns_active_tool) {
         if (status.contains("toolhead") && status["toolhead"].is_object()) {
             const auto& toolhead = status["toolhead"];
             if (toolhead.contains("extruder") && toolhead["extruder"].is_string()) {

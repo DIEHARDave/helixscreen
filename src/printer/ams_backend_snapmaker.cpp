@@ -1242,9 +1242,16 @@ void AmsBackendSnapmaker::apply_active_tool_locked(const snapmaker::StatusDelta&
     }
     if (delta.toolhead_extruder) {
         // "extruder" = 0, "extruder1" = 1, etc. An unparseable name leaves
-        // whatever the per-extruder state decided above.
+        // whatever the per-extruder state decided above. toolhead.extruder names
+        // the last head used, not a mounted one: a head reporting PARKED is on
+        // its dock, so the per-extruder answer stands, -1 when every head is
+        // parked (prestonbrown/helixscreen#1784).
         if (const auto tool_number = helix::tool_number_for_extruder(*delta.toolhead_extruder)) {
-            active = *tool_number;
+            const bool named_head_parked = *tool_number >= 0 && *tool_number < NUM_TOOLS &&
+                                           extruder_states_[*tool_number].state == "PARKED";
+            if (!named_head_parked) {
+                active = *tool_number;
+            }
         }
         has_extruder_data = true;
     }
