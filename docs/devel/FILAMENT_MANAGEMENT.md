@@ -1245,7 +1245,9 @@ below medium, three from medium up; the environment pill still costs the row its
 The sidebar tightens for portrait: its gaps drop to `space_xxs` and the status line's
 vertical padding to 0. The strip's meters stand on the right of its two lines and follow
 the breakpoint like landscape: the small row below medium (the strip stays 37 px), the full
-form from medium up (the clog arc's growth is capped by `ams_clog_arc_max`).
+form from medium up (the clog arc's growth is capped by `ams_clog_arc_max`). From medium up
+the text column is wide, so the weight follows the position (`position_hug`, at most 70% of
+the column) instead of ending the line beside the meters; below medium it ends the line.
 Below medium, where the bottom section is about 70 px, the four
 actions sit in one row (`styles.action_cell_quarter`, stacked icon over label: a 60 px cell
 has no room for both side by side), and the step progress is a row instead of a list

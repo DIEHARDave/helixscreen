@@ -565,6 +565,10 @@ TEST_CASE_METHOD(AmsTrayPanelFixture,
         CHECK(ma.y2 >= da.y1);
     }
     REQUIRE(meters_seen > 0);
+    // In a narrow text column the weight ends the position line.
+    lv_area_t wa;
+    lv_obj_get_coords(lv_obj_find_by_name(panel_obj_, "loaded_weight"), &wa);
+    CHECK(wa.x2 == da.x2);
     // Lane badges stay apart at eight lanes.
     lv_obj_t* badges = lv_obj_find_by_name(panel_obj_, "badge_layer");
     REQUIRE(badges != nullptr);
@@ -576,4 +580,38 @@ TEST_CASE_METHOD(AmsTrayPanelFixture,
         lv_obj_get_coords(lv_obj_get_child(badges, i + 1), &b);
         CHECK(a.x2 < b.x1);
     }
+}
+
+TEST_CASE_METHOD(AmsTrayPanelFixture,
+                 "AMS panel in portrait at 480x800: the weight follows the position",
+                 "[ams][tray][ui_integration][portrait]") {
+    helix::test::ScopedGeometry portrait(480, 800);
+    REQUIRE(lv_subject_get_int(lv_xml_get_subject(nullptr, "ui_breakpoint")) >= 3);
+    host_ = lv_obj_create(test_screen());
+    lv_obj_set_size(host_, 480, 730);
+    lv_obj_set_style_pad_all(host_, 0, LV_PART_MAIN);
+    lv_obj_set_style_border_width(host_, 0, LV_PART_MAIN);
+    build("passive", 8);
+    lv_obj_update_layout(test_screen());
+
+    lv_obj_t* details = lv_obj_find_by_name(panel_obj_, "loaded_details");
+    lv_obj_t* position = lv_obj_find_by_name(panel_obj_, "loaded_position");
+    lv_obj_t* weight = lv_obj_find_by_name(panel_obj_, "loaded_weight");
+    REQUIRE(details != nullptr);
+    REQUIRE(position != nullptr);
+    REQUIRE(weight != nullptr);
+    REQUIRE_FALSE(lv_obj_has_flag(weight, LV_OBJ_FLAG_HIDDEN));
+    lv_area_t da, pa, wa;
+    lv_obj_get_coords(details, &da);
+    lv_obj_get_coords(position, &pa);
+    lv_obj_get_coords(weight, &wa);
+    CAPTURE(da.x1, da.x2, pa.x1, pa.x2, wa.x1, wa.x2);
+    // The text column is wide, so the weight sits right after the position
+    // rather than at the column's far end beside the meters.
+    REQUIRE(lv_area_get_width(&da) > 3 * (lv_area_get_width(&pa) + lv_area_get_width(&wa)) / 2);
+    CHECK(wa.x1 > pa.x2);
+    CHECK(wa.x1 - pa.x2 <= 16);
+    CHECK(wa.x2 < da.x2 - lv_area_get_width(&wa));
+    CHECK(wa.y1 < pa.y2);
+    CHECK(wa.y2 > pa.y1);
 }
