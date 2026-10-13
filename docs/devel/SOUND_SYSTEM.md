@@ -402,7 +402,7 @@ These are the 13 standard sound names recognized by the system. Theme files may 
 | `error_tone` | EVENT | Error | Error severity toast shown |
 | `alarm_urgent` | ALARM | Critical | Critical failure alarm |
 | `test_beep` | UI | Settings | Preview sound buttons in settings |
-| `startup` | EVENT | System | HelixScreen boot chime |
+| `startup` | EVENT | System | HelixScreen boot chime (skipped under `--test`, via `RuntimeConfig::should_play_startup_sound()`) |
 
 **UI sounds** (`button_tap`, `toggle_on`, `toggle_off`, `nav_forward`, `nav_back`, `dropdown_open`) are affected by the `ui_sounds_enabled` toggle. EVENT and ALARM sounds play regardless of the UI toggle -- only the `sounds_enabled` master toggle can disable them.
 

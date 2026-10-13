@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "runtime_config.h"
 #include "sound_sequencer.h"
 #include "sound_theme.h"
 
@@ -66,6 +67,9 @@ class SoundManager {
     /// try_install_m300_backend() once hardware discovery confirms the
     /// printer's Klipper config declares a beeper output_pin.
     void initialize();
+
+    /// Play the boot chime, unless @p config says this run stays silent.
+    void play_startup(const RuntimeConfig& config);
 
     /// Install the M300 (Klipper gcode beeper) backend.
     ///

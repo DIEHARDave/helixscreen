@@ -519,6 +519,12 @@ void SoundManager::load_theme(const std::string& name) {
     }
 }
 
+void SoundManager::play_startup(const RuntimeConfig& config) {
+    if (config.should_play_startup_sound()) {
+        play("startup", SoundPriority::EVENT);
+    }
+}
+
 bool SoundManager::is_ui_sound(const std::string& name) {
     // UI interaction sounds — affected by ui_sounds_enabled toggle
     return name == "button_tap" || name == "toggle_on" || name == "toggle_off" ||

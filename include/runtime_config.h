@@ -305,6 +305,14 @@ struct RuntimeConfig {
     }
 
     /**
+     * @brief Whether boot plays the startup chime
+     * @return false in test mode; every other sound still plays there
+     */
+    bool should_play_startup_sound() const {
+        return !test_mode;
+    }
+
+    /**
      * @brief Whether the GENERIC, sensor-driven filament runout modal may show.
      *
      * This is a policy question about which surface owns a runout, not a
