@@ -5,8 +5,8 @@
      per head. The widget publishes what it reads (tool_switcher_face_*): the
      head's name in the form the cell has room for, its temperature and filament
      colour, or "Choose head" with the carriage empty. A tap opens the sheet,
-     where every head and Park are. Disabled, like the sheet's rows, while
-     anything blocks toolhead motion or a print refuses the switch. Sized by the
+     where every head and Park are. Disabled, like the segments and the sheet's
+     rows, while tool_switcher_change_blocked. Sized by the
      widget's cell, which is never under the touch floor. -->
 <component>
   <styles>
@@ -19,7 +19,7 @@
   <view extends="lv_obj"
         flex_flow="column" style_flex_main_place="center" style_flex_cross_place="center"
         style_flex_track_place="center" style_pad_all="0" style_pad_gap="0" style_radius="0" style_border_width="0"
-        clickable="true" scrollable="false" moves_machine="true">
+        clickable="true" scrollable="false">
     <bind_style_prop prop="width" subject="tool_switcher_cell_w"/>
     <bind_style_prop prop="height" subject="tool_switcher_cell_h"/>
     <style name="face_idle"/>

@@ -12,11 +12,10 @@
   <view name="tool_picker_btn_root"
         extends="lv_obj" width="100%" height="content" style_pad_all="0" style_bg_opa="0" style_border_width="0"
         scrollable="false">
-    <!-- A finger-sized row. A tool change moves the toolhead, so the row is
-         refused while anything blocks motion, and while a print refuses the
-         switch. -->
-    <ui_button name="tool_btn"
-               width="100%" height="content" variant="ghost" style_min_height="#touch_target_min" moves_machine="true">
+    <!-- A finger-sized row, disabled while tool_switcher_change_blocked: a
+         print that refuses the switch, or spools on the bed. A paused print
+         still offers it, behind its confirmation. -->
+    <ui_button name="tool_btn" width="100%" height="content" variant="ghost" style_min_height="#touch_target_min">
       <bind_state_if_eq subject="tool_switcher_change_blocked" state="disabled" ref_value="1"/>
       <lv_obj name="tool_btn_text"
               width="content" height="content" align="center" flex_flow="column" style_flex_cross_place="center"

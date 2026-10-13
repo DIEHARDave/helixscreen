@@ -11,7 +11,10 @@
  * route each tap where it belongs.
  */
 
+#include "ui_modal.h"
+
 #include "../lvgl_ui_test_fixture.h"
+#include "../test_helpers/print_state_test_drivers.h"
 #include "../test_helpers/tool_switcher_rig.h"
 #include "../test_helpers/tool_switcher_test_access.h"
 #include "panel_widget_registry.h"
@@ -455,5 +458,53 @@ TEST_CASE_METHOD(LVGLUITestFixture, "tool_switcher: spools on the bed block ever
     process_lvgl(30);
 
     state().print_state().set_spool_latch(false);
+    process_lvgl(30);
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "tool_switcher: a paused print still lets a head change through its confirmation",
+                 "[tool_switcher][1784]") {
+    ToolChangerRig rig(4);
+    PanelWidgetHarness<ToolSwitcherWidget> h(test_screen(), state());
+    process_lvgl(30);
+    resize_content(h, 600, 60);
+    process_lvgl(30);
+    REQUIRE(mode() == static_cast<int>(ToolSwitcherMode::RailWithPark));
+    lv_obj_t* seg = named(h, "tool_switcher_seg_1");
+    lv_obj_t* park = named(h, "tool_switcher_rail_park_btn_3");
+    helix::test::set_wire_state(state(), PrintJobState::PAUSED);
+    process_lvgl(30);
+    REQUIRE(ModalStack::instance().empty());
+
+    SECTION("a head is offered, behind the paused-change confirmation") {
+        CHECK_FALSE(lv_obj_has_state(seg, LV_STATE_DISABLED));
+        CHECK_FALSE(lv_obj_has_state(named(h, "tool_switcher_face"), LV_STATE_DISABLED));
+        tap(seg);
+        process_lvgl(30);
+        CHECK_FALSE(ModalStack::instance().empty());
+        CHECK(rig.backend->change_tool_calls == 0);
+        CHECK(rig.warnings.empty());
+    }
+    SECTION("Park is not: resuming with the head docked prints nothing") {
+        CHECK(lv_obj_has_state(park, LV_STATE_DISABLED));
+        tap(park);
+        CHECK(rig.backend->park_calls == 0);
+        REQUIRE(rig.warnings.size() == 1);
+        CHECK(rig.warnings[0].find("Cannot park while a print is active") != std::string::npos);
+    }
+    SECTION("spools on the bed refuse the head change as well") {
+        state().print_state().set_spool_latch(true);
+        process_lvgl(30);
+        CHECK(lv_obj_has_state(seg, LV_STATE_DISABLED));
+        tap(seg);
+        process_lvgl(30);
+        CHECK(ModalStack::instance().empty());
+        CHECK(rig.backend->change_tool_calls == 0);
+        REQUIRE(rig.warnings.size() == 1);
+        CHECK(rig.warnings[0].find(lv_tr(spool_latch_message())) != std::string::npos);
+        state().print_state().set_spool_latch(false);
+        process_lvgl(30);
+    }
+    helix::test::set_wire_state(state(), PrintJobState::STANDBY);
     process_lvgl(30);
 }

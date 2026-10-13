@@ -100,6 +100,7 @@ class ToolSwitcherWidget : public TiledPanelWidget {
     ObserverGuard active_tool_observer_;
     ObserverGuard tool_count_observer_;
     ObserverGuard print_state_observer_;
+    ObserverGuard spool_latch_observer_;
     ObserverGuard slots_observer_;
     ObserverGuard extruders_observer_;
 
@@ -158,9 +159,10 @@ class ToolSwitcherWidget : public TiledPanelWidget {
      */
     [[nodiscard]] AmsError tool_change_refusal() const;
 
-    /// Publish tool_change_refusal() as tool_switcher_change_blocked. Called
-    /// from publish() and the print-state observer, so a recycled instance
-    /// re-applies it on attach as well as on state change.
+    /// Publish tool_switcher_change_blocked: tool_change_refusal(), or spools
+    /// on the bed. Called from publish() and the print-state and latch
+    /// observers, so a recycled instance re-applies it on attach as well as on
+    /// state change.
     void refresh_print_gating();
 
     /// Issue the change and report any refusal. Static so the confirmation

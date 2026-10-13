@@ -312,6 +312,16 @@ void ToolSwitcherWidget::attach(lv_obj_t* widget_obj, lv_obj_t* parent_screen) {
         },
         printer_state_.print_state().get_static_subjects_lifetime());
 
+    // Spools laid on the bed block a head change as a print does.
+    spool_latch_observer_ = helix::ui::observe<int>(
+        printer_state_.print_state().get_spool_latch_subject(), this,
+        [token](ToolSwitcherWidget* self, int /*latched*/) {
+            if (token.expired())
+                return;
+            self->refresh_print_gating();
+        },
+        printer_state_.print_state().get_static_subjects_lifetime());
+
     // A slot's colour or material changing recolours its head. A backend
     // arriving or leaving can change whether there is a Park cell, which
     // re-decides the layout.
@@ -352,6 +362,7 @@ void ToolSwitcherWidget::detach() {
     active_tool_observer_.reset();
     tool_count_observer_.reset();
     print_state_observer_.reset();
+    spool_latch_observer_.reset();
     slots_observer_.reset();
     extruders_observer_.reset();
     head_temps_.clear();
@@ -795,7 +806,11 @@ AmsError ToolSwitcherWidget::tool_change_refusal() const {
 }
 
 void ToolSwitcherWidget::refresh_print_gating() {
-    set_int_if_changed(&s_change_blocked_subject, tool_change_refusal().success() ? 0 : 1);
+    // Not moves_machine's machine_motion_blocked: that holds through PAUSED,
+    // where a head change is offered behind its confirmation.
+    const bool blocked =
+        !tool_change_refusal().success() || printer_state_.print_state().spool_latch_active();
+    set_int_if_changed(&s_change_blocked_subject, blocked ? 1 : 0);
 }
 
 void ToolSwitcherWidget::dispatch_tool_change(int tool_index) {
