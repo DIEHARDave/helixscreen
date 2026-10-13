@@ -166,16 +166,20 @@ tallest peak: the two tallest peaks can be different modes entirely (a frame mod
 path, a belt hump on the other).
 
 The comparison is invalid when either curve has fewer than three in-band bins. The
-constants are provisional. Five printers captured so far sort plausibly under them (fixtures
-in `tests/fixtures/belt_sweeps/`, named by axis):
+constants are provisional (prestonbrown/helixscreen#1737). Six printers captured so far sort
+plausibly under them (fixtures in `tests/fixtures/belt_sweeps/`, named by axis):
 
 | Printer | Band (Hz) | Similarity | Verdict |
 |---------|-----------|-----------:|---------|
+| AD5X | 20-80 | 99.5% | Good match |
 | K1C | 5-133.3 | 98.9% | Good match |
 | AD5M | 5-100 | 97.4% | Good match |
 | K2 Plus | 20-120 | 92.2% | Good match |
 | U1 | 5-100 | 81.7% | Fair match (main pair 3 Hz apart) |
 | Voron 2.4 (Kalico) | 5-135 | 48.3% | Poor match (uneven belts, gantry due for re-racking) |
+
+A rerun of the same machine moves the number: the AD5M read 98.4% and the Voron 43.7% on a
+second capture, so a cutoff a few points from a printer's reading can flip its verdict.
 
 Belt modes sit where the machine puts them (40-60 Hz on the small factory printers,
 110-130 Hz on the Voron), so no fixed "belt band" would work across the fleet. No capture
@@ -224,7 +228,7 @@ one `###` entry per variable.
 |------|--------|
 | `tests/unit/test_belt_tension_calibrator.cpp` | The calibrator: homing order, sweep lifecycle, cancel-mid-run generation guard, emergency abort |
 | `tests/unit/test_belt_tension_panel_states.cpp` | Panel view states, gate-to-button binding, similarity/facts/markers, ghost series on re-test, low-RAM warning |
-| `tests/unit/test_belt_compare.cpp` | `compare_belt_paths` / `pair_belt_peaks` / `band_similarity` against five printers' real captures (`tests/fixtures/belt_sweeps/`) and synthetic curves |
+| `tests/unit/test_belt_compare.cpp` | `compare_belt_paths` / `pair_belt_peaks` / `band_similarity` against six printers' real captures (`tests/fixtures/belt_sweeps/`) and synthetic curves |
 | `tests/unit/test_belt_gating.cpp` | Every gate leg of `evaluate_belt_gate` |
 | `tests/unit/test_mock_test_resonances.cpp` | The mock's sweep simulation, including each `HELIX_MOCK_BELT_FAIL` mode |
 | `tests/unit/test_frequency_response_chart_style.cpp` (`[belt]` cases) | Series styling, muted ghost, sweep cursor, markers |

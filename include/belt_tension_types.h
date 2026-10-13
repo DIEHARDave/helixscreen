@@ -60,8 +60,9 @@ using BeltCurve = std::vector<std::pair<float, float>>;
 
 enum class BeltVerdict { MATCHED, CLOSE, ADJUST };
 
-/// Provisional: from one real capture pair so far. Replace from more captures
-/// before the verdict gains directional advice (prestonbrown/helixscreen#1721).
+/// Provisional: they sort every real capture in tests/fixtures/belt_sweeps/
+/// plausibly, but no known-good reference exists yet for a printer that reads
+/// Poor (prestonbrown/helixscreen#1737).
 namespace belt_verdict {
 inline constexpr float PEAK_THRESHOLD_FRACTION = 0.10f; ///< of the in-band maximum
 inline constexpr float PAIR_MAX_HZ = 10.0f;             ///< pairing distance ceiling
