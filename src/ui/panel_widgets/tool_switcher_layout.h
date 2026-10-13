@@ -66,14 +66,16 @@ struct ToolSwitcherGrid {
 /// @param gap         px between adjacent cells
 /// @param body_px     line height of the breakpoint's body font
 /// @param small_px    line height of the breakpoint's small font
+/// @param park_available  the backend can dock the mounted head; without it
+///                    there is no Park cell to draw, so no mode reserves one
 ///
 /// The first mode that fits wins: a segment per head plus Park, a segment per
 /// head, the mounted head's face beside Park along the long axis, and the face
-/// alone, which takes whatever box there is.
-[[nodiscard]] inline ToolSwitcherLayout decide_tool_switcher_layout(int tool_count, int content_w,
-                                                                    int content_h, int min_target,
-                                                                    int gap, int body_px,
-                                                                    int small_px) {
+/// alone, which takes whatever box there is. The two Park modes need
+/// @p park_available.
+[[nodiscard]] inline ToolSwitcherLayout
+decide_tool_switcher_layout(int tool_count, int content_w, int content_h, int min_target, int gap,
+                            int body_px, int small_px, bool park_available) {
     ToolSwitcherLayout out;
     if (content_w <= 0 || content_h <= 0)
         return out;
@@ -85,7 +87,7 @@ struct ToolSwitcherGrid {
 
     const ToolSwitcherMode rail_modes[2] = {ToolSwitcherMode::RailWithPark, ToolSwitcherMode::Rail};
     const int rail_cells[2] = {tool_count + 1, tool_count};
-    for (int i = 0; i < 2; i++) {
+    for (int i = park_available ? 0 : 1; i < 2; i++) {
         const ToolSwitcherGrid g =
             fit_tool_switcher_cells(rail_cells[i], content_w, content_h, min_target, gap);
         if (!g.fits)
@@ -124,7 +126,7 @@ struct ToolSwitcherGrid {
     if (park_px < min_target)
         park_px = min_target;
     const int face_px = long_px - gap - park_px;
-    if (short_px >= min_target && face_px >= min_target) {
+    if (park_available && short_px >= min_target && face_px >= min_target) {
         out.mode = ToolSwitcherMode::Pair;
         out.pair_horizontal = horizontal;
         out.cols = horizontal ? 2 : 1;

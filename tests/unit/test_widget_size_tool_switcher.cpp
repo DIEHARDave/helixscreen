@@ -166,6 +166,8 @@ TEST_CASE_METHOD(ToolSwitcherFixture,
                  "tool_switcher: publishes the mode its measured box earns, and re-decides on "
                  "every size change",
                  "[widget_size][tool_switcher][1784]") {
+    // A backend that can dock a head, so the Park modes are open.
+    ParkingBackend parking(/*tool_changer=*/true);
     // 214x93 is the 2x1 content box at 800x480: four 48 px segments fit, five
     // do not.
     configure_tools(5);
@@ -239,6 +241,8 @@ TEST_CASE_METHOD(ToolSwitcherFixture,
                  "tool_switcher: segments read \"Tool 1\" over \"T0\" where every head's lines "
                  "fit, else \"T0\"",
                  "[widget_size][tool_switcher][1784][1769]") {
+    // A backend that can dock a head, so the Park modes are open.
+    ParkingBackend parking(/*tool_changer=*/true);
     configure_tools(4);
     PanelWidgetHarness<ToolSwitcherWidget> h(test_screen(), state());
     process_lvgl(30);
@@ -271,6 +275,8 @@ TEST_CASE_METHOD(ToolSwitcherFixture,
 TEST_CASE_METHOD(ToolSwitcherFixture,
                  "tool_switcher: configured names in 48 px segments read the G-code name",
                  "[widget_size][tool_switcher][1784][1769]") {
+    // A backend that can dock a head, so the Park modes are open.
+    ParkingBackend parking(/*tool_changer=*/true);
     configure_named_tools({"Left Extruder", "Right Extruder"});
     PanelWidgetHarness<ToolSwitcherWidget> h(test_screen(), state());
     process_lvgl(30);
@@ -365,6 +371,8 @@ TEST_CASE_METHOD(ToolSwitcherFixture, "tool_switcher: no filament system means n
 TEST_CASE_METHOD(ToolSwitcherFixture,
                  "tool_switcher: a new head count republishes every pool at the cached size",
                  "[widget_size][tool_switcher][1784]") {
+    // A backend that can dock a head, so the Park modes are open.
+    ParkingBackend parking(/*tool_changer=*/true);
     configure_tools(4);
     PanelWidgetHarness<ToolSwitcherWidget> h(test_screen(), state());
     process_lvgl(30);

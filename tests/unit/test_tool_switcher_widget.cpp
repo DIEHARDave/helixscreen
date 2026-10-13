@@ -15,6 +15,8 @@
 #include "../test_helpers/tool_switcher_rig.h"
 #include "../test_helpers/tool_switcher_test_access.h"
 #include "panel_widget_registry.h"
+#include "printer_state.h"
+#include "spool_latch_gate.h"
 #include "theme_manager.h"
 #include "tool_state.h"
 
@@ -301,4 +303,157 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     REQUIRE(cell_h() - strip < lines);
     CHECK(lv_subject_get_int(two_line) == 0);
     CHECK(lv_obj_has_flag(sub, LV_OBJ_FLAG_HIDDEN));
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "tool_switcher: a backend that cannot park gets no Park cell anywhere",
+                 "[tool_switcher][1784]") {
+    SECTION("a rail with room for Park is a rail of heads") {
+        ToolChangerRig rig(4);
+        rig.backend->can_park = false;
+        PanelWidgetHarness<ToolSwitcherWidget> h(test_screen(), state());
+        process_lvgl(30);
+        resize_content(h, 600, 60);
+        process_lvgl(30);
+        CHECK(mode() == static_cast<int>(ToolSwitcherMode::Rail));
+        lv_obj_update_layout(h.root());
+        for (int i = 0; i < 4; ++i) {
+            CAPTURE(i);
+            CHECK(shown(named(h, "tool_switcher_seg_" + std::to_string(i))));
+            CHECK_FALSE(shown(named(h, "tool_switcher_rail_park_" + std::to_string(i))));
+        }
+        // The heads take the whole width: no cell is held back for Park.
+        const int floor = resolve_px("touch_target_min", 48);
+        lv_obj_t* last = named(h, "tool_switcher_seg_3");
+        CHECK(lv_obj_get_x(last) + lv_obj_get_width(last) + floor > 600);
+    }
+    SECTION("a box for a face beside Park is the face alone") {
+        ToolChangerRig rig(5);
+        rig.backend->can_park = false;
+        PanelWidgetHarness<ToolSwitcherWidget> h(test_screen(), state());
+        process_lvgl(30);
+        resize_content(h, 214, 93);
+        process_lvgl(30);
+        CHECK(mode() == static_cast<int>(ToolSwitcherMode::Single));
+        lv_obj_update_layout(h.root());
+        CHECK_FALSE(shown(named(h, "tool_switcher_face_park")));
+        CHECK(lv_obj_get_width(named(h, "tool_switcher_face")) == 214);
+    }
+    SECTION("a backend that learns to park re-decides the tile it already sized") {
+        ToolChangerRig rig(4);
+        rig.backend->can_park = false;
+        PanelWidgetHarness<ToolSwitcherWidget> h(test_screen(), state());
+        process_lvgl(30);
+        resize_content(h, 600, 60);
+        process_lvgl(30);
+        REQUIRE(mode() == static_cast<int>(ToolSwitcherMode::Rail));
+
+        rig.backend->can_park = true;
+        AmsState::instance().bump_slots_version();
+        process_lvgl(30);
+        CHECK(mode() == static_cast<int>(ToolSwitcherMode::RailWithPark));
+        CHECK(shown(named(h, "tool_switcher_rail_park_3")));
+    }
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "tool_switcher: a sheet row shows its head's temperature and colour strip",
+                 "[tool_switcher][1784]") {
+    ToolChangerRig rig(3);
+    // Each head sources its own lane, which is where its colour comes from.
+    ToolTopology topo;
+    topo.tool_count = 3;
+    topo.active_tool = 0;
+    topo.tool_to_slot = {0, 1, 2};
+    ToolState::instance().set_ams_topology(topo);
+    state().temperature_state().init_extruders({"extruder", "extruder1", "extruder2"});
+    process_lvgl(30);
+    PanelWidgetHarness<ToolSwitcherWidget> h(test_screen(), state());
+    process_lvgl(30);
+    state().update_from_status(nlohmann::json{{"extruder1", {{"temperature", 215.0}}}});
+    process_lvgl(30);
+    h.resize(2, 2, 160, 60);
+    process_lvgl(30);
+
+    ToolSwitcherTestAccess::show_picker(h.widget());
+    lv_obj_t* list = ToolSwitcherTestAccess::picker_list(h.widget());
+    REQUIRE(list != nullptr);
+    REQUIRE(lv_obj_get_child_count(list) == 3);
+    lv_obj_t* row1 = lv_obj_get_child(list, 1);
+    lv_obj_t* temp = lv_obj_find_by_name(row1, "tool_btn_temp");
+    REQUIRE(temp != nullptr);
+    CHECK(std::string(lv_label_get_text(temp)) == "215°C");
+
+    // The strip follows the head's own colour subject, shown exactly when the
+    // head's filament colour is known.
+    int known = 0;
+    for (int i = 0; i < 3; ++i) {
+        CAPTURE(i);
+        const std::string base = "tool_switcher_seg_" + std::to_string(i);
+        const int has_color =
+            lv_subject_get_int(lv_xml_get_subject(nullptr, (base + "_has_color").c_str()));
+        lv_obj_t* strip = lv_obj_find_by_name(lv_obj_get_child(list, i), "tool_btn_strip");
+        REQUIRE(strip != nullptr);
+        CHECK(lv_obj_has_flag(strip, LV_OBJ_FLAG_HIDDEN) == (has_color == 0));
+        if (has_color) {
+            ++known;
+            CHECK((lv_color_to_u32(lv_obj_get_style_bg_color(strip, LV_PART_MAIN)) & 0xFFFFFF) ==
+                  (lv_color_to_u32(lv_subject_get_color(
+                       lv_xml_get_subject(nullptr, (base + "_color").c_str()))) &
+                   0xFFFFFF));
+        }
+    }
+    CHECK(known > 0);
+
+    lv_obj_update_layout(list);
+    for (uint32_t i = 0; i < 3; ++i) {
+        CHECK(lv_obj_get_height(lv_obj_find_by_name(lv_obj_get_child(list, i), "tool_btn")) >=
+              resolve_px("touch_target_min", 48));
+    }
+    ToolSwitcherTestAccess::hide_picker(h.widget());
+    process_lvgl(30);
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture, "tool_switcher: spools on the bed block every head and Park",
+                 "[tool_switcher][1784]") {
+    ToolChangerRig rig(4);
+    PanelWidgetHarness<ToolSwitcherWidget> h(test_screen(), state());
+    process_lvgl(30);
+    resize_content(h, 600, 60);
+    process_lvgl(30);
+    REQUIRE(mode() == static_cast<int>(ToolSwitcherMode::RailWithPark));
+    lv_obj_t* seg = named(h, "tool_switcher_seg_1");
+    lv_obj_t* park = named(h, "tool_switcher_rail_park_btn_3");
+    REQUIRE(shown(named(h, "tool_switcher_rail_park_3")));
+    REQUIRE_FALSE(lv_obj_has_state(seg, LV_STATE_DISABLED));
+    REQUIRE_FALSE(lv_obj_has_state(park, LV_STATE_DISABLED));
+
+    state().print_state().set_spool_latch(true);
+    process_lvgl(30);
+    CHECK(lv_obj_has_state(seg, LV_STATE_DISABLED));
+    CHECK(lv_obj_has_state(park, LV_STATE_DISABLED));
+    CHECK(lv_obj_has_state(named(h, "tool_switcher_face"), LV_STATE_DISABLED));
+
+    // A tap that reaches them anyway is refused, and says why.
+    tap(seg);
+    tap(park);
+    CHECK(rig.backend->change_tool_calls == 0);
+    CHECK(rig.backend->park_calls == 0);
+    REQUIRE(rig.warnings.size() == 2);
+    for (const std::string& w : rig.warnings) {
+        CHECK(w.find(lv_tr(spool_latch_message())) != std::string::npos);
+    }
+
+    // The sheet's head rows too.
+    ToolSwitcherTestAccess::show_picker(h.widget());
+    Sheet sheet = open_sheet(h.widget());
+    REQUIRE_FALSE(sheet.rows.empty());
+    for (lv_obj_t* row : sheet.rows) {
+        CHECK(lv_obj_has_state(row, LV_STATE_DISABLED));
+    }
+    ToolSwitcherTestAccess::hide_picker(h.widget());
+    process_lvgl(30);
+
+    state().print_state().set_spool_latch(false);
+    process_lvgl(30);
 }

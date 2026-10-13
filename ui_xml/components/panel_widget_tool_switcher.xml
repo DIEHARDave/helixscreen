@@ -44,8 +44,7 @@
           <tool_switcher_segment name="tool_switcher_seg_${i}" index="${i}"/>
           <lv_obj name="tool_switcher_rail_park_${i}"
                   style_pad_all="0" style_bg_opa="0" style_border_width="0" scrollable="false">
-            <bind_flag_if cond="tool_switcher_mode ne 0 or tool_count ne ${i + 1} or tool_switcher_park_supported eq 0"
-                          flag="hidden"/>
+            <bind_flag_if cond="tool_switcher_mode ne 0 or tool_count ne ${i + 1}" flag="hidden"/>
             <bind_style_prop prop="width" subject="tool_switcher_cell_w"/>
             <bind_style_prop prop="height" subject="tool_switcher_cell_h"/>
             <tool_switcher_park_segment name="tool_switcher_rail_park_btn_${i}" width="100%" height="100%"/>
@@ -93,7 +92,7 @@
       <lv_obj name="tool_switcher_face_park"
               width="100%" height="100%" flex_grow="1" style_pad_all="0" style_bg_opa="0" style_border_width="0"
               scrollable="false">
-        <bind_flag_if cond="tool_switcher_mode ne 2 or tool_switcher_park_supported eq 0" flag="hidden"/>
+        <bind_flag_if cond="tool_switcher_mode ne 2" flag="hidden"/>
         <tool_switcher_park_segment name="tool_switcher_face_park_btn" width="100%" height="100%"/>
       </lv_obj>
     </lv_obj>

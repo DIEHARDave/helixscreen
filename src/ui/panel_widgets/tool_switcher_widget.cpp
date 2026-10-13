@@ -20,6 +20,7 @@
 #include "panel_widget_size.h"
 #include "print_lifecycle_state.h"
 #include "printer_state.h"
+#include "spool_latch_gate.h"
 #include "static_subject_registry.h"
 #include "theme_manager.h"
 #include "tool_state.h"
@@ -71,6 +72,8 @@ IndexedSubjectPool s_seg_sub{"tool_switcher_seg", IndexedSubjectPool::Type::Stri
 IndexedSubjectPool s_seg_color{"tool_switcher_seg", IndexedSubjectPool::Type::Color, 0, "_color"};
 IndexedSubjectPool s_seg_has_color{"tool_switcher_seg", IndexedSubjectPool::Type::Int, 0,
                                    "_has_color"};
+// The head's temperature whatever the label form, for its sheet row.
+IndexedSubjectPool s_seg_temp{"tool_switcher_seg", IndexedSubjectPool::Type::String, 16, "_temp"};
 // Per detail row, in display order (tool_switcher_detail_order()).
 IndexedSubjectPool s_detail_text{"tool_switcher_detail", IndexedSubjectPool::Type::String, 96,
                                  "_text"};
@@ -81,9 +84,9 @@ IndexedSubjectPool s_detail_has_color{"tool_switcher_detail", IndexedSubjectPool
 IndexedSubjectPool s_detail_hot{"tool_switcher_detail", IndexedSubjectPool::Type::Int, 0, "_hot"};
 IndexedSubjectPool s_detail_main{"tool_switcher_detail", IndexedSubjectPool::Type::Int, 0, "_main"};
 
-IndexedSubjectPool* const s_pools[] = {&s_seg_label,        &s_seg_sub,     &s_seg_color,
-                                       &s_seg_has_color,    &s_detail_text, &s_detail_color,
-                                       &s_detail_has_color, &s_detail_hot,  &s_detail_main};
+IndexedSubjectPool* const s_pools[] = {
+    &s_seg_label,   &s_seg_sub,      &s_seg_color,        &s_seg_has_color, &s_seg_temp,
+    &s_detail_text, &s_detail_color, &s_detail_has_color, &s_detail_hot,    &s_detail_main};
 
 void tool_switcher_widget_init_subjects() {
     if (s_subjects_initialized)
@@ -309,13 +312,21 @@ void ToolSwitcherWidget::attach(lv_obj_t* widget_obj, lv_obj_t* parent_screen) {
         },
         printer_state_.print_state().get_static_subjects_lifetime());
 
-    // A slot's colour or material changing recolours its head.
+    // A slot's colour or material changing recolours its head. A backend
+    // arriving or leaving can change whether there is a Park cell, which
+    // re-decides the layout.
     slots_observer_ = helix::ui::observe<int>(
         AmsState::instance().get_slots_version_subject(), this,
         [token](ToolSwitcherWidget* self, int /*version*/) {
             if (token.expired())
                 return;
-            self->publish_heads();
+            const int park_before = lv_subject_get_int(&s_park_supported_subject);
+            self->refresh_park_support();
+            if (lv_subject_get_int(&s_park_supported_subject) != park_before) {
+                self->publish();
+            } else {
+                self->publish_heads();
+            }
         },
         AmsState::instance().get_subjects_lifetime());
 
@@ -403,8 +414,10 @@ void ToolSwitcherWidget::publish_layout() {
     // The rail draws a segment per head from pools of kPoolSize, so a printer
     // with more heads than that gets the face and reaches them in the sheet.
     const int decided_heads = count > kPoolSize ? kUnrailableHeads : count;
+    // A backend that cannot dock a head gets no Park cell to reserve.
     layout_ = decide_tool_switcher_layout(decided_heads, content_w, content_h, min_target, kRailGap,
-                                          body_px, small_px);
+                                          body_px, small_px,
+                                          lv_subject_get_int(&s_park_supported_subject) != 0);
     const bool rail =
         layout_.mode == ToolSwitcherMode::RailWithPark || layout_.mode == ToolSwitcherMode::Rail;
 
@@ -509,6 +522,7 @@ void ToolSwitcherWidget::publish_heads() {
         }
         ui::copy_string_if_changed(s_seg_label.at(i), label.c_str());
         ui::copy_string_if_changed(s_seg_sub.at(i), sub.c_str());
+        ui::copy_string_if_changed(s_seg_temp.at(i), temp_text(i).c_str());
         set_int_if_changed(s_seg_has_color.at(i), filament[i].has_color ? 1 : 0);
         if (filament[i].has_color) {
             set_color_if_changed(s_seg_color.at(i), filament[i].color_rgb);
@@ -672,7 +686,15 @@ void ToolSwitcherWidget::ToolPicker::on_created(lv_obj_t* backdrop) {
         // Create picker button from XML template
         const std::string full = tool_text(tools[i], ui::ToolLabelForm::Full);
         const std::string code = tool_text(tools[i], ui::ToolLabelForm::Code);
-        const char* btn_attrs[] = {"tool_text", full.c_str(), "tool_code_text", code.c_str(),
+        // Heads past the pools have no per-head subjects; their rows show the
+        // name alone.
+        const std::string index = std::to_string(i);
+        const char* btn_attrs[] = {"tool_text",
+                                   full.c_str(),
+                                   "tool_code_text",
+                                   code.c_str(),
+                                   i < static_cast<size_t>(kPoolSize) ? "index" : nullptr,
+                                   index.c_str(),
                                    nullptr};
         lv_obj_t* picker_btn =
             static_cast<lv_obj_t*>(lv_xml_create(tool_list, "tool_picker_button", btn_attrs));
@@ -696,7 +718,7 @@ void ToolSwitcherWidget::ToolPicker::on_created(lv_obj_t* backdrop) {
             // ui_button "ghost" doesn't have a bg — set primary bg directly
             lv_obj_set_style_bg_color(btn, theme_manager_get_color("primary"), 0);
             lv_obj_set_style_bg_opa(btn, LV_OPA_COVER, 0);
-            for (const char* name : {"tool_btn_label", "tool_btn_code_label"}) {
+            for (const char* name : {"tool_btn_label", "tool_btn_code_label", "tool_btn_temp"}) {
                 if (lv_obj_t* label = helix::ui::find_required(picker_btn, name, "ToolSwitcher")) {
                     lv_obj_set_style_text_color(label, theme_manager_get_color("screen_bg"), 0);
                 }
@@ -810,9 +832,24 @@ void ToolSwitcherWidget::refresh_park_support() {
     set_int_if_changed(&s_park_supported_subject, park_offered() ? 1 : 0);
 }
 
+bool ToolSwitcherWidget::refuse_while_spools_on_bed() const {
+    if (!printer_state_.print_state().spool_latch_active()) {
+        return false;
+    }
+    spdlog::info("[ToolSwitcher] Refused: spools are on the bed");
+    helix::ui::notify_ams_warning(AmsError(AmsResult::WRONG_STATE,
+                                           "Tool change blocked: spools on the bed",
+                                           lv_tr(spool_latch_message()), ""));
+    return true;
+}
+
 void ToolSwitcherWidget::handle_park_requested() {
     AmsBackend* backend = AmsState::instance().get_backend();
     if (!backend || !backend->supports_tool_park()) {
+        return;
+    }
+
+    if (refuse_while_spools_on_bed()) {
         return;
     }
 
@@ -842,6 +879,10 @@ void ToolSwitcherWidget::handle_park_requested() {
 
 void ToolSwitcherWidget::handle_tool_selected(int tool_index) {
     auto& tool_state = ToolState::instance();
+
+    if (refuse_while_spools_on_bed()) {
+        return;
+    }
 
     // Already on this tool
     if (tool_index == tool_state.active_tool_index()) {
