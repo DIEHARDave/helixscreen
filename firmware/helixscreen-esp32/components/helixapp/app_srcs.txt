@@ -373,6 +373,7 @@ src/ui/panel_widgets/shutdown_widget.cpp
 src/ui/panel_widgets/speed_flow_widget.cpp
 src/ui/panel_widgets/tile_sizing.cpp
 src/ui/panel_widgets/tile_widget.cpp
+src/ui/panel_widgets/z_offset_widget.cpp
 src/ui/panel_widgets/temp_graph_widget.cpp
 src/ui/panel_widgets/temp_stack_widget.cpp
 src/ui/panel_widgets/thermistor_widget.cpp
