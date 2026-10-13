@@ -1594,7 +1594,7 @@ reading while open. When the backend goes away it reads an empty snapshot and fa
 to the "does not report buffer or flow data" message instead of the last backend's rows.
 
 **Known gap.** The CFS clog source reads only the fork's `active` flag
-(`src/printer/ams_backend_cfs.cpp#AmsBackendCfs::parse_flat_box_status`'s buffer block), because the other
+(`src/printer/ams_backend_cfs.cpp#parse_flat_box_status`'s buffer block), because the other
 buffer fields are undocumented. The Clog Detection widget can therefore appear with no
 distance data behind it.
 
