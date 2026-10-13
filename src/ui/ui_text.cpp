@@ -343,6 +343,10 @@ static void ui_text_apply(lv_xml_parser_state_t* state, const char** attrs) {
 
     bind_long_mode_to_animations_pref(state, label);
 
+    // A dotted label meant for one line must not grow to fit its wrapped text,
+    // or it never ellipsizes (prestonbrown/helixscreen#1775).
+    helix::ui::label_hold_one_line_if_dotted(label);
+
     // Apply stroke attributes (stroke_width, stroke_color, stroke_opa)
     apply_stroke_attrs(label, attrs);
 
@@ -571,6 +575,51 @@ std::string middle_ellipsize(const char* text, int32_t max_width, const lv_font_
         lv_text_encoded_next(text, &tail_start);
     }
     return fitted;
+}
+
+namespace {
+
+void apply_one_line_height(lv_obj_t* label) {
+    const lv_font_t* font = lv_obj_get_style_text_font(label, LV_PART_MAIN);
+    if (!font) {
+        return;
+    }
+    const int32_t height = lv_font_get_line_height(font) +
+                           lv_obj_get_style_space_top(label, LV_PART_MAIN) +
+                           lv_obj_get_style_space_bottom(label, LV_PART_MAIN);
+    // Setting the height refreshes the style and re-sends STYLE_CHANGED, which
+    // lands back here; comparing first is what ends that loop.
+    if (lv_obj_get_style_height(label, LV_PART_MAIN) != height) {
+        // DECLARATIVE_OK: measured from the label's computed font, which XML cannot name
+        lv_obj_set_height(label, height);
+    }
+}
+
+void one_line_style_changed_cb(lv_event_t* e) {
+    apply_one_line_height(static_cast<lv_obj_t*>(lv_event_get_current_target(e)));
+}
+
+} // namespace
+
+void label_hold_one_line(lv_obj_t* label) {
+    if (!label) {
+        return;
+    }
+    // One hook per label however often it is held.
+    lv_obj_remove_event_cb(label, one_line_style_changed_cb);
+    lv_obj_add_event_cb(label, one_line_style_changed_cb, LV_EVENT_STYLE_CHANGED, nullptr);
+    apply_one_line_height(label);
+}
+
+void label_hold_one_line_if_dotted(lv_obj_t* label) {
+    if (!label || lv_label_get_long_mode(label) != LV_LABEL_LONG_MODE_DOTS) {
+        return;
+    }
+    if (lv_obj_get_style_height(label, LV_PART_MAIN) != LV_SIZE_CONTENT ||
+        lv_obj_get_style_max_height(label, LV_PART_MAIN) != LV_COORD_MAX) {
+        return;
+    }
+    label_hold_one_line(label);
 }
 
 } // namespace helix::ui

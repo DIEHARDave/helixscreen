@@ -5,6 +5,7 @@
 
 #include "ui_fonts.h"
 #include "ui_icon_codepoints.h"
+#include "ui_text.h"
 #include "ui_update_queue.h"
 #include "ui_variant.h"
 
@@ -1130,6 +1131,7 @@ void ui_button_apply(lv_xml_parser_state_t* state, const char** attrs) {
         lv_obj_set_width(data->label, lv_pct(100));
         // Center text within the expanded label
         lv_obj_set_style_text_align(data->label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+        helix::ui::label_hold_one_line_if_dotted(data->label);
         spdlog::trace("[ui_button] Set long_mode to '{}'", long_mode);
     }
 

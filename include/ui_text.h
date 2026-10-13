@@ -97,4 +97,30 @@ namespace helix::ui {
 std::string middle_ellipsize(const char* text, int32_t max_width, const lv_font_t* font,
                              int32_t letter_space = 0);
 
+/**
+ * Hold a label to exactly one line of its own font
+ *
+ * LVGL's DOTS mode ellipsizes only when the wrapped text is taller than the
+ * label, so a label at content height wraps instead of ellipsizing. This sets
+ * the height to one line of the label's computed font plus its top and bottom
+ * padding and borders, and keeps it there when the font or padding changes
+ * later (on LV_EVENT_STYLE_CHANGED, writing only when the value differs).
+ * Calling it again on the same label is a no-op beyond re-measuring.
+ *
+ * @param label Label to hold; nullptr is ignored
+ */
+void label_hold_one_line(lv_obj_t* label);
+
+/**
+ * Hold a dotted, content-height label to one line
+ *
+ * The rule text_* and ui_button apply after their attributes: a label whose
+ * long mode is DOTS, whose height is LV_SIZE_CONTENT and which sets no
+ * max_height is held with label_hold_one_line(). An explicit height or a
+ * max_height leaves it alone, as does any other long mode.
+ *
+ * @param label Label to check; nullptr is ignored
+ */
+void label_hold_one_line_if_dotted(lv_obj_t* label);
+
 } // namespace helix::ui
