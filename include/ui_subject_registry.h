@@ -236,4 +236,12 @@ inline void copy_string_if_changed(lv_subject_t* subject, const char* text) {
     }
 }
 
+/// Write @p value into an int subject only when it differs, so a sync that finds
+/// the same value wakes no observer.
+inline void set_int_if_changed(lv_subject_t* subject, int value) {
+    if (lv_subject_get_int(subject) != value) {
+        lv_subject_set_int(subject, value);
+    }
+}
+
 } // namespace helix::ui

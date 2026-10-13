@@ -11,6 +11,9 @@
     <!-- 1 while the unit is an absent placeholder: a box address held for a box
          that is not on the bus. The card shows disabled and says so. -->
     <prop name="absent" type="subject" default="ams_env_ind_off_flag"/>
+    <!-- 1 while the unit's logo is full-color art, drawn as is; 0 for a white mono mark,
+         which is tinted to the text color. -->
+    <prop name="logo_color" type="subject" default="ams_env_ind_off_flag"/>
     <!-- 1 while a present unit is reported offline: drawn faded, with a chip. -->
     <prop name="disconnected" type="subject" default="ams_env_ind_off_flag"/>
     <prop name="temp_text" type="subject" default="ams_env_ind_0_temp_text"/>
@@ -47,6 +50,7 @@
            the binding. -->
       <lv_image name="unit_logo" width="#ams_logo_size" height="#ams_logo_size" inner_align="contain">
         <bind_flag_if_eq subject="ams_cards_compact" flag="hidden" ref_value="1"/>
+        <bind_style_if_eq name="styles.ams_logo_mono" subject="$logo_color" ref_value="0"/>
       </lv_image>
       <!-- width="1"+flex_grow so the label is sized by the row rather than by its
            own content: a name longer than the card used to size to content, overflow

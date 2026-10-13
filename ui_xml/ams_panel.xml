@@ -73,13 +73,14 @@
             <text_heading text=":" clickable="false" event_bubble="true" scrollable="false">
               <bind_flag_if_eq subject="ui_is_portrait" flag="hidden" ref_value="1"/>
             </text_heading>
-            <!-- System logo (bound to ams_system_logo subject). The logos are white
-                 marks, recolored to the heading text so they read in both modes. -->
+            <!-- System logo (bound to ams_system_logo subject). Mono logos are white marks,
+                 recolored to the heading text so they read in both modes; a full-color
+                 logo (ams_system_logo_color 1) is drawn as is. -->
             <lv_image name="system_logo"
                       width="#ams_header_logo_size" height="#ams_header_logo_size" bind_src="ams_system_logo"
-                      inner_align="contain" clickable="false" event_bubble="true" style_image_recolor="#text"
-                      style_image_recolor_opa="255">
+                      inner_align="contain" clickable="false" event_bubble="true">
               <bind_flag_if_eq subject="ams_system_has_logo" flag="hidden" ref_value="0"/>
+              <bind_style_if_eq name="styles.ams_logo_mono" subject="ams_system_logo_color" ref_value="0"/>
             </lv_image>
             <!-- System name (bound to ams_system_name subject) -->
             <text_heading name="system_name_label"

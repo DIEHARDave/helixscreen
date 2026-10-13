@@ -38,6 +38,10 @@
          boundary. -->
     <style name="invisible" opa="0"/>
 
+    <!-- A mono AMS logo (a white mark) is tinted to the text color so it reads in both
+         themes. Full-color logos are not given this style. -->
+    <style name="ams_logo_mono" image_recolor="#text" image_recolor_opa="255"/>
+
     <!-- Heater status-area duty text. Two mutually exclusive bindings partition
          the state space (heating vs everything else); the pair lives here so
          every heater surface colors the duty identically. -->

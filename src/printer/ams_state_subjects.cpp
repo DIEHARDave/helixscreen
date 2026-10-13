@@ -166,6 +166,7 @@ void AmsState::init_subjects(bool register_xml) {
     if (register_xml)
         helix::xml::register_subject_in_current_scope("ams_system_logo", &ams_system_logo_);
     INIT_SUBJECT_INT(ams_system_has_logo, 0, subjects_, register_xml);
+    INIT_SUBJECT_INT(ams_system_logo_color, 0, subjects_, register_xml);
 
     INIT_SUBJECT_STRING(ams_current_tool_text, "---", subjects_, register_xml);
 
@@ -393,6 +394,12 @@ void AmsState::init_subjects(bool register_xml) {
         subjects_.register_subject(&unit_disconnected_[i], register_xml ? name_buf : nullptr);
         if (register_xml)
             helix::xml::register_subject_in_current_scope(name_buf, &unit_disconnected_[i]);
+
+        lv_subject_init_int(&unit_logo_color_[i], 0);
+        snprintf(name_buf, sizeof(name_buf), "ams_unit_%d_logo_color", i);
+        subjects_.register_subject(&unit_logo_color_[i], register_xml ? name_buf : nullptr);
+        if (register_xml)
+            helix::xml::register_subject_in_current_scope(name_buf, &unit_logo_color_[i]);
     }
 
     // Per-unit environment indicator display subjects (formatted text for XML binding)
@@ -452,6 +459,7 @@ void AmsState::init_subjects(bool register_xml) {
     INIT_SUBJECT_INT(ams_page_has_prev, 0, subjects_, register_xml);
     INIT_SUBJECT_INT(ams_page_has_next, 0, subjects_, register_xml);
     INIT_SUBJECT_INT(ams_page_has_logo, 0, subjects_, register_xml);
+    INIT_SUBJECT_INT(ams_page_unit_logo_color, 0, subjects_, register_xml);
     lv_subject_init_string(&ams_page_unit_name_, page_unit_name_buf_, nullptr,
                            sizeof(page_unit_name_buf_), "");
     subjects_.register_subject(&ams_page_unit_name_, register_xml ? "ams_page_unit_name" : nullptr);
@@ -652,6 +660,7 @@ void AmsState::register_xml_subject_names() {
     helix::xml::register_subject_in_current_scope("ams_system_name", &ams_system_name_);
     helix::xml::register_subject_in_current_scope("ams_system_logo", &ams_system_logo_);
     helix::xml::register_subject_in_current_scope("ams_system_has_logo", &ams_system_has_logo_);
+    helix::xml::register_subject_in_current_scope("ams_system_logo_color", &ams_system_logo_color_);
     helix::xml::register_subject_in_current_scope("ams_current_tool_text", &ams_current_tool_text_);
     helix::xml::register_subject_in_current_scope("ams_endless_state", &ams_endless_state_);
     helix::xml::register_subject_in_current_scope("ams_endless_text", &ams_endless_text_);
@@ -783,6 +792,8 @@ void AmsState::register_xml_subject_names() {
         helix::xml::register_subject_in_current_scope(name_buf, &unit_absent_[i]);
         snprintf(name_buf, sizeof(name_buf), "ams_unit_%d_disconnected", i);
         helix::xml::register_subject_in_current_scope(name_buf, &unit_disconnected_[i]);
+        snprintf(name_buf, sizeof(name_buf), "ams_unit_%d_logo_color", i);
+        helix::xml::register_subject_in_current_scope(name_buf, &unit_logo_color_[i]);
     }
     helix::xml::register_subject_in_current_scope("ams_viewed_unit_disconnected",
                                                   &viewed_unit_disconnected_);
@@ -792,6 +803,8 @@ void AmsState::register_xml_subject_names() {
     helix::xml::register_subject_in_current_scope("ams_page_has_prev", &ams_page_has_prev_);
     helix::xml::register_subject_in_current_scope("ams_page_has_next", &ams_page_has_next_);
     helix::xml::register_subject_in_current_scope("ams_page_has_logo", &ams_page_has_logo_);
+    helix::xml::register_subject_in_current_scope("ams_page_unit_logo_color",
+                                                  &ams_page_unit_logo_color_);
     helix::xml::register_subject_in_current_scope("ams_page_unit_name", &ams_page_unit_name_);
     helix::xml::register_subject_in_current_scope("ams_page_unit_logo", &ams_page_unit_logo_);
     helix::xml::register_subject_in_current_scope("ams_units_dryer_version",
@@ -1065,22 +1078,30 @@ AmsState::EnvIndicatorSubjectNames AmsState::env_indicator_subject_names(int uni
     return names;
 }
 
-std::string AmsState::unit_disconnected_subject_name(int unit_index) {
-    if (unit_index < 0 || unit_index >= MAX_UNITS) {
-        return ENV_IND_OFF_FLAG_SUBJECT;
+namespace {
+
+/// "ams_unit_<N>_<flag>", or the always-0 placeholder for a unit past MAX_UNITS.
+std::string unit_flag_subject_name(int unit_index, const char* flag) {
+    if (unit_index < 0 || unit_index >= AmsState::MAX_UNITS) {
+        return AmsState::ENV_IND_OFF_FLAG_SUBJECT;
     }
-    char buf[40];
-    snprintf(buf, sizeof(buf), "ams_unit_%d_disconnected", unit_index);
+    char buf[48];
+    snprintf(buf, sizeof(buf), "ams_unit_%d_%s", unit_index, flag);
     return buf;
 }
 
+} // namespace
+
+std::string AmsState::unit_disconnected_subject_name(int unit_index) {
+    return unit_flag_subject_name(unit_index, "disconnected");
+}
+
 std::string AmsState::unit_absent_subject_name(int unit_index) {
-    if (unit_index < 0 || unit_index >= MAX_UNITS) {
-        return ENV_IND_OFF_FLAG_SUBJECT;
-    }
-    char buf[32];
-    snprintf(buf, sizeof(buf), "ams_unit_%d_absent", unit_index);
-    return buf;
+    return unit_flag_subject_name(unit_index, "absent");
+}
+
+std::string AmsState::unit_logo_color_subject_name(int unit_index) {
+    return unit_flag_subject_name(unit_index, "logo_color");
 }
 
 lv_subject_t* AmsState::backend_slot_subject(int backend_index, int slot_index,
