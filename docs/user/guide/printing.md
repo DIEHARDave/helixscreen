@@ -212,6 +212,8 @@ You don't have to wait for a print to end before picking the next one. While a p
 
 Access by tapping **Tune** during an active print.
 
+You can also keep the Speed / Flow and Z-Offset readings on the home screen and tap them to open this overlay: see the [Speed / Flow](home-panel.md#speed--flow-widget) and [Z-Offset](home-panel.md#z-offset-widget) widgets.
+
 | Parameter | Range | What It Does |
 |-----------|-------|--------------|
 | Speed % | 50-200% | Overall print speed multiplier |
@@ -244,6 +246,8 @@ The overlay also includes Z-Offset / baby-step controls (see below).
 ## Z-Offset / Baby Steps
 
 Fine-tune your first layer height, during a print or while idle.
+
+The [Z-Offset widget](home-panel.md#z-offset-widget) puts the live offset, the baby-step buttons and **Save** on the home screen.
 
 **Getting there:**
 

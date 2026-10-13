@@ -43,7 +43,7 @@ Run it right on your printer, or on a separate device — a spare Pi, a mini PC,
 
 ## Why HelixScreen?
 
-- **Customizable dashboard** — Multi-page grid with drag-to-reposition, edge resize, and 30+ widgets including temperature graphs, fan arcs, and power toggles
+- **Customizable dashboard** — Multi-page grid with drag-to-reposition, edge resize, and 40+ widgets including temperature graphs, fan arcs, and power toggles
 - **Every feature at your fingertips** — 30+ panels, 20+ overlays, 20+ modals, 300+ XML layouts
 - **~15MB RAM on embedded targets, ~75MB disk** — sips memory on a Creality K1 or Flashforge AD5M; a few times more on 64-bit Pi, still well under what other touchscreen UIs need. Your printer's onboard SoC or an older Pi is plenty — no need to buy new hardware.
 - **80+ printers in the database** — Auto-detects your hardware and configures itself
@@ -112,7 +112,7 @@ See [docs/devel/GALLERY.md](docs/devel/GALLERY.md) for the full gallery.
 
 ## Features
 
-**Dashboard** — Customizable multi-page grid with drag-to-reposition, edge resize, and a catalog of 30+ widgets. Temperature graphs, fan arcs, power toggles, camera feeds, active spool, favorite macros — add what matters, hide what doesn't. Per-breakpoint layout persistence.
+**Dashboard** — Customizable multi-page grid with drag-to-reposition, edge resize, and a catalog of 40+ widgets. Temperature graphs, fan arcs, power toggles, camera feeds, active spool, favorite macros — add what matters, hide what doesn't. Per-breakpoint layout persistence.
 
 **Printer Control** — Print management with G-code preview, motion controls, temperature presets with per-material overrides, multi-fan control, Z-offset, speed/flow tuning, live filament consumption tracking, power device management.
 
