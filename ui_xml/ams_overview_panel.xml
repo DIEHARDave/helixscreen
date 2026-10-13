@@ -20,6 +20,10 @@
     <style name="path_portrait" height="#ams_portrait_path_h" flex_grow="0"/>
     <style name="detail_path_landscape" flex_grow="1" margin_top="-8"/>
     <style name="detail_path_portrait" height="#ams_portrait_path_h" flex_grow="0" margin_top="-12"/>
+    <style name="name_landscape" max_height="100%"/>
+    <style name="name_portrait" height="content"/>
+    <!-- Portrait centres the logo and name in the header's height. -->
+    <style name="suffix_portrait" flex_track_place="center"/>
     <style name="right_landscape" width="#ams_right_col_w" height="100%" flex_grow="0" pad_all="#space_sm"/>
     <style name="right_portrait"
            width="100%" height="0" flex_grow="1" pad_left="#space_sm" pad_right="#space_sm" pad_top="0" pad_bottom="0"/>
@@ -58,11 +62,12 @@
                         style_text_align="left" clickable="false" event_bubble="true" scrollable="false">
             <bind_flag_if_eq subject="ams_unit_view_active" flag="hidden" ref_value="1"/>
           </text_heading>
-          <!-- Unit view title; below SMALL it and the ":" give way, so the unit's logo and name stay -->
+          <!-- Unit view title; below SMALL and in portrait it and the ":" give way, so the
+               unit's logo and name stay -->
           <text_heading name="header_title_unit_view"
                         text="Multi-Filament" text_transform="uppercase" long_mode="dots" style_max_width="100%"
                         style_text_align="left" clickable="false" event_bubble="true" scrollable="false">
-            <bind_flag_if cond="ams_unit_view_active eq 0 or ui_breakpoint lt 2" flag="hidden"/>
+            <bind_flag_if cond="ams_unit_view_active eq 0 or ui_breakpoint lt 2 or ui_is_portrait eq 1" flag="hidden"/>
           </text_heading>
           <!-- ":" + logo + name of the unit on this page. width="1"+flex_grow: the suffix takes
                what the title and the chip leave, and its name ellipsizes inside that, so the
@@ -72,8 +77,9 @@
                   style_flex_cross_place="center" style_pad_gap="#space_xs" scrollable="false" clickable="false"
                   event_bubble="true">
             <bind_flag_if_eq subject="ams_unit_view_active" flag="hidden" ref_value="0"/>
+            <bind_style_if_eq name="suffix_portrait" subject="ui_is_portrait" ref_value="1"/>
             <text_heading name="header_colon" text=":" clickable="false" event_bubble="true" scrollable="false">
-              <bind_flag_if_lt subject="ui_breakpoint" flag="hidden" ref_value="2"/>
+              <bind_flag_if cond="ui_breakpoint lt 2 or ui_is_portrait eq 1" flag="hidden"/>
             </text_heading>
             <lv_image name="detail_logo"
                       width="#ams_header_logo_size" height="#ams_header_logo_size" bind_src="ams_page_unit_logo"
@@ -83,8 +89,10 @@
             </lv_image>
             <text_heading name="detail_unit_name"
                           width="1" flex_grow="1" bind_text="ams_page_unit_name" text_transform="uppercase"
-                          long_mode="dots" style_max_height="100%" clickable="false" event_bubble="true"
-                          scrollable="false"/>
+                          long_mode="dots" clickable="false" event_bubble="true" scrollable="false">
+              <bind_style_if_eq name="name_landscape" subject="ui_is_portrait" ref_value="0"/>
+              <bind_style_if_eq name="name_portrait" subject="ui_is_portrait" ref_value="1"/>
+            </text_heading>
           </lv_obj>
         </lv_obj>
         <!-- Outside the back button so a long unit name cannot push it off the header -->

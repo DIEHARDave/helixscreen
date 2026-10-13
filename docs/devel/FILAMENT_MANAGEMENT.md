@@ -1231,6 +1231,15 @@ follow it; the slot carries the sidebar instance in its user data, so the Bypass
 callback (`bypass_inline`, shown only in portrait, hidden during any operation like the
 landscape `bypass_row`) routes from either place.
 
+The portrait header names the system instead of the screen: [back] [logo] NAME on both
+panels (the AMS panel's `ams_system_name`/`ams_system_logo`, the unit view's
+`ams_page_unit_name`/`ams_page_unit_logo`), the "Multi-Filament" title and ":" hidden, the
+logo and name centred in the header's height (`flex_track_place` center, the name at
+content height). The logo hides when the system has none (`ams_system_has_logo`,
+`ams_page_has_logo`). The name is the backend's type name, else its type, so it is never
+empty while a backend exists. Landscape keeps its rule: title, then ":" + logo + name from
+SMALL up.
+
 The full-width box takes the same rules as landscape at the same breakpoint: two label rows
 below medium, three from medium up; the environment pill still costs the row its width.
 The sidebar tightens for portrait: its gaps drop to `space_xxs` and the status line's

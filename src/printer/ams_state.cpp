@@ -385,6 +385,7 @@ void AmsState::reset_backend_subjects() {
     lv_subject_copy_string(&ams_system_name_, "");
     system_logo_buf_[0] = '\0';
     lv_subject_set_pointer(&ams_system_logo_, nullptr);
+    lv_subject_set_int(&ams_system_has_logo_, 0);
     lv_subject_copy_string(&ams_action_detail_, "");
     last_operation_detail_.clear();
     lv_subject_set_int(&toolchange_step_, -1);
@@ -713,6 +714,9 @@ void AmsState::sync_system_subjects(const AmsSystemInfo& info) {
         system_logo_buf_[sizeof(system_logo_buf_) - 1] = '\0';
         lv_subject_set_pointer(&ams_system_logo_, system_logo_buf_);
     }
+    const int has_logo = system_logo_buf_[0] ? 1 : 0;
+    if (lv_subject_get_int(&ams_system_has_logo_) != has_logo)
+        lv_subject_set_int(&ams_system_has_logo_, has_logo);
     if (lv_subject_get_int(&current_slot_) != info.current_slot) {
         spdlog::debug("[AmsState] current_slot changed: {} → {}",
                       lv_subject_get_int(&current_slot_), info.current_slot);
