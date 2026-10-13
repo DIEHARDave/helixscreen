@@ -118,6 +118,17 @@ All already published (no new plumbing): `ToolState` (tool list, names, `active_
 `AmsBackend::supports_tool_park()` / `park_active_tool()` from commit 12f267453 (U1
 sends `PARK_EXTRUDER`, klipper-toolchanger `UNSELECT_TOOL`).
 
+## Empty carriage on the U1
+
+Read from the U1 (192.168.30.103) on 2026-10-13, idle after a print: every
+`extruderN.state` is `"PARKED"` while `toolhead.extruder` still reads `"extruder2"`. The
+toolhead object names the last head used, not a mounted one. So `active_tool` must be -1
+whenever the head it names reports `PARKED`, or the rail shows T2 mounted and Park
+enabled on an empty carriage. The U1 backend already parses `extruder_states_[i].state`;
+the rule belongs there (vendor knowledge stays in the backend), surfaced through the
+same active-tool path the toolchanger backends use, with a backend unit test feeding
+this exact frame. After `PARK_EXTRUDER` the widget must read the carriage as empty.
+
 ## Code shape
 
 Keep from the branch: the backend park capability and its tests (12f267453, backend
@@ -192,7 +203,5 @@ screenshots of 1x1/2x1/1x2/2x2 for Preston to judge the look.
 
 ## Open (not blocking)
 
-- U1: after `PARK_EXTRUDER`, `active_tool` may still report the last head (no tool-map
-  table), leaving Park enabled; needs a check on hardware (hw-verify).
 - The Filament panel's closed tool dropdown should read "T0" (decided earlier); separate
   small change on the same branch.
