@@ -1197,7 +1197,9 @@ The right column, shared by the AMS panel and the overview's unit view
   reading over source; slider over reading over label); below it they shrink to one small
   row (a small arc beside its reading, the `swap_vertical` icon beside the buffer reading).
 - **Status** (`status_section`): the action detail in `text_body`, on its own line at every
-  size.
+  size. While the sidebar preheats for a load it reads "Heating nozzle"
+  (`preheat_status_text`): the step list's heat step carries the live "current / target"
+  reading, so the reading appears once. Only with no step list does the status carry it.
 - **Step progress** (`progress_stepper_container`): shown during an operation, in the room
   the hidden meters and action buttons leave. A four-step swap load fits without scrolling
   at 480x272.

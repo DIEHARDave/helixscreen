@@ -36,6 +36,14 @@ class PrinterState;
 namespace helix::ui {
 
 /**
+ * What the status line says while the sidebar preheats the nozzle for a load.
+ * The step list's heat step carries the live "current / target" reading whenever
+ * there is a step list, so the status names the action and the reading appears
+ * once; with no step list the status is the only place left for the reading.
+ */
+std::string preheat_status_text(bool step_list_shows_temp, int current_c, int target_c);
+
+/**
  * @brief Shared AMS sidebar component for operation status and controls
  *
  * Manages the right-column sidebar used by both AmsPanel and AmsOverviewPanel.

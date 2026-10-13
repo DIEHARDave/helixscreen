@@ -1718,11 +1718,8 @@ void AmsOperationSidebar::check_pending_load() {
         lv_subject_get_int(printer_state_.temperature_state().get_active_extruder_temp_subject());
     int current = temperature::deci_to_degrees(current_deci);
 
-    // Update display with current temperature while waiting
-    char temp_buf[32];
-    temperature::format_temperature_pair(current, pending_load_target_temp_, temp_buf,
-                                         sizeof(temp_buf));
-    AmsState::instance().set_action_detail(temp_buf);
+    AmsState::instance().set_action_detail(
+        preheat_status_text(step_progress_ != nullptr, current, pending_load_target_temp_));
 
     if (current >= (pending_load_target_temp_ - PREHEAT_MARGIN_C)) {
         int slot = pending_load_slot_;
@@ -1906,6 +1903,14 @@ void AmsOperationSidebar::handle_load_complete() {
     }
 }
 
+std::string preheat_status_text(bool step_list_shows_temp, int current_c, int target_c) {
+    if (step_list_shows_temp)
+        return lv_tr("Heating nozzle");
+    char temp_buf[32];
+    temperature::format_temperature_pair(current_c, target_c, temp_buf, sizeof(temp_buf));
+    return temp_buf;
+}
+
 void AmsOperationSidebar::show_preheat_feedback(int slot_index, int target_temp) {
     LV_UNUSED(slot_index);
 
@@ -1913,9 +1918,9 @@ void AmsOperationSidebar::show_preheat_feedback(int slot_index, int target_temp)
         lv_subject_get_int(printer_state_.temperature_state().get_active_extruder_temp_subject());
     int current_temp = temperature::deci_to_degrees(current_deci);
 
-    char temp_buf[32];
-    temperature::format_temperature_pair(current_temp, target_temp, temp_buf, sizeof(temp_buf));
-    AmsState::instance().set_action_detail(temp_buf);
+    const std::string status =
+        preheat_status_text(step_progress_ != nullptr, current_temp, target_temp);
+    AmsState::instance().set_action_detail(status);
 
     if (step_progress_container_) {
         lv_obj_remove_flag(step_progress_container_, LV_OBJ_FLAG_HIDDEN);
@@ -1924,7 +1929,7 @@ void AmsOperationSidebar::show_preheat_feedback(int slot_index, int target_temp)
         ui_step_progress_set_current(step_progress_, 0);
     }
 
-    spdlog::debug("[AmsSidebar] Showing preheat feedback: {}", temp_buf);
+    spdlog::debug("[AmsSidebar] Showing preheat feedback: {}", status);
 }
 
 } // namespace helix::ui
