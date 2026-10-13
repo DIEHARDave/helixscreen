@@ -27,6 +27,7 @@ typedef struct {
     int32_t circle_size;     // Responsive circle diameter
     int32_t connector_width; // Responsive connector line thickness
     lv_obj_t* caption;       // Current-label-only mode: the one label, else nullptr
+    bool hug_content;        // Vertical list sized to its widest step
 } step_progress_data_t;
 
 // Theme-aware color variables (loaded from component scope or defaults)
@@ -308,10 +309,30 @@ static void relayout_connectors(step_progress_data_t* data, lv_obj_t* container)
  * visible, label growth, container resize). Absolutely-positioned connectors
  * don't track flex reflow on their own.
  */
+// A hugging list's labels wrap at the parent's width less the indicator, so the
+// widest step never runs past the parent.
+static void apply_label_caps(step_progress_data_t* data, lv_obj_t* container) {
+    if (!data->hug_content || data->horizontal)
+        return;
+    lv_obj_t* parent = lv_obj_get_parent(container);
+    const int32_t avail = parent ? lv_obj_get_content_width(parent) : 0;
+    for (int i = 0; i < data->step_count; i++) {
+        lv_obj_t* label = lv_obj_get_child(data->step_items[i], 1);
+        if (!label)
+            continue;
+        const int32_t cap =
+            avail - data->circle_size - lv_obj_get_style_pad_left(label, LV_PART_MAIN);
+        const int32_t max_w = cap > 0 ? cap : LV_COORD_MAX;
+        if (lv_obj_get_style_max_width(label, LV_PART_MAIN) != max_w)
+            lv_obj_set_style_max_width(label, max_w, 0);
+    }
+}
+
 static void step_progress_size_changed_cb(lv_event_t* e) {
     lv_obj_t* container = lv_event_get_target_obj(e);
     step_progress_data_t* data = (step_progress_data_t*)lv_obj_get_user_data(container);
     if (data) {
+        apply_label_caps(data, container);
         relayout_connectors(data, container);
     }
 }
@@ -359,6 +380,7 @@ lv_obj_t* ui_step_progress_create(lv_obj_t* parent, const ui_step_t* steps, int 
     data->circle_size = circle_size;
     data->connector_width = connector_thickness;
     data->caption = nullptr;
+    data->hug_content = false;
 
     // Allocate arrays using RAII
     auto label_buffers_ptr = lvgl_make_unique_array<char*>(static_cast<size_t>(step_count));
@@ -580,6 +602,30 @@ void ui_step_progress_set_current_label_only(lv_obj_t* widget, bool on) {
         lv_obj_set_style_pad_bottom(widget, 0, 0);
     }
     refresh_caption(data);
+}
+
+// NAMESPACE_OK: the widget's C API, beside its siblings
+void ui_step_progress_set_hug_content(lv_obj_t* widget, bool on) {
+    auto* data = widget ? (step_progress_data_t*)lv_obj_get_user_data(widget) : nullptr;
+    if (!data || data->horizontal)
+        return;
+    data->hug_content = on;
+    lv_obj_set_width(widget, on ? LV_SIZE_CONTENT : LV_PCT(100));
+    lv_obj_set_style_max_width(widget, on ? LV_PCT(100) : LV_COORD_MAX, 0);
+    for (int i = 0; i < data->step_count; i++) {
+        lv_obj_t* item = data->step_items[i];
+        lv_obj_set_width(item, on ? LV_SIZE_CONTENT : LV_PCT(100));
+        lv_obj_t* label = lv_obj_get_child(item, 1);
+        if (!label)
+            continue;
+        lv_obj_set_flex_grow(label, on ? 0 : 1);
+        if (!on)
+            lv_obj_set_style_max_width(label, LV_COORD_MAX, 0);
+    }
+    lv_obj_update_layout(widget);
+    apply_label_caps(data, widget);
+    lv_obj_update_layout(widget);
+    relayout_connectors(data, widget);
 }
 
 // NAMESPACE_OK: the widget's C API, beside its siblings

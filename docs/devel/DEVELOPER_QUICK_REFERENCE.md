@@ -327,6 +327,12 @@ picks: the active one, else the last completed, else the first. The caption foll
 `set_current()`, `set_completed()` and `set_label()`. The AMS operation sidebar turns it on
 for its horizontal stepper (a narrow portrait screen).
 
+A vertical list fills its parent's width by default. `ui_step_progress_set_hug_content(progress,
+true)` sizes it to its widest step instead, labels still left-aligned within it and wrapping at
+the parent's width, so the parent can place it as a block: a flex column parent centres it with
+`flex_cross_place` and `flex_track_place` both `center` (one item is one track, which
+`flex_track_place` positions). The AMS operation sidebar does this for its vertical stepper.
+
 ---
 
 ## Sensor Framework

@@ -33,6 +33,7 @@
 #include "theme_manager.h"
 
 #include <algorithm>
+#include <cstdlib>
 #include <memory>
 
 #include "../catch_amalgamated.hpp"
@@ -390,6 +391,28 @@ TEST_CASE_METHOD(AmsKeepAliveFixture, "AmsPanel: reopening keeps one operation s
         start_load();
         CHECK(steppers() == 1);
     }
+}
+
+TEST_CASE_METHOD(AmsKeepAliveFixture, "AmsPanel: the operation's step list stands centred",
+                 "[ams][keep_alive][step_hug]") {
+    open();
+    auto* sidebar = AmsPanelTestAccess::sidebar(*get_existing_ams_panel());
+    REQUIRE(sidebar != nullptr);
+    sidebar->start_operation(StepOperationType::LOAD_FRESH, 0);
+    process_lvgl(30);
+    lv_obj_t* box = lv_obj_find_by_name(panel_obj(), "progress_stepper_container");
+    REQUIRE(box != nullptr);
+    REQUIRE(lv_obj_get_child_count(box) == 1);
+    lv_obj_update_layout(panel_obj());
+    lv_obj_t* stepper = lv_obj_get_child(box, 0);
+    lv_area_t ba, sa;
+    lv_obj_get_coords(box, &ba);
+    lv_obj_get_coords(stepper, &sa);
+    CAPTURE(ba.x1, ba.x2, sa.x1, sa.x2);
+    // A vertical list: narrower than the column, with even room either side.
+    REQUIRE(lv_obj_get_style_flex_flow(stepper, LV_PART_MAIN) == LV_FLEX_FLOW_COLUMN);
+    CHECK(lv_area_get_width(&sa) < lv_area_get_width(&ba));
+    CHECK(std::abs((sa.x1 - ba.x1) - (ba.x2 - sa.x2)) <= 1);
 }
 
 TEST_CASE_METHOD(AmsKeepAliveFixture, "AmsPanel: a stale close callback re-arms the next close",
