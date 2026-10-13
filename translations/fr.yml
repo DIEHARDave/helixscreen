@@ -18,6 +18,7 @@ translations:
   '%d objects': '%d objets'
   '%d of %d printing': '%d sur %d en impression'
   '%d skipped': '%d ignorés'
+  '%d profiles': '%d profils'
   '%d slots': '%d emplacements'
   '%d toolheads': '%d têtes d''outil'
   '%d tools': '%d outils'
@@ -80,6 +81,7 @@ translations:
   1 minute: 1 minute
   1 more tap to {} beta features: 1 appui supplémentaire pour {} les fonctionnalités
     bêta
+  1 profile: '1 profil'
   '1 unit': '1 unité'
   1. Printer homes all axes (~1 minute): 1. L'imprimante prend l'origine de tous les axes (~1 minute)
   1. Printer homes and probes the bed: 1. L'imprimante fait l'origine et palpe le
@@ -365,6 +367,7 @@ translations:
   'Bed cooling, spools still on the bed:': 'Le plateau refroidit, les bobines sont toujours dessus :'
 
   Bed is Level!: Le plateau est niveau !
+  'Bed mesh calibration failed: {}': 'Échec du calibrage du maillage du plateau : {}'
   Bed mesh operation timed out: Maillage du plateau — délai dépassé
   Bed mesh...: Maillage du plateau...
   Bed tab moves lift to this height first: 'Les déplacements de l''onglet Plateau montent d''abord à cette hauteur'
@@ -1550,6 +1553,7 @@ translations:
   Heating to {}°C...: Chauffe à {}°C...
   Heating...: Chauffage...
   'Heating: %d / %d°C': 'Chauffage : %d / %d°C'
+  Heightmap and flatness of the active bed mesh: 'Carte des hauteurs et planéité du maillage du plateau actif'
   HelixScreen: HelixScreen
   HelixScreen Crashed: HelixScreen a planté
   HelixScreen is detecting your display orientation: HelixScreen détecte l'orientation
@@ -1865,6 +1869,7 @@ translations:
   Load filament: 'Charger le filament'
   Load filament first: Chargez d'abord du filament
   Load or unload filament.: Chargez ou déchargez du filament.
+  Load profile: 'Charger un profil'
   Load the required filaments or start anyway?: Charger les filaments requis ou démarrer
     quand même ?
   'Load, unload, and swap spools. View your multi-filament system at a glance, map colors to slots, and monitor runout sensors.': 'Chargez, déchargez et changez les bobines. Visualisez votre système multi-filaments en un coup d''œil, associez les couleurs aux emplacements et surveillez les capteurs de fin de filament.'

@@ -55,6 +55,7 @@ void register_nozzle_temps_widget();
 void register_speed_flow_widget();
 void register_dryer_widget();
 void register_z_offset_widget();
+void register_bed_mesh_tile_widget();
 void register_toolhead_widget();
 void register_host_health_widget();
 void register_exclude_map_widget();
@@ -136,6 +137,7 @@ static std::vector<PanelWidgetDef> s_widget_defs = {
     {"exclude_map",      TR_NOOP("Exclude Objects"),   "debug_step_over",  TR_NOOP("Objects in the print, with a tap to open the skip map"), "printer_has_exclude_object", "Requires Klipper exclude_object", CAT_PRINT,    false, 4, 4, 1, 1, 8, 6, false, true, true},
     {"dryer",            TR_NOOP("Filament Dryer"),    "heat_wave",        TR_NOOP("Drying progress and humidity for boxes, the chamber, and the bed"), "home_dryer_available", "No filament dryer detected",         CAT_FILAMENT, false, 2, 2, 1, 1, 6, 8, false, true, true},
     {"z_offset",         TR_NOOP("Z-Offset"),          "axis_z_arrow",     TR_NOOP("Live Z-offset, with baby steps and Save"), nullptr,           nullptr,                               CAT_PRINT,    false, 4, 2, 1, 1, 8, 4, false, true, true},
+    {"bed_mesh_tile",    TR_NOOP("Bed Mesh"),          "grid_large",       TR_NOOP("Heightmap and flatness of the active bed mesh"), "printer_has_bed_mesh", "No bed mesh support detected",      CAT_CONTROLS, false, 4, 4, 1, 1, 12, 8, false, true, true},
     {"toolhead",         TR_NOOP("Toolhead"),          "axis_arrow",       TR_NOOP("Toolhead position and homing, with a plate view and Home All"), nullptr,           nullptr,                               CAT_CONTROLS, false, 4, 4, 1, 1, 8, 8, false, true, true},
     //                                                                                                                                          hint                                cat              en  col row min_c min_r max_c max_r  multi  half_c half_r merges_card
     {"tips",             TR_NOOP("Tips"),              "help_circle",      TR_NOOP("Rotating tips for using your printer"),             nullptr,              nullptr,                               CAT_SYSTEM,   true,  8, 4, 4, 2, BAND_COLSPAN, 4, false, true, true, false},
@@ -390,6 +392,7 @@ void init_widget_registrations() {
     register_speed_flow_widget();
     register_dryer_widget();
     register_z_offset_widget();
+    register_bed_mesh_tile_widget();
     register_toolhead_widget();
     register_host_health_widget();
     register_exclude_map_widget();

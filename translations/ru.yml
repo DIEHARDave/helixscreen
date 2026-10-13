@@ -18,6 +18,7 @@ translations:
   '%d objects': 'Объектов: %d'
   '%d of %d printing': '%d из %d печатается'
   '%d skipped': 'Пропущено: %d'
+  '%d profiles': 'Профилей: %d'
   '%d slots': '%d слотов'
   '%d toolheads': '%d печатающих головок'
   '%d tools': '%d инструментов'
@@ -79,6 +80,7 @@ translations:
   1 min ago: 1 мин. назад
   1 minute: 1 минута
   1 more tap to {} beta features: 1 нажатие до {} бета-функций
+  1 profile: '1 профиль'
   '1 unit': '1 ед.'
   1. Printer homes all axes (~1 minute): 1. Принтер ищет ноль по всем осям (~1 минута)
   1. Printer homes and probes the bed: 1. Принтер паркуется и зондирует стол
@@ -355,6 +357,7 @@ translations:
   'Bed cooling, spools still on the bed:': 'Стол остывает, катушки всё ещё на нём:'
 
   Bed is Level!: Стол выровнен!
+  'Bed mesh calibration failed: {}': 'Ошибка калибровки сетки стола: {}'
   Bed mesh operation timed out: Сетка стола — время ожидания истекло
   Bed mesh...: Сетка стола...
   Bed tab moves lift to this height first: Перемещения на вкладке «Стол» сначала поднимают до этой высоты
@@ -1520,6 +1523,7 @@ translations:
   Heating to {}°C...: Нагрев до {}°C...
   Heating...: Нагрев...
   'Heating: %d / %d°C': 'Нагрев: %d / %d°C'
+  Heightmap and flatness of the active bed mesh: 'Карта высот и ровность активной сетки стола'
   HelixScreen: HelixScreen
   HelixScreen Crashed: HelixScreen аварийно завершился
   HelixScreen is detecting your display orientation: HelixScreen определяет ориентацию
@@ -1833,6 +1837,7 @@ translations:
   Load filament: 'Загрузка филамента'
   Load filament first: Сначала загрузите филамент
   Load or unload filament.: Загружайте или выгружайте филамент.
+  Load profile: 'Загрузить профиль'
   Load the required filaments or start anyway?: Загрузить нужные филаменты или начать
     без них?
   'Load, unload, and swap spools. View your multi-filament system at a glance, map colors to slots, and monitor runout sensors.': 'Загружайте, выгружайте и меняйте катушки. Просматривайте вашу мультифиламентную систему одним взглядом, сопоставляйте цвета со слотами и отслеживайте датчики окончания филамента.'

@@ -18,6 +18,7 @@ translations:
   '%d objects': '%d個のオブジェクト'
   '%d of %d printing': '%d/%d 印刷中'
   '%d skipped': '%d個スキップ'
+  '%d profiles': '%d 個のプロファイル'
   '%d slots': '%d スロット'
   '%d toolheads': '%d ツールヘッド'
   '%d tools': '%d ツール'
@@ -79,6 +80,7 @@ translations:
   1 min ago: 1分前
   1 minute: 1分
   1 more tap to {} beta features: あと1回タップでベータ機能を{}
+  1 profile: '1 個のプロファイル'
   '1 unit': '1ユニット'
   1. Printer homes all axes (~1 minute): 1. プリンターが全軸の原点復帰を行います（約1分）
   1. Printer homes and probes the bed: 1. プリンターがホーミングしてベッドをプローブします
@@ -336,6 +338,7 @@ translations:
   'Bed cooling, spools still on the bed:': 'ベッド冷却中、スプールはまだベッドの上です:'
 
   Bed is Level!: ベッドが水平です！
+  'Bed mesh calibration failed: {}': 'ベッドメッシュのキャリブレーションに失敗しました: {}'
   Bed mesh operation timed out: ベッドメッシュ操作がタイムアウトしました
   Bed mesh...: ベッドメッシュ...
   Bed tab moves lift to this height first: ベッドタブの移動はまずこの高さまで上昇します
@@ -1443,6 +1446,7 @@ translations:
   Heating to {}°C...: '{}°Cに加熱中...'
   Heating...: 加熱中...
   'Heating: %d / %d°C': '加熱中: %d / %d°C'
+  Heightmap and flatness of the active bed mesh: '有効なベッドメッシュの高さマップと平面度'
   HelixScreen: HelixScreen
   HelixScreen Crashed: HelixScreen がクラッシュしました
   HelixScreen is detecting your display orientation: HelixScreenがディスプレイの向きを検出しています
@@ -1731,6 +1735,7 @@ translations:
   Load filament: 'フィラメントをロード'
   Load filament first: 先にフィラメントを装填してください
   Load or unload filament.: フィラメントを装填または排出します。
+  Load profile: 'プロファイルを読み込む'
   Load the required filaments or start anyway?: 必要なフィラメントを装填しますか？それともこのまま開始しますか？
   'Load, unload, and swap spools. View your multi-filament system at a glance, map colors to slots, and monitor runout sensors.': スプールのロード、アンロード、交換を行います。マルチフィラメントシステムを一目で確認し、色をスロットにマッピングし、ランアウトセンサーを監視できます。
   Load...: 装填...

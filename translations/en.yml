@@ -18,6 +18,7 @@ translations:
   '%d objects': '%d objects'
   '%d of %d printing': '%d of %d printing'
   '%d skipped': '%d skipped'
+  '%d profiles': '%d profiles'
   '%d slots': '%d slots'
   '%d toolheads': '%d toolheads'
   '%d tools': '%d tools'
@@ -78,6 +79,7 @@ translations:
   1 min ago: 1 min ago
   1 minute: 1 minute
   1 more tap to {} beta features: 1 more tap to {} beta features
+  1 profile: 1 profile
   1 unit: 1 unit
   1. Printer homes all axes (~1 minute): 1. Printer homes all axes (~1 minute)
   1. Printer homes and probes the bed: 1. Printer homes and probes the bed
@@ -348,6 +350,7 @@ translations:
   Bed Temperature: Bed Temperature
   'Bed cooling, spools still on the bed:': 'Bed cooling, spools still on the bed:'
   Bed is Level!: Bed is Level!
+  'Bed mesh calibration failed: {}': 'Bed mesh calibration failed: {}'
   Bed mesh operation timed out: Bed mesh operation timed out
   'Bed mesh...': 'Bed mesh...'
   Bed tab moves lift to this height first: Bed tab moves lift to this height first
@@ -1487,6 +1490,7 @@ translations:
   Heating to {}°C...: Heating to {}°C...
   Heating...: Heating...
   'Heating: %d / %d°C': 'Heating: %d / %d°C'
+  Heightmap and flatness of the active bed mesh: Heightmap and flatness of the active bed mesh
   HelixScreen: HelixScreen
   HelixScreen Crashed: HelixScreen Crashed
   HelixScreen is detecting your display orientation: HelixScreen is detecting your
@@ -1792,6 +1796,7 @@ translations:
   Load filament: Load filament
   Load filament first: Load filament first
   Load or unload filament.: Load or unload filament.
+  Load profile: Load profile
   Load the required filaments or start anyway?: Load the required filaments or start
     anyway?
   'Load, unload, and swap spools. View your multi-filament system at a glance, map colors to slots, and monitor runout sensors.': 'Load, unload, and swap spools. View your multi-filament system at a glance, map colors to slots, and monitor runout sensors.'

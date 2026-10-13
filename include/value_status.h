@@ -27,6 +27,14 @@ constexpr ValueStatus z_offset_status(bool save_available) {
     return save_available ? ValueStatus::Warn : ValueStatus::Normal;
 }
 
+/// How flat a bed mesh is, from its Z range in millimetres: Normal below 0.15, Warn below
+/// 0.30, Danger from there.
+constexpr ValueStatus mesh_flatness_status(float range_mm) {
+    return range_mm < 0.15f   ? ValueStatus::Normal
+           : range_mm < 0.30f ? ValueStatus::Warn
+                              : ValueStatus::Danger;
+}
+
 /// Free space on the gcodes disk below which the host is Warn.
 constexpr int kDiskLowFreeMb = 500;
 

@@ -48,6 +48,7 @@
 #include "../test_helpers/update_queue_test_access.h"
 #include "ams_backend_mock.h"
 #include "ams_state.h"
+#include "bed_mesh_state.h"
 #include "display_metrics.h"
 #include "grid_layout.h"
 #include "panel_widget_manager.h"
@@ -594,6 +595,9 @@ TEST_CASE_METHOD(ContentFitsFixture,
     TestModeGuard test_mode_guard(get_runtime_config());
 
     PanelWidgetManager::instance().init_widget_subjects();
+    // The bed mesh tile binds BedMeshState's subjects, which the app registers before any
+    // widget XML is parsed.
+    BedMeshState::instance().init_subjects();
     require_font_tokens_distinct();
     seed_printer_topology(state());
 

@@ -18,6 +18,7 @@ translations:
   '%d objects': '%d objetos'
   '%d of %d printing': '%d de %d imprimiéndose'
   '%d skipped': '%d omitidos'
+  '%d profiles': '%d perfiles'
   '%d slots': '%d ranuras'
   '%d toolheads': '%d cabezales'
   '%d tools': '%d herramientas'
@@ -79,6 +80,7 @@ translations:
   1 min ago: hace 1 min
   1 minute: 1 minuto
   1 more tap to {} beta features: 1 toque más para {} funciones beta
+  1 profile: '1 perfil'
   '1 unit': '1 unidad'
   1. Printer homes all axes (~1 minute): 1. La impresora referencia todos los ejes (~1 minuto)
   1. Printer homes and probes the bed: 1. La impresora hace origen y sondea la cama
@@ -360,6 +362,7 @@ translations:
   'Bed cooling, spools still on the bed:': 'La cama se enfría, las bobinas siguen encima:'
 
   Bed is Level!: ¡La Cama está Nivelada!
+  'Bed mesh calibration failed: {}': 'Falló la calibración de la malla de cama: {}'
   Bed mesh operation timed out: Malla de cama — tiempo de espera agotado
   Bed mesh...: Malla de cama...
   Bed tab moves lift to this height first: Los movimientos de la pestaña Cama suben primero a esta altura
@@ -1537,6 +1540,7 @@ translations:
   Heating to {}°C...: Calentando a {}°C...
   Heating...: Calentando...
   'Heating: %d / %d°C': 'Calentando: %d / %d°C'
+  Heightmap and flatness of the active bed mesh: 'Mapa de alturas y planitud de la malla de cama activa'
   HelixScreen: HelixScreen
   HelixScreen Crashed: HelixScreen se Bloqueó
   HelixScreen is detecting your display orientation: HelixScreen está detectando la
@@ -1850,6 +1854,7 @@ translations:
   Load filament: 'Cargar filamento'
   Load filament first: Cargue filamento primero
   Load or unload filament.: Carga o descarga filamento.
+  Load profile: 'Cargar perfil'
   Load the required filaments or start anyway?: ¿Cargar los filamentos requeridos
     o iniciar de todos modos?
   'Load, unload, and swap spools. View your multi-filament system at a glance, map colors to slots, and monitor runout sensors.': 'Carga, descarga e intercambia bobinas. Ve tu sistema multi-filamento de un vistazo, asigna colores a los slots y monitoriza los sensores de agotamiento.'

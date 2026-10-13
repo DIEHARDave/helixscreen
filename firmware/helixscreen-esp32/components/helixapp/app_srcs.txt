@@ -164,6 +164,7 @@ src/printer/lane_translation.cpp
 src/printer/lane_legacy_migration.cpp
 src/printer/lane_binding.cpp
 src/printer/bed_dimensions.cpp
+src/printer/bed_mesh_state.cpp
 src/printer/chamber_heater_assignment.cpp
 src/printer/chamber_heater_backend_dragonbreath.cpp
 src/printer/chamber_heater_backend_generic.cpp
@@ -345,6 +346,7 @@ src/ui/clog_meter_geometry.cpp
 src/ui/clog_meter_model.cpp
 src/ui/panel_widget_registry.cpp
 src/ui/panel_widgets/active_spool_widget.cpp
+src/ui/panel_widgets/bed_mesh_tile_widget.cpp
 src/ui/panel_widgets/bypass_widget.cpp
 src/ui/panel_widgets/camera_widget.cpp
 src/ui/panel_widgets/clock_widget.cpp

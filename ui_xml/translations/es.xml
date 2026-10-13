@@ -15,6 +15,7 @@
   <translation tag="%d more sensors" es="%d sensores más"/>
   <translation tag="%d objects" es="%d objetos"/>
   <translation tag="%d of %d printing" es="%d de %d imprimiéndose"/>
+  <translation tag="%d profiles" es="%d perfiles"/>
   <translation tag="%d skipped" es="%d omitidos"/>
   <translation tag="%d slots" es="%d ranuras"/>
   <translation tag="%d toolheads" es="%d cabezales"/>
@@ -78,6 +79,7 @@
   <translation tag="1 min ago" es="hace 1 min"/>
   <translation tag="1 minute" es="1 minuto"/>
   <translation tag="1 more tap to {} beta features" es="1 toque más para {} funciones beta"/>
+  <translation tag="1 profile" es="1 perfil"/>
   <translation tag="1 unit" es="1 unidad"/>
   <translation tag="1. Printer homes all axes (~1 minute)" es="1. La impresora referencia todos los ejes (~1 minuto)"/>
   <translation tag="1. Printer homes and probes the bed" es="1. La impresora hace origen y sondea la cama"/>
@@ -331,6 +333,7 @@
   <translation tag="Bed Temperature" es="Temperatura de Cama"/>
   <translation tag="Bed cooling, spools still on the bed:" es="La cama se enfría, las bobinas siguen encima:"/>
   <translation tag="Bed is Level!" es="¡La Cama está Nivelada!"/>
+  <translation tag="Bed mesh calibration failed: {}" es="Falló la calibración de la malla de cama: {}"/>
   <translation tag="Bed mesh operation timed out" es="Malla de cama — tiempo de espera agotado"/>
   <translation tag="Bed mesh..." es="Malla de cama..."/>
   <translation tag="Bed tab moves lift to this height first" es="Los movimientos de la pestaña Cama suben primero a esta altura"/>
@@ -1396,6 +1399,7 @@
   <translation tag="Heating to {}°C..." es="Calentando a {}°C..."/>
   <translation tag="Heating..." es="Calentando..."/>
   <translation tag="Heating: %d / %d°C" es="Calentando: %d / %d°C"/>
+  <translation tag="Heightmap and flatness of the active bed mesh" es="Mapa de alturas y planitud de la malla de cama activa"/>
   <translation tag="HelixScreen" es="HelixScreen"/>
   <translation tag="HelixScreen Crashed" es="HelixScreen se Bloqueó"/>
   <translation tag="HelixScreen is detecting your display orientation" es="HelixScreen está detectando la orientación de su pantalla"/>
@@ -1666,6 +1670,7 @@
   <translation tag="Load filament" es="Cargar filamento"/>
   <translation tag="Load filament first" es="Cargue filamento primero"/>
   <translation tag="Load or unload filament." es="Carga o descarga filamento."/>
+  <translation tag="Load profile" es="Cargar perfil"/>
   <translation tag="Load the required filaments or start anyway?" es="¿Cargar los filamentos requeridos o iniciar de todos modos?"/>
   <translation tag="Load, unload, and swap spools. View your multi-filament system at a glance, map colors to slots, and monitor runout sensors." es="Carga, descarga e intercambia bobinas. Ve tu sistema multi-filamento de un vistazo, asigna colores a los slots y monitoriza los sensores de agotamiento."/>
   <translation tag="Load..." es="Cargar..."/>

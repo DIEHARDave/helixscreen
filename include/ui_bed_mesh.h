@@ -98,6 +98,14 @@ void ui_bed_mesh_evaluate_render_mode(lv_obj_t* canvas);
 void ui_bed_mesh_set_render_mode(lv_obj_t* canvas, helix::BedMeshRenderMode mode);
 
 /**
+ * @brief Render mode the widget is set to
+ *
+ * @param canvas The bed_mesh canvas widget
+ * @return The mode last set (Auto for a widget that has none)
+ */
+helix::BedMeshRenderMode ui_bed_mesh_get_render_mode(lv_obj_t* canvas);
+
+/**
  * @brief Show or hide the zero reference plane
  *
  * The zero plane is a translucent reference surface at Z=0 that intersects
@@ -147,6 +155,39 @@ bool ui_bed_mesh_is_async_mode(lv_obj_t* widget);
  * @return true if mesh data has been set, false otherwise
  */
 bool ui_bed_mesh_has_data(lv_obj_t* widget);
+
+/**
+ * @brief Draw a static, non-interactive frame without a render thread
+ *
+ * On, the widget renders on the main thread when the mesh, bounds, render mode or size
+ * changes and blits that frame until the next change. A 3D frame that costs more than
+ * the widget's budget drops it to the 2D heatmap. Off, the cached frame is freed.
+ * Independent of ui_bed_mesh_set_async_mode(); a running render thread takes precedence.
+ *
+ * @param widget The bed_mesh widget
+ * @param enabled true to draw static frames
+ */
+void ui_bed_mesh_set_static_mode(lv_obj_t* widget, bool enabled);
+
+/**
+ * @brief Cost in milliseconds of the widget's last static render (0 before the first)
+ */
+float ui_bed_mesh_static_render_ms(lv_obj_t* widget);
+
+/**
+ * @brief How many static frames the widget has rendered (0 until the first draw)
+ */
+int ui_bed_mesh_static_render_count(lv_obj_t* widget);
+
+/**
+ * @brief A static 3D render overran its budget, so this widget draws 2D for good
+ *
+ * ui_bed_mesh_set_render_mode() keeps answering 2D afterwards, whatever mode is asked for.
+ */
+bool ui_bed_mesh_static_3d_banned(lv_obj_t* widget);
+
+/// Overrides the static 3D render budget (150 ms); a value <= 0 restores it.
+void ui_bed_mesh_set_static_render_budget_ms_for_test(float budget_ms);
 
 #ifdef __cplusplus
 }
