@@ -66,7 +66,7 @@ helix::MacroParamModal& get_shared_param_modal() {
 // touch the originating widget, which may be destroyed while a dialog is open.
 struct MacroExecCtx {
     std::string macro_name;
-    IMoonrakerAPI* api;
+    helix::IMoonrakerAPI* api;
     lv_obj_t* parent_screen;
     helix::MacroParamDefaultRecord defaults;
 };
@@ -97,7 +97,7 @@ void run_macro_after_confirm(MacroExecCtx ctx) {
     }
 
     std::string name = ctx.macro_name;
-    IMoonrakerAPI* api = ctx.api;
+    helix::IMoonrakerAPI* api = ctx.api;
     auto on_result = [api, name](const helix::MacroParamResult& result) {
         helix::execute_macro_gcode(api, name, result, "[FavoriteMacroWidget]",
                                    get_printer_state().get_discovery());

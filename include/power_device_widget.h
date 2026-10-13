@@ -14,9 +14,8 @@
 #include <string>
 #include <vector>
 
-class IMoonrakerAPI;
-
 namespace helix {
+class IMoonrakerAPI;
 
 struct PowerDeviceWidgetTestAccess; // test-only friend (tests/test_helpers/)
 

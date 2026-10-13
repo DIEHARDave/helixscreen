@@ -388,6 +388,7 @@ translations:
   Bouncing Printer: Прыгающий принтер
   Bowden Length: 'Длина боудена'
   Bowden tube length from hub to toolhead: 'Длина боуден-трубки от хаба до печатающей головки'
+  Box: Бокс
   Brand: Бренд
   Brand and material come from Spoolman: Бренд и материал берутся из Spoolman
   Brightness: Яркость
@@ -985,6 +986,7 @@ translations:
 
   Drying on the bed: Сушка на столе
 
+  Drying progress and humidity for boxes, the chamber, and the bed: Ход сушки и влажность боксов, камеры и стола
   Drying started: Сушка запущена
   Drying stopped: Сушка остановлена
   Duplicate: Дублировать
@@ -1294,6 +1296,7 @@ translations:
   Filament Buffer: 'Буфер филамента'
   Filament Control: Управление филаментом
   Filament Detected: Филамент обнаружен
+  Filament Dryer: Сушилка филамента
   Filament Grade Mismatch: Несоответствие марки филамента
   Filament Humidity: Влажность филамента
   Filament In The Toolhead: Филамент в печатающей головке
@@ -2174,6 +2177,7 @@ translations:
   Not connected to printer.: Нет подключения к принтеру.
   Not connected to the printer: Нет подключения к принтеру
   Not detected: Не обнаружено
+  Not drying: Не сушится
   Not enough frequency data from the sweeps. Try again.: 'Недостаточно данных о частоте по результатам измерений. Попробуйте снова.'
   Not enough room for this widget. Rearrange or remove widgets to make space.: Недостаточно места для этого виджета. Измените раскладку или удалите виджеты, чтобы освободить место.
   Not in your spools? Set it up: Нет в ваших катушках? Настроить
@@ -2609,6 +2613,7 @@ translations:
   RFID reader malfunction (left): Неисправность RFID-считывателя (левый)
   RFID reader malfunction (right): Неисправность RFID-считывателя (правый)
   RFID, auto-refill, nozzle and link care: RFID, автопополнение, уход за соплом и связью
+  RH: RH
   RSS: RSS
   'RSS:': 'RSS:'
   Ramming Volume: 'Объём рэмминга'
@@ -3884,6 +3889,7 @@ translations:
   direct drive: с прямой подачей
   disable: отключить
   disabled: отключено
+  drying: сушатся
   e.g. Jet Black: напр. Чёрный
   e.g. NAME=my_var VALUE=123: напр. NAME=my_var VALUE=123
   e.g. Polymaker: напр. Polymaker

@@ -362,6 +362,7 @@
   <translation tag="Bouncing Printer" ru="Прыгающий принтер"/>
   <translation tag="Bowden Length" ru="Длина боудена"/>
   <translation tag="Bowden tube length from hub to toolhead" ru="Длина боуден-трубки от хаба до печатающей головки"/>
+  <translation tag="Box" ru="Бокс"/>
   <translation tag="Brand" ru="Бренд"/>
   <translation tag="Brand and material come from Spoolman" ru="Бренд и материал берутся из Spoolman"/>
   <translation tag="Brightness" ru="Яркость"/>
@@ -898,6 +899,7 @@
   <translation tag="Drying" ru="Сушка"/>
   <translation tag="Drying is already running" ru="Сушка уже идёт"/>
   <translation tag="Drying on the bed" ru="Сушка на столе"/>
+  <translation tag="Drying progress and humidity for boxes, the chamber, and the bed" ru="Ход сушки и влажность боксов, камеры и стола"/>
   <translation tag="Drying started" ru="Сушка запущена"/>
   <translation tag="Drying stopped" ru="Сушка остановлена"/>
   <translation tag="Duplicate" ru="Дублировать"/>
@@ -1186,6 +1188,7 @@
   <translation tag="Filament Buffer" ru="Буфер филамента"/>
   <translation tag="Filament Control" ru="Управление филаментом"/>
   <translation tag="Filament Detected" ru="Филамент обнаружен"/>
+  <translation tag="Filament Dryer" ru="Сушилка филамента"/>
   <translation tag="Filament Grade Mismatch" ru="Несоответствие марки филамента"/>
   <translation tag="Filament Humidity" ru="Влажность филамента"/>
   <translation tag="Filament In The Toolhead" ru="Филамент в печатающей головке"/>
@@ -1984,6 +1987,7 @@
   <translation tag="Not connected to printer." ru="Нет подключения к принтеру."/>
   <translation tag="Not connected to the printer" ru="Нет подключения к принтеру"/>
   <translation tag="Not detected" ru="Не обнаружено"/>
+  <translation tag="Not drying" ru="Не сушится"/>
   <translation tag="Not enough frequency data from the sweeps. Try again." ru="Недостаточно данных о частоте по результатам измерений. Попробуйте снова."/>
   <translation tag="Not enough room for this widget. Rearrange or remove widgets to make space." ru="Недостаточно места для этого виджета. Измените раскладку или удалите виджеты, чтобы освободить место."/>
   <translation tag="Not in your spools? Set it up" ru="Нет в ваших катушках? Настроить"/>
@@ -2386,6 +2390,7 @@
   <translation tag="RFID reader malfunction (left)" ru="Неисправность RFID-считывателя (левый)"/>
   <translation tag="RFID reader malfunction (right)" ru="Неисправность RFID-считывателя (правый)"/>
   <translation tag="RFID, auto-refill, nozzle and link care" ru="RFID, автопополнение, уход за соплом и связью"/>
+  <translation tag="RH" ru="RH"/>
   <translation tag="RSS" ru="RSS"/>
   <translation tag="RSS:" ru="RSS:"/>
   <translation tag="Ramming Volume" ru="Объём рэмминга"/>
@@ -3504,6 +3509,7 @@
   <translation tag="direct drive" ru="с прямой подачей"/>
   <translation tag="disable" ru="отключить"/>
   <translation tag="disabled" ru="отключено"/>
+  <translation tag="drying" ru="сушатся"/>
   <translation tag="e.g. Jet Black" ru="напр. Чёрный"/>
   <translation tag="e.g. NAME=my_var VALUE=123" ru="напр. NAME=my_var VALUE=123"/>
   <translation tag="e.g. Polymaker" ru="напр. Polymaker"/>

@@ -18,7 +18,9 @@
 #include <string>
 #include <vector>
 
+namespace helix {
 class IMoonrakerAPI;
+}
 class MoonrakerAdvancedAPI;
 class TemperatureService;
 
@@ -180,7 +182,7 @@ class PIDCalibrationPanel : public OverlayBase {
      *
      * @param api IMoonrakerAPI for PID calibrate and save_config
      */
-    void set_api(IMoonrakerAPI* api) {
+    void set_api(helix::IMoonrakerAPI* api) {
         api_ = api;
     }
 
@@ -240,7 +242,7 @@ class PIDCalibrationPanel : public OverlayBase {
   private:
     // Client/API references
     // Note: overlay_root_ inherited from OverlayBase
-    IMoonrakerAPI* api_ = nullptr;
+    helix::IMoonrakerAPI* api_ = nullptr;
 
     /// Owns the SAVE_CONFIG contract: absorbs the rpc the restart drops
     /// and reports success only once Klipper is back.

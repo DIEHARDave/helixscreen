@@ -116,7 +116,7 @@ class EmergencyStopOverlay {
      * @param printer_state Reference to helix::PrinterState for print job state
      * @param api Pointer to IMoonrakerAPI for emergency_stop() calls
      */
-    void init(helix::PrinterState& printer_state, IMoonrakerAPI* api);
+    void init(helix::PrinterState& printer_state, helix::IMoonrakerAPI* api);
 
     /**
      * @brief Initialize subjects for XML binding
@@ -230,7 +230,7 @@ class EmergencyStopOverlay {
 
     // Dependencies (set via init())
     helix::PrinterState* printer_state_ = nullptr;
-    IMoonrakerAPI* api_ = nullptr;
+    helix::IMoonrakerAPI* api_ = nullptr;
 
     // Confirmation requirement (set via set_require_confirmation())
     bool require_confirmation_ = false;

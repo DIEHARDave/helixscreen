@@ -22,9 +22,9 @@ namespace chamber {
 class ChamberHeaterBackend;
 }
 } // namespace helix
-class IMoonrakerAPI;
 
 namespace helix {
+class IMoonrakerAPI;
 
 // HeaterPresets lives in ui_heater_config.h (included above) so heater_config_t
 // and this controller share one definition instead of two parallel copies.

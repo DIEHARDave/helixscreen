@@ -460,7 +460,7 @@ namespace {
 /// builds the store and does the blocking load.
 class StoreBackedHelper : public helix::AmsBackendToolChanger {
   public:
-    explicit StoreBackedHelper(IMoonrakerAPI* api, int tool_count)
+    explicit StoreBackedHelper(helix::IMoonrakerAPI* api, int tool_count)
         : helix::AmsBackendToolChanger(api, nullptr) {
         std::vector<std::string> names;
         for (int i = 0; i < tool_count; ++i) {

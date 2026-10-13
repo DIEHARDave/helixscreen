@@ -30,9 +30,9 @@
 #include <vector>
 
 // Forward declarations
-class IMoonrakerAPI;
 
 namespace helix {
+class IMoonrakerAPI;
 
 // ============================================================================
 // Utility Functions

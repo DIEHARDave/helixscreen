@@ -15,9 +15,8 @@
 #include <mutex>
 #include <string>
 
-class IMoonrakerAPI;
-
 namespace helix {
+class IMoonrakerAPI;
 
 /**
  * @brief Smart print cancellation manager with progressive escalation

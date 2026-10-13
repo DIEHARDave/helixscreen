@@ -56,7 +56,7 @@ class AdvancedPanel : public PanelBase {
      * @param printer_state Reference to helix::PrinterState
      * @param api Pointer to IMoonrakerAPI
      */
-    AdvancedPanel(helix::PrinterState& printer_state, IMoonrakerAPI* api);
+    AdvancedPanel(helix::PrinterState& printer_state, helix::IMoonrakerAPI* api);
 
     ~AdvancedPanel() override = default;
 
@@ -255,4 +255,4 @@ AdvancedPanel& get_global_advanced_panel();
  * @param printer_state Reference to helix::PrinterState
  * @param api Pointer to IMoonrakerAPI
  */
-void init_global_advanced_panel(helix::PrinterState& printer_state, IMoonrakerAPI* api);
+void init_global_advanced_panel(helix::PrinterState& printer_state, helix::IMoonrakerAPI* api);

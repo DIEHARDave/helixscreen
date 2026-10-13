@@ -26,8 +26,8 @@
 #include "tool_mapping_origin.h"
 #include "toolchanger_addon.h"
 
-class IMoonrakerAPI;
 namespace helix {
+class IMoonrakerAPI;
 #ifdef HELIX_ENABLE_MOCKS
 class AmsBackendMock;
 #endif

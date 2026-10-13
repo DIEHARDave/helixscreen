@@ -8,9 +8,8 @@
 #include <functional>
 #include <string>
 
-class IMoonrakerAPI;
-
 namespace helix {
+class IMoonrakerAPI;
 
 /// Edit-mode configuration modal for a FavoriteMacroWidget.
 /// Tabs: Macro | Appearance | Options. Immediate-apply (no Save/Cancel).

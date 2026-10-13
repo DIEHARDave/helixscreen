@@ -602,7 +602,7 @@ nlohmann::json SpoolWizardOverlay::vendor_create_payload(const std::string& name
 }
 
 void SpoolWizardOverlay::create_vendor_then_filament_then_spool() {
-    IMoonrakerAPI* api = get_moonraker_api();
+    helix::IMoonrakerAPI* api = get_moonraker_api();
     if (!api) {
         on_creation_error(lv_tr("No API connection"));
         return;
@@ -663,7 +663,7 @@ nlohmann::json SpoolWizardOverlay::filament_create_payload(const FilamentEntry& 
 }
 
 void SpoolWizardOverlay::create_filament_then_spool(int vendor_id) {
-    IMoonrakerAPI* api = get_moonraker_api();
+    helix::IMoonrakerAPI* api = get_moonraker_api();
     if (!api) {
         on_creation_error(lv_tr("No API connection"), created_vendor_id_);
         return;
@@ -694,7 +694,7 @@ void SpoolWizardOverlay::create_filament_then_spool(int vendor_id) {
 }
 
 void SpoolWizardOverlay::create_spool(int filament_id) {
-    IMoonrakerAPI* api = get_moonraker_api();
+    helix::IMoonrakerAPI* api = get_moonraker_api();
     if (!api) {
         on_creation_error(lv_tr("No API connection"), created_vendor_id_, created_filament_id_);
         return;
@@ -756,7 +756,7 @@ void SpoolWizardOverlay::on_creation_error(const std::string& message, int rollb
     ToastManager::instance().show(ToastSeverity::ERROR, message.c_str());
 
     // Best-effort rollback — delete filament first (references vendor), then vendor
-    IMoonrakerAPI* api = get_moonraker_api();
+    helix::IMoonrakerAPI* api = get_moonraker_api();
     if (api) {
         auto delete_vendor = [api, rollback_vendor_id]() {
             if (rollback_vendor_id >= 0) {
@@ -852,7 +852,7 @@ void SpoolWizardOverlay::load_vendors() {
         lv_subject_set_int(&show_create_vendor_subject_, 0);
     }
 
-    IMoonrakerAPI* api = get_moonraker_api();
+    helix::IMoonrakerAPI* api = get_moonraker_api();
     if (!api) {
         spdlog::warn("[{}] No API available, showing empty vendors", get_name());
         if (subjects_initialized_) {
@@ -1159,7 +1159,7 @@ void SpoolWizardOverlay::load_filaments() {
         lv_subject_set_int(&filaments_loading_subject_, 1);
     }
 
-    IMoonrakerAPI* api = get_moonraker_api();
+    helix::IMoonrakerAPI* api = get_moonraker_api();
     if (!api) {
         spdlog::warn("[{}] No API available, showing empty filaments", get_name());
         if (subjects_initialized_) {
@@ -1726,7 +1726,7 @@ void SpoolWizardOverlay::set_catalog_state(CatalogState state) {
 }
 
 void SpoolWizardOverlay::sync_catalog_available() {
-    IMoonrakerAPI* api = get_moonraker_api();
+    helix::IMoonrakerAPI* api = get_moonraker_api();
     const bool available = api && helix::SpoolmanCatalogSearch::availability(
                                       api->get_client().connection_generation()) ==
                                       helix::SpoolmanCatalogSearch::Availability::Available;
@@ -1737,7 +1737,7 @@ void SpoolWizardOverlay::sync_catalog_available() {
 
 void SpoolWizardOverlay::probe_catalog_search() {
     sync_catalog_available();
-    IMoonrakerAPI* api = get_moonraker_api();
+    helix::IMoonrakerAPI* api = get_moonraker_api();
     if (!api) {
         return;
     }
@@ -1801,7 +1801,7 @@ void SpoolWizardOverlay::apply_search_text() {
 }
 
 void SpoolWizardOverlay::run_catalog_search(const std::string& query) {
-    IMoonrakerAPI* api = get_moonraker_api();
+    helix::IMoonrakerAPI* api = get_moonraker_api();
     const uint64_t conn = api ? api->get_client().connection_generation() : 0;
     if (!api ||
         helix::SpoolmanCatalogSearch::availability(conn) ==
@@ -1826,7 +1826,7 @@ void SpoolWizardOverlay::run_catalog_search(const std::string& query) {
 }
 
 void SpoolWizardOverlay::send_catalog_search(std::string query) {
-    IMoonrakerAPI* api = get_moonraker_api();
+    helix::IMoonrakerAPI* api = get_moonraker_api();
     if (!api) {
         return;
     }
@@ -1945,7 +1945,7 @@ void SpoolWizardOverlay::select_catalog_result(int index) {
         navigate_to_step(Step::SPOOL_DETAILS);
         enter_spool_details();
     };
-    IMoonrakerAPI* api = get_moonraker_api();
+    helix::IMoonrakerAPI* api = get_moonraker_api();
     if (selected_vendor_.server_id < 0 || !api) {
         show_details();
         return;

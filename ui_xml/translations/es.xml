@@ -362,6 +362,7 @@
   <translation tag="Bouncing Printer" es="Bouncing Printer"/>
   <translation tag="Bowden Length" es="Longitud del bowden"/>
   <translation tag="Bowden tube length from hub to toolhead" es="Longitud del tubo bowden del hub al cabezal"/>
+  <translation tag="Box" es="Caja"/>
   <translation tag="Brand" es="Marca"/>
   <translation tag="Brand and material come from Spoolman" es="La marca y el material provienen de Spoolman"/>
   <translation tag="Brightness" es="Brillo"/>
@@ -898,6 +899,7 @@
   <translation tag="Drying" es="Secando"/>
   <translation tag="Drying is already running" es="El secado ya está en marcha"/>
   <translation tag="Drying on the bed" es="Secando en la cama"/>
+  <translation tag="Drying progress and humidity for boxes, the chamber, and the bed" es="Progreso de secado y humedad de las cajas, la cámara y la cama"/>
   <translation tag="Drying started" es="Secado iniciado"/>
   <translation tag="Drying stopped" es="Secado detenido"/>
   <translation tag="Duplicate" es="Duplicar"/>
@@ -1186,6 +1188,7 @@
   <translation tag="Filament Buffer" es="Búfer de filamento"/>
   <translation tag="Filament Control" es="Control de filamento"/>
   <translation tag="Filament Detected" es="Filamento Detectado"/>
+  <translation tag="Filament Dryer" es="Secador de filamento"/>
   <translation tag="Filament Grade Mismatch" es="El grado del filamento no coincide"/>
   <translation tag="Filament Humidity" es="Humedad del Filamento"/>
   <translation tag="Filament In The Toolhead" es="Filamento en el cabezal"/>
@@ -1984,6 +1987,7 @@
   <translation tag="Not connected to printer." es="No conectado a la impresora."/>
   <translation tag="Not connected to the printer" es="No conectado a la impresora"/>
   <translation tag="Not detected" es="No detectado"/>
+  <translation tag="Not drying" es="Sin secar"/>
   <translation tag="Not enough frequency data from the sweeps. Try again." es="No hay suficientes datos de frecuencia de los barridos. Intente de nuevo."/>
   <translation tag="Not enough room for this widget. Rearrange or remove widgets to make space." es="No hay espacio suficiente para este widget. Reorganiza o elimina widgets para hacer espacio."/>
   <translation tag="Not in your spools? Set it up" es="¿No está en tus bobinas? Configúralo"/>
@@ -2386,6 +2390,7 @@
   <translation tag="RFID reader malfunction (left)" es="Fallo del lector RFID (izquierdo)"/>
   <translation tag="RFID reader malfunction (right)" es="Fallo del lector RFID (derecho)"/>
   <translation tag="RFID, auto-refill, nozzle and link care" es="RFID, rellenado automático, cuidado de boquilla y enlace"/>
+  <translation tag="RH" es="HR"/>
   <translation tag="RSS" es="RSS"/>
   <translation tag="RSS:" es="RSS:"/>
   <translation tag="Ramming Volume" es="Volumen de compactación"/>
@@ -3504,6 +3509,7 @@
   <translation tag="direct drive" es="de accionamiento directo"/>
   <translation tag="disable" es="deshabilitar"/>
   <translation tag="disabled" es="desactivado"/>
+  <translation tag="drying" es="secando"/>
   <translation tag="e.g. Jet Black" es="p. ej. Negro Azabache"/>
   <translation tag="e.g. NAME=my_var VALUE=123" es="p. ej. NAME=mi_var VALUE=123"/>
   <translation tag="e.g. Polymaker" es="p. ej. Polymaker"/>

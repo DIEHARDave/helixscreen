@@ -381,6 +381,7 @@ translations:
   Bouncing Printer: Bouncing Printer
   Bowden Length: Bowden Length
   Bowden tube length from hub to toolhead: Bowden tube length from hub to toolhead
+  Box: Box
   Brand: Brand
   Brand and material come from Spoolman: Brand and material come from Spoolman
   Brightness: Brightness
@@ -960,6 +961,7 @@ translations:
   Drying: Drying
   Drying is already running: Drying is already running
   Drying on the bed: Drying on the bed
+  Drying progress and humidity for boxes, the chamber, and the bed: Drying progress and humidity for boxes, the chamber, and the bed
   Drying started: Drying started
   Drying stopped: Drying stopped
   Duplicate: Duplicate
@@ -1263,6 +1265,7 @@ translations:
   Filament Buffer: 'Filament Buffer'
   Filament Control: Filament Control
   Filament Detected: Filament Detected
+  Filament Dryer: Filament Dryer
   Filament Grade Mismatch: Filament Grade Mismatch
   Filament Humidity: Filament Humidity
   Filament In The Toolhead: Filament In The Toolhead
@@ -2129,6 +2132,7 @@ translations:
   Not connected to printer.: Not connected to printer.
   Not connected to the printer: Not connected to the printer
   Not detected: Not detected
+  Not drying: Not drying
   Not enough frequency data from the sweeps. Try again.: 'Not enough frequency data from the sweeps. Try again.'
   Not enough room for this widget. Rearrange or remove widgets to make space.: Not enough room for this widget. Rearrange or remove widgets to make space.
   Not in your spools? Set it up: Not in your spools? Set it up
@@ -2558,6 +2562,7 @@ translations:
   RFID reader malfunction (left): RFID reader malfunction (left)
   RFID reader malfunction (right): RFID reader malfunction (right)
   RFID, auto-refill, nozzle and link care: RFID, auto-refill, nozzle and link care
+  RH: RH
   RSS: RSS
   'RSS:': 'RSS:'
   Ramming Volume: Ramming Volume
@@ -3813,6 +3818,7 @@ translations:
   direct drive: direct drive
   disable: disable
   disabled: disabled
+  drying: drying
   e.g. Jet Black: e.g. Jet Black
   e.g. NAME=my_var VALUE=123: e.g. NAME=my_var VALUE=123
   e.g. Polymaker: e.g. Polymaker

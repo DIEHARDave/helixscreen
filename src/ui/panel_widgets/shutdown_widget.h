@@ -11,9 +11,8 @@
 #include <functional>
 #include <string>
 
-class IMoonrakerAPI;
-
 namespace helix {
+class IMoonrakerAPI;
 
 class ShutdownWidget : public TiledPanelWidget {
   public:

@@ -23,8 +23,8 @@
 namespace helix {
 class PrinterState;
 class TemperatureController;
-} // namespace helix
 class IMoonrakerAPI;
+} // namespace helix
 class TemperatureService;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -103,7 +103,7 @@ struct HeaterState {
  */
 class TemperatureService {
   public:
-    TemperatureService(helix::PrinterState& printer_state, IMoonrakerAPI* api);
+    TemperatureService(helix::PrinterState& printer_state, helix::IMoonrakerAPI* api);
     ~TemperatureService();
 
     // Non-copyable, non-movable (has reference member and LVGL subject state)
@@ -154,7 +154,7 @@ class TemperatureService {
         return heaters_[static_cast<int>(helix::HeaterType::Bed)].current;
     }
 
-    void set_api(IMoonrakerAPI* api) {
+    void set_api(helix::IMoonrakerAPI* api) {
         api_ = api;
     }
 
@@ -208,7 +208,7 @@ class TemperatureService {
     void update_graphs(helix::HeaterType type, float temp_deg, int64_t now_ms);
 
     helix::PrinterState& printer_state_;
-    IMoonrakerAPI* api_;
+    helix::IMoonrakerAPI* api_;
     helix::TemperatureController* controller_ = nullptr;
 
     // ── Per-heater state (indexed by HeaterType) ────────────────────────

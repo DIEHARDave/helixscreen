@@ -155,7 +155,7 @@ class FilamentPanel : public PanelBase {
      * @param printer_state Reference to helix::PrinterState
      * @param api Pointer to IMoonrakerAPI (for future temp commands)
      */
-    FilamentPanel(helix::PrinterState& printer_state, IMoonrakerAPI* api);
+    FilamentPanel(helix::PrinterState& printer_state, helix::IMoonrakerAPI* api);
 
     ~FilamentPanel() override;
 

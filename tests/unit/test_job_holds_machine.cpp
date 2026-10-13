@@ -444,6 +444,7 @@ constexpr const char* kNoMachineControlFiles[] = {
     "ui_xml/components/panel_widget_power_device.xml",
     "ui_xml/components/panel_widget_preheat.xml",
     "ui_xml/components/panel_widget_print_stats.xml",
+    "ui_xml/components/panel_widget_dryer.xml",
     "ui_xml/components/panel_widget_print_status.xml",
     "ui_xml/components/panel_widget_printer_image.xml",
     "ui_xml/components/panel_widget_shutdown.xml",

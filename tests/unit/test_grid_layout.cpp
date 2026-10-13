@@ -479,6 +479,7 @@ TEST_CASE("PanelWidgetDef: half-cell capability is classified per widget",
         {"active_spool", {true, true}},      // measured compact/wide switch
         {"nozzle_temps", {true, true}},      // decide_nozzle_layout() is measured
         {"speed_flow", {true, true}},        // decide_speed_flow_layout() is measured
+        {"dryer", {true, true}},             // decide_dryer_layout() is measured
         {"z_offset", {true, true}},          // decide_z_offset_layout() is measured
         {"temp_stack", {true, true}},        // 2-3 stacked readout rows
         {"fan_stack", {true, true}},         // 2-3 stacked readout rows

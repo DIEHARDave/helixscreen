@@ -50,7 +50,7 @@ namespace {
 
 /// Records the Spoolman calls the sync makes and keeps their callbacks so a test
 /// decides when, and with what, the server answers.
-class RecordingSpoolman : public ISpoolmanAPI {
+class RecordingSpoolman : public helix::ISpoolmanAPI {
   public:
     struct SpoolRequest {
         int id;

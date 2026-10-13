@@ -21,9 +21,8 @@
 
 #include "hv/json.hpp"
 
-class IMoonrakerAPI;
-
 namespace helix {
+class IMoonrakerAPI;
 class IMoonrakerClient;
 
 // Forward declaration

@@ -133,6 +133,7 @@ void PrinterTemperatureState::init_subjects(bool register_xml) {
     INIT_SUBJECT_STRING(chamber_filter_fan_percent_text, "--", subjects_, register_xml);
     chamber_filter_fan_percent_text_lifetime_ = std::make_shared<bool>(true);
     INIT_SUBJECT_INT(chamber_dryer_active, 0, subjects_, register_xml);
+    INIT_SUBJECT_INT(chamber_dryer_reported, 0, subjects_, register_xml);
     INIT_SUBJECT_STRING(chamber_dryer_text, "", subjects_, register_xml);
 
     // Extruder version subject (bumped when extruder list changes)
@@ -672,9 +673,11 @@ void PrinterTemperatureState::update_from_status(const nlohmann::json& status) {
                 }
                 if (d->drying_active.has_value()) {
                     chamber_dryer_running_ = *d->drying_active;
+                    lv_subject_set_int(&chamber_dryer_reported_, 1);
                 }
                 if (d->drying_remaining_s.has_value()) {
                     chamber_dryer_remaining_s_ = *d->drying_remaining_s;
+                    chamber_dryer_remaining_reported_ = true;
                 }
                 if (d->drying_target_c.has_value()) {
                     chamber_dryer_target_c_ = *d->drying_target_c;

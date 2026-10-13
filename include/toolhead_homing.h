@@ -5,7 +5,9 @@
 
 #include <functional>
 
+namespace helix {
 class IMoonrakerAPI;
+}
 struct MoonrakerError;
 
 namespace helix {

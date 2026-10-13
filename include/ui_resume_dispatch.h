@@ -6,7 +6,9 @@
 #include <functional>
 #include <string>
 
+namespace helix {
 class IMoonrakerAPI;
+}
 
 namespace helix::ui {
 

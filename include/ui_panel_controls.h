@@ -69,7 +69,7 @@ class ControlsPanel : public PanelBase {
      * @param printer_state Reference to helix::PrinterState
      * @param api Pointer to IMoonrakerAPI (may be nullptr)
      */
-    ControlsPanel(helix::PrinterState& printer_state, IMoonrakerAPI* api);
+    ControlsPanel(helix::PrinterState& printer_state, helix::IMoonrakerAPI* api);
 
     ~ControlsPanel() override;
 
@@ -417,8 +417,8 @@ class ControlsPanel : public PanelBase {
 
     /// Hands the shared success/error callbacks to whichever API entry point
     /// runs this quick action's command.
-    using QuickActionDispatch =
-        std::function<void(IMoonrakerAPI::SuccessCallback, IMoonrakerAPI::ErrorCallback)>;
+    using QuickActionDispatch = std::function<void(helix::IMoonrakerAPI::SuccessCallback,
+                                                   helix::IMoonrakerAPI::ErrorCallback)>;
 
     /**
      * @brief Run one guarded quick action end to end.

@@ -14,8 +14,8 @@
 
 namespace helix {
 class IMoonrakerClient;
-}
 class IMoonrakerAPI;
+} // namespace helix
 
 /**
  * @file ui_panel_screws_tilt.h
@@ -119,7 +119,7 @@ class ScrewsTiltPanel : public OverlayBase {
      * @param client Moonraker client for sending commands
      * @param api Moonraker API for calculate_screws_tilt()
      */
-    void set_client(helix::IMoonrakerClient* client, IMoonrakerAPI* api) {
+    void set_client(helix::IMoonrakerClient* client, helix::IMoonrakerAPI* api) {
         client_ = client;
         api_ = api;
     }
@@ -191,7 +191,7 @@ class ScrewsTiltPanel : public OverlayBase {
     // Widget references
     // Note: overlay_root_ inherited from OverlayBase
     helix::IMoonrakerClient* client_ = nullptr;
-    IMoonrakerAPI* api_ = nullptr;
+    helix::IMoonrakerAPI* api_ = nullptr;
 
     // Results UI elements
     lv_obj_t* bed_diagram_container_ = nullptr;

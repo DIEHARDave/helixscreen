@@ -25,6 +25,7 @@
 #include "printer_cache_registry.h"
 #include "printer_state.h"
 #include "runtime_config.h"
+#include "src/ui/panel_widgets/dryer_model.h"
 #include "src/ui/panel_widgets/tile_sizing.h"
 #include "system/crash_handler.h"
 #include "system/telemetry_manager.h"
@@ -1784,6 +1785,9 @@ SubjectLifetime gate_subject_lifetime(const char* name) {
     if (std::strcmp(name, "power_device_count") == 0 ||
         std::strcmp(name, "printer_has_chamber") == 0) {
         return get_printer_state().get_subjects_lifetime();
+    }
+    if (std::strcmp(name, "home_dryer_available") == 0) {
+        return dryer_model::lifetime();
     }
     return nullptr;
 }

@@ -262,7 +262,7 @@ void MacrosPanel::on_ui_destroyed() {
 // ============================================================================
 
 bool MacrosPanel::refresh_macros() {
-    IMoonrakerAPI* api = get_moonraker_api();
+    helix::IMoonrakerAPI* api = get_moonraker_api();
     if (!api) {
         // No API (early boot, or a unit test that pre-set all_macros_). Leave
         // the current list intact rather than clobbering it to empty.
@@ -498,7 +498,7 @@ std::string MacrosPanel::prettify_macro_name(const std::string& name) {
 // ============================================================================
 
 void MacrosPanel::fetch_params_and_execute(const std::string& macro_name) {
-    IMoonrakerAPI* api = get_moonraker_api();
+    helix::IMoonrakerAPI* api = get_moonraker_api();
     if (!api) {
         spdlog::warn("[{}] No IMoonrakerAPI available - cannot fetch params", get_name());
         return;
@@ -613,7 +613,7 @@ void MacrosPanel::fetch_params_and_run(const std::string& macro_name) {
 
 void MacrosPanel::execute_with_params(const std::string& macro_name,
                                       const helix::MacroParamResult& result) {
-    IMoonrakerAPI* api = get_moonraker_api();
+    helix::IMoonrakerAPI* api = get_moonraker_api();
     helix::execute_macro_gcode(api, macro_name, result, "[MacrosPanel]",
                                get_printer_state().get_discovery());
 }
