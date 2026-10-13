@@ -74,6 +74,12 @@ class UpdateQueueTestAccess {
         return q.pending_.empty();
     }
 
+    /// How many callbacks are queued and not yet drained.
+    static size_t pending_count(UpdateQueue& q) {
+        std::lock_guard<std::mutex> lock(q.mutex_);
+        return q.pending_.size();
+    }
+
     /// Period of the drain timer, in milliseconds.
     ///
     /// lv_timer_handler() answers with the shortest time until any live timer is
