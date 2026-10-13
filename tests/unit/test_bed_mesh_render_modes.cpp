@@ -12,6 +12,7 @@
 #include "bed_mesh_overlays.h"
 #include "bed_mesh_renderer.h"
 
+#include <cmath>
 #include <cstring>
 
 #include "../catch_amalgamated.hpp"
@@ -196,5 +197,67 @@ TEST_CASE("A round bed draws a different floor than a rectangular one", "[bed_me
     PixelBuffer a = render(square.r);
     PixelBuffer b = render(round.r);
     REQUIRE(std::memcmp(a.data(), b.data(), a.stride() * H) != 0);
+}
+namespace {
+
+/// A 7x7 mesh probed over [-100,100], on a [-125,125] bed.
+struct DeltaMesh {
+    bed_mesh_renderer_t* r = bed_mesh_renderer_create();
+    float rows[7][7];
+    explicit DeltaMesh(bool circular) {
+        const float* p[7];
+        for (int i = 0; i < 7; i++) {
+            for (int j = 0; j < 7; j++) {
+                rows[i][j] = 0.05f * static_cast<float>(i - j);
+            }
+            p[i] = rows[i];
+        }
+        bed_mesh_renderer_set_mesh_data(r, p, 7, 7);
+        bed_mesh_renderer_set_zero_plane_visible(r, true);
+        bed_mesh_renderer_set_bounds(r, -125, 125, -125, 125, -100, 100, -100, 100, circular);
+    }
+    ~DeltaMesh() {
+        bed_mesh_renderer_destroy(r);
+    }
+    /// Distance from the bed centre in printer mm (bed centred on 0,0).
+    double radius_mm(const bed_mesh_vertex_3d_t& v) const {
+        return std::hypot(v.x, v.y) / r->coord_scale;
+    }
+};
+
+} // namespace
+
+TEST_CASE("A round bed's mesh and zero plane stop at their circles", "[bed_mesh][bed_grid]") {
+    DeltaMesh m(true);
+    REQUIRE_FALSE(m.r->quads.empty());
+    double mesh_reach = 0.0, plane_reach = 0.0;
+    for (const auto& q : m.r->quads) {
+        const bool surface = q.opacity == LV_OPA_COVER;
+        for (const auto& v : q.vertices) {
+            const double d = m.radius_mm(v);
+            CHECK(d <= (surface ? 100.0 : 125.0) + 1e-6);
+            (surface ? mesh_reach : plane_reach) = std::max(surface ? mesh_reach : plane_reach, d);
+        }
+    }
+    // Both reach out to their circle rather than stopping a cell short.
+    CHECK(mesh_reach == Approx(100.0).epsilon(0.01));
+    CHECK(plane_reach == Approx(125.0).epsilon(0.01));
+}
+
+TEST_CASE("A rectangular bed's mesh keeps one quad per cell, corners included",
+          "[bed_mesh][bed_grid]") {
+    DeltaMesh m(false);
+    size_t surface = 0;
+    double reach = 0.0;
+    for (const auto& q : m.r->quads) {
+        if (q.opacity == LV_OPA_COVER) {
+            surface++;
+            for (const auto& v : q.vertices) {
+                reach = std::max(reach, m.radius_mm(v));
+            }
+        }
+    }
+    CHECK(surface == 36);
+    CHECK(reach == Approx(100.0 * std::sqrt(2.0)));
 }
 #endif

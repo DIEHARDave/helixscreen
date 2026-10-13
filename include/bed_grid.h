@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include <optional>
+#include <utility>
 #include <vector>
 
 namespace helix {
@@ -28,5 +30,38 @@ struct BedGridSegment {
  */
 std::vector<BedGridSegment> bed_grid_lines(double x_min, double x_max, double y_min, double y_max,
                                            double spacing_mm, bool circular);
+
+/// A point in printer mm.
+struct BedPoint {
+    double x, y;
+};
+
+/// A round bed: the circle inscribed in its bounding box.
+struct RoundBed {
+    double cx, cy, r;
+};
+
+/// The circle inscribed in [x_min, x_max] x [y_min, y_max].
+RoundBed inscribed_round_bed(double x_min, double x_max, double y_min, double y_max);
+
+/// Straight segments every view uses to approximate a round bed's outline.
+inline constexpr int kRoundBedSegments = 72;
+
+/**
+ * @brief Clip a convex polygon to a round bed
+ *
+ * The circle is the regular kRoundBedSegments-gon with its vertices on it.
+ * A polygon wholly inside comes back unchanged; one wholly outside comes back
+ * empty.
+ */
+std::vector<BedPoint> clip_to_round_bed(const std::vector<BedPoint>& polygon, const RoundBed& bed);
+
+/**
+ * @brief The part of segment a->b inside a round bed, as parameters along it
+ *
+ * {t0, t1} with 0 <= t0 < t1 <= 1, or nullopt when the segment stays outside.
+ */
+std::optional<std::pair<double, double>> segment_in_round_bed(BedPoint a, BedPoint b,
+                                                              const RoundBed& bed);
 
 } // namespace helix

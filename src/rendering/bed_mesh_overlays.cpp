@@ -38,9 +38,6 @@ constexpr double Z_LABEL_ABOVE_CEILING = 32.0; // Z label offset above ceiling
 
 constexpr double GRID_SPACING_MM = helix::kBedGridSpacingMm;
 
-// Straight segments approximating a round bed's floor outline
-constexpr int CIRCLE_OUTLINE_SEGMENTS = 72;
-
 // Number of segments for Z-axis grid divisions
 constexpr int Z_AXIS_SEGMENT_COUNT = 5;
 
@@ -522,31 +519,70 @@ void render_grid_lines(PixelBuffer& buf, const bed_mesh_renderer_t* renderer, in
     const auto& screen_x = renderer->projected_screen_x;
     const auto& screen_y = renderer->projected_screen_y;
 
-    // Draw horizontal grid lines (connect points in same row)
+    // A round bed's surface stops at the circle inscribed in the mesh area, so
+    // its wireframe does too.
+    const bool round = renderer->circular_bed && renderer->geometry_computed;
+    const RoundBed circle =
+        inscribed_round_bed(renderer->mesh_area_min_x, renderer->mesh_area_max_x,
+                            renderer->mesh_area_min_y, renderer->mesh_area_max_y);
+    auto printer_xy = [&](int row, int col) {
+        return BedPoint{renderer->mesh_area_min_x +
+                            col * (renderer->mesh_area_max_x - renderer->mesh_area_min_x) /
+                                (renderer->cols - 1),
+                        renderer->mesh_area_min_y +
+                            row * (renderer->mesh_area_max_y - renderer->mesh_area_min_y) /
+                                (renderer->rows - 1)};
+    };
+
+    auto draw_segment = [&](int r1, int c1, int r2, int c2) {
+        int p1_x = screen_x[static_cast<size_t>(r1)][static_cast<size_t>(c1)];
+        int p1_y = screen_y[static_cast<size_t>(r1)][static_cast<size_t>(c1)];
+        int p2_x = screen_x[static_cast<size_t>(r2)][static_cast<size_t>(c2)];
+        int p2_y = screen_y[static_cast<size_t>(r2)][static_cast<size_t>(c2)];
+        if (round) {
+            const BedPoint a = printer_xy(r1, c1);
+            const BedPoint b = printer_xy(r2, c2);
+            const auto t = segment_in_round_bed(a, b, circle);
+            if (!t) {
+                return;
+            }
+            if (t->first > 0.0 || t->second < 1.0) {
+                const double za = renderer->mesh[static_cast<size_t>(r1)][static_cast<size_t>(c1)];
+                const double zb = renderer->mesh[static_cast<size_t>(r2)][static_cast<size_t>(c2)];
+                auto project_at = [&](double s) {
+                    return bed_mesh_projection_project_3d_to_2d(
+                        printer_x_to_world_x(a.x + s * (b.x - a.x), renderer->bed_center_x,
+                                             renderer->coord_scale),
+                        printer_y_to_world_y(a.y + s * (b.y - a.y), renderer->bed_center_y,
+                                             renderer->coord_scale),
+                        mesh_z_to_world_z(za + s * (zb - za), renderer->cached_z_center,
+                                          renderer->view_state.z_scale),
+                        canvas_width, canvas_height, &renderer->view_state);
+                };
+                const auto q1 = project_at(t->first);
+                const auto q2 = project_at(t->second);
+                p1_x = q1.screen_x;
+                p1_y = q1.screen_y;
+                p2_x = q2.screen_x;
+                p2_y = q2.screen_y;
+            }
+        }
+        if (is_line_visible(p1_x, p1_y, p2_x, p2_y, canvas_width, canvas_height)) {
+            buf.draw_line(p1_x, p1_y, p2_x, p2_y, line_r, line_g, line_b, grid_alpha);
+        }
+    };
+
+    // Horizontal grid lines (connect points in same row)
     for (int row = 0; row < renderer->rows; row++) {
         for (int col = 0; col < renderer->cols - 1; col++) {
-            int p1_x = screen_x[static_cast<size_t>(row)][static_cast<size_t>(col)];
-            int p1_y = screen_y[static_cast<size_t>(row)][static_cast<size_t>(col)];
-            int p2_x = screen_x[static_cast<size_t>(row)][static_cast<size_t>(col + 1)];
-            int p2_y = screen_y[static_cast<size_t>(row)][static_cast<size_t>(col + 1)];
-
-            if (is_line_visible(p1_x, p1_y, p2_x, p2_y, canvas_width, canvas_height)) {
-                buf.draw_line(p1_x, p1_y, p2_x, p2_y, line_r, line_g, line_b, grid_alpha);
-            }
+            draw_segment(row, col, row, col + 1);
         }
     }
 
-    // Draw vertical grid lines (connect points in same column)
+    // Vertical grid lines (connect points in same column)
     for (int col = 0; col < renderer->cols; col++) {
         for (int row = 0; row < renderer->rows - 1; row++) {
-            int p1_x = screen_x[static_cast<size_t>(row)][static_cast<size_t>(col)];
-            int p1_y = screen_y[static_cast<size_t>(row)][static_cast<size_t>(col)];
-            int p2_x = screen_x[static_cast<size_t>(row + 1)][static_cast<size_t>(col)];
-            int p2_y = screen_y[static_cast<size_t>(row + 1)][static_cast<size_t>(col)];
-
-            if (is_line_visible(p1_x, p1_y, p2_x, p2_y, canvas_width, canvas_height)) {
-                buf.draw_line(p1_x, p1_y, p2_x, p2_y, line_r, line_g, line_b, grid_alpha);
-            }
+            draw_segment(row, col, row + 1, col);
         }
     }
 }
@@ -590,14 +626,11 @@ void render_reference_grids(PixelBuffer& buf, const bed_mesh_renderer_t* rendere
     // ========== 1. BOTTOM GRID (XY plane at Z=z_floor) ==========
     // Outline: the floor rectangle, or the circle inscribed in the bed.
     if (ext.circular) {
-        const double cx = (frame.edge_x_min + frame.edge_x_max) / 2.0;
-        const double cy = (frame.edge_y_min + frame.edge_y_max) / 2.0;
-        const double r =
-            std::min(frame.edge_x_max - frame.edge_x_min, frame.edge_y_max - frame.edge_y_min) /
-            2.0;
-        for (int i = 0; i < CIRCLE_OUTLINE_SEGMENTS; i++) {
-            const double a1 = 2.0 * M_PI * i / CIRCLE_OUTLINE_SEGMENTS;
-            const double a2 = 2.0 * M_PI * (i + 1) / CIRCLE_OUTLINE_SEGMENTS;
+        const auto [cx, cy, r] = helix::inscribed_round_bed(frame.edge_x_min, frame.edge_x_max,
+                                                            frame.edge_y_min, frame.edge_y_max);
+        for (int i = 0; i < helix::kRoundBedSegments; i++) {
+            const double a1 = 2.0 * M_PI * i / helix::kRoundBedSegments;
+            const double a2 = 2.0 * M_PI * (i + 1) / helix::kRoundBedSegments;
             floor_line(cx + r * std::cos(a1), cy + r * std::sin(a1), cx + r * std::cos(a2),
                        cy + r * std::sin(a2));
         }
