@@ -26,7 +26,7 @@ Open a terminal **on your desktop PC** (not on the printer) and run:
 curl -sSL https://releases.helixscreen.org/install.sh | sh -s -- --desktop
 ```
 
-Do not use `sudo`. The installer puts HelixScreen in `~/.local/share/helixscreen` and adds **HelixScreen** to your applications menu.
+Do not use `sudo`. Run as root without `--desktop`, the installer sets up the full-screen kiosk instead, which replaces your login screen at boot; with `--desktop`, it stops with an error and changes nothing. The installer puts HelixScreen in `~/.local/share/helixscreen` and adds **HelixScreen** to your applications menu.
 
 > **Without `--desktop`:** on a PC with a desktop session, the installer asks whether you want HelixScreen in a window (the default) or as a full-screen kiosk. The kiosk option is meant for a dedicated printer screen; it replaces your login screen, so pick the window unless that is what you want. Passing `--desktop` skips the question.
 
