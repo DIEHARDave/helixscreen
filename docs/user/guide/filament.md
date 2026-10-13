@@ -83,20 +83,24 @@ If your filament system already handles this (AFC does), turn off **Settings > P
 
 ![AMS Panel](../../images/user/ams.png)
 
-For multi-material systems (Happy Hare, AFC-Klipper, ACE, Tool Changer, etc.). The AMS panel has two main areas: the **slot view** on the left and the **sidebar** on the right.
+For multi-material systems (Happy Hare, AFC-Klipper, ACE, Tool Changer, etc.). The AMS panel has two main areas: the **slot view**, which draws your spools and the filament path, and the **sidebar**, which shows what is loaded and holds the controls.
 
-### Slot View (Left)
+How the two are arranged depends on the shape of your screen:
 
-The left side shows all your filament slots in a visual tray layout:
+- **Landscape screens** put the slot view on the left and the sidebar on the right.
+- **Portrait screens** (taller than wide) stack everything in one column. From the top: the header, with the back button, your filament system's logo and its name; the loaded-filament strip and the status line, with the **Bypass** switch at the end of the status line when your system has one; the slot view and filament path at full width; and the action buttons, or the step progress while an operation runs, across the bottom.
+
+### Slot View
+
+The slot view shows all your filament slots in a visual tray layout:
 
 - **Spool icons** — Each slot displays a 3D spool visualization with its filament color
-- **Material labels** — Material type (PLA, PETG, ABS, etc.) shown above each spool
+- **Spool labels**: Above each spool. With four slots or fewer, the label shows the spool's name (for example "Bone White") over its material (PLA, PETG, ABS, etc.). When the name already says the material, as in "PLA+ Bone White", only the name is shown, and a slot with no name shows just the material. With five or more slots there is only room for the material, shortened to its first four letters. On smaller screens five or more labels alternate between two rows, so neighbours never overlap, and a thin line leads from a raised label down to its spool.
 - **Status badge** — Slot number with color-coded background (green = loaded, gray = empty, red = error)
-- **Tool badge** — If a slot is assigned to a specific extruder tool (T0, T1, etc.), a badge appears in the corner
+- **Tool badge**: A small badge (T0, T1, etc.) on a slot shows which tool prints from it. When every tool feeds the slot of its own number (T0 the first slot, T1 the second, and so on), the badges would only repeat the slot numbers, so they are hidden. They appear when the tools are mapped any other way, for example after you remap a tool or when two tools share a slot. A badge in the warning color marks a mapping you set yourself rather than the one your system reports.
+- **Environment pill**: On a box that reports temperature or humidity, a pill stands at the right end of the box: a thermometer with the temperature over a water drop with the humidity. While the box dries, the temperature line shows the heat icon and the time left. Tap the pill to open that box's drying and humidity screen (see [Filament Drying and Humidity](#filament-drying-and-humidity)). Boxes with no readings have no pill, and the box takes the full width.
 
 Below the slot grid, a **filament path diagram** shows the routing from slots through the hub/selector to the toolhead. This updates in real time during load/unload operations, including eject animations when retracting filament at the slot sensor. On the Anycubic ACE the path reads the hub and toolhead sensors the driver publishes, so a strand parked partway down the tube is drawn where it actually sits - short of the hub - rather than back at the spool.
-
-Above the slot view, a **mini temperature graph** shows live nozzle, bed, and chamber temperatures (when a chamber sensor or heater is present) so you can monitor heating during filament operations without switching panels. On small portrait screens there is no room to draw it, so a graph button takes its place next to the filament strip at the bottom - tap it to open the full-screen temperature graph.
 
 #### Reading Error States
 
@@ -119,18 +123,21 @@ When a slot runs into trouble, HelixScreen shows it visually so you don't have t
 - **Unload** - when filament is at the toolhead. Heats the nozzle first.
 - **Unlock** - a last resort that clears Happy Hare's pause lock without moving anything.
 
-### Sidebar (Right)
+### Sidebar
 
-The right sidebar shows the status of the currently loaded filament and provides quick-access controls.
+The sidebar shows the status of the currently loaded filament and provides quick-access controls. On a portrait screen the loaded-filament strip and status line sit above the slot view, and the buttons sit below it.
 
-**Currently loaded section:**
+**Currently loaded strip:**
 
-- **"Current: Slot N"** — Header showing which slot is active (or "Current: Bypass" when bypass is enabled)
-- **Color swatch** — Large color indicator matching the loaded filament
-- **Material name** — e.g., "Red PLA", "Prusament PETG"
-- **Remaining weight** — Estimated filament remaining (e.g., "750g"), if available
-- **Buffer slider**: When your system has a filament buffer with a proportional reading (a filament pressure sensor, or Happy Hare sync feedback), a small upright gauge sits at the right of the card, with the short reading and, on wider screens, its **FPS** or **Sync** label under it. For Happy Hare and AFC pressure-sensor buffers it is a slider: loose is up and tight is down; the block is gray on target, amber off target and red near an end. For an OpenAMS pressure sensor it is a fill that rises from the bottom with the pressure, with a tick at the target, gray until it nears the top or bottom end. It is the same reading the [Filament Buffer widget](home-panel.md#filament-buffer-widget) shows. Without a target a slider reading shows as a number only, and a fill keeps its gauge with no tick.
-- **Clog detection meter** — When your system has flow monitoring (encoder, FlowGuard, or AFC buffer), an arc meter shows the current reading, with the sensor named underneath. It is the same reading the [Clog Detection widget](home-panel.md#clog-detection-widget) draws as a bar on the dashboard. When the sensor is armed but has nothing to report, the arc is replaced by a check mark
+A narrow color bar matching the loaded filament sits beside two lines of text:
+
+- **Position and weight**: Which slot is feeding the toolhead, such as "Current: Slot 2" (or "Current: Bypass" when bypass is enabled), followed by the estimated filament remaining (e.g., "750g") when your system knows it
+- **Filament name**: e.g., "Red PLA", "Prusament PETG". A long name is cut short with "..."
+
+When your system has a buffer or flow sensor, its meters sit under the two lines on a landscape screen and to their right on a portrait screen. On smaller screens each meter shrinks to a small icon or arc beside its reading. The meters hide while a load or unload runs, so the step progress has the room.
+
+- **Buffer slider**: When your system has a filament buffer with a proportional reading (a filament pressure sensor, or Happy Hare sync feedback), a small upright gauge appears in the strip, with the short reading and, on wider screens, its **FPS** or **Sync** label under it. For Happy Hare and AFC pressure-sensor buffers it is a slider: loose is up and tight is down; the block is gray on target, amber off target and red near an end. For an OpenAMS pressure sensor it is a fill that rises from the bottom with the pressure, with a tick at the target, gray until it nears the top or bottom end. It is the same reading the [Filament Buffer widget](home-panel.md#filament-buffer-widget) shows. Without a target a slider reading shows as a number only, and a fill keeps its gauge with no tick. On smaller screens a small up-and-down arrow icon stands in for the gauge, beside the reading.
+- **Clog detection meter** — When your system has flow monitoring (encoder, FlowGuard, or AFC buffer), an arc meter shows the current reading, with the sensor named underneath. It is the same reading the [Clog Detection widget](home-panel.md#clog-detection-widget) draws as a bar on the dashboard. When the sensor is armed but has nothing to report, the arc is replaced by a check mark. On smaller screens the sensor name is left off.
 
 **During load/unload operations**, the sidebar switches to a **step progress display** showing each stage of the operation. The exact steps come from your filament system, so they match what it actually does rather than a generic list.
 
@@ -152,14 +159,17 @@ Systems that don't publish a step list of their own get a shorter generic bar: H
 
 Some steps only apply to how your machine is set up. A step your system never reaches stays greyed out instead of lighting up, so a bar that skips **Cut tip** or **Kick away** is normal, not a stall. Each step updates in real time so you can see exactly where the operation is.
 
-**Action buttons** (hidden while an operation is in progress):
+On small portrait screens there is room for the steps only as a row of dots, so the name of the current step is shown under them.
+
+**Action buttons** (hidden while an operation is in progress) sit two to a row. On small portrait screens they sit in one row. Only the buttons your system supports appear. On a landscape screen the **Bypass** switch sits above them; on a portrait screen it sits at the end of the status line.
 
 | Button | Action |
 |--------|--------|
 | **Bypass** (toggle) | Feed filament directly to the extruder, bypassing the AMS. Shown when your hardware supports bypass, or when you turn on **Enable Bypass Controls** - see [When Bypass Doesn't Appear](#when-bypass-doesnt-appear). The toggle is guarded: it can't be changed while a job holds the machine (a "Bypass cannot be changed while printing" warning appears), if a lane's filament is loaded it is unloaded first before bypass engages, and where a hardware sensor owns the bypass the toggle only reports that the sensor is in control. |
-| **Load** | Load a slot's filament into the toolhead. On the Snapmaker U1 it opens a picker instead - see below |
-| **Unload** | Retract the currently loaded filament back to its slot. It also works when filament is stuck in the toolhead and no slot claims it, on systems that can tell. On the Snapmaker U1 it opens a picker instead - see below |
+| **Load...** | Snapmaker U1 only: opens a picker to load several heads at once - see below. On other systems, tap a slot in the slot view and choose **Load** |
+| **Unload** | Retract the currently loaded filament back to its slot. It also works when filament is stuck in the toolhead and no slot claims it, on systems that can tell. If your system needs to know which slot that filament came from and cannot tell, Unload first asks **Which lane is in the toolhead?** - pick the lane, or tap outside the list to cancel. On the Snapmaker U1 it reads **Unload...** and opens a picker instead - see below |
 | **Reset** | Reset the AMS system state (useful after jams or errors) |
+| **Check slots** | Happy Hare only: checks every slot's sensor. The printer parks the toolhead and moves each lane's filament to test it, so the button is greyed out while a print is running |
 | **Settings** | Open the AMS Management overlay for advanced controls |
 
 **Loading or unloading several heads at once (Snapmaker U1).** The U1 has a toolhead per slot, so **Load** and **Unload** there open a picker listing every head with what it holds - the material and whether it is loaded, ready to load, or empty. Unload comes with the loaded heads already ticked; Load comes with the empty-but-fed heads ticked. Tick the heads you want and confirm: if a ticked head turns out not to take the operation, it is skipped with a warning naming the head and the reason, and the rest continue. The U1 runs its own batch command, which preheats the next head while the current one finishes.

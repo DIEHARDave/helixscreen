@@ -46,7 +46,7 @@ unchanged. `ifs_loaded` overwrites `seated_chan_` directly.
 | Action | Command |
 |--------|---------|
 | Load | `IFS_LOAD SLOT={n}` (resolves its own heat from the slot's material; self-unloads the outgoing lane) |
-| Toolhead unload | `IFS_UNLOAD SLOT={n}` (bare for "whatever is active" — it defaults from `ifs_loaded`) |
+| Toolhead unload | `IFS_UNLOAD SLOT={n}`, or bare when a live active slot exists (the macro defaults `SLOT=` from `ifs_loaded`). With no active slot the backend names the lane itself or asks the user; see "Unload with no lane named" below |
 | Lane eject | `IFS_EJECT SLOT={n}` (replaces the zmod `IFS_F24`/`F11`/`F39` sequence) |
 | Tool change | `T{n}` — the module maps T0..T3 to slots 1..4 itself, so the identity tool map is firmware truth |
 | Material/colour edit | `IFS_SET_MATERIAL SLOT={n} TYPE=… COLOR=7EC8E3` (bare hex — klipper's parser eats `#`; the module re-prefixes) |
@@ -333,6 +333,48 @@ entirely: the lane a menu names may not be the seated one, and a cold eject of t
 grinds un-cut filament. The AMS sidebar's panel-level Unload and the Filament panel's Unload stay
 live instead, dispatching `unload_filament(-1)`; `do_unload_filament()` takes the row-4 heated
 cut, so the firmware resolves the real channel, not the screen.
+
+That holds on native ZMOD, whose `_IFS_REMOVE_CURRENT_PRUTOK` finds the channel itself. The
+standalone module is different, and the next section covers it.
+
+#### Unload with no lane named (standalone module, #1324)
+
+The module's `IFS_UNLOAD` retracts a numbered lane. Sent bare, it takes the lane from its
+`ifs_loaded` record and refuses when that is 0 (`IFS_UNLOAD needs SLOT= (nothing is currently
+loaded)`). So when the head holds filament and `current_slot` is -1, a slotless unload has to
+name the lane before it dispatches. `do_unload_filament()` takes the first of:
+
+1. the lane the caller passed;
+2. the seated channel (`seated_chan_`, from `ifs_loaded`);
+3. the remembered seated lane (`src/printer/ams_backend_ad5x_ifs.cpp#remembered_unload_lane_locked`):
+   `persisted_seated_slot_`, the last lane seen loaded to the head, kept in the Moonraker
+   `lane_data` DB under the `seated` key so it survives a power cycle. It counts only while
+   that lane's port still reads present, so an emptied lane is never named.
+
+With none of them, it returns `WRONG_STATE` ("Choose which lane is in the toolhead to unload
+it") before setting `HEATING`, so nothing warms up for an unload that cannot run. The
+dispatch then sends `IFS_UNLOAD SLOT={n}` for the lane it found.
+
+The UI asks before it gets that far. `AmsBackend::unload_lane_candidates()` is empty by default
+and on native ZMOD; on the module
+(`src/printer/ams_backend_ad5x_ifs.cpp#unload_lane_candidates`) it lists
+every lane whose port reads present, but only when no active slot, seated channel or
+remembered lane exists and the head is not empty (`head_empty_for_unload_routing_locked()`).
+The AMS sidebar's Unload (`src/ui/ui_ams_sidebar.cpp#"void AmsOperationSidebar::handle_unload()"`)
+and the Filament panel's Unload (`src/ui/ui_panel_filament.cpp#handle_unload_button`)
+both call `src/ui/ui_unload_lane_choice.cpp#choose_unload_lane` first. With
+candidates, it opens the slot picker titled "Which lane is in the toolhead?" anchored to the
+Unload button, and the picked lane re-enters the same handler as an explicit slot: the
+sidebar passes `lane_in_toolhead`, so the stepper treats that lane as the loaded one, and the
+Filament panel holds it in `chosen_unload_lane_` through its preheat. Dismissing the picker
+cancels the unload. The Filament panel asks before its preheat, so a cancelled choice heats
+nothing either. With no candidates, `choose_unload_lane()` shows nothing and the handler
+goes on to its usual unload, which is every case on native ZMOD.
+
+`HELIX_MOCK_IFS_UNACCOUNTED` makes the `ifs-module` mock track the head apart from
+`ifs_loaded`, so the picker flow runs under `--test` (`docs/devel/MOCK_ENVIRONMENT_VARIABLES.md`).
+Unit coverage: `tests/unit/test_unload_lane_choice.cpp` and the remembered-lane cases in
+`tests/unit/test_ams_ad5x_ifs_module.cpp`.
 
 **"Empty" for row 3 is the switch pair, not `head_filament_`** (`head_empty_for_unload_routing_locked()`):
 
