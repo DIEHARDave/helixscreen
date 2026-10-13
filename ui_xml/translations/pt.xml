@@ -11,7 +11,9 @@
   <translation tag="%d lanes" pt="%d lanes"/>
   <translation tag="%d min" pt="%d min"/>
   <translation tag="%d min left" pt="restam %d min"/>
+  <translation tag="%d mm/s" pt="%d mm/s"/>
   <translation tag="%d more sensors" pt="%d sensores adicionais"/>
+  <translation tag="%d profiles" pt="%d perfis"/>
   <translation tag="%d slots" pt="%d slots"/>
   <translation tag="%d toolheads" pt="%d cabeçotes"/>
   <translation tag="%d tools" pt="%d ferramentas"/>
@@ -74,6 +76,7 @@
   <translation tag="1 min ago" pt="há 1 min"/>
   <translation tag="1 minute" pt="1 minuto"/>
   <translation tag="1 more tap to {} beta features" pt="Mais 1 toque para {} recursos beta"/>
+  <translation tag="1 profile" pt="1 perfil"/>
   <translation tag="1 unit" pt="1 unidade"/>
   <translation tag="1. Printer homes all axes (~1 minute)" pt="1. A impressora referencia todos os eixos (~1 minuto)"/>
   <translation tag="1. Printer homes and probes the bed" pt="1. A impressora faz home e sonda a mesa"/>
@@ -327,6 +330,7 @@
   <translation tag="Bed Temperature" pt="Temperatura da Mesa"/>
   <translation tag="Bed cooling, spools still on the bed:" pt="A mesa está esfriando, os carretéis ainda estão sobre ela:"/>
   <translation tag="Bed is Level!" pt="Mesa Nivelada!"/>
+  <translation tag="Bed mesh calibration failed: {}" pt="Falha na calibração da malha da mesa: {}"/>
   <translation tag="Bed mesh operation timed out" pt="Malha da mesa — tempo esgotado"/>
   <translation tag="Bed mesh..." pt="Malha da mesa..."/>
   <translation tag="Bed tab moves lift to this height first" pt="Os movimentos da aba Mesa sobem primeiro até esta altura"/>
@@ -1391,6 +1395,7 @@
   <translation tag="Heating to {}°C..." pt="Aquecendo a {}°C..."/>
   <translation tag="Heating..." pt="Aquecendo..."/>
   <translation tag="Heating: %d / %d°C" pt="Aquecendo: %d / %d°C"/>
+  <translation tag="Heightmap and flatness of the active bed mesh" pt="Mapa de alturas e planicidade da malha da mesa ativa"/>
   <translation tag="HelixScreen" pt="HelixScreen"/>
   <translation tag="HelixScreen Crashed" pt="HelixScreen Travou"/>
   <translation tag="HelixScreen is detecting your display orientation" pt="HelixScreen está detectando a orientação do seu ecrã"/>
@@ -1411,6 +1416,7 @@
   <translation tag="Holding nozzle at {}°C to purge previous filament." pt="Mantendo o bico a {}°C para purgar o filamento anterior."/>
   <translation tag="Home" pt="Início"/>
   <translation tag="Home &amp; Continue" pt="Fazer home e continuar"/>
+  <translation tag="Home All" pt="Posicionar tudo"/>
   <translation tag="Home all axes to use the map" pt="Referencie todos os eixos para usar o mapa"/>
   <translation tag="Home and sweep the cutter to re-find its position" pt="Referencia e varre o cortador para reencontrar sua posição"/>
   <translation tag="Home failed" pt="Homing falhou"/>
@@ -1437,6 +1443,8 @@
   <translation tag="Homing..." pt="Posicionando..."/>
   <translation tag="Horizontal" pt="Horizontal"/>
   <translation tag="Host" pt="Host"/>
+  <translation tag="Host Health" pt="Estado do host"/>
+  <translation tag="Host and MCU load, temperature, and memory" pt="Carga, temperatura e memória do host e da MCU"/>
   <translation tag="Host: " pt="Host: "/>
   <translation tag="Hotend" pt="Hotend"/>
   <translation tag="Hotend Fan" pt="Ventoinha do Hotend"/>
@@ -1658,6 +1666,7 @@
   <translation tag="Load filament" pt="Carregar filamento"/>
   <translation tag="Load filament first" pt="Carregue filamento primeiro"/>
   <translation tag="Load or unload filament." pt="Carregue ou descarregue o filamento."/>
+  <translation tag="Load profile" pt="Carregar perfil"/>
   <translation tag="Load the required filaments or start anyway?" pt="Carregar os filamentos necessários ou iniciar mesmo assim?"/>
   <translation tag="Load, unload, and swap spools. View your multi-filament system at a glance, map colors to slots, and monitor runout sensors." pt="Carregue, descarregue e troque carretéis. Visualize seu sistema de múltiplos filamentos rapidamente, mapeie cores para slots e monitore sensores de fim de filamento."/>
   <translation tag="Load..." pt="Carregar..."/>
@@ -2179,6 +2188,7 @@
   <translation tag="Poor match" pt="Correspondência fraca"/>
   <translation tag="Port" pt="Porta"/>
   <translation tag="Position" pt="Posição"/>
+  <translation tag="Position unknown" pt="Posição desconhecida"/>
   <translation tag="Post-Sensor Clear" pt="Avanço após o sensor"/>
   <translation tag="Power" pt="Energia"/>
   <translation tag="Power Devices" pt="Dispositivos de energia"/>
@@ -2385,6 +2395,7 @@
   <translation tag="Quick Button 4" pt="Botão Rápido 4"/>
   <translation tag="Quick actions, calibration, speed" pt="Ações rápidas, calibração, velocidade"/>
   <translation tag="Quiet" pt="Silencioso"/>
+  <translation tag="RAM" pt="RAM"/>
   <translation tag="RFCOMM connect failed" pt="Falha ao conectar RFCOMM"/>
   <translation tag="RFCOMM connect failed: " pt="Falha ao conectar RFCOMM: "/>
   <translation tag="RFID reader malfunction (left)" pt="Falha do leitor RFID (esquerdo)"/>
@@ -3202,6 +3213,7 @@
   <translation tag="Toolhead Style" pt="Estilo do Cabeçote"/>
   <translation tag="Toolhead Y" pt="Cabeçote Y"/>
   <translation tag="Toolhead jam" pt="Atolamento do cabeçote"/>
+  <translation tag="Toolhead position and homing, with a plate view and Home All" pt="Posição e posicionamento do cabeçote, com vista da mesa e Posicionar tudo"/>
   <translation tag="Toolhead position unknown" pt="Posição do cabeçote desconhecida"/>
   <translation tag="Toolheads" pt="Cabeçotes"/>
   <translation tag="Tools" pt="Ferramentas"/>

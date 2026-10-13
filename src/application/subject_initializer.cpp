@@ -44,6 +44,7 @@
 #include "ams_state.h"
 #include "app_globals.h"
 #include "bed_drying_controller.h"
+#include "bed_mesh_state.h"
 #include "filament_catalog.h"
 #include "filament_database.h"
 #include "filament_variants.h"
@@ -116,6 +117,10 @@ void SubjectInitializer::init_core_and_state() {
     // machine-wide offset plus ToolState's per-tool dirty flag, so it registers
     // after all three, and before any panel XML binds the name.
     helix::zoffset::init_save_available_subject();
+
+    // The active bed mesh's stats, read by BedMeshPanel's XML and the home tile. They
+    // exist from here, so neither depends on the panel having been opened.
+    helix::BedMeshState::instance().init_subjects();
 
     // Phase 4: Navigation subjects — MUST register AFTER PrinterState/AmsState
     // so that in reverse deinit order, NavigationManager cleans up its observers

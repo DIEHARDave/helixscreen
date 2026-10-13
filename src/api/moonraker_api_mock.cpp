@@ -119,12 +119,14 @@ MoonrakerTimelapseAPIMock& MoonrakerAPIMock::timelapse_mock() {
 // ============================================================================
 
 SubscriptionId
-MoonrakerAPIMock::subscribe_notifications(std::function<void(const json&)> /*callback*/) {
-    return mock_next_subscription_id_++;
+MoonrakerAPIMock::subscribe_notifications(std::function<void(const json&)> callback) {
+    // The mock client fans every status update out to the notification callbacks, so a
+    // listener such as BedMeshState follows the mock printer as it would a real one.
+    return MoonrakerAPI::subscribe_notifications(std::move(callback));
 }
 
-bool MoonrakerAPIMock::unsubscribe_notifications(SubscriptionId /*id*/) {
-    return true;
+bool MoonrakerAPIMock::unsubscribe_notifications(SubscriptionId id) {
+    return MoonrakerAPI::unsubscribe_notifications(id);
 }
 
 void MoonrakerAPIMock::register_method_callback(const std::string& method, const std::string& name,

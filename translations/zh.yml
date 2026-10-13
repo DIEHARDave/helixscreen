@@ -13,7 +13,9 @@ translations:
   '%d lanes': '%d 个耗材通道'
   '%d min': '%d分钟'
   '%d min left': '剩余 %d 分钟'
+  '%d mm/s': '%d mm/s'
   '%d more sensors': 还有%d个传感器
+  '%d profiles': '%d 个配置'
   '%d slots': '%d 个槽位'
   '%d toolheads': '%d 个工具头'
   '%d tools': '%d 个工具'
@@ -74,6 +76,7 @@ translations:
   1 min ago: 1分钟前
   1 minute: 1 分钟
   1 more tap to {} beta features: 再点击 1 次以{}测试功能
+  1 profile: '1 个配置'
   '1 unit': '1 个单元'
   1. Printer homes all axes (~1 minute): 1. 打印机全部轴归零（约1分钟）
   1. Printer homes and probes the bed: 1. 打印机归位并探测热床
@@ -331,6 +334,7 @@ translations:
   'Bed cooling, spools still on the bed:': '热床正在冷却,料盘仍在上面:'
 
   Bed is Level!: 热床已水平！
+  'Bed mesh calibration failed: {}': '热床网格校准失败：{}'
   Bed mesh operation timed out: 热床网格操作超时
   Bed mesh...: 热床网格...
   Bed tab moves lift to this height first: 热床标签页的移动会先抬升到此高度
@@ -1434,6 +1438,7 @@ translations:
   Heating to {}°C...: 正在加热至{}°C...
   Heating...: 正在加热...
   'Heating: %d / %d°C': 加热中：%d / %d°C
+  Heightmap and flatness of the active bed mesh: '当前热床网格的高度图和平整度'
   HelixScreen: HelixScreen
   HelixScreen Crashed: HelixScreen 崩溃
   HelixScreen is detecting your display orientation: HelixScreen正在检测显示屏方向
@@ -1455,6 +1460,7 @@ translations:
   Holding nozzle at {}°C to purge previous filament.: 将喷嘴保持在 {}°C 以清洗之前的耗材。
   Home: 归位
   Home & Continue: 归位并继续
+  Home All: "全部归位"
   Home all axes to use the map: 请先归位所有轴以使用地图
   Home and sweep the cutter to re-find its position: 归零并扫过切刀以重新找到其位置
   Home failed: 归位失败
@@ -1481,6 +1487,8 @@ translations:
   Homing...: 正在归零...
   Horizontal: 水平
   Host: 主机
+  Host Health: 主机状态
+  Host and MCU load, temperature, and memory: 主机和 MCU 的负载、温度和内存
   'Host: ': '主机: '
   Hotend: 热端
   Hotend Fan: 热端风扇
@@ -1717,6 +1725,7 @@ translations:
   Load filament: '装载耗材'
   Load filament first: 请先装载耗材
   Load or unload filament.: 装载或卸载耗材。
+  Load profile: '加载配置'
   Load the required filaments or start anyway?: 加载所需耗材还是直接开始？
   'Load, unload, and swap spools. View your multi-filament system at a glance, map colors to slots, and monitor runout sensors.': 加载、卸载和更换料盘。一目了然地查看您的多耗材系统、将颜色映射到槽位，并监控耗材用尽传感器。
   Load...: 加载...
@@ -2257,6 +2266,7 @@ translations:
   Poor match: "匹配较差"
   Port: 端口
   Position: 位置
+  Position unknown: "位置未知"
   Post-Sensor Clear: '传感器触发后额外移动'
   Power: 电源
   Power Devices: 电源设备
@@ -2468,6 +2478,7 @@ translations:
   Quick Button 4: 快捷按钮 4
   Quick actions, calibration, speed: 快捷操作、校准、速度
   Quiet: '安静'
+  RAM: RAM
   RFCOMM connect failed: RFCOMM 连接失败
   'RFCOMM connect failed: ': 'RFCOMM 连接失败: '
   RFID reader malfunction (left): RFID 读取器故障（左）
@@ -3351,6 +3362,7 @@ translations:
   Toolhead Style: 工具头样式
   Toolhead Y: 工具头 Y
   Toolhead jam: 工具头堵塞
+  Toolhead position and homing, with a plate view and Home All: "工具头位置与归位，含热床视图和全部归位"
   Toolhead position unknown: 工具头位置未知
   Toolheads: 工具头
   Tools: 工具

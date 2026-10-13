@@ -13,7 +13,9 @@ translations:
   '%d lanes': '%d Spuren'
   '%d min': '%d Min'
   '%d min left': 'noch %d Min'
+  '%d mm/s': '%d mm/s'
   '%d more sensors': '%d weitere Sensoren'
+  '%d profiles': '%d Profile'
   '%d slots': '%d Slots'
   '%d toolheads': '%d Werkzeugköpfe'
   '%d tools': '%d Werkzeuge'
@@ -76,6 +78,7 @@ translations:
   1 min ago: vor 1 Min.
   1 minute: 1 Minute
   1 more tap to {} beta features: 1 weiteres Mal tippen, um Beta-Funktionen zu {}
+  1 profile: '1 Profil'
   '1 unit': '1 Einheit'
   1. Printer homes all axes (~1 minute): 1. Drucker referenziert alle Achsen (~1 Minute)
   1. Printer homes and probes the bed: 1. Drucker referenziert und prüft das Bett
@@ -362,6 +365,7 @@ translations:
   'Bed cooling, spools still on the bed:': 'Heizbett kühlt ab, Spulen liegen noch darauf:'
 
   Bed is Level!: Bett ist nivelliert!
+  'Bed mesh calibration failed: {}': 'Bettnetz-Kalibrierung fehlgeschlagen: {}'
   Bed mesh operation timed out: Bettnetz-Vorgang Zeitüberschreitung
   Bed mesh...: Bettnetz...
   Bed tab moves lift to this height first: Bewegungen im Heizbett-Tab heben zuerst auf diese Höhe an
@@ -1542,6 +1546,7 @@ translations:
   Heating to {}°C...: Aufheizen auf {}°C...
   Heating...: Heizt...
   'Heating: %d / %d°C': 'Aufheizen: %d / %d°C'
+  Heightmap and flatness of the active bed mesh: 'Höhenkarte und Ebenheit des aktiven Bettnetzes'
   HelixScreen: HelixScreen
   HelixScreen Crashed: HelixScreen abgestürzt
   HelixScreen is detecting your display orientation: HelixScreen erkennt Ihre Display-Ausrichtung
@@ -1565,6 +1570,7 @@ translations:
     vorheriges Filament auszuspülen.
   Home: Home
   Home & Continue: Referenzieren & Fortfahren
+  Home All: "Alle referenzieren"
   Home all axes to use the map: Alle Achsen referenzieren, um die Karte zu nutzen
   Home and sweep the cutter to re-find its position: Referenzfahrt und Messfahrt des Schneiders, um seine Position neu zu ermitteln
   Home failed: Referenzfahrt fehlgeschlagen
@@ -1593,6 +1599,8 @@ translations:
   Homing...: Referenzfahrt...
   Horizontal: Horizontal
   Host: Host
+  Host Health: Host-Zustand
+  Host and MCU load, temperature, and memory: Last, Temperatur und Speicher von Host und MCU
   'Host: ': 'Host: '
   Hotend: Hotend
   Hotend Fan: Hotend-Lüfter
@@ -1853,6 +1861,7 @@ translations:
   Load filament: 'Filament laden'
   Load filament first: Laden Sie zuerst Filament
   Load or unload filament.: Filament laden oder entladen.
+  Load profile: 'Profil laden'
   Load the required filaments or start anyway?: Benötigte Filamente laden oder trotzdem
     starten?
   'Load, unload, and swap spools. View your multi-filament system at a glance, map colors to slots, and monitor runout sensors.': 'Spulen laden, entladen und wechseln. Ihr Multi-Filament-System auf einen Blick sehen, Farben den Slots zuordnen und Filamentsensoren überwachen.'
@@ -2418,6 +2427,7 @@ translations:
   Poor match: "Schlechte Übereinstimmung"
   Port: Port
   Position: Position
+  Position unknown: "Position unbekannt"
   Post-Sensor Clear: 'Nachlauf nach Sensor'
   Power: Strom
   Power Devices: Stromgeräte
@@ -2640,6 +2650,7 @@ translations:
   Quick Button 4: Schnelltaste 4
   Quick actions, calibration, speed: Schnellaktionen, Kalibrierung, Geschwindigkeit
   Quiet: 'Leise'
+  RAM: RAM
   RFCOMM connect failed: RFCOMM-Verbindung fehlgeschlagen
   'RFCOMM connect failed: ': 'RFCOMM-Verbindung fehlgeschlagen: '
   RFID reader malfunction (left): Fehlfunktion des RFID-Lesers (links)
@@ -3607,6 +3618,7 @@ translations:
   Toolhead Style: Toolhead-Stil
   Toolhead Y: Werkzeugkopf Y
   Toolhead jam: Werkzeugkopf-Stau
+  Toolhead position and homing, with a plate view and Home All: "Position und Referenzfahrt des Werkzeugkopfs, mit Plattenansicht und Alle referenzieren"
   Toolhead position unknown: Werkzeugkopfposition unbekannt
   Toolheads: Werkzeugköpfe
   Tools: Werkzeuge

@@ -141,7 +141,7 @@ void SpoolmanOverlay::on_activate() {}
 void SpoolmanOverlay::on_deactivating(DeactivateReason) {}
 void SpoolmanOverlay::before_show() {}
 SpoolmanOverlay& get_spoolman_overlay() {
-    static SpoolmanOverlay overlay;
+    static HELIX_PSRAM_BSS SpoolmanOverlay overlay;
     return overlay;
 }
 } // namespace ui
@@ -195,7 +195,7 @@ void SpoolmanPanel::on_activate() {}
 void SpoolmanPanel::on_deactivating(DeactivateReason) {}
 
 SpoolmanPanel& get_global_spoolman_panel() {
-    static SpoolmanPanel panel;
+    static HELIX_PSRAM_BSS SpoolmanPanel panel;
     return panel;
 }
 

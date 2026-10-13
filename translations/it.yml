@@ -13,7 +13,9 @@ translations:
   '%d lanes': '%d corsie'
   '%d min': '%d min'
   '%d min left': '%d min rimanenti'
+  '%d mm/s': '%d mm/s'
   '%d more sensors': '%d altri sensori'
+  '%d profiles': '%d profili'
   '%d slots': '%d slot'
   '%d toolheads': '%d testine'
   '%d tools': '%d strumenti'
@@ -75,6 +77,7 @@ translations:
   1 min ago: 1 min fa
   1 minute: 1 minuto
   1 more tap to {} beta features: 1 tocco per {} funzioni beta
+  1 profile: '1 profilo'
   '1 unit': '1 unità'
   1. Printer homes all axes (~1 minute): 1. La stampante azzererà tutti gli assi (~1 minuto)
   1. Printer homes and probes the bed: 1. La stampante esegue homing e sonda il piano
@@ -357,6 +360,7 @@ translations:
   'Bed cooling, spools still on the bed:': 'Il piano si sta raffreddando, le bobine sono ancora sopra:'
 
   Bed is Level!: Piano livellato!
+  'Bed mesh calibration failed: {}': 'Calibrazione della mesh del piano non riuscita: {}'
   Bed mesh operation timed out: Mesh piano — tempo scaduto
   Bed mesh...: Mesh piano...
   Bed tab moves lift to this height first: I movimenti della scheda Piano salgono prima a questa altezza
@@ -1530,6 +1534,7 @@ translations:
   Heating to {}°C...: Riscaldamento a {}°C...
   Heating...: Riscaldamento...
   'Heating: %d / %d°C': 'Riscaldamento: %d / %d°C'
+  Heightmap and flatness of the active bed mesh: 'Mappa delle altezze e planarità della mesh del piano attiva'
   HelixScreen: HelixScreen
   HelixScreen Crashed: HelixScreen si è arrestato
   HelixScreen is detecting your display orientation: HelixScreen sta rilevando l'orientamento
@@ -1553,6 +1558,7 @@ translations:
     spurgare il filamento precedente.
   Home: Home
   Home & Continue: Homing e continua
+  Home All: "Homing tutto"
   Home all axes to use the map: Porta tutti gli assi in posizione per usare la mappa
   Home and sweep the cutter to re-find its position: Azzera e fa scorrevolare la taglierina per ritrovare la sua posizione
   Home failed: Homing fallito
@@ -1581,6 +1587,8 @@ translations:
   Homing...: Azzeramento...
   Horizontal: Orizzontale
   Host: Host
+  Host Health: 'Stato dell''host'
+  Host and MCU load, temperature, and memory: Carico, temperatura e memoria di host e MCU
   'Host: ': 'Host: '
   Hotend: Hotend
   Hotend Fan: Ventola hotend
@@ -1843,6 +1851,7 @@ translations:
   Load filament: 'Carica il filamento'
   Load filament first: Prima carica il filamento
   Load or unload filament.: Carica o scarica il filamento.
+  Load profile: 'Carica profilo'
   Load the required filaments or start anyway?: Caricare i filamenti richiesti o avviare
     comunque?
   'Load, unload, and swap spools. View your multi-filament system at a glance, map colors to slots, and monitor runout sensors.': 'Carica, scarica e sostituisci le bobine. Visualizza a colpo d''occhio il tuo sistema multi-filamento, abbina i colori agli slot e monitora i sensori di esaurimento.'
@@ -2408,6 +2417,7 @@ translations:
   Poor match: "Scarsa corrispondenza"
   Port: Porta
   Position: Posizione
+  Position unknown: "Posizione sconosciuta"
   Post-Sensor Clear: 'Avanzamento dopo il sensore'
   Power: Alimentazione
   Power Devices: Dispositivi di alimentazione
@@ -2630,6 +2640,7 @@ translations:
   Quick Button 4: Pulsante rapido 4
   Quick actions, calibration, speed: Azioni rapide, calibrazione, velocità
   Quiet: 'Silenzioso'
+  RAM: RAM
   RFCOMM connect failed: Connessione RFCOMM fallita
   'RFCOMM connect failed: ': 'Connessione RFCOMM fallita: '
   RFID reader malfunction (left): Malfunzionamento del lettore RFID (sinistro)
@@ -3600,6 +3611,7 @@ translations:
   Toolhead Style: Stile testina
   Toolhead Y: Testina Y
   Toolhead jam: Inceppamento testina
+  Toolhead position and homing, with a plate view and Home All: "Posizione e homing della testina, con vista del piatto e Homing tutto"
   Toolhead position unknown: Posizione della testina sconosciuta
   Toolheads: Testine
   Tools: Strumenti

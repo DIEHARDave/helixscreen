@@ -13,7 +13,9 @@ translations:
   '%d lanes': '%d レーン'
   '%d min': '%d分'
   '%d min left': '残り %d 分'
+  '%d mm/s': '%d mm/s'
   '%d more sensors': 他%d個のセンサー
+  '%d profiles': '%d 個のプロファイル'
   '%d slots': '%d スロット'
   '%d toolheads': '%d ツールヘッド'
   '%d tools': '%d ツール'
@@ -75,6 +77,7 @@ translations:
   1 min ago: 1分前
   1 minute: 1分
   1 more tap to {} beta features: あと1回タップでベータ機能を{}
+  1 profile: '1 個のプロファイル'
   '1 unit': '1ユニット'
   1. Printer homes all axes (~1 minute): 1. プリンターが全軸の原点復帰を行います（約1分）
   1. Printer homes and probes the bed: 1. プリンターがホーミングしてベッドをプローブします
@@ -332,6 +335,7 @@ translations:
   'Bed cooling, spools still on the bed:': 'ベッド冷却中、スプールはまだベッドの上です:'
 
   Bed is Level!: ベッドが水平です！
+  'Bed mesh calibration failed: {}': 'ベッドメッシュのキャリブレーションに失敗しました: {}'
   Bed mesh operation timed out: ベッドメッシュ操作がタイムアウトしました
   Bed mesh...: ベッドメッシュ...
   Bed tab moves lift to this height first: ベッドタブの移動はまずこの高さまで上昇します
@@ -1438,6 +1442,7 @@ translations:
   Heating to {}°C...: '{}°Cに加熱中...'
   Heating...: 加熱中...
   'Heating: %d / %d°C': '加熱中: %d / %d°C'
+  Heightmap and flatness of the active bed mesh: '有効なベッドメッシュの高さマップと平面度'
   HelixScreen: HelixScreen
   HelixScreen Crashed: HelixScreen がクラッシュしました
   HelixScreen is detecting your display orientation: HelixScreenがディスプレイの向きを検出しています
@@ -1459,6 +1464,7 @@ translations:
   Holding nozzle at {}°C to purge previous filament.: 前のフィラメントをパージするためノズルを {}°C に保持しています。
   Home: ホーム
   Home & Continue: ホーミングして続行
+  Home All: "全軸ホーミング"
   Home all axes to use the map: マップを使うには全軸をホーミングしてください
   Home and sweep the cutter to re-find its position: 原点復帰後にカッターを走査して位置を再検出します
   Home failed: ホーミング失敗
@@ -1485,6 +1491,8 @@ translations:
   Homing...: ホーミング中...
   Horizontal: 水平
   Host: ホスト
+  Host Health: ホストの状態
+  Host and MCU load, temperature, and memory: ホストと MCU の負荷、温度、メモリ
   'Host: ': 'ホスト: '
   Hotend: ホットエンド
   Hotend Fan: ホットエンドファン
@@ -1723,6 +1731,7 @@ translations:
   Load filament: 'フィラメントをロード'
   Load filament first: 先にフィラメントを装填してください
   Load or unload filament.: フィラメントを装填または排出します。
+  Load profile: 'プロファイルを読み込む'
   Load the required filaments or start anyway?: 必要なフィラメントを装填しますか？それともこのまま開始しますか？
   'Load, unload, and swap spools. View your multi-filament system at a glance, map colors to slots, and monitor runout sensors.': スプールのロード、アンロード、交換を行います。マルチフィラメントシステムを一目で確認し、色をスロットにマッピングし、ランアウトセンサーを監視できます。
   Load...: 装填...
@@ -2265,6 +2274,7 @@ translations:
   Poor match: "不十分な一致"
   Port: ポート
   Position: 位置
+  Position unknown: "位置が不明です"
   Post-Sensor Clear: 'センサー通過後の追加移動'
   Power: 電源
   Power Devices: 電源デバイス
@@ -2477,6 +2487,7 @@ translations:
   Quick Button 4: クイックボタン4
   Quick actions, calibration, speed: クイックアクション、キャリブレーション、速度
   Quiet: '静音'
+  RAM: RAM
   RFCOMM connect failed: RFCOMM 接続に失敗しました
   'RFCOMM connect failed: ': 'RFCOMM 接続に失敗しました: '
   RFID reader malfunction (left): RFID リーダーの異常（左）
@@ -3360,6 +3371,7 @@ translations:
   Toolhead Style: ツールヘッドスタイル
   Toolhead Y: ツールヘッド Y
   Toolhead jam: ツールヘッドの詰まり
+  Toolhead position and homing, with a plate view and Home All: "ツールヘッドの位置とホーミング。プレート表示と全軸ホーミング付き"
   Toolhead position unknown: ツールヘッドの位置が不明です
   Toolheads: ツールヘッド
   Tools: ツール

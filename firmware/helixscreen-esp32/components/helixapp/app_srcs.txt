@@ -164,6 +164,7 @@ src/printer/lane_translation.cpp
 src/printer/lane_legacy_migration.cpp
 src/printer/lane_binding.cpp
 src/printer/bed_dimensions.cpp
+src/printer/bed_mesh_state.cpp
 src/printer/chamber_heater_assignment.cpp
 src/printer/chamber_heater_backend_dragonbreath.cpp
 src/printer/chamber_heater_backend_generic.cpp
@@ -345,6 +346,7 @@ src/ui/clog_meter_geometry.cpp
 src/ui/clog_meter_model.cpp
 src/ui/panel_widget_registry.cpp
 src/ui/panel_widgets/active_spool_widget.cpp
+src/ui/panel_widgets/bed_mesh_tile_widget.cpp
 src/ui/panel_widgets/bypass_widget.cpp
 src/ui/panel_widgets/camera_widget.cpp
 src/ui/panel_widgets/clock_widget.cpp
@@ -356,6 +358,7 @@ src/ui/panel_widgets/filament_buffer_widget.cpp
 src/ui/panel_widgets/filament_sensor_widget.cpp
 src/ui/panel_widgets/gcode_console_widget.cpp
 src/ui/panel_widgets/heater_temp_widget.cpp
+src/ui/panel_widgets/host_health_widget.cpp
 src/ui/panel_widgets/humidity_widget.cpp
 src/ui/panel_widgets/job_queue_widget.cpp
 src/ui/panel_widgets/led_controls_widget.cpp
@@ -380,6 +383,7 @@ src/ui/panel_widgets/temp_graph_widget.cpp
 src/ui/panel_widgets/temp_stack_widget.cpp
 src/ui/panel_widgets/thermistor_widget.cpp
 src/ui/panel_widgets/tips_widget.cpp
+src/ui/panel_widgets/toolhead_widget.cpp
 src/ui/panel_widgets/tool_switcher_widget.cpp
 src/ui/panel_widgets/width_sensor_widget.cpp
 src/ui/print_control_buttons.cpp

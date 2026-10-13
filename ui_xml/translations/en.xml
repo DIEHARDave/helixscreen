@@ -11,7 +11,9 @@
   <translation tag="%d lanes" en="%d lanes"/>
   <translation tag="%d min" en="%d min"/>
   <translation tag="%d min left" en="%d min left"/>
+  <translation tag="%d mm/s" en="%d mm/s"/>
   <translation tag="%d more sensors" en="%d more sensors"/>
+  <translation tag="%d profiles" en="%d profiles"/>
   <translation tag="%d slots" en="%d slots"/>
   <translation tag="%d toolheads" en="%d toolheads"/>
   <translation tag="%d tools" en="%d tools"/>
@@ -74,6 +76,7 @@
   <translation tag="1 min ago" en="1 min ago"/>
   <translation tag="1 minute" en="1 minute"/>
   <translation tag="1 more tap to {} beta features" en="1 more tap to {} beta features"/>
+  <translation tag="1 profile" en="1 profile"/>
   <translation tag="1 unit" en="1 unit"/>
   <translation tag="1. Printer homes all axes (~1 minute)" en="1. Printer homes all axes (~1 minute)"/>
   <translation tag="1. Printer homes and probes the bed" en="1. Printer homes and probes the bed"/>
@@ -327,6 +330,7 @@
   <translation tag="Bed Temperature" en="Bed Temperature"/>
   <translation tag="Bed cooling, spools still on the bed:" en="Bed cooling, spools still on the bed:"/>
   <translation tag="Bed is Level!" en="Bed is Level!"/>
+  <translation tag="Bed mesh calibration failed: {}" en="Bed mesh calibration failed: {}"/>
   <translation tag="Bed mesh operation timed out" en="Bed mesh operation timed out"/>
   <translation tag="Bed mesh..." en="Bed mesh..."/>
   <translation tag="Bed tab moves lift to this height first" en="Bed tab moves lift to this height first"/>
@@ -1391,6 +1395,7 @@
   <translation tag="Heating to {}°C..." en="Heating to {}°C..."/>
   <translation tag="Heating..." en="Heating..."/>
   <translation tag="Heating: %d / %d°C" en="Heating: %d / %d°C"/>
+  <translation tag="Heightmap and flatness of the active bed mesh" en="Heightmap and flatness of the active bed mesh"/>
   <translation tag="HelixScreen" en="HelixScreen"/>
   <translation tag="HelixScreen Crashed" en="HelixScreen Crashed"/>
   <translation tag="HelixScreen is detecting your display orientation" en="HelixScreen is detecting your display orientation"/>
@@ -1411,6 +1416,7 @@
   <translation tag="Holding nozzle at {}°C to purge previous filament." en="Holding nozzle at {}°C to purge previous filament."/>
   <translation tag="Home" en="Home"/>
   <translation tag="Home &amp; Continue" en="Home &amp; Continue"/>
+  <translation tag="Home All" en="Home All"/>
   <translation tag="Home all axes to use the map" en="Home all axes to use the map"/>
   <translation tag="Home and sweep the cutter to re-find its position" en="Home and sweep the cutter to re-find its position"/>
   <translation tag="Home failed" en="Home failed"/>
@@ -1437,6 +1443,8 @@
   <translation tag="Homing..." en="Homing..."/>
   <translation tag="Horizontal" en="Horizontal"/>
   <translation tag="Host" en="Host"/>
+  <translation tag="Host Health" en="Host Health"/>
+  <translation tag="Host and MCU load, temperature, and memory" en="Host and MCU load, temperature, and memory"/>
   <translation tag="Host: " en="Host: "/>
   <translation tag="Hotend" en="Hotend"/>
   <translation tag="Hotend Fan" en="Hotend Fan"/>
@@ -1658,6 +1666,7 @@
   <translation tag="Load filament" en="Load filament"/>
   <translation tag="Load filament first" en="Load filament first"/>
   <translation tag="Load or unload filament." en="Load or unload filament."/>
+  <translation tag="Load profile" en="Load profile"/>
   <translation tag="Load the required filaments or start anyway?" en="Load the required filaments or start anyway?"/>
   <translation tag="Load, unload, and swap spools. View your multi-filament system at a glance, map colors to slots, and monitor runout sensors." en="Load, unload, and swap spools. View your multi-filament system at a glance, map colors to slots, and monitor runout sensors."/>
   <translation tag="Load..." en="Load..."/>
@@ -2179,6 +2188,7 @@
   <translation tag="Poor match" en="Poor match"/>
   <translation tag="Port" en="Port"/>
   <translation tag="Position" en="Position"/>
+  <translation tag="Position unknown" en="Position unknown"/>
   <translation tag="Post-Sensor Clear" en="Post-Sensor Clear"/>
   <translation tag="Power" en="Power"/>
   <translation tag="Power Devices" en="Power Devices"/>
@@ -2385,6 +2395,7 @@
   <translation tag="Quick Button 4" en="Quick Button 4"/>
   <translation tag="Quick actions, calibration, speed" en="Quick actions, calibration, speed"/>
   <translation tag="Quiet" en="Quiet"/>
+  <translation tag="RAM" en="RAM"/>
   <translation tag="RFCOMM connect failed" en="RFCOMM connect failed"/>
   <translation tag="RFCOMM connect failed: " en="RFCOMM connect failed: "/>
   <translation tag="RFID reader malfunction (left)" en="RFID reader malfunction (left)"/>
@@ -3202,6 +3213,7 @@
   <translation tag="Toolhead Style" en="Toolhead Style"/>
   <translation tag="Toolhead Y" en="Toolhead Y"/>
   <translation tag="Toolhead jam" en="Toolhead jam"/>
+  <translation tag="Toolhead position and homing, with a plate view and Home All" en="Toolhead position and homing, with a plate view and Home All"/>
   <translation tag="Toolhead position unknown" en="Toolhead position unknown"/>
   <translation tag="Toolheads" en="Toolheads"/>
   <translation tag="Tools" en="Tools"/>

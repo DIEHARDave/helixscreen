@@ -13,7 +13,9 @@ translations:
   '%d lanes': '%d lanes'
   '%d min': '%d min'
   '%d min left': '%d min left'
+  '%d mm/s': '%d mm/s'
   '%d more sensors': '%d more sensors'
+  '%d profiles': '%d profiles'
   '%d slots': '%d slots'
   '%d toolheads': '%d toolheads'
   '%d tools': '%d tools'
@@ -74,6 +76,7 @@ translations:
   1 min ago: 1 min ago
   1 minute: 1 minute
   1 more tap to {} beta features: 1 more tap to {} beta features
+  1 profile: 1 profile
   1 unit: 1 unit
   1. Printer homes all axes (~1 minute): 1. Printer homes all axes (~1 minute)
   1. Printer homes and probes the bed: 1. Printer homes and probes the bed
@@ -344,6 +347,7 @@ translations:
   Bed Temperature: Bed Temperature
   'Bed cooling, spools still on the bed:': 'Bed cooling, spools still on the bed:'
   Bed is Level!: Bed is Level!
+  'Bed mesh calibration failed: {}': 'Bed mesh calibration failed: {}'
   Bed mesh operation timed out: Bed mesh operation timed out
   'Bed mesh...': 'Bed mesh...'
   Bed tab moves lift to this height first: Bed tab moves lift to this height first
@@ -1482,6 +1486,7 @@ translations:
   Heating to {}°C...: Heating to {}°C...
   Heating...: Heating...
   'Heating: %d / %d°C': 'Heating: %d / %d°C'
+  Heightmap and flatness of the active bed mesh: Heightmap and flatness of the active bed mesh
   HelixScreen: HelixScreen
   HelixScreen Crashed: HelixScreen Crashed
   HelixScreen is detecting your display orientation: HelixScreen is detecting your
@@ -1504,6 +1509,7 @@ translations:
   Holding nozzle at {}°C to purge previous filament.: Holding nozzle at {}°C to purge previous filament.
   Home: Home
   Home & Continue: Home & Continue
+  Home All: Home All
   Home all axes to use the map: Home all axes to use the map
   Home and sweep the cutter to re-find its position: Home and sweep the cutter to re-find its position
   Home failed: Home failed
@@ -1532,6 +1538,8 @@ translations:
   Homing...: Homing...
   Horizontal: Horizontal
   Host: Host
+  Host Health: Host Health
+  Host and MCU load, temperature, and memory: Host and MCU load, temperature, and memory
   'Host: ': 'Host: '
   Hotend: Hotend
   Hotend Fan: Hotend Fan
@@ -1784,6 +1792,7 @@ translations:
   Load filament: Load filament
   Load filament first: Load filament first
   Load or unload filament.: Load or unload filament.
+  Load profile: Load profile
   Load the required filaments or start anyway?: Load the required filaments or start
     anyway?
   'Load, unload, and swap spools. View your multi-filament system at a glance, map colors to slots, and monitor runout sensors.': 'Load, unload, and swap spools. View your multi-filament system at a glance, map colors to slots, and monitor runout sensors.'
@@ -2340,6 +2349,7 @@ translations:
   Poor match: Poor match
   Port: Port
   Position: Position
+  Position unknown: Position unknown
   Post-Sensor Clear: Post-Sensor Clear
   Power: Power
   Power Devices: Power Devices
@@ -2557,6 +2567,7 @@ translations:
   Quick Button 4: Quick Button 4
   Quick actions, calibration, speed: Quick actions, calibration, speed
   Quiet: Quiet
+  RAM: RAM
   RFCOMM connect failed: RFCOMM connect failed
   'RFCOMM connect failed: ': 'RFCOMM connect failed: '
   RFID reader malfunction (left): RFID reader malfunction (left)
@@ -3491,6 +3502,7 @@ translations:
   Toolhead Style: Toolhead Style
   Toolhead Y: Toolhead Y
   Toolhead jam: Toolhead jam
+  Toolhead position and homing, with a plate view and Home All: Toolhead position and homing, with a plate view and Home All
   Toolhead position unknown: Toolhead position unknown
   Toolheads: Toolheads
   Tools: Tools
