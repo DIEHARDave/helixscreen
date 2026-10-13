@@ -93,6 +93,11 @@ void init_subsystems_from_hardware(const PrinterDiscovery& hardware, IMoonrakerA
 
     // Initialize tool changer state from discovered hardware
     helix::ToolState::instance().init_tools(hardware);
+    // init_tools() mounts T0 and drops any backend topology. A backend started
+    // above, or still running from the last discovery, already said which head
+    // is mounted and sends nothing more until its state changes, so its answer
+    // goes back to ToolState here.
+    AmsState::instance().sync_from_backend();
 
     // Seed the per-tool offsets. Must follow init_tools(): the initial status
     // snapshot arrived before tools_ existed, so it was dropped, and Moonraker

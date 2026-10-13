@@ -334,6 +334,7 @@ bool AmsSubscriptionBackend::op_moves_toolhead(FilamentOp op) const {
     case FilamentOp::Load:
     case FilamentOp::Unload:
     case FilamentOp::ChangeTool:
+    case FilamentOp::ParkTool:
         // Pushing or pulling filament through the hotend, and swapping what is
         // on the carriage, are toolhead motion on every backend there is. No
         // override path exists for these on purpose.
@@ -352,6 +353,7 @@ AmsError AmsSubscriptionBackend::claim_filament_op(FilamentOp op, bool check_sta
         pending = AmsAction::LOADING;
         break;
     case FilamentOp::Unload:
+    case FilamentOp::ParkTool:
         pending = AmsAction::UNLOADING;
         break;
     case FilamentOp::SelectSlot:
@@ -430,6 +432,8 @@ AmsError AmsSubscriptionBackend::run_filament_op(FilamentOp op, int arg,
         return do_select_slot(arg);
     case FilamentOp::ChangeTool:
         return do_change_tool(arg);
+    case FilamentOp::ParkTool:
+        return do_park_active_tool();
     }
     return AmsErrorHelper::success(); // Unreachable; the enum is exhaustive.
 }
@@ -448,6 +452,15 @@ AmsError AmsSubscriptionBackend::select_slot(int slot_index) {
 
 AmsError AmsSubscriptionBackend::change_tool(int tool_number) {
     return run_filament_op(FilamentOp::ChangeTool, tool_number);
+}
+
+AmsError AmsSubscriptionBackend::park_active_tool() {
+    // Unsupported is the answer whatever state the backend is in, so it comes
+    // before the gate's not-started and busy refusals.
+    if (!supports_tool_park()) {
+        return AmsErrorHelper::not_supported("Tool park");
+    }
+    return run_filament_op(FilamentOp::ParkTool, -1);
 }
 
 AmsError AmsSubscriptionBackend::load_filament_batch(const std::vector<int>& slots) {

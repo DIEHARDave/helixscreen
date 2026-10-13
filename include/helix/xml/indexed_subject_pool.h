@@ -16,7 +16,9 @@ namespace helix::xml {
 
 // A reusable, dynamically-sized pool of name-registered LVGL subjects for
 // rendering variable-length lists declaratively (XML binds to
-// "<prefix>_<i>" by name; C++ only ever grows/sets by index).
+// "<prefix>_<i><suffix>" by name; C++ only ever grows/sets by index). A
+// suffix lets several pools describe one row: "seg_${i}_label",
+// "seg_${i}_color".
 //
 // Pointer stability: subjects and string buffers are heap-allocated
 // individually (std::unique_ptr per slot) so growing the pool never
@@ -32,7 +34,8 @@ class IndexedSubjectPool {
   public:
     enum class Type { Int, String, Color };
 
-    IndexedSubjectPool(std::string prefix, Type type, size_t string_cap = 64);
+    IndexedSubjectPool(std::string prefix, Type type, size_t string_cap = 64,
+                       std::string suffix = {});
     ~IndexedSubjectPool();
 
     IndexedSubjectPool(const IndexedSubjectPool&) = delete;
@@ -61,6 +64,7 @@ class IndexedSubjectPool {
 
   private:
     std::string prefix_;
+    std::string suffix_;
     Type type_;
     size_t string_cap_;
     std::vector<std::unique_ptr<lv_subject_t>> subjects_;

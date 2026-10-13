@@ -145,6 +145,10 @@ class AmsBackendMock : public AmsBackend {
     AmsError unload_filament(int slot_index) override;
     AmsError select_slot(int slot_index) override;
     AmsError change_tool(int tool_number) override;
+    /// Docks the mounted tool on the personas whose hardware can (tool
+    /// changer, Snapmaker U1): the unload simulation, ending with no tool.
+    AmsError park_active_tool() override;
+    [[nodiscard]] bool supports_tool_park() const override;
 
     /// Slot index the last accepted unload_filament() ran with, or nullopt when
     /// none has run. The unload itself ignores the slot, so tests asserting
@@ -268,6 +272,7 @@ class AmsBackendMock : public AmsBackend {
     [[nodiscard]] RemapStrategy get_remap_strategy() const override;
     [[nodiscard]] bool remap_ready() const override;
     [[nodiscard]] bool owns_tool_mapping_table() const override;
+    [[nodiscard]] bool carriage_can_be_empty() const override;
 
     /// Emulate a backend that declares a different route. The shape worth
     /// reaching for is RemapStrategy::None — ACE, or a single-extruder printer
@@ -1086,6 +1091,8 @@ class AmsBackendMock : public AmsBackend {
     std::atomic<bool> scenario_thread_running_{false}; ///< Guards against double-join
     bool mock_toolhead_unaccounted_ = false; ///< "unaccounted" scenario staged (gate input)
     std::optional<int> last_unload_slot_;    ///< slot unload_filament() last accepted
+    bool park_pending_ =
+        false; ///< the running unload is a park: it ends with no tool. Under mutex_
 
     // Test override for native-tracking capability. False in production; tests
     // flip this to exercise the FilamentConsumptionTracker gating path.

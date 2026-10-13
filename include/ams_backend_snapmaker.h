@@ -158,6 +158,12 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
         return kTraits;
     }
 
+    // PARK_EXTRUDER docks every head, so the carriage can be empty even though
+    // a load feeds filament rather than mounting a tool.
+    [[nodiscard]] bool carriage_can_be_empty() const override {
+        return true;
+    }
+
     // FEED_AUTO homes and sets its own nozzle target from the lane's material:
     // a load reports load_homing then load_heating, an unload unload_homing then
     // unload_heating. A G28 or UI preheat in front of it is a second wait.
@@ -228,7 +234,15 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     AmsError do_unload_filament(int slot_index) override;
     AmsError do_select_slot(int slot_index) override;
     AmsError do_change_tool(int tool_number) override;
+    /// PARK_EXTRUDER: the firmware's "Detach Toolhead", back to its dock.
+    AmsError do_park_active_tool() override;
 
+  public:
+    [[nodiscard]] bool supports_tool_park() const override {
+        return true;
+    }
+
+  protected:
     /// Batch load/unload as ONE AUTO_FEEDING script. The firmware serializes
     /// channels itself (FEED_AUTO's process-wide channel_active gate) and
     /// Moonraker holds the script response until every line has run, so the

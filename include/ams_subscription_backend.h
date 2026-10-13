@@ -90,6 +90,9 @@ class AmsSubscriptionBackend : public AmsBackend {
     AmsError unload_filament(int slot_index) final;
     AmsError select_slot(int slot_index) final;
     AmsError change_tool(int tool_number) final;
+    /// Through the same gate and claim as the four above: parking moves the
+    /// toolhead. Backends implement do_park_active_tool().
+    AmsError park_active_tool() final;
 
     /// Batch load/unload, through the SAME gate and claim as the per-slot ops
     /// above: one claim covers the whole batch, so a batch cannot start while
@@ -296,6 +299,11 @@ class AmsSubscriptionBackend : public AmsBackend {
     virtual AmsError do_unload_filament(int slot_index) = 0;
     virtual AmsError do_select_slot(int slot_index) = 0;
     virtual AmsError do_change_tool(int tool_number) = 0;
+    /// Backend implementation of park_active_tool(), same contract as the hooks
+    /// above. Default refuses, matching AmsBackend::supports_tool_park().
+    virtual AmsError do_park_active_tool() {
+        return AmsErrorHelper::not_supported("Tool park");
+    }
 
     /// Backend implementation of a batch load (@p load true) or unload, reached
     /// only after the gate has passed — same contract as the per-slot do_*
@@ -440,9 +448,9 @@ class AmsSubscriptionBackend : public AmsBackend {
     helix::ams::OwnWriteEchoes own_write_echoes_;
 
   private:
-    /// The four gated operations, so motion can be classified per METHOD in one
+    /// The gated operations, so motion can be classified per METHOD in one
     /// place instead of per backend at every call site.
-    enum class FilamentOp { Load, Unload, SelectSlot, ChangeTool };
+    enum class FilamentOp { Load, Unload, SelectSlot, ChangeTool, ParkTool };
 
     /// Motion classification, stated ONCE for every backend.
     [[nodiscard]] bool op_moves_toolhead(FilamentOp op) const;
@@ -481,7 +489,7 @@ class AmsSubscriptionBackend : public AmsBackend {
         AmsSubscriptionBackend* owner_ = nullptr;
     };
 
-    /// Gate, claim, then dispatch. The four public entry points are one line
+    /// Gate, claim, then dispatch. The public entry points are one line
     /// each on top of this, so there is exactly one place the gate can run.
     /// @param batch When non-null, dispatch goes to do_filament_batch() instead
     ///        of the per-slot hook; @p arg is ignored. Only the batch entry

@@ -231,7 +231,19 @@ class AmsBackendToolChanger : public AmsSubscriptionBackend {
      */
     AmsError do_change_tool(int tool_number) override;
 
+    /// The unmount Unload already sends with no tool named: whatever is on the
+    /// carriage goes back to its dock.
+    AmsError do_park_active_tool() override {
+        return do_unload_filament(-1);
+    }
+
   public:
+    /// A machine whose own swap commands have no unmount can only trade one
+    /// tool for another.
+    [[nodiscard]] bool supports_tool_park() const override {
+        return !tool_commands_.present || !tool_commands_.unselect.empty();
+    }
+
     /**
      * @brief Offer Unload only for the tool currently on the carriage.
      *

@@ -751,6 +751,7 @@ AmsError AmsBackendMock::unload_filament(int slot_index) {
 
         // Start unloading
         last_unload_slot_ = slot_index;
+        park_pending_ = false;
         system_info_.action = AmsAction::UNLOADING;
         system_info_.operation_detail = lv_tr("Unloading filament");
         filament_segment_ = PathSegment::NOZZLE; // Start at nozzle (working backwards)
@@ -760,6 +761,40 @@ AmsError AmsBackendMock::unload_filament(int slot_index) {
     emit_event(EVENT_STATE_CHANGED);
     schedule_completion(AmsAction::UNLOADING, EVENT_UNLOAD_COMPLETE);
 
+    return AmsErrorHelper::success();
+}
+
+bool AmsBackendMock::supports_tool_park() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return system_info_.type == AmsType::TOOL_CHANGER || system_info_.type == AmsType::SNAPMAKER;
+}
+
+AmsError AmsBackendMock::park_active_tool() {
+    if (!supports_tool_park()) {
+        return AmsBackend::park_active_tool();
+    }
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+
+        if (!running_) {
+            return AmsErrorHelper::not_connected("Mock backend not started");
+        }
+        if (system_info_.action != AmsAction::IDLE) {
+            return AmsErrorHelper::busy(ams_action_to_string(system_info_.action));
+        }
+        if (system_info_.current_tool < 0) {
+            return AmsErrorHelper::not_loaded();
+        }
+
+        park_pending_ = true;
+        system_info_.action = AmsAction::UNLOADING;
+        system_info_.operation_detail = lv_tr("Parking toolhead");
+        filament_segment_ = PathSegment::NOZZLE;
+        spdlog::info("[AmsBackendMock] Parking T{}", system_info_.current_tool);
+    }
+
+    emit_event(EVENT_STATE_CHANGED);
+    schedule_completion(AmsAction::UNLOADING, EVENT_UNLOAD_COMPLETE);
     return AmsErrorHelper::success();
 }
 
@@ -914,6 +949,7 @@ AmsError AmsBackendMock::change_tool(int tool_number) {
         system_info_.operation_detail = fmt::format(lv_tr("Tool change to T{}"), tool_number);
         target_slot = mapped_slot; // Capture while locked
         system_info_.pending_target_slot = target_slot;
+        park_pending_ = false;
         spdlog::info("[AmsBackendMock] Tool change to T{}", tool_number);
     }
 
@@ -3588,6 +3624,10 @@ void AmsBackendMock::finalize_unload_state(AmsAction then, const std::string& th
     }
     system_info_.filament_loaded = false;
     system_info_.current_slot = -1;
+    if (park_pending_) {
+        system_info_.current_tool = -1;
+        park_pending_ = false;
+    }
     filament_segment_ = PathSegment::NONE;
     // A cancel that landed mid-unload has already set IDLE; handing over to the
     // next phase would bring the operation back to life.
@@ -3884,6 +3924,17 @@ bool AmsBackendMock::owns_tool_mapping_table() const {
     // in for a backend that does, including the tool changer, whose table is
     // identity but real and rewritten by ASSIGN_TOOL.
     return !snapmaker_mode_;
+}
+
+bool AmsBackendMock::carriage_can_be_empty() const {
+    bool snapmaker = false;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        snapmaker = snapmaker_mode_;
+    }
+    // AmsBackendSnapmaker parks its heads; every other mode answers what the
+    // backend it stands in for answers. traits() takes mutex_ itself.
+    return snapmaker || load_mounts_tool();
 }
 
 void AmsBackendMock::set_remap_strategy(RemapStrategy strategy) {
