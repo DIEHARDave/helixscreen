@@ -1439,6 +1439,8 @@
   <translation tag="Homing..." de="Referenzfahrt..."/>
   <translation tag="Horizontal" de="Horizontal"/>
   <translation tag="Host" de="Host"/>
+  <translation tag="Host Health" de="Host-Zustand"/>
+  <translation tag="Host and MCU load, temperature, and memory" de="Last, Temperatur und Speicher von Host und MCU"/>
   <translation tag="Host: " de="Host: "/>
   <translation tag="Hotend" de="Hotend"/>
   <translation tag="Hotend Fan" de="Hotend-Lüfter"/>
@@ -2388,6 +2390,7 @@
   <translation tag="Quick Button 4" de="Schnelltaste 4"/>
   <translation tag="Quick actions, calibration, speed" de="Schnellaktionen, Kalibrierung, Geschwindigkeit"/>
   <translation tag="Quiet" de="Leise"/>
+  <translation tag="RAM" de="RAM"/>
   <translation tag="RFCOMM connect failed" de="RFCOMM-Verbindung fehlgeschlagen"/>
   <translation tag="RFCOMM connect failed: " de="RFCOMM-Verbindung fehlgeschlagen: "/>
   <translation tag="RFID reader malfunction (left)" de="Fehlfunktion des RFID-Lesers (links)"/>

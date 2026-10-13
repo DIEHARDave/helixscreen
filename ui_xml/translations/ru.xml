@@ -1439,6 +1439,8 @@
   <translation tag="Homing..." ru="Парковка..."/>
   <translation tag="Horizontal" ru="Горизонтально"/>
   <translation tag="Host" ru="Хост"/>
+  <translation tag="Host Health" ru="Состояние хоста"/>
+  <translation tag="Host and MCU load, temperature, and memory" ru="Нагрузка, температура и память хоста и MCU"/>
   <translation tag="Host: " ru="Хост: "/>
   <translation tag="Hotend" ru="Хотенд"/>
   <translation tag="Hotend Fan" ru="Вентилятор хотенда"/>
@@ -2388,6 +2390,7 @@
   <translation tag="Quick Button 4" ru="Быстрая кнопка 4"/>
   <translation tag="Quick actions, calibration, speed" ru="Быстрые действия, калибровка, скорость"/>
   <translation tag="Quiet" ru="Тихий"/>
+  <translation tag="RAM" ru="RAM"/>
   <translation tag="RFCOMM connect failed" ru="Не удалось подключиться по RFCOMM"/>
   <translation tag="RFCOMM connect failed: " ru="Не удалось подключиться по RFCOMM: "/>
   <translation tag="RFID reader malfunction (left)" ru="Неисправность RFID-считывателя (левый)"/>

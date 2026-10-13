@@ -1439,6 +1439,8 @@
   <translation tag="Homing..." zh="正在归零..."/>
   <translation tag="Horizontal" zh="水平"/>
   <translation tag="Host" zh="主机"/>
+  <translation tag="Host Health" zh="主机状态"/>
+  <translation tag="Host and MCU load, temperature, and memory" zh="主机和 MCU 的负载、温度和内存"/>
   <translation tag="Host: " zh="主机: "/>
   <translation tag="Hotend" zh="热端"/>
   <translation tag="Hotend Fan" zh="热端风扇"/>
@@ -2388,6 +2390,7 @@
   <translation tag="Quick Button 4" zh="快捷按钮 4"/>
   <translation tag="Quick actions, calibration, speed" zh="快捷操作、校准、速度"/>
   <translation tag="Quiet" zh="安静"/>
+  <translation tag="RAM" zh="RAM"/>
   <translation tag="RFCOMM connect failed" zh="RFCOMM 连接失败"/>
   <translation tag="RFCOMM connect failed: " zh="RFCOMM 连接失败: "/>
   <translation tag="RFID reader malfunction (left)" zh="RFID 读取器故障（左）"/>

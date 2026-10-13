@@ -1487,6 +1487,8 @@ translations:
   Homing...: ホーミング中...
   Horizontal: 水平
   Host: ホスト
+  Host Health: ホストの状態
+  Host and MCU load, temperature, and memory: ホストと MCU の負荷、温度、メモリ
   'Host: ': 'ホスト: '
   Hotend: ホットエンド
   Hotend Fan: ホットエンドファン
@@ -2480,6 +2482,7 @@ translations:
   Quick Button 4: クイックボタン4
   Quick actions, calibration, speed: クイックアクション、キャリブレーション、速度
   Quiet: '静音'
+  RAM: RAM
   RFCOMM connect failed: RFCOMM 接続に失敗しました
   'RFCOMM connect failed: ': 'RFCOMM 接続に失敗しました: '
   RFID reader malfunction (left): RFID リーダーの異常（左）

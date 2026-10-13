@@ -56,6 +56,7 @@ void register_speed_flow_widget();
 void register_dryer_widget();
 void register_z_offset_widget();
 void register_toolhead_widget();
+void register_host_health_widget();
 void register_active_spool_widget();
 void register_bypass_widget();
 #if HELIX_HAS_CAMERA
@@ -127,6 +128,7 @@ static std::vector<PanelWidgetDef> s_widget_defs = {
     {"macros",           TR_NOOP("Macros"),            "script_text",      TR_NOOP("Browse and run your Klipper macros"),           nullptr,              nullptr,                               CAT_CONTROLS, false, 2, 2, 1, 1, BAND_COLSPAN, BAND_COLSPAN, false, true, true},
     {"motion",           TR_NOOP("Motion"),            "cursor_move",      TR_NOOP("Open motion controls for jogging"),           nullptr,              nullptr,                               CAT_CONTROLS, false, 2, 2, 1, 1, BAND_COLSPAN, BAND_COLSPAN, false, true, true},
     {"clock",            TR_NOOP("Digital Clock"),     "clock",            TR_NOOP("The time, date, and system uptime"),    nullptr,              nullptr,                               CAT_SYSTEM,   false, 4, 2, 2, 2, 6, 6, false, true, true},
+    {"host_health",      TR_NOOP("Host Health"),       "gauge",            TR_NOOP("Host and MCU load, temperature, and memory"), "perf_available",   "Requires Moonraker performance data", CAT_SYSTEM,   false, 4, 2, 1, 1, 8, 8, false, true, true},
     {"control_buttons",  TR_NOOP("Print Controls"),    "pause",            TR_NOOP("Pause, resume, or stop the print"),   nullptr,              nullptr,                               CAT_PRINT,    false, 4, 2, 2, 2, 8, 4},
     {"job_queue",        TR_NOOP("Job Queue"),         "progress_clock",   TR_NOOP("Print jobs waiting to run"),        nullptr,              nullptr,                               CAT_PRINT,    false, 4, 4, 4, 4, 8, 6, false, true, true},
     {"speed_flow",       TR_NOOP("Speed / Flow"),      "speed",            TR_NOOP("Speed and flow overrides, with a tap to tune"), nullptr,           nullptr,                               CAT_PRINT,    false, 4, 2, 1, 1, 8, 4, false, true, true},
@@ -387,6 +389,7 @@ void init_widget_registrations() {
     register_dryer_widget();
     register_z_offset_widget();
     register_toolhead_widget();
+    register_host_health_widget();
 #if HELIX_HAS_CAMERA
     register_camera_widget();
 #endif

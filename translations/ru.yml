@@ -1567,6 +1567,8 @@ translations:
   Homing...: Парковка...
   Horizontal: Горизонтально
   Host: Хост
+  Host Health: Состояние хоста
+  Host and MCU load, temperature, and memory: Нагрузка, температура и память хоста и MCU
   'Host: ': 'Хост: '
   Hotend: Хотенд
   Hotend Fan: Вентилятор хотенда
@@ -2611,6 +2613,7 @@ translations:
   Quick Button 4: Быстрая кнопка 4
   Quick actions, calibration, speed: Быстрые действия, калибровка, скорость
   Quiet: 'Тихий'
+  RAM: RAM
   RFCOMM connect failed: Не удалось подключиться по RFCOMM
   'RFCOMM connect failed: ': 'Не удалось подключиться по RFCOMM: '
   RFID reader malfunction (left): Неисправность RFID-считывателя (левый)
