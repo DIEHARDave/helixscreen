@@ -11,6 +11,7 @@
   <translation tag="%d lanes" en="%d lanes"/>
   <translation tag="%d min" en="%d min"/>
   <translation tag="%d min left" en="%d min left"/>
+  <translation tag="%d mm/s" en="%d mm/s"/>
   <translation tag="%d more sensors" en="%d more sensors"/>
   <translation tag="%d objects" en="%d objects"/>
   <translation tag="%d of %d printing" en="%d of %d printing"/>
@@ -1415,6 +1416,7 @@
   <translation tag="Holding nozzle at {}°C to purge previous filament." en="Holding nozzle at {}°C to purge previous filament."/>
   <translation tag="Home" en="Home"/>
   <translation tag="Home &amp; Continue" en="Home &amp; Continue"/>
+  <translation tag="Home All" en="Home All"/>
   <translation tag="Home all axes to use the map" en="Home all axes to use the map"/>
   <translation tag="Home and sweep the cutter to re-find its position" en="Home and sweep the cutter to re-find its position"/>
   <translation tag="Home failed" en="Home failed"/>
@@ -2188,6 +2190,7 @@
   <translation tag="Poor match" en="Poor match"/>
   <translation tag="Port" en="Port"/>
   <translation tag="Position" en="Position"/>
+  <translation tag="Position unknown" en="Position unknown"/>
   <translation tag="Post-Sensor Clear" en="Post-Sensor Clear"/>
   <translation tag="Power" en="Power"/>
   <translation tag="Power Devices" en="Power Devices"/>
@@ -3214,6 +3217,7 @@
   <translation tag="Toolhead Style" en="Toolhead Style"/>
   <translation tag="Toolhead Y" en="Toolhead Y"/>
   <translation tag="Toolhead jam" en="Toolhead jam"/>
+  <translation tag="Toolhead position and homing, with a plate view and Home All" en="Toolhead position and homing, with a plate view and Home All"/>
   <translation tag="Toolhead position unknown" en="Toolhead position unknown"/>
   <translation tag="Toolheads" en="Toolheads"/>
   <translation tag="Tools" en="Tools"/>

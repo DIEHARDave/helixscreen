@@ -11,6 +11,7 @@
   <translation tag="%d lanes" pt="%d lanes"/>
   <translation tag="%d min" pt="%d min"/>
   <translation tag="%d min left" pt="restam %d min"/>
+  <translation tag="%d mm/s" pt="%d mm/s"/>
   <translation tag="%d more sensors" pt="%d sensores adicionais"/>
   <translation tag="%d objects" pt="%d objetos"/>
   <translation tag="%d of %d printing" pt="%d de %d imprimindo"/>
@@ -1415,6 +1416,7 @@
   <translation tag="Holding nozzle at {}°C to purge previous filament." pt="Mantendo o bico a {}°C para purgar o filamento anterior."/>
   <translation tag="Home" pt="Início"/>
   <translation tag="Home &amp; Continue" pt="Fazer home e continuar"/>
+  <translation tag="Home All" pt="Posicionar tudo"/>
   <translation tag="Home all axes to use the map" pt="Referencie todos os eixos para usar o mapa"/>
   <translation tag="Home and sweep the cutter to re-find its position" pt="Referencia e varre o cortador para reencontrar sua posição"/>
   <translation tag="Home failed" pt="Homing falhou"/>
@@ -2188,6 +2190,7 @@
   <translation tag="Poor match" pt="Correspondência fraca"/>
   <translation tag="Port" pt="Porta"/>
   <translation tag="Position" pt="Posição"/>
+  <translation tag="Position unknown" pt="Posição desconhecida"/>
   <translation tag="Post-Sensor Clear" pt="Avanço após o sensor"/>
   <translation tag="Power" pt="Energia"/>
   <translation tag="Power Devices" pt="Dispositivos de energia"/>
@@ -3214,6 +3217,7 @@
   <translation tag="Toolhead Style" pt="Estilo do Cabeçote"/>
   <translation tag="Toolhead Y" pt="Cabeçote Y"/>
   <translation tag="Toolhead jam" pt="Atolamento do cabeçote"/>
+  <translation tag="Toolhead position and homing, with a plate view and Home All" pt="Posição e posicionamento do cabeçote, com vista da mesa e Posicionar tudo"/>
   <translation tag="Toolhead position unknown" pt="Posição do cabeçote desconhecida"/>
   <translation tag="Toolheads" pt="Cabeçotes"/>
   <translation tag="Tools" pt="Ferramentas"/>

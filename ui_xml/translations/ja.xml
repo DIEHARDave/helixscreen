@@ -11,6 +11,7 @@
   <translation tag="%d lanes" ja="%d レーン"/>
   <translation tag="%d min" ja="%d分"/>
   <translation tag="%d min left" ja="残り %d 分"/>
+  <translation tag="%d mm/s" ja="%d mm/s"/>
   <translation tag="%d more sensors" ja="他%d個のセンサー"/>
   <translation tag="%d objects" ja="%d個のオブジェクト"/>
   <translation tag="%d of %d printing" ja="%d/%d 印刷中"/>
@@ -1415,6 +1416,7 @@
   <translation tag="Holding nozzle at {}°C to purge previous filament." ja="前のフィラメントをパージするためノズルを {}°C に保持しています。"/>
   <translation tag="Home" ja="ホーム"/>
   <translation tag="Home &amp; Continue" ja="ホーミングして続行"/>
+  <translation tag="Home All" ja="全軸ホーミング"/>
   <translation tag="Home all axes to use the map" ja="マップを使うには全軸をホーミングしてください"/>
   <translation tag="Home and sweep the cutter to re-find its position" ja="原点復帰後にカッターを走査して位置を再検出します"/>
   <translation tag="Home failed" ja="ホーミング失敗"/>
@@ -2188,6 +2190,7 @@
   <translation tag="Poor match" ja="不十分な一致"/>
   <translation tag="Port" ja="ポート"/>
   <translation tag="Position" ja="位置"/>
+  <translation tag="Position unknown" ja="位置が不明です"/>
   <translation tag="Post-Sensor Clear" ja="センサー通過後の追加移動"/>
   <translation tag="Power" ja="電源"/>
   <translation tag="Power Devices" ja="電源デバイス"/>
@@ -3214,6 +3217,7 @@
   <translation tag="Toolhead Style" ja="ツールヘッドスタイル"/>
   <translation tag="Toolhead Y" ja="ツールヘッド Y"/>
   <translation tag="Toolhead jam" ja="ツールヘッドの詰まり"/>
+  <translation tag="Toolhead position and homing, with a plate view and Home All" ja="ツールヘッドの位置とホーミング。プレート表示と全軸ホーミング付き"/>
   <translation tag="Toolhead position unknown" ja="ツールヘッドの位置が不明です"/>
   <translation tag="Toolheads" ja="ツールヘッド"/>
   <translation tag="Tools" ja="ツール"/>

@@ -382,6 +382,7 @@ src/ui/panel_widgets/temp_graph_widget.cpp
 src/ui/panel_widgets/temp_stack_widget.cpp
 src/ui/panel_widgets/thermistor_widget.cpp
 src/ui/panel_widgets/tips_widget.cpp
+src/ui/panel_widgets/toolhead_widget.cpp
 src/ui/panel_widgets/tool_switcher_widget.cpp
 src/ui/panel_widgets/width_sensor_widget.cpp
 src/ui/print_control_buttons.cpp

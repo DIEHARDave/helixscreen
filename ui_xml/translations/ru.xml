@@ -11,6 +11,7 @@
   <translation tag="%d lanes" ru="%d каналов"/>
   <translation tag="%d min" ru="%d мин"/>
   <translation tag="%d min left" ru="осталось %d мин"/>
+  <translation tag="%d mm/s" ru="%d mm/s"/>
   <translation tag="%d more sensors" ru="Ещё %d датчиков"/>
   <translation tag="%d objects" ru="Объектов: %d"/>
   <translation tag="%d of %d printing" ru="%d из %d печатается"/>
@@ -1415,6 +1416,7 @@
   <translation tag="Holding nozzle at {}°C to purge previous filament." ru="Удержание сопла при {}°C для очистки от предыдущего филамента."/>
   <translation tag="Home" ru="Главная"/>
   <translation tag="Home &amp; Continue" ru="Запарковать и продолжить"/>
+  <translation tag="Home All" ru="Парковка всех осей"/>
   <translation tag="Home all axes to use the map" ru="Выполните парковку всех осей, чтобы использовать карту"/>
   <translation tag="Home and sweep the cutter to re-find its position" ru="Ищет ноль и прощупывает резак, чтобы заново найти его позицию"/>
   <translation tag="Home failed" ru="Парковка не удалась"/>
@@ -2188,6 +2190,7 @@
   <translation tag="Poor match" ru="Плохое совпадение"/>
   <translation tag="Port" ru="Порт"/>
   <translation tag="Position" ru="Позиция"/>
+  <translation tag="Position unknown" ru="Положение неизвестно"/>
   <translation tag="Post-Sensor Clear" ru="Догон после датчика"/>
   <translation tag="Power" ru="Питание"/>
   <translation tag="Power Devices" ru="Устройства питания"/>
@@ -3214,6 +3217,7 @@
   <translation tag="Toolhead Style" ru="Стиль печатающей головки"/>
   <translation tag="Toolhead Y" ru="Печатающая головка Y"/>
   <translation tag="Toolhead jam" ru="Замятие в печатающей головке"/>
+  <translation tag="Toolhead position and homing, with a plate view and Home All" ru="Положение и парковка печатающей головки, с видом стола и кнопкой «Парковка всех осей»"/>
   <translation tag="Toolhead position unknown" ru="Положение печатающей головки неизвестно"/>
   <translation tag="Toolheads" ru="Печатающие головки"/>
   <translation tag="Tools" ru="Инструменты"/>

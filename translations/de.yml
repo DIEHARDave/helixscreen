@@ -13,6 +13,7 @@ translations:
   '%d lanes': '%d Spuren'
   '%d min': '%d Min'
   '%d min left': 'noch %d Min'
+  '%d mm/s': '%d mm/s'
   '%d more sensors': '%d weitere Sensoren'
   '%d objects': '%d Objekte'
   '%d of %d printing': '%d von %d werden gedruckt'
@@ -1569,6 +1570,7 @@ translations:
     vorheriges Filament auszuspülen.
   Home: Home
   Home & Continue: Referenzieren & Fortfahren
+  Home All: "Alle referenzieren"
   Home all axes to use the map: Alle Achsen referenzieren, um die Karte zu nutzen
   Home and sweep the cutter to re-find its position: Referenzfahrt und Messfahrt des Schneiders, um seine Position neu zu ermitteln
   Home failed: Referenzfahrt fehlgeschlagen
@@ -2427,6 +2429,7 @@ translations:
   Poor match: "Schlechte Übereinstimmung"
   Port: Port
   Position: Position
+  Position unknown: "Position unbekannt"
   Post-Sensor Clear: 'Nachlauf nach Sensor'
   Power: Strom
   Power Devices: Stromgeräte
@@ -3619,6 +3622,7 @@ translations:
   Toolhead Style: Toolhead-Stil
   Toolhead Y: Werkzeugkopf Y
   Toolhead jam: Werkzeugkopf-Stau
+  Toolhead position and homing, with a plate view and Home All: "Position und Referenzfahrt des Werkzeugkopfs, mit Plattenansicht und Alle referenzieren"
   Toolhead position unknown: Werkzeugkopfposition unbekannt
   Toolheads: Werkzeugköpfe
   Tools: Werkzeuge
