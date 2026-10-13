@@ -58,7 +58,8 @@ Represents one physical tool (print head):
 ```cpp
 struct ToolInfo {
     int index = 0;                                    // Tool index (0, 1, 2, ...)
-    std::string name = "T0";                          // Klipper tool name ("T0", "T1", ...)
+    std::string name = "T0";                          // Klipper tool name ("T0", "T1", or a configured "Left")
+    std::string display_label;                        // Physical label, 1-based ("Tool 1", "Toolhead 1" on a U1)
     std::optional<std::string> extruder_name = "extruder"; // Linked extruder ("extruder", "extruder1")
     std::optional<std::string> heater_name;           // Explicit heater override (nullopt = use extruder)
     std::optional<std::string> fan_name;              // Part cooling fan ("fan", "fan_generic fan1")
@@ -71,6 +72,16 @@ struct ToolInfo {
     int backend_slot = -1;                            // Fixed slot in that backend (-1 = any/dynamic)
 };
 ```
+
+**Names and labels.** `name` is the G-code identity. On klipper-toolchanger it is the
+`[tool <name>]` section name from the printer's Klipper config, so `[tool Left]` gives
+`"Left"`; everywhere else it is generated as `"T<n>"` (`tool_label()`). HelixScreen has no
+setting of its own for it: renaming a tool means renaming its Klipper section.
+`display_label` is always generated, from the backend's noun (`active_tool_noun()`).
+UI text goes through `include/display_numbering.h` rather than either field directly:
+`tool_label_in_form()` renders a generated name as "Tool 1 (T0)" (`Full`) or "T0" (`Code`),
+and a configured one as "Left (T0)" or "T0"; `tool_name_label()` gives the friendly half
+alone ("Tool 1", "Left"), and `is_generated_tool_name()` tells the two kinds apart.
 
 **`effective_heater()` helper:** Returns the heater responsible for this tool. Prefers explicit `heater_name`, falls back to `extruder_name`, then `"extruder"`.
 
