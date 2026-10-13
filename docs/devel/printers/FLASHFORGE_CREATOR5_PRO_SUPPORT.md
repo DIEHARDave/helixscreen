@@ -122,7 +122,7 @@ HelixScreen data root". `HELIX_DATA_DIR` overrides the lookup.
 | Input | evdev (auto-detect; `HELIX_TOUCH_DEVICE=/dev/input/event2` to pin) |
 | SSL | Enabled (static OpenSSL in the toolchain image) |
 | Platform defines | `HELIX_PLATFORM_MIPS` only, no creator5 define |
-| Sound | Compiled in, same as K1/AD5X (`HELIX_HAS_SOUND` + tracker via the jz_pwm backend); whether this board has `/dev/jz_pwm` hardware is unverified |
+| Sound | Compiled in, same as K1/AD5X (`HELIX_HAS_SOUND` + tracker via the jz_pwm backend); whether this board has `/dev/jz_pwm` hardware is unverified (`ls /dev/jz_pwm` results go to [#1714](https://github.com/prestonbrown/helixscreen/issues/1714)) |
 | Output | `build/mips/bin/helix-screen`, `helix-splash`; CA bundle in `build/mips/certs/` |
 
 ## Printer detection and preset
@@ -197,7 +197,8 @@ query — is sent at connect and after `FIRMWARE_RESTART`, and its answer clears
 boot carriage reading on firmware older than the `zmod_color` export; the afclite shim's
 fault flag (`error_state` + `message`) surfaces as this backend's own fault dialog, while
 its activity word and lane map are logged for field visibility and acted on for nothing
-(vocabulary unverified — a debug bundle captured during a real load shows both); and
+(vocabulary unverified — a debug bundle captured during a real load shows both; post its
+share code on [#1714](https://github.com/prestonbrown/helixscreen/issues/1714)); and
 `zmod_color.slots[].hasFilament` stamps a docked head without filament as Empty.
 
 **Load feeds through the afclite shim's `CHANGE_TOOL`.** `LOAD_FILAMENT`,
@@ -290,9 +291,11 @@ Each item below says whether it is done or still open.
    both.
 7. **Memory** (open): 128-256 MB shared with Klipper, Moonraker, `firmwareExe`.
    HelixScreen's ~15 MB footprint is fine, but check `free` with the stock stack
-   running.
-8. **Init** (open): no systemd; the stock stack is started from BusyBox init scripts. An
-   init.d script modeled on the AD5X/ZMOD `S80guppyscreen` pattern is the likely shape.
+   running and post the output on
+   [#1714](https://github.com/prestonbrown/helixscreen/issues/1714).
+8. **Init** (done on Z-Mod): no systemd; the stock stack is started from BusyBox init
+   scripts. Z-Mod ships its own `S80helixscreen` init script and starts HelixScreen in
+   place of the stock UI with `DISPLAY_OFF HELIX=1` (#1714).
 9. **Per-head runout** (hw-verify): the presets give `fd_ex0..3` the runout role and
    `"lane": N`, because the names encode no head. Z-Mod holds every `fd_ex`/`fm_ex` sensor
    disabled in standby and enables only the active head's pair while printing
