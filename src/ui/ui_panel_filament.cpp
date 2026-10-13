@@ -2021,12 +2021,16 @@ void FilamentPanel::populate_extruder_dropdown() {
     if (!multi_tool)
         return;
 
-    // Build options string ("Tool 1\nTool 2\nTool 3")
+    // Build options string ("Tool 1 (T0)\nTool 2 (T1)\n..."). The open list
+    // sizes itself to its widest option, so it always has room for the full
+    // form; the closed control keeps tool_short_label().
+    const auto noun = helix::ui::active_tool_noun();
     std::string options;
     for (const auto& tool : ts.tools()) {
         if (!options.empty())
             options += '\n';
-        options += tool.display_label;
+        options += helix::ui::tool_label_in_form(noun, tool.name, tool.index,
+                                                 helix::ui::ToolLabelForm::Full);
     }
     lv_dropdown_set_options(extruder_dropdown_, options.c_str());
 

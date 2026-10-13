@@ -51,14 +51,23 @@ ToolSwitcherWidget::ToolSwitcherWidget(PrinterState& printer_state)
     UI_MANAGED_SUBJECT_INT(compact_subject_, 0, "tool_switcher_compact", subjects_);
     UI_MANAGED_SUBJECT_STRING(active_label_subject_, active_label_buf_, "",
                               "tool_switcher_active_label", subjects_);
+    UI_MANAGED_SUBJECT_INT(picker_code_form_subject_, 0, "tool_switcher_picker_code_form",
+                           subjects_);
     refresh_label_budget();
 }
 
+std::string ToolSwitcherWidget::tool_text(const ToolInfo& tool, ui::ToolLabelForm form) {
+    return ui::tool_label_in_form(ui::active_tool_noun(), tool.name, tool.index, form);
+}
+
 void ToolSwitcherWidget::refresh_label_budget() {
+    // The compact readout is the form for a box with no room, so it always
+    // reads in the shortest one.
     std::string widest;
     for (const auto& tool : ToolState::instance().tools()) {
-        if (tool.display_label.size() > widest.size()) {
-            widest = tool.display_label;
+        std::string text = tool_text(tool, ui::ToolLabelForm::Code);
+        if (text.size() > widest.size()) {
+            widest = std::move(text);
         }
     }
     sizing_.set_content({widest, widest, "", true});
@@ -75,7 +84,8 @@ bool ToolSwitcherWidget::is_compact_size() const {
 }
 
 // Compact when the box is small on both axes; the pills need room on one.
-ToolSwitcherWidget::PillGrid ToolSwitcherWidget::pill_grid_at(int width_px, int height_px) {
+ToolSwitcherWidget::PillGrid ToolSwitcherWidget::pill_grid_at(int width_px, int height_px,
+                                                              const LabelOf& label_of) {
     const auto& tools = ToolState::instance().tools();
     const int count = static_cast<int>(tools.size());
     if (count == 0) {
@@ -86,7 +96,7 @@ ToolSwitcherWidget::PillGrid ToolSwitcherWidget::pill_grid_at(int width_px, int 
     const lv_font_t* face = lv_obj_get_style_text_font(lv_screen_active(), LV_PART_MAIN);
     int label_w = 0;
     for (const auto& tool : tools) {
-        label_w = std::max<int>(label_w, ui::text_width(tool.display_label.c_str(), face));
+        label_w = std::max<int>(label_w, ui::text_width(label_of(tool).c_str(), face));
     }
     // The 2px on each axis is the button's border.
     const int pill_min_w = label_w + 2 * resolve_space_token("space_sm", 8) + 2;
@@ -116,8 +126,23 @@ ToolSwitcherWidget::PillGrid ToolSwitcherWidget::pill_grid_at(int width_px, int 
     return best;
 }
 
+ToolSwitcherWidget::LabelOf ToolSwitcherWidget::label_in(ui::ToolLabelForm form) {
+    return [form](const ToolInfo& tool) { return tool_text(tool, form); };
+}
+
+ui::ToolLabelForm ToolSwitcherWidget::pill_label_form_at(int width_px, int height_px) {
+    return ui::pick_tool_label_form([width_px, height_px](ui::ToolLabelForm form) {
+        return pill_grid_at(width_px, height_px, label_in(form)).fits();
+    });
+}
+
 bool ToolSwitcherWidget::is_compact_at(int width_px, int height_px) {
-    return !pill_grid_at(width_px, height_px).fits();
+    // Pills earn the tile where the physical label ("Tool 1") fits, whichever
+    // form they then draw in, so the label forms never move the line between
+    // pills and the compact readout.
+    return !pill_grid_at(width_px, height_px, [](const ToolInfo& tool) {
+                return tool.display_label;
+            }).fits();
 }
 
 void ToolSwitcherWidget::attach(lv_obj_t* widget_obj, lv_obj_t* parent_screen) {
@@ -295,7 +320,9 @@ void ToolSwitcherWidget::rebuild_pills() {
     // An even grid of equal pills from the granted size: every pill fills its
     // cell's width and as much of its height as a large button takes, and the
     // grid sits centred in the tile.
-    const PillGrid grid = pill_grid_at(current_width_px_, current_height_px_);
+    pill_label_form_ = pill_label_form_at(current_width_px_, current_height_px_);
+    const PillGrid grid =
+        pill_grid_at(current_width_px_, current_height_px_, label_in(pill_label_form_));
     const int cols = std::max(grid.cols, 1);
     const int rows = std::max(grid.rows, 1);
     const int inset = resolve_space_token("space_md", 10);
@@ -315,9 +342,9 @@ void ToolSwitcherWidget::rebuild_pills() {
         // Equal buttons, the active one highlighted; the variant carries the look
         const char* variant = is_active ? "primary" : "secondary";
         const std::string name = "tool_pill_" + std::to_string(i);
-        const char* attrs[] = {"name",  name.c_str(), "variant",
-                               variant, "text",       tools[i].display_label.c_str(),
-                               nullptr};
+        const std::string text = tool_text(tools[i], pill_label_form_);
+        const char* attrs[] = {"name", name.c_str(), "variant", variant,
+                               "text", text.c_str(), nullptr};
         lv_obj_t* btn = static_cast<lv_obj_t*>(lv_xml_create(container, "ui_button", attrs));
         if (!btn) {
             spdlog::error("[ToolSwitcher] lv_xml_create('ui_button') returned NULL for pill '{}'",
@@ -415,7 +442,7 @@ void ToolSwitcherWidget::rebuild_compact() {
     // line this mode carries visibly occupied, where an empty label reads as a
     // widget that failed to draw.
     std::string tool_name = (active >= 0 && active < static_cast<int>(tools.size()))
-                                ? tools[active].display_label
+                                ? tool_text(tools[active], ui::ToolLabelForm::Code)
                                 : "?";
     lv_subject_copy_string(&active_label_subject_, tool_name.c_str());
     compact_label_ = lv_obj_find_by_name(widget_obj_, "tool_switcher_compact_label");
@@ -477,12 +504,20 @@ void ToolSwitcherWidget::ToolPicker::on_created(lv_obj_t* backdrop) {
     const auto& tools = tool_state.tools();
     int active = tool_state.active_tool_index();
 
+    // Rows carry both label forms; the subject shows one once the rows are laid
+    // out and their width is known. Full until then.
+    lv_subject_set_int(&owner_.picker_code_form_subject_, 0);
+
     lv_obj_t* active_btn_in_picker = nullptr;
+    std::vector<lv_obj_t*> row_buttons;
     for (size_t i = 0; i < tools.size(); ++i) {
         bool is_active = (static_cast<int>(i) == active);
 
         // Create picker button from XML template
-        const char* btn_attrs[] = {"tool_text", tools[i].display_label.c_str(), nullptr};
+        const std::string full = tool_text(tools[i], ui::ToolLabelForm::Full);
+        const std::string code = tool_text(tools[i], ui::ToolLabelForm::Code);
+        const char* btn_attrs[] = {"tool_text", full.c_str(), "tool_code_text", code.c_str(),
+                                   nullptr};
         lv_obj_t* picker_btn =
             static_cast<lv_obj_t*>(lv_xml_create(tool_list, "tool_picker_button", btn_attrs));
         if (!picker_btn) {
@@ -497,6 +532,7 @@ void ToolSwitcherWidget::ToolPicker::on_created(lv_obj_t* backdrop) {
         }
         lv_obj_set_width(picker_btn, LV_PCT(100));
         lv_obj_set_width(btn, LV_PCT(100));
+        row_buttons.push_back(btn);
 
         // Active tool: use primary variant styling (let ui_button handle colors)
         if (is_active) {
@@ -504,10 +540,10 @@ void ToolSwitcherWidget::ToolPicker::on_created(lv_obj_t* backdrop) {
             // ui_button "ghost" doesn't have a bg — set primary bg directly
             lv_obj_set_style_bg_color(btn, theme_manager_get_color("primary"), 0);
             lv_obj_set_style_bg_opa(btn, LV_OPA_COVER, 0);
-            lv_obj_t* label =
-                helix::ui::find_required(picker_btn, "tool_btn_label", "ToolSwitcher");
-            if (label) {
-                lv_obj_set_style_text_color(label, theme_manager_get_color("screen_bg"), 0);
+            for (const char* name : {"tool_btn_label", "tool_btn_code_label"}) {
+                if (lv_obj_t* label = helix::ui::find_required(picker_btn, name, "ToolSwitcher")) {
+                    lv_obj_set_style_text_color(label, theme_manager_get_color("screen_bg"), 0);
+                }
             }
         }
 
@@ -528,6 +564,27 @@ void ToolSwitcherWidget::ToolPicker::on_created(lv_obj_t* backdrop) {
             },
             LV_EVENT_CLICKED, reinterpret_cast<void*>(static_cast<intptr_t>(i)));
     }
+
+    // The card is only as wide as the tile, so a row's room for its label is
+    // known only once the rows are laid out in it. Past the button's content
+    // box a label wraps or clips.
+    lv_obj_update_layout(tool_list);
+    const lv_font_t* face = nullptr;
+    if (!row_buttons.empty()) {
+        if (lv_obj_t* label = lv_obj_find_by_name(row_buttons.front(), "tool_btn_label")) {
+            face = lv_obj_get_style_text_font(label, LV_PART_MAIN);
+        }
+    }
+    const ui::ToolLabelForm form = ui::pick_tool_label_form([&](ui::ToolLabelForm f) {
+        for (size_t i = 0; i < row_buttons.size() && i < tools.size(); ++i) {
+            if (ui::text_width(tool_text(tools[i], f).c_str(), face) >
+                lv_obj_get_content_width(row_buttons[i])) {
+                return false;
+            }
+        }
+        return true;
+    });
+    lv_subject_set_int(&owner_.picker_code_form_subject_, form == ui::ToolLabelForm::Code ? 1 : 0);
 
     // Scroll the active tool into view inside the capped list.
     if (active_btn_in_picker) {

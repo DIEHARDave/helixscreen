@@ -3740,6 +3740,7 @@ translations:
   wpa_supplicant is not running. WiFi features unavailable.: wpa_supplicant が動作していません。WiFi 機能は利用できません。
   you have: 現在は
   '{:.0f}-{:.0f} Hz · about {} min': '{:.0f}-{:.0f} Hz · 約{}分'
+  '{} ({})': '{}（{}）'
   '{} Hardware Issues': 'ハードウェアの問題 {} 件'
   '{} Issues Detected': '問題を {} 件検出'
   '{} LED strips available': '{} 個の LED ストリップが利用可能です'

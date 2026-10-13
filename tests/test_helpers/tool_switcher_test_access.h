@@ -41,6 +41,23 @@ class ToolSwitcherTestAccess {
     static lv_obj_t* compact_label(const ToolSwitcherWidget& widget) {
         return widget.compact_label_;
     }
+
+    /// Raise the compact form's tool picker, as a tap on the compact tile does.
+    static void show_picker(ToolSwitcherWidget& widget) {
+        widget.show_tool_picker();
+    }
+
+    static void hide_picker(ToolSwitcherWidget& widget) {
+        widget.picker_.hide();
+    }
+
+    /// The picker's tool list, or null while the picker is hidden.
+    static lv_obj_t* picker_list(ToolSwitcherWidget& widget) {
+        if (!widget.picker_.is_visible() || !widget.parent_screen_) {
+            return nullptr;
+        }
+        return lv_obj_find_by_name(widget.parent_screen_, "tool_list");
+    }
 };
 
 } // namespace helix

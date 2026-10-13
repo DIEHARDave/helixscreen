@@ -6,17 +6,21 @@
 
 #include "ams_error.h"
 #include "async_lifetime_guard.h"
+#include "display_numbering.h"
 #include "src/ui/panel_widgets/tiled_panel_widget.h"
 #include "subject_managed_panel.h"
 
 #include <cstdint>
+#include <functional>
 #include <memory>
+#include <string>
 #include <vector>
 
 namespace helix {
 
 class PrinterState;
 class ToolSwitcherTestAccess;
+struct ToolInfo;
 
 class ToolSwitcherWidget : public TiledPanelWidget {
   public:
@@ -75,6 +79,8 @@ class ToolSwitcherWidget : public TiledPanelWidget {
     // need to know which layout is currently built without a size to read.
     int current_width_px_ = 0;
     int current_height_px_ = 0;
+    /// The form the pills were last labeled in, chosen at the granted size.
+    ui::ToolLabelForm pill_label_form_ = ui::ToolLabelForm::Full;
 
     ObserverGuard active_tool_observer_;
     ObserverGuard tool_count_observer_;
@@ -93,6 +99,8 @@ class ToolSwitcherWidget : public TiledPanelWidget {
 
     /// 1 while the compact form is shown; XML hides the other form.
     lv_subject_t compact_subject_{};
+    /// 1 while the picker rows read in ToolLabelForm::Code; XML shows that label.
+    lv_subject_t picker_code_form_subject_{};
     lv_subject_t active_label_subject_{};
     char active_label_buf_[32] = {};
     SubjectManager subjects_;
@@ -133,9 +141,17 @@ class ToolSwitcherWidget : public TiledPanelWidget {
             return cols > 0;
         }
     };
-    /// The arrangement of equal cells, each holding the widest tool label
+    /// What a pill reads for one tool.
+    using LabelOf = std::function<std::string(const ToolInfo&)>;
+    /// The arrangement of equal cells, each holding the widest label_of(tool)
     /// legibly in a width_px x height_px tile, whose cells are squarest.
-    static PillGrid pill_grid_at(int width_px, int height_px);
+    static PillGrid pill_grid_at(int width_px, int height_px, const LabelOf& label_of);
+    /// Pill text in @p form.
+    static LabelOf label_in(ui::ToolLabelForm form);
+    /// The most informative label form whose pills fit this box.
+    static ui::ToolLabelForm pill_label_form_at(int width_px, int height_px);
+    /// @p tool's label in @p form, in the connected printer's tool noun.
+    static std::string tool_text(const ToolInfo& tool, ui::ToolLabelForm form);
     /// Budget the compact value at the widest label any tool carries.
     void refresh_label_budget();
     void on_active_tool_changed(int tool_index);

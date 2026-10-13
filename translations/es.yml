@@ -3997,6 +3997,7 @@ translations:
   wpa_supplicant is not running. WiFi features unavailable.: wpa_supplicant no se está ejecutando. Las funciones WiFi no están disponibles.
   you have: tienes
   '{:.0f}-{:.0f} Hz · about {} min': '{:.0f}-{:.0f} Hz · unos {} min'
+  '{} ({})': '{} ({})'
   '{} Hardware Issues': '{} problemas de hardware'
   '{} Issues Detected': '{} problemas detectados'
   '{} LED strips available': '{} tiras LED disponibles'

@@ -175,6 +175,19 @@ TEST_CASE_METHOD(LVGLUITestFixture, "Closed tool dropdown spells the 1-based too
     CHECK(std::string(closed) == "2");
 }
 
+TEST_CASE_METHOD(LVGLUITestFixture, "Open tool list names each tool's G-code name beside it",
+                 "[filament][ui][tool][1769]") {
+    // The open list sizes itself to its widest option, so it always has room
+    // for the full form; the closed control stays the bare number above.
+    ManageRowHarness h(*this, {"extruder", "extruder1"}, AmsType::NONE);
+
+    lv_obj_t* dd = TA::extruder_dropdown(*h.panel);
+    REQUIRE(dd != nullptr);
+    const char* options = lv_dropdown_get_options(dd);
+    REQUIRE(options != nullptr);
+    CHECK(std::string(options) == "Tool 1 (T0)\nTool 2 (T1)");
+}
+
 TEST_CASE_METHOD(LVGLUITestFixture,
                  "Portrait small screen turns the graph card into a spacer with a strip button",
                  "[filament][ui][portrait]") {

@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <functional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -56,6 +57,46 @@ bool is_generated_tool_name(std::string_view name);
  * @return empty when @p index is negative
  */
 std::string tool_short_label(std::string_view name, int index);
+
+/**
+ * @brief How much of a tool's identity a label spells.
+ *
+ * Klipper and every slicer count tools from T0, while the machine is labeled
+ * from 1. A generated name gets both when there is room, so neither number
+ * reads as the other's mistake; a narrow box gets the G-code name alone, the
+ * one a user can type.
+ */
+enum class ToolLabelForm {
+    Full, ///< "Tool 1 (T0)": the physical label with the G-code name it answers to
+    Code, ///< "T0": the G-code name alone
+};
+
+/// Every ToolLabelForm, most informative first: the order a caller tries them in.
+inline constexpr ToolLabelForm kToolLabelForms[] = {ToolLabelForm::Full, ToolLabelForm::Code};
+
+/**
+ * @brief The label for the tool at @p index in @p form.
+ *
+ * Only a generated "T<n>" name changes with the form. A configured name
+ * ("Left") reads as the physical label ("Tool 1") in every form, as it always
+ * has: the G-code name it answers to is not a number to confuse with it.
+ *
+ * @param noun what the printer calls a tool (active_tool_noun()): "Toolhead 1 (T0)" on a U1
+ * @return empty when @p index is negative
+ */
+std::string tool_label_in_form(LaneNoun noun, std::string_view name, int index, ToolLabelForm form);
+
+/**
+ * @brief The most informative form @p fits accepts.
+ *
+ * Callers measure differently (a pill grid, a list row), so each supplies its
+ * own fit test and this owns the preference order. Every caller labels all its
+ * tools in one form, so a row of pills never mixes "Tool 1 (T0)" with "T1".
+ *
+ * @return the first form in kToolLabelForms that @p fits accepts, else Code:
+ *         a label has to say something, and Code is the shortest
+ */
+ToolLabelForm pick_tool_label_form(const std::function<bool(ToolLabelForm)>& fits);
 
 /**
  * @brief Convert a storage index to the number a user sees.

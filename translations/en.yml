@@ -3878,6 +3878,7 @@ translations:
   wpa_supplicant is not running. WiFi features unavailable.: wpa_supplicant is not running. WiFi features unavailable.
   you have: you have
   '{:.0f}-{:.0f} Hz · about {} min': '{:.0f}-{:.0f} Hz · about {} min'
+  '{} ({})': '{} ({})'
   '{} Hardware Issues': '{} Hardware Issues'
   '{} Issues Detected': '{} Issues Detected'
   '{} LED strips available': '{} LED strips available'

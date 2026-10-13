@@ -3569,6 +3569,7 @@
   <translation tag="wpa_supplicant is not running. WiFi features unavailable." fr="wpa_supplicant ne fonctionne pas. Les fonctions WiFi sont indisponibles."/>
   <translation tag="you have" fr="vous avez"/>
   <translation tag="{:.0f}-{:.0f} Hz · about {} min" fr="{:.0f}-{:.0f} Hz · environ {} min"/>
+  <translation tag="{} ({})" fr="{} ({})"/>
   <translation tag="{} Hardware Issues" fr="{} problèmes matériels"/>
   <translation tag="{} Issues Detected" fr="{} problèmes détectés"/>
   <translation tag="{} LED strips available" fr="{} bandeaux LED disponibles"/>

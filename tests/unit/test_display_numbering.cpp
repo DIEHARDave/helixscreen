@@ -9,6 +9,9 @@
 #include "display_numbering.h"
 #include "lvgl/src/others/translation/lv_translation.h"
 
+#include <optional>
+#include <vector>
+
 #include "../catch_amalgamated.hpp"
 
 using namespace helix::ui;
@@ -196,4 +199,63 @@ TEST_CASE("tool badges show when a tool has no lane", "[numbering][tool_badge]")
 TEST_CASE("an empty tool map is not proof of identity", "[numbering][tool_badge]") {
     CHECK(tool_badges_add_information({}, 4));
     CHECK(tool_badges_add_information({}, 0));
+}
+
+TEST_CASE("a generated tool name shows its display number beside the G-code name",
+          "[numbering][1769]") {
+    // Klipper and the slicer say T1 for the second tool; the machine says Tool 2.
+    // Where there is room the label carries both, so neither reads as a typo.
+    CHECK(tool_label_in_form(LaneNoun::Tool, "T0", 0, ToolLabelForm::Full) == "Tool 1 (T0)");
+    CHECK(tool_label_in_form(LaneNoun::Tool, "T1", 1, ToolLabelForm::Full) == "Tool 2 (T1)");
+    CHECK(tool_label_in_form(LaneNoun::Tool, "T1", 1, ToolLabelForm::Code) == "T1");
+    CHECK(tool_label_in_form(LaneNoun::Tool, tool_label(11), 11, ToolLabelForm::Code) == "T11");
+}
+
+TEST_CASE("the full tool label speaks the printer's own noun", "[numbering][1769]") {
+    CHECK(tool_label_in_form(LaneNoun::Toolhead, "T2", 2, ToolLabelForm::Full) ==
+          "Toolhead 3 (T2)");
+    CHECK(tool_label_in_form(LaneNoun::Toolhead, "T2", 2, ToolLabelForm::Code) == "T2");
+}
+
+TEST_CASE("a configured tool name keeps the physical label in every form", "[numbering][1769]") {
+    // "Left" is not a number a user can mistake for the display number, so it
+    // gains nothing from the G-code suffix and never collapses to it.
+    CHECK(tool_label_in_form(LaneNoun::Tool, "Left", 0, ToolLabelForm::Full) == "Tool 1");
+    CHECK(tool_label_in_form(LaneNoun::Tool, "Left", 0, ToolLabelForm::Code) == "Tool 1");
+    // Not the generated spelling: lowercase, or a T with no digits after it.
+    CHECK(tool_label_in_form(LaneNoun::Tool, "t0", 0, ToolLabelForm::Code) == "Tool 1");
+    CHECK(tool_label_in_form(LaneNoun::Tool, "T", 0, ToolLabelForm::Full) == "Tool 1");
+}
+
+TEST_CASE("a tool with no position has no label in any form", "[numbering][1769]") {
+    CHECK(tool_label_in_form(LaneNoun::Tool, "T0", -1, ToolLabelForm::Full).empty());
+    CHECK(tool_label_in_form(LaneNoun::Tool, "T0", -1, ToolLabelForm::Code).empty());
+    CHECK(tool_label_in_form(LaneNoun::Tool, "Left", -1, ToolLabelForm::Full).empty());
+}
+
+TEST_CASE("pick_tool_label_form takes the most informative form that fits", "[numbering][1769]") {
+    std::vector<ToolLabelForm> asked;
+    auto fits_only = [&asked](std::optional<ToolLabelForm> accepted) {
+        asked.clear();
+        return [&asked, accepted](ToolLabelForm f) {
+            asked.push_back(f);
+            return accepted && f == *accepted;
+        };
+    };
+
+    SECTION("room for the full label") {
+        CHECK(pick_tool_label_form([](ToolLabelForm) { return true; }) == ToolLabelForm::Full);
+    }
+    SECTION("only the G-code name fits") {
+        CHECK(pick_tool_label_form(fits_only(ToolLabelForm::Code)) == ToolLabelForm::Code);
+        // Full was tried first and refused; Code was then asked.
+        CHECK(asked == std::vector<ToolLabelForm>{ToolLabelForm::Full, ToolLabelForm::Code});
+    }
+    SECTION("nothing fits: the shortest form, never nothing") {
+        CHECK(pick_tool_label_form(fits_only(std::nullopt)) == ToolLabelForm::Code);
+    }
+    SECTION("the first accepted form wins without asking the rest") {
+        CHECK(pick_tool_label_form(fits_only(ToolLabelForm::Full)) == ToolLabelForm::Full);
+        CHECK(asked == std::vector<ToolLabelForm>{ToolLabelForm::Full});
+    }
 }

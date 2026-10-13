@@ -3569,6 +3569,7 @@
   <translation tag="wpa_supplicant is not running. WiFi features unavailable." ru="wpa_supplicant не запущен. Функции WiFi недоступны."/>
   <translation tag="you have" ru="у вас"/>
   <translation tag="{:.0f}-{:.0f} Hz · about {} min" ru="{:.0f}-{:.0f} Гц · примерно {} мин"/>
+  <translation tag="{} ({})" ru="{} ({})"/>
   <translation tag="{} Hardware Issues" ru="Проблем с оборудованием: {}"/>
   <translation tag="{} Issues Detected" ru="Обнаружено проблем: {}"/>
   <translation tag="{} LED strips available" ru="Доступно светодиодных лент: {}"/>

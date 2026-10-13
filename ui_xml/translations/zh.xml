@@ -3569,6 +3569,7 @@
   <translation tag="wpa_supplicant is not running. WiFi features unavailable." zh="wpa_supplicant 未运行。WiFi 功能不可用。"/>
   <translation tag="you have" zh="您有"/>
   <translation tag="{:.0f}-{:.0f} Hz · about {} min" zh="{:.0f}-{:.0f} Hz · 约 {} 分钟"/>
+  <translation tag="{} ({})" zh="{}（{}）"/>
   <translation tag="{} Hardware Issues" zh="{} 个硬件问题"/>
   <translation tag="{} Issues Detected" zh="检测到 {} 个问题"/>
   <translation tag="{} LED strips available" zh="{} 条 LED 灯带可用"/>

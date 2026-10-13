@@ -39,6 +39,7 @@
 
 #include <cstdlib>
 #include <string>
+#include <vector>
 
 #include "../catch_amalgamated.hpp"
 
@@ -145,8 +146,10 @@ TEST_CASE_METHOD(ToolSwitcherFixture,
     REQUIRE(lv_obj_get_child_count(container) == 3);
     CHECK(pill_tracks(container) == std::make_pair(1, 3));
 
-    // Square: a balanced grid of equal cells, not one long row.
-    h.resize(1, 1, 230, 230);
+    // Square: a balanced grid of equal cells, not one long row. Big enough
+    // that a 2x2 cell holds the full "Tool 1 (T0)" label, which the pills
+    // prefer over a squarer grid of shorter ones.
+    h.resize(1, 1, 300, 300);
     process_lvgl(30);
     REQUIRE(lv_obj_get_child_count(container) == 3);
     CHECK(pill_tracks(container) == std::make_pair(2, 2));
@@ -173,7 +176,7 @@ TEST_CASE_METHOD(ToolSwitcherFixture,
 
     // fits_at follows the same measurement: a box with no legible pill
     // arrangement is sized by the compact form alone.
-    CHECK(h.widget().fits_at(230, 230));
+    CHECK(h.widget().fits_at(300, 300));
     CHECK_FALSE(h.widget().fits_at(4, 4));
 }
 
@@ -299,7 +302,7 @@ TEST_CASE_METHOD(ToolSwitcherFixture, "tool_switcher: compact mode marks an unkn
 
     lv_obj_t* label = ToolSwitcherTestAccess::compact_label(h.widget());
     REQUIRE(label != nullptr);
-    REQUIRE(std::string(lv_label_get_text(label)) == ts.tools()[0].display_label);
+    REQUIRE(std::string(lv_label_get_text(label)) == "T0");
 
     ts.update_from_status(nlohmann::json{{"toolchanger", {{"tool_number", 7}}}});
     process_lvgl(30);
@@ -338,7 +341,7 @@ TEST_CASE_METHOD(ToolSwitcherFixture,
     CHECK(lv_obj_get_style_text_font(icon, LV_PART_MAIN) != small_face);
     CHECK(lv_obj_get_style_text_font(label, LV_PART_MAIN) ==
           ui::tile_rung_face(ui::TileLadder::Value, large).font);
-    CHECK(std::string(lv_label_get_text(label)) == ToolState::instance().tools()[0].display_label);
+    CHECK(std::string(lv_label_get_text(label)) == "T0");
 }
 
 TEST_CASE_METHOD(ToolSwitcherFixture,
@@ -377,4 +380,139 @@ TEST_CASE_METHOD(ToolSwitcherFixture,
     update_tools(12, 0);
     process_lvgl(30);
     CHECK(lv_subject_get_int(lv_xml_get_subject(nullptr, "tool_switcher_tile_icon")) == expected);
+}
+
+// ============================================================================
+// #1769: a generated tool name reads "Tool 1 (T0)" where there is room, "T0"
+// where there is not
+// ============================================================================
+
+namespace {
+
+/// The text a pill draws: ui_button's label child.
+std::string pill_text(lv_obj_t* pill) {
+    for (uint32_t i = 0; i < lv_obj_get_child_count(pill); ++i) {
+        lv_obj_t* child = lv_obj_get_child(pill, static_cast<int32_t>(i));
+        if (lv_obj_check_type(child, &lv_label_class)) {
+            return lv_label_get_text(child);
+        }
+    }
+    return {};
+}
+
+/// The label a picker row shows: whichever of its two forms is not hidden.
+std::string picker_row_text(lv_obj_t* row) {
+    for (const char* name : {"tool_btn_label", "tool_btn_code_label"}) {
+        lv_obj_t* label = lv_obj_find_by_name(row, name);
+        if (label && !lv_obj_has_flag(label, LV_OBJ_FLAG_HIDDEN)) {
+            return lv_label_get_text(label);
+        }
+    }
+    return {};
+}
+
+} // namespace
+
+TEST_CASE_METHOD(ToolSwitcherFixture,
+                 "tool_switcher: pills carry the G-code name beside the number when they fit",
+                 "[widget_size][tool_switcher][1769]") {
+    configure_tools(3);
+    PanelWidgetHarness<ToolSwitcherWidget> h(test_screen(), state());
+    lv_obj_t* container = h.child("tool_switcher_container");
+    REQUIRE(container != nullptr);
+    process_lvgl(30);
+
+    // A wide row: every pill holds "Tool N (T<N-1>)".
+    h.resize(1, 1, 800, 60);
+    process_lvgl(30);
+    REQUIRE(lv_obj_get_child_count(container) == 3);
+    CHECK(pill_text(lv_obj_get_child(container, 0)) == "Tool 1 (T0)");
+    CHECK(pill_text(lv_obj_get_child(container, 2)) == "Tool 3 (T2)");
+
+    // Narrow and tall: a column of pills too narrow for the full form reads
+    // in the G-code name alone, every pill in the same form.
+    h.resize(1, 1, 90, 300);
+    process_lvgl(30);
+    REQUIRE(lv_obj_get_child_count(container) == 3);
+    CHECK(pill_text(lv_obj_get_child(container, 0)) == "T0");
+    CHECK(pill_text(lv_obj_get_child(container, 1)) == "T1");
+    CHECK(pill_text(lv_obj_get_child(container, 2)) == "T2");
+}
+
+TEST_CASE_METHOD(ToolSwitcherFixture, "tool_switcher: the compact readout names the G-code tool",
+                 "[widget_size][tool_switcher][1769]") {
+    // The compact form exists because there is no room, so it reads in the
+    // shortest form: the T-number Klipper and the slicer use.
+    configure_tools(3, /*active_index=*/1);
+    PanelWidgetHarness<ToolSwitcherWidget> h(test_screen(), state());
+    process_lvgl(30);
+    h.resize(2, 2, 60, 60);
+    process_lvgl(30);
+
+    lv_obj_t* label = ToolSwitcherTestAccess::compact_label(h.widget());
+    REQUIRE(label != nullptr);
+    CHECK(std::string(lv_label_get_text(label)) == "T1");
+}
+
+TEST_CASE_METHOD(ToolSwitcherFixture,
+                 "tool_switcher: a configured tool name keeps its physical label",
+                 "[widget_size][tool_switcher][1769]") {
+    ToolState& ts = ToolState::instance();
+    ts.deinit_subjects();
+    ts.init_subjects(false);
+    helix::PrinterDiscovery disc;
+    nlohmann::json objects = {"toolchanger", "tool Left", "tool Right", "extruder", "extruder1"};
+    disc.parse_objects(objects);
+    ts.init_tools(disc);
+    REQUIRE(ts.tool_count() == 2);
+    REQUIRE(ts.tools()[0].name == "Left");
+
+    PanelWidgetHarness<ToolSwitcherWidget> h(test_screen(), state());
+    lv_obj_t* container = h.child("tool_switcher_container");
+    REQUIRE(container != nullptr);
+    process_lvgl(30);
+
+    h.resize(1, 1, 800, 60);
+    process_lvgl(30);
+    REQUIRE(lv_obj_get_child_count(container) == 2);
+    CHECK(pill_text(lv_obj_get_child(container, 0)) == "Tool 1");
+
+    h.resize(2, 2, 60, 60);
+    process_lvgl(30);
+    lv_obj_t* label = ToolSwitcherTestAccess::compact_label(h.widget());
+    REQUIRE(label != nullptr);
+    CHECK(std::string(lv_label_get_text(label)) == "Tool 1");
+}
+
+TEST_CASE_METHOD(ToolSwitcherFixture,
+                 "tool_switcher: the picker rows read in the form the card has room for",
+                 "[widget_size][tool_switcher][1769]") {
+    configure_tools(3);
+    PanelWidgetHarness<ToolSwitcherWidget> h(test_screen(), state());
+    process_lvgl(30);
+
+    auto rows_after_opening_at = [&](int w, int hpx) {
+        h.resize(1, 1, w, hpx);
+        process_lvgl(30);
+        REQUIRE(h.child("tool_switcher_compact") != nullptr);
+        REQUIRE_FALSE(lv_obj_has_flag(h.child("tool_switcher_compact"), LV_OBJ_FLAG_HIDDEN));
+        ToolSwitcherTestAccess::show_picker(h.widget());
+        lv_obj_t* list = ToolSwitcherTestAccess::picker_list(h.widget());
+        REQUIRE(list != nullptr);
+        REQUIRE(lv_obj_get_child_count(list) == 3);
+        std::vector<std::string> texts;
+        for (uint32_t i = 0; i < 3; ++i) {
+            texts.push_back(picker_row_text(lv_obj_get_child(list, static_cast<int32_t>(i))));
+        }
+        ToolSwitcherTestAccess::hide_picker(h.widget());
+        process_lvgl(30);
+        return texts;
+    };
+
+    // Too short for any pill, but wide: the card hangs off this tile at its
+    // width, so the rows have room for the full form.
+    CHECK(rows_after_opening_at(300, 30) ==
+          std::vector<std::string>{"Tool 1 (T0)", "Tool 2 (T1)", "Tool 3 (T2)"});
+    // A one-cell tile: the card is too narrow, so every row reads the G-code name.
+    CHECK(rows_after_opening_at(60, 60) == std::vector<std::string>{"T0", "T1", "T2"});
 }

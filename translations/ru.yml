@@ -3955,6 +3955,7 @@ translations:
   wpa_supplicant is not running. WiFi features unavailable.: wpa_supplicant не запущен. Функции WiFi недоступны.
   you have: у вас
   '{:.0f}-{:.0f} Hz · about {} min': '{:.0f}-{:.0f} Гц · примерно {} мин'
+  '{} ({})': '{} ({})'
   '{} Hardware Issues': 'Проблем с оборудованием: {}'
   '{} Issues Detected': 'Обнаружено проблем: {}'
   '{} LED strips available': 'Доступно светодиодных лент: {}'

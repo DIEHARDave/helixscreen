@@ -3569,6 +3569,7 @@
   <translation tag="wpa_supplicant is not running. WiFi features unavailable." ja="wpa_supplicant が動作していません。WiFi 機能は利用できません。"/>
   <translation tag="you have" ja="現在は"/>
   <translation tag="{:.0f}-{:.0f} Hz · about {} min" ja="{:.0f}-{:.0f} Hz · 約{}分"/>
+  <translation tag="{} ({})" ja="{}（{}）"/>
   <translation tag="{} Hardware Issues" ja="ハードウェアの問題 {} 件"/>
   <translation tag="{} Issues Detected" ja="問題を {} 件検出"/>
   <translation tag="{} LED strips available" ja="{} 個の LED ストリップが利用可能です"/>

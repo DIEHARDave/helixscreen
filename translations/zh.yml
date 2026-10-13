@@ -3730,6 +3730,7 @@ translations:
   wpa_supplicant is not running. WiFi features unavailable.: wpa_supplicant 未运行。WiFi 功能不可用。
   you have: 您有
   '{:.0f}-{:.0f} Hz · about {} min': '{:.0f}-{:.0f} Hz · 约 {} 分钟'
+  '{} ({})': '{}（{}）'
   '{} Hardware Issues': '{} 个硬件问题'
   '{} Issues Detected': '检测到 {} 个问题'
   '{} LED strips available': '{} 条 LED 灯带可用'

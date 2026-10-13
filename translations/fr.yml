@@ -4032,6 +4032,7 @@ translations:
   wpa_supplicant is not running. WiFi features unavailable.: wpa_supplicant ne fonctionne pas. Les fonctions WiFi sont indisponibles.
   you have: vous avez
   '{:.0f}-{:.0f} Hz · about {} min': '{:.0f}-{:.0f} Hz · environ {} min'
+  '{} ({})': '{} ({})'
   '{} Hardware Issues': '{} problèmes matériels'
   '{} Issues Detected': '{} problèmes détectés'
   '{} LED strips available': '{} bandeaux LED disponibles'

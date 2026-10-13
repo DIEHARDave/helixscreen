@@ -2,12 +2,20 @@
 <component name="tool_picker_button">
   <api>
     <prop name="tool_text" type="string" default="Tool 1"/>
+    <!-- The same tool in its shortest form, shown when the row is too narrow
+         for tool_text. -->
+    <prop name="tool_code_text" type="string" default="T0"/>
   </api>
   <view name="tool_picker_btn_root"
         extends="lv_obj" width="100%" height="content" style_pad_all="0" style_bg_opa="0" style_border_width="0"
         scrollable="false">
     <ui_button name="tool_btn" width="100%" height="content" variant="ghost" style_min_height="#button_height_sm">
-      <text_small name="tool_btn_label" text="$tool_text" align="center"/>
+      <text_small name="tool_btn_label" text="$tool_text" align="center">
+        <bind_flag_if_eq subject="tool_switcher_picker_code_form" flag="hidden" ref_value="1"/>
+      </text_small>
+      <text_small name="tool_btn_code_label" text="$tool_code_text" align="center">
+        <bind_flag_if_eq subject="tool_switcher_picker_code_form" flag="hidden" ref_value="0"/>
+      </text_small>
     </ui_button>
   </view>
 </component>
