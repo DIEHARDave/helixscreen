@@ -18,6 +18,7 @@
 #include "src/ui/panel_widgets/tool_switcher_layout.h"
 
 #include <string>
+#include <vector>
 
 #include "../catch_amalgamated.hpp"
 
@@ -298,4 +299,29 @@ TEST_CASE("Tool switcher layout: a detail block fits under a tall rail", "[tool_
         CHECK(short_by_one.rail_h == k480_2x2.h);
         CHECK(layout_for(1, k480_2x2, kFonts480).detail);
     }
+}
+
+TEST_CASE("Tool switcher detail order: the mounted head leads, the others follow by index",
+          "[tool_switcher][1784]") {
+    using helix::tool_switcher_detail_order;
+    CHECK(tool_switcher_detail_order(4, 2) == std::vector<int>{2, 0, 1, 3});
+    CHECK(tool_switcher_detail_order(4, 0) == std::vector<int>{0, 1, 2, 3});
+    // An empty carriage puts its own line where the mounted head would be.
+    CHECK(tool_switcher_detail_order(3, -1) ==
+          std::vector<int>{helix::kToolSwitcherEmptyCarriageRow, 0, 1, 2});
+    // An index past the list names no head: no line claims to be mounted.
+    CHECK(tool_switcher_detail_order(3, 7) == std::vector<int>{0, 1, 2});
+    CHECK(tool_switcher_detail_order(0, -1).empty());
+}
+
+TEST_CASE("Tool switcher detail rows: a body line, then small lines, dropped whole",
+          "[tool_switcher][1784]") {
+    using helix::tool_switcher_detail_rows_that_fit;
+    // 20 + 16 + 16 = 52: three rows fit 52 px exactly, not 51.
+    CHECK(tool_switcher_detail_rows_that_fit(5, 52, 20, 16) == 3);
+    CHECK(tool_switcher_detail_rows_that_fit(5, 51, 20, 16) == 2);
+    // The first row is the body line: 19 px holds nothing.
+    CHECK(tool_switcher_detail_rows_that_fit(5, 19, 20, 16) == 0);
+    // Never more rows than there are.
+    CHECK(tool_switcher_detail_rows_that_fit(2, 500, 20, 16) == 2);
 }

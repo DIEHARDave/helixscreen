@@ -485,6 +485,7 @@
   <translation tag="Cannot start print: printer is {}" de="Druck kann nicht gestartet werden: Drucker ist {}"/>
   <translation tag="Cannot unload while a print is active" de="Entladen während eines aktiven Drucks nicht möglich"/>
   <translation tag="Capabilities: " de="Fähigkeiten: "/>
+  <translation tag="Carriage empty · tap a head" de="Wagen leer · Kopf antippen"/>
   <translation tag="Cartographer scan calibrate sent — use Z-Offset panel to adjust" de="Cartographer Scan-Kalibrierung gesendet — Z-Offset-Panel zum Anpassen verwenden"/>
   <translation tag="Cartographer touch calibrate sent" de="Cartographer Touch-Kalibrierung gesendet"/>
   <translation tag="Category" de="Kategorie"/>

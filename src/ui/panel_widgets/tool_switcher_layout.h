@@ -10,6 +10,8 @@
 // are arranged. Every cell it hands back is at least min_target on both axes,
 // so no mode ever draws a touch target smaller than the floor.
 
+#include <vector>
+
 namespace helix {
 
 /// The values are the widget's published mode subject ints, so XML ref_values
@@ -131,6 +133,42 @@ struct ToolSwitcherGrid {
         out.cell_h = horizontal ? content_h : face_px;
     }
     return out;
+}
+
+/// A detail row that is the empty-carriage line rather than a head.
+inline constexpr int kToolSwitcherEmptyCarriageRow = -1;
+
+/// The detail block's rows in display order, as tool indices: the mounted head
+/// first, then the others by index. With the carriage empty (@p active_tool
+/// -1) the first row is kToolSwitcherEmptyCarriageRow instead. An active index
+/// the tool list does not hold names no head, so every head keeps its order.
+[[nodiscard]] inline std::vector<int> tool_switcher_detail_order(int tool_count, int active_tool) {
+    std::vector<int> order;
+    if (tool_count < 1)
+        return order;
+    const bool mounted = active_tool >= 0 && active_tool < tool_count;
+    if (mounted)
+        order.push_back(active_tool);
+    else if (active_tool == -1)
+        order.push_back(kToolSwitcherEmptyCarriageRow);
+    for (int i = 0; i < tool_count; i++) {
+        if (i != active_tool)
+            order.push_back(i);
+    }
+    return order;
+}
+
+/// How many of @p rows detail rows fit in @p avail_h px: the first is a body
+/// line, each after it a small line. Rows that do not fit are dropped whole.
+[[nodiscard]] inline int tool_switcher_detail_rows_that_fit(int rows, int avail_h, int body_px,
+                                                            int small_px) {
+    int used = 0;
+    for (int i = 0; i < rows; i++) {
+        used += i == 0 ? body_px : small_px;
+        if (used > avail_h)
+            return i;
+    }
+    return rows;
 }
 
 } // namespace helix

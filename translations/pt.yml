@@ -536,6 +536,7 @@ translations:
   Cannot save offsets while printing: Não é possível salvar offsets durante a impressão
   Cannot unload while a print is active: Não é possível descarregar enquanto uma impressão está ativa
   'Capabilities: ': 'Capacidades: '
+  Carriage empty · tap a head: 'Carro vazio · toque numa cabeça'
   Cartographer scan calibrate sent — use Z-Offset panel to adjust: Cartographer calibração
     de varredura enviada — use o painel Z-Offset para ajustar
   Cartographer touch calibrate sent: Cartographer calibração por toque enviada

@@ -7,7 +7,7 @@
 namespace helix {
 
 // Friend access to ToolSwitcherWidget's print gate. Both members are reachable
-// in production only by tapping a pill on an attached home-panel widget, which
+// in production only by tapping the tile on an attached home-panel widget, which
 // needs a mounted XML tree, a sized grid cell and a live touch event — none of
 // which say anything useful about the policy being asserted.
 //
@@ -30,21 +30,14 @@ class ToolSwitcherTestAccess {
         widget.handle_tool_selected(tool_index);
     }
 
-    /// The pill list refresh_print_gating() greys. Writable so a test can hand
-    /// it plain buttons instead of standing up a mounted XML tree.
-    static std::vector<lv_obj_t*>& pills(ToolSwitcherWidget& widget) {
-        return widget.pill_buttons_;
+    /// The verdict the widget last published.
+    static ToolSwitcherLayout layout(const ToolSwitcherWidget& widget) {
+        return widget.layout_;
     }
 
-    /// Compact-mode label refresh_print_gating() greys. Nullable read so a
-    /// teardown test can assert it was dropped alongside the pills.
-    static lv_obj_t* compact_label(const ToolSwitcherWidget& widget) {
-        return widget.compact_label_;
-    }
-
-    /// Whether a box this size gets the compact readout instead of pills.
-    static bool is_compact_at(int width_px, int height_px) {
-        return ToolSwitcherWidget::is_compact_at(width_px, height_px);
+    /// The tile the widget is attached to, or null once it is gone.
+    static lv_obj_t* tile_root(const ToolSwitcherWidget& widget) {
+        return widget.widget_obj_;
     }
 
     /// The funnel every Park tap reaches.

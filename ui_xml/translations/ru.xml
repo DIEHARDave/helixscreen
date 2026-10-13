@@ -485,6 +485,7 @@
   <translation tag="Cannot start print: printer is {}" ru="Невозможно начать печать: принтер {}"/>
   <translation tag="Cannot unload while a print is active" ru="Нельзя выгрузить во время печати"/>
   <translation tag="Capabilities: " ru="Возможности: "/>
+  <translation tag="Carriage empty · tap a head" ru="Каретка пуста · выберите головку"/>
   <translation tag="Cartographer scan calibrate sent — use Z-Offset panel to adjust" ru="Cartographer сканирующая калибровка отправлена — используйте панель Z-Offset для настройки"/>
   <translation tag="Cartographer touch calibrate sent" ru="Cartographer тактильная калибровка отправлена"/>
   <translation tag="Category" ru="Категория"/>

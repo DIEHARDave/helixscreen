@@ -260,20 +260,20 @@ TEST_CASE_METHOD(ToolSwitcherGateFixture, "PAUSED refuses on a self-homing backe
 // The greying has to track the print state LIVE
 //
 // PanelWidget instances are recycled across home-panel rebuilds, so the gate is
-// applied from attach() (via the print-state observer) and from both rebuild
-// paths. Registering the observer only in on_size_changed() would leave a reused
-// instance correct on first build and stale forever after.
+// published from attach() (via the print-state observer) and from every size
+// change. Registering the observer only in on_size_changed() would leave a
+// reused instance correct on first build and stale forever after.
 // ============================================================================
 
-TEST_CASE_METHOD(ToolSwitcherGateFixture, "pills grey and un-grey as the print state changes",
+TEST_CASE_METHOD(ToolSwitcherGateFixture,
+                 "the published gate follows the print state as it changes",
                  "[ams][tool-switcher][safety]") {
     lv_obj_t* host = lv_obj_create(lv_screen_active());
     ToolSwitcherWidget widget(printer_state);
     widget.attach(host, lv_screen_active());
 
-    auto& pills = ToolSwitcherTestAccess::pills(widget);
-    pills.push_back(lv_obj_create(host));
-    pills.push_back(lv_obj_create(host));
+    lv_subject_t* blocked = lv_xml_get_subject(nullptr, "tool_switcher_change_blocked");
+    REQUIRE(blocked != nullptr);
 
     // observe<int>() defers through the UpdateQueue, so the gate lands on
     // the next tick — drain before asserting.
@@ -283,23 +283,20 @@ TEST_CASE_METHOD(ToolSwitcherGateFixture, "pills grey and un-grey as the print s
 
     set_print_state(helix::PrintJobState::PRINTING);
     tick();
-    for (lv_obj_t* pill : pills) {
-        CHECK(lv_obj_has_state(pill, LV_STATE_DISABLED));
-    }
+    CHECK(lv_subject_get_int(blocked) == 1);
 
     // PAUSED on a backend that does not self-home is the recovery workflow —
-    // greying it there would hide the backend relaxation entirely.
+    // blocking it there would hide the backend relaxation entirely.
     set_print_state(helix::PrintJobState::PAUSED);
     tick();
-    for (lv_obj_t* pill : pills) {
-        CHECK_FALSE(lv_obj_has_state(pill, LV_STATE_DISABLED));
-    }
+    CHECK(lv_subject_get_int(blocked) == 0);
 
+    set_print_state(helix::PrintJobState::PRINTING);
+    tick();
+    REQUIRE(lv_subject_get_int(blocked) == 1);
     set_print_state(helix::PrintJobState::STANDBY);
     tick();
-    for (lv_obj_t* pill : pills) {
-        CHECK_FALSE(lv_obj_has_state(pill, LV_STATE_DISABLED));
-    }
+    CHECK(lv_subject_get_int(blocked) == 0);
 
     widget.detach();
     lv_obj_delete(host);

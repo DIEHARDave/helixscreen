@@ -485,6 +485,7 @@
   <translation tag="Cannot start print: printer is {}" ja="印刷を開始できません: プリンターは {} 状態です"/>
   <translation tag="Cannot unload while a print is active" ja="印刷中は排出できません"/>
   <translation tag="Capabilities: " ja="機能: "/>
+  <translation tag="Carriage empty · tap a head" ja="キャリッジが空 · ヘッドをタップ"/>
   <translation tag="Cartographer scan calibrate sent — use Z-Offset panel to adjust" ja="Cartographerスキャンキャリブレーション送信済み — Z-Offsetパネルで調整してください"/>
   <translation tag="Cartographer touch calibrate sent" ja="Cartographerタッチキャリブレーション送信済み"/>
   <translation tag="Category" ja="カテゴリー"/>
