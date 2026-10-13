@@ -60,6 +60,13 @@ class GateBackend : public AmsBackendMock {
     int last_tool = -1;
     bool can_park = true;
     int park_calls = 0;
+    /// Slot reads, which take the backend's mutex: what a widget refresh costs it.
+    mutable int slot_info_calls = 0;
+
+    SlotInfo get_slot_info(int slot_index) const override {
+        ++slot_info_calls;
+        return AmsBackendMock::get_slot_info(slot_index);
+    }
 
     BackendTraits traits() const override {
         BackendTraits t = AmsBackendMock::traits();

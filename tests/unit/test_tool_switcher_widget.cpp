@@ -761,3 +761,94 @@ TEST_CASE_METHOD(LVGLUITestFixture, "tool_switcher: the empty-carriage detail li
     CHECK(std::string(lv_subject_get_string(lv_xml_get_subject(
               nullptr, "tool_switcher_detail_0_text"))) == lv_tr("Carriage empty · tap a head"));
 }
+
+namespace {
+
+std::string published(const std::string& name) {
+    lv_subject_t* s = lv_xml_get_subject(nullptr, name.c_str());
+    REQUIRE(s != nullptr);
+    return lv_subject_get_string(s);
+}
+
+int published_int(const std::string& name) {
+    lv_subject_t* s = lv_xml_get_subject(nullptr, name.c_str());
+    REQUIRE(s != nullptr);
+    return lv_subject_get_int(s);
+}
+
+} // namespace
+
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "tool_switcher: a temperature tick republishes the temperatures alone",
+                 "[tool_switcher][1784]") {
+    // Extruder temperatures notify several times a second per head; reading
+    // every head's slot on each one holds the backend's mutex for nothing.
+    ToolChangerRig rig(3);
+    map_heads_to_lanes(3);
+    state().temperature_state().init_extruders({"extruder", "extruder1", "extruder2"});
+    process_lvgl(30);
+    PanelWidgetHarness<ToolSwitcherWidget> h(test_screen(), state());
+    process_lvgl(30);
+
+    // A rail with its detail block.
+    resize_content(h, 214, 211);
+    process_lvgl(30);
+    REQUIRE(published_int("tool_switcher_detail") == 1);
+    REQUIRE(published_int("tool_switcher_detail_rows") >= 2);
+    const std::string label = published("tool_switcher_seg_1_label");
+    const int reads = rig.backend->slot_info_calls;
+
+    state().update_from_status(nlohmann::json{{"extruder1", {{"temperature", 150.0}}}});
+    process_lvgl(30);
+    CHECK(published("tool_switcher_seg_1_temp") == "150°C");
+    if (published_int("tool_switcher_label_form") == static_cast<int>(ui::ToolLabelForm::Code)) {
+        CHECK(published("tool_switcher_seg_1_sub") == "150°C");
+    }
+    // Head 0 is mounted, so head 1 is the second detail row.
+    CHECK(published("tool_switcher_detail_1_text").find("150°C") != std::string::npos);
+    CHECK(published_int("tool_switcher_detail_1_hot") == 1);
+    CHECK(published("tool_switcher_seg_1_label") == label);
+    CHECK(rig.backend->slot_info_calls == reads);
+
+    // The face's second line is the mounted head's temperature.
+    h.resize(2, 2, 60, 60);
+    process_lvgl(30);
+    REQUIRE(published_int("tool_switcher_mode") == static_cast<int>(ToolSwitcherMode::Single));
+    const int face_reads = rig.backend->slot_info_calls;
+    state().update_from_status(nlohmann::json{{"extruder", {{"temperature", 200.0}}}});
+    process_lvgl(30);
+    CHECK(published("tool_switcher_face_sub") == "200°C");
+    CHECK(rig.backend->slot_info_calls == face_reads);
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "tool_switcher: with no tools the face names no head and is not filled",
+                 "[tool_switcher][1784]") {
+    // Before discovery, or while disconnected.
+    ToolState::instance().deinit_subjects();
+    ToolState::instance().init_subjects(true);
+    REQUIRE(ToolState::instance().tool_count() == 0);
+    register_tool_switcher_widget();
+    PanelWidgetHarness<ToolSwitcherWidget> h(test_screen(), state());
+    process_lvgl(30);
+    h.resize(2, 2, 60, 60);
+    process_lvgl(30);
+    REQUIRE(mode() == static_cast<int>(ToolSwitcherMode::Single));
+    lv_obj_t* face = named(h, "tool_switcher_face");
+    REQUIRE(face != nullptr);
+    const uint32_t primary = lv_color_to_u32(theme_manager_get_color("primary"));
+
+    CHECK(published("tool_switcher_face_label").empty());
+    CHECK(lv_color_to_u32(lv_obj_get_style_bg_color(face, LV_PART_MAIN)) != primary);
+
+    // A mounted head fills the face, so the check above can see a fill.
+    ToolTopology topo;
+    topo.tool_count = 2;
+    topo.active_tool = 0;
+    ToolState::instance().set_ams_topology(topo);
+    process_lvgl(30);
+    CHECK_FALSE(published("tool_switcher_face_label").empty());
+    CHECK(lv_color_to_u32(lv_obj_get_style_bg_color(face, LV_PART_MAIN)) == primary);
+
+    ToolState::instance().deinit_subjects();
+}

@@ -96,6 +96,9 @@ class ToolSwitcherWidget : public TiledPanelWidget {
 
     /// Indexed by tool, sized to the tool count; rebuilt when it changes.
     std::vector<HeadTemp> head_temps_;
+    /// Each head's material as publish_heads() last read it from its slot, so
+    /// a temperature change rewrites a detail line without reading the slots.
+    std::vector<std::string> head_materials_;
 
     ObserverGuard active_tool_observer_;
     ObserverGuard tool_count_observer_;
@@ -133,15 +136,30 @@ class ToolSwitcherWidget : public TiledPanelWidget {
     /// whether the cells hold a second line, from ToolState, the filament
     /// system and the temperatures.
     void publish_heads();
+    /// Head @p i's new temperature: its segment's temperature (and second
+    /// line in the Code form), its detail line, the face's second line when
+    /// it is mounted, and whether the second lines still fit. Labels, colours
+    /// and materials keep what publish_heads() last published.
+    void publish_head_temp(int i);
+    /// Whether every cell shown holds its second line.
+    void publish_two_line();
     /// Observe each head's extruder temperature; the set follows the tools.
     void rebuild_head_temps();
+    /// Head @p i's temperature, empty while unknown.
+    std::string head_temp_text(int i) const;
+    /// Whether head @p i reads hot.
+    bool head_hot(int i) const;
+    /// @p tool's detail line: its name, material and temperature, in the full
+    /// form for the @p main line where the content box has room for it.
+    std::string detail_head_text(const ToolInfo& tool, bool main) const;
 
     /// @p tool's label in @p form, in the connected printer's tool noun.
     static std::string tool_text(const ToolInfo& tool, ui::ToolLabelForm form);
     /// What a wide segment calls @p tool: its configured name, else "Tool 1".
     static std::string name_text(const ToolInfo& tool);
-    /// What a narrow segment calls @p tool: "T<index>", the name it answers to
-    /// in G-code and in the slicer, configured name or not.
+    /// What a narrow segment calls @p tool: the name it answers to in G-code
+    /// and in the slicer, configured name or not. The sheet's G-code form, so
+    /// the rail and the sheet never name one head two ways.
     static std::string short_text(const ToolInfo& tool);
     void on_active_tool_changed(int tool_index);
 

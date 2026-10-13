@@ -671,3 +671,35 @@ TEST_CASE_METHOD(ToolSwitcherFixture,
     ToolSwitcherTestAccess::hide_picker(h.widget());
     process_lvgl(30);
 }
+
+TEST_CASE_METHOD(ToolSwitcherFixture,
+                 "tool_switcher: a head's G-code name is the same on the rail and in the sheet",
+                 "[widget_size][tool_switcher][1784]") {
+    // A toolchanger whose tool numbers skip one: the second head answers to T2.
+    configure_named_tools({"T0", "T2"});
+    REQUIRE(ToolState::instance().tools()[1].name == "T2");
+    PanelWidgetHarness<ToolSwitcherWidget> h(test_screen(), state());
+    process_lvgl(30);
+
+    resize_content(h, 600, 60);
+    process_lvgl(30);
+    REQUIRE(subject_int("tool_switcher_label_form") == static_cast<int>(ui::ToolLabelForm::Full));
+    CHECK(subject_string(seg(1, "sub")) == "T2");
+
+    // The detail block names the other heads by G-code name too.
+    resize_content(h, 600, 400);
+    process_lvgl(30);
+    REQUIRE(subject_int("tool_switcher_detail_rows") >= 2);
+    CHECK(subject_string(detail(1, "text")).rfind("T2", 0) == 0);
+
+    // A one-cell tile: the segment-less face, whose sheet reads G-code names.
+    h.resize(1, 1, 60, 60);
+    process_lvgl(30);
+    ToolSwitcherTestAccess::show_picker(h.widget());
+    lv_obj_t* list = ToolSwitcherTestAccess::picker_list(h.widget());
+    REQUIRE(list != nullptr);
+    REQUIRE(lv_obj_get_child_count(list) == 2);
+    CHECK(picker_row_text(lv_obj_get_child(list, 1)) == "T2");
+    ToolSwitcherTestAccess::hide_picker(h.widget());
+    process_lvgl(30);
+}

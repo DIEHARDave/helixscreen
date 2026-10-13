@@ -271,7 +271,7 @@ std::string ToolSwitcherWidget::name_text(const ToolInfo& tool) {
 }
 
 std::string ToolSwitcherWidget::short_text(const ToolInfo& tool) {
-    return ui::tool_label(tool.index);
+    return tool_text(tool, ui::ToolLabelForm::Code);
 }
 
 ToolSwitcherWidget::~ToolSwitcherWidget() {
@@ -522,10 +522,40 @@ void ToolSwitcherWidget::rebuild_head_temps() {
                 if (token.expired() || i >= self->head_temps_.size())
                     return;
                 self->head_temps_[i].deci = deci;
-                self->publish_heads();
+                self->publish_head_temp(static_cast<int>(i));
             },
             head.lifetime);
     }
+}
+
+std::string ToolSwitcherWidget::head_temp_text(int i) const {
+    if (i < 0 || i >= static_cast<int>(head_temps_.size()) || !head_temps_[i].known)
+        return {};
+    char buf[16];
+    return ui::temperature::format_temperature(
+        ui::temperature::deci_to_degrees(head_temps_[i].deci), buf, sizeof(buf));
+}
+
+bool ToolSwitcherWidget::head_hot(int i) const {
+    return i >= 0 && i < static_cast<int>(head_temps_.size()) && head_temps_[i].known &&
+           head_temps_[i].deci >= kHotDeci;
+}
+
+std::string ToolSwitcherWidget::detail_head_text(const ToolInfo& tool, bool main) const {
+    // The mounted head's line is in the body font and reads
+    // "Tool 2 (T1) · PLA · 215°C" where the content box is wide enough, else
+    // "T1 · ..."; the rest are small and always read "T0 · ...".
+    const int i = tool.index;
+    const std::string& material =
+        i >= 0 && i < static_cast<int>(head_materials_.size()) ? head_materials_[i] : std::string();
+    const std::string temp = head_temp_text(i);
+    if (main) {
+        std::string text = detail_line(tool_text(tool, ui::ToolLabelForm::Full), material, temp);
+        const int content_w = current_width_px_ - 2 * resolve_px_token("space_md", 10);
+        if (ui::text_width(text.c_str(), theme_manager_get_font("font_body")) <= content_w)
+            return text;
+    }
+    return detail_line(short_text(tool), material, temp);
 }
 
 void ToolSwitcherWidget::publish_heads() {
@@ -537,42 +567,30 @@ void ToolSwitcherWidget::publish_heads() {
     const int heads = std::min(count, kPoolSize);
     const int active = tool_state.active_tool_index();
 
-    auto temp_text = [this](int i) -> std::string {
-        if (i < 0 || i >= static_cast<int>(head_temps_.size()) || !head_temps_[i].known)
-            return {};
-        char buf[16];
-        return ui::temperature::format_temperature(
-            ui::temperature::deci_to_degrees(head_temps_[i].deci), buf, sizeof(buf));
-    };
-    auto is_hot = [this](int i) {
-        return i >= 0 && i < static_cast<int>(head_temps_.size()) && head_temps_[i].known &&
-               head_temps_[i].deci >= kHotDeci;
-    };
-
     std::vector<HeadFilament> filament(static_cast<size_t>(heads));
+    head_materials_.assign(static_cast<size_t>(heads), std::string());
     for (int i = 0; i < heads; ++i) {
         filament[i] = head_filament(tools[i]);
+        head_materials_[i] = filament[i].material;
 
         // Full: the configured name or "Tool 1", over "T0". Code: "T0" over
         // the temperature, shown where the segment is tall enough.
         std::string label = short_text(tools[i]);
-        std::string sub = temp_text(i);
+        std::string sub = head_temp_text(i);
         if (label_form_ == ui::ToolLabelForm::Full) {
             label = name_text(tools[i]);
             sub = short_text(tools[i]);
         }
         ui::copy_string_if_changed(s_seg_label.at(i), label.c_str());
         ui::copy_string_if_changed(s_seg_sub.at(i), sub.c_str());
-        ui::copy_string_if_changed(s_seg_temp.at(i), temp_text(i).c_str());
+        ui::copy_string_if_changed(s_seg_temp.at(i), head_temp_text(i).c_str());
         set_int_if_changed(s_seg_has_color.at(i), filament[i].has_color ? 1 : 0);
         if (filament[i].has_color) {
             set_color_if_changed(s_seg_color.at(i), filament[i].color_rgb);
         }
     }
 
-    // Detail rows, mounted head first. The mounted head's line is in the body
-    // font and reads "Tool 2 (T1) · PLA · 215°C" where the content box is wide
-    // enough, else "T1 · ..."; the rest are small and always read "T0 · ...".
+    // Detail rows, mounted head first.
     const std::vector<int> order = tool_switcher_detail_order(heads, active);
     const int rows = std::min(static_cast<int>(order.size()), kPoolSize);
     const int content_w = current_width_px_ - 2 * resolve_px_token("space_md", 10);
@@ -580,11 +598,6 @@ void ToolSwitcherWidget::publish_heads() {
     const lv_font_t* small = theme_manager_get_font("font_small");
     const int body_px = body ? lv_font_get_line_height(body) : 0;
     const int small_px = small ? lv_font_get_line_height(small) : 0;
-    auto line = [&](int i, ui::ToolLabelForm form) {
-        const std::string head =
-            form == ui::ToolLabelForm::Full ? tool_text(tools[i], form) : short_text(tools[i]);
-        return detail_line(head, filament[i].material, temp_text(i));
-    };
     for (int r = 0; r < rows; ++r) {
         const int i = order[r];
         const bool main = r == 0 && (i == active || i == kToolSwitcherEmptyCarriageRow);
@@ -594,17 +607,13 @@ void ToolSwitcherWidget::publish_heads() {
             text = lv_tr("Carriage empty · tap a head");
             if (ui::text_width(text.c_str(), body) > content_w)
                 text = lv_tr("Carriage empty");
-        } else if (main) {
-            text = line(i, ui::ToolLabelForm::Full);
-            if (ui::text_width(text.c_str(), body) > content_w)
-                text = line(i, ui::ToolLabelForm::Code);
         } else {
-            text = line(i, ui::ToolLabelForm::Code);
+            text = detail_head_text(tools[i], main);
         }
         const bool has_color = i >= 0 && filament[i].has_color;
         ui::copy_string_if_changed(s_detail_text.at(r), text.c_str());
         set_int_if_changed(s_detail_main.at(r), main ? 1 : 0);
-        set_int_if_changed(s_detail_hot.at(r), is_hot(i) ? 1 : 0);
+        set_int_if_changed(s_detail_hot.at(r), head_hot(i) ? 1 : 0);
         set_int_if_changed(s_detail_has_color.at(r), has_color ? 1 : 0);
         if (has_color) {
             set_color_if_changed(s_detail_color.at(r), filament[i].color_rgb);
@@ -620,17 +629,20 @@ void ToolSwitcherWidget::publish_heads() {
     set_int_if_changed(&s_detail_rows_subject, fit);
 
     // The face: the mounted head by its full name where the cell has room,
-    // else the G-code name. An out-of-range active index has no head to name;
-    // "?" keeps the face visibly occupied.
+    // else the G-code name. With no tools there is no head to name, and an
+    // out-of-range active index names none the list holds; "?" keeps the face
+    // visibly occupied.
     const int room = layout_.cell_w - 2 * resolve_px_token("space_xs", 4);
     std::string face;
     std::string face_sub;
     HeadFilament face_filament;
-    if (active >= 0 && active < count) {
+    if (count == 0) {
+        // Nothing discovered yet: the face names nothing.
+    } else if (active >= 0 && active < count) {
         face = tool_text(tools[active], ui::ToolLabelForm::Full);
         if (ui::text_width(face.c_str(), body) > room)
             face = short_text(tools[active]);
-        face_sub = temp_text(active);
+        face_sub = head_temp_text(active);
         face_filament = active < heads ? filament[active] : head_filament(tools[active]);
     } else if (active == -1) {
         face = lv_tr("Choose head");
@@ -646,18 +658,63 @@ void ToolSwitcherWidget::publish_heads() {
         set_color_if_changed(&s_face_color_subject, face_filament.color_rgb);
     }
 
+    publish_two_line();
+}
+
+void ToolSwitcherWidget::publish_head_temp(int i) {
+    if (!s_subjects_initialized)
+        return;
+    auto& tool_state = ToolState::instance();
+    const auto& tools = tool_state.tools();
+    const int heads = std::min(static_cast<int>(tools.size()), kPoolSize);
+    if (i < 0 || i >= heads)
+        return;
+    const int active = tool_state.active_tool_index();
+
+    const std::string temp = head_temp_text(i);
+    ui::copy_string_if_changed(s_seg_temp.at(i), temp.c_str());
+    if (label_form_ == ui::ToolLabelForm::Code) {
+        ui::copy_string_if_changed(s_seg_sub.at(i), temp.c_str());
+    }
+
+    const std::vector<int> order = tool_switcher_detail_order(heads, active);
+    const int rows = std::min(static_cast<int>(order.size()), kPoolSize);
+    for (int r = 0; r < rows; ++r) {
+        if (order[r] != i)
+            continue;
+        const bool main = r == 0 && i == active;
+        ui::copy_string_if_changed(s_detail_text.at(r), detail_head_text(tools[i], main).c_str());
+        set_int_if_changed(s_detail_hot.at(r), head_hot(i) ? 1 : 0);
+        break;
+    }
+
+    if (i == active) {
+        ui::copy_string_if_changed(&s_face_sub_subject, temp.c_str());
+    }
+
+    publish_two_line();
+}
+
+void ToolSwitcherWidget::publish_two_line() {
     // A second line shows only where the cell is tall enough for both lines
     // over its colour strip, and every shown second line is narrow enough.
+    const lv_font_t* body = theme_manager_get_font("font_body");
+    const lv_font_t* small = theme_manager_get_font("font_small");
+    const int body_px = body ? lv_font_get_line_height(body) : 0;
+    const int small_px = small ? lv_font_get_line_height(small) : 0;
+    const int room = layout_.cell_w - 2 * resolve_px_token("space_xs", 4);
     bool two_line = layout_.cell_h - tool_switcher_strip_px(layout_.cell_h) >= body_px + small_px;
     const bool rail =
         layout_.mode == ToolSwitcherMode::RailWithPark || layout_.mode == ToolSwitcherMode::Rail;
     auto fits = [&](const char* text) { return ui::text_width(text, small) <= room; };
     if (rail) {
+        const int heads =
+            std::min(static_cast<int>(ToolState::instance().tools().size()), kPoolSize);
         for (int i = 0; i < heads && two_line; ++i) {
             two_line = fits(lv_subject_get_string(s_seg_sub.at(i)));
         }
     } else {
-        two_line = two_line && fits(face_sub.c_str());
+        two_line = two_line && fits(lv_subject_get_string(&s_face_sub_subject));
     }
     set_int_if_changed(&s_two_line_subject, two_line ? 1 : 0);
 }
