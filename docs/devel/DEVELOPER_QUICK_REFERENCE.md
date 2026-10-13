@@ -320,6 +320,13 @@ lv_obj_t* progress = ui_step_progress_create(parent, steps, 3, false);  // false
 ui_step_progress_set_current(progress, 2);  // Advance to step 3
 ```
 
+A horizontal row puts a label under every step. Where the row is too narrow for that,
+`ui_step_progress_set_current_label_only(progress, true)` hides the per-step labels and
+shows one caption centred under the row, naming the step `ui_step_progress_caption_step()`
+picks: the active one, else the last completed, else the first. The caption follows
+`set_current()`, `set_completed()` and `set_label()`. The AMS operation sidebar turns it on
+for its horizontal stepper (a narrow portrait screen).
+
 ---
 
 ## Sensor Framework

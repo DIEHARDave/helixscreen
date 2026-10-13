@@ -26,6 +26,7 @@ typedef struct {
     bool horizontal;
     int32_t circle_size;     // Responsive circle diameter
     int32_t connector_width; // Responsive connector line thickness
+    lv_obj_t* caption;       // Current-label-only mode: the one label, else nullptr
 } step_progress_data_t;
 
 // Theme-aware color variables (loaded from component scope or defaults)
@@ -357,6 +358,7 @@ lv_obj_t* ui_step_progress_create(lv_obj_t* parent, const ui_step_t* steps, int 
     data->horizontal = horizontal;
     data->circle_size = circle_size;
     data->connector_width = connector_thickness;
+    data->caption = nullptr;
 
     // Allocate arrays using RAII
     auto label_buffers_ptr = lvgl_make_unique_array<char*>(static_cast<size_t>(step_count));
@@ -517,6 +519,75 @@ lv_obj_t* ui_step_progress_create(lv_obj_t* parent, const ui_step_t* steps, int 
     return container;
 }
 
+// NAMESPACE_OK: the widget's C API, beside its siblings
+int ui_step_progress_caption_step(const StepState* states, int step_count) {
+    if (!states || step_count <= 0)
+        return -1;
+    int last_completed = -1;
+    for (int i = 0; i < step_count; i++) {
+        if (states[i] == StepState::Active)
+            return i;
+        if (states[i] == StepState::Completed)
+            last_completed = i;
+    }
+    return last_completed >= 0 ? last_completed : 0;
+}
+
+static void refresh_caption(step_progress_data_t* data) {
+    if (!data || !data->caption)
+        return;
+    const int idx = ui_step_progress_caption_step(data->states, data->step_count);
+    lv_label_set_text(data->caption, idx >= 0 ? data->label_buffers[idx] : "");
+}
+
+// NAMESPACE_OK: the widget's C API, beside its siblings
+void ui_step_progress_set_current_label_only(lv_obj_t* widget, bool on) {
+    if (!widget)
+        return;
+    auto* data = (step_progress_data_t*)lv_obj_get_user_data(widget);
+    if (!data)
+        return;
+    for (int i = 0; i < data->step_count; i++) {
+        lv_obj_t* label = lv_obj_get_child(data->step_items[i], 1);
+        if (!label)
+            continue;
+        if (on)
+            lv_obj_add_flag(label, LV_OBJ_FLAG_HIDDEN);
+        else
+            lv_obj_remove_flag(label, LV_OBJ_FLAG_HIDDEN);
+    }
+    if (on && !data->caption) {
+        lv_obj_t* caption = lv_label_create(widget);
+        lv_obj_add_flag(caption, LV_OBJ_FLAG_FLOATING);
+        lv_obj_set_width(caption, LV_PCT(100));
+        lv_label_set_long_mode(caption, LV_LABEL_LONG_DOT);
+        lv_obj_set_style_text_align(caption, LV_TEXT_ALIGN_CENTER, 0);
+        lv_obj_set_style_text_font(caption, theme_manager_get_font("font_body"), 0);
+        lv_obj_set_style_text_color(caption, color_label_active, 0);
+        int32_t label_gap = theme_manager_get_spacing("step_label_gap");
+        if (label_gap <= 0)
+            label_gap = 8;
+        // The floating caption takes no room in the row, so the row reserves it as
+        // bottom padding, and the caption stands in that padding.
+        const int32_t reserve =
+            lv_font_get_line_height(theme_manager_get_font("font_body")) + label_gap;
+        lv_obj_set_style_pad_bottom(widget, reserve, 0);
+        lv_obj_align(caption, LV_ALIGN_BOTTOM_MID, 0, reserve);
+        data->caption = caption;
+    } else if (!on && data->caption) {
+        lv_obj_delete(data->caption);
+        data->caption = nullptr;
+        lv_obj_set_style_pad_bottom(widget, 0, 0);
+    }
+    refresh_caption(data);
+}
+
+// NAMESPACE_OK: the widget's C API, beside its siblings
+lv_obj_t* ui_step_progress_get_caption(lv_obj_t* widget) {
+    auto* data = widget ? (step_progress_data_t*)lv_obj_get_user_data(widget) : nullptr;
+    return data ? data->caption : nullptr;
+}
+
 void ui_step_progress_set_current(lv_obj_t* widget, int step_index) {
     if (!widget)
         return;
@@ -544,6 +615,7 @@ void ui_step_progress_set_current(lv_obj_t* widget, int step_index) {
     for (int i = 0; i < data->step_count; i++) {
         apply_step_styling(data->step_items[i], data->states[i]);
     }
+    refresh_caption(data);
 
     // Update connector colors — connector i connects FROM step i, colored by step i's state
     for (int i = 0; i < data->step_count - 1; i++) {
@@ -580,6 +652,7 @@ void ui_step_progress_set_completed(lv_obj_t* widget, int step_index) {
     if (step_index < data->step_count - 1 && data->connectors[step_index]) {
         lv_obj_set_style_bg_color(data->connectors[step_index], color_completed, 0);
     }
+    refresh_caption(data);
 }
 
 void ui_step_progress_set_label(lv_obj_t* widget, int step_index, const char* new_label) {
@@ -600,6 +673,7 @@ void ui_step_progress_set_label(lv_obj_t* widget, int step_index, const char* ne
     if (label) {
         lv_label_set_text(label, data->label_buffers[step_index]);
     }
+    refresh_caption(data);
 }
 
 lv_obj_t* ui_step_progress_test_get_connector(lv_obj_t* widget, int index) {

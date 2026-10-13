@@ -1240,7 +1240,9 @@ Below medium, where the bottom section is about 70 px, the strip drops its meter
 actions sit in one row (`styles.action_cell_quarter`, stacked icon over label: a 60 px cell
 has no room for both side by side), and the step progress is a row instead of a list
 (`include/ui_ams_slot_layout.h#ams_stepper_horizontal`): a four-step list needs about 90 px
-there, the row 56. The portrait 2x2 cells (480x800 and up) lay each button's icon beside its
+there. The row shows only the current step's label, centred under its dots
+(`ui_step_progress_set_current_label_only`), because a label under each of four 66 px steps
+collides; the row is 39 px. The portrait 2x2 cells (480x800 and up) lay each button's icon beside its
 label: the longest, "Check slots", takes 126 px of a 223 px cell at 480x800. `[portrait]`
 pins the 272x480 panel: the strip and status above the diagram, the bottom section under
 it, the capped canvas with the toolhead whole, eight lane badges apart.

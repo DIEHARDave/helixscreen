@@ -16,13 +16,14 @@
 
 #include "ui_step_progress.h"
 
+#include "../lvgl_test_fixture.h"
 #include "lvgl/lvgl.h"
 
-#include "../lvgl_test_fixture.h"
+#include <array>
+#include <cstdlib>
+#include <string>
 
 #include "../catch_amalgamated.hpp"
-
-#include <array>
 
 namespace {
 
@@ -51,9 +52,8 @@ TEST_CASE_METHOD(LVGLTestFixture, "step progress creates vertical connectors whe
     lv_obj_t* parent = make_sized_parent(test_screen());
 
     auto steps = make_vertical_steps();
-    lv_obj_t* widget =
-        ui_step_progress_create(parent, steps.data(), static_cast<int>(steps.size()),
-                                /*horizontal=*/false, nullptr);
+    lv_obj_t* widget = ui_step_progress_create(parent, steps.data(), static_cast<int>(steps.size()),
+                                               /*horizontal=*/false, nullptr);
     REQUIRE(widget != nullptr);
 
     lv_obj_update_layout(parent);
@@ -78,9 +78,8 @@ TEST_CASE_METHOD(LVGLTestFixture, "step progress recomputes connectors on reflow
     lv_obj_set_width(parent, 600);
 
     auto steps = make_vertical_steps(); // labels/states reused; horizontal layout
-    lv_obj_t* widget =
-        ui_step_progress_create(parent, steps.data(), static_cast<int>(steps.size()),
-                                /*horizontal=*/true, nullptr);
+    lv_obj_t* widget = ui_step_progress_create(parent, steps.data(), static_cast<int>(steps.size()),
+                                               /*horizontal=*/true, nullptr);
     REQUIRE(widget != nullptr);
     lv_obj_update_layout(parent);
 
@@ -104,4 +103,68 @@ TEST_CASE_METHOD(LVGLTestFixture, "step progress recomputes connectors on reflow
     // its create-time width and overshoots the narrower layout.
     CHECK(narrow_w < wide_w);
     CHECK(narrow_w > 0);
+}
+
+TEST_CASE("step progress caption: the active step, else the last done, else the first",
+          "[ui][step][step_caption]") {
+    using helix::StepState;
+    const StepState active[] = {StepState::Completed, StepState::Active, StepState::Pending};
+    CHECK(ui_step_progress_caption_step(active, 3) == 1);
+    const StepState done[] = {StepState::Completed, StepState::Completed, StepState::Completed};
+    CHECK(ui_step_progress_caption_step(done, 3) == 2);
+    const StepState fresh[] = {StepState::Pending, StepState::Pending, StepState::Pending};
+    CHECK(ui_step_progress_caption_step(fresh, 3) == 0);
+    // Steps completed out of order, nothing active: the last one done.
+    const StepState partial[] = {StepState::Completed, StepState::Pending, StepState::Completed};
+    CHECK(ui_step_progress_caption_step(partial, 3) == 2);
+    CHECK(ui_step_progress_caption_step(nullptr, 0) == -1);
+}
+
+TEST_CASE_METHOD(LVGLTestFixture,
+                 "step progress current-label-only mode: one centred caption, no per-step labels",
+                 "[ui][step][step_caption]") {
+    lv_obj_t* parent = make_sized_parent(test_screen());
+    lv_obj_set_width(parent, 264);
+    auto steps = make_vertical_steps();
+    lv_obj_t* widget = ui_step_progress_create(parent, steps.data(), static_cast<int>(steps.size()),
+                                               /*horizontal=*/true, nullptr);
+    REQUIRE(widget != nullptr);
+    ui_step_progress_set_current_label_only(widget, true);
+    ui_step_progress_set_current(widget, 2);
+    lv_obj_update_layout(parent);
+
+    // Every step's own label is hidden; the caption names the current step.
+    for (uint32_t i = 0; i < lv_obj_get_child_count(widget); ++i) {
+        lv_obj_t* item = lv_obj_get_child(widget, (int32_t)i);
+        if (lv_obj_get_child_count(item) < 2)
+            continue; // a connector
+        CHECK(lv_obj_has_flag(lv_obj_get_child(item, 1), LV_OBJ_FLAG_HIDDEN));
+    }
+    lv_obj_t* caption = ui_step_progress_get_caption(widget);
+    REQUIRE(caption != nullptr);
+    CHECK(std::string(lv_label_get_text(caption)) == "Purge");
+    lv_area_t ca, wa;
+    lv_obj_get_coords(caption, &ca);
+    lv_obj_get_coords(widget, &wa);
+    CHECK(ca.y1 >= wa.y1);
+    CHECK(ca.y2 <= wa.y2);
+    CHECK(std::abs((ca.x1 + ca.x2) / 2 - (wa.x1 + wa.x2) / 2) <= 1);
+    // The caption stands under the row of dots, not over it.
+    for (uint32_t i = 0; i < lv_obj_get_child_count(widget); ++i) {
+        lv_obj_t* item = lv_obj_get_child(widget, (int32_t)i);
+        if (item == caption || lv_obj_get_child_count(item) < 2)
+            continue;
+        lv_area_t ia;
+        lv_obj_get_coords(lv_obj_get_child(item, 0), &ia);
+        CHECK(ca.y1 > ia.y2);
+    }
+
+    // A relabel of the current step reaches the caption; another step's does not.
+    ui_step_progress_set_label(widget, 2, "Purge 40 mm");
+    CHECK(std::string(lv_label_get_text(caption)) == "Purge 40 mm");
+    ui_step_progress_set_label(widget, 0, "Heat nozzle 220");
+    CHECK(std::string(lv_label_get_text(caption)) == "Purge 40 mm");
+
+    ui_step_progress_set_current(widget, 3);
+    CHECK(std::string(lv_label_get_text(caption)) == "Clean");
 }

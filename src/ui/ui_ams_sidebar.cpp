@@ -760,6 +760,8 @@ void AmsOperationSidebar::recreate_step_progress_for_operation(StepOperationType
             step_progress_ =
                 ui_step_progress_create(step_progress_container_, steps.data(), current_step_count_,
                                         horizontal, "ams_step_progress");
+            if (step_progress_ && horizontal)
+                ui_step_progress_set_current_label_only(step_progress_, true);
             if (step_progress_) {
                 // Observe the backend-supplied current-step subject. Every
                 // backend shipping today routes it through AmsState (narration
@@ -886,6 +888,9 @@ void AmsOperationSidebar::recreate_step_progress_for_operation(StepOperationType
         spdlog::error("[AmsSidebar] Failed to create step progress for op_type={}",
                       static_cast<int>(op_type));
     } else {
+        // A row has no width for a label under every step: name the current one.
+        if (horizontal)
+            ui_step_progress_set_current_label_only(step_progress_, true);
         spdlog::debug("[AmsSidebar] Created step progress: {} steps for op_type={}",
                       current_step_count_, static_cast<int>(op_type));
     }
