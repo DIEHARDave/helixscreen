@@ -726,6 +726,7 @@
   <translation tag="Could not initialize WiFi hardware. Check system configuration." zh="无法初始化 WiFi 硬件。请检查系统配置。"/>
   <translation tag="Could not load printer database" zh="无法加载打印机数据库"/>
   <translation tag="Could not move the plate" zh="无法移动热床"/>
+  <translation tag="Could not open a browser for the update" zh="无法打开浏览器进行更新"/>
   <translation tag="Could not parse tips database" zh="无法解析提示数据库"/>
   <translation tag="Could not reach Spoolman at" zh="无法连接 Spoolman："/>
   <translation tag="Could not read the screw adjustments from the printer" zh="无法从打印机读取螺丝调整数据"/>

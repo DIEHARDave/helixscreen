@@ -285,8 +285,11 @@ class MoonrakerDiscoverySequence {
      * @param service_state `service_state` out of machine.system_info, or an
      *        empty object when that query failed — which reads as "assume
      *        available" (prestonbrown/helixscreen#1351).
+     * @param probe_local_endpoints Fall back to probing loopback camera ports
+     *        when the registry has nothing usable; see
+     *        helix::local_camera_probe_safe() for where that is allowed.
      */
-    void detect_webcam(json service_state);
+    void detect_webcam(json service_state, bool probe_local_endpoints);
 
     /**
      * @brief Continue discovery after Klippy readiness gate passes

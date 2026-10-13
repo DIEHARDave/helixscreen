@@ -1160,7 +1160,8 @@ TEST_CASE("Toolhead badges: several toolheads are named by extruder, never by a 
         const auto layout = compute_system_tool_layout(info, nullptr);
         const auto badges = compute_tool_badge_labels(layout, info, -1, -1);
         CHECK(badges.prefix == 'E');
-        CHECK(badges.numbers == std::vector<int>{helix::ui::lane_number(0), helix::ui::lane_number(1)});
+        CHECK(badges.numbers ==
+              std::vector<int>{helix::ui::lane_number(0), helix::ui::lane_number(1)});
     }
 
     SECTION("with none the toolhead is its position, not the lane's group") {

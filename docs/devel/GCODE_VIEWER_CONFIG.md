@@ -23,7 +23,7 @@ the renderer:
 
 | Value | Mode | Notes |
 |-------|------|-------|
-| 0 | Auto | 3D where GLES is available, 2D otherwise. Default. |
+| 0 | Auto | 3D where GLES is available, 2D otherwise. Default. On an SDL build "available" is decided at runtime: the renderer resolves GLES2 from the SDL context, and a machine without it gets 2D. |
 | 1 | 3D | Only offered on `ENABLE_GLES_3D` builds |
 | 2 | 2D Layers | Software rasterizer, every platform |
 | 3 | Thumbnail Only | No toolpath rendering at all |

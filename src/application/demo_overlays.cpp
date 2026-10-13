@@ -239,6 +239,7 @@ bool show_demo_overlay(const std::string& name) {
         // detection does. The mock publishes no reachable webcam, so
         // HELIX_DEMO_SNAPSHOT_URL names a snapshot to fetch instead.
         auto sources = helix::live_camera_sources();
+#if HELIX_HAS_CAMERA
         if (const char* url = std::getenv("HELIX_DEMO_SNAPSHOT_URL"); url && *url) {
             sources.stream_frame = nullptr;
             sources.snapshot = [u = std::string(url)] {
@@ -248,6 +249,7 @@ bool show_demo_overlay(const std::string& name) {
                                              }};
             };
         }
+#endif
         auto modal = std::make_unique<SpaghettiDetectionModal>();
         modal->set_detection("Spaghetti detected (78%)");
         modal->request_camera_frame(sources);

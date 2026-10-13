@@ -744,6 +744,7 @@ translations:
   Could not load printer database: 无法加载打印机数据库
   Could not move the plate: 无法移动热床
 
+  Could not open a browser for the update: 无法打开浏览器进行更新
   Could not parse tips database: 无法解析提示数据库
   Could not reach Spoolman at: 无法连接 Spoolman：
   Could not read the screw adjustments from the printer: 无法从打印机读取螺丝调整数据

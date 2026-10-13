@@ -144,7 +144,25 @@ TEST_CASE("helix::flashforge_machine_display_name matches the printer DB spellin
           "FlashForge Adventurer 5X");
     CHECK(std::string(helix::flashforge_machine_display_name(helix::FlashForgeMachine::Creator5)) ==
           "FlashForge Creator 5");
-    CHECK(std::string(
-              helix::flashforge_machine_display_name(helix::FlashForgeMachine::Creator5Pro)) ==
-          "FlashForge Creator 5 Pro");
+    CHECK(std::string(helix::flashforge_machine_display_name(
+              helix::FlashForgeMachine::Creator5Pro)) == "FlashForge Creator 5 Pro");
+}
+
+TEST_CASE("helix::local_camera_probe_safe allows a K1 and refuses every FlashForge MIPS board",
+          "[platform_info][camera]") {
+    TempDirGuard k1;
+    write_probe_file(k1.path, "etc/os-release", "ID=debian\n");
+    REQUIRE(helix::local_camera_probe_safe(k1.path.string()));
+
+    for (const char* layout : {"zmod-marker", "zmod-prog", "forgex", "forgex-host"}) {
+        TempDirGuard tmp;
+        INFO("layout: " << layout);
+        REQUIRE_FALSE(helix::local_camera_probe_safe(
+            helix::test::make_ad5x_layout(tmp.path, layout).string()));
+    }
+
+    // Inside the Z-Mod chroot only the os-release codename names the board.
+    TempDirGuard chroot;
+    write_probe_file(chroot.path, "etc/os-release", "VERSION_CODENAME=\"Creator5Pro 1.9.9\"\n");
+    REQUIRE_FALSE(helix::local_camera_probe_safe(chroot.path.string()));
 }

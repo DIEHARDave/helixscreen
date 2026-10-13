@@ -22,6 +22,7 @@ const std::vector<Info> kPlatforms = {
     {"pi", "Raspberry Pi", false, ELF64, LE, EM_AARCH64_, {}},
     {"pi32", "Raspberry Pi (32-bit)", false, ELF32, LE, EM_ARM_, {}},
     {"x86", "x86 Desktop", false, ELF64, LE, EM_X86_64_, {}},
+    {"x86-desktop", "x86 Linux Desktop (windowed)", false, ELF64, LE, EM_X86_64_, {}},
     {"ad5m", "FlashForge Adventurer 5M", true, ELF32, LE, EM_ARM_, kZmodDiagnosticFiles},
     {"ad5x", "FlashForge Adventurer 5X", true, ELF32, LE, EM_MIPS_, kZmodDiagnosticFiles},
     {"mips", "MIPS (K1 series / AD5X)", true, ELF32, LE, EM_MIPS_, kZmodDiagnosticFiles},
@@ -43,6 +44,13 @@ const Info* find(const std::string& key) {
         }
     }
     return nullptr;
+}
+
+std::vector<std::string> release_asset_keys(const std::string& key, bool ad5x_board) {
+    if (key == "mips") {
+        return {key, ad5x_board ? "ad5x" : "k1"};
+    }
+    return {key};
 }
 
 std::string display_name(const std::string& key) {
@@ -81,6 +89,8 @@ std::string current_key() {
     return "k2";
 #elif defined(HELIX_PLATFORM_X86)
     return "x86";
+#elif defined(HELIX_PLATFORM_X86_DESKTOP)
+    return "x86-desktop";
 #elif defined(HELIX_PLATFORM_SNAPMAKER_U1)
     return "snapmaker-u1";
 #elif defined(HELIX_PLATFORM_PI32)

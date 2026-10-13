@@ -321,17 +321,36 @@ TEST_CASE_METHOD(MultiBackendFixture,
     helix::PrinterDiscovery hw;
     // The C5's object list under Z-Mod 1.7.4: the four heads, the changer's
     // dock/grab buttons, zmod_color, and the afclite shim's AFC objects.
-    nlohmann::json objects = nlohmann::json::array(
-        {"AFC", "AFC_unit C5", "AFC_lane E0", "AFC_lane E1", "AFC_lane E2", "AFC_lane E3",
-         "zmod_afclite", "zmod_color", "gcode_button extruder_pos1", "gcode_button extruder_grab1",
-         "gcode_button extruder_pos2", "gcode_button extruder_grab2", "gcode_button extruder_pos3",
-         "gcode_button extruder_grab3", "gcode_button extruder_pos4", "gcode_button extruder_grab4",
-         "extruder", "extruder1", "extruder2", "extruder3", "heater_bed",
-         "heater_generic chamber_heater", "filament_switch_sensor fd_ex0",
-         "filament_switch_sensor fd_ex1", "filament_switch_sensor fd_ex2",
-         "filament_switch_sensor fd_ex3", "filament_motion_sensor fm_ex0",
-         "filament_motion_sensor fm_ex1", "filament_motion_sensor fm_ex2",
-         "filament_motion_sensor fm_ex3"});
+    nlohmann::json objects = nlohmann::json::array({"AFC",
+                                                    "AFC_unit C5",
+                                                    "AFC_lane E0",
+                                                    "AFC_lane E1",
+                                                    "AFC_lane E2",
+                                                    "AFC_lane E3",
+                                                    "zmod_afclite",
+                                                    "zmod_color",
+                                                    "gcode_button extruder_pos1",
+                                                    "gcode_button extruder_grab1",
+                                                    "gcode_button extruder_pos2",
+                                                    "gcode_button extruder_grab2",
+                                                    "gcode_button extruder_pos3",
+                                                    "gcode_button extruder_grab3",
+                                                    "gcode_button extruder_pos4",
+                                                    "gcode_button extruder_grab4",
+                                                    "extruder",
+                                                    "extruder1",
+                                                    "extruder2",
+                                                    "extruder3",
+                                                    "heater_bed",
+                                                    "heater_generic chamber_heater",
+                                                    "filament_switch_sensor fd_ex0",
+                                                    "filament_switch_sensor fd_ex1",
+                                                    "filament_switch_sensor fd_ex2",
+                                                    "filament_switch_sensor fd_ex3",
+                                                    "filament_motion_sensor fm_ex0",
+                                                    "filament_motion_sensor fm_ex1",
+                                                    "filament_motion_sensor fm_ex2",
+                                                    "filament_motion_sensor fm_ex3"});
     hw.parse_objects(objects);
 
     // The shim's own marker was seen. Its `AFC_unit C5` also trips the

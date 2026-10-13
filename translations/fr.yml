@@ -819,6 +819,7 @@ translations:
   Could not load printer database: Impossible de charger la base de données d'imprimantes
   Could not move the plate: Impossible de déplacer le plateau
 
+  Could not open a browser for the update: "Impossible d'ouvrir un navigateur pour la mise à jour"
   Could not parse tips database: Impossible d'analyser la base de données de conseils
   Could not reach Spoolman at: Impossible de joindre Spoolman à
   Could not read the screw adjustments from the printer: Impossible de lire les ajustements des vis du plateau depuis l'imprimante

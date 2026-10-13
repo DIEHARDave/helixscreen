@@ -16,7 +16,7 @@ Welcome to the HelixScreen documentation. Choose your path:
 | [**Troubleshooting**](user/TROUBLESHOOTING.md) | Solutions to common problems |
 | [**FAQ**](user/FAQ.md) | Quick answers to common questions |
 | [**Telemetry**](user/TELEMETRY.md) | What telemetry collects, privacy controls, opt-in/out |
-| [**Feature Guides**](user/guide/) | 30 guides: per-feature (printing, calibration, filament, sensors, camera, and more) plus per-printer install guides (K1C, K2, AD5M, AD5X, CC1, Sonic Pad, U1) |
+| [**Feature Guides**](user/guide/) | 33 guides: per-feature (printing, calibration, filament, sensors, camera, and more) plus per-platform install guides (K1C, K2, AD5M, AD5X, CC1, Sonic Pad, U1, K-Touch, Linux desktop window) |
 
 ---
 
@@ -157,7 +157,7 @@ docs/
 │   ├── CONFIGURATION.md      # Settings reference
 │   ├── TROUBLESHOOTING.md    # Common problems
 │   ├── FAQ.md                # Frequently asked questions
-│   └── guide/                # 30 guides: per-feature + per-printer install (+ guide/settings/)
+│   └── guide/                # 33 guides: per-feature + per-platform install (+ guide/settings/)
 │
 ├── devel/                    # DEVELOPER DOCUMENTATION
 │   ├── CLAUDE.md             # Full developer doc index

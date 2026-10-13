@@ -809,6 +809,7 @@ translations:
   Could not load printer database: Impossibile caricare il database della stampante
   Could not move the plate: Impossibile spostare il piano
 
+  Could not open a browser for the update: "Impossibile aprire un browser per l'aggiornamento"
   Could not parse tips database: Impossibile analizzare il database dei suggerimenti
   Could not reach Spoolman at: Impossibile raggiungere Spoolman a
   Could not read the screw adjustments from the printer: Impossibile leggere le regolazioni delle viti dalla stampante

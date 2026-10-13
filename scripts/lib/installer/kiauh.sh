@@ -41,6 +41,8 @@ detect_kiauh_dir() {
 detect_kiauh() {
     KIAUH_DIR=""
     [ "${skip_kiauh_registration:-false}" = "true" ] && return 0
+    # KIAUH manages printer-host services, which a desktop install is not.
+    [ "${platform:-}" = "x86-desktop" ] && return 0
     KIAUH_DIR=$(detect_kiauh_dir)
     if [ -n "$KIAUH_DIR" ] && [ -d "$KIAUH_DIR/helixscreen" ]; then
         KIAUH_DIR=""

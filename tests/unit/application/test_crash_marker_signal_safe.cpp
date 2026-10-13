@@ -29,6 +29,7 @@
 #include <filesystem>
 #include <fstream>
 #include <string>
+#include <unistd.h>
 
 #include "../../catch_amalgamated.hpp"
 
@@ -165,4 +166,61 @@ TEST_CASE("a crash loop boots this run in safe mode", "[application][crash_loop]
     CHECK_FALSE(helix::record_start_and_check_crash_loop(path, NOW + 40));
     CHECK_FALSE(get_runtime_config()->crash_loop_safe_mode);
     fs::remove(path);
+}
+
+namespace {
+
+/// A directory holding a marker that the process cannot delete: write
+/// permission on the directory is what unlink(2) needs, and a read-only
+/// filesystem fails the same call with EROFS.
+struct UnremovableMarker {
+    fs::path dir;
+    std::string path;
+
+    explicit UnremovableMarker(const char* tag) {
+        dir = fs::temp_directory_path() / (std::string("helix_crash_marker_ro_") + tag);
+        // A run that died mid-test leaves the directory read-only behind it.
+        std::error_code ec;
+        fs::permissions(dir, fs::perms::owner_all, ec);
+        fs::remove_all(dir, ec);
+        fs::create_directories(dir);
+        path = (dir / ".crash_restart_count").string();
+        std::ofstream(path) << "1770000000\n1770000010\n1770000020\n";
+        fs::permissions(dir, fs::perms::owner_read | fs::perms::owner_exec);
+    }
+    ~UnremovableMarker() {
+        std::error_code ec;
+        fs::permissions(dir, fs::perms::owner_all, ec);
+        fs::remove_all(dir, ec);
+    }
+    /// Root ignores directory permissions, so the setup proves nothing there.
+    bool effective() const {
+        return ::access(dir.c_str(), W_OK) != 0;
+    }
+};
+
+} // namespace
+
+TEST_CASE("clearing a marker that cannot be removed does not throw", "[application][crash_loop]") {
+    UnremovableMarker marker("clear");
+    if (!marker.effective()) {
+        SKIP("running as root: directory permissions do not stop unlink");
+    }
+    CHECK_NOTHROW(helix::clear_crash_marker(marker.path));
+    CHECK(fs::exists(marker.path));
+
+    // A marker that was never written is the common clean-shutdown case.
+    CHECK_NOTHROW(helix::clear_crash_marker((marker.dir / "absent").string()));
+}
+
+TEST_CASE("a crash loop whose marker cannot be removed still boots in safe mode",
+          "[application][crash_loop]") {
+    ScopedRuntimeConfig scoped_config;
+    UnremovableMarker marker("loop");
+    if (!marker.effective()) {
+        SKIP("running as root: directory permissions do not stop unlink");
+    }
+    bool loop = false;
+    REQUIRE_NOTHROW(loop = helix::record_start_and_check_crash_loop(marker.path, 1770000030));
+    CHECK(loop);
 }

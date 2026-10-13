@@ -55,6 +55,7 @@
 #ifdef __ANDROID__
 #include "system/http_android.h"
 #endif
+#include "platform_info.h"
 #include "platform_table.h"
 #include "version.h"
 
@@ -154,10 +155,71 @@ std::string json_string_or_empty(const json& j, const std::string& key) {
     return "";
 }
 
+/// "'mips' or 'k1'": the keys a lookup tried, for logs and errors.
+std::string describe_asset_keys(const std::vector<std::string>& asset_keys) {
+    std::string out;
+    for (const auto& key : asset_keys) {
+        out += (out.empty() ? "'" : " or '") + key + "'";
+    }
+    return out;
+}
+
+/// This build's release_asset_keys(), on the board it is running on. The board
+/// probe only matters to the unified MIPS build, so no other build stats for it.
+std::vector<std::string> this_build_release_asset_keys() {
+    const std::string key = helix::platform::current_key();
+    return helix::platform::release_asset_keys(key,
+                                               key == "mips" && helix::ad5x_mod_layout_present());
+}
+
+/// Picks @p platform_key's asset out of a GitHub release asset list into
+/// @p info. False, leaving @p info untouched, when the release has none.
+bool select_github_asset(const json& assets, const std::string& platform_key,
+                         UpdateChecker::ReleaseInfo& info) {
+    const std::string zip_name = "helixscreen-" + platform_key + ".zip";
+    const std::string platform_prefix = "helixscreen-" + platform_key + "-";
+    spdlog::info("[UpdateChecker] Platform key: '{}', prefer prefix '{}...tar.gz' else '{}'",
+                 platform_key, platform_prefix, zip_name);
+
+    std::string zip_url;
+    size_t zip_size = 0;
+    for (const auto& asset : assets) {
+        std::string name = asset.value("name", "");
+        // The version's 'v' must sit directly after the platform prefix:
+        // a longer platform key that extends this one (k1-dynamic for k1)
+        // carries the prefix too and must not be selected for the shorter
+        // key. Asset names are helixscreen-<plat>-v<version>.tar.gz.
+        const size_t after_prefix = platform_prefix.size();
+        if (name.size() > after_prefix + 1 && name[after_prefix] == 'v' &&
+            isdigit(static_cast<unsigned char>(name[after_prefix + 1])) &&
+            name.compare(0, after_prefix, platform_prefix) == 0 &&
+            name.find(".tar.gz") != std::string::npos) {
+            info.download_url = asset.value("browser_download_url", "");
+            info.download_bytes = asset.value("size", static_cast<size_t>(0));
+            spdlog::info("[UpdateChecker] Selected asset: {} ({} bytes)", name,
+                         info.download_bytes);
+            return true;
+        }
+        if (zip_url.empty() && name == zip_name) {
+            zip_url = asset.value("browser_download_url", "");
+            zip_size = asset.value("size", static_cast<size_t>(0));
+        }
+    }
+    if (zip_url.empty()) {
+        return false;
+    }
+    info.download_url = zip_url;
+    info.download_bytes = zip_size;
+    spdlog::info("[UpdateChecker] Selected zip asset (no tar.gz present): {} ({} bytes)", zip_name,
+                 info.download_bytes);
+    return true;
+}
+
 /**
  * @brief Parse ReleaseInfo from a GitHub release JSON object (already parsed)
  */
-bool parse_github_release(const json& j, UpdateChecker::ReleaseInfo& info, std::string& error) {
+bool parse_github_release(const json& j, UpdateChecker::ReleaseInfo& info, std::string& error,
+                          const std::vector<std::string>& asset_keys) {
     info.tag_name = json_string_or_empty(j, "tag_name");
     info.release_notes = json_string_or_empty(j, "body");
     info.published_at = json_string_or_empty(j, "published_at");
@@ -182,46 +244,17 @@ bool parse_github_release(const json& j, UpdateChecker::ReleaseInfo& info, std::
     // (mirrors the R2 manifest --include-zip gate). Once telemetry shows
     // v0.99.30 adoption is gone, this preference can flip back to zip.
     if (j.contains("assets") && j["assets"].is_array()) {
-        const std::string platform_key = helix::platform::current_key();
-        const std::string zip_name = "helixscreen-" + platform_key + ".zip";
-        const std::string platform_prefix = "helixscreen-" + platform_key + "-";
-        spdlog::info("[UpdateChecker] Platform key: '{}', prefer prefix '{}...tar.gz' else '{}'",
-                     platform_key, platform_prefix, zip_name);
-
-        std::string zip_url;
-        size_t zip_size = 0;
-        for (const auto& asset : j["assets"]) {
-            std::string name = asset.value("name", "");
-            // The version's 'v' must sit directly after the platform prefix:
-            // a longer platform key that extends this one (k1-dynamic for k1)
-            // carries the prefix too and must not be selected for the shorter
-            // key. Asset names are helixscreen-<plat>-v<version>.tar.gz.
-            const size_t after_prefix = platform_prefix.size();
-            if (name.size() > after_prefix + 1 && name[after_prefix] == 'v' &&
-                isdigit(static_cast<unsigned char>(name[after_prefix + 1])) &&
-                name.compare(0, after_prefix, platform_prefix) == 0 &&
-                name.find(".tar.gz") != std::string::npos) {
-                info.download_url = asset.value("browser_download_url", "");
-                info.download_bytes = asset.value("size", static_cast<size_t>(0));
-                spdlog::info("[UpdateChecker] Selected asset: {} ({} bytes)", name,
-                             info.download_bytes);
+        bool found = false;
+        for (const auto& key : asset_keys) {
+            if (select_github_asset(j["assets"], key, info)) {
+                found = true;
                 break;
             }
-            if (zip_url.empty() && name == zip_name) {
-                zip_url = asset.value("browser_download_url", "");
-                zip_size = asset.value("size", static_cast<size_t>(0));
-            }
-        }
-        if (info.download_url.empty() && !zip_url.empty()) {
-            info.download_url = zip_url;
-            info.download_bytes = zip_size;
-            spdlog::info("[UpdateChecker] Selected zip asset (no tar.gz present): {} ({} bytes)",
-                         zip_name, info.download_bytes);
         }
         // No fallback to arbitrary assets — wrong-platform binaries can brick devices
-        if (info.download_url.empty()) {
-            spdlog::warn("[UpdateChecker] No asset found for platform '{}' in release {}",
-                         platform_key, info.version);
+        if (!found) {
+            spdlog::warn("[UpdateChecker] No asset found for platform {} in release {}",
+                         describe_asset_keys(asset_keys), info.version);
         }
     }
 
@@ -632,16 +665,58 @@ std::string strip_version_prefix(const std::string& tag) {
  */
 bool parse_github_release(const std::string& json_str, UpdateChecker::ReleaseInfo& info,
                           std::string& error) {
+    return parse_github_release(json_str, info, error, this_build_release_asset_keys());
+}
+
+bool parse_github_release(const std::string& json_str, UpdateChecker::ReleaseInfo& info,
+                          std::string& error, const std::vector<std::string>& asset_keys) {
     try {
         auto j = json::parse(json_str);
         // :: reaches the anonymous-namespace json overload; unqualified lookup
-        // stops at this namespace and selects the string overload above.
-        return ::parse_github_release(j, info, error);
+        // stops at this namespace and selects the string overloads above.
+        return ::parse_github_release(j, info, error, asset_keys);
     } catch (const json::exception& e) {
         error = std::string("JSON parse error: ") + e.what();
         return false;
     } catch (const std::exception& e) {
         error = std::string("Parse error: ") + e.what();
+        return false;
+    }
+}
+
+bool parse_release_manifest(const std::string& json_str, UpdateChecker::ReleaseInfo& info,
+                            std::string& error, const std::vector<std::string>& asset_keys) {
+    try {
+        auto j = json::parse(json_str);
+
+        info.version = json_string_or_empty(j, "version");
+        if (info.version.empty()) {
+            error = "Missing 'version' field in manifest";
+            return false;
+        }
+
+        info.tag_name = json_string_or_empty(j, "tag");
+        info.release_notes = json_string_or_empty(j, "notes");
+        info.published_at = json_string_or_empty(j, "published_at");
+
+        if (!j.contains("assets") || !j["assets"].is_object() || j["assets"].empty()) {
+            error = "Missing or empty 'assets' in manifest";
+            return false;
+        }
+
+        const auto& assets = j["assets"];
+        for (const auto& key : asset_keys) {
+            if (assets.contains(key)) {
+                spdlog::debug("[UpdateChecker] Manifest asset key: '{}'", key);
+                populate_release_urls_from_manifest(assets[key], info);
+                return true;
+            }
+        }
+        error = "No asset for platform " + describe_asset_keys(asset_keys) + " in manifest";
+        return false;
+
+    } catch (const json::exception& e) {
+        error = std::string("JSON parse error: ") + e.what();
         return false;
     }
 }
@@ -1301,6 +1376,18 @@ void UpdateChecker::report_download_status(DownloadStatus status, int progress,
 void UpdateChecker::start_download() {
     if (shutting_down_.load())
         return;
+
+#ifdef HELIX_PLATFORM_X86_DESKTOP
+    // The desktop build never rewrites its own install: Install Update opens the
+    // release page (UpdatesSettingsOverlay), and the installer it would run here
+    // treats every in-app update as the kiosk flavour.
+    spdlog::warn("[UpdateChecker] Download refused: the desktop build updates through its "
+                 "installer, not in-app");
+    report_download_status(DownloadStatus::Error, 0,
+                           lv_tr("Error: This install can't update itself"),
+                           "desktop build: install updates with the installer");
+    return;
+#endif
 
     // Firmware-managed devices own updates via their own package pipeline, and a
     // read-only / non-writable install tree can't be swapped at all. Never
@@ -3412,41 +3499,13 @@ bool UpdateChecker::fetch_r2_manifest(const std::string& channel, ReleaseInfo& i
         return false;
     }
 
-    // Parse manifest (same format as dev channel - generated by generate-manifest.sh)
-    try {
-        auto j = json::parse(body);
-
-        info.version = json_string_or_empty(j, "version");
-        if (info.version.empty()) {
-            error = "Missing 'version' field in R2 manifest";
-            return false;
-        }
-
-        info.tag_name = json_string_or_empty(j, "tag");
-        info.release_notes = json_string_or_empty(j, "notes");
-        info.published_at = json_string_or_empty(j, "published_at");
-
-        if (!j.contains("assets") || !j["assets"].is_object() || j["assets"].empty()) {
-            error = "Missing or empty 'assets' in R2 manifest";
-            return false;
-        }
-
-        std::string platform = helix::platform::current_key();
-        const auto& assets = j["assets"];
-        if (!assets.contains(platform)) {
-            error = "No asset for platform '" + platform + "' in R2 manifest";
-            return false;
-        }
-
-        populate_release_urls_from_manifest(assets[platform], info);
-
-        spdlog::debug("[UpdateChecker] R2 manifest parsed: {} ({})", info.version, channel);
-        return true;
-
-    } catch (const json::exception& e) {
-        error = std::string("R2 JSON parse error: ") + e.what();
+    // Same schema as the dev channel manifest (generate-manifest.sh)
+    if (!helix::parse_release_manifest(body, info, error, this_build_release_asset_keys())) {
+        error = "R2 " + error;
         return false;
     }
+    spdlog::debug("[UpdateChecker] R2 manifest parsed: {} ({})", info.version, channel);
+    return true;
 }
 
 bool UpdateChecker::fetch_stable_release(ReleaseInfo& info, std::string& error) {
@@ -3521,6 +3580,8 @@ bool UpdateChecker::fetch_beta_release(ReleaseInfo& info, std::string& error) {
             return false;
         }
 
+        const auto asset_keys = this_build_release_asset_keys();
+
         // First pass: find latest prerelease (GitHub returns newest-first)
         for (const auto& rel : releases) {
             if (rel.value("draft", false))
@@ -3528,7 +3589,7 @@ bool UpdateChecker::fetch_beta_release(ReleaseInfo& info, std::string& error) {
             if (!rel.value("prerelease", false))
                 continue;
 
-            if (::parse_github_release(rel, info, error)) {
+            if (::parse_github_release(rel, info, error, asset_keys)) {
                 spdlog::debug("[UpdateChecker] Beta: selected prerelease {}", info.tag_name);
                 return true;
             }
@@ -3538,7 +3599,7 @@ bool UpdateChecker::fetch_beta_release(ReleaseInfo& info, std::string& error) {
         for (const auto& rel : releases) {
             if (rel.value("draft", false))
                 continue;
-            if (::parse_github_release(rel, info, error)) {
+            if (::parse_github_release(rel, info, error, asset_keys)) {
                 spdlog::debug("[UpdateChecker] Beta: no prerelease found, falling back to {}",
                               info.tag_name);
                 return true;
@@ -3586,40 +3647,7 @@ bool UpdateChecker::fetch_dev_release(ReleaseInfo& info, std::string& error) {
             return false;
         }
 
-        // Parse dev manifest
-        try {
-            auto j = json::parse(body);
-
-            info.version = json_string_or_empty(j, "version");
-            if (info.version.empty()) {
-                error = "Missing 'version' field in manifest";
-                return false;
-            }
-
-            info.tag_name = json_string_or_empty(j, "tag");
-            info.release_notes = json_string_or_empty(j, "notes");
-            info.published_at = json_string_or_empty(j, "published_at");
-
-            if (!j.contains("assets") || !j["assets"].is_object() || j["assets"].empty()) {
-                error = "Missing or empty 'assets' in manifest";
-                return false;
-            }
-
-            std::string platform = helix::platform::current_key();
-            const auto& assets = j["assets"];
-            if (!assets.contains(platform)) {
-                error = "No asset for platform '" + platform + "'";
-                return false;
-            }
-
-            populate_release_urls_from_manifest(assets[platform], info);
-
-            return true;
-
-        } catch (const json::exception& e) {
-            error = std::string("JSON parse error: ") + e.what();
-            return false;
-        }
+        return helix::parse_release_manifest(body, info, error, this_build_release_asset_keys());
     }
 
     // No explicit dev_url -- use R2 default

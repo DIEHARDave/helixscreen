@@ -746,6 +746,7 @@ translations:
   Could not load printer database: プリンターデータベースを読み込めませんでした
   Could not move the plate: ベッドを動かせませんでした
 
+  Could not open a browser for the update: 更新用のブラウザを開けませんでした
   Could not parse tips database: ヒントデータベースを解析できませんでした
   Could not reach Spoolman at: 'Spoolman に接続できません:'
   Could not read the screw adjustments from the printer: プリンターからネジ調整を読み取れませんでした

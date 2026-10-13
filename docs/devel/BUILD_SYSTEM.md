@@ -63,6 +63,8 @@ Docker images are **automatically built** on first use - no manual setup require
 | **FlashForge AD5X** | `make ad5x-docker` | MIPS32r5 (glibc) | fbdev | `build/ad5x/` |
 | **Creality K1 (dynamic)** | `make k1-dynamic-docker` | MIPS32r2 (glibc) | fbdev | `build/k1-dynamic/` |
 | **Creality K2** | `make k2-docker` | armv7-a (musl) | fbdev | `build/k2/` |
+| **x86_64 SBC / mini PC (kiosk)** | `make x86-all-docker` | x86_64 (glibc 2.31) | DRM/fbdev | `build/x86/`, `build/x86-fbdev/` |
+| **x86_64 Linux desktop (window)** | `make x86-desktop-docker` | x86_64 (glibc 2.31) | SDL2 | `build/x86-desktop/` |
 | **Native (SDL)** | `make` | Host architecture | SDL2 | `build/` |
 
 ### How It Works
@@ -125,6 +127,9 @@ Docker images are **automatically built** on first use - no manual setup require
 5. **Display Backend Selection**: Cross-compilation automatically selects the appropriate display backend:
    - **Pi / Pi32**: DRM (preferred) with fbdev fallback
    - **AD5M / CC1**: fbdev (framebuffer)
+   - **x86**: DRM with fbdev fallback (`x86-both` links both from one compile)
+   - **x86-desktop**: SDL2. A separate compile, never a relink of `x86-both`:
+     `HELIX_DISPLAY_SDL` selects `LV_USE_SDL` in `lv_conf.h`, so every LVGL object differs
 
 ### Build Targets
 
@@ -139,6 +144,8 @@ make cc1-docker          # Centauri Carbon 1 via Docker
 make k1-docker           # Creality K1 series via Docker (static/musl)
 make k1-dynamic-docker   # Creality K1 series via Docker (dynamic/glibc)
 make k2-docker           # Creality K2 series via Docker (tested on K2 Plus)
+make x86-all-docker      # x86_64 kiosk — both DRM + fbdev (single pass)
+make x86-desktop-docker  # x86_64 Linux desktop — SDL window, no service
 make docker-toolchains   # Pre-build all Docker images
 
 # Direct cross-compilation (requires toolchain installed on host)
@@ -229,6 +236,26 @@ make cross-info          # Show cross-compilation help
 - **Docker Image**: `helixscreen/toolchain-k2` (Debian Bookworm)
 - **OS**: OpenWrt 21.02-SNAPSHOT, Linux 5.4.61 armv7l, procd init (NOT systemd)
 - See `docs/devel/printers/CREALITY_K2_SUPPORT.md` for full hardware details.
+
+#### x86_64 Linux Desktop (`x86-desktop`)
+- **What it is**: the app in an SDL window beside the user's own desktop, connected to a
+  printer over the network. Released as `helixscreen-x86-desktop-<ver>.tar.gz`; the
+  installer's `--desktop` flavour installs it per user (`docs/devel/INSTALLER.md`).
+- **Toolchain**: the x86 Bullseye image (`helixscreen/toolchain-x86`), glibc 2.31, so the
+  binary runs on Debian 11 / Ubuntu 20.04 and newer.
+- **SDL2**: built statically from `lib/sdl2` (the image has no `libsdl2-dev`, so
+  `sdl2-config` is absent and the Makefile takes the submodule path). SDL dlopens X11,
+  Wayland, PulseAudio, ALSA and DBus at runtime, so none of them is a load-time
+  dependency; the image carries their headers so SDL compiles that support in.
+- **Runtime dependencies**: glibc, libstdc++, zlib and `libusb-1.0`. OpenSSL is static, as on
+  `x86`; libsystemd is not linked.
+- **3D G-code view**: GLES2 is resolved at runtime from the SDL context
+  (`include/gles2_sdl_loader.h`), so a machine without GLES falls back to the 2D renderer
+  instead of failing to start. Same for every SDL build, dev builds included.
+- **No splash or watchdog**: both exist to own a framebuffer, so `all` builds neither and
+  `strip` strips only what was built.
+- **Platform key**: `x86-desktop` (`HELIX_PLATFORM_X86_DESKTOP`). Its Install Update opens the
+  release page instead of running the tarball updater.
 
 ### Dockerfile Architecture
 
@@ -866,7 +893,7 @@ Individual clean targets are available for forcing rebuilds of specific librarie
 
 ```bash
 make libhv-clean    # Clean libhv WebSocket library artifacts
-make sdl2-clean     # Clean SDL2 CMake build directory
+make sdl2-clean     # Clean SDL2 CMake build directory ($(BUILD_DIR)/sdl2)
 make lvgl-clean     # Clean LVGL compiled objects
 make libs-clean     # Clean all library artifacts at once
 ```
@@ -1692,7 +1719,7 @@ Usually invoked after editing icons/images. See **[Font Generation](#font-genera
 
 These get their own deep section above — see **[Cross-Compilation](#cross-compilation-embedded-targets)**. Shape of it:
 
-- **Build:** `make <target>-docker` (recommended, no local toolchain) or `make <target>` (needs host toolchain). Targets: `pi`, `pi32`, `ad5m`, `ad5x`, `cc1`, `k1`, `k1-dynamic`, `k2`, `snapmaker-u1`, `x86`.
+- **Build:** `make <target>-docker` (recommended, no local toolchain) or `make <target>` (needs host toolchain). Targets: `pi`, `pi32`, `ad5m`, `ad5x`, `cc1`, `k1`, `k1-dynamic`, `k2`, `snapmaker-u1`, `x86`, `x86-desktop`.
 - **Deploy + run on device:** `make <target>-test` (build + deploy + run fg), `make deploy-<target>` (background), `deploy-<target>-fg` (foreground), `deploy-<target>-bin` (binaries only, fast iteration), `<target>-ssh`.
 - **Host override:** `make deploy-pi PI_HOST=192.168.1.50`. Defaults live in `mk/cross.mk` — note `PI_HOST` actually defaults to `192.168.1.113` (the `make help-cross` text saying `helixpi.local` is stale, and `helixpi.local` does not resolve). `K2_HOST` has **no** default and must be supplied.
 - **Remote build:** two transports, and the choice matters on a slow link.
@@ -2035,7 +2062,7 @@ target in `mk/cross.mk`:
 | `PLATFORM_TARGET` | Tiers |
 |-------------------|-------|
 | `pi`, `pi-fbdev`, `pi-both`, `pi32`, `pi32-fbdev`, `pi32-both` | `all` |
-| `x86`, `x86-fbdev`, `x86-both`, `native` | `all` |
+| `x86`, `x86-fbdev`, `x86-both`, `x86-desktop`, `native` | `all` |
 | `ad5m`, `ad5m-br`, `ad5x` | `medium large` |
 | `mips` / `k1`, `k1-dynamic` | `small medium` |
 | `k2` | `large xlarge` |
@@ -2068,9 +2095,9 @@ did link them.
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `ENABLE_SDL` | yes (native) | SDL2 desktop display |
+| `ENABLE_SDL` | yes (native, `x86-desktop`) | SDL2 desktop display |
 | `ENABLE_OPENGLES` | no (all targets) | Requests LVGL's DRM EGL path; the #error in display_backend_drm.cpp fails the build if set without LV_USE_OPENGLES |
-| `ENABLE_GLES_3D` | yes (Linux) | 3D gcode rendering |
+| `ENABLE_GLES_3D` | yes (Linux) | 3D gcode rendering. DRM builds link `-lGLESv2`; SDL builds resolve GLES2 at runtime and link nothing |
 | `ENABLE_SCREENSAVER` | yes (desktop/Pi) | Flying toasters |
 | `ENABLE_MOCKS` | yes (no on `cc1`/`ad5m`/`ad5m-br`) | Mock backends for development |
 | `ENABLE_SSL` | per target | OpenSSL for HTTPS/WSS |

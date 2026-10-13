@@ -784,6 +784,7 @@ translations:
   Could not initialize WiFi hardware. Check system configuration.: Could not initialize WiFi hardware. Check system configuration.
   Could not load printer database: Could not load printer database
   Could not move the plate: Could not move the plate
+  Could not open a browser for the update: Could not open a browser for the update
   Could not parse tips database: Could not parse tips database
   Could not reach Spoolman at: Could not reach Spoolman at
   Could not read the screw adjustments from the printer: Could not read the screw adjustments from the printer

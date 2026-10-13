@@ -8,7 +8,7 @@ Developer guide for the HelixScreen installer infrastructure: modular shell scri
 
 ## Architecture Overview
 
-The installer is a **modular POSIX shell system** with 18 library modules (in `scripts/lib/installer/`) that get bundled into monolithic scripts for end-user distribution. All shell code targets `/bin/sh` for maximum compatibility, including BusyBox on embedded platforms (AD5M, K1).
+The installer is a **modular POSIX shell system** with 21 library modules (in `scripts/lib/installer/`) that get bundled into monolithic scripts for end-user distribution. All shell code targets `/bin/sh` for maximum compatibility, including BusyBox on embedded platforms (AD5M, K1).
 
 ```
 scripts/
@@ -18,7 +18,7 @@ scripts/
   bundle-installer.sh         # Generates install.sh from modules
   bundle-uninstaller.sh       # Generates uninstall.sh from modules
   helix-launcher.sh           # Runtime launcher with watchdog supervision
-  lib/installer/              # 17 modules (subset shown)
+  lib/installer/              # 21 modules (subset shown)
     main.sh                   # Orchestrator: arg parsing, install flow, KIAUH call
     common.sh                 # Logging, colors, error handler, process killing
     host_profile.sh           # Mod-host probe + mod-owned path guard (see the payload-contract section)
@@ -27,6 +27,7 @@ scripts/
     requirements.sh            # Pre-flight: commands, deps, disk space, init system
     forgex.sh                  # ForgeX-specific: display config, screen.sh patching
     competing_uis.sh           # Stop GuppyScreen, KlipperScreen, Xorg, stock UI
+    desktop.sh                 # x86 desktop vs kiosk flavour; per-user desktop install/uninstall
     release.sh                 # Download from R2 CDN/GitHub, extract, validate arch
     service.sh                 # systemd/SysV service install, platform hooks
     moonraker.sh               # Moonraker update_manager configuration
@@ -118,17 +119,17 @@ From a repo checkout, the modular installer sources modules directly:
 
 1. **Host probe and arguments** -- `host_profile_probe`, `parse_installer_args`, `mod_payload_autodetect`
 2. **Guards** -- refuse an uninstall run from the install dir; refuse to install over a firmware-managed HelixScreen
-3. **Platform detection** -- `detect_platform()` returns one of `cc1`, `k2`, `ad5m`, `ad5x`, `k1`, `snapmaker-u1`, `m1`, `pi`, `pi32`, `x86`, or `unsupported` (plus zmod/guilouz sub-detectors); `unsupported` exits
+3. **Platform detection** -- `detect_platform()` returns one of `cc1`, `k2`, `ad5m`, `ad5x`, `k1`, `snapmaker-u1`, `m1`, `pi`, `pi32`, `x86`, or `unsupported` (plus zmod/guilouz sub-detectors); `unsupported` exits. On `x86`, `resolve_x86_flavour` then settles desktop vs kiosk, and a desktop install is platform `x86-desktop` from there on (see [x86: Desktop Window or Kiosk](#x86-desktop-window-or-kiosk-x86-x86-desktop))
 4. **Firmware detection** -- AD5M/AD5X: `detect_mod_flavor`; K1: `detect_k1_firmware`
 5. **Path configuration** -- `set_install_paths()` sets `INSTALL_DIR`, `INIT_SCRIPT_DEST`, `PREVIOUS_UI_SCRIPT`, `TMP_DIR`; `mod_payload_mode_block` settles payload mode
-6. **Permission check** -- Root required on AD5M/K1; sudo on Pi. `--uninstall` branches off here and exits, so it never reaches the confirm point; `parse_installer_args` refuses `--uninstall --dry-run`
+6. **Permission check** -- Root required on AD5M/K1; sudo on Pi; refused on `x86-desktop`, which installs as the user and also refuses a directory at its root that is not a desktop install. `--uninstall` branches off here and exits, so it never reaches the confirm point; `parse_installer_args` refuses `--uninstall --dry-run`
 7. **Pre-flight checks** -- `detect_missing_unzip`, `check_requirements`, `detect_missing_runtime_deps`, `check_disk_space`, `detect_init_system`, `check_klipper_ecosystem`
 8. **Version and release** -- `resolve_update_channel` (update or existing install), then `--local` filename, `--version` or `get_latest_version`; `probe_release` HEADs the archive so the plan only offers a release that exists
 9. **Detection for the plan** -- `detect_competing_uis` (only stock UIs that are running or would start at boot; one an earlier install already disabled is not listed), `detect_moonraker_integration`, `detect_kiauh` (no Add when the extension is already installed)
 
 ### The confirm point
 
-`confirm_point` prints the logo banner and the plan screen (Printer, Found, Install or `Update A -> B`, Remove, Libraries, Disable, Add, Disk, sudo). Then:
+`confirm_point` prints the logo banner and the plan screen (Printer, Mode on x86, Found, Install or `Update A -> B`, Remove, Libraries, Disable, Add, Disk, sudo). Then:
 
 - `--dry-run` prints "Dry run, nothing changed." and exits 0. A check that would stop the install has already exited non-zero before this.
 - A fresh install with a terminal asks `Continue? [Y/n]`, read from `/dev/tty` (`HELIX_TTY_DEVICE` overrides it). EOF means no. `--yes`, no terminal and `--update` do not ask.
@@ -149,6 +150,8 @@ One numbered step per phase; a step with nothing to do is skipped under the same
 7. **Starting HelixScreen** -- recovery script, install-time printer detection (see [Install-Time Printer Detection](#install-time-printer-detection)), then `start_service`, which waits up to 5 seconds for startup confirmation. On a payload install, where the mod starts the UI at boot, the same step is titled **Finishing setup**.
 
 Then `INSTALL_COMPLETE=1`, the old-install cleanups, `finalize_install_log`, `cleanup_on_success` and `print_summary`.
+
+An `x86-desktop` install takes its own short path, `apply_desktop_install` (`scripts/lib/installer/main.sh#apply_desktop_install`), and `plan_count_steps` counts exactly its four steps: Checking system, Downloading (the shared `download_step`), Installing files (`extract_release`, which also refuses a payload that is not the desktop build, then `verify_binary_deps`), and Adding HelixScreen to the app menu. None of the kiosk steps above applies to it.
 
 ### Install-Time Printer Detection
 
@@ -555,6 +558,54 @@ except `config/` and `platform/`, so a cache there would be wiped on every refre
 | **Init script** | `/etc/init.d/S99helixscreen` |
 | **Previous UI** | `/etc/init.d/S99guppyscreen` |
 
+### x86: Desktop Window or Kiosk (`x86`, `x86-desktop`)
+
+An x86_64 box can take either of two packages: the **kiosk** (`helixscreen-x86-*`, DRM/fbdev,
+a systemd service that takes over the screen, everything above) or the **desktop** build
+(`helixscreen-x86-desktop-*`, SDL, an app window beside the user's own desktop). The choice is
+made once, at the first install, by `resolve_x86_flavour` (`scripts/lib/installer/desktop.sh`),
+and on "desktop" it sets `platform=x86-desktop`, so every later `case "$platform"` dispatches
+on it: the download name, install paths, permissions, ELF check and uninstall all follow.
+Steps that must skip the desktop test `[ "${platform:-}" = "x86-desktop" ]` directly rather than
+through a predicate function, because three installer-flow test harnesses stub every function
+to return 0.
+
+**Resolution, first match wins** (`X86_FLAVOUR_REASON` records which, and the plan's Mode row
+prints it):
+
+| # | Condition | Flavour |
+|---|-----------|---------|
+| 1 | Not x86 | unchanged; `--desktop`/`--kiosk` exit 1 |
+| 2 | `--desktop` or `--kiosk` (both together: refused at parse) | the flag |
+| 3 | `HELIX_SELF_UPDATE=1` (the app updating itself) | kiosk: only the kiosk app self-updates |
+| 4 | A provable desktop install **and** a kiosk install | exit 1, asking for a flag |
+| 5 | A provable desktop install | desktop |
+| 6 | A kiosk install: the service unit or init script, or a `bin/helix-screen` under a kiosk root that is not a desktop payload | kiosk |
+| 7 | `--uninstall` with nothing found | kiosk (the unchanged sweep) |
+| 8 | Running as root | kiosk: a desktop install refuses root |
+| 9 | No desktop present (`_in_graphical_session`, or a display manager active or enabled) | kiosk |
+| 10 | `--update`, `--dry-run`, `--yes`, or no terminal to answer | desktop, inferred |
+| 11 | Otherwise | asks `Run HelixScreen in a window on this desktop? [Y/n]`; end of input exits with nothing changed, since "no" takes over the screen |
+
+**Proof of ownership.** A desktop install is recognised by its payload, not its path:
+`desktop_payload_is_ours` needs `bin/helix-screen` and a `release_info.json` naming
+`helixscreen-x86-desktop.zip`; `desktop_root_is_ours` adds a real directory named
+`helixscreen`, reached through no symlink and not `$HOME`. Every removal (`--uninstall`,
+`--clean`) goes through it, and a fresh install refuses a directory at the root that fails it.
+No home-relative path is on `HELIX_INSTALL_DIRS`, whose sweep removes without checking.
+
+| Setting | Value |
+|---------|-------|
+| **Install dir** | `${XDG_DATA_HOME:-$HOME/.local/share}/helixscreen`; never `~/helixscreen`, which collides with git clones and `$KLIPPER_HOME/helixscreen`. A path needing quotes (space, glob, `$`) is refused; `INSTALL_DIR` is ignored with a warning |
+| **Privileges** | None. Root is refused; `SUDO` is empty and the plan has no sudo row |
+| **Service** | None, and no autostart entry. A freedesktop entry at `~/.local/share/applications/helixscreen.desktop` |
+| **Skipped** | Libraries, competing-UI takedown, service, permission rules, Moonraker, KIAUH, recovery, ALSA, printer seeding |
+| **Install log** | `${XDG_STATE_HOME:-~/.local/state}/helixscreen/helixscreen-install.log`, through `INSTALL_LOG_DIR` |
+| **Updates** | The app only announces them (Install Update opens the release page, and `UpdateChecker::start_download()` refuses on this build); `install.sh --update` finds the install and keeps `config/` |
+| **Uninstall** | `uninstall_desktop`: the root after the ownership proof, its `.old` backups, the menu entry when it launches this root, the install log. Nothing outside the user's home |
+
+Tests: `tests/shell/test_x86_desktop_flavour.bats`.
+
 ### K2 / Other Platforms
 
 K2 is fully detected by `detect_platform()` (which echoes `k2`), alongside `cc1`, `ad5m`, `ad5x`, `k1`, `snapmaker-u1`, `m1`, `pi`, `pi32`, and `x86`.
@@ -668,7 +719,7 @@ Moonraker update_manager is skipped on AD5M (typically no Mainsail/Fluidd web UI
 
 ## Uninstaller
 
-The uninstaller (`uninstall.sh`, bundled from `lib/installer/uninstall.sh` and its dependencies) reverses the installation:
+The uninstaller (`uninstall.sh`, bundled from `lib/installer/uninstall.sh` and its dependencies) reverses the installation. On x86 it runs `resolve_x86_flavour` first and, for a desktop install, removes only that (see [x86: Desktop Window or Kiosk](#x86-desktop-window-or-kiosk-x86-x86-desktop)); `--desktop`/`--kiosk` pick one when both are installed. Everywhere else:
 
 1. **Stop service** -- systemd or SysV, plus kill remaining processes (watchdog first to prevent crash dialog)
 2. **Remove service** -- Delete systemd unit or init script
@@ -723,7 +774,7 @@ After extraction, `validate_binary_architecture()` reads the ELF header (first 2
 - ELF class (32-bit vs 64-bit)
 - Machine type (ARM vs AARCH64)
 
-This prevents installing a Pi binary on AD5M or vice versa.
+This prevents installing a Pi binary on AD5M or vice versa. `x86` and `x86-desktop` share the x86_64 expectation; what tells the two payloads apart is `release_info.json`, checked in `extract_release` for a desktop install.
 
 ---
 

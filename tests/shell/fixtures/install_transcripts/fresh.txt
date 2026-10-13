@@ -1,5 +1,6 @@
 HelixScreen installer v1.0.0 (stable)
   Printer    x86 · systemd · user root
+  Mode       kiosk, takes over the screen (running as root)
   Install    v1.0.0 (stable) · local file, <size>
   Add        Moonraker update manager
 

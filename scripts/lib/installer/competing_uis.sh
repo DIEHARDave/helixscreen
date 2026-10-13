@@ -700,6 +700,8 @@ detect_competing_uis() {
     local ui initscript bin unit comp dm current_ui proc
     COMPETING_UIS_FOUND=""
     _is_self_update && return 0
+    # A desktop install opens a window beside the other UIs; it stops none.
+    [ "${platform:-}" = "x86-desktop" ] && return 0
     [ "${HOST_OWNS_COMPETING_UIS:-}" = "1" ] && return 0
     [ "${AD5M_FIRMWARE:-}" = "zmod" ] && return 0
 

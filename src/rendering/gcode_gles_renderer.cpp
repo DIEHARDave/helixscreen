@@ -13,6 +13,7 @@
 #include "gcode_selection_style.h"
 #include "lv_draw_buf_guard.h"
 #include "runtime_config.h"
+#include "scoped_guard_file.h"
 
 #include <spdlog/spdlog.h>
 
@@ -29,9 +30,14 @@
 #include <unistd.h>
 #endif
 
-// GLES2 function declarations and common headers (both paths)
+// GLES2: resolved at runtime on SDL (no libGLESv2 link), linked on EGL
+#if LV_USE_SDL
+#include "gles2_sdl_loader.h"
+using namespace helix::gles2;
+#else
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
+#endif
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -374,8 +380,8 @@ GCodeGLESRenderer::~GCodeGLESRenderer() {
 // ============================================================
 
 #if !LV_USE_SDL
-// Try to set up EGL with a given display, returning true on success.
-// On success, egl_display_, egl_context_, and optionally egl_surface_ are set.
+// Open and initialize a native EGL display, then create the renderer's context
+// on it. The renderer owns that display and terminates it on teardown.
 bool GCodeGLESRenderer::try_egl_display(void* native_display, const char* label) {
     auto display = eglGetDisplay(static_cast<EGLNativeDisplayType>(native_display));
     if (!display || display == EGL_NO_DISPLAY) {
@@ -390,6 +396,19 @@ bool GCodeGLESRenderer::try_egl_display(void* native_display, const char* label)
     }
     spdlog::info("[GCode GLES] EGL {}.{} via {}", major, minor, label);
 
+    if (!create_egl_context(display, label, /*owns_display=*/true)) {
+        eglTerminate(display);
+        return false;
+    }
+    return true;
+}
+
+// Create the renderer's context on an initialized display, returning true on
+// success. On success, egl_display_, egl_context_, and optionally egl_surface_
+// are set. Never terminates @p display: on failure the caller decides that.
+bool GCodeGLESRenderer::create_egl_context(void* egl_display, const char* label,
+                                           bool owns_display) {
+    auto display = static_cast<EGLDisplay>(egl_display);
     eglBindAPI(EGL_OPENGL_ES_API);
 
     // Check surfaceless support
@@ -413,7 +432,6 @@ bool GCodeGLESRenderer::try_egl_display(void* native_display, const char* label)
     }
     if (num_configs == 0) {
         spdlog::debug("[GCode GLES] {} — no suitable config", label);
-        eglTerminate(display);
         return false;
     }
 
@@ -422,7 +440,6 @@ bool GCodeGLESRenderer::try_egl_display(void* native_display, const char* label)
     auto context = eglCreateContext(display, egl_config, EGL_NO_CONTEXT, ctx_attribs);
     if (context == EGL_NO_CONTEXT) {
         spdlog::debug("[GCode GLES] {} — context creation failed: 0x{:X}", label, eglGetError());
-        eglTerminate(display);
         return false;
     }
 
@@ -435,7 +452,6 @@ bool GCodeGLESRenderer::try_egl_display(void* native_display, const char* label)
             spdlog::debug("[GCode GLES] {} — PBuffer creation failed: 0x{:X}", label,
                           eglGetError());
             eglDestroyContext(display, context);
-            eglTerminate(display);
             return false;
         }
     }
@@ -464,7 +480,6 @@ bool GCodeGLESRenderer::try_egl_display(void* native_display, const char* label)
         if (surface != EGL_NO_SURFACE)
             eglDestroySurface(display, surface);
         eglDestroyContext(display, context);
-        eglTerminate(display);
         return false;
     }
 
@@ -480,6 +495,7 @@ bool GCodeGLESRenderer::try_egl_display(void* native_display, const char* label)
     egl_display_ = display;
     egl_context_ = context;
     egl_surface_ = (surface != EGL_NO_SURFACE) ? static_cast<void*>(surface) : nullptr;
+    owns_egl_display_ = owns_display;
     spdlog::info("[GCode GLES] Context ready via {} ({})", label,
                  has_surfaceless ? "surfaceless" : "PBuffer");
     return true;
@@ -491,6 +507,14 @@ bool GCodeGLESRenderer::init_gl() {
         return true;
     if (gl_init_failed_)
         return false;
+
+    // Layer 2 covers driver init too: loading the GPU driver can fault before any
+    // draw is reached. A graceful failure removes the guard on return and the
+    // viewer falls back to 2D for this session; only a fault inside leaves it for
+    // the next startup to promote.
+    const helix::ScopedGuardFile init_guard(helix::writable_path("gpu_3d_guard"));
+    if (!init_guard.armed())
+        spdlog::warn("[GCode GLES] Could not write GPU crash-loop guard: {}", init_guard.path());
 
 #if LV_USE_SDL
     // Desktop path: use SDL_GL_CreateContext with a hidden window.
@@ -515,6 +539,15 @@ bool GCodeGLESRenderer::init_gl() {
         return false;
     }
 
+    // SDL_GL_CreateContext left the context current, which resolving needs.
+    if (!helix::gles2::load(SDL_GL_GetProcAddress)) {
+        SDL_GL_MakeCurrent(window, nullptr);
+        SDL_GL_DeleteContext(gl_ctx);
+        SDL_DestroyWindow(window);
+        gl_init_failed_ = true;
+        return false;
+    }
+
     sdl_gl_window_ = window;
     sdl_gl_context_ = gl_ctx;
 
@@ -527,11 +560,19 @@ bool GCodeGLESRenderer::init_gl() {
 
 #else  // !LV_USE_SDL — EGL backend
     // EGL initialization with fallback chain:
-    // 1. GBM/DRM (Pi, embedded — surfaceless FBO rendering)
-    // 2. Default EGL display (desktop Linux with X11/Wayland — PBuffer)
+    // 1. The display backend's own EGLDisplay, when one is current
+    // 2. GBM/DRM (Pi, embedded — surfaceless FBO rendering)
+    // 3. Default EGL display (desktop Linux with X11/Wayland — PBuffer)
     bool egl_ok = false;
 
-    // Path 1: Try GBM/DRM render nodes first (don't need DRM master, works alongside compositor)
+    // An EGL screen already has the GPU driver loaded and a display up. Opening a
+    // second device beside it loads the driver a second time, which faults inside
+    // the dynamic loader on some Mesa stacks (prestonbrown/helixscreen#1742).
+    if (EGLDisplay current = eglGetCurrentDisplay(); current != EGL_NO_DISPLAY) {
+        egl_ok = create_egl_context(current, "the display's EGLDisplay", /*owns_display=*/false);
+    }
+
+    // Path 2: Try GBM/DRM render nodes first (don't need DRM master, works alongside compositor)
     // Then try card nodes (needed on Pi where render nodes may not exist)
     static const char* DRM_DEVICES[] = {"/dev/dri/renderD128", "/dev/dri/renderD129",
                                         "/dev/dri/card1", "/dev/dri/card0", nullptr};
@@ -556,7 +597,7 @@ bool GCodeGLESRenderer::init_gl() {
         }
     }
 
-    // Path 2: Default EGL display (Mesa on X11/Wayland)
+    // Path 3: Default EGL display (Mesa on X11/Wayland)
     if (!egl_ok) {
         if (try_egl_display(EGL_DEFAULT_DISPLAY, "EGL_DEFAULT_DISPLAY")) {
             egl_ok = true;
@@ -835,7 +876,8 @@ void GCodeGLESRenderer::destroy_gl() {
     }
 
     if (egl_display_) {
-        eglTerminate(static_cast<EGLDisplay>(egl_display_));
+        if (owns_egl_display_)
+            eglTerminate(static_cast<EGLDisplay>(egl_display_));
         egl_display_ = nullptr;
     }
 

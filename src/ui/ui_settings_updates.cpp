@@ -23,9 +23,30 @@
 #include "system/android_update_source.h"
 
 #include <SDL.h>
+#elif defined(HELIX_PLATFORM_X86_DESKTOP)
+#include "system/release_page.h"
+
+#include <SDL.h>
 #endif
 
 namespace helix::settings {
+
+#if defined(__ANDROID__) || defined(HELIX_PLATFORM_X86_DESKTOP)
+namespace {
+/// The release the update check is offering, for builds that open a page
+/// instead of running the tarball updater.
+helix::OfferedRelease offered_release() {
+    auto& checker = UpdateChecker::instance();
+    helix::OfferedRelease offered;
+    if (auto info = checker.get_cached_update()) {
+        offered.tag_name = info->tag_name;
+        offered.version = info->version;
+    }
+    offered.on_github = checker.get_channel() != UpdateChecker::UpdateChannel::Dev;
+    return offered;
+}
+} // namespace
+#endif
 
 void UpdatesSettingsOverlay::register_callbacks() {
     register_xml_callbacks({
@@ -137,20 +158,27 @@ void UpdatesSettingsOverlay::show_update_download_modal(bool start_immediately) 
     // sideload.
     if (helix::is_android_platform()) {
         const std::string installer = helix::android::installer_package();
-        auto& checker = UpdateChecker::instance();
-        helix::android::OfferedRelease offered;
-        if (auto info = checker.get_cached_update()) {
-            offered.tag_name = info->tag_name;
-            offered.version = info->version;
-        }
-        offered.on_github = checker.get_channel() != UpdateChecker::UpdateChannel::Dev;
-        const std::string url = helix::android::update_url(installer, offered);
+        const std::string url = helix::android::update_url(installer, offered_release());
         spdlog::info("[UpdatesSettings] Installer '{}', opening {}", installer, url);
         if (SDL_OpenURL(url.c_str()) != 0) {
             spdlog::warn("[UpdatesSettings] Opening {} failed: {}", url, SDL_GetError());
             if (url == helix::android::kPlayStoreMarketUrl) {
                 SDL_OpenURL(helix::android::kPlayStoreWebUrl);
             }
+        }
+        (void)start_immediately;
+        return;
+    }
+#elif defined(HELIX_PLATFORM_X86_DESKTOP)
+    // The desktop build never rewrites its own install: every install intent opens
+    // the release page in the user's browser, where they download the new tarball.
+    {
+        const std::string url = helix::release_page_url(offered_release());
+        spdlog::info("[UpdatesSettings] Desktop build, opening {}", url);
+        if (SDL_OpenURL(url.c_str()) != 0) {
+            spdlog::warn("[UpdatesSettings] Opening {} failed: {}", url, SDL_GetError());
+            ToastManager::instance().show(ToastSeverity::WARNING,
+                                          lv_tr("Could not open a browser for the update"), 4000);
         }
         (void)start_immediately;
         return;

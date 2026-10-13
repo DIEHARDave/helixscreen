@@ -141,6 +141,17 @@ TEST_CASE("real K2 Plus captures read well matched", "[belt][compare]") {
     CHECK(cmp.peaks.unpaired_b.empty());
 }
 
+TEST_CASE("real AD5X captures read well matched", "[belt][compare]") {
+    const auto cmp = compare_fixture("ad5x", 20.0f, 80.0f);
+    REQUIRE(cmp.valid);
+    CHECK(cmp.similarity_percent == Catch::Approx(99.5f).margin(1.0f));
+    CHECK(cmp.verdict == BeltVerdict::MATCHED);
+    // Both paths' tallest in-band bin is 54.2 Hz.
+    REQUIRE_FALSE(cmp.peaks.pairs.empty());
+    CHECK(cmp.peaks.pairs.front().a.freq_hz == Catch::Approx(54.2f).margin(0.1f));
+    CHECK(cmp.peaks.pairs.front().b.freq_hz == Catch::Approx(54.2f).margin(0.1f));
+}
+
 TEST_CASE("real U1 captures read close", "[belt][compare]") {
     const auto cmp = compare_fixture("u1", 5.0f, 100.0f);
     REQUIRE(cmp.valid);
