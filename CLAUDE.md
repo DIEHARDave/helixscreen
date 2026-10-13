@@ -266,7 +266,7 @@ What is shared here:
   One session may hold both on its own tree; only a different owner blocks.
 
   Liveness is **derived from process state, never asserted**: a claim records its owner's pid
-  and that pid's kernel start-time, so a crashed owner reads STALE on its own, pid reuse
+  and that pid's start time (from `/proc`, or `ps` on a Mac), so a crashed owner reads STALE on its own, pid reuse
   cannot fake LIVE, and nothing needs cleaning up. Use it for `worktree:<name>` (hold it
   from your FIRST edit until the commit lands - not merely for a merge, rebase or long
   commit: uncommitted files with no claim and an old mtime are indistinguishable from
