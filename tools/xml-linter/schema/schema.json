@@ -1933,6 +1933,10 @@
       },
       "inherits": "lv_obj"
     },
+    "belt_gap_gauge": {
+      "attributes": {},
+      "inherits": "lv_obj"
+    },
     "belt_path_sketch": {
       "attributes": {},
       "inherits": "lv_obj"
@@ -2911,6 +2915,7 @@
     "setting_group",
     "ams_lane_bar",
     "ams_lane_spool",
+    "belt_gap_gauge",
     "belt_path_sketch",
     "leader_line",
     "lv_obj-bind_tile_rung"

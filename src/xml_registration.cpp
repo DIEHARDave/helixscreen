@@ -8,6 +8,7 @@
 #include "ui_ams_device_operations_overlay.h"
 #include "ui_ams_device_section_detail_overlay.h"
 #include "ui_bed_drying_modal.h"
+#include "ui_belt_gap_gauge.h"
 #include "ui_belt_path_sketch.h"
 #if HELIX_HAS_CFS
 #include "ui_cfs_chute_calibration_overlay.h"
@@ -462,6 +463,7 @@ void register_xml_components() {
 
 #if HELIX_HAS_BELT_TUNER
     helix::ui::register_belt_path_sketch_widget(); // before the panel XML that uses it
+    helix::ui::register_belt_gap_gauge_widget();
 #endif
 
     register_settings_panel_callbacks(); // Register callbacks before XML parse [L013]

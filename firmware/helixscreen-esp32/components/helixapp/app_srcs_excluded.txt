@@ -272,6 +272,7 @@ src/ui/ui_overlay_timelapse_settings.cpp  # scope decision 2026-08-12: unreachab
 src/ui/ui_overlay_timelapse_videos.cpp  # viewer UI is gated off here; its helix::ui entry points and the global accessors are stubbed in excluded_subsystems_stub.cpp, which is where kept callers resolve them
 src/ui/ui_panel_bed_mesh.cpp  # not in the v1 Core+AMS cut
 src/ui/ui_belt_path_sketch.cpp  # only the Belt Tension panel draws it; not in the v1 Core+AMS cut
+src/ui/ui_belt_gap_gauge.cpp  # only the Belt Tension panel draws it; not in the v1 Core+AMS cut
 src/ui/ui_panel_belt_tension.cpp  # not in the v1 Core+AMS cut
 src/ui/ui_panel_calibration_pid.cpp  # not in the v1 Core+AMS cut
 src/ui/ui_panel_calibration_tool_offset.cpp  # not in the v1 Core+AMS cut
