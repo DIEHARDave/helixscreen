@@ -310,7 +310,7 @@ live breadcrumb of the navigation stack, e.g. `controls / motion_panel_0 > `.
 | `resolve <target>` | Print the absolute locator a target resolves to |
 | `list_panels` | List the registered base panels (the fixed `PanelId` set) |
 | `wake`, `screensaver off` | Reset the idle timer / dismiss the screensaver |
-| `screensaver <name>` | Preview a saver by its stable registry name (`maze`, `flipclock`, ...) the way Test Screensaver does: a saver too heavy for the board runs its fallback |
+| `screensaver <name>` | Preview a saver by its stable registry name (`maze`, `flipclock`, ...) the way Test Screensaver does. The reply names what `runs` (a saver too heavy for the board runs its fallback), or says `started: false` when a saver is already up. `screensaver off`, in any case, is `wake` |
 
 ### The working directory
 

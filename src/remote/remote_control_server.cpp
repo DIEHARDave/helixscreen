@@ -32,6 +32,7 @@
 #include "remote_client.h"
 #include "remote_pointer.h"
 #include "runtime_config.h"
+#include "screensaver.h"
 #include "screensaver_registry.h"
 #include "screenshot.h"
 #include "subject_debug_registry.h"
@@ -2466,7 +2467,8 @@ nlohmann::json RemoteControlServer::handle_wake(const nlohmann::json& /*params*/
 }
 
 // Starts a saver by its stable name the way the settings Test Screensaver button does, so a
-// saver too heavy for the board runs its fallback. No wake: a wake dismisses the saver.
+// saver too heavy for the board runs its fallback, named in "runs". No wake: a wake dismisses
+// the saver. A saver already up is left running and reported, as the button would leave it.
 nlohmann::json RemoteControlServer::handle_preview_screensaver(const nlohmann::json& params) {
     if (!params.contains("name") || !params["name"].is_string()) {
         throw std::invalid_argument("Missing required parameter: name");
@@ -2482,8 +2484,17 @@ nlohmann::json RemoteControlServer::handle_preview_screensaver(const nlohmann::j
         if (!dm) {
             throw std::runtime_error("DisplayManager not available");
         }
+        ScreensaverManager& savers = ScreensaverManager::instance();
+        if (savers.is_active()) {
+            return {{"requested", name},
+                    {"started", false},
+                    {"reason", "a screensaver is already running"}};
+        }
+        const ScreensaverType runs = savers.runnable_type(*type);
         dm->preview_screensaver(static_cast<int>(*type));
-        return {{"previewing", name}};
+        return {{"requested", name},
+                {"runs", helix::ui::screensaver_name(runs)},
+                {"started", savers.is_active()}};
     });
 #else
     throw std::runtime_error("This build has no screensavers");

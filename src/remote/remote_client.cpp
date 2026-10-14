@@ -20,6 +20,8 @@
 
 #include "remote_client.h"
 
+#include "screensaver_registry.h"
+
 #include <cctype>
 #include <cerrno>
 #include <cstdio>
@@ -737,7 +739,8 @@ static nlohmann::json build_request_from_tokens(const std::vector<std::string>& 
         return build_request("scenario", {{"name", tokens[1]}});
     } else if (cmd == "list_scenarios") {
         return build_request("list_scenarios");
-    } else if (cmd == "screensaver" && tokens.size() >= 2 && tokens[1] != "off") {
+    } else if (cmd == "screensaver" && tokens.size() >= 2 &&
+               !helix::ui::equals_ignoring_case(tokens[1], helix::ui::SCREENSAVER_OFF_NAME)) {
         // `screensaver <name>` previews a saver by its stable name.
         return build_request("preview_screensaver", {{"name", tokens[1]}});
     } else if (cmd == "wake" || cmd == "screensaver") {
