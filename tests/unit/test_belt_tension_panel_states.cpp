@@ -147,6 +147,12 @@ class BeltPanelFixture : public XMLTestFixture {
     int panel_series_id(int path_index) {
         return panel_->series_[path_index];
     }
+    lv_obj_t* panel_chart_host_tuning() {
+        return panel_->chart_host_tuning_;
+    }
+    int panel_tune_ghost_id(int path_index, int k) {
+        return panel_->tune_ghost_series_[path_index][k];
+    }
     lv_obj_t* panel_low_ram_dialog() {
         return panel_->low_ram_dialog_;
     }
@@ -1432,4 +1438,122 @@ TEST_CASE("Confirm drops its duration on compact layouts and beside Next zone",
         portrait.set(1);
         CHECK(confirms() == shortened);
     }
+}
+
+TEST_CASE("the tuning view hosts the chart", "[belt][panel][tune][chart]") {
+    BeltPanelFixture fx;
+    enter_tuning(fx);
+
+    auto* chart = fx.panel_chart();
+    REQUIRE(chart != nullptr);
+    lv_obj_t* host = lv_obj_find_by_name(fx.view(), "chart_host_tuning");
+    REQUIRE(host != nullptr);
+    CHECK(fx.panel_chart_host_tuning() == host);
+    CHECK(lv_obj_get_parent(ui_frequency_response_chart_get_obj(chart)) == host);
+}
+
+TEST_CASE("destroying the UI drops every chart host and the tuning ghosts",
+          "[belt][panel][tune][chart]") {
+    BeltPanelFixture fx;
+    enter_tuning(fx);
+    REQUIRE(fx.panel_chart_host_tuning() != nullptr);
+    REQUIRE(fx.panel_tune_ghost_id(0, 0) >= 0);
+    REQUIRE(fx.panel_tune_ghost_id(1, 1) >= 0);
+
+    fx.panel().on_ui_destroyed();
+    CHECK(fx.panel_chart() == nullptr);
+    CHECK(fx.panel_chart_host_tuning() == nullptr);
+    for (int path = 0; path < 2; ++path) {
+        for (int k = 0; k < 2; ++k) {
+            CHECK(fx.panel_tune_ghost_id(path, k) == -1);
+        }
+    }
+}
+
+TEST_CASE("leaving the panel ends the tuning session", "[belt][panel][tune]") {
+    BeltPanelFixture fx;
+    fx.mock().set_belt_tune_script('B', {110.0f});
+    enter_tuning(fx);
+    tune_round(fx);
+    REQUIRE(fx.state_int("bt_tune_phase") == PHASE_MATCHED);
+
+    fx.panel().on_deactivate(DeactivateReason::NavigateAway);
+    UpdateQueue::instance().drain();
+    CHECK(fx.state_int("bt_tune_phase") == PHASE_ADJUST);
+    CHECK(fx.state_int("belt_tension_state") ==
+          static_cast<int>(BeltTensionPanel::ViewState::START));
+}
+
+TEST_CASE("a fresh Start ends the tuning session", "[belt][panel][tune]") {
+    BeltPanelFixture fx;
+    fx.mock().set_belt_tune_script('B', {110.0f});
+    enter_tuning(fx);
+    tune_round(fx);
+    REQUIRE(fx.state_int("bt_tune_phase") == PHASE_MATCHED);
+
+    fx.panel().handle_start_clicked();
+    CHECK(fx.state_int("bt_tune_phase") == PHASE_ADJUST);
+    REQUIRE(fx.pump_until_state(RESULTS));
+    CHECK(fx.state_int("bt_tune_phase") == PHASE_ADJUST);
+}
+
+TEST_CASE("a tuning round keeps the peak markers on screen while it sweeps",
+          "[belt][panel][tune][chart]") {
+    BeltPanelFixture fx;
+    enter_tuning(fx);
+    auto* chart = fx.panel_chart();
+    REQUIRE(chart != nullptr);
+    for (int path = 0; path < 2; ++path) {
+        REQUIRE(ui_frequency_response_chart_get_markers(chart, fx.panel_series_id(path)).size() ==
+                1);
+    }
+
+    fx.panel().handle_tune_measure_clicked();
+    REQUIRE(fx.state_int("bt_tune_phase") == PHASE_SWEEPING);
+    for (int path = 0; path < 2; ++path) {
+        CHECK(ui_frequency_response_chart_get_markers(chart, fx.panel_series_id(path)).size() == 1);
+    }
+}
+
+TEST_CASE("a gate that closes during a tuning sweep ends it in ERROR",
+          "[belt][panel][tune][gating]") {
+    BeltPanelFixture fx;
+    enter_tuning(fx);
+    fx.panel().handle_tune_measure_clicked();
+    REQUIRE(fx.state_int("bt_tune_phase") == PHASE_SWEEPING);
+
+    lv_subject_set_int(get_printer_state().print_state().get_print_active_subject(), 1);
+    fx.pump_ms(200);
+    CHECK(fx.state_int("belt_tension_state") ==
+          static_cast<int>(BeltTensionPanel::ViewState::ERROR));
+}
+
+TEST_CASE("a theme toggle recolors the tuning ghosts", "[belt][panel][tune][chart]") {
+    BeltPanelFixture fx;
+    enter_tuning(fx);
+    auto* chart = fx.panel_chart();
+    REQUIRE(chart != nullptr);
+    const auto rgb = [chart](int id) {
+        return lv_color_to_u32(ui_frequency_response_chart_get_series_color(chart, id)) & 0xFFFFFF;
+    };
+    const uint32_t before = rgb(fx.panel_tune_ghost_id(0, 0));
+
+    theme_manager_toggle_dark_mode();
+    UpdateQueue::instance().drain();
+    const uint32_t want_a = lv_color_to_u32(theme_manager_get_color("belt_path_a")) & 0xFFFFFF;
+    const uint32_t want_b = lv_color_to_u32(theme_manager_get_color("belt_path_b")) & 0xFFFFFF;
+    std::vector<uint32_t> after;
+    for (int path = 0; path < 2; ++path) {
+        for (int k = 0; k < 2; ++k) {
+            after.push_back(rgb(fx.panel_tune_ghost_id(path, k)));
+        }
+    }
+    theme_manager_toggle_dark_mode();
+    UpdateQueue::instance().drain();
+
+    REQUIRE(want_a != before);
+    CHECK(after[0] == want_a);
+    CHECK(after[1] == want_a);
+    CHECK(after[2] == want_b);
+    CHECK(after[3] == want_b);
 }
