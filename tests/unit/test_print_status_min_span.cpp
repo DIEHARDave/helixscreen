@@ -154,5 +154,6 @@ TEST_CASE_METHOD(LVGLUITestFixture,
         CHECK(idle_card_fits(measure_idle_card_needs(), w, h));
         ++checked;
     }
+    theme_manager_refresh_layout_constants(disp);
     CHECK(checked == static_cast<int>(test::kMeasuredGrids.size()));
 }

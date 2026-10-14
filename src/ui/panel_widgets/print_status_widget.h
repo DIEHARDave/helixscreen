@@ -83,7 +83,9 @@ class PrintStatusWidget : public PanelWidget {
     void on_activate() override;
     void on_edit_mode_exited() override;
     void on_size_changed(int colspan, int rowspan, int width_px, int height_px) override;
-    /// Refuses a box the idle card cannot draw in (idle_card_fits).
+    /// Refuses a box the idle card cannot draw in (idle_card_fits). The needs
+    /// are the Detailed card's whatever layout_style is set: the Library card's
+    /// action rows shrink to share their column, so it has no fixed floor.
     bool fits_at(int width_px, int height_px) const override;
     /// Factory-registration key. Exposed so callers scanning a heterogeneous
     /// widget list can match on id() and static_cast, instead of dynamic_cast —
