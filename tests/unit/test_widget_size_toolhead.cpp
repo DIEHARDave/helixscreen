@@ -696,3 +696,38 @@ TEST_CASE_METHOD(ToolheadFixture,
     settle();
     CHECK(h.widget().drawn_plate_input()->x_mm == Catch::Approx(150.0f));
 }
+
+TEST_CASE_METHOD(ToolheadFixture, "toolhead: only a delta draws a round plate",
+                 "[widget_size][toolhead]") {
+    set_homed("xyz");
+    {
+        PanelWidgetHarness<ToolheadWidget> h(test_screen(), state());
+        h.resize(1, 1, kWide.w, kWide.h);
+        settle();
+        REQUIRE(h.widget().drawn_plate_input().has_value());
+        CHECK_FALSE(h.widget().drawn_plate_input()->circular);
+    }
+
+    mock_api.hardware().set_kinematics("delta");
+    PanelWidgetHarness<ToolheadWidget> h(test_screen(), state());
+    h.resize(1, 1, kWide.w, kWide.h);
+    settle();
+    REQUIRE(h.widget().drawn_plate_input().has_value());
+    CHECK(h.widget().drawn_plate_input()->circular);
+    mock_api.hardware().set_kinematics("");
+}
+
+TEST_CASE_METHOD(ToolheadFixture, "toolhead: any velocity at all counts as moving",
+                 "[widget_size][toolhead]") {
+    set_homed("xyz");
+    set_position(10000, 10000, 1000);
+    set_live_position(10500, 10500, 1500);
+    PanelWidgetHarness<ToolheadWidget> h(test_screen(), state());
+    h.resize(1, 1, 114, 113);
+    settle();
+    REQUIRE(subject_text("toolhead_x_text") == "100.0");
+
+    set_velocity(1);
+    settle();
+    CHECK(subject_text("toolhead_x_text") == "105.0");
+}

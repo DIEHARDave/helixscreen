@@ -11,6 +11,7 @@
 #include "ui_error_reporting.h"
 #include "ui_event_safety.h"
 #include "ui_manual_pull_prompt.h"
+#include "ui_spool_canvas.h"
 #include "ui_step_progress.h"
 #include "ui_temperature_utils.h"
 #include "ui_unload_lane_choice.h"
@@ -452,19 +453,36 @@ void AmsOperationSidebar::init_observers() {
         },
         AmsState::instance().get_subjects_lifetime());
 
-    // Color observer: reactively updates loaded card swatch color
+    // Color observer: paints the loaded filament's colour on the card's bar
+    // (below medium) and its spool (medium up); XML picks which one shows.
     color_observer_ = observe<int>(
         AmsState::instance().get_current_color_subject(), this,
         [](AmsOperationSidebar* self, int color_int) {
-            if (!self->active_ || !self->sidebar_root_)
+            if (!self->active_ || !self->sidebar_root_ || !self->loaded_card_)
                 return;
-            lv_obj_t* swatch = self->loaded_card_
-                                   ? lv_obj_find_by_name(self->loaded_card_, "loaded_swatch")
-                                   : nullptr;
-            if (swatch) {
-                lv_color_t color = lv_color_hex(static_cast<uint32_t>(color_int));
+            lv_color_t color = lv_color_hex(static_cast<uint32_t>(color_int));
+            if (lv_obj_t* swatch = lv_obj_find_by_name(self->loaded_card_, "loaded_swatch")) {
                 lv_obj_set_style_bg_color(swatch, color, 0);
                 lv_obj_set_style_border_color(swatch, color, 0);
+            }
+            if (lv_obj_t* spool = lv_obj_find_by_name(self->loaded_card_, "loaded_spool")) {
+                ui_spool_canvas_set_color(spool, color);
+            }
+        },
+        AmsState::instance().get_subjects_lifetime());
+
+    // Fill observer: how much is left on the loaded spool, in the
+    // SlotInfo::display_fill_pct() encoding. -1 (no weight data) draws a full
+    // spool rather than leaving the render as it is: this one spool shows
+    // whatever is loaded now, so an untouched render would keep the previous
+    // load's fill.
+    fill_observer_ = observe<int>(
+        AmsState::instance().get_current_fill_pct_subject(), this,
+        [](AmsOperationSidebar* self, int pct) {
+            if (!self->active_ || !self->sidebar_root_ || !self->loaded_card_)
+                return;
+            if (lv_obj_t* spool = lv_obj_find_by_name(self->loaded_card_, "loaded_spool")) {
+                ui_spool_canvas_set_fill_level(spool, pct < 0 ? 1.0f : pct / 100.0f);
             }
         },
         AmsState::instance().get_subjects_lifetime());
@@ -552,6 +570,7 @@ void AmsOperationSidebar::cleanup() {
     active_backend_observer_.reset();
     bypass_spool_observer_.reset();
     color_observer_.reset();
+    fill_observer_.reset();
     step_index_observer_.reset(); // [L085] reset(), never release()
     extruder_temp_observer_.reset();
     extruder_target_observer_.reset();

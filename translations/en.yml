@@ -15,6 +15,9 @@ translations:
   '%d min left': '%d min left'
   '%d mm/s': '%d mm/s'
   '%d more sensors': '%d more sensors'
+  '%d objects': '%d objects'
+  '%d of %d printing': '%d of %d printing'
+  '%d skipped': '%d skipped'
   '%d profiles': '%d profiles'
   '%d slots': '%d slots'
   '%d toolheads': '%d toolheads'
@@ -839,9 +842,6 @@ translations:
   'Current name:': 'Current name:'
   'Current:': 'Current:'
   'Current: %d°C | Target: %d°C': 'Current: %d°C | Target: %d°C'
-  'Current: %s': 'Current: %s'
-  'Current: %s · %s': 'Current: %s · %s'
-  'Current: Bypass': 'Current: Bypass'
   Currently Loaded: Currently Loaded
   Currently printing: Currently printing
   Custom: Custom
@@ -1099,6 +1099,7 @@ translations:
   'Exception: {}': 'Exception: {}'
   Exclude: Exclude
   Exclude Object?: Exclude Object?
+  Exclude Objects: Exclude Objects
   Excluded: Excluded
   Exclusion cancelled: Exclusion cancelled
   Execute printer macros: Execute printer macros
@@ -2095,6 +2096,7 @@ translations:
   No networks found: No networks found
   No new mesh was stored as '{}': No new mesh was stored as '{}'
   No notifications: No notifications
+  No objects: No objects
   No objects defined for this print: No objects defined for this print
   No output yet: No output yet
   No presets configured: No presets configured
@@ -2165,6 +2167,7 @@ translations:
   Notification: Notification
   Notifications: Notifications
   Notify when print finishes: Notify when print finishes
+  Now printing: Now printing
   Noz max: Noz max
   Noz min: Noz min
   Noz rec: Noz rec
@@ -2198,6 +2201,7 @@ translations:
   Object picks apply only to prints started now: Object picks apply only to prints started now
   Object positions unavailable: Object positions unavailable
   Objects: Objects
+  Objects in the print, with a tap to open the skip map: Objects in the print, with a tap to open the skip map
   'Off': 'Off'
   'Off:': 'Off:'
   'Off: runs with these values without asking': 'Off: runs with these values without asking'
@@ -3027,9 +3031,11 @@ translations:
   Signal: Signal
   'Signal #': 'Signal #'
   Similarity: Similarity
+  Single object: Single object
   Single toggle macro. State is not tracked.: Single toggle macro. State is not tracked.
   Size: Size
   Skip: Skip
+  Skip objects...: Skip objects...
   Skipped: Skipped
   Sleep While Printing: Sleep While Printing
   Sleep adjusted to match dim timeout: Sleep adjusted to match dim timeout

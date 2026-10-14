@@ -15,6 +15,9 @@ translations:
   '%d min left': 'quedan %d min'
   '%d mm/s': '%d mm/s'
   '%d more sensors': '%d sensores más'
+  '%d objects': '%d objetos'
+  '%d of %d printing': '%d de %d imprimiéndose'
+  '%d skipped': '%d omitidos'
   '%d profiles': '%d perfiles'
   '%d slots': '%d ranuras'
   '%d toolheads': '%d cabezales'
@@ -593,7 +596,7 @@ translations:
   Check for Updates: Buscar actualizaciones
   Check slot: Comprobar ranura
   Check slot failed: Error al comprobar ranura
-  Check slots: Comprobar ranuras
+  Check slots: Comprobar
   Check slots failed: Error al comprobar ranuras
   Check that only one filament path is active: Compruebe que solo haya una ruta de filamento activa
   Check that the cutter mechanism is properly installed: Compruebe que el mecanismo de corte esté correctamente instalado
@@ -872,9 +875,6 @@ translations:
   'Current name:': 'Nombre actual:'
   'Current:': 'Actual:'
   'Current: %d°C | Target: %d°C': 'Actual: %d°C | Objetivo: %d°C'
-  'Current: %s': 'Actual: %s'
-  'Current: %s · %s': 'Actual: %s · %s'
-  'Current: Bypass': 'Actual: Bypass'
   Currently Loaded: Actualmente cargado
   Currently printing: Imprimiendo actualmente
   Custom: Personalizado
@@ -1142,6 +1142,7 @@ translations:
   'Exception: {}': 'Excepción: {}'
   Exclude: Excluir
   Exclude Object?: '¿Excluir objeto?'
+  Exclude Objects: 'Excluir objetos'
   Excluded: Excluido
   Exclusion cancelled: Exclusión cancelada
   Execute printer macros: Ejecutar macros de impresora
@@ -2158,6 +2159,7 @@ translations:
   No networks found: No se encontraron redes
   No new mesh was stored as '{}': "No se guardó ninguna malla nueva como '{}'"
   No notifications: Sin notificaciones
+  No objects: 'Sin objetos'
   No objects defined for this print: No hay objetos definidos para esta impresión
   No output yet: Sin salida aún
   No presets configured: No hay preajustes configurados
@@ -2230,6 +2232,7 @@ translations:
   Notification: Notificación
   Notifications: Notificaciones
   Notify when print finishes: Notificar cuando termine la impresión
+  Now printing: 'Imprimiendo ahora'
   Noz max: Boq máx
   Noz min: Boq mín
   Noz rec: Boq rec
@@ -2263,6 +2266,7 @@ translations:
   Object picks apply only to prints started now: 'La selección de objetos solo se aplica a impresiones iniciadas ahora'
   Object positions unavailable: Posiciones de objetos no disponibles
   Objects: Objetos
+  Objects in the print, with a tap to open the skip map: 'Objetos de la impresión, con un toque abre el mapa para omitir'
   'Off': Apagado
   'Off:': 'Apagado:'
   'Off: runs with these values without asking': 'Desactivado: ejecuta con estos valores sin preguntar'
@@ -3113,10 +3117,12 @@ translations:
   Signal: Señal
   'Signal #': Señal n.º
   Similarity: "Similitud"
+  Single object: 'Un solo objeto'
   Single toggle macro. State is not tracked.: Macro de alternancia único. El estado
     no se rastrea.
   Size: Tamaño
   Skip: Omitir
+  Skip objects...: 'Omitir objetos...'
   Skipped: 'Omitido'
   Sleep While Printing: Apagar pantalla al imprimir
   Sleep adjusted to match dim timeout: Tiempo de suspensión ajustado

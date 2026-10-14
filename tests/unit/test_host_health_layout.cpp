@@ -161,6 +161,12 @@ TEST_CASE("host_health layout: the Glance text follows the cause", "[host_health
     CHECK(format_glance_text(HealthCause::DiskFree, none) == "--");
 }
 
+TEST_CASE("host_health layout: a reported zero reads 0%, not a dash", "[host_health][layout]") {
+    const HostHealthReadings idle{0, 500, 0, 412};
+    CHECK(format_glance_text(HealthCause::HostCpu, idle) == "0%");
+    CHECK(format_glance_text(HealthCause::McuLoad, idle) == "0%");
+}
+
 TEST_CASE("host_health layout: temperature text rounds to whole degrees or shows a decimal",
           "[host_health][layout]") {
     CHECK(format_cpu_temp(614, 0) == "61\xc2\xb0"

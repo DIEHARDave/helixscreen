@@ -734,3 +734,15 @@ TEST_CASE_METHOD(BedMeshTileFixture,
     CHECK(ui_bed_mesh_get_render_mode(map) == BedMeshRenderMode::Force2D);
 }
 #endif
+
+TEST_CASE_METHOD(BedMeshTileFixture, "bed_mesh_tile: clearing the mesh clears the flatness status",
+                 "[widget_size][bed_mesh_tile]") {
+    load_mesh(0.50f);
+    Harness h(test_screen(), state());
+    h.resize(1, 1, 114, 113);
+    REQUIRE(subject_int("bed_mesh_tile_status") == 2);
+
+    clear_mesh(0);
+
+    CHECK(subject_int("bed_mesh_tile_status") == 0);
+}

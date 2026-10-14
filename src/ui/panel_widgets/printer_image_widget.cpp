@@ -20,6 +20,9 @@
 #include "http_executor.h"
 #include "led/led_controller.h"
 #include "led/ui_led_control_overlay.h"
+#include "led_widget.h"
+#include "light_button_config.h"
+#include "lock_manager.h"
 #include "observer_factory.h"
 #include "panel_widget_registry.h"
 #include "prerendered_images.h"
@@ -58,6 +61,7 @@ static lv_subject_t s_callout_bed_shown;
 static lv_subject_t s_callout_chamber_shown;
 static lv_subject_t s_callout_fan_shown;
 static lv_subject_t s_callout_light_shown;
+static lv_subject_t s_callout_light_on;
 static lv_subject_t s_callout_bed_heating;
 static lv_subject_t s_callout_nozzle_text;
 static char s_callout_nozzle_text_buf[32];
@@ -150,6 +154,7 @@ static void printer_image_widget_init_subjects() {
         {&s_callout_chamber_shown, "callout_chamber_shown"},
         {&s_callout_fan_shown, "callout_fan_shown"},
         {&s_callout_light_shown, "callout_light_shown"},
+        {&s_callout_light_on, "callout_light_on"},
         {&s_callout_bed_heating, "callout_bed_heating"},
     };
     for (const auto& s : int_subjects) {
@@ -219,6 +224,8 @@ void register_printer_image_widget() {
                              PrinterImageWidget::printer_callout_fan_cb);
     lv_xml_register_event_cb(nullptr, "printer_callout_light_cb",
                              PrinterImageWidget::printer_callout_light_cb);
+    lv_xml_register_event_cb(nullptr, "printer_callout_light_hold_cb",
+                             PrinterImageWidget::printer_callout_light_hold_cb);
 
     // Prune old cached printer images on startup
     prune_printer_image_cache();
@@ -649,12 +656,20 @@ void PrinterImageWidget::printer_manager_clicked_cb(lv_event_t* e) {
     LVGL_SAFE_EVENT_CB_END();
 }
 
-void PrinterImageWidget::route_callout_click(lv_event_t* e, CalloutKind kind) {
-    // The home panel makes every descendant bubble, so an unstopped chip tap also
-    // reaches printer_container and opens Printer Manager over the chip's control.
-    // Only CLICKED stops here; PRESSED and LONG_PRESSED still reach grid edit mode.
-    lv_event_stop_bubbling(e);
+namespace {
 
+/// The light chip switches a real light, so a touch that reaches it behind the
+/// lock screen (a resting finger on wake) does nothing.
+bool light_chip_locked() {
+    if (!helix::LockManager::instance().is_locked())
+        return false;
+    spdlog::debug("[PrinterImageWidget] light chip touch ignored: screen locked");
+    return true;
+}
+
+} // namespace
+
+PrinterImageWidget* PrinterImageWidget::widget_from_chip(lv_event_t* e) {
     // chip -> callout_layer -> printer_container, whose user_data attach() set.
     auto* chip = static_cast<lv_obj_t*>(lv_event_get_current_target(e));
     lv_obj_t* layer = chip ? lv_obj_get_parent(chip) : nullptr;
@@ -662,11 +677,21 @@ void PrinterImageWidget::route_callout_click(lv_event_t* e, CalloutKind kind) {
     auto* self =
         container ? static_cast<PrinterImageWidget*>(lv_obj_get_user_data(container)) : nullptr;
     if (!self) {
-        spdlog::warn("[PrinterImageWidget] callout click: could not recover widget instance");
-        return;
+        spdlog::warn("[PrinterImageWidget] callout event: could not recover widget instance");
     }
-    self->record_interaction();
-    self->handle_callout_clicked(kind);
+    return self;
+}
+
+void PrinterImageWidget::route_callout_click(lv_event_t* e, CalloutKind kind) {
+    // The home panel makes every descendant bubble, so an unstopped chip tap also
+    // reaches printer_container and opens Printer Manager over the chip's control.
+    // Only CLICKED stops here; PRESSED and LONG_PRESSED still reach grid edit mode,
+    // except on the light chip, whose hold has its own action.
+    lv_event_stop_bubbling(e);
+    if (auto* self = widget_from_chip(e)) {
+        self->record_interaction();
+        self->handle_callout_clicked(kind);
+    }
 }
 
 void PrinterImageWidget::printer_callout_nozzle_cb(lv_event_t* e) {
@@ -699,6 +724,25 @@ void PrinterImageWidget::printer_callout_light_cb(lv_event_t* e) {
     LVGL_SAFE_EVENT_CB_END();
 }
 
+void PrinterImageWidget::printer_callout_light_hold_cb(lv_event_t* e) {
+    LVGL_SAFE_EVENT_CB_BEGIN("[PrinterImageWidget] printer_callout_light_hold_cb");
+    // A hold on the bulb opens the light's controls rather than grid edit mode.
+    // Its release still sends CLICKED, so the press is cancelled here: a hold
+    // must not also toggle the light.
+    lv_event_stop_bubbling(e);
+    auto* self = widget_from_chip(e);
+    if (lv_indev_t* indev = lv_indev_active())
+        lv_indev_reset(indev, nullptr);
+    if (light_chip_locked())
+        return; // inside the SAFE_EVENT_CB try block; END closes it below
+    if (self) {
+        self->record_interaction();
+        open_led_control_overlay(self->parent_screen_,
+                                 helix::led::LedController::instance().chamber_light());
+    }
+    LVGL_SAFE_EVENT_CB_END();
+}
+
 void PrinterImageWidget::handle_callout_clicked(CalloutKind kind) {
     switch (kind) {
     case CalloutKind::Nozzle:
@@ -714,10 +758,16 @@ void PrinterImageWidget::handle_callout_clicked(CalloutKind kind) {
     case CalloutKind::Fan:
         open_fan_control_overlay(parent_screen_);
         break;
-    case CalloutKind::Light:
-        open_led_control_overlay(parent_screen_,
-                                 helix::led::LedController::instance().chamber_light());
+    case CalloutKind::Light: {
+        if (light_chip_locked())
+            break;
+        const auto result = toggle_lights(
+            helix::led::LedController::instance().light_targets(std::string()), "PrinterImage");
+        // The dark bulb shows while the state is unknown, so it takes the flash.
+        if (result.unconfirmed && widget_obj_)
+            flash_light_icon(lv_obj_find_by_name(widget_obj_, "callout_light_dark"));
         break;
+    }
     }
 }
 
@@ -735,6 +785,12 @@ lv_subject_t* printer_has_led_subject() {
 
 int read_int_or_zero(lv_subject_t* s) {
     return s ? lv_subject_get_int(s) : 0;
+}
+
+/// The light chip shows, lit or dark, whenever a chamber light can be switched.
+bool light_chip_capable() {
+    return read_int_or_zero(printer_has_led_subject()) &&
+           !helix::led::LedController::instance().chamber_light().empty();
 }
 
 } // namespace
@@ -837,9 +893,12 @@ void PrinterImageWidget::update_callouts() {
     snprintf(fan_buf, sizeof(fan_buf), "%d%%", fan);
     publish(&s_callout_fan_shown, fan > 0 ? 1 : 0, CalloutKind::Fan, &s_callout_fan_text,
             fan > 0 ? fan_buf : "");
-    const int light_shown =
-        read_int_or_zero(printer_has_led_subject()) && helix::led::chamber_light_on() ? 1 : 0;
-    publish(&s_callout_light_shown, light_shown, CalloutKind::Light, nullptr, {});
+    const bool light_capable = light_chip_capable();
+    publish(&s_callout_light_shown, light_capable ? 1 : 0, CalloutKind::Light, nullptr, {});
+    // Lit or dark is the same chip size, so it needs no relayout.
+    const int light_on = light_capable && helix::led::chamber_light_on() ? 1 : 0;
+    if (lv_subject_get_int(&s_callout_light_on) != light_on)
+        lv_subject_set_int(&s_callout_light_on, light_on);
     set_text(CalloutKind::Toolhead, &s_callout_toolhead_text,
              callout_full_text_[static_cast<size_t>(CalloutKind::Nozzle)] + "  " + fan_buf);
 
@@ -1011,7 +1070,7 @@ void PrinterImageWidget::apply_callout_layout() {
          icon_px("lightbulb_on"),
          {},
          {},
-         read_int_or_zero(printer_has_led_subject()) != 0},
+         light_chip_capable()},
     };
     for (const Chip& c : chips) {
         if (c.capable)

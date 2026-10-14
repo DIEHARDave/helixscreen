@@ -34,6 +34,8 @@ HelixScreen never saves your PIN itself, only a scrambled version of it that can
 
 The row shows how busy things are right now, for example *95% CPU · 13% MCU*. Tap it for live processor and memory use on the computer running HelixScreen, plus the load on each of your printer's controller boards. Check it when prints stutter or the screen feels slow, to see whether the host or a board is overloaded.
 
+The same readings can sit on the home screen as the [Host Health widget](../home-panel.md#host-health-widget), which opens this screen when tapped.
+
 ---
 
 ## Share Usage Data

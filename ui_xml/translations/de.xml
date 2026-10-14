@@ -13,7 +13,10 @@
   <translation tag="%d min left" de="noch %d Min"/>
   <translation tag="%d mm/s" de="%d mm/s"/>
   <translation tag="%d more sensors" de="%d weitere Sensoren"/>
+  <translation tag="%d objects" de="%d Objekte"/>
+  <translation tag="%d of %d printing" de="%d von %d werden gedruckt"/>
   <translation tag="%d profiles" de="%d Profile"/>
+  <translation tag="%d skipped" de="%d übersprungen"/>
   <translation tag="%d slots" de="%d Slots"/>
   <translation tag="%d toolheads" de="%d Werkzeugköpfe"/>
   <translation tag="%d tools" de="%d Werkzeuge"/>
@@ -781,9 +784,6 @@
   <translation tag="Current name:" de="Aktueller Name:"/>
   <translation tag="Current:" de="Aktuell:"/>
   <translation tag="Current: %d°C | Target: %d°C" de="Aktuell: %d°C | Ziel: %d°C"/>
-  <translation tag="Current: %s" de="Aktuell: %s"/>
-  <translation tag="Current: %s · %s" de="Aktuell: %s · %s"/>
-  <translation tag="Current: Bypass" de="Aktuell: Bypass"/>
   <translation tag="Currently Loaded" de="Aktuell geladen"/>
   <translation tag="Currently printing" de="Aktueller Druck"/>
   <translation tag="Custom" de="Benutzerdefiniert"/>
@@ -1032,6 +1032,7 @@
   <translation tag="Exception: {}" de="Ausnahme: {}"/>
   <translation tag="Exclude" de="Ausschließen"/>
   <translation tag="Exclude Object?" de="Objekt ausschließen?"/>
+  <translation tag="Exclude Objects" de="Objekte ausschließen"/>
   <translation tag="Excluded" de="Ausgeschlossen"/>
   <translation tag="Exclusion cancelled" de="Ausschluss abgebrochen"/>
   <translation tag="Execute printer macros" de="Drucker-Makros ausführen"/>
@@ -1952,6 +1953,7 @@
   <translation tag="No networks found" de="Keine Netzwerke gefunden"/>
   <translation tag="No new mesh was stored as &apos;{}&apos;" de="Kein neues Netz wurde als &apos;{}&apos; gespeichert"/>
   <translation tag="No notifications" de="Keine Benachrichtigungen"/>
+  <translation tag="No objects" de="Keine Objekte"/>
   <translation tag="No objects defined for this print" de="Keine Objekte für diesen Druck definiert"/>
   <translation tag="No output yet" de="Noch keine Ausgabe"/>
   <translation tag="No presets configured" de="Keine Voreinstellungen konfiguriert"/>
@@ -2018,6 +2020,7 @@
   <translation tag="Notification" de="Benachrichtigung"/>
   <translation tag="Notifications" de="Benachrichtigungen"/>
   <translation tag="Notify when print finishes" de="Benachrichtigen wenn Druck beendet"/>
+  <translation tag="Now printing" de="Wird gedruckt"/>
   <translation tag="Noz max" de="Düse max"/>
   <translation tag="Noz min" de="Düse min"/>
   <translation tag="Noz rec" de="Düse empf."/>
@@ -2051,6 +2054,7 @@
   <translation tag="Object picks apply only to prints started now" de="Objektauswahl gilt nur für jetzt gestartete Drucke"/>
   <translation tag="Object positions unavailable" de="Objektpositionen nicht verfügbar"/>
   <translation tag="Objects" de="Objekte"/>
+  <translation tag="Objects in the print, with a tap to open the skip map" de="Objekte des Drucks, per Tipp zur Überspringen-Karte"/>
   <translation tag="Off" de="Aus"/>
   <translation tag="Off:" de="Aus:"/>
   <translation tag="Off: runs with these values without asking" de="Aus: führt diese Werte aus, ohne zu fragen"/>
@@ -2811,9 +2815,11 @@
   <translation tag="Signal" de="Signal"/>
   <translation tag="Signal #" de="Signal-Nr."/>
   <translation tag="Similarity" de="Übereinstimmung"/>
+  <translation tag="Single object" de="Einzelnes Objekt"/>
   <translation tag="Single toggle macro. State is not tracked." de="Einzelnes Umschalt-Makro. Status wird nicht verfolgt."/>
   <translation tag="Size" de="Größe"/>
   <translation tag="Skip" de="Überspringen"/>
+  <translation tag="Skip objects..." de="Objekte überspringen..."/>
   <translation tag="Skipped" de="Übersprungen"/>
   <translation tag="Sleep While Printing" de="Ruhemodus beim Drucken"/>
   <translation tag="Sleep adjusted to match dim timeout" de="Ruhemodus-Zeitlimit angepasst"/>

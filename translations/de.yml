@@ -15,6 +15,9 @@ translations:
   '%d min left': 'noch %d Min'
   '%d mm/s': '%d mm/s'
   '%d more sensors': '%d weitere Sensoren'
+  '%d objects': '%d Objekte'
+  '%d of %d printing': '%d von %d werden gedruckt'
+  '%d skipped': '%d übersprungen'
   '%d profiles': '%d Profile'
   '%d slots': '%d Slots'
   '%d toolheads': '%d Werkzeugköpfe'
@@ -876,9 +879,6 @@ translations:
   'Current name:': 'Aktueller Name:'
   'Current:': 'Aktuell:'
   'Current: %d°C | Target: %d°C': 'Aktuell: %d°C | Ziel: %d°C'
-  'Current: %s': 'Aktuell: %s'
-  'Current: %s · %s': 'Aktuell: %s · %s'
-  'Current: Bypass': 'Aktuell: Bypass'
   Currently Loaded: Aktuell geladen
   Currently printing: Aktueller Druck
   Custom: Benutzerdefiniert
@@ -1147,6 +1147,7 @@ translations:
   'Exception: {}': 'Ausnahme: {}'
   Exclude: Ausschließen
   Exclude Object?: 'Objekt ausschließen?'
+  Exclude Objects: 'Objekte ausschließen'
   Excluded: Ausgeschlossen
   Exclusion cancelled: Ausschluss abgebrochen
   Execute printer macros: Drucker-Makros ausführen
@@ -2167,6 +2168,7 @@ translations:
   No networks found: Keine Netzwerke gefunden
   No new mesh was stored as '{}': "Kein neues Netz wurde als '{}' gespeichert"
   No notifications: Keine Benachrichtigungen
+  No objects: 'Keine Objekte'
   No objects defined for this print: Keine Objekte für diesen Druck definiert
   No output yet: Noch keine Ausgabe
   No presets configured: Keine Voreinstellungen konfiguriert
@@ -2239,6 +2241,7 @@ translations:
   Notification: Benachrichtigung
   Notifications: Benachrichtigungen
   Notify when print finishes: Benachrichtigen wenn Druck beendet
+  Now printing: 'Wird gedruckt'
   Noz max: Düse max
   Noz min: Düse min
   Noz rec: Düse empf.
@@ -2272,6 +2275,7 @@ translations:
   Object picks apply only to prints started now: 'Objektauswahl gilt nur für jetzt gestartete Drucke'
   Object positions unavailable: Objektpositionen nicht verfügbar
   Objects: Objekte
+  Objects in the print, with a tap to open the skip map: 'Objekte des Drucks, per Tipp zur Überspringen-Karte'
   'Off': Aus
   'Off:': 'Aus:'
   'Off: runs with these values without asking': 'Aus: führt diese Werte aus, ohne zu fragen'
@@ -3123,10 +3127,12 @@ translations:
   Signal: Signal
   'Signal #': Signal-Nr.
   Similarity: "Übereinstimmung"
+  Single object: 'Einzelnes Objekt'
   Single toggle macro. State is not tracked.: Einzelnes Umschalt-Makro. Status wird
     nicht verfolgt.
   Size: Größe
   Skip: Überspringen
+  Skip objects...: 'Objekte überspringen...'
   Skipped: 'Übersprungen'
   Sleep While Printing: Ruhemodus beim Drucken
   Sleep adjusted to match dim timeout: Ruhemodus-Zeitlimit angepasst

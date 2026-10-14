@@ -58,7 +58,8 @@ Represents one physical tool (print head):
 ```cpp
 struct ToolInfo {
     int index = 0;                                    // Tool index (0, 1, 2, ...)
-    std::string name = "T0";                          // Klipper tool name ("T0", "T1", ...)
+    std::string name = "T0";                          // Klipper tool name ("T0", "T1", or a configured "Left")
+    std::string display_label;                        // Physical label, 1-based ("Tool 1", "Toolhead 1" on a U1)
     std::optional<std::string> extruder_name = "extruder"; // Linked extruder ("extruder", "extruder1")
     std::optional<std::string> heater_name;           // Explicit heater override (nullopt = use extruder)
     std::optional<std::string> fan_name;              // Part cooling fan ("fan", "fan_generic fan1")
@@ -71,6 +72,16 @@ struct ToolInfo {
     int backend_slot = -1;                            // Fixed slot in that backend (-1 = any/dynamic)
 };
 ```
+
+**Names and labels.** `name` is the G-code identity. On klipper-toolchanger it is the
+`[tool <name>]` section name from the printer's Klipper config, so `[tool Left]` gives
+`"Left"`; everywhere else it is generated as `"T<n>"` (`tool_label()`). HelixScreen has no
+setting of its own for it: renaming a tool means renaming its Klipper section.
+`display_label` is always generated, from the backend's noun (`active_tool_noun()`).
+UI text goes through `include/display_numbering.h` rather than either field directly:
+`tool_label_in_form()` renders a generated name as "Tool 1 (T0)" (`Full`) or "T0" (`Code`),
+and a configured one as "Left (T0)" or "T0"; `tool_name_label()` gives the friendly half
+alone ("Tool 1", "Left"), and `is_generated_tool_name()` tells the two kinds apart.
 
 **`effective_heater()` helper:** Returns the heater responsible for this tool. Prefers explicit `heater_name`, falls back to `extruder_name`, then `"extruder"`.
 
@@ -131,7 +142,7 @@ Application startup
 
 ### Tool Changer Printers
 
-When `PrinterDiscovery` finds both a `toolchanger` object and `tool T*` objects in Klipper's object list, `init_tools()` creates one `ToolInfo` per discovered tool name.
+When `PrinterDiscovery` finds both a `toolchanger` object and `tool T*` objects in Klipper's object list, `init_tools()` creates one `ToolInfo` per discovered tool name, in Klipper's tool-number order: a tool's index is its tool number (see **Tool order** in `FILAMENT_BACKEND_TOOLCHANGER.md`).
 
 Extruder mapping is by index: discovered extruder names (sorted alphabetically) are paired with tools in order. If there are fewer extruders than tools, extra tools get `extruder_name = nullopt`.
 
@@ -209,6 +220,21 @@ home tool switcher's face reads "Choose head" ("None" where that does not fit), 
 Park cell disabled. `clear_backend_active_tool()` hands the active tool back to the
 frame whenever the backend builds a topology, cannot empty its carriage, or is gone, and
 maps a held -1 to T0.
+
+### Parking the Active Tool
+
+`AmsBackend::park_active_tool()` goes through the same gated path as a tool change
+(`FilamentOp::ParkTool` in `AmsSubscriptionBackend::run_filament_op`), with a stricter
+gate: a paused job refuses it too, on every backend, because a print resumed with its
+tool docked prints nothing. The refusal lives in the shared gate so any caller meets it,
+and the tool switcher widget (`park_offered()` and `handle_park_requested()`) mirrors it
+with `job_holds_machine()` so the action greys out.
+
+A tool change is the opposite case: it is allowed while paused (behind the widget's
+confirmation) unless `filament_ops_self_home()` is true. While `T<n>` is in flight the
+U1 never reads an empty carriage: the old head docks before the new one reports, so the
+backend holds the previous `current_tool` while a `T<n>` it sent has not landed (bounded
+by `kToolChangeWindow`), a head is in its `activating_move`, or the action is `SELECTING`.
 
 ### Per-Tool Objects
 

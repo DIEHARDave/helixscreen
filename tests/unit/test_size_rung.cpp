@@ -66,6 +66,15 @@ TEST_CASE("choose_size_rung: a box holding both Strip and Column takes its aspec
     CHECK(choose_size_rung(60, 60, needs) == SizeRung::Strip);
 }
 
+TEST_CASE(
+    "choose_size_rung: a box that holds only one of Strip and Column takes it whatever its aspect",
+    "[size_rung]") {
+    constexpr RungNeeds strip_only{rung_box(10, 10), rung_box(50, 30)};
+    CHECK(choose_size_rung(55, 90, strip_only) == SizeRung::Strip);
+    constexpr RungNeeds column_only{rung_box(10, 10), RungBox{}, rung_box(30, 50)};
+    CHECK(choose_size_rung(90, 55, column_only) == SizeRung::Column);
+}
+
 TEST_CASE("choose_size_rung: a rung the widget does not offer is never chosen", "[size_rung]") {
     constexpr RungNeeds needs{rung_box(10, 10), RungBox{}, RungBox{},
                               RungBox{},        RungBox{}, rung_box(100, 100)};
