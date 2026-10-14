@@ -64,6 +64,58 @@ static bool cache_candidate_viable(const std::string& path) {
 using helix::cache_internal::CacheCandidate;
 using helix::cache_internal::is_deliberate;
 
+namespace helix::cache_internal {
+
+std::vector<CacheCandidate> board_cache_candidates(board::Board board, FlashForgeModTree tree,
+                                                   const std::string& subdir) {
+    const char* tier = board::info(board).key;
+    auto rung = [&](const std::string& root) {
+        return CacheCandidate{root + "/cache/" + subdir, tier, true};
+    };
+
+    switch (board) {
+    case board::Board::Ad5m:
+        // Dot-prefixed on purpose: /data is the only large writable partition on
+        // this board and the vendor symlinks it whole into Moonraker's gcodes
+        // root, so a plain-named directory shows up in the print-file picker.
+        // Moonraker's listings hide dot-entries (the vendor's own .mod and .thumbs
+        // rely on exactly that), no moonraker.conf edit needed.
+        return {rung("/data/.helixscreen")};
+    case board::Board::Cc1:
+        // /user-resource is the 6.3GB ext4 partition. / is a read-only squashfs with
+        // no /opt, so anything rooted there falls through to RAM-backed /tmp. The
+        // -state sibling keeps the cache off the payload, which every update deletes.
+        return {rung("/user-resource/helixscreen-state")};
+    case board::Board::K2:
+        // /mnt/UDISK is the 27.5GB user partition and carries both the payload and
+        // its state; the cache sits in the -state sibling because the payload is
+        // what an update replaces. /usr/data is on the root overlay, only ~240MB
+        // and shared with the firmware, so it is the fallback for a unit without
+        // the mount. Same two roots plr_backend.cpp probes for Creality data.
+        return {rung("/mnt/UDISK/helixscreen-state"), rung("/usr/data/helixscreen-state")};
+    case board::Board::K1:
+        // /usr/data IS the large user partition here, unlike on the K2. The cache
+        // sits in a sibling of the payload rather than inside it, because the
+        // payload is what an update replaces.
+        return {rung("/usr/data/helixscreen-state")};
+    case board::Board::Ad5x:
+    case board::Board::Creator5:
+    case board::Board::Creator5Pro:
+        // Z-Mod keeps state under /srv; the Forge-X chroot has neither /srv nor
+        // /usr/data and keeps it in the mod's durable config directory.
+        if (tree == FlashForgeModTree::ForgeX)
+            return {rung("/opt/config/mod_data/helixscreen-state")};
+        return {rung("/srv/helixscreen-state")};
+    case board::Board::SnapmakerU1:
+        return {rung("/userdata/helixscreen-state")};
+    case board::Board::Generic:
+        break;
+    }
+    return {};
+}
+
+} // namespace helix::cache_internal
+
 /// The cache cascade for `subdir`, in priority order. Pure: enumerating the
 /// candidates touches nothing on disk.
 static std::vector<CacheCandidate> cache_path_candidates(const std::string& subdir) {
@@ -80,36 +132,11 @@ static std::vector<CacheCandidate> cache_path_candidates(const std::string& subd
     if (!base.empty())
         out.push_back({base + "/" + subdir, "config", false});
 
-        // 3. Platform-specific compile-time paths
-#if defined(HELIX_PLATFORM_AD5M)
-    // Dot-prefixed on purpose: /data is the only large writable partition on
-    // this board and the vendor symlinks it whole into Moonraker's gcodes
-    // root, so a plain-named directory shows up in the print-file picker.
-    // Moonraker's listings hide dot-entries (the vendor's own .mod and .thumbs
-    // rely on exactly that), no moonraker.conf edit needed.
-    out.push_back({"/data/.helixscreen/cache/" + subdir, "AD5M", true});
-#elif defined(HELIX_PLATFORM_CC1)
-    // /user-resource is the 6.3GB ext4 partition. / is a read-only squashfs with
-    // no /opt, so anything rooted there falls through to RAM-backed /tmp. The
-    // -state sibling keeps the cache off the payload, which every update deletes.
-    out.push_back({"/user-resource/helixscreen-state/cache/" + subdir, "CC1", true});
-#elif defined(HELIX_PLATFORM_K2)
-    // /mnt/UDISK is the 27.5GB user partition and carries both the payload and
-    // its state; the cache sits in the -state sibling because the payload is
-    // what an update replaces. /usr/data is on the root overlay, only ~240MB
-    // and shared with the firmware, so it is the fallback for a unit without
-    // the mount. Same two roots plr_backend.cpp probes for Creality data.
-    out.push_back({"/mnt/UDISK/helixscreen-state/cache/" + subdir, "K2", true});
-    out.push_back({"/usr/data/helixscreen-state/cache/" + subdir, "K2", true});
-#elif defined(HELIX_PLATFORM_MIPS)
-    // K1 series: /usr/data IS the large user partition here, unlike on the K2.
-    // The cache sits in a sibling of the payload rather than inside it, because
-    // the payload is what an update replaces. This binary also serves the AD5X,
-    // where /usr/data exists only in the ZMOD chroot (persistent — cache lands
-    // here) and never in the Forge-X chroot (can_create_dir fails and the
-    // cascade falls through to XDG, same as the dedicated AD5X build did).
-    out.push_back({"/usr/data/helixscreen-state/cache/" + subdir, "MIPS", true});
-#elif defined(HELIX_PLATFORM_ANDROID) || defined(__ANDROID__)
+    // 3. The board's own rung
+    for (CacheCandidate& c : helix::cache_internal::board_cache_candidates(
+             helix::board::current(), helix::flashforge_mod_tree(), subdir))
+        out.push_back(std::move(c));
+#if defined(HELIX_PLATFORM_ANDROID) || defined(__ANDROID__)
     // Use SDL's Android internal storage path (app-private, no permissions needed)
     if (const char* android_path = SDL_AndroidGetInternalStoragePath())
         out.push_back({std::string(android_path) + "/cache/" + subdir, "Android", true});
@@ -336,7 +363,8 @@ int sweep_stale_helix_cache_dirs() {
 namespace helix {
 
 void migrate_legacy_state_roots() {
-#if defined(HELIX_PLATFORM_AD5M)
+    if (board::current() != board::Board::Ad5m)
+        return;
     // /data is this board's only large writable partition and the vendor
     // symlinks it whole into Moonraker's gcodes root, so the state root has to
     // stay dot-prefixed to stay out of the print-file picker. A binary update
@@ -359,7 +387,6 @@ void migrate_legacy_state_roots() {
         setenv(var, repaired.c_str(), 1);
         spdlog::info("[CacheDir] Repointed {} to the renamed state root: {}", var, repaired);
     }
-#endif
 }
 
 } // namespace helix

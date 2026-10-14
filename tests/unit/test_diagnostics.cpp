@@ -254,7 +254,7 @@ TEST_CASE("the bundle form carries the resolved paths and the cache tier", "[dia
     helix::diagnostics::Diagnostics d;
     d.paths.config_dir = "/etc/klipper/config/helixscreen";
     d.paths.cache_dir = "/usr/data/helixscreen-state/cache";
-    d.paths.cache_tier = "MIPS";
+    d.paths.cache_tier = "k1";
     d.identity.platform_key = "mips";
     d.identity.mod_flavor = "Forge-X";
     d.machine.cpu_cores = 4;
@@ -262,7 +262,7 @@ TEST_CASE("the bundle form carries the resolved paths and the cache tier", "[dia
     const auto section = helix::DebugBundleCollector::build_diagnostics_info(d);
 
     REQUIRE(section["paths"]["config_dir"] == "/etc/klipper/config/helixscreen");
-    REQUIRE(section["paths"]["cache_tier"] == "MIPS");
+    REQUIRE(section["paths"]["cache_tier"] == "k1");
     REQUIRE(section["identity"]["platform_key"] == "mips");
     REQUIRE(section["identity"]["mod_flavor"] == "Forge-X");
     REQUIRE(section["machine"]["cpu_cores"] == 4);

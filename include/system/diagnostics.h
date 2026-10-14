@@ -29,7 +29,7 @@ struct Paths {
     /// get_helix_cache_dir() reports as a [CacheDir] fall-through.
     std::string cache_dir;
     /// Which rung of the cache cascade won: "HELIX_CACHE_DIR", "config",
-    /// "AD5M", "CC1", "K2", "MIPS", "Android", or "" for a fall-through rung
+    /// a board key ("ad5m", "k1", "creator5-pro"), "Android", or "" for a fall-through rung
     /// (XDG, $HOME, /var/tmp, /tmp).
     std::string cache_tier;
     std::string state_dir; ///< backup/state root (settings.json.backup lives here)

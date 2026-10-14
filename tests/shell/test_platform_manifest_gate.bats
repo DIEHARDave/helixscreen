@@ -37,7 +37,7 @@ make_tree() {
     cp mk/cross.mk mk/images.mk "$TREE/mk/"
     cp scripts/lib/installer/common.sh scripts/lib/installer/platform.sh "$TREE/scripts/lib/installer/"
     cp src/system/log_collector.cpp src/system/update_checker.cpp \
-       src/system/debug_bundle_collector.cpp "$TREE/src/system/"
+       src/system/debug_bundle_collector.cpp src/system/helix_cache_dir.cpp "$TREE/src/system/"
     cp include/helix_install_roots.h "$TREE/include/"
 }
 
@@ -222,6 +222,19 @@ d["platforms"]["k2"]["storage"]["root"]="/brand-new-mount/helixscreen"; \
 json.dump(d,open(p,"w"),indent=2)' "$TREE/assets/config/platforms.json"
     run python3 "$GATE" --quiet --root "$TREE"
     contains "/brand-new-mount/helixscreen" "$output"
+}
+
+@test "check_cache_rungs reports a manifest cache_dir the cascade lacks" {
+    make_tree
+    run python3 "$GATE" --quiet --root "$TREE"
+    lacks "[cache-rungs]" "$output"
+
+    python3 -c 'import json,sys; p=sys.argv[1]; d=json.load(open(p)); \
+d["platforms"]["k2"]["storage"]["cache_dir"]="/brand-new-mount/helixscreen-state/cache"; \
+json.dump(d,open(p,"w"),indent=2)' "$TREE/assets/config/platforms.json"
+    run python3 "$GATE" --quiet --root "$TREE"
+    contains "[cache-rungs]" "$output"
+    contains "/brand-new-mount/helixscreen-state/cache" "$output"
 }
 
 @test "gate: reports a platform whose panel is not hardware-verified" {
