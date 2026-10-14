@@ -19,7 +19,7 @@
 #   (firmware/helixscreen-esp32/components/helixcore/CMakeLists.txt) at these
 #   files instead of the desktop assets/fonts/*.c originals.
 #
-# Symbol names, glyph sets, sizes, and bpp are IDENTICAL to the desktop
+# Symbol names, glyph sets (bar the ranges noted below), sizes, and bpp match the desktop
 # originals so the firmware externs/aliases resolve unchanged. Const-ness of
 # the top-level `lv_font_t <name>` symbol is also matched to the desktop
 # originals AND to the firmware externs in
@@ -90,6 +90,8 @@ if [ ! -f "$FONT_CJK_SC" ] || [ ! -f "$FONT_CJK_JP" ]; then
 fi
 
 # --- Ranges (verbatim from regen_text_fonts.sh / regen_mdi_fonts.sh) ---------
+# Except the eighth fractions (0x215B-0x215E): only the Belt Tension panel
+# draws them, and the firmware does not build it.
 
 # Wizard welcome page CJK codepoints - always compiled into the .c fonts.
 # 欢迎！中文ようこそ！日本語
