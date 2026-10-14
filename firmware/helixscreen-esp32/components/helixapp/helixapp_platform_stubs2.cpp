@@ -506,6 +506,9 @@ void UpdateChecker::on_language_changed() {}
 void UpdateChecker::clear_cache() {}
 void UpdateChecker::start_download() {}
 void UpdateChecker::cancel_download() {}
+lv_subject_t* UpdateChecker::download_status_subject() {
+    return &download_status_subject_;
+}
 // Firmware updates are flashed whole; there is no tarball to stage.
 std::string UpdateChecker::compute_update_staging_dir(const std::string&, const std::string&) {
     return {};
