@@ -77,10 +77,10 @@ std::string current_key() {
 #elif defined(HELIX_PLATFORM_CC1)
     return "cc1";
 #elif defined(HELIX_PLATFORM_MIPS)
-    // One binary serves the K1 series and the AD5X, so one platform key and
-    // one self-update asset. Which board the binary is ON is a separate
-    // runtime question (helix::flashforge_mod_tree) answered wherever
-    // behavior actually differs, never for update selection.
+    // One binary serves the K1 series, the AD5X and the Creator 5 line, so one
+    // platform key. Which board the binary is ON is a separate runtime question
+    // (helix::board::current()); it also picks the legacy release asset a
+    // pre-unification release lists this build under.
     return "mips";
 #elif defined(HELIX_PLATFORM_K1)
     // k1-dynamic build variant: dev/debug dynamic-linked K1 binary. Not in the

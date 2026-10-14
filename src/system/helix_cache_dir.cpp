@@ -133,8 +133,14 @@ static std::vector<CacheCandidate> cache_path_candidates(const std::string& subd
         out.push_back({base + "/" + subdir, "config", false});
 
     // 3. The board's own rung
-    for (CacheCandidate& c : helix::cache_internal::board_cache_candidates(
-             helix::board::current(), helix::flashforge_mod_tree(), subdir))
+    const helix::board::Board board = helix::board::current();
+    // The mod tree only decides the FlashForge MIPS boards' rung, so no other board stats for it.
+    const bool flashforge_mips = board == helix::board::Board::Ad5x ||
+                                 board == helix::board::Board::Creator5 ||
+                                 board == helix::board::Board::Creator5Pro;
+    const helix::FlashForgeModTree tree =
+        flashforge_mips ? helix::flashforge_mod_tree() : helix::FlashForgeModTree::None;
+    for (CacheCandidate& c : helix::cache_internal::board_cache_candidates(board, tree, subdir))
         out.push_back(std::move(c));
 #if defined(HELIX_PLATFORM_ANDROID) || defined(__ANDROID__)
     // Use SDL's Android internal storage path (app-private, no permissions needed)

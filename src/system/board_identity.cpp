@@ -14,7 +14,7 @@ namespace {
 // keeps the table the size of the enum.
 //                        key             display_name                 legacy   cam    jz     fx dim
 //                        fw-upd
-const std::array<Info, kBoardCount> kRows = {{
+constexpr std::array<Info, kBoardCount> kRows = {{
     {Board::Generic, "generic", "", nullptr, true, false, false, false, false},
     {Board::Ad5m, "ad5m", "FlashForge Adventurer 5M", nullptr, false, false, false, true, false},
     {Board::Ad5x, "ad5x", "FlashForge Adventurer 5X", "ad5x", false, true, false, true, false},
@@ -26,6 +26,16 @@ const std::array<Info, kBoardCount> kRows = {{
     {Board::Cc1, "cc1", "Elegoo Centauri Carbon", nullptr, true, false, false, false, false},
     {Board::SnapmakerU1, "snapmaker-u1", "Snapmaker U1", nullptr, true, false, false, false, true},
 }};
+
+constexpr bool rows_follow_enum_order() {
+    for (int i = 0; i < kBoardCount; ++i) {
+        if (static_cast<int>(kRows[static_cast<std::size_t>(i)].board) != i ||
+            kRows[static_cast<std::size_t>(i)].key == nullptr)
+            return false;
+    }
+    return true;
+}
+static_assert(rows_follow_enum_order(), "every Board needs a row, in enumerator order");
 
 std::optional<Board> s_override;
 
