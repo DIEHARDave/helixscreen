@@ -1790,8 +1790,7 @@ TEST_CASE("TUNING below medium is one tappable line over the chart",
         CHECK(lv_hidden(named("bt_tune_row_stepper")));
         CHECK_FALSE(lv_hidden(named("btn_tune_swap")));
     }
-    SECTION("portrait medium uses the one-line hero") {
-        bp.set(BP_MEDIUM);
+    SECTION("micro portrait uses the one-line hero") {
         portrait.set(1);
         CHECK(lv_hidden(named("bt_tune_hero")));
         CHECK_FALSE(lv_hidden(named("bt_tune_line")));
@@ -2131,11 +2130,10 @@ TEST_CASE("portrait START stacks the sketch over the text", "[belt][panel][portr
     }
 }
 
-TEST_CASE("tall portrait shows the full tuning hero, stacked", "[belt][panel][portrait][tune]") {
+TEST_CASE("portrait shows the full tuning hero, stacked", "[belt][panel][portrait][tune]") {
     BeltPanelFixture fx;
     get_printer_state().set_printer_type_sync("Voron 2.4");
     ScopedLayoutSubject bp("ui_breakpoint", BP_MEDIUM);
-    ScopedLayoutSubject bp_v("ui_breakpoint_v", 6);
     ScopedLayoutSubject portrait("ui_is_portrait", 1);
     ScopedLayoutSubject ultrawide("ui_is_ultrawide", 0);
     enter_tuning(fx);
@@ -2159,10 +2157,19 @@ TEST_CASE("tall portrait shows the full tuning hero, stacked", "[belt][panel][po
     CHECK(lv_obj_get_y(right) > lv_obj_get_y(left));
     CHECK(lv_obj_get_y(named("btn_tune_measure_short")) > lv_obj_get_y(named("btn_tune_done")));
 
-    SECTION("shorter portrait keeps the one-line hero") {
-        bp_v.set(5);
+    // The warning wraps instead of truncating.
+    CHECK(lv_hidden(named("bt_tune_hint")));
+    CHECK_FALSE(lv_hidden(named("bt_tune_hint_wrap")));
+
+    SECTION("micro portrait keeps the one-line hero") {
+        bp.set(BP_MICRO);
         CHECK(lv_hidden(named("bt_tune_hero")));
         CHECK_FALSE(lv_hidden(named("bt_tune_line")));
         CHECK(lv_hidden(named("btn_tune_swap")));
+    }
+    SECTION("landscape keeps the one-line warning") {
+        portrait.set(0);
+        CHECK_FALSE(lv_hidden(named("bt_tune_hint")));
+        CHECK(lv_hidden(named("bt_tune_hint_wrap")));
     }
 }
