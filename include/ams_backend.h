@@ -680,6 +680,17 @@ class AmsBackend {
     }
 
     /**
+     * @brief Why Eject is unavailable for this lane, in one line, or empty.
+     *
+     * Same contract as unload_blocked_reason(): the refusal is a configuration the
+     * user can fix, so the lane menu states it instead of silently omitting the
+     * action. Empty means eject is available or there is nothing to say.
+     */
+    [[nodiscard]] virtual std::string eject_unavailable_reason(int /*slot_index*/) const {
+        return {};
+    }
+
+    /**
      * @brief True when this backend already populates remaining_weight_g from a live
      * printer-side source. FilamentConsumptionTracker skips slots on such backends
      * to avoid double-counting.

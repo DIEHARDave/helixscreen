@@ -1365,3 +1365,56 @@ TEST_CASE("Load stays offered on the mounted head when Load is a feed",
     mounting.feed(nlohmann::json{{"zmod_color", {{"active_tool_id", 1}}}});
     CHECK_FALSE(ops_for(mounting, 1).can_load);
 }
+
+// ============================================================================
+// on_created: the eject refusal is the backend's to explain
+// ============================================================================
+
+namespace {
+class EjectReasonBackend : public AmsBackendMock {
+  public:
+    using AmsBackendMock::AmsBackendMock;
+    std::string reason;
+    [[nodiscard]] std::string eject_unavailable_reason(int /*slot_index*/) const override {
+        return reason;
+    }
+};
+} // namespace
+
+TEST_CASE_METHOD(LVGLUITestFixture, "the context menu shows a backend's eject reason",
+                 "[ui][ams][context_menu]") {
+    auto backend = std::make_unique<EjectReasonBackend>(4);
+    REQUIRE(lv_xml_register_component_from_file("A:ui_xml/ams_context_menu.xml") == LV_RESULT_OK);
+
+    SECTION("a reason reaches the hint") {
+        backend->reason = "x";
+        AmsContextMenu menu;
+        REQUIRE(menu.show_near_widget(test_screen(), /*slot_index=*/1, test_screen(),
+                                      /*is_loaded=*/false, backend.get()));
+
+        lv_subject_t* hint = lv_xml_get_subject(nullptr, "ams_slot_eject_hint");
+        REQUIRE(hint != nullptr);
+        CHECK(std::string(lv_subject_get_string(hint)) == "x");
+        lv_subject_t* visible = lv_xml_get_subject(nullptr, "ams_slot_eject_hint_visible");
+        REQUIRE(visible != nullptr);
+        CHECK(lv_subject_get_int(visible) == 1);
+
+        lv_obj_t* label = lv_obj_find_by_name(test_screen(), "eject_force_move_hint");
+        REQUIRE(label != nullptr);
+        CHECK_FALSE(lv_obj_has_flag(label, LV_OBJ_FLAG_HIDDEN));
+    }
+
+    SECTION("no reason hides the hint") {
+        AmsContextMenu menu;
+        REQUIRE(menu.show_near_widget(test_screen(), /*slot_index=*/1, test_screen(),
+                                      /*is_loaded=*/false, backend.get()));
+
+        lv_subject_t* visible = lv_xml_get_subject(nullptr, "ams_slot_eject_hint_visible");
+        REQUIRE(visible != nullptr);
+        CHECK(lv_subject_get_int(visible) == 0);
+
+        lv_obj_t* label = lv_obj_find_by_name(test_screen(), "eject_force_move_hint");
+        REQUIRE(label != nullptr);
+        CHECK(lv_obj_has_flag(label, LV_OBJ_FLAG_HIDDEN));
+    }
+}

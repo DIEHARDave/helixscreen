@@ -183,6 +183,7 @@ class AmsBackendQidi : public AmsSubscriptionBackend {
         // needs no [force_move]; the Q2/Plus 4 box_stepper FORCE_MOVE path does. #1083
         return box_uses_multi_color_ || fw_force_move_enabled_;
     }
+    [[nodiscard]] std::string eject_unavailable_reason(int slot_index) const override;
 
     AmsError apply_user_edit(int slot_index, const SlotInfo& info,
                              const helix::ams::Observation& declared) override;
