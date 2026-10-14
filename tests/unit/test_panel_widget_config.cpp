@@ -3384,6 +3384,28 @@ TEST_CASE_METHOD(PanelWidgetConfigFixture,
 }
 
 TEST_CASE_METHOD(PanelWidgetConfigFixture,
+                 "PanelWidgetConfig: a default block saved before any grid is read as written",
+                 "[panel_widget_config][default_block][unnamed_units]") {
+    const std::string id = an_enabled_default_widget();
+    REQUIRE_FALSE(id.empty());
+
+    // The shape a pending default saves: placed widgets, a default block, no
+    // grid. The block names the coordinates, so the layout loads as written.
+    json node = placed_home_node(id);
+    node["default"] = json{{"signature", ""}, {"hash", ""}};
+    REQUIRE_FALSE(node.contains("grid"));
+    setup_with_widgets(node);
+    get_data()["config_version"] = 30;
+
+    CHECK_FALSE(PanelWidgetConfig::has_uninterpretable_coordinates(node, 30));
+
+    PanelWidgetConfig wc("home", config);
+    wc.load();
+    CHECK(wc.has_pending_anchors());
+    CHECK_FALSE(wc.is_enabled(id));
+}
+
+TEST_CASE_METHOD(PanelWidgetConfigFixture,
                  "PanelWidgetConfig: a parked grid carries its own default block",
                  "[panel_widget_config][default_block]") {
     setup_empty_config();
