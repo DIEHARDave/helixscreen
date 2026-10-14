@@ -54,6 +54,7 @@
   <translation tag="+ Add Preset" pt="+ Adicionar Predefinição"/>
   <translation tag="+ Add Printer" pt="+ Adicionar Impressora"/>
   <translation tag="+ New" pt="+ Novo"/>
+  <translation tag="+{} more" pt="+{} mais"/>
   <translation tag="- Check [resonance_tester] in printer.cfg" pt="- Verifique [resonance_tester] no printer.cfg"/>
   <translation tag="- Ensure ADXL345 is connected" pt="- Certifique-se de que o ADXL345 está conectado"/>
   <translation tag="- Try Measure Noise first" pt="- Tente Medir Ruído primeiro"/>
@@ -332,6 +333,7 @@
   <translation tag="Bed Screws" pt="Parafusos da Mesa"/>
   <translation tag="Bed Temp" pt="Temp. Mesa"/>
   <translation tag="Bed Temperature" pt="Temperatura da Mesa"/>
+  <translation tag="Bed clear · Start next" pt="Mesa livre · Iniciar próximo"/>
   <translation tag="Bed cooling, spools still on the bed:" pt="A mesa está esfriando, os carretéis ainda estão sobre ela:"/>
   <translation tag="Bed is Level!" pt="Mesa Nivelada!"/>
   <translation tag="Bed mesh calibration failed: {}" pt="Falha na calibração da malha da mesa: {}"/>
@@ -1560,6 +1562,7 @@
   <translation tag="It&apos;s a new spool" pt="É um carretel novo"/>
   <translation tag="Jammed at the Toolhead" pt="Atolado no cabeçote"/>
   <translation tag="Job Queue" pt="Fila de Trabalhos"/>
+  <translation tag="Job queue not enabled in Moonraker" pt="Fila de trabalhos não ativada no Moonraker"/>
   <translation tag="Jog" pt="Jog"/>
   <translation tag="Jog Speed XY" pt="Velocidade de movimento XY"/>
   <translation tag="Jog Speed Z" pt="Velocidade de movimento Z"/>
@@ -1899,6 +1902,8 @@
   <translation tag="New printer successfully added" pt="Nova impressora adicionada com sucesso"/>
   <translation tag="New profile name" pt="Novo nome do perfil"/>
   <translation tag="Next" pt="Próximo"/>
+  <translation tag="Next: {}" pt="A seguir: {}"/>
+  <translation tag="Next: {} (starts automatically)" pt="A seguir: {} (inicia automaticamente)"/>
   <translation tag="Niimbot (Bluetooth)" pt="Niimbot (Bluetooth)"/>
   <translation tag="No" pt="Não"/>
   <translation tag="No AMS Detected" pt="Nenhum AMS detectado"/>
@@ -2398,6 +2403,7 @@
   <translation tag="Quad Gantry Level" pt="Nivelamento Quad Gantry"/>
   <translation tag="Quad Gantry Level complete" pt="QGL concluído"/>
   <translation tag="Quad Gantry Level started..." pt="QGL iniciado..."/>
+  <translation tag="Queue empty" pt="Fila vazia"/>
   <translation tag="Queue: Paused" pt="Fila: Pausada"/>
   <translation tag="Queue: Ready" pt="Fila: Pronta"/>
   <translation tag="Queued {}h {}m ago" pt="Na fila há {} h {} min"/>
@@ -2920,6 +2926,7 @@
   <translation tag="Start at" pt="Começar em"/>
   <translation tag="Start drying" pt="Iniciar secagem"/>
   <translation tag="Start failed" pt="Falha ao iniciar"/>
+  <translation tag="Start next" pt="Iniciar próximo"/>
   <translation tag="Start next: {}" pt="Iniciar próximo: {}"/>
   <translation tag="Start print anyway?" pt="Iniciar impressão mesmo assim?"/>
   <translation tag="Started" pt="Iniciado"/>
@@ -2927,6 +2934,7 @@
   <translation tag="Starting download..." pt="Iniciando download..."/>
   <translation tag="Starting nozzle clean..." pt="Iniciando limpeza do bico..."/>
   <translation tag="Starting print..." pt="Iniciando impressão..."/>
+  <translation tag="Starting {}…" pt="Iniciando {}…"/>
   <translation tag="Starting..." pt="Iniciando..."/>
   <translation tag="Starts after the current print" pt="Começa depois da impressão atual"/>
   <translation tag="Startup Brightness" pt="Brilho na inicialização"/>
@@ -3659,6 +3667,7 @@
   <translation tag="{} new hardware available" pt="{} novo hardware disponível"/>
   <translation tag="{} new plugins available. Enable them in Settings &gt; Plugins." pt="{} novos plugins disponíveis. Ative-os em Configurações &gt; Plugins."/>
   <translation tag="{} preset{}" pt="{} predefinição{}"/>
+  <translation tag="{} queued" pt="{} na fila"/>
   <translation tag="{} serial" pt="N.º de série de {}"/>
   <translation tag="{} set to {}" pt="{} definido para {}"/>
   <translation tag="{} set to {} {}" pt="{} definido para {} {}"/>

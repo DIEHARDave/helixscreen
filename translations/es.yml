@@ -54,6 +54,7 @@ translations:
   + Add Preset: + Agregar Preajuste
   + Add Printer: + Agregar Impresora
   + New: + Nuevo
+  +{} more: '+{} más'
   '- Check [resonance_tester] in printer.cfg': '- Verifique [resonance_tester] en
     printer.cfg'
   '- Ensure ADXL345 is connected': '- Asegúrese de que el ADXL345 esté conectado'
@@ -360,6 +361,7 @@ translations:
   Bed Screws: Tornillos de Cama
   Bed Temp: Temp. Cama
   Bed Temperature: Temperatura de Cama
+  Bed clear · Start next: 'Cama libre · Iniciar siguiente'
   'Bed cooling, spools still on the bed:': 'La cama se enfría, las bobinas siguen encima:'
 
   Bed is Level!: ¡La Cama está Nivelada!
@@ -1725,6 +1727,7 @@ translations:
   It's a new spool: Es una bobina nueva
   Jammed at the Toolhead: Atascado en el cabezal
   Job Queue: Cola de trabajos
+  Job queue not enabled in Moonraker: 'Cola de trabajos no habilitada en Moonraker'
   Jog: Jog
   Jog Speed XY: Velocidad de movimiento XY
   Jog Speed Z: Velocidad de movimiento Z
@@ -2098,6 +2101,8 @@ translations:
   New printer successfully added: Nueva impresora añadida correctamente
   New profile name: Nombre del nuevo perfil
   Next: Siguiente
+  'Next: {}': 'Siguiente: {}'
+  'Next: {} (starts automatically)': 'Siguiente: {} (inicia automáticamente)'
   Niimbot (Bluetooth): Niimbot (Bluetooth)
   'No': 'No'
   No AMS Detected: 'No se detectó AMS'
@@ -2645,6 +2650,7 @@ translations:
   Quad Gantry Level: Nivelación de Pórtico Cuádruple
   Quad Gantry Level complete: QGL completado
   Quad Gantry Level started...: QGL iniciado...
+  Queue empty: 'Cola vacía'
   'Queue: Paused': 'Cola: Pausada'
   'Queue: Ready': 'Cola: Lista'
   Queued {}h {}m ago: 'En cola desde hace {} h {} min'
@@ -3235,6 +3241,7 @@ translations:
   Start drying: Iniciar secado
 
   Start failed: Inicio fallido
+  Start next: 'Iniciar siguiente'
   'Start next: {}': 'Iniciar siguiente: {}'
   Start print anyway?: ¿Iniciar la impresión de todos modos?
   Started: Iniciado
@@ -3242,6 +3249,7 @@ translations:
   Starting download...: Iniciando descarga...
   Starting nozzle clean...: Iniciando limpieza de boquilla...
   Starting print...: Iniciando impresión...
+  Starting {}…: 'Iniciando {}…'
   Starting...: Iniciando...
   Starts after the current print: Comienza cuando termine la impresión actual
   Startup Brightness: Brillo de inicio
@@ -4088,6 +4096,7 @@ translations:
   '{} new hardware available': '{} nuevo hardware disponible'
   '{} new plugins available. Enable them in Settings > Plugins.': '{} nuevos plugins disponibles. Actívalos en Ajustes > Plugins.'
   '{} preset{}': '{} preajuste{}'
+  '{} queued': '{} en cola'
   '{} serial': 'N.º de serie de {}'
   '{} set to {}': '{} ajustado a {}'
   '{} set to {} {}': '{} ajustado a {} {}'

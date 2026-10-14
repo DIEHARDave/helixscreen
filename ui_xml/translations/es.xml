@@ -54,6 +54,7 @@
   <translation tag="+ Add Preset" es="+ Agregar Preajuste"/>
   <translation tag="+ Add Printer" es="+ Agregar Impresora"/>
   <translation tag="+ New" es="+ Nuevo"/>
+  <translation tag="+{} more" es="+{} más"/>
   <translation tag="- Check [resonance_tester] in printer.cfg" es="- Verifique [resonance_tester] en printer.cfg"/>
   <translation tag="- Ensure ADXL345 is connected" es="- Asegúrese de que el ADXL345 esté conectado"/>
   <translation tag="- Try Measure Noise first" es="- Intente Medir Ruido primero"/>
@@ -332,6 +333,7 @@
   <translation tag="Bed Screws" es="Tornillos de Cama"/>
   <translation tag="Bed Temp" es="Temp. Cama"/>
   <translation tag="Bed Temperature" es="Temperatura de Cama"/>
+  <translation tag="Bed clear · Start next" es="Cama libre · Iniciar siguiente"/>
   <translation tag="Bed cooling, spools still on the bed:" es="La cama se enfría, las bobinas siguen encima:"/>
   <translation tag="Bed is Level!" es="¡La Cama está Nivelada!"/>
   <translation tag="Bed mesh calibration failed: {}" es="Falló la calibración de la malla de cama: {}"/>
@@ -1560,6 +1562,7 @@
   <translation tag="It&apos;s a new spool" es="Es una bobina nueva"/>
   <translation tag="Jammed at the Toolhead" es="Atascado en el cabezal"/>
   <translation tag="Job Queue" es="Cola de trabajos"/>
+  <translation tag="Job queue not enabled in Moonraker" es="Cola de trabajos no habilitada en Moonraker"/>
   <translation tag="Jog" es="Jog"/>
   <translation tag="Jog Speed XY" es="Velocidad de movimiento XY"/>
   <translation tag="Jog Speed Z" es="Velocidad de movimiento Z"/>
@@ -1899,6 +1902,8 @@
   <translation tag="New printer successfully added" es="Nueva impresora añadida correctamente"/>
   <translation tag="New profile name" es="Nombre del nuevo perfil"/>
   <translation tag="Next" es="Siguiente"/>
+  <translation tag="Next: {}" es="Siguiente: {}"/>
+  <translation tag="Next: {} (starts automatically)" es="Siguiente: {} (inicia automáticamente)"/>
   <translation tag="Niimbot (Bluetooth)" es="Niimbot (Bluetooth)"/>
   <translation tag="No" es="No"/>
   <translation tag="No AMS Detected" es="No se detectó AMS"/>
@@ -2398,6 +2403,7 @@
   <translation tag="Quad Gantry Level" es="Nivelación de Pórtico Cuádruple"/>
   <translation tag="Quad Gantry Level complete" es="QGL completado"/>
   <translation tag="Quad Gantry Level started..." es="QGL iniciado..."/>
+  <translation tag="Queue empty" es="Cola vacía"/>
   <translation tag="Queue: Paused" es="Cola: Pausada"/>
   <translation tag="Queue: Ready" es="Cola: Lista"/>
   <translation tag="Queued {}h {}m ago" es="En cola desde hace {} h {} min"/>
@@ -2920,6 +2926,7 @@
   <translation tag="Start at" es="Comenzar en"/>
   <translation tag="Start drying" es="Iniciar secado"/>
   <translation tag="Start failed" es="Inicio fallido"/>
+  <translation tag="Start next" es="Iniciar siguiente"/>
   <translation tag="Start next: {}" es="Iniciar siguiente: {}"/>
   <translation tag="Start print anyway?" es="¿Iniciar la impresión de todos modos?"/>
   <translation tag="Started" es="Iniciado"/>
@@ -2927,6 +2934,7 @@
   <translation tag="Starting download..." es="Iniciando descarga..."/>
   <translation tag="Starting nozzle clean..." es="Iniciando limpieza de boquilla..."/>
   <translation tag="Starting print..." es="Iniciando impresión..."/>
+  <translation tag="Starting {}…" es="Iniciando {}…"/>
   <translation tag="Starting..." es="Iniciando..."/>
   <translation tag="Starts after the current print" es="Comienza cuando termine la impresión actual"/>
   <translation tag="Startup Brightness" es="Brillo de inicio"/>
@@ -3659,6 +3667,7 @@
   <translation tag="{} new hardware available" es="{} nuevo hardware disponible"/>
   <translation tag="{} new plugins available. Enable them in Settings &gt; Plugins." es="{} nuevos plugins disponibles. Actívalos en Ajustes &gt; Plugins."/>
   <translation tag="{} preset{}" es="{} preajuste{}"/>
+  <translation tag="{} queued" es="{} en cola"/>
   <translation tag="{} serial" es="N.º de serie de {}"/>
   <translation tag="{} set to {}" es="{} ajustado a {}"/>
   <translation tag="{} set to {} {}" es="{} ajustado a {} {}"/>

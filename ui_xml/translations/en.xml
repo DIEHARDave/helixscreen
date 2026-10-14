@@ -54,6 +54,7 @@
   <translation tag="+ Add Preset" en="+ Add Preset"/>
   <translation tag="+ Add Printer" en="+ Add Printer"/>
   <translation tag="+ New" en="+ New"/>
+  <translation tag="+{} more" en="+{} more"/>
   <translation tag="- Check [resonance_tester] in printer.cfg" en="- Check [resonance_tester] in printer.cfg"/>
   <translation tag="- Ensure ADXL345 is connected" en="- Ensure ADXL345 is connected"/>
   <translation tag="- Try Measure Noise first" en="- Try Measure Noise first"/>
@@ -332,6 +333,7 @@
   <translation tag="Bed Screws" en="Bed Screws"/>
   <translation tag="Bed Temp" en="Bed Temp"/>
   <translation tag="Bed Temperature" en="Bed Temperature"/>
+  <translation tag="Bed clear · Start next" en="Bed clear · Start next"/>
   <translation tag="Bed cooling, spools still on the bed:" en="Bed cooling, spools still on the bed:"/>
   <translation tag="Bed is Level!" en="Bed is Level!"/>
   <translation tag="Bed mesh calibration failed: {}" en="Bed mesh calibration failed: {}"/>
@@ -1560,6 +1562,7 @@
   <translation tag="It&apos;s a new spool" en="It&apos;s a new spool"/>
   <translation tag="Jammed at the Toolhead" en="Jammed at the Toolhead"/>
   <translation tag="Job Queue" en="Job Queue"/>
+  <translation tag="Job queue not enabled in Moonraker" en="Job queue not enabled in Moonraker"/>
   <translation tag="Jog" en="Jog"/>
   <translation tag="Jog Speed XY" en="Jog Speed XY"/>
   <translation tag="Jog Speed Z" en="Jog Speed Z"/>
@@ -1899,6 +1902,8 @@
   <translation tag="New printer successfully added" en="New printer successfully added"/>
   <translation tag="New profile name" en="New profile name"/>
   <translation tag="Next" en="Next"/>
+  <translation tag="Next: {}" en="Next: {}"/>
+  <translation tag="Next: {} (starts automatically)" en="Next: {} (starts automatically)"/>
   <translation tag="Niimbot (Bluetooth)" en="Niimbot (Bluetooth)"/>
   <translation tag="No" en="No"/>
   <translation tag="No AMS Detected" en="No AMS Detected"/>
@@ -2398,6 +2403,7 @@
   <translation tag="Quad Gantry Level" en="Quad Gantry Level"/>
   <translation tag="Quad Gantry Level complete" en="Quad Gantry Level complete"/>
   <translation tag="Quad Gantry Level started..." en="Quad Gantry Level started..."/>
+  <translation tag="Queue empty" en="Queue empty"/>
   <translation tag="Queue: Paused" en="Queue: Paused"/>
   <translation tag="Queue: Ready" en="Queue: Ready"/>
   <translation tag="Queued {}h {}m ago" en="Queued {}h {}m ago"/>
@@ -2920,6 +2926,7 @@
   <translation tag="Start at" en="Start at"/>
   <translation tag="Start drying" en="Start drying"/>
   <translation tag="Start failed" en="Start failed"/>
+  <translation tag="Start next" en="Start next"/>
   <translation tag="Start next: {}" en="Start next: {}"/>
   <translation tag="Start print anyway?" en="Start print anyway?"/>
   <translation tag="Started" en="Started"/>
@@ -2927,6 +2934,7 @@
   <translation tag="Starting download..." en="Starting download..."/>
   <translation tag="Starting nozzle clean..." en="Starting nozzle clean..."/>
   <translation tag="Starting print..." en="Starting print..."/>
+  <translation tag="Starting {}…" en="Starting {}…"/>
   <translation tag="Starting..." en="Starting..."/>
   <translation tag="Starts after the current print" en="Starts after the current print"/>
   <translation tag="Startup Brightness" en="Startup Brightness"/>
@@ -3659,6 +3667,7 @@
   <translation tag="{} new hardware available" en="{} new hardware available"/>
   <translation tag="{} new plugins available. Enable them in Settings &gt; Plugins." en="{} new plugins available. Enable them in Settings &gt; Plugins."/>
   <translation tag="{} preset{}" en="{} preset{}"/>
+  <translation tag="{} queued" en="{} queued"/>
   <translation tag="{} serial" en="{} serial"/>
   <translation tag="{} set to {}" en="{} set to {}"/>
   <translation tag="{} set to {} {}" en="{} set to {} {}"/>

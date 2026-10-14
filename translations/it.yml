@@ -54,6 +54,7 @@ translations:
   + Add Preset: + Aggiungi preset
   + Add Printer: + Aggiungi stampante
   + New: + Nuovo
+  +{} more: '+{} altri'
   '- Check [resonance_tester] in printer.cfg': '- Controllare [resonance_tester] in
     printer.cfg'
   '- Ensure ADXL345 is connected': '- Assicurarsi che ADXL345 sia collegato'
@@ -361,6 +362,7 @@ translations:
   Bed Screws: Viti piano
   Bed Temp: Temp. piatto
   Bed Temperature: Temperatura del piano
+  Bed clear · Start next: 'Piano libero · Avvia il prossimo'
   'Bed cooling, spools still on the bed:': 'Il piano si sta raffreddando, le bobine sono ancora sopra:'
 
   Bed is Level!: Piano livellato!
@@ -1723,6 +1725,7 @@ translations:
   It's a new spool: È una nuova bobina
   Jammed at the Toolhead: Inceppato nella testina
   Job Queue: Coda lavori
+  Job queue not enabled in Moonraker: 'Coda lavori non abilitata in Moonraker'
   Jog: Jog
   Jog Speed XY: Velocità di movimento XY
   Jog Speed Z: Velocità di movimento Z
@@ -2098,6 +2101,8 @@ translations:
   New printer successfully added: Nuova stampante aggiunta con successo
   New profile name: Nome nuovo profilo
   Next: Avanti
+  'Next: {}': 'Prossimo: {}'
+  'Next: {} (starts automatically)': 'Prossimo: {} (parte in automatico)'
   Niimbot (Bluetooth): Niimbot (Bluetooth)
   'No': 'No'
   No AMS Detected: 'Nessun AMS rilevato'
@@ -2643,6 +2648,7 @@ translations:
   Quad Gantry Level: Livellamento gantry quadruplo
   Quad Gantry Level complete: QGL completato
   Quad Gantry Level started...: QGL avviato...
+  Queue empty: 'Coda vuota'
   'Queue: Paused': 'Coda: In pausa'
   'Queue: Ready': 'Coda: Pronta'
   Queued {}h {}m ago: 'In coda da {} h {} min'
@@ -3235,6 +3241,7 @@ translations:
   Start drying: Avvia essiccazione
 
   Start failed: Avvio fallito
+  Start next: 'Avvia il prossimo'
   'Start next: {}': 'Avvia il prossimo: {}'
   Start print anyway?: Avviare comunque la stampa?
   Started: Avviato
@@ -3242,6 +3249,7 @@ translations:
   Starting download...: Avvio del download...
   Starting nozzle clean...: Avvio pulizia ugello...
   Starting print...: Avvio stampa...
+  Starting {}…: 'Avvio di {}…'
   Starting...: Avvio...
   Starts after the current print: Inizia dopo la stampa in corso
   Startup Brightness: Luminosità all'avvio
@@ -4089,6 +4097,7 @@ translations:
   '{} new hardware available': '{} nuovo hardware disponibile'
   '{} new plugins available. Enable them in Settings > Plugins.': '{} nuovi plugin disponibili. Abilitali in Impostazioni > Plugin.'
   '{} preset{}': '{} preset{}'
+  '{} queued': '{} in coda'
   '{} serial': 'Numero di serie {}'
   '{} set to {}': '{} impostato su {}'
   '{} set to {} {}': '{} impostato su {} {}'

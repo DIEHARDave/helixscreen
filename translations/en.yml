@@ -54,6 +54,7 @@ translations:
   + Add Preset: + Add Preset
   + Add Printer: + Add Printer
   + New: + New
+  +{} more: +{} more
   '- Check [resonance_tester] in printer.cfg': '- Check [resonance_tester] in printer.cfg'
   '- Ensure ADXL345 is connected': '- Ensure ADXL345 is connected'
   '- Try Measure Noise first': '- Try Measure Noise first'
@@ -349,6 +350,7 @@ translations:
   Bed Screws: Bed Screws
   Bed Temp: Bed Temp
   Bed Temperature: Bed Temperature
+  Bed clear · Start next: Bed clear · Start next
   'Bed cooling, spools still on the bed:': 'Bed cooling, spools still on the bed:'
   Bed is Level!: Bed is Level!
   'Bed mesh calibration failed: {}': 'Bed mesh calibration failed: {}'
@@ -1672,6 +1674,7 @@ translations:
   It's a new spool: It's a new spool
   Jammed at the Toolhead: Jammed at the Toolhead
   Job Queue: Job Queue
+  Job queue not enabled in Moonraker: Job queue not enabled in Moonraker
   Jog: Jog
   Jog Speed XY: Jog Speed XY
   Jog Speed Z: Jog Speed Z
@@ -2038,6 +2041,8 @@ translations:
   New printer successfully added: New printer successfully added
   New profile name: New profile name
   Next: Next
+  'Next: {}': 'Next: {}'
+  'Next: {} (starts automatically)': 'Next: {} (starts automatically)'
   Niimbot (Bluetooth): Niimbot (Bluetooth)
   'No': 'No'
   No AMS Detected: No AMS Detected
@@ -2570,6 +2575,7 @@ translations:
   Quad Gantry Level: Quad Gantry Level
   Quad Gantry Level complete: Quad Gantry Level complete
   Quad Gantry Level started...: Quad Gantry Level started...
+  Queue empty: Queue empty
   'Queue: Paused': 'Queue: Paused'
   'Queue: Ready': 'Queue: Ready'
   Queued {}h {}m ago: Queued {}h {}m ago
@@ -3143,6 +3149,7 @@ translations:
   Start Check: Start Check
   Start drying: Start drying
   Start failed: Start failed
+  Start next: Start next
   'Start next: {}': 'Start next: {}'
   Start print anyway?: Start print anyway?
   Started: Started
@@ -3150,6 +3157,7 @@ translations:
   Starting download...: Starting download...
   'Starting nozzle clean...': 'Starting nozzle clean...'
   'Starting print...': 'Starting print...'
+  Starting {}…: Starting {}…
   Starting...: Starting...
   Starts after the current print: Starts after the current print
   Startup Brightness: Startup Brightness
@@ -3969,6 +3977,7 @@ translations:
   '{} new hardware available': '{} new hardware available'
   '{} new plugins available. Enable them in Settings > Plugins.': '{} new plugins available. Enable them in Settings > Plugins.'
   '{} preset{}': '{} preset{}'
+  '{} queued': '{} queued'
   '{} serial': '{} serial'
   '{} set to {}': '{} set to {}'
   '{} set to {} {}': '{} set to {} {}'

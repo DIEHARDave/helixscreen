@@ -54,6 +54,7 @@
   <translation tag="+ Add Preset" ru="+ Добавить пресет"/>
   <translation tag="+ Add Printer" ru="+ Добавить принтер"/>
   <translation tag="+ New" ru="+ Новый"/>
+  <translation tag="+{} more" ru="+ещё {}"/>
   <translation tag="- Check [resonance_tester] in printer.cfg" ru="- Проверьте блок [resonance_tester] в printer.cfg"/>
   <translation tag="- Ensure ADXL345 is connected" ru="- Убедитесь, что ADXL345 подключен"/>
   <translation tag="- Try Measure Noise first" ru="- Сначала попробуйте измерить шум акселерометра"/>
@@ -332,6 +333,7 @@
   <translation tag="Bed Screws" ru="Винты стола"/>
   <translation tag="Bed Temp" ru="Темп. стола"/>
   <translation tag="Bed Temperature" ru="Температура стола"/>
+  <translation tag="Bed clear · Start next" ru="Стол свободен · Запустить следующую"/>
   <translation tag="Bed cooling, spools still on the bed:" ru="Стол остывает, катушки всё ещё на нём:"/>
   <translation tag="Bed is Level!" ru="Стол выровнен!"/>
   <translation tag="Bed mesh calibration failed: {}" ru="Ошибка калибровки сетки стола: {}"/>
@@ -1560,6 +1562,7 @@
   <translation tag="It&apos;s a new spool" ru="Это новая катушка"/>
   <translation tag="Jammed at the Toolhead" ru="Замятие в печатающей головке"/>
   <translation tag="Job Queue" ru="Очередь заданий"/>
+  <translation tag="Job queue not enabled in Moonraker" ru="Очередь заданий не включена в Moonraker"/>
   <translation tag="Jog" ru="Джог"/>
   <translation tag="Jog Speed XY" ru="Скорость перемещения XY"/>
   <translation tag="Jog Speed Z" ru="Скорость перемещения Z"/>
@@ -1899,6 +1902,8 @@
   <translation tag="New printer successfully added" ru="Новый принтер успешно добавлен"/>
   <translation tag="New profile name" ru="Новое имя профиля"/>
   <translation tag="Next" ru="Далее"/>
+  <translation tag="Next: {}" ru="Далее: {}"/>
+  <translation tag="Next: {} (starts automatically)" ru="Далее: {} (запустится автоматически)"/>
   <translation tag="Niimbot (Bluetooth)" ru="Niimbot (Bluetooth)"/>
   <translation tag="No" ru="Нет"/>
   <translation tag="No AMS Detected" ru="AMS не обнаружен"/>
@@ -2398,6 +2403,7 @@
   <translation tag="Quad Gantry Level" ru="Выравнивание портала"/>
   <translation tag="Quad Gantry Level complete" ru="QGL завершён"/>
   <translation tag="Quad Gantry Level started..." ru="QGL запущен..."/>
+  <translation tag="Queue empty" ru="Очередь пуста"/>
   <translation tag="Queue: Paused" ru="Очередь: Пауза"/>
   <translation tag="Queue: Ready" ru="Очередь: Готово"/>
   <translation tag="Queued {}h {}m ago" ru="В очереди {} ч {} мин"/>
@@ -2920,6 +2926,7 @@
   <translation tag="Start at" ru="Начать с"/>
   <translation tag="Start drying" ru="Начать сушку"/>
   <translation tag="Start failed" ru="Ошибка запуска"/>
+  <translation tag="Start next" ru="Запустить следующую"/>
   <translation tag="Start next: {}" ru="Запустить следующую: {}"/>
   <translation tag="Start print anyway?" ru="Всё равно начать печать?"/>
   <translation tag="Started" ru="Начато"/>
@@ -2927,6 +2934,7 @@
   <translation tag="Starting download..." ru="Начало загрузки..."/>
   <translation tag="Starting nozzle clean..." ru="Запуск очистки сопла..."/>
   <translation tag="Starting print..." ru="Запуск печати..."/>
+  <translation tag="Starting {}…" ru="Запуск {}…"/>
   <translation tag="Starting..." ru="Запуск..."/>
   <translation tag="Starts after the current print" ru="Начнётся после текущей печати"/>
   <translation tag="Startup Brightness" ru="Яркость при запуске"/>
@@ -3659,6 +3667,7 @@
   <translation tag="{} new hardware available" ru="Доступно нового оборудования: {}"/>
   <translation tag="{} new plugins available. Enable them in Settings &gt; Plugins." ru="Доступно новых плагинов: {}. Включите их в разделе Настройки &gt; Плагины."/>
   <translation tag="{} preset{}" ru="{} пресет{}"/>
+  <translation tag="{} queued" ru="В очереди: {}"/>
   <translation tag="{} serial" ru="Серийный номер {}"/>
   <translation tag="{} set to {}" ru="{} установлено на {}"/>
   <translation tag="{} set to {} {}" ru="{} установлено на {} {}"/>

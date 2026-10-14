@@ -6,6 +6,7 @@
 #include "ui_observer_guard.h"
 
 #include "async_lifetime_guard.h"
+#include "job_queue_tile_state.h"
 #include "moonraker_queue_api.h"
 #include "subject_managed_panel.h" // SubjectManager
 
@@ -32,6 +33,19 @@ std::string format_up_next_text(const std::string& display_name, int queued_coun
 /// "Start next: <name>" — the completion modal's secondary button. Empty on
 /// an empty queue (the button hides with it).
 std::string format_start_next_text(const std::string& display_name, int queued_count);
+
+/// The queue tile's strings for one JobQueueTileState. Fields a state does not
+/// show are empty. @p next_estimated_s of 0 means unknown.
+struct JobQueueTileText {
+    std::string hero;
+    std::string detail;
+    std::string more;
+    std::string action;
+    std::string action_short;
+};
+JobQueueTileText compose_job_queue_tile_text(JobQueueTileState state,
+                                             const std::string& next_display_name, int queued_count,
+                                             int next_estimated_s);
 } // namespace helix
 
 /**
@@ -76,6 +90,16 @@ class JobQueueState {
     /// Get cached jobs
     const std::vector<helix::JobQueueEntry>& get_jobs() const {
         return cached_jobs_;
+    }
+
+    /// Whether a queue response has ever arrived. Unlike is_loaded() it survives
+    /// invalidate(), so a dropped socket keeps showing the last known queue.
+    [[nodiscard]] bool has_ever_loaded() const {
+        return ever_loaded_;
+    }
+
+    [[nodiscard]] helix::QueueRunState run_state() const {
+        return helix::parse_queue_run_state(queue_state_);
     }
 
     /// Get queue state string
@@ -149,6 +173,7 @@ class JobQueueState {
 
     // State
     bool is_loaded_ = false;
+    bool ever_loaded_ = false; // set in on_queue_fetched(), never cleared
     // Atomic so the BG callback can clear it before the defer is posted —
     // prevents UpdateQueue freeze-drops from stranding the fetch guard.
     std::atomic<bool> is_fetching_{false};
@@ -179,6 +204,9 @@ class JobQueueState {
     // rebuilds them, so a queue mutation that does not move this subject is
     // invisible until the next resize.
     lv_subject_t job_queue_count_subject_{};
+    // helix::QueueRunState as an int. Published before the count so a count
+    // observer reads it settled.
+    lv_subject_t job_queue_run_state_subject_{};
     /// Owns every subject above and the death signal
     /// get_subjects_lifetime() hands out.
     SubjectManager subjects_;

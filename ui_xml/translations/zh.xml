@@ -54,6 +54,7 @@
   <translation tag="+ Add Preset" zh="+ 添加预设"/>
   <translation tag="+ Add Printer" zh="+ 添加打印机"/>
   <translation tag="+ New" zh="+ 新建"/>
+  <translation tag="+{} more" zh="还有 {} 个"/>
   <translation tag="- Check [resonance_tester] in printer.cfg" zh="- 检查 printer.cfg 中的 [resonance_tester]"/>
   <translation tag="- Ensure ADXL345 is connected" zh="- 确保 ADXL345 已连接"/>
   <translation tag="- Try Measure Noise first" zh="- 先尝试测量噪声"/>
@@ -332,6 +333,7 @@
   <translation tag="Bed Screws" zh="热床螺丝"/>
   <translation tag="Bed Temp" zh="热床温度"/>
   <translation tag="Bed Temperature" zh="热床温度"/>
+  <translation tag="Bed clear · Start next" zh="热床已清空 · 开始下一个"/>
   <translation tag="Bed cooling, spools still on the bed:" zh="热床正在冷却,料盘仍在上面:"/>
   <translation tag="Bed is Level!" zh="热床已水平！"/>
   <translation tag="Bed mesh calibration failed: {}" zh="热床网格校准失败：{}"/>
@@ -1560,6 +1562,7 @@
   <translation tag="It&apos;s a new spool" zh="这是新料盘"/>
   <translation tag="Jammed at the Toolhead" zh="工具头处堵塞"/>
   <translation tag="Job Queue" zh="任务队列"/>
+  <translation tag="Job queue not enabled in Moonraker" zh="Moonraker 未启用任务队列"/>
   <translation tag="Jog" zh="点动"/>
   <translation tag="Jog Speed XY" zh="XY 移动速度"/>
   <translation tag="Jog Speed Z" zh="Z 移动速度"/>
@@ -1899,6 +1902,8 @@
   <translation tag="New printer successfully added" zh="新打印机已成功添加"/>
   <translation tag="New profile name" zh="新配置名称"/>
   <translation tag="Next" zh="下一步"/>
+  <translation tag="Next: {}" zh="下一个：{}"/>
+  <translation tag="Next: {} (starts automatically)" zh="下一个：{}（自动开始）"/>
   <translation tag="Niimbot (Bluetooth)" zh="Niimbot（蓝牙）"/>
   <translation tag="No" zh="否"/>
   <translation tag="No AMS Detected" zh="未检测到 AMS"/>
@@ -2398,6 +2403,7 @@
   <translation tag="Quad Gantry Level" zh="四角龙门调平"/>
   <translation tag="Quad Gantry Level complete" zh="QGL 完成"/>
   <translation tag="Quad Gantry Level started..." zh="QGL 已开始..."/>
+  <translation tag="Queue empty" zh="队列为空"/>
   <translation tag="Queue: Paused" zh="队列：已暂停"/>
   <translation tag="Queue: Ready" zh="队列：就绪"/>
   <translation tag="Queued {}h {}m ago" zh="{} 小时 {} 分钟前加入队列"/>
@@ -2920,6 +2926,7 @@
   <translation tag="Start at" zh="从第"/>
   <translation tag="Start drying" zh="开始烘干"/>
   <translation tag="Start failed" zh="启动失败"/>
+  <translation tag="Start next" zh="开始下一个"/>
   <translation tag="Start next: {}" zh="开始下一个：{}"/>
   <translation tag="Start print anyway?" zh="仍要开始打印吗？"/>
   <translation tag="Started" zh="已开始"/>
@@ -2927,6 +2934,7 @@
   <translation tag="Starting download..." zh="正在开始下载..."/>
   <translation tag="Starting nozzle clean..." zh="正在开始清洁喷嘴..."/>
   <translation tag="Starting print..." zh="正在启动打印..."/>
+  <translation tag="Starting {}…" zh="正在开始 {}…"/>
   <translation tag="Starting..." zh="正在启动..."/>
   <translation tag="Starts after the current print" zh="当前打印完成后开始"/>
   <translation tag="Startup Brightness" zh="启动亮度"/>
@@ -3659,6 +3667,7 @@
   <translation tag="{} new hardware available" zh="{} 个新硬件可用"/>
   <translation tag="{} new plugins available. Enable them in Settings &gt; Plugins." zh="{} 个新插件可用。请在设置 &gt; 插件中启用。"/>
   <translation tag="{} preset{}" zh="{} 个预设{}"/>
+  <translation tag="{} queued" zh="{} 个在队列中"/>
   <translation tag="{} serial" zh="{} 序列号"/>
   <translation tag="{} set to {}" zh="{} 已设为 {}"/>
   <translation tag="{} set to {} {}" zh="{} 已设为 {} {}"/>

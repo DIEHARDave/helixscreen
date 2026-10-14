@@ -54,6 +54,7 @@ translations:
   + Add Preset: + 添加预设
   + Add Printer: + 添加打印机
   + New: + 新建
+  +{} more: '还有 {} 个'
   '- Check [resonance_tester] in printer.cfg': '- 检查 printer.cfg 中的 [resonance_tester]'
   '- Ensure ADXL345 is connected': '- 确保 ADXL345 已连接'
   '- Try Measure Noise first': '- 先尝试测量噪声'
@@ -335,6 +336,7 @@ translations:
   Bed Screws: 热床螺丝
   Bed Temp: 热床温度
   Bed Temperature: 热床温度
+  Bed clear · Start next: '热床已清空 · 开始下一个'
   'Bed cooling, spools still on the bed:': '热床正在冷却,料盘仍在上面:'
 
   Bed is Level!: 热床已水平！
@@ -1609,6 +1611,7 @@ translations:
   It's a new spool: 这是新料盘
   Jammed at the Toolhead: 工具头处堵塞
   Job Queue: 任务队列
+  Job queue not enabled in Moonraker: 'Moonraker 未启用任务队列'
   Jog: '点动'
   Jog Speed XY: XY 移动速度
   Jog Speed Z: Z 移动速度
@@ -1962,6 +1965,8 @@ translations:
   New printer successfully added: 新打印机已成功添加
   New profile name: 新配置名称
   Next: 下一步
+  'Next: {}': '下一个：{}'
+  'Next: {} (starts automatically)': '下一个：{}（自动开始）'
   Niimbot (Bluetooth): Niimbot（蓝牙）
   'No': 否
   No AMS Detected: '未检测到 AMS'
@@ -2481,6 +2486,7 @@ translations:
   Quad Gantry Level: 四角龙门调平
   Quad Gantry Level complete: QGL 完成
   Quad Gantry Level started...: QGL 已开始...
+  Queue empty: '队列为空'
   'Queue: Paused': '队列：已暂停'
   'Queue: Ready': 队列：就绪
   Queued {}h {}m ago: '{} 小时 {} 分钟前加入队列'
@@ -3028,6 +3034,7 @@ translations:
   Start drying: 开始烘干
 
   Start failed: 启动失败
+  Start next: '开始下一个'
   'Start next: {}': '开始下一个：{}'
   Start print anyway?: 仍要开始打印吗？
   Started: 已开始
@@ -3035,6 +3042,7 @@ translations:
   Starting download...: 正在开始下载...
   Starting nozzle clean...: 正在开始清洁喷嘴...
   Starting print...: 正在启动打印...
+  Starting {}…: '正在开始 {}…'
   Starting...: 正在启动...
   Starts after the current print: 当前打印完成后开始
   Startup Brightness: 启动亮度
@@ -3820,6 +3828,7 @@ translations:
   '{} new hardware available': '{} 个新硬件可用'
   '{} new plugins available. Enable them in Settings > Plugins.': '{} 个新插件可用。请在设置 > 插件中启用。'
   '{} preset{}': '{} 个预设{}'
+  '{} queued': '{} 个在队列中'
   '{} serial': '{} 序列号'
   '{} set to {}': '{} 已设为 {}'
   '{} set to {} {}': '{} 已设为 {} {}'

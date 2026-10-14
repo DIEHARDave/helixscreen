@@ -54,6 +54,7 @@ translations:
   + Add Preset: + Voreinstellung
   + Add Printer: + Drucker hinzufügen
   + New: + Neu
+  +{} more: '+{} weitere'
   '- Check [resonance_tester] in printer.cfg': '- Prüfen Sie [resonance_tester] in
     printer.cfg'
   '- Ensure ADXL345 is connected': '- Stellen Sie sicher, dass der ADXL345 angeschlossen
@@ -366,6 +367,7 @@ translations:
   Bed Screws: Bettschrauben
   Bed Temp: Betttemperatur
   Bed Temperature: Betttemperatur
+  Bed clear · Start next: 'Bett frei · Nächstes starten'
   'Bed cooling, spools still on the bed:': 'Heizbett kühlt ab, Spulen liegen noch darauf:'
 
   Bed is Level!: Bett ist nivelliert!
@@ -1734,6 +1736,7 @@ translations:
   It's a new spool: Es ist eine neue Spule
   Jammed at the Toolhead: Stau am Werkzeugkopf
   Job Queue: Auftragswarteschlange
+  Job queue not enabled in Moonraker: 'Auftragswarteschlange in Moonraker nicht aktiviert'
   Jog: 'Verfahren'
   Jog Speed XY: Bewegungsgeschwindigkeit XY
   Jog Speed Z: Bewegungsgeschwindigkeit Z
@@ -2108,6 +2111,8 @@ translations:
   New printer successfully added: Neuer Drucker erfolgreich hinzugefügt
   New profile name: Neuer Profilname
   Next: Weiter
+  'Next: {}': 'Als Nächstes: {}'
+  'Next: {} (starts automatically)': 'Als Nächstes: {} (startet automatisch)'
   Niimbot (Bluetooth): Niimbot (Bluetooth)
   'No': Nein
   No AMS Detected: 'Kein AMS erkannt'
@@ -2653,6 +2658,7 @@ translations:
   Quad Gantry Level: Quad Gantry Level
   Quad Gantry Level complete: Quad Gantry Level abgeschlossen
   Quad Gantry Level started...: Quad Gantry Level gestartet...
+  Queue empty: 'Warteschlange leer'
   'Queue: Paused': 'Warteschlange: Pausiert'
   'Queue: Ready': 'Warteschlange: Bereit'
   Queued {}h {}m ago: 'Vor {} Std. {} Min. eingereiht'
@@ -3245,6 +3251,7 @@ translations:
   Start drying: Trocknung starten
 
   Start failed: Start fehlgeschlagen
+  Start next: 'Nächstes starten'
   'Start next: {}': 'Nächstes starten: {}'
   Start print anyway?: Druck trotzdem starten?
   Started: Gestartet
@@ -3252,6 +3259,7 @@ translations:
   Starting download...: Download wird gestartet...
   Starting nozzle clean...: Düsenreinigung starten...
   Starting print...: Druck starten...
+  Starting {}…: '{} wird gestartet…'
   Starting...: Starten...
   Starts after the current print: Startet nach dem aktuellen Druck
   Startup Brightness: Starthelligkeit
@@ -4099,6 +4107,7 @@ translations:
   '{} new hardware available': '{} neue Hardware verfügbar'
   '{} new plugins available. Enable them in Settings > Plugins.': '{} neue Plugins verfügbar. Aktivieren Sie sie unter Einstellungen > Plugins.'
   '{} preset{}': '{} Voreinstellung{}'
+  '{} queued': '{} in der Warteschlange'
   '{} serial': '{} Seriennummer'
   '{} set to {}': '{} auf {} gesetzt'
   '{} set to {} {}': '{} auf {} {} gesetzt'

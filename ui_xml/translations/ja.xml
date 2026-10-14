@@ -54,6 +54,7 @@
   <translation tag="+ Add Preset" ja="+ プリセットを追加"/>
   <translation tag="+ Add Printer" ja="+ プリンターを追加"/>
   <translation tag="+ New" ja="+ 新規"/>
+  <translation tag="+{} more" ja="他{}件"/>
   <translation tag="- Check [resonance_tester] in printer.cfg" ja="- printer.cfg の [resonance_tester] を確認してください"/>
   <translation tag="- Ensure ADXL345 is connected" ja="- ADXL345 が接続されていることを確認してください"/>
   <translation tag="- Try Measure Noise first" ja="- まず「ノイズ測定」をお試しください"/>
@@ -332,6 +333,7 @@
   <translation tag="Bed Screws" ja="ベッドネジ"/>
   <translation tag="Bed Temp" ja="ベッド温度"/>
   <translation tag="Bed Temperature" ja="ベッド温度"/>
+  <translation tag="Bed clear · Start next" ja="ベッド空き · 次を開始"/>
   <translation tag="Bed cooling, spools still on the bed:" ja="ベッド冷却中、スプールはまだベッドの上です:"/>
   <translation tag="Bed is Level!" ja="ベッドが水平です！"/>
   <translation tag="Bed mesh calibration failed: {}" ja="ベッドメッシュのキャリブレーションに失敗しました: {}"/>
@@ -1560,6 +1562,7 @@
   <translation tag="It&apos;s a new spool" ja="新しいスプールです"/>
   <translation tag="Jammed at the Toolhead" ja="ツールヘッドで詰まり"/>
   <translation tag="Job Queue" ja="ジョブキュー"/>
+  <translation tag="Job queue not enabled in Moonraker" ja="Moonraker でジョブキューが有効になっていません"/>
   <translation tag="Jog" ja="ジョグ"/>
   <translation tag="Jog Speed XY" ja="XY ジョグ速度"/>
   <translation tag="Jog Speed Z" ja="Z ジョグ速度"/>
@@ -1899,6 +1902,8 @@
   <translation tag="New printer successfully added" ja="新しいプリンターを追加しました"/>
   <translation tag="New profile name" ja="新しいプロファイル名"/>
   <translation tag="Next" ja="次へ"/>
+  <translation tag="Next: {}" ja="次の印刷：{}"/>
+  <translation tag="Next: {} (starts automatically)" ja="次の印刷：{}（自動で開始）"/>
   <translation tag="Niimbot (Bluetooth)" ja="Niimbot (Bluetooth)"/>
   <translation tag="No" ja="いいえ"/>
   <translation tag="No AMS Detected" ja="AMS が検出されません"/>
@@ -2398,6 +2403,7 @@
   <translation tag="Quad Gantry Level" ja="クアッドガントリーレベル"/>
   <translation tag="Quad Gantry Level complete" ja="QGL 完了"/>
   <translation tag="Quad Gantry Level started..." ja="QGL を開始しました..."/>
+  <translation tag="Queue empty" ja="キューは空です"/>
   <translation tag="Queue: Paused" ja="キュー: 一時停止"/>
   <translation tag="Queue: Ready" ja="キュー: 準備完了"/>
   <translation tag="Queued {}h {}m ago" ja="{} 時間 {} 分前にキューへ追加"/>
@@ -2920,6 +2926,7 @@
   <translation tag="Start at" ja="開始位置"/>
   <translation tag="Start drying" ja="乾燥開始"/>
   <translation tag="Start failed" ja="開始に失敗"/>
+  <translation tag="Start next" ja="次を開始"/>
   <translation tag="Start next: {}" ja="次を開始：{}"/>
   <translation tag="Start print anyway?" ja="それでも印刷を開始しますか？"/>
   <translation tag="Started" ja="開始"/>
@@ -2927,6 +2934,7 @@
   <translation tag="Starting download..." ja="ダウンロードを開始中..."/>
   <translation tag="Starting nozzle clean..." ja="ノズル清掃を開始中..."/>
   <translation tag="Starting print..." ja="印刷開始中..."/>
+  <translation tag="Starting {}…" ja="{} を開始中…"/>
   <translation tag="Starting..." ja="開始中..."/>
   <translation tag="Starts after the current print" ja="現在の印刷が終わったら開始します"/>
   <translation tag="Startup Brightness" ja="起動時の明るさ"/>
@@ -3659,6 +3667,7 @@
   <translation tag="{} new hardware available" ja="{} 個の新しいハードウェアが利用可能です"/>
   <translation tag="{} new plugins available. Enable them in Settings &gt; Plugins." ja="{} 個の新しいプラグインが利用可能です。設定 &gt; プラグインで有効化してください。"/>
   <translation tag="{} preset{}" ja="{} 個のプリセット{}"/>
+  <translation tag="{} queued" ja="{} 件キュー中"/>
   <translation tag="{} serial" ja="{} シリアル番号"/>
   <translation tag="{} set to {}" ja="{} を {} に設定しました"/>
   <translation tag="{} set to {} {}" ja="{} を {} {} に設定しました"/>

@@ -54,6 +54,7 @@
   <translation tag="+ Add Preset" de="+ Voreinstellung"/>
   <translation tag="+ Add Printer" de="+ Drucker hinzufügen"/>
   <translation tag="+ New" de="+ Neu"/>
+  <translation tag="+{} more" de="+{} weitere"/>
   <translation tag="- Check [resonance_tester] in printer.cfg" de="- Prüfen Sie [resonance_tester] in printer.cfg"/>
   <translation tag="- Ensure ADXL345 is connected" de="- Stellen Sie sicher, dass der ADXL345 angeschlossen ist"/>
   <translation tag="- Try Measure Noise first" de="- Versuchen Sie zuerst Rauschen messen"/>
@@ -332,6 +333,7 @@
   <translation tag="Bed Screws" de="Bettschrauben"/>
   <translation tag="Bed Temp" de="Betttemperatur"/>
   <translation tag="Bed Temperature" de="Betttemperatur"/>
+  <translation tag="Bed clear · Start next" de="Bett frei · Nächstes starten"/>
   <translation tag="Bed cooling, spools still on the bed:" de="Heizbett kühlt ab, Spulen liegen noch darauf:"/>
   <translation tag="Bed is Level!" de="Bett ist nivelliert!"/>
   <translation tag="Bed mesh calibration failed: {}" de="Bettnetz-Kalibrierung fehlgeschlagen: {}"/>
@@ -1560,6 +1562,7 @@
   <translation tag="It&apos;s a new spool" de="Es ist eine neue Spule"/>
   <translation tag="Jammed at the Toolhead" de="Stau am Werkzeugkopf"/>
   <translation tag="Job Queue" de="Auftragswarteschlange"/>
+  <translation tag="Job queue not enabled in Moonraker" de="Auftragswarteschlange in Moonraker nicht aktiviert"/>
   <translation tag="Jog" de="Verfahren"/>
   <translation tag="Jog Speed XY" de="Bewegungsgeschwindigkeit XY"/>
   <translation tag="Jog Speed Z" de="Bewegungsgeschwindigkeit Z"/>
@@ -1899,6 +1902,8 @@
   <translation tag="New printer successfully added" de="Neuer Drucker erfolgreich hinzugefügt"/>
   <translation tag="New profile name" de="Neuer Profilname"/>
   <translation tag="Next" de="Weiter"/>
+  <translation tag="Next: {}" de="Als Nächstes: {}"/>
+  <translation tag="Next: {} (starts automatically)" de="Als Nächstes: {} (startet automatisch)"/>
   <translation tag="Niimbot (Bluetooth)" de="Niimbot (Bluetooth)"/>
   <translation tag="No" de="Nein"/>
   <translation tag="No AMS Detected" de="Kein AMS erkannt"/>
@@ -2398,6 +2403,7 @@
   <translation tag="Quad Gantry Level" de="Quad Gantry Level"/>
   <translation tag="Quad Gantry Level complete" de="Quad Gantry Level abgeschlossen"/>
   <translation tag="Quad Gantry Level started..." de="Quad Gantry Level gestartet..."/>
+  <translation tag="Queue empty" de="Warteschlange leer"/>
   <translation tag="Queue: Paused" de="Warteschlange: Pausiert"/>
   <translation tag="Queue: Ready" de="Warteschlange: Bereit"/>
   <translation tag="Queued {}h {}m ago" de="Vor {} Std. {} Min. eingereiht"/>
@@ -2920,6 +2926,7 @@
   <translation tag="Start at" de="Beginnen bei"/>
   <translation tag="Start drying" de="Trocknung starten"/>
   <translation tag="Start failed" de="Start fehlgeschlagen"/>
+  <translation tag="Start next" de="Nächstes starten"/>
   <translation tag="Start next: {}" de="Nächstes starten: {}"/>
   <translation tag="Start print anyway?" de="Druck trotzdem starten?"/>
   <translation tag="Started" de="Gestartet"/>
@@ -2927,6 +2934,7 @@
   <translation tag="Starting download..." de="Download wird gestartet..."/>
   <translation tag="Starting nozzle clean..." de="Düsenreinigung starten..."/>
   <translation tag="Starting print..." de="Druck starten..."/>
+  <translation tag="Starting {}…" de="{} wird gestartet…"/>
   <translation tag="Starting..." de="Starten..."/>
   <translation tag="Starts after the current print" de="Startet nach dem aktuellen Druck"/>
   <translation tag="Startup Brightness" de="Starthelligkeit"/>
@@ -3659,6 +3667,7 @@
   <translation tag="{} new hardware available" de="{} neue Hardware verfügbar"/>
   <translation tag="{} new plugins available. Enable them in Settings &gt; Plugins." de="{} neue Plugins verfügbar. Aktivieren Sie sie unter Einstellungen &gt; Plugins."/>
   <translation tag="{} preset{}" de="{} Voreinstellung{}"/>
+  <translation tag="{} queued" de="{} in der Warteschlange"/>
   <translation tag="{} serial" de="{} Seriennummer"/>
   <translation tag="{} set to {}" de="{} auf {} gesetzt"/>
   <translation tag="{} set to {} {}" de="{} auf {} {} gesetzt"/>

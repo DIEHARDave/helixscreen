@@ -6,6 +6,7 @@
 #include "ui_filename_utils.h"
 
 #include "connection_staleness.h"
+#include "format_utils.h"
 #include "i_moonraker_api.h"
 #include "i_moonraker_client.h"
 #include "job_queue_start.h"
@@ -84,6 +85,10 @@ void JobQueueState::init_subjects() {
     lv_subject_init_int(&job_queue_count_subject_, 0);
     subjects_.publish("job_queue_count", &job_queue_count_subject_);
 
+    lv_subject_init_int(&job_queue_run_state_subject_,
+                        static_cast<int>(helix::QueueRunState::Paused));
+    subjects_.publish("job_queue_run_state", &job_queue_run_state_subject_);
+
     lv_subject_init_string(&job_queue_up_next_text_subject_, up_next_text_buffer_, nullptr,
                            sizeof(up_next_text_buffer_), "");
     subjects_.publish("job_queue_up_next_text", &job_queue_up_next_text_subject_);
@@ -103,6 +108,9 @@ void JobQueueState::init_subjects() {
                                                       LV_SUBJECT_TYPE_STRING, __FILE__, __LINE__);
     SubjectDebugRegistry::instance().register_subject(&job_queue_count_subject_, "job_queue_count",
                                                       LV_SUBJECT_TYPE_INT, __FILE__, __LINE__);
+    SubjectDebugRegistry::instance().register_subject(&job_queue_run_state_subject_,
+                                                      "job_queue_run_state", LV_SUBJECT_TYPE_INT,
+                                                      __FILE__, __LINE__);
     SubjectDebugRegistry::instance().register_subject(&job_queue_up_next_text_subject_,
                                                       "job_queue_up_next_text",
                                                       LV_SUBJECT_TYPE_STRING, __FILE__, __LINE__);
@@ -169,6 +177,7 @@ void JobQueueState::on_queue_fetched(const helix::JobQueueStatus& status) {
     cached_jobs_ = status.queued_jobs;
     queue_state_ = status.queue_state;
     is_loaded_ = true;
+    ever_loaded_ = true;
     // Prune once per connect, on the FIRST fetch. Which fetch triggers it is
     // irrelevant to safety: the prune reads the option store first and the
     // queue second, so an entry can only be deleted against a queue read
@@ -258,6 +267,8 @@ void JobQueueState::update_subjects() {
 
     lv_subject_set_int(&job_queue_automatic_transition_subject_, automatic_transition_ ? 1 : 0);
 
+    lv_subject_set_int(&job_queue_run_state_subject_, static_cast<int>(run_state()));
+
     // Count goes LAST, after cached_jobs_ and both text subjects are settled.
     // It is the rebuild trigger the queue surfaces observe, and PrintStatusWidget's
     // observer runs synchronously (observe<int>) — publishing it first would
@@ -299,6 +310,45 @@ std::string format_start_next_text(const std::string& display_name, int queued_c
         return {};
     }
     return fmt::format(lv_tr("Start next: {}"), display_name);
+}
+
+JobQueueTileText compose_job_queue_tile_text(JobQueueTileState state,
+                                             const std::string& next_display_name, int queued_count,
+                                             int next_estimated_s) {
+    JobQueueTileText t;
+    switch (state) {
+    case JobQueueTileState::Unavailable:
+        t.hero = lv_tr("Job queue not enabled in Moonraker");
+        break;
+    case JobQueueTileState::NotLoaded:
+        break;
+    case JobQueueTileState::Empty:
+        t.hero = lv_tr("Queue empty");
+        break;
+    case JobQueueTileState::WaitingForStart:
+        t.hero = next_display_name;
+        if (next_estimated_s > 0) {
+            t.detail = format::duration(next_estimated_s);
+        }
+        if (queued_count >= 2) {
+            t.more = fmt::format(lv_tr("+{} more"), queued_count - 1);
+        }
+        t.action = lv_tr("Bed clear · Start next");
+        t.action_short = lv_tr("Start next");
+        break;
+    case JobQueueTileState::AutoNext:
+        t.hero = fmt::format(lv_tr("{} queued"), queued_count);
+        t.detail = fmt::format(lv_tr("Next: {} (starts automatically)"), next_display_name);
+        break;
+    case JobQueueTileState::Printing:
+        t.hero = fmt::format(lv_tr("{} queued"), queued_count);
+        t.detail = fmt::format(lv_tr("Next: {}"), next_display_name);
+        break;
+    case JobQueueTileState::Starting:
+        t.hero = fmt::format(lv_tr("Starting {}…"), next_display_name);
+        break;
+    }
+    return t;
 }
 
 bool parse_automatic_transition(const json& rpc_response) {

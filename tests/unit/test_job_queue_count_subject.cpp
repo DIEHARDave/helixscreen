@@ -176,3 +176,67 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     REQUIRE(empty_state != nullptr);
     CHECK_FALSE(lv_obj_has_flag(empty_state, LV_OBJ_FLAG_HIDDEN));
 }
+
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "job_queue_run_state follows queue_state and settles before the count",
+                 "[job_queue][subjects]") {
+    JobQueueState jqs(nullptr, nullptr);
+    ScopedJobQueueSubjects subject_guard;
+    jqs.init_subjects();
+
+    lv_subject_t* run_state = lv_xml_get_subject(nullptr, "job_queue_run_state");
+    lv_subject_t* count = lv_xml_get_subject(nullptr, "job_queue_count");
+    REQUIRE(run_state != nullptr);
+    REQUIRE(count != nullptr);
+
+    auto paused = status_with(2);
+    paused.queue_state = "paused";
+    JobQueueStateTestAccess::deliver_status(jqs, paused);
+    CHECK(lv_subject_get_int(run_state) == static_cast<int>(QueueRunState::Paused));
+    CHECK(lv_subject_get_int(run_state) == 3);
+
+    JobQueueStateTestAccess::deliver_status(jqs, status_with(2));
+    CHECK(lv_subject_get_int(run_state) == 0);
+    CHECK(lv_subject_get_int(count) == 2);
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture, "a count observer already reads the new run state",
+                 "[job_queue][subjects]") {
+    JobQueueState jqs(nullptr, nullptr);
+    ScopedJobQueueSubjects subject_guard;
+    jqs.init_subjects();
+
+    lv_subject_t* count = lv_xml_get_subject(nullptr, "job_queue_count");
+    REQUIRE(count != nullptr);
+
+    int run_state_seen = -1;
+    lv_observer_t* obs = lv_subject_add_observer(
+        count,
+        [](lv_observer_t* observer, lv_subject_t*) {
+            auto* dest = static_cast<int*>(lv_observer_get_user_data(observer));
+            *dest = lv_subject_get_int(lv_xml_get_subject(nullptr, "job_queue_run_state"));
+        },
+        &run_state_seen);
+
+    auto paused = status_with(3);
+    paused.queue_state = "paused";
+    JobQueueStateTestAccess::deliver_status(jqs, paused);
+    CHECK(run_state_seen == 3);
+
+    lv_observer_remove(obs);
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture, "invalidate keeps has_ever_loaded", "[job_queue][subjects]") {
+    JobQueueState jqs(nullptr, nullptr);
+    ScopedJobQueueSubjects subject_guard;
+    jqs.init_subjects();
+
+    CHECK_FALSE(jqs.has_ever_loaded());
+    JobQueueStateTestAccess::deliver_status(jqs, status_with(1));
+    CHECK(jqs.is_loaded());
+    CHECK(jqs.has_ever_loaded());
+
+    jqs.invalidate();
+    CHECK_FALSE(jqs.is_loaded());
+    CHECK(jqs.has_ever_loaded());
+}

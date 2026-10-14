@@ -54,6 +54,7 @@
   <translation tag="+ Add Preset" it="+ Aggiungi preset"/>
   <translation tag="+ Add Printer" it="+ Aggiungi stampante"/>
   <translation tag="+ New" it="+ Nuovo"/>
+  <translation tag="+{} more" it="+{} altri"/>
   <translation tag="- Check [resonance_tester] in printer.cfg" it="- Controllare [resonance_tester] in printer.cfg"/>
   <translation tag="- Ensure ADXL345 is connected" it="- Assicurarsi che ADXL345 sia collegato"/>
   <translation tag="- Try Measure Noise first" it="- Provare prima Misura rumore"/>
@@ -332,6 +333,7 @@
   <translation tag="Bed Screws" it="Viti piano"/>
   <translation tag="Bed Temp" it="Temp. piatto"/>
   <translation tag="Bed Temperature" it="Temperatura del piano"/>
+  <translation tag="Bed clear · Start next" it="Piano libero · Avvia il prossimo"/>
   <translation tag="Bed cooling, spools still on the bed:" it="Il piano si sta raffreddando, le bobine sono ancora sopra:"/>
   <translation tag="Bed is Level!" it="Piano livellato!"/>
   <translation tag="Bed mesh calibration failed: {}" it="Calibrazione della mesh del piano non riuscita: {}"/>
@@ -1560,6 +1562,7 @@
   <translation tag="It&apos;s a new spool" it="È una nuova bobina"/>
   <translation tag="Jammed at the Toolhead" it="Inceppato nella testina"/>
   <translation tag="Job Queue" it="Coda lavori"/>
+  <translation tag="Job queue not enabled in Moonraker" it="Coda lavori non abilitata in Moonraker"/>
   <translation tag="Jog" it="Jog"/>
   <translation tag="Jog Speed XY" it="Velocità di movimento XY"/>
   <translation tag="Jog Speed Z" it="Velocità di movimento Z"/>
@@ -1899,6 +1902,8 @@
   <translation tag="New printer successfully added" it="Nuova stampante aggiunta con successo"/>
   <translation tag="New profile name" it="Nome nuovo profilo"/>
   <translation tag="Next" it="Avanti"/>
+  <translation tag="Next: {}" it="Prossimo: {}"/>
+  <translation tag="Next: {} (starts automatically)" it="Prossimo: {} (parte in automatico)"/>
   <translation tag="Niimbot (Bluetooth)" it="Niimbot (Bluetooth)"/>
   <translation tag="No" it="No"/>
   <translation tag="No AMS Detected" it="Nessun AMS rilevato"/>
@@ -2398,6 +2403,7 @@
   <translation tag="Quad Gantry Level" it="Livellamento gantry quadruplo"/>
   <translation tag="Quad Gantry Level complete" it="QGL completato"/>
   <translation tag="Quad Gantry Level started..." it="QGL avviato..."/>
+  <translation tag="Queue empty" it="Coda vuota"/>
   <translation tag="Queue: Paused" it="Coda: In pausa"/>
   <translation tag="Queue: Ready" it="Coda: Pronta"/>
   <translation tag="Queued {}h {}m ago" it="In coda da {} h {} min"/>
@@ -2920,6 +2926,7 @@
   <translation tag="Start at" it="Inizia da"/>
   <translation tag="Start drying" it="Avvia essiccazione"/>
   <translation tag="Start failed" it="Avvio fallito"/>
+  <translation tag="Start next" it="Avvia il prossimo"/>
   <translation tag="Start next: {}" it="Avvia il prossimo: {}"/>
   <translation tag="Start print anyway?" it="Avviare comunque la stampa?"/>
   <translation tag="Started" it="Avviato"/>
@@ -2927,6 +2934,7 @@
   <translation tag="Starting download..." it="Avvio del download..."/>
   <translation tag="Starting nozzle clean..." it="Avvio pulizia ugello..."/>
   <translation tag="Starting print..." it="Avvio stampa..."/>
+  <translation tag="Starting {}…" it="Avvio di {}…"/>
   <translation tag="Starting..." it="Avvio..."/>
   <translation tag="Starts after the current print" it="Inizia dopo la stampa in corso"/>
   <translation tag="Startup Brightness" it="Luminosità all&apos;avvio"/>
@@ -3659,6 +3667,7 @@
   <translation tag="{} new hardware available" it="{} nuovo hardware disponibile"/>
   <translation tag="{} new plugins available. Enable them in Settings &gt; Plugins." it="{} nuovi plugin disponibili. Abilitali in Impostazioni &gt; Plugin."/>
   <translation tag="{} preset{}" it="{} preset{}"/>
+  <translation tag="{} queued" it="{} in coda"/>
   <translation tag="{} serial" it="Numero di serie {}"/>
   <translation tag="{} set to {}" it="{} impostato su {}"/>
   <translation tag="{} set to {} {}" it="{} impostato su {} {}"/>

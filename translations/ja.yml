@@ -54,6 +54,7 @@ translations:
   + Add Preset: + プリセットを追加
   + Add Printer: + プリンターを追加
   + New: + 新規
+  +{} more: '他{}件'
   '- Check [resonance_tester] in printer.cfg': '- printer.cfg の [resonance_tester]
     を確認してください'
   '- Ensure ADXL345 is connected': '- ADXL345 が接続されていることを確認してください'
@@ -336,6 +337,7 @@ translations:
   Bed Screws: ベッドネジ
   Bed Temp: ベッド温度
   Bed Temperature: ベッド温度
+  Bed clear · Start next: 'ベッド空き · 次を開始'
   'Bed cooling, spools still on the bed:': 'ベッド冷却中、スプールはまだベッドの上です:'
 
   Bed is Level!: ベッドが水平です！
@@ -1614,6 +1616,7 @@ translations:
   It's a new spool: 新しいスプールです
   Jammed at the Toolhead: ツールヘッドで詰まり
   Job Queue: ジョブキュー
+  Job queue not enabled in Moonraker: 'Moonraker でジョブキューが有効になっていません'
   Jog: 'ジョグ'
   Jog Speed XY: XY ジョグ速度
   Jog Speed Z: Z ジョグ速度
@@ -1968,6 +1971,8 @@ translations:
   New printer successfully added: 新しいプリンターを追加しました
   New profile name: 新しいプロファイル名
   Next: 次へ
+  'Next: {}': '次の印刷：{}'
+  'Next: {} (starts automatically)': '次の印刷：{}（自動で開始）'
   Niimbot (Bluetooth): Niimbot (Bluetooth)
   'No': いいえ
   No AMS Detected: 'AMS が検出されません'
@@ -2490,6 +2495,7 @@ translations:
   Quad Gantry Level: クアッドガントリーレベル
   Quad Gantry Level complete: QGL 完了
   Quad Gantry Level started...: QGL を開始しました...
+  Queue empty: 'キューは空です'
   'Queue: Paused': 'キュー: 一時停止'
   'Queue: Ready': 'キュー: 準備完了'
   Queued {}h {}m ago: '{} 時間 {} 分前にキューへ追加'
@@ -3037,6 +3043,7 @@ translations:
   Start drying: 乾燥開始
 
   Start failed: 開始に失敗
+  Start next: '次を開始'
   'Start next: {}': '次を開始：{}'
   Start print anyway?: それでも印刷を開始しますか？
   Started: 開始
@@ -3044,6 +3051,7 @@ translations:
   Starting download...: ダウンロードを開始中...
   Starting nozzle clean...: ノズル清掃を開始中...
   Starting print...: 印刷開始中...
+  Starting {}…: '{} を開始中…'
   Starting...: 開始中...
   Starts after the current print: 現在の印刷が終わったら開始します
   Startup Brightness: 起動時の明るさ
@@ -3830,6 +3838,7 @@ translations:
   '{} new hardware available': '{} 個の新しいハードウェアが利用可能です'
   '{} new plugins available. Enable them in Settings > Plugins.': '{} 個の新しいプラグインが利用可能です。設定 > プラグインで有効化してください。'
   '{} preset{}': '{} 個のプリセット{}'
+  '{} queued': '{} 件キュー中'
   '{} serial': '{} シリアル番号'
   '{} set to {}': '{} を {} に設定しました'
   '{} set to {} {}': '{} を {} {} に設定しました'

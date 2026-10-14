@@ -21,8 +21,8 @@ class JobQueueStateTestAccess {
 
     /// Drives a queue response through the real fetch-completion path
     /// (on_queue_fetched -> update_subjects), which is what publishes the
-    /// job_queue_count / job_queue_state_text / job_queue_summary_text
-    /// subjects. set_jobs() above deliberately does NOT touch subjects, so a
+    /// job_queue_count / job_queue_run_state / job_queue_state_text /
+    /// job_queue_summary_text subjects. set_jobs() above deliberately does NOT touch subjects, so a
     /// test that needs the observer wiring to fire must come through here.
     ///
     /// In production this is only ever reached from fetch()'s success callback

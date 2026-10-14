@@ -54,6 +54,7 @@
   <translation tag="+ Add Preset" fr="+ Ajouter un préréglage"/>
   <translation tag="+ Add Printer" fr="+ Ajouter une imprimante"/>
   <translation tag="+ New" fr="+ Nouveau"/>
+  <translation tag="+{} more" fr="+{} de plus"/>
   <translation tag="- Check [resonance_tester] in printer.cfg" fr="- Vérifiez [resonance_tester] dans printer.cfg"/>
   <translation tag="- Ensure ADXL345 is connected" fr="- Assurez-vous que l&apos;ADXL345 est connecté"/>
   <translation tag="- Try Measure Noise first" fr="- Essayez d&apos;abord Mesurer le bruit"/>
@@ -332,6 +333,7 @@
   <translation tag="Bed Screws" fr="Vis du plateau"/>
   <translation tag="Bed Temp" fr="Temp. du plateau"/>
   <translation tag="Bed Temperature" fr="Température du plateau"/>
+  <translation tag="Bed clear · Start next" fr="Plateau libre · Lancer le suivant"/>
   <translation tag="Bed cooling, spools still on the bed:" fr="Le plateau refroidit, les bobines sont toujours dessus :"/>
   <translation tag="Bed is Level!" fr="Le plateau est niveau !"/>
   <translation tag="Bed mesh calibration failed: {}" fr="Échec du calibrage du maillage du plateau : {}"/>
@@ -1560,6 +1562,7 @@
   <translation tag="It&apos;s a new spool" fr="C&apos;est une nouvelle bobine"/>
   <translation tag="Jammed at the Toolhead" fr="Bourrage à la tête d&apos;outil"/>
   <translation tag="Job Queue" fr="File d&apos;impression"/>
+  <translation tag="Job queue not enabled in Moonraker" fr="File d&apos;impression non activée dans Moonraker"/>
   <translation tag="Jog" fr="Jog"/>
   <translation tag="Jog Speed XY" fr="Vitesse de déplacement XY"/>
   <translation tag="Jog Speed Z" fr="Vitesse de déplacement Z"/>
@@ -1899,6 +1902,8 @@
   <translation tag="New printer successfully added" fr="Nouvelle imprimante ajoutée avec succès"/>
   <translation tag="New profile name" fr="Nouveau nom de profil"/>
   <translation tag="Next" fr="Suivant"/>
+  <translation tag="Next: {}" fr="À suivre : {}"/>
+  <translation tag="Next: {} (starts automatically)" fr="À suivre : {} (démarre automatiquement)"/>
   <translation tag="Niimbot (Bluetooth)" fr="Niimbot (Bluetooth)"/>
   <translation tag="No" fr="Non"/>
   <translation tag="No AMS Detected" fr="Aucun AMS détecté"/>
@@ -2398,6 +2403,7 @@
   <translation tag="Quad Gantry Level" fr="Quad Gantry Level"/>
   <translation tag="Quad Gantry Level complete" fr="Quad Gantry Level terminé"/>
   <translation tag="Quad Gantry Level started..." fr="Quad Gantry Level démarré..."/>
+  <translation tag="Queue empty" fr="File vide"/>
   <translation tag="Queue: Paused" fr="File : En pause"/>
   <translation tag="Queue: Ready" fr="File : Prête"/>
   <translation tag="Queued {}h {}m ago" fr="Mis en file il y a {} h {} min"/>
@@ -2920,6 +2926,7 @@
   <translation tag="Start at" fr="Commencer à"/>
   <translation tag="Start drying" fr="Démarrer le séchage"/>
   <translation tag="Start failed" fr="Échec du démarrage"/>
+  <translation tag="Start next" fr="Lancer le suivant"/>
   <translation tag="Start next: {}" fr="Lancer le suivant : {}"/>
   <translation tag="Start print anyway?" fr="Démarrer l&apos;impression quand même ?"/>
   <translation tag="Started" fr="Démarré"/>
@@ -2927,6 +2934,7 @@
   <translation tag="Starting download..." fr="Démarrage du téléchargement..."/>
   <translation tag="Starting nozzle clean..." fr="Démarrage du nettoyage de la buse..."/>
   <translation tag="Starting print..." fr="Démarrage de l&apos;impression..."/>
+  <translation tag="Starting {}…" fr="Démarrage de {}…"/>
   <translation tag="Starting..." fr="Démarrage..."/>
   <translation tag="Starts after the current print" fr="Commence après l&apos;impression en cours"/>
   <translation tag="Startup Brightness" fr="Luminosité au démarrage"/>
@@ -3659,6 +3667,7 @@
   <translation tag="{} new hardware available" fr="{} nouveau matériel disponible"/>
   <translation tag="{} new plugins available. Enable them in Settings &gt; Plugins." fr="{} nouveaux plugins disponibles. Activez-les dans Paramètres &gt; Plugins."/>
   <translation tag="{} preset{}" fr="{} préréglage{}"/>
+  <translation tag="{} queued" fr="{} en file"/>
   <translation tag="{} serial" fr="N° de série {}"/>
   <translation tag="{} set to {}" fr="{} réglé sur {}"/>
   <translation tag="{} set to {} {}" fr="{} réglé sur {} {}"/>
