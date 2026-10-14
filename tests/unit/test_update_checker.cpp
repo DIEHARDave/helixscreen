@@ -21,6 +21,7 @@
 
 #include "../helix_test_fixture.h"
 #include "../test_helpers/live_thread_count.h"
+#include "../test_helpers/scoped_board.h"
 #include "../test_helpers/scoped_env.h"
 #include "../test_helpers/scoped_runtime_config.h"
 #include "../test_helpers/scoped_update_urls.h"
@@ -304,42 +305,92 @@ TEST_CASE("A release with no asset for this board is refused, never given anothe
     }
 
     SECTION("the refusal names the version and the board") {
-        const std::string msg = helix::release_unavailable_message(
-            from_manifest, helix::flashforge_machine_display_name(FlashForgeMachine::Creator5));
+        const std::string msg = helix::no_build_message("1.0.5", "FlashForge Creator 5");
         CHECK(msg == "v1.0.5 has no build for the FlashForge Creator 5, so it can't be installed "
                      "here. Pick a channel with a newer release.");
     }
 
     SECTION("a check refuses a newer or older release with no asset, never a same one") {
-        const std::string board = "FlashForge Creator 5";
-        const std::string want = "v1.0.5 has no build for the FlashForge Creator 5, so it can't "
-                                 "be installed here. Pick a channel with a newer release.";
-        auto newer = helix::decide_check_outcome("1.0.4", from_manifest, board);
+        auto newer = helix::decide_check_outcome("1.0.4", from_manifest);
         CHECK(newer.status == UpdateChecker::Status::Error);
-        CHECK(newer.error == want);
-        auto older = helix::decide_check_outcome("1.1.0", from_github, board);
+        auto older = helix::decide_check_outcome("1.1.0", from_github);
         CHECK(older.status == UpdateChecker::Status::Error);
-        CHECK(older.error == want);
-        CHECK(helix::decide_check_outcome("1.0.5", from_manifest, board).status ==
+        CHECK_FALSE(older.is_downgrade);
+        CHECK(helix::decide_check_outcome("1.0.5", from_manifest).status ==
               UpdateChecker::Status::UpToDate);
 
         UpdateChecker::ReleaseInfo with_asset = from_manifest;
         with_asset.download_url = "https://r/mips.zip";
-        auto up = helix::decide_check_outcome("1.0.4", with_asset, board);
+        auto up = helix::decide_check_outcome("1.0.4", with_asset);
         CHECK(up.status == UpdateChecker::Status::UpdateAvailable);
         CHECK_FALSE(up.is_downgrade);
-        CHECK(up.error.empty());
-        auto down = helix::decide_check_outcome("1.1.0", with_asset, board);
+        auto down = helix::decide_check_outcome("1.1.0", with_asset);
         CHECK(down.status == UpdateChecker::Status::UpdateAvailable);
         CHECK(down.is_downgrade);
+        CHECK(helix::decide_check_outcome("1.0.5", with_asset).status ==
+              UpdateChecker::Status::UpToDate);
     }
 
     SECTION("a release that has an asset is not refused") {
         UpdateChecker::ReleaseInfo ok;
         ok.version = "1.1.0";
         ok.download_url = "https://r/mips.zip";
-        CHECK(helix::release_unavailable_message(ok, "FlashForge Creator 5").empty());
+        CHECK(helix::release_has_build_for_this_board(ok));
+        CHECK_FALSE(helix::release_has_build_for_this_board(from_manifest));
     }
+}
+
+TEST_CASE("a release with this board's legacy asset is offered normally",
+          "[update_checker][platform][json]") {
+    const auto keys = helix::platform::release_asset_keys("mips", helix::board::Board::K1);
+    const std::string github = R"({"tag_name": "v1.0.5", "assets": [)" +
+                               asset_json("helixscreen-ad5x-v1.0.5.tar.gz") + "," +
+                               asset_json("helixscreen-k1-v1.0.5.tar.gz") + R"(]})";
+    UpdateChecker::ReleaseInfo release;
+    std::string error;
+    REQUIRE(helix::parse_github_release(github, release, error, keys));
+
+    CHECK(release.download_url.find("helixscreen-k1-v1.0.5.tar.gz") != std::string::npos);
+    CHECK(helix::release_has_build_for_this_board(release));
+    CHECK(helix::decide_check_outcome("1.0.4", release).status ==
+          UpdateChecker::Status::UpdateAvailable);
+}
+
+TEST_CASE("a Creator 5 Pro is refused a release with no mips asset on the main thread",
+          "[update_checker][platform][json]") {
+    helix::test::ScopedBoard board(helix::board::Board::Creator5Pro);
+    auto& checker = UpdateChecker::instance();
+    checker.clear_cache();
+    checker.init();
+
+    // v1.0.5 stable shape: per-board assets only, no "mips".
+    const std::string github = R"({"tag_name": "v1.0.5", "assets": [)" +
+                               asset_json("helixscreen-ad5x-v1.0.5.tar.gz") + "," +
+                               asset_json("helixscreen-k1-v1.0.5.tar.gz") + R"(]})";
+    UpdateChecker::ReleaseInfo release;
+    std::string error;
+    REQUIRE(helix::parse_github_release(
+        github, release, error,
+        helix::platform::release_asset_keys("mips", helix::board::current())));
+    REQUIRE(release.download_url.empty());
+
+    UpdateCheckerTestAccess::report_result(checker, UpdateChecker::Status::Error, release);
+    helix::ui::UpdateQueue::instance().drain();
+
+    CHECK(lv_subject_get_int(checker.status_subject()) ==
+          static_cast<int>(UpdateChecker::Status::Error));
+    const std::string shown = lv_subject_get_string(checker.version_text_subject());
+    CHECK(shown.find("no build for the FlashForge Creator 5 Pro") != std::string::npos);
+    CHECK(shown.find("v1.0.5") != std::string::npos);
+
+    // An error with no release attached keeps its own text.
+    UpdateCheckerTestAccess::report_result(checker, UpdateChecker::Status::Error, std::nullopt,
+                                           "boom");
+    helix::ui::UpdateQueue::instance().drain();
+    CHECK(std::string(lv_subject_get_string(checker.version_text_subject())).find("boom") !=
+          std::string::npos);
+
+    checker.shutdown();
 }
 
 TEST_CASE("Release manifest takes the first asset key it lists", "[update_checker][json][1789]") {

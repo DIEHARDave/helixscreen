@@ -690,22 +690,21 @@ bool parse_github_release(const std::string& json_str, UpdateChecker::ReleaseInf
     }
 }
 
-std::string release_unavailable_message(const UpdateChecker::ReleaseInfo& info,
-                                        const std::string& board_name) {
-    if (!info.download_url.empty()) {
-        return "";
-    }
+bool release_has_build_for_this_board(const UpdateChecker::ReleaseInfo& info) {
+    return !info.download_url.empty();
+}
+
+std::string no_build_message(const std::string& version, const std::string& board_name) {
     char buf[256];
     std::snprintf(buf, sizeof(buf),
                   lv_tr("v%s has no build for the %s, so it can't be installed here. Pick a "
                         "channel with a newer release."),
-                  info.version.c_str(), board_name.c_str());
+                  version.c_str(), board_name.c_str());
     return buf;
 }
 
 CheckOutcome decide_check_outcome(const std::string& installed,
-                                  const UpdateChecker::ReleaseInfo& info,
-                                  const std::string& board_name) {
+                                  const UpdateChecker::ReleaseInfo& info) {
     CheckOutcome out;
     switch (compare_channel_version(installed, info.version)) {
     case ChannelVersionRelation::Older:
@@ -714,10 +713,10 @@ CheckOutcome decide_check_outcome(const std::string& installed,
     case ChannelVersionRelation::Newer:
         // A release offered with nothing this board can install is refused up
         // front, rather than as a dead Install button.
-        out.error = release_unavailable_message(info, board_name);
-        out.status = out.error.empty() ? UpdateChecker::Status::UpdateAvailable
-                                       : UpdateChecker::Status::Error;
-        if (out.status == UpdateChecker::Status::Error) {
+        if (release_has_build_for_this_board(info)) {
+            out.status = UpdateChecker::Status::UpdateAvailable;
+        } else {
+            out.status = UpdateChecker::Status::Error;
             out.is_downgrade = false;
         }
         break;
@@ -951,7 +950,9 @@ void UpdateChecker::render_version_text() {
         return;
     case Status::Error:
         snprintf(version_text_buf_, sizeof(version_text_buf_), lv_tr("Error: %s"),
-                 shown_.error.c_str());
+                 shown_.no_build_for_board
+                     ? no_build_message(shown_.version, this_board_display_name()).c_str()
+                     : shown_.error.c_str());
         break;
     case Status::Idle:
         lv_subject_copy_string(&version_text_subject_,
@@ -2951,8 +2952,7 @@ void UpdateChecker::do_check() {
         std::string current_version = HELIX_VERSION;
         spdlog::debug("[UpdateChecker] Current: {}, Latest: {}", current_version, info.version);
 
-        const auto outcome =
-            helix::decide_check_outcome(current_version, info, this_board_display_name());
+        const auto outcome = helix::decide_check_outcome(current_version, info);
         info.is_downgrade = outcome.is_downgrade;
         switch (outcome.status) {
         case Status::UpdateAvailable:
@@ -2963,8 +2963,12 @@ void UpdateChecker::do_check() {
             report_result(Status::UpdateAvailable, info, "");
             break;
         case Status::Error:
-            spdlog::warn("[UpdateChecker] {}", outcome.error);
-            report_result(Status::Error, std::nullopt, outcome.error);
+            // The user-visible text is composed on the main thread; this one is the
+            // untranslated diagnostic that lands in logs and bundles.
+            spdlog::warn("[UpdateChecker] Release {} has no build for {}", info.version,
+                         describe_asset_keys(this_build_release_asset_keys()));
+            report_result(Status::Error, info,
+                          "no build for " + this_board_display_name() + " in v" + info.version);
             break;
         default:
             spdlog::info("[UpdateChecker] Already up to date ({})", current_version);
@@ -3788,7 +3792,11 @@ void UpdateChecker::report_result(Status status, std::optional<ReleaseInfo> info
                     render_version_text();
                     lv_subject_copy_string(&new_version_subject_, "");
                 } else if (status == Status::Error) {
-                    shown_ = {status, "", false, error};
+                    // An Error carrying a release means the release is the problem:
+                    // it has no build for this board.
+                    const bool no_build = info && !release_has_build_for_this_board(*info);
+                    shown_ = {status, no_build ? info->version : "", false, no_build ? "" : error,
+                              no_build};
                     render_version_text();
                     lv_subject_copy_string(&new_version_subject_, "");
                 }
