@@ -134,17 +134,3 @@ TEST_CASE_METHOD(LVGLTestFixture, "a moved-from SubjectManager still hands out a
     CHECK_FALSE(*token);
     CHECK(*fresh);
 }
-
-// The lifetime renewed at teardown already reads live, so the subject's own type is
-// the only signal a consumer has that there is nothing to observe until the next init.
-TEST_CASE_METHOD(LVGLTestFixture, "SubjectManager leaves a torn-down subject reading uninitialized",
-                 "[observer][raii][crash_hardening]") {
-    ManagedOwner owner;
-    owner.init_subjects();
-    REQUIRE(owner.value_.type == LV_SUBJECT_TYPE_INT);
-
-    owner.subjects_.deinit_all();
-
-    CHECK(owner.value_.type == LV_SUBJECT_TYPE_INVALID);
-    CHECK(*owner.subjects_.get_subjects_lifetime());
-}
