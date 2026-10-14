@@ -2132,28 +2132,35 @@ Anything that needs one successor per slot calls the projection and never re-der
 `endless_spool_backup_for(cfg, slot)` for one slot. Ordered groups project along their order.
 Unordered groups project onto a **ring**: `members[i] -> members[i+1]`, last back to first.
 Both entry points agree that the first group to give a slot a successor wins, so they cannot
-disagree on a hand-built config with two successors for one slot. The two production callers
-are `AmsPanel::update_endless_arrows_from_backend()` (`src/ui/ui_panel_ams.cpp`) and
-`AmsContextMenu::get_current_backup_for_slot()` (`src/ui/ui_ams_context_menu.cpp`), so the
-arrows and the dropdown cannot disagree about a Happy Hare group.
+disagree on a hand-built config with two successors for one slot. The production caller is
+`AmsContextMenu::get_current_backup_for_slot()` (`src/ui/ui_ams_context_menu.cpp`), whose
+dropdown can show only one backup per slot.
 
-**Why a ring and not "the first other member".** The projection originally pointed every
-member at the first *other* member, reproducing the arrow set Happy Hare's backend computed
-inline with a `// Use first match` loop. For a 4-gate group that draws 0->1, 1->0, 2->0, 3->0
-— a picture that says "gate 1 is everyone's backup", which is not what a clique means. A ring
-gives every member exactly one successor and visits the whole group, which is the closest a
-one-target-per-source edge view can get to "any member substitutes for any other".
+**Why a ring and not "the first other member".** Pointing every member at the first *other*
+member draws a 4-gate group as 0->1, 1->0, 2->0, 3->0, which says "gate 1 is everyone's
+backup", and a clique does not say that. A ring gives every member exactly one successor and
+visits the whole group, which is the closest a one-target-per-source view can get to "any
+member substitutes for any other".
 
-**What the arrow widget cannot express, and is not asked to.** `ui_endless_spool_arrows`
-(`src/ui/ui_endless_spool_arrows.cpp`) takes `backup_slots[source] = target`: one target per
-source, at most 16 slots, drawn as a directed dashed up-over-down line with an arrowhead at
-the target. It has no primitive for a pool — no bracket, no shared container, no undirected
-edge — so an N-member clique genuinely cannot be drawn as a clique, and drawing all N*(N-1)
-directed arrows would be unreadable at 480x272 even if it were correct. The ring is the honest
-fallback, not a claim to be the whole relation. The widget does now clamp its stacked route
-heights to the canvas: an N-member group projects to N mutually-overlapping arrows, and the
-unclamped height ladder used to walk past the bottom edge and draw the "vertical" segments
-inverted, outside the widget.
+**The slot-row drawing takes groups, not edges.** `ui_endless_spool_arrows`
+(`src/ui/ui_endless_spool_arrows.cpp`) is handed the whole `EndlessSpoolConfig` by
+`AmsPanel::update_endless_arrows_from_backend()` (`ui_endless_spool_arrows_set_groups`) and
+decides per group what to draw. The decision is the pure function
+`helix::ui::endless_spool_marks(config, slot_count)`, tested in `test_ams_endless_spool.cpp`
+(`[marks]`) without LVGL; the draw callback only paints its output.
+
+| Group | Mark |
+|-------|------|
+| Unordered (Happy Hare gate group, ACE groups) | A **bracket**: one bar from the leftmost to the rightmost member, a tick down to each member ending in a dot. No arrowheads: the members are interchangeable |
+| Ordered (AFC `SET_RUNOUT`, AD5X) | One routed **arrow** per hand-off, up from the source, over, down into an arrowhead at the target. A slot keeps only its first successor, as in the projection |
+
+Marks whose bars overlap horizontally take different height levels; wider spans take the
+upper levels, so a nested group sits under the group spanning it. Every line is solid, and a
+bar is broken for a few pixels wherever another mark's vertical passes through it, so
+interleaved groups (`{1,3}` and `{2,4}`) read as two groups rather than one. Levels clamp to
+the canvas height: past the last level that fits, the deepest marks share one bar. All
+marks use `text_muted` and no per-group tint, because a tint would read as filament colour.
+Members at or beyond the slot count, and slots past 16, are not drawn.
 
 ### The status line
 

@@ -33,11 +33,12 @@ static constexpr int32_t DEFAULT_SLOT_WIDTH = 80;
 
 // Line styling
 static constexpr int32_t LINE_WIDTH = 2;
-static constexpr int32_t ARROW_SIZE = 6;    // Size of arrowhead
-static constexpr int32_t CORNER_RADIUS = 6; // Radius for rounded corners
+static constexpr int32_t ARROW_SIZE = 6; // Size of arrowhead
+static constexpr int32_t DOT_RADIUS = 3; // Bracket tick's end dot
+static constexpr int32_t BAR_GAP = 4;    // Half-width of a break in a crossed bar
 
-// Vertical spacing for multiple overlapping connections
-// Lines at height 0 are at the top, height N is further down
+// Vertical spacing for multiple overlapping marks
+// Bars at height 0 are at the top, height N is further down
 static constexpr int32_t BASE_HEIGHT_OFFSET = 10;
 static constexpr int32_t HEIGHT_STEP = 8; // Separation between overlapping lines
 
@@ -54,8 +55,8 @@ struct EndlessSpoolArrowsData {
     int32_t slot_overlap = 0; // Overlap between slots in pixels (for 5+ slots)
     int32_t slot_offset = 0;  // Left offset of the slot row, as the slot grid lays it out
 
-    // Backup slot configuration: backup_slots[source] = target (-1 = no backup)
-    int backup_slots[MAX_SLOTS] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
+    // The relation to draw; the draw callback lays it out against slot_count
+    helix::printer::EndlessSpoolConfig config;
 
     // Theme-derived colors
     lv_color_t arrow_color;
@@ -106,51 +107,117 @@ static int32_t get_slot_center_x(int slot_index, int slot_count, int32_t slot_wi
     return x_off + slot_width / 2 + slot_index * slot_spacing;
 }
 
-// Structure to track line segments for overlap detection
-struct ArrowConnection {
-    int source;
-    int target;
-    int min_slot;     // Left-most slot involved
-    int max_slot;     // Right-most slot involved
-    int height_level; // 0 = lowest, higher = further up
-};
+using helix::ui::EndlessSpoolMark;
+using helix::ui::EndlessSpoolMarkKind;
 
-// Assign height levels to connections to avoid overlap
-// Connections that span overlapping horizontal ranges get different heights
-static void assign_height_levels(std::vector<ArrowConnection>& connections) {
-    if (connections.empty()) {
-        return;
-    }
+// Assign height levels so marks whose bars overlap horizontally stack instead
+// of drawing on top of each other. Wider spans take the upper levels: a group
+// nested inside another then sits under it, and no tick crosses a bar.
+static void assign_height_levels(std::vector<EndlessSpoolMark>& marks) {
+    std::stable_sort(marks.begin(), marks.end(),
+                     [](const EndlessSpoolMark& a, const EndlessSpoolMark& b) {
+                         const int span_a = a.max_slot - a.min_slot;
+                         const int span_b = b.max_slot - b.min_slot;
+                         if (span_a != span_b) {
+                             return span_a > span_b;
+                         }
+                         return a.min_slot < b.min_slot;
+                     });
 
-    // Sort by span width (smaller spans get lower heights - closer to slots)
-    std::sort(connections.begin(), connections.end(),
-              [](const ArrowConnection& a, const ArrowConnection& b) {
-                  int span_a = a.max_slot - a.min_slot;
-                  int span_b = b.max_slot - b.min_slot;
-                  return span_a < span_b;
-              });
-
-    // Assign heights, checking for horizontal overlap
-    for (size_t i = 0; i < connections.size(); ++i) {
-        ArrowConnection& conn = connections[i];
-        conn.height_level = 0;
-
-        // Check against all previously assigned connections
+    for (size_t i = 0; i < marks.size(); ++i) {
+        EndlessSpoolMark& mark = marks[i];
+        mark.height_level = 0;
         for (size_t j = 0; j < i; ++j) {
-            const ArrowConnection& prev = connections[j];
-
-            // Check if horizontal ranges overlap
+            const EndlessSpoolMark& prev = marks[j];
             // Ranges overlap if: max(min1, min2) < min(max1, max2)
-            int overlap_start = std::max(conn.min_slot, prev.min_slot);
-            int overlap_end = std::min(conn.max_slot, prev.max_slot);
-
+            const int overlap_start = std::max(mark.min_slot, prev.min_slot);
+            const int overlap_end = std::min(mark.max_slot, prev.max_slot);
             if (overlap_start < overlap_end) {
-                // There is overlap - need to use a different height
-                conn.height_level = std::max(conn.height_level, prev.height_level + 1);
+                mark.height_level = std::max(mark.height_level, prev.height_level + 1);
             }
         }
     }
 }
+
+// Break each bar wherever another mark's vertical passes through it. A vertical
+// runs from its own bar down to the slots, so it crosses only bars drawn below
+// its own, and only strictly inside their span: at a bar's end, or at a slot
+// the crossed mark also drops to, the two lines coincide rather than cross.
+static void assign_bar_gaps(std::vector<EndlessSpoolMark>& marks) {
+    for (auto& lower : marks) {
+        for (const auto& upper : marks) {
+            if (upper.height_level >= lower.height_level) {
+                continue;
+            }
+            for (int slot : upper.slots) {
+                const bool inside = slot > lower.min_slot && slot < lower.max_slot;
+                const bool shared =
+                    std::find(lower.slots.begin(), lower.slots.end(), slot) != lower.slots.end();
+                if (inside && !shared &&
+                    std::find(lower.bar_gaps.begin(), lower.bar_gaps.end(), slot) ==
+                        lower.bar_gaps.end()) {
+                    lower.bar_gaps.push_back(slot);
+                }
+            }
+        }
+        std::sort(lower.bar_gaps.begin(), lower.bar_gaps.end());
+    }
+}
+
+namespace helix::ui {
+
+std::vector<EndlessSpoolMark> endless_spool_marks(const helix::printer::EndlessSpoolConfig& config,
+                                                  int slot_count) {
+    std::vector<EndlessSpoolMark> marks;
+    const auto in_range = [slot_count](int slot) { return slot >= 0 && slot < slot_count; };
+
+    // An ordered group draws one arrow per hand-off; a slot keeps only its first
+    // successor, the same rule helix::printer::endless_spool_backup_for() applies.
+    std::vector<bool> has_successor(slot_count > 0 ? static_cast<size_t>(slot_count) : 0, false);
+
+    for (const auto& group : config.groups) {
+        if (group.ordered) {
+            for (size_t i = 0; i + 1 < group.members.size(); ++i) {
+                const int from = group.members[i];
+                const int to = group.members[i + 1];
+                if (!in_range(from) || !in_range(to) || from == to ||
+                    has_successor[static_cast<size_t>(from)]) {
+                    continue;
+                }
+                has_successor[static_cast<size_t>(from)] = true;
+                EndlessSpoolMark mark;
+                mark.kind = EndlessSpoolMarkKind::Arrow;
+                mark.slots = {from, to};
+                mark.min_slot = std::min(from, to);
+                mark.max_slot = std::max(from, to);
+                marks.push_back(std::move(mark));
+            }
+            continue;
+        }
+
+        EndlessSpoolMark mark;
+        mark.kind = EndlessSpoolMarkKind::Bracket;
+        for (int member : group.members) {
+            if (in_range(member)) {
+                mark.slots.push_back(member);
+            }
+        }
+        std::sort(mark.slots.begin(), mark.slots.end());
+        mark.slots.erase(std::unique(mark.slots.begin(), mark.slots.end()), mark.slots.end());
+        if (mark.slots.size() < 2) {
+            continue; // A group of one backs nothing up
+        }
+        mark.min_slot = mark.slots.front();
+        mark.max_slot = mark.slots.back();
+        marks.push_back(std::move(mark));
+    }
+
+    assign_height_levels(marks);
+    assign_bar_gaps(marks);
+    return marks;
+}
+
+} // namespace helix::ui
 
 // ============================================================================
 // Drawing Functions
@@ -169,10 +236,35 @@ static void draw_line(lv_layer_t* layer, int32_t x1, int32_t y1, int32_t x2, int
     line_dsc.p2.y = y2;
     line_dsc.round_start = true;
     line_dsc.round_end = true;
-    // Use dashed lines for subtle backup indication
-    line_dsc.dash_width = 4;
-    line_dsc.dash_gap = 3;
     lv_draw_line(layer, &line_dsc);
+}
+
+// Draw a horizontal bar from x1 to x2 (x1 <= x2), broken around each gap x so a
+// vertical passing through it reads as crossing, not joining
+static void draw_bar(lv_layer_t* layer, int32_t x1, int32_t x2, int32_t y,
+                     const std::vector<int32_t>& gap_xs, lv_color_t color, int32_t width) {
+    const int32_t half_gap = BAR_GAP + width / 2;
+    int32_t start = x1;
+    for (int32_t gap_x : gap_xs) {
+        if (gap_x - half_gap > start) {
+            draw_line(layer, start, y, gap_x - half_gap, y, color, width);
+        }
+        start = std::max(start, gap_x + half_gap);
+    }
+    if (x2 > start) {
+        draw_line(layer, start, y, x2, y, color, width);
+    }
+}
+
+// Draw a filled dot centred on (x, y)
+static void draw_dot(lv_layer_t* layer, int32_t x, int32_t y, lv_color_t color, int32_t radius) {
+    lv_draw_rect_dsc_t rect_dsc;
+    lv_draw_rect_dsc_init(&rect_dsc);
+    rect_dsc.bg_color = color;
+    rect_dsc.bg_opa = LV_OPA_COVER;
+    rect_dsc.radius = LV_RADIUS_CIRCLE;
+    lv_area_t area = {x - radius, y - radius, x + radius, y + radius};
+    lv_draw_rect(layer, &rect_dsc, &area);
 }
 
 // Draw an arrowhead pointing downward
@@ -210,12 +302,14 @@ static void draw_arrow_down(lv_layer_t* layer, int32_t tip_x, int32_t tip_y, lv_
 // - Vertical lines down to bottom edge (y_bottom) which is just above slots
 // - Arrowheads point down toward slots
 static void draw_routed_arrow(lv_layer_t* layer, int32_t src_x, int32_t dst_x, int32_t y_bottom,
-                              int32_t y_route, lv_color_t color, int32_t line_width) {
+                              int32_t y_route, const std::vector<int32_t>& gap_xs, lv_color_t color,
+                              int32_t line_width) {
     // Path: horizontal at route height -> vertical down from source -> vertical down to target with
     // arrow
 
-    // Horizontal line at route height (top of widget)
-    draw_line(layer, src_x, y_route, dst_x, y_route, color, line_width);
+    // Horizontal line at route height
+    draw_bar(layer, std::min(src_x, dst_x), std::max(src_x, dst_x), y_route, gap_xs, color,
+             line_width);
 
     // Vertical line from route down to source slot position (no arrow - this is the "from" side)
     draw_line(layer, src_x, y_route, src_x, y_bottom, color, line_width);
@@ -227,6 +321,19 @@ static void draw_routed_arrow(lv_layer_t* layer, int32_t src_x, int32_t dst_x, i
 
     // Draw arrowhead at target pointing down
     draw_arrow_down(layer, dst_x, y_bottom, color, ARROW_SIZE);
+}
+
+// Draw a bracket: one bar over the members, a tick down to each, ending in a dot.
+// No arrowhead - an unordered group has no direction.
+static void draw_bracket(lv_layer_t* layer, const std::vector<int32_t>& member_xs, int32_t y_bottom,
+                         int32_t y_route, const std::vector<int32_t>& gap_xs, lv_color_t color,
+                         int32_t line_width) {
+    draw_bar(layer, member_xs.front(), member_xs.back(), y_route, gap_xs, color, line_width);
+    const int32_t dot_y = y_bottom - DOT_RADIUS;
+    for (int32_t x : member_xs) {
+        draw_line(layer, x, y_route, x, dot_y, color, line_width);
+        draw_dot(layer, x, dot_y, color, DOT_RADIUS);
+    }
 }
 
 // ============================================================================
@@ -248,69 +355,58 @@ static void endless_spool_arrows_draw_cb(lv_event_t* e) {
     int32_t x_off = obj_coords.x1 + data->slot_offset;
     int32_t y_off = obj_coords.y1;
 
-    // Collect all connections
-    std::vector<ArrowConnection> connections;
-    for (int i = 0; i < data->slot_count; ++i) {
-        int backup = data->backup_slots[i];
-        if (backup >= 0 && backup < data->slot_count && backup != i) {
-            ArrowConnection conn;
-            conn.source = i;
-            conn.target = backup;
-            conn.min_slot = std::min(i, backup);
-            conn.max_slot = std::max(i, backup);
-            conn.height_level = 0;
-            connections.push_back(conn);
-        }
-    }
-
-    if (connections.empty()) {
-        spdlog::trace("[EndlessSpoolArrows] No connections to draw");
+    const auto marks = helix::ui::endless_spool_marks(data->config, data->slot_count);
+    if (marks.empty()) {
+        spdlog::trace("[EndlessSpoolArrows] No marks to draw");
         return;
     }
 
-    // Assign height levels to avoid overlap
-    assign_height_levels(connections);
-
-    // Calculate Y positions
     // Widget is positioned ABOVE slots, so:
     // - y_bottom = bottom of widget (where it meets the slots below)
-    // - y_route = near top of widget (routing lines are at top)
+    // - y_route = bar height, level 0 near the top of the widget
     int32_t y_bottom = y_off + height - 2; // Bottom edge with small margin
 
-    // Highest route line that still leaves room for the arrowhead below it. An
-    // N-member group now projects to N arrows (a ring, see
-    // endless_spool_backup_edges), all of them overlapping, so a wide group can
-    // ask for more height levels than the canvas has. Unclamped, y_route walks
-    // past y_bottom and the "vertical" segments draw inverted, outside the
-    // widget. Clamping stacks the deepest connections on one shared line
-    // instead - crowded, but inside the canvas and readable.
+    // Lowest bar that still leaves room for the arrowhead below it. A relation
+    // can ask for more height levels than the canvas has; unclamped, y_route
+    // walks past y_bottom and the "vertical" segments draw inverted, outside the
+    // widget. Clamping stacks the deepest marks on one shared bar instead -
+    // crowded, but inside the canvas and readable.
     const int32_t max_route_y = y_bottom - ARROW_SIZE - 2;
     const int max_height_level =
         max_route_y > y_off + BASE_HEIGHT_OFFSET
             ? static_cast<int>((max_route_y - (y_off + BASE_HEIGHT_OFFSET)) / HEIGHT_STEP)
             : 0;
 
-    // Draw each connection
-    for (const auto& conn : connections) {
-        int32_t src_x = get_slot_center_x(conn.source, data->slot_count, data->slot_width,
-                                          data->slot_overlap, x_off);
-        int32_t dst_x = get_slot_center_x(conn.target, data->slot_count, data->slot_width,
-                                          data->slot_overlap, x_off);
+    const auto slot_x = [&](int slot) {
+        return get_slot_center_x(slot, data->slot_count, data->slot_width, data->slot_overlap,
+                                 x_off);
+    };
 
-        // Route height based on height_level
-        // Higher levels = closer to top of widget = lower Y value
-        // Level 0 is closest to bottom (slots), higher levels stack upward
-        const int level = std::min(conn.height_level, max_height_level);
-        int32_t y_route = y_off + BASE_HEIGHT_OFFSET + level * HEIGHT_STEP;
+    for (const auto& mark : marks) {
+        const int level = std::min(mark.height_level, max_height_level);
+        const int32_t y_route = y_off + BASE_HEIGHT_OFFSET + level * HEIGHT_STEP;
 
-        draw_routed_arrow(layer, src_x, dst_x, y_bottom, y_route, data->arrow_color,
-                          data->line_width);
+        std::vector<int32_t> gap_xs;
+        gap_xs.reserve(mark.bar_gaps.size());
+        for (int slot : mark.bar_gaps) {
+            gap_xs.push_back(slot_x(slot));
+        }
 
-        spdlog::trace("[EndlessSpoolArrows] Drew arrow: {} -> {} at height level {}", conn.source,
-                      conn.target, conn.height_level);
+        if (mark.kind == EndlessSpoolMarkKind::Arrow) {
+            draw_routed_arrow(layer, slot_x(mark.slots[0]), slot_x(mark.slots[1]), y_bottom,
+                              y_route, gap_xs, data->arrow_color, data->line_width);
+        } else {
+            std::vector<int32_t> member_xs;
+            member_xs.reserve(mark.slots.size());
+            for (int slot : mark.slots) {
+                member_xs.push_back(slot_x(slot));
+            }
+            draw_bracket(layer, member_xs, y_bottom, y_route, gap_xs, data->arrow_color,
+                         data->line_width);
+        }
     }
 
-    spdlog::trace("[EndlessSpoolArrows] Drew {} arrows", connections.size());
+    spdlog::trace("[EndlessSpoolArrows] Drew {} marks", marks.size());
 }
 
 // ============================================================================
@@ -476,33 +572,21 @@ void ui_endless_spool_arrows_set_slot_offset(lv_obj_t* obj, int32_t offset) {
     }
 }
 
-void ui_endless_spool_arrows_set_config(lv_obj_t* obj, const int* backup_slots, int count) {
+void ui_endless_spool_arrows_set_groups(lv_obj_t* obj,
+                                        const helix::printer::EndlessSpoolConfig& config) {
     auto* data = get_data(obj);
     if (!data) {
         return;
     }
-
-    // Clear existing config
-    for (int i = 0; i < MAX_SLOTS; ++i) {
-        data->backup_slots[i] = -1;
-    }
-
-    // Copy new config
-    int copy_count = std::min(count, MAX_SLOTS);
-    for (int i = 0; i < copy_count; ++i) {
-        data->backup_slots[i] = backup_slots[i];
-    }
-
-    spdlog::debug("[EndlessSpoolArrows] Config updated with {} slots", copy_count);
+    data->config = config;
+    spdlog::debug("[EndlessSpoolArrows] Config updated with {} group(s)", config.groups.size());
     lv_obj_invalidate(obj);
 }
 
 void ui_endless_spool_arrows_clear(lv_obj_t* obj) {
     auto* data = get_data(obj);
     if (data) {
-        for (int i = 0; i < MAX_SLOTS; ++i) {
-            data->backup_slots[i] = -1;
-        }
+        data->config.groups.clear();
         lv_obj_invalidate(obj);
     }
 }

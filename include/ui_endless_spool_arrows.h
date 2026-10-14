@@ -13,13 +13,14 @@ extern "C" {
  * @file ui_endless_spool_arrows.h
  * @brief Canvas widget for visualizing endless spool backup relationships
  *
- * Draws routed arrow lines connecting slots that have backup relationships.
- * The arrows show chains at a glance (e.g., Slot 1 -> Slot 3 -> Slot 5).
- *
- * Visual design:
- *   - Routed lines: up from source slot, over horizontally, down to target slot
- *   - Arrowheads pointing down at target end
- *   - Multiple connections draw at different vertical heights to avoid overlap
+ * Draws the endless-spool relation above the slot row, one mark per group:
+ *   - Unordered group (any member substitutes for any other): a BRACKET, one
+ *     horizontal bar spanning the members with a tick down to each member,
+ *     ending in a dot. No arrowheads, because the group has no order.
+ *   - Ordered group (a directed hand-off, e.g. AFC's SET_RUNOUT): a routed
+ *     arrow per hand-off, up from the source, over, and down into the target.
+ *   - Overlapping marks stack at different heights; a bar is broken where
+ *     another mark's vertical passes through it, so membership stays readable.
  *   - Uses subtle color (#text_muted) to avoid overwhelming filament colors
  *
  * XML usage:
@@ -86,20 +87,6 @@ void ui_endless_spool_arrows_set_slot_overlap(lv_obj_t* obj, int32_t overlap);
 void ui_endless_spool_arrows_set_slot_offset(lv_obj_t* obj, int32_t offset);
 
 /**
- * @brief Set endless spool configuration
- *
- * Provides the backup slot mappings for visualization.
- * Each element in the array represents one slot's backup:
- *   - Index is the source slot
- *   - Value is the backup slot (-1 = no backup)
- *
- * @param obj The endless_spool_arrows widget
- * @param backup_slots Array of backup slot indices (one per slot)
- * @param count Number of elements in the array
- */
-void ui_endless_spool_arrows_set_config(lv_obj_t* obj, const int* backup_slots, int count);
-
-/**
  * @brief Clear all endless spool connections
  *
  * @param obj The endless_spool_arrows widget
@@ -115,4 +102,57 @@ void ui_endless_spool_arrows_refresh(lv_obj_t* obj);
 
 #ifdef __cplusplus
 }
+
+#include "ams_types.h"
+
+#include <vector>
+
+/**
+ * @brief Set the endless-spool relation to draw
+ *
+ * The widget decides bracket vs arrow from each group's `ordered` flag.
+ * Members at or beyond the slot count (or beyond 16 slots) are not drawn.
+ *
+ * @param obj The endless_spool_arrows widget
+ * @param config The backend's group relation
+ */
+void ui_endless_spool_arrows_set_groups(lv_obj_t* obj,
+                                        const helix::printer::EndlessSpoolConfig& config);
+
+namespace helix::ui {
+
+/// What one endless-spool mark draws as.
+enum class EndlessSpoolMarkKind {
+    Bracket, ///< Unordered group: bar over the members, a tick + dot per member
+    Arrow,   ///< One ordered hand-off: routed line with an arrowhead at the target
+};
+
+/// One mark above the slot row, in slot units (no pixels).
+struct EndlessSpoolMark {
+    EndlessSpoolMarkKind kind = EndlessSpoolMarkKind::Bracket;
+    /// Bracket: members, ascending. Arrow: {source, target}.
+    std::vector<int> slots;
+    int min_slot = 0; ///< Left end of the bar
+    int max_slot = 0; ///< Right end of the bar
+    /// 0 = the bar furthest from the slots; each level steps toward them.
+    int height_level = 0;
+    /// Slots where another mark's vertical crosses this bar; the bar is broken there.
+    std::vector<int> bar_gaps;
+};
+
+/**
+ * @brief Lay out the marks for an endless-spool relation
+ *
+ * Pure geometry, no LVGL: which marks exist, their height levels, and where
+ * each bar is broken. Members outside [0, slot_count) are dropped; a group
+ * left with fewer than two members draws nothing.
+ *
+ * @param config     The group relation
+ * @param slot_count Number of slots on the row
+ * @return Marks, in no particular order
+ */
+[[nodiscard]] std::vector<EndlessSpoolMark>
+endless_spool_marks(const helix::printer::EndlessSpoolConfig& config, int slot_count);
+
+} // namespace helix::ui
 #endif
