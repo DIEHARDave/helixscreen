@@ -580,10 +580,11 @@ TEST_CASE("Subscription: toolchanger + per-tool fields cover ToolState reads",
     fx.add("tool T1", {});
     json subs = fx.build();
 
-    SECTION("toolchanger reads status, tool_number, tool_numbers") {
+    SECTION("toolchanger reads status, tool_number, tool_numbers, tool_names") {
         REQUIRE(has_field(subs, "toolchanger", "status"));
         REQUIRE(has_field(subs, "toolchanger", "tool_number"));
         REQUIRE(has_field(subs, "toolchanger", "tool_numbers"));
+        REQUIRE(has_field(subs, "toolchanger", "tool_names"));
     }
 
     SECTION("per-tool reads active/mounted/detect_state/offsets/extruder/fan") {

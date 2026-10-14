@@ -631,9 +631,10 @@ void PrinterDiscovery::parse_objects(const nlohmann::json& objects) {
         natural_sort(afc_buffer_names_);
     }
 
-    // Sort tool names for consistent ordering
+    // Name order until the toolchanger's status says how Klipper numbers them
+    // (order_tools_by_number). Natural, so T10 follows T9 rather than T1.
     if (!tool_names_.empty()) {
-        std::sort(tool_names_.begin(), tool_names_.end());
+        natural_sort(tool_names_);
     }
 
     // A chamber heater measures its own chamber, so it supplies the reading
@@ -1062,6 +1063,49 @@ bool PrinterDiscovery::parse_sensor_toggle_command(const nlohmann::json& setting
     }
     sensor_toggle_command_ = renamed->get<std::string>();
     return true;
+}
+
+void PrinterDiscovery::order_tools_by_number(const nlohmann::json& toolchanger_status) {
+    if (!toolchanger_status.is_object()) {
+        return;
+    }
+    const auto listed = toolchanger_status.find("tool_names");
+    if (listed == toolchanger_status.end() || !listed->is_array()) {
+        return;
+    }
+
+    // klipper-toolchanger names each tool by its config section, "tool Left".
+    static constexpr std::string_view kSectionPrefix = "tool ";
+    std::vector<std::string> ordered;
+    ordered.reserve(tool_names_.size());
+    for (const auto& entry : *listed) {
+        if (!entry.is_string()) {
+            continue;
+        }
+        std::string name = entry.get<std::string>();
+        if (name.rfind(kSectionPrefix, 0) == 0) {
+            name.erase(0, kSectionPrefix.size());
+        }
+        const bool discovered =
+            std::find(tool_names_.begin(), tool_names_.end(), name) != tool_names_.end();
+        if (discovered && std::find(ordered.begin(), ordered.end(), name) == ordered.end()) {
+            ordered.push_back(std::move(name));
+        }
+    }
+    for (const auto& name : tool_names_) {
+        if (std::find(ordered.begin(), ordered.end(), name) == ordered.end()) {
+            ordered.push_back(name);
+        }
+    }
+
+    if (ordered != tool_names_) {
+        std::string joined;
+        for (const auto& name : ordered) {
+            joined += joined.empty() ? name : ", " + name;
+        }
+        spdlog::info("[PrinterDiscovery] Tools ordered by Klipper tool number: {}", joined);
+        tool_names_ = std::move(ordered);
+    }
 }
 
 void PrinterDiscovery::natural_sort(std::vector<std::string>& names) {

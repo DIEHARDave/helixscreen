@@ -55,8 +55,17 @@ differs - the unmount, which a machine whose tools are plain extruders does not 
 | `status` | string | "ready", "changing", "error", "uninitialized", "initializing" |
 | `tool` | string | Current tool name ("T0") or null |
 | `tool_number` | int | Current tool number (-1 if none) |
-| `tool_numbers` | int[] | All tool numbers [0, 1, 2] |
-| `tool_names` | string[] | All tool names ["T0", "T1", "T2"] |
+| `tool_numbers` | int[] | All tool numbers, ascending [0, 1, 2] |
+| `tool_names` | string[] | Each tool's config section, in `tool_numbers` order ["tool T0", "tool T1", "tool T2"]. Discovery orders the slots by it (below) |
+
+**Tool order.** A slot's index is its Klipper tool number: slot `n` is selected with `SELECT_TOOL T=n` and
+labelled "T`n`". The objects list names the tools but not their numbers, so discovery
+sorts them naturally (T2 before T10) and then, once the subscription's first status
+arrives, puts them in `toolchanger.tool_names` order
+(`PrinterDiscovery::order_tools_by_number`). `[tool Right]` numbered 0 therefore takes
+slot 0 ahead of `[tool Left]` numbered 1. Tools with no `tool_number` follow the numbered
+ones. Numbers with gaps (0, 1, 5) still map slot by position, so slot 2 is selected as
+`T=2`; that layout is not supported.
 
 **Per-tool** (`tool T{n}`):
 
@@ -74,7 +83,7 @@ differs - the unmount, which a machine whose tools are plain extruders does not 
 
 | Command | Action |
 |---------|--------|
-| `SELECT_TOOL TOOL=T{n}` | Mount specified tool |
+| `SELECT_TOOL T={n}` | Mount the tool Klipper numbers `n` (what a slot tap sends; slot `n` is tool number `n`) |
 | `UNSELECT_TOOL` | Unmount current tool (park it) |
 | `T{n}` | Tool change macro |
 
