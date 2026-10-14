@@ -97,6 +97,7 @@
 #include "ui_fan_control_overlay.h"
 #include "ui_gcode_viewer.h"
 #include "ui_gradient_canvas.h"
+#include "ui_guided_device_flow.h"
 #include "ui_icon.h"
 #include "ui_icon_loader.h"
 #include "ui_keyboard_manager.h"
@@ -1720,6 +1721,10 @@ bool Application::register_widgets() {
 bool Application::register_xml_components() {
     helix::register_xml_components();
     spdlog::debug("[Application] XML components registered");
+
+    // Guided flows must exist before any overlay builds: an action that names an unregistered
+    // flow is refused rather than executed.
+    helix::ui::register_cfs_device_flows();
 
     // Start XML hot reloader if enabled. Default ON for native (non-release)
     // builds so editing XML during dev Just Works; OFF for cross-compiled

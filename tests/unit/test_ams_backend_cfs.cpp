@@ -497,6 +497,24 @@ TEST_CASE("CFS auto-refill device action sends an explicit ENABLE", "[ams][cfs]"
     }
 }
 
+TEST_CASE("CFS actions name their guided flows", "[ams][cfs][calib]") {
+    CfsK1RemapHelper backend;
+
+    const auto cutter = find_action(backend, "calibrate_cutter");
+    REQUIRE(cutter.has_value());
+    CHECK(cutter->guided_flow == "cfs_cutter");
+
+    const auto chute = find_action(backend, "calibrate_purge_chute");
+    REQUIRE(chute.has_value());
+    CHECK(chute->guided_flow == "cfs_purge_chute");
+
+    // An ordinary action runs straight through the backend.
+    const auto refill = find_action(backend, "toggle_auto_refill");
+    if (refill.has_value()) {
+        CHECK(refill->guided_flow.empty());
+    }
+}
+
 TEST_CASE("CFS calibration section and actions are K1-stock only (#1282)", "[ams][cfs][calib]") {
     SECTION("K1 dialect exposes both calibration actions in one section") {
         CfsK1RemapHelper backend;

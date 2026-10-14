@@ -4273,10 +4273,13 @@ std::vector<helix::printer::DeviceAction> AmsBackendCfs::get_device_actions() co
         if (print_blocks) {
             reason = "Printer is busy with a print";
         }
-        for (DA a : {DA::button("calibrate_cutter", "Calibrate Cutter", "calibration", "",
-                                "Home and sweep the cutter to re-find its position"),
-                     DA::button("calibrate_purge_chute", "Calibrate Purge Chute", "calibration", "",
-                                "Guide the toolhead to the chute's extrude position")}) {
+        DA cutter = DA::button("calibrate_cutter", "Calibrate Cutter", "calibration", "",
+                               "Home and sweep the cutter to re-find its position");
+        cutter.guided_flow = "cfs_cutter";
+        DA chute = DA::button("calibrate_purge_chute", "Calibrate Purge Chute", "calibration", "",
+                              "Guide the toolhead to the chute's extrude position");
+        chute.guided_flow = "cfs_purge_chute";
+        for (DA a : {std::move(cutter), std::move(chute)}) {
             a.enabled = !print_blocks;
             a.disable_reason = reason;
             actions.push_back(std::move(a));
