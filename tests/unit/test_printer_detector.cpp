@@ -2312,6 +2312,52 @@ TEST_CASE_METHOD(PrinterDetectorFixture,
     REQUIRE(PrinterDetector::meets_autosave_threshold(result));
 }
 
+TEST_CASE_METHOD(PrinterDetectorFixture,
+                 "PrinterDetector: stock Plus 5 fingerprint detects as the Qidi Plus 5",
+                 "[printer][qidi][plus5]") {
+    auto hardware = printer_capture("qidi_plus5");
+
+    auto result = PrinterDetector::detect(hardware);
+    CAPTURE(result.type_name, result.confidence, result.runner_up_type_name,
+            result.runner_up_confidence, result.margin(), result.tied_count);
+
+    REQUIRE(result.detected());
+    // The capture carries the shared QIDI hardware plus the Plus 5's ~333x345
+    // travel, which separates it from the Q2 (~275) and Max 4 (~390). Nothing
+    // names the model, so the bed size is what picks the Plus 5 once the family
+    // is identified.
+    REQUIRE(result.type_name == "Qidi Plus 5");
+    REQUIRE(result.margin() >= PrinterDetector::DETECT_MIN_MARGIN);
+    REQUIRE(PrinterDetector::meets_autosave_threshold(result));
+}
+
+TEST_CASE_METHOD(PrinterDetectorFixture,
+                 "PrinterDetector: nameless corexy at the Plus 5 bed size is not saved as a Plus 5",
+                 "[printer][qidi][plus5][regression]") {
+    // A bare corexy carrying the Plus 5's ~333x345 stepper travel but none of
+    // the QIDI family hardware (no chamber thermal protection sensor) must not
+    // be saved as a Plus 5: bed size separates the model inside the family, it
+    // never identifies a machine on its own.
+    PrinterHardwareData hardware{
+        .heaters = {"extruder", "heater_bed"},
+        .sensors = {},
+        .fans = {},
+        .leds = {},
+        .hostname = "",
+        .printer_objects = {},
+        .steppers = {"stepper_x", "stepper_y", "stepper_z", "stepper_z1"},
+        .kinematics = "corexy",
+        .build_volume = {.x_min = -7, .x_max = 326, .y_min = -5, .y_max = 340, .z_max = 300}};
+    hardware.objects_reported = true;
+
+    auto result = PrinterDetector::detect(hardware);
+    CAPTURE(result.type_name, result.confidence, result.runner_up_type_name,
+            result.runner_up_confidence, result.margin(), result.tied_count);
+
+    REQUIRE(result.type_name != "Qidi Plus 5");
+    REQUIRE_FALSE(PrinterDetector::meets_autosave_threshold(result));
+}
+
 // ============================================================================
 // MCU-Based Detection Tests - STM32F103 (Sovol SV08)
 // ============================================================================

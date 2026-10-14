@@ -7,7 +7,8 @@
 
 > The Plus 5 is the newest QIDI and shares the **new-generation board** class with
 > the Q2 and Max 4 (Rockchip host + STM32 main MCU + Linux framebuffer display),
-> but with a **sideways 480×800** panel and a **~325 mm** bed. This note records
+> but with a **sideways 480×800** panel and a **~333×345 mm** stepper travel
+> (~325 mm print area). This note records
 > what the hardware exposes, so the database entry and preset key off real
 > signals rather than assumptions.
 
@@ -24,10 +25,10 @@
 | MCUs | **STM32F407** (main) + **STM32F103xe** (toolhead, `[mcu THR]` on `/dev/ttyS4`) |
 
 Because there are no VTs, Xorg/KlipperScreen cannot start normally (`parse_vt_settings:
-Cannot open /dev/tty0`). HelixScreen is unaffected: it renders through **SDL2 on
-DRM/fbdev directly** and needs no display server. (For the record, the no-VT Xorg
-workaround is `Xorg :0 vt08 -sharevts` with `/dev/tty8 -> /dev/null` — see the
-companion community project.)
+Cannot open /dev/tty0`). HelixScreen is unaffected: its Pi/aarch64 build renders
+through **LVGL's DRM/fbdev backends directly** (SDL is a desktop-only backend) and
+needs no display server. (For the record, the no-VT Xorg workaround is `Xorg :0 vt08
+-sharevts` with `/dev/tty8 -> /dev/null` — see the companion community project.)
 
 ## 1. Display + stock UI
 
@@ -76,32 +77,43 @@ size** instead (see § 3).
 
 ## 3. Database entry rationale
 
-The `qidi_plus_5` entry uses the `build_volume_range` window **324–342 × 336–354 mm**
-with **`"identifying": true`**: it is the one signal that names the model among the
-Q2/Plus 4/Max 4, and it *only* matches a ~325 mm bed, so it never fires on the Q2
-(≈275) or Max 4 (≈390) hardware. The QIDI-shared signals (chamber heater, chamber
-thermal sensor, aux fan, `multi_color_controller`, `probe_air`, `M4029`,
-`CLEAR_NOZZLE`, STM32F407) are marked **`corroborating`**, so they can support the
-id but cannot make the Plus 5 lead on another QIDI's hardware.
+The `qidi_plus_5` entry identifies by the **`build_volume_range` window 324–342 ×
+336–354 mm** (`"identifying": true`): the bed size is the one signal that names the
+model among the QIDI framebuffer family (Q2 ≈ 275, Max 4 ≈ 390), and it never matches
+those siblings. Because a bare corexy with the same travel would otherwise be saved
+as a Plus 5, the entry also carries a **`sensor_required` on
+`Chamber_Thermal_Protection`** (a QIDI config marker): a machine without it is
+excluded outright, so bed size alone never identifies a Plus 5. The remaining
+QIDI-shared signals (chamber heater, aux fan, `multi_color_controller`, `probe_air`,
+`M4029`, `CLEAR_NOZZLE`, STM32F407) are marked **`corroborating`** — support only.
 
-Measured on the device (override via `printer_database.d/`, then detection replayed):
+> A stricter shape suggested in review — bed size as a `"separator"` inside an
+> already-identified family (the K2 pattern) — needs the whole QIDI family's
+> identifying evidence normalised so the siblings tie before the bed breaks the tie.
+> That is a larger change than this entry and is left for a follow-up.
 
-```
-Detection complete: Qidi Plus 5 (confidence: 100%, 11 matches, margin 12 over 'Qidi Q2', 1 tied,
-  reason: Stepper travel ~333x345mm: the Qidi Plus 5 bed. ... (+10 more))
-Auto-detected printer: 'Qidi Plus 5' (100% confidence)
-```
+The behaviour is pinned by `tests/fixtures/printers/qidi_plus5.json` (with a corpus
+row in `detection_cases.json`) and by the negative test that a nameless corexy at the
+same bed size is not saved as a Plus 5.
 
 The preset (`assets/config/presets/qidi_plus5.json`) carries the hardware mappings,
 `display.rotate = 90`, and the CLEAR_NOZZLE / M4029 quick macros.
 
 ## 4. On-device install notes
 
-- Stock firmware runs standard **Moonraker on `:7125`**, so the installer's
-  QIDI-class hook (`hooks-qidi.sh`) already stops/disables `qidi-client`. The
-  screen app and QIDI cloud/camera stop working while HelixScreen runs; uninstalling
-  brings them back.
-- HelixScreen auto-selects its **SDL2 DRM** backend and the Goodix touch device;
-  with rotation set it transparently uses the framebuffer path for software rotation.
+- Stock firmware runs standard **Moonraker on `:7125`**. HelixScreen's installer
+  disables the stock screen at install time through `competing_uis.sh`, which takes
+  down the `qidi-client` unit **by name** (it is in `COMPETING_UIS`). The boot-time
+  `hooks-qidi.sh` platform hook does **not** fire here: its `_is_qidi_class_sbc`
+  fingerprint requires `/etc/hostname` to be `linaro-alip`, and the Plus 5's is
+  `qidi-plus5`. The `ExecStart` arm does not match either — the unit runs
+  `bash /home/qidi/QIDI_Client/bin/start.sh`, and the `qidiclient` binary is `exec`ed
+  from inside `start.sh` — and `QIDI_STOCK_UI_BINS` lists only `…/QD_Q2/bin/client`.
+  The screen app and QIDI cloud/camera stop while HelixScreen runs; uninstalling
+  brings them back. (Extending the fingerprint/bins, with a bats test, is a proposed
+  follow-up.)
+- HelixScreen auto-selects its **DRM** backend and the Goodix touch device; with
+  rotation set it transparently uses the framebuffer path for software rotation.
+  `display.rotate = 90` was confirmed correct on hardware.
 - RAM is fine: HelixScreen ran at ~49 MB RSS alongside Klipper/Moonraker on the
   498 MB host.
