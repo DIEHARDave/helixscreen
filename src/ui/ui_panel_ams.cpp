@@ -1022,30 +1022,17 @@ void AmsPanel::update_endless_arrows_from_backend() {
         return;
     }
 
-    // Get the endless spool relation and flatten it to one arrow per slot. The
-    // group-to-edge projection lives in helix::printer, shared with the context
-    // menu's dropdown, so a Happy Hare group and an AFC chain cannot disagree
-    // about which arrow to draw.
+    // The widget receives the whole group relation and decides per group
+    // whether it is a bracket (unordered) or arrows (ordered).
     static constexpr int MAX_ARROW_SLOTS = 16;
     const auto config = backend->get_endless_spool_config();
     int slot_count = std::min(backend->get_system_info().total_slots, MAX_ARROW_SLOTS);
-    if (config.empty() || slot_count <= 0) {
-        ui_endless_spool_arrows_clear(endless_arrows_);
-        lv_obj_add_flag(endless_arrows_, LV_OBJ_FLAG_HIDDEN);
-        return;
-    }
-
-    const std::vector<int> edges = helix::printer::endless_spool_backup_edges(config, slot_count);
-    if (std::none_of(edges.begin(), edges.end(), [](int backup) { return backup >= 0; })) {
+    if (config.empty() || slot_count <= 0 ||
+        helix::ui::endless_spool_marks(config, slot_count).empty()) {
         spdlog::trace("[{}] No endless spool backups configured - hiding arrows", get_name());
         ui_endless_spool_arrows_clear(endless_arrows_);
         lv_obj_add_flag(endless_arrows_, LV_OBJ_FLAG_HIDDEN);
         return;
-    }
-
-    int backup_slots[MAX_ARROW_SLOTS];
-    for (int i = 0; i < slot_count; ++i) {
-        backup_slots[i] = edges[static_cast<size_t>(i)];
     }
     spdlog::trace("[{}] Endless spool relation has {} group(s) over {} slots", get_name(),
                   config.groups.size(), slot_count);
@@ -1071,7 +1058,7 @@ void AmsPanel::update_endless_arrows_from_backend() {
     ui_endless_spool_arrows_set_slot_width(endless_arrows_, slot_width);
     ui_endless_spool_arrows_set_slot_overlap(endless_arrows_, overlap);
     ui_endless_spool_arrows_set_slot_offset(endless_arrows_, offset);
-    ui_endless_spool_arrows_set_config(endless_arrows_, backup_slots, slot_count);
+    ui_endless_spool_arrows_set_groups(endless_arrows_, config);
 
     // Show the canvas
     lv_obj_remove_flag(endless_arrows_, LV_OBJ_FLAG_HIDDEN);

@@ -2262,11 +2262,11 @@ struct EndlessSpoolGroup {
  * @brief The whole system's endless-spool relation.
  *
  * Membership, not a single successor. A Happy Hare 4-gate group is ONE entry
- * here rather than four arbitrary arrows, which is what the old per-slot
- * `{slot_index, backup_slot}` vector forced the backend to invent (its
- * `// Use first match` loop). Projection down to one-successor-per-slot is a
- * rendering concern and lives in exactly one place -
- * endless_spool_backup_edges() / endless_spool_backup_for().
+ * here rather than four arbitrary arrows. Projection down to
+ * one-successor-per-slot, for consumers that can show only one backup per
+ * slot, lives in exactly one place - endless_spool_backup_edges() /
+ * endless_spool_backup_for(). The slot-row drawing takes the groups themselves
+ * (helix::ui::endless_spool_marks()).
  *
  * Overlapping groups are legal when `ordered`: AFC permits 0->2 and 1->2, which
  * is two ordered pairs sharing slot 2. An unordered relation is a partition.
@@ -2301,8 +2301,8 @@ endless_spool_config_from_groups(const std::vector<int>& group_ids);
 /**
  * @brief Project a group relation onto one successor per slot.
  *
- * The single group-to-edge projection in the codebase. Used by the arrow
- * renderer and by the single-successor dropdown; never re-derive it.
+ * The single group-to-edge projection in the codebase. Used by the
+ * single-successor dropdown; never re-derive it.
  *
  * Ordered group:   members[i] -> members[i+1]; the last member gets nothing.
  * Unordered group: a ring - members[i] -> members[i+1], last -> first. Every

@@ -2356,7 +2356,7 @@ class AmsBackend {
      *
      * Groups, not per-slot successors - see helix::printer::EndlessSpoolConfig.
      * Project with helix::printer::endless_spool_backup_edges() /
-     * endless_spool_backup_for() when a renderer needs single arrows.
+     * endless_spool_backup_for() when a consumer needs one backup per slot.
      *
      * Backends whose mapping lives in a SlotRegistry build this in one line:
      * lock `mutex_`, then

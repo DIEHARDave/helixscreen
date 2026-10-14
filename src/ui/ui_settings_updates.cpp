@@ -154,10 +154,16 @@ void UpdatesSettingsOverlay::show_update_download_modal(bool start_immediately) 
 #ifdef __ANDROID__
     // Android never runs the tarball updater. Every install intent (the Install
     // Update row and the "New Version Available" notification) opens wherever this
-    // APK came from: the Play listing for a Play install, the GitHub release for a
-    // sideload.
+    // APK came from: Play's in-app update flow (or its listing) for a Play install,
+    // the GitHub release for a sideload.
     if (helix::is_android_platform()) {
         const std::string installer = helix::android::installer_package();
+        if (helix::android::installed_by_play(installer) && helix::android::start_play_update()) {
+            spdlog::info("[UpdatesSettings] Installer '{}', starting the Play update flow",
+                         installer);
+            (void)start_immediately;
+            return;
+        }
         const std::string url = helix::android::update_url(installer, offered_release());
         spdlog::info("[UpdatesSettings] Installer '{}', opening {}", installer, url);
         if (SDL_OpenURL(url.c_str()) != 0) {

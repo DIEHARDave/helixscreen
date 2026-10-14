@@ -2860,6 +2860,7 @@ translations:
   Retraction distance to clear extruder gears: 'Distancia de retracción para liberar los engranajes del extrusor'
   Retry: Reintentar
   Reverse Multiplier: 'Multiplicador de retroceso'
+  Review: Revisar
   Review detected hardware validation issues: Revisar problemas de validación de hardware
     detectados
   Review your configuration below, then click Finish to save: Revisa tu configuración
@@ -2960,6 +2961,7 @@ translations:
   Scan and select a Bluetooth printer first: Escanee y seleccione una impresora Bluetooth
     primero
   Scan for Printers: Buscar Impresoras
+  Scan the spool label with your barcode scanner: 'Escanee la etiqueta de la bobina con su escáner de código de barras'
   Scan with your phone to save these values: Escanee con su teléfono para guardar estos valores
   Scanner: Escáner
   ? Scanner bonded but didn't attach as a keyboard. Try turning the scanner off and
@@ -3520,6 +3522,7 @@ translations:
     se enviarán
   This is what data would be sent if enabled: Estos son los datos que se enviarían
     si se activa
+  This looks like a {}, but it is set up as a {}: Esta impresora parece una {}, pero está configurada como {}
   This may take up to 30 seconds: Esto puede tardar hasta 30 segundos
   This plugin asks for no special permissions.: 'Este plugin no pide permisos especiales.'
   This plugin lets HelixScreen control print start options like bed mesh and QGL.: 'Este plugin permite que HelixScreen controle opciones de inicio de impresión como malla de cama y QGL.'
@@ -4037,6 +4040,7 @@ translations:
   tool(s): herramienta(s)
   used: usado
   v%s available: v%s disponible
+  v%s has no build for the %s, so it can't be installed here. Pick a channel with a newer release.: v%s no tiene una versión para %s, así que no se puede instalar aquí. Elige un canal de actualización con una versión más reciente.
   v{} installed! Restarting...: ¡v{} instalado! Reiniciando...
   v{} is available. Tap to update.: v{} disponible. Toque para actualizar.
   wpa_supplicant is not running. WiFi features unavailable.: wpa_supplicant no se está ejecutando. Las funciones WiFi no están disponibles.

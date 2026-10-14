@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #pragma once
 
+#include "platform_info.h"
+
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -27,10 +30,14 @@ std::string current_key();
 
 /// Asset keys a release may list the @p key build under, best match first.
 /// Releases cut before the unified MIPS build carry no "mips" asset, only the
-/// board's own ("ad5x" when @p ad5x_board, else "k1"), so a MIPS build moving
-/// back to one of those releases needs that key too. Every other key maps to
-/// itself alone.
-std::vector<std::string> release_asset_keys(const std::string& key, bool ad5x_board);
+/// board's own ("ad5x" when @p mod_layout, else "k1"), so a MIPS build moving
+/// back to one of those releases needs that key too. A Creator 5 or Creator 5
+/// Pro (@p machine) has no pre-unification build of its own, and the AD5X one
+/// is another board's binary, so it answers to "mips" alone. Every other key
+/// maps to itself alone.
+std::vector<std::string> release_asset_keys(const std::string& key,
+                                            std::optional<FlashForgeMachine> machine,
+                                            bool mod_layout);
 
 /// Table row for @p key, or nullptr for an unknown key.
 const Info* find(const std::string& key);
