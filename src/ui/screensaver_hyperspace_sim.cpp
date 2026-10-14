@@ -83,7 +83,7 @@ static_assert(TUNNEL_MAX / 8 + GOO_MAX / 8 <= 31 && TUNNEL_MAX / 4 + GOO_MAX / 4
 Rgb hue_color(uint32_t h) {
     h &= 255;
     const uint32_t sector = h * 6 / 256;
-    const auto ramp = static_cast<uint8_t>((h * 6 - sector * 256) * 255 / 255);
+    const auto ramp = static_cast<uint8_t>(h * 6 - sector * 256);
     const auto fall = static_cast<uint8_t>(255 - ramp);
     switch (sector) {
     case 0:
@@ -665,7 +665,10 @@ void HyperspaceSim::step(uint32_t dt_ms, FrameTarget& frame, std::minstd_rand& r
     if (tables_stale_) {
         build_tables();
     }
-    build_palettes();
+    // A level without a tunnel draws neither tunnel nor goo, so nothing reads the palettes.
+    if (HYPERSPACE_LEVELS[level_].block != 0) {
+        build_palettes();
+    }
 
     const auto draw = [&](auto pixel_type) {
         using Px = decltype(pixel_type);

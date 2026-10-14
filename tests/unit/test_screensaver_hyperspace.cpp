@@ -320,11 +320,25 @@ TEST_CASE("the tunnel draws at each level's block size, and the last level draws
     CHECK(none.first < 0.08);
 }
 
-TEST_CASE("the last level flies fewer stars than the first", "[screensaver][hyperspace_sim]") {
-    CHECK(HYPERSPACE_LEVELS[HYPERSPACE_LEVEL_COUNT - 1].stars < HYPERSPACE_LEVELS[0].stars);
-    for (const auto& level : HYPERSPACE_LEVELS) {
-        CHECK(level.stars <= HyperspaceSim::MAX_STARS);
+TEST_CASE("the last level draws fewer stars than the rung above it",
+          "[screensaver][hyperspace_sim]") {
+    // Both levels draw stars and nothing behind them, and a seed flies the same stars at every
+    // level, so stepping them together compares the same sky.
+    Flight full(47, HYPERSPACE_LEVEL_COUNT - 2);
+    Flight fewer(47, HYPERSPACE_LEVEL_COUNT - 1);
+    REQUIRE_FALSE(HYPERSPACE_LEVELS[HYPERSPACE_LEVEL_COUNT - 2].goo);
+    bool open = false;
+    for (uint32_t t = 0; t < 30000 && !open; t += FRAME_MS) {
+        full.step();
+        fewer.step();
+        open = full.sim.tunnel_amount() == 0 && full.sim.burst_flares_alive() == 0 && t > 1000;
     }
+    REQUIRE(open);
+    const double stars_full = share_at_least(full.frame, 1);
+    const double stars_fewer = share_at_least(fewer.frame, 1);
+    CAPTURE(stars_full, stars_fewer);
+    CHECK(stars_fewer > 0.0);
+    CHECK(stars_fewer < 0.8 * stars_full);
 }
 
 TEST_CASE("the hyperspace colours cycle around the wheel over a few seconds",
@@ -365,8 +379,10 @@ TEST_CASE("the camera always flies forward, rolls a little and drifts gently",
     CHECK(most_roll <= HYPERSPACE_MAX_ROLL);
     CHECK(most_roll > 0.05f);
     CHECK(max_drift - min_drift > 4.0f);
-    CHECK(std::fabs(min_drift) < static_cast<float>(W) / 4);
-    CHECK(std::fabs(max_drift) < static_cast<float>(W) / 4);
+    // The vanishing point strays at most a tenth of the frame height from the centre.
+    const float bound = 0.1f * static_cast<float>(H) + 0.01f;
+    CHECK(std::fabs(min_drift) <= bound);
+    CHECK(std::fabs(max_drift) <= bound);
 }
 
 TEST_CASE("a starburst of flares bursts ahead within the first few seconds",
