@@ -40,8 +40,10 @@ enum class BeltTensionerKind {
     SPRING,
 };
 
-/// Frequency range a TEST_RESONANCES sweep is limited to. Both zero means the
-/// printer's own [resonance_tester] range.
+/// Frequency range a TEST_RESONANCES sweep is limited to, sent as FREQ_START
+/// (floored) and FREQ_END (ceiled). Klipper rejects a FREQ_START under 1 Hz, so
+/// both bounds must be real frequencies; pass no window for the printer's own
+/// [resonance_tester] range.
 struct BeltSweepWindow {
     float freq_start_hz = 0.0f;
     float freq_end_hz = 0.0f;
