@@ -316,6 +316,10 @@ class SubjectManager {
             // mutex abort.
             SubjectDebugRegistry::instance().unregister_subject(subject);
             lv_subject_deinit(subject);
+            // lv_subject_deinit() leaves the type set, so the subject would still
+            // read as initialized. An observer attached to it before the next
+            // init is orphaned when that init resets the observer list.
+            subject->type = LV_SUBJECT_TYPE_INVALID;
         }
 
         subjects_.clear();
