@@ -26,4 +26,4 @@ done
 | quattro_box | Quattro Box |
 | btt_vivid | BTT ViViD |
 | kms | KMS |
-| openams | OpenAMS, full color (MIT). `openams.svg` is `tools/docs/logo/out/openams-logo.svg` of the OpenAMS project (the light set, which also reads on dark backgrounds); `openams_64.png` is its `rsvg-convert -w 64 -h 64` render |
+| openams | OpenAMS, full color (MIT, Copyright (c) 2025 OpenAMS; notice in [LICENSE-openams.md](LICENSE-openams.md)). `openams.svg` is `tools/docs/logo/out/openams-logo.svg` of the OpenAMS project (the light set, which also reads on dark backgrounds); `openams_64.png` is its `rsvg-convert -w 64 -h 64` render |

@@ -2,15 +2,15 @@
 
 The home panel is not one hardcoded screen: it is a grid of independently developed "widgets" (fan speeds, temperatures, camera, macros and 30-odd more), each pairing an XML component (appearance) with a C++ `PanelWidget` subclass (behavior and sizing). `PanelWidgetManager`, a `::instance()` singleton, owns the lifecycle: it reads the user's saved layout from disk, decides which widgets the connected hardware earns, places them on a responsive grid, and creates and attaches each one. When hardware, config, or the user in edit mode changes the layout, the manager does the least work that change needs: a gate flip re-creates only the flipped tiles, a move re-seats the built tiles in place, and only an id-list change tears the page down. Even then C++ instances are recycled, so expensive state (a live camera stream) never restarts.
 
-Counts, recounted 2026-10-09 (method included so you can re-run it):
+Counts, recounted 2026-10-13 (method included so you can re-run it):
 
 | What | Count | Method |
 |------|-------|--------|
-| Built-in widget defs | 39 (38 + `camera` behind `HELIX_HAS_CAMERA`) | rows of `s_widget_defs` (`src/ui/panel_widget_registry.cpp#"s_widget_defs = {"`) |
-| `PanelWidget` subclasses | 33, counting the `TiledPanelWidget` base; plus `LuaPanelWidget` for plugin tiles | `rg -l 'public (Tiled)?PanelWidget' include src -g '*.h' -g '*.cpp'` |
-| XML components | 42 | `ls ui_xml/components/panel_widget_*.xml \| wc -l` |
+| Built-in widget defs | 46 (45 + `camera` behind `HELIX_HAS_CAMERA`) | rows of `s_widget_defs` (`src/ui/panel_widget_registry.cpp#"s_widget_defs = {"`) |
+| `PanelWidget` subclasses | 40, counting the `TiledPanelWidget` base; plus `LuaPanelWidget` for plugin tiles | `rg -l 'public (Tiled)?PanelWidget' include src -g '*.h' -g '*.cpp'` |
+| XML components | 49 | `ls ui_xml/components/panel_widget_*.xml \| wc -l` |
 | Factory-less (pure XML) defs | 1 | `ams`; `register_tile_widgets()` gives every other def without a class a sizing-only `TileWidget` |
-| Hardware-gated defs | 13 (13 distinct gate subjects) | defs with a non-null `hardware_gate_subject` in the table below |
+| Hardware-gated defs | 17 (17 distinct gate subjects) | defs with a non-null `hardware_gate_subject` in the table below |
 | Multi-instance defs (`base_id:N`) | 7 | `power_device`, `led`, `fan_stack`, `fan`, `thermistor`, `temp_graph`, `favorite_macro` (`multi_instance = true`) |
 
 One class can serve several defs: `HeaterTempWidget` is instantiated three ways with different configs (`temperature`, `bed_temperature`, `chamber_temperature`, `src/ui/panel_widgets/heater_temp_widget.cpp#register_heater_temp_widget`). Two implementations live outside `panel_widgets/` ([`src/ui/widgets/power_device_widget.cpp`](../../../src/ui/widgets/power_device_widget.cpp), [`src/ui/widgets/favorite_macro_widget.cpp`](../../../src/ui/widgets/favorite_macro_widget.cpp)), and plugin tiles come from `src/plugin/`: the registry does not care where the factory lives.
@@ -45,6 +45,7 @@ flowchart TB
 | [`include/panel_widget_config.h`](../../../include/panel_widget_config.h) | `PanelWidgetConfig` / `PanelWidgetEntry`: per-printer layout JSON (pages, enabled flags, grid positions, per-widget config) |
 | [`src/ui/ui_panel_home.cpp`](../../../src/ui/ui_panel_home.cpp) | `HomePanel`: page carousel, per-page containers, the rebuild and re-seat paths that feed the manager |
 | `src/ui/panel_widgets/` | Most widget implementations (one class per file pair, headers alongside) plus the shared layout helpers |
+| [`src/ui/panel_widgets/size_rung.h`](../../../src/ui/panel_widgets/size_rung.h), [`content_chrome.h`](../../../src/ui/panel_widgets/content_chrome.h), [`live_tile_owner.h`](../../../src/ui/panel_widgets/live_tile_owner.h), [`include/value_status.h`](../../../include/value_status.h) | The shared parts of the sized-widget family: the rung ladder and its chooser, the measured content box, which instance of a single-instance widget publishes, and the reading classifiers |
 | [`src/ui/panel_widgets/fan_stack_widget.cpp`](../../../src/ui/panel_widgets/fan_stack_widget.cpp) | Version-observer rebinding, two XML components, edit-mode configure picker |
 | [`src/ui/panel_widgets/camera_widget.cpp`](../../../src/ui/panel_widgets/camera_widget.cpp) | The reuse rationale: MJPEG stream that must survive LVGL tree rebuilds |
 | [`src/plugin/lua_panel_widget.cpp`](../../../src/plugin/lua_panel_widget.cpp) | `LuaPanelWidget`: forwards the lifecycle to a plugin's `helix.widget` hooks ([`../PLUGIN_DEVELOPMENT.md`](../PLUGIN_DEVELOPMENT.md)) |
@@ -106,9 +107,15 @@ The built-in catalog (gate subjects from the def table; "-" means always availab
 | `macros` | `MacrosWidget` | - |
 | `motion` | `MotionWidget` | - |
 | `clock` | `ClockWidget` | - |
+| `host_health` | `HostHealthWidget` | `perf_available` |
 | `control_buttons` | `ControlButtonsWidget` | - |
 | `job_queue` | `JobQueueWidget` | - |
 | `speed_flow` | `SpeedFlowWidget` | - |
+| `dryer` | `DryerWidget` | `home_dryer_available` |
+| `z_offset` | `ZOffsetWidget` | - |
+| `bed_mesh_tile` | `BedMeshTileWidget` | `printer_has_bed_mesh` |
+| `toolhead` | `ToolheadWidget` | - |
+| `exclude_map` | `ExcludeMapWidget` | `printer_has_exclude_object` |
 | `tips` | `TipsWidget` | - |
 | `clog_detection` | `ClogDetectionWidget` (the FlowGuard bar) | `clog_meter_mode` |
 | `filament_buffer` | `FilamentBufferWidget` | `buffer_present` |
@@ -144,6 +151,10 @@ Every page build costs seconds of UI thread on slow boards, so `HomePanel` picks
 The contract that makes reuse safe (`include/panel_widget.h#PanelWidget/supports_reuse`): `detach()` clears LVGL pointers and observers only; the destructor does full cleanup; `attach()` must work on a previously detached instance. The motivating case is `CameraWidget` (`src/ui/panel_widgets/camera_widget.cpp#detach`): its MJPEG stream keeps running across rebuilds, and frame callbacks arriving in the detach-to-reattach gap find `camera_image_ == nullptr` and no-op. `LuaPanelWidget` opts out, because a plugin reload can leave an instance speaking for a dead runtime.
 
 One trap the recycle path sets: size is re-announced after every re-attach, but only applied if the widget actually applies it. A stateful early-return inside `on_size_changed` (`if (mode == last_mode_) return;`) skips the apply on a recycled instance whose size did not change, and the fresh XML component sits at its defaults. Either re-apply from `attach()` too, or key the early-return on something the new tree invalidates.
+
+### Sized widgets: a shared ladder
+
+Seven widgets (`speed_flow`, `z_offset`, `dryer`, `host_health`, `toolhead`, `bed_mesh_tile`, `exclude_map`) size themselves on one ladder instead of each inventing its own: `helix::SizeRung` (`src/ui/panel_widgets/size_rung.h`) names the rungs from `Glance` (half a cell square) to `Large`, `choose_size_rung()` picks the largest one whose measured box fits, and a pure `decide_*_layout()` header per widget turns the rung into the flags its XML binds. The content box comes from `measure_content_chrome()` (`src/ui/panel_widgets/content_chrome.h`), not from a guess at the tile's padding. These widgets keep module-level subjects, so `helix::LiveTileOwner` (`src/ui/panel_widgets/live_tile_owner.h`) decides which instance publishes when a probe or a rebuild briefly creates a second one, and their readings are classified by `helix::status` in `include/value_status.h`. Every one registers half-cell support, so a `fits_at()` that can refuse a size is part of the registry contract rather than an extra. [`../PANEL_WIDGET_GUIDE.md`](../PANEL_WIDGET_GUIDE.md#the-sized-widget-family) has the table of what each draws and the checklist a new member passes: vertical centring, the covered-panel redraw gate, language re-composition, the toolhead-safety census, the gate subject's owner row and `HELIX_PSRAM_BSS` for the statics.
 
 ### Version-observer self-binding: widgets rebind themselves
 
@@ -183,7 +194,7 @@ Two subtleties both families hit. First, `observe<int>` defers its initial fire 
 
 ## Going deeper
 
-- [`../PANEL_WIDGET_GUIDE.md`](../PANEL_WIDGET_GUIDE.md) - authoring a widget: registry def, class, XML, and the measured-layout pattern.
+- [`../PANEL_WIDGET_GUIDE.md`](../PANEL_WIDGET_GUIDE.md) - authoring a widget: registry def, class, XML, the measured-layout pattern, the shared size ladder and the checklist the sized widgets follow.
 - [`../LAYOUT_SYSTEM.md`](../LAYOUT_SYSTEM.md) - the grid itself: `GridLayout` track math, half-cell tracks, breakpoint column counts, preset seed layouts, span authoring.
 - [`../HOME_EDIT_MODE.md`](../HOME_EDIT_MODE.md) - edit mode: the session over a page, grab and click rules, the events that end a gesture, cross-page drag and the page lifecycle.
 - [`../PAGE_SCROLL_BUTTONS.md`](../PAGE_SCROLL_BUTTONS.md) - the `PANEL_WIDGET_TILE_FLAG` consumer: why the chevron gutter must not descend into a tile.
@@ -203,7 +214,7 @@ Read in this order; about 30 minutes total.
 1. `include/panel_widget.h#PANEL_WIDGET_TILE_FLAG`: the flag ledger, then `include/panel_widget.h#PanelWidget`: read the hooks in order and note which run before XML creation and which after.
 2. `include/panel_widget_registry.h#PanelWidgetDef`: every field is a decision the manager or the catalog makes somewhere.
 3. `src/ui/panel_widget_registry.cpp#"s_widget_defs = {"`: the span triples, gate subjects, `multi_instance` column and the `HELIX_HAS_CAMERA` guard; then `init_widget_registrations()`, `get_all_widget_defs()` and `find_widget_def()` in the same file.
-4. `src/ui/panel_widgets/tiled_panel_widget.h#"class TiledPanelWidget"` and `src/ui/panel_widgets/tile_sizing.h#"class TileSizing {"`: how most tiles size themselves, and why the sizing is built in the constructor.
+4. `src/ui/panel_widgets/size_rung.h#choose_size_rung` and `src/ui/panel_widgets/speed_flow_layout.h#decide_speed_flow_layout`: the smallest sized widget's whole decision; then `src/ui/panel_widgets/tiled_panel_widget.h#"class TiledPanelWidget"` and `src/ui/panel_widgets/tile_sizing.h#"class TileSizing {"`: how most tiles size themselves, and why the sizing is built in the constructor.
 5. `src/ui/panel_widget_manager.cpp#populate_widgets`: once top to bottom; `resolve_slot`, the `~gated` short-circuit key, the `fits_at` grow on anchors, the two auto-place policies, the write-back rules, the create/attach loop, grid-last activation.
 6. `src/ui/panel_widget_manager.cpp#setup_gate_observers`: the registry walk, the `GateRebuildSlot` coalescing, and `clear_gate_observers()` canceling in-flight rebuilds.
 7. `src/ui/ui_panel_home.cpp#populate_page`: the ID snapshot, the gate-flip swap, reuse-map extraction, freeze+drain+`safe_clean_children`; then `reseat_widgets()` and `relayout_edit_page()` beside it.

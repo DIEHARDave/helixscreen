@@ -132,8 +132,12 @@ Everything else is pushed out. A large static in firmware-compiled code carries 
 ([`include/helix_psram_attr.h`](../../../include/helix_psram_attr.h)), which is `EXT_RAM_BSS_ATTR` here and empty
 on every other platform: `AmsState`'s instance
 (`src/printer/ams_state.cpp#"static HELIX_PSRAM_BSS AmsState instance"`), the filament path planner's scratch
-(`src/ui/ui_filament_path_topology.cpp#plan_scratch`), `PrinterState`, `TelemetryManager` and `UpdateChecker`. Only
-for statics first touched after boot and never reached by DMA or an ISR. A thread that does not need internal RAM
+(`src/ui/ui_filament_path_topology.cpp#plan_scratch`), `PrinterState`, `TelemetryManager` and `UpdateChecker`. The
+home widgets follow the same rule: the module-level subjects and text buffers of the toolhead, host health, dryer
+and bed mesh tile widgets, the dryer model's subjects, and the `BedMeshState` and `PerformanceState` singletons
+they read are `HELIX_PSRAM_BSS` (`src/ui/panel_widgets/toolhead_widget.cpp`, `src/printer/bed_mesh_state.cpp#instance`,
+`src/system/performance_state.cpp#instance`), because the subjects and buffers of a handful of widgets are
+enough together to push `.dram0.bss` over its ceiling. Only for statics first touched after boot and never reached by DMA or an ISR. A thread that does not need internal RAM
 gets a PSRAM stack through `PsramThreadStackScope`
 ([`include/psram_thread_stack.h`](../../../include/psram_thread_stack.h)), which also bars that thread from storage
 (`helix::fs::forbid_storage_on_this_thread`), because a flash operation on a PSRAM stack faults. The HTTP lane, the
@@ -144,6 +148,9 @@ cannot spare, so on the firmware a `submit()` to them never runs.
 Two numbers in `size_budget.json` hold the line: `dram_bss_max_bytes` and `dram_data_max_bytes` cap the
 `.dram0.bss` and `.dram0.data` sections at their measured size plus 2KB. The comment there is the reason: statics
 come out of the same internal heap the WiFi driver starts in, and 14KB more is enough to stop it associating.
+When `scripts/check_esp32_size.py` fails a ceiling it lists the eight largest inputs of the section by size,
+input section and object, so the static that crossed it is named; a new widget is the usual cause, and the fix
+is the attribute, not a higher ceiling.
 
 Heap telemetry follows one rule: while the panel scans out, read counters, never walk.
 `heap_caps_get_largest_free_block()` on PSRAM walks every block with interrupts masked for 20-30ms, the bounce

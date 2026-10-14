@@ -1284,11 +1284,14 @@ void PrintStatusPanel::on_activate() {
     // segment at re-entry.
     layout_fitter_.resume_temp_graph();
 
+    open_pending_exclude_map();
+
     crash_handler::breadcrumb::note("pstat_act", "exit");
 }
 
 void PrintStatusPanel::on_deactivating(DeactivateReason) {
     is_active_ = false;
+    exclude_map_requested_ = false;
     spdlog::debug("[{}] on_deactivating()", get_name());
 
     // The panel is no longer visible: drop the queued G-code load
@@ -1340,6 +1343,7 @@ void PrintStatusPanel::cleanup() {
 }
 
 void PrintStatusPanel::on_ui_destroyed() {
+    exclude_map_requested_ = false;
     spdlog::debug("[{}] on_ui_destroyed() - nulling widget pointers", get_name());
 
     // The tree is only detached here (the actual deletion is deferred), so the
@@ -1532,6 +1536,8 @@ bool PrintStatusPanel::push_overlay(lv_obj_t* parent_screen) {
         spdlog::error("[PrintStatusPanel] push_overlay: null parent_screen");
         return false;
     }
+    // A request belongs to the push that made it: any other push is not asking for the map.
+    get_global_print_status_panel().exclude_map_requested_ = false;
 
     // Lazy-create the widget tree if it was destroyed or never created
     if (!s_cached_panel) {
@@ -1584,6 +1590,17 @@ bool PrintStatusPanel::push_overlay(lv_obj_t* parent_screen) {
     helix::nav::on_close(s_cached_panel, on_overlay_closed);
 
     helix::nav::push_overlay(s_cached_panel);
+    return true;
+}
+
+bool PrintStatusPanel::push_overlay_with_exclude_map(lv_obj_t* parent_screen) {
+    if (!push_overlay(parent_screen))
+        return false;
+    // Armed after the push, which disarms any earlier request. A push that lands
+    // synchronously has already activated the panel; a queued one activates it later.
+    auto& panel = get_global_print_status_panel();
+    panel.exclude_map_requested_ = true;
+    panel.open_pending_exclude_map();
     return true;
 }
 
@@ -1663,6 +1680,16 @@ void PrintStatusPanel::show_exclude_map_view() {
 
 void PrintStatusPanel::hide_exclude_map_view() {
     exclude_mode_.hide();
+}
+
+void PrintStatusPanel::open_pending_exclude_map() {
+    if (!exclude_map_requested_ || !is_active_) {
+        return;
+    }
+    exclude_map_requested_ = false;
+    if (!exclude_mode_.is_open()) {
+        show_exclude_map_view();
+    }
 }
 
 void PrintStatusPanel::update_heater_status_rows() {

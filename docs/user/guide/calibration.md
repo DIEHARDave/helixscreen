@@ -12,6 +12,8 @@ HelixScreen provides built-in tools for the most common Klipper calibration task
 
 The Bed Mesh panel has two parts: a 3D visualization of your bed surface on the left, and information cards on the right.
 
+The [Bed Mesh widget](home-panel.md#bed-mesh-widget) shows the active mesh and how flat it is on the home screen, and opens this panel when tapped.
+
 **Visualization (left):**
 
 - **Color gradient**: Blue (low) to Red (high)

@@ -409,7 +409,10 @@ AmsError AmsSubscriptionBackend::run_filament_op(FilamentOp op, int arg,
     // synchronization and nothing in system_info_ to be atomic with, and the
     // claim already excludes a second op for the whole window.
     if (op_moves_toolhead(op)) {
-        if (auto e = refuse_if_printing(); !e.success()) {
+        // Parking leaves no tool for a paused job to resume with, so a paused
+        // job refuses it on every backend, whatever the others allow.
+        if (auto e = refuse_if_printing(/*paused_blocks=*/op == FilamentOp::ParkTool);
+            !e.success()) {
             return e;
         }
     }
@@ -512,7 +515,7 @@ AmsError AmsSubscriptionBackend::check_preconditions(bool requires_toolhead_moti
     return AmsErrorHelper::success();
 }
 
-AmsError AmsSubscriptionBackend::refuse_if_printing() const {
+AmsError AmsSubscriptionBackend::refuse_if_printing(bool paused_blocks) const {
     // The AmsError face of print_blocks_filament_op(), which states the rule and
     // why each lifecycle answers as it does. Only the parts specific to being
     // the BACKEND end of it live here.
@@ -533,7 +536,7 @@ AmsError AmsSubscriptionBackend::refuse_if_printing() const {
     }
     const auto lifecycle = api_->printer_state().print_state().get_print_lifecycle();
     const bool is_paused = (lifecycle == PrintState::Paused);
-    const bool self_homes = filament_ops_self_home();
+    const bool self_homes = paused_blocks || filament_ops_self_home();
     // print_blocks_filament_op() is the rule, shared with every surface that
     // greys a filament-op button. This function's job is to map its answer onto
     // an AmsError, not to decide it a second time.

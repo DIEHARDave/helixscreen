@@ -142,7 +142,7 @@ Application startup
 
 ### Tool Changer Printers
 
-When `PrinterDiscovery` finds both a `toolchanger` object and `tool T*` objects in Klipper's object list, `init_tools()` creates one `ToolInfo` per discovered tool name.
+When `PrinterDiscovery` finds both a `toolchanger` object and `tool T*` objects in Klipper's object list, `init_tools()` creates one `ToolInfo` per discovered tool name, in Klipper's tool-number order: a tool's index is its tool number (see **Tool order** in `FILAMENT_BACKEND_TOOLCHANGER.md`).
 
 Extruder mapping is by index: discovered extruder names (sorted alphabetically) are paired with tools in order. If there are fewer extruders than tools, extra tools get `extruder_name = nullopt`.
 
@@ -220,6 +220,21 @@ home tool switcher's face reads "Choose head" ("None" where that does not fit), 
 Park cell disabled. `clear_backend_active_tool()` hands the active tool back to the
 frame whenever the backend builds a topology, cannot empty its carriage, or is gone, and
 maps a held -1 to T0.
+
+### Parking the Active Tool
+
+`AmsBackend::park_active_tool()` goes through the same gated path as a tool change
+(`FilamentOp::ParkTool` in `AmsSubscriptionBackend::run_filament_op`), with a stricter
+gate: a paused job refuses it too, on every backend, because a print resumed with its
+tool docked prints nothing. The refusal lives in the shared gate so any caller meets it,
+and the tool switcher widget (`park_offered()` and `handle_park_requested()`) mirrors it
+with `job_holds_machine()` so the action greys out.
+
+A tool change is the opposite case: it is allowed while paused (behind the widget's
+confirmation) unless `filament_ops_self_home()` is true. While `T<n>` is in flight the
+U1 never reads an empty carriage: the old head docks before the new one reports, so the
+backend holds the previous `current_tool` while a `T<n>` it sent has not landed (bounded
+by `kToolChangeWindow`), a head is in its `activating_move`, or the action is `SELECTING`.
 
 ### Per-Tool Objects
 

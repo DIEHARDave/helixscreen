@@ -140,6 +140,17 @@ class PrintStatusPanel : public OverlayBase {
     static bool push_overlay(lv_obj_t* parent_screen);
 
     /**
+     * @brief Push the print status overlay and open the exclude-object map over its preview
+     *
+     * The home exclude_map tile's entry. The map opens once the panel is active, so its
+     * canvas is sized against a laid-out preview card. Opening only shows the map: the
+     * exclusion itself still goes through the confirmation modal and undo window.
+     *
+     * @return true if the overlay was pushed
+     */
+    static bool push_overlay_with_exclude_map(lv_obj_t* parent_screen);
+
+    /**
      * @brief Get the cached overlay widget pointer, if created.
      *
      * Exposes `s_cached_panel` to callers that need to check nav-stack
@@ -494,6 +505,7 @@ class PrintStatusPanel : public OverlayBase {
     // Track whether panel is currently active (visible and receiving updates)
     // Used to load gcode immediately if already active when print starts
     bool is_active_ = false;
+    bool exclude_map_requested_ = false; ///< Open the exclude map on the next activation
 
     // Control buttons (stored for enable/disable on state changes)
     lv_obj_t* btn_timelapse_ = nullptr;
@@ -556,6 +568,8 @@ class PrintStatusPanel : public OverlayBase {
     void animate_print_error();     ///< Error animation when print fails
     void show_exclude_map_view();   ///< Show overhead map view of print objects
     void hide_exclude_map_view();   ///< Destroy map view and restore thumbnail/gradient
+    /// Open the map a push_overlay_with_exclude_map() asked for, once the panel is active.
+    void open_pending_exclude_map();
 
     //
     // === Instance Handlers ===

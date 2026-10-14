@@ -451,6 +451,19 @@ class PrinterDiscovery {
         return tool_names_;
     }
 
+    /**
+     * @brief Put the tools in the order klipper-toolchanger numbers them.
+     *
+     * A tool's position in tool_names() is its slot, and slot i is selected and
+     * labelled as tool number i, so the list follows Klipper's numbering rather
+     * than the names: `[tool Right]` numbered 0 comes before `[tool Left]`
+     * numbered 1. @p toolchanger_status is the toolchanger object's status,
+     * whose tool_names are in tool-number order. Tools it does not list (no
+     * tool_number) follow in name order. A status with no tool_names leaves the
+     * list as discovered.
+     */
+    void order_tools_by_number(const nlohmann::json& toolchanger_status);
+
     /// @brief Alias for tool_names() - compatibility with PrinterCapabilities API
     [[nodiscard]] const std::vector<std::string>& get_tool_names() const {
         return tool_names_;

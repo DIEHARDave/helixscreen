@@ -465,6 +465,7 @@ TEST_CASE("PanelWidgetDef: half-cell capability is classified per widget",
         {"dryer", {true, true}},             // decide_dryer_layout() is measured
         {"toolhead", {true, true}},          // decide_toolhead_layout() is measured
         {"z_offset", {true, true}},          // decide_z_offset_layout() is measured
+        {"exclude_map", {true, true}},       // decide_exclude_map_layout() is measured
         {"bed_mesh_tile", {true, true}},     // decide_bed_mesh_tile_layout() is measured
         {"host_health", {true, true}},       // decide_host_health_layout() is measured
         {"temp_stack", {true, true}},        // 2-3 stacked readout rows
