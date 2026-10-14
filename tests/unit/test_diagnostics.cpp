@@ -12,7 +12,8 @@
 #include "platform_info.h"
 #include "system/debug_bundle_collector.h"
 #include "system/diagnostics.h"
-#include "test_helpers/ad5x_layout_fixture.h"
+#include "test_helpers/flashforge_layout_fixture.h"
+#include "test_helpers/scoped_board.h"
 #include "test_helpers/unique_temp_dir.h"
 
 #include <cstdlib>
@@ -143,37 +144,27 @@ TEST_CASE("the updater staging dir is a sibling of the install root", "[diagnost
 
 TEST_CASE("the mod flavor separates the layouts one platform key serves", "[diagnostics]") {
     TempDir tmp;
-    const char* flavor = nullptr;
+    auto name_of = [&](const char* layout) {
+        return std::string(helix::flashforge_mod_tree_name(helix::flashforge_mod_tree(
+            helix::test::make_flashforge_layout(tmp.path, layout).string())));
+    };
 
-    SECTION("ZMOD by marker file") {
-        REQUIRE(helix::ad5x_mod_layout_present(
-            helix::test::make_ad5x_layout(tmp.path, "zmod-marker").string(), &flavor));
-        REQUIRE(std::string(flavor) == "ZMOD");
-    }
+    CHECK(name_of("zmod-marker") == "ZMOD");
+    CHECK(name_of("zmod-prog") == "ZMOD");
+    CHECK(name_of("forgex") == "Forge-X");
+    CHECK(name_of("forgex-host") == "Forge-X");
+    CHECK(name_of("plain") == "none");
+}
 
-    SECTION("ZMOD by the FlashForge /usr/prog dir") {
-        REQUIRE(helix::ad5x_mod_layout_present(
-            helix::test::make_ad5x_layout(tmp.path, "zmod-prog").string(), &flavor));
-        REQUIRE(std::string(flavor) == "ZMOD");
-    }
+TEST_CASE("diagnostics names the board", "[diagnostics]") {
+    helix::test::ScopedBoard board(helix::board::Board::Creator5Pro);
+    CHECK(helix::diagnostics::collect().identity.board == "creator5-pro");
+}
 
-    SECTION("Forge-X in-chroot") {
-        REQUIRE(helix::ad5x_mod_layout_present(
-            helix::test::make_ad5x_layout(tmp.path, "forgex").string(), &flavor));
-        REQUIRE(std::string(flavor) == "Forge-X");
-    }
-
-    SECTION("Forge-X host-side") {
-        REQUIRE(helix::ad5x_mod_layout_present(
-            helix::test::make_ad5x_layout(tmp.path, "forgex-host").string(), &flavor));
-        REQUIRE(std::string(flavor) == "Forge-X");
-    }
-
-    SECTION("a plain host names no mod tree") {
-        REQUIRE_FALSE(helix::ad5x_mod_layout_present(
-            helix::test::make_ad5x_layout(tmp.path, "plain").string(), &flavor));
-        REQUIRE(flavor == nullptr);
-    }
+TEST_CASE("the bundle form carries the board", "[diagnostics]") {
+    helix::diagnostics::Diagnostics d;
+    d.identity.board = "k1";
+    CHECK(helix::DebugBundleCollector::build_diagnostics_info(d)["identity"]["board"] == "k1");
 }
 
 TEST_CASE("collect() reports a mod flavor for every host", "[diagnostics]") {
@@ -263,7 +254,7 @@ TEST_CASE("the bundle form carries the resolved paths and the cache tier", "[dia
     helix::diagnostics::Diagnostics d;
     d.paths.config_dir = "/etc/klipper/config/helixscreen";
     d.paths.cache_dir = "/usr/data/helixscreen-state/cache";
-    d.paths.cache_tier = "MIPS";
+    d.paths.cache_tier = "k1";
     d.identity.platform_key = "mips";
     d.identity.mod_flavor = "Forge-X";
     d.machine.cpu_cores = 4;
@@ -271,7 +262,7 @@ TEST_CASE("the bundle form carries the resolved paths and the cache tier", "[dia
     const auto section = helix::DebugBundleCollector::build_diagnostics_info(d);
 
     REQUIRE(section["paths"]["config_dir"] == "/etc/klipper/config/helixscreen");
-    REQUIRE(section["paths"]["cache_tier"] == "MIPS");
+    REQUIRE(section["paths"]["cache_tier"] == "k1");
     REQUIRE(section["identity"]["platform_key"] == "mips");
     REQUIRE(section["identity"]["mod_flavor"] == "Forge-X");
     REQUIRE(section["machine"]["cpu_cores"] == 4);

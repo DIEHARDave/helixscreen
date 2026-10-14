@@ -675,6 +675,11 @@ class UpdateChecker {
      */
     void report_result(Status status, std::optional<ReleaseInfo> info, const std::string& error);
 
+    /// Report what a check that fetched @p info concludes for a build at @p current_version:
+    /// available, a downgrade, up to date, or an Error carrying the release when it has
+    /// no build for this board.
+    void report_fetched_release(ReleaseInfo info, const std::string& current_version);
+
     /// Last hop of sync_moonraker_channel(): restart Moonraker unless a job holds the
     /// machine or update_manager is busy. @p gen is the sync's moonraker_sync_generation_.
     void restart_moonraker_for_channel(helix::IMoonrakerAPI& api, uint64_t gen);
@@ -747,6 +752,9 @@ class UpdateChecker {
         std::string version;
         bool is_downgrade = false;
         std::string error;
+        /// Error only: the release named by `version` has no build for this board.
+        /// The text is composed at render time, where lv_tr is safe.
+        bool no_build_for_board = false;
     };
     ShownVersionText shown_{};
     void render_version_text();
@@ -871,7 +879,7 @@ bool parse_github_release(const std::string& json_str, UpdateChecker::ReleaseInf
  * The asset is the entry under the first of @p asset_keys the manifest lists.
  * A manifest listing none of them parses like a GitHub release with no matching
  * asset: the version is filled in and download_url stays empty (see
- * release_unavailable_message()).
+ * release_has_build_for_this_board()).
  *
  * @param json_str Manifest body
  * @param info Parsed release info, download URLs included on success
@@ -882,24 +890,23 @@ bool parse_github_release(const std::string& json_str, UpdateChecker::ReleaseInf
 bool parse_release_manifest(const std::string& json_str, UpdateChecker::ReleaseInfo& info,
                             std::string& error, const std::vector<std::string>& asset_keys);
 
-/// The user-facing refusal for a release @p info that carries no download for
-/// @p board_name ("FlashForge Creator 5"); empty when it does. Offering it would
-/// leave Install failing, and borrowing another board's asset would brick it.
-std::string release_unavailable_message(const UpdateChecker::ReleaseInfo& info,
-                                        const std::string& board_name);
+/// True when @p info carries a download for this build's board. A release without one
+/// cannot be installed here, and borrowing another board's asset would brick it.
+bool release_has_build_for_this_board(const UpdateChecker::ReleaseInfo& info);
 
-/// What a check that fetched @p info concludes on a build at @p installed running
-/// on @p board_name. A newer or older release with no download for this board is
-/// an Error carrying release_unavailable_message(); the same version is UpToDate
-/// whether or not it has one.
+/// The refusal shown for release @p version when it has no download for @p board_name
+/// ("FlashForge Creator 5"). Translated with lv_tr, so main thread only.
+std::string no_build_message(const std::string& version, const std::string& board_name);
+
+/// What a check that fetched @p info concludes on a build at @p installed. A newer or
+/// older release with no download for this board is an Error, the same version is
+/// UpToDate whether or not it has one.
 struct CheckOutcome {
     UpdateChecker::Status status = UpdateChecker::Status::UpToDate;
     bool is_downgrade = false; ///< UpdateAvailable only: the channel is behind the install
-    std::string error;         ///< Error only: the user-visible refusal
 };
 CheckOutcome decide_check_outcome(const std::string& installed,
-                                  const UpdateChecker::ReleaseInfo& info,
-                                  const std::string& board_name);
+                                  const UpdateChecker::ReleaseInfo& info);
 
 /**
  * @brief Strip a leading 'v' or 'V' from a GitHub release tag

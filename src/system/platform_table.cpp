@@ -46,16 +46,13 @@ const Info* find(const std::string& key) {
     return nullptr;
 }
 
-std::vector<std::string> release_asset_keys(const std::string& key,
-                                            std::optional<FlashForgeMachine> machine,
-                                            bool mod_layout) {
-    if (key == "mips") {
-        if (machine == FlashForgeMachine::Creator5 || machine == FlashForgeMachine::Creator5Pro) {
-            return {key};
-        }
-        return {key, mod_layout ? "ad5x" : "k1"};
+std::vector<std::string> release_asset_keys(const std::string& key, board::Board board) {
+    std::vector<std::string> keys{key};
+    const char* legacy = board::info(board).legacy_release_asset;
+    if (legacy != nullptr && key != legacy) {
+        keys.emplace_back(legacy);
     }
-    return {key};
+    return keys;
 }
 
 std::string display_name(const std::string& key) {
@@ -80,10 +77,10 @@ std::string current_key() {
 #elif defined(HELIX_PLATFORM_CC1)
     return "cc1";
 #elif defined(HELIX_PLATFORM_MIPS)
-    // One binary serves the K1 series and the AD5X, so one platform key and
-    // one self-update asset. Which board the binary is ON is a separate
-    // runtime question (helix::ad5x_mod_layout_present) answered wherever
-    // behavior actually differs, never for update selection.
+    // One binary serves the K1 series, the AD5X and the Creator 5 line, so one
+    // platform key. Which board the binary is ON is a separate runtime question
+    // (helix::board::current()); it also picks the legacy release asset a
+    // pre-unification release lists this build under.
     return "mips";
 #elif defined(HELIX_PLATFORM_K1)
     // k1-dynamic build variant: dev/debug dynamic-linked K1 binary. Not in the

@@ -21,6 +21,7 @@
 
 #include "../helix_test_fixture.h"
 #include "../test_helpers/live_thread_count.h"
+#include "../test_helpers/scoped_board.h"
 #include "../test_helpers/scoped_env.h"
 #include "../test_helpers/scoped_runtime_config.h"
 #include "../test_helpers/scoped_update_urls.h"
@@ -260,37 +261,27 @@ TEST_CASE("GitHub release JSON parsing", "[update_checker][json]") {
 // Release Asset Keys (prestonbrown/helixscreen#1789)
 // ============================================================================
 
-TEST_CASE("Unified MIPS build also answers to its board's pre-unification key",
+TEST_CASE("release_asset_keys gives a Creator 5 no legacy asset",
           "[update_checker][platform][1789]") {
-    using helix::FlashForgeMachine;
+    using helix::board::Board;
     using helix::platform::release_asset_keys;
-    const std::vector<std::string> mips_k1{"mips", "k1"};
-    const std::vector<std::string> mips_ad5x{"mips", "ad5x"};
+    using Keys = std::vector<std::string>;
 
-    SECTION("K1: no machine id, no FlashForge layout") {
-        CHECK(release_asset_keys("mips", std::nullopt, false) == mips_k1);
-    }
-    SECTION("AD5X, by machine id or by a layout that names no machine (Forge-X)") {
-        CHECK(release_asset_keys("mips", FlashForgeMachine::Ad5x, true) == mips_ad5x);
-        CHECK(release_asset_keys("mips", std::nullopt, true) == mips_ad5x);
-    }
-    SECTION("Creator 5 and Creator 5 Pro never alias to another board's build") {
-        const std::vector<std::string> only_mips{"mips"};
-        CHECK(release_asset_keys("mips", FlashForgeMachine::Creator5, true) == only_mips);
-        CHECK(release_asset_keys("mips", FlashForgeMachine::Creator5Pro, true) == only_mips);
-    }
-    SECTION("every other key maps to itself alone") {
-        CHECK(release_asset_keys("pi", FlashForgeMachine::Ad5x, true) ==
-              std::vector<std::string>{"pi"});
-        CHECK(release_asset_keys("k1", std::nullopt, false) == std::vector<std::string>{"k1"});
-    }
+    CHECK(release_asset_keys("mips", Board::Creator5) == Keys{"mips"});
+    CHECK(release_asset_keys("mips", Board::Creator5Pro) == Keys{"mips"});
+    // The AD5X by machine id or by a layout naming no machine (Forge-X), and the K1.
+    CHECK(release_asset_keys("mips", Board::Ad5x) == Keys{"mips", "ad5x"});
+    CHECK(release_asset_keys("mips", Board::K1) == Keys{"mips", "k1"});
+    // A dedicated build of a board whose legacy asset is its own key is not listed twice.
+    CHECK(release_asset_keys("k1", Board::K1) == Keys{"k1"});
+    CHECK(release_asset_keys("pi", Board::Generic) == Keys{"pi"});
 }
 
 TEST_CASE("A release with no asset for this board is refused, never given another board's build",
           "[update_checker][platform][json]") {
     using helix::FlashForgeMachine;
     using helix::platform::release_asset_keys;
-    const auto c5_keys = release_asset_keys("mips", FlashForgeMachine::Creator5, true);
+    const auto c5_keys = release_asset_keys("mips", helix::board::Board::Creator5);
 
     // v1.0.5 stable shape: per-board assets only, no "mips".
     const std::string manifest = R"({"version": "1.0.5", "tag": "v1.0.5", "assets": {
@@ -314,42 +305,94 @@ TEST_CASE("A release with no asset for this board is refused, never given anothe
     }
 
     SECTION("the refusal names the version and the board") {
-        const std::string msg = helix::release_unavailable_message(
-            from_manifest, helix::flashforge_machine_display_name(FlashForgeMachine::Creator5));
+        const std::string msg = helix::no_build_message("1.0.5", "FlashForge Creator 5");
         CHECK(msg == "v1.0.5 has no build for the FlashForge Creator 5, so it can't be installed "
                      "here. Pick a channel with a newer release.");
     }
 
     SECTION("a check refuses a newer or older release with no asset, never a same one") {
-        const std::string board = "FlashForge Creator 5";
-        const std::string want = "v1.0.5 has no build for the FlashForge Creator 5, so it can't "
-                                 "be installed here. Pick a channel with a newer release.";
-        auto newer = helix::decide_check_outcome("1.0.4", from_manifest, board);
+        auto newer = helix::decide_check_outcome("1.0.4", from_manifest);
         CHECK(newer.status == UpdateChecker::Status::Error);
-        CHECK(newer.error == want);
-        auto older = helix::decide_check_outcome("1.1.0", from_github, board);
+        auto older = helix::decide_check_outcome("1.1.0", from_github);
         CHECK(older.status == UpdateChecker::Status::Error);
-        CHECK(older.error == want);
-        CHECK(helix::decide_check_outcome("1.0.5", from_manifest, board).status ==
+        CHECK_FALSE(older.is_downgrade);
+        CHECK(helix::decide_check_outcome("1.0.5", from_manifest).status ==
               UpdateChecker::Status::UpToDate);
 
         UpdateChecker::ReleaseInfo with_asset = from_manifest;
         with_asset.download_url = "https://r/mips.zip";
-        auto up = helix::decide_check_outcome("1.0.4", with_asset, board);
+        auto up = helix::decide_check_outcome("1.0.4", with_asset);
         CHECK(up.status == UpdateChecker::Status::UpdateAvailable);
         CHECK_FALSE(up.is_downgrade);
-        CHECK(up.error.empty());
-        auto down = helix::decide_check_outcome("1.1.0", with_asset, board);
+        auto down = helix::decide_check_outcome("1.1.0", with_asset);
         CHECK(down.status == UpdateChecker::Status::UpdateAvailable);
         CHECK(down.is_downgrade);
+        CHECK(helix::decide_check_outcome("1.0.5", with_asset).status ==
+              UpdateChecker::Status::UpToDate);
     }
 
     SECTION("a release that has an asset is not refused") {
         UpdateChecker::ReleaseInfo ok;
         ok.version = "1.1.0";
         ok.download_url = "https://r/mips.zip";
-        CHECK(helix::release_unavailable_message(ok, "FlashForge Creator 5").empty());
+        CHECK(helix::release_has_build_for_this_board(ok));
+        CHECK_FALSE(helix::release_has_build_for_this_board(from_manifest));
     }
+}
+
+TEST_CASE("a release with this board's legacy asset is offered normally",
+          "[update_checker][platform][json]") {
+    const auto keys = helix::platform::release_asset_keys("mips", helix::board::Board::K1);
+    const std::string github = R"({"tag_name": "v1.0.5", "assets": [)" +
+                               asset_json("helixscreen-ad5x-v1.0.5.tar.gz") + "," +
+                               asset_json("helixscreen-k1-v1.0.5.tar.gz") + R"(]})";
+    UpdateChecker::ReleaseInfo release;
+    std::string error;
+    REQUIRE(helix::parse_github_release(github, release, error, keys));
+
+    CHECK(release.download_url.find("helixscreen-k1-v1.0.5.tar.gz") != std::string::npos);
+    CHECK(helix::release_has_build_for_this_board(release));
+    CHECK(helix::decide_check_outcome("1.0.4", release).status ==
+          UpdateChecker::Status::UpdateAvailable);
+}
+
+TEST_CASE("a Creator 5 Pro is refused a release with no mips asset on the main thread",
+          "[update_checker][platform][json]") {
+    helix::test::ScopedBoard board(helix::board::Board::Creator5Pro);
+    auto& checker = UpdateChecker::instance();
+    checker.clear_cache();
+    checker.init();
+
+    // v1.0.5 stable shape: per-board assets only, no "mips".
+    const std::string github = R"({"tag_name": "v1.0.5", "assets": [)" +
+                               asset_json("helixscreen-ad5x-v1.0.5.tar.gz") + "," +
+                               asset_json("helixscreen-k1-v1.0.5.tar.gz") + R"(]})";
+    UpdateChecker::ReleaseInfo release;
+    std::string error;
+    REQUIRE(helix::parse_github_release(
+        github, release, error,
+        helix::platform::release_asset_keys("mips", helix::board::current())));
+    REQUIRE(release.download_url.empty());
+
+    // The worker's own mapping, not a hand-built report: a regression that drops the
+    // release from the Error would leave the row reading a bare diagnostic.
+    UpdateCheckerTestAccess::report_fetched_release(checker, release, "1.0.4");
+    helix::ui::UpdateQueue::instance().drain();
+
+    CHECK(lv_subject_get_int(checker.status_subject()) ==
+          static_cast<int>(UpdateChecker::Status::Error));
+    const std::string shown = lv_subject_get_string(checker.version_text_subject());
+    CHECK(shown.find("no build for the FlashForge Creator 5 Pro") != std::string::npos);
+    CHECK(shown.find("v1.0.5") != std::string::npos);
+
+    // An error with no release attached keeps its own text.
+    UpdateCheckerTestAccess::report_result(checker, UpdateChecker::Status::Error, std::nullopt,
+                                           "boom");
+    helix::ui::UpdateQueue::instance().drain();
+    CHECK(std::string(lv_subject_get_string(checker.version_text_subject())).find("boom") !=
+          std::string::npos);
+
+    checker.shutdown();
 }
 
 TEST_CASE("Release manifest takes the first asset key it lists", "[update_checker][json][1789]") {

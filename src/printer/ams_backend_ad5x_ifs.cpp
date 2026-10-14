@@ -175,9 +175,10 @@ bool AmsBackendAd5xIfs::owns_filament_sensor(const std::string& bare_name,
     // strip only removes the stock prefixes, so the bare_name still carries the
     // zmod namespace — claim it by prefix so the head/motion sensors aren't
     // surfaced as generic runout sensors.
-    if (bare_name.rfind("zmod_ifs_switch_sensor ", 0) == 0 ||
-        bare_name.rfind("zmod_ifs_motion_sensor ", 0) == 0) {
-        return true;
+    for (const char* prefix : kAd5xIfsSensorObjectPrefixes) {
+        if (bare_name.rfind(prefix, 0) == 0) {
+            return true;
+        }
     }
     // lessWaste per-port HUB sensors (_ifs_port_sensor_{1..4}) and older ZMOD
     // per-port motion sensors (_ifs_motion_sensor_N).

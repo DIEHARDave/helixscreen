@@ -341,6 +341,10 @@ std::optional<AmsType> AmsState::primary_type() const {
     return registry_.primary_type();
 }
 
+std::optional<BackendTraits> AmsState::primary_traits() const {
+    return registry_.primary_traits();
+}
+
 int AmsState::backend_count() const {
     return registry_.count();
 }

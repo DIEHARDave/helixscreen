@@ -819,6 +819,26 @@ describe("mapEventToDataPoints", () => {
     expect(dp.doubles).toHaveLength(8);
   });
 
+  it("maps crash app_board into blob8 and keeps the other crash slots", () => {
+    const event = {
+      event: "crash",
+      device_id: "dev-crash",
+      app_version: "1.1.0",
+      signal_name: "SIGSEGV",
+      app_platform: "mips",
+      app_board: "creator5-pro",
+      fault_addr: "0x10",
+    };
+    const dp = mapEventToDataPoints(event)[0];
+    expect(dp.blobs![7]).toBe("creator5-pro");
+    expect(dp.blobs![2]).toBe("SIGSEGV");
+    expect(dp.blobs![3]).toBe("mips");
+    expect(dp.blobs![6]).toBe("0x10");
+    expect(dp.blobs).toHaveLength(12);
+    const old = mapEventToDataPoints({ event: "crash", device_id: "d" })[0];
+    expect(old.blobs![7]).toBe("");
+  });
+
   it("maps session zip_tool into blob10", () => {
     const event = {
       event: "session",
@@ -828,6 +848,24 @@ describe("mapEventToDataPoints", () => {
     const dp = mapEventToDataPoints(event)[0];
     expect(dp.blobs![9]).toBe("python");
     expect(dp.blobs).toHaveLength(12);
+  });
+
+  it("maps session app.board into blob11", () => {
+    const event = {
+      event: "session",
+      device_id: "dev-board",
+      app: { version: "1.1.0", platform: "mips", board: "creator5-pro" },
+    };
+    const dp = mapEventToDataPoints(event)[0];
+    expect(dp.blobs![10]).toBe("creator5-pro");
+    expect(dp.blobs![2]).toBe("mips");
+    expect(dp.blobs).toHaveLength(12);
+  });
+
+  it("leaves session board empty for clients that do not send it", () => {
+    const event = { event: "session", device_id: "dev-old", app: { version: "1.0.5" } };
+    const dp = mapEventToDataPoints(event)[0];
+    expect(dp.blobs![10]).toBe("");
   });
 
   it("leaves session zip_tool empty for clients that do not send it", () => {

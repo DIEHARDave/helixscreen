@@ -1134,6 +1134,12 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
 - **Installing the HelixPrint plugin from the screen failed on the K1 series** (#1790) - the
   install could not find Moonraker where Creality puts it. It now finds the running Moonraker
   wherever it lives, and the reason for a failed install is written to the log.
+- **Creator 5 and Creator 5 Pro: a channel with no build for your printer says so** - switching
+  to Stable, whose newest release has no build for these printers, used to offer the AD5X
+  build. The update row now reads "v1.0.5 has no build for the FlashForge Creator 5 Pro, so
+  it can't be installed here. Pick a channel with a newer release." and never offers Install.
+  On every printer the same message replaces the old "No update available" failure for a
+  release that has no download for it.
 
 **Translations**
 
@@ -1167,6 +1173,12 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
   overwrite only the slot-owned fields, instead of copying the rest by name (#1626).
 - `helix-tests` links through a response file: the inline object list passed Linux's 128 KiB
   per-argument limit and the ASAN link failed with "Argument list too long".
+- Debug bundles, crash reports and telemetry name the printer board (for example
+  `creator5-pro`) next to the platform key, so one `mips` build is no longer one lump in the
+  numbers. The K1's panel size now comes from its own table row, so its startup log names the
+  known panel instead of the 160 DPI fallback; sizing does not change. One board table
+  (`include/board_identity.h`) answers which printer the build is on, and a lint ratchet
+  refuses new vendor branches in generic code (`scripts/check_vendor_branches.py`).
 
 - The pre-v22 grid is reconstructed rather than recorded. `legacy_grid_cols()` is a frozen
   copy of the old column table, and the old row count is read back off the saved layout, which

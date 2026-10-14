@@ -11021,6 +11021,10 @@ TEST_CASE_METHOD(Ad5xRunoutFixture,
 
         auto ev = backend.current_error();
         REQUIRE(ev.has_value());
+        // The runout fault the hook raises is what the trait claims. It arrives
+        // only while paused, so it is not owned during the job.
+        REQUIRE(backend.traits().raises_runout_fault);
+        REQUIRE_FALSE(backend.traits().raises_runout_fault_during_job);
         REQUIRE(ev->source == helix::ErrorSource::IFS);
         REQUIRE(ev->severity == helix::ErrorSeverity::CRITICAL);
         REQUIRE(ev->sticky);

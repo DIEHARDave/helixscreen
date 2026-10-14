@@ -11,6 +11,7 @@
 #include "ams_types.h"
 #include "app_globals.h"
 #include "audio_settings_manager.h"
+#include "board_identity.h"
 #include "config.h"
 #include "display_backend.h"
 #include "display_manager.h"
@@ -1090,6 +1091,7 @@ nlohmann::json TelemetryManager::build_crash_event(const nlohmann::json& crash_d
 
     // Add platform (not in crash file — determined at runtime)
     event["app_platform"] = helix::platform::current_key();
+    event["app_board"] = helix::board::current_info().key;
 
     return event;
 }
@@ -1176,6 +1178,7 @@ nlohmann::json TelemetryManager::build_session_event() const {
     json app;
     app["version"] = HELIX_VERSION;
     app["platform"] = helix::platform::current_key();
+    app["board"] = helix::board::current_info().key;
 
     if (auto* dm = DisplayManager::instance()) {
         int w = dm->width();

@@ -111,6 +111,13 @@ public:
 };
 ```
 
+**Fixed toolheads:** a machine that ships a set number of toolheads and publishes no
+`tool T<n>` objects declares them in one provider table,
+`src/printer/fixed_tool_topology.cpp` (`include/fixed_tool_topology.h`): each head's
+extruder, heater and part fan. `init_tools()` builds `ToolInfo` from
+`helix::tool_topology::fixed_toolheads()` when it is non-empty and never names the machine.
+Adding a machine of that kind is one row in that table.
+
 ---
 
 ## Lifecycle

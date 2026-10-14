@@ -44,21 +44,29 @@ bool platform_defaults_to_external_updates();
 /// Moonraker address is a real question or a wasted step.
 bool is_printer_embedded();
 
-/// True when the environment carries an AD5X mod tree: ZMOD (the /ZMOD marker
-/// file or FlashForge's /usr/prog dir) or Forge-X — whose chroot has neither,
-/// but whose mod git tree stays reachable (/opt/config/mod in-chroot,
-/// /usr/data/config/mod host-side, proven by .shell/platform.sh). Same rule as
-/// the launcher's heap-diag gate (scripts/helix-launcher.sh); the two test
-/// suites pin both to one truth table. All probes resolve under `probe_root`
-/// (default "/") so tests can feed a fake layout without touching the real
-/// root filesystem. stat-only; never opens anything.
-///
-/// `flavor_out`, when non-null, receives a static "ZMOD" or "Forge-X" naming
-/// which arm matched, and is left untouched on a false return. One platform key
-/// can serve a K1 and both AD5X firmware populations, so the arm is what tells
-/// three different filesystem layouts apart in a diagnostic.
-bool ad5x_mod_layout_present(const std::string& probe_root = "/",
-                             const char** flavor_out = nullptr);
+/// Which FlashForge mod's filesystem tree the environment carries. A tree
+/// fact, not a board fact: an AD5X and a Creator 5 both carry FlashForge's
+/// /usr/prog.
+enum class FlashForgeModTree {
+    None,   ///< no FlashForge mod tree (Pi, dev box, K1)
+    Zmod,   ///< the /ZMOD marker file or FlashForge's /usr/prog dir
+    ForgeX, ///< a Forge-X chroot, which has neither but keeps its mod git tree reachable
+};
+
+/// Probes the mod tree: ZMOD (the /ZMOD marker file or FlashForge's /usr/prog dir) or
+/// Forge-X, whose chroot has neither but whose mod git tree stays reachable
+/// (/opt/config/mod in-chroot, /usr/data/config/mod host-side, proven by
+/// .shell/platform.sh). Same rule as the launcher's heap-diag gate
+/// (scripts/helix-launcher.sh); the two test suites pin both to one truth
+/// table. All probes resolve under `probe_root` (default "/") so tests can feed
+/// a fake layout without touching the real root filesystem. stat-only; never
+/// opens anything. One platform key can serve a K1 and both FlashForge firmware
+/// populations, so the tree is what tells three filesystem layouts apart in a
+/// diagnostic.
+FlashForgeModTree flashforge_mod_tree(const std::string& probe_root = "/");
+
+/// "none", "ZMOD" or "Forge-X".
+const char* flashforge_mod_tree_name(FlashForgeModTree tree);
 
 /// The three FlashForge boards the unified MIPS payload ships on. Answered by
 /// flashforge_machine_id() below.
@@ -82,19 +90,6 @@ enum class FlashForgeMachine {
 /// carries neither shape), so the caller keeps its own fallback. All probes
 /// resolve under `probe_root` (default "/") for tests.
 std::optional<FlashForgeMachine> flashforge_machine_id(const std::string& probe_root = "/");
-
-/// True on an Adventurer 5X. The mod layout alone also matches a Creator 5,
-/// which carries FlashForge's /usr/prog too, so a board that names itself
-/// anything else is not one; a layout with no machine id (Forge-X) still is.
-/// All probes resolve under `probe_root` (default "/") for tests.
-bool ad5x_board_present(const std::string& probe_root = "/");
-
-/// True when discovery may probe loopback camera endpoints (127.0.0.1:8080 and
-/// friends) for a camera Moonraker does not list. False on the FlashForge MIPS
-/// boards, whose kernel crashes when a camera streamer is woken on v4l2_open;
-/// every other platform, a K1 sharing the same MIPS payload included, allows it.
-/// All probes resolve under `probe_root` (default "/") for tests.
-bool local_camera_probe_safe(const std::string& probe_root = "/");
 
 /// The printer-database spelling of a board ("FlashForge Creator 5 Pro"), the
 /// same names ad5x_board_name() prints in the installer.

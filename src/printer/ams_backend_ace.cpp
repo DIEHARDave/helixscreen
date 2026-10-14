@@ -28,6 +28,7 @@
 #include "lane_translation.h"
 #include "lvgl/src/others/translation/lv_translation.h"
 #include "post_op_cooldown_manager.h"
+#include "printer_discovery.h"
 #include "settings_manager.h"
 #include "spdlog/spdlog.h"
 #include "text_io.h"
@@ -50,6 +51,23 @@ static constexpr int MAX_INFO_FETCH_FAILURES = 3;
 // ============================================================================
 // Construction / Destruction
 // ============================================================================
+
+nlohmann::json AmsBackendAce::required_status_objects(const helix::PrinterDiscovery& hw) {
+    nlohmann::json objects = nlohmann::json::object();
+    if (hw.mmu_type() != AmsType::ACE) {
+        return objects;
+    }
+    // Subscribe the real detected object name(s) so slot colors, materials, status
+    // and dryer state push live via get_status().
+    if (hw.ace_object_names().empty()) {
+        objects["ace"] = nullptr;
+    } else {
+        for (const auto& name : hw.ace_object_names()) {
+            objects[name] = nullptr;
+        }
+    }
+    return objects;
+}
 
 AmsBackendAce::AmsBackendAce(IMoonrakerAPI* api, IMoonrakerClient* client)
     : AmsSubscriptionBackend(api, client) {

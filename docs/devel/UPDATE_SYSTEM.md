@@ -403,7 +403,7 @@ The platform key is determined at compile time via preprocessor defines, in
 |--------|-------------|---------|
 | `HELIX_PLATFORM_AD5M` | `ad5m` | Flashforge Adventurer 5M |
 | `HELIX_PLATFORM_CC1` | `cc1` | Elegoo Centauri Carbon |
-| `HELIX_PLATFORM_MIPS` | `mips` | The unified MIPS build: Creality K1 series, FlashForge AD5X, Creator 5 and Creator 5 Pro. A release cut before that build has no `mips` asset, so `release_asset_keys()` also tries a K1 or AD5X's old key (`k1` or `ad5x`); a Creator 5 answers to `mips` alone and refuses a release without it (`release_unavailable_message()`) |
+| `HELIX_PLATFORM_MIPS` | `mips` | The unified MIPS build: Creality K1 series, FlashForge AD5X, Creator 5 and Creator 5 Pro. A release cut before that build has no `mips` asset, so `release_asset_keys(key, board)` also tries the resolved board's pre-unification asset (`board::info(board).legacy_release_asset`: `k1` or `ad5x`); a Creator 5 has none and answers to `mips` alone. A newer or older release with no asset for this board is refused (`decide_check_outcome()` reports `Error` with the release attached; the main thread renders `no_build_message()` with the board's display name). Stable stays selectable; only the message changes |
 | `HELIX_PLATFORM_K1` | `k1` | The `k1-dynamic` variant |
 | `HELIX_PLATFORM_K2` | `k2` | Creality K2 series |
 | `HELIX_PLATFORM_X86` | `x86` | x86_64 kiosk (DRM/fbdev) |

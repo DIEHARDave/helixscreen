@@ -1186,7 +1186,7 @@ assert_extracted() {
 # itself); the layout probes resolve under HELIX_AD5X_PROBE_ROOT pointing at a
 # sandbox fake root — these tests must never create /ZMOD or /usr/prog on the
 # build host. Pinned to the SAME truth table as the C++ predicate
-# helix::ad5x_mod_layout_present() (tests/unit/test_platform_info.cpp).
+# helix::flashforge_mod_tree() (tests/unit/test_platform_info.cpp).
 # =============================================================================
 
 # Echo the resulting MALLOC_CHECK_ (empty when the block left it unset) for a

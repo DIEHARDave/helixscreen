@@ -26,7 +26,7 @@ SoundManager (singleton, public API)
         +-> SDLSoundBackend   (desktop, per-sample envelope + biquad filter)
         +-> ALSASoundBackend  (Linux SBCs, per-sample envelope + biquad filter)
         +-> PWMSoundBackend   (AD5M hardware buzzer, sysfs /sys/class/pwm)
-        +-> JzPwmSoundBackend (AD5X piezo, jz_pwm DMA one-shot buffers via fx-pwm)
+        +-> JzPwmSoundBackend (FlashForge MIPS boards' piezo: AD5X, Creator 5, Creator 5 Pro, jz_pwm DMA one-shot buffers via fx-pwm)
         +-> M300SoundBackend  (Klipper printers, G-code via Moonraker)
 ```
 
@@ -80,7 +80,7 @@ The sequencer thread sleeps on a condition variable when idle (no sound playing,
 | 0 | PWM | `/sound/pwm_channel` setting (or the `HELIX_PWM_SOUND` override) names `<chip>:<channel>` (pi, pi32, x86, yocto, native and ad5m builds) and the channel exports | A buzzer the user wired to a PWM pin |
 | 1 | SDL | `#ifdef HELIX_DISPLAY_SDL` + `SDL_OpenAudioDevice` succeeds | Desktop/simulator |
 | 2 | ALSA | `#ifdef HELIX_HAS_ALSA` + ALSA PCM device opens (saved/env device, then `default`) | Linux SBCs with audio hardware |
-| 3 | JzPwm | `#ifdef HELIX_HAS_JZ_PWM` (ad5x builds) + `/dev/jz_pwm` exists and fx-pwm is executable | AD5X piezo (on-rig install) |
+| 3 | JzPwm | `#ifdef HELIX_HAS_JZ_PWM` (unified MIPS build) + the board row says it has the piezo (AD5X, Creator 5, Creator 5 Pro) + `/dev/jz_pwm` exists and fx-pwm is executable | FlashForge MIPS boards' piezo (on-rig install) |
 | 4 | PWM | ad5m/ad5m-br builds only, unnamed: `pwmchip0/pwm6`, auto-exported by `initialize()` | AD5M hardware buzzer |
 | 5 | M300 | Printer answers M300 gcode: a beeper `output_pin` or an M300 macro in objects/list, or the `speaker` capability override forced on — plus a `MoonrakerClient` set via `set_moonraker_client()` | Klipper printers with a gcode beeper (no local audio) |
 | 6 | None | All above failed | Sounds silently disabled |

@@ -288,9 +288,9 @@ If `HELIX_ANALYTICS_READ_TOKEN` needs to be recreated:
 
 | Event | Description | Key Fields |
 |-------|-------------|------------|
-| `session` | App startup | platform, version, printer_model, kinematics, display, ram, cpu_cores |
+| `session` | App startup | platform, board, version, printer_model, kinematics, display, ram, cpu_cores |
 | `print_outcome` | Print completed/failed | outcome, filament_type, duration, temps, filament_used |
-| `crash` | App crash | signal_name, version, platform, uptime, backtrace_depth |
+| `crash` | App crash | signal_name, version, platform, board, uptime, backtrace_depth |
 | `update_failed` | Update attempt failed | reason, version, from_version, platform, http_code |
 | `update_success` | Update completed | version, from_version, platform |
 | `memory_snapshot` | Periodic memory check | trigger, uptime_sec, rss_kb, vm_size_kb, vm_peak_kb, vm_hwm_kb, private_dirty_kb, private_clean_kb, shared_clean_kb, pss_kb, system_total_mb, system_available_mb |

@@ -4370,6 +4370,9 @@ TEST_CASE("Happy Hare classify_error: runout pause is CRITICAL with recovery",
     auto ev = hh.classify_error("!! Runout detected", ctx);
 
     REQUIRE(ev.has_value());
+    // The runout fault the hook raises is what the trait claims.
+    CHECK(hh.traits().raises_runout_fault);
+    CHECK(hh.traits().raises_runout_fault_during_job);
     CHECK(ev->source == helix::ErrorSource::HAPPY_HARE);
     CHECK(ev->severity == helix::ErrorSeverity::CRITICAL);
     CHECK_FALSE(ev->recovery_actions.empty());

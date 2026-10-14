@@ -23,6 +23,7 @@
 #include "../../include/pending_startup_warnings.h"
 #include "app_constants.h"
 #include "app_globals.h"
+#include "board_identity.h"
 #include "config.h"
 #include "display/lv_display_private.h"
 #include "display_settings_manager.h"
@@ -498,8 +499,8 @@ bool DisplayManager::init(const Config& config) {
         // On AD5M, Klipper's reset_screen fires ~3s after Klipper becomes READY.
         // Klipper typically becomes ready 10-20s after boot, so a 20s delay ensures
         // we fire AFTER the delayed_gcode dims the screen.
-        // Only needed on Allwinner (AD5M) - other platforms don't have this issue.
-        if (std::string_view(m_backlight->name()) == "Allwinner") {
+        // Only the FlashForge firmwares dim behind our back.
+        if (helix::board::current_info().firmware_dims_backlight_after_boot) {
             lv_timer_create(
                 [](lv_timer_t* t) {
                     auto* dm = static_cast<DisplayManager*>(lv_timer_get_user_data(t));

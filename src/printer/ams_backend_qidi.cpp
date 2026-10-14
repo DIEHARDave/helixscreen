@@ -14,6 +14,7 @@
 #include "lane_source_store.h"
 #include "lane_translation.h"
 #include "macro_param_cache.h"
+#include "printer_discovery.h"
 #include "settings_manager.h"
 #include "slot_registry.h"
 #include "text_io.h"
@@ -237,6 +238,18 @@ int load_temp_for_slot(const SlotInfo& slot) {
     return QIDI_DEFAULT_LOAD_TEMP_C;
 }
 } // namespace
+
+nlohmann::json AmsBackendQidi::required_status_objects(const helix::PrinterDiscovery& hw) {
+    nlohmann::json objects = nlohmann::json::object();
+    if (hw.mmu_type() == AmsType::QIDI_BOX) {
+        // box_extras carries box_drying_state.box<N>.{dry_state, end_time} for the
+        // dryer countdown; save_variables carries slot/box state. Subscribing keeps
+        // both pushing live to handle_status().
+        objects["box_extras"] = nullptr;
+        objects["save_variables"] = nullptr;
+    }
+    return objects;
+}
 
 AmsBackendQidi::AmsBackendQidi(IMoonrakerAPI* api, helix::IMoonrakerClient* client)
     : AmsSubscriptionBackend(api, client) {

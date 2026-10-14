@@ -326,28 +326,6 @@ struct RuntimeConfig {
 };
 
 /**
- * @brief Whether this AMS backend owns the runout surface WHILE A JOB HOLDS
- *        THE MACHINE.
- *
- * The phase-aware sibling of the ownership rule inside
- * RuntimeConfig::should_show_runout_modal(): while a job runs, a backend that
- * raises its own runout fault (Happy Hare, AFC, CFS via classify_error() /
- * current_error()) already has that fault on screen with hardware-derived
- * recovery actions, so the generic sensor-edge toast only restates it
- * (prestonbrown/helixscreen#1388). AD5X IFS is deliberately NOT an owner
- * here: its runout detector fires only while paused and only after a
- * 30-180s confirm dwell, so at the sensor edge nothing has fired yet and
- * quieting the toast would open a silent window - the toast is the immediate
- * surface. Backends with no runout surface of their own (ACE, QIDI Box, tool
- * changers) and AmsType::NONE never own it: for them the toast is the only
- * runout signal there is.
- *
- * @return true if, during a job, this backend surfaces the runout itself and
- *         the generic sensor-edge toast should stand down
- */
-bool backend_owns_runout_during_job(helix::AmsType type);
-
-/**
  * @brief Get global runtime configuration
  * @return Pointer to the global runtime configuration
  */

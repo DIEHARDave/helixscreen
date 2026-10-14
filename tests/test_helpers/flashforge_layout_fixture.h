@@ -3,15 +3,15 @@
 #pragma once
 
 /**
- * @file ad5x_layout_fixture.h
- * @brief Fake-rootfs builders for the AD5X mod-layout predicate.
+ * @file flashforge_layout_fixture.h
+ * @brief Fake-rootfs builders for the FlashForge mod-tree probe.
  *
- * make_ad5x_layout() builds, under a caller-supplied base dir, each filesystem
- * shape helix::ad5x_mod_layout_present() (and the launcher's
+ * make_flashforge_layout() builds, under a caller-supplied base dir, each filesystem
+ * shape helix::flashforge_mod_tree() (and the launcher's
  * heap-diag gate) keys on. Every probe resolves under the returned root, so no
  * test ever creates /ZMOD or /usr/prog on the real build host.
  *
- * Shared by test_platform_info.cpp (the predicate itself) and
+ * Shared by test_platform_info.cpp (the probe itself) and
  * test_log_collector.cpp (the mod_data log-path gating) so the two cannot
  * drift apart on what a layout means. The caller owns the base dir's
  * lifetime — pair with a temp-dir guard.
@@ -34,7 +34,12 @@ namespace fs = std::filesystem;
 //                 seen from outside the chroot (the rig binds /usr/data at
 //                 /opt, so exactly one spelling is reachable per side)
 //   plain       : empty root (Pi / dev box / K1: none of the markers)
-inline fs::path make_ad5x_layout(const fs::path& base, const std::string& layout) {
+//
+// A non-empty `machine` also writes /usr/prog/app_startup.sh with `MACHINE=<machine>`,
+// the line helix::flashforge_machine_id() reads, so a board test builds an AD5X,
+// Creator 5 or Creator 5 Pro root in one call.
+inline fs::path make_flashforge_layout(const fs::path& base, const std::string& layout,
+                                       const std::string& machine = "") {
     fs::path root = base / layout;
     if (layout == "zmod-marker") {
         fs::create_directories(root);
@@ -49,6 +54,10 @@ inline fs::path make_ad5x_layout(const fs::path& base, const std::string& layout
         std::ofstream(root / "usr/data/config/mod/.shell/platform.sh") << "#!/bin/sh\n";
     } else {
         fs::create_directories(root);
+    }
+    if (!machine.empty()) {
+        fs::create_directories(root / "usr/prog");
+        std::ofstream(root / "usr/prog/app_startup.sh") << "MACHINE=" << machine << "\n";
     }
     return root;
 }

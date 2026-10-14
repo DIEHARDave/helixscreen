@@ -2895,6 +2895,35 @@ enum class AmsType {
 
 Update `ams_type_to_string()`, `ams_type_from_string()`, and the `is_filament_system()` / `is_tool_changer()` helpers as appropriate.
 
+### 1a. Declare the status objects and the runout traits
+
+A backend names the Klipper status objects it needs; the subscription builder
+(`src/api/moonraker_discovery_sequence.cpp#build_subscription_objects`) never does. Add a
+static to the backend class:
+
+```cpp
+[[nodiscard]] static nlohmann::json required_status_objects(const helix::PrinterDiscovery& hw);
+```
+
+It returns `{object: field-array-or-null}` and answers only for its own printer (an empty
+map for any other). A field array is a strict allowlist: `null` makes Klipper serialize every
+internal field of the object on every notification, so narrow wherever the parser reads a
+known set. Then add the backend to the merge in `AmsBackend::required_status_objects`
+(`src/printer/ams_backend.cpp`), inside its `HELIX_HAS_*` guard. Sensors the backend publishes
+under a non-stock object-type prefix go in `AmsBackend::filament_sensor_object_prefixes()`.
+`tests/unit/test_subscription_parity.cpp` pins the whole subscription map per backend against
+`tests/fixtures/subscription_parity/`; add a fixture for a new one.
+
+Who owns a runout is three `BackendTraits` fields on the backend's `kTraits`, all default
+false: `raises_runout_fault` (the backend raises its own runout event through
+`classify_error()` or `current_error()`, so the generic runout modal stands down),
+`raises_runout_fault_during_job` (that event is already on screen while a job runs, so the
+sensor-edge toast stands down) and `unloads_to_hub_between_prints` (the firmware unloads to
+its hub when idle, so an idle head-empty edge is not news). Callers read them through
+`AmsBackend::raises_runout_fault()` and friends, or `AmsState::primary_traits()` off the main
+thread. A backend with no runout fault of its own leaves them false: the generic modal is then
+the only runout surface the user has.
+
 ### 1b. Declare the firmware default routing (only if it is not lane-per-tool)
 
 `AmsBackend::firmware_default_routing()` answers which physical head a logical
