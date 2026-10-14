@@ -46,9 +46,14 @@ const Info* find(const std::string& key) {
     return nullptr;
 }
 
-std::vector<std::string> release_asset_keys(const std::string& key, bool ad5x_board) {
+std::vector<std::string> release_asset_keys(const std::string& key,
+                                            std::optional<FlashForgeMachine> machine,
+                                            bool mod_layout) {
     if (key == "mips") {
-        return {key, ad5x_board ? "ad5x" : "k1"};
+        if (machine == FlashForgeMachine::Creator5 || machine == FlashForgeMachine::Creator5Pro) {
+            return {key};
+        }
+        return {key, mod_layout ? "ad5x" : "k1"};
     }
     return {key};
 }

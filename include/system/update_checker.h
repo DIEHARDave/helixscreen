@@ -857,17 +857,24 @@ bool parse_github_release(const std::string& json_str, UpdateChecker::ReleaseInf
  * @brief Parse a release manifest (R2 and dev channel schema) into ReleaseInfo
  *
  * The asset is the entry under the first of @p asset_keys the manifest lists.
- * A manifest listing none of them is an error: offering a version with nothing
- * to download leaves Install failing with "No update available".
+ * A manifest listing none of them parses like a GitHub release with no matching
+ * asset: the version is filled in and download_url stays empty (see
+ * release_unavailable_message()).
  *
  * @param json_str Manifest body
  * @param info Parsed release info, download URLs included on success
  * @param error Failure reason
  * @param asset_keys Keys this build's asset may sit under, best match first
- * @return true when the manifest names a version and an asset for this build
+ * @return true when the manifest names a version
  */
 bool parse_release_manifest(const std::string& json_str, UpdateChecker::ReleaseInfo& info,
                             std::string& error, const std::vector<std::string>& asset_keys);
+
+/// The user-facing refusal for a release @p info that carries no download for
+/// @p board_name ("FlashForge Creator 5"); empty when it does. Offering it would
+/// leave Install failing, and borrowing another board's asset would brick it.
+std::string release_unavailable_message(const UpdateChecker::ReleaseInfo& info,
+                                        const std::string& board_name);
 
 /**
  * @brief Strip a leading 'v' or 'V' from a GitHub release tag

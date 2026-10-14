@@ -168,8 +168,19 @@ std::string describe_asset_keys(const std::vector<std::string>& asset_keys) {
 /// probe only matters to the unified MIPS build, so no other build stats for it.
 std::vector<std::string> this_build_release_asset_keys() {
     const std::string key = helix::platform::current_key();
-    return helix::platform::release_asset_keys(key,
-                                               key == "mips" && helix::ad5x_mod_layout_present());
+    if (key != "mips") {
+        return helix::platform::release_asset_keys(key, std::nullopt, false);
+    }
+    return helix::platform::release_asset_keys(key, helix::flashforge_machine_id(),
+                                               helix::ad5x_mod_layout_present());
+}
+
+/// What this build runs on, for the "no build for the ..." refusal.
+std::string this_board_display_name() {
+    if (auto machine = helix::flashforge_machine_id()) {
+        return helix::flashforge_machine_display_name(*machine);
+    }
+    return helix::platform::display_name(helix::platform::current_key());
 }
 
 /// Picks @p platform_key's asset out of a GitHub release asset list into
@@ -684,6 +695,19 @@ bool parse_github_release(const std::string& json_str, UpdateChecker::ReleaseInf
     }
 }
 
+std::string release_unavailable_message(const UpdateChecker::ReleaseInfo& info,
+                                        const std::string& board_name) {
+    if (!info.download_url.empty()) {
+        return "";
+    }
+    char buf[256];
+    std::snprintf(buf, sizeof(buf),
+                  lv_tr("v%s has no build for the %s, so it can't be installed here. Pick a "
+                        "channel with a newer release."),
+                  info.version.c_str(), board_name.c_str());
+    return buf;
+}
+
 bool parse_release_manifest(const std::string& json_str, UpdateChecker::ReleaseInfo& info,
                             std::string& error, const std::vector<std::string>& asset_keys) {
     try {
@@ -712,8 +736,11 @@ bool parse_release_manifest(const std::string& json_str, UpdateChecker::ReleaseI
                 return true;
             }
         }
-        error = "No asset for platform " + describe_asset_keys(asset_keys) + " in manifest";
-        return false;
+        // Same as parse_github_release(): the version is real, the download stays
+        // empty, and the caller decides what a release with no build means.
+        spdlog::warn("[UpdateChecker] No asset found for platform {} in manifest {}",
+                     describe_asset_keys(asset_keys), info.version);
+        return true;
 
     } catch (const json::exception& e) {
         error = std::string("JSON parse error: ") + e.what();
@@ -2896,8 +2923,24 @@ void UpdateChecker::do_check() {
         std::string current_version = HELIX_VERSION;
         spdlog::debug("[UpdateChecker] Current: {}, Latest: {}", current_version, info.version);
 
+        // A release offered with nothing this board can install is refused up front,
+        // rather than as a dead Install button.
+        auto refuse_without_asset = [&]() {
+            std::string refusal =
+                helix::release_unavailable_message(info, this_board_display_name());
+            if (refusal.empty()) {
+                return false;
+            }
+            spdlog::warn("[UpdateChecker] {}", refusal);
+            report_result(Status::Error, std::nullopt, refusal);
+            return true;
+        };
+
         switch (compare_channel_version(current_version, info.version)) {
         case ChannelVersionRelation::Newer:
+            if (refuse_without_asset()) {
+                break;
+            }
             info.is_downgrade = false;
             spdlog::info("[UpdateChecker] Update available: {} -> {}", current_version,
                          info.version);
@@ -2911,6 +2954,9 @@ void UpdateChecker::do_check() {
             // build with the check reporting "up to date" forever. Flagged so
             // the auto-check never raises this unprompted and the install path
             // asks first.
+            if (refuse_without_asset()) {
+                break;
+            }
             info.is_downgrade = true;
             spdlog::info("[UpdateChecker] Channel is behind: {} -> {} (downgrade offered)",
                          current_version, info.version);

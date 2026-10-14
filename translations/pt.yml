@@ -4044,6 +4044,7 @@ translations:
   tool(s): ferramenta(s)
   used: usado
   v%s available: v%s disponível
+  v%s has no build for the %s, so it can't be installed here. Pick a channel with a newer release.: v%s não tem uma versão para %s, então não pode ser instalada aqui. Escolha um canal de atualização com uma versão mais recente.
   v{} installed! Restarting...: v{} instalado! Reiniciando...
   v{} is available. Tap to update.: v{} disponível. Toque para atualizar.
   wpa_supplicant is not running. WiFi features unavailable.: wpa_supplicant não está em execução. Os recursos de WiFi estão indisponíveis.

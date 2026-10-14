@@ -3612,6 +3612,7 @@
   <translation tag="tool(s)" en="tool(s)"/>
   <translation tag="used" en="used"/>
   <translation tag="v%s available" en="v%s available"/>
+  <translation tag="v%s has no build for the %s, so it can&apos;t be installed here. Pick a channel with a newer release." en="v%s has no build for the %s, so it can&apos;t be installed here. Pick a channel with a newer release."/>
   <translation tag="v{} installed! Restarting..." en="v{} installed! Restarting..."/>
   <translation tag="v{} is available. Tap to update." en="v{} is available. Tap to update."/>
   <translation tag="wpa_supplicant is not running. WiFi features unavailable." en="wpa_supplicant is not running. WiFi features unavailable."/>
