@@ -15,7 +15,6 @@
 #include "print_lifecycle_state.h"
 #include "printer_discovery.h"
 #include "printer_state.h"
-#include "runtime_config.h" // backend_owns_runout_during_job()
 #include "spdlog/fmt/fmt.h"
 #include "spdlog/spdlog.h"
 #include "static_subject_registry.h"
@@ -972,21 +971,24 @@ void FilamentSensorManager::update_from_status(const json& status) {
     const auto lifecycle = get_printer_state().print_state().get_print_lifecycle();
     const bool job_owns_machine = job_holds_machine(lifecycle);
     const AmsType backend_type = AmsState::instance().primary_type().value_or(AmsType::NONE);
-    // AD5X-IFS auto-unloads filament back into the IFS between prints. The head
-    // sensor going empty when the printer is idle is firmware behaviour, not a
-    // user-facing event. "Between prints" is the lifecycle's Idle/terminal side,
-    // not merely "not PRINTING": a head-empty during a pre-print block is not
-    // the firmware's idle auto-unload and must not be swallowed.
-    const bool ad5x_idle_unload = backend_type == AmsType::AD5X_IFS && !job_owns_machine;
+    const BackendTraits backend_traits =
+        AmsState::instance().primary_traits().value_or(BackendTraits{});
+    // A backend whose firmware unloads filament back to its hub between prints
+    // (AD5X IFS) makes the head sensor going empty while idle firmware behaviour,
+    // not a user-facing event. "Between prints" is the lifecycle's Idle/terminal
+    // side, not merely "not PRINTING": a head-empty during a pre-print block is
+    // not the firmware's idle auto-unload and must not be swallowed.
+    const bool idle_unload_expected =
+        backend_traits.unloads_to_hub_between_prints && !job_owns_machine;
     // While a job holds the machine, a backend that raises its own runout fault
     // owns the runout surface for that phase: its prompt is already telling the
     // user what happened, with recovery actions derived from live hardware, so
     // the sensor-edge toast restates it (#1388). Ownership-scoped, never a
     // blanket muzzle: on a backend with no error hook of its own, and with no
     // backend at all, this toast is the only runout signal there is. The
-    // per-backend table lives in backend_owns_runout_during_job().
+    // The backend declares that through raises_runout_fault_during_job.
     const bool runout_surface_owned_during_job =
-        job_owns_machine && backend_owns_runout_during_job(backend_type);
+        job_owns_machine && backend_traits.raises_runout_fault_during_job;
     // A tool change pulls filament off the toolhead sensor and feeds the next
     // lane past it. At the edge that is identical to a runout; only duration
     // separates them. Where a backend could be changing tools and a job holds
@@ -1113,7 +1115,7 @@ void FilamentSensorManager::update_from_status(const json& status) {
                 // filament backend owns the runout surface for that phase (its
                 // own prompt already tells the story; see #1388). A backend that
                 // owns nothing, and no backend at all, keeps the toast: there it
-                // is the only runout signal. ams_active, ad5x_idle_unload and
+                // is the only runout signal. ams_active, idle_unload_expected and
                 // runout_surface_owned_during_job were read above, before the
                 // lock. The runout ROLE is preserved either way, so runout
                 // detection and its subjects still fire in-print; only the
@@ -1145,7 +1147,7 @@ void FilamentSensorManager::update_from_status(const json& status) {
                     observed_runouts_.insert(sensor.klipper_name);
                 }
                 notif.should_toast = !within_grace_period && !is_wizard_active() && !ams_active &&
-                                     !ad5x_idle_unload && !post_unload_removal &&
+                                     !idle_unload_expected && !post_unload_removal &&
                                      !runout_surface_owned_during_job && master_enabled_ &&
                                      observed_while_monitoring && sensor.enabled &&
                                      sensor.role != FilamentSensorRole::NONE;
@@ -1176,11 +1178,10 @@ void FilamentSensorManager::update_from_status(const json& status) {
                     spdlog::debug(
                         "[FilamentSensorManager] Suppressing toast during AMS operation for {}",
                         sensor.sensor_name);
-                } else if (ad5x_idle_unload && master_enabled_ && sensor.enabled &&
+                } else if (idle_unload_expected && master_enabled_ && sensor.enabled &&
                            sensor.role != FilamentSensorRole::NONE) {
-                    spdlog::debug(
-                        "[FilamentSensorManager] Suppressing AD5X idle-unload toast for {}",
-                        sensor.sensor_name);
+                    spdlog::debug("[FilamentSensorManager] Suppressing idle-unload toast for {}",
+                                  sensor.sensor_name);
                 } else if (runout_surface_owned_during_job && master_enabled_ && sensor.enabled &&
                            sensor.role != FilamentSensorRole::NONE) {
                     spdlog::debug(

@@ -36,6 +36,7 @@
 
 #include "../lvgl_test_fixture.h"
 #include "../test_helpers/post_unload_grace_test_access.h"
+#include "../test_helpers/trait_probe_backend.h"
 #include "../ui_test_utils.h"
 #include "ams_backend_ad5x_ifs.h"
 #include "ams_backend_cfs.h"
@@ -246,6 +247,46 @@ TEST_CASE_METHOD(Ad5xToastFixture, "AD5X head-empty mid-print is a real runout",
     CHECK(report_head_empty() == 1);
 }
 
+TEST_CASE_METHOD(SensorEdgeToastFixture,
+                 "idle unload is expected only where the backend unloads to its hub",
+                 "[ams][filament-sensor][job-holds-machine]") {
+    drive_lifecycle(printer_state, "standby");
+    REQUIRE(published_lifecycle(printer_state) == PrintState::Idle);
+    REQUIRE_FALSE(AmsState::instance().is_filament_operation_active());
+
+    SECTION("a backend that unloads to its hub swallows the idle head-empty edge") {
+        BackendTraits unloads;
+        unloads.unloads_to_hub_between_prints = true;
+        install_backend(std::make_unique<helix::test::TraitProbeBackend>(unloads));
+        CHECK(report_head_empty() == 0);
+    }
+
+    SECTION("a backend that does not, announces it") {
+        install_backend(std::make_unique<helix::test::TraitProbeBackend>(BackendTraits{}));
+        CHECK(report_head_empty() == 1);
+    }
+}
+
+TEST_CASE_METHOD(SensorEdgeToastFixture,
+                 "a backend that raises its runout fault during the job quiets the sensor toast",
+                 "[ams][filament-sensor][job-holds-machine][1388]") {
+    drive_lifecycle(printer_state, "printing");
+    REQUIRE(published_lifecycle(printer_state) == PrintState::Printing);
+    REQUIRE_FALSE(AmsState::instance().is_filament_operation_active());
+
+    SECTION("trait set") {
+        BackendTraits owns;
+        owns.raises_runout_fault_during_job = true;
+        install_backend(std::make_unique<helix::test::TraitProbeBackend>(owns));
+        CHECK(report_head_empty() == 0);
+    }
+
+    SECTION("trait clear") {
+        install_backend(std::make_unique<helix::test::TraitProbeBackend>(BackendTraits{}));
+        CHECK(report_head_empty() == 1);
+    }
+}
+
 // ============================================================================
 // 1b. Runout-surface ownership while a job holds the machine (#1388)
 // ============================================================================
@@ -254,7 +295,7 @@ TEST_CASE_METHOD(SensorEdgeToastFixture,
                  "CFS head-empty mid-print yields to the backend that owns the runout surface",
                  "[ams][cfs][filament-sensor][job-holds-machine][1388]") {
     // A real CFS backend with no transport, the same rig shape
-    // test_ams_backend_cfs.cpp uses: the ownership gate asks only for its type.
+    // test_ams_backend_cfs.cpp uses: the ownership gate asks only for its traits.
     install_backend(std::make_unique<helix::printer::AmsBackendCfs>(nullptr, nullptr));
 
     // Guard against a leaked filament operation from an earlier test: that
@@ -267,7 +308,7 @@ TEST_CASE_METHOD(SensorEdgeToastFixture,
 
     // The CFS raises its own runout fault while a job runs, so its prompt is
     // already the surface and the sensor-edge toast restates it (#1388).
-    // Flipping CFS to false in backend_owns_runout_during_job() makes this 1.
+    // Clearing raises_runout_fault_during_job on the CFS traits makes this 1.
     CHECK(report_head_empty() == 0);
 }
 
