@@ -107,6 +107,7 @@ UNICODE_RANGES+=",0x2022"        # Bullet
 UNICODE_RANGES+=",0x2026"        # Ellipsis
 UNICODE_RANGES+=",0x20AC"        # Euro sign
 UNICODE_RANGES+=",0x2122"        # Trademark
+UNICODE_RANGES+=",0x215B-0x215E" # Eighth fractions (belt tuning turns)
 
 # MDI icon codepoints (0xF0000 range): read from regen_mdi_fonts.sh, the list
 # the desktop fonts and include/ui_icon_codepoints.h are validated against, so
