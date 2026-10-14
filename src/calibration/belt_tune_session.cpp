@@ -61,7 +61,8 @@ struct PeakCensus {
     Tallest tallest_b;
     float floor = 0.0f;
 
-    explicit PeakCensus(const BeltPeakPairing& pk) {
+    explicit PeakCensus(const BeltComparison& cmp) {
+        const BeltPeakPairing& pk = cmp.peaks;
         for (const auto& pair : pk.pairs) {
             a.push_back(pair.a);
             b.push_back(pair.b);
@@ -76,8 +77,11 @@ struct PeakCensus {
             b.push_back(p);
             tallest_b.offer(p, false);
         }
-        const float top = std::max(tallest_a.peak ? tallest_a.peak->amplitude : 0.0f,
-                                   tallest_b.peak ? tallest_b.peak->amplitude : 0.0f);
+        // A comparison built without curves carries no band maximum; its
+        // tallest peak stands in.
+        const float top =
+            std::max({cmp.band_max_psd, tallest_a.peak ? tallest_a.peak->amplitude : 0.0f,
+                      tallest_b.peak ? tallest_b.peak->amplitude : 0.0f});
         floor = ZONE_MIN_AMPLITUDE_FRACTION * top;
     }
 
@@ -100,56 +104,38 @@ struct PeakCensus {
     }
 };
 
-/// The in-window bin indices [first, last] of an ascending curve; first > last
-/// when the window holds no bin.
-std::pair<size_t, size_t> window_bins(const BeltCurve& curve, BeltSweepWindow window) {
-    size_t first = 0;
-    while (first < curve.size() && curve[first].first < window.freq_start_hz) {
-        ++first;
-    }
-    size_t end = first;
-    while (end < curve.size() && curve[end].first <= window.freq_end_hz) {
-        ++end;
-    }
-    return {first, end == 0 ? 0 : end - 1};
-}
-
-/// The frequency of the window's edge bin when it is the in-window maximum
-/// and rises above its inward neighbour: the peak sits at or past the edge.
-std::optional<float> edge_maximum(const BeltCurve& curve, BeltSweepWindow window) {
-    const auto [first, last] = window_bins(curve, window);
-    if (curve.empty() || first >= last) {
+/// The frequency of the window's edge bin when it is the window's maximum and
+/// rises above its inward neighbour: the peak sits at or past the edge.
+/// `window` holds only the in-window bins.
+std::optional<float> edge_maximum(const BeltCurve& window) {
+    if (window.size() < 2) {
         return std::nullopt;
     }
-    size_t top = first;
-    for (size_t i = first + 1; i <= last; ++i) {
-        if (curve[i].second > curve[top].second) {
-            top = i;
-        }
+    const auto top =
+        std::max_element(window.begin(), window.end(),
+                         [](const auto& l, const auto& r) { return l.second < r.second; });
+    if (top == window.begin() && window[0].second > window[1].second) {
+        return window.front().first;
     }
-    if (top == first && curve[first].second > curve[first + 1].second) {
-        return curve[first].first;
-    }
-    if (top == last && curve[last].second > curve[last - 1].second) {
-        return curve[last].first;
+    const size_t last = window.size() - 1;
+    if (top == window.begin() + static_cast<std::ptrdiff_t>(last) &&
+        window[last].second > window[last - 1].second) {
+        return window.back().first;
     }
     return std::nullopt;
 }
 
-/// Whether the in-window maximum stands PEAK_MIN_PROMINENCE above the
-/// in-window minimum. A flat or gently sloped window holds no clear peak.
-bool prominent(const BeltCurve& curve, BeltSweepWindow window) {
-    const auto [first, last] = window_bins(curve, window);
-    if (curve.empty() || first > last || last >= curve.size()) {
-        return false;
+float max_psd(const BeltCurve& curve) {
+    float top = 0.0f;
+    for (const auto& bin : curve) {
+        top = std::max(top, bin.second);
     }
-    float lo = curve[first].second;
-    float hi = curve[first].second;
-    for (size_t i = first + 1; i <= last; ++i) {
-        lo = std::min(lo, curve[i].second);
-        hi = std::max(hi, curve[i].second);
-    }
-    return hi > 0.0f && hi >= PEAK_MIN_PROMINENCE * lo;
+    return top;
+}
+
+/// The zone's looser path: the lower peak. `zone` is seen from PATH_A.
+BeltPath looser_path(const BeltTuneZone& zone) {
+    return zone.adj_hz <= zone.ref_hz ? BeltPath::PATH_A : BeltPath::PATH_B;
 }
 
 float round_to_turn_step(float turns) {
@@ -163,7 +149,7 @@ float round_to_turn_step(float turns) {
 // ============================================================================
 
 bool tallest_peak_unpaired(const BeltComparison& cmp) {
-    return cmp.valid && PeakCensus(cmp.peaks).unpaired_tallest().has_value();
+    return cmp.valid && PeakCensus(cmp).unpaired_tallest().has_value();
 }
 
 std::optional<BeltTuneZone> pick_tune_zone(const BeltComparison& cmp, BeltPath adjusted,
@@ -172,7 +158,7 @@ std::optional<BeltTuneZone> pick_tune_zone(const BeltComparison& cmp, BeltPath a
     if (!cmp.valid) {
         return std::nullopt;
     }
-    const PeakCensus census(cmp.peaks);
+    const PeakCensus census(cmp);
 
     const auto usable = [&](float a_hz, float b_hz) {
         return std::abs(a_hz - b_hz) > MATCHED_MIN_HZ &&
@@ -220,9 +206,49 @@ std::optional<BeltTuneZone> pick_tune_zone(const BeltComparison& cmp, BeltPath a
                      band_min_hz, band_max_hz);
 }
 
+std::optional<float> unexcited_floor_psd(const BeltCurve& curve, BeltSweepWindow window,
+                                         float band_min_hz, float band_max_hz) {
+    std::vector<float> outside;
+    for (const auto& bin : curve_in_band(curve, band_min_hz, band_max_hz)) {
+        if (bin.first < window.freq_start_hz || bin.first > window.freq_end_hz) {
+            outside.push_back(bin.second);
+        }
+    }
+    if (outside.size() < static_cast<size_t>(UNEXCITED_MIN_BINS)) {
+        return std::nullopt;
+    }
+    std::sort(outside.begin(), outside.end());
+    const size_t mid = outside.size() / 2;
+    return outside.size() % 2 == 1 ? outside[mid] : (outside[mid - 1] + outside[mid]) / 2.0f;
+}
+
+bool window_holds_peak(const BeltCurve& curve, BeltSweepWindow window, float band_min_hz,
+                       float band_max_hz) {
+    const BeltCurve x = curve_in_band(curve, window.freq_start_hz, window.freq_end_hz);
+    if (x.empty()) {
+        return false;
+    }
+    const float top = max_psd(x);
+    const float base =
+        unexcited_floor_psd(curve, window, band_min_hz, band_max_hz)
+            .value_or(std::min_element(x.begin(), x.end(), [](const auto& l, const auto& r) {
+                          return l.second < r.second;
+                      })->second);
+    return top > 0.0f && top >= PEAK_MIN_PROMINENCE * base;
+}
+
 std::optional<float> refine_peak_in_window(const BeltCurve& curve, BeltSweepWindow window,
-                                           std::optional<float> near_hz) {
-    const auto peaks = detect_belt_peaks(curve, window.freq_start_hz, window.freq_end_hz);
+                                           std::optional<float> near_hz,
+                                           std::optional<float> floor_psd) {
+    const BeltCurve x = curve_in_band(curve, window.freq_start_hz, window.freq_end_hz);
+    const float top = max_psd(x);
+    std::vector<BeltPeak> peaks;
+    for (const auto& p : detect_belt_peaks(x, window.freq_start_hz, window.freq_end_hz)) {
+        if (p.amplitude >= NEAR_PEAK_MIN_FRACTION * top &&
+            (!floor_psd || p.amplitude >= PEAK_MIN_PROMINENCE * *floor_psd)) {
+            peaks.push_back(p);
+        }
+    }
     if (peaks.empty()) {
         return std::nullopt;
     }
@@ -237,10 +263,10 @@ std::optional<float> refine_peak_in_window(const BeltCurve& curve, BeltSweepWind
                                    });
 
     // detect_belt_peaks copies bins, so the frequency matches exactly, and a
-    // peak always has both neighbours in the curve.
-    const auto it = std::find_if(curve.begin(), curve.end(),
+    // peak is never a window edge bin, so both neighbours are in the window.
+    const auto it = std::find_if(x.begin(), x.end(),
                                  [&](const auto& bin) { return bin.first == chosen->freq_hz; });
-    if (it == curve.begin() || it == curve.end() || std::next(it) == curve.end()) {
+    if (it == x.begin() || it == x.end() || std::next(it) == x.end()) {
         return chosen->freq_hz;
     }
     const auto& [f0, y0] = *std::prev(it);
@@ -274,7 +300,7 @@ BeltTuneSession::BeltTuneSession(const BeltCurve& a, const BeltCurve& b,
       kind_(kind), tolerance_hz_(std::max(matched_tolerance_hz(a), matched_tolerance_hz(b))),
       shape_warning_(tallest_peak_unpaired(round0)) {
     if (auto z = find_zone(matched_centres_hz_)) {
-        enter_zone(*z);
+        enter_zone(*z, looser_path(*z));
     }
 }
 
@@ -290,9 +316,8 @@ std::optional<BeltTuneZone> BeltTuneSession::find_zone(std::vector<float> matche
     }
 }
 
-void BeltTuneSession::enter_zone(const BeltTuneZone& zone) {
-    // zone is seen from PATH_A. The looser path, the lower peak, is adjusted.
-    const BeltPath path = zone.adj_hz <= zone.ref_hz ? BeltPath::PATH_A : BeltPath::PATH_B;
+void BeltTuneSession::enter_zone(const BeltTuneZone& zone, BeltPath path) {
+    // zone is seen from PATH_A.
     if (path != adjusted_) {
         clear_belt_history();
     }
@@ -308,6 +333,7 @@ void BeltTuneSession::enter_zone(const BeltTuneZone& zone) {
     adj_hz_ =
         refine_peak_in_window(adj_curve, zone_->window, zone_->adj_hz).value_or(zone_->adj_hz);
     previous_gap_hz_.reset();
+    window_widened_ = false;
     rounds_.clear();
     spdlog::debug("[BeltTune] Zone {:.1f}-{:.1f} Hz ({}), adjusting {}: {:.2f} vs {:.2f} Hz",
                   zone_->window.freq_start_hz, zone_->window.freq_end_hz,
@@ -318,6 +344,7 @@ void BeltTuneSession::enter_zone(const BeltTuneZone& zone) {
 void BeltTuneSession::clear_belt_history() {
     rate_samples_.clear();
     unmeasured_turns_ = 0.0f;
+    unmeasured_abs_turns_ = 0.0f;
     pending_turns_.reset();
 }
 
@@ -331,6 +358,7 @@ BeltPath BeltTuneSession::adjusted_path() const {
 
 void BeltTuneSession::swap_adjusted_path() {
     adjusted_ = adjusted_ == BeltPath::PATH_A ? BeltPath::PATH_B : BeltPath::PATH_A;
+    path_swapped_ = true;
     if (zone_) {
         std::swap(zone_->adj_hz, zone_->ref_hz);
     }
@@ -374,14 +402,6 @@ const BeltTuneRound& BeltTuneSession::add_round(const BeltCurve& a_window,
                                                 const BeltCurve& b_window) {
     const BeltTuneAdvice advised = advice();
     BeltTuneRound r;
-    if (kind_ == BeltTensionerKind::SCREW) {
-        r.turns_made = pending_turns_ ? pending_turns_ : advised.turns;
-        const float signed_turns =
-            advised.direction == BeltTurnDirection::TIGHTEN ? *r.turns_made : -*r.turns_made;
-        (adjusted_ == BeltPath::PATH_A ? total_turns_a_ : total_turns_b_) += signed_turns;
-        unmeasured_turns_ += signed_turns;
-    }
-    pending_turns_.reset();
     ++total_rounds_;
     r.ref_hz = ref_hz_;
     r.adj_hz = adj_hz_;
@@ -395,22 +415,44 @@ const BeltTuneRound& BeltTuneSession::add_round(const BeltCurve& a_window,
         return rounds_.back();
     };
 
+    const std::optional<float> pending = pending_turns_;
+    pending_turns_.reset();
     if (!zone_) {
         return finish(BeltTuneOutcome::NO_PEAK);
     }
+    if (kind_ == BeltTensionerKind::SCREW) {
+        // No turn is advised before a baseline, so only a recorded one counts.
+        r.turns_made = pending ? pending : needs_baseline_ ? std::nullopt : advised.turns;
+        if (r.turns_made) {
+            const float signed_turns =
+                advised.direction == BeltTurnDirection::TIGHTEN ? *r.turns_made : -*r.turns_made;
+            (adjusted_ == BeltPath::PATH_A ? total_turns_a_ : total_turns_b_) += signed_turns;
+            unmeasured_turns_ += signed_turns;
+            unmeasured_abs_turns_ += *r.turns_made;
+        }
+    }
+
     const BeltSweepWindow window = zone_->window;
     const BeltCurve& ref_curve = adjusted_ == BeltPath::PATH_A ? b_window : a_window;
     const BeltCurve& adj_curve = adjusted_ == BeltPath::PATH_A ? a_window : b_window;
-    if (!prominent(ref_curve, window) || !prominent(adj_curve, window)) {
+    if (!window_holds_peak(ref_curve, window, band_min_hz_, band_max_hz_) ||
+        !window_holds_peak(adj_curve, window, band_min_hz_, band_max_hz_)) {
         return finish(BeltTuneOutcome::NO_PEAK);
     }
-    const auto ref = refine_peak_in_window(ref_curve, window, ref_hz_);
-    const auto adj = refine_peak_in_window(adj_curve, window, adj_hz_);
+    const auto ref =
+        refine_peak_in_window(ref_curve, window, ref_hz_,
+                              unexcited_floor_psd(ref_curve, window, band_min_hz_, band_max_hz_));
+    const auto adj =
+        refine_peak_in_window(adj_curve, window, adj_hz_,
+                              unexcited_floor_psd(adj_curve, window, band_min_hz_, band_max_hz_));
 
     if (!adj) {
-        if (const auto edge = edge_maximum(adj_curve, window)) {
-            // A peak still past the edge after one move is not chased further.
-            if (!rounds_.empty() && rounds_.back().outcome == BeltTuneOutcome::OUT_OF_WINDOW) {
+        const auto edge =
+            edge_maximum(curve_in_band(adj_curve, window.freq_start_hz, window.freq_end_hz));
+        if (edge) {
+            // The window moves once per zone until a peak is measured again: a
+            // peak still past the edge is not chased to the band's end.
+            if (window_widened_) {
                 return finish(BeltTuneOutcome::NO_PEAK);
             }
             // Re-centre on the reference, reaching past the edge the adjusted
@@ -420,6 +462,7 @@ const BeltTuneRound& BeltTuneSession::add_round(const BeltCurve& a_window,
                                         std::abs(*edge - centre) + ZONE_MARGIN_HZ);
             zone_->window.freq_start_hz = std::max(band_min_hz_, centre - half);
             zone_->window.freq_end_hz = std::min(band_max_hz_, centre + half);
+            window_widened_ = true;
             return finish(BeltTuneOutcome::OUT_OF_WINDOW);
         }
     }
@@ -427,21 +470,34 @@ const BeltTuneRound& BeltTuneSession::add_round(const BeltCurve& a_window,
         return finish(BeltTuneOutcome::NO_PEAK);
     }
 
+    const bool baseline = needs_baseline_;
+    needs_baseline_ = false;
+    window_widened_ = false;
     const float prev_gap = gap_hz();
     const float move = *adj - adj_hz_;
     ref_hz_ = *ref;
     adj_hz_ = *adj;
     const float gap = gap_hz();
-    previous_gap_hz_ = prev_gap;
     r.ref_hz = ref_hz_;
     r.adj_hz = adj_hz_;
     r.gap_hz = gap;
 
-    if (std::abs(move) >= MIN_MOVE_HZ && unmeasured_turns_ != 0.0f) {
-        rate_samples_.push_back(std::abs(move) / std::abs(unmeasured_turns_));
+    // A sample needs the move and the turns behind it from the same zone, and
+    // turns that all went one way.
+    const bool one_direction = std::abs(unmeasured_turns_) >= unmeasured_abs_turns_ - 1e-6f;
+    if (!baseline && std::abs(move) >= MIN_MOVE_HZ && unmeasured_abs_turns_ > 0.0f &&
+        one_direction) {
+        rate_samples_.push_back(std::abs(move) / unmeasured_abs_turns_);
     }
     unmeasured_turns_ = 0.0f;
+    unmeasured_abs_turns_ = 0.0f;
 
+    if (baseline) {
+        previous_gap_hz_.reset();
+        return finish(std::abs(gap) <= tolerance_hz_ ? BeltTuneOutcome::MATCHED
+                                                     : BeltTuneOutcome::BASELINE);
+    }
+    previous_gap_hz_ = prev_gap;
     const float expected = advised.direction == BeltTurnDirection::TIGHTEN ? 1.0f : -1.0f;
     if (std::abs(gap) <= tolerance_hz_) {
         return finish(BeltTuneOutcome::MATCHED);
@@ -475,7 +531,8 @@ bool BeltTuneSession::next_zone() {
         return false;
     }
     matched_centres_hz_ = std::move(matched);
-    enter_zone(*z);
+    enter_zone(*z, path_swapped_ ? adjusted_ : looser_path(*z));
+    needs_baseline_ = true;
     return true;
 }
 
@@ -485,6 +542,10 @@ bool BeltTuneSession::has_next_zone() const {
         matched.push_back((zone_->ref_hz + zone_->adj_hz) / 2.0f);
     }
     return find_zone(std::move(matched)).has_value();
+}
+
+bool BeltTuneSession::needs_baseline() const {
+    return needs_baseline_;
 }
 
 std::optional<float> BeltTuneSession::hz_per_turn() const {
@@ -501,11 +562,22 @@ bool BeltTuneSession::show_mechanical_hint() const {
     if (shape_warning_) {
         return true;
     }
+    if (kind_ == BeltTensionerKind::SPRING) {
+        // A re-seat that does not improve the match points at the mechanics.
+        int without_improvement = 0;
+        for (auto it = rounds_.rbegin(); it != rounds_.rend(); ++it) {
+            if (it->outcome == BeltTuneOutcome::CLOSER || it->outcome == BeltTuneOutcome::MATCHED ||
+                it->outcome == BeltTuneOutcome::BASELINE) {
+                break;
+            }
+            ++without_improvement;
+        }
+        return without_improvement >= SPRING_STALL_ROUNDS;
+    }
     const auto unmatched = std::count_if(rounds_.begin(), rounds_.end(), [](const auto& r) {
         return r.outcome != BeltTuneOutcome::MATCHED;
     });
-    const int limit = kind_ == BeltTensionerKind::SPRING ? SPRING_STALL_ROUNDS : STALL_ROUNDS;
-    return unmatched >= limit;
+    return unmatched >= STALL_ROUNDS;
 }
 
 const std::vector<BeltTuneRound>& BeltTuneSession::rounds() const {

@@ -11,6 +11,7 @@
 
 using namespace helix::calibration;
 using helix::calibration::test::lorentzian_curve;
+using helix::calibration::test::windowed;
 
 namespace {
 
@@ -51,12 +52,19 @@ BeltTuneSession session_for(float a_hz, float b_hz, BeltTensionerKind kind) {
     return BeltTuneSession(a, b, compare_belt_paths(a, b, LO, HI), LO, HI, kind);
 }
 
-/// Both paths swept over the session's current zone window.
-const BeltTuneRound& sweep(BeltTuneSession& s, float a_hz, float b_hz) {
+/// The unexcited floor of a synthetic windowed sweep.
+constexpr float FLOOR = 0.01f;
+
+/// Both paths swept over the session's current zone window: driven bins
+/// inside it, the unexcited floor across the rest of the band.
+const BeltTuneRound& sweep_curves(BeltTuneSession& s, const BeltCurve& a, const BeltCurve& b) {
     REQUIRE(s.zone().has_value());
     const auto w = s.zone()->window;
-    return s.add_round(one_peak(a_hz, w.freq_start_hz, w.freq_end_hz + 0.5f),
-                       one_peak(b_hz, w.freq_start_hz, w.freq_end_hz + 0.5f));
+    return s.add_round(windowed(a, w, FLOOR), windowed(b, w, FLOOR));
+}
+
+const BeltTuneRound& sweep(BeltTuneSession& s, float a_hz, float b_hz) {
+    return sweep_curves(s, one_peak(a_hz), one_peak(b_hz));
 }
 
 BeltPeak pk(float hz, float amp) {
@@ -229,22 +237,32 @@ TEST_CASE("tune zone on real captures", "[belt][tune]") {
         CHECK(z->ref_hz == Catch::Approx(119.5f).margin(0.1f));
         CHECK(z->window.freq_end_hz - z->window.freq_start_hz <=
               2.0f * (belt_tune::ZONE_FALLBACK_MAX_HZ / 2.0f + belt_tune::ZONE_MARGIN_HZ));
+        // Midpoint 125.5 +- (12/2 + 5), clamped at the band top.
+        CHECK(z->window.freq_start_hz == Catch::Approx(114.5f).margin(0.5f));
+        CHECK(z->window.freq_end_hz == Catch::Approx(135.0f).margin(0.5f));
 
         BeltTuneSession s(a, b, cmp, 5.0f, 135.0f, BeltTensionerKind::SCREW);
         CHECK(s.show_mechanical_hint());
         CHECK(s.adjusted_path() == BeltPath::PATH_B);
     }
 
-    SECTION("K1C (98.9%): no zone, or one already within tolerance") {
+    SECTION("K1C (98.9%): no zone, because every strong pair is within a bin") {
         const auto a = load_fixture("k1c_axis_1_-1.csv");
         const auto b = load_fixture("k1c_axis_1_1.csv");
         const auto cmp = compare_belt_paths(a, b, 5.0f, 133.333f);
         REQUIRE(cmp.valid);
-        const auto z = pick_tune_zone(cmp, BeltPath::PATH_A, 5.0f, 133.333f, {});
-        if (z.has_value()) {
-            INFO("zone A " << z->adj_hz << " B " << z->ref_hz);
-            CHECK(std::abs(z->adj_hz - z->ref_hz) <= matched_tolerance_hz(a));
+        CHECK_FALSE(pick_tune_zone(cmp, BeltPath::PATH_A, 5.0f, 133.333f, {}).has_value());
+        CHECK_FALSE(tallest_peak_unpaired(cmp));
+        const float tolerance = std::max(matched_tolerance_hz(a), matched_tolerance_hz(b));
+        const float floor = belt_tune::ZONE_MIN_AMPLITUDE_FRACTION * cmp.band_max_psd;
+        REQUIRE_FALSE(cmp.peaks.pairs.empty());
+        for (const auto& p : cmp.peaks.pairs) {
+            INFO("pair " << p.a.freq_hz << " / " << p.b.freq_hz << " amps " << p.a.amplitude
+                         << " / " << p.b.amplitude << " floor " << floor);
+            CHECK(std::abs(p.a.freq_hz - p.b.freq_hz) <= tolerance);
         }
+        BeltTuneSession s(a, b, cmp, 5.0f, 133.333f, BeltTensionerKind::SCREW);
+        CHECK_FALSE(s.zone().has_value());
     }
 }
 
@@ -651,4 +669,226 @@ TEST_CASE("tune session: a pair within one bin is already matched", "[belt][tune
     CHECK(s.tolerance_hz() == Catch::Approx(1.5f).margin(0.01f));
     CHECK_FALSE(s.zone().has_value());
     CHECK_FALSE(s.has_next_zone());
+}
+
+// ============================================================================
+// Review fixes
+// ============================================================================
+
+TEST_CASE("tune zone: the amplitude floor follows the in-band maximum", "[belt][tune]") {
+    // Peaks alone put the floor at 20; a 400 band maximum puts it at 80.
+    auto c =
+        cmp_with({{pk(50.0f, 100.0f), pk(52.0f, 100.0f)}, {pk(80.0f, 60.0f), pk(86.0f, 60.0f)}});
+    auto z = pick_tune_zone(c, BeltPath::PATH_A, LO, HI, {});
+    REQUIRE(z.has_value());
+    REQUIRE(z->adj_hz == Catch::Approx(80.0f));
+    c.band_max_psd = 400.0f;
+    z = pick_tune_zone(c, BeltPath::PATH_A, LO, HI, {});
+    REQUIRE(z.has_value());
+    CHECK(z->adj_hz == Catch::Approx(50.0f));
+
+    // compare_belt_paths records the stronger curve's in-band maximum.
+    const auto a = lorentzian_curve({{60.0f, 5e3f}}, LO, HI);
+    const auto b = lorentzian_curve({{60.0f, 7e3f}}, LO, HI);
+    float top = 0.0f;
+    for (const auto& [f, v] : b) {
+        top = std::max(top, v);
+    }
+    CHECK(compare_belt_paths(a, b, LO, HI).band_max_psd == Catch::Approx(top));
+}
+
+TEST_CASE("tune peak: prominence over the unexcited floor", "[belt][tune]") {
+    SECTION("the real Voron B hump in a centred 20 Hz window holds a peak") {
+        const auto full = load_fixture("voron24_kalico_axis_1_1.csv");
+        const BeltSweepWindow w{109.5f, 129.5f};
+        const auto in_window = curve_in_band(full, w.freq_start_hz, w.freq_end_hz);
+        float lo = in_window.front().second, hi = lo;
+        for (const auto& [f, v] : in_window) {
+            lo = std::min(lo, v);
+            hi = std::max(hi, v);
+        }
+        // The hump is broad: inside the window it never reaches 1.5x its own minimum.
+        REQUIRE(hi < belt_tune::PEAK_MIN_PROMINENCE * lo);
+        float floor = hi;
+        for (const auto& [f, v] : curve_in_band(full, 5.0f, 135.0f)) {
+            floor = std::min(floor, v);
+        }
+        const auto swept = windowed(full, w, floor);
+        CHECK(window_holds_peak(swept, w, 5.0f, 135.0f));
+        const auto f =
+            refine_peak_in_window(swept, w, 119.5f, unexcited_floor_psd(swept, w, 5.0f, 135.0f));
+        REQUIRE(f.has_value());
+        CHECK(*f == Catch::Approx(119.5f).margin(1.0f));
+    }
+
+    SECTION("a window at the floor holds no peak") {
+        const BeltSweepWindow w{95.0f, 117.0f};
+        const auto flat = windowed(lorentzian_curve({}, LO, HI, 3200.0f / 4096.0f, 5.0f), w, 5.0f);
+        REQUIRE(unexcited_floor_psd(flat, w, LO, HI).has_value());
+        CHECK_FALSE(window_holds_peak(flat, w, LO, HI));
+    }
+
+    SECTION("with too few unexcited bins, the window's own minimum is the floor") {
+        const BeltSweepWindow w{95.0f, 117.0f};
+        const auto only_window = lorentzian_curve({{106.0f, 1e4f}}, 95.0f, 117.5f);
+        CHECK_FALSE(unexcited_floor_psd(only_window, w, LO, HI).has_value());
+        CHECK(window_holds_peak(only_window, w, LO, HI));
+    }
+
+    SECTION("candidates need the near-peak fraction and the floor prominence") {
+        // A sharp peak moved from 100 to 104, and a 15% ripple left at 100.
+        auto c = lorentzian_curve({{104.0f, 1e4f}}, 80.0f, 130.0f, 3200.0f / 4096.0f, 0.01f, 1.5f);
+        auto nearest = c.begin();
+        for (auto it = c.begin(); it != c.end(); ++it) {
+            if (std::abs(it->first - 100.0f) < std::abs(nearest->first - 100.0f)) {
+                nearest = it;
+            }
+        }
+        nearest->second += 1.5e3f;
+        const BeltSweepWindow w{90.0f, 120.0f};
+        REQUIRE(detect_belt_peaks(c, w.freq_start_hz, w.freq_end_hz).size() == 2);
+        const auto f = refine_peak_in_window(c, w, 100.0f);
+        REQUIRE(f.has_value());
+        CHECK(*f == Catch::Approx(104.0f).margin(0.2f));
+
+        // A 60% second peak competes, unless the floor puts it under 1.5x.
+        const auto two = lorentzian_curve({{95.0f, 1e4f}, {115.0f, 6e3f}}, 80.0f, 130.0f);
+        const BeltSweepWindow w2{85.0f, 125.0f};
+        const auto near_high = refine_peak_in_window(two, w2, 114.0f);
+        REQUIRE(near_high.has_value());
+        CHECK(*near_high == Catch::Approx(115.0f).margin(0.3f));
+        const auto floored = refine_peak_in_window(two, w2, 114.0f, 4.5e3f);
+        REQUIRE(floored.has_value());
+        CHECK(*floored == Catch::Approx(95.0f).margin(0.3f));
+    }
+}
+
+TEST_CASE("tune outcomes under LOOSEN advice", "[belt][tune]") {
+    // After the swap A, at 112, is adjusted against B at 100: loosen A.
+    auto s = session_for(112.0f, 100.0f, BeltTensionerKind::UNKNOWN);
+    s.swap_adjusted_path();
+    REQUIRE(s.adjusted_path() == BeltPath::PATH_A);
+    REQUIRE(s.advice().direction == BeltTurnDirection::LOOSEN);
+
+    SECTION("CLOSER") {
+        CHECK(sweep(s, 108.0f, 100.0f).outcome == BeltTuneOutcome::CLOSER);
+    }
+    SECTION("OVERSHOT") {
+        CHECK(sweep(s, 98.0f, 100.0f).outcome == BeltTuneOutcome::OVERSHOT);
+        CHECK(s.advice().direction == BeltTurnDirection::TIGHTEN);
+    }
+    SECTION("WRONG_WAY") {
+        CHECK(sweep(s, 114.0f, 100.0f).outcome == BeltTuneOutcome::WRONG_WAY);
+    }
+    SECTION("NO_MOVEMENT") {
+        CHECK(sweep(s, 111.7f, 100.0f).outcome == BeltTuneOutcome::NO_MOVEMENT);
+    }
+}
+
+TEST_CASE("tune OUT_OF_WINDOW: an edge-dominant window beside a ripple, once per zone",
+          "[belt][tune]") {
+    auto s = session_for(112.0f, 100.0f, BeltTensionerKind::UNKNOWN);
+
+    SECTION("a ripple left behind does not hide a peak past the edge") {
+        // B's peak ran to 120, past 117; a sharp 15% ripple stays at 100.
+        auto b = one_peak(120.0f);
+        for (auto& [f, v] : b) {
+            if (std::abs(f - 100.0f) < 0.4f) {
+                v += 1.5e3f;
+            }
+        }
+        CHECK(sweep_curves(s, one_peak(112.0f), b).outcome == BeltTuneOutcome::OUT_OF_WINDOW);
+    }
+
+    SECTION("O, then NO_PEAK until a peak is measured, then O again") {
+        CHECK(sweep(s, 112.0f, 125.0f).outcome == BeltTuneOutcome::OUT_OF_WINDOW);
+        const auto w = s.zone()->window;
+        CHECK(sweep(s, 112.0f, 125.0f).outcome == BeltTuneOutcome::NO_PEAK);
+        CHECK(sweep(s, 112.0f, 125.0f).outcome == BeltTuneOutcome::NO_PEAK);
+        CHECK(s.zone()->window.freq_end_hz == Catch::Approx(w.freq_end_hz));
+        CHECK(sweep(s, 112.0f, 115.0f).outcome == BeltTuneOutcome::OVERSHOT);
+        CHECK(sweep(s, 112.0f, 125.0f).outcome == BeltTuneOutcome::OUT_OF_WINDOW);
+    }
+}
+
+TEST_CASE("tune zones: a later zone starts from its own measurement", "[belt][tune]") {
+    // A is looser in both zones: 100 vs 104, then 47 vs 50.
+    const auto a = lorentzian_curve({{47.0f, 1e4f}, {100.0f, 1e4f}}, LO, HI);
+    const auto b = lorentzian_curve({{50.0f, 1e4f}, {104.0f, 1e4f}}, LO, HI);
+    const auto cmp = compare_belt_paths(a, b, LO, HI);
+    REQUIRE(cmp.peaks.pairs.size() == 2);
+    BeltTuneSession s(a, b, cmp, LO, HI, BeltTensionerKind::SCREW);
+    REQUIRE(s.adjusted_path() == BeltPath::PATH_A);
+    REQUIRE_FALSE(s.needs_baseline());
+
+    // A quarter turn takes A's 100 Hz mode to 104: 16 Hz/turn, matched.
+    REQUIRE(sweep_curves(s, lorentzian_curve({{48.5f, 1e4f}, {104.0f, 1e4f}}, LO, HI), b).outcome ==
+            BeltTuneOutcome::MATCHED);
+    REQUIRE(s.hz_per_turn() == Catch::Approx(16.0f).margin(0.5f));
+
+    REQUIRE(s.next_zone());
+    CHECK(s.adjusted_path() == BeltPath::PATH_A);
+    CHECK(s.needs_baseline());
+    // The first zone's turn already moved A's 47 Hz mode to 48.5: a baseline,
+    // not a 1.5 Hz move for the suggested quarter turn.
+    const auto& base =
+        sweep_curves(s, lorentzian_curve({{48.5f, 1e4f}, {104.0f, 1e4f}}, LO, HI), b);
+    CHECK(base.outcome == BeltTuneOutcome::BASELINE);
+    CHECK_FALSE(base.turns_made.has_value());
+    CHECK_FALSE(s.needs_baseline());
+    CHECK_FALSE(s.previous_gap_hz().has_value());
+    CHECK(s.adjusted_hz() == Catch::Approx(48.5f).margin(0.1f));
+    CHECK(s.hz_per_turn() == Catch::Approx(16.0f).margin(0.5f));
+    CHECK(s.total_turns(BeltPath::PATH_A) == Catch::Approx(0.25f));
+
+    // The next round measures this zone alone: the suggested eighth moved A
+    // 1 Hz, 8 Hz/turn; the median of 16 and 8 is 12.
+    const auto& r = sweep_curves(s, lorentzian_curve({{49.5f, 1e4f}, {104.0f, 1e4f}}, LO, HI), b);
+    CHECK(r.outcome == BeltTuneOutcome::MATCHED);
+    REQUIRE(s.previous_gap_hz().has_value());
+    CHECK(*s.previous_gap_hz() == Catch::Approx(-1.5f).margin(0.1f));
+    CHECK(r.turns_made == std::optional<float>(0.125f));
+    CHECK(s.hz_per_turn() == Catch::Approx(12.0f).margin(0.5f));
+}
+
+TEST_CASE("tune zones: a swap sticks across zones", "[belt][tune]") {
+    // A is the looser path in both zones; swapping to B in the first keeps B.
+    const auto a = lorentzian_curve({{47.0f, 1e4f}, {100.0f, 1e4f}}, LO, HI);
+    const auto b = lorentzian_curve({{50.0f, 1e4f}, {104.0f, 1e4f}}, LO, HI);
+    BeltTuneSession s(a, b, compare_belt_paths(a, b, LO, HI), LO, HI, BeltTensionerKind::UNKNOWN);
+    REQUIRE(s.adjusted_path() == BeltPath::PATH_A);
+    s.swap_adjusted_path();
+    sweep(s, 100.0f, 100.0f);
+    REQUIRE(s.zone_matched());
+    REQUIRE(s.next_zone());
+    CHECK(s.adjusted_path() == BeltPath::PATH_B);
+
+    BeltTuneSession t(a, b, compare_belt_paths(a, b, LO, HI), LO, HI, BeltTensionerKind::UNKNOWN);
+    sweep(t, 104.0f, 104.0f);
+    REQUIRE(t.zone_matched());
+    REQUIRE(t.next_zone());
+    CHECK(t.adjusted_path() == BeltPath::PATH_A);
+}
+
+TEST_CASE("tune hints: spring rounds that improve do not stall", "[belt][tune]") {
+    auto s = session_for(104.0f, 100.0f, BeltTensionerKind::SPRING);
+    REQUIRE_FALSE(s.show_mechanical_hint());
+    REQUIRE(sweep(s, 104.0f, 101.0f).outcome == BeltTuneOutcome::CLOSER);
+    REQUIRE(sweep(s, 104.0f, 102.0f).outcome == BeltTuneOutcome::CLOSER);
+    CHECK_FALSE(s.show_mechanical_hint());
+    REQUIRE(sweep(s, 104.0f, 102.1f).outcome == BeltTuneOutcome::NO_MOVEMENT);
+    CHECK_FALSE(s.show_mechanical_hint());
+    REQUIRE(sweep(s, 104.0f, 102.2f).outcome == BeltTuneOutcome::NO_MOVEMENT);
+    CHECK(s.show_mechanical_hint());
+}
+
+TEST_CASE("tune session: a round with no zone books no turns", "[belt][tune]") {
+    const auto a = lorentzian_curve({{99.5f, 1e4f}}, LO, HI, 1.5f);
+    const auto b = lorentzian_curve({{101.0f, 1e4f}}, LO, HI, 1.5f);
+    BeltTuneSession s(a, b, compare_belt_paths(a, b, LO, HI), LO, HI, BeltTensionerKind::SCREW);
+    REQUIRE_FALSE(s.zone().has_value());
+    s.record_turns(0.5f);
+    CHECK(s.add_round(a, b).outcome == BeltTuneOutcome::NO_PEAK);
+    CHECK(s.total_turns(BeltPath::PATH_A) == Catch::Approx(0.0f));
+    CHECK(s.total_turns(BeltPath::PATH_B) == Catch::Approx(0.0f));
 }

@@ -29,10 +29,7 @@ namespace helix::calibration {
 // pair_belt_peaks() / verdict_for_similarity() / compare_belt_paths()
 // ============================================================================
 
-namespace {
-
-/// The curve's bins with band_min_hz <= f <= band_max_hz, ascending frequency.
-BeltCurve in_band(const BeltCurve& curve, float band_min_hz, float band_max_hz) {
+BeltCurve curve_in_band(const BeltCurve& curve, float band_min_hz, float band_max_hz) {
     BeltCurve out;
     for (const auto& bin : curve) {
         if (bin.first >= band_min_hz && bin.first <= band_max_hz) {
@@ -41,6 +38,8 @@ BeltCurve in_band(const BeltCurve& curve, float band_min_hz, float band_max_hz) 
     }
     return out;
 }
+
+namespace {
 
 /// Linear interpolation at freq, clamped to the end bins outside the curve
 /// (numpy's np.interp semantics).
@@ -82,8 +81,8 @@ BeltVerdict verdict_for_similarity(float similarity_percent) {
 
 float band_similarity(const BeltCurve& a, const BeltCurve& b, float band_min_hz,
                       float band_max_hz) {
-    const BeltCurve xa = in_band(a, band_min_hz, band_max_hz);
-    const BeltCurve xb = in_band(b, band_min_hz, band_max_hz);
+    const BeltCurve xa = curve_in_band(a, band_min_hz, band_max_hz);
+    const BeltCurve xb = curve_in_band(b, band_min_hz, band_max_hz);
     if (xa.size() < 3 || xb.size() < 3) {
         return 0.0f;
     }
@@ -118,7 +117,7 @@ float band_similarity(const BeltCurve& a, const BeltCurve& b, float band_min_hz,
 
 std::vector<BeltPeak> detect_belt_peaks(const BeltCurve& curve, float band_min_hz,
                                         float band_max_hz) {
-    const BeltCurve x = in_band(curve, band_min_hz, band_max_hz);
+    const BeltCurve x = curve_in_band(curve, band_min_hz, band_max_hz);
     std::vector<BeltPeak> peaks;
     if (x.size() < 3) {
         return peaks;
@@ -208,11 +207,16 @@ BeltPeakPairing pair_belt_peaks(const std::vector<BeltPeak>& a, const std::vecto
 BeltComparison compare_belt_paths(const BeltCurve& a, const BeltCurve& b, float band_min_hz,
                                   float band_max_hz) {
     BeltComparison out;
-    if (in_band(a, band_min_hz, band_max_hz).size() < 3 ||
-        in_band(b, band_min_hz, band_max_hz).size() < 3) {
+    if (curve_in_band(a, band_min_hz, band_max_hz).size() < 3 ||
+        curve_in_band(b, band_min_hz, band_max_hz).size() < 3) {
         return out;
     }
     out.valid = true;
+    for (const auto* curve : {&a, &b}) {
+        for (const auto& bin : curve_in_band(*curve, band_min_hz, band_max_hz)) {
+            out.band_max_psd = std::max(out.band_max_psd, bin.second);
+        }
+    }
     out.similarity_percent = band_similarity(a, b, band_min_hz, band_max_hz);
     out.verdict = verdict_for_similarity(out.similarity_percent);
     out.peaks = pair_belt_peaks(detect_belt_peaks(a, band_min_hz, band_max_hz),

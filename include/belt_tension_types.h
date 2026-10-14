@@ -109,7 +109,11 @@ struct BeltComparison {
     float similarity_percent = 0.0f;
     BeltVerdict verdict = BeltVerdict::ADJUST; ///< from similarity only
     BeltPeakPairing peaks;
+    float band_max_psd = 0.0f; ///< the stronger curve's in-band maximum
 };
+
+/// The curve's bins with band_min_hz <= f <= band_max_hz, ascending frequency.
+[[nodiscard]] BeltCurve curve_in_band(const BeltCurve& curve, float band_min_hz, float band_max_hz);
 
 /// Pearson correlation x100 of the two curves inside the band, clamped to 0..100.
 /// B is linearly interpolated onto A's in-band frequencies. Returns 0 when either
