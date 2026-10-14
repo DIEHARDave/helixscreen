@@ -65,6 +65,7 @@ translations:
   -- kWh: -- кВт·ч
   --°C: --°C
   '...': '...'
+  /wk: '/нед.'
   0 = computed: 0 = вычислено
   0 events queued: 0 событий в очереди
   0 slots: '{0} Слотов'

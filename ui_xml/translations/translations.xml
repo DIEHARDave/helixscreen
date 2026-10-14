@@ -64,6 +64,7 @@
   <translation tag="-- kWh" de="-- kWh" en="-- kWh" es="-- kWh" fr="-- kWh" it="-- kWh" ja="-- kWh" pt="-- kWh" ru="-- кВт·ч" zh="-- kWh"/>
   <translation tag="--°C" de="--°C" en="--°C" es="--°C" fr="--°C" it="--°C" ja="--°C" pt="--°C" ru="--°C" zh="--°C"/>
   <translation tag="..." de="..." en="..." es="..." fr="..." it="..." ja="..." pt="..." ru="..." zh="..."/>
+  <translation tag="/wk" de="/Wo." en="/wk" es="/sem." fr="/sem." it="/sett." ja="/週" pt="/sem." ru="/нед." zh="/周"/>
   <translation tag="0 = computed" de="0 = berechnet" en="0 = computed" es="0 = calculado" fr="0 = calculé" it="0 = calcolato" ja="0 = 自動計算" pt="0 = calculado" ru="0 = вычислено" zh="0 = 自动计算"/>
   <translation tag="0 events queued" de="0 Ereignisse in Warteschlange" en="0 events queued" es="0 eventos en cola" fr="0 événement en file" it="0 eventi in coda" ja="待機中のイベントなし" pt="0 eventos na fila" ru="0 событий в очереди" zh="0 个事件已排队"/>
   <translation tag="0 slots" de="0 Slots" en="0 slots" es="0 ranuras" fr="0 emplacements" it="{0} Slot" ja="{0} スロット" pt="{0} Slots" ru="{0} Слотов" zh="{0} 个槽位"/>

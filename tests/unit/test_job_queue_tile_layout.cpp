@@ -160,3 +160,18 @@ TEST_CASE("job queue tile: fits is false below the strip and monotonic",
         }
     }
 }
+
+TEST_CASE("job queue tile: a Cell name on two lines takes the room under it",
+          "[job_queue_tile][layout]") {
+    auto in = input_for(100, 140);
+    CHECK(decide_job_queue_tile_layout(in).show_more);
+    in.cell_name_extra_h = 21;
+    CHECK_FALSE(decide_job_queue_tile_layout(in).show_more);
+    in.cell_name_extra_h = 20;
+    CHECK(decide_job_queue_tile_layout(in).show_more);
+
+    auto autonext = input_for(100, 140, JobQueueTileState::AutoNext);
+    CHECK(decide_job_queue_tile_layout(autonext).show_auto_line);
+    autonext.cell_name_extra_h = 11;
+    CHECK_FALSE(decide_job_queue_tile_layout(autonext).show_auto_line);
+}

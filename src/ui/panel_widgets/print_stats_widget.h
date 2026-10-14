@@ -52,8 +52,11 @@ class PrintStatsWidget : public PanelWidget {
     /// inside a ScopedFreeze.
     void refresh();
 
-    [[nodiscard]] PrintStatsTileVerdict
-    decide(int width_px, int height_px, PrintStatsContent content, bool lifetime_known) const;
+    /// @p hero and @p label are the texts the Strip would draw, for choosing its fonts.
+    [[nodiscard]] PrintStatsTileVerdict decide(int width_px, int height_px,
+                                               PrintStatsContent content, bool lifetime_known,
+                                               const std::string& hero = {},
+                                               const std::string& label = {}) const;
     void handle_clicked();
 
     /// The support line's two levels, from the lifetime totals.

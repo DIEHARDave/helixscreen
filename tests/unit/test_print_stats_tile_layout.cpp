@@ -148,3 +148,26 @@ TEST_CASE("print stats tile: fits is false below the strip and monotonic",
         }
     }
 }
+
+TEST_CASE("print stats tile: the Strip takes the largest fonts that hold its line whole",
+          "[print_stats_tile][layout]") {
+    auto in = input_for(100, 40);
+    // Widths per PrintStatsStripText, largest fonts first, the short label from 4.
+    const int widths[kPrintStatsStripTexts] = {126, 109, 92, 80, 70, 60, 50, 40};
+    for (int i = 0; i < kPrintStatsStripTexts; ++i)
+        in.strip_line_w[i] = widths[i];
+    CHECK(decide_print_stats_tile_layout(in).strip_text == PrintStatsStripText::BodyXsWeek);
+    in.content_w = 109;
+    CHECK(decide_print_stats_tile_layout(in).strip_text == PrintStatsStripText::BodyWeek);
+    // Nothing with the full label fits: the short label in the largest fonts that do.
+    in.content_w = 79;
+    in.needs.strip = rung_box(70, 40);
+    CHECK(decide_print_stats_tile_layout(in).strip_text == PrintStatsStripText::HeadingShort);
+    // Nothing fits at all: the smallest form.
+    for (int& w : in.strip_line_w)
+        w = 500;
+    CHECK(decide_print_stats_tile_layout(in).strip_text == PrintStatsStripText::SmallXsShort);
+    // Other rungs always draw the largest form.
+    CHECK(decide_print_stats_tile_layout(input_for(100, 120)).strip_text ==
+          PrintStatsStripText::HeadingWeek);
+}

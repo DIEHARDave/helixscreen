@@ -64,6 +64,7 @@
   <translation tag="-- kWh" zh="-- kWh"/>
   <translation tag="--°C" zh="--°C"/>
   <translation tag="..." zh="..."/>
+  <translation tag="/wk" zh="/周"/>
   <translation tag="0 = computed" zh="0 = 自动计算"/>
   <translation tag="0 events queued" zh="0 个事件已排队"/>
   <translation tag="0 slots" zh="{0} 个槽位"/>

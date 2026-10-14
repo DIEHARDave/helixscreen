@@ -38,6 +38,21 @@ enum class PrintStatsSupport : int {
     Full = 2,       ///< prints, hours and filament
 };
 
+/// How the Strip's one line is set, largest first: the hero and label fonts, and whether
+/// the label is the week's full wording or its short form ("/wk"). The values are the
+/// print_stats_strip_text subject ints. Every other rung draws HeadingWeek.
+enum class PrintStatsStripText : int {
+    HeadingWeek = 0, ///< hero font_heading, label font_small
+    BodyWeek = 1,    ///< hero font_body, label font_small
+    BodyXsWeek = 2,  ///< hero font_body, label font_xs
+    SmallXsWeek = 3, ///< hero font_small, label font_xs
+    HeadingShort = 4,
+    BodyShort = 5,
+    BodyXsShort = 6,
+    SmallXsShort = 7,
+};
+inline constexpr int kPrintStatsStripTexts = 8;
+
 struct PrintStatsTileLayoutInput {
     int content_w = 0; ///< the box the content draws in, chrome already subtracted
     int content_h = 0;
@@ -50,6 +65,9 @@ struct PrintStatsTileLayoutInput {
     int count_line_w = 0;
     int full_line_w = 0;
     int support_line_h = 0;
+    /// The Strip line's width, hero, gap and label, as each PrintStatsStripText would
+    /// draw it now.
+    int strip_line_w[kPrintStatsStripTexts] = {};
 };
 
 /// The published verdict. `rung` is SizeRung's int; the flags are 0/1 subjects.
@@ -60,12 +78,14 @@ struct PrintStatsTileVerdict {
     bool show_day_labels = false;
     bool side_by_side = false; ///< hero beside the bars rather than above them
     PrintStatsSupport support = PrintStatsSupport::None;
+    PrintStatsStripText strip_text = PrintStatsStripText::HeadingWeek;
 };
 
-/// Strip: the hours and "this week" on one line. Cell: the hours over "this week",
-/// with the lifetime print count under them where it fits. Wide: the hours beside the
-/// seven bars, over the lifetime line. Full: the hours over the bars, a weekday initial
-/// under each, then the lifetime line.
+/// Strip: the hours and "this week" on one line, in the largest fonts that hold it whole,
+/// then the short label the same way; the smallest short form when nothing fits. Cell: the hours
+/// over "this week", with the lifetime print count under them where it fits. Wide: the hours beside
+/// the seven bars, over the lifetime line. Full: the hours over the bars, a weekday initial under
+/// each, then the lifetime line.
 [[nodiscard]] constexpr PrintStatsTileVerdict
 decide_print_stats_tile_layout(const PrintStatsTileLayoutInput& in) {
     PrintStatsTileVerdict v;
@@ -76,6 +96,15 @@ decide_print_stats_tile_layout(const PrintStatsTileLayoutInput& in) {
     v.show_bars = r >= static_cast<int>(SizeRung::Wide) && activity;
     v.show_day_labels = v.show_bars && v.rung == SizeRung::Full;
     v.side_by_side = v.rung == SizeRung::Wide;
+    if (v.rung == SizeRung::Strip) {
+        v.strip_text = PrintStatsStripText::SmallXsShort;
+        for (int i = 0; i < kPrintStatsStripTexts; ++i) {
+            if (in.strip_line_w[i] <= in.content_w) {
+                v.strip_text = static_cast<PrintStatsStripText>(i);
+                break;
+            }
+        }
+    }
     if (v.rung == SizeRung::Strip || !in.lifetime_known || !activity)
         return v;
     const bool count_fits = in.count_line_w <= in.content_w;

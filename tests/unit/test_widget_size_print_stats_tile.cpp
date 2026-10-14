@@ -387,3 +387,28 @@ TEST_CASE_METHOD(PrintStatsTileFixture,
     CHECK(line.x2 >= bar.x2);
     CHECK(line.y1 >= bar.y2);
 }
+
+TEST_CASE_METHOD(PrintStatsTileFixture,
+                 "print stats tile: the Strip shrinks its fonts until the line fits whole",
+                 "[widget_size][print_stats]") {
+    seed({job(0, 3600)});
+    PanelWidgetHarness<PrintStatsWidget> h(test_screen());
+    h.resize(1, 1, kStrip.w, kStrip.h);
+    settle();
+    h.resize(1, 1, kStrip.w, kStrip.h);
+    REQUIRE(subject_int("print_stats_rung") == static_cast<int>(SizeRung::Strip));
+    CHECK(subject_int("print_stats_strip_text") !=
+          static_cast<int>(PrintStatsStripText::HeadingWeek));
+    lv_obj_t* label = h.child("ps_hero_label");
+    const std::string text = lv_label_get_text(label);
+    CHECK(text == subject_text("print_stats_hero_label"));
+    lv_point_t size{};
+    lv_text_get_size(&size, text.c_str(), lv_obj_get_style_text_font(label, LV_PART_MAIN), 0, 0,
+                     LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+    CHECK(size.x <= lv_obj_get_content_width(label));
+
+    // A roomier tile goes back to the heading font.
+    h.resize(1, 1, kFull.w, kFull.h);
+    CHECK(subject_int("print_stats_strip_text") ==
+          static_cast<int>(PrintStatsStripText::HeadingWeek));
+}

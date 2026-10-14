@@ -64,6 +64,7 @@ translations:
   -- kWh: -- kWh
   --°C: --°C
   '...': '...'
+  /wk: '/wk'
   0 = computed: 0 = computed
   0 events queued: 0 events queued
   0 slots: 0 slots

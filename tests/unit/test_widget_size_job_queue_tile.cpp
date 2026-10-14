@@ -130,7 +130,7 @@ Parts parts_of(PanelWidgetHarness<JobQueueWidget>& h) {
     Parts p;
     p.label_row = shown(h, "jq_label");
     p.thumb = shown(h, "jq_thumb");
-    p.detail = shown(h, "jq_detail");
+    p.detail = shown(h, "jq_detail") || shown(h, "jq_cell_next");
     p.more = shown(h, "jq_more");
     p.action_icon = shown(h, "jq_action_icon");
     p.action_cell = shown(h, "jq_action_cell");
@@ -361,18 +361,33 @@ TEST_CASE_METHOD(JobQueueTileFixture,
 
     PanelWidgetHarness<JobQueueWidget> h(test_screen());
     lv_area_t content;
-    for (const Box& b : {kCell, kWide}) {
-        INFO(b.w << "x" << b.h);
-        h.resize(1, 1, b.w, b.h);
-        REQUIRE(subject_int("jq_tile_rung") == static_cast<int>(b.rung));
-        lv_obj_t* hero = h.child("jq_hero");
-        REQUIRE(hero != nullptr);
-        CHECK(helix::test::held_to_one_line(hero));
-        lv_obj_get_content_coords(h.root(), &content);
-        lv_area_t hero_box;
-        lv_obj_get_coords(hero, &hero_box);
-        CHECK(hero_box.x2 <= content.x2);
-    }
+    h.resize(1, 1, kWide.w, kWide.h);
+    REQUIRE(subject_int("jq_tile_rung") == static_cast<int>(SizeRung::Wide));
+    lv_obj_t* hero = h.child("jq_hero");
+    REQUIRE(hero != nullptr);
+    CHECK(helix::test::held_to_one_line(hero));
+    lv_obj_get_content_coords(h.root(), &content);
+    lv_area_t box;
+    lv_obj_get_coords(hero, &box);
+    CHECK(box.x2 <= content.x2);
+
+    // A Cell wraps the name to two lines and cuts the rest with an ellipsis.
+    h.resize(1, 1, kCell.w, kCell.h);
+    REQUIRE(subject_int("jq_tile_rung") == static_cast<int>(SizeRung::Cell));
+    lv_obj_t* name = h.child("jq_cell_name");
+    REQUIRE(name != nullptr);
+    REQUIRE(shown(name));
+    CHECK_FALSE(shown(h, "jq_hero"));
+    const std::string cut = subject_text("jq_tile_cell_name");
+    const std::string ellipsis = "…";
+    REQUIRE(cut.size() > ellipsis.size());
+    CHECK(cut.substr(cut.size() - ellipsis.size()) == ellipsis);
+    const lv_font_t* font = lv_obj_get_style_text_font(name, LV_PART_MAIN);
+    CHECK(lv_obj_get_height(name) == 2 * lv_font_get_line_height(font));
+    lv_obj_get_coords(name, &box);
+    lv_obj_get_content_coords(h.root(), &content);
+    CHECK(box.y2 <= content.y2);
+
     h.resize(1, 1, kStrip.w, kStrip.h);
     lv_obj_t* icon = h.child("jq_action_icon");
     REQUIRE(icon != nullptr);
@@ -449,4 +464,26 @@ TEST_CASE_METHOD(JobQueueTileFixture, "job queue tile: fits_at refuses below the
     JobQueueWidget probe;
     CHECK_FALSE(probe.fits_at(60, 30));
     CHECK(probe.fits_at(kStrip.w, kStrip.h));
+}
+
+TEST_CASE_METHOD(JobQueueTileFixture,
+                 "job queue tile: a Cell names the next job alone under the count while printing",
+                 "[widget_size][job_queue]") {
+    set_automatic(true);
+    deliver(3);
+    set_print_active(true);
+    PanelWidgetHarness<JobQueueWidget> h(test_screen());
+    h.resize(1, 1, kCell.w, kCell.h);
+    REQUIRE(subject_int("jq_tile_rung") == static_cast<int>(SizeRung::Cell));
+    CHECK(subject_text("jq_tile_hero") == "3 queued");
+    CHECK(subject_text("jq_tile_cell_name") == "file-0");
+    CHECK(shown(h, "jq_cell_next"));
+    CHECK_FALSE(shown(h, "jq_detail"));
+    CHECK(shown(h, "jq_auto"));
+
+    h.resize(1, 1, kWide.w, kWide.h);
+    CHECK(subject_text("jq_tile_cell_name").empty());
+    CHECK(shown(h, "jq_detail"));
+    CHECK_FALSE(shown(h, "jq_cell_next"));
+    CHECK(subject_text("jq_tile_detail") == "Next: file-0");
 }

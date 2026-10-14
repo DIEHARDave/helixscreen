@@ -9,7 +9,8 @@
     texts, and seven day bars with their weekday initials; everything below binds off
     them. A tap opens the history dashboard.
 
-    Rungs: 1 strip (this week's hours and its label on one line), 3 cell (the hours over
+    Rungs: 1 strip (this week's hours and its label on one line, in the largest fonts
+    print_stats_strip_text says hold it whole), 3 cell (the hours over
     "this week", and the lifetime print count where it fits), 4 wide (the hours beside the
     seven bars, over the lifetime line), 5 full (the hours over the bars, a weekday initial
     under each bar, then the lifetime line).
@@ -27,6 +28,9 @@
            flex_track_place="start"/>
     <style name="ps_label_inline" flex_grow="1"/>
     <style name="ps_grow" flex_grow="1"/>
+    <style name="ps_font_body" text_font="#font_body"/>
+    <style name="ps_font_small" text_font="#font_small"/>
+    <style name="ps_font_xs" text_font="#font_xs"/>
   </styles>
   <view name="panel_widget_print_stats"
         extends="lv_obj" width="100%" height="100%" style_pad_hor="#space_sm" style_pad_ver="#space_xxs"
@@ -50,11 +54,16 @@
         <bind_style_if_not_eq name="ps_hero_stacked" subject="print_stats_rung" ref_value="1"/>
         <text_heading name="ps_hero" bind_text="print_stats_hero" clickable="false" event_bubble="true">
           <bind_flag_if_eq subject="print_stats_content" flag="hidden" ref_value="1"/>
+          <bind_style_if name="ps_font_body"
+                         cond="print_stats_strip_text eq 1 or print_stats_strip_text eq 2 or print_stats_strip_text eq 5 or print_stats_strip_text eq 6"/>
+          <bind_style_if name="ps_font_small" cond="print_stats_strip_text eq 3 or print_stats_strip_text eq 7"/>
         </text_heading>
         <text_small name="ps_hero_label"
                     bind_text="print_stats_hero_label" long_mode="dots" style_text_color="#text_muted" clickable="false"
                     event_bubble="true">
           <bind_style_if_eq name="ps_label_inline" subject="print_stats_rung" ref_value="1"/>
+          <bind_style_if name="ps_font_xs"
+                         cond="print_stats_strip_text eq 2 or print_stats_strip_text eq 3 or print_stats_strip_text eq 6 or print_stats_strip_text eq 7"/>
         </text_small>
       </lv_obj>
 

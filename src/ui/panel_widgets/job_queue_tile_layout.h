@@ -27,6 +27,8 @@ struct JobQueueTileLayoutInput {
     int more_line_h = 0; ///< what "+N more" adds under the name at Cell, gap included
     int list_row_h = 0;  ///< what one listed job adds at Full, gap included
     int auto_line_h = 0; ///< what "Starts automatically" adds at Cell, where it wraps
+    /// What the next job's name adds at Cell beyond its first line, when it wraps.
+    int cell_name_extra_h = 0;
 };
 
 /// The published verdict. `rung` is SizeRung's int; the flags are 0/1 subjects.
@@ -58,9 +60,9 @@ decide_job_queue_tile_layout(const JobQueueTileLayoutInput& in) {
     // A waiting job's detail is its estimate, which earns the thumbnail's width.
     v.show_detail = (waiting && r >= static_cast<int>(SizeRung::Wide)) || (printing && has_room);
     // At Cell the line wraps under the hero and shows only where the height holds it.
-    v.show_auto_line =
-        in.state == JobQueueTileState::AutoNext && has_room &&
-        (v.rung != SizeRung::Cell || in.content_h >= in.needs.cell.h + in.auto_line_h);
+    const int cell_h = in.needs.cell.h + in.cell_name_extra_h;
+    v.show_auto_line = in.state == JobQueueTileState::AutoNext && has_room &&
+                       (v.rung != SizeRung::Cell || in.content_h >= cell_h + in.auto_line_h);
     const bool has_queue = in.state != JobQueueTileState::Empty &&
                            in.state != JobQueueTileState::NotLoaded &&
                            in.state != JobQueueTileState::Unavailable;
@@ -72,8 +74,7 @@ decide_job_queue_tile_layout(const JobQueueTileLayoutInput& in) {
             std::max(0, std::min({kJobQueueTileListRows, in.job_count - 1, std::max(0, fit)}));
     }
     // "+N more" counts only what the tile does not already show.
-    const bool more_room =
-        v.rung != SizeRung::Cell || in.content_h >= in.needs.cell.h + in.more_line_h;
+    const bool more_room = v.rung != SizeRung::Cell || in.content_h >= cell_h + in.more_line_h;
     if (waiting && has_room && more_room) {
         v.more_count = std::max(0, in.job_count - 1 - v.list_rows);
     }

@@ -46,6 +46,7 @@ struct Subjects {
     lv_subject_t show_bars{};
     lv_subject_t show_day_labels{};
     lv_subject_t side_by_side{};
+    lv_subject_t strip_text{};
     lv_subject_t hero{};
     lv_subject_t hero_label{};
     lv_subject_t support_text{};
@@ -75,6 +76,9 @@ void print_stats_init_subjects() {
     UI_MANAGED_SUBJECT_INT(s_subj.show_bars, 0, "print_stats_show_bars", s_subjects);
     UI_MANAGED_SUBJECT_INT(s_subj.show_day_labels, 0, "print_stats_show_day_labels", s_subjects);
     UI_MANAGED_SUBJECT_INT(s_subj.side_by_side, 0, "print_stats_side_by_side", s_subjects);
+    UI_MANAGED_SUBJECT_INT(s_subj.strip_text,
+                           static_cast<int>(helix::PrintStatsStripText::HeadingWeek),
+                           "print_stats_strip_text", s_subjects);
     UI_MANAGED_SUBJECT_STRING(s_subj.hero, s_subj.hero_buf, "--", "print_stats_hero", s_subjects);
     UI_MANAGED_SUBJECT_STRING(s_subj.hero_label, s_subj.hero_label_buf, "",
                               "print_stats_hero_label", s_subjects);
@@ -107,6 +111,11 @@ void print_stats_init_subjects() {
 
 int line_px(const lv_font_t* font) {
     return font ? static_cast<int>(lv_font_get_line_height(font)) : 0;
+}
+
+/// The Strip's short label: "/wk" for this week's figure, the label itself otherwise.
+std::string strip_short_label(helix::PrintStatsContent content, const std::string& label) {
+    return content == helix::PrintStatsContent::Activity ? std::string(lv_tr("/wk")) : label;
 }
 
 /// The minimum content box each rung draws in. Mirrors panel_widget_print_stats.xml:
@@ -170,8 +179,9 @@ PrintStatsWidget::~PrintStatsWidget() {
 }
 
 PrintStatsTileVerdict PrintStatsWidget::decide(int width_px, int height_px,
-                                               PrintStatsContent content,
-                                               bool lifetime_known) const {
+                                               PrintStatsContent content, bool lifetime_known,
+                                               const std::string& hero,
+                                               const std::string& label) const {
     // The tree's own padding where it exists; before it does (the load path asks
     // fits_at then) the root's padding on each side plus its row gap.
     ContentChrome chrome;
@@ -194,6 +204,23 @@ PrintStatsTileVerdict PrintStatsWidget::decide(int width_px, int height_px,
         li.full_line_w = measure_text_px(full_line().c_str(), small);
     }
     li.support_line_h = line_px(small) + theme_manager_get_spacing("space_xxs");
+    // The Strip line in each font pair, the full label then the short one. The hero is
+    // hidden when there is no history, and so is its gap.
+    const lv_font_t* heading = theme_manager_get_font("font_heading");
+    const lv_font_t* body = theme_manager_get_font("font_body");
+    const lv_font_t* xs = theme_manager_get_font("font_xs");
+    const lv_font_t* hero_fonts[] = {heading, body, body, small};
+    const lv_font_t* label_fonts[] = {small, small, xs, xs};
+    const bool hero_shown = content != PrintStatsContent::NoHistory;
+    const std::string short_label = strip_short_label(content, label);
+    const int col_gap = theme_manager_get_spacing("space_xs");
+    for (int i = 0; i < kPrintStatsStripTexts; ++i) {
+        const int pair = i % 4;
+        const std::string& text = i < 4 ? label : short_label;
+        const int hero_w =
+            hero_shown ? measure_text_px(hero.c_str(), hero_fonts[pair]) + col_gap : 0;
+        li.strip_line_w[i] = hero_w + measure_text_px(text.c_str(), label_fonts[pair]);
+    }
     const auto& n = li.needs;
     spdlog::trace("[PrintStatsWidget] box {}x{} chrome {}x{} needs s{}x{} c{}x{} w{}x{} f{}x{} "
                   "content={}",
@@ -357,9 +384,6 @@ void PrintStatsWidget::refresh() {
     const int64_t lifetime_prints =
         lifetime_totals_valid_ ? static_cast<int64_t>(lifetime_totals_.total_jobs) : -1;
     const PrintStatsContent content = print_stats_content(loaded, cached_jobs, lifetime_prints);
-    const PrintStatsTileVerdict verdict =
-        decide(granted_w_, granted_h_, content, lifetime_totals_valid_);
-
     const ActivityDayStarts starts = local_day_starts(std::time(nullptr));
     const WeekActivity week = hm ? summarize_week(hm->get_jobs(), starts) : WeekActivity{};
     const auto bars = scale_day_bars(week.hours_by_day);
@@ -375,6 +399,11 @@ void PrintStatsWidget::refresh() {
             hero_label = lv_tr("No prints this week");
     }
 
+    const PrintStatsTileVerdict verdict =
+        decide(granted_w_, granted_h_, content, lifetime_totals_valid_, hero, hero_label);
+    if (verdict.strip_text >= PrintStatsStripText::HeadingShort)
+        hero_label = strip_short_label(content, hero_label);
+
     std::string support_text;
     if (verdict.support == PrintStatsSupport::PrintsOnly) {
         support_text = count_line();
@@ -388,6 +417,7 @@ void PrintStatsWidget::refresh() {
     helix::ui::set_int_if_changed(&s_subj.show_bars, verdict.show_bars ? 1 : 0);
     helix::ui::set_int_if_changed(&s_subj.show_day_labels, verdict.show_day_labels ? 1 : 0);
     helix::ui::set_int_if_changed(&s_subj.side_by_side, verdict.side_by_side ? 1 : 0);
+    helix::ui::set_int_if_changed(&s_subj.strip_text, static_cast<int>(verdict.strip_text));
     helix::ui::copy_string_if_changed(&s_subj.hero, hero.c_str());
     helix::ui::copy_string_if_changed(&s_subj.hero_label, hero_label.c_str());
     helix::ui::copy_string_if_changed(&s_subj.support_text, support_text.c_str());

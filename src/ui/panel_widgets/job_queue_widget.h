@@ -10,6 +10,8 @@
 #include "panel_widget.h"
 #include "src/ui/panel_widgets/job_queue_tile_layout.h"
 
+#include <string>
+
 namespace helix {
 
 /// Home tile for the job queue. Reads the queue into a JobQueueTileState, measures
@@ -39,8 +41,10 @@ class JobQueueWidget : public PanelWidget {
 
   private:
     [[nodiscard]] JobQueueTileInputs read_inputs() const;
+    /// @p cell_name, when given, gets the next job's name as a Cell draws it.
     [[nodiscard]] JobQueueTileVerdict decide(int width_px, int height_px,
-                                             const JobQueueTileInputs& in) const;
+                                             const JobQueueTileInputs& in,
+                                             std::string* cell_name = nullptr) const;
     /// Coalesces the observers' notifications into one refresh on the next tick.
     void schedule_refresh();
     void refresh();
@@ -49,6 +53,7 @@ class JobQueueWidget : public PanelWidget {
     int granted_w_ = 0;
     int granted_h_ = 0;
     JobQueueTileVerdict verdict_{};
+    std::string cell_name_; ///< the next job's name wrapped for the Cell, empty elsewhere
     bool refresh_pending_ = false;
 
     ObserverGuard count_observer_;

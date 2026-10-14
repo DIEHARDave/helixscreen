@@ -51,12 +51,14 @@ struct Subjects {
     lv_subject_t list_rows{};
     lv_subject_t hero{};
     lv_subject_t count{};
+    lv_subject_t cell_name{};
     lv_subject_t detail{};
     lv_subject_t more{};
     lv_subject_t action_text{};
     lv_subject_t after[helix::kJobQueueTileListRows]{};
     char hero_buf[320]{};
     char count_buf[16]{};
+    char cell_name_buf[320]{};
     char detail_buf[320]{};
     char more_buf[64]{};
     char action_text_buf[96]{};
@@ -85,6 +87,8 @@ void job_queue_init_subjects() {
     UI_MANAGED_SUBJECT_INT(s_subj.list_rows, 0, "jq_tile_list_rows", s_subjects);
     UI_MANAGED_SUBJECT_STRING(s_subj.hero, s_subj.hero_buf, "", "jq_tile_hero", s_subjects);
     UI_MANAGED_SUBJECT_STRING(s_subj.count, s_subj.count_buf, "", "jq_tile_count", s_subjects);
+    UI_MANAGED_SUBJECT_STRING(s_subj.cell_name, s_subj.cell_name_buf, "", "jq_tile_cell_name",
+                              s_subjects);
     UI_MANAGED_SUBJECT_STRING(s_subj.detail, s_subj.detail_buf, "", "jq_tile_detail", s_subjects);
     UI_MANAGED_SUBJECT_STRING(s_subj.more, s_subj.more_buf, "", "jq_tile_more", s_subjects);
     UI_MANAGED_SUBJECT_STRING(s_subj.action_text, s_subj.action_text_buf, "", "jq_tile_action_text",
@@ -123,6 +127,33 @@ int widest_word_px(const std::string& text, const lv_font_t* font) {
         start = end + 1;
     }
     return widest;
+}
+
+/// @p text as it fits @p width in @p font on at most @p max_lines wrapped lines, cut at
+/// the end with an ellipsis when it does not. @p lines_out gets the lines it takes.
+std::string fit_text_to_lines(const std::string& text, const lv_font_t* font, int width,
+                              int max_lines, int* lines_out) {
+    const int line_h = line_px(font);
+    const auto lines_of = [&](const std::string& t) {
+        lv_point_t size{};
+        lv_text_get_size(&size, t.c_str(), font, 0, 0, width, LV_TEXT_FLAG_NONE);
+        return line_h > 0 ? std::max(1, static_cast<int>(size.y) / line_h) : 1;
+    };
+    std::string fitted = text;
+    int lines = lines_of(fitted);
+    std::string base = text;
+    while (lines > max_lines && !base.empty()) {
+        // Drop one UTF-8 character: its continuation bytes, then its lead byte.
+        while (!base.empty() && (static_cast<unsigned char>(base.back()) & 0xC0) == 0x80)
+            base.pop_back();
+        if (!base.empty())
+            base.pop_back();
+        fitted = base + "…";
+        lines = lines_of(fitted);
+    }
+    if (lines_out)
+        *lines_out = std::min(lines, max_lines);
+    return fitted;
 }
 
 /// The fonts, spacing and line heights panel_widget_job_queue.xml draws with.
@@ -247,7 +278,10 @@ JobQueueTileInputs JobQueueWidget::read_inputs() const {
 }
 
 JobQueueTileVerdict JobQueueWidget::decide(int width_px, int height_px,
-                                           const JobQueueTileInputs& in) const {
+                                           const JobQueueTileInputs& in,
+                                           std::string* cell_name) const {
+    if (cell_name)
+        cell_name->clear();
     // The tree's own padding where it exists; before it does (the load path asks
     // fits_at then) the root's padding on each side plus its row gap.
     ContentChrome chrome;
@@ -277,6 +311,23 @@ JobQueueTileVerdict JobQueueWidget::decide(int width_px, int height_px,
                   "state={}",
                   width_px, height_px, chrome.w, chrome.h, n.strip.w, n.strip.h, n.cell.w, n.cell.h,
                   n.wide.w, n.wide.h, n.full.w, n.full.h, static_cast<int>(li.state));
+    JobQueueTileVerdict verdict = decide_job_queue_tile_layout(li);
+    if (verdict.rung != SizeRung::Cell)
+        return verdict;
+
+    // A Cell names the next job on up to two lines where the height holds the second,
+    // in the body font while it waits and in the small font under "N queued".
+    const bool counting =
+        li.state == JobQueueTileState::AutoNext || li.state == JobQueueTileState::Printing;
+    const lv_font_t* font = counting ? m.small : m.body;
+    const int line_h = counting ? m.small_h : m.body_h;
+    const int max_lines = li.content_h >= li.needs.cell.h + line_h ? 2 : 1;
+    int lines = 1;
+    std::string name = fit_text_to_lines(next_display_name(get_job_queue_state(), 0), font,
+                                         li.content_w, max_lines, &lines);
+    if (cell_name)
+        *cell_name = std::move(name);
+    li.cell_name_extra_h = (lines - 1) * line_h;
     return decide_job_queue_tile_layout(li);
 }
 
@@ -374,7 +425,7 @@ void JobQueueWidget::refresh() {
     if (granted_w_ <= 0 || granted_h_ <= 0)
         return;
     const JobQueueTileInputs in = read_inputs();
-    verdict_ = decide(granted_w_, granted_h_, in);
+    verdict_ = decide(granted_w_, granted_h_, in, &cell_name_);
     if (!s_tile.is_owner(this))
         return;
     publish(in);
@@ -404,6 +455,7 @@ void JobQueueWidget::publish(const JobQueueTileInputs& in) {
     helix::ui::copy_string_if_changed(&s_subj.hero, text.hero.c_str());
     helix::ui::copy_string_if_changed(&s_subj.count, text.count.c_str());
     helix::ui::copy_string_if_changed(&s_subj.detail, text.detail.c_str());
+    helix::ui::copy_string_if_changed(&s_subj.cell_name, cell_name_.c_str());
     helix::ui::copy_string_if_changed(&s_subj.more, text.more.c_str());
     helix::ui::copy_string_if_changed(
         &s_subj.action_text,
