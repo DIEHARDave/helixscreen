@@ -1,16 +1,17 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Runs ON the Pi through perf_run_remote with TYPE=<settings dropdown index> and optional
+# Runs ON the Pi through perf_run_remote with SAVER=<stable saver name, or off> and optional
 # SETTLE_S=<seconds> with no ctl traffic before a saver starts, for a gate idle baseline
 # (the last 10 s before a saver runs) that sees the app quiet.
-# TYPE=0 measures CPU on the idle home panel. Any other type starts that saver with the Test
-# Screensaver button, measures CPU for 20 s and traces ioctls for 10 s; the trace is left at
+# SAVER=off measures CPU on the idle home panel. Any other name starts that saver through
+# `ctl screensaver <name>`, the Test Screensaver path (a saver too heavy for the board runs its
+# fallback), measures CPU for 20 s and traces ioctls for 10 s; the trace is left at
 # /tmp/hm_strace.txt for the host to collect. Prints CPU, STOPPED_MIDRUN and STARTED lines.
 set -u
 PW=${PW:-}
 INSTALL=${INSTALL:?}
 CTL_SOCK=${CTL_SOCK:?}
-TYPE=${TYPE:-1}
+SAVER=${SAVER:-toasters}
 SETTLE_S=${SETTLE_S:-0}
 CTL_BIN="$INSTALL/bin/helix-screen-egl"
 
@@ -51,24 +52,17 @@ cpu_window() {
     rm -f /tmp/hm_s0 /tmp/hm_s1
 }
 
-ORIG_TYPE=$(python3 -c 'import json, sys; print(json.load(open(sys.argv[1]))["display"]["screensaver_type"])' "$INSTALL/config/settings.json")
 ctl navigate home
 sleep 2
 
-if [ "$TYPE" -eq 0 ]; then
+if [ "$SAVER" = off ]; then
     cpu_window 20
     exit 0
 fi
 
-ctl navigate settings
-sleep 1
-ctl click row_display
-sleep 1
-ctl set_value row_screensaver "$TYPE"
-sleep 1
 sleep "$SETTLE_S"
 T_START=$(date '+%Y-%m-%d %H:%M:%S')
-ctl click btn_test_screensaver
+ctl screensaver "$SAVER"
 sleep 5
 
 cpu_window 20
@@ -78,11 +72,5 @@ echo "STOPPED_MIDRUN $(sudo_ journalctl -u helixscreen --since "$T_START" --no-p
 echo "STARTED $(sudo_ journalctl -u helixscreen --since "$T_START" --no-pager -o cat 2>/dev/null | grep -c 'Started screensaver type')"
 
 ctl wake
-sleep 1
-ctl navigate settings
-sleep 1
-ctl click row_display
-sleep 1
-ctl set_value row_screensaver "$ORIG_TYPE"
 sleep 1
 ctl navigate home

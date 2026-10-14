@@ -3776,6 +3776,7 @@ translations:
   tall: 高さ
   target {}%: '目標 {}%'
   target {}°: '目標 {}°'
+  too slow: 遅すぎ
   tool(s): ツール
   used: 使用
   v%s available: v%s が利用可能です

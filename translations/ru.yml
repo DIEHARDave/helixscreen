@@ -3991,6 +3991,7 @@ translations:
   tall: высотой
   target {}%: 'цель {}%'
   target {}°: 'цель {}°'
+  too slow: слишком медленно
   tool(s): инструмент(ы)
   used: использ.
   v%s available: Доступна v%s

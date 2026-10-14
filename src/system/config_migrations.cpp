@@ -10,6 +10,7 @@
 #include "input_defaults.h"
 #include "json_utils.h"
 #include "platform_capabilities.h"
+#include "screensaver_setting.h"
 #include "text_io.h"
 
 #if !defined(HELIX_SPLASH_ONLY) && !defined(HELIX_WATCHDOG)
@@ -1259,6 +1260,29 @@ static void migrate_v26_to_v27(json& config, const std::string& /*config_path*/)
     }
 }
 
+/// Rewrite an integer /display/screensaver_type as the stable name it stood for, straight from
+/// the frozen legacy table and never through the live registry, so neither a reordered nor a
+/// removed saver changes what an old number becomes. An out-of-range number becomes the default
+/// saver. A string is already a name and is left as it is, as is any other JSON type, which the
+/// reader treats as the default.
+static void migrate_v27_to_v28(json& config, const std::string& /*config_path*/) {
+    if (!config.contains("display") || !config["display"].is_object()) {
+        return;
+    }
+    json& display = config["display"];
+    if (!display.contains("screensaver_type") || !display["screensaver_type"].is_number_integer()) {
+        return;
+    }
+    const json& stored = display["screensaver_type"];
+    const char* name = helix::ui::legacy_screensaver_name(stored.get<long long>());
+    if (name == nullptr) {
+        name = helix::ui::screensaver_name(helix::ui::DEFAULT_SCREENSAVER_TYPE);
+    }
+    spdlog::info("[Config] Migration v28: display.screensaver_type {} -> \"{}\"", stored.dump(),
+                 name);
+    display["screensaver_type"] = name;
+}
+
 using MigrationFn = void (*)(json& config, const std::string& config_path);
 
 /// The ladder, oldest first. A row runs when the document's stamp is below
@@ -1273,6 +1297,7 @@ constexpr struct {
     {19, migrate_v18_to_v19}, {20, migrate_v19_to_v20}, {21, migrate_v20_to_v21},
     {22, migrate_v21_to_v22}, {23, migrate_v22_to_v23}, {24, migrate_v23_to_v24},
     {25, migrate_v24_to_v25}, {26, migrate_v25_to_v26}, {27, migrate_v26_to_v27},
+    {28, migrate_v27_to_v28},
 };
 
 static_assert(kMigrations[std::size(kMigrations) - 1].to_version == CURRENT_CONFIG_VERSION,

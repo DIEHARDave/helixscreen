@@ -574,7 +574,7 @@ Force the screensaver to start immediately instead of waiting for the idle timeo
 
 | Property | Value |
 |----------|-------|
-| **Values** | A saver name from `include/screensaver_registry.h#"SCREENSAVERS[]"` (`toasters`, `starfield`, `pipes`, `bounce`, `fireworks`, `logo`, `maze`, `hyperspace`, `flipclock`), or `1` / any other value (uses the configured type, falling back to flying toasters) |
+| **Values** | A saver name from `include/screensaver_registry.h#"SCREENSAVERS[]"` (`toasters`, `starfield`, `pipes`, `bounce`, `fireworks`, `logo`, `maze`, `hyperspace`, `flipclock`), or `1` / any other value (uses the configured type, falling back to flying toasters). A saver stored as too heavy for the board runs its fallback, as the idle screen would (`docs/devel/SCREENSAVERS.md` § "The gate") |
 | **Default** | Unset — normal idle-timeout behavior |
 | **File** | `src/application/display_manager.cpp`, names in `include/screensaver_registry.h` |
 
@@ -655,7 +655,7 @@ Requires a build with `HELIX_ENABLE_SCREENSAVER`.
 
 ### `HELIX_SCREENSAVER_LEVEL`
 
-Runs every saver that starts at this quality level and turns the gate off for that run: no step-down and no stored level. Level 0 is the most expensive. A level past the saver's ladder is ignored with a warning, and the stored level is used. Read when a saver starts.
+Runs every saver that starts at this quality level and turns the gate off for that run: no step-down and no stored level. A saver stored as too heavy runs too, with no fallback, and the settings dropdown offers it. Level 0 is the most expensive. A level past the saver's ladder is ignored with a warning, and the stored level is used. Read when a saver starts.
 
 | Property | Value |
 |----------|-------|

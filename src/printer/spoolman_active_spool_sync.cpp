@@ -192,9 +192,13 @@ void attach(IMoonrakerClient& client, ISpoolmanAPI& spoolman) {
     // Sync external spool from Moonraker's active Spoolman spool. This ensures the
     // filament panel shows the correct spool on startup, even if the active spool was
     // changed via Spoolman's web UI or another client.
+    // The reply arrives on the WebSocket thread and sync_from_status() reads AmsState.
     spoolman.get_spoolman_status(
         [&spoolman](bool connected, int active_spool_id) {
-            sync_from_status(spoolman, connected, active_spool_id);
+            helix::ui::queue_update("spoolman_active_spool_sync::sync_from_status",
+                                    [&spoolman, connected, active_spool_id]() {
+                                        sync_from_status(spoolman, connected, active_spool_id);
+                                    });
         },
         [](const MoonrakerError& err) {
             spdlog::debug("[Application] Spoolman status unavailable: {}", err.message);

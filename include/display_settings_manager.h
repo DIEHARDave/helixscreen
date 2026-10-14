@@ -341,7 +341,7 @@ class DisplaySettingsManager {
     /** @brief Get screensaver type (a ScreensaverType value, include/screensaver_registry.h) */
     int get_screensaver_type() const;
 
-    /** @brief Set screensaver type (updates subject + persists) */
+    /** @brief Set screensaver type (updates subject, persists its stable name) */
     void set_screensaver_type(int type);
 #endif
 

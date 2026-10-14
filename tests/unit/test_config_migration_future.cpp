@@ -159,7 +159,8 @@ json future_config(int version) {
 ///
 /// Several values are deliberately set to what a migration's trigger looks for,
 /// so a replay is visible rather than a no-op:
-///   screensaver_type 1         — the v15→v16 Flying Toasters disable
+///   screensaver_type "toasters", Flying Toasters: the v15→v16 test swaps in the legacy
+///                                number 1, the only value that migration reads
 ///   sleep_backlight_off/hardware_blank — the v12→v13 / v14→v15 AD5X repair
 /// A user who deliberately chose any of these is indistinguishable, in the
 /// stored JSON, from a user who never touched it.
@@ -192,7 +193,7 @@ json populated_config() {
           {"rotate", 0},
           {"drm_device", "/dev/dri/card0"},
           {"gcode_render_mode", 1},
-          {"screensaver_type", 1},
+          {"screensaver_type", "toasters"},
           {"sleep_backlight_off", false},
           {"hardware_blank", 0}}},
         {"preset_materials",
@@ -538,20 +539,23 @@ TEST_CASE_METHOD(MigrationFutureFixture,
     } tier_guard;
     helix::config_testing::set_forced_tier_for_migration(helix::PlatformTier::BASIC);
 
-    // A current-stamp config runs no migration, so Flying Toasters standing at
-    // 1 here is the user's own choice — either they never hit v15→v16, or they
-    // hit it and re-selected the screensaver afterwards.
-    const json baseline = boot(populated_config());
+    // A current-stamp config runs no migration, so Flying Toasters standing
+    // here is the user's own choice: either they never hit v15→v16, or they
+    // hit it and re-selected the screensaver afterwards. It is the legacy number
+    // v15→v16 reads, as a backup from before v28 restored over this build holds.
+    json legacy_number = populated_config();
+    legacy_number["display"]["screensaver_type"] = 1;
+    const json baseline = boot(legacy_number);
     REQUIRE(baseline["display"]["screensaver_type"] == 1);
 
     // A rollback past the v15→v16 gate overrides that choice.
     const json replayed = replay_from(baseline, 15);
-    CHECK(replayed["display"]["screensaver_type"] == 0);
+    CHECK(replayed["display"]["screensaver_type"] == "off");
     CHECK(replayed["display"]["screensaver_migration_notice_pending"] == true);
 
     // One version later the gate is not crossed and the choice stands.
     const json safe = replay_from(baseline, 16);
-    CHECK(safe["display"]["screensaver_type"] == 1);
+    CHECK(safe["display"]["screensaver_type"] == "toasters");
     CHECK_FALSE(safe["display"].contains("screensaver_migration_notice_pending"));
 }
 

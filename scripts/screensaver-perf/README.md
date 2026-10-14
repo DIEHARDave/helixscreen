@@ -42,8 +42,12 @@ finishes. An arm has two halves and they take DIFFERENT variables: `WORKLOADS` s
 measurement passes (default `idle toasters starfield pipes`) and `SAVERS` selects the load gates
 (default `off toasters starfield pipes`). Setting only one leaves the other at its default, so
 `SAVERS="off fireworks"` gates fireworks while still measuring the default four. Workload names
-come from `perf_saver_type` in `perf_env.sh`: `idle`, `off` and `ui` run no saver, and `toasters`,
-`starfield`, `pipes`, `bounce` and `fireworks` each run that saver.
+come from `perf_saver_name` in `perf_env.sh`: `idle`, `off` and `ui` run no saver, and every
+stable saver name (`toasters`, `starfield`, `pipes`, `bounce`, `fireworks`, `logo`, `maze`,
+`hyperspace`, `flipclock`) runs that saver through `helix-screen ctl screensaver <name>`, the Test
+Screensaver path, which needs no settings change and so leaves the configured saver alone. A
+saver the board has marked too heavy runs its fallback there, so check the `STARTED` line's
+type before reading a number as that saver's.
 
 Before touching the Pi the arm asks the Moonraker in the app's settings for the print state and
 stops unless the printer is idle (`PRINT_STATE` in the log). Every arm runs with
