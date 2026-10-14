@@ -470,12 +470,12 @@ The table has two kinds of entry in `anchors`.
 exist so a cell can hold whichever widget this printer can use:
 
 ```json
-{ "slot": "spool_env",
-  "placements": { "medium": { "col": 8, "row": 0, "colspan": 4, "rowspan": 2 } },
+{ "slot": "spool_env_rl",
+  "placements": { "medium": { "col": 4, "row": 2, "colspan": 4, "rowspan": 2 } },
   "alternatives": [
     { "cells": [ { "candidates": ["ams"], "at": [0, 0, 4, 2] } ] },
-    { "cells": [ { "candidates": "ENV", "at": [0, 0, 2, 2] },
-                 { "candidates": "FIL", "at": [2, 0, 2, 2] } ] }
+    { "cells": [ { "candidates": "ENV_FIL", "at": [2, 0, 2, 2] },
+                 { "candidates": "ENV_FIL", "at": [0, 0, 2, 2] } ] }
   ] }
 ```
 
@@ -483,19 +483,30 @@ exist so a cell can hold whichever widget this printer can use:
   span is allowed only for a widget whose registry def has `supports_half_col` /
   `supports_half_row`.
 - `candidates` is an inline array or the name of a top-level `candidate_lists` entry. A
-  candidate is an id or `{"id", "requires": ["subject", ...]}`. The shipped lists are `ENV`
-  (dryer, chamber_temperature, led, clock, lock), `FIL` (filament, led, active_spool
-  requiring `printer_has_spoolman`, network, lock, macros), `ENV2`, `MESH` and `FILLER`.
+  candidate is an id or `{"id", "requires": ["subject", ...]}`. The shipped table has one
+  list, `ENV_FIL`: filament, dryer, chamber_temperature requiring `printer_is_enclosed` (a
+  chamber sensor on an open frame reads the room), led, and active_spool requiring
+  `printer_has_spoolman`. The bed mesh and the AMS are inline single-candidate lists.
 - **A candidate qualifies** when its registry gate subject is open, every subject in its
   `requires` is non-zero, and no earlier cell placed it. A gate subject that is not registered
   reads open; a `requires` subject that is not registered reads 0.
 - **Resolution order:** fixed anchors first, then slots in file order. Within a slot, the first
-  alternative whose lead (first cell's first candidate) qualifies wins; the last alternative has
-  no lead requirement. Each cell takes its first qualifying candidate. With a measured grid, an
-  alternative whose cells run off it gives way to a later one that stays on it.
-- **No dead tiles:** every candidate list ends in an ungated widget, so a cell is never a
-  dimmed gated tile. A fixed anchor is either an ungated widget or one whose gate is open on
-  every printer that reaches that tier; anything else is a slot.
+  alternative that fits the region and whose lead cell (its first cell) has a qualifying
+  candidate wins; the last alternative has no lead requirement. Each cell takes its first
+  qualifying candidate, so cells that share a list fill in the order they are written, across
+  slots too, and the cells left over stay empty. Authoring order is how a table decides where
+  a printer with fewer readouts shows its empty cells: the cell beside a declared gap or at an
+  edge is written last. With a measured grid, an alternative whose cells run off it gives way
+  to a later one that stays on it.
+- **No stand-ins:** every candidate is gated on hardware or a capability. A printer without
+  the hardware gets an empty cell, never a generic widget (clock, network, macros, motion,
+  z-offset and the like) filling space, and never a dimmed gated tile. A fixed anchor is
+  either an ungated widget or one whose gate is open on every printer that reaches that tier;
+  anything else is a slot.
+- **Planned gaps:** a table's `gaps` map lists, per placement key, the `[col, row, colspan,
+  rowspan]` blocks left empty on purpose. The resolver does not read it; the coverage test
+  does (below). Gaps are whole cells, grouped into one calm block where the tier allows, and a
+  neighbour is never grown into one.
 - **Losers are switched off:** every widget a candidate list of the active table names and the
   resolver did not place comes back in `ResolvedDefault::disabled` and is written
   `enabled: false`, so auto-placement never tries to seat it into a full grid. That includes the
@@ -508,8 +519,11 @@ exist so a cell can hold whichever widget this printer can use:
 ```json
 {
   "disabled": {
-    "micro": ["tips", "temp_graph"],
+    "micro": ["tips"],
     "medium": ["tips"]
+  },
+  "gaps": {
+    "large": [[8, 2, 8, 4]]
   },
   "variants": {
     "portrait": {
@@ -520,7 +534,7 @@ exist so a cell can hold whichever widget this printer can use:
 }
 ```
 
-A variant is either a bare anchor array or an object carrying `anchors` plus `disabled`; the
+A variant is either a bare anchor array or an object carrying `anchors`, `disabled` and `gaps`; the
 resolver uses the first variant in `LayoutManager::variant_chain()` with a non-empty `anchors`
 and falls back to the top-level table. A `disabled` map takes grid-qualified keys
 (`"micro@8x6"`) as well as tier names; see [Grid-qualified keys](#grid-qualified-keys).
@@ -556,7 +570,14 @@ the fallback warning above for why leaving one out is dangerous rather than mere
 the 320x240 micro panel (`micro@8x6`), the two ultratall portrait strips, 320x1480
 (`tiny@8x34`) and 440x1920 (`small@10x44`), and the 1080x2400 portrait panel
 (`xxlarge@14x32`), whose eight rows past the 14x24 table hold a taller temperature graph and
-a G-code console.
+a declared empty block.
+
+What every table shares: notifications in the top-right corner; temperatures, fans and the
+spool slot (the AMS tile, or a pair of `ENV_FIL` readouts) beside the printer image;
+print_status always placed. Micro (480x272) puts print_status (4x2 cells) beside the
+temperature graph (2x2); medium keeps the graph and leaves tips off; the ultrawide strips
+are two bands, the image, an empty span and the readout cluster on top, print_status and
+the graph sharing the bottom half and half.
 
 Inside a table, breakpoint keys are named rather than indexed - `micro`, `tiny`, `small`,
 `medium`, `large`, `xlarge`, `xxlarge` (seven, matching `UiBreakpoint`). A missing tier
@@ -635,12 +656,15 @@ has to fit. A bare key remains the catch-all for every grid with no entry of its
 `disabled` maps take the same keys. A grid-qualified list replaces the bare tier's list on
 that grid, so a grid too small for some of the tier's anchors switches them off there and
 nowhere else. The Creality Hi's 320x240 panel is micro on an 8x6 grid: `"micro@8x6"`
-switches off printer_image, fan_stack and notifications so print_status can be two cells
-tall (one cell has no room for its progress ring), and 480x272 keeps all three. Every entry
-with a bare key for the tier needs a grid-qualified placement or a place in that list, or it
-inherits the bare key's coordinates off the smaller grid. The "every measured grid is fully
-covered" case in `test_default_layout.cpp` resolves each measured grid with every gate open
-and every gate closed and fails on any uncovered track.
+switches off printer_image and fan_stack so print_status can be two cells tall (one cell has
+no room for its progress ring) under a top row of nozzle, bed, one `ENV_FIL` readout and
+notifications in the corner; 480x272 keeps both. Every entry with a bare key for the tier
+needs a grid-qualified placement or a place in that list, or it inherits the bare key's
+coordinates off the smaller grid. The "every measured grid is covered or declared empty" case
+in `test_default_layout.cpp` resolves each measured grid with every gate open, every gate
+open but no AMS, and every gate closed. With gates open the empty tracks must be exactly the
+grid's declared `gaps`; with gates closed an empty track must be a declared gap or a slot cell
+nothing qualified for. An undeclared hole fails, and so does an overlap.
 
 **An anchor that does not fit the measured grid is now dropped rather than clamped.**
 `build_default_grid(grid_cols, grid_rows)` checks each anchor against the grid it is being

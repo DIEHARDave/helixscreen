@@ -1780,14 +1780,14 @@ TEST_CASE("default_layout: an AMS printer fills the medium spool slot with the A
     auto* a = find_entry(entries, "ams");
     REQUIRE(a);
     CHECK(a->enabled);
-    CHECK(a->col == 8);
-    CHECK(a->row == 0);
+    CHECK(a->col == 4);
+    CHECK(a->row == 2);
     CHECK(a->colspan == 4);
     CHECK(a->rowspan == 2);
 
     // The slot's other alternative lost, so its candidates are switched off
     // rather than left for auto-placement to squeeze into a full grid.
-    for (const char* id : {"filament", "led", "dryer", "chamber_temperature", "clock"}) {
+    for (const char* id : {"filament", "led", "dryer", "chamber_temperature"}) {
         auto* off = find_entry(entries, id);
         REQUIRE(off);
         INFO("candidate " << id);
@@ -1797,8 +1797,9 @@ TEST_CASE("default_layout: an AMS printer fills the medium spool slot with the A
     require_every_default_widget_placed_or_off(entries);
 }
 
-TEST_CASE("default_layout: a printer without an AMS fills the medium spool slot from ENV and FIL",
-          "[default_layout][slot][shipped]") {
+TEST_CASE(
+    "default_layout: a printer without an AMS fills the medium spool slot from the graph side",
+    "[default_layout][slot][shipped]") {
     helix::test::ScopedBreakpoint bp(UiBreakpoint::Medium);
     LayoutTypeGuard landscape(800, 480);
     AmsSubjectGuard ams(0);
@@ -1810,16 +1811,19 @@ TEST_CASE("default_layout: a printer without an AMS fills the medium spool slot 
 
     auto entries = PanelWidgetConfig::build_default_grid(kMediumCols, kMediumRows);
 
-    auto* l = find_entry(entries, "led");
-    REQUIRE(l);
-    CHECK(l->is_placed());
-    CHECK(l->col == 8);
-    CHECK(l->row == 0);
+    // Both cells draw from ENV_FIL in the order they are written: the one
+    // beside the graph first, so a lone readout never strands an empty cell
+    // between two tiles.
     auto* f = find_entry(entries, "filament");
     REQUIRE(f);
     CHECK(f->is_placed());
-    CHECK(f->col == 10);
-    CHECK(f->row == 0);
+    CHECK(f->col == 6);
+    CHECK(f->row == 2);
+    auto* l = find_entry(entries, "led");
+    REQUIRE(l);
+    CHECK(l->is_placed());
+    CHECK(l->col == 4);
+    CHECK(l->row == 2);
 
     auto* a = find_entry(entries, "ams");
     REQUIRE(a);
@@ -1828,7 +1832,7 @@ TEST_CASE("default_layout: a printer without an AMS fills the medium spool slot 
     require_every_default_widget_placed_or_off(entries);
 }
 
-TEST_CASE("default_layout: a gate closed on every ENV candidate falls through to the clock",
+TEST_CASE("default_layout: a printer with no readout hardware leaves the medium spool slot empty",
           "[default_layout][slot][shipped]") {
     helix::test::ScopedBreakpoint bp(UiBreakpoint::Medium);
     LayoutTypeGuard landscape(800, 480);
@@ -1842,14 +1846,20 @@ TEST_CASE("default_layout: a gate closed on every ENV candidate falls through to
     std::string signature;
     auto entries = PanelWidgetConfig::build_default_grid(kMediumCols, kMediumRows, &signature);
 
-    auto* c = find_entry(entries, "clock");
-    REQUIRE(c);
-    CHECK(c->is_placed());
-    CHECK(c->col == 8);
-    CHECK(c->row == 0);
-    CHECK(c->colspan == 2);
-    CHECK(c->rowspan == 2);
-    for (const char* id : {"led", "filament"}) {
+    // No stand-in: the region (4,2,4,2) holds nothing at all.
+    for (const auto& e : entries) {
+        if (!e.enabled || !e.has_grid_position()) {
+            continue;
+        }
+        INFO("widget " << e.id << " at (" << e.col << "," << e.row << ") " << e.colspan << "x"
+                       << e.rowspan);
+        const bool overlaps =
+            e.col < 8 && e.col + e.colspan > 4 && e.row < 4 && e.row + e.rowspan > 2;
+        CHECK_FALSE(overlaps);
+    }
+    REQUIRE(find_entry(entries, "print_status"));
+    CHECK(find_entry(entries, "print_status")->is_placed());
+    for (const char* id : {"led", "filament", "clock"}) {
         auto* off = find_entry(entries, id);
         REQUIRE(off);
         INFO("candidate " << id);
@@ -1910,8 +1920,8 @@ TEST_CASE("default_layout: an AMS on a medium grid too narrow for the slot is au
     ScopedIntSubject fil("filament_sensor_count", 1);
     ScopedIntSubject spoolman("printer_has_spoolman", 0);
 
-    // The shipped region (8,0,4,2) ends at track 12; a 10-column grid cuts it.
-    auto entries = PanelWidgetConfig::build_default_grid(10, kMediumRows);
+    // The shipped region (4,2,4,2) ends at track 8; a 6-column grid cuts it.
+    auto entries = PanelWidgetConfig::build_default_grid(6, kMediumRows);
 
     auto* a = find_entry(entries, "ams");
     REQUIRE(a);
@@ -2096,47 +2106,77 @@ TEST_CASE("default_layout: every shipped span is one its widget can take",
     CHECK(spans > 0);
 }
 
-TEST_CASE("default_layout: every shipped candidate list ends in an ungated widget",
+TEST_CASE("default_layout: every shipped candidate is gated on hardware or a capability",
           "[default_layout][shipped][slot]") {
+    // A slot holds a readout the printer actually has, or nothing: no candidate
+    // is a stand-in that every printer qualifies for.
     const auto layout = load_shipped_layout();
-    auto check_tail = [](const std::string& what, const nlohmann::json& list) {
+    int candidates = 0;
+    auto check_list = [&](const std::string& what, const nlohmann::json& list) {
         INFO(what);
         REQUIRE(list.is_array());
         REQUIRE_FALSE(list.empty());
-        const auto& last = list.back();
-        const auto* def = helix::find_widget_def(candidate_id(last));
-        REQUIRE(def != nullptr);
-        CHECK(def->hardware_gate_subject == nullptr);
-        CHECK((last.is_string() || !last.contains("requires") || last["requires"].empty()));
+        for (const auto& c : list) {
+            const std::string id = candidate_id(c);
+            const auto* def = helix::find_widget_def(id);
+            INFO("candidate " << id);
+            REQUIRE(def != nullptr);
+            const bool has_requires =
+                c.is_object() && c.contains("requires") && !c["requires"].empty();
+            CHECK((def->hardware_gate_subject != nullptr || has_requires));
+            if (id == "chamber_temperature") {
+                // A chamber sensor on an open frame reads the room.
+                REQUIRE(has_requires);
+                const auto& req = c["requires"];
+                CHECK(std::find(req.begin(), req.end(), "printer_is_enclosed") != req.end());
+            }
+            ++candidates;
+        }
     };
 
-    int lists = 0;
     for (auto it = layout["candidate_lists"].begin(); it != layout["candidate_lists"].end(); ++it) {
-        check_tail("named list " + it.key(), it.value());
-        ++lists;
+        check_list("named list " + it.key(), it.value());
     }
     for (const auto& t : shipped_tables(layout)) {
         for (const auto& entry : (*t.table)["anchors"]) {
             if (!entry.contains("slot")) {
                 continue;
             }
-            const auto& alternatives = entry["alternatives"];
-            for (size_t a = 0; a < alternatives.size(); ++a) {
-                const auto& cells = alternatives[a]["cells"];
-                for (size_t c = 0; c < cells.size(); ++c) {
-                    // An alternative before the last is taken only when its lead
-                    // candidate qualifies, so its lead cell cannot come up empty.
-                    const bool guaranteed_lead = c == 0 && a + 1 < alternatives.size();
-                    if (cells[c]["candidates"].is_array() && !guaranteed_lead) {
-                        check_tail(t.name + " slot " + entry["slot"].get<std::string>(),
-                                   cells[c]["candidates"]);
-                        ++lists;
+            for (const auto& alt : entry["alternatives"]) {
+                for (const auto& cell : alt["cells"]) {
+                    if (cell["candidates"].is_array()) {
+                        check_list(t.name + " slot " + entry["slot"].get<std::string>(),
+                                   cell["candidates"]);
                     }
                 }
             }
         }
     }
-    CHECK(lists > 0);
+    CHECK(candidates > 0);
+}
+
+TEST_CASE("default_layout: no shipped table places a generic filler", "[default_layout][shipped]") {
+    const auto layout = load_shipped_layout();
+    std::set<std::string> named;
+    std::function<void(const nlohmann::json&)> walk = [&](const nlohmann::json& j) {
+        if (j.is_string()) {
+            named.insert(j.get<std::string>());
+        } else if (j.is_structured()) {
+            for (const auto& v : j) {
+                walk(v);
+            }
+        }
+    };
+    walk(layout["anchors"]);
+    walk(layout["candidate_lists"]);
+    walk(layout["variants"]);
+    REQUIRE(named.count("print_status") == 1);
+    for (const char* id :
+         {"z_offset", "speed_flow", "print_stats", "job_queue", "gcode_console", "control_buttons",
+          "preheat", "clock", "network", "lock", "motion", "macros", "favorite_macro"}) {
+        INFO("widget " << id);
+        CHECK(named.count(id) == 0);
+    }
 }
 
 TEST_CASE("default_layout: every shipped slot's last alternative fits every region it inherits",
@@ -2173,16 +2213,15 @@ TEST_CASE("default_layout: every shipped slot's last alternative fits every regi
     CHECK(checked > 0);
 }
 
-TEST_CASE("default_layout: every shipped slot cell fills with every gate closed",
+TEST_CASE("default_layout: every shipped slot stays empty with every gate closed",
           "[default_layout][shipped][slot]") {
-    // A printer that opens no gate and no `requires` subject still gets a full
-    // panel: each slot's region is covered by what the resolver placed. Ending
-    // a list in an ungated widget is not enough on its own, since a widget
-    // already placed by an earlier slot or anchor does not qualify again.
+    // A printer that opens no gate and no `requires` subject gets nothing in
+    // any slot region: the cells stay empty rather than taking a stand-in.
     const auto layout = load_shipped_layout();
     const CapabilitySnapshot closed = all_closed(layout);
     REQUIRE(closed.subjects.count("ams_slot_count") == 1);
     REQUIRE(closed.subjects.count("printer_has_spoolman") == 1);
+    REQUIRE(closed.subjects.count("printer_is_enclosed") == 1);
 
     struct Grid {
         std::string tier;
@@ -2212,12 +2251,6 @@ TEST_CASE("default_layout: every shipped slot cell fills with every gate closed"
             INFO("table " << t.name << " grid " << g.tier << "@" << g.cols << "x" << g.rows);
             REQUIRE(r.ok);
 
-            std::set<std::string> ids;
-            for (const auto& p : r.placed) {
-                INFO("placed twice: " << p.id);
-                CHECK(ids.insert(p.id).second);
-            }
-
             for (const auto& entry : (*t.table)["anchors"]) {
                 if (!entry.contains("slot")) {
                     continue;
@@ -2229,17 +2262,10 @@ TEST_CASE("default_layout: every shipped slot cell fills with every gate closed"
                 }
                 const AnchorRect region = rect_of("region", entry["placements"][key]);
                 ++regions;
-                for (int col = region.col; col < region.col + region.colspan; ++col) {
-                    for (int row = region.row; row < region.row + region.rowspan; ++row) {
-                        bool covered = false;
-                        for (const auto& p : r.placed) {
-                            covered = covered || (col >= p.col && col < p.col + p.colspan &&
-                                                  row >= p.row && row < p.row + p.rowspan);
-                        }
-                        INFO("slot " << entry["slot"].get<std::string>() << " track (" << col << ","
-                                     << row << ") is a hole");
-                        CHECK(covered);
-                    }
+                for (const auto& p : r.placed) {
+                    const AnchorRect placed{p.id, p.col, p.row, p.colspan, p.rowspan};
+                    INFO("slot " << entry["slot"].get<std::string>() << " holds " << p.id);
+                    CHECK_FALSE(anchors_overlap(region, placed));
                 }
             }
         }
@@ -2329,54 +2355,58 @@ struct Persona {
 // clang-format off
 const std::vector<Persona> kPersonas = {
     {"k2 medium: the CFS takes the spool slot as one 2x1 tile", "medium", 12, 8, {},
-     {{"ams_slot_count", 4}, {"led_controllable", 1}, {"filament_sensor_count", 0},
-      {"printer_has_chamber", 1}},
-     {{"ams", 8, 0, 4, 2}, {"printer_image", 0, 0, 4, 4}, {"temperature", 4, 0, 2, 2},
-      {"bed_temperature", 6, 0, 2, 2}, {"fan_stack", 4, 2, 2, 2}, {"notifications", 6, 2, 2, 2},
+     {{"ams_slot_count", 4}, {"led_controllable", 1}, {"printer_has_chamber", 1},
+      {"printer_is_enclosed", 1}},
+     {{"printer_image", 0, 0, 4, 4}, {"temperature", 4, 0, 2, 2}, {"bed_temperature", 6, 0, 2, 2},
+      {"fan_stack", 8, 0, 2, 2}, {"notifications", 10, 0, 2, 2}, {"ams", 4, 2, 4, 2},
       {"temp_graph", 8, 2, 4, 6}, {"print_status", 0, 4, 8, 4}},
-     {"filament", "led", "chamber_temperature", "clock", "network"}},
-    {"ad5m medium: chamber and filament, LED left off", "medium", 12, 8, {},
+     {"filament", "led", "chamber_temperature", "tips"}},
+    {"ad5m medium: an open frame's chamber sensor gets no tile", "medium", 12, 8, {},
      {{"printer_has_chamber", 1}, {"led_controllable", 1}, {"filament_sensor_count", 1}},
-     {{"printer_image", 0, 0, 4, 4}, {"temperature", 4, 0, 2, 2},
-      {"bed_temperature", 6, 0, 2, 2}, {"fan_stack", 4, 2, 2, 2}, {"notifications", 6, 2, 2, 2},
-      {"temp_graph", 8, 2, 4, 6}, {"print_status", 0, 4, 8, 4},
-      {"chamber_temperature", 8, 0, 2, 2}, {"filament", 10, 0, 2, 2}},
-     {"ams", "led", "active_spool", "clock"}},
-    {"ad5m with Spoolman: filament still leads the FIL cell", "medium", 12, 8, {},
+     {{"printer_image", 0, 0, 4, 4}, {"temperature", 4, 0, 2, 2}, {"bed_temperature", 6, 0, 2, 2},
+      {"fan_stack", 8, 0, 2, 2}, {"notifications", 10, 0, 2, 2}, {"filament", 6, 2, 2, 2},
+      {"led", 4, 2, 2, 2}, {"temp_graph", 8, 2, 4, 6}, {"print_status", 0, 4, 8, 4}},
+     {"ams", "chamber_temperature", "active_spool"}},
+    {"ad5m pro medium: an enclosed chamber leads the LED", "medium", 12, 8, {},
+     {{"printer_has_chamber", 1}, {"printer_is_enclosed", 1}, {"led_controllable", 1},
+      {"filament_sensor_count", 1}},
+     {{"printer_image", 0, 0, 4, 4}, {"temperature", 4, 0, 2, 2}, {"bed_temperature", 6, 0, 2, 2},
+      {"fan_stack", 8, 0, 2, 2}, {"notifications", 10, 0, 2, 2}, {"filament", 6, 2, 2, 2},
+      {"chamber_temperature", 4, 2, 2, 2}, {"temp_graph", 8, 2, 4, 6},
+      {"print_status", 0, 4, 8, 4}},
+     {"ams", "led"}},
+    {"ad5m with Spoolman: filament and LED keep the cells", "medium", 12, 8, {},
      {{"printer_has_chamber", 1}, {"led_controllable", 1}, {"filament_sensor_count", 1},
       {"printer_has_spoolman", 1}},
-     {{"printer_image", 0, 0, 4, 4}, {"temperature", 4, 0, 2, 2},
-      {"bed_temperature", 6, 0, 2, 2}, {"fan_stack", 4, 2, 2, 2}, {"notifications", 6, 2, 2, 2},
-      {"temp_graph", 8, 2, 4, 6}, {"print_status", 0, 4, 8, 4},
-      {"chamber_temperature", 8, 0, 2, 2}, {"filament", 10, 0, 2, 2}},
-     {"active_spool", "led"}},
-    {"ad5m with Spoolman and no filament sensor: LED leads active_spool", "medium", 12, 8, {},
-     {{"printer_has_chamber", 1}, {"led_controllable", 1}, {"printer_has_spoolman", 1}},
-     {{"printer_image", 0, 0, 4, 4}, {"temperature", 4, 0, 2, 2},
-      {"bed_temperature", 6, 0, 2, 2}, {"fan_stack", 4, 2, 2, 2}, {"notifications", 6, 2, 2, 2},
-      {"temp_graph", 8, 2, 4, 6}, {"print_status", 0, 4, 8, 4},
-      {"chamber_temperature", 8, 0, 2, 2}, {"led", 10, 0, 2, 2}},
-     {"active_spool", "filament"}},
-    {"Spoolman with no LED and no filament sensor: active_spool fills the FIL cell", "medium", 12, 8, {},
+     {{"printer_image", 0, 0, 4, 4}, {"temperature", 4, 0, 2, 2}, {"bed_temperature", 6, 0, 2, 2},
+      {"fan_stack", 8, 0, 2, 2}, {"notifications", 10, 0, 2, 2}, {"filament", 6, 2, 2, 2},
+      {"led", 4, 2, 2, 2}, {"temp_graph", 8, 2, 4, 6}, {"print_status", 0, 4, 8, 4}},
+     {"active_spool", "chamber_temperature"}},
+    {"Spoolman alone: active_spool beside the graph, the image-side cell empty", "medium", 12, 8, {},
      {{"printer_has_chamber", 1}, {"printer_has_spoolman", 1}},
-     {{"printer_image", 0, 0, 4, 4}, {"temperature", 4, 0, 2, 2},
-      {"bed_temperature", 6, 0, 2, 2}, {"fan_stack", 4, 2, 2, 2}, {"notifications", 6, 2, 2, 2},
-      {"temp_graph", 8, 2, 4, 6}, {"print_status", 0, 4, 8, 4},
-      {"chamber_temperature", 8, 0, 2, 2}, {"active_spool", 10, 0, 2, 2}},
-     {"network"}},
-    {"cc1 micro: LED and filament beside the fans", "micro", 12, 8, {},
+     {{"printer_image", 0, 0, 4, 4}, {"temperature", 4, 0, 2, 2}, {"bed_temperature", 6, 0, 2, 2},
+      {"fan_stack", 8, 0, 2, 2}, {"notifications", 10, 0, 2, 2}, {"active_spool", 6, 2, 2, 2},
+      {"temp_graph", 8, 2, 4, 6}, {"print_status", 0, 4, 8, 4}},
+     {"chamber_temperature", "led", "filament"}},
+    {"cc1 micro: print status beside the graph, filament and LED beside the fans", "micro", 12, 8, {},
      {{"led_controllable", 1}, {"filament_sensor_count", 1}},
      {{"printer_image", 0, 0, 6, 4}, {"temperature", 6, 0, 2, 2}, {"bed_temperature", 8, 0, 2, 2},
-      {"notifications", 10, 0, 2, 2}, {"fan_stack", 6, 2, 2, 2}, {"led", 8, 2, 2, 2},
-      {"filament", 10, 2, 2, 2}, {"print_status", 0, 4, 12, 4}},
-     {"ams", "tips", "temp_graph"}},
+      {"notifications", 10, 0, 2, 2}, {"fan_stack", 6, 2, 2, 2}, {"filament", 8, 2, 2, 2},
+      {"led", 10, 2, 2, 2}, {"print_status", 0, 4, 8, 4}, {"temp_graph", 8, 4, 4, 4}},
+     {"ams", "tips"}},
     {"qidi_q2 micro: the AMS takes the spool slot", "micro", 12, 8, {},
-     {{"ams_slot_count", 4}, {"printer_has_chamber", 1}, {"led_controllable", 1},
-      {"filament_sensor_count", 1}},
+     {{"ams_slot_count", 4}, {"printer_has_chamber", 1}, {"printer_is_enclosed", 1},
+      {"led_controllable", 1}, {"filament_sensor_count", 1}},
      {{"printer_image", 0, 0, 6, 4}, {"temperature", 6, 0, 2, 2}, {"bed_temperature", 8, 0, 2, 2},
       {"notifications", 10, 0, 2, 2}, {"fan_stack", 6, 2, 2, 2}, {"ams", 8, 2, 4, 2},
-      {"print_status", 0, 4, 12, 4}},
+      {"print_status", 0, 4, 8, 4}, {"temp_graph", 8, 4, 4, 4}},
      {"chamber_temperature", "led", "filament"}},
+    {"creality hi micro@8x6: one readout beside the temperatures, notifications in the corner",
+     "micro", 8, 6, {},
+     {{"led_controllable", 1}, {"filament_sensor_count", 1}},
+     {{"temperature", 0, 0, 2, 2}, {"bed_temperature", 2, 0, 2, 2}, {"filament", 4, 0, 2, 2},
+      {"notifications", 6, 0, 2, 2}, {"print_status", 0, 2, 8, 4}},
+     {"printer_image", "fan_stack", "led", "temp_graph", "ams"}},
     {"u1 tiny: the tool tile lists all four tools", "tiny", 10, 8, {},
      {{"ams_slot_count", 4}, {"led_controllable", 1}, {"filament_sensor_count", 1}},
      {{"printer_image", 0, 0, 4, 4}, {"temperature", 4, 0, 2, 2}, {"bed_temperature", 6, 0, 2, 2},
@@ -2384,59 +2414,69 @@ const std::vector<Persona> kPersonas = {
       {"print_status", 0, 4, 10, 4}},
      {"led", "filament"}},
     {"voron toolchanger medium: the tool tile takes the spool slot, no toolhead", "medium", 12, 8, {},
-     {{"ams_slot_count", 4}, {"printer_has_chamber", 1}, {"led_controllable", 1},
-      {"filament_sensor_count", 1}, {"printer_has_bed_mesh", 1}},
-     {{"printer_image", 0, 0, 4, 4}, {"temperature", 4, 0, 2, 2},
-      {"bed_temperature", 6, 0, 2, 2}, {"fan_stack", 4, 2, 2, 2}, {"notifications", 6, 2, 2, 2},
-      {"temp_graph", 8, 2, 4, 6}, {"print_status", 0, 4, 8, 4},
-      {"ams", 8, 0, 4, 2}},
-     {"toolhead", "chamber_temperature", "led", "filament"},
+     {{"ams_slot_count", 4}, {"printer_has_chamber", 1}, {"printer_is_enclosed", 1},
+      {"led_controllable", 1}, {"filament_sensor_count", 1}, {"printer_has_bed_mesh", 1}},
+     {{"printer_image", 0, 0, 4, 4}, {"temperature", 4, 0, 2, 2}, {"bed_temperature", 6, 0, 2, 2},
+      {"fan_stack", 8, 0, 2, 2}, {"notifications", 10, 0, 2, 2}, {"ams", 4, 2, 4, 2},
+      {"temp_graph", 8, 2, 4, 6}, {"print_status", 0, 4, 8, 4}},
+     {"toolhead", "chamber_temperature", "led", "filament", "bed_mesh_tile"},
      {{"ams_is_tool_changer", 1}}},
-    {"voron_24 large: print_stats in the freed 2x2, the bed mesh below it", "large", 16, 10, {},
-     {{"printer_has_chamber", 1}, {"led_controllable", 1}, {"filament_sensor_count", 1},
-      {"printer_has_bed_mesh", 1}},
+    {"voron_24 large: readouts fill toward the empty block, the bed mesh below it", "large", 16, 10, {},
+     {{"printer_has_chamber", 1}, {"printer_is_enclosed", 1}, {"led_controllable", 1},
+      {"filament_sensor_count", 1}, {"printer_has_bed_mesh", 1}},
      {{"printer_image", 0, 0, 4, 4}, {"temperature", 4, 0, 2, 2}, {"bed_temperature", 6, 0, 2, 2},
-      {"chamber_temperature", 8, 0, 2, 2}, {"filament", 10, 0, 2, 2}, {"led", 12, 0, 2, 2},
-      {"notifications", 14, 0, 2, 2}, {"fan_stack", 4, 2, 2, 2}, {"network", 6, 2, 2, 2},
-      {"z_offset", 8, 2, 4, 2}, {"print_stats", 12, 2, 4, 4}, {"print_status", 0, 4, 8, 4},
-      {"speed_flow", 8, 4, 4, 2}, {"temp_graph", 8, 6, 4, 4}, {"bed_mesh_tile", 12, 6, 4, 4},
-      {"tips", 0, 8, 8, 2}},
-     {"job_queue", "ams", "toolhead", "host_health", "exclude_map"}},
-    {"voron_24 large without a bed mesh: the job queue takes its place", "large", 16, 10, {},
-     {{"printer_has_chamber", 1}, {"led_controllable", 1}, {"filament_sensor_count", 1}},
+      {"filament", 8, 0, 2, 2}, {"chamber_temperature", 10, 0, 2, 2}, {"fan_stack", 12, 0, 2, 2},
+      {"notifications", 14, 0, 2, 2}, {"led", 4, 2, 2, 2}, {"print_status", 0, 4, 8, 4},
+      {"temp_graph", 8, 6, 4, 4}, {"bed_mesh_tile", 12, 6, 4, 4}, {"tips", 0, 8, 8, 2}},
+     {"ams", "toolhead", "host_health", "exclude_map", "job_queue", "print_stats"}},
+    {"voron_24 large without a bed mesh: the mesh cell stays empty", "large", 16, 10, {},
+     {{"printer_has_chamber", 1}, {"printer_is_enclosed", 1}, {"led_controllable", 1},
+      {"filament_sensor_count", 1}},
      {{"printer_image", 0, 0, 4, 4}, {"temperature", 4, 0, 2, 2}, {"bed_temperature", 6, 0, 2, 2},
-      {"chamber_temperature", 8, 0, 2, 2}, {"filament", 10, 0, 2, 2}, {"led", 12, 0, 2, 2},
-      {"notifications", 14, 0, 2, 2}, {"fan_stack", 4, 2, 2, 2}, {"network", 6, 2, 2, 2},
-      {"z_offset", 8, 2, 4, 2}, {"print_stats", 12, 2, 4, 4}, {"print_status", 0, 4, 8, 4},
-      {"speed_flow", 8, 4, 4, 2}, {"temp_graph", 8, 6, 4, 4}, {"job_queue", 12, 6, 4, 4},
-      {"tips", 0, 8, 8, 2}},
-     {"bed_mesh_tile"}},
-    {"voron_24 xxlarge: the 12x7-cell table, FILLER takes the clock", "xxlarge", 24, 14, {},
-     {{"printer_has_chamber", 1}, {"led_controllable", 1}, {"filament_sensor_count", 1},
-      {"printer_has_bed_mesh", 1}},
+      {"filament", 8, 0, 2, 2}, {"chamber_temperature", 10, 0, 2, 2}, {"fan_stack", 12, 0, 2, 2},
+      {"notifications", 14, 0, 2, 2}, {"led", 4, 2, 2, 2}, {"print_status", 0, 4, 8, 4},
+      {"temp_graph", 8, 6, 4, 4}, {"tips", 0, 8, 8, 2}},
+     {"bed_mesh_tile", "job_queue"}},
+    {"voron_24 xxlarge: the 12x7-cell table keeps the 72px cell", "xxlarge", 24, 14, {},
+     {{"printer_has_chamber", 1}, {"printer_is_enclosed", 1}, {"led_controllable", 1},
+      {"filament_sensor_count", 1}, {"printer_has_bed_mesh", 1}},
      {{"printer_image", 0, 0, 6, 6}, {"print_status", 6, 0, 10, 6}, {"temperature", 16, 0, 2, 2},
-      {"bed_temperature", 18, 0, 2, 2}, {"chamber_temperature", 20, 0, 2, 2},
-      {"filament", 22, 0, 2, 2}, {"fan_stack", 16, 2, 2, 2}, {"notifications", 18, 2, 2, 2},
-      {"led", 20, 2, 2, 2}, {"network", 22, 2, 2, 2}, {"z_offset", 16, 4, 4, 2},
-      {"speed_flow", 20, 4, 4, 2}, {"temp_graph", 0, 6, 16, 6}, {"tips", 0, 12, 16, 2},
-      {"bed_mesh_tile", 16, 6, 8, 4}, {"print_stats", 16, 10, 6, 4}, {"clock", 22, 10, 2, 4}},
-     {"job_queue", "lock", "toolhead", "host_health", "exclude_map"}},
-    {"voron_24 xxlarge without a bed mesh: the job queue spans the mesh region", "xxlarge", 24, 14, {},
-     {{"printer_has_chamber", 1}, {"led_controllable", 1}, {"filament_sensor_count", 1}},
+      {"bed_temperature", 18, 0, 2, 2}, {"fan_stack", 20, 0, 2, 2},
+      {"notifications", 22, 0, 2, 2}, {"filament", 16, 2, 2, 2},
+      {"chamber_temperature", 18, 2, 2, 2}, {"led", 20, 2, 2, 2},
+      {"bed_mesh_tile", 16, 4, 8, 4}, {"temp_graph", 0, 6, 16, 6}, {"tips", 0, 12, 16, 2}},
+     {"ams", "clock", "print_stats", "z_offset", "toolhead", "host_health", "exclude_map"}},
+    {"voron_24 xxlarge without a bed mesh: the mesh region stays empty", "xxlarge", 24, 14, {},
+     {{"printer_has_chamber", 1}, {"printer_is_enclosed", 1}, {"led_controllable", 1},
+      {"filament_sensor_count", 1}},
      {{"printer_image", 0, 0, 6, 6}, {"print_status", 6, 0, 10, 6}, {"temperature", 16, 0, 2, 2},
-      {"bed_temperature", 18, 0, 2, 2}, {"chamber_temperature", 20, 0, 2, 2},
-      {"filament", 22, 0, 2, 2}, {"fan_stack", 16, 2, 2, 2}, {"notifications", 18, 2, 2, 2},
-      {"led", 20, 2, 2, 2}, {"network", 22, 2, 2, 2}, {"z_offset", 16, 4, 4, 2},
-      {"speed_flow", 20, 4, 4, 2}, {"temp_graph", 0, 6, 16, 6}, {"tips", 0, 12, 16, 2},
-      {"job_queue", 16, 6, 8, 4}, {"print_stats", 16, 10, 6, 4}, {"clock", 22, 10, 2, 4}},
-     {"bed_mesh_tile"}},
-    {"k1 portrait medium: LED and filament under the print card", "medium", 8, 12, {"portrait"},
+      {"bed_temperature", 18, 0, 2, 2}, {"fan_stack", 20, 0, 2, 2},
+      {"notifications", 22, 0, 2, 2}, {"filament", 16, 2, 2, 2},
+      {"chamber_temperature", 18, 2, 2, 2}, {"led", 20, 2, 2, 2},
+      {"temp_graph", 0, 6, 16, 6}, {"tips", 0, 12, 16, 2}},
+     {"bed_mesh_tile", "job_queue"}},
+    {"k1 portrait medium: filament and LED beside the graph", "medium", 8, 12, {"portrait"},
      {{"led_controllable", 1}, {"filament_sensor_count", 1}},
      {{"printer_image", 0, 0, 4, 4}, {"temperature", 4, 0, 2, 2}, {"notifications", 6, 0, 2, 2},
       {"bed_temperature", 4, 2, 2, 2}, {"fan_stack", 6, 2, 2, 2}, {"tips", 0, 4, 8, 2},
-      {"print_status", 0, 6, 8, 4}, {"led", 0, 10, 2, 2}, {"filament", 2, 10, 2, 2},
-      {"temp_graph", 4, 10, 4, 2}},
+      {"print_status", 0, 6, 8, 4}, {"temp_graph", 0, 10, 4, 2}, {"filament", 4, 10, 2, 2},
+      {"led", 6, 10, 2, 2}},
      {"ams", "clock"}},
+    {"ultrawide 1920x440: image, empty span, readout cluster; print status beside the graph",
+     "small", 46, 10, {"ultrawide"},
+     {{"led_controllable", 1}, {"filament_sensor_count", 1}},
+     {{"printer_image", 0, 0, 8, 4}, {"temperature", 38, 0, 2, 2}, {"bed_temperature", 40, 0, 2, 2},
+      {"fan_stack", 42, 0, 2, 2}, {"notifications", 44, 0, 2, 2}, {"filament", 44, 2, 2, 2},
+      {"led", 42, 2, 2, 2}, {"print_status", 0, 4, 23, 6}, {"temp_graph", 23, 4, 23, 6}},
+     {"ams", "tips"}},
+    {"ultratall 440x1920: notifications in the corner, the bed mesh below the graph",
+     "small", 10, 44, {"portrait"},
+     {{"led_controllable", 1}, {"filament_sensor_count", 1}, {"printer_has_bed_mesh", 1}},
+     {{"printer_image", 0, 0, 6, 6}, {"temperature", 6, 0, 2, 2}, {"notifications", 8, 0, 2, 2},
+      {"bed_temperature", 6, 2, 2, 2}, {"fan_stack", 8, 2, 2, 2}, {"filament", 6, 4, 2, 2},
+      {"led", 8, 4, 2, 2}, {"tips", 0, 6, 10, 2}, {"print_status", 0, 8, 10, 6},
+      {"temp_graph", 0, 14, 10, 8}, {"bed_mesh_tile", 0, 22, 8, 6}},
+     {"ams", "gcode_console", "clock"}},
 };
 // clang-format on
 
@@ -2492,28 +2532,109 @@ TEST_CASE("default_layout: shipped tables resolve each printer persona",
     }
 }
 
-TEST_CASE("default_layout: every measured grid is fully covered with gates open and closed",
+namespace {
+
+/// The table the resolver reads for @p chain: the first variant in it with
+/// anchors, else the base.
+const nlohmann::json& active_table(const nlohmann::json& layout,
+                                   const std::vector<std::string>& chain) {
+    for (const auto& name : chain) {
+        if (layout["variants"].contains(name) && layout["variants"][name].is_object() &&
+            layout["variants"][name].contains("anchors")) {
+            return layout["variants"][name];
+        }
+    }
+    return layout;
+}
+
+using TrackSet = std::set<std::pair<int, int>>;
+
+void add_rect(TrackSet& out, int col, int row, int colspan, int rowspan) {
+    for (int r = row; r < row + rowspan; ++r) {
+        for (int c = col; c < col + colspan; ++c) {
+            out.insert({c, r});
+        }
+    }
+}
+
+/// The tracks @p table declares empty on purpose on this grid.
+TrackSet declared_gaps(const nlohmann::json& table, int bp, int cols, int rows) {
+    TrackSet out;
+    if (!table.contains("gaps")) {
+        return out;
+    }
+    const std::string key = helix::layout::choose_placement_key(
+        table["gaps"], static_cast<UiBreakpoint>(bp), cols, rows);
+    if (key.empty()) {
+        return out;
+    }
+    for (const auto& g : table["gaps"][key]) {
+        add_rect(out, g[0].get<int>(), g[1].get<int>(), g[2].get<int>(), g[3].get<int>());
+    }
+    return out;
+}
+
+/// The tracks of every slot region @p table resolves on this grid.
+TrackSet slot_regions(const nlohmann::json& table, int bp, int cols, int rows) {
+    TrackSet out;
+    for (const auto& entry : table["anchors"]) {
+        if (!entry.contains("slot")) {
+            continue;
+        }
+        const std::string key = helix::layout::choose_placement_key(
+            entry["placements"], static_cast<UiBreakpoint>(bp), cols, rows);
+        if (key.empty()) {
+            continue;
+        }
+        const auto& p = entry["placements"][key];
+        add_rect(out, p["col"].get<int>(), p["row"].get<int>(), p["colspan"].get<int>(),
+                 p["rowspan"].get<int>());
+    }
+    return out;
+}
+
+std::string describe(const TrackSet& tracks) {
+    std::string out;
+    for (const auto& [c, r] : tracks) {
+        out += " (" + std::to_string(c) + "," + std::to_string(r) + ")";
+    }
+    return out;
+}
+
+} // namespace
+
+TEST_CASE("default_layout: every measured grid is covered or declared empty",
           "[default_layout][shipped][coverage]") {
-    // The resolver's own output, with nothing left to auto-placement: every
-    // track of the grid belongs to exactly one tile, each tile at a span its
-    // widget can take, and print_status always placed because it is the only
-    // progress readout on home. Both gate extremes, since a slot that fills
-    // with every gate open can still leave a hole when they all close.
+    // The resolver's own output, with nothing left to auto-placement. Every
+    // track belongs to at most one tile, at a span its widget can take, and
+    // print_status is always placed because it is the only progress readout on
+    // home. An empty track is either a gap the table declares for this grid or,
+    // when the printer lacks the hardware, a slot cell nothing qualified for.
+    // With every gate open each slot fills, so the empty tracks are exactly the
+    // declared gaps, with or without an AMS taking its spool slot.
     const auto layout = load_shipped_layout();
     CapabilitySnapshot closed = all_closed(layout);
     CapabilitySnapshot open = closed;
     for (auto& [subject, value] : open.subjects) {
         value = subject == "ams_slot_count" ? 4 : 1;
     }
+    CapabilitySnapshot open_no_ams = open;
+    open_no_ams.subjects["ams_slot_count"] = 0;
 
     for (const auto& g : helix::test::kMeasuredGrids) {
         LayoutTypeGuard layout_type(g.panel_w, g.panel_h);
         const std::vector<std::string> chain = helix::LayoutManager::instance().variant_chain();
         const int bp = static_cast<int>(breakpoint_for(std::min(g.panel_w, g.panel_h)));
+        const auto& table = active_table(layout, chain);
+        const TrackSet gaps = declared_gaps(table, bp, g.cols, g.rows);
+        const TrackSet slots = slot_regions(table, bp, g.cols, g.rows);
 
-        for (const CapabilitySnapshot* caps : {&open, &closed}) {
+        for (const CapabilitySnapshot* caps : {&open, &open_no_ams, &closed}) {
+            const char* gates = caps == &open          ? "open"
+                                : caps == &open_no_ams ? "open, no AMS"
+                                                       : "closed";
             INFO(g.name << " (" << kBpNames[bp] << " " << g.cols << "x" << g.rows
-                        << " tracks), gates " << (caps == &open ? "open" : "closed"));
+                        << " tracks), gates " << gates);
             const ResolvedDefault r = helix::layout::resolve_default_layout(
                 layout, nullptr, kBpNames[bp], g.cols, g.rows, chain, "", *caps);
             REQUIRE(r.ok);
@@ -2547,16 +2668,29 @@ TEST_CASE("default_layout: every measured grid is fully covered with gates open 
                 }
             }
 
-            std::string holes;
+            TrackSet holes;
             for (int row = 0; row < g.rows; ++row) {
                 for (int col = 0; col < g.cols; ++col) {
                     if (owner[static_cast<size_t>(row)][static_cast<size_t>(col)].empty()) {
-                        holes += " (" + std::to_string(col) + "," + std::to_string(row) + ")";
+                        holes.insert({col, row});
                     }
                 }
             }
-            INFO("uncovered tracks:" << holes);
-            CHECK(holes.empty());
+            if (caps == &closed) {
+                TrackSet undeclared;
+                for (const auto& t : holes) {
+                    if (!gaps.count(t) && !slots.count(t)) {
+                        undeclared.insert(t);
+                    }
+                }
+                INFO(
+                    "empty tracks neither a declared gap nor a slot cell:" << describe(undeclared));
+                CHECK(undeclared.empty());
+            } else {
+                INFO("empty tracks:" << describe(holes));
+                INFO("declared gaps:" << describe(gaps));
+                CHECK(holes == gaps);
+            }
 
             CHECK(placed_widget(r, "print_status") != nullptr);
             for (const auto& def : helix::get_all_widget_defs()) {
@@ -2567,4 +2701,45 @@ TEST_CASE("default_layout: every measured grid is fully covered with gates open 
             }
         }
     }
+}
+
+TEST_CASE("default_layout: every declared gap is whole cells on its grid",
+          "[default_layout][shipped][coverage]") {
+    // A gap is breathing room a user can drop a widget into, so it is at least
+    // one whole cell and never straddles one.
+    const auto layout = load_shipped_layout();
+    int gaps = 0;
+    for (const auto& t : shipped_tables(layout)) {
+        if (!t.table->contains("gaps")) {
+            continue;
+        }
+        for (auto key = (*t.table)["gaps"].begin(); key != (*t.table)["gaps"].end(); ++key) {
+            const auto pk = parse_placement_key(key.key());
+            int cols = pk.cols;
+            int rows = pk.rows;
+            if (!pk.grid_qualified()) {
+                const auto b = t.budgets->find(pk.tier);
+                REQUIRE(b != t.budgets->end());
+                cols = b->second.cols;
+                rows = b->second.rows;
+            }
+            for (const auto& g : key.value()) {
+                INFO("table " << t.name << " key " << key.key() << " gap " << g.dump());
+                REQUIRE(g.is_array());
+                REQUIRE(g.size() == 4);
+                const int c = g[0].get<int>(), r = g[1].get<int>(), w = g[2].get<int>(),
+                          h = g[3].get<int>();
+                CHECK(c % 2 == 0);
+                CHECK(r % 2 == 0);
+                CHECK(w >= 2);
+                CHECK(h >= 2);
+                CHECK(w % 2 == 0);
+                CHECK(h % 2 == 0);
+                CHECK(c + w <= cols);
+                CHECK(r + h <= rows);
+                ++gaps;
+            }
+        }
+    }
+    CHECK(gaps > 0);
 }

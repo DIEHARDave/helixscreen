@@ -322,6 +322,49 @@ TEST_CASE("resolver: the last alternative has no lead requirement", "[default_la
     require_cell(r, "clock", 4, 2, 2, 2);
 }
 
+TEST_CASE("resolver: an earlier alternative is taken when any lead-cell candidate qualifies",
+          "[default_layout_resolver]") {
+    // The pair is not last, and its lead list opens with a closed gate: a later
+    // qualifying candidate in that cell still takes the pair over the single.
+    const json table = parse(R"json({"anchors": [
+      {"slot": "s", "placements": {"medium": {"col": 2, "row": 2, "colspan": 4, "rowspan": 2}},
+       "alternatives": [
+         {"cells": [{"candidates": ["dryer", "led", "filament"], "at": [0, 0, 2, 2]},
+                    {"candidates": ["dryer", "led", "filament"], "at": [2, 0, 2, 2]}]},
+         {"cells": [{"candidates": ["filament"], "at": [0, 0, 2, 2]}]}]}]})json");
+    CapabilitySnapshot caps;
+    caps.subjects["home_dryer_available"] = 0;
+    caps.subjects["led_controllable"] = 1;
+    caps.subjects["filament_sensor_count"] = 1;
+    const auto r = resolve(table, "medium", caps);
+    require_cell(r, "led", 2, 2, 2, 2);
+    require_cell(r, "filament", 4, 2, 2, 2);
+
+    // No candidate in the lead cell qualifies: the pair gives way.
+    caps.subjects["led_controllable"] = 0;
+    caps.subjects["filament_sensor_count"] = 0;
+    const auto none = resolve(table, "medium", caps);
+    CHECK(none.placed.empty());
+}
+
+TEST_CASE("resolver: cells sharing a list fill in written order and leave the rest empty",
+          "[default_layout_resolver]") {
+    const json table = parse(R"json({
+      "candidate_lists": {"R": ["filament", "dryer", "led"]},
+      "anchors": [
+      {"slot": "s", "placements": {"medium": {"col": 0, "row": 0, "colspan": 4, "rowspan": 2}},
+       "alternatives": [
+         {"cells": [{"candidates": "R", "at": [2, 0, 2, 2]},
+                    {"candidates": "R", "at": [0, 0, 2, 2]}]}]}]})json");
+    CapabilitySnapshot caps;
+    caps.subjects["filament_sensor_count"] = 1;
+    caps.subjects["home_dryer_available"] = 0;
+    caps.subjects["led_controllable"] = 0;
+    const auto r = resolve(table, "medium", caps);
+    REQUIRE(r.placed.size() == 1);
+    require_cell(r, "filament", 2, 0, 2, 2);
+}
+
 TEST_CASE("resolver: overlay replaces and removes by id and slot", "[default_layout_resolver]") {
     const json table = parse(kSlotTable);
     const json overlay = parse(R"json({"anchors": [

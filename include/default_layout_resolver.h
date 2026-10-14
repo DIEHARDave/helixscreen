@@ -21,13 +21,14 @@
 /// - a fixed anchor `{"id", "placements": {tier: {col,row,colspan,rowspan}}}`,
 ///   placed wherever its tier key says;
 /// - a slot `{"slot", "placements": {tier: region}, "alternatives": [...]}`,
-///   whose region is filled by the first alternative whose lead candidate
-///   qualifies. Each alternative is `{"cells": [{"candidates", "at"}]}`, `at`
-///   being `[col, row, colspan, rowspan]` relative to the region, and
-///   `candidates` either an inline array (ids, or `{"id", "requires": [...]}`)
-///   or the name of a top-level `candidate_lists` entry.
-///   With a measured grid, an alternative whose cells run off it gives way to
-///   a later one that stays on it; when none does, the region alone decides.
+///   whose region is filled by the first alternative whose lead cell has a
+///   qualifying candidate; the last alternative needs none. Each alternative is `{"cells":
+///   [{"candidates", "at"}]}`, `at` being `[col, row, colspan, rowspan]` relative to the region,
+///   and `candidates` either an inline array (ids, or `{"id", "requires": [...]}`) or the name of a
+///   top-level `candidate_lists` entry. Each cell takes the first qualifying candidate not already
+///   placed, so cells sharing a list fill in the order they are written and a cell with none stays
+///   empty. With a measured grid, an alternative whose cells run off it gives way to a later one
+///   that stays on it; when none does, the region alone decides.
 ///
 /// A table's `disabled` object lists widget ids switched off per placement key,
 /// chosen the way placements are, so a grid-qualified list replaces the bare

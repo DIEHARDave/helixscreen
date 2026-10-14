@@ -129,6 +129,7 @@ class LiveDefaultFixture : public LVGLUITestFixture {
         pin("ams_slot_count", ams_slots);
         pin("home_dryer_available", 0);
         pin("printer_has_chamber", 0);
+        pin("printer_is_enclosed", 0);
         pin("led_controllable", 1);
         pin("filament_sensor_count", 1);
         pin("printer_has_spoolman", 0);
@@ -249,11 +250,11 @@ class LiveDefaultFixture : public LVGLUITestFixture {
         const auto* ams = entry(panel, "ams");
         REQUIRE(ams != nullptr);
         CHECK(ams->is_placed());
-        CHECK(ams->col == 8);
-        CHECK(ams->row == 0);
+        CHECK(ams->col == 4);
+        CHECK(ams->row == 2);
         CHECK(ams->colspan == 4);
         CHECK(ams->rowspan == 2);
-        check_tile("ams", 8, 0, 4, 2);
+        check_tile("ams", 4, 2, 4, 2);
         CHECK_FALSE(entry(panel, "filament")->enabled);
         CHECK_FALSE(entry(panel, "led")->enabled);
         CHECK(lv_obj_find_by_name(container_, "filament") == nullptr);
@@ -265,8 +266,8 @@ class LiveDefaultFixture : public LVGLUITestFixture {
         CHECK(lv_obj_find_by_name(container_, "ams") == nullptr);
         CHECK(placed(panel, "led"));
         CHECK(placed(panel, "filament"));
-        check_tile("led", 8, 0, 2, 2);
-        check_tile("filament", 10, 0, 2, 2);
+        check_tile("filament", 6, 2, 2, 2);
+        check_tile("led", 4, 2, 2, 2);
     }
 
     /// Every enabled widget on the main page holds a cell.

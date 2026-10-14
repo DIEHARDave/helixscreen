@@ -1,46 +1,22 @@
 {
-  "_comment": "Default widget layout anchors in half-cell tracks (TRACKS_PER_CELL = 2). Spans are authored per tier against the square-cell track counts (each axis derived independently from the content box), NOT the pre-square-cell values doubled. Widgets not listed for a tier are auto-placed at their registry default_enabled, so switching one off needs an explicit entry in 'disabled'. A 'slot' entry fills its region with the first alternative whose lead candidate qualifies (gate open, every 'requires' subject non-zero, not already placed); 'candidates' is an inline list or a name in 'candidate_lists', and every candidate the slot passes over is switched off. 'at' is [col, row, colspan, rowspan] relative to the region. 'anchors' is the base (landscape) table; 'variants' holds per-layout overrides keyed by LayoutManager::variant_chain(). Breakpoint keys: micro(0), tiny(1), small(2), medium(3), large(4), xlarge(5), xxlarge(6). See include/ui_breakpoint.h.",
+  "_comment": "Default home layouts, in half-cell tracks (TRACKS_PER_CELL = 2), authored per tier against the square-cell track counts. Placement keys are a tier (micro, tiny, small, medium, large, xlarge, xxlarge; include/ui_breakpoint.h) or a tier on one measured grid ('<tier>@<cols>x<rows>'), which wins over the bare tier on that grid. 'anchors' is the landscape table; 'variants' holds per-layout tables keyed by LayoutManager::variant_chain(). A fixed anchor sits where its key says. A 'slot' fills its region with the first alternative that fits and whose lead cell has a qualifying candidate (gate open, every 'requires' subject non-zero, not already placed); the last alternative is taken whenever it fits. Each cell takes the first qualifying candidate of its list, so cells sharing a list fill in the order they are written and any cell left over stays empty; slots resolve in table order. 'at' is [col, row, colspan, rowspan] relative to the region. Candidate lists hold only hardware- or capability-gated widgets, so a printer without the hardware gets an empty cell, never a stand-in. Widgets not placed are auto-placed at their registry default_enabled, so 'disabled' switches a default-enabled widget off where a tier has no room for it. 'gaps' lists, per placement key, the [col, row, colspan, rowspan] blocks left empty on purpose: every track is a tile, a declared gap, or a slot cell with no qualifying candidate (tests/unit/test_default_layout.cpp coverage case). The resolver does not read 'gaps'.",
   "candidate_lists": {
-    "ENV": [
-      "dryer",
-      "chamber_temperature",
-      "led",
-      "clock",
-      "lock"
-    ],
-    "FIL": [
+    "ENV_FIL": [
       "filament",
+      "dryer",
+      {
+        "id": "chamber_temperature",
+        "requires": [
+          "printer_is_enclosed"
+        ]
+      },
       "led",
       {
         "id": "active_spool",
         "requires": [
           "printer_has_spoolman"
         ]
-      },
-      "network",
-      "lock",
-      "macros"
-    ],
-    "ENV2": [
-      "chamber_temperature",
-      "dryer",
-      "led",
-      "clock",
-      "lock",
-      "macros",
-      "motion",
-      "favorite_macro"
-    ],
-    "MESH": [
-      "bed_mesh_tile",
-      "job_queue"
-    ],
-    "FILLER": [
-      "clock",
-      "network",
-      "lock",
-      "macros",
-      "motion"
+      }
     ]
   },
   "anchors": [
@@ -198,53 +174,6 @@
       }
     },
     {
-      "id": "notifications",
-      "placements": {
-        "micro": {
-          "col": 10,
-          "row": 0,
-          "colspan": 2,
-          "rowspan": 2
-        },
-        "tiny": {
-          "col": 8,
-          "row": 0,
-          "colspan": 2,
-          "rowspan": 2
-        },
-        "small": {
-          "col": 8,
-          "row": 0,
-          "colspan": 2,
-          "rowspan": 2
-        },
-        "medium": {
-          "col": 6,
-          "row": 2,
-          "colspan": 2,
-          "rowspan": 2
-        },
-        "large": {
-          "col": 14,
-          "row": 0,
-          "colspan": 2,
-          "rowspan": 2
-        },
-        "xlarge": {
-          "col": 14,
-          "row": 0,
-          "colspan": 2,
-          "rowspan": 2
-        },
-        "xxlarge": {
-          "col": 18,
-          "row": 2,
-          "colspan": 2,
-          "rowspan": 2
-        }
-      }
-    },
-    {
       "id": "fan_stack",
       "placements": {
         "micro": {
@@ -266,26 +195,79 @@
           "rowspan": 2
         },
         "medium": {
-          "col": 4,
-          "row": 2,
+          "col": 8,
+          "row": 0,
           "colspan": 2,
           "rowspan": 2
         },
         "large": {
-          "col": 4,
-          "row": 2,
+          "col": 12,
+          "row": 0,
           "colspan": 2,
           "rowspan": 2
         },
         "xlarge": {
-          "col": 4,
-          "row": 2,
+          "col": 12,
+          "row": 0,
           "colspan": 2,
           "rowspan": 2
         },
         "xxlarge": {
-          "col": 16,
-          "row": 2,
+          "col": 20,
+          "row": 0,
+          "colspan": 2,
+          "rowspan": 2
+        }
+      }
+    },
+    {
+      "id": "notifications",
+      "placements": {
+        "micro": {
+          "col": 10,
+          "row": 0,
+          "colspan": 2,
+          "rowspan": 2
+        },
+        "micro@8x6": {
+          "col": 6,
+          "row": 0,
+          "colspan": 2,
+          "rowspan": 2
+        },
+        "tiny": {
+          "col": 8,
+          "row": 0,
+          "colspan": 2,
+          "rowspan": 2
+        },
+        "small": {
+          "col": 8,
+          "row": 0,
+          "colspan": 2,
+          "rowspan": 2
+        },
+        "medium": {
+          "col": 10,
+          "row": 0,
+          "colspan": 2,
+          "rowspan": 2
+        },
+        "large": {
+          "col": 14,
+          "row": 0,
+          "colspan": 2,
+          "rowspan": 2
+        },
+        "xlarge": {
+          "col": 14,
+          "row": 0,
+          "colspan": 2,
+          "rowspan": 2
+        },
+        "xxlarge": {
+          "col": 22,
+          "row": 0,
           "colspan": 2,
           "rowspan": 2
         }
@@ -300,7 +282,7 @@
         "micro": {
           "col": 0,
           "row": 4,
-          "colspan": 12,
+          "colspan": 8,
           "rowspan": 4
         },
         "micro@8x6": {
@@ -350,6 +332,12 @@
     {
       "id": "temp_graph",
       "placements": {
+        "micro": {
+          "col": 8,
+          "row": 4,
+          "colspan": 4,
+          "rowspan": 4
+        },
         "medium": {
           "col": 8,
           "row": 2,
@@ -406,75 +394,6 @@
       }
     },
     {
-      "id": "z_offset",
-      "placements": {
-        "large": {
-          "col": 8,
-          "row": 2,
-          "colspan": 4,
-          "rowspan": 2
-        },
-        "xlarge": {
-          "col": 8,
-          "row": 2,
-          "colspan": 4,
-          "rowspan": 2
-        },
-        "xxlarge": {
-          "col": 16,
-          "row": 4,
-          "colspan": 4,
-          "rowspan": 2
-        }
-      }
-    },
-    {
-      "id": "speed_flow",
-      "placements": {
-        "large": {
-          "col": 8,
-          "row": 4,
-          "colspan": 4,
-          "rowspan": 2
-        },
-        "xlarge": {
-          "col": 8,
-          "row": 4,
-          "colspan": 4,
-          "rowspan": 2
-        },
-        "xxlarge": {
-          "col": 20,
-          "row": 4,
-          "colspan": 4,
-          "rowspan": 2
-        }
-      }
-    },
-    {
-      "id": "print_stats",
-      "placements": {
-        "large": {
-          "col": 12,
-          "row": 2,
-          "colspan": 4,
-          "rowspan": 4
-        },
-        "xlarge": {
-          "col": 12,
-          "row": 2,
-          "colspan": 4,
-          "rowspan": 4
-        },
-        "xxlarge": {
-          "col": 16,
-          "row": 10,
-          "colspan": 6,
-          "rowspan": 4
-        }
-      }
-    },
-    {
       "slot": "spool_env",
       "placements": {
         "micro": {
@@ -486,7 +405,7 @@
         "micro@8x6": {
           "col": 4,
           "row": 0,
-          "colspan": 4,
+          "colspan": 2,
           "rowspan": 2
         },
         "tiny": {
@@ -501,12 +420,6 @@
           "colspan": 4,
           "rowspan": 2
         },
-        "medium": {
-          "col": 8,
-          "row": 0,
-          "colspan": 4,
-          "rowspan": 2
-        },
         "large": {
           "col": 8,
           "row": 0,
@@ -520,8 +433,8 @@
           "rowspan": 2
         },
         "xxlarge": {
-          "col": 20,
-          "row": 0,
+          "col": 16,
+          "row": 2,
           "colspan": 4,
           "rowspan": 2
         }
@@ -545,7 +458,7 @@
         {
           "cells": [
             {
-              "candidates": "ENV",
+              "candidates": "ENV_FIL",
               "at": [
                 0,
                 0,
@@ -554,9 +467,22 @@
               ]
             },
             {
-              "candidates": "FIL",
+              "candidates": "ENV_FIL",
               "at": [
                 2,
+                0,
+                2,
+                2
+              ]
+            }
+          ]
+        },
+        {
+          "cells": [
+            {
+              "candidates": "ENV_FIL",
+              "at": [
+                0,
                 0,
                 2,
                 2
@@ -567,17 +493,67 @@
       ]
     },
     {
-      "slot": "env2",
+      "slot": "spool_env_rl",
+      "placements": {
+        "medium": {
+          "col": 4,
+          "row": 2,
+          "colspan": 4,
+          "rowspan": 2
+        }
+      },
+      "alternatives": [
+        {
+          "cells": [
+            {
+              "candidates": [
+                "ams"
+              ],
+              "at": [
+                0,
+                0,
+                4,
+                2
+              ]
+            }
+          ]
+        },
+        {
+          "cells": [
+            {
+              "candidates": "ENV_FIL",
+              "at": [
+                2,
+                0,
+                2,
+                2
+              ]
+            },
+            {
+              "candidates": "ENV_FIL",
+              "at": [
+                0,
+                0,
+                2,
+                2
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slot": "readout_1",
       "placements": {
         "large": {
-          "col": 12,
-          "row": 0,
+          "col": 4,
+          "row": 2,
           "colspan": 2,
           "rowspan": 2
         },
         "xlarge": {
-          "col": 12,
-          "row": 0,
+          "col": 4,
+          "row": 2,
           "colspan": 2,
           "rowspan": 2
         },
@@ -592,7 +568,7 @@
         {
           "cells": [
             {
-              "candidates": "ENV2",
+              "candidates": "ENV_FIL",
               "at": [
                 0,
                 0,
@@ -605,7 +581,7 @@
       ]
     },
     {
-      "slot": "fil2",
+      "slot": "readout_2",
       "placements": {
         "large": {
           "col": 6,
@@ -630,7 +606,7 @@
         {
           "cells": [
             {
-              "candidates": "FIL",
+              "candidates": "ENV_FIL",
               "at": [
                 0,
                 0,
@@ -659,7 +635,7 @@
         },
         "xxlarge": {
           "col": 16,
-          "row": 6,
+          "row": 4,
           "colspan": 8,
           "rowspan": 4
         }
@@ -668,12 +644,14 @@
         {
           "cells": [
             {
-              "candidates": "MESH",
+              "candidates": [
+                "bed_mesh_tile"
+              ],
               "at": [
                 0,
                 0,
                 8,
-                4
+                6
               ]
             }
           ]
@@ -682,7 +660,7 @@
           "cells": [
             {
               "candidates": [
-                "job_queue"
+                "bed_mesh_tile"
               ],
               "at": [
                 0,
@@ -696,7 +674,9 @@
         {
           "cells": [
             {
-              "candidates": "MESH",
+              "candidates": [
+                "bed_mesh_tile"
+              ],
               "at": [
                 0,
                 0,
@@ -707,38 +687,59 @@
           ]
         }
       ]
-    },
-    {
-      "slot": "filler",
-      "placements": {
-        "xxlarge": {
-          "col": 22,
-          "row": 10,
-          "colspan": 2,
-          "rowspan": 4
-        }
-      },
-      "alternatives": [
-        {
-          "cells": [
-            {
-              "candidates": "FILLER",
-              "at": [
-                0,
-                0,
-                2,
-                4
-              ]
-            }
-          ]
-        }
-      ]
     }
   ],
+  "disabled": {
+    "micro": [
+      "tips"
+    ],
+    "micro@8x6": [
+      "tips",
+      "temp_graph",
+      "printer_image",
+      "fan_stack"
+    ],
+    "tiny": [
+      "tips",
+      "temp_graph"
+    ],
+    "small": [
+      "temp_graph"
+    ],
+    "medium": [
+      "tips"
+    ]
+  },
+  "gaps": {
+    "large": [
+      [
+        8,
+        2,
+        8,
+        4
+      ]
+    ],
+    "xlarge": [
+      [
+        8,
+        2,
+        8,
+        4
+      ]
+    ],
+    "xxlarge": [
+      [
+        16,
+        8,
+        8,
+        6
+      ]
+    ]
+  },
   "variants": {
-    "_comment": "PORTRAIT. Full-width bands: printer image beside a 2x2 block of small widgets, tips, print_status, then a bottom row. Spans are authored per tier against the square-cell track counts (each axis derived independently), NOT the landscape values doubled. 'disabled' switches a widget off on tiers with no room for it.",
+    "_comment": "Per-layout tables. Notifications sit in the top-right corner of every one. Slots whose cells may come up empty sit beside a declared gap or at an edge, so a printer with less hardware shows one calm empty block rather than a hole between two tiles.",
     "ultrawide": {
-      "_comment": "ULTRAWIDE (1480x320 -> 36x8 tracks, 1920x440 -> 46x10). Printer image, print status and the temperature graph run left to right with the small readouts blocked at the right edge, tips as a footer band. Only tiny and small are authored: micro falls back to tiny, and every shipping ultrawide panel has a narrow axis of 320 or 440.",
+      "_comment": "ULTRAWIDE (1480x320 -> 36x8 tracks, 1920x440 -> 46x10). Two bands. Top: the printer image at the left, a deliberate empty span, then the readout cluster at the right edge with notifications in the corner; its slot cells fill from the right so any left unfilled join the empty span. Bottom: print status on the left half, the temperature graph on the right half. Only tiny and small are authored: micro falls back to tiny, and every shipping ultrawide panel has a narrow axis of 320 or 440.",
       "anchors": [
         {
           "id": "printer_image",
@@ -758,81 +759,10 @@
           }
         },
         {
-          "id": "print_status",
-          "config": {
-            "layout_style": "detailed"
-          },
-          "placements": {
-            "tiny": {
-              "col": 8,
-              "row": 0,
-              "colspan": 16,
-              "rowspan": 4
-            },
-            "small": {
-              "col": 8,
-              "row": 0,
-              "colspan": 18,
-              "rowspan": 4
-            }
-          }
-        },
-        {
-          "id": "z_offset",
-          "placements": {
-            "tiny": {
-              "col": 24,
-              "row": 0,
-              "colspan": 4,
-              "rowspan": 2
-            },
-            "small": {
-              "col": 26,
-              "row": 0,
-              "colspan": 4,
-              "rowspan": 2
-            }
-          }
-        },
-        {
-          "id": "speed_flow",
-          "placements": {
-            "tiny": {
-              "col": 24,
-              "row": 2,
-              "colspan": 4,
-              "rowspan": 2
-            },
-            "small": {
-              "col": 26,
-              "row": 2,
-              "colspan": 4,
-              "rowspan": 2
-            }
-          }
-        },
-        {
           "id": "temperature",
           "placements": {
             "tiny": {
               "col": 28,
-              "row": 0,
-              "colspan": 2,
-              "rowspan": 2
-            },
-            "small": {
-              "col": 36,
-              "row": 0,
-              "colspan": 2,
-              "rowspan": 2
-            }
-          }
-        },
-        {
-          "id": "bed_temperature",
-          "placements": {
-            "tiny": {
-              "col": 30,
               "row": 0,
               "colspan": 2,
               "rowspan": 2
@@ -846,6 +776,23 @@
           }
         },
         {
+          "id": "bed_temperature",
+          "placements": {
+            "tiny": {
+              "col": 30,
+              "row": 0,
+              "colspan": 2,
+              "rowspan": 2
+            },
+            "small": {
+              "col": 40,
+              "row": 0,
+              "colspan": 2,
+              "rowspan": 2
+            }
+          }
+        },
+        {
           "id": "fan_stack",
           "placements": {
             "tiny": {
@@ -855,7 +802,7 @@
               "rowspan": 2
             },
             "small": {
-              "col": 40,
+              "col": 42,
               "row": 0,
               "colspan": 2,
               "rowspan": 2
@@ -880,10 +827,79 @@
           }
         },
         {
-          "id": "motion",
+          "id": "print_status",
+          "config": {
+            "layout_style": "detailed"
+          },
+          "placements": {
+            "tiny": {
+              "col": 0,
+              "row": 4,
+              "colspan": 18,
+              "rowspan": 4
+            },
+            "small": {
+              "col": 0,
+              "row": 4,
+              "colspan": 23,
+              "rowspan": 6
+            }
+          }
+        },
+        {
+          "id": "temp_graph",
+          "placements": {
+            "tiny": {
+              "col": 18,
+              "row": 4,
+              "colspan": 18,
+              "rowspan": 4
+            },
+            "small": {
+              "col": 23,
+              "row": 4,
+              "colspan": 23,
+              "rowspan": 6
+            }
+          }
+        },
+        {
+          "slot": "readout_1",
           "placements": {
             "tiny": {
               "col": 34,
+              "row": 2,
+              "colspan": 2,
+              "rowspan": 2
+            },
+            "small": {
+              "col": 44,
+              "row": 2,
+              "colspan": 2,
+              "rowspan": 2
+            }
+          },
+          "alternatives": [
+            {
+              "cells": [
+                {
+                  "candidates": "ENV_FIL",
+                  "at": [
+                    0,
+                    0,
+                    2,
+                    2
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "slot": "readout_2",
+          "placements": {
+            "tiny": {
+              "col": 32,
               "row": 2,
               "colspan": 2,
               "rowspan": 2
@@ -894,66 +910,25 @@
               "colspan": 2,
               "rowspan": 2
             }
-          }
-        },
-        {
-          "id": "macros",
-          "placements": {
-            "small": {
-              "col": 44,
-              "row": 2,
-              "colspan": 2,
-              "rowspan": 2
+          },
+          "alternatives": [
+            {
+              "cells": [
+                {
+                  "candidates": "ENV_FIL",
+                  "at": [
+                    0,
+                    0,
+                    2,
+                    2
+                  ]
+                }
+              ]
             }
-          }
+          ]
         },
         {
-          "id": "clock",
-          "placements": {
-            "small": {
-              "col": 40,
-              "row": 2,
-              "colspan": 2,
-              "rowspan": 2
-            }
-          }
-        },
-        {
-          "id": "tips",
-          "placements": {
-            "tiny": {
-              "col": 0,
-              "row": 4,
-              "colspan": 36,
-              "rowspan": 2
-            },
-            "small": {
-              "col": 0,
-              "row": 4,
-              "colspan": 46,
-              "rowspan": 2
-            }
-          }
-        },
-        {
-          "id": "temp_graph",
-          "placements": {
-            "tiny": {
-              "col": 0,
-              "row": 6,
-              "colspan": 36,
-              "rowspan": 2
-            },
-            "small": {
-              "col": 0,
-              "row": 6,
-              "colspan": 46,
-              "rowspan": 4
-            }
-          }
-        },
-        {
-          "slot": "spool_env",
+          "slot": "spool_env_rl",
           "placements": {
             "tiny": {
               "col": 28,
@@ -962,7 +937,7 @@
               "rowspan": 2
             },
             "small": {
-              "col": 36,
+              "col": 38,
               "row": 2,
               "colspan": 4,
               "rowspan": 2
@@ -987,48 +962,16 @@
             {
               "cells": [
                 {
-                  "candidates": "ENV",
+                  "candidates": "ENV_FIL",
                   "at": [
-                    0,
+                    2,
                     0,
                     2,
                     2
                   ]
                 },
                 {
-                  "candidates": "FIL",
-                  "at": [
-                    2,
-                    0,
-                    2,
-                    2
-                  ]
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "slot": "env2",
-          "placements": {
-            "tiny": {
-              "col": 32,
-              "row": 2,
-              "colspan": 2,
-              "rowspan": 2
-            },
-            "small": {
-              "col": 42,
-              "row": 0,
-              "colspan": 2,
-              "rowspan": 2
-            }
-          },
-          "alternatives": [
-            {
-              "cells": [
-                {
-                  "candidates": "ENV2",
+                  "candidates": "ENV_FIL",
                   "at": [
                     0,
                     0,
@@ -1039,29 +982,37 @@
               ]
             }
           ]
-        },
-        {
-          "id": "control_buttons",
-          "placements": {
-            "small": {
-              "col": 30,
-              "row": 0,
-              "colspan": 6,
-              "rowspan": 4
-            }
-          }
         }
       ],
       "disabled": {
         "tiny": [
-          "active_spool",
-          "macros",
-          "clock",
-          "control_buttons"
+          "tips"
+        ],
+        "small": [
+          "tips"
+        ]
+      },
+      "gaps": {
+        "tiny": [
+          [
+            8,
+            0,
+            20,
+            4
+          ]
+        ],
+        "small": [
+          [
+            8,
+            0,
+            30,
+            4
+          ]
         ]
       }
     },
     "portrait": {
+      "_comment": "PORTRAIT. Full-width bands: the printer image beside a block of readouts (notifications top-right), tips, print status, then the graph and a bottom row. The tall grids (320x1480, 440x1920, 1080x2400) end in a declared empty block below the bed mesh.",
       "anchors": [
         {
           "id": "printer_image",
@@ -1119,180 +1070,6 @@
               "row": 0,
               "colspan": 6,
               "rowspan": 6
-            }
-          }
-        },
-        {
-          "id": "print_status",
-          "config": {
-            "layout_style": "detailed"
-          },
-          "placements": {
-            "micro": {
-              "col": 0,
-              "row": 6,
-              "colspan": 8,
-              "rowspan": 4
-            },
-            "tiny": {
-              "col": 0,
-              "row": 4,
-              "colspan": 8,
-              "rowspan": 4
-            },
-            "small": {
-              "col": 0,
-              "row": 6,
-              "colspan": 10,
-              "rowspan": 4
-            },
-            "medium": {
-              "col": 0,
-              "row": 6,
-              "colspan": 8,
-              "rowspan": 4
-            },
-            "large": {
-              "col": 0,
-              "row": 6,
-              "colspan": 10,
-              "rowspan": 6
-            },
-            "xlarge": {
-              "col": 0,
-              "row": 6,
-              "colspan": 10,
-              "rowspan": 6
-            },
-            "xxlarge": {
-              "col": 0,
-              "row": 6,
-              "colspan": 14,
-              "rowspan": 6
-            },
-            "tiny@8x34": {
-              "col": 0,
-              "row": 8,
-              "colspan": 8,
-              "rowspan": 6
-            },
-            "small@10x44": {
-              "col": 0,
-              "row": 8,
-              "colspan": 10,
-              "rowspan": 6
-            }
-          }
-        },
-        {
-          "id": "tips",
-          "placements": {
-            "micro": {
-              "col": 0,
-              "row": 4,
-              "colspan": 8,
-              "rowspan": 2
-            },
-            "small": {
-              "col": 0,
-              "row": 4,
-              "colspan": 10,
-              "rowspan": 2
-            },
-            "medium": {
-              "col": 0,
-              "row": 4,
-              "colspan": 8,
-              "rowspan": 2
-            },
-            "large": {
-              "col": 0,
-              "row": 4,
-              "colspan": 10,
-              "rowspan": 2
-            },
-            "xlarge": {
-              "col": 0,
-              "row": 4,
-              "colspan": 10,
-              "rowspan": 2
-            },
-            "xxlarge": {
-              "col": 0,
-              "row": 12,
-              "colspan": 14,
-              "rowspan": 2
-            },
-            "tiny@8x34": {
-              "col": 0,
-              "row": 4,
-              "colspan": 8,
-              "rowspan": 4
-            },
-            "small@10x44": {
-              "col": 0,
-              "row": 6,
-              "colspan": 10,
-              "rowspan": 2
-            }
-          }
-        },
-        {
-          "id": "temp_graph",
-          "placements": {
-            "micro": {
-              "col": 4,
-              "row": 10,
-              "colspan": 4,
-              "rowspan": 2
-            },
-            "tiny": {
-              "col": 4,
-              "row": 8,
-              "colspan": 4,
-              "rowspan": 2
-            },
-            "medium": {
-              "col": 4,
-              "row": 10,
-              "colspan": 4,
-              "rowspan": 2
-            },
-            "large": {
-              "col": 0,
-              "row": 12,
-              "colspan": 10,
-              "rowspan": 2
-            },
-            "xlarge": {
-              "col": 0,
-              "row": 12,
-              "colspan": 10,
-              "rowspan": 4
-            },
-            "xxlarge": {
-              "col": 0,
-              "row": 14,
-              "colspan": 14,
-              "rowspan": 6
-            },
-            "tiny@8x34": {
-              "col": 0,
-              "row": 14,
-              "colspan": 8,
-              "rowspan": 8
-            },
-            "small@10x44": {
-              "col": 0,
-              "row": 14,
-              "colspan": 10,
-              "rowspan": 8
-            },
-            "xxlarge@14x32": {
-              "col": 0,
-              "row": 14,
-              "colspan": 14,
-              "rowspan": 8
             }
           }
         },
@@ -1407,8 +1184,8 @@
               "rowspan": 2
             },
             "small@10x44": {
-              "col": 8,
-              "row": 0,
+              "col": 6,
+              "row": 2,
               "colspan": 2,
               "rowspan": 2
             }
@@ -1466,7 +1243,7 @@
               "rowspan": 2
             },
             "small@10x44": {
-              "col": 6,
+              "col": 8,
               "row": 2,
               "colspan": 2,
               "rowspan": 2
@@ -1526,145 +1303,129 @@
             },
             "small@10x44": {
               "col": 8,
-              "row": 2,
+              "row": 0,
               "colspan": 2,
               "rowspan": 2
             }
           }
         },
         {
-          "id": "z_offset",
+          "id": "tips",
           "placements": {
-            "xxlarge": {
-              "col": 6,
+            "micro": {
+              "col": 0,
               "row": 4,
-              "colspan": 4,
+              "colspan": 8,
               "rowspan": 2
             },
-            "tiny@8x34": {
-              "col": 4,
-              "row": 22,
-              "colspan": 4,
-              "rowspan": 2
-            },
-            "small@10x44": {
+            "small": {
               "col": 0,
-              "row": 22,
-              "colspan": 4,
-              "rowspan": 2
-            }
-          }
-        },
-        {
-          "id": "speed_flow",
-          "placements": {
-            "xxlarge": {
-              "col": 10,
               "row": 4,
-              "colspan": 4,
+              "colspan": 10,
               "rowspan": 2
             },
-            "tiny@8x34": {
+            "medium": {
               "col": 0,
-              "row": 24,
-              "colspan": 4,
+              "row": 4,
+              "colspan": 8,
               "rowspan": 2
             },
-            "small@10x44": {
+            "large": {
               "col": 0,
-              "row": 24,
-              "colspan": 4,
+              "row": 4,
+              "colspan": 10,
               "rowspan": 2
-            }
-          }
-        },
-        {
-          "id": "print_stats",
-          "placements": {
+            },
+            "xlarge": {
+              "col": 0,
+              "row": 4,
+              "colspan": 10,
+              "rowspan": 2
+            },
             "xxlarge": {
-              "col": 8,
-              "row": 20,
-              "colspan": 4,
-              "rowspan": 4
+              "col": 0,
+              "row": 12,
+              "colspan": 14,
+              "rowspan": 2
             },
             "tiny@8x34": {
-              "col": 4,
-              "row": 24,
-              "colspan": 4,
-              "rowspan": 4
-            },
-            "small@10x44": {
-              "col": 4,
-              "row": 22,
-              "colspan": 6,
-              "rowspan": 4
-            },
-            "xxlarge@14x32": {
-              "col": 8,
-              "row": 22,
-              "colspan": 4,
-              "rowspan": 4
-            }
-          }
-        },
-        {
-          "id": "clock",
-          "placements": {
-            "tiny@8x34": {
               "col": 0,
-              "row": 26,
-              "colspan": 4,
-              "rowspan": 2
+              "row": 4,
+              "colspan": 8,
+              "rowspan": 4
             },
-            "small@10x44": {
-              "col": 6,
-              "row": 38,
-              "colspan": 4,
-              "rowspan": 6
-            }
-          }
-        },
-        {
-          "id": "motion",
-          "placements": {
-            "small@10x44": {
-              "col": 8,
-              "row": 26,
-              "colspan": 2,
-              "rowspan": 2
-            }
-          }
-        },
-        {
-          "id": "macros",
-          "placements": {
-            "small@10x44": {
-              "col": 8,
-              "row": 28,
-              "colspan": 2,
-              "rowspan": 2
-            }
-          }
-        },
-        {
-          "id": "gcode_console",
-          "placements": {
             "small@10x44": {
               "col": 0,
-              "row": 32,
+              "row": 6,
+              "colspan": 10,
+              "rowspan": 2
+            }
+          }
+        },
+        {
+          "id": "print_status",
+          "config": {
+            "layout_style": "detailed"
+          },
+          "placements": {
+            "micro": {
+              "col": 0,
+              "row": 6,
+              "colspan": 8,
+              "rowspan": 4
+            },
+            "tiny": {
+              "col": 0,
+              "row": 4,
+              "colspan": 8,
+              "rowspan": 4
+            },
+            "small": {
+              "col": 0,
+              "row": 6,
+              "colspan": 10,
+              "rowspan": 4
+            },
+            "medium": {
+              "col": 0,
+              "row": 6,
+              "colspan": 8,
+              "rowspan": 4
+            },
+            "large": {
+              "col": 0,
+              "row": 6,
               "colspan": 10,
               "rowspan": 6
             },
-            "xxlarge@14x32": {
+            "xlarge": {
               "col": 0,
-              "row": 26,
+              "row": 6,
+              "colspan": 10,
+              "rowspan": 6
+            },
+            "xxlarge": {
+              "col": 0,
+              "row": 6,
               "colspan": 14,
+              "rowspan": 6
+            },
+            "tiny@8x34": {
+              "col": 0,
+              "row": 8,
+              "colspan": 8,
+              "rowspan": 6
+            },
+            "small@10x44": {
+              "col": 0,
+              "row": 8,
+              "colspan": 10,
               "rowspan": 6
             }
           }
         },
         {
-          "slot": "spool_env",
+          "id": "temp_graph",
           "placements": {
             "micro": {
               "col": 0,
@@ -1678,6 +1439,65 @@
               "colspan": 4,
               "rowspan": 2
             },
+            "medium": {
+              "col": 0,
+              "row": 10,
+              "colspan": 4,
+              "rowspan": 2
+            },
+            "large": {
+              "col": 0,
+              "row": 12,
+              "colspan": 10,
+              "rowspan": 2
+            },
+            "xlarge": {
+              "col": 0,
+              "row": 12,
+              "colspan": 10,
+              "rowspan": 4
+            },
+            "xxlarge": {
+              "col": 0,
+              "row": 14,
+              "colspan": 14,
+              "rowspan": 6
+            },
+            "tiny@8x34": {
+              "col": 0,
+              "row": 14,
+              "colspan": 8,
+              "rowspan": 8
+            },
+            "small@10x44": {
+              "col": 0,
+              "row": 14,
+              "colspan": 10,
+              "rowspan": 8
+            },
+            "xxlarge@14x32": {
+              "col": 0,
+              "row": 14,
+              "colspan": 14,
+              "rowspan": 8
+            }
+          }
+        },
+        {
+          "slot": "spool_env",
+          "placements": {
+            "micro": {
+              "col": 4,
+              "row": 10,
+              "colspan": 4,
+              "rowspan": 2
+            },
+            "tiny": {
+              "col": 4,
+              "row": 8,
+              "colspan": 4,
+              "rowspan": 2
+            },
             "small": {
               "col": 6,
               "row": 2,
@@ -1685,7 +1505,7 @@
               "rowspan": 2
             },
             "medium": {
-              "col": 0,
+              "col": 4,
               "row": 10,
               "colspan": 4,
               "rowspan": 2
@@ -1708,15 +1528,15 @@
               "colspan": 4,
               "rowspan": 2
             },
-            "tiny@8x34": {
-              "col": 0,
-              "row": 22,
-              "colspan": 4,
-              "rowspan": 2
-            },
             "small@10x44": {
               "col": 6,
               "row": 4,
+              "colspan": 4,
+              "rowspan": 2
+            },
+            "tiny@8x34": {
+              "col": 0,
+              "row": 28,
               "colspan": 4,
               "rowspan": 2
             }
@@ -1740,7 +1560,7 @@
             {
               "cells": [
                 {
-                  "candidates": "ENV",
+                  "candidates": "ENV_FIL",
                   "at": [
                     0,
                     0,
@@ -1749,7 +1569,7 @@
                   ]
                 },
                 {
-                  "candidates": "FIL",
+                  "candidates": "ENV_FIL",
                   "at": [
                     2,
                     0,
@@ -1762,7 +1582,7 @@
           ]
         },
         {
-          "slot": "env2",
+          "slot": "readout_1",
           "placements": {
             "xxlarge": {
               "col": 10,
@@ -1775,7 +1595,7 @@
             {
               "cells": [
                 {
-                  "candidates": "ENV2",
+                  "candidates": "ENV_FIL",
                   "at": [
                     0,
                     0,
@@ -1788,7 +1608,7 @@
           ]
         },
         {
-          "slot": "fil2",
+          "slot": "readout_2",
           "placements": {
             "xxlarge": {
               "col": 12,
@@ -1801,7 +1621,7 @@
             {
               "cells": [
                 {
-                  "candidates": "FIL",
+                  "candidates": "ENV_FIL",
                   "at": [
                     0,
                     0,
@@ -1827,68 +1647,16 @@
               "row": 22,
               "colspan": 8,
               "rowspan": 4
-            }
-          },
-          "alternatives": [
-            {
-              "cells": [
-                {
-                  "candidates": "MESH",
-                  "at": [
-                    0,
-                    0,
-                    8,
-                    4
-                  ]
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "slot": "filler",
-          "placements": {
-            "xxlarge": {
-              "col": 12,
-              "row": 20,
-              "colspan": 2,
-              "rowspan": 4
             },
-            "xxlarge@14x32": {
-              "col": 12,
-              "row": 22,
-              "colspan": 2,
-              "rowspan": 4
-            }
-          },
-          "alternatives": [
-            {
-              "cells": [
-                {
-                  "candidates": "FILLER",
-                  "at": [
-                    0,
-                    0,
-                    2,
-                    4
-                  ]
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "slot": "mesh_tall",
-          "placements": {
             "tiny@8x34": {
               "col": 0,
-              "row": 28,
+              "row": 22,
               "colspan": 8,
               "rowspan": 6
             },
             "small@10x44": {
               "col": 0,
-              "row": 26,
+              "row": 22,
               "colspan": 8,
               "rowspan": 6
             }
@@ -1897,7 +1665,9 @@
             {
               "cells": [
                 {
-                  "candidates": "MESH",
+                  "candidates": [
+                    "bed_mesh_tile"
+                  ],
                   "at": [
                     0,
                     0,
@@ -1906,41 +1676,38 @@
                   ]
                 }
               ]
+            },
+            {
+              "cells": [
+                {
+                  "candidates": [
+                    "bed_mesh_tile"
+                  ],
+                  "at": [
+                    0,
+                    0,
+                    8,
+                    4
+                  ]
+                }
+              ]
+            },
+            {
+              "cells": [
+                {
+                  "candidates": [
+                    "bed_mesh_tile"
+                  ],
+                  "at": [
+                    0,
+                    0,
+                    4,
+                    4
+                  ]
+                }
+              ]
             }
           ]
-        },
-        {
-          "id": "favorite_macro",
-          "placements": {
-            "small@10x44": {
-              "col": 8,
-              "row": 30,
-              "colspan": 2,
-              "rowspan": 2
-            }
-          }
-        },
-        {
-          "id": "control_buttons",
-          "placements": {
-            "small@10x44": {
-              "col": 0,
-              "row": 38,
-              "colspan": 6,
-              "rowspan": 4
-            }
-          }
-        },
-        {
-          "id": "preheat",
-          "placements": {
-            "small@10x44": {
-              "col": 0,
-              "row": 42,
-              "colspan": 6,
-              "rowspan": 2
-            }
-          }
         }
       ],
       "disabled": {
@@ -1949,30 +1716,71 @@
           "tips"
         ],
         "tiny@8x34": []
+      },
+      "gaps": {
+        "xxlarge": [
+          [
+            6,
+            4,
+            8,
+            2
+          ],
+          [
+            8,
+            20,
+            6,
+            4
+          ]
+        ],
+        "xxlarge@14x32": [
+          [
+            6,
+            4,
+            8,
+            2
+          ],
+          [
+            8,
+            22,
+            6,
+            4
+          ],
+          [
+            0,
+            26,
+            14,
+            6
+          ]
+        ],
+        "tiny@8x34": [
+          [
+            4,
+            28,
+            4,
+            2
+          ],
+          [
+            0,
+            30,
+            8,
+            4
+          ]
+        ],
+        "small@10x44": [
+          [
+            8,
+            22,
+            2,
+            6
+          ],
+          [
+            0,
+            28,
+            10,
+            16
+          ]
+        ]
       }
     }
-  },
-  "disabled": {
-    "micro": [
-      "tips",
-      "temp_graph"
-    ],
-    "micro@8x6": [
-      "tips",
-      "temp_graph",
-      "printer_image",
-      "fan_stack",
-      "notifications"
-    ],
-    "tiny": [
-      "tips",
-      "temp_graph"
-    ],
-    "small": [
-      "temp_graph"
-    ],
-    "medium": [
-      "tips"
-    ]
   }
 }

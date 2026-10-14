@@ -349,9 +349,23 @@ class Resolver {
         return true;
     }
 
+    /// True when any candidate in @p list qualifies.
+    bool any_qualifies(const json* list) {
+        if (!list) {
+            return false;
+        }
+        for (const auto& c : *list) {
+            if (qualifies(read_candidate(c))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /// Fill the region at (@p rc, @p rr) from the first alternative that fits
-    /// it, and the grid too when @p check_grid, and whose lead qualifies (the
-    /// last alternative has no lead requirement). False when none is taken.
+    /// it, and the grid too when @p check_grid, and whose lead cell has a
+    /// qualifying candidate (the last alternative has no lead requirement).
+    /// False when none is taken.
     bool fill_from_first_qualifying(const json& alternatives, int rc, int rr, int rw, int rh,
                                     bool check_grid) {
         const size_t n = alternatives.size();
@@ -362,12 +376,8 @@ class Resolver {
                 continue;
             }
             const bool last = i + 1 == n;
-            if (!last) {
-                const json* lead_list = cell_candidates((*cells)[0], doc_);
-                if (!lead_list || lead_list->empty() ||
-                    !qualifies(read_candidate((*lead_list)[0]))) {
-                    continue;
-                }
+            if (!last && !any_qualifies(cell_candidates((*cells)[0], doc_))) {
+                continue;
             }
             for (const auto& cell : *cells) {
                 int at[4];

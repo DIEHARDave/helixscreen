@@ -1877,6 +1877,7 @@ SubjectLifetime gate_subject_lifetime(const char* name) {
     if (std::strcmp(name, "power_device_count") == 0 ||
         std::strcmp(name, "printer_has_chamber") == 0 ||
         std::strcmp(name, "printer_has_spoolman") == 0 ||
+        std::strcmp(name, "printer_is_enclosed") == 0 ||
         std::strcmp(name, "printer_connection_state") == 0 ||
         std::strcmp(name, "klippy_state") == 0 ||
         std::strcmp(name, "printer_has_exclude_object") == 0 ||
