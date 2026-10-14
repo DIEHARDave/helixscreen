@@ -2154,8 +2154,18 @@ decides per group what to draw. The decision is the pure function
 | Unordered (Happy Hare gate group, ACE groups) | A **bracket**: one bar from the leftmost to the rightmost member, a tick down to each member ending in a dot. No arrowheads: the members are interchangeable |
 | Ordered (AFC `SET_RUNOUT`, AD5X) | One routed **arrow** per hand-off, up from the source, over, down into an arrowhead at the target. A slot keeps only its first successor, as in the projection |
 
-Marks whose bars overlap horizontally take different height levels; wider spans take the
-upper levels, so a nested group sits under the group spanning it. Every line is solid, and a
+Every hop of an ordered group must read on its own, so no two arrows share a column or a
+bar. Each arrow end takes a **lane** beside its slot centre: a source leaves one lane left of
+it, an arrowhead lands one lane right of it, and further ends on the same side step outward.
+A slot that is both the target of one hop and the source of the next therefore shows two
+lines. The lane is a unit in the geometry; the painter turns it into pixels from the theme's
+`space_sm`, narrowed on a crowded row so an end never drifts into the next slot. Bracket ticks
+stay centred.
+
+Marks whose bars overlap horizontally, lanes included, take different height levels: each
+takes the highest level no overlapping mark holds, so a chain alternates between two levels.
+Wider spans are placed first and take the upper levels, so a nested group sits under the
+group spanning it. Every line is solid, and a
 bar is broken for a few pixels wherever another mark's vertical passes through it, so
 interleaved groups (`{1,3}` and `{2,4}`) read as two groups rather than one. Levels clamp to
 the canvas height: past the last level that fits, the deepest marks share one bar. All

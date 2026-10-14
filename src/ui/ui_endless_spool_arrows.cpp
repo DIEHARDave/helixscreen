@@ -16,6 +16,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
 #include <cstring>
 #include <memory>
 #include <unordered_map>
@@ -33,6 +34,7 @@ static constexpr int32_t DEFAULT_SLOT_WIDTH = 80;
 
 // Line styling
 static constexpr int32_t LINE_WIDTH = 2;
+static constexpr int32_t DEFAULT_LANE_STEP = 7;
 static constexpr int32_t ARROW_SIZE = 6; // Size of arrowhead
 static constexpr int32_t DOT_RADIUS = 3; // Bracket tick's end dot
 static constexpr int32_t BAR_GAP = 4;    // Half-width of a break in a crossed bar
@@ -63,6 +65,7 @@ struct EndlessSpoolArrowsData {
 
     // Theme-derived sizes
     int32_t line_width = LINE_WIDTH;
+    int32_t lane_step = DEFAULT_LANE_STEP; // Sideways offset of one arrow-end lane
 };
 
 // Registry of widget data
@@ -81,6 +84,7 @@ static void load_theme_colors(EndlessSpoolArrowsData* data) {
     // Get responsive sizing from theme
     int32_t space_xxs = theme_manager_get_spacing("space_xxs");
     data->line_width = LV_MAX(2, space_xxs);
+    data->lane_step = LV_MAX(data->line_width + 2, theme_manager_get_spacing("space_sm"));
 
     spdlog::trace("[EndlessSpoolArrows] Theme colors loaded");
 }
@@ -107,60 +111,86 @@ static int32_t get_slot_center_x(int slot_index, int slot_count, int32_t slot_wi
     return x_off + slot_width / 2 + slot_index * slot_spacing;
 }
 
+using helix::ui::EndlessSpoolColumn;
 using helix::ui::EndlessSpoolMark;
 using helix::ui::EndlessSpoolMarkKind;
 
+// A column's left-to-right position. Lanes are far narrower than a slot, so
+// any lane offset stays between its slot's neighbours.
+static constexpr int LANES_PER_SLOT = 64;
+static int column_pos(const EndlessSpoolColumn& c) {
+    return c.slot * LANES_PER_SLOT + c.lane;
+}
+
+// The bar's drawn extent, lanes included
+static int mark_min_pos(const EndlessSpoolMark& m) {
+    return std::min(column_pos(m.columns.front()), column_pos(m.columns.back()));
+}
+static int mark_max_pos(const EndlessSpoolMark& m) {
+    return std::max(column_pos(m.columns.front()), column_pos(m.columns.back()));
+}
+
 // Assign height levels so marks whose bars overlap horizontally stack instead
-// of drawing on top of each other. Wider spans take the upper levels: a group
-// nested inside another then sits under it, and no tick crosses a bar.
+// of sharing a line. Two hops meeting at one slot do overlap, because the
+// arriving end sits right of the slot centre and the leaving end left of it;
+// on one bar they would read as one line with two arrowheads. Wider spans take
+// the upper levels: a group nested inside another then sits under it, and no
+// tick crosses a bar.
 static void assign_height_levels(std::vector<EndlessSpoolMark>& marks) {
     std::stable_sort(marks.begin(), marks.end(),
                      [](const EndlessSpoolMark& a, const EndlessSpoolMark& b) {
-                         const int span_a = a.max_slot - a.min_slot;
-                         const int span_b = b.max_slot - b.min_slot;
+                         const int span_a = mark_max_pos(a) - mark_min_pos(a);
+                         const int span_b = mark_max_pos(b) - mark_min_pos(b);
                          if (span_a != span_b) {
                              return span_a > span_b;
                          }
-                         return a.min_slot < b.min_slot;
+                         return mark_min_pos(a) < mark_min_pos(b);
                      });
 
+    // Each mark takes the highest level no mark it meets already holds, so a
+    // chain alternates between two levels rather than stepping down per hop.
     for (size_t i = 0; i < marks.size(); ++i) {
         EndlessSpoolMark& mark = marks[i];
-        mark.height_level = 0;
+        std::vector<bool> taken;
         for (size_t j = 0; j < i; ++j) {
             const EndlessSpoolMark& prev = marks[j];
-            // Ranges overlap if: max(min1, min2) < min(max1, max2)
-            const int overlap_start = std::max(mark.min_slot, prev.min_slot);
-            const int overlap_end = std::min(mark.max_slot, prev.max_slot);
+            const int overlap_start = std::max(mark_min_pos(mark), mark_min_pos(prev));
+            const int overlap_end = std::min(mark_max_pos(mark), mark_max_pos(prev));
             if (overlap_start < overlap_end) {
-                mark.height_level = std::max(mark.height_level, prev.height_level + 1);
+                const auto level = static_cast<size_t>(prev.height_level);
+                if (taken.size() <= level) {
+                    taken.resize(level + 1, false);
+                }
+                taken[level] = true;
             }
         }
+        mark.height_level =
+            static_cast<int>(std::find(taken.begin(), taken.end(), false) - taken.begin());
     }
 }
 
 // Break each bar wherever another mark's vertical passes through it. A vertical
 // runs from its own bar down to the slots, so it crosses only bars drawn below
-// its own, and only strictly inside their span: at a bar's end, or at a slot
-// the crossed mark also drops to, the two lines coincide rather than cross.
+// its own, and only strictly inside their extent.
 static void assign_bar_gaps(std::vector<EndlessSpoolMark>& marks) {
     for (auto& lower : marks) {
         for (const auto& upper : marks) {
             if (upper.height_level >= lower.height_level) {
                 continue;
             }
-            for (int slot : upper.slots) {
-                const bool inside = slot > lower.min_slot && slot < lower.max_slot;
-                const bool shared =
-                    std::find(lower.slots.begin(), lower.slots.end(), slot) != lower.slots.end();
-                if (inside && !shared &&
-                    std::find(lower.bar_gaps.begin(), lower.bar_gaps.end(), slot) ==
-                        lower.bar_gaps.end()) {
-                    lower.bar_gaps.push_back(slot);
+            for (const auto& column : upper.columns) {
+                const int pos = column_pos(column);
+                const bool inside = pos > mark_min_pos(lower) && pos < mark_max_pos(lower);
+                if (inside && std::find(lower.bar_gaps.begin(), lower.bar_gaps.end(), column) ==
+                                  lower.bar_gaps.end()) {
+                    lower.bar_gaps.push_back(column);
                 }
             }
         }
-        std::sort(lower.bar_gaps.begin(), lower.bar_gaps.end());
+        std::sort(lower.bar_gaps.begin(), lower.bar_gaps.end(),
+                  [](const EndlessSpoolColumn& a, const EndlessSpoolColumn& b) {
+                      return column_pos(a) < column_pos(b);
+                  });
     }
 }
 
@@ -170,10 +200,15 @@ std::vector<EndlessSpoolMark> endless_spool_marks(const helix::printer::EndlessS
                                                   int slot_count) {
     std::vector<EndlessSpoolMark> marks;
     const auto in_range = [slot_count](int slot) { return slot >= 0 && slot < slot_count; };
+    const size_t n = slot_count > 0 ? static_cast<size_t>(slot_count) : 0;
 
     // An ordered group draws one arrow per hand-off; a slot keeps only its first
     // successor, the same rule helix::printer::endless_spool_backup_for() applies.
-    std::vector<bool> has_successor(slot_count > 0 ? static_cast<size_t>(slot_count) : 0, false);
+    // Each arrow end takes the next free lane on its side of the slot: sources
+    // step left of centre, targets step right.
+    std::vector<bool> has_successor(n, false);
+    std::vector<int> sources_at(n, 0);
+    std::vector<int> targets_at(n, 0);
 
     for (const auto& group : config.groups) {
         if (group.ordered) {
@@ -188,6 +223,8 @@ std::vector<EndlessSpoolMark> endless_spool_marks(const helix::printer::EndlessS
                 EndlessSpoolMark mark;
                 mark.kind = EndlessSpoolMarkKind::Arrow;
                 mark.slots = {from, to};
+                mark.columns = {{from, -(++sources_at[static_cast<size_t>(from)])},
+                                {to, ++targets_at[static_cast<size_t>(to)]}};
                 mark.min_slot = std::min(from, to);
                 mark.max_slot = std::max(from, to);
                 marks.push_back(std::move(mark));
@@ -206,6 +243,9 @@ std::vector<EndlessSpoolMark> endless_spool_marks(const helix::printer::EndlessS
         mark.slots.erase(std::unique(mark.slots.begin(), mark.slots.end()), mark.slots.end());
         if (mark.slots.size() < 2) {
             continue; // A group of one backs nothing up
+        }
+        for (int slot : mark.slots) {
+            mark.columns.push_back({slot, 0});
         }
         mark.min_slot = mark.slots.front();
         mark.max_slot = mark.slots.back();
@@ -377,9 +417,25 @@ static void endless_spool_arrows_draw_cb(lv_event_t* e) {
             ? static_cast<int>((max_route_y - (y_off + BASE_HEIGHT_OFFSET)) / HEIGHT_STEP)
             : 0;
 
-    const auto slot_x = [&](int slot) {
-        return get_slot_center_x(slot, data->slot_count, data->slot_width, data->slot_overlap,
-                                 x_off);
+    // Lanes must stay inside their slot's half of the spacing, or an arrow end
+    // would drift into the neighbouring slot; narrow rows shrink the step.
+    int max_lane = 0;
+    for (const auto& mark : marks) {
+        for (const auto& column : mark.columns) {
+            max_lane = std::max(max_lane, std::abs(column.lane));
+        }
+    }
+    const int32_t slot_spacing =
+        data->slot_count > 1 ? data->slot_width - data->slot_overlap : data->slot_width;
+    const int32_t lane_step =
+        max_lane > 0
+            ? std::max<int32_t>(2, std::min(data->lane_step, slot_spacing / (2 * (max_lane + 1))))
+            : 0;
+
+    const auto column_x = [&](const EndlessSpoolColumn& column) {
+        return get_slot_center_x(column.slot, data->slot_count, data->slot_width,
+                                 data->slot_overlap, x_off) +
+               column.lane * lane_step;
     };
 
     for (const auto& mark : marks) {
@@ -388,18 +444,18 @@ static void endless_spool_arrows_draw_cb(lv_event_t* e) {
 
         std::vector<int32_t> gap_xs;
         gap_xs.reserve(mark.bar_gaps.size());
-        for (int slot : mark.bar_gaps) {
-            gap_xs.push_back(slot_x(slot));
+        for (const auto& column : mark.bar_gaps) {
+            gap_xs.push_back(column_x(column));
         }
 
         if (mark.kind == EndlessSpoolMarkKind::Arrow) {
-            draw_routed_arrow(layer, slot_x(mark.slots[0]), slot_x(mark.slots[1]), y_bottom,
+            draw_routed_arrow(layer, column_x(mark.columns[0]), column_x(mark.columns[1]), y_bottom,
                               y_route, gap_xs, data->arrow_color, data->line_width);
         } else {
             std::vector<int32_t> member_xs;
-            member_xs.reserve(mark.slots.size());
-            for (int slot : mark.slots) {
-                member_xs.push_back(slot_x(slot));
+            member_xs.reserve(mark.columns.size());
+            for (const auto& column : mark.columns) {
+                member_xs.push_back(column_x(column));
             }
             draw_bracket(layer, member_xs, y_bottom, y_route, gap_xs, data->arrow_color,
                          data->line_width);

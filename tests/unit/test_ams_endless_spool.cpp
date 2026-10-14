@@ -1141,6 +1141,34 @@ const helix::ui::EndlessSpoolMark* find_mark(const std::vector<helix::ui::Endles
     return nullptr;
 }
 
+// Every hop must read on its own: no two arrow ends in one column, and two
+// arrows whose drawn extents meet or overlap never share a height level.
+void check_hops_are_separable(const std::vector<helix::ui::EndlessSpoolMark>& marks) {
+    // Lanes are far narrower than a slot, so (slot, lane) orders left to right.
+    const auto pos = [](const helix::ui::EndlessSpoolColumn& c) { return c.slot * 64 + c.lane; };
+    for (size_t i = 0; i < marks.size(); ++i) {
+        for (size_t j = i + 1; j < marks.size(); ++j) {
+            const auto& a = marks[i];
+            const auto& b = marks[j];
+            for (const auto& ca : a.columns) {
+                for (const auto& cb : b.columns) {
+                    INFO("marks " << i << " and " << j << " share column slot " << ca.slot
+                                  << " lane " << ca.lane);
+                    CHECK(ca != cb);
+                }
+            }
+            const int a_lo = std::min(pos(a.columns.front()), pos(a.columns.back()));
+            const int a_hi = std::max(pos(a.columns.front()), pos(a.columns.back()));
+            const int b_lo = std::min(pos(b.columns.front()), pos(b.columns.back()));
+            const int b_hi = std::max(pos(b.columns.front()), pos(b.columns.back()));
+            if (std::max(a_lo, b_lo) <= std::min(a_hi, b_hi)) {
+                INFO("marks " << i << " and " << j << " meet but share level " << a.height_level);
+                CHECK(a.height_level != b.height_level);
+            }
+        }
+    }
+}
+
 } // namespace
 
 TEST_CASE("Endless spool marks: unordered groups are brackets, ordered groups are arrows",
@@ -1160,6 +1188,9 @@ TEST_CASE("Endless spool marks: unordered groups are brackets, ordered groups ar
         CHECK(marks[0].min_slot == 1);
         CHECK(marks[0].max_slot == 3);
         CHECK(marks[0].bar_gaps.empty());
+        // Bracket ticks drop at the slot centres.
+        CHECK(marks[0].columns ==
+              std::vector<helix::ui::EndlessSpoolColumn>{{1, 0}, {2, 0}, {3, 0}});
         CHECK(count_kind(marks, EndlessSpoolMarkKind::Arrow) == 0);
     }
 
@@ -1182,6 +1213,12 @@ TEST_CASE("Endless spool marks: unordered groups are brackets, ordered groups ar
         REQUIRE(marks.size() == 1);
         CHECK(marks[0].kind == EndlessSpoolMarkKind::Arrow);
         CHECK(marks[0].slots == std::vector<int>{2, 0});
+        // The source leaves left of its slot centre, the arrowhead lands right of it.
+        REQUIRE(marks[0].columns.size() == 2);
+        CHECK(marks[0].columns[0].slot == 2);
+        CHECK(marks[0].columns[0].lane < 0);
+        CHECK(marks[0].columns[1].slot == 0);
+        CHECK(marks[0].columns[1].lane > 0);
         CHECK(marks[0].min_slot == 0);
         CHECK(marks[0].max_slot == 2);
     }
@@ -1243,7 +1280,8 @@ TEST_CASE("Endless spool marks: unordered groups are brackets, ordered groups ar
         // The upper bracket's tick drops through the lower bar at the one
         // member of the upper group lying strictly inside the lower span.
         const int crossing = upper == first ? 3 : 2;
-        CHECK(lower->bar_gaps == std::vector<int>{crossing});
+        REQUIRE(lower->bar_gaps.size() == 1);
+        CHECK(lower->bar_gaps[0] == helix::ui::EndlessSpoolColumn{crossing, 0});
         // Nothing drops through the upper bar.
         CHECK(upper->bar_gaps.empty());
     }
@@ -1276,8 +1314,55 @@ TEST_CASE("Endless spool marks: unordered groups are brackets, ordered groups ar
         REQUIRE(arrow != nullptr);
         REQUIRE(bracket->height_level != arrow->height_level);
         const auto* lower = bracket->height_level > arrow->height_level ? bracket : arrow;
-        const int crossing = lower == bracket ? 1 : 2;
-        CHECK(lower->bar_gaps == std::vector<int>{crossing});
+        const auto* upper = lower == bracket ? arrow : bracket;
+        // The upper mark's vertical inside the lower span is where the bar breaks.
+        const size_t crossing_index = upper == arrow ? 0 : 1;
+        REQUIRE(lower->bar_gaps.size() == 1);
+        CHECK(lower->bar_gaps[0] == upper->columns[crossing_index]);
+    }
+
+    SECTION("a chain's hops never share a column or, where they meet, a height level") {
+        // 0->1->2->3: slots 1 and 2 are each the target of one hop and the
+        // source of the next.
+        EndlessSpoolConfig cfg;
+        cfg.groups.push_back(ordered_group({0, 1, 2, 3}));
+
+        const auto marks = endless_spool_marks(cfg, 4);
+
+        REQUIRE(count_kind(marks, EndlessSpoolMarkKind::Arrow) == 3);
+        check_hops_are_separable(marks);
+        // Neighbouring hops touch at a shared slot, so they cannot share a bar.
+        const auto* a = find_mark(marks, {0, 1});
+        const auto* b = find_mark(marks, {1, 2});
+        const auto* c = find_mark(marks, {2, 3});
+        REQUIRE((a && b && c));
+        CHECK(a->height_level != b->height_level);
+        CHECK(b->height_level != c->height_level);
+    }
+
+    SECTION("AFC's 0->2, 1->2, 3->0 keep every hop separable") {
+        const auto cfg = endless_spool_config_from_edges({2, 2, -1, 0});
+
+        const auto marks = endless_spool_marks(cfg, 4);
+
+        REQUIRE(count_kind(marks, EndlessSpoolMarkKind::Arrow) == 3);
+        check_hops_are_separable(marks);
+        // Two arrowheads land on slot 2; each gets its own column.
+        const auto* a = find_mark(marks, {0, 2});
+        const auto* b = find_mark(marks, {1, 2});
+        REQUIRE((a && b));
+        CHECK(a->columns[1] != b->columns[1]);
+        CHECK(a->columns[1].lane > 0);
+        CHECK(b->columns[1].lane > 0);
+    }
+
+    SECTION("disjoint ordered pairs still share a level") {
+        const auto cfg = endless_spool_config_from_edges({1, -1, 3, -1});
+
+        const auto marks = endless_spool_marks(cfg, 4);
+
+        REQUIRE(marks.size() == 2);
+        CHECK(marks[0].height_level == marks[1].height_level);
     }
 
     SECTION("an empty relation draws nothing") {

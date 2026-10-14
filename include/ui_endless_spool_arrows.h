@@ -127,24 +127,45 @@ enum class EndlessSpoolMarkKind {
     Arrow,   ///< One ordered hand-off: routed line with an arrowhead at the target
 };
 
-/// One mark above the slot row, in slot units (no pixels).
+/// Where a vertical meets the slot row: a slot, nudged sideways by whole lanes.
+struct EndlessSpoolColumn {
+    int slot = 0;
+    /// 0 = the slot's centre. Negative lanes sit left of it (arrow sources),
+    /// positive lanes right of it (arrow targets), so a slot that is both the
+    /// target of one hop and the source of the next shows two separate lines.
+    int lane = 0;
+
+    bool operator==(const EndlessSpoolColumn& o) const {
+        return slot == o.slot && lane == o.lane;
+    }
+    bool operator!=(const EndlessSpoolColumn& o) const {
+        return !(*this == o);
+    }
+};
+
+/// One mark above the slot row, in slot and lane units (no pixels).
 struct EndlessSpoolMark {
     EndlessSpoolMarkKind kind = EndlessSpoolMarkKind::Bracket;
     /// Bracket: members, ascending. Arrow: {source, target}.
     std::vector<int> slots;
-    int min_slot = 0; ///< Left end of the bar
-    int max_slot = 0; ///< Right end of the bar
+    /// One per entry of `slots`: where that vertical drops. Bracket ticks are
+    /// centred; arrow ends take their own lane.
+    std::vector<EndlessSpoolColumn> columns;
+    int min_slot = 0; ///< Leftmost slot the mark touches
+    int max_slot = 0; ///< Rightmost slot the mark touches
     /// 0 = the bar furthest from the slots; each level steps toward them.
     int height_level = 0;
-    /// Slots where another mark's vertical crosses this bar; the bar is broken there.
-    std::vector<int> bar_gaps;
+    /// Columns where another mark's vertical crosses this bar; the bar is broken there.
+    std::vector<EndlessSpoolColumn> bar_gaps;
 };
 
 /**
  * @brief Lay out the marks for an endless-spool relation
  *
- * Pure geometry, no LVGL: which marks exist, their height levels, and where
- * each bar is broken. Members outside [0, slot_count) are dropped; a group
+ * Pure geometry, no LVGL: which marks exist, which column each vertical
+ * drops in, their height levels, and where each bar is broken. No two arrow
+ * ends share a column, and marks whose extents meet or overlap never share a
+ * height level, so every hop reads on its own. Members outside [0, slot_count) are dropped; a group
  * left with fewer than two members draws nothing.
  *
  * @param config     The group relation
