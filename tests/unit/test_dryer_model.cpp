@@ -107,6 +107,22 @@ TEST_CASE_METHOD(DryerModelFixture, "dryer model: a torn-down filament system is
     CHECK(lv_ll_get_len(&humidity->subs_ll) == 1);
 }
 
+TEST_CASE_METHOD(DryerModelFixture, "dryer model: a torn-down printer state is not observed",
+                 "[dryer][model]") {
+    auto& ps = state();
+    lv_subject_t* active = ps.temperature_state().get_chamber_dryer_active_subject();
+    dryer_model::refresh();
+    REQUIRE(lv_ll_get_len(&active->subs_ll) == 1);
+
+    ps.deinit_subjects();
+    dryer_model::refresh();
+    CHECK(lv_ll_get_len(&active->subs_ll) == 0);
+
+    ps.init_subjects(true);
+    dryer_model::refresh();
+    CHECK(lv_ll_get_len(&active->subs_ll) == 1);
+}
+
 TEST_CASE_METHOD(DryerModelFixture, "dryer model: no source, no gate", "[dryer][model]") {
     CHECK_FALSE(gate());
     CHECK_FALSE(dryer_model::summary().available);
