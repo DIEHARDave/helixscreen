@@ -24,10 +24,15 @@
  * - Downsampling preserves frequency range endpoints
  */
 
+#include "ui_fonts.h"
+
 #include "../../include/platform_capabilities.h"
 #include "../../include/ui_frequency_response_chart.h"
 #include "../ui_test_utils.h"
 #include "lvgl/lvgl.h"
+#include "lvgl/src/misc/lv_text_private.h"
+
+#include <cstring>
 
 #include "../catch_amalgamated.hpp"
 
@@ -1098,4 +1103,35 @@ TEST_CASE_METHOD(FrequencyResponseChartTestFixture, "Edge cases",
     }
 
     ui_frequency_response_chart_destroy(chart);
+}
+
+// ============================================================================
+// Axis label boxes follow the label font
+// ============================================================================
+
+namespace {
+
+int32_t sample_width(const lv_font_t* font, const char* text) {
+    lv_text_attributes_t attributes = {};
+    attributes.max_width = LV_COORD_MAX;
+    return lv_text_get_width(text, static_cast<uint32_t>(std::strlen(text)), font, &attributes);
+}
+
+} // namespace
+
+TEST_CASE("axis label boxes fit the label font", "[frequency_response_chart][axis]") {
+    SECTION("a large font widens the gutter past its widest label") {
+        const lv_font_t* big = &source_code_pro_24;
+        REQUIRE(sample_width(big, "100%") > 36);
+        CHECK(ui_frequency_response_chart_y_gutter_width(big) >= sample_width(big, "100%"));
+        CHECK(ui_frequency_response_chart_y_gutter_width(big) >= sample_width(big, "999k"));
+        REQUIRE(sample_width(big, "100 Hz") > 64);
+        CHECK(2 * ui_frequency_response_chart_x_label_half_width(big) >=
+              sample_width(big, "100 Hz"));
+    }
+    SECTION("a small font keeps the sizes the smaller tiers were laid out against") {
+        const lv_font_t* small = &source_code_pro_8;
+        CHECK(ui_frequency_response_chart_y_gutter_width(small) == 36);
+        CHECK(ui_frequency_response_chart_x_label_half_width(small) == 32);
+    }
 }

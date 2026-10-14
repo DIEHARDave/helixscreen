@@ -12,6 +12,7 @@
 #include "ui_frequency_response_chart.h"
 
 #include "display_settings_manager.h"
+#include "lvgl/src/misc/lv_text_private.h" // lv_text_get_width
 #include "theme_manager.h"
 
 #include <spdlog/spdlog.h>
@@ -22,6 +23,15 @@
 #include <limits>
 #include <memory>
 #include <vector>
+
+/// Left padding of the chart: the amplitude gutter when its labels show.
+static int32_t y_label_pad(bool labels_visible) {
+    if (!labels_visible) {
+        return theme_manager_get_spacing("space_sm");
+    }
+    return ui_frequency_response_chart_y_gutter_width(theme_manager_get_font("font_small")) +
+           theme_manager_get_spacing("space_xs");
+}
 
 // Maximum number of series supported: raw PSD + every fitted shaper curve the
 // panel can overlay (MAX_SHAPERS = 11) + the live-before "was" curve. Fitted
@@ -512,10 +522,7 @@ void ui_frequency_response_chart_set_y_labels_visible(
     }
     chart->show_y_labels = visible;
     if (chart->chart) {
-        lv_obj_set_style_pad_left(chart->chart,
-                                  visible ? 36 + theme_manager_get_spacing("space_xs")
-                                          : theme_manager_get_spacing("space_sm"),
-                                  LV_PART_MAIN);
+        lv_obj_set_style_pad_left(chart->chart, y_label_pad(visible), LV_PART_MAIN);
         lv_obj_invalidate(chart->chart);
     }
 }
@@ -1394,6 +1401,36 @@ static void draw_markers_cb(lv_event_t* e) {
     }
 }
 
+namespace {
+
+int32_t text_width(const lv_font_t* font, const char* text) {
+    if (!font) {
+        return 0;
+    }
+    lv_text_attributes_t attributes = {};
+    attributes.max_width = LV_COORD_MAX;
+    return lv_text_get_width(text, static_cast<uint32_t>(std::strlen(text)), font, &attributes);
+}
+
+} // namespace
+
+// NAMESPACE_OK: joins the header's global ui_frequency_response_chart_* API
+int32_t ui_frequency_response_chart_y_gutter_width(const lv_font_t* font) {
+    // The 36 px floor is the gutter the smaller tiers are laid out against.
+    constexpr int32_t MIN_GUTTER = 36;
+    int32_t widest = 0;
+    for (const char* sample : {"100%", "999k", "0.01"}) {
+        widest = std::max(widest, text_width(font, sample));
+    }
+    return std::max(MIN_GUTTER, widest);
+}
+
+// NAMESPACE_OK: joins the header's global ui_frequency_response_chart_* API
+int32_t ui_frequency_response_chart_x_label_half_width(const lv_font_t* font) {
+    constexpr int32_t MIN_HALF = 32;
+    return std::max(MIN_HALF, text_width(font, "100 Hz") / 2 + 2);
+}
+
 static void draw_x_axis_labels_cb(lv_event_t* e) {
     lv_obj_t* chart_obj = lv_event_get_target_obj(e);
     lv_layer_t* layer = lv_event_get_layer(e);
@@ -1452,6 +1489,9 @@ static void draw_x_axis_labels_cb(lv_event_t* e) {
         tick_interval = 25.0f;
     }
 
+    // Wide enough that "100 Hz" stays on one line at this font.
+    const int32_t half_w = ui_frequency_response_chart_x_label_half_width(label_font);
+
     // Persistent label buffers (LVGL may defer drawing)
     static char freq_labels[8][12];
     int label_idx = 0;
@@ -1470,10 +1510,9 @@ static void draw_x_axis_labels_cb(lv_event_t* e) {
 
         // Center label on tick position
         lv_area_t label_area;
-        // Wide enough that "100 Hz" stays on one line.
-        label_area.x1 = x - 32;
+        label_area.x1 = x - half_w;
         label_area.y1 = label_y;
-        label_area.x2 = x + 32;
+        label_area.x2 = x + half_w;
         label_area.y2 = label_y + label_height;
 
         label_dsc.text = buf;
@@ -1634,7 +1673,7 @@ void ui_frequency_response_chart_configure_for_platform(ui_frequency_response_ch
             int32_t space_xs = theme_manager_get_spacing("space_xs");
             int32_t space_sm = theme_manager_get_spacing("space_sm");
             // Left padding: room for Y-axis labels when they are shown
-            lv_obj_set_style_pad_left(chart->chart, chart->show_y_labels ? 36 + space_xs : space_sm,
+            lv_obj_set_style_pad_left(chart->chart, y_label_pad(chart->show_y_labels),
                                       LV_PART_MAIN);
             // Bottom padding: room for X-axis labels
             lv_obj_set_style_pad_bottom(chart->chart, space_sm + axis_label_h + space_xs,
