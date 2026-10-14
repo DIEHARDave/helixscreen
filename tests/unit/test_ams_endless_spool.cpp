@@ -1435,13 +1435,13 @@ TEST_CASE("Endless spool marks: unordered groups are brackets, ordered groups ar
         }
 
         helix::ui::EndlessSpoolMarkLimits limits;
-        limits.lane_px = 7;
+        limits.lane_px = 10;
         limits.slot_spacing_px = 104;
         const auto roomy = endless_spool_marks(cfg, 4, limits);
         const auto* a = find_mark(roomy, {0, 2});
         REQUIRE(a != nullptr);
-        CHECK(a->columns[0].offset_px == -7);
-        CHECK(a->columns[1].offset_px == 7 * a->columns[1].lane);
+        CHECK(a->columns[0].offset_px == -10);
+        CHECK(a->columns[1].offset_px == 10 * a->columns[1].lane);
 
         // Two lanes right of slot 2 must stay inside half of a 30px spacing.
         limits.slot_spacing_px = 30;
@@ -1459,7 +1459,7 @@ TEST_CASE("Endless spool marks: unordered groups are brackets, ordered groups ar
         const auto cfg = endless_spool_config_from_edges({2, 2, -1, 0});
         for (const int32_t spacing : {104, 40, 20}) {
             helix::ui::EndlessSpoolMarkLimits limits;
-            limits.lane_px = 7;
+            limits.lane_px = 10;
             limits.slot_spacing_px = spacing;
 
             const auto marks = endless_spool_marks(cfg, 4, limits);

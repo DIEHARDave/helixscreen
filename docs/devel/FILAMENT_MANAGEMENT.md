@@ -2163,7 +2163,7 @@ lines. Bracket ticks stay centred.
 
 `endless_spool_marks()` also takes `EndlessSpoolMarkLimits`, what the canvas can hold, and
 turns lanes into pixels itself (`EndlessSpoolColumn::offset_px`): the painter passes the
-theme's `space_sm` as the lane width, the slot spacing, and the deepest height level the
+theme's `space_md` as the lane width, the slot spacing, and the deepest height level the
 canvas fits. Lanes narrow on a crowded row so an end stays inside its slot's half of the
 spacing, except that where two arrowheads share a slot a lane never narrows below what two
 of the smallest heads need. An arrowhead is full size unless it shares its slot, in which

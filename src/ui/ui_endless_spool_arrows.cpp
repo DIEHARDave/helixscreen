@@ -34,7 +34,7 @@ static constexpr int32_t DEFAULT_SLOT_WIDTH = 80;
 
 // Line styling
 static constexpr int32_t LINE_WIDTH = 2;
-static constexpr int32_t DEFAULT_LANE_STEP = 7;
+static constexpr int32_t DEFAULT_LANE_STEP = 10;
 static constexpr int32_t ARROW_SIZE = 6;       // Arrowhead half-width, room permitting
 static constexpr int32_t ARROW_WING_WIDTH = 2; // Stroke of an arrowhead's wings
 static constexpr int32_t DOT_RADIUS = 3;       // Bracket tick's end dot
@@ -85,7 +85,7 @@ static void load_theme_colors(EndlessSpoolArrowsData* data) {
     // Get responsive sizing from theme
     int32_t space_xxs = theme_manager_get_spacing("space_xxs");
     data->line_width = LV_MAX(2, space_xxs);
-    data->lane_step = LV_MAX(data->line_width + 2, theme_manager_get_spacing("space_sm"));
+    data->lane_step = LV_MAX(data->line_width + 2, theme_manager_get_spacing("space_md"));
 
     spdlog::trace("[EndlessSpoolArrows] Theme colors loaded");
 }
