@@ -36,7 +36,7 @@ void detach(IMoonrakerClient& client);
 
 /// The startup sync, given Moonraker's Spoolman status. No-op when Spoolman is down,
 /// no spool is active, or the external slot already holds that spool; otherwise
-/// fetches the spool and syncs it.
+/// fetches the spool and syncs it. Main thread only: it reads AmsState.
 void sync_from_status(ISpoolmanAPI& spoolman, bool connected, int active_spool_id);
 
 /// The notify_active_spool_set handler. @p msg is the full JSON-RPC message.
