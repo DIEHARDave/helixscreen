@@ -404,6 +404,11 @@ buttons keep room for their labels in every locale. The charts grow into the spa
 only up to `belt_chart_max_h` (about the content width of each tier), so a tall screen
 leaves space under the controls rather than drawing a chart taller than it is wide. START
 stacks the sketch over the text instead of setting them side by side.
+A tall portrait (`ui_breakpoint_v` xxlarge, 1024 px and up) has the height for the full
+tuning hero, so it gets it instead of the one-line hero: the instruction and stepper beside
+the gap and gauge, with the round, zone and rate under them, and the swap back as a button.
+A shorter portrait such as 480x800 keeps the one-line hero, where the full one would take
+the chart's height.
 
 ### Ultrawide layout
 

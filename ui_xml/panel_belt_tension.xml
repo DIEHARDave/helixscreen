@@ -44,6 +44,12 @@
     <style name="bt_flow_row_wrap" layout="flex" flex_flow="row_wrap"/>
     <style name="bt_w0_grow" width="0" flex_grow="1"/>
     <style name="bt_content_w" width="content"/>
+    <!-- Tall portrait (ui_breakpoint_v xxlarge): the full tuning hero, its columns stacked two over one -->
+    <style name="bt_hero_fixed" height="#belt_tune_hero_h" layout="flex" flex_flow="row"/>
+    <style name="bt_hero_stack" height="content" layout="flex" flex_flow="row_wrap"/>
+    <style name="bt_w36" width="36%"/>
+    <style name="bt_w30" width="30%"/>
+    <style name="bt_w_half" width="48%"/>
     <style name="bt_own_line" width="100%" flex_grow="0" flex_main_place="center"/>
     <style name="bt_grow_main_end" flex_grow="1" flex_main_place="end"/>
   </styles>
@@ -338,7 +344,8 @@
           <lv_obj name="bt_tune_line"
                   width="100%" height="content" style_pad_all="0" flex_flow="row" style_flex_cross_place="center"
                   style_pad_gap="#space_xs" clickable="true" scrollable="false">
-            <bind_flag_if cond="ui_breakpoint gt 2 and ui_is_portrait eq 0 or ui_is_ultrawide eq 1" flag="hidden"/>
+            <bind_flag_if cond="ui_breakpoint gt 2 and ui_is_portrait eq 0 or ui_is_ultrawide eq 1 or ui_is_portrait eq 1 and ui_breakpoint_v ge 6"
+                          flag="hidden"/>
             <event_cb trigger="clicked" callback="belt_tension_tune_swap_cb"/>
             <icon src="rotate_right" size="xs" clickable="false" event_bubble="true">
               <bind_style name="path_a_text" subject="bt_tune_path" ref_value="0"/>
@@ -382,18 +389,21 @@
             </icon>
           </lv_obj>
           <belt_gap_gauge name="bt_tune_line_gauge" width="100%" height="#space_xl">
-            <bind_flag_if cond="ui_breakpoint gt 2 and ui_is_portrait eq 0 or ui_is_ultrawide eq 1 or bt_tune_baseline eq 1 or bt_tune_has_zone eq 0"
+            <bind_flag_if cond="ui_breakpoint gt 2 and ui_is_portrait eq 0 or ui_is_ultrawide eq 1 or ui_is_portrait eq 1 and ui_breakpoint_v ge 6 or bt_tune_baseline eq 1 or bt_tune_has_zone eq 0"
                           flag="hidden"/>
           </belt_gap_gauge>
           <lv_obj name="bt_tune_hero"
-                  width="100%" height="#belt_tune_hero_h" style_pad_all="0" flex_flow="row"
-                  style_flex_main_place="space_between" style_flex_cross_place="start" style_pad_gap="#space_sm"
-                  scrollable="false">
-            <bind_flag_if cond="(ui_breakpoint le 2 or ui_is_portrait eq 1) and ui_is_ultrawide eq 0" flag="hidden"/>
+                  width="100%" style_pad_all="0" style_flex_main_place="space_between" style_flex_cross_place="start"
+                  style_pad_gap="#space_sm" scrollable="false">
+            <bind_flag_if cond="(ui_breakpoint le 2 or ui_is_portrait eq 1) and ui_is_ultrawide eq 0 and (ui_is_portrait eq 0 or ui_breakpoint_v lt 6)"
+                          flag="hidden"/>
+            <bind_style_if name="bt_hero_fixed" cond="ui_is_portrait eq 0 or ui_breakpoint_v lt 6"/>
+            <bind_style_if name="bt_hero_stack" cond="ui_is_portrait eq 1 and ui_breakpoint_v ge 6"/>
             <!-- Left: what to do, in the adjusted path's color -->
             <lv_obj name="bt_tune_left"
-                    width="36%" height="content" style_pad_all="0" flex_flow="column" style_pad_gap="#space_xxs"
-                    scrollable="false">
+                    height="content" style_pad_all="0" flex_flow="column" style_pad_gap="#space_xxs" scrollable="false">
+              <bind_style_if name="bt_w36" cond="ui_is_portrait eq 0 or ui_breakpoint_v lt 6"/>
+              <bind_style_if name="bt_w_half" cond="ui_is_portrait eq 1 and ui_breakpoint_v ge 6"/>
               <lv_obj width="100%"
                       height="content" style_pad_all="0" flex_flow="row" style_flex_cross_place="center"
                       style_pad_gap="#space_xs" scrollable="false">
@@ -454,8 +464,10 @@
             </lv_obj>
             <!-- Centre: the gap, colored by distance, over the gauge -->
             <lv_obj name="bt_tune_centre"
-                    width="30%" height="content" style_pad_all="0" flex_flow="column" style_flex_cross_place="center"
+                    height="content" style_pad_all="0" flex_flow="column" style_flex_cross_place="center"
                     style_pad_gap="#space_xxs" scrollable="false">
+              <bind_style_if name="bt_w30" cond="ui_is_portrait eq 0 or ui_breakpoint_v lt 6"/>
+              <bind_style_if name="bt_w_half" cond="ui_is_portrait eq 1 and ui_breakpoint_v ge 6"/>
               <lv_label name="bt_tune_gap" bind_text="bt_tune_gap" style_text_font="#font_xl">
                 <bind_style name="gap_matched" subject="bt_tune_severity" ref_value="0"/>
                 <bind_style name="gap_near" subject="bt_tune_severity" ref_value="1"/>
@@ -470,8 +482,10 @@
             </lv_obj>
             <!-- Right: where the loop stands -->
             <lv_obj name="bt_tune_right"
-                    width="30%" height="content" style_pad_all="0" flex_flow="column" style_flex_cross_place="end"
+                    height="content" style_pad_all="0" flex_flow="column" style_flex_cross_place="end"
                     scrollable="false">
+              <bind_style_if name="bt_w30" cond="ui_is_portrait eq 0 or ui_breakpoint_v lt 6"/>
+              <bind_style_if name="bt_full_w" cond="ui_is_portrait eq 1 and ui_breakpoint_v ge 6"/>
               <text_body width="100%"
                          bind_text="bt_tune_round" style_text_font="#font_body_bold" style_text_align="right"/>
               <text_small width="100%" bind_text="bt_tune_zone" style_text_color="#text_muted" style_text_align="right"/>
@@ -522,7 +536,7 @@
                     style_pad_gap="#space_xs" scrollable="false">
               <bind_style_if name="bt_content_w" cond="ui_is_portrait eq 0"/>
               <bind_style_if name="bt_own_line" cond="ui_is_portrait eq 1"/>
-              <bind_flag_if cond="ui_breakpoint gt 2 and ui_is_portrait eq 0 or ui_is_ultrawide eq 1 or bt_tune_kind ne 1 or bt_tune_baseline eq 1"
+              <bind_flag_if cond="ui_breakpoint gt 2 and ui_is_portrait eq 0 or ui_is_ultrawide eq 1 or ui_is_portrait eq 1 and ui_breakpoint_v ge 6 or bt_tune_kind ne 1 or bt_tune_baseline eq 1"
                             flag="hidden"/>
               <ui_button name="btn_tune_row_less"
                          width="#button_height_sm" height="#button_height" icon="minus" variant="secondary">
@@ -541,7 +555,8 @@
             <ui_button name="btn_tune_swap"
                        width="0" height="#button_height" flex_grow="1" bind_text="bt_tune_swap_label"
                        variant="secondary">
-              <bind_flag_if cond="(ui_breakpoint le 2 or ui_is_portrait eq 1) and ui_is_ultrawide eq 0" flag="hidden"/>
+              <bind_flag_if cond="(ui_breakpoint le 2 or ui_is_portrait eq 1) and ui_is_ultrawide eq 0 and (ui_is_portrait eq 0 or ui_breakpoint_v lt 6)"
+                            flag="hidden"/>
               <event_cb trigger="clicked" callback="belt_tension_tune_swap_cb"/>
             </ui_button>
             <ui_button name="btn_tune_measure"
@@ -552,8 +567,9 @@
               <event_cb trigger="clicked" callback="belt_tension_tune_measure_cb"/>
             </ui_button>
             <ui_button name="btn_tune_measure_short"
-                       width="0" height="#button_height" flex_grow="1" icon="waveform" text="Re-measure"
-                       variant="primary">
+                       height="#button_height" icon="waveform" text="Re-measure" variant="primary">
+              <bind_style_if name="bt_w0_grow" cond="ui_is_portrait eq 0 or ui_breakpoint_v lt 6"/>
+              <bind_style_if name="bt_own_line" cond="ui_is_portrait eq 1 and ui_breakpoint_v ge 6"/>
               <bind_flag_if cond="ui_breakpoint gt 2 and ui_is_portrait eq 0 or ui_is_ultrawide eq 1" flag="hidden"/>
               <bind_state_if_eq subject="bt_can_start" state="disabled" ref_value="0"/>
               <event_cb trigger="clicked" callback="belt_tension_tune_measure_cb"/>

@@ -2130,3 +2130,39 @@ TEST_CASE("portrait START stacks the sketch over the text", "[belt][panel][portr
         CHECK(lv_obj_get_x(text) > lv_obj_get_x(sketch));
     }
 }
+
+TEST_CASE("tall portrait shows the full tuning hero, stacked", "[belt][panel][portrait][tune]") {
+    BeltPanelFixture fx;
+    get_printer_state().set_printer_type_sync("Voron 2.4");
+    ScopedLayoutSubject bp("ui_breakpoint", BP_MEDIUM);
+    ScopedLayoutSubject bp_v("ui_breakpoint_v", 6);
+    ScopedLayoutSubject portrait("ui_is_portrait", 1);
+    ScopedLayoutSubject ultrawide("ui_is_ultrawide", 0);
+    enter_tuning(fx);
+    REQUIRE(fx.state_int("bt_tune_kind") == 1);
+
+    auto named = [&](const char* name) { return named_in(fx, name); };
+    CHECK_FALSE(lv_hidden(named("bt_tune_hero")));
+    CHECK(lv_hidden(named("bt_tune_line")));
+    CHECK(lv_hidden(named("bt_tune_line_gauge")));
+    CHECK(lv_hidden(named("bt_tune_row_stepper")));
+    CHECK_FALSE(lv_hidden(named("bt_tune_stepper")));
+    // The tappable line is gone, so the swap is a button again.
+    CHECK_FALSE(lv_hidden(named("btn_tune_swap")));
+    CHECK_FALSE(lv_hidden(named("btn_tune_measure_short")));
+
+    lv_obj_update_layout(fx.view());
+    lv_obj_t* left = named("bt_tune_left");
+    lv_obj_t* centre = named("bt_tune_centre");
+    lv_obj_t* right = named("bt_tune_right");
+    CHECK(lv_obj_get_y(centre) == lv_obj_get_y(left));
+    CHECK(lv_obj_get_y(right) > lv_obj_get_y(left));
+    CHECK(lv_obj_get_y(named("btn_tune_measure_short")) > lv_obj_get_y(named("btn_tune_done")));
+
+    SECTION("shorter portrait keeps the one-line hero") {
+        bp_v.set(5);
+        CHECK(lv_hidden(named("bt_tune_hero")));
+        CHECK_FALSE(lv_hidden(named("bt_tune_line")));
+        CHECK(lv_hidden(named("btn_tune_swap")));
+    }
+}
