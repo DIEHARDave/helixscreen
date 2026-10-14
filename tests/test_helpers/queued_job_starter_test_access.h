@@ -16,8 +16,15 @@
 
 class QueuedJobStarterTestAccess {
   public:
-    static helix::ui::PrintPreparationManager& prep(helix::queue::QueuedJobStarter& s) {
-        return *s.prep_;
+    /// The prep manager the starter's next start resolves.
+    static helix::ui::PrintPreparationManager* prep(helix::queue::QueuedJobStarter& s) {
+        return s.prep_source_();
+    }
+
+    /// Point the starter at @p prep instead of print-select's.
+    static void set_prep(helix::queue::QueuedJobStarter& s,
+                         helix::ui::PrintPreparationManager* prep) {
+        s.prep_source_ = [prep]() { return prep; };
     }
 
     static helix::ui::PrintStartController& controller(helix::queue::QueuedJobStarter& s) {

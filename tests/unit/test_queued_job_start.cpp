@@ -22,6 +22,10 @@
 #include "../test_helpers/queued_job_starter_test_access.h"
 #include "../test_helpers/queued_start_fixture.h"
 #include "../test_helpers/scoped_mock_ams.h"
+#include "moonraker_api_mock.h"
+#include "moonraker_client_mock.h"
+#include "preprint_skip_wrappers.h"
+#include "printer_discovery.h"
 #include "queued_job_start.h"
 #include "static_panel_registry.h"
 
@@ -73,6 +77,8 @@ class StarterFixture : public helix::test::QueuedStartFixture {
                 return true;
             });
         starter = std::make_unique<QueuedJobStarter>(get_printer_state(), api_.get());
+        // The fixture's panel is this test's print-select.
+        QueuedJobStarterTestAccess::set_prep(*starter, panel_->print_preparation_manager());
     }
 
     ~StarterFixture() override {
@@ -255,4 +261,125 @@ TEST_CASE_METHOD(StarterFixture,
     }
 
     StaticPanelRegistry::instance().destroy_all();
+}
+
+// ============================================================================
+// One PrintPreparationManager for the app
+// ============================================================================
+
+namespace {
+
+/// The app's own wiring: the global print-select panel and a starter left
+/// to find its prep manager the production way. No fixture panel, so the
+/// panel's manager is the only one observing the printer.
+class OneManagerFixture : private helix::PrintSelectGlobalStateReset, public LVGLUITestFixture {
+  public:
+    OneManagerFixture() : client(MoonrakerClientMock::PrinterType::VORON_24, 100.0) {
+        StaticPanelRegistry::instance().destroy_all();
+        client.connect("ws://mock/websocket", []() {}, []() {});
+        api = std::make_unique<MoonrakerAPIMock>(client, get_printer_state());
+        previous_api_ = get_moonraker_api();
+        set_moonraker_api(api.get());
+        get_printer_state().set_klippy_state_sync(helix::KlippyState::READY);
+        set_connection(ConnectionState::CONNECTED);
+        helix::test::wait_out_print_start_grace();
+        helix::MoonrakerClientMockTestAccess::set_method_handler(
+            client, "printer.print.start",
+            [](MoonrakerClientMock*, const json&, std::function<void(const json&)> success_cb,
+               std::function<void(const MoonrakerError&)>) -> bool {
+                success_cb(json{{"result", "ok"}});
+                return true;
+            });
+        panel = get_print_select_panel(get_printer_state(), api.get());
+        // setup() builds the detail-view model, and with it the manager.
+        REQUIRE(panel->print_preparation_manager() != nullptr);
+        settle();
+    }
+
+    ~OneManagerFixture() override {
+        auto& ps = get_printer_state();
+        if (ps.print_state().has_preparing_job()) {
+            ps.print_state().retire_preparing(helix::PreparingExit::Superseded);
+        }
+        set_wire_state(ps, PrintJobState::STANDBY);
+        settle();
+        StaticPanelRegistry::instance().destroy_all();
+        set_moonraker_api(previous_api_);
+        api.reset();
+        client.stop_temperature_simulation();
+        client.disconnect();
+    }
+
+    static void settle() {
+        for (int i = 0; i < 6; ++i) {
+            helix::ui::UpdateQueue::instance().drain();
+        }
+    }
+
+    static void set_connection(ConnectionState state) {
+        lv_subject_set_int(
+            get_printer_state().network_state().get_printer_connection_state_subject(),
+            static_cast<int>(state));
+        settle();
+    }
+
+    /// PRINT_START analyses started by one reconnect: each reads the config
+    /// file list once.
+    int analyses_per_reconnect() {
+        const int before = client.call_count("server.files.list");
+        set_connection(ConnectionState::DISCONNECTED);
+        set_connection(ConnectionState::CONNECTED);
+        return client.call_count("server.files.list") - before;
+    }
+
+    /// `_HELIX_PREP` resets sent when a job ends with a leveling skip pending.
+    int skip_resets_at_job_end() {
+        helix::PrinterDiscovery hw;
+        hw.parse_objects(json::array({"bed_mesh", "quad_gantry_level", "gcode_macro _HELIX_PREP"}));
+        hw.set_skip_wrappers({helix::skip_wrappers::Op::BedMesh, helix::skip_wrappers::Op::Qgl},
+                             {helix::skip_wrappers::Op::BedMesh, helix::skip_wrappers::Op::Qgl});
+        auto& ps = get_printer_state();
+        ps.set_hardware(hw);
+        lv_subject_set_int(ps.print_state().get_job_holds_machine_subject(), 1);
+        settle();
+        ps.update_from_status({{"gcode_macro _HELIX_PREP", {{"run_qgl", 0}}}});
+        settle();
+        const int before = client.call_count("printer.gcode.script");
+        lv_subject_set_int(ps.print_state().get_job_holds_machine_subject(), 0);
+        settle();
+        return client.call_count("printer.gcode.script") - before;
+    }
+
+    MoonrakerClientMock client;
+    std::unique_ptr<MoonrakerAPIMock> api;
+    PrintSelectPanel* panel = nullptr;
+
+  private:
+    IMoonrakerAPI* previous_api_ = nullptr;
+};
+
+} // namespace
+
+TEST_CASE_METHOD(OneManagerFixture, "the tile drives print-select's own prep manager",
+                 "[queued_job_start][one_prep_manager]") {
+    const int analyses_before = analyses_per_reconnect();
+    REQUIRE(analyses_before == 1);
+
+    QueuedJobStarter starter(get_printer_state(), api.get());
+    CHECK(QueuedJobStarterTestAccess::prep(starter) == panel->print_preparation_manager());
+
+    PlantedGcode file("one_manager.gcode", "", kPetgFile);
+    std::optional<Outcome> outcome;
+    starter.start(helix::JobQueueEntry{"0001", file.name(), 0.0, 0.0},
+                  [&outcome](Outcome o) { outcome = o; });
+    settle();
+    REQUIRE(outcome.has_value());
+    REQUIRE(*outcome == Outcome::Started);
+
+    SECTION("one PRINT_START analysis per connect") {
+        CHECK(analyses_per_reconnect() == 1);
+    }
+    SECTION("one owner resets a pending skip") {
+        CHECK(skip_resets_at_job_end() == 1);
+    }
 }

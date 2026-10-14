@@ -2627,6 +2627,11 @@ void PrintSelectPanel::create_print_controller() {
     print_controller_->recover_pending_remap();
 }
 
+helix::ui::PrintPreparationManager* PrintSelectPanel::print_preparation_manager() {
+    ensure_detail_view_model();
+    return detail_view_->get_prep_manager();
+}
+
 void PrintSelectPanel::ensure_detail_view_model() {
     if (detail_view_) {
         return;

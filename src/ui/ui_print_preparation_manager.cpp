@@ -35,6 +35,7 @@
 #include <cerrno>
 #include <cstdlib>
 #include <cstring>
+#include <initializer_list>
 #include <map>
 #include <memory>
 #include <optional>
@@ -141,11 +142,15 @@ PrePrintOptionState PrintPreparationManager::get_option_state(const std::string&
         }
     }
 
-    // 1. Provider takes priority. The detail panel registers a provider that
-    //    reads from per-option dynamic subjects. The provider returns 0/1
-    //    when bound; any other value means "not bound" — fall through.
-    if (option_state_provider_) {
-        int v = option_state_provider_(id);
+    // 1. Providers take priority: a start's override, then the attached one.
+    //    The detail panel registers a provider that reads from per-option
+    //    dynamic subjects. A provider returns 0/1 when bound; any other value
+    //    means "not bound" — fall through.
+    for (const OptionStateProvider* provider : {&start_option_override_, &option_state_provider_}) {
+        if (!*provider) {
+            continue;
+        }
+        const int v = (*provider)(id);
         if (v == 0) {
             return PrePrintOptionState::DISABLED;
         }
@@ -397,6 +402,7 @@ void PrintPreparationManager::analyze_print_start_macro_internal() {
         // A retry can land here mid-analysis; the next connect starts over.
         macro_analysis_in_progress_ = false;
         macro_analysis_stale_ = false;
+        notify_start_waiter();
         return;
     }
 
@@ -425,6 +431,7 @@ void PrintPreparationManager::analyze_print_start_macro_internal() {
                 if (on_macro_analysis_complete_) {
                     on_macro_analysis_complete_(analysis);
                 }
+                notify_start_waiter();
             });
         },
         // Error callback - runs on HTTP thread; same pattern as success.
@@ -485,6 +492,7 @@ void PrintPreparationManager::analyze_print_start_macro_internal() {
                 if (on_macro_analysis_complete_) {
                     on_macro_analysis_complete_(not_found);
                 }
+                notify_start_waiter();
             });
         });
 }
@@ -728,6 +736,35 @@ void PrintPreparationManager::answer_printer_stop_check(const std::string& filen
     if (on_scan_answered_) {
         on_scan_answered_();
     }
+    start_waiter_needs_scan_ = false;
+    notify_start_waiter();
+}
+
+void PrintPreparationManager::when_ready_to_start(const std::string& filename,
+                                                  const std::string& current_path,
+                                                  std::function<void()> ready) {
+    start_waiter_ = std::move(ready);
+    if (!start_waiter_) {
+        return;
+    }
+    start_waiter_needs_scan_ = !has_scan_result_for(filename);
+    if (start_waiter_needs_scan_) {
+        scan_file_for_operations(filename, current_path);
+        // A cached answer returns without calling back.
+        if (has_scan_result_for(filename) || has_printer_stop_answer_for(filename)) {
+            start_waiter_needs_scan_ = false;
+        }
+    }
+    notify_start_waiter();
+}
+
+void PrintPreparationManager::notify_start_waiter() {
+    if (!start_waiter_ || start_waiter_needs_scan_ || macro_analysis_in_progress_) {
+        return;
+    }
+    auto ready = std::move(start_waiter_);
+    start_waiter_ = nullptr;
+    ready();
 }
 
 bool PrintPreparationManager::has_scan_result_for(const std::string& filename) const {

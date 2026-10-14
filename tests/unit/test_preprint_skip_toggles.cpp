@@ -329,14 +329,15 @@ TEST_CASE("the mock without the knob has no wrappers", "[skip_wrappers][mock]") 
 
 namespace {
 
-/// Start part.gcode through a QueuedJobStarter with @p saved answering its
-/// options. The operations scan is injected, and the file itself cannot be
-/// read, so its facts name no tools and every file gate passes.
+/// Start part.gcode through a QueuedJobStarter driving the fixture's manager,
+/// with @p saved answering its options. The operations scan is injected, and
+/// the file itself cannot be read, so its facts name no tools and every file
+/// gate passes.
 void start_queued_part(SkipToggleFixture& f, QueuedJobOptions saved) {
     helix::test::wait_out_print_start_grace();
     QueuedJobStarter starter(f.state, f.api.get());
-    QueuedJobStarterTestAccess::prep(starter).set_cached_scan_result(gcode::ScanResult{},
-                                                                     "part.gcode");
+    QueuedJobStarterTestAccess::set_prep(starter, &f.manager);
+    f.manager.set_cached_scan_result(gcode::ScanResult{}, "part.gcode");
     starter.start_with_options(helix::JobQueueEntry{"0001", "part.gcode", 0.0, 0.0},
                                std::move(saved));
     for (int i = 0; i < 6; ++i) {

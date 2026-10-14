@@ -14,6 +14,7 @@
  */
 
 #include "ui_callback_helpers.h"
+#include "ui_filament_mapping_card.h"
 #include "ui_print_select_detail_view.h"
 #include "ui_update_queue.h"
 
@@ -202,6 +203,40 @@ TEST_CASE_METHOD(LVGLUITestFixture, "fill_file_context feeds the material mismat
         ctx.has_file_facts = false;
         CHECK(helix::material_mismatches_in(ctx).empty());
     }
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "with an AMS the mismatch comes from the tool materials and the mapping flag",
+                 "[print_start_inputs]") {
+    helix::test::ScopedMockAms ams({{0xFF0000, "PLA"}, {0x00FF00, "PLA"}});
+
+    FileStartFacts facts;
+    facts.filename = "petg.gcode";
+    facts.palette.colors = {"#FF0000"};
+    facts.palette.materials = {"PETG"};
+    facts.tools_used = {0};
+
+    helix::PrintStartContext ctx;
+    ctx.ams_available = true;
+    ctx.has_active_backend = true;
+    ctx.ams_manages_filament = true;
+    ctx.filament_color_count = facts.palette.colors.size();
+    helix::fill_file_context(ctx, facts);
+    // The AMS path never reads the palette's material list.
+    ctx.filament_materials.clear();
+
+    const auto* tool = helix::ui::FilamentMappingCard::find_by_tool_index(ctx.tool_info, 0);
+    REQUIRE(tool != nullptr);
+    CHECK(tool->material == "PETG");
+    REQUIRE(ctx.mappings.size() == 1);
+    CHECK(ctx.mappings[0].material_mismatch);
+
+    const auto mismatches = helix::material_mismatches_in(ctx);
+    REQUIRE(mismatches.size() == 1);
+    CHECK(mismatches[0].tool_index == 0);
+    CHECK(mismatches[0].expected_material == "PETG");
+    CHECK(mismatches[0].loaded_material == "PLA");
+    CHECK_FALSE(mismatches[0].grade_only);
 }
 
 TEST_CASE_METHOD(LVGLUITestFixture, "fill_file_context leaves no mapping on a printer with no AMS",

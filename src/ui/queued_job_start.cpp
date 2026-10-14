@@ -4,6 +4,7 @@
 
 #include "ui_error_reporting.h"
 #include "ui_modal.h"
+#include "ui_panel_print_select.h"
 #include "ui_preflight_check_modal.h"
 #include "ui_print_preparation_manager.h"
 #include "ui_print_start_controller.h"
@@ -70,22 +71,12 @@ void finish_started_queued_job(AsyncLifetimeGuard& lifetime, IMoonrakerAPI* api,
 // ============================================================================
 
 QueuedJobStarter::QueuedJobStarter(PrinterState& printer_state, IMoonrakerAPI* api)
-    : printer_state_(printer_state), api_(api),
-      prep_(std::make_unique<ui::PrintPreparationManager>()),
+    : printer_state_(printer_state), api_(api), prep_source_([this]() {
+          return get_print_select_panel(printer_state_, api_)->print_preparation_manager();
+      }),
       controller_(std::make_unique<ui::PrintStartController>(printer_state, api)),
       facts_loader_(api) {
-    prep_->set_dependencies(api, &printer_state);
-    // Every option the job saved answers from the saved entry; the rest take
-    // their defaults, as for a file opened fresh.
-    prep_->set_option_state_provider(
-        [this](const std::string& id) { return saved_option_state(saved_, id); });
-    // Macro-analysis rows exist only once the analysis lands, so a start
-    // waiting on it resumes here.
-    prep_->set_macro_analysis_callback(
-        [this](const PrintStartAnalysis&) { run_checks_when_gathered(); });
-
     // No detail view and no navigation: the user stays where the tap was.
-    controller_->set_prep_manager(prep_.get());
     controller_->set_on_print_started([this]() {
         finish_started_queued_job(lifetime_, api_, job_id_);
         finish(Outcome::Started);
@@ -93,14 +84,25 @@ QueuedJobStarter::QueuedJobStarter(PrinterState& printer_state, IMoonrakerAPI* a
     controller_->set_on_print_cancelled([this]() { finish(Outcome::NotStarted); });
 }
 
-QueuedJobStarter::~QueuedJobStarter() = default;
+QueuedJobStarter::~QueuedJobStarter() {
+    release_prep();
+}
+
+void QueuedJobStarter::release_prep() {
+    if (!prep_) {
+        return;
+    }
+    prep_->when_ready_to_start({}, {}, nullptr);
+    prep_->set_start_option_override(nullptr);
+    controller_->set_prep_manager(nullptr);
+    prep_ = nullptr;
+}
 
 void QueuedJobStarter::set_api(IMoonrakerAPI* api) {
     if (in_flight_ || api == api_) {
         return;
     }
     api_ = api;
-    prep_->set_dependencies(api, &printer_state_);
     controller_->set_api(api);
     facts_loader_.set_api(api);
 }
@@ -150,22 +152,24 @@ void QueuedJobStarter::gather(const JobQueueEntry& job, QueuedJobOptions saved) 
     const std::string dir = pending->dir;
     pending_ = std::move(pending);
 
-    // The operations scan answers the printer-stopping command check. Its
-    // answer arrives here on the main thread, success or failure; an answer
-    // already held for this file (or one given while the call runs) needs none.
-    prep_->set_on_scan_answered([this]() {
-        if (pending_) {
-            pending_->scanned = true;
-            run_checks_when_gathered();
+    prep_ = prep_source_();
+    if (!prep_) {
+        spdlog::error("[QueuedJobStart] No print preparation manager for queued job {}",
+                      job.job_id);
+        finish(Outcome::NotStarted);
+        return;
+    }
+    controller_->set_prep_manager(prep_);
+    // The operations scan answers the printer-stopping command check, and
+    // macro-analysis option rows exist only once the analysis lands.
+    auto tok = lifetime_.token();
+    prep_->when_ready_to_start(name, dir, [this, tok]() {
+        if (tok.expired() || !pending_) {
+            return;
         }
-    });
-    if (!prep_->has_scan_result_for(name)) {
-        prep_->scan_file_for_operations(name, dir);
-    }
-    if (pending_ &&
-        (prep_->has_scan_result_for(name) || prep_->has_printer_stop_answer_for(name))) {
         pending_->scanned = true;
-    }
+        run_checks_when_gathered();
+    });
 
     facts_loader_.load(job.filename, [this](FileStartFacts facts) {
         if (pending_) {
@@ -176,12 +180,10 @@ void QueuedJobStarter::gather(const JobQueueEntry& job, QueuedJobOptions saved) 
 }
 
 void QueuedJobStarter::run_checks_when_gathered() {
-    if (!pending_ || !pending_->facts || !pending_->scanned ||
-        prep_->is_macro_analysis_in_progress()) {
+    if (!pending_ || !pending_->facts || !pending_->scanned) {
         return;
     }
     auto pending = std::move(pending_);
-    prep_->set_on_scan_answered(nullptr);
     FileStartFacts facts = std::move(*pending->facts);
     run_checks(*pending, std::move(facts));
 }
@@ -189,6 +191,10 @@ void QueuedJobStarter::run_checks_when_gathered() {
 void QueuedJobStarter::run_checks(const Pending& pending, FileStartFacts facts) {
     const JobQueueEntry& job = pending.job;
     auto start_gates = [this, name = pending.name, dir = pending.dir, facts]() {
+        // Every option the job saved answers from the saved entry; the rest
+        // take their defaults, as for a file opened fresh.
+        prep_->set_start_option_override(
+            [this](const std::string& id) { return saved_option_state(saved_, id); });
         controller_->set_file_facts(facts);
         controller_->set_file(name, dir, facts.palette.colors, "");
         controller_->initiate();
@@ -239,7 +245,7 @@ void QueuedJobStarter::finish(Outcome outcome) {
     }
     in_flight_ = false;
     pending_.reset();
-    prep_->set_on_scan_answered(nullptr);
+    release_prep();
     auto done = std::move(done_);
     done_ = nullptr;
     if (done) {

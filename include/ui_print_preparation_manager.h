@@ -156,6 +156,19 @@ class PrintPreparationManager {
     }
 
     /**
+     * @brief Answer option states for a start that has no detail view rows.
+     *
+     * While set, get_option_state() asks @p provider before the attached
+     * provider, with the same 0/1/-1 contract. A queued job started from the
+     * home tile sets its saved options here for the length of its start and
+     * clears it (nullptr) when the start ends; the detail view's provider
+     * stays attached throughout.
+     */
+    void set_start_option_override(OptionStateProvider provider) {
+        start_option_override_ = std::move(provider);
+    }
+
+    /**
      * @brief Read the user-intent state for a pre-print option by id.
      *
      * Resolution order:
@@ -283,6 +296,19 @@ class PrintPreparationManager {
 
     /// Called on the main thread each time a scan answers, success or failure.
     void set_on_scan_answered(std::function<void()> cb);
+
+    /**
+     * @brief Run @p ready once a start may read this manager for @p filename.
+     *
+     * Ready means the operations scan has answered (an answer for any file
+     * ends the wait, so a scan the detail view starts meanwhile cannot strand
+     * it) and no PRINT_START analysis is running. Starts the scan when no
+     * result for @p filename is cached; runs @p ready at once when nothing is
+     * outstanding. Main thread. One waiter: a later call replaces it, and a
+     * null @p ready cancels it. Independent of set_on_scan_answered().
+     */
+    void when_ready_to_start(const std::string& filename, const std::string& current_path,
+                             std::function<void()> ready);
 
     /**
      * @brief Check if scan result is available for a file
@@ -572,6 +598,12 @@ class PrintPreparationManager {
     // to surface dynamic per-option subjects without the manager having to
     // know about their LVGL pointers.
     OptionStateProvider option_state_provider_;
+    OptionStateProvider start_option_override_;
+
+    // === when_ready_to_start() waiter ===
+    std::function<void()> start_waiter_;
+    bool start_waiter_needs_scan_ = false;
+    void notify_start_waiter();
 
     // === PRINT_START Analysis Cache ===
     std::optional<helix::PrintStartAnalysis> macro_analysis_;

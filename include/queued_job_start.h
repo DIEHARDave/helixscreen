@@ -87,12 +87,17 @@ class QueuedJobStarter {
 
     void finish(Outcome outcome);
 
+    /// Hand the shared prep manager back: drop the waiter and the option
+    /// override this start set on it.
+    void release_prep();
+
     /// Refuses @p job (answering @p done) when no start may begin; else marks
     /// the start in flight and keeps @p done.
     bool begin(const JobQueueEntry& job, DoneCallback& done);
 
-    /// Gather the file's facts, its operations scan and the PRINT_START
-    /// analysis, then run_checks().
+    /// Gather the file's facts and wait for print-select's prep manager to be
+    /// ready (its operations scan of the file, the PRINT_START analysis), then
+    /// run_checks().
     void gather(const JobQueueEntry& job, QueuedJobOptions saved);
 
     /// What the start in flight is still waiting on.
@@ -112,7 +117,11 @@ class QueuedJobStarter {
 
     PrinterState& printer_state_;
     IMoonrakerAPI* api_ = nullptr;
-    std::unique_ptr<ui::PrintPreparationManager> prep_;
+    /// Where the app's one PrintPreparationManager is found: print-select's
+    /// (PrintSelectPanel::print_preparation_manager()). Asked per start.
+    std::function<ui::PrintPreparationManager*()> prep_source_;
+    /// The manager the start in flight drives; null when none is in flight.
+    ui::PrintPreparationManager* prep_ = nullptr;
     std::unique_ptr<ui::PrintStartController> controller_;
     FileStartFactsLoader facts_loader_;
     QueuedJobOptions saved_;

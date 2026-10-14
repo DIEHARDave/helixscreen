@@ -611,6 +611,16 @@ class PrintSelectPanel : public PanelBase {
     void start_queued_job(const helix::JobQueueEntry& job);
 
     /**
+     * @brief The app's one PrintPreparationManager.
+     *
+     * Owned by this panel's detail-view model, which exists from setup() so
+     * the PRINT_START analysis runs on connect. A start with no file view
+     * (the home tile's QueuedJobStarter) drives this same instance, so there
+     * is one analysis per connect and one owner of the skip-pending handler.
+     */
+    [[nodiscard]] helix::ui::PrintPreparationManager* print_preparation_manager();
+
+    /**
      * @brief Show the enriched pre-flight filament check modal.
      *
      * Replaces the simple confirmation dialog. Renders a per-tool breakdown of
