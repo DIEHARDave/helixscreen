@@ -84,6 +84,9 @@ perf_saver_type() {
     pipes) echo 3 ;;
     bounce) echo 4 ;;
     fireworks) echo 5 ;;
+    logo) echo 6 ;;
+    maze) echo 7 ;;
+    hyperspace) echo 8 ;;
     *)
         echo "perf_saver_type: unknown workload '$1'" >&2
         return 1

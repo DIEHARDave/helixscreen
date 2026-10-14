@@ -14,6 +14,7 @@
 #include "screensaver_base.h"
 #include "screensaver_bounce.h"
 #include "screensaver_fireworks.h"
+#include "screensaver_hyperspace.h"
 #include "screensaver_level_store.h"
 #include "screensaver_maze.h"
 #include "screensaver_pipes.h"
@@ -48,6 +49,7 @@ ScreensaverManager::ScreensaverManager() : cpu_clock_(helix::ui::read_process_cp
     screensavers_.push_back(std::make_unique<helix::BouncingLogoScreensaver>());
     screensavers_.push_back(std::make_unique<helix::ui::FireworksScreensaver>());
     screensavers_.push_back(std::make_unique<helix::ui::MazeScreensaver>());
+    screensavers_.push_back(std::make_unique<helix::ui::HyperspaceScreensaver>());
 
     for (const char* name : savers_missing_for_build_depth()) {
         spdlog::error("[ScreensaverManager] {} is listed as drawing at this colour depth but no "
