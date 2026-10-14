@@ -524,11 +524,11 @@ class PanelWidgetConfig {
                                                      bool append_registry_defaults = true,
                                                      nlohmann::json* retained = nullptr);
 
-    /// Populate pages_ from the default layout with the preset's seed overlay
-    /// (assets/config/panel_widgets/<preset>/home.json) applied, stamped as a
-    /// live default. Returns false when the panel has no seed. Used only on
-    /// fresh installs (no saved config).
-    bool try_populate_from_preset_seed();
+    /// build_default_grid() with this config's preset seed overlay applied: every caller that
+    /// builds this panel's own default goes through here, so a seeded default stays seeded across
+    /// Reset, pending anchors and re-resolves.
+    std::vector<PanelWidgetEntry> build_default_grid_with_seed(int grid_cols, int grid_rows,
+                                                               std::string* signature) const;
 
     /// One-shot migration for installs stuck in the pre-ef580203d state where
     /// the filament widget captured a grid cell before ams_slot_count reported

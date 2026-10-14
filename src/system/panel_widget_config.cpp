@@ -401,14 +401,8 @@ void PanelWidgetConfig::load() {
         return;
     }
 
-    // No saved config — try a preset-shipped seed first, then fall back to
-    // breakpoint-driven defaults.
-    if (try_populate_from_preset_seed()) {
-        save(); // Persist seeded layout so user edits survive reload
-        loaded_ = true;
-        return;
-    }
-
+    // No saved config: breakpoint-driven defaults, with the preset's seed
+    // overlay applied when it ships one.
     PageConfig page;
     page.id = "main";
     page.widgets = build_defaults();
@@ -417,24 +411,6 @@ void PanelWidgetConfig::load() {
     stamp_default("");
     save(); // Persist default grid positions for future launches
     loaded_ = true;
-}
-
-bool PanelWidgetConfig::try_populate_from_preset_seed() {
-    // Only the home panel has a default layout table for a seed to overlay.
-    if (panel_id_ != "home" || load_preset_overlay(config_.get_preset()).is_null()) {
-        return false;
-    }
-
-    PageConfig page;
-    page.id = "main";
-    page.widgets = build_defaults();
-    pages_.push_back(std::move(page));
-    next_page_id_ = 1;
-    stamp_default("");
-
-    spdlog::info("[PanelWidgetConfig] Seeded panel '{}' from preset '{}'", panel_id_,
-                 config_.get_preset());
-    return true;
 }
 
 /// True when @p entry is exactly what parse_widget_array() appends for a
@@ -1243,9 +1219,16 @@ bool PanelWidgetConfig::is_grid_format() const {
     return false;
 }
 
-std::vector<PanelWidgetEntry> PanelWidgetConfig::build_defaults() const {
+std::vector<PanelWidgetEntry>
+PanelWidgetConfig::build_default_grid_with_seed(int grid_cols, int grid_rows,
+                                                std::string* signature) const {
     const nlohmann::json overlay = load_preset_overlay(config_.get_preset());
-    return build_default_grid(0, 0, nullptr, overlay.is_null() ? nullptr : &overlay);
+    return build_default_grid(grid_cols, grid_rows, signature,
+                              overlay.is_null() ? nullptr : &overlay);
+}
+
+std::vector<PanelWidgetEntry> PanelWidgetConfig::build_defaults() const {
+    return build_default_grid_with_seed(0, 0, nullptr);
 }
 
 void PanelWidgetConfig::restore_pages(const nlohmann::json& payload) {
@@ -1371,9 +1354,7 @@ void PanelWidgetConfig::apply_pending_anchors(int grid_cols, int grid_rows) {
     // Page 0 only. Extra pages are user-made, and a user who has built one has
     // arranged page 0 too, so a layout still tagged pending has exactly one.
     std::string signature;
-    const nlohmann::json overlay = load_preset_overlay(config_.get_preset());
-    auto rebuilt = build_default_grid(grid_cols, grid_rows, &signature,
-                                      overlay.is_null() ? nullptr : &overlay);
+    auto rebuilt = build_default_grid_with_seed(grid_cols, grid_rows, &signature);
     if (rebuilt.empty() || pages_.empty()) {
         return;
     }
@@ -1435,9 +1416,7 @@ bool PanelWidgetConfig::reresolve_default_if_changed(int cols, int rows) {
     }
 
     std::string signature;
-    const nlohmann::json overlay = load_preset_overlay(config_.get_preset());
-    auto rebuilt =
-        build_default_grid(cols, rows, &signature, overlay.is_null() ? nullptr : &overlay);
+    auto rebuilt = build_default_grid_with_seed(cols, rows, &signature);
     if (rebuilt.empty()) {
         return false;
     }

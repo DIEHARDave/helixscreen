@@ -219,6 +219,11 @@ class PanelWidgetManager {
     /// the widget catalog) holds its own under a distinct key.
     void setup_gate_observers(const std::string& panel_id, RebuildCallback rebuild_cb);
 
+    /// Every subject setup_gate_observers() watches: the registry gates, the
+    /// default layout table's subjects, @p overlay's (a preset seed, null for
+    /// none) and the connection pair. Sorted, unique.
+    static std::vector<std::string> gate_subject_names(const nlohmann::json& overlay);
+
     /// Release gate observers for a panel (call during deinit/shutdown). Safe to
     /// call after the manager is destroyed: a process-lifetime panel can outlive
     /// this function-local static at exit, and then there is nothing to release.

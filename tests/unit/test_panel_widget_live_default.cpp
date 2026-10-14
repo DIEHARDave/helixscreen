@@ -833,3 +833,20 @@ TEST_CASE_METHOD(LiveDefaultFixture,
     PanelWidgetConfig::load_default_table();
     CHECK(PanelWidgetConfig::default_table_reads() == reads + 1);
 }
+
+TEST_CASE("live default: the gate observers also watch a preset seed's subjects",
+          "[live_default][preset]") {
+    const nlohmann::json overlay = {
+        {"candidate_lists",
+         {{"FIL", {{{"id", "filament"}, {"requires", {"zz_seed_only_capability"}}}, "network"}}}}};
+
+    const auto with = PanelWidgetManager::gate_subject_names(overlay);
+    const auto without = PanelWidgetManager::gate_subject_names(nlohmann::json());
+    CHECK(std::find(with.begin(), with.end(), "zz_seed_only_capability") != with.end());
+    CHECK(std::find(without.begin(), without.end(), "zz_seed_only_capability") == without.end());
+    // The seed adds to the table's and the registry's subjects, never replaces them.
+    for (const char* base : {"printer_connection_state", "klippy_state", "ams_slot_count"}) {
+        CHECK(std::find(with.begin(), with.end(), base) != with.end());
+    }
+    CHECK(std::is_sorted(with.begin(), with.end()));
+}

@@ -1872,6 +1872,28 @@ SubjectLifetime gate_subject_lifetime(const char* name) {
     return nullptr;
 }
 
+std::vector<std::string> PanelWidgetManager::gate_subject_names(const nlohmann::json& overlay) {
+    // The default layout table's subjects (slot candidates' gates and their
+    // `requires`) re-resolve a live default, and the connection pair decides
+    // when one may: a change that arrived while Klipper was not READY waits for
+    // READY to rebuild.
+    std::vector<std::string> gate_names = {"printer_connection_state", "klippy_state"};
+    for (const auto& def : get_all_widget_defs()) {
+        if (def.hardware_gate_subject) {
+            gate_names.emplace_back(def.hardware_gate_subject);
+        }
+    }
+    for (auto& name : helix::layout::subjects_named_by(PanelWidgetConfig::load_default_table())) {
+        gate_names.push_back(std::move(name));
+    }
+    for (auto& name : helix::layout::subjects_named_by(overlay)) {
+        gate_names.push_back(std::move(name));
+    }
+    std::sort(gate_names.begin(), gate_names.end());
+    gate_names.erase(std::unique(gate_names.begin(), gate_names.end()), gate_names.end());
+    return gate_names;
+}
+
 void PanelWidgetManager::setup_gate_observers(const std::string& panel_id,
                                               RebuildCallback rebuild_cb) {
     using helix::ui::observe;
@@ -1921,29 +1943,9 @@ void PanelWidgetManager::setup_gate_observers(const std::string& panel_id,
     // for this panel_id (e.g. soft-restart re-registers the home panel).
     lv_async_call_cancel(&PanelWidgetManager::gate_rebuild_trampoline, &slot);
 
-    // The default layout table's subjects (slot candidates' gates and their
-    // `requires`) re-resolve a live default, and the connection pair decides
-    // when one may: a change that arrived while Klipper was not READY waits for
-    // READY to rebuild.
-    std::vector<std::string> gate_names = {"printer_connection_state", "klippy_state"};
-    for (const auto& def : get_all_widget_defs()) {
-        if (def.hardware_gate_subject) {
-            gate_names.emplace_back(def.hardware_gate_subject);
-        }
-    }
-    for (auto& name : helix::layout::subjects_named_by(PanelWidgetConfig::load_default_table())) {
-        gate_names.push_back(std::move(name));
-    }
     const Config* cfg = Config::get_instance();
-    if (const nlohmann::json overlay =
-            PanelWidgetConfig::load_preset_overlay(cfg ? cfg->get_preset() : std::string{});
-        !overlay.is_null()) {
-        for (auto& name : helix::layout::subjects_named_by(overlay)) {
-            gate_names.push_back(std::move(name));
-        }
-    }
-    std::sort(gate_names.begin(), gate_names.end());
-    gate_names.erase(std::unique(gate_names.begin(), gate_names.end()), gate_names.end());
+    const std::vector<std::string> gate_names = gate_subject_names(
+        PanelWidgetConfig::load_preset_overlay(cfg ? cfg->get_preset() : std::string{}));
 
     for (const std::string& name_str : gate_names) {
         const char* name = name_str.c_str();

@@ -2609,24 +2609,158 @@ TEST_CASE_METHOD(PanelWidgetConfigFixture, "a preset without a seed file falls b
     CHECK(get_saved_page0_widgets() == base);
 }
 
-TEST_CASE("preset seeds: shipped seeds are overlays that place no excluded widget",
-          "[panel_widget_config][preset]") {
-    const std::filesystem::path root =
-        std::filesystem::path(find_readable("default_layout.json")).parent_path() / "panel_widgets";
+namespace {
+
+/// Seed files directly under @p root/<preset>/home.json that were examined, and
+/// the problems found: a seed that is not an object, one carrying a page list,
+/// or one naming a widget no default may place.
+struct SeedAudit {
+    int examined = 0;
+    std::vector<std::string> problems;
+};
+
+SeedAudit audit_seed_dir(const std::filesystem::path& root) {
+    SeedAudit audit;
     std::error_code ec;
     for (const auto& dir : std::filesystem::directory_iterator(root, ec)) {
         std::ifstream in(dir.path() / "home.json");
         if (!in.is_open()) {
             continue;
         }
-        INFO("seed " << dir.path().filename().string());
+        ++audit.examined;
+        const std::string name = dir.path().filename().string();
         const json seed = json::parse(in, nullptr, false);
-        REQUIRE(seed.is_object());
-        CHECK_FALSE(seed.contains("pages"));
+        if (!seed.is_object()) {
+            audit.problems.push_back(name + ": not a JSON object");
+            continue;
+        }
+        if (seed.contains("pages")) {
+            audit.problems.push_back(name + ": carries a page list");
+        }
         const std::string text = seed.dump();
         for (const char* id : {"toolhead", "host_health", "exclude_map"}) {
-            CHECK(text.find(std::string("\"") + id + "\"") == std::string::npos);
+            if (text.find(std::string("\"") + id + "\"") != std::string::npos) {
+                audit.problems.push_back(name + ": names " + id);
+            }
         }
+    }
+    return audit;
+}
+
+} // namespace
+
+TEST_CASE_METHOD(PanelWidgetConfigFixture, "preset seeds: the seed audit examines and can fail",
+                 "[panel_widget_config][preset]") {
+    ConfigDirGuard guard("preset-audit");
+    write_seed(guard, "good", json{{"anchors", {{{"id", "tips"}, {"remove", true}}}}});
+    write_seed(guard, "paged", json{{"pages", json::array()}});
+    write_seed(guard, "banned", json{{"anchors", {{{"id", "toolhead"}}}}});
+
+    const SeedAudit audit = audit_seed_dir(guard.dir / "panel_widgets");
+    CHECK(audit.examined == 3);
+    CHECK(audit.problems.size() == 2);
+    CHECK(std::count_if(audit.problems.begin(), audit.problems.end(),
+                        [](const std::string& p) { return p.rfind("good", 0) == 0; }) == 0);
+}
+
+TEST_CASE("preset seeds: shipped seeds are overlays that place no excluded widget",
+          "[panel_widget_config][preset]") {
+    const std::filesystem::path root =
+        std::filesystem::path(find_readable("default_layout.json")).parent_path() / "panel_widgets";
+    // No seed ships today, so there may be nothing to examine; each one that
+    // does ship is held to the same audit as the fixtures above.
+    const SeedAudit audit = audit_seed_dir(root);
+    for (const auto& problem : audit.problems) {
+        FAIL_CHECK(problem);
+    }
+}
+
+namespace {
+
+/// A seed that removes tips and replaces the spool slot's large placement.
+const json kOverlaySeed = {
+    {"anchors",
+     {{{"id", "tips"}, {"remove", true}},
+      {{"slot", "spool_env"},
+       {"placements", {{"large", {{"col", 8}, {"row", 0}, {"colspan", 4}, {"rowspan", 2}}}}},
+       {"alternatives", {{{"cells", {{{"candidates", {"clock"}}, {"at", {0, 0, 4, 2}}}}}}}}}}},
+    {"disabled", {{"large", {"tips"}}}}};
+
+} // namespace
+
+TEST_CASE_METHOD(PanelWidgetConfigFixture,
+                 "a seeded unedited default keeps its overlay through every rebuild path",
+                 "[panel_widget_config][preset]") {
+    ConfigDirGuard guard("preset-overlay-paths");
+    helix::test::ScopedBreakpoint bp(UiBreakpoint::Large);
+
+    auto page_entries = [](const PanelWidgetConfig& wc) {
+        std::vector<PanelWidgetEntry> placed;
+        for (const auto& e : wc.page_entries(0)) {
+            if (e.enabled && e.has_grid_position()) {
+                placed.push_back(e);
+            }
+        }
+        return placed;
+    };
+    auto has = [](const std::vector<PanelWidgetEntry>& v, const char* id) {
+        return std::any_of(v.begin(), v.end(),
+                           [&](const PanelWidgetEntry& e) { return e.id == id; });
+    };
+    auto expect_overlay = [&](const PanelWidgetConfig& wc) {
+        const auto placed = page_entries(wc);
+        CHECK_FALSE(has(placed, "tips"));
+        REQUIRE(has(placed, "clock"));
+        const auto it = std::find_if(placed.begin(), placed.end(),
+                                     [](const PanelWidgetEntry& e) { return e.id == "clock"; });
+        CHECK(it->col == 8);
+        CHECK(it->colspan == 4);
+    };
+
+    // The same steps without a seed: tips is placed and the clock is not, so
+    // the overlay assertions below cannot pass on an empty layout.
+    {
+        setup_empty_config();
+        PanelWidgetConfig plain("home", config);
+        plain.load();
+        plain.apply_pending_anchors(24, 12);
+        const auto placed = page_entries(plain);
+        REQUIRE(has(placed, "tips"));
+        REQUIRE_FALSE(has(placed, "clock"));
+    }
+
+    write_seed(guard, "testp", kOverlaySeed);
+    setup_empty_config();
+    ConfigTestAccess::data(config)["printers"]["default"]["preset"] = "testp";
+    PanelWidgetConfig wc("home", config);
+    wc.load();
+    REQUIRE(wc.is_unedited_default());
+    expect_overlay(wc);
+
+    SECTION("apply_pending_anchors") {
+        REQUIRE(wc.has_pending_anchors());
+        wc.apply_pending_anchors(24, 12);
+        CHECK_FALSE(wc.has_pending_anchors());
+        CHECK(wc.is_unedited_default());
+        expect_overlay(wc);
+    }
+
+    SECTION("reresolve_default_if_changed on a grid change") {
+        wc.apply_pending_anchors(24, 12);
+        REQUIRE(wc.reresolve_default_if_changed(20, 12));
+        CHECK(wc.is_unedited_default());
+        CHECK_FALSE(has(page_entries(wc), "tips"));
+    }
+
+    SECTION("reset_to_defaults") {
+        wc.apply_pending_anchors(24, 12);
+        wc.add_page();
+        REQUIRE_FALSE(wc.is_unedited_default());
+        wc.reset_to_defaults();
+        CHECK(wc.is_unedited_default());
+        expect_overlay(wc);
+        wc.apply_pending_anchors(24, 12);
+        expect_overlay(wc);
     }
 }
 

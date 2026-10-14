@@ -4,7 +4,7 @@
 // #1162: the "preset" marker lived at the config root while every other piece
 // of printer configuration sat under /printers/<id>/. Configuring a second
 // printer overwrote the first printer's marker, and consumers of get_preset()
-// (PanelWidgetConfig::try_populate_from_preset_seed, the wizard's step
+// (PanelWidgetConfig's preset overlay, the wizard's step
 // collapsing in wizard_step_registry.cpp) then read the wrong printer's preset.
 //
 // Storage is per-printer now, with lift_root_preset() in Config::init() moving
