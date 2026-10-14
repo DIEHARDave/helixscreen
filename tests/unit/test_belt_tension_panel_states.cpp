@@ -1557,3 +1557,31 @@ TEST_CASE("a theme toggle recolors the tuning ghosts", "[belt][panel][tune][char
     CHECK(after[2] == want_b);
     CHECK(after[3] == want_b);
 }
+
+TEST_CASE("a closed gate stops a Re-test", "[belt][panel][gating]") {
+    BeltPanelFixture fx;
+    REQUIRE(fx.wait_gate_open());
+    fx.panel().handle_start_clicked();
+    REQUIRE(fx.pump_until_state(RESULTS));
+
+    lv_subject_set_int(get_printer_state().print_state().get_print_active_subject(), 1);
+    fx.pump_ms(200);
+    REQUIRE(fx.state_int("bt_can_start") == 0);
+
+    fx.mock().clear_gcode_script_history();
+    fx.panel().handle_retest_clicked(helix::calibration::BeltPath::PATH_A);
+    fx.pump_ms(2000);
+    CHECK(resonance_lines(fx).empty());
+    CHECK(fx.state_int("belt_tension_state") == RESULTS);
+}
+
+TEST_CASE("cleanup closes the Re-test menu", "[belt][panel][compact]") {
+    BeltPanelFixture fx;
+    ScopedLayoutSubject bp("ui_breakpoint", BP_MICRO);
+    enter_results_with_menu(fx);
+    open_retest_menu(fx, "btn_retest_path_a");
+
+    fx.panel().cleanup();
+    UpdateQueue::instance().drain();
+    CHECK(helix::ui::ContextMenu::active() == nullptr);
+}
