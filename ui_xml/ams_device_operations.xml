@@ -164,7 +164,7 @@
         <lv_obj name="row_qidi_eject_distance"
                 width="100%" height="content" style_pad_all="0" flex_flow="column" style_pad_gap="#space_sm"
                 scrollable="false">
-          <bind_flag_if_eq subject="ams_device_ops_is_qidi" flag="hidden" ref_value="0"/>
+          <bind_flag_if_eq subject="ams_device_ops_has_eject_params" flag="hidden" ref_value="0"/>
           <!-- Header: icon + label/description + current value -->
           <lv_obj width="100%"
                   height="content" style_pad_all="0" flex_flow="row" style_flex_main_place="space_between"
@@ -197,7 +197,7 @@
         <lv_obj name="row_qidi_eject_velocity"
                 width="100%" height="content" style_pad_all="0" flex_flow="column" style_pad_gap="#space_sm"
                 scrollable="false">
-          <bind_flag_if_eq subject="ams_device_ops_is_qidi" flag="hidden" ref_value="0"/>
+          <bind_flag_if_eq subject="ams_device_ops_has_eject_params" flag="hidden" ref_value="0"/>
           <!-- Header: icon + label/description + current value -->
           <lv_obj width="100%"
                   height="content" style_pad_all="0" flex_flow="row" style_flex_main_place="space_between"
