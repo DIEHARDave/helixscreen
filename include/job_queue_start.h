@@ -14,10 +14,14 @@ enum class UpNextTapAction {
     StartNextJob,   ///< Printer free: hand it the first queued job
 };
 
-/// The single entry point for "start the first queued job". The completion
+/// Start the first queued job through print-select's file view. The completion
 /// modal's "Start next" button and the "Up next" line's idle tap both go
-/// through here; no caller starts a queued job any other way.
+/// through here. The home tile starts through QueuedJobStarter instead, which
+/// shares this path's option rule, gates, start call and bookkeeping.
 void start_next_queued_job();
+
+/// Show the process-wide job queue modal.
+void open_job_queue_modal();
 
 /// Open @p job in print-select's file view, seeded with its saved options, to
 /// start with a Print tap: the two-tap path start_next_queued_job() takes for

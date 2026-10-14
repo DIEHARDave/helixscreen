@@ -21,15 +21,22 @@ class JobQueueStateTestAccess {
 
     /// Drives a queue response through the real fetch-completion path
     /// (on_queue_fetched -> update_subjects), which is what publishes the
-    /// job_queue_count / job_queue_run_state / job_queue_state_text /
-    /// job_queue_summary_text subjects. set_jobs() above deliberately does NOT
-    /// touch subjects, so a test that needs the observer wiring to fire must come through here.
+    /// job_queue_count / job_queue_run_state / job_queue_up_next_text subjects.
+    /// set_jobs() above deliberately does NOT touch subjects, so a test that needs
+    /// the observer wiring to fire must come through here.
     ///
     /// In production this is only ever reached from fetch()'s success callback
     /// via tok.defer(), i.e. on the main thread — call it on the main thread
     /// here too.
     static void deliver_status(JobQueueState& state, const helix::JobQueueStatus& status) {
         state.on_queue_fetched(status);
+    }
+
+    /// Sets Moonraker's automatic_transition the way the `server.config` answer
+    /// does in fetch_automatic_transition(): the member and its subject.
+    static void set_automatic_transition(JobQueueState& state, bool automatic) {
+        state.automatic_transition_ = automatic;
+        lv_subject_set_int(&state.job_queue_automatic_transition_subject_, automatic ? 1 : 0);
     }
 
     /// Delivers a file-metadata answer for the next job as the deferred

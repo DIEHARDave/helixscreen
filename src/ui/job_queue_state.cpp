@@ -28,8 +28,6 @@
 
 JobQueueState::JobQueueState(helix::IMoonrakerAPI* api, helix::IMoonrakerClient* client)
     : api_(api), client_(client) {
-    std::memset(state_buffer_, 0, sizeof(state_buffer_));
-    std::memset(summary_buffer_, 0, sizeof(summary_buffer_));
     std::memset(up_next_text_buffer_, 0, sizeof(up_next_text_buffer_));
     std::memset(start_next_text_buffer_, 0, sizeof(start_next_text_buffer_));
     std::memset(next_thumbnail_buf_, 0, sizeof(next_thumbnail_buf_));
@@ -79,14 +77,6 @@ void JobQueueState::init_subjects() {
     if (subjects_initialized_)
         return;
 
-    lv_subject_init_string(&job_queue_state_subject_, state_buffer_, nullptr, sizeof(state_buffer_),
-                           "Ready");
-    subjects_.publish("job_queue_state_text", &job_queue_state_subject_);
-
-    lv_subject_init_string(&job_queue_summary_subject_, summary_buffer_, nullptr,
-                           sizeof(summary_buffer_), "Queue empty");
-    subjects_.publish("job_queue_summary_text", &job_queue_summary_subject_);
-
     lv_subject_init_int(&job_queue_count_subject_, 0);
     subjects_.publish("job_queue_count", &job_queue_count_subject_);
 
@@ -113,12 +103,6 @@ void JobQueueState::init_subjects() {
     lv_subject_init_int(&job_queue_automatic_transition_subject_, automatic_transition_ ? 1 : 0);
     subjects_.publish("job_queue_automatic_transition", &job_queue_automatic_transition_subject_);
 
-    SubjectDebugRegistry::instance().register_subject(&job_queue_state_subject_,
-                                                      "job_queue_state_text",
-                                                      LV_SUBJECT_TYPE_STRING, __FILE__, __LINE__);
-    SubjectDebugRegistry::instance().register_subject(&job_queue_summary_subject_,
-                                                      "job_queue_summary_text",
-                                                      LV_SUBJECT_TYPE_STRING, __FILE__, __LINE__);
     SubjectDebugRegistry::instance().register_subject(&job_queue_count_subject_, "job_queue_count",
                                                       LV_SUBJECT_TYPE_INT, __FILE__, __LINE__);
     SubjectDebugRegistry::instance().register_subject(&job_queue_run_state_subject_,
@@ -340,28 +324,8 @@ void JobQueueState::update_subjects() {
 
     int count = static_cast<int>(cached_jobs_.size());
 
-    // State text: capitalize first letter for display
-    std::string state_display = queue_state_;
-    if (!state_display.empty()) {
-        state_display[0] =
-            static_cast<char>(std::toupper(static_cast<unsigned char>(state_display[0])));
-    }
-    std::snprintf(state_buffer_, sizeof(state_buffer_), "%s", state_display.c_str());
-    lv_subject_copy_string(&job_queue_state_subject_, state_buffer_);
-
-    // Summary text
-    if (count == 0) {
-        std::snprintf(summary_buffer_, sizeof(summary_buffer_), "Queue empty");
-    } else if (count == 1) {
-        std::snprintf(summary_buffer_, sizeof(summary_buffer_), "1 job queued");
-    } else {
-        std::snprintf(summary_buffer_, sizeof(summary_buffer_), "%d jobs queued", count);
-    }
-    lv_subject_copy_string(&job_queue_summary_subject_, summary_buffer_);
-
     // Next-job display name, empty when the queue is empty, feeds both
-    // composed strings. Same settled-before-count rule as the two subjects
-    // above: count observers re-read these.
+    // composed strings. They settle before the count: count observers re-read them.
     const std::string next_display =
         cached_jobs_.empty() ? std::string{}
                              : helix::gcode::get_display_filename(cached_jobs_.front().filename);

@@ -2,35 +2,93 @@
 <!-- Copyright (C) 2025-2026 356C LLC -->
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <component>
-  <view extends="lv_obj"
-        width="100%" height="100%" style_pad_all="#space_sm" style_pad_gap="#space_xs" style_bg_opa="0%"
-        scrollable="false" flex_flow="column" style_flex_main_place="start" style_flex_cross_place="start">
+  <!--
+    Job queue home tile. JobQueueWidget publishes jq_tile_state (JobQueueTileState),
+    jq_tile_action (JobQueueTileAction), jq_tile_rung (SizeRung), the show/list-row
+    flags and the texts; everything below binds off them. A tap anywhere that is not the
+    start button opens the queue modal.
 
+    Rungs: 1 strip (the headline beside an icon-only start button), 3 cell (thumbnail and
+    headline over "+N more", then a full-width start button), 4 wide (the same with the
+    estimate or detail beside "+N more", and the longer button text), 5 full (wide, plus
+    the next jobs listed below).
+    States: 1 not loaded (a label row above an empty headline), 2 empty, 3 waiting for
+    start, 4 automatic next, 5 printing, 6 starting, 0 queue not enabled in Moonraker.
+  -->
+  <view name="panel_widget_job_queue"
+        extends="lv_obj" width="100%" height="100%" style_pad_all="#space_xxs" style_pad_row="#space_xxs"
+        style_pad_column="0" scrollable="false" flex_flow="column" style_flex_main_place="center"
+        style_flex_cross_place="start">
     <event_cb trigger="clicked" callback="on_job_queue_widget_clicked"/>
+    <style name="styles.press_wash" selector="pressed"/>
 
-    <!-- Header row: icon + title + state badge -->
-    <lv_obj width="100%"
-            height="content" flex_flow="row" style_flex_main_place="start" style_flex_cross_place="center"
-            style_pad_gap="#space_sm" style_bg_opa="0%" style_border_width="0" style_pad_all="0" clickable="false"
+    <lv_obj name="jq_label_row"
+            width="100%" height="content" flex_flow="row" style_flex_cross_place="center" style_pad_all="0"
+            style_pad_gap="#space_xs" style_bg_opa="0" style_border_width="0" scrollable="false" clickable="false"
             event_bubble="true">
-      <icon src="progress_clock" size="#icon_size" variant="secondary" event_bubble="true"/>
-      <text_heading text="Job Queue" flex_grow="1" event_bubble="true"/>
-      <text_small bind_text="job_queue_state_text" event_bubble="true"/>
+      <bind_flag_if_not_eq subject="jq_tile_state" flag="hidden" ref_value="1"/>
+      <icon src="progress_clock" size="xs" variant="muted" clickable="false" event_bubble="true"/>
+      <text_small text="Job Queue" style_text_color="#text_muted" clickable="false" event_bubble="true"/>
     </lv_obj>
 
-    <!-- Summary text -->
-    <text_body bind_text="job_queue_summary_text" event_bubble="true"/>
-
-    <!-- Job list container (scrollable, populated dynamically) -->
-    <!-- Hidden in compact mode (size_mode == 0) -->
-    <lv_obj name="job_list_container"
-            width="100%" flex_grow="1" flex_flow="column" style_pad_all="0" style_pad_gap="2" style_bg_opa="0%"
-            style_border_width="0" scrollbar_mode="auto" clickable="false" event_bubble="true">
-      <bind_flag_if_eq subject="jq_size_mode" flag="hidden" ref_value="0"/>
+    <lv_obj name="jq_body"
+            width="100%" height="content" flex_flow="row" style_flex_main_place="start" style_flex_cross_place="center"
+            style_flex_track_place="center" style_pad_all="0" style_pad_gap="#space_xs" style_bg_opa="0"
+            style_border_width="0" scrollable="false" clickable="false" event_bubble="true">
+      <lv_image name="jq_thumb"
+                width="#button_height_sm" height="#button_height_sm" bind_src="job_queue_next_thumbnail"
+                inner_align="contain" clickable="false" event_bubble="true">
+        <bind_flag_if_not_eq subject="jq_tile_show_thumb" flag="hidden" ref_value="1"/>
+      </lv_image>
+      <lv_obj name="jq_text"
+              height="content" flex_grow="1" flex_flow="column" style_flex_main_place="center"
+              style_flex_cross_place="start" style_pad_all="0" style_pad_row="0" style_bg_opa="0" style_border_width="0"
+              scrollable="false" clickable="false" event_bubble="true">
+        <text_heading name="jq_hero"
+                      width="100%" bind_text="jq_tile_hero" long_mode="dots" clickable="false" event_bubble="true"/>
+        <lv_obj name="jq_meta"
+                width="100%" height="content" flex_flow="row" style_flex_cross_place="center" style_pad_all="0"
+                style_pad_column="#space_xs" style_bg_opa="0" style_border_width="0" scrollable="false"
+                clickable="false" event_bubble="true">
+          <text_small name="jq_detail"
+                      flex_grow="1" bind_text="jq_tile_detail" long_mode="dots" style_text_color="#text_muted"
+                      clickable="false" event_bubble="true">
+            <bind_flag_if_not_eq subject="jq_tile_show_detail" flag="hidden" ref_value="1"/>
+          </text_small>
+          <text_small name="jq_more"
+                      bind_text="jq_tile_more" style_text_color="#text_muted" clickable="false" event_bubble="true">
+            <bind_flag_if_not_eq subject="jq_tile_show_more" flag="hidden" ref_value="1"/>
+          </text_small>
+        </lv_obj>
+      </lv_obj>
+      <ui_button name="jq_action_icon"
+                 width="#button_height_sm" height="#button_height_sm" icon="play" moves_machine="true">
+        <event_cb trigger="clicked" callback="on_job_queue_tile_action"/>
+        <bind_flag_if cond="jq_tile_rung ne 1 or jq_tile_action eq 0" flag="hidden"/>
+      </ui_button>
     </lv_obj>
 
-    <!-- Empty state (visibility controlled by rebuild_job_list) -->
-    <text_small name="jq_empty_state"
-                width="100%" text="No jobs in queue" style_text_align="center" hidden="true" event_bubble="true"/>
+    <ui_button name="jq_action_wide"
+               width="100%" height="#button_height_sm" bind_text="jq_tile_action_text" moves_machine="true">
+      <event_cb trigger="clicked" callback="on_job_queue_tile_action"/>
+      <bind_flag_if cond="jq_tile_rung lt 4 or jq_tile_action eq 0" flag="hidden"/>
+    </ui_button>
+
+    <ui_button name="jq_action_cell"
+               width="100%" height="#button_height_sm" bind_text="jq_tile_action_text" moves_machine="true">
+      <event_cb trigger="clicked" callback="on_job_queue_tile_action"/>
+      <bind_flag_if cond="jq_tile_rung ne 3 or jq_tile_action eq 0" flag="hidden"/>
+    </ui_button>
+
+    <lv_obj name="jq_list"
+            width="100%" height="content" flex_flow="column" style_pad_all="0" style_pad_row="#space_xxs"
+            style_bg_opa="0" style_border_width="0" scrollable="false" clickable="false" event_bubble="true">
+      <bind_flag_if_eq subject="jq_tile_list_rows" flag="hidden" ref_value="0"/>
+      <repeat count="3">
+        <job_queue_row name="jq_after_${i}" hide_delete="true" row_clickable="false" name_subject="jq_tile_after_${i}">
+          <bind_flag_if cond="jq_tile_list_rows le ${i}" flag="hidden"/>
+        </job_queue_row>
+      </repeat>
+    </lv_obj>
   </view>
 </component>

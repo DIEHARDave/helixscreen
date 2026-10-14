@@ -199,10 +199,6 @@ class JobQueueState {
     bool pruned_this_connect_ = false;
 
     // LVGL subjects
-    lv_subject_t job_queue_state_subject_{};
-    char state_buffer_[64];
-    lv_subject_t job_queue_summary_subject_{};
-    char summary_buffer_[128];
     // "Up next: <name> (+N)" for the print-status panel and home widget; the
     // display name of the first queued job, "" when the queue is empty.
     lv_subject_t job_queue_up_next_text_subject_{};

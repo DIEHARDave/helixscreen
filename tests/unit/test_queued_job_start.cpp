@@ -62,22 +62,9 @@ constexpr const char* kPetgFile = "; filament_type = PETG\n"
                                   "G28\n"
                                   "; filament used [g] = 1.50\n";
 
-class StarterFixture : public helix::test::QueuedStartFixture {
+class StarterFixture : public helix::test::QueuedStartMockedFixture {
   public:
-    StarterFixture() : QueuedStartFixture(helix::PrintSelectApi::Mock) {
-        helix::test::wait_out_print_start_grace();
-        // The pre-start G-code is refused while Klipper reads as halted.
-        prior_klippy_ = static_cast<helix::KlippyState>(
-            lv_subject_get_int(get_printer_state().network_state().get_klippy_state_subject()));
-        get_printer_state().set_klippy_state_sync(helix::KlippyState::READY);
-        // A start answered at once, with no simulated print behind it.
-        helix::MoonrakerClientMockTestAccess::set_method_handler(
-            mock_client_, "printer.print.start",
-            [](MoonrakerClientMock*, const json&, std::function<void(const json&)> success_cb,
-               std::function<void(const MoonrakerError&)>) -> bool {
-                success_cb(json{{"result", "ok"}});
-                return true;
-            });
+    StarterFixture() {
         starter = std::make_unique<QueuedJobStarter>(get_printer_state(), api_.get());
         // The fixture's panel is this test's print-select.
         QueuedJobStarterTestAccess::set_prep(*starter, panel_->print_preparation_manager());
@@ -85,20 +72,12 @@ class StarterFixture : public helix::test::QueuedStartFixture {
 
     ~StarterFixture() override {
         starter.reset();
-        get_printer_state().set_klippy_state_sync(prior_klippy_);
-        settle();
     }
 
     void start(const helix::JobQueueEntry& job) {
         outcome.reset();
         starter->start(job, [this](Outcome o) { outcome = o; });
         settle();
-    }
-
-    static void settle() {
-        for (int i = 0; i < 6; ++i) {
-            drain();
-        }
     }
 
     /// Press @p button on the dialog on top of ModalStack.
@@ -113,16 +92,8 @@ class StarterFixture : public helix::test::QueuedStartFixture {
         settle();
     }
 
-    int starts() const {
-        return mock_client_.call_count("printer.print.start");
-    }
-
-    helix::test::ScopedMacrosRead macros;
     std::unique_ptr<QueuedJobStarter> starter;
     std::optional<Outcome> outcome;
-
-  private:
-    helix::KlippyState prior_klippy_ = helix::KlippyState::SHUTDOWN;
 };
 
 } // namespace

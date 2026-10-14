@@ -12,12 +12,16 @@
 #include "app_globals.h"
 #include "i_moonraker_sub_apis.h"
 #include "moonraker_api.h"
+#include "moonraker_client_mock.h"
+#include "moonraker_client_mock_test_access.h"
 #include "print_select_panel_fixture.h"
 #include "print_select_panel_test_access.h"
+#include "print_start_grace.h"
 #include "print_state_test_drivers.h"
 #include "printer_state.h"
 #include "printer_state_test_access.h"
 #include "queued_job_options.h"
+#include "scoped_macros_read.h"
 #include "test_helpers/pre_print_option_sets.h"
 
 #include <map>
@@ -144,6 +148,47 @@ class QueuedStartFixture : private helix::PrintSelectGlobalStateReset,
 
   private:
     IMoonrakerAPI* previous_api_ = nullptr;
+};
+
+/// QueuedStartFixture over the mock API with everything a queued start needs to reach
+/// Moonraker: the print-start grace waited out, Klippy ready, the printer macros read,
+/// and a printer.print.start the mock answers at once with no simulated print behind it.
+class QueuedStartMockedFixture : public QueuedStartFixture {
+  public:
+    QueuedStartMockedFixture() : QueuedStartFixture(helix::PrintSelectApi::Mock) {
+        helix::test::wait_out_print_start_grace();
+        // The pre-start G-code is refused while Klipper reads as halted.
+        prior_klippy_ = static_cast<helix::KlippyState>(
+            lv_subject_get_int(get_printer_state().network_state().get_klippy_state_subject()));
+        get_printer_state().set_klippy_state_sync(helix::KlippyState::READY);
+        helix::MoonrakerClientMockTestAccess::set_method_handler(
+            mock_client_, "printer.print.start",
+            [](MoonrakerClientMock*, const json&, std::function<void(const json&)> success_cb,
+               std::function<void(const MoonrakerError&)>) -> bool {
+                success_cb(json{{"result", "ok"}});
+                return true;
+            });
+    }
+
+    ~QueuedStartMockedFixture() override {
+        get_printer_state().set_klippy_state_sync(prior_klippy_);
+        settle();
+    }
+
+    static void settle() {
+        for (int i = 0; i < 6; ++i) {
+            drain();
+        }
+    }
+
+    int starts() const {
+        return mock_client_.call_count("printer.print.start");
+    }
+
+    helix::test::ScopedMacrosRead macros;
+
+  private:
+    helix::KlippyState prior_klippy_ = helix::KlippyState::SHUTDOWN;
 };
 
 } // namespace helix::test
