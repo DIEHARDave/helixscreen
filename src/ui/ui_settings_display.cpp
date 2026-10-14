@@ -311,6 +311,9 @@ void DisplaySettingsOverlay::init_screensaver_dropdown() {
 }
 
 void DisplaySettingsOverlay::handle_screensaver_changed(int index) {
+#ifndef HELIX_ENABLE_SCREENSAVER
+    (void)index;
+#else
     if (index < 0 || static_cast<size_t>(index) >= screensaver_choices_.size()) {
         spdlog::warn("[{}] Screensaver dropdown index {} is outside the {} offered", get_name(),
                      index, screensaver_choices_.size());
@@ -324,6 +327,7 @@ void DisplaySettingsOverlay::handle_screensaver_changed(int index) {
     DisplaySettingsManager::instance().set_screensaver_type(static_cast<int>(*type));
     // A choice can change what the list offers: Off drops a too-slow stored saver.
     init_screensaver_dropdown();
+#endif
 }
 
 // Per drag tick: apply to the backlight and update the readout, but do NOT
