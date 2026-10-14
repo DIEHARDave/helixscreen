@@ -3350,3 +3350,40 @@ home_widget_flex_styles_without_layout() {
     [ "$status" -eq 0 ]
     [[ "$output" == *"x_inline"* ]]
 }
+
+# --- Vendor branches in generic code ---
+# A vendor name belongs to one module per capability (.claude/rules/vendor-abstraction.md).
+# The ratchet lets counts fall and never rise.
+
+@test "no new vendor branches in generic code" {
+    run python3 scripts/check_vendor_branches.py
+    [ "$status" -eq 0 ]
+}
+
+@test "the vendor-branch gate catches each shape and honours VENDOR_OK" {
+    local root="$BATS_TEST_TMPDIR/root"
+    mkdir -p "$root/src/ui" "$root/scripts"
+    : > "$root/scripts/vendor_branch_baseline.txt"
+    cat > "$root/src/ui/x.cpp" <<'CPP'
+#if defined(HELIX_PLATFORM_K2)
+#endif
+bool a(AmsType t) { return t == AmsType::CFS; }
+bool b() { return flashforge_machine_id().has_value(); }
+CPP
+    run python3 scripts/check_vendor_branches.py --root "$root"
+    [ "$status" -eq 1 ]
+    contains "x.cpp:platform-macro" "$output"
+    contains "x.cpp:amstype-branch" "$output"
+    contains "x.cpp:board-probe" "$output"
+
+    cat > "$root/src/ui/x.cpp" <<'CPP'
+// VENDOR_OK: test
+#if defined(HELIX_PLATFORM_K2)
+#endif
+// VENDOR_OK: test
+bool a(AmsType t) { return t == AmsType::CFS; }
+bool b() { return flashforge_machine_id().has_value(); } // VENDOR_OK: test
+CPP
+    run python3 scripts/check_vendor_branches.py --root "$root"
+    [ "$status" -eq 0 ]
+}
