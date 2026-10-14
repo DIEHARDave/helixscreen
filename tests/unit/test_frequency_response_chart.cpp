@@ -27,7 +27,9 @@
 #include "ui_fonts.h"
 
 #include "../../include/platform_capabilities.h"
+#include "../../include/theme_manager.h"
 #include "../../include/ui_frequency_response_chart.h"
+#include "../test_fixtures.h"
 #include "../ui_test_utils.h"
 #include "lvgl/lvgl.h"
 #include "lvgl/src/misc/lv_text_private.h"
@@ -1134,4 +1136,35 @@ TEST_CASE("axis label boxes fit the label font", "[frequency_response_chart][axi
         CHECK(ui_frequency_response_chart_y_gutter_width(small) == 36);
         CHECK(ui_frequency_response_chart_x_label_half_width(small) == 32);
     }
+}
+
+TEST_CASE_METHOD(XMLTestFixture, "a configured chart pads its gutter for the theme's label font",
+                 "[frequency_response_chart][axis]") {
+    ui_frequency_response_chart_t* chart = ui_frequency_response_chart_create(test_screen());
+    REQUIRE(chart != nullptr);
+    ui_frequency_response_chart_configure_for_platform(chart, PlatformTier::STANDARD);
+    ui_frequency_response_chart_set_y_labels_visible(chart, true);
+
+    lv_obj_t* root = ui_frequency_response_chart_get_obj(chart);
+    REQUIRE(root != nullptr);
+    REQUIRE(lv_obj_get_child_count(root) > 0);
+    lv_obj_t* plot = lv_obj_get_child(root, 0);
+    REQUIRE(lv_obj_check_type(plot, &lv_chart_class));
+
+    const int32_t gutter =
+        ui_frequency_response_chart_y_gutter_width(theme_manager_get_font("font_small"));
+    // The theme's font_small at this display is wider than the 36 px floor,
+    // so a fixed gutter would read narrower than this.
+    REQUIRE(gutter > 36);
+    const int32_t want = gutter + theme_manager_get_spacing("space_xs");
+    CHECK(lv_obj_get_style_pad_left(plot, LV_PART_MAIN) == want);
+
+    SECTION("a resize re-measures the gutter") {
+        lv_obj_set_style_pad_left(plot, 0, LV_PART_MAIN);
+        lv_obj_set_size(root, 300, 200);
+        lv_obj_update_layout(root);
+        CHECK(lv_obj_get_style_pad_left(plot, LV_PART_MAIN) == want);
+    }
+
+    ui_frequency_response_chart_destroy(chart);
 }

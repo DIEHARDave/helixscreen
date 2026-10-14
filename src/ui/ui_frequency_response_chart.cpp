@@ -33,6 +33,23 @@ static int32_t y_label_pad(bool labels_visible) {
            theme_manager_get_spacing("space_xs");
 }
 
+/// Size the label gutters (left: amplitude, bottom: frequency) from the current
+/// font_small. Runs again on every resize, since a breakpoint change swaps the
+/// font under a live chart. Writes a pad only when it differs, so the layout
+/// pass it triggers settles at once.
+static void apply_axis_pads(lv_obj_t* chart_obj, bool y_labels_visible) {
+    const int32_t left = y_label_pad(y_labels_visible);
+    const int32_t bottom = theme_manager_get_spacing("space_sm") +
+                           theme_manager_get_font_height(theme_manager_get_font("font_small")) +
+                           theme_manager_get_spacing("space_xs");
+    if (lv_obj_get_style_pad_left(chart_obj, LV_PART_MAIN) != left) {
+        lv_obj_set_style_pad_left(chart_obj, left, LV_PART_MAIN);
+    }
+    if (lv_obj_get_style_pad_bottom(chart_obj, LV_PART_MAIN) != bottom) {
+        lv_obj_set_style_pad_bottom(chart_obj, bottom, LV_PART_MAIN);
+    }
+}
+
 // Maximum number of series supported: raw PSD + every fitted shaper curve the
 // panel can overlay (MAX_SHAPERS = 11) + the live-before "was" curve. Fitted
 // CSVs from Kalico carry up to 11 columns; too few slots here silently drops
@@ -522,7 +539,7 @@ void ui_frequency_response_chart_set_y_labels_visible(
     }
     chart->show_y_labels = visible;
     if (chart->chart) {
-        lv_obj_set_style_pad_left(chart->chart, y_label_pad(visible), LV_PART_MAIN);
+        apply_axis_pads(chart->chart, visible);
         lv_obj_invalidate(chart->chart);
     }
 }
@@ -1419,7 +1436,8 @@ int32_t ui_frequency_response_chart_y_gutter_width(const lv_font_t* font) {
     // The 36 px floor is the gutter the smaller tiers are laid out against.
     constexpr int32_t MIN_GUTTER = 36;
     int32_t widest = 0;
-    for (const char* sample : {"100%", "999k", "0.01"}) {
+    // Every shape the amplitude formatter emits, at its widest.
+    for (const char* sample : {"100%", "999k", "0.005", "1e-04", "100e9"}) {
         widest = std::max(widest, text_width(font, sample));
     }
     return std::max(MIN_GUTTER, widest);
@@ -1667,17 +1685,17 @@ void ui_frequency_response_chart_configure_for_platform(ui_frequency_response_ch
             lv_chart_set_point_count(chart->chart, static_cast<uint32_t>(chart->max_points));
             lv_chart_set_axis_range(chart->chart, LV_CHART_AXIS_PRIMARY_Y, 0, 1000);
 
-            // Padding for axis labels
-            const lv_font_t* axis_font = theme_manager_get_font("font_small");
-            int32_t axis_label_h = theme_manager_get_font_height(axis_font);
-            int32_t space_xs = theme_manager_get_spacing("space_xs");
+            // Padding for axis labels, re-measured on resize
             int32_t space_sm = theme_manager_get_spacing("space_sm");
-            // Left padding: room for Y-axis labels when they are shown
-            lv_obj_set_style_pad_left(chart->chart, y_label_pad(chart->show_y_labels),
-                                      LV_PART_MAIN);
-            // Bottom padding: room for X-axis labels
-            lv_obj_set_style_pad_bottom(chart->chart, space_sm + axis_label_h + space_xs,
-                                        LV_PART_MAIN);
+            apply_axis_pads(chart->chart, chart->show_y_labels);
+            lv_obj_add_event_cb(
+                chart->chart,
+                [](lv_event_t* e) {
+                    auto* c =
+                        static_cast<ui_frequency_response_chart_t*>(lv_event_get_user_data(e));
+                    apply_axis_pads(lv_event_get_target_obj(e), c->show_y_labels);
+                },
+                LV_EVENT_SIZE_CHANGED, chart);
             // Small top/right padding for visual breathing room
             lv_obj_set_style_pad_top(chart->chart, space_sm, LV_PART_MAIN);
             lv_obj_set_style_pad_right(chart->chart, space_sm, LV_PART_MAIN);

@@ -178,16 +178,10 @@ void ui_frequency_response_chart_set_y_labels_visible(ui_frequency_response_char
                                                       bool visible);
 
 /**
- * @brief Label the amplitude gridlines as percentages
- *
- * For callers that normalise their data to 0-100 and set the amplitude range
- * to match: each gridline reads "100%", "75%", ... instead of a raw value.
- */
-/**
  * @brief Width of the amplitude-label gutter for @p font
  *
- * The widest label the gutter draws ("100%", "999k", "0.01"), never less
- * than 36 px. The chart adds space_xs on top of it.
+ * The widest label the gutter draws ("100%", "999k", "0.005", "1e-04",
+ * "100e9"), never less than 36 px. The chart adds space_xs on top of it.
  */
 // NAMESPACE_OK: matches this file's C-style chart API
 int32_t ui_frequency_response_chart_y_gutter_width(const lv_font_t* font);
@@ -200,6 +194,12 @@ int32_t ui_frequency_response_chart_y_gutter_width(const lv_font_t* font);
 // NAMESPACE_OK: matches this file's C-style chart API
 int32_t ui_frequency_response_chart_x_label_half_width(const lv_font_t* font);
 
+/**
+ * @brief Label the amplitude gridlines as percentages
+ *
+ * For callers that normalise their data to 0-100 and set the amplitude range
+ * to match: each gridline reads "100%", "75%", ... instead of a raw value.
+ */
 // NAMESPACE_OK: matches this file's C-style chart API
 void ui_frequency_response_chart_set_y_labels_percent(ui_frequency_response_chart_t* chart,
                                                       bool percent);
