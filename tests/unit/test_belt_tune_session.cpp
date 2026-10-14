@@ -583,6 +583,21 @@ TEST_CASE("tune rate: median of real moves, recorded turns win", "[belt][tune]")
     CHECK(s.rounds().size() == 4);
 }
 
+TEST_CASE("tune rate: a wrong-way round teaches nothing", "[belt][tune]") {
+    auto s = session_for(112.0f, 100.0f, BeltTensionerKind::SCREW);
+    // A quarter turn moved B 2 Hz the wrong way: no rate, so the next
+    // amount is the default, not |gap| over 8 Hz/turn.
+    const auto& wrong = sweep(s, 112.0f, 98.0f);
+    REQUIRE(wrong.outcome == BeltTuneOutcome::WRONG_WAY);
+    CHECK_FALSE(s.hz_per_turn().has_value());
+    REQUIRE(s.advice().turns.has_value());
+    CHECK(*s.advice().turns == Catch::Approx(0.25f));
+    // The next real move is the only sample: a quarter turn for 4 Hz.
+    REQUIRE(sweep(s, 112.0f, 102.0f).outcome == BeltTuneOutcome::CLOSER);
+    REQUIRE(s.hz_per_turn().has_value());
+    CHECK(*s.hz_per_turn() == Catch::Approx(16.0f).margin(0.4f));
+}
+
 TEST_CASE("tune hints: unpaired zones and stalled rounds", "[belt][tune]") {
     SECTION("an unpaired zone shows the mechanical causes at once") {
         auto s = session_for(112.0f, 100.0f, BeltTensionerKind::SCREW);
