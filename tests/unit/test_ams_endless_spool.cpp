@@ -1365,6 +1365,119 @@ TEST_CASE("Endless spool marks: unordered groups are brackets, ordered groups ar
         CHECK(marks[0].height_level == marks[1].height_level);
     }
 
+    SECTION("a group nested in another always sits below its container") {
+        // {0,5}, {3,8}, {6,7}: {6,7} overlaps only {3,8}, so the first free
+        // level alone would lift it above the group that spans it.
+        const auto cfg = endless_spool_config_from_groups({0, -1, -1, 1, -1, 0, 2, 2, 1});
+
+        const auto marks = endless_spool_marks(cfg, 9);
+
+        REQUIRE(marks.size() == 3);
+        const auto* outer = find_mark(marks, {3, 8});
+        const auto* inner = find_mark(marks, {6, 7});
+        REQUIRE(outer != nullptr);
+        REQUIRE(inner != nullptr);
+        CHECK(outer->height_level < inner->height_level);
+        // Nothing drops through the nested bar.
+        CHECK(inner->bar_gaps.empty());
+    }
+
+    SECTION("a slot that heads two ordered groups keeps only its first successor") {
+        EndlessSpoolConfig cfg;
+        cfg.groups.push_back(ordered_group({0, 1}));
+        cfg.groups.push_back(ordered_group({0, 2}));
+
+        const auto marks = endless_spool_marks(cfg, 3);
+
+        REQUIRE(marks.size() == 1);
+        CHECK(marks[0].slots == std::vector<int>{0, 1});
+        CHECK(endless_spool_backup_for(cfg, 0) == 1);
+    }
+
+    SECTION("levels clamp to what the canvas holds, and gaps follow the clamped levels") {
+        // {0,3}, {1,4}, {2,5}: each overlaps the other two.
+        const auto cfg = endless_spool_config_from_groups({0, 1, 2, 0, 1, 2});
+
+        const auto unclamped = endless_spool_marks(cfg, 6);
+        const auto* deepest = find_mark(unclamped, {2, 5});
+        REQUIRE(deepest != nullptr);
+        CHECK(deepest->height_level == 2);
+        // Ticks at 3 and 4 both drop through the deepest bar.
+        CHECK(deepest->bar_gaps.size() == 2);
+
+        helix::ui::EndlessSpoolMarkLimits limits;
+        limits.max_height_level = 1;
+        const auto marks = endless_spool_marks(cfg, 6, limits);
+
+        REQUIRE(marks.size() == 3);
+        for (const auto& m : marks) {
+            CHECK(m.height_level <= 1);
+        }
+        const auto* shared_a = find_mark(marks, {1, 4});
+        const auto* shared_b = find_mark(marks, {2, 5});
+        REQUIRE((shared_a && shared_b));
+        CHECK(shared_a->height_level == 1);
+        CHECK(shared_b->height_level == 1);
+        // Marks on one bar do not break each other: only {0,3}'s tick at 3
+        // still crosses {2,5}.
+        REQUIRE(shared_b->bar_gaps.size() == 1);
+        CHECK(shared_b->bar_gaps[0] == helix::ui::EndlessSpoolColumn{3, 0});
+    }
+
+    SECTION("lanes become pixel offsets, narrowed to stay inside the slot") {
+        const auto cfg = endless_spool_config_from_edges({2, 2, -1, 0});
+
+        // No limits: lanes have no width.
+        for (const auto& m : endless_spool_marks(cfg, 4)) {
+            for (const auto& c : m.columns) {
+                CHECK(c.offset_px == 0);
+            }
+        }
+
+        helix::ui::EndlessSpoolMarkLimits limits;
+        limits.lane_px = 7;
+        limits.slot_spacing_px = 104;
+        const auto roomy = endless_spool_marks(cfg, 4, limits);
+        const auto* a = find_mark(roomy, {0, 2});
+        REQUIRE(a != nullptr);
+        CHECK(a->columns[0].offset_px == -7);
+        CHECK(a->columns[1].offset_px == 7 * a->columns[1].lane);
+
+        // Two lanes right of slot 2 must stay inside half of a 30px spacing.
+        limits.slot_spacing_px = 30;
+        for (const auto& m : endless_spool_marks(cfg, 4, limits)) {
+            for (const auto& c : m.columns) {
+                CHECK(std::abs(c.offset_px) < limits.slot_spacing_px / 2);
+                if (c.lane != 0) {
+                    CHECK(c.offset_px != 0);
+                }
+            }
+        }
+    }
+
+    SECTION("arrowheads sharing a slot never overlap") {
+        const auto cfg = endless_spool_config_from_edges({2, 2, -1, 0});
+        for (const int32_t spacing : {104, 40, 20}) {
+            helix::ui::EndlessSpoolMarkLimits limits;
+            limits.lane_px = 7;
+            limits.slot_spacing_px = spacing;
+
+            const auto marks = endless_spool_marks(cfg, 4, limits);
+
+            const auto* a = find_mark(marks, {0, 2});
+            const auto* b = find_mark(marks, {1, 2});
+            const auto* lone = find_mark(marks, {3, 0});
+            REQUIRE((a && b && lone));
+            INFO("slot spacing " << spacing);
+            const int32_t apart = std::abs(a->columns[1].offset_px - b->columns[1].offset_px);
+            // Each wing's 2px stroke reaches 1px past the half-width.
+            CHECK((a->head_px + 1) + (b->head_px + 1) < apart);
+            CHECK(a->head_px >= 1);
+            // A slot with one arrowhead keeps the full-size head.
+            CHECK(lone->head_px == 6);
+        }
+    }
+
     SECTION("an empty relation draws nothing") {
         CHECK(endless_spool_marks(EndlessSpoolConfig{}, 4).empty());
     }

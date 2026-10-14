@@ -130,10 +130,13 @@ enum class EndlessSpoolMarkKind {
 /// Where a vertical meets the slot row: a slot, nudged sideways by whole lanes.
 struct EndlessSpoolColumn {
     int slot = 0;
-    /// 0 = the slot's centre. Negative lanes sit left of it (arrow sources),
-    /// positive lanes right of it (arrow targets), so a slot that is both the
-    /// target of one hop and the source of the next shows two separate lines.
+    /// 0 = the slot's centre. An arrow's source sits one lane left of it and
+    /// its arrowhead one lane right, so a slot that is both the target of one
+    /// hop and the source of the next shows two separate lines. A second
+    /// arrowhead into the same slot lands one lane further right.
     int lane = 0;
+    /// `lane` in pixels: lane times the lane width the limits allow.
+    int32_t offset_px = 0;
 
     bool operator==(const EndlessSpoolColumn& o) const {
         return slot == o.slot && lane == o.lane;
@@ -143,7 +146,8 @@ struct EndlessSpoolColumn {
     }
 };
 
-/// One mark above the slot row, in slot and lane units (no pixels).
+/// One mark above the slot row, in slot and lane units plus the pixel sizes
+/// that depend on them.
 struct EndlessSpoolMark {
     EndlessSpoolMarkKind kind = EndlessSpoolMarkKind::Bracket;
     /// Bracket: members, ascending. Arrow: {source, target}.
@@ -154,26 +158,46 @@ struct EndlessSpoolMark {
     int min_slot = 0; ///< Leftmost slot the mark touches
     int max_slot = 0; ///< Rightmost slot the mark touches
     /// 0 = the bar furthest from the slots; each level steps toward them.
+    /// Never deeper than EndlessSpoolMarkLimits::max_height_level.
     int height_level = 0;
     /// Columns where another mark's vertical crosses this bar; the bar is broken there.
     std::vector<EndlessSpoolColumn> bar_gaps;
+    /// Arrow: half-width of the arrowhead, small enough that arrowheads sharing
+    /// a slot never overlap. Bracket: 0.
+    int32_t head_px = 0;
+};
+
+/// What the canvas can hold. The defaults impose nothing: unlimited levels and
+/// lanes with no width.
+struct EndlessSpoolMarkLimits {
+    /// Deepest height level the canvas fits; deeper marks share that bar. -1 = no limit.
+    int max_height_level = -1;
+    /// Preferred lane width in pixels.
+    int32_t lane_px = 0;
+    /// Distance between neighbouring slot centres in pixels; 0 = do not narrow lanes.
+    /// Lanes narrow so the outermost one stays inside its slot's half of it.
+    int32_t slot_spacing_px = 0;
 };
 
 /**
  * @brief Lay out the marks for an endless-spool relation
  *
- * Pure geometry, no LVGL: which marks exist, which column each vertical
- * drops in, their height levels, and where each bar is broken. No two arrow
- * ends share a column, and marks whose extents meet or overlap never share a
- * height level, so every hop reads on its own. Members outside [0, slot_count) are dropped; a group
+ * Pure geometry, no LVGL: which marks exist, which column each vertical drops
+ * in, their height levels, and where each bar is broken. No two arrow ends
+ * share a column, and marks whose extents overlap (lanes included, so two hops
+ * meeting at a slot overlap) never share a height level unless the canvas
+ * limit forces them onto its last one. A mark sits below every mark that
+ * contains its extent. Members outside [0, slot_count) are dropped; a group
  * left with fewer than two members draws nothing.
  *
  * @param config     The group relation
  * @param slot_count Number of slots on the row
+ * @param limits     What the canvas can hold
  * @return Marks, in no particular order
  */
 [[nodiscard]] std::vector<EndlessSpoolMark>
-endless_spool_marks(const helix::printer::EndlessSpoolConfig& config, int slot_count);
+endless_spool_marks(const helix::printer::EndlessSpoolConfig& config, int slot_count,
+                    const EndlessSpoolMarkLimits& limits = {});
 
 } // namespace helix::ui
 #endif

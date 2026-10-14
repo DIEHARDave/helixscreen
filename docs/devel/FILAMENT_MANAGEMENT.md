@@ -2155,22 +2155,30 @@ decides per group what to draw. The decision is the pure function
 | Ordered (AFC `SET_RUNOUT`, AD5X) | One routed **arrow** per hand-off, up from the source, over, down into an arrowhead at the target. A slot keeps only its first successor, as in the projection |
 
 Every hop of an ordered group must read on its own, so no two arrows share a column or a
-bar. Each arrow end takes a **lane** beside its slot centre: a source leaves one lane left of
-it, an arrowhead lands one lane right of it, and further ends on the same side step outward.
+bar. Each arrow end takes a **lane** beside its slot centre. A slot is the source of at most
+one arrow (the first-successor rule), which leaves one lane left of the centre; an arrowhead
+lands one lane right of it, and a second arrowhead into the same slot one lane further right.
 A slot that is both the target of one hop and the source of the next therefore shows two
-lines. The lane is a unit in the geometry; the painter turns it into pixels from the theme's
-`space_sm`, narrowed on a crowded row so an end never drifts into the next slot. Bracket ticks
-stay centred.
+lines. Bracket ticks stay centred.
 
-Marks whose bars overlap horizontally, lanes included, take different height levels: each
-takes the highest level no overlapping mark holds, so a chain alternates between two levels.
-Wider spans are placed first and take the upper levels, so a nested group sits under the
-group spanning it. Every line is solid, and a
-bar is broken for a few pixels wherever another mark's vertical passes through it, so
-interleaved groups (`{1,3}` and `{2,4}`) read as two groups rather than one. Levels clamp to
-the canvas height: past the last level that fits, the deepest marks share one bar. All
-marks use `text_muted` and no per-group tint, because a tint would read as filament colour.
-Members at or beyond the slot count, and slots past 16, are not drawn.
+`endless_spool_marks()` also takes `EndlessSpoolMarkLimits`, what the canvas can hold, and
+turns lanes into pixels itself (`EndlessSpoolColumn::offset_px`): the painter passes the
+theme's `space_sm` as the lane width, the slot spacing, and the deepest height level the
+canvas fits. Lanes narrow on a crowded row so an end stays inside its slot's half of the
+spacing, except that where two arrowheads share a slot a lane never narrows below what two
+of the smallest heads need. An arrowhead is full size unless it shares its slot, in which
+case its half-width (`head_px`) shrinks so the two heads never overlap.
+
+Marks whose bars overlap horizontally, lanes included, take different height levels. Wider
+spans are placed first, and a mark always sits below every mark whose extent contains its
+own, so a nested group sits under the group spanning it. Within that, each mark takes the
+first level from the top that no overlapping mark holds, so a chain alternates between two
+levels. Past the deepest level the canvas fits, marks share that bar, and the crossing gaps
+are placed from those clamped levels. Every line is solid, and a bar is broken for a few
+pixels wherever another mark's vertical passes through it, never reaching the bar's own
+junctions, so interleaved groups (`{1,3}` and `{2,4}`) read as two groups rather than one.
+All marks use `text_muted` and no per-group tint, because a tint would read as filament
+colour. Members at or beyond the slot count, and slots past 16, are not drawn.
 
 ### The status line
 
