@@ -26,6 +26,7 @@
 #include "moonraker_client_mock.h"
 #include "printer_detector.h"
 #include "printer_state.h"
+#include "wizard_config_paths.h"
 
 #include <algorithm>
 #include <filesystem>
@@ -319,6 +320,28 @@ TEST_CASE_METHOD(StepFixture, "a printer type chosen by the user sets the sensor
     REQUIRE_FALSE(PrinterDetector::apply_type_choice(&fresh.config(), "Elegoo Centauri Carbon",
                                                      api.hardware())
                       .empty());
+
+    CHECK(cc1_sensor_is_runout());
+}
+
+// An install whose wizard finished and whose printer type is saved gets the preset's sensor
+// block merged on the next discovery; the sensors must pick it up without a restart.
+TEST_CASE_METHOD(StepFixture, "a migrated preset sensor block takes effect in the same session",
+                 "[discovery_steps][preset][sensors]") {
+    FreshInstallConfig fresh;
+    discover_cc1_sensor_without_preset(api.hardware());
+    REQUIRE_FALSE(cc1_sensor_is_runout());
+
+    helix::Config& config = fresh.config();
+    config.set<bool>(config.df() + "wizard_completed", true);
+    config.set<std::string>(config.df() + helix::wizard::PRINTER_TYPE, "Elegoo Centauri Carbon");
+
+    auto ctx = context(/*hw_changed=*/true);
+    for (const DiscoveryStep& step : helix::discovery_core_steps()) {
+        if (std::string(step.name) == "auto_detect_printer") {
+            step.run(ctx);
+        }
+    }
 
     CHECK(cc1_sensor_is_runout());
 }

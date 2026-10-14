@@ -1198,12 +1198,6 @@ std::string PrinterDetector::get_preset_for_name(const std::string& printer_name
     return printer_field(printer_name, "preset");
 }
 
-void helix::reload_sensor_roles_after_preset() {
-    FilamentSensorManager::instance().load_config_from_file();
-    helix::sensors::ProbeSensorManager::instance().load_config_from_file();
-    helix::sensors::WidthSensorManager::instance().load_config_from_file();
-}
-
 std::string PrinterDetector::apply_preset_with_variants(helix::Config* config,
                                                         const std::string& preset,
                                                         const helix::PrinterDiscovery& discovery) {
