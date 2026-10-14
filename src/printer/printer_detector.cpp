@@ -8,6 +8,7 @@
 #include "app_globals.h"
 #include "config.h"
 #include "data_root_resolver.h"
+#include "filament_sensor_manager.h"
 #include "helix_fs.h"
 #include "json_utils.h"
 #include "klipper_extruder_naming.h"
@@ -16,8 +17,10 @@
 #include "printer_discovery.h"
 #include "printer_state.h"
 #include "probe_preparation.h"
+#include "probe_sensor_manager.h"
 #include "text_io.h"
 #include "thermal_rate_model.h"
+#include "width_sensor_manager.h"
 #include "wizard_config_paths.h"
 
 #include <spdlog/spdlog.h>
@@ -1195,6 +1198,12 @@ std::string PrinterDetector::get_preset_for_name(const std::string& printer_name
     return printer_field(printer_name, "preset");
 }
 
+void helix::reload_sensor_roles_after_preset() {
+    FilamentSensorManager::instance().load_config_from_file();
+    helix::sensors::ProbeSensorManager::instance().load_config_from_file();
+    helix::sensors::WidthSensorManager::instance().load_config_from_file();
+}
+
 std::string PrinterDetector::apply_preset_with_variants(helix::Config* config,
                                                         const std::string& preset,
                                                         const helix::PrinterDiscovery& discovery) {
@@ -1254,6 +1263,7 @@ std::string PrinterDetector::apply_preset_with_variants(helix::Config* config,
     }
 
     config->set_preset(applied);
+    helix::reload_sensor_roles_after_preset();
     return applied;
 }
 
@@ -1805,7 +1815,9 @@ bool PrinterDetector::auto_detect_and_save(const helix::PrinterDiscovery& discov
         // installs without this hook).
         std::string saved_preset = get_preset_for_name(saved_type);
         if (!saved_preset.empty()) {
-            config->apply_preset_file(saved_preset);
+            if (config->apply_preset_file(saved_preset)) {
+                helix::reload_sensor_roles_after_preset();
+            }
         }
         // Apply the saved type to PrinterState for the same reason the
         // detected-type path does: it is what resolves the pre-print option

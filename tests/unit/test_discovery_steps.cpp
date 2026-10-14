@@ -24,6 +24,7 @@
 #include "hardware_setup_prompter.h"
 #include "moonraker_api_mock.h"
 #include "moonraker_client_mock.h"
+#include "printer_detector.h"
 #include "printer_state.h"
 
 #include <algorithm>
@@ -224,38 +225,79 @@ TEST_CASE("the print_active decision: the discovery status can raise it, never l
     CHECK_FALSE(helix::discovery_print_active(false, json::object()));
 }
 
+namespace {
+
+constexpr const char* kCc1Sensor = "filament_switch_sensor filament_sensor";
+
+/// The global Config swapped for a fresh install and restored on scope exit.
+class FreshInstallConfig {
+  public:
+    FreshInstallConfig()
+        : config_(*helix::Config::get_instance()), data_(helix::ConfigTestAccess::data(config_)),
+          path_(helix::ConfigTestAccess::path(config_)),
+          id_(helix::ConfigTestAccess::active_printer_id(config_)),
+          dir_((std::filesystem::temp_directory_path() /
+                ("helix_preset_roles_" + std::to_string(getpid())))
+                   .string()) {
+        std::filesystem::create_directories(dir_);
+        helix::ConfigTestAccess::path(config_) = dir_ + "/settings.json";
+        helix::ConfigTestAccess::active_printer_id(config_) = "default";
+        helix::ConfigTestAccess::data(config_) = {
+            {"active_printer_id", "default"},
+            {"printers",
+             {{"default", {{"moonraker_host", "127.0.0.1"}, {"wizard_completed", false}}}}}};
+        get_printer_state().set_printer_type_sync("");
+    }
+    ~FreshInstallConfig() {
+        helix::FilamentSensorManager::instance().discover_sensors({});
+        helix::ConfigTestAccess::data(config_) = data_;
+        helix::ConfigTestAccess::path(config_) = path_;
+        helix::ConfigTestAccess::active_printer_id(config_) = id_;
+        get_printer_state().set_printer_type_sync("");
+        std::filesystem::remove_all(dir_);
+    }
+    helix::Config& config() {
+        return config_;
+    }
+
+  private:
+    helix::Config& config_;
+    json data_;
+    std::string path_;
+    std::string id_;
+    std::string dir_;
+};
+
+bool cc1_sensor_is_runout() {
+    for (const auto& sensor : helix::FilamentSensorManager::instance().get_sensors()) {
+        if (sensor.klipper_name == kCc1Sensor) {
+            return sensor.role == helix::FilamentSensorRole::RUNOUT;
+        }
+    }
+    return false;
+}
+
+/// Sensors discovered and their config loaded before any preset exists, as startup does.
+void discover_cc1_sensor_without_preset(helix::PrinterDiscovery& hw) {
+    hw.parse_objects(
+        helix::test::load_printer_capture("elegoo_centauri_carbon_objects_list").at("objects"));
+    auto& fsm = helix::FilamentSensorManager::instance();
+    fsm.discover_sensors(hw.filament_sensor_names());
+    fsm.load_config_from_file();
+}
+
+} // namespace
+
 // A preset applied by the auto-detect step lands after the sensors were discovered and their
 // config loaded. The CC1's `filament_sensor` has no role by name, so the preset's role has to
 // reach the manager in the same session or the home filament tile stays blank until restart.
 TEST_CASE_METHOD(StepFixture, "a preset applied during discovery sets the sensor roles at once",
                  "[discovery_steps][preset][sensors]") {
-    namespace fs = std::filesystem;
-    constexpr const char* kSensor = "filament_switch_sensor filament_sensor";
+    FreshInstallConfig fresh;
+    discover_cc1_sensor_without_preset(api.hardware());
+    REQUIRE_FALSE(cc1_sensor_is_runout());
 
-    helix::Config& config = *helix::Config::get_instance();
-    const json saved_data = helix::ConfigTestAccess::data(config);
-    const std::string saved_path = helix::ConfigTestAccess::path(config);
-    const std::string saved_id = helix::ConfigTestAccess::active_printer_id(config);
-    const std::string dir =
-        (fs::temp_directory_path() / ("helix_preset_roles_" + std::to_string(getpid()))).string();
-    fs::create_directories(dir);
-
-    helix::ConfigTestAccess::path(config) = dir + "/settings.json";
-    helix::ConfigTestAccess::active_printer_id(config) = "default";
-    helix::ConfigTestAccess::data(config) = {
-        {"active_printer_id", "default"},
-        {"printers",
-         {{"default", {{"moonraker_host", "127.0.0.1"}, {"wizard_completed", false}}}}}};
-    get_printer_state().set_printer_type_sync("");
-
-    api.hardware().parse_objects(
-        helix::test::load_printer_capture("elegoo_centauri_carbon_objects_list").at("objects"));
-    auto& fsm = helix::FilamentSensorManager::instance();
-    fsm.discover_sensors(api.hardware().filament_sensor_names());
-    fsm.load_config_from_file();
-    REQUIRE_FALSE(fsm.is_sensor_available(helix::FilamentSensorRole::RUNOUT));
-
-    config.set_preset("cc1");
+    fresh.config().set_preset("cc1");
     auto ctx = context(/*hw_changed=*/true);
     for (const DiscoveryStep& step : helix::discovery_core_steps()) {
         if (std::string(step.name) == "auto_detect_printer") {
@@ -263,18 +305,20 @@ TEST_CASE_METHOD(StepFixture, "a preset applied during discovery sets the sensor
         }
     }
 
-    bool runout = false;
-    for (const auto& sensor : fsm.get_sensors()) {
-        if (sensor.klipper_name == kSensor) {
-            runout = sensor.role == helix::FilamentSensorRole::RUNOUT;
-        }
-    }
-    CHECK(runout);
+    CHECK(cc1_sensor_is_runout());
+}
 
-    fsm.discover_sensors({});
-    helix::ConfigTestAccess::data(config) = saved_data;
-    helix::ConfigTestAccess::path(config) = saved_path;
-    helix::ConfigTestAccess::active_printer_id(config) = saved_id;
-    get_printer_state().set_printer_type_sync("");
-    fs::remove_all(dir);
+// The wizard and the Printer Manager apply a preset through apply_type_choice, which must
+// reload the sensors the same way.
+TEST_CASE_METHOD(StepFixture, "a printer type chosen by the user sets the sensor roles at once",
+                 "[discovery_steps][preset][sensors]") {
+    FreshInstallConfig fresh;
+    discover_cc1_sensor_without_preset(api.hardware());
+    REQUIRE_FALSE(cc1_sensor_is_runout());
+
+    REQUIRE_FALSE(PrinterDetector::apply_type_choice(&fresh.config(), "Elegoo Centauri Carbon",
+                                                     api.hardware())
+                      .empty());
+
+    CHECK(cc1_sensor_is_runout());
 }

@@ -12,7 +12,6 @@
 #include "app_globals.h"
 #include "config.h"
 #include "discovery_steps.h"
-#include "filament_sensor_manager.h"
 #include "hardware_role_registry.h"
 #include "light_button_config.h"
 #include "printer_detector.h"
@@ -122,10 +121,6 @@ void software_versions_step(DiscoveryContext& ctx) {
 // 0 fans, hostname ''" (#802).
 void auto_detect_printer_step(DiscoveryContext& ctx) {
     PrinterDetector::auto_detect_and_save(ctx.hw, Config::get_instance());
-    // Sensors were discovered and their config loaded before the preset landed, so a
-    // sensor the preset assigns a role (the CC1's `filament_sensor` carries no role by
-    // name) would keep role none until the next restart. Runs on the UI thread.
-    FilamentSensorManager::instance().load_config_from_file();
 }
 
 // Auto-heal + persist heater roles (batched single save, symmetry with fan roles above).

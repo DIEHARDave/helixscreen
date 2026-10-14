@@ -763,6 +763,16 @@ class PrinterDetector {
     static bool meets_autosave_threshold(const PrinterDetectionResult& result);
 };
 
+namespace helix {
+
+/// Re-reads the filament, probe and width sensor config. A preset assigns sensor roles after
+/// discovery has already loaded that config, so every path that applies a preset calls this
+/// or the sensors keep the roles inferred from their names until the next restart.
+/// UI thread only.
+void reload_sensor_roles_after_preset();
+
+} // namespace helix
+
 inline bool PrinterDetectionResult::ambiguous() const {
     return detected() && margin() < PrinterDetector::DETECT_MIN_MARGIN;
 }
