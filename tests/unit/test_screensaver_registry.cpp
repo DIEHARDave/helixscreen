@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "screensaver_registry.h"
+#include "screensaver_setting.h"
 
 #include <algorithm>
 #include <fstream>
@@ -283,4 +284,71 @@ TEST_CASE("the dropdown selects the saver that actually runs",
     // Only an all-too-heavy board runs a saver the dropdown does not list: it shows a black
     // screen, which reads as Off.
     CHECK(screensaver_choice_index(choices, ScreensaverType::MAZE_3D) == 0);
+}
+
+TEST_CASE("a stored screensaver name maps to its saver whatever its case",
+          "[screensaver][screensaver_registry][screensaver_setting]") {
+    using helix::ui::screensaver_from_name;
+    using helix::ui::screensaver_name;
+    for (const helix::ui::ScreensaverInfo& info : SCREENSAVERS) {
+        CAPTURE(info.name);
+        CHECK(screensaver_name(info.type) == std::string(info.name));
+        CHECK(screensaver_from_name(info.name) == info.type);
+    }
+    CHECK(screensaver_name(ScreensaverType::OFF) == std::string("off"));
+    CHECK(screensaver_from_name("off") == ScreensaverType::OFF);
+    CHECK(screensaver_from_name("OFF") == ScreensaverType::OFF);
+    CHECK(screensaver_from_name("Maze") == ScreensaverType::MAZE_3D);
+    CHECK(screensaver_from_name("FLIPCLOCK") == ScreensaverType::FLIP_CLOCK);
+    CHECK_FALSE(screensaver_from_name("3D Maze").has_value());
+    CHECK_FALSE(screensaver_from_name("").has_value());
+    CHECK_FALSE(screensaver_from_name("mazes").has_value());
+}
+
+TEST_CASE("legacy screensaver type numbers keep the meaning they were written with",
+          "[screensaver][screensaver_registry][screensaver_setting]") {
+    // Literal, not derived from ScreensaverType or SCREENSAVERS: reordering the registry, adding
+    // a saver or compiling one out must never change what an old stored number selects.
+    const std::vector<std::string> written{"off",        "toasters",  "starfield", "pipes",
+                                           "bounce",     "fireworks", "logo",      "maze",
+                                           "hyperspace", "flipclock"};
+    REQUIRE(std::size(helix::ui::LEGACY_SCREENSAVER_TYPE_NAMES) == written.size());
+    for (size_t i = 0; i < written.size(); i++) {
+        CAPTURE(i);
+        REQUIRE(helix::ui::legacy_screensaver_name(static_cast<long long>(i)) != nullptr);
+        CHECK(helix::ui::legacy_screensaver_name(static_cast<long long>(i)) == written[i]);
+        const nlohmann::json number = static_cast<int>(i);
+        CHECK(helix::ui::screensaver_name(helix::ui::screensaver_from_setting(
+                  &number, ScreensaverType::STARFIELD)) == written[i]);
+    }
+    CHECK(helix::ui::legacy_screensaver_name(-1) == nullptr);
+    CHECK(helix::ui::legacy_screensaver_name(static_cast<long long>(written.size())) == nullptr);
+}
+
+TEST_CASE("a stored screensaver setting reads leniently and falls back to the default",
+          "[screensaver][screensaver_registry][screensaver_setting]") {
+    using helix::ui::screensaver_from_setting;
+    const ScreensaverType fallback = ScreensaverType::FLYING_TOASTERS;
+    const auto read = [&](const nlohmann::json& value) {
+        return screensaver_from_setting(&value, fallback);
+    };
+    SECTION("a name, in any case") {
+        CHECK(read("maze") == ScreensaverType::MAZE_3D);
+        CHECK(read("Hyperspace") == ScreensaverType::HYPERSPACE);
+        CHECK(read("off") == ScreensaverType::OFF);
+    }
+    SECTION("a legacy integer") {
+        CHECK(read(7) == ScreensaverType::MAZE_3D);
+        CHECK(read(0) == ScreensaverType::OFF);
+    }
+    SECTION("an unknown name, an out-of-range number or another JSON type") {
+        CHECK(read("lava lamp") == fallback);
+        CHECK(read(10) == fallback);
+        CHECK(read(-1) == fallback);
+        CHECK(read(7.0) == fallback);
+        CHECK(read(true) == fallback);
+        CHECK(read(nlohmann::json::array()) == fallback);
+        CHECK(read(nullptr) == fallback);
+        CHECK(screensaver_from_setting(nullptr, fallback) == fallback);
+    }
 }

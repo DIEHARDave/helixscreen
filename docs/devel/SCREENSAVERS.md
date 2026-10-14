@@ -8,7 +8,8 @@ This doc is the map: which file owns what, how the gate decides, and how to add 
 
 | File | Owns |
 |---|---|
-| `include/screensaver_registry.h` | `ScreensaverType`, the `SCREENSAVERS` rows (type, stable name, label key, color depths), clamp, `HELIX_SCREENSAVER_NOW` names, the fresh-install default, the too-heavy fallback order and the settings dropdown's choices. Always compiled |
+| `include/screensaver_registry.h` | `ScreensaverType`, the `SCREENSAVERS` rows (type, stable name, label key, color depths), clamp, the stable names and the frozen legacy type numbers, the fresh-install default, the too-heavy fallback order and the settings dropdown's choices. Always compiled |
+| `include/screensaver_setting.h` | Reading the persisted choice: a name in any case, or a legacy number |
 | `include/screensaver_base.h` | `SaverBase`: start, frame and stop sequence, levels, level requests |
 | `include/screensaver_overlay.h` | `SaverOverlay`: the black touch-absorbing overlay on `lv_layer_top()` |
 | `include/screensaver_canvas.h` | `SaverCanvas`: stride-sized buffer, format per depth, hide-before-free, dirty areas merged to 32, the dirty-box layer session |
@@ -106,7 +107,7 @@ rewritten, so a config moved to a faster board runs the saver it names.
 
 The settings dropdown (`DisplaySettingsOverlay::init_screensaver_dropdown`) lists Off and the
 savers `ScreensaverManager::choices()` keeps, so its index is not the type: the overlay keeps
-the list and maps the picked index back to a type. A too-heavy stored choice is hidden and the
+the stable name at each position and stores the picked one. A too-heavy stored choice is hidden and the
 dropdown selects the saver that runs in its place; on a board where every saver is too heavy
 it selects Off. The XML `options` still carry the full registry list as the translation
 source.
@@ -114,6 +115,17 @@ source.
 `HELIX_SCREENSAVER_BUDGET_PCT` replaces the budget and `HELIX_SCREENSAVER_LEVEL` forces a level
 with the gate off (`docs/devel/ENVIRONMENT_VARIABLES.md`). A forced level runs a saver stored as
 too heavy, with no fallback, and the dropdown offers it.
+
+## Names, not numbers
+
+Everything outside the app names a saver by its stable `SCREENSAVERS` name (`"maze"`, `"off"`
+for none): `/display/screensaver_type` in settings.json, `HELIX_SCREENSAVER_NOW`, `helix-screen
+ctl screensaver <name>`, and the level store key. `ScreensaverType` is in-app identity only, so
+reordering the registry, adding a saver or compiling one out never changes what a stored value
+means. The setting is read leniently (`screensaver_from_setting`): a name in any case, or a
+legacy integer through the frozen `LEGACY_SCREENSAVER_TYPE_NAMES` table, which config migration
+v28 also uses to rewrite old numbers as names. An unknown name, an out-of-range number or another
+JSON type reads as the default. Writes always store the name.
 
 ## Color depth and builds
 
@@ -130,6 +142,8 @@ build draws at its depth, otherwise the first registered saver that does, and Of
 ## Adding a saver
 
 1. Add the type to `ScreensaverType` and a row to `SCREENSAVERS` with a stable name and depths.
+   The name is what configs store, so it never changes once shipped.
+   `LEGACY_SCREENSAVER_TYPE_NAMES` stays as it is: a new saver has no legacy number.
 2. Add the label to `row_screensaver` in `ui_xml/settings_display_overlay.xml` (a test
    compares it with the registry; the overlay builds the shown options from the registry, and
    this list is their translation source), run `make translation-sync`, translate the new key in every

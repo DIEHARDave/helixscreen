@@ -42,7 +42,7 @@ class DisplaySettingsOverlay : public OverlayBase {
     /// type: a too-heavy stored choice shows its fallback, and the stored value is left alone.
     void init_screensaver_dropdown();
 
-    /// Stores the type at dropdown `index` of the list init_screensaver_dropdown() built.
+    /// Stores the saver at dropdown `index` of the list init_screensaver_dropdown() built.
     void handle_screensaver_changed(int index);
 
   private:
@@ -60,8 +60,8 @@ class DisplaySettingsOverlay : public OverlayBase {
     lv_subject_t brightness_value_subject_{};
     char brightness_value_buf_[8]; // e.g., "100%"
 
-    /// Type at each screensaver dropdown index.
-    std::vector<ScreensaverType> screensaver_choices_;
+    /// Stable registry name ("off", "maze", ...) at each screensaver dropdown index.
+    std::vector<const char*> screensaver_choices_;
 };
 
 inline DisplaySettingsOverlay& get_display_settings_overlay() {

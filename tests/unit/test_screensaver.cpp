@@ -95,31 +95,37 @@ TEST_CASE_METHOD(LVGLTestFixture, "Screensaver type set/get round trip",
 
 TEST_CASE_METHOD(LVGLTestFixture, "Screensaver type survives a restart",
                  "[screensaver][display_settings]") {
-    // The load path clamps independently of the setter, so a type the setter
-    // accepts can still be rewritten on the next boot — the user picks a
-    // screensaver, restarts, and finds a different one selected.
+    // The load path reads the stored name independently of the setter, so a choice the
+    // setter accepts must read back as the same saver on the next boot.
     Config* config = Config::get_instance();
 
     // The fixture leaves the subjects initialized, and init_subjects() returns
     // early in that state — so the config has to be seeded while they are down
     // for the boot-time read to be the thing under test.
-    auto boot_with_type = [&](int persisted) {
+    auto boot_with = [&](const nlohmann::json& persisted) {
         DisplaySettingsManager::instance().deinit_subjects();
-        config->set<int>("/display/screensaver_type", persisted);
+        config->set<nlohmann::json>("/display/screensaver_type", persisted);
         DisplaySettingsManager::instance().init_subjects();
         return DisplaySettingsManager::instance().get_screensaver_type();
     };
+    const int bounce = static_cast<int>(ScreensaverType::BOUNCING_PRINTER);
+    const int fallback = static_cast<int>(helix::ui::DEFAULT_SCREENSAVER_TYPE);
 
     SECTION("Bouncing Printer is read back as itself") {
-        REQUIRE(boot_with_type(4) == 4);
+        DisplaySettingsManager::instance().set_screensaver_type(bounce);
+        const nlohmann::json* written = config->try_get_json("/display/screensaver_type");
+        REQUIRE(written != nullptr);
+        CHECK(*written == "bounce");
+        REQUIRE(boot_with(*written) == bounce);
+        REQUIRE(boot_with("bounce") == bounce);
     }
 
-    SECTION("a type past the last one is clamped, not wrapped") {
-        REQUIRE(boot_with_type(99) == helix::ui::screensaver_last_type());
+    SECTION("a legacy type number past the last one reads as the default, not wrapped") {
+        REQUIRE(boot_with(99) == fallback);
     }
 
-    SECTION("a negative type falls back to Off") {
-        REQUIRE(boot_with_type(-7) == 0);
+    SECTION("a negative legacy number reads as the default") {
+        REQUIRE(boot_with(-7) == fallback);
     }
 }
 
@@ -140,11 +146,13 @@ TEST_CASE_METHOD(LVGLTestFixture, "Screensaver type subject reflects setter",
     DisplaySettingsManager::instance().deinit_subjects();
 }
 
-TEST_CASE_METHOD(LVGLTestFixture,
-                 "a stored or subject screensaver type past the last type clamps to the last type",
-                 "[screensaver][display_settings]") {
+TEST_CASE_METHOD(
+    LVGLTestFixture,
+    "a stored number past the last type reads as the default; a subject clamps to the last",
+    "[screensaver][display_settings]") {
     Config* config = Config::get_instance();
-    const int stored_before = config->get<int>("/display/screensaver_type", 1);
+    const nlohmann::json* stored_node = config->try_get_json("/display/screensaver_type");
+    const nlohmann::json stored_before = stored_node ? *stored_node : nlohmann::json("toasters");
     config->set<int>("/display/screensaver_type", 99);
 
     // init_subjects() returns early while subjects are up, and the fixture leaves
@@ -152,7 +160,7 @@ TEST_CASE_METHOD(LVGLTestFixture,
     DisplaySettingsManager::instance().deinit_subjects();
     DisplaySettingsManager::instance().init_subjects();
     CHECK(DisplaySettingsManager::instance().get_screensaver_type() ==
-          helix::ui::screensaver_last_type());
+          static_cast<int>(helix::ui::DEFAULT_SCREENSAVER_TYPE));
 
     // The manager clamps what the subject holds, whoever wrote it.
     lv_subject_set_int(DisplaySettingsManager::instance().subject_screensaver_type(), 99);
@@ -160,7 +168,7 @@ TEST_CASE_METHOD(LVGLTestFixture,
           static_cast<ScreensaverType>(helix::ui::screensaver_last_type()));
 
     DisplaySettingsManager::instance().deinit_subjects();
-    config->set<int>("/display/screensaver_type", stored_before);
+    config->set<nlohmann::json>("/display/screensaver_type", stored_before);
 }
 
 // ============================================================================

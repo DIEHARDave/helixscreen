@@ -23,6 +23,7 @@
 #include <spdlog/spdlog.h>
 
 #include <cmath>
+#include <optional>
 #include <string>
 
 namespace helix::settings {
@@ -245,20 +246,22 @@ void DisplaySettingsOverlay::init_screensaver_dropdown() {
         return;
 
     ScreensaverManager& savers = ScreensaverManager::instance();
-    screensaver_choices_ = savers.choices();
+    const std::vector<ScreensaverType> choices = savers.choices();
+    screensaver_choices_.clear();
     std::string options;
-    for (ScreensaverType type : screensaver_choices_) {
+    for (ScreensaverType type : choices) {
         const helix::ui::ScreensaverInfo* info = helix::ui::find_screensaver(type);
         if (!options.empty()) {
             options += "\n";
         }
         options += lv_tr(info ? info->label_key : helix::ui::SCREENSAVER_OFF_LABEL_KEY);
+        screensaver_choices_.push_back(helix::ui::screensaver_name(type));
     }
     lv_dropdown_set_options(dropdown, options.c_str());
 
     const ScreensaverType configured = ScreensaverManager::configured_type();
     const ScreensaverType runs = savers.runnable_type(configured);
-    const size_t index = helix::ui::screensaver_choice_index(screensaver_choices_, runs);
+    const size_t index = helix::ui::screensaver_choice_index(choices, runs);
     lv_dropdown_set_selected(dropdown, static_cast<uint32_t>(index));
 
     spdlog::debug("[{}] Screensaver dropdown: {} of {} savers offered, stored type {} runs as {}",
@@ -273,8 +276,12 @@ void DisplaySettingsOverlay::handle_screensaver_changed(int index) {
                      index, screensaver_choices_.size());
         return;
     }
-    DisplaySettingsManager::instance().set_screensaver_type(
-        static_cast<int>(screensaver_choices_[static_cast<size_t>(index)]));
+    const char* name = screensaver_choices_[static_cast<size_t>(index)];
+    const std::optional<ScreensaverType> type = helix::ui::screensaver_from_name(name);
+    if (!type) {
+        return;
+    }
+    DisplaySettingsManager::instance().set_screensaver_type(static_cast<int>(*type));
 }
 
 // Per drag tick: apply to the backlight and update the readout, but do NOT

@@ -79,6 +79,7 @@ An animation that plays while the screen is idle. It starts when the screen woul
 | **Bouncing Printer** | Your printer drifts around and bounces off the edges, changing color at every wall. Land a corner and it celebrates |
 | **Fireworks** | Fireworks over hills at night |
 | **Bouncing Logo** | The HelixScreen logo drifts around a black screen and bounces off the edges, in its own colors |
+| **3D Maze** | A walk through a brick maze, as in the old Windows screensaver: spinning HelixScreen icons, rocks that flip the view upside down, and a smiley at the exit |
 | **Hyperspace** | A flight through glowing rainbow space: star flares stream past, a shimmering wormhole sweeps in and out, and now and then a shell of flares bursts ahead |
 | **Flip Clock** | A split-flap clock in the 12- or 24-hour format you chose under Time Format, one card per digit; only the digits that change flip. While a print runs it counts down the time left as hours, minutes and seconds, with the finish time and progress underneath. A paused print freezes the count under PAUSED; a finished one shows DONE for a minute, then the clock comes back |
 
