@@ -6,6 +6,7 @@
 #include "ui_event_safety.h"
 #include "ui_filename_utils.h"
 #include "ui_next_tick.h"
+#include "ui_subject_registry.h"
 
 #include "app_globals.h"
 #include "helix_psram_attr.h"
@@ -98,16 +99,6 @@ void job_queue_init_subjects() {
             s_subjects_initialized = false;
         }
     });
-}
-
-void set_int(lv_subject_t* subject, int value) {
-    if (lv_subject_get_int(subject) != value)
-        lv_subject_set_int(subject, value);
-}
-
-void set_text(lv_subject_t* subject, const std::string& text) {
-    if (text != lv_subject_get_string(subject))
-        lv_subject_copy_string(subject, text.c_str());
 }
 
 int line_px(const lv_font_t* font) {
@@ -320,21 +311,26 @@ void JobQueueWidget::publish(const JobQueueTileInputs& in) {
     const JobQueueTileText text = compose_job_queue_tile_text(
         state, next_display_name(jqs, 0), in.job_count, jqs ? jqs->next_estimated_seconds() : 0);
 
-    set_int(&s_subj.state, static_cast<int>(state));
-    set_int(&s_subj.action, static_cast<int>(job_queue_tile_action(state)));
-    set_int(&s_subj.rung, static_cast<int>(verdict_.rung));
+    helix::ui::set_int_if_changed(&s_subj.state, static_cast<int>(state));
+    helix::ui::set_int_if_changed(&s_subj.action, static_cast<int>(job_queue_tile_action(state)));
+    helix::ui::set_int_if_changed(&s_subj.rung, static_cast<int>(verdict_.rung));
     // A part with no text would still take a line of the column.
-    set_int(&s_subj.show_thumb, verdict_.show_thumbnail ? 1 : 0);
-    set_int(&s_subj.show_detail, verdict_.show_detail && !text.detail.empty() ? 1 : 0);
-    set_int(&s_subj.show_more, verdict_.show_more && !text.more.empty() ? 1 : 0);
-    set_int(&s_subj.list_rows, verdict_.list_rows);
-    set_text(&s_subj.hero, text.hero);
-    set_text(&s_subj.detail, text.detail);
-    set_text(&s_subj.more, text.more);
-    set_text(&s_subj.action_text,
-             verdict_.rung == SizeRung::Cell ? text.action_short : text.action);
+    helix::ui::set_int_if_changed(&s_subj.show_thumb, verdict_.show_thumbnail ? 1 : 0);
+    helix::ui::set_int_if_changed(&s_subj.show_detail,
+                                  verdict_.show_detail && !text.detail.empty() ? 1 : 0);
+    helix::ui::set_int_if_changed(&s_subj.show_more,
+                                  verdict_.show_more && !text.more.empty() ? 1 : 0);
+    helix::ui::set_int_if_changed(&s_subj.list_rows, verdict_.list_rows);
+    helix::ui::copy_string_if_changed(&s_subj.hero, text.hero.c_str());
+    helix::ui::copy_string_if_changed(&s_subj.detail, text.detail.c_str());
+    helix::ui::copy_string_if_changed(&s_subj.more, text.more.c_str());
+    helix::ui::copy_string_if_changed(
+        &s_subj.action_text,
+        std::string(verdict_.rung == SizeRung::Cell ? text.action_short : text.action).c_str());
     for (int i = 0; i < kJobQueueTileListRows; ++i)
-        set_text(&s_subj.after[i], next_display_name(jqs, static_cast<size_t>(i) + 1));
+        helix::ui::copy_string_if_changed(
+            &s_subj.after[i],
+            std::string(next_display_name(jqs, static_cast<size_t>(i) + 1)).c_str());
 }
 
 void JobQueueWidget::on_tile_clicked(lv_event_t* e) {
@@ -347,7 +343,8 @@ void JobQueueWidget::on_tile_clicked(lv_event_t* e) {
 
 void JobQueueWidget::on_action_clicked(lv_event_t* e) {
     LVGL_SAFE_EVENT_CB_BEGIN("[JobQueueWidget] on_action_clicked");
-    // A start tap is not a tap on the tile, which opens the queue modal.
+    // A start tap is not a tap on the tile, which opens the queue modal. The button
+    // does not bubble today; this guards against it ever gaining event_bubble.
     lv_event_stop_bubbling(e);
     if (lv_subject_get_int(&s_subj.action) != static_cast<int>(JobQueueTileAction::StartNext))
         return;
