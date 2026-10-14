@@ -82,6 +82,7 @@ translations:
   1 minute: 1 minute
   1 more tap to {} beta features: 1 appui supplémentaire pour {} les fonctionnalités
     bêta
+  1 print: '1 impression'
   1 profile: '1 profil'
   '1 unit': '1 unité'
   1. Printer homes all axes (~1 minute): 1. L'imprimante prend l'origine de tous les axes (~1 minute)
@@ -4111,6 +4112,7 @@ translations:
   '{} filament sensors available': '{} capteurs de filament disponibles'
   '{} filament • {}': '{} de filament • {}'
   '{} firmware': 'Firmware {}'
+  '{} h': '{} h'
   '{} heater turned off': Chauffage {} désactivé
   '{} is asking to connect to this printer.': '{} demande à se connecter à cette imprimante.'
   '{} is blocked — manual intervention required': '{} : blocage — intervention manuelle requise'
@@ -4123,10 +4125,12 @@ translations:
   '{} lines in helixscreen.env were ignored': '{} lignes de helixscreen.env ont été ignorées'
   '{} kept crashing the panel; switched back to {}': '{} a planté l''écran à plusieurs reprises ; retour à {}'
   '{} kept crashing the panel; pick a printer to connect': '{} a planté l''écran à plusieurs reprises ; choisissez une imprimante à connecter'
+  '{} m': '{} m'
   '{} macro not configured': Macro {} non configurée
   '{} matches.': '{} correspond.'
   '{} may cause unintended changes. Are you sure?': '{} peut entraîner des modifications
     non souhaitées. Êtes-vous sûr ?'
+  '{} min': '{} min'
   '{} min ago': il y a {} min
   '{} missing': '{} manquant(s)'
   '{} more taps to {} beta features': '{} appuis supplémentaires pour {} les fonctionnalités
@@ -4136,6 +4140,7 @@ translations:
   '{} new hardware available': '{} nouveau matériel disponible'
   '{} new plugins available. Enable them in Settings > Plugins.': '{} nouveaux plugins disponibles. Activez-les dans Paramètres > Plugins.'
   '{} preset{}': '{} préréglage{}'
+  '{} prints': '{} impressions'
   '{} queued': '{} en file'
   '{} serial': 'N° de série {}'
   '{} set to {}': '{} réglé sur {}'

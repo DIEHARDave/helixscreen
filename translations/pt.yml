@@ -81,6 +81,7 @@ translations:
   1 min ago: há 1 min
   1 minute: 1 minuto
   1 more tap to {} beta features: Mais 1 toque para {} recursos beta
+  1 print: '1 impressão'
   1 profile: '1 perfil'
   '1 unit': '1 unidade'
   1. Printer homes all axes (~1 minute): 1. A impressora referencia todos os eixos (~1 minuto)
@@ -4080,6 +4081,7 @@ translations:
   '{} filament sensors available': '{} sensores de filamento disponíveis'
   '{} filament • {}': '{} de filamento • {}'
   '{} firmware': 'Firmware de {}'
+  '{} h': '{} h'
   '{} heater turned off': Aquecedor {} desligado
   '{} is asking to connect to this printer.': '{} quer conectar-se a esta impressora.'
   '{} is blocked — manual intervention required': '{}: bloqueio — intervenção manual necessária'
@@ -4092,10 +4094,12 @@ translations:
   '{} lines in helixscreen.env were ignored': '{} linhas do helixscreen.env foram ignoradas'
   '{} kept crashing the panel; switched back to {}': '{} travou a tela repetidamente; voltou para {}'
   '{} kept crashing the panel; pick a printer to connect': '{} travou a tela repetidamente; escolha uma impressora para conectar'
+  '{} m': '{} m'
   '{} macro not configured': Macro {} não configurado
   '{} matches.': '{} corresponde.'
   '{} may cause unintended changes. Are you sure?': '{} pode causar alterações não
     intencionais. Tem certeza?'
+  '{} min': '{} min'
   '{} min ago': há {} min
   '{} missing': '{} ausente(s)'
   '{} more taps to {} beta features': Mais {} toques para {} recursos beta
@@ -4104,6 +4108,7 @@ translations:
   '{} new hardware available': '{} novo hardware disponível'
   '{} new plugins available. Enable them in Settings > Plugins.': '{} novos plugins disponíveis. Ative-os em Configurações > Plugins.'
   '{} preset{}': '{} predefinição{}'
+  '{} prints': '{} impressões'
   '{} queued': '{} na fila'
   '{} serial': 'N.º de série de {}'
   '{} set to {}': '{} definido para {}'

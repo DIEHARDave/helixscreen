@@ -42,6 +42,9 @@ std::string format_localized_modified_date(const struct tm* tm_info);
 /// Examples: "Mar 09" (en), "09. Mär." (de), "3/9" (ja)
 std::string format_localized_short_date(const struct tm* tm_info);
 
+/// Localized weekday abbreviation ("Mon", "lun.", "月") from tm_wday.
+std::string format_localized_weekday_abbr(const struct tm* tm_info);
+
 /// Get the default time format for a language (true = 24h, false = 12h)
 bool locale_default_24h(const std::string& lang_code);
 
