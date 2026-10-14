@@ -3175,3 +3175,19 @@ TEST_CASE_METHOD(PanelWidgetConfigFixture,
     CHECK(wc.default_signature().empty());
     CHECK_FALSE(wc.has_pending_anchors());
 }
+
+TEST_CASE_METHOD(PanelWidgetConfigFixture,
+                 "PanelWidgetConfig: seeding a new grid drops the old grid's default block",
+                 "[panel_widget_config][default_block]") {
+    setup_empty_config();
+    PanelWidgetConfig wc("home", config);
+    wc.load();
+    wc.apply_pending_anchors(12, 8);
+    REQUIRE_FALSE(wc.default_signature().empty());
+
+    wc.switch_to_grid(10, 8);
+    CHECK(wc.default_signature().empty());
+    CHECK_FALSE(wc.has_pending_anchors());
+    CHECK_FALSE(wc.is_unedited_default());
+    CHECK_FALSE(get_saved_root().contains("default"));
+}

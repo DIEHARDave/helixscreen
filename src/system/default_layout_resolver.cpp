@@ -285,36 +285,19 @@ class Resolver {
         const int rw = ju::safe_int(*region, "colspan", 0);
         const int rh = ju::safe_int(*region, "rowspan", 0);
 
-        const size_t n = alternatives->size();
-        for (size_t i = 0; i < n; ++i) {
-            const json* cells = array_member((*alternatives)[i], "cells");
-            if (!cells || cells->empty() || !fits(*cells, rw, rh)) {
-                continue;
+        // An alternative whose cells run off the measured grid gives way to a
+        // later one that stays on it. When none does, the choice falls back to
+        // the region alone: the caller auto-places a winner it cannot seat,
+        // where resolving nothing would switch every candidate off.
+        const bool have_grid = cols_ > 0 && rows_ > 0;
+        for (const bool within_grid : {true, false}) {
+            if (!within_grid && !have_grid) {
+                break;
             }
-            const bool last = i + 1 == n;
-            if (!last) {
-                const json* lead_list = cell_candidates((*cells)[0], doc_);
-                if (!lead_list || lead_list->empty() ||
-                    !qualifies(read_candidate((*lead_list)[0]))) {
-                    continue;
-                }
+            if (fill_from_first_qualifying(*alternatives, rc, rr, rw, rh,
+                                           within_grid && have_grid)) {
+                return;
             }
-            for (const auto& cell : *cells) {
-                int at[4];
-                read_rect(*ju::find_member(cell, "at"), at);
-                const json* list = cell_candidates(cell, doc_);
-                if (!list) {
-                    continue;
-                }
-                for (const auto& c : *list) {
-                    Candidate cand = read_candidate(c);
-                    if (qualifies(cand)) {
-                        place(cand.id, rc + at[0], rr + at[1], at[2], at[3], json::object());
-                        break;
-                    }
-                }
-            }
-            return;
         }
         // The last alternative wins whenever it fits, so reaching here means
         // none fits the region.
@@ -364,6 +347,46 @@ class Resolver {
             }
         }
         return true;
+    }
+
+    /// Fill the region at (@p rc, @p rr) from the first alternative that fits
+    /// it, and the grid too when @p check_grid, and whose lead qualifies (the
+    /// last alternative has no lead requirement). False when none is taken.
+    bool fill_from_first_qualifying(const json& alternatives, int rc, int rr, int rw, int rh,
+                                    bool check_grid) {
+        const size_t n = alternatives.size();
+        for (size_t i = 0; i < n; ++i) {
+            const json* cells = array_member(alternatives[i], "cells");
+            if (!cells || cells->empty() || !fits(*cells, rw, rh) ||
+                (check_grid && !fits(*cells, cols_ - rc, rows_ - rr))) {
+                continue;
+            }
+            const bool last = i + 1 == n;
+            if (!last) {
+                const json* lead_list = cell_candidates((*cells)[0], doc_);
+                if (!lead_list || lead_list->empty() ||
+                    !qualifies(read_candidate((*lead_list)[0]))) {
+                    continue;
+                }
+            }
+            for (const auto& cell : *cells) {
+                int at[4];
+                read_rect(*ju::find_member(cell, "at"), at);
+                const json* list = cell_candidates(cell, doc_);
+                if (!list) {
+                    continue;
+                }
+                for (const auto& c : *list) {
+                    Candidate cand = read_candidate(c);
+                    if (qualifies(cand)) {
+                        place(cand.id, rc + at[0], rr + at[1], at[2], at[3], json::object());
+                        break;
+                    }
+                }
+            }
+            return true;
+        }
+        return false;
     }
 
     static bool fits(const json& cells, int region_w, int region_h) {

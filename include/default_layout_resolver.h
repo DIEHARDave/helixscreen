@@ -26,6 +26,8 @@
 ///   being `[col, row, colspan, rowspan]` relative to the region, and
 ///   `candidates` either an inline array (ids, or `{"id", "requires": [...]}`)
 ///   or the name of a top-level `candidate_lists` entry.
+///   With a measured grid, an alternative whose cells run off it gives way to
+///   a later one that stays on it; when none does, the region alone decides.
 ///
 /// Every widget named in a candidate list of the active table that ends up
 /// unplaced is reported in `disabled`, including the candidates of a slot that

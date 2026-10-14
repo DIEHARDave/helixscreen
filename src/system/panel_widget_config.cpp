@@ -337,16 +337,19 @@ void PanelWidgetConfig::load() {
         }
 
         // Ensure at least one page
-        if (pages_.empty()) {
+        const bool defaulted = pages_.empty();
+        if (defaulted) {
             PageConfig page;
             page.id = "main";
             page.widgets = build_defaults();
             pages_.push_back(std::move(page));
-            stamp_default("");
-            save();
         }
 
-        if (panel_id_ == "home" && migrate_stuck_ams_filament_swap()) {
+        const bool migrated = panel_id_ == "home" && migrate_stuck_ams_filament_swap();
+        if (defaulted) {
+            stamp_default("");
+        }
+        if (defaulted || migrated) {
             save();
         }
 
@@ -382,12 +385,12 @@ void PanelWidgetConfig::load() {
         page.widgets = std::move(entries);
         pages_.push_back(std::move(page));
         next_page_id_ = 1;
-        if (defaulted) {
-            stamp_default("");
-        }
 
         if (panel_id_ == "home") {
             migrate_stuck_ams_filament_swap();
+        }
+        if (defaulted) {
+            stamp_default("");
         }
 
         // Migrate to new format on disk
@@ -1080,6 +1083,11 @@ std::vector<PanelWidgetEntry> PanelWidgetConfig::build_default_grid(int grid_col
     // widgets on the same track, each looking like a chosen position. An
     // unseated widget goes through the auto-placement pass below instead, which
     // is the honest answer: this anchor does not describe this grid.
+    //
+    // The table chose these widgets for this printer, so one it cannot seat
+    // stays on, waiting for auto-placement, rather than falling back to its
+    // registry default_enabled.
+    std::set<std::string> unseated;
     if (grid_cols > 0 && grid_rows > 0) {
         // Manual join — fmt::join needs fmt/ranges.h, which spdlog's bundled
         // copy does not carry.
@@ -1101,6 +1109,7 @@ std::vector<PanelWidgetEntry> PanelWidgetConfig::build_default_grid(int grid_col
                                          }
                                          rejected += a.id;
                                          ++rejected_count;
+                                         unseated.insert(a.id);
                                          return true;
                                      }),
                       anchors.end());
@@ -1132,7 +1141,8 @@ std::vector<PanelWidgetEntry> PanelWidgetConfig::build_default_grid(int grid_col
     for (const auto& def : defs) {
         if (fixed_ids.count(def.id) > 0)
             continue;
-        result.push_back({def.id, def.default_enabled, {}, -1, -1, def.colspan, def.rowspan});
+        const bool enabled = def.default_enabled || unseated.count(def.id) > 0;
+        result.push_back({def.id, enabled, {}, -1, -1, def.colspan, def.rowspan});
     }
 
     // Applied after the registry pass so it reaches widgets that were appended
@@ -1315,6 +1325,10 @@ void PanelWidgetConfig::switch_to_grid(int cols, int rows) {
         }
     }
 
+    // The ported pages are no longer the resolver's output for any grid.
+    has_default_ = false;
+    default_signature_.clear();
+    default_hash_.clear();
     grid_signature_ = target;
     spdlog::info("[PanelWidgetConfig] '{}': seeded the {} grid from {} ({} widget(s) reseated, "
                  "the rest auto-placed)",

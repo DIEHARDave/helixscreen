@@ -30,7 +30,9 @@
 
 #include "../lvgl_ui_test_fixture.h"
 #include "../test_helpers/panel_widget_size_harness.h"
+#include "../test_helpers/scoped_int_subject.h"
 #include "../test_helpers/update_queue_test_access.h"
+#include "ams_state.h"
 #include "grid_layout.h"
 #include "helix-xml/src/xml/lv_xml.h"
 #include "panel_widget_manager.h"
@@ -86,12 +88,16 @@ class DefaultPlacementFixture : public LVGLUITestFixture {
         state().temperature_state().init_extruders({"extruder"});
         helix::ui::UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
 
-        // The default table's spool slot resolves off this subject; pin it so
-        // the slot does not take the AMS because of what an earlier case in
-        // this binary left behind. Subjects are process-global.
-        if (lv_subject_t* ams = lv_xml_get_subject(nullptr, "ams_slot_count")) {
-            lv_subject_set_int(ams, 0);
+        // The default table's spool slot resolves off this subject; pin it to
+        // 0 so the slot does not take the AMS. Registered here when no earlier
+        // case has, because an absent gate subject reads as open. Subjects are
+        // process-global.
+        if (lv_xml_get_subject(nullptr, "ams_slot_count") == nullptr) {
+            helix::AmsState::instance().init_subjects(true);
         }
+        lv_subject_t* ams = lv_xml_get_subject(nullptr, "ams_slot_count");
+        REQUIRE(ams != nullptr);
+        lv_subject_set_int(ams, 0);
     }
 
     /// A grid container whose CONTENT box is exactly content_w x content_h:
@@ -166,8 +172,8 @@ const AuthoredAnchor kMicroAnchors[] = {
 
 /// The medium table's fixed anchors: 800x480 is the regression guard for the
 /// larger tiers, where the whole-cell floor does not apply and placement is
-/// already correct. Tracks (8,0) to (11,1) are the spool slot, whose occupant
-/// depends on the printer's capabilities.
+/// already correct. Tracks (8,0) to (11,1) are the spool slot, whose occupants
+/// depend on the printer's capabilities, so the test checks them separately.
 const AuthoredAnchor kMediumAnchors[] = {
     {"printer_image",    0, 0, 4, 4},
     {"temperature",      4, 0, 2, 2},
@@ -298,6 +304,15 @@ TEST_CASE_METHOD(DefaultPlacementFixture, "medium default layout is unchanged at
     REQUIRE(dims.cols == 12);
     REQUIRE(dims.rows == 8);
 
+    // The spool slot's occupants follow the capability subjects, so pin every
+    // one it consults: with ams_slot_count at 0 (seed_topology()) it takes its
+    // second alternative, led in the ENV cell and filament in the FIL cell.
+    helix::test::ScopedIntSubject dryer("home_dryer_available", 0);
+    helix::test::ScopedIntSubject chamber("printer_has_chamber", 0);
+    helix::test::ScopedIntSubject led("led_controllable", 1);
+    helix::test::ScopedIntSubject fil("filament_sensor_count", 1);
+    helix::test::ScopedIntSubject spoolman("printer_has_spoolman", 0);
+
     populate_fresh_defaults("test_medium_home_800", container);
     lv_obj_update_layout(container);
     REQUIRE(grid_count_tracks(lv_obj_get_style_grid_column_dsc_array(container, LV_PART_MAIN)) ==
@@ -307,23 +322,9 @@ TEST_CASE_METHOD(DefaultPlacementFixture, "medium default layout is unchanged at
         check_anchor(container, a);
     }
 
-    // The spool slot is filled whatever the capabilities: an AMS across it, or
-    // one tile at each of its two cells.
-    const auto tile_at = [&](int col, int row) {
-        const uint32_t n = lv_obj_get_child_count(container);
-        for (uint32_t i = 0; i < n; ++i) {
-            lv_obj_t* child = lv_obj_get_child(container, static_cast<int32_t>(i));
-            if (lv_obj_get_style_grid_cell_column_pos(child, LV_PART_MAIN) == col &&
-                lv_obj_get_style_grid_cell_row_pos(child, LV_PART_MAIN) == row) {
-                return true;
-            }
-        }
-        return false;
-    };
-    CHECK(tile_at(8, 0));
-    if (lv_obj_find_by_name(container, "ams") == nullptr) {
-        CHECK(tile_at(10, 0));
-    }
+    CHECK(lv_obj_find_by_name(container, "ams") == nullptr);
+    check_anchor(container, {"led", 8, 0, 2, 2});
+    check_anchor(container, {"filament", 10, 0, 2, 2});
 
     PanelWidgetManager::instance().clear_panel_config("test_medium_home_800");
 }

@@ -5,6 +5,7 @@
 
 #include "../helix_test_fixture.h"
 #include "../test_helpers/scoped_breakpoint.h"
+#include "../test_helpers/scoped_int_subject.h"
 #include "ams_state.h"
 #include "data_root_resolver.h"
 #include "helix-xml/src/xml/lv_xml.h"
@@ -1672,45 +1673,7 @@ TEST_CASE("default_layout: every grid-qualified table fits the grid it names",
 
 namespace {
 
-/// Pins one integer subject in the global XML scope for the guard's life. An
-/// already-registered subject gets its value set and put back; an absent one is
-/// registered here and unregistered again, so a later test still finds it
-/// absent.
-class ScopedIntSubject {
-  public:
-    ScopedIntSubject(const char* name, int value) : name_(name) {
-        if (!lv_xml_component_get_scope("globals")) {
-            lv_xml_component_init();
-        }
-        existing_ = lv_xml_get_subject(nullptr, name);
-        if (existing_) {
-            saved_ = lv_subject_get_int(existing_);
-            lv_subject_set_int(existing_, value);
-        } else {
-            lv_subject_init_int(&own_, value);
-            lv_xml_register_subject(nullptr, name, &own_);
-        }
-    }
-
-    ~ScopedIntSubject() {
-        if (existing_) {
-            lv_subject_set_int(existing_, saved_);
-        } else {
-            lv_xml_unregister_subject(nullptr, name_.c_str());
-            lv_subject_deinit(&own_);
-        }
-        helix::ui::UpdateQueue::instance().drain();
-    }
-
-    ScopedIntSubject(const ScopedIntSubject&) = delete;
-    ScopedIntSubject& operator=(const ScopedIntSubject&) = delete;
-
-  private:
-    std::string name_;
-    lv_subject_t* existing_ = nullptr;
-    lv_subject_t own_{};
-    int saved_ = 0;
-};
+using helix::test::ScopedIntSubject;
 
 /// The medium landscape grid of an 800x480 panel: 12x8 tracks.
 constexpr int kMediumCols = 12;
@@ -1863,4 +1826,27 @@ TEST_CASE("default_layout: snapshot reads an absent gate as open and an absent r
               .get("zz_test_overlay_capability") == 3);
     CHECK(PanelWidgetConfig::snapshot_capabilities(table).subjects.count(
               "zz_test_overlay_capability") == 0);
+}
+
+TEST_CASE("default_layout: an AMS on a medium grid too narrow for the slot is auto-placed",
+          "[default_layout][slot][shipped]") {
+    helix::test::ScopedBreakpoint bp(UiBreakpoint::Medium);
+    LayoutTypeGuard landscape(800, 480);
+    AmsSubjectGuard ams(4);
+    ScopedIntSubject dryer("home_dryer_available", 0);
+    ScopedIntSubject chamber("printer_has_chamber", 0);
+    ScopedIntSubject led("led_controllable", 1);
+    ScopedIntSubject fil("filament_sensor_count", 1);
+    ScopedIntSubject spoolman("printer_has_spoolman", 0);
+
+    // The shipped region (8,0,4,2) ends at track 12; a 10-column grid cuts it.
+    auto entries = PanelWidgetConfig::build_default_grid(10, kMediumRows);
+
+    auto* a = find_entry(entries, "ams");
+    REQUIRE(a);
+    CHECK(a->enabled);
+    CHECK_FALSE(a->has_grid_position());
+    auto* f = find_entry(entries, "filament");
+    REQUIRE(f);
+    CHECK_FALSE(f->enabled);
 }

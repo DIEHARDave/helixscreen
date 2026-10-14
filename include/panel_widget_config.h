@@ -251,7 +251,9 @@ class PanelWidgetConfig {
     /// slot's first qualifying alternative. Every candidate the resolver passed
     /// over, and every id the tier's `disabled` list names, comes back disabled
     /// and unplaced. A registry widget the table never names comes back at its
-    /// default_enabled with no position. @p signature, when given, receives the
+    /// default_enabled with no position; a widget the table placed but the
+    /// measured grid cannot seat stays enabled with no position, for
+    /// auto-placement. @p signature, when given, receives the
     /// resolver's signature for this result.
     static std::vector<PanelWidgetEntry> build_default_grid(int grid_cols = 0, int grid_rows = 0,
                                                             std::string* signature = nullptr);

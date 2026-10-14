@@ -252,6 +252,43 @@ TEST_CASE("resolver: an alternative that does not fit its region is skipped",
     }
 }
 
+TEST_CASE("resolver: an alternative that runs off the grid gives way to one that fits",
+          "[default_layout_resolver]") {
+    const json table = parse(R"json({"anchors": [
+      {"slot": "s", "placements": {"medium": {"col": 8, "row": 0, "colspan": 4, "rowspan": 2}},
+       "alternatives": [
+         {"cells": [{"candidates": ["ams"], "at": [0, 0, 4, 2]}]},
+         {"cells": [{"candidates": ["notifications"], "at": [0, 0, 2, 2]}]}]}]})json");
+    CapabilitySnapshot caps;
+    caps.subjects["ams_slot_count"] = 4;
+    SECTION("a 12-column grid holds the region: the AMS wins") {
+        const auto r = resolve(table, "medium", caps, 12, 8);
+        require_cell(r, "ams", 8, 0, 4, 2);
+    }
+    SECTION("a 10-column grid cuts the region: the alternative that fits wins") {
+        const auto r = resolve(table, "medium", caps, 10, 8);
+        require_cell(r, "notifications", 8, 0, 2, 2);
+        CHECK(placed_entry(r, "ams") == nullptr);
+        CHECK(is_disabled(r, "ams"));
+    }
+    SECTION("an unknown grid checks the region only") {
+        const auto r = resolve(table, "medium", caps, 0, 0);
+        require_cell(r, "ams", 8, 0, 4, 2);
+    }
+}
+
+TEST_CASE("resolver: when no alternative fits the grid the slot still picks a winner",
+          "[default_layout_resolver]") {
+    // The caller auto-places a winner it cannot seat; resolving nothing would
+    // disable every candidate instead.
+    const json table = parse(kSlotTable);
+    CapabilitySnapshot caps;
+    caps.subjects["ams_slot_count"] = 4;
+    const auto r = resolve(table, "medium", caps, 10, 8);
+    require_cell(r, "ams", 8, 0, 4, 2);
+    CHECK_FALSE(is_disabled(r, "ams"));
+}
+
 TEST_CASE("resolver: the last alternative has no lead requirement", "[default_layout_resolver]") {
     const json table = parse(R"json({"anchors": [
       {"slot": "s", "placements": {"medium": {"col": 2, "row": 2, "colspan": 4, "rowspan": 2}},
