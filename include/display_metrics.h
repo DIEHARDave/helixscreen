@@ -26,17 +26,19 @@
 
 #pragma once
 
+#include "board_identity.h"
+
 #include <cstdint>
 #include <optional>
 #include <string>
 
 namespace helix {
 
-/// Physical description of a panel that is permanently attached to a platform.
+/// Physical description of a panel that is permanently attached to a board.
 ///
-/// Only platforms whose display is integrated get an entry. A Raspberry Pi, a
+/// Only boards whose display is integrated get an entry. A Raspberry Pi, a
 /// CB1, or an x86 desktop drives a user-chosen panel, so panel size is not a
-/// property of those platform keys and they are deliberately absent.
+/// property of those (Board::Generic) and they are deliberately absent.
 struct PanelSpec {
     int32_t width_px;
     int32_t height_px;
@@ -118,9 +120,9 @@ class DisplayMetrics {
     /// Whether a measurement should be believed at all.
     static bool dpi_is_trustworthy(double dpi);
 
-    /// The integrated panel for a platform key, or nullopt when the platform
-    /// drives an arbitrary user-chosen display.
-    static std::optional<PanelSpec> known_panel(const std::string& platform_key);
+    /// The integrated panel for a board, or nullopt when the board drives an
+    /// arbitrary user-chosen display or its panel is unmeasured.
+    static std::optional<PanelSpec> known_panel(board::Board board);
 
     /// DPI implied by a panel's pixel dimensions and physical diagonal.
     static double dpi_of(const PanelSpec& panel);
@@ -130,7 +132,7 @@ class DisplayMetrics {
     /// unset); @p platform_measured is a measurement from a platform we trust
     /// (Android's SDL_GetDisplayDPI), which is still plausibility-checked.
     static ResolvedDpi resolve_dpi(int user_override_dpi, std::optional<double> platform_measured,
-                                   const std::string& platform_key);
+                                   board::Board board);
 
     /// Scale an authored pixel constant. The single choke point every future
     /// physical-units caller goes through, so widening the refactor past
