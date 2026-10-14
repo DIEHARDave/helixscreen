@@ -271,6 +271,12 @@ class BeltTensionPanel : public OverlayBase {
     void apply_path_colors();
     /// Park the chart obj in the RUNNING host; called when a new run starts.
     void chart_to_running_host();
+    /// The host the chart belongs in for `state`: the ultrawide host beside the
+    /// sidebar when ui_is_ultrawide is 1, else that state's own host. Null for
+    /// states that show no chart.
+    [[nodiscard]] lv_obj_t* chart_host_for(ViewState state) const;
+    /// Move the chart into chart_host_for(state) when it lives elsewhere.
+    void place_chart(ViewState state);
     /// Fit the chart's axes to the curves it holds (or the sweep range before any).
     void push_chart_data();
     void push_chart_markers(const helix::calibration::BeltComparison& cmp);
@@ -372,6 +378,7 @@ class BeltTensionPanel : public OverlayBase {
     ObserverGuard connected_observer_;
     ObserverGuard klippy_observer_;
     ObserverGuard theme_observer_;
+    ObserverGuard ultrawide_observer_;
     bool gate_observers_wired_ = false;
 
     // Klippy's UDS path, from Moonraker's /server/config. Reachability is
@@ -394,6 +401,7 @@ class BeltTensionPanel : public OverlayBase {
     lv_obj_t* chart_host_running_ = nullptr;
     lv_obj_t* chart_host_results_ = nullptr;
     lv_obj_t* chart_host_tuning_ = nullptr;
+    lv_obj_t* chart_host_wide_ = nullptr;
 
     /// Render tier override for tests; nullopt reads PlatformCapabilities.
     std::optional<helix::PlatformTier> tier_override_;

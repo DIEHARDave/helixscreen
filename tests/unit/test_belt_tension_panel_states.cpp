@@ -49,6 +49,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <limits>
@@ -152,6 +153,9 @@ class BeltPanelFixture : public XMLTestFixture {
     }
     lv_obj_t* panel_chart_host_tuning() {
         return panel_->chart_host_tuning_;
+    }
+    void panel_set_view_state(BeltTensionPanel::ViewState state) {
+        panel_->set_view_state(state);
     }
     int panel_tune_ghost_id(int path_index, int k) {
         return panel_->tune_ghost_series_[path_index][k];
@@ -1993,4 +1997,76 @@ TEST_CASE("cleanup closes the Re-test menu", "[belt][panel][compact]") {
     fx.panel().cleanup();
     UpdateQueue::instance().drain();
     CHECK(helix::ui::ContextMenu::active() == nullptr);
+}
+
+// ============================================================================
+// Ultrawide: the chart grows on the left, the rest sits in a sidebar
+// ============================================================================
+
+TEST_CASE("TUNING on ultrawide puts the chart beside a sidebar with the full hero",
+          "[belt][panel][ultrawide][tune]") {
+    BeltPanelFixture fx;
+    get_printer_state().set_printer_type_sync("Voron 2.4");
+    // 1920x440 reads small, which alone would pick the one-line hero.
+    ScopedLayoutSubject bp("ui_breakpoint", BP_SMALL);
+    ScopedLayoutSubject portrait("ui_is_portrait", 0);
+    ScopedLayoutSubject ultrawide("ui_is_ultrawide", 1);
+    enter_tuning(fx);
+    REQUIRE(fx.state_int("bt_tune_kind") == 1);
+
+    auto named = [&](const char* name) { return named_in(fx, name); };
+    CHECK_FALSE(lv_hidden(named("chart_host_wide")));
+    CHECK(lv_hidden(named("chart_host_tuning")));
+    CHECK_FALSE(lv_hidden(named("bt_tune_hero")));
+    CHECK(lv_hidden(named("bt_tune_line")));
+    CHECK(lv_hidden(named("bt_tune_line_gauge")));
+    CHECK(lv_hidden(named("bt_tune_row_stepper")));
+    CHECK_FALSE(lv_hidden(named("btn_tune_swap")));
+    CHECK_FALSE(lv_hidden(named("btn_tune_measure")));
+    CHECK(lv_hidden(named("btn_tune_measure_short")));
+
+    auto* chart = fx.panel_chart();
+    REQUIRE(chart != nullptr);
+    lv_obj_t* chart_obj = ui_frequency_response_chart_get_obj(chart);
+    CHECK(lv_obj_get_parent(chart_obj) == named("chart_host_wide"));
+
+    // The sidebar keeps the token's width instead of stretching.
+    lv_obj_update_layout(fx.view());
+    const char* side_w = lv_xml_get_const(nullptr, "belt_sidebar_w");
+    REQUIRE(side_w != nullptr);
+    CHECK(lv_obj_get_width(named("bt_main")) == std::atoi(side_w));
+
+    SECTION("leaving ultrawide hands the chart back to the state's own host") {
+        ultrawide.set(0);
+        UpdateQueue::instance().drain();
+        fx.pump_ms(100);
+        CHECK(lv_obj_get_parent(chart_obj) == named("chart_host_tuning"));
+        CHECK(lv_hidden(named("chart_host_wide")));
+        CHECK(lv_hidden(named("bt_tune_hero")));
+        CHECK_FALSE(lv_hidden(named("bt_tune_line")));
+    }
+}
+
+TEST_CASE("RESULTS on ultrawide keeps both Re-test buttons in the sidebar",
+          "[belt][panel][ultrawide]") {
+    BeltPanelFixture fx;
+    ScopedLayoutSubject bp("ui_breakpoint", BP_SMALL);
+    ScopedLayoutSubject portrait("ui_is_portrait", 0);
+    ScopedLayoutSubject ultrawide("ui_is_ultrawide", 1);
+    enter_results_with_menu(fx);
+
+    CHECK(visible_results_buttons(fx) == UNFOLDED);
+    auto* chart = fx.panel_chart();
+    REQUIRE(chart != nullptr);
+    CHECK(lv_obj_get_parent(ui_frequency_response_chart_get_obj(chart)) ==
+          named_in(fx, "chart_host_wide"));
+    CHECK(lv_hidden(named_in(fx, "chart_host_results")));
+
+    SECTION("START has no chart, so the panel takes the full width") {
+        fx.panel_set_view_state(BeltTensionPanel::ViewState::START);
+        CHECK(lv_hidden(named_in(fx, "chart_host_wide")));
+        lv_obj_update_layout(fx.view());
+        CHECK(lv_obj_get_width(named_in(fx, "bt_main")) ==
+              lv_obj_get_content_width(named_in(fx, "overlay_content")));
+    }
 }

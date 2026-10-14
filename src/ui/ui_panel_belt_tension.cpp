@@ -91,6 +91,7 @@ BeltTensionPanel::~BeltTensionPanel() {
     chart_host_running_ = nullptr;
     chart_host_results_ = nullptr;
     chart_host_tuning_ = nullptr;
+    chart_host_wide_ = nullptr;
 }
 
 void init_belt_tension_row_handler() {
@@ -309,6 +310,7 @@ lv_obj_t* BeltTensionPanel::create(lv_obj_t* parent) {
     chart_host_running_ = helix::ui::find_required(overlay_root_, "chart_host_running", get_name());
     chart_host_results_ = helix::ui::find_required(overlay_root_, "chart_host_results", get_name());
     chart_host_tuning_ = helix::ui::find_required(overlay_root_, "chart_host_tuning", get_name());
+    chart_host_wide_ = helix::ui::find_required(overlay_root_, "chart_host_wide", get_name());
 
     ensure_gate_observers();
     refresh_gate();
@@ -395,6 +397,17 @@ void BeltTensionPanel::on_activate() {
     theme_observer_ = helix::ui::observe<int>(
         theme_manager_get_changed_subject(), this,
         [](BeltTensionPanel* self, int) { self->apply_path_colors(); }, subject_never_freed());
+    // A rotation can cross the ultrawide line under a live view. ui_is_ultrawide
+    // is a theme global, deinited only after LVGL is gone.
+    if (lv_subject_t* ultrawide = lv_xml_get_subject(nullptr, "ui_is_ultrawide")) {
+        ultrawide_observer_ = helix::ui::observe<int>(
+            ultrawide, this,
+            [](BeltTensionPanel* self, int) {
+                self->place_chart(
+                    static_cast<ViewState>(lv_subject_get_int(&s_belt_tension_state)));
+            },
+            subject_never_freed());
+    }
     probe_klippy_socket();
     query_hw_facts();
     start_hardware_detection();
@@ -442,6 +455,7 @@ void BeltTensionPanel::on_deactivating(DeactivateReason reason) {
     }
     suspended_ = false;
     theme_observer_.reset();
+    ultrawide_observer_.reset();
 
     // A rebuild frees the whole widget tree without firing on_ui_destroyed(),
     // and the chart's object is a child of a host inside that tree. Drop it
@@ -476,6 +490,7 @@ void BeltTensionPanel::cleanup() {
     connected_observer_.reset();
     klippy_observer_.reset();
     theme_observer_.reset();
+    ultrawide_observer_.reset();
     gate_observers_wired_ = false;
 
     destroy_chart();
@@ -493,6 +508,7 @@ void BeltTensionPanel::on_ui_destroyed() {
     chart_host_running_ = nullptr;
     chart_host_results_ = nullptr;
     chart_host_tuning_ = nullptr;
+    chart_host_wide_ = nullptr;
 }
 
 // ============================================================================
@@ -506,18 +522,41 @@ void BeltTensionPanel::set_view_state(ViewState state) {
     // Update subject - XML bindings handle visibility automatically
     lv_subject_set_int(&s_belt_tension_state, static_cast<int>(state));
 
-    if (state == ViewState::RESULTS) {
-        if (chart_ && chart_host_results_) {
-            lv_obj_set_parent(ui_frequency_response_chart_get_obj(chart_), chart_host_results_);
-        }
-    } else if (state == ViewState::RUNNING) {
-        if (chart_ && chart_host_running_) {
-            lv_obj_set_parent(ui_frequency_response_chart_get_obj(chart_), chart_host_running_);
-        }
-    } else if (state == ViewState::TUNING) {
-        if (chart_ && chart_host_tuning_) {
-            lv_obj_set_parent(ui_frequency_response_chart_get_obj(chart_), chart_host_tuning_);
-        }
+    place_chart(state);
+}
+
+lv_obj_t* BeltTensionPanel::chart_host_for(ViewState state) const {
+    lv_obj_t* own = nullptr;
+    switch (state) {
+    case ViewState::RUNNING:
+        own = chart_host_running_;
+        break;
+    case ViewState::RESULTS:
+        own = chart_host_results_;
+        break;
+    case ViewState::TUNING:
+        own = chart_host_tuning_;
+        break;
+    default:
+        return nullptr;
+    }
+    // On ultrawide the XML hides every state's own host and shows the wide
+    // one beside the sidebar; the chart is the one child XML cannot move.
+    lv_subject_t* ultrawide = lv_xml_get_subject(nullptr, "ui_is_ultrawide");
+    if (ultrawide && lv_subject_get_int(ultrawide) == 1 && chart_host_wide_) {
+        return chart_host_wide_;
+    }
+    return own;
+}
+
+void BeltTensionPanel::place_chart(ViewState state) {
+    lv_obj_t* host = chart_host_for(state);
+    if (!chart_ || !host) {
+        return;
+    }
+    lv_obj_t* obj = ui_frequency_response_chart_get_obj(chart_);
+    if (lv_obj_get_parent(obj) != host) {
+        lv_obj_set_parent(obj, host);
     }
 }
 
@@ -1866,8 +1905,5 @@ void BeltTensionPanel::destroy_chart() {
 
 void BeltTensionPanel::chart_to_running_host() {
     ensure_chart();
-    if (chart_ && chart_host_running_ &&
-        lv_obj_get_parent(ui_frequency_response_chart_get_obj(chart_)) != chart_host_running_) {
-        lv_obj_set_parent(ui_frequency_response_chart_get_obj(chart_), chart_host_running_);
-    }
+    place_chart(ViewState::RUNNING);
 }
