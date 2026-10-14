@@ -41,6 +41,7 @@ using helix::PlantedGcode;
 using helix::PrintJobState;
 using helix::queue::QueuedJobOptions;
 using helix::queue::QueuedJobStarter;
+using helix::test::NotificationLog;
 using helix::test::set_wire_state;
 using helix::test::WarningLog;
 using Outcome = QueuedJobStarter::Outcome;
@@ -231,7 +232,9 @@ TEST_CASE_METHOD(StarterFixture,
     CHECK_FALSE(outcome.has_value());
 
     SECTION("Remap hands the job to the file view") {
+        NotificationLog infos(NotificationLog::Kind::Info);
         press("btn_tertiary");
+        CHECK_FALSE(infos.contains("could not be checked from Home")); // the user chose it
         REQUIRE(outcome.has_value());
         CHECK(*outcome == Outcome::OpenedFileView);
         CHECK(starts() == 0);
@@ -300,8 +303,10 @@ TEST_CASE_METHOD(StarterFixture, "a queued .3mf opens in the file view and start
                  "[queued_job_start]") {
     PlantedGcode file("tile_project.gcode.3mf", "", "PK\x03\x04");
     StaticPanelRegistry::instance().destroy_all();
+    NotificationLog infos(NotificationLog::Kind::Info);
 
     start(entry("0001", file.name()));
+    CHECK(infos.contains(file.name() + " could not be checked from Home"));
 
     REQUIRE(outcome.has_value());
     CHECK(*outcome == Outcome::OpenedFileView);

@@ -3638,6 +3638,7 @@
   <translation tag="{} complete" ja="{} 完了"/>
   <translation tag="{} configured item not found" ja="設定された項目 {} 個が見つかりません"/>
   <translation tag="{} configured items not found" ja="設定された項目 {} 個が見つかりません"/>
+  <translation tag="{} could not be checked from Home - review it and tap Print" ja="{} をホームから確認できませんでした – 内容を確認して印刷をタップしてください"/>
   <translation tag="{} critical" ja="重大 {} 件"/>
   <translation tag="{} critical hardware issues" ja="{} 個の重要なハードウェアの問題"/>
   <translation tag="{} disabled" ja="{} を無効にしました"/>

@@ -105,4 +105,19 @@ TEST_CASE_METHOD(FileCheckFixture, "Print waits on the file check only when an o
         CHECK(can_print() == 1);
         CHECK(blocked_reason().empty());
     }
+    SECTION("turning a step off while the file reads holds Print") {
+        // A printer whose option set renders a bed mesh row.
+        get_printer_state().set_printer_type_sync("Creality K2 Plus");
+        open();
+        REQUIRE(can_print() == 1);
+        lv_obj_t* row = lv_obj_find_by_name(lv_screen_active(), "option_tile_bed_mesh");
+        REQUIRE(row != nullptr);
+        REQUIRE(lv_obj_has_state(row, LV_STATE_CHECKED));
+        lv_obj_remove_state(row, LV_STATE_CHECKED);
+        lv_obj_send_event(row, LV_EVENT_VALUE_CHANGED, nullptr);
+        drain();
+        CHECK(can_print() == 0);
+        CHECK(blocked_reason() == "Checking file…");
+        get_printer_state().set_printer_type_sync("");
+    }
 }

@@ -110,8 +110,9 @@ class QueuedJobStarter {
     void give_up(const char* why);
 
     /// End the start and open the job in the file view, where a file the tile
-    /// cannot check, or a remap, is handled.
-    void open_in_file_view(const char* why);
+    /// cannot check, or a remap, is handled. @p explain tells the user why the
+    /// view opened; a remap they chose needs no telling.
+    void open_in_file_view(const char* why, bool explain = true);
 
     /// (Re)arm the one-shot that gives up a start whose gathering stalls.
     void arm_stall_watchdog(uint32_t ms);

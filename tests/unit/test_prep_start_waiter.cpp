@@ -378,6 +378,50 @@ TEST_CASE_METHOD(WaiterFixture,
     settle();
 }
 
+TEST_CASE_METHOD(WaiterFixture, "a refused start reads a failed file again, so a retry starts",
+                 "[start_waiter][queued_job_start]") {
+    PlantedGcode part("retry_part.gcode", "", kMeshFile);
+    REQUIRE(part.remove_from_disk()); // the read fails
+    manager->scan_file_for_operations(part.name(), "");
+    settle();
+    REQUIRE_FALSE(manager->has_scan_result_for(part.name()));
+    manager->set_option_state_provider(
+        [](const std::string& id) { return id == "bed_mesh" ? 0 : -1; });
+    REQUIRE_FALSE(manager->print_waits_on_scan(part.name())); // the failed read answered
+    std::optional<bool> ok;
+    std::string error;
+    auto tap_print = [&]() {
+        ok.reset();
+        error.clear();
+        manager->start_print(
+            part.name(), "", []() {},
+            [&ok, &error](bool success, const std::string& e) {
+                ok = success;
+                error = e;
+            });
+        settle();
+    };
+
+    {
+        std::ofstream out(part.path(), std::ios::trunc | std::ios::binary);
+        out << kMeshFile;
+        REQUIRE(out.good());
+    }
+    const int reads = transfers.partial_read_count;
+    transfers.hold_partials = true;
+    tap_print();
+    REQUIRE(ok.has_value());
+    CHECK_FALSE(*ok);
+    CHECK(error.find("Try again") != std::string::npos);
+    CHECK(transfers.partial_read_count == reads + 1); // read again
+    CHECK(manager->print_waits_on_scan(part.name()));
+
+    release_scans();
+    REQUIRE(manager->has_scan_result_for(part.name()));
+    tap_print();
+    CHECK_FALSE((ok.has_value() && !*ok));
+}
+
 TEST_CASE_METHOD(WaiterFixture, "a re-sliced file of the same name is read again",
                  "[start_waiter][queued_job_start]") {
     PlantedGcode part("waiter_resliced.gcode", "", kMeshFile);

@@ -157,7 +157,7 @@ void QueuedJobStarter::give_up(const char* why) {
     finish(Outcome::NotStarted);
 }
 
-void QueuedJobStarter::open_in_file_view(const char* why) {
+void QueuedJobStarter::open_in_file_view(const char* why, bool explain) {
     if (!in_flight_) {
         return;
     }
@@ -165,6 +165,10 @@ void QueuedJobStarter::open_in_file_view(const char* why) {
     const JobQueueEntry job = job_;
     finish(Outcome::OpenedFileView);
     open_queued_job_in_file_view(job);
+    if (explain) {
+        NOTIFY_INFO(lv_tr("{} could not be checked from Home - review it and tap Print"),
+                    job.filename);
+    }
 }
 
 void QueuedJobStarter::start(const JobQueueEntry& job, DoneCallback done) {
@@ -298,7 +302,7 @@ void QueuedJobStarter::run_checks(const Pending& pending, FileStartFacts facts) 
             return;
         }
         *chosen = true;
-        open_in_file_view("Remap chosen");
+        open_in_file_view("Remap chosen", false);
     });
     modal->set_on_closed([this, tok, chosen]() {
         if (tok.expired() || *chosen) {

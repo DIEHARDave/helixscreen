@@ -3638,6 +3638,7 @@
   <translation tag="{} complete" ru="{} завершено"/>
   <translation tag="{} configured item not found" ru="Не найден {} настроенный элемент"/>
   <translation tag="{} configured items not found" ru="Не найдено {} настроенных элементов"/>
+  <translation tag="{} could not be checked from Home - review it and tap Print" ru="Не удалось проверить {} с главного экрана – проверьте файл и нажмите «Печать»"/>
   <translation tag="{} critical" ru="критических: {}"/>
   <translation tag="{} critical hardware issues" ru="{} критических проблем с оборудованием"/>
   <translation tag="{} disabled" ru="{} выключено"/>

@@ -1050,6 +1050,15 @@ void PrintPreparationManager::start_print(const std::string& filename,
         spdlog::error("[PrintPreparationManager] Refusing to start {}: no scan of {} answers for "
                       "the steps turned off",
                       filename_to_print, start_key);
+        // A read that failed is read again, so the retry the message offers
+        // can succeed.
+        if (const KeptScan* kept = kept_scan(start_key); kept && !kept->result) {
+            const std::string scanned_name = kept->filename;
+            const FileVersion version = kept->version;
+            const std::string local_path =
+                start_key == scan_key(filename, current_path) ? std::string() : start_key;
+            request_scan(scanned_name, current_path, local_path, version);
+        }
         if (on_completion) {
             on_completion(false,
                           fmt::format(fmt::runtime(lv_tr(

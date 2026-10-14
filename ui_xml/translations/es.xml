@@ -3638,6 +3638,7 @@
   <translation tag="{} complete" es="{} completado"/>
   <translation tag="{} configured item not found" es="{} elemento configurado no encontrado"/>
   <translation tag="{} configured items not found" es="{} elementos configurados no encontrados"/>
+  <translation tag="{} could not be checked from Home - review it and tap Print" es="No se pudo comprobar {} desde Inicio: revísalo y toca Imprimir"/>
   <translation tag="{} critical" es="{} crítico(s)"/>
   <translation tag="{} critical hardware issues" es="{} problemas de hardware crítico"/>
   <translation tag="{} disabled" es="{} desactivado"/>

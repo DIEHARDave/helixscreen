@@ -28,20 +28,29 @@
 
 namespace helix::test {
 
-/// Collects the user-facing warning toasts: toasts are compiled out of the
+/// Collects the user-facing warning (or info) toasts: toasts are compiled out of the
 /// test build, so the hook is the only observable.
-struct WarningLog {
+struct NotificationLog {
+    enum class Kind { Warning, Info };
     std::vector<std::string> messages;
 
-    WarningLog() {
-        helix::ui::set_test_notification_warning_hook(
-            [this](const std::string& message) { messages.push_back(message); });
+    explicit NotificationLog(Kind kind = Kind::Warning) : kind_(kind) {
+        auto record = [this](const std::string& message) { messages.push_back(message); };
+        if (kind_ == Kind::Info) {
+            helix::ui::set_test_notification_info_hook(record);
+        } else {
+            helix::ui::set_test_notification_warning_hook(record);
+        }
     }
-    ~WarningLog() {
-        helix::ui::set_test_notification_warning_hook(nullptr);
+    ~NotificationLog() {
+        if (kind_ == Kind::Info) {
+            helix::ui::set_test_notification_info_hook(nullptr);
+        } else {
+            helix::ui::set_test_notification_warning_hook(nullptr);
+        }
     }
-    WarningLog(const WarningLog&) = delete;
-    WarningLog& operator=(const WarningLog&) = delete;
+    NotificationLog(const NotificationLog&) = delete;
+    NotificationLog& operator=(const NotificationLog&) = delete;
 
     bool contains(const std::string& needle) const {
         for (const auto& m : messages) {
@@ -51,7 +60,12 @@ struct WarningLog {
         }
         return false;
     }
+
+  private:
+    Kind kind_;
 };
+
+using WarningLog = NotificationLog;
 
 class QueuedStartFixture : private helix::PrintSelectGlobalStateReset,
                            public helix::PrintSelectPanelFixture {

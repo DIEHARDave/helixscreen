@@ -3638,6 +3638,7 @@
   <translation tag="{} complete" zh="{} 完成"/>
   <translation tag="{} configured item not found" zh="未找到 {} 个已配置的项目"/>
   <translation tag="{} configured items not found" zh="未找到 {} 个已配置的项目"/>
+  <translation tag="{} could not be checked from Home - review it and tap Print" zh="无法从主页检查 {} – 请查看后点按打印"/>
   <translation tag="{} critical" zh="{} 个严重"/>
   <translation tag="{} critical hardware issues" zh="{} 个关键硬件问题"/>
   <translation tag="{} disabled" zh="已停用{}"/>
