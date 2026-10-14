@@ -89,6 +89,10 @@ static const HelpEntry HELP[] = {
      "until pixels stop changing (see `freeze`)"},
     {nullptr, "status", "Show panel, connection state, printer status", nullptr},
     {nullptr, "wake", "Reset idle timer / dismiss the screensaver", nullptr},
+    {nullptr, "screensaver <name|off>", "Preview a screensaver by name, as Test Screensaver does",
+     "toasters, starfield, pipes, bounce, fireworks, logo, maze,\n"
+     "hyperspace, flipclock; a saver too heavy for the board runs its\n"
+     "fallback. `off` is wake"},
     {nullptr, "demo <name>", "Show a sample-data overlay unreachable in mock mode",
      "preflight-check, runout-modal, lock-screen, print-status,\n"
      "print-tune, ams, camera"},
@@ -733,6 +737,9 @@ static nlohmann::json build_request_from_tokens(const std::vector<std::string>& 
         return build_request("scenario", {{"name", tokens[1]}});
     } else if (cmd == "list_scenarios") {
         return build_request("list_scenarios");
+    } else if (cmd == "screensaver" && tokens.size() >= 2 && tokens[1] != "off") {
+        // `screensaver <name>` previews a saver by its stable name.
+        return build_request("preview_screensaver", {{"name", tokens[1]}});
     } else if (cmd == "wake" || cmd == "screensaver") {
         // `wake` or `screensaver off` — reset the idle timer / dismiss the saver.
         return build_request("wake");
@@ -837,6 +844,7 @@ static const char* REPL_COMMANDS[] = {"ping",
                                       "screenshot",
                                       "status",
                                       "wake",
+                                      "screensaver",
                                       "demo",
                                       "get",
                                       "set",
