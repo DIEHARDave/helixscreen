@@ -17,11 +17,11 @@ bool reduced_effects_for(const board::Info& board, bool constrained_memory) {
     return board.reduced_effects || constrained_memory;
 }
 
-// Cached on first use: the board and the installed memory do not change at runtime.
+// Installed memory does not change at runtime, so only it is cached; the board is
+// asked each call so a test's board override is honoured.
 bool reduced_effects() {
-    static const bool cached = reduced_effects_for(
-        board::current_info(), helix::get_system_memory_info().is_constrained_device());
-    return cached;
+    static const bool constrained = helix::get_system_memory_info().is_constrained_device();
+    return reduced_effects_for(board::current_info(), constrained);
 }
 
 // Color helpers delegate to ams_draw so there is one definition of the

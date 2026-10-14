@@ -4,6 +4,8 @@
 #include "../lvgl_test_fixture.h"
 #include "board_identity.h"
 #include "filament_tube_stroker.h"
+#include "memory_utils.h"
+#include "test_helpers/scoped_board.h"
 #include "theme_manager.h"
 
 #include "../catch_amalgamated.hpp"
@@ -139,4 +141,14 @@ TEST_CASE_METHOD(LVGLTestFixture, "tube_accent lightens primary in light theme o
     CHECK(brightness(accent) > brightness(primary));
 
     theme_manager_init(lv_display_get_default(), original_dark);
+}
+
+TEST_CASE("reduced_effects follows a board override instead of freezing the first board seen",
+          "[filament-path][stroker]") {
+    {
+        helix::test::ScopedBoard board(helix::board::Board::K2);
+        CHECK(helix::ui::reduced_effects());
+    }
+    helix::test::ScopedBoard board(helix::board::Board::Generic);
+    CHECK(helix::ui::reduced_effects() == helix::get_system_memory_info().is_constrained_device());
 }

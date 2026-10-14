@@ -50,7 +50,7 @@ bool reduced_effects_for(const board::Info& board, bool constrained_memory);
 
 /// Detect low-performance platforms: a board whose row asks for it (K2) or a
 /// constrained-memory device (the K1C's 214MB qualifies, the AD5X's 485MB does not).
-/// When true, the stroker drops the halo; walls and bore still draw. Evaluated once.
+/// When true, the stroker drops the halo; walls and bore still draw.
 bool reduced_effects();
 
 /// Color helpers (delegate to ams_draw::* — kept here so callers and the
