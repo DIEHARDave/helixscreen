@@ -2287,6 +2287,7 @@
   <translation tag="Print error" ru="Ошибка печати"/>
   <translation tag="Print failed" ru="Печать не удалась"/>
   <translation tag="Print history will show the rewritten name" ru="История печати покажет изменённое имя"/>
+  <translation tag="Print hours this week and lifetime totals" ru="Часы печати за неделю и общие итоги"/>
   <translation tag="Print issue detected" ru="Обнаружена проблема печати"/>
   <translation tag="Print jobs waiting to run" ru="Задания печати в очереди"/>
   <translation tag="Print preparation failed: {}" ru="Ошибка подготовки печати: {}"/>

@@ -2287,6 +2287,7 @@
   <translation tag="Print error" ja="印刷エラー"/>
   <translation tag="Print failed" ja="印刷失敗"/>
   <translation tag="Print history will show the rewritten name" ja="印刷履歴には書き換え後の名前が表示されます"/>
+  <translation tag="Print hours this week and lifetime totals" ja="今週の印刷時間と累計"/>
   <translation tag="Print issue detected" ja="印刷の問題を検出しました"/>
   <translation tag="Print jobs waiting to run" ja="実行待ちの印刷ジョブ"/>
   <translation tag="Print preparation failed: {}" ja="印刷準備に失敗しました: {}"/>

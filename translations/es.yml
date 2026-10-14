@@ -825,6 +825,7 @@ translations:
     estar disponibles.
   Could not answer the connection request: 'No se pudo responder a la solicitud de conexión'
   'Could not check {} - it stays in the queue': 'No se pudo comprobar {}: permanece en la cola'
+  Print hours this week and lifetime totals: 'Horas de impresión de esta semana y totales históricos'
   '{} could not be checked from Home - review it and tap Print': 'No se pudo comprobar {} desde Inicio: revísalo y toca Imprimir'
   ? "Could not check webcam status.\nCheck printer connection."
   : "No se pudo verificar la webcam.\nCompruebe la conexión."

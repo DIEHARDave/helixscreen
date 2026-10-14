@@ -2287,6 +2287,7 @@
   <translation tag="Print error" zh="打印错误"/>
   <translation tag="Print failed" zh="打印失败"/>
   <translation tag="Print history will show the rewritten name" zh="打印历史将显示改写后的名称"/>
+  <translation tag="Print hours this week and lifetime totals" zh="本周打印时长和累计总数"/>
   <translation tag="Print issue detected" zh="检测到打印问题"/>
   <translation tag="Print jobs waiting to run" zh="等待执行的打印任务"/>
   <translation tag="Print preparation failed: {}" zh="打印准备失败: {}"/>

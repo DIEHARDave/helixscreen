@@ -2287,6 +2287,7 @@
   <translation tag="Print error" fr="Erreur d&apos;impression"/>
   <translation tag="Print failed" fr="Impression échouée"/>
   <translation tag="Print history will show the rewritten name" fr="L&apos;historique d&apos;impression affichera le nom réécrit"/>
+  <translation tag="Print hours this week and lifetime totals" fr="Heures d&apos;impression cette semaine et totaux cumulés"/>
   <translation tag="Print issue detected" fr="Problème d&apos;impression détecté"/>
   <translation tag="Print jobs waiting to run" fr="Impressions en attente"/>
   <translation tag="Print preparation failed: {}" fr="Échec de la préparation de l&apos;impression : {}"/>
