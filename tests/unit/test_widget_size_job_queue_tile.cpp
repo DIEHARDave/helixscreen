@@ -7,9 +7,9 @@
  * the published verdict and texts, which parts carry HIDDEN, and the re-decision when
  * the queue, the run state or the printer's activity changes.
  *
- * Boxes are the medium-tier pixel budgets (114x54, 124x113, 244x113, 244x232). The
- * decision is job_queue_tile_layout.h's and the state is job_queue_tile_state.h's;
- * these tests pin their wiring to the real fonts and XML.
+ * Boxes are the medium-tier pixel budgets (114x54 and the Cell and Wide widths in
+ * job_queue_tile_boxes.h). The decision is job_queue_tile_layout.h's and the state is
+ * job_queue_tile_state.h's; these tests pin their wiring to the real fonts and XML.
  *
  * Run with: ./build/bin/helix-tests "[widget_size][job_queue]"
  */
@@ -19,6 +19,7 @@
 #include "../lvgl_ui_test_fixture.h"
 #include "../test_helpers/job_queue_state_test_access.h"
 #include "../test_helpers/job_queue_subjects_fixture.h"
+#include "../test_helpers/job_queue_tile_boxes.h"
 #include "../test_helpers/job_queue_tile_seed.h"
 #include "../test_helpers/one_line_label.h"
 #include "../test_helpers/panel_widget_size_harness.h"
@@ -48,9 +49,9 @@ struct Box {
 };
 
 constexpr Box kStrip{114, 54, SizeRung::Strip};
-constexpr Box kCell{124, 113, SizeRung::Cell};
-constexpr Box kWide{244, 113, SizeRung::Wide};
-constexpr Box kFull{244, 232, SizeRung::Full};
+constexpr Box kCell{test::kJobQueueCellW, 113, SizeRung::Cell};
+constexpr Box kWide{test::kJobQueueWideW, 113, SizeRung::Wide};
+constexpr Box kFull{test::kJobQueueWideW, 232, SizeRung::Full};
 
 struct JobQueueTileFixture : public LVGLUITestFixture, public JobQueueTileSeed {
     JobQueueTileFixture() : JobQueueTileSeed([this] { settle(); }) {}

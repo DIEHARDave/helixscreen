@@ -3,6 +3,7 @@
 #pragma once
 
 #include "lvgl/lvgl.h"
+#include "theme_manager.h"
 
 #include <algorithm>
 
@@ -13,6 +14,12 @@ struct ContentChrome {
     int w = 0;
     int h = 0;
 };
+
+/// The width a text button adds around its label: button_padding and a border pixel on
+/// each side.
+inline int button_label_chrome_w() {
+    return 2 * (theme_manager_get_spacing("button_padding") + 1);
+}
 
 /// The chrome of the single-child chain from `root` down to the first container
 /// that holds more than one child: the padding of every container on the way, and

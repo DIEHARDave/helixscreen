@@ -32,6 +32,7 @@
 #include "../test_helpers/job_queue_modal_test_access.h"
 #include "../test_helpers/job_queue_state_test_access.h"
 #include "../test_helpers/job_queue_subjects_fixture.h"
+#include "../test_helpers/job_queue_tile_boxes.h"
 #include "../test_helpers/moonraker_client_mock_test_access.h"
 #include "../test_helpers/panel_widget_size_harness.h"
 #include "../test_helpers/print_select_panel_fixture.h"
@@ -632,9 +633,9 @@ TEST_CASE_METHOD(TileStartFixture,
         int h;
         const char* name;
     };
-    const Button button =
-        GENERATE(Button{114, 54, "jq_action_icon"}, Button{124, 113, "jq_action_cell"},
-                 Button{244, 113, "jq_action_wide"});
+    const Button button = GENERATE(Button{114, 54, "jq_action_icon"},
+                                   Button{test::kJobQueueCellW, 113, "jq_action_cell"},
+                                   Button{test::kJobQueueWideW, 113, "jq_action_wide"});
     INFO(button.name);
 
     PlantedGcode file("tile_start_button.gcode");
@@ -658,7 +659,7 @@ TEST_CASE_METHOD(TileStartFixture, "a tap on the tile outside the button opens t
     PlantedGcode file("tile_tap_modal.gcode");
     show_queue(entry("0001", file.name()));
     PanelWidgetHarness<JobQueueWidget> tile(test_screen());
-    tile.resize(1, 1, 124, 113);
+    tile.resize(1, 1, test::kJobQueueCellW, 113);
 
     REQUIRE(ModalStack::instance().top_dialog() == nullptr);
     lv_obj_send_event(tile.root(), LV_EVENT_CLICKED, nullptr);

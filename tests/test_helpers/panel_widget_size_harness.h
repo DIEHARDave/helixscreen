@@ -424,10 +424,11 @@ inline void walk(lv_obj_t* o, const std::string& path, const OverflowExceptions&
 
     // Content that the layout kept inside the box by shifting it: the children
     // are all in bounds, and the box still cannot show them all at once.
-    // An image reports its source's natural size as its self size whatever its box or
-    // inner_align draws, so a thumbnail scaled to fit still shows as scrollable. Its
+    // An image reports its source's natural size as its self size whatever its box
+    // draws, so a thumbnail scaled to fit (inner_align contain) still shows as scrollable. Its
     // box is still held to the parent by the geometry check below.
-    const bool is_image = lv_obj_check_type(o, &lv_image_class);
+    const bool is_image = lv_obj_check_type(o, &lv_image_class) &&
+                          lv_image_get_inner_align(o) == LV_IMAGE_ALIGN_CONTAIN;
     const int32_t sb = is_image ? 0 : lv_obj_get_scroll_bottom(o);
     const int32_t sr = is_image ? 0 : lv_obj_get_scroll_right(o);
     if (sb > 0) {
