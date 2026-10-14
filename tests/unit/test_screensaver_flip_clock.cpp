@@ -11,6 +11,7 @@
 
 #include <algorithm>
 #include <cstring>
+#include <initializer_list>
 #include <string>
 #include <vector>
 
@@ -36,6 +37,7 @@ using helix::ui::FlipLayout;
 using helix::ui::FlipMeridiem;
 using helix::ui::FlipMode;
 using helix::ui::FlipPrintPhase;
+using helix::ui::FlipShape;
 using helix::ui::FrameTarget;
 using helix::ui::PixelFormat;
 using helix::ui::PixelWriter;
@@ -44,16 +46,27 @@ using helix::ui::SaverTestAccess;
 
 namespace {
 
-/// The digits of each card joined with ':'.
+/// One character per card, a blank card as a space, groups joined with ':'.
 std::string cards_text(const FlipFace& face) {
     std::string out;
-    for (size_t i = 0; i < face.card_count; i++) {
-        if (i > 0) {
+    size_t i = 0;
+    for (size_t g = 0; g < face.shape.group_count; g++) {
+        if (g > 0) {
             out += ':';
         }
-        out += face.cards[i].text.data();
+        for (size_t c = 0; c < face.shape.groups[g]; c++, i++) {
+            out += face.cards[i].digit == '\0' ? ' ' : face.cards[i].digit;
+        }
     }
     return out;
+}
+
+FlipShape shape_of(std::initializer_list<uint8_t> groups) {
+    FlipShape shape;
+    for (const uint8_t g : groups) {
+        shape.groups[shape.group_count++] = g;
+    }
+    return shape;
 }
 
 constexpr int32_t hms(int32_t h, int32_t m, int32_t s = 0) {
@@ -163,27 +176,32 @@ void fire(lv_timer_t* timer) {
 TEST_CASE("the clock face shows 24-hour time with a leading zero and no marker",
           "[screensaver][screensaver_flip_clock]") {
     CHECK(cards_text(clock_face(hms(9, 5), true)) == "09:05");
+    CHECK(clock_face(hms(9, 5), true).shape == shape_of({2, 2}));
     CHECK(cards_text(clock_face(hms(0, 0), true)) == "00:00");
     CHECK(cards_text(clock_face(hms(23, 59, 59), true)) == "23:59");
     CHECK(clock_face(hms(13, 0), true).meridiem == FlipMeridiem::NONE);
     CHECK(clock_face(hms(13, 0), true).caption == FlipCaption::NONE);
 }
 
-TEST_CASE("the clock face shows 12-hour time without a leading zero, marked AM or PM",
+TEST_CASE("the clock face shows 12-hour time with a blank leading card, marked AM or PM",
           "[screensaver][screensaver_flip_clock]") {
     CHECK(cards_text(clock_face(hms(0, 30), false)) == "12:30");
     CHECK(clock_face(hms(0, 30), false).meridiem == FlipMeridiem::AM);
-    CHECK(cards_text(clock_face(hms(9, 42), false)) == "9:42");
+    CHECK(cards_text(clock_face(hms(9, 42), false)) == " 9:42");
+    CHECK(clock_face(hms(9, 42), false).shape == shape_of({2, 2}));
     CHECK(clock_face(hms(11, 59), false).meridiem == FlipMeridiem::AM);
     CHECK(cards_text(clock_face(hms(12, 0), false)) == "12:00");
     CHECK(clock_face(hms(12, 0), false).meridiem == FlipMeridiem::PM);
-    CHECK(cards_text(clock_face(hms(13, 7), false)) == "1:07");
+    CHECK(cards_text(clock_face(hms(13, 7), false)) == " 1:07");
     CHECK(clock_face(hms(23, 59), false).meridiem == FlipMeridiem::PM);
 }
 
 TEST_CASE("the countdown face shows H:MM:SS under an hour, past ten hours and at the limits",
           "[screensaver][screensaver_flip_clock]") {
-    CHECK(countdown_face(hms(1, 2, 5)).card_count == 3);
+    CHECK(countdown_face(hms(1, 2, 5)).shape == shape_of({1, 2, 2}));
+    CHECK(countdown_face(hms(10, 2, 5)).shape == shape_of({2, 2, 2}));
+    CHECK(countdown_face(hms(100, 2, 5)).shape == shape_of({3, 2, 2}));
+    CHECK(countdown_face(hms(100, 2, 5)).shape.card_count() == 7);
     CHECK(cards_text(countdown_face(hms(1, 2, 5))) == "1:02:05");
     CHECK(cards_text(countdown_face(59)) == "0:00:59");
     CHECK(cards_text(countdown_face(hms(0, 45, 0))) == "0:45:00");
@@ -191,8 +209,9 @@ TEST_CASE("the countdown face shows H:MM:SS under an hour, past ten hours and at
     CHECK(cards_text(countdown_face(hms(37, 0, 1))) == "37:00:01");
     CHECK(cards_text(countdown_face(0)) == "0:00:00");
     CHECK(cards_text(countdown_face(-5)) == "0:00:00");
-    CHECK(cards_text(countdown_face(FLIP_MAX_COUNTDOWN_S)) == "99:59:59");
-    CHECK(cards_text(countdown_face(FLIP_MAX_COUNTDOWN_S + 3600)) == "99:59:59");
+    CHECK(cards_text(countdown_face(hms(123, 4, 5))) == "123:04:05");
+    CHECK(cards_text(countdown_face(FLIP_MAX_COUNTDOWN_S)) == "999:59:59");
+    CHECK(cards_text(countdown_face(FLIP_MAX_COUNTDOWN_S + 3600)) == "999:59:59");
 }
 
 // ============================================================================
@@ -372,7 +391,7 @@ TEST_CASE("the flip clock reads the print lifecycle, with ended prints as no pri
 // Layout
 // ============================================================================
 
-TEST_CASE("cards fit every screen shape at the widest drift, in a row or a column",
+TEST_CASE("one card per digit fits every screen shape at the widest drift, in rows or one row",
           "[screensaver][screensaver_flip_clock]") {
     struct Screen {
         int32_t w;
@@ -380,47 +399,72 @@ TEST_CASE("cards fit every screen shape at the widest drift, in a row or a colum
     };
     const Screen screen = GENERATE(Screen{800, 480}, Screen{480, 272}, Screen{1024, 600},
                                    Screen{480, 800}, Screen{272, 480}, Screen{1280, 720});
-    const uint8_t count = GENERATE(as<uint8_t>{}, 2, 3);
-    CAPTURE(screen.w, screen.h, count);
+    // The clock, then countdowns with one, two and three hour digits.
+    const FlipShape shape =
+        GENERATE(shape_of({2, 2}), shape_of({1, 2, 2}), shape_of({2, 2, 2}), shape_of({3, 2, 2}));
+    const uint8_t count = shape.card_count();
+    CAPTURE(screen.w, screen.h, count, shape.groups[0]);
 
     int32_t max_dx = 0;
     int32_t max_dy = 0;
-    helix::ui::flip_drift_range(screen.w, screen.h, count, max_dx, max_dy);
+    helix::ui::flip_drift_range(screen.w, screen.h, shape, max_dx, max_dy);
     CHECK(max_dx > 0);
     CHECK(max_dy > 0);
     const DirtyRect whole{0, 0, screen.w - 1, screen.h - 1};
     for (int sx : {-1, 0, 1}) {
         for (int sy : {-1, 0, 1}) {
             const FlipLayout layout =
-                helix::ui::layout_flip_cards(screen.w, screen.h, count, sx * max_dx, sy * max_dy);
+                helix::ui::layout_flip_cards(screen.w, screen.h, shape, sx * max_dx, sy * max_dy);
             REQUIRE(layout.card_count == count);
+            CHECK(layout.shape == shape);
             CHECK(inside(layout.bounds(), whole));
             CHECK(inside(layout.caption, whole));
             CHECK(inside(layout.meridiem, layout.cards[0]));
             for (size_t i = 0; i < count; i++) {
                 CHECK(inside(layout.cards[i], whole));
+                CHECK(layout.cards[i].x2 - layout.cards[i].x1 ==
+                      layout.cards[0].x2 - layout.cards[0].x1);
+                CHECK(layout.cards[i].y2 - layout.cards[i].y1 ==
+                      layout.cards[0].y2 - layout.cards[0].y1);
                 for (size_t j = i + 1; j < count; j++) {
                     CHECK_FALSE(layout.cards[i].intersects(layout.cards[j]));
                 }
                 CHECK_FALSE(layout.cards[i].intersects(layout.caption));
+                for (size_t c = 0; c < layout.colon_count; c++) {
+                    CHECK_FALSE(layout.cards[i].intersects(layout.colons[c]));
+                }
+            }
+            for (size_t c = 0; c < layout.colon_count; c++) {
+                CHECK(inside(layout.colons[c], layout.bounds()));
             }
             CHECK(layout.split_top > 0);
             CHECK(layout.split_bottom > layout.split_top);
         }
     }
 
-    const FlipLayout layout = helix::ui::layout_flip_cards(screen.w, screen.h, count, 0, 0);
+    const FlipLayout layout = helix::ui::layout_flip_cards(screen.w, screen.h, shape, 0, 0);
     // The cards take a large share of the screen.
     CHECK(layout.bounds().area() * 100 > static_cast<int64_t>(screen.w) * screen.h * 25);
     // Only the countdown carries a line under its cards; the clock centres without one.
-    CHECK(layout.caption.empty() == (count == 2));
-    if (count == 2) {
+    CHECK(layout.caption.empty() == !shape.has_caption());
+    if (!shape.has_caption()) {
         const DirtyRect b = layout.bounds();
         CHECK(std::abs((b.y1 + b.y2) - (screen.h - 1)) <= 1);
     }
-    // A portrait screen stacks the cards; a landscape one lines them up.
-    const bool column = layout.cards[1].y1 > layout.cards[0].y2;
-    CHECK(column == (screen.h > screen.w));
+    // A portrait screen puts each group on its own row with no colons; a landscape one lines
+    // every card up with a colon between groups.
+    const bool rows = layout.cards[count - 1].y1 > layout.cards[0].y2;
+    CHECK(rows == (screen.h > screen.w));
+    CHECK(layout.colon_count == (rows ? 0 : shape.group_count - 1));
+    // The cards of a group always share a row.
+    size_t i = 0;
+    for (size_t g = 0; g < shape.group_count; g++) {
+        for (size_t c = 1; c < shape.groups[g]; c++) {
+            CHECK(layout.cards[i + c].y1 == layout.cards[i].y1);
+            CHECK(layout.cards[i + c].x1 > layout.cards[i + c - 1].x2);
+        }
+        i += shape.groups[g];
+    }
 }
 
 TEST_CASE("the drift moves the cards once per step and stays within its range",
@@ -469,6 +513,24 @@ TEST_CASE("the flip clock draws light digits on dark cards over black, in either
         CHECK(lit_in(frame, card) > 100);
     }
     CHECK(writer.get(layout.cards[0].x1, layout.cards[0].y1) == FlipClockSim::BACKGROUND);
+    // The colon between hours and minutes.
+    REQUIRE(layout.colon_count == 1);
+    const DirtyRect& colon = layout.colons[0];
+    size_t colon_px = 0;
+    for (int32_t y = colon.y1; y <= colon.y2; y++) {
+        for (int32_t x = colon.x1; x <= colon.x2; x++) {
+            colon_px += writer.get(x, y) == FlipClockSim::BACKGROUND ? 0 : 1;
+        }
+    }
+    CHECK(colon_px > 4);
+}
+
+TEST_CASE("a blank card draws no digit", "[screensaver][screensaver_flip_clock]") {
+    SimFrame frame(400, 240, PixelFormat::XRGB8888);
+    FlipClockSim sim;
+    sim.init(frame.target, 0, clock_face(hms(9, 41), false));
+    CHECK(lit_in(frame, sim.layout().cards[0]) == 0);
+    CHECK(lit_in(frame, sim.layout().cards[1]) > 50);
 }
 
 TEST_CASE("different digits draw different cards", "[screensaver][screensaver_flip_clock]") {
@@ -476,10 +538,9 @@ TEST_CASE("different digits draw different cards", "[screensaver][screensaver_fl
     FlipClockSim sim;
     std::vector<std::vector<uint8_t>> seen;
     for (int d = 0; d < 10; d++) {
-        const std::string text = "0" + std::to_string(d);
         FlipFace face = clock_face(hms(d, d), true);
         sim.init(frame.target, 2, face);
-        const std::vector<uint8_t> card = card_bytes(frame, sim.layout().cards[1]);
+        const std::vector<uint8_t> card = card_bytes(frame, sim.layout().cards[3]);
         for (const auto& other : seen) {
             CHECK(card != other);
         }
@@ -492,7 +553,7 @@ TEST_CASE("a changed card folds over the flip duration while the others stay sti
     SimFrame frame(400, 240, PixelFormat::XRGB8888);
     FlipClockSim sim;
     sim.init(frame.target, 0, clock_face(hms(10, 8), true));
-    const DirtyRect minutes = sim.layout().cards[1];
+    const DirtyRect minutes = sim.layout().cards[3];
     const std::vector<uint8_t> start = card_bytes(frame, minutes);
 
     std::vector<DirtyRect> dirty;
@@ -500,17 +561,17 @@ TEST_CASE("a changed card folds over the flip duration while the others stay sti
     sim.step(0, frame.target, next, dirty);
     CHECK(sim.flipping());
     CHECK(sim.flip_progress(0) == 1.0f);
-    CHECK(sim.flip_progress(1) == 0.0f);
+    CHECK(sim.flip_progress(3) == 0.0f);
 
     sim.step(FLIP_DURATION_MS / 4, frame.target, next, dirty);
-    CHECK(sim.flip_progress(1) == Catch::Approx(0.25f));
+    CHECK(sim.flip_progress(3) == Catch::Approx(0.25f));
     REQUIRE(dirty.size() == 1);
     CHECK(dirty[0] == minutes);
     const std::vector<uint8_t> quarter = card_bytes(frame, minutes);
     CHECK(quarter != start);
 
     sim.step(FLIP_DURATION_MS / 2, frame.target, next, dirty);
-    CHECK(sim.flip_progress(1) == Catch::Approx(0.75f));
+    CHECK(sim.flip_progress(3) == Catch::Approx(0.75f));
     const std::vector<uint8_t> three_quarters = card_bytes(frame, minutes);
     CHECK(three_quarters != quarter);
 
@@ -524,6 +585,84 @@ TEST_CASE("a changed card folds over the flip duration while the others stay sti
     FlipClockSim fresh;
     fresh.init(still.target, 0, next);
     CHECK(end == card_bytes(still, minutes));
+}
+
+TEST_CASE("only the digits that change flip, each on its own card and all at once",
+          "[screensaver][screensaver_flip_clock]") {
+    struct Change {
+        const char* name;
+        FlipFace from;
+        FlipFace to;
+        std::vector<size_t> flips;
+    };
+    const Change change = GENERATE(
+        Change{"10:08 -> 10:09", clock_face(hms(10, 8), true), clock_face(hms(10, 9), true), {3}},
+        Change{"10:59 -> 11:00",
+               clock_face(hms(10, 59), true),
+               clock_face(hms(11, 0), true),
+               {1, 2, 3}},
+        Change{"09:59 -> 10:00",
+               clock_face(hms(9, 59), true),
+               clock_face(hms(10, 0), true),
+               {0, 1, 2, 3}},
+        Change{"12h 1:09 -> 1:10",
+               clock_face(hms(1, 9), false),
+               clock_face(hms(1, 10), false),
+               {2, 3}},
+        Change{"12h 9:59 -> 10:00",
+               clock_face(hms(9, 59), false),
+               clock_face(hms(10, 0), false),
+               {0, 1, 2, 3}},
+        Change{"0:00:10 -> 0:00:09", countdown_face(10), countdown_face(9), {3, 4}},
+        Change{"0:10:00 -> 0:09:59",
+               countdown_face(hms(0, 10, 0)),
+               countdown_face(hms(0, 9, 59)),
+               {1, 2, 3, 4}},
+        Change{"1:00:00 -> 0:59:59",
+               countdown_face(hms(1, 0, 0)),
+               countdown_face(hms(0, 59, 59)),
+               {0, 1, 2, 3, 4}},
+        Change{"12:30:00 -> 12:29:59",
+               countdown_face(hms(12, 30, 0)),
+               countdown_face(hms(12, 29, 59)),
+               {2, 3, 4, 5}});
+    CAPTURE(change.name);
+    const auto flips = [&change](size_t i) {
+        return std::find(change.flips.begin(), change.flips.end(), i) != change.flips.end();
+    };
+
+    SimFrame frame(800, 480, PixelFormat::XRGB8888);
+    FlipClockSim sim;
+    sim.init(frame.target, 0, change.from);
+    const FlipLayout layout = sim.layout();
+    std::vector<std::vector<uint8_t>> before;
+    for (size_t i = 0; i < layout.card_count; i++) {
+        before.push_back(card_bytes(frame, layout.cards[i]));
+    }
+
+    std::vector<DirtyRect> dirty;
+    sim.step(0, frame.target, change.to, dirty);
+    for (const uint32_t dt : {FLIP_DURATION_MS / 3, FLIP_DURATION_MS / 3}) {
+        sim.step(dt, frame.target, change.to, dirty);
+        // One box per flipping card, and nothing for the cards that stay.
+        std::vector<DirtyRect> expected;
+        for (const size_t i : change.flips) {
+            expected.push_back(layout.cards[i]);
+        }
+        CHECK(dirty == expected);
+        for (size_t i = 0; i < layout.card_count; i++) {
+            CAPTURE(i);
+            if (flips(i)) {
+                // Every changed card is at the same point of its own fold.
+                CHECK(sim.flip_progress(i) == Catch::Approx(sim.flip_progress(change.flips[0])));
+                CHECK(sim.flip_progress(i) < 1.0f);
+                CHECK(card_bytes(frame, layout.cards[i]) != before[i]);
+            } else {
+                CHECK(sim.flip_progress(i) == 1.0f);
+                CHECK(card_bytes(frame, layout.cards[i]) == before[i]);
+            }
+        }
+    }
 }
 
 TEST_CASE("between changes a frame writes nothing", "[screensaver][screensaver_flip_clock]") {

@@ -137,16 +137,22 @@ by `PrintEtaEstimator`) and the displayed progress; `flip_clock_now()` adds the 
 the Time Format setting. `FlipClockState` turns that into a face:
 
 - Idle, cancelled, failed, or preparing with no estimate yet: the time of day, HH:MM, with
-  AM/PM on the hour card in 12-hour mode.
-- A print with an estimate: H:MM:SS counting down at wall-clock rate, with "done at
+  AM/PM on the first hour card in 12-hour mode, where that card is blank before 10.
+- A print with an estimate: H:MM:SS (as many hour cards as the hours need, up to
+  `FLIP_MAX_COUNTDOWN_S`) counting down at wall-clock rate, with "done at
   <time> · <n>%" under the cards. An estimate within `FLIP_COUNTDOWN_RESYNC_S` of the running
   count is ignored, so estimator jitter never flips the seconds backwards.
 - Paused: the count freezes under PAUSED.
 - A print the clock saw finish: 0:00:00 and DONE for `FLIP_DONE_HOLD_MS`, then the clock.
 
-`FlipClockSim` draws the digits from strokes (lines and arcs) into a coverage cache sized to
-the layout, so they scale to any screen and draw at both depths. It writes only the cards
-that change and nothing between changes; the layout drifts every `FLIP_DRIFT_STEP_MS` and is
-then repainted whole. The caption and AM/PM marker are `lv_draw_label` text on the canvas,
+Every digit has its own card, grouped by a `FlipShape` (hours, minutes, seconds).
+`layout_flip_cards` puts every group in one row with a colon between groups, or, when that
+gives larger cards (portrait), one group per row. `FlipClockSim` draws the digits from
+strokes (lines and arcs) into a coverage cache sized to the layout, so they scale to any
+screen and draw at both depths. Only the cards whose digit changes flip, each with its own
+fold and dirty box, all at once when several change (09:59 to 10:00 flips four, 10:59 to
+11:00 three); nothing is written between changes. A new shape (the clock becoming a
+countdown, the hours gaining a digit) and the drift every `FLIP_DRIFT_STEP_MS` repaint the
+layout whole. The caption and AM/PM marker are `lv_draw_label` text on the canvas,
 which is why its canvas uses the pipes format.
 

@@ -44,8 +44,8 @@ inline constexpr uint32_t FLIP_DONE_HOLD_MS = 60000;
 /// A remaining-time estimate this far from the running countdown resets it; nearer ones are
 /// ignored, so estimator jitter never flips the seconds backwards.
 inline constexpr int32_t FLIP_COUNTDOWN_RESYNC_S = 10;
-/// Longest countdown the cards show: 99:59:59.
-inline constexpr int32_t FLIP_MAX_COUNTDOWN_S = 99 * 3600 + 59 * 60 + 59;
+/// Longest countdown the cards show: 999:59:59.
+inline constexpr int32_t FLIP_MAX_COUNTDOWN_S = 999 * 3600 + 59 * 60 + 59;
 /// How often the cards drift to a new position, so no pixel stays lit in one place.
 inline constexpr uint32_t FLIP_DRIFT_STEP_MS = 60000;
 
@@ -74,36 +74,57 @@ enum class FlipCaption : uint8_t { NONE, DONE_AT, PAUSED, DONE };
 /// The 12-hour marker shown on the hour card.
 enum class FlipMeridiem : uint8_t { NONE, AM, PM };
 
-/// One card's digits: one or two characters, NUL-terminated.
+/// One card: a single digit, or blank.
 struct FlipCard {
-    std::array<char, 3> text{};
+    char digit = '\0'; ///< '0' to '9', or NUL for a blank card
 
     bool operator==(const FlipCard& o) const {
-        return text == o.text;
+        return digit == o.digit;
     }
     bool operator!=(const FlipCard& o) const {
         return !(*this == o);
     }
 };
 
-inline constexpr size_t FLIP_MAX_CARDS = 3;
+/// Hours, minutes, seconds.
+inline constexpr size_t FLIP_MAX_GROUPS = 3;
+/// Three hour cards, two minute cards, two second cards.
+inline constexpr size_t FLIP_MAX_CARDS = 7;
+
+/// How the cards fall into groups (hours, minutes and seconds), one card per digit.
+struct FlipShape {
+    uint8_t group_count = 0;
+    std::array<uint8_t, FLIP_MAX_GROUPS> groups{}; ///< cards in each group
+
+    uint8_t card_count() const;
+    /// Only the countdown, three groups, has a line under its cards.
+    bool has_caption() const {
+        return group_count >= FLIP_MAX_GROUPS;
+    }
+    bool operator==(const FlipShape& o) const {
+        return group_count == o.group_count && groups == o.groups;
+    }
+    bool operator!=(const FlipShape& o) const {
+        return !(*this == o);
+    }
+};
 
 /// Everything the screen shows, without pixels.
 struct FlipFace {
-    uint8_t card_count = 0;
-    std::array<FlipCard, FLIP_MAX_CARDS> cards{};
+    FlipShape shape;
+    std::array<FlipCard, FLIP_MAX_CARDS> cards{}; ///< shape.card_count() of them, left to right
     FlipMeridiem meridiem = FlipMeridiem::NONE;
     FlipCaption caption = FlipCaption::NONE;
     int32_t eta_minute_of_day = 0; ///< DONE_AT: local minute the print ends, 0 to 1439
     int32_t progress_pct = 0;      ///< DONE_AT: percent done
 };
 
-/// Hour and minute cards for `seconds_of_day`: 24-hour with a leading zero, or 12-hour
-/// without one and an AM/PM marker.
+/// Two hour and two minute cards for `seconds_of_day`: 24-hour with a leading zero, or
+/// 12-hour with the leading card blank below 10 and an AM/PM marker.
 FlipFace clock_face(int32_t seconds_of_day, bool use_24h);
 
-/// Hours (no leading zero), minutes and seconds cards for `seconds`, clamped to 0 and
-/// FLIP_MAX_COUNTDOWN_S.
+/// One card per digit of the hours (no leading zero, as many as needed), minutes and seconds
+/// for `seconds`, clamped to 0 and FLIP_MAX_COUNTDOWN_S.
 FlipFace countdown_face(int32_t seconds);
 
 /**
@@ -144,9 +165,13 @@ class FlipClockState {
 /// Where the cards and their text sit on a screen.
 struct FlipLayout {
     int32_t unit = 0; ///< glyph scale: pixels per glyph width unit
+    FlipShape shape;
     uint8_t card_count = 0;
     std::array<DirtyRect, FLIP_MAX_CARDS> cards{};
-    DirtyRect caption;        ///< the line under the cards, empty for the two-card clock
+    uint8_t colon_count = 0;
+    /// The colon between two groups in a row; a column of groups has none.
+    std::array<DirtyRect, FLIP_MAX_GROUPS - 1> colons{};
+    DirtyRect caption;        ///< the line under the cards, empty for the clock
     DirtyRect meridiem;       ///< AM/PM, in the first card's top-left corner
     int32_t split_top = 0;    ///< first row of the split line, relative to a card's top
     int32_t split_bottom = 0; ///< first row below the split line
@@ -156,12 +181,14 @@ struct FlipLayout {
     DirtyRect bounds() const;
 };
 
-/// Lays out `card_count` cards as large as fit on a `w` x `h` screen, in a row or, when that
-/// makes them larger (portrait), a column, centred and then moved by (`dx`, `dy`).
-FlipLayout layout_flip_cards(int32_t w, int32_t h, uint8_t card_count, int32_t dx, int32_t dy);
+/// Lays out the cards of `shape` as large as fit on a `w` x `h` screen: every group in one
+/// row with a colon between groups, or, when that makes them larger (portrait), one group per
+/// row; centred, then moved by (`dx`, `dy`).
+FlipLayout layout_flip_cards(int32_t w, int32_t h, const FlipShape& shape, int32_t dx, int32_t dy);
 
-/// Largest drift either way that keeps the layout of `card_count` cards on a `w` x `h` screen.
-void flip_drift_range(int32_t w, int32_t h, uint8_t card_count, int32_t& max_dx, int32_t& max_dy);
+/// Largest drift either way that keeps the layout of `shape` on a `w` x `h` screen.
+void flip_drift_range(int32_t w, int32_t h, const FlipShape& shape, int32_t& max_dx,
+                      int32_t& max_dy);
 
 /// Drift offset `elapsed_ms` into a run, stepping every FLIP_DRIFT_STEP_MS within the range.
 void flip_drift_at(uint32_t elapsed_ms, int32_t max_dx, int32_t max_dy, int32_t& dx, int32_t& dy);
@@ -169,9 +196,10 @@ void flip_drift_at(uint32_t elapsed_ms, int32_t max_dx, int32_t max_dy, int32_t&
 /**
  * @brief Draws the clock into a frame, redrawing only the cards that change
  *
- * A card whose digits change folds its top half down over FLIP_DURATION_MS at an animating
- * level, or swaps at once otherwise. A changed card count or a drift step repaints the whole
- * layout. Between changes a frame writes nothing.
+ * Each digit has its own card. A card whose digit changes folds its top half down over
+ * FLIP_DURATION_MS at an animating level, or swaps at once otherwise; cards that change
+ * together fold together, and the rest are not touched. A changed shape or a drift step
+ * repaints the whole layout. Between changes a frame writes nothing.
  */
 class FlipClockSim {
   public:
@@ -214,6 +242,7 @@ class FlipClockSim {
     static constexpr Rgb CARD_TOP{30, 30, 32};
     static constexpr Rgb CARD_BOTTOM{24, 24, 26};
     static constexpr Rgb DIGIT{222, 222, 222};
+    static constexpr Rgb COLON{130, 130, 130};
 
   private:
     struct CardAnim {
@@ -222,10 +251,11 @@ class FlipClockSim {
         uint32_t elapsed_ms = FLIP_DURATION_MS;
     };
 
-    void relayout(FrameTarget& frame, uint8_t card_count, std::vector<DirtyRect>& dirty);
+    void relayout(FrameTarget& frame, const FlipShape& shape, std::vector<DirtyRect>& dirty);
     void build_glyphs();
     void draw_card(FrameTarget& frame, size_t i) const;
-    /// Card face pixel at card-local (x, y) for digits `card`, before the corner mask.
+    void draw_colons(FrameTarget& frame) const;
+    /// Card face pixel at card-local (x, y) for `card`, before the corner mask.
     Rgb face_pixel(const FlipCard& card, int32_t x, int32_t y) const;
     uint8_t glyph_coverage(int digit, int32_t gx, int32_t gy) const;
     uint8_t corner_coverage(int32_t x, int32_t y) const;
