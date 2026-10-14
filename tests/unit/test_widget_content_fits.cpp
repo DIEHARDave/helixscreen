@@ -194,9 +194,6 @@ const std::vector<KnownClip> kKnownClipping = {
     {"print_status",     "*"},
     {"printer_image",    "*"},
 
-    // Geometry-specific.
-    {"ams",              "272x480"},
-
     // The #icon_size cluster that used to live here - bed_temperature,
     // chamber_temperature, gcode_console, led, macros, motion, network at
     // 1024x600 and 1280x720, plus led_controls on every panel - is gone. It was
