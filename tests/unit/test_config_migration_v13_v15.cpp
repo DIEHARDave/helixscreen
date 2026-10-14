@@ -3,9 +3,13 @@
 
 // The v12 -> v13 and v14 -> v15 migrations repair the same stale AD5X display pair
 // (sleep_backlight_off=false with hardware_blank=0). Both are driven through the public
-// Config::init() path, starting one version below the migration under test.
+// Config::init() path, starting one version below the migration under test. Starting from
+// v12 runs v13 and then v15, and v15 would repair a config v13 left alone, so the config value
+// alone cannot say which migration did the repair: each repair logs its own tag, and the
+// case asserts on that.
 
 #include "config.h"
+#include "test_helpers/log_capture.h"
 #include "test_helpers/unique_temp_dir.h"
 
 #include <cstdlib>
@@ -66,15 +70,23 @@ json stale_display() {
 
 TEST_CASE_METHOD(SleepMigrationFixture, "both AD5X sleep migrations repair the same stale pair",
                  "[config][migration]") {
-    // The version below each migration, so only that migration repairs the config.
+    // The version below each migration. From 12 the v13 repair lands first and v15 finds
+    // nothing left to do; from 14 only v15 runs.
     const int from_version = GENERATE(12, 14);
     CAPTURE(from_version);
+    const std::string repairing_tag =
+        from_version == 12 ? "Migration v13: restored" : "Migration v15: restored";
+    const std::string idle_tag =
+        from_version == 12 ? "Migration v15: restored" : "Migration v13: restored";
+    helix::TextLogCapture log;
 
     SECTION("preset ad5x") {
         write_and_init(
             {{"config_version", from_version}, {"preset", "ad5x"}, {"display", stale_display()}});
         CHECK(config.get<bool>("/display/sleep_backlight_off", false) == true);
         CHECK(config.get<int>("/display/hardware_blank", -1) == 1);
+        CHECK(log.contains(repairing_tag));
+        CHECK_FALSE(log.contains(idle_tag));
     }
 
     SECTION("saved printer of type FlashForge Adventurer 5X") {
@@ -83,6 +95,8 @@ TEST_CASE_METHOD(SleepMigrationFixture, "both AD5X sleep migrations repair the s
                         {"display", stale_display()}});
         CHECK(config.get<bool>("/display/sleep_backlight_off", false) == true);
         CHECK(config.get<int>("/display/hardware_blank", -1) == 1);
+        CHECK(log.contains(repairing_tag));
+        CHECK_FALSE(log.contains(idle_tag));
     }
 
     SECTION("preset ad5m is untouched") {

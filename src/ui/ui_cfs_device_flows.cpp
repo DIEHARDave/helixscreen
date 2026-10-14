@@ -8,7 +8,6 @@
 #include "ui_cfs_chute_calibration_overlay.h"
 #include "ui_error_reporting.h"
 #include "ui_modal.h"
-#include "ui_subject_registry.h"
 
 #include "ams_backend.h"
 #include "ams_backend_cfs.h"
@@ -34,15 +33,20 @@ lv_subject_t s_cfs_cutter_status{};
 char s_cfs_cutter_status_buf[128] = {};
 bool s_cfs_cutter_subjects_ready = false;
 
-/// Init once per process: a second init would memzero a subject whose observers are live.
+/// Subjects initialize once per process (a second init would memzero a subject whose observers
+/// are live) and always register in the global scope, which is where the status line's XML binds
+/// them. A global registry that lost them is repopulated without re-initializing.
 void ensure_cutter_subjects() {
-    if (s_cfs_cutter_subjects_ready) {
-        return;
+    if (!s_cfs_cutter_subjects_ready) {
+        s_cfs_cutter_subjects_ready = true;
+        lv_subject_init_int(&s_cfs_cutter_phase, 0);
+        lv_subject_init_string(&s_cfs_cutter_status, s_cfs_cutter_status_buf, nullptr,
+                               sizeof(s_cfs_cutter_status_buf), "");
     }
-    s_cfs_cutter_subjects_ready = true;
-    UI_SUBJECT_INIT_AND_REGISTER_INT(s_cfs_cutter_phase, 0, "cfs_cutter_phase");
-    UI_SUBJECT_INIT_AND_REGISTER_STRING(s_cfs_cutter_status, s_cfs_cutter_status_buf, "",
-                                        "cfs_cutter_status");
+    if (lv_xml_get_subject(nullptr, "cfs_cutter_phase") != &s_cfs_cutter_phase) {
+        lv_xml_register_subject(nullptr, "cfs_cutter_phase", &s_cfs_cutter_phase);
+        lv_xml_register_subject(nullptr, "cfs_cutter_status", &s_cfs_cutter_status);
+    }
 }
 
 void set_cutter_row_state(const char* status_text, bool busy) {

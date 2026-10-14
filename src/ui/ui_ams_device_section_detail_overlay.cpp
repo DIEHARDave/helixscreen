@@ -472,7 +472,9 @@ void AmsDeviceSectionDetailOverlay::on_action_clicked(lv_event_t* e) {
                                  "guided flow '{}'; not executing",
                                  action_id, guided_flow);
                 } else if (flow) {
-                    flow->start(label);
+                    if (flow->start) {
+                        flow->start(label);
+                    }
                 } else {
                     AmsError result = backend->execute_device_action(action_id);
                     if (result.success()) {

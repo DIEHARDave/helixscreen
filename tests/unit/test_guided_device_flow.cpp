@@ -17,6 +17,7 @@
 
 #include "../lvgl_ui_test_fixture.h"
 #include "ams_backend_mock.h"
+#include "ams_error.h"
 #include "ams_state.h"
 #include "static_panel_registry.h"
 
@@ -36,9 +37,19 @@ using helix::ui::get_ams_device_section_detail_overlay;
 
 namespace {
 
+class CountingMock : public AmsBackendMock {
+  public:
+    using AmsBackendMock::AmsBackendMock;
+    int cutter_calibrations = 0;
+    AmsError calibrate_cutter(std::function<void(bool, const std::string&)>) override {
+        ++cutter_calibrations;
+        return AmsErrorHelper::success();
+    }
+};
+
 class GuidedFlowFixture : public LVGLUITestFixture {
   public:
-    AmsBackendMock* backend = nullptr;
+    CountingMock* backend = nullptr;
 
     GuidedFlowFixture() {
         helix::ui::destroy_static_panels();
@@ -46,7 +57,7 @@ class GuidedFlowFixture : public LVGLUITestFixture {
         auto& ams = AmsState::instance();
         ams.deinit_subjects();
 
-        auto owned = std::make_unique<AmsBackendMock>(4);
+        auto owned = std::make_unique<CountingMock>(4);
         backend = owned.get();
         backend->set_operation_delay(0);
         REQUIRE(backend->start().success());
@@ -56,7 +67,9 @@ class GuidedFlowFixture : public LVGLUITestFixture {
     }
 
     ~GuidedFlowFixture() override {
-        helix::ui::unregister_guided_device_flow("t");
+        for (const char* id : {"t", "cfs_cutter", "cfs_purge_chute"}) {
+            helix::ui::unregister_guided_device_flow(id);
+        }
         NavigationManager::instance().go_back();
         settle();
         helix::ui::destroy_static_panels();
@@ -133,15 +146,24 @@ TEST_CASE_METHOD(GuidedFlowFixture, "an unregistered guided flow never executes 
     SECTION("before any registration") {
         click(btn);
         CHECK(last_executed().empty());
+        CHECK(backend->cutter_calibrations == 0);
+        CHECK(ModalStack::instance().empty());
     }
 
 #if HELIX_HAS_CFS
     SECTION("after registration the confirmation gates the action") {
         helix::ui::register_cfs_device_flows();
         click(btn);
-        // A registered CFS flow asks before it moves the printer; the sweep has not run.
-        CHECK(last_executed().empty());
+        // A registered CFS flow asks before it moves the printer.
         CHECK(helix::ui::find_guided_device_flow("cfs_cutter") != nullptr);
+        CHECK_FALSE(ModalStack::instance().empty());
+        CHECK(backend->cutter_calibrations == 0);
+        CHECK(last_executed().empty());
+
+        lv_obj_t* confirm = lv_obj_find_by_name(lv_screen_active(), "btn_primary");
+        REQUIRE(confirm != nullptr);
+        click(confirm);
+        CHECK(backend->cutter_calibrations == 1);
     }
 #endif
 }
@@ -157,4 +179,13 @@ TEST_CASE_METHOD(GuidedFlowFixture, "a flow's status attach runs once per sectio
 
     open_section_and_find({button("a", "t"), button("b", "t")}, "a");
     CHECK(attaches == 1);
+}
+
+TEST_CASE_METHOD(GuidedFlowFixture,
+                 "a registered flow with no start is a no-op, not a call into an empty function",
+                 "[ams][guided-flow]") {
+    helix::ui::register_guided_device_flow("t", {nullptr, nullptr});
+    lv_obj_t* btn = open_section_and_find({button("a", "t")}, "a");
+    click(btn);
+    CHECK(last_executed().empty());
 }
