@@ -633,8 +633,8 @@ TEST_CASE_METHOD(TileStartFixture,
         const char* name;
     };
     const Button button =
-        GENERATE(Button{114, 54, "jq_action_icon"}, Button{114, 113, "jq_action_cell"},
-                 Button{234, 113, "jq_action_wide"});
+        GENERATE(Button{114, 54, "jq_action_icon"}, Button{124, 113, "jq_action_cell"},
+                 Button{244, 113, "jq_action_wide"});
     INFO(button.name);
 
     PlantedGcode file("tile_start_button.gcode");
@@ -658,7 +658,7 @@ TEST_CASE_METHOD(TileStartFixture, "a tap on the tile outside the button opens t
     PlantedGcode file("tile_tap_modal.gcode");
     show_queue(entry("0001", file.name()));
     PanelWidgetHarness<JobQueueWidget> tile(test_screen());
-    tile.resize(1, 1, 114, 113);
+    tile.resize(1, 1, 124, 113);
 
     REQUIRE(ModalStack::instance().top_dialog() == nullptr);
     lv_obj_send_event(tile.root(), LV_EVENT_CLICKED, nullptr);

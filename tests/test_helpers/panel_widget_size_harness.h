@@ -220,6 +220,13 @@ class RegistryWidgetHarness : public PanelWidgetHarnessBase {
         return created_;
     }
 
+    /// What the grid does once the tile is on screen; a no-op for a pure-XML widget.
+    void activate() {
+        if (owned_) {
+            owned_->on_activate();
+        }
+    }
+
   private:
     std::unique_ptr<PanelWidget> owned_;
     bool created_ = false;
@@ -417,8 +424,12 @@ inline void walk(lv_obj_t* o, const std::string& path, const OverflowExceptions&
 
     // Content that the layout kept inside the box by shifting it: the children
     // are all in bounds, and the box still cannot show them all at once.
-    const int32_t sb = lv_obj_get_scroll_bottom(o);
-    const int32_t sr = lv_obj_get_scroll_right(o);
+    // An image reports its source's natural size as its self size whatever its box or
+    // inner_align draws, so a thumbnail scaled to fit still shows as scrollable. Its
+    // box is still held to the parent by the geometry check below.
+    const bool is_image = lv_obj_check_type(o, &lv_image_class);
+    const int32_t sb = is_image ? 0 : lv_obj_get_scroll_bottom(o);
+    const int32_t sr = is_image ? 0 : lv_obj_get_scroll_right(o);
     if (sb > 0) {
         r.findings.push_back(
             {OverflowKind::Scroll, path, "scroll_bottom " + std::to_string(sb) + "px"});

@@ -7,7 +7,7 @@
  * the published verdict and texts, which parts carry HIDDEN, and the re-decision when
  * the queue, the run state or the printer's activity changes.
  *
- * Boxes are the medium-tier pixel budgets (114x54, 114x113, 234x113, 234x232). The
+ * Boxes are the medium-tier pixel budgets (114x54, 124x113, 244x113, 244x232). The
  * decision is job_queue_tile_layout.h's and the state is job_queue_tile_state.h's;
  * these tests pin their wiring to the real fonts and XML.
  *
@@ -19,6 +19,7 @@
 #include "../lvgl_ui_test_fixture.h"
 #include "../test_helpers/job_queue_state_test_access.h"
 #include "../test_helpers/job_queue_subjects_fixture.h"
+#include "../test_helpers/job_queue_tile_seed.h"
 #include "../test_helpers/one_line_label.h"
 #include "../test_helpers/panel_widget_size_harness.h"
 #include "../test_helpers/update_queue_test_access.h"
@@ -47,29 +48,16 @@ struct Box {
 };
 
 constexpr Box kStrip{114, 54, SizeRung::Strip};
-constexpr Box kCell{114, 113, SizeRung::Cell};
-constexpr Box kWide{234, 113, SizeRung::Wide};
-constexpr Box kFull{234, 232, SizeRung::Full};
+constexpr Box kCell{124, 113, SizeRung::Cell};
+constexpr Box kWide{244, 113, SizeRung::Wide};
+constexpr Box kFull{244, 232, SizeRung::Full};
 
-struct JobQueueTileFixture : public LVGLUITestFixture {
-    JobQueueTileFixture() {
-        PanelWidgetManager::instance().init_widget_subjects();
-        jqs.init_subjects();
-        set_component_available(true);
-        set_print_active(false);
-    }
+struct JobQueueTileFixture : public LVGLUITestFixture, public JobQueueTileSeed {
+    JobQueueTileFixture() : JobQueueTileSeed([this] { settle(); }) {}
     ~JobQueueTileFixture() override {
-        set_print_active(false);
-        set_component_available(false);
         SystemSettingsManager::instance().set_language("en");
         drain();
     }
-
-    // Destruction runs in reverse: the state pointer clears first, then the subject
-    // names leave helix-xml's scope, then the state dies.
-    JobQueueState jqs{nullptr, nullptr};
-    ScopedJobQueueSubjects subject_guard;
-    ScopedJobQueueState scoped_state{&jqs};
 
     static void drain() {
         helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
@@ -78,32 +66,10 @@ struct JobQueueTileFixture : public LVGLUITestFixture {
         drain();
         process_lvgl(30);
     }
-
-    static void set_component_available(bool on) {
-        lv_subject_t* subject = lv_xml_get_subject(nullptr, "printer_has_job_queue");
-        REQUIRE(subject != nullptr);
-        lv_subject_set_int(subject, on ? 1 : 0);
-    }
-    void set_print_active(bool on) {
-        lv_subject_set_int(get_printer_state().print_state().get_print_active_subject(),
-                           on ? 1 : 0);
-        settle();
-    }
-    /// A queue response with @p n jobs (file-0.gcode ...) in @p queue_state.
-    void deliver(int n, const char* queue_state = "ready") {
-        JobQueueStatus status = status_with(n);
-        status.queue_state = queue_state;
-        JobQueueStateTestAccess::deliver_status(jqs, status);
-        settle();
-    }
     void set_estimate(int seconds) {
         FileMetadata metadata;
         metadata.estimated_time = seconds;
         JobQueueStateTestAccess::deliver_next_metadata(jqs, "file-0.gcode", metadata);
-        settle();
-    }
-    void set_automatic(bool on) {
-        JobQueueStateTestAccess::set_automatic_transition(jqs, on);
         settle();
     }
 };

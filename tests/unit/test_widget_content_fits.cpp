@@ -43,7 +43,9 @@
 #include "../lvgl_ui_test_fixture.h"
 #include "../test_helpers/ams_state_test_access.h"
 #include "../test_helpers/buffer_infos.h"
+#include "../test_helpers/job_queue_tile_seed.h"
 #include "../test_helpers/panel_widget_size_harness.h"
+#include "../test_helpers/print_history_seed.h"
 #include "../test_helpers/tips_manager_test_access.h"
 #include "../test_helpers/update_queue_test_access.h"
 #include "ams_backend_mock.h"
@@ -63,6 +65,7 @@
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
+#include <functional>
 #include <optional>
 #include <set>
 #include <string>
@@ -253,6 +256,11 @@ struct TestModeGuard {
 /// clear it or later files in the same binary inherit stale tools (same trap
 /// as NozzleTempsFixture in test_widget_size_nozzle_temps.cpp).
 struct ContentFitsFixture : public LVGLUITestFixture {
+    /// What the seeds that publish through the update queue call after each change.
+    void settle_updates() {
+        helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
+        process_lvgl(30);
+    }
     ~ContentFitsFixture() override {
         // Before ToolState, and before the base fixture's reset_all() gets to
         // it: PrintStatusWidget's formatter is a process-lifetime static whose
@@ -345,6 +353,51 @@ struct ClogReadingSeed {
     AmsBackendMock* backend_ = nullptr;
 };
 
+/// The widest content the job queue tile budgets for: four jobs, the first named by 90
+/// characters with no break to wrap at, in the state that shows the most text.
+struct QueueTileSeed : helix::JobQueueTileSeed {
+    using JobQueueTileSeed::JobQueueTileSeed;
+    static std::string long_name() {
+        return std::string(86, 'x') + ".gcode";
+    }
+    void waiting() {
+        set_print_active(false);
+        set_automatic(false);
+        deliver_named(4, long_name());
+    }
+    void auto_next() {
+        waiting();
+        set_automatic(true);
+    }
+    void printing() {
+        auto_next();
+        set_print_active(true);
+    }
+    void empty() {
+        set_print_active(false);
+        deliver(0);
+    }
+};
+
+/// The print stats tile at its widest numbers: a week of prints and lifetime totals at
+/// the largest values the tile budgets for.
+struct StatsTileSeed : helix::PrintHistorySeed {
+    StatsTileSeed(helix::PrinterState& state, std::function<void()> settle)
+        : PrintHistorySeed(state, std::move(settle)) {
+        PrintHistoryTotals totals;
+        totals.total_jobs = 88888;
+        totals.total_time = 8888 * 3600;
+        totals.total_filament_used = 12345678.0;
+        history_api->totals_api().totals = totals;
+        connect(state);
+        std::vector<PrintHistoryJob> week;
+        for (int day = 0; day < 7; ++day) {
+            week.push_back(job(day, 3600.0 * (day + 1)));
+        }
+        seed(std::move(week));
+    }
+};
+
 struct Rendered {
     bool built = false;
     OverflowReport report;
@@ -356,7 +409,7 @@ struct Rendered {
 /// grid @p m with the arithmetic PanelWidgetManager applies (truncation
 /// included), and measure what spills.
 Rendered render_at(lv_obj_t* screen, const PanelWidgetDef& def, const CellMetrics& m, int c, int r,
-                   const char* icon_name = nullptr) {
+                   const char* icon_name = nullptr, bool activate = false) {
     Rendered out;
     {
         RegistryWidgetHarness h(screen, def, &m);
@@ -366,6 +419,9 @@ Rendered render_at(lv_obj_t* screen, const PanelWidgetDef& def, const CellMetric
         out.built = true;
         h.resize(c, r, static_cast<int>(grid_track_extent(m.cell_w, m.gutter, c)),
                  static_cast<int>(grid_track_extent(m.cell_h, m.gutter, r)));
+        if (activate) {
+            h.activate();
+        }
         // Several widgets rebuild their content from an observer that fires
         // through UpdateQueue rather than inline (observe<int> queues its
         // handler), so measuring before the drain measures the pre-rebuild tree.
@@ -674,11 +730,20 @@ TEST_CASE_METHOD(ContentFitsFixture,
             std::optional<ClogReadingSeed> clog_seed;
             if (std::string_view(def.id) == "clog_detection")
                 clog_seed.emplace();
+            std::optional<QueueTileSeed> queue_seed;
+            if (std::string_view(def.id) == "job_queue") {
+                queue_seed.emplace([this] { settle_updates(); });
+                queue_seed->waiting();
+            }
+            std::optional<StatsTileSeed> stats_seed;
+            if (std::string_view(def.id) == "print_stats")
+                stats_seed.emplace(state(), [this] { settle_updates(); });
             for (int pass = 0; pass < (clog_seed ? 2 : 1); ++pass) {
                 if (clog_seed) {
                     pass == 0 ? clog_seed->flowguard() : clog_seed->encoder();
                 }
-                const Rendered rendered = render_at(test_screen(), def, m, min_c, min_r);
+                const Rendered rendered =
+                    render_at(test_screen(), def, m, min_c, min_r, nullptr, stats_seed.has_value());
                 if (!rendered.built) {
                     spdlog::warn("[content_fits] {} @ {}: component would not build", def.id,
                                  g.name);
@@ -752,6 +817,107 @@ TEST_CASE_METHOD(ContentFitsFixture,
         return s;
     }());
     CHECK(regressions.empty());
+}
+
+TEST_CASE_METHOD(ContentFitsFixture,
+                 "queue and stats tiles render every rung on every shipping geometry",
+                 "[content_fits][queue_stats]") {
+    lv_display_t* disp = lv_display_get_default();
+    REQUIRE(disp != nullptr);
+    TestModeGuard test_mode_guard(get_runtime_config());
+    PanelWidgetManager::instance().init_widget_subjects();
+    require_font_tokens_distinct();
+
+    QueueTileSeed queue([this] { settle_updates(); });
+    StatsTileSeed stats(state(), [this] { settle_updates(); });
+
+    struct Span {
+        int c;
+        int r;
+    };
+    // The four rungs of the medium tier's ladder, from the Strip to the Full tile.
+    const Span spans[] = {{2, 1}, {2, 2}, {4, 2}, {4, 4}};
+    struct QueueState {
+        const char* name;
+        void (QueueTileSeed::*apply)();
+    };
+    const QueueState queue_states[] = {{"WaitingForStart", &QueueTileSeed::waiting},
+                                       {"AutoNext", &QueueTileSeed::auto_next},
+                                       {"Printing", &QueueTileSeed::printing},
+                                       {"Empty", &QueueTileSeed::empty}};
+
+    const PanelWidgetDef* queue_def = find_widget_def("job_queue");
+    const PanelWidgetDef* stats_def = find_widget_def("print_stats");
+    REQUIRE(queue_def != nullptr);
+    REQUIRE(stats_def != nullptr);
+
+    std::vector<std::string> refused;
+    int rendered_count = 0;
+    auto check_clean = [](const Rendered& r) {
+        std::string detail;
+        for (const auto& f : r.report.findings) {
+            detail += std::string("[") + overflow_kind_name(f.kind) + "] " + f.path + ": " +
+                      f.detail + "\n";
+        }
+        INFO(detail);
+        CHECK(r.report.clean());
+    };
+
+    for (const auto& g : kShipping) {
+        ScopedResolution res(disp, g.panel_w, g.panel_h);
+        theme_manager_refresh_layout_constants(disp);
+        helix::unregister_idle_xml_components();
+        const UiBreakpoint bp = breakpoint_for(std::min(g.panel_w, g.panel_h));
+        const GridDimensions dims = GridLayout::get_dimensions(bp, g.content_w, g.content_h);
+        const CellMetrics m =
+            grid_cell_metrics(g.content_w, g.content_h, dims.cols, dims.rows, g.gutter);
+
+        for (const Span sp : spans) {
+            const std::string where =
+                std::string(g.name) + " @ " + std::to_string(sp.c) + "x" + std::to_string(sp.r);
+            for (const PanelWidgetDef* def : {queue_def, stats_def}) {
+                if (sp.c > dims.cols || sp.r > dims.rows) {
+                    refused.push_back(std::string(def->id) + " " + where + " (grid " +
+                                      std::to_string(dims.cols) + "x" + std::to_string(dims.rows) +
+                                      ")");
+                    continue;
+                }
+                auto probe = def->factory(def->id);
+                REQUIRE(probe != nullptr);
+                if (TileSizing* sizing = probe->tile_sizing()) {
+                    sizing->set_cell_metrics(m);
+                }
+                if (!probe->fits_at(
+                        static_cast<int>(grid_track_extent(m.cell_w, m.gutter, sp.c)),
+                        static_cast<int>(grid_track_extent(m.cell_h, m.gutter, sp.r)))) {
+                    refused.push_back(std::string(def->id) + " " + where + " (fits_at)");
+                    continue;
+                }
+                if (def == queue_def) {
+                    for (const QueueState& qs : queue_states) {
+                        (queue.*qs.apply)();
+                        INFO(def->id << " " << where << " " << qs.name);
+                        const Rendered r = render_at(test_screen(), *def, m, sp.c, sp.r);
+                        REQUIRE(r.built);
+                        ++rendered_count;
+                        check_clean(r);
+                    }
+                } else {
+                    INFO(def->id << " " << where << " Activity");
+                    const Rendered r = render_at(test_screen(), *def, m, sp.c, sp.r, nullptr, true);
+                    REQUIRE(r.built);
+                    ++rendered_count;
+                    check_clean(r);
+                }
+            }
+        }
+    }
+    for (const auto& x : refused) {
+        INFO("not rendered: " << x);
+    }
+    spdlog::info("[content_fits] queue/stats: {} renders, {} spans not offered", rendered_count,
+                 refused.size());
+    CHECK(rendered_count > 0);
 }
 
 TEST_CASE_METHOD(ContentFitsFixture, "every icon tile renders its content grown to two cells",

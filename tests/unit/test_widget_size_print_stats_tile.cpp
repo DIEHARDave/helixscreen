@@ -18,7 +18,7 @@
 
 #include "../lvgl_ui_test_fixture.h"
 #include "../test_helpers/panel_widget_size_harness.h"
-#include "../test_helpers/print_history_manager_test_access.h"
+#include "../test_helpers/print_history_seed.h"
 #include "../test_helpers/update_queue_test_access.h"
 #include "app_globals.h"
 #include "locale_formats.h"
@@ -59,57 +59,14 @@ constexpr Box kCell{114, 142, SizeRung::Cell};
 constexpr Box kWide{236, 95, SizeRung::Wide};
 constexpr Box kFull{236, 182, SizeRung::Full};
 
-/// Answers lifetime totals from the test when it holds some, else from the mock.
-class TotalsHistoryAPI : public MoonrakerHistoryAPI {
-  public:
-    explicit TotalsHistoryAPI(helix::IMoonrakerClient& client) : MoonrakerHistoryAPI(client) {}
-
-    void get_history_totals(HistoryTotalsCallback on_success, ErrorCallback on_error) override {
-        if (totals) {
-            on_success(*totals);
-            return;
-        }
-        MoonrakerHistoryAPI::get_history_totals(std::move(on_success), std::move(on_error));
-    }
-
-    std::optional<PrintHistoryTotals> totals;
-};
-
-class TotalsMoonrakerAPI : public MoonrakerAPI {
-  public:
-    TotalsMoonrakerAPI(helix::IMoonrakerClient& client, helix::PrinterState& state)
-        : MoonrakerAPI(client, state) {
-        history_api_ = std::make_unique<TotalsHistoryAPI>(client);
-    }
-
-    TotalsHistoryAPI& totals_api() {
-        return static_cast<TotalsHistoryAPI&>(*history_api_);
-    }
-};
-
-struct PrintStatsTileFixture : public LVGLUITestFixture {
-    PrintStatsTileFixture() : client(MoonrakerClientMock::PrinterType::VORON_24, 1000.0) {
-        client.connect("ws://mock/websocket", []() {}, []() {});
-        api = std::make_unique<TotalsMoonrakerAPI>(client, state());
-        manager = std::make_unique<PrintHistoryManager>(api.get(), &client);
-        set_moonraker_api(api.get());
-        set_print_history_manager(manager.get());
+struct PrintStatsTileFixture : public LVGLUITestFixture, public PrintHistorySeed {
+    PrintStatsTileFixture() : PrintHistorySeed(state(), [this] { settle(); }) {
         PanelWidgetManager::instance().init_widget_subjects();
-        // The staleness watcher is queued with the socket down and stales any cache it
-        // finds when it runs, so drain it and bring the socket up first.
-        settle();
-        lv_subject_set_int(state().network_state().get_printer_connection_state_subject(),
-                           static_cast<int>(ConnectionState::CONNECTED));
-        settle();
+        connect(state());
     }
     ~PrintStatsTileFixture() override {
         SystemSettingsManager::instance().set_language("en");
         drain();
-        set_print_history_manager(nullptr);
-        set_moonraker_api(nullptr);
-        manager.reset();
-        api.reset();
-        client.disconnect();
     }
 
     static void drain() {
@@ -119,40 +76,6 @@ struct PrintStatsTileFixture : public LVGLUITestFixture {
         drain();
         process_lvgl(30);
     }
-
-    /// The totals the mock reports, read the way the tile reads them.
-    PrintHistoryTotals mock_totals() {
-        std::optional<PrintHistoryTotals> got;
-        api->history().get_history_totals([&](const PrintHistoryTotals& t) { got = t; },
-                                          [](const MoonrakerError&) {});
-        REQUIRE(got.has_value());
-        return *got;
-    }
-
-    /// Install @p jobs as the whole cached history.
-    void seed(std::vector<PrintHistoryJob> jobs) {
-        PrintHistoryManagerTestAccess::set_loaded_jobs(
-            *manager, std::move(jobs), HistoryScope::RECENT, PrintHistoryManager::kRecentJobLimit);
-        settle();
-    }
-
-    /// A job that finished @p days_ago local days back, ten seconds after that day began.
-    static PrintHistoryJob job(int days_ago, double print_seconds, double total_seconds = 0.0) {
-        const ActivityDayStarts starts = local_day_starts(std::time(nullptr));
-        PrintHistoryJob j;
-        j.job_id = "job-" + std::to_string(days_ago) + "-" + std::to_string(print_seconds);
-        j.filename = "a.gcode";
-        j.status = PrintJobStatus::COMPLETED;
-        j.start_time = starts[static_cast<size_t>(kActivityDays - 1 - days_ago)] + 10.0;
-        j.end_time = j.start_time + print_seconds;
-        j.print_duration = print_seconds;
-        j.total_duration = total_seconds > 0 ? total_seconds : print_seconds;
-        return j;
-    }
-
-    MoonrakerClientMock client;
-    std::unique_ptr<TotalsMoonrakerAPI> api;
-    std::unique_ptr<PrintHistoryManager> manager;
 };
 
 int subject_int(const char* name) {
@@ -220,7 +143,7 @@ TEST_CASE_METHOD(PrintStatsTileFixture,
 
 TEST_CASE_METHOD(PrintStatsTileFixture, "print stats tile: no history at all",
                  "[widget_size][print_stats]") {
-    client.fail_next("server.history.totals");
+    history_client.fail_next("server.history.totals");
     seed({});
     PanelWidgetHarness<PrintStatsWidget> h(test_screen());
     h.resize(1, 1, kFull.w, kFull.h);
@@ -238,7 +161,7 @@ TEST_CASE_METHOD(PrintStatsTileFixture,
                  "[widget_size][print_stats]") {
     const PrintHistoryTotals totals = mock_totals();
     seed({job(0, 3600)});
-    client.defer_next("server.history.totals");
+    history_client.defer_next("server.history.totals");
     PanelWidgetHarness<PrintStatsWidget> h(test_screen());
     h.resize(1, 1, kWide.w, kWide.h);
     h.widget().on_activate();
@@ -247,7 +170,7 @@ TEST_CASE_METHOD(PrintStatsTileFixture,
     CHECK(subject_text("print_stats_support_text").empty());
     CHECK_FALSE(shown(h, "ps_support"));
 
-    client.fire_deferred("server.history.totals");
+    history_client.fire_deferred("server.history.totals");
     settle();
     CHECK(subject_text("print_stats_support_text") ==
           format_lifetime_line({totals.total_jobs, static_cast<double>(totals.total_time) / 3600.0,
@@ -262,7 +185,7 @@ TEST_CASE_METHOD(PrintStatsTileFixture,
 TEST_CASE_METHOD(PrintStatsTileFixture,
                  "print stats tile: the lifetime line never comes from the job cache",
                  "[widget_size][print_stats]") {
-    client.fail_next("server.history.totals");
+    history_client.fail_next("server.history.totals");
     seed({job(0, 3600), job(1, 3600), job(2, 3600)});
     PanelWidgetHarness<PrintStatsWidget> h(test_screen());
     h.widget().on_activate();
@@ -282,7 +205,7 @@ TEST_CASE_METHOD(PrintStatsTileFixture, "print stats tile: filament shows from W
     totals.total_jobs = 128;
     totals.total_time = 412 * 3600;
     totals.total_filament_used = 412300.0;
-    api->totals_api().totals = totals;
+    history_api->totals_api().totals = totals;
     seed({job(0, 3600)});
     PanelWidgetHarness<PrintStatsWidget> h(test_screen());
     h.resize(1, 1, kWide.w, kWide.h);
@@ -360,7 +283,7 @@ TEST_CASE_METHOD(PrintStatsTileFixture, "print stats tile: bars and lines stay i
     totals.total_jobs = 88888;
     totals.total_time = 8888ULL * 3600;
     totals.total_filament_used = 88888000.0;
-    api->totals_api().totals = totals;
+    history_api->totals_api().totals = totals;
     seed({job(0, 3600), job(1, 7200), job(3, 1800)});
     PanelWidgetHarness<PrintStatsWidget> h(test_screen());
     h.widget().on_activate();
