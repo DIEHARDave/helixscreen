@@ -2060,6 +2060,7 @@ translations:
   No temperature sensors detected: '未检测到温度传感器'
   No timelapse videos found: 未找到延时视频
   No tools to calibrate: 没有可校准的工具
+  'No turn: the gap moved {:.1f} Hz': "未转动:差距移动了 {:.1f} Hz"
   'No unload macro found: unload by hand, then start again': 未找到卸载宏:请手动卸载,然后重新开始
 
   No vendors found: 未找到供应商

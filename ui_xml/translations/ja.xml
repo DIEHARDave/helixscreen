@@ -1994,6 +1994,7 @@
   <translation tag="No temperature sensors detected" ja="温度センサーが検出されません"/>
   <translation tag="No timelapse videos found" ja="タイムラプス動画が見つかりません"/>
   <translation tag="No tools to calibrate" ja="キャリブレートするツールがありません"/>
+  <translation tag="No turn: the gap moved {:.1f} Hz" ja="回していません: 差は{:.1f} Hz動きました"/>
   <translation tag="No unload macro found: unload by hand, then start again" ja="排出マクロが見つかりません: 手で排出してから、もう一度始めてください"/>
   <translation tag="No vendors found" ja="ベンダーが見つかりません"/>
   <translation tag="No verified bypass command for this CFS firmware" ja="この CFS ファームウェアには検証済みのバイパスコマンドがありません"/>

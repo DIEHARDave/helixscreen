@@ -424,6 +424,7 @@ const BeltTuneRound& BeltTuneSession::add_round(const BeltCurve& a_window,
         // A recorded zero is a round with no turn.
         if (pending) {
             r.turns_made = *pending > 0.0f ? pending : std::nullopt;
+            r.no_turn = !r.turns_made;
         } else if (!needs_baseline_) {
             r.turns_made = advised.turns;
         }
@@ -587,7 +588,7 @@ bool BeltTuneSession::show_mechanical_hint() const {
         return without_improvement >= SPRING_STALL_ROUNDS;
     }
     const auto unmatched = std::count_if(rounds_.begin(), rounds_.end(), [](const auto& r) {
-        return r.outcome != BeltTuneOutcome::MATCHED;
+        return r.outcome != BeltTuneOutcome::MATCHED && !r.no_turn;
     });
     return unmatched >= STALL_ROUNDS;
 }

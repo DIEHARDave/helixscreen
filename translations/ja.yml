@@ -2067,6 +2067,7 @@ translations:
   No temperature sensors detected: '温度センサーが検出されません'
   No timelapse videos found: タイムラプス動画が見つかりません
   No tools to calibrate: キャリブレートするツールがありません
+  'No turn: the gap moved {:.1f} Hz': "回していません: 差は{:.1f} Hz動きました"
   'No unload macro found: unload by hand, then start again': '排出マクロが見つかりません: 手で排出してから、もう一度始めてください'
 
   No vendors found: ベンダーが見つかりません

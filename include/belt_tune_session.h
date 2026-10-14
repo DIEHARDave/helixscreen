@@ -135,6 +135,9 @@ struct BeltTuneRound {
     /// NO_PEAK with a peak on the adjusted path only: the reference's peak
     /// left the window, which a turn of the wrong belt does.
     bool reference_lost = false;
+    /// SCREW: the stepper recorded zero, so the round checks repeatability
+    /// rather than a turn. It never counts toward the stall.
+    bool no_turn = false;
 };
 
 /// One tuning run: a zone at a time, a round per pair of windowed sweeps.

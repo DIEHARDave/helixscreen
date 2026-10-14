@@ -1295,6 +1295,49 @@ TEST_CASE("waking the screen mid-tuning keeps the session", "[belt][panel][tune]
     }
 }
 
+TEST_CASE("a wake re-asks what the suspension cancelled", "[belt][panel]") {
+    BeltPanelFixture fx;
+    helix::ui::modal_init_subjects();
+    REQUIRE(fx.register_component("modal_dialog"));
+
+    SECTION("hardware detection still pending") {
+        fx.panel().on_deactivate(DeactivateReason::NavigateAway);
+        fx.panel().on_activate();
+        REQUIRE(fx.panel_detection_pending());
+        // The screen sleeps before detection answers; its callbacks expire.
+        fx.panel().on_deactivate(DeactivateReason::Suspended);
+        fx.pump_ms(2000);
+        REQUIRE(fx.panel_detection_pending());
+        fx.panel().on_activate();
+        fx.pump_ms(2000);
+        CHECK_FALSE(fx.panel_detection_pending());
+        CHECK(fx.wait_gate_open());
+    }
+    SECTION("the low-RAM warning closes with the screen") {
+        enter_tuning(fx);
+        helix::MemoryInfo small;
+        small.total_kb = 128 * 1024;
+        small.available_kb = 80 * 1024;
+        fx.panel().set_memory_for_test(small);
+        fx.panel().handle_tune_measure_clicked();
+        fx.pump_ms(200);
+        REQUIRE(fx.panel_low_ram_dialog() != nullptr);
+        fx.panel().on_deactivate(DeactivateReason::Suspended);
+        fx.pump_ms(500);
+        CHECK(fx.panel_low_ram_dialog() == nullptr);
+        CHECK(ModalStack::instance().top_dialog() == nullptr);
+        // After the wake, Re-measure asks again and Continue sweeps.
+        fx.panel().on_activate();
+        fx.panel().handle_tune_measure_clicked();
+        fx.pump_ms(200);
+        lv_obj_t* dialog = fx.panel_low_ram_dialog();
+        REQUIRE(dialog != nullptr);
+        lv_obj_send_event(lv_obj_find_by_name(dialog, "btn_primary"), LV_EVENT_CLICKED, nullptr);
+        fx.pump_ms(200);
+        CHECK(fx.state_int("bt_tune_phase") == PHASE_SWEEPING);
+    }
+}
+
 TEST_CASE("Continue on the low-RAM warning re-checks the gate", "[belt][panel][tune][gating]") {
     BeltPanelFixture fx;
     helix::ui::modal_init_subjects();
@@ -1429,7 +1472,8 @@ TEST_CASE("a zero-turn Re-measure books no turn", "[belt][panel][tune]") {
     REQUIRE(fx.text("bt_tune_amount") == "0 turns");
     tune_round(fx);
     INFO("last: " << fx.text("bt_tune_last"));
-    REQUIRE(fx.text("bt_tune_last").find("The gap didn't close") == 0);
+    // No verdict on a turn nobody made: the line reports the gap's move.
+    CHECK(fx.text("bt_tune_last") == "No turn: the gap moved 0.1 Hz");
     // Nothing was turned, so the advice does not double to half a turn.
     CHECK(fx.text("bt_tune_amount") == "¼ turn");
 
@@ -1547,6 +1591,7 @@ TEST_CASE("every locale's tuning strings fit their buffers", "[belt][panel][tune
               "The gap grew after loosening {0}. Check you turned Path {0}'s tensioner."}) {
             CHECK(f(last, 'A').size() < fx.last_buf_size());
         }
+        CHECK(f("No turn: the gap moved {:.1f} Hz", 12.3).size() < fx.last_buf_size());
         CHECK(f("Path {0}'s peak left the zone. Check that only Path {1}'s tensioner was turned.",
                 'A', 'B')
                   .size() < fx.last_buf_size());

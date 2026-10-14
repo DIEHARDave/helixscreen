@@ -212,7 +212,7 @@ translations:
   Address: Endereço
   Adjust screen brightness level: Ajustar nível de brilho da tela
   Adjust screws, then re-probe.: Ajuste os parafusos, depois sonde novamente.
-  Adjust {} instead: "Ajustar {} no lugar"
+  Adjust {} instead: "Trocar para {}"
   Adjustments stay active until restart. Save after print completes.: Ajustes permanecem
     ativos até reiniciar. Salve após a impressão terminar.
   Adjusts individual characteristics of your heaters for optimal control: Ajusta características
@@ -2205,6 +2205,7 @@ translations:
   No temperature sensors detected: 'Nenhum sensor de temperatura detectado'
   No timelapse videos found: Nenhum vídeo timelapse encontrado
   No tools to calibrate: Nenhuma ferramenta para calibrar
+  'No turn: the gap moved {:.1f} Hz': "Sem volta: a diferença moveu {:.1f} Hz"
   'No unload macro found: unload by hand, then start again': 'Nenhuma macro de descarga encontrada: descarregue à mão e comece de novo'
 
   No vendors found: Nenhum fornecedor encontrado
@@ -2687,7 +2688,7 @@ translations:
   Raspberry Pi (32-bit): Raspberry Pi (32-bit)
   Re-identify: Reidentificar
   Re-measure: 'Medir novamente'
-  Re-measure (~{} min): "Medir (~{} min)"
+  Re-measure (~{} min): "Remedir (~{} min)"
   Re-measuring Path {}: Medindo novamente Caminho {}
   Re-probe: Sondar Novamente
   Re-read spool RFID tags and remaining length: 'Reler as etiquetas RFID dos carretéis e o comprimento restante'

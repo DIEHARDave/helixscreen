@@ -364,11 +364,19 @@ void BeltTensionPanel::on_activate() {
 
     if (suspended_) {
         // A wake from the screensaver: the user was at the tensioner, or a
-        // sweep was running. Keep the view, the run and the tuning session,
-        // and leave the calibrator alone: re-detecting hardware mid-sweep
-        // would overwrite its MEASURING state.
+        // sweep was running. Keep the view, the run and the tuning session.
+        // The suspension expired every pending async answer, so re-ask what
+        // can be re-asked; never mid-sweep, where re-detecting hardware would
+        // overwrite the calibrator's MEASURING state.
         suspended_ = false;
         ensure_gate_observers();
+        if (!measuring()) {
+            probe_klippy_socket();
+            query_hw_facts();
+            if (detection_pending_) {
+                start_hardware_detection();
+            }
+        }
         refresh_gate();
         refresh_notes();
         refresh_tune();
@@ -389,8 +397,10 @@ void BeltTensionPanel::on_activate() {
         [](BeltTensionPanel* self, int) { self->apply_path_colors(); }, subject_never_freed());
     probe_klippy_socket();
     query_hw_facts();
+    start_hardware_detection();
+}
 
-    // Detect hardware capabilities
+void BeltTensionPanel::start_hardware_detection() {
     if (calibrator_) {
         detection_pending_ = true;
         calibrator_->detect_hardware(
@@ -419,6 +429,9 @@ void BeltTensionPanel::on_deactivating(DeactivateReason reason) {
     // The menu hangs off the screen, not the panel: left up, a tap on it would
     // start a sweep with no belt UI on screen.
     hide_retest_menu();
+    // The dialog's answer is owned by lifetime_, which every deactivation
+    // expires: left up, Continue would close it and start nothing.
+    hide_low_ram_dialog();
 
     // An idle screen is not a walk-away. A sweep means nobody is touching the
     // screen, so the screensaver lands mid-measurement; the run has to survive
@@ -603,6 +616,13 @@ void BeltTensionPanel::handle_retest_menu_clicked(lv_obj_t* anchor) {
         }
     });
     retest_menu_.show_below_widget(lv_obj_get_screen(anchor), anchor);
+}
+
+void BeltTensionPanel::hide_low_ram_dialog() {
+    if (low_ram_dialog_) {
+        helix::ui::modal_hide(low_ram_dialog_);
+        low_ram_dialog_ = nullptr;
+    }
 }
 
 void BeltTensionPanel::hide_retest_menu() {
@@ -1421,6 +1441,21 @@ std::string BeltTensionPanel::tune_last_message() const {
     const auto& t = *tune_;
     const char adj_letter = path_letter(t.adjusted_path());
     const char ref_letter = path_letter(other_path(t.adjusted_path()));
+    const bool no_turn = !t.rounds().empty() && t.rounds().back().no_turn;
+    switch (*tune_last_outcome_) {
+    case BeltTuneOutcome::CLOSER:
+    case BeltTuneOutcome::OVERSHOT:
+    case BeltTuneOutcome::WRONG_WAY:
+    case BeltTuneOutcome::NO_MOVEMENT:
+        // A round with no turn reports the gap's move, not a verdict on a turn.
+        if (no_turn) {
+            return fmt::format(fmt::runtime(lv_tr("No turn: the gap moved {:.1f} Hz")),
+                               tune_last_move_hz_);
+        }
+        break;
+    default:
+        break;
+    }
     switch (*tune_last_outcome_) {
     case BeltTuneOutcome::CLOSER: {
         const auto prev = t.previous_gap_hz();

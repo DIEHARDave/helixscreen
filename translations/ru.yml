@@ -2183,6 +2183,7 @@ translations:
   No temperature sensors detected: 'Датчики температуры не обнаружены'
   No timelapse videos found: Таймлапс-видео не найдены
   No tools to calibrate: Нет инструментов для калибровки
+  'No turn: the gap moved {:.1f} Hz': "Без поворота: разница сдвинулась на {:.1f} Гц"
   'No unload macro found: unload by hand, then start again': 'Макрос выгрузки не найден: выгрузите вручную и начните заново'
 
   No vendors found: Производители не найдены

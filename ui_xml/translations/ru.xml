@@ -1994,6 +1994,7 @@
   <translation tag="No temperature sensors detected" ru="Датчики температуры не обнаружены"/>
   <translation tag="No timelapse videos found" ru="Таймлапс-видео не найдены"/>
   <translation tag="No tools to calibrate" ru="Нет инструментов для калибровки"/>
+  <translation tag="No turn: the gap moved {:.1f} Hz" ru="Без поворота: разница сдвинулась на {:.1f} Гц"/>
   <translation tag="No unload macro found: unload by hand, then start again" ru="Макрос выгрузки не найден: выгрузите вручную и начните заново"/>
   <translation tag="No vendors found" ru="Производители не найдены"/>
   <translation tag="No verified bypass command for this CFS firmware" ru="Нет проверенной команды обхода для этой прошивки CFS"/>

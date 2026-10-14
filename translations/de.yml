@@ -2212,6 +2212,7 @@ translations:
   No temperature sensors detected: 'Keine Temperatursensoren erkannt'
   No timelapse videos found: Keine Zeitraffer-Videos gefunden
   No tools to calibrate: Keine Werkzeuge zum Kalibrieren
+  'No turn: the gap moved {:.1f} Hz': "Keine Drehung: der Abstand bewegte sich um {:.1f} Hz"
   'No unload macro found: unload by hand, then start again': 'Kein Entlade-Makro gefunden: Entlade von Hand und starte dann erneut'
 
   No vendors found: Keine Hersteller gefunden

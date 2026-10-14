@@ -2203,6 +2203,7 @@ translations:
   No temperature sensors detected: 'No se detectaron sensores de temperatura'
   No timelapse videos found: No se encontraron videos timelapse
   No tools to calibrate: No hay herramientas para calibrar
+  'No turn: the gap moved {:.1f} Hz': "Sin giro: la diferencia se movió {:.1f} Hz"
   'No unload macro found: unload by hand, then start again': 'No se encontró una macro de descarga: descarga a mano y vuelve a empezar'
 
   No vendors found: No se encontraron proveedores
@@ -2686,7 +2687,7 @@ translations:
   Raspberry Pi (32-bit): Raspberry Pi (32-bit)
   Re-identify: Reidentificar
   Re-measure: 'Volver a medir'
-  Re-measure (~{} min): "Medir (~{} min)"
+  Re-measure (~{} min): "Remedir (~{} min)"
   Re-measuring Path {}: Volviendo a medir Ruta {}
   Re-probe: Re-sondear
   Re-read spool RFID tags and remaining length: 'Volver a leer las etiquetas RFID de las bobinas y la longitud restante'

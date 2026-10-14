@@ -252,6 +252,9 @@ class BeltTensionPanel : public OverlayBase {
     void probe_klippy_socket();
     /// Ask the printer its [resonance_tester] range for bt_hw_sweep.
     void query_hw_facts();
+    /// Ask the calibrator for kinematics and the accelerometer; the answer
+    /// clears detection_pending_.
+    void start_hardware_detection();
 
     //
     // === Chart ===
@@ -422,6 +425,7 @@ class BeltTensionPanel : public OverlayBase {
     /// Close the Re-test menu and drop its callback, so nothing it dispatches
     /// later can start a sweep.
     void hide_retest_menu();
+    void hide_low_ram_dialog();
     std::vector<helix::calibration::BeltPath> queue_;
     /// Size of the queue this run started with, for "2 of 2" detail lines.
     size_t run_queue_total_ = 0;

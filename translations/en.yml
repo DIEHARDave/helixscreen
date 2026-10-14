@@ -2139,6 +2139,7 @@ translations:
   No temperature sensors detected: No temperature sensors detected
   No timelapse videos found: No timelapse videos found
   No tools to calibrate: No tools to calibrate
+  'No turn: the gap moved {:.1f} Hz': 'No turn: the gap moved {:.1f} Hz'
   'No unload macro found: unload by hand, then start again': 'No unload macro found: unload by hand, then start again'
   No vendors found: No vendors found
   No verified bypass command for this CFS firmware: No verified bypass command for this CFS firmware

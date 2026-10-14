@@ -2203,6 +2203,7 @@ translations:
   No temperature sensors detected: 'Nessun sensore di temperatura rilevato'
   No timelapse videos found: Nessun video timelapse trovato
   No tools to calibrate: Nessuno strumento da calibrare
+  'No turn: the gap moved {:.1f} Hz': "Nessuna rotazione: la differenza si è spostata di {:.1f} Hz"
   'No unload macro found: unload by hand, then start again': 'Nessuna macro di scarico trovata: scarica a mano, poi ricomincia'
 
   No vendors found: Nessun fornitore trovato

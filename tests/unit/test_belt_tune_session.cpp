@@ -491,6 +491,11 @@ TEST_CASE("tune round outcomes", "[belt][tune]") {
         CHECK(s.gap_hz() == Catch::Approx(-12.0f).margin(0.1f));
     }
 
+    SECTION("both peaks drifting down together is not a wrong way") {
+        // B fell 1.5 Hz under TIGHTEN advice, but A fell with it.
+        CHECK(sweep(s, 110.5f, 98.5f).outcome == BeltTuneOutcome::NO_MOVEMENT);
+    }
+
     SECTION("the reference moving away is the gap moving the wrong way") {
         // B held at 100 while A rose 2 Hz: tightening B cannot widen the gap.
         CHECK(sweep(s, 114.0f, 100.0f).outcome == BeltTuneOutcome::WRONG_WAY);
@@ -660,6 +665,21 @@ TEST_CASE("tune session: a recorded zero is a round with no turn", "[belt][tune]
     REQUIRE(sweep(s, 112.0f, 104.1f).outcome == BeltTuneOutcome::CLOSER);
     REQUIRE(s.hz_per_turn().has_value());
     CHECK(*s.hz_per_turn() == Catch::Approx(16.0f).margin(0.4f));
+}
+
+TEST_CASE("tune hints: zero-turn rounds never stall", "[belt][tune]") {
+    auto s = session_for(104.0f, 100.0f, BeltTensionerKind::SCREW);
+    REQUIRE_FALSE(s.show_mechanical_hint());
+    for (int i = 0; i < belt_tune::STALL_ROUNDS; ++i) {
+        s.record_turns(0.0f);
+        const auto& r = sweep(s, 104.0f, 100.0f);
+        REQUIRE(r.no_turn);
+        REQUIRE(r.outcome == BeltTuneOutcome::NO_MOVEMENT);
+    }
+    CHECK_FALSE(s.show_mechanical_hint());
+    // A recorded turn is not a no-turn round.
+    s.record_turns(0.25f);
+    CHECK_FALSE(sweep(s, 104.0f, 100.0f).no_turn);
 }
 
 TEST_CASE("tune rate: a wrong-way round teaches nothing", "[belt][tune]") {

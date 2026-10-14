@@ -1994,6 +1994,7 @@
   <translation tag="No temperature sensors detected" zh="未检测到温度传感器"/>
   <translation tag="No timelapse videos found" zh="未找到延时视频"/>
   <translation tag="No tools to calibrate" zh="没有可校准的工具"/>
+  <translation tag="No turn: the gap moved {:.1f} Hz" zh="未转动:差距移动了 {:.1f} Hz"/>
   <translation tag="No unload macro found: unload by hand, then start again" zh="未找到卸载宏:请手动卸载,然后重新开始"/>
   <translation tag="No vendors found" zh="未找到供应商"/>
   <translation tag="No verified bypass command for this CFS firmware" zh="此 CFS 固件没有经验证的旁通命令"/>

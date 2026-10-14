@@ -1994,6 +1994,7 @@
   <translation tag="No temperature sensors detected" it="Nessun sensore di temperatura rilevato"/>
   <translation tag="No timelapse videos found" it="Nessun video timelapse trovato"/>
   <translation tag="No tools to calibrate" it="Nessuno strumento da calibrare"/>
+  <translation tag="No turn: the gap moved {:.1f} Hz" it="Nessuna rotazione: la differenza si è spostata di {:.1f} Hz"/>
   <translation tag="No unload macro found: unload by hand, then start again" it="Nessuna macro di scarico trovata: scarica a mano, poi ricomincia"/>
   <translation tag="No vendors found" it="Nessun fornitore trovato"/>
   <translation tag="No verified bypass command for this CFS firmware" it="Nessun comando bypass verificato per questo firmware CFS"/>
