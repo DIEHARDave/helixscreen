@@ -140,6 +140,25 @@ CFS, and IFS gates are off on AD5M ([`mk/cross.mk`](../../../mk/cross.mk)). Soun
 tone-only on AD5M; compiled out on K2, CC1, k1-dynamic, the Snapmaker U1 and Yocto. The camera gate,
 `HELIX_HAS_CAMERA`, is derived from the platform defines in `lv_conf.h` rather than set in `mk/cross.mk`.
 
+### Board identity
+
+A platform key names a *build*; a board is the printer that build is running on. The unified
+`mips` build serves the K1 series, the AD5X, the Creator 5 and the Creator 5 Pro, so the key
+alone cannot answer a board question. [`include/board_identity.h`](../../../include/board_identity.h)
+is the one place that does: `helix::board::current()` resolves the platform key plus, for `mips`
+only, the FlashForge machine id and mod-tree probe, caches the answer, and `board::info(board)` returns
+the row of per-board facts (camera probing, the jz_pwm piezo, reduced effects, backlight re-assert,
+firmware-owned updates, legacy release asset). Capability modules that own large per-board data
+key their own tables on `board::Board` the same way: touch fits
+(`src/ui/touch_calibration.cpp#factory_touch_fit`), panel geometry
+(`src/application/display_metrics.cpp`) and cache rungs
+(`src/system/helix_cache_dir.cpp#board_cache_candidates`). Generic code asks the board; it never
+tests a `HELIX_PLATFORM_*` macro or probes the filesystem for a vendor. A new board is one enum
+value and one row. `scripts/check_vendor_branches.py` is the ratchet that enforces it.
+
+Tests set a board with `helix::test::ScopedBoard` (`tests/test_helpers/scoped_board.h`);
+`HelixTestFixture::reset_all()` clears any override so it cannot leak into the next case.
+
 ### The ESP32 firmware: a curated subset with its own gates
 
 `firmware/helixscreen-esp32/` is an ESP-IDF (CMake) build for the BTT K-Touch, an ESP32-S3 with PSRAM, and the

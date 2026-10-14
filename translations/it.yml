@@ -19,6 +19,9 @@ translations:
   '%d min left': '%d min rimanenti'
   '%d mm/s': '%d mm/s'
   '%d more sensors': '%d altri sensori'
+  '%d objects': '%d oggetti'
+  '%d of %d printing': '%d di %d in stampa'
+  '%d skipped': '%d saltati'
   '%d profiles': '%d profili'
   '%d slots': '%d slot'
   '%d toolheads': '%d testine'
@@ -117,6 +120,7 @@ translations:
 
   30 minutes: 30 minuti
   30 seconds: 30 secondi
+  3D Maze: Labirinto 3D
   3D Pipes: Tubi 3D
   3D View: Vista 3D
   4. Paper should move but with resistance: 4. La carta dovrebbe muoversi ma con resistenza
@@ -471,7 +475,7 @@ translations:
   Calibrate Purge Chute: Calibra condotto di spurgo
   Calibrate X: Calibra X
   Calibrate Y: Calibra Y
-  Calibrate all tools: Calibra tutti gli strumenti
+  Calibrate All Tools: Calibra tutti gli strumenti
   Calibrate input shaping to reduce ringing artifacts in prints: Calibra input shaping
     per ridurre artefatti di ringing nelle stampe
   Calibrate tool offsets?: Calibrare gli offset degli strumenti?
@@ -593,9 +597,9 @@ translations:
   Check failed: Verifica non riuscita
   Check filament: Controlla filamento
   Check for Updates: Verifica Aggiornamenti
-  Check slot: Controlla slot
+  Check Slot: Controlla slot
   Check slot failed: Controllo slot fallito
-  Check slots: Controlla slot
+  Check Slots: Controlla
   Check slots failed: Controllo slot fallito
   Check that only one filament path is active: Verificare che sia attivo un solo percorso del filamento
   Check that the cutter mechanism is properly installed: Verificare che il meccanismo di taglio sia installato correttamente
@@ -874,9 +878,6 @@ translations:
   'Current name:': 'Nome attuale:'
   'Current:': 'Attuale:'
   'Current: %d°C | Target: %d°C': 'Attuale: %d°C | Obiettivo: %d°C'
-  'Current: %s': 'Attuale: %s'
-  'Current: %s · %s': 'Attuale: %s · %s'
-  'Current: Bypass': 'Attuale: Bypass'
   Currently Loaded: Attualmente caricato
   Currently printing: Stampa in corso
   Curves differ in shape. Steering by each path's tallest peak.: "Le curve differiscono nella forma. Si segue il picco più alto di ogni percorso."
@@ -903,6 +904,7 @@ translations:
   DISABLED: DISABILITATO
   DISCOVERED PRINTERS: STAMPANTI SCOPERTE
   DISPLAY: SCHERMO
+  DONE: FATTO
   Damping (Kd): Smorzamento (Kd)
   Danger: Pericolo
   Danger Zone: Zona pericolosa
@@ -1147,6 +1149,7 @@ translations:
   'Exception: {}': 'Eccezione: {}'
   Exclude: Escludi
   Exclude Object?: 'Escludere oggetto?'
+  Exclude Objects: 'Escludi oggetti'
   Excluded: Escluso
   Exclusion cancelled: Esclusione annullata
   Execute printer macros: Esegui macro stampante
@@ -1420,6 +1423,7 @@ translations:
   FlashForge Creator 5 Pro: FlashForge Creator 5 Pro
   FlashForge IFS: FlashForge IFS
   Flip: Capovolgi
+  Flip Clock: Orologio a palette
   Flip the spools: Gira le bobine
 
   Flow: Flusso
@@ -1578,7 +1582,7 @@ translations:
   Home and sweep the cutter to re-find its position: Azzera e fa scorrevolare la taglierina per ritrovare la sua posizione
   Home failed: Homing fallito
   Home printer first?: Eseguire prima l'homing della stampante?
-  Home selector: Homing selettore
+  Home Selector: Homing selettore
   Homing AFC system...: Homing sistema AFC...
   Homing Failed: 'Azzeramento non riuscito'
   Homing X...: Homing X...
@@ -1625,6 +1629,7 @@ translations:
   Hyperlapse: Hyperlapse
   Hyperlapse captures frames at fixed time intervals. Good for very long prints.: Hyperlapse
     cattura i fotogrammi a intervalli di tempo fissi. Ideale per stampe molto lunghe.
+  Hyperspace: Iperspazio
   I understand: Ho capito
 
   ID (optional): ID (opzionale)
@@ -1867,7 +1872,7 @@ translations:
   Load filament: 'Carica il filamento'
   Load filament first: Prima carica il filamento
   Load or unload filament.: Carica o scarica il filamento.
-  Load profile: 'Carica profilo'
+  Load Profile: 'Carica profilo'
   Load the required filaments or start anyway?: Caricare i filamenti richiesti o avviare
     comunque?
   'Load, unload, and swap spools. View your multi-filament system at a glance, map colors to slots, and monitor runout sensors.': 'Carica, scarica e sostituisci le bobine. Visualizza a colpo d''occhio il tuo sistema multi-filamento, abbina i colori agli slot e monitora i sensori di esaurimento.'
@@ -2177,6 +2182,7 @@ translations:
   No networks found: Nessuna rete trovata
   No new mesh was stored as '{}': "Nessuna nuova mesh è stata salvata come '{}'"
   No notifications: Nessuna notifica
+  No objects: 'Nessun oggetto'
   No objects defined for this print: Nessun oggetto definito per questa stampa
   No output yet: Nessun output
   No presets configured: Nessun preset configurato
@@ -2251,6 +2257,7 @@ translations:
   Notification: Notifica
   Notifications: Notifiche
   Notify when print finishes: Notifica al termine della stampa
+  Now printing: 'In stampa ora'
   Noz max: Ug. max
   Noz min: Ug. min
   Noz rec: Ug. cons.
@@ -2284,6 +2291,7 @@ translations:
   Object picks apply only to prints started now: 'La selezione degli oggetti vale solo per le stampe avviate ora'
   Object positions unavailable: Posizioni oggetti non disponibili
   Objects: Oggetti
+  Objects in the print, with a tap to open the skip map: 'Oggetti della stampa, tocca per aprire la mappa'
   'Off': 'Off'
   'Off:': 'Off:'
   'Off: runs with these values without asking': 'Disattivato: esegue con questi valori senza chiedere'
@@ -2339,6 +2347,7 @@ translations:
   PA: PA
   PATH A · 1,-1: "PERCORSO A · 1,-1"
   PATH B · 1,1: "PERCORSO B · 1,1"
+  PAUSED: IN PAUSA
   PETG: PETG
   PID: PID
   PIN must be 4-6 digits: Il PIN deve avere 4-6 cifre
@@ -2813,6 +2822,7 @@ translations:
   Reset failed: Reset fallito
   Reset motor run-time counter: 'Ripristina il contatore delle ore di funzionamento del motore'
   Reset tags: Ripristina contrassegni
+  Reset Tags: Ripristina contrassegni
   Reset to Default: Ripristina predefinito
   Reset to defaults: Ripristina predefiniti
   Reset to original values: Ripristina valori originali
@@ -2875,6 +2885,7 @@ translations:
   Retraction distance to clear extruder gears: 'Distanza di retrazione per liberare gli ingranaggi dell''estrusore'
   Retry: Riprova
   Reverse Multiplier: 'Moltiplicatore all''indietro'
+  Review: Rivedi
   Review detected hardware validation issues: Rivedi problemi di validazione hardware
     rilevati
   Review your configuration below, then click Finish to save: Rivedi la configurazione
@@ -2950,7 +2961,7 @@ translations:
   Save changes to persist them across restarts?: Salvare le modifiche per mantenerle
     dopo i riavvii?
   'Save failed: {}': 'Salvataggio fallito: {}'
-  Save offsets: Salva offset
+  Save Offsets: Salva offset
   Save offsets?: Salvare gli offset?
   Save to Spoolman: Salva su Spoolman
   Saved Z-Offset: Z-Offset Salvato
@@ -2976,6 +2987,7 @@ translations:
   Scan and select a Bluetooth printer first: Prima scansiona e seleziona una stampante
     Bluetooth
   Scan for Printers: Cerca stampanti
+  Scan the spool label with your barcode scanner: 'Scansiona l''etichetta della bobina con lo scanner codici a barre'
   Scan with your phone to save these values: Scansiona con il telefono per salvare questi valori
   Scanner: Scanner
   ? Scanner bonded but didn't attach as a keyboard. Try turning the scanner off and
@@ -3041,7 +3053,7 @@ translations:
   Select macro for third button: Seleziona macro per il terzo pulsante
   Select material to begin: Seleziona il materiale per iniziare
   Select sensor: Seleziona sensore
-  Select slot: Seleziona slot
+  Select Slot: Seleziona slot
   Select slot failed: Selezione slot fallita
   Select the heaters Klipper uses for your bed and hotend: Seleziona i riscaldatori
     Klipper per piano e hotend
@@ -3142,10 +3154,12 @@ translations:
   Signal: Segnale
   'Signal #': 'Segnale #'
   Similarity: "Similitudine"
+  Single object: 'Oggetto singolo'
   Single toggle macro. State is not tracked.: Singola macro toggle. Lo stato non è
     tracciato.
   Size: Dimensione
   Skip: Salta
+  Skip Objects...: 'Salta oggetti...'
   Skipped: 'Saltato'
   Sleep While Printing: Sospensione Durante Stampa
   Sleep adjusted to match dim timeout: Timeout standby regolato
@@ -3248,7 +3262,7 @@ translations:
   Start Probing: Avvia sondaggio
   Start anyway?: 'Avviare comunque?'
   Start at: Inizia da
-  Start check: Avvia controllo
+  Start Check: Avvia controllo
   Start drying: Avvia essiccazione
 
   Start failed: Avvio fallito
@@ -3339,7 +3353,6 @@ translations:
   TOOLS: STRUMENTI
   TPU: TPU
   Tag Parts: Contrassegna componenti
-  Tag parts: Contrassegna componenti
   Takes 3-5 min. Do not interrupt.: Richiede 3-5 min. Non interrompere.
   Tangle prevention active: Prevenzione grovigli attiva
   Tangle prevention boosted: Prevenzione grovigli potenziata
@@ -3395,7 +3408,7 @@ translations:
   Test RS-485 link to CFS units: 'Prova il collegamento RS-485 alle unità CFS'
   Test Screensaver: Prova salvaschermo
   Test Tracker: Test Tracker
-  Test both: Testa entrambi
+  Test Both: Testa entrambi
   Test label printed: Etichetta di prova stampata
   'Testing rotation: %d° (%d/%d) - %ds remaining': 'Test rotazione: %d°
     (%d/%d) - %ds rimanenti'
@@ -3540,6 +3553,7 @@ translations:
     inviati
   This is what data would be sent if enabled: Questi sono i dati che verrebbero inviati
     se abilitato
+  This looks like a {}, but it is set up as a {}: Questa stampante sembra una {}, ma è configurata come {}
   This may take up to 30 seconds: Questo potrebbe richiedere fino a 30 secondi
   This plugin asks for no special permissions.: 'Questo plugin non richiede permessi speciali.'
   This plugin lets HelixScreen control print start options like bed mesh and QGL.: 'Questo plugin permette a HelixScreen di controllare opzioni avvio stampa come mesh piano e QGL.'
@@ -3673,7 +3687,7 @@ translations:
   Trigger: Attivazione
   'Troubleshooting:': 'Risoluzione problemi:'
   Try adjusting your search or filters: Prova a modificare la ricerca o i filtri
-  Try again: 'Riprova'
+  Try Again: 'Riprova'
   Try the operation again. If it persists, check for mechanical issues.: Riprova l'operazione. Se il problema persiste, controlla eventuali problemi meccanici.
   Tune: Regola
   Tune belts: "Regola cinghie"
@@ -3789,7 +3803,7 @@ translations:
   Use Unload before Eject: 'Usa Scarica prima di Espelli'
   Use first HID scanner found: 'Usa il primo scanner HID trovato'
   Use printer type to select image: Usa il tipo di stampante per selezionare l'immagine
-  Use scan: Usa scansione
+  Use Scan: Usa scansione
   User intervention required: 'Intervento manuale richiesto'
   VM Peak: Picco VM
   VM Size: Dimensione VM
@@ -3988,6 +4002,7 @@ translations:
   direct drive: direct drive
   disable: disabilita
   disabled: disabilitato
+  done at {} · {}%: "finisce alle {} · {}%"
   drying: in essiccazione
   e.g. Jet Black: es. Nero intenso
   e.g. NAME=my_var VALUE=123: es. NAME=mia_var VALUE=123
@@ -4062,9 +4077,11 @@ translations:
   tall: di altezza
   target {}%: 'target {}%'
   target {}°: 'target {}°'
+  too slow: troppo lento
   tool(s): utensile/i
   used: usato
   v%s available: v%s disponibile
+  v%s has no build for the %s, so it can't be installed here. Pick a channel with a newer release.: v%s non ha una build per %s, quindi non può essere installata qui. Scegli un canale aggiornamenti con una versione più recente.
   v{} installed! Restarting...: v{} installata! Riavvio in corso...
   v{} is available. Tap to update.: v{} disponibile. Tocca per aggiornare.
   what you turned: "quanto hai girato"

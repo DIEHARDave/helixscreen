@@ -38,6 +38,10 @@
          boundary. -->
     <style name="invisible" opa="0"/>
 
+    <!-- A mono AMS logo (a white mark) is tinted to the text color so it reads in both
+         themes. Full-color logos are not given this style. -->
+    <style name="ams_logo_mono" image_recolor="#text" image_recolor_opa="255"/>
+
     <!-- Heater status-area duty text. Two mutually exclusive bindings partition
          the state space (heating vs everything else); the pair lives here so
          every heater surface colors the duty identically. -->
@@ -122,8 +126,11 @@
     <style name="buffer_trace_area" bg_opa="0" border_width="0" pad_all="#space_xxs"/>
 
     <!-- Action buttons in a grid, two to a row: action_grid on the container,
-         action_cell on each button, which stacks its icon over its label
-         (stacked_if_bp_lte). A stacked ui_button asks for 100% of a
+         action_cell on each button. From medium up in landscape the sidebar shows the
+         label alone (ams_actions_text_only), at medium's body size and with the
+         side padding ams_action_pad_hor allows (ams_tokens.xml), so a half-width
+         cell holds every locale's label whole; long_mode="dots" keeps any label
+         that still would not fit inside its button. A stacked ui_button asks for 100% of a
          content-height parent, which inside a wrapping row never settles, so the
          cell pins its height to the touch target. No flex_grow on a cell: a
          growing item counts as zero width when the row wraps, which puts every
@@ -133,7 +140,12 @@
     <style name="action_grid"
            layout="flex" flex_flow="row_wrap" flex_main_place="center" flex_cross_place="center"
            flex_track_place="start"/>
-    <style name="action_cell" width="48%" min_height="#touch_target_min" max_height="#touch_target_min"/>
+    <style name="action_cell"
+           width="48%" min_height="#touch_target_min" max_height="#touch_target_min" pad_ver="#space_xxs"/>
+    <!-- A text-only cell (ams_actions_text_only): the label's face and the narrow
+         side padding that let it fill the cell. A cell that shows its icon keeps
+         the theme's padding. -->
+    <style name="action_cell_text" pad_hor="#ams_action_pad_hor" text_font="#ams_action_label_font"/>
     <!-- Four to a row, for a narrow portrait screen with no height for two rows. -->
     <style name="action_cell_quarter" width="23%"/>
   </styles>

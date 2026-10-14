@@ -78,6 +78,11 @@ class AmsBackendHappyHare : public AmsSubscriptionBackend {
     AmsBackendHappyHare(IMoonrakerAPI* api, helix::IMoonrakerClient* client);
     ~AmsBackendHappyHare() override;
 
+    /// The `mmu` fields this backend reads, as a `printer.objects.subscribe` objects map.
+    /// The list is a strict allowlist: `nullptr` would make Klipper serialize every
+    /// internal field on every notification. Empty unless @p hw detected Happy Hare.
+    [[nodiscard]] static nlohmann::json required_status_objects(const helix::PrinterDiscovery& hw);
+
     /**
      * @brief Bare filament-sensor names Happy Hare owns (no AMS keyword).
      *
@@ -155,6 +160,10 @@ class AmsBackendHappyHare : public AmsSubscriptionBackend {
         // mmu.action stays Idle until MMU_LOAD/MMU_UNLOAD starts, and through
         // the UI's own preheat before it.
         t.holds_optimistic_action = true;
+        // classify_error() raises the pause as a fault, and it fires while a job runs,
+        // so the generic runout modal and the sensor-edge toast both stand down.
+        t.raises_runout_fault = true;
+        t.raises_runout_fault_during_job = true;
         return t;
     }();
     [[nodiscard]] BackendTraits traits() const override {

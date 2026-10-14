@@ -178,18 +178,9 @@ std::vector<int> endless_spool_backup_edges(const EndlessSpoolConfig& cfg, int s
             continue;
         }
         // Undirected: project the clique onto a ring, members[i] -> members[i+1]
-        // and the last member back to the first.
-        //
-        // The projection this replaced pointed every member at the FIRST other
-        // member, which for a 4-gate Happy Hare group drew 0->1, 1->0, 2->0,
-        // 3->0 - a picture that says "slot 1 is everyone's backup", which is not
-        // what a clique means. A ring says the true thing the widget is able to
-        // say: every member hands off to another member, and following the
-        // arrows visits the whole group exactly once. Neither shape is the whole
-        // relation - see endless_spool_status()' sibling note and the
-        // ui_endless_spool_arrows widget, which has one target per source and no
-        // way to draw a pool - but only one of them privileges an arbitrary
-        // member.
+        // and the last member back to the first. Every member hands off to
+        // another member and following the edges visits the whole group, so no
+        // member is privileged as everyone's backup.
         for (size_t i = 0; i < group.members.size(); ++i) {
             assign(group.members[i], group.members[(i + 1) % group.members.size()]);
         }

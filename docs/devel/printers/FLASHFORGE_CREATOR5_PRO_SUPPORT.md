@@ -34,7 +34,7 @@ wording, the bar stays silently suppressed until the parser learns it.
 |------|-------|
 | SoC | Ingenic X2000 (XBurst2, MIPS32r2, 2x 1.2 GHz) - same family as the Creality K1's X2000E |
 | FPU / ABI | Hard float, 64-bit FPU (`-mfp64`), **NaN2008** (`/lib/ld-linux-mipsn8.so.1`) |
-| RAM | 128-256 MB |
+| RAM | 512 MB (MemTotal ~473 MB, as reported by Creator 5 Pro installs in telemetry) |
 | Display | 800x480 panel; the framebuffer is exposed **portrait (480x800)**, so the preset sets `display.rotate = 90` (verified on the printer); fbdev `/dev/fb0`, no X11/Wayland/DRM |
 | Touch | evdev, `/dev/input/event2` (auto-detected; override with `HELIX_TOUCH_DEVICE`) |
 | Stock UI | `firmwareExe` - LVGL 8 on fbdev. **Also** hosts the port-8898 REST API, the MQTT cloud link, and the tool-pickup orchestration for UI-started prints |
@@ -289,10 +289,9 @@ Each item below says whether it is done or still open.
    chamber_*_fan`, `led chamber_led`. The chamber heater and the `chamber_*_fan`s are
    the Pro's hardware; the heater-free Creator 5 reports neither, and its preset drops
    both.
-7. **Memory** (open): 128-256 MB shared with Klipper, Moonraker, `firmwareExe`.
-   HelixScreen's ~15 MB footprint is fine, but check `free` with the stock stack
-   running and post the output on
-   [#1714](https://github.com/prestonbrown/helixscreen/issues/1714).
+7. **Memory** (done): 512 MB, shared with Klipper, Moonraker and `firmwareExe`.
+   Telemetry `host.ram_total_mb` reads 472-473 on every Creator 5 Pro install;
+   no heater-free Creator 5 has reported yet.
 8. **Init** (done on Z-Mod): no systemd; the stock stack is started from BusyBox init
    scripts. Z-Mod ships its own `S80helixscreen` init script and starts HelixScreen in
    place of the stock UI with `DISPLAY_OFF HELIX=1` (#1714).

@@ -23,6 +23,7 @@
 #include "../../include/pending_startup_warnings.h"
 #include "app_constants.h"
 #include "app_globals.h"
+#include "board_identity.h"
 #include "config.h"
 #include "display/lv_display_private.h"
 #include "display_settings_manager.h"
@@ -45,6 +46,7 @@
 #ifdef HELIX_ENABLE_SCREENSAVER
 
 #include "screensaver.h"
+#include "screensaver_flip_clock.h"
 #endif
 
 #include "pending_startup_warnings.h"
@@ -497,8 +499,8 @@ bool DisplayManager::init(const Config& config) {
         // On AD5M, Klipper's reset_screen fires ~3s after Klipper becomes READY.
         // Klipper typically becomes ready 10-20s after boot, so a 20s delay ensures
         // we fire AFTER the delayed_gcode dims the screen.
-        // Only needed on Allwinner (AD5M) - other platforms don't have this issue.
-        if (std::string_view(m_backlight->name()) == "Allwinner") {
+        // Only the FlashForge firmwares dim behind our back.
+        if (helix::board::current_info().firmware_dims_backlight_after_boot) {
             lv_timer_create(
                 [](lv_timer_t* t) {
                     auto* dm = static_cast<DisplayManager*>(lv_timer_get_user_data(t));
@@ -858,6 +860,15 @@ helix::ui::SaverHost DisplayManager::screensaver_host(const DisplayBackend* back
     helix::ui::SaverHost host;
     host.is_printing = [] {
         return job_holds_machine(get_printer_state().print_state().get_print_lifecycle());
+    };
+    // The remaining time the print status panel shows, smoothed by PrintEtaEstimator.
+    host.print_status = [] {
+        helix::PrinterPrintState& print = get_printer_state().print_state();
+        helix::ui::FlipClockPrint status;
+        status.phase = helix::ui::flip_print_phase(print.get_print_lifecycle());
+        status.remaining_s = lv_subject_get_int(print.get_print_time_left_subject());
+        status.progress_pct = lv_subject_get_int(print.get_print_progress_display_subject());
+        return status;
     };
     host.display_backend =
         backend ? helix::ui::display_backend_key(backend->type(), backend->is_gpu_accelerated())

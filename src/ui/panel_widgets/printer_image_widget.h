@@ -54,6 +54,8 @@ class PrinterImageWidget : public PanelWidget {
     static void printer_callout_chamber_cb(lv_event_t* e);
     static void printer_callout_fan_cb(lv_event_t* e);
     static void printer_callout_light_cb(lv_event_t* e);
+    /// Long-press on the light chip: opens the LEDs overlay on the chamber light.
+    static void printer_callout_light_hold_cb(lv_event_t* e);
 
   private:
     /// Points `img` at the pre-scaled copy for its current size, if one is on disk.
@@ -118,7 +120,8 @@ class PrinterImageWidget : public PanelWidget {
     void place_printer_image(const CalloutRect* moved);
     void set_glow_pulse(bool on); ///< start/stop the bed glow's opacity pulse
     void handle_callout_clicked(CalloutKind kind);
-    /// Recovers the widget from a chip's click (chip -> callout_layer -> printer_container).
+    /// Recovers the widget from a chip's event (chip -> callout_layer -> printer_container).
+    static PrinterImageWidget* widget_from_chip(lv_event_t* e);
     static void route_callout_click(lv_event_t* e, CalloutKind kind);
 
     lv_timer_t* callout_timer_ = nullptr;

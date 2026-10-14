@@ -51,7 +51,7 @@ class PixelWriter {
     /// channel's top bits.
     void put(int32_t x, int32_t y, Rgb c) {
         if (frame_.format == PixelFormat::RGB565) {
-            write_565(x, y, static_cast<uint16_t>((c.r >> 3) << 11 | (c.g >> 2) << 5 | (c.b >> 3)));
+            write_565(x, y, static_cast<uint16_t>(pack(c, PixelFormat::RGB565)));
             return;
         }
         uint8_t* p = pixel(x, y, 4);
@@ -59,6 +59,16 @@ class PixelWriter {
         p[1] = c.g;
         p[2] = c.r;
         p[3] = 0xFF;
+    }
+
+    /// `c` as put() stores it in `format`, read as one little-endian value: the RGB565 word,
+    /// or the XRGB8888 word with its X byte 0xFF.
+    static constexpr uint32_t pack(Rgb c, PixelFormat format) {
+        if (format == PixelFormat::RGB565) {
+            return static_cast<uint32_t>((c.r >> 3) << 11 | (c.g >> 2) << 5 | (c.b >> 3));
+        }
+        return 0xFF000000u | static_cast<uint32_t>(c.r) << 16 | static_cast<uint32_t>(c.g) << 8 |
+               c.b;
     }
 
     /// Like put(), but RGB565 dithers each channel with BAYER_4X4 at (x, y), so a smooth fade

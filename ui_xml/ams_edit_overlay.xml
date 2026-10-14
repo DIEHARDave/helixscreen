@@ -287,7 +287,7 @@
                       scrollable="false"/>
               <text_small bind_text="ams_edit_scan_text"/>
               <ui_button name="btn_use_scanned_color"
-                         width="content" height="#button_height_sm" text="Use scan" variant="secondary">
+                         width="content" height="#button_height_sm" text="Use Scan" variant="secondary">
                 <event_cb trigger="clicked" callback="ams_edit_use_scan_cb"/>
               </ui_button>
             </lv_obj>
@@ -309,7 +309,7 @@
                     style_pad_gap="#space_xs" scrollable="false" clickable="false">
               <bind_flag_if cond="ams_edit_identity_is_spoolmans eq 0 or printer_has_spoolman eq 1" flag="hidden"/>
               <text_body name="details_identity_label"
-                         bind_text="ams_edit_identity_text" long_mode="dots" clickable="false"/>
+                         width="100%" bind_text="ams_edit_identity_text" long_mode="dots" clickable="false"/>
               <text_small text="Spoolman is offline. Brand and material can change once it's back."
                           style_text_color="#text_muted" long_mode="wrap" clickable="false"/>
             </lv_obj>

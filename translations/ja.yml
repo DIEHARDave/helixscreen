@@ -19,6 +19,9 @@ translations:
   '%d min left': '残り %d 分'
   '%d mm/s': '%d mm/s'
   '%d more sensors': 他%d個のセンサー
+  '%d objects': '%d個のオブジェクト'
+  '%d of %d printing': '%d/%d 印刷中'
+  '%d skipped': '%d個スキップ'
   '%d profiles': '%d 個のプロファイル'
   '%d slots': '%d スロット'
   '%d toolheads': '%d ツールヘッド'
@@ -113,6 +116,7 @@ translations:
 
   30 minutes: 30分
   30 seconds: 30秒
+  3D Maze: 3D迷路
   3D Pipes: 3Dパイプ
   3D View: 3Dビュー
   4. Paper should move but with resistance: 4. 紙が抵抗を感じながら動く状態が適切です
@@ -442,7 +446,7 @@ translations:
   Calibrate Purge Chute: パージシュートをキャリブレート
   Calibrate X: X軸をキャリブレート
   Calibrate Y: Y軸をキャリブレート
-  Calibrate all tools: すべてのツールをキャリブレート
+  Calibrate All Tools: すべてのツールをキャリブレート
   Calibrate input shaping to reduce ringing artifacts in prints: 入力シェーピングをキャリブレートして印刷のリンギングを軽減します
   Calibrate tool offsets?: ツールオフセットをキャリブレートしますか？
   Calibrate your touchscreen for accurate input: タッチスクリーンの入力精度をキャリブレートします
@@ -548,9 +552,9 @@ translations:
   Check failed: 確認に失敗しました
   Check filament: フィラメントを確認
   Check for Updates: 更新を確認
-  Check slot: スロットを確認
+  Check Slot: スロットを確認
   Check slot failed: スロットの確認に失敗しました
-  Check slots: スロットを確認
+  Check Slots: スロット確認
   Check slots failed: スロットの確認に失敗しました
   Check that only one filament path is active: フィラメント経路が 1 つだけ有効か確認してください
   Check that the cutter mechanism is properly installed: カッター機構が正しく取り付けられているか確認してください
@@ -810,9 +814,6 @@ translations:
   'Current name:': '現在の名前:'
   'Current:': '現在:'
   'Current: %d°C | Target: %d°C': '現在: %d°C | 目標: %d°C'
-  'Current: %s': '現在: %s'
-  'Current: %s · %s': '現在: %s · %s'
-  'Current: Bypass': '現在: バイパス'
   Currently Loaded: 現在ロード中
   Currently printing: 印刷中
   Curves differ in shape. Steering by each path's tallest peak.: "カーブの形が異なります。各パスの最も高いピークで調整します。"
@@ -839,6 +840,7 @@ translations:
   DISABLED: 無効
   DISCOVERED PRINTERS: 検出されたプリンター
   DISPLAY: ディスプレイ
+  DONE: 完了
   Damping (Kd): 減衰 (Kd)
   Danger: 危険
   Danger Zone: 危険ゾーン
@@ -1073,6 +1075,7 @@ translations:
   'Exception: {}': '例外: {}'
   Exclude: 除外
   Exclude Object?: 'オブジェクトを除外しますか？'
+  Exclude Objects: 'オブジェクトの除外'
   Excluded: 除外
   Exclusion cancelled: 除外がキャンセルされました
   Execute printer macros: プリンターマクロを実行
@@ -1333,6 +1336,7 @@ translations:
   FlashForge Creator 5 Pro: FlashForge Creator 5 Pro
   FlashForge IFS: FlashForge IFS
   Flip: 反転
+  Flip Clock: パタパタ時計
   Flip the spools: スプールを裏返す
 
   Flow: フロー
@@ -1484,7 +1488,7 @@ translations:
   Home and sweep the cutter to re-find its position: 原点復帰後にカッターを走査して位置を再検出します
   Home failed: ホーミング失敗
   Home printer first?: 先にプリンターをホーミングしますか？
-  Home selector: セレクターをホーミング
+  Home Selector: セレクターをホーミング
   Homing AFC system...: AFCシステムをホーミング中...
   Homing Failed: 'ホーミングに失敗しました'
   Homing X...: X軸をホーミング中...
@@ -1527,6 +1531,7 @@ translations:
   Humidity Sensors: 湿度センサー
   Hyperlapse: ハイパーラプス
   Hyperlapse captures frames at fixed time intervals. Good for very long prints.: ハイパーラプスは一定の時間間隔でフレームを撮影します。非常に長い印刷に適しています。
+  Hyperspace: ハイパースペース
   I understand: 理解しました
 
   ID (optional): ID（任意）
@@ -1747,7 +1752,7 @@ translations:
   Load filament: 'フィラメントをロード'
   Load filament first: 先にフィラメントを装填してください
   Load or unload filament.: フィラメントを装填または排出します。
-  Load profile: 'プロファイルを読み込む'
+  Load Profile: 'プロファイルを読み込む'
   Load the required filaments or start anyway?: 必要なフィラメントを装填しますか？それともこのまま開始しますか？
   'Load, unload, and swap spools. View your multi-filament system at a glance, map colors to slots, and monitor runout sensors.': スプールのロード、アンロード、交換を行います。マルチフィラメントシステムを一目で確認し、色をスロットにマッピングし、ランアウトセンサーを監視できます。
   Load...: 装填...
@@ -2042,6 +2047,7 @@ translations:
   No networks found: ネットワークが見つかりません
   No new mesh was stored as '{}': "新しいメッシュは '{}' として保存されませんでした"
   No notifications: 通知なし
+  No objects: 'オブジェクトなし'
   No objects defined for this print: この印刷にはオブジェクトが定義されていません
   No output yet: 出力なし
   No presets configured: プリセットが設定されていません
@@ -2115,6 +2121,7 @@ translations:
   Notification: 通知
   Notifications: 通知
   Notify when print finishes: 印刷完了時に通知
+  Now printing: '印刷中'
   Noz max: ノズル最大
   Noz min: ノズル最小
   Noz rec: ノズル推奨
@@ -2148,6 +2155,7 @@ translations:
   Object picks apply only to prints started now: 'オブジェクトの選択は今すぐ開始する印刷にのみ適用されます'
   Object positions unavailable: オブジェクト位置が利用できません
   Objects: オブジェクト
+  Objects in the print, with a tap to open the skip map: '印刷中のオブジェクト。タップでスキップマップを開きます'
   'Off': オフ
   'Off:': 'オフ:'
   'Off: runs with these values without asking': 'オフ: これらの値で確認なしに実行'
@@ -2201,6 +2209,7 @@ translations:
   PA: PA
   PATH A · 1,-1: "パス A · 1,-1"
   PATH B · 1,1: "パス B · 1,1"
+  PAUSED: 一時停止
   PETG: PETG
   PID: PID
   PIN must be 4-6 digits: PIN は 4〜6 桁にしてください
@@ -2653,6 +2662,7 @@ translations:
   Reset failed: リセットに失敗しました
   Reset motor run-time counter: 'モーターの稼働時間カウンターをリセット'
   Reset tags: タグをリセット
+  Reset Tags: タグをリセット
   Reset to Default: デフォルトにリセット
   Reset to defaults: デフォルトに戻す
   Reset to original values: 元の値にリセット
@@ -2714,6 +2724,7 @@ translations:
   Retraction distance to clear extruder gears: 'エクストルーダーギアから抜くための引き戻し距離'
   Retry: 再試行
   Reverse Multiplier: '逆方向倍率'
+  Review: 確認
   Review detected hardware validation issues: 検出されたハードウェア検証の問題を確認
   Review your configuration below, then click Finish to save: 以下の設定を確認し、「完了」をクリックして保存してください
   Rewinding: 巻き戻し中
@@ -2781,7 +2792,7 @@ translations:
   Save Z-Offset?: Z-Offset を保存しますか？
   Save changes to persist them across restarts?: 再起動後も変更を保持するために保存しますか？
   'Save failed: {}': '保存に失敗しました: {}'
-  Save offsets: オフセットを保存
+  Save Offsets: オフセットを保存
   Save offsets?: オフセットを保存しますか？
   Save to Spoolman: Spoolman に保存
   Saved Z-Offset: 保存されたZ-Offset
@@ -2803,6 +2814,7 @@ translations:
   Scan Spool QR Code: スプール QR コードをスキャン
   Scan and select a Bluetooth printer first: 先に Bluetooth プリンターをスキャンして選択してください
   Scan for Printers: プリンターをスキャン
+  Scan the spool label with your barcode scanner: 'バーコードスキャナーでスプールのラベルをスキャンしてください'
   Scan with your phone to save these values: スマートフォンでスキャンして値を保存
   Scanner: スキャナー
   ? Scanner bonded but didn't attach as a keyboard. Try turning the scanner off and
@@ -2863,7 +2875,7 @@ translations:
   Select macro for third button: 3番目のボタンのマクロを選択
   Select material to begin: 素材を選択して開始してください
   Select sensor: センサーを選択
-  Select slot: スロットを選択
+  Select Slot: スロットを選択
   Select slot failed: スロットの選択に失敗しました
   Select the heaters Klipper uses for your bed and hotend: Klipper がベッドとホットエンドに使用するヒーターを選択してください
   Select which devices the home screen power button controls: ホーム画面の電源ボタンで制御するデバイスを選択
@@ -2951,9 +2963,11 @@ translations:
   Signal: 信号
   'Signal #': 信号番号
   Similarity: "類似度"
+  Single object: 'オブジェクト1個'
   Single toggle macro. State is not tracked.: 単一のトグルマクロ。状態は追跡されません。
   Size: サイズ
   Skip: スキップ
+  Skip Objects...: 'オブジェクトをスキップ...'
   Skipped: 'スキップ'
   Sleep While Printing: 印刷中のスリープ
   Sleep adjusted to match dim timeout: スリープタイムアウトを調整しました
@@ -3050,7 +3064,7 @@ translations:
   Start Probing: プローブ開始
   Start anyway?: 'それでも開始しますか？'
   Start at: 開始位置
-  Start check: チェック開始
+  Start Check: チェック開始
   Start drying: 乾燥開始
 
   Start failed: 開始に失敗
@@ -3133,7 +3147,6 @@ translations:
   TOOLS: ツール
   TPU: TPU
   Tag Parts: 部位をタグ付け
-  Tag parts: 部位をタグ付け
   Takes 3-5 min. Do not interrupt.: 3〜5分かかります。中断しないでください。
   Tangle prevention active: 絡み防止 動作中
   Tangle prevention boosted: 絡み防止 強化中
@@ -3188,7 +3201,7 @@ translations:
   Test RS-485 link to CFS units: 'CFSユニットへのRS-485接続をテスト'
   Test Screensaver: スクリーンセーバーをテスト
   Test Tracker: テストトラッカー
-  Test both: 両方をテスト
+  Test Both: 両方をテスト
   Test label printed: テストラベル印刷完了
   'Testing rotation: %d° (%d/%d) - %ds remaining': '回転テスト: %d° (%d/%d)
     - %ds残り'
@@ -3314,6 +3327,7 @@ translations:
   'This is an emergency stop: the printer halts and Klipper restarts.': これは緊急停止です：プリンターが停止し、Klipperが再起動します。
   This is exactly the data that will be sent: これが送信されるデータです
   This is what data would be sent if enabled: これは有効にした場合に送信されるデータです
+  This looks like a {}, but it is set up as a {}: このプリンターは{}のようですが、{}として設定されています
   This may take up to 30 seconds: 最大30秒かかる場合があります
   This plugin asks for no special permissions.: 'このプラグインは特別な権限を要求しません。'
   This plugin lets HelixScreen control print start options like bed mesh and QGL.: 'このプラグインにより、HelixScreen がベッドメッシュや QGL などの印刷開始オプションを制御できます。'
@@ -3433,7 +3447,7 @@ translations:
   Trigger: トリガー
   'Troubleshooting:': 'トラブルシューティング:'
   Try adjusting your search or filters: 検索やフィルターを調整してみてください
-  Try again: '再試行'
+  Try Again: '再試行'
   Try the operation again. If it persists, check for mechanical issues.: もう一度お試しください。解決しない場合は機械的な問題がないか確認してください。
   Tune: チューニング
   Tune belts: "ベルトを調整"
@@ -3543,7 +3557,7 @@ translations:
   Use Unload before Eject: '先に「アンロード」してから「排出」してください'
   Use first HID scanner found: '最初に見つかった HID スキャナーを使用'
   Use printer type to select image: プリンタータイプで画像を選択
-  Use scan: スキャンを使用
+  Use Scan: スキャンを使用
   User intervention required: '手動での対応が必要です'
   VM Peak: VM ピーク
   VM Size: VM サイズ
@@ -3731,6 +3745,7 @@ translations:
   direct drive: ダイレクトドライブ
   disable: 無効化
   disabled: 無効
+  done at {} · {}%: "{} に完了 · {}%"
   drying: 乾燥中
   e.g. Jet Black: 例：ジェットブラック
   e.g. NAME=my_var VALUE=123: '例: NAME=my_var VALUE=123'
@@ -3804,9 +3819,11 @@ translations:
   tall: 高さ
   target {}%: '目標 {}%'
   target {}°: '目標 {}°'
+  too slow: 遅すぎ
   tool(s): ツール
   used: 使用
   v%s available: v%s が利用可能です
+  v%s has no build for the %s, so it can't be installed here. Pick a channel with a newer release.: v%s には %s 用のビルドがないため、ここにはインストールできません。より新しいリリースがある更新チャンネルを選んでください。
   v{} installed! Restarting...: v{} をインストールしました！再起動中...
   v{} is available. Tap to update.: v{} が利用可能です。タップして更新してください。
   what you turned: "回した量"

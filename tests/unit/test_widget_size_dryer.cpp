@@ -510,3 +510,36 @@ TEST_CASE_METHOD(DryerTapFixture, "dryer: a tap on a row that is not listed does
     lv_obj_send_event(part(h, "dryer_row_5"), LV_EVENT_CLICKED, nullptr);
     CHECK(taps.empty());
 }
+
+TEST_CASE_METHOD(DryerFixture, "dryer: Wide lists at most four drying times",
+                 "[widget_size][dryer]") {
+    DryerSummaryInput in;
+    in.zones = {box(0, "Box 1", 31.0f, 150), box(1, "Box 2", 30.0f, 120),
+                box(2, "Box 3", 29.0f, 90), box(3, "Box 4", 28.0f, 60), box(4, "Box 5", 27.0f, 45)};
+    publish(in);
+    PanelWidgetHarness<DryerWidget> h(test_screen());
+
+    h.resize(1, 1, 234, 113);
+    REQUIRE(rung_subject() == static_cast<int>(SizeRung::Wide));
+    CHECK(subject_text("home_dryer_count_text") == "5 drying");
+    const std::string times = subject_text("home_dryer_times_text");
+    size_t separators = 0;
+    for (size_t at = times.find("  "); at != std::string::npos; at = times.find("  ", at + 2))
+        ++separators;
+    CHECK(separators == 3);
+}
+
+TEST_CASE_METHOD(DryerFixture, "dryer: a row names its box, or numbers it, and carries humidity",
+                 "[widget_size][dryer]") {
+    DryerSummaryInput in;
+    in.zones = {box(0, "Left Box", 31.0f, 150), box(2, "", 40.0f)};
+    publish(in);
+    PanelWidgetHarness<DryerWidget> h(test_screen());
+
+    h.resize(1, 1, 234, 232);
+    REQUIRE(rung_subject() == static_cast<int>(SizeRung::Full));
+    REQUIRE(subject_int("home_dryer_row_count") >= 2);
+    CHECK(subject_text("home_dryer_row_0_name") == "Left Box");
+    CHECK(subject_text("home_dryer_row_1_name") == "Box 3");
+    CHECK(subject_text("home_dryer_row_1_detail").find("40% RH") != std::string::npos);
+}

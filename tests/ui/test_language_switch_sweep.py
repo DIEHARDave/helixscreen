@@ -39,11 +39,11 @@ ALLOW = {"min", "mm", "PLA", "PETG", "ABS", "ASA", "TPU", "OK"}
 
 TEXT_TYPES = {"label", "dropdown"}
 
-# Widgets that show data: file, spool, material and macro names, paths, the
+# Widgets that show data: file, spool and AMS slot (spool) names, material and macro names, paths, the
 # licenses text, LED names from the printer's config.
 DATA_PATH = re.compile(
     r"licenses_text|row_install_root|loaded_material|macro_label|macro_desc|"
-    r"filename_label|spool_name|led_tab_\d+/0/tab_label")
+    r"filename_label|spool_name|ams_slot_view\[\d+\]/name_label|led_tab_\d+/0/tab_label")
 
 # Fan names generated from the mock printer's config object names.
 CONFIG_NAMES = {"Controller Fan", "Nevermore Fan"}

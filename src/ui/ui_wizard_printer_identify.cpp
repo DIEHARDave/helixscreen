@@ -6,6 +6,7 @@
 #include "ui_error_reporting.h"
 #include "ui_event_safety.h"
 #include "ui_subject_registry.h"
+#include "ui_text.h"
 #include "ui_wizard.h"
 
 #include "app_globals.h"
@@ -795,6 +796,7 @@ void WizardPrinterIdentifyStep::populate_vendor_tiles() {
         // Width is the tile's content width so the dots mode has a bound.
         lv_obj_set_width(label, lv_pct(100));
         lv_label_set_long_mode(label, LV_LABEL_LONG_MODE_DOTS);
+        helix::ui::label_hold_one_line(label);
         lv_obj_set_style_text_font(label, theme_manager_get_font("font_body"), LV_PART_MAIN);
         lv_obj_set_style_text_color(label, theme_manager_get_color("text"), LV_PART_MAIN);
 

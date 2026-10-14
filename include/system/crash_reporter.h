@@ -184,9 +184,11 @@ class CrashReporter {
         std::string display_info;
         int ram_total_mb = 0;
         int cpu_cores = 0;
-        // Which firmware population this is: one platform key ("mips") serves
-        // the K1 series and both AD5X firmwares, which only mod_flavor splits.
+        // Which FlashForge mod tree this is ("none", "ZMOD" or "Forge-X"). One
+        // platform key ("mips") serves several boards; `board` names the board,
+        // this names the mod's filesystem layout.
         std::string mod_flavor;
+        std::string board; ///< helix::board::current_info().key
         // Resolved layout: where the config this process read and the cache it
         // would have used actually live, and which cascade rung won the cache.
         std::string config_dir;

@@ -99,6 +99,14 @@ namespace helix {
 
 DisplaySleepController::DisplaySleepController(DisplaySleepHost host) : m_host(std::move(host)) {}
 
+// A controller that slept without LVGL teardown abandoning its state still owns a
+// full-screen black overlay on the top layer and a hold that hides the active screen.
+DisplaySleepController::~DisplaySleepController() {
+    if (lv_is_initialized()) {
+        destroy_sleep_overlay();
+    }
+}
+
 void DisplaySleepController::configure(const DisplaySleepConfig& config) {
     m_use_hardware_blank = config.use_hardware_blank;
     m_use_power_off = config.use_power_off;

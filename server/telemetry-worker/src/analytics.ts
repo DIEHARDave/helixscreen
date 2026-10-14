@@ -52,7 +52,10 @@ function mapEventToDataPointInternal(
         // Empty for clients older than the field. Gates the .tar.gz retirement
         // (#993) — see build_session_event() in src/system/telemetry_manager.cpp.
         String(app.zip_tool ?? event.zip_tool ?? ""),
-        "",
+        // blob11: resolved printer board ("creator5-pro", "k1", "generic"), which
+        // splits the unified "mips" platform key. Empty for clients older than
+        // the field. See build_session_event() in src/system/telemetry_manager.cpp.
+        String(app.board ?? event.board ?? ""),
         "",
       ],
       doubles: [
@@ -109,7 +112,8 @@ function mapEventToDataPointInternal(
         String(event.load_base ?? ""),
         String(event.fault_code_name ?? ""),
         String(event.fault_addr ?? ""),
-        "",
+        // blob8: resolved printer board, as the session event's blob11.
+        String(app.board ?? event.app_board ?? event.board ?? ""),
         "",
         "",
         "",

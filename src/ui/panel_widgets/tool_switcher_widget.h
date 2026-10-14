@@ -7,7 +7,7 @@
 #include "ams_error.h"
 #include "async_lifetime_guard.h"
 #include "display_numbering.h"
-#include "src/ui/panel_widgets/tiled_panel_widget.h"
+#include "panel_widget.h"
 #include "src/ui/panel_widgets/tool_switcher_layout.h"
 #include "subject_managed_panel.h"
 
@@ -21,7 +21,9 @@ class PrinterState;
 class ToolSwitcherTestAccess;
 struct ToolInfo;
 
-class ToolSwitcherWidget : public TiledPanelWidget {
+/// Draws its own measured layout (decide_tool_switcher_layout()), so it takes no
+/// part in the TileSizing ladder.
+class ToolSwitcherWidget : public PanelWidget {
   public:
     /// Heads the per-head subject pools hold. Every pool is sized to this
     /// when the subjects are registered, before any XML binds a row; a printer

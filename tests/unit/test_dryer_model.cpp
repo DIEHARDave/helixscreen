@@ -89,6 +89,40 @@ std::unique_ptr<AmsBackendQidi> two_boxes_one_drying(std::time_t end_time_s) {
 
 } // namespace
 
+// Its next init resets the subject's observer list, which would orphan the node.
+TEST_CASE_METHOD(DryerModelFixture, "dryer model: a torn-down filament system is not observed",
+                 "[dryer][model]") {
+    auto& ams = AmsState::instance();
+    ams.init_subjects(false);
+    lv_subject_t* humidity = ams.get_unit_humidity_subject(0);
+    dryer_model::refresh();
+    REQUIRE(lv_ll_get_len(&humidity->subs_ll) == 1);
+
+    ams.deinit_subjects();
+    dryer_model::refresh();
+    CHECK(lv_ll_get_len(&humidity->subs_ll) == 0);
+
+    ams.init_subjects(false);
+    dryer_model::refresh();
+    CHECK(lv_ll_get_len(&humidity->subs_ll) == 1);
+}
+
+TEST_CASE_METHOD(DryerModelFixture, "dryer model: a torn-down printer state is not observed",
+                 "[dryer][model]") {
+    auto& ps = state();
+    lv_subject_t* active = ps.temperature_state().get_chamber_dryer_active_subject();
+    dryer_model::refresh();
+    REQUIRE(lv_ll_get_len(&active->subs_ll) == 1);
+
+    ps.deinit_subjects();
+    dryer_model::refresh();
+    CHECK(lv_ll_get_len(&active->subs_ll) == 0);
+
+    ps.init_subjects(true);
+    dryer_model::refresh();
+    CHECK(lv_ll_get_len(&active->subs_ll) == 1);
+}
+
 TEST_CASE_METHOD(DryerModelFixture, "dryer model: no source, no gate", "[dryer][model]") {
     CHECK_FALSE(gate());
     CHECK_FALSE(dryer_model::summary().available);
@@ -284,4 +318,49 @@ TEST_CASE_METHOD(DryerModelFixture,
     CHECK(lv_subject_get_int(rows) == 2);
 
     ams.deinit_subjects();
+}
+
+TEST_CASE_METHOD(DryerModelFixture, "dryer model: a burst of source changes queues one refresh",
+                 "[dryer][model][queue]") {
+    using Access = helix::ui::UpdateQueueTestAccess;
+    auto& queue = helix::ui::UpdateQueue::instance();
+    auto& temps = state().temperature_state();
+
+    state().capabilities_state().set_has_chamber_dryer(true);
+    const size_t one_change = Access::pending_count(queue);
+    REQUIRE(one_change > 0);
+    drain();
+
+    state().capabilities_state().set_has_chamber_dryer(false);
+    state().capabilities_state().set_bed_drying(true, true);
+    lv_subject_set_int(temps.get_bed_temp_subject(), 300);
+    CHECK(Access::pending_count(queue) == one_change);
+}
+
+TEST_CASE_METHOD(DryerModelFixture, "dryer model: attaching to the sources queues no refresh",
+                 "[dryer][model][queue]") {
+    state().capabilities_state().set_has_chamber_dryer(true);
+    drain();
+
+    dryer_model::refresh();
+
+    CHECK(helix::ui::UpdateQueueTestAccess::queue_empty(helix::ui::UpdateQueue::instance()));
+}
+
+TEST_CASE_METHOD(DryerModelFixture, "dryer model: the chamber row follows whole degrees",
+                 "[dryer][model][temps]") {
+    auto& temps = state().temperature_state();
+    state().capabilities_state().set_has_chamber_dryer(true);
+    lv_subject_set_int(temps.get_chamber_temp_subject(), 250);
+    drain();
+    REQUIRE(dryer_model::summary().sources.size() == 1);
+    CHECK(dryer_model::summary().sources[0].current_c == 25);
+
+    lv_subject_set_int(temps.get_chamber_temp_subject(), 612);
+    drain();
+    CHECK(dryer_model::summary().sources[0].current_c == 61);
+
+    // Less than a whole degree queues nothing.
+    lv_subject_set_int(temps.get_chamber_temp_subject(), 614);
+    CHECK(helix::ui::UpdateQueueTestAccess::queue_empty(helix::ui::UpdateQueue::instance()));
 }

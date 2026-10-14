@@ -53,7 +53,7 @@ class PrinterDiscovery;
  * Thread Safety:
  * Main thread only, checked, except where a method says otherwise. The
  * exceptions answer from state with its own guard: the backend registry
- * (backend_count, primary_type, any_filament_batch_in_flight; get_backend
+ * (backend_count, primary_type, primary_traits, any_filament_batch_in_flight; get_backend
  * returns a raw pointer and is main-thread only),
  * RunoutGrace (the unload grace and per-slot unload stamps), the action and
  * step-operation atomics, and the setters that marshal themselves to the main
@@ -189,6 +189,9 @@ class AmsState {
     /// address gap held for a box that is not on the bus. Past MAX_UNITS it is
     /// the always-0 placeholder.
     [[nodiscard]] static std::string unit_absent_subject_name(int unit_index);
+    /// Subject holding 1 while the unit's logo is full-color art (0: a tinted mono mark);
+    /// the always-0 placeholder for units past MAX_UNITS.
+    [[nodiscard]] static std::string unit_logo_color_subject_name(int unit_index);
 
     /// The int subject that says a present unit is disconnected (1): on the bus
     /// map but reported offline (AmsUnit::connected false). An absent unit is
@@ -205,13 +208,15 @@ class AmsState {
     /// Published for its XML as ams_unit_view_active (1 while the unit view is on screen),
     /// ams_page_count, ams_page_current (0-based), ams_page_has_prev / ams_page_has_next
     /// (1 only when a neighboring page exists), ams_page_unit_name, ams_page_unit_logo and
-    /// ams_page_has_logo (1 while the shown unit has a logo; XML hides the image on 0).
+    /// ams_page_has_logo (1 while the shown unit has a logo; XML hides the image on 0) and
+    /// ams_page_unit_logo_color (1 when that logo is full-color art, 0 for a tinted mono mark).
     /// Main thread only.
     /// @{
     /// @p current is clamped into [0, count - 1]; with no pages everything reads 0.
     void set_unit_page(int count, int current);
     /// The shown unit's display name and logo image path (null or empty: no logo).
-    void set_unit_page_header(const std::string& name, const char* logo_path);
+    void set_unit_page_header(const std::string& name, const char* logo_path,
+                              bool logo_is_color = false);
     /// Whether the overview shows its unit view instead of its unit cards.
     void set_unit_view_active(bool active);
     lv_subject_t* get_ams_unit_view_active_subject() {
@@ -234,6 +239,9 @@ class AmsState {
     }
     lv_subject_t* get_ams_page_has_logo_subject() {
         return &ams_page_has_logo_;
+    }
+    lv_subject_t* get_ams_page_unit_logo_color_subject() {
+        return &ams_page_unit_logo_color_;
     }
     /// @}
 
@@ -267,6 +275,11 @@ class AmsState {
      */
     static const char* get_logo_path(const std::string& type_name);
 
+    /// get_logo_path() with the art's drawing mode.
+    static LogoArt get_logo(const std::string& type_name);
+    /// A unit's logo: its own name first, then the system's type name.
+    static LogoArt get_unit_logo(const AmsUnit& unit, const AmsSystemInfo& info);
+
     // Non-copyable, non-movable singleton
     AmsState(const AmsState&) = delete;
     AmsState& operator=(const AmsState&) = delete;
@@ -299,6 +312,13 @@ class AmsState {
      * Disconnects all observers from subjects.
      */
     void deinit_subjects();
+
+    /// False between deinit_subjects() and the next init_subjects(): the subjects
+    /// still read as their old type, and an observer attached then is orphaned by
+    /// the next init.
+    bool are_subjects_initialized() const {
+        return initialized_;
+    }
 
     /**
      * @brief Initialize AMS backend from discovered hardware
@@ -352,6 +372,15 @@ class AmsState {
      * @return nullopt when no backend is registered
      */
     [[nodiscard]] std::optional<AmsType> primary_type() const;
+
+    /**
+     * @brief Capability traits of the primary backend, by value. Safe off the main thread.
+     *
+     * The same guarantee as primary_type(): a copy taken under the registry lock, so
+     * nothing it returns outlives clear_backends().
+     * @return nullopt when no backend is registered
+     */
+    [[nodiscard]] std::optional<BackendTraits> primary_traits() const;
 
     /**
      * @brief Add a backend to the multi-backend list
@@ -754,6 +783,11 @@ class AmsState {
     /// 1 while the system has a logo for ams_system_logo; XML hides the image on 0.
     lv_subject_t* get_ams_system_has_logo_subject() {
         return &ams_system_has_logo_;
+    }
+
+    /// 1 when the system logo is full-color art (drawn untinted), 0 for a mono mark
+    lv_subject_t* get_ams_system_logo_color_subject() {
+        return &ams_system_logo_color_;
     }
 
     /**
@@ -1284,6 +1318,15 @@ class AmsState {
         return &current_color_;
     }
 
+    /**
+     * @brief Get current fill percent subject
+     * @return Subject holding the loaded spool's fill in the
+     *         SlotInfo::display_fill_pct() encoding (0-100, -1 = no data)
+     */
+    lv_subject_t* get_current_fill_pct_subject() {
+        return &current_fill_pct_;
+    }
+
     // ========================================================================
     // Per-Slot Subject Accessors
     // ========================================================================
@@ -1686,8 +1729,9 @@ class AmsState {
      */
     void sync_current_loaded_from_backend(const AmsSystemInfo& primary_info);
 
-    /// Writes the "Current: ..." header for @p slot_index on @p backend, with
-    /// the unit name on multi-unit systems. @p info is @p backend's system info.
+    /// Writes the loaded card's position header ("Gate 1") for @p slot_index on
+    /// @p backend, prefixed with the unit name on multi-unit systems. @p info is @p backend's
+    /// system info.
     void set_current_slot_header(AmsBackend& backend, const AmsSystemInfo& info, int slot_index);
 
     /**
@@ -2257,6 +2301,7 @@ class AmsState {
     lv_subject_t ams_system_logo_{};
     char system_logo_buf_[64];
     lv_subject_t ams_system_has_logo_{};
+    lv_subject_t ams_system_logo_color_{};
     lv_subject_t ams_current_tool_text_{};
     // Holds a translated position label ("Tool 1", "Инструмент 16", "Печатающая
     // головка 16") or "---". Sized like current_slot_text_buf_/system_logo_buf_:
@@ -2365,6 +2410,7 @@ class AmsState {
     char current_weight_text_buf_[32];
     lv_subject_t current_has_weight_{};
     lv_subject_t current_color_{};
+    lv_subject_t current_fill_pct_{};
 
     // Per-slot subjects (color, status, remaining filament)
     lv_subject_t slot_colors_[MAX_SLOTS]{};
@@ -2392,6 +2438,7 @@ class AmsState {
     lv_subject_t unit_temp_[MAX_UNITS]{};         // int: tenths of C (270 = 27.0C), 0 = no data
     lv_subject_t unit_humidity_[MAX_UNITS]{};     // int: percentage, 0 = no data
     lv_subject_t unit_absent_[MAX_UNITS]{};       // int: 1 = AmsUnit::absent
+    lv_subject_t unit_logo_color_[MAX_UNITS]{};   // int: 1 = the unit's logo is full-color art
     lv_subject_t unit_disconnected_[MAX_UNITS]{}; // int: 1 = present but !connected
     // int: 1 = the unit set_viewed_unit() names is disconnected
     lv_subject_t viewed_unit_disconnected_{};
@@ -2411,6 +2458,7 @@ class AmsState {
     lv_subject_t ams_page_unit_logo_{};
     char page_unit_logo_buf_[64]{};
     lv_subject_t ams_page_has_logo_{};
+    lv_subject_t ams_page_unit_logo_color_{};
 
     /// Which units' dryers ran at the last sync, one character per unit position.
     std::string units_drying_signature_;

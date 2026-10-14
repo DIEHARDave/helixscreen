@@ -101,6 +101,11 @@ struct DirtyRect {
         add(other.x1, other.y1, other.x2, other.y2);
     }
 
+    /// True when the two share a pixel. Nothing intersects an empty box.
+    constexpr bool intersects(const DirtyRect& o) const {
+        return !empty() && !o.empty() && x1 <= o.x2 && o.x1 <= x2 && y1 <= o.y2 && o.y1 <= y2;
+    }
+
     bool operator==(const DirtyRect& o) const {
         return x1 == o.x1 && y1 == o.y1 && x2 == o.x2 && y2 == o.y2;
     }

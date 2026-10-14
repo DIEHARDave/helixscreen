@@ -19,6 +19,9 @@ translations:
   '%d min left': '剩余 %d 分钟'
   '%d mm/s': '%d mm/s'
   '%d more sensors': 还有%d个传感器
+  '%d objects': '%d 个对象'
+  '%d of %d printing': '%d / %d 正在打印'
+  '%d skipped': '已跳过 %d 个'
   '%d profiles': '%d 个配置'
   '%d slots': '%d 个槽位'
   '%d toolheads': '%d 个工具头'
@@ -112,6 +115,7 @@ translations:
 
   30 minutes: 30 分钟
   30 seconds: 30 秒
+  3D Maze: 3D 迷宫
   3D Pipes: 3D 管道
   3D View: 3D 视图
   4. Paper should move but with resistance: 4. 纸张应能移动但有阻力
@@ -441,7 +445,7 @@ translations:
   Calibrate Purge Chute: 校准排料口
   Calibrate X: 校准 X 轴
   Calibrate Y: 校准 Y 轴
-  Calibrate all tools: 校准所有工具
+  Calibrate All Tools: 校准所有工具
   Calibrate input shaping to reduce ringing artifacts in prints: 校准输入整形以减少打印中的振纹
   Calibrate tool offsets?: 校准工具偏移？
   Calibrate your touchscreen for accurate input: 校准触摸屏以确保输入准确
@@ -547,9 +551,9 @@ translations:
   Check failed: 检查失败
   Check filament: 检查耗材
   Check for Updates: 检查更新
-  Check slot: 检查槽位
+  Check Slot: 检查槽位
   Check slot failed: 检查槽位失败
-  Check slots: 检查槽位
+  Check Slots: 检查槽位
   Check slots failed: 检查槽位失败
   Check that only one filament path is active: 请确认只有一条耗材通路处于活动状态
   Check that the cutter mechanism is properly installed: 请检查切刀机构是否正确安装
@@ -808,9 +812,6 @@ translations:
   'Current name:': 当前名称：
   'Current:': 当前：
   'Current: %d°C | Target: %d°C': '当前: %d°C | 目标: %d°C'
-  'Current: %s': '当前: %s'
-  'Current: %s · %s': '当前: %s · %s'
-  'Current: Bypass': '当前: 旁通'
   Currently Loaded: 当前已装载
   Currently printing: 正在打印
   Curves differ in shape. Steering by each path's tallest peak.: "曲线形状不同。按各路径的最高峰调整。"
@@ -837,6 +838,7 @@ translations:
   DISABLED: 已禁用
   DISCOVERED PRINTERS: 已发现的打印机
   DISPLAY: 显示
+  DONE: 完成
   Damping (Kd): 阻尼 (Kd)
   Danger: 危险
   Danger Zone: 危险区域
@@ -1069,6 +1071,7 @@ translations:
   'Exception: {}': '异常: {}'
   Exclude: 排除
   Exclude Object?: '排除对象？'
+  Exclude Objects: '排除对象'
   Excluded: 已排除
   Exclusion cancelled: 排除已取消
   Execute printer macros: 执行打印机宏
@@ -1329,6 +1332,7 @@ translations:
   FlashForge Creator 5 Pro: FlashForge Creator 5 Pro
   FlashForge IFS: FlashForge IFS
   Flip: 翻转
+  Flip Clock: 翻页时钟
   Flip the spools: 翻转料盘
 
   Flow: 流量
@@ -1480,7 +1484,7 @@ translations:
   Home and sweep the cutter to re-find its position: 归零并扫过切刀以重新找到其位置
   Home failed: 归位失败
   Home printer first?: 先将打印机归位？
-  Home selector: 选择器归位
+  Home Selector: 选择器归位
   Homing AFC system...: AFC系统归位中...
   Homing Failed: '回零失败'
   Homing X...: 正在归位 X...
@@ -1522,6 +1526,7 @@ translations:
   Humidity Sensors: 湿度传感器
   Hyperlapse: 延时摄影
   Hyperlapse captures frames at fixed time intervals. Good for very long prints.: 延时拍摄以固定时间间隔捕获帧。适合超长时间打印。
+  Hyperspace: 超空间
   I understand: 我已了解
 
   ID (optional): ID（可选）
@@ -1741,7 +1746,7 @@ translations:
   Load filament: '装载耗材'
   Load filament first: 请先装载耗材
   Load or unload filament.: 装载或卸载耗材。
-  Load profile: '加载配置'
+  Load Profile: '加载配置'
   Load the required filaments or start anyway?: 加载所需耗材还是直接开始？
   'Load, unload, and swap spools. View your multi-filament system at a glance, map colors to slots, and monitor runout sensors.': 加载、卸载和更换料盘。一目了然地查看您的多耗材系统、将颜色映射到槽位，并监控耗材用尽传感器。
   Load...: 加载...
@@ -2035,6 +2040,7 @@ translations:
   No networks found: 未找到网络
   No new mesh was stored as '{}': "没有新的网格保存为 '{}'"
   No notifications: 无通知
+  No objects: '无对象'
   No objects defined for this print: 此次打印未定义对象
   No output yet: 暂无输出
   No presets configured: 未配置预设
@@ -2108,6 +2114,7 @@ translations:
   Notification: 通知
   Notifications: 通知
   Notify when print finishes: 打印完成时通知
+  Now printing: '正在打印'
   Noz max: 喷嘴最高
   Noz min: 喷嘴最低
   Noz rec: 喷嘴推荐
@@ -2141,6 +2148,7 @@ translations:
   Object picks apply only to prints started now: '对象选择仅适用于现在开始的打印'
   Object positions unavailable: 对象位置不可用
   Objects: 对象
+  Objects in the print, with a tap to open the skip map: '打印中的对象，点按打开跳过地图'
   'Off': 关
   'Off:': '关:'
   'Off: runs with these values without asking': '关: 不询问,直接以这些值运行'
@@ -2194,6 +2202,7 @@ translations:
   PA: PA
   PATH A · 1,-1: "路径 A · 1,-1"
   PATH B · 1,1: "路径 B · 1,1"
+  PAUSED: 已暂停
   PETG: PETG
   PID: PID
   PIN must be 4-6 digits: PIN 码必须为 4-6 位数字
@@ -2644,6 +2653,7 @@ translations:
   Reset failed: 重置失败
   Reset motor run-time counter: '重置电机运行时间计数器'
   Reset tags: 重置标记
+  Reset Tags: 重置标记
   Reset to Default: 重置为默认
   Reset to defaults: 重置为默认值
   Reset to original values: 重置为原始值
@@ -2705,6 +2715,7 @@ translations:
   Retraction distance to clear extruder gears: '退出挤出机齿轮所需的回抽距离'
   Retry: 重试
   Reverse Multiplier: '反向倍率'
+  Review: 查看
   Review detected hardware validation issues: 查看检测到的硬件验证问题
   Review your configuration below, then click Finish to save: 请检查以下配置，然后点击完成以保存
   Rewinding: 回卷中
@@ -2772,7 +2783,7 @@ translations:
   Save Z-Offset?: 保存 Z 偏移？
   Save changes to persist them across restarts?: 保存更改以便在重启后保留？
   'Save failed: {}': '保存失败: {}'
-  Save offsets: 保存偏移
+  Save Offsets: 保存偏移
   Save offsets?: 保存偏移？
   Save to Spoolman: 保存到 Spoolman
   Saved Z-Offset: 已保存 Z 偏移
@@ -2794,6 +2805,7 @@ translations:
   Scan Spool QR Code: 扫描料盘 QR 码
   Scan and select a Bluetooth printer first: 请先扫描并选择蓝牙打印机
   Scan for Printers: 扫描打印机
+  Scan the spool label with your barcode scanner: '请用条码扫描器扫描料盘标签'
   Scan with your phone to save these values: 用手机扫描以保存这些数值
   Scanner: 扫描器
   ? Scanner bonded but didn't attach as a keyboard. Try turning the scanner off and
@@ -2854,7 +2866,7 @@ translations:
   Select macro for third button: 为第三个按钮选择宏
   Select material to begin: 选择材料以开始
   Select sensor: 选择传感器
-  Select slot: 选择槽位
+  Select Slot: 选择槽位
   Select slot failed: 选择槽位失败
   Select the heaters Klipper uses for your bed and hotend: 选择 Klipper 用于热床和热端的加热器
   Select which devices the home screen power button controls: 选择主页电源按钮控制的设备
@@ -2942,9 +2954,11 @@ translations:
   Signal: 信号
   'Signal #': '信号 #'
   Similarity: "相似度"
+  Single object: '单个对象'
   Single toggle macro. State is not tracked.: 单个切换宏。不跟踪状态。
   Size: 大小
   Skip: 跳过
+  Skip Objects...: '跳过对象...'
   Skipped: '已跳过'
   Sleep While Printing: 打印时休眠
   Sleep adjusted to match dim timeout: 休眠超时已调整
@@ -3041,7 +3055,7 @@ translations:
   Start Probing: 开始探测
   Start anyway?: '仍要开始吗？'
   Start at: 从第
-  Start check: 开始检查
+  Start Check: 开始检查
   Start drying: 开始烘干
 
   Start failed: 启动失败
@@ -3125,7 +3139,6 @@ translations:
   TOOLS: 工具
   TPU: TPU
   Tag Parts: 标记部件
-  Tag parts: 标记部件
   Takes 3-5 min. Do not interrupt.: 需要 3-5 分钟。请勿中断。
   Tangle prevention active: 防打结已启用
   Tangle prevention boosted: 防打结已增强
@@ -3180,7 +3193,7 @@ translations:
   Test RS-485 link to CFS units: '测试与 CFS 单元的 RS-485 链路'
   Test Screensaver: 测试屏保
   Test Tracker: 测试追踪器
-  Test both: 测试两者
+  Test Both: 测试两者
   Test label printed: 测试标签已打印
   'Testing rotation: %d° (%d/%d) - %ds remaining': '测试旋转: %d° (%d/%d)
     - 剩余%ds'
@@ -3305,6 +3318,7 @@ translations:
   'This is an emergency stop: the printer halts and Klipper restarts.': 这是紧急停止：打印机将停机并重启 Klipper。
   This is exactly the data that will be sent: 这正是将要发送的数据
   This is what data would be sent if enabled: 这是启用后将发送的数据
+  This looks like a {}, but it is set up as a {}: 这台打印机看起来是 {}，但被设置为 {}
   This may take up to 30 seconds: 这可能需要 30 秒
   This plugin asks for no special permissions.: '此插件不请求任何特殊权限。'
   This plugin lets HelixScreen control print start options like bed mesh and QGL.: '此插件让 HelixScreen 控制打印启动选项，如热床网格和 QGL。'
@@ -3424,7 +3438,7 @@ translations:
   Trigger: 触发器
   'Troubleshooting:': 故障排除：
   Try adjusting your search or filters: 尝试调整搜索或筛选条件
-  Try again: '重试'
+  Try Again: '重试'
   Try the operation again. If it persists, check for mechanical issues.: 请重试该操作。如果问题持续存在，请检查是否有机械故障。
   Tune: 调优
   Tune belts: "调整皮带"
@@ -3534,7 +3548,7 @@ translations:
   Use Unload before Eject: '请先使用“卸载”，再使用“弹出”'
   Use first HID scanner found: '使用找到的第一个 HID 扫描器'
   Use printer type to select image: 使用打印机类型选择图片
-  Use scan: 使用扫描
+  Use Scan: 使用扫描
   User intervention required: '需要手动干预'
   VM Peak: 虚拟内存峰值
   VM Size: 虚拟内存大小
@@ -3721,6 +3735,7 @@ translations:
   direct drive: 直驱
   disable: 禁用
   disabled: 已禁用
+  done at {} · {}%: "{} 完成 · {}%"
   drying: 烘干中
   e.g. Jet Black: 例如 炭黑
   e.g. NAME=my_var VALUE=123: 例如 NAME=my_var VALUE=123
@@ -3794,9 +3809,11 @@ translations:
   tall: 高
   target {}%: '目标 {}%'
   target {}°: '目标 {}°'
+  too slow: 太慢
   tool(s): 工具
   used: 已使用
   v%s available: v%s 可用
+  v%s has no build for the %s, so it can't be installed here. Pick a channel with a newer release.: v%s 没有适用于 %s 的版本，因此无法在此安装。请选择有更新版本的更新通道。
   v{} installed! Restarting...: 已安装 v{}！正在重启...
   v{} is available. Tap to update.: v{} 可用。点击以更新。
   what you turned: "你转动的量"

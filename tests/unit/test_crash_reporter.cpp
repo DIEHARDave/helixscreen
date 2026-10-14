@@ -13,6 +13,7 @@
 #include "system/crash_history.h"
 #include "system/crash_reporter.h"
 #include "system/diagnostics.h"
+#include "test_helpers/scoped_board.h"
 
 #include <chrono>
 #include <filesystem>
@@ -235,6 +236,17 @@ TEST_CASE_METHOD(CrashReporterTestFixture,
     CHECK(j.contains("config_dir"));
     CHECK(j.contains("cache_dir"));
     CHECK(j.contains("cache_tier"));
+}
+
+TEST_CASE_METHOD(CrashReporterTestFixture, "CrashReporter: crash reports carry the board",
+                 "[crash_reporter]") {
+    helix::test::ScopedBoard board(helix::board::Board::Creator5Pro);
+    write_crash_file();
+    auto report = cr.collect_report();
+
+    CHECK(report.board == "creator5-pro");
+    CHECK(cr.report_to_json(report)["board"] == "creator5-pro");
+    CHECK(cr.report_to_text(report).find(report.platform + " / creator5-pro") != std::string::npos);
 }
 
 // ============================================================================

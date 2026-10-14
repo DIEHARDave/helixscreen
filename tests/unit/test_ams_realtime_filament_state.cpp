@@ -602,6 +602,44 @@ TEST_CASE_METHOD(LVGLTestFixture, "AMS op-card color matches the loaded slot's c
     ams.deinit_subjects();
 }
 
+TEST_CASE_METHOD(LVGLTestFixture, "AMS loaded-card fill follows the loaded slot's weight",
+                 "[ams][realtime][opcard]") {
+    auto& ams = AmsState::instance();
+    ams.init_subjects(false);
+
+    auto mock = std::make_unique<AmsBackendMock>();
+    auto* mock_ptr = mock.get();
+    mock_ptr->set_operation_delay(10);
+    ams.set_backend(std::move(mock));
+    mock_ptr->start();
+
+    auto weigh = [&](int slot_index, float remaining, float total) {
+        auto slot = mock_ptr->get_slot_info(slot_index);
+        slot.remaining_weight_g = remaining;
+        slot.total_weight_g = total;
+        helix::test::apply_edit(*mock_ptr, slot_index, slot);
+    };
+    weigh(0, 900.0f, 1000.0f);
+    weigh(1, 250.0f, 1000.0f);
+
+    mock_ptr->load_filament(1);
+    mock_ptr->wait_for_operation_thread();
+    REQUIRE(mock_ptr->get_current_slot() == 1);
+    ams.sync_from_backend();
+    drain();
+    // Slot 1's quarter, not slot 0's nine tenths.
+    CHECK(lv_subject_get_int(ams.get_current_fill_pct_subject()) == 25);
+
+    weigh(1, 500.0f, 1000.0f);
+    ams.sync_from_backend();
+    drain();
+    CHECK(lv_subject_get_int(ams.get_current_fill_pct_subject()) == 50);
+
+    mock_ptr->stop();
+    ams.clear_backends();
+    ams.deinit_subjects();
+}
+
 // ============================================================================
 // Part 3b — filament_loaded cleared on unload (active-lane subject clears)
 // ============================================================================

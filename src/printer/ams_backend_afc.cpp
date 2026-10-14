@@ -359,6 +359,16 @@ void AmsBackendAfc::on_started() {
     load_afc_configs();
 }
 
+nlohmann::json AmsBackendAfc::required_status_objects(const helix::PrinterDiscovery& hw) {
+    std::vector<std::string> afc_objects;
+    for (const auto& name : hw.printer_objects()) {
+        if (name == "AFC" || name.rfind("AFC_", 0) == 0) {
+            afc_objects.push_back(name);
+        }
+    }
+    return required_status_objects(afc_objects);
+}
+
 nlohmann::json AmsBackendAfc::required_status_objects(const std::vector<std::string>& afc_objects) {
     using nlohmann::json;
     static const json state_fields = json::array({"connected",

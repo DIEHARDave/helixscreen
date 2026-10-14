@@ -80,7 +80,8 @@ const std::vector<std::pair<std::string, Owner>>& owners() {
                              [] { perf::PerformanceState::instance().deinit_subjects(); }});
         const Owner printer{[] { get_printer_state().init_subjects(true); },
                             [] { get_printer_state().deinit_subjects(); }};
-        for (const char* n : {"power_device_count", "printer_has_chamber", "printer_has_bed_mesh"})
+        for (const char* n : {"power_device_count", "printer_has_chamber",
+                              "printer_has_exclude_object", "printer_has_bed_mesh"})
             t.emplace_back(n, printer);
         return t;
     }();

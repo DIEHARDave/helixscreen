@@ -4,6 +4,7 @@
 #if HELIX_HAS_PLUGINS
 
 #include "ui_panel_home.h"
+#include "ui_temp_display.h"
 #include "ui_update_queue.h"
 
 #include "../lvgl_test_fixture.h"
@@ -421,6 +422,9 @@ namespace {} // namespace
 TEST_CASE_METHOD(LVGLTestFixture,
                  "an enabled reload rebuilds a placed home tile onto the new runtime",
                  "[plugin][host]") {
+    // The rebuilt home page builds its default temperature tile, whose
+    // temp_display component wraps this C++ widget.
+    ui_temp_display_init();
     HostRig rig(enabled("widget-demo", {}));
     rig.host->load_from("tests/fixtures/plugins");
     REQUIRE(rig.info("widget-demo")->status == PluginStatus::Loaded);

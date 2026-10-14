@@ -556,6 +556,29 @@ TEST_CASE_METHOD(ApplicationTestFixture,
     }
 }
 
+// DisplayManager never deletes its keyboard group, so the fixture reset has to:
+// left as LVGL's default, it takes in and focuses the first widget a later test makes.
+TEST_CASE_METHOD(ApplicationTestFixture,
+                 "A keyboard group a test leaves behind is gone after the fixture reset",
+                 "[application][display][indev]") {
+    {
+        DisplayManager mgr;
+        DisplayManagerTestAccess::set_backend(mgr, std::make_unique<MockPointerBackend>());
+        DisplayManagerTestAccess::create_input_devices(mgr);
+        REQUIRE(mgr.keyboard_input() != nullptr);
+        lv_indev_delete(mgr.pointer_input());
+        lv_indev_delete(mgr.keyboard_input());
+    }
+    REQUIRE(lv_group_get_default() != nullptr);
+
+    HelixTestFixture::reset_all();
+
+    CHECK(lv_group_get_default() == nullptr);
+    lv_obj_t* button = lv_button_create(lv_screen_active());
+    CHECK_FALSE(lv_obj_has_state(button, LV_STATE_FOCUSED));
+    lv_obj_delete(button);
+}
+
 TEST_CASE_METHOD(ApplicationTestFixture,
                  "DisplayManager clears its own pointer when LVGL deletes the device",
                  "[application][display][indev]") {

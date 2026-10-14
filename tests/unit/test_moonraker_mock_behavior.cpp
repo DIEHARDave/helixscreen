@@ -63,6 +63,7 @@
 #include "../../include/printer_hardware.h"
 #include "../../include/printer_state.h"
 #include "../../include/runtime_config.h"
+#include "../../include/ui_update_queue.h"
 #include "../helix_test_fixture.h"
 #include "../test_helpers/scoped_runtime_config.h"
 #include "moonraker_api.h"
@@ -2495,6 +2496,8 @@ TEST_CASE("MoonrakerClientMock M112 reports Klipper's shutdown reason until a re
 
     mock.stop_temperature_simulation();
     mock.disconnect();
+    // M112 also reports the shutdown to the global PrinterState from the UI thread.
+    helix::ui::UpdateQueue::instance().drain();
 }
 
 // ============================================================================

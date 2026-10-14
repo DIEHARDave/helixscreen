@@ -168,6 +168,7 @@
 
 #include "active_print_media_manager.h"
 #include "android_asset_extractor.h"
+#include "board_identity.h"
 #include "data_root_resolver.h"
 #include "display_settings_manager.h"
 #include "helix_sparkline.h"
@@ -680,7 +681,9 @@ int Application::run(int argc, char** argv) {
     // Backend detection (PWM, ALSA, SDL) is checked by PrinterCapabilitiesState
     // to show sound settings even without a Klipper beeper output_pin.
     SoundManager::instance().initialize();
-    SoundManager::instance().play("startup", SoundPriority::EVENT);
+    if (SoundManager::plays_startup_sound(get_runtime_config()->is_test_mode())) {
+        SoundManager::instance().play("startup", SoundPriority::EVENT);
+    }
 
     // Backend is now picked: seed the backend subjects so the Sound overlay's
     // device-row and Test Tracker bindings resolve correctly. Subjects init
@@ -1398,8 +1401,8 @@ bool Application::init_display() {
     // scale is flat (exactly 1.0) through 225 DPI, which covers every shipping
     // printer measured, so this is an identity everywhere except phone-class
     // panels.
-    const helix::ResolvedDpi resolved = helix::DisplayMetrics::resolve_dpi(
-        m_args.dpi, measured_dpi, helix::platform::current_key());
+    const helix::ResolvedDpi resolved =
+        helix::DisplayMetrics::resolve_dpi(m_args.dpi, measured_dpi, helix::board::current());
     const double auto_scale = helix::DisplayMetrics::ui_scale_for_dpi(resolved.dpi);
     helix::DisplayMetrics::set_auto_scale(auto_scale);
 

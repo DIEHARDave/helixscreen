@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #pragma once
 
+#include "board_identity.h"
+#include "platform_table.h"
 #include "system/diagnostics.h"
 #include "system/host_census.h"
 #include "touch_calibration.h"
@@ -145,6 +147,15 @@ class DebugBundleCollector {
     /// Pure assembly from a snapshot — touches no LVGL and no PrinterState, so
     /// it is safe on the collect worker and testable without either.
     static nlohmann::json collect_printer_info(const PrinterSnapshot& snap);
+
+    /**
+     * @brief The hardware name a bundle reports for @p platform on @p board.
+     *
+     * The unified "mips" row names a board family, so the board's own display name
+     * stands in for it; every other row names its hardware itself. Empty for a
+     * generic host (Pi, x86), which has no printer hardware of its own.
+     */
+    static std::string platform_model_for(const platform::Info* platform, board::Board board);
     /// `num_lines <= 0` (the default) ships the whole ring — see
     /// resolve_log_tail_lines().
     static std::string collect_log_tail(int num_lines = 0);

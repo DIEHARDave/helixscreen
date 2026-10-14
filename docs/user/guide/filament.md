@@ -614,6 +614,8 @@ Many filament materials absorb moisture from the air over time. Wet filament pri
 
 HelixScreen groups all of this into **boxes**. A box is one enclosure it can measure, heat, or both. What counts as a box depends on your hardware: a box can be a whole unit, a group of slots inside a unit, or a single lane with its own heater and sensor.
 
+The home screen can show every drying cycle at a glance with the [Filament Dryer widget](home-panel.md#filament-dryer-widget).
+
 > **A box is not a unit.** The slot range printed under the box name is the only thing that tells you which lanes that box covers. Read it before you start a dry.
 
 ### Supported Systems

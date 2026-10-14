@@ -17,6 +17,7 @@
 #include "app_globals.h"
 #include "async_lifetime_guard.h"
 #include "audio_settings_manager.h"
+#include "board_identity.h"
 #include "config.h"
 #include "display_settings_manager.h"
 #include "fault_surface_correlation.h"
@@ -326,6 +327,9 @@ void HelixTestFixture::reset_printer_state() {
 }
 
 void HelixTestFixture::reset_all() {
+    // A board override a test set must not leak into the next case in the shard.
+    helix::board::set_current_override(std::nullopt);
+
     // LVGL + UpdateQueue must be up before we touch any subject-backed state.
     // lv_init_safe() is idempotent and also re-arms the UpdateQueue if a prior
     // fixture's destructor shut it down. Safe to call from non-LVGL tests.
@@ -338,6 +342,14 @@ void HelixTestFixture::reset_all() {
     // to be re-asserted from a place every test passes through rather than at
     // any one creation site.
     ensure_displays_never_block_on_flush();
+
+    // DisplayManager makes its keyboard group LVGL's default and never deletes it,
+    // so one built by a test outlives that test. Every object created after it
+    // joins the group and its first member takes focus.
+    if (lv_group_t* group = lv_group_get_default()) {
+        // A deleted member leaves its group, so none dangle.
+        lv_group_delete(group);
+    }
 
     // BEFORE the drain, not after: EmergencyStopOverlay is a process-wide
     // singleton holding raw init() pointers to a PrinterState that in tests is a

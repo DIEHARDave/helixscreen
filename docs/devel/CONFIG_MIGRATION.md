@@ -35,7 +35,7 @@ Every config file has an integer `config_version` at the root level:
 The current version is defined in `config.h`:
 
 ```cpp
-static constexpr int CURRENT_CONFIG_VERSION = 26;
+static constexpr int CURRENT_CONFIG_VERSION = 28;
 static constexpr int MIN_MIGRATABLE_CONFIG_VERSION = 9;
 ```
 
@@ -73,9 +73,19 @@ The current head of the ladder:
   `true` -> Alert, `false` -> Off; an explicit stored int is a real user choice
   and is left untouched.
 
-All three have dedicated tests: `tests/unit/test_config_migration_v24.cpp`,
-`tests/unit/test_config_migration_v25.cpp`, and
-`tests/unit/test_config_migration_v26.cpp`.
+- **v27 -> v28** rewrites an integer `/display/screensaver_type` as the stable saver
+  name it stood for (`7` -> `"maze"`), through the frozen
+  `LEGACY_SCREENSAVER_TYPE_NAMES` table in `include/screensaver_registry.h`, so
+  reordering, adding or compiling out a saver never changes a stored choice. An
+  out-of-range number becomes the default saver's name; a string is left as it is.
+  The reader (`include/screensaver_setting.h#screensaver_from_setting`) stays
+  lenient on its own, so a hand edit or an old backup restored at the current
+  version still reads correctly.
+
+Each has a dedicated test: `tests/unit/test_config_migration_v24.cpp`,
+`tests/unit/test_config_migration_v25.cpp`,
+`tests/unit/test_config_migration_v26.cpp` and
+`tests/unit/test_config_migration_v28.cpp`.
 
 ### Fresh Install vs. Upgrade
 
@@ -134,7 +144,7 @@ v17->v18 skips a version-0 document whose active printer has not completed the s
 In `include/config.h`:
 
 ```cpp
-static constexpr int CURRENT_CONFIG_VERSION = 27;  // was 26
+static constexpr int CURRENT_CONFIG_VERSION = 29;  // was 28
 ```
 
 ### Step 2: Write the migration function
@@ -142,8 +152,8 @@ static constexpr int CURRENT_CONFIG_VERSION = 27;  // was 26
 In `src/system/config_migrations.cpp`, add a static function in the anonymous namespace alongside the existing migrations:
 
 ```cpp
-/// Migration v26->v27: <description of what and why>
-static void migrate_v26_to_v27(json& config, const std::string& /*config_path*/) {
+/// Migration v28->v29: <description of what and why>
+static void migrate_v28_to_v29(json& config, const std::string& /*config_path*/) {
     // Modify config in place; spdlog::info() what changed.
 }
 ```
@@ -153,8 +163,8 @@ static void migrate_v26_to_v27(json& config, const std::string& /*config_path*/)
 ### Step 3: Add a row to `kMigrations`
 
 ```cpp
-    {26, migrate_v25_to_v26},
-    {27, migrate_v26_to_v27},  // <-- ADD THIS
+    {28, migrate_v27_to_v28},
+    {29, migrate_v28_to_v29},  // <-- ADD THIS
 ```
 
 A `static_assert` fails the build if the last row does not reach `CURRENT_CONFIG_VERSION`.

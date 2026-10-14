@@ -478,6 +478,7 @@ TEST_CASE("CFS auto-refill device action sends an explicit ENABLE", "[ams][cfs]"
         auto err = backend.execute_device_action("toggle_auto_refill");
         REQUIRE(err.result == AmsResult::SUCCESS);
         REQUIRE(backend.captured == std::vector<std::string>{"BOX_ENABLE_AUTO_REFILL ENABLE=1"});
+        drain_calib_queue();
     }
 
     SECTION("auto-refill currently on → ENABLE=0") {
@@ -492,6 +493,7 @@ TEST_CASE("CFS auto-refill device action sends an explicit ENABLE", "[ams][cfs]"
         auto err = backend.execute_device_action("toggle_auto_refill");
         REQUIRE(err.result == AmsResult::SUCCESS);
         REQUIRE(backend.captured == std::vector<std::string>{"BOX_ENABLE_AUTO_REFILL ENABLE=0"});
+        drain_calib_queue();
     }
 }
 
@@ -4718,6 +4720,9 @@ TEST_CASE("CFS runout: 'no identical supplies' raises one runout fault", "[ams][
 
     auto ev = backend.classify_error("// no identical supplies", paused_ctx());
     REQUIRE(ev.has_value());
+    // The runout fault the hook raises is what the trait claims.
+    CHECK(backend.traits().raises_runout_fault);
+    CHECK(backend.traits().raises_runout_fault_during_job);
     CHECK(ev->source == helix::ErrorSource::CFS);
     CHECK(ev->severity == helix::ErrorSeverity::CRITICAL);
     CHECK(ev->sticky);
@@ -5653,6 +5658,7 @@ TEST_CASE("CFS auto-refill toggle sends the switch's value", "[ams][cfs][endless
         backend.captured.clear();
         REQUIRE(backend.execute_device_action("toggle_auto_refill", std::any(true)).success());
         CHECK(backend.captured == std::vector<std::string>{"BOX_ENABLE_AUTO_REFILL ENABLE=1"});
+        drain_calib_queue();
     }
 
     SECTION("switch off while the box reports off sends ENABLE=0") {
@@ -5662,6 +5668,7 @@ TEST_CASE("CFS auto-refill toggle sends the switch's value", "[ams][cfs][endless
         backend.captured.clear();
         REQUIRE(backend.execute_device_action("toggle_auto_refill", std::any(false)).success());
         CHECK(backend.captured == std::vector<std::string>{"BOX_ENABLE_AUTO_REFILL ENABLE=0"});
+        drain_calib_queue();
     }
 }
 

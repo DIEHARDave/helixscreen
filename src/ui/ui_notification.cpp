@@ -356,16 +356,17 @@ void ui_notification_info(const char* title, const char* message) {
     show_notification(title, message, ToastSeverity::INFO, 4000);
 }
 
-void ui_notification_info_with_action(const char* title, const char* message, const char* action) {
+static void add_history_action_entry(ToastSeverity severity, const char* title, const char* message,
+                                     const char* action) {
     if (!message || !action) {
-        spdlog::warn("[Notification] info_with_action called with null message or action");
+        spdlog::warn("[Notification] with_action called with null message or action");
         return;
     }
 
     // Build entry directly — no toast, history only
     NotificationHistoryEntry entry = {};
     entry.timestamp_ms = lv_tick_get();
-    entry.severity = ToastSeverity::INFO;
+    entry.severity = severity;
     entry.was_modal = false;
     entry.was_read = false;
 
@@ -395,6 +396,16 @@ void ui_notification_info_with_action(const char* title, const char* message, co
     }
 
     spdlog::info("[Notification] History-only notification: '{}' action='{}'", message, action);
+}
+
+void ui_notification_info_with_action(const char* title, const char* message, const char* action) {
+    add_history_action_entry(ToastSeverity::INFO, title, message, action);
+}
+
+// NAMESPACE_OK: matches ui_notification_info_with_action, this file's existing global-scope API
+void ui_notification_warning_with_action(const char* title, const char* message,
+                                         const char* action) {
+    add_history_action_entry(ToastSeverity::WARNING, title, message, action);
 }
 
 void ui_notification_success(const char* title, const char* message) {

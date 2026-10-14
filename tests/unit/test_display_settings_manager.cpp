@@ -11,6 +11,8 @@
 #include "settings_manager.h"
 
 #include <cstdlib>
+#include <optional>
+#include <string>
 
 #include "../catch_amalgamated.hpp"
 
@@ -419,8 +421,9 @@ TEST_CASE_METHOD(LVGLTestFixture, "screensaver type defaults to the registry def
                  "[display_settings][screensaver]") {
     Config* config = Config::get_instance();
     config->set<int>("/display/sleep_sec", 1200); // makes sure the /display group exists
-    const bool had_type = config->exists("/display/screensaver_type");
-    const int stored_type = config->get<int>("/display/screensaver_type", 0);
+    const nlohmann::json* type_node = config->try_get_json("/display/screensaver_type");
+    const std::optional<nlohmann::json> stored_type =
+        type_node ? std::optional<nlohmann::json>(*type_node) : std::nullopt;
     const bool had_legacy = config->exists("/display/screensaver_enabled");
     const bool stored_legacy = config->get<bool>("/display/screensaver_enabled", true);
 
@@ -440,8 +443,9 @@ TEST_CASE_METHOD(LVGLTestFixture, "screensaver type defaults to the registry def
         config->set<bool>("/display/screensaver_enabled", true);
         mgr.init_subjects();
         REQUIRE(mgr.get_screensaver_type() == registry_default);
-        // The migration persists its answer, so the legacy key is read once.
-        REQUIRE(config->exists("/display/screensaver_type"));
+        // The migration persists its answer, by name, so the legacy key is read once.
+        REQUIRE(config->get<std::string>("/display/screensaver_type", "") ==
+                helix::ui::screensaver_name(helix::ui::DEFAULT_SCREENSAVER_TYPE));
     }
 
     SECTION("legacy screensaver_enabled=false migrates to Off") {
@@ -450,18 +454,41 @@ TEST_CASE_METHOD(LVGLTestFixture, "screensaver type defaults to the registry def
         REQUIRE(mgr.get_screensaver_type() == 0);
     }
 
-    SECTION("a stored type at the registry's top end survives re-init") {
-        const int fireworks = static_cast<int>(ScreensaverType::FIREWORKS);
-        config->set<int>("/display/screensaver_type", fireworks);
+    SECTION("a stored name selects its saver, in any case") {
+        config->set<std::string>("/display/screensaver_type", "Fireworks");
         mgr.init_subjects();
-        REQUIRE(mgr.get_screensaver_type() == fireworks);
+        REQUIRE(mgr.get_screensaver_type() == static_cast<int>(ScreensaverType::FIREWORKS));
+    }
+
+    SECTION("a legacy type number still selects the saver it stood for") {
+        config->set<int>("/display/screensaver_type", 7);
+        mgr.init_subjects();
+        REQUIRE(mgr.get_screensaver_type() == static_cast<int>(ScreensaverType::MAZE_3D));
+    }
+
+    SECTION("an unknown name or an out-of-range number reads as the registry default") {
+        config->set<std::string>("/display/screensaver_type", "lava lamp");
+        mgr.init_subjects();
+        CHECK(mgr.get_screensaver_type() == registry_default);
+        mgr.deinit_subjects();
+        config->set<int>("/display/screensaver_type", 42);
+        mgr.init_subjects();
+        CHECK(mgr.get_screensaver_type() == registry_default);
+    }
+
+    SECTION("a choice persists as its stable name") {
+        mgr.init_subjects();
+        mgr.set_screensaver_type(static_cast<int>(ScreensaverType::HYPERSPACE));
+        CHECK(config->get<std::string>("/display/screensaver_type", "") == "hyperspace");
+        mgr.set_screensaver_type(static_cast<int>(ScreensaverType::OFF));
+        CHECK(config->get<std::string>("/display/screensaver_type", "") == "off");
     }
 
     // Restore both keys and re-derive the live subject from them. A later test may
     // call init_subjects() without deinit_subjects() first, and that init is a no-op
     // while subjects are already up, so the subject must hold the restored value.
-    if (had_type) {
-        config->set<int>("/display/screensaver_type", stored_type);
+    if (stored_type) {
+        config->set<nlohmann::json>("/display/screensaver_type", *stored_type);
     } else {
         config->get_json("/display").erase("screensaver_type");
     }

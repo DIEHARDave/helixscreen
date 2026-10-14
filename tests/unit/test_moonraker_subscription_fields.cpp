@@ -36,7 +36,6 @@ struct DiscoveryFixture {
     std::vector<std::string> fans;
     std::vector<std::string> leds;
     std::vector<std::string> load_cells;
-    std::vector<std::string> afc_objects;
     std::vector<std::string> filament_sensors;
     std::vector<std::string> mcus;
     json all_objects = json::array();
@@ -53,8 +52,6 @@ struct DiscoveryFixture {
                 fans.push_back(name);
             else if (c == "led")
                 leds.push_back(name);
-            else if (c == "afc")
-                afc_objects.push_back(name);
             else if (c == "load_cell")
                 load_cells.push_back(name);
             else if (c == "filament_sensor")
@@ -73,7 +70,7 @@ struct DiscoveryFixture {
     /// For a snapshot a test finished itself, e.g. one with a status claim settled.
     json build(const PrinterDiscovery& hw) const {
         return MoonrakerDiscoverySequence::build_subscription_objects(
-            hw, heaters, sensors, load_cells, fans, leds, afc_objects, filament_sensors, mcus);
+            hw, heaters, sensors, load_cells, fans, leds, filament_sensors, mcus);
     }
 };
 
@@ -375,7 +372,6 @@ TEST_CASE("Subscription: AFC field lists are exactly the parsers' inputs",
           "[moonraker][subscription][afc]") {
     DiscoveryFixture fx;
     fx.add("AFC", {"afc"});
-    fx.add("afc", {"afc"});
     fx.add("AFC_stepper lane1", {"afc"});
     fx.add("AFC_lane lane2", {"afc"});
     fx.add("AFC_hub turtle1", {"afc"});
@@ -418,7 +414,6 @@ TEST_CASE("Subscription: AFC field lists are exactly the parsers' inputs",
                      "td1_color",       "td1_scan_time", "td1_td",      "tool_loaded",   "weight"});
 
     CHECK(subs["AFC"] == state);
-    CHECK(subs["afc"] == state);
     CHECK(subs["AFC_stepper lane1"] == stepper);
     CHECK(subs["AFC_lane lane2"] == stepper);
     CHECK(subs["AFC_hub turtle1"] == json::array({"state", "afc_bowden_length"}));
@@ -580,10 +575,11 @@ TEST_CASE("Subscription: toolchanger + per-tool fields cover ToolState reads",
     fx.add("tool T1", {});
     json subs = fx.build();
 
-    SECTION("toolchanger reads status, tool_number, tool_numbers") {
+    SECTION("toolchanger reads status, tool_number, tool_numbers, tool_names") {
         REQUIRE(has_field(subs, "toolchanger", "status"));
         REQUIRE(has_field(subs, "toolchanger", "tool_number"));
         REQUIRE(has_field(subs, "toolchanger", "tool_numbers"));
+        REQUIRE(has_field(subs, "toolchanger", "tool_names"));
     }
 
     SECTION("per-tool reads active/mounted/detect_state/offsets/extruder/fan") {

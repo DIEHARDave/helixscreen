@@ -173,6 +173,34 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
   following the percent or mm/s choice the print screen uses. At its largest size it gains
   - and + buttons in 5% steps while printing, and a long press on a value puts it back to
   100%. Tap anywhere else on the tile to open Tune.
+- **A Z-Offset widget** - the live Z-offset on the home screen. It shows how far you have moved
+  since the last save and turns the warning color while there is something to save. At 2x1 it
+  gains a Save button, and at 2x2 up and down baby-step buttons with the same remembered step
+  size as Tune. Tap anywhere else to open Tune. Printers whose firmware keeps the offset itself
+  never show Save.
+- **A Filament Dryer widget** - every way your printer can dry filament in one tile: heated
+  filament boxes, a chamber heater's drying cycle, and drying on the heated bed. Idle it shows
+  the humidity, while drying the time left inside a progress ring, and on a 2x2 tile one row
+  per dryer. A tap opens that dryer's own screen. It never starts or stops a cycle.
+- **A Host Health widget** - CPU load and temperature, memory and the busiest controller board,
+  with a trace of recent load. It turns amber or red at 70% and 90% load, at 70 and 80 C, on CPU
+  throttling, on rising MCU retransmits and on under 500 MB free for G-code files. A tap opens
+  Settings > System > Performance. Only offered once Moonraker reports performance data.
+- **A Toolhead widget** - X, Y and Z, shown as `--` until each axis is homed, with a plate view
+  and a crosshair for the nozzle from 1.5x1 up. During a print the small sizes show the Z height
+  instead. At 2x2 a Home All button appears while an axis is not homed, and during a print the
+  active tool and live speed take its place. A tap opens Motion.
+- **A Bed Mesh widget** - the active mesh as a heatmap, with a flatness reading tinted green
+  below 0.15 mm, amber below 0.30 mm and red above. Wider tiles add the profile name, lowest and
+  highest point and grid size, then a color scale and the profile count, and a 3x3 tile draws the
+  mesh in 3D on screens that can. With no mesh loaded and nothing printing, a 2x2 tile offers
+  Calibrate and Load profile. Only offered on printers with bed mesh support.
+- **An Exclude Objects widget** - during a multi-object print, how many objects are still
+  printing and how many are skipped, with a small map from 0.5x1 up: the object printing now
+  in the accent color, skipped ones faded and hatched, over the bed's 50 mm grid. Wider tiles
+  name the current object, and a 2x2 tile adds Skip objects. A tap opens the full objects map
+  in Print Status, so skipping keeps its confirmation and undo. Only offered on printers with
+  `[exclude_object]`.
 - **Scheduled pauses are marked on the progress indicator (#1509)** - filament changes (`M600`),
   explicit `PAUSE`/`M601`, and slicer pause-at-layer stops each draw a tick where they sit in
   the print, on both the home print-status card's bar and arc and the print panel's bar. The
@@ -529,11 +557,27 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
 - **Bouncing Logo screensaver** - the HelixScreen logo bouncing around a black screen in its
   own colors, for anyone whose printer image is not much to look at. Select it under Settings >
   Display > Screensaver.
+- **Flip Clock screensaver** - big light digits on dark split-flap cards, the time of day in
+  your 12- or 24-hour format. While a print runs the cards count down the time left, with
+  "done at 9:42 PM · 63%" underneath; a pause freezes the count and a finished print shows
+  DONE for a minute. Every digit has its own card, and only the digits that change fold
+  their top half down; slower boards swap the digits instead. Select it under Settings > Display > Screensaver.
 - **Fireworks screensaver** - shells rise from behind a line of hills under a starry night
   sky, trail sparks, and burst as peonies, chrysanthemums, willows or rings, each spark
   fading from white through its shell's colour to an ember. It adjusts how many sparks and
   bursts it draws to what the board can afford. Select it under Settings > Display >
   Screensaver.
+- **3D Maze screensaver** - the old Windows walk through a brick maze, with wood floors and
+  a tiled ceiling. Spinning HelixScreen logos float in the halls, gray rocks flip the view
+  upside down, a tiny toolhead scurries past, and your printer hangs framed on the walls.
+  Select it under Settings > Display > Screensaver.
+- **Hyperspace screensaver** - a flight through glowing rainbow space: star flares stream
+  past, a shimmering wormhole sweeps in and out, and now and then a shell of flares bursts
+  ahead. Select it under Settings > Display > Screensaver.
+- **A screensaver your printer can't run is left out** - each saver measures what it costs
+  on your board, and one that would still slow the printer at its lightest setting drops out
+  of the list. Another saver plays in its place instead of a black screen, and your choice
+  stays saved for a faster printer. 3D Maze and Hyperspace are too heavy for the AD5M.
 - **All five screensavers on every board** - Flying Toasters, Starfield, 3D Pipes, Bouncing
   Printer and Fireworks now run on the AD5M and Centauri Carbon too, which had none, and on
   every other board with a 16-bit display. Each saver draws less on a slower board rather
@@ -1098,6 +1142,12 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
 - **Installing the HelixPrint plugin from the screen failed on the K1 series** (#1790) - the
   install could not find Moonraker where Creality puts it. It now finds the running Moonraker
   wherever it lives, and the reason for a failed install is written to the log.
+- **Creator 5 and Creator 5 Pro: a channel with no build for your printer says so** - switching
+  to Stable, whose newest release has no build for these printers, used to offer the AD5X
+  build. The update row now reads "v1.0.5 has no build for the FlashForge Creator 5 Pro, so
+  it can't be installed here. Pick a channel with a newer release." and never offers Install.
+  On every printer the same message replaces the old "No update available" failure for a
+  release that has no download for it.
 
 **Translations**
 
@@ -1131,6 +1181,12 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
   overwrite only the slot-owned fields, instead of copying the rest by name (#1626).
 - `helix-tests` links through a response file: the inline object list passed Linux's 128 KiB
   per-argument limit and the ASAN link failed with "Argument list too long".
+- Debug bundles, crash reports and telemetry name the printer board (for example
+  `creator5-pro`) next to the platform key, so one `mips` build is no longer one lump in the
+  numbers. The K1's panel size now comes from its own table row, so its startup log names the
+  known panel instead of the 160 DPI fallback; sizing does not change. One board table
+  (`include/board_identity.h`) answers which printer the build is on, and a lint ratchet
+  refuses new vendor branches in generic code (`scripts/check_vendor_branches.py`).
 
 - The pre-v22 grid is reconstructed rather than recorded. `legacy_grid_cols()` is a frozen
   copy of the old column table, and the old row count is read back off the saved layout, which

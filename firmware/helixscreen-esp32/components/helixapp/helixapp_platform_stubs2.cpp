@@ -408,8 +408,14 @@ void DebugBundleCollector::upload_async(const BundleOptions&, ResultCallback cal
 std::string host_arch_string() {
     return std::string("xtensa");
 }
-bool ad5x_mod_layout_present(const std::string&, const char**) {
-    return false;
+std::optional<FlashForgeMachine> flashforge_machine_id(const std::string&) {
+    return std::nullopt;
+}
+FlashForgeModTree flashforge_mod_tree(const std::string&) {
+    return FlashForgeModTree::None;
+}
+const char* flashforge_mod_tree_name(FlashForgeModTree) {
+    return "none";
 }
 
 // --- IppPrinter (IPP/PWG-Raster over libhv HTTP; detached print thread) ------
@@ -506,6 +512,9 @@ void UpdateChecker::on_language_changed() {}
 void UpdateChecker::clear_cache() {}
 void UpdateChecker::start_download() {}
 void UpdateChecker::cancel_download() {}
+lv_subject_t* UpdateChecker::download_status_subject() {
+    return &download_status_subject_;
+}
 // Firmware updates are flashed whole; there is no tarball to stage.
 std::string UpdateChecker::compute_update_staging_dir(const std::string&, const std::string&) {
     return {};

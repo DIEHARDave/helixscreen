@@ -608,6 +608,26 @@ TEST_CASE_METHOD(LVGLTestFixture, "software sleep overlay hides the screen until
     CHECK_FALSE(helix::active_screen_hide_hold().is_held());
 }
 
+TEST_CASE_METHOD(LVGLTestFixture,
+                 "a display manager destroyed asleep takes its overlay and hold with it",
+                 "[application][display][sleep][screen_hide]") {
+    lv_obj_t* screen = lv_screen_active();
+    const uint32_t top_children = lv_obj_get_child_count(lv_layer_top());
+    {
+        DisplayManager mgr;
+        DisplayManagerTestAccess::set_backend(
+            mgr, std::make_unique<FakePowerOffBackend>(/*supports_power_off=*/false));
+        DisplayManagerTestAccess::set_use_hardware_blank(mgr, false);
+        DisplayManagerTestAccess::set_use_power_off(mgr, false);
+        DisplayManagerTestAccess::enter_sleep(mgr, 60);
+        REQUIRE(DisplayManagerTestAccess::sleep_overlay(mgr) != nullptr);
+        REQUIRE(lv_obj_get_child_count(lv_layer_top()) == top_children + 1);
+    }
+    CHECK(lv_obj_get_child_count(lv_layer_top()) == top_children);
+    CHECK_FALSE(helix::active_screen_hide_hold().is_held());
+    CHECK_FALSE(lv_obj_has_flag(screen, LV_OBJ_FLAG_HIDDEN));
+}
+
 // ============================================================================
 // Refresh period across sleep and input rebuilds
 // ============================================================================

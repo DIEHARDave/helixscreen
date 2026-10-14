@@ -222,6 +222,30 @@ def check_state_roots(manifest, f):
                 f.add("state-roots", f"kStateRoots does not list {root}")
 
 
+def check_cache_rungs(manifest, f):
+    """Every manifest cache_dir must be a rung of the app's cache cascade.
+
+    The app picks its cache by board, not by reading the manifest, so a manifest
+    cache_dir the cascade never names is a device whose cache lands somewhere the
+    manifest does not say, and an uninstall that sweeps the wrong tree.
+    """
+    declared = set()
+    for entry in manifest["platforms"].values():
+        value = entry.get("storage", {}).get("cache_dir")
+        if value and value.startswith("/"):
+            declared.add(value)
+
+    text = read("src/system/helix_cache_dir.cpp")
+    if text is None:
+        f.add("cache-rungs", "src/system/helix_cache_dir.cpp not found")
+        return
+    for path in sorted(declared):
+        # The cascade spells a rung as its state root; "/cache/<subdir>" is appended.
+        root = path[: -len("/cache")] if path.endswith("/cache") else path
+        if root not in text:
+            f.add("cache-rungs", f"helix_cache_dir.cpp has no rung for {path}")
+
+
 def check_installer_branch_roots(manifest, f):
     """The installer's per-platform literals must be the manifest's values.
 
@@ -482,6 +506,7 @@ def main():
     check_installer_branch_roots(manifest, f)
     check_state_outside_payload(manifest, f)
     check_state_roots(manifest, f)
+    check_cache_rungs(manifest, f)
     check_renders_exist(manifest, f, args.build_dir)
 
     if not args.quiet:

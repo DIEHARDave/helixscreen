@@ -8,6 +8,7 @@
 #include "ui_icon.h"
 #include "ui_icon_codepoints.h"
 #include "ui_settings_system.h"
+#include "ui_subject_registry.h"
 #include "ui_utils.h"
 
 #include "app_globals.h"
@@ -33,6 +34,7 @@
 #include <string>
 
 using helix::ui::measure_text_px;
+using helix::ui::set_int_if_changed;
 
 namespace {
 
@@ -109,11 +111,6 @@ void host_health_init_subjects() {
             s_subjects_initialized = false;
         }
     });
-}
-
-void set_int(lv_subject_t* subject, int value) {
-    if (lv_subject_get_int(subject) != value)
-        lv_subject_set_int(subject, value);
 }
 
 void set_text(lv_subject_t* subject, const std::string& text) {
@@ -435,9 +432,9 @@ void HostHealthWidget::on_size_changed(int /*colspan*/, int /*rowspan*/, int wid
     if (!s_tile.is_owner(this))
         return;
 
-    set_int(&s_rung_subject, static_cast<int>(verdict_.rung));
-    set_int(&s_show_mcu_row_subject, verdict_.show_mcu_row ? 1 : 0);
-    set_int(&s_mcu_rows_subject, verdict_.mcu_rows);
+    set_int_if_changed(&s_rung_subject, static_cast<int>(verdict_.rung));
+    set_int_if_changed(&s_show_mcu_row_subject, verdict_.show_mcu_row ? 1 : 0);
+    set_int_if_changed(&s_mcu_rows_subject, verdict_.mcu_rows);
     sync_mcu_rows();
     on_sample();
 
@@ -493,8 +490,8 @@ void HostHealthWidget::publish_status(const Sample& sample) {
     in.mcu_retransmits_rose = sample.retransmits_rose;
     in.disk_free_mb = sample.disk_free_mb;
     const auto verdict = status::host_health_status(in);
-    set_int(&s_status_subject, static_cast<int>(verdict.status));
-    set_int(&s_cause_subject, static_cast<int>(verdict.cause));
+    set_int_if_changed(&s_status_subject, static_cast<int>(verdict.status));
+    set_int_if_changed(&s_cause_subject, static_cast<int>(verdict.cause));
 
     // Each reading's own status, judged alone, colours that reading wherever it is drawn.
     const auto alone = [](auto set) {
@@ -502,14 +499,17 @@ void HostHealthWidget::publish_status(const Sample& sample) {
         set(one);
         return static_cast<int>(status::host_health_status(one).status);
     };
-    set_int(&s_cpu_status_subject,
-            alone([&](status::HostHealthInput& i) { i.cpu_pct = sample.cpu_pct; }));
-    set_int(&s_temp_status_subject,
-            alone([&](status::HostHealthInput& i) { i.cpu_temp_c10 = sample.cpu_temp_c10; }));
-    set_int(&s_throttle_status_subject,
-            alone([&](status::HostHealthInput& i) { i.throttle_bits = sample.throttle_bits; }));
-    set_int(&s_disk_status_subject,
-            alone([&](status::HostHealthInput& i) { i.disk_free_mb = sample.disk_free_mb; }));
+    set_int_if_changed(&s_cpu_status_subject,
+                       alone([&](status::HostHealthInput& i) { i.cpu_pct = sample.cpu_pct; }));
+    set_int_if_changed(&s_temp_status_subject, alone([&](status::HostHealthInput& i) {
+        i.cpu_temp_c10 = sample.cpu_temp_c10;
+    }));
+    set_int_if_changed(&s_throttle_status_subject, alone([&](status::HostHealthInput& i) {
+        i.throttle_bits = sample.throttle_bits;
+    }));
+    set_int_if_changed(&s_disk_status_subject, alone([&](status::HostHealthInput& i) {
+        i.disk_free_mb = sample.disk_free_mb;
+    }));
 }
 
 void HostHealthWidget::publish_texts(const Sample& sample) {
@@ -541,7 +541,7 @@ void HostHealthWidget::publish_texts(const Sample& sample) {
             const auto& mcu = sample.mcus[static_cast<size_t>(sample.busiest)];
             set_text(&s_busiest_name_subject, mcu.name);
             set_text(&s_busiest_text_subject, perf_string("perf_mcu_" + mcu.safe + "_text"));
-            set_int(&s_busiest_load_subject, std::max(0, mcu.load));
+            set_int_if_changed(&s_busiest_load_subject, std::max(0, mcu.load));
         } else {
             set_text(&s_mem_text_subject, format_percent(sample.mem_pct));
         }

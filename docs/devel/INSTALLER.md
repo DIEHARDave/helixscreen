@@ -428,7 +428,7 @@ exists. On any other host - Pi, CC1, Snapmaker U1, K1/K2, plain Linux - the prob
 "no mod": guards are inert (nothing mod-owned exists), the contract cannot arm, services and
 paths resolve exactly as before. The **architecture** layers are vendor-neutral on purpose -
 one flavor detector (`forge_x | zmod | stock`), one C++ platform predicate
-(`platform_info.h`'s `ad5x_mod_layout_present`, which also fixes Forge-X rigs'
+(`platform_info.h`'s `flashforge_mod_tree`, which also fixes Forge-X rigs'
 self-update classification), zero vendor literals in generic code - so the next mod flavor
 is one module touch, not a sweep. The **feature** activates only on the verified shape:
 both Forge-X boards today; Z-Mod and everything else keep their existing flows.

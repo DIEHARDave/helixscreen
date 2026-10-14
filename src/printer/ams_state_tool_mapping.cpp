@@ -15,6 +15,7 @@
 #include "ams_tool_topology.h"
 #include "filament_mapper.h"
 #include "settings_manager.h"
+#include "ui/ams_drawing_utils.h"
 
 #include <spdlog/spdlog.h>
 
@@ -94,7 +95,8 @@ std::vector<helix::AvailableSlot> AmsState::collect_available_slots() const {
         const AmsSystemInfo& info = *snapshot;
         bool multi_unit = info.units.size() > 1;
 
-        for (const auto& unit : info.units) {
+        for (size_t pos = 0; pos < info.units.size(); ++pos) {
+            const AmsUnit& unit = info.units[pos];
             if (unit.absent) {
                 continue;
             }
@@ -113,8 +115,9 @@ std::vector<helix::AvailableSlot> AmsState::collect_available_slots() const {
                 as.unit_index = unit.unit_index;
                 as.noun = backend->lane_noun();
                 if (multi_unit) {
+                    // The name the overview's unit card shows, so both surfaces agree.
                     as.unit_display_name =
-                        unit.display_name.empty() ? unit.name : unit.display_name;
+                        ams_draw::get_unit_display_name(unit, static_cast<int>(pos));
                 }
                 slots.push_back(std::move(as));
             }

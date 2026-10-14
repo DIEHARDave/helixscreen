@@ -3324,3 +3324,116 @@ own_endpoint_http_offenders() {
     run grep -n 'heap_caps_get_free_size(MALLOC_CAP_SPIRAM)' include/esp_psram_thumbnail.h
     [ "$status" -eq 0 ]
 }
+
+# --- Home-widget flex styles must switch the layout on ---
+# flex_flow / flex_main_place on a style only configure a flex layout the object
+# already has. A bind_style that sets them without layout="flex" leaves the children
+# on the default layout, stacked at the top-left corner on top of each other.
+
+home_widget_flex_styles_without_layout() {
+    grep -nE '<style [^>]*(flex_flow|flex_main_place)=' "$@" | grep -v 'layout="flex"'
+}
+
+@test "home-widget styles that set flex_flow or flex_main_place also set layout flex" {
+    run home_widget_flex_styles_without_layout ui_xml/components/panel_widget_*.xml \
+        ui_xml/components/speed_flow_part.xml ui_xml/components/chamber_dryer_row.xml \
+        ui_xml/components/host_health_mcu_row.xml
+    [ "$status" -eq 1 ]
+    [ -z "$output" ]
+}
+
+@test "the home-widget flex-style gate fires on a style without layout flex" {
+    local d="${BATS_TEST_TMPDIR}/flex_style"
+    mkdir -p "$d"
+    printf '%s\n' '<style name="x_inline" flex_flow="row" flex_main_place="start"/>' > "$d/bad.xml"
+    run home_widget_flex_styles_without_layout "$d/bad.xml"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"x_inline"* ]]
+}
+
+# --- Vendor branches in generic code ---
+# A vendor name belongs to one module per capability (.claude/rules/vendor-abstraction.md).
+# The ratchet lets counts fall and never rise.
+
+@test "no new vendor branches in generic code" {
+    run python3 scripts/check_vendor_branches.py
+    [ "$status" -eq 0 ]
+}
+
+@test "the vendor-branch gate catches each shape and honours VENDOR_OK" {
+    local root="$BATS_TEST_TMPDIR/root"
+    mkdir -p "$root/src/ui" "$root/scripts"
+    : > "$root/scripts/vendor_branch_baseline.txt"
+    cat > "$root/src/ui/x.cpp" <<'CPP'
+#if defined(HELIX_PLATFORM_K2)
+#endif
+bool a(AmsType t) { return t == AmsType::CFS; }
+bool b() { return flashforge_machine_id().has_value(); }
+CPP
+    run python3 scripts/check_vendor_branches.py --root "$root"
+    [ "$status" -eq 1 ]
+    contains "x.cpp:platform-macro" "$output"
+    contains "x.cpp:amstype-branch" "$output"
+    contains "x.cpp:board-probe" "$output"
+
+    cat > "$root/src/ui/x.cpp" <<'CPP'
+// VENDOR_OK: test
+#if defined(HELIX_PLATFORM_K2)
+#endif
+// VENDOR_OK: test
+bool a(AmsType t) { return t == AmsType::CFS; }
+bool b() { return flashforge_machine_id().has_value(); } // VENDOR_OK: test
+CPP
+    run python3 scripts/check_vendor_branches.py --root "$root"
+    [ "$status" -eq 0 ]
+}
+
+# The ratchet compares per-file counts to the baseline.
+@test "the vendor-branch gate fails above a nonzero baseline and passes at or below it" {
+    local root="$BATS_TEST_TMPDIR/ratchet"
+    mkdir -p "$root/src/ui"
+    printf 'bool a(AmsType t) { return t == AmsType::CFS; }\nbool b(AmsType t) { return t != AmsType::AFC; }\n' \
+        > "$root/src/ui/x.cpp"
+    printf '1 src/ui/x.cpp:amstype-branch\n' > "$root/base.txt"
+    run python3 scripts/check_vendor_branches.py --root "$root" --baseline "$root/base.txt"
+    [ "$status" -eq 1 ] || fail "two branches over a baseline of one passed"
+    printf '2 src/ui/x.cpp:amstype-branch\n' > "$root/base.txt"
+    run python3 scripts/check_vendor_branches.py --root "$root" --baseline "$root/base.txt"
+    [ "$status" -eq 0 ] || fail "two branches at a baseline of two failed: $output"
+    printf '3 src/ui/x.cpp:amstype-branch\n' > "$root/base.txt"
+    run python3 scripts/check_vendor_branches.py --root "$root" --baseline "$root/base.txt"
+    [ "$status" -eq 0 ] || fail "below baseline failed: $output"
+    contains "lowered" "$output"
+}
+
+@test "the vendor-branch gate is quiet on AmsType::NONE and on build-shape macros" {
+    local root="$BATS_TEST_TMPDIR/quiet"
+    mkdir -p "$root/src/ui"
+    cat > "$root/src/ui/x.cpp" <<'CPP'
+bool a(AmsType t) { return t == AmsType::NONE; }
+#if defined(HELIX_PLATFORM_ESP32)
+#endif
+CPP
+    run python3 scripts/check_vendor_branches.py --root "$root"
+    [ "$status" -eq 0 ] || fail "quiet cases reported: $output"
+}
+
+@test "the vendor-branch gate reads multi-line conditionals and honours VENDOR_OK above them" {
+    local root="$BATS_TEST_TMPDIR/multi"
+    mkdir -p "$root/src/ui"
+    printf '#if defined(HELIX_PLATFORM_K2) || \\\n    defined(HELIX_PLATFORM_K1)\n#endif\n' > "$root/src/ui/x.cpp"
+    run python3 scripts/check_vendor_branches.py --root "$root"
+    [ "$status" -eq 1 ] || fail "multi-line conditional not counted"
+    printf '// VENDOR_OK: test\n#if defined(HELIX_PLATFORM_K2) || \\\n    defined(HELIX_PLATFORM_K1)\n#endif\n' > "$root/src/ui/x.cpp"
+    run python3 scripts/check_vendor_branches.py --root "$root"
+    [ "$status" -eq 0 ] || fail "VENDOR_OK above a multi-line conditional ignored: $output"
+}
+
+@test "the vendor-branch gate catches a name() compare written either way round" {
+    local root="$BATS_TEST_TMPDIR/names"
+    mkdir -p "$root/src/ui"
+    printf 'bool a(X* x) { return "AFC" == x->name(); }\nbool b(X x) { return x.name() == "AFC"; }\n' > "$root/src/ui/x.cpp"
+    run python3 scripts/check_vendor_branches.py --root "$root"
+    [ "$status" -eq 1 ] || fail "name() compares not counted"
+    contains "2 branch" "$output"
+}

@@ -109,29 +109,36 @@ void attach_sources() {
     s_observers.clear();
     s_attaching = true;
 
+    // A torn-down source's subjects still read as initialized, and its next init
+    // resets their observer lists under any observer attached in between.
     auto& ps = get_printer_state();
     const SubjectLifetime printer_life = ps.get_subjects_lifetime();
     s_printer_life = printer_life;
-    watch(ps.capabilities_state().subject(Capability::HasChamberDryer), printer_life);
-    watch(ps.capabilities_state().subject(Capability::CanBedDry), printer_life);
-    watch(ps.temperature_state().get_chamber_dryer_active_subject(), printer_life);
-    watch(ps.temperature_state().get_chamber_dryer_reported_subject(), printer_life);
-    watch_text(ps.temperature_state().get_chamber_dryer_text_subject(), printer_life);
-    if (auto* chamber = ps.temperature_state().get_chamber_temp_subject(); subject_ready(chamber))
-        s_observers.push_back(ui::observe<int>(chamber, &s_anchor, on_chamber_temp, printer_life,
-                                               ui::Dispatch::Immediate));
-    if (auto* bed_temp = ps.temperature_state().get_bed_temp_subject(); subject_ready(bed_temp))
-        s_observers.push_back(ui::observe<int>(bed_temp, &s_anchor, on_bed_temp, printer_life,
-                                               ui::Dispatch::Immediate));
+    if (ps.are_subjects_initialized()) {
+        watch(ps.capabilities_state().subject(Capability::HasChamberDryer), printer_life);
+        watch(ps.capabilities_state().subject(Capability::CanBedDry), printer_life);
+        watch(ps.temperature_state().get_chamber_dryer_active_subject(), printer_life);
+        watch(ps.temperature_state().get_chamber_dryer_reported_subject(), printer_life);
+        watch_text(ps.temperature_state().get_chamber_dryer_text_subject(), printer_life);
+        if (auto* chamber = ps.temperature_state().get_chamber_temp_subject();
+            subject_ready(chamber))
+            s_observers.push_back(ui::observe<int>(chamber, &s_anchor, on_chamber_temp,
+                                                   printer_life, ui::Dispatch::Immediate));
+        if (auto* bed_temp = ps.temperature_state().get_bed_temp_subject(); subject_ready(bed_temp))
+            s_observers.push_back(ui::observe<int>(bed_temp, &s_anchor, on_bed_temp, printer_life,
+                                                   ui::Dispatch::Immediate));
+    }
 
     auto& ams = AmsState::instance();
-    const SubjectLifetime ams_life = ams.get_subjects_lifetime();
-    watch(ams.get_units_dryer_version_subject(), ams_life);
-    for (int i = 0; i < AmsState::MAX_UNITS; ++i) {
-        watch(ams.get_unit_humidity_subject(i), ams_life);
-        watch(ams.get_env_ind_visible_subject(i), ams_life);
-        watch(ams.get_env_ind_drying_active_subject(i), ams_life);
-        watch_text(ams.get_env_ind_drying_text_subject(i), ams_life);
+    if (ams.are_subjects_initialized()) {
+        const SubjectLifetime ams_life = ams.get_subjects_lifetime();
+        watch(ams.get_units_dryer_version_subject(), ams_life);
+        for (int i = 0; i < AmsState::MAX_UNITS; ++i) {
+            watch(ams.get_unit_humidity_subject(i), ams_life);
+            watch(ams.get_env_ind_visible_subject(i), ams_life);
+            watch(ams.get_env_ind_drying_active_subject(i), ams_life);
+            watch_text(ams.get_env_ind_drying_text_subject(i), ams_life);
+        }
     }
 
     s_bed_watched = false;

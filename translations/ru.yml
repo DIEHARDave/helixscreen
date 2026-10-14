@@ -19,6 +19,9 @@ translations:
   '%d min left': 'осталось %d мин'
   '%d mm/s': '%d mm/s'
   '%d more sensors': Ещё %d датчиков
+  '%d objects': 'Объектов: %d'
+  '%d of %d printing': '%d из %d печатается'
+  '%d skipped': 'Пропущено: %d'
   '%d profiles': 'Профилей: %d'
   '%d slots': '%d слотов'
   '%d toolheads': '%d печатающих головок'
@@ -116,6 +119,7 @@ translations:
 
   30 minutes: 30 минут
   30 seconds: 30 секунд
+  3D Maze: 3D лабиринт
   3D Pipes: 3D трубы
   3D View: 3D вид
   4. Paper should move but with resistance: 4. Бумага должна двигаться, но с сопротивлением
@@ -464,7 +468,7 @@ translations:
   Calibrate Purge Chute: Калибровать жёлоб продувки
   Calibrate X: Калибровать X
   Calibrate Y: Калибровать Y
-  Calibrate all tools: Калибровать все инструменты
+  Calibrate All Tools: Калибровать все инструменты
   Calibrate input shaping to reduce ringing artifacts in prints: Калибровка компенсации
     вибраций для уменьшения артефактов звона
   Calibrate tool offsets?: Калибровать смещения инструментов?
@@ -588,9 +592,9 @@ translations:
   Check failed: Ошибка проверки
   Check filament: Проверьте филамент
   Check for Updates: Проверить обновления
-  Check slot: Проверить слот
+  Check Slot: Проверить слот
   Check slot failed: Ошибка проверки слота
-  Check slots: Проверить слоты
+  Check Slots: Проверить
   Check slots failed: Ошибка проверки слотов
   Check that only one filament path is active: Убедитесь, что активен только один путь филамента
   Check that the cutter mechanism is properly installed: Проверьте правильность установки режущего механизма
@@ -866,9 +870,6 @@ translations:
   'Current name:': 'Текущее имя:'
   'Current:': 'Текущий:'
   'Current: %d°C | Target: %d°C': 'Текущая: %d°C | Целевая: %d°C'
-  'Current: %s': 'Текущий: %s'
-  'Current: %s · %s': 'Текущий: %s · %s'
-  'Current: Bypass': 'Текущий: Обход'
   Currently Loaded: Загружено
   Currently printing: Сейчас печатается
   Curves differ in shape. Steering by each path's tallest peak.: "Формы кривых различаются. Ориентир — самый высокий пик каждого пути."
@@ -895,6 +896,7 @@ translations:
   DISABLED: ОТКЛЮЧЕНО
   DISCOVERED PRINTERS: НАЙДЕННЫЕ ПРИНТЕРЫ
   DISPLAY: ДИСПЛЕЙ
+  DONE: ГОТОВО
   Damping (Kd): Демпфирование (Kd)
   Danger: Опасность
   Danger Zone: Опасная зона
@@ -1135,6 +1137,7 @@ translations:
   'Exception: {}': 'Исключение: {}'
   Exclude: Исключить
   Exclude Object?: 'Исключить объект?'
+  Exclude Objects: 'Исключение объектов'
   Excluded: Исключён
   Exclusion cancelled: Исключение отменено
   Execute printer macros: Выполнить макросы принтера
@@ -1406,6 +1409,7 @@ translations:
   FlashForge Creator 5 Pro: FlashForge Creator 5 Pro
   FlashForge IFS: FlashForge IFS
   Flip: Отразить
+  Flip Clock: Перекидные часы
   Flip the spools: Переверните катушки
 
   Flow: Поток
@@ -1562,7 +1566,7 @@ translations:
   Home and sweep the cutter to re-find its position: Ищет ноль и прощупывает резак, чтобы заново найти его позицию
   Home failed: Парковка не удалась
   Home printer first?: Сначала запарковать принтер?
-  Home selector: Парковать селектор
+  Home Selector: Парковать селектор
   Homing AFC system...: Парковка системы AFC...
   Homing Failed: 'Ошибка парковки'
   Homing X...: Парковка X...
@@ -1609,6 +1613,7 @@ translations:
   Hyperlapse captures frames at fixed time intervals. Good for very long prints.: Гиперлапс
     захватывает кадры через фиксированные интервалы времени. Подходит для очень долгих
     печатей.
+  Hyperspace: Гиперпространство
   I understand: Я понимаю
 
   ID (optional): ID (необязательно)
@@ -1849,7 +1854,7 @@ translations:
   Load filament: 'Загрузка филамента'
   Load filament first: Сначала загрузите филамент
   Load or unload filament.: Загружайте или выгружайте филамент.
-  Load profile: 'Загрузить профиль'
+  Load Profile: 'Загрузить профиль'
   Load the required filaments or start anyway?: Загрузить нужные филаменты или начать
     без них?
   'Load, unload, and swap spools. View your multi-filament system at a glance, map colors to slots, and monitor runout sensors.': 'Загружайте, выгружайте и меняйте катушки. Просматривайте вашу мультифиламентную систему одним взглядом, сопоставляйте цвета со слотами и отслеживайте датчики окончания филамента.'
@@ -2157,6 +2162,7 @@ translations:
   No networks found: Сети не найдены
   No new mesh was stored as '{}': "Новая сетка не сохранена как '{}'"
   No notifications: Нет уведомлений
+  No objects: 'Нет объектов'
   No objects defined for this print: Для этой печати не определены объекты
   No output yet: Нет вывода
   No presets configured: Пресеты не настроены
@@ -2231,6 +2237,7 @@ translations:
   Notification: Уведомление
   Notifications: Уведомления
   Notify when print finishes: Уведомить о завершении печати
+  Now printing: 'Сейчас печатается'
   Noz max: Соп макс
   Noz min: Соп мин
   Noz rec: Соп рек
@@ -2264,6 +2271,7 @@ translations:
   Object picks apply only to prints started now: 'Выбор объектов применяется только к печати, запущенной сейчас'
   Object positions unavailable: Позиции объектов недоступны
   Objects: Объекты
+  Objects in the print, with a tap to open the skip map: 'Объекты печати, касание открывает карту пропуска'
   'Off': Выкл
   'Off:': 'Выкл:'
   'Off: runs with these values without asking': 'Выкл.: запуск с этими значениями без запроса'
@@ -2318,6 +2326,7 @@ translations:
   PA: PA
   PATH A · 1,-1: "ПУТЬ A · 1,-1"
   PATH B · 1,1: "ПУТЬ B · 1,1"
+  PAUSED: ПАУЗА
   PETG: PETG
   PID: PID
   PIN must be 4-6 digits: PIN должен содержать 4-6 цифр
@@ -2790,6 +2799,7 @@ translations:
   Reset failed: Ошибка сброса
   Reset motor run-time counter: 'Сбросить счётчик наработки мотора'
   Reset tags: Сбросить отметки
+  Reset Tags: Сбросить отметки
   Reset to Default: Сбросить до умолчания
   Reset to defaults: Сбросить по умолчанию
   Reset to original values: Сбросить к исходным значениям
@@ -2852,6 +2862,7 @@ translations:
   Retraction distance to clear extruder gears: 'Расстояние ретракции для выхода из шестерён экструдера'
   Retry: Повторить
   Reverse Multiplier: 'Множитель обратного хода'
+  Review: Проверить
   Review detected hardware validation issues: Просмотр обнаруженных проблем валидации
     оборудования
   Review your configuration below, then click Finish to save: Проверьте конфигурацию
@@ -2927,7 +2938,7 @@ translations:
   Save changes to persist them across restarts?: Сохранить изменения, чтобы они сохранились
     после перезапуска?
   'Save failed: {}': 'Ошибка сохранения: {}'
-  Save offsets: Сохранить смещения
+  Save Offsets: Сохранить смещения
   Save offsets?: Сохранить смещения?
   Save to Spoolman: Сохранить в Spoolman
   Saved Z-Offset: Сохранённый Z-Offset
@@ -2951,6 +2962,7 @@ translations:
   Scan Spool QR Code: Сканировать QR-код катушки
   Scan and select a Bluetooth printer first: Сначала найдите и выберите Bluetooth-принтер
   Scan for Printers: Поиск принтеров
+  Scan the spool label with your barcode scanner: 'Отсканируйте этикетку катушки сканером штрих-кодов'
   Scan with your phone to save these values: Отсканируйте телефоном, чтобы сохранить эти значения
   Scanner: Сканер
   ? Scanner bonded but didn't attach as a keyboard. Try turning the scanner off and
@@ -3015,7 +3027,7 @@ translations:
   Select macro for third button: Выберите макрос для третьей кнопки
   Select material to begin: Выберите материал для начала
   Select sensor: Выбрать датчик
-  Select slot: Выбрать слот
+  Select Slot: Выбрать слот
   Select slot failed: Ошибка выбора слота
   Select the heaters Klipper uses for your bed and hotend: Выберите нагреватели Klipper
     для стола и хотенда
@@ -3115,10 +3127,12 @@ translations:
   Signal: Сигнал
   'Signal #': Сигнал №
   Similarity: "Схожесть"
+  Single object: 'Один объект'
   Single toggle macro. State is not tracked.: Один макрос переключения. Состояние
     не отслеживается.
   Size: Размер
   Skip: Пропустить
+  Skip Objects...: 'Пропустить объекты...'
   Skipped: 'Пропущено'
   Sleep While Printing: Спящий режим при печати
   Sleep adjusted to match dim timeout: Таймаут сна изменён
@@ -3220,7 +3234,7 @@ translations:
   Start Probing: Начать зондирование
   Start anyway?: 'Всё равно начать?'
   Start at: Начать с
-  Start check: Начать проверку
+  Start Check: Начать проверку
   Start drying: Начать сушку
 
   Start failed: Ошибка запуска
@@ -3309,7 +3323,6 @@ translations:
   TOOLS: ИНСТРУМЕНТЫ
   TPU: TPU
   Tag Parts: Отметить узлы
-  Tag parts: Отметить узлы
   Takes 3-5 min. Do not interrupt.: Занимает 3-5 мин. Не прерывайте.
   Tangle prevention active: Защита от спутывания активна
   Tangle prevention boosted: Защита от спутывания усилена
@@ -3366,7 +3379,7 @@ translations:
   Test RS-485 link to CFS units: 'Проверить связь RS-485 с блоками CFS'
   Test Screensaver: Проверить заставку
   Test Tracker: Трекер тестов
-  Test both: Тест обоих
+  Test Both: Тест обоих
   Test label printed: Тестовая этикетка напечатана
   'Testing rotation: %d° (%d/%d) - %ds remaining': 'Тест поворота: %d°
     (%d/%d) - осталось %ds'
@@ -3506,6 +3519,7 @@ translations:
   This is exactly the data that will be sent: Это именно те данные, которые будут
     отправлены
   This is what data would be sent if enabled: Эти данные были бы отправлены при включении
+  This looks like a {}, but it is set up as a {}: Похоже, это {}, но принтер настроен как {}
   This may take up to 30 seconds: Это может занять до 30 секунд
   This plugin asks for no special permissions.: 'Этот плагин не запрашивает специальных разрешений.'
   This plugin lets HelixScreen control print start options like bed mesh and QGL.: 'Этот плагин позволяет HelixScreen управлять опциями начала печати, такими как сетка стола и QGL.'
@@ -3634,7 +3648,7 @@ translations:
   Trigger: Триггер
   'Troubleshooting:': 'Устранение неполадок:'
   Try adjusting your search or filters: Попробуйте изменить поиск или фильтры
-  Try again: 'Повторить'
+  Try Again: 'Повторить'
   Try the operation again. If it persists, check for mechanical issues.: Повторите операцию. Если проблема не исчезает, проверьте механические неисправности.
   Tune: Настройка
   Tune belts: "Настроить"
@@ -3749,7 +3763,7 @@ translations:
   Use Unload before Eject: 'Используйте «Выгрузить» перед «Извлечь»'
   Use first HID scanner found: 'Использовать первый найденный HID-сканер'
   Use printer type to select image: Использовать тип принтера для выбора изображения
-  Use scan: Взять скан
+  Use Scan: Взять скан
   User intervention required: 'Требуется ручное вмешательство'
   VM Peak: Пик VM
   VM Size: Размер VM
@@ -3946,6 +3960,7 @@ translations:
   direct drive: с прямой подачей
   disable: отключить
   disabled: отключено
+  done at {} · {}%: "готово в {} · {}%"
   drying: сушатся
   e.g. Jet Black: напр. Чёрный
   e.g. NAME=my_var VALUE=123: напр. NAME=my_var VALUE=123
@@ -4019,9 +4034,11 @@ translations:
   tall: высотой
   target {}%: 'цель {}%'
   target {}°: 'цель {}°'
+  too slow: слишком медленно
   tool(s): инструмент(ы)
   used: использ.
   v%s available: Доступна v%s
+  v%s has no build for the %s, so it can't be installed here. Pick a channel with a newer release.: Для v%s нет сборки для %s, поэтому её нельзя установить здесь. Выберите канал обновлений с более новым выпуском.
   v{} installed! Restarting...: v{} установлена! Перезапуск...
   v{} is available. Tap to update.: v{} доступна. Нажмите для обновления.
   what you turned: "сколько повернули"

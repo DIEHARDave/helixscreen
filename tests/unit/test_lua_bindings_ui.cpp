@@ -8,6 +8,7 @@
 
 #include "../lvgl_test_fixture.h"
 #include "../lvgl_ui_test_fixture.h"
+#include "../test_fixtures.h"
 #include "../test_helpers/log_capture.h"
 #include "../test_helpers/plugin_host_test_support.h"
 #include "../test_helpers/plugin_test_support.h"
@@ -16,7 +17,9 @@
 #include "helix-xml/src/xml/lv_xml_component.h"
 #include "layout_manager.h"
 #include "lua_bindings.h"
+#include "lvgl/src/misc/lv_text_private.h"
 #include "lvgl_log_handler.h"
+#include "plugin_canvas.h"
 #include "plugin_overlay_host.h"
 #include "xml_registration.h"
 
@@ -356,6 +359,57 @@ TEST_CASE_METHOD(LVGLTestFixture, "toast and confirm validate their arguments",
     )"));
     CHECK_FALSE(b.t.run(R"(helix.ui.toast("x", "loud"))"));
     CHECK_FALSE(b.t.run(R"(helix.ui.confirm("t", "m", { severity = "loud" }))"));
+}
+
+namespace {
+/// Width lv_draw_label gives @p text in the canvas font @p name, for comparison.
+int32_t drawn_width(const char* text, const char* name) {
+    const lv_font_t* font = canvas_resolve_font(name);
+    REQUIRE(font);
+    lv_text_attributes_t attributes = {};
+    attributes.max_width = LV_COORD_MAX;
+    return lv_text_get_width(text, static_cast<uint32_t>(strlen(text)), font, &attributes);
+}
+} // namespace
+
+TEST_CASE_METHOD(XMLTestFixture, "helix.ui.text_width measures in the live theme font",
+                 "[plugin][bindings][ui][text_width]") {
+    BoundRuntime b({&install_ui_bindings});
+    REQUIRE(b.t.run(R"(
+        small = helix.ui.text_width("Benchy_0.2mm_PLA.gcode", "small")
+        heading = helix.ui.text_width("Benchy_0.2mm_PLA.gcode", "heading")
+        default = helix.ui.text_width("Benchy_0.2mm_PLA.gcode")
+        body = helix.ui.text_width("Benchy_0.2mm_PLA.gcode", "body")
+        empty = helix.ui.text_width("", "body")
+        is_int = math.type(small)
+    )"));
+    CHECK(b.t.global("small") == std::to_string(drawn_width("Benchy_0.2mm_PLA.gcode", "small")));
+    CHECK(b.t.global("heading") ==
+          std::to_string(drawn_width("Benchy_0.2mm_PLA.gcode", "heading")));
+    CHECK(std::stoi(b.t.global("heading")) > std::stoi(b.t.global("small")));
+    CHECK(b.t.global("default") == b.t.global("body"));
+    CHECK(b.t.global("empty") == "0");
+    CHECK(b.t.global("is_int") == "integer");
+}
+
+TEST_CASE_METHOD(XMLTestFixture, "helix.ui.text_width refuses fonts canvas text refuses",
+                 "[plugin][bindings][ui][text_width]") {
+    // Each refusal gets a fresh runtime: the 3rd error within 60 s faults one.
+    {
+        BoundRuntime b({&install_ui_bindings});
+        CHECK_FALSE(b.t.run(R"(helix.ui.text_width("x", "heading_large"))"));
+        CHECK_FALSE(b.t.run(R"(helix.ui.text_width("x", "nope"))"));
+    }
+    {
+        BoundRuntime b({&install_ui_bindings});
+        CHECK_FALSE(b.t.run(R"(helix.ui.text_width(nil, "body"))"));
+        CHECK_FALSE(b.t.run(R"(helix.ui.text_width(string.rep("w", 1025), "body"))"));
+    }
+    {
+        BoundRuntime b({&install_ui_bindings});
+        REQUIRE(b.t.run(R"(w = helix.ui.text_width(string.rep("w", 1024), "body"))"));
+        CHECK(std::stoi(b.t.global("w")) > 0);
+    }
 }
 
 namespace {

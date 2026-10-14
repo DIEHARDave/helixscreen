@@ -21,7 +21,8 @@
 #include "lane_translation.h"
 #include "operation_patterns.h"    // helix::contains_ci
 #include "print_lifecycle_state.h" // job_holds_machine
-#include "printer_state.h"         // PrinterState: mid-print clear guard
+#include "printer_discovery.h"
+#include "printer_state.h" // PrinterState: mid-print clear guard
 #include "settings_manager.h"
 #include "text_io.h"
 
@@ -78,6 +79,60 @@ int unit_index_for_gate(const AmsSystemInfo& info, int gate) {
 // ============================================================================
 // Construction / Destruction
 // ============================================================================
+
+nlohmann::json AmsBackendHappyHare::required_status_objects(const helix::PrinterDiscovery& hw) {
+    nlohmann::json objects = nlohmann::json::object();
+    if (hw.mmu_type() != AmsType::HAPPY_HARE) {
+        return objects;
+    }
+    // endless_spool_enabled is the ENABLE bit for endless_spool_groups. Happy Hare
+    // ignores a GROUPS= write while it is 0, so an edit sent without reading it first
+    // fails silently.
+    objects["mmu"] = nlohmann::json::array({"gate",
+                                            "tool",
+                                            "filament",
+                                            "action",
+                                            "reason_for_pause",
+                                            "filament_pos",
+                                            "gate_status",
+                                            "gate_color_rgb",
+                                            "gate_color",
+                                            "gate_material",
+                                            "gate_name",
+                                            "gate_vendor",
+                                            "gate_filament_name",
+                                            "gate_spool_id",
+                                            "gate_temperature",
+                                            "has_bypass",
+                                            "num_units",
+                                            "num_gates",
+                                            "unit_gate_counts",
+                                            "unit",
+                                            "ttg_map",
+                                            "endless_spool_groups",
+                                            "endless_spool_enabled",
+                                            "sensors",
+                                            "bowden_progress",
+                                            "clog_detection_enabled",
+                                            "encoder",
+                                            "flowguard",
+                                            "drying_state",
+                                            "sync_feedback_state",
+                                            "sync_feedback_bias_modelled",
+                                            "sync_feedback_bias_raw",
+                                            "sync_feedback_flow_rate",
+                                            "sync_drive",
+                                            "spoolman_support",
+                                            "pending_spool_id",
+                                            "espooler_active",
+                                            "espooler",
+                                            "tangle_prevention",
+                                            "num_toolchanges",
+                                            "slicer_tool_map",
+                                            "toolchange_purge_volume",
+                                            "leds"});
+    return objects;
+}
 
 AmsBackendHappyHare::AmsBackendHappyHare(IMoonrakerAPI* api, IMoonrakerClient* client)
     : AmsSubscriptionBackend(api, client) {

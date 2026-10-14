@@ -675,12 +675,29 @@ class UpdateChecker {
      */
     void report_result(Status status, std::optional<ReleaseInfo> info, const std::string& error);
 
+    /// Report what a check that fetched @p info concludes for a build at @p current_version:
+    /// available, a downgrade, up to date, or an Error carrying the release when it has
+    /// no build for this board.
+    void report_fetched_release(ReleaseInfo info, const std::string& current_version);
+
     /// Last hop of sync_moonraker_channel(): restart Moonraker unless a job holds the
     /// machine or update_manager is busy. @p gen is the sync's moonraker_sync_generation_.
     void restart_moonraker_for_channel(helix::IMoonrakerAPI& api, uint64_t gen);
     /// sync_moonraker_channel() with this install's directory supplied; the stanza's
     /// `path:` must resolve to it.
     void sync_moonraker_channel_for(const std::string& install_root);
+
+#ifdef __ANDROID__
+    /**
+     * @brief On a Play install, report what Google Play will serve instead of the manifest
+     *
+     * @param manifest The fetched manifest release (empty version if the fetch failed)
+     * @param manifest_error Why the manifest fetch failed (empty on success)
+     * @return true if the check was reported here; false for a non-Play install,
+     *         whose manifest result the caller reports as usual
+     */
+    bool report_play_verdict(ReleaseInfo manifest, const std::string& manifest_error);
+#endif
 
     void init_subjects();
 
@@ -735,6 +752,9 @@ class UpdateChecker {
         std::string version;
         bool is_downgrade = false;
         std::string error;
+        /// Error only: the release named by `version` has no build for this board.
+        /// The text is composed at render time, where lv_tr is safe.
+        bool no_build_for_board = false;
     };
     ShownVersionText shown_{};
     void render_version_text();
@@ -857,17 +877,36 @@ bool parse_github_release(const std::string& json_str, UpdateChecker::ReleaseInf
  * @brief Parse a release manifest (R2 and dev channel schema) into ReleaseInfo
  *
  * The asset is the entry under the first of @p asset_keys the manifest lists.
- * A manifest listing none of them is an error: offering a version with nothing
- * to download leaves Install failing with "No update available".
+ * A manifest listing none of them parses like a GitHub release with no matching
+ * asset: the version is filled in and download_url stays empty (see
+ * release_has_build_for_this_board()).
  *
  * @param json_str Manifest body
  * @param info Parsed release info, download URLs included on success
  * @param error Failure reason
  * @param asset_keys Keys this build's asset may sit under, best match first
- * @return true when the manifest names a version and an asset for this build
+ * @return true when the manifest names a version
  */
 bool parse_release_manifest(const std::string& json_str, UpdateChecker::ReleaseInfo& info,
                             std::string& error, const std::vector<std::string>& asset_keys);
+
+/// True when @p info carries a download for this build's board. A release without one
+/// cannot be installed here, and borrowing another board's asset would brick it.
+bool release_has_build_for_this_board(const UpdateChecker::ReleaseInfo& info);
+
+/// The refusal shown for release @p version when it has no download for @p board_name
+/// ("FlashForge Creator 5"). Translated with lv_tr, so main thread only.
+std::string no_build_message(const std::string& version, const std::string& board_name);
+
+/// What a check that fetched @p info concludes on a build at @p installed. A newer or
+/// older release with no download for this board is an Error, the same version is
+/// UpToDate whether or not it has one.
+struct CheckOutcome {
+    UpdateChecker::Status status = UpdateChecker::Status::UpToDate;
+    bool is_downgrade = false; ///< UpdateAvailable only: the channel is behind the install
+};
+CheckOutcome decide_check_outcome(const std::string& installed,
+                                  const UpdateChecker::ReleaseInfo& info);
 
 /**
  * @brief Strip a leading 'v' or 'V' from a GitHub release tag

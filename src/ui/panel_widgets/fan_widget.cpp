@@ -5,6 +5,7 @@
 
 #include "ui_event_safety.h"
 #include "ui_fan_control_overlay.h"
+#include "ui_text.h"
 #include "ui_update_queue.h"
 
 #include "app_globals.h"
@@ -314,6 +315,7 @@ void FanWidget::FanPicker::on_created(lv_obj_t* menu_obj) {
         lv_label_set_text(name, fan.display_name.c_str());
         lv_obj_set_flex_grow(name, 1);
         lv_label_set_long_mode(name, LV_LABEL_LONG_MODE_DOTS);
+        helix::ui::label_hold_one_line(name);
         lv_obj_set_style_text_font(name, lv_font_get_default(), 0);
 
         // Current speed

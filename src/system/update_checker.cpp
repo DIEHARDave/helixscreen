@@ -53,6 +53,7 @@
 
 #include <cctype>
 #ifdef __ANDROID__
+#include "system/android_update_source.h"
 #include "system/http_android.h"
 #endif
 #include "platform_info.h"
@@ -164,12 +165,17 @@ std::string describe_asset_keys(const std::vector<std::string>& asset_keys) {
     return out;
 }
 
-/// This build's release_asset_keys(), on the board it is running on. The board
-/// probe only matters to the unified MIPS build, so no other build stats for it.
+/// This build's release_asset_keys(), on the board it is running on.
 std::vector<std::string> this_build_release_asset_keys() {
-    const std::string key = helix::platform::current_key();
-    return helix::platform::release_asset_keys(key,
-                                               key == "mips" && helix::ad5x_mod_layout_present());
+    return helix::platform::release_asset_keys(helix::platform::current_key(),
+                                               helix::board::current());
+}
+
+/// What this build runs on, for the "no build for the ..." refusal. A generic host has no
+/// board name, so its platform's name stands in ("Raspberry Pi").
+std::string this_board_display_name() {
+    const std::string name = helix::board::current_info().display_name;
+    return name.empty() ? helix::platform::display_name(helix::platform::current_key()) : name;
 }
 
 /// Picks @p platform_key's asset out of a GitHub release asset list into
@@ -684,6 +690,45 @@ bool parse_github_release(const std::string& json_str, UpdateChecker::ReleaseInf
     }
 }
 
+bool release_has_build_for_this_board(const UpdateChecker::ReleaseInfo& info) {
+    return !info.download_url.empty();
+}
+
+std::string no_build_message(const std::string& version, const std::string& board_name) {
+    char buf[256];
+    std::snprintf(buf, sizeof(buf),
+                  lv_tr("v%s has no build for the %s, so it can't be installed here. Pick a "
+                        "channel with a newer release."),
+                  version.c_str(), board_name.c_str());
+    return buf;
+}
+
+CheckOutcome decide_check_outcome(const std::string& installed,
+                                  const UpdateChecker::ReleaseInfo& info) {
+    CheckOutcome out;
+    switch (compare_channel_version(installed, info.version)) {
+    case ChannelVersionRelation::Older:
+        out.is_downgrade = true;
+        [[fallthrough]];
+    case ChannelVersionRelation::Newer:
+        // A release offered with nothing this board can install is refused up
+        // front, rather than as a dead Install button.
+        if (release_has_build_for_this_board(info)) {
+            out.status = UpdateChecker::Status::UpdateAvailable;
+        } else {
+            out.status = UpdateChecker::Status::Error;
+            out.is_downgrade = false;
+        }
+        break;
+    case ChannelVersionRelation::Same:
+    case ChannelVersionRelation::Unknown:
+    default:
+        out.status = UpdateChecker::Status::UpToDate;
+        break;
+    }
+    return out;
+}
+
 bool parse_release_manifest(const std::string& json_str, UpdateChecker::ReleaseInfo& info,
                             std::string& error, const std::vector<std::string>& asset_keys) {
     try {
@@ -712,8 +757,11 @@ bool parse_release_manifest(const std::string& json_str, UpdateChecker::ReleaseI
                 return true;
             }
         }
-        error = "No asset for platform " + describe_asset_keys(asset_keys) + " in manifest";
-        return false;
+        // Same as parse_github_release(): the version is real, the download stays
+        // empty, and the caller decides what a release with no build means.
+        spdlog::warn("[UpdateChecker] No asset found for platform {} in manifest {}",
+                     describe_asset_keys(asset_keys), info.version);
+        return true;
 
     } catch (const json::exception& e) {
         error = std::string("JSON parse error: ") + e.what();
@@ -902,7 +950,9 @@ void UpdateChecker::render_version_text() {
         return;
     case Status::Error:
         snprintf(version_text_buf_, sizeof(version_text_buf_), lv_tr("Error: %s"),
-                 shown_.error.c_str());
+                 shown_.no_build_for_board
+                     ? no_build_message(shown_.version, this_board_display_name()).c_str()
+                     : shown_.error.c_str());
         break;
     case Status::Idle:
         lv_subject_copy_string(&version_text_subject_,
@@ -2886,6 +2936,12 @@ void UpdateChecker::do_check() {
             return;
         }
 
+#ifdef __ANDROID__
+        if (report_play_verdict(ok ? info : ReleaseInfo{}, ok ? "" : error)) {
+            return;
+        }
+#endif
+
         if (!ok) {
             spdlog::warn("[UpdateChecker] {}", error);
             report_result(Status::Error, std::nullopt, error);
@@ -2896,35 +2952,7 @@ void UpdateChecker::do_check() {
         std::string current_version = HELIX_VERSION;
         spdlog::debug("[UpdateChecker] Current: {}, Latest: {}", current_version, info.version);
 
-        switch (compare_channel_version(current_version, info.version)) {
-        case ChannelVersionRelation::Newer:
-            info.is_downgrade = false;
-            spdlog::info("[UpdateChecker] Update available: {} -> {}", current_version,
-                         info.version);
-            report_result(Status::UpdateAvailable, info, "");
-            break;
-
-        case ChannelVersionRelation::Older:
-            // The selected channel is behind this install — almost always
-            // because the user just moved from a faster channel back to a
-            // slower one. Offer it, or they are stranded on the old channel's
-            // build with the check reporting "up to date" forever. Flagged so
-            // the auto-check never raises this unprompted and the install path
-            // asks first.
-            info.is_downgrade = true;
-            spdlog::info("[UpdateChecker] Channel is behind: {} -> {} (downgrade offered)",
-                         current_version, info.version);
-            report_result(Status::UpdateAvailable, info, "");
-            break;
-
-        case ChannelVersionRelation::Same:
-        case ChannelVersionRelation::Unknown:
-        default:
-            spdlog::info("[UpdateChecker] Already up to date ({})", current_version);
-            // Pass info even for UpToDate so callbacks (e.g., --release-notes) can access it
-            report_result(Status::UpToDate, info, "");
-            break;
-        }
+        report_fetched_release(std::move(info), current_version);
 
         spdlog::debug("[UpdateChecker] Worker thread finished");
     } catch (const std::exception& e) {
@@ -2935,6 +2963,48 @@ void UpdateChecker::do_check() {
         report_result(Status::Error, std::nullopt, "Internal error (unknown exception)");
     }
 }
+
+#ifdef __ANDROID__
+bool UpdateChecker::report_play_verdict(ReleaseInfo manifest, const std::string& manifest_error) {
+    namespace android = helix::android;
+    const std::string installer = android::installer_package();
+    android::PlayUpdateQuery play;
+    if (android::installed_by_play(installer)) {
+        play = android::query_play_update(HTTP_TIMEOUT_SECONDS);
+    }
+    const auto verdict = android::decide_update(installer, play, manifest.version);
+    if (verdict.kind == android::UpdateVerdict::Kind::Manifest) {
+        return false;
+    }
+    if (cancelled_) {
+        spdlog::debug("[UpdateChecker] Check cancelled during Play query");
+        return true;
+    }
+    if (!manifest_error.empty()) {
+        spdlog::info("[UpdateChecker] Manifest unavailable, Google Play decides: {}",
+                     manifest_error);
+    }
+
+    if (verdict.kind == android::UpdateVerdict::Kind::None) {
+        spdlog::info("[UpdateChecker] No update announced for this Play install: {}",
+                     verdict.reason);
+        report_result(Status::UpToDate, std::nullopt, "");
+        return true;
+    }
+
+    ReleaseInfo info;
+    if (verdict.manifest_describes_it) {
+        info = std::move(manifest);
+    } else {
+        info.version = verdict.version;
+        info.tag_name = "v" + verdict.version;
+    }
+    info.is_downgrade = false;
+    spdlog::info("[UpdateChecker] Google Play offers {} -> {}", HELIX_VERSION, info.version);
+    report_result(Status::UpdateAvailable, info, "");
+    return true;
+}
+#endif
 
 // ============================================================================
 // Channel-specific fetch methods
@@ -3654,6 +3724,33 @@ bool UpdateChecker::fetch_dev_release(ReleaseInfo& info, std::string& error) {
     return fetch_r2_manifest("dev", info, error);
 }
 
+void UpdateChecker::report_fetched_release(ReleaseInfo info, const std::string& current_version) {
+    const auto outcome = helix::decide_check_outcome(current_version, info);
+    info.is_downgrade = outcome.is_downgrade;
+    switch (outcome.status) {
+    case Status::UpdateAvailable:
+        spdlog::info("[UpdateChecker] {}: {} -> {}",
+                     info.is_downgrade ? "Channel is behind (downgrade offered)"
+                                       : "Update available",
+                     current_version, info.version);
+        report_result(Status::UpdateAvailable, info, "");
+        break;
+    case Status::Error:
+        // The user-visible text is composed on the main thread; this one is the
+        // untranslated diagnostic that lands in logs and bundles.
+        spdlog::warn("[UpdateChecker] Release {} has no build for {}", info.version,
+                     describe_asset_keys(this_build_release_asset_keys()));
+        report_result(Status::Error, info,
+                      "no build for " + this_board_display_name() + " in v" + info.version);
+        break;
+    default:
+        spdlog::info("[UpdateChecker] Already up to date ({})", current_version);
+        // Pass info even for UpToDate so callbacks (e.g., --release-notes) can access it
+        report_result(Status::UpToDate, info, "");
+        break;
+    }
+}
+
 void UpdateChecker::report_result(Status status, std::optional<ReleaseInfo> info,
                                   const std::string& error) {
     // Don't report if cancelled
@@ -3699,7 +3796,11 @@ void UpdateChecker::report_result(Status status, std::optional<ReleaseInfo> info
                     render_version_text();
                     lv_subject_copy_string(&new_version_subject_, "");
                 } else if (status == Status::Error) {
-                    shown_ = {status, "", false, error};
+                    // An Error carrying a release means the release is the problem:
+                    // it has no build for this board.
+                    const bool no_build = info && !release_has_build_for_this_board(*info);
+                    shown_ = {status, no_build ? info->version : "", false, no_build ? "" : error,
+                              no_build};
                     render_version_text();
                     lv_subject_copy_string(&new_version_subject_, "");
                 }

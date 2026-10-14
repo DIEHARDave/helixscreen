@@ -453,8 +453,11 @@ void AmsOverviewPanel::create_unit_cards(const AmsSystemInfo& info, helix::ui::L
         const AmsState::EnvIndicatorSubjectNames s = AmsState::env_indicator_subject_names(i);
         const std::string absent = AmsState::unit_absent_subject_name(i);
         const std::string disconnected = AmsState::unit_disconnected_subject_name(i);
+        const std::string logo_color = AmsState::unit_logo_color_subject_name(i);
         const char* attrs[] = {"absent",
                                absent.c_str(),
+                               "logo_color",
+                               logo_color.c_str(),
                                "disconnected",
                                disconnected.c_str(),
                                "temp_text",
@@ -644,7 +647,8 @@ void AmsOverviewPanel::push_unit_anchors(bool relayout) {
 // itself stays in XML, bound to this subject.
 void AmsOverviewPanel::publish_cards_compact(int32_t narrowest_card_w) {
     // Content width the card has left after its own padding.
-    const int32_t content_w = narrowest_card_w - 2 * theme_manager_get_spacing("space_sm");
+    // ams_unit_card.xml pads the card's left and right with space_xs.
+    const int32_t content_w = narrowest_card_w - 2 * theme_manager_get_spacing("space_xs");
 
     // Widest unit name that has to fit, and the logo's declared size.
     //
@@ -1013,8 +1017,9 @@ void AmsOverviewPanel::show_current_page(const AmsSystemInfo& info, bool relayou
     // The unit's own number, not its position: that is what the viewed-unit flag and the
     // environment mirror are keyed on.
     ams.set_viewed_unit(unit.unit_index);
-    ams.set_unit_page_header(ams_draw::get_unit_display_name(unit, page.unit_index),
-                             ams_draw::unit_logo_path(unit, info));
+    const helix::LogoArt logo = AmsState::get_unit_logo(unit, info);
+    ams.set_unit_page_header(ams_draw::get_unit_display_name(unit, page.unit_index), logo.path,
+                             logo.color);
 
     if (relayout || new_unit || detail_slot_count_ != std::min(unit.slot_count, MAX_DETAIL_SLOTS)) {
         create_detail_slots(info, page.unit_index);

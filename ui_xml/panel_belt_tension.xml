@@ -161,7 +161,7 @@
         <!-- bind_state_if_eq is the hard gate: bound to a subject, it holds -->
         <!-- however the user reached the panel. -->
         <ui_button name="btn_start"
-                   width="100%" height="#button_height" icon="waveform" text="Start check" variant="primary">
+                   width="100%" height="#button_height" icon="waveform" text="Start Check" variant="primary">
           <bind_state_if_eq subject="bt_can_start" state="disabled" ref_value="0"/>
           <event_cb trigger="clicked" callback="belt_tension_start_cb"/>
         </ui_button>
@@ -204,11 +204,9 @@
         </lv_obj>
         <!-- Paired peaks (numbered on the chart), then peaks only one path has -->
         <text_small name="bt_facts_label"
-                    width="100%" bind_text="bt_facts" style_text_align="center" style_text_color="#text_muted"
-                    long_mode="dots"/>
+                    width="100%" bind_text="bt_facts" style_text_align="center" style_text_color="#text_muted"/>
         <text_small name="bt_unpaired_label"
-                    width="100%" bind_text="bt_unpaired" style_text_align="center" style_text_color="#text_muted"
-                    long_mode="dots">
+                    width="100%" bind_text="bt_unpaired" style_text_align="center" style_text_color="#text_muted">
           <bind_flag_if_eq subject="bt_has_unpaired" flag="hidden" ref_value="0"/>
         </text_small>
         <lv_obj width="100%"
@@ -232,7 +230,7 @@
             <event_cb trigger="clicked" callback="belt_tension_retest_menu_cb"/>
           </ui_button>
           <ui_button name="btn_test_both"
-                     width="0" height="#button_height" flex_grow="1" icon="restart" text="Test both" variant="secondary">
+                     width="0" height="#button_height" flex_grow="1" icon="restart" text="Test Both" variant="secondary">
             <event_cb trigger="clicked" callback="belt_tension_start_cb"/>
           </ui_button>
           <ui_button name="btn_tune"

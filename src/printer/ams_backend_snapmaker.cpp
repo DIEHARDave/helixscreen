@@ -23,6 +23,7 @@
 #include "moonraker_api.h"
 #include "pause_cause.h"
 #include "post_op_cooldown_manager.h"
+#include "printer_discovery.h"
 #include "settings_manager.h"
 #include "snapmaker_channel_state.h"
 #include "snapmaker_resume.h"
@@ -122,6 +123,30 @@ using snapmaker::classify_channel_state;
 // ============================================================================
 // Construction
 // ============================================================================
+
+nlohmann::json AmsBackendSnapmaker::required_status_objects(const helix::PrinterDiscovery& hw) {
+    nlohmann::json objects = nlohmann::json::object();
+    if (hw.mmu_type() != AmsType::SNAPMAKER) {
+        return objects;
+    }
+    objects["filament_detect"] = nullptr;
+    objects["filament_feed left"] = nullptr;
+    objects["filament_feed right"] = nullptr;
+    objects["print_task_config"] = nullptr;
+    objects["machine_state_manager"] = nullptr;
+    for (int i = 0; i < 4; ++i) {
+        objects[fmt::format("filament_motion_sensor e{}_filament", i)] = nullptr;
+    }
+    // The batch macro's `doing` variable drives batch-feed progress, so it needs a
+    // subscription to be readable while a feed runs. Klipper keeps the config's case
+    // for the status object key, so subscribe under the name as written in
+    // printer.cfg; a guessed name makes Moonraker reject the whole subscription.
+    const std::string batch_macro = hw.macro_config_name(helix::macro_patterns::AUTO_FEEDING_BATCH);
+    if (!batch_macro.empty()) {
+        objects[fmt::format("gcode_macro {}", batch_macro)] = nullptr;
+    }
+    return objects;
+}
 
 AmsBackendSnapmaker::AmsBackendSnapmaker(IMoonrakerAPI* api, helix::IMoonrakerClient* client)
     : AmsSubscriptionBackend(api, client) {
@@ -680,12 +705,23 @@ AmsError AmsBackendSnapmaker::do_change_tool(int tool_number) {
     if (err.result != AmsResult::SUCCESS)
         return err;
 
-    return execute_gcode(fmt::format("T{}", tool_number));
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        pending_tool_ = tool_number;
+        pending_until_ = std::chrono::steady_clock::now() + kToolChangeWindow;
+    }
+    auto result = execute_gcode(fmt::format("T{}", tool_number));
+    if (!result.success()) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        pending_tool_ = -1;
+    }
+    return result;
 }
 
 AmsError AmsBackendSnapmaker::do_park_active_tool() {
     {
         std::lock_guard<std::mutex> lock(mutex_);
+        pending_tool_ = -1;
         if (system_info_.current_tool < 0) {
             return AmsErrorHelper::not_loaded();
         }
@@ -1224,6 +1260,13 @@ void AmsBackendSnapmaker::apply_extruders_locked(const snapmaker::StatusDelta& d
     }
 }
 
+bool AmsBackendSnapmaker::tool_change_in_flight_locked() const {
+    const bool pending = pending_tool_ >= 0 && std::chrono::steady_clock::now() < pending_until_;
+    return pending || system_info_.action == AmsAction::SELECTING ||
+           std::any_of(extruder_states_.begin(), extruder_states_.end(),
+                       [](const auto& e) { return e.activating_move; });
+}
+
 void AmsBackendSnapmaker::apply_active_tool_locked(const snapmaker::StatusDelta& delta,
                                                    FrameEffects& fx) {
     // Detect active tool from extruder pin state and toolhead.extruder. Only
@@ -1266,6 +1309,14 @@ void AmsBackendSnapmaker::apply_active_tool_locked(const snapmaker::StatusDelta&
             extruder_states_[current].state == "PARKED" && !extruder_states_[current].active_pin) {
             has_extruder_data = true;
         }
+    }
+    if (active >= 0 && active == pending_tool_) {
+        pending_tool_ = -1; // the requested head arrived
+    }
+    if (active < 0 && has_extruder_data && tool_change_in_flight_locked()) {
+        // The old head docks before the new one reports, so every head reads
+        // PARKED for a frame mid-change. That is not an empty carriage.
+        has_extruder_data = false;
     }
     if (has_extruder_data && active != system_info_.current_tool) {
         // Demote previous active tool from LOADED to AVAILABLE
