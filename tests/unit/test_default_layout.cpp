@@ -1025,8 +1025,7 @@ const std::map<std::string, TrackBudget> kLandscapeBudget = {
     {"medium", {12, 8}},
     {"large", {16, 10}},
     {"xlarge", {16, 10}},
-    // 1920x1080, measured. Not 26x16: the track formula adds half a cell and
-    // then truncates, so 1764px of content over a 144px cell is 12 cells.
+    // 1920x1080, measured: 1720x1056 of content over the 72px track edge is 12x7 cells.
     {"xxlarge", {24, 14}},
 };
 

@@ -368,7 +368,7 @@ and rowspan mean the same physical thing.
 ```cpp
 // include/grid_layout.h
 TRACKS_PER_CELL = 2                                         // a track is HALF a cell
-GRID_CELL[NUM_BREAKPOINTS] = {34, 40, 40, 60, 60, 72, 96}   // target track edge, px
+GRID_CELL[NUM_BREAKPOINTS] = {34, 40, 40, 60, 60, 72, 72}   // target track edge, px
 ```
 
 `GRID_CELL` carries one entry per `UiBreakpoint`, XXLarge included — a `static_assert` ties
@@ -427,6 +427,7 @@ layout:` / `Track geometry:` lines); pinned in `tests/unit/test_grid_square_cell
 | 480x800 | MEDIUM | 466x664 | 5 | **8x12** | 53.88 x 50.75 | 1.06 |
 | 1024x600 | LARGE | 904x584 | 6 | **16x10** | 50.88 x 53.00 | 0.96 |
 | 1280x720 | XLARGE | 1128x700 | 8 | **16x10** | 63.00 x 62.80 | 1.00 |
+| 1920x1080 | XXLARGE | 1720x1056 | 10 | **24x14** | 62.08 x 66.14 | 0.94 |
 | 1920x440 | SMALL | 1832x428 | 4 | **46x10** | 35.91 x 39.20 | 0.92 |
 | 320x1480 | TINY | 312x1332 | 2 | **8x34** | 37.25 x 37.24 | 1.00 |
 

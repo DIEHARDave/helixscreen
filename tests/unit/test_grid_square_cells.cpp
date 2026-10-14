@@ -64,6 +64,7 @@ const std::vector<Geometry> kMeasured = {
     {"ultratall 440x1920",       440, 1920,   428, 1768,   4,   10, 44},
     {"ultratall 320x1480",       320, 1480,   312, 1332,   2,    8, 34},
     {"ultrawide 1480x320",      1480,  320,  1418,  312,   2,   36,  8},
+    {"xxlarge 1920x1080",        1920, 1080,  1720, 1056,  10,   24, 14},
 };
 // clang-format on
 
