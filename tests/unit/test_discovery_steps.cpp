@@ -14,16 +14,22 @@
 
 #include "../lvgl_test_fixture.h"
 #include "../test_helpers/breadcrumb_capture.h"
+#include "../test_helpers/config_test_access.h"
+#include "../test_helpers/printer_capture.h"
 #include "app_globals.h"
 #include "async_lifetime_guard.h"
+#include "config.h"
 #include "discovery_steps.h"
+#include "filament_sensor_manager.h"
 #include "hardware_setup_prompter.h"
 #include "moonraker_api_mock.h"
 #include "moonraker_client_mock.h"
 #include "printer_state.h"
 
 #include <algorithm>
+#include <filesystem>
 #include <string>
+#include <unistd.h>
 #include <vector>
 
 #include "../catch_amalgamated.hpp"
@@ -216,4 +222,59 @@ TEST_CASE("the print_active decision: the discovery status can raise it, never l
     CHECK(helix::discovery_print_active(true, printing));
     CHECK_FALSE(helix::discovery_print_active(false, idle));
     CHECK_FALSE(helix::discovery_print_active(false, json::object()));
+}
+
+// A preset applied by the auto-detect step lands after the sensors were discovered and their
+// config loaded. The CC1's `filament_sensor` has no role by name, so the preset's role has to
+// reach the manager in the same session or the home filament tile stays blank until restart.
+TEST_CASE_METHOD(StepFixture, "a preset applied during discovery sets the sensor roles at once",
+                 "[discovery_steps][preset][sensors]") {
+    namespace fs = std::filesystem;
+    constexpr const char* kSensor = "filament_switch_sensor filament_sensor";
+
+    helix::Config& config = *helix::Config::get_instance();
+    const json saved_data = helix::ConfigTestAccess::data(config);
+    const std::string saved_path = helix::ConfigTestAccess::path(config);
+    const std::string saved_id = helix::ConfigTestAccess::active_printer_id(config);
+    const std::string dir =
+        (fs::temp_directory_path() / ("helix_preset_roles_" + std::to_string(getpid()))).string();
+    fs::create_directories(dir);
+
+    helix::ConfigTestAccess::path(config) = dir + "/settings.json";
+    helix::ConfigTestAccess::active_printer_id(config) = "default";
+    helix::ConfigTestAccess::data(config) = {
+        {"active_printer_id", "default"},
+        {"printers",
+         {{"default", {{"moonraker_host", "127.0.0.1"}, {"wizard_completed", false}}}}}};
+    get_printer_state().set_printer_type_sync("");
+
+    api.hardware().parse_objects(
+        helix::test::load_printer_capture("elegoo_centauri_carbon_objects_list").at("objects"));
+    auto& fsm = helix::FilamentSensorManager::instance();
+    fsm.discover_sensors(api.hardware().filament_sensor_names());
+    fsm.load_config_from_file();
+    REQUIRE_FALSE(fsm.is_sensor_available(helix::FilamentSensorRole::RUNOUT));
+
+    config.set_preset("cc1");
+    auto ctx = context(/*hw_changed=*/true);
+    for (const DiscoveryStep& step : helix::discovery_core_steps()) {
+        if (std::string(step.name) == "auto_detect_printer") {
+            step.run(ctx);
+        }
+    }
+
+    bool runout = false;
+    for (const auto& sensor : fsm.get_sensors()) {
+        if (sensor.klipper_name == kSensor) {
+            runout = sensor.role == helix::FilamentSensorRole::RUNOUT;
+        }
+    }
+    CHECK(runout);
+
+    fsm.discover_sensors({});
+    helix::ConfigTestAccess::data(config) = saved_data;
+    helix::ConfigTestAccess::path(config) = saved_path;
+    helix::ConfigTestAccess::active_printer_id(config) = saved_id;
+    get_printer_state().set_printer_type_sync("");
+    fs::remove_all(dir);
 }
