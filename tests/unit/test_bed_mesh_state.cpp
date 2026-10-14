@@ -66,6 +66,15 @@ TEST_CASE("compute_mesh_stats: a flat mesh has no range", "[bed_mesh][mesh_stats
     CHECK(s.range == 0.0f);
 }
 
+TEST_CASE("compute_mesh_stats: equal extremes report the first point probed",
+          "[bed_mesh][mesh_stats]") {
+    const MeshStats s = compute_mesh_stats(make_profile({{0.3f, 0.0f, 0.3f}, {0.0f, 0.3f, 0.0f}}));
+    CHECK(s.max_x == Catch::Approx(10.0f));
+    CHECK(s.max_y == Catch::Approx(20.0f));
+    CHECK(s.min_x == Catch::Approx(60.0f));
+    CHECK(s.min_y == Catch::Approx(20.0f));
+}
+
 TEST_CASE("compute_mesh_stats: Klipper's empty mesh reads as not loaded",
           "[bed_mesh][mesh_stats]") {
     CHECK_FALSE(compute_mesh_stats(BedMeshProfile{}).loaded);
@@ -175,4 +184,37 @@ TEST_CASE_METHOD(BedMeshStateFixture, "BedMeshState stops following once detache
     mock.dispatch_status_update(mesh_frame(json::array({json::array({0.0, 0.2})}), "default"));
     drain();
     CHECK(number("bed_mesh_available") == 0);
+}
+
+TEST_CASE_METHOD(BedMeshStateFixture,
+                 "BedMeshState publishes the high and low spots with coordinates",
+                 "[bed_mesh][mesh_stats]") {
+    BedMeshState::instance().attach(&mock_api);
+    mock.dispatch_status_update(mesh_frame(
+        json::array({json::array({0.0, 0.1, 0.3}), json::array({-0.1, 0.05, 0.15})}), "adaptive"));
+    drain();
+
+    CHECK(text("bed_mesh_max_value") == "0.300 mm");
+    CHECK(text("bed_mesh_min_value") == "-0.100 mm");
+    CHECK(text("bed_mesh_max_coord") == "[110, 20]");
+    CHECK(text("bed_mesh_min_coord") == "[10, 220]");
+}
+
+TEST_CASE_METHOD(BedMeshStateFixture, "BedMeshState attach with no API is a no-op",
+                 "[bed_mesh][mesh_stats]") {
+    BedMeshState::instance().attach(nullptr);
+    CHECK(number("bed_mesh_available") == 0);
+}
+
+TEST_CASE_METHOD(BedMeshStateFixture, "BedMeshState retranslate leaves a loaded mesh's text alone",
+                 "[bed_mesh][mesh_stats]") {
+    BedMeshState::instance().attach(&mock_api);
+    mock.dispatch_status_update(
+        mesh_frame(json::array({json::array({0.0, 0.2}), json::array({0.1, 0.3})}), "default"));
+    drain();
+    REQUIRE(text("bed_mesh_dimensions") == "2x2 points");
+
+    BedMeshState::instance().retranslate();
+
+    CHECK(text("bed_mesh_dimensions") == "2x2 points");
 }

@@ -1,9 +1,10 @@
 # Default home layouts by capability and printer
 
-Status: design, revised after independent review, awaiting approval. Supersedes the
+Status: design, revised after independent review and a render pass on live mocks, awaiting approval. Supersedes the
 "Default layout" section of `2026-08-12-home-widgets-design.md`, which ruled one
-re-author once all seven widgets exist. This ships with the six that exist;
-`exclude_map` joins a candidate list when it lands.
+re-author once all seven widgets exist. All seven now exist; `exclude_map` (gate
+`printer_has_exclude_object`) stays in the catalog this pass, since the freed large-tier
+cell went to print_stats.
 
 ## Goal
 
@@ -17,11 +18,14 @@ tiles. Layouts the user has changed are never touched.
 |---|---|
 | Mechanism | Capability rules in `default_layout.json` for every printer; preset seeds only where a packaged printer still needs one |
 | Existing layouts | Fresh and Reset only |
-| Timing | Go now with six widgets; reserve a place for `exclude_map` |
+| Timing | Go now; `exclude_map` landed meanwhile and stays catalog-only this pass |
 | Scope | Every tier (micro through xxlarge, portrait, ultrawide), the U1 and K-Touch gaps, the screenshot recipes |
 | Approach | Candidate slots; an unedited default stays live (A) |
 | temp_graph | Stays on medium (2x3 cells, unchanged) |
-| toolhead | On for toolchangers at every tier; on for everyone at large and up |
+| toolhead | Never in a default (esoteric); catalog only. Toolchangers get the AMS tool tile, which lists every tool's filament |
+| active_spool | Ranks after filament and LED: at 1x1 it is a bare spool icon |
+| Cell freed by toolhead on large+ | print_stats |
+| xxlarge grid | Track edge 96 to 72px (1920x1080: 9x6 to about 12x7 cells), measured before committing |
 | bed_mesh_tile | Large and up only, when the bed-mesh gate is open |
 | host_health | Never in a default; catalog only |
 | Last 1x1 cells | Notifications is fixed everywhere; LED is a low-priority candidate |
@@ -61,7 +65,6 @@ region per tier and an ordered list of alternatives that fill it.
   "slot": "spool_env",
   "placements": { "medium": {"col": 8, "row": 0, "colspan": 4, "rowspan": 2} },
   "alternatives": [
-    { "cells": [ {"candidates": [{"id": "toolhead", "requires": ["ams_is_tool_changer"]}], "at": [0, 0, 4, 2]} ] },
     { "cells": [ {"candidates": ["ams"], "at": [0, 0, 4, 2]} ] },
     { "cells": [ {"candidates": "ENV", "at": [0, 0, 2, 2]},
                  {"candidates": "FIL", "at": [2, 0, 2, 2]} ] }
@@ -96,10 +99,8 @@ region per tier and an ordered list of alternatives that fill it.
 - Seed overlays may replace a base anchor or slot by `id`/`slot`, or remove one with
   `{"id": "tips", "remove": true}`.
 
-Condition subjects, all existing: `ams_is_tool_changer` (`AmsState`, true for
-`AmsType::TOOL_CHANGER` and `SNAPMAKER` via `is_tool_changer()`), and
-`printer_has_spoolman` (`printer_capabilities_state.cpp`). Both get entries in
-`gate_subject_lifetime()`, and `setup_gate_observers()` observes every `requires`
+The one condition subject is `printer_has_spoolman` (`printer_capabilities_state.cpp`),
+existing. It gets an entry in `gate_subject_lifetime()`, and `setup_gate_observers()` observes every `requires`
 subject named in the loaded table as well as the registry gates.
 
 ### Resolution is a pure function
@@ -156,7 +157,8 @@ loaded by `try_populate_from_preset_seed()` and resolved by the same function.
 - `cc1`, `ad5x`, `ad5x_zmod`: deleted if the base tables reproduce their intent (AD5X
   IFS reaches SPOOL_ENV as an AMS). The render pass shows each persona before and after;
   a seed survives only where the base table loses something.
-- U1: no seed needed. `ams_is_tool_changer` puts toolhead in SPOOL_ENV on every tier.
+- U1: no seed needed. Its Snapmaker backend publishes `ams_slot_count`, so SPOOL_ENV shows
+  the AMS tool tile (all four tools and their filament) on every tier.
   The stale `printer.panel_widgets.home` block in `presets/snapmaker_u1.json` is deleted.
 
 ## Tables
@@ -169,14 +171,13 @@ Candidate lists:
 | Name | Candidates |
 |---|---|
 | ENV | dryer, chamber_temperature, led, clock |
-| FIL | filament, active_spool `requires printer_has_spoolman`, led, clock |
+| FIL | filament, led, active_spool `requires printer_has_spoolman`, clock |
 | ENV2 | chamber_temperature, dryer, led, clock |
-| FIL2 | active_spool `requires printer_has_spoolman`, filament, led, clock |
 | MESH | bed_mesh_tile, job_queue |
 
-SPOOL_ENV is the slot above: toolhead (toolchangers), else AMS, else ENV + FIL.
-Toolhead in SPOOL_ENV only matters below large; at large and up toolhead is a fixed
-anchor, so it is already placed and the AMS alternative leads.
+SPOOL_ENV is the slot above: AMS (any filament system, toolchangers included) at 2x1,
+else ENV + FIL. A second ENV or FIL cell elsewhere on the page takes the next candidate
+not already placed.
 
 ### medium 6x4 (800x480: AD5M, AD5X, K1/K1C/K2, Creator 5, Max 4, K-Touch)
 
@@ -197,11 +198,16 @@ fan_stack (2,1); SPOOL_ENV (3,1,2,1); print_status (0,2,5,2). Small adds tips (0
 ### large and xlarge 8x5 (1024x600, 1280x720)
 
 printer_image (0,0,2,2); temperature (2,0); bed_temperature (3,0); SPOOL_ENV (4,0,2,1);
-ENV2 (6,0); notifications (7,0); fan_stack (2,1); FIL2 (3,1); z_offset (4,1,2,1);
-toolhead (6,1,2,2); print_status (0,2,4,2); speed_flow (4,2,2,1); temp_graph (4,3,2,2);
+ENV2 (6,0); notifications (7,0); fan_stack (2,1); FIL (3,1); z_offset (4,1,2,1);
+print_stats (6,1,2,2); print_status (0,2,4,2); speed_flow (4,2,2,1); temp_graph (4,3,2,2);
 MESH (6,3,2,2); tips (0,4,4,1). 40 of 40 cells.
 
-### xxlarge 12x7 (1920x1080)
+### xxlarge 12x7 (1920x1080 at a 72px track edge)
+
+The track edge drops from 96 to 72px (`include/grid_layout.h#GRID_CELL`), taking 1920x1080
+from 9x6 to 12x7 cells (measured on a spike build: 1x1 cell 134x142px; every 1x1 and
+2x1 widget used here reads without clipping; temp_graph needs 3 rows to keep its axes
+and legend; print_status needs 5 columns, as 4x3 clips its idle data column by 14px).
 
 | Widget | Cells |
 |---|---|
@@ -209,15 +215,20 @@ MESH (6,3,2,2); tips (0,4,4,1). 40 of 40 cells.
 | print_status detailed | (3,0,5,3) |
 | temperature, bed_temperature | (8,0), (9,0) |
 | SPOOL_ENV | (10,0,2,1) |
-| fan_stack, notifications, ENV2, FIL2 | (8,1), (9,1), (10,1), (11,1) |
+| fan_stack, notifications, ENV, FIL | (8,1), (9,1), (10,1), (11,1) |
 | z_offset, speed_flow | (8,2,2,1), (10,2,2,1) |
-| tips | (0,3,8,1) |
-| temp_graph | (0,4,8,3) |
-| toolhead | (8,3,4,2) |
-| MESH | (8,5,4,2) |
+| temp_graph | (0,3,8,3) |
+| tips | (0,6,8,1) |
+| MESH | (8,3,4,2) |
+| print_stats | (8,5,3,2) |
+| FILLER = `[clock, network]` | (11,5,1,2) |
 
-84 of 84 cells. job_queue's max (8x6 tracks) admits 4x2 cells; print_stats (max 6x4) does
-not, which is why MESH falls back to job_queue.
+84 of 84 cells, rendered on the spike build with voron_24 (`ctl overflow` reports only the
+idle print card's buttons 7px past the bottom, which the 96px build shows too).
+Consequences handled in the same task: `tests/unit/test_grid_square_cells.cpp` and the
+`LAYOUT_SYSTEM.md` grid table gain the 1920x1080 row; `kLandscapeBudget` follows; an
+existing xxlarge layout meets a new grid once and is parked and ported by
+`switch_to_grid`, as on a UI Scale change.
 
 ### Portrait (tracks)
 
@@ -240,7 +251,7 @@ The existing band structure stays; only the small-widget positions change.
   (30,0), fan_stack (32,0), notifications (34,0), SPOOL_ENV (28,2,4,2), ENV2 (32,2),
   motion (34,2).
 - **small** (46x10): temperature (36,0), bed_temperature (38,0), fan_stack (40,0), ENV2
-  (42,0), notifications (44,0), SPOOL_ENV (36,2,4,2), FIL2 (40,2), motion (42,2), macros
+  (42,0), notifications (44,0), SPOOL_ENV (36,2,4,2), FIL (40,2), motion (42,2), macros
   (44,2). The tiny `disabled` list (active_spool, macros) stays.
 
 ## Gaps fixed in the same change
@@ -268,10 +279,11 @@ Each of these fails if its feature is removed.
 - Resolver, table-driven, one row per persona snapshot:
   - k2: AMS 2x1;
   - ad5m: ENV + FIL, no active_spool without Spoolman, LED placed once;
-  - u1 and voron toolchanger at tiny and medium: toolhead in SPOOL_ENV;
-  - k2 at medium: CFS does NOT get toolhead (tool_count 4, not a toolchanger);
+  - u1 at tiny and a voron toolchanger at medium: AMS tool tile 2x1;
+  - no table ever places toolhead or host_health;
   - cc1, qidi_q2 (AMS);
-  - voron_24 at large (toolhead, bed_mesh_tile) and without a mesh (job_queue).
+  - voron_24 at large (print_stats, bed_mesh_tile) and without a mesh (job_queue);
+  - ad5m with Spoolman: active_spool never leads filament or LED.
   Each row asserts ids and cells, and that no default-enabled widget is left enabled
   and unplaced.
 - Liveness, through `populate_widgets` (not only the resolver):
