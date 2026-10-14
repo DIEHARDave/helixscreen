@@ -379,6 +379,10 @@ constexpr const char* kNoMachineControlFiles[] = {
     "ui_xml/bed_mesh_panel.xml",
     "ui_xml/bed_mesh_rename_modal.xml",
     "ui_xml/bed_mesh_save_config_modal.xml",
+    // Re-test sweeps: refused by Belt Tension's Start gate in C++
+    // (gate_allows_sweep, which closes on an active print) rather than
+    // moves_machine, the same as panel_belt_tension.xml.
+    "ui_xml/belt_retest_menu.xml",
     "ui_xml/calibration_pid_panel.xml",
     "ui_xml/calibration_zoffset_panel.xml",
     "ui_xml/change_host_modal.xml",
