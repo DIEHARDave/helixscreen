@@ -90,10 +90,12 @@ echo -n "📛 Checking namespace compliance (declarations outside helix::)..."
 # 1965 -> 1964 is main's own slack of one, picked up by the merge.
 # 1964 -> 1962 is the toolhead, host health and bed mesh widgets sharing
 # helix::ui::set_int_if_changed instead of each keeping a file-local copy.
+# 1962 -> 1960 is the runout-ownership switches leaving runtime_config.cpp for
+# BackendTraits fields.
 #
 # tests/shell/test_namespace_gate.bats carries this same number and fails if
 # the two disagree or if the tree drifts under it.
-if python3 scripts/check_namespace_compliance.py --max-allowed 1962 --summary >/tmp/namespace_check.out 2>&1; then
+if python3 scripts/check_namespace_compliance.py --max-allowed 1960 --summary >/tmp/namespace_check.out 2>&1; then
   section_time $SECTION_START
   echo ""
   tail -1 /tmp/namespace_check.out
