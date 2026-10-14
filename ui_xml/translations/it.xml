@@ -2608,6 +2608,7 @@
   <translation tag="Retraction distance to clear extruder gears" it="Distanza di retrazione per liberare gli ingranaggi dell&apos;estrusore"/>
   <translation tag="Retry" it="Riprova"/>
   <translation tag="Reverse Multiplier" it="Moltiplicatore all&apos;indietro"/>
+  <translation tag="Review" it="Rivedi"/>
   <translation tag="Review detected hardware validation issues" it="Rivedi problemi di validazione hardware rilevati"/>
   <translation tag="Review your configuration below, then click Finish to save" it="Rivedi la configurazione qui sotto, poi tocca Fine per salvare"/>
   <translation tag="Rewinding" it="Riavvolgimento"/>
@@ -2689,6 +2690,7 @@
   <translation tag="Scan Spool QR Code" it="Scansiona codice QR bobina"/>
   <translation tag="Scan and select a Bluetooth printer first" it="Prima scansiona e seleziona una stampante Bluetooth"/>
   <translation tag="Scan for Printers" it="Cerca stampanti"/>
+  <translation tag="Scan the spool label with your barcode scanner" it="Scansiona l&apos;etichetta della bobina con lo scanner codici a barre"/>
   <translation tag="Scan with your phone to save these values" it="Scansiona con il telefono per salvare questi valori"/>
   <translation tag="Scanner" it="Scanner"/>
   <translation tag="Scanner bonded but didn&apos;t attach as a keyboard. Try turning the scanner off and on, then tap Pair again. If that fails, add ClassicBondedOnly=false to /etc/bluetooth/input.conf." it="Scanner associato ma non collegato come tastiera. Prova a spegnere e riaccendere lo scanner, poi tocca di nuovo Pair. Se non funziona, aggiungi ClassicBondedOnly=false a /etc/bluetooth/input.conf."/>
@@ -3158,6 +3160,7 @@
   <translation tag="This is an emergency stop: the printer halts and Klipper restarts." it="Questo è uno stop di emergenza: la stampante si ferma e Klipper si riavvia."/>
   <translation tag="This is exactly the data that will be sent" it="Questi sono esattamente i dati che verranno inviati"/>
   <translation tag="This is what data would be sent if enabled" it="Questi sono i dati che verrebbero inviati se abilitato"/>
+  <translation tag="This looks like a {}, but it is set up as a {}" it="Questa stampante sembra una {}, ma è configurata come {}"/>
   <translation tag="This may take up to 30 seconds" it="Questo potrebbe richiedere fino a 30 secondi"/>
   <translation tag="This plugin asks for no special permissions." it="Questo plugin non richiede permessi speciali."/>
   <translation tag="This plugin lets HelixScreen control print start options like bed mesh and QGL." it="Questo plugin permette a HelixScreen di controllare opzioni avvio stampa come mesh piano e QGL."/>
@@ -3620,6 +3623,7 @@
   <translation tag="tool(s)" it="utensile/i"/>
   <translation tag="used" it="usato"/>
   <translation tag="v%s available" it="v%s disponibile"/>
+  <translation tag="v%s has no build for the %s, so it can&apos;t be installed here. Pick a channel with a newer release." it="v%s non ha una build per %s, quindi non può essere installata qui. Scegli un canale aggiornamenti con una versione più recente."/>
   <translation tag="v{} installed! Restarting..." it="v{} installata! Riavvio in corso..."/>
   <translation tag="v{} is available. Tap to update." it="v{} disponibile. Tocca per aggiornare."/>
   <translation tag="wpa_supplicant is not running. WiFi features unavailable." it="wpa_supplicant non è in esecuzione. Le funzioni WiFi non sono disponibili."/>

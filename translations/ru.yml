@@ -2845,6 +2845,7 @@ translations:
   Retraction distance to clear extruder gears: 'Расстояние ретракции для выхода из шестерён экструдера'
   Retry: Повторить
   Reverse Multiplier: 'Множитель обратного хода'
+  Review: Проверить
   Review detected hardware validation issues: Просмотр обнаруженных проблем валидации
     оборудования
   Review your configuration below, then click Finish to save: Проверьте конфигурацию
@@ -2943,6 +2944,7 @@ translations:
   Scan Spool QR Code: Сканировать QR-код катушки
   Scan and select a Bluetooth printer first: Сначала найдите и выберите Bluetooth-принтер
   Scan for Printers: Поиск принтеров
+  Scan the spool label with your barcode scanner: 'Отсканируйте этикетку катушки сканером штрих-кодов'
   Scan with your phone to save these values: Отсканируйте телефоном, чтобы сохранить эти значения
   Scanner: Сканер
   ? Scanner bonded but didn't attach as a keyboard. Try turning the scanner off and
@@ -3497,6 +3499,7 @@ translations:
   This is exactly the data that will be sent: Это именно те данные, которые будут
     отправлены
   This is what data would be sent if enabled: Эти данные были бы отправлены при включении
+  This looks like a {}, but it is set up as a {}: Похоже, это {}, но принтер настроен как {}
   This may take up to 30 seconds: Это может занять до 30 секунд
   This plugin asks for no special permissions.: 'Этот плагин не запрашивает специальных разрешений.'
   This plugin lets HelixScreen control print start options like bed mesh and QGL.: 'Этот плагин позволяет HelixScreen управлять опциями начала печати, такими как сетка стола и QGL.'
@@ -4007,6 +4010,7 @@ translations:
   tool(s): инструмент(ы)
   used: использ.
   v%s available: Доступна v%s
+  v%s has no build for the %s, so it can't be installed here. Pick a channel with a newer release.: Для v%s нет сборки для %s, поэтому её нельзя установить здесь. Выберите канал обновлений с более новым выпуском.
   v{} installed! Restarting...: v{} установлена! Перезапуск...
   v{} is available. Tap to update.: v{} доступна. Нажмите для обновления.
   wpa_supplicant is not running. WiFi features unavailable.: wpa_supplicant не запущен. Функции WiFi недоступны.

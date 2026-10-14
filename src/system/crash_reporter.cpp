@@ -326,6 +326,7 @@ CrashReporter::CrashReport CrashReporter::collect_report() {
     report.platform = diag.identity.platform_key;
     report.printer_model = diag.identity.printer_model;
     report.mod_flavor = diag.identity.mod_flavor;
+    report.board = diag.identity.board;
     report.config_dir = diag.paths.config_dir;
     report.cache_dir = diag.paths.cache_dir;
     report.cache_tier = diag.paths.cache_tier;
@@ -421,6 +422,7 @@ nlohmann::json CrashReporter::report_to_json(const CrashReport& report) {
     j["ram_mb"] = report.ram_total_mb;
     j["cpu_cores"] = report.cpu_cores;
     j["mod_flavor"] = report.mod_flavor;
+    j["board"] = report.board;
     // Paths can embed a username, and this JSON reaches a public GitHub issue,
     // so they pass through the same redaction the debug bundle applies to the
     // same values; the local text report keeps them raw.
@@ -649,7 +651,7 @@ std::string CrashReporter::report_to_text(const CrashReport& report) {
     }
 
     ss << "--- System Info ---\n";
-    ss << "Platform:  " << report.platform << "\n";
+    ss << "Platform:  " << report.platform << " / " << report.board << "\n";
     ss << "Mod:       " << report.mod_flavor << "\n";
     ss << "RAM:       " << report.ram_total_mb << " MB\n";
     ss << "CPU Cores: " << report.cpu_cores << "\n";
@@ -725,7 +727,8 @@ std::string CrashReporter::generate_github_url(const CrashReport& report) {
     body << "## Crash Summary\n";
     body << "- **Signal:** " << report.signal << " (" << report.signal_name << ")\n";
     body << "- **Version:** " << report.app_version << "\n";
-    body << "- **Platform:** " << report.platform << " (" << report.mod_flavor << ")\n";
+    body << "- **Platform:** " << report.platform << " / " << report.board << " ("
+         << report.mod_flavor << ")\n";
     body << "- **Uptime:** " << report.uptime_sec << "s\n";
     if (!report.exception_what.empty()) {
         body << "- **Exception:** " << report.exception_what << "\n";

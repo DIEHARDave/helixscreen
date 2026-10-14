@@ -287,7 +287,7 @@ class MoonrakerDiscoverySequence {
      *        available" (prestonbrown/helixscreen#1351).
      * @param probe_local_endpoints Fall back to probing loopback camera ports
      *        when the registry has nothing usable; see
-     *        helix::local_camera_probe_safe() for where that is allowed.
+     *        helix::board::Info::local_camera_probe_safe for where that is allowed.
      */
     void detect_webcam(json service_state, bool probe_local_endpoints);
 
@@ -343,7 +343,6 @@ class MoonrakerDiscoverySequence {
         const PrinterDiscovery& hw, const std::vector<std::string>& heaters,
         const std::vector<std::string>& sensors, const std::vector<std::string>& load_cells,
         const std::vector<std::string>& fans, const std::vector<std::string>& leds,
-        const std::vector<std::string>& afc_objects,
         const std::vector<std::string>& filament_sensors, const std::vector<std::string>& mcus);
 
   private:

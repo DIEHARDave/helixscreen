@@ -2707,6 +2707,7 @@ translations:
   Retraction distance to clear extruder gears: 'エクストルーダーギアから抜くための引き戻し距離'
   Retry: 再試行
   Reverse Multiplier: '逆方向倍率'
+  Review: 確認
   Review detected hardware validation issues: 検出されたハードウェア検証の問題を確認
   Review your configuration below, then click Finish to save: 以下の設定を確認し、「完了」をクリックして保存してください
   Rewinding: 巻き戻し中
@@ -2795,6 +2796,7 @@ translations:
   Scan Spool QR Code: スプール QR コードをスキャン
   Scan and select a Bluetooth printer first: 先に Bluetooth プリンターをスキャンして選択してください
   Scan for Printers: プリンターをスキャン
+  Scan the spool label with your barcode scanner: 'バーコードスキャナーでスプールのラベルをスキャンしてください'
   Scan with your phone to save these values: スマートフォンでスキャンして値を保存
   Scanner: スキャナー
   ? Scanner bonded but didn't attach as a keyboard. Try turning the scanner off and
@@ -3305,6 +3307,7 @@ translations:
   'This is an emergency stop: the printer halts and Klipper restarts.': これは緊急停止です：プリンターが停止し、Klipperが再起動します。
   This is exactly the data that will be sent: これが送信されるデータです
   This is what data would be sent if enabled: これは有効にした場合に送信されるデータです
+  This looks like a {}, but it is set up as a {}: このプリンターは{}のようですが、{}として設定されています
   This may take up to 30 seconds: 最大30秒かかる場合があります
   This plugin asks for no special permissions.: 'このプラグインは特別な権限を要求しません。'
   This plugin lets HelixScreen control print start options like bed mesh and QGL.: 'このプラグインにより、HelixScreen がベッドメッシュや QGL などの印刷開始オプションを制御できます。'
@@ -3792,6 +3795,7 @@ translations:
   tool(s): ツール
   used: 使用
   v%s available: v%s が利用可能です
+  v%s has no build for the %s, so it can't be installed here. Pick a channel with a newer release.: v%s には %s 用のビルドがないため、ここにはインストールできません。より新しいリリースがある更新チャンネルを選んでください。
   v{} installed! Restarting...: v{} をインストールしました！再起動中...
   v{} is available. Tap to update.: v{} が利用可能です。タップして更新してください。
   wpa_supplicant is not running. WiFi features unavailable.: wpa_supplicant が動作していません。WiFi 機能は利用できません。

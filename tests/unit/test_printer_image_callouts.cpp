@@ -1092,8 +1092,10 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     lv_obj_t* img = h.child("printer_image");
     lv_obj_t* container = h.child("printer_container");
     bool shrunk_seen = false;
+    // The container pads its content box, so the tile carries that on top.
+    const int pad = theme_manager_get_spacing("space_sm");
     for (int w = 480; w >= 320 && !shrunk_seen; w -= 2) {
-        h.resize(8, 4, w, 120);
+        h.resize(8, 4, w + 2 * pad, 120 + 2 * pad);
         settle();
         lv_obj_update_layout(h.root());
         if (mode_now() != static_cast<int>(CalloutMode::BothSides))

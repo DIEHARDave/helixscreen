@@ -12,12 +12,17 @@
  * disagree on any field.
  */
 
+#include "ams_backend_ace.h"
 #include "ams_backend_ad5x_ifs.h"
 #include "ams_backend_afc.h"
+#include "ams_backend_cfs.h"
 #include "ams_backend_happy_hare.h"
 #include "ams_backend_mock.h"
+#include "ams_backend_openams.h"
+#include "ams_backend_qidi.h"
 #include "ams_backend_snapmaker.h"
 #include "ams_backend_toolchanger.h"
+#include "test_helpers/qidi_box_test_access.h"
 
 #include "../catch_amalgamated.hpp"
 
@@ -158,4 +163,98 @@ TEST_CASE("Mock AFC load leaves only the new lane loaded", "[ams][mock][traits]"
     CHECK(mock.slot_is_actively_loaded(target));
     CHECK_FALSE(mock.slot_is_actively_loaded(prior));
     mock.stop();
+}
+
+// ============================================================================
+// Runout ownership
+// ============================================================================
+
+namespace {
+
+helix::ClassifyContext paused_job() {
+    helix::ClassifyContext ctx;
+    ctx.is_paused = true;
+    ctx.is_printing = true;
+    return ctx;
+}
+
+} // namespace
+
+TEST_CASE("runout ownership traits match the table", "[ams][traits][runout_traits]") {
+    struct Row {
+        const char* name;
+        BackendTraits traits;
+        bool raises_runout_fault;
+        bool raises_runout_fault_during_job;
+        bool unloads_to_hub_between_prints;
+    };
+    const Row rows[] = {
+        {"Happy Hare", AmsBackendHappyHare::kTraits, true, true, false},
+        {"AFC", AmsBackendAfc::kTraits, true, true, false},
+        {"AD5X IFS", AmsBackendAd5xIfs::kTraits, true, false, true},
+        {"CFS", helix::printer::AmsBackendCfs::kTraits, true, true, false},
+        {"ACE", AmsBackendAce::kTraits, false, false, false},
+        {"QIDI Box", AmsBackendQidi::kTraits, false, false, false},
+        {"OpenAMS", AmsBackendOpenAms::kTraits, false, false, false},
+        {"Tool changer", AmsBackendToolChanger::kTraits, false, false, false},
+        {"Snapmaker", AmsBackendSnapmaker::kTraits, false, false, false},
+    };
+    for (const Row& row : rows) {
+        INFO(row.name);
+        CHECK(row.traits.raises_runout_fault == row.raises_runout_fault);
+        CHECK(row.traits.raises_runout_fault_during_job == row.raises_runout_fault_during_job);
+        CHECK(row.traits.unloads_to_hub_between_prints == row.unloads_to_hub_between_prints);
+    }
+}
+
+// The backends that raise a runout fault pin that trait beside the runout fixture that proves
+// they raise it (the [runout_traits] cases in their own test files). These are the other side:
+// a backend with no runout fault of its own must produce no error event for a runout, or the
+// generic modal would be silenced with nothing put in its place.
+TEST_CASE("runout_fault_traits_match_the_error_hooks", "[ams][traits][runout_traits]") {
+    const std::string runout_line = "!! Filament runout";
+
+    SECTION("ACE has no error hook") {
+        AmsBackendAce backend(nullptr, nullptr);
+        CHECK_FALSE(backend.classify_error(runout_line, paused_job()).has_value());
+        CHECK_FALSE(backend.current_error().has_value());
+        CHECK_FALSE(backend.traits().raises_runout_fault);
+    }
+
+    SECTION("OpenAMS raises faults of the manager, not a runout") {
+        AmsBackendOpenAms backend(nullptr, nullptr);
+        CHECK_FALSE(backend.classify_error(runout_line, paused_job()).has_value());
+        CHECK_FALSE(backend.current_error().has_value());
+        CHECK_FALSE(backend.traits().raises_runout_fault);
+    }
+
+    SECTION("Snapmaker classifies only the missing-filament-type refusal") {
+        AmsBackendSnapmaker backend(nullptr, nullptr);
+        CHECK_FALSE(backend.classify_error(runout_line, paused_job()).has_value());
+        CHECK_FALSE(backend.current_error().has_value());
+        CHECK_FALSE(backend.traits().raises_runout_fault);
+    }
+
+    SECTION("a tool changer raises dock-sensor faults, not a runout") {
+        AmsBackendToolChanger backend(nullptr, nullptr);
+        CHECK_FALSE(backend.classify_error(runout_line, paused_job()).has_value());
+        CHECK_FALSE(backend.current_error().has_value());
+        CHECK_FALSE(backend.traits().raises_runout_fault);
+    }
+
+    SECTION("QIDI Box reports a blocked slot with a dismiss-only dialog") {
+        AmsBackendQidi backend(nullptr, nullptr);
+        CHECK_FALSE(backend.classify_error(runout_line, paused_job()).has_value());
+        CHECK_FALSE(backend.current_error().has_value());
+        QidiBoxTestAccess::parse_vars(
+            backend,
+            json{{"enable_box", 1}, {"slot0", 1}, {"slot1", -3}, {"slot2", 1}, {"slot3", 1}});
+        auto ev = backend.current_error();
+        REQUIRE(ev.has_value());
+        // Nothing to resume or reload from: the generic runout modal is the surface
+        // that offers the user a way forward.
+        REQUIRE(ev->recovery_actions.size() == 1);
+        CHECK(ev->recovery_actions[0].gcode.empty());
+        CHECK_FALSE(backend.traits().raises_runout_fault);
+    }
 }

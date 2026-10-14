@@ -92,7 +92,7 @@ honouring `RESET` while disabled, and `_reset_endless_spool()` then assigns *and
 side effect.
 
 `endless_spool_enabled` is in the `mmu` subscription field list
-(`src/api/moonraker_discovery_sequence.cpp`) alongside `endless_spool_groups`. Happy Hare
+(`src/printer/ams_backend_happy_hare.cpp#required_status_objects`) alongside `endless_spool_groups`. Happy Hare
 publishes the bit under two keys, `endless_spool_enabled` and `endless_spool`, both tagged
 DEPRECATED in mmu.py's `get_status()` with no replacement shipped, so the parse reads the
 newer spelling and falls back to the older one; if a future Happy Hare drops both, the flag

@@ -242,9 +242,9 @@ There are three runout queries, from coarse to fine:
 | inside the stabilization window | first frames after connect are not news |
 | the setup wizard is active | the wizard is walking the user through it |
 | `AmsState::is_filament_operation_active()` | load/unload moves filament past sensors on purpose |
-| AD5X IFS backend and no job holds the machine | the firmware auto-unloads between prints |
+| the backend unloads to its hub between prints (`BackendTraits::unloads_to_hub_between_prints`, AD5X IFS) and no job holds the machine | the firmware auto-unloads between prints |
 | removal edge inside the post-unload grace | the user just unloaded |
-| `backend_owns_runout_during_job()` for the active backend, during a job | Happy Hare, AFC and CFS raise their own runout prompt (`src/system/runtime_config.cpp#backend_owns_runout_during_job`) |
+| `BackendTraits::raises_runout_fault_during_job` for the active backend, during a job | Happy Hare, AFC and CFS raise their own runout prompt (`include/ams_backend.h#BackendTraits`) |
 | master switch off, sensor disabled, no role, or the firmware was not running the sensor on both sides of the edge | not monitoring |
 
 When a job holds the machine and any AMS backend is present, a removal toast is not fired on the edge. It waits `RUNOUT_TOAST_DWELL` (45 s, `include/filament_sensor_types.h#"RUNOUT_TOAST_DWELL"`), because a tool change clears the toolhead sensor for 26 to 33 s and then refills it. A refill inside the dwell cancels the toast silently; the dwell is swept on every status frame rather than on a timer. Detection and the runout subjects still fire on the edge; only the toast waits.

@@ -6,15 +6,12 @@
 #include "ui_update_queue.h"
 
 #include "accel_sensor_manager.h"
+#include "ams_backend.h"
 #include "ams_backend_afc.h"
-#include "ams_backend_openams.h"
 #include "ams_state.h"
-#include "batch_feed_reconcile.h"
-#include "screws_tilt_dialect.h"
-#if HELIX_HAS_IFS
-#include "ams_backend_ad5x_ifs.h"
-#endif
 #include "app_globals.h"
+#include "batch_feed_reconcile.h"
+#include "board_identity.h"
 #include "chamber_heater_backend.h"
 #include "config.h"
 #include "filament_temperature_source.h"
@@ -39,6 +36,7 @@
 #include "printer_detector.h"
 #include "printer_state.h"
 #include "probe_sensor_manager.h"
+#include "screws_tilt_dialect.h"
 #include "sensor_state.h"
 #include "text_io.h"
 #include "tool_offsets.h"
@@ -54,6 +52,18 @@
 #include <utility>
 
 namespace helix {
+
+namespace {
+
+/// Whether a filament backend publishes its sensors under @p name's object-type
+/// prefix instead of Klipper's stock filament_switch_sensor / filament_motion_sensor.
+bool is_backend_filament_sensor(const std::string& name) {
+    const auto& prefixes = AmsBackend::filament_sensor_object_prefixes();
+    return std::any_of(prefixes.begin(), prefixes.end(),
+                       [&name](const std::string& prefix) { return name.rfind(prefix, 0) == 0; });
+}
+
+} // namespace
 
 bool probe_snapshot_reachable(const std::string& snapshot_url) {
     auto req = std::make_shared<HttpRequest>();
@@ -731,7 +741,8 @@ void MoonrakerDiscoverySequence::continue_discovery_objects(uint64_t seq) {
                 // service_state the webcam decision cross-checks (#1351). A failed
                 // query is fatal for neither — webcam detection still runs, with an
                 // empty service_state that reads as "assume available".
-                const bool probe_local_cameras = helix::local_camera_probe_safe();
+                const bool probe_local_cameras =
+                    helix::board::current_info().local_camera_probe_safe;
                 client_.send_jsonrpc(
                     "machine.system_info", json::object(),
                     [this, probe_local_cameras](const json& sys_response) {
@@ -1185,8 +1196,7 @@ json MoonrakerDiscoverySequence::build_subscription_objects(
     const PrinterDiscovery& hw, const std::vector<std::string>& heaters,
     const std::vector<std::string>& sensors, const std::vector<std::string>& load_cells,
     const std::vector<std::string>& fans, const std::vector<std::string>& leds,
-    const std::vector<std::string>& afc_objects, const std::vector<std::string>& filament_sensors,
-    const std::vector<std::string>& mcus) {
+    const std::vector<std::string>& filament_sensors, const std::vector<std::string>& mcus) {
     json subscription_objects;
 
     // Core non-optional objects — narrow each to the fields HelixScreen
@@ -1338,78 +1348,14 @@ json MoonrakerDiscoverySequence::build_subscription_objects(
     // Narrowed to the single `state` field to avoid needless notifications.
     subscription_objects["idle_timeout"] = json::array({"state"});
 
-    // Happy Hare MMU object (gate status, colors, materials, filament info)
-    // Subscribe to specific fields only — nullptr means ALL fields, which causes
-    // excessive notifications and Klipper-side serialization cost (#388)
-    if (hw.mmu_type() == AmsType::HAPPY_HARE) {
-        // endless_spool_enabled is the ENABLE bit for endless_spool_groups. Happy Hare
-        // ignores a GROUPS= write while it is 0, so an edit sent without reading it first
-        // fails silently.
-        subscription_objects["mmu"] = json::array({"gate",
-                                                   "tool",
-                                                   "filament",
-                                                   "action",
-                                                   "reason_for_pause",
-                                                   "filament_pos",
-                                                   "gate_status",
-                                                   "gate_color_rgb",
-                                                   "gate_color",
-                                                   "gate_material",
-                                                   "gate_name",
-                                                   "gate_vendor",
-                                                   "gate_filament_name",
-                                                   "gate_spool_id",
-                                                   "gate_temperature",
-                                                   "has_bypass",
-                                                   "num_units",
-                                                   "num_gates",
-                                                   "unit_gate_counts",
-                                                   "unit",
-                                                   "ttg_map",
-                                                   "endless_spool_groups",
-                                                   "endless_spool_enabled",
-                                                   "sensors",
-                                                   "bowden_progress",
-                                                   "clog_detection_enabled",
-                                                   "encoder",
-                                                   "flowguard",
-                                                   "drying_state",
-                                                   "sync_feedback_state",
-                                                   "sync_feedback_bias_modelled",
-                                                   "sync_feedback_bias_raw",
-                                                   "sync_feedback_flow_rate",
-                                                   "sync_drive",
-                                                   "spoolman_support",
-                                                   "pending_spool_id",
-                                                   "espooler_active",
-                                                   "espooler",
-                                                   "tangle_prevention",
-                                                   "num_toolchanges",
-                                                   "slicer_tool_map",
-                                                   "toolchange_purge_volume",
-                                                   "leds"});
-    }
-
-    // All discovered AFC objects: the backend owns which fields each object
-    // type needs. nullptr here would cost dearly: an AFC BoxTurtle setup
-    // typically has ~9 AFC_* objects, all updated by the firmware on every lane
-    // state change.
-    const json afc_subscriptions = AmsBackendAfc::required_status_objects(afc_objects);
-    for (auto it = afc_subscriptions.begin(); it != afc_subscriptions.end(); ++it) {
+    // Filament systems (Happy Hare, AFC, AD5X IFS, CFS, ACE, Snapmaker, QIDI Box,
+    // OpenAMS): each backend owns which objects it reads and which fields of them,
+    // and answers only for its own printer. Subscribing a field-less object costs
+    // Klipper serialization on every tick, so the backends narrow where they can.
+    const json filament_objects = AmsBackend::required_status_objects(hw);
+    for (auto it = filament_objects.begin(); it != filament_objects.end(); ++it) {
         subscription_objects[it.key()] = it.value();
     }
-
-    // AD5X IFS: save_variables for filament state (colors, types, tool mapping),
-    // plus native ZMOD's own zmod_ifs/zmod_color objects where the firmware
-    // publishes them. The backend owns which names those are; asking it keeps
-    // the firmware's schema in the one module that parses it.
-#if HELIX_HAS_IFS
-    if (hw.mmu_type() == AmsType::AD5X_IFS) {
-        for (const auto& object : AmsBackendAd5xIfs::required_status_objects(hw)) {
-            subscription_objects[object] = nullptr;
-        }
-    }
-#endif // HELIX_HAS_IFS
 
     // Firmware that keeps the authoritative z-offset outside gcode_move needs
     // whatever object stores it; without this the Z-offset row reads 0.000
@@ -1455,64 +1401,6 @@ json MoonrakerDiscoverySequence::build_subscription_objects(
     for (const auto& obj : helix::chamber::required_status_objects(hw.chamber_diagnostics_object(),
                                                                    hw.chamber_filter_fan_pin())) {
         subscription_objects[obj] = nullptr;
-    }
-
-    // ACE (Anycubic ACE Pro — ValgACE/BunnyACE/DuckACE Klipper drivers, native
-    // GoKlipper `filament_hub`, or the Kobra S1 mainline-Python fork's
-    // `ace_instance_N` objects, #1107). Subscribe the real detected object
-    // name(s) so slot colors, materials, status, and dryer state push live via
-    // get_status(). Falls back to `ace` if the name list is unexpectedly empty.
-    if (hw.mmu_type() == AmsType::ACE) {
-        if (hw.ace_object_names().empty()) {
-            subscription_objects["ace"] = nullptr;
-        } else {
-            for (const auto& ace_obj : hw.ace_object_names()) {
-                subscription_objects[ace_obj] = nullptr;
-            }
-        }
-    }
-
-    // CFS (Creality Filament System) — K2 series with RS-485 CFS units
-    if (hw.mmu_type() == AmsType::CFS) {
-        subscription_objects["box"] = nullptr;
-        subscription_objects["motor_control"] = nullptr;
-    }
-
-    // Snapmaker U1 SnapSwap — RFID filament, feed modules, task config, extruder states
-    if (hw.mmu_type() == AmsType::SNAPMAKER) {
-        subscription_objects["filament_detect"] = nullptr;
-        subscription_objects["filament_feed left"] = nullptr;
-        subscription_objects["filament_feed right"] = nullptr;
-        subscription_objects["print_task_config"] = nullptr;
-        subscription_objects["machine_state_manager"] = nullptr;
-        for (int i = 0; i < 4; ++i) {
-            subscription_objects[fmt::format("filament_motion_sensor e{}_filament", i)] = nullptr;
-        }
-        // The batch macro's `doing` variable drives batch-feed progress, so it
-        // needs a subscription to be readable while a feed runs. Klipper
-        // keeps the config's case for the status object key, so subscribe
-        // under the name as written in printer.cfg; a guessed name makes
-        // Moonraker reject the whole subscription.
-        const std::string batch_macro =
-            hw.macro_config_name(helix::macro_patterns::AUTO_FEEDING_BATCH);
-        if (!batch_macro.empty()) {
-            subscription_objects[fmt::format("gcode_macro {}", batch_macro)] = nullptr;
-        }
-    }
-
-    // QIDI Box — box_extras carries box_drying_state.box<N>.{dry_state, end_time}
-    // for the dryer countdown (issue #1019); save_variables carries slot/box state.
-    // Both are also bootstrap-queried in AmsBackendQidi::on_started(); subscribing
-    // keeps drying-state changes pushing live to handle_status().
-    if (hw.mmu_type() == AmsType::QIDI_BOX) {
-        subscription_objects["box_extras"] = nullptr;
-        subscription_objects["save_variables"] = nullptr;
-    }
-
-    // OpenAMS: the backend owns which oams_manager fields it reads.
-    const json openams_objects = AmsBackendOpenAms::required_status_objects(hw);
-    for (auto it = openams_objects.begin(); it != openams_objects.end(); ++it) {
-        subscription_objects[it.key()] = it.value();
     }
 
     // Power-loss recovery: the PLR module owns which status objects its
@@ -1626,8 +1514,8 @@ void MoonrakerDiscoverySequence::complete_discovery_subscription(uint64_t seq) {
 
     // Step 5: Subscribe to all discovered objects + core objects. The pure
     // helper builds the full objects map; per-section logging stays here.
-    json subscription_objects = build_subscription_objects(
-        hw, heaters_, sensors_, load_cells_, fans_, leds_, afc_objects_, filament_sensors_, mcus_);
+    json subscription_objects = build_subscription_objects(hw, heaters_, sensors_, load_cells_,
+                                                           fans_, leds_, filament_sensors_, mcus_);
 
     // A matched z-offset persistence provider (ZMOD, Forge-X, Helper-Script's
     // save-zoffset) owns offset storage. "Save Z Offset" must stand down or
@@ -1652,8 +1540,16 @@ void MoonrakerDiscoverySequence::complete_discovery_subscription(uint64_t seq) {
     if (hw.has_fan_feedback()) {
         spdlog::debug("[MoonrakerDiscoverySequence] Subscribing to fan_feedback for RPM data");
     }
-    if (hw.mmu_type() == AmsType::HAPPY_HARE) {
-        spdlog::info("[Moonraker Client] Subscribing to MMU object (Happy Hare)");
+    {
+        const json filament_objects = AmsBackend::required_status_objects(hw);
+        if (!filament_objects.empty()) {
+            std::vector<std::string> names;
+            for (auto it = filament_objects.begin(); it != filament_objects.end(); ++it) {
+                names.push_back(it.key());
+            }
+            spdlog::info("[Moonraker Client] Subscribing to {} filament system objects ({}): {}",
+                         names.size(), ams_type_to_string(hw.mmu_type()), json(names).dump());
+        }
     }
     const size_t afc_skipped =
         afc_objects_.size() - AmsBackendAfc::required_status_objects(afc_objects_).size();
@@ -1661,27 +1557,12 @@ void MoonrakerDiscoverySequence::complete_discovery_subscription(uint64_t seq) {
         spdlog::debug("[Moonraker Client] Skipped {} unparsed AFC object(s) from subscription",
                       afc_skipped);
     }
-    if (hw.mmu_type() == AmsType::OPENAMS) {
-        spdlog::info("[Moonraker Client] Subscribing to oams_manager (OpenAMS UI API)");
-    }
-    if (hw.mmu_type() == AmsType::AD5X_IFS) {
-        spdlog::info("[Moonraker Client] Subscribing to save_variables (AD5X IFS)");
-    }
     if (!helix::plr_required_status_objects(hw).empty()) {
         spdlog::info("[Moonraker Client] Subscribing to save_variables (power-loss recovery)");
     }
     if (helix::zoffset::firmware_persists_z_offset(hw)) {
         spdlog::info("[Moonraker Client] Subscribing persisted z-offset objects ({})",
                      helix::zoffset::persistence_provider_name(hw));
-    }
-    if (hw.mmu_type() == AmsType::ACE) {
-        spdlog::info("[Moonraker Client] Subscribing to ace object (Anycubic ACE)");
-    }
-    if (hw.mmu_type() == AmsType::CFS) {
-        spdlog::info("[Moonraker Client] Subscribing to box + motor_control (CFS)");
-    }
-    if (hw.mmu_type() == AmsType::SNAPMAKER) {
-        spdlog::info("[Moonraker Client] Subscribing to Snapmaker filament + feed objects");
     }
     if (hw.has_width_sensors()) {
         spdlog::info("[Moonraker Client] Subscribing to {} width sensors",
@@ -2107,8 +1988,7 @@ void MoonrakerDiscoverySequence::parse_objects(const json& objects) {
         // state.
         else if (name.rfind("filament_switch_sensor ", 0) == 0 ||
                  name.rfind("filament_motion_sensor ", 0) == 0 ||
-                 name.rfind("zmod_ifs_switch_sensor ", 0) == 0 ||
-                 name.rfind("zmod_ifs_motion_sensor ", 0) == 0) {
+                 is_backend_filament_sensor(name)) {
             filament_sensors_.push_back(name);
         }
         // MCUs: "mcu" (primary) and "mcu <name>" (secondary boards, host MCU,

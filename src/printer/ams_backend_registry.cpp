@@ -112,6 +112,14 @@ std::optional<AmsType> AmsBackendRegistry::primary_type() const {
     return backends_[0]->get_type();
 }
 
+std::optional<BackendTraits> AmsBackendRegistry::primary_traits() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (backends_.empty() || !backends_[0]) {
+        return std::nullopt;
+    }
+    return backends_[0]->traits();
+}
+
 bool AmsBackendRegistry::any_filament_batch_in_flight() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return std::any_of(backends_.begin(), backends_.end(), [](const auto& backend) {

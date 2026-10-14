@@ -17,6 +17,7 @@
 #include "config.h"
 #include "data_root_resolver.h"
 #include "display_numbering.h"
+#include "fixed_tool_topology.h"
 #include "helix_fs.h"
 #include "i_moonraker_api.h"
 #include "i_moonraker_client.h"
@@ -200,21 +201,24 @@ void ToolState::init_tools(const helix::PrinterDiscovery& hardware) {
                      helix::tool_offsets::provider_name(hardware), axes);
     }
 
-    if (hardware.has_snapmaker()) {
-        // Snapmaker U1: 4 fixed toolheads, not using viesturz tool objects
-        static const std::string extruder_names[] = {"extruder", "extruder1", "extruder2",
-                                                     "extruder3"};
-        for (int i = 0; i < 4; ++i) {
+    const std::vector<helix::tool_topology::FixedTool> fixed_tools =
+        helix::tool_topology::fixed_toolheads(hardware);
+    if (!fixed_tools.empty()) {
+        // Firmware-fixed toolheads: no `tool T<n>` objects to enumerate.
+        spdlog::info("[ToolState] {} fixed toolheads via {}", fixed_tools.size(),
+                     helix::tool_topology::provider_name(hardware));
+        for (size_t i = 0; i < fixed_tools.size(); ++i) {
+            const int index = static_cast<int>(i);
             ToolInfo tool;
-            tool.index = i;
-            tool.name = helix::ui::tool_label(i);
-            tool.display_label = noun_tool_label(i);
-            tool.extruder_name = extruder_names[i];
-            tool.heater_name = extruder_names[i];
-            tool.fan_name = (i == 0)
-                                ? std::optional<std::string>("fan")
-                                : std::optional<std::string>(fmt::format("fan_generic e{}_fan", i));
-            spdlog::debug("[ToolState] Snapmaker tool {}: extruder={}, fan={}", i,
+            tool.index = index;
+            tool.name = helix::ui::tool_label(index);
+            tool.display_label = noun_tool_label(index);
+            tool.extruder_name = fixed_tools[i].extruder;
+            tool.heater_name = fixed_tools[i].heater;
+            if (!fixed_tools[i].fan.empty()) {
+                tool.fan_name = fixed_tools[i].fan;
+            }
+            spdlog::debug("[ToolState] Fixed tool {}: extruder={}, fan={}", index,
                           tool.extruder_name.value_or("none"), tool.fan_name.value_or("none"));
             tools_.push_back(std::move(tool));
         }

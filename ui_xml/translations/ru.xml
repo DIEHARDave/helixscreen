@@ -2608,6 +2608,7 @@
   <translation tag="Retraction distance to clear extruder gears" ru="Расстояние ретракции для выхода из шестерён экструдера"/>
   <translation tag="Retry" ru="Повторить"/>
   <translation tag="Reverse Multiplier" ru="Множитель обратного хода"/>
+  <translation tag="Review" ru="Проверить"/>
   <translation tag="Review detected hardware validation issues" ru="Просмотр обнаруженных проблем валидации оборудования"/>
   <translation tag="Review your configuration below, then click Finish to save" ru="Проверьте конфигурацию ниже, затем нажмите «Готово» для сохранения"/>
   <translation tag="Rewinding" ru="Перемотка"/>
@@ -2689,6 +2690,7 @@
   <translation tag="Scan Spool QR Code" ru="Сканировать QR-код катушки"/>
   <translation tag="Scan and select a Bluetooth printer first" ru="Сначала найдите и выберите Bluetooth-принтер"/>
   <translation tag="Scan for Printers" ru="Поиск принтеров"/>
+  <translation tag="Scan the spool label with your barcode scanner" ru="Отсканируйте этикетку катушки сканером штрих-кодов"/>
   <translation tag="Scan with your phone to save these values" ru="Отсканируйте телефоном, чтобы сохранить эти значения"/>
   <translation tag="Scanner" ru="Сканер"/>
   <translation tag="Scanner bonded but didn&apos;t attach as a keyboard. Try turning the scanner off and on, then tap Pair again. If that fails, add ClassicBondedOnly=false to /etc/bluetooth/input.conf." ru="Сканер сопряжён, но не подключился как клавиатура. Попробуйте выключить и включить сканер, затем снова нажмите Pair. Если не поможет, добавьте ClassicBondedOnly=false в /etc/bluetooth/input.conf."/>
@@ -3158,6 +3160,7 @@
   <translation tag="This is an emergency stop: the printer halts and Klipper restarts." ru="Это аварийный останов: принтер останавливается, и Klipper перезапускается."/>
   <translation tag="This is exactly the data that will be sent" ru="Это именно те данные, которые будут отправлены"/>
   <translation tag="This is what data would be sent if enabled" ru="Эти данные были бы отправлены при включении"/>
+  <translation tag="This looks like a {}, but it is set up as a {}" ru="Похоже, это {}, но принтер настроен как {}"/>
   <translation tag="This may take up to 30 seconds" ru="Это может занять до 30 секунд"/>
   <translation tag="This plugin asks for no special permissions." ru="Этот плагин не запрашивает специальных разрешений."/>
   <translation tag="This plugin lets HelixScreen control print start options like bed mesh and QGL." ru="Этот плагин позволяет HelixScreen управлять опциями начала печати, такими как сетка стола и QGL."/>
@@ -3620,6 +3623,7 @@
   <translation tag="tool(s)" ru="инструмент(ы)"/>
   <translation tag="used" ru="использ."/>
   <translation tag="v%s available" ru="Доступна v%s"/>
+  <translation tag="v%s has no build for the %s, so it can&apos;t be installed here. Pick a channel with a newer release." ru="Для v%s нет сборки для %s, поэтому её нельзя установить здесь. Выберите канал обновлений с более новым выпуском."/>
   <translation tag="v{} installed! Restarting..." ru="v{} установлена! Перезапуск..."/>
   <translation tag="v{} is available. Tap to update." ru="v{} доступна. Нажмите для обновления."/>
   <translation tag="wpa_supplicant is not running. WiFi features unavailable." ru="wpa_supplicant не запущен. Функции WiFi недоступны."/>

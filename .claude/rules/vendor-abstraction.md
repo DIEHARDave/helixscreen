@@ -33,7 +33,8 @@ how to enable it).
 when the call site looks clean.
 
 Existing vendor dispatch that already lives behind an interface is the pattern working:
-`AmsBackend*` (one class per filament system, `AmsState` never names one),
+`helix::board` (`include/board_identity.h`: one enum and one row per printer board; generic code
+asks `board::current_info()`), `AmsBackend*` (one class per filament system, `AmsState` never names one),
 `ZOffsetCalibrationStrategy`, `PrinterDetector` capability lookups. Follow those.
 
 Genuinely unavoidable vendor branch in generic code? Annotate it: `// VENDOR_OK: <reason>`.

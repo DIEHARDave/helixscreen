@@ -53,7 +53,7 @@ class PrinterDiscovery;
  * Thread Safety:
  * Main thread only, checked, except where a method says otherwise. The
  * exceptions answer from state with its own guard: the backend registry
- * (backend_count, primary_type, any_filament_batch_in_flight; get_backend
+ * (backend_count, primary_type, primary_traits, any_filament_batch_in_flight; get_backend
  * returns a raw pointer and is main-thread only),
  * RunoutGrace (the unload grace and per-slot unload stamps), the action and
  * step-operation atomics, and the setters that marshal themselves to the main
@@ -372,6 +372,15 @@ class AmsState {
      * @return nullopt when no backend is registered
      */
     [[nodiscard]] std::optional<AmsType> primary_type() const;
+
+    /**
+     * @brief Capability traits of the primary backend, by value. Safe off the main thread.
+     *
+     * The same guarantee as primary_type(): a copy taken under the registry lock, so
+     * nothing it returns outlives clear_backends().
+     * @return nullopt when no backend is registered
+     */
+    [[nodiscard]] std::optional<BackendTraits> primary_traits() const;
 
     /**
      * @brief Add a backend to the multi-backend list

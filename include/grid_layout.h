@@ -113,13 +113,9 @@ class GridLayout {
     /// orientation. Dividing each screen axis by the same number is what makes
     /// the cell square: a rotated panel transposes its grid exactly.
     ///
-    /// The XXLarge rung has to exist. While this table was six long, XXLarge
-    /// clamped onto XLarge and a 1080p panel drew a 144px cell — the same
-    /// physical widget size as a 1280x720 panel — while the font and icon
-    /// ladders, which do carry a real xxlarge rung, scaled up 1.6x around it.
-    /// 96 keeps the cell growing at the same 1.6x from Large that font_body
-    /// does (20 -> 32px), so type stays proportionate to the box holding it.
-    static constexpr int GRID_CELL[NUM_BREAKPOINTS] = {34, 40, 40, 60, 60, 72, 96};
+    /// The XXLarge rung carries its own entry, equal to XLarge's 72px edge, so
+    /// 1920x1080 yields a 12x7-cell (24x14-track) grid.
+    static constexpr int GRID_CELL[NUM_BREAKPOINTS] = {34, 40, 40, 60, 60, 72, 72};
     static_assert(std::size(GRID_CELL) == static_cast<size_t>(to_int(UiBreakpoint::XXLarge)) + 1,
                   "GRID_CELL must carry one track edge per UiBreakpoint tier");
 
@@ -165,7 +161,10 @@ class GridLayout {
     /// Row track count for a content rectangle. See get_dimensions().
     static int get_rows(UiBreakpoint bp, int content_w, int content_h);
 
-    /// Inter-track gap the home grid is built with, in px.
+    /// Inter-track gap the home grid is built with, in px: the per-breakpoint
+    /// `home_grid_gap` token (ui_xml/globals.xml), which matches space_xs up to
+    /// medium and widens from large up. It is grid spacing, so a user's own
+    /// layout gets it too.
     ///
     /// Single source of truth for the spacing token: PanelWidgetManager sets the
     /// container's pad_column/pad_row from this, and every consumer that

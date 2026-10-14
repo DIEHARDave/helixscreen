@@ -9,7 +9,9 @@
 #include "../ui_test_utils.h"
 #include "app_constants.h"
 #include "app_globals.h"
+#include "board_identity.h"
 #include "config.h"
+#include "platform_table.h"
 #include "printer_state.h"
 #include "system/debug_bundle_collector.h"
 #include "system/update_checker.h"
@@ -2234,4 +2236,20 @@ TEST_CASE_METHOD(LVGLTestFixture,
 
     const json bundle = helix::DebugBundleCollector::collect();
     CHECK(bundle["printer"].dump().find("bundle-race-probe") == std::string::npos);
+}
+
+TEST_CASE("DebugBundleCollector: the bundle names the board as platform_model", "[debug-bundle]") {
+    const auto* mips = helix::platform::find("mips");
+    const auto* pi = helix::platform::find("pi");
+    REQUIRE(mips != nullptr);
+    REQUIRE(pi != nullptr);
+
+    using helix::board::Board;
+    CHECK(helix::DebugBundleCollector::platform_model_for(mips, Board::Creator5) ==
+          "FlashForge Creator 5");
+    CHECK(helix::DebugBundleCollector::platform_model_for(mips, Board::K1) == "Creality K1");
+    CHECK(helix::DebugBundleCollector::platform_model_for(pi, Board::Generic).empty());
+    CHECK(helix::DebugBundleCollector::platform_model_for(nullptr, Board::Generic).empty());
+    CHECK(helix::DebugBundleCollector::platform_model_for(
+              helix::platform::find("ad5m"), Board::Ad5m) == "FlashForge Adventurer 5M");
 }

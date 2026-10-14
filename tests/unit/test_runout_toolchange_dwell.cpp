@@ -37,6 +37,7 @@
 #include "../test_helpers/post_unload_grace_test_access.h"
 #include "../test_helpers/print_state_test_drivers.h"
 #include "../ui_test_utils.h"
+#include "ams_backend_ace.h"
 #include "ams_backend_ad5x_ifs.h"
 #include "ams_backend_mock.h"
 #include "ams_state.h"
@@ -71,14 +72,26 @@ nlohmann::json head_status(bool detected) {
     return nlohmann::json{{HEAD_SENSOR, {{"filament_detected", detected}, {"enabled", true}}}};
 }
 
-/// A backend that reports whichever AmsType the test needs. The dwell asks only
-/// "is there a backend, and what type", so nothing else has to be faithful.
+/// A backend that reports whichever AmsType the test needs, with the traits of the real
+/// backend of that type. The dwell asks only "is there a backend, what type, and does it
+/// own the runout", so nothing else has to be faithful.
 class TypedBackend : public AmsBackendMock {
   public:
     explicit TypedBackend(AmsType type) : AmsBackendMock(4), type_(type) {}
 
     AmsType get_type() const override {
         return type_;
+    }
+
+    [[nodiscard]] BackendTraits traits() const override {
+        switch (type_) {
+        case AmsType::AD5X_IFS:
+            return AmsBackendAd5xIfs::kTraits;
+        case AmsType::ACE:
+            return AmsBackendAce::kTraits;
+        default:
+            return {};
+        }
     }
 
   private:

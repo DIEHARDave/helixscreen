@@ -387,14 +387,24 @@ void ToastManager::show_with_action(ToastSeverity severity, const char* message,
     });
 }
 
-void ToastManager::hide() {
-    // Dismiss all visible toasts. With animations off begin_exit erases the
-    // entry synchronously, so advance before calling it.
+template <typename Pred> void ToastManager::hide_where(Pred pred) {
+    // With animations off begin_exit erases the entry synchronously, so
+    // advance before calling it.
     for (auto it = active_.begin(); it != active_.end();) {
         auto cur = it++;
-        if (!cur->is_exiting)
+        if (!cur->is_exiting && pred(*cur))
             begin_exit(cur);
     }
+}
+
+void ToastManager::hide() {
+    hide_where([](const ToastInstance&) { return true; });
+}
+
+void ToastManager::hide(toast_action_callback_t action_callback, void* user_data) {
+    hide_where([action_callback, user_data](const ToastInstance& t) {
+        return t.action_cb == action_callback && t.action_user_data == user_data;
+    });
 }
 
 bool ToastManager::is_visible() const {

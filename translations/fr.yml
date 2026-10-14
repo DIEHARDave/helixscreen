@@ -2889,6 +2889,7 @@ translations:
   Retraction distance to clear extruder gears: 'Distance de rétraction pour dégager les engrenages de l''extrudeur'
   Retry: Réessayer
   Reverse Multiplier: 'Multiplicateur arrière'
+  Review: Examiner
   Review detected hardware validation issues: Examiner les problèmes de validation
     matérielle détectés
   Review your configuration below, then click Finish to save: Vérifiez votre configuration
@@ -2989,6 +2990,7 @@ translations:
   Scan and select a Bluetooth printer first: Scannez et sélectionnez d'abord une imprimante
     Bluetooth
   Scan for Printers: Rechercher des imprimantes
+  Scan the spool label with your barcode scanner: 'Scannez l''étiquette de la bobine avec votre scanner de codes-barres'
   Scan with your phone to save these values: Scannez avec votre téléphone pour enregistrer ces valeurs
   Scanner: Scanner
   ? Scanner bonded but didn't attach as a keyboard. Try turning the scanner off and
@@ -3561,6 +3563,7 @@ translations:
     envoyées
   This is what data would be sent if enabled: Voici les données qui seraient envoyées
     si activé
+  This looks like a {}, but it is set up as a {}: Cette imprimante ressemble à une {}, mais elle est configurée comme {}
   This may take up to 30 seconds: Cela peut prendre jusqu'à 30 secondes
   This plugin asks for no special permissions.: 'Ce plugin ne demande aucune autorisation particulière.'
   This plugin lets HelixScreen control print start options like bed mesh and QGL.: 'Ce plugin permet à HelixScreen de contrôler les options de démarrage d''impression comme le maillage du plateau et QGL.'
@@ -4084,6 +4087,7 @@ translations:
   tool(s): outil(s)
   used: utilisé
   v%s available: v%s disponible
+  v%s has no build for the %s, so it can't be installed here. Pick a channel with a newer release.: "v%s n'a pas de version pour %s et ne peut donc pas être installée ici. Choisissez un canal de mise à jour avec une version plus récente."
   v{} installed! Restarting...: v{} installée ! Redémarrage...
   v{} is available. Tap to update.: v{} est disponible. Appuyez pour mettre à jour.
   wpa_supplicant is not running. WiFi features unavailable.: wpa_supplicant ne fonctionne pas. Les fonctions WiFi sont indisponibles.

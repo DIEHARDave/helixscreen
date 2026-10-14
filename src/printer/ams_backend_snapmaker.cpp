@@ -23,6 +23,7 @@
 #include "moonraker_api.h"
 #include "pause_cause.h"
 #include "post_op_cooldown_manager.h"
+#include "printer_discovery.h"
 #include "settings_manager.h"
 #include "snapmaker_channel_state.h"
 #include "snapmaker_resume.h"
@@ -122,6 +123,30 @@ using snapmaker::classify_channel_state;
 // ============================================================================
 // Construction
 // ============================================================================
+
+nlohmann::json AmsBackendSnapmaker::required_status_objects(const helix::PrinterDiscovery& hw) {
+    nlohmann::json objects = nlohmann::json::object();
+    if (hw.mmu_type() != AmsType::SNAPMAKER) {
+        return objects;
+    }
+    objects["filament_detect"] = nullptr;
+    objects["filament_feed left"] = nullptr;
+    objects["filament_feed right"] = nullptr;
+    objects["print_task_config"] = nullptr;
+    objects["machine_state_manager"] = nullptr;
+    for (int i = 0; i < 4; ++i) {
+        objects[fmt::format("filament_motion_sensor e{}_filament", i)] = nullptr;
+    }
+    // The batch macro's `doing` variable drives batch-feed progress, so it needs a
+    // subscription to be readable while a feed runs. Klipper keeps the config's case
+    // for the status object key, so subscribe under the name as written in
+    // printer.cfg; a guessed name makes Moonraker reject the whole subscription.
+    const std::string batch_macro = hw.macro_config_name(helix::macro_patterns::AUTO_FEEDING_BATCH);
+    if (!batch_macro.empty()) {
+        objects[fmt::format("gcode_macro {}", batch_macro)] = nullptr;
+    }
+    return objects;
+}
 
 AmsBackendSnapmaker::AmsBackendSnapmaker(IMoonrakerAPI* api, helix::IMoonrakerClient* client)
     : AmsSubscriptionBackend(api, client) {

@@ -29,6 +29,7 @@
 #include "post_op_cooldown_manager.h"
 #include "print_lifecycle_state.h" // PrintState, job_holds_machine
 #include "printer_detector.h"
+#include "printer_discovery.h"
 #include "printer_state.h" // get_print_lifecycle_subject: the insert-probe gate
 #include "settings_manager.h"
 #include "text_io.h"
@@ -335,6 +336,15 @@ std::optional<AmsAlert> CfsErrorDecoder::decode(const std::string& key_code, int
 // =============================================================================
 // AmsBackendCfs — Main CFS backend class
 // =============================================================================
+
+nlohmann::json AmsBackendCfs::required_status_objects(const helix::PrinterDiscovery& hw) {
+    nlohmann::json objects = nlohmann::json::object();
+    if (hw.mmu_type() == AmsType::CFS) {
+        objects["box"] = nullptr;
+        objects["motor_control"] = nullptr;
+    }
+    return objects;
+}
 
 AmsBackendCfs::AmsBackendCfs(IMoonrakerAPI* api, helix::IMoonrakerClient* client)
     : AmsSubscriptionBackend(api, client) {

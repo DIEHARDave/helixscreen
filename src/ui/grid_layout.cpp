@@ -356,7 +356,7 @@ void GridLayout::clear() {
 }
 
 int GridLayout::gutter_px() {
-    return theme_manager_get_spacing("space_xs");
+    return theme_manager_get_spacing("home_grid_gap");
 }
 
 int grid_count_tracks(const int32_t* dsc) {

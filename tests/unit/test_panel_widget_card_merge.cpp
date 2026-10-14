@@ -174,7 +174,7 @@ TEST_CASE_METHOD(XMLTestFixture, "Card merge: adjacent aligned widgets share one
     lv_xml_register_component_from_data(
         "test_card_merge_stub",
         "<component><view extends=\"lv_obj\" width=\"100%\" height=\"100%\"/></component>");
-    REQUIRE(theme_manager_get_spacing("space_xs") > 0);
+    REQUIRE(helix::GridLayout::gutter_px() > 0);
 
     ScopedWidgetFactory a("shutdown", stub_factory());
     ScopedWidgetFactory b("lock", stub_factory());
@@ -209,7 +209,7 @@ TEST_CASE_METHOD(XMLTestFixture, "Card merge: a widget on an odd track still get
     lv_xml_register_component_from_data(
         "test_card_merge_stub",
         "<component><view extends=\"lv_obj\" width=\"100%\" height=\"100%\"/></component>");
-    REQUIRE(theme_manager_get_spacing("space_xs") > 0);
+    REQUIRE(helix::GridLayout::gutter_px() > 0);
 
     // The premise: this widget really is half-cell capable, so an odd track is
     // reachable by drag. If that ever changes the test is no longer meaningful.
@@ -251,7 +251,7 @@ TEST_CASE_METHOD(XMLTestFixture, "Card merge: a widget 1.5 cells wide gets a car
     lv_xml_register_component_from_data(
         "test_card_merge_stub",
         "<component><view extends=\"lv_obj\" width=\"100%\" height=\"100%\"/></component>");
-    REQUIRE(theme_manager_get_spacing("space_xs") > 0);
+    REQUIRE(helix::GridLayout::gutter_px() > 0);
 
     // The premise: clock resizes on odd track counts and wants the shared card.
     const auto* def = helix::find_widget_def("clock");
@@ -285,7 +285,7 @@ TEST_CASE_METHOD(XMLTestFixture, "Card merge: a tall widget beside a short row i
     lv_xml_register_component_from_data(
         "test_card_merge_stub",
         "<component><view extends=\"lv_obj\" width=\"100%\" height=\"100%\"/></component>");
-    REQUIRE(theme_manager_get_spacing("space_xs") > 0);
+    REQUIRE(helix::GridLayout::gutter_px() > 0);
 
     const std::vector<std::string> merging = {"temperature",   "bed_temperature", "led",
                                               "notifications", "fan_stack",       "ams",
@@ -337,7 +337,7 @@ TEST_CASE_METHOD(XMLTestFixture, "Card merge: an in-place relayout replaces only
     lv_xml_register_component_from_data(
         "test_card_merge_stub",
         "<component><view extends=\"lv_obj\" width=\"100%\" height=\"100%\"/></component>");
-    REQUIRE(theme_manager_get_spacing("space_xs") > 0);
+    REQUIRE(helix::GridLayout::gutter_px() > 0);
 
     ScopedWidgetFactory a("shutdown", stub_factory());
     ScopedWidgetFactory b("lock", stub_factory());
@@ -472,7 +472,7 @@ TEST_CASE_METHOD(XMLTestFixture, "Card merge: re-seating every tile keeps their 
     lv_xml_register_component_from_data(
         "test_card_merge_stub",
         "<component><view extends=\"lv_obj\" width=\"100%\" height=\"100%\"/></component>");
-    REQUIRE(theme_manager_get_spacing("space_xs") > 0);
+    REQUIRE(helix::GridLayout::gutter_px() > 0);
 
     ScopedWidgetFactory a("shutdown", stub_factory());
     ScopedWidgetFactory b("lock", [](const std::string& wid) {

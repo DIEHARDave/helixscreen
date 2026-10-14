@@ -14,6 +14,7 @@
 
 #include "ui_breakpoint.h"
 
+#include "../test_helpers/measured_grids.h"
 #include "grid_layout.h"
 
 #include <cmath>
@@ -28,44 +29,8 @@ using helix::GridLayout;
 
 namespace {
 
-/// One measured geometry: a resolution, the home grid container's content box
-/// at that resolution, the gutter (space_xs at that breakpoint), and the grid
-/// the sizing model is expected to produce.
-///
-/// content_w/content_h/gutter were read off a live instance per resolution —
-/// `HELIX_SCREEN_SIZE=<WxH> helix-screen --test -vv`, then the
-/// `[PanelWidgetManager] Grid layout:` and `Track geometry:` lines. The content
-/// box is a property of the panel chrome and does not change with the track
-/// count, so it is stable data to pin against.
-struct Geometry {
-    const char* name;
-    int panel_w, panel_h;
-    int content_w, content_h;
-    int gutter;
-    int cols, rows;
-};
-
-// clang-format off
-const std::vector<Geometry> kMeasured = {
-    //  name                        panel        content     gut   grid
-    {"micro 480x272",            480,  272,   430,  264,   2,   12,  8},
-    {"micro portrait 272x480",   272,  480,   264,  394,   2,    8, 12},
-    {"tiny 480x320",             480,  320,   418,  312,   2,   10,  8},
-    {"tiny portrait 320x480",    320,  480,   312,  394,   2,    8, 10},
-    {"small 480x400",            480,  400,   414,  388,   4,   10, 10},
-    {"small portrait 400x480",   400,  480,   388,  390,   4,   10, 10},
-    {"medium 800x480",           800,  480,   710,  466,   5,   12,  8},
-    {"portrait 480x800",         480,  800,   466,  664,   5,    8, 12},
-    {"large 1024x600",          1024,  600,   904,  584,   6,   16, 10},
-    {"large portrait 600x1024",  600, 1024,   584,  868,   6,   10, 14},
-    {"xlarge 1280x720",         1280,  720,  1128,  700,   8,   16, 10},
-    {"xlarge portrait 720x1280", 720, 1280,   700, 1120,   8,   10, 16},
-    {"ultrawide 1920x440",      1920,  440,  1832,  428,   4,   46, 10},
-    {"ultratall 440x1920",       440, 1920,   428, 1768,   4,   10, 44},
-    {"ultratall 320x1480",       320, 1480,   312, 1332,   2,    8, 34},
-    {"ultrawide 1480x320",      1480,  320,  1418,  312,   2,   36,  8},
-};
-// clang-format on
+using Geometry = helix::test::MeasuredGrid;
+const std::vector<Geometry>& kMeasured = helix::test::kMeasuredGrids;
 
 UiBreakpoint bp_of(const Geometry& g) {
     return breakpoint_for(std::min(g.panel_w, g.panel_h));
@@ -78,7 +43,7 @@ GridDimensions dims_of(const Geometry& g) {
 /// Landscape/portrait pairs, as indices into kMeasured. Every entry is a real
 /// measurement of the same panel in both orientations.
 const std::vector<std::pair<size_t, size_t>> kRotationPairs = {
-    {0, 1}, {2, 3}, {4, 5}, {6, 7}, {8, 9}, {10, 11}, {12, 13}, {15, 14},
+    {0, 1}, {2, 3}, {4, 5}, {6, 7}, {8, 9}, {10, 11}, {12, 13}, {15, 14}, {16, 18},
 };
 
 } // namespace

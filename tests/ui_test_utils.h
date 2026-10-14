@@ -160,6 +160,17 @@ void set_test_notification_info_hook(std::function<void(const std::string&)> hoo
 void set_test_notification_success_hook(std::function<void(const std::string&)> hook);
 
 /**
+ * @brief Install a hook invoked by the test ui_notification_*_with_action() stubs.
+ *
+ * Those calls add a history row only, which the test build replaces with a
+ * log-only no-op. The hook receives the row's severity, message and action id,
+ * so a test can prove an entry was added and that tapping it would dispatch
+ * the right action. Pass nullptr to clear.
+ */
+void set_test_notification_action_hook(
+    std::function<void(ToastSeverity, const std::string&, const std::string&)> hook);
+
+/**
  * @brief Install a hook invoked by the test ToastManager stub's show paths.
  *
  * Same purpose as the notification hooks, one layer down: code that calls
@@ -181,6 +192,14 @@ void set_test_toast_hook(std::function<void(ToastSeverity, const std::string&, u
  * set_test_toast_hook(), which forgets the last action.
  */
 bool fire_last_toast_action();
+
+/**
+ * @brief True when the most recent action toast was dismissed through
+ *        ToastManager::hide(action_callback, user_data) with its own pair.
+ *
+ * Cleared, like the last action, by set_test_toast_hook().
+ */
+bool last_action_toast_dismissed();
 
 } // namespace ui
 } // namespace helix

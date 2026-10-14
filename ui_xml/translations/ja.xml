@@ -2608,6 +2608,7 @@
   <translation tag="Retraction distance to clear extruder gears" ja="エクストルーダーギアから抜くための引き戻し距離"/>
   <translation tag="Retry" ja="再試行"/>
   <translation tag="Reverse Multiplier" ja="逆方向倍率"/>
+  <translation tag="Review" ja="確認"/>
   <translation tag="Review detected hardware validation issues" ja="検出されたハードウェア検証の問題を確認"/>
   <translation tag="Review your configuration below, then click Finish to save" ja="以下の設定を確認し、「完了」をクリックして保存してください"/>
   <translation tag="Rewinding" ja="巻き戻し中"/>
@@ -2689,6 +2690,7 @@
   <translation tag="Scan Spool QR Code" ja="スプール QR コードをスキャン"/>
   <translation tag="Scan and select a Bluetooth printer first" ja="先に Bluetooth プリンターをスキャンして選択してください"/>
   <translation tag="Scan for Printers" ja="プリンターをスキャン"/>
+  <translation tag="Scan the spool label with your barcode scanner" ja="バーコードスキャナーでスプールのラベルをスキャンしてください"/>
   <translation tag="Scan with your phone to save these values" ja="スマートフォンでスキャンして値を保存"/>
   <translation tag="Scanner" ja="スキャナー"/>
   <translation tag="Scanner bonded but didn&apos;t attach as a keyboard. Try turning the scanner off and on, then tap Pair again. If that fails, add ClassicBondedOnly=false to /etc/bluetooth/input.conf." ja="スキャナーはボンディングされましたが、キーボードとして接続されませんでした。スキャナーの電源を入れ直してから、もう一度 Pair をタップしてください。それでも失敗する場合は、/etc/bluetooth/input.conf に ClassicBondedOnly=false を追加してください。"/>
@@ -3158,6 +3160,7 @@
   <translation tag="This is an emergency stop: the printer halts and Klipper restarts." ja="これは緊急停止です：プリンターが停止し、Klipperが再起動します。"/>
   <translation tag="This is exactly the data that will be sent" ja="これが送信されるデータです"/>
   <translation tag="This is what data would be sent if enabled" ja="これは有効にした場合に送信されるデータです"/>
+  <translation tag="This looks like a {}, but it is set up as a {}" ja="このプリンターは{}のようですが、{}として設定されています"/>
   <translation tag="This may take up to 30 seconds" ja="最大30秒かかる場合があります"/>
   <translation tag="This plugin asks for no special permissions." ja="このプラグインは特別な権限を要求しません。"/>
   <translation tag="This plugin lets HelixScreen control print start options like bed mesh and QGL." ja="このプラグインにより、HelixScreen がベッドメッシュや QGL などの印刷開始オプションを制御できます。"/>
@@ -3620,6 +3623,7 @@
   <translation tag="tool(s)" ja="ツール"/>
   <translation tag="used" ja="使用"/>
   <translation tag="v%s available" ja="v%s が利用可能です"/>
+  <translation tag="v%s has no build for the %s, so it can&apos;t be installed here. Pick a channel with a newer release." ja="v%s には %s 用のビルドがないため、ここにはインストールできません。より新しいリリースがある更新チャンネルを選んでください。"/>
   <translation tag="v{} installed! Restarting..." ja="v{} をインストールしました！再起動中..."/>
   <translation tag="v{} is available. Tap to update." ja="v{} が利用可能です。タップして更新してください。"/>
   <translation tag="wpa_supplicant is not running. WiFi features unavailable." ja="wpa_supplicant が動作していません。WiFi 機能は利用できません。"/>

@@ -381,7 +381,7 @@ bool all_viable(const std::string&) {
 std::vector<CacheCandidate> device_shape() {
     return {
         {"/usr/data/helixscreen/cache/helix_thumbs", "HELIX_CACHE_DIR", false},
-        {"/usr/data/helixscreen/cache/helix_thumbs", "MIPS", true},
+        {"/usr/data/helixscreen-state/cache/helix_thumbs", "k1", true},
         {"/root/.cache/helix/helix_thumbs", nullptr, false},
         {"/var/tmp/helix_helix_thumbs", nullptr, false},
         {"/tmp/helix_helix_thumbs", nullptr, false},
@@ -405,7 +405,7 @@ TEST_CASE("select_stale_paths never reclaims a deliberate rung", "[cache]") {
     std::vector<CacheCandidate> c = {
         {"/pinned/helix_thumbs", "HELIX_CACHE_DIR", false},
         {"/configured/helix_thumbs", "config", false},
-        {"/platform/helix_thumbs", "MIPS", true},
+        {"/platform/helix_thumbs", "k1", true},
         {"/home/dev/.cache/helix/helix_thumbs", nullptr, false},
     };
     const std::vector<std::string> stale = select_stale_paths(c, all_viable);
@@ -526,4 +526,55 @@ TEST_CASE("migrate_state_root drops empty legacy scaffolding", "[cache]") {
     REQUIRE(std::filesystem::exists(current + "/logs/marker"));
 
     cleanup_dir(root);
+}
+
+// ---------------------------------------------------------------------------
+// board_cache_candidates() - the platform rung is a per-board table
+// ---------------------------------------------------------------------------
+
+#include "board_identity.h"
+#include "platform_info.h"
+
+using helix::FlashForgeModTree;
+using helix::board::Board;
+using helix::cache_internal::board_cache_candidates;
+
+namespace {
+/// The paths of @p rungs, in order, after checking each is a labelled platform rung.
+std::vector<std::string> rung_paths(const std::vector<CacheCandidate>& rungs, Board board) {
+    std::vector<std::string> out;
+    for (const auto& c : rungs) {
+        CHECK(c.platform);
+        CHECK(std::string(c.tier) == helix::board::info(board).key);
+        out.push_back(c.path);
+    }
+    return out;
+}
+} // namespace
+
+TEST_CASE("board_cache_candidates names each board's rung", "[cache]") {
+    using V = std::vector<std::string>;
+    auto paths = [](Board b, FlashForgeModTree t) {
+        return rung_paths(board_cache_candidates(b, t, "x"), b);
+    };
+
+    CHECK(paths(Board::Ad5m, FlashForgeModTree::None) == V{"/data/.helixscreen/cache/x"});
+    CHECK(paths(Board::Cc1, FlashForgeModTree::None) ==
+          V{"/user-resource/helixscreen-state/cache/x"});
+    CHECK(paths(Board::K2, FlashForgeModTree::None) ==
+          V{"/mnt/UDISK/helixscreen-state/cache/x", "/usr/data/helixscreen-state/cache/x"});
+    CHECK(paths(Board::K1, FlashForgeModTree::None) == V{"/usr/data/helixscreen-state/cache/x"});
+    CHECK(paths(Board::SnapmakerU1, FlashForgeModTree::None) ==
+          V{"/userdata/helixscreen-state/cache/x"});
+    CHECK(paths(Board::Generic, FlashForgeModTree::None).empty());
+
+    // The FlashForge MIPS boards split on the mod tree: Z-Mod keeps state under /srv,
+    // Forge-X under the mod's own durable config directory.
+    for (Board b : {Board::Ad5x, Board::Creator5, Board::Creator5Pro}) {
+        INFO("board: " << helix::board::info(b).key);
+        CHECK(paths(b, FlashForgeModTree::Zmod) == V{"/srv/helixscreen-state/cache/x"});
+        CHECK(paths(b, FlashForgeModTree::None) == V{"/srv/helixscreen-state/cache/x"});
+        CHECK(paths(b, FlashForgeModTree::ForgeX) ==
+              V{"/opt/config/mod_data/helixscreen-state/cache/x"});
+    }
 }

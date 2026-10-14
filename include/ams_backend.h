@@ -102,6 +102,9 @@ struct BackendTraits {
     bool recovers_filament_on_resume = false;
     bool has_environment_sensors = false;
     bool holds_optimistic_action = false;
+    bool raises_runout_fault = false;
+    bool raises_runout_fault_during_job = false;
+    bool unloads_to_hub_between_prints = false;
 
     // All-bool with no padding, so the bytes are the value.
     bool operator==(const BackendTraits& o) const {
@@ -2715,6 +2718,48 @@ class AmsBackend {
     }
 
     /**
+     * @brief Whether this backend surfaces its own runout fault, and so owns the
+     *        runout surface for the printer it is on.
+     *
+     * One rule for both channels of the error architecture
+     * (docs/devel/FILAMENT_MANAGEMENT.md, "Two error channels"): exactly one
+     * surface per printer. A backend that raises its own runout event through
+     * classify_error() or current_error() already tells the user what happened,
+     * with recovery buttons derived from live hardware state, so the generic
+     * sensor-driven runout modal stands down for it. A backend that raises no
+     * runout fault owns nothing: suppressing the generic modal for it would leave
+     * the user with no runout notification at all, so it stays false.
+     *
+     * @return true if the generic runout modal must stand down for this backend
+     */
+    [[nodiscard]] bool raises_runout_fault() const {
+        return traits().raises_runout_fault;
+    }
+
+    /**
+     * @brief Whether the backend's runout fault is already on screen WHILE A JOB
+     *        HOLDS THE MACHINE.
+     *
+     * The phase-aware sibling of raises_runout_fault(): when true, the sensor-edge
+     * runout toast only restates the backend's own prompt and stands down. A backend
+     * whose fault arrives later than the sensor edge (AD5X IFS) leaves this false,
+     * because quieting the toast there would open a silent window.
+     */
+    [[nodiscard]] bool raises_runout_fault_during_job() const {
+        return traits().raises_runout_fault_during_job;
+    }
+
+    /**
+     * @brief Whether the firmware unloads filament back to the hub between prints.
+     *
+     * The toolhead sensor going empty while the printer is idle is then firmware
+     * behaviour rather than a user-facing event, and its removal toast is not shown.
+     */
+    [[nodiscard]] bool unloads_to_hub_between_prints() const {
+        return traits().unloads_to_hub_between_prints;
+    }
+
+    /**
      * @brief Whether the reported bypass position is virtual rather than physical.
      *
      * True on a backend whose firmware publishes a bypass sensor whether or not
@@ -3293,6 +3338,25 @@ class AmsBackend {
      */
     static bool sensor_belongs_to_backend(AmsType type, const std::string& bare_name,
                                           const helix::PrinterDiscovery& discovery);
+
+    /**
+     * @brief Every Klipper status object the filament systems in @p hw need pushed.
+     *
+     * Merges each backend's own `required_status_objects`; each decides whether it
+     * applies to @p hw, so the subscription builder never names a vendor. Values are
+     * the field allowlist for the object, or null for the whole object. Like
+     * sensor_belongs_to_backend() it is static: discovery runs before any backend
+     * instance exists.
+     */
+    [[nodiscard]] static nlohmann::json required_status_objects(const helix::PrinterDiscovery& hw);
+
+    /**
+     * @brief Object-name prefixes, beyond Klipper's stock filament_switch_sensor and
+     *        filament_motion_sensor, under which a backend's filament sensors are
+     *        published. Discovery buckets objects with these prefixes as filament
+     *        sensors.
+     */
+    [[nodiscard]] static const std::vector<std::string>& filament_sensor_object_prefixes();
 
     // ========================================================================
     // Factory Method

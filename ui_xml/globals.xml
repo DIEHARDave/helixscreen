@@ -108,6 +108,14 @@
     <px name="space_xs_large" value="6"/>
     <px name="space_xs_xlarge" value="8"/>
     <px name="space_xs_xxlarge" value="10"/>
+    <!-- home_grid_gap: gap between the home widget grid's tracks. Matches space_xs up to
+         medium; wider from large up, where cells are big enough to want the air. -->
+    <px name="home_grid_gap_tiny" value="2"/>
+    <px name="home_grid_gap_small" value="4"/>
+    <px name="home_grid_gap_medium" value="5"/>
+    <px name="home_grid_gap_large" value="10"/>
+    <px name="home_grid_gap_xlarge" value="10"/>
+    <px name="home_grid_gap_xxlarge" value="12"/>
     <!-- space_sm: Small (tight layouts, minor separations) -->
     <px name="space_sm_tiny" value="4"/>
     <px name="space_sm_small" value="6"/>

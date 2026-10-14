@@ -56,6 +56,12 @@ class AmsBackendAce : public AmsSubscriptionBackend {
 
     ~AmsBackendAce() override;
 
+    /// The status objects ACE pushes, as a `printer.objects.subscribe` objects map:
+    /// every detected ACE object name (the community drivers, native GoKlipper
+    /// `filament_hub`, or the Kobra S1 fork's `ace_instance_N`), falling back to `ace`.
+    /// Empty unless @p hw detected ACE.
+    [[nodiscard]] static nlohmann::json required_status_objects(const helix::PrinterDiscovery& hw);
+
     // ========================================================================
     // Type
     // ========================================================================

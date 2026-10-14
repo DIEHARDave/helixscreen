@@ -56,7 +56,7 @@ TEST_CASE_METHOD(XMLTestFixture, "GridEditMode: real drag lands on the gutter-aw
     // process's cwd. Run this test from anywhere but the repo root and the
     // token silently resolves to 0 — gutters vanish and the whole test
     // becomes vacuous (it would still pass, having proven nothing).
-    const int gutter = theme_manager_get_spacing("space_xs");
+    const int gutter = helix::GridLayout::gutter_px();
     REQUIRE(gutter > 0);
 
     // current_metrics() derives cols/rows from the live ui_breakpoint subject,
@@ -263,7 +263,7 @@ TEST_CASE_METHOD(XMLTestFixture,
     // container rather than asking GridLayout for the breakpoint's row count,
     // or the snap target it computes describes a lattice the live grid does
     // not have.
-    const int gutter = theme_manager_get_spacing("space_xs");
+    const int gutter = helix::GridLayout::gutter_px();
     REQUIRE(gutter > 0);
 
     lv_subject_t* bp_subj = theme_manager_get_breakpoint_subject();
@@ -427,7 +427,7 @@ struct GuardFixture {
 };
 
 GuardFixture make_guard_fixture(lv_obj_t* parent, const std::string& panel_id) {
-    const int gutter = theme_manager_get_spacing("space_xs");
+    const int gutter = helix::GridLayout::gutter_px();
     REQUIRE(gutter > 0); // see the cwd note on the first test
 
     // Track counts are quantised from the content rectangle

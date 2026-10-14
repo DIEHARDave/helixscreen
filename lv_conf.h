@@ -32,7 +32,7 @@
  * Pi (DRM) and desktop (SDL) stay at 32-bit ARGB8888. */
 #if defined(HELIX_PLATFORM_AD5M) || defined(HELIX_PLATFORM_CC1) || \
     defined(HELIX_PLATFORM_MIPS) || defined(HELIX_PLATFORM_K1) || \
-    defined(HELIX_PLATFORM_AD5X) || defined(HELIX_PLATFORM_K2) || \
+    defined(HELIX_PLATFORM_K2) || \
     defined(HELIX_PLATFORM_SNAPMAKER_U1)
     #define LV_COLOR_DEPTH 16
 #else
@@ -917,7 +917,7 @@
  * (dlopen), otherwise via stb_image (header-only, zero deps). */
 #if !defined(HELIX_PLATFORM_AD5M) && !defined(HELIX_PLATFORM_CC1) && \
     !defined(HELIX_PLATFORM_MIPS) && !defined(HELIX_PLATFORM_K1) && \
-    !defined(HELIX_PLATFORM_AD5X) && !defined(HELIX_PLATFORM_K2) && \
+    !defined(HELIX_PLATFORM_K2) && \
     !defined(HELIX_PLATFORM_SNAPMAKER_U1)
 #define HELIX_HAS_CAMERA 1
 #else

@@ -8,6 +8,7 @@
 // the exact active area of the official 7" touchscreen — for a panel that is
 // really ~115mm diagonal, so a plausibility check alone would never catch it.
 
+#include "board_identity.h"
 #include "display_metrics.h"
 
 #include <cmath>
@@ -18,6 +19,7 @@
 using helix::DisplayMetrics;
 using helix::DpiSource;
 using helix::PanelSpec;
+using helix::board::Board;
 
 namespace {
 
@@ -138,38 +140,50 @@ TEST_CASE("simpledrm's synthesized 96 DPI is not treated as a measurement",
 // Known-panel table — integrated displays only
 // ============================================================================
 
-TEST_CASE("integrated-panel platforms have a known panel", "[display_metrics][panel]") {
-    for (const char* key : {"ad5m", "cc1", "k1", "k2"}) {
-        INFO("platform: " << key);
-        REQUIRE(DisplayMetrics::known_panel(key).has_value());
+TEST_CASE("integrated-panel boards have a known panel", "[display_metrics][panel]") {
+    for (Board board : {Board::Ad5m, Board::Cc1, Board::K1, Board::K2}) {
+        INFO("board: " << helix::board::info(board).key);
+        REQUIRE(DisplayMetrics::known_panel(board).has_value());
     }
+}
+
+TEST_CASE("known_panel finds the K1 on the unified build", "[display_metrics][panel]") {
+    // A release K1 is the "mips" platform key, so only the resolved board can find its row.
+    const auto panel = DisplayMetrics::known_panel(Board::K1);
+    REQUIRE(panel.has_value());
+    CHECK(panel->width_px == 480);
+    CHECK(panel->height_px == 800);
+    CHECK(panel->diagonal_mm == Catch::Approx(108.6));
+    CHECK(DisplayMetrics::resolve_dpi(0, std::nullopt, Board::K1).source == DpiSource::KnownPanel);
 }
 
 TEST_CASE("platforms driving arbitrary panels have no entry", "[display_metrics][panel]") {
     // A Pi, a CB1, or an x86 desktop drives a user-chosen display, so panel
-    // size is not a property of the platform key. Claiming one would be a
-    // guess applied to every user of that build.
-    for (const char* key : {"pi", "pi32", "x86", "esp32", "unknown-platform"}) {
-        INFO("platform: " << key);
-        REQUIRE_FALSE(DisplayMetrics::known_panel(key).has_value());
+    // size is not a property of the platform. Claiming one would be a
+    // guess applied to every user of that build. The AD5X, Creator 5 line and
+    // Snapmaker U1 have no measured diagonal.
+    for (Board board :
+         {Board::Generic, Board::Ad5x, Board::Creator5, Board::Creator5Pro, Board::SnapmakerU1}) {
+        INFO("board: " << helix::board::info(board).key);
+        REQUIRE_FALSE(DisplayMetrics::known_panel(board).has_value());
     }
 }
 
 TEST_CASE("known panels reproduce their measured DPI", "[display_metrics][panel]") {
     struct Expect {
-        const char* key;
+        Board board;
         double dpi;
     };
     // K1C reports 0x0 over the ioctl, so the table is the only source it has.
     constexpr Expect expected[] = {
-        {"ad5m", 221.5},
-        {"cc1", 131.0},
-        {"k1", 218.2},
-        {"k2", 218.2},
+        {Board::Ad5m, 221.5},
+        {Board::Cc1, 131.0},
+        {Board::K1, 218.2},
+        {Board::K2, 218.2},
     };
     for (const auto& e : expected) {
-        INFO("platform: " << e.key);
-        auto panel = DisplayMetrics::known_panel(e.key);
+        INFO("board: " << helix::board::info(e.board).key);
+        auto panel = DisplayMetrics::known_panel(e.board);
         REQUIRE(panel.has_value());
         REQUIRE(DisplayMetrics::dpi_of(*panel) == Catch::Approx(e.dpi).margin(1.0));
     }
@@ -177,9 +191,9 @@ TEST_CASE("known panels reproduce their measured DPI", "[display_metrics][panel]
 
 TEST_CASE("known panel DPI values all sit inside the deadband", "[display_metrics][panel]") {
     // If this ever fails, adding a panel silently resized a shipping device.
-    for (const char* key : {"ad5m", "cc1", "k1", "k2"}) {
-        INFO("platform: " << key);
-        auto panel = DisplayMetrics::known_panel(key);
+    for (Board board : {Board::Ad5m, Board::Cc1, Board::K1, Board::K2}) {
+        INFO("board: " << helix::board::info(board).key);
+        auto panel = DisplayMetrics::known_panel(board);
         REQUIRE(panel.has_value());
         REQUIRE(DisplayMetrics::ui_scale_for_dpi(DisplayMetrics::dpi_of(*panel)) ==
                 Catch::Approx(1.0));
@@ -191,14 +205,14 @@ TEST_CASE("known panel DPI values all sit inside the deadband", "[display_metric
 // ============================================================================
 
 TEST_CASE("user override beats every other source", "[display_metrics][resolve]") {
-    auto r = DisplayMetrics::resolve_dpi(300, 405.0, "ad5m");
+    auto r = DisplayMetrics::resolve_dpi(300, 405.0, Board::Ad5m);
     REQUIRE(r.source == DpiSource::UserOverride);
     REQUIRE(r.dpi == Catch::Approx(300.0));
 }
 
 TEST_CASE("trusted platform measurement beats the known-panel table",
           "[display_metrics][resolve]") {
-    auto r = DisplayMetrics::resolve_dpi(0, 405.0, "ad5m");
+    auto r = DisplayMetrics::resolve_dpi(0, 405.0, Board::Ad5m);
     REQUIRE(r.source == DpiSource::PlatformMeasured);
     REQUIRE(r.dpi == Catch::Approx(405.0));
 }
@@ -206,14 +220,14 @@ TEST_CASE("trusted platform measurement beats the known-panel table",
 TEST_CASE("untrustworthy platform measurement falls through to the table",
           "[display_metrics][resolve]") {
     // A trusted platform can still hand back junk; the band still applies.
-    auto r = DisplayMetrics::resolve_dpi(0, 23.2, "k2");
+    auto r = DisplayMetrics::resolve_dpi(0, 23.2, Board::K2);
     REQUIRE(r.source == DpiSource::KnownPanel);
     REQUIRE(r.dpi == Catch::Approx(218.2).margin(1.0));
 }
 
 TEST_CASE("no measurement and no known panel lands on the authoring reference",
           "[display_metrics][resolve]") {
-    auto r = DisplayMetrics::resolve_dpi(0, std::nullopt, "pi");
+    auto r = DisplayMetrics::resolve_dpi(0, std::nullopt, Board::Generic);
     REQUIRE(r.source == DpiSource::Fallback);
     REQUIRE(r.dpi == Catch::Approx(DisplayMetrics::kReferenceDpi));
     // And the fallback must be a no-op on sizing.
@@ -222,7 +236,7 @@ TEST_CASE("no measurement and no known panel lands on the authoring reference",
 
 TEST_CASE("out-of-range user override is ignored rather than obeyed",
           "[display_metrics][resolve]") {
-    auto r = DisplayMetrics::resolve_dpi(5000, std::nullopt, "pi");
+    auto r = DisplayMetrics::resolve_dpi(5000, std::nullopt, Board::Generic);
     REQUIRE(r.source != DpiSource::UserOverride);
 }
 

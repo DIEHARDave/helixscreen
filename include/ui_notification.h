@@ -101,6 +101,21 @@ void ui_notification_info(const char* title, const char* message);
 void ui_notification_info_with_action(const char* title, const char* message, const char* action);
 
 /**
+ * @brief Add a warning notification to history only (no toast)
+ *
+ * ui_notification_info_with_action at WARNING severity, for a history entry the
+ * user should act on. Pair it with ToastManager::show_with_action() when the
+ * moment itself also needs a button.
+ *
+ * @param title Title for the history entry
+ * @param message Message text
+ * @param action Action identifier dispatched when the entry is tapped
+ */
+// NAMESPACE_OK: matches ui_notification_info_with_action, this file's existing global-scope API
+void ui_notification_warning_with_action(const char* title, const char* message,
+                                         const char* action);
+
+/**
  * @brief Show a success toast notification
  *
  * Displays a non-blocking green toast message that auto-dismisses after 4 seconds.
