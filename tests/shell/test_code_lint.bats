@@ -3387,3 +3387,53 @@ CPP
     run python3 scripts/check_vendor_branches.py --root "$root"
     [ "$status" -eq 0 ]
 }
+
+# The ratchet compares per-file counts to the baseline.
+@test "the vendor-branch gate fails above a nonzero baseline and passes at or below it" {
+    local root="$BATS_TEST_TMPDIR/ratchet"
+    mkdir -p "$root/src/ui"
+    printf 'bool a(AmsType t) { return t == AmsType::CFS; }\nbool b(AmsType t) { return t != AmsType::AFC; }\n' \
+        > "$root/src/ui/x.cpp"
+    printf '1 src/ui/x.cpp:amstype-branch\n' > "$root/base.txt"
+    run python3 scripts/check_vendor_branches.py --root "$root" --baseline "$root/base.txt"
+    [ "$status" -eq 1 ] || fail "two branches over a baseline of one passed"
+    printf '2 src/ui/x.cpp:amstype-branch\n' > "$root/base.txt"
+    run python3 scripts/check_vendor_branches.py --root "$root" --baseline "$root/base.txt"
+    [ "$status" -eq 0 ] || fail "two branches at a baseline of two failed: $output"
+    printf '3 src/ui/x.cpp:amstype-branch\n' > "$root/base.txt"
+    run python3 scripts/check_vendor_branches.py --root "$root" --baseline "$root/base.txt"
+    [ "$status" -eq 0 ] || fail "below baseline failed: $output"
+    contains "lowered" "$output"
+}
+
+@test "the vendor-branch gate is quiet on AmsType::NONE and on build-shape macros" {
+    local root="$BATS_TEST_TMPDIR/quiet"
+    mkdir -p "$root/src/ui"
+    cat > "$root/src/ui/x.cpp" <<'CPP'
+bool a(AmsType t) { return t == AmsType::NONE; }
+#if defined(HELIX_PLATFORM_ESP32)
+#endif
+CPP
+    run python3 scripts/check_vendor_branches.py --root "$root"
+    [ "$status" -eq 0 ] || fail "quiet cases reported: $output"
+}
+
+@test "the vendor-branch gate reads multi-line conditionals and honours VENDOR_OK above them" {
+    local root="$BATS_TEST_TMPDIR/multi"
+    mkdir -p "$root/src/ui"
+    printf '#if defined(HELIX_PLATFORM_K2) || \\\n    defined(HELIX_PLATFORM_K1)\n#endif\n' > "$root/src/ui/x.cpp"
+    run python3 scripts/check_vendor_branches.py --root "$root"
+    [ "$status" -eq 1 ] || fail "multi-line conditional not counted"
+    printf '// VENDOR_OK: test\n#if defined(HELIX_PLATFORM_K2) || \\\n    defined(HELIX_PLATFORM_K1)\n#endif\n' > "$root/src/ui/x.cpp"
+    run python3 scripts/check_vendor_branches.py --root "$root"
+    [ "$status" -eq 0 ] || fail "VENDOR_OK above a multi-line conditional ignored: $output"
+}
+
+@test "the vendor-branch gate catches a name() compare written either way round" {
+    local root="$BATS_TEST_TMPDIR/names"
+    mkdir -p "$root/src/ui"
+    printf 'bool a(X* x) { return "AFC" == x->name(); }\nbool b(X x) { return x.name() == "AFC"; }\n' > "$root/src/ui/x.cpp"
+    run python3 scripts/check_vendor_branches.py --root "$root"
+    [ "$status" -eq 1 ] || fail "name() compares not counted"
+    contains "2 branch" "$output"
+}

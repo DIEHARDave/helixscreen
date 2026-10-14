@@ -13,7 +13,7 @@
 #                    vendors and are not matched.
 #   amstype-branch   ==, != or `case` on an AmsType value other than NONE.
 #   board-probe      a call to flashforge_machine_id(, ad5x_mod_layout_present(,
-#                    flashforge_mod_tree( or `->name() ==`.
+#                    flashforge_mod_tree( or a `name()` compare either way round.
 #
 # A line carrying `VENDOR_OK: <reason>`, or directly preceded by a comment line carrying
 # it, is skipped. The module that owns a capability is exempt for that shape.
@@ -53,7 +53,8 @@ AMSTYPE_BRANCH = re.compile(
 )
 BOARD_PROBE = re.compile(
     r"\b(?:flashforge_machine_id|ad5x_mod_layout_present|flashforge_mod_tree)\s*\("
-    r"|->\s*name\s*\(\s*\)\s*\)?\s*=="
+    r"|(?:->|\.)\s*name\s*\(\s*\)\s*\)?\s*(?:==|!=)"
+    r"|(?:==|!=)\s*\(?\s*[A-Za-z_][\w:]*(?:\s*(?:->|\.)\s*\w+)*\s*(?:->|\.)\s*name\s*\(\s*\)"
 )
 LINE_COMMENT = re.compile(r"//.*$")
 
@@ -92,6 +93,7 @@ def count_text(rel: str, text: str) -> tuple[dict[str, int], list[str]]:
     in_pp_continuation = False
     pp_buf = ""
     pp_start = 0
+    pp_opt = False
     for lineno, raw in enumerate(text.splitlines(), start=1):
         opt_out = "VENDOR_OK:" in raw or prev_ok
         stripped = raw.strip()
@@ -103,14 +105,14 @@ def count_text(rel: str, text: str) -> tuple[dict[str, int], list[str]]:
             if not raw.rstrip().endswith("\\"):
                 in_pp_continuation = False
                 logical, start = pp_buf, pp_start
-                if (not opt_out and not exempt("platform-macro", rel)
+                if (not pp_opt and not exempt("platform-macro", rel)
                         and PLATFORM_MACRO.search(logical)):
                     key = f"{rel}:platform-macro"
                     counts[key] = counts.get(key, 0) + 1
                     detail.append(f"{rel}:{start}: platform-macro\n      {logical.strip()[:110]}")
             continue
         if stripped.startswith("#") and raw.rstrip().endswith("\\"):
-            in_pp_continuation, pp_buf, pp_start = True, raw, lineno
+            in_pp_continuation, pp_buf, pp_start, pp_opt = True, raw, lineno, opt_out
             continue
 
         code = LINE_COMMENT.sub("", raw)
