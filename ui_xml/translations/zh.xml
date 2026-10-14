@@ -2598,6 +2598,7 @@
   <translation tag="Retraction distance to clear extruder gears" zh="退出挤出机齿轮所需的回抽距离"/>
   <translation tag="Retry" zh="重试"/>
   <translation tag="Reverse Multiplier" zh="反向倍率"/>
+  <translation tag="Review" zh="查看"/>
   <translation tag="Review detected hardware validation issues" zh="查看检测到的硬件验证问题"/>
   <translation tag="Review your configuration below, then click Finish to save" zh="请检查以下配置，然后点击完成以保存"/>
   <translation tag="Rewinding" zh="回卷中"/>
@@ -3146,6 +3147,7 @@
   <translation tag="This is an emergency stop: the printer halts and Klipper restarts." zh="这是紧急停止：打印机将停机并重启 Klipper。"/>
   <translation tag="This is exactly the data that will be sent" zh="这正是将要发送的数据"/>
   <translation tag="This is what data would be sent if enabled" zh="这是启用后将发送的数据"/>
+  <translation tag="This looks like a {}, but it is set up as a {}" zh="这台打印机看起来是 {}，但被设置为 {}"/>
   <translation tag="This may take up to 30 seconds" zh="这可能需要 30 秒"/>
   <translation tag="This plugin asks for no special permissions." zh="此插件不请求任何特殊权限。"/>
   <translation tag="This plugin lets HelixScreen control print start options like bed mesh and QGL." zh="此插件让 HelixScreen 控制打印启动选项，如热床网格和 QGL。"/>

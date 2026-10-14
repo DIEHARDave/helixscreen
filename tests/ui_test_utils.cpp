@@ -586,6 +586,7 @@ std::function<void(const std::string&)> g_test_sticky_warning_hook;
 std::function<void(const std::string&)> g_test_error_hook;
 std::function<void(const std::string&)> g_test_success_hook;
 std::function<void(const std::string&)> g_test_info_hook;
+std::function<void(ToastSeverity, const std::string&, const std::string&)> g_test_action_hook;
 } // namespace
 
 namespace helix {
@@ -606,8 +607,25 @@ void set_test_notification_info_hook(std::function<void(const std::string&)> hoo
 void set_test_notification_success_hook(std::function<void(const std::string&)> hook) {
     g_test_success_hook = std::move(hook);
 }
+void set_test_notification_action_hook(
+    std::function<void(ToastSeverity, const std::string&, const std::string&)> hook) {
+    g_test_action_hook = std::move(hook);
+}
 } // namespace ui
 } // namespace helix
+
+namespace {
+// Both *_with_action stubs: history rows only, so log and feed the hook.
+void report_test_action(ToastSeverity severity, const char* title, const char* message,
+                        const char* action) {
+    spdlog::debug("[Test Stub] ui_notification_*_with_action: {} - {} (action: {})",
+                  title ? title : "(null)", message ? message : "(null)",
+                  action ? action : "(null)");
+    if (g_test_action_hook) {
+        g_test_action_hook(severity, message ? message : "", action ? action : "");
+    }
+}
+} // namespace
 
 // Stub implementations for notification functions (tests don't display UI)
 void ui_notification_init() {
@@ -630,9 +648,12 @@ void ui_notification_info(const char* title, const char* message) {
 }
 
 void ui_notification_info_with_action(const char* title, const char* message, const char* action) {
-    spdlog::debug("[Test Stub] ui_notification_info_with_action: {} - {} (action: {})",
-                  title ? title : "(null)", message ? message : "(null)",
-                  action ? action : "(null)");
+    report_test_action(ToastSeverity::INFO, title, message, action);
+}
+
+void ui_notification_warning_with_action(const char* title, const char* message,
+                                         const char* action) {
+    report_test_action(ToastSeverity::WARNING, title, message, action);
 }
 
 void ui_notification_success(const char* message) {

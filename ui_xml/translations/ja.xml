@@ -2598,6 +2598,7 @@
   <translation tag="Retraction distance to clear extruder gears" ja="エクストルーダーギアから抜くための引き戻し距離"/>
   <translation tag="Retry" ja="再試行"/>
   <translation tag="Reverse Multiplier" ja="逆方向倍率"/>
+  <translation tag="Review" ja="確認"/>
   <translation tag="Review detected hardware validation issues" ja="検出されたハードウェア検証の問題を確認"/>
   <translation tag="Review your configuration below, then click Finish to save" ja="以下の設定を確認し、「完了」をクリックして保存してください"/>
   <translation tag="Rewinding" ja="巻き戻し中"/>
@@ -3146,6 +3147,7 @@
   <translation tag="This is an emergency stop: the printer halts and Klipper restarts." ja="これは緊急停止です：プリンターが停止し、Klipperが再起動します。"/>
   <translation tag="This is exactly the data that will be sent" ja="これが送信されるデータです"/>
   <translation tag="This is what data would be sent if enabled" ja="これは有効にした場合に送信されるデータです"/>
+  <translation tag="This looks like a {}, but it is set up as a {}" ja="このプリンターは{}のようですが、{}として設定されています"/>
   <translation tag="This may take up to 30 seconds" ja="最大30秒かかる場合があります"/>
   <translation tag="This plugin asks for no special permissions." ja="このプラグインは特別な権限を要求しません。"/>
   <translation tag="This plugin lets HelixScreen control print start options like bed mesh and QGL." ja="このプラグインにより、HelixScreen がベッドメッシュや QGL などの印刷開始オプションを制御できます。"/>

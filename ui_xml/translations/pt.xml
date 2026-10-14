@@ -2598,6 +2598,7 @@
   <translation tag="Retraction distance to clear extruder gears" pt="Distância de retração para liberar as engrenagens do extrusor"/>
   <translation tag="Retry" pt="Tentar Novamente"/>
   <translation tag="Reverse Multiplier" pt="Multiplicador de retrocesso"/>
+  <translation tag="Review" pt="Revisar"/>
   <translation tag="Review detected hardware validation issues" pt="Revisar problemas de validação de hardware detectados"/>
   <translation tag="Review your configuration below, then click Finish to save" pt="Revise sua configuração abaixo e clique em Finalizar para salvar"/>
   <translation tag="Rewinding" pt="Rebobinando"/>
@@ -3146,6 +3147,7 @@
   <translation tag="This is an emergency stop: the printer halts and Klipper restarts." pt="Esta é uma parada de emergência: a impressora para e o Klipper reinicia."/>
   <translation tag="This is exactly the data that will be sent" pt="Estes são exatamente os dados que serão enviados"/>
   <translation tag="This is what data would be sent if enabled" pt="Estes são os dados que seriam enviados se habilitado"/>
+  <translation tag="This looks like a {}, but it is set up as a {}" pt="Esta impressora parece uma {}, mas está configurada como {}"/>
   <translation tag="This may take up to 30 seconds" pt="Isso pode levar até 30 segundos"/>
   <translation tag="This plugin asks for no special permissions." pt="Este plugin não pede permissões especiais."/>
   <translation tag="This plugin lets HelixScreen control print start options like bed mesh and QGL." pt="Este plugin permite que o HelixScreen controle opções de início de impressão como malha da mesa e QGL."/>

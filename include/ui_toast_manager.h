@@ -72,6 +72,9 @@ class ToastManager {
     /**
      * Show a toast with an action button. Each toast has its own callback, so
      * multiple action toasts can coexist in the stack.
+     *
+     * @p duration_ms of 0 means the toast never auto-dismisses, as for
+     * show_with_detail(): it stays until its button or close button is tapped.
      */
     void show_with_action(ToastSeverity severity, const char* message, const char* action_text,
                           toast_action_callback_t action_callback, void* user_data,

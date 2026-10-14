@@ -9,7 +9,9 @@
 
 #include "subject_managed_panel.h"
 
+#include <functional>
 #include <lvgl.h>
+#include <string>
 
 /**
  * @file ui_panel_notification_history.h
@@ -180,3 +182,15 @@ class NotificationHistoryPanel : public PanelBase {
 
 // Global instance accessor (needed by main.cpp)
 NotificationHistoryPanel& get_global_notification_history_panel();
+
+namespace helix::ui {
+
+/// Handler for a history entry's action id, for modules the panel cannot name (one
+/// compiled out of a build, or owned per printer session). Registering replaces any
+/// handler for @p id; an empty @p handler removes it. Main thread only.
+void set_notification_action_handler(const std::string& id, std::function<void()> handler);
+
+/// The handler registered for @p id, empty when none is.
+std::function<void()> notification_action_handler(const std::string& id);
+
+} // namespace helix::ui

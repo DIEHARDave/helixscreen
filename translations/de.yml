@@ -2867,6 +2867,7 @@ translations:
   Retraction distance to clear extruder gears: 'Rückzugsweg, um die Extruderzahnräder freizumachen'
   Retry: Wiederholen
   Reverse Multiplier: 'Rückwärtsmultiplikator'
+  Review: Prüfen
   Review detected hardware validation issues: Erkannte Hardware-Validierungsprobleme
     überprüfen
   Review your configuration below, then click Finish to save: Überprüfen Sie Ihre
@@ -3527,6 +3528,7 @@ translations:
   This is exactly the data that will be sent: Dies sind genau die Daten, die gesendet
     werden
   This is what data would be sent if enabled: Diese Daten würden bei Aktivierung gesendet
+  This looks like a {}, but it is set up as a {}: Dieser Drucker wirkt wie ein {}, ist aber als {} eingerichtet
   This may take up to 30 seconds: Dies kann bis zu 30 Sekunden dauern
   This plugin asks for no special permissions.: 'Dieses Plugin fragt nach keinen besonderen Berechtigungen.'
   This plugin lets HelixScreen control print start options like bed mesh and QGL.: 'Dieses Plugin ermöglicht HelixScreen die Steuerung von Druckstartoptionen wie Bettnetz und QGL.'

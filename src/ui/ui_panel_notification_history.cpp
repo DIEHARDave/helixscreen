@@ -24,6 +24,7 @@
 #include <spdlog/spdlog.h>
 
 #include <cstring>
+#include <map>
 #include <memory>
 
 using namespace helix;
@@ -282,10 +283,40 @@ void NotificationHistoryPanel::dispatch_action(const char* action) {
         // Close notification history overlay first, then show update modal
         helix::nav::go_back();
         UpdateChecker::instance().show_update_notification();
+    } else if (auto handler = helix::ui::notification_action_handler(action)) {
+        helix::nav::go_back();
+        handler();
     } else {
         spdlog::warn("[{}] Unknown action: {}", get_name(), action);
     }
 }
+
+namespace {
+
+std::map<std::string, std::function<void()>>& notification_action_handlers() {
+    static std::map<std::string, std::function<void()>> handlers;
+    return handlers;
+}
+
+} // namespace
+
+namespace helix::ui {
+
+void set_notification_action_handler(const std::string& id, std::function<void()> handler) {
+    if (handler) {
+        notification_action_handlers()[id] = std::move(handler);
+    } else {
+        notification_action_handlers().erase(id);
+    }
+}
+
+std::function<void()> notification_action_handler(const std::string& id) {
+    auto& handlers = notification_action_handlers();
+    auto it = handlers.find(id);
+    return it == handlers.end() ? std::function<void()>{} : it->second;
+}
+
+} // namespace helix::ui
 
 // ============================================================================
 // STATIC TRAMPOLINES
