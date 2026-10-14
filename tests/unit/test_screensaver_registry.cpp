@@ -249,7 +249,8 @@ TEST_CASE("the screensaver dropdown offers Off and every saver that is not too h
     using helix::ui::screensaver_choices;
 
     SECTION("nothing too heavy: Off then the whole registry, so the index is the type") {
-        const std::vector<ScreensaverType> choices = screensaver_choices(HeavySet{});
+        const std::vector<ScreensaverType> choices =
+            screensaver_choices(HeavySet{}, ScreensaverType::FLYING_TOASTERS);
         REQUIRE(choices.size() == SCREENSAVER_COUNT + 1);
         for (size_t i = 0; i < choices.size(); i++) {
             CHECK(static_cast<size_t>(choices[i]) == i);
@@ -257,7 +258,8 @@ TEST_CASE("the screensaver dropdown offers Off and every saver that is not too h
     }
     SECTION("too-heavy savers are left out, the rest keep registry order") {
         const std::vector<ScreensaverType> choices =
-            screensaver_choices(HeavySet{{ScreensaverType::MAZE_3D, ScreensaverType::HYPERSPACE}});
+            screensaver_choices(HeavySet{{ScreensaverType::MAZE_3D, ScreensaverType::HYPERSPACE}},
+                                ScreensaverType::MAZE_3D);
         CHECK(choices.size() == SCREENSAVER_COUNT - 1);
         CHECK(choices.front() == ScreensaverType::OFF);
         CHECK(std::find(choices.begin(), choices.end(), ScreensaverType::MAZE_3D) == choices.end());
@@ -265,12 +267,15 @@ TEST_CASE("the screensaver dropdown offers Off and every saver that is not too h
               choices.end());
         CHECK(std::is_sorted(choices.begin(), choices.end()));
     }
-    SECTION("every saver too heavy leaves Off") {
+    SECTION("every saver too heavy keeps the configured one, so choosing Off is a change") {
         HeavySet all;
         for (const helix::ui::ScreensaverInfo& info : SCREENSAVERS) {
             all.heavy.insert(info.type);
         }
-        CHECK(screensaver_choices(all) == std::vector<ScreensaverType>{ScreensaverType::OFF});
+        CHECK(screensaver_choices(all, ScreensaverType::MAZE_3D) ==
+              std::vector<ScreensaverType>{ScreensaverType::OFF, ScreensaverType::MAZE_3D});
+        CHECK(screensaver_choices(all, ScreensaverType::OFF) ==
+              std::vector<ScreensaverType>{ScreensaverType::OFF});
     }
 }
 
@@ -281,9 +286,16 @@ TEST_CASE("the dropdown selects the saver that actually runs",
         ScreensaverType::OFF, ScreensaverType::FLYING_TOASTERS, ScreensaverType::FLIP_CLOCK};
     CHECK(screensaver_choice_index(choices, ScreensaverType::OFF) == 0);
     CHECK(screensaver_choice_index(choices, ScreensaverType::FLIP_CLOCK) == 2);
-    // Only an all-too-heavy board runs a saver the dropdown does not list: it shows a black
-    // screen, which reads as Off.
-    CHECK(screensaver_choice_index(choices, ScreensaverType::MAZE_3D) == 0);
+
+    HeavySet all;
+    for (const helix::ui::ScreensaverInfo& info : SCREENSAVERS) {
+        all.heavy.insert(info.type);
+    }
+    const std::vector<ScreensaverType> all_heavy =
+        helix::ui::screensaver_choices(all, ScreensaverType::FLYING_TOASTERS);
+    const ScreensaverType runs =
+        helix::ui::runnable_screensaver(ScreensaverType::FLYING_TOASTERS, all);
+    CHECK(screensaver_choice_index(all_heavy, runs) == 1);
 }
 
 TEST_CASE("a stored screensaver name maps to its saver whatever its case",

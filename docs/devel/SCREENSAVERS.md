@@ -106,11 +106,13 @@ the last resort, when every saver is too heavy. The stored `/display/screensaver
 rewritten, so a config moved to a faster board runs the saver it names.
 
 The settings dropdown (`DisplaySettingsOverlay::init_screensaver_dropdown`) lists Off and the
-savers `ScreensaverManager::choices()` keeps, so its index is not the type: the overlay keeps
-the stable name at each position and stores the picked one. A too-heavy stored choice is hidden and the
-dropdown selects the saver that runs in its place; on a board where every saver is too heavy
-it selects Off. The XML `options` still carry the full registry list as the translation
-source.
+savers `ScreensaverManager::settings_dropdown()` keeps, so its index is not the type: the overlay keeps
+the stable name at each position and stores the picked one. A too-heavy stored choice is hidden
+and the dropdown selects the saver that runs in its place. On a board where every saver is too
+heavy, the stored one stays listed and selected, marked "(too slow)" in the list, so choosing
+Off is a real change; the closed field shows its plain label. The XML `options` still carry the
+full registry list as the translation source, and the row's `options_tag` puts that list back
+on a language change, so the overlay rebuilds its own list after it.
 
 `HELIX_SCREENSAVER_BUDGET_PCT` replaces the budget and `HELIX_SCREENSAVER_LEVEL` forces a level
 with the gate off (`docs/devel/ENVIRONMENT_VARIABLES.md`). A forced level runs a saver stored as

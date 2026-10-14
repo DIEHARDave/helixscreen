@@ -4033,6 +4033,7 @@ translations:
   tall: de alto
   target {}%: 'objetivo {}%'
   target {}°: 'objetivo {}°'
+  too slow: demasiado lento
   tool(s): herramienta(s)
   used: usado
   v%s available: v%s disponible

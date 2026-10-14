@@ -3766,6 +3766,7 @@ translations:
   tall: 高
   target {}%: '目标 {}%'
   target {}°: '目标 {}°'
+  too slow: 太慢
   tool(s): 工具
   used: 已使用
   v%s available: v%s 可用

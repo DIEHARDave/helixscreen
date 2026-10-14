@@ -181,8 +181,20 @@ class ScreensaverManager {
      */
     bool too_heavy_here(ScreensaverType type);
 
-    /// The settings dropdown's options on this board (helix::ui::screensaver_choices).
-    std::vector<ScreensaverType> choices();
+    /// The settings dropdown's options on this board with `configured` stored
+    /// (helix::ui::screensaver_choices).
+    std::vector<ScreensaverType> choices(ScreensaverType configured);
+
+    /// What the settings dropdown lists and selects with `configured` stored.
+    struct SettingsDropdown {
+        std::vector<ScreensaverType> choices;
+        /// The saver that runs, which the dropdown selects.
+        ScreensaverType runs = ScreensaverType::OFF;
+        /// Only on a board where every saver is too heavy: `runs` is the stored saver, listed
+        /// so that choosing Off is a change.
+        bool runs_too_heavy = false;
+    };
+    static SettingsDropdown settings_dropdown(ScreensaverType configured);
 
     /** @brief Stop whatever screensaver or black screen is active */
     void stop();

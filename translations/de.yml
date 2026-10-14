@@ -4043,6 +4043,7 @@ translations:
   tall: hoch
   target {}%: 'Ziel {}%'
   target {}°: 'Ziel {}°'
+  too slow: zu langsam
   tool(s): Werkzeug(e)
   used: verbraucht
   v%s available: v%s verfügbar

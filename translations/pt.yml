@@ -4037,6 +4037,7 @@ translations:
   tall: de altura
   target {}%: 'alvo {}%'
   target {}°: 'alvo {}°'
+  too slow: lento demais
   tool(s): ferramenta(s)
   used: usado
   v%s available: v%s disponível

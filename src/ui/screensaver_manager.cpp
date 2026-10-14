@@ -165,10 +165,22 @@ bool ScreensaverManager::too_heavy_here(ScreensaverType type) {
     return too_heavy_for_identity(type);
 }
 
-std::vector<ScreensaverType> ScreensaverManager::choices() {
+std::vector<ScreensaverType> ScreensaverManager::choices(ScreensaverType configured) {
     refresh_identity();
     return helix::ui::screensaver_choices(
-        [this](ScreensaverType t) { return too_heavy_for_identity(t); });
+        [this](ScreensaverType t) { return too_heavy_for_identity(t); }, configured);
+}
+
+ScreensaverManager::SettingsDropdown
+ScreensaverManager::settings_dropdown(ScreensaverType configured) {
+    ScreensaverManager& mgr = instance();
+    mgr.refresh_identity();
+    SettingsDropdown out;
+    const auto too_heavy = [&mgr](ScreensaverType t) { return mgr.too_heavy_for_identity(t); };
+    out.choices = helix::ui::screensaver_choices(too_heavy, configured);
+    out.runs = helix::ui::runnable_screensaver(configured, too_heavy);
+    out.runs_too_heavy = too_heavy(out.runs);
+    return out;
 }
 
 bool ScreensaverManager::too_heavy_for_identity(ScreensaverType type) const {

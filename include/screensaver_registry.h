@@ -229,21 +229,24 @@ runnable_screensaver(ScreensaverType configured, TooHeavy&& too_heavy,
     return configured;
 }
 
-/// What the settings dropdown offers, in order: OFF, then every registered saver
-/// `too_heavy(type)` does not reject.
+/// What the settings dropdown offers with `configured` stored, in order: OFF, then every
+/// registered saver `too_heavy(type)` does not reject. When every saver is too heavy the
+/// configured one stays listed too, so the dropdown shows what is stored and choosing Off is
+/// a change.
 template <typename TooHeavy>
-std::vector<ScreensaverType> screensaver_choices(TooHeavy&& too_heavy) {
+std::vector<ScreensaverType> screensaver_choices(TooHeavy&& too_heavy, ScreensaverType configured) {
+    const ScreensaverType runs = runnable_screensaver(configured, too_heavy);
     std::vector<ScreensaverType> choices{ScreensaverType::OFF};
     for (const ScreensaverInfo& row : SCREENSAVERS) {
-        if (!too_heavy(row.type)) {
+        if (row.type == runs || !too_heavy(row.type)) {
             choices.push_back(row.type);
         }
     }
     return choices;
 }
 
-/// Dropdown index of `runs` in `choices`. A saver missing from them runs only as the black
-/// screen of a board where every saver is too heavy, which reads as Off: index 0.
+/// Dropdown index of `runs` in `choices`, or 0 (Off) when it is missing, which choices built
+/// for the same stored saver never are.
 inline size_t screensaver_choice_index(const std::vector<ScreensaverType>& choices,
                                        ScreensaverType runs) {
     for (size_t i = 0; i < choices.size(); i++) {

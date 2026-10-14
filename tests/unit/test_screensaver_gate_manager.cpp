@@ -520,6 +520,71 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     lv_obj_delete(root);
 }
 
+TEST_CASE_METHOD(
+    LVGLUITestFixture,
+    "with every saver too heavy the dropdown keeps the stored one so Off can be chosen",
+    "[screensaver][screensaver_gate][ui]") {
+    GateHarness gate;
+    StoredTypeRestore restore;
+    store_all_too_heavy_except(gate, ScreensaverType::OFF);
+    auto& display = helix::DisplaySettingsManager::instance();
+    display.set_screensaver_type(static_cast<int>(ScreensaverType::FLYING_TOASTERS));
+
+    helix::settings::DisplaySettingsOverlay overlay;
+    lv_obj_t* root = overlay.create(test_screen());
+    REQUIRE(root != nullptr);
+    overlay.init_screensaver_dropdown();
+    lv_obj_t* dropdown =
+        lv_obj_find_by_name(lv_obj_find_by_name(root, "row_screensaver"), "dropdown");
+    REQUIRE(dropdown != nullptr);
+
+    const std::vector<std::string> expected{"Off", "Flying Toasters (too slow)"};
+    CHECK(dropdown_lines(dropdown) == expected);
+    REQUIRE(lv_dropdown_get_selected(dropdown) == 1);
+    REQUIRE(lv_dropdown_get_text(dropdown) != nullptr);
+    CHECK(std::string(lv_dropdown_get_text(dropdown)) == "Flying Toasters");
+
+    // Off is a different row from the one selected, so choosing it is a change that stores.
+    overlay.handle_screensaver_changed(0);
+    CHECK(helix::Config::get_instance()->get<std::string>("/display/screensaver_type", "") ==
+          "off");
+    CHECK(dropdown_lines(dropdown) == std::vector<std::string>{"Off"});
+    CHECK(lv_dropdown_get_text(dropdown) == nullptr);
+
+    lv_obj_delete(root);
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "a language change keeps the screensaver dropdown's hidden savers hidden",
+                 "[screensaver][screensaver_gate][ui]") {
+    GateHarness gate;
+    StoredTypeRestore restore;
+    const std::string board = ScreensaverManagerTestAccess::current_board(gate.mgr);
+    gate.store("maze", {3, true, helix_version_full(), board});
+    auto& display = helix::DisplaySettingsManager::instance();
+    display.set_screensaver_type(static_cast<int>(ScreensaverType::FLIP_CLOCK));
+
+    helix::settings::DisplaySettingsOverlay overlay;
+    lv_obj_t* root = overlay.create(test_screen());
+    REQUIRE(root != nullptr);
+    overlay.init_screensaver_dropdown();
+    overlay.init_screensaver_dropdown();
+    lv_obj_t* dropdown =
+        lv_obj_find_by_name(lv_obj_find_by_name(root, "row_screensaver"), "dropdown");
+    REQUIRE(dropdown != nullptr);
+    const std::vector<std::string> before = dropdown_lines(dropdown);
+    const uint32_t selected = lv_dropdown_get_selected(dropdown);
+    REQUIRE(std::find(before.begin(), before.end(), "3D Maze") == before.end());
+
+    // The row's options_tag puts the full XML list back on a language change; the overlay
+    // rebuilds its own list after it.
+    lv_obj_send_event(dropdown, LV_EVENT_TRANSLATION_LANGUAGE_CHANGED, nullptr);
+    CHECK(dropdown_lines(dropdown) == before);
+    CHECK(lv_dropdown_get_selected(dropdown) == selected);
+
+    lv_obj_delete(root);
+}
+
 #endif // HELIX_ENABLE_SCREENSAVER
 
 TEST_CASE_METHOD(LVGLTestFixture,
