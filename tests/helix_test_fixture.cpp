@@ -343,7 +343,8 @@ void HelixTestFixture::reset_all() {
     // so one built by a test outlives that test. Every object created after it
     // joins the group and its first member takes focus.
     if (lv_group_t* group = lv_group_get_default()) {
-        lv_group_delete(group); // a deleted member leaves its group, so none dangle
+        // A deleted member leaves its group, so none dangle.
+        lv_group_delete(group);
     }
 
     // BEFORE the drain, not after: EmergencyStopOverlay is a process-wide
