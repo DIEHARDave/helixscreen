@@ -103,7 +103,13 @@
           <style name="styles.activity_chip"/>
           <bind_flag_if_eq subject="callout_light_shown" flag="hidden" ref_value="0"/>
           <event_cb trigger="clicked" callback="printer_callout_light_cb"/>
-          <icon src="lightbulb_on" size="xs" variant="warning"/>
+          <event_cb trigger="long_pressed" callback="printer_callout_light_hold_cb"/>
+          <icon name="callout_light_lit" src="lightbulb_on" size="xs" variant="warning">
+            <bind_flag_if_eq subject="callout_light_on" flag="hidden" ref_value="0"/>
+          </icon>
+          <icon name="callout_light_dark" src="lightbulb_outline" size="xs" variant="muted">
+            <bind_flag_if_eq subject="callout_light_on" flag="hidden" ref_value="1"/>
+          </icon>
         </lv_obj>
         <activity_chip name="callout_chip_toolhead"
                        text_subject="callout_toolhead_text" shown_subject="callout_toolhead_merged"
