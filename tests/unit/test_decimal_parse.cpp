@@ -109,11 +109,9 @@ TEST_CASE("parse_decimal - trailing junk still parses the leading number", "[dec
 TEST_CASE("parse_decimal - decimal point is always '.' regardless of the process locale",
           "[decimal_parse]") {
     std::string saved = std::setlocale(LC_NUMERIC, nullptr);
-    const char* applied = std::setlocale(LC_NUMERIC, "de_DE.UTF-8");
-    if (applied == nullptr) {
-        WARN("de_DE.UTF-8 locale not installed; skipping locale-independence check");
-    } else {
-        CHECK(parse("42.5") == Approx(42.5f));
+    if (std::setlocale(LC_NUMERIC, "de_DE.UTF-8") == nullptr) {
+        SKIP("de_DE.UTF-8 locale not installed");
     }
+    CHECK(parse("42.5") == Approx(42.5f));
     std::setlocale(LC_NUMERIC, saved.c_str());
 }
