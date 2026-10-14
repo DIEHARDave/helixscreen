@@ -18,7 +18,7 @@ This doc is the map: which file owns what, how the gate decides, and how to add 
 | `include/screensaver_gate.h`, `include/screensaver_cpu_clock.h` | Budget, decision, idle baseline, windows, environment switches, the CPU clock seam |
 | `include/screensaver_level_store.h` | Board fingerprint and the stored level per saver |
 | `include/screensaver.h`, `src/ui/screensaver_manager.cpp` | `ScreensaverManager`: factories, holds, the gate, the black-screen fallback |
-| `include/ui_screensaver.h`, `include/screensaver_starfield.h`, `include/screensaver_pipes.h`, `include/screensaver_bounce.h`, `include/screensaver_fireworks.h` | The savers |
+| `include/ui_screensaver.h`, `include/screensaver_starfield.h`, `include/screensaver_pipes.h`, `include/screensaver_bounce.h`, `include/screensaver_fireworks.h`, `include/screensaver_hyperspace.h` | The savers |
 | `include/screensaver_maze_sim.h`, `include/screensaver_maze.h` | The 3D maze: maze generation, the wall-following walk, and the raycaster that draws it. No LVGL in the sim |
 | `scripts/screensaver-perf/` | Measuring a saver on a real board |
 
@@ -38,7 +38,8 @@ Every ladder starts at 16 ms (`SAVER_FAST_PERIOD`, one refresh of a 60 Hz panel)
 and pipes then run at 33 ms; toasters at 33 ms with every sprite, then 33 ms with ten; the
 bouncing printer and bouncing logo (one class; `BouncingLogoScreensaver` swaps the sprite and drops the tint and corner celebration) at 33 ms, then 33 ms with the corner flash but no confetti; fireworks per
 `FIREWORKS_LEVELS`; the 3D maze per `MAZE_LEVELS`: full resolution at 16 ms, then half resolution at
-33 ms, the same with flat floor and ceiling, and quarter resolution at 50 ms. While a saver runs, `helix::RefreshPeriodHold` refreshes the display at
+33 ms, the same with flat floor and ceiling, and quarter resolution at 50 ms; hyperspace per `HYPERSPACE_LEVELS`, which keeps 33 ms past level 0
+and draws its tunnel and goo in 2x2, then 4x4 blocks, drops the goo, then the tunnel, then stars. While a saver runs, `helix::RefreshPeriodHold` refreshes the display at
 the saver's current period (`follow`), so the display and the saver stay equal at every level. Device measurements assume the pacing that keeps 16 ms even: EGL vsync and a 1 ms
 main-loop floor, which every device run sets explicitly (`scripts/screensaver-perf/arm_measure.sh`).
 
