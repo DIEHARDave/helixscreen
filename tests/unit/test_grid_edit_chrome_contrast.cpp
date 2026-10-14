@@ -53,7 +53,7 @@ lv_obj_t* icon_label_of(lv_obj_t* pill) {
 
 TEST_CASE_METHOD(XMLTestFixture, "edit-mode chrome icons clear WCAG AA on their composited pills",
                  "[grid_edit][edit-chrome]") {
-    const int gutter = theme_manager_get_spacing("space_xs");
+    const int gutter = helix::GridLayout::gutter_px();
     REQUIRE(gutter > 0);
 
     // Same geometry contract as test_grid_edit_drag_path.cpp: a content box

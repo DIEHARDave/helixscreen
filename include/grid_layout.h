@@ -161,7 +161,10 @@ class GridLayout {
     /// Row track count for a content rectangle. See get_dimensions().
     static int get_rows(UiBreakpoint bp, int content_w, int content_h);
 
-    /// Inter-track gap the home grid is built with, in px.
+    /// Inter-track gap the home grid is built with, in px: the per-breakpoint
+    /// `home_grid_gap` token (ui_xml/globals.xml), which matches space_xs up to
+    /// medium and widens from large up. It is grid spacing, so a user's own
+    /// layout gets it too.
     ///
     /// Single source of truth for the spacing token: PanelWidgetManager sets the
     /// container's pad_column/pad_row from this, and every consumer that

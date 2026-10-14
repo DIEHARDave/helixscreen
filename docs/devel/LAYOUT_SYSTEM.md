@@ -411,6 +411,12 @@ The breakpoint comes from the **narrow** axis (`min(width, height)`), so a tall 
 panel is classified by its width and keeps the same cell edge after rotation. See
 `include/ui_breakpoint.h`.
 
+**Gutter.** The gap between tracks is the per-breakpoint `home_grid_gap` token
+(`ui_xml/globals.xml`, read by `GridLayout::gutter_px()`): the same as `space_xs` up to
+medium (2/4/5px), wider from large up (10px at large and xlarge, 12px at xxlarge). It is grid
+spacing, so a user's own layout gets it too. It does not change the track count, which comes
+from the content box alone.
+
 **Measured grids.** Content boxes read off a live instance
 (`HELIX_SCREEN_SIZE=<WxH> helix-screen --test -vv`, then the `[PanelWidgetManager] Grid
 layout:` / `Track geometry:` lines); pinned in `tests/unit/test_grid_square_cells.cpp`.
@@ -425,9 +431,9 @@ layout:` / `Track geometry:` lines); pinned in `tests/unit/test_grid_square_cell
 | 480x400 | SMALL | 414x388 | 4 | **10x10** | 37.80 x 35.20 | 1.07 |
 | 800x480 | MEDIUM | 710x466 | 5 | **12x8** | 54.58 x 53.88 | 1.01 |
 | 480x800 | MEDIUM | 466x664 | 5 | **8x12** | 53.88 x 50.75 | 1.06 |
-| 1024x600 | LARGE | 904x584 | 6 | **16x10** | 50.88 x 53.00 | 0.96 |
-| 1280x720 | XLARGE | 1128x700 | 8 | **16x10** | 63.00 x 62.80 | 1.00 |
-| 1920x1080 | XXLARGE | 1720x1056 | 10 | **24x14** | 62.08 x 66.14 | 0.94 |
+| 1024x600 | LARGE | 904x584 | 10 | **16x10** | 47.12 x 49.40 | 0.95 |
+| 1280x720 | XLARGE | 1128x700 | 10 | **16x10** | 61.12 x 61.00 | 1.00 |
+| 1920x1080 | XXLARGE | 1720x1056 | 12 | **24x14** | 60.17 x 64.29 | 0.94 |
 | 1920x440 | SMALL | 1832x428 | 4 | **46x10** | 35.91 x 39.20 | 0.92 |
 | 320x1480 | TINY | 312x1332 | 2 | **8x34** | 37.25 x 37.24 | 1.00 |
 

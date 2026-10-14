@@ -8,7 +8,7 @@
 namespace helix::test {
 
 /// One measured geometry: a resolution, the home grid container's content box
-/// at that resolution, the gutter (space_xs at that breakpoint), and the grid
+/// at that resolution, the gutter (home_grid_gap at that breakpoint), and the grid
 /// the sizing model produces, in tracks.
 ///
 /// content_w/content_h/gutter were read off a live instance per resolution:
@@ -35,18 +35,18 @@ inline const std::vector<MeasuredGrid> kMeasuredGrids = {
     {"small portrait 400x480",   400,  480,   388,  390,   4,   10, 10},
     {"medium 800x480",           800,  480,   710,  466,   5,   12,  8},
     {"portrait 480x800",         480,  800,   466,  664,   5,    8, 12},
-    {"large 1024x600",          1024,  600,   904,  584,   6,   16, 10},
-    {"large portrait 600x1024",  600, 1024,   584,  868,   6,   10, 14},
-    {"xlarge 1280x720",         1280,  720,  1128,  700,   8,   16, 10},
-    {"xlarge portrait 720x1280", 720, 1280,   700, 1120,   8,   10, 16},
+    {"large 1024x600",          1024,  600,   904,  584,  10,   16, 10},
+    {"large portrait 600x1024",  600, 1024,   584,  868,  10,   10, 14},
+    {"xlarge 1280x720",         1280,  720,  1128,  700,  10,   16, 10},
+    {"xlarge portrait 720x1280", 720, 1280,   700, 1120,  10,   10, 16},
     {"ultrawide 1920x440",      1920,  440,  1832,  428,   4,   46, 10},
     {"ultratall 440x1920",       440, 1920,   428, 1768,   4,   10, 44},
     {"ultratall 320x1480",       320, 1480,   312, 1332,   2,    8, 34},
     {"ultrawide 1480x320",      1480,  320,  1418,  312,   2,   36,  8},
-    {"xxlarge 1920x1080",        1920, 1080,  1720, 1056,  10,   24, 14},
+    {"xxlarge 1920x1080",        1920, 1080,  1720, 1056,  12,   24, 14},
     {"micro 320x240",            320,  240,   270,  232,   2,    8,  6},
-    {"xxlarge portrait 1080x1920", 1080, 1920, 1056, 1756, 10,   14, 24},
-    {"xxlarge portrait 1080x2400", 1080, 2400, 1056, 2236, 10,   14, 32},
+    {"xxlarge portrait 1080x1920", 1080, 1920, 1056, 1756, 12,   14, 24},
+    {"xxlarge portrait 1080x2400", 1080, 2400, 1056, 2236, 12,   14, 32},
 };
 // clang-format on
 

@@ -121,18 +121,18 @@ const std::vector<Geometry> kShipping = {
     {"480x400",   480,  400,   414, 388,  4},
     {"800x480",   800,  480,   710, 466,  5},
     {"480x800",   480,  800,   466, 664,  5},
-    {"1024x600", 1024,  600,   904, 584,  6},
-    {"1280x720", 1280,  720,  1128, 700,  8},
+    {"1024x600", 1024,  600,   904, 584, 10},
+    {"1280x720", 1280,  720,  1128, 700, 10},
 
     // Phone-class panel — a 1080x2400 handset, the geometry the DPI work exists
     // for. Measured off a live instance the way the rest of the table was:
     // `-s 1080x2400 -vv`, reading the `[PanelWidgetManager] Grid layout:` and
     // `Track geometry:` lines. Adding it immediately surfaced two widgets that
     // had always clipped at this size and had simply never been measured.
-    {"1080x2400", 1080, 2400,  1056, 2236, 10},
+    {"1080x2400", 1080, 2400,  1056, 2236, 12},
 
     // The xxlarge rung's landscape panel: a 1080p screen, measured the same way.
-    {"1920x1080", 1920, 1080,  1720, 1056, 10},
+    {"1920x1080", 1920, 1080,  1720, 1056, 12},
 };
 // clang-format on
 
@@ -618,6 +618,9 @@ TEST_CASE_METHOD(ContentFitsFixture,
 
         const UiBreakpoint bp = breakpoint_for(std::min(g.panel_w, g.panel_h));
         const GridDimensions dims = GridLayout::get_dimensions(bp, g.content_w, g.content_h);
+        // The table's gutter is the one the home grid is built with here.
+        INFO("geometry " << g.name);
+        REQUIRE(GridLayout::gutter_px() == g.gutter);
         const CellMetrics m =
             grid_cell_metrics(g.content_w, g.content_h, dims.cols, dims.rows, g.gutter);
 
