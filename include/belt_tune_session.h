@@ -105,9 +105,10 @@ refine_peak_in_window(const BeltCurve& curve, BeltSweepWindow window, std::optio
 enum class BeltTuneOutcome {
     CLOSER,    ///< the gap shrank and kept its sign
     OVERSHOT,  ///< the gap changed sign
-    WRONG_WAY, ///< the adjusted peak moved against the advice by MIN_MOVE_HZ or more
-    /// The adjusted peak moved less than MIN_MOVE_HZ, or moved the advised way
-    /// while the gap did not close.
+    WRONG_WAY, ///< the gap moved against the advice by MIN_MOVE_HZ or more
+    /// The gap moved less than MIN_MOVE_HZ. Outcomes read the gap's change,
+    /// not the adjusted peak's: only the adjusted belt was turned, so drift
+    /// common to both peaks cancels.
     NO_MOVEMENT,
     MATCHED,       ///< |gap| within the matched tolerance
     NO_PEAK,       ///< a path's window holds no clear peak; nothing measured
@@ -131,6 +132,9 @@ struct BeltTuneRound {
     float gap_hz = 0.0f;             ///< adjusted - reference
     std::optional<float> turns_made; ///< what the stepper recorded before this round
     BeltTuneOutcome outcome = BeltTuneOutcome::NO_PEAK;
+    /// NO_PEAK with a peak on the adjusted path only: the reference's peak
+    /// left the window, which a turn of the wrong belt does.
+    bool reference_lost = false;
 };
 
 /// One tuning run: a zone at a time, a round per pair of windowed sweeps.
@@ -151,7 +155,8 @@ class BeltTuneSession {
     /// Meaningless while needs_baseline(): measure the zone first.
     [[nodiscard]] BeltTuneAdvice advice() const;
     /// The stepper's value for the next round; SCREW only. Without it a round
-    /// records the suggested amount (nothing on a BASELINE round).
+    /// records the suggested amount (nothing on a BASELINE round). Zero
+    /// records a round with no turn.
     void record_turns(float turns);
     /// Both paths swept over the current window.
     const BeltTuneRound& add_round(const BeltCurve& a_window, const BeltCurve& b_window);
@@ -206,9 +211,10 @@ class BeltTuneSession {
     int total_rounds_ = 0;
 
     std::optional<float> pending_turns_;
-    float unmeasured_turns_ = 0.0f;     ///< signed turns since the last measured round
-    float unmeasured_abs_turns_ = 0.0f; ///< the same, as magnitudes
-    std::vector<float> rate_samples_;   ///< |peak move| / |turns|, Hz per turn
+    /// Turns since the last measured round, as magnitudes. Only a measured
+    /// round can flip the advised direction, so they all went one way.
+    float unmeasured_turns_ = 0.0f;
+    std::vector<float> rate_samples_; ///< |gap move| / turns, Hz per turn
     float total_turns_a_ = 0.0f;
     float total_turns_b_ = 0.0f;
 };

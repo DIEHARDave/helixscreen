@@ -344,7 +344,6 @@ void BeltTuneSession::enter_zone(const BeltTuneZone& zone, BeltPath path) {
 void BeltTuneSession::clear_belt_history() {
     rate_samples_.clear();
     unmeasured_turns_ = 0.0f;
-    unmeasured_abs_turns_ = 0.0f;
     pending_turns_.reset();
 }
 
@@ -422,21 +421,27 @@ const BeltTuneRound& BeltTuneSession::add_round(const BeltCurve& a_window,
     }
     if (kind_ == BeltTensionerKind::SCREW) {
         // No turn is advised before a baseline, so only a recorded one counts.
-        r.turns_made = pending ? pending : needs_baseline_ ? std::nullopt : advised.turns;
+        // A recorded zero is a round with no turn.
+        if (pending) {
+            r.turns_made = *pending > 0.0f ? pending : std::nullopt;
+        } else if (!needs_baseline_) {
+            r.turns_made = advised.turns;
+        }
         if (r.turns_made) {
             const float signed_turns =
                 advised.direction == BeltTurnDirection::TIGHTEN ? *r.turns_made : -*r.turns_made;
             (adjusted_ == BeltPath::PATH_A ? total_turns_a_ : total_turns_b_) += signed_turns;
-            unmeasured_turns_ += signed_turns;
-            unmeasured_abs_turns_ += *r.turns_made;
+            unmeasured_turns_ += *r.turns_made;
         }
     }
 
     const BeltSweepWindow window = zone_->window;
     const BeltCurve& ref_curve = adjusted_ == BeltPath::PATH_A ? b_window : a_window;
     const BeltCurve& adj_curve = adjusted_ == BeltPath::PATH_A ? a_window : b_window;
-    if (!window_holds_peak(ref_curve, window, band_min_hz_, band_max_hz_) ||
-        !window_holds_peak(adj_curve, window, band_min_hz_, band_max_hz_)) {
+    const bool ref_holds = window_holds_peak(ref_curve, window, band_min_hz_, band_max_hz_);
+    const bool adj_holds = window_holds_peak(adj_curve, window, band_min_hz_, band_max_hz_);
+    if (!ref_holds || !adj_holds) {
+        r.reference_lost = !ref_holds && adj_holds;
         return finish(BeltTuneOutcome::NO_PEAK);
     }
     const auto ref =
@@ -467,6 +472,7 @@ const BeltTuneRound& BeltTuneSession::add_round(const BeltCurve& a_window,
         }
     }
     if (!ref || !adj) {
+        r.reference_lost = !ref && adj;
         return finish(BeltTuneOutcome::NO_PEAK);
     }
 
@@ -474,20 +480,19 @@ const BeltTuneRound& BeltTuneSession::add_round(const BeltCurve& a_window,
     needs_baseline_ = false;
     window_widened_ = false;
     const float prev_gap = gap_hz();
-    const float move = *adj - adj_hz_;
     ref_hz_ = *ref;
     adj_hz_ = *adj;
     const float gap = gap_hz();
     r.ref_hz = ref_hz_;
     r.adj_hz = adj_hz_;
     r.gap_hz = gap;
+    // Only the adjusted belt was turned, so the gap's change is what the turn
+    // did: drift that moves both peaks together cancels out of it.
+    const float move = gap - prev_gap;
 
-    // A sample needs the move and the turns behind it from the same zone, and
-    // turns that all went one way.
-    const bool one_direction = std::abs(unmeasured_turns_) >= unmeasured_abs_turns_ - 1e-6f;
-    const float turns_behind = unmeasured_abs_turns_;
+    // A sample needs the move and the turns behind it from the same zone.
+    const float turns_behind = unmeasured_turns_;
     unmeasured_turns_ = 0.0f;
-    unmeasured_abs_turns_ = 0.0f;
 
     if (baseline) {
         previous_gap_hz_.reset();
@@ -506,16 +511,15 @@ const BeltTuneRound& BeltTuneSession::add_round(const BeltCurve& a_window,
     } else if (gap * prev_gap < 0.0f) {
         outcome = BeltTuneOutcome::OVERSHOT;
     } else {
-        // The peak moved the advised way; if the reference moved with it, the
-        // gap did not close and the turn achieved nothing relative to the
-        // other belt.
+        // The gap moved the advised way without crossing zero. From a gap of
+        // exactly zero that is away from the match.
         outcome = std::abs(gap) < std::abs(prev_gap) ? BeltTuneOutcome::CLOSER
                                                      : BeltTuneOutcome::NO_MOVEMENT;
     }
-    // A peak that moved against the advice says the turn went elsewhere (the
+    // A gap that moved against the advice says the turn went elsewhere (the
     // other belt, the other way), so it teaches nothing about this belt.
     if (outcome != BeltTuneOutcome::WRONG_WAY && std::abs(move) >= MIN_MOVE_HZ &&
-        turns_behind > 0.0f && one_direction) {
+        turns_behind > 0.0f) {
         rate_samples_.push_back(std::abs(move) / turns_behind);
     }
     return finish(outcome);

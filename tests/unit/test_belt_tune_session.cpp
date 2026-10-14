@@ -473,7 +473,7 @@ TEST_CASE("tune round outcomes", "[belt][tune]") {
         CHECK(s.advice().direction == BeltTurnDirection::LOOSEN);
     }
 
-    SECTION("WRONG_WAY: the adjusted peak moved against the advice") {
+    SECTION("WRONG_WAY: the gap moved against the advice") {
         const auto& r = sweep(s, 112.0f, 98.0f);
         CHECK(r.outcome == BeltTuneOutcome::WRONG_WAY);
         CHECK(s.advice().direction == BeltTurnDirection::TIGHTEN);
@@ -482,6 +482,22 @@ TEST_CASE("tune round outcomes", "[belt][tune]") {
     SECTION("NO_MOVEMENT: under half a hertz either way") {
         CHECK(sweep(s, 112.0f, 100.3f).outcome == BeltTuneOutcome::NO_MOVEMENT);
         CHECK(sweep(s, 112.0f, 99.9f).outcome == BeltTuneOutcome::NO_MOVEMENT);
+    }
+
+    SECTION("both peaks drifting together is not a move") {
+        // 1.5 Hz of common drift, no turn: the gap held at -12.
+        const auto& r = sweep(s, 113.5f, 101.5f);
+        CHECK(r.outcome == BeltTuneOutcome::NO_MOVEMENT);
+        CHECK(s.gap_hz() == Catch::Approx(-12.0f).margin(0.1f));
+    }
+
+    SECTION("the reference moving away is the gap moving the wrong way") {
+        // B held at 100 while A rose 2 Hz: tightening B cannot widen the gap.
+        CHECK(sweep(s, 114.0f, 100.0f).outcome == BeltTuneOutcome::WRONG_WAY);
+    }
+
+    SECTION("the reference coming closer is the gap closing") {
+        CHECK(sweep(s, 108.0f, 100.0f).outcome == BeltTuneOutcome::CLOSER);
     }
 
     SECTION("MATCHED: the gap is within tolerance") {
@@ -498,9 +514,40 @@ TEST_CASE("tune round outcomes", "[belt][tune]") {
         }
         const auto& r = s.add_round(one_peak(112.0f, w.freq_start_hz, w.freq_end_hz + 0.5f), flat);
         CHECK(r.outcome == BeltTuneOutcome::NO_PEAK);
+        // The adjusted path lost its peak, not the reference.
+        CHECK_FALSE(r.reference_lost);
         CHECK(s.gap_hz() == Catch::Approx(-12.0f).margin(0.1f));
         CHECK_FALSE(s.previous_gap_hz().has_value());
         CHECK(s.rounds().size() == 1);
+    }
+
+    SECTION("NO_PEAK: the reference's peak left the window") {
+        const auto w = s.zone()->window;
+        SECTION("its window is flat") {
+            BeltCurve flat;
+            for (float f = w.freq_start_hz; f <= w.freq_end_hz; f += 0.78125f) {
+                flat.emplace_back(f, 5.0f);
+            }
+            const auto& r =
+                s.add_round(flat, one_peak(104.0f, w.freq_start_hz, w.freq_end_hz + 0.5f));
+            CHECK(r.outcome == BeltTuneOutcome::NO_PEAK);
+            CHECK(r.reference_lost);
+        }
+        SECTION("it runs off the window's low edge") {
+            // A, the reference, slid down past 95 Hz; B still peaks inside.
+            const auto& r = sweep(s, 88.0f, 104.0f);
+            CHECK(r.outcome == BeltTuneOutcome::NO_PEAK);
+            CHECK(r.reference_lost);
+        }
+        SECTION("both windows flat: no path is singled out") {
+            BeltCurve flat;
+            for (float f = w.freq_start_hz; f <= w.freq_end_hz; f += 0.78125f) {
+                flat.emplace_back(f, 5.0f);
+            }
+            const auto& r = s.add_round(flat, flat);
+            CHECK(r.outcome == BeltTuneOutcome::NO_PEAK);
+            CHECK_FALSE(r.reference_lost);
+        }
     }
 
     SECTION("OUT_OF_WINDOW: re-centred on the reference, widened, gap kept") {
@@ -581,6 +628,38 @@ TEST_CASE("tune rate: median of real moves, recorded turns win", "[belt][tune]")
     CHECK(s.total_turns(BeltPath::PATH_A) == Catch::Approx(0.0f));
     CHECK(s.total_rounds() == 4);
     CHECK(s.rounds().size() == 4);
+}
+
+TEST_CASE("tune rate: common drift teaches nothing", "[belt][tune]") {
+    auto s = session_for(112.0f, 100.0f, BeltTensionerKind::SCREW);
+    // A quarter turn booked, but both peaks rose 1.5 Hz: the gap held, so the
+    // turn did nothing and no rate is learned.
+    const auto& r = sweep(s, 113.5f, 101.5f);
+    REQUIRE(r.turns_made == std::optional<float>(0.25f));
+    CHECK(r.outcome == BeltTuneOutcome::NO_MOVEMENT);
+    CHECK_FALSE(s.hz_per_turn().has_value());
+    // A quarter turn that closed the gap 4 Hz while both drifted 1 Hz: 16 Hz/turn.
+    s.record_turns(0.25f);
+    REQUIRE(sweep(s, 114.5f, 106.5f).outcome == BeltTuneOutcome::CLOSER);
+    REQUIRE(s.hz_per_turn().has_value());
+    CHECK(*s.hz_per_turn() == Catch::Approx(16.0f).margin(0.4f));
+}
+
+TEST_CASE("tune session: a recorded zero is a round with no turn", "[belt][tune]") {
+    auto s = session_for(112.0f, 100.0f, BeltTensionerKind::SCREW);
+    s.record_turns(0.0f);
+    const auto& r = sweep(s, 112.0f, 100.1f);
+    CHECK(r.outcome == BeltTuneOutcome::NO_MOVEMENT);
+    CHECK_FALSE(r.turns_made.has_value());
+    CHECK(s.total_turns(BeltPath::PATH_B) == Catch::Approx(0.0f));
+    // Nothing was turned, so nothing doubles: the first quarter turn stands.
+    REQUIRE(s.advice().turns.has_value());
+    CHECK(*s.advice().turns == Catch::Approx(belt_tune::FIRST_TURN));
+    // The zero turn adds nothing behind the next sample: a quarter turn for 4 Hz.
+    s.record_turns(0.25f);
+    REQUIRE(sweep(s, 112.0f, 104.1f).outcome == BeltTuneOutcome::CLOSER);
+    REQUIRE(s.hz_per_turn().has_value());
+    CHECK(*s.hz_per_turn() == Catch::Approx(16.0f).margin(0.4f));
 }
 
 TEST_CASE("tune rate: a wrong-way round teaches nothing", "[belt][tune]") {
@@ -687,7 +766,7 @@ TEST_CASE("tune session: a pair within one bin is already matched", "[belt][tune
 }
 
 // ============================================================================
-// Review fixes
+// Floors, prominence, LOOSEN outcomes and zones across rounds
 // ============================================================================
 
 TEST_CASE("tune zone: the amplitude floor follows the in-band maximum", "[belt][tune]") {
