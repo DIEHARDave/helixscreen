@@ -2761,6 +2761,29 @@ on a multi-extruder rig, swaps the single bowden / toolhead / toolhead-LED entri
 per-extruder ones. See the [AFC-Specific Features](FILAMENT_BACKEND_AFC.md#afc-specific-features) section for
 details.
 
+#### Guided flows
+
+A `DeviceAction` whose `guided_flow` names a registered flow is started through that flow
+instead of being executed and toasted. `include/ui_guided_device_flow.h` holds the registry
+(`register_guided_device_flow`, `find_guided_device_flow`): a flow supplies `start(label)` and,
+optionally, `attach_status(container)` to append status widgets below the section's buttons.
+The section overlay (`src/ui/ui_ams_device_section_detail_overlay.cpp`) knows only that
+registry. It never names a vendor, and a flow id with no registration is refused with a
+warning rather than executed, because the flow is what asks before moving the machine.
+
+The Creality CFS flows (`cfs_purge_chute`, `cfs_cutter`) live in `src/ui/ui_cfs_device_flows.cpp`
+and are registered by `register_cfs_device_flows()` at startup, before any overlay builds
+(`Application::register_xml_components()`, and the ESP32 `app_boot.cpp` boot path). A new
+vendor flow is one new file plus one `guided_flow` string on its backend's action.
+
+#### Unavailable operations explain themselves
+
+`AmsBackend::unload_blocked_reason(slot)` and `eject_unavailable_reason(slot)` return a
+translated one-line reason, or empty. The lane context menu binds them to the
+`ams_slot_unload_hint` / `ams_slot_eject_hint` subjects, so the UI never decides which backend
+owes the user an explanation. The Device Operations overlay shows its eject distance and
+velocity rows from `supports_configurable_eject_params()` (`ams_device_ops_has_eject_params`).
+
 ---
 
 ## Mock Mode for Testing

@@ -5,7 +5,5 @@
 11 src/system/telemetry_manager.cpp:amstype-branch
 1 src/ui/filament_op_execute.cpp:amstype-branch
 2 src/ui/modals/buffer_status_modal.cpp:amstype-branch
-1 src/ui/ui_ams_context_menu.cpp:amstype-branch
 1 src/ui/ui_ams_detail.cpp:amstype-branch
-3 src/ui/ui_ams_device_section_detail_overlay.cpp:amstype-branch
 9 src/ui/ui_wizard_ams_identify.cpp:amstype-branch
