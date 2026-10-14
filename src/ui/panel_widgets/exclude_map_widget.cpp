@@ -8,6 +8,7 @@
 #include "ui_icon.h"
 #include "ui_icon_codepoints.h"
 #include "ui_panel_print_status.h"
+#include "ui_subject_registry.h"
 #include "ui_utils.h"
 
 #include "app_globals.h"
@@ -95,16 +96,6 @@ void exclude_map_init_subjects() {
             s_subjects_initialized = false;
         }
     });
-}
-
-void set_int(lv_subject_t* subject, int value) {
-    if (lv_subject_get_int(subject) != value)
-        lv_subject_set_int(subject, value);
-}
-
-void set_text(lv_subject_t* subject, const std::string& text) {
-    if (text != lv_subject_get_string(subject))
-        lv_subject_copy_string(subject, text.c_str());
 }
 
 // The texts, composed once for the labels and the measurement alike.
@@ -372,36 +363,43 @@ bool ExcludeMapWidget::fits_at(int width_px, int height_px) const {
 }
 
 void ExcludeMapWidget::publish(const Live& live) {
-    set_int(&s_placeholder_subject, verdict_.placeholder ? 1 : 0);
-    set_int(&s_show_map_subject, verdict_.show_map ? 1 : 0);
-    set_int(&s_show_skip_subject, verdict_.show_skip_button ? 1 : 0);
-    set_int(&s_show_name_subject, verdict_.show_name ? 1 : 0);
-    set_int(&s_has_current_subject, live.current.empty() ? 0 : 1);
-    set_int(&s_rung_subject, static_cast<int>(verdict_.rung));
+    helix::ui::set_int_if_changed(&s_placeholder_subject, verdict_.placeholder ? 1 : 0);
+    helix::ui::set_int_if_changed(&s_show_map_subject, verdict_.show_map ? 1 : 0);
+    helix::ui::set_int_if_changed(&s_show_skip_subject, verdict_.show_skip_button ? 1 : 0);
+    helix::ui::set_int_if_changed(&s_show_name_subject, verdict_.show_name ? 1 : 0);
+    helix::ui::set_int_if_changed(&s_has_current_subject, live.current.empty() ? 0 : 1);
+    helix::ui::set_int_if_changed(&s_rung_subject, static_cast<int>(verdict_.rung));
 
     if (verdict_.placeholder) {
-        set_text(&s_placeholder_text_subject, placeholder_text(live.state));
+        helix::ui::copy_string_if_changed(&s_placeholder_text_subject,
+                                          std::string(placeholder_text(live.state)).c_str());
         return;
     }
     // Only the texts the rung shows are composed.
     switch (verdict_.rung) {
     case SizeRung::Glance:
     case SizeRung::Column:
-        set_text(&s_count_text_subject, count_text(live.counts));
+        helix::ui::copy_string_if_changed(&s_count_text_subject,
+                                          std::string(count_text(live.counts)).c_str());
         break;
     case SizeRung::Strip:
-        set_text(&s_objects_text_subject, objects_text(live.counts.total));
-        set_text(&s_skipped_text_subject, skipped_text(live.counts.skipped));
+        helix::ui::copy_string_if_changed(&s_objects_text_subject,
+                                          std::string(objects_text(live.counts.total)).c_str());
+        helix::ui::copy_string_if_changed(&s_skipped_text_subject,
+                                          std::string(skipped_text(live.counts.skipped)).c_str());
         break;
     case SizeRung::Cell:
-        set_text(&s_printing_text_subject, printing_text(live.counts));
+        helix::ui::copy_string_if_changed(&s_printing_text_subject,
+                                          std::string(printing_text(live.counts)).c_str());
         break;
     case SizeRung::Wide:
     case SizeRung::Full:
     case SizeRung::Large:
-        set_text(&s_printing_text_subject, printing_text(live.counts));
-        set_text(&s_skipped_text_subject, skipped_text(live.counts.skipped));
-        set_text(&s_current_name_subject, live.current);
+        helix::ui::copy_string_if_changed(&s_printing_text_subject,
+                                          std::string(printing_text(live.counts)).c_str());
+        helix::ui::copy_string_if_changed(&s_skipped_text_subject,
+                                          std::string(skipped_text(live.counts.skipped)).c_str());
+        helix::ui::copy_string_if_changed(&s_current_name_subject, live.current.c_str());
         break;
     }
 }

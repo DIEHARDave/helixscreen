@@ -10,6 +10,7 @@
 #include "ui_event_safety.h"
 #include "ui_icon.h"
 #include "ui_icon_codepoints.h"
+#include "ui_subject_registry.h"
 
 #include "display_numbering.h"
 #include "display_settings_manager.h"
@@ -151,16 +152,6 @@ void dryer_init_subjects() {
             s_subjects_initialized = false;
         }
     });
-}
-
-void set_text(TextSubject& text, const std::string& value) {
-    if (value != lv_subject_get_string(&text.subject))
-        lv_subject_copy_string(&text.subject, value.c_str());
-}
-
-void set_int(lv_subject_t& subject, int value) {
-    if (lv_subject_get_int(&subject) != value)
-        lv_subject_set_int(&subject, value);
 }
 
 // "2:30" while a cycle has hours left, "45m" under one, "9h" at ten or more, so the
@@ -538,9 +529,9 @@ bool DryerWidget::fits_at(int width_px, int height_px) const {
 }
 
 void DryerWidget::publish_verdict() {
-    set_int(s_flags.rung, static_cast<int>(verdict_.rung));
-    set_int(s_flags.show_ring, verdict_.show_ring ? 1 : 0);
-    set_int(s_flags.row_count, verdict_.row_count);
+    helix::ui::set_int_if_changed(&s_flags.rung, static_cast<int>(verdict_.rung));
+    helix::ui::set_int_if_changed(&s_flags.show_ring, verdict_.show_ring ? 1 : 0);
+    helix::ui::set_int_if_changed(&s_flags.row_count, verdict_.row_count);
 }
 
 void DryerWidget::publish_texts() {
@@ -556,47 +547,50 @@ void DryerWidget::publish_texts() {
     TextSet t;
     if (rung != SizeRung::Full)
         t = compose_single(summary, rung, use_24h);
-    set_text(s_texts.time, t.time);
-    set_text(s_texts.name, t.name);
-    set_text(s_texts.temp, t.temp);
-    set_text(s_texts.rh_detail, t.rh_detail);
-    set_text(s_texts.rh, t.rh);
-    set_text(s_texts.status, t.status);
-    set_text(s_texts.end, t.end);
-    set_text(s_texts.count, t.count);
-    set_text(s_texts.times, t.times);
+    helix::ui::copy_string_if_changed(&s_texts.time.subject, t.time.c_str());
+    helix::ui::copy_string_if_changed(&s_texts.name.subject, t.name.c_str());
+    helix::ui::copy_string_if_changed(&s_texts.temp.subject, t.temp.c_str());
+    helix::ui::copy_string_if_changed(&s_texts.rh_detail.subject, t.rh_detail.c_str());
+    helix::ui::copy_string_if_changed(&s_texts.rh.subject, t.rh.c_str());
+    helix::ui::copy_string_if_changed(&s_texts.status.subject, t.status.c_str());
+    helix::ui::copy_string_if_changed(&s_texts.end.subject, t.end.c_str());
+    helix::ui::copy_string_if_changed(&s_texts.count.subject, t.count.c_str());
+    helix::ui::copy_string_if_changed(&s_texts.times.subject, t.times.c_str());
 
     const bool single = rung != SizeRung::Full;
     const auto flag = [](const std::string& s) { return s.empty() ? 0 : 1; };
     const bool ring = verdict_.show_ring;
-    set_int(s_flags.show_icon, single && (!drying || rung == SizeRung::Column) ? 1 : 0);
-    set_int(s_flags.show_time, flag(t.time) && !ring ? 1 : 0);
-    set_int(s_flags.show_name, flag(t.name));
-    set_int(s_flags.show_temp, flag(t.temp));
-    set_int(s_flags.show_rh_detail, flag(t.rh_detail));
-    set_int(s_flags.show_rh, flag(t.rh));
-    set_int(s_flags.show_status, flag(t.status));
-    set_int(s_flags.show_end, flag(t.end));
-    set_int(s_flags.show_count, flag(t.count));
-    set_int(s_flags.show_times, flag(t.times));
-    set_int(s_flags.show_info, (flag(t.time) && !ring) || flag(t.name) || flag(t.temp) ||
-                                       flag(t.rh_detail) || flag(t.rh) || flag(t.status) ||
-                                       flag(t.end) || flag(t.count) || flag(t.times)
-                                   ? 1
-                                   : 0);
+    helix::ui::set_int_if_changed(&s_flags.show_icon,
+                                  single && (!drying || rung == SizeRung::Column) ? 1 : 0);
+    helix::ui::set_int_if_changed(&s_flags.show_time, flag(t.time) && !ring ? 1 : 0);
+    helix::ui::set_int_if_changed(&s_flags.show_name, flag(t.name));
+    helix::ui::set_int_if_changed(&s_flags.show_temp, flag(t.temp));
+    helix::ui::set_int_if_changed(&s_flags.show_rh_detail, flag(t.rh_detail));
+    helix::ui::set_int_if_changed(&s_flags.show_rh, flag(t.rh));
+    helix::ui::set_int_if_changed(&s_flags.show_status, flag(t.status));
+    helix::ui::set_int_if_changed(&s_flags.show_end, flag(t.end));
+    helix::ui::set_int_if_changed(&s_flags.show_count, flag(t.count));
+    helix::ui::set_int_if_changed(&s_flags.show_times, flag(t.times));
+    helix::ui::set_int_if_changed(&s_flags.show_info,
+                                  (flag(t.time) && !ring) || flag(t.name) || flag(t.temp) ||
+                                          flag(t.rh_detail) || flag(t.rh) || flag(t.status) ||
+                                          flag(t.end) || flag(t.count) || flag(t.times)
+                                      ? 1
+                                      : 0);
 
     const DryerSource* primary = primary_source(summary);
-    set_int(s_flags.ring_pct, ring && primary ? std::clamp(primary->progress_pct, 0, 100) : 0);
+    helix::ui::set_int_if_changed(&s_flags.ring_pct,
+                                  ring && primary ? std::clamp(primary->progress_pct, 0, 100) : 0);
 
     // Rows only exist at Full; below it nothing is composed for them, and what Full left
     // behind is cleared once.
     if (rung != SizeRung::Full) {
         if (s_rows_composed) {
             for (auto& row : s_rows) {
-                set_text(row.name, "");
-                set_text(row.time, "");
-                set_text(row.detail, "");
-                set_int(row.pct, -1);
+                helix::ui::copy_string_if_changed(&row.name.subject, "");
+                helix::ui::copy_string_if_changed(&row.time.subject, "");
+                helix::ui::copy_string_if_changed(&row.detail.subject, "");
+                helix::ui::set_int_if_changed(&row.pct, -1);
             }
             s_rows_composed = false;
         }
@@ -607,19 +601,21 @@ void DryerWidget::publish_texts() {
         RowSubjects& row = s_rows[i];
         const bool shown = i < verdict_.row_count && i < static_cast<int>(summary.sources.size());
         if (!shown) {
-            set_int(row.pct, -1);
+            helix::ui::set_int_if_changed(&row.pct, -1);
             continue;
         }
         const DryerSource& s = summary.sources[static_cast<size_t>(i)];
-        set_text(row.name, source_name(s));
-        set_text(row.time,
-                 s.drying ? format_time_left(s.remaining_min) : std::string(lv_tr("Idle")));
+        helix::ui::copy_string_if_changed(&row.name.subject, std::string(source_name(s)).c_str());
+        helix::ui::copy_string_if_changed(
+            &row.time.subject,
+            std::string(s.drying ? format_time_left(s.remaining_min) : std::string(lv_tr("Idle")))
+                .c_str());
         std::string detail = temp_text(s, !s.drying);
         const std::string rh = rh_text(s.humidity_pct, true);
         if (!rh.empty())
             detail += detail.empty() ? rh : "  " + rh;
-        set_text(row.detail, detail);
-        set_int(row.pct, s.drying ? s.progress_pct : -1);
+        helix::ui::copy_string_if_changed(&row.detail.subject, detail.c_str());
+        helix::ui::set_int_if_changed(&row.pct, s.drying ? s.progress_pct : -1);
     }
 }
 
