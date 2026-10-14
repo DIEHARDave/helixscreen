@@ -1254,14 +1254,22 @@ AmsSystemInfo AmsBackendCfs::parse_flat_box_status(const nlohmann::json& box_jso
         }
     }
 
-    // One environment reading covers the chain; giving it to every box would
-    // show the same sensor as several zones.
-    bool environment_placed = false;
+    // The payload carries one environment reading, taken from the box named by
+    // load_path.box_addr (1-based; null when nothing is loaded). Only that box
+    // shows it; giving it to every box would show one sensor as several zones.
+    // With no usable address it stays on the first box.
+    int environment_address = boxes.empty() ? -1 : boxes.begin()->first;
+    if (auto path_it = box_json.find("load_path");
+        path_it != box_json.end() && path_it->is_object()) {
+        const int box_addr = helix::json_util::safe_int(*path_it, "box_addr", 0);
+        if (boxes.count(box_addr - 1) != 0) {
+            environment_address = box_addr - 1;
+        }
+    }
     for (auto& [address, box] : boxes) {
-        if (environment_placed) {
+        if (address != environment_address) {
             box.environment.reset();
         }
-        environment_placed = environment_placed || box.environment.has_value();
         info.units.push_back(std::move(box));
     }
     reserve_address_gaps(info);

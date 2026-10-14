@@ -714,6 +714,51 @@ TEST_CASE("CFS flat: a real four-box payload parses as four boxes, three of them
     CHECK(info.current_slot == -1);
 }
 
+// The payload's one temp/humidity reading belongs to the box load_path.box_addr
+// names (1-based), not to whichever box parses first.
+TEST_CASE("CFS flat: the environment reading lands on the box load_path.box_addr names",
+          "[ams][cfs][flat][fork][environment]") {
+    auto box = load_box_fixture("cfs_fork_four_box_L8MMBCCK.json");
+
+    const auto units_with_environment = [](const AmsSystemInfo& info) {
+        std::vector<int> out;
+        for (const auto& u : info.units) {
+            if (u.environment.has_value()) {
+                out.push_back(u.unit_index);
+            }
+        }
+        return out;
+    };
+
+    SECTION("box_addr 4 puts it on the fourth unit only") {
+        box["load_path"]["box_addr"] = 4;
+        const auto info = AmsBackendCfs::parse_box_status(box);
+        REQUIRE(units_with_environment(info) == std::vector<int>{3});
+        CHECK(info.units[3].environment->temperature_c == 27.0f);
+        CHECK(info.units[3].environment->humidity_pct == 54.0f);
+    }
+
+    SECTION("box_addr 2 puts it on the second unit only") {
+        box["load_path"]["box_addr"] = 2;
+        REQUIRE(units_with_environment(AmsBackendCfs::parse_box_status(box)) ==
+                std::vector<int>{1});
+    }
+
+    SECTION("a null box_addr keeps it on the first unit") {
+        REQUIRE(units_with_environment(AmsBackendCfs::parse_box_status(box)) ==
+                std::vector<int>{0});
+    }
+
+    SECTION("a box_addr naming no listed box keeps it on the first unit") {
+        box["load_path"]["box_addr"] = 9;
+        REQUIRE(units_with_environment(AmsBackendCfs::parse_box_status(box)) ==
+                std::vector<int>{0});
+        box["load_path"]["box_addr"] = 0;
+        REQUIRE(units_with_environment(AmsBackendCfs::parse_box_status(box)) ==
+                std::vector<int>{0});
+    }
+}
+
 TEST_CASE("CFS flat: four boxes converge on one toolhead in the system path layout",
           "[ams][cfs][flat][tool_layout][ams_draw]") {
     const auto info =
