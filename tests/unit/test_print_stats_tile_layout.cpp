@@ -27,16 +27,25 @@ RungNeeds synthetic_needs() {
     return n;
 }
 
-PrintStatsTileVerdict verdict_for(int w, int h,
-                                  PrintStatsContent content = PrintStatsContent::Activity,
-                                  bool lifetime_known = true) {
+PrintStatsTileLayoutInput input_for(int w, int h,
+                                    PrintStatsContent content = PrintStatsContent::Activity,
+                                    bool lifetime_known = true) {
     PrintStatsTileLayoutInput in;
     in.content_w = w;
     in.content_h = h;
     in.content = content;
     in.lifetime_known = lifetime_known;
     in.needs = synthetic_needs();
-    return decide_print_stats_tile_layout(in);
+    in.count_line_w = 60;
+    in.full_line_w = 200;
+    in.support_line_h = 20;
+    return in;
+}
+
+PrintStatsTileVerdict verdict_for(int w, int h,
+                                  PrintStatsContent content = PrintStatsContent::Activity,
+                                  bool lifetime_known = true) {
+    return decide_print_stats_tile_layout(input_for(w, h, content, lifetime_known));
 }
 
 } // namespace
@@ -68,8 +77,8 @@ TEST_CASE("print stats tile: parts per rung with the lifetime totals known",
     CHECK_FALSE(strip.side_by_side);
     CHECK(strip.support == PrintStatsSupport::None);
 
-    const auto cell = verdict_for(100, 100);
-    CHECK(cell.show_bars);
+    const auto cell = verdict_for(100, 120);
+    CHECK_FALSE(cell.show_bars);
     CHECK_FALSE(cell.show_day_labels);
     CHECK_FALSE(cell.side_by_side);
     CHECK(cell.support == PrintStatsSupport::PrintsOnly);
@@ -87,9 +96,28 @@ TEST_CASE("print stats tile: parts per rung with the lifetime totals known",
     CHECK(full.support == PrintStatsSupport::Full);
 }
 
+TEST_CASE("print stats tile: the support line steps down rather than cut",
+          "[print_stats_tile][layout]") {
+    // Cell: the count needs its own line's height under the stacked hero.
+    CHECK(verdict_for(100, 119).support == PrintStatsSupport::None);
+    CHECK(verdict_for(100, 120).support == PrintStatsSupport::PrintsOnly);
+
+    auto in = input_for(220, 100);
+    in.full_line_w = 220;
+    CHECK(decide_print_stats_tile_layout(in).support == PrintStatsSupport::Full);
+    in.full_line_w = 221;
+    CHECK(decide_print_stats_tile_layout(in).support == PrintStatsSupport::PrintsOnly);
+    in.count_line_w = 221;
+    CHECK(decide_print_stats_tile_layout(in).support == PrintStatsSupport::None);
+
+    auto cell = input_for(100, 200);
+    cell.count_line_w = 101;
+    CHECK(decide_print_stats_tile_layout(cell).support == PrintStatsSupport::None);
+}
+
 TEST_CASE("print stats tile: no support line until the lifetime totals are known",
           "[print_stats_tile][layout]") {
-    for (const auto& box : {std::pair{100, 40}, {100, 100}, {220, 100}, {220, 220}}) {
+    for (const auto& box : {std::pair{100, 40}, {100, 120}, {220, 100}, {220, 220}}) {
         INFO(box.first << "x" << box.second);
         CHECK(verdict_for(box.first, box.second, PrintStatsContent::Activity, false).support ==
               PrintStatsSupport::None);

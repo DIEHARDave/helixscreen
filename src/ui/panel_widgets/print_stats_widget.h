@@ -10,6 +10,7 @@
 #include "src/ui/panel_widgets/print_stats_tile_layout.h"
 
 #include <lvgl.h>
+#include <string>
 
 namespace helix {
 
@@ -54,6 +55,10 @@ class PrintStatsWidget : public PanelWidget {
     [[nodiscard]] PrintStatsTileVerdict
     decide(int width_px, int height_px, PrintStatsContent content, bool lifetime_known) const;
     void handle_clicked();
+
+    /// The support line's two levels, from the lifetime totals.
+    [[nodiscard]] std::string count_line() const;
+    [[nodiscard]] std::string full_line() const;
 
     friend class PrintStatsTestAccess;
 

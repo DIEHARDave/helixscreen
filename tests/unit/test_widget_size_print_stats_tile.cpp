@@ -17,6 +17,7 @@
 #include "ui_utils.h"
 
 #include "../lvgl_ui_test_fixture.h"
+#include "../test_helpers/one_line_label.h"
 #include "../test_helpers/panel_widget_size_harness.h"
 #include "../test_helpers/print_history_seed.h"
 #include "../test_helpers/update_queue_test_access.h"
@@ -55,9 +56,9 @@ struct Box {
 // Just above the smallest box each rung needs with the fixture's fonts (heading 34px,
 // small 22px) and the tile's 3px padding. The Strip is the medium tier's 2x1 cell.
 constexpr Box kStrip{114, 54, SizeRung::Strip};
-constexpr Box kCell{114, 142, SizeRung::Cell};
-constexpr Box kWide{236, 95, SizeRung::Wide};
-constexpr Box kFull{236, 182, SizeRung::Full};
+constexpr Box kCell{114, 113, SizeRung::Cell};
+constexpr Box kWide{233, 113, SizeRung::Wide};
+constexpr Box kFull{233, 232, SizeRung::Full};
 
 struct PrintStatsTileFixture : public LVGLUITestFixture, public PrintHistorySeed {
     PrintStatsTileFixture() : PrintHistorySeed(state(), [this] { settle(); }) {
@@ -91,14 +92,18 @@ std::string subject_text(const char* name) {
 }
 
 /// Whether an object draws: it and every ancestor up to the widget root is unhidden.
-bool shown(PanelWidgetHarness<PrintStatsWidget>& h, const char* name) {
-    lv_obj_t* obj = h.child(name);
-    REQUIRE(obj != nullptr);
+bool shown(lv_obj_t* obj) {
     for (lv_obj_t* o = obj; o != nullptr; o = lv_obj_get_parent(o)) {
         if (lv_obj_has_flag(o, LV_OBJ_FLAG_HIDDEN))
             return false;
     }
     return true;
+}
+
+bool shown(PanelWidgetHarness<PrintStatsWidget>& h, const char* name) {
+    lv_obj_t* obj = h.child(name);
+    REQUIRE(obj != nullptr);
+    return shown(obj);
 }
 
 } // namespace
@@ -298,6 +303,8 @@ TEST_CASE_METHOD(PrintStatsTileFixture, "print stats tile: bars and lines stay i
             INFO(name);
             lv_obj_t* obj = h.child(name);
             REQUIRE(obj != nullptr);
+            if (!shown(obj))
+                continue;
             lv_area_t a;
             lv_obj_get_coords(obj, &a);
             CHECK(a.x1 >= tile.x1);
@@ -306,8 +313,11 @@ TEST_CASE_METHOD(PrintStatsTileFixture, "print stats tile: bars and lines stay i
             CHECK(a.y2 <= tile.y2);
         }
         lv_obj_t* bar = h.child("ps_bar_6");
-        CHECK(lv_obj_get_height(bar) >= lv_font_get_line_height(lv_obj_get_style_text_font(
-                                            h.child("ps_support"), LV_PART_MAIN)));
+        CHECK(shown(bar) == (b.rung != SizeRung::Cell));
+        if (shown(bar)) {
+            CHECK(lv_obj_get_height(bar) >= lv_font_get_line_height(lv_obj_get_style_text_font(
+                                                h.child("ps_support"), LV_PART_MAIN)));
+        }
     }
 }
 
@@ -334,4 +344,46 @@ TEST_CASE_METHOD(PrintStatsTileFixture,
     CHECK(label.x2 <= tile.x2);
     CHECK(label.y2 <= tile.y2);
     CHECK(hero.y2 <= tile.y2);
+}
+
+TEST_CASE_METHOD(PrintStatsTileFixture,
+                 "print stats tile: the Cell stacks the hours over this week and the count",
+                 "[widget_size][print_stats]") {
+    seed({job(0, 3600)});
+    PanelWidgetHarness<PrintStatsWidget> h(test_screen());
+    h.widget().on_activate();
+    h.resize(1, 1, kCell.w, kCell.h);
+    settle();
+    h.resize(1, 1, kCell.w, kCell.h);
+    REQUIRE(subject_int("print_stats_rung") == static_cast<int>(SizeRung::Cell));
+    lv_area_t hero, label, support;
+    lv_obj_get_coords(h.child("ps_hero"), &hero);
+    lv_obj_get_coords(h.child("ps_hero_label"), &label);
+    lv_obj_get_coords(h.child("ps_support"), &support);
+    CHECK(label.y1 >= hero.y2);
+    CHECK(shown(h.child("ps_support")));
+    CHECK(support.y1 >= label.y2);
+    CHECK(subject_text("print_stats_support_text") == format_print_count(mock_totals().total_jobs));
+    CHECK(helix::test::held_to_one_line(h.child("ps_hero_label")));
+    CHECK_FALSE(shown(h.child("ps_bars")));
+}
+
+TEST_CASE_METHOD(PrintStatsTileFixture,
+                 "print stats tile: Full labels the hours and draws today on the baseline",
+                 "[widget_size][print_stats]") {
+    seed({job(1, 3600)});
+    PanelWidgetHarness<PrintStatsWidget> h(test_screen());
+    h.resize(1, 1, kFull.w, kFull.h);
+    REQUIRE(subject_int("print_stats_rung") == static_cast<int>(SizeRung::Full));
+    CHECK(shown(h.child("ps_hero_label")));
+    CHECK(subject_text("print_stats_hero_label") == "this week");
+    CHECK(subject_int("print_stats_day_6") == 0);
+    lv_obj_t* baseline = h.child("ps_baseline");
+    REQUIRE(baseline != nullptr);
+    CHECK(shown(baseline));
+    lv_area_t line, bar;
+    lv_obj_get_coords(baseline, &line);
+    lv_obj_get_coords(h.child("ps_bar_6"), &bar);
+    CHECK(line.x2 >= bar.x2);
+    CHECK(line.y1 >= bar.y2);
 }

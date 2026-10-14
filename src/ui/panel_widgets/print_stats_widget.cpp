@@ -110,10 +110,11 @@ int line_px(const lv_font_t* font) {
 }
 
 /// The minimum content box each rung draws in. Mirrors panel_widget_print_stats.xml:
-/// the root's gap is space_xxs between rows and space_xs between the hero and the bars
-/// when they sit side by side. The hero and the lifetime lines are budgeted at fixed
-/// worst-case samples so the rung holds while the numbers change; the hero label
-/// ellipsizes, so it is budgeted at its usual text.
+/// the root's gap is space_xxs between rows, space_xs between the hero and the bars
+/// when they sit side by side, and space_xs between bars. The hero is budgeted at a
+/// fixed worst-case sample so the rung holds while the hours change. The support line
+/// is not budgeted here: the decision measures it as it would draw and drops it to a
+/// shorter level when it does not fit.
 helix::RungNeeds measure_needs(const helix::ContentChrome& chrome) {
     using helix::rung_box;
     const lv_font_t* heading = theme_manager_get_font("font_heading");
@@ -127,26 +128,26 @@ helix::RungNeeds measure_needs(const helix::ContentChrome& chrome) {
     const int hero_w = measure_text_px(helix::format_print_hours(888.0).c_str(), heading);
     const int label_w = measure_text_px(lv_tr("this week"), small);
     const int text_w = std::max(hero_w, label_w);
-    const int bar_w = theme_manager_get_spacing("space_xs");
-    const int bars_w = helix::kActivityDays * bar_w + (helix::kActivityDays - 1) * row_gap;
-    const int count_w = measure_text_px(helix::format_print_count(88888).c_str(), small);
-    const int full_line_w = measure_text_px(
-        helix::format_lifetime_line({88888, 8888, 88888000.0}, true).c_str(), small);
+    const int hero_block_h = heading_h + small_h;
+    const int bar_w = col_gap;
+    const int bars_w = helix::kActivityDays * bar_w + (helix::kActivityDays - 1) * col_gap;
+    // Bars shorter than a heading line stop reading as a chart; the baseline is 1px.
+    const int bars_h = heading_h + 1;
 
     helix::RungNeeds needs;
     // The hero and its label share one line; the label ellipsizes, so only its first
     // letters are budgeted.
     const int label_min_w = measure_text_px("th…", small);
     needs.strip = rung_box(hero_w + col_gap + label_min_w, heading_h);
-    needs.cell = rung_box(std::max({text_w, bars_w, count_w}),
-                          heading_h + small_h + 2 * small_h + small_h + 3 * row_gap);
-    needs.wide = rung_box(std::max(text_w + col_gap + bars_w, full_line_w),
-                          heading_h + small_h + small_h + 2 * row_gap);
+    needs.cell = rung_box(text_w, hero_block_h);
+    needs.wide =
+        rung_box(text_w + col_gap + bars_w, std::max(hero_block_h, bars_h) + row_gap + small_h);
     // Full is a size class as well as a content fit: a 2x1 tile can hold the content,
     // but the rung is for 2x2 and up.
-    needs.full = rung_box(
-        std::max({needs.cell.w, full_line_w, helix::widget_size::w_normal() - chrome.w}),
-        std::max(needs.cell.h + small_h + line_px(xs), helix::widget_size::h_tall() - chrome.h));
+    needs.full =
+        rung_box(std::max({text_w, bars_w, helix::widget_size::w_normal() - chrome.w}),
+                 std::max(hero_block_h + row_gap + bars_h + line_px(xs) + row_gap + small_h,
+                          helix::widget_size::h_tall() - chrome.h));
     return needs;
 }
 
@@ -177,21 +178,39 @@ PrintStatsTileVerdict PrintStatsWidget::decide(int width_px, int height_px,
     if (root()) {
         chrome = measure_content_chrome(root(), 0);
     } else {
-        const int pad = theme_manager_get_spacing("space_xxs");
-        chrome = {2 * pad, 3 * pad};
+        const int pad_hor = theme_manager_get_spacing("space_sm");
+        const int pad_ver = theme_manager_get_spacing("space_xxs");
+        chrome = {2 * pad_hor, 2 * pad_ver + pad_ver};
     }
+    const lv_font_t* small = theme_manager_get_font("font_small");
     PrintStatsTileLayoutInput li;
     li.content_w = width_px - chrome.w;
     li.content_h = height_px - chrome.h;
     li.content = content;
     li.lifetime_known = lifetime_known;
     li.needs = measure_needs(chrome);
+    if (lifetime_known) {
+        li.count_line_w = measure_text_px(count_line().c_str(), small);
+        li.full_line_w = measure_text_px(full_line().c_str(), small);
+    }
+    li.support_line_h = line_px(small) + theme_manager_get_spacing("space_xxs");
     const auto& n = li.needs;
     spdlog::trace("[PrintStatsWidget] box {}x{} chrome {}x{} needs s{}x{} c{}x{} w{}x{} f{}x{} "
                   "content={}",
                   width_px, height_px, chrome.w, chrome.h, n.strip.w, n.strip.h, n.cell.w, n.cell.h,
                   n.wide.w, n.wide.h, n.full.w, n.full.h, static_cast<int>(content));
     return decide_print_stats_tile_layout(li);
+}
+
+std::string PrintStatsWidget::count_line() const {
+    return format_print_count(lifetime_totals_.total_jobs);
+}
+
+std::string PrintStatsWidget::full_line() const {
+    return format_lifetime_line({lifetime_totals_.total_jobs,
+                                 static_cast<double>(lifetime_totals_.total_time) / 3600.0,
+                                 lifetime_totals_.total_filament_used},
+                                true);
 }
 
 void PrintStatsWidget::attach(lv_obj_t* widget_obj, lv_obj_t* parent_screen) {
@@ -358,12 +377,9 @@ void PrintStatsWidget::refresh() {
 
     std::string support_text;
     if (verdict.support == PrintStatsSupport::PrintsOnly) {
-        support_text = format_print_count(lifetime_totals_.total_jobs);
+        support_text = count_line();
     } else if (verdict.support == PrintStatsSupport::Full) {
-        support_text = format_lifetime_line(
-            {lifetime_totals_.total_jobs, static_cast<double>(lifetime_totals_.total_time) / 3600.0,
-             lifetime_totals_.total_filament_used},
-            true);
+        support_text = full_line();
     }
 
     helix::ui::set_int_if_changed(&s_subj.rung, static_cast<int>(verdict.rung));

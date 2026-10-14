@@ -44,6 +44,12 @@ struct PrintStatsTileLayoutInput {
     PrintStatsContent content = PrintStatsContent::Loading;
     bool lifetime_known = false; ///< the server's totals have arrived
     RungNeeds needs;             ///< offers strip, cell, wide and full only
+    /// The support line's widths as they would draw now, and the height it adds under
+    /// the Cell's stacked hero. The line never ellipsizes: a level that does not fit
+    /// whole steps down to the shorter one, then to none.
+    int count_line_w = 0;
+    int full_line_w = 0;
+    int support_line_h = 0;
 };
 
 /// The published verdict. `rung` is SizeRung's int; the flags are 0/1 subjects.
@@ -56,6 +62,10 @@ struct PrintStatsTileVerdict {
     PrintStatsSupport support = PrintStatsSupport::None;
 };
 
+/// Strip: the hours and "this week" on one line. Cell: the hours over "this week",
+/// with the lifetime print count under them where it fits. Wide: the hours beside the
+/// seven bars, over the lifetime line. Full: the hours over the bars, a weekday initial
+/// under each, then the lifetime line.
 [[nodiscard]] constexpr PrintStatsTileVerdict
 decide_print_stats_tile_layout(const PrintStatsTileLayoutInput& in) {
     PrintStatsTileVerdict v;
@@ -63,12 +73,19 @@ decide_print_stats_tile_layout(const PrintStatsTileLayoutInput& in) {
     v.fits = holds_any_rung(in.content_w, in.content_h, in.needs);
     const int r = static_cast<int>(v.rung);
     const bool activity = in.content == PrintStatsContent::Activity;
-    v.show_bars = r >= static_cast<int>(SizeRung::Cell) && activity;
+    v.show_bars = r >= static_cast<int>(SizeRung::Wide) && activity;
     v.show_day_labels = v.show_bars && v.rung == SizeRung::Full;
     v.side_by_side = v.rung == SizeRung::Wide;
-    if (v.rung != SizeRung::Strip && in.lifetime_known && activity) {
-        v.support = r >= static_cast<int>(SizeRung::Wide) ? PrintStatsSupport::Full
-                                                          : PrintStatsSupport::PrintsOnly;
+    if (v.rung == SizeRung::Strip || !in.lifetime_known || !activity)
+        return v;
+    const bool count_fits = in.count_line_w <= in.content_w;
+    if (v.rung == SizeRung::Cell) {
+        if (count_fits && in.content_h >= in.needs.cell.h + in.support_line_h)
+            v.support = PrintStatsSupport::PrintsOnly;
+    } else if (in.full_line_w <= in.content_w) {
+        v.support = PrintStatsSupport::Full;
+    } else if (count_fits) {
+        v.support = PrintStatsSupport::PrintsOnly;
     }
     return v;
 }
