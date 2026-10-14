@@ -556,18 +556,24 @@ class ParamModalFixture : public LVGLUITestFixture {
 };
 
 /// Removes the form_field component for its lifetime, so no parameter field can be
-/// built, and registers it again from its file on the way out.
+/// built, and registers it again from its file on the way out. A process that has not
+/// registered it yet (this case running first in its shard) already has no such field,
+/// and is left that way.
 struct FormFieldUnregistered {
-    FormFieldUnregistered() {
-        REQUIRE(lv_xml_component_unregister("form_field") == LV_RESULT_OK);
-    }
+    FormFieldUnregistered()
+        : was_registered_(lv_xml_component_unregister("form_field") == LV_RESULT_OK) {}
     ~FormFieldUnregistered() {
+        if (!was_registered_)
+            return;
         const std::string path =
             "A:" + helix::LayoutManager::instance().resolve_xml_path("form_field.xml");
         lv_xml_register_component_from_file(path.c_str());
     }
     FormFieldUnregistered(const FormFieldUnregistered&) = delete;
     FormFieldUnregistered& operator=(const FormFieldUnregistered&) = delete;
+
+  private:
+    bool was_registered_;
 };
 
 } // namespace

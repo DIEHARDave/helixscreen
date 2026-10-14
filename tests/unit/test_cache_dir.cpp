@@ -578,3 +578,32 @@ TEST_CASE("board_cache_candidates names each board's rung", "[cache]") {
               V{"/opt/config/mod_data/helixscreen-state/cache/x"});
     }
 }
+
+#include "helix_install_roots.h"
+
+TEST_CASE("every board's cache rung lives under a known state root", "[cache]") {
+    // A state root missing from kStateRoots is logs and crash files a debug bundle cannot
+    // find, and a tree the uninstaller never sweeps.
+    for (int i = 0; i < helix::board::kBoardCount; ++i) {
+        for (FlashForgeModTree tree :
+             {FlashForgeModTree::None, FlashForgeModTree::Zmod, FlashForgeModTree::ForgeX}) {
+            const Board board = static_cast<Board>(i);
+            for (const auto& rung : board_cache_candidates(board, tree, "x")) {
+                bool known = false;
+                for (const char* root : helix::kStateRoots) {
+                    known = known || rung.path.rfind(std::string(root) + "/", 0) == 0;
+                }
+                INFO("board " << helix::board::info(board).key << " rung " << rung.path);
+                CHECK(known);
+            }
+        }
+    }
+}
+
+TEST_CASE("the Forge-X state root is a known state root", "[cache]") {
+    bool found = false;
+    for (const char* root : helix::kStateRoots) {
+        found = found || std::string(root) == "/opt/config/mod_data/helixscreen-state";
+    }
+    CHECK(found);
+}
