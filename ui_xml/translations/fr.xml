@@ -2435,7 +2435,7 @@
   <translation tag="Raspberry Pi (32-bit)" fr="Raspberry Pi (32-bit)"/>
   <translation tag="Re-identify" fr="Ré-identifier"/>
   <translation tag="Re-measure" fr="Remesurer"/>
-  <translation tag="Re-measure (~{} min)" fr="Remesurer (~{} min)"/>
+  <translation tag="Re-measure (~{} min)" fr="Mesurer (~{} min)"/>
   <translation tag="Re-measuring Path {}" fr="Nouvelle mesure du Chemin {}"/>
   <translation tag="Re-probe" fr="Re-palper"/>
   <translation tag="Re-read spool RFID tags and remaining length" fr="Relire les étiquettes RFID des bobines et la longueur restante"/>
@@ -3060,7 +3060,7 @@
   <translation tag="Test RS-485 link to CFS units" fr="Tester la liaison RS-485 vers les unités CFS"/>
   <translation tag="Test Screensaver" fr="Tester l&apos;économiseur d&apos;écran"/>
   <translation tag="Test Tracker" fr="Test Tracker"/>
-  <translation tag="Test both" fr="Tester les deux"/>
+  <translation tag="Test both" fr="Les deux"/>
   <translation tag="Test label printed" fr="Étiquette de test imprimée"/>
   <translation tag="Testing rotation: %d° (%d/%d) - %ds remaining" fr="Test de rotation : %d° (%d/%d) - %ds restantes"/>
   <translation tag="Testing, servo, and motor operations" fr="Opérations de test, servo et moteur"/>
@@ -3269,7 +3269,7 @@
   <translation tag="Try again" fr="Réessayer"/>
   <translation tag="Try the operation again. If it persists, check for mechanical issues." fr="Réessayez l&apos;opération. Si le problème persiste, vérifiez s&apos;il y a des problèmes mécaniques."/>
   <translation tag="Tune" fr="Régler"/>
-  <translation tag="Tune belts" fr="Régler les courroies"/>
+  <translation tag="Tune belts" fr="Régler"/>
   <translation tag="Tuning tower enabled - start a print to test" fr="Tour de réglage activée - lancez une impression pour tester"/>
   <translation tag="Turbo" fr="Turbo"/>
   <translation tag="Turbo Inner" fr="Turbo intérieur"/>

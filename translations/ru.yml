@@ -1386,7 +1386,7 @@ translations:
   Fine: Точно
   Fine Inner: Точно (внутренний)
   Fine Outer: Точно (внешний)
-  Fine-tune: "Точная настройка"
+  Fine-tune: "Доводка"
   Finish: Завершить
   Finish or cancel the print before loading, unloading, or changing filament: Завершите или отмените печать перед загрузкой, выгрузкой или сменой филамента
   Finishing clean...: Завершение очистки...
@@ -2659,15 +2659,15 @@ translations:
   Raspberry Pi (32-bit): Raspberry Pi (32-bit)
   Re-identify: Определить снова
   Re-measure: 'Измерить снова'
-  Re-measure (~{} min): "Измерить снова (~{} мин)"
+  Re-measure (~{} min): "Замер (~{} мин)"
   Re-measuring Path {}: Повторное измерение Пути {}
   Re-probe: Перепроверить
   Re-read spool RFID tags and remaining length: 'Перечитать RFID-метки катушек и остаток'
   Re-seat the Bowden tube connector on the CFS unit: Переустановите разъём трубки Боудена на блоке CFS
   Re-syncs Happy Hare's tracked state with the hardware.: Повторно синхронизирует
     отслеживаемое состояние Happy Hare с оборудованием.
-  Re-test A: Повторный тест A
-  Re-test B: Повторный тест B
+  Re-test A: Тест A
+  Re-test B: Тест B
   Readings from extra temperature sensors: Показания доп. датчиков температуры
   Ready: Готов
   Ready for filament operations: Готово к операциям с филаментом
@@ -3630,7 +3630,7 @@ translations:
   Try again: 'Повторить'
   Try the operation again. If it persists, check for mechanical issues.: Повторите операцию. Если проблема не исчезает, проверьте механические неисправности.
   Tune: Настройка
-  Tune belts: "Настроить ремни"
+  Tune belts: "Настроить"
   Tuning tower enabled - start a print to test: Башня настройки включена — начните
     печать для теста
   Turbo: Турбо

@@ -1272,7 +1272,7 @@
   <translation tag="Fine" ru="Точно"/>
   <translation tag="Fine Inner" ru="Точно (внутренний)"/>
   <translation tag="Fine Outer" ru="Точно (внешний)"/>
-  <translation tag="Fine-tune" ru="Точная настройка"/>
+  <translation tag="Fine-tune" ru="Доводка"/>
   <translation tag="Finish" ru="Завершить"/>
   <translation tag="Finish or cancel the print before loading, unloading, or changing filament" ru="Завершите или отмените печать перед загрузкой, выгрузкой или сменой филамента"/>
   <translation tag="Finishing clean..." ru="Завершение очистки..."/>
@@ -2435,14 +2435,14 @@
   <translation tag="Raspberry Pi (32-bit)" ru="Raspberry Pi (32-bit)"/>
   <translation tag="Re-identify" ru="Определить снова"/>
   <translation tag="Re-measure" ru="Измерить снова"/>
-  <translation tag="Re-measure (~{} min)" ru="Измерить снова (~{} мин)"/>
+  <translation tag="Re-measure (~{} min)" ru="Замер (~{} мин)"/>
   <translation tag="Re-measuring Path {}" ru="Повторное измерение Пути {}"/>
   <translation tag="Re-probe" ru="Перепроверить"/>
   <translation tag="Re-read spool RFID tags and remaining length" ru="Перечитать RFID-метки катушек и остаток"/>
   <translation tag="Re-seat the Bowden tube connector on the CFS unit" ru="Переустановите разъём трубки Боудена на блоке CFS"/>
   <translation tag="Re-syncs Happy Hare&apos;s tracked state with the hardware." ru="Повторно синхронизирует отслеживаемое состояние Happy Hare с оборудованием."/>
-  <translation tag="Re-test A" ru="Повторный тест A"/>
-  <translation tag="Re-test B" ru="Повторный тест B"/>
+  <translation tag="Re-test A" ru="Тест A"/>
+  <translation tag="Re-test B" ru="Тест B"/>
   <translation tag="Readings from extra temperature sensors" ru="Показания доп. датчиков температуры"/>
   <translation tag="Ready" ru="Готов"/>
   <translation tag="Ready for filament operations" ru="Готово к операциям с филаментом"/>
@@ -3269,7 +3269,7 @@
   <translation tag="Try again" ru="Повторить"/>
   <translation tag="Try the operation again. If it persists, check for mechanical issues." ru="Повторите операцию. Если проблема не исчезает, проверьте механические неисправности."/>
   <translation tag="Tune" ru="Настройка"/>
-  <translation tag="Tune belts" ru="Настроить ремни"/>
+  <translation tag="Tune belts" ru="Настроить"/>
   <translation tag="Tuning tower enabled - start a print to test" ru="Башня настройки включена — начните печать для теста"/>
   <translation tag="Turbo" ru="Турбо"/>
   <translation tag="Turbo Inner" ru="Турбо (внутренний)"/>

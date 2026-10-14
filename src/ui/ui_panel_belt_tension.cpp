@@ -42,6 +42,10 @@ int path_index(BeltPath path) {
     return path == BeltPath::PATH_A ? 0 : 1;
 }
 
+BeltPath path_at(int index) {
+    return index == 0 ? BeltPath::PATH_A : BeltPath::PATH_B;
+}
+
 char path_letter(BeltPath path) {
     return path == BeltPath::PATH_A ? 'A' : 'B';
 }
@@ -524,13 +528,7 @@ void BeltTensionPanel::on_error(const std::string& message) {
 void BeltTensionPanel::handle_start_clicked() {
     spdlog::info("[BeltTension] Start clicked");
 
-    // The XML binding already disables this button while the gate is shut. This
-    // is the same check on the action itself, so a stale binding or a
-    // programmatic click cannot get past it.
-    refresh_gate();
-    if (lv_subject_get_int(&can_start_subject_) == 0) {
-        spdlog::warn("[BeltTension] Start refused: {}",
-                     lv_subject_get_string(&gate_message_subject_));
+    if (!gate_allows_sweep("Start")) {
         return;
     }
 
@@ -544,9 +542,12 @@ void BeltTensionPanel::handle_start_clicked() {
 void BeltTensionPanel::handle_retest_clicked(helix::calibration::BeltPath path) {
     spdlog::info("[BeltTension] Re-test clicked for path {}",
                  helix::calibration::BeltTensionCalibrator::output_name(path));
+    if (!gate_allows_sweep("Re-test")) {
+        return;
+    }
 
     run_after_ram_check([this, path]() {
-        const int idx = path == helix::calibration::BeltPath::PATH_A ? 0 : 1;
+        const int idx = path_index(path);
         auto& run = runs_[idx];
 
         // The curve being replaced becomes the ghost this run compares against,
@@ -559,6 +560,19 @@ void BeltTensionPanel::handle_retest_clicked(helix::calibration::BeltPath path) 
 
         begin_run({path}, /*clear_previous=*/false);
     });
+}
+
+bool BeltTensionPanel::gate_allows_sweep(const char* action) {
+    // The XML bindings already disable every sweep button while the gate is
+    // shut. This is the same check on the action itself, so a stale binding or
+    // a programmatic click cannot get past it.
+    refresh_gate();
+    if (lv_subject_get_int(&can_start_subject_) == 0) {
+        spdlog::warn("[BeltTension] {} refused: {}", action,
+                     lv_subject_get_string(&gate_message_subject_));
+        return false;
+    }
+    return true;
 }
 
 void BeltTensionPanel::run_after_ram_check(std::function<void()> go) {
@@ -663,7 +677,7 @@ void BeltTensionPanel::start_next_measurement() {
     }
 
     const auto path = queue_.front();
-    const int idx = path == helix::calibration::BeltPath::PATH_A ? 0 : 1;
+    const int idx = path_index(path);
     lv_subject_set_int(&running_path_subject_, idx);
     // A single-path run is a re-test: the path already has a result.
     const char* title =
@@ -711,7 +725,7 @@ void BeltTensionPanel::on_sweep_complete(helix::calibration::BeltPath path,
     }
     stall_guard_.end();
 
-    const int idx = path == helix::calibration::BeltPath::PATH_A ? 0 : 1;
+    const int idx = path_index(path);
     if (run_window_) {
         tune_curves_[idx] = std::move(curve);
     } else {
@@ -931,9 +945,7 @@ void BeltTensionPanel::refresh_notes() {
         auto& note_buf = idx == 0 ? note_a_buf_ : note_b_buf_;
 
         std::string note = "--";
-        if (running && !queue_.empty() &&
-            (queue_.front() == (idx == 0 ? helix::calibration::BeltPath::PATH_A
-                                         : helix::calibration::BeltPath::PATH_B))) {
+        if (running && !queue_.empty() && queue_.front() == path_at(idx)) {
             note = lv_tr("sweeping");
         } else if (run.has) {
             const uint32_t age_s = (lv_tick_get() - run.measured_at_ms) / 1000;
@@ -1011,6 +1023,9 @@ void BeltTensionPanel::handle_tune_measure_clicked() {
     if (!tune_ || !tune_->zone() || measuring()) {
         return;
     }
+    if (!gate_allows_sweep("Re-measure")) {
+        return;
+    }
     if (tune_->tensioner() == helix::calibration::BeltTensionerKind::SCREW &&
         !tune_->needs_baseline()) {
         tune_->record_turns(tune_turns_);
@@ -1051,7 +1066,7 @@ void BeltTensionPanel::handle_tune_amount_step(int direction) {
 }
 
 void BeltTensionPanel::handle_tune_next_zone_clicked() {
-    if (!tune_ || measuring()) {
+    if (!tune_ || measuring() || !gate_allows_sweep("Next zone")) {
         return;
     }
     if (!tune_->next_zone()) {
@@ -1070,7 +1085,7 @@ void BeltTensionPanel::handle_tune_next_zone_clicked() {
 }
 
 void BeltTensionPanel::handle_tune_confirm_clicked() {
-    if (!tune_ || measuring()) {
+    if (!tune_ || measuring() || !gate_allows_sweep("Confirm")) {
         return;
     }
     const auto& t = *tune_;
@@ -1140,6 +1155,7 @@ void BeltTensionPanel::finish_tune_round() {
     }
     const bool baseline = tune_->needs_baseline();
     const float adj_before = tune_->adjusted_hz();
+    tune_last_direction_ = tune_->advice().direction;
     const auto& round = tune_->add_round(tune_curves_[0], tune_curves_[1]);
     tune_has_curves_ = true;
     tune_last_outcome_ = round.outcome;
@@ -1321,7 +1337,7 @@ std::string BeltTensionPanel::tune_last_message() const {
                            ref_letter, std::abs(t.gap_hz()));
     case BeltTuneOutcome::WRONG_WAY:
         return fmt::format(
-            fmt::runtime(t.advice().direction == helix::calibration::BeltTurnDirection::TIGHTEN
+            fmt::runtime(tune_last_direction_ == helix::calibration::BeltTurnDirection::TIGHTEN
                              ? lv_tr("{0}'s peak went down after tightening. Check you turned "
                                      "Path {0}'s tensioner.")
                              : lv_tr("{0}'s peak went up after loosening. Check you turned "
@@ -1525,23 +1541,18 @@ ui_frequency_response_chart_t* BeltTensionPanel::ensure_chart() {
     for (int idx = 0; idx < 2; ++idx) {
         const char letter = 'A' + idx;
         series_[idx] = ui_frequency_response_chart_add_series(
-            chart_, fmt::format(lv_tr("Path {}"), letter).c_str(),
-            path_color(idx == 0 ? helix::calibration::BeltPath::PATH_A
-                                : helix::calibration::BeltPath::PATH_B));
+            chart_, fmt::format(lv_tr("Path {}"), letter).c_str(), path_color(path_at(idx)));
         ui_frequency_response_chart_set_series_style(chart_, series_[idx], {3, true, true});
 
         ghost_series_[idx] = ui_frequency_response_chart_add_series(
-            chart_, fmt::format(lv_tr("Path {} before"), letter).c_str(),
-            path_color(idx == 0 ? helix::calibration::BeltPath::PATH_A
-                                : helix::calibration::BeltPath::PATH_B));
+            chart_, fmt::format(lv_tr("Path {} before"), letter).c_str(), path_color(path_at(idx)));
         ui_frequency_response_chart_set_series_muted(chart_, ghost_series_[idx], true);
         ui_frequency_response_chart_show_series(chart_, ghost_series_[idx], false);
 
         for (int& id : tune_ghost_series_[idx]) {
             id = ui_frequency_response_chart_add_series(
                 chart_, fmt::format(lv_tr("Path {} earlier round"), letter).c_str(),
-                path_color(idx == 0 ? helix::calibration::BeltPath::PATH_A
-                                    : helix::calibration::BeltPath::PATH_B));
+                path_color(path_at(idx)));
             ui_frequency_response_chart_set_series_muted(chart_, id, true);
             ui_frequency_response_chart_show_series(chart_, id, false);
         }
@@ -1558,8 +1569,7 @@ void BeltTensionPanel::apply_path_colors() {
         return;
     }
     for (int idx = 0; idx < 2; ++idx) {
-        const lv_color_t color = path_color(idx == 0 ? helix::calibration::BeltPath::PATH_A
-                                                     : helix::calibration::BeltPath::PATH_B);
+        const lv_color_t color = path_color(path_at(idx));
         ui_frequency_response_chart_set_series_color(chart_, series_[idx], color);
         ui_frequency_response_chart_set_series_color(chart_, ghost_series_[idx], color);
         for (const int id : tune_ghost_series_[idx]) {

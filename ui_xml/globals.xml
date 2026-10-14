@@ -393,6 +393,15 @@
     <px name="buffer_trace_h_large" value="98"/>
     <px name="buffer_trace_h_xlarge" value="112"/>
     <px name="buffer_trace_h_xxlarge" value="122"/>
+    <!-- text_small_line_h: one line of <text_small> (font_small's line height on
+         the same ladder), for a label that must truncate to a single line. -->
+    <px name="text_small_line_h_micro" value="15"/>
+    <px name="text_small_line_h_tiny" value="15"/>
+    <px name="text_small_line_h_small" value="18"/>
+    <px name="text_small_line_h_medium" value="22"/>
+    <px name="text_small_line_h_large" value="24"/>
+    <px name="text_small_line_h_xlarge" value="27"/>
+    <px name="text_small_line_h_xxlarge" value="34"/>
     <!-- belt_tune_hero_h: the Belt Tension tuning hero (instruction, turn
          stepper, gap, round facts). Fixed, so the chart below keeps its height
          whatever the hero says. -->

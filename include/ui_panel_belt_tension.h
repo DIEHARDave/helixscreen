@@ -271,6 +271,9 @@ class BeltTensionPanel : public OverlayBase {
     /// One curve into a series as a percentage of `tallest`; hidden when empty.
     void push_series_data(int series_id, const helix::calibration::BeltCurve& curve, float tallest);
     void run_after_ram_check(std::function<void()> go);
+    /// Re-check the gate before any sweep starts; false (logged) when it is
+    /// shut. `action` names the button in the log.
+    [[nodiscard]] bool gate_allows_sweep(const char* action);
 
     // Subject manager for RAII cleanup
     SubjectManager subjects_;
@@ -424,6 +427,9 @@ class BeltTensionPanel : public OverlayBase {
     /// first, at most two.
     std::vector<helix::calibration::BeltCurve> tune_adj_history_;
     std::optional<helix::calibration::BeltTuneOutcome> tune_last_outcome_;
+    /// The direction the last round's turn was advised in: what the user acted on.
+    helix::calibration::BeltTurnDirection tune_last_direction_ =
+        helix::calibration::BeltTurnDirection::TIGHTEN;
     /// How far the adjusted peak moved in the last round, Hz.
     float tune_last_move_hz_ = 0.0f;
     float tune_turns_ = helix::calibration::belt_tune::FIRST_TURN; ///< the stepper

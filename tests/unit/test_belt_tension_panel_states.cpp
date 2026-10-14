@@ -41,11 +41,14 @@
 #include "lvgl/lvgl.h"
 #include "moonraker_api_mock.h"
 #include "moonraker_client_mock.h"
+#include "printer_detector.h"
 #include "printer_state.h"
 
 #include <algorithm>
 #include <cmath>
+#include <filesystem>
 #include <fstream>
+#include <optional>
 #include <string>
 #include <unistd.h>
 #include <vector>
@@ -867,6 +870,13 @@ TEST_CASE("the turn stepper shows only for screw tensioners", "[belt][panel][tun
         lv_obj_t* stepper = lv_obj_find_by_name(fx.view(), "bt_tune_stepper");
         REQUIRE(stepper != nullptr);
         CHECK(lv_hidden(stepper));
+        // Words only: no screw arrow either way.
+        for (const char* icon : {"bt_tune_icon_cw", "bt_tune_icon_ccw"}) {
+            lv_obj_t* obj = lv_obj_find_by_name(fx.view(), icon);
+            REQUIRE(obj != nullptr);
+            INFO(icon);
+            CHECK(lv_hidden(obj));
+        }
     }
     SECTION("screw: an eighth-turn stepper, clamped") {
         BeltPanelFixture fx;
@@ -876,6 +886,9 @@ TEST_CASE("the turn stepper shows only for screw tensioners", "[belt][panel][tun
         lv_obj_t* stepper = lv_obj_find_by_name(fx.view(), "bt_tune_stepper");
         REQUIRE(stepper != nullptr);
         CHECK_FALSE(lv_hidden(stepper));
+        // "Tighten B": the clockwise arrow, not the counter-clockwise one.
+        CHECK_FALSE(lv_hidden(lv_obj_find_by_name(fx.view(), "bt_tune_icon_cw")));
+        CHECK(lv_hidden(lv_obj_find_by_name(fx.view(), "bt_tune_icon_ccw")));
         CHECK(fx.text("bt_tune_amount") == "¼ turn");
         fx.panel().handle_tune_amount_step(+1);
         CHECK(fx.text("bt_tune_amount") == "⅜ turn");
@@ -1011,4 +1024,157 @@ TEST_CASE("the text faces draw the turn fractions", "[belt][panel][tune][font]")
         lv_font_glyph_dsc_t sixth{};
         CHECK_FALSE(lv_font_get_glyph_dsc(font, &sixth, 0x2159, 0));
     }
+}
+
+namespace {
+
+/// Points PrinterDetector at a user extension naming one spring-tensioned
+/// printer for the life of this object.
+class SpringPrinterDb {
+  public:
+    SpringPrinterDb() : dir_("/tmp/helix-belt-spring-db-" + std::to_string(getpid())) {
+        env_.emplace("HELIX_CONFIG_DIR", dir_.c_str());
+        std::filesystem::create_directories(dir_ + "/printer_database.d");
+        std::ofstream(dir_ + "/printer_database.d/spring.json")
+            << R"({"printers": [{"id": "test_spring", "name": "Test Spring Printer",
+                                  "belt_tensioner": "spring"}]})";
+        PrinterDetector::reload();
+    }
+    ~SpringPrinterDb() {
+        // The database reloads from the real config dir, not this one.
+        env_.reset();
+        PrinterDetector::reload();
+        std::filesystem::remove_all(dir_);
+    }
+
+  private:
+    std::string dir_;
+    std::optional<helix::ScopedEnv> env_;
+};
+
+} // namespace
+
+TEST_CASE("a spring tensioner gets the re-seat instruction and no screw controls",
+          "[belt][panel][tune]") {
+    BeltPanelFixture fx;
+    SpringPrinterDb db;
+    REQUIRE(PrinterDetector::get_belt_tensioner("Test Spring Printer") ==
+            helix::calibration::BeltTensionerKind::SPRING);
+    get_printer_state().set_printer_type_sync("Test Spring Printer");
+    enter_tuning(fx);
+
+    CHECK(fx.state_int("bt_tune_kind") == 2);
+    CHECK(fx.text("bt_tune_instruction") ==
+          "Release B's tensioner, let the spring settle, lock it");
+    CHECK(fx.text("bt_tune_amount").empty());
+    for (const char* name : {"bt_tune_stepper", "bt_tune_icon_cw", "bt_tune_icon_ccw"}) {
+        lv_obj_t* obj = lv_obj_find_by_name(fx.view(), name);
+        REQUIRE(obj != nullptr);
+        INFO(name);
+        CHECK(lv_hidden(obj));
+    }
+}
+
+namespace {
+
+/// A replay capture with equal-height peaks at `peaks_hz`, over the mock's
+/// 5-135 Hz band.
+void write_two_peak_csv(const std::string& path, std::initializer_list<float> peaks_hz) {
+    std::ofstream out(path);
+    out << "freq,psd_x,psd_y,psd_z,psd_xyz\n";
+    for (double freq = 5.0; freq <= 135.0; freq += 3200.0 / 4096.0) {
+        double psd = 150.0;
+        for (const float p : peaks_hz) {
+            const double df = freq - p;
+            psd += 1.5e4 / (1.0 + df * df / 9.0);
+        }
+        out << freq << ',' << psd * 0.45 << ',' << psd * 0.45 << ',' << psd * 0.1 << ',' << psd
+            << '\n';
+    }
+}
+
+} // namespace
+
+TEST_CASE("Next zone measures the new zone before advising", "[belt][panel][tune]") {
+    // Two pairs: 100/94 (the wider gap, tuned first) and 60/56.
+    const std::string csv_a = "/tmp/helix-belt-zones-a-" + std::to_string(getpid()) + ".csv";
+    const std::string csv_b = "/tmp/helix-belt-zones-b-" + std::to_string(getpid()) + ".csv";
+    write_two_peak_csv(csv_a, {60.0f, 100.0f});
+    write_two_peak_csv(csv_b, {56.0f, 94.0f});
+    helix::ScopedEnv replay_a("HELIX_MOCK_BELT_CSV_A", csv_a.c_str());
+    helix::ScopedEnv replay_b("HELIX_MOCK_BELT_CSV_B", csv_b.c_str());
+
+    BeltPanelFixture fx;
+    enter_tuning(fx);
+    REQUIRE(fx.text("bt_tune_instruction") == "Tighten B");
+    const auto [lo, hi] = zone_range(fx.text("bt_tune_zone"));
+    REQUIRE(lo <= 94);
+    REQUIRE(hi >= 100);
+
+    // B's upper peak meets A's: this zone matches, the lower pair is next.
+    write_two_peak_csv(csv_b, {56.0f, 100.0f});
+    tune_round(fx);
+    REQUIRE(fx.state_int("bt_tune_phase") == PHASE_MATCHED);
+    REQUIRE(fx.state_int("bt_tune_has_next_zone") == 1);
+
+    fx.panel().handle_tune_next_zone_clicked();
+    // The baseline sweep starts at once, with no advice on screen.
+    CHECK(fx.state_int("bt_tune_phase") == PHASE_SWEEPING);
+    CHECK(fx.state_int("bt_tune_baseline") == 1);
+    CHECK(fx.text("bt_tune_instruction") == "Measure this zone first");
+    CHECK(fx.text("bt_tune_amount").empty());
+    CHECK(fx.text("bt_tune_gap") == "--");
+    const auto [lo2, hi2] = zone_range(fx.text("bt_tune_zone"));
+    CHECK(lo2 <= 56);
+    CHECK(hi2 >= 60);
+    CHECK(hi2 < 90);
+
+    for (uint32_t t = 0; t < 60000 && fx.state_int("bt_tune_phase") == PHASE_SWEEPING; t += 100) {
+        fx.pump_ms(100);
+    }
+    REQUIRE(fx.state_int("bt_tune_phase") == PHASE_ADJUST);
+    CHECK(fx.state_int("bt_tune_baseline") == 0);
+    CHECK(fx.text("bt_tune_instruction") == "Tighten B");
+    CHECK(fx.text("bt_tune_gap") == "4.0 Hz");
+    // A baseline has no previous turn to report on.
+    CHECK(fx.text("bt_tune_last").empty());
+
+    std::remove(csv_a.c_str());
+    std::remove(csv_b.c_str());
+}
+
+TEST_CASE("a closed gate stops the tuning sweeps", "[belt][panel][tune][gating]") {
+    BeltPanelFixture fx;
+    enter_tuning(fx);
+    REQUIRE(fx.state_int("bt_can_start") == 1);
+
+    // A print starts while the user is turning a screw.
+    lv_subject_set_int(get_printer_state().print_state().get_print_active_subject(), 1);
+    fx.pump_ms(200);
+    CHECK(fx.state_int("bt_can_start") == 0);
+    lv_obj_t* measure = lv_obj_find_by_name(fx.view(), "btn_tune_measure");
+    REQUIRE(measure != nullptr);
+    CHECK(lv_obj_has_state(measure, LV_STATE_DISABLED));
+
+    fx.mock().clear_gcode_script_history();
+    fx.panel().handle_tune_measure_clicked();
+    fx.pump_ms(2000);
+    CHECK(resonance_lines(fx).empty());
+    CHECK(fx.state_int("bt_tune_phase") == PHASE_ADJUST);
+}
+
+TEST_CASE("a wrong-way line names the advice the user acted on", "[belt][panel][tune]") {
+    // Told to tighten B, B's peak drops 98 -> 96.5 while A's falls 110 -> 95:
+    // the gap flips sign, so the NEXT advice is to loosen B, but the turn just
+    // made was a tightening.
+    BeltPanelFixture fx;
+    fx.mock().set_belt_tune_script('A', {95.0f});
+    fx.mock().set_belt_tune_script('B', {96.5f});
+    enter_tuning(fx);
+    REQUIRE(fx.text("bt_tune_instruction") == "Tighten B");
+    tune_round(fx);
+    INFO("last: " << fx.text("bt_tune_last"));
+    CHECK(fx.text("bt_tune_instruction") == "Loosen B");
+    CHECK(fx.text("bt_tune_last") ==
+          "B's peak went down after tightening. Check you turned Path B's tensioner.");
 }

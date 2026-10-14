@@ -203,7 +203,7 @@
   <translation tag="Address" de="Adresse"/>
   <translation tag="Adjust screen brightness level" de="Bildschirmhelligkeit anpassen"/>
   <translation tag="Adjust screws, then re-probe." de="Schrauben einstellen, dann erneut prüfen."/>
-  <translation tag="Adjust {} instead" de="Stattdessen {} einstellen"/>
+  <translation tag="Adjust {} instead" de="{} einstellen"/>
   <translation tag="Adjustments stay active until restart. Save after print completes." de="Anpassungen bleiben bis zum Neustart aktiv. Nach Druckende speichern."/>
   <translation tag="Adjusts individual characteristics of your heaters for optimal control" de="Passt individuelle Eigenschaften Ihrer Heizungen für optimale Regelung an"/>
   <translation tag="Advanced" de="Erweitert"/>
@@ -1272,7 +1272,7 @@
   <translation tag="Fine" de="Fein"/>
   <translation tag="Fine Inner" de="Fein Innen"/>
   <translation tag="Fine Outer" de="Fein Außen"/>
-  <translation tag="Fine-tune" de="Feinabstimmung"/>
+  <translation tag="Fine-tune" de="Feinjustage"/>
   <translation tag="Finish" de="Fertig"/>
   <translation tag="Finish or cancel the print before loading, unloading, or changing filament" de="Beenden oder brechen Sie den Druck ab, bevor Sie Filament laden, entladen oder wechseln"/>
   <translation tag="Finishing clean..." de="Reinigung abschließen..."/>
@@ -2435,14 +2435,14 @@
   <translation tag="Raspberry Pi (32-bit)" de="Raspberry Pi (32-bit)"/>
   <translation tag="Re-identify" de="Erneut identifizieren"/>
   <translation tag="Re-measure" de="Erneut messen"/>
-  <translation tag="Re-measure (~{} min)" de="Neu messen (~{} Min)"/>
+  <translation tag="Re-measure (~{} min)" de="Messen (~{} Min)"/>
   <translation tag="Re-measuring Path {}" de="Messe Pfad {} erneut"/>
   <translation tag="Re-probe" de="Erneut abtasten"/>
   <translation tag="Re-read spool RFID tags and remaining length" de="RFID-Tags der Spulen und Restlänge erneut lesen"/>
   <translation tag="Re-seat the Bowden tube connector on the CFS unit" de="Bowden-Schlauchanschluss an der CFS-Einheit neu einsetzen"/>
   <translation tag="Re-syncs Happy Hare&apos;s tracked state with the hardware." de="Synchronisiert den von Happy Hare erfassten Status erneut mit der Hardware."/>
-  <translation tag="Re-test A" de="A neu testen"/>
-  <translation tag="Re-test B" de="B neu testen"/>
+  <translation tag="Re-test A" de="A testen"/>
+  <translation tag="Re-test B" de="B testen"/>
   <translation tag="Readings from extra temperature sensors" de="Werte zusätzlicher Temperatursensoren"/>
   <translation tag="Ready" de="Bereit"/>
   <translation tag="Ready for filament operations" de="Bereit für Filament-Vorgänge"/>
@@ -3060,7 +3060,7 @@
   <translation tag="Test RS-485 link to CFS units" de="RS-485-Verbindung zu den CFS-Einheiten testen"/>
   <translation tag="Test Screensaver" de="Bildschirmschoner testen"/>
   <translation tag="Test Tracker" de="Test-Tracker"/>
-  <translation tag="Test both" de="Beide testen"/>
+  <translation tag="Test both" de="Beide"/>
   <translation tag="Test label printed" de="Testetikett gedruckt"/>
   <translation tag="Testing rotation: %d° (%d/%d) - %ds remaining" de="Drehung testen: %d° (%d/%d) - %ds verbleibend"/>
   <translation tag="Testing, servo, and motor operations" de="Test-, Servo- und Motorfunktionen"/>
@@ -3269,7 +3269,7 @@
   <translation tag="Try again" de="Erneut versuchen"/>
   <translation tag="Try the operation again. If it persists, check for mechanical issues." de="Versuchen Sie den Vorgang erneut. Wenn das Problem bestehen bleibt, prüfen Sie auf mechanische Probleme."/>
   <translation tag="Tune" de="Abstimmen"/>
-  <translation tag="Tune belts" de="Riemen einstellen"/>
+  <translation tag="Tune belts" de="Einstellen"/>
   <translation tag="Tuning tower enabled - start a print to test" de="Tuning-Tower aktiviert - starten Sie einen Druck zum Testen"/>
   <translation tag="Turbo" de="Turbo"/>
   <translation tag="Turbo Inner" de="Turbo Innen"/>

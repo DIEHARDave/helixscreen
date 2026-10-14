@@ -214,7 +214,7 @@ translations:
   Address: Adresse
   Adjust screen brightness level: Bildschirmhelligkeit anpassen
   Adjust screws, then re-probe.: Schrauben einstellen, dann erneut prüfen.
-  Adjust {} instead: "Stattdessen {} einstellen"
+  Adjust {} instead: "{} einstellen"
   Adjustments stay active until restart. Save after print completes.: Anpassungen
     bleiben bis zum Neustart aktiv. Nach Druckende speichern.
   Adjusts individual characteristics of your heaters for optimal control: Passt individuelle
@@ -1412,7 +1412,7 @@ translations:
   Fine: Fein
   Fine Inner: Fein Innen
   Fine Outer: Fein Außen
-  Fine-tune: "Feinabstimmung"
+  Fine-tune: "Feinjustage"
   Finish: Fertig
   Finish or cancel the print before loading, unloading, or changing filament: Beenden oder brechen Sie den Druck ab, bevor Sie Filament laden, entladen oder wechseln
   Finishing clean...: Reinigung abschließen...
@@ -2691,15 +2691,15 @@ translations:
   Raspberry Pi (32-bit): Raspberry Pi (32-bit)
   Re-identify: Erneut identifizieren
   Re-measure: 'Erneut messen'
-  Re-measure (~{} min): "Neu messen (~{} Min)"
+  Re-measure (~{} min): "Messen (~{} Min)"
   Re-measuring Path {}: Messe Pfad {} erneut
   Re-probe: Erneut abtasten
   Re-read spool RFID tags and remaining length: 'RFID-Tags der Spulen und Restlänge erneut lesen'
   Re-seat the Bowden tube connector on the CFS unit: Bowden-Schlauchanschluss an der CFS-Einheit neu einsetzen
   Re-syncs Happy Hare's tracked state with the hardware.: Synchronisiert den von Happy
     Hare erfassten Status erneut mit der Hardware.
-  Re-test A: A neu testen
-  Re-test B: B neu testen
+  Re-test A: A testen
+  Re-test B: B testen
   Readings from extra temperature sensors: Werte zusätzlicher Temperatursensoren
   Ready: Bereit
   Ready for filament operations: Bereit für Filament-Vorgänge
@@ -3398,7 +3398,7 @@ translations:
   Test RS-485 link to CFS units: 'RS-485-Verbindung zu den CFS-Einheiten testen'
   Test Screensaver: Bildschirmschoner testen
   Test Tracker: Test-Tracker
-  Test both: Beide testen
+  Test both: Beide
   Test label printed: Testetikett gedruckt
   'Testing rotation: %d° (%d/%d) - %ds remaining': 'Drehung testen: %d°
     (%d/%d) - %ds verbleibend'
@@ -3678,7 +3678,7 @@ translations:
   Try again: 'Erneut versuchen'
   Try the operation again. If it persists, check for mechanical issues.: Versuchen Sie den Vorgang erneut. Wenn das Problem bestehen bleibt, prüfen Sie auf mechanische Probleme.
   Tune: Abstimmen
-  Tune belts: "Riemen einstellen"
+  Tune belts: "Einstellen"
   Tuning tower enabled - start a print to test: Tuning-Tower aktiviert - starten Sie
     einen Druck zum Testen
   Turbo: Turbo

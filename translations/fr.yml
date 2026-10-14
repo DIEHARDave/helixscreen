@@ -2700,7 +2700,7 @@ translations:
   Raspberry Pi (32-bit): Raspberry Pi (32-bit)
   Re-identify: Ré-identifier
   Re-measure: 'Remesurer'
-  Re-measure (~{} min): "Remesurer (~{} min)"
+  Re-measure (~{} min): "Mesurer (~{} min)"
   Re-measuring Path {}: Nouvelle mesure du Chemin {}
   Re-probe: Re-palper
   Re-read spool RFID tags and remaining length: 'Relire les étiquettes RFID des bobines et la longueur restante'
@@ -3415,7 +3415,7 @@ translations:
   Test RS-485 link to CFS units: 'Tester la liaison RS-485 vers les unités CFS'
   Test Screensaver: Tester l'économiseur d'écran
   Test Tracker: Test Tracker
-  Test both: Tester les deux
+  Test both: Les deux
   Test label printed: Étiquette de test imprimée
   'Testing rotation: %d° (%d/%d) - %ds remaining': 'Test de rotation : %d°
     (%d/%d) - %ds restantes'
@@ -3700,7 +3700,7 @@ translations:
   Try again: 'Réessayer'
   Try the operation again. If it persists, check for mechanical issues.: Réessayez l'opération. Si le problème persiste, vérifiez s'il y a des problèmes mécaniques.
   Tune: Régler
-  Tune belts: "Régler les courroies"
+  Tune belts: "Régler"
   Tuning tower enabled - start a print to test: Tour de réglage activée - lancez une
     impression pour tester
   Turbo: Turbo
