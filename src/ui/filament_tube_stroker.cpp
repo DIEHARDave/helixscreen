@@ -3,6 +3,7 @@
 
 #include "filament_tube_stroker.h"
 
+#include "board_identity.h"
 #include "memory_utils.h"
 #include "theme_manager.h"
 #include "ui/ams_drawing_utils.h"
@@ -12,16 +13,15 @@
 namespace helix {
 namespace ui {
 
-// Detect low-performance platforms at compile time or runtime.
-// Returns true on K2 (compile time) or constrained-memory devices (runtime:
-// the K1C's 214MB qualifies, the AD5X's 485MB does not).
+bool reduced_effects_for(const board::Info& board, bool constrained_memory) {
+    return board.reduced_effects || constrained_memory;
+}
+
+// Cached on first use: the board and the installed memory do not change at runtime.
 bool reduced_effects() {
-#if defined(HELIX_PLATFORM_K2)
-    return true;
-#else
-    static const bool cached = helix::get_system_memory_info().is_constrained_device();
+    static const bool cached = reduced_effects_for(
+        board::current_info(), helix::get_system_memory_info().is_constrained_device());
     return cached;
-#endif
 }
 
 // Color helpers delegate to ams_draw so there is one definition of the

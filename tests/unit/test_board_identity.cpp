@@ -22,6 +22,17 @@ using helix::board::info;
 using helix::board::resolve;
 using helix::test::make_flashforge_layout;
 
+TEST_CASE("only FlashForge firmware re-asserts brightness after boot", "[board]") {
+    for (Board b : {Board::Ad5m, Board::Ad5x, Board::Creator5, Board::Creator5Pro})
+        CHECK(info(b).firmware_dims_backlight_after_boot);
+    for (Board b : {Board::Cc1, Board::K1, Board::K2, Board::SnapmakerU1, Board::Generic})
+        CHECK_FALSE(info(b).firmware_dims_backlight_after_boot);
+}
+
+TEST_CASE("the AD5M has no jz_pwm piezo", "[board]") {
+    CHECK_FALSE(info(Board::Ad5m).has_jz_pwm_piezo);
+}
+
 namespace {
 
 struct TempDirGuard {

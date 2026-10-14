@@ -500,7 +500,7 @@ endif
 # same controller. So the probe cannot be trusted to decide this — the platform
 # must, or the user naming the channel. M300 (the PRINTER's beeper, over gcode) is deliberately NOT gated and
 # keeps working everywhere. Neither MIPS board exposes a sysfs pwmchip (the
-# AD5X piezo goes through jz_pwm below, the K1 has no audio at all).
+# FlashForge MIPS boards' piezo goes through jz_pwm below, the K1 has no audio at all).
 #
 # Decided HERE, above APP_OBJS, and not down in the sound-flags section: APP_OBJS
 # is computed from APP_SRCS a few lines below, so a filter-out placed after it is
@@ -518,7 +518,7 @@ else
     APP_SRCS := $(filter-out $(SRC_DIR)/system/pwm_sound_backend.cpp,$(APP_SRCS))
 endif
 
-# AD5X piezo via the jz_pwm DMA engine, exec'd through fx-pwm - there is no
+# The FlashForge MIPS boards' piezo via the jz_pwm DMA engine, exec'd through fx-pwm - there is no
 # sysfs pwmchip on the X2600, so the sysfs PWM backend above cannot drive it.
 # Compiled into the unified MIPS build and probed at runtime (/dev/jz_pwm + the
 # fx-pwm binary): the K1 carries /dev/jz_pwm but no fx-pwm, so the probe fails

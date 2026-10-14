@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "../lvgl_test_fixture.h"
+#include "board_identity.h"
 #include "filament_tube_stroker.h"
 #include "theme_manager.h"
 
@@ -25,6 +26,16 @@ bool same(lv_color_t a, lv_color_t b) {
 }
 
 } // namespace
+
+TEST_CASE("reduced effects follow the board row or low memory", "[filament-path][stroker]") {
+    using helix::board::Board;
+    using helix::board::info;
+    using helix::ui::reduced_effects_for;
+    CHECK(reduced_effects_for(info(Board::K2), false));
+    CHECK(reduced_effects_for(info(Board::K1), true));
+    CHECK_FALSE(reduced_effects_for(info(Board::K1), false));
+    CHECK_FALSE(reduced_effects_for(info(Board::Generic), false));
+}
 
 TEST_CASE("Halo layer paints two opaque pre-blended bands", "[filament-path][stroker]") {
     TubePass out[4];
