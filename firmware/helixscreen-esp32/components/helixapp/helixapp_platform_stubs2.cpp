@@ -408,8 +408,11 @@ void DebugBundleCollector::upload_async(const BundleOptions&, ResultCallback cal
 std::string host_arch_string() {
     return std::string("xtensa");
 }
-bool ad5x_mod_layout_present(const std::string&, const char**) {
-    return false;
+FlashForgeModTree flashforge_mod_tree(const std::string&) {
+    return FlashForgeModTree::None;
+}
+const char* flashforge_mod_tree_name(FlashForgeModTree) {
+    return "none";
 }
 
 // --- IppPrinter (IPP/PWG-Raster over libhv HTTP; detached print thread) ------

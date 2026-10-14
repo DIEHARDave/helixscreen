@@ -168,8 +168,8 @@ std::string describe_asset_keys(const std::vector<std::string>& asset_keys) {
 /// probe only matters to the unified MIPS build, so no other build stats for it.
 std::vector<std::string> this_build_release_asset_keys() {
     const std::string key = helix::platform::current_key();
-    return helix::platform::release_asset_keys(key,
-                                               key == "mips" && helix::ad5x_mod_layout_present());
+    return helix::platform::release_asset_keys(
+        key, key == "mips" && helix::flashforge_mod_tree() != helix::FlashForgeModTree::None);
 }
 
 /// Picks @p platform_key's asset out of a GitHub release asset list into

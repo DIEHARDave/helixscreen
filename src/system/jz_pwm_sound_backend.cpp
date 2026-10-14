@@ -196,7 +196,7 @@ bool JzPwmSoundBackend::available() {
     // included, where its channels drive things other than the piezo (the
     // K1C's backlight among them). Only the AD5X mod install wires fx-pwm
     // to the buzzer, so the probe runs there and nowhere else.
-    if (!helix::ad5x_mod_layout_present())
+    if (helix::flashforge_mod_tree() == helix::FlashForgeModTree::None)
         return false;
     if (access(kDevice, F_OK) != 0)
         return false;

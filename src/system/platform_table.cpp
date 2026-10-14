@@ -77,7 +77,7 @@ std::string current_key() {
 #elif defined(HELIX_PLATFORM_MIPS)
     // One binary serves the K1 series and the AD5X, so one platform key and
     // one self-update asset. Which board the binary is ON is a separate
-    // runtime question (helix::ad5x_mod_layout_present) answered wherever
+    // runtime question (helix::flashforge_mod_tree) answered wherever
     // behavior actually differs, never for update selection.
     return "mips";
 #elif defined(HELIX_PLATFORM_K1)

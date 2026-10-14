@@ -12,7 +12,7 @@
 #include "platform_info.h"
 #include "system/debug_bundle_collector.h"
 #include "system/diagnostics.h"
-#include "test_helpers/ad5x_layout_fixture.h"
+#include "test_helpers/flashforge_layout_fixture.h"
 #include "test_helpers/unique_temp_dir.h"
 
 #include <cstdlib>
@@ -143,37 +143,16 @@ TEST_CASE("the updater staging dir is a sibling of the install root", "[diagnost
 
 TEST_CASE("the mod flavor separates the layouts one platform key serves", "[diagnostics]") {
     TempDir tmp;
-    const char* flavor = nullptr;
+    auto name_of = [&](const char* layout) {
+        return std::string(helix::flashforge_mod_tree_name(helix::flashforge_mod_tree(
+            helix::test::make_flashforge_layout(tmp.path, layout).string())));
+    };
 
-    SECTION("ZMOD by marker file") {
-        REQUIRE(helix::ad5x_mod_layout_present(
-            helix::test::make_ad5x_layout(tmp.path, "zmod-marker").string(), &flavor));
-        REQUIRE(std::string(flavor) == "ZMOD");
-    }
-
-    SECTION("ZMOD by the FlashForge /usr/prog dir") {
-        REQUIRE(helix::ad5x_mod_layout_present(
-            helix::test::make_ad5x_layout(tmp.path, "zmod-prog").string(), &flavor));
-        REQUIRE(std::string(flavor) == "ZMOD");
-    }
-
-    SECTION("Forge-X in-chroot") {
-        REQUIRE(helix::ad5x_mod_layout_present(
-            helix::test::make_ad5x_layout(tmp.path, "forgex").string(), &flavor));
-        REQUIRE(std::string(flavor) == "Forge-X");
-    }
-
-    SECTION("Forge-X host-side") {
-        REQUIRE(helix::ad5x_mod_layout_present(
-            helix::test::make_ad5x_layout(tmp.path, "forgex-host").string(), &flavor));
-        REQUIRE(std::string(flavor) == "Forge-X");
-    }
-
-    SECTION("a plain host names no mod tree") {
-        REQUIRE_FALSE(helix::ad5x_mod_layout_present(
-            helix::test::make_ad5x_layout(tmp.path, "plain").string(), &flavor));
-        REQUIRE(flavor == nullptr);
-    }
+    CHECK(name_of("zmod-marker") == "ZMOD");
+    CHECK(name_of("zmod-prog") == "ZMOD");
+    CHECK(name_of("forgex") == "Forge-X");
+    CHECK(name_of("forgex-host") == "Forge-X");
+    CHECK(name_of("plain") == "none");
 }
 
 TEST_CASE("collect() reports a mod flavor for every host", "[diagnostics]") {
