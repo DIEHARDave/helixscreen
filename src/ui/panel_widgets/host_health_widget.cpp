@@ -33,6 +33,7 @@
 #include <algorithm>
 #include <string>
 
+using helix::ui::copy_string_if_changed;
 using helix::ui::measure_text_px;
 using helix::ui::set_int_if_changed;
 
@@ -111,11 +112,6 @@ void host_health_init_subjects() {
             s_subjects_initialized = false;
         }
     });
-}
-
-void set_text(lv_subject_t* subject, const std::string& text) {
-    if (text != lv_subject_get_string(subject))
-        lv_subject_copy_string(subject, text.c_str());
 }
 
 /// A perf subject's value, or `fallback` when the subject does not exist (the performance
@@ -516,40 +512,56 @@ void HostHealthWidget::publish_texts(const Sample& sample) {
     switch (verdict_.rung) {
     case SizeRung::Glance: {
         const auto cause = static_cast<status::HealthCause>(lv_subject_get_int(&s_cause_subject));
-        set_text(&s_glance_text_subject,
-                 format_glance_text(cause, {sample.cpu_pct, sample.cpu_temp_c10,
-                                            sample.mcu_max_load, sample.disk_free_mb}));
+        copy_string_if_changed(
+            &s_glance_text_subject,
+            std::string(format_glance_text(cause, {sample.cpu_pct, sample.cpu_temp_c10,
+                                                   sample.mcu_max_load, sample.disk_free_mb}))
+                .c_str());
         break;
     }
     case SizeRung::Strip:
-        set_text(&s_cpu_text_subject, format_percent(sample.cpu_pct));
-        set_text(&s_temp_text_subject, format_cpu_temp(sample.cpu_temp_c10, 0));
+        copy_string_if_changed(&s_cpu_text_subject,
+                               std::string(format_percent(sample.cpu_pct)).c_str());
+        copy_string_if_changed(&s_temp_text_subject,
+                               std::string(format_cpu_temp(sample.cpu_temp_c10, 0)).c_str());
         break;
     case SizeRung::Column:
-        set_text(&s_cpu_text_subject, format_percent(sample.cpu_pct));
-        set_text(&s_temp_text_subject, format_cpu_temp(sample.cpu_temp_c10, 0));
-        set_text(&s_mem_text_subject, format_percent(sample.mem_pct));
+        copy_string_if_changed(&s_cpu_text_subject,
+                               std::string(format_percent(sample.cpu_pct)).c_str());
+        copy_string_if_changed(&s_temp_text_subject,
+                               std::string(format_cpu_temp(sample.cpu_temp_c10, 0)).c_str());
+        copy_string_if_changed(&s_mem_text_subject,
+                               std::string(format_percent(sample.mem_pct)).c_str());
         break;
     case SizeRung::Cell:
-        set_text(&s_cpu_text_subject, format_percent(sample.cpu_pct));
-        set_text(&s_detail_text_subject, format_cpu_temp(sample.cpu_temp_c10, 0) + kDotSep +
-                                             format_percent(sample.mem_pct));
+        copy_string_if_changed(&s_cpu_text_subject,
+                               std::string(format_percent(sample.cpu_pct)).c_str());
+        copy_string_if_changed(&s_detail_text_subject,
+                               std::string(format_cpu_temp(sample.cpu_temp_c10, 0) + kDotSep +
+                                           format_percent(sample.mem_pct))
+                                   .c_str());
         break;
     case SizeRung::Wide:
-        set_text(&s_cpu_text_subject, format_percent(sample.cpu_pct));
+        copy_string_if_changed(&s_cpu_text_subject,
+                               std::string(format_percent(sample.cpu_pct)).c_str());
         if (verdict_.show_mcu_row && sample.busiest >= 0) {
             const auto& mcu = sample.mcus[static_cast<size_t>(sample.busiest)];
-            set_text(&s_busiest_name_subject, mcu.name);
-            set_text(&s_busiest_text_subject, perf_string("perf_mcu_" + mcu.safe + "_text"));
+            copy_string_if_changed(&s_busiest_name_subject, mcu.name.c_str());
+            copy_string_if_changed(
+                &s_busiest_text_subject,
+                std::string(perf_string("perf_mcu_" + mcu.safe + "_text")).c_str());
             set_int_if_changed(&s_busiest_load_subject, std::max(0, mcu.load));
         } else {
-            set_text(&s_mem_text_subject, format_percent(sample.mem_pct));
+            copy_string_if_changed(&s_mem_text_subject,
+                                   std::string(format_percent(sample.mem_pct)).c_str());
         }
         break;
     case SizeRung::Full:
     case SizeRung::Large:
-        set_text(&s_cpu_text_subject, format_percent(sample.cpu_pct));
-        set_text(&s_temp_text_subject, format_cpu_temp(sample.cpu_temp_c10, 1));
+        copy_string_if_changed(&s_cpu_text_subject,
+                               std::string(format_percent(sample.cpu_pct)).c_str());
+        copy_string_if_changed(&s_temp_text_subject,
+                               std::string(format_cpu_temp(sample.cpu_temp_c10, 1)).c_str());
         break;
     }
 }

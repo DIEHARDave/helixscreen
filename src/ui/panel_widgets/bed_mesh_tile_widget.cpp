@@ -44,6 +44,7 @@
 #include <string>
 #include <vector>
 
+using helix::ui::copy_string_if_changed;
 using helix::ui::measure_text_px;
 using helix::ui::set_int_if_changed;
 
@@ -116,11 +117,6 @@ void bed_mesh_tile_init_subjects() {
             s_subjects_initialized = false;
         }
     });
-}
-
-void set_text(lv_subject_t* subject, const std::string& text) {
-    if (text != lv_subject_get_string(subject))
-        lv_subject_copy_string(subject, text.c_str());
 }
 
 std::string profile_count_text(int count) {
@@ -485,19 +481,23 @@ void BedMeshTileWidget::publish_texts(const LiveState& live) {
     if (!s_tile.is_owner(this))
         return;
     const MeshStats& st = live.stats;
-    set_text(&s_range_text_subject,
-             st.loaded ? format_mesh_range(st.range, verdict_.decimals) : std::string());
-    set_text(&s_extent_text_subject,
-             st.loaded ? format_mesh_extent(st.min_z, st.max_z) : std::string());
+    copy_string_if_changed(
+        &s_range_text_subject,
+        std::string(st.loaded ? format_mesh_range(st.range, verdict_.decimals) : std::string())
+            .c_str());
+    copy_string_if_changed(
+        &s_extent_text_subject,
+        std::string(st.loaded ? format_mesh_extent(st.min_z, st.max_z) : std::string()).c_str());
     char low[16] = "";
     char high[16] = "";
     if (st.loaded) {
         std::snprintf(low, sizeof(low), "%.2f", static_cast<double>(st.min_z));
         std::snprintf(high, sizeof(high), "%.2f", static_cast<double>(st.max_z));
     }
-    set_text(&s_scale_low_text_subject, low);
-    set_text(&s_scale_high_text_subject, high);
-    set_text(&s_count_text_subject, profile_count_text(live.measure.profile_count));
+    copy_string_if_changed(&s_scale_low_text_subject, low);
+    copy_string_if_changed(&s_scale_high_text_subject, high);
+    copy_string_if_changed(&s_count_text_subject,
+                           std::string(profile_count_text(live.measure.profile_count)).c_str());
     lv_subject_set_int(&s_status_subject,
                        st.loaded ? static_cast<int>(status::mesh_flatness_status(st.range)) : 0);
 }

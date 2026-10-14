@@ -38,6 +38,7 @@
 #include <cstdio>
 #include <string>
 
+using helix::ui::copy_string_if_changed;
 using helix::ui::measure_text_px;
 using helix::ui::set_int_if_changed;
 
@@ -104,11 +105,6 @@ void toolhead_init_subjects() {
             s_subjects_initialized = false;
         }
     });
-}
-
-void set_text_if_changed(lv_subject_t* subject, const std::string& text) {
-    if (text != lv_subject_get_string(subject))
-        lv_subject_copy_string(subject, text.c_str());
 }
 
 struct Fonts {
@@ -612,23 +608,29 @@ void ToolheadWidget::publish_state(const LiveState& live) {
 
 void ToolheadWidget::publish_values(const LiveState& live) {
     if (verdict_.show_rows || verdict_.show_plate) {
-        set_text_if_changed(
+        copy_string_if_changed(
             &s_x_text_subject,
-            format_toolhead_axis(Axis::X, live.centimm[0], live.homed[0], verdict_.compact_values));
-        set_text_if_changed(
+            std::string(format_toolhead_axis(Axis::X, live.centimm[0], live.homed[0],
+                                             verdict_.compact_values))
+                .c_str());
+        copy_string_if_changed(
             &s_y_text_subject,
-            format_toolhead_axis(Axis::Y, live.centimm[1], live.homed[1], verdict_.compact_values));
+            std::string(format_toolhead_axis(Axis::Y, live.centimm[1], live.homed[1],
+                                             verdict_.compact_values))
+                .c_str());
     }
     if (verdict_.show_rows || verdict_.show_plate || verdict_.show_z_only) {
-        set_text_if_changed(
+        copy_string_if_changed(
             &s_z_text_subject,
-            format_toolhead_axis(Axis::Z, live.centimm[2], live.homed[2], verdict_.compact_values));
+            std::string(format_toolhead_axis(Axis::Z, live.centimm[2], live.homed[2],
+                                             verdict_.compact_values))
+                .c_str());
     }
     if (verdict_.show_status_row) {
-        set_text_if_changed(&s_tool_text_subject, live.tool_label);
+        copy_string_if_changed(&s_tool_text_subject, live.tool_label.c_str());
         char speed[24];
         std::snprintf(speed, sizeof(speed), lv_tr("%d mm/s"), live.velocity_mm_s);
-        set_text_if_changed(&s_speed_text_subject, speed);
+        copy_string_if_changed(&s_speed_text_subject, speed);
     }
 }
 
