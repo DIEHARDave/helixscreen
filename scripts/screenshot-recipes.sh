@@ -42,14 +42,15 @@ print-select       navigate print-select
 # Printer image callouts (home widget, prestonbrown/helixscreen#1397).
 # callouts-2x2 and callouts-untagged just need the widget's natural default
 # span, so --printer selects a tagged vs untagged printer image. callouts-4x2 needs
-# a 4x2-cell span, and the default layout fills the cells to the right of and
-# below the image with temperature, bed_temperature, fan_stack and notifications.
-# ctl home remove frees those cells by widget id and ctl home resize widens the image
-# (docs/devel/HELIXCTL.md, section Home-grid layout without gestures), so the
-# recipe carries no pixel coordinates and holds for whichever widgets the
-# capability-resolved default places beside the image.
+# a 4x2-cell span. On the default mock printer at 800x480 the cells it grows
+# into hold temperature and bed_temperature beside the image and ams below
+# them. ctl home remove frees those cells by widget id and ctl home resize
+# widens the image (docs/devel/HELIXCTL.md, section Home-grid layout without
+# gestures), so the recipe carries no pixel coordinates; a default that puts
+# other widgets in those cells needs their ids here instead.
+# tests/ui/test_callouts_recipe.py runs it against the default.
 callouts-2x2       navigate home
-callouts-4x2       navigate home; home remove temperature; home remove bed_temperature; home remove fan_stack; home remove notifications; home resize printer_image 4 2; wait_idle
+callouts-4x2       navigate home; home remove temperature; home remove bed_temperature; home remove ams; home resize printer_image 4 2; wait_idle
 callouts-untagged  navigate home
 
 # Home widget catalog (docs/user/guide/home-panel.md). A long press on the grid
