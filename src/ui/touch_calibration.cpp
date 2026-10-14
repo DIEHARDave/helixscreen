@@ -11,6 +11,7 @@
 #include <cmath>
 #include <initializer_list>
 #include <mutex>
+#include <optional>
 
 namespace helix {
 
@@ -143,14 +144,12 @@ bool invert_transform_point(const TouchCalibration& cal, Point screen, Point& ou
     return true;
 }
 
-TouchCalibration platform_default_calibration() {
-    TouchCalibration cal;
-
-    // Measured on our own hardware, one unit per platform. The AD5X and AD5M Pro
+std::optional<TouchCalibration> factory_touch_fit(board::Board board) {
+    // Measured on our own hardware, one unit per board. The AD5X and AD5M Pro
     // panels are the same part: strip the Y-axis polarity difference and the two
     // fits agree to 0.19% in X scale and 1.61% in Y, with raw spans of 682.8 vs
     // 681.4 (X) and 324.6 vs 329.8 (Y). That cross-agreement is why these are
-    // shipped at all — a lone fit would only describe the unit it came from.
+    // shipped at all - a lone fit would only describe the unit it came from.
     //
     // e is positive on the AD5X and negative on the AD5M: the digitizer reports Y
     // in opposite directions on the two models, and f absorbs the flip.
@@ -161,12 +160,13 @@ TouchCalibration platform_default_calibration() {
     // fit measured on a rotated panel (a K2-class preset ships rotate=270) has to
     // set capture_rotation to that rotation, or the matrix is placed in a basis it
     // was never solved in and every tap lands a quarter turn out.
-#if defined(HELIX_PLATFORM_MIPS)
-    // One binary serves K1, AD5X and the Creator 5 line: the AD5X fit applies
-    // only on that board. The Creator 5's digitizer already spans its panel, so
-    // this fit would throw its taps off-screen. K1 and Creator 5 boards ship no
-    // default fit; the calibration wizard owns the first run there.
-    if (helix::board::current() == helix::board::Board::Ad5x) {
+    //
+    // The Creator 5's digitizer already spans its panel, so the AD5X fit would
+    // throw its taps off-screen; it and every other board ship no default fit and
+    // the calibration wizard owns the first run.
+    TouchCalibration cal;
+    switch (board) {
+    case board::Board::Ad5x:
         cal.valid = true;
         cal.a = 1.171731f;
         cal.b = -0.043628f;
@@ -174,20 +174,34 @@ TouchCalibration platform_default_calibration() {
         cal.d = -0.006188f;
         cal.e = 1.478954f;
         cal.f = -118.906227f;
+        return cal;
+    case board::Board::Ad5m:
+        cal.valid = true;
+        cal.a = 1.174004f;
+        cal.b = 0.009220f;
+        cal.c = -79.064400f;
+        cal.d = -0.000000f;
+        cal.e = -1.455497f;
+        cal.f = 570.492126f;
+        return cal;
+    case board::Board::Generic:
+    case board::Board::Creator5:
+    case board::Board::Creator5Pro:
+    case board::Board::K1:
+    case board::Board::K2:
+    case board::Board::Cc1:
+    case board::Board::SnapmakerU1:
+        break;
     }
-#elif defined(HELIX_PLATFORM_AD5M)
-    cal.valid = true;
-    cal.a = 1.174004f;
-    cal.b = 0.009220f;
-    cal.c = -79.064400f;
-    cal.d = -0.000000f;
-    cal.e = -1.455497f;
-    cal.f = 570.492126f;
-#endif
+    return std::nullopt;
+}
+
+TouchCalibration platform_default_calibration() {
+    TouchCalibration cal = factory_touch_fit(board::current()).value_or(TouchCalibration{});
 
     // Never hand back a default that our own validator would reject.
     if (cal.valid && !is_calibration_valid(cal)) {
-        spdlog::warn("[TouchCal] Platform default failed validation — ignoring");
+        spdlog::warn("[TouchCal] Platform default failed validation - ignoring");
         cal.valid = false;
     }
     return cal;
