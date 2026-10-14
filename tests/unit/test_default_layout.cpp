@@ -1003,6 +1003,13 @@ struct TrackBudget {
     int rows;
 };
 
+/// The table the app ships, as the app finds it.
+nlohmann::json load_shipped_layout() {
+    std::ifstream in(helix::find_readable("default_layout.json"));
+    REQUIRE(in.is_open());
+    return nlohmann::json::parse(in);
+}
+
 const std::map<std::string, TrackBudget> kPortraitBudget = {
     {"micro", {8, 12}},
     {"tiny", {8, 10}},
@@ -1010,13 +1017,13 @@ const std::map<std::string, TrackBudget> kPortraitBudget = {
     {"medium", {8, 12}},
     {"large", {10, 14}},
     {"xlarge", {10, 16}},
-    // 1080x2400, measured: content 1056x2236 over a 192px cell is 6x12 cells.
-    // Held at scale 1.0 - the UI scale factor multiplies the cell edge, so the
-    // same panel quantises to 8x18 tracks at 125% and 6x14 at 158%, and the
-    // shipped anchors do not fit either. That gap is real and untracked here:
-    // this table is keyed by breakpoint alone, which cannot express it. See
-    // the scale note above check_anchor_table().
-    {"xxlarge", {12, 24}},
+    // 1080x1920, measured: content 1056x1756 over the 144px cell of the 72px
+    // track edge is 7x12 cells. 1080x2400 measures 14x32, the same width with
+    // more rows. Held at scale 1.0 - the UI scale factor multiplies the cell
+    // edge, so the same panels quantise to 12 tracks wide at 125%, which this
+    // breakpoint-keyed table cannot express. See the scale note above
+    // check_anchor_table().
+    {"xxlarge", {14, 24}},
 };
 
 const std::map<std::string, TrackBudget> kLandscapeBudget = {
@@ -1058,8 +1065,8 @@ bool anchors_overlap(const AnchorRect& a, const AnchorRect& b) {
 ///
 /// A breakpoint is not the whole story any more. The high-DPI UI scale factor
 /// multiplies the grid's cell edge, so one panel at one breakpoint has as many
-/// track counts as it has scales: 1080x2400 is xxlarge portrait at 12x24 tracks
-/// unscaled, 8x18 at 125%, and 6x14 at 158%. The budgets below are the scale
+/// track counts as it has scales: 1080x2400 is xxlarge portrait at 14x32 tracks
+/// unscaled, 12x24 at 125%, and 10x20 at 158%. The budgets below are the scale
 /// 1.0 grids, which is what every shipping printer runs (they all sit inside
 /// the DPI deadband). Anchors authored for a tier are NOT checked against that
 /// tier's scaled grids, because the table cannot name one — keying the shipped
@@ -1214,10 +1221,7 @@ const char* kBpNames[] = {"micro", "tiny", "small", "medium", "large", "xlarge",
 // through to auto-place and the anchor is decoration.
 TEST_CASE("default_layout: the shipped portrait anchors fit a portrait grid",
           "[default_layout][portrait][shipped]") {
-    std::string path = helix::find_readable("default_layout.json");
-    std::ifstream in(path);
-    REQUIRE(in.is_open());
-    nlohmann::json layout = nlohmann::json::parse(in);
+    nlohmann::json layout = load_shipped_layout();
 
     REQUIRE(layout.contains("variants"));
     REQUIRE(layout["variants"].contains("portrait"));
@@ -1353,10 +1357,7 @@ TEST_CASE("default_layout: an anchor carries per-widget config", "[default_layou
 // measured geometry.
 TEST_CASE("default_layout: the shipped portrait print_status is Detailed",
           "[default_layout][portrait][shipped]") {
-    std::string path = helix::find_readable("default_layout.json");
-    std::ifstream in(path);
-    REQUIRE(in.is_open());
-    nlohmann::json layout = nlohmann::json::parse(in);
+    nlohmann::json layout = load_shipped_layout();
 
     const auto& node = layout["variants"]["portrait"];
     const nlohmann::json& anchors = node.is_object() ? node.at("anchors") : node;
@@ -1383,10 +1384,7 @@ TEST_CASE("default_layout: the shipped portrait print_status is Detailed",
 // one — see the ledger's default-layout discussion item.
 TEST_CASE("default_layout: the shipped landscape anchors fit their grid",
           "[default_layout][shipped]") {
-    std::string path = helix::find_readable("default_layout.json");
-    std::ifstream in(path);
-    REQUIRE(in.is_open());
-    nlohmann::json layout = nlohmann::json::parse(in);
+    nlohmann::json layout = load_shipped_layout();
     REQUIRE(layout.contains("anchors"));
 
     for (int i = 0; i < 7; i++) {
@@ -1398,10 +1396,7 @@ TEST_CASE("default_layout: the shipped landscape anchors fit their grid",
 
 TEST_CASE("default_layout: the shipped ultrawide anchors fit their grid",
           "[default_layout][shipped][ultrawide]") {
-    std::string path = helix::find_readable("default_layout.json");
-    std::ifstream in(path);
-    REQUIRE(in.is_open());
-    nlohmann::json layout = nlohmann::json::parse(in);
+    nlohmann::json layout = load_shipped_layout();
     REQUIRE(layout.contains("variants"));
     REQUIRE(layout["variants"].contains("ultrawide"));
 
@@ -1418,10 +1413,7 @@ TEST_CASE("default_layout: the shipped ultrawide anchors fit their grid",
 // them hands one widget coordinates authored for a wider grid.
 TEST_CASE("default_layout: no shipped table mixes authored and inherited placements",
           "[default_layout][shipped]") {
-    std::string path = helix::find_readable("default_layout.json");
-    std::ifstream in(path);
-    REQUIRE(in.is_open());
-    nlohmann::json layout = nlohmann::json::parse(in);
+    nlohmann::json layout = load_shipped_layout();
 
     for (int i = 0; i < 7; i++) {
         INFO("base (landscape) table");
@@ -1445,7 +1437,7 @@ TEST_CASE("default_layout: no shipped table mixes authored and inherited placeme
 //
 // A breakpoint names a panel, not a grid. The high-DPI UI scale multiplies the
 // cell edge, so one panel at one tier has a different track count per scale --
-// 1080x2400 is xxlarge portrait at 12x24 tracks unscaled, 8x18 at 125%, 6x14 at
+// 1080x2400 is xxlarge portrait at 14x32 tracks unscaled, 12x24 at 125%, 10x20 at
 // 158%. Anchors authored against one of those collapse through clamp_to_grid on
 // the others. A placement may therefore name the grid it was authored for.
 
@@ -1592,10 +1584,7 @@ TEST_CASE("default_layout: every grid-qualified table fits the grid it names",
     // about which panel or scale produces the grid, and none needed. This is
     // the check the tier-keyed budgets cannot make: they hold one grid per
     // tier, and the UI scale gives a tier as many grids as it has scales.
-    std::string path = helix::find_readable("default_layout.json");
-    std::ifstream in(path);
-    REQUIRE(in.is_open());
-    nlohmann::json layout = nlohmann::json::parse(in);
+    nlohmann::json layout = load_shipped_layout();
 
     std::vector<std::pair<std::string, const nlohmann::json*>> tables;
     tables.emplace_back("base", &layout);
@@ -1607,7 +1596,6 @@ TEST_CASE("default_layout: every grid-qualified table fits the grid it names",
         }
     }
 
-    int checked = 0;
     for (const auto& [table_name, table] : tables) {
         // Collect every grid-qualified key this table uses, then check each
         // key's anchors as the one layout they are: all of them together, not
@@ -1678,14 +1666,12 @@ TEST_CASE("default_layout: every grid-qualified table fits the grid it names",
                     CHECK_FALSE(anchors_overlap(r, other));
                 }
                 placed.push_back(r);
-                ++checked;
             }
         }
     }
 
-    // Guards the loop against passing by finding nothing: the shipped file
-    // carries at least one grid-qualified table.
-    CHECK(checked > 0);
+    // The shipped file carries no grid-qualified table today, so this case
+    // guards the keys a later edit adds; the cases above cover the key itself.
 }
 
 // ============================================================================
@@ -1880,12 +1866,6 @@ namespace {
 
 using helix::layout::CapabilitySnapshot;
 using helix::layout::ResolvedDefault;
-
-nlohmann::json load_shipped_layout() {
-    std::ifstream in(helix::find_readable("default_layout.json"));
-    REQUIRE(in.is_open());
-    return nlohmann::json::parse(in);
-}
 
 /// One table of the shipped file: the base (landscape) anchors or a variant,
 /// with the variant chain that selects it and the measured grid of each tier.
@@ -2240,9 +2220,10 @@ struct Persona {
     int cols;
     int rows;
     std::vector<std::string> chain;
-    std::map<std::string, int> open; // every subject not named here reads 0
-    std::vector<ExpectedRect> placed;
+    std::map<std::string, int> open;  // every subject not named here reads 0
+    std::vector<ExpectedRect> placed; // the whole page: nothing else is placed
     std::vector<const char*> not_placed;
+    std::map<std::string, int> unnamed = {}; // published subjects the table never consults
 };
 
 // Capability subjects as each printer publishes them, tracks as the shipped
@@ -2258,20 +2239,32 @@ const std::vector<Persona> kPersonas = {
      {"filament", "led", "chamber_temperature", "clock", "network"}},
     {"ad5m medium: chamber and filament, LED left off", "medium", 12, 8, {},
      {{"printer_has_chamber", 1}, {"led_controllable", 1}, {"filament_sensor_count", 1}},
-     {{"chamber_temperature", 8, 0, 2, 2}, {"filament", 10, 0, 2, 2}},
+     {{"printer_image", 0, 0, 4, 4}, {"temperature", 4, 0, 2, 2},
+      {"bed_temperature", 6, 0, 2, 2}, {"fan_stack", 4, 2, 2, 2}, {"notifications", 6, 2, 2, 2},
+      {"temp_graph", 8, 2, 4, 6}, {"print_status", 0, 4, 8, 4},
+      {"chamber_temperature", 8, 0, 2, 2}, {"filament", 10, 0, 2, 2}},
      {"ams", "led", "active_spool", "clock"}},
     {"ad5m with Spoolman: filament still leads the FIL cell", "medium", 12, 8, {},
      {{"printer_has_chamber", 1}, {"led_controllable", 1}, {"filament_sensor_count", 1},
       {"printer_has_spoolman", 1}},
-     {{"chamber_temperature", 8, 0, 2, 2}, {"filament", 10, 0, 2, 2}},
+     {{"printer_image", 0, 0, 4, 4}, {"temperature", 4, 0, 2, 2},
+      {"bed_temperature", 6, 0, 2, 2}, {"fan_stack", 4, 2, 2, 2}, {"notifications", 6, 2, 2, 2},
+      {"temp_graph", 8, 2, 4, 6}, {"print_status", 0, 4, 8, 4},
+      {"chamber_temperature", 8, 0, 2, 2}, {"filament", 10, 0, 2, 2}},
      {"active_spool", "led"}},
     {"ad5m with Spoolman and no filament sensor: LED leads active_spool", "medium", 12, 8, {},
      {{"printer_has_chamber", 1}, {"led_controllable", 1}, {"printer_has_spoolman", 1}},
-     {{"chamber_temperature", 8, 0, 2, 2}, {"led", 10, 0, 2, 2}},
+     {{"printer_image", 0, 0, 4, 4}, {"temperature", 4, 0, 2, 2},
+      {"bed_temperature", 6, 0, 2, 2}, {"fan_stack", 4, 2, 2, 2}, {"notifications", 6, 2, 2, 2},
+      {"temp_graph", 8, 2, 4, 6}, {"print_status", 0, 4, 8, 4},
+      {"chamber_temperature", 8, 0, 2, 2}, {"led", 10, 0, 2, 2}},
      {"active_spool", "filament"}},
     {"Spoolman with no LED and no filament sensor: active_spool fills the FIL cell", "medium", 12, 8, {},
      {{"printer_has_chamber", 1}, {"printer_has_spoolman", 1}},
-     {{"chamber_temperature", 8, 0, 2, 2}, {"active_spool", 10, 0, 2, 2}},
+     {{"printer_image", 0, 0, 4, 4}, {"temperature", 4, 0, 2, 2},
+      {"bed_temperature", 6, 0, 2, 2}, {"fan_stack", 4, 2, 2, 2}, {"notifications", 6, 2, 2, 2},
+      {"temp_graph", 8, 2, 4, 6}, {"print_status", 0, 4, 8, 4},
+      {"chamber_temperature", 8, 0, 2, 2}, {"active_spool", 10, 0, 2, 2}},
      {"network"}},
     {"cc1 micro: LED and filament beside the fans", "micro", 12, 8, {},
      {{"led_controllable", 1}, {"filament_sensor_count", 1}},
@@ -2282,7 +2275,9 @@ const std::vector<Persona> kPersonas = {
     {"qidi_q2 micro: the AMS takes the spool slot", "micro", 12, 8, {},
      {{"ams_slot_count", 4}, {"printer_has_chamber", 1}, {"led_controllable", 1},
       {"filament_sensor_count", 1}},
-     {{"ams", 8, 2, 4, 2}, {"print_status", 0, 4, 12, 4}},
+     {{"printer_image", 0, 0, 6, 4}, {"temperature", 6, 0, 2, 2}, {"bed_temperature", 8, 0, 2, 2},
+      {"notifications", 10, 0, 2, 2}, {"fan_stack", 6, 2, 2, 2}, {"ams", 8, 2, 4, 2},
+      {"print_status", 0, 4, 12, 4}},
      {"chamber_temperature", "led", "filament"}},
     {"u1 tiny: the tool tile lists all four tools", "tiny", 10, 8, {},
      {{"ams_slot_count", 4}, {"led_controllable", 1}, {"filament_sensor_count", 1}},
@@ -2290,6 +2285,15 @@ const std::vector<Persona> kPersonas = {
       {"notifications", 8, 0, 2, 2}, {"fan_stack", 4, 2, 2, 2}, {"ams", 6, 2, 4, 2},
       {"print_status", 0, 4, 10, 4}},
      {"led", "filament"}},
+    {"voron toolchanger medium: the tool tile takes the spool slot, no toolhead", "medium", 12, 8, {},
+     {{"ams_slot_count", 4}, {"printer_has_chamber", 1}, {"led_controllable", 1},
+      {"filament_sensor_count", 1}, {"printer_has_bed_mesh", 1}},
+     {{"printer_image", 0, 0, 4, 4}, {"temperature", 4, 0, 2, 2},
+      {"bed_temperature", 6, 0, 2, 2}, {"fan_stack", 4, 2, 2, 2}, {"notifications", 6, 2, 2, 2},
+      {"temp_graph", 8, 2, 4, 6}, {"print_status", 0, 4, 8, 4},
+      {"ams", 8, 0, 4, 2}},
+     {"toolhead", "chamber_temperature", "led", "filament"},
+     {{"ams_is_tool_changer", 1}}},
     {"voron_24 large: print_stats in the freed 2x2, the bed mesh below it", "large", 16, 10, {},
      {{"printer_has_chamber", 1}, {"led_controllable", 1}, {"filament_sensor_count", 1},
       {"printer_has_bed_mesh", 1}},
@@ -2302,7 +2306,12 @@ const std::vector<Persona> kPersonas = {
      {"job_queue", "ams", "toolhead", "host_health", "exclude_map"}},
     {"voron_24 large without a bed mesh: the job queue takes its place", "large", 16, 10, {},
      {{"printer_has_chamber", 1}, {"led_controllable", 1}, {"filament_sensor_count", 1}},
-     {{"job_queue", 12, 6, 4, 4}, {"print_stats", 12, 2, 4, 4}},
+     {{"printer_image", 0, 0, 4, 4}, {"temperature", 4, 0, 2, 2}, {"bed_temperature", 6, 0, 2, 2},
+      {"chamber_temperature", 8, 0, 2, 2}, {"filament", 10, 0, 2, 2}, {"led", 12, 0, 2, 2},
+      {"notifications", 14, 0, 2, 2}, {"fan_stack", 4, 2, 2, 2}, {"network", 6, 2, 2, 2},
+      {"z_offset", 8, 2, 4, 2}, {"print_stats", 12, 2, 4, 4}, {"print_status", 0, 4, 8, 4},
+      {"speed_flow", 8, 4, 4, 2}, {"temp_graph", 8, 6, 4, 4}, {"job_queue", 12, 6, 4, 4},
+      {"tips", 0, 8, 8, 2}},
      {"bed_mesh_tile"}},
     {"voron_24 xxlarge: the 12x7-cell table, FILLER takes the clock", "xxlarge", 24, 14, {},
      {{"printer_has_chamber", 1}, {"led_controllable", 1}, {"filament_sensor_count", 1},
@@ -2316,7 +2325,12 @@ const std::vector<Persona> kPersonas = {
      {"job_queue", "lock", "toolhead", "host_health", "exclude_map"}},
     {"voron_24 xxlarge without a bed mesh: the job queue spans the mesh region", "xxlarge", 24, 14, {},
      {{"printer_has_chamber", 1}, {"led_controllable", 1}, {"filament_sensor_count", 1}},
-     {{"job_queue", 16, 6, 8, 4}},
+     {{"printer_image", 0, 0, 6, 6}, {"print_status", 6, 0, 10, 6}, {"temperature", 16, 0, 2, 2},
+      {"bed_temperature", 18, 0, 2, 2}, {"chamber_temperature", 20, 0, 2, 2},
+      {"filament", 22, 0, 2, 2}, {"fan_stack", 16, 2, 2, 2}, {"notifications", 18, 2, 2, 2},
+      {"led", 20, 2, 2, 2}, {"network", 22, 2, 2, 2}, {"z_offset", 16, 4, 4, 2},
+      {"speed_flow", 20, 4, 4, 2}, {"temp_graph", 0, 6, 16, 6}, {"tips", 0, 12, 16, 2},
+      {"job_queue", 16, 6, 8, 4}, {"print_stats", 16, 10, 6, 4}, {"clock", 22, 10, 2, 4}},
      {"bed_mesh_tile"}},
     {"k1 portrait medium: LED and filament under the print card", "medium", 8, 12, {"portrait"},
      {{"led_controllable", 1}, {"filament_sensor_count", 1}},
@@ -2340,6 +2354,10 @@ TEST_CASE("default_layout: shipped tables resolve each printer persona",
             REQUIRE(caps.subjects.count(subject) == 1);
             caps.subjects[subject] = value;
         }
+        for (const auto& [subject, value] : persona.unnamed) {
+            REQUIRE(caps.subjects.count(subject) == 0);
+            caps.subjects[subject] = value;
+        }
 
         const ResolvedDefault r = helix::layout::resolve_default_layout(
             layout, nullptr, persona.tier, persona.cols, persona.rows, persona.chain, "", caps);
@@ -2359,6 +2377,7 @@ TEST_CASE("default_layout: shipped tables resolve each printer persona",
             CHECK(placed_widget(r, id) == nullptr);
         }
 
+        CHECK(r.placed.size() == persona.placed.size());
         std::set<std::string> ids;
         for (const auto& p : r.placed) {
             INFO("placed twice: " << p.id);

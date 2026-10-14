@@ -6,10 +6,7 @@
       "chamber_temperature",
       "led",
       "clock",
-      "lock",
-      "macros",
-      "motion",
-      "temp_stack"
+      "lock"
     ],
     "FIL": [
       "filament",
@@ -22,9 +19,7 @@
       },
       "network",
       "lock",
-      "macros",
-      "motion",
-      "temp_stack"
+      "macros"
     ],
     "ENV2": [
       "chamber_temperature",
@@ -34,7 +29,7 @@
       "lock",
       "macros",
       "motion",
-      "temp_stack"
+      "favorite_macro"
     ],
     "MESH": [
       "bed_mesh_tile",
@@ -45,8 +40,7 @@
       "network",
       "lock",
       "macros",
-      "motion",
-      "temp_stack"
+      "motion"
     ]
   },
   "anchors": [
@@ -1041,14 +1035,8 @@
             "xxlarge": {
               "col": 0,
               "row": 0,
-              "colspan": 4,
-              "rowspan": 4
-            },
-            "xxlarge@6x14": {
-              "col": 0,
-              "row": 0,
-              "colspan": 4,
-              "rowspan": 4
+              "colspan": 6,
+              "rowspan": 6
             }
           }
         },
@@ -1097,14 +1085,8 @@
             "xxlarge": {
               "col": 0,
               "row": 6,
-              "colspan": 10,
+              "colspan": 14,
               "rowspan": 6
-            },
-            "xxlarge@6x14": {
-              "col": 0,
-              "row": 6,
-              "colspan": 6,
-              "rowspan": 4
             }
           }
         },
@@ -1143,14 +1125,8 @@
             },
             "xxlarge": {
               "col": 0,
-              "row": 4,
-              "colspan": 10,
-              "rowspan": 2
-            },
-            "xxlarge@6x14": {
-              "col": 0,
-              "row": 10,
-              "colspan": 6,
+              "row": 12,
+              "colspan": 14,
               "rowspan": 2
             }
           }
@@ -1190,9 +1166,9 @@
             },
             "xxlarge": {
               "col": 0,
-              "row": 12,
-              "colspan": 10,
-              "rowspan": 4
+              "row": 14,
+              "colspan": 14,
+              "rowspan": 6
             }
           }
         },
@@ -1236,14 +1212,8 @@
               "rowspan": 2
             },
             "xxlarge": {
-              "col": 4,
+              "col": 6,
               "row": 0,
-              "colspan": 2,
-              "rowspan": 2
-            },
-            "xxlarge@6x14": {
-              "col": 0,
-              "row": 4,
               "colspan": 2,
               "rowspan": 2
             }
@@ -1289,14 +1259,8 @@
               "rowspan": 2
             },
             "xxlarge": {
-              "col": 4,
-              "row": 2,
-              "colspan": 2,
-              "rowspan": 2
-            },
-            "xxlarge@6x14": {
-              "col": 2,
-              "row": 4,
+              "col": 8,
+              "row": 0,
               "colspan": 2,
               "rowspan": 2
             }
@@ -1342,14 +1306,8 @@
               "rowspan": 2
             },
             "xxlarge": {
-              "col": 6,
+              "col": 10,
               "row": 0,
-              "colspan": 2,
-              "rowspan": 2
-            },
-            "xxlarge@6x14": {
-              "col": 4,
-              "row": 4,
               "colspan": 2,
               "rowspan": 2
             }
@@ -1395,16 +1353,43 @@
               "rowspan": 2
             },
             "xxlarge": {
+              "col": 12,
+              "row": 0,
+              "colspan": 2,
+              "rowspan": 2
+            }
+          }
+        },
+        {
+          "id": "z_offset",
+          "placements": {
+            "xxlarge": {
+              "col": 6,
+              "row": 4,
+              "colspan": 4,
+              "rowspan": 2
+            }
+          }
+        },
+        {
+          "id": "speed_flow",
+          "placements": {
+            "xxlarge": {
+              "col": 10,
+              "row": 4,
+              "colspan": 4,
+              "rowspan": 2
+            }
+          }
+        },
+        {
+          "id": "print_stats",
+          "placements": {
+            "xxlarge": {
               "col": 8,
-              "row": 0,
-              "colspan": 2,
-              "rowspan": 2
-            },
-            "xxlarge@6x14": {
-              "col": 4,
-              "row": 0,
-              "colspan": 2,
-              "rowspan": 2
+              "row": 20,
+              "colspan": 4,
+              "rowspan": 4
             }
           }
         },
@@ -1452,12 +1437,6 @@
               "row": 2,
               "colspan": 4,
               "rowspan": 2
-            },
-            "xxlarge@6x14": {
-              "col": 0,
-              "row": 12,
-              "colspan": 4,
-              "rowspan": 2
             }
           },
           "alternatives": [
@@ -1503,8 +1482,8 @@
         {
           "slot": "env2",
           "placements": {
-            "xxlarge@6x14": {
-              "col": 4,
+            "xxlarge": {
+              "col": 10,
               "row": 2,
               "colspan": 2,
               "rowspan": 2
@@ -1527,11 +1506,11 @@
           ]
         },
         {
-          "slot": "spool_aux",
+          "slot": "fil2",
           "placements": {
-            "xxlarge@6x14": {
-              "col": 4,
-              "row": 12,
+            "xxlarge": {
+              "col": 12,
+              "row": 2,
               "colspan": 2,
               "rowspan": 2
             }
@@ -1540,19 +1519,64 @@
             {
               "cells": [
                 {
-                  "candidates": [
-                    "led",
-                    "clock",
-                    "lock",
-                    "macros",
-                    "motion",
-                    "temp_stack"
-                  ],
+                  "candidates": "FIL",
                   "at": [
                     0,
                     0,
                     2,
                     2
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "slot": "mesh",
+          "placements": {
+            "xxlarge": {
+              "col": 0,
+              "row": 20,
+              "colspan": 8,
+              "rowspan": 4
+            }
+          },
+          "alternatives": [
+            {
+              "cells": [
+                {
+                  "candidates": "MESH",
+                  "at": [
+                    0,
+                    0,
+                    8,
+                    4
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "slot": "filler",
+          "placements": {
+            "xxlarge": {
+              "col": 12,
+              "row": 20,
+              "colspan": 2,
+              "rowspan": 4
+            }
+          },
+          "alternatives": [
+            {
+              "cells": [
+                {
+                  "candidates": "FILLER",
+                  "at": [
+                    0,
+                    0,
+                    2,
+                    4
                   ]
                 }
               ]
