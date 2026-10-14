@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "platform_info.h"
 
+#include "board_identity.h"
+
 #include <spdlog/spdlog.h>
 
 #include <fstream>
@@ -35,11 +37,7 @@ bool platform_defaults_to_external_updates() {
     if (s_external_updates_default_override >= 0) {
         return s_external_updates_default_override != 0;
     }
-#ifdef HELIX_PLATFORM_SNAPMAKER_U1
-    return true;
-#else
-    return false;
-#endif
+    return board::current_info().firmware_manages_updates;
 }
 
 void set_external_updates_default_override(int override_value) {
@@ -57,13 +55,7 @@ bool is_printer_embedded() {
     if (s_printer_embedded_override >= 0) {
         return s_printer_embedded_override != 0;
     }
-#if defined(HELIX_PLATFORM_AD5M) || defined(HELIX_PLATFORM_AD5X) || defined(HELIX_PLATFORM_K1) ||  \
-    defined(HELIX_PLATFORM_CC1) || defined(HELIX_PLATFORM_SNAPMAKER_U1) ||                         \
-    defined(HELIX_PLATFORM_K2) || defined(HELIX_PLATFORM_MIPS)
-    return true;
-#else
-    return false;
-#endif
+    return board::current() != board::Board::Generic;
 }
 
 void set_printer_embedded_override(int override_value) {
@@ -183,24 +175,6 @@ std::optional<FlashForgeMachine> flashforge_machine_id(const std::string& probe_
     }
     return machine_from_name(
         last_assignment_value(rooted(probe_root, "/etc/os-release"), "VERSION_CODENAME", true));
-}
-
-bool ad5x_board_present(const std::string& probe_root) {
-    if (flashforge_mod_tree(probe_root) == FlashForgeModTree::None) {
-        return false;
-    }
-    const auto machine = flashforge_machine_id(probe_root);
-    return !machine.has_value() || *machine == FlashForgeMachine::Ad5x;
-}
-
-bool local_camera_probe_safe(const std::string& probe_root) {
-#ifdef HELIX_PLATFORM_AD5X
-    (void)probe_root;
-    return false;
-#else
-    return !flashforge_machine_id(probe_root).has_value() &&
-           flashforge_mod_tree(probe_root) == FlashForgeModTree::None;
-#endif
 }
 
 const char* flashforge_machine_display_name(FlashForgeMachine machine) {

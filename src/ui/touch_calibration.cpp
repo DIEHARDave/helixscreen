@@ -3,7 +3,7 @@
 
 #include "touch_calibration.h"
 
-#include "platform_info.h"
+#include "board_identity.h"
 
 #include <spdlog/spdlog.h>
 
@@ -166,7 +166,7 @@ TouchCalibration platform_default_calibration() {
     // only on that board. The Creator 5's digitizer already spans its panel, so
     // this fit would throw its taps off-screen. K1 and Creator 5 boards ship no
     // default fit; the calibration wizard owns the first run there.
-    if (helix::ad5x_board_present()) {
+    if (helix::board::current() == helix::board::Board::Ad5x) {
         cal.valid = true;
         cal.a = 1.171731f;
         cal.b = -0.043628f;

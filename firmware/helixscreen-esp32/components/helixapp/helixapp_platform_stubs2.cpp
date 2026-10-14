@@ -408,6 +408,9 @@ void DebugBundleCollector::upload_async(const BundleOptions&, ResultCallback cal
 std::string host_arch_string() {
     return std::string("xtensa");
 }
+std::optional<FlashForgeMachine> flashforge_machine_id(const std::string&) {
+    return std::nullopt;
+}
 FlashForgeModTree flashforge_mod_tree(const std::string&) {
     return FlashForgeModTree::None;
 }

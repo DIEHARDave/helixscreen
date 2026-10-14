@@ -91,19 +91,6 @@ enum class FlashForgeMachine {
 /// resolve under `probe_root` (default "/") for tests.
 std::optional<FlashForgeMachine> flashforge_machine_id(const std::string& probe_root = "/");
 
-/// True on an Adventurer 5X. The mod layout alone also matches a Creator 5,
-/// which carries FlashForge's /usr/prog too, so a board that names itself
-/// anything else is not one; a layout with no machine id (Forge-X) still is.
-/// All probes resolve under `probe_root` (default "/") for tests.
-bool ad5x_board_present(const std::string& probe_root = "/");
-
-/// True when discovery may probe loopback camera endpoints (127.0.0.1:8080 and
-/// friends) for a camera Moonraker does not list. False on the FlashForge MIPS
-/// boards, whose kernel crashes when a camera streamer is woken on v4l2_open;
-/// every other platform, a K1 sharing the same MIPS payload included, allows it.
-/// All probes resolve under `probe_root` (default "/") for tests.
-bool local_camera_probe_safe(const std::string& probe_root = "/");
-
 /// The printer-database spelling of a board ("FlashForge Creator 5 Pro"), the
 /// same names ad5x_board_name() prints in the installer.
 const char* flashforge_machine_display_name(FlashForgeMachine machine);

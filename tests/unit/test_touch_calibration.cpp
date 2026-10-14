@@ -1717,7 +1717,7 @@ TEST_CASE("shipped AD5X and AD5M fits describe the same panel", "[touch][calibra
 
 // On a build that HAS a measured default, the shipped function must return one of
 // the fits above rather than something invalid. The unified MIPS build picks the
-// AD5X fit at runtime (ad5x_board_present), so it cannot be asserted at compile
+// AD5X fit at runtime (board::current()), so it cannot be asserted at compile
 // time; the fits themselves are checked as data above.
 TEST_CASE("platform_default_calibration agrees with the shipped table", "[touch][calibration]") {
     helix::TouchCalibration cal = helix::platform_default_calibration();

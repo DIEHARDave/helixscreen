@@ -17,6 +17,7 @@
 #include "app_globals.h"
 #include "async_lifetime_guard.h"
 #include "audio_settings_manager.h"
+#include "board_identity.h"
 #include "config.h"
 #include "display_settings_manager.h"
 #include "fault_surface_correlation.h"
@@ -326,6 +327,9 @@ void HelixTestFixture::reset_printer_state() {
 }
 
 void HelixTestFixture::reset_all() {
+    // A board override a test set must not leak into the next case in the shard.
+    helix::board::set_current_override(std::nullopt);
+
     // LVGL + UpdateQueue must be up before we touch any subject-backed state.
     // lv_init_safe() is idempotent and also re-arms the UpdateQueue if a prior
     // fixture's destructor shut it down. Safe to call from non-LVGL tests.

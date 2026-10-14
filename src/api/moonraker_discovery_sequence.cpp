@@ -10,6 +10,7 @@
 #include "ams_backend_openams.h"
 #include "ams_state.h"
 #include "batch_feed_reconcile.h"
+#include "board_identity.h"
 #include "screws_tilt_dialect.h"
 #if HELIX_HAS_IFS
 #include "ams_backend_ad5x_ifs.h"
@@ -731,7 +732,8 @@ void MoonrakerDiscoverySequence::continue_discovery_objects(uint64_t seq) {
                 // service_state the webcam decision cross-checks (#1351). A failed
                 // query is fatal for neither — webcam detection still runs, with an
                 // empty service_state that reads as "assume available".
-                const bool probe_local_cameras = helix::local_camera_probe_safe();
+                const bool probe_local_cameras =
+                    helix::board::current_info().local_camera_probe_safe;
                 client_.send_jsonrpc(
                     "machine.system_info", json::object(),
                     [this, probe_local_cameras](const json& sys_response) {

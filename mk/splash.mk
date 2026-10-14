@@ -90,6 +90,8 @@ SPLASH_EXTRA_OBJS := \
     $(BUILD_DIR)/splash/pending_startup_warnings.o \
     $(BUILD_DIR)/splash/log_redact.o \
     $(BUILD_DIR)/splash/platform_info.o \
+    $(BUILD_DIR)/splash/board_identity.o \
+    $(BUILD_DIR)/splash/platform_table.o \
     $(BUILD_DIR)/splash/prerender_size_class.o \
     $(BUILD_DIR)/splash/splash_asset_choice.o \
     $(BUILD_DIR)/splash/helix_lvgl_anomaly_stub.o
@@ -166,6 +168,16 @@ $(BUILD_DIR)/splash/ui_notification_stub.o: tools/ui_notification_stub.cpp $(LIB
 # default fit via the mod-layout probe on the unified MIPS build, so the probe
 # implementation is a hard link dependency here too. Zero deps beyond spdlog.
 $(BUILD_DIR)/splash/platform_info.o: src/system/platform_info.cpp $(ABI_STAMP) | $(BUILD_DIR)/splash
+	@echo "[CXX] $< (splash)"
+	$(Q)$(CXX) $(SPLASH_CXXFLAGS) $(DEPFLAGS) -c $< -o $@
+
+# platform_info.cpp answers board questions through board_identity, which keys on the
+# platform table, so both are link dependencies of every binary that links it.
+$(BUILD_DIR)/splash/board_identity.o: src/system/board_identity.cpp $(ABI_STAMP) | $(BUILD_DIR)/splash
+	@echo "[CXX] $< (splash)"
+	$(Q)$(CXX) $(SPLASH_CXXFLAGS) $(DEPFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/splash/platform_table.o: src/system/platform_table.cpp $(ABI_STAMP) | $(BUILD_DIR)/splash
 	@echo "[CXX] $< (splash)"
 	$(Q)$(CXX) $(SPLASH_CXXFLAGS) $(DEPFLAGS) -c $< -o $@
 
