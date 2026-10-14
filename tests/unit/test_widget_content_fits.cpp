@@ -130,6 +130,9 @@ const std::vector<Geometry> kShipping = {
     // `Track geometry:` lines. Adding it immediately surfaced two widgets that
     // had always clipped at this size and had simply never been measured.
     {"1080x2400", 1080, 2400,  1056, 2236, 10},
+
+    // The xxlarge rung's landscape panel: a 1080p screen, measured the same way.
+    {"1920x1080", 1920, 1080,  1720, 1056, 10},
 };
 // clang-format on
 
@@ -212,18 +215,6 @@ const std::vector<KnownClip> kKnownClipping = {
     {"nozzle_temps",     "272x480"},  {"nozzle_temps",     "480x400"},
     {"nozzle_temps",     "1024x600"},
 
-    // Measured against the LONGEST title in the database, which is what the
-    // sweep now pins — the two entries this used to hold were whatever the
-    // random rotation happened to draw. tip_container ends up taller than the
-    // tile on seven of the nine geometries, overflowing top and bottom
-    // equally (2px at 480x800, 34px at 1080x2400): the title wraps to more
-    // lines than the authored minimum height has room for. Only 480x320 and
-    // 800x480 hold it. The fix is a line clamp on the title label rather than
-    // a bigger minimum, which is why these are recorded rather than resized.
-    {"tips",             "272x480"},  {"tips",             "480x272"},
-    {"tips",             "480x400"},  {"tips",             "480x800"},
-    {"tips",             "1024x600"}, {"tips",             "1280x720"},
-    {"tips",             "1080x2400"},
 };
 // clang-format on
 
@@ -866,4 +857,45 @@ TEST_CASE_METHOD(ContentFitsFixture,
             CHECK(two.icon_h > one.icon_h);
         }
     }
+}
+
+TEST_CASE_METHOD(ContentFitsFixture,
+                 "the tips tile refuses a width whose title column breaks inside a word",
+                 "[content_fits][tips]") {
+    // The title ends in an ellipsis rather than overflowing, which the sweep
+    // accepts as declared truncation, so the minimum span is what keeps a
+    // title readable. At 1920x1080 the authored minimum leaves the column a
+    // few characters wide.
+    lv_display_t* disp = lv_display_get_default();
+    REQUIRE(disp != nullptr);
+    TestModeGuard test_mode_guard(get_runtime_config());
+    PanelWidgetManager::instance().init_widget_subjects();
+
+    const auto g = std::find_if(kShipping.begin(), kShipping.end(), [](const Geometry& x) {
+        return std::string_view(x.name) == "1920x1080";
+    });
+    REQUIRE(g != kShipping.end());
+    ScopedResolution res(disp, g->panel_w, g->panel_h);
+    theme_manager_refresh_layout_constants(disp);
+    helix::unregister_idle_xml_components();
+    const UiBreakpoint bp = breakpoint_for(std::min(g->panel_w, g->panel_h));
+    const GridDimensions dims = GridLayout::get_dimensions(bp, g->content_w, g->content_h);
+    const CellMetrics m =
+        grid_cell_metrics(g->content_w, g->content_h, dims.cols, dims.rows, g->gutter);
+
+    const auto& defs = get_all_widget_defs();
+    const auto def = std::find_if(defs.begin(), defs.end(), [](const PanelWidgetDef& d) {
+        return std::string_view(d.id) == "tips";
+    });
+    REQUIRE(def != defs.end());
+    auto probe = def->factory(def->id);
+    REQUIRE(probe);
+
+    const int h_px =
+        static_cast<int>(grid_track_extent(m.cell_h, m.gutter, def->effective_min_rowspan()));
+    const auto w_px = [&](int span) {
+        return static_cast<int>(grid_track_extent(m.cell_w, m.gutter, span));
+    };
+    CHECK_FALSE(probe->fits_at(w_px(def->effective_min_colspan()), h_px));
+    CHECK(probe->fits_at(w_px(dims.cols), h_px));
 }
