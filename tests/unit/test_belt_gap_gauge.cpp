@@ -9,6 +9,9 @@
 #include "../lvgl_test_fixture.h"
 #include "belt_tune_session.h"
 #include "helix-xml/src/xml/lv_xml.h"
+#include "theme_manager.h"
+
+#include <cstdint>
 
 #include "../catch_amalgamated.hpp"
 
@@ -77,4 +80,178 @@ TEST_CASE_METHOD(LVGLTestFixture, "belt gap gauge set() is child-free and layout
     lv_refr_now(nullptr);
     ui_belt_gap_gauge_set(nullptr, 1.0f, std::nullopt, 1.0f, 10.0f);
     CHECK(lv_obj_get_child_count(gauge) == 0);
+}
+
+namespace {
+
+struct Px {
+    uint8_t r = 0, g = 0, b = 0, a = 0;
+    bool operator==(const Px& o) const {
+        return r == o.r && g == o.g && b == o.b && a == o.a;
+    }
+};
+
+/// The gauge's own draw, snapshotted: pixels it never touches stay alpha 0.
+class GaugeShot {
+  public:
+    explicit GaugeShot(lv_obj_t* gauge) : snap_(lv_snapshot_take(gauge, LV_COLOR_FORMAT_ARGB8888)) {
+        REQUIRE(snap_ != nullptr);
+    }
+    ~GaugeShot() {
+        lv_draw_buf_destroy(snap_);
+    }
+    Px at(int x, int y) const {
+        const uint32_t stride = snap_->header.stride;
+        const uint8_t* p = snap_->data + static_cast<uint32_t>(y) * stride + x * 4;
+        return Px{p[2], p[1], p[0], p[3]};
+    }
+    bool untouched(int x, int y) const {
+        return at(x, y).a == 0;
+    }
+    int drawn() const {
+        int n = 0;
+        for (uint32_t y = 0; y < snap_->header.h; ++y) {
+            for (uint32_t x = 0; x < snap_->header.w; ++x) {
+                n += at(static_cast<int>(x), static_cast<int>(y)).a != 0 ? 1 : 0;
+            }
+        }
+        return n;
+    }
+
+  private:
+    lv_draw_buf_t* snap_;
+};
+
+Px color_px(const char* token) {
+    const lv_color_t c = theme_manager_get_color(token);
+    return Px{c.red, c.green, c.blue, 255};
+}
+
+} // namespace
+
+TEST_CASE_METHOD(LVGLTestFixture,
+                 "belt gap gauge draws the track, band and needles where the gap puts them",
+                 "[belt][gauge][render]") {
+    register_belt_gap_gauge_widget();
+    lv_obj_t* gauge =
+        static_cast<lv_obj_t*>(lv_xml_create(test_screen(), "belt_gap_gauge", nullptr));
+    REQUIRE(gauge != nullptr);
+
+    // 200x40: needles are 4 wide and 30 tall, the track 10 tall, centred at
+    // y=20 and running x=4..195. Range 10 Hz puts a 5 Hz gap 75% along, at
+    // x=147; -5 Hz at x=52; the 1 Hz tolerance band spans x=90..109.
+    lv_obj_set_size(gauge, 200, 40);
+    lv_obj_update_layout(gauge);
+
+    SECTION("track, band and filled needle") {
+        ui_belt_gap_gauge_set(gauge, 5.0f, std::nullopt, 1.0f, 10.0f);
+        const GaugeShot shot(gauge);
+
+        CHECK_FALSE(shot.untouched(30, 20));
+        CHECK(shot.untouched(2, 20));
+        CHECK(shot.untouched(197, 20));
+        CHECK_FALSE(shot.untouched(30, 15));
+        CHECK_FALSE(shot.untouched(30, 25));
+        CHECK(shot.untouched(30, 13));
+        CHECK(shot.untouched(30, 27));
+
+        // The band sits on the track, centred.
+        CHECK_FALSE(shot.at(89, 20) == shot.at(90, 20));
+        CHECK_FALSE(shot.at(109, 20) == shot.at(110, 20));
+        CHECK(shot.at(95, 20) == shot.at(104, 20));
+        CHECK(shot.at(90, 15) == shot.at(90, 25));
+        CHECK(shot.untouched(95, 13));
+
+        // A 5 Hz gap is past the warning band: opaque danger, 30 tall.
+        CHECK(shot.at(147, 6) == color_px("danger"));
+        CHECK(shot.at(147, 34) == color_px("danger"));
+        CHECK(shot.at(145, 20) == color_px("danger"));
+        CHECK(shot.at(149, 20) == color_px("danger"));
+        CHECK(shot.untouched(147, 3));
+        CHECK(shot.untouched(147, 37));
+        CHECK_FALSE(shot.at(143, 20).a == 255);
+        CHECK_FALSE(shot.at(151, 20).a == 255);
+        // No previous round: no hollow needle and no arrow.
+        CHECK_FALSE(shot.at(52, 5).a == 255);
+        CHECK_FALSE(shot.at(70, 20).a == 255);
+    }
+
+    SECTION("the needle takes its colour from the gap") {
+        ui_belt_gap_gauge_set(gauge, 2.0f, std::nullopt, 1.0f, 10.0f);
+        CHECK(GaugeShot(gauge).at(119, 6) == color_px("warning"));
+        ui_belt_gap_gauge_set(gauge, 0.5f, std::nullopt, 1.0f, 10.0f);
+        CHECK(GaugeShot(gauge).at(104, 6) == color_px("success"));
+    }
+
+    SECTION("the previous round is a hollow needle with an arrow to this round") {
+        ui_belt_gap_gauge_set(gauge, 5.0f, -5.0f, 1.0f, 10.0f);
+        const GaugeShot shot(gauge);
+
+        // Hollow: an opaque muted border around the needle's box.
+        CHECK(shot.at(50, 20) == color_px("text_muted"));
+        CHECK(shot.at(54, 20) == color_px("text_muted"));
+        CHECK(shot.at(52, 5) == color_px("text_muted"));
+        CHECK(shot.at(52, 35) == color_px("text_muted"));
+        CHECK(shot.untouched(52, 3));
+        CHECK(shot.at(147, 6) == color_px("danger"));
+
+        // The arrow runs between the needles, tip at x=143 on this round's.
+        CHECK(shot.at(70, 20).a >= 200);
+        CHECK(shot.at(130, 20).a >= 200);
+        CHECK_FALSE(shot.at(55, 20).a >= 200);
+        CHECK(shot.at(138, 20).a >= 200);
+        CHECK(shot.at(138, 21).a >= 200);
+        CHECK_FALSE(shot.at(138, 27).a >= 200);
+        CHECK_FALSE(shot.at(144, 20).a >= 200);
+        CHECK(shot.at(136, 18).a >= 200);
+        CHECK_FALSE(shot.at(142, 16).a >= 200);
+    }
+
+    SECTION("the arrow points back when the gap shrank") {
+        ui_belt_gap_gauge_set(gauge, -5.0f, 5.0f, 1.0f, 10.0f);
+        const GaugeShot shot(gauge);
+
+        // This round's needle is at x=52 now; the arrow's tip is at x=56.
+        CHECK(shot.at(52, 6) == color_px("danger"));
+        CHECK(shot.at(60, 20).a >= 200);
+        CHECK(shot.at(100, 20).a >= 200);
+        CHECK(shot.at(140, 20).a >= 200);
+        CHECK(shot.at(61, 22).a >= 200);
+        CHECK_FALSE(shot.at(61, 28).a >= 200);
+        CHECK_FALSE(shot.at(57, 17).a >= 200);
+        CHECK(shot.at(63, 17).a >= 200);
+        // The shaft stops at the head's base (x=64), not beyond the tip.
+        CHECK_FALSE(shot.at(55, 20).a >= 200);
+    }
+
+    SECTION("needles closer than an arrowhead get no arrow") {
+        // 3.72 Hz puts the previous needle at x=135, exactly 12 from x=147:
+        // the head (8) plus a needle width (4) leaves no room.
+        ui_belt_gap_gauge_set(gauge, 5.0f, 3.72f, 1.0f, 10.0f);
+        const GaugeShot shot(gauge);
+        CHECK(shot.at(135, 6) == color_px("text_muted"));
+        CHECK_FALSE(shot.at(141, 20).a >= 200);
+        CHECK_FALSE(shot.at(140, 20).a >= 200);
+    }
+}
+
+TEST_CASE_METHOD(LVGLTestFixture, "belt gap gauge draws nothing below its minimum size",
+                 "[belt][gauge][render]") {
+    register_belt_gap_gauge_widget();
+    lv_obj_t* gauge =
+        static_cast<lv_obj_t*>(lv_xml_create(test_screen(), "belt_gap_gauge", nullptr));
+    REQUIRE(gauge != nullptr);
+    ui_belt_gap_gauge_set(gauge, 2.0f, -2.0f, 1.0f, 10.0f);
+
+    const auto drawn_at = [&](int w, int h) {
+        lv_obj_set_size(gauge, w, h);
+        lv_obj_update_layout(gauge);
+        return GaugeShot(gauge).drawn();
+    };
+    CHECK(drawn_at(20, 40) > 0);
+    CHECK(drawn_at(200, 8) > 0);
+    CHECK(drawn_at(19, 40) == 0);
+    CHECK(drawn_at(200, 7) == 0);
+    CHECK(drawn_at(10, 40) == 0);
+    CHECK(drawn_at(200, 4) == 0);
 }
