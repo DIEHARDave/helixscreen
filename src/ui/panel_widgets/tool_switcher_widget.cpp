@@ -255,8 +255,7 @@ void register_tool_switcher_widget() {
 }
 
 ToolSwitcherWidget::ToolSwitcherWidget(PrinterState& printer_state)
-    : TiledPanelWidget("tool_switcher", TileSizing::Content{"", "", "", true}),
-      printer_state_(printer_state) {
+    : printer_state_(printer_state) {
     // A widget built outside the panel-subject phase still publishes into live
     // subjects. A no-op once they exist.
     tool_switcher_widget_init_subjects();
@@ -416,8 +415,6 @@ void ToolSwitcherWidget::on_size_changed(int /*colspan*/, int /*rowspan*/, int w
                                          int height_px) {
     current_width_px_ = width_px;
     current_height_px_ = height_px;
-
-    sizing_.measure_and_publish(width_px, height_px);
     publish();
 }
 

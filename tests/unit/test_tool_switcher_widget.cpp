@@ -84,6 +84,14 @@ TEST_CASE("ToolSwitcherWidget: supports scaling from one cell to 2x2 cells",
     REQUIRE(def->is_scalable());
 }
 
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "ToolSwitcherWidget: draws its own layout, so it sits outside the tile ladder",
+                 "[tool_switcher][panel_widget][1792]") {
+    ToolSwitcherWidget widget(state());
+    CHECK(widget.tile_sizing() == nullptr);
+    CHECK(widget.xml_attrs() == nullptr);
+}
+
 TEST_CASE("ToolSwitcherWidget: not enabled by default (requires multi-tool)",
           "[tool_switcher][panel_widget]") {
     const auto* def = find_widget_def("tool_switcher");
