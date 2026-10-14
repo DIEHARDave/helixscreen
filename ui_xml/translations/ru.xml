@@ -1977,6 +1977,7 @@
   <translation tag="No printer configured — check printer settings" ru="Принтер не настроен — проверьте настройки принтера"/>
   <translation tag="No printer connection" ru="Нет подключения к принтеру"/>
   <translation tag="No printers found" ru="Принтеры не найдены"/>
+  <translation tag="No prints this week" ru="Нет печатей за неделю"/>
   <translation tag="No prints yet" ru="Нет печатей"/>
   <translation tag="No profiles available" ru="Профили недоступны"/>
   <translation tag="No sensors detected" ru="Датчики не обнаружены"/>
@@ -3617,6 +3618,7 @@
   <translation tag="tall" ru="высотой"/>
   <translation tag="target {}%" ru="цель {}%"/>
   <translation tag="target {}°" ru="цель {}°"/>
+  <translation tag="this week" ru="за неделю"/>
   <translation tag="too slow" ru="слишком медленно"/>
   <translation tag="tool(s)" ru="инструмент(ы)"/>
   <translation tag="used" ru="использ."/>

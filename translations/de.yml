@@ -2194,6 +2194,7 @@ translations:
     prüfen
   No printer connection: Keine Druckerverbindung
   No printers found: Keine Drucker gefunden
+  No prints this week: Keine Drucke diese Woche
   No prints yet: Noch keine Drucke
   No profiles available: Keine Profile verfügbar
   No sensors detected: Keine Sensoren erkannt
@@ -4056,6 +4057,7 @@ translations:
   tall: hoch
   target {}%: 'Ziel {}%'
   target {}°: 'Ziel {}°'
+  this week: diese Woche
   too slow: zu langsam
   tool(s): Werkzeug(e)
   used: verbraucht

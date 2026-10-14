@@ -1977,6 +1977,7 @@
   <translation tag="No printer configured — check printer settings" it="Nessuna stampante configurata — controlla le impostazioni della stampante"/>
   <translation tag="No printer connection" it="Nessuna connessione alla stampante"/>
   <translation tag="No printers found" it="Nessuna stampante trovata"/>
+  <translation tag="No prints this week" it="Nessuna stampa questa settimana"/>
   <translation tag="No prints yet" it="Nessuna stampa"/>
   <translation tag="No profiles available" it="Nessun profilo disponibile"/>
   <translation tag="No sensors detected" it="Nessun sensore rilevato"/>
@@ -3617,6 +3618,7 @@
   <translation tag="tall" it="di altezza"/>
   <translation tag="target {}%" it="target {}%"/>
   <translation tag="target {}°" it="target {}°"/>
+  <translation tag="this week" it="questa settimana"/>
   <translation tag="too slow" it="troppo lento"/>
   <translation tag="tool(s)" it="utensile/i"/>
   <translation tag="used" it="usato"/>

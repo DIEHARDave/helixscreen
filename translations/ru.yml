@@ -2165,6 +2165,7 @@ translations:
     настройки принтера
   No printer connection: Нет подключения к принтеру
   No printers found: Принтеры не найдены
+  No prints this week: Нет печатей за неделю
   No prints yet: Нет печатей
   No profiles available: Профили недоступны
   No sensors detected: Датчики не обнаружены
@@ -4004,6 +4005,7 @@ translations:
   tall: высотой
   target {}%: 'цель {}%'
   target {}°: 'цель {}°'
+  this week: за неделю
   too slow: слишком медленно
   tool(s): инструмент(ы)
   used: использ.

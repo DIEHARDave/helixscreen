@@ -2200,6 +2200,7 @@ translations:
     les paramètres de l'imprimante
   No printer connection: Aucune connexion imprimante
   No printers found: Aucune imprimante trouvée
+  No prints this week: Aucune impression cette semaine
   No prints yet: Aucune impression
   No profiles available: Aucun profil disponible
   No sensors detected: Aucun capteur détecté
@@ -4081,6 +4082,7 @@ translations:
   tall: de haut
   target {}%: 'cible {}%'
   target {}°: 'cible {}°'
+  this week: cette semaine
   too slow: trop lent
   tool(s): outil(s)
   used: utilisé

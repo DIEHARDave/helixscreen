@@ -2187,6 +2187,7 @@ translations:
     verifique as configurações da impressora
   No printer connection: Sem conexão com a impressora
   No printers found: Nenhuma impressora encontrada
+  No prints this week: Sem impressões esta semana
   No prints yet: Sem impressões ainda
   No profiles available: Nenhum perfil disponível
   No sensors detected: Nenhum sensor detectado
@@ -4050,6 +4051,7 @@ translations:
   tall: de altura
   target {}%: 'alvo {}%'
   target {}°: 'alvo {}°'
+  this week: esta semana
   too slow: lento demais
   tool(s): ferramenta(s)
   used: usado

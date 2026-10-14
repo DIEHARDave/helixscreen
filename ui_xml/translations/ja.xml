@@ -1977,6 +1977,7 @@
   <translation tag="No printer configured — check printer settings" ja="プリンターが設定されていません — プリンター設定を確認してください"/>
   <translation tag="No printer connection" ja="プリンター未接続"/>
   <translation tag="No printers found" ja="プリンターが見つかりません"/>
+  <translation tag="No prints this week" ja="今週の印刷なし"/>
   <translation tag="No prints yet" ja="印刷履歴なし"/>
   <translation tag="No profiles available" ja="利用可能なプロファイルがありません"/>
   <translation tag="No sensors detected" ja="センサーが検出されませんでした"/>
@@ -3617,6 +3618,7 @@
   <translation tag="tall" ja="高さ"/>
   <translation tag="target {}%" ja="目標 {}%"/>
   <translation tag="target {}°" ja="目標 {}°"/>
+  <translation tag="this week" ja="今週"/>
   <translation tag="too slow" ja="遅すぎ"/>
   <translation tag="tool(s)" ja="ツール"/>
   <translation tag="used" ja="使用"/>

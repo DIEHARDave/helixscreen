@@ -2185,6 +2185,7 @@ translations:
     los ajustes de la impresora
   No printer connection: Sin conexión a impresora
   No printers found: No se encontraron impresoras
+  No prints this week: Sin impresiones esta semana
   No prints yet: Sin impresiones aún
   No profiles available: No hay perfiles disponibles
   No sensors detected: No se detectaron sensores
@@ -4046,6 +4047,7 @@ translations:
   tall: de alto
   target {}%: 'objetivo {}%'
   target {}°: 'objetivo {}°'
+  this week: esta semana
   too slow: demasiado lento
   tool(s): herramienta(s)
   used: usado

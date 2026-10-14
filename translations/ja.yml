@@ -2049,6 +2049,7 @@ translations:
   No printer configured — check printer settings: プリンターが設定されていません — プリンター設定を確認してください
   No printer connection: プリンター未接続
   No printers found: プリンターが見つかりません
+  No prints this week: 今週の印刷なし
   No prints yet: 印刷履歴なし
   No profiles available: 利用可能なプロファイルがありません
   No sensors detected: センサーが検出されませんでした
@@ -3789,6 +3790,7 @@ translations:
   tall: 高さ
   target {}%: '目標 {}%'
   target {}°: '目標 {}°'
+  this week: 今週
   too slow: 遅すぎ
   tool(s): ツール
   used: 使用

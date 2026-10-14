@@ -2122,6 +2122,7 @@ translations:
     settings
   No printer connection: No printer connection
   No printers found: No printers found
+  No prints this week: No prints this week
   No prints yet: No prints yet
   No profiles available: No profiles available
   No sensors detected: No sensors detected
@@ -3927,6 +3928,7 @@ translations:
   tall: tall
   target {}%: target {}%
   target {}°: target {}°
+  this week: this week
   too slow: too slow
   tool(s): tool(s)
   used: used

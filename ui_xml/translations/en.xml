@@ -1977,6 +1977,7 @@
   <translation tag="No printer configured — check printer settings" en="No printer configured — check printer settings"/>
   <translation tag="No printer connection" en="No printer connection"/>
   <translation tag="No printers found" en="No printers found"/>
+  <translation tag="No prints this week" en="No prints this week"/>
   <translation tag="No prints yet" en="No prints yet"/>
   <translation tag="No profiles available" en="No profiles available"/>
   <translation tag="No sensors detected" en="No sensors detected"/>
@@ -3617,6 +3618,7 @@
   <translation tag="tall" en="tall"/>
   <translation tag="target {}%" en="target {}%"/>
   <translation tag="target {}°" en="target {}°"/>
+  <translation tag="this week" en="this week"/>
   <translation tag="too slow" en="too slow"/>
   <translation tag="tool(s)" en="tool(s)"/>
   <translation tag="used" en="used"/>

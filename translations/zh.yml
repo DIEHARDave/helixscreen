@@ -2042,6 +2042,7 @@ translations:
   No printer configured — check printer settings: 未配置打印机 — 请检查打印机设置
   No printer connection: 无打印机连接
   No printers found: 未找到打印机
+  No prints this week: 本周暂无打印
   No prints yet: 暂无打印记录
   No profiles available: 无可用配置
   No sensors detected: 未检测到传感器
@@ -3779,6 +3780,7 @@ translations:
   tall: 高
   target {}%: '目标 {}%'
   target {}°: '目标 {}°'
+  this week: 本周
   too slow: 太慢
   tool(s): 工具
   used: 已使用
