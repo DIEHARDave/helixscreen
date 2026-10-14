@@ -536,7 +536,7 @@
   <translation tag="Check for Updates" ru="Проверить обновления"/>
   <translation tag="Check slot" ru="Проверить слот"/>
   <translation tag="Check slot failed" ru="Ошибка проверки слота"/>
-  <translation tag="Check slots" ru="Проверить слоты"/>
+  <translation tag="Check slots" ru="Проверить"/>
   <translation tag="Check slots failed" ru="Ошибка проверки слотов"/>
   <translation tag="Check that only one filament path is active" ru="Убедитесь, что активен только один путь филамента"/>
   <translation tag="Check that the cutter mechanism is properly installed" ru="Проверьте правильность установки режущего механизма"/>

@@ -63,7 +63,35 @@ struct UiButtonData {
 
     // long_mode was given: the label is bounded so it can ellipsize or wrap.
     bool label_bounded{false};
+    // A bounded label beside the icon is one line of whatever font it ends up
+    // with; label_line_cb keeps that height in step as styles land.
+    bool label_beside{false};
+    bool label_line_cb{false};
 };
+
+/// One line of the label's current font, the height a bounded label beside
+/// its icon keeps.
+void fit_label_line(lv_obj_t* label) {
+    const lv_font_t* font = lv_obj_get_style_text_font(label, LV_PART_MAIN);
+    if (!font) {
+        return;
+    }
+    const int32_t line = lv_font_get_line_height(font);
+    if (lv_obj_get_style_height(label, LV_PART_MAIN) != line) {
+        lv_obj_set_height(label, line);
+    }
+}
+
+/// The label's font is inherited, so a style added to the button later (a
+/// cell style setting text_font) changes it after the label was bounded.
+void label_line_style_cb(lv_event_t* e) {
+    auto* label = static_cast<lv_obj_t*>(lv_event_get_target(e));
+    lv_obj_t* btn = lv_obj_get_parent(label);
+    auto* data = btn ? static_cast<UiButtonData*>(lv_obj_get_user_data(btn)) : nullptr;
+    if (data && data->magic == UiButtonData::MAGIC && data->label == label && data->label_beside) {
+        fit_label_line(label);
+    }
+}
 
 /// Bound the label of a long_mode button. Stacked or text-only, it spans the
 /// button. Beside an icon it takes what the icon leaves (a flex grow item, whose
@@ -71,11 +99,16 @@ struct UiButtonData {
 /// that ellipsizes inside the button instead of pushing past its edge: a
 /// label's dots mode only cuts text that overruns its height.
 void apply_label_bound(UiButtonData* data, bool beside_icon) {
+    data->label_beside = beside_icon;
     lv_obj_set_flex_grow(data->label, beside_icon ? 1 : 0);
     lv_obj_set_width(data->label, lv_pct(100));
     if (beside_icon) {
-        const lv_font_t* font = lv_obj_get_style_text_font(data->label, LV_PART_MAIN);
-        lv_obj_set_height(data->label, font ? lv_font_get_line_height(font) : LV_SIZE_CONTENT);
+        if (!data->label_line_cb) {
+            // DECLARATIVE_OK: the widget's own label tracks its inherited font
+            lv_obj_add_event_cb(data->label, label_line_style_cb, LV_EVENT_STYLE_CHANGED, nullptr);
+            data->label_line_cb = true;
+        }
+        fit_label_line(data->label);
     } else {
         lv_obj_set_height(data->label, LV_SIZE_CONTENT);
     }

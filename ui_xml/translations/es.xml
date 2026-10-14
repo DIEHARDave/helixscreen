@@ -536,7 +536,7 @@
   <translation tag="Check for Updates" es="Buscar actualizaciones"/>
   <translation tag="Check slot" es="Comprobar ranura"/>
   <translation tag="Check slot failed" es="Error al comprobar ranura"/>
-  <translation tag="Check slots" es="Comprobar ranuras"/>
+  <translation tag="Check slots" es="Comprobar"/>
   <translation tag="Check slots failed" es="Error al comprobar ranuras"/>
   <translation tag="Check that only one filament path is active" es="Compruebe que solo haya una ruta de filamento activa"/>
   <translation tag="Check that the cutter mechanism is properly installed" es="Compruebe que el mecanismo de corte esté correctamente instalado"/>

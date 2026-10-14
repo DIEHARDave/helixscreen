@@ -536,7 +536,7 @@
   <translation tag="Check for Updates" ja="更新を確認"/>
   <translation tag="Check slot" ja="スロットを確認"/>
   <translation tag="Check slot failed" ja="スロットの確認に失敗しました"/>
-  <translation tag="Check slots" ja="スロットを確認"/>
+  <translation tag="Check slots" ja="スロット確認"/>
   <translation tag="Check slots failed" ja="スロットの確認に失敗しました"/>
   <translation tag="Check that only one filament path is active" ja="フィラメント経路が 1 つだけ有効か確認してください"/>
   <translation tag="Check that the cutter mechanism is properly installed" ja="カッター機構が正しく取り付けられているか確認してください"/>

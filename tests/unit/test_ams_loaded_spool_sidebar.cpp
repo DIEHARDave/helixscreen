@@ -29,6 +29,7 @@
 #include <cstring>
 #include <memory>
 #include <string>
+#include <utility>
 
 #include "../catch_amalgamated.hpp"
 
@@ -70,6 +71,23 @@ class ScopedLanguage {
     ScopedLanguage(const ScopedLanguage&) = delete;
     ScopedLanguage& operator=(const ScopedLanguage&) = delete;
 };
+
+/// Labels whose standard term outruns a half-width cell at 800x480, where the
+/// shared catalog term is used app-wide and no shorter standard word exists.
+/// They ellipsize until the wording is decided; every other label must fit.
+bool awaiting_short_term(const char* lang, const std::string& key) {
+    static const std::pair<const char*, const char*> kPending[] = {
+        {"de", "Settings"}, // Einstellungen
+        {"pt", "Settings"}, // Configurações
+        {"de", "Reset"},    // Zurücksetzen
+    };
+    for (const auto& [l, k] : kPending) {
+        if (std::strcmp(lang, l) == 0 && key == k) {
+            return true;
+        }
+    }
+    return false;
+}
 
 /// The button's own text label: the child that is not its icon.
 lv_obj_t* button_label(lv_obj_t* btn) {
@@ -187,7 +205,7 @@ TEST_CASE_METHOD(XMLTestFixture,
     ScopedLanguage restore_lang;
     register_ams_widgets_and_xml_once();
 
-    for (const char* lang : {"en", "de", "fr", "es", "pt", "it", "ru"}) {
+    for (const char* lang : {"en", "de", "fr", "es", "pt", "it", "ru", "ja", "zh"}) {
         CAPTURE(lang);
         if (std::strcmp(lang, "en") == 0) {
             lv_translation_set_language(helix::ui::kIdentityLocale);
@@ -196,58 +214,73 @@ TEST_CASE_METHOD(XMLTestFixture,
             lv_translation_set_language(lang);
         }
 
-        auto mock = std::make_unique<AmsBackendMock>(4);
-        REQUIRE(mock->start().success());
-        AmsState::instance().set_backend(std::move(mock));
-        AmsState::instance().init_subjects(true);
-        AmsState::instance().sync_from_backend();
+        // Happy Hare's mock shows Home and Check slots; AFC's shows Reset.
+        for (const bool afc : {false, true}) {
+            CAPTURE(afc);
+            auto mock = std::make_unique<AmsBackendMock>(4);
+            mock->set_afc_mode(afc);
+            REQUIRE(mock->start().success());
+            AmsState::instance().set_backend(std::move(mock));
+            AmsState::instance().init_subjects(true);
+            AmsState::instance().sync_from_backend();
 
-        AmsPanel panel(state(), &api());
-        panel.init_subjects();
-        lv_obj_t* panel_obj =
-            static_cast<lv_obj_t*>(lv_xml_create(test_screen(), "ams_panel", nullptr));
-        REQUIRE(panel_obj != nullptr);
-        panel.setup(panel_obj, test_screen());
-        panel.on_activate();
-        process_lvgl(20);
-        lv_obj_update_layout(test_screen());
+            AmsPanel panel(state(), &api());
+            panel.init_subjects();
+            lv_obj_t* panel_obj =
+                static_cast<lv_obj_t*>(lv_xml_create(test_screen(), "ams_panel", nullptr));
+            REQUIRE(panel_obj != nullptr);
+            panel.setup(panel_obj, test_screen());
+            panel.on_activate();
+            process_lvgl(20);
+            lv_obj_update_layout(test_screen());
 
-        int checked = 0;
-        for (const char* name : {"btn_unload", "btn_batch_unload", "btn_batch_load", "btn_reset",
-                                 "btn_check_gates", "btn_settings"}) {
-            CAPTURE(name);
-            lv_obj_t* btn = lv_obj_find_by_name(panel_obj, name);
-            REQUIRE(btn != nullptr);
-            if (lv_obj_has_flag(btn, LV_OBJ_FLAG_HIDDEN)) {
-                continue;
-            }
-            lv_obj_t* label = button_label(btn);
-            REQUIRE(label != nullptr);
-            lv_area_t inner;
-            lv_obj_get_content_coords(btn, &inner);
-            lv_area_t text;
-            lv_obj_get_coords(label, &text);
-            CHECK(text.x1 >= inner.x1);
-            CHECK(text.x2 <= inner.x2);
-            CHECK(text.y1 >= inner.y1);
-            CHECK(text.y2 <= inner.y2);
-            if (std::strcmp(lang, "en") == 0) {
-                // English fits whole: nothing is ellipsized.
+            int checked = 0;
+            const std::string reset_key = AmsState::instance().get_backend()->reset_button_label();
+            const std::pair<const char*, std::string> buttons[] = {
+                {"btn_unload", "Unload"},           {"btn_batch_unload", "Unload..."},
+                {"btn_batch_load", "Load..."},      {"btn_reset", reset_key},
+                {"btn_check_gates", "Check slots"}, {"btn_settings", "Settings"},
+            };
+            for (const auto& [name, key] : buttons) {
+                CAPTURE(name);
+                lv_obj_t* btn = lv_obj_find_by_name(panel_obj, name);
+                REQUIRE(btn != nullptr);
+                if (lv_obj_has_flag(btn, LV_OBJ_FLAG_HIDDEN)) {
+                    continue;
+                }
+                lv_obj_t* label = button_label(btn);
+                REQUIRE(label != nullptr);
+                lv_area_t inner;
+                lv_obj_get_content_coords(btn, &inner);
+                lv_area_t text;
+                lv_obj_get_coords(label, &text);
+                CHECK(text.x1 >= inner.x1);
+                CHECK(text.x2 <= inner.x2);
+                CHECK(text.y1 >= inner.y1);
+                CHECK(text.y2 <= inner.y2);
+                // Whole, in every language: the label shows its full translation (a
+                // dots label rewrites its own text), and that text fits its width.
+                const std::string want = lv_tr(key.c_str());
+                CAPTURE(want);
+                if (awaiting_short_term(lang, key)) {
+                    ++checked;
+                    continue;
+                }
+                CHECK(std::string(lv_label_get_text(label)) == want);
                 const lv_font_t* font = lv_obj_get_style_text_font(label, LV_PART_MAIN);
                 lv_point_t natural;
-                lv_text_get_size(&natural, lv_label_get_text(label), font, 0, 0, LV_COORD_MAX,
+                lv_text_get_size(&natural, want.c_str(), font, 0, 0, LV_COORD_MAX,
                                  LV_TEXT_FLAG_NONE);
                 CHECK(natural.x <= lv_area_get_width(&text));
+                ++checked;
             }
-            ++checked;
-        }
-        // A Happy Hare-style mock shows Unload, Home/Reset, Check slots and Settings.
-        CHECK(checked >= 3);
+            CHECK(checked >= 3);
 
-        panel.on_deactivate(DeactivateReason::NavigateAway);
-        panel.clear_panel_reference();
-        lv_obj_delete(panel_obj);
-        process_lvgl(10);
-        AmsState::instance().set_backend(nullptr);
+            panel.on_deactivate(DeactivateReason::NavigateAway);
+            panel.clear_panel_reference();
+            lv_obj_delete(panel_obj);
+            process_lvgl(10);
+            AmsState::instance().set_backend(nullptr);
+        }
     }
 }

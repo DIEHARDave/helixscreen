@@ -70,6 +70,7 @@
          block; stacked under a gauge they centre on it. -->
     <style name="reading_center" flex_cross_place="center"/>
     <style name="reading_start" flex_cross_place="start"/>
+    <style name="reading_value" text_font="#ams_tile_value_font"/>
   </styles>
   <view name="ams_loaded_card"
         extends="ui_card" width="100%" height="content" style_radius="#border_radius" style_pad_all="#space_xs"
@@ -144,7 +145,9 @@
                 scrollable="false">
           <bind_style_if name="reading_center" cond="ams_loaded_tiles eq 0"/>
           <bind_style_if name="reading_start" cond="ams_loaded_tiles"/>
-          <text_tiny name="clog_value_text" bind_text="clog_meter_center_text" style_text_align="center"/>
+          <text_tiny name="clog_value_text" bind_text="clog_meter_center_text" style_text_align="center">
+            <bind_style_if name="reading_value" cond="ams_loaded_tiles"/>
+          </text_tiny>
           <text_tiny name="clog_caption" text="Clog" style_text_color="#text_muted">
             <bind_flag_if cond="ui_breakpoint lt 3" flag="hidden"/>
           </text_tiny>
@@ -173,6 +176,7 @@
           <bind_style_if name="reading_start" cond="ams_loaded_tiles"/>
           <text_tiny name="buffer_mini_value"
                      width="content" bind_text="buffer_short_text" style_text_align="center" long_mode="wrap">
+            <bind_style_if name="reading_value" cond="ams_loaded_tiles"/>
             <bind_style_if_eq name="styles.buffer_ok" subject="buffer_status" ref_value="0"/>
             <bind_style_if_eq name="styles.buffer_warning" subject="buffer_status" ref_value="1"/>
             <bind_style_if_eq name="styles.buffer_danger" subject="buffer_status" ref_value="2"/>

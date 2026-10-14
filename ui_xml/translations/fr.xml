@@ -536,7 +536,7 @@
   <translation tag="Check for Updates" fr="Vérifier les mises à jour"/>
   <translation tag="Check slot" fr="Vérifier le slot"/>
   <translation tag="Check slot failed" fr="Échec de la vérification du slot"/>
-  <translation tag="Check slots" fr="Vérifier les slots"/>
+  <translation tag="Check slots" fr="Vérifier"/>
   <translation tag="Check slots failed" fr="Échec de la vérification des slots"/>
   <translation tag="Check that only one filament path is active" fr="Vérifiez qu&apos;un seul chemin de filament est actif"/>
   <translation tag="Check that the cutter mechanism is properly installed" fr="Vérifiez que le mécanisme de coupe est correctement installé"/>
