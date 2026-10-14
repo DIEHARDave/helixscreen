@@ -1186,6 +1186,9 @@ TEST_CASE_METHOD(PanelWidgetConfigFixture,
     wc.load();
     CHECK(wc.is_unedited_default());
     CHECK(wc.has_pending_anchors());
+    // Nothing is written before READY: the old array is still what is on disk.
+    CHECK_FALSE(get_printer_data()["panel_widgets"]["home"].is_object());
+    wc.save();
     const json saved = get_printer_data()["panel_widgets"]["home"];
     REQUIRE(saved.is_object());
     CHECK(saved.contains("default"));

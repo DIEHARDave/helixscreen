@@ -394,11 +394,13 @@ void PanelWidgetConfig::load() {
             migrate_stuck_ams_filament_swap();
         }
         if (defaulted) {
+            // Left pending and unsaved: the old array stays on disk until the
+            // READY resolve writes the default that replaces it.
             stamp_default("");
+        } else {
+            // Migrate to new format on disk
+            save();
         }
-
-        // Migrate to new format on disk
-        save();
         loaded_ = true;
         return;
     }
