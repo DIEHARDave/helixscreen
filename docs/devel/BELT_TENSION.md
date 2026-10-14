@@ -398,6 +398,13 @@ drops its duration when the button row holds three buttons or the layout is comp
 Re-measure and Next zone drop theirs on compact layouts. The wide layout and the compact one are the same subjects
 bound to different widgets, so `refresh_tune` feeds both.
 
+Portrait adds two rules of its own, because there width is scarce and height spare. The
+button rows wrap: the turn stepper, Tune belts and Confirm each take a line, so the other
+buttons keep room for their labels in every locale. The charts grow into the spare height
+only up to `belt_chart_max_h` (about the content width of each tier), so a tall screen
+leaves space under the controls rather than drawing a chart taller than it is wide. START
+stacks the sketch over the text instead of setting them side by side.
+
 ### Ultrawide layout
 
 On ultrawide screens (`ui_is_ultrawide eq 1`, wider than 2.5:1) the compact conditions give
