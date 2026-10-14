@@ -6,6 +6,8 @@
 #include "resonance_console.h"
 #include "shaper_csv_parser.h"
 
+#include <algorithm>
+#include <limits>
 #include <string>
 #include <vector>
 
@@ -106,5 +108,107 @@ TEST_CASE_METHOD(BeltMockFixture, "mock failure modes", "[belt][mock]") {
         mock.set_belt_failure(BeltMockFailure::ERROR);
         CHECK_FALSE(run("TEST_RESONANCES AXIS=1,-1 OUTPUT=resonances NAME=helix_belt_a"));
         CHECK(lines.back().rfind("!! ", 0) == 0);
+    }
+}
+
+namespace {
+constexpr const char* WINDOW_B =
+    "TEST_RESONANCES AXIS=1,1 FREQ_START=88 FREQ_END=120 OUTPUT=resonances NAME=helix_belt_b";
+constexpr const char* WINDOW_A =
+    "TEST_RESONANCES AXIS=1,-1 FREQ_START=88 FREQ_END=120 OUTPUT=resonances NAME=helix_belt_a";
+
+float csv_peak(const std::string& path) {
+    auto d = parse_resonance_csv(path);
+    REQUIRE(d.error == ResonanceCsvError::NONE);
+    return find_peak_frequency(d.curve, 20.0f, d.curve.back().first).frequency;
+}
+} // namespace
+
+TEST_CASE_METHOD(BeltMockFixture, "a windowed mock sweep emits lines only inside the window",
+                 "[belt][mock]") {
+    auto path = run(WINDOW_B);
+    REQUIRE(path);
+    CHECK(lines.front() == "Testing frequency 88 Hz");
+    CHECK(lines[lines.size() - 2] == "Testing frequency 120 Hz");
+    // The CSV still spans the configured range, as Klipper's does.
+    CHECK(parse_resonance_csv(*path).curve.back().first > 130.0f);
+}
+
+TEST_CASE_METHOD(BeltMockFixture,
+                 "the tune script moves the scripted path's peak per windowed sweep",
+                 "[belt][mock]") {
+    mock.set_belt_tune_script('B', {102.1f, 107.6f, 109.8f});
+    for (float expected : {102.1f, 107.6f, 109.8f}) {
+        auto path = run(WINDOW_B);
+        REQUIRE(path);
+        CHECK(csv_peak(*path) == Catch::Approx(expected).margin(0.8f));
+    }
+    // Exhausted: the last value holds.
+    auto path = run(WINDOW_B);
+    REQUIRE(path);
+    CHECK(csv_peak(*path) == Catch::Approx(109.8f).margin(0.8f));
+
+    auto a = run(WINDOW_A);
+    REQUIRE(a);
+    CHECK(csv_peak(*a) == Catch::Approx(110.0f).margin(0.8f));
+}
+
+TEST_CASE_METHOD(BeltMockFixture, "full sweeps keep the re-measure walk when a script is set",
+                 "[belt][mock]") {
+    mock.set_belt_peaks_hz(110.0f, 98.0f);
+    mock.set_belt_tune_script('B', {102.0f});
+    run("TEST_RESONANCES AXIS=1,-1 OUTPUT=resonances NAME=helix_belt_a");
+    run("TEST_RESONANCES AXIS=1,-1 OUTPUT=resonances NAME=helix_belt_a");
+    CHECK(mock.belt_peak_hz('A') == Catch::Approx(106.0f));
+}
+
+TEST_CASE_METHOD(BeltMockFixture, "a malformed script is ignored item by item", "[belt][mock]") {
+    mock.apply_belt_tune_script("B:102,abc,,109");
+    auto first = run(WINDOW_B);
+    REQUIRE(first);
+    CHECK(csv_peak(*first) == Catch::Approx(102.0f).margin(0.8f));
+    auto second = run(WINDOW_B);
+    REQUIRE(second);
+    CHECK(csv_peak(*second) == Catch::Approx(109.0f).margin(0.8f));
+
+    // A letter other than A/B drops the whole spec; the paths keep their peaks.
+    mock.apply_belt_tune_script("Q:50,60");
+    auto third = run(WINDOW_B);
+    REQUIRE(third);
+    CHECK(csv_peak(*third) == Catch::Approx(109.0f).margin(0.8f));
+}
+
+TEST_CASE_METHOD(BeltMockFixture, "a flat script item writes a curve with no peak",
+                 "[belt][mock]") {
+    auto in_window_flatness = [](const std::string& path) {
+        auto d = parse_resonance_csv(path);
+        REQUIRE(d.error == ResonanceCsvError::NONE);
+        float lo = 1e30f, hi = 0.0f;
+        for (const auto& [f, v] : d.curve) {
+            if (f >= 88.0f && f <= 120.0f) {
+                lo = std::min(lo, v);
+                hi = std::max(hi, v);
+            }
+        }
+        return hi / lo;
+    };
+
+    SECTION("env-string form") {
+        mock.apply_belt_tune_script("B:flat");
+        auto path = run(WINDOW_B);
+        REQUIRE(path);
+        CHECK(in_window_flatness(*path) < 1.25f);
+    }
+    SECTION("setter form with NaN") {
+        mock.set_belt_tune_script('B', {std::numeric_limits<float>::quiet_NaN()});
+        auto path = run(WINDOW_B);
+        REQUIRE(path);
+        CHECK(in_window_flatness(*path) < 1.25f);
+    }
+    SECTION("a scripted peak is not flat") {
+        mock.apply_belt_tune_script("B:104");
+        auto path = run(WINDOW_B);
+        REQUIRE(path);
+        CHECK(in_window_flatness(*path) > 2.0f);
     }
 }

@@ -1357,6 +1357,24 @@ Set belt path B's simulated resonance peak (Hz), the `AXIS=1,1` diagonal. Read o
 HELIX_MOCK_BELT_A_HZ=115 HELIX_MOCK_BELT_B_HZ=95 ./build/bin/helix-screen --test --sim-speed 6 -vv
 ```
 
+### `HELIX_MOCK_BELT_TUNE_SCRIPT`
+
+Script one belt path's peak across the guided tuning loop. The loop sweeps a narrowed band (`TEST_RESONANCES ... FREQ_START= FREQ_END=`), and each such windowed sweep of the named path plays the next value in the list; the last value holds once the list runs out. Windowed sweeps never apply the re-measure walk described under `HELIX_MOCK_BELT_A_HZ`; full sweeps keep it. The CSV always spans the configured range, as Klipper's does. Read once at mock construction. An empty or non-numeric item is skipped with a warning, and a prefix other than `A:` or `B:` drops the whole value.
+
+| Property | Value |
+|----------|-------|
+| **Values** | `<A\|B>:<hz>,<hz>,...`; the item `flat` writes a featureless curve (noise floor, no peak) for that sweep, which reaches the no-peak round |
+| **Default** | unset — windowed sweeps use the path's current peak |
+| **File** | `src/api/moonraker_client_mock.cpp` (`apply_belt_tune_script`, `dispatch_test_resonances_response`) |
+
+```bash
+# B tightens toward A (110 Hz) over three windowed sweeps
+HELIX_MOCK_BELT_TUNE_SCRIPT="B:102.1,107.6,109.8" ./build/bin/helix-screen --test --sim-speed 6 -vv
+
+# B's first windowed sweep finds no peak
+HELIX_MOCK_BELT_TUNE_SCRIPT="B:flat,104" ./build/bin/helix-screen --test --sim-speed 6 -vv
+```
+
 ### `HELIX_MOCK_BELT_FAIL`
 
 Make the mock's next `TEST_RESONANCES` run fail the way real hardware does, so the belt-tension UI's error paths are reachable without a printer. Read once at mock construction.

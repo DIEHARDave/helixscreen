@@ -758,6 +758,16 @@ class MoonrakerClientMock : public helix::MoonrakerClient {
     /// toward the other path's, so the defaults start with a visible delta.
     void set_belt_peaks_hz(float a_hz, float b_hz);
 
+    /// Script one path's peak across successive WINDOWED sweeps (FREQ_START/
+    /// FREQ_END given); the last entry holds once the list runs out. A NaN
+    /// entry writes a featureless curve (floor plus noise, no peak). Full
+    /// sweeps ignore the script and keep the re-measure walk.
+    void set_belt_tune_script(char path_letter, std::vector<float> peaks_hz);
+
+    /// Parse and apply a `<A|B>:<hz|flat>,...` script (HELIX_MOCK_BELT_TUNE_SCRIPT).
+    /// Bad items are skipped with a warning; a bad path letter drops the spec.
+    void apply_belt_tune_script(const std::string& spec);
+
     /// Switch the next TEST_RESONANCES to a failure mode (NONE = normal).
     void set_belt_failure(BeltMockFailure f) {
         belt_failure_ = f;
@@ -2178,6 +2188,10 @@ class MoonrakerClientMock : public helix::MoonrakerClient {
     /// Measurements taken per path; every one after the first walks that
     /// path's peak toward the other's, so repeated tuning converges.
     int belt_measure_count_[2]{0, 0};
+    /// Per-path scripted peaks for windowed sweeps (NaN = flat) and the next
+    /// entry to play.
+    std::vector<float> belt_script_[2];
+    size_t belt_script_pos_[2]{0, 0};
     BeltMockFailure belt_failure_{BeltMockFailure::NONE};
     /// 0 = derive the line interval from hz_per_sec and the sim speed.
     uint32_t belt_line_interval_ms_{0};
