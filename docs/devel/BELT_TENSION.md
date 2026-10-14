@@ -51,6 +51,9 @@ Z belts are deliberately unsupported; see the header comment on
 |------|------|
 | `src/ui/ui_panel_belt_tension.cpp`, `include/ui_panel_belt_tension.h`, `ui_xml/panel_belt_tension.xml` | The panel: four view states (START, RUNNING, RESULTS, ERROR), subjects, gate wiring, run queue, re-test and ghost bookkeeping |
 | `src/ui/ui_belt_path_sketch.cpp` | The START-screen sketch widget drawing the two diagonals |
+| `src/calibration/belt_tune_session.cpp`, `include/belt_tune_session.h` | `BeltTuneSession`: the tuning loop's pure logic (zone choice, peak refinement, advice, round outcomes, rate learning) and the `belt_tune` thresholds |
+| `src/ui/ui_belt_gap_gauge.cpp`, `include/ui_belt_gap_gauge.h` | The `<belt_gap_gauge>` widget and its pure helpers `belt_gap_gauge_x` / `belt_gap_severity` |
+| `src/printer/printer_detector.cpp#get_belt_tensioner` | The `belt_tensioner` printer-database field as a `BeltTensionerKind` |
 | `src/calibration/belt_tension_calibrator.cpp` | Measures one path per call: home if needed, sweep, cancel, `emergency_abort()` |
 | `src/calibration/belt_tension_types.cpp` | `compare_belt_paths` (band similarity, paired peaks) with `band_similarity` / `detect_belt_peaks` / `pair_belt_peaks` / `verdict_for_similarity` |
 | `src/calibration/resonance_console.cpp` | `[resonance_tester]` config query and console-line parsing shared with input shaper |
@@ -206,6 +209,201 @@ correlates only the swept band.
   are hollow rings. Both curves (and the re-test ghosts) are trimmed to the sweep band and
   scaled by the tallest in-band point on screen, so the y axis reads 0-100%.
 
+## Tuning loop
+
+The RESULTS screen offers **Tune belts** (**Fine-tune** when the verdict is already MATCHED). The button opens the TUNING view
+(`BeltTensionPanel::handle_tune_clicked`), which walks the user through adjusting one belt at
+a time and re-measuring only the part of the spectrum that moves. The logic is
+`BeltTuneSession` (`include/belt_tune_session.h`), which is pure (no LVGL, no I/O): the panel
+feeds it the round-0 comparison and each round's two curves and renders what it says.
+
+A higher peak means a tighter belt, and clockwise tightens. The session's gap is always
+`adjusted - reference` within one round, so drift between rounds cancels; negative means the
+adjusted belt is looser. The advice follows from the gap's sign: a negative gap says tighten
+the adjusted path, a positive one loosen it.
+
+### Round flow
+
+```
+TunePhase::ADJUST     user turns the tensioner (SCREW: sets the amount on the stepper)
+  | Re-measure         handle_tune_measure_clicked: gate re-check, record_turns(), start_tune_round()
+  v
+TunePhase::SWEEPING   begin_run({A, B}, window): TEST_RESONANCES ... FREQ_START=<lo> FREQ_END=<hi>
+  |                   once per path, over the zone's window only
+  v
+finish_tune_round     BeltTuneSession::add_round(a_window, b_window) -> BeltTuneRound.outcome
+  v
+ADJUST | MATCHED      MATCHED when the round's outcome is MATCHED
+```
+
+Both paths are swept over the same window each round, so the reference peak is re-measured
+alongside the adjusted one. Gaps never compare a fresh peak to a stale one. A windowed sweep is
+a fraction of the full band, so a round takes roughly `2 * window / hz_per_sec` (the
+Re-measure button shows the estimate). Klipper and Kalico both write the CSV across the whole
+configured range, but bins outside the window carry no excitation. `unexcited_floor_psd`
+reads exactly those bins as the belt's unexcited floor.
+
+Windowing needs `FREQ_START` / `FREQ_END` on `TEST_RESONANCES`. Hardware confirmation that
+each firmware honours them is pending (see Thresholds).
+
+**Next zone** and **Confirm** are the other two exits. Confirm runs a full two-path check
+(`handle_tune_confirm_clicked`) with the pre-tuning curves ghosted, and the facts line
+carries " · Tuned in N rounds" plus, on SCREW printers, the net turns per path
+(`BeltTuneSession::total_turns`).
+
+Start is gated at every sweep, not only at Start: `gate_allows_sweep` re-checks the Start
+gate on **Re-measure**, **Next zone** and **Confirm**, so a print that began, a klippy that
+dropped or an accelerometer that vanished mid-tuning refuses the sweep with the gate's own
+message.
+
+### Zone choice
+
+`pick_tune_zone` turns the round-0 `BeltComparison` into a window (`BeltTuneZone`) around the
+peaks to close. Peaks under `ZONE_MIN_AMPLITUDE_FRACTION` (20%) of the stronger path's
+in-band maximum never define a zone. Pairs no more than `MATCHED_MIN_HZ` (1 Hz) apart, or
+centred within `ZONE_HALF_MIN_HZ` of an already matched zone's centre, are skipped.
+
+Two sources, tried in this order:
+
+| `BeltZoneSource` | Condition |
+|------------------|-----------|
+| `TALLEST_UNPAIRED` | Either path's tallest peak is unpaired and above the floor (`tallest_peak_unpaired`). The taller of the two steers against the other path's nearest floor-eligible peak, provided it sits within `ZONE_FALLBACK_MAX_HZ` (30 Hz, three times the pairing ceiling) |
+| `PAIRED` | Otherwise, or when no partner is that close: the widest remaining pair |
+
+The window is the zone's midpoint +- max(`ZONE_HALF_MIN_HZ`, gap / 2 + `ZONE_MARGIN_HZ`),
+clamped to the sweep band.
+
+The shape-warning hint is decoupled from the source. `BeltTuneSession` latches
+`tallest_peak_unpaired(round0)` at construction (`shape_warning_`), so the "Curves differ in
+shape" hint shows whenever round 0 had an unpaired tallest peak, even if the zone ended up
+`PAIRED` because no partner sat within 30 Hz.
+
+The adjusted path starts as the zone's looser one (the lower peak). **Adjust X instead**
+(`swap_adjusted_path`) swaps reference and adjusted for this and later zones; the learned
+rate and this zone's rounds belong to the other belt, so they clear. `next_zone` keeps a
+swapped path; without a swap each new zone adjusts its own looser path.
+
+### Peak refinement
+
+`refine_peak_in_window` finds a path's peak inside the window and refines it between bins by
+parabolic interpolation. Candidates are interior local maxima that reach
+`NEAR_PEAK_MIN_FRACTION` (50%) of the window's maximum and, when a floor is given,
+`PEAK_MIN_PROMINENCE` (1.5x) of it. With several candidates the one nearest the previous
+peak wins (so a tall neighbour cannot steal the track), else the tallest.
+
+The floor is `unexcited_floor_psd`: the median of the curve's in-band bins outside the window
+(at least `UNEXCITED_MIN_BINS` of them). A windowed sweep drives only its window, so those
+bins read what the belt does when nothing excites it. `window_holds_peak` applies the same
+1.5x rule to the whole window, falling back to the window's own minimum when there are too few
+outside bins. A window failing it is `NO_PEAK`.
+
+### Outcomes
+
+`BeltTuneSession::add_round` classifies each round. The panel's message
+(`BeltTensionPanel::tune_last_message`) follows from the outcome:
+
+| `BeltTuneOutcome` | Condition | Message |
+|-------------------|-----------|---------|
+| `MATCHED` | `|gap|` within the matched tolerance (`matched_tolerance_hz`: the curve's mean bin spacing, at least 1 Hz) | Matched at N Hz |
+| `CLOSER` | the gap shrank and kept its sign | "last turn: N Hz closer" |
+| `OVERSHOT` | the gap changed sign | "Went past X by N Hz. Back it off a little." |
+| `WRONG_WAY` | the adjusted peak moved against the advice by `MIN_MOVE_HZ` (0.5 Hz) or more | "X's peak went down after tightening. Check you turned Path X's tensioner." (mirrored for loosening) |
+| `NO_MOVEMENT` | the peak moved under `MIN_MOVE_HZ`, or moved the advised way while the reference moved with it so the gap did not close | "The gap didn't close (moved N Hz). Try a bigger turn." |
+| `NO_PEAK` | a path's window holds no clear peak (`window_holds_peak`), or a peak is still past the edge after one widening | "No clear peak in this zone" |
+| `OUT_OF_WINDOW` | the adjusted peak sits on a window edge; the window re-centres on the reference and widens, once per zone until a peak is measured again, then `NO_PEAK` | "X's peak moved out of the zone. Widening it." |
+| `BASELINE` | the first measurement after `next_zone`: no gap history yet, so no outcome against it | (none; the zone's gap shows) |
+
+`NO_PEAK` and `OUT_OF_WINDOW` carry no gap: nothing is measured, the previous gap stays. A
+zone's first round after `next_zone` is always a baseline round (`needs_baseline`): the earlier
+zone's turns moved this zone's peaks, so the panel measures before advising, and it is
+`MATCHED` if the baseline already reads within tolerance.
+
+### Rate learning and advice
+
+On SCREW printers each measured round that follows recorded turns yields a sample,
+`|peak move| / turns`, in Hz per turn. `hz_per_turn` is the median of the samples, and the
+advised amount is `|gap| / rate`, rounded to `TURN_STEP` (an eighth) and clamped to
+`TURN_STEP .. TURN_MAX` (one full turn). A sample is rejected unless the move and the turns
+behind it come from the same zone and all turned one way:
+
+- `WRONG_WAY`, `NO_PEAK`, `OUT_OF_WINDOW` and `BASELINE` rounds teach nothing: the first says
+  the turn went elsewhere, the others measured no move.
+- Turns made in a zone are cleared from the unmeasured tally when the zone or the adjusted
+  belt changes, so no sample spans zones.
+
+Without a rate the first advised turn is `FIRST_TURN` (a quarter); after a `NO_MOVEMENT`
+round it doubles the turn that did nothing. The user sets the amount actually turned on a
+stepper; `record_turns` stores it for the next round, defaulting to the advice. The panel
+formats amounts with `format_belt_turns` (the text fonts carry the eighth-fraction glyphs).
+
+### Tensioner kinds
+
+`BeltTensionerKind` comes from the printer database's `belt_tensioner` field
+(`PrinterDetector::get_belt_tensioner`, keyed on the detected printer name):
+
+| Kind | Printers | Advice |
+|------|----------|--------|
+| `SCREW` | Voron 2.4 and Trident (`belt_tensioner: "screw"` in `assets/config/printer_database.json`) | Direction plus an amount in turns, the stepper, the learned Hz per turn |
+| `SPRING` | none in the database yet | Direction only: "Release X's tensioner, let the spring settle, lock it". Two rounds without improvement (`SPRING_STALL_ROUNDS`) show the mechanical hint |
+| `UNKNOWN` | everything else | Direction only, "Tighten X" / "Loosen X" |
+
+SCREW printers show the mechanical hint after `STALL_ROUNDS` (8) unmatched rounds in a zone.
+Add `"belt_tensioner": "screw"` to a database entry only once the printer is known to have a
+screw tensioner with a repeatable relation between turns and frequency.
+
+### Gap gauge
+
+`<belt_gap_gauge>` (`ui_belt_gap_gauge_set`) is a horizontal track for the signed gap. It draws
+a matched band of +- tolerance around the centre, a filled needle at this round's gap, a
+hollow needle at the previous round's and an arrow between them, and no text. The track's
+half-span is `tune_gauge_range_hz_`, set at the zone's first measurement
+(`reset_tune_gauge_range`) to the larger of `2 * GAUGE_WARN_HZ` and 1.25 x the first gap, so
+the needle stays on the track while it closes. `belt_gap_gauge_x` maps a gap to a pixel
+(centred at zero, clamped to the ends); `belt_gap_severity` classifies it as `MATCHED`,
+`NEAR` (up to `GAUGE_WARN_HZ`, 3 Hz) or `FAR`, and the panel maps that to colour through
+`bt_tune_severity`.
+
+### Compact layouts
+
+Below the medium breakpoint, or in portrait (`ui_breakpoint le 2 or ui_is_portrait eq 1` in
+`ui_xml/panel_belt_tension.xml`), the TUNING view and RESULTS screen shrink to fit: the hero
+becomes one line (the instruction, the amount and a thin `bt_tune_line_gauge`; tapping it
+adjusts the other path), the two Re-test buttons on RESULTS fold into one menu, and Confirm
+drops its duration when the button row holds three buttons or the layout is compact. The wide layout and the compact one are the same subjects
+bound to different widgets, so `refresh_tune` feeds both.
+
+### Mock script
+
+`HELIX_MOCK_BELT_TUNE_SCRIPT="B:102.1,107.6,109.8"` scripts one path's peak across successive
+windowed sweeps, so the loop can be driven without a printer. Full reference:
+`MOCK_ENVIRONMENT_VARIABLES.md`. Windowed sweeps never apply the re-measure walk that full
+sweeps do, and an item `flat` writes a curve with no peak to reach `NO_PEAK`.
+
+### Thresholds (provisional)
+
+All in `belt_tune` (`include/belt_tune_session.h`). They are reasoned from the six captures
+above and a synthetic model, and are **pending hardware verification** (prestonbrown/helixscreen#1736):
+none has been exercised against a real windowed sweep on a real printer.
+
+| Constant | Value | Role |
+|----------|-------|------|
+| `ZONE_MIN_AMPLITUDE_FRACTION` | 0.20 | peaks below this fraction of the in-band maximum never define a zone |
+| `ZONE_HALF_MIN_HZ` / `ZONE_MARGIN_HZ` | 10 / 5 Hz | narrowest window half-width / reach beyond the zone's peaks |
+| `ZONE_FALLBACK_MAX_HZ` | 30 Hz | how close the other path's peak must be to steer an unpaired tallest peak |
+| `MATCHED_MIN_HZ` | 1 Hz | matched tolerance floor (the real tolerance is also at least the mean bin spacing) |
+| `MIN_MOVE_HZ` | 0.5 Hz | smaller peak moves are noise |
+| `FIRST_TURN` / `TURN_STEP` / `TURN_MAX` | 1/4 / 1/8 / 1 turn | SCREW amounts |
+| `STALL_ROUNDS` / `SPRING_STALL_ROUNDS` | 8 / 2 | unmatched rounds before the mechanical hint (screw / spring) |
+| `PEAK_MIN_PROMINENCE` | 1.5x | a peak must stand this far over the unexcited floor |
+| `UNEXCITED_MIN_BINS` | 8 | in-band bins outside the window needed to measure the floor |
+| `NEAR_PEAK_MIN_FRACTION` | 0.5 | a maximum competes for "nearest the previous peak" at this fraction of the window's maximum |
+| `GAUGE_WARN_HZ` | 3 Hz | gap gauge: warning colour up to here |
+
+Open hardware questions: that `FREQ_START` / `FREQ_END` take effect on Kalico and mainline
+(the first "Testing frequency" line should equal the window start); that a quarter turn moves
+the peak at least `MIN_MOVE_HZ`; and that a broad hump (119-133 Hz on the Voron) moves as one
+piece under refinement.
+
 ## Mock knobs
 
 The mock simulates the whole console sequence: "Testing frequency" lines, the terminal
@@ -230,6 +428,8 @@ one `###` entry per variable.
 | `tests/unit/test_belt_tension_panel_states.cpp` | Panel view states, gate-to-button binding, similarity/facts/markers, ghost series on re-test, low-RAM warning |
 | `tests/unit/test_belt_compare.cpp` | `compare_belt_paths` / `pair_belt_peaks` / `band_similarity` against six printers' real captures (`tests/fixtures/belt_sweeps/`) and synthetic curves |
 | `tests/unit/test_belt_gating.cpp` | Every gate leg of `evaluate_belt_gate` |
+| `tests/unit/test_belt_tune_session.cpp` | `BeltTuneSession`: zone choice and fallback, peak refinement, every outcome, rate learning, tensioner kinds |
+| `tests/unit/test_belt_gap_gauge.cpp` | `belt_gap_gauge_x`, `belt_gap_severity` and the widget's set/get |
 | `tests/unit/test_mock_test_resonances.cpp` | The mock's sweep simulation, including each `HELIX_MOCK_BELT_FAIL` mode |
 | `tests/unit/test_frequency_response_chart_style.cpp` (`[belt]` cases) | Series styling, muted ghost, sweep cursor, markers |
 

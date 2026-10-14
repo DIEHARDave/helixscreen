@@ -251,6 +251,47 @@ After adjusting a belt, you do not need to re-run both paths:
 - **Re-test A** / **Re-test B** sweeps just that one path and keeps the other's previous result. The path's old curve stays on the chart as a faint line, so you can see which way, and how far, your adjustment moved it
 - **Test both** discards both and starts a fresh run of the full check
 
+### Tuning Your Belts
+
+When the results show the paths differ, **Tune belts** (**Fine-tune** if they already match well) walks you through closing the gap one belt at a time. Instead of repeating the full check after every adjustment, it re-measures only the stretch of the spectrum where the two paths disagree, which takes a fraction of the time. The same requirements as the full check apply, and each Re-measure, Next zone and Confirm checks them again: if a print has started or Klipper has dropped out, the sweep is refused with the reason.
+
+What the screen shows:
+
+- **The instruction** at the top: which path to adjust and which way ("Tighten A", "Loosen B"). A higher peak means a tighter belt, and clockwise tightens
+- **The amount**, on printers HelixScreen knows have screw tensioners (the Voron 2.4 and Trident): how far to turn, in eighths of a turn. Use the plus and minus buttons to match what you actually turned. After a round or two HelixScreen learns how many Hz a turn moves on your machine and sizes the advice to it
+- **The gap gauge**: the distance between the two paths' peaks. The middle band is "matched". The solid marker is this round's gap and the hollow one is last round's, so you can see which way it moved. The colour tells you how far off you are
+- **The chart**: only the zone being tuned, with the adjusted path's earlier rounds fading behind it
+
+To work through it:
+
+1. Tap **Tune belts**. The first zone comes straight from your results, so the instruction is ready at once
+2. Follow the instruction: turn the named tensioner by the amount shown, then tap **Re-measure**. The printer sweeps both paths over the zone only
+3. Read the note under the gauge:
+   - "last turn: N Hz closer": keep going
+   - "Went past X": the turn was too big, back it off a little
+   - "The gap didn't close": try a bigger turn
+   - "peak went down after tightening": the other belt, or the other direction, probably moved. Check which tensioner you turned
+   - "No clear peak in this zone": the sweep found nothing to compare there. Try again, or see below
+   - "peak moved out of the zone. Widening it.": nothing to do, the next sweep covers the wider range
+4. When the gap is inside the matched band, the zone is **matched**. If more mismatched peaks remain, **Next zone** moves on to the next one (its first sweep is a baseline, because the earlier turns moved it). Otherwise **Confirm** runs a full two-path check and shows the result against the one you started from, with the rounds taken and the total turns per belt
+5. **Adjust X instead** switches which belt you are tuning, if the other one is easier to reach or you turned the wrong one. **Done** leaves tuning with your starting results
+
+**"Curves differ in shape"** means the tallest peak on one path has no partner on the other. Tuning can still steer by each path's tallest peak, but something besides tension may be shaping the response. Check for:
+
+- a worn, frayed or mis-tracking belt
+- a loose or slipping pulley grub screw
+- an idler or bearing that binds
+- debris in the belt teeth, or a belt rubbing a flange
+- a loose accelerometer mount
+
+The same hint appears if the gap is not closing after many rounds.
+
+**Spring-tensioned and unrecognised printers** get direction-only advice, with no amount in turns, since HelixScreen cannot know what your tensioner does per turn. For a spring tensioner the instruction is to release it, let the spring settle and lock it again, which resets the belt to whatever the spring gives. If two re-seats in a row do not improve things, the mechanical hint appears.
+
+The matched band and the other limits are provisional while they are being checked against more printers, so treat a "matched" result as a good sign and the final full check as the verdict.
+
+---
+
 ---
 
 ## Pressure Advance

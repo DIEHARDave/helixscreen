@@ -470,6 +470,13 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
   > the hardware matrix in `BELT_TUNER.md` § Validation status has actually been run.
   > Delete this box only when that is done, not when the code looks finished.
 
+- **Guided belt tuning** (#1736) - after a belt tension check, Tune belts walks you through
+  closing the gap one belt at a time. It names the belt to adjust and which way, re-measures
+  only the stretch of the spectrum where the two disagree instead of the whole range, and shows
+  the remaining gap on a gauge. On Voron 2.4 and Trident it also suggests how far to turn and
+  learns how many Hz a turn moves on your machine; other printers get direction-only advice.
+  Beta, and the thresholds are provisional until it has run on more hardware.
+
 - **Switch a Kalico heater between PID and MPC** (#1237) - the method selector on Kalico
   printers is out of beta. It migrates your config in both directions, and cancelling a
   running MPC calibration asks first, because cancelling means an emergency stop and a
