@@ -12,12 +12,16 @@
 #include "../lvgl_ui_test_fixture.h"
 #include "../test_helpers/job_queue_state_test_access.h"
 #include "../test_helpers/job_queue_subjects_fixture.h"
+#include "../test_helpers/thumbnail_test_png.h"
 #include "helix-xml/src/xml/lv_xml.h"
 #include "job_queue_state.h"
 #include "moonraker_api.h"
 #include "moonraker_client_mock.h"
 #include "printer_print_state.h"
+#include "thumbnail_cache.h"
+#include "thumbnail_processor.h"
 
+#include <functional>
 #include <string>
 
 #include "../catch_amalgamated.hpp"
@@ -68,6 +72,26 @@ struct NextMediaFixture : public LVGLUITestFixture {
             file, [&](const FileMetadata& md) { seconds = static_cast<int>(md.estimated_time); },
             [](const MoonrakerError&) {});
         return seconds;
+    }
+
+    /// The cache key the state will fetch for a file's thumbnail.
+    std::string thumbnail_key(const char* file) {
+        std::string key;
+        mock_api.files().get_file_metadata(
+            file,
+            [&](const FileMetadata& md) {
+                key = select_and_resolve_thumbnail(md.thumbnails, gcode_dir_of(file), 0, 0);
+            },
+            [](const MoonrakerError&) {});
+        return key;
+    }
+
+    /// Join the processor pool and drain until `done`, or give up.
+    void settle(const std::function<bool()>& done) {
+        for (int i = 0; i < 40 && !done(); ++i) {
+            ThumbnailProcessor::instance().wait_for_completion();
+            helix::ui::UpdateQueue::instance().drain();
+        }
     }
 
     int estimate_subject() {
@@ -143,7 +167,7 @@ TEST_CASE_METHOD(NextMediaFixture, "the thumbnail subject is never empty",
     JobQueueStateTestAccess::deliver_next_metadata(jqs, kFileA, no_thumbs);
 
     CHECK(estimate_subject() == 120);
-    CHECK_FALSE(thumbnail_subject().empty());
+    CHECK(thumbnail_subject() == PrinterPrintState::no_thumbnail_placeholder());
 }
 
 TEST_CASE_METHOD(NextMediaFixture, "one fetch per change of first job", "[job_queue][next_media]") {
@@ -167,4 +191,81 @@ TEST_CASE_METHOD(NextMediaFixture, "a failed metadata read leaves the job unknow
 
     CHECK(estimate_subject() == 0);
     CHECK(thumbnail_subject() == PrinterPrintState::no_thumbnail_placeholder());
+}
+
+TEST_CASE_METHOD(NextMediaFixture, "an emptied queue refetches when the same job returns",
+                 "[job_queue][next_media]") {
+    const int expected = mock_estimate(kFileA);
+    const int before = client.call_count(kMetadataMethod);
+
+    deliver({kFileA});
+    deliver({});
+    deliver({kFileA});
+
+    CHECK(client.call_count(kMetadataMethod) == before + 2);
+    CHECK(estimate_subject() == expected);
+}
+
+TEST_CASE_METHOD(NextMediaFixture, "the next job's thumbnail replaces the placeholder",
+                 "[job_queue][next_media][thumbnail]") {
+    auto& cache = get_thumbnail_cache();
+    const std::string key = thumbnail_key(kFileA);
+    REQUIRE_FALSE(key.empty());
+    cache.invalidate(key);
+    plant_cached_png(cache, key);
+    const std::string placeholder = PrinterPrintState::no_thumbnail_placeholder();
+
+    deliver({kFileA});
+    settle([&] { return thumbnail_subject() != placeholder; });
+
+    const std::string shown = thumbnail_subject();
+    CHECK(shown != placeholder);
+    CHECK(shown.rfind("A:", 0) == 0);
+    CHECK(shown.find(".bin") != std::string::npos);
+
+    cache.invalidate(key);
+}
+
+TEST_CASE_METHOD(NextMediaFixture, "a thumbnail still loading for a superseded job is dropped",
+                 "[job_queue][next_media][thumbnail]") {
+    auto& cache = get_thumbnail_cache();
+    const std::string key_a = thumbnail_key(kFileA);
+    const std::string key_b = thumbnail_key(kFileB);
+    REQUIRE_FALSE(key_a.empty());
+    REQUIRE_FALSE(key_b.empty());
+    cache.invalidate(key_a);
+    cache.invalidate(key_b);
+    plant_cached_png(cache, key_a);
+    plant_cached_png(cache, key_b);
+    const std::string placeholder = PrinterPrintState::no_thumbnail_placeholder();
+
+    // A's pre-scale finishes and parks its result in the UpdateQueue; what
+    // happens to the queue next decides whether that result may land.
+    JobQueueStateTestAccess::deliver_status(jqs, queue_of({kFileA}));
+    helix::ui::UpdateQueue::instance().drain();
+    ThumbnailProcessor::instance().wait_for_completion();
+    REQUIRE(thumbnail_subject() == placeholder);
+
+    ThumbnailRequest req_a;
+    req_a.key = key_a;
+    req_a.target = ThumbnailProcessor::get_target_for_display(ThumbnailSize::Card);
+    const std::string path_a = cache.get_if_cached(req_a);
+    REQUIRE_FALSE(path_a.empty());
+
+    SECTION("the queue empties while it loads") {
+        JobQueueStateTestAccess::deliver_status(jqs, queue_of({}));
+        settle([] { return false; });
+
+        CHECK(thumbnail_subject() == placeholder);
+    }
+
+    SECTION("a different job becomes first while it loads") {
+        JobQueueStateTestAccess::deliver_status(jqs, queue_of({kFileB}));
+        settle([&] { return thumbnail_subject() != placeholder; });
+
+        CHECK(thumbnail_subject() != path_a);
+    }
+
+    cache.invalidate(key_a);
+    cache.invalidate(key_b);
 }

@@ -270,10 +270,18 @@ void JobQueueState::on_next_job_metadata(const std::string& filename,
     req.api = api_;
     req.source_modified = static_cast<time_t>(metadata.modified);
 
+    auto token = lifetime_.token();
+    auto ctx = ThumbnailLoadContext::create(lifetime_, &next_thumbnail_generation_);
     get_thumbnail_cache().fetch(
-        req, ThumbnailLoadContext::create(lifetime_, &next_thumbnail_generation_),
-        [this](const std::string& lvgl_path, bool /*degraded*/) {
-            lv_subject_copy_string(&job_queue_next_thumbnail_subject_, lvgl_path.c_str());
+        req, ctx,
+        [this, token, ctx](const std::string& lvgl_path, bool /*degraded*/) {
+            token.defer("JobQueueState::apply_next_thumbnail", [this, ctx, lvgl_path]() {
+                // A later change of first job can land in the hop this defer adds.
+                if (!ctx.is_valid()) {
+                    return;
+                }
+                lv_subject_copy_string(&job_queue_next_thumbnail_subject_, lvgl_path.c_str());
+            });
         },
         [thumb_path](const std::string& error) {
             spdlog::debug("[JobQueueState] Next job thumbnail '{}' failed: {}", thumb_path, error);
@@ -283,6 +291,7 @@ void JobQueueState::on_next_job_metadata(const std::string& filename,
 
 void JobQueueState::clear_next_job_media() {
     ++next_thumbnail_generation_;
+    next_media_filename_.clear();
     next_estimated_s_ = 0;
     if (!subjects_initialized_) {
         return;
