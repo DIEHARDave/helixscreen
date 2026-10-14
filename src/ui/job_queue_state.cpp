@@ -10,9 +10,13 @@
 #include "i_moonraker_api.h"
 #include "i_moonraker_client.h"
 #include "job_queue_start.h"
+#include "moonraker_types.h"
+#include "printer_print_state.h"
 #include "queued_job_options.h"
 #include "static_subject_registry.h"
 #include "subject_debug_registry.h"
+#include "thumbnail_cache.h"
+#include "thumbnail_processor.h"
 
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
@@ -28,6 +32,7 @@ JobQueueState::JobQueueState(helix::IMoonrakerAPI* api, helix::IMoonrakerClient*
     std::memset(summary_buffer_, 0, sizeof(summary_buffer_));
     std::memset(up_next_text_buffer_, 0, sizeof(up_next_text_buffer_));
     std::memset(start_next_text_buffer_, 0, sizeof(start_next_text_buffer_));
+    std::memset(next_thumbnail_buf_, 0, sizeof(next_thumbnail_buf_));
 
     subscribe_to_notifications();
     watch_connection_state();
@@ -97,6 +102,14 @@ void JobQueueState::init_subjects() {
                            sizeof(start_next_text_buffer_), "");
     subjects_.publish("job_queue_start_next_text", &job_queue_start_next_text_subject_);
 
+    lv_subject_init_int(&job_queue_next_estimate_subject_, 0);
+    subjects_.publish("job_queue_next_estimate", &job_queue_next_estimate_subject_);
+
+    lv_subject_init_string(&job_queue_next_thumbnail_subject_, next_thumbnail_buf_, nullptr,
+                           sizeof(next_thumbnail_buf_),
+                           helix::PrinterPrintState::no_thumbnail_placeholder());
+    subjects_.publish("job_queue_next_thumbnail", &job_queue_next_thumbnail_subject_);
+
     lv_subject_init_int(&job_queue_automatic_transition_subject_, automatic_transition_ ? 1 : 0);
     subjects_.publish("job_queue_automatic_transition", &job_queue_automatic_transition_subject_);
 
@@ -111,6 +124,12 @@ void JobQueueState::init_subjects() {
     SubjectDebugRegistry::instance().register_subject(&job_queue_run_state_subject_,
                                                       "job_queue_run_state", LV_SUBJECT_TYPE_INT,
                                                       __FILE__, __LINE__);
+    SubjectDebugRegistry::instance().register_subject(&job_queue_next_estimate_subject_,
+                                                      "job_queue_next_estimate",
+                                                      LV_SUBJECT_TYPE_INT, __FILE__, __LINE__);
+    SubjectDebugRegistry::instance().register_subject(&job_queue_next_thumbnail_subject_,
+                                                      "job_queue_next_thumbnail",
+                                                      LV_SUBJECT_TYPE_STRING, __FILE__, __LINE__);
     SubjectDebugRegistry::instance().register_subject(&job_queue_up_next_text_subject_,
                                                       "job_queue_up_next_text",
                                                       LV_SUBJECT_TYPE_STRING, __FILE__, __LINE__);
@@ -187,8 +206,90 @@ void JobQueueState::on_queue_fetched(const helix::JobQueueStatus& status) {
         pruned_this_connect_ = true;
         prune_option_store();
     }
+    refresh_next_job_media();
     update_subjects();
     spdlog::debug("[JobQueueState] Updated: state={}, jobs={}", queue_state_, cached_jobs_.size());
+}
+
+void JobQueueState::refresh_next_job_media() {
+    if (cached_jobs_.empty()) {
+        clear_next_job_media();
+        return;
+    }
+    const std::string& filename = cached_jobs_.front().filename;
+    if (filename == next_media_filename_) {
+        return;
+    }
+    clear_next_job_media();
+    next_media_filename_ = filename;
+    if (!api_) {
+        return;
+    }
+
+    auto token = lifetime_.token();
+    api_->files().get_file_metadata(
+        filename,
+        [this, token, filename](const FileMetadata& metadata) {
+            token.defer("JobQueueState::on_next_job_metadata",
+                        [this, filename, metadata]() { on_next_job_metadata(filename, metadata); });
+        },
+        [filename](const MoonrakerError& err) {
+            spdlog::debug("[JobQueueState] Metadata for next job '{}' unavailable: {}", filename,
+                          err.message);
+        });
+}
+
+void JobQueueState::on_next_job_metadata(const std::string& filename,
+                                         const FileMetadata& metadata) {
+    // The queue may have moved on while the request was in flight.
+    if (filename != next_media_filename_) {
+        spdlog::debug("[JobQueueState] Dropping metadata for '{}': next job is now '{}'", filename,
+                      next_media_filename_);
+        return;
+    }
+    next_estimated_s_ = std::max(0, static_cast<int>(metadata.estimated_time));
+    if (subjects_initialized_) {
+        lv_subject_set_int(&job_queue_next_estimate_subject_, next_estimated_s_);
+    }
+
+#if !defined(HELIX_PLATFORM_ESP32)
+    if (!api_ || !subjects_initialized_) {
+        return;
+    }
+    const auto target =
+        helix::ThumbnailProcessor::get_target_for_display(helix::ThumbnailSize::Card);
+    const std::string thumb_path = helix::select_and_resolve_thumbnail(
+        metadata.thumbnails, helix::gcode_dir_of(filename), target.width, target.height);
+    if (thumb_path.empty()) {
+        return;
+    }
+
+    ThumbnailRequest req;
+    req.key = thumb_path;
+    req.target = target;
+    req.api = api_;
+    req.source_modified = static_cast<time_t>(metadata.modified);
+
+    get_thumbnail_cache().fetch(
+        req, ThumbnailLoadContext::create(lifetime_, &next_thumbnail_generation_),
+        [this](const std::string& lvgl_path, bool /*degraded*/) {
+            lv_subject_copy_string(&job_queue_next_thumbnail_subject_, lvgl_path.c_str());
+        },
+        [thumb_path](const std::string& error) {
+            spdlog::debug("[JobQueueState] Next job thumbnail '{}' failed: {}", thumb_path, error);
+        });
+#endif
+}
+
+void JobQueueState::clear_next_job_media() {
+    ++next_thumbnail_generation_;
+    next_estimated_s_ = 0;
+    if (!subjects_initialized_) {
+        return;
+    }
+    lv_subject_set_int(&job_queue_next_estimate_subject_, 0);
+    lv_subject_copy_string(&job_queue_next_thumbnail_subject_,
+                           helix::PrinterPrintState::no_thumbnail_placeholder());
 }
 
 void JobQueueState::fetch_automatic_transition() {

@@ -31,4 +31,11 @@ class JobQueueStateTestAccess {
     static void deliver_status(JobQueueState& state, const helix::JobQueueStatus& status) {
         state.on_queue_fetched(status);
     }
+
+    /// Delivers a file-metadata answer for the next job as the deferred
+    /// success callback would, on the main thread.
+    static void deliver_next_metadata(JobQueueState& state, const std::string& filename,
+                                      const FileMetadata& metadata) {
+        state.on_next_job_metadata(filename, metadata);
+    }
 };

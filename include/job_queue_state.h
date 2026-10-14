@@ -15,6 +15,8 @@
 #include <string>
 #include <vector>
 
+struct FileMetadata; // NAMESPACE_OK: declared at global scope in moonraker_types.h
+
 namespace helix {
 class IMoonrakerAPI;
 class IMoonrakerClient;
@@ -102,6 +104,12 @@ class JobQueueState {
         return helix::parse_queue_run_state(queue_state_);
     }
 
+    /// Estimated print time of the first queued job, in seconds. 0 while its
+    /// metadata is unknown, absent or still loading.
+    [[nodiscard]] int next_estimated_seconds() const {
+        return next_estimated_s_;
+    }
+
     /// Get queue state string
     const std::string& get_queue_state() const {
         return queue_state_;
@@ -161,6 +169,13 @@ class JobQueueState {
     void update_subjects();
     void deinit_subjects();
 
+    /// Fetch the first queued job's metadata once per change of first job.
+    void refresh_next_job_media();
+    /// Main thread. Drops an answer for a job that is no longer first.
+    void on_next_job_metadata(const std::string& filename, const FileMetadata& metadata);
+    /// Unknown estimate and the placeholder thumbnail; supersedes any load in flight.
+    void clear_next_job_media();
+
     helix::IMoonrakerAPI* api_;
     helix::IMoonrakerClient* client_;
 
@@ -207,6 +222,15 @@ class JobQueueState {
     // helix::QueueRunState as an int. Published before the count so a count
     // observer reads it settled.
     lv_subject_t job_queue_run_state_subject_{};
+    // The first queued job's estimated time (seconds, 0 = unknown) and
+    // thumbnail path. The thumbnail is never "": it holds the placeholder
+    // until a real image is cached.
+    std::string next_media_filename_;
+    int next_estimated_s_ = 0;
+    std::atomic<uint32_t> next_thumbnail_generation_{0};
+    lv_subject_t job_queue_next_estimate_subject_{};
+    lv_subject_t job_queue_next_thumbnail_subject_{};
+    char next_thumbnail_buf_[256];
     /// Owns every subject above and the death signal
     /// get_subjects_lifetime() hands out.
     SubjectManager subjects_;
