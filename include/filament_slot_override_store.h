@@ -134,9 +134,12 @@ class FilamentSlotOverrideStore {
     // Klipper plugins own lane_data, AFC deletes that whole namespace on every
     // boot and full-POSTs each lane record, and load_blocking() would otherwise
     // ingest those foreign records as if they were user overrides.
+    // migrates_legacy_namespace: the first load of an empty store copies slots forward from
+    // the pre-lane_data "helix-screen:<backend_id>_slot_overrides" blob. Only the backends that
+    // ever wrote that blob (ACE, CFS) set it.
     FilamentSlotOverrideStore(IMoonrakerAPI* api, std::string backend_id,
                               LaneKeyStyle key_style = LaneKeyStyle::Lane,
-                              std::string ns = "lane_data");
+                              std::string ns = "lane_data", bool migrates_legacy_namespace = false);
 
     /// Test-only view of the configured namespace.
     [[nodiscard]] const std::string& namespace_for_test() const {
@@ -223,6 +226,7 @@ class FilamentSlotOverrideStore {
     // (Lane style) or "T0" (Tool style) on disk. See format_lane_key in the
     // .cpp for the exact rule.
     std::string namespace_ = "lane_data";
+    bool migrates_legacy_namespace_ = false;
     // Local timeout for load_blocking()'s cv.wait_for. Defaults to 5 seconds;
     // overridable by FilamentSlotOverrideStoreTestAccess for timeout tests.
     // Stored as milliseconds (not seconds) because tests need sub-second
@@ -305,10 +309,10 @@ struct LoadedOverrideStore {
 /// mutex across it stalls the parse path (and self-deadlocks a caller that
 /// takes a non-recursive mutex before asking). Publish the result under the
 /// lock afterwards, which is one move of each field.
-[[nodiscard]] LoadedOverrideStore make_loaded_override_store(IMoonrakerAPI* api,
-                                                             std::string backend_id, AmsType type,
-                                                             const std::string& log_tag,
-                                                             std::string ns = "lane_data");
+[[nodiscard]] LoadedOverrideStore
+make_loaded_override_store(IMoonrakerAPI* api, std::string backend_id, AmsType type,
+                           const std::string& log_tag, std::string ns = "lane_data",
+                           bool migrates_legacy_namespace = false);
 
 // =============================================================================
 // Shared firmware -> lane_data mirror helper

@@ -354,27 +354,27 @@ void PrintStartController::execute_print_start() {
     // the unchanged synchronous start path below.
     if (AmsBackend* backend = AmsState::instance().get_backend();
         backend && backend->requires_preprint_send()) {
-        send_snapmaker_preprint_then(
-            detail_view_ ? detail_view_->get_tools_used() : std::set<int>{},
-            detail_view_ ? detail_view_->get_effective_remap() : std::map<int, int>{}, start_now,
-            [this]() {
-                if (update_print_button_) {
-                    update_print_button_();
-                }
-                if (on_print_cancelled_) {
-                    on_print_cancelled_();
-                }
-            });
+        send_backend_preprint_then(detail_view_ ? detail_view_->get_tools_used() : std::set<int>{},
+                                   detail_view_ ? detail_view_->get_effective_remap()
+                                                : std::map<int, int>{},
+                                   start_now, [this]() {
+                                       if (update_print_button_) {
+                                           update_print_button_();
+                                       }
+                                       if (on_print_cancelled_) {
+                                           on_print_cancelled_();
+                                       }
+                                   });
         return; // start_now fires from the send continuation — do NOT also start here
     }
 
     start_now();
 }
 
-void PrintStartController::send_snapmaker_preprint_then(const std::set<int>& tools_used,
-                                                        const std::map<int, int>& remap,
-                                                        std::function<void()> on_done,
-                                                        std::function<void()> on_abort) {
+void PrintStartController::send_backend_preprint_then(const std::set<int>& tools_used,
+                                                      const std::map<int, int>& remap,
+                                                      std::function<void()> on_done,
+                                                      std::function<void()> on_abort) {
     AmsBackend* backend = AmsState::instance().get_backend();
     if (!backend) {
         // No backend — nothing to pre-send; proceed with the start step.
@@ -388,17 +388,17 @@ void PrintStartController::send_snapmaker_preprint_then(const std::set<int>& too
 
     if (gcode.empty()) {
         // Nothing the firmware needs (e.g. no parsed tools) — start immediately.
-        spdlog::debug("[PrintStartController] U1 pre-print config empty — starting print directly");
+        spdlog::debug("[PrintStartController] pre-print config empty — starting print directly");
         if (on_done) {
             on_done();
         }
         return;
     }
 
-    spdlog::info("[PrintStartController] U1 pre-print config:\n{}", gcode);
+    spdlog::info("[PrintStartController] pre-print config:\n{}", gcode);
 
     if (!api_) {
-        spdlog::error("[PrintStartController] No API to send U1 pre-print config — aborting print");
+        spdlog::error("[PrintStartController] No API to send pre-print config — aborting print");
         NOTIFY_ERROR(lv_tr("Print setup failed: internal error"));
         if (on_abort) {
             on_abort();
@@ -425,7 +425,7 @@ void PrintStartController::send_snapmaker_preprint_then(const std::set<int>& too
             // reached the printer, so it shows its own reason.
             std::string local = err.message_tag ? err.localized_message() : std::string{};
             tok.defer("PrintStartController::preprint.err", [msg, local, on_abort]() {
-                LOG_ERROR_INTERNAL("[PrintStartController] U1 pre-print config rejected: {}", msg);
+                LOG_ERROR_INTERNAL("[PrintStartController] pre-print config rejected: {}", msg);
                 NOTIFY_ERROR_MODAL(
                     lv_tr("Print setup failed"), "{}",
                     !local.empty()
@@ -548,7 +548,7 @@ void PrintStartController::initiate_reprint(const std::string& filename, const s
                 on_error();
             }
         };
-        send_snapmaker_preprint_then(tools_used, *remap, start, abort);
+        send_backend_preprint_then(tools_used, *remap, start, abort);
         return; // start fires from the send continuation — do NOT also start here
     }
 

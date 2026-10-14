@@ -60,8 +60,9 @@ void ui_spool_canvas_invalidate_cache(void);
 #ifdef __cplusplus
 }
 
+#include "filament_tube_stroker.h"
+
 namespace helix::ui {
-bool reduced_effects();
 
 /**
  * @brief Create a glow layer: an image the caller places behind a spool,

@@ -436,7 +436,8 @@ void AmsBackendCfs::on_started() {
     // lane_data is empty (Task 8).
     if (api_) {
         auto loaded =
-            helix::ams::make_loaded_override_store(api_, "cfs", get_type(), backend_log_tag());
+            helix::ams::make_loaded_override_store(api_, "cfs", get_type(), backend_log_tag(),
+                                                   "lane_data", /*migrates_legacy_namespace=*/true);
         if (loaded.store) {
             helix::ams::ingest_legacy_records(*loaded.store, helix::ams::LegacyLockKeys::LaneData,
                                               backend_index());

@@ -2640,7 +2640,8 @@ TEST_CASE("CFS migrates from helix-screen:cfs_slot_overrides on first startup",
     };
     mock_printer.client.mock_db_set("helix-screen", "cfs_slot_overrides", legacy);
 
-    helix::ams::FilamentSlotOverrideStore store(&api, "cfs");
+    helix::ams::FilamentSlotOverrideStore store(&api, "cfs", helix::ams::LaneKeyStyle::Lane,
+                                                "lane_data", true);
     FilamentSlotOverrideStoreTestAccess::set_cache_directory(store, tmp.path);
     auto loaded = store.load_blocking();
 

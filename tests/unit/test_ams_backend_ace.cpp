@@ -1367,7 +1367,8 @@ TEST_CASE("ACE migrates from helix-screen:ace_slot_overrides on first startup",
     };
     mock_printer.client.mock_db_set("helix-screen", "ace_slot_overrides", legacy);
 
-    helix::ams::FilamentSlotOverrideStore store(&api, "ace");
+    helix::ams::FilamentSlotOverrideStore store(&api, "ace", helix::ams::LaneKeyStyle::Lane,
+                                                "lane_data", true);
     FilamentSlotOverrideStoreTestAccess::set_cache_directory(store, tmp.path);
     auto loaded = store.load_blocking();
 
