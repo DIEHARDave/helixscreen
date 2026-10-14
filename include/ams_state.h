@@ -313,6 +313,13 @@ class AmsState {
      */
     void deinit_subjects();
 
+    /// False between deinit_subjects() and the next init_subjects(): the subjects
+    /// still read as their old type, and an observer attached then is orphaned by
+    /// the next init.
+    bool are_subjects_initialized() const {
+        return initialized_;
+    }
+
     /**
      * @brief Initialize AMS backend from discovered hardware
      *
