@@ -522,7 +522,8 @@ exist so a cell can hold whichever widget this printer can use:
 
 A variant is either a bare anchor array or an object carrying `anchors` plus `disabled`; the
 resolver uses the first variant in `LayoutManager::variant_chain()` with a non-empty `anchors`
-and falls back to the top-level table.
+and falls back to the top-level table. A `disabled` map takes grid-qualified keys
+(`"micro@8x6"`) as well as tier names; see [Grid-qualified keys](#grid-qualified-keys).
 
 **`disabled` is not optional bookkeeping.** Omitting a widget from a tier does *not* switch
 it off - `parse_widget_array()` appends every absent registry widget at its
@@ -547,12 +548,15 @@ the file is kept by `load_default_table()` until its mtime or size changes, so t
 runtime-editable table still takes effect without a per-call read.
 
 The three shipped tables are the base (landscape), `variants.ultrawide` (1480x320,
-1920x440) and `variants.portrait`. Each authors **all seven tiers**; see the fallback
-warning above for why leaving one out is dangerous rather than merely terse. The xxlarge
-landscape table is authored on the 12x7-cell grid (portrait xxlarge is 14 tracks wide).
-Three grids carry grid-qualified tables of their own: the 320x240 micro panel
-(`micro@8x6`) and the two ultratall portrait strips, 320x1480 (`tiny@8x34`) and 440x1920
-(`small@10x44`).
+1920x440) and `variants.portrait`. The base and portrait tables author all seven tiers; see
+the fallback warning above for why leaving one out is dangerous rather than merely terse.
+`variants.ultrawide` authors `tiny` and `small` only, the tiers an ultrawide strip reaches
+(`micro` inherits `tiny`). The xxlarge landscape table is authored on the 12x7-cell grid
+(portrait xxlarge is 14 tracks wide). Four grids carry grid-qualified tables of their own:
+the 320x240 micro panel (`micro@8x6`), the two ultratall portrait strips, 320x1480
+(`tiny@8x34`) and 440x1920 (`small@10x44`), and the 1080x2400 portrait panel
+(`xxlarge@14x32`), whose eight rows past the 14x24 table hold a taller temperature graph and
+a G-code console.
 
 Inside a table, breakpoint keys are named rather than indexed - `micro`, `tiny`, `small`,
 `medium`, `large`, `xlarge`, `xxlarge` (seven, matching `UiBreakpoint`). A missing tier
@@ -582,29 +586,39 @@ so a parked per-grid copy carries its own:
   unchanged" early return. Only while the printer is connected and Klippy is READY (a teardown
   or retarget zeroes subjects such as `ams_slot_count` and must not reshuffle the panel), only
   for an unedited default, only when the signature differs, and not while home Edit Mode is open
-  (`PanelWidgetConfig::set_edit_session_open`). A changed signature saves once; an unchanged one
-  writes nothing. The gate observers `setup_gate_observers()` registers cover every `requires`
+  (`PanelWidgetConfig::set_edit_session_open`). The signature is compared before any entries
+  are built. A changed signature saves once; an unchanged one writes nothing.
+- **Offline** (not CONNECTED): a pending block, or an unedited default whose grid changed, is
+  resolved in memory so the panel has something to show, but the block stays pending (empty
+  signature) and nothing is saved, since the subjects may still hold a previous printer's
+  capabilities. A default that has already resolved is left as it is. The first READY populate
+  resolves the pending block from the printer's own values and writes once. While Klippy is
+  starting on a connected printer nothing resolves at all. The gate observers `setup_gate_observers()` registers cover every `requires`
   subject the table names as well as the registry gates, so a capability arriving late (an AMS
   backend coming up after connect) re-resolves the panel.
 - A grid change (rotation, UI scale) on an unedited layout re-resolves for the new grid instead
-  of parking and porting.
-- Reset to defaults (`reset_to_defaults()`) resolves and stamps a fresh block. Crash-loop safe
-  mode shows defaults and writes nothing.
+  of parking and porting. During an open Edit Mode session it is ported so the session keeps
+  its arrangement, but its block stays pending and resolves when the session closes. A parked
+  unedited default that a grid change restores is re-resolved before it is shown.
+- A re-resolve carries each surviving widget's `config` across, merged over the table's
+  `config` for the new placement, so a key the widget never set keeps the table's value.
+- Reset to defaults (`reset_to_defaults()`) stamps a pending block, which the next measured
+  populate resolves. Crash-loop safe mode shows defaults and writes nothing.
 
 #### Preset overlays
 
 A preset can adjust the table without forking it: `assets/config/panel_widgets/<preset>/home.json`
-is an overlay `load_preset_overlay()` reads and `build_default_grid()` applies over the table. It
-replaces a base anchor or slot by `id` / `slot`, adds ones the table lacks, or removes one with
-`{"id": "tips", "remove": true}`; the same resolver handles it and the preset is part of the
-signature. No preset ships an overlay today: the base tables cover every packaged printer.
+is an overlay `load_preset_overlay()` reads (cached by mtime and size, like the table) and
+`build_default_grid()` applies over the table. It replaces a base anchor or slot by `id` /
+`slot`, adds ones the table lacks, or removes one with `{"id": "tips", "remove": true}`; the
+same resolver handles it and the preset is part of the signature. No preset ships an overlay today: the base tables cover every packaged printer.
 
 #### Grid-qualified keys
 
 A breakpoint names a *panel*, not a *grid*. The high-DPI UI scale multiplies the cell edge
 (see `include/display_metrics.h`), so one panel at one tier has a different track count per
-scale — 1080x2400 is xxlarge portrait at **12x24** tracks unscaled, **8x18** at 125% and
-**6x14** at 158%. A table authored for one of those does not describe the others.
+scale — 1080x2400 is xxlarge portrait at **14x32** tracks unscaled and fewer at each larger
+scale. A table authored for one of those does not describe the others.
 
 A placement key may therefore name its grid: `"xxlarge@6x14"`. Within a tier the qualified
 key wins over the bare one, and the tier chain still dominates — this tier on some other
