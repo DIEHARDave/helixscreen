@@ -30,9 +30,9 @@
   <view name="ams_unit_card"
         extends="lv_obj" height="content" scrollable="false" flex_flow="column" style_flex_main_place="start"
         style_flex_cross_place="center" style_bg_color="#elevated_bg" style_bg_opa="255" style_radius="#border_radius"
-        style_pad_all="#space_sm" style_pad_gap="#space_xs" style_border_width="1" style_border_color="#border"
-        style_border_opa="80" style_min_width="#ams_card_min_width" style_max_width="#ams_card_max_width"
-        clickable="true">
+        style_pad_ver="#space_sm" style_pad_hor="#space_xs" style_pad_gap="#space_xs" style_border_width="1"
+        style_border_color="#border" style_border_opa="80" style_min_width="#ams_card_min_width"
+        style_max_width="#ams_card_max_width" clickable="true">
     <style name="styles.press_wash" selector="pressed"/>
     <bind_state_if_eq subject="$absent" state="disabled" ref_value="1"/>
     <!-- Offline fades the header, bars and readout, but not the card itself: it stays
@@ -66,7 +66,7 @@
          mirrors the single-unit detail layout (ams_unit_detail.xml). -->
     <lv_obj width="100%"
             height="content" scrollable="false" clickable="false" event_bubble="true" flex_flow="row"
-            style_flex_main_place="center" style_flex_cross_place="center" style_pad_all="0" style_pad_gap="#space_xs"
+            style_flex_main_place="center" style_flex_cross_place="center" style_pad_all="0" style_pad_gap="#space_xxs"
             style_bg_opa="0" style_border_width="0">
       <!-- Left column: mini bars + slot count + runout. width="1"+flex_grow per L066 so
            flex allocates from grown width (not content), letting the indicator take the rest. -->
@@ -81,8 +81,10 @@
                 style_pad_column="#space_xxs" style_bg_opa="0" style_border_width="0">
           <bind_style_if_eq name="unit_offline" subject="$disconnected" ref_value="1"/>
         </lv_obj>
-        <!-- Slot count label -->
-        <text_small name="slot_count" text="0 slots" event_bubble="true">
+        <!-- Slot count label: bounded by the column so it can never run under the
+             environment box beside it; a noun too long for the column ellipsizes. -->
+        <text_small name="slot_count"
+                    width="100%" text="0 slots" long_mode="dots" style_text_align="center" event_bubble="true">
           <bind_flag_if_eq subject="$absent" flag="hidden" ref_value="1"/>
           <bind_flag_if_eq subject="$disconnected" flag="hidden" ref_value="1"/>
         </text_small>
