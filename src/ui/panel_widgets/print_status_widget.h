@@ -48,6 +48,29 @@ struct LastPrintText {
 /// seconds, passed in so every branch is reachable from a test.
 [[nodiscard]] LastPrintText describe_last_print(const PrintHistoryJob& job, double now_s);
 
+/// What the idle card needs to show its filename, its detail lines and its
+/// action buttons, measured from the live theme.
+struct IdleCardNeeds {
+    int chrome_w = 0; ///< Card padding and border, both sides.
+    int chrome_h = 0;
+    int title_h = 0;   ///< One line of the filename.
+    int detail_h = 0;  ///< The detail column beside the thumbnail: both its lines.
+    int gap = 0;       ///< Between the card's rows, and between the two buttons.
+    int button_h = 0;  ///< One row of buttons.
+    int reprint_w = 0; ///< Each button's natural width: caption plus padding.
+    int queue_w = 0;
+};
+
+/// The idle card's needs at the current breakpoint.
+[[nodiscard]] IdleCardNeeds measure_idle_card_needs();
+
+/// Whether a box holds the idle card: the filename, the detail column and both
+/// buttons, side by side where the row has room for the two and stacked where
+/// it does not. The detail column always draws its two lines, so a box with
+/// room for one would push the second under the buttons. Monotonic on both
+/// axes, as PanelWidget::fits_at must be.
+[[nodiscard]] bool idle_card_fits(const IdleCardNeeds& needs, int width_px, int height_px);
+
 class PrintStatusWidget : public PanelWidget {
     friend class PrintStatusWidgetTestAccess;
 
@@ -60,6 +83,8 @@ class PrintStatusWidget : public PanelWidget {
     void on_activate() override;
     void on_edit_mode_exited() override;
     void on_size_changed(int colspan, int rowspan, int width_px, int height_px) override;
+    /// Refuses a box the idle card cannot draw in (idle_card_fits).
+    bool fits_at(int width_px, int height_px) const override;
     /// Factory-registration key. Exposed so callers scanning a heterogeneous
     /// widget list can match on id() and static_cast, instead of dynamic_cast —
     /// the firmware builds -fno-rtti.
