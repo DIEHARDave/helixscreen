@@ -316,6 +316,11 @@ class Resolver {
             }
             return;
         }
+        // The last alternative wins whenever it fits, so reaching here means
+        // none fits the region.
+        spdlog::debug("[DefaultLayoutResolver] slot '{}' at {}: no alternative fits region "
+                      "{},{} {}x{}",
+                      ju::safe_string(slot, "slot"), key, rc, rr, rw, rh);
     }
 
     std::vector<ResolvedPlacement> take_placed() {
@@ -593,12 +598,12 @@ std::string arrangement_hash(const json& pages_payload) {
             if (const json* widgets = array_member(page, "widgets")) {
                 for (const auto& w : *widgets) {
                     const std::string id = ju::safe_string(w, "id");
-                    if (id.empty() || !find_widget_def(id)) {
+                    const int col = ju::safe_int(w, "col", -1);
+                    const int row = ju::safe_int(w, "row", -1);
+                    if (id.empty() || !ju::safe_bool(w, "enabled", true) || col < 0 || row < 0) {
                         continue;
                     }
-                    text += id + ',' + (ju::safe_bool(w, "enabled", true) ? '1' : '0') + ',' +
-                            std::to_string(ju::safe_int(w, "col", -1)) + ',' +
-                            std::to_string(ju::safe_int(w, "row", -1)) + ',' +
+                    text += id + ',' + std::to_string(col) + ',' + std::to_string(row) + ',' +
                             std::to_string(ju::safe_int(w, "colspan", 0)) + ',' +
                             std::to_string(ju::safe_int(w, "rowspan", 0)) + ';';
                 }

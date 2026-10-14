@@ -1,7 +1,9 @@
 // Copyright (C) 2025-2026 356C LLC
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include "../test_helpers/scope_exit.h"
 #include "default_layout_resolver.h"
+#include "panel_widget_registry.h"
 
 #include <algorithm>
 #include <string>
@@ -282,6 +284,73 @@ TEST_CASE("resolver: overlay replaces and removes by id and slot", "[default_lay
     require_cell(r, "clock", 8, 4, 4, 2);
 }
 
+TEST_CASE("resolver: overlay replaces a named candidate list", "[default_layout_resolver]") {
+    const json table = parse(kSlotTable);
+    const json overlay =
+        parse(R"json({"candidate_lists": {"FIL": ["notifications", "clock"]}})json");
+    const auto r = resolve(table, "medium", {{{"filament_sensor_count", 1}}}, 12, 8, &overlay);
+    // ENV ends in clock and FIL now leads with notifications, not filament.
+    require_cell(r, "clock", 8, 0, 2, 2);
+    require_cell(r, "notifications", 10, 0, 2, 2);
+    CHECK(placed_entry(r, "filament") == nullptr);
+    // ENV is untouched by an overlay that names only FIL.
+    CHECK(is_disabled(r, "dryer"));
+}
+
+TEST_CASE("resolver: overlay merges into variants", "[default_layout_resolver]") {
+    const json table = parse(R"json({
+      "anchors": [{"id": "clock", "placements": {"medium": {"col": 0, "row": 0, "colspan": 4, "rowspan": 2}}}],
+      "variants": {
+        "portrait": {"anchors": [
+            {"id": "clock", "placements": {"medium": {"col": 0, "row": 6, "colspan": 4, "rowspan": 2}}},
+            {"id": "notifications", "placements": {"medium": {"col": 4, "row": 6, "colspan": 2, "rowspan": 2}}}],
+          "disabled": {"medium": ["led"]}},
+        "ultrawide": [
+            {"id": "clock", "placements": {"medium": {"col": 9, "row": 0, "colspan": 4, "rowspan": 2}}},
+            {"id": "notifications", "placements": {"medium": {"col": 13, "row": 0, "colspan": 2, "rowspan": 2}}}]
+      }})json");
+    const std::vector<std::string> portrait{"portrait"};
+    const std::vector<std::string> ultrawide{"ultrawide"};
+
+    SECTION("object-form overlay on an object variant: replace, remove, disabled") {
+        const json overlay = parse(R"json({"variants": {"portrait": {
+            "anchors": [
+              {"id": "clock", "placements": {"medium": {"col": 2, "row": 8, "colspan": 4, "rowspan": 2}}},
+              {"id": "notifications", "remove": true}],
+            "disabled": {"medium": ["tips"]}}}})json");
+        const auto r = resolve(table, "medium", {}, 8, 16, &overlay, portrait);
+        require_cell(r, "clock", 2, 8, 4, 2);
+        CHECK(placed_entry(r, "notifications") == nullptr);
+        CHECK(is_disabled(r, "tips"));
+        CHECK_FALSE(is_disabled(r, "led"));
+    }
+    SECTION("bare-array overlay on an object variant") {
+        const json overlay = parse(R"json({"variants": {"portrait": [
+            {"id": "temperature", "placements": {"medium": {"col": 6, "row": 6, "colspan": 2, "rowspan": 2}}}]}})json");
+        const auto r = resolve(table, "medium", {}, 8, 16, &overlay, portrait);
+        require_cell(r, "clock", 0, 6, 4, 2);
+        require_cell(r, "notifications", 4, 6, 2, 2);
+        require_cell(r, "temperature", 6, 6, 2, 2);
+        CHECK(is_disabled(r, "led"));
+    }
+    SECTION("object-form overlay on a bare-array variant") {
+        const json overlay = parse(R"json({"variants": {"ultrawide": {
+            "anchors": [{"id": "clock", "placements": {"medium": {"col": 20, "row": 0, "colspan": 4, "rowspan": 2}}}],
+            "disabled": {"medium": ["tips"]}}}})json");
+        const auto r = resolve(table, "medium", {}, 36, 8, &overlay, ultrawide);
+        require_cell(r, "clock", 20, 0, 4, 2);
+        require_cell(r, "notifications", 13, 0, 2, 2);
+        CHECK(is_disabled(r, "tips"));
+    }
+    SECTION("an overlay can add a variant the base lacks") {
+        const json overlay = parse(R"json({"variants": {"tiny_portrait": [
+            {"id": "notifications", "placements": {"medium": {"col": 0, "row": 0, "colspan": 2, "rowspan": 2}}}]}})json");
+        const auto r = resolve(table, "medium", {}, 8, 16, &overlay, {"tiny_portrait", "portrait"});
+        require_cell(r, "notifications", 0, 0, 2, 2);
+        CHECK(placed_entry(r, "clock") == nullptr);
+    }
+}
+
 TEST_CASE("resolver: variant chain falls through to the base anchors",
           "[default_layout_resolver]") {
     const json table = parse(R"json({
@@ -408,11 +477,47 @@ TEST_CASE("resolver: arrangement_hash covers the arrangement only", "[default_la
         p["pages"][0]["widgets"][0]["config"] = {{"x", 1}};
         CHECK(helix::layout::arrangement_hash(p) == h);
     }
-    SECTION("retained entries do not change it") {
+    SECTION("an appended enabled but unplaced entry does not change it") {
+        json p = pages;
+        p["pages"][0]["widgets"].push_back({{"id", "fan_stack"},
+                                            {"enabled", true},
+                                            {"col", -1},
+                                            {"row", -1},
+                                            {"colspan", 2},
+                                            {"rowspan", 2}});
+        p["pages"][0]["widgets"].push_back({{"id", "macros"}, {"enabled", true}});
+        CHECK(helix::layout::arrangement_hash(p) == h);
+    }
+    SECTION("a disabled entry with a stale position does not change it") {
+        json p = pages;
+        p["pages"][0]["widgets"].push_back({{"id", "motion"},
+                                            {"enabled", false},
+                                            {"col", 8},
+                                            {"row", 0},
+                                            {"colspan", 2},
+                                            {"rowspan", 2}});
+        CHECK(helix::layout::arrangement_hash(p) == h);
+    }
+    SECTION("an unplaced plugin id whose definition registers later does not change it") {
+        json p = pages;
+        p["pages"][0]["widgets"].push_back({{"id", "resolver_test_plugin"}, {"enabled", true}});
+        REQUIRE(helix::find_widget_def("resolver_test_plugin") == nullptr);
+        const std::string before = helix::layout::arrangement_hash(p);
+        helix::RuntimeWidgetDef def;
+        def.id = "resolver_test_plugin";
+        def.display_name = "Resolver Test";
+        helix::test::ScopeExit cleanup(
+            [] { helix::unregister_runtime_widget_def("resolver_test_plugin"); });
+        REQUIRE(helix::register_runtime_widget_def(def));
+        REQUIRE(helix::find_widget_def("resolver_test_plugin") != nullptr);
+        const std::string after = helix::layout::arrangement_hash(p);
+        CHECK(before == h);
+        CHECK(after == before);
+    }
+    SECTION("a placed plugin entry is part of it") {
         json p = pages;
         p["pages"][0]["widgets"][2]["col"] = 9;
-        p["pages"][0]["widgets"].push_back({{"id", "another_plugin"}, {"enabled", true}});
-        CHECK(helix::layout::arrangement_hash(p) == h);
+        CHECK(helix::layout::arrangement_hash(p) != h);
     }
     SECTION("a move changes it") {
         json p = pages;

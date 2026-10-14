@@ -26,6 +26,10 @@
 ///   being `[col, row, colspan, rowspan]` relative to the region, and
 ///   `candidates` either an inline array (ids, or `{"id", "requires": [...]}`)
 ///   or the name of a top-level `candidate_lists` entry.
+///
+/// Every widget named in a candidate list of the active table that ends up
+/// unplaced is reported in `disabled`, including the candidates of a slot that
+/// has no region at this tier.
 namespace helix::layout {
 
 struct CapabilitySnapshot {
@@ -37,7 +41,9 @@ struct CapabilitySnapshot {
 struct ResolvedPlacement {
     std::string id;
     int col, row, colspan, rowspan; // tracks
-    nlohmann::json config;          // the anchor's `config`, or empty object
+    /// The anchor's `config` with its placement-level `config` merged over
+    /// it, or an empty object.
+    nlohmann::json config;
 };
 
 struct ResolvedDefault {
@@ -61,10 +67,11 @@ ResolvedDefault resolve_default_layout(const nlohmann::json& table,
 /// slots and candidate lists) plus every `requires` subject; sorted, unique.
 std::vector<std::string> subjects_named_by(const nlohmann::json& table);
 
-/// Hash of a serialize_pages() payload's arrangement: per page, each known
-/// widget's id, enabled, col, row, colspan, rowspan; and the page count.
-/// Per-widget `config` and entries no registry definition knows (retained
-/// plugin widgets) do not contribute.
+/// Hash of a serialize_pages() payload's arrangement: per page, the id, col,
+/// row, colspan and rowspan of each placed entry (enabled, with a grid
+/// position), in order; and the page count. Unplaced and disabled entries do
+/// not contribute, so neither does per-widget `config` nor whether an id has a
+/// registry definition.
 std::string arrangement_hash(const nlohmann::json& pages_payload);
 
 /// Placement key for a tier on a measured grid, or "" when nothing matches.
