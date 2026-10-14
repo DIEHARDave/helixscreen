@@ -42,18 +42,15 @@ print-select       navigate print-select
 # Printer image callouts (home widget, prestonbrown/helixscreen#1397).
 # callouts-2x2 and callouts-untagged just need the widget's natural default
 # span, so --printer selects a tagged vs untagged printer image. callouts-4x2 needs
-# an 8x4-track span, which needs colspan8 free at row0-4 - space the default
-# 800x480 layout has no slack for, since 4 neighboring tiles already fill
-# it. That space is cleared by selecting each blocking tile (a press+release
-# at its centre) and clicking its edit-mode trash pill (an unnamed floating
-# button, hence the literal offsets: BTN_SIZE 32 / OVERHANG 8 at the small
-# breakpoint 800x480 resolves to, src/ui/grid_edit_mode.cpp), before
-# resizing printer_image's right edge the same way HELIXCTL.md's own resize
-# recipes do. Tied to the current default_layout.json small-tier placements;
-# a layout change that moves temperature/bed_temperature/fan_stack/ams
-# needs matching coordinate updates here.
+# a 4x2-cell span. On the default mock printer at 800x480 the cells it grows
+# into hold temperature and bed_temperature beside the image and ams below
+# them. ctl home remove frees those cells by widget id and ctl home resize
+# widens the image (docs/devel/HELIXCTL.md, section Home-grid layout without
+# gestures), so the recipe carries no pixel coordinates; a default that puts
+# other widgets in those cells needs their ids here instead.
+# tests/ui/test_callouts_recipe.py runs it against the default.
 callouts-2x2       navigate home
-callouts-4x2       navigate home; set settings_long_press_time 10000; long_press 200 111; press 379 63; release 379 63; press 424 5; release 424 5; press 498 63; release 498 63; press 531 5; release 531 5; press 379 181; release 379 181; press 412 123; release 412 123; press 498 181; release 498 181; press 531 123; release 531 123; press 200 111; release 200 111; press 317 111; move 790 111; release 790 111; click nav_btn_edit_done
+callouts-4x2       navigate home; home remove temperature; home remove bed_temperature; home remove ams; home resize printer_image 4 2; wait_idle
 callouts-untagged  navigate home
 
 # Home widget catalog (docs/user/guide/home-panel.md). A long press on the grid
@@ -64,7 +61,8 @@ callouts-untagged  navigate home
 # picked by its index, which follows the WidgetCategory order in
 # include/panel_widget_registry.h. The default 800x480 layout leaves no free
 # cell, which dims every row with a needs-space note, so the category shot
-# removes fan_stack first.
+# removes fan_stack first. The long press lands inside printer_image, which every
+# default places at the grid origin and spans past x=200,y=111 at 800x480.
 widget-catalog           navigate home; long_press 200 111; click nav_btn_edit_add
 widget-catalog-category  navigate home; home remove fan_stack; wait_idle; long_press 200 111; click nav_btn_edit_add; wait_idle; click action_row[2]
 

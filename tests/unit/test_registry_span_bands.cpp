@@ -43,7 +43,7 @@ namespace {
 /// Measured container content boxes and gutters, one per shipping tier.
 /// content_w/content_h are the home grid container's content box, which is a
 /// property of the panel chrome and does not change with the track count; the
-/// gutter is the space_xs token at that breakpoint. Both are what
+/// gutter is the home_grid_gap token at that breakpoint. Both are what
 /// GridLayout::get_dimensions() and grid_cell_metrics() divide, so a tier is
 /// fully described by them plus the breakpoint its resolution selects.
 ///
@@ -64,8 +64,8 @@ const std::vector<Geometry> kGeometries = {
     {"tiny 480x320",            480,  320,  418, 312,  2},
     {"small 480x400",           480,  400,  414, 388,  4},
     {"medium 800x480",          800,  480,  710, 466,  5},
-    {"large 1024x600",         1024,  600,  904, 584,  6},
-    {"xlarge 1280x720",        1280,  720, 1128, 700,  8},
+    {"large 1024x600",         1024,  600,  904, 584, 10},
+    {"xlarge 1280x720",        1280,  720, 1128, 700, 10},
     {"micro portrait 272x480",  272,  480,  264, 394,  2},
     {"portrait 480x800",        480,  800,  466, 664,  5},
 };

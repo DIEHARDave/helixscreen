@@ -331,7 +331,7 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     // container would read as an empty page and nothing would be refused.
     // 715x475 is the geometry test_grid_edit_snap_anim_lifetime.cpp uses: a
     // 12x8 Medium grid of exact 55px tracks.
-    const int gutter = theme_manager_get_spacing("space_xs");
+    const int gutter = helix::GridLayout::gutter_px();
     REQUIRE(gutter > 0);
     const auto dims = GridLayout::get_dimensions(UiBreakpoint::Medium, 715, 475);
     REQUIRE(dims.cols == 12);

@@ -140,6 +140,15 @@ class PanelWidgetManager {
                                                                int page_index = 0,
                                                                WidgetReuseMap reuse = {});
 
+    /// Re-resolve @p panel_id's unedited default layout on the grid it was last
+    /// stamped for when a capability it consults has changed. Only while the
+    /// printer is CONNECTED and Klipper READY: a teardown or retarget zeroes
+    /// capability subjects, and that is not a reason to reshuffle the panel.
+    /// Returns true when it rewrote the arrangement, so the caller rebuilds
+    /// even if the visible widget list is unchanged. populate_widgets() runs
+    /// this first.
+    bool refresh_live_default(const std::string& panel_id);
+
     /// Compute which widget IDs would be visible for a panel without creating
     /// any LVGL objects. Used to short-circuit rebuilds when the list is unchanged.
     std::vector<std::string> compute_visible_widget_ids(const std::string& panel_id,
@@ -203,10 +212,17 @@ class PanelWidgetManager {
     // -- Gate observers --
 
     /// Observe every hardware gate subject so that widgets appear/disappear
-    /// when capabilities change. Calls rebuild_cb on change. @p panel_id only
+    /// when capabilities change, every subject the default layout table
+    /// consults, and the printer connection and Klipper state that decide when
+    /// a live default may re-resolve. Calls rebuild_cb on change. @p panel_id only
     /// keys the registration: any surface listing gated widgets (the home panel,
     /// the widget catalog) holds its own under a distinct key.
     void setup_gate_observers(const std::string& panel_id, RebuildCallback rebuild_cb);
+
+    /// Every subject setup_gate_observers() watches: the registry gates, the
+    /// default layout table's subjects, @p overlay's (a preset seed, null for
+    /// none) and the connection pair. Sorted, unique.
+    static std::vector<std::string> gate_subject_names(const nlohmann::json& overlay);
 
     /// Release gate observers for a panel (call during deinit/shutdown). Safe to
     /// call after the manager is destroyed: a process-lifetime panel can outlive

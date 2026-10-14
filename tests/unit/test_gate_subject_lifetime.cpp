@@ -13,10 +13,12 @@
 #include "../lvgl_test_fixture.h"
 #include "ams_state.h"
 #include "app_globals.h"
+#include "default_layout_resolver.h"
 #include "filament_sensor_manager.h"
 #include "helix-xml/src/xml/lv_xml.h"
 #include "humidity_sensor_manager.h"
 #include "led/led_controller.h"
+#include "panel_widget_config.h"
 #include "panel_widget_manager.h"
 #include "panel_widget_registry.h"
 #include "performance_state.h"
@@ -80,8 +82,9 @@ const std::vector<std::pair<std::string, Owner>>& owners() {
                              [] { perf::PerformanceState::instance().deinit_subjects(); }});
         const Owner printer{[] { get_printer_state().init_subjects(true); },
                             [] { get_printer_state().deinit_subjects(); }};
-        for (const char* n : {"power_device_count", "printer_has_chamber",
-                              "printer_has_exclude_object", "printer_has_bed_mesh"})
+        for (const char* n :
+             {"power_device_count", "printer_has_chamber", "printer_has_exclude_object",
+              "printer_has_bed_mesh", "printer_has_spoolman", "printer_is_enclosed"})
             t.emplace_back(n, printer);
         return t;
     }();
@@ -122,5 +125,21 @@ TEST_CASE("gate_subject_lifetime: every widget gate subject has an owner row",
         INFO("gate subject " << def.hardware_gate_subject);
         CHECK(covered.count(def.hardware_gate_subject) == 1);
         CHECK(gate_subject_lifetime(def.hardware_gate_subject) != nullptr);
+    }
+}
+
+TEST_CASE("gate_subject_lifetime: every subject the shipped default table names has an owner row",
+          "[panel_widget][manager][observer]") {
+    // A `requires` subject re-resolves the live default exactly like a widget
+    // gate, so it needs the same owner mapping.
+    std::set<std::string> covered;
+    for (const auto& row : owners())
+        covered.insert(row.first);
+    const auto names = helix::layout::subjects_named_by(*PanelWidgetConfig::load_default_table());
+    REQUIRE_FALSE(names.empty());
+    for (const auto& name : names) {
+        INFO("subject " << name);
+        CHECK(covered.count(name) == 1);
+        CHECK(gate_subject_lifetime(name.c_str()) != nullptr);
     }
 }

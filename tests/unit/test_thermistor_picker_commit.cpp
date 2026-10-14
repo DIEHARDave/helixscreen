@@ -17,6 +17,7 @@
  * without reaching into the widget's private state.
  */
 
+#include "ui_carousel.h"
 #include "ui_context_menu.h"
 #include "ui_update_queue.h"
 
@@ -186,6 +187,7 @@ TEST_CASE_METHOD(ThermistorPickerFixture, "thermistor picker rows hold the senso
 TEST_CASE_METHOD(ThermistorPickerFixture,
                  "thermistor carousel pages hold the sensor name to one line",
                  "[thermistor][one_line]") {
+    ui_carousel_init();
     REQUIRE(register_component("components/panel_widget_thermistor_carousel"));
     ThermistorWidget widget("thermistor");
     widget.set_config(

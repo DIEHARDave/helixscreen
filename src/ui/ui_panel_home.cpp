@@ -866,7 +866,10 @@ void HomePanel::setup_widget_gate_observers() {
                 }
             }
         }
-        populate_widgets(/*force=*/false);
+        // A live default rearranged by this change can keep the same widget
+        // list, which the unforced path would read as nothing to do.
+        const bool relaid = helix::PanelWidgetManager::instance().refresh_live_default("home");
+        populate_widgets(/*force=*/relaid);
     });
 }
 

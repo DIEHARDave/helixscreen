@@ -47,6 +47,7 @@
 #include "standard_macros.h"
 #include "static_subject_registry.h"
 #include "subject_managed_panel.h"
+#include "text_measure.h"
 #include "theme_manager.h"
 #include "thumbnail_cache.h"
 #include "thumbnail_load_context.h"
@@ -507,6 +508,45 @@ void PrintStatusWidget::on_activate() {
         !job_holds_machine(printer_state_.print_state().get_print_lifecycle())) {
         defer_reset_print_card_to_idle();
     }
+}
+
+namespace helix {
+
+IdleCardNeeds measure_idle_card_needs() {
+    IdleCardNeeds n;
+    // ui_card pads by #space_md; a pixel per side covers its border.
+    const int card_pad = theme_manager_get_spacing("space_md") + 1;
+    n.chrome_w = 2 * card_pad;
+    n.chrome_h = 2 * card_pad;
+    const lv_font_t* title_font = theme_manager_get_font("font_body");
+    const lv_font_t* line_font = theme_manager_get_font("font_small");
+    n.gap = theme_manager_get_spacing("space_xs");
+    n.title_h = title_font ? lv_font_get_line_height(title_font) : 0;
+    // The "when" and "meta" lines, stacked with the column's gap.
+    n.detail_h = line_font ? 2 * lv_font_get_line_height(line_font) + n.gap : 0;
+    n.button_h = theme_manager_get_spacing("button_height_sm");
+    // A caption measured in font_body, the larger face a button label takes,
+    // plus button_padding and a border pixel on each side.
+    const int button_chrome = 2 * (theme_manager_get_spacing("button_padding") + 1);
+    n.reprint_w = ui::measure_text_px(lv_tr("Reprint Last"), title_font) + button_chrome;
+    n.queue_w = ui::measure_text_px(lv_tr("Job Queue"), title_font) + button_chrome;
+    return n;
+}
+
+bool idle_card_fits(const IdleCardNeeds& n, int width_px, int height_px) {
+    const int avail_w = width_px - n.chrome_w;
+    if (avail_w < std::max(n.reprint_w, n.queue_w)) {
+        return false;
+    }
+    const bool side_by_side = avail_w >= n.reprint_w + n.gap + n.queue_w;
+    const int buttons_h = side_by_side ? n.button_h : 2 * n.button_h + n.gap;
+    return height_px - n.chrome_h >= n.title_h + n.gap + n.detail_h + n.gap + buttons_h;
+}
+
+} // namespace helix
+
+bool PrintStatusWidget::fits_at(int width_px, int height_px) const {
+    return idle_card_fits(measure_idle_card_needs(), width_px, height_px);
 }
 
 void PrintStatusWidget::on_size_changed(int /*colspan*/, int /*rowspan*/, int width_px,

@@ -37,8 +37,6 @@
 #include "i_moonraker_client.h"
 #include "lvgl/lvgl.h"
 #include "lvgl/src/others/translation/lv_translation.h"
-#include "panel_widget_config.h"
-#include "panel_widget_manager.h"
 #include "platform_info.h"
 #include "runtime_config.h"
 #include "static_panel_registry.h"
@@ -1038,13 +1036,6 @@ size_t ui_wizard_record_expected_hardware(helix::Config* config) {
             std::string ams_hw_name = backend->get_klipper_object_name();
             if (!ams_hw_name.empty()) {
                 names.push_back(std::move(ams_hw_name));
-            }
-
-            // Enable AMS widget on home panel since AMS hardware was detected
-            auto& wc = PanelWidgetManager::instance().get_widget_config("home");
-            if (wc.set_enabled_by_id("ams", true)) {
-                wc.save();
-                spdlog::info("[Wizard] Enabled AMS widget on home panel");
             }
         }
     }

@@ -195,7 +195,7 @@ Two subtleties both families hit. First, `observe<int>` defers its initial fire 
 ## Going deeper
 
 - [`../PANEL_WIDGET_GUIDE.md`](../PANEL_WIDGET_GUIDE.md) - authoring a widget: registry def, class, XML, the measured-layout pattern, the shared size ladder and the checklist the sized widgets follow.
-- [`../LAYOUT_SYSTEM.md`](../LAYOUT_SYSTEM.md) - the grid itself: `GridLayout` track math, half-cell tracks, breakpoint column counts, preset seed layouts, span authoring.
+- [`../LAYOUT_SYSTEM.md`](../LAYOUT_SYSTEM.md) - the grid itself: `GridLayout` track math, half-cell tracks, breakpoint column counts, the capability-resolved default layout and its slots, preset overlays, span authoring.
 - [`../HOME_EDIT_MODE.md`](../HOME_EDIT_MODE.md) - edit mode: the session over a page, grab and click rules, the events that end a gesture, cross-page drag and the page lifecycle.
 - [`../PAGE_SCROLL_BUTTONS.md`](../PAGE_SCROLL_BUTTONS.md) - the `PANEL_WIDGET_TILE_FLAG` consumer: why the chevron gutter must not descend into a tile.
 - [`../PLUGIN_DEVELOPMENT.md`](../PLUGIN_DEVELOPMENT.md) - plugin-declared widgets and their Lua hooks.
@@ -218,7 +218,7 @@ Read in this order; about 30 minutes total.
 5. `src/ui/panel_widget_manager.cpp#populate_widgets`: once top to bottom; `resolve_slot`, the `~gated` short-circuit key, the `fits_at` grow on anchors, the two auto-place policies, the write-back rules, the create/attach loop, grid-last activation.
 6. `src/ui/panel_widget_manager.cpp#setup_gate_observers`: the registry walk, the `GateRebuildSlot` coalescing, and `clear_gate_observers()` canceling in-flight rebuilds.
 7. `src/ui/ui_panel_home.cpp#populate_page`: the ID snapshot, the gate-flip swap, reuse-map extraction, freeze+drain+`safe_clean_children`; then `reseat_widgets()` and `relayout_edit_page()` beside it.
-8. `include/panel_widget_config.h#PanelWidgetEntry` and the `PanelWidgetConfig` API around it: pages, `set_widget_config`, the preset-seed loader (`include/panel_widget_config.h#try_populate_from_preset_seed`).
+8. `include/panel_widget_config.h#PanelWidgetEntry` and the `PanelWidgetConfig` API around it: pages, `set_widget_config`, the preset-overlay loader (`include/panel_widget_config.h#load_preset_overlay`).
 9. `src/ui/panel_widgets/motion_widget.cpp#register_motion_widget`: the whole 59-line widget, the minimum viable `PanelWidget`.
 10. `src/ui/panel_widgets/fan_stack_widget.cpp#register_fan_stack_widget`: then `attach_stack`, `bind_fans`, `bind_fan_observer` (note the manual initial-value read), and the version observer in `setup_common_observers`.
 11. `src/ui/panel_widgets/led_widget.cpp#attach` through `bind_led()`: the second instance of the version-observer pattern.
