@@ -19,6 +19,8 @@ How the CI pipeline ships `helix-screen` to Google Play, and the one-time manual
 | Managed publishing | **Off**: an approved change publishes without another click |
 | Opt-in link | `https://play.google.com/apps/testing/org.helixscreen.app`. Admits only members of the tester group |
 | `PLAY_SERVICE_ACCOUNT_JSON` | Still unset, so `publish-android` skips on every tag |
+| New stable tags | **Not on Play until uploaded by hand**: every stable tag needs the steps in "Uploading a stable release by hand" below. The in-app updater on a Play install only announces what Play serves, so a tag left un-uploaded is silently invisible to Play testers |
+| Testing on your own phone | The opt-in link answered "App not available" for the developer account `preston.brown@gmail.com`; a phone signed into another account that joined the tester group installs normally |
 
 **The production gate.** A personal developer account cannot apply for production until a closed
 test has had **at least 12 testers opted in for 14 days**; the app dashboard's "Apply for access to
@@ -228,6 +230,18 @@ Google is phasing in a requirement that the developer behind a package name be a
   | Google's app signing key (Play-served installs) | Play Console → Test and release → App integrity → App signing. Does not exist until Play App Signing enrollment completes, so it cannot be registered before the first manual upload |
 - **Enforcement starts 2026-09-30**, and only for **Brazil, Indonesia, Singapore, and Thailand**, and only on *participating* app stores. Our sideload channel (direct APK download from a GitHub release) is not affected by that wave. Global enforcement is **2027**.
 - **Register early anyway.** It costs nothing now, and it parks the package name — `org.helixscreen.app` is not reserved by anything today.
+
+## Uploading a stable release by hand
+
+Until `PLAY_SERVICE_ACCOUNT_JSON` exists, a stable tag reaches Play only through these steps.
+Do them for every stable tag, the day it is published.
+
+1. Download `helixscreen-android-vX.Y.Z.aab` from the GitHub release (`gh release download vX.Y.Z -p 'helixscreen-android-vX.Y.Z.aab'`). Play takes the bundle, never the APKs.
+2. Play Console (`/u/1/`, the `preston.brown@gmail.com` account) → HelixScreen → Test and release → Testing → **Closed testing** → **Closed testing - Alpha** → **Create new release**.
+3. Upload the AAB under **App bundles**. The row must show the versionCode `scripts/android-version-code.sh X.Y.Z` prints (1.0.5 is `100000599`).
+4. Release name `X.Y.Z`. Release notes: the `release-android-whatsnew` artifact of the tag's Release run holds `whatsnew-en-US`; paste it between `<en-US>` and `</en-US>`.
+5. **Next**. Errors block the release; the "no deobfuscation file" warning is expected because the build does not minify. **Save** → **Go to Publishing overview** → **Send changes for review**.
+6. With managed publishing off, testers get the update as soon as Google approves it. Check by opening the Play listing on a tester phone: it offers **Update**.
 
 ## How a Play install finds and takes updates
 
