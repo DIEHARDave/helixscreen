@@ -138,8 +138,10 @@ class BeltTuneSession {
     [[nodiscard]] float reference_hz() const; ///< latest round's reference peak
     [[nodiscard]] float adjusted_hz() const;
     [[nodiscard]] std::optional<float> previous_gap_hz() const; ///< hollow gauge needle
-    [[nodiscard]] float total_turns() const; ///< signed sum, tighten positive; SCREW only
-    [[nodiscard]] int total_rounds() const;  ///< across zones
+    /// Signed sum, tighten positive, of the turns recorded while `path` was
+    /// the adjusted one. SCREW only.
+    [[nodiscard]] float total_turns(BeltPath path) const;
+    [[nodiscard]] int total_rounds() const; ///< across zones
 
   private:
     [[nodiscard]] std::optional<BeltTuneZone> find_zone(std::vector<float> matched) const;
@@ -167,7 +169,8 @@ class BeltTuneSession {
     std::optional<float> pending_turns_;
     float unmeasured_turns_ = 0.0f;   ///< signed turns since the last measured round
     std::vector<float> rate_samples_; ///< |peak move| / |turns|, Hz per turn
-    float total_turns_ = 0.0f;
+    float total_turns_a_ = 0.0f;
+    float total_turns_b_ = 0.0f;
 };
 
 } // namespace helix::calibration

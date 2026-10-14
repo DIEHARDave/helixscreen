@@ -378,7 +378,7 @@ const BeltTuneRound& BeltTuneSession::add_round(const BeltCurve& a_window,
         r.turns_made = pending_turns_ ? pending_turns_ : advised.turns;
         const float signed_turns =
             advised.direction == BeltTurnDirection::TIGHTEN ? *r.turns_made : -*r.turns_made;
-        total_turns_ += signed_turns;
+        (adjusted_ == BeltPath::PATH_A ? total_turns_a_ : total_turns_b_) += signed_turns;
         unmeasured_turns_ += signed_turns;
     }
     pending_turns_.reset();
@@ -532,8 +532,8 @@ std::optional<float> BeltTuneSession::previous_gap_hz() const {
     return previous_gap_hz_;
 }
 
-float BeltTuneSession::total_turns() const {
-    return total_turns_;
+float BeltTuneSession::total_turns(BeltPath path) const {
+    return path == BeltPath::PATH_A ? total_turns_a_ : total_turns_b_;
 }
 
 int BeltTuneSession::total_rounds() const {

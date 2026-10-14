@@ -337,6 +337,17 @@ TEST_CASE("tune session: the looser path is adjusted, and swapping flips it", "[
         CHECK(s.zone()->window.freq_end_hz == Catch::Approx(window.freq_end_hz));
     }
 
+    SECTION("turns are totalled per belt across a swap") {
+        // B tightened a quarter, then A, now adjusted and higher, loosened an eighth.
+        sweep(s, 104.0f, 101.0f);
+        s.swap_adjusted_path();
+        REQUIRE(s.advice().direction == BeltTurnDirection::LOOSEN);
+        s.record_turns(0.125f);
+        sweep(s, 103.0f, 101.0f);
+        CHECK(s.total_turns(BeltPath::PATH_B) == Catch::Approx(0.25f));
+        CHECK(s.total_turns(BeltPath::PATH_A) == Catch::Approx(-0.125f));
+    }
+
     SECTION("swap clears the learned rate; the amount restarts at a quarter turn") {
         sweep(s, 104.0f, 101.0f); // B moved 1 Hz for the default quarter turn
         REQUIRE(s.hz_per_turn().has_value());
@@ -410,7 +421,8 @@ TEST_CASE("tune advice: amounts for screws only, spring re-seat", "[belt][tune]"
             CHECK_FALSE(r.turns_made.has_value());
             CHECK_FALSE(s.advice().turns.has_value());
             CHECK_FALSE(s.hz_per_turn().has_value());
-            CHECK(s.total_turns() == Catch::Approx(0.0f));
+            CHECK(s.total_turns(BeltPath::PATH_A) == Catch::Approx(0.0f));
+            CHECK(s.total_turns(BeltPath::PATH_B) == Catch::Approx(0.0f));
             CHECK(s.advice().spring_reseat == (kind == BeltTensionerKind::SPRING));
         }
     }
@@ -547,7 +559,8 @@ TEST_CASE("tune rate: median of real moves, recorded turns win", "[belt][tune]")
     // Median of 16, 6 and 8; counting the 0.4 Hz/turn round would give 7.
     REQUIRE(s.hz_per_turn().has_value());
     CHECK(*s.hz_per_turn() == Catch::Approx(8.0f).margin(0.4f));
-    CHECK(s.total_turns() == Catch::Approx(1.125f));
+    CHECK(s.total_turns(BeltPath::PATH_B) == Catch::Approx(1.125f));
+    CHECK(s.total_turns(BeltPath::PATH_A) == Catch::Approx(0.0f));
     CHECK(s.total_rounds() == 4);
     CHECK(s.rounds().size() == 4);
 }
