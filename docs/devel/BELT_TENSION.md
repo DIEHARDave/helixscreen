@@ -398,6 +398,21 @@ drops its duration when the button row holds three buttons or the layout is comp
 Re-measure and Next zone drop theirs on compact layouts. The wide layout and the compact one are the same subjects
 bound to different widgets, so `refresh_tune` feeds both.
 
+### Ultrawide layout
+
+On ultrawide screens (`ui_is_ultrawide eq 1`, wider than 2.5:1) the compact conditions give
+way: those screens read a small or medium tier by their short axis, but the problem there is
+width, not room. `overlay_content` becomes a row. While a state shows a chart (RUNNING,
+RESULTS, TUNING) the chart sits in `chart_host_wide` on the left and grows, and `bt_main`,
+holding everything else, becomes a sidebar `belt_sidebar_w` wide (640 small, 720 medium, 800
+large, 960 xlarge, 1280 xxlarge, measured so the button labels fit in en and ru). The sidebar
+carries the full tuning hero and the wide button variants, the RESULTS hero row and all four
+RESULTS buttons, and the run status with Stop. START keeps the full width: the sketch grows
+on the left and the text and Start take the sidebar width. The chart is a C++ widget, so
+`BeltTensionPanel::chart_host_for` picks the wide host and an observer on `ui_is_ultrawide`
+moves it when a rotation crosses the line. On the EMBEDDED tier, which has no chart, the
+panel keeps the full width.
+
 ### Mock script
 
 `HELIX_MOCK_BELT_TUNE_SCRIPT="B:102.1,107.6,109.8"` scripts one path's peak across successive
