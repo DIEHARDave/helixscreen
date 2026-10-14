@@ -4518,6 +4518,7 @@
     },
     {
       "id": "flsun_t1_pro",
+      "enclosed": true,
       "name": "FLSUN T1 Pro",
       "manufacturer": "FLSUN",
       "image": "flsun-delta.png",
