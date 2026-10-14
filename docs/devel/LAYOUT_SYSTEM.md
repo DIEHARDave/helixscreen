@@ -490,8 +490,8 @@ exist so a cell can hold whichever widget this printer can use:
   `supports_half_row`.
 - `candidates` is an inline array or the name of a top-level `candidate_lists` entry. A
   candidate is an id or `{"id", "requires": ["subject", ...]}`. The shipped table has one
-  list, `ENV_FIL`: filament, dryer, chamber_temperature requiring `printer_is_enclosed` (a
-  chamber sensor on an open frame reads the room), led, and active_spool requiring
+  list, `ENV_FIL`: filament, led, dryer, chamber_temperature requiring `printer_is_enclosed` (a
+  chamber sensor on an open frame reads the room), and active_spool requiring
   `printer_has_spoolman`. The bed mesh and the AMS are inline single-candidate lists.
 - **A candidate qualifies** when its registry gate subject is open, every subject in its
   `requires` is non-zero, and no earlier cell placed it. A gate subject that is not registered

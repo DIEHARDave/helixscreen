@@ -3,6 +3,7 @@
   "candidate_lists": {
     "ENV_FIL": [
       "filament",
+      "led",
       "dryer",
       {
         "id": "chamber_temperature",
@@ -10,7 +11,6 @@
           "printer_is_enclosed"
         ]
       },
-      "led",
       {
         "id": "active_spool",
         "requires": [
@@ -483,6 +483,7 @@
               "candidates": [
                 "ams",
                 "filament",
+                "led",
                 "dryer",
                 {
                   "id": "chamber_temperature",
@@ -490,7 +491,6 @@
                     "printer_is_enclosed"
                   ]
                 },
-                "led",
                 {
                   "id": "active_spool",
                   "requires": [
