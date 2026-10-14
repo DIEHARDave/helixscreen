@@ -147,6 +147,44 @@ TEST_CASE("helix::flashforge_machine_display_name matches the printer DB spellin
     CHECK(std::string(helix::flashforge_machine_display_name(
               helix::FlashForgeMachine::Creator5Pro)) == "FlashForge Creator 5 Pro");
 }
+TEST_CASE("helix::ad5x_board_present names the AD5X and not a Creator 5 sharing its layout",
+          "[platform_info][machine-id]") {
+    // Every layout the mod probe recognises is an AD5X unless the board names
+    // itself something else; Forge-X carries no machine id at all.
+    for (const char* layout : {"zmod-marker", "zmod-prog", "forgex", "forgex-host"}) {
+        TempDirGuard tmp;
+        INFO("layout: " << layout);
+        REQUIRE(
+            helix::ad5x_board_present(helix::test::make_ad5x_layout(tmp.path, layout).string()));
+    }
+
+    TempDirGuard ad5x;
+    write_probe_file(ad5x.path, "usr/prog/app_startup.sh", "MACHINE=AD5X\n");
+    REQUIRE(helix::ad5x_board_present(ad5x.path.string()));
+
+    // A Creator 5 has FlashForge's /usr/prog too, so the mod probe alone
+    // cannot tell it from an AD5X.
+    for (const char* machine : {"Creator5", "Creator5Pro"}) {
+        TempDirGuard c5;
+        INFO("machine: " << machine);
+        write_probe_file(c5.path, "usr/prog/app_startup.sh",
+                         std::string("MACHINE=") + machine + "\n");
+        REQUIRE(helix::ad5x_mod_layout_present(c5.path.string()));
+        REQUIRE_FALSE(helix::ad5x_board_present(c5.path.string()));
+    }
+
+    // Inside the Z-Mod chroot only /usr/prog/config is bound and the
+    // os-release codename names the board.
+    TempDirGuard chroot;
+    fs::create_directories(chroot.path / "usr/prog/config");
+    write_probe_file(chroot.path, "etc/os-release", "VERSION_CODENAME=\"Creator5Pro 1.9.9\"\n");
+    REQUIRE(helix::ad5x_mod_layout_present(chroot.path.string()));
+    REQUIRE_FALSE(helix::ad5x_board_present(chroot.path.string()));
+
+    TempDirGuard plain;
+    REQUIRE_FALSE(
+        helix::ad5x_board_present(helix::test::make_ad5x_layout(plain.path, "plain").string()));
+}
 
 TEST_CASE("helix::local_camera_probe_safe allows a K1 and refuses every FlashForge MIPS board",
           "[platform_info][camera]") {
