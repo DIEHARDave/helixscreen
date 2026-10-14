@@ -2322,10 +2322,9 @@ TEST_CASE_METHOD(PrinterDetectorFixture,
             result.runner_up_confidence, result.margin(), result.tied_count);
 
     REQUIRE(result.detected());
-    // The capture carries the shared QIDI hardware plus the Plus 5's ~333x345
-    // travel, which separates it from the Q2 (~275) and Max 4 (~390). Nothing
-    // names the model, so the bed size is what picks the Plus 5 once the family
-    // is identified.
+    // Nothing in the capture names the model, so the ~333x345 travel identifies
+    // the Plus 5 (Q2 ~275, Max 4 ~390). The QIDI Chamber_Thermal_Protection
+    // sensor is what lets that bed-size match stand.
     REQUIRE(result.type_name == "Qidi Plus 5");
     REQUIRE(result.margin() >= PrinterDetector::DETECT_MIN_MARGIN);
     REQUIRE(PrinterDetector::meets_autosave_threshold(result));
@@ -2336,8 +2335,8 @@ TEST_CASE_METHOD(PrinterDetectorFixture,
                  "[printer][qidi][plus5][regression]") {
     // A bare corexy carrying the Plus 5's ~333x345 stepper travel but none of
     // the QIDI family hardware (no chamber thermal protection sensor) must not
-    // be saved as a Plus 5: bed size separates the model inside the family, it
-    // never identifies a machine on its own.
+    // be saved as a Plus 5: the entry's sensor_required excludes it, so bed
+    // size never identifies a machine on its own.
     PrinterHardwareData hardware{
         .heaters = {"extruder", "heater_bed"},
         .sensors = {},
