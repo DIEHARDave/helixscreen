@@ -345,13 +345,13 @@
           "rowspan": 6
         },
         "large": {
-          "col": 8,
+          "col": 12,
           "row": 6,
           "colspan": 4,
           "rowspan": 4
         },
         "xlarge": {
-          "col": 8,
+          "col": 12,
           "row": 6,
           "colspan": 4,
           "rowspan": 4
@@ -545,18 +545,6 @@
     {
       "slot": "readout_1",
       "placements": {
-        "large": {
-          "col": 4,
-          "row": 2,
-          "colspan": 2,
-          "rowspan": 2
-        },
-        "xlarge": {
-          "col": 4,
-          "row": 2,
-          "colspan": 2,
-          "rowspan": 2
-        },
         "xxlarge": {
           "col": 20,
           "row": 2,
@@ -583,18 +571,6 @@
     {
       "slot": "readout_2",
       "placements": {
-        "large": {
-          "col": 6,
-          "row": 2,
-          "colspan": 2,
-          "rowspan": 2
-        },
-        "xlarge": {
-          "col": 6,
-          "row": 2,
-          "colspan": 2,
-          "rowspan": 2
-        },
         "xxlarge": {
           "col": 22,
           "row": 2,
@@ -622,13 +598,13 @@
       "slot": "mesh",
       "placements": {
         "large": {
-          "col": 12,
+          "col": 8,
           "row": 6,
           "colspan": 4,
           "rowspan": 4
         },
         "xlarge": {
-          "col": 12,
+          "col": 8,
           "row": 6,
           "colspan": 4,
           "rowspan": 4
@@ -713,6 +689,12 @@
   "gaps": {
     "large": [
       [
+        4,
+        2,
+        4,
+        2
+      ],
+      [
         8,
         2,
         8,
@@ -720,6 +702,12 @@
       ]
     ],
     "xlarge": [
+      [
+        4,
+        2,
+        4,
+        2
+      ],
       [
         8,
         2,

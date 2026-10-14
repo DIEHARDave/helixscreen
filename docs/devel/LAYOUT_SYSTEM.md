@@ -512,7 +512,10 @@ exist so a cell can hold whichever widget this printer can use:
 - **Planned gaps:** a table's `gaps` map lists, per placement key, the `[col, row, colspan,
   rowspan]` blocks left empty on purpose. The resolver does not read it; the coverage test
   does (below). Gaps are whole cells, grouped into one calm block where the tier allows, and a
-  neighbour is never grown into one.
+  neighbour is never grown into one. The card behind merging tiles covers the bounding box of
+  each connected group, so a gap that sits inside such a box is painted as card: keep a
+  tier's planned gap outside its readout band (large keeps one band of readouts on top for
+  that reason).
 - **Losers are switched off:** every widget a candidate list of the active table names and the
   resolver did not place comes back in `ResolvedDefault::disabled` and is written
   `enabled: false`, so auto-placement never tries to seat it into a full grid. That includes the
@@ -529,7 +532,7 @@ exist so a cell can hold whichever widget this printer can use:
     "medium": ["tips"]
   },
   "gaps": {
-    "large": [[8, 2, 8, 4]]
+    "large": [[4, 2, 4, 2], [8, 2, 8, 4]]
   },
   "variants": {
     "portrait": {
