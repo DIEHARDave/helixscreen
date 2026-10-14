@@ -8,6 +8,7 @@
 #include "default_layout_resolver.h"
 
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "hv/json.hpp"
@@ -268,12 +269,40 @@ class PanelWidgetConfig {
     static helix::layout::CapabilitySnapshot
     snapshot_capabilities(const nlohmann::json& table, const nlohmann::json* overlay = nullptr);
 
+    /// The shipped default layout table (default_layout.json), parsed; null
+    /// when the file is missing or not valid JSON.
+    static nlohmann::json load_default_table();
+
     /// True while the saved pages are exactly the arrangement the resolver
     /// produced: a default block is stamped and its hash matches
     /// helix::layout::arrangement_hash() of the current pages. Any change to
     /// what is placed where, or to the page count, makes the layout the user's.
-    /// Per-widget config is outside the hash.
+    /// Per-widget config is outside the hash. The older `anchors: "pending"`
+    /// tag, which carries no hash, also reads as unedited: it is the builder's
+    /// own placement.
     bool is_unedited_default() const;
+
+    /// Resolve the default layout again for a @p cols x @p rows grid and, when
+    /// the result differs from what is stamped, install it on page 0, stamp it
+    /// and save once (through save_soon()). Returns true when it rewrote the
+    /// arrangement.
+    ///
+    /// Only an unedited default (is_unedited_default()) is touched. An
+    /// unchanged signature on the same grid writes nothing. On a different
+    /// grid, one the user arranged by hand (a parked layout that is not an
+    /// unedited default) is left for switch_to_grid() to restore. Per-widget
+    /// config carries across for every id that survives.
+    bool reresolve_default_if_changed(int cols, int rows);
+
+    /// Record the current arrangement as the default's own, keeping its
+    /// signature. For placement the populate pass does on the default's behalf
+    /// (auto-placing a widget the table left unseated, dropping one the grid
+    /// cannot hold), which is not a user edit. No-op without a default block.
+    void restamp_default_hash();
+
+    /// Track counts of the active grid, parsed from grid_signature(); {0, 0}
+    /// when no grid is stamped.
+    std::pair<int, int> stamped_grid() const;
 
     /// The resolver signature stamped with the default block, or "" when there
     /// is no block or the block is still pending a measured grid.
@@ -440,6 +469,16 @@ class PanelWidgetConfig {
     /// Record the current pages as the defaults builder's output for
     /// @p signature ("" while no grid has been measured).
     void stamp_default(std::string signature);
+
+    /// Replace page 0 with @p rebuilt, the builder's output for a @p cols x
+    /// @p rows grid, carrying per-widget config across for ids that survive,
+    /// and stamp it with @p signature as that grid's arrangement. Does not save.
+    void install_default(std::vector<PanelWidgetEntry> rebuilt, std::string signature, int cols,
+                         int rows);
+
+    /// True when the arrangement parked for grid @p signature is one the user
+    /// made rather than an unedited default.
+    bool parked_layout_is_users(const std::string& signature) const;
 
     /// Read the `default` block (or the older `anchors: "pending"` key) from a
     /// serialize_pages() payload or a saved panel node; clears it when absent.

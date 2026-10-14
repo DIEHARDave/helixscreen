@@ -567,8 +567,19 @@ void PanelWidgetConfig::read_default_block(const nlohmann::json& node) {
 }
 
 bool PanelWidgetConfig::is_unedited_default() const {
-    return has_default_ && !default_hash_.empty() &&
-           default_hash_ == helix::layout::arrangement_hash(serialize_pages());
+    if (!has_default_) {
+        return false;
+    }
+    if (default_hash_.empty()) {
+        return default_signature_.empty();
+    }
+    return default_hash_ == helix::layout::arrangement_hash(serialize_pages());
+}
+
+void PanelWidgetConfig::restamp_default_hash() {
+    if (has_default_) {
+        default_hash_ = helix::layout::arrangement_hash(serialize_pages());
+    }
 }
 
 std::string PanelWidgetConfig::default_signature() const {
@@ -978,6 +989,20 @@ bool anchor_fits_grid(int col, int row, int colspan, int rowspan, int cols, int 
 
 } // namespace
 
+nlohmann::json PanelWidgetConfig::load_default_table() {
+    // config/default_layout.json is runtime-editable, so it is read each time.
+    nlohmann::json layout;
+    if (const auto layout_text =
+            helix::text_io::read_file(helix::find_readable("default_layout.json"))) {
+        layout = nlohmann::json::parse(*layout_text, nullptr, false);
+        if (layout.is_discarded()) {
+            spdlog::warn("[PanelWidgetConfig] Failed to parse default_layout.json: not valid JSON");
+            layout = nlohmann::json();
+        }
+    }
+    return layout;
+}
+
 helix::layout::CapabilitySnapshot
 PanelWidgetConfig::snapshot_capabilities(const nlohmann::json& table,
                                          const nlohmann::json* overlay) {
@@ -1028,17 +1053,9 @@ std::vector<PanelWidgetEntry> PanelWidgetConfig::build_default_grid(int grid_col
     // and TINY_PORTRAIT falls through tiny_portrait → portrait → base (#1216).
     const bool portrait = is_portrait_layout(LayoutManager::instance().type());
 
-    // config/default_layout.json is runtime-editable; a missing or malformed
-    // file leaves `layout` null, which the resolver reports as unusable.
-    nlohmann::json layout;
-    if (const auto layout_text =
-            helix::text_io::read_file(helix::find_readable("default_layout.json"))) {
-        layout = nlohmann::json::parse(*layout_text, nullptr, false);
-        if (layout.is_discarded()) {
-            spdlog::warn("[PanelWidgetConfig] Failed to parse default_layout.json: not valid JSON");
-            layout = nlohmann::json();
-        }
-    }
+    // A missing or malformed table is null, which the resolver reports as
+    // unusable.
+    const nlohmann::json layout = load_default_table();
 
     const Config* cfg = Config::get_instance();
     const std::string preset = cfg ? cfg->get_preset() : std::string{};
@@ -1349,10 +1366,11 @@ void PanelWidgetConfig::apply_pending_anchors(int grid_cols, int grid_rows) {
     // Page 0 only. Extra pages are user-made, and a user who has built one has
     // arranged page 0 too, so a layout still tagged pending has exactly one.
     std::string signature;
-    const auto rebuilt = build_default_grid(grid_cols, grid_rows, &signature);
-    if (!rebuilt.empty() && !pages_.empty()) {
-        pages_[0].widgets = rebuilt;
+    auto rebuilt = build_default_grid(grid_cols, grid_rows, &signature);
+    if (rebuilt.empty() || pages_.empty()) {
+        return;
     }
+    install_default(std::move(rebuilt), std::move(signature), grid_cols, grid_rows);
 
     int anchored = 0;
     for (const auto& e : pages_[0].widgets) {
@@ -1363,10 +1381,77 @@ void PanelWidgetConfig::apply_pending_anchors(int grid_cols, int grid_rows) {
     spdlog::info("[PanelWidgetConfig] '{}': applied default anchors for a {}x{} track grid, {} of "
                  "{} widget(s) placed",
                  panel_id_, grid_cols, grid_rows, anchored, pages_[0].widgets.size());
-
-    stamp_default(signature);
-    grid_signature_ = std::to_string(grid_cols) + "x" + std::to_string(grid_rows);
     save();
+}
+
+void PanelWidgetConfig::install_default(std::vector<PanelWidgetEntry> rebuilt,
+                                        std::string signature, int cols, int rows) {
+    // Per-widget config (an LED strip, a print_status style) is outside the
+    // arrangement, so it belongs to the widget and survives a re-resolve.
+    for (auto& entry : rebuilt) {
+        for (const auto& old : pages_[0].widgets) {
+            if (old.id == entry.id && !old.config.empty()) {
+                entry.config = old.config;
+                break;
+            }
+        }
+    }
+    pages_[0].widgets = std::move(rebuilt);
+    grid_signature_ = std::to_string(cols) + "x" + std::to_string(rows);
+    stamp_default(std::move(signature));
+}
+
+bool PanelWidgetConfig::parked_layout_is_users(const std::string& signature) const {
+    auto it = parked_grids_.find(signature);
+    if (it == parked_grids_.end() || !it->is_object()) {
+        return false;
+    }
+    const json* block = helix::json_util::find_member(*it, "default");
+    if (!block || !block->is_object()) {
+        return true;
+    }
+    const std::string hash = helix::json_util::safe_string(*block, "hash");
+    if (hash.empty()) {
+        return !helix::json_util::safe_string(*block, "signature").empty();
+    }
+    return hash != helix::layout::arrangement_hash(*it);
+}
+
+bool PanelWidgetConfig::reresolve_default_if_changed(int cols, int rows) {
+    if (cols <= 0 || rows <= 0 || pages_.empty() || !is_unedited_default()) {
+        return false;
+    }
+    const std::string target = std::to_string(cols) + "x" + std::to_string(rows);
+    const bool grid_changes = grid_signature_ != target;
+    if (grid_changes && parked_layout_is_users(target)) {
+        return false;
+    }
+
+    std::string signature;
+    auto rebuilt = build_default_grid(cols, rows, &signature);
+    if (rebuilt.empty()) {
+        return false;
+    }
+    // A pending block has no signature yet, so it always differs.
+    if (!grid_changes && signature == default_signature_) {
+        return false;
+    }
+
+    const std::string from = default_signature_;
+    install_default(std::move(rebuilt), signature, cols, rows);
+    // This grid's arrangement is the one just resolved; a parked copy of an
+    // older default for it would only shadow it on the next switch.
+    parked_grids_.erase(target);
+    spdlog::info("[PanelWidgetConfig] '{}': re-resolved the default layout for the {} grid ({} "
+                 "-> {})",
+                 panel_id_, target, from.empty() ? "pending" : from, signature);
+    save_soon();
+    return true;
+}
+
+std::pair<int, int> PanelWidgetConfig::stamped_grid() const {
+    return {parse_grid_axis(grid_signature_, /*want_cols=*/true),
+            parse_grid_axis(grid_signature_, /*want_cols=*/false)};
 }
 
 } // namespace helix

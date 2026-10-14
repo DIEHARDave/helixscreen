@@ -644,6 +644,20 @@ lv_obj_t* create_tile(lv_obj_t* container, WidgetSlot& slot, const TileCell& cel
 }
 } // namespace
 
+bool PanelWidgetManager::refresh_live_default(const std::string& panel_id) {
+    lv_subject_t* conn = lv_xml_get_subject(nullptr, "printer_connection_state");
+    lv_subject_t* klippy = lv_xml_get_subject(nullptr, "klippy_state");
+    const bool ready = conn &&
+                       lv_subject_get_int(conn) == static_cast<int>(ConnectionState::CONNECTED) &&
+                       klippy && lv_subject_get_int(klippy) == static_cast<int>(KlippyState::READY);
+    if (!ready) {
+        return false;
+    }
+    auto& widget_config = get_widget_config(panel_id);
+    const auto [cols, rows] = widget_config.stamped_grid();
+    return widget_config.reresolve_default_if_changed(cols, rows);
+}
+
 std::vector<std::unique_ptr<PanelWidget>>
 PanelWidgetManager::populate_widgets(const std::string& panel_id, lv_obj_t* container,
                                      int page_index, WidgetReuseMap reuse) {
@@ -662,32 +676,52 @@ PanelWidgetManager::populate_widgets(const std::string& panel_id, lv_obj_t* cont
 
     auto& widget_config = get_widget_config(panel_id);
 
-    // Collect enabled + hardware-available widgets
+    // Before anything reads the entries: a live default whose capabilities
+    // moved is rearranged here, and a rearrangement can keep the same widget
+    // list while moving every tile.
+    const bool default_relaid = refresh_live_default(panel_id);
+
+    // Collect enabled + hardware-available widgets. Instances already taken
+    // go back to `reuse` first, so a second collection after the entries
+    // change reattaches them rather than building new ones.
     std::vector<WidgetSlot> enabled_widgets;
-    for (const auto& entry : widget_config.page_entries(page_index)) {
-        if (!entry.enabled) {
-            continue;
+    auto collect_enabled = [&]() {
+        for (auto& slot : enabled_widgets) {
+            if (slot.instance) {
+                reuse[slot.widget_id] = std::move(slot.instance);
+            }
         }
-        if (auto slot = resolve_slot(panel_id, entry, reuse)) {
-            enabled_widgets.push_back(std::move(*slot));
+        enabled_widgets.clear();
+        for (const auto& entry : widget_config.page_entries(page_index)) {
+            if (!entry.enabled) {
+                continue;
+            }
+            if (auto slot = resolve_slot(panel_id, entry, reuse)) {
+                enabled_widgets.push_back(std::move(*slot));
+            }
         }
-    }
+    };
+    auto enabled_visible_ids = [&]() {
+        std::vector<std::string> ids;
+        ids.reserve(enabled_widgets.size());
+        for (const auto& slot : enabled_widgets) {
+            ids.push_back(visible_id(slot.widget_id, slot.hardware_gated));
+        }
+        return ids;
+    };
+    collect_enabled();
+    const auto cache_key = make_cache_key(panel_id, page_index);
 
     // Check if widget list is unchanged — skip teardown+rebuild if nothing changed.
     // Gate status is part of the key: a widget transitioning from gated→ungated
     // must trigger a rebuild so its cancel-icon overlay + OPA_40 are removed and
     // the PanelWidget instance gets attached. Matches compute_visible_widget_ids().
     {
-        std::vector<std::string> new_ids;
-        new_ids.reserve(enabled_widgets.size());
-        for (const auto& slot : enabled_widgets) {
-            new_ids.push_back(visible_id(slot.widget_id, slot.hardware_gated));
-        }
+        std::vector<std::string> new_ids = enabled_visible_ids();
 
-        auto cache_key = make_cache_key(panel_id, page_index);
         auto it = active_configs_.find(cache_key);
         bool container_has_children = lv_obj_get_child_count(container) > 0;
-        if (it != active_configs_.end() && it->second.widget_ids == new_ids &&
+        if (!default_relaid && it != active_configs_.end() && it->second.widget_ids == new_ids &&
             container_has_children) {
             spdlog::debug("[PanelWidgetManager] Widget list unchanged for '{}', skipping rebuild",
                           cache_key);
@@ -803,6 +837,10 @@ PanelWidgetManager::populate_widgets(const std::string& panel_id, lv_obj_t* cont
         conn_layout &&
         lv_subject_get_int(conn_layout) == static_cast<int>(ConnectionState::CONNECTED) &&
         klippy_layout && lv_subject_get_int(klippy_layout) != static_cast<int>(KlippyState::READY);
+    // Any of these can replace the entries the widget list was collected from
+    // (a resolution enables and disables widgets, a restored grid is another
+    // arrangement), so the list is collected again after one does.
+    bool entries_replaced = false;
     if (layout_state_transient) {
         spdlog::debug("[PanelWidgetManager] '{}': deferring layout resolution — Klipper is not "
                       "READY, so this arrangement is transient",
@@ -810,6 +848,7 @@ PanelWidgetManager::populate_widgets(const std::string& panel_id, lv_obj_t* cont
     } else if (widget_config.has_pending_anchors()) {
         if (content_box_measured) {
             widget_config.apply_pending_anchors(grid_dims.cols, grid_dims.rows);
+            entries_replaced = true;
         } else {
             spdlog::warn("[PanelWidgetManager] '{}': deferring the default anchors until the "
                          "content box measures",
@@ -823,10 +862,37 @@ PanelWidgetManager::populate_widgets(const std::string& panel_id, lv_obj_t* cont
         // arrangement the user made on another one, and switching back finds
         // nothing to restore.
         //
+        // An unedited default is not an arrangement to carry across: it is
+        // resolved again for the new grid. Everything else is parked and
+        // ported, or restored.
+        //
         // Cheap on the common path: the signature already matches on every
         // rebuild after the first, so this returns without touching storage.
-        widget_config.switch_to_grid(grid_dims.cols, grid_dims.rows);
+        const std::string grid_before = widget_config.grid_signature();
+        const std::string grid_now =
+            std::to_string(grid_dims.cols) + "x" + std::to_string(grid_dims.rows);
+        if (grid_before != grid_now) {
+            const bool relaid =
+                widget_config.reresolve_default_if_changed(grid_dims.cols, grid_dims.rows);
+            if (!relaid) {
+                widget_config.switch_to_grid(grid_dims.cols, grid_dims.rows);
+            }
+            entries_replaced = relaid || !grid_before.empty();
+        }
     }
+    if (entries_replaced) {
+        collect_enabled();
+        active_configs_[cache_key] = ActiveWidgetConfig{enabled_visible_ids()};
+        if (enabled_widgets.empty()) {
+            populating_ = false;
+            return {};
+        }
+    }
+
+    // Placement below may seat what the table left unseated, or drop what the
+    // grid cannot hold. Neither is the user's edit, so a default that is live
+    // here stays live.
+    const bool default_live = widget_config.is_unedited_default();
 
     // Build grid placement tracker to compute positions
     GridLayout grid(breakpoint, grid_dims);
@@ -1237,6 +1303,9 @@ PanelWidgetManager::populate_widgets(const std::string& panel_id, lv_obj_t* cont
                 }
             }
         }
+        if (default_live) {
+            widget_config.restamp_default_hash();
+        }
         // `evicted_position` is the other reason to save: a widget that lost its
         // cell this pass changed nothing about the widgets that WERE placed, so
         // any_written stays false and the eviction would never reach disk — which
@@ -1244,6 +1313,8 @@ PanelWidgetManager::populate_widgets(const std::string& panel_id, lv_obj_t* cont
         if (any_written || evicted_position) {
             widget_config.save();
         }
+    } else if (default_live) {
+        widget_config.restamp_default_hash();
     }
 
     // Row track count comes from the grid, exactly like the column count. The
@@ -1785,6 +1856,9 @@ SubjectLifetime gate_subject_lifetime(const char* name) {
     }
     if (std::strcmp(name, "power_device_count") == 0 ||
         std::strcmp(name, "printer_has_chamber") == 0 ||
+        std::strcmp(name, "printer_has_spoolman") == 0 ||
+        std::strcmp(name, "printer_connection_state") == 0 ||
+        std::strcmp(name, "klippy_state") == 0 ||
         std::strcmp(name, "printer_has_exclude_object") == 0 ||
         std::strcmp(name, "printer_has_bed_mesh") == 0) {
         return get_printer_state().get_subjects_lifetime();
@@ -1847,22 +1921,24 @@ void PanelWidgetManager::setup_gate_observers(const std::string& panel_id,
     // for this panel_id (e.g. soft-restart re-registers the home panel).
     lv_async_call_cancel(&PanelWidgetManager::gate_rebuild_trampoline, &slot);
 
-    std::vector<const char*> gate_names;
+    // The default layout table's subjects (slot candidates' gates and their
+    // `requires`) re-resolve a live default, and the connection pair decides
+    // when one may: a change that arrived while Klipper was not READY waits for
+    // READY to rebuild.
+    std::vector<std::string> gate_names = {"printer_connection_state", "klippy_state"};
     for (const auto& def : get_all_widget_defs()) {
-        if (!def.hardware_gate_subject)
-            continue;
-        bool dup = false;
-        for (const auto* n : gate_names) {
-            if (std::strcmp(n, def.hardware_gate_subject) == 0) {
-                dup = true;
-                break;
-            }
+        if (def.hardware_gate_subject) {
+            gate_names.emplace_back(def.hardware_gate_subject);
         }
-        if (!dup)
-            gate_names.push_back(def.hardware_gate_subject);
     }
+    for (auto& name : helix::layout::subjects_named_by(PanelWidgetConfig::load_default_table())) {
+        gate_names.push_back(std::move(name));
+    }
+    std::sort(gate_names.begin(), gate_names.end());
+    gate_names.erase(std::unique(gate_names.begin(), gate_names.end()), gate_names.end());
 
-    for (const char* name : gate_names) {
+    for (const std::string& name_str : gate_names) {
+        const char* name = name_str.c_str();
         lv_subject_t* subject = lv_xml_get_subject(nullptr, name);
         if (!subject) {
             spdlog::trace("[PanelWidgetManager] Gate subject '{}' not registered yet", name);
@@ -1883,9 +1959,9 @@ void PanelWidgetManager::setup_gate_observers(const std::string& panel_id,
         // a particular panel registration.
         observers.push_back(observe<int>(
             subject, this,
-            [name, panel_id](PanelWidgetManager* self, int value) {
+            [name = name_str, panel_id](PanelWidgetManager* self, int value) {
                 spdlog::debug("[PanelWidgetManager] gate '{}' -> {} (rebuild)", name, value);
-                crash_handler::breadcrumb::note("gate", name, value);
+                crash_handler::breadcrumb::note("gate", name.c_str(), value);
 
                 // Look up the stable per-panel slot. If the panel was torn
                 // down between subscription and firing, skip — the gate
