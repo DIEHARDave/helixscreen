@@ -580,6 +580,11 @@ std::string middle_ellipsize(const char* text, int32_t max_width, const lv_font_
 namespace {
 
 void apply_one_line_height(lv_obj_t* label) {
+    // A held label that has since left DOTS keeps whatever height its owner
+    // gives it.
+    if (lv_label_get_long_mode(label) != LV_LABEL_LONG_MODE_DOTS) {
+        return;
+    }
     const lv_font_t* font = lv_obj_get_style_text_font(label, LV_PART_MAIN);
     if (!font) {
         return;

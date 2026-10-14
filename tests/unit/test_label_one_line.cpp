@@ -234,3 +234,22 @@ TEST_CASE_METHOD(XMLTestFixture, "label_hold_one_line pins a plain lv_label",
     CHECK(lv_obj_get_height(label) == lv_font_get_line_height(font));
     CHECK(ends_with_dots(label));
 }
+
+TEST_CASE_METHOD(XMLTestFixture, "a held label that leaves DOTS is no longer pinned",
+                 "[ui_text][one_line]") {
+    lv_obj_t* label = lv_label_create(test_screen());
+    lv_obj_set_width(label, 80);
+    lv_label_set_long_mode(label, LV_LABEL_LONG_MODE_DOTS);
+    lv_label_set_text(label, LONG_TEXT);
+    helix::ui::label_hold_one_line(label);
+    settle(label);
+    const int32_t one_line = lv_obj_get_height(label);
+    REQUIRE(one_line == lv_font_get_line_height(lv_obj_get_style_text_font(label, LV_PART_MAIN)));
+
+    lv_label_set_long_mode(label, LV_LABEL_LONG_MODE_WRAP);
+    lv_obj_set_height(label, LV_SIZE_CONTENT);
+    lv_obj_set_style_text_font(label, theme_manager_get_font("font_heading"), LV_PART_MAIN);
+    settle(label);
+    CHECK(lv_obj_get_style_height(label, LV_PART_MAIN) == LV_SIZE_CONTENT);
+    CHECK(lv_obj_get_height(label) > line_height("font_heading"));
+}

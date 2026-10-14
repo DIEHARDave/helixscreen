@@ -21,6 +21,8 @@
 #include "ui_update_queue.h"
 
 #include "../test_fixtures.h"
+#include "../test_helpers/one_line_label.h"
+#include "helix-xml/src/xml/lv_xml.h"
 #include "src/ui/panel_widgets/thermistor_widget.h"
 #include "temperature_sensor_manager.h"
 
@@ -160,4 +162,42 @@ TEST_CASE_METHOD(ThermistorPickerFixture, "thermistor configure picker: both pat
     process_lvgl(50);
 
     CHECK(find_open_picker(test_screen()).card == nullptr);
+}
+
+TEST_CASE_METHOD(ThermistorPickerFixture, "thermistor picker rows hold the sensor name to one line",
+                 "[thermistor][one_line]") {
+    ThermistorWidget widget("thermistor");
+    widget.set_config({{"sensors", std::vector<std::string>{SENSOR_A}}});
+    lv_obj_t* tile = lv_obj_create(test_screen());
+    widget.attach(tile, test_screen());
+    widget.on_edit_configure();
+
+    OpenPicker picker = find_open_picker(test_screen());
+    REQUIRE(picker.sensor_list != nullptr);
+    lv_obj_t* row = lv_obj_get_child(picker.sensor_list, row_index_of(SENSOR_A));
+    lv_obj_t* name = helix::test::find_dotted_label(row);
+    REQUIRE(name != nullptr);
+    CHECK(helix::test::held_to_one_line(name));
+
+    lv_obj_send_event(picker.backdrop, LV_EVENT_CLICKED, nullptr);
+    process_lvgl(50);
+}
+
+TEST_CASE_METHOD(ThermistorPickerFixture,
+                 "thermistor carousel pages hold the sensor name to one line",
+                 "[thermistor][one_line]") {
+    REQUIRE(register_component("components/panel_widget_thermistor_carousel"));
+    ThermistorWidget widget("thermistor");
+    widget.set_config(
+        {{"sensors", std::vector<std::string>{SENSOR_A, SENSOR_B}}, {"display_mode", "carousel"}});
+    REQUIRE(widget.get_component_name() == "panel_widget_thermistor_carousel");
+    auto* tile = static_cast<lv_obj_t*>(
+        lv_xml_create(test_screen(), "panel_widget_thermistor_carousel", nullptr));
+    REQUIRE(tile != nullptr);
+    widget.attach(tile, test_screen());
+
+    lv_obj_t* name = helix::test::find_dotted_label(tile);
+    REQUIRE(name != nullptr);
+    CHECK(helix::test::held_to_one_line(name));
+    widget.detach();
 }

@@ -107,6 +107,11 @@ std::string middle_ellipsize(const char* text, int32_t max_width, const lv_font_
  * later (on LV_EVENT_STYLE_CHANGED, writing only when the value differs).
  * Calling it again on the same label is a no-op beyond re-measuring.
  *
+ * The label must be in DOTS mode for the height to be applied. While it stays
+ * in DOTS, the hook rewrites any height a caller sets later, so code that
+ * wants a different height switches the long mode first; out of DOTS the hook
+ * leaves the height alone.
+ *
  * @param label Label to hold; nullptr is ignored
  */
 void label_hold_one_line(lv_obj_t* label);
