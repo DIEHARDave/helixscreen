@@ -1153,11 +1153,13 @@ TEST_CASE_METHOD(PanelWidgetConfigFixture,
     wc.load();
 
     // Migration moves data to /printers/default/panel_widgets/home and removes old key.
-    // Legacy configs without grid coords are detected as pre-grid and reset to defaults.
-    // After migration, data is saved in the new pages format.
+    // Legacy configs without grid coords are detected as pre-grid and reset to defaults,
+    // which stay pending until READY: the pages format reaches disk on the next save.
     auto& printer_data = get_data()["printers"]["default"];
     REQUIRE(printer_data.contains("panel_widgets"));
     REQUIRE(printer_data["panel_widgets"].contains("home"));
+    CHECK_FALSE(printer_data["panel_widgets"]["home"].is_object());
+    wc.save();
     auto root = printer_data["panel_widgets"]["home"];
     REQUIRE(root.is_object());
     REQUIRE(root.contains("pages"));
