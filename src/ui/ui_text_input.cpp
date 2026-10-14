@@ -61,12 +61,20 @@ static thread_local bool g_updating_from_textarea = false;
  */
 static void textarea_text_observer_cb(lv_observer_t* observer, lv_subject_t* subject) {
     if (subject->type == LV_SUBJECT_TYPE_STRING || subject->type == LV_SUBJECT_TYPE_POINTER) {
+        auto* textarea = static_cast<lv_obj_t*>(observer->target);
+        const char* value = static_cast<const char*>(subject->value.pointer);
+        // Every keystroke's write-back lands here too. lv_textarea_set_text()
+        // moves the cursor to the end, so re-applying text the textarea already
+        // holds would yank a hand-placed cursor away after each character.
+        const char* current = lv_textarea_get_text(textarea);
+        if (value && current && std::strcmp(current, value) == 0) {
+            return;
+        }
         // With max_length set, lv_textarea_set_text() adds one character at a
         // time and fires VALUE_CHANGED after each. Writing that partial text
         // back would overwrite the subject buffer it is still reading from.
         g_updating_from_textarea = true;
-        lv_textarea_set_text(static_cast<lv_obj_t*>(observer->target),
-                             static_cast<const char*>(subject->value.pointer));
+        lv_textarea_set_text(textarea, value);
         g_updating_from_textarea = false;
     }
 }
