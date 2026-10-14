@@ -29,9 +29,9 @@ namespace {
 // queued behind a "started" toast stays hidden for its whole lifetime. The
 // buttons' labels never change; ui_xml/components/cfs_cutter_status.xml
 // renders these subjects (phase: 0 nothing to report, 1 running, 2 result).
-lv_subject_t s_cfs_cutter_phase;
-lv_subject_t s_cfs_cutter_status;
-char s_cfs_cutter_status_buf[128];
+lv_subject_t s_cfs_cutter_phase{};
+lv_subject_t s_cfs_cutter_status{};
+char s_cfs_cutter_status_buf[128] = {};
 bool s_cfs_cutter_subjects_ready = false;
 
 /// Init once per process: a second init would memzero a subject whose observers are live.
