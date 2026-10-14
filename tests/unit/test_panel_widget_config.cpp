@@ -2582,6 +2582,7 @@ TEST_CASE_METHOD(PanelWidgetConfigFixture,
     setup_empty_config();
     PanelWidgetConfig plain("home", config);
     plain.load();
+    plain.save();
     const json base = get_saved_page0_widgets();
     REQUIRE(find_placed_widget(base, "tips") != nullptr);
     REQUIRE(find_placed_widget(base, "clock") == nullptr);
@@ -2599,6 +2600,7 @@ TEST_CASE_METHOD(PanelWidgetConfigFixture,
 
     PanelWidgetConfig wc("home", config);
     wc.load();
+    wc.save();
 
     const json widgets = get_saved_page0_widgets();
     CHECK(find_placed_widget(widgets, "tips") == nullptr);
@@ -2627,6 +2629,7 @@ TEST_CASE_METHOD(PanelWidgetConfigFixture, "a preset seed overlay yields a live 
     // The block is what lets the layout re-resolve when a capability changes
     // and what a Reset re-arms; an unstamped seed would read as a user edit.
     CHECK(wc.is_unedited_default());
+    wc.save();
     const json saved = get_printer_data()["panel_widgets"]["home"];
     REQUIRE(saved.contains("default"));
     CHECK(saved["default"].contains("hash"));
@@ -2935,6 +2938,7 @@ TEST_CASE_METHOD(PanelWidgetConfigFixture,
     CHECK(wc.grid_signature().empty());
 
     // ...and the rebuild is what a later load reads, not a one-run repair.
+    wc.save();
     auto root = get_saved_root();
     REQUIRE(root.is_object());
     REQUIRE(root.contains("default"));
@@ -3161,18 +3165,24 @@ TEST_CASE_METHOD(PanelWidgetConfigFixture, "restoring a parked layout keeps its 
 }
 
 TEST_CASE_METHOD(PanelWidgetConfigFixture,
-                 "PanelWidgetConfig: a new printer's saved defaults read back without a rebuild",
+                 "PanelWidgetConfig: a new printer's default is written at READY, not at load",
                  "[panel_widget_config][unnamed_units][multi-printer]") {
-    // A printer added at run time gets the defaults saved on its first load, before any
-    // grid has been measured; the next load (a live switch reloads Home) must read them.
+    // A default built at load can hold the previous printer's capability values after a
+    // live switch, so nothing is saved until the READY resolve; the next load must then
+    // read what that wrote.
     setup_empty_config();
     get_data()["config_version"] = 30;
     PanelWidgetConfig first("home", config);
     first.load();
+    CHECK(first.has_pending_anchors());
+    CHECK_FALSE(get_printer_data().contains("panel_widgets"));
+
+    REQUIRE(first.reresolve_default_if_changed(12, 8, /*persist=*/true));
+    first.flush_pending_save();
     const json saved = get_printer_data()["panel_widgets"]["home"];
     REQUIRE(saved.contains("default"));
-    REQUIRE(saved["default"].value("signature", "x").empty());
-    REQUIRE_FALSE(saved.contains("grid"));
+    REQUIRE_FALSE(saved["default"].value("signature", "").empty());
+    REQUIRE(saved.contains("grid"));
 
     CHECK_FALSE(PanelWidgetConfig::has_uninterpretable_coordinates(saved, 30));
 }

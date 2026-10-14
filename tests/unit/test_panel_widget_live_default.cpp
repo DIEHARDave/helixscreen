@@ -607,13 +607,12 @@ TEST_CASE_METHOD(LiveDefaultFixture,
     settle_saves();
     CHECK(writes.writes() == before);
     {
-        // Only load's own pending stamp is on disk, which the READY populate
-        // resolves again whatever it holds.
+        // Nothing of B's layout reaches the disk before READY: a default built
+        // now could carry A's capability values.
         const nlohmann::json node_b = cfg->get<nlohmann::json>(path_b, nlohmann::json());
         INFO(node_b.dump());
-        REQUIRE(node_b.contains("default"));
-        CHECK(node_b["default"].value("signature", std::string{}).empty());
-        CHECK_FALSE(node_b.contains("grid"));
+        CHECK_FALSE(node_b.contains("default"));
+        CHECK_FALSE(node_b.contains("pages"));
     }
 
     // B's own values arrive before it is READY: shown, still not written.

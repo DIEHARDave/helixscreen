@@ -410,8 +410,9 @@ void PanelWidgetConfig::load() {
     page.widgets = build_defaults();
     pages_.push_back(std::move(page));
     next_page_id_ = 1;
+    // Left pending and unsaved: the first READY populate resolves it from the
+    // printer's own capabilities and writes it then.
     stamp_default("");
-    save(); // Persist default grid positions for future launches
     loaded_ = true;
 }
 
