@@ -136,6 +136,10 @@ class AmsBackendCfs : public AmsSubscriptionBackend {
   public:
     AmsBackendCfs(IMoonrakerAPI* api, helix::IMoonrakerClient* client);
 
+    /// The status objects the CFS backend pushes (`box`, `motor_control`).
+    /// Empty unless @p hw detected CFS.
+    [[nodiscard]] static nlohmann::json required_status_objects(const helix::PrinterDiscovery& hw);
+
     /**
      * @brief Bare filament-sensor name CFS owns: "filament_sensor".
      *

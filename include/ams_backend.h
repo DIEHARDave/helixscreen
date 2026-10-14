@@ -3294,6 +3294,25 @@ class AmsBackend {
     static bool sensor_belongs_to_backend(AmsType type, const std::string& bare_name,
                                           const helix::PrinterDiscovery& discovery);
 
+    /**
+     * @brief Every Klipper status object the filament systems in @p hw need pushed.
+     *
+     * Merges each backend's own `required_status_objects`; each decides whether it
+     * applies to @p hw, so the subscription builder never names a vendor. Values are
+     * the field allowlist for the object, or null for the whole object. Like
+     * sensor_belongs_to_backend() it is static: discovery runs before any backend
+     * instance exists.
+     */
+    [[nodiscard]] static nlohmann::json required_status_objects(const helix::PrinterDiscovery& hw);
+
+    /**
+     * @brief Object-name prefixes, beyond Klipper's stock filament_switch_sensor and
+     *        filament_motion_sensor, under which a backend's filament sensors are
+     *        published. Discovery buckets objects with these prefixes as filament
+     *        sensors.
+     */
+    [[nodiscard]] static const std::vector<std::string>& filament_sensor_object_prefixes();
+
     // ========================================================================
     // Factory Method
     // ========================================================================

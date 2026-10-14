@@ -233,6 +233,10 @@ class AmsBackendAfc : public AmsSubscriptionBackend {
     [[nodiscard]] static nlohmann::json
     required_status_objects(const std::vector<std::string>& afc_objects);
 
+    /// Same map, discovering the AFC objects itself: `AFC` and every `AFC_*` object
+    /// the printer lists. Unconditional; a printer with none gets an empty map.
+    [[nodiscard]] static nlohmann::json required_status_objects(const helix::PrinterDiscovery& hw);
+
     // State queries
     [[nodiscard]] AmsSystemInfo get_system_info() const override;
 

@@ -59,6 +59,10 @@ class AmsBackendQidi : public AmsSubscriptionBackend {
     AmsBackendQidi(IMoonrakerAPI* api, helix::IMoonrakerClient* client);
     ~AmsBackendQidi() override;
 
+    /// The status objects the QIDI Box backend pushes (drying state, slot/box state).
+    /// Empty unless @p hw detected a QIDI Box.
+    [[nodiscard]] static nlohmann::json required_status_objects(const helix::PrinterDiscovery& hw);
+
     /// Single-box default. Chainable up to 16 slots (4 boxes × 4 slots) on
     /// supported hardware, but the stub only advertises a single box.
     static constexpr int NUM_SLOTS = 4;

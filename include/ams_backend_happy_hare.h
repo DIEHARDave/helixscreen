@@ -78,6 +78,11 @@ class AmsBackendHappyHare : public AmsSubscriptionBackend {
     AmsBackendHappyHare(IMoonrakerAPI* api, helix::IMoonrakerClient* client);
     ~AmsBackendHappyHare() override;
 
+    /// The `mmu` fields this backend reads, as a `printer.objects.subscribe` objects map.
+    /// The list is a strict allowlist: `nullptr` would make Klipper serialize every
+    /// internal field on every notification. Empty unless @p hw detected Happy Hare.
+    [[nodiscard]] static nlohmann::json required_status_objects(const helix::PrinterDiscovery& hw);
+
     /**
      * @brief Bare filament-sensor names Happy Hare owns (no AMS keyword).
      *
