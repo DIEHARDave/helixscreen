@@ -13,7 +13,10 @@
   <translation tag="%d min left" ja="残り %d 分"/>
   <translation tag="%d mm/s" ja="%d mm/s"/>
   <translation tag="%d more sensors" ja="他%d個のセンサー"/>
+  <translation tag="%d objects" ja="%d個のオブジェクト"/>
+  <translation tag="%d of %d printing" ja="%d/%d 印刷中"/>
   <translation tag="%d profiles" ja="%d 個のプロファイル"/>
+  <translation tag="%d skipped" ja="%d個スキップ"/>
   <translation tag="%d slots" ja="%d スロット"/>
   <translation tag="%d toolheads" ja="%d ツールヘッド"/>
   <translation tag="%d tools" ja="%d ツール"/>
@@ -1032,6 +1035,7 @@
   <translation tag="Exception: {}" ja="例外: {}"/>
   <translation tag="Exclude" ja="除外"/>
   <translation tag="Exclude Object?" ja="オブジェクトを除外しますか？"/>
+  <translation tag="Exclude Objects" ja="オブジェクトの除外"/>
   <translation tag="Excluded" ja="除外"/>
   <translation tag="Exclusion cancelled" ja="除外がキャンセルされました"/>
   <translation tag="Execute printer macros" ja="プリンターマクロを実行"/>
@@ -1952,6 +1956,7 @@
   <translation tag="No networks found" ja="ネットワークが見つかりません"/>
   <translation tag="No new mesh was stored as &apos;{}&apos;" ja="新しいメッシュは &apos;{}&apos; として保存されませんでした"/>
   <translation tag="No notifications" ja="通知なし"/>
+  <translation tag="No objects" ja="オブジェクトなし"/>
   <translation tag="No objects defined for this print" ja="この印刷にはオブジェクトが定義されていません"/>
   <translation tag="No output yet" ja="出力なし"/>
   <translation tag="No presets configured" ja="プリセットが設定されていません"/>
@@ -2018,6 +2023,7 @@
   <translation tag="Notification" ja="通知"/>
   <translation tag="Notifications" ja="通知"/>
   <translation tag="Notify when print finishes" ja="印刷完了時に通知"/>
+  <translation tag="Now printing" ja="印刷中"/>
   <translation tag="Noz max" ja="ノズル最大"/>
   <translation tag="Noz min" ja="ノズル最小"/>
   <translation tag="Noz rec" ja="ノズル推奨"/>
@@ -2051,6 +2057,7 @@
   <translation tag="Object picks apply only to prints started now" ja="オブジェクトの選択は今すぐ開始する印刷にのみ適用されます"/>
   <translation tag="Object positions unavailable" ja="オブジェクト位置が利用できません"/>
   <translation tag="Objects" ja="オブジェクト"/>
+  <translation tag="Objects in the print, with a tap to open the skip map" ja="印刷中のオブジェクト。タップでスキップマップを開きます"/>
   <translation tag="Off" ja="オフ"/>
   <translation tag="Off:" ja="オフ:"/>
   <translation tag="Off: runs with these values without asking" ja="オフ: これらの値で確認なしに実行"/>
@@ -2811,9 +2818,11 @@
   <translation tag="Signal" ja="信号"/>
   <translation tag="Signal #" ja="信号番号"/>
   <translation tag="Similarity" ja="類似度"/>
+  <translation tag="Single object" ja="オブジェクト1個"/>
   <translation tag="Single toggle macro. State is not tracked." ja="単一のトグルマクロ。状態は追跡されません。"/>
   <translation tag="Size" ja="サイズ"/>
   <translation tag="Skip" ja="スキップ"/>
+  <translation tag="Skip objects..." ja="オブジェクトをスキップ..."/>
   <translation tag="Skipped" ja="スキップ"/>
   <translation tag="Sleep While Printing" ja="印刷中のスリープ"/>
   <translation tag="Sleep adjusted to match dim timeout" ja="スリープタイムアウトを調整しました"/>

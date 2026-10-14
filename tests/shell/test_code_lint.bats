@@ -3324,3 +3324,29 @@ own_endpoint_http_offenders() {
     run grep -n 'heap_caps_get_free_size(MALLOC_CAP_SPIRAM)' include/esp_psram_thumbnail.h
     [ "$status" -eq 0 ]
 }
+
+# --- Home-widget flex styles must switch the layout on ---
+# flex_flow / flex_main_place on a style only configure a flex layout the object
+# already has. A bind_style that sets them without layout="flex" leaves the children
+# on the default layout, stacked at the top-left corner on top of each other.
+
+home_widget_flex_styles_without_layout() {
+    grep -nE '<style [^>]*(flex_flow|flex_main_place)=' "$@" | grep -v 'layout="flex"'
+}
+
+@test "home-widget styles that set flex_flow or flex_main_place also set layout flex" {
+    run home_widget_flex_styles_without_layout ui_xml/components/panel_widget_*.xml \
+        ui_xml/components/speed_flow_part.xml ui_xml/components/chamber_dryer_row.xml \
+        ui_xml/components/host_health_mcu_row.xml
+    [ "$status" -eq 1 ]
+    [ -z "$output" ]
+}
+
+@test "the home-widget flex-style gate fires on a style without layout flex" {
+    local d="${BATS_TEST_TMPDIR}/flex_style"
+    mkdir -p "$d"
+    printf '%s\n' '<style name="x_inline" flex_flow="row" flex_main_place="start"/>' > "$d/bad.xml"
+    run home_widget_flex_styles_without_layout "$d/bad.xml"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"x_inline"* ]]
+}

@@ -75,6 +75,8 @@ heater is shared or per-lane.
 | `tests/unit/test_ams_environment_zone_source.cpp` | The default walk and backend overrides - `[ams][zones][source]` |
 | `tests/unit/test_zone_presentation.cpp` | Verdicts, labels, presentation choice - `[ams][zones][presentation]` |
 | `tests/unit/test_ams_environment_overlay_zones.cpp` | Overlay behavior over a zone set - `[ams][zones][overlay]` |
+| `include/dryer_summary.h`, `src/ui/panel_widgets/dryer_model.{h,cpp}` | `summarize_dryers()`, `ChamberCycle`, the live `dryer_model` behind the Dryer home widget - [The dryer summary](#the-dryer-summary) |
+| `tests/unit/test_dryer_summary.cpp`, `tests/unit/test_dryer_model.cpp` | The aggregation and the model - `[dryer][summary]` |
 
 ---
 
@@ -367,6 +369,54 @@ into can go stale while the list sits paused underneath.
 Both overlays register their repeated component (`zone_tab`, `zone_row`) before their own XML is
 parsed, and both self-register their overlay XML so they are safe to open without first visiting
 a host panel.
+
+---
+
+## The dryer summary
+
+The Dryer home widget needs one answer to "what is drying filament right now" across three
+independent things that can: box dryers (the zones above), the chamber heater's drying cycle
+([CHAMBER_HEATER.md](CHAMBER_HEATER.md)) and drying on the heated bed ([BED_DRYING.md](BED_DRYING.md)).
+`summarize_dryers()` in `include/dryer_summary.h` is the only place they are folded together.
+It takes a `DryerSummaryInput` (the backend's zones, a `ChamberDryerReading`, a
+`BedDryerReading`) and returns a `DryerSummary`: a vector of `DryerSource` (boxes, then chamber,
+then bed), `drying_count`, `highest_rh_pct` and `available`. It is pure and LVGL-free, with its own
+tests (`tests/unit/test_dryer_summary.cpp`, `[dryer][summary]`).
+
+- **One source per dryer, not per zone.** A unit whose sensors are per lane yields one zone per
+  lane over one dryer, so zones with no `dryer.supported` are skipped for sources and boxes are
+  de-duplicated by heater name (or by unit index when there is none). Humidity still counts
+  every zone: `highest_rh_pct` is the highest reading anywhere.
+- **A source that is not drying carries no cycle numbers.** Remaining time, progress and target
+  are filled only while `drying` is set; the current temperature and humidity are always filled.
+  Unknown numbers are -1.
+- **Progress is one function.** `progress_pct_from(remaining_min, duration_min)` is the percent
+  elapsed, -1 when either number is unknown. A box uses its zone's duration; the bed uses the
+  run record's (`bed_drying_progress_pct`, [BED_DRYING.md](BED_DRYING.md#subjects)).
+- **The chamber has no duration, so its progress is observed.** The appliance reports minutes
+  left and nothing else. `next_chamber_cycle()` tracks a `ChamberCycle`: a cycle is `counted`
+  only when this session saw it begin (a reading that was inactive, then active), and its total
+  is the longest remaining time seen since. A cycle already running when the first reading
+  arrives has no known total, so its `progress_pct` stays -1 and the widget draws no ring: a ring
+  at 0 for an unknown progress would read as a cycle that has not started. Before a real status
+  frame has reported (`chamber_dryer_reported`), the default "inactive" reading is not a
+  baseline and `next_chamber_cycle()` returns the previous state unchanged; the first real
+  frame is the baseline.
+- **`primary_source()` picks the source a single-number rung shows**: the drying one whose cycle
+  ends first, sources with no known time last.
+- **Taps resolve in the same header.** `tap_for_source()` maps a row to the environment overlay
+  (a box), the chamber modal or the bed modal; `tap_for_tile()` picks the box that is drying (or
+  the first box), then the chamber, then the bed. The widget never starts or stops a cycle.
+
+`helix::dryer_model` (`src/ui/panel_widgets/dryer_model.h`) is the live side. `init_subjects()`
+registers `home_dryer_available` (the widget's gate) and `home_dryer_version`, attaches observers to
+every source and refreshes; the dryer widget's subject hook calls it, so the gate exists before the
+panel widget manager resolves gates. Sources notify far more often than the summary changes, so an
+observer only requests a refresh, and a burst becomes one `refresh_now()` on the UpdateQueue; the
+chamber and bed temperatures request one only when the whole-degree value changes. The version
+subject bumps only when the new summary differs from the last. The bed controller is built after
+the widget subjects, so the next refresh that finds it attaches its observers.
+`publish_for_test()` pins a summary for a widget test until `release_for_test()`.
 
 ---
 

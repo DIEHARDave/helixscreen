@@ -17,6 +17,8 @@ The current **X**, **Y**, and **Z** coordinates sit in the header of the Motion 
 
 The coordinates are greyed out whenever the printer isn't ready - not connected, or still starting up.
 
+The [Toolhead widget](home-panel.md#available-widgets) on the home screen shows the same X, Y and Z, draws where the nozzle sits on the plate, and opens this screen when tapped.
+
 ---
 
 ## Jog Pad

@@ -1376,6 +1376,9 @@ For what each widget does and how big it can get, see the [Home Panel guide](gui
 | `print_status` | Print Status | Yes | No |
 | `control_buttons` | Print Controls | No | No |
 | `print_stats` | Print Stats | No | No |
+| `speed_flow` | Speed / Flow | No | No |
+| `z_offset` | Z-Offset | No | No |
+| `exclude_map` | Exclude Objects | No | Klipper `[exclude_object]` |
 | `job_queue` | Job Queue | No | No |
 | `camera` | Camera | No | Webcam configured |
 | `temperature` | Nozzle Temperature | Yes | No |
@@ -1392,17 +1395,21 @@ For what each widget does and how big it can get, see the [Home Panel guide](gui
 | `active_spool` | Active Spool | No | No |
 | `filament` | Filament Sensor | Yes | Filament sensor |
 | `humidity` | Humidity | No | Humidity sensor |
+| `dryer` | Filament Dryer | No | Filament dryer |
 | `width_sensor` | Width Sensor | No | Width sensor |
 | `clog_detection` | Clog Detection | No | Clog detection hardware |
 | `favorite_macro` | Macro Button | No | No |
 | `macros` | Macros | No | No |
 | `gcode_console` | G-code Console | No | No |
 | `motion` | Motion | No | No |
+| `toolhead` | Toolhead | No | No |
+| `bed_mesh_tile` | Bed Mesh | No | Bed mesh support |
 | `tool_switcher` | Tool Switcher | No | No |
 | `power_device` | Power | No | Moonraker power device |
 | `led` | LED Light | Yes | LEDs configured |
 | `led_controls` | LED Controls | No | LEDs configured |
 | `network` | Network | No | No |
+| `host_health` | Host Health | No | Performance readings |
 | `notifications` | Notifications | Yes | No |
 | `clock` | Digital Clock | No | No |
 | `tips` | Tips | Yes | No |

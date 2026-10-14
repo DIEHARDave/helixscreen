@@ -200,6 +200,12 @@ void LVGLTestFixture::ensure_lvgl_initialized() {
                                    LV_DISPLAY_RENDER_MODE_PARTIAL);
             lv_display_set_flush_cb(s_display, test_display_flush_cb);
         }
+        // The app registers globals.xml before the theme. The global scope is
+        // first-registration-wins, so a theme init that ran first would let a
+        // component-local const of the same name (card_height) shadow it for the
+        // rest of the process.
+        lv_xml_register_component_from_file("A:ui_xml/globals.xml");
+
         // The fixture base swept the display list before this one existed, and
         // the first test to run is entitled to the same guarantee as the rest.
         ensure_displays_never_block_on_flush();

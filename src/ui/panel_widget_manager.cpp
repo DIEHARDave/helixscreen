@@ -1785,6 +1785,7 @@ SubjectLifetime gate_subject_lifetime(const char* name) {
     }
     if (std::strcmp(name, "power_device_count") == 0 ||
         std::strcmp(name, "printer_has_chamber") == 0 ||
+        std::strcmp(name, "printer_has_exclude_object") == 0 ||
         std::strcmp(name, "printer_has_bed_mesh") == 0) {
         return get_printer_state().get_subjects_lifetime();
     }
