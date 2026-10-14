@@ -265,23 +265,51 @@ TEST_CASE_METHOD(StarterFixture,
     StaticPanelRegistry::instance().destroy_all();
 }
 
-TEST_CASE_METHOD(StarterFixture, "a printer-stop check that did not run never starts from the tile",
+namespace {
+
+/// The job the global print-select panel's file view holds, or "" for none.
+std::string file_view_job(MoonrakerAPI* api) {
+    const std::string* pending = ::PrintSelectPanelTestAccess::pending_queued_job_id(
+        *get_print_select_panel(get_printer_state(), api));
+    return pending ? *pending : std::string();
+}
+
+} // namespace
+
+TEST_CASE_METHOD(StarterFixture,
+                 "a printer-stop check that did not run opens the file view, never starts",
                  "[queued_job_start]") {
     PlantedGcode file("tile_unchecked.gcode", "", kPetgFile);
+    StaticPanelRegistry::instance().destroy_all();
     // Unread macros leave the file's printer-stopping command check NotRun.
     helix::MacroParamCache::instance().clear();
 
-    WarningLog warnings;
     start(entry("0001", file.name()));
 
     REQUIRE(outcome.has_value());
-    CHECK(*outcome == Outcome::NotStarted);
-    CHECK(warnings.contains("Could not check"));
-    CHECK(warnings.contains(file.name()));
+    CHECK(*outcome == Outcome::OpenedFileView);
+    CHECK(file_view_job(api_.get()) == "0001");
     CHECK(starts() == 0);
-    CHECK(ModalStack::instance().stack_empty());
     CHECK(queue_has("0001"));
     CHECK_FALSE(starter->in_flight());
+
+    StaticPanelRegistry::instance().destroy_all();
+}
+
+TEST_CASE_METHOD(StarterFixture, "a queued .3mf opens in the file view and starts nothing",
+                 "[queued_job_start]") {
+    PlantedGcode file("tile_project.gcode.3mf", "", "PK\x03\x04");
+    StaticPanelRegistry::instance().destroy_all();
+
+    start(entry("0001", file.name()));
+
+    REQUIRE(outcome.has_value());
+    CHECK(*outcome == Outcome::OpenedFileView);
+    CHECK(file_view_job(api_.get()) == "0001");
+    CHECK(starts() == 0);
+    CHECK(queue_has("0001"));
+
+    StaticPanelRegistry::instance().destroy_all();
 }
 
 TEST_CASE_METHOD(StarterFixture, "a stalled start gives up, and a later tap starts again",
@@ -324,12 +352,14 @@ TEST_CASE_METHOD(StarterFixture, "a stalled start gives up, and a later tap star
     settle();
 }
 
-TEST_CASE_METHOD(StarterFixture, "a macro re-read before the gates run refuses the start there",
+TEST_CASE_METHOD(StarterFixture,
+                 "a macro re-read before the gates run sends the job to the file view there",
                  "[queued_job_start]") {
     // An empty lane for tool 0 holds the start on the pre-flight dialog.
     helix::test::ScopedMockAms ams({{0xFF0000, "PETG"}});
     ams.load(0, 0xFF0000, "PETG", helix::SlotStatus::EMPTY);
     PlantedGcode file("tile_reread.gcode", "", kPetgFile);
+    StaticPanelRegistry::instance().destroy_all();
     start(entry("0001", file.name()));
     lv_obj_t* dialog = ModalStack::instance().top_dialog();
     REQUIRE(dialog != nullptr);
@@ -339,13 +369,14 @@ TEST_CASE_METHOD(StarterFixture, "a macro re-read before the gates run refuses t
     // file's printer-stopping command check no longer describes them.
     helix::MacroParamCache::instance().populate_from_configfile(nlohmann::json::object(), {});
 
-    WarningLog warnings;
     press("btn_primary"); // Print Anyway
     REQUIRE(outcome.has_value());
-    CHECK(*outcome == Outcome::NotStarted);
-    CHECK(warnings.contains("Could not check"));
+    CHECK(*outcome == Outcome::OpenedFileView);
+    CHECK(file_view_job(api_.get()) == "0001");
     CHECK(starts() == 0);
     CHECK(queue_has("0001"));
+
+    StaticPanelRegistry::instance().destroy_all();
 }
 
 // ============================================================================

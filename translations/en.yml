@@ -528,7 +528,7 @@ translations:
   'Cannot start print: not connected to printer': 'Cannot start print: not connected
     to printer'
   'Cannot start print: printer is {}': 'Cannot start print: printer is {}'
-  'Cannot start {}: the file could not be checked for the steps you turned off': 'Cannot start {}: the file could not be checked for the steps you turned off'
+  'Cannot start {}: the file could not be checked yet for the steps you turned off. Try again in a moment.': 'Cannot start {}: the file could not be checked yet for the steps you turned off. Try again in a moment.'
   Cannot save offsets while printing: Cannot save offsets while printing
   Cannot unload while a print is active: Cannot unload while a print is active
   'Capabilities: ': 'Capabilities: '
@@ -601,6 +601,7 @@ translations:
   Checking Spoolman server...: Checking Spoolman server...
   Checking accelerometer...: Checking accelerometer...
   'Checking extruders...': 'Checking extruders...'
+  Checking file…: 'Checking file…'
   Checking filament...: Checking filament...
   Checking for plugin...: Checking for plugin...
   Checking for webcam...: Checking for webcam...

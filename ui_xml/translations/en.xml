@@ -496,7 +496,7 @@
   <translation tag="Cannot start print: internal error" en="Cannot start print: internal error"/>
   <translation tag="Cannot start print: not connected to printer" en="Cannot start print: not connected to printer"/>
   <translation tag="Cannot start print: printer is {}" en="Cannot start print: printer is {}"/>
-  <translation tag="Cannot start {}: the file could not be checked for the steps you turned off" en="Cannot start {}: the file could not be checked for the steps you turned off"/>
+  <translation tag="Cannot start {}: the file could not be checked yet for the steps you turned off. Try again in a moment." en="Cannot start {}: the file could not be checked yet for the steps you turned off. Try again in a moment."/>
   <translation tag="Cannot unload while a print is active" en="Cannot unload while a print is active"/>
   <translation tag="Capabilities: " en="Capabilities: "/>
   <translation tag="Carriage empty" en="Carriage empty"/>
@@ -563,6 +563,7 @@
   <translation tag="Checking accelerometer..." en="Checking accelerometer..."/>
   <translation tag="Checking extruders..." en="Checking extruders..."/>
   <translation tag="Checking filament..." en="Checking filament..."/>
+  <translation tag="Checking file…" en="Checking file…"/>
   <translation tag="Checking for plugin..." en="Checking for plugin..."/>
   <translation tag="Checking for webcam..." en="Checking for webcam..."/>
   <translation tag="Checking plugin" en="Checking plugin"/>

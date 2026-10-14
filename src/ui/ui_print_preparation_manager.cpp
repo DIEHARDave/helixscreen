@@ -596,9 +596,10 @@ std::string PrintPreparationManager::scan_key(const std::string& filename,
 
 void PrintPreparationManager::scan_file_for_operations(const std::string& filename,
                                                        const std::string& current_path,
-                                                       const std::string& local_path) {
+                                                       const std::string& local_path,
+                                                       FileVersion version) {
     current_scan_key_ = scan_key(filename, current_path, local_path);
-    request_scan(filename, current_path, local_path);
+    request_scan(filename, current_path, local_path, version);
 }
 
 const PrintPreparationManager::KeptScan*
@@ -609,21 +610,34 @@ PrintPreparationManager::kept_scan(const std::string& key) const {
 
 void PrintPreparationManager::request_scan(const std::string& filename,
                                            const std::string& current_path,
-                                           const std::string& local_path) {
-    // A kept result is reusable only while its printer-stopping command answer
-    // still holds. An answer computed before the printer's macros were read,
-    // or against a macro set it has since replaced, says nothing about this
-    // printer, so the file is scanned again.
+                                           const std::string& local_path, FileVersion version) {
     const std::string file_path = scan_key(filename, current_path);
     const std::string key = scan_key(filename, current_path, local_path);
-    if (auto it = kept_scans_.find(key);
-        it != kept_scans_.end() && it->second.result && scan_answered_for(key)) {
-        spdlog::debug("[PrintPreparationManager] Using kept scan result for {}", key);
-        it->second.last_used = ++scan_use_counter_;
-        return;
+    if (auto it = kept_scans_.find(key); it != kept_scans_.end()) {
+        // A scan of another version of the file (re-sliced under the same
+        // name) has the wrong line numbers for this one, so it is dropped.
+        if (it->second.version != version) {
+            spdlog::info("[PrintPreparationManager] {} changed since its scan - scanning again",
+                         key);
+            kept_scans_.erase(it);
+        } else if (it->second.result && scan_answered_for(key)) {
+            // Reusable only while its printer-stopping command answer still
+            // holds: one computed before the printer's macros were read, or
+            // against a macro set since replaced, says nothing about this
+            // printer.
+            spdlog::debug("[PrintPreparationManager] Using kept scan result for {}", key);
+            it->second.last_used = ++scan_use_counter_;
+            return;
+        }
     }
-    if (!scans_in_flight_.insert(key).second) {
-        return; // its answer is already on the way
+    if (auto it = scans_in_flight_.find(key); it != scans_in_flight_.end()) {
+        if (it->second == version) {
+            return; // its answer is already on the way
+        }
+        // The read under way is of another version; its answer is dropped.
+        it->second = version;
+    } else {
+        scans_in_flight_.emplace(key, version);
     }
     const uint64_t epoch = scan_epoch_;
 
@@ -631,14 +645,14 @@ void PrintPreparationManager::request_scan(const std::string& filename,
         spdlog::warn("[PrintPreparationManager] Cannot scan G-code - no API connection");
         // Nothing was read, so whatever this file's scan already held stands.
         const KeptScan* kept = kept_scan(key);
-        keep_scan(key, filename, kept ? kept->result : std::nullopt,
+        keep_scan(key, filename, version, kept ? kept->result : std::nullopt,
                   helix::printer_stop_not_run("no printer connection"));
         return;
     }
 
     if (helix::gcode::is_3mf(filename)) {
         // An empty result, not none: a .3mf holds no operations to strip.
-        keep_scan(key, filename, gcode::ScanResult{},
+        keep_scan(key, filename, version, gcode::ScanResult{},
                   printer_stop_not_run("a .3mf project holds no G-code to scan"));
         return;
     }
@@ -653,7 +667,12 @@ void PrintPreparationManager::request_scan(const std::string& filename,
     // downloading multi-MB files just to scan the first few hundred lines.
     // Both callbacks run on a background thread: parse there, then defer the
     // shared state updates to the main thread.
-    auto on_content = [this, token, filename, key, epoch](const std::string& content) {
+    // An answer lands only while it is still for the version last asked for.
+    auto current = [this, key, version, epoch]() {
+        const auto it = scans_in_flight_.find(key);
+        return epoch == scan_epoch_ && it != scans_in_flight_.end() && it->second == version;
+    };
+    auto on_content = [this, token, filename, key, version, current](const std::string& content) {
         gcode::GCodeOpsDetector detector;
         auto scan_result = detector.scan_content(content);
         // The whole downloaded head, not the detector's shorter op window:
@@ -679,25 +698,29 @@ void PrintPreparationManager::request_scan(const std::string& filename,
         }
 
         token.defer("PrintPreparationManager::scan_success",
-                    [this, filename, key, epoch, scan_result, stop_check]() {
-                        if (epoch == scan_epoch_) {
-                            keep_scan(key, filename, scan_result, stop_check);
+                    [this, filename, key, version, current, scan_result, stop_check]() {
+                        if (current()) {
+                            keep_scan(key, filename, version, scan_result, stop_check);
                         }
                     });
     };
     // A failed read just logs; it never blocks the UI.
-    auto on_failure = [this, token, filename, key, epoch](const std::string& message) {
+    auto on_failure = [this, token, filename, key, version, current](const std::string& message) {
         spdlog::warn("[PrintPreparationManager] Failed to scan G-code {}: {}", filename, message);
         std::string reason = "the file could not be read: " + message;
-        token.defer("PrintPreparationManager::scan_error", [this, filename, key, epoch, reason]() {
-            if (epoch == scan_epoch_) {
-                keep_scan(key, filename, std::nullopt, helix::printer_stop_not_run(reason));
-            }
-        });
+        token.defer("PrintPreparationManager::scan_error",
+                    [this, filename, key, version, current, reason]() {
+                        if (current()) {
+                            keep_scan(key, filename, version, std::nullopt,
+                                      helix::printer_stop_not_run(reason));
+                        }
+                    });
     };
 
-    // A bounded read, on the fast lane: the slow lane's one worker can sit
-    // behind a multi-minute upload.
+    // A bounded read. A stick file is read on the fast lane. A printer file's
+    // partial download runs on the slow lane, so it can queue behind a
+    // whole-file transfer already under way; a start that needs this answer
+    // waits for it (print_waits_on_scan()).
     if (!local_path.empty()) {
         helix::http::HttpExecutor::fast().submit([local_path, on_content, on_failure]() {
             auto head = helix::text_io::read_file(local_path, helix::PRINTER_STOP_SCAN_BYTES);
@@ -716,11 +739,13 @@ void PrintPreparationManager::request_scan(const std::string& filename,
 }
 
 void PrintPreparationManager::keep_scan(const std::string& key, const std::string& filename,
+                                        FileVersion version,
                                         std::optional<gcode::ScanResult> result,
                                         helix::PrinterStopCheck printer_stop) {
     scans_in_flight_.erase(key);
     KeptScan& kept = kept_scans_[key];
     kept.filename = filename;
+    kept.version = version;
     kept.result = std::move(result);
     kept.printer_stop = std::move(printer_stop);
     kept.last_used = ++scan_use_counter_;
@@ -732,13 +757,12 @@ void PrintPreparationManager::keep_scan(const std::string& key, const std::strin
 }
 
 void PrintPreparationManager::evict_kept_scans() {
-    // The file the detail view shows and the file a start waits on are never
+    // The file the detail view shows and the file a start is on are never
     // evicted: neither may lose its scan to the other.
     while (kept_scans_.size() > kMaxKeptScans) {
         auto oldest = kept_scans_.end();
         for (auto it = kept_scans_.begin(); it != kept_scans_.end(); ++it) {
-            const bool held = it->first == current_scan_key_ ||
-                              (start_waiter_ && it->first == start_waiter_->key);
+            const bool held = it->first == current_scan_key_ || it->first == start_pin_key_;
             if (!held &&
                 (oldest == kept_scans_.end() || it->second.last_used < oldest->second.last_used)) {
                 oldest = it;
@@ -755,6 +779,7 @@ void PrintPreparationManager::clear_scan_cache() {
     kept_scans_.clear();
     scans_in_flight_.clear();
     current_scan_key_.clear();
+    start_pin_key_.clear();
     ++scan_epoch_;
     cached_file_size_.reset();
 }
@@ -784,13 +809,15 @@ bool PrintPreparationManager::scan_answered_for(const std::string& key) const {
 
 void PrintPreparationManager::when_ready_to_start(const std::string& filename,
                                                   const std::string& current_path,
-                                                  StartReadyCallback ready) {
+                                                  FileVersion version, StartReadyCallback ready) {
     if (!ready) {
         start_waiter_.reset();
+        start_pin_key_.clear();
         return;
     }
-    start_waiter_ =
-        StartWaiter{filename, current_path, scan_key(filename, current_path), false, 1, ready};
+    const std::string key = scan_key(filename, current_path);
+    start_waiter_ = StartWaiter{filename, current_path, key, version, false, 1, ready};
+    start_pin_key_ = key;
     request_start_waiter_scan();
     notify_start_waiter();
 }
@@ -799,7 +826,7 @@ void PrintPreparationManager::request_start_waiter_scan() {
     const std::string key = start_waiter_->key;
     // Never through scan_file_for_operations(): this file is not the one the
     // detail view shows, and must not become it.
-    request_scan(start_waiter_->filename, start_waiter_->current_path);
+    request_scan(start_waiter_->filename, start_waiter_->current_path, {}, start_waiter_->version);
     if (start_waiter_ && start_waiter_->key == key && scan_answered_for(key)) {
         start_waiter_->answered = true;
     }
@@ -954,6 +981,10 @@ void PrintPreparationManager::start_print(const std::string& filename,
         expected_scan_key.empty() ? scan_key(filename, current_path) : expected_scan_key;
     const gcode::ScanResult* own_scan = scan_result_for(start_key);
     start_scan_ = own_scan ? std::optional<gcode::ScanResult>(*own_scan) : std::nullopt;
+    // Copied, so the scan no longer needs keeping for this start.
+    if (start_pin_key_ == start_key) {
+        start_pin_key_.clear();
+    }
 
     // No double-tap guard here any more. The flag it used to read is now
     // published by PrinterPrintState from the preparing job, and the caller arms
@@ -1005,30 +1036,25 @@ void PrintPreparationManager::start_print(const std::string& filename,
     //
     // Lines are concatenated with newlines; Moonraker forwards the whole
     // block to Klipper as a single gcode_script.
-    const auto& db_options = get_cached_options();
-    std::vector<std::string> pre_start_lines = collect_pre_start_gcode_lines(filename_to_print);
-    // A skip an earlier print left unconsumed must not ride into this one,
-    // including for a step whose toggle is hidden now.
-    if (printer_state_ && !printer_state_->get_discovery().skip_active().empty()) {
-        pre_start_lines.insert(pre_start_lines.begin(), helix::skip_wrappers::PREP_MACRO);
-    }
-    const bool emit_printer_setup = !macro_skip_params.empty() && !db_options.setup_gcode.empty();
-    std::string combined =
-        build_pre_start_gcode_block(db_options.setup_gcode, pre_start_lines, emit_printer_setup);
+    const PreStartBlock pre_start = pre_start_block(
+        macro_skip_params, filename_to_print,
+        start_scan_ && start_scan_->print_start.found ? &start_scan_->print_start : nullptr);
+    const std::string& combined = pre_start.gcode;
 
     // Without this file's scan nothing can say which disabled steps the file
     // embeds, nor where its START_PRINT call is. A start that would act on
-    // either is refused rather than run with the user's choices dropped.
-    const bool rewrites_start_call =
-        !macro_skip_params.empty() && combined.empty() && can_modify_gcode();
-    if (!start_scan_ && (!ops_user_disabled().empty() || rewrites_start_call)) {
+    // either is refused rather than run with the user's choices dropped. The
+    // file view holds Print while that scan is still reading, so this answers
+    // a scan that failed or timed out.
+    if (!start_scan_ && start_acts_on_scan(macro_skip_params, pre_start)) {
         spdlog::error("[PrintPreparationManager] Refusing to start {}: no scan of {} answers for "
                       "the steps turned off",
                       filename_to_print, start_key);
         if (on_completion) {
             on_completion(false,
-                          fmt::format(fmt::runtime(lv_tr("Cannot start {}: the file could not be "
-                                                         "checked for the steps you turned off")),
+                          fmt::format(fmt::runtime(lv_tr(
+                                          "Cannot start {}: the file could not be checked yet for "
+                                          "the steps you turned off. Try again in a moment.")),
                                       filename));
         }
         return;
@@ -1078,7 +1104,7 @@ void PrintPreparationManager::start_print(const std::string& filename,
 
     if (!combined.empty()) {
         spdlog::info("[PrintPreparationManager] Executing pre-start gcode ({} line(s)): {}",
-                     (emit_printer_setup ? 1 : 0) + pre_start_lines.size(), combined);
+                     (pre_start.emit_setup ? 1 : 0) + pre_start.lines.size(), combined);
 
         // This block runs in front of the job, so it sits inside the pre-print
         // measurement window. Tell the collector, or its timings get averaged
@@ -1266,7 +1292,7 @@ bool PrintPreparationManager::disabling_option_requires_plugin(const PrePrintOpt
     // Does disabling it still do something without the plugin? A PreStartGcode
     // option always emits its own line. A MacroParam skip rides a pre-start
     // block: printer-level setup_gcode (gated on a MacroParam skip, see
-    // emit_printer_setup in start_print()) or any PreStartGcode line. This is
+    // PreStartBlock::emit_setup in start_print()) or any PreStartGcode line. This is
     // the K2 Plus PREPARE case (MacroParam bed_mesh + setup_gcode), which must
     // stay visible without the plugin.
     const auto& option_set = get_cached_options();
@@ -1377,7 +1403,7 @@ std::string PrintPreparationManager::describe_dropped_modifications(
 // disabling_option_requires_plugin() exactly:
 //   - plugin present    -> modify_and_print() rewrites the PRINT_START call
 //   - setup_gcode set   -> non-empty skip params trigger the printer-level
-//                          pre-start block (emit_printer_setup in start_print),
+//                          pre-start block (PreStartBlock::emit_setup in start_print),
 //                          which is how K1/K1C PRINT_PREPARED fires. Suppressing
 //                          here would silently disarm that trigger.
 //   - pre-start lines   -> the same pre-start path fires for per-option
@@ -1512,9 +1538,42 @@ PrintPreparationManager::collect_macro_skip_params() const {
     return skip_params;
 }
 
-std::vector<std::string>
-PrintPreparationManager::collect_pre_start_gcode_lines(const std::string& filename,
-                                                       bool with_skip_toggles) const {
+PrintPreparationManager::PreStartBlock PrintPreparationManager::pre_start_block(
+    const std::vector<std::pair<std::string, std::string>>& macro_skip_params,
+    const std::string& filename, const gcode::PrintStartCallInfo* job_start) const {
+    PreStartBlock block;
+    const auto& db_options = get_cached_options();
+    block.lines = collect_pre_start_gcode_lines(filename, true, job_start);
+    // A skip an earlier print left unconsumed must not ride into this one,
+    // including for a step whose toggle is hidden now.
+    if (printer_state_ && !printer_state_->get_discovery().skip_active().empty()) {
+        block.lines.insert(block.lines.begin(), helix::skip_wrappers::PREP_MACRO);
+    }
+    block.emit_setup = !macro_skip_params.empty() && !db_options.setup_gcode.empty();
+    block.gcode =
+        build_pre_start_gcode_block(db_options.setup_gcode, block.lines, block.emit_setup);
+    return block;
+}
+
+bool PrintPreparationManager::start_acts_on_scan(
+    const std::vector<std::pair<std::string, std::string>>& macro_skip_params,
+    const PreStartBlock& block) const {
+    const bool rewrites_start_call =
+        !macro_skip_params.empty() && block.gcode.empty() && can_modify_gcode();
+    return !ops_user_disabled().empty() || rewrites_start_call;
+}
+
+bool PrintPreparationManager::print_waits_on_scan(const std::string& key) const {
+    if (scans_in_flight_.count(key) == 0) {
+        return false;
+    }
+    const auto skip_params = collect_macro_skip_params();
+    return start_acts_on_scan(skip_params, pre_start_block(skip_params, {}, nullptr));
+}
+
+std::vector<std::string> PrintPreparationManager::collect_pre_start_gcode_lines(
+    const std::string& filename, bool with_skip_toggles,
+    const gcode::PrintStartCallInfo* job_start) const {
     std::vector<std::string> lines;
 
     const auto& db_options = get_cached_options();
@@ -1559,15 +1618,11 @@ PrintPreparationManager::collect_pre_start_gcode_lines(const std::string& filena
             continue;
         }
 
-        // Job temps come from the file's own START_PRINT line via the scan
-        // cache — Moonraker metadata is wrong on multi-material files. Only
-        // trust the cache when it was built for the file being printed;
-        // otherwise 0 lets the firmware macro keep its own default.
         PreStartGcodeContext ctx;
         ctx.filename = filename;
-        if (const auto* start = print_start_for(filename)) {
-            ctx.bed_temp = start->bed_temp;
-            ctx.extruder_temp = start->extruder_temp;
+        if (job_start) {
+            ctx.bed_temp = job_start->bed_temp;
+            ctx.extruder_temp = job_start->extruder_temp;
         }
         std::string line = render_pre_start_gcode(opt, enabled, ctx);
         if (line.empty()) {

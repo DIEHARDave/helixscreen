@@ -13,6 +13,7 @@
 
 #include "async_lifetime_guard.h"
 #include "filament_mapper.h"
+#include "file_version.h"
 #include "gcode_footer_summary.h"
 #include "moonraker_types.h"
 #include "preflight_validator.h"
@@ -39,6 +40,9 @@ struct FilePalette {
 };
 
 [[nodiscard]] FilePalette file_palette_from_metadata(const FileMetadata& metadata);
+
+/// The version of the file @p metadata describes; zero when there is none.
+[[nodiscard]] FileVersion file_version_of(const std::optional<FileMetadata>& metadata);
 
 /// The file half of the pre-start checks' input.
 struct FileStartFacts {

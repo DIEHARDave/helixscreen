@@ -2461,6 +2461,7 @@ void PrintSelectPanel::update_print_button_state() {
         if (auto* prep_mgr = detail_view_->get_prep_manager()) {
             inputs.macro_analysis_running = prep_mgr->is_macro_analysis_in_progress();
         }
+        inputs.file_check_pending = detail_view_->file_check_pending();
     }
 
     const auto view = helix::ui::compute_print_select_button_view(inputs);
@@ -2649,6 +2650,8 @@ void PrintSelectPanel::ensure_detail_view_model() {
     // Re-enable the print button when macro analysis completes.
     detail_view_->set_on_macro_analysis(
         [this](const helix::PrintStartAnalysis& /*analysis*/) { update_print_button_state(); });
+    // Print waits while the shown file's scan reads, when an option needs it.
+    detail_view_->set_on_print_readiness_changed([this]() { update_print_button_state(); });
 }
 
 void PrintSelectPanel::create_detail_view() {

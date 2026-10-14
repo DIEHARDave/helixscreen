@@ -25,6 +25,13 @@ namespace helix {
 
 namespace tio = helix::text_io;
 
+FileVersion file_version_of(const std::optional<FileMetadata>& metadata) {
+    if (!metadata) {
+        return {};
+    }
+    return {metadata->size, static_cast<time_t>(metadata->modified)};
+}
+
 FilePalette file_palette_from_metadata(const FileMetadata& metadata) {
     FilePalette palette;
     // Per-tool materials from the semicolon-separated metadata
@@ -164,8 +171,9 @@ void FileStartFactsLoader::load(const std::string& filename, ReadyFn on_ready, D
         if (metadata) {
             facts->palette = file_palette_from_metadata(*metadata);
         }
-        const uint64_t size = metadata ? metadata->size : 0;
-        const auto modified = metadata ? static_cast<time_t>(metadata->modified) : time_t{0};
+        const FileVersion version = file_version_of(metadata);
+        const uint64_t size = version.size_bytes;
+        const time_t modified = version.modified;
 
         auto cached = tools_used_cache().lookup(filename, size, modified);
         if (cached) {

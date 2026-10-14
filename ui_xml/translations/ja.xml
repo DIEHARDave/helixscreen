@@ -496,7 +496,7 @@
   <translation tag="Cannot start print: internal error" ja="印刷を開始できません: 内部エラー"/>
   <translation tag="Cannot start print: not connected to printer" ja="印刷を開始できません: プリンター未接続"/>
   <translation tag="Cannot start print: printer is {}" ja="印刷を開始できません: プリンターは {} 状態です"/>
-  <translation tag="Cannot start {}: the file could not be checked for the steps you turned off" ja="{} を開始できません: オフにした手順についてファイルを確認できませんでした"/>
+  <translation tag="Cannot start {}: the file could not be checked yet for the steps you turned off. Try again in a moment." ja="{} を開始できません: オフにした手順についてファイルをまだ確認できていません。少し待ってからもう一度お試しください。"/>
   <translation tag="Cannot unload while a print is active" ja="印刷中は排出できません"/>
   <translation tag="Capabilities: " ja="機能: "/>
   <translation tag="Carriage empty" ja="キャリッジが空"/>
@@ -563,6 +563,7 @@
   <translation tag="Checking accelerometer..." ja="加速度センサーを確認中..."/>
   <translation tag="Checking extruders..." ja="エクストルーダーを確認中..."/>
   <translation tag="Checking filament..." ja="フィラメントを確認中..."/>
+  <translation tag="Checking file…" ja="ファイルを確認中…"/>
   <translation tag="Checking for plugin..." ja="プラグインを確認中..."/>
   <translation tag="Checking for webcam..." ja="ウェブカメラを確認中..."/>
   <translation tag="Checking plugin" ja="プラグインを確認中"/>

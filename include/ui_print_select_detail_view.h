@@ -211,6 +211,16 @@ class PrintSelectDetailView : public OverlayBase {
         on_macro_analysis_cb_ = std::move(callback);
     }
 
+    /// Set callback fired when file_check_pending() may have changed: the
+    /// shown file's scan was asked for or answered, or an option row changed.
+    void set_on_print_readiness_changed(std::function<void()> callback) {
+        on_print_readiness_changed_cb_ = std::move(callback);
+    }
+
+    /// Print waits on the shown file's scan: it is still reading, and an
+    /// option as now set needs it (PrintPreparationManager::print_waits_on_scan()).
+    [[nodiscard]] bool file_check_pending() const;
+
     /**
      * @brief Handle a tap on the filament card.
      *
@@ -999,6 +1009,8 @@ class PrintSelectDetailView : public OverlayBase {
     std::function<void()> on_plugin_setup_requested_;
     std::function<void()> on_dismissed_cb_;
     MacroAnalysisCallback on_macro_analysis_cb_;
+    std::function<void()> on_print_readiness_changed_cb_;
+    void notify_print_readiness_changed() const;
 
     // === Internal Methods ===
 

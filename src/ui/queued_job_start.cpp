@@ -79,12 +79,14 @@ QueuedJobStarter::QueuedJobStarter(PrinterState& printer_state, IMoonrakerAPI* a
       facts_loader_(api) {
     // No detail view and no navigation: the user stays where the tap was.
     controller_->set_on_print_started([this]() {
-        finish_started_queued_job(lifetime_, api_, job_id_);
+        finish_started_queued_job(lifetime_, api_, job_.job_id);
         finish(Outcome::Started);
     });
     controller_->set_on_print_cancelled([this]() { finish(Outcome::NotStarted); });
-    // The gates end the start themselves; this says why the job stays queued.
-    controller_->set_on_file_unchecked([this]() { warn_stays_queued(); });
+    // A file the tile could not check is started from the file view; the
+    // gates end this start themselves.
+    controller_->set_on_file_unchecked(
+        [this]() { open_in_file_view("its printer-stopping command check did not run"); });
 }
 
 QueuedJobStarter::~QueuedJobStarter() {
@@ -96,7 +98,7 @@ void QueuedJobStarter::release_prep() {
     if (!prep_) {
         return;
     }
-    prep_->when_ready_to_start({}, {}, nullptr);
+    prep_->when_ready_to_start({}, {}, {}, nullptr);
     prep_->set_start_option_override(nullptr);
     controller_->set_prep_manager(nullptr);
     prep_ = nullptr;
@@ -123,8 +125,7 @@ bool QueuedJobStarter::begin(const JobQueueEntry& job, DoneCallback& done) {
     in_flight_ = true;
     ++start_generation_;
     done_ = std::move(done);
-    job_id_ = job.job_id;
-    job_filename_ = job.filename;
+    job_ = job;
     arm_stall_watchdog(kStallMs);
     return true;
 }
@@ -151,13 +152,19 @@ void QueuedJobStarter::give_up(const char* why) {
     if (!in_flight_) {
         return;
     }
-    spdlog::warn("[QueuedJobStart] Not starting queued job {}: {}", job_id_, why);
-    warn_stays_queued();
+    spdlog::warn("[QueuedJobStart] Not starting queued job {}: {}", job_.job_id, why);
+    NOTIFY_WARNING(lv_tr("Could not check {} - it stays in the queue"), job_.filename);
     finish(Outcome::NotStarted);
 }
 
-void QueuedJobStarter::warn_stays_queued() {
-    NOTIFY_WARNING(lv_tr("Could not check {} - it stays in the queue"), job_filename_);
+void QueuedJobStarter::open_in_file_view(const char* why) {
+    if (!in_flight_) {
+        return;
+    }
+    spdlog::info("[QueuedJobStart] Opening queued job {} in the file view: {}", job_.job_id, why);
+    const JobQueueEntry job = job_;
+    finish(Outcome::OpenedFileView);
+    open_queued_job_in_file_view(job);
 }
 
 void QueuedJobStarter::start(const JobQueueEntry& job, DoneCallback done) {
@@ -229,21 +236,22 @@ void QueuedJobStarter::wait_for_scan() {
     // answer is for this file's path, never another file the view opened.
     const uint32_t gen = start_generation_;
     prep_->when_ready_to_start(
-        pending_->name, pending_->dir, [this, gen](std::optional<PrinterStopCheck> check) {
+        pending_->name, pending_->dir, file_version_of(pending_->facts->metadata),
+        [this, gen](std::optional<PrinterStopCheck> check) {
             if (gen != start_generation_ || !pending_ || !pending_->facts) {
                 return;
             }
+            // The tile has no screen to show what an unread file holds, so a
+            // file whose printer-stopping command check cannot run here (a
+            // .3mf, unread macros, a failed read) is started from the file view.
             if (!check) {
-                give_up("its file check kept going stale");
+                open_in_file_view("its file check kept going stale");
                 return;
             }
-            // The tile has no screen to show what an unread file holds, so a
-            // start whose printer-stopping command check did not run waits for
-            // the file view.
             if (check->state == PrinterStopCheck::State::NotRun) {
                 spdlog::info("[QueuedJobStart] Printer-stop check did not run: {}",
                              check->not_run_reason);
-                give_up("its printer-stopping command check did not run");
+                open_in_file_view("its printer-stopping command check did not run");
                 return;
             }
             stall_watchdog_.reset();
@@ -285,13 +293,12 @@ void QueuedJobStarter::run_checks(const Pending& pending, FileStartFacts facts) 
         start_gates();
     });
     // Remap edits the file view's mapping card, so the job goes there.
-    modal->set_on_remap([this, tok, chosen, job = pending.job]() {
+    modal->set_on_remap([this, tok, chosen]() {
         if (tok.expired()) {
             return;
         }
         *chosen = true;
-        finish(Outcome::OpenedFileView);
-        open_queued_job_in_file_view(job);
+        open_in_file_view("Remap chosen");
     });
     modal->set_on_closed([this, tok, chosen]() {
         if (tok.expired() || *chosen) {

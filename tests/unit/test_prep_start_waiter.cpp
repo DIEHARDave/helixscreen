@@ -20,6 +20,7 @@
 #include "../test_helpers/delayed_file_transfers.h"
 #include "../test_helpers/moonraker_client_mock_test_access.h"
 #include "../test_helpers/planted_gcode.h"
+#include "../test_helpers/print_preparation_manager_test_access.h"
 #include "../test_helpers/print_select_panel_fixture.h"
 #include "../test_helpers/print_start_grace.h"
 #include "../test_helpers/print_state_test_drivers.h"
@@ -32,6 +33,7 @@
 #include "printer_state.h"
 #include "queued_job_start.h"
 
+#include <fstream>
 #include <memory>
 #include <optional>
 #include <string>
@@ -81,14 +83,16 @@ class WaiterFixture : private helix::PrintSelectGlobalStateReset, public LVGLUIT
         }
     }
 
-    /// when_ready_to_start(@p name, @p dir), recording its answer.
-    void wait(const std::string& name, const std::string& dir = {}) {
+    /// when_ready_to_start(@p name, @p dir, @p version), recording its answer.
+    void wait(const std::string& name, const std::string& dir = {},
+              helix::FileVersion version = {}) {
         answers = 0;
         answer.reset();
-        manager->when_ready_to_start(name, dir, [this](std::optional<PrinterStopCheck> check) {
-            ++answers;
-            answer = check;
-        });
+        manager->when_ready_to_start(name, dir, version,
+                                     [this](std::optional<PrinterStopCheck> check) {
+                                         ++answers;
+                                         answer = check;
+                                     });
     }
 
     void release_scans() {
@@ -198,10 +202,12 @@ TEST_CASE_METHOD(WaiterFixture, "the wait holds while the PRINT_START analysis r
     CHECK(answers == 0);
     const int reads = transfers.partial_read_count;
 
+    bool reread = false;
     SECTION("the analysis landing ends it") {}
     SECTION("a macro re-read meanwhile scans the file again first") {
         helix::MacroParamCache::instance().populate_from_configfile(nlohmann::json::object(), {});
         REQUIRE_FALSE(manager->has_printer_stop_answer_for(a.name()));
+        reread = true;
     }
 
     client.fire_deferred("server.files.list");
@@ -217,7 +223,11 @@ TEST_CASE_METHOD(WaiterFixture, "the wait holds while the PRINT_START analysis r
     // Whatever it answered is current for the printer's macros.
     CHECK(manager->has_printer_stop_answer_for(a.name()));
     CHECK(answer->macro_generation == helix::MacroParamCache::instance().generation());
-    CHECK(transfers.partial_read_count >= reads);
+    if (reread) {
+        CHECK(transfers.partial_read_count > reads);
+    } else {
+        CHECK(transfers.partial_read_count == reads);
+    }
 }
 
 TEST_CASE_METHOD(WaiterFixture, "a start's option override comes before the attached provider",
@@ -239,6 +249,18 @@ namespace {
 constexpr const char* kMeshFile = "G28\n"
                                   "BED_MESH_CALIBRATE\n"
                                   "G1 X10\n";
+
+/// The line @p scan found the bed mesh on, or 0 when it found none.
+size_t mesh_line(const gcode::ScanResult* scan) {
+    if (scan) {
+        for (const auto& op : scan->operations) {
+            if (op.type == gcode::OperationType::BED_MESH) {
+                return op.line_number;
+            }
+        }
+    }
+    return 0;
+}
 
 gcode::ScanResult mesh_scan() {
     gcode::ScanResult scan;
@@ -316,7 +338,7 @@ TEST_CASE_METHOD(WaiterFixture,
                  "a tile start then the file view opening another file: both keep their scans",
                  "[start_waiter][queued_job_start]") {
     PlantedGcode a("tile_a.gcode", "", kPlainFile);
-    PlantedGcode b("tile_b.gcode", "", kPlainFile);
+    PlantedGcode b("tile_b.gcode", "", kMeshFile);
     make_starter();
     transfers.hold_partials = true;
 
@@ -338,12 +360,144 @@ TEST_CASE_METHOD(WaiterFixture,
     REQUIRE(manager->get_scan_result().has_value());
     CHECK(manager->scan_result_for(b.name()) == &*manager->get_scan_result());
 
-    // B then starts from the view with its own scan.
+    // B then starts from the view, bed mesh off, with its own scan: the file's
+    // mesh is found and stripped, which only B's scan can say.
     helix::test::set_wire_state(get_printer_state(), helix::PrintJobState::STANDBY);
+    manager->set_option_state_provider(
+        [](const std::string& id) { return id == "bed_mesh" ? 0 : -1; });
+    get_printer_state().set_helix_plugin_installed(true); // a rewrite may run
+    settle();
+    const int downloads = transfers.download_count;
     std::optional<bool> b_ok;
     manager->start_print(
         b.name(), "", []() {}, [&b_ok](bool success, const std::string&) { b_ok = success; });
     settle();
     CHECK_FALSE((b_ok.has_value() && !*b_ok));
-    CHECK(client.call_count("printer.print.start") == 2);
+    CHECK(transfers.download_count == downloads + 1); // the modify path read the whole file
+    get_printer_state().set_helix_plugin_installed(false);
+    settle();
+}
+
+TEST_CASE_METHOD(WaiterFixture, "a re-sliced file of the same name is read again",
+                 "[start_waiter][queued_job_start]") {
+    PlantedGcode part("waiter_resliced.gcode", "", kMeshFile);
+    const helix::FileVersion sliced{100, 1000};
+    manager->scan_file_for_operations(part.name(), "", "", sliced);
+    settle();
+    REQUIRE(mesh_line(manager->scan_result_for(part.name())) == 2);
+    const int reads = transfers.partial_read_count;
+
+    SECTION("the same version reuses its scan") {
+        manager->scan_file_for_operations(part.name(), "", "", sliced);
+        settle();
+        CHECK(transfers.partial_read_count == reads);
+    }
+
+    // The same name uploaded again, its mesh now at line 4.
+    const helix::FileVersion resliced{120, 2000};
+    auto reslice = [&part]() {
+        std::ofstream out(part.path(), std::ios::trunc | std::ios::binary);
+        out << "G28\nG1 X10\nG1 Y10\nBED_MESH_CALIBRATE\n";
+        REQUIRE(out.good());
+    };
+    auto check_new_lines = [&]() {
+        CHECK(transfers.partial_read_count == reads + 1);
+        CHECK(mesh_line(manager->scan_result_for(part.name())) == 4);
+    };
+    SECTION("the file view opening the new version reads it") {
+        reslice();
+        manager->scan_file_for_operations(part.name(), "", "", resliced);
+        settle();
+        check_new_lines();
+    }
+    SECTION("a start waiting on the new version reads it") {
+        reslice();
+        wait(part.name(), {}, resliced);
+        settle();
+        CHECK(answers == 1);
+        check_new_lines();
+    }
+}
+
+namespace {
+
+/// Files planted for the eviction cases, each with its own name.
+std::vector<std::unique_ptr<PlantedGcode>> plant(const std::string& prefix, int count) {
+    std::vector<std::unique_ptr<PlantedGcode>> files;
+    for (int i = 1; i <= count; ++i) {
+        files.push_back(std::make_unique<PlantedGcode>(prefix + "_" + std::to_string(i) + ".gcode",
+                                                       "", kPlainFile));
+    }
+    return files;
+}
+
+} // namespace
+
+TEST_CASE_METHOD(WaiterFixture,
+                 "kept scans stay bounded, and never evict the shown file or a start's",
+                 "[start_waiter][queued_job_start]") {
+    PlantedGcode shown("evict_shown.gcode", "", kPlainFile);
+    PlantedGcode started("evict_started.gcode", "", kPlainFile);
+    manager->scan_file_for_operations(shown.name(), "");
+    settle();
+    wait(started.name());
+    settle();
+    REQUIRE(answers == 1);
+
+    // Five more files, each read by neither the view nor the start.
+    const auto others = plant("evict_other", 5);
+    for (const auto& f : others) {
+        PrintPreparationManagerTestAccess::request_scan(*manager, f->name());
+        settle();
+        REQUIRE(manager->has_printer_stop_answer_for(f->name()));
+    }
+
+    CHECK(PrintPreparationManagerTestAccess::kept_scan_count(*manager) ==
+          PrintPreparationManager::kMaxKeptScans);
+    CHECK(manager->has_scan_result_for(shown.name()));
+    CHECK(manager->has_scan_result_for(started.name()));
+    // The oldest unheld go first.
+    CHECK_FALSE(manager->has_scan_result_for(others[0]->name()));
+    CHECK_FALSE(manager->has_scan_result_for(others[2]->name()));
+    CHECK(manager->has_scan_result_for(others[3]->name()));
+    CHECK(manager->has_scan_result_for(others[4]->name()));
+}
+
+TEST_CASE_METHOD(WaiterFixture, "a start's file stays kept from its answer until start_print",
+                 "[start_waiter][queued_job_start]") {
+    PlantedGcode a("pin_a.gcode", "", kMeshFile);
+    wait(a.name());
+    settle();
+    REQUIRE(answers == 1);
+
+    // The file view opens five other files while the start's dialogs are up.
+    const auto viewed = plant("pin_viewed", 5);
+    for (const auto& f : viewed) {
+        manager->scan_file_for_operations(f->name(), "");
+        settle();
+    }
+    REQUIRE(manager->has_scan_result_for(a.name()));
+
+    // The start still reads its own scan: bed mesh off is honoured, not refused.
+    manager->set_option_state_provider(
+        [](const std::string& id) { return id == "bed_mesh" ? 0 : -1; });
+    std::optional<bool> ok;
+    std::string error;
+    manager->start_print(
+        a.name(), "", []() {},
+        [&ok, &error](bool success, const std::string& e) {
+            ok = success;
+            error = e;
+        });
+    settle();
+    CHECK_FALSE(
+        (ok.has_value() && !*ok && error.find("could not be checked") != std::string::npos));
+
+    // Taken by the start, the scan is no longer held.
+    const auto later = plant("pin_later", PrintPreparationManager::kMaxKeptScans);
+    for (const auto& f : later) {
+        PrintPreparationManagerTestAccess::request_scan(*manager, f->name());
+        settle();
+    }
+    CHECK_FALSE(manager->has_scan_result_for(a.name()));
 }

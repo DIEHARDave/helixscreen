@@ -61,7 +61,8 @@ class QueuedJobStarter {
         Refused,        ///< not attempted: printer busy, a start in flight, no API
         NotStarted,     ///< the controller ended without a print (a gate, a refusal, a
                         ///< failed start); the job and its options stay
-        OpenedFileView, ///< a check needed the file view; the job opened there
+        OpenedFileView, ///< a check needed the file view (a remap, or a file the
+                        ///< tile cannot check); the job opened there
     };
     using DoneCallback = std::function<void(Outcome outcome)>;
 
@@ -107,7 +108,10 @@ class QueuedJobStarter {
 
     /// End a start that could not be checked: warn that the job stays queued.
     void give_up(const char* why);
-    void warn_stays_queued();
+
+    /// End the start and open the job in the file view, where a file the tile
+    /// cannot check, or a remap, is handled.
+    void open_in_file_view(const char* why);
 
     /// (Re)arm the one-shot that gives up a start whose gathering stalls.
     void arm_stall_watchdog(uint32_t ms);
@@ -141,8 +145,7 @@ class QueuedJobStarter {
     std::unique_ptr<ui::PrintStartController> controller_;
     FileStartFactsLoader facts_loader_;
     QueuedJobOptions saved_;
-    std::string job_id_;
-    std::string job_filename_;
+    JobQueueEntry job_; ///< the job the start in flight is for
     DoneCallback done_;
     bool in_flight_ = false;
     /// Bumped per start and at its end, so an answer for an earlier start

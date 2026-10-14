@@ -27,8 +27,17 @@ class PrintPreparationManagerTestAccess {
     }
     static std::vector<std::string>
     get_pre_start_gcode_lines(const helix::ui::PrintPreparationManager& m,
-                              const std::string& filename = {}) {
-        return m.collect_pre_start_gcode_lines(filename);
+                              const std::string& filename = {},
+                              const helix::gcode::PrintStartCallInfo* job_start = nullptr) {
+        return m.collect_pre_start_gcode_lines(filename, true, job_start);
+    }
+    /// A scan neither the detail view nor a start asked for: it holds no file.
+    static void request_scan(helix::ui::PrintPreparationManager& m, const std::string& filename,
+                             helix::FileVersion version = {}) {
+        m.request_scan(filename, "", "", version);
+    }
+    static size_t kept_scan_count(const helix::ui::PrintPreparationManager& m) {
+        return m.kept_scans_.size();
     }
     static std::vector<helix::gcode::OperationType>
     get_ops_to_disable(const helix::ui::PrintPreparationManager& m) {

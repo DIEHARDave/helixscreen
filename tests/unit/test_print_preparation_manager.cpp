@@ -3094,20 +3094,19 @@ TEST_CASE_METHOD(HelixTestFixture,
     SECTION("job temps come from the file's own START_PRINT call") {
         // The gcode file's START_PRINT line is the source of truth for temps
         // (Moonraker metadata lies on multi-material files). The scanner
-        // extracts them into print_start; the pre-start renderer must use
-        // them when the scanned file is the file being printed.
+        // extracts them into print_start, and the start hands the renderer
+        // its own file's call.
         gcode::ScanResult scan;
         scan.print_start.found = true;
         scan.print_start.macro_name = "START_PRINT";
         scan.print_start.raw_line = "START_PRINT EXTRUDER_TEMP=260 BED_TEMP=105";
         scan.print_start.extruder_temp = 260;
         scan.print_start.bed_temp = 105;
-        manager.set_cached_scan_result(scan, "part.gcode");
 
         manager.set_option_state_provider(
             [](const std::string& id) { return id == "bed_mesh" ? 1 : -1; });
-        auto lines =
-            PrintPreparationManagerTestAccess::get_pre_start_gcode_lines(manager, "part.gcode");
+        auto lines = PrintPreparationManagerTestAccess::get_pre_start_gcode_lines(
+            manager, "part.gcode", &scan.print_start);
         bool found = false;
         for (const auto& l : lines) {
             if (l.find("BED_MESH_CALIBRATE_START_PRINT") != std::string::npos) {
@@ -3119,12 +3118,13 @@ TEST_CASE_METHOD(HelixTestFixture,
         REQUIRE(found);
     }
 
-    SECTION("temps render 0 when the scan cache is for a different file") {
+    SECTION("temps render 0 when the start has no START_PRINT call of its own") {
+        // The shown file's scan is not the started file's.
         gcode::ScanResult scan;
         scan.print_start.found = true;
         scan.print_start.bed_temp = 105;
         scan.print_start.extruder_temp = 260;
-        manager.set_cached_scan_result(scan, "other.gcode");
+        manager.set_cached_scan_result(scan, "part.gcode");
 
         manager.set_option_state_provider(
             [](const std::string& id) { return id == "bed_mesh" ? 1 : -1; });

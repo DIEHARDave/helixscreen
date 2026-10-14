@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include "file_version.h"
+
 #include <cstdint>
 #include <ctime>
 #include <map>
@@ -44,8 +46,7 @@ class ToolsUsedCache {
 
   private:
     struct Entry {
-        uint64_t size_bytes = 0;
-        time_t modified = 0;
+        FileVersion version;
         std::set<int> tools;
         uint64_t last_used_ctr = 0; // higher = more recent
     };

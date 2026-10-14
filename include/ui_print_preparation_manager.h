@@ -7,6 +7,7 @@
 
 #include "async_lifetime_guard.h"
 #include "capability_matrix.h"
+#include "file_version.h"
 #include "gcode_file_modifier.h"
 #include "gcode_ops_detector.h"
 #include "gcode_rewrite_block.h"
@@ -279,9 +280,11 @@ class PrintPreparationManager {
      * @param current_path Current directory path (empty = root)
      * @param local_path The file on this host (a USB stick) when Moonraker has
      *        no copy; read directly instead of downloaded.
+     * @param version The file's size and modified time; a scan kept for
+     *        another version of the file is read again.
      */
     void scan_file_for_operations(const std::string& filename, const std::string& current_path,
-                                  const std::string& local_path = {});
+                                  const std::string& local_path = {}, FileVersion version = {});
 
     /**
      * @brief Clear cached scan result
@@ -321,15 +324,22 @@ class PrintPreparationManager {
      *
      * Ready means this file's scan, kept by scan_key(), has answered for the
      * printer's current macros, and no PRINT_START analysis is running.
-     * Starts the scan unless this file's answer is already kept; the scan
-     * does not become the detail view's shown file, and evicts no scan the
-     * view holds. An answer gone stale by the time the analysis lands (the
-     * macros were read again) is scanned once more, then answers nullopt.
+     * Starts the scan unless this file's answer is already kept for
+     * @p version; the scan does not become the detail view's shown file, and
+     * evicts no scan the view holds. An answer gone stale by the time the
+     * analysis lands (the macros were read again) is scanned once more, then
+     * answers nullopt. The file's scan stays kept from this call until
+     * start_print() takes it, or a null @p ready cancels the wait.
      * Main thread. One waiter: a later call replaces it, and a null @p ready
      * cancels it. Independent of set_on_scan_answered().
      */
     void when_ready_to_start(const std::string& filename, const std::string& current_path,
-                             StartReadyCallback ready);
+                             FileVersion version, StartReadyCallback ready);
+
+    /// Whether a Print tap must wait on the scan of the file kept under @p key:
+    /// its read is under way and the start would act on it (a step the user
+    /// turned off that a file may embed, or a START_PRINT rewrite).
+    [[nodiscard]] bool print_waits_on_scan(const std::string& key) const;
 
     /// Whether a scan result is kept for the file with scan_key() @p key.
     [[nodiscard]] bool has_scan_result_for(const std::string& key) const;
@@ -597,24 +607,29 @@ class PrintPreparationManager {
     /// printer-stopping command answer (absent until one is given).
     struct KeptScan {
         std::string filename;
+        FileVersion version;
         std::optional<gcode::ScanResult> result;
         std::optional<helix::PrinterStopCheck> printer_stop;
         uint64_t last_used = 0;
     };
     std::map<std::string, KeptScan> kept_scans_; ///< By scan_key()
-    std::set<std::string> scans_in_flight_;      ///< Keys whose read is under way
-    std::string current_scan_key_;               ///< The file the detail view shows
+    /// Keys whose read is under way, with the file version each reads.
+    std::map<std::string, FileVersion> scans_in_flight_;
+    std::string current_scan_key_; ///< The file the detail view shows
+    /// A start's file, kept from when_ready_to_start() until start_print().
+    std::string start_pin_key_;
     uint64_t scan_use_counter_ = 0;
     /// Bumped by clear_scan_cache(); a read started before it is dropped.
     uint64_t scan_epoch_ = 0;
     std::function<void()> on_scan_answered_;
 
     [[nodiscard]] const KeptScan* kept_scan(const std::string& key) const;
-    /// Read one file's head unless its answer is kept or already on the way.
+    /// Read one file's head unless its answer is kept for @p version or
+    /// already on the way.
     void request_scan(const std::string& filename, const std::string& current_path,
-                      const std::string& local_path = {});
+                      const std::string& local_path, FileVersion version);
     /// Keep a scan's answer under @p key and report it.
-    void keep_scan(const std::string& key, const std::string& filename,
+    void keep_scan(const std::string& key, const std::string& filename, FileVersion version,
                    std::optional<gcode::ScanResult> result, helix::PrinterStopCheck printer_stop);
     void evict_kept_scans();
 
@@ -624,9 +639,6 @@ class PrintPreparationManager {
     std::optional<gcode::ScanResult> start_scan_;
 
     std::optional<size_t> cached_file_size_; ///< File size from Moonraker metadata
-    /// Job temps for {bed_temp}/{extruder_temp} come from the scan cache's
-    /// print_start call (the file's own START_PRINT line) — see
-    /// collect_pre_start_gcode_lines().
 
     /**
      * @brief Get the cached pre-print option set from PrinterState
@@ -653,6 +665,7 @@ class PrintPreparationManager {
         std::string filename;
         std::string current_path;
         std::string key;
+        FileVersion version;
         bool answered = false;
         int rescans_left = 1;
         StartReadyCallback ready;
@@ -907,11 +920,33 @@ class PrintPreparationManager {
      * @param with_skip_toggles False leaves out the leveling-skip toggles
      *        (skip_wrappers::option_for()): those set a flag and carry no
      *        START_PRINT skip parameter, so they are no delivery path for one.
+     * @param job_start The START_PRINT call the started file's own scan found,
+     *        whose temps fill {bed_temp}/{extruder_temp} (Moonraker metadata is
+     *        wrong on multi-material files). Null renders them 0, so the
+     *        firmware macro keeps its own default.
      * @return Vector of rendered gcode lines, e.g. {"LOAD_AI_RUN SWITCH=1"}.
      */
     [[nodiscard]] std::vector<std::string>
-    collect_pre_start_gcode_lines(const std::string& filename = {},
-                                  bool with_skip_toggles = true) const;
+    collect_pre_start_gcode_lines(const std::string& filename = {}, bool with_skip_toggles = true,
+                                  const gcode::PrintStartCallInfo* job_start = nullptr) const;
+
+    /// The block a start sends ahead of START_PRINT: the printer's setup_gcode
+    /// (when @p macro_skip_params has any) and every pre-start line, joined.
+    struct PreStartBlock {
+        std::vector<std::string> lines;
+        bool emit_setup = false;
+        std::string gcode; ///< empty when nothing is sent
+    };
+    [[nodiscard]] PreStartBlock
+    pre_start_block(const std::vector<std::pair<std::string, std::string>>& macro_skip_params,
+                    const std::string& filename, const gcode::PrintStartCallInfo* job_start) const;
+
+    /// Whether a start with these choices acts on its file's scan: a step the
+    /// user turned off that a file may embed, or a START_PRINT rewrite (skip
+    /// parameters with no pre-start block to carry them).
+    [[nodiscard]] bool
+    start_acts_on_scan(const std::vector<std::pair<std::string, std::string>>& macro_skip_params,
+                       const PreStartBlock& block) const;
 
     /**
      * @brief Build the combined pre-start gcode block executed before START_PRINT.

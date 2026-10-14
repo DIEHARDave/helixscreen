@@ -55,8 +55,8 @@ bool ToolsUsedCache::load_from_disk() {
             continue; // drop malformed entry, keep the rest
         }
         Entry parsed;
-        parsed.size_bytes = e["size"].get<uint64_t>();
-        parsed.modified = static_cast<time_t>(e["mtime"].get<int64_t>());
+        parsed.version.size_bytes = e["size"].get<uint64_t>();
+        parsed.version.modified = static_cast<time_t>(e["mtime"].get<int64_t>());
         bool ok = true;
         for (const auto& t : e["tools"]) {
             if (!t.is_number() || t.get<int64_t>() < 0) {
@@ -79,8 +79,8 @@ void ToolsUsedCache::save_to_disk() {
         nlohmann::json tools = nlohmann::json::array();
         for (int t : e.tools)
             tools.push_back(t);
-        j["entries"][key] = {{"size", e.size_bytes},
-                             {"mtime", static_cast<int64_t>(e.modified)},
+        j["entries"][key] = {{"size", e.version.size_bytes},
+                             {"mtime", static_cast<int64_t>(e.version.modified)},
                              {"tools", std::move(tools)}};
     }
     const std::string path = cache_file_path();
@@ -96,15 +96,15 @@ void ToolsUsedCache::save_to_disk() {
 
 std::optional<std::set<int>> ToolsUsedCache::lookup(const std::string& file_path,
                                                     uint64_t size_bytes, time_t modified) {
-    if (!loaded_ && !load_from_disk()) {
-        // cold cache — loaded_ is now true, entries_ empty
+    if (!loaded_) {
+        load_from_disk();
     }
     const auto it = entries_.find(file_path);
     if (it == entries_.end()) {
         return std::nullopt;
     }
     const Entry& e = it->second;
-    if (e.size_bytes != size_bytes || e.modified != modified) {
+    if (e.version != FileVersion{size_bytes, modified}) {
         return std::nullopt; // stale — same key, changed file
     }
     it->second.last_used_ctr = next_ctr_++;
@@ -113,11 +113,11 @@ std::optional<std::set<int>> ToolsUsedCache::lookup(const std::string& file_path
 
 void ToolsUsedCache::store(const std::string& file_path, uint64_t size_bytes, time_t modified,
                            const std::set<int>& tools) {
-    if (!loaded_ && !load_from_disk()) {
+    if (!loaded_) {
+        load_from_disk();
     }
     Entry& e = entries_[file_path];
-    e.size_bytes = size_bytes;
-    e.modified = modified;
+    e.version = {size_bytes, modified};
     e.tools = tools;
     e.last_used_ctr = next_ctr_++;
 

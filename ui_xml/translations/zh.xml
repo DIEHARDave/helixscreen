@@ -496,7 +496,7 @@
   <translation tag="Cannot start print: internal error" zh="无法开始打印: 内部错误"/>
   <translation tag="Cannot start print: not connected to printer" zh="无法开始打印: 未连接打印机"/>
   <translation tag="Cannot start print: printer is {}" zh="无法开始打印: 打印机状态为 {}"/>
-  <translation tag="Cannot start {}: the file could not be checked for the steps you turned off" zh="无法启动 {}：无法针对您关闭的步骤检查该文件"/>
+  <translation tag="Cannot start {}: the file could not be checked yet for the steps you turned off. Try again in a moment." zh="无法启动 {}：尚未能针对您关闭的步骤检查该文件。请稍后再试。"/>
   <translation tag="Cannot unload while a print is active" zh="打印时无法卸载"/>
   <translation tag="Capabilities: " zh="功能: "/>
   <translation tag="Carriage empty" zh="未装载打印头"/>
@@ -563,6 +563,7 @@
   <translation tag="Checking accelerometer..." zh="正在检查加速度计..."/>
   <translation tag="Checking extruders..." zh="正在检查挤出机..."/>
   <translation tag="Checking filament..." zh="正在检查耗材……"/>
+  <translation tag="Checking file…" zh="正在检查文件…"/>
   <translation tag="Checking for plugin..." zh="正在检查插件..."/>
   <translation tag="Checking for webcam..." zh="正在检查摄像头..."/>
   <translation tag="Checking plugin" zh="正在检查插件"/>

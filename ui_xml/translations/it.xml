@@ -496,7 +496,7 @@
   <translation tag="Cannot start print: internal error" it="Impossibile avviare stampa: errore interno"/>
   <translation tag="Cannot start print: not connected to printer" it="Impossibile avviare stampa: non connesso alla stampante"/>
   <translation tag="Cannot start print: printer is {}" it="Impossibile avviare stampa: stampante è {}"/>
-  <translation tag="Cannot start {}: the file could not be checked for the steps you turned off" it="Impossibile avviare {}: non è stato possibile controllare il file per i passaggi disattivati"/>
+  <translation tag="Cannot start {}: the file could not be checked yet for the steps you turned off. Try again in a moment." it="Impossibile avviare {}: non è stato ancora possibile controllare il file per i passaggi disattivati. Riprova tra un momento."/>
   <translation tag="Cannot unload while a print is active" it="Impossibile scaricare durante una stampa in corso"/>
   <translation tag="Capabilities: " it="Funzionalità: "/>
   <translation tag="Carriage empty" it="Carrello vuoto"/>
@@ -563,6 +563,7 @@
   <translation tag="Checking accelerometer..." it="Controllo accelerometro..."/>
   <translation tag="Checking extruders..." it="Verifica estrusori..."/>
   <translation tag="Checking filament..." it="Controllo filamento..."/>
+  <translation tag="Checking file…" it="Verifica del file in corso…"/>
   <translation tag="Checking for plugin..." it="Ricerca plugin..."/>
   <translation tag="Checking for webcam..." it="Ricerca webcam in corso..."/>
   <translation tag="Checking plugin" it="Verifica plugin"/>

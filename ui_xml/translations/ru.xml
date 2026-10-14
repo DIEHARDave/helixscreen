@@ -496,7 +496,7 @@
   <translation tag="Cannot start print: internal error" ru="Невозможно начать печать: внутренняя ошибка"/>
   <translation tag="Cannot start print: not connected to printer" ru="Невозможно начать печать: не подключено к принтеру"/>
   <translation tag="Cannot start print: printer is {}" ru="Невозможно начать печать: принтер {}"/>
-  <translation tag="Cannot start {}: the file could not be checked for the steps you turned off" ru="Не удалось запустить {}: файл не удалось проверить на отключённые шаги"/>
+  <translation tag="Cannot start {}: the file could not be checked yet for the steps you turned off. Try again in a moment." ru="Не удалось запустить {}: файл ещё не удалось проверить на отключённые шаги. Повторите попытку через мгновение."/>
   <translation tag="Cannot unload while a print is active" ru="Нельзя выгрузить во время печати"/>
   <translation tag="Capabilities: " ru="Возможности: "/>
   <translation tag="Carriage empty" ru="Каретка пуста"/>
@@ -563,6 +563,7 @@
   <translation tag="Checking accelerometer..." ru="Проверка акселерометра..."/>
   <translation tag="Checking extruders..." ru="Проверка экструдеров..."/>
   <translation tag="Checking filament..." ru="Проверка филамента..."/>
+  <translation tag="Checking file…" ru="Проверка файла…"/>
   <translation tag="Checking for plugin..." ru="Поиск плагина..."/>
   <translation tag="Checking for webcam..." ru="Проверка веб-камеры..."/>
   <translation tag="Checking plugin" ru="Проверка плагина"/>

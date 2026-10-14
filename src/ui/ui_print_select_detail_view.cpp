@@ -467,6 +467,7 @@ void PrintSelectDetailView::set_analysis_dependencies(IMoonrakerAPI* api,
         // A scan answer can be what a deferred Print tap is waiting on.
         prep_manager_->set_on_scan_answered([this]() {
             refresh_exclude_objects();
+            notify_print_readiness_changed();
             fire_on_preflight_ready();
         });
         // Macro rows come and go with the analysis, so an open view rebuilds
@@ -776,6 +777,17 @@ void PrintSelectDetailView::reclaim_download(const std::string& path) {
     std::remove(path.c_str());
 }
 
+bool PrintSelectDetailView::file_check_pending() const {
+    return prep_manager_ && !current_filename_.empty() &&
+           prep_manager_->print_waits_on_scan(current_scan_key());
+}
+
+void PrintSelectDetailView::notify_print_readiness_changed() const {
+    if (on_print_readiness_changed_cb_) {
+        on_print_readiness_changed_cb_();
+    }
+}
+
 std::string PrintSelectDetailView::current_scan_key() const {
     return PrintPreparationManager::scan_key(current_filename_, current_path_, current_local_path_);
 }
@@ -896,9 +908,12 @@ void PrintSelectDetailView::on_activate() {
     // The scan happens NOW after registration, so if user navigates away,
     // on_deactivate() will be called and we can check cleanup_called()
     if (!current_filename_.empty() && prep_manager_) {
-        prep_manager_->scan_file_for_operations(current_filename_, current_path_,
-                                                current_local_path_);
+        prep_manager_->scan_file_for_operations(
+            current_filename_, current_path_, current_local_path_,
+            helix::FileVersion{static_cast<uint64_t>(current_file_size_bytes_),
+                               current_file_modified_});
     }
+    notify_print_readiness_changed();
     // A cached scan answers without calling back, so read it here too.
     refresh_exclude_objects();
 
@@ -2668,10 +2683,11 @@ void PrintSelectDetailView::populate_option_rows() {
     };
 
     option_rows_renderer_.populate(pre_print_options_container_, rendered, visibility_lookup,
-                                   [](const std::string& id, int new_state) {
+                                   [this](const std::string& id, int new_state) {
                                        spdlog::debug("[DetailView] Option '{}' toggled: {}", id,
                                                      new_state);
                                        update_prep_time_label();
+                                       notify_print_readiness_changed();
                                    });
 
     // Wire up the option-state provider on the prep manager so that
