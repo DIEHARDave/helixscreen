@@ -647,7 +647,8 @@ void AmsOverviewPanel::push_unit_anchors(bool relayout) {
 // itself stays in XML, bound to this subject.
 void AmsOverviewPanel::publish_cards_compact(int32_t narrowest_card_w) {
     // Content width the card has left after its own padding.
-    const int32_t content_w = narrowest_card_w - 2 * theme_manager_get_spacing("space_sm");
+    // ams_unit_card.xml pads the card's left and right with space_xs.
+    const int32_t content_w = narrowest_card_w - 2 * theme_manager_get_spacing("space_xs");
 
     // Widest unit name that has to fit, and the logo's declared size.
     //
