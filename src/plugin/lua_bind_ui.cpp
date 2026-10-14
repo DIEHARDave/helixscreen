@@ -7,6 +7,8 @@
 #include "ui_toast_manager.h"
 
 #include "lua_bindings.h"
+#include "lvgl/src/misc/lv_text_private.h" // lv_text_get_width
+#include "plugin_canvas.h"
 #include "plugin_overlay_host.h"
 #include "plugin_xml_policy.h"
 
@@ -211,6 +213,26 @@ int ui_toast(lua_State* L) {
     int i = luaL_checkoption(L, 2, "info", kNames);
     ToastManager::instance().show(kSeverity[i], msg);
     return 0;
+}
+
+// Measured as canvas text draws it: the same base-token font and no letter spacing.
+int ui_text_width(lua_State* L) {
+    size_t len = 0;
+    const char* str = luaL_checklstring(L, 1, &len);
+    if (len > kMaxString)
+        return luaL_error(L, "helix.ui.text_width: text is at most %d bytes",
+                          static_cast<int>(kMaxString));
+    const char* name = luaL_optstring(L, 2, "body");
+    const lv_font_t* font = canvas_resolve_font(name);
+    if (!font)
+        return luaL_error(L,
+                          "helix.ui.text_width: font token '%s' must be a base token; a "
+                          "size-suffixed variant renders as the default font below its tier",
+                          name);
+    lv_text_attributes_t attributes = {};
+    attributes.max_width = LV_COORD_MAX;
+    lua_pushinteger(L, lv_text_get_width(str, static_cast<uint32_t>(len), font, &attributes));
+    return 1;
 }
 
 int ui_confirm(lua_State* L) {
@@ -468,11 +490,9 @@ void install_ui_bindings(PluginContext& ctx) {
         {"int", [](lua_State* L) { return make_subject(L, false); }},
         {"string", [](lua_State* L) { return make_subject(L, true); }},
         {nullptr, nullptr}};
-    static const luaL_Reg ui_fns[] = {{"on", &ui_on},
-                                      {"toast", &ui_toast},
-                                      {"confirm", &ui_confirm},
-                                      {"overlay", &ui_overlay},
-                                      {nullptr, nullptr}};
+    static const luaL_Reg ui_fns[] = {
+        {"on", &ui_on},           {"toast", &ui_toast},           {"confirm", &ui_confirm},
+        {"overlay", &ui_overlay}, {"text_width", &ui_text_width}, {nullptr, nullptr}};
     lua_getglobal(L, "helix");
     lua_newtable(L);
     luaL_setfuncs(L, subject_fns, 0);
