@@ -43,7 +43,7 @@ GridDimensions dims_of(const Geometry& g) {
 /// Landscape/portrait pairs, as indices into kMeasured. Every entry is a real
 /// measurement of the same panel in both orientations.
 const std::vector<std::pair<size_t, size_t>> kRotationPairs = {
-    {0, 1}, {2, 3}, {4, 5}, {6, 7}, {8, 9}, {10, 11}, {12, 13}, {15, 14},
+    {0, 1}, {2, 3}, {4, 5}, {6, 7}, {8, 9}, {10, 11}, {12, 13}, {15, 14}, {16, 18},
 };
 
 } // namespace

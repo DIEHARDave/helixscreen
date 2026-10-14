@@ -812,17 +812,6 @@
           }
         },
         {
-          "id": "print_stats",
-          "placements": {
-            "small": {
-              "col": 30,
-              "row": 0,
-              "colspan": 6,
-              "rowspan": 4
-            }
-          }
-        },
-        {
           "id": "temperature",
           "placements": {
             "tiny": {
@@ -1050,6 +1039,17 @@
               ]
             }
           ]
+        },
+        {
+          "id": "control_buttons",
+          "placements": {
+            "small": {
+              "col": 30,
+              "row": 0,
+              "colspan": 6,
+              "rowspan": 4
+            }
+          }
         }
       ],
       "disabled": {
@@ -1057,7 +1057,7 @@
           "active_spool",
           "macros",
           "clock",
-          "print_stats"
+          "control_buttons"
         ]
       }
     },
@@ -1178,7 +1178,7 @@
             },
             "small@10x44": {
               "col": 0,
-              "row": 10,
+              "row": 8,
               "colspan": 10,
               "rowspan": 6
             }
@@ -1233,7 +1233,7 @@
               "col": 0,
               "row": 6,
               "colspan": 10,
-              "rowspan": 4
+              "rowspan": 2
             }
           }
         },
@@ -1284,8 +1284,14 @@
             },
             "small@10x44": {
               "col": 0,
-              "row": 16,
+              "row": 14,
               "colspan": 10,
+              "rowspan": 8
+            },
+            "xxlarge@14x32": {
+              "col": 0,
+              "row": 14,
+              "colspan": 14,
               "rowspan": 8
             }
           }
@@ -1543,7 +1549,7 @@
             },
             "small@10x44": {
               "col": 0,
-              "row": 24,
+              "row": 22,
               "colspan": 4,
               "rowspan": 2
             }
@@ -1566,7 +1572,7 @@
             },
             "small@10x44": {
               "col": 0,
-              "row": 26,
+              "row": 24,
               "colspan": 4,
               "rowspan": 2
             }
@@ -1589,8 +1595,14 @@
             },
             "small@10x44": {
               "col": 4,
-              "row": 24,
+              "row": 22,
               "colspan": 6,
+              "rowspan": 4
+            },
+            "xxlarge@14x32": {
+              "col": 8,
+              "row": 22,
+              "colspan": 4,
               "rowspan": 4
             }
           }
@@ -1605,10 +1617,10 @@
               "rowspan": 2
             },
             "small@10x44": {
-              "col": 8,
-              "row": 32,
-              "colspan": 2,
-              "rowspan": 2
+              "col": 6,
+              "row": 38,
+              "colspan": 4,
+              "rowspan": 6
             }
           }
         },
@@ -1617,7 +1629,7 @@
           "placements": {
             "small@10x44": {
               "col": 8,
-              "row": 28,
+              "row": 26,
               "colspan": 2,
               "rowspan": 2
             }
@@ -1628,7 +1640,7 @@
           "placements": {
             "small@10x44": {
               "col": 8,
-              "row": 30,
+              "row": 28,
               "colspan": 2,
               "rowspan": 2
             }
@@ -1639,9 +1651,15 @@
           "placements": {
             "small@10x44": {
               "col": 0,
-              "row": 34,
+              "row": 32,
               "colspan": 10,
-              "rowspan": 10
+              "rowspan": 6
+            },
+            "xxlarge@14x32": {
+              "col": 0,
+              "row": 26,
+              "colspan": 14,
+              "rowspan": 6
             }
           }
         },
@@ -1803,6 +1821,12 @@
               "row": 20,
               "colspan": 8,
               "rowspan": 4
+            },
+            "xxlarge@14x32": {
+              "col": 0,
+              "row": 22,
+              "colspan": 8,
+              "rowspan": 4
             }
           },
           "alternatives": [
@@ -1827,6 +1851,12 @@
             "xxlarge": {
               "col": 12,
               "row": 20,
+              "colspan": 2,
+              "rowspan": 4
+            },
+            "xxlarge@14x32": {
+              "col": 12,
+              "row": 22,
               "colspan": 2,
               "rowspan": 4
             }
@@ -1858,7 +1888,7 @@
             },
             "small@10x44": {
               "col": 0,
-              "row": 28,
+              "row": 26,
               "colspan": 8,
               "rowspan": 6
             }
@@ -1878,6 +1908,39 @@
               ]
             }
           ]
+        },
+        {
+          "id": "favorite_macro",
+          "placements": {
+            "small@10x44": {
+              "col": 8,
+              "row": 30,
+              "colspan": 2,
+              "rowspan": 2
+            }
+          }
+        },
+        {
+          "id": "control_buttons",
+          "placements": {
+            "small@10x44": {
+              "col": 0,
+              "row": 38,
+              "colspan": 6,
+              "rowspan": 4
+            }
+          }
+        },
+        {
+          "id": "preheat",
+          "placements": {
+            "small@10x44": {
+              "col": 0,
+              "row": 42,
+              "colspan": 6,
+              "rowspan": 2
+            }
+          }
         }
       ],
       "disabled": {
