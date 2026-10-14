@@ -225,6 +225,7 @@ src/printer/snapmaker_status_parse.cpp
 src/printer/status_dispatch.cpp
 src/printer/preprint_skip_wrappers.cpp
 src/printer/z_offset_persistence.cpp
+src/printer/fixed_tool_topology.cpp
 src/printer/plr_backend.cpp
 src/printer/plr_offer.cpp
 src/printer/standard_macros.cpp
