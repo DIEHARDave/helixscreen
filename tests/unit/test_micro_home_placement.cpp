@@ -20,10 +20,10 @@
  * oracle: every anchor the table seats must land at its authored cell and
  * span, unchanged.
  *
- * 320x240 is the honest edge: the micro table is authored against a 12x8
- * grid and this content box (270x232) is an 8x6, so five anchors are out of
- * bounds by design and go through auto-placement. The anchors that DO fit
- * must still land exactly; that is where a bad floor grows them.
+ * 320x240 is the honest edge: its content box (270x232) is an 8x6 grid with a
+ * 32px column track, below the micro tier's 34px nominal, and the table
+ * carries a micro@8x6 layout for it. Every anchor must still land exactly;
+ * that is where a bad floor grows them.
  */
 
 #include "ui_update_queue.h"
@@ -183,15 +183,12 @@ const AuthoredAnchor kMediumAnchors[] = {
     {"print_status",     0, 4, 8, 4},
 };
 
-/// The micro anchors an 8x6 grid can seat. The other five (bed_temperature
-/// col 8, notifications col 10, led col 8, filament col 10, print_status
-/// colspan 12) are out of bounds at this width and go through auto-placement
-/// by design: build_default_grid() drops anchors the measured grid cannot
-/// hold rather than clamping them onto occupied tracks.
-const AuthoredAnchor kMicroCompanionAnchors[] = {
-    {"printer_image", 0, 0, 6, 4},
-    {"temperature",   6, 0, 2, 2},
-    {"fan_stack",     6, 2, 2, 2},
+/// The micro@8x6 table's fixed anchors. Tracks (4,0) to (7,1) are the spool
+/// slot, whose occupants depend on the printer's capabilities.
+const AuthoredAnchor kMicro8x6Anchors[] = {
+    {"temperature",     0, 0, 2, 2},
+    {"bed_temperature", 2, 0, 2, 2},
+    {"print_status",    0, 2, 8, 4},
 };
 // clang-format on
 
@@ -235,7 +232,7 @@ TEST_CASE_METHOD(DefaultPlacementFixture, "micro default layout lands exactly at
     PanelWidgetManager::instance().clear_panel_config("test_micro_home_480");
 }
 
-TEST_CASE_METHOD(DefaultPlacementFixture, "micro anchors that fit land exactly at 320x240",
+TEST_CASE_METHOD(DefaultPlacementFixture, "micro default layout lands exactly at 320x240",
                  "[micro_home][panel_widget_manager]") {
     lv_display_t* disp = lv_display_get_default();
     REQUIRE(disp != nullptr);
@@ -268,14 +265,15 @@ TEST_CASE_METHOD(DefaultPlacementFixture, "micro anchors that fit land exactly a
     REQUIRE(grid_count_tracks(lv_obj_get_style_grid_column_dsc_array(container, LV_PART_MAIN)) ==
             8);
 
-    for (const auto& a : kMicroCompanionAnchors) {
+    for (const auto& a : kMicro8x6Anchors) {
         check_anchor(container, a);
     }
 
-    // The out-of-bounds anchors still render, auto-placed rather than lost.
-    for (const char* id : {"bed_temperature", "notifications", "led", "filament", "print_status"}) {
-        INFO("auto-placed widget '" << id << "' missing from the grid");
-        CHECK(lv_obj_find_by_name(container, id) != nullptr);
+    // The table switches these off on this grid rather than leaving them to
+    // auto-placement, which has no free track to give them.
+    for (const char* id : {"printer_image", "fan_stack", "notifications"}) {
+        INFO("widget '" << id << "' placed on a full grid");
+        CHECK(lv_obj_find_by_name(container, id) == nullptr);
     }
 
     PanelWidgetManager::instance().clear_panel_config("test_micro_home_320");

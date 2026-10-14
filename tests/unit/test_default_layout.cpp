@@ -4,6 +4,7 @@
 #include "ui_update_queue.h"
 
 #include "../helix_test_fixture.h"
+#include "../test_helpers/measured_grids.h"
 #include "../test_helpers/scoped_breakpoint.h"
 #include "../test_helpers/scoped_int_subject.h"
 #include "ams_state.h"
@@ -2390,6 +2391,83 @@ TEST_CASE("default_layout: shipped tables resolve each printer persona",
             }
             INFO("default-enabled widget " << def.id << " neither placed nor disabled");
             CHECK((placed_widget(r, def.id) != nullptr || resolved_disabled(r, def.id)));
+        }
+    }
+}
+
+TEST_CASE("default_layout: every measured grid is fully covered with gates open and closed",
+          "[default_layout][shipped][coverage]") {
+    // The resolver's own output, with nothing left to auto-placement: every
+    // track of the grid belongs to exactly one tile, each tile at a span its
+    // widget can take, and print_status always placed because it is the only
+    // progress readout on home. Both gate extremes, since a slot that fills
+    // with every gate open can still leave a hole when they all close.
+    const auto layout = load_shipped_layout();
+    CapabilitySnapshot closed = all_closed(layout);
+    CapabilitySnapshot open = closed;
+    for (auto& [subject, value] : open.subjects) {
+        value = subject == "ams_slot_count" ? 4 : 1;
+    }
+
+    for (const auto& g : helix::test::kMeasuredGrids) {
+        LayoutTypeGuard layout_type(g.panel_w, g.panel_h);
+        const std::vector<std::string> chain = helix::LayoutManager::instance().variant_chain();
+        const int bp = static_cast<int>(breakpoint_for(std::min(g.panel_w, g.panel_h)));
+
+        for (const CapabilitySnapshot* caps : {&open, &closed}) {
+            INFO(g.name << " (" << kBpNames[bp] << " " << g.cols << "x" << g.rows
+                        << " tracks), gates " << (caps == &open ? "open" : "closed"));
+            const ResolvedDefault r = helix::layout::resolve_default_layout(
+                layout, nullptr, kBpNames[bp], g.cols, g.rows, chain, "", *caps);
+            REQUIRE(r.ok);
+
+            std::vector<std::vector<std::string>> owner(
+                static_cast<size_t>(g.rows), std::vector<std::string>(static_cast<size_t>(g.cols)));
+            for (const auto& p : r.placed) {
+                const auto* def = helix::find_widget_def(p.id);
+                INFO("widget " << p.id << " at (" << p.col << "," << p.row << ") " << p.colspan
+                               << "x" << p.rowspan);
+                REQUIRE(def != nullptr);
+                CHECK(p.colspan >= def->effective_min_colspan());
+                CHECK(p.colspan <= def->effective_max_colspan());
+                CHECK(p.rowspan >= def->effective_min_rowspan());
+                CHECK(p.rowspan <= def->effective_max_rowspan());
+                CHECK((p.colspan % 2 == 0 || def->supports_half_col));
+                CHECK((p.rowspan % 2 == 0 || def->supports_half_row));
+                const bool on_grid = p.col >= 0 && p.row >= 0 && p.col + p.colspan <= g.cols &&
+                                     p.row + p.rowspan <= g.rows;
+                CHECK(on_grid);
+                if (!on_grid) {
+                    continue;
+                }
+                for (int row = p.row; row < p.row + p.rowspan; ++row) {
+                    for (int col = p.col; col < p.col + p.colspan; ++col) {
+                        auto& cell = owner[static_cast<size_t>(row)][static_cast<size_t>(col)];
+                        INFO("track (" << col << "," << row << ") already holds " << cell);
+                        CHECK(cell.empty());
+                        cell = p.id;
+                    }
+                }
+            }
+
+            std::string holes;
+            for (int row = 0; row < g.rows; ++row) {
+                for (int col = 0; col < g.cols; ++col) {
+                    if (owner[static_cast<size_t>(row)][static_cast<size_t>(col)].empty()) {
+                        holes += " (" + std::to_string(col) + "," + std::to_string(row) + ")";
+                    }
+                }
+            }
+            INFO("uncovered tracks:" << holes);
+            CHECK(holes.empty());
+
+            CHECK(placed_widget(r, "print_status") != nullptr);
+            for (const auto& def : helix::get_all_widget_defs()) {
+                if (def.default_enabled) {
+                    INFO("default-enabled widget " << def.id << " neither placed nor disabled");
+                    CHECK((placed_widget(r, def.id) != nullptr || resolved_disabled(r, def.id)));
+                }
+            }
         }
     }
 }

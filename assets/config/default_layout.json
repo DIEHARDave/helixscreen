@@ -100,6 +100,12 @@
           "colspan": 2,
           "rowspan": 2
         },
+        "micro@8x6": {
+          "col": 0,
+          "row": 0,
+          "colspan": 2,
+          "rowspan": 2
+        },
         "tiny": {
           "col": 4,
           "row": 0,
@@ -143,6 +149,12 @@
       "placements": {
         "micro": {
           "col": 8,
+          "row": 0,
+          "colspan": 2,
+          "rowspan": 2
+        },
+        "micro@8x6": {
+          "col": 2,
           "row": 0,
           "colspan": 2,
           "rowspan": 2
@@ -289,6 +301,12 @@
           "col": 0,
           "row": 4,
           "colspan": 12,
+          "rowspan": 4
+        },
+        "micro@8x6": {
+          "col": 0,
+          "row": 2,
+          "colspan": 8,
           "rowspan": 4
         },
         "tiny": {
@@ -462,6 +480,12 @@
         "micro": {
           "col": 8,
           "row": 2,
+          "colspan": 4,
+          "rowspan": 2
+        },
+        "micro@8x6": {
+          "col": 4,
+          "row": 0,
           "colspan": 4,
           "rowspan": 2
         },
@@ -742,13 +766,58 @@
             "tiny": {
               "col": 8,
               "row": 0,
-              "colspan": 14,
+              "colspan": 16,
               "rowspan": 4
             },
             "small": {
               "col": 8,
               "row": 0,
-              "colspan": 16,
+              "colspan": 18,
+              "rowspan": 4
+            }
+          }
+        },
+        {
+          "id": "z_offset",
+          "placements": {
+            "tiny": {
+              "col": 24,
+              "row": 0,
+              "colspan": 4,
+              "rowspan": 2
+            },
+            "small": {
+              "col": 26,
+              "row": 0,
+              "colspan": 4,
+              "rowspan": 2
+            }
+          }
+        },
+        {
+          "id": "speed_flow",
+          "placements": {
+            "tiny": {
+              "col": 24,
+              "row": 2,
+              "colspan": 4,
+              "rowspan": 2
+            },
+            "small": {
+              "col": 26,
+              "row": 2,
+              "colspan": 4,
+              "rowspan": 2
+            }
+          }
+        },
+        {
+          "id": "print_stats",
+          "placements": {
+            "small": {
+              "col": 30,
+              "row": 0,
+              "colspan": 6,
               "rowspan": 4
             }
           }
@@ -987,7 +1056,8 @@
         "tiny": [
           "active_spool",
           "macros",
-          "clock"
+          "clock",
+          "print_stats"
         ]
       }
     },
@@ -1033,6 +1103,18 @@
               "rowspan": 4
             },
             "xxlarge": {
+              "col": 0,
+              "row": 0,
+              "colspan": 6,
+              "rowspan": 6
+            },
+            "tiny@8x34": {
+              "col": 0,
+              "row": 0,
+              "colspan": 4,
+              "rowspan": 4
+            },
+            "small@10x44": {
               "col": 0,
               "row": 0,
               "colspan": 6,
@@ -1087,6 +1169,18 @@
               "row": 6,
               "colspan": 14,
               "rowspan": 6
+            },
+            "tiny@8x34": {
+              "col": 0,
+              "row": 8,
+              "colspan": 8,
+              "rowspan": 6
+            },
+            "small@10x44": {
+              "col": 0,
+              "row": 10,
+              "colspan": 10,
+              "rowspan": 6
             }
           }
         },
@@ -1128,6 +1222,18 @@
               "row": 12,
               "colspan": 14,
               "rowspan": 2
+            },
+            "tiny@8x34": {
+              "col": 0,
+              "row": 4,
+              "colspan": 8,
+              "rowspan": 4
+            },
+            "small@10x44": {
+              "col": 0,
+              "row": 6,
+              "colspan": 10,
+              "rowspan": 4
             }
           }
         },
@@ -1169,6 +1275,18 @@
               "row": 14,
               "colspan": 14,
               "rowspan": 6
+            },
+            "tiny@8x34": {
+              "col": 0,
+              "row": 14,
+              "colspan": 8,
+              "rowspan": 8
+            },
+            "small@10x44": {
+              "col": 0,
+              "row": 16,
+              "colspan": 10,
+              "rowspan": 8
             }
           }
         },
@@ -1212,6 +1330,18 @@
               "rowspan": 2
             },
             "xxlarge": {
+              "col": 6,
+              "row": 0,
+              "colspan": 2,
+              "rowspan": 2
+            },
+            "tiny@8x34": {
+              "col": 4,
+              "row": 0,
+              "colspan": 2,
+              "rowspan": 2
+            },
+            "small@10x44": {
               "col": 6,
               "row": 0,
               "colspan": 2,
@@ -1263,6 +1393,18 @@
               "row": 0,
               "colspan": 2,
               "rowspan": 2
+            },
+            "tiny@8x34": {
+              "col": 4,
+              "row": 2,
+              "colspan": 2,
+              "rowspan": 2
+            },
+            "small@10x44": {
+              "col": 8,
+              "row": 0,
+              "colspan": 2,
+              "rowspan": 2
             }
           }
         },
@@ -1308,6 +1450,18 @@
             "xxlarge": {
               "col": 10,
               "row": 0,
+              "colspan": 2,
+              "rowspan": 2
+            },
+            "tiny@8x34": {
+              "col": 6,
+              "row": 2,
+              "colspan": 2,
+              "rowspan": 2
+            },
+            "small@10x44": {
+              "col": 6,
+              "row": 2,
               "colspan": 2,
               "rowspan": 2
             }
@@ -1357,6 +1511,18 @@
               "row": 0,
               "colspan": 2,
               "rowspan": 2
+            },
+            "tiny@8x34": {
+              "col": 6,
+              "row": 0,
+              "colspan": 2,
+              "rowspan": 2
+            },
+            "small@10x44": {
+              "col": 8,
+              "row": 2,
+              "colspan": 2,
+              "rowspan": 2
             }
           }
         },
@@ -1366,6 +1532,18 @@
             "xxlarge": {
               "col": 6,
               "row": 4,
+              "colspan": 4,
+              "rowspan": 2
+            },
+            "tiny@8x34": {
+              "col": 4,
+              "row": 22,
+              "colspan": 4,
+              "rowspan": 2
+            },
+            "small@10x44": {
+              "col": 0,
+              "row": 24,
               "colspan": 4,
               "rowspan": 2
             }
@@ -1379,6 +1557,18 @@
               "row": 4,
               "colspan": 4,
               "rowspan": 2
+            },
+            "tiny@8x34": {
+              "col": 0,
+              "row": 24,
+              "colspan": 4,
+              "rowspan": 2
+            },
+            "small@10x44": {
+              "col": 0,
+              "row": 26,
+              "colspan": 4,
+              "rowspan": 2
             }
           }
         },
@@ -1390,6 +1580,68 @@
               "row": 20,
               "colspan": 4,
               "rowspan": 4
+            },
+            "tiny@8x34": {
+              "col": 4,
+              "row": 24,
+              "colspan": 4,
+              "rowspan": 4
+            },
+            "small@10x44": {
+              "col": 4,
+              "row": 24,
+              "colspan": 6,
+              "rowspan": 4
+            }
+          }
+        },
+        {
+          "id": "clock",
+          "placements": {
+            "tiny@8x34": {
+              "col": 0,
+              "row": 26,
+              "colspan": 4,
+              "rowspan": 2
+            },
+            "small@10x44": {
+              "col": 8,
+              "row": 32,
+              "colspan": 2,
+              "rowspan": 2
+            }
+          }
+        },
+        {
+          "id": "motion",
+          "placements": {
+            "small@10x44": {
+              "col": 8,
+              "row": 28,
+              "colspan": 2,
+              "rowspan": 2
+            }
+          }
+        },
+        {
+          "id": "macros",
+          "placements": {
+            "small@10x44": {
+              "col": 8,
+              "row": 30,
+              "colspan": 2,
+              "rowspan": 2
+            }
+          }
+        },
+        {
+          "id": "gcode_console",
+          "placements": {
+            "small@10x44": {
+              "col": 0,
+              "row": 34,
+              "colspan": 10,
+              "rowspan": 10
             }
           }
         },
@@ -1435,6 +1687,18 @@
             "xxlarge": {
               "col": 6,
               "row": 2,
+              "colspan": 4,
+              "rowspan": 2
+            },
+            "tiny@8x34": {
+              "col": 0,
+              "row": 22,
+              "colspan": 4,
+              "rowspan": 2
+            },
+            "small@10x44": {
+              "col": 6,
+              "row": 4,
               "colspan": 4,
               "rowspan": 2
             }
@@ -1582,12 +1846,46 @@
               ]
             }
           ]
+        },
+        {
+          "slot": "mesh_tall",
+          "placements": {
+            "tiny@8x34": {
+              "col": 0,
+              "row": 28,
+              "colspan": 8,
+              "rowspan": 6
+            },
+            "small@10x44": {
+              "col": 0,
+              "row": 28,
+              "colspan": 8,
+              "rowspan": 6
+            }
+          },
+          "alternatives": [
+            {
+              "cells": [
+                {
+                  "candidates": "MESH",
+                  "at": [
+                    0,
+                    0,
+                    8,
+                    6
+                  ]
+                }
+              ]
+            }
+          ]
         }
       ],
       "disabled": {
+        "micro": [],
         "tiny": [
           "tips"
-        ]
+        ],
+        "tiny@8x34": []
       }
     }
   },
@@ -1595,6 +1893,13 @@
     "micro": [
       "tips",
       "temp_graph"
+    ],
+    "micro@8x6": [
+      "tips",
+      "temp_graph",
+      "printer_image",
+      "fan_stack",
+      "notifications"
     ],
     "tiny": [
       "tips",

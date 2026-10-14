@@ -418,6 +418,7 @@ layout:` / `Track geometry:` lines); pinned in `tests/unit/test_grid_square_cell
 | Panel | Tier | Content box | Gutter | Grid | Track (w x h) | Aspect |
 |-------|------|-------------|--------|------|---------------|--------|
 | 480x272 | MICRO | 430x264 | 2 | **12x8** | 34.00 x 31.25 | 1.09 |
+| 320x240 | MICRO | 270x232 | 2 | **8x6** | 32.00 x 37.00 | 0.86 |
 | 272x480 | MICRO | 264x394 | 2 | **8x12** | 31.25 x 31.00 | 1.01 |
 | 480x320 | TINY | 418x312 | 2 | **10x8** | 40.00 x 37.25 | 1.07 |
 | 320x480 | TINY | 312x394 | 2 | **8x10** | 37.25 x 37.60 | 0.99 |
@@ -549,6 +550,9 @@ The three shipped tables are the base (landscape), `variants.ultrawide` (1480x32
 1920x440) and `variants.portrait`. Each authors **all seven tiers**; see the fallback
 warning above for why leaving one out is dangerous rather than merely terse. The xxlarge
 landscape table is authored on the 12x7-cell grid (portrait xxlarge is 14 tracks wide).
+Three grids carry grid-qualified tables of their own: the 320x240 micro panel
+(`micro@8x6`) and the two ultratall portrait strips, 320x1480 (`tiny@8x34`) and 440x1920
+(`small@10x44`).
 
 Inside a table, breakpoint keys are named rather than indexed - `micro`, `tiny`, `small`,
 `medium`, `large`, `xlarge`, `xxlarge` (seven, matching `UiBreakpoint`). A missing tier
@@ -613,6 +617,16 @@ has to fit. A bare key remains the catch-all for every grid with no entry of its
   "xxlarge@6x14": { "col": 4, "row": 0, "colspan": 2, "rowspan": 2 }
 }
 ```
+
+`disabled` maps take the same keys. A grid-qualified list replaces the bare tier's list on
+that grid, so a grid too small for some of the tier's anchors switches them off there and
+nowhere else. The Creality Hi's 320x240 panel is micro on an 8x6 grid: `"micro@8x6"`
+switches off printer_image, fan_stack and notifications so print_status can be two cells
+tall (one cell has no room for its progress ring), and 480x272 keeps all three. Every entry
+with a bare key for the tier needs a grid-qualified placement or a place in that list, or it
+inherits the bare key's coordinates off the smaller grid. The "every measured grid is fully
+covered" case in `test_default_layout.cpp` resolves each measured grid with every gate open
+and every gate closed and fails on any uncovered track.
 
 **An anchor that does not fit the measured grid is now dropped rather than clamped.**
 `build_default_grid(grid_cols, grid_rows)` checks each anchor against the grid it is being

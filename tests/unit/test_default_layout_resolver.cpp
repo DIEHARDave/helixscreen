@@ -230,6 +230,27 @@ TEST_CASE("resolver: losers and tier disabled ids are disabled", "[default_layou
     }
 }
 
+TEST_CASE("resolver: a grid-qualified disabled list beats the bare tier list",
+          "[default_layout_resolver]") {
+    // A grid too small for a tier's anchors switches some of them off without
+    // touching the tier's other grids, the same way a grid-qualified placement
+    // moves them.
+    const json table = parse(R"json({"anchors": [
+      {"id": "fan_stack", "placements": {"micro": {"col": 6, "row": 2, "colspan": 2, "rowspan": 2}}},
+      {"id": "tips", "placements": {"micro": {"col": 0, "row": 0, "colspan": 6, "rowspan": 2}}}],
+      "disabled": {"micro": ["tips"], "micro@8x6": ["tips", "fan_stack"]}})json");
+
+    const auto small_grid = resolve(table, "micro", {}, 8, 6);
+    CHECK(placed_entry(small_grid, "fan_stack") == nullptr);
+    CHECK(is_disabled(small_grid, "fan_stack"));
+    CHECK(is_disabled(small_grid, "tips"));
+
+    const auto tier_grid = resolve(table, "micro", {}, 12, 8);
+    require_cell(tier_grid, "fan_stack", 6, 2, 2, 2);
+    CHECK_FALSE(is_disabled(tier_grid, "fan_stack"));
+    CHECK(is_disabled(tier_grid, "tips"));
+}
+
 TEST_CASE("resolver: an alternative that does not fit its region is skipped",
           "[default_layout_resolver]") {
     const json table = parse(R"json({"anchors": [

@@ -222,7 +222,7 @@ class Resolver {
         if (!d || !d->is_object()) {
             return;
         }
-        const std::string key = choose_placement_key(*d, bp_, 0, 0);
+        const std::string key = choose_placement_key(*d, bp_, cols_, rows_);
         const json* ids = key.empty() ? nullptr : array_member(*d, key.c_str());
         if (!ids) {
             return;

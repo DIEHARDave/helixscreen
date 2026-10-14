@@ -29,6 +29,10 @@
 ///   With a measured grid, an alternative whose cells run off it gives way to
 ///   a later one that stays on it; when none does, the region alone decides.
 ///
+/// A table's `disabled` object lists widget ids switched off per placement key,
+/// chosen the way placements are, so a grid-qualified list replaces the bare
+/// tier's on that grid.
+///
 /// Every widget named in a candidate list of the active table that ends up
 /// unplaced is reported in `disabled`, including the candidates of a slot that
 /// has no region at this tier.
