@@ -119,5 +119,11 @@ class AceTestAccess {
     static void poll_slots(AmsBackendAce& b) {
         b.poll_slots();
     }
+
+    // Runs only the startup store load: a null client makes on_started return
+    // right after it.
+    static void start_load(AmsBackendAce& b) {
+        b.on_started();
+    }
 };
 } // namespace helix

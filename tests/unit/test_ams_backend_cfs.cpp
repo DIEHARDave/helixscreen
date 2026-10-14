@@ -2614,6 +2614,19 @@ TEST_CASE("CFS override loaded at init is applied over firmware data",
     CHECK(info.color_rgb == 0xFF5500u);
 }
 
+TEST_CASE("a CFS backend start migrates the legacy override namespace",
+          "[ams][cfs][filament_slot_override][migration]") {
+    MockPrinter mock_printer;
+    mock_printer.client.mock_db_set(
+        "helix-screen", "cfs_slot_overrides",
+        json{{"0", json{{"brand", "Polymaker"}, {"material", "PLA"}, {"color_rgb", 0xFF5500}}}});
+
+    helix::printer::AmsBackendCfs backend(&mock_printer.api, nullptr);
+    CfsTestAccess::start_load(backend);
+
+    CHECK(mock_printer.client.mock_db_get("helix-screen", "cfs_slot_overrides").is_null());
+}
+
 TEST_CASE("CFS migrates from helix-screen:cfs_slot_overrides on first startup",
           "[ams][cfs][filament_slot_override][migration]") {
     // Pre-Task-8 CFS wrote per-slot overrides to
