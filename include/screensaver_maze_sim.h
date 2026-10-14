@@ -97,68 +97,99 @@ struct MazePose {
     float angle = 0.0f; ///< radians, 0 east, pi / 2 south
 };
 
+/// What a walk reached before the time it was given ran out.
+enum class WalkEvent : uint8_t {
+    NONE,
+    /// Crossed a doorway into a new cell, or stopped at the stop cell's doorway.
+    ENTERED,
+    /// Passed the middle of the cell it is in.
+    ARRIVED,
+};
+
 /**
- * @brief Walks the maze by keeping one hand on the wall
+ * @brief Walks the maze by keeping one hand on the wall, without stopping in the cells
  *
- * At each cell it turns toward its hand when that side is open, else goes on, else turns the
- * other way, else turns round. Moves and turns are eased over fixed durations, so the pose is
- * a function of the time fed in.
+ * The walk runs doorway to doorway at a constant speed: straight through a cell, a quarter
+ * arc round the inner corner where it turns, and only in a dead end in to the middle, round
+ * on the spot and back out, the one place it faces a wall. Where to leave a cell is decided at
+ * the doorway in: toward its hand when that side is open, else on, else away. The pose is a
+ * function of the time fed in.
  */
 class MazeWalker {
   public:
+    /// One cell, doorway to doorway: two tiles.
     static constexpr uint32_t DEFAULT_MOVE_MS = 650;
+    /// A quarter turn on the spot, at the start and in dead ends.
     static constexpr uint32_t DEFAULT_TURN_MS = 420;
 
-    /// Stands in cell (cx, cy) facing `heading`.
+    /// Stands in the middle of cell (cx, cy) facing `heading`.
     void reset(int cx, int cy, int heading, bool left_handed, uint32_t move_ms = DEFAULT_MOVE_MS,
                uint32_t turn_ms = DEFAULT_TURN_MS);
+
+    /// Eases to a stop at the doorway into cell (cx, cy) and stays there; (-1, -1) for none.
+    void set_stop_cell(int cx, int cy) {
+        stop_x_ = cx;
+        stop_y_ = cy;
+    }
 
     /**
      * @brief Walks for up to `dt_ms`
      *
-     * Stops early on reaching a new cell, so the caller can react to what is there.
-     * @param arrived set when the walk reached a new cell
+     * Stops early at a doorway and at the middle of a cell, so the caller can react to what is
+     * there. Once stopped at the stop cell it uses all the time it is given and stays put.
      * @return the milliseconds used
      */
-    uint32_t advance(const MazeMap& map, uint32_t dt_ms, bool& arrived);
+    uint32_t advance(const MazeMap& map, uint32_t dt_ms, WalkEvent& event);
 
     MazePose pose() const;
+    /// The cell the walk is in, from the doorway in to the doorway out.
     int cell_x() const {
         return cx_;
     }
     int cell_y() const {
         return cy_;
     }
-    int heading() const {
-        return heading_;
-    }
     bool left_handed() const {
         return left_handed_;
     }
-    /// Swaps hands from the next decision on; a move or turn under way finishes first.
+    /// Swaps hands from the next doorway on.
     void set_left_handed(bool left) {
         left_handed_ = left;
     }
-    /// Cells entered since reset().
+    /// True once the walk has stopped at the stop cell's doorway.
+    bool stopped() const {
+        return stopped_;
+    }
+    /// Cell middles passed since reset().
     uint32_t moves() const {
         return moves_;
     }
 
   private:
-    enum class Action : uint8_t { MOVE, TURN_RIGHT, TURN_LEFT };
+    enum class Segment : uint8_t { START, STRAIGHT, TURN, DEAD_END };
 
-    void plan(const MazeMap& map);
+    /// Plans the way through the cell just entered: the way out and how long it takes.
+    void plan_segment(const MazeMap& map);
+    void plan_start(const MazeMap& map);
 
     int cx_ = 0;
     int cy_ = 0;
-    int heading_ = 0;
+    int d_in_ = 0;  ///< heading the walk entered the cell with (at the start, the one it faces)
+    int d_out_ = 0; ///< heading it leaves the cell by
+    int stop_x_ = -1;
+    int stop_y_ = -1;
     bool left_handed_ = false;
+    bool planned_ = false;
+    bool stopped_ = false;
+    bool arrived_ = false;  ///< the middle of this segment has been passed
+    bool ease_out_ = false; ///< the segment ends at the stop cell's doorway
+    Segment kind_ = Segment::START;
+    int spin_quarters_ = 0; ///< signed quarter turns on the spot (START and DEAD_END)
     uint32_t move_ms_ = DEFAULT_MOVE_MS;
     uint32_t turn_ms_ = DEFAULT_TURN_MS;
-    Action queue_[3]{};
-    int queue_len_ = 0;
-    int queue_pos_ = 0;
     uint32_t progress_ms_ = 0;
+    uint32_t duration_ms_ = 1;
+    uint32_t arrive_ms_ = 0;
     uint32_t moves_ = 0;
 };
 
@@ -194,14 +225,13 @@ struct MazeArt {
  * @brief Draws the maze from a pose with one ray per column
  *
  * Renders at the level's internal resolution into a column-major buffer of pixels already
- * packed in the frame's format, then replicates it into the frame row by row. Textures and
- * sprites are built once by init(); nothing is allocated per frame.
+ * packed in the frame's format, at that format's width (2 bytes for RGB565), then replicates
+ * it into the frame row by row. Textures and sprites are built once by init(); nothing is
+ * allocated per frame.
  */
 class MazeRenderer {
   public:
     static constexpr int TEX = 64;
-    /// A sprite texel that draws nothing. No packed RGB565 or XRGB8888 value equals it.
-    static constexpr uint32_t SPRITE_KEY = 0x00FFFFFFu;
     static constexpr int ROCK_FRAMES = 16;
 
     /// Sizes every buffer for a w x h frame of `format` drawn from `level` down, and builds
@@ -242,30 +272,52 @@ class MazeRenderer {
         return wall_bottom_[x];
     }
     /// Packed pixel at internal (x, y) of the last render, before the flip.
-    uint32_t internal_pixel(uint32_t x, uint32_t y) const {
-        return buf_[static_cast<size_t>(x) * ih_ + y];
-    }
+    uint32_t internal_pixel(uint32_t x, uint32_t y) const;
     /// Whether picture walls show a picture.
     bool has_picture() const {
         return has_picture_;
     }
 
   private:
-    struct Texture {
-        uint32_t px[TEX * TEX]; ///< column-major: px[u * TEX + v]
+    /// Everything held at the frame's pixel width. Only the store for the frame's format is
+    /// filled.
+    template <typename Px> struct Store {
+        std::vector<Px> frame;      ///< column-major internal frame
+        std::vector<Px> textures;   ///< each TEX x TEX, column-major: [u * TEX + v]
+        std::vector<Px> sprites;    ///< laid out the same; sprite_key<Px>() draws nothing
+        std::vector<Px> ceil_rows;  ///< flat ceiling colour per internal row
+        std::vector<Px> floor_rows; ///< flat floor colour per internal row
+        std::vector<Px> row;        ///< one output row, built once per internal row
     };
     struct SpriteDraw {
         float depth; ///< squared distance, for drawing far to near
         uint16_t item;
     };
 
-    void build_textures(const MazeArt& art);
-    void build_sprites(const MazeArt& art);
-    void cast_walls(const MazeMap& map, const MazePose& pose);
+    template <typename Px> Store<Px>& store() {
+        if constexpr (sizeof(Px) == 2) {
+            return s16_;
+        } else {
+            return s32_;
+        }
+    }
+    template <typename Px> const Store<Px>& store() const {
+        if constexpr (sizeof(Px) == 2) {
+            return s16_;
+        } else {
+            return s32_;
+        }
+    }
+    template <typename Px> void build(const MazeArt& art);
+    template <typename Px> void apply_level();
+    template <typename Px>
+    void render_as(const MazeMap& map, const std::vector<MazeItem>& items, const MazePose& pose,
+                   float flip, uint32_t elapsed_ms, FrameTarget& out);
+    template <typename Px> void cast_walls(const MazeMap& map, const MazePose& pose);
+    template <typename Px>
     void draw_sprites(const std::vector<MazeItem>& items, const MazePose& pose,
                       uint32_t elapsed_ms);
-    void blit(float flip, FrameTarget& out);
-    uint32_t pack(Rgb c) const;
+    template <typename Px> void blit(float flip, FrameTarget& out);
 
     PixelFormat format_ = PixelFormat::XRGB8888;
     uint32_t w_ = 0;
@@ -275,20 +327,14 @@ class MazeRenderer {
     size_t level_ = 0;
     bool has_picture_ = false;
 
-    std::vector<uint32_t> buf_; ///< column-major internal frame
+    Store<uint16_t> s16_;
+    Store<uint32_t> s32_;
     std::vector<float> zbuf_;
     std::vector<int> wall_top_;
     std::vector<int> wall_bottom_;
     std::vector<int32_t> row_dist_q16_; ///< floor distance of each internal row, 16.16
-    std::vector<uint32_t> ceil_rows_;   ///< flat ceiling colour per internal row
-    std::vector<uint32_t> floor_rows_;  ///< flat floor colour per internal row
     std::vector<int> src_rows_;         ///< internal row each output row reads, -1 for black
-    std::vector<uint16_t> row16_;       ///< one RGB565 output row, built once per internal row
-    std::vector<uint32_t> row32_;       ///< one XRGB8888 output row, likewise
     std::vector<SpriteDraw> sprite_order_;
-
-    std::vector<Texture> textures_; ///< see the TEX_* indices in the source
-    std::vector<Texture> sprites_;  ///< see the SPR_* indices in the source
 };
 
 /**
@@ -333,6 +379,10 @@ class MazeSim {
     bool flipping() const {
         return flip_left_ms_ > 0;
     }
+    /// True while the walk waits at the exit's doorway before the next maze.
+    bool holding_exit() const {
+        return exit_left_ms_ > 0;
+    }
     /// New mazes started since init().
     uint32_t mazes() const {
         return mazes_;
@@ -347,6 +397,11 @@ class MazeSim {
     void new_maze(std::minstd_rand& rng);
     void advance(uint32_t dt_ms, std::minstd_rand& rng);
     void on_arrival(std::minstd_rand& rng);
+
+    // Scratch for laying out a maze, kept to reuse its allocation.
+    std::vector<uint8_t> taken_;
+    std::vector<int> dist_;
+    std::vector<int> queue_;
 
     MazeMap map_;
     std::vector<MazeItem> items_;

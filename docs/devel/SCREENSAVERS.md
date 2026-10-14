@@ -42,11 +42,29 @@ bouncing printer and bouncing logo (one class; `BouncingLogoScreensaver` swaps t
 the saver's current period (`follow`), so the display and the saver stay equal at every level. Device measurements assume the pacing that keeps 16 ms even: EGL vsync and a 1 ms
 main-loop floor, which every device run sets explicitly (`scripts/screensaver-perf/arm_measure.sh`).
 
-The maze repaints every pixel every frame, so it is the costliest saver per frame and the one
-the gate is likeliest to mark too heavy on a small board. It renders one ray per column into its
-own column-major frame at the level's resolution, then copies that frame into the canvas row by
-row. Its frame, textures and sprites are allocated in `on_start()` and freed in `on_stop()`, sized
-for the level the run starts at, so the saver holds no memory while it is not running.
+## The 3D maze
+
+A port of the Windows 95 OpenGL "3D Maze", drawn Wolfenstein-style: one ray per column through
+a tile grid, no polygons. Each run is a 12 x 12 perfect maze (no loops) from a recursive
+backtracker. The walk starts in a dead end facing out past the start sign, and the exit, a
+translucent smiley, is the cell furthest from the start, which in a tree is always a dead end.
+
+- **The walk** (`MazeWalker`) keeps a hand on the wall and never stops in a cell: doorway to
+  doorway at a constant speed, straight through or round a quarter arc about the inner corner,
+  so the wall ahead stays at least about three quarters of a tile away. Only a dead end walks in
+  to the middle, spins round and walks out, the one place the view faces a wall. It eases to a
+  stop in the exit's doorway and holds there with the smiley a tile ahead, then a new maze
+  starts. A walk past `MazeSim::step_bound()` cells starts a new maze instead of walking on.
+- **Items**: spinning Helix icons where the original had OpenGL logos, a start sign carrying the
+  icon, gray icosahedron rocks that flip the view upside down (a squash through zero) and swap
+  the walk to the other hand, a toolhead that wanders on its own walk, and the active printer's
+  image hung on a few walls, plain brick when there is none.
+- **Cost**: it repaints every pixel every frame, so it is the costliest saver per frame and the
+  one the gate is likeliest to mark too heavy on a small board. `MAZE_LEVELS` pulls the
+  internal resolution (each pixel replicated `scale x scale`) and swaps textured floor and
+  ceiling for flat gradients. It renders into its own column-major frame, then copies that into
+  the canvas row by row. Frame, textures and sprites are packed at the display's own pixel width
+  (2 bytes on RGB565), so the inner loops copy pixels and never convert colour.
 
 Motion is a function of elapsed time (`include/screensaver_motion.h`), so a level that changes
 the frame period changes nothing on screen but the frame rate, and at the toasters' lowest rung
@@ -101,3 +119,8 @@ build draws at its depth, otherwise the first registered saver that does, and Of
    (the Makefile screensaver filter picks up `src/ui/screensaver_*.cpp` by itself).
 5. Test determinism per seed, that dirty areas cover every changed pixel, and the ladder, then
    measure the saver on a board with `scripts/screensaver-perf/`.
+6. A saver costs no RAM while it is not running. Nothing sizable goes in `.data` or `.bss`: no
+   static or global textures, frames, sprite sheets or lookup tables (small `constexpr` tables in
+   `.rodata` are fine). Everything is allocated in `on_start()` and released, capacity included,
+   in `on_stop()`; `clear()` on a vector keeps its capacity, so swap it with an empty one. Check
+   with `size build/obj/ui/screensaver_<name>*.o`.

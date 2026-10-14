@@ -12,6 +12,7 @@
 #include <cstring>
 #include <deque>
 #include <random>
+#include <utility>
 #include <vector>
 
 #include "../catch_amalgamated.hpp"
@@ -32,6 +33,7 @@ using helix::ui::MazeWalker;
 using helix::ui::PixelFormat;
 using helix::ui::PixelWriter;
 using helix::ui::Rgb;
+using helix::ui::WalkEvent;
 
 namespace {
 
@@ -99,17 +101,60 @@ int open_edges(const MazeMap& map) {
     return edges;
 }
 
-/// Walks until arriving in cell (ex, ey), or `limit` moves; returns the moves taken or -1.
-int walk_to(MazeWalker& walker, const MazeMap& map, int ex, int ey, uint32_t limit) {
+/// Walks until the middle of every cell has been passed, or `limit` moves; returns the moves
+/// taken, or -1 when some cell was never reached.
+int walk_all(MazeWalker& walker, const MazeMap& map, uint32_t limit) {
+    const int n = map.cells();
+    std::vector<bool> seen(static_cast<size_t>(n * n), false);
+    seen[static_cast<size_t>(walker.cell_y() * n + walker.cell_x())] = true;
+    int unseen = n * n - 1;
     while (walker.moves() <= limit) {
-        bool arrived = false;
-        walker.advance(map, 50, arrived);
-        if (arrived && walker.cell_x() == ex && walker.cell_y() == ey) {
-            return static_cast<int>(walker.moves());
+        WalkEvent event = WalkEvent::NONE;
+        walker.advance(map, 50, event);
+        if (event != WalkEvent::ARRIVED) {
+            continue;
+        }
+        const auto i = static_cast<size_t>(walker.cell_y() * n + walker.cell_x());
+        if (!seen[i]) {
+            seen[i] = true;
+            if (--unseen == 0) {
+                return static_cast<int>(walker.moves());
+            }
         }
     }
     return -1;
 }
+
+/// Open passages out of cell (cx, cy).
+int passages(const MazeMap& map, int cx, int cy) {
+    int count = 0;
+    for (int d = 0; d < 4; d++) {
+        count += map.passage(cx, cy, d) ? 1 : 0;
+    }
+    return count;
+}
+
+/// A dead-end cell of `map` and the heading out of it.
+std::pair<int, int> dead_end(const MazeMap& map, int& heading) {
+    for (int cy = 0; cy < map.cells(); cy++) {
+        for (int cx = 0; cx < map.cells(); cx++) {
+            if (passages(map, cx, cy) != 1) {
+                continue;
+            }
+            for (heading = 0; !map.passage(cx, cy, heading); heading++) {
+            }
+            return {cx, cy};
+        }
+    }
+    heading = 0;
+    return {0, 0};
+}
+
+/// Frame size and padding for the canary test: rows padded past their pixels with a known
+/// byte, and a guard past the last row.
+constexpr uint8_t CANARY = 0xA5;
+constexpr uint32_t ROW_PAD = 12;
+constexpr size_t GUARD = 64;
 
 /// A corridor running east: open tiles (1..size-2, mid), brick elsewhere.
 MazeMap corridor(int size) {
@@ -137,10 +182,6 @@ MazeMap room(int size) {
 }
 
 } // namespace
-
-// ============================================================================
-// Maze generation
-// ============================================================================
 
 TEST_CASE("a generated maze is perfect: every cell reachable, no loops, closed outside",
           "[screensaver][maze]") {
@@ -180,42 +221,35 @@ TEST_CASE("a maze hangs pictures only on walls, and out of bounds reads as brick
     CHECK(map.tile(map.size(), 3) == MazeTile::BRICK);
 }
 
-// ============================================================================
-// Walker
-// ============================================================================
-
-TEST_CASE("the wall follower reaches every cell of a perfect maze within the step bound",
+TEST_CASE("the wall follower passes every cell of a perfect maze within the step bound",
           "[screensaver][maze]") {
     const uint32_t bound = 4u * MazeSim::CELLS * MazeSim::CELLS;
     for (uint32_t seed = 1; seed <= 50; seed++) {
         std::minstd_rand rng(seed);
         MazeMap map;
         map.generate(MazeSim::CELLS, rng);
-        const int last = MazeSim::CELLS - 1;
         for (bool left : {false, true}) {
             MazeWalker walker;
             walker.reset(0, 0, 0, left);
             INFO("seed " << seed << (left ? " left" : " right"));
-            CHECK(walk_to(walker, map, last, last, bound) > 0);
+            CHECK(walk_all(walker, map, bound) > 0);
         }
     }
 }
 
-TEST_CASE("a walker that swaps hands mid-walk still reaches the far corner",
-          "[screensaver][maze]") {
+TEST_CASE("a walker that swaps hands mid-walk still passes every cell", "[screensaver][maze]") {
     std::minstd_rand rng(11);
     MazeMap map;
     map.generate(MazeSim::CELLS, rng);
     MazeWalker walker;
     walker.reset(0, 0, 0, false);
     while (walker.moves() < 10) {
-        bool arrived = false;
-        walker.advance(map, 50, arrived);
+        WalkEvent event = WalkEvent::NONE;
+        walker.advance(map, 50, event);
     }
     walker.set_left_handed(true);
     CHECK(walker.left_handed());
-    const int last = MazeSim::CELLS - 1;
-    CHECK(walk_to(walker, map, last, last, 8u * MazeSim::CELLS * MazeSim::CELLS) > 0);
+    CHECK(walk_all(walker, map, 8u * MazeSim::CELLS * MazeSim::CELLS) > 0);
 }
 
 TEST_CASE("the walk is a function of time: two short advances equal one long one",
@@ -228,15 +262,15 @@ TEST_CASE("the walk is a function of time: two short advances equal one long one
     a.reset(0, 0, 0, false);
     b.reset(0, 0, 0, false);
     for (int i = 0; i < 200; i++) {
-        bool arrived = false;
+        WalkEvent event = WalkEvent::NONE;
         uint32_t left = 32;
         while (left > 0) {
-            left -= a.advance(map, left, arrived);
+            left -= a.advance(map, left, event);
         }
         for (int half = 0; half < 2; half++) {
             uint32_t part = 16;
             while (part > 0) {
-                part -= b.advance(map, part, arrived);
+                part -= b.advance(map, part, event);
             }
         }
         REQUIRE(a.pose().x == Catch::Approx(b.pose().x).margin(1e-4));
@@ -246,23 +280,63 @@ TEST_CASE("the walk is a function of time: two short advances equal one long one
     CHECK(a.moves() > 0);
 }
 
-TEST_CASE("a walker stops at each new cell so the caller sees every arrival",
+TEST_CASE("a walker stops at each doorway and each cell middle so the caller sees both",
           "[screensaver][maze]") {
     // Cell row 2 is tile row 5, the corridor's open row.
     MazeMap map = corridor(11);
     MazeWalker walker;
     walker.reset(0, 2, 0, false);
-    bool arrived = false;
-    const uint32_t used = walker.advance(map, 100000, arrived);
-    CHECK(arrived);
+    WalkEvent event = WalkEvent::NONE;
+
+    // From the middle of the first cell, speeding up to the doorway: one tile.
+    uint32_t used = walker.advance(map, 100000, event);
+    CHECK(event == WalkEvent::ENTERED);
     CHECK(used == MazeWalker::DEFAULT_MOVE_MS);
     CHECK(walker.cell_x() == 1);
+    CHECK(walker.moves() == 0);
+    CHECK(walker.pose().x == Catch::Approx(2.5f));
+
+    // Then at walking pace, two tiles per move, to the middle of the next.
+    used = walker.advance(map, 100000, event);
+    CHECK(event == WalkEvent::ARRIVED);
+    CHECK(used == MazeWalker::DEFAULT_MOVE_MS / 2);
     CHECK(walker.moves() == 1);
+    CHECK(walker.pose().x == Catch::Approx(3.5f).margin(0.01f));
 }
 
-// ============================================================================
-// Raycaster
-// ============================================================================
+TEST_CASE("the walk keeps its distance from the wall ahead outside dead ends",
+          "[screensaver][maze]") {
+    // At walking pace through a cell, straight or round the inner corner, the nearest wall
+    // straight ahead is never closer than about three quarters of a tile.
+    for (uint32_t seed = 1; seed <= 20; seed++) {
+        std::minstd_rand rng(seed);
+        MazeMap map;
+        map.generate(MazeSim::CELLS, rng);
+        int heading = 0;
+        const auto [sx, sy] = dead_end(map, heading);
+        MazeWalker walker;
+        walker.reset(sx, sy, heading, (seed & 1) != 0);
+        MazeRenderer r;
+        Frame frame(32, 20, PixelFormat::XRGB8888);
+        r.init(32, 20, PixelFormat::XRGB8888, MazeArt{});
+        size_t checked = 0;
+        while (walker.moves() < 2u * MazeSim::CELLS * MazeSim::CELLS) {
+            uint32_t left = 80;
+            while (left > 0) {
+                WalkEvent event = WalkEvent::NONE;
+                left -= walker.advance(map, left, event);
+            }
+            if (passages(map, walker.cell_x(), walker.cell_y()) == 1) {
+                continue;
+            }
+            r.render(map, {}, walker.pose(), 0.0f, 0, frame.target);
+            INFO("seed " << seed << " cell " << walker.cell_x() << "," << walker.cell_y());
+            REQUIRE(r.wall_distance(r.internal_w() / 2) >= 0.75f);
+            checked++;
+        }
+        CHECK(checked > 100);
+    }
+}
 
 TEST_CASE("a wall straight ahead has the slice height its distance gives, with no fisheye",
           "[screensaver][maze]") {
@@ -343,6 +417,95 @@ TEST_CASE("a sprite behind a wall draws nothing; in front of it, it draws", "[sc
     std::vector<MazeItem> inactive{{MazeItemKind::LOGO, 5.5f, 5.5f, false}};
     r.render(map, inactive, pose, 0.0f, 0, frame.target);
     CHECK(changed() == 0);
+}
+
+TEST_CASE("picture walls read the right way round from all four sides", "[screensaver][maze]") {
+    // Left half red, right half blue.
+    MazeArt art;
+    art.picture.w = 2;
+    art.picture.h = 1;
+    art.picture.argb = {0xFFFF0000u, 0xFF0000FFu};
+    const int size = 15;
+    std::vector<MazeTile> tiles(static_cast<size_t>(size * size), MazeTile::BRICK);
+    for (int y = 1; y < size - 1; y++) {
+        for (int x = 1; x < size - 1; x++) {
+            tiles[static_cast<size_t>(y * size + x)] = MazeTile::OPEN;
+        }
+    }
+    const int mid = size / 2;
+    const int picture[4][2] = {{size - 1, mid}, {mid, size - 1}, {0, mid}, {mid, 0}};
+    for (const auto& t : picture) {
+        tiles[static_cast<size_t>(t[1] * size + t[0])] = MazeTile::PICTURE;
+    }
+    MazeMap map;
+    map.set_tiles(size, tiles);
+    MazeRenderer r;
+    Frame frame(320, 200, PixelFormat::XRGB8888);
+    r.init(320, 200, PixelFormat::XRGB8888, art);
+    REQUIRE(r.has_picture());
+    for (int heading = 0; heading < 4; heading++) {
+        INFO("heading " << heading);
+        // Three tiles back from the picture tile's centre, facing it.
+        const MazePose pose{picture[heading][0] + 0.5f - 3.0f * helix::ui::HEADING_DX[heading],
+                            picture[heading][1] + 0.5f - 3.0f * helix::ui::HEADING_DY[heading],
+                            heading * 3.14159265f * 0.5f};
+        r.render(map, {}, pose, 0.0f, 0, frame.target);
+        const uint32_t row = r.internal_h() / 2;
+        const uint32_t left = r.internal_pixel(r.internal_w() / 2 - 10, row);
+        const uint32_t right = r.internal_pixel(r.internal_w() / 2 + 10, row);
+        CHECK((left >> 16 & 0xFF) > 150);
+        CHECK((left & 0xFF) < 100);
+        CHECK((right & 0xFF) > 150);
+        CHECK((right >> 16 & 0xFF) < 100);
+    }
+}
+
+TEST_CASE("frames of every size, level and depth stay inside their rows", "[screensaver][maze]") {
+    const std::pair<uint32_t, uint32_t> sizes[] = {{801, 481}, {799, 479}, {480, 272},
+                                                   {5, 2},     {3, 3},     {1, 1}};
+    const uint32_t dts[] = {16, 700, 33, 16, 50, 1, 16, 400};
+    for (PixelFormat fmt : {PixelFormat::RGB565, PixelFormat::XRGB8888}) {
+        const uint32_t bpp = fmt == PixelFormat::RGB565 ? 2 : 4;
+        for (const auto& [w, h] : sizes) {
+            for (size_t level = 0; level < helix::ui::MAZE_LEVEL_COUNT; level++) {
+                INFO(w << "x" << h << " level " << level << " bpp " << bpp);
+                const uint32_t stride = w * bpp + ROW_PAD;
+                std::vector<uint8_t> bytes(static_cast<size_t>(stride) * h + GUARD, CANARY);
+                FrameTarget target{bytes.data(), stride, w, h, fmt};
+                std::minstd_rand rng(w * 31 + h + static_cast<uint32_t>(level));
+                MazeSim sim;
+                sim.init(target, MazeArt{}, rng, level);
+                std::vector<DirtyRect> dirty;
+                for (int i = 0; i < 24; i++) {
+                    if (i == 8) {
+                        sim.set_level(helix::ui::MAZE_LEVEL_COUNT - 1);
+                    } else if (i == 16) {
+                        sim.set_level(0);
+                    }
+                    sim.step(dts[i % 8], target, rng, dirty);
+                }
+                size_t touched = 0;
+                for (uint32_t y = 0; y < h; y++) {
+                    for (uint32_t i = w * bpp; i < stride; i++) {
+                        touched += bytes[static_cast<size_t>(y) * stride + i] != CANARY ? 1 : 0;
+                    }
+                }
+                for (size_t i = static_cast<size_t>(stride) * h; i < bytes.size(); i++) {
+                    touched += bytes[i] != CANARY ? 1 : 0;
+                }
+                REQUIRE(touched == 0);
+            }
+        }
+    }
+}
+
+TEST_CASE("an RGB565 maze holds its frame and art at two bytes a pixel", "[screensaver][maze]") {
+    MazeRenderer wide;
+    MazeRenderer narrow;
+    wide.init(800, 480, PixelFormat::XRGB8888, MazeArt{});
+    narrow.init(800, 480, PixelFormat::RGB565, MazeArt{});
+    // Everything per pixel halves; only the per-row and per-column tables stay the same size.
+    CHECK(narrow.buffer_bytes() * 10 < wide.buffer_bytes() * 6);
 }
 
 TEST_CASE("RGB565 and XRGB8888 renders of one scene agree to 565 precision",
@@ -427,10 +590,6 @@ TEST_CASE("mid-flip the view squashes to black at the horizon", "[screensaver][m
     }
 }
 
-// ============================================================================
-// Ladder and the whole scene
-// ============================================================================
-
 TEST_CASE("the maze ladder runs 16, 33, 33, 50 ms and shrinks the internal frame",
           "[screensaver][maze]") {
     REQUIRE(helix::ui::MAZE_LEVEL_COUNT == 4);
@@ -456,7 +615,7 @@ TEST_CASE("the maze ladder runs 16, 33, 33, 50 ms and shrinks the internal frame
     MazeRenderer low;
     low.init(800, 480, PixelFormat::RGB565, MazeArt{}, 3);
     CHECK(low.internal_w() == 200);
-    CHECK(r.buffer_bytes() - low.buffer_bytes() >= (800u * 480u - 200u * 120u) * 4u);
+    CHECK(r.buffer_bytes() - low.buffer_bytes() >= (800u * 480u - 200u * 120u) * 2u);
 }
 
 TEST_CASE("the flat-floor level draws the floor as one colour per row", "[screensaver][maze]") {
@@ -537,6 +696,32 @@ TEST_CASE("a scene places start, exit, logos, rocks and a toolhead", "[screensav
     CHECK(counts[static_cast<int>(MazeItemKind::TOOLHEAD)] == 1);
 }
 
+TEST_CASE("the walk waits in the exit's doorway with the smiley in view", "[screensaver][maze]") {
+    for (uint32_t seed : {5u, 6u, 7u}) {
+        INFO("seed " << seed);
+        std::minstd_rand rng(seed);
+        MazeSim sim;
+        Frame frame(160, 96, PixelFormat::XRGB8888);
+        sim.init(frame.target, MazeArt{}, rng, 0);
+        std::vector<DirtyRect> dirty;
+        for (int i = 0; i < 40000 && !sim.holding_exit(); i++) {
+            sim.step(50, frame.target, rng, dirty);
+        }
+        REQUIRE(sim.holding_exit());
+        sim.step(100, frame.target, rng, dirty);
+        REQUIRE(sim.holding_exit());
+        PixelWriter p(frame.target);
+        size_t yellow = 0;
+        for (int32_t y = 0; y < 96; y++) {
+            for (int32_t x = 0; x < 160; x++) {
+                const Rgb c = p.get(x, y);
+                yellow += c.r > 200 && c.g > 170 && c.b < 90 ? 1 : 0;
+            }
+        }
+        CHECK(yellow > 160u * 96u / 50u);
+    }
+}
+
 TEST_CASE("touching a rock flips the view and swaps hands; reaching the exit starts a new maze",
           "[screensaver][maze]") {
     std::minstd_rand rng(17);
@@ -613,10 +798,6 @@ TEST_CASE("PixelWriter::pack writes what put() writes", "[screensaver][maze]") {
         }
     }
 }
-
-// ============================================================================
-// The saver
-// ============================================================================
 
 TEST_CASE_METHOD(LVGLTestFixture, "the maze saver declares the maze ladder",
                  "[screensaver][maze]") {
