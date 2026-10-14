@@ -22,7 +22,7 @@ config, not hardware-verified. Build targets are `PLATFORM_TARGET` values in `mk
 | Creality K2 / K2 Plus / K2 Pro | Allwinner T113, Cortex-A7 armv7 | 480x800 portrait, rotated | stock | CFS (up to 16) | `k2` | Tested (K2 Plus); Community (K2 Pro); base K2 not captured |
 | Snapmaker U1 | Rockchip RK3562, aarch64 | 480x320 DRM | stock 1.2+ with Root access, or PAXX | SnapSwap 4-head | `snapmaker-u1` | Tested on PAXX; stock unverified |
 | Elegoo Centauri Carbon 1 | Allwinner R528, Cortex-A7 armv7 | 480x272 fbdev | OpenCentauri COSMOS 26.07.0+ | none | `cc1`, `yocto` | Tested |
-| QIDI Q2 / Max 4 | Cortex-A35, aarch64 | 480x272 / 800x480 fbdev | stock, FreeDi, FreeQIDI | QIDI Box | `pi` | Supported (Q2 community-validated; Max 4 community-run, box eject unverified) |
+| QIDI Q2 / Max 4 / Plus 5 | Cortex-A35, aarch64 | 480x272 / 800x480 / 480x800 fbdev | stock, FreeDi, FreeQIDI | QIDI Box | `pi` | Supported (Q2 community-validated; Max 4 + Plus 5 community-run, box eject unverified) |
 | QIDI Plus 4 and 3-series | RK3328, aarch64 | TJC serial HMI | stock | QIDI Box (Plus 4) | remote only | Supported as a remote target |
 | Creality Sonic Pad | Allwinner R818, armv7 userspace | 1024x600 | SonicPad-Debian | n/a | `pi32` | Supported |
 | Anycubic Kobra 2 Pro / 3 / S1, Sovol SV06 ACE | various | n/a | Rinkhals or community Klipper | ACE Pro | remote | Community |
@@ -48,6 +48,7 @@ documents below record which.
 | [SNAPMAKER_U1_RESEARCH.md](SNAPMAKER_U1_RESEARCH.md) | U1 toolhead layout, published firmware sources, on-device layout, PAXX extended firmware |
 | [QIDI_PLUS_4_RESEARCH.md](QIDI_PLUS_4_RESEARCH.md) | A modded Plus 4 (Pi 4 + Kalico + Happy Hare + QIDI Box) from a user dump; TJC panel and `libColPic` encoder |
 | [QIDI_BOX_HEATER.md](QIDI_BOX_HEATER.md) | QIDI Box PTC heater: Klipper objects, command surfaces, firmware variants, HelixScreen integration |
+| [QIDI_PLUS_5_RESEARCH.md](QIDI_PLUS_5_RESEARCH.md) | Stock Plus 5 recon: RK3308 host, no-VT kernel, sideways 480x800 panel, STM32F407/F103 MCUs, and why detection keys off the ~325mm bed |
 | [ANYCUBIC_KOBRA_COREXY_RESEARCH.md](ANYCUBIC_KOBRA_COREXY_RESEARCH.md) | Kobra S1 / 3 series, ACE Pro, Rinkhals, native `filament_hub` interface |
 | [ANYCUBIC_ACE_KOBRA_S1_LOG_ANALYSIS.md](ANYCUBIC_ACE_KOBRA_S1_LOG_ANALYSIS.md) | ACE Pro on the mainline-Python Kobra S1 fork, from real logs; raw samples in [`kobra-s1-ace-1098/`](kobra-s1-ace-1098/README.md) |
 | [BTT_K_TOUCH_HARDWARE.md](BTT_K_TOUCH_HARDWARE.md) | K-Touch (ESP32-S3) hardware recon and stock firmware layout |

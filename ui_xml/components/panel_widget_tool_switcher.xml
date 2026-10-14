@@ -1,14 +1,5 @@
 <?xml version="1.0"?>
 <component name="panel_widget_tool_switcher">
-  <api>
-    <!-- Per-instance subject names, supplied by the widget at creation. They
-         must exist before this component is parsed: a binding whose subject is
-         missing at parse time is dropped permanently and silently. -->
-    <prop name="tile_icon_subject" type="string" default=""/>
-    <prop name="tile_label_subject" type="string" default=""/>
-    <prop name="tile_dir_subject" type="string" default=""/>
-    <prop name="tile_target_subject" type="string" default=""/>
-  </api>
   <styles>
     <!-- A Pair stacked along a tall tile. layout="flex" is load-bearing: a
          style carrying flex_flow alone activates no layout. -->

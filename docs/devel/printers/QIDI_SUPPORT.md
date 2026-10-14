@@ -10,13 +10,13 @@ HelixScreen supports the entire QIDI 3-series and 4-series in two distinct modes
 
 If your QIDI is running Klipper + Moonraker -- whether that's stock firmware, [FreeDi](https://github.com/Phil1988/FreeDi), [FreeQIDI](https://github.com/Phil1988/FreeQIDI), or another community stack -- HelixScreen can control it remotely from a separate touchscreen device. The printer's local display (TJC HMI or otherwise) is irrelevant in this mode; HelixScreen talks to Moonraker over WebSocket on port 7125 the same way Mainsail or Fluidd does.
 
-All seven QIDI models in the printer database (X-Smart 3, X-Plus 3, X-Max 3, Q1 Pro, Plus 4, Q2, Max 4) are auto-detected as remote targets. Just point HelixScreen at the printer's hostname or IP and the correct profile loads automatically.
+All eight QIDI models in the printer database (X-Smart 3, X-Plus 3, X-Max 3, Q1 Pro, Plus 4, Q2, Max 4, Plus 5) are auto-detected as remote targets. Just point HelixScreen at the printer's hostname or IP and the correct profile loads automatically.
 
 **On-device install (replace the built-in UI)**
 
 This mode requires a Linux framebuffer display. Most older QIDI models use TJC HMI displays (the Chinese Nextion OEM) connected over serial UART -- standalone MCU-driven screens that HelixScreen cannot drive without a physical screen swap. FreeDi targets that serial display from the mainboard side with its own firmware; HelixScreen can't.
 
-Of the newer models, **Q2** and **Max 4** ship with Linux framebuffer displays and can run HelixScreen directly on the printer.
+Of the newer models, **Q2**, **Max 4** and **Plus 5** ship with Linux framebuffer displays and can run HelixScreen directly on the printer.
 
 ## Display Compatibility
 
@@ -40,14 +40,15 @@ The only way to run HelixScreen on-device on a Plus 4 or 3-series printer is to 
 QIDI uses two generations of mainboard:
 
 - **Older models (X-Smart 3, X-Plus 3, X-Max 3, Q1 Pro, Plus 4):** MKSPI boards with Rockchip RK3328, ARM Cortex-A53 (aarch64), 1 GB RAM. These all use TJC HMI serial displays.
-- **Newer models (Q2, Max 4):** New-generation boards with quad-core ARM Cortex-A35 (aarch64), ~498 MB RAM. Both drive Linux framebuffer displays from the SoC.
+- **Newer models (Q2, Max 4, Plus 5):** New-generation boards with a quad-core ARM Cortex-A35 (aarch64, Rockchip RK3308 on the Plus 5), ~498 MB RAM. All drive Linux framebuffer displays from the SoC.
 
-"On-device" below means whether HelixScreen can replace the printer's built-in display. **All seven models work as remote targets regardless of this column.**
+"On-device" below means whether HelixScreen can replace the printer's built-in display. **All eight models work as remote targets regardless of this column.**
 
 | Model | Display Type | Resolution | On-Device Install? | Notes |
 |-------|-------------|------------|--------------------|-------|
 | Max 4 | Linux framebuffer (5" capacitive) | 800x480 | **Yes** (community-tested) | Same new-gen mainboard as Q2, with a larger framebuffer display. QIDI Box eject is unverified on hardware ([#1067](https://github.com/prestonbrown/helixscreen/issues/1067)). |
 | Q2 | Linux framebuffer (4.3" IPS capacitive) | 480x272 | **Yes** (confirmed) | Goodix touch controller. User-confirmed working install. WiFi requires wpa_supplicant backend (see below). |
+| Plus 5 | Linux framebuffer (sideways 480x800 portrait panel) | 480x800 | **Yes** (community-tested) | Same new-gen board as the Q2/Max 4 (STM32F407 main MCU). The panel is a portrait 480x800 mounted sideways; HelixScreen rotates it to landscape (set by the preset). RK3308 host with no virtual terminals, so the stock QIDI LVGL app (`qidi-client`) is the on-device UI replaced here. Compatible with the QIDI Box. |
 | Plus 4 | TJC HMI (serial) | 800x480 | **No** | Panel identified: `TJC8048X250_011C_I_Z03`, firmware V1.65, CST3240 touch, driven by `xindi` daemon over `/dev/ttyS1 @ 115200`. Requires screen replacement. Auto-detected as remote target. |
 | Q1 Pro | TJC HMI (serial) | 480x272 | **No** | Requires screen replacement. TJC model TJC4827X243_011. Auto-detected as remote target. |
 | X-Max 3 | TJC HMI (serial) | 800x480 | **No** | Requires screen replacement (HDMI/DSI touchscreen). Auto-detected as remote target. |
