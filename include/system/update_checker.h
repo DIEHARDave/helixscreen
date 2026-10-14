@@ -675,6 +675,11 @@ class UpdateChecker {
      */
     void report_result(Status status, std::optional<ReleaseInfo> info, const std::string& error);
 
+    /// Report what a check that fetched @p info concludes for a build at @p current_version:
+    /// available, a downgrade, up to date, or an Error carrying the release when it has
+    /// no build for this board.
+    void report_fetched_release(ReleaseInfo info, const std::string& current_version);
+
     /// Last hop of sync_moonraker_channel(): restart Moonraker unless a job holds the
     /// machine or update_manager is busy. @p gen is the sync's moonraker_sync_generation_.
     void restart_moonraker_for_channel(helix::IMoonrakerAPI& api, uint64_t gen);

@@ -103,4 +103,10 @@ class UpdateCheckerTestAccess {
                               const std::string& error = "") {
         c.report_result(status, std::move(info), error);
     }
+
+    /// The worker's mapping from a fetched release to the reported result.
+    static void report_fetched_release(UpdateChecker& c, UpdateChecker::ReleaseInfo info,
+                                       const std::string& current_version) {
+        c.report_fetched_release(std::move(info), current_version);
+    }
 };

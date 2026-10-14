@@ -374,7 +374,9 @@ TEST_CASE("a Creator 5 Pro is refused a release with no mips asset on the main t
         helix::platform::release_asset_keys("mips", helix::board::current())));
     REQUIRE(release.download_url.empty());
 
-    UpdateCheckerTestAccess::report_result(checker, UpdateChecker::Status::Error, release);
+    // The worker's own mapping, not a hand-built report: a regression that drops the
+    // release from the Error would leave the row reading a bare diagnostic.
+    UpdateCheckerTestAccess::report_fetched_release(checker, release, "1.0.4");
     helix::ui::UpdateQueue::instance().drain();
 
     CHECK(lv_subject_get_int(checker.status_subject()) ==

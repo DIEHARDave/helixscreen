@@ -2952,30 +2952,7 @@ void UpdateChecker::do_check() {
         std::string current_version = HELIX_VERSION;
         spdlog::debug("[UpdateChecker] Current: {}, Latest: {}", current_version, info.version);
 
-        const auto outcome = helix::decide_check_outcome(current_version, info);
-        info.is_downgrade = outcome.is_downgrade;
-        switch (outcome.status) {
-        case Status::UpdateAvailable:
-            spdlog::info("[UpdateChecker] {}: {} -> {}",
-                         info.is_downgrade ? "Channel is behind (downgrade offered)"
-                                           : "Update available",
-                         current_version, info.version);
-            report_result(Status::UpdateAvailable, info, "");
-            break;
-        case Status::Error:
-            // The user-visible text is composed on the main thread; this one is the
-            // untranslated diagnostic that lands in logs and bundles.
-            spdlog::warn("[UpdateChecker] Release {} has no build for {}", info.version,
-                         describe_asset_keys(this_build_release_asset_keys()));
-            report_result(Status::Error, info,
-                          "no build for " + this_board_display_name() + " in v" + info.version);
-            break;
-        default:
-            spdlog::info("[UpdateChecker] Already up to date ({})", current_version);
-            // Pass info even for UpToDate so callbacks (e.g., --release-notes) can access it
-            report_result(Status::UpToDate, info, "");
-            break;
-        }
+        report_fetched_release(std::move(info), current_version);
 
         spdlog::debug("[UpdateChecker] Worker thread finished");
     } catch (const std::exception& e) {
@@ -3745,6 +3722,33 @@ bool UpdateChecker::fetch_dev_release(ReleaseInfo& info, std::string& error) {
 
     // No explicit dev_url -- use R2 default
     return fetch_r2_manifest("dev", info, error);
+}
+
+void UpdateChecker::report_fetched_release(ReleaseInfo info, const std::string& current_version) {
+    const auto outcome = helix::decide_check_outcome(current_version, info);
+    info.is_downgrade = outcome.is_downgrade;
+    switch (outcome.status) {
+    case Status::UpdateAvailable:
+        spdlog::info("[UpdateChecker] {}: {} -> {}",
+                     info.is_downgrade ? "Channel is behind (downgrade offered)"
+                                       : "Update available",
+                     current_version, info.version);
+        report_result(Status::UpdateAvailable, info, "");
+        break;
+    case Status::Error:
+        // The user-visible text is composed on the main thread; this one is the
+        // untranslated diagnostic that lands in logs and bundles.
+        spdlog::warn("[UpdateChecker] Release {} has no build for {}", info.version,
+                     describe_asset_keys(this_build_release_asset_keys()));
+        report_result(Status::Error, info,
+                      "no build for " + this_board_display_name() + " in v" + info.version);
+        break;
+    default:
+        spdlog::info("[UpdateChecker] Already up to date ({})", current_version);
+        // Pass info even for UpToDate so callbacks (e.g., --release-notes) can access it
+        report_result(Status::UpToDate, info, "");
+        break;
+    }
 }
 
 void UpdateChecker::report_result(Status status, std::optional<ReleaseInfo> info,
