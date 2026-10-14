@@ -14,10 +14,13 @@
  * passes over both.
  */
 
+#include "ui_panel_home.h"
 #include "ui_update_queue.h"
 
 #include "../lvgl_ui_test_fixture.h"
+#include "../test_helpers/breadcrumb_capture.h"
 #include "../test_helpers/config_test_access.h"
+#include "../test_helpers/home_panel_test_access.h"
 #include "../test_helpers/panel_widget_size_harness.h"
 #include "../test_helpers/scope_exit.h"
 #include "../test_helpers/scoped_config_write_counter.h"
@@ -29,6 +32,7 @@
 #include "connection_state.h"
 #include "data_root_resolver.h"
 #include "default_layout_resolver.h"
+#include "grid_edit_mode.h"
 #include "grid_layout.h"
 #include "helix-xml/src/xml/lv_xml.h"
 #include "panel_widget_config.h"
@@ -1034,4 +1038,133 @@ TEST_CASE_METHOD(LiveDefaultFixture,
     CHECK(config(panel).grid_signature() == "12x8");
     CHECK(config(panel).is_unedited_default());
     check_ams_slot(panel);
+}
+
+TEST_CASE_METHOD(LiveDefaultFixture,
+                 "live default: the first READY populate lays out what it resolves",
+                 "[live_default]") {
+    // The config loads before the AMS is known; the populate that applies the
+    // pending default resolves with it and must build the tiles of that
+    // resolution, not of the one load built.
+    use_geometry(kMedium12x8);
+    require_font_tokens_distinct();
+    pin_capabilities(0);
+    ScopedConfigWriteCounter writes;
+    const std::string panel = fresh_panel("live_default_first_ready");
+    REQUIRE(config(panel).has_pending_anchors());
+    REQUIRE_FALSE(entry(panel, "ams")->enabled);
+    REQUIRE(entry(panel, "filament")->enabled);
+
+    set("ams_slot_count", 4);
+    populate(panel);
+    CHECK_FALSE(config(panel).has_pending_anchors());
+    check_ams_slot(panel);
+}
+
+TEST_CASE_METHOD(LiveDefaultFixture,
+                 "live default: a populate while Klipper starts leaves the default live",
+                 "[live_default]") {
+    use_geometry(kMedium12x8);
+    pin_capabilities(0);
+    ScopedConfigWriteCounter writes;
+    const std::string panel = fresh_panel("live_default_starting");
+    populate(panel);
+    REQUIRE(config(panel).is_unedited_default());
+    const auto resolved = config(panel).page_entries(0);
+
+    // Resolution waits for READY, so the 12x8 arrangement is placed onto a
+    // grid half its width that it does not describe. What placement takes
+    // away to fit is not an edit.
+    set("klippy_state", kStartup);
+    container_ = make_container(kMedium12x8.content_w / 2, kMedium12x8.content_h);
+    populate(panel);
+    REQUIRE(config(panel).grid_signature() == "12x8");
+    REQUIRE_FALSE(config(panel).page_entries(0) == resolved);
+    CHECK(config(panel).is_unedited_default());
+
+    set("klippy_state", kReady);
+    container_ = make_container(kMedium12x8.content_w / 2, kMedium12x8.content_h);
+    populate(panel);
+    CHECK(config(panel).grid_signature() != "12x8");
+    CHECK(config(panel).is_unedited_default());
+    CHECK_FALSE(config(panel).default_signature().empty());
+    check_none_enabled_unplaced(panel);
+}
+
+TEST_CASE_METHOD(LiveDefaultFixture,
+                 "live default: the home panel's gate rebuild lays out a rearranged default",
+                 "[live_default]") {
+    use_geometry(kMedium12x8);
+    require_font_tokens_distinct();
+    pin_capabilities(0);
+    ScopedConfigWriteCounter writes;
+    const std::string panel = fresh_panel("home");
+    HomePanel& home = get_global_home_panel();
+    HomePanelTestAccess::set_single_page_container(home, container_);
+    helix::test::ScopeExit detach([&home] {
+        PanelWidgetManager::clear_gate_observers("home");
+        HomePanelTestAccess::clear_page_containers(home);
+    });
+    HomePanelTestAccess::populate(home);
+    run_rebuild();
+    check_env_fil_slot(panel);
+
+    // The AMS tile is off and the slot's other widgets keep their gates, so
+    // the visible widget list does not change: only the layout does.
+    HomePanelTestAccess::setup_gate_observers(home);
+    run_rebuild();
+    set("ams_slot_count", 4);
+    run_rebuild();
+    check_ams_slot(panel);
+}
+
+TEST_CASE_METHOD(LiveDefaultFixture,
+                 "live default: grid edit mode holds the arrangement for its session",
+                 "[live_default][grid_edit]") {
+    use_geometry(kMedium12x8);
+    pin_capabilities(0);
+    ScopedConfigWriteCounter writes;
+    const std::string panel = fresh_panel("live_default_grid_edit_mode");
+    populate(panel);
+    REQUIRE(config(panel).is_unedited_default());
+    auto& mgr = PanelWidgetManager::instance();
+
+    helix::GridEditMode edit;
+    REQUIRE(edit.enter(container_, &config(panel), 0));
+    set("ams_slot_count", 4);
+    CHECK_FALSE(mgr.refresh_live_default(panel));
+    CHECK_FALSE(entry(panel, "ams")->enabled);
+    edit.exit();
+
+    CHECK(config(panel).is_unedited_default());
+    CHECK(mgr.refresh_live_default(panel));
+    CHECK(entry(panel, "ams")->enabled);
+    CHECK_FALSE(entry(panel, "filament")->enabled);
+}
+
+TEST_CASE_METHOD(LiveDefaultFixture,
+                 "live default: a gate observer names its gate in the crash breadcrumbs",
+                 "[live_default]") {
+    use_geometry(kMedium12x8);
+    pin_capabilities(0);
+    const std::string panel = fresh_panel("live_default_gate_crumb");
+    populate(panel);
+    GateObserverScope scope{panel};
+    observe_gates(panel);
+
+    // The observer outlives the list of names it was registered from.
+    for (int i = 0; i < 256; ++i) {
+        crash_handler::breadcrumb::note("drain", "drain");
+    }
+    set("filament_sensor_count", 3);
+    helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
+
+    const auto lines = helix::capture_breadcrumb_lines();
+    const bool named = std::any_of(lines.begin(), lines.end(), [](const std::string& line) {
+        return line.find(" gate ") != std::string::npos &&
+               line.find("filament_sensor_count 3") != std::string::npos;
+    });
+    INFO("last crumb: " << (lines.empty() ? std::string{} : lines.back()));
+    CHECK(named);
+    run_rebuild();
 }

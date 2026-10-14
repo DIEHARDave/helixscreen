@@ -1168,6 +1168,43 @@ TEST_CASE_METHOD(PanelWidgetConfigFixture,
 }
 
 TEST_CASE_METHOD(PanelWidgetConfigFixture,
+                 "PanelWidgetConfig: a flat array replaced by the defaults is a live default",
+                 "[panel_widget][widget_config][migration][panel_widget_config]") {
+    // Whatever the old array held is gone, so the arrangement is the builder's
+    // own and waits for a measured grid like any fresh default.
+    SECTION("pre-grid entries") {
+        setup_with_widgets(json::array({
+            {{"id", "temperature"}, {"enabled", true}},
+            {{"id", "network"}, {"enabled", true}},
+        }));
+    }
+    SECTION("an empty array") {
+        setup_with_widgets(json::array());
+    }
+
+    PanelWidgetConfig wc("home", config);
+    wc.load();
+    CHECK(wc.is_unedited_default());
+    CHECK(wc.has_pending_anchors());
+    const json saved = get_printer_data()["panel_widgets"]["home"];
+    REQUIRE(saved.is_object());
+    CHECK(saved.contains("default"));
+}
+
+TEST_CASE_METHOD(PanelWidgetConfigFixture,
+                 "PanelWidgetConfig: a flat array with grid positions is the user's",
+                 "[panel_widget][widget_config][migration][panel_widget_config]") {
+    setup_with_widgets(json::array({
+        {{"id", "temperature"}, {"enabled", true}, {"col", 0}, {"row", 0}},
+    }));
+
+    PanelWidgetConfig wc("home", config);
+    wc.load();
+    CHECK_FALSE(wc.is_unedited_default());
+    CHECK_FALSE(wc.has_pending_anchors());
+}
+
+TEST_CASE_METHOD(PanelWidgetConfigFixture,
                  "PanelWidgetConfig: migration does not trigger for non-home panels",
                  "[panel_widget][widget_config][migration]") {
     // Set up legacy home_widgets

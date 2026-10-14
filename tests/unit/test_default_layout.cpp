@@ -1578,6 +1578,69 @@ TEST_CASE("default_layout: the same anchor fits a grid that is big enough",
     CHECK(ps->row == 0);
 }
 
+TEST_CASE("default_layout: a widget the table chose stays on when its anchor does not fit",
+          "[default_layout][grid_key]") {
+    // clock is off in the registry, so only the table's choice keeps it on
+    // once its anchor is dropped for auto-placement.
+    const auto* clock_def = helix::find_widget_def("clock");
+    REQUIRE(clock_def);
+    REQUIRE_FALSE(clock_def->default_enabled);
+
+    TempCwdGuard guard;
+    guard.write_layout(R"({
+        "anchors": [
+            { "id": "printer_image",
+              "placements": { "tiny": { "col": 0, "row": 0, "colspan": 4, "rowspan": 4 } } },
+            { "id": "clock",
+              "placements": { "tiny": { "col": 8, "row": 0, "colspan": 4, "rowspan": 2 } } }
+        ]
+    })");
+
+    SECTION("unseated on a grid too narrow") {
+        auto entries = PanelWidgetConfig::build_default_grid(6, 14);
+        auto* clock = find_entry(entries, "clock");
+        REQUIRE(clock);
+        CHECK(clock->enabled);
+        CHECK_FALSE(clock->has_grid_position());
+    }
+    SECTION("seated where it fits") {
+        auto entries = PanelWidgetConfig::build_default_grid(12, 24);
+        auto* clock = find_entry(entries, "clock");
+        REQUIRE(clock);
+        CHECK(clock->enabled);
+        CHECK(clock->col == 8);
+    }
+}
+
+TEST_CASE("default_layout: an AMS printer keeps the filament widget the table anchors",
+          "[default_layout]") {
+    // Whether the spool tile is the AMS or the filament sensor is the table's
+    // decision (a slot); nothing outside it swaps one for the other.
+    TempCwdGuard guard;
+    guard.write_layout(R"({
+        "anchors": [
+            { "id": "printer_image",
+              "placements": { "tiny": { "col": 0, "row": 0, "colspan": 4, "rowspan": 4 } } },
+            { "id": "filament",
+              "placements": { "tiny": { "col": 4, "row": 0, "colspan": 2, "rowspan": 2 } } }
+        ]
+    })");
+    AmsSubjectGuard ams(4);
+
+    auto entries = PanelWidgetConfig::build_default_grid();
+    auto* fil = find_entry(entries, "filament");
+    REQUIRE(fil);
+    CHECK(fil->enabled);
+    CHECK(fil->col == 4);
+    CHECK(fil->row == 0);
+
+    const auto* ams_def = helix::find_widget_def("ams");
+    REQUIRE(ams_def);
+    auto* a = find_entry(entries, "ams");
+    REQUIRE(a);
+    CHECK(a->enabled == ams_def->default_enabled);
+}
+
 TEST_CASE("default_layout: every grid-qualified table fits the grid it names",
           "[default_layout][shipped][grid_key]") {
     // A grid-qualified key states the track grid it was authored for, so it
@@ -2182,6 +2245,40 @@ TEST_CASE("default_layout: every shipped slot cell fills with every gate closed"
         }
     }
     CHECK(regions > 0);
+}
+
+TEST_CASE("default_layout: the shipped table repeats no key within an object",
+          "[default_layout][shipped]") {
+    // The parser keeps the last of two equal keys, so a repeated tier silently
+    // discards the placement written first.
+    std::ifstream in(helix::find_readable("default_layout.json"));
+    REQUIRE(in.is_open());
+    const std::string text((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+
+    std::vector<std::set<std::string>> open_objects;
+    std::vector<std::string> repeated;
+    const auto table = nlohmann::json::parse(
+        text, [&](int /*depth*/, nlohmann::json::parse_event_t event, nlohmann::json& parsed) {
+            switch (event) {
+            case nlohmann::json::parse_event_t::object_start:
+                open_objects.emplace_back();
+                break;
+            case nlohmann::json::parse_event_t::object_end:
+                open_objects.pop_back();
+                break;
+            case nlohmann::json::parse_event_t::key:
+                if (!open_objects.back().insert(parsed.get<std::string>()).second) {
+                    repeated.push_back(parsed.get<std::string>());
+                }
+                break;
+            default:
+                break;
+            }
+            return true;
+        });
+    REQUIRE(table.is_object());
+    INFO("repeated keys: " << nlohmann::json(repeated).dump());
+    CHECK(repeated.empty());
 }
 
 TEST_CASE("default_layout: no shipped table names toolhead, host_health or exclude_map",
