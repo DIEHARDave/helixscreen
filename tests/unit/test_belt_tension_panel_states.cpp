@@ -2070,3 +2070,63 @@ TEST_CASE("RESULTS on ultrawide keeps both Re-test buttons in the sidebar",
               lv_obj_get_content_width(named_in(fx, "overlay_content")));
     }
 }
+
+// ============================================================================
+// Portrait: width is scarce, height is spare
+// ============================================================================
+
+namespace {
+
+int32_t chart_max_h_token() {
+    const char* v = lv_xml_get_const(nullptr, "belt_chart_max_h");
+    REQUIRE(v != nullptr);
+    return std::atoi(v);
+}
+
+} // namespace
+
+TEST_CASE("portrait gives the primary action its own line and caps the chart",
+          "[belt][panel][portrait]") {
+    BeltPanelFixture fx;
+    ScopedLayoutSubject bp("ui_breakpoint", BP_MEDIUM);
+    ScopedLayoutSubject portrait("ui_is_portrait", 1);
+    ScopedLayoutSubject ultrawide("ui_is_ultrawide", 0);
+    enter_results_with_menu(fx);
+
+    lv_obj_update_layout(fx.view());
+    lv_obj_t* tune = named_in(fx, "btn_tune");
+    lv_obj_t* both = named_in(fx, "btn_test_both");
+    CHECK(lv_obj_get_y(tune) > lv_obj_get_y(both));
+    CHECK(lv_obj_get_width(tune) > lv_obj_get_width(both));
+    CHECK(lv_obj_get_style_max_height(named_in(fx, "chart_host_results"), LV_PART_MAIN) ==
+          chart_max_h_token());
+
+    SECTION("landscape keeps one row and an uncapped chart") {
+        portrait.set(0);
+        lv_obj_update_layout(fx.view());
+        CHECK(lv_obj_get_y(tune) == lv_obj_get_y(both));
+        CHECK(lv_obj_get_style_max_height(named_in(fx, "chart_host_results"), LV_PART_MAIN) !=
+              chart_max_h_token());
+    }
+}
+
+TEST_CASE("portrait START stacks the sketch over the text", "[belt][panel][portrait]") {
+    BeltPanelFixture fx;
+    ScopedLayoutSubject bp("ui_breakpoint", BP_MEDIUM);
+    ScopedLayoutSubject portrait("ui_is_portrait", 1);
+    ScopedLayoutSubject ultrawide("ui_is_ultrawide", 0);
+    REQUIRE(fx.state_int("belt_tension_state") ==
+            static_cast<int>(BeltTensionPanel::ViewState::START));
+
+    lv_obj_update_layout(fx.view());
+    lv_obj_t* sketch = named_in(fx, "bt_sketch");
+    lv_obj_t* text = named_in(fx, "bt_start_text");
+    CHECK(lv_obj_get_y(text) > lv_obj_get_y(sketch));
+    CHECK(lv_obj_get_x(text) == lv_obj_get_x(sketch));
+
+    SECTION("landscape puts them side by side") {
+        portrait.set(0);
+        lv_obj_update_layout(fx.view());
+        CHECK(lv_obj_get_x(text) > lv_obj_get_x(sketch));
+    }
+}

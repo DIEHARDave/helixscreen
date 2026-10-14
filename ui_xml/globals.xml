@@ -422,6 +422,15 @@
     <px name="belt_sidebar_w_large" value="800"/>
     <px name="belt_sidebar_w_xlarge" value="960"/>
     <px name="belt_sidebar_w_xxlarge" value="1280"/>
+    <!-- belt_chart_max_h: in portrait the Belt Tension chart grows into the
+         spare height only up to about its own width. Portrait tiers follow the
+         screen width, so each value sits a little under that tier's content
+         width. -->
+    <px name="belt_chart_max_h_small" value="400"/>
+    <px name="belt_chart_max_h_medium" value="440"/>
+    <px name="belt_chart_max_h_large" value="560"/>
+    <px name="belt_chart_max_h_xlarge" value="680"/>
+    <px name="belt_chart_max_h_xxlarge" value="960"/>
 
     <!-- Spinner arc widths - proportional to size -->
     <px name="spinner_arc_lg_small" value="3"/>

@@ -30,6 +30,21 @@
     <style name="bt_grow" flex_grow="1"/>
     <style name="bt_cross_end" flex_cross_place="end"/>
     <style name="bt_main_end" flex_main_place="end"/>
+    <!-- Portrait: the chart stops at about its width, so a tall screen leaves -->
+    <!-- space under the controls instead of a chart taller than it is wide. -->
+    <style name="bt_chart_cap" max_height="#belt_chart_max_h"/>
+    <!-- Portrait START stacks: the sketch on top takes the spare height, the text under it -->
+    <style name="bt_w40" width="40%"/>
+    <style name="bt_full_w_grow" width="100%" flex_grow="1"/>
+    <style name="bt_start_text_row" height="100%" flex_grow="1"/>
+    <style name="bt_start_text_side" width="#belt_sidebar_w" height="100%"/>
+    <style name="bt_start_text_col" width="100%" height="content" flex_grow="0"/>
+    <!-- Portrait: a button row wraps, and the button given bt_own_line takes -->
+    <!-- a line of its own, so the rest keep room for their labels -->
+    <style name="bt_flow_row_wrap" layout="flex" flex_flow="row_wrap"/>
+    <style name="bt_w0_grow" width="0" flex_grow="1"/>
+    <style name="bt_content_w" width="content"/>
+    <style name="bt_own_line" width="100%" flex_grow="0" flex_main_place="center"/>
     <style name="bt_grow_main_end" flex_grow="1" flex_main_place="end"/>
   </styles>
   <view name="panel_belt_tension"
@@ -140,15 +155,19 @@
           <bind_flag_if_not_eq subject="belt_tension_state" flag="hidden" ref_value="0"/>
           <!-- Ultrawide: the sketch grows on the left; the text and Start keep the sidebar's width -->
           <bind_style_if name="bt_cross_end" cond="ui_is_ultrawide eq 1"/>
-          <lv_obj width="100%"
-                  flex_grow="1" style_pad_all="0" flex_flow="row" style_pad_gap="#space_lg" scrollable="false">
-            <belt_path_sketch name="bt_sketch" width="40%" height="100%">
+          <lv_obj width="100%" flex_grow="1" style_pad_all="0" style_pad_gap="#space_lg" scrollable="false">
+            <bind_style_if name="bt_flow_row" cond="ui_is_portrait eq 0"/>
+            <bind_style_if name="bt_flow_column" cond="ui_is_portrait eq 1"/>
+            <belt_path_sketch name="bt_sketch" height="100%">
+              <bind_style_if name="bt_w40" cond="ui_is_portrait eq 0"/>
               <bind_style_if name="bt_grow" cond="ui_is_ultrawide eq 1"/>
+              <bind_style_if name="bt_full_w_grow" cond="ui_is_portrait eq 1"/>
             </belt_path_sketch>
             <lv_obj name="bt_start_text"
-                    height="100%" style_pad_all="0" flex_flow="column" style_pad_gap="#space_xs" scrollable="false">
-              <bind_style_if name="bt_grow" cond="ui_is_ultrawide eq 0"/>
-              <bind_style_if name="bt_side_w" cond="ui_is_ultrawide eq 1"/>
+                    style_pad_all="0" flex_flow="column" style_pad_gap="#space_xs" scrollable="false">
+              <bind_style_if name="bt_start_text_row" cond="ui_is_ultrawide eq 0 and ui_is_portrait eq 0"/>
+              <bind_style_if name="bt_start_text_side" cond="ui_is_ultrawide eq 1"/>
+              <bind_style_if name="bt_start_text_col" cond="ui_is_portrait eq 1"/>
               <lv_obj width="100%"
                       height="content" style_pad_all="0" flex_flow="row" style_flex_cross_place="center"
                       scrollable="false">
@@ -219,6 +238,7 @@
                   width="100%" flex_grow="1" style_pad_all="0" style_radius="#border_radius" style_bg_opa="0"
                   scrollable="false">
             <bind_flag_if cond="bt_chart_available eq 0 or ui_is_ultrawide eq 1" flag="hidden"/>
+            <bind_style_if name="bt_chart_cap" cond="ui_is_portrait eq 1"/>
           </lv_obj>
           <lv_obj width="100%"
                   height="content" style_pad_all="0" flex_flow="row" style_flex_cross_place="center"
@@ -243,6 +263,7 @@
                   width="100%" flex_grow="1" style_pad_all="0" style_radius="#border_radius" style_bg_opa="0"
                   scrollable="false">
             <bind_flag_if cond="bt_chart_available eq 0 or ui_is_ultrawide eq 1" flag="hidden"/>
+            <bind_style_if name="bt_chart_cap" cond="ui_is_portrait eq 1"/>
           </lv_obj>
           <!-- Paired peaks (numbered on the chart), then peaks only one path has -->
           <text_small name="bt_facts_label"
@@ -252,8 +273,10 @@
             <bind_flag_if_eq subject="bt_has_unpaired" flag="hidden" ref_value="0"/>
           </text_small>
           <lv_obj width="100%"
-                  height="content" style_pad_all="0" style_pad_top="#space_xs" flex_flow="row" style_pad_gap="#space_sm"
+                  height="content" style_pad_all="0" style_pad_top="#space_xs" style_pad_gap="#space_sm"
                   scrollable="false">
+            <bind_style_if name="bt_flow_row" cond="ui_is_portrait eq 0"/>
+            <bind_style_if name="bt_flow_row_wrap" cond="ui_is_portrait eq 1"/>
             <ui_button name="btn_retest_a"
                        width="0" height="#button_height" flex_grow="1" icon="refresh" text="Re-test A"
                        variant="secondary">
@@ -280,8 +303,9 @@
               <event_cb trigger="clicked" callback="belt_tension_start_cb"/>
             </ui_button>
             <ui_button name="btn_tune"
-                       width="0" height="#button_height" flex_grow="1" icon="rotate_right" bind_text="bt_tune_cta"
-                       variant="primary">
+                       height="#button_height" icon="rotate_right" bind_text="bt_tune_cta" variant="primary">
+              <bind_style_if name="bt_w0_grow" cond="ui_is_portrait eq 0"/>
+              <bind_style_if name="bt_own_line" cond="ui_is_portrait eq 1"/>
               <event_cb trigger="clicked" callback="belt_tension_tune_cb"/>
             </ui_button>
           </lv_obj>
@@ -460,6 +484,7 @@
                   width="100%" flex_grow="1" style_pad_all="0" style_radius="#border_radius" style_bg_opa="0"
                   scrollable="false">
             <bind_flag_if cond="bt_chart_available eq 0 or ui_is_ultrawide eq 1" flag="hidden"/>
+            <bind_style_if name="bt_chart_cap" cond="ui_is_portrait eq 1"/>
           </lv_obj>
           <!-- One line each: the last turn's outcome, then why the loop may not -->
           <!-- converge (tap for the causes). On ultrawide the strip takes the -->
@@ -487,13 +512,16 @@
             </lv_obj>
           </lv_obj>
           <!-- ADJUST -->
-          <lv_obj width="100%"
-                  height="content" style_pad_all="0" flex_flow="row" style_pad_gap="#space_sm" scrollable="false">
+          <lv_obj width="100%" height="content" style_pad_all="0" style_pad_gap="#space_sm" scrollable="false">
             <bind_flag_if_not_eq subject="bt_tune_phase" flag="hidden" ref_value="0"/>
-            <!-- Compact layouts: the turn stepper moves down here -->
+            <bind_style_if name="bt_flow_row" cond="ui_is_portrait eq 0"/>
+            <bind_style_if name="bt_flow_row_wrap" cond="ui_is_portrait eq 1"/>
+            <!-- Compact layouts: the turn stepper moves down here, on a line of its own in portrait -->
             <lv_obj name="bt_tune_row_stepper"
-                    width="content" height="content" style_pad_all="0" flex_flow="row" style_flex_cross_place="center"
+                    height="content" style_pad_all="0" flex_flow="row" style_flex_cross_place="center"
                     style_pad_gap="#space_xs" scrollable="false">
+              <bind_style_if name="bt_content_w" cond="ui_is_portrait eq 0"/>
+              <bind_style_if name="bt_own_line" cond="ui_is_portrait eq 1"/>
               <bind_flag_if cond="ui_breakpoint gt 2 and ui_is_portrait eq 0 or ui_is_ultrawide eq 1 or bt_tune_kind ne 1 or bt_tune_baseline eq 1"
                             flag="hidden"/>
               <ui_button name="btn_tune_row_less"
@@ -545,9 +573,10 @@
             </ui_button>
           </lv_obj>
           <!-- MATCHED -->
-          <lv_obj width="100%"
-                  height="content" style_pad_all="0" flex_flow="row" style_pad_gap="#space_sm" scrollable="false">
+          <lv_obj width="100%" height="content" style_pad_all="0" style_pad_gap="#space_sm" scrollable="false">
             <bind_flag_if_not_eq subject="bt_tune_phase" flag="hidden" ref_value="2"/>
+            <bind_style_if name="bt_flow_row" cond="ui_is_portrait eq 0"/>
+            <bind_style_if name="bt_flow_row_wrap" cond="ui_is_portrait eq 1"/>
             <ui_button name="btn_tune_keep"
                        width="0" height="#button_height" flex_grow="1" text="Keep tuning" variant="secondary">
               <bind_flag_if_eq subject="bt_tune_has_zone" flag="hidden" ref_value="0"/>
@@ -578,7 +607,9 @@
             </ui_button>
             <!-- Three buttons, or a compact layout: Confirm without its duration -->
             <ui_button name="btn_tune_confirm_short"
-                       width="0" height="#button_height" flex_grow="1" icon="check" text="Confirm" variant="primary">
+                       height="#button_height" icon="check" text="Confirm" variant="primary">
+              <bind_style_if name="bt_w0_grow" cond="ui_is_portrait eq 0"/>
+              <bind_style_if name="bt_own_line" cond="ui_is_portrait eq 1"/>
               <bind_flag_if cond="(ui_breakpoint gt 2 and ui_is_portrait eq 0 or ui_is_ultrawide eq 1) and bt_tune_has_next_zone eq 0"
                             flag="hidden"/>
               <bind_state_if_eq subject="bt_can_start" state="disabled" ref_value="0"/>
