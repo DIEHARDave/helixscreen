@@ -108,6 +108,10 @@ bool LayoutManager::has_override(const std::string& filename) const {
     return !active_variant_dir(filename).empty();
 }
 
+bool is_ultrawide_aspect(int width, int height) {
+    return height > 0 && width * 2 > height * 5;
+}
+
 LayoutType detect_layout_type(int width, int height) {
     float ratio = static_cast<float>(width) / static_cast<float>(height);
     int max_dim = std::max(width, height);
@@ -120,7 +124,7 @@ LayoutType detect_layout_type(int width, int height) {
         }
         return (width >= height) ? LayoutType::TINY : LayoutType::TINY_PORTRAIT;
     }
-    if (ratio > 2.5f) {
+    if (is_ultrawide_aspect(width, height)) {
         return LayoutType::ULTRAWIDE;
     }
     if (ratio < 0.8f) {

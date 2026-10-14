@@ -27,6 +27,11 @@ enum class LayoutType {
 /// threshold that sizes overlays from ever disagreeing.
 LayoutType detect_layout_type(int width, int height);
 
+/// The ultrawide test: wider than 2.5:1. detect_layout_type() applies it after
+/// the micro/tiny classes; callers that size things from raw dimensions before
+/// LayoutManager exists apply it through here too, so the threshold has one home.
+bool is_ultrawide_aspect(int width, int height);
+
 /// True for every portrait class, i.e. every geometry whose navigation bar is
 /// the horizontal bottom strip ui_xml/navigation_bar.xml builds when
 /// ui_is_portrait is 1.

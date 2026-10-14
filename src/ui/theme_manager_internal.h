@@ -142,6 +142,11 @@ struct ThemeSubjects {
     lv_subject_t is_portrait{};
     bool is_portrait_ready = false;
 
+    /// 1 for the ultrawide class (wider than 2.5:1), 0 otherwise. Its tier
+    /// follows the short axis, so ui_breakpoint calls a 1920x440 panel small.
+    lv_subject_t is_ultrawide{};
+    bool is_ultrawide_ready = false;
+
     /// Theme-editor swatch descriptions, bound by name from XML.
     lv_subject_t swatch_desc[kSwatchCount]{};
     char swatch_bufs[kSwatchCount][kSwatchBufSize]{};

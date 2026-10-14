@@ -84,6 +84,7 @@ void ThemeSubjects::deinit() {
     drop(breakpoint, breakpoint_ready);
     drop(breakpoint_v, breakpoint_v_ready);
     drop(is_portrait, is_portrait_ready);
+    drop(is_ultrawide, is_ultrawide_ready);
     if (swatch_ready) {
         for (auto& subject : swatch_desc) {
             lv_subject_deinit(&subject);
@@ -279,12 +280,16 @@ void theme_manager_init(lv_display_t* display, bool use_dark_mode_param) {
     {
         int32_t hor_res = lv_display_get_horizontal_resolution(display);
         int32_t ver_res = lv_display_get_vertical_resolution(display);
-        int is_portrait = is_portrait_layout(detect_layout_type(hor_res, ver_res)) ? 1 : 0;
+        const LayoutType type = detect_layout_type(hor_res, ver_res);
+        int is_portrait = is_portrait_layout(type) ? 1 : 0;
+        int is_ultrawide = type == LayoutType::ULTRAWIDE ? 1 : 0;
 
         publish_int_subject(subjects().is_portrait, subjects().is_portrait_ready, is_portrait,
                             "ui_is_portrait");
-        spdlog::debug("[Theme] Registered ui_is_portrait subject: {} ({}x{})", is_portrait, hor_res,
-                      ver_res);
+        publish_int_subject(subjects().is_ultrawide, subjects().is_ultrawide_ready, is_ultrawide,
+                            "ui_is_ultrawide");
+        spdlog::debug("[Theme] Registered ui_is_portrait/ui_is_ultrawide subjects: {}/{} ({}x{})",
+                      is_portrait, is_ultrawide, hor_res, ver_res);
     }
 
     // Validate critical color pairs were registered (fail-fast if missing)

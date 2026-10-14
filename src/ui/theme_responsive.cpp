@@ -376,26 +376,30 @@ void theme_manager_refresh_orientation(lv_display_t* display) {
     // STANDARD; detect_layout_type() gives the right physical answer, using the
     // caller's display when provided so a non-default display (tests, a
     // specific refresh target) is not confused with the default. See #1255.
+    // ui_is_ultrawide follows the same source for the same reason.
     lv_subject_t* portrait_subject = lv_xml_get_subject(nullptr, "ui_is_portrait");
-    if (!portrait_subject) {
+    lv_subject_t* ultrawide_subject = lv_xml_get_subject(nullptr, "ui_is_ultrawide");
+    if (!portrait_subject && !ultrawide_subject) {
         return;
     }
 
-    int is_portrait;
+    LayoutType type;
     if (LayoutManager::instance().is_initialized()) {
-        is_portrait = is_portrait_layout(LayoutManager::instance().type()) ? 1 : 0;
+        type = LayoutManager::instance().type();
     } else {
         lv_display_t* disp = display ? display : lv_display_get_default();
         if (!disp) {
             return;
         }
-        is_portrait =
-            is_portrait_layout(detect_layout_type(lv_display_get_horizontal_resolution(disp),
-                                                  lv_display_get_vertical_resolution(disp)))
-                ? 1
-                : 0;
+        type = detect_layout_type(lv_display_get_horizontal_resolution(disp),
+                                  lv_display_get_vertical_resolution(disp));
     }
-    lv_subject_set_int(portrait_subject, is_portrait);
+    if (portrait_subject) {
+        lv_subject_set_int(portrait_subject, is_portrait_layout(type) ? 1 : 0);
+    }
+    if (ultrawide_subject) {
+        lv_subject_set_int(ultrawide_subject, type == LayoutType::ULTRAWIDE ? 1 : 0);
+    }
 }
 
 void theme_manager_refresh_layout_constants(lv_display_t* display) {

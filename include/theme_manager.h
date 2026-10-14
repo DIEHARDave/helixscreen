@@ -483,10 +483,10 @@ void theme_manager_register_responsive_spacing(lv_display_t* display);
 void theme_manager_refresh_layout_constants(lv_display_t* display);
 
 /**
- * @brief Republish the ui_is_portrait subject from the override-aware source.
+ * @brief Republish ui_is_portrait and ui_is_ultrawide from the override-aware source.
  *
- * ui_is_portrait must follow LayoutManager::type() so a --layout override and
- * the XML that branches on it agree. LayoutManager isn't constructed until
+ * Both must follow LayoutManager::type() so a --layout override and the XML
+ * that branches on them agree. LayoutManager isn't constructed until
  * Phase 8b, so the startup seed (theme_manager_init) still uses
  * detect_layout_type(); once LayoutManager is up, call this to publish the
  * override-aware value. theme_manager_refresh_layout_constants() also calls it
