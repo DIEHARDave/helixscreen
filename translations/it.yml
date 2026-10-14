@@ -734,6 +734,7 @@ translations:
   Configured hardware no longer present: 'L''hardware configurato non è più presente'
   Configured in the backup-spool package, not from here: Si configura nel plugin della bobina di riserva, non da qui
   Configuring Moonraker...: Configurazione Moonraker...
+  Confirm: Conferma
   Confirm (full, ~{} min): "Conferma (completo, ~{} min)"
   Confirm PIN: Conferma PIN
   Confirm before running macros: Conferma prima di eseguire le macro
@@ -1752,7 +1753,7 @@ translations:
 
   Keep its own data on this screen (up to 256 KB).: 'Conserva i propri dati su questo schermo (fino a 256 KB).'
   Keep the bypass spool visible when bypass is off: Mantieni visibile la bobina di bypass quando il bypass è disabilitato
-  Keep tuning: "Continua a regolare"
+  Keep tuning: Continua
   Kick away: 'Espelli'
   Kinematics: Cinematica
   Klipper: Klipper
@@ -2688,6 +2689,7 @@ translations:
   Re-seat the Bowden tube connector on the CFS unit: Reinserire il connettore del tubo Bowden sull'unità CFS
   Re-syncs Happy Hare's tracked state with the hardware.: Risincronizza lo stato tracciato
     di Happy Hare con l'hardware.
+  Re-test: Ritesta
   Re-test A: Ritesta A
   Re-test B: Ritesta B
   Readings from extra temperature sensors: Letture dai sensori di temperatura extra

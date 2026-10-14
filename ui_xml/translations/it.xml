@@ -662,6 +662,7 @@
   <translation tag="Configured hardware no longer present" it="L&apos;hardware configurato non è più presente"/>
   <translation tag="Configured in the backup-spool package, not from here" it="Si configura nel plugin della bobina di riserva, non da qui"/>
   <translation tag="Configuring Moonraker..." it="Configurazione Moonraker..."/>
+  <translation tag="Confirm" it="Conferma"/>
   <translation tag="Confirm (full, ~{} min)" it="Conferma (completo, ~{} min)"/>
   <translation tag="Confirm PIN" it="Conferma PIN"/>
   <translation tag="Confirm before running macros" it="Conferma prima di eseguire le macro"/>
@@ -1585,7 +1586,7 @@
   <translation tag="Keep hands clear. The printer moves on its own." it="Tenere le mani lontane. La stampante si muove da sola."/>
   <translation tag="Keep its own data on this screen (up to 256 KB)." it="Conserva i propri dati su questo schermo (fino a 256 KB)."/>
   <translation tag="Keep the bypass spool visible when bypass is off" it="Mantieni visibile la bobina di bypass quando il bypass è disabilitato"/>
-  <translation tag="Keep tuning" it="Continua a regolare"/>
+  <translation tag="Keep tuning" it="Continua"/>
   <translation tag="Kick away" it="Espelli"/>
   <translation tag="Kinematics" it="Cinematica"/>
   <translation tag="Klipper" it="Klipper"/>
@@ -2441,6 +2442,7 @@
   <translation tag="Re-read spool RFID tags and remaining length" it="Rileggi i tag RFID delle bobine e la lunghezza rimanente"/>
   <translation tag="Re-seat the Bowden tube connector on the CFS unit" it="Reinserire il connettore del tubo Bowden sull&apos;unità CFS"/>
   <translation tag="Re-syncs Happy Hare&apos;s tracked state with the hardware." it="Risincronizza lo stato tracciato di Happy Hare con l&apos;hardware."/>
+  <translation tag="Re-test" it="Ritesta"/>
   <translation tag="Re-test A" it="Ritesta A"/>
   <translation tag="Re-test B" it="Ritesta B"/>
   <translation tag="Readings from extra temperature sensors" it="Letture dai sensori di temperatura extra"/>

@@ -662,6 +662,7 @@
   <translation tag="Configured hardware no longer present" ja="設定済みのハードウェアが見つかりません"/>
   <translation tag="Configured in the backup-spool package, not from here" ja="バックアップスプール用プラグイン側で設定します"/>
   <translation tag="Configuring Moonraker..." ja="Moonrakerを設定中..."/>
+  <translation tag="Confirm" ja="確認"/>
   <translation tag="Confirm (full, ~{} min)" ja="確認(フル、約{}分)"/>
   <translation tag="Confirm PIN" ja="PIN を確認"/>
   <translation tag="Confirm before running macros" ja="マクロ実行前に確認する"/>
@@ -2441,6 +2442,7 @@
   <translation tag="Re-read spool RFID tags and remaining length" ja="スプールのRFIDタグと残量を再読み込み"/>
   <translation tag="Re-seat the Bowden tube connector on the CFS unit" ja="CFS ユニットのボーデンチューブ接続を差し直してください"/>
   <translation tag="Re-syncs Happy Hare&apos;s tracked state with the hardware." ja="Happy Hare が追跡している状態をハードウェアと再同期します。"/>
+  <translation tag="Re-test" ja="再テスト"/>
   <translation tag="Re-test A" ja="Aを再テスト"/>
   <translation tag="Re-test B" ja="Bを再テスト"/>
   <translation tag="Readings from extra temperature sensors" ja="追加の温度センサーの値"/>

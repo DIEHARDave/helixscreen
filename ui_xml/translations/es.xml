@@ -662,6 +662,7 @@
   <translation tag="Configured hardware no longer present" es="El hardware configurado ya no está presente"/>
   <translation tag="Configured in the backup-spool package, not from here" es="Se configura en el plugin de bobina de respaldo, no aquí"/>
   <translation tag="Configuring Moonraker..." es="Configurando Moonraker..."/>
+  <translation tag="Confirm" es="Confirmar"/>
   <translation tag="Confirm (full, ~{} min)" es="Confirmar (completo, ~{} min)"/>
   <translation tag="Confirm PIN" es="Confirmar PIN"/>
   <translation tag="Confirm before running macros" es="Confirmar antes de ejecutar macros"/>
@@ -2441,6 +2442,7 @@
   <translation tag="Re-read spool RFID tags and remaining length" es="Volver a leer las etiquetas RFID de las bobinas y la longitud restante"/>
   <translation tag="Re-seat the Bowden tube connector on the CFS unit" es="Vuelva a asentar el conector del tubo Bowden en la unidad CFS"/>
   <translation tag="Re-syncs Happy Hare&apos;s tracked state with the hardware." es="Vuelve a sincronizar el estado registrado de Happy Hare con el hardware."/>
+  <translation tag="Re-test" es="Probar de nuevo"/>
   <translation tag="Re-test A" es="Probar A de nuevo"/>
   <translation tag="Re-test B" es="Probar B de nuevo"/>
   <translation tag="Readings from extra temperature sensors" es="Lecturas de sensores adicionales"/>

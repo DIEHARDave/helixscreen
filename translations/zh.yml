@@ -674,6 +674,7 @@ translations:
   Configured hardware no longer present: '已配置的硬件已不存在'
   Configured in the backup-spool package, not from here: 在备用料盘插件中配置，而非此处
   Configuring Moonraker...: 正在配置 Moonraker...
+  Confirm: 确认
   Confirm (full, ~{} min): "确认(完整,约 {} 分钟)"
   Confirm PIN: 确认 PIN 码
   Confirm before running macros: 运行宏前进行确认
@@ -2525,6 +2526,7 @@ translations:
   Re-read spool RFID tags and remaining length: '重新读取料盘 RFID 标签与剩余长度'
   Re-seat the Bowden tube connector on the CFS unit: 请重新插紧 CFS 单元上的鲍登管接头
   Re-syncs Happy Hare's tracked state with the hardware.: 将 Happy Hare 跟踪的状态与硬件重新同步。
+  Re-test: 重新测试
   Re-test A: 重新测试 A
   Re-test B: 重新测试 B
   Readings from extra temperature sensors: 额外温度传感器的读数

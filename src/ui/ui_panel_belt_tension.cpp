@@ -125,6 +125,11 @@ void ui_panel_belt_tension_register_callbacks() {
          [](lv_event_t* /*e*/) {
              get_global_belt_tension_panel().handle_retest_clicked(calibration::BeltPath::PATH_B);
          }},
+        {"belt_tension_retest_menu_cb",
+         [](lv_event_t* e) {
+             get_global_belt_tension_panel().handle_retest_menu_clicked(
+                 static_cast<lv_obj_t*>(lv_event_get_current_target(e)));
+         }},
         {"belt_tension_tune_cb",
          [](lv_event_t* /*e*/) { get_global_belt_tension_panel().handle_tune_clicked(); }},
         {"belt_tension_tune_measure_cb",
@@ -174,6 +179,7 @@ void ui_panel_belt_tension_register_callbacks() {
                  ModalSeverity::Info, lv_tr("Got it"));
          }},
     });
+    helix::ui::BeltRetestMenu::register_callbacks();
 
     // Initialize subjects BEFORE XML creation
     auto& panel = get_global_belt_tension_panel();
@@ -424,6 +430,7 @@ void BeltTensionPanel::cleanup() {
     spdlog::debug("[BeltTension] Cleaning up");
 
     cancel_run();
+    retest_menu_.hide();
 
     // Expire all outstanding async tokens
     lifetime_.invalidate();
@@ -560,6 +567,20 @@ void BeltTensionPanel::handle_retest_clicked(helix::calibration::BeltPath path) 
 
         begin_run({path}, /*clear_previous=*/false);
     });
+}
+
+void BeltTensionPanel::handle_retest_menu_clicked(lv_obj_t* anchor) {
+    if (!anchor || retest_menu_.is_visible()) {
+        return;
+    }
+    retest_menu_.set_action_callback([this](int action, int /*item*/) {
+        if (action == helix::ui::BeltRetestMenu::ACTION_PATH_A) {
+            handle_retest_clicked(BeltPath::PATH_A);
+        } else if (action == helix::ui::BeltRetestMenu::ACTION_PATH_B) {
+            handle_retest_clicked(BeltPath::PATH_B);
+        }
+    });
+    retest_menu_.show_below_widget(lv_obj_get_screen(anchor), anchor);
 }
 
 bool BeltTensionPanel::gate_allows_sweep(const char* action) {
@@ -1044,7 +1065,7 @@ void BeltTensionPanel::handle_tune_done_clicked() {
 }
 
 void BeltTensionPanel::handle_tune_swap_clicked() {
-    if (!tune_ || measuring()) {
+    if (!tune_ || tune_phase_ != TunePhase::ADJUST) {
         return;
     }
     tune_->swap_adjusted_path();
@@ -1311,9 +1332,12 @@ void BeltTensionPanel::refresh_tune() {
         fmt::format(fmt::runtime(lv_tr("Confirm (full, ~{} min)")), full_check_minutes()).c_str());
 
     if (measured && overlay_root_) {
-        if (lv_obj_t* gauge = lv_obj_find_by_name(overlay_root_, "bt_tune_gauge")) {
-            helix::ui::ui_belt_gap_gauge_set(gauge, gap, t.previous_gap_hz(), tolerance,
-                                             tune_gauge_range_hz_);
+        // The hero's gauge, and the one-line hero's thin bar on the smallest screens.
+        for (const char* name : {"bt_tune_gauge", "bt_tune_line_gauge"}) {
+            if (lv_obj_t* gauge = lv_obj_find_by_name(overlay_root_, name)) {
+                helix::ui::ui_belt_gap_gauge_set(gauge, gap, t.previous_gap_hz(), tolerance,
+                                                 tune_gauge_range_hz_);
+            }
         }
     }
 }

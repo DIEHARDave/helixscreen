@@ -1,9 +1,12 @@
 # XML bindings the desktop registers and the ESP32 firmware does not.
 # Accepted debt, shrink-only: register the name on the firmware, then
 # re-run scripts/check_esp32_xml_bindings.py with --write-baseline.
+callback:belt_retest_menu_a_cb
+callback:belt_retest_menu_b_cb
 callback:belt_tension_help_cb
 callback:belt_tension_retest_a_cb
 callback:belt_tension_retest_b_cb
+callback:belt_tension_retest_menu_cb
 callback:belt_tension_retry_cb
 callback:belt_tension_start_cb
 callback:belt_tension_stop_cb

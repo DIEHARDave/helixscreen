@@ -676,6 +676,7 @@ translations:
   Configured hardware no longer present: '設定済みのハードウェアが見つかりません'
   Configured in the backup-spool package, not from here: バックアップスプール用プラグイン側で設定します
   Configuring Moonraker...: Moonrakerを設定中...
+  Confirm: 確認
   Confirm (full, ~{} min): "確認(フル、約{}分)"
   Confirm PIN: PIN を確認
   Confirm before running macros: マクロ実行前に確認する
@@ -2534,6 +2535,7 @@ translations:
   Re-read spool RFID tags and remaining length: 'スプールのRFIDタグと残量を再読み込み'
   Re-seat the Bowden tube connector on the CFS unit: CFS ユニットのボーデンチューブ接続を差し直してください
   Re-syncs Happy Hare's tracked state with the hardware.: Happy Hare が追跡している状態をハードウェアと再同期します。
+  Re-test: 再テスト
   Re-test A: Aを再テスト
   Re-test B: Bを再テスト
   Readings from extra temperature sensors: 追加の温度センサーの値

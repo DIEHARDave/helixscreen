@@ -662,6 +662,7 @@
   <translation tag="Configured hardware no longer present" fr="Le matériel configuré n&apos;est plus présent"/>
   <translation tag="Configured in the backup-spool package, not from here" fr="Se configure dans le plugin de bobine de secours, pas ici"/>
   <translation tag="Configuring Moonraker..." fr="Configuration de Moonraker..."/>
+  <translation tag="Confirm" fr="Confirmer"/>
   <translation tag="Confirm (full, ~{} min)" fr="Confirmer (complet, ~{} min)"/>
   <translation tag="Confirm PIN" fr="Confirmer le code PIN"/>
   <translation tag="Confirm before running macros" fr="Confirmer avant d&apos;exécuter les macros"/>
@@ -1585,7 +1586,7 @@
   <translation tag="Keep hands clear. The printer moves on its own." fr="Tenez vos mains à distance. L&apos;imprimante bouge seule."/>
   <translation tag="Keep its own data on this screen (up to 256 KB)." fr="Conserve ses propres données sur cet écran (jusqu&apos;à 256 Ko)."/>
   <translation tag="Keep the bypass spool visible when bypass is off" fr="Garder la bobine de bypass visible lorsque le bypass est désactivé"/>
-  <translation tag="Keep tuning" fr="Continuer le réglage"/>
+  <translation tag="Keep tuning" fr="Continuer"/>
   <translation tag="Kick away" fr="Éjecter"/>
   <translation tag="Kinematics" fr="Cinématique"/>
   <translation tag="Klipper" fr="Klipper"/>
@@ -2441,6 +2442,7 @@
   <translation tag="Re-read spool RFID tags and remaining length" fr="Relire les étiquettes RFID des bobines et la longueur restante"/>
   <translation tag="Re-seat the Bowden tube connector on the CFS unit" fr="Réemboîtez le raccord du tube Bowden sur l&apos;unité CFS"/>
   <translation tag="Re-syncs Happy Hare&apos;s tracked state with the hardware." fr="Resynchronise l&apos;état suivi par Happy Hare avec le matériel."/>
+  <translation tag="Re-test" fr="Retester"/>
   <translation tag="Re-test A" fr="Retester A"/>
   <translation tag="Re-test B" fr="Retester B"/>
   <translation tag="Readings from extra temperature sensors" fr="Relevés des capteurs supplémentaires"/>

@@ -273,6 +273,7 @@ src/ui/ui_overlay_timelapse_videos.cpp  # viewer UI is gated off here; its helix
 src/ui/ui_panel_bed_mesh.cpp  # not in the v1 Core+AMS cut
 src/ui/ui_belt_path_sketch.cpp  # only the Belt Tension panel draws it; not in the v1 Core+AMS cut
 src/ui/ui_belt_gap_gauge.cpp  # only the Belt Tension panel draws it; not in the v1 Core+AMS cut
+src/ui/ui_belt_retest_menu.cpp  # only the Belt Tension panel raises it; not in the v1 Core+AMS cut
 src/ui/ui_panel_belt_tension.cpp  # not in the v1 Core+AMS cut
 src/ui/ui_panel_calibration_pid.cpp  # not in the v1 Core+AMS cut
 src/ui/ui_panel_calibration_tool_offset.cpp  # not in the v1 Core+AMS cut

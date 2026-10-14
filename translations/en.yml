@@ -711,6 +711,7 @@ translations:
   Configured hardware no longer present: Configured hardware no longer present
   Configured in the backup-spool package, not from here: Configured in the backup-spool package, not from here
   Configuring Moonraker...: Configuring Moonraker...
+  Confirm: Confirm
   Confirm (full, ~{} min): Confirm (full, ~{} min)
   Confirm PIN: Confirm PIN
   Confirm before running macros: Confirm before running macros
@@ -2615,6 +2616,7 @@ translations:
   Re-seat the Bowden tube connector on the CFS unit: Re-seat the Bowden tube connector on the CFS unit
   Re-syncs Happy Hare's tracked state with the hardware.: Re-syncs Happy Hare's tracked
     state with the hardware.
+  Re-test: Re-test
   Re-test A: Re-test A
   Re-test B: Re-test B
   Readings from extra temperature sensors: Readings from extra temperature sensors

@@ -662,6 +662,7 @@
   <translation tag="Configured hardware no longer present" ru="Настроенное оборудование больше не обнаруживается"/>
   <translation tag="Configured in the backup-spool package, not from here" ru="Настраивается в плагине резервной катушки, не здесь"/>
   <translation tag="Configuring Moonraker..." ru="Настройка Moonraker..."/>
+  <translation tag="Confirm" ru="Подтвердить"/>
   <translation tag="Confirm (full, ~{} min)" ru="Подтвердить (полный, ~{} мин)"/>
   <translation tag="Confirm PIN" ru="Подтвердите PIN"/>
   <translation tag="Confirm before running macros" ru="Подтверждать перед запуском макросов"/>
@@ -1585,7 +1586,7 @@
   <translation tag="Keep hands clear. The printer moves on its own." ru="Держите руки подальше. Принтер двигается сам."/>
   <translation tag="Keep its own data on this screen (up to 256 KB)." ru="Хранит собственные данные на этом экране (до 256 КБ)."/>
   <translation tag="Keep the bypass spool visible when bypass is off" ru="Показывать катушку байпаса, даже когда байпас выключен"/>
-  <translation tag="Keep tuning" ru="Продолжить настройку"/>
+  <translation tag="Keep tuning" ru="Продолжить"/>
   <translation tag="Kick away" ru="Сброс остатка"/>
   <translation tag="Kinematics" ru="Кинематика"/>
   <translation tag="Klipper" ru="Klipper"/>
@@ -2441,6 +2442,7 @@
   <translation tag="Re-read spool RFID tags and remaining length" ru="Перечитать RFID-метки катушек и остаток"/>
   <translation tag="Re-seat the Bowden tube connector on the CFS unit" ru="Переустановите разъём трубки Боудена на блоке CFS"/>
   <translation tag="Re-syncs Happy Hare&apos;s tracked state with the hardware." ru="Повторно синхронизирует отслеживаемое состояние Happy Hare с оборудованием."/>
+  <translation tag="Re-test" ru="Повторить тест"/>
   <translation tag="Re-test A" ru="Тест A"/>
   <translation tag="Re-test B" ru="Тест B"/>
   <translation tag="Readings from extra temperature sensors" ru="Показания доп. датчиков температуры"/>

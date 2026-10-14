@@ -26,6 +26,7 @@
 
 #include "ui_belt_gap_gauge.h"
 #include "ui_belt_path_sketch.h"
+#include "ui_context_menu.h"
 #include "ui_fonts.h"
 #include "ui_frequency_response_chart.h"
 #include "ui_modal.h"
@@ -815,6 +816,10 @@ TEST_CASE("three Re-measures walk CLOSER, CLOSER, MATCHED", "[belt][panel][tune]
     INFO("instruction: " << fx.text("bt_tune_instruction"));
     CHECK(fx.text("bt_tune_instruction").rfind("Matched at 1", 0) == 0);
     CHECK(fx.text("bt_tune_last").empty());
+    // Swapping paths is an ADJUST action; the one-line hero is tappable in
+    // every phase, so a tap once matched must do nothing.
+    fx.panel().handle_tune_swap_clicked();
+    CHECK(fx.state_int("bt_tune_path") == 1);
 
     // The chart marks each path's refined peak with a hollow ring.
     auto* chart = fx.panel_chart();
@@ -1177,4 +1182,146 @@ TEST_CASE("a wrong-way line names the advice the user acted on", "[belt][panel][
     CHECK(fx.text("bt_tune_instruction") == "Loosen B");
     CHECK(fx.text("bt_tune_last") ==
           "B's peak went down after tightening. Check you turned Path B's tensioner.");
+}
+
+// ============================================================================
+// Smallest screens
+// ============================================================================
+
+namespace {
+
+/// Pins ui_breakpoint for one case and puts it back after.
+class ScopedBreakpoint {
+  public:
+    explicit ScopedBreakpoint(int breakpoint)
+        : subject_(lv_xml_get_subject(nullptr, "ui_breakpoint")) {
+        REQUIRE(subject_ != nullptr);
+        original_ = lv_subject_get_int(subject_);
+        lv_subject_set_int(subject_, breakpoint);
+    }
+    ~ScopedBreakpoint() {
+        lv_subject_set_int(subject_, original_);
+    }
+    void set(int breakpoint) {
+        lv_subject_set_int(subject_, breakpoint);
+    }
+
+  private:
+    lv_subject_t* subject_;
+    int original_ = 0;
+};
+
+std::vector<std::string> visible_results_buttons(BeltPanelFixture& fx) {
+    std::vector<std::string> out;
+    for (const char* name :
+         {"btn_retest_a", "btn_retest_b", "btn_retest_menu", "btn_test_both", "btn_tune"}) {
+        lv_obj_t* btn = lv_obj_find_by_name(fx.view(), name);
+        INFO("missing results button: " << name);
+        REQUIRE(btn != nullptr);
+        if (!lv_hidden(btn)) {
+            out.emplace_back(name);
+        }
+    }
+    return out;
+}
+
+/// Opens the Re-test menu and taps one of its rows.
+void pick_retest(BeltPanelFixture& fx, const char* row) {
+    lv_obj_t* opener = lv_obj_find_by_name(fx.view(), "btn_retest_menu");
+    REQUIRE(opener != nullptr);
+    lv_obj_send_event(opener, LV_EVENT_CLICKED, nullptr);
+    fx.pump_ms(100);
+    REQUIRE(helix::ui::ContextMenu::active() != nullptr);
+    lv_obj_t* item = lv_obj_find_by_name(lv_obj_get_screen(fx.view()), row);
+    INFO("menu row: " << row);
+    REQUIRE(item != nullptr);
+    lv_obj_send_event(item, LV_EVENT_CLICKED, nullptr);
+    UpdateQueue::instance().drain();
+    CHECK(helix::ui::ContextMenu::active() == nullptr);
+}
+
+} // namespace
+
+TEST_CASE("RESULTS folds Re-test A/B into one menu on the smallest screens",
+          "[belt][panel][micro]") {
+    BeltPanelFixture fx;
+    helix::ui::ContextMenu::register_shared_callbacks();
+    REQUIRE(fx.register_component("belt_retest_menu"));
+    ScopedBreakpoint bp(0);
+    REQUIRE(fx.wait_gate_open());
+    fx.panel().handle_start_clicked();
+    REQUIRE(fx.pump_until_state(RESULTS));
+
+    CHECK(visible_results_buttons(fx) ==
+          std::vector<std::string>{"btn_retest_menu", "btn_test_both", "btn_tune"});
+
+    SECTION("every 480-wide screen folds them") {
+        for (int narrow : {1, 2}) {
+            bp.set(narrow);
+            INFO("ui_breakpoint " << narrow);
+            CHECK(visible_results_buttons(fx) ==
+                  std::vector<std::string>{"btn_retest_menu", "btn_test_both", "btn_tune"});
+        }
+    }
+    SECTION("a medium screen keeps the two Re-test buttons") {
+        bp.set(3);
+        CHECK(visible_results_buttons(fx) == std::vector<std::string>{"btn_retest_a",
+                                                                      "btn_retest_b",
+                                                                      "btn_test_both", "btn_tune"});
+    }
+    SECTION("Re-test A from the menu re-measures A") {
+        pick_retest(fx, "btn_retest_path_a");
+        CHECK(fx.state_int("belt_tension_state") ==
+              static_cast<int>(BeltTensionPanel::ViewState::RUNNING));
+        CHECK(fx.text("bt_run_title") == "Re-measuring Path A");
+    }
+    SECTION("Re-test B from the menu re-measures B") {
+        pick_retest(fx, "btn_retest_path_b");
+        CHECK(fx.state_int("belt_tension_state") ==
+              static_cast<int>(BeltTensionPanel::ViewState::RUNNING));
+        CHECK(fx.text("bt_run_title") == "Re-measuring Path B");
+    }
+}
+
+TEST_CASE("TUNING on a 480-wide screen is one tappable line over the chart",
+          "[belt][panel][micro][tune]") {
+    BeltPanelFixture fx;
+    get_printer_state().set_printer_type_sync("Voron 2.4");
+    ScopedBreakpoint bp(0);
+    enter_tuning(fx);
+    REQUIRE(fx.state_int("bt_tune_kind") == 1);
+
+    auto named = [&](const char* name) {
+        lv_obj_t* obj = lv_obj_find_by_name(fx.view(), name);
+        INFO("missing: " << name);
+        REQUIRE(obj != nullptr);
+        return obj;
+    };
+    CHECK(lv_hidden(named("bt_tune_hero")));
+    CHECK_FALSE(lv_hidden(named("bt_tune_line")));
+    // The stepper and the short Re-measure share the button row; the swap
+    // button gives its place to the tappable line.
+    CHECK_FALSE(lv_hidden(named("bt_tune_row_stepper")));
+    CHECK_FALSE(lv_hidden(named("btn_tune_measure_short")));
+    CHECK(lv_hidden(named("btn_tune_measure")));
+    CHECK(lv_hidden(named("btn_tune_swap")));
+
+    const std::string amount = fx.text("bt_tune_amount");
+    lv_obj_send_event(named("btn_tune_row_more"), LV_EVENT_CLICKED, nullptr);
+    CHECK(fx.text("bt_tune_amount") != amount);
+    lv_obj_send_event(named("btn_tune_row_less"), LV_EVENT_CLICKED, nullptr);
+    CHECK(fx.text("bt_tune_amount") == amount);
+
+    REQUIRE(fx.text("bt_tune_instruction") == "Tighten B");
+    lv_obj_send_event(named("bt_tune_line"), LV_EVENT_CLICKED, nullptr);
+    CHECK(fx.state_int("bt_tune_path") == 0);
+    CHECK(fx.text("bt_tune_swap_label") == "Adjust B instead");
+
+    SECTION("a medium screen keeps the full hero") {
+        bp.set(3);
+        CHECK_FALSE(lv_hidden(named("bt_tune_hero")));
+        CHECK(lv_hidden(named("bt_tune_line")));
+        CHECK(lv_hidden(named("bt_tune_row_stepper")));
+        CHECK_FALSE(lv_hidden(named("btn_tune_swap")));
+    }
 }

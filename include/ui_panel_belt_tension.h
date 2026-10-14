@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ui_belt_retest_menu.h"
 #include "ui_observer_guard.h"
 #include "ui_timer_guard.h"
 
@@ -143,6 +144,8 @@ class BeltTensionPanel : public OverlayBase {
     void handle_stop_clicked();
     void handle_retry_clicked();
     void handle_retest_clicked(helix::calibration::BeltPath path);
+    /// The smallest screens' single Re-test button: a menu of the two paths.
+    void handle_retest_menu_clicked(lv_obj_t* anchor);
 
     // Tuning loop
     void handle_tune_clicked();
@@ -403,6 +406,8 @@ class BeltTensionPanel : public OverlayBase {
     float was_similarity_percent_ = 0.0f;
     std::optional<helix::MemoryInfo> mem_override_;
     lv_obj_t* low_ram_dialog_ = nullptr;
+    /// RESULTS's Re-test menu on the smallest screens.
+    helix::ui::BeltRetestMenu retest_menu_;
     std::vector<helix::calibration::BeltPath> queue_;
     /// Size of the queue this run started with, for "2 of 2" detail lines.
     size_t run_queue_total_ = 0;

@@ -727,6 +727,7 @@ translations:
   Configured hardware no longer present: 'Настроенное оборудование больше не обнаруживается'
   Configured in the backup-spool package, not from here: Настраивается в плагине резервной катушки, не здесь
   Configuring Moonraker...: Настройка Moonraker...
+  Confirm: Подтвердить
   Confirm (full, ~{} min): "Подтвердить (полный, ~{} мин)"
   Confirm PIN: Подтвердите PIN
   Confirm before running macros: Подтверждать перед запуском макросов
@@ -1736,7 +1737,7 @@ translations:
 
   Keep its own data on this screen (up to 256 KB).: 'Хранит собственные данные на этом экране (до 256 КБ).'
   Keep the bypass spool visible when bypass is off: Показывать катушку байпаса, даже когда байпас выключен
-  Keep tuning: "Продолжить настройку"
+  Keep tuning: Продолжить
   Kick away: 'Сброс остатка'
   Kinematics: Кинематика
   Klipper: Klipper
@@ -2666,6 +2667,7 @@ translations:
   Re-seat the Bowden tube connector on the CFS unit: Переустановите разъём трубки Боудена на блоке CFS
   Re-syncs Happy Hare's tracked state with the hardware.: Повторно синхронизирует
     отслеживаемое состояние Happy Hare с оборудованием.
+  Re-test: Повторить тест
   Re-test A: Тест A
   Re-test B: Тест B
   Readings from extra temperature sensors: Показания доп. датчиков температуры

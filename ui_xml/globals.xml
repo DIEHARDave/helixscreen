@@ -404,14 +404,15 @@
     <px name="text_small_line_h_xxlarge" value="34"/>
     <!-- belt_tune_hero_h: the Belt Tension tuning hero (instruction, turn
          stepper, gap, round facts). Fixed, so the chart below keeps its height
-         whatever the hero says. -->
-    <px name="belt_tune_hero_h_micro" value="56"/>
-    <px name="belt_tune_hero_h_tiny" value="64"/>
-    <px name="belt_tune_hero_h_small" value="86"/>
+         whatever the hero says. Each value is the tallest column's measured
+         height, the stepper column in ADJUST. The hero shows from medium up:
+         480-wide screens use the one-line hero, so _small only completes the
+         required triplet. -->
+    <px name="belt_tune_hero_h_small" value="94"/>
     <px name="belt_tune_hero_h_medium" value="94"/>
-    <px name="belt_tune_hero_h_large" value="98"/>
-    <px name="belt_tune_hero_h_xlarge" value="110"/>
-    <px name="belt_tune_hero_h_xxlarge" value="124"/>
+    <px name="belt_tune_hero_h_large" value="101"/>
+    <px name="belt_tune_hero_h_xlarge" value="119"/>
+    <px name="belt_tune_hero_h_xxlarge" value="158"/>
 
     <!-- Spinner arc widths - proportional to size -->
     <px name="spinner_arc_lg_small" value="3"/>

@@ -742,6 +742,7 @@ translations:
   Configured hardware no longer present: 'Konfigurierte Hardware nicht mehr vorhanden'
   Configured in the backup-spool package, not from here: Wird im Reserve-Spulen-Plugin konfiguriert, nicht hier
   Configuring Moonraker...: Moonraker wird konfiguriert...
+  Confirm: Bestätigen
   Confirm (full, ~{} min): "Bestätigen (voll, ~{} Min)"
   Confirm PIN: PIN bestätigen
   Confirm before running macros: Vor dem Ausführen von Makros bestätigen
@@ -2698,6 +2699,7 @@ translations:
   Re-seat the Bowden tube connector on the CFS unit: Bowden-Schlauchanschluss an der CFS-Einheit neu einsetzen
   Re-syncs Happy Hare's tracked state with the hardware.: Synchronisiert den von Happy
     Hare erfassten Status erneut mit der Hardware.
+  Re-test: Erneut testen
   Re-test A: A testen
   Re-test B: B testen
   Readings from extra temperature sensors: Werte zusätzlicher Temperatursensoren

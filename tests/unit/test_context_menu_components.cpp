@@ -42,6 +42,7 @@ constexpr const char* MENUS[] = {
     "printer_switch_menu",
     "ams_selector_menu",
     "spoolman_context_menu",
+    "belt_retest_menu",
     "ams_context_menu",
 };
 
