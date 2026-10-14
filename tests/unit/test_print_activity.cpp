@@ -155,6 +155,31 @@ TEST_CASE("summarize_week buckets print_duration by job_timestamp", "[print_acti
     }
 }
 
+TEST_CASE("summarize_week over real local days across a DST change", "[print_activity]") {
+    TzGuard tz(kTestZone);
+    const auto starts = local_day_starts(local_time(2026, 11, 3, 12));
+    const double nov1 = static_cast<double>(local_time(2026, 11, 1, 0));
+
+    size_t dst_day = 0;
+    for (size_t i = 0; i < kActivityDays; ++i) {
+        if (starts[i] == nov1)
+            dst_day = i;
+    }
+    // A job exactly at a day's start belongs to that day; one second earlier to the day before.
+    const auto w =
+        summarize_week({job(0, starts[dst_day], 3600), job(0, starts[dst_day] - 1, 7200),
+                        job(0, starts[dst_day + 1] - 1, 1800), job(0, starts[dst_day + 1], 5400)},
+                       starts);
+    CHECK(w.hours_by_day[dst_day] == Catch::Approx(1.5));
+    CHECK(w.hours_by_day[dst_day - 1] == Catch::Approx(2.0));
+    CHECK(w.hours_by_day[dst_day + 1] == Catch::Approx(1.5));
+    double sum = 0;
+    for (double h : w.hours_by_day)
+        sum += h;
+    CHECK(w.week_hours == sum);
+    CHECK(w.week_prints == 4);
+}
+
 TEST_CASE("scale_day_bars scales to the tallest day", "[print_activity]") {
     using A = std::array<double, kActivityDays>;
     using B = std::array<int, kActivityDays>;
@@ -183,15 +208,15 @@ TEST_CASE("format_print_count", "[print_activity]") {
     CHECK(format_print_count(128) == "128 prints");
 }
 
-TEST_CASE("format_filament_length", "[print_activity]") {
-    CHECK(format_filament_length(0).empty());
-    CHECK(format_filament_length(-5).empty());
-    CHECK(format_filament_length(30) == "0.1 m");
-    CHECK(format_filament_length(2540) == "2.5 m");
-    CHECK(format_filament_length(2040) == "2 m");
-    CHECK(format_filament_length(9960) == "10 m");
-    CHECK(format_filament_length(412300) == "412 m");
-    CHECK(format_filament_length(12345678) == "12346 m");
+TEST_CASE("format_filament_meters", "[print_activity]") {
+    CHECK(format_filament_meters(0).empty());
+    CHECK(format_filament_meters(-5).empty());
+    CHECK(format_filament_meters(30) == "0.1 m");
+    CHECK(format_filament_meters(2540) == "2.5 m");
+    CHECK(format_filament_meters(2040) == "2 m");
+    CHECK(format_filament_meters(9960) == "10 m");
+    CHECK(format_filament_meters(412300) == "412 m");
+    CHECK(format_filament_meters(12345678) == "12346 m");
 }
 
 TEST_CASE("format_lifetime_line", "[print_activity]") {

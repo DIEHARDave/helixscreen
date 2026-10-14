@@ -110,7 +110,7 @@ std::string format_print_count(uint64_t prints) {
     return fmt::format(lv_tr("{} prints"), prints);
 }
 
-std::string format_filament_length(double mm) {
+std::string format_filament_meters(double mm) {
     if (!std::isfinite(mm) || mm <= 0.0) {
         return {};
     }
@@ -121,7 +121,7 @@ std::string format_lifetime_line(const LifetimeSummary& summary, bool with_filam
     std::string line =
         format_print_count(summary.prints) + " · " + format_print_hours(summary.hours);
     if (with_filament) {
-        const std::string length = format_filament_length(summary.filament_mm);
+        const std::string length = format_filament_meters(summary.filament_mm);
         if (!length.empty()) {
             line += " · " + length;
         }

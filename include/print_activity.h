@@ -49,7 +49,9 @@ scale_day_bars(const std::array<double, kActivityDays>& hours);
 [[nodiscard]] std::string format_print_count(uint64_t prints);
 
 /// Filament length in meters ("0.1 m", "2.5 m", "412 m"); empty when there is none.
-[[nodiscard]] std::string format_filament_length(double mm);
+/// Separate from format::format_filament_length, which picks mm, m or km by size;
+/// the stats tile compares lengths across prints and needs one unit.
+[[nodiscard]] std::string format_filament_meters(double mm);
 
 struct LifetimeSummary {
     uint64_t prints = 0;
