@@ -32,14 +32,14 @@ Outputs:
 |---|---|---|---|
 | Unavailable | Moonraker has no job_queue component | Widget is unavailable, with the reason "Job queue not enabled in Moonraker", like other gated widgets | none |
 | Empty | 0 jobs | Quiet "Queue empty" | none |
-| WaitingForStart | printer not printing, jobs queued, whatever `automatic_transition` and `queue_state` say | Next job's thumbnail and name, "+N more", estimated time if known | **"Bed clear · Start next"**: one tap starts the job, no extra dialog |
+| WaitingForStart | printer not printing, jobs queued, whatever `automatic_transition` and `queue_state` say | Next job's thumbnail and name, "+N more", estimated time if known | **"Bed clear · Start next"**: one tap starts the job with its saved options, no extra dialog |
 | AutoNext | a print is running, jobs queued, auto transition on, queue ready | Hero "N queued" and "Next: name (starts automatically)" | none |
 | Printing | a print is running, jobs queued, and the queue will not start the next job by itself | Hero "N queued" and "Next: name" | none |
 | Starting | queue_state loading or starting | "Starting name…" | none |
 
 Moonraker sets `queue_state` to "paused" after every job it loads unless automatic transition is on, and starts in "paused", so a post-job wait and a user pause cannot be told apart. Neither needs to be: an idle printer with jobs queued always offers the same start button. "Starts automatically" is only true while a print is running with automatic transition on and the queue ready, because Moonraker transitions only when a job completes.
 
-**Start action:** the button calls Moonraker's `server.job_queue.start` through the queue API (`IMoonrakerQueueAPI::start_queue`), so one tap starts the next queued job on the printer. It does not go through the print-select file view. The print status "Up next" row and the print-complete dialog's "Start next" keep their current behaviour (`src/ui/job_queue_start.cpp#handle_up_next_tap`).
+**Start action:** one tap starts the next queued job through HelixScreen's own print-start path with the pre-print options saved for that job, the same gates and start call print-select's Print button uses for a queued job, with no screen in between. A job with no saved options starts with the file's defaults, as print-select would. On a confirmed start the job leaves Moonraker's queue and its saved options are deleted, with the same bookkeeping print-select uses. The "start a queued job with its saved options" logic is one shared, UI-free piece that print-select and the tile both call. The print status "Up next" row and the print-complete dialog's "Start next" keep their current behaviour (`src/ui/job_queue_start.cpp#handle_up_next_tap`).
 
 **Tapping elsewhere** on the tile opens the existing queue modal.
 
