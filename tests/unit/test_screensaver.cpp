@@ -1164,7 +1164,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "a screensaver that fails to start gives the r
         REQUIRE(mgr.is_active());
         REQUIRE(default_refr_timer_period() == SAVER_PERIOD_MS);
 
-        mgr.start(static_cast<ScreensaverType>(7));
+        mgr.start(static_cast<ScreensaverType>(helix::ui::screensaver_last_type() + 1));
 
         CHECK_FALSE(mgr.is_active());
         CHECK_FALSE(helix::active_refresh_period_hold().is_held());
