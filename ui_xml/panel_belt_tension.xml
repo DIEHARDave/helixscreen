@@ -155,7 +155,7 @@
         <!-- bind_state_if_eq is the hard gate: bound to a subject, it holds -->
         <!-- however the user reached the panel. -->
         <ui_button name="btn_start"
-                   width="100%" height="#button_height" icon="waveform" text="Start check" variant="primary">
+                   width="100%" height="#button_height" icon="waveform" text="Start Check" variant="primary">
           <bind_state_if_eq subject="bt_can_start" state="disabled" ref_value="0"/>
           <event_cb trigger="clicked" callback="belt_tension_start_cb"/>
         </ui_button>
@@ -217,7 +217,7 @@
             <event_cb trigger="clicked" callback="belt_tension_retest_b_cb"/>
           </ui_button>
           <ui_button name="btn_test_both"
-                     width="0" height="#button_height" flex_grow="1" icon="restart" text="Test both" variant="primary">
+                     width="0" height="#button_height" flex_grow="1" icon="restart" text="Test Both" variant="primary">
             <event_cb trigger="clicked" callback="belt_tension_start_cb"/>
           </ui_button>
         </lv_obj>

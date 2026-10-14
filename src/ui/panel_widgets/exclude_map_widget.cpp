@@ -211,7 +211,7 @@ helix::RungNeeds measure_needs(helix::ExcludeMapState state, int digits) {
             rung_box(map_min + col_gap + 2 * text_w + comfort, std::max(map_min, text_h) + 1);
     }
     {
-        const int button_w = text_px(lv_tr("Skip objects..."), f.small) + icon_w +
+        const int button_w = text_px(lv_tr("Skip Objects..."), f.small) + icon_w +
                              2 * theme_manager_get_spacing("space_md");
         const int text_w = std::max({now_w, printing_w, button_w});
         // The map over caption, name, counts, the skipped line and the button.
