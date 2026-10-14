@@ -284,10 +284,14 @@ class PanelWidgetConfig {
     /// The seed of @p preset (panel_widgets/<preset>/home.json), parsed: an
     /// overlay build_default_grid() applies over the default table. Null when
     /// the preset is empty, has no seed file, or the file is not a JSON object.
-    static nlohmann::json load_preset_overlay(const std::string& preset);
+    /// Cached the way load_default_table() is. LVGL thread only.
+    static std::shared_ptr<const nlohmann::json> load_preset_overlay(const std::string& preset);
 
     /// How many times load_default_table() has read the file from disk.
     static int default_table_reads();
+
+    /// How many times load_preset_overlay() has read a seed file from disk.
+    static int preset_overlay_reads();
 
     /// True while a layout edit session has this panel open. A live default
     /// does not re-resolve then: the arrangement under the user's hands stays
@@ -311,14 +315,20 @@ class PanelWidgetConfig {
     /// Resolve the default layout again for a @p cols x @p rows grid and, when
     /// the result differs from what is stamped, install it on page 0, stamp it
     /// and save once (through save_soon()). Returns true when it rewrote the
-    /// arrangement.
+    /// arrangement. The resolver's signature is compared before any entries
+    /// are built.
     ///
     /// Only an unedited default (is_unedited_default()) is touched. An
     /// unchanged signature on the same grid writes nothing. On a different
     /// grid, one the user arranged by hand (a parked layout that is not an
     /// unedited default) is left for switch_to_grid() to restore. Per-widget
     /// config carries across for every id that survives.
-    bool reresolve_default_if_changed(int cols, int rows);
+    ///
+    /// @p persist false is for a printer that is not CONNECTED and READY: a
+    /// pending block, or a default whose grid changed, is resolved in memory
+    /// for display and left pending (empty signature), with nothing saved;
+    /// an already resolved default on the same grid is left alone.
+    bool reresolve_default_if_changed(int cols, int rows, bool persist = true);
 
     /// Record the current arrangement as the default's own, keeping its
     /// signature. For placement the populate pass does on the default's behalf
@@ -399,6 +409,10 @@ class PanelWidgetConfig {
     /// A layout with no recorded grid is stamped and otherwise left alone:
     /// which grid it was arranged on is unrecoverable, and reseating it on a
     /// guess would discard a real arrangement. No-op when already active.
+    ///
+    /// An unedited default while an edit session is open is ported too, so the
+    /// session keeps its arrangement, but it keeps a pending default block and
+    /// is not saved: it resolves for the new grid once the session closes.
     void switch_to_grid(int cols, int rows);
 
     /// Apply the default anchors for a now-known grid, stamp the default block
@@ -464,6 +478,9 @@ class PanelWidgetConfig {
     bool has_default_ = false;
     bool edit_session_open_ = false;
     std::string default_signature_;
+    /// Signature of a pending block's in-memory resolution, shown while the
+    /// printer is not READY. Never persisted.
+    std::string provisional_signature_;
     std::string default_hash_;
     std::string grid_signature_;
     /// Arrangements for grids that are not active, keyed by signature. Each
@@ -492,6 +509,11 @@ class PanelWidgetConfig {
     void write_to(const std::string& panel_path);
 
     std::vector<PanelWidgetEntry> build_defaults() const;
+
+    /// The resolver's answer for the current tier, variant, preset and
+    /// capabilities on a @p grid_cols x @p grid_rows grid.
+    static helix::layout::ResolvedDefault resolve_default(int grid_cols, int grid_rows,
+                                                          const nlohmann::json* overlay);
 
     /// Record the current pages as the defaults builder's output for
     /// @p signature ("" while no grid has been measured).
@@ -526,9 +548,9 @@ class PanelWidgetConfig {
                                                      bool append_registry_defaults = true,
                                                      nlohmann::json* retained = nullptr);
 
-    /// build_default_grid() with this config's preset seed overlay applied: every caller that
-    /// builds this panel's own default goes through here, so a seeded default stays seeded across
-    /// Reset, pending anchors and re-resolves.
+    /// build_default_grid() with this config's preset seed overlay applied, so a seeded default
+    /// stays seeded across Reset and pending anchors. reresolve_default_if_changed() applies the
+    /// same overlay itself, since it resolves the signature before building.
     std::vector<PanelWidgetEntry> build_default_grid_with_seed(int grid_cols, int grid_rows,
                                                                std::string* signature) const;
 

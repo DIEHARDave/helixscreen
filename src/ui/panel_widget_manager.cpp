@@ -642,20 +642,36 @@ lv_obj_t* create_tile(lv_obj_t* container, WidgetSlot& slot, const TileCell& cel
     log_if_slow_build(slot.widget_id.c_str(), t_create, t_attach);
     return widget;
 }
+
+/// What the printer link says about the arrangement a populate is looking at.
+enum class LayoutReadiness {
+    Ready,    ///< CONNECTED and Klipper READY: capabilities are the printer's own
+    Starting, ///< CONNECTED, Klipper not READY: a transient, possibly torn-down view
+    Offline,  ///< not CONNECTED: capabilities may be another printer's or none
+};
+
+LayoutReadiness layout_readiness() {
+    lv_subject_t* conn = lv_xml_get_subject(nullptr, "printer_connection_state");
+    lv_subject_t* klippy = lv_xml_get_subject(nullptr, "klippy_state");
+    if (!conn || lv_subject_get_int(conn) != static_cast<int>(ConnectionState::CONNECTED) ||
+        !klippy) {
+        return LayoutReadiness::Offline;
+    }
+    return lv_subject_get_int(klippy) == static_cast<int>(KlippyState::READY)
+               ? LayoutReadiness::Ready
+               : LayoutReadiness::Starting;
+}
 } // namespace
 
 bool PanelWidgetManager::refresh_live_default(const std::string& panel_id) {
-    lv_subject_t* conn = lv_xml_get_subject(nullptr, "printer_connection_state");
-    lv_subject_t* klippy = lv_xml_get_subject(nullptr, "klippy_state");
-    const bool ready = conn &&
-                       lv_subject_get_int(conn) == static_cast<int>(ConnectionState::CONNECTED) &&
-                       klippy && lv_subject_get_int(klippy) == static_cast<int>(KlippyState::READY);
-    if (!ready) {
+    const LayoutReadiness readiness = layout_readiness();
+    if (readiness == LayoutReadiness::Starting) {
         return false;
     }
     auto& widget_config = get_widget_config(panel_id);
     const auto [cols, rows] = widget_config.stamped_grid();
-    return widget_config.reresolve_default_if_changed(cols, rows);
+    return widget_config.reresolve_default_if_changed(cols, rows,
+                                                      readiness == LayoutReadiness::Ready);
 }
 
 std::vector<std::unique_ptr<PanelWidget>>
@@ -831,12 +847,13 @@ PanelWidgetManager::populate_widgets(const std::string& panel_id, lv_obj_t* cont
     // make; deferring costs nothing, because the next READY populate resolves
     // it cleanly. Both halves of the condition are load-bearing — see the
     // write-back for why klippy_state alone is not enough.
-    lv_subject_t* conn_layout = lv_xml_get_subject(nullptr, "printer_connection_state");
-    lv_subject_t* klippy_layout = lv_xml_get_subject(nullptr, "klippy_state");
-    const bool layout_state_transient =
-        conn_layout &&
-        lv_subject_get_int(conn_layout) == static_cast<int>(ConnectionState::CONNECTED) &&
-        klippy_layout && lv_subject_get_int(klippy_layout) != static_cast<int>(KlippyState::READY);
+    //
+    // Offline, an unedited default is resolved for display and left pending,
+    // unsaved: the capabilities in the subjects then may be a previous
+    // printer's. The first READY populate resolves it and writes once.
+    const LayoutReadiness readiness = layout_readiness();
+    const bool layout_state_transient = readiness == LayoutReadiness::Starting;
+    const bool printer_ready = readiness == LayoutReadiness::Ready;
     // Any of these can replace the entries the widget list was collected from
     // (a resolution enables and disables widgets, a restored grid is another
     // arrangement), so the list is collected again after one does.
@@ -846,9 +863,12 @@ PanelWidgetManager::populate_widgets(const std::string& panel_id, lv_obj_t* cont
                       "READY, so this arrangement is transient",
                       panel_id);
     } else if (widget_config.has_pending_anchors()) {
-        if (content_box_measured) {
+        if (content_box_measured && printer_ready) {
             widget_config.apply_pending_anchors(grid_dims.cols, grid_dims.rows);
             entries_replaced = true;
+        } else if (content_box_measured) {
+            entries_replaced = widget_config.reresolve_default_if_changed(
+                grid_dims.cols, grid_dims.rows, /*persist=*/false);
         } else {
             spdlog::warn("[PanelWidgetManager] '{}': deferring the default anchors until the "
                          "content box measures",
@@ -872,10 +892,13 @@ PanelWidgetManager::populate_widgets(const std::string& panel_id, lv_obj_t* cont
         const std::string grid_now =
             std::to_string(grid_dims.cols) + "x" + std::to_string(grid_dims.rows);
         if (grid_before != grid_now) {
-            const bool relaid =
-                widget_config.reresolve_default_if_changed(grid_dims.cols, grid_dims.rows);
+            const bool relaid = widget_config.reresolve_default_if_changed(
+                grid_dims.cols, grid_dims.rows, printer_ready);
             if (!relaid) {
                 widget_config.switch_to_grid(grid_dims.cols, grid_dims.rows);
+                // A restored grid can be an unedited default resolved against
+                // older capabilities; the refresh at the top saw the outgoing one.
+                refresh_live_default(panel_id);
             }
             entries_replaced = relaid || !grid_before.empty();
         }
@@ -1273,13 +1296,10 @@ PanelWidgetManager::populate_widgets(const std::string& panel_id, lv_obj_t* cont
     // Moonraker has reported anything, so gating on it alone would also refuse
     // the first write-back of every launch, and an auto-placed layout would
     // never reach disk at all.
-    lv_subject_t* conn_now = lv_xml_get_subject(nullptr, "printer_connection_state");
-    lv_subject_t* klippy_now = lv_xml_get_subject(nullptr, "klippy_state");
-    const bool connected =
-        conn_now && lv_subject_get_int(conn_now) == static_cast<int>(ConnectionState::CONNECTED);
-    const bool klippy_not_ready =
-        klippy_now && lv_subject_get_int(klippy_now) != static_cast<int>(KlippyState::READY);
-    if (!(connected && klippy_not_ready)) {
+    //
+    // A pending default is not persisted either: it is resolved and written by
+    // the first READY populate.
+    if (!layout_state_transient) {
         auto& mut_entries = widget_config.page_entries_mut(page_index);
         bool any_written = false;
         for (const auto& p : placed) {
@@ -1310,7 +1330,7 @@ PanelWidgetManager::populate_widgets(const std::string& panel_id, lv_obj_t* cont
         // cell this pass changed nothing about the widgets that WERE placed, so
         // any_written stays false and the eviction would never reach disk — which
         // is exactly how the "grid full" toast came back on every launch.
-        if (any_written || evicted_position) {
+        if ((any_written || evicted_position) && !widget_config.has_pending_anchors()) {
             widget_config.save();
         }
     } else if (default_live) {
@@ -1945,7 +1965,7 @@ void PanelWidgetManager::setup_gate_observers(const std::string& panel_id,
 
     const Config* cfg = Config::get_instance();
     const std::vector<std::string> gate_names = gate_subject_names(
-        PanelWidgetConfig::load_preset_overlay(cfg ? cfg->get_preset() : std::string{}));
+        *PanelWidgetConfig::load_preset_overlay(cfg ? cfg->get_preset() : std::string{}));
 
     for (const std::string& name_str : gate_names) {
         const char* name = name_str.c_str();

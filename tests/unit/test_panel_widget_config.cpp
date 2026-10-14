@@ -12,6 +12,8 @@
 #include "theme_manager.h"
 
 #include <algorithm>
+#include <chrono>
+#include <filesystem>
 #include <fstream>
 #include <map>
 #include <set>
@@ -2589,6 +2591,32 @@ TEST_CASE_METHOD(PanelWidgetConfigFixture, "a preset seed overlay yields a live 
     const json saved = get_printer_data()["panel_widgets"]["home"];
     REQUIRE(saved.contains("default"));
     CHECK(saved["default"].contains("hash"));
+}
+
+TEST_CASE_METHOD(PanelWidgetConfigFixture, "a preset seed is parsed once per file stamp",
+                 "[panel_widget_config][preset]") {
+    ConfigDirGuard guard("preset-overlay-cache");
+    write_seed(guard, "testp", json{{"anchors", {{{"id", "tips"}, {"remove", true}}}}});
+    const auto path = guard.dir / "panel_widgets" / "testp" / "home.json";
+
+    const auto first = PanelWidgetConfig::load_preset_overlay("testp");
+    REQUIRE(first->is_object());
+    const int reads = PanelWidgetConfig::preset_overlay_reads();
+    const auto again = PanelWidgetConfig::load_preset_overlay("testp");
+    CHECK(PanelWidgetConfig::preset_overlay_reads() == reads);
+    CHECK(again.get() == first.get());
+
+    const json changed{{"anchors", {{{"id", "clock"}, {"remove", true}}}}};
+    write_seed(guard, "testp", changed);
+    std::filesystem::last_write_time(path, std::filesystem::last_write_time(path) +
+                                               std::chrono::seconds(7));
+    const auto reloaded = PanelWidgetConfig::load_preset_overlay("testp");
+    CHECK(PanelWidgetConfig::preset_overlay_reads() == reads + 1);
+    CHECK(*reloaded == changed);
+    // A tree a caller still holds survives the reload.
+    CHECK((*first)["anchors"][0]["id"] == "tips");
+    PanelWidgetConfig::load_preset_overlay("testp");
+    CHECK(PanelWidgetConfig::preset_overlay_reads() == reads + 1);
 }
 
 TEST_CASE_METHOD(PanelWidgetConfigFixture, "a preset without a seed file falls back to the base",

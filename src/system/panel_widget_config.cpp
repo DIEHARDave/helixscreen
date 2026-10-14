@@ -476,6 +476,7 @@ nlohmann::json PanelWidgetConfig::serialize_pages() const {
 
 void PanelWidgetConfig::stamp_default(std::string signature) {
     has_default_ = true;
+    provisional_signature_.clear();
     default_signature_ = std::move(signature);
     default_hash_ = helix::layout::arrangement_hash(serialize_pages());
 }
@@ -484,6 +485,7 @@ void PanelWidgetConfig::read_default_block(const nlohmann::json& node) {
     has_default_ = false;
     default_signature_.clear();
     default_hash_.clear();
+    provisional_signature_.clear();
     if (const json* block = helix::json_util::find_member(node, "default");
         block && block->is_object()) {
         has_default_ = true;
@@ -923,67 +925,97 @@ bool anchor_fits_grid(int col, int row, int colspan, int rowspan, int cols, int 
 } // namespace
 
 namespace {
-int g_default_table_reads = 0;
-} // namespace
 
-int PanelWidgetConfig::default_table_reads() {
-    return g_default_table_reads;
+/// A parsed runtime-editable JSON file, reused until the file's path, mtime or
+/// size changes.
+struct ParsedFileCache {
+    std::string path;
+    std::int64_t mtime_ns = -1;
+    std::int64_t size = -1;
+    std::shared_ptr<const nlohmann::json> parsed;
+    int reads = 0;
+};
+
+ParsedFileCache& default_table_cache() {
+    static ParsedFileCache cache;
+    return cache;
 }
 
-std::shared_ptr<const nlohmann::json> PanelWidgetConfig::load_default_table() {
-    // config/default_layout.json is runtime-editable: the parse is reused until
-    // the file's path, mtime or size changes. Callers share one immutable tree;
-    // a reload swaps the pointer, so a tree a caller still holds stays valid.
-    static std::string cached_path;
-    static std::int64_t cached_mtime_ns = -1;
-    static std::int64_t cached_size = -1;
-    static std::shared_ptr<const nlohmann::json> cached;
+ParsedFileCache& preset_overlay_cache() {
+    static ParsedFileCache cache;
+    return cache;
+}
 
-    const std::string path = helix::find_readable("default_layout.json");
+/// @p path parsed through @p cache: @p interpret turns the file's text into the
+/// tree to keep. A file that cannot be read is null. Callers share one
+/// immutable tree; a reload swaps the pointer, so a tree a caller still holds
+/// stays valid.
+template <typename Interpret>
+std::shared_ptr<const nlohmann::json>
+load_cached_json(ParsedFileCache& cache, const std::string& path, Interpret interpret) {
     const auto mtime = path.empty() ? std::nullopt : helix::fs::mtime_ns(path);
     const auto size = path.empty() ? std::nullopt : helix::text_io::file_size(path);
     const bool have_stat = mtime && size;
     const std::int64_t mtime_ns = have_stat ? *mtime : -1;
     const std::int64_t size_bytes = have_stat ? static_cast<std::int64_t>(*size) : -1;
-    if (have_stat && cached && path == cached_path && mtime_ns == cached_mtime_ns &&
-        size_bytes == cached_size) {
-        return cached;
+    if (have_stat && cache.parsed && path == cache.path && mtime_ns == cache.mtime_ns &&
+        size_bytes == cache.size) {
+        return cache.parsed;
     }
 
-    ++g_default_table_reads;
-    nlohmann::json layout;
-    if (const auto layout_text = helix::text_io::read_file(path)) {
-        layout = nlohmann::json::parse(*layout_text, nullptr, false);
-        if (layout.is_discarded()) {
-            spdlog::warn("[PanelWidgetConfig] Failed to parse default_layout.json: not valid JSON");
-            layout = nlohmann::json();
-        }
+    ++cache.reads;
+    nlohmann::json tree;
+    if (const auto text = helix::text_io::read_file(path)) {
+        tree = interpret(*text);
     }
-    auto table = std::make_shared<const nlohmann::json>(std::move(layout));
+    auto parsed = std::make_shared<const nlohmann::json>(std::move(tree));
     if (have_stat) {
-        cached_path = path;
-        cached_mtime_ns = mtime_ns;
-        cached_size = size_bytes;
-        cached = table;
+        cache.path = path;
+        cache.mtime_ns = mtime_ns;
+        cache.size = size_bytes;
+        cache.parsed = parsed;
     }
-    return table;
+    return parsed;
 }
 
-nlohmann::json PanelWidgetConfig::load_preset_overlay(const std::string& preset) {
+} // namespace
+
+int PanelWidgetConfig::default_table_reads() {
+    return default_table_cache().reads;
+}
+
+int PanelWidgetConfig::preset_overlay_reads() {
+    return preset_overlay_cache().reads;
+}
+
+std::shared_ptr<const nlohmann::json> PanelWidgetConfig::load_default_table() {
+    return load_cached_json(default_table_cache(), helix::find_readable("default_layout.json"),
+                            [](const std::string& text) {
+                                nlohmann::json layout = nlohmann::json::parse(text, nullptr, false);
+                                if (layout.is_discarded()) {
+                                    spdlog::warn("[PanelWidgetConfig] Failed to parse "
+                                                 "default_layout.json: not valid JSON");
+                                    return nlohmann::json();
+                                }
+                                return layout;
+                            });
+}
+
+std::shared_ptr<const nlohmann::json>
+PanelWidgetConfig::load_preset_overlay(const std::string& preset) {
     if (preset.empty()) {
-        return nlohmann::json();
+        static const auto none = std::make_shared<const nlohmann::json>();
+        return none;
     }
     const std::string seed_path = helix::find_readable("panel_widgets/" + preset + "/home.json");
-    const auto seed_text = helix::text_io::read_file(seed_path);
-    if (!seed_text) {
-        return nlohmann::json();
-    }
-    nlohmann::json seed = nlohmann::json::parse(*seed_text, nullptr, false);
-    if (!seed.is_object()) {
-        spdlog::warn("[PanelWidgetConfig] Preset seed '{}' is not a JSON object", seed_path);
-        return nlohmann::json();
-    }
-    return seed;
+    return load_cached_json(preset_overlay_cache(), seed_path, [&](const std::string& text) {
+        nlohmann::json seed = nlohmann::json::parse(text, nullptr, false);
+        if (!seed.is_object()) {
+            spdlog::warn("[PanelWidgetConfig] Preset seed '{}' is not a JSON object", seed_path);
+            return nlohmann::json();
+        }
+        return seed;
+    });
 }
 
 helix::layout::CapabilitySnapshot
@@ -1013,15 +1045,13 @@ PanelWidgetConfig::snapshot_capabilities(const nlohmann::json& table,
     return snap;
 }
 
-std::vector<PanelWidgetEntry> PanelWidgetConfig::build_default_grid(int grid_cols, int grid_rows,
-                                                                    std::string* signature,
-                                                                    const nlohmann::json* overlay) {
-    const auto& defs = get_all_widget_defs();
+namespace {
 
-    // Determine current breakpoint for per-breakpoint anchor sizing
+/// The name the default table keys the current breakpoint's tier by.
+const char* current_tier_name() {
     lv_subject_t* bp_subj = theme_manager_get_breakpoint_subject();
-    UiBreakpoint breakpoint = bp_subj ? as_breakpoint(lv_subject_get_int(bp_subj))
-                                      : UiBreakpoint::Medium; // Default MEDIUM
+    const UiBreakpoint breakpoint = bp_subj ? as_breakpoint(lv_subject_get_int(bp_subj))
+                                            : UiBreakpoint::Medium; // Default MEDIUM
 
     // One name per UiBreakpoint tier. Indexed by the enum, so it must stay
     // seven long: XXLarge is 6 and a six-entry table read past its end.
@@ -1029,25 +1059,38 @@ std::vector<PanelWidgetEntry> PanelWidgetConfig::build_default_grid(int grid_col
                                      "large", "xlarge", "xxlarge"};
     static_assert(std::size(bp_names) == to_int(UiBreakpoint::XXLarge) + 1,
                   "bp_names must cover every UiBreakpoint tier");
-    const char* bp_name = bp_names[to_int(breakpoint)];
+    return bp_names[to_int(breakpoint)];
+}
 
-    // Anchor tables are keyed by layout variant in the same most-specific-first
-    // order LayoutManager uses for ui_xml/ overrides: "variants": { "portrait":
-    // [...] } wins over the top-level (landscape) "anchors" on a portrait panel,
-    // and TINY_PORTRAIT falls through tiny_portrait → portrait → base (#1216).
-    const bool portrait = is_portrait_layout(LayoutManager::instance().type());
+} // namespace
 
+helix::layout::ResolvedDefault PanelWidgetConfig::resolve_default(int grid_cols, int grid_rows,
+                                                                  const nlohmann::json* overlay) {
     // A missing or malformed table is null, which the resolver reports as
     // unusable.
     const auto layout_ptr = load_default_table();
     const nlohmann::json& layout = *layout_ptr;
 
+    // Anchor tables are keyed by layout variant in the same most-specific-first
+    // order LayoutManager uses for ui_xml/ overrides: "variants": { "portrait":
+    // [...] } wins over the top-level (landscape) "anchors" on a portrait panel,
+    // and TINY_PORTRAIT falls through tiny_portrait → portrait → base (#1216).
     const Config* cfg = Config::get_instance();
     const std::string preset = cfg ? cfg->get_preset() : std::string{};
     const auto caps = snapshot_capabilities(layout, overlay);
-    auto resolved = helix::layout::resolve_default_layout(
-        layout, overlay, bp_name, grid_cols, grid_rows, LayoutManager::instance().variant_chain(),
-        preset, caps);
+    return helix::layout::resolve_default_layout(
+        layout, overlay, current_tier_name(), grid_cols, grid_rows,
+        LayoutManager::instance().variant_chain(), preset, caps);
+}
+
+std::vector<PanelWidgetEntry> PanelWidgetConfig::build_default_grid(int grid_cols, int grid_rows,
+                                                                    std::string* signature,
+                                                                    const nlohmann::json* overlay) {
+    const auto& defs = get_all_widget_defs();
+    const char* bp_name = current_tier_name();
+    const bool portrait = is_portrait_layout(LayoutManager::instance().type());
+
+    auto resolved = resolve_default(grid_cols, grid_rows, overlay);
     if (signature) {
         *signature = resolved.signature;
     }
@@ -1227,9 +1270,9 @@ bool PanelWidgetConfig::is_grid_format() const {
 std::vector<PanelWidgetEntry>
 PanelWidgetConfig::build_default_grid_with_seed(int grid_cols, int grid_rows,
                                                 std::string* signature) const {
-    const nlohmann::json overlay = load_preset_overlay(config_.get_preset());
+    const auto overlay = load_preset_overlay(config_.get_preset());
     return build_default_grid(grid_cols, grid_rows, signature,
-                              overlay.is_null() ? nullptr : &overlay);
+                              overlay->is_null() ? nullptr : overlay.get());
 }
 
 std::vector<PanelWidgetEntry> PanelWidgetConfig::build_defaults() const {
@@ -1291,6 +1334,9 @@ void PanelWidgetConfig::switch_to_grid(int cols, int rows) {
     }
 
     const std::string outgoing = grid_signature_;
+    // An unedited default open in Edit Mode is ported like any arrangement, so
+    // the session keeps what it is showing, but it stays the builder's.
+    const bool keep_default = edit_session_open_ && is_unedited_default();
     const int old_cols = parse_grid_axis(outgoing, /*want_cols=*/true);
     const int old_rows = parse_grid_axis(outgoing, /*want_cols=*/false);
 
@@ -1335,11 +1381,21 @@ void PanelWidgetConfig::switch_to_grid(int cols, int rows) {
         }
     }
 
+    grid_signature_ = target;
+    if (keep_default) {
+        // Pending, it resolves for this grid at the first populate after the
+        // session closes, and writes then.
+        stamp_default("");
+        spdlog::info("[PanelWidgetConfig] '{}': carried the default onto the {} grid for the "
+                     "open edit session; it resolves when the session closes",
+                     panel_id_, target);
+        return;
+    }
+
     // The ported pages are no longer the resolver's output for any grid.
     has_default_ = false;
     default_signature_.clear();
     default_hash_.clear();
-    grid_signature_ = target;
     spdlog::info("[PanelWidgetConfig] '{}': seeded the {} grid from {} ({} widget(s) reseated, "
                  "the rest auto-placed)",
                  panel_id_, target, outgoing, seated);
@@ -1380,13 +1436,20 @@ void PanelWidgetConfig::apply_pending_anchors(int grid_cols, int grid_rows) {
 void PanelWidgetConfig::install_default(std::vector<PanelWidgetEntry> rebuilt,
                                         std::string signature, int cols, int rows) {
     // Per-widget config (an LED strip, a print_status style) is outside the
-    // arrangement, so it belongs to the widget and survives a re-resolve.
+    // arrangement, so it belongs to the widget and survives a re-resolve. The
+    // table's config for the new placement is the base: a key the widget's
+    // config does not set keeps the table's value.
     for (auto& entry : rebuilt) {
         for (const auto& old : pages_[0].widgets) {
-            if (old.id == entry.id && !old.config.empty()) {
-                entry.config = old.config;
-                break;
+            if (old.id != entry.id || old.config.empty()) {
+                continue;
             }
+            if (entry.config.is_object() && old.config.is_object()) {
+                entry.config.update(old.config);
+            } else {
+                entry.config = old.config;
+            }
+            break;
         }
     }
     pages_[0].widgets = std::move(rebuilt);
@@ -1410,7 +1473,7 @@ bool PanelWidgetConfig::parked_layout_is_users(const std::string& signature) con
     return hash != helix::layout::arrangement_hash(*it);
 }
 
-bool PanelWidgetConfig::reresolve_default_if_changed(int cols, int rows) {
+bool PanelWidgetConfig::reresolve_default_if_changed(int cols, int rows, bool persist) {
     if (edit_session_open_ || cols <= 0 || rows <= 0 || pages_.empty() || !is_unedited_default()) {
         return false;
     }
@@ -1419,15 +1482,36 @@ bool PanelWidgetConfig::reresolve_default_if_changed(int cols, int rows) {
     if (grid_changes && parked_layout_is_users(target)) {
         return false;
     }
+    // Capabilities read while the printer is not READY do not rearrange a
+    // default that has already resolved; only a pending one, or one whose grid
+    // changed, needs an arrangement to show meanwhile.
+    if (!persist && !grid_changes && !has_pending_anchors()) {
+        return false;
+    }
 
-    std::string signature;
-    auto rebuilt = build_default_grid_with_seed(cols, rows, &signature);
+    // The signature decides; the entries are built only when it moved. A
+    // pending block has no signature yet, so it always differs when persisting.
+    const auto overlay = load_preset_overlay(config_.get_preset());
+    const nlohmann::json* seed = overlay->is_null() ? nullptr : overlay.get();
+    const std::string signature = resolve_default(cols, rows, seed).signature;
+    const std::string& shown = persist ? default_signature_ : provisional_signature_;
+    if (!grid_changes && signature == shown) {
+        return false;
+    }
+    auto rebuilt = build_default_grid(cols, rows, nullptr, seed);
     if (rebuilt.empty()) {
         return false;
     }
-    // A pending block has no signature yet, so it always differs.
-    if (!grid_changes && signature == default_signature_) {
-        return false;
+
+    if (!persist) {
+        // Shown, but left pending and unsaved: the first READY populate
+        // resolves it from the printer's own values and writes it then.
+        install_default(std::move(rebuilt), "", cols, rows);
+        provisional_signature_ = signature;
+        spdlog::debug("[PanelWidgetConfig] '{}': resolved the default for the {} grid for display "
+                      "while the printer is not READY ({}); it stays pending",
+                      panel_id_, target, signature);
+        return true;
     }
 
     const std::string from = default_signature_;

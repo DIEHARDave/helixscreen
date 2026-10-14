@@ -542,6 +542,20 @@ TEST_CASE_METHOD(LiveDefaultFixture, "live default: Reset after an edit makes it
     check_ams_slot(panel);
 }
 
+/// True when @p node places @p id on its first page.
+bool node_places(const nlohmann::json& node, const char* id) {
+    if (!node.contains("pages") || node["pages"].empty()) {
+        return false;
+    }
+    for (const auto& w : node["pages"][0]["widgets"]) {
+        if (w.value("id", std::string{}) == id && w.value("enabled", false) &&
+            w.value("col", -1) >= 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
 TEST_CASE_METHOD(LiveDefaultFixture,
                  "live default: a printer switch resolves the new printer once it is READY",
                  "[live_default]") {
@@ -553,40 +567,140 @@ TEST_CASE_METHOD(LiveDefaultFixture,
     const std::string saved_active = active;
     helix::test::ScopeExit restore_active([&] { active = saved_active; });
 
+    // Printer A has an AMS.
     const std::string panel = "live_default_switch";
     active = "live_default_printer_a";
     fresh_panel(panel);
     populate(panel);
+    GateObserverScope scope{panel};
+    observe_gates(panel);
+    set("ams_slot_count", 4);
+    run_rebuild();
+    check_ams_slot(panel);
     config(panel).flush_pending_save();
     const std::string path_a = cfg->df() + "panel_widgets/" + panel;
     const nlohmann::json node_a = cfg->get<nlohmann::json>(path_a, nlohmann::json());
     REQUIRE(node_a.contains("default"));
+    REQUIRE(node_places(node_a, "ams"));
 
-    GateObserverScope scope{panel};
-    observe_gates(panel);
-
-    // The retarget: the link drops, every cached layout reloads from the new
-    // printer's path, and the new printer's capabilities arrive before READY.
+    // The retarget: the link drops and every cached layout reloads from the new
+    // printer's path while A's capabilities are still in the subjects.
     set("printer_connection_state", kDisconnected);
     run_rebuild();
     active = "live_default_printer_b";
     fresh_panel(panel);
     PanelWidgetManager::instance().clear_all_panel_configs();
+    const std::string path_b = cfg->df() + "panel_widgets/" + panel;
+    REQUIRE(config(panel).has_pending_anchors());
+    const int before = writes.writes();
+
     populate(panel);
-    set("ams_slot_count", 4);
+    // Shown from what the subjects hold, and left pending and unsaved.
+    check_ams_slot(panel);
+    CHECK(config(panel).has_pending_anchors());
+    CHECK(config(panel).is_unedited_default());
+    settle_saves();
+    CHECK(writes.writes() == before);
+    {
+        // Only load's own pending stamp is on disk, which the READY populate
+        // resolves again whatever it holds.
+        const nlohmann::json node_b = cfg->get<nlohmann::json>(path_b, nlohmann::json());
+        INFO(node_b.dump());
+        REQUIRE(node_b.contains("default"));
+        CHECK(node_b["default"].value("signature", std::string{}).empty());
+        CHECK_FALSE(node_b.contains("grid"));
+    }
+
+    // B's own values arrive before it is READY: shown, still not written.
+    set("ams_slot_count", 0);
     run_rebuild();
-    CHECK_FALSE(entry(panel, "ams")->is_placed());
+    check_env_fil_slot(panel);
+    CHECK(config(panel).has_pending_anchors());
+    settle_saves();
+    CHECK(writes.writes() == before);
 
     set("printer_connection_state", kConnected);
     run_rebuild();
-    check_ams_slot(panel);
-    config(panel).flush_pending_save();
+    check_env_fil_slot(panel);
+    CHECK_FALSE(config(panel).has_pending_anchors());
+    settle_saves();
+    CHECK(writes.writes() - before == 1);
 
     CHECK(cfg->get<nlohmann::json>(path_a, nlohmann::json()) == node_a);
-    const nlohmann::json node_b =
-        cfg->get<nlohmann::json>(cfg->df() + "panel_widgets/" + panel, nlohmann::json());
+    const nlohmann::json node_b = cfg->get<nlohmann::json>(path_b, nlohmann::json());
     REQUIRE(node_b.contains("default"));
-    CHECK(node_b["default"]["signature"] != node_a["default"]["signature"]);
+    const std::string sig_b = node_b["default"]["signature"];
+    CHECK(sig_b.find("ams_slot_count=0") != std::string::npos);
+    CHECK(sig_b != node_a["default"]["signature"]);
+    CHECK_FALSE(node_places(node_b, "ams"));
+}
+
+TEST_CASE_METHOD(LiveDefaultFixture,
+                 "live default: an offline grid change shows the new grid and writes at READY",
+                 "[live_default]") {
+    use_geometry(kMedium12x8);
+    pin_capabilities(0);
+    ScopedConfigWriteCounter writes;
+    const std::string panel = fresh_panel("live_default_offline_grid");
+    populate(panel);
+    config(panel).flush_pending_save();
+    const nlohmann::json node_12 = saved_node(panel);
+    REQUIRE(node_12.value("grid", std::string{}) == "12x8");
+    REQUIRE_FALSE(config(panel).has_pending_anchors());
+
+    set("printer_connection_state", kDisconnected);
+    const int before = writes.writes();
+    container_ = make_container(kMedium10x8.content_w, kMedium10x8.content_h);
+    populate(panel);
+    CHECK(config(panel).grid_signature() == "10x8");
+    CHECK(config(panel).has_pending_anchors());
+    CHECK(config(panel).is_unedited_default());
+    check_none_enabled_unplaced(panel);
+    settle_saves();
+    CHECK(writes.writes() == before);
+    CHECK(saved_node(panel) == node_12);
+
+    // Another offline populate on the same grid changes nothing.
+    PanelWidgetManager::instance().populate_widgets(panel, container_, 0);
+    settle_saves();
+    CHECK(writes.writes() == before);
+
+    set("printer_connection_state", kConnected);
+    populate(panel);
+    settle_saves();
+    CHECK(writes.writes() - before == 1);
+    CHECK_FALSE(config(panel).has_pending_anchors());
+    CHECK(config(panel).default_signature().find("|10|8|") != std::string::npos);
+    const nlohmann::json node_10 = saved_node(panel);
+    CHECK(node_10.value("grid", std::string{}) == "10x8");
+    CHECK_FALSE(node_10.contains("parked_grids"));
+}
+
+TEST_CASE_METHOD(LiveDefaultFixture,
+                 "live default: a re-resolve keeps the table's config under the widget's own",
+                 "[live_default]") {
+    use_geometry(kMedium12x8);
+    pin_capabilities(0);
+    ScopedConfigWriteCounter writes;
+    const std::string panel = fresh_panel("live_default_config_merge");
+    populate(panel);
+    REQUIRE(config(panel).get_widget_config("print_status") ==
+            nlohmann::json{{"layout_style", "detailed"}});
+
+    SECTION("a key the widget does not set keeps the table's value") {
+        config(panel).set_widget_config("print_status", {{"zz_user_key", 1}});
+        set("ams_slot_count", 4);
+        REQUIRE(PanelWidgetManager::instance().refresh_live_default(panel));
+        CHECK(config(panel).get_widget_config("print_status") ==
+              nlohmann::json{{"layout_style", "detailed"}, {"zz_user_key", 1}});
+    }
+    SECTION("a key the widget sets wins") {
+        config(panel).set_widget_config("print_status", {{"layout_style", "compact"}});
+        set("ams_slot_count", 4);
+        REQUIRE(PanelWidgetManager::instance().refresh_live_default(panel));
+        CHECK(config(panel).get_widget_config("print_status") ==
+              nlohmann::json{{"layout_style", "compact"}});
+    }
 }
 
 TEST_CASE_METHOD(
@@ -849,4 +963,75 @@ TEST_CASE("live default: the gate observers also watch a preset seed's subjects"
         CHECK(std::find(with.begin(), with.end(), base) != with.end());
     }
     CHECK(std::is_sorted(with.begin(), with.end()));
+}
+
+TEST_CASE_METHOD(LiveDefaultFixture,
+                 "live default: a grid change during an edit session resolves when it closes",
+                 "[live_default]") {
+    use_geometry(kMedium12x8);
+    pin_capabilities(0);
+    ScopedConfigWriteCounter writes;
+    const std::string panel = fresh_panel("live_default_edit_grid");
+    populate(panel);
+    REQUIRE(config(panel).is_unedited_default());
+
+    config(panel).set_edit_session_open(true);
+    container_ = make_container(kMedium10x8.content_w, kMedium10x8.content_h);
+    populate(panel);
+    CHECK(config(panel).grid_signature() == "10x8");
+    CHECK(config(panel).is_unedited_default());
+    CHECK(config(panel).has_pending_anchors());
+
+    config(panel).set_edit_session_open(false);
+    populate(panel);
+    CHECK(config(panel).is_unedited_default());
+    CHECK(config(panel).default_signature().find("|10|8|") != std::string::npos);
+    check_none_enabled_unplaced(panel);
+
+    // Still live: a capability change rearranges it.
+    set("ams_slot_count", 4);
+    CHECK(PanelWidgetManager::instance().refresh_live_default(panel));
+    CHECK(entry(panel, "ams")->enabled);
+    CHECK_FALSE(entry(panel, "filament")->enabled);
+}
+
+TEST_CASE_METHOD(LiveDefaultFixture,
+                 "live default: a restored parked default is refreshed before it is shown",
+                 "[live_default]") {
+    use_geometry(kMedium12x8);
+    require_font_tokens_distinct();
+    pin_capabilities(0);
+    ScopedConfigWriteCounter writes;
+    const std::string panel = fresh_panel("live_default_restored");
+
+    // An unedited default for 12x8, resolved without an AMS.
+    populate(panel);
+    config(panel).flush_pending_save();
+    const nlohmann::json node_12 = saved_node(panel);
+    REQUIRE(node_12.contains("default"));
+    nlohmann::json parked_12 = nlohmann::json::object();
+    for (const char* key : {"pages", "main_page_index", "next_page_id", "default"}) {
+        parked_12[key] = node_12[key];
+    }
+
+    // The user's own arrangement on 10x8, with that default parked beside it.
+    fresh_panel(panel);
+    container_ = make_container(kMedium10x8.content_w, kMedium10x8.content_h);
+    populate(panel);
+    swap_temperatures(panel);
+    REQUIRE_FALSE(config(panel).is_unedited_default());
+    config(panel).flush_pending_save();
+    nlohmann::json node_10 = saved_node(panel);
+    REQUIRE(node_10.value("grid", std::string{}) == "10x8");
+    node_10["parked_grids"] = {{"12x8", parked_12}};
+    Config* cfg = Config::get_instance();
+    cfg->set<nlohmann::json>(cfg->df() + "panel_widgets/" + panel, node_10);
+    config(panel).mark_dirty();
+
+    set("ams_slot_count", 4);
+    container_ = make_container(kMedium12x8.content_w, kMedium12x8.content_h);
+    populate(panel);
+    CHECK(config(panel).grid_signature() == "12x8");
+    CHECK(config(panel).is_unedited_default());
+    check_ams_slot(panel);
 }
