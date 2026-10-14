@@ -496,7 +496,7 @@
   <translation tag="Cannot start print: internal error" ru="Невозможно начать печать: внутренняя ошибка"/>
   <translation tag="Cannot start print: not connected to printer" ru="Невозможно начать печать: не подключено к принтеру"/>
   <translation tag="Cannot start print: printer is {}" ru="Невозможно начать печать: принтер {}"/>
-  <translation tag="Cannot start {}: its pre-print check was for another file" ru="Не удалось запустить {}: предварительная проверка относилась к другому файлу"/>
+  <translation tag="Cannot start {}: the file could not be checked for the steps you turned off" ru="Не удалось запустить {}: файл не удалось проверить на отключённые шаги"/>
   <translation tag="Cannot unload while a print is active" ru="Нельзя выгрузить во время печати"/>
   <translation tag="Capabilities: " ru="Возможности: "/>
   <translation tag="Carriage empty" ru="Каретка пуста"/>

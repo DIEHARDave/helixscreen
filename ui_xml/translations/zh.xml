@@ -496,7 +496,7 @@
   <translation tag="Cannot start print: internal error" zh="无法开始打印: 内部错误"/>
   <translation tag="Cannot start print: not connected to printer" zh="无法开始打印: 未连接打印机"/>
   <translation tag="Cannot start print: printer is {}" zh="无法开始打印: 打印机状态为 {}"/>
-  <translation tag="Cannot start {}: its pre-print check was for another file" zh="无法启动 {}：打印前检查针对的是另一个文件"/>
+  <translation tag="Cannot start {}: the file could not be checked for the steps you turned off" zh="无法启动 {}：无法针对您关闭的步骤检查该文件"/>
   <translation tag="Cannot unload while a print is active" zh="打印时无法卸载"/>
   <translation tag="Capabilities: " zh="功能: "/>
   <translation tag="Carriage empty" zh="未装载打印头"/>

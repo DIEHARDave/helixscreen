@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include "../test_helpers/scoped_cache_dir.h"
 #include "tools_used_cache.h"
 
+#include <cstdio>
 #include <cstdlib>
 #include <filesystem>
 #include <set>
@@ -9,35 +11,7 @@
 #include "../catch_amalgamated.hpp"
 
 namespace {
-// Per-TEST_SECTION temp cache dir; HELIX_CACHE_DIR is the documented override
-// for get_helix_cache_dir() (src/app_globals.cpp:424). MUST save/restore the
-// previous value — leaking it would redirect every later test's cache writes
-// in this binary (tests within one Catch2 binary run sequentially, but they
-// share the process env).
-struct CacheDirGuard {
-    std::filesystem::path dir;
-    std::string prev_env_;
-    bool had_prev_ = false;
-    CacheDirGuard()
-        : dir(std::filesystem::temp_directory_path() /
-              ("tools_used_test_" + std::to_string(::getpid()))) {
-        std::filesystem::create_directories(dir);
-        if (const char* old = ::getenv("HELIX_CACHE_DIR")) {
-            prev_env_ = old;
-            had_prev_ = true;
-        }
-        setenv("HELIX_CACHE_DIR", dir.c_str(), 1);
-    }
-    ~CacheDirGuard() {
-        if (had_prev_) {
-            setenv("HELIX_CACHE_DIR", prev_env_.c_str(), 1);
-        } else {
-            unsetenv("HELIX_CACHE_DIR");
-        }
-        std::error_code ec;
-        std::filesystem::remove_all(dir, ec);
-    }
-};
+using CacheDirGuard = helix::test::ScopedCacheDir;
 } // namespace
 
 TEST_CASE("ToolsUsedCache round trip + staleness", "[tools_used_cache]") {
@@ -88,4 +62,46 @@ TEST_CASE("ToolsUsedCache LRU bound", "[tools_used_cache]") {
     // The most recent stores survive.
     const size_t last = helix::ToolsUsedCache::MAX_ENTRIES + 9;
     REQUIRE(a.lookup("f" + std::to_string(last) + ".gcode", last, last).has_value());
+}
+
+TEST_CASE("ToolsUsedCache evicts the least recently looked up, not the first by name",
+          "[tools_used_cache]") {
+    CacheDirGuard guard;
+    helix::ToolsUsedCache a;
+    const size_t n = helix::ToolsUsedCache::MAX_ENTRIES;
+    // Stored in reverse name order, so name order and age disagree.
+    auto name = [](size_t i) {
+        char buf[16];
+        std::snprintf(buf, sizeof(buf), "f%03zu.gcode", i);
+        return std::string(buf);
+    };
+    for (size_t i = n; i-- > 0;) {
+        a.store(name(i), i, static_cast<time_t>(i), {static_cast<int>(i % 4)});
+    }
+    // The oldest store, looked up, becomes the most recent.
+    const size_t oldest = n - 1;
+    REQUIRE(a.lookup(name(oldest), oldest, static_cast<time_t>(oldest)).has_value());
+
+    a.store("overflow.gcode", 1, 1, {0});
+
+    CHECK(a.lookup(name(oldest), oldest, static_cast<time_t>(oldest)).has_value());
+    CHECK_FALSE(a.lookup(name(n - 2), n - 2, static_cast<time_t>(n - 2)).has_value());
+    CHECK(a.lookup(name(0), 0, 0).has_value()); // first by name, stored last: kept
+}
+
+TEST_CASE("the shared tools-used cache reads the directory it is pointed at",
+          "[tools_used_cache]") {
+    {
+        CacheDirGuard guard;
+        helix::tools_used_cache().store("shared.gcode", 7, 7, {1});
+        REQUIRE(helix::tools_used_cache().lookup("shared.gcode", 7, 7).has_value());
+    }
+    CacheDirGuard fresh_dir;
+    // Nothing carries over from the last directory...
+    CHECK_FALSE(helix::tools_used_cache().lookup("shared.gcode", 7, 7).has_value());
+    // ...and what lands in this one on disk is read, not a stale empty copy.
+    helix::tools_used_cache().invalidate();
+    helix::ToolsUsedCache writer;
+    writer.store("written.gcode", 3, 3, {2});
+    CHECK(helix::tools_used_cache().lookup("written.gcode", 3, 3).has_value());
 }

@@ -27,18 +27,19 @@ class ToolsUsedCache {
                                         time_t modified);
 
     /// Persist an entry (also compacts when over MAX_ENTRIES — drop
-    /// least-recently-LOOKED-UP first). Re-reads the file before writing it,
-    /// so entries another instance stored since this one loaded survive.
-    /// Writes through to disk immediately; a failed write logs a warning and
-    /// keeps the in-memory entry.
+    /// least-recently-LOOKED-UP first). Writes through to disk immediately;
+    /// a failed write logs a warning and keeps the in-memory entry.
     void store(const std::string& file_path, uint64_t size_bytes, time_t modified,
                const std::set<int>& tools);
 
     static constexpr size_t MAX_ENTRIES = 256;
 
-    /// Test seam + cheap explicit reset. Not needed in production flow.
+    /// Drop the in-memory copy; the next use reads the file again. Not needed
+    /// in production flow: tests reset the shared instance with it when they
+    /// point the cache directory elsewhere.
     void invalidate() {
         entries_.clear();
+        loaded_ = false;
     }
 
   private:
@@ -55,5 +56,10 @@ class ToolsUsedCache {
     uint64_t next_ctr_ = 1;
     bool loaded_ = false;
 };
+
+/// The one cache every reader and writer shares: the file view's chips and a
+/// queued start's facts. One instance, because each saves its whole map, so a
+/// second would drop the first's entries and lose its lookup recency.
+ToolsUsedCache& tools_used_cache();
 
 } // namespace helix

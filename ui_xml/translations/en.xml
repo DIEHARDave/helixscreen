@@ -496,7 +496,7 @@
   <translation tag="Cannot start print: internal error" en="Cannot start print: internal error"/>
   <translation tag="Cannot start print: not connected to printer" en="Cannot start print: not connected to printer"/>
   <translation tag="Cannot start print: printer is {}" en="Cannot start print: printer is {}"/>
-  <translation tag="Cannot start {}: its pre-print check was for another file" en="Cannot start {}: its pre-print check was for another file"/>
+  <translation tag="Cannot start {}: the file could not be checked for the steps you turned off" en="Cannot start {}: the file could not be checked for the steps you turned off"/>
   <translation tag="Cannot unload while a print is active" en="Cannot unload while a print is active"/>
   <translation tag="Capabilities: " en="Capabilities: "/>
   <translation tag="Carriage empty" en="Carriage empty"/>

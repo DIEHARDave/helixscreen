@@ -502,7 +502,7 @@ translations:
   'Cannot start print: internal error': '印刷を開始できません: 内部エラー'
   'Cannot start print: not connected to printer': '印刷を開始できません: プリンター未接続'
   'Cannot start print: printer is {}': '印刷を開始できません: プリンターは {} 状態です'
-  'Cannot start {}: its pre-print check was for another file': '{} を開始できません: 印刷前チェックは別のファイルのものでした'
+  'Cannot start {}: the file could not be checked for the steps you turned off': '{} を開始できません: オフにした手順についてファイルを確認できませんでした'
   Cannot save offsets while printing: 印刷中はオフセットを保存できません
   Cannot unload while a print is active: 印刷中は排出できません
   'Capabilities: ': '機能: '

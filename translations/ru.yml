@@ -539,7 +539,7 @@ translations:
   'Cannot start print: not connected to printer': 'Невозможно начать печать: не подключено
     к принтеру'
   'Cannot start print: printer is {}': 'Невозможно начать печать: принтер {}'
-  'Cannot start {}: its pre-print check was for another file': 'Не удалось запустить {}: предварительная проверка относилась к другому файлу'
+  'Cannot start {}: the file could not be checked for the steps you turned off': 'Не удалось запустить {}: файл не удалось проверить на отключённые шаги'
   Cannot save offsets while printing: Нельзя сохранить смещения во время печати
   Cannot unload while a print is active: Нельзя выгрузить во время печати
   'Capabilities: ': 'Возможности: '

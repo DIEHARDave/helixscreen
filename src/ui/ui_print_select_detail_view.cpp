@@ -613,8 +613,8 @@ void PrintSelectDetailView::show(const std::string& filename, const std::string&
     palette_settled_ = !current_filament_colors_.empty();
     lv_subject_set_int(&detail_mapping_ready_, 0);
 
-    if (auto cached = tools_used_cache_.lookup(current_file_key(), current_file_size_bytes_,
-                                               current_file_modified_)) {
+    if (auto cached = helix::tools_used_cache().lookup(current_file_key(), current_file_size_bytes_,
+                                                       current_file_modified_)) {
         headless_tools_used_ = *cached;
         headless_scan_done_ = true;    // readiness now true; the scan below is skipped
         headless_scan_settled_ = true; // the cached answer IS the settled answer
@@ -774,6 +774,10 @@ void PrintSelectDetailView::reclaim_download(const std::string& path) {
         return;
     }
     std::remove(path.c_str());
+}
+
+std::string PrintSelectDetailView::current_scan_key() const {
+    return PrintPreparationManager::scan_key(current_filename_, current_path_, current_local_path_);
 }
 
 std::string PrintSelectDetailView::current_file_key() const {
@@ -1554,8 +1558,8 @@ void PrintSelectDetailView::try_extract_gcode_colors(lv_obj_t* viewer) {
     const bool set_is_authoritative =
         ui_gcode_viewer_get_parsed_file(viewer) != nullptr || headless_scan_settled_;
     if (set_is_authoritative) {
-        tools_used_cache_.store(current_file_key(), current_file_size_bytes_,
-                                current_file_modified_, tools_used_effective());
+        helix::tools_used_cache().store(current_file_key(), current_file_size_bytes_,
+                                        current_file_modified_, tools_used_effective());
     } else {
         spdlog::debug("[DetailView] Streaming load with the tools scan still pending — "
                       "not caching a provisional used-tool set");
@@ -1948,7 +1952,7 @@ void PrintSelectDetailView::run_when_preflight_ready(std::function<void()> cb) {
 bool PrintSelectDetailView::is_print_start_ready() const {
     const bool stop_check_answered = printer_stop_wait_timed_out_ || !prep_manager_ ||
                                      current_filename_.empty() ||
-                                     prep_manager_->has_printer_stop_answer_for(current_filename_);
+                                     prep_manager_->has_printer_stop_answer_for(current_scan_key());
     return is_preflight_ready() && stop_check_answered;
 }
 
@@ -1971,8 +1975,9 @@ void PrintSelectDetailView::fire_on_preflight_ready() {
 
 void PrintSelectDetailView::refresh_exclude_objects() {
     std::vector<helix::gcode::GCodeObject> scanned;
-    if (prep_manager_ && prep_manager_->has_scan_result_for(current_filename_)) {
-        scanned = prep_manager_->get_scan_result()->objects;
+    if (const auto* scan =
+            prep_manager_ ? prep_manager_->scan_result_for(current_scan_key()) : nullptr) {
+        scanned = scan->objects;
     }
     // An open view shown for another file still holds the previous file's parse.
     const auto* parsed = gcode_viewer_ && viewer_file_ == current_filename_
@@ -2122,8 +2127,8 @@ void PrintSelectDetailView::apply_scan_result(std::set<int> tools, bool authorit
     // prefers the viewer's parsed set when it exists (same file, same
     // answer), so this is correct on both paths.
     if (authoritative) {
-        tools_used_cache_.store(current_file_key(), current_file_size_bytes_,
-                                current_file_modified_, tools_used_effective());
+        helix::tools_used_cache().store(current_file_key(), current_file_size_bytes_,
+                                        current_file_modified_, tools_used_effective());
     }
 
     // Render the per-tool chips from the REAL used-tool set recovered

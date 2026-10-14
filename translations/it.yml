@@ -544,7 +544,7 @@ translations:
   'Cannot start print: not connected to printer': 'Impossibile avviare stampa: non
     connesso alla stampante'
   'Cannot start print: printer is {}': 'Impossibile avviare stampa: stampante è {}'
-  'Cannot start {}: its pre-print check was for another file': 'Impossibile avviare {}: il controllo preliminare riguardava un altro file'
+  'Cannot start {}: the file could not be checked for the steps you turned off': 'Impossibile avviare {}: non è stato possibile controllare il file per i passaggi disattivati'
   Cannot save offsets while printing: Impossibile salvare gli offset durante la stampa
   Cannot unload while a print is active: Impossibile scaricare durante una stampa in corso
   'Capabilities: ': 'Funzionalità: '

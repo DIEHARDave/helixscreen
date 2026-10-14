@@ -108,6 +108,20 @@ class PrintStartController {
                   const std::vector<std::string>& filament_colors,
                   const std::string& thumbnail_path = "");
 
+    /// The key the prep manager keeps this file's scan under, when it is not
+    /// the file's own path (a stick file printed from its copy). set_file()
+    /// clears it.
+    void set_scan_key(std::string key) {
+        scan_key_ = std::move(key);
+    }
+
+    /// Runs when a start with no detail view meets a printer-stopping command
+    /// check that did not run: the start ends there (then the cancelled
+    /// callback), since nothing on screen can stand in for that check.
+    void set_on_file_unchecked(std::function<void()> cb) {
+        on_file_unchecked_ = std::move(cb);
+    }
+
     /// Objects to skip in the next start, captured at the Print tap. Consumed
     /// by that start; a reprint never reads them.
     void set_exclude_picks(std::vector<std::string> picks) {
@@ -252,6 +266,9 @@ class PrintStartController {
     /// A start ended without a print: the button comes back and the owner hears.
     void end_without_print();
 
+    /// The key this file's scan is kept under: set_scan_key()'s, else its path.
+    [[nodiscard]] std::string file_scan_key() const;
+
     // === Dependencies ===
     PrinterState& printer_state_;
     IMoonrakerAPI* api_ = nullptr;
@@ -271,6 +288,8 @@ class PrintStartController {
     std::vector<std::string> filament_colors_;
     std::vector<std::string> exclude_picks_;
     std::string thumbnail_path_; ///< Pre-extracted thumbnail for USB/embedded files
+    std::string scan_key_;
+    std::function<void()> on_file_unchecked_;
 
     // === Gate Pipeline State ===
     std::vector<helix::PrintStartGate> gate_list_; ///< ctor-seeded; overridable in tests

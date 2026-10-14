@@ -553,7 +553,7 @@ translations:
     nicht mit Drucker verbunden'
   'Cannot start print: printer is {}': 'Druck kann nicht gestartet werden: Drucker
     ist {}'
-  'Cannot start {}: its pre-print check was for another file': '{} kann nicht gestartet werden: Die Prüfung vor dem Druck galt einer anderen Datei'
+  'Cannot start {}: the file could not be checked for the steps you turned off': '{} kann nicht gestartet werden: Die Datei konnte nicht auf die ausgeschalteten Schritte geprüft werden'
   Cannot save offsets while printing: Offsets können während des Drucks nicht gespeichert werden
   Cannot unload while a print is active: Entladen während eines aktiven Drucks nicht möglich
   'Capabilities: ': 'Fähigkeiten: '

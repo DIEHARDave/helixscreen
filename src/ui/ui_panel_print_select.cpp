@@ -2873,17 +2873,20 @@ void PrintSelectPanel::start_print(bool force) {
     std::string thumbnail = selected_detail_thumbnail_buffer_;
     std::vector<std::string> exclude_picks =
         detail_view_ ? detail_view_->exclude_picks() : std::vector<std::string>{};
+    // The copy a stick file prints from has another path; its scan is the stick file's.
+    std::string scan_key = selected_scan_key();
     if (!selected_local_path_.empty()) {
         copy_usb_file_to_printer([this, colors = std::move(colors),
-                                  thumbnail = std::move(thumbnail),
-                                  exclude_picks](const std::string& dest) {
+                                  thumbnail = std::move(thumbnail), exclude_picks,
+                                  scan_key](const std::string& dest) {
             const size_t slash = dest.rfind('/');
             dispatch_print(dest.substr(slash + 1), dest.substr(0, slash), colors, thumbnail,
-                           exclude_picks);
+                           exclude_picks, scan_key);
         });
         return;
     }
-    dispatch_print(filename, current_path_, colors, thumbnail, std::move(exclude_picks));
+    dispatch_print(filename, current_path_, colors, thumbnail, std::move(exclude_picks),
+                   std::move(scan_key));
 }
 
 bool PrintSelectPanel::refuse_start_with_every_object_picked() {
@@ -2894,12 +2897,19 @@ bool PrintSelectPanel::refuse_start_with_every_object_picked() {
     return true;
 }
 
+std::string PrintSelectPanel::selected_scan_key() const {
+    return helix::ui::PrintPreparationManager::scan_key(selected_filename_buffer_, current_path_,
+                                                        selected_local_path_);
+}
+
 void PrintSelectPanel::dispatch_print(const std::string& filename, const std::string& dir,
                                       const std::vector<std::string>& filament_colors,
                                       const std::string& thumbnail,
-                                      std::vector<std::string> exclude_picks) {
+                                      std::vector<std::string> exclude_picks,
+                                      std::string scan_key) {
     // Pass extracted thumbnail path so USB/embedded thumbnails propagate to print status
     print_controller_->set_file(filename, dir, filament_colors, thumbnail);
+    print_controller_->set_scan_key(std::move(scan_key));
     // The picks seen at the tap: a USB copy can land after another file opened.
     print_controller_->set_exclude_picks(std::move(exclude_picks));
 
@@ -3352,7 +3362,7 @@ void PrintSelectPanel::open_remap_modal() {
     auto* prep = detail_view_->get_prep_manager();
     remap_modal_.set_start_macro_note(
         start_macro_remap_note(backend->get_remap_strategy(),
-                               prep ? prep->print_start_for(selected_filename_buffer_) : nullptr));
+                               prep ? prep->print_start_for(selected_scan_key()) : nullptr));
     remap_modal_.show(lv_screen_active());
 }
 

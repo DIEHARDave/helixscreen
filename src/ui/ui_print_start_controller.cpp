@@ -128,6 +128,11 @@ void PrintStartController::set_file(const std::string& filename, const std::stri
     path_ = path;
     filament_colors_ = filament_colors;
     thumbnail_path_ = thumbnail_path;
+    scan_key_.clear();
+}
+
+std::string PrintStartController::file_scan_key() const {
+    return scan_key_.empty() ? PrintPreparationManager::scan_key(filename_, path_) : scan_key_;
 }
 
 bool PrintStartController::is_ready() const {
@@ -242,7 +247,8 @@ void PrintStartController::execute_print_start() {
     PrinterState* ps = &printer_state_;
 
     auto start_now = [this, ps, prep_manager, filename_to_print, path = path_, thumbnail_path,
-                      on_started, on_cancelled, update_button, show_detail, exclude_picks]() {
+                      on_started, on_cancelled, update_button, show_detail, exclude_picks,
+                      scan_key = file_scan_key()]() {
         // Navigate to print status panel IMMEDIATELY (optimistic navigation)
         // The busy overlay will show on top during download/upload operations.
         // On failure, we'll navigate back to the detail overlay.
@@ -359,7 +365,8 @@ void PrintStartController::execute_print_start() {
                             }
                         }
                     });
-            });
+            },
+            scan_key);
     };
 
     // Some backends (Snapmaker U1) must emit firmware-native print_task_config
@@ -608,7 +615,7 @@ helix::PrintStartContext PrintStartController::gather_print_start_context() cons
     if (!ctx.has_file_facts) {
         ctx.printer_stop.not_run_reason = "no file detail view";
     } else if (auto* prep = active_prep_manager()) {
-        ctx.printer_stop = prep->printer_stop_check_for(filename_);
+        ctx.printer_stop = prep->printer_stop_check_for(file_scan_key());
     } else {
         ctx.printer_stop.not_run_reason = "no file scanner";
     }
@@ -627,6 +634,20 @@ helix::PrintStartContext PrintStartController::gather_print_start_context() cons
 
 void PrintStartController::run_gates_from(size_t index) {
     const auto ctx = gather_print_start_context();
+    // A start with no detail view has no screen that read the file, so an
+    // unrun printer-stopping command check ends it, at every (re-)entry: the
+    // macros can be read again while a dialog waits.
+    if (!detail_view_ && file_facts_ &&
+        ctx.printer_stop.state == helix::PrinterStopCheck::State::NotRun) {
+        spdlog::warn("[PrintStartController] Not starting {}: printer-stopping command check "
+                     "did not run ({})",
+                     filename_, ctx.printer_stop.not_run_reason);
+        if (on_file_unchecked_) {
+            on_file_unchecked_();
+        }
+        end_without_print();
+        return;
+    }
     if (index == 0 && ctx.printer_stop.state == helix::PrinterStopCheck::State::NotRun) {
         helix::warn_printer_stop_check_skipped(detail_view_ ? "the print select panel"
                                                             : "a queued job start",

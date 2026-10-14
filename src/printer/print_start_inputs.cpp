@@ -167,7 +167,7 @@ void FileStartFactsLoader::load(const std::string& filename, ReadyFn on_ready, D
         const uint64_t size = metadata ? metadata->size : 0;
         const auto modified = metadata ? static_cast<time_t>(metadata->modified) : time_t{0};
 
-        auto cached = ToolsUsedCache().lookup(filename, size, modified);
+        auto cached = tools_used_cache().lookup(filename, size, modified);
         if (cached) {
             facts->tools_used = *cached;
         }
@@ -186,7 +186,7 @@ void FileStartFactsLoader::load(const std::string& filename, ReadyFn on_ready, D
         // The authoritative rule: an answer read from the file is cached, the
         // empty set of a file that could not be had is not.
         auto remember = [filename, size, modified](const std::set<int>& tools) {
-            ToolsUsedCache().store(filename, size, modified, tools);
+            tools_used_cache().store(filename, size, modified, tools);
         };
         const auto need = req.need;
 
@@ -400,14 +400,15 @@ void FileStartFactsLoader::start_full_scan(uint32_t generation, ScanRequest req,
         // Line by line on the slow HTTP lane: off the main thread, and the
         // scanner never holds the whole file.
         helix::http::HttpExecutor::slow().submit([finish, stop_set, own_copy, path]() {
-            // A copy gone before the scan reads it is no file at all, not an
-            // empty one.
-            if (!tio::open_file(path, "rb")) {
+            bool opened = false;
+            std::set<int> tools = gcode::scan_tools_used_from_file(path, stop_set, &opened);
+            if (!opened) {
+                // A copy gone before the scan read it is no file at all, not
+                // an empty one.
                 spdlog::debug("[FileStartFacts] Tools scan: {} is gone - degrading", path);
                 finish({}, false);
                 return;
             }
-            std::set<int> tools = gcode::scan_tools_used_from_file(path, stop_set);
             if (own_copy) {
                 std::remove(path.c_str());
             }

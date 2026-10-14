@@ -496,7 +496,7 @@
   <translation tag="Cannot start print: internal error" ja="印刷を開始できません: 内部エラー"/>
   <translation tag="Cannot start print: not connected to printer" ja="印刷を開始できません: プリンター未接続"/>
   <translation tag="Cannot start print: printer is {}" ja="印刷を開始できません: プリンターは {} 状態です"/>
-  <translation tag="Cannot start {}: its pre-print check was for another file" ja="{} を開始できません: 印刷前チェックは別のファイルのものでした"/>
+  <translation tag="Cannot start {}: the file could not be checked for the steps you turned off" ja="{} を開始できません: オフにした手順についてファイルを確認できませんでした"/>
   <translation tag="Cannot unload while a print is active" ja="印刷中は排出できません"/>
   <translation tag="Capabilities: " ja="機能: "/>
   <translation tag="Carriage empty" ja="キャリッジが空"/>

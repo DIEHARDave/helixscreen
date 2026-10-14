@@ -13,6 +13,7 @@
 
 #include "ui_timer_guard.h"
 
+#include "app_constants.h"
 #include "async_lifetime_guard.h"
 #include "i_moonraker_sub_apis.h" // JobQueueEntry
 #include "print_start_inputs.h"
@@ -106,14 +107,14 @@ class QueuedJobStarter {
 
     /// End a start that could not be checked: warn that the job stays queued.
     void give_up(const char* why);
+    void warn_stays_queued();
 
     /// (Re)arm the one-shot that gives up a start whose gathering stalls.
     void arm_stall_watchdog(uint32_t ms);
 
     /// Each gathering step (the options read, the metadata, the footer read,
-    /// the operations scan) answers within this, as an upload must report
-    /// progress within the USB copy's stall window.
-    static constexpr uint32_t kStallMs = 30000;
+    /// the operations scan) answers within the app's transfer stall window.
+    static constexpr uint32_t kStallMs = app_constants::transfer::STALL_MS;
     /// A footer that cannot answer falls back to reading the whole file; that
     /// read is allowed the file's size at this rate on top of kStallMs.
     static constexpr uint64_t kSlowestReadBytesPerMs = 100; // 100 kB/s

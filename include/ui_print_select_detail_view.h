@@ -981,12 +981,6 @@ class PrintSelectDetailView : public OverlayBase {
     // server didn't report it; the tail read falls back to a fixed window.
     uint64_t current_gcode_end_byte_ = 0;
 
-    // Persistent tools-used cache (path/size/mtime keyed, JSON in the helix
-    // cache dir). Seeded at show() so re-prints render the final chip state
-    // in one paint; written through when a scan/parse makes the set final.
-    // Main-thread use only (documented on helix::ToolsUsedCache).
-    helix::ToolsUsedCache tools_used_cache_;
-
     // The footer read and whole-file tools scan, shared with a queued start
     // that has no file view.
     helix::FileStartFactsLoader facts_loader_{nullptr};
@@ -1064,6 +1058,9 @@ class PrintSelectDetailView : public OverlayBase {
     void resolve_local_gcodes_root();
 
     void reclaim_download(const std::string& path);
+
+    /// The key the prep manager keeps this file's operations scan under.
+    [[nodiscard]] std::string current_scan_key() const;
 
     [[nodiscard]] std::string current_file_key() const;
 

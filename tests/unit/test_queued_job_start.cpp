@@ -303,16 +303,49 @@ TEST_CASE_METHOD(StarterFixture, "a stalled start gives up, and a later tap star
     CHECK_FALSE(starter->in_flight());
     CHECK(queue_has("0001"));
 
-    // The held options read answering late must not revive the start.
+    // A later tap starts again; its metadata read is held.
+    const int metadata_reads = mock_client_.call_count("server.files.metadata");
+    mock_client_.defer_next("server.files.metadata");
+    std::optional<Outcome> second;
+    starter->start_with_options(entry("0002", "3DBenchy.gcode"), {},
+                                [&second](Outcome o) { second = o; });
+    settle();
+    REQUIRE(starter->in_flight());
+    REQUIRE(mock_client_.call_count("server.files.metadata") == metadata_reads + 1);
+
+    // The first start's options answering now must not act on the second.
     mock_client_.fire_deferred("server.database.get_item");
     settle();
-    CHECK_FALSE(starter->in_flight());
-
-    const int reads = mock_client_.call_count("server.database.get_item");
-    mock_client_.defer_next("server.database.get_item");
-    start(entry("0001", "3DBenchy.gcode"));
+    CHECK(mock_client_.call_count("server.files.metadata") == metadata_reads + 1);
     CHECK(starter->in_flight());
-    CHECK(mock_client_.call_count("server.database.get_item") == reads + 1);
+    CHECK_FALSE(second.has_value());
+
+    mock_client_.fire_deferred("server.files.metadata");
+    settle();
+}
+
+TEST_CASE_METHOD(StarterFixture, "a macro re-read before the gates run refuses the start there",
+                 "[queued_job_start]") {
+    // An empty lane for tool 0 holds the start on the pre-flight dialog.
+    helix::test::ScopedMockAms ams({{0xFF0000, "PETG"}});
+    ams.load(0, 0xFF0000, "PETG", helix::SlotStatus::EMPTY);
+    PlantedGcode file("tile_reread.gcode", "", kPetgFile);
+    start(entry("0001", file.name()));
+    lv_obj_t* dialog = ModalStack::instance().top_dialog();
+    REQUIRE(dialog != nullptr);
+    REQUIRE(lv_obj_find_by_name(dialog, "btn_tertiary") != nullptr); // the pre-flight modal
+
+    // The printer's macros are read again while the dialog waits, so the
+    // file's printer-stopping command check no longer describes them.
+    helix::MacroParamCache::instance().populate_from_configfile(nlohmann::json::object(), {});
+
+    WarningLog warnings;
+    press("btn_primary"); // Print Anyway
+    REQUIRE(outcome.has_value());
+    CHECK(*outcome == Outcome::NotStarted);
+    CHECK(warnings.contains("Could not check"));
+    CHECK(starts() == 0);
+    CHECK(queue_has("0001"));
 }
 
 // ============================================================================

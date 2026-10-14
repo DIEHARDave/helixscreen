@@ -546,7 +546,7 @@ translations:
     não conectado à impressora'
   'Cannot start print: printer is {}': 'Não é possível iniciar impressão: impressora
     está {}'
-  'Cannot start {}: its pre-print check was for another file': 'Não é possível iniciar {}: a verificação prévia era de outro arquivo'
+  'Cannot start {}: the file could not be checked for the steps you turned off': 'Não é possível iniciar {}: não foi possível verificar o arquivo para as etapas desativadas'
   Cannot save offsets while printing: Não é possível salvar offsets durante a impressão
   Cannot unload while a print is active: Não é possível descarregar enquanto uma impressão está ativa
   'Capabilities: ': 'Capacidades: '

@@ -20,7 +20,7 @@
 
 #include "../lvgl_ui_test_fixture.h"
 #include "../test_helpers/planted_gcode.h"
-#include "../test_helpers/scoped_env.h"
+#include "../test_helpers/scoped_cache_dir.h"
 #include "../test_helpers/scoped_mock_ams.h"
 #include "app_globals.h"
 #include "moonraker_api_mock.h"
@@ -46,22 +46,7 @@ namespace {
 
 void noop_cb(lv_event_t* /*e*/) {}
 
-/// A tools-used cache directory of this test's own.
-struct CacheDir {
-    helix::ScopedEnv restore{"HELIX_CACHE_DIR"};
-    std::filesystem::path dir = std::filesystem::temp_directory_path() /
-                                ("print_start_inputs_" + std::to_string(::getpid()));
-    CacheDir() {
-        std::error_code ec;
-        std::filesystem::remove_all(dir, ec);
-        std::filesystem::create_directories(dir);
-        ::setenv("HELIX_CACHE_DIR", dir.c_str(), 1);
-    }
-    ~CacheDir() {
-        std::error_code ec;
-        std::filesystem::remove_all(dir, ec);
-    }
-};
+using CacheDir = helix::test::ScopedCacheDir;
 
 FileStartFacts two_tool_facts() {
     FileStartFacts facts;
@@ -146,7 +131,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "fill_file_context matches the file view",
     constexpr size_t kSize = 2468;
     constexpr time_t kMtime = 1357;
     // A warmed cache renders the authoritative state inside show().
-    helix::ToolsUsedCache().store(facts.filename, kSize, kMtime, facts.tools_used);
+    helix::tools_used_cache().store(facts.filename, kSize, kMtime, facts.tools_used);
     view.show("two_tool.gcode", "sub", "PLA", facts.palette.colors, facts.palette.materials, kSize,
               kMtime);
     view.recompute_preflight();

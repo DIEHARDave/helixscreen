@@ -83,6 +83,8 @@ QueuedJobStarter::QueuedJobStarter(PrinterState& printer_state, IMoonrakerAPI* a
         finish(Outcome::Started);
     });
     controller_->set_on_print_cancelled([this]() { finish(Outcome::NotStarted); });
+    // The gates end the start themselves; this says why the job stays queued.
+    controller_->set_on_file_unchecked([this]() { warn_stays_queued(); });
 }
 
 QueuedJobStarter::~QueuedJobStarter() {
@@ -150,8 +152,12 @@ void QueuedJobStarter::give_up(const char* why) {
         return;
     }
     spdlog::warn("[QueuedJobStart] Not starting queued job {}: {}", job_id_, why);
-    NOTIFY_WARNING(lv_tr("Could not check {} - it stays in the queue"), job_filename_);
+    warn_stays_queued();
     finish(Outcome::NotStarted);
+}
+
+void QueuedJobStarter::warn_stays_queued() {
+    NOTIFY_WARNING(lv_tr("Could not check {} - it stays in the queue"), job_filename_);
 }
 
 void QueuedJobStarter::start(const JobQueueEntry& job, DoneCallback done) {
@@ -228,7 +234,7 @@ void QueuedJobStarter::wait_for_scan() {
                 return;
             }
             if (!check) {
-                give_up("other files' scans pre-empted its own");
+                give_up("its file check kept going stale");
                 return;
             }
             // The tile has no screen to show what an unread file holds, so a

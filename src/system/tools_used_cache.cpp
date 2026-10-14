@@ -113,10 +113,8 @@ std::optional<std::set<int>> ToolsUsedCache::lookup(const std::string& file_path
 
 void ToolsUsedCache::store(const std::string& file_path, uint64_t size_bytes, time_t modified,
                            const std::set<int>& tools) {
-    // Re-read the file first, every time: other instances (the print-select
-    // view's and the queued-start loader's) write it too, and saving this
-    // instance's map alone would drop their entries.
-    load_from_disk();
+    if (!loaded_ && !load_from_disk()) {
+    }
     Entry& e = entries_[file_path];
     e.size_bytes = size_bytes;
     e.modified = modified;
@@ -140,6 +138,11 @@ void ToolsUsedCache::store(const std::string& file_path, uint64_t size_bytes, ti
         }
     }
     save_to_disk();
+}
+
+ToolsUsedCache& tools_used_cache() {
+    static ToolsUsedCache cache;
+    return cache;
 }
 
 } // namespace helix

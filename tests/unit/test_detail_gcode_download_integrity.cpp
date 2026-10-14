@@ -43,6 +43,8 @@
 #include "../lvgl_ui_test_fixture.h"
 #include "../test_helpers/delayed_file_transfers.h"
 #include "../test_helpers/planted_gcode.h"
+#include "../test_helpers/scoped_cache_dir.h"
+#include "../test_helpers/scoped_macros_read.h"
 #include "gcode_ops_detector.h"
 #include "gcode_preview_fetcher.h"
 #include "helix-xml/src/xml/lv_xml.h"
@@ -75,33 +77,7 @@ namespace {
 /// that panel, but the XML references them at create() time).
 void detail_noop_cb(lv_event_t* /*e*/) {}
 
-/// Per-test temp cache dir for HELIX_CACHE_DIR — keeps ToolsUsedCache disk
-/// state and the shared gcode download out of the real user cache.
-/// Saves/restores the env var so later tests in this binary are unaffected.
-struct CacheDirGuard {
-    std::filesystem::path dir;
-    std::string prev_env_;
-    bool had_prev_ = false;
-    CacheDirGuard()
-        : dir(std::filesystem::temp_directory_path() /
-              ("detail_gcode_integrity_" + std::to_string(::getpid()))) {
-        std::filesystem::create_directories(dir);
-        if (const char* old = ::getenv("HELIX_CACHE_DIR")) {
-            prev_env_ = old;
-            had_prev_ = true;
-        }
-        ::setenv("HELIX_CACHE_DIR", dir.c_str(), 1);
-    }
-    ~CacheDirGuard() {
-        if (had_prev_) {
-            ::setenv("HELIX_CACHE_DIR", prev_env_.c_str(), 1);
-        } else {
-            ::unsetenv("HELIX_CACHE_DIR");
-        }
-        std::error_code ec;
-        std::filesystem::remove_all(dir, ec);
-    }
-};
+using CacheDirGuard = helix::test::ScopedCacheDir;
 
 /// Save/set/restore one environment variable (used for
 /// HELIX_FORCE_GCODE_MEMORY_FAIL — read per-call by memory_utils).
@@ -228,7 +204,7 @@ TEST_CASE_METHOD(DetailDownloadFixture,
 
     // …but the empty set is NOT an answer about this file: nothing may be
     // persisted under its (path, size, mtime) key.
-    helix::ToolsUsedCache fresh;
+    auto& fresh = helix::tools_used_cache();
     REQUIRE(fresh.lookup("no_such_mock_file.gcode", kSize, kMtime) == std::nullopt);
 
     pop_and_drain();
@@ -257,7 +233,7 @@ TEST_CASE_METHOD(DetailDownloadFixture,
     // so finish_scan's deferred body publishes readiness.
     REQUIRE(wait_until([this]() { return ready(); }, 15000));
 
-    helix::ToolsUsedCache fresh;
+    auto& fresh = helix::tools_used_cache();
     const auto got = fresh.lookup("3DBenchy.gcode", benchy_size, kMtime);
     // The empty set must be a HIT, not a miss — else every open of every
     // single-extruder file re-scans, and the fix over-corrected.
@@ -327,7 +303,7 @@ TEST_CASE_METHOD(DetailDownloadFixture,
     // download serves the viewer alone — the reprint-of-an-oversize-file
     // leak scenario (every open re-downloads, viewer rejects, file lingers).
     {
-        helix::ToolsUsedCache warmer;
+        auto& warmer = helix::tools_used_cache();
         warmer.store("3DBenchy.gcode", benchy_size, kMtime, {0});
     }
 
@@ -403,11 +379,11 @@ TEST_CASE_METHOD(DetailDownloadFixture,
     // The late scan runs against the INTACT file and persists the real set.
     REQUIRE(wait_until(
         [&]() {
-            helix::ToolsUsedCache fresh;
+            auto& fresh = helix::tools_used_cache();
             return fresh.lookup(key, file_size, kMtime).has_value();
         },
         15000));
-    helix::ToolsUsedCache fresh;
+    auto& fresh = helix::tools_used_cache();
     const auto got = fresh.lookup(key, file_size, kMtime);
     REQUIRE(got.has_value());
     REQUIRE(*got == std::set<int>{0, 1, 2, 3});
@@ -447,7 +423,7 @@ TEST_CASE_METHOD(DetailDownloadFixture,
     REQUIRE_FALSE(std::filesystem::exists(canonical_path_for(key)));
 
     // Authoritative: the next open of this file renders final chips instantly.
-    helix::ToolsUsedCache fresh;
+    auto& fresh = helix::tools_used_cache();
     const auto cached = fresh.lookup(key, size, kMtime);
     REQUIRE(cached.has_value());
     REQUIRE(*cached == std::set<int>{4});
@@ -578,7 +554,7 @@ TEST_CASE_METHOD(DetailDownloadFixture,
     // Warm the cache so the used-tool question is settled before show() runs —
     // exactly what a second open of an already-viewed file sees.
     {
-        helix::ToolsUsedCache warmer;
+        auto& warmer = helix::tools_used_cache();
         warmer.store("3DBenchy.gcode", size, kMtime, {0});
     }
 
@@ -635,16 +611,11 @@ TEST_CASE_METHOD(DetailDownloadFixture, "nothing outstanding issues no footer re
 namespace {
 
 /// This printer's M729 is a macro that shuts it down.
-struct StopMacroCache {
-    StopMacroCache() {
-        nlohmann::json config;
-        config["gcode_macro M729"] = {
-            {"gcode", "{action_emergency_stop(\"M729 is not supported\")}"}};
-        helix::MacroParamCache::instance().populate_from_configfile(config, {"M729"});
-    }
-    ~StopMacroCache() {
-        helix::MacroParamCache::instance().clear();
-    }
+struct StopMacroCache : helix::test::ScopedMacrosRead {
+    StopMacroCache()
+        : ScopedMacrosRead({{"gcode_macro M729",
+                             {{"gcode", "{action_emergency_stop(\"M729 is not supported\")}"}}}},
+                           {"M729"}) {}
 };
 
 } // namespace
@@ -869,7 +840,10 @@ TEST_CASE_METHOD(DetailDownloadFixture, "A USB file is read from the stick, neve
     auto* prep = view_.get_prep_manager();
     REQUIRE(prep != nullptr);
     REQUIRE(wait_until(
-        [&]() { return view_.is_gcode_loaded() && ready() && prep->has_scan_result_for(name); },
+        [&]() {
+            return view_.is_gcode_loaded() && ready() &&
+                   prep->has_scan_result_for(stick.path.string());
+        },
         15000));
     drain_queue_chain();
 
@@ -893,13 +867,13 @@ TEST_CASE_METHOD(DetailDownloadFixture, "An unreadable USB file asks Moonraker f
     auto* prep = view_.get_prep_manager();
     REQUIRE(prep != nullptr);
     REQUIRE(
-        wait_until([&]() { return ready() && prep->has_printer_stop_answer_for(name); }, 15000));
+        wait_until([&]() { return ready() && prep->has_printer_stop_answer_for(missing); }, 15000));
     drain_queue_chain();
 
     CHECK(transfers_.download_count == 0);
     CHECK(transfers_.tail_read_count == 0);
     CHECK(transfers_.partial_read_count == 0);
-    CHECK(prep->printer_stop_check_for(name).state == helix::PrinterStopCheck::State::NotRun);
+    CHECK(prep->printer_stop_check_for(missing).state == helix::PrinterStopCheck::State::NotRun);
 
     pop_and_drain();
 }
@@ -924,7 +898,7 @@ TEST_CASE_METHOD(DetailDownloadFixture,
     StickFile stick(name, stick_gcode);
     view_.show(name, "", "PLA", {"#FF0000"}, {}, stick_gcode.size(), 42, 0, stick.path.string());
     prep = view_.get_prep_manager();
-    REQUIRE(wait_until([&]() { return prep->has_scan_result_for(name); }, 15000));
+    REQUIRE(wait_until([&]() { return prep->has_scan_result_for(stick.path.string()); }, 15000));
     drain_queue_chain();
 
     CHECK_FALSE(prep->get_scan_result()->has_operation(helix::gcode::OperationType::BED_MESH));
@@ -949,7 +923,8 @@ TEST_CASE_METHOD(DetailDownloadFixture,
     view_.show(name, "", "PLA", {"#FF0000"}, {}, content.size(), 42, 0, stick.path.string());
     auto* prep = view_.get_prep_manager();
     REQUIRE(prep != nullptr);
-    CHECK(wait_until([&]() { return prep->has_printer_stop_answer_for(name); }, 5000));
+    CHECK(
+        wait_until([&]() { return prep->has_printer_stop_answer_for(stick.path.string()); }, 5000));
 
     release.set_value();
     REQUIRE(wait_until([this]() { return ready(); }, 15000));

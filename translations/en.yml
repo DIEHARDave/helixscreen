@@ -528,7 +528,7 @@ translations:
   'Cannot start print: not connected to printer': 'Cannot start print: not connected
     to printer'
   'Cannot start print: printer is {}': 'Cannot start print: printer is {}'
-  'Cannot start {}: its pre-print check was for another file': 'Cannot start {}: its pre-print check was for another file'
+  'Cannot start {}: the file could not be checked for the steps you turned off': 'Cannot start {}: the file could not be checked for the steps you turned off'
   Cannot save offsets while printing: Cannot save offsets while printing
   Cannot unload while a print is active: Cannot unload while a print is active
   'Capabilities: ': 'Capabilities: '

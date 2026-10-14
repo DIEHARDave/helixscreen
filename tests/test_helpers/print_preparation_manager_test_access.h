@@ -32,7 +32,8 @@ class PrintPreparationManagerTestAccess {
     }
     static std::vector<helix::gcode::OperationType>
     get_ops_to_disable(const helix::ui::PrintPreparationManager& m) {
-        return m.collect_ops_to_disable(m.cached_scan_result_ ? &*m.cached_scan_result_ : nullptr);
+        const auto& shown = m.get_scan_result();
+        return m.collect_ops_to_disable(shown ? &*shown : nullptr);
     }
     static std::string build_pre_start_gcode_block(const std::string& setup_gcode,
                                                    const std::vector<std::string>& lines,
@@ -48,7 +49,7 @@ class PrintPreparationManagerTestAccess {
                                  std::function<void()> on_navigate_to_status = nullptr) {
         // start_print() hands its verified scan to the modify step; a test
         // entering at the modify step hands it the cached one the same way.
-        m.start_scan_ = m.cached_scan_result_;
+        m.start_scan_ = m.get_scan_result();
         m.modify_and_print(file_path, {}, {}, std::move(on_navigate_to_status));
     }
     /// Age the pre-start send timestamp. Production stamps it when the

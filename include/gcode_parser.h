@@ -1022,10 +1022,14 @@ int tool_index_for_line(const std::string& raw, std::pair<size_t, size_t>* digit
  *        (get_used_tool_info() filters to palette indices), so a missed
  *        beyond-palette tool is invisible. Empty set => scan whole file
  *        (back-compat).
+ * @param opened When given, set to whether the file could be opened, so an
+ *        empty result from a missing file is not mistaken for a file with
+ *        no tool changes.
  * @return Distinct tool indices seen (empty if the file can't be opened).
  */
 std::set<int> scan_tools_used_from_file(const std::string& filepath,
-                                        std::set<int> early_exit_full_set = {});
+                                        std::set<int> early_exit_full_set = {},
+                                        bool* opened = nullptr);
 
 } // namespace gcode
 } // namespace helix

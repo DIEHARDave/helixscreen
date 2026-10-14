@@ -496,7 +496,7 @@
   <translation tag="Cannot start print: internal error" it="Impossibile avviare stampa: errore interno"/>
   <translation tag="Cannot start print: not connected to printer" it="Impossibile avviare stampa: non connesso alla stampante"/>
   <translation tag="Cannot start print: printer is {}" it="Impossibile avviare stampa: stampante è {}"/>
-  <translation tag="Cannot start {}: its pre-print check was for another file" it="Impossibile avviare {}: il controllo preliminare riguardava un altro file"/>
+  <translation tag="Cannot start {}: the file could not be checked for the steps you turned off" it="Impossibile avviare {}: non è stato possibile controllare il file per i passaggi disattivati"/>
   <translation tag="Cannot unload while a print is active" it="Impossibile scaricare durante una stampa in corso"/>
   <translation tag="Capabilities: " it="Funzionalità: "/>
   <translation tag="Carriage empty" it="Carrello vuoto"/>

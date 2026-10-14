@@ -24,6 +24,7 @@
 #include <map>
 #include <memory>
 #include <optional>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -256,19 +257,23 @@ class PrintPreparationManager {
     /**
      * @brief Set cached scan result (for testing)
      *
-     * Allows injecting mock scan data without async file downloads.
+     * Allows injecting mock scan data without async file downloads. Kept
+     * under @p filename as its scan_key() and made the shown file's; it carries
+     * no printer-stopping command answer.
      * @param scan The scan result to cache
-     * @param filename The filename to associate with this scan
+     * @param filename The scan_key() to keep it under
      */
     void set_cached_scan_result(const gcode::ScanResult& scan, const std::string& filename);
 
     // === G-code Scanning ===
 
     /**
-     * @brief Scan a G-code file for embedded operations (async)
+     * @brief Scan the file the detail view shows for embedded operations (async)
      *
      * Downloads file content and scans for operations like bed leveling, QGL, etc.
-     * Result is cached until a different file is scanned.
+     * Results are kept per file, by scan_key(), for the last kMaxKeptScans
+     * files; the shown file's and a waiting start's are never evicted. This
+     * file becomes the one get_scan_result() and the option rows describe.
      *
      * @param filename File name (relative to gcodes root)
      * @param current_path Current directory path (empty = root)
@@ -284,15 +289,18 @@ class PrintPreparationManager {
     void clear_scan_cache();
 
     /**
-     * @brief What the last scan of @p filename found about printer-stopping commands
+     * @brief What the scan of the file kept under @p key found about printer-stopping commands
      *
-     * NotRun until a scan of that file answers, or when its download failed or the
-     * printer's macros had not been read; not_run_reason says which.
+     * NotRun until a scan of that file answers for the printer's current
+     * macros, or when its download failed or the macros had not been read;
+     * not_run_reason says which.
+     * @param key The file's scan_key()
      */
-    [[nodiscard]] helix::PrinterStopCheck printer_stop_check_for(const std::string& filename) const;
+    [[nodiscard]] helix::PrinterStopCheck printer_stop_check_for(const std::string& key) const;
 
-    /// Whether a scan of @p filename has answered, whatever the answer.
-    [[nodiscard]] bool has_printer_stop_answer_for(const std::string& filename) const;
+    /// Whether the scan kept under @p key (a scan_key()) has answered for the
+    /// printer's current macros, whatever the answer.
+    [[nodiscard]] bool has_printer_stop_answer_for(const std::string& key) const;
 
     /// Called on the main thread each time a scan answers, success or failure.
     void set_on_scan_answered(std::function<void()> cb);
@@ -304,43 +312,45 @@ class PrintPreparationManager {
                                               const std::string& local_path = {});
 
     /// Answers when_ready_to_start(): the file's printer-stopping command
-    /// check, or nullopt when other files' scans pre-empted this one's twice.
+    /// check, or nullopt when its answer went stale twice (the macros were
+    /// read again).
     using StartReadyCallback = std::function<void(std::optional<helix::PrinterStopCheck> check)>;
 
     /**
      * @brief Run @p ready once a start may read this manager for one file.
      *
-     * Ready means the operations scan has answered for exactly this file,
-     * matched by scan_key(), and no PRINT_START analysis is running. Starts
-     * the scan unless this file's answer is already held. When another
-     * file's scan pre-empts it (the detail view opened a different file),
-     * the scan is requested once more after that file's answer lands; a
-     * second pre-emption answers nullopt. Main thread. One waiter: a later
-     * call replaces it, and a null @p ready cancels it. Independent of
-     * set_on_scan_answered().
+     * Ready means this file's scan, kept by scan_key(), has answered for the
+     * printer's current macros, and no PRINT_START analysis is running.
+     * Starts the scan unless this file's answer is already kept; the scan
+     * does not become the detail view's shown file, and evicts no scan the
+     * view holds. An answer gone stale by the time the analysis lands (the
+     * macros were read again) is scanned once more, then answers nullopt.
+     * Main thread. One waiter: a later call replaces it, and a null @p ready
+     * cancels it. Independent of set_on_scan_answered().
      */
     void when_ready_to_start(const std::string& filename, const std::string& current_path,
                              StartReadyCallback ready);
 
-    /**
-     * @brief Check if scan result is available for a file
-     */
-    [[nodiscard]] bool has_scan_result_for(const std::string& filename) const;
+    /// Whether a scan result is kept for the file with scan_key() @p key.
+    [[nodiscard]] bool has_scan_result_for(const std::string& key) const;
+
+    /// The scan result kept for scan_key() @p key; null when none is (no scan,
+    /// or its read failed).
+    [[nodiscard]] const gcode::ScanResult* scan_result_for(const std::string& key) const;
 
     /**
-     * @brief The PRINT_START/START_PRINT call the cached scan found in `filename`
+     * @brief The PRINT_START/START_PRINT call the scan kept under @p key found
      *
-     * @return nullptr when the cache holds another file, or no call was found.
+     * @return nullptr when no scan is kept for that file, or no call was found.
      */
-    [[nodiscard]] const gcode::PrintStartCallInfo*
-    print_start_for(const std::string& filename) const;
+    [[nodiscard]] const gcode::PrintStartCallInfo* print_start_for(const std::string& key) const;
 
-    /**
-     * @brief Get cached scan result (if available)
-     */
-    [[nodiscard]] const std::optional<gcode::ScanResult>& get_scan_result() const {
-        return cached_scan_result_;
-    }
+    /// The scan result of the file the detail view shows (the last
+    /// scan_file_for_operations() or set_cached_scan_result()), if kept.
+    [[nodiscard]] const std::optional<gcode::ScanResult>& get_scan_result() const;
+
+    /// Files whose scan results are kept at once.
+    static constexpr size_t kMaxKeptScans = 4;
 
     // === Resource Safety ===
 
@@ -413,14 +423,24 @@ class PrintPreparationManager {
      * Print is started by calling Moonraker's print API. The PRINT_START macro
      * handles all pre-print operations (homing, heating, bed mesh, etc.) internally.
      *
+     * Only the scan kept for this file is used, so line edits always describe
+     * the file being printed. When no scan is kept for it (none answered, or
+     * its read failed) and the start would act on one (a disabled step the
+     * file may embed, or a START_PRINT rewrite), the start is refused with
+     * a message through @p on_completion.
+     *
      * @param filename File to print
      * @param current_path Current directory path
      * @param on_navigate_to_status Callback to navigate to print status panel
      * @param on_completion Optional callback for print completion
+     * @param expected_scan_key The scan_key() this file's scan was kept under
+     *        when it differs from its printer path (a stick file printed from
+     *        its copy); empty = scan_key(filename, current_path)
      */
     void start_print(const std::string& filename, const std::string& current_path,
                      NavigateToStatusCallback on_navigate_to_status,
-                     PrintCompletionCallback on_completion = nullptr);
+                     PrintCompletionCallback on_completion = nullptr,
+                     const std::string& expected_scan_key = {});
 
     /**
      * @brief Rewrite tool commands in a G-code file and print the modified copy.
@@ -573,32 +593,36 @@ class PrintPreparationManager {
     bool predictor_cached_ = false;
 
     // === Scan Cache ===
-    std::optional<gcode::ScanResult> cached_scan_result_;
-    std::string cached_scan_filename_;
-    /// Full identity of the file cached_scan_result_ came from (the stick path
-    /// for a USB file, else current_path/filename), so a same-named file
-    /// elsewhere never reuses it.
-    std::string cached_scan_key_;
-    /// Key of the newest scan requested; an older scan's late answer is dropped.
-    std::string requested_scan_key_;
-    helix::PrinterStopCheck printer_stop_check_;
-    std::string printer_stop_check_filename_; ///< The file printer_stop_check_ answers for
-    std::string printer_stop_check_key_;      ///< Its scan_key()
-    /// The cached scan read the file on this host (a USB stick). Such a file
-    /// is printed from a copy on the printer with another path, so its scan
-    /// stands for that start.
-    bool cached_scan_local_ = false;
+    /// One file's scan: its operations (absent when the read failed) and its
+    /// printer-stopping command answer (absent until one is given).
+    struct KeptScan {
+        std::string filename;
+        std::optional<gcode::ScanResult> result;
+        std::optional<helix::PrinterStopCheck> printer_stop;
+        uint64_t last_used = 0;
+    };
+    std::map<std::string, KeptScan> kept_scans_; ///< By scan_key()
+    std::set<std::string> scans_in_flight_;      ///< Keys whose read is under way
+    std::string current_scan_key_;               ///< The file the detail view shows
+    uint64_t scan_use_counter_ = 0;
+    /// Bumped by clear_scan_cache(); a read started before it is dropped.
+    uint64_t scan_epoch_ = 0;
     std::function<void()> on_scan_answered_;
+
+    [[nodiscard]] const KeptScan* kept_scan(const std::string& key) const;
+    /// Read one file's head unless its answer is kept or already on the way.
+    void request_scan(const std::string& filename, const std::string& current_path,
+                      const std::string& local_path = {});
+    /// Keep a scan's answer under @p key and report it.
+    void keep_scan(const std::string& key, const std::string& filename,
+                   std::optional<gcode::ScanResult> result, helix::PrinterStopCheck printer_stop);
+    void evict_kept_scans();
 
     /// The scan this start checked was its own file's, copied at start_print()
     /// so every later step (the modify and upload) reads it, never whatever the
     /// cache holds by then.
     std::optional<gcode::ScanResult> start_scan_;
 
-    /// Record the scan's printer-stopping command answer for @p filename (whose
-    /// scan_key() is @p key) and report it.
-    void answer_printer_stop_check(const std::string& filename, const std::string& key,
-                                   helix::PrinterStopCheck check);
     std::optional<size_t> cached_file_size_; ///< File size from Moonraker metadata
     /// Job temps for {bed_temp}/{extruder_temp} come from the scan cache's
     /// print_start call (the file's own START_PRINT line) — see
@@ -634,7 +658,7 @@ class PrintPreparationManager {
         StartReadyCallback ready;
     };
     std::optional<StartWaiter> start_waiter_;
-    /// The printer-stop answer held is @p key's and still current.
+    /// The printer-stop answer kept for @p key is still current.
     [[nodiscard]] bool scan_answered_for(const std::string& key) const;
     void request_start_waiter_scan();
     /// A scan answered for @p key: resolve, re-request or give up the waiter.
@@ -755,6 +779,10 @@ class PrintPreparationManager {
      */
     [[nodiscard]] std::vector<gcode::OperationType>
     collect_ops_to_disable(const gcode::ScanResult* scan) const;
+
+    /// The file-embeddable steps the user turned off that may be stripped from
+    /// a file, whatever any one file holds.
+    [[nodiscard]] std::vector<gcode::OperationType> ops_user_disabled() const;
 
     /**
      * @brief Download, modify, and print a G-code file
