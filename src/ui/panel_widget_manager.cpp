@@ -1883,7 +1883,7 @@ std::vector<std::string> PanelWidgetManager::gate_subject_names(const nlohmann::
             gate_names.emplace_back(def.hardware_gate_subject);
         }
     }
-    for (auto& name : helix::layout::subjects_named_by(PanelWidgetConfig::load_default_table())) {
+    for (auto& name : helix::layout::subjects_named_by(*PanelWidgetConfig::load_default_table())) {
         gate_names.push_back(std::move(name));
     }
     for (auto& name : helix::layout::subjects_named_by(overlay)) {

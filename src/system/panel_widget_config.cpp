@@ -10,6 +10,7 @@
 #include "default_layout_resolver.h"
 #include "grid_layout.h"
 #include "helix-xml/src/xml/lv_xml.h"
+#include "helix_fs.h"
 #include "json_utils.h"
 #include "layout_manager.h"
 #include "layout_port.h"
@@ -24,9 +25,10 @@
 #include <algorithm>
 #include <cstdint>
 #include <iterator>
+#include <memory>
+#include <optional>
 #include <set>
 #include <string>
-#include <sys/stat.h>
 
 namespace helix {
 
@@ -928,22 +930,23 @@ int PanelWidgetConfig::default_table_reads() {
     return g_default_table_reads;
 }
 
-nlohmann::json PanelWidgetConfig::load_default_table() {
+std::shared_ptr<const nlohmann::json> PanelWidgetConfig::load_default_table() {
     // config/default_layout.json is runtime-editable: the parse is reused until
-    // the file's path, mtime or size changes.
+    // the file's path, mtime or size changes. Callers share one immutable tree;
+    // a reload swaps the pointer, so a tree a caller still holds stays valid.
     static std::string cached_path;
     static std::int64_t cached_mtime_ns = -1;
     static std::int64_t cached_size = -1;
-    static nlohmann::json cached;
+    static std::shared_ptr<const nlohmann::json> cached;
 
     const std::string path = helix::find_readable("default_layout.json");
-    struct stat st {};
-    const bool have_stat = !path.empty() && ::stat(path.c_str(), &st) == 0;
-    const std::int64_t mtime_ns =
-        have_stat ? static_cast<std::int64_t>(st.st_mtim.tv_sec) * 1000000000LL + st.st_mtim.tv_nsec
-                  : -1;
-    const std::int64_t size = have_stat ? static_cast<std::int64_t>(st.st_size) : -1;
-    if (have_stat && path == cached_path && mtime_ns == cached_mtime_ns && size == cached_size) {
+    const auto mtime = path.empty() ? std::nullopt : helix::fs::mtime_ns(path);
+    const auto size = path.empty() ? std::nullopt : helix::text_io::file_size(path);
+    const bool have_stat = mtime && size;
+    const std::int64_t mtime_ns = have_stat ? *mtime : -1;
+    const std::int64_t size_bytes = have_stat ? static_cast<std::int64_t>(*size) : -1;
+    if (have_stat && cached && path == cached_path && mtime_ns == cached_mtime_ns &&
+        size_bytes == cached_size) {
         return cached;
     }
 
@@ -956,13 +959,14 @@ nlohmann::json PanelWidgetConfig::load_default_table() {
             layout = nlohmann::json();
         }
     }
+    auto table = std::make_shared<const nlohmann::json>(std::move(layout));
     if (have_stat) {
         cached_path = path;
         cached_mtime_ns = mtime_ns;
-        cached_size = size;
-        cached = layout;
+        cached_size = size_bytes;
+        cached = table;
     }
-    return layout;
+    return table;
 }
 
 nlohmann::json PanelWidgetConfig::load_preset_overlay(const std::string& preset) {
@@ -1035,7 +1039,8 @@ std::vector<PanelWidgetEntry> PanelWidgetConfig::build_default_grid(int grid_col
 
     // A missing or malformed table is null, which the resolver reports as
     // unusable.
-    const nlohmann::json layout = load_default_table();
+    const auto layout_ptr = load_default_table();
+    const nlohmann::json& layout = *layout_ptr;
 
     const Config* cfg = Config::get_instance();
     const std::string preset = cfg ? cfg->get_preset() : std::string{};

@@ -478,7 +478,7 @@ TEST_CASE_METHOD(LiveDefaultFixture,
     // A gate the table never consults: its flips rebuild the panel but cannot
     // change the signature.
     const auto consulted =
-        helix::layout::subjects_named_by(PanelWidgetConfig::load_default_table());
+        helix::layout::subjects_named_by(*PanelWidgetConfig::load_default_table());
     std::string unconsulted;
     for (const auto& def : get_all_widget_defs()) {
         if (def.hardware_gate_subject &&
@@ -823,7 +823,7 @@ TEST_CASE_METHOD(LiveDefaultFixture,
     const auto table = PanelWidgetConfig::load_default_table();
     PanelWidgetConfig::load_default_table();
     CHECK(PanelWidgetConfig::default_table_reads() == reads);
-    CHECK(table.is_object());
+    CHECK(table->is_object());
 
     struct timespec bumped[2] = {before.st_atim, before.st_mtim};
     bumped[1].tv_sec += 7;

@@ -7,6 +7,7 @@
 
 #include "default_layout_resolver.h"
 
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -276,8 +277,9 @@ class PanelWidgetConfig {
     /// The shipped default layout table (default_layout.json), parsed; null
     /// when the file is missing or not valid JSON. The parse is kept until the
     /// file's mtime or size changes, so edits to the runtime-editable table
-    /// still apply. LVGL thread only.
-    static nlohmann::json load_default_table();
+    /// still apply. Never null; hold the pointer, not a reference into it.
+    /// LVGL thread only.
+    static std::shared_ptr<const nlohmann::json> load_default_table();
 
     /// The seed of @p preset (panel_widgets/<preset>/home.json), parsed: an
     /// overlay build_default_grid() applies over the default table. Null when
