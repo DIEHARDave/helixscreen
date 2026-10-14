@@ -50,12 +50,14 @@
 #include "moonraker_client_mock.h"
 #include "printer_state.h"
 #include "test_helpers/afc_test_access.h"
+#include "test_helpers/snapmaker_test_access.h"
 
 #include <memory>
 #include <string>
 #include <vector>
 
 #include "../catch_amalgamated.hpp"
+#include "hv/json.hpp"
 
 using helix::AmsError;
 using helix::AmsErrorHelper;
@@ -557,4 +559,36 @@ TEST_CASE_METHOD(PausedGateFixture, "AFC is the backend whose cold lane ops the 
 #if HELIX_HAS_IFS
     CHECK_FALSE(make<helix::AmsBackendAd5xIfs>()->cold_lane_ops_refused_during_print());
 #endif
+}
+
+// ============================================================================
+// Park Toolhead: the shared gate refuses a paused job for every caller
+// ============================================================================
+
+TEST_CASE_METHOD(PausedGateFixture, "park_active_tool is refused while paused or printing",
+                 "[ams][safety][paused][park]") {
+    auto backend = make<helix::AmsBackendSnapmaker>();
+    helix::SnapmakerTestAccess::handle_status(
+        *backend, nlohmann::json{{"toolhead", nlohmann::json{{"extruder", "extruder1"}}}});
+    REQUIRE(backend->get_current_tool() == 1);
+
+    SECTION("paused: refused although the backend allows other ops while paused") {
+        set_print_state(helix::PrintJobState::PAUSED);
+        CHECK(backend->change_tool(2).success());
+        backend->dispatched.clear();
+
+        CHECK_FALSE(backend->park_active_tool().success());
+        CHECK(backend->dispatched.empty());
+    }
+    SECTION("printing: refused") {
+        set_print_state(helix::PrintJobState::PRINTING);
+        CHECK_FALSE(backend->park_active_tool().success());
+        CHECK(backend->dispatched.empty());
+    }
+    SECTION("standby: parks") {
+        set_print_state(helix::PrintJobState::STANDBY);
+        REQUIRE(backend->park_active_tool().success());
+        REQUIRE(backend->dispatched.size() == 1);
+        CHECK(backend->dispatched[0] == "PARK_EXTRUDER");
+    }
 }

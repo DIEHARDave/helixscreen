@@ -6,7 +6,6 @@
 #include "ui_callback_helpers.h"
 #include "ui_error_reporting.h"
 #include "ui_event_safety.h"
-#include "ui_toast_manager.h"
 #include "ui_update_queue.h"
 
 #include "i_moonraker_api.h"
@@ -115,23 +114,10 @@ void PrintLightTimelapseControls::deinit_subjects() {
 // ============================================================================
 
 void PrintLightTimelapseControls::handle_light_button() {
-    if (helix::led::LedController::instance().light_command_in_flight()) {
-        spdlog::debug("[PrintLightTimelapseControls] Ignoring toggle — LED command in flight");
-        ToastManager::instance().show(
-            ToastSeverity::INFO, lv_tr("Light will switch when the current operation finishes"));
-        return;
-    }
     // Drives what the home light buttons drive (the light the user picked), or
     // the chamber light when none is placed. The icon updates when its state
     // does, via refresh_light_state().
-    const auto targets = helix::home_light_button_targets();
-    if (targets.empty()) {
-        spdlog::warn("[PrintLightTimelapseControls] Light button clicked but no light resolves");
-        return;
-    }
-    const bool on = helix::led::LedController::instance().toggle_power(targets);
-    spdlog::info("[PrintLightTimelapseControls] Light button clicked, {} device(s) -> {}",
-                 targets.size(), on ? "ON" : "OFF");
+    helix::toggle_lights(helix::home_light_button_targets(), "PrintStatus");
 }
 
 void PrintLightTimelapseControls::refresh_timelapse_display() {

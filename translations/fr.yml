@@ -15,6 +15,9 @@ translations:
   '%d min left': '%d min restantes'
   '%d mm/s': '%d mm/s'
   '%d more sensors': '%d capteurs supplémentaires'
+  '%d objects': '%d objets'
+  '%d of %d printing': '%d sur %d en impression'
+  '%d skipped': '%d ignorés'
   '%d profiles': '%d profils'
   '%d slots': '%d emplacements'
   '%d toolheads': '%d têtes d''outil'
@@ -1147,6 +1150,7 @@ translations:
   'Exception: {}': 'Exception : {}'
   Exclude: Exclure
   Exclude Object?: 'Exclure l''objet ?'
+  Exclude Objects: 'Exclure des objets'
   Excluded: Exclu
   Exclusion cancelled: Exclusion annulée
   Execute printer macros: Exécuter les macros de l'imprimante
@@ -2170,6 +2174,7 @@ translations:
   No networks found: Aucun réseau trouvé
   No new mesh was stored as '{}': "Aucun nouveau maillage n'a été enregistré sous '{}'"
   No notifications: Aucune notification
+  No objects: 'Aucun objet'
   No objects defined for this print: Aucun objet défini pour cette impression
   No output yet: Aucune sortie
   No presets configured: Aucun préréglage configuré
@@ -2242,6 +2247,7 @@ translations:
   Notification: Notification
   Notifications: Notifications
   Notify when print finishes: Notifier à la fin de l'impression
+  Now printing: 'En cours d''impression'
   Noz max: Buse max
   Noz min: Buse min
   Noz rec: Buse rec
@@ -2275,6 +2281,7 @@ translations:
   Object picks apply only to prints started now: 'La sélection d''objets ne s''applique qu''aux impressions lancées maintenant'
   Object positions unavailable: Positions des objets indisponibles
   Objects: Objets
+  Objects in the print, with a tap to open the skip map: 'Objets de l''impression, un toucher ouvre la carte d''exclusion'
   'Off': Éteint
   'Off:': 'Arrêt :'
   'Off: runs with these values without asking': 'Désactivé : exécute avec ces valeurs sans demander'
@@ -3134,10 +3141,12 @@ translations:
   Signal: Signal
   'Signal #': Signal n°
   Similarity: "Similitude"
+  Single object: 'Objet unique'
   Single toggle macro. State is not tracked.: Macro à bascule unique. L'état n'est
     pas suivi.
   Size: Taille
   Skip: Passer
+  Skip objects...: 'Passer des objets...'
   Skipped: 'Ignoré'
   Sleep While Printing: Veille pendant impression
   Sleep adjusted to match dim timeout: Délai de veille ajusté

@@ -285,3 +285,48 @@ TEST_CASE_METHOD(DryerModelFixture,
 
     ams.deinit_subjects();
 }
+
+TEST_CASE_METHOD(DryerModelFixture, "dryer model: a burst of source changes queues one refresh",
+                 "[dryer][model][queue]") {
+    using Access = helix::ui::UpdateQueueTestAccess;
+    auto& queue = helix::ui::UpdateQueue::instance();
+    auto& temps = state().temperature_state();
+
+    state().capabilities_state().set_has_chamber_dryer(true);
+    const size_t one_change = Access::pending_count(queue);
+    REQUIRE(one_change > 0);
+    drain();
+
+    state().capabilities_state().set_has_chamber_dryer(false);
+    state().capabilities_state().set_bed_drying(true, true);
+    lv_subject_set_int(temps.get_bed_temp_subject(), 300);
+    CHECK(Access::pending_count(queue) == one_change);
+}
+
+TEST_CASE_METHOD(DryerModelFixture, "dryer model: attaching to the sources queues no refresh",
+                 "[dryer][model][queue]") {
+    state().capabilities_state().set_has_chamber_dryer(true);
+    drain();
+
+    dryer_model::refresh();
+
+    CHECK(helix::ui::UpdateQueueTestAccess::queue_empty(helix::ui::UpdateQueue::instance()));
+}
+
+TEST_CASE_METHOD(DryerModelFixture, "dryer model: the chamber row follows whole degrees",
+                 "[dryer][model][temps]") {
+    auto& temps = state().temperature_state();
+    state().capabilities_state().set_has_chamber_dryer(true);
+    lv_subject_set_int(temps.get_chamber_temp_subject(), 250);
+    drain();
+    REQUIRE(dryer_model::summary().sources.size() == 1);
+    CHECK(dryer_model::summary().sources[0].current_c == 25);
+
+    lv_subject_set_int(temps.get_chamber_temp_subject(), 612);
+    drain();
+    CHECK(dryer_model::summary().sources[0].current_c == 61);
+
+    // Less than a whole degree queues nothing.
+    lv_subject_set_int(temps.get_chamber_temp_subject(), 614);
+    CHECK(helix::ui::UpdateQueueTestAccess::queue_empty(helix::ui::UpdateQueue::instance()));
+}

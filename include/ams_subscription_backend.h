@@ -359,7 +359,11 @@ class AmsSubscriptionBackend : public AmsBackend {
     ///
     /// Exposed to derived backends that gate motion ops WITHOUT the running_/busy
     /// checks in check_preconditions() (e.g. QIDI Box).
-    AmsError refuse_if_printing() const;
+    ///
+    /// @param paused_blocks Refuse a PAUSED job too, on a backend that would
+    ///        otherwise allow it: for an op that leaves nothing on the carriage,
+    ///        which the job cannot resume without.
+    AmsError refuse_if_printing(bool paused_blocks = false) const;
 
     /// Whether this backend's firmware publishes lane identity of its own,
     /// which it files as a VendorCache reading on every status frame.

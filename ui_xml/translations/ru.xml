@@ -13,7 +13,10 @@
   <translation tag="%d min left" ru="осталось %d мин"/>
   <translation tag="%d mm/s" ru="%d mm/s"/>
   <translation tag="%d more sensors" ru="Ещё %d датчиков"/>
+  <translation tag="%d objects" ru="Объектов: %d"/>
+  <translation tag="%d of %d printing" ru="%d из %d печатается"/>
   <translation tag="%d profiles" ru="Профилей: %d"/>
+  <translation tag="%d skipped" ru="Пропущено: %d"/>
   <translation tag="%d slots" ru="%d слотов"/>
   <translation tag="%d toolheads" ru="%d печатающих головок"/>
   <translation tag="%d tools" ru="%d инструментов"/>
@@ -1029,6 +1032,7 @@
   <translation tag="Exception: {}" ru="Исключение: {}"/>
   <translation tag="Exclude" ru="Исключить"/>
   <translation tag="Exclude Object?" ru="Исключить объект?"/>
+  <translation tag="Exclude Objects" ru="Исключение объектов"/>
   <translation tag="Excluded" ru="Исключён"/>
   <translation tag="Exclusion cancelled" ru="Исключение отменено"/>
   <translation tag="Execute printer macros" ru="Выполнить макросы принтера"/>
@@ -1949,6 +1953,7 @@
   <translation tag="No networks found" ru="Сети не найдены"/>
   <translation tag="No new mesh was stored as &apos;{}&apos;" ru="Новая сетка не сохранена как &apos;{}&apos;"/>
   <translation tag="No notifications" ru="Нет уведомлений"/>
+  <translation tag="No objects" ru="Нет объектов"/>
   <translation tag="No objects defined for this print" ru="Для этой печати не определены объекты"/>
   <translation tag="No output yet" ru="Нет вывода"/>
   <translation tag="No presets configured" ru="Пресеты не настроены"/>
@@ -2015,6 +2020,7 @@
   <translation tag="Notification" ru="Уведомление"/>
   <translation tag="Notifications" ru="Уведомления"/>
   <translation tag="Notify when print finishes" ru="Уведомить о завершении печати"/>
+  <translation tag="Now printing" ru="Сейчас печатается"/>
   <translation tag="Noz max" ru="Соп макс"/>
   <translation tag="Noz min" ru="Соп мин"/>
   <translation tag="Noz rec" ru="Соп рек"/>
@@ -2048,6 +2054,7 @@
   <translation tag="Object picks apply only to prints started now" ru="Выбор объектов применяется только к печати, запущенной сейчас"/>
   <translation tag="Object positions unavailable" ru="Позиции объектов недоступны"/>
   <translation tag="Objects" ru="Объекты"/>
+  <translation tag="Objects in the print, with a tap to open the skip map" ru="Объекты печати, касание открывает карту пропуска"/>
   <translation tag="Off" ru="Выкл"/>
   <translation tag="Off:" ru="Выкл:"/>
   <translation tag="Off: runs with these values without asking" ru="Выкл.: запуск с этими значениями без запроса"/>
@@ -2808,9 +2815,11 @@
   <translation tag="Signal" ru="Сигнал"/>
   <translation tag="Signal #" ru="Сигнал №"/>
   <translation tag="Similarity" ru="Схожесть"/>
+  <translation tag="Single object" ru="Один объект"/>
   <translation tag="Single toggle macro. State is not tracked." ru="Один макрос переключения. Состояние не отслеживается."/>
   <translation tag="Size" ru="Размер"/>
   <translation tag="Skip" ru="Пропустить"/>
+  <translation tag="Skip objects..." ru="Пропустить объекты..."/>
   <translation tag="Skipped" ru="Пропущено"/>
   <translation tag="Sleep While Printing" ru="Спящий режим при печати"/>
   <translation tag="Sleep adjusted to match dim timeout" ru="Таймаут сна изменён"/>

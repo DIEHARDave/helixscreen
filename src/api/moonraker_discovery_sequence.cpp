@@ -1548,11 +1548,12 @@ json MoonrakerDiscoverySequence::build_subscription_objects(
     }
 
     // Toolchanger + per-tool objects. AmsBackendToolchanger reads
-    // status/tool_number/tool_numbers; ToolState reads tool active/mounted/
+    // status/tool_number/tool_numbers; discovery orders the tools by
+    // tool_names; ToolState reads tool active/mounted/
     // detect_state + gcode_*_offset + extruder + fan.
     if (hw.has_tool_changer()) {
         subscription_objects["toolchanger"] =
-            json::array({"status", "tool_number", "tool_numbers"});
+            json::array({"status", "tool_number", "tool_numbers", "tool_names"});
         static const json tool_fields =
             json::array({"active", "mounted", "detect_state", "gcode_x_offset", "gcode_y_offset",
                          "gcode_z_offset", "extruder", "fan"});
@@ -1822,6 +1823,13 @@ void MoonrakerDiscoverySequence::finish_discovery_subscription(const PrinterDisc
     json initial_status;
     if (sub_response.contains("result") && sub_response["result"].contains("status")) {
         initial_status = sub_response["result"]["status"];
+    }
+    // The objects list names the tools but not their numbers; the first status
+    // does, and every consumer of the hardware takes a tool's slot from its
+    // position.
+    if (initial_status.contains("toolchanger")) {
+        std::lock_guard<std::mutex> lock(hardware_mutex_);
+        hardware_.order_tools_by_number(initial_status["toolchanger"]);
     }
     if (on_discovery_complete_) {
         PrinterDiscovery hw_snapshot;

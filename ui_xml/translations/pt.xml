@@ -13,7 +13,10 @@
   <translation tag="%d min left" pt="restam %d min"/>
   <translation tag="%d mm/s" pt="%d mm/s"/>
   <translation tag="%d more sensors" pt="%d sensores adicionais"/>
+  <translation tag="%d objects" pt="%d objetos"/>
+  <translation tag="%d of %d printing" pt="%d de %d imprimindo"/>
   <translation tag="%d profiles" pt="%d perfis"/>
+  <translation tag="%d skipped" pt="%d ignorados"/>
   <translation tag="%d slots" pt="%d slots"/>
   <translation tag="%d toolheads" pt="%d cabeçotes"/>
   <translation tag="%d tools" pt="%d ferramentas"/>
@@ -1029,6 +1032,7 @@
   <translation tag="Exception: {}" pt="Exceção: {}"/>
   <translation tag="Exclude" pt="Excluir"/>
   <translation tag="Exclude Object?" pt="Excluir objeto?"/>
+  <translation tag="Exclude Objects" pt="Excluir objetos"/>
   <translation tag="Excluded" pt="Excluído"/>
   <translation tag="Exclusion cancelled" pt="Exclusão cancelada"/>
   <translation tag="Execute printer macros" pt="Executar macros da impressora"/>
@@ -1949,6 +1953,7 @@
   <translation tag="No networks found" pt="Nenhuma rede encontrada"/>
   <translation tag="No new mesh was stored as &apos;{}&apos;" pt="Nenhuma malha nova foi salva como &apos;{}&apos;"/>
   <translation tag="No notifications" pt="Sem notificações"/>
+  <translation tag="No objects" pt="Sem objetos"/>
   <translation tag="No objects defined for this print" pt="Nenhum objeto definido para esta impressão"/>
   <translation tag="No output yet" pt="Sem saída ainda"/>
   <translation tag="No presets configured" pt="Nenhuma predefinição configurada"/>
@@ -2015,6 +2020,7 @@
   <translation tag="Notification" pt="Notificação"/>
   <translation tag="Notifications" pt="Notificações"/>
   <translation tag="Notify when print finishes" pt="Notificar quando a impressão terminar"/>
+  <translation tag="Now printing" pt="Imprimindo agora"/>
   <translation tag="Noz max" pt="Bico máx"/>
   <translation tag="Noz min" pt="Bico mín"/>
   <translation tag="Noz rec" pt="Bico rec"/>
@@ -2048,6 +2054,7 @@
   <translation tag="Object picks apply only to prints started now" pt="A seleção de objetos vale apenas para impressões iniciadas agora"/>
   <translation tag="Object positions unavailable" pt="Posições dos objetos indisponíveis"/>
   <translation tag="Objects" pt="Objetos"/>
+  <translation tag="Objects in the print, with a tap to open the skip map" pt="Objetos da impressão, toque para abrir o mapa de exclusão"/>
   <translation tag="Off" pt="Desligado"/>
   <translation tag="Off:" pt="Desligado:"/>
   <translation tag="Off: runs with these values without asking" pt="Desativado: executa com estes valores sem perguntar"/>
@@ -2808,9 +2815,11 @@
   <translation tag="Signal" pt="Sinal"/>
   <translation tag="Signal #" pt="Sinal #"/>
   <translation tag="Similarity" pt="Similaridade"/>
+  <translation tag="Single object" pt="Objeto único"/>
   <translation tag="Single toggle macro. State is not tracked." pt="Macro de alternância única. O estado não é rastreado."/>
   <translation tag="Size" pt="Tamanho"/>
   <translation tag="Skip" pt="Pular"/>
+  <translation tag="Skip objects..." pt="Pular objetos..."/>
   <translation tag="Skipped" pt="Ignorado"/>
   <translation tag="Sleep While Printing" pt="Suspender Durante Impressão"/>
   <translation tag="Sleep adjusted to match dim timeout" pt="Tempo de suspensão ajustado"/>

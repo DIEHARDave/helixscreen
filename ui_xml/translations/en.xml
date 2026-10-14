@@ -13,7 +13,10 @@
   <translation tag="%d min left" en="%d min left"/>
   <translation tag="%d mm/s" en="%d mm/s"/>
   <translation tag="%d more sensors" en="%d more sensors"/>
+  <translation tag="%d objects" en="%d objects"/>
+  <translation tag="%d of %d printing" en="%d of %d printing"/>
   <translation tag="%d profiles" en="%d profiles"/>
+  <translation tag="%d skipped" en="%d skipped"/>
   <translation tag="%d slots" en="%d slots"/>
   <translation tag="%d toolheads" en="%d toolheads"/>
   <translation tag="%d tools" en="%d tools"/>
@@ -1029,6 +1032,7 @@
   <translation tag="Exception: {}" en="Exception: {}"/>
   <translation tag="Exclude" en="Exclude"/>
   <translation tag="Exclude Object?" en="Exclude Object?"/>
+  <translation tag="Exclude Objects" en="Exclude Objects"/>
   <translation tag="Excluded" en="Excluded"/>
   <translation tag="Exclusion cancelled" en="Exclusion cancelled"/>
   <translation tag="Execute printer macros" en="Execute printer macros"/>
@@ -1949,6 +1953,7 @@
   <translation tag="No networks found" en="No networks found"/>
   <translation tag="No new mesh was stored as &apos;{}&apos;" en="No new mesh was stored as &apos;{}&apos;"/>
   <translation tag="No notifications" en="No notifications"/>
+  <translation tag="No objects" en="No objects"/>
   <translation tag="No objects defined for this print" en="No objects defined for this print"/>
   <translation tag="No output yet" en="No output yet"/>
   <translation tag="No presets configured" en="No presets configured"/>
@@ -2015,6 +2020,7 @@
   <translation tag="Notification" en="Notification"/>
   <translation tag="Notifications" en="Notifications"/>
   <translation tag="Notify when print finishes" en="Notify when print finishes"/>
+  <translation tag="Now printing" en="Now printing"/>
   <translation tag="Noz max" en="Noz max"/>
   <translation tag="Noz min" en="Noz min"/>
   <translation tag="Noz rec" en="Noz rec"/>
@@ -2048,6 +2054,7 @@
   <translation tag="Object picks apply only to prints started now" en="Object picks apply only to prints started now"/>
   <translation tag="Object positions unavailable" en="Object positions unavailable"/>
   <translation tag="Objects" en="Objects"/>
+  <translation tag="Objects in the print, with a tap to open the skip map" en="Objects in the print, with a tap to open the skip map"/>
   <translation tag="Off" en="Off"/>
   <translation tag="Off:" en="Off:"/>
   <translation tag="Off: runs with these values without asking" en="Off: runs with these values without asking"/>
@@ -2808,9 +2815,11 @@
   <translation tag="Signal" en="Signal"/>
   <translation tag="Signal #" en="Signal #"/>
   <translation tag="Similarity" en="Similarity"/>
+  <translation tag="Single object" en="Single object"/>
   <translation tag="Single toggle macro. State is not tracked." en="Single toggle macro. State is not tracked."/>
   <translation tag="Size" en="Size"/>
   <translation tag="Skip" en="Skip"/>
+  <translation tag="Skip objects..." en="Skip objects..."/>
   <translation tag="Skipped" en="Skipped"/>
   <translation tag="Sleep While Printing" en="Sleep While Printing"/>
   <translation tag="Sleep adjusted to match dim timeout" en="Sleep adjusted to match dim timeout"/>

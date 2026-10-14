@@ -29,7 +29,13 @@ firmware. Before you commit:
   which the firmware toolchain does not have.
 - **Statics:** a large static in a firmware-compiled file is `HELIX_PSRAM_BSS`, `const`, or heap.
   `check_esp32_size.py` fails CI when `.dram0.bss` crosses its ceiling, and on the device the symptom is
-  `wifi:malloc buffer fail` at boot and no WiFi.
+  `wifi:malloc buffer fail` at boot and no WiFi. Small ones add up: every `lv_subject_t` and
+  text buffer a home widget keeps at namespace scope counts, and the widgets that ship them
+  (`src/ui/panel_widgets/toolhead_widget.cpp`, `host_health_widget.cpp`, `bed_mesh_tile_widget.cpp`,
+  `dryer_widget.cpp`, `dryer_model.cpp`) declare them all `HELIX_PSRAM_BSS`, as do the state singletons they
+  read (`src/printer/bed_mesh_state.cpp`, `src/system/performance_state.cpp`). Do the same for a new widget's
+  or model's subjects, buffers and singleton. Subjects registered at app runtime are first touched after PSRAM
+  is up, which is what makes the attribute legal.
 - **Push:** `.githooks/pre-push` runs `scripts/esp32_syntax_check.py`, which compiles the touched firmware units
   `-fsyntax-only` in the `espressif/idf` image and catches the host-green, Xtensa-red class (`int32_t` is `long`).
   It skips with a note when docker or the image is missing; `HELIX_ESP32_SYNTAX=0` skips it.
@@ -139,7 +145,7 @@ diagnostics); the boot heap gates print as `heap before pthread` and `internal h
 | `scripts/check_esp32_app_srcs.py` | commit (`scripts/qc/esp32_app_srcs.sh`) | Manifest coverage, stale lines, locale-pulling includes, exception sites. `--link` (advisory) reads native objects for a kept file calling a symbol only an excluded file defines |
 | `scripts/check_esp32_xml_bindings.py` | commit (`scripts/qc/esp32_xml_bindings.sh`) | XML bindings the firmware does not register; baseline `scripts/esp32_xml_binding_baseline.txt` |
 | `scripts/esp32_syntax_check.py` | pre-push | Xtensa `-fsyntax-only` on touched firmware units |
-| `scripts/check_esp32_size.py` | `esp32-build.yml` | App image vs `app_max_bytes`, `.dram0.bss`/`.data` vs their ceilings, exception support or `std::locale` linked |
+| `scripts/check_esp32_size.py` | `esp32-build.yml` | App image vs `app_max_bytes`, `.dram0.bss`/`.data` vs their ceilings, exception support or `std::locale` linked. A breach prints the eight largest inputs of the section (size, input section, object file) so the offending static is named; read that list before raising a ceiling |
 | `tests/python/test_esp32_pack_assets.py` | `esp32-build.yml` | The frogfs packer round trip |
 | `tests/shell/test_code_lint.bats` | bats suite | A PSRAM heap walk on a per-event path (thumbnail, print select, print status) |
 | `tests/unit/test_esp32_*.cpp` | unit sweep | Reconnect backoff, link liveness, transport ordering, the HTTP lane queue, tested on the host |

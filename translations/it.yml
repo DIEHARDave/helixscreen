@@ -15,6 +15,9 @@ translations:
   '%d min left': '%d min rimanenti'
   '%d mm/s': '%d mm/s'
   '%d more sensors': '%d altri sensori'
+  '%d objects': '%d oggetti'
+  '%d of %d printing': '%d di %d in stampa'
+  '%d skipped': '%d saltati'
   '%d profiles': '%d profili'
   '%d slots': '%d slot'
   '%d toolheads': '%d testine'
@@ -1136,6 +1139,7 @@ translations:
   'Exception: {}': 'Eccezione: {}'
   Exclude: Escludi
   Exclude Object?: 'Escludere oggetto?'
+  Exclude Objects: 'Escludi oggetti'
   Excluded: Escluso
   Exclusion cancelled: Esclusione annullata
   Execute printer macros: Esegui macro stampante
@@ -2155,6 +2159,7 @@ translations:
   No networks found: Nessuna rete trovata
   No new mesh was stored as '{}': "Nessuna nuova mesh è stata salvata come '{}'"
   No notifications: Nessuna notifica
+  No objects: 'Nessun oggetto'
   No objects defined for this print: Nessun oggetto definito per questa stampa
   No output yet: Nessun output
   No presets configured: Nessun preset configurato
@@ -2227,6 +2232,7 @@ translations:
   Notification: Notifica
   Notifications: Notifiche
   Notify when print finishes: Notifica al termine della stampa
+  Now printing: 'In stampa ora'
   Noz max: Ug. max
   Noz min: Ug. min
   Noz rec: Ug. cons.
@@ -2260,6 +2266,7 @@ translations:
   Object picks apply only to prints started now: 'La selezione degli oggetti vale solo per le stampe avviate ora'
   Object positions unavailable: Posizioni oggetti non disponibili
   Objects: Oggetti
+  Objects in the print, with a tap to open the skip map: 'Oggetti della stampa, tocca per aprire la mappa'
   'Off': 'Off'
   'Off:': 'Off:'
   'Off: runs with these values without asking': 'Disattivato: esegue con questi valori senza chiedere'
@@ -3110,10 +3117,12 @@ translations:
   Signal: Segnale
   'Signal #': 'Segnale #'
   Similarity: "Similitudine"
+  Single object: 'Oggetto singolo'
   Single toggle macro. State is not tracked.: Singola macro toggle. Lo stato non è
     tracciato.
   Size: Dimensione
   Skip: Salta
+  Skip objects...: 'Salta oggetti...'
   Skipped: 'Saltato'
   Sleep While Printing: Sospensione Durante Stampa
   Sleep adjusted to match dim timeout: Timeout standby regolato

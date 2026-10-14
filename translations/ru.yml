@@ -15,6 +15,9 @@ translations:
   '%d min left': 'осталось %d мин'
   '%d mm/s': '%d mm/s'
   '%d more sensors': Ещё %d датчиков
+  '%d objects': 'Объектов: %d'
+  '%d of %d printing': '%d из %d печатается'
+  '%d skipped': 'Пропущено: %d'
   '%d profiles': 'Профилей: %d'
   '%d slots': '%d слотов'
   '%d toolheads': '%d печатающих головок'
@@ -1124,6 +1127,7 @@ translations:
   'Exception: {}': 'Исключение: {}'
   Exclude: Исключить
   Exclude Object?: 'Исключить объект?'
+  Exclude Objects: 'Исключение объектов'
   Excluded: Исключён
   Exclusion cancelled: Исключение отменено
   Execute printer macros: Выполнить макросы принтера
@@ -2135,6 +2139,7 @@ translations:
   No networks found: Сети не найдены
   No new mesh was stored as '{}': "Новая сетка не сохранена как '{}'"
   No notifications: Нет уведомлений
+  No objects: 'Нет объектов'
   No objects defined for this print: Для этой печати не определены объекты
   No output yet: Нет вывода
   No presets configured: Пресеты не настроены
@@ -2207,6 +2212,7 @@ translations:
   Notification: Уведомление
   Notifications: Уведомления
   Notify when print finishes: Уведомить о завершении печати
+  Now printing: 'Сейчас печатается'
   Noz max: Соп макс
   Noz min: Соп мин
   Noz rec: Соп рек
@@ -2240,6 +2246,7 @@ translations:
   Object picks apply only to prints started now: 'Выбор объектов применяется только к печати, запущенной сейчас'
   Object positions unavailable: Позиции объектов недоступны
   Objects: Объекты
+  Objects in the print, with a tap to open the skip map: 'Объекты печати, касание открывает карту пропуска'
   'Off': Выкл
   'Off:': 'Выкл:'
   'Off: runs with these values without asking': 'Выкл.: запуск с этими значениями без запроса'
@@ -3083,10 +3090,12 @@ translations:
   Signal: Сигнал
   'Signal #': Сигнал №
   Similarity: "Схожесть"
+  Single object: 'Один объект'
   Single toggle macro. State is not tracked.: Один макрос переключения. Состояние
     не отслеживается.
   Size: Размер
   Skip: Пропустить
+  Skip objects...: 'Пропустить объекты...'
   Skipped: 'Пропущено'
   Sleep While Printing: Спящий режим при печати
   Sleep adjusted to match dim timeout: Таймаут сна изменён
