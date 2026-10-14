@@ -136,6 +136,10 @@ class AmsBackendCfs : public AmsSubscriptionBackend {
   public:
     AmsBackendCfs(IMoonrakerAPI* api, helix::IMoonrakerClient* client);
 
+    /// The status objects the CFS backend pushes (`box`, `motor_control`).
+    /// Empty unless @p hw detected CFS.
+    [[nodiscard]] static nlohmann::json required_status_objects(const helix::PrinterDiscovery& hw);
+
     /**
      * @brief Bare filament-sensor name CFS owns: "filament_sensor".
      *
@@ -185,6 +189,10 @@ class AmsBackendCfs : public AmsSubscriptionBackend {
         // because a stood-down box has no answer for a bay operation. An
         // unaccounted toolhead is that same lane-free situation.
         t.can_clear_unaccounted_toolhead = true;
+        // classify_error() raises the auto-refill give-up messages as a fault, and it
+        // does so while a job runs.
+        t.raises_runout_fault = true;
+        t.raises_runout_fault_during_job = true;
         return t;
     }();
     [[nodiscard]] BackendTraits traits() const override {

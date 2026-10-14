@@ -14,9 +14,7 @@
 #include "mock_persona.h"
 #include "moonraker_client_mock.h"
 #endif
-#if HELIX_HAS_IFS
 #include "ams_backend_ad5x_ifs.h"
-#endif
 #if HELIX_HAS_CFS
 #include "ams_backend_cfs.h"
 #endif
@@ -788,6 +786,45 @@ bool AmsBackend::sensor_belongs_to_backend(AmsType type, const std::string& bare
     default:
         return false;
     }
+}
+
+nlohmann::json AmsBackend::required_status_objects(const helix::PrinterDiscovery& hw) {
+    nlohmann::json objects = nlohmann::json::object();
+    const auto merge = [&objects](const nlohmann::json& from) {
+        for (auto it = from.begin(); it != from.end(); ++it) {
+            objects[it.key()] = it.value();
+        }
+    };
+
+    merge(AmsBackendAfc::required_status_objects(hw));
+    merge(AmsBackendHappyHare::required_status_objects(hw));
+    merge(AmsBackendOpenAms::required_status_objects(hw));
+#if HELIX_HAS_IFS
+    if (hw.mmu_type() == AmsType::AD5X_IFS) {
+        for (const auto& name : AmsBackendAd5xIfs::required_status_objects(hw)) {
+            objects[name] = nullptr;
+        }
+    }
+#endif
+#if HELIX_HAS_CFS
+    merge(printer::AmsBackendCfs::required_status_objects(hw));
+#endif
+#if HELIX_HAS_ACE
+    merge(AmsBackendAce::required_status_objects(hw));
+#endif
+#if HELIX_HAS_QIDI
+    merge(AmsBackendQidi::required_status_objects(hw));
+#endif
+#if HELIX_HAS_SNAPMAKER
+    merge(AmsBackendSnapmaker::required_status_objects(hw));
+#endif
+    return objects;
+}
+
+const std::vector<std::string>& AmsBackend::filament_sensor_object_prefixes() {
+    static const std::vector<std::string> prefixes(kAd5xIfsSensorObjectPrefixes.begin(),
+                                                   kAd5xIfsSensorObjectPrefixes.end());
+    return prefixes;
 }
 
 std::unique_ptr<AmsBackend> AmsBackend::create(AmsType detected_type, IMoonrakerAPI* api,

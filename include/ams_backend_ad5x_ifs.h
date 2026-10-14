@@ -2,6 +2,20 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #pragma once
+
+#include <array>
+
+namespace helix {
+
+/// Klipper object-name prefixes under which native Z-Mod publishes the IFS head and
+/// motion sensors, in place of the stock filament_switch_sensor /
+/// filament_motion_sensor sections. Outside the HELIX_HAS_IFS guard because
+/// discovery buckets these as filament sensors on every build.
+inline constexpr std::array<const char*, 2> kAd5xIfsSensorObjectPrefixes = {
+    "zmod_ifs_switch_sensor ", "zmod_ifs_motion_sensor "};
+
+} // namespace helix
+
 #if HELIX_HAS_IFS
 
 #include "ams_subscription_backend.h"
@@ -259,6 +273,15 @@ class AmsBackendAd5xIfs : public AmsSubscriptionBackend {
         // IFS firmware persists color + material type but NOT spoolman_id,
         // so ToolState must handle spool assignment persistence via Moonraker DB.
         t.has_firmware_spool_persistence = false;
+        // current_error() raises the unattended-runout detector's fault. It is NOT
+        // raised during a job: the detector fires only while PAUSED and only after a
+        // 30-180s confirm dwell, so at the sensor edge nothing has fired yet and
+        // quieting the toast would open a silent window. Mid-print the toast is the
+        // immediate surface.
+        t.raises_runout_fault = true;
+        // The firmware unloads filament back into the IFS between prints, so the
+        // head sensor going empty while the printer is idle is expected, not news.
+        t.unloads_to_hub_between_prints = true;
         return t;
     }();
     [[nodiscard]] BackendTraits traits() const override {

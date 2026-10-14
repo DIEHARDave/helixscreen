@@ -52,6 +52,11 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
 
     ~AmsBackendSnapmaker() override;
 
+    /// The status objects the SnapSwap backend pushes: RFID filament, feed modules,
+    /// task config, extruder state, and the batch-feed macro when the firmware has it.
+    /// Empty unless @p hw detected the Snapmaker filament system.
+    [[nodiscard]] static nlohmann::json required_status_objects(const helix::PrinterDiscovery& hw);
+
     [[nodiscard]] AmsType get_type() const override {
         return AmsType::SNAPMAKER;
     }

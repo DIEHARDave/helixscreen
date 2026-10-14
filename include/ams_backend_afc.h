@@ -233,6 +233,10 @@ class AmsBackendAfc : public AmsSubscriptionBackend {
     [[nodiscard]] static nlohmann::json
     required_status_objects(const std::vector<std::string>& afc_objects);
 
+    /// Same map, discovering the AFC objects itself: `AFC` and every `AFC_*` object
+    /// the printer lists. Unconditional; a printer with none gets an empty map.
+    [[nodiscard]] static nlohmann::json required_status_objects(const helix::PrinterDiscovery& hw);
+
     // State queries
     [[nodiscard]] AmsSystemInfo get_system_info() const override;
 
@@ -262,6 +266,9 @@ class AmsBackendAfc : public AmsSubscriptionBackend {
         t.has_firmware_spool_persistence = true;
         // AFC publishes a lane spool_id in its status
         t.printer_reports_spool_ids = true;
+        // classify_error() + current_error() raise the runout, while a job runs too.
+        t.raises_runout_fault = true;
+        t.raises_runout_fault_during_job = true;
         return t;
     }();
     [[nodiscard]] BackendTraits traits() const override {

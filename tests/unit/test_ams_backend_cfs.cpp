@@ -4720,6 +4720,9 @@ TEST_CASE("CFS runout: 'no identical supplies' raises one runout fault", "[ams][
 
     auto ev = backend.classify_error("// no identical supplies", paused_ctx());
     REQUIRE(ev.has_value());
+    // The runout fault the hook raises is what the trait claims.
+    CHECK(backend.traits().raises_runout_fault);
+    CHECK(backend.traits().raises_runout_fault_during_job);
     CHECK(ev->source == helix::ErrorSource::CFS);
     CHECK(ev->severity == helix::ErrorSeverity::CRITICAL);
     CHECK(ev->sticky);
