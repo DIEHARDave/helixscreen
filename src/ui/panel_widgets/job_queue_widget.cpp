@@ -123,8 +123,10 @@ helix::RungNeeds measure_needs(const helix::ContentChrome& chrome) {
 
     // A two-digit count is the least a hero can show; anything longer ellipsizes.
     const int hero_w = measure_text_px("88…", heading);
-    const int action_short_w = measure_text_px(lv_tr("Start next"), body) + 2 * pad_sm;
-    const int action_w = measure_text_px(lv_tr("Bed clear · Start next"), body) + 2 * pad_sm;
+    // A button's label sits inside button_padding and a border pixel on each side.
+    const int button_chrome = 2 * (theme_manager_get_spacing("button_padding") + 1);
+    const int action_short_w = measure_text_px(lv_tr("Start next"), body) + button_chrome;
+    const int action_w = measure_text_px(lv_tr("Bed clear · Start next"), body) + button_chrome;
     // The thumbnail is a button-height square (jq_thumb).
     const int thumb_w = btn;
     // The text column is the hero over one line of small text.
