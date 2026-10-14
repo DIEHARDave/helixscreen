@@ -203,7 +203,7 @@
   <translation tag="Address" pt="Endereço"/>
   <translation tag="Adjust screen brightness level" pt="Ajustar nível de brilho da tela"/>
   <translation tag="Adjust screws, then re-probe." pt="Ajuste os parafusos, depois sonde novamente."/>
-  <translation tag="Adjust {} instead" pt="Ajustar {} em vez disso"/>
+  <translation tag="Adjust {} instead" pt="Ajustar {} no lugar"/>
   <translation tag="Adjustments stay active until restart. Save after print completes." pt="Ajustes permanecem ativos até reiniciar. Salve após a impressão terminar."/>
   <translation tag="Adjusts individual characteristics of your heaters for optimal control" pt="Ajusta características individuais dos seus aquecedores para controle ideal"/>
   <translation tag="Advanced" pt="Avançado"/>
@@ -1910,7 +1910,7 @@
   <translation tag="New profile name" pt="Novo nome do perfil"/>
   <translation tag="Next" pt="Próximo"/>
   <translation tag="Next zone" pt="Próxima zona"/>
-  <translation tag="Next zone (~{} min)" pt="Próxima zona (~{} min)"/>
+  <translation tag="Next zone (~{} min)" pt="Próx. zona (~{} min)"/>
   <translation tag="Niimbot (Bluetooth)" pt="Niimbot (Bluetooth)"/>
   <translation tag="No" pt="Não"/>
   <translation tag="No AMS Detected" pt="Nenhum AMS detectado"/>
@@ -2438,7 +2438,7 @@
   <translation tag="Raspberry Pi (32-bit)" pt="Raspberry Pi (32-bit)"/>
   <translation tag="Re-identify" pt="Reidentificar"/>
   <translation tag="Re-measure" pt="Medir novamente"/>
-  <translation tag="Re-measure (~{} min)" pt="Medir de novo (~{} min)"/>
+  <translation tag="Re-measure (~{} min)" pt="Medir (~{} min)"/>
   <translation tag="Re-measuring Path {}" pt="Medindo novamente Caminho {}"/>
   <translation tag="Re-probe" pt="Sondar Novamente"/>
   <translation tag="Re-read spool RFID tags and remaining length" pt="Reler as etiquetas RFID dos carretéis e o comprimento restante"/>

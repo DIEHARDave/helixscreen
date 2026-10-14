@@ -1910,7 +1910,7 @@
   <translation tag="New profile name" es="Nombre del nuevo perfil"/>
   <translation tag="Next" es="Siguiente"/>
   <translation tag="Next zone" es="Siguiente zona"/>
-  <translation tag="Next zone (~{} min)" es="Siguiente zona (~{} min)"/>
+  <translation tag="Next zone (~{} min)" es="Sig. zona (~{} min)"/>
   <translation tag="Niimbot (Bluetooth)" es="Niimbot (Bluetooth)"/>
   <translation tag="No" es="No"/>
   <translation tag="No AMS Detected" es="No se detectó AMS"/>
@@ -2438,7 +2438,7 @@
   <translation tag="Raspberry Pi (32-bit)" es="Raspberry Pi (32-bit)"/>
   <translation tag="Re-identify" es="Reidentificar"/>
   <translation tag="Re-measure" es="Volver a medir"/>
-  <translation tag="Re-measure (~{} min)" es="Volver a medir (~{} min)"/>
+  <translation tag="Re-measure (~{} min)" es="Medir (~{} min)"/>
   <translation tag="Re-measuring Path {}" es="Volviendo a medir Ruta {}"/>
   <translation tag="Re-probe" es="Re-sondear"/>
   <translation tag="Re-read spool RFID tags and remaining length" es="Volver a leer las etiquetas RFID de las bobinas y la longitud restante"/>

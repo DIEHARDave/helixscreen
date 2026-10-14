@@ -2120,7 +2120,7 @@ translations:
   New profile name: Neuer Profilname
   Next: Weiter
   Next zone: "Nächste Zone"
-  Next zone (~{} min): "Nächste Zone (~{} Min)"
+  Next zone (~{} min): "Nächste (~{} Min)"
   Niimbot (Bluetooth): Niimbot (Bluetooth)
   'No': Nein
   No AMS Detected: 'Kein AMS erkannt'

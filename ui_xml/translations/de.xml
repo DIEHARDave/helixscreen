@@ -1910,7 +1910,7 @@
   <translation tag="New profile name" de="Neuer Profilname"/>
   <translation tag="Next" de="Weiter"/>
   <translation tag="Next zone" de="Nächste Zone"/>
-  <translation tag="Next zone (~{} min)" de="Nächste Zone (~{} Min)"/>
+  <translation tag="Next zone (~{} min)" de="Nächste (~{} Min)"/>
   <translation tag="Niimbot (Bluetooth)" de="Niimbot (Bluetooth)"/>
   <translation tag="No" de="Nein"/>
   <translation tag="No AMS Detected" de="Kein AMS erkannt"/>

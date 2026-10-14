@@ -2110,7 +2110,7 @@ translations:
   New profile name: Nombre del nuevo perfil
   Next: Siguiente
   Next zone: "Siguiente zona"
-  Next zone (~{} min): "Siguiente zona (~{} min)"
+  Next zone (~{} min): "Sig. zona (~{} min)"
   Niimbot (Bluetooth): Niimbot (Bluetooth)
   'No': 'No'
   No AMS Detected: 'No se detectó AMS'
@@ -2686,7 +2686,7 @@ translations:
   Raspberry Pi (32-bit): Raspberry Pi (32-bit)
   Re-identify: Reidentificar
   Re-measure: 'Volver a medir'
-  Re-measure (~{} min): "Volver a medir (~{} min)"
+  Re-measure (~{} min): "Medir (~{} min)"
   Re-measuring Path {}: Volviendo a medir Ruta {}
   Re-probe: Re-sondear
   Re-read spool RFID tags and remaining length: 'Volver a leer las etiquetas RFID de las bobinas y la longitud restante'
