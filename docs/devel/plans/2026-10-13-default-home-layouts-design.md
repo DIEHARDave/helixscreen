@@ -202,17 +202,33 @@ ENV2 (6,0); notifications (7,0); fan_stack (2,1); FIL (3,1); z_offset (4,1,2,1);
 print_stats (6,1,2,2); print_status (0,2,4,2); speed_flow (4,2,2,1); temp_graph (4,3,2,2);
 MESH (6,3,2,2); tips (0,4,4,1). 40 of 40 cells.
 
-### xxlarge (1920x1080)
+### xxlarge 12x7 (1920x1080 at a 72px track edge)
 
 The track edge drops from 96 to 72px (`include/grid_layout.h#GRID_CELL`), taking 1920x1080
-from 9x6 to about 12x7 cells. The first plan task measures it: the grid the app actually
-gives, and every widget used below at its smallest size there, `ctl overflow` clean.
-The table is authored against the measured grid in the same task, with the large set
-plus room (z_offset, speed_flow, print_stats, MESH at the Large rung, tips). Consequences
-handled in that task: `tests/unit/test_grid_square_cells.cpp` and the `LAYOUT_SYSTEM.md`
-grid table gain the 1920x1080 row; `kLandscapeBudget` follows; an existing xxlarge layout
-meets a new grid once and is parked and ported by `switch_to_grid`, as on a UI Scale
-change.
+from 9x6 to 12x7 cells (measured on a spike build: 1x1 cell 134x142px; every 1x1 and
+2x1 widget used here reads without clipping; temp_graph needs 3 rows to keep its axes
+and legend; print_status needs 5 columns, as 4x3 clips its idle data column by 14px).
+
+| Widget | Cells |
+|---|---|
+| printer_image | (0,0,3,3) |
+| print_status detailed | (3,0,5,3) |
+| temperature, bed_temperature | (8,0), (9,0) |
+| SPOOL_ENV | (10,0,2,1) |
+| fan_stack, notifications, ENV, FIL | (8,1), (9,1), (10,1), (11,1) |
+| z_offset, speed_flow | (8,2,2,1), (10,2,2,1) |
+| temp_graph | (0,3,8,3) |
+| tips | (0,6,8,1) |
+| MESH | (8,3,4,2) |
+| print_stats | (8,5,3,2) |
+| FILLER = `[clock, network]` | (11,5,1,2) |
+
+84 of 84 cells, rendered on the spike build with voron_24 (`ctl overflow` reports only the
+idle print card's buttons 7px past the bottom, which the 96px build shows too).
+Consequences handled in the same task: `tests/unit/test_grid_square_cells.cpp` and the
+`LAYOUT_SYSTEM.md` grid table gain the 1920x1080 row; `kLandscapeBudget` follows; an
+existing xxlarge layout meets a new grid once and is parked and ported by
+`switch_to_grid`, as on a UI Scale change.
 
 ### Portrait (tracks)
 
