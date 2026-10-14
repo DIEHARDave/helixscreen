@@ -1,0 +1,135 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+#pragma once
+
+/**
+ * @file queued_start_fixture.h
+ * @brief The print-select panel over a mock queue and option store, for the
+ *        suites that start queued jobs (print-select's two-tap path and the
+ *        home tile's QueuedJobStarter).
+ */
+
+#include "../ui_test_utils.h"
+#include "app_globals.h"
+#include "i_moonraker_sub_apis.h"
+#include "moonraker_api.h"
+#include "print_select_panel_fixture.h"
+#include "print_select_panel_test_access.h"
+#include "print_state_test_drivers.h"
+#include "printer_state.h"
+#include "printer_state_test_access.h"
+#include "queued_job_options.h"
+#include "test_helpers/pre_print_option_sets.h"
+
+#include <map>
+#include <string>
+#include <vector>
+
+#include "../catch_amalgamated.hpp"
+
+namespace helix::test {
+
+/// Collects the user-facing warning toasts: toasts are compiled out of the
+/// test build, so the hook is the only observable.
+struct WarningLog {
+    std::vector<std::string> messages;
+
+    WarningLog() {
+        helix::ui::set_test_notification_warning_hook(
+            [this](const std::string& message) { messages.push_back(message); });
+    }
+    ~WarningLog() {
+        helix::ui::set_test_notification_warning_hook(nullptr);
+    }
+    WarningLog(const WarningLog&) = delete;
+    WarningLog& operator=(const WarningLog&) = delete;
+
+    bool contains(const std::string& needle) const {
+        for (const auto& m : messages) {
+            if (m.find(needle) != std::string::npos) {
+                return true;
+            }
+        }
+        return false;
+    }
+};
+
+class QueuedStartFixture : private helix::PrintSelectGlobalStateReset,
+                           public helix::PrintSelectPanelFixture {
+  public:
+    explicit QueuedStartFixture(PrintSelectApi api = PrintSelectApi::Real)
+        : helix::PrintSelectPanelFixture(helix::PrintSelectFilelistHandler::Unregistered,
+                                         helix::PrintSelectVisit::Immediate, api) {
+        PrinterStateTestAccess::set_option_set(get_printer_state(), make_skip_and_addon_set());
+        previous_api_ = get_moonraker_api();
+        set_moonraker_api(api_.get());
+        drain();
+    }
+
+    ~QueuedStartFixture() override {
+        // With the panel and its api still alive: settle the state, then hand
+        // the global api pointer back before the bases tear anything down.
+        auto& ps = get_printer_state();
+        if (ps.print_state().has_preparing_job()) {
+            ps.print_state().retire_preparing(helix::PreparingExit::Superseded);
+        }
+        set_wire_state(ps, PrintJobState::STANDBY);
+        drain();
+        set_moonraker_api(previous_api_);
+    }
+
+    /// Writes a stored-options entry the way add_to_queue does: one post to
+    /// the job's own key. The mock dispatches inline, so it answers before
+    /// returning.
+    void seed_store(const std::string& job_id, const std::string& filename,
+                    std::map<std::string, bool> options) {
+        api_->database_post_item(
+            helix::queue::kOptionsDbNamespace, helix::queue::queued_job_option_key(job_id),
+            helix::queue::encode_queued_job_entry(
+                helix::queue::QueuedJobOptions{filename, std::move(options)}),
+            []() {}, [](const MoonrakerError&) { FAIL("seed post failed"); });
+    }
+
+    /// Reads the stored option map straight from the (mock) database.
+    helix::queue::QueuedJobOptionsMap read_store() {
+        helix::queue::QueuedJobOptionsMap out;
+        bool answered = false;
+        api_->database_get_item(
+            helix::queue::kOptionsDbNamespace, helix::queue::kOptionsDbKey,
+            [&out, &answered](const json& value) {
+                out = helix::queue::decode_queued_job_options(value);
+                answered = true;
+            },
+            [&answered](const MoonrakerError&) { answered = true; });
+        REQUIRE(answered);
+        return out;
+    }
+
+    /// Whether the job is still in Moonraker's queue (the mock answers
+    /// synchronously, so a capturing lambda is safe here).
+    bool queue_has(const std::string& job_id) {
+        bool found = false;
+        api_->queue().get_queue_status(
+            [&found, &job_id](const JobQueueStatus& status) {
+                for (const auto& job : status.queued_jobs) {
+                    if (job.job_id == job_id) {
+                        found = true;
+                    }
+                }
+            },
+            [](const MoonrakerError& err) { FAIL(err.message); });
+        return found;
+    }
+
+    static JobQueueEntry entry(const std::string& job_id, const std::string& filename) {
+        return JobQueueEntry{job_id, filename, 0.0, 0.0};
+    }
+
+    const std::string* pending_job_id() const {
+        return ::PrintSelectPanelTestAccess::pending_queued_job_id(*panel_);
+    }
+
+  private:
+    IMoonrakerAPI* previous_api_ = nullptr;
+};
+
+} // namespace helix::test

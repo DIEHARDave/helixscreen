@@ -59,11 +59,14 @@ void start_next_queued_job() {
         spdlog::debug("[JobQueueStart] Start next found no queued job");
         return;
     }
+    open_queued_job_in_file_view(jqs->get_jobs().front());
+}
+
+void open_queued_job_in_file_view(const JobQueueEntry& job) {
     // The same entry the queue modal's row tap uses: the busy guard, the
     // saved option states and the entry's removal on confirmed start all
     // live in the detail-view pipeline every manual Print tap already uses.
-    get_print_select_panel(get_printer_state(), get_moonraker_api())
-        ->start_queued_job(jqs->get_jobs().front());
+    get_print_select_panel(get_printer_state(), get_moonraker_api())->start_queued_job(job);
 }
 
 void handle_up_next_tap() {

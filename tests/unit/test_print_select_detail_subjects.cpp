@@ -196,7 +196,8 @@ TEST_CASE_METHOD(LVGLUITestFixture,
 
     // Saved states for a queued job: bed_mesh flipped off, timelapse flipped
     // on, plus an id no option set has ever defined.
-    view.seed_option_states({{"bed_mesh", false}, {"timelapse", true}, {"ghost_option", true}});
+    view.seed_option_states(
+        {"queued.gcode", {{"bed_mesh", false}, {"timelapse", true}, {"ghost_option", true}}});
     view.show("queued.gcode", "", "PLA");
     helix::ui::UpdateQueue::instance().drain();
 

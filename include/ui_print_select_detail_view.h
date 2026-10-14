@@ -16,7 +16,9 @@
 #include "overlay_base.h"
 #include "preflight_validator.h"
 #include "print_file_data.h" // For FileHistoryStatus
+#include "print_start_inputs.h"
 #include "printer_excluded_objects_state.h"
+#include "queued_job_options.h"
 #include "subject_managed_panel.h"
 #include "tools_used_cache.h"
 
@@ -450,11 +452,12 @@ class PrintSelectDetailView : public OverlayBase {
      * states are handed back before show() so the rows for that one file open
      * as they were saved, not at default_enabled. Applied in on_activate()
      * right after populate_option_rows() re-initializes the rows, then
-     * consumed — a later show starts from defaults again. Ids with no row are
-     * dropped by the renderer's set_state(); ids the seed does not mention
-     * keep their defaults.
+     * consumed — a later show starts from defaults again. Each row reads its
+     * state through helix::queue::saved_option_state(), the rule a queued start
+     * with no file view shares: ids with no row drop, rows the job saved
+     * nothing for keep their defaults.
      */
-    void seed_option_states(std::map<std::string, bool> overrides);
+    void seed_option_states(helix::queue::QueuedJobOptions saved);
 
     /**
      * @brief Get current filament mappings from the mapping card
@@ -867,7 +870,7 @@ class PrintSelectDetailView : public OverlayBase {
     /// stand-ins as though they were the file's own colors.
     bool palette_settled_ = false;
     bool headless_scan_done_ = false; // scan finished (success/empty/fail/timeout)
-    // True ONLY where the scan actually SETTLED: finish_scan's deferred body,
+    // True ONLY where the scan actually SETTLED: apply_scan_result(),
     // the show() cache-hit seed, or the no-API early-out. Deliberately NOT
     // set by the preflight safety timeout, which flips headless_scan_done_
     // while a download/scan may still be in flight. Gates oversize-reject
@@ -962,7 +965,7 @@ class PrintSelectDetailView : public OverlayBase {
 
     // States handed over by seed_option_states(), applied over the freshly
     // populated rows by the next on_activate() and consumed there.
-    std::map<std::string, bool> pending_option_seed_;
+    std::optional<helix::queue::QueuedJobOptions> pending_option_seed_;
 
     // === Cached show() parameters (used by on_activate) ===
     std::string current_filename_;
@@ -983,6 +986,10 @@ class PrintSelectDetailView : public OverlayBase {
     // in one paint; written through when a scan/parse makes the set final.
     // Main-thread use only (documented on helix::ToolsUsedCache).
     helix::ToolsUsedCache tools_used_cache_;
+
+    // The footer read and whole-file tools scan, shared with a queued start
+    // that has no file view.
+    helix::FileStartFactsLoader facts_loader_{nullptr};
 
     // Cached metadata from the async fetch (nullopt until fetch completes or when file changes)
     std::optional<FileMetadata> cached_file_metadata_;
@@ -1085,47 +1092,19 @@ class PrintSelectDetailView : public OverlayBase {
     void disarm_viewer_callbacks();
 
     /**
-     * @brief Apply a finished headless tools-scan result (callable from any thread)
+     * @brief Apply a finished headless tools-scan result (main thread).
      *
-     * Marshals via tok.defer — `this` is only touched inside the deferred
-     * body (main thread), where the result is stored, the color swatches are
-     * rendered (2D-only platforms), pre-flight is recomputed, the mapping
-     * card is restricted, and any deferred preflight-ready attempt is
-     * released. When @p authoritative is true (the scan actually read the
-     * downloaded file) the result is also written through to the tools-used
-     * cache — including a legitimate empty set (single-extruder file). A
-     * degraded finish (download failed, authoritative=false) must NOT
-     * persist: its empty set carries no information and, on 2D-only
-     * platforms where no viewer parse ever repairs it, would freeze "no
-     * tools" for the file permanently.
-     */
-    void finish_scan(LifetimeToken tok, std::set<int> tools, bool authoritative);
-
-    /**
-     * @brief Main-thread body of finish_scan() (see there for the contract).
-     *
-     * Split out so the footer-read path can adopt the file's palette and
-     * publish the used-tool set in ONE deferred tick, instead of chaining a
-     * second defer behind the colour update.
+     * Stores the result, renders the color swatches (2D-only platforms),
+     * recomputes pre-flight, restricts the mapping card and releases any
+     * deferred preflight-ready attempt. When @p authoritative is true (the
+     * scan actually read the file) the result is also written through to the
+     * tools-used cache, including a legitimate empty set (single-extruder
+     * file). A degraded finish (download failed, authoritative=false) must NOT
+     * persist: its empty set carries no information and, on 2D-only platforms
+     * where no viewer parse ever repairs it, would freeze "no tools" for the
+     * file permanently.
      */
     void apply_scan_result(std::set<int> tools, bool authoritative);
-
-    /**
-     * @brief Fast path: answer tools_used (and colors) from the file's footer.
-     *
-     * Slicers write `filament used [g]` and `filament_colour` after the last
-     * move, so one HTTP suffix range over the last few tens of KB answers both
-     * — no whole-file download, no geometry parse (~16s for an 870 KB file on
-     * a K2). Sized from gcode_end_byte when Moonraker reported it.
-     *
-     * Parsing happens on the HTTP thread (pure, no `this`); the result is
-     * marshaled by apply_scan_result() via tok.defer. ANY failure — transport
-     * error, a slicer that writes neither key, an all-zero usage vector —
-     * falls through to start_full_tools_scan(), so the footer read can only
-     * ever be faster than today, never worse.
-     */
-    void start_tail_summary_scan(LifetimeToken tok, std::set<int> stop_set,
-                                 helix::gcode::FooterReadNeed need);
 
     /// Apply whatever a footer read managed to answer. `need` says what the
     /// read was issued for: when it did NOT include the tools question, the
@@ -1133,14 +1112,6 @@ class PrintSelectDetailView : public OverlayBase {
     /// from this summary — only the palette and grams are taken.
     void apply_footer_summary(const helix::gcode::GcodeFooterSummary& summary,
                               helix::gcode::FooterReadNeed need);
-
-    /**
-     * @brief Fallback: download the whole file and scan it for Tn commands.
-     *
-     * The pre-footer-read behavior, unchanged. Shares the ONE canonical
-     * download with the viewer preview (ensure_gcode_downloaded).
-     */
-    void start_full_tools_scan(LifetimeToken tok, std::set<int> stop_set);
 
     /**
      * @brief Show or hide the gcode viewer
@@ -1181,16 +1152,13 @@ class PrintSelectDetailView : public OverlayBase {
     /**
      * @brief Start the headless tools_used scan for the current file.
      *
-     * Tries the footer read first (start_tail_summary_scan) — a small suffix
-     * range that usually answers outright. Only when that cannot answer does
-     * it fall back to start_full_tools_scan(), which shares the ONE canonical
-     * download with the viewer preview
-     * (ensure_gcode_downloaded); once the file is on disk, runs a lightweight
-     * Tn-only line scan on the slow HTTP lane (off the main thread,
-     * memory-safe — never holds the whole file), early-exiting once every
-     * slicer-palette tool has been seen. finish_scan() then marshals the
-     * result back to the main thread: sets headless_tools_used_ +
-     * headless_scan_done_ and runs recompute_preflight() +
+     * Runs through FileStartFactsLoader::scan(), the read a queued start with
+     * no file view uses too: the footer read first (a small suffix range that
+     * usually answers outright), and only when that cannot answer the whole-file
+     * Tn scan, which shares the ONE canonical download with the viewer preview
+     * (ensure_gcode_downloaded). The answers land on the main thread in
+     * apply_footer_summary() and apply_scan_result(), which set
+     * headless_tools_used_ + headless_scan_done_ and run recompute_preflight() +
      * fire_on_preflight_ready(). Runs on ALL platforms; it is the readiness
      * signal the gate uses on 2D-only (where the viewer never parses).
      * Degrades gracefully: a download/scan failure still marks the scan done
@@ -1290,7 +1258,7 @@ class PrintSelectDetailView : public OverlayBase {
      * The single implementation of the "we now know which tools this file
      * really uses" render, shared by the three sites that learn that set:
      * show()'s tools-used cache seed, the viewer parse
-     * (try_extract_gcode_colors) and the headless scan (finish_scan).
+     * (try_extract_gcode_colors) and the headless scan (apply_scan_result).
      * Re-publishes the card's visibility now that the precise set is known
      * (never the slicer palette size, which over-counts), re-runs the
      * pre-flight gate, and restricts the card to @p tools_used.
@@ -1300,7 +1268,7 @@ class PrintSelectDetailView : public OverlayBase {
      * @param refresh_card_from_palette Also rebuild the mapping card's display
      *                                state from the full palette. Only the
      *                                headless path needs this — see
-     *                                finish_scan().
+     *                                apply_scan_result().
      */
     void render_authoritative_chips(const std::set<int>& tools_used,
                                     bool refresh_card_from_palette = false);

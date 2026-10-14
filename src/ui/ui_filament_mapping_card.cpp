@@ -70,15 +70,17 @@ bool FilamentMappingCard::recompute_visibility() {
     // whose size apply_used_tools_filter() shrinks, which would make a second
     // set_used_tools() for the same file decide against a number the first call
     // had already trimmed.
-    if (!card_ || !rows_container_) {
-        should_show_ = false;
-        return false;
-    }
+    // Visibility is published via the `filament_mapping_visible` subject by the
+    // detail view — see PrintSelectDetailView::publish_card_visibility().
+    should_show_ = card_ && rows_container_ &&
+                   shows_mapping_for(palette_colour_count_, palette_tool_count_, used_tools_);
+    return should_show_;
+}
 
-    // Check if AMS is available
+bool FilamentMappingCard::shows_mapping_for(size_t palette_colour_count, size_t palette_tool_count,
+                                            const std::optional<std::set<int>>& used_tools) {
     auto& ams = AmsState::instance();
     if (!ams.is_available()) {
-        should_show_ = false;
         return false;
     }
 
@@ -108,16 +110,14 @@ bool FilamentMappingCard::recompute_visibility() {
     // K2 Plus), and this gate has always asked "how many lanes does the file
     // want", which is a question about colours.
     if (ams.any_bypass_active() &&
-        helix::print_lane_requirement(used_tools_ ? *used_tools_ : std::set<int>{},
-                                      palette_colour_count_) <= 1) {
-        should_show_ = false;
+        helix::print_lane_requirement(used_tools ? *used_tools : std::set<int>{},
+                                      palette_colour_count) <= 1) {
         return false;
     }
 
     // Nothing to map. Equivalent to the build_tool_info() result being empty:
     // it emits max(colours, materials) entries and filters none.
-    if (palette_tool_count_ == 0) {
-        should_show_ = false;
+    if (palette_tool_count == 0) {
         return false;
     }
 
@@ -139,15 +139,11 @@ bool FilamentMappingCard::recompute_visibility() {
     const bool is_multi_tool_printer =
         helix::ToolState::instance().is_multi_tool() || ams_slots > 1;
     const size_t tool_count = helix::print_lane_requirement(
-        used_tools_ ? *used_tools_ : std::set<int>{}, palette_tool_count_);
+        used_tools ? *used_tools : std::set<int>{}, palette_tool_count);
     if (!(is_multi_tool_printer ? tool_count > 0 : tool_count > 1)) {
-        should_show_ = false;
         return false;
     }
 
-    // Visibility is published via the `filament_mapping_visible` subject by the
-    // detail view — see PrintSelectDetailView::publish_card_visibility().
-    should_show_ = true;
     return true;
 }
 

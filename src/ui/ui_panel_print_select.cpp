@@ -56,9 +56,11 @@
 #include "print_history_manager.h"
 #include "print_lifecycle_state.h" // job_holds_machine()
 #include "print_start_analyzer.h"
+#include "print_start_inputs.h"
 #include "printer_state.h"
 #include "published_hold.h"
 #include "queued_job_options.h"
+#include "queued_job_start.h"
 #include "runtime_config.h"
 #include "static_panel_registry.h"
 #include "text_io.h"
@@ -1195,17 +1197,12 @@ void PrintSelectPanel::process_metadata_result(size_t i, const std::string& file
     // Extract all values (this runs on background thread - metadata is const ref)
     int print_time_minutes = static_cast<int>(metadata.estimated_time / 60.0);
     float filament_grams = static_cast<float>(metadata.filament_weight_total);
-    std::string filament_type_raw = metadata.filament_type;
     std::string filament_name_raw = metadata.filament_name;
 
-    // Parse per-tool filament types and names from semicolon-separated metadata
-    // (e.g., "PLA;PLA;PETG" → ["PLA", "PLA", "PETG"])
-    std::vector<std::string> filament_types;
-    if (!filament_type_raw.empty()) {
-        for (std::string_view sv : tio::lines(filament_type_raw, ';')) {
-            filament_types.emplace_back(sv);
-        }
-    }
+    // Per-tool materials and colors: the same palette a queued start reads.
+    helix::FilePalette palette = helix::file_palette_from_metadata(metadata);
+    std::vector<std::string> filament_types = std::move(palette.materials);
+    // Per-tool filament names from semicolon-separated metadata
     std::vector<std::string> filament_names;
     if (!filament_name_raw.empty()) {
         for (std::string_view sv : tio::lines(filament_name_raw, ';')) {
@@ -1217,8 +1214,7 @@ void PrintSelectPanel::process_metadata_result(size_t i, const std::string& file
     std::string filament_type = filament_types.empty() ? "" : filament_types.front();
     std::string filament_name = filament_names.empty() ? "" : filament_names.front();
 
-    // Copy filament colors (per-tool hex colors parsed from Moonraker)
-    std::vector<std::string> filament_colors = metadata.filament_colors;
+    std::vector<std::string> filament_colors = std::move(palette.colors);
     uint32_t layer_count = metadata.layer_count;
     uint64_t gcode_end_byte = metadata.gcode_end_byte;
     double object_height = metadata.object_height;
@@ -2092,7 +2088,7 @@ void PrintSelectPanel::show_detail_view() {
         // render, and the job stays queued for its own row tap.
         if (pending_queued_start_) {
             if (pending_queued_start_->filename == composed_selected_filename()) {
-                detail_view_->seed_option_states(pending_queued_start_->saved.options);
+                detail_view_->seed_option_states(pending_queued_start_->saved);
                 pending_queued_start_->start_attempted = false;
             } else {
                 pending_queued_start_.reset();
@@ -3161,8 +3157,7 @@ std::string PrintSelectPanel::composed_selected_filename() const {
 }
 
 void PrintSelectPanel::start_queued_job(const JobQueueEntry& job) {
-    if (!printer_state_.print_state().can_start_new_print()) {
-        NOTIFY_WARNING(lv_tr("Printer is busy - {} stays in the queue"), job.filename);
+    if (helix::queue::refuse_queued_start_while_busy(printer_state_, job.filename)) {
         return;
     }
 
@@ -3254,32 +3249,7 @@ void PrintSelectPanel::finish_pending_queued_job() {
     }
     const std::string job_id = pending_queued_start_->job_id;
     pending_queued_start_.reset();
-    if (!api_) {
-        return;
-    }
-
-    spdlog::info("[{}] Print started for queued job {} - removing from queue", get_name(), job_id);
-    api_->queue().remove_jobs(
-        {job_id},
-        object_lifetime_.bg_cb("PrintSelectPanel::queued_job_started",
-                               [this, job_id]() {
-                                   // Options are deleted only once Moonraker confirms the removal:
-                                   // a refusal (or a stale id after a Moonraker restart) leaves the
-                                   // job queued, and Start next must still find its saved options.
-                                   helix::queue::delete_queued_job_options(api_, job_id);
-                                   if (auto* jqs = get_job_queue_state()) {
-                                       jqs->fetch();
-                                   }
-                               }),
-        object_lifetime_.bg_cb(
-            "PrintSelectPanel::queued_job_removal_failed", [job_id](const MoonrakerError& err) {
-                spdlog::warn("[PrintSelectPanel] Removing queued job {} failed: {}", job_id,
-                             err.message);
-                NOTIFY_WARNING(lv_tr("Could not remove the job from the queue"));
-                if (auto* jqs = get_job_queue_state()) {
-                    jqs->fetch();
-                }
-            }));
+    helix::queue::finish_started_queued_job(object_lifetime_, api_, job_id);
 }
 
 void PrintSelectPanel::show_preflight_modal(const helix::PreflightResult& pf) {

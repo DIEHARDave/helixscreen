@@ -248,7 +248,7 @@ TEST_CASE("material_mismatches_in: no detail view -> none", "[print-start][gate-
 TEST_CASE("material_mismatches_in: AMS path flags mismatched mapped tool",
           "[print-start][gate-pipeline]") {
     auto ctx = ctx_with([](PrintStartContext& c) {
-        c.has_detail_view = true;
+        c.has_file_facts = true;
         c.ams_available = true;
         ToolMapping m;
         m.tool_index = 0;
@@ -274,7 +274,7 @@ TEST_CASE("material_mismatches_in: AMS path flags mismatched mapped tool",
 TEST_CASE("material_mismatches_in: zero-usage tool is skipped when weights known",
           "[print-start][gate-pipeline]") {
     auto ctx = ctx_with([](PrintStartContext& c) {
-        c.has_detail_view = true;
+        c.has_file_facts = true;
         c.ams_available = true;
         ToolMapping m;
         m.tool_index = 0;
@@ -300,7 +300,7 @@ TEST_CASE("material_mismatches_in: zero-usage tool is skipped when weights known
 TEST_CASE("material_mismatches_in: unknown material on either side is skipped",
           "[print-start][gate-pipeline]") {
     auto ctx = ctx_with([](PrintStartContext& c) {
-        c.has_detail_view = true;
+        c.has_file_facts = true;
         c.ams_available = true;
         ToolMapping m;
         m.tool_index = 0;
@@ -319,7 +319,7 @@ TEST_CASE("material_mismatches_in: unknown material on either side is skipped",
 TEST_CASE("material_mismatches_in: non-AMS external spool mismatch",
           "[print-start][gate-pipeline]") {
     auto ctx = ctx_with([](PrintStartContext& c) {
-        c.has_detail_view = true;
+        c.has_file_facts = true;
         c.ams_available = false;
         c.filament_materials = {"ABS"};
         SlotInfo spool;
@@ -339,7 +339,7 @@ TEST_CASE("material_mismatches_in: bypass print compares external spool, not lan
     // the dialog must name the external spool's material.
     auto make = [](const char* spool_material) {
         return ctx_with([&](PrintStartContext& c) {
-            c.has_detail_view = true;
+            c.has_file_facts = true;
             c.ams_available = true; // AMS present — bypass is what redirects
             c.any_bypass_active = true;
             c.tools_used = {1};
@@ -389,7 +389,7 @@ TEST_CASE("material_mismatches_in: non-AMS grade change is flagged grade_only",
     // hard mismatch stays silent. The grade pass is what speaks up.
     auto make = [](const char* file_material, const char* spool_material) {
         return ctx_with([&](PrintStartContext& c) {
-            c.has_detail_view = true;
+            c.has_file_facts = true;
             c.ams_available = false;
             c.filament_materials = {file_material};
             SlotInfo spool;
@@ -420,7 +420,7 @@ TEST_CASE("material_mismatches_in: bypass grade change is flagged grade_only",
     // against the external spool rather than the mapped lane.
     auto make = [](const char* spool_material) {
         return ctx_with([&](PrintStartContext& c) {
-            c.has_detail_view = true;
+            c.has_file_facts = true;
             c.ams_available = true;
             c.any_bypass_active = true;
             c.tools_used = {1};
@@ -456,7 +456,7 @@ TEST_CASE("material_mismatches_in: AMS grade change is flagged on a matched lane
     // yet the lane holds the unfilled grade of a filled file.
     auto make = [](const char* slot_material, double weight) {
         return ctx_with([&](PrintStartContext& c) {
-            c.has_detail_view = true;
+            c.has_file_facts = true;
             c.ams_available = true;
             GcodeToolInfo t;
             t.tool_index = 0;
@@ -499,7 +499,7 @@ TEST_CASE("gate material_compatibility: grade-only dialog names the abrasive dir
 
     auto ctx_for = [](const char* file_material, const char* spool_material) {
         return ctx_with([&](PrintStartContext& c) {
-            c.has_detail_view = true;
+            c.has_file_facts = true;
             c.ams_available = false;
             c.filament_materials = {file_material};
             SlotInfo spool;
@@ -532,7 +532,7 @@ TEST_CASE("material_mismatches_in: bypass falls back to palette materials",
     // was never built) — the file's palette still names the used tool's
     // material.
     auto ctx = ctx_with([](PrintStartContext& c) {
-        c.has_detail_view = true;
+        c.has_file_facts = true;
         c.any_bypass_active = true;
         c.tools_used = {2};
         c.filament_materials = {"PLA", "PLA", "ASA-GF", "PLA"};
@@ -811,7 +811,7 @@ TEST_CASE("gate unresolved_tools: warns with Start Anyway and verbatim title",
 TEST_CASE("gate material_compatibility: warns with verbatim title",
           "[print-start][gate-pipeline]") {
     auto ctx = ctx_with([](PrintStartContext& c) {
-        c.has_detail_view = true;
+        c.has_file_facts = true;
         c.ams_available = false;
         c.filament_materials = {"ABS"};
         SlotInfo spool;
@@ -829,7 +829,7 @@ TEST_CASE("gate material_compatibility: names the gcode tool, not the physical l
     // T0 is the slicer's tool number, so the multi-tool dialog names it 0-based
     // even though a physical lane in this same dialog would count from 1.
     auto ctx = ctx_with([](PrintStartContext& c) {
-        c.has_detail_view = true;
+        c.has_file_facts = true;
         c.ams_available = true;
 
         GcodeToolInfo t0;
@@ -955,10 +955,11 @@ TEST_CASE("gate runner: proceed resumes at NEXT gate", "[print-start][gate-pipel
     PrintStartControllerTestAccess::gate_proceed(fx.controller);
     // toy_b passes -> pipeline ran off the end into execute_print_start(),
     // which fails on the missing prep manager: re-enables the button exactly
-    // once and shows an error. That once-count IS the completion signal.
+    // once, shows an error, and ends the start like any other start that
+    // printed nothing. That once-count IS the completion signal.
     CHECK(PrintStartControllerTestAccess::print_gate_modal(fx.controller) == nullptr);
     CHECK(fx.button_updates == 1);
-    CHECK(fx.cancelled == 0);
+    CHECK(fx.cancelled == 1);
 }
 
 // Gate captions are copied into the dialog, so the second warn shows gate B's

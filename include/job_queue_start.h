@@ -5,6 +5,8 @@
 
 namespace helix {
 
+struct JobQueueEntry;
+
 /// What a tap on an "Up next" line should do, given whether the printer can
 /// take a job right now.
 enum class UpNextTapAction {
@@ -16,6 +18,11 @@ enum class UpNextTapAction {
 /// modal's "Start next" button and the "Up next" line's idle tap both go
 /// through here; no caller starts a queued job any other way.
 void start_next_queued_job();
+
+/// Open @p job in print-select's file view, seeded with its saved options, to
+/// start with a Print tap: the two-tap path start_next_queued_job() takes for
+/// the first job.
+void open_queued_job_in_file_view(const JobQueueEntry& job);
 
 /// Route an "Up next" tap through decide_up_next_tap(): start the job when
 /// the printer can take one, otherwise open the job queue modal.

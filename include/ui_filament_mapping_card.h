@@ -208,6 +208,17 @@ class FilamentMappingCard {
         return should_show_;
     }
 
+    /// The visibility rule should_show() answers, without the card's widgets:
+    /// AMS availability, the bypass single-lane rule and the lane count. A
+    /// start with no file view asks it to know whether the view's card would
+    /// hold a mapping for the same file.
+    /// @param palette_colour_count Slicer colors in the palette
+    /// @param palette_tool_count   max(colors, materials), build_tool_info()'s count
+    /// @param used_tools           The scan's used tools; empty or nullopt reads as unknown
+    [[nodiscard]] static bool shows_mapping_for(size_t palette_colour_count,
+                                                size_t palette_tool_count,
+                                                const std::optional<std::set<int>>& used_tools);
+
     /**
      * @brief Null widget pointers (called during destroy-on-close)
      */
