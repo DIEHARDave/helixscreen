@@ -680,12 +680,23 @@ AmsError AmsBackendSnapmaker::do_change_tool(int tool_number) {
     if (err.result != AmsResult::SUCCESS)
         return err;
 
-    return execute_gcode(fmt::format("T{}", tool_number));
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        pending_tool_ = tool_number;
+        pending_until_ = std::chrono::steady_clock::now() + kToolChangeWindow;
+    }
+    auto result = execute_gcode(fmt::format("T{}", tool_number));
+    if (!result.success()) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        pending_tool_ = -1;
+    }
+    return result;
 }
 
 AmsError AmsBackendSnapmaker::do_park_active_tool() {
     {
         std::lock_guard<std::mutex> lock(mutex_);
+        pending_tool_ = -1;
         if (system_info_.current_tool < 0) {
             return AmsErrorHelper::not_loaded();
         }
@@ -1224,6 +1235,13 @@ void AmsBackendSnapmaker::apply_extruders_locked(const snapmaker::StatusDelta& d
     }
 }
 
+bool AmsBackendSnapmaker::tool_change_in_flight_locked() const {
+    const bool pending = pending_tool_ >= 0 && std::chrono::steady_clock::now() < pending_until_;
+    return pending || system_info_.action == AmsAction::SELECTING ||
+           std::any_of(extruder_states_.begin(), extruder_states_.end(),
+                       [](const auto& e) { return e.activating_move; });
+}
+
 void AmsBackendSnapmaker::apply_active_tool_locked(const snapmaker::StatusDelta& delta,
                                                    FrameEffects& fx) {
     // Detect active tool from extruder pin state and toolhead.extruder. Only
@@ -1266,6 +1284,14 @@ void AmsBackendSnapmaker::apply_active_tool_locked(const snapmaker::StatusDelta&
             extruder_states_[current].state == "PARKED" && !extruder_states_[current].active_pin) {
             has_extruder_data = true;
         }
+    }
+    if (active >= 0 && active == pending_tool_) {
+        pending_tool_ = -1; // the requested head arrived
+    }
+    if (active < 0 && has_extruder_data && tool_change_in_flight_locked()) {
+        // The old head docks before the new one reports, so every head reads
+        // PARKED for a frame mid-change. That is not an empty carriage.
+        has_extruder_data = false;
     }
     if (has_extruder_data && active != system_info_.current_tool) {
         // Demote previous active tool from LOADED to AVAILABLE
