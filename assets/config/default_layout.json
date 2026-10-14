@@ -5,7 +5,11 @@
       "dryer",
       "chamber_temperature",
       "led",
-      "clock"
+      "clock",
+      "lock",
+      "macros",
+      "motion",
+      "temp_stack"
     ],
     "FIL": [
       "filament",
@@ -16,7 +20,33 @@
           "printer_has_spoolman"
         ]
       },
-      "clock"
+      "network",
+      "lock",
+      "macros",
+      "motion",
+      "temp_stack"
+    ],
+    "ENV2": [
+      "chamber_temperature",
+      "dryer",
+      "led",
+      "clock",
+      "lock",
+      "macros",
+      "motion",
+      "temp_stack"
+    ],
+    "MESH": [
+      "bed_mesh_tile",
+      "job_queue"
+    ],
+    "FILLER": [
+      "clock",
+      "network",
+      "lock",
+      "macros",
+      "motion",
+      "temp_stack"
     ]
   },
   "anchors": [
@@ -29,12 +59,6 @@
           "colspan": 6,
           "rowspan": 4
         },
-        "medium": {
-          "col": 0,
-          "row": 0,
-          "colspan": 4,
-          "rowspan": 4
-        },
         "tiny": {
           "col": 0,
           "row": 0,
@@ -47,10 +71,22 @@
           "colspan": 4,
           "rowspan": 4
         },
+        "medium": {
+          "col": 0,
+          "row": 0,
+          "colspan": 4,
+          "rowspan": 4
+        },
         "large": {
           "col": 0,
           "row": 0,
-          "colspan": 6,
+          "colspan": 4,
+          "rowspan": 4
+        },
+        "xlarge": {
+          "col": 0,
+          "row": 0,
+          "colspan": 4,
           "rowspan": 4
         },
         "xxlarge": {
@@ -58,12 +94,6 @@
           "row": 0,
           "colspan": 6,
           "rowspan": 6
-        },
-        "xlarge": {
-          "col": 0,
-          "row": 0,
-          "colspan": 6,
-          "rowspan": 4
         }
       }
     },
@@ -76,12 +106,6 @@
           "colspan": 2,
           "rowspan": 2
         },
-        "medium": {
-          "col": 4,
-          "row": 0,
-          "colspan": 2,
-          "rowspan": 2
-        },
         "tiny": {
           "col": 4,
           "row": 0,
@@ -94,20 +118,26 @@
           "colspan": 2,
           "rowspan": 2
         },
-        "large": {
-          "col": 6,
+        "medium": {
+          "col": 4,
           "row": 0,
           "colspan": 2,
           "rowspan": 2
         },
-        "xxlarge": {
-          "col": 14,
+        "large": {
+          "col": 4,
           "row": 0,
           "colspan": 2,
           "rowspan": 2
         },
         "xlarge": {
-          "col": 6,
+          "col": 4,
+          "row": 0,
+          "colspan": 2,
+          "rowspan": 2
+        },
+        "xxlarge": {
+          "col": 16,
           "row": 0,
           "colspan": 2,
           "rowspan": 2
@@ -123,12 +153,6 @@
           "colspan": 2,
           "rowspan": 2
         },
-        "medium": {
-          "col": 6,
-          "row": 0,
-          "colspan": 2,
-          "rowspan": 2
-        },
         "tiny": {
           "col": 6,
           "row": 0,
@@ -141,20 +165,26 @@
           "colspan": 2,
           "rowspan": 2
         },
+        "medium": {
+          "col": 6,
+          "row": 0,
+          "colspan": 2,
+          "rowspan": 2
+        },
         "large": {
-          "col": 8,
+          "col": 6,
+          "row": 0,
+          "colspan": 2,
+          "rowspan": 2
+        },
+        "xlarge": {
+          "col": 6,
           "row": 0,
           "colspan": 2,
           "rowspan": 2
         },
         "xxlarge": {
-          "col": 14,
-          "row": 2,
-          "colspan": 2,
-          "rowspan": 2
-        },
-        "xlarge": {
-          "col": 8,
+          "col": 18,
           "row": 0,
           "colspan": 2,
           "rowspan": 2
@@ -170,12 +200,6 @@
           "colspan": 2,
           "rowspan": 2
         },
-        "medium": {
-          "col": 6,
-          "row": 2,
-          "colspan": 2,
-          "rowspan": 2
-        },
         "tiny": {
           "col": 8,
           "row": 0,
@@ -188,14 +212,14 @@
           "colspan": 2,
           "rowspan": 2
         },
-        "large": {
-          "col": 14,
-          "row": 0,
+        "medium": {
+          "col": 6,
+          "row": 2,
           "colspan": 2,
           "rowspan": 2
         },
-        "xxlarge": {
-          "col": 16,
+        "large": {
+          "col": 14,
           "row": 0,
           "colspan": 2,
           "rowspan": 2
@@ -203,6 +227,12 @@
         "xlarge": {
           "col": 14,
           "row": 0,
+          "colspan": 2,
+          "rowspan": 2
+        },
+        "xxlarge": {
+          "col": 18,
+          "row": 2,
           "colspan": 2,
           "rowspan": 2
         }
@@ -217,121 +247,39 @@
           "colspan": 2,
           "rowspan": 2
         },
+        "tiny": {
+          "col": 4,
+          "row": 2,
+          "colspan": 2,
+          "rowspan": 2
+        },
+        "small": {
+          "col": 4,
+          "row": 2,
+          "colspan": 2,
+          "rowspan": 2
+        },
         "medium": {
           "col": 4,
           "row": 2,
           "colspan": 2,
           "rowspan": 2
         },
-        "tiny": {
-          "col": 4,
-          "row": 2,
-          "colspan": 2,
-          "rowspan": 2
-        },
-        "small": {
-          "col": 4,
-          "row": 2,
-          "colspan": 2,
-          "rowspan": 2
-        },
         "large": {
-          "col": 6,
+          "col": 4,
           "row": 2,
-          "colspan": 2,
-          "rowspan": 2
-        },
-        "xxlarge": {
-          "col": 14,
-          "row": 4,
           "colspan": 2,
           "rowspan": 2
         },
         "xlarge": {
-          "col": 6,
+          "col": 4,
           "row": 2,
-          "colspan": 2,
-          "rowspan": 2
-        }
-      }
-    },
-    {
-      "id": "led",
-      "placements": {
-        "micro": {
-          "col": 8,
-          "row": 2,
-          "colspan": 2,
-          "rowspan": 2
-        },
-        "tiny": {
-          "col": 6,
-          "row": 2,
-          "colspan": 2,
-          "rowspan": 2
-        },
-        "small": {
-          "col": 6,
-          "row": 2,
-          "colspan": 2,
-          "rowspan": 2
-        },
-        "large": {
-          "col": 10,
-          "row": 0,
           "colspan": 2,
           "rowspan": 2
         },
         "xxlarge": {
           "col": 16,
           "row": 2,
-          "colspan": 2,
-          "rowspan": 2
-        },
-        "xlarge": {
-          "col": 10,
-          "row": 0,
-          "colspan": 2,
-          "rowspan": 2
-        }
-      }
-    },
-    {
-      "id": "filament",
-      "placements": {
-        "micro": {
-          "col": 10,
-          "row": 2,
-          "colspan": 2,
-          "rowspan": 2
-        },
-        "tiny": {
-          "col": 8,
-          "row": 2,
-          "colspan": 2,
-          "rowspan": 2
-        },
-        "small": {
-          "col": 8,
-          "row": 2,
-          "colspan": 2,
-          "rowspan": 2
-        },
-        "large": {
-          "col": 12,
-          "row": 0,
-          "colspan": 2,
-          "rowspan": 2
-        },
-        "xxlarge": {
-          "col": 16,
-          "row": 4,
-          "colspan": 2,
-          "rowspan": 2
-        },
-        "xlarge": {
-          "col": 12,
-          "row": 0,
           "colspan": 2,
           "rowspan": 2
         }
@@ -349,12 +297,6 @@
           "colspan": 12,
           "rowspan": 4
         },
-        "medium": {
-          "col": 0,
-          "row": 4,
-          "colspan": 8,
-          "rowspan": 4
-        },
         "tiny": {
           "col": 0,
           "row": 4,
@@ -367,7 +309,19 @@
           "colspan": 10,
           "rowspan": 4
         },
+        "medium": {
+          "col": 0,
+          "row": 4,
+          "colspan": 8,
+          "rowspan": 4
+        },
         "large": {
+          "col": 0,
+          "row": 4,
+          "colspan": 8,
+          "rowspan": 4
+        },
+        "xlarge": {
           "col": 0,
           "row": 4,
           "colspan": 8,
@@ -376,14 +330,8 @@
         "xxlarge": {
           "col": 6,
           "row": 0,
-          "colspan": 8,
+          "colspan": 10,
           "rowspan": 6
-        },
-        "xlarge": {
-          "col": 0,
-          "row": 4,
-          "colspan": 8,
-          "rowspan": 4
         }
       }
     },
@@ -398,20 +346,20 @@
         },
         "large": {
           "col": 8,
-          "row": 2,
-          "colspan": 8,
-          "rowspan": 6
-        },
-        "xxlarge": {
-          "col": 0,
-          "row": 8,
-          "colspan": 18,
+          "row": 6,
+          "colspan": 4,
           "rowspan": 4
         },
         "xlarge": {
           "col": 8,
-          "row": 2,
-          "colspan": 8,
+          "row": 6,
+          "colspan": 4,
+          "rowspan": 4
+        },
+        "xxlarge": {
+          "col": 0,
+          "row": 6,
+          "colspan": 16,
           "rowspan": 6
         }
       }
@@ -428,28 +376,133 @@
         "large": {
           "col": 0,
           "row": 8,
-          "colspan": 16,
-          "rowspan": 2
-        },
-        "xxlarge": {
-          "col": 0,
-          "row": 6,
-          "colspan": 18,
+          "colspan": 8,
           "rowspan": 2
         },
         "xlarge": {
           "col": 0,
           "row": 8,
+          "colspan": 8,
+          "rowspan": 2
+        },
+        "xxlarge": {
+          "col": 0,
+          "row": 12,
           "colspan": 16,
           "rowspan": 2
         }
       }
     },
     {
+      "id": "z_offset",
+      "placements": {
+        "large": {
+          "col": 8,
+          "row": 2,
+          "colspan": 4,
+          "rowspan": 2
+        },
+        "xlarge": {
+          "col": 8,
+          "row": 2,
+          "colspan": 4,
+          "rowspan": 2
+        },
+        "xxlarge": {
+          "col": 16,
+          "row": 4,
+          "colspan": 4,
+          "rowspan": 2
+        }
+      }
+    },
+    {
+      "id": "speed_flow",
+      "placements": {
+        "large": {
+          "col": 8,
+          "row": 4,
+          "colspan": 4,
+          "rowspan": 2
+        },
+        "xlarge": {
+          "col": 8,
+          "row": 4,
+          "colspan": 4,
+          "rowspan": 2
+        },
+        "xxlarge": {
+          "col": 20,
+          "row": 4,
+          "colspan": 4,
+          "rowspan": 2
+        }
+      }
+    },
+    {
+      "id": "print_stats",
+      "placements": {
+        "large": {
+          "col": 12,
+          "row": 2,
+          "colspan": 4,
+          "rowspan": 4
+        },
+        "xlarge": {
+          "col": 12,
+          "row": 2,
+          "colspan": 4,
+          "rowspan": 4
+        },
+        "xxlarge": {
+          "col": 16,
+          "row": 10,
+          "colspan": 6,
+          "rowspan": 4
+        }
+      }
+    },
+    {
       "slot": "spool_env",
       "placements": {
+        "micro": {
+          "col": 8,
+          "row": 2,
+          "colspan": 4,
+          "rowspan": 2
+        },
+        "tiny": {
+          "col": 6,
+          "row": 2,
+          "colspan": 4,
+          "rowspan": 2
+        },
+        "small": {
+          "col": 6,
+          "row": 2,
+          "colspan": 4,
+          "rowspan": 2
+        },
         "medium": {
           "col": 8,
+          "row": 0,
+          "colspan": 4,
+          "rowspan": 2
+        },
+        "large": {
+          "col": 8,
+          "row": 0,
+          "colspan": 4,
+          "rowspan": 2
+        },
+        "xlarge": {
+          "col": 8,
+          "row": 0,
+          "colspan": 4,
+          "rowspan": 2
+        },
+        "xxlarge": {
+          "col": 20,
           "row": 0,
           "colspan": 4,
           "rowspan": 2
@@ -489,6 +542,174 @@
                 0,
                 2,
                 2
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slot": "env2",
+      "placements": {
+        "large": {
+          "col": 12,
+          "row": 0,
+          "colspan": 2,
+          "rowspan": 2
+        },
+        "xlarge": {
+          "col": 12,
+          "row": 0,
+          "colspan": 2,
+          "rowspan": 2
+        },
+        "xxlarge": {
+          "col": 20,
+          "row": 2,
+          "colspan": 2,
+          "rowspan": 2
+        }
+      },
+      "alternatives": [
+        {
+          "cells": [
+            {
+              "candidates": "ENV2",
+              "at": [
+                0,
+                0,
+                2,
+                2
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slot": "fil2",
+      "placements": {
+        "large": {
+          "col": 6,
+          "row": 2,
+          "colspan": 2,
+          "rowspan": 2
+        },
+        "xlarge": {
+          "col": 6,
+          "row": 2,
+          "colspan": 2,
+          "rowspan": 2
+        },
+        "xxlarge": {
+          "col": 22,
+          "row": 2,
+          "colspan": 2,
+          "rowspan": 2
+        }
+      },
+      "alternatives": [
+        {
+          "cells": [
+            {
+              "candidates": "FIL",
+              "at": [
+                0,
+                0,
+                2,
+                2
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slot": "mesh",
+      "placements": {
+        "large": {
+          "col": 12,
+          "row": 6,
+          "colspan": 4,
+          "rowspan": 4
+        },
+        "xlarge": {
+          "col": 12,
+          "row": 6,
+          "colspan": 4,
+          "rowspan": 4
+        },
+        "xxlarge": {
+          "col": 16,
+          "row": 6,
+          "colspan": 8,
+          "rowspan": 4
+        }
+      },
+      "alternatives": [
+        {
+          "cells": [
+            {
+              "candidates": "MESH",
+              "at": [
+                0,
+                0,
+                8,
+                4
+              ]
+            }
+          ]
+        },
+        {
+          "cells": [
+            {
+              "candidates": [
+                "job_queue"
+              ],
+              "at": [
+                0,
+                0,
+                8,
+                4
+              ]
+            }
+          ]
+        },
+        {
+          "cells": [
+            {
+              "candidates": "MESH",
+              "at": [
+                0,
+                0,
+                4,
+                4
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slot": "filler",
+      "placements": {
+        "xxlarge": {
+          "col": 22,
+          "row": 10,
+          "colspan": 2,
+          "rowspan": 4
+        }
+      },
+      "alternatives": [
+        {
+          "cells": [
+            {
+              "candidates": "FILLER",
+              "at": [
+                0,
+                0,
+                2,
+                4
               ]
             }
           ]
@@ -607,57 +828,6 @@
           }
         },
         {
-          "id": "filament",
-          "placements": {
-            "tiny": {
-              "col": 28,
-              "row": 2,
-              "colspan": 2,
-              "rowspan": 2
-            },
-            "small": {
-              "col": 36,
-              "row": 2,
-              "colspan": 2,
-              "rowspan": 2
-            }
-          }
-        },
-        {
-          "id": "led",
-          "placements": {
-            "tiny": {
-              "col": 30,
-              "row": 2,
-              "colspan": 2,
-              "rowspan": 2
-            },
-            "small": {
-              "col": 42,
-              "row": 0,
-              "colspan": 2,
-              "rowspan": 2
-            }
-          }
-        },
-        {
-          "id": "clock",
-          "placements": {
-            "tiny": {
-              "col": 32,
-              "row": 2,
-              "colspan": 2,
-              "rowspan": 2
-            },
-            "small": {
-              "col": 38,
-              "row": 2,
-              "colspan": 2,
-              "rowspan": 2
-            }
-          }
-        },
-        {
           "id": "motion",
           "placements": {
             "tiny": {
@@ -666,6 +836,28 @@
               "colspan": 2,
               "rowspan": 2
             },
+            "small": {
+              "col": 42,
+              "row": 2,
+              "colspan": 2,
+              "rowspan": 2
+            }
+          }
+        },
+        {
+          "id": "macros",
+          "placements": {
+            "small": {
+              "col": 44,
+              "row": 2,
+              "colspan": 2,
+              "rowspan": 2
+            }
+          }
+        },
+        {
+          "id": "clock",
+          "placements": {
             "small": {
               "col": 40,
               "row": 2,
@@ -709,32 +901,99 @@
           }
         },
         {
-          "id": "active_spool",
+          "slot": "spool_env",
           "placements": {
-            "small": {
-              "col": 42,
+            "tiny": {
+              "col": 28,
               "row": 2,
-              "colspan": 2,
+              "colspan": 4,
+              "rowspan": 2
+            },
+            "small": {
+              "col": 36,
+              "row": 2,
+              "colspan": 4,
               "rowspan": 2
             }
-          }
+          },
+          "alternatives": [
+            {
+              "cells": [
+                {
+                  "candidates": [
+                    "ams"
+                  ],
+                  "at": [
+                    0,
+                    0,
+                    4,
+                    2
+                  ]
+                }
+              ]
+            },
+            {
+              "cells": [
+                {
+                  "candidates": "ENV",
+                  "at": [
+                    0,
+                    0,
+                    2,
+                    2
+                  ]
+                },
+                {
+                  "candidates": "FIL",
+                  "at": [
+                    2,
+                    0,
+                    2,
+                    2
+                  ]
+                }
+              ]
+            }
+          ]
         },
         {
-          "id": "macros",
+          "slot": "env2",
           "placements": {
-            "small": {
-              "col": 44,
+            "tiny": {
+              "col": 32,
               "row": 2,
               "colspan": 2,
               "rowspan": 2
+            },
+            "small": {
+              "col": 42,
+              "row": 0,
+              "colspan": 2,
+              "rowspan": 2
             }
-          }
+          },
+          "alternatives": [
+            {
+              "cells": [
+                {
+                  "candidates": "ENV2",
+                  "at": [
+                    0,
+                    0,
+                    2,
+                    2
+                  ]
+                }
+              ]
+            }
+          ]
         }
       ],
       "disabled": {
         "tiny": [
           "active_spool",
-          "macros"
+          "macros",
+          "clock"
         ]
       }
     },
@@ -1060,7 +1319,7 @@
             },
             "small": {
               "col": 6,
-              "row": 2,
+              "row": 0,
               "colspan": 2,
               "rowspan": 2
             },
@@ -1072,19 +1331,19 @@
             },
             "large": {
               "col": 6,
-              "row": 2,
+              "row": 0,
               "colspan": 2,
               "rowspan": 2
             },
             "xlarge": {
               "col": 6,
-              "row": 2,
+              "row": 0,
               "colspan": 2,
               "rowspan": 2
             },
             "xxlarge": {
               "col": 6,
-              "row": 2,
+              "row": 0,
               "colspan": 2,
               "rowspan": 2
             },
@@ -1150,101 +1409,48 @@
           }
         },
         {
-          "id": "led",
+          "slot": "spool_env",
           "placements": {
             "micro": {
               "col": 0,
               "row": 10,
-              "colspan": 2,
+              "colspan": 4,
               "rowspan": 2
             },
             "tiny": {
               "col": 0,
               "row": 8,
-              "colspan": 2,
+              "colspan": 4,
               "rowspan": 2
             },
             "small": {
               "col": 6,
-              "row": 0,
-              "colspan": 2,
+              "row": 2,
+              "colspan": 4,
               "rowspan": 2
             },
             "medium": {
               "col": 0,
               "row": 10,
-              "colspan": 2,
+              "colspan": 4,
               "rowspan": 2
             },
             "large": {
               "col": 6,
-              "row": 0,
-              "colspan": 2,
+              "row": 2,
+              "colspan": 4,
               "rowspan": 2
             },
             "xlarge": {
               "col": 6,
-              "row": 0,
-              "colspan": 2,
+              "row": 2,
+              "colspan": 4,
               "rowspan": 2
             },
             "xxlarge": {
               "col": 6,
-              "row": 0,
-              "colspan": 2,
-              "rowspan": 2
-            },
-            "xxlarge@6x14": {
-              "col": 4,
               "row": 2,
-              "colspan": 2,
-              "rowspan": 2
-            }
-          }
-        },
-        {
-          "id": "filament",
-          "placements": {
-            "micro": {
-              "col": 2,
-              "row": 10,
-              "colspan": 2,
-              "rowspan": 2
-            },
-            "tiny": {
-              "col": 2,
-              "row": 8,
-              "colspan": 2,
-              "rowspan": 2
-            },
-            "small": {
-              "col": 8,
-              "row": 2,
-              "colspan": 2,
-              "rowspan": 2
-            },
-            "medium": {
-              "col": 2,
-              "row": 10,
-              "colspan": 2,
-              "rowspan": 2
-            },
-            "large": {
-              "col": 8,
-              "row": 2,
-              "colspan": 2,
-              "rowspan": 2
-            },
-            "xlarge": {
-              "col": 8,
-              "row": 2,
-              "colspan": 2,
-              "rowspan": 2
-            },
-            "xxlarge": {
-              "col": 8,
-              "row": 2,
-              "colspan": 2,
+              "colspan": 4,
               "rowspan": 2
             },
             "xxlarge@6x14": {
@@ -1253,7 +1459,105 @@
               "colspan": 4,
               "rowspan": 2
             }
-          }
+          },
+          "alternatives": [
+            {
+              "cells": [
+                {
+                  "candidates": [
+                    "ams"
+                  ],
+                  "at": [
+                    0,
+                    0,
+                    4,
+                    2
+                  ]
+                }
+              ]
+            },
+            {
+              "cells": [
+                {
+                  "candidates": "ENV",
+                  "at": [
+                    0,
+                    0,
+                    2,
+                    2
+                  ]
+                },
+                {
+                  "candidates": "FIL",
+                  "at": [
+                    2,
+                    0,
+                    2,
+                    2
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "slot": "env2",
+          "placements": {
+            "xxlarge@6x14": {
+              "col": 4,
+              "row": 2,
+              "colspan": 2,
+              "rowspan": 2
+            }
+          },
+          "alternatives": [
+            {
+              "cells": [
+                {
+                  "candidates": "ENV2",
+                  "at": [
+                    0,
+                    0,
+                    2,
+                    2
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "slot": "spool_aux",
+          "placements": {
+            "xxlarge@6x14": {
+              "col": 4,
+              "row": 12,
+              "colspan": 2,
+              "rowspan": 2
+            }
+          },
+          "alternatives": [
+            {
+              "cells": [
+                {
+                  "candidates": [
+                    "led",
+                    "clock",
+                    "lock",
+                    "macros",
+                    "motion",
+                    "temp_stack"
+                  ],
+                  "at": [
+                    0,
+                    0,
+                    2,
+                    2
+                  ]
+                }
+              ]
+            }
+          ]
         }
       ],
       "disabled": {

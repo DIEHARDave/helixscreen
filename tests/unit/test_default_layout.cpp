@@ -8,6 +8,7 @@
 #include "../test_helpers/scoped_int_subject.h"
 #include "ams_state.h"
 #include "data_root_resolver.h"
+#include "default_layout_resolver.h"
 #include "helix-xml/src/xml/lv_xml.h"
 #include "helix-xml/src/xml/lv_xml_component.h"
 #include "layout_manager.h"
@@ -22,6 +23,7 @@ extern "C" void lv_xml_component_init(void);
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <functional>
 #include <map>
 #include <set>
 #include <string>
@@ -1230,6 +1232,9 @@ TEST_CASE("default_layout: the shipped portrait anchors fit a portrait grid",
     // Every anchor names a real widget, and every tier it mentions is one the
     // budget table knows — a typo'd tier would otherwise go unchecked.
     for (const auto& anchor : portrait) {
+        if (anchor.contains("slot")) {
+            continue; // a slot's region and cells are checked by the slot cases below
+        }
         const std::string id = anchor.value("id", std::string{});
         INFO("anchor " << id);
         const auto* def = helix::find_widget_def(id);
@@ -1625,15 +1630,31 @@ TEST_CASE("default_layout: every grid-qualified table fits the grid it names",
 
             std::vector<AnchorRect> placed;
             for (const auto& anchor : (*table)["anchors"]) {
-                const std::string id = anchor.value("id", std::string{});
                 if (!anchor.contains("placements") || !anchor["placements"].contains(key)) {
                     continue;
                 }
+                const auto& p = anchor["placements"][key];
+                if (anchor.contains("slot")) {
+                    // A slot's region holds its place on the grid like an anchor;
+                    // what fills it is checked by the slot cases below.
+                    const AnchorRect r{"slot:" + anchor.value("slot", std::string{}),
+                                       p.value("col", 0), p.value("row", 0), p.value("colspan", 1),
+                                       p.value("rowspan", 1)};
+                    INFO("slot " << r.id);
+                    CHECK(r.col + r.colspan <= pk.cols);
+                    CHECK(r.row + r.rowspan <= pk.rows);
+                    for (const auto& other : placed) {
+                        INFO("overlaps anchor " << other.id);
+                        CHECK_FALSE(anchors_overlap(r, other));
+                    }
+                    placed.push_back(r);
+                    continue;
+                }
+                const std::string id = anchor.value("id", std::string{});
                 const auto* def = helix::find_widget_def(id);
                 INFO("anchor " << id);
                 REQUIRE(def != nullptr);
 
-                const auto& p = anchor["placements"][key];
                 const AnchorRect r{id, p.value("col", 0), p.value("row", 0),
                                    p.value("colspan", def->colspan),
                                    p.value("rowspan", def->rowspan)};
@@ -1849,4 +1870,507 @@ TEST_CASE("default_layout: an AMS on a medium grid too narrow for the slot is au
     auto* f = find_entry(entries, "filament");
     REQUIRE(f);
     CHECK_FALSE(f->enabled);
+}
+
+// ============================================================================
+// The shipped tables: slot structure and printer personas
+// ============================================================================
+
+namespace {
+
+using helix::layout::CapabilitySnapshot;
+using helix::layout::ResolvedDefault;
+
+nlohmann::json load_shipped_layout() {
+    std::ifstream in(helix::find_readable("default_layout.json"));
+    REQUIRE(in.is_open());
+    return nlohmann::json::parse(in);
+}
+
+/// One table of the shipped file: the base (landscape) anchors or a variant,
+/// with the variant chain that selects it and the measured grid of each tier.
+struct ShippedTable {
+    std::string name;
+    const nlohmann::json* table;
+    std::vector<std::string> chain;
+    const std::map<std::string, TrackBudget>* budgets;
+};
+
+std::vector<ShippedTable> shipped_tables(const nlohmann::json& layout) {
+    std::vector<ShippedTable> out;
+    out.push_back({"base", &layout, {}, &kLandscapeBudget});
+    out.push_back({"portrait", &layout["variants"]["portrait"], {"portrait"}, &kPortraitBudget});
+    out.push_back(
+        {"ultrawide", &layout["variants"]["ultrawide"], {"ultrawide"}, &kUltrawideBudget});
+    return out;
+}
+
+/// A cell's candidates: its inline array, or the named `candidate_lists` entry.
+const nlohmann::json& cell_candidate_list(const nlohmann::json& layout,
+                                          const nlohmann::json& cell) {
+    const auto& c = cell.at("candidates");
+    if (c.is_array()) {
+        return c;
+    }
+    REQUIRE(c.is_string());
+    const std::string name = c.get<std::string>();
+    INFO("candidate list " << name);
+    REQUIRE(layout["candidate_lists"].contains(name));
+    return layout["candidate_lists"][name];
+}
+
+std::string candidate_id(const nlohmann::json& c) {
+    return c.is_string() ? c.get<std::string>() : c.value("id", std::string{});
+}
+
+AnchorRect rect_of(const std::string& id, const nlohmann::json& p) {
+    return {id, p.value("col", 0), p.value("row", 0), p.value("colspan", 1), p.value("rowspan", 1)};
+}
+
+bool cells_fit(const nlohmann::json& alternative, int w, int h) {
+    for (const auto& cell : alternative["cells"]) {
+        const auto& at = cell["at"];
+        if (at[0].get<int>() + at[2].get<int>() > w || at[1].get<int>() + at[3].get<int>() > h) {
+            return false;
+        }
+    }
+    return true;
+}
+
+/// Every gate and `requires` subject the file names, all closed.
+CapabilitySnapshot all_closed(const nlohmann::json& layout) {
+    CapabilitySnapshot snap;
+    for (const auto& s : helix::layout::subjects_named_by(layout)) {
+        snap.subjects[s] = 0;
+    }
+    return snap;
+}
+
+const helix::layout::ResolvedPlacement* placed_widget(const ResolvedDefault& r,
+                                                      const std::string& id) {
+    for (const auto& p : r.placed) {
+        if (p.id == id) {
+            return &p;
+        }
+    }
+    return nullptr;
+}
+
+bool resolved_disabled(const ResolvedDefault& r, const std::string& id) {
+    return std::find(r.disabled.begin(), r.disabled.end(), id) != r.disabled.end();
+}
+
+} // namespace
+
+TEST_CASE("default_layout: every shipped slot alternative stays inside its region",
+          "[default_layout][shipped][slot]") {
+    const auto layout = load_shipped_layout();
+    int alternatives_checked = 0;
+    for (const auto& t : shipped_tables(layout)) {
+        for (const auto& entry : (*t.table)["anchors"]) {
+            if (!entry.contains("slot")) {
+                continue;
+            }
+            const std::string slot = entry["slot"].get<std::string>();
+            REQUIRE(entry.contains("alternatives"));
+            REQUIRE_FALSE(entry["alternatives"].empty());
+            for (auto key = entry["placements"].begin(); key != entry["placements"].end(); ++key) {
+                const AnchorRect region = rect_of("slot:" + slot, key.value());
+                bool any_fits = false;
+                for (const auto& alt : entry["alternatives"]) {
+                    REQUIRE_FALSE(alt["cells"].empty());
+                    if (!cells_fit(alt, region.colspan, region.rowspan)) {
+                        continue; // the resolver passes over it for this region
+                    }
+                    any_fits = true;
+                    ++alternatives_checked;
+                    std::vector<AnchorRect> cells;
+                    for (const auto& cell : alt["cells"]) {
+                        const auto& at = cell["at"];
+                        const AnchorRect r{"cell", at[0], at[1], at[2], at[3]};
+                        INFO("table " << t.name << " slot " << slot << " key " << key.key()
+                                      << " cell at " << at.dump());
+                        for (const auto& other : cells) {
+                            CHECK_FALSE(anchors_overlap(r, other));
+                        }
+                        cells.push_back(r);
+                    }
+                }
+                INFO("table " << t.name << " slot " << slot << " key " << key.key());
+                CHECK(any_fits);
+            }
+        }
+    }
+    CHECK(alternatives_checked > 0);
+}
+
+TEST_CASE("default_layout: every shipped span is one its widget can take",
+          "[default_layout][shipped][slot]") {
+    // Within the registry's min and max, and an odd track count only on an axis
+    // the widget resolves to half a cell on.
+    const auto layout = load_shipped_layout();
+    auto check_span = [](const std::string& id, int colspan, int rowspan) {
+        const auto* def = helix::find_widget_def(id);
+        INFO("widget " << id << " at " << colspan << "x" << rowspan);
+        REQUIRE(def != nullptr);
+        CHECK(colspan >= def->effective_min_colspan());
+        CHECK(colspan <= def->effective_max_colspan());
+        CHECK(rowspan >= def->effective_min_rowspan());
+        CHECK(rowspan <= def->effective_max_rowspan());
+        if (colspan % 2 != 0) {
+            CHECK(def->supports_half_col);
+        }
+        if (rowspan % 2 != 0) {
+            CHECK(def->supports_half_row);
+        }
+    };
+
+    int spans = 0;
+    for (const auto& t : shipped_tables(layout)) {
+        INFO("table " << t.name);
+        for (const auto& entry : (*t.table)["anchors"]) {
+            if (!entry.contains("slot")) {
+                const std::string id = entry["id"].get<std::string>();
+                for (const auto& p : entry["placements"]) {
+                    check_span(id, p["colspan"].get<int>(), p["rowspan"].get<int>());
+                    ++spans;
+                }
+                continue;
+            }
+            INFO("slot " << entry["slot"].get<std::string>());
+            for (const auto& alt : entry["alternatives"]) {
+                for (const auto& cell : alt["cells"]) {
+                    for (const auto& c : cell_candidate_list(layout, cell)) {
+                        check_span(candidate_id(c), cell["at"][2].get<int>(),
+                                   cell["at"][3].get<int>());
+                        ++spans;
+                    }
+                }
+            }
+        }
+    }
+    CHECK(spans > 0);
+}
+
+TEST_CASE("default_layout: every shipped candidate list ends in an ungated widget",
+          "[default_layout][shipped][slot]") {
+    const auto layout = load_shipped_layout();
+    auto check_tail = [](const std::string& what, const nlohmann::json& list) {
+        INFO(what);
+        REQUIRE(list.is_array());
+        REQUIRE_FALSE(list.empty());
+        const auto& last = list.back();
+        const auto* def = helix::find_widget_def(candidate_id(last));
+        REQUIRE(def != nullptr);
+        CHECK(def->hardware_gate_subject == nullptr);
+        CHECK((last.is_string() || !last.contains("requires") || last["requires"].empty()));
+    };
+
+    int lists = 0;
+    for (auto it = layout["candidate_lists"].begin(); it != layout["candidate_lists"].end(); ++it) {
+        check_tail("named list " + it.key(), it.value());
+        ++lists;
+    }
+    for (const auto& t : shipped_tables(layout)) {
+        for (const auto& entry : (*t.table)["anchors"]) {
+            if (!entry.contains("slot")) {
+                continue;
+            }
+            const auto& alternatives = entry["alternatives"];
+            for (size_t a = 0; a < alternatives.size(); ++a) {
+                const auto& cells = alternatives[a]["cells"];
+                for (size_t c = 0; c < cells.size(); ++c) {
+                    // An alternative before the last is taken only when its lead
+                    // candidate qualifies, so its lead cell cannot come up empty.
+                    const bool guaranteed_lead = c == 0 && a + 1 < alternatives.size();
+                    if (cells[c]["candidates"].is_array() && !guaranteed_lead) {
+                        check_tail(t.name + " slot " + entry["slot"].get<std::string>(),
+                                   cells[c]["candidates"]);
+                        ++lists;
+                    }
+                }
+            }
+        }
+    }
+    CHECK(lists > 0);
+}
+
+TEST_CASE("default_layout: every shipped slot's last alternative fits every region it inherits",
+          "[default_layout][shipped][slot]") {
+    // The last alternative has no lead requirement, so it is what a slot falls
+    // back to; a region it does not fit leaves the slot empty on that tier.
+    const auto layout = load_shipped_layout();
+    int checked = 0;
+    for (const auto& t : shipped_tables(layout)) {
+        for (const auto& entry : (*t.table)["anchors"]) {
+            if (!entry.contains("slot")) {
+                continue;
+            }
+            const auto& last = entry["alternatives"].back();
+            for (int bp = 0; bp < 7; ++bp) {
+                const auto budget = t.budgets->find(kBpNames[bp]);
+                const int cols = budget == t.budgets->end() ? 0 : budget->second.cols;
+                const int rows = budget == t.budgets->end() ? 0 : budget->second.rows;
+                for (const auto& [c, r] : {std::pair{0, 0}, std::pair{cols, rows}}) {
+                    const std::string key = helix::layout::choose_placement_key(
+                        entry["placements"], static_cast<UiBreakpoint>(bp), c, r);
+                    if (key.empty()) {
+                        continue;
+                    }
+                    const AnchorRect region = rect_of("region", entry["placements"][key]);
+                    INFO("table " << t.name << " slot " << entry["slot"].get<std::string>()
+                                  << " tier " << kBpNames[bp] << " key " << key);
+                    CHECK(cells_fit(last, region.colspan, region.rowspan));
+                    ++checked;
+                }
+            }
+        }
+    }
+    CHECK(checked > 0);
+}
+
+TEST_CASE("default_layout: every shipped slot cell fills with every gate closed",
+          "[default_layout][shipped][slot]") {
+    // A printer that opens no gate and no `requires` subject still gets a full
+    // panel: each slot's region is covered by what the resolver placed. Ending
+    // a list in an ungated widget is not enough on its own, since a widget
+    // already placed by an earlier slot or anchor does not qualify again.
+    const auto layout = load_shipped_layout();
+    const CapabilitySnapshot closed = all_closed(layout);
+    REQUIRE(closed.subjects.count("ams_slot_count") == 1);
+    REQUIRE(closed.subjects.count("printer_has_spoolman") == 1);
+
+    struct Grid {
+        std::string tier;
+        int cols;
+        int rows;
+    };
+    int regions = 0;
+    for (const auto& t : shipped_tables(layout)) {
+        std::vector<Grid> grids;
+        for (const auto& [tier, b] : *t.budgets) {
+            grids.push_back({tier, b.cols, b.rows});
+        }
+        for (const auto& entry : (*t.table)["anchors"]) {
+            for (auto key = entry["placements"].begin(); key != entry["placements"].end(); ++key) {
+                const auto pk = parse_placement_key(key.key());
+                if (pk.grid_qualified()) {
+                    grids.push_back({pk.tier, pk.cols, pk.rows});
+                }
+            }
+        }
+
+        for (const auto& g : grids) {
+            const int bp = breakpoint_from_name(g.tier.c_str());
+            REQUIRE(bp >= 0);
+            const ResolvedDefault r = helix::layout::resolve_default_layout(
+                layout, nullptr, g.tier, g.cols, g.rows, t.chain, "", closed);
+            INFO("table " << t.name << " grid " << g.tier << "@" << g.cols << "x" << g.rows);
+            REQUIRE(r.ok);
+
+            std::set<std::string> ids;
+            for (const auto& p : r.placed) {
+                INFO("placed twice: " << p.id);
+                CHECK(ids.insert(p.id).second);
+            }
+
+            for (const auto& entry : (*t.table)["anchors"]) {
+                if (!entry.contains("slot")) {
+                    continue;
+                }
+                const std::string key = helix::layout::choose_placement_key(
+                    entry["placements"], static_cast<UiBreakpoint>(bp), g.cols, g.rows);
+                if (key.empty()) {
+                    continue;
+                }
+                const AnchorRect region = rect_of("region", entry["placements"][key]);
+                ++regions;
+                for (int col = region.col; col < region.col + region.colspan; ++col) {
+                    for (int row = region.row; row < region.row + region.rowspan; ++row) {
+                        bool covered = false;
+                        for (const auto& p : r.placed) {
+                            covered = covered || (col >= p.col && col < p.col + p.colspan &&
+                                                  row >= p.row && row < p.row + p.rowspan);
+                        }
+                        INFO("slot " << entry["slot"].get<std::string>() << " track (" << col << ","
+                                     << row << ") is a hole");
+                        CHECK(covered);
+                    }
+                }
+            }
+        }
+    }
+    CHECK(regions > 0);
+}
+
+TEST_CASE("default_layout: no shipped table names toolhead, host_health or exclude_map",
+          "[default_layout][shipped]") {
+    const auto layout = load_shipped_layout();
+    std::vector<std::string> strings;
+    std::function<void(const nlohmann::json&)> walk = [&](const nlohmann::json& j) {
+        if (j.is_string()) {
+            strings.push_back(j.get<std::string>());
+        } else if (j.is_structured()) {
+            for (const auto& v : j) {
+                walk(v);
+            }
+        }
+    };
+    walk(layout);
+    REQUIRE(std::count(strings.begin(), strings.end(), "printer_image") > 0);
+    for (const char* id : {"toolhead", "host_health", "exclude_map"}) {
+        INFO("widget " << id);
+        CHECK(std::count(strings.begin(), strings.end(), id) == 0);
+    }
+}
+
+namespace {
+
+struct ExpectedRect {
+    const char* id;
+    int col;
+    int row;
+    int colspan;
+    int rowspan;
+};
+
+struct Persona {
+    const char* name;
+    const char* tier;
+    int cols;
+    int rows;
+    std::vector<std::string> chain;
+    std::map<std::string, int> open; // every subject not named here reads 0
+    std::vector<ExpectedRect> placed;
+    std::vector<const char*> not_placed;
+};
+
+// Capability subjects as each printer publishes them, tracks as the shipped
+// table places them at that printer's own measured grid.
+// clang-format off
+const std::vector<Persona> kPersonas = {
+    {"k2 medium: the CFS takes the spool slot as one 2x1 tile", "medium", 12, 8, {},
+     {{"ams_slot_count", 4}, {"led_controllable", 1}, {"filament_sensor_count", 0},
+      {"printer_has_chamber", 1}},
+     {{"ams", 8, 0, 4, 2}, {"printer_image", 0, 0, 4, 4}, {"temperature", 4, 0, 2, 2},
+      {"bed_temperature", 6, 0, 2, 2}, {"fan_stack", 4, 2, 2, 2}, {"notifications", 6, 2, 2, 2},
+      {"temp_graph", 8, 2, 4, 6}, {"print_status", 0, 4, 8, 4}},
+     {"filament", "led", "chamber_temperature", "clock", "network"}},
+    {"ad5m medium: chamber and filament, LED left off", "medium", 12, 8, {},
+     {{"printer_has_chamber", 1}, {"led_controllable", 1}, {"filament_sensor_count", 1}},
+     {{"chamber_temperature", 8, 0, 2, 2}, {"filament", 10, 0, 2, 2}},
+     {"ams", "led", "active_spool", "clock"}},
+    {"ad5m with Spoolman: filament still leads the FIL cell", "medium", 12, 8, {},
+     {{"printer_has_chamber", 1}, {"led_controllable", 1}, {"filament_sensor_count", 1},
+      {"printer_has_spoolman", 1}},
+     {{"chamber_temperature", 8, 0, 2, 2}, {"filament", 10, 0, 2, 2}},
+     {"active_spool", "led"}},
+    {"ad5m with Spoolman and no filament sensor: LED leads active_spool", "medium", 12, 8, {},
+     {{"printer_has_chamber", 1}, {"led_controllable", 1}, {"printer_has_spoolman", 1}},
+     {{"chamber_temperature", 8, 0, 2, 2}, {"led", 10, 0, 2, 2}},
+     {"active_spool", "filament"}},
+    {"Spoolman with no LED and no filament sensor: active_spool fills the FIL cell", "medium", 12, 8, {},
+     {{"printer_has_chamber", 1}, {"printer_has_spoolman", 1}},
+     {{"chamber_temperature", 8, 0, 2, 2}, {"active_spool", 10, 0, 2, 2}},
+     {"network"}},
+    {"cc1 micro: LED and filament beside the fans", "micro", 12, 8, {},
+     {{"led_controllable", 1}, {"filament_sensor_count", 1}},
+     {{"printer_image", 0, 0, 6, 4}, {"temperature", 6, 0, 2, 2}, {"bed_temperature", 8, 0, 2, 2},
+      {"notifications", 10, 0, 2, 2}, {"fan_stack", 6, 2, 2, 2}, {"led", 8, 2, 2, 2},
+      {"filament", 10, 2, 2, 2}, {"print_status", 0, 4, 12, 4}},
+     {"ams", "tips", "temp_graph"}},
+    {"qidi_q2 micro: the AMS takes the spool slot", "micro", 12, 8, {},
+     {{"ams_slot_count", 4}, {"printer_has_chamber", 1}, {"led_controllable", 1},
+      {"filament_sensor_count", 1}},
+     {{"ams", 8, 2, 4, 2}, {"print_status", 0, 4, 12, 4}},
+     {"chamber_temperature", "led", "filament"}},
+    {"u1 tiny: the tool tile lists all four tools", "tiny", 10, 8, {},
+     {{"ams_slot_count", 4}, {"led_controllable", 1}, {"filament_sensor_count", 1}},
+     {{"printer_image", 0, 0, 4, 4}, {"temperature", 4, 0, 2, 2}, {"bed_temperature", 6, 0, 2, 2},
+      {"notifications", 8, 0, 2, 2}, {"fan_stack", 4, 2, 2, 2}, {"ams", 6, 2, 4, 2},
+      {"print_status", 0, 4, 10, 4}},
+     {"led", "filament"}},
+    {"voron_24 large: print_stats in the freed 2x2, the bed mesh below it", "large", 16, 10, {},
+     {{"printer_has_chamber", 1}, {"led_controllable", 1}, {"filament_sensor_count", 1},
+      {"printer_has_bed_mesh", 1}},
+     {{"printer_image", 0, 0, 4, 4}, {"temperature", 4, 0, 2, 2}, {"bed_temperature", 6, 0, 2, 2},
+      {"chamber_temperature", 8, 0, 2, 2}, {"filament", 10, 0, 2, 2}, {"led", 12, 0, 2, 2},
+      {"notifications", 14, 0, 2, 2}, {"fan_stack", 4, 2, 2, 2}, {"network", 6, 2, 2, 2},
+      {"z_offset", 8, 2, 4, 2}, {"print_stats", 12, 2, 4, 4}, {"print_status", 0, 4, 8, 4},
+      {"speed_flow", 8, 4, 4, 2}, {"temp_graph", 8, 6, 4, 4}, {"bed_mesh_tile", 12, 6, 4, 4},
+      {"tips", 0, 8, 8, 2}},
+     {"job_queue", "ams", "toolhead", "host_health", "exclude_map"}},
+    {"voron_24 large without a bed mesh: the job queue takes its place", "large", 16, 10, {},
+     {{"printer_has_chamber", 1}, {"led_controllable", 1}, {"filament_sensor_count", 1}},
+     {{"job_queue", 12, 6, 4, 4}, {"print_stats", 12, 2, 4, 4}},
+     {"bed_mesh_tile"}},
+    {"voron_24 xxlarge: the 12x7-cell table, FILLER takes the clock", "xxlarge", 24, 14, {},
+     {{"printer_has_chamber", 1}, {"led_controllable", 1}, {"filament_sensor_count", 1},
+      {"printer_has_bed_mesh", 1}},
+     {{"printer_image", 0, 0, 6, 6}, {"print_status", 6, 0, 10, 6}, {"temperature", 16, 0, 2, 2},
+      {"bed_temperature", 18, 0, 2, 2}, {"chamber_temperature", 20, 0, 2, 2},
+      {"filament", 22, 0, 2, 2}, {"fan_stack", 16, 2, 2, 2}, {"notifications", 18, 2, 2, 2},
+      {"led", 20, 2, 2, 2}, {"network", 22, 2, 2, 2}, {"z_offset", 16, 4, 4, 2},
+      {"speed_flow", 20, 4, 4, 2}, {"temp_graph", 0, 6, 16, 6}, {"tips", 0, 12, 16, 2},
+      {"bed_mesh_tile", 16, 6, 8, 4}, {"print_stats", 16, 10, 6, 4}, {"clock", 22, 10, 2, 4}},
+     {"job_queue", "lock", "toolhead", "host_health", "exclude_map"}},
+    {"voron_24 xxlarge without a bed mesh: the job queue spans the mesh region", "xxlarge", 24, 14, {},
+     {{"printer_has_chamber", 1}, {"led_controllable", 1}, {"filament_sensor_count", 1}},
+     {{"job_queue", 16, 6, 8, 4}},
+     {"bed_mesh_tile"}},
+    {"k1 portrait medium: LED and filament under the print card", "medium", 8, 12, {"portrait"},
+     {{"led_controllable", 1}, {"filament_sensor_count", 1}},
+     {{"printer_image", 0, 0, 4, 4}, {"temperature", 4, 0, 2, 2}, {"notifications", 6, 0, 2, 2},
+      {"bed_temperature", 4, 2, 2, 2}, {"fan_stack", 6, 2, 2, 2}, {"tips", 0, 4, 8, 2},
+      {"print_status", 0, 6, 8, 4}, {"led", 0, 10, 2, 2}, {"filament", 2, 10, 2, 2},
+      {"temp_graph", 4, 10, 4, 2}},
+     {"ams", "clock"}},
+};
+// clang-format on
+
+} // namespace
+
+TEST_CASE("default_layout: shipped tables resolve each printer persona",
+          "[default_layout][shipped][persona]") {
+    const auto layout = load_shipped_layout();
+    for (const auto& persona : kPersonas) {
+        INFO("persona: " << persona.name);
+        CapabilitySnapshot caps = all_closed(layout);
+        for (const auto& [subject, value] : persona.open) {
+            REQUIRE(caps.subjects.count(subject) == 1);
+            caps.subjects[subject] = value;
+        }
+
+        const ResolvedDefault r = helix::layout::resolve_default_layout(
+            layout, nullptr, persona.tier, persona.cols, persona.rows, persona.chain, "", caps);
+        REQUIRE(r.ok);
+
+        for (const auto& e : persona.placed) {
+            INFO("widget " << e.id);
+            const auto* p = placed_widget(r, e.id);
+            REQUIRE(p != nullptr);
+            CHECK(p->col == e.col);
+            CHECK(p->row == e.row);
+            CHECK(p->colspan == e.colspan);
+            CHECK(p->rowspan == e.rowspan);
+        }
+        for (const char* id : persona.not_placed) {
+            INFO("widget " << id << " is placed");
+            CHECK(placed_widget(r, id) == nullptr);
+        }
+
+        std::set<std::string> ids;
+        for (const auto& p : r.placed) {
+            INFO("placed twice: " << p.id);
+            CHECK(ids.insert(p.id).second);
+        }
+        // Nothing default-enabled is left for auto-placement to squeeze in.
+        for (const auto& def : helix::get_all_widget_defs()) {
+            if (!def.default_enabled) {
+                continue;
+            }
+            INFO("default-enabled widget " << def.id << " neither placed nor disabled");
+            CHECK((placed_widget(r, def.id) != nullptr || resolved_disabled(r, def.id)));
+        }
+    }
 }
