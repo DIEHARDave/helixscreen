@@ -9,6 +9,8 @@
 //
 // HELIX_WRITE_GOLDENS=1 rewrites the files from the current builder output.
 
+#include "../helix_test_fixture.h"
+#include "moonraker_client_mock.h"
 #include "moonraker_discovery_sequence.h"
 #include "printer_discovery.h"
 
@@ -37,7 +39,6 @@ std::string golden_path(const std::string& name) {
 struct Printer {
     std::vector<std::string> heaters{"extruder", "heater_bed"};
     std::vector<std::string> fans{"fan"};
-    std::vector<std::string> afc_objects;
     std::vector<std::string> filament_sensors;
     json all_objects = json::array({"extruder", "heater_bed", "fan"});
     json status_claim;
@@ -47,9 +48,7 @@ struct Printer {
         return *this;
     }
     Printer& afc(const std::string& name) {
-        all_objects.push_back(name);
-        afc_objects.push_back(name);
-        return *this;
+        return obj(name);
     }
     Printer& sensor(const std::string& name) {
         all_objects.push_back(name);
@@ -63,8 +62,8 @@ struct Printer {
         if (!status_claim.is_null()) {
             hw.settle_status_claims(status_claim);
         }
-        return MoonrakerDiscoverySequence::build_subscription_objects(
-            hw, heaters, {}, {}, fans, {}, afc_objects, filament_sensors, {});
+        return MoonrakerDiscoverySequence::build_subscription_objects(hw, heaters, {}, {}, fans, {},
+                                                                      filament_sensors, {});
     }
 };
 
@@ -193,4 +192,31 @@ TEST_CASE("subscription objects are unchanged for every backend fixture", "[subs
         p.heaters.push_back("extruder1");
         check_against_golden("toolchanger", p.build());
     }
+}
+
+TEST_CASE_METHOD(HelixTestFixture, "backend sensor prefixes bucket as filament sensors",
+                 "[subscription_parity]") {
+    MoonrakerClientMock mock(MoonrakerClientMock::PrinterType::VORON_24);
+    MoonrakerDiscoverySequence discovery(mock);
+    discovery.parse_objects(
+        json::array({"extruder", "filament_switch_sensor runout", "filament_motion_sensor encoder",
+                     "zmod_ifs_switch_sensor head", "zmod_ifs_motion_sensor ifs_motion_sensor",
+                     "zmod_ifs", "zmod_ifs_status"}));
+
+    const auto& sensors = discovery.filament_sensors();
+    CHECK(sensors == std::vector<std::string>{"filament_switch_sensor runout",
+                                              "filament_motion_sensor encoder",
+                                              "zmod_ifs_switch_sensor head",
+                                              "zmod_ifs_motion_sensor ifs_motion_sensor"});
+
+    const json fields = json::array({"filament_detected", "enabled", "detection_count"});
+    PrinterDiscovery hw;
+    hw.parse_objects(json::array({"extruder"}));
+    const json subs =
+        MoonrakerDiscoverySequence::build_subscription_objects(hw, {}, {}, {}, {}, {}, sensors, {});
+    for (const auto& name : sensors) {
+        INFO(name);
+        CHECK(subs.value(name, json()) == fields);
+    }
+    CHECK_FALSE(subs.contains("zmod_ifs_status"));
 }
