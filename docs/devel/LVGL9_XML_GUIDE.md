@@ -865,7 +865,38 @@ shape; the other `setting_*_row.xml` components are the three-attribute shape.
 
 Reach for `long_mode="dots"` instead when the row must stay exactly one line
 (filenames, spool names) — then a determinate width is still required, and the
-string ellipsizes rather than wrapping.
+string ellipsizes rather than wrapping. See "One-line labels: `long_mode="dots"`"
+below.
+
+#### One-line labels: `long_mode="dots"`
+
+LVGL's DOTS mode ellipsizes only when the wrapped text is taller than the label.
+A content-height label grows to fit whatever it wraps to, so on a bare
+`lv_label` dots never fire: the text wraps onto two or three lines and pushes
+its siblings. HelixScreen closes that gap in one place:
+
+- **`text_*` and `ui_button` hold a dotted, content-height label to one line**
+  of its own font (plus its top/bottom padding and border). Leaving the height
+  unset or writing `height="content"` both qualify. The height follows a later
+  font or padding change (`helix::ui::label_hold_one_line`, `include/ui_text.h`).
+- **An explicit height opts out.** A px or % `height`, or `style_max_height`,
+  leaves the label alone, which is how a deliberately multi-line dotted label is
+  written (`option_tile.xml`: `style_max_height="100%"` inside a fixed tile).
+- **The label still needs a width bound.** `width="100%"`, or `flex_grow="1"`
+  (with `width="1"`/`width="0"`) in a row. With no width, or `width="content"`
+  and no `style_max_width`, the text never wraps, so there is nothing to
+  ellipsize: it runs past its parent and is clipped.
+- **A bare `<lv_label>` gets none of this.** Use a `text_*` widget for a dotted
+  label in XML.
+- **C++ labels call the helper.** A label built with `lv_label_create()` and set
+  to `LV_LABEL_LONG_MODE_DOTS` calls `helix::ui::label_hold_one_line(label)`.
+- **Text meant to wrap must not use dots.** A sentence (a note, a banner
+  message) takes `long_mode="wrap"` or no long mode.
+- **DOTS writes the ellipsis into the label's text.** Once it fires,
+  `lv_label_get_text()` returns the shortened string, so read the source value
+  (the subject or the string you set), not the label.
+
+Regression cover: `tests/unit/test_label_one_line.cpp`.
 
 Regression cover: `tests/unit/test_setting_row_description_wrap.cpp` asserts the
 wrapped label is taller than one line and never wider than the row.

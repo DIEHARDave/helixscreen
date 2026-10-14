@@ -10,6 +10,7 @@
 #include "ui_icon.h"
 #include "ui_icon_codepoints.h"
 #include "ui_panel_bed_mesh.h"
+#include "ui_subject_registry.h"
 
 #include "app_globals.h"
 #include "bed_mesh_calibration_plan.h"
@@ -44,6 +45,7 @@
 #include <vector>
 
 using helix::ui::measure_text_px;
+using helix::ui::set_int_if_changed;
 
 namespace {
 
@@ -119,12 +121,6 @@ void bed_mesh_tile_init_subjects() {
 void set_text(lv_subject_t* subject, const std::string& text) {
     if (text != lv_subject_get_string(subject))
         lv_subject_copy_string(subject, text.c_str());
-}
-
-void set_flag(lv_subject_t* subject, bool on) {
-    const int value = on ? 1 : 0;
-    if (lv_subject_get_int(subject) != value)
-        lv_subject_set_int(subject, value);
 }
 
 std::string profile_count_text(int count) {
@@ -244,7 +240,7 @@ helix::RungNeeds measure_needs(const MeasureState& m, const helix::ContentChrome
             // The buttons stack, each as wide as its label in the body face plus padding.
             const int button_label_pad = 2 * theme_manager_get_spacing("space_lg");
             const int calibrate_w = text_px(lv_tr("Calibrate"), f.body) + button_label_pad;
-            const int load_w = text_px(lv_tr("Load profile"), f.body) + button_label_pad;
+            const int load_w = text_px(lv_tr("Load Profile"), f.body) + button_label_pad;
             const bool offers_load = m.profile_count > 0 && m.panel_available;
             const int buttons = offers_load ? 2 : 1;
             full_w =
@@ -475,14 +471,14 @@ bool BedMeshTileWidget::fits_at(int width_px, int height_px) const {
 
 void BedMeshTileWidget::publish_verdict() {
     lv_subject_set_int(&s_rung_subject, static_cast<int>(verdict_.rung));
-    set_flag(&s_show_map_subject, verdict_.show_map);
-    set_flag(&s_show_range_subject, verdict_.show_range);
-    set_flag(&s_show_empty_subject, verdict_.show_empty_text);
-    set_flag(&s_show_details_subject, verdict_.show_details);
-    set_flag(&s_show_scale_subject, verdict_.show_scale);
-    set_flag(&s_show_footer_subject, verdict_.show_footer);
-    set_flag(&s_show_calibrate_subject, verdict_.show_calibrate);
-    set_flag(&s_show_load_subject, verdict_.show_load_profile);
+    set_int_if_changed(&s_show_map_subject, verdict_.show_map ? 1 : 0);
+    set_int_if_changed(&s_show_range_subject, verdict_.show_range ? 1 : 0);
+    set_int_if_changed(&s_show_empty_subject, verdict_.show_empty_text ? 1 : 0);
+    set_int_if_changed(&s_show_details_subject, verdict_.show_details ? 1 : 0);
+    set_int_if_changed(&s_show_scale_subject, verdict_.show_scale ? 1 : 0);
+    set_int_if_changed(&s_show_footer_subject, verdict_.show_footer ? 1 : 0);
+    set_int_if_changed(&s_show_calibrate_subject, verdict_.show_calibrate ? 1 : 0);
+    set_int_if_changed(&s_show_load_subject, verdict_.show_load_profile ? 1 : 0);
 }
 
 void BedMeshTileWidget::publish_texts(const LiveState& live) {
@@ -532,7 +528,7 @@ void BedMeshTileWidget::on_deactivate() {
 void BedMeshTileWidget::set_calibrating(bool on) {
     calibrating_ = on;
     if (s_tile.is_owner(this))
-        set_flag(&s_calibrating_subject, on);
+        set_int_if_changed(&s_calibrating_subject, on ? 1 : 0);
 }
 
 void BedMeshTileWidget::on_mesh_changed() {

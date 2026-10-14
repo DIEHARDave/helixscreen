@@ -209,6 +209,7 @@ class AmsOperationSidebar {
     ObserverGuard extruder_temp_observer_;
     ObserverGuard extruder_target_observer_;
     ObserverGuard color_observer_;
+    ObserverGuard fill_observer_;
     // Watches AmsState's ams_operation_indeterminate subject (#1065 row 14). When
     // 1 the live "Heat 225/230" readout is frozen by a starved status feed, so
     // the Heat step swaps to an indeterminate "Working…" busy label instead of a

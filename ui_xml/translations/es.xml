@@ -426,6 +426,7 @@
   <translation tag="Calculator" es="Calculadora"/>
   <translation tag="Calibrate" es="Calibrar"/>
   <translation tag="Calibrate All" es="Calibrar Todo"/>
+  <translation tag="Calibrate All Tools" es="Calibrar todas las herramientas"/>
   <translation tag="Calibrate Bowden" es="Calibrar el bowden"/>
   <translation tag="Calibrate Cutter" es="Calibrar cortador"/>
   <translation tag="Calibrate Encoder" es="Calibrar el encoder"/>
@@ -434,7 +435,6 @@
   <translation tag="Calibrate Purge Chute" es="Calibrar conducto de purga"/>
   <translation tag="Calibrate X" es="Calibrar X"/>
   <translation tag="Calibrate Y" es="Calibrar Y"/>
-  <translation tag="Calibrate all tools" es="Calibrar todas las herramientas"/>
   <translation tag="Calibrate input shaping to reduce ringing artifacts in prints" es="Calibrar input shaping para reducir artefactos de resonancia en impresiones"/>
   <translation tag="Calibrate tool offsets?" es="¿Calibrar los offsets de herramienta?"/>
   <translation tag="Calibrate your touchscreen for accurate input" es="Calibrar la pantalla táctil para una entrada precisa"/>
@@ -534,13 +534,13 @@
   <translation tag="Check AFC configuration" es="Compruebe la configuración de AFC"/>
   <translation tag="Check Again" es="Verificar de nuevo"/>
   <translation tag="Check Klipper console for details" es="Consulte la consola de Klipper para más detalles"/>
+  <translation tag="Check Slot" es="Comprobar ranura"/>
+  <translation tag="Check Slots" es="Comprobar"/>
   <translation tag="Check extruder temperature and try again. Manual removal may be required." es="Compruebe la temperatura del extrusor e inténtelo de nuevo. Es posible que deba retirarse manualmente."/>
   <translation tag="Check failed" es="Error al verificar"/>
   <translation tag="Check filament" es="Comprobar filamento"/>
   <translation tag="Check for Updates" es="Buscar actualizaciones"/>
-  <translation tag="Check slot" es="Comprobar ranura"/>
   <translation tag="Check slot failed" es="Error al comprobar ranura"/>
-  <translation tag="Check slots" es="Comprobar ranuras"/>
   <translation tag="Check slots failed" es="Error al comprobar ranuras"/>
   <translation tag="Check that only one filament path is active" es="Compruebe que solo haya una ruta de filamento activa"/>
   <translation tag="Check that the cutter mechanism is properly installed" es="Compruebe que el mecanismo de corte esté correctamente instalado"/>
@@ -785,9 +785,6 @@
   <translation tag="Current name:" es="Nombre actual:"/>
   <translation tag="Current:" es="Actual:"/>
   <translation tag="Current: %d°C | Target: %d°C" es="Actual: %d°C | Objetivo: %d°C"/>
-  <translation tag="Current: %s" es="Actual: %s"/>
-  <translation tag="Current: %s · %s" es="Actual: %s · %s"/>
-  <translation tag="Current: Bypass" es="Actual: Bypass"/>
   <translation tag="Currently Loaded" es="Actualmente cargado"/>
   <translation tag="Currently printing" es="Imprimiendo actualmente"/>
   <translation tag="Custom" es="Personalizado"/>
@@ -1429,11 +1426,11 @@
   <translation tag="Home" es="Inicio"/>
   <translation tag="Home &amp; Continue" es="Referenciar y continuar"/>
   <translation tag="Home All" es="Posicionar todo"/>
+  <translation tag="Home Selector" es="Referenciar selector"/>
   <translation tag="Home all axes to use the map" es="Lleva todos los ejes al origen para usar el mapa"/>
   <translation tag="Home and sweep the cutter to re-find its position" es="Referencia y barrido del cortador para volver a encontrar su posición"/>
   <translation tag="Home failed" es="Error en referencia"/>
   <translation tag="Home printer first?" es="¿Referenciar la impresora primero?"/>
-  <translation tag="Home selector" es="Referenciar selector"/>
   <translation tag="Homing AFC system..." es="Referenciando sistema AFC..."/>
   <translation tag="Homing Failed" es="Fallo de homing"/>
   <translation tag="Homing X..." es="Posicionando X..."/>
@@ -1671,6 +1668,7 @@
   <translation tag="Load Extruder" es="Cargar extrusor"/>
   <translation tag="Load Failed" es="Fallo al cargar"/>
   <translation tag="Load Filament" es="Cargar Filamento"/>
+  <translation tag="Load Profile" es="Cargar perfil"/>
   <translation tag="Load a filament first before trying to unload" es="Cargue primero filamento antes de intentar descargar"/>
   <translation tag="Load a new spool in this slot, or turn on auto-refill to switch to a matching one" es="Cargue una bobina nueva en esta ranura, o active el rellenado automático para cambiar a una equivalente"/>
   <translation tag="Load cancelled: nozzle target dropped" es="Carga cancelada: el objetivo de la boquilla bajó"/>
@@ -1679,7 +1677,6 @@
   <translation tag="Load filament" es="Cargar filamento"/>
   <translation tag="Load filament first" es="Cargue filamento primero"/>
   <translation tag="Load or unload filament." es="Carga o descarga filamento."/>
-  <translation tag="Load profile" es="Cargar perfil"/>
   <translation tag="Load the required filaments or start anyway?" es="¿Cargar los filamentos requeridos o iniciar de todos modos?"/>
   <translation tag="Load, unload, and swap spools. View your multi-filament system at a glance, map colors to slots, and monitor runout sensors." es="Carga, descarga e intercambia bobinas. Ve tu sistema multi-filamento de un vistazo, asigna colores a los slots y monitoriza los sensores de agotamiento."/>
   <translation tag="Load..." es="Cargar..."/>
@@ -2534,6 +2531,7 @@
   <translation tag="Reset Motor Timer" es="Restablecer el temporizador del motor"/>
   <translation tag="Reset Servo Counter" es="Restablecer el contador del servo"/>
   <translation tag="Reset Speed &amp; Flow to 100%" es="Restablecer Velocidad y Flujo a 100%"/>
+  <translation tag="Reset Tags" es="Restablecer marcas"/>
   <translation tag="Reset all settings and restart wizard" es="Restablecer todos los ajustes y reiniciar asistente"/>
   <translation tag="Reset endless spool failed" es="Error al restablecer la bobina infinita"/>
   <translation tag="Reset failed" es="Error al restablecer"/>
@@ -2654,13 +2652,13 @@
   <translation tag="Save &amp; Restart" es="Guardar y Reiniciar"/>
   <translation tag="Save As New" es="Guardar Como Nuevo"/>
   <translation tag="Save Hardware" es="Guardar Hardware"/>
+  <translation tag="Save Offsets" es="Guardar offsets"/>
   <translation tag="Save Printer Configuration" es="Guardar Configuración de Impresora"/>
   <translation tag="Save Theme As" es="Guardar Tema Como"/>
   <translation tag="Save Z-Offset" es="Guardar Z-Offset"/>
   <translation tag="Save Z-Offset?" es="¿Guardar Z-Offset?"/>
   <translation tag="Save changes to persist them across restarts?" es="¿Guardar cambios para mantenerlos entre reinicios?"/>
   <translation tag="Save failed: {}" es="Error al guardar: {}"/>
-  <translation tag="Save offsets" es="Guardar offsets"/>
   <translation tag="Save offsets?" es="¿Guardar offsets?"/>
   <translation tag="Save to Spoolman" es="Guardar en Spoolman"/>
   <translation tag="Saved Z-Offset" es="Z-Offset guardado"/>
@@ -2722,6 +2720,7 @@
   <translation tag="Select G-Code File" es="Seleccionar Archivo G-Code"/>
   <translation tag="Select Sensor" es="Seleccionar sensor"/>
   <translation tag="Select Sensors" es="Seleccionar Sensores"/>
+  <translation tag="Select Slot" es="Seleccionar ranura"/>
   <translation tag="Select Spool" es="Seleccionar bobina"/>
   <translation tag="Select a filament slot to load" es="Seleccione una ranura de filamento para cargar"/>
   <translation tag="Select a valid number" es="Seleccione un número válido"/>
@@ -2738,7 +2737,6 @@
   <translation tag="Select macro for third button" es="Seleccionar macro para el tercer botón"/>
   <translation tag="Select material to begin" es="Selecciona un material para empezar"/>
   <translation tag="Select sensor" es="Seleccionar sensor"/>
-  <translation tag="Select slot" es="Seleccionar ranura"/>
   <translation tag="Select slot failed" es="Error al seleccionar ranura"/>
   <translation tag="Select the heaters Klipper uses for your bed and hotend" es="Selecciona los calentadores que Klipper usa para tu cama y hotend"/>
   <translation tag="Select which devices the home screen power button controls" es="Seleccione qué dispositivos controla el botón de encendido"/>
@@ -2827,7 +2825,7 @@
   <translation tag="Single toggle macro. State is not tracked." es="Macro de alternancia único. El estado no se rastrea."/>
   <translation tag="Size" es="Tamaño"/>
   <translation tag="Skip" es="Omitir"/>
-  <translation tag="Skip objects..." es="Omitir objetos..."/>
+  <translation tag="Skip Objects..." es="Omitir objetos..."/>
   <translation tag="Skipped" es="Omitido"/>
   <translation tag="Sleep While Printing" es="Apagar pantalla al imprimir"/>
   <translation tag="Sleep adjusted to match dim timeout" es="Tiempo de suspensión ajustado"/>
@@ -2914,12 +2912,12 @@
   <translation tag="Start" es="Iniciar"/>
   <translation tag="Start Anyway" es="Iniciar de Todos Modos"/>
   <translation tag="Start Calibration" es="Iniciar Calibración"/>
+  <translation tag="Start Check" es="Iniciar verificación"/>
   <translation tag="Start Drying" es="Iniciar secado"/>
   <translation tag="Start Print" es="Iniciar Impresión"/>
   <translation tag="Start Probing" es="Iniciar Sondeo"/>
   <translation tag="Start anyway?" es="¿Iniciar de todos modos?"/>
   <translation tag="Start at" es="Comenzar en"/>
-  <translation tag="Start check" es="Iniciar verificación"/>
   <translation tag="Start drying" es="Iniciar secado"/>
   <translation tag="Start failed" es="Inicio fallido"/>
   <translation tag="Start next: {}" es="Iniciar siguiente: {}"/>
@@ -2998,7 +2996,6 @@
   <translation tag="TOOLS" es="HERRAMIENTAS"/>
   <translation tag="TPU" es="TPU"/>
   <translation tag="Tag Parts" es="Marcar Componentes"/>
-  <translation tag="Tag parts" es="Marcar componentes"/>
   <translation tag="Takes 3-5 min. Do not interrupt." es="Tarda 3-5 min. No interrumpa."/>
   <translation tag="Tangle prevention active" es="Prevención de enredos activa"/>
   <translation tag="Tangle prevention boosted" es="Prevención de enredos reforzada"/>
@@ -3042,6 +3039,7 @@
   <translation tag="Temporary adjustment for this print, unless saved on Controls panel" es="Ajuste temporal para esta impresión, a menos que se guarde en el panel de Controles"/>
   <translation tag="Tertiary" es="Terciario"/>
   <translation tag="Test All Lanes" es="Probar todos los carriles"/>
+  <translation tag="Test Both" es="Probar ambos"/>
   <translation tag="Test Connection" es="Probar Conexión"/>
   <translation tag="Test Grip" es="Probar el agarre"/>
   <translation tag="Test Load" es="Probar la carga"/>
@@ -3051,7 +3049,6 @@
   <translation tag="Test RS-485 link to CFS units" es="Probar el enlace RS-485 con las unidades CFS"/>
   <translation tag="Test Screensaver" es="Probar Salvapantallas"/>
   <translation tag="Test Tracker" es="Rastreador de Pruebas"/>
-  <translation tag="Test both" es="Probar ambos"/>
   <translation tag="Test label printed" es="Etiqueta de prueba impresa"/>
   <translation tag="Testing rotation: %d° (%d/%d) - %ds remaining" es="Probando rotación: %d° (%d/%d) - %ds restantes"/>
   <translation tag="Testing, servo, and motor operations" es="Operaciones de prueba, servo y motor"/>
@@ -3253,8 +3250,8 @@
   <translation tag="Trace" es="Traza"/>
   <translation tag="Trigger" es="Disparador"/>
   <translation tag="Troubleshooting:" es="Solución de problemas:"/>
+  <translation tag="Try Again" es="Reintentar"/>
   <translation tag="Try adjusting your search or filters" es="Intente ajustar su búsqueda o filtros"/>
-  <translation tag="Try again" es="Reintentar"/>
   <translation tag="Try the operation again. If it persists, check for mechanical issues." es="Intente la operación de nuevo. Si persiste, compruebe si hay problemas mecánicos."/>
   <translation tag="Tune" es="Ajustar"/>
   <translation tag="Tuning tower enabled - start a print to test" es="Torre de ajuste activada - inicie una impresión para probar"/>
@@ -3359,10 +3356,10 @@
   <translation tag="Use Android native keyboard for text input" es="Usar el teclado nativo de Android para entrada de texto"/>
   <translation tag="Use G10/G11 firmware retraction" es="Usar retracción de firmware G10/G11"/>
   <translation tag="Use New Address" es="Usar nueva dirección"/>
+  <translation tag="Use Scan" es="Usar escaneo"/>
   <translation tag="Use Unload before Eject" es="Use Descargar antes de Expulsar"/>
   <translation tag="Use first HID scanner found" es="Usar el primer escáner HID encontrado"/>
   <translation tag="Use printer type to select image" es="Usar tipo de impresora para seleccionar imagen"/>
-  <translation tag="Use scan" es="Usar escaneo"/>
   <translation tag="User intervention required" es="Se requiere intervención manual"/>
   <translation tag="VM Peak" es="Pico de VM"/>
   <translation tag="VM Size" es="Tamaño de VM"/>

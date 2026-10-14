@@ -91,14 +91,15 @@
         <bind_style_if name="bm_text_column" cond="bed_mesh_tile_rung ne 1 and bed_mesh_tile_rung ne 4"/>
       </text_small>
 
-      <!-- Wide: the profile beside its numbers. -->
+      <!-- Wide: the profile beside its numbers. The numbers size the column; a longer
+           profile name ellipsizes to their width. -->
       <lv_obj name="bed_mesh_tile_details"
               width="content" height="content" flex_flow="column" style_flex_main_place="center"
               style_flex_cross_place="start" style_pad_all="0" style_pad_row="#space_xxs" style_bg_opa="0"
               style_border_width="0" scrollable="false" clickable="false" event_bubble="true">
         <bind_flag_if_eq subject="bed_mesh_tile_show_details" flag="hidden" ref_value="0"/>
         <text_small name="bed_mesh_tile_details_name"
-                    width="content" bind_text="bed_mesh_profile_name" long_mode="dots" clickable="false"
+                    width="100%" bind_text="bed_mesh_profile_name" long_mode="dots" clickable="false"
                     event_bubble="true"/>
         <text_body name="bed_mesh_tile_details_range"
                    bind_text="bed_mesh_variance" clickable="false" event_bubble="true">
@@ -166,7 +167,7 @@
           <bind_flag_if_eq subject="bed_mesh_tile_calibrating" flag="hidden" ref_value="1"/>
           <event_cb trigger="clicked" callback="bed_mesh_tile_calibrate_cb"/>
         </ui_button>
-        <ui_button name="bed_mesh_tile_load" width="content" height="#button_height_sm" text="Load profile">
+        <ui_button name="bed_mesh_tile_load" width="content" height="#button_height_sm" text="Load Profile">
           <bind_flag_if_eq subject="bed_mesh_tile_show_load" flag="hidden" ref_value="0"/>
           <event_cb trigger="clicked" callback="bed_mesh_tile_load_cb"/>
         </ui_button>

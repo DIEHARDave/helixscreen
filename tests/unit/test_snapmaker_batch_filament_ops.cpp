@@ -681,10 +681,9 @@ TEST_CASE_METHOD(BatchFixture,
         helix::AmsState::instance().sync_from_backend();
         lv_subject_t* header = lv_xml_get_subject(nullptr, "ams_current_slot_text");
         REQUIRE(header != nullptr);
-        // Head 3 is 0-based; lane labels are 1-based over the heads. The
-        // fixture resets the language, so the format renders as written.
+        // Head 3 is 0-based; lane labels are 1-based over the heads.
         CHECK(std::string(lv_subject_get_string(header)) ==
-              "Current: " + helix::ui::lane_label(backend().lane_noun(), 3));
+              helix::ui::lane_label(backend().lane_noun(), 3));
     }
 }
 
@@ -739,8 +738,7 @@ TEST_CASE_METHOD(BatchFixture, "An op's working head names the header, not the l
     set_channel(1, "unload_homing", "ok", /*detected=*/true, /*module=*/true, /*no_auto=*/false);
     ams.sync_from_backend();
 
-    const std::string working_header =
-        "Current: " + helix::ui::lane_label(backend().lane_noun(), 1);
+    const std::string working_header = helix::ui::lane_label(backend().lane_noun(), 1);
     CHECK(std::string(lv_subject_get_string(header)) == working_header);
     CHECK(lv_subject_get_int(color) == card_at_rest);
 
@@ -804,7 +802,7 @@ TEST_CASE_METHOD(BatchFixture, "A batch the firmware ends mid-head leaves no wor
     lv_subject_t* header = lv_xml_get_subject(nullptr, "ams_current_slot_text");
     REQUIRE(header != nullptr);
     CHECK(std::string(lv_subject_get_string(header)) ==
-          "Current: " + helix::ui::lane_label(backend().lane_noun(), 3));
+          helix::ui::lane_label(backend().lane_noun(), 3));
 }
 
 // ============================================================================

@@ -318,7 +318,6 @@ TEST_CASE_METHOD(PagingFixture, "Unit view: the panel opens on the overview",
     CHECK(lv_obj_has_flag(named("unit_detail_container"), LV_OBJ_FLAG_HIDDEN));
     CHECK_FALSE(lv_obj_has_flag(named("header_title"), LV_OBJ_FLAG_HIDDEN));
     CHECK(lv_obj_has_flag(named("header_backend_suffix"), LV_OBJ_FLAG_HIDDEN));
-    CHECK(lv_obj_has_flag(named("header_title_unit_view"), LV_OBJ_FLAG_HIDDEN));
 }
 
 TEST_CASE_METHOD(PagingFixture, "Unit view: tapping a card opens that unit's page",
@@ -940,14 +939,12 @@ TEST_CASE_METHOD(PagingFixture, "Unit view: the hub holds still on a unit with f
 }
 
 TEST_CASE_METHOD(PagingFixture,
-                 "Unit view: a small screen's header names the unit instead of the screen",
+                 "Unit view: the header names the unit, its logo and name on one axis",
                  "[ams][pages][panel]") {
     open_at(2);
     lv_subject_t* bp = lv_xml_get_subject(nullptr, "ui_breakpoint");
     REQUIRE(bp != nullptr);
     const int original = lv_subject_get_int(bp);
-    lv_obj_t* title = named("header_title_unit_view");
-    lv_obj_t* colon = named("header_colon");
     lv_obj_t* logo = named("detail_logo");
     lv_obj_t* name = named("detail_unit_name");
 
@@ -956,12 +953,14 @@ TEST_CASE_METHOD(PagingFixture,
         lv_subject_set_int(bp, breakpoint);
         helix::ui::UpdateQueue::instance().drain();
         process_lvgl(20);
-        const bool small = breakpoint < 2;
-        // Below breakpoint 2 the title and the colon give way; the logo and name never do.
-        CHECK(lv_obj_has_flag(title, LV_OBJ_FLAG_HIDDEN) == small);
-        CHECK(lv_obj_has_flag(colon, LV_OBJ_FLAG_HIDDEN) == small);
+        lv_obj_update_layout(lv_obj_get_screen(logo));
         CHECK_FALSE(lv_obj_has_flag(logo, LV_OBJ_FLAG_HIDDEN));
         CHECK_FALSE(lv_obj_has_flag(name, LV_OBJ_FLAG_HIDDEN));
+        lv_area_t logo_box;
+        lv_area_t name_box;
+        lv_obj_get_coords(logo, &logo_box);
+        lv_obj_get_coords(name, &name_box);
+        CHECK(std::abs((logo_box.y1 + logo_box.y2) - (name_box.y1 + name_box.y2)) <= 2);
         CHECK_FALSE(lv_obj_has_flag(named("header_backend_suffix"), LV_OBJ_FLAG_HIDDEN));
         // The overview's own title is not in play.
         CHECK(lv_obj_has_flag(named("header_title"), LV_OBJ_FLAG_HIDDEN));
@@ -1021,6 +1020,22 @@ TEST_CASE_METHOD(LVGLTestFixture, "AmsState: the header's has-logo flag follows 
     ams.set_unit_page_header("Box 7", "");
     CHECK(has_logo() == 0);
     ams.set_unit_page_header("", nullptr);
+}
+
+TEST_CASE_METHOD(LVGLTestFixture, "AmsState: the header's logo-color flag follows the shown unit",
+                 "[ams][pages][subjects][logo]") {
+    auto& ams = AmsState::instance();
+    ams.init_subjects(true);
+    auto is_color = [&] { return subject_value(ams.get_ams_page_unit_logo_color_subject()); };
+
+    ams.set_unit_page_header("OpenAMS 1", "A:/openams.png", true);
+    CHECK(is_color() == 1);
+    // The next unit's mono mark is tinted again.
+    ams.set_unit_page_header("Box 7", "A:/mono.png", false);
+    CHECK(is_color() == 0);
+    ams.set_unit_page_header("OpenAMS 1", "A:/openams.png", true);
+    ams.set_unit_page_header("", nullptr);
+    CHECK(is_color() == 0);
 }
 
 TEST_CASE_METHOD(LVGLTestFixture,

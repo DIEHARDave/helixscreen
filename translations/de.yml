@@ -475,7 +475,7 @@ translations:
   Calibrate Purge Chute: Entlüftungsrinne kalibrieren
   Calibrate X: X kalibrieren
   Calibrate Y: Y kalibrieren
-  Calibrate all tools: Alle Werkzeuge kalibrieren
+  Calibrate All Tools: Alle Werkzeuge kalibrieren
   Calibrate input shaping to reduce ringing artifacts in prints: Input Shaping kalibrieren,
     um Ringing-Artefakte im Druck zu reduzieren
   Calibrate tool offsets?: Werkzeug-Offsets kalibrieren?
@@ -600,9 +600,9 @@ translations:
   Check failed: Prüfung fehlgeschlagen
   Check filament: Filament prüfen
   Check for Updates: Nach Updates suchen
-  Check slot: Slot prüfen
+  Check Slot: Slot prüfen
   Check slot failed: Slot prüfen fehlgeschlagen
-  Check slots: Slots prüfen
+  Check Slots: Slots prüfen
   Check slots failed: Slots prüfen fehlgeschlagen
   Check that only one filament path is active: Prüfen, dass nur ein Filamentpfad aktiv ist
   Check that the cutter mechanism is properly installed: Prüfen, ob der Schneidmechanismus korrekt eingebaut ist
@@ -880,9 +880,6 @@ translations:
   'Current name:': 'Aktueller Name:'
   'Current:': 'Aktuell:'
   'Current: %d°C | Target: %d°C': 'Aktuell: %d°C | Ziel: %d°C'
-  'Current: %s': 'Aktuell: %s'
-  'Current: %s · %s': 'Aktuell: %s · %s'
-  'Current: Bypass': 'Aktuell: Bypass'
   Currently Loaded: Aktuell geladen
   Currently printing: Aktueller Druck
   Custom: Benutzerdefiniert
@@ -1587,7 +1584,7 @@ translations:
   Home and sweep the cutter to re-find its position: Referenzfahrt und Messfahrt des Schneiders, um seine Position neu zu ermitteln
   Home failed: Referenzfahrt fehlgeschlagen
   Home printer first?: Drucker zuerst referenzieren?
-  Home selector: Selektor referenzieren
+  Home Selector: Selektor referenzieren
   Homing AFC system...: AFC-Referenzfahrt...
   Homing Failed: 'Referenzfahrt fehlgeschlagen'
   Homing X...: Referenzfahrt X...
@@ -1874,7 +1871,7 @@ translations:
   Load filament: 'Filament laden'
   Load filament first: Laden Sie zuerst Filament
   Load or unload filament.: Filament laden oder entladen.
-  Load profile: 'Profil laden'
+  Load Profile: 'Profil laden'
   Load the required filaments or start anyway?: Benötigte Filamente laden oder trotzdem
     starten?
   'Load, unload, and swap spools. View your multi-filament system at a glance, map colors to slots, and monitor runout sensors.': 'Spulen laden, entladen und wechseln. Ihr Multi-Filament-System auf einen Blick sehen, Farben den Slots zuordnen und Filamentsensoren überwachen.'
@@ -2807,6 +2804,7 @@ translations:
   Reset failed: Zurücksetzen fehlgeschlagen
   Reset motor run-time counter: 'Den Betriebsstundenzähler des Motors zurücksetzen'
   Reset tags: Markierungen zurücksetzen
+  Reset Tags: Markierungen zurücksetzen
   Reset to Default: Auf Standard zurücksetzen
   Reset to defaults: Auf Standardwerte zurücksetzen
   Reset to original values: Auf Originalwerte zurücksetzen
@@ -2943,7 +2941,7 @@ translations:
   Save changes to persist them across restarts?: Änderungen speichern, um sie über
     Neustarts hinweg zu erhalten?
   'Save failed: {}': 'Speichern fehlgeschlagen: {}'
-  Save offsets: Offsets speichern
+  Save Offsets: Offsets speichern
   Save offsets?: Offsets speichern?
   Save to Spoolman: In Spoolman speichern
   Saved Z-Offset: Gespeicherter Z-Offset
@@ -3035,7 +3033,7 @@ translations:
   Select macro for third button: Makro für dritte Taste auswählen
   Select material to begin: Material auswählen, um zu beginnen
   Select sensor: Sensor auswählen
-  Select slot: Slot auswählen
+  Select Slot: Slot auswählen
   Select slot failed: Slot auswählen fehlgeschlagen
   Select the heaters Klipper uses for your bed and hotend: Wählen Sie die Heizungen,
     die Klipper für Bett und Hotend verwendet
@@ -3140,7 +3138,7 @@ translations:
     nicht verfolgt.
   Size: Größe
   Skip: Überspringen
-  Skip objects...: 'Objekte überspringen...'
+  Skip Objects...: 'Objekte überspringen...'
   Skipped: 'Übersprungen'
   Sleep While Printing: Ruhemodus beim Drucken
   Sleep adjusted to match dim timeout: Ruhemodus-Zeitlimit angepasst
@@ -3243,7 +3241,7 @@ translations:
   Start Probing: Abtasten starten
   Start anyway?: 'Trotzdem starten?'
   Start at: Beginnen bei
-  Start check: Prüfung starten
+  Start Check: Prüfung starten
   Start drying: Trocknung starten
 
   Start failed: Start fehlgeschlagen
@@ -3331,7 +3329,6 @@ translations:
   TOOLS: WERKZEUGE
   TPU: TPU
   Tag Parts: Bauteile markieren
-  Tag parts: Bauteile markieren
   Takes 3-5 min. Do not interrupt.: Dauert 3-5 Min. Nicht unterbrechen.
   Tangle prevention active: Verwicklungsschutz aktiv
   Tangle prevention boosted: Verwicklungsschutz verstärkt
@@ -3388,7 +3385,7 @@ translations:
   Test RS-485 link to CFS units: 'RS-485-Verbindung zu den CFS-Einheiten testen'
   Test Screensaver: Bildschirmschoner testen
   Test Tracker: Test-Tracker
-  Test both: Beide testen
+  Test Both: Beide testen
   Test label printed: Testetikett gedruckt
   'Testing rotation: %d° (%d/%d) - %ds remaining': 'Drehung testen: %d°
     (%d/%d) - %ds verbleibend'
@@ -3662,7 +3659,7 @@ translations:
   Trigger: Auslöser
   'Troubleshooting:': 'Fehlerbehebung:'
   Try adjusting your search or filters: Versuchen Sie Suche oder Filter anzupassen
-  Try again: 'Erneut versuchen'
+  Try Again: 'Erneut versuchen'
   Try the operation again. If it persists, check for mechanical issues.: Versuchen Sie den Vorgang erneut. Wenn das Problem bestehen bleibt, prüfen Sie auf mechanische Probleme.
   Tune: Abstimmen
   Tuning tower enabled - start a print to test: Tuning-Tower aktiviert - starten Sie
@@ -3777,7 +3774,7 @@ translations:
   Use Unload before Eject: 'Verwenden Sie Entladen vor Auswerfen'
   Use first HID scanner found: 'Ersten gefundenen HID-Scanner verwenden'
   Use printer type to select image: Druckertyp zur Bildauswahl verwenden
-  Use scan: Scan verwenden
+  Use Scan: Scan verwenden
   User intervention required: 'Manueller Eingriff erforderlich'
   VM Peak: VM-Spitze
   VM Size: VM-Größe

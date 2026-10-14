@@ -7,6 +7,7 @@
 #include "ui_ams_slot_layout.h"
 #include "ui_fonts.h"
 #include "ui_observer_guard.h"
+#include "ui_text.h"
 #include "ui_toolhead_badge.h"
 #include "ui_update_queue.h"
 #include "ui_utils.h"
@@ -809,14 +810,10 @@ static void* ams_slot_xml_create(lv_xml_parser_state_t* state, const char** attr
     if (data->material_label) {
         lv_label_set_text(data->material_label, "--");
     }
-    // A dotted label ellipsizes only at a fixed height; at content height it
-    // wraps into the spool instead. One line of its own font is that height.
+    // At content height a dotted label wraps into the spool instead of
+    // ellipsizing, and the stagger rows below are laid out one line apart.
     for (lv_obj_t* label : {data->name_label, data->material_label}) {
-        if (!label)
-            continue;
-        // DECLARATIVE_OK: measured from the label's computed font, which XML cannot name
-        lv_obj_set_height(label,
-                          lv_font_get_line_height(lv_obj_get_style_text_font(label, LV_PART_MAIN)));
+        helix::ui::label_hold_one_line(label);
     }
     if (data->slot_badge) {
         lv_label_set_text(data->slot_badge, "?");
@@ -1065,9 +1062,9 @@ void ui_ams_slot_set_layout_info(lv_obj_t* obj, int slot_index, int total_count)
     int32_t line_height = lv_font_get_line_height(label_font);
     const int32_t row_height = helix::ui::ams_stagger_row_height(line_height, bp);
     if (data->material_label && stagger_rows > 1) {
-        // DECLARATIVE_OK: computed font; the stagger rows are sized from it
+        // DECLARATIVE_OK: computed font; the stagger rows are sized from it. The
+        // label is held to one line, so its height follows the font.
         lv_obj_set_style_text_font(data->material_label, label_font, LV_PART_MAIN);
-        lv_obj_set_height(data->material_label, line_height);
     }
 
     // For staggered labels, we use absolute positioning

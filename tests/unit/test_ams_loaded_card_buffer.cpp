@@ -14,6 +14,7 @@
 #include "../test_helpers/buffer_infos.h"
 #include "ams_state.h"
 
+#include <cstdlib>
 #include <string>
 
 #include "../catch_amalgamated.hpp"
@@ -103,8 +104,20 @@ TEST_CASE_METHOD(LVGLUITestFixture,
         const lv_area_t details = coords_of(card, "loaded_details");
         const lv_area_t body = coords_of(card, "loaded_body");
         const lv_area_t buffer = coords_of(card, "buffer_mini");
-        // Both lines take the body's width, one line each, ellipsized beyond.
-        CHECK(lv_area_get_width(&details) == lv_area_get_width(&body));
+        if (breakpoint < 3) {
+            // A colour bar leads; both lines take the body's width.
+            CHECK_FALSE(hidden(card, "loaded_swatch"));
+            CHECK(hidden(card, "loaded_spool"));
+            CHECK(lv_area_get_width(&details) == lv_area_get_width(&body));
+        } else {
+            // The spool leads, and the lines take the rest of its track.
+            CHECK(hidden(card, "loaded_swatch"));
+            REQUIRE_FALSE(hidden(card, "loaded_spool"));
+            const lv_area_t spool = coords_of(card, "loaded_spool");
+            CHECK(details.x1 > spool.x2);
+            CHECK(details.x2 == body.x2);
+        }
+        // One line each, ellipsized beyond.
         CHECK(name.y1 > position.y1);
         const lv_font_t* font =
             lv_obj_get_style_text_font(lv_obj_find_by_name(card, "loaded_material"), LV_PART_MAIN);
@@ -113,11 +126,37 @@ TEST_CASE_METHOD(LVGLUITestFixture,
         CHECK(buffer.y1 > details.y2);
     }
 
-    // During any operation the meters give their room to the step progress.
+    // From medium up in landscape the meters are two equal tiles on one row,
+    // under a divider that goes with them.
     lv_subject_t* clog_mode = lv_xml_get_subject(nullptr, "clog_meter_mode");
     REQUIRE(clog_mode != nullptr);
     const int clog_mode_before = lv_subject_get_int(clog_mode);
     lv_subject_set_int(clog_mode, 1);
+    lv_subject_set_int(bp, 3);
+    process_lvgl(20);
+    lv_obj_update_layout(card);
+    {
+        REQUIRE_FALSE(hidden(card, "loaded_meter_divider"));
+        const lv_area_t divider = coords_of(card, "loaded_meter_divider");
+        const lv_area_t details = coords_of(card, "loaded_details");
+        const lv_area_t clog = coords_of(card, "clog_meter");
+        const lv_area_t buffer = coords_of(card, "buffer_mini");
+        CHECK(divider.y1 > details.y2);
+        CHECK(clog.y1 > divider.y2);
+        CHECK(clog.y1 == buffer.y1);
+        CHECK(lv_area_get_height(&clog) == lv_area_get_height(&buffer));
+        CHECK(std::abs(lv_area_get_width(&clog) - lv_area_get_width(&buffer)) <= 1);
+        CHECK(text(card, "clog_caption") == "Clog");
+    }
+    // No meter to show: no divider either.
+    lv_subject_set_int(clog_mode, 0);
+    lv_subject_set_int(ams.get_buffer_present_subject(), 0);
+    process_lvgl(20);
+    CHECK(hidden(card, "loaded_meter_divider"));
+    lv_subject_set_int(clog_mode, 1);
+    lv_subject_set_int(ams.get_buffer_present_subject(), 1);
+
+    // During any operation the meters give their room to the step progress.
     process_lvgl(20);
     REQUIRE_FALSE(hidden(card, "clog_meter"));
     lv_subject_set_int(ams.get_ams_action_subject(), static_cast<int>(AmsAction::LOADING));

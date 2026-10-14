@@ -309,6 +309,7 @@ Subjects are the plugin's whole output: XML binds to them, Lua sets them.
 | `helix.ui.toast(msg[, severity])` | | `severity` is `"info"` (default), `"success"`, `"warning"` or `"error"` |
 | `helix.ui.confirm(title, msg[, opts])` | | `opts.severity` (`"info"`, `"warning"`, `"error"`), `opts.confirm_text` (default `"OK"`), `opts.on_confirm`, `opts.on_cancel`; a dismissed dialog runs `on_cancel` too; at most one open dialog per plugin; not during `on_unload` |
 | `helix.ui.overlay(component[, attrs])` | handle | opens one of the plugin's own components full-screen; a component the plugin already has open is a no-op returning the same handle (the showing overlay keeps its attrs and `on_close`); `attrs` is a table of string attributes passed to the component plus an optional `on_close` function; `handle.close()` closes it; the plugin unloading closes every open overlay; not during `on_unload` |
+| `helix.ui.text_width(str[, font])` | integer px | width `str` draws at in the live theme font, measured the way `c:text` draws it (no letter spacing, one line); `font` is a base token without the `font_` prefix (default `"body"`), and a size-suffixed or unknown token is an error, as for canvas text; `str` is at most 1024 bytes. Call it where the layout is decided (a widget hook, a canvas redraw), since the theme font changes with the display tier |
 
 ### helix.widget (`src/plugin/lua_bind_widget.cpp`)
 
@@ -360,6 +361,9 @@ Drawing is staged, then published:
 | `c:circle(cx, cy, r[, opts])` | `fill`, `border`, `border_width`, `opa` | -, -, 1, 100 |
 | `c:arc(cx, cy, r, a1, a2[, opts])` | `color`, `width`, `opa` | `"text"`, 1, 100 |
 | `c:text(x, y, str[, opts])` | `font`, `color` | `"body"`, `"text"` |
+
+To fit or center canvas text, measure it with `helix.ui.text_width(str, font)` using the same
+`font` the `c:text` call names.
 
 `opa` is the primitive's alpha as a percent, 0 to 100 (default 100, fully opaque); it
 covers a stroke, a fill and a border alike.
@@ -556,6 +560,7 @@ approval* instead of loading; enabling it again approves only the new lines.
 | Canvas coordinates | finite, within +-16384; stroke and border widths 0 to 64 | `include/plugin_canvas.h#kMaxCanvasCoord` |
 | Canvas opa | 0 to 100 percent on line/polyline/arc/rect/circle, and fill_opa on polyline | `src/plugin/lua_bind_canvas.cpp` |
 | Canvas text | at most 256 bytes per string | `src/plugin/lua_bind_canvas.cpp` |
+| Measured text | at most 1024 bytes per `helix.ui.text_width` string | `src/plugin/lua_bind_ui.cpp` |
 | Canvas list bytes | charged against the plugin memory cap as staged | `include/plugin_canvas.h#DisplayList/bytes` |
 
 A fault (time budget, memory, error count, or `main.lua` failing to load) unloads the

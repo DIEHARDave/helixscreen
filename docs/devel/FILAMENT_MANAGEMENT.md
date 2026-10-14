@@ -1517,8 +1517,9 @@ so the whole derivation runs — `clog_healthy`, `clog_warning`, `clog_blocked`,
 `buffer_fault`, `clog_off`. The buffer-reading scenarios are listed under
 [Filament buffer reading](#filament-buffer-reading).
 
-**Note line.** The bar carries one line under its reading (`clog_meter_note_text`, hidden by
+**Note line.** The bar carries a note under its reading (`clog_meter_note_text`, hidden by
 `clog_meter_note_kind`): a tripped FlowGuard's reason, else tangle prevention active or boosted.
+The firmware reason wraps rather than ellipsizing; the two fixed phrases hold one line.
 `helix::ui::clog_meter_note()` holds the precedence.
 
 ### AFC buffers: switched vs FPS_PSF

@@ -399,6 +399,8 @@ HelixScreen provides semantic widgets that already have the right colors, fonts,
 
 All of these support `bind_text="subject_name"` for dynamic content and `text="static text"` for fixed content. You can override the color with `style_text_color="#token"`.
 
+With `long_mode="dots"` and no explicit height, a `text_*` label holds exactly one line and ellipsizes; it still needs a width bound (`width="100%"`, or `flex_grow` in a row). A px/% height or `style_max_height` opts out. Text meant to wrap must not use `dots`. See `LVGL9_XML_GUIDE.md`, "One-line labels: `long_mode="dots"`".
+
 ```xml
 <text_heading text="Temperature"/>
 <text_body bind_text="nozzle_temp_display"/>

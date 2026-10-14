@@ -4,6 +4,7 @@
 #include "job_queue_widget.h"
 
 #include "ui_next_tick.h"
+#include "ui_text.h"
 #include "ui_utils.h"
 
 #include "app_globals.h"
@@ -239,6 +240,7 @@ void JobQueueWidget::rebuild_job_list() {
         lv_obj_set_style_text_color(name_label, text_color, 0);
         lv_obj_set_flex_grow(name_label, 1);
         lv_label_set_long_mode(name_label, LV_LABEL_LONG_DOT);
+        helix::ui::label_hold_one_line(name_label);
 
         // Time in queue (only in expanded mode)
         if (current_size_mode_ >= 2 && job.time_in_queue > 0) {
