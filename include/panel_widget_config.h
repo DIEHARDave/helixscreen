@@ -270,8 +270,23 @@ class PanelWidgetConfig {
     snapshot_capabilities(const nlohmann::json& table, const nlohmann::json* overlay = nullptr);
 
     /// The shipped default layout table (default_layout.json), parsed; null
-    /// when the file is missing or not valid JSON.
+    /// when the file is missing or not valid JSON. The parse is kept until the
+    /// file's mtime or size changes, so edits to the runtime-editable table
+    /// still apply. LVGL thread only.
     static nlohmann::json load_default_table();
+
+    /// How many times load_default_table() has read the file from disk.
+    static int default_table_reads();
+
+    /// True while a layout edit session has this panel open. A live default
+    /// does not re-resolve then: the arrangement under the user's hands stays
+    /// put until the session ends.
+    void set_edit_session_open(bool open) {
+        edit_session_open_ = open;
+    }
+    bool edit_session_open() const {
+        return edit_session_open_;
+    }
 
     /// True while the saved pages are exactly the arrangement the resolver
     /// produced: a default block is stamped and its hash matches
@@ -436,6 +451,7 @@ class PanelWidgetConfig {
     /// builder. An empty signature means the anchors still wait for a measured
     /// grid; the hash is arrangement_hash() of the pages as stamped.
     bool has_default_ = false;
+    bool edit_session_open_ = false;
     std::string default_signature_;
     std::string default_hash_;
     std::string grid_signature_;

@@ -22,9 +22,11 @@
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
+#include <cstdint>
 #include <iterator>
 #include <set>
 #include <string>
+#include <sys/stat.h>
 
 namespace helix {
 
@@ -560,7 +562,8 @@ void PanelWidgetConfig::read_default_block(const nlohmann::json& node) {
         return;
     }
     // The older spelling of a block still waiting for a measured grid. It
-    // carries no hash, so it never reads as an unedited default.
+    // carries no hash and no signature, which is_unedited_default() reads as
+    // the builder's own pending default.
     if (helix::json_util::safe_string(node, "anchors") == "pending") {
         has_default_ = true;
     }
@@ -989,16 +992,47 @@ bool anchor_fits_grid(int col, int row, int colspan, int rowspan, int cols, int 
 
 } // namespace
 
+namespace {
+int g_default_table_reads = 0;
+} // namespace
+
+int PanelWidgetConfig::default_table_reads() {
+    return g_default_table_reads;
+}
+
 nlohmann::json PanelWidgetConfig::load_default_table() {
-    // config/default_layout.json is runtime-editable, so it is read each time.
+    // config/default_layout.json is runtime-editable: the parse is reused until
+    // the file's path, mtime or size changes.
+    static std::string cached_path;
+    static std::int64_t cached_mtime_ns = -1;
+    static std::int64_t cached_size = -1;
+    static nlohmann::json cached;
+
+    const std::string path = helix::find_readable("default_layout.json");
+    struct stat st {};
+    const bool have_stat = !path.empty() && ::stat(path.c_str(), &st) == 0;
+    const std::int64_t mtime_ns =
+        have_stat ? static_cast<std::int64_t>(st.st_mtim.tv_sec) * 1000000000LL + st.st_mtim.tv_nsec
+                  : -1;
+    const std::int64_t size = have_stat ? static_cast<std::int64_t>(st.st_size) : -1;
+    if (have_stat && path == cached_path && mtime_ns == cached_mtime_ns && size == cached_size) {
+        return cached;
+    }
+
+    ++g_default_table_reads;
     nlohmann::json layout;
-    if (const auto layout_text =
-            helix::text_io::read_file(helix::find_readable("default_layout.json"))) {
+    if (const auto layout_text = helix::text_io::read_file(path)) {
         layout = nlohmann::json::parse(*layout_text, nullptr, false);
         if (layout.is_discarded()) {
             spdlog::warn("[PanelWidgetConfig] Failed to parse default_layout.json: not valid JSON");
             layout = nlohmann::json();
         }
+    }
+    if (have_stat) {
+        cached_path = path;
+        cached_mtime_ns = mtime_ns;
+        cached_size = size;
+        cached = layout;
     }
     return layout;
 }
@@ -1418,7 +1452,7 @@ bool PanelWidgetConfig::parked_layout_is_users(const std::string& signature) con
 }
 
 bool PanelWidgetConfig::reresolve_default_if_changed(int cols, int rows) {
-    if (cols <= 0 || rows <= 0 || pages_.empty() || !is_unedited_default()) {
+    if (edit_session_open_ || cols <= 0 || rows <= 0 || pages_.empty() || !is_unedited_default()) {
         return false;
     }
     const std::string target = std::to_string(cols) + "x" + std::to_string(rows);

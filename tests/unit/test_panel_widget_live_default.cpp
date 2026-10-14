@@ -27,6 +27,7 @@
 #include "ams_state.h"
 #include "config.h"
 #include "connection_state.h"
+#include "data_root_resolver.h"
 #include "default_layout_resolver.h"
 #include "grid_layout.h"
 #include "helix-xml/src/xml/lv_xml.h"
@@ -40,9 +41,11 @@
 #include "tool_state.h"
 
 #include <algorithm>
+#include <fcntl.h>
 #include <memory>
 #include <set>
 #include <string>
+#include <sys/stat.h>
 #include <vector>
 
 #include "../catch_amalgamated.hpp"
@@ -777,4 +780,56 @@ TEST_CASE_METHOD(LiveDefaultFixture,
             check_none_enabled_unplaced(panel);
         }
     }
+}
+
+TEST_CASE_METHOD(LiveDefaultFixture,
+                 "live default: an open edit session keeps the arrangement still",
+                 "[live_default]") {
+    use_geometry(kMedium12x8);
+    require_font_tokens_distinct();
+    pin_capabilities(0);
+    const std::string panel = fresh_panel("live_default_edit_session");
+
+    populate(panel);
+    REQUIRE(config(panel).is_unedited_default());
+    check_env_fil_slot(panel);
+
+    config(panel).set_edit_session_open(true);
+    set("ams_slot_count", 4);
+    populate(panel);
+    check_env_fil_slot(panel);
+    CHECK(config(panel).is_unedited_default());
+
+    config(panel).set_edit_session_open(false);
+    populate(panel);
+    check_ams_slot(panel);
+    CHECK(config(panel).is_unedited_default());
+}
+
+TEST_CASE_METHOD(LiveDefaultFixture,
+                 "live default: the default table is parsed once per file stamp",
+                 "[live_default]") {
+    const std::string path = helix::find_readable("default_layout.json");
+    REQUIRE_FALSE(path.empty());
+    struct stat before {};
+    REQUIRE(::stat(path.c_str(), &before) == 0);
+    auto restore = helix::test::ScopeExit([&]() {
+        struct timespec times[2] = {before.st_atim, before.st_mtim};
+        ::utimensat(AT_FDCWD, path.c_str(), times, 0);
+    });
+
+    PanelWidgetConfig::load_default_table();
+    const int reads = PanelWidgetConfig::default_table_reads();
+    const auto table = PanelWidgetConfig::load_default_table();
+    PanelWidgetConfig::load_default_table();
+    CHECK(PanelWidgetConfig::default_table_reads() == reads);
+    CHECK(table.is_object());
+
+    struct timespec bumped[2] = {before.st_atim, before.st_mtim};
+    bumped[1].tv_sec += 7;
+    REQUIRE(::utimensat(AT_FDCWD, path.c_str(), bumped, 0) == 0);
+    PanelWidgetConfig::load_default_table();
+    CHECK(PanelWidgetConfig::default_table_reads() == reads + 1);
+    PanelWidgetConfig::load_default_table();
+    CHECK(PanelWidgetConfig::default_table_reads() == reads + 1);
 }
