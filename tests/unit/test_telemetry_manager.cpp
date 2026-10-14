@@ -1824,6 +1824,21 @@ TEST_CASE_METHOD(TelemetryTestFixture,
     REQUIRE_FALSE(tm.had_update_restart());
 }
 
+TEST_CASE_METHOD(TelemetryTestFixture, "Crash event: app_board is the resolved board",
+                 "[telemetry][crash]") {
+    helix::test::ScopedBoard board(helix::board::Board::Creator5Pro);
+    auto& tm = TelemetryManager::instance();
+    tm.set_enabled(true);
+    write_file("crash.txt", "signal:11\nname:SIGSEGV\nversion:0.14.0\n");
+
+    tm.check_previous_crash();
+
+    REQUIRE(tm.queue_size() == 1);
+    auto event = tm.get_queue_snapshot()[0];
+    CHECK(event["app_board"] == "creator5-pro");
+    CHECK(event["app_platform"] == helix::platform::current_key());
+}
+
 TEST_CASE_METHOD(TelemetryTestFixture, "Post-update crash: had_update_restart is false by default",
                  "[telemetry][update][crash]") {
     auto& tm = TelemetryManager::instance();

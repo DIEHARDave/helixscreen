@@ -112,7 +112,8 @@ function mapEventToDataPointInternal(
         String(event.load_base ?? ""),
         String(event.fault_code_name ?? ""),
         String(event.fault_addr ?? ""),
-        "",
+        // blob8: resolved printer board, as the session event's blob11.
+        String(app.board ?? event.app_board ?? event.board ?? ""),
         "",
         "",
         "",
