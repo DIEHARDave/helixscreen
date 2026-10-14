@@ -331,7 +331,7 @@ TEST_CASE("resolver: an earlier alternative is taken when any lead-cell candidat
        "alternatives": [
          {"cells": [{"candidates": ["dryer", "led", "filament"], "at": [0, 0, 2, 2]},
                     {"candidates": ["dryer", "led", "filament"], "at": [2, 0, 2, 2]}]},
-         {"cells": [{"candidates": ["filament"], "at": [0, 0, 2, 2]}]}]}]})json");
+         {"cells": [{"candidates": ["notifications"], "at": [0, 0, 2, 2]}]}]}]})json");
     CapabilitySnapshot caps;
     caps.subjects["home_dryer_available"] = 0;
     caps.subjects["led_controllable"] = 1;
@@ -340,11 +340,14 @@ TEST_CASE("resolver: an earlier alternative is taken when any lead-cell candidat
     require_cell(r, "led", 2, 2, 2, 2);
     require_cell(r, "filament", 4, 2, 2, 2);
 
-    // No candidate in the lead cell qualifies: the pair gives way.
+    CHECK(placed_entry(r, "notifications") == nullptr);
+
+    // No candidate in the lead cell qualifies: the pair gives way to the single.
     caps.subjects["led_controllable"] = 0;
     caps.subjects["filament_sensor_count"] = 0;
     const auto none = resolve(table, "medium", caps);
-    CHECK(none.placed.empty());
+    REQUIRE(none.placed.size() == 1);
+    require_cell(none, "notifications", 2, 2, 2, 2);
 }
 
 TEST_CASE("resolver: cells sharing a list fill in written order and leave the rest empty",

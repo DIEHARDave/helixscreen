@@ -2407,6 +2407,11 @@ const std::vector<Persona> kPersonas = {
      {{"temperature", 0, 0, 2, 2}, {"bed_temperature", 2, 0, 2, 2}, {"filament", 4, 0, 2, 2},
       {"notifications", 6, 0, 2, 2}, {"print_status", 0, 2, 8, 4}},
      {"printer_image", "fan_stack", "led", "temp_graph", "ams"}},
+    {"creality hi combo micro@8x6: the CFS takes the readout cell", "micro", 8, 6, {},
+     {{"ams_slot_count", 4}, {"led_controllable", 1}, {"filament_sensor_count", 1}},
+     {{"temperature", 0, 0, 2, 2}, {"bed_temperature", 2, 0, 2, 2}, {"ams", 4, 0, 2, 2},
+      {"notifications", 6, 0, 2, 2}, {"print_status", 0, 2, 8, 4}},
+     {"printer_image", "fan_stack", "filament", "led", "temp_graph"}},
     {"u1 tiny: the tool tile lists all four tools", "tiny", 10, 8, {},
      {{"ams_slot_count", 4}, {"led_controllable", 1}, {"filament_sensor_count", 1}},
      {{"printer_image", 0, 0, 4, 4}, {"temperature", 4, 0, 2, 2}, {"bed_temperature", 6, 0, 2, 2},
@@ -2714,6 +2719,9 @@ TEST_CASE("default_layout: every declared gap is whole cells on its grid",
             continue;
         }
         for (auto key = (*t.table)["gaps"].begin(); key != (*t.table)["gaps"].end(); ++key) {
+            // Each track is declared at most once: a duplicated or overlapping
+            // rectangle would otherwise merge silently into the coverage set.
+            TrackSet declared;
             const auto pk = parse_placement_key(key.key());
             int cols = pk.cols;
             int rows = pk.rows;
@@ -2737,6 +2745,12 @@ TEST_CASE("default_layout: every declared gap is whole cells on its grid",
                 CHECK(h % 2 == 0);
                 CHECK(c + w <= cols);
                 CHECK(r + h <= rows);
+                for (int y = r; y < r + h; ++y) {
+                    for (int x = c; x < c + w; ++x) {
+                        INFO("track (" << x << "," << y << ")");
+                        CHECK(declared.insert({x, y}).second);
+                    }
+                }
                 ++gaps;
             }
         }

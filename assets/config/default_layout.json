@@ -480,7 +480,24 @@
         {
           "cells": [
             {
-              "candidates": "ENV_FIL",
+              "candidates": [
+                "ams",
+                "filament",
+                "dryer",
+                {
+                  "id": "chamber_temperature",
+                  "requires": [
+                    "printer_is_enclosed"
+                  ]
+                },
+                "led",
+                {
+                  "id": "active_spool",
+                  "requires": [
+                    "printer_has_spoolman"
+                  ]
+                }
+              ],
               "at": [
                 0,
                 0,
@@ -1000,7 +1017,7 @@
       }
     },
     "portrait": {
-      "_comment": "PORTRAIT. Full-width bands: the printer image beside a block of readouts (notifications top-right), tips, print status, then the graph and a bottom row. The tall grids (320x1480, 440x1920, 1080x2400) end in a declared empty block below the bed mesh.",
+      "_comment": "PORTRAIT. Full-width bands: the printer image beside a block of readouts (notifications top-right), tips, print status, then the graph and a bottom row. The tall grids (320x1480, 440x1920, 1080x2400) end in a declared empty block below the bed mesh; on 320x1480 the readout pair sits at its top edge, so an unfilled readout cell joins that block.",
       "anchors": [
         {
           "id": "printer_image",
@@ -1524,7 +1541,7 @@
             },
             "tiny@8x34": {
               "col": 0,
-              "row": 22,
+              "row": 28,
               "colspan": 4,
               "rowspan": 2
             }
@@ -1638,7 +1655,7 @@
             },
             "tiny@8x34": {
               "col": 0,
-              "row": 24,
+              "row": 22,
               "colspan": 8,
               "rowspan": 6
             },
@@ -1743,7 +1760,7 @@
         "tiny@8x34": [
           [
             4,
-            22,
+            28,
             4,
             2
           ],
