@@ -4445,6 +4445,7 @@
     },
     {
       "id": "flsun_s1",
+      "enclosed": true,
       "name": "FLSUN S1 / S1 Pro",
       "manufacturer": "FLSUN",
       "image": "flsun-s1.png",
@@ -4517,6 +4518,7 @@
     },
     {
       "id": "flsun_t1_pro",
+      "enclosed": true,
       "name": "FLSUN T1 Pro",
       "manufacturer": "FLSUN",
       "image": "flsun-delta.png",
