@@ -256,7 +256,7 @@ python3 scripts/telemetry-crashes.py .telemetry-data/events/
 
 ```bash
 cd server/telemetry-worker
-wrangler deploy
+wrangler deploy --var GIT_SHA:$(git rev-parse --short HEAD)
 ```
 
 ### Dashboard
