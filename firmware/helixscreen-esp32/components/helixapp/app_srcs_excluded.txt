@@ -116,6 +116,7 @@ src/calibration/belt_live_data.cpp  # not in the v1 Core+AMS cut
 src/calibration/belt_stream_client.cpp  # not in the v1 Core+AMS cut
 src/calibration/belt_tension_calibrator.cpp  # not in the v1 Core+AMS cut
 src/calibration/belt_tension_types.cpp  # not in the v1 Core+AMS cut
+src/calibration/belt_tune_session.cpp  # not in the v1 Core+AMS cut
 src/calibration/calibration_abort.cpp  # not in the v1 Core+AMS cut
 src/calibration/input_shaper_calibrator.cpp  # not in the v1 Core+AMS cut
 src/calibration/pitch_estimator.cpp  # not in the v1 Core+AMS cut
