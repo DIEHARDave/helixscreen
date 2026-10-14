@@ -159,8 +159,8 @@ json future_config(int version) {
 ///
 /// Several values are deliberately set to what a migration's trigger looks for,
 /// so a replay is visible rather than a no-op:
-///   screensaver_type "toasters" — Flying Toasters, which v15→v16 disables when it is still
-///                                 the legacy number 1
+///   screensaver_type "toasters", Flying Toasters: the v15→v16 test swaps in the legacy
+///                                number 1, the only value that migration reads
 ///   sleep_backlight_off/hardware_blank — the v12→v13 / v14→v15 AD5X repair
 /// A user who deliberately chose any of these is indistinguishable, in the
 /// stored JSON, from a user who never touched it.
@@ -540,7 +540,7 @@ TEST_CASE_METHOD(MigrationFutureFixture,
     helix::config_testing::set_forced_tier_for_migration(helix::PlatformTier::BASIC);
 
     // A current-stamp config runs no migration, so Flying Toasters standing
-    // here is the user's own choice — either they never hit v15→v16, or they
+    // here is the user's own choice: either they never hit v15→v16, or they
     // hit it and re-selected the screensaver afterwards. It is the legacy number
     // v15→v16 reads, as a backup from before v28 restored over this build holds.
     json legacy_number = populated_config();

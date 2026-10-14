@@ -6,6 +6,9 @@
 
 #include "config.h"
 #include "config_migrations.h"
+#include "screensaver_registry.h"
+
+#include <iterator>
 
 #include "../catch_amalgamated.hpp"
 #include "hv/json.hpp"
@@ -31,6 +34,16 @@ TEST_CASE("v28 turns a legacy screensaver type number into its name",
     CHECK(migrate(7) == "maze");
     CHECK(migrate(8) == "hyperspace");
     CHECK(migrate(9) == "flipclock");
+}
+
+TEST_CASE("v28 writes the frozen table's name for every legacy number",
+          "[config][migration][screensaver_setting]") {
+    // The migration reads the frozen table alone; the live registry can lose or reorder a saver
+    // without changing what an old number migrates to.
+    for (size_t i = 0; i < std::size(helix::ui::LEGACY_SCREENSAVER_TYPE_NAMES); i++) {
+        CAPTURE(i);
+        CHECK(migrate(static_cast<int>(i)) == helix::ui::LEGACY_SCREENSAVER_TYPE_NAMES[i]);
+    }
 }
 
 TEST_CASE("v28 turns an out-of-range screensaver number into the default saver",

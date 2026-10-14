@@ -1260,10 +1260,11 @@ static void migrate_v26_to_v27(json& config, const std::string& /*config_path*/)
     }
 }
 
-/// Rewrite an integer /display/screensaver_type as the stable name it stood for, through the
-/// frozen legacy table, so the stored choice survives any reordering of the registry. An
-/// out-of-range number becomes the default saver. A string is already a name and is left as
-/// it is, as is any other JSON type, which the reader treats as the default.
+/// Rewrite an integer /display/screensaver_type as the stable name it stood for, straight from
+/// the frozen legacy table and never through the live registry, so neither a reordered nor a
+/// removed saver changes what an old number becomes. An out-of-range number becomes the default
+/// saver. A string is already a name and is left as it is, as is any other JSON type, which the
+/// reader treats as the default.
 static void migrate_v27_to_v28(json& config, const std::string& /*config_path*/) {
     if (!config.contains("display") || !config["display"].is_object()) {
         return;
@@ -1273,8 +1274,10 @@ static void migrate_v27_to_v28(json& config, const std::string& /*config_path*/)
         return;
     }
     const json& stored = display["screensaver_type"];
-    const char* name = helix::ui::screensaver_name(
-        helix::ui::screensaver_from_setting(&stored, helix::ui::DEFAULT_SCREENSAVER_TYPE));
+    const char* name = helix::ui::legacy_screensaver_name(stored.get<long long>());
+    if (name == nullptr) {
+        name = helix::ui::screensaver_name(helix::ui::DEFAULT_SCREENSAVER_TYPE);
+    }
     spdlog::info("[Config] Migration v28: display.screensaver_type {} -> \"{}\"", stored.dump(),
                  name);
     display["screensaver_type"] = name;
