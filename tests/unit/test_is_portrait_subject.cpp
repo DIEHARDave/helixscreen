@@ -257,6 +257,27 @@ TEST_CASE_METHOD(XMLTestFixture, "ui_is_ultrawide marks only the ultrawide class
     }
 }
 
+TEST_CASE_METHOD(XMLTestFixture, "rotation republishes ui_is_ultrawide",
+                 "[theme][layout][is-ultrawide-subject]") {
+    RestoreDisplayConsts restore;
+
+    lv_display_t* wide = make_test_display(1920, 440);
+    theme_manager_refresh_layout_constants(wide);
+    REQUIRE(subject_value("ui_is_ultrawide") == 1);
+    lv_display_delete(wide);
+
+    lv_display_t* tall = make_test_display(440, 1920);
+    theme_manager_refresh_layout_constants(tall);
+    CHECK(subject_value("ui_is_ultrawide") == 0);
+    CHECK(subject_value("ui_is_portrait") == 1);
+    lv_display_delete(tall);
+
+    lv_display_t* back = make_test_display(1920, 440);
+    theme_manager_refresh_layout_constants(back);
+    CHECK(subject_value("ui_is_ultrawide") == 1);
+    lv_display_delete(back);
+}
+
 TEST_CASE_METHOD(XMLTestFixture, "the STARTUP publish sets ui_is_ultrawide",
                  "[theme][layout][is-ultrawide-subject]") {
     RestoreDisplayConsts restore;

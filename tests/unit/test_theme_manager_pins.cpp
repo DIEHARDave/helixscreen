@@ -228,7 +228,8 @@ void noop_cb(lv_observer_t*, lv_subject_t*) {}
 TEST_CASE_METHOD(LVGLUITestFixture, "theme subjects exist once the theme is initialized",
                  "[theme_pins][theme]") {
     std::vector<lv_subject_t*> subjects;
-    for (const char* name : {"ui_breakpoint", "ui_breakpoint_v", "ui_is_portrait"}) {
+    for (const char* name :
+         {"ui_breakpoint", "ui_breakpoint_v", "ui_is_portrait", "ui_is_ultrawide"}) {
         lv_subject_t* s = lv_xml_get_subject(nullptr, name);
         REQUIRE(s != nullptr);
         subjects.push_back(s);
@@ -262,6 +263,8 @@ TEST_CASE_METHOD(LVGLTestFixture,
     subs.breakpoint_v_ready = true;
     lv_subject_init_int(&subs.is_portrait, 0);
     subs.is_portrait_ready = true;
+    lv_subject_init_int(&subs.is_ultrawide, 0);
+    subs.is_ultrawide_ready = true;
     for (size_t i = 0; i < subs.kSwatchCount; ++i) {
         lv_subject_init_string(&subs.swatch_desc[i], subs.swatch_bufs[i], nullptr,
                                subs.kSwatchBufSize, "x");
@@ -269,7 +272,7 @@ TEST_CASE_METHOD(LVGLTestFixture,
     subs.swatch_ready = true;
 
     std::vector<lv_subject_t*> all = {&subs.changed, &subs.breakpoint, &subs.breakpoint_v,
-                                      &subs.is_portrait};
+                                      &subs.is_portrait, &subs.is_ultrawide};
     for (auto& s : subs.swatch_desc)
         all.push_back(&s);
     for (lv_subject_t* s : all) {
@@ -286,6 +289,7 @@ TEST_CASE_METHOD(LVGLTestFixture,
     CHECK_FALSE(subs.breakpoint_ready);
     CHECK_FALSE(subs.breakpoint_v_ready);
     CHECK_FALSE(subs.is_portrait_ready);
+    CHECK_FALSE(subs.is_ultrawide_ready);
     CHECK_FALSE(subs.swatch_ready);
     CHECK(subs.generation == 0);
 
