@@ -28,8 +28,8 @@
     <style name="sf_fill" width="100%"/>
     <style name="sf_shrink" width="content"/>
     <style name="sf_small_font" text_font="#font_xs"/>
-    <style name="sf_stacked" flex_flow="column" flex_main_place="center" flex_cross_place="center"/>
-    <style name="sf_inline" flex_flow="row" flex_main_place="start" flex_cross_place="center"/>
+    <style name="sf_stacked" layout="flex" flex_flow="column" flex_main_place="center" flex_cross_place="center"/>
+    <style name="sf_inline" layout="flex" flex_flow="row" flex_main_place="start" flex_cross_place="center"/>
   </styles>
   <view name="speed_flow_part"
         extends="lv_obj" height="content" flex_flow="column" style_flex_main_place="center"

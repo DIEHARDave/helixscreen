@@ -56,6 +56,9 @@ class PrintStatusPanelTestAccess {
     static void hide_exclude(PrintStatusPanel& panel) {
         panel.hide_exclude_map_view();
     }
+    static bool exclude_open(const PrintStatusPanel& panel) {
+        return panel.exclude_mode_.is_open();
+    }
 
     /// The G-code viewer the XML build found, or null once the tree is gone.
     static lv_obj_t* gcode_viewer(const PrintStatusPanel& panel) {
