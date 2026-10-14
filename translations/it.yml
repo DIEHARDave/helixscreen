@@ -469,7 +469,7 @@ translations:
   Calibrate Purge Chute: Calibra condotto di spurgo
   Calibrate X: Calibra X
   Calibrate Y: Calibra Y
-  Calibrate all tools: Calibra tutti gli strumenti
+  Calibrate All Tools: Calibra tutti gli strumenti
   Calibrate input shaping to reduce ringing artifacts in prints: Calibra input shaping
     per ridurre artefatti di ringing nelle stampe
   Calibrate tool offsets?: Calibrare gli offset degli strumenti?
@@ -591,9 +591,9 @@ translations:
   Check failed: Verifica non riuscita
   Check filament: Controlla filamento
   Check for Updates: Verifica Aggiornamenti
-  Check slot: Controlla slot
+  Check Slot: Controlla slot
   Check slot failed: Controllo slot fallito
-  Check slots: Controlla
+  Check Slots: Controlla
   Check slots failed: Controllo slot fallito
   Check that only one filament path is active: Verificare che sia attivo un solo percorso del filamento
   Check that the cutter mechanism is properly installed: Verificare che il meccanismo di taglio sia installato correttamente
@@ -1569,7 +1569,7 @@ translations:
   Home and sweep the cutter to re-find its position: Azzera e fa scorrevolare la taglierina per ritrovare la sua posizione
   Home failed: Homing fallito
   Home printer first?: Eseguire prima l'homing della stampante?
-  Home selector: Homing selettore
+  Home Selector: Homing selettore
   Homing AFC system...: Homing sistema AFC...
   Homing Failed: 'Azzeramento non riuscito'
   Homing X...: Homing X...
@@ -1857,7 +1857,7 @@ translations:
   Load filament: 'Carica il filamento'
   Load filament first: Prima carica il filamento
   Load or unload filament.: Carica o scarica il filamento.
-  Load profile: 'Carica profilo'
+  Load Profile: 'Carica profilo'
   Load the required filaments or start anyway?: Caricare i filamenti richiesti o avviare
     comunque?
   'Load, unload, and swap spools. View your multi-filament system at a glance, map colors to slots, and monitor runout sensors.': 'Carica, scarica e sostituisci le bobine. Visualizza a colpo d''occhio il tuo sistema multi-filamento, abbina i colori agli slot e monitora i sensori di esaurimento.'
@@ -2789,6 +2789,7 @@ translations:
   Reset failed: Reset fallito
   Reset motor run-time counter: 'Ripristina il contatore delle ore di funzionamento del motore'
   Reset tags: Ripristina contrassegni
+  Reset Tags: Ripristina contrassegni
   Reset to Default: Ripristina predefinito
   Reset to defaults: Ripristina predefiniti
   Reset to original values: Ripristina valori originali
@@ -2925,7 +2926,7 @@ translations:
   Save changes to persist them across restarts?: Salvare le modifiche per mantenerle
     dopo i riavvii?
   'Save failed: {}': 'Salvataggio fallito: {}'
-  Save offsets: Salva offset
+  Save Offsets: Salva offset
   Save offsets?: Salvare gli offset?
   Save to Spoolman: Salva su Spoolman
   Saved Z-Offset: Z-Offset Salvato
@@ -3016,7 +3017,7 @@ translations:
   Select macro for third button: Seleziona macro per il terzo pulsante
   Select material to begin: Seleziona il materiale per iniziare
   Select sensor: Seleziona sensore
-  Select slot: Seleziona slot
+  Select Slot: Seleziona slot
   Select slot failed: Selezione slot fallita
   Select the heaters Klipper uses for your bed and hotend: Seleziona i riscaldatori
     Klipper per piano e hotend
@@ -3122,7 +3123,7 @@ translations:
     tracciato.
   Size: Dimensione
   Skip: Salta
-  Skip objects...: 'Salta oggetti...'
+  Skip Objects...: 'Salta oggetti...'
   Skipped: 'Saltato'
   Sleep While Printing: Sospensione Durante Stampa
   Sleep adjusted to match dim timeout: Timeout standby regolato
@@ -3225,7 +3226,7 @@ translations:
   Start Probing: Avvia sondaggio
   Start anyway?: 'Avviare comunque?'
   Start at: Inizia da
-  Start check: Avvia controllo
+  Start Check: Avvia controllo
   Start drying: Avvia essiccazione
 
   Start failed: Avvio fallito
@@ -3316,7 +3317,6 @@ translations:
   TOOLS: STRUMENTI
   TPU: TPU
   Tag Parts: Contrassegna componenti
-  Tag parts: Contrassegna componenti
   Takes 3-5 min. Do not interrupt.: Richiede 3-5 min. Non interrompere.
   Tangle prevention active: Prevenzione grovigli attiva
   Tangle prevention boosted: Prevenzione grovigli potenziata
@@ -3372,7 +3372,7 @@ translations:
   Test RS-485 link to CFS units: 'Prova il collegamento RS-485 alle unità CFS'
   Test Screensaver: Prova salvaschermo
   Test Tracker: Test Tracker
-  Test both: Testa entrambi
+  Test Both: Testa entrambi
   Test label printed: Etichetta di prova stampata
   'Testing rotation: %d° (%d/%d) - %ds remaining': 'Test rotazione: %d°
     (%d/%d) - %ds rimanenti'
@@ -3645,7 +3645,7 @@ translations:
   Trigger: Attivazione
   'Troubleshooting:': 'Risoluzione problemi:'
   Try adjusting your search or filters: Prova a modificare la ricerca o i filtri
-  Try again: 'Riprova'
+  Try Again: 'Riprova'
   Try the operation again. If it persists, check for mechanical issues.: Riprova l'operazione. Se il problema persiste, controlla eventuali problemi meccanici.
   Tune: Regola
   Tuning tower enabled - start a print to test: Torre di regolazione abilitata - avvia
@@ -3760,7 +3760,7 @@ translations:
   Use Unload before Eject: 'Usa Scarica prima di Espelli'
   Use first HID scanner found: 'Usa il primo scanner HID trovato'
   Use printer type to select image: Usa il tipo di stampante per selezionare l'immagine
-  Use scan: Usa scansione
+  Use Scan: Usa scansione
   User intervention required: 'Intervento manuale richiesto'
   VM Peak: Picco VM
   VM Size: Dimensione VM

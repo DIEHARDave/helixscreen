@@ -287,7 +287,7 @@
                       scrollable="false"/>
               <text_small bind_text="ams_edit_scan_text"/>
               <ui_button name="btn_use_scanned_color"
-                         width="content" height="#button_height_sm" text="Use scan" variant="secondary">
+                         width="content" height="#button_height_sm" text="Use Scan" variant="secondary">
                 <event_cb trigger="clicked" callback="ams_edit_use_scan_cb"/>
               </ui_button>
             </lv_obj>

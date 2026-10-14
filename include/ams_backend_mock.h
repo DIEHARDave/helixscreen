@@ -588,7 +588,8 @@ class AmsBackendMock : public AmsBackend {
     /**
      * @brief Enable multi-unit mode for testing overview panel
      *
-     * Creates a Box Turtle (4 slots) + Night Owl (2 slots) = 6 total slots.
+     * Creates a Box Turtle (4 slots) + Night Owl (2 slots) = 6 total slots, named as AFC
+     * names them: "Box_Turtle Turtle_1" and "Night_Owl Night_Owl_1".
      * All units feed a single toolhead via combiner (virtual tools).
      *
      * @param enabled true to enable multi-unit, false to revert to single unit
@@ -630,9 +631,9 @@ class AmsBackendMock : public AmsBackend {
      * @brief Enable mixed topology mode for testing multi-unit mixed hardware
      *
      * Simulates J0eB0l's real hardware: 6-tool toolchanger with mixed AFC:
-     * - Unit 0: "Turtle_1" (Box Turtle) - 4 lanes, PARALLEL, 1:1 lane->tool
-     * - Unit 1: "AMS_1" (OpenAMS) - 4 lanes, HUB, 4:1 lane->T4
-     * - Unit 2: "AMS_2" (OpenAMS) - 4 lanes, HUB, 4:1 lane->T5
+     * - Unit 0: "Box_Turtle Turtle_1" - 4 lanes, PARALLEL, 1:1 lane->tool
+     * - Unit 1: "OpenAMS AMS_1" - 4 lanes, HUB, 4:1 lane->T4
+     * - Unit 2: "OpenAMS AMS_2" - 4 lanes, HUB, 4:1 lane->T5
      *
      * @param enabled true to enable mixed topology mode
      */
@@ -647,9 +648,9 @@ class AmsBackendMock : public AmsBackend {
      * @brief Enable ViViD mixed mode for testing 2x BoxTurtle + 1x ViViD
      *
      * Simulates the user's real hardware:
-     * - Unit 0: "Turtle_1" (Box Turtle) - lanes 1-4, HUB topology
-     * - Unit 1: "Turtle_2" (Box Turtle) - lanes 5-8, HUB topology (shared hub)
-     * - Unit 2: "vivid_1" (ViViD) - lanes 13-16, HUB topology
+     * - Unit 0: "Box_Turtle Turtle_1" - lanes 1-4, HUB topology
+     * - Unit 1: "Box_Turtle Turtle_2" - lanes 5-8, HUB topology (shared hub)
+     * - Unit 2: "ViViD Vivid_1" - lanes 13-16, HUB topology
      *
      * @param enabled true to enable ViViD mixed mode
      */

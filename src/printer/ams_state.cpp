@@ -92,6 +92,7 @@ bool shutting_down() {
 } // namespace ams_state_detail
 
 using ams_state_detail::assert_main_thread;
+using ams_state_detail::set_int_if_changed;
 using ams_state_detail::slot_error_state;
 
 namespace {
@@ -111,7 +112,7 @@ AmsState& AmsState::instance() {
     return instance;
 }
 
-const char* AmsState::get_logo_path(const std::string& type_name) {
+LogoArt AmsState::get_logo(const std::string& type_name) {
     // Normalize to lowercase for matching
     std::string lower_name = helix::text_io::to_lower(type_name);
 
@@ -133,51 +134,57 @@ const char* AmsState::get_logo_path(const std::string& type_name) {
     }
 
     // Map system names to logo paths
-    // Note: All logos are 64x64 white-on-transparent PNGs
-    static const std::unordered_map<std::string, std::string> logo_map = {
+    // Every logo is a 64x64 PNG. A mono mark is white on transparent and the UI tints it
+    // to the text color; a color mark is drawn as is.
+    struct Entry {
+        std::string path;
+        bool color;
+    };
+    static const std::unordered_map<std::string, Entry> logo_map = {
         // AFC (Armored Turtle) - has its own logo
-        {"afc", asset_component_uri("assets/images/ams/afc_64.png")},
-        {"box turtle", asset_component_uri("assets/images/ams/box_turtle_64.png")},
-        {"box_turtle", asset_component_uri("assets/images/ams/box_turtle_64.png")},
-        {"boxturtle", asset_component_uri("assets/images/ams/box_turtle_64.png")},
+        {"afc", {asset_component_uri("assets/images/ams/afc_64.png"), false}},
+        {"box turtle", {asset_component_uri("assets/images/ams/box_turtle_64.png"), false}},
+        {"box_turtle", {asset_component_uri("assets/images/ams/box_turtle_64.png"), false}},
+        {"boxturtle", {asset_component_uri("assets/images/ams/box_turtle_64.png"), false}},
 
         // Happy Hare - generic firmware, has its own logo
-        {"happy hare", asset_component_uri("assets/images/ams/happy_hare_64.png")},
-        {"happy_hare", asset_component_uri("assets/images/ams/happy_hare_64.png")},
-        {"happyhare", asset_component_uri("assets/images/ams/happy_hare_64.png")},
+        {"happy hare", {asset_component_uri("assets/images/ams/happy_hare_64.png"), false}},
+        {"happy_hare", {asset_component_uri("assets/images/ams/happy_hare_64.png"), false}},
+        {"happyhare", {asset_component_uri("assets/images/ams/happy_hare_64.png"), false}},
 
         // Specific hardware types (when detected or configured)
-        {"ercf", asset_component_uri("assets/images/ams/ercf_64.png")},
-        {"3ms", asset_component_uri("assets/images/ams/3ms_64.png")},
-        {"tradrack", asset_component_uri("assets/images/ams/tradrack_64.png")},
-        {"mmx", asset_component_uri("assets/images/ams/mmx_64.png")},
-        {"night owl", asset_component_uri("assets/images/ams/night_owl_64.png")},
-        {"night_owl", asset_component_uri("assets/images/ams/night_owl_64.png")},
-        {"nightowl", asset_component_uri("assets/images/ams/night_owl_64.png")},
-        {"quattro box", asset_component_uri("assets/images/ams/quattro_box_64.png")},
-        {"quattro_box", asset_component_uri("assets/images/ams/quattro_box_64.png")},
-        {"quattrobox", asset_component_uri("assets/images/ams/quattro_box_64.png")},
-        {"btt vivid", asset_component_uri("assets/images/ams/btt_vivid_64.png")},
-        {"btt_vivid", asset_component_uri("assets/images/ams/btt_vivid_64.png")},
-        {"bttvivid", asset_component_uri("assets/images/ams/btt_vivid_64.png")},
-        {"vivid", asset_component_uri("assets/images/ams/btt_vivid_64.png")},
-        {"kms", asset_component_uri("assets/images/ams/kms_64.png")},
+        {"ercf", {asset_component_uri("assets/images/ams/ercf_64.png"), false}},
+        {"3ms", {asset_component_uri("assets/images/ams/3ms_64.png"), false}},
+        {"tradrack", {asset_component_uri("assets/images/ams/tradrack_64.png"), false}},
+        {"mmx", {asset_component_uri("assets/images/ams/mmx_64.png"), false}},
+        {"night owl", {asset_component_uri("assets/images/ams/night_owl_64.png"), false}},
+        {"night_owl", {asset_component_uri("assets/images/ams/night_owl_64.png"), false}},
+        {"nightowl", {asset_component_uri("assets/images/ams/night_owl_64.png"), false}},
+        {"quattro box", {asset_component_uri("assets/images/ams/quattro_box_64.png"), false}},
+        {"quattro_box", {asset_component_uri("assets/images/ams/quattro_box_64.png"), false}},
+        {"quattrobox", {asset_component_uri("assets/images/ams/quattro_box_64.png"), false}},
+        {"btt vivid", {asset_component_uri("assets/images/ams/btt_vivid_64.png"), false}},
+        {"btt_vivid", {asset_component_uri("assets/images/ams/btt_vivid_64.png"), false}},
+        {"bttvivid", {asset_component_uri("assets/images/ams/btt_vivid_64.png"), false}},
+        {"vivid", {asset_component_uri("assets/images/ams/btt_vivid_64.png"), false}},
+        {"kms", {asset_component_uri("assets/images/ams/kms_64.png"), false}},
+        // OpenAMS: a full-color mark, drawn untinted.
+        {"open ams", {asset_component_uri("assets/images/ams/openams_64.png"), true}},
+        {"open_ams", {asset_component_uri("assets/images/ams/openams_64.png"), true}},
+        {"openams", {asset_component_uri("assets/images/ams/openams_64.png"), true}},
 
         // AFC unit types with no artwork of their own (Claymore is new in AFC
         // v1.2.0; the rest predate it). They fall back to the AFC mark:
         // wrong-but-related beats a blank slot, and the alternative is
         // silently rendering nothing.
-        {"htlf", asset_component_uri("assets/images/ams/afc_64.png")},
-        {"open ams", asset_component_uri("assets/images/ams/afc_64.png")},
-        {"open_ams", asset_component_uri("assets/images/ams/afc_64.png")},
-        {"openams", asset_component_uri("assets/images/ams/afc_64.png")},
-        {"claymore", asset_component_uri("assets/images/ams/afc_64.png")},
-        {"emu", asset_component_uri("assets/images/ams/afc_64.png")},
+        {"htlf", {asset_component_uri("assets/images/ams/afc_64.png"), false}},
+        {"claymore", {asset_component_uri("assets/images/ams/afc_64.png"), false}},
+        {"emu", {asset_component_uri("assets/images/ams/afc_64.png"), false}},
     };
 
     auto it = logo_map.find(lower_name);
     if (it != logo_map.end()) {
-        return it->second.c_str();
+        return {it->second.path.c_str(), it->second.color};
     }
 
     // AFC names a unit by type AND instance — "Box_Turtle Turtle_1" — so the
@@ -189,10 +196,22 @@ const char* AmsState::get_logo_path(const std::string& type_name) {
     if (space_pos != std::string::npos && space_pos > 0) {
         it = logo_map.find(lower_name.substr(0, space_pos));
         if (it != logo_map.end()) {
-            return it->second.c_str();
+            return {it->second.path.c_str(), it->second.color};
         }
     }
-    return nullptr;
+    return {};
+}
+
+LogoArt AmsState::get_unit_logo(const AmsUnit& unit, const AmsSystemInfo& info) {
+    LogoArt art = get_logo(unit.name);
+    if (!art.path || !art.path[0]) {
+        art = get_logo(info.type_name);
+    }
+    return art;
+}
+
+const char* AmsState::get_logo_path(const std::string& type_name) {
+    return get_logo(type_name).path;
 }
 
 AmsState::AmsState() {
@@ -390,6 +409,7 @@ void AmsState::reset_backend_subjects() {
     system_logo_buf_[0] = '\0';
     lv_subject_set_pointer(&ams_system_logo_, nullptr);
     lv_subject_set_int(&ams_system_has_logo_, 0);
+    lv_subject_set_int(&ams_system_logo_color_, 0);
     lv_subject_copy_string(&ams_action_detail_, "");
     last_operation_detail_.clear();
     lv_subject_set_int(&toolchange_step_, -1);
@@ -422,6 +442,7 @@ void AmsState::reset_backend_subjects() {
         lv_subject_set_int(&unit_humidity_[i], 0);
         lv_subject_set_int(&unit_absent_[i], 0);
         lv_subject_set_int(&unit_disconnected_[i], 0);
+        lv_subject_set_int(&unit_logo_color_[i], 0);
         lv_subject_copy_string(&env_ind_temp_text_[i], "");
         lv_subject_copy_string(&env_ind_humidity_text_[i], "");
         lv_subject_set_int(&env_ind_humidity_status_[i], 0);
@@ -713,16 +734,15 @@ void AmsState::sync_system_subjects(const AmsSystemInfo& info) {
     }
 
     // Set system logo path for declarative image binding (pointer subject for bind_src)
-    const char* logo_path = get_logo_path(sys_name);
-    const char* new_logo = logo_path ? logo_path : "";
+    const LogoArt logo_art = get_logo(sys_name);
+    const char* new_logo = logo_art.path ? logo_art.path : "";
     if (strcmp(system_logo_buf_, new_logo) != 0) {
         strncpy(system_logo_buf_, new_logo, sizeof(system_logo_buf_) - 1);
         system_logo_buf_[sizeof(system_logo_buf_) - 1] = '\0';
         lv_subject_set_pointer(&ams_system_logo_, system_logo_buf_);
     }
-    const int has_logo = system_logo_buf_[0] ? 1 : 0;
-    if (lv_subject_get_int(&ams_system_has_logo_) != has_logo)
-        lv_subject_set_int(&ams_system_has_logo_, has_logo);
+    set_int_if_changed(&ams_system_has_logo_, system_logo_buf_[0] ? 1 : 0);
+    set_int_if_changed(&ams_system_logo_color_, logo_art.color ? 1 : 0);
     if (lv_subject_get_int(&current_slot_) != info.current_slot) {
         spdlog::debug("[AmsState] current_slot changed: {} → {}",
                       lv_subject_get_int(&current_slot_), info.current_slot);
@@ -1003,21 +1023,19 @@ void AmsState::set_unit_page(int count, int current) {
     count = std::max(0, count);
     current = count > 0 ? std::clamp(current, 0, count - 1) : 0;
     // Only a change is published, so a refresh that finds the same page wakes nobody.
-    auto set_if_changed = [](lv_subject_t* subject, int value) {
-        if (lv_subject_get_int(subject) != value)
-            lv_subject_set_int(subject, value);
-    };
-    set_if_changed(&ams_page_count_, count);
-    set_if_changed(&ams_page_current_, current);
-    set_if_changed(&ams_page_has_prev_, current > 0 ? 1 : 0);
-    set_if_changed(&ams_page_has_next_, current + 1 < count ? 1 : 0);
+    set_int_if_changed(&ams_page_count_, count);
+    set_int_if_changed(&ams_page_current_, current);
+    set_int_if_changed(&ams_page_has_prev_, current > 0 ? 1 : 0);
+    set_int_if_changed(&ams_page_has_next_, current + 1 < count ? 1 : 0);
 }
 
-void AmsState::set_unit_page_header(const std::string& name, const char* logo_path) {
+void AmsState::set_unit_page_header(const std::string& name, const char* logo_path,
+                                    bool logo_is_color) {
     assert_main_thread("set_unit_page_header");
     if (name != lv_subject_get_string(&ams_page_unit_name_))
         lv_subject_copy_string(&ams_page_unit_name_, name.c_str());
     const char* logo = logo_path ? logo_path : "";
+    set_int_if_changed(&ams_page_unit_logo_color_, logo_is_color ? 1 : 0);
     if (strcmp(page_unit_logo_buf_, logo) != 0) {
         strncpy(page_unit_logo_buf_, logo, sizeof(page_unit_logo_buf_) - 1);
         page_unit_logo_buf_[sizeof(page_unit_logo_buf_) - 1] = '\0';
@@ -1066,6 +1084,7 @@ void AmsState::sync_unit_environment(AmsBackend* backend, const AmsSystemInfo& i
         int idx = unit.unit_index;
         if (idx >= 0 && idx < MAX_UNITS) {
             lv_subject_set_int(&unit_absent_[idx], unit.absent ? 1 : 0);
+            set_int_if_changed(&unit_logo_color_[idx], get_unit_logo(unit, info).color ? 1 : 0);
             lv_subject_set_int(&unit_disconnected_[idx], (!unit.absent && !unit.connected) ? 1 : 0);
             if (unit.environment.has_value()) {
                 int temp_tenths = static_cast<int>(unit.environment->temperature_c * 10.0f);
@@ -1085,6 +1104,7 @@ void AmsState::sync_unit_environment(AmsBackend* backend, const AmsSystemInfo& i
         lv_subject_set_int(&unit_humidity_[i], 0);
         lv_subject_set_int(&unit_absent_[i], 0);
         lv_subject_set_int(&unit_disconnected_[i], 0);
+        set_int_if_changed(&unit_logo_color_[i], 0);
     }
     publish_viewed_unit_disconnected(&info);
 

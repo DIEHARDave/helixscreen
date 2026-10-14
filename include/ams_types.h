@@ -1269,6 +1269,14 @@ struct SlotInfo {
     }
 };
 
+/// A logo image and how the UI draws it.
+struct LogoArt {
+    const char* path = nullptr; ///< Asset path; null when the type has no logo
+    /// True for full-color art, drawn as is. False for a white mono mark, which the
+    /// UI tints to the text color.
+    bool color = false;
+};
+
 /**
  * @brief Information about an AMS unit
  *

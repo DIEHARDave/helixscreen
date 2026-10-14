@@ -222,7 +222,7 @@ TEST_CASE_METHOD(XMLTestFixture,
             const std::pair<const char*, std::string> buttons[] = {
                 {"btn_unload", "Unload"},           {"btn_batch_unload", "Unload..."},
                 {"btn_batch_load", "Load..."},      {"btn_reset", reset_key},
-                {"btn_check_gates", "Check slots"}, {"btn_settings", "Settings"},
+                {"btn_check_gates", "Check Slots"}, {"btn_settings", "Settings"},
             };
             for (const auto& [name, key] : buttons) {
                 CAPTURE(name);

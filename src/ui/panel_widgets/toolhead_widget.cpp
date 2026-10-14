@@ -8,6 +8,7 @@
 #include "ui_icon.h"
 #include "ui_icon_codepoints.h"
 #include "ui_panel_motion.h"
+#include "ui_subject_registry.h"
 
 #include "app_globals.h"
 #include "display_numbering.h"
@@ -38,6 +39,7 @@
 #include <string>
 
 using helix::ui::measure_text_px;
+using helix::ui::set_int_if_changed;
 
 namespace {
 
@@ -102,11 +104,6 @@ void toolhead_init_subjects() {
             s_subjects_initialized = false;
         }
     });
-}
-
-void set_int_if_changed(lv_subject_t* subject, int value) {
-    if (lv_subject_get_int(subject) != value)
-        lv_subject_set_int(subject, value);
 }
 
 void set_text_if_changed(lv_subject_t* subject, const std::string& text) {
