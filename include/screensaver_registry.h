@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <iterator>
 #include <string_view>
+#include <vector>
 
 /**
  * @file screensaver_registry.h
@@ -19,7 +20,9 @@
 /**
  * @brief Available screensaver types
  *
- * Values map directly to the settings dropdown index and persisted config value.
+ * Values are the persisted config value. The settings dropdown lists them in this order but
+ * leaves out the ones too heavy for the board (screensaver_choices), so its index is not the
+ * type.
  */
 enum class ScreensaverType : int {
     OFF = 0,
@@ -76,7 +79,7 @@ inline constexpr size_t SCREENSAVER_COUNT = std::size(SCREENSAVERS);
 inline constexpr const char* SCREENSAVER_OFF_LABEL_KEY = "Off";
 
 /// Type a fresh install prefers, when this build can draw it. The screensaver gate measures it
-/// and steps it down, or shows a black screen, when it costs too much.
+/// and steps it down, or runs a lighter saver in its place, when it costs too much.
 inline constexpr ScreensaverType DEFAULT_SCREENSAVER_TYPE = ScreensaverType::FLYING_TOASTERS;
 
 /// Highest valid type value.
@@ -143,6 +146,57 @@ constexpr ScreensaverType resolve_screensaver_now(std::string_view value,
         return info->type;
     }
     return configured != ScreensaverType::OFF ? configured : ScreensaverType::FLYING_TOASTERS;
+}
+
+/**
+ * @brief The saver that runs when `configured` is chosen
+ *
+ * `configured` itself unless `too_heavy(type)` rejects it; then `preferred`, then the first
+ * registered saver it does not reject. When it rejects every saver, `configured`,
+ * which the manager shows as a static black screen. OFF stays OFF. The stored choice is never
+ * rewritten, so a config moved to a faster board runs the saver it names.
+ */
+template <typename TooHeavy>
+constexpr ScreensaverType
+runnable_screensaver(ScreensaverType configured, TooHeavy&& too_heavy,
+                     ScreensaverType preferred = DEFAULT_SCREENSAVER_TYPE) {
+    if (configured == ScreensaverType::OFF || !too_heavy(configured)) {
+        return configured;
+    }
+    if (!too_heavy(preferred)) {
+        return preferred;
+    }
+    for (const ScreensaverInfo& row : SCREENSAVERS) {
+        if (!too_heavy(row.type)) {
+            return row.type;
+        }
+    }
+    return configured;
+}
+
+/// What the settings dropdown offers, in order: OFF, then every registered saver
+/// `too_heavy(type)` does not reject.
+template <typename TooHeavy>
+std::vector<ScreensaverType> screensaver_choices(TooHeavy&& too_heavy) {
+    std::vector<ScreensaverType> choices{ScreensaverType::OFF};
+    for (const ScreensaverInfo& row : SCREENSAVERS) {
+        if (!too_heavy(row.type)) {
+            choices.push_back(row.type);
+        }
+    }
+    return choices;
+}
+
+/// Dropdown index of `runs` in `choices`. A saver missing from them runs only as the black
+/// screen of a board where every saver is too heavy, which reads as Off: index 0.
+inline size_t screensaver_choice_index(const std::vector<ScreensaverType>& choices,
+                                       ScreensaverType runs) {
+    for (size_t i = 0; i < choices.size(); i++) {
+        if (choices[i] == runs) {
+            return i;
+        }
+    }
+    return 0;
 }
 
 } // namespace helix::ui

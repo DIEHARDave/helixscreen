@@ -17,6 +17,7 @@
 #include "display_settings_manager.h"
 #include "format_utils.h"
 #include "lvgl/src/others/translation/lv_translation.h"
+#include "screensaver.h"
 #include "ui/ui_widget_helpers.h"
 
 #include <spdlog/spdlog.h>
@@ -104,7 +105,7 @@ void DisplaySettingsOverlay::register_callbacks() {
 #ifdef HELIX_ENABLE_SCREENSAVER
         {"on_screensaver_changed",
          [](lv_event_t* e) {
-             DisplaySettingsManager::instance().set_screensaver_type(event_selected(e));
+             get_display_settings_overlay().handle_screensaver_changed(event_selected(e));
          }},
         {"on_test_screensaver",
          [](lv_event_t*) {
@@ -136,7 +137,9 @@ void DisplaySettingsOverlay::on_activate() {
     init_sleep_dropdown();
     init_ui_scale_dropdown();
 
-#ifndef HELIX_ENABLE_SCREENSAVER
+#ifdef HELIX_ENABLE_SCREENSAVER
+    init_screensaver_dropdown();
+#else
     if (lv_obj_t* ss_row = helix::ui::find_required(overlay_root_, "row_screensaver", get_name())) {
         lv_obj_add_flag(ss_row, LV_OBJ_FLAG_HIDDEN);
     }
@@ -144,8 +147,8 @@ void DisplaySettingsOverlay::on_activate() {
 }
 
 // Rows whose widget index is not the stored value (rotation degrees, dim and
-// sleep seconds, UI scale percent) are selected here; the toggle and screensaver
-// rows bind to their subjects in XML.
+// sleep seconds, UI scale percent, screensaver type) are selected here; the
+// toggle rows bind to their subjects in XML.
 void DisplaySettingsOverlay::init_display_rotation_dropdown() {
     lv_obj_t* row = helix::ui::find_required(overlay_root_, "row_display_rotation", get_name());
     if (lv_obj_t* dropdown = helix::ui::find_required(row, "dropdown", get_name())) {
@@ -232,6 +235,46 @@ void DisplaySettingsOverlay::init_ui_scale_dropdown() {
 
     spdlog::debug("[{}] UI scale dropdown initialized: stored={} auto={}%", get_name(), stored,
                   auto_percent);
+}
+
+void DisplaySettingsOverlay::init_screensaver_dropdown() {
+#ifdef HELIX_ENABLE_SCREENSAVER
+    lv_obj_t* row = helix::ui::find_required(overlay_root_, "row_screensaver", get_name());
+    lv_obj_t* dropdown = helix::ui::find_required(row, "dropdown", get_name());
+    if (!dropdown)
+        return;
+
+    ScreensaverManager& savers = ScreensaverManager::instance();
+    screensaver_choices_ = savers.choices();
+    std::string options;
+    for (ScreensaverType type : screensaver_choices_) {
+        const helix::ui::ScreensaverInfo* info = helix::ui::find_screensaver(type);
+        if (!options.empty()) {
+            options += "\n";
+        }
+        options += lv_tr(info ? info->label_key : helix::ui::SCREENSAVER_OFF_LABEL_KEY);
+    }
+    lv_dropdown_set_options(dropdown, options.c_str());
+
+    const ScreensaverType configured = ScreensaverManager::configured_type();
+    const ScreensaverType runs = savers.runnable_type(configured);
+    const size_t index = helix::ui::screensaver_choice_index(screensaver_choices_, runs);
+    lv_dropdown_set_selected(dropdown, static_cast<uint32_t>(index));
+
+    spdlog::debug("[{}] Screensaver dropdown: {} of {} savers offered, stored type {} runs as {}",
+                  get_name(), screensaver_choices_.size() - 1, helix::ui::SCREENSAVER_COUNT,
+                  static_cast<int>(configured), static_cast<int>(runs));
+#endif
+}
+
+void DisplaySettingsOverlay::handle_screensaver_changed(int index) {
+    if (index < 0 || static_cast<size_t>(index) >= screensaver_choices_.size()) {
+        spdlog::warn("[{}] Screensaver dropdown index {} is outside the {} offered", get_name(),
+                     index, screensaver_choices_.size());
+        return;
+    }
+    DisplaySettingsManager::instance().set_screensaver_type(
+        static_cast<int>(screensaver_choices_[static_cast<size_t>(index)]));
 }
 
 // Per drag tick: apply to the backlight and update the readout, but do NOT

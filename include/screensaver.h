@@ -141,7 +141,8 @@ class ScreensaverManager {
      *
      * The saver starts at the level stored for it on this board and app version, or at level 0
      * (HELIX_SCREENSAVER_LEVEL forces a level and turns the gate off for the run). A saver
-     * stored as too heavy shows a static black screen instead.
+     * stored as too heavy gives way to runnable_type(type); with every saver too heavy, a
+     * static black screen shows instead.
      *
      * While a saver runs, the active screen is hidden beneath its overlay
      * (helix::ScreenHideHold), and it stays hidden across a switch between types.
@@ -163,6 +164,26 @@ class ScreensaverManager {
      */
     std::vector<const char*> savers_missing_for_build_depth() const;
 
+    /**
+     * @brief The saver start(configured) runs on this board and app version
+     *
+     * `configured`, or when it is too heavy here the fallback helix::ui::runnable_screensaver
+     * picks. The stored setting is left alone.
+     */
+    ScreensaverType runnable_type(ScreensaverType configured);
+
+    /**
+     * @brief Whether this board cannot run `type`
+     *
+     * True when its stored entry for this board and app version is marked too heavy, or the
+     * build has no instance of a registered saver. False for OFF, for a value the registry does
+     * not know, and for a saver HELIX_SCREENSAVER_LEVEL runs at a forced level with the gate off.
+     */
+    bool too_heavy_here(ScreensaverType type);
+
+    /// The settings dropdown's options on this board (helix::ui::screensaver_choices).
+    std::vector<ScreensaverType> choices();
+
     /** @brief Stop whatever screensaver or black screen is active */
     void stop();
 
@@ -181,7 +202,8 @@ class ScreensaverManager {
      * Call on the display manager's idle-check tick. While no saver runs, samples feed the idle
      * baseline. While one runs they close the gate's windows: over budget steps the saver down
      * one level and stores that level; over budget at the lowest level stores the board as too
-     * heavy and replaces the saver with a static black screen.
+     * heavy and replaces the saver with its fallback (runnable_type), or a static black screen
+     * when every saver is too heavy.
      */
     void on_idle_check_tick();
 
@@ -200,9 +222,22 @@ class ScreensaverManager {
     /** @brief Find screensaver instance by type, or nullptr */
     helix::ui::SaverBase* find(ScreensaverType type) const;
 
-    /// Level, too-heavy mark and gating a run of `saver` starts with. Records the board and
-    /// version.
+    /// Level, too-heavy mark and gating a run of `saver` starts with, for the identity
+    /// refresh_identity() last read.
     StartPlan plan_start(const helix::ui::SaverBase& saver, const helix::ui::ScreensaverInfo& info);
+
+    /// Reads the core count, app version and board fingerprint the level store is keyed by.
+    void refresh_identity();
+
+    /// too_heavy_here() against the identity refresh_identity() last read.
+    bool too_heavy_for_identity(ScreensaverType type) const;
+
+    /// runnable_type() against the identity refresh_identity() last read.
+    ScreensaverType runnable_type_for_identity(ScreensaverType configured) const;
+
+    /// Starts `type`, already resolved by runnable_type(), keeping the screen hold out. A saver
+    /// stored as too heavy shows the black screen.
+    void launch(ScreensaverType type);
 
     helix::ui::BoardFacts board_facts(const helix::PlatformCapabilities& caps) const;
 

@@ -3,6 +3,7 @@
 
 #include "screensaver_registry.h"
 
+#include <algorithm>
 #include <fstream>
 #include <regex>
 #include <set>
@@ -180,4 +181,106 @@ TEST_CASE("the fresh-install default is a saver this build can actually draw",
             CHECK((row->depths & depth) != 0U);
         }
     }
+}
+
+namespace {
+
+/// A too-heavy predicate that rejects exactly `heavy`.
+struct HeavySet {
+    std::set<ScreensaverType> heavy;
+    bool operator()(ScreensaverType type) const {
+        return heavy.count(type) != 0;
+    }
+};
+
+} // namespace
+
+TEST_CASE("a too-heavy saver falls back to the default, then the first runnable registry saver",
+          "[screensaver][screensaver_registry]") {
+    using helix::ui::DEFAULT_SCREENSAVER_TYPE;
+    using helix::ui::runnable_screensaver;
+
+    SECTION("a saver the board can run runs itself") {
+        CHECK(runnable_screensaver(ScreensaverType::MAZE_3D, HeavySet{}) ==
+              ScreensaverType::MAZE_3D);
+        CHECK(runnable_screensaver(ScreensaverType::MAZE_3D,
+                                   HeavySet{{ScreensaverType::HYPERSPACE}}) ==
+              ScreensaverType::MAZE_3D);
+    }
+    SECTION("a too-heavy saver gives way to the default") {
+        CHECK(
+            runnable_screensaver(ScreensaverType::MAZE_3D, HeavySet{{ScreensaverType::MAZE_3D}}) ==
+            DEFAULT_SCREENSAVER_TYPE);
+        // The preferred saver comes before registry order wherever it sits in the registry.
+        CHECK(runnable_screensaver(ScreensaverType::MAZE_3D, HeavySet{{ScreensaverType::MAZE_3D}},
+                                   ScreensaverType::FLIP_CLOCK) == ScreensaverType::FLIP_CLOCK);
+    }
+    SECTION("with the default too heavy as well, the first registry saver that is not") {
+        const HeavySet heavy{{ScreensaverType::MAZE_3D, DEFAULT_SCREENSAVER_TYPE}};
+        ScreensaverType first = ScreensaverType::OFF;
+        for (const helix::ui::ScreensaverInfo& info : SCREENSAVERS) {
+            if (!heavy(info.type)) {
+                first = info.type;
+                break;
+            }
+        }
+        REQUIRE(first != ScreensaverType::OFF);
+        CHECK(runnable_screensaver(ScreensaverType::MAZE_3D, heavy) == first);
+        // The configured saver is skipped in registry order too, not just at its own row.
+        HeavySet early{{SCREENSAVERS[0].type, SCREENSAVERS[1].type, DEFAULT_SCREENSAVER_TYPE}};
+        CHECK(runnable_screensaver(SCREENSAVERS[1].type, early) == SCREENSAVERS[2].type);
+    }
+    SECTION("with every saver too heavy, the configured one stays for the black screen") {
+        HeavySet all;
+        for (const helix::ui::ScreensaverInfo& info : SCREENSAVERS) {
+            all.heavy.insert(info.type);
+        }
+        CHECK(runnable_screensaver(ScreensaverType::MAZE_3D, all) == ScreensaverType::MAZE_3D);
+    }
+    SECTION("Off stays off whatever is too heavy") {
+        CHECK(runnable_screensaver(ScreensaverType::OFF, HeavySet{{DEFAULT_SCREENSAVER_TYPE}}) ==
+              ScreensaverType::OFF);
+    }
+}
+
+TEST_CASE("the screensaver dropdown offers Off and every saver that is not too heavy",
+          "[screensaver][screensaver_registry]") {
+    using helix::ui::screensaver_choices;
+
+    SECTION("nothing too heavy: Off then the whole registry, so the index is the type") {
+        const std::vector<ScreensaverType> choices = screensaver_choices(HeavySet{});
+        REQUIRE(choices.size() == SCREENSAVER_COUNT + 1);
+        for (size_t i = 0; i < choices.size(); i++) {
+            CHECK(static_cast<size_t>(choices[i]) == i);
+        }
+    }
+    SECTION("too-heavy savers are left out, the rest keep registry order") {
+        const std::vector<ScreensaverType> choices =
+            screensaver_choices(HeavySet{{ScreensaverType::MAZE_3D, ScreensaverType::HYPERSPACE}});
+        CHECK(choices.size() == SCREENSAVER_COUNT - 1);
+        CHECK(choices.front() == ScreensaverType::OFF);
+        CHECK(std::find(choices.begin(), choices.end(), ScreensaverType::MAZE_3D) == choices.end());
+        CHECK(std::find(choices.begin(), choices.end(), ScreensaverType::HYPERSPACE) ==
+              choices.end());
+        CHECK(std::is_sorted(choices.begin(), choices.end()));
+    }
+    SECTION("every saver too heavy leaves Off") {
+        HeavySet all;
+        for (const helix::ui::ScreensaverInfo& info : SCREENSAVERS) {
+            all.heavy.insert(info.type);
+        }
+        CHECK(screensaver_choices(all) == std::vector<ScreensaverType>{ScreensaverType::OFF});
+    }
+}
+
+TEST_CASE("the dropdown selects the saver that actually runs",
+          "[screensaver][screensaver_registry]") {
+    using helix::ui::screensaver_choice_index;
+    const std::vector<ScreensaverType> choices{
+        ScreensaverType::OFF, ScreensaverType::FLYING_TOASTERS, ScreensaverType::FLIP_CLOCK};
+    CHECK(screensaver_choice_index(choices, ScreensaverType::OFF) == 0);
+    CHECK(screensaver_choice_index(choices, ScreensaverType::FLIP_CLOCK) == 2);
+    // Only an all-too-heavy board runs a saver the dropdown does not list: it shows a black
+    // screen, which reads as Off.
+    CHECK(screensaver_choice_index(choices, ScreensaverType::MAZE_3D) == 0);
 }

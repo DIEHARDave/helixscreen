@@ -8,7 +8,7 @@ This doc is the map: which file owns what, how the gate decides, and how to add 
 
 | File | Owns |
 |---|---|
-| `include/screensaver_registry.h` | `ScreensaverType`, the `SCREENSAVERS` rows (type, stable name, label key, color depths), clamp, `HELIX_SCREENSAVER_NOW` names, the fresh-install default. Always compiled |
+| `include/screensaver_registry.h` | `ScreensaverType`, the `SCREENSAVERS` rows (type, stable name, label key, color depths), clamp, `HELIX_SCREENSAVER_NOW` names, the fresh-install default, the too-heavy fallback order and the settings dropdown's choices. Always compiled |
 | `include/screensaver_base.h` | `SaverBase`: start, frame and stop sequence, levels, level requests |
 | `include/screensaver_overlay.h` | `SaverOverlay`: the black touch-absorbing overlay on `lv_layer_top()` |
 | `include/screensaver_canvas.h` | `SaverCanvas`: stride-sized buffer, format per depth, hide-before-free, dirty areas merged to 32, the dirty-box layer session |
@@ -17,7 +17,7 @@ This doc is the map: which file owns what, how the gate decides, and how to add 
 | `include/screensaver_frame.h`, `include/screensaver_pixel_writer.h` | `DirtyRect`, `FrameTarget`, `PixelWriter` (RGB565 and XRGB8888, ordered dither, max blend, lines). No LVGL |
 | `include/screensaver_gate.h`, `include/screensaver_cpu_clock.h` | Budget, decision, idle baseline, windows, environment switches, the CPU clock seam |
 | `include/screensaver_level_store.h` | Board fingerprint and the stored level per saver |
-| `include/screensaver.h`, `src/ui/screensaver_manager.cpp` | `ScreensaverManager`: factories, holds, the gate, the black-screen fallback |
+| `include/screensaver.h`, `src/ui/screensaver_manager.cpp` | `ScreensaverManager`: factories, holds, the gate, the too-heavy fallback and the last-resort black screen |
 | `include/ui_screensaver.h`, `include/screensaver_starfield.h`, `include/screensaver_pipes.h`, `include/screensaver_bounce.h`, `include/screensaver_fireworks.h`, `include/screensaver_hyperspace.h`, `include/screensaver_flip_clock.h` | The savers |
 | `include/screensaver_maze_sim.h`, `include/screensaver_maze.h` | The 3D maze: maze generation, the wall-following walk, and the raycaster that draws it. No LVGL in the sim |
 | `include/screensaver_flip_clock_sim.h` | Flip clock: what it shows (`FlipClockState`), the card layout, and the drawing (`FlipClockSim`). No LVGL |
@@ -87,16 +87,33 @@ samples `CLOCK_PROCESS_CPUTIME_ID` (every thread, LVGL's draw thread included) a
 - The budget is `saver_budget_share`: 4 or more cores 50%, 3 cores 37%, 2 cores 25%, 1 core 10%,
   halved while `SaverHost::is_printing` says a print holds the machine.
 - `decide_saver_level`: within budget the level stays (a run never steps up); over budget the
-  saver steps down one level at its next natural break; over budget at the bottom level the run
-  becomes a static black `SaverOverlay` with no frame timer.
+  saver steps down one level at its next natural break; over budget at the bottom level the
+  saver is too heavy for the board, and its fallback takes over at once.
 
 Each step down and each too-heavy mark is stored at `/display/screensaver_levels/<name>` as
 `{"level", "too_heavy", "version", "board"}`. The next run of that saver starts there, unless
 `helix_version_full()` or the board fingerprint (display path, cores, bogomips to the nearest
 100, resolution, color depth) differs, which starts again at level 0.
 
+**A too-heavy saver never shows a black screen while another saver fits.**
+`ScreensaverManager::runnable_type` (`runnable_screensaver` in the registry) picks what runs in
+its place: `DEFAULT_SCREENSAVER_TYPE`, then the registry order, skipping every saver marked too
+heavy for this board and version. `start()` resolves through it, so the idle timeout, the
+settings Test button and `HELIX_SCREENSAVER_NOW` all run the same fallback, and the gate starts
+it the moment a running saver is marked. A static black `SaverOverlay` with no frame timer is
+the last resort, when every saver is too heavy. The stored `/display/screensaver_type` is never
+rewritten, so a config moved to a faster board runs the saver it names.
+
+The settings dropdown (`DisplaySettingsOverlay::init_screensaver_dropdown`) lists Off and the
+savers `ScreensaverManager::choices()` keeps, so its index is not the type: the overlay keeps
+the list and maps the picked index back to a type. A too-heavy stored choice is hidden and the
+dropdown selects the saver that runs in its place; on a board where every saver is too heavy
+it selects Off. The XML `options` still carry the full registry list as the translation
+source.
+
 `HELIX_SCREENSAVER_BUDGET_PCT` replaces the budget and `HELIX_SCREENSAVER_LEVEL` forces a level
-with the gate off (`docs/devel/ENVIRONMENT_VARIABLES.md`).
+with the gate off (`docs/devel/ENVIRONMENT_VARIABLES.md`). A forced level runs a saver stored as
+too heavy, with no fallback, and the dropdown offers it.
 
 ## Color depth and builds
 
@@ -114,7 +131,8 @@ build draws at its depth, otherwise the first registered saver that does, and Of
 
 1. Add the type to `ScreensaverType` and a row to `SCREENSAVERS` with a stable name and depths.
 2. Add the label to `row_screensaver` in `ui_xml/settings_display_overlay.xml` (a test
-   compares it with the registry), run `make translation-sync`, translate the new key in every
+   compares it with the registry; the overlay builds the shown options from the registry, and
+   this list is their translation source), run `make translation-sync`, translate the new key in every
    `translations/*.yml`, then `make translations` (and `make regen-text-fonts` for new CJK text).
 3. Derive from `SaverBase` in `include/screensaver_<name>.h` and `src/ui/screensaver_<name>.cpp`;
    keep the scene in a pure simulation class when it writes pixels, so it is testable without a
