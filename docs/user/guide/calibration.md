@@ -258,7 +258,7 @@ When the results show the paths differ, **Tune belts** (**Fine-tune** if they al
 What the screen shows:
 
 - **The instruction** at the top: which path to adjust and which way ("Tighten A", "Loosen B"). A higher peak means a tighter belt, and clockwise tightens
-- **The amount**, on printers HelixScreen knows have screw tensioners (the Voron 2.4 and Trident): how far to turn, in eighths of a turn. Use the plus and minus buttons to match what you actually turned, down to 0 if you re-measure without turning anything. After a round or two HelixScreen learns how many Hz a turn moves on your machine and sizes the advice to it
+- **The amount**, on printers HelixScreen knows have screw tensioners (the Voron 2.4 and Trident): how far to turn, in eighths of a turn. Use the plus and minus buttons to match what you actually turned, down to 0 if you re-measure without turning anything (the note then just reports how far the gap moved). After a round or two HelixScreen learns how many Hz a turn moves on your machine and sizes the advice to it
 - **The gap gauge**: the distance between the two paths' peaks. The middle band is "matched". The solid marker is this round's gap and the hollow one is last round's, so you can see which way it moved. The colour tells you how far off you are
 - **The chart**: only the zone being tuned, with the adjusted path's earlier rounds fading behind it
 
@@ -274,8 +274,8 @@ To work through it:
    - "Path X's peak left the zone": the belt you were not adjusting moved. Check that only the named tensioner was turned
    - "No clear peak in this zone": the sweep found nothing to compare there. Try again, or see below
    - "peak moved out of the zone. Widening it.": nothing to do, the next sweep covers the wider range
-4. When the gap is inside the matched band, the zone is **matched**. If more mismatched peaks remain, **Next zone** moves on to the next one and sweeps it at once, so the button shows how long that takes (its first sweep is a baseline, because the earlier turns moved it). Otherwise **Confirm** runs a full two-path check and shows the result against the one you started from, with the rounds taken and the total turns per belt
-5. **Adjust X instead** switches which belt you are tuning, if the other one is easier to reach or you turned the wrong one. **Done** leaves tuning with your starting results
+4. When the gap is inside the matched band, the zone is **matched**. If more mismatched peaks remain, **Next zone** moves on to the next one and sweeps it at once, so on larger screens the button shows how long that takes (its first sweep is a baseline, because the earlier turns moved it). Otherwise **Confirm** runs a full two-path check and shows the result against the one you started from, with the rounds taken and the total turns per belt
+5. **Adjust X instead** switches which belt you are tuning, if the other one is easier to reach or you turned the wrong one. **Good enough** leaves tuning with your starting results
 
 The screen can dim or show the screensaver while you are at the tensioner; waking it returns you to the same round. On printers with little memory the low-memory warning is asked once, at the first sweep of a tuning session.
 

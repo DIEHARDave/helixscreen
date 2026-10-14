@@ -470,7 +470,8 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
   > the hardware matrix in `BELT_TUNER.md` § Validation status has actually been run.
   > Delete this box only when that is done, not when the code looks finished.
 
-- **Guided belt tuning** (#1736) - after a belt tension check, Tune belts walks you through
+- **Guided belt tuning** (#1736) - after a Belt Tension path comparison (Advanced >
+  Calibration, the two-sweep check, not the pluck tuner above), Tune belts walks you through
   closing the gap one belt at a time. It names the belt to adjust and which way, re-measures
   only the stretch of the spectrum where the two disagree instead of the whole range, and shows
   the remaining gap on a gauge. On Voron 2.4 and Trident it also suggests how far to turn and

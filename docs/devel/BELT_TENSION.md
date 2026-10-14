@@ -49,7 +49,7 @@ Z belts are deliberately unsupported; see the header comment on
 
 | File | Role |
 |------|------|
-| `src/ui/ui_panel_belt_tension.cpp`, `include/ui_panel_belt_tension.h`, `ui_xml/panel_belt_tension.xml` | The panel: four view states (START, RUNNING, RESULTS, ERROR), subjects, gate wiring, run queue, re-test and ghost bookkeeping |
+| `src/ui/ui_panel_belt_tension.cpp`, `include/ui_panel_belt_tension.h`, `ui_xml/panel_belt_tension.xml` | The panel: five view states (START, RUNNING, RESULTS, ERROR, TUNING), subjects, gate wiring, run queue, re-test and ghost bookkeeping |
 | `src/ui/ui_belt_path_sketch.cpp` | The START-screen sketch widget drawing the two diagonals |
 | `src/calibration/belt_tune_session.cpp`, `include/belt_tune_session.h` | `BeltTuneSession`: the tuning loop's pure logic (zone choice, peak refinement, advice, round outcomes, rate learning) and the `belt_tune` thresholds |
 | `src/ui/ui_belt_gap_gauge.cpp`, `include/ui_belt_gap_gauge.h` | The `<belt_gap_gauge>` widget and its pure helpers `belt_gap_gauge_x` / `belt_gap_severity` |
@@ -265,7 +265,15 @@ returning to START or re-detecting hardware. A confirmed **Stop** acts only whil
 still running; a short round can finish while the dialog is up.
 
 **Next zone** sweeps at once (a baseline round over the next zone's window), so its button
-shows that round's duration the way Re-measure does (`peek_next_zone`).
+shows that round's duration the way Re-measure does (`peek_next_zone`), except on compact
+layouts.
+
+A round recorded with 0 turns on a SCREW printer is a repeatability check (`no_turn`): its
+line reads "No turn: the gap moved N Hz" instead of a verdict on a turn, and it never counts
+toward the stall. A wake also re-asks what the suspension expired: when no sweep is running
+it re-probes the klippy socket and the sweep range, and re-runs hardware detection if it had
+not answered. The low-RAM warning closes on any deactivation, since its answer is tied to
+the panel's lifetime.
 
 ### Zone choice
 
@@ -386,7 +394,8 @@ Below the medium breakpoint, or in portrait (`ui_breakpoint le 2 or ui_is_portra
 `ui_xml/panel_belt_tension.xml`), the TUNING view and RESULTS screen shrink to fit: the hero
 becomes one line (the instruction, the amount and a thin `bt_tune_line_gauge`; tapping it
 adjusts the other path), the two Re-test buttons on RESULTS fold into one menu, and Confirm
-drops its duration when the button row holds three buttons or the layout is compact. The wide layout and the compact one are the same subjects
+drops its duration when the button row holds three buttons or the layout is compact.
+Re-measure and Next zone drop theirs on compact layouts. The wide layout and the compact one are the same subjects
 bound to different widgets, so `refresh_tune` feeds both.
 
 ### Mock script
@@ -408,7 +417,7 @@ none has been exercised against a real windowed sweep on a real printer.
 | `ZONE_HALF_MIN_HZ` / `ZONE_MARGIN_HZ` | 10 / 5 Hz | narrowest window half-width / reach beyond the zone's peaks |
 | `ZONE_FALLBACK_MAX_HZ` | 30 Hz | how close the other path's peak must be to steer an unpaired tallest peak |
 | `MATCHED_MIN_HZ` | 1 Hz | matched tolerance floor (the real tolerance is also at least the mean bin spacing) |
-| `MIN_MOVE_HZ` | 0.5 Hz | smaller peak moves are noise |
+| `MIN_MOVE_HZ` | 0.5 Hz | smaller moves of the gap are noise |
 | `FIRST_TURN` / `TURN_STEP` / `TURN_MAX` | 1/4 / 1/8 / 1 turn | SCREW amounts |
 | `STALL_ROUNDS` / `SPRING_STALL_ROUNDS` | 8 / 2 | unmatched rounds before the mechanical hint (screw / spring) |
 | `PEAK_MIN_PROMINENCE` | 1.5x | a peak must stand this far over the unexcited floor |
