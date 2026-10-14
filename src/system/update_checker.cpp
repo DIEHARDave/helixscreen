@@ -53,6 +53,7 @@
 
 #include <cctype>
 #ifdef __ANDROID__
+#include "system/android_update_source.h"
 #include "system/http_android.h"
 #endif
 #include "platform_info.h"
@@ -2886,6 +2887,12 @@ void UpdateChecker::do_check() {
             return;
         }
 
+#ifdef __ANDROID__
+        if (report_play_verdict(ok ? info : ReleaseInfo{}, ok ? "" : error)) {
+            return;
+        }
+#endif
+
         if (!ok) {
             spdlog::warn("[UpdateChecker] {}", error);
             report_result(Status::Error, std::nullopt, error);
@@ -2935,6 +2942,48 @@ void UpdateChecker::do_check() {
         report_result(Status::Error, std::nullopt, "Internal error (unknown exception)");
     }
 }
+
+#ifdef __ANDROID__
+bool UpdateChecker::report_play_verdict(ReleaseInfo manifest, const std::string& manifest_error) {
+    namespace android = helix::android;
+    const std::string installer = android::installer_package();
+    android::PlayUpdateQuery play;
+    if (android::installed_by_play(installer)) {
+        play = android::query_play_update(HTTP_TIMEOUT_SECONDS);
+    }
+    const auto verdict = android::decide_update(installer, play, manifest.version);
+    if (verdict.kind == android::UpdateVerdict::Kind::Manifest) {
+        return false;
+    }
+    if (cancelled_) {
+        spdlog::debug("[UpdateChecker] Check cancelled during Play query");
+        return true;
+    }
+    if (!manifest_error.empty()) {
+        spdlog::info("[UpdateChecker] Manifest unavailable, Google Play decides: {}",
+                     manifest_error);
+    }
+
+    if (verdict.kind == android::UpdateVerdict::Kind::None) {
+        spdlog::info("[UpdateChecker] No update announced for this Play install: {}",
+                     verdict.reason);
+        report_result(Status::UpToDate, std::nullopt, "");
+        return true;
+    }
+
+    ReleaseInfo info;
+    if (verdict.manifest_describes_it) {
+        info = std::move(manifest);
+    } else {
+        info.version = verdict.version;
+        info.tag_name = "v" + verdict.version;
+    }
+    info.is_downgrade = false;
+    spdlog::info("[UpdateChecker] Google Play offers {} -> {}", HELIX_VERSION, info.version);
+    report_result(Status::UpdateAvailable, info, "");
+    return true;
+}
+#endif
 
 // ============================================================================
 // Channel-specific fetch methods
