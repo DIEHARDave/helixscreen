@@ -512,8 +512,8 @@ unrailable and gets the face and the sheet.
   is bound.
 - A measured-exact fit renders as an overlap: measurement and rendered width
   disagree by a few pixels, so keep a comfort margin on text-budgeted rungs
-  and pin one-line labels (`long_mode="dots"`) when the stack model budgets
-  one line.
+  and pin one-line labels (`long_mode="dots"` on a `text_*` label with a width
+  bound, which holds it to one line) when the stack model budgets one line.
 - Bindable fonts on semantic `text_*` widgets work because the semantic font
   rides a shared ADDED style (#1614). An `<icon>`'s face and `temp_display`'s four labels
   ride the same mechanism (`helix::ui::apply_font_style`,

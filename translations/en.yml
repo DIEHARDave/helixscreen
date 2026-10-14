@@ -110,6 +110,7 @@ translations:
   3. Save the position: 3. Save the position
   30 minutes: 30 minutes
   30 seconds: 30 seconds
+  3D Maze: 3D Maze
   3D Pipes: 3D Pipes
   3D View: 3D View
   4. Paper should move but with resistance: 4. Paper should move but with resistance
@@ -455,7 +456,7 @@ translations:
   Calibrate Purge Chute: Calibrate Purge Chute
   Calibrate X: Calibrate X
   Calibrate Y: Calibrate Y
-  Calibrate all tools: Calibrate all tools
+  Calibrate All Tools: Calibrate All Tools
   Calibrate input shaping to reduce ringing artifacts in prints: Calibrate input shaping
     to reduce ringing artifacts in prints
   Calibrate tool offsets?: Calibrate tool offsets?
@@ -574,9 +575,9 @@ translations:
   Check failed: Check failed
   Check filament: Check filament
   Check for Updates: Check for Updates
-  Check slot: Check slot
+  Check Slot: Check Slot
   Check slot failed: Check slot failed
-  Check slots: Check slots
+  Check Slots: Check Slots
   Check slots failed: Check slots failed
   Check that only one filament path is active: Check that only one filament path is active
   Check that the cutter mechanism is properly installed: Check that the cutter mechanism is properly installed
@@ -842,9 +843,6 @@ translations:
   'Current name:': 'Current name:'
   'Current:': 'Current:'
   'Current: %d°C | Target: %d°C': 'Current: %d°C | Target: %d°C'
-  'Current: %s': 'Current: %s'
-  'Current: %s · %s': 'Current: %s · %s'
-  'Current: Bypass': 'Current: Bypass'
   Currently Loaded: Currently Loaded
   Currently printing: Currently printing
   Custom: Custom
@@ -870,6 +868,7 @@ translations:
   DISABLED: DISABLED
   DISCOVERED PRINTERS: DISCOVERED PRINTERS
   DISPLAY: DISPLAY
+  DONE: DONE
   Damping (Kd): Damping (Kd)
   Danger: Danger
   Danger Zone: Danger Zone
@@ -1370,6 +1369,7 @@ translations:
   FlashForge Creator 5 Pro: FlashForge Creator 5 Pro
   FlashForge IFS: FlashForge IFS
   Flip: Flip
+  Flip Clock: Flip Clock
   Flip the spools: Flip the spools
   Flow: Flow
   Flow Compensation: Flow Compensation
@@ -1523,7 +1523,7 @@ translations:
   Home and sweep the cutter to re-find its position: Home and sweep the cutter to re-find its position
   Home failed: Home failed
   Home printer first?: Home printer first?
-  Home selector: Home selector
+  Home Selector: Home Selector
   Homing AFC system...: Homing AFC system...
   Homing Failed: Homing Failed
   Homing X...: Homing X...
@@ -1569,6 +1569,7 @@ translations:
   Hyperlapse: Hyperlapse
   Hyperlapse captures frames at fixed time intervals. Good for very long prints.: Hyperlapse
     captures frames at fixed time intervals. Good for very long prints.
+  Hyperspace: Hyperspace
   I understand: I understand
   ID (optional): ID (optional)
   IMPORT FROM USB: IMPORT FROM USB
@@ -1801,7 +1802,7 @@ translations:
   Load filament: Load filament
   Load filament first: Load filament first
   Load or unload filament.: Load or unload filament.
-  Load profile: Load profile
+  Load Profile: Load Profile
   Load the required filaments or start anyway?: Load the required filaments or start
     anyway?
   'Load, unload, and swap spools. View your multi-filament system at a glance, map colors to slots, and monitor runout sensors.': 'Load, unload, and swap spools. View your multi-filament system at a glance, map colors to slots, and monitor runout sensors.'
@@ -2258,6 +2259,7 @@ translations:
   PA: PA
   PATH A · 1,-1: PATH A · 1,-1
   PATH B · 1,1: PATH B · 1,1
+  PAUSED: PAUSED
   PETG: PETG
   PID: PID
   PIN must be 4-6 digits: PIN must be 4-6 digits
@@ -2715,6 +2717,7 @@ translations:
   Reset failed: Reset failed
   Reset motor run-time counter: Reset motor run-time counter
   Reset tags: Reset tags
+  Reset Tags: Reset Tags
   Reset to Default: Reset to Default
   Reset to defaults: Reset to defaults
   Reset to original values: Reset to original values
@@ -2849,7 +2852,7 @@ translations:
   Save changes to persist them across restarts?: Save changes to persist them across
     restarts?
   'Save failed: {}': 'Save failed: {}'
-  Save offsets: Save offsets
+  Save Offsets: Save Offsets
   Save offsets?: Save offsets?
   Save to Spoolman: Save to Spoolman
   Saved Z-Offset: Saved Z-Offset
@@ -2936,7 +2939,7 @@ translations:
   Select macro for third button: Select macro for third button
   Select material to begin: Select material to begin
   Select sensor: Select sensor
-  Select slot: Select slot
+  Select Slot: Select Slot
   Select slot failed: Select slot failed
   Select the heaters Klipper uses for your bed and hotend: Select the heaters Klipper
     uses for your bed and hotend
@@ -3038,7 +3041,7 @@ translations:
   Single toggle macro. State is not tracked.: Single toggle macro. State is not tracked.
   Size: Size
   Skip: Skip
-  Skip objects...: Skip objects...
+  Skip Objects...: Skip Objects...
   Skipped: Skipped
   Sleep While Printing: Sleep While Printing
   Sleep adjusted to match dim timeout: Sleep adjusted to match dim timeout
@@ -3137,7 +3140,7 @@ translations:
   Start Probing: Start Probing
   Start anyway?: Start anyway?
   Start at: Start at
-  Start check: Start check
+  Start Check: Start Check
   Start drying: Start drying
   Start failed: Start failed
   'Start next: {}': 'Start next: {}'
@@ -3224,7 +3227,6 @@ translations:
   TOOLS: TOOLS
   TPU: TPU
   Tag Parts: Tag Parts
-  Tag parts: Tag parts
   Takes 3-5 min. Do not interrupt.: Takes 3-5 min. Do not interrupt.
   Tangle prevention active: Tangle prevention active
   Tangle prevention boosted: Tangle prevention boosted
@@ -3281,7 +3283,7 @@ translations:
   Test RS-485 link to CFS units: Test RS-485 link to CFS units
   Test Screensaver: Test Screensaver
   Test Tracker: Test Tracker
-  Test both: Test both
+  Test Both: Test Both
   Test label printed: Test label printed
   'Testing rotation: %d° (%d/%d) - %ds remaining': 'Testing rotation: %d°
     (%d/%d) - %ds remaining'
@@ -3539,7 +3541,7 @@ translations:
   Trigger: Trigger
   'Troubleshooting:': 'Troubleshooting:'
   Try adjusting your search or filters: Try adjusting your search or filters
-  Try again: Try again
+  Try Again: Try Again
   Try the operation again. If it persists, check for mechanical issues.: Try the operation again. If it persists, check for mechanical issues.
   Tune: Tune
   Tuning tower enabled - start a print to test: Tuning tower enabled - start a print
@@ -3652,7 +3654,7 @@ translations:
   Use Unload before Eject: Use Unload before Eject
   Use first HID scanner found: Use first HID scanner found
   Use printer type to select image: Use printer type to select image
-  Use scan: Use scan
+  Use Scan: Use Scan
   User intervention required: User intervention required
   VM Peak: VM Peak
   VM Size: VM Size
@@ -3845,6 +3847,7 @@ translations:
   direct drive: direct drive
   disable: disable
   disabled: disabled
+  done at {} · {}%: done at {} · {}%
   drying: drying
   e.g. Jet Black: e.g. Jet Black
   e.g. NAME=my_var VALUE=123: e.g. NAME=my_var VALUE=123
@@ -3911,6 +3914,7 @@ translations:
   tall: tall
   target {}%: target {}%
   target {}°: target {}°
+  too slow: too slow
   tool(s): tool(s)
   used: used
   v%s available: v%s available

@@ -133,7 +133,7 @@
            phrases chosen by clog_meter_note_kind so they follow the language. -->
       <text_tiny name="clog_bar_note"
                  width="100%" bind_text="clog_meter_note_text" style_text_color="#text_muted" style_text_align="center"
-                 long_mode="dots" clickable="false" event_bubble="true">
+                 clickable="false" event_bubble="true">
         <bind_flag_if_not_eq subject="clog_meter_note_kind" flag="hidden" ref_value="1"/>
       </text_tiny>
       <text_tiny name="clog_bar_note_boosted"

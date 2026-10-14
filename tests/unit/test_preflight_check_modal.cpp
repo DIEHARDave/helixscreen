@@ -148,10 +148,11 @@ TEST_CASE_METHOD(LVGLUITestFixture,
 TEST_CASE_METHOD(LVGLUITestFixture,
                  "PreflightCheckModal explanation names a multi-unit lane within its own unit",
                  "[preflight][modal][ui]") {
-    // Box Turtle 1 (global 0-3) + Night Owl (global 4-5): global slot 5 is
-    // Night Owl's second lane, local index 1 - "Night Owl · Lane 2" on every
-    // other surface (mapping chip, remap modal). The explanation must agree,
-    // not spell it "Lane 6" from the global index.
+    // Turtle 1 (global 0-3) + Night Owl 1 (global 4-5): global slot 5 is
+    // Night Owl 1's second lane, local index 1 - "Night Owl 1 · Lane 2" on every
+    // other surface (unit card, mapping chip, remap modal). The explanation must
+    // agree, not spell it "Lane 6" from the global index, nor show AFC's raw
+    // instance name "Night_Owl_1".
     auto& ams = helix::AmsState::instance();
     ams.init_subjects(false);
     auto owned_backend = std::make_unique<helix::AmsBackendMock>();
@@ -173,7 +174,8 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     lv_obj_t* explain = lv_obj_find_by_name(test_screen(), "preflight_explanation");
     REQUIRE(explain != nullptr);
     std::string text = lv_label_get_text(explain);
-    CHECK(text.find("Night Owl") != std::string::npos);
+    CHECK(text.find("Night Owl 1") != std::string::npos);
+    CHECK(text.find("Night_Owl") == std::string::npos);
     CHECK(text.find("Lane 2") != std::string::npos);
     CHECK(text.find("Lane 6") == std::string::npos);
 

@@ -116,6 +116,7 @@ translations:
 
   30 minutes: 30 minutos
   30 seconds: 30 segundos
+  3D Maze: Labirinto 3D
   3D Pipes: Canos 3D
   3D View: Vista 3D
   4. Paper should move but with resistance: 4. O papel deve se mover, mas com resistência
@@ -467,7 +468,7 @@ translations:
   Calibrate Purge Chute: Calibrar calha de purga
   Calibrate X: Calibrar X
   Calibrate Y: Calibrar Y
-  Calibrate all tools: Calibrar todas as ferramentas
+  Calibrate All Tools: Calibrar todas as ferramentas
   Calibrate input shaping to reduce ringing artifacts in prints: Calibrar input shaping
     para reduzir artefatos de ringing nas impressões
   Calibrate tool offsets?: Calibrar os offsets de ferramenta?
@@ -593,9 +594,9 @@ translations:
   Check failed: Falha na verificação
   Check filament: Verificar filamento
   Check for Updates: Verificar Atualizações
-  Check slot: Verificar slot
+  Check Slot: Verificar slot
   Check slot failed: Falha ao verificar slot
-  Check slots: Verificar slots
+  Check Slots: Verificar
   Check slots failed: Falha ao verificar slots
   Check that only one filament path is active: Verifique se apenas um caminho de filamento está ativo
   Check that the cutter mechanism is properly installed: Verifique se o mecanismo de corte está instalado corretamente
@@ -875,9 +876,6 @@ translations:
   'Current name:': 'Nome atual:'
   'Current:': 'Atual:'
   'Current: %d°C | Target: %d°C': 'Atual: %d°C | Alvo: %d°C'
-  'Current: %s': 'Atual: %s'
-  'Current: %s · %s': 'Atual: %s · %s'
-  'Current: Bypass': 'Atual: Bypass'
   Currently Loaded: Atualmente carregado
   Currently printing: Imprimindo atualmente
   Custom: Personalizado
@@ -903,6 +901,7 @@ translations:
   DISABLED: DESABILITADO
   DISCOVERED PRINTERS: IMPRESSORAS DESCOBERTAS
   DISPLAY: TELA
+  DONE: CONCLUÍDO
   Damping (Kd): Amortecimento (Kd)
   Danger: Perigo
   Danger Zone: Zona de Perigo
@@ -1417,6 +1416,7 @@ translations:
   FlashForge Creator 5 Pro: FlashForge Creator 5 Pro
   FlashForge IFS: FlashForge IFS
   Flip: Inverter
+  Flip Clock: Relógio de palhetas
   Flip the spools: Vire os carretéis
 
   Flow: Fluxo
@@ -1576,7 +1576,7 @@ translations:
   Home and sweep the cutter to re-find its position: Referencia e varre o cortador para reencontrar sua posição
   Home failed: Homing falhou
   Home printer first?: Fazer home da impressora primeiro?
-  Home selector: Fazer home do seletor
+  Home Selector: Fazer home do seletor
   Homing AFC system...: Homing do sistema AFC...
   Homing Failed: 'Falha ao referenciar'
   Homing X...: Posicionando X...
@@ -1623,6 +1623,7 @@ translations:
   Hyperlapse captures frames at fixed time intervals. Good for very long prints.: O
     Hyperlapse captura quadros em intervalos de tempo fixos. Bom para impressões muito
     longas.
+  Hyperspace: Hiperespaço
   I understand: Entendi
 
   ID (optional): ID (opcional)
@@ -1862,7 +1863,7 @@ translations:
   Load filament: 'Carregar filamento'
   Load filament first: Carregue filamento primeiro
   Load or unload filament.: Carregue ou descarregue o filamento.
-  Load profile: 'Carregar perfil'
+  Load Profile: 'Carregar perfil'
   Load the required filaments or start anyway?: Carregar os filamentos necessários
     ou iniciar mesmo assim?
   'Load, unload, and swap spools. View your multi-filament system at a glance, map colors to slots, and monitor runout sensors.': 'Carregue, descarregue e troque carretéis. Visualize seu sistema de múltiplos filamentos rapidamente, mapeie cores para slots e monitore sensores de fim de filamento.'
@@ -2327,6 +2328,7 @@ translations:
   PA: PA
   PATH A · 1,-1: "CAMINHO A · 1,-1"
   PATH B · 1,1: "CAMINHO B · 1,1"
+  PAUSED: PAUSADO
   PETG: PETG
   PID: PID
   PIN must be 4-6 digits: O PIN deve ter 4-6 dígitos
@@ -2796,6 +2798,7 @@ translations:
   Reset failed: Falha ao redefinir
   Reset motor run-time counter: 'Resetar o contador de horas de funcionamento do motor'
   Reset tags: Resetar marcações
+  Reset Tags: Resetar marcações
   Reset to Default: Restaurar Padrão
   Reset to defaults: Restaurar padrões
   Reset to original values: Restaurar valores originais
@@ -2932,7 +2935,7 @@ translations:
   Save changes to persist them across restarts?: Salvar alterações para persistir
     entre reinicializações?
   'Save failed: {}': 'Falha ao salvar: {}'
-  Save offsets: Salvar offsets
+  Save Offsets: Salvar offsets
   Save offsets?: Salvar offsets?
   Save to Spoolman: Salvar no Spoolman
   Saved Z-Offset: Z-Offset Salvo
@@ -3023,7 +3026,7 @@ translations:
   Select macro for third button: Selecionar macro para o terceiro botão
   Select material to begin: Selecione o material para começar
   Select sensor: Selecionar sensor
-  Select slot: Selecionar slot
+  Select Slot: Selecionar slot
   Select slot failed: Falha ao selecionar slot
   Select the heaters Klipper uses for your bed and hotend: Selecione os aquecedores
     que o Klipper usa para a mesa e o hotend
@@ -3130,7 +3133,7 @@ translations:
     não é rastreado.
   Size: Tamanho
   Skip: Pular
-  Skip objects...: 'Pular objetos...'
+  Skip Objects...: 'Pular objetos...'
   Skipped: 'Ignorado'
   Sleep While Printing: Suspender Durante Impressão
   Sleep adjusted to match dim timeout: Tempo de suspensão ajustado
@@ -3233,7 +3236,7 @@ translations:
   Start Probing: Iniciar Sondagem
   Start anyway?: 'Iniciar mesmo assim?'
   Start at: Começar em
-  Start check: Iniciar verificação
+  Start Check: Iniciar verificação
   Start drying: Iniciar secagem
 
   Start failed: Falha ao iniciar
@@ -3324,7 +3327,6 @@ translations:
   TOOLS: FERRAMENTAS
   TPU: TPU
   Tag Parts: Marcar Componentes
-  Tag parts: Marcar componentes
   Takes 3-5 min. Do not interrupt.: Leva 3-5 min. Não interrompa.
   Tangle prevention active: Prevenção de emaranhados ativa
   Tangle prevention boosted: Prevenção de emaranhados reforçada
@@ -3381,7 +3383,7 @@ translations:
   Test RS-485 link to CFS units: 'Testar o enlace RS-485 com as unidades CFS'
   Test Screensaver: Testar Protetor de Tela
   Test Tracker: Rastreador de Testes
-  Test both: Testar ambos
+  Test Both: Testar ambos
   Test label printed: Etiqueta de teste impressa
   'Testing rotation: %d° (%d/%d) - %ds remaining': 'Testando rotação: %d°
     (%d/%d) - %ds restantes'
@@ -3652,7 +3654,7 @@ translations:
   Trigger: Gatilho
   'Troubleshooting:': 'Solução de Problemas:'
   Try adjusting your search or filters: Tente ajustar sua busca ou filtros
-  Try again: 'Tentar novamente'
+  Try Again: 'Tentar novamente'
   Try the operation again. If it persists, check for mechanical issues.: Tente a operação novamente. Se persistir, verifique problemas mecânicos.
   Tune: Ajustar
   Tuning tower enabled - start a print to test: Torre de ajuste habilitada - inicie
@@ -3767,7 +3769,7 @@ translations:
   Use Unload before Eject: 'Use Descarregar antes de Ejetar'
   Use first HID scanner found: 'Usar o primeiro leitor HID encontrado'
   Use printer type to select image: Usar tipo de impressora para selecionar imagem
-  Use scan: Usar leitura
+  Use Scan: Usar leitura
   User intervention required: 'Intervenção manual necessária'
   VM Peak: Pico de VM
   VM Size: Tamanho de VM
@@ -3961,6 +3963,7 @@ translations:
   direct drive: de acionamento direto
   disable: desabilitar
   disabled: desabilitado
+  done at {} · {}%: "termina às {} · {}%"
   drying: secando
   e.g. Jet Black: ex. Preto Fosco
   e.g. NAME=my_var VALUE=123: ex. NAME=minha_var VALUE=123
@@ -4034,6 +4037,7 @@ translations:
   tall: de altura
   target {}%: 'alvo {}%'
   target {}°: 'alvo {}°'
+  too slow: lento demais
   tool(s): ferramenta(s)
   used: usado
   v%s available: v%s disponível

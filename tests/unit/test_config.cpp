@@ -4101,7 +4101,7 @@ TEST_CASE("Config: v15→v16 migration disables Flying Toasters on constrained t
         test_config.init(temp_path);
 
         REQUIRE(test_config.get<int>("/config_version") == CURRENT_CONFIG_VERSION);
-        REQUIRE(test_config.get<int>("/display/screensaver_type", 1) == 0);
+        REQUIRE(test_config.get<std::string>("/display/screensaver_type", "") == "off");
         REQUIRE(test_config.get<bool>("/display/screensaver_migration_notice_pending", false) ==
                 true);
 
@@ -4127,7 +4127,7 @@ TEST_CASE("Config: v15→v16 migration disables Flying Toasters on constrained t
         test_config.init(temp_path);
 
         REQUIRE(test_config.get<int>("/config_version") == CURRENT_CONFIG_VERSION);
-        REQUIRE(test_config.get<int>("/display/screensaver_type", 1) == 0);
+        REQUIRE(test_config.get<std::string>("/display/screensaver_type", "") == "off");
         REQUIRE(test_config.get<bool>("/display/screensaver_migration_notice_pending", false) ==
                 true);
 
@@ -4152,7 +4152,7 @@ TEST_CASE("Config: v15→v16 migration disables Flying Toasters on constrained t
         Config test_config;
         test_config.init(temp_path);
 
-        REQUIRE(test_config.get<int>("/display/screensaver_type", 0) == 1);
+        REQUIRE(test_config.get<std::string>("/display/screensaver_type", "") == "toasters");
         REQUIRE_FALSE(test_config.exists("/display/screensaver_migration_notice_pending"));
 
         std::filesystem::remove_all(temp_dir);
@@ -4176,7 +4176,7 @@ TEST_CASE("Config: v15→v16 migration disables Flying Toasters on constrained t
         Config test_config;
         test_config.init(temp_path);
 
-        REQUIRE(test_config.get<int>("/display/screensaver_type", 0) == 2);
+        REQUIRE(test_config.get<std::string>("/display/screensaver_type", "") == "starfield");
         REQUIRE_FALSE(test_config.exists("/display/screensaver_migration_notice_pending"));
 
         std::filesystem::remove_all(temp_dir);
@@ -4200,7 +4200,7 @@ TEST_CASE("Config: v15→v16 migration disables Flying Toasters on constrained t
         Config test_config;
         test_config.init(temp_path);
 
-        REQUIRE(test_config.get<int>("/display/screensaver_type", 0) == 3);
+        REQUIRE(test_config.get<std::string>("/display/screensaver_type", "") == "pipes");
         REQUIRE_FALSE(test_config.exists("/display/screensaver_migration_notice_pending"));
 
         std::filesystem::remove_all(temp_dir);
@@ -4224,7 +4224,7 @@ TEST_CASE("Config: v15→v16 migration disables Flying Toasters on constrained t
         Config test_config;
         test_config.init(temp_path);
 
-        REQUIRE(test_config.get<int>("/display/screensaver_type", 1) == 0);
+        REQUIRE(test_config.get<std::string>("/display/screensaver_type", "") == "off");
         REQUIRE_FALSE(test_config.exists("/display/screensaver_migration_notice_pending"));
 
         std::filesystem::remove_all(temp_dir);
@@ -4249,7 +4249,7 @@ TEST_CASE("Config: v15→v16 migration disables Flying Toasters on constrained t
         test_config.init(temp_path);
 
         // Migration gate (version < 16) must not fire for already-v16 config
-        REQUIRE(test_config.get<int>("/display/screensaver_type", 0) == 1);
+        REQUIRE(test_config.get<std::string>("/display/screensaver_type", "") == "toasters");
         REQUIRE_FALSE(test_config.exists("/display/screensaver_migration_notice_pending"));
 
         std::filesystem::remove_all(temp_dir);

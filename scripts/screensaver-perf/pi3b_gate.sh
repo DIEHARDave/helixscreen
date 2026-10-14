@@ -17,7 +17,7 @@ OUT=$HELIX_PERF_SCRATCH/results/$ARM.txt
 mkdir -p "$HELIX_PERF_SCRATCH/cyclic"
 
 for label in $SAVERS; do
-    type=$(perf_saver_type "$label") || exit 2
+    saver=$(perf_saver_name "$label") || exit 2
     ui_loop=0
     [ "$label" = "ui" ] && ui_loop=1
     mid_thermal=$HELIX_PERF_SCRATCH/cyclic/$ARM-r$RUN-$label.thermal
@@ -25,7 +25,7 @@ for label in $SAVERS; do
     # Sampled while the load runs: the load, not the pause after it, is what throttles the board.
     (sleep $((DUR / 2 + 5)); perf_thermal > "$mid_thermal") < /dev/null &
     sampler=$!
-    raw=$(perf_run_remote "$PERF_HERE/pi3b_loadgate.sh" "ARM=$ARM" "LABEL=$label" "TYPE=$type" \
+    raw=$(perf_run_remote "$PERF_HERE/pi3b_loadgate.sh" "ARM=$ARM" "LABEL=$label" "SAVER=$saver" \
         "UI_LOOP=$ui_loop" "DUR=$DUR" 2>&1 | grep '^GATE_RAW' | tail -n 1)
     wait "$sampler"
     remote_hist=$(sed -n 's/.*hist=\([^ ]*\).*/\1/p' <<<"$raw")

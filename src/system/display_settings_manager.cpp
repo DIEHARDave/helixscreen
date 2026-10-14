@@ -15,6 +15,7 @@
 #include "platform_info.h"
 #include "screensaver_canvas.h"
 #include "screensaver_registry.h"
+#include "screensaver_setting.h"
 #include "spdlog/spdlog.h"
 #include "static_subject_registry.h"
 #include "theme_loader.h"
@@ -362,25 +363,27 @@ void DisplaySettingsManager::init_subjects() {
     spdlog::info("[DisplaySettingsManager] Timezone set to '{}' (index {})", tz, tz_index);
 
 #ifdef HELIX_ENABLE_SCREENSAVER
-    // Screensaver type. A fresh install runs the registry default for this build's colour
-    // depth; a stored choice is kept as it is.
-    const int screensaver_default =
-        static_cast<int>(helix::ui::default_screensaver_type(helix::ui::SAVER_BUILD_DEPTH));
+    // Screensaver: a stored name, or a legacy type number, read leniently
+    // (helix::ui::screensaver_from_setting). A fresh install, and a value naming no saver, run
+    // the registry default for this build's colour depth.
+    const ScreensaverType screensaver_default =
+        helix::ui::default_screensaver_type(helix::ui::SAVER_BUILD_DEPTH);
 
-    int screensaver_type = screensaver_default;
-    if (config->exists("/display/screensaver_type")) {
-        screensaver_type = config->get<int>("/display/screensaver_type", screensaver_default);
+    ScreensaverType screensaver = screensaver_default;
+    if (const json* stored = config->try_get_json(helix::ui::SCREENSAVER_SETTING_PATH)) {
+        screensaver = helix::ui::screensaver_from_setting(stored, screensaver_default);
     } else if (config->exists("/display/screensaver_enabled")) {
-        // Legacy screensaver_enabled: true reads as the default type, false as Off.
+        // Legacy screensaver_enabled: true reads as the default saver, false as Off.
         bool old_enabled = config->get<bool>("/display/screensaver_enabled", true);
-        screensaver_type = old_enabled ? screensaver_default : 0;
-        config->set<int>("/display/screensaver_type", screensaver_type);
+        screensaver = old_enabled ? screensaver_default : ScreensaverType::OFF;
+        config->set<std::string>(helix::ui::SCREENSAVER_SETTING_PATH,
+                                 helix::ui::screensaver_name(screensaver));
         config->save();
         spdlog::info(
             "[DisplaySettingsManager] Migrated screensaver_enabled={} → screensaver_type={}",
-            old_enabled, screensaver_type);
+            old_enabled, helix::ui::screensaver_name(screensaver));
     }
-    screensaver_type = helix::ui::clamp_screensaver_type(screensaver_type);
+    const int screensaver_type = static_cast<int>(screensaver);
     UI_MANAGED_SUBJECT_INT(screensaver_type_subject_, screensaver_type, "settings_screensaver_type",
                            subjects_);
 #endif
@@ -888,7 +891,8 @@ void DisplaySettingsManager::set_screensaver_type(int type) {
     lv_subject_set_int(&screensaver_type_subject_, type);
 
     Config* config = Config::get_instance();
-    config->set<int>("/display/screensaver_type", type);
+    config->set<std::string>(helix::ui::SCREENSAVER_SETTING_PATH,
+                             helix::ui::screensaver_name(static_cast<ScreensaverType>(type)));
     config->save();
 }
 #endif

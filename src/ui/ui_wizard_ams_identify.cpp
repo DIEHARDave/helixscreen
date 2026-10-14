@@ -62,6 +62,7 @@ void WizardAmsIdentifyStep::init_subjects() {
                               subjects_);
     UI_MANAGED_SUBJECT_STRING(wizard_ams_details_, ams_details_buffer_, "", "wizard_ams_details",
                               subjects_);
+    UI_MANAGED_SUBJECT_INT(wizard_ams_logo_color_, 0, "wizard_ams_logo_color", subjects_);
 
     subjects_initialized_ = true;
     spdlog::debug("[{}] Subjects initialized", get_name());
@@ -129,8 +130,9 @@ void WizardAmsIdentifyStep::update_display() {
     // Set logo image (imperative - images don't support bind_src)
     lv_obj_t* logo = helix::ui::find_required(screen_root_, "ams_logo", get_name());
     if (logo && backend) {
-        const char* logo_path =
-            helix::AmsState::get_logo_path(backend->get_system_info().type_name);
+        const helix::LogoArt art = helix::AmsState::get_logo(backend->get_system_info().type_name);
+        const char* logo_path = art.path;
+        lv_subject_set_int(&wizard_ams_logo_color_, art.color ? 1 : 0);
         if (logo_path && logo_path[0] != '\0') {
             lv_image_set_src(logo, logo_path);
             lv_obj_remove_flag(logo, LV_OBJ_FLAG_HIDDEN);

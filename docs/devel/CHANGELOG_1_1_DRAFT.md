@@ -549,11 +549,27 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
 - **Bouncing Logo screensaver** - the HelixScreen logo bouncing around a black screen in its
   own colors, for anyone whose printer image is not much to look at. Select it under Settings >
   Display > Screensaver.
+- **Flip Clock screensaver** - big light digits on dark split-flap cards, the time of day in
+  your 12- or 24-hour format. While a print runs the cards count down the time left, with
+  "done at 9:42 PM · 63%" underneath; a pause freezes the count and a finished print shows
+  DONE for a minute. Every digit has its own card, and only the digits that change fold
+  their top half down; slower boards swap the digits instead. Select it under Settings > Display > Screensaver.
 - **Fireworks screensaver** - shells rise from behind a line of hills under a starry night
   sky, trail sparks, and burst as peonies, chrysanthemums, willows or rings, each spark
   fading from white through its shell's colour to an ember. It adjusts how many sparks and
   bursts it draws to what the board can afford. Select it under Settings > Display >
   Screensaver.
+- **3D Maze screensaver** - the old Windows walk through a brick maze, with wood floors and
+  a tiled ceiling. Spinning HelixScreen logos float in the halls, gray rocks flip the view
+  upside down, a tiny toolhead scurries past, and your printer hangs framed on the walls.
+  Select it under Settings > Display > Screensaver.
+- **Hyperspace screensaver** - a flight through glowing rainbow space: star flares stream
+  past, a shimmering wormhole sweeps in and out, and now and then a shell of flares bursts
+  ahead. Select it under Settings > Display > Screensaver.
+- **A screensaver your printer can't run is left out** - each saver measures what it costs
+  on your board, and one that would still slow the printer at its lightest setting drops out
+  of the list. Another saver plays in its place instead of a black screen, and your choice
+  stays saved for a faster printer. 3D Maze and Hyperspace are too heavy for the AD5M.
 - **All five screensavers on every board** - Flying Toasters, Starfield, 3D Pipes, Bouncing
   Printer and Fireworks now run on the AD5M and Centauri Carbon too, which had none, and on
   every other board with a 16-bit display. Each saver draws less on a slower board rather

@@ -89,6 +89,40 @@ std::unique_ptr<AmsBackendQidi> two_boxes_one_drying(std::time_t end_time_s) {
 
 } // namespace
 
+// Its next init resets the subject's observer list, which would orphan the node.
+TEST_CASE_METHOD(DryerModelFixture, "dryer model: a torn-down filament system is not observed",
+                 "[dryer][model]") {
+    auto& ams = AmsState::instance();
+    ams.init_subjects(false);
+    lv_subject_t* humidity = ams.get_unit_humidity_subject(0);
+    dryer_model::refresh();
+    REQUIRE(lv_ll_get_len(&humidity->subs_ll) == 1);
+
+    ams.deinit_subjects();
+    dryer_model::refresh();
+    CHECK(lv_ll_get_len(&humidity->subs_ll) == 0);
+
+    ams.init_subjects(false);
+    dryer_model::refresh();
+    CHECK(lv_ll_get_len(&humidity->subs_ll) == 1);
+}
+
+TEST_CASE_METHOD(DryerModelFixture, "dryer model: a torn-down printer state is not observed",
+                 "[dryer][model]") {
+    auto& ps = state();
+    lv_subject_t* active = ps.temperature_state().get_chamber_dryer_active_subject();
+    dryer_model::refresh();
+    REQUIRE(lv_ll_get_len(&active->subs_ll) == 1);
+
+    ps.deinit_subjects();
+    dryer_model::refresh();
+    CHECK(lv_ll_get_len(&active->subs_ll) == 0);
+
+    ps.init_subjects(true);
+    dryer_model::refresh();
+    CHECK(lv_ll_get_len(&active->subs_ll) == 1);
+}
+
 TEST_CASE_METHOD(DryerModelFixture, "dryer model: no source, no gate", "[dryer][model]") {
     CHECK_FALSE(gate());
     CHECK_FALSE(dryer_model::summary().available);

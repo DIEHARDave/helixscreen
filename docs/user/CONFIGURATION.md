@@ -482,15 +482,15 @@ The K2 build default applies only when the backlight is a sysfs device (`/sys/cl
 **Description:** Whether display sleep powers the screen panel down or just turns its backlight off. Automatic powers the panel down only when the screen has no brightness control; on every other screen, sleep turns the backlight off. Set `1` if your screen goes black at sleep but the backlight stays lit. Set `0` if at sleep your screen flashes colours, glows at the edges, or does not come back on when you wake it. Takes effect after a restart. See [Troubleshooting](TROUBLESHOOTING.md#screen-goes-dark-at-sleep-but-the-backlight-stays-on).
 
 ### `screensaver_type`
-**Type:** integer
-**Default:** `1`
-**Values:** `0` = Off, `1` = Flying Toasters, `2` = Starfield, `3` = 3D Pipes, `4` = Bouncing Printer, `5` = Fireworks, `6` = Bouncing Logo
-**Description:** Which screensaver plays when the screen has been idle. Choose it in **Settings > Display**. It starts at the `dim_sec` mark, alongside dimming, and stops when `sleep_sec` takes the display down. On a panel with no backlight control the screensaver is the only idle indication you get. A fresh install selects Flying Toasters on every device that has screensavers. Each screensaver checks its own cost on your device and lowers its frame rate or detail, or shows a plain black screen, if it would slow the printer (see `screensaver_levels`).
+**Type:** string
+**Default:** `"toasters"`
+**Values:** `"off"`, `"toasters"` (Flying Toasters), `"starfield"`, `"pipes"` (3D Pipes), `"bounce"` (Bouncing Printer), `"fireworks"`, `"logo"` (Bouncing Logo), `"maze"` (3D Maze), `"hyperspace"`, `"flipclock"` (Flip Clock)
+**Description:** Which screensaver plays when the screen has been idle. Choose it in **Settings > Display**. It starts at the `dim_sec` mark, alongside dimming, and stops when `sleep_sec` takes the display down. On a panel with no backlight control the screensaver is the only idle indication you get. A fresh install selects Flying Toasters on every device that has screensavers. Names are not case-sensitive. Older versions stored a number here (`0` = Off through `9` = Flip Clock, in the order above); a number is still read as the screensaver it stood for and is rewritten as its name on the next update. A value that names no screensaver reads as the default. Each screensaver checks its own cost on your device and lowers its frame rate or detail if it would slow the printer. One that is still too heavy is left out of the list, and another plays in its place (see `screensaver_levels`). Your choice stays saved here either way.
 
 ### `screensaver_levels`
 **Type:** object
 **Default:** absent
-**Description:** Written by HelixScreen; do not edit it. Each screensaver measures how much processor time it uses while it plays. If it would slow the printer, it lowers its frame rate or detail, and if even its lowest setting is too much it shows a plain black screen instead. The result is kept here for each screensaver, with the HelixScreen version and a description of the screen hardware, and is measured again after an update or on different hardware. Delete this entry to have every screensaver measured again.
+**Description:** Written by HelixScreen; do not edit it. Each screensaver measures how much processor time it uses while it plays. If it would slow the printer, it lowers its frame rate or detail, and if even its lowest setting is too much another screensaver plays in its place, or a plain black screen when none fits. The result is kept here for each screensaver, with the HelixScreen version and a description of the screen hardware, and is measured again after an update or on different hardware. Delete this entry to have every screensaver measured again.
 
 ### `drm_device`
 **Type:** string

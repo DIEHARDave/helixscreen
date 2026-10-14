@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Runs ON the Pi through perf_run_remote with ARM=<label> LABEL=<workload> TYPE=<dropdown
-# index, 0 for none> UI_LOOP=0|1 DUR=<seconds>.
-# Starts the saver (TYPE > 0) or cycles the base panels (UI_LOOP=1), loads two cores with
-# stress-ng, runs cyclictest for DUR seconds and prints one GATE_RAW line. The histogram is
-# left at /tmp/hm_cyclic_<arm>_<label>.txt for the host to collect.
+# Runs ON the Pi through perf_run_remote with ARM=<label> LABEL=<workload> SAVER=<stable
+# saver name, or off for none> UI_LOOP=0|1 DUR=<seconds>.
+# Starts the saver (`ctl screensaver <name>`) or cycles the base panels (UI_LOOP=1), loads
+# two cores with stress-ng, runs cyclictest for DUR seconds and prints one GATE_RAW line. The
+# histogram is left at /tmp/hm_cyclic_<arm>_<label>.txt for the host to collect.
 # cyclictest needs root even for SCHED_OTHER; --laptop keeps it from pinning
 # /dev/cpu_dma_latency to 0, which would hold the CPU out of idle states and distort the
 # latency being measured.
@@ -14,7 +14,7 @@ INSTALL=${INSTALL:?}
 CTL_SOCK=${CTL_SOCK:?}
 ARM=${ARM:-unnamed}
 LABEL=${LABEL:-off}
-TYPE=${TYPE:-0}
+SAVER=${SAVER:-off}
 UI_LOOP=${UI_LOOP:-0}
 DUR=${DUR:-60}
 CTL_BIN="$INSTALL/bin/helix-screen-egl"
@@ -40,18 +40,11 @@ cpu_ticks() {
     echo $((${12} + ${13}))
 }
 
-ORIG_TYPE=$(python3 -c 'import json, sys; print(json.load(open(sys.argv[1]))["display"]["screensaver_type"])' "$INSTALL/config/settings.json")
 ctl navigate home
 sleep 1
 T_START=$(date '+%Y-%m-%d %H:%M:%S')
-if [ "$TYPE" -ne 0 ]; then
-    ctl navigate settings
-    sleep 1
-    ctl click row_display
-    sleep 1
-    ctl set_value row_screensaver "$TYPE"
-    sleep 1
-    ctl click btn_test_screensaver
+if [ "$SAVER" != off ]; then
+    ctl screensaver "$SAVER"
     sleep 4
 fi
 
@@ -89,14 +82,8 @@ STOPPED=$(sudo_ journalctl -u helixscreen --since "$T_START" --no-pager -o cat 2
 CT_ERR=$(grep -v -i "password" "$HIST.err" | grep -v "cpu_dma_latency" | head -n 1 | tr ' ' '_')
 rm -f "$HIST.err"
 
-if [ "$TYPE" -ne 0 ]; then
+if [ "$SAVER" != off ]; then
     ctl wake
-    sleep 1
-    ctl navigate settings
-    sleep 1
-    ctl click row_display
-    sleep 1
-    ctl set_value row_screensaver "$ORIG_TYPE"
     sleep 1
 fi
 ctl navigate home

@@ -52,6 +52,10 @@ struct DisplaySleepConfig {
 class DisplaySleepController {
   public:
     explicit DisplaySleepController(DisplaySleepHost host);
+    ~DisplaySleepController();
+
+    DisplaySleepController(const DisplaySleepController&) = delete;
+    DisplaySleepController& operator=(const DisplaySleepController&) = delete;
 
     void configure(const DisplaySleepConfig& config);
 

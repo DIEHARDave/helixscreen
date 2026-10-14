@@ -677,8 +677,8 @@ The widget updates automatically when the active tool changes, whether you switc
 Tap a tool that is not mounted to switch to it. Tapping the tool that is already mounted opens the tool picker instead.
 
 - **When idle**, the tool change happens right away.
-- **When paused**, a confirmation dialog appears first, because changing tools mid-print can cause problems.
-- **While printing**, and while spools are [drying on the bed](temperature.md#drying-filament-on-the-bed), switching is unavailable.
+- **When paused**, a confirmation dialog appears first, because changing tools mid-print can cause problems. Printers whose filament change homes the toolhead itself (such as the AD5X) refuse tool changes while paused as well.
+- **While printing or preparing to print**, and while spools are [drying on the bed](temperature.md#drying-filament-on-the-bed), switching is unavailable: the tools are greyed out, and a tap shows a warning instead of changing tools.
 
 ### Parking the Tool
 

@@ -5,6 +5,7 @@
 
 #include "ui_fonts.h"
 #include "ui_icon_codepoints.h"
+#include "ui_text.h"
 #include "ui_update_queue.h"
 #include "ui_variant.h"
 
@@ -60,7 +61,78 @@ struct UiButtonData {
     // glyph can be restored after busy/done.
     lv_obj_t* op_spinner{nullptr};
     char op_idle_glyph[8]{}; // MDI glyph is 4-byte UTF-8 + NUL; 8 is generous
+
+    // long_mode was given: the label is bounded so it can ellipsize or wrap.
+    bool label_bounded{false};
+    // A bounded label beside the icon is one line of whatever font it ends up
+    // with; label_line_cb keeps that height in step as styles land.
+    bool label_beside{false};
+    bool label_line_cb{false};
 };
+
+/// One line of the label's current font, the height a bounded label in a row
+/// keeps so its text stays centred and ellipsizes on that line.
+void fit_label_line(lv_obj_t* label) {
+    const lv_font_t* font = lv_obj_get_style_text_font(label, LV_PART_MAIN);
+    if (!font) {
+        return;
+    }
+    const int32_t line = lv_font_get_line_height(font);
+    if (lv_obj_get_style_height(label, LV_PART_MAIN) != line) {
+        lv_obj_set_height(label, line);
+    }
+}
+
+/// The label's font is inherited, so a style added to the button after the
+/// label was bounded (a cell style setting text_font) changes its line height.
+void label_line_style_cb(lv_event_t* e) {
+    auto* label = static_cast<lv_obj_t*>(lv_event_get_target(e));
+    lv_obj_t* btn = lv_obj_get_parent(label);
+    auto* data = btn ? static_cast<UiButtonData*>(lv_obj_get_user_data(btn)) : nullptr;
+    if (data && data->magic == UiButtonData::MAGIC && data->label == label && data->label_beside) {
+        fit_label_line(label);
+    }
+}
+
+/// Bound the label of a long_mode button. Stacked or text-only, it spans the
+/// button. Beside an icon it takes what the icon leaves (a flex grow item, whose
+/// width the row decides) and one line of its font, so a label too long for
+/// that ellipsizes inside the button instead of pushing past its edge: a
+/// label's dots mode only cuts text that overruns its height.
+void apply_label_bound(UiButtonData* data, bool beside_icon) {
+    data->label_beside = beside_icon;
+    lv_obj_set_flex_grow(data->label, beside_icon ? 1 : 0);
+    lv_obj_set_width(data->label, lv_pct(100));
+    if (beside_icon) {
+        if (!data->label_line_cb) {
+            // DECLARATIVE_OK: the widget's own label tracks its inherited font
+            lv_obj_add_event_cb(data->label, label_line_style_cb, LV_EVENT_STYLE_CHANGED, nullptr);
+            data->label_line_cb = true;
+        }
+        fit_label_line(data->label);
+    } else {
+        lv_obj_set_height(data->label, LV_SIZE_CONTENT);
+    }
+}
+
+/// Hide one part of @p btn while @p subject_name equals @p ref: the observer
+/// behind label_hidden_subject and icon_hidden_subject.
+void bind_part_hidden(lv_xml_parser_state_t* state, lv_obj_t* btn, const char* subject_name,
+                      const char* ref, const char* part, lv_observer_cb_t cb) {
+    if (!subject_name || subject_name[0] == '\0') {
+        return;
+    }
+    lv_subject_t* subject = lv_xml_get_subject(&state->scope, subject_name);
+    if (!subject || !ref) {
+        spdlog::warn("[ui_button] {}_hidden_subject '{}' {}", part, subject_name,
+                     subject ? "has no _if_eq value" : "not found");
+        return;
+    }
+    const intptr_t ref_val = static_cast<intptr_t>(atoi(ref));
+    lv_subject_add_observer_obj(subject, cb, btn, reinterpret_cast<void*>(ref_val));
+    spdlog::trace("[ui_button] {} hidden while {} == {}", part, subject_name,
+                  static_cast<int>(ref_val));
+}
 
 // Monotonic source of per-button identity tokens. Buttons are created on the
 // main thread, so a plain non-atomic counter is sufficient.
@@ -1127,9 +1199,13 @@ void ui_button_apply(lv_xml_parser_state_t* state, const char** attrs) {
             mode = LV_LABEL_LONG_MODE_SCROLL_CIRCULAR;
         lv_label_set_long_mode(data->label, mode);
         // Label must have a bounded width for long_mode to take effect
-        lv_obj_set_width(data->label, lv_pct(100));
+        data->label_bounded = true;
+        apply_label_bound(data,
+                          data->icon != nullptr &&
+                              lv_obj_get_style_flex_flow(btn, LV_PART_MAIN) == LV_FLEX_FLOW_ROW);
         // Center text within the expanded label
         lv_obj_set_style_text_align(data->label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+        helix::ui::label_hold_one_line_if_dotted(data->label);
         spdlog::trace("[ui_button] Set long_mode to '{}'", long_mode);
     }
 
@@ -1157,25 +1233,27 @@ void ui_button_apply(lv_xml_parser_state_t* state, const char** attrs) {
         label_hidden_subject = "ui_breakpoint";
         label_hidden_ref = label_hidden_bp;
     }
-    if (label_hidden_subject && label_hidden_subject[0] != '\0' && data &&
-        data->magic == UiButtonData::MAGIC && data->label) {
-        lv_subject_t* subject = lv_xml_get_subject(&state->scope, label_hidden_subject);
-        if (subject && label_hidden_ref) {
-            intptr_t ref_val = static_cast<intptr_t>(atoi(label_hidden_ref));
-            lv_subject_add_observer_obj(
-                subject,
-                [](lv_observer_t* o, lv_subject_t* s) {
-                    auto* target = static_cast<lv_obj_t*>(lv_observer_get_target_obj(o));
-                    intptr_t ref = reinterpret_cast<intptr_t>(lv_observer_get_user_data(o));
-                    ui_button_set_label_hidden(target, lv_subject_get_int(s) == ref);
-                },
-                btn, reinterpret_cast<void*>(ref_val));
-            spdlog::trace("[ui_button] label hidden while {} == {}", label_hidden_subject,
-                          static_cast<int>(ref_val));
-        } else {
-            spdlog::warn("[ui_button] label_hidden_subject '{}' {}", label_hidden_subject,
-                         subject ? "has no label_hidden_if_eq" : "not found");
-        }
+    if (data && data->magic == UiButtonData::MAGIC && data->label) {
+        bind_part_hidden(state, btn, label_hidden_subject, label_hidden_ref, "label",
+                         [](lv_observer_t* o, lv_subject_t* s) {
+                             auto* target = static_cast<lv_obj_t*>(lv_observer_get_target_obj(o));
+                             intptr_t ref =
+                                 reinterpret_cast<intptr_t>(lv_observer_get_user_data(o));
+                             ui_button_set_label_hidden(target, lv_subject_get_int(s) == ref);
+                         });
+    }
+
+    // The icon's spelling of label_hidden_subject: a button that reads as text
+    // alone at some sizes keeps one declaration instead of two instances.
+    if (data && data->magic == UiButtonData::MAGIC && data->icon) {
+        bind_part_hidden(state, btn, lv_xml_get_value_of(attrs, "icon_hidden_subject"),
+                         lv_xml_get_value_of(attrs, "icon_hidden_if_eq"), "icon",
+                         [](lv_observer_t* o, lv_subject_t* s) {
+                             auto* target = static_cast<lv_obj_t*>(lv_observer_get_target_obj(o));
+                             intptr_t ref =
+                                 reinterpret_cast<intptr_t>(lv_observer_get_user_data(o));
+                             ui_button_set_icon_hidden(target, lv_subject_get_int(s) == ref);
+                         });
     }
 
     // Attribute-level sibling of label_hidden_if_bp_eq for the opposite
@@ -1309,6 +1387,22 @@ void ui_button_set_label_hidden(lv_obj_t* btn, bool hidden) {
 }
 
 // NAMESPACE_OK: joins this header's global ui_button_* free-function API
+void ui_button_set_icon_hidden(lv_obj_t* btn, bool hidden) {
+    if (!btn) {
+        return;
+    }
+    auto* data = static_cast<UiButtonData*>(lv_obj_get_user_data(btn));
+    if (!data || data->magic != UiButtonData::MAGIC || !data->icon) {
+        return;
+    }
+    if (hidden) {
+        lv_obj_add_flag(data->icon, LV_OBJ_FLAG_HIDDEN);
+    } else {
+        lv_obj_remove_flag(data->icon, LV_OBJ_FLAG_HIDDEN);
+    }
+}
+
+// NAMESPACE_OK: joins this header's global ui_button_* free-function API
 void ui_button_set_stacked(lv_obj_t* btn, bool stacked) {
     if (!btn) {
         return;
@@ -1330,6 +1424,8 @@ void ui_button_set_stacked(lv_obj_t* btn, bool stacked) {
         lv_obj_move_to_index(data->icon, data->icon_on_bottom ? -1 : 0);
         lv_obj_set_style_text_font(data->label, theme_manager_get_font("font_small"), LV_PART_MAIN);
         lv_obj_set_style_pad_top(data->label, theme_manager_get_spacing("space_xxs"), LV_PART_MAIN);
+        if (data->label_bounded)
+            apply_label_bound(data, false);
     } else {
         // Icon beside label, the create-time row recipe, at the fixed
         // button_height the row layout expects.
@@ -1341,6 +1437,8 @@ void ui_button_set_stacked(lv_obj_t* btn, bool stacked) {
         lv_obj_move_to_index(data->icon, data->icon_on_right ? -1 : 0);
         lv_obj_remove_local_style_prop(data->label, LV_STYLE_TEXT_FONT, LV_PART_MAIN);
         lv_obj_remove_local_style_prop(data->label, LV_STYLE_PAD_TOP, LV_PART_MAIN);
+        if (data->label_bounded)
+            apply_label_bound(data, true);
     }
 }
 

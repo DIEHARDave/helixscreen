@@ -4235,6 +4235,48 @@ TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker parking another head leaves the mo
     CHECK(backend.get_system_info().current_tool == 2);
 }
 
+TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker does not read a tool change in flight as a park",
+                 "[ams][snapmaker][tool_switcher][1784]") {
+    // The old head docks before the new one reports, so for a frame every head
+    // reads PARKED.
+    helix::test::RegisteredBackend<CapturingSnapmakerBackend> backend_reg;
+    CapturingSnapmakerBackend& backend = *backend_reg;
+
+    SnapmakerTestAccess::handle_status(
+        backend, json{{"extruder1", json{{"state", "ACTIVE"}, {"active_pin", true}}},
+                      {"toolhead", json{{"extruder", "extruder1"}}}});
+    REQUIRE(backend.get_system_info().current_tool == 1);
+
+    SECTION("T<n> sent, nothing has left a dock yet") {
+        REQUIRE(backend.change_tool(2).success());
+        SnapmakerTestAccess::handle_status(
+            backend, json{{"extruder1", json{{"state", "PARKED"}, {"active_pin", false}}}});
+        CHECK(backend.get_system_info().current_tool == 1);
+
+        SnapmakerTestAccess::handle_status(
+            backend, json{{"extruder2", json{{"state", "ACTIVE"}, {"active_pin", true}}},
+                          {"toolhead", json{{"extruder", "extruder2"}}}});
+        CHECK(backend.get_system_info().current_tool == 2);
+
+        // The change landed: parking the new head empties the carriage again.
+        SnapmakerTestAccess::handle_status(
+            backend, json{{"extruder2", json{{"state", "PARKED"}, {"active_pin", false}}}});
+        CHECK(backend.get_system_info().current_tool == -1);
+    }
+    SECTION("the new head is in its activating move") {
+        SnapmakerTestAccess::handle_status(
+            backend, json{{"extruder2", json{{"state", "PARKED"}, {"activating_move", true}}}});
+        SnapmakerTestAccess::handle_status(
+            backend, json{{"extruder1", json{{"state", "PARKED"}, {"active_pin", false}}}});
+        CHECK(backend.get_system_info().current_tool == 1);
+    }
+    SECTION("a park with no change in flight still empties the carriage") {
+        SnapmakerTestAccess::handle_status(
+            backend, json{{"extruder1", json{{"state", "PARKED"}, {"active_pin", false}}}});
+        CHECK(backend.get_system_info().current_tool == -1);
+    }
+}
+
 TEST_CASE("Only a backend whose carriage can be empty says so",
           "[ams][snapmaker][tool_switcher][1784]") {
     AmsBackendSnapmaker snapmaker(nullptr, nullptr);

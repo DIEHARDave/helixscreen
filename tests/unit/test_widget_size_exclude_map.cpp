@@ -669,6 +669,7 @@ TEST_CASE_METHOD(ExcludeMapFixture, "exclude_map: a language switch re-composes 
 TEST_CASE_METHOD(ExcludeMapFixture, "exclude_map: the tree can be deleted under a live map",
                  "[widget_size][exclude_map]") {
     print_six();
+    const uint32_t baseline = lv_obj_get_child_count(test_screen());
     SECTION("detach first, then the tree") {
         {
             PanelWidgetHarness<ExcludeMapWidget> h(test_screen(), state());
@@ -679,6 +680,7 @@ TEST_CASE_METHOD(ExcludeMapFixture, "exclude_map: the tree can be deleted under 
         lv_obj_delete(lv_obj_get_child(test_screen(), -1));
         process_lvgl(30);
         drain();
+        CHECK(lv_obj_get_child_count(test_screen()) == baseline);
     }
     SECTION("the tree first, with the map still built") {
         auto h = std::make_unique<PanelWidgetHarness<ExcludeMapWidget>>(test_screen(), state());
@@ -691,6 +693,12 @@ TEST_CASE_METHOD(ExcludeMapFixture, "exclude_map: the tree can be deleted under 
         drain();
         h.reset();
         process_lvgl(30);
+        CHECK(lv_obj_get_child_count(test_screen()) == baseline);
     }
-    CHECK(true);
+
+    // A new widget on the same state builds a live map after the teardown.
+    PanelWidgetHarness<ExcludeMapWidget> again(test_screen(), state());
+    again.widget().on_activate();
+    again.resize(1, 1, kFull.w, kFull.h);
+    CHECK(map_children(again) == 1);
 }

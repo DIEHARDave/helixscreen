@@ -14,6 +14,7 @@
 #include "snapmaker_status_parse.h"
 
 #include <array>
+#include <chrono>
 #include <map>
 #include <memory>
 #include <optional>
@@ -623,6 +624,21 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
 
     /// Per-extruder cached state
     std::array<ExtruderToolState, NUM_TOOLS> extruder_states_;
+
+    /// How long a sent T<n> keeps the carriage from reading empty if the head
+    /// never reports; a change that fails on the firmware must not hold it forever.
+    static constexpr std::chrono::seconds kToolChangeWindow{20};
+
+    /// Tool of a T<n> sent and not yet seen on the carriage, -1 when none. The
+    /// old head docks before the new one reports, so every head briefly reads
+    /// PARKED mid-change; this keeps that gap from reading as an empty carriage.
+    /// Guarded by mutex_.
+    int pending_tool_ = -1;
+    std::chrono::steady_clock::time_point pending_until_{};
+
+    /// A head is moving onto the carriage: a T<n> is pending, a head is in its
+    /// activating move, or the action is SELECTING. Caller holds mutex_.
+    [[nodiscard]] bool tool_change_in_flight_locked() const;
 
     /// Per-slot filament_motion_sensor "filament_detected" state. True means
     /// filament is currently being fed to the toolhead; false means runout has

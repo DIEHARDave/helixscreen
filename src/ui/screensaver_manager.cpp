@@ -14,7 +14,10 @@
 #include "screensaver_base.h"
 #include "screensaver_bounce.h"
 #include "screensaver_fireworks.h"
+#include "screensaver_flip_clock.h"
+#include "screensaver_hyperspace.h"
 #include "screensaver_level_store.h"
+#include "screensaver_maze.h"
 #include "screensaver_pipes.h"
 #include "screensaver_starfield.h"
 
@@ -46,6 +49,17 @@ ScreensaverManager::ScreensaverManager() : cpu_clock_(helix::ui::read_process_cp
     screensavers_.push_back(std::make_unique<helix::BouncingPrinterScreensaver>());
     screensavers_.push_back(std::make_unique<helix::BouncingLogoScreensaver>());
     screensavers_.push_back(std::make_unique<helix::ui::FireworksScreensaver>());
+    screensavers_.push_back(std::make_unique<helix::ui::MazeScreensaver>());
+    screensavers_.push_back(std::make_unique<helix::ui::HyperspaceScreensaver>());
+    auto flip_clock = std::make_unique<helix::ui::FlipClockScreensaver>();
+    flip_clock->set_input_source([this] {
+        helix::ui::FlipClockInput in = helix::ui::flip_clock_now();
+        if (host_.print_status) {
+            in.print = host_.print_status();
+        }
+        return in;
+    });
+    screensavers_.push_back(std::move(flip_clock));
 
     for (const char* name : savers_missing_for_build_depth()) {
         spdlog::error("[ScreensaverManager] {} is listed as drawing at this colour depth but no "
@@ -76,8 +90,10 @@ void ScreensaverManager::start(ScreensaverType type) {
         return;
     }
 
+    refresh_identity();
+    const ScreensaverType runs = runnable_type_for_identity(type);
     const bool already_running =
-        (active_ && active_->type() == type && active_->is_active()) || black_screen_type_ == type;
+        (active_ && active_->type() == runs && active_->is_active()) || black_screen_type_ == runs;
     if (already_running) {
         return;
     }
@@ -85,7 +101,15 @@ void ScreensaverManager::start(ScreensaverType type) {
     // The screen hold stays out until the new saver has started or failed, so the panel is
     // never uncovered between the two.
     end_current();
+    if (runs != type) {
+        spdlog::info("[ScreensaverManager] Type {} is stored as too heavy for board {} on {}; "
+                     "running type {} instead",
+                     static_cast<int>(type), board_, version_, static_cast<int>(runs));
+    }
+    launch(runs);
+}
 
+void ScreensaverManager::launch(ScreensaverType type) {
     helix::ui::SaverBase* saver = find(type);
     const helix::ui::ScreensaverInfo* info = helix::ui::find_screensaver(type);
     if (!saver || !info) {
@@ -98,9 +122,9 @@ void ScreensaverManager::start(ScreensaverType type) {
 
     const StartPlan plan = plan_start(*saver, *info);
     if (plan.too_heavy) {
-        spdlog::warn("[ScreensaverManager] {} is stored as too heavy for board {} on {}; showing "
-                     "a black screen",
-                     info->name, board_, version_);
+        spdlog::warn("[ScreensaverManager] Every screensaver is stored as too heavy for board {} "
+                     "on {}; showing a black screen",
+                     board_, version_);
         release_refresh_period();
         show_black_screen(type);
         hold_screen();
@@ -124,6 +148,68 @@ void ScreensaverManager::start(ScreensaverType type) {
     begin_gate(plan);
     hold_screen();
     spdlog::info("[ScreensaverManager] Started screensaver type {}", static_cast<int>(type));
+}
+
+ScreensaverType ScreensaverManager::runnable_type(ScreensaverType configured) {
+    refresh_identity();
+    return runnable_type_for_identity(configured);
+}
+
+ScreensaverType ScreensaverManager::runnable_type_for_identity(ScreensaverType configured) const {
+    return helix::ui::runnable_screensaver(
+        configured, [this](ScreensaverType t) { return too_heavy_for_identity(t); });
+}
+
+bool ScreensaverManager::too_heavy_here(ScreensaverType type) {
+    refresh_identity();
+    return too_heavy_for_identity(type);
+}
+
+std::vector<ScreensaverType> ScreensaverManager::choices(ScreensaverType configured) {
+    refresh_identity();
+    return helix::ui::screensaver_choices(
+        [this](ScreensaverType t) { return too_heavy_for_identity(t); }, configured);
+}
+
+ScreensaverManager::SettingsDropdown
+ScreensaverManager::settings_dropdown(ScreensaverType configured) {
+    ScreensaverManager& mgr = instance();
+    mgr.refresh_identity();
+    SettingsDropdown out;
+    const auto too_heavy = [&mgr](ScreensaverType t) { return mgr.too_heavy_for_identity(t); };
+    out.choices = helix::ui::screensaver_choices(too_heavy, configured);
+    out.runs = helix::ui::runnable_screensaver(configured, too_heavy);
+    out.runs_too_heavy = too_heavy(out.runs);
+    return out;
+}
+
+bool ScreensaverManager::too_heavy_for_identity(ScreensaverType type) const {
+    if (type == ScreensaverType::OFF) {
+        return false;
+    }
+    const helix::ui::ScreensaverInfo* info = helix::ui::find_screensaver(type);
+    if (!info) {
+        // Not a saver at all: launch() refuses it rather than running a fallback.
+        return false;
+    }
+    const helix::ui::SaverBase* saver = find(type);
+    if (!saver) {
+        return true;
+    }
+    const helix::ui::SaverEnvOverrides env = helix::ui::saver_env_overrides();
+    if (env.level && *env.level < saver->level_count()) {
+        return false;
+    }
+    const std::optional<SaverLevelEntry> stored =
+        helix::ui::load_level_entry(*helix::Config::get_instance(), info->name);
+    return helix::ui::start_entry(stored, version_, board_, saver->level_count()).too_heavy;
+}
+
+void ScreensaverManager::refresh_identity() {
+    const helix::PlatformCapabilities caps = helix::PlatformCapabilities::detect();
+    cores_ = caps.cpu_cores;
+    version_ = helix_version_full();
+    board_ = helix::ui::board_fingerprint(board_facts(caps));
 }
 
 void ScreensaverManager::stop() {
@@ -186,11 +272,6 @@ ScreensaverManager::board_facts(const helix::PlatformCapabilities& caps) const {
 ScreensaverManager::StartPlan
 ScreensaverManager::plan_start(const helix::ui::SaverBase& saver,
                                const helix::ui::ScreensaverInfo& info) {
-    const helix::PlatformCapabilities caps = helix::PlatformCapabilities::detect();
-    cores_ = caps.cpu_cores;
-    version_ = helix_version_full();
-    board_ = helix::ui::board_fingerprint(board_facts(caps));
-
     const helix::ui::SaverEnvOverrides env = helix::ui::saver_env_overrides();
     budget_override_.reset();
     if (env.budget_pct) {
@@ -274,8 +355,8 @@ void ScreensaverManager::on_idle_check_tick() {
         return;
     case GateDecision::TOO_HEAVY: {
         spdlog::warn("[ScreensaverManager] {} used {:.1f}% of a core at its lowest level against a "
-                     "{:.1f}% budget{}; showing a black screen until the app version or board "
-                     "changes",
+                     "{:.1f}% budget{}; it is too heavy for this board until the app version or "
+                     "board changes",
                      active_info_->name, *share * 100.0, budget * 100.0,
                      printing ? " while printing" : "");
         record_level(gated_level_, true);
@@ -283,8 +364,8 @@ void ScreensaverManager::on_idle_check_tick() {
         active_->stop();
         active_ = nullptr;
         active_info_ = nullptr;
-        release_refresh_period();
-        show_black_screen(type);
+        gate_enabled_ = false;
+        launch(runnable_type_for_identity(type));
         return;
     }
     }

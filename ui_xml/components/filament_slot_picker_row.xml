@@ -18,9 +18,7 @@
             style_border_width="1" style_border_color="#text_muted" style_border_opa="30" style_pad_all="0"
             scrollable="false" clickable="false" event_bubble="true"/>
     <!-- Slot description ("Turtle 1 · Slot 2: PLA"). -->
-    <lv_label name="slot_label"
-              flex_grow="1" text="" long_mode="dots" style_text_font="#font_body" style_text_color="#text"
-              clickable="false" event_bubble="true"/>
+    <text_body name="slot_label" flex_grow="1" text="" long_mode="dots" clickable="false" event_bubble="true"/>
     <!-- Material-mismatch warning (shown only when the slot's material
          differs from the file's expected material). -->
     <lv_label name="warn_icon"

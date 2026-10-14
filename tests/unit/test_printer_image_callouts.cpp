@@ -44,6 +44,7 @@
 #include <chrono>
 #include <filesystem>
 #include <fstream>
+#include <string>
 #include <thread>
 
 #include "../catch_amalgamated.hpp"
@@ -480,11 +481,12 @@ TEST_CASE_METHOD(LVGLUITestFixture, "callouts: a chip narrower than its text dot
     lv_obj_t* chip = h.child("callout_chip_bed");
     lv_obj_t* label = lv_obj_find_by_name(chip, "chip_text");
     REQUIRE(label);
-    REQUIRE(lv_obj_get_width(label) <
-            helix::ui::measure_text_px(lv_label_get_text(label),
-                                       lv_obj_get_style_text_font(label, LV_PART_MAIN)));
+    REQUIRE(lv_label_get_long_mode(label) == LV_LABEL_LONG_MODE_DOTS);
     CHECK(within_chip(chip, label));
-    CHECK(lv_label_get_long_mode(label) == LV_LABEL_LONG_MODE_DOTS);
+    // A dotted label rewrites its own text with the ellipsis once it overflows.
+    const std::string shown = lv_label_get_text(label);
+    REQUIRE(shown.size() >= 3);
+    CHECK(shown.compare(shown.size() - 3, 3, "...") == 0);
 }
 
 TEST_CASE_METHOD(LVGLUITestFixture, "callouts: a laid-out chip is not narrower than its text",

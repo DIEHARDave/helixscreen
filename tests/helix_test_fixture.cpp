@@ -339,6 +339,14 @@ void HelixTestFixture::reset_all() {
     // any one creation site.
     ensure_displays_never_block_on_flush();
 
+    // DisplayManager makes its keyboard group LVGL's default and never deletes it,
+    // so one built by a test outlives that test. Every object created after it
+    // joins the group and its first member takes focus.
+    if (lv_group_t* group = lv_group_get_default()) {
+        // A deleted member leaves its group, so none dangle.
+        lv_group_delete(group);
+    }
+
     // BEFORE the drain, not after: EmergencyStopOverlay is a process-wide
     // singleton holding raw init() pointers to a PrinterState that in tests is a
     // stack local or fixture member. By the time a fixture destructor reaches

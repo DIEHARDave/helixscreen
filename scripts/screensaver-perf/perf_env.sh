@@ -75,17 +75,16 @@ perf_run_remote() {
     } | perf_ssh "bash -s"
 }
 
-# Settings dropdown index of a workload name. idle, off and ui run no saver.
-perf_saver_type() {
+# Stable screensaver name a workload runs (include/screensaver_registry.h), or off for the
+# idle, off and ui workloads, which run no saver.
+perf_saver_name() {
     case $1 in
-    idle | off | ui) echo 0 ;;
-    toasters) echo 1 ;;
-    starfield) echo 2 ;;
-    pipes) echo 3 ;;
-    bounce) echo 4 ;;
-    fireworks) echo 5 ;;
+    idle | off | ui) echo off ;;
+    toasters | starfield | pipes | bounce | fireworks | logo | maze | hyperspace | flipclock)
+        echo "$1"
+        ;;
     *)
-        echo "perf_saver_type: unknown workload '$1'" >&2
+        echo "perf_saver_name: unknown workload '$1'" >&2
         return 1
         ;;
     esac
