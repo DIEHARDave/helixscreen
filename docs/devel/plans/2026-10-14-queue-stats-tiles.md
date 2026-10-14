@@ -47,7 +47,7 @@ These are recorded so a reviewer can overturn them; each is a one-line change in
 
 1. **An idle printer with jobs always offers Start (Preston's ruling).** Moonraker's `job_queue.py` sets `queue_state` to `"paused"` after every job it loads unless automatic transition is on, and also starts in `"paused"`, so a post-job wait and a user pause cannot be told apart. They need not be: idle with jobs is WaitingForStart whatever `automatic_transition` and `queue_state` say. There is no UserPaused state and no "Resume queue".
 2. **"Starts automatically" only while printing (Preston's ruling).** Moonraker transitions only when a job completes, so AutoNext is a print running with automatic transition on and the queue `"ready"`. A running print with the queue paused, or with auto off, is Printing.
-3. **One tap starts the job with its saved options (Preston's ruling).** Print-select applies a queued job's saved options by seeding its file view and starting through `PrintStartController` and `PrintPreparationManager::start_print()`. The tile reaches the same two objects with no screen through `QueuedJobStarter` (Task 3): saved options answer `PrintPreparationManager`'s option provider, the file is scanned as the file view scans it, the controller's gates run, and a confirmed start runs the same removal bookkeeping. A job with nothing saved starts with each option's default, as a freshly opened file does. Known gap, flagged for Preston: the gates that read the file view's own data (material mismatch, spool shortfall, filament mapping; `src/printer/print_start_checks.cpp` returns early on `!ctx.has_detail_view`) do not run from the tile. The printer-stop scan does, because the starter scans the file itself.
+3. **One tap starts the job with its saved options and every check (rulings).** Print-select applies a queued job's saved options by seeding its file view and starting through `PrintStartController` and `PrintPreparationManager::start_print()`. The tile reaches the same objects with no screen through `QueuedJobStarter` (Task 3), and Task 3 makes the file-dependent checks (material mismatch, spool shortfall, unresolved tools, the empty-slot pre-flight) computable from `FileStartFacts` instead of the file view, showing the same dialogs. The one fallback to the file view is the pre-flight modal's Remap choice, because it edits the file view's mapping card; Task 3 lists every check and where it runs.
 4. **A NotLoaded state.** The spec removes the old "Ready / Queue empty" shown before data. Before the first queue response the tile shows only its icon and "Job Queue" label (state `NotLoaded`). After that, a dropped socket keeps the last known queue (`JobQueueState::has_ever_loaded()`).
 5. **No shared metadata cache exists.** Print-select keeps metadata per directory listing; the print-status media manager fetches per active print. "Reuse that cache" is read as: the same `api->files().get_file_metadata()` call and the shared `ThumbnailCache` (`get_thumbnail_cache().fetch(req, ctx, ...)`), owned by `JobQueueState` and fetched once per change of first job. On `HELIX_PLATFORM_ESP32` the thumbnail fetch is skipped (that path uses a PSRAM-specific loader) and the placeholder shows; the estimate still shows.
 6. **Filament as length (Preston's ruling).** `server.history.totals.total_filament_used` is millimetres; the tile shows meters, one decimal under 10 m, whole meters from there ("412 m", "12346 m"). `HistoryDashboardPanel::format_filament()` (`src/ui/ui_panel_history_dashboard.cpp`) prints mm/m/km untranslated with no space, a different output for a different screen, so the tile's formatter is its own.
@@ -64,9 +64,11 @@ These are recorded so a reviewer can overturn them; each is a one-line change in
 |------|--------|----------------|
 | `include/job_queue_tile_state.h` | create | Pure queue-tile state and action decision; `QueueRunState` parse |
 | `include/job_queue_state.h`, `src/ui/job_queue_state.cpp` | modify | Publish run state and next-job media; compose tile text; retire `job_queue_state_text` / `job_queue_summary_text` (Task 4) |
+| `include/print_start_inputs.h`, `src/printer/print_start_inputs.cpp` | create | `FileStartFacts`: what a file gives the pre-start checks, gathered without the file view, and its derivation into `PrintStartContext` |
 | `include/queued_job_start.h`, `src/ui/queued_job_start.cpp` | create | The shared queued-job start: `saved_option_state()`, `finish_started_queued_job()`, `QueuedJobStarter` |
-| `include/ui_print_start_controller.h`, `src/ui/ui_print_start_controller.cpp` | modify | `set_prep_manager()`: start with no detail view |
-| `include/ui_panel_print_select.h`, `src/ui/ui_panel_print_select.cpp`, `src/ui/ui_print_select_detail_view.cpp` | modify | Print-select calls the shared bookkeeping and option rule |
+| `include/print_start_checks.h`, `src/printer/print_start_checks.cpp` | modify | `has_detail_view` becomes `has_file_facts` |
+| `include/ui_print_start_controller.h`, `src/ui/ui_print_start_controller.cpp` | modify | `set_prep_manager()`, `set_file_facts()`: start and check with no detail view |
+| `include/ui_panel_print_select.h`, `src/ui/ui_panel_print_select.cpp`, `src/ui/ui_print_select_detail_view.cpp` | modify | Print-select and its file view call the shared palette, scan, option rule and bookkeeping |
 | `include/job_queue_start.h`, `src/ui/job_queue_start.cpp` | modify | `open_job_queue_modal()` exported |
 | `src/ui/panel_widgets/job_queue_tile_layout.h` | create | Pure rung and part decision for the queue tile |
 | `src/ui/panel_widgets/job_queue_widget.h/.cpp` | rewrite | Measure, decide, publish; no imperative UI |
@@ -284,21 +286,101 @@ git show --stat HEAD
 
 ---
 
-### Task 3: One shared queued-job start, with saved options and no screen
+### Task 3: One shared queued-job start: saved options and every check, no screen
 
-Print-select starts a queued job by seeding its file view with the saved options and starting through `PrintStartController` and `PrintPreparationManager::start_print()`; a confirmed start runs `PrintSelectPanel::finish_pending_queued_job()`. This task pulls the screen-independent parts into one place both callers use, and adds the screen-less starter the tile calls in Task 4.
+Print-select starts a queued job by seeding its file view with the saved options, then a Print tap runs the empty-slot pre-flight (`PrintSelectPanel::start_print`), the `PrintStartController` gate pipeline (material mismatch, spool shortfall, unresolved tools, runout, printer-stop scan and the rest) and `PrintPreparationManager::start_print()`; a confirmed start runs `finish_pending_queued_job()`. Those checks read the file's palette, tools used, per-tool grams and metadata from the file view (`print_start_checks.cpp` returns early on `!ctx.has_detail_view`). This task makes every one of them computable without the file view, and builds the screen-less starter the tile calls in Task 4 on top. No check is skipped from the tile.
+
+**Check by check (the list the ruling asks for):**
+
+| Check | Where it runs | From the tile |
+|---|---|---|
+| Material mismatch, spool shortfall, unresolved tools, insufficient spool weight, empty required lanes | `PrintStartController` gates over `PrintStartContext` | Evaluated from `FileStartFacts` via `fill_file_context()`; the same gate dialog; Proceed continues, anything else ends the start (`NotStarted`) |
+| Printer-stop command scan | gate over `ctx.printer_stop` | The starter's `PrintPreparationManager` scans the file, so `ctx.printer_stop` is real, not "no file detail view" |
+| Runout, toolhead filament unaccounted, spool removal, the other environment gates | gates over AmsState / sensor state | Unchanged: they never needed the file view |
+| Empty-slot pre-flight block (a used tool mapped to an empty slot) | `PrintSelectPanel::start_print()` before the controller | `preflight_for(facts)`; the same `PreflightCheckModal`; **Force** continues the start, **Remap** is the one fallback (below) |
+| Every object set to skip | `refuse_start_with_every_object_picked()` | Not applicable: a queued job carries no exclude picks |
+
+**Fallback, and why:** only the pre-flight modal's **Remap** choice. It opens the remap picker, which edits the file view's own mapping card (`PrintSelectPanel::open_remap_modal`); there is no mapping to edit without that card. Choosing Remap from the tile hands the job to the existing two-tap path, `start_next_queued_job()` (file view seeded with the saved options), and the starter ends with `OpenedFileView`. No check evaluates differently from the tile than from the file view with an unedited mapping card; a user's hand-edited mapping exists only in the file view, so a tile start always uses the effective automatic mapping the file view starts from.
 
 **Files:**
+- Create: `include/print_start_inputs.h`, `src/printer/print_start_inputs.cpp`
 - Create: `include/queued_job_start.h`, `src/ui/queued_job_start.cpp`
-- Modify: `include/ui_print_start_controller.h`, `src/ui/ui_print_start_controller.cpp` (`set_prep_manager()`; every way a start ends without a print reaches `on_print_cancelled_`)
-- Modify: `src/ui/ui_panel_print_select.cpp` (`finish_pending_queued_job()` delegates to `finish_started_queued_job()`; `start_queued_job()`'s busy refusal stays where it is)
-- Modify: `src/ui/ui_print_select_detail_view.cpp` (the seeded-option lookup goes through `saved_option_state()`)
-- Modify: `firmware/helixscreen-esp32/components/helixapp/app_srcs.txt` (add `src/ui/queued_job_start.cpp` beside `src/ui/ui_print_start_controller.cpp`)
-- Test: `tests/unit/test_queued_job_start.cpp` (new), `tests/unit/test_print_start_controller_no_detail.cpp` (new), `tests/test_helpers/queued_job_starter_test_access.h` (new), `tests/unit/test_preprint_skip_toggles.cpp` (the options-reach-the-start cases), `tests/unit/test_job_queue_start_guard.cpp` (both callers' bookkeeping)
+- Modify: `include/print_start_checks.h`, `src/printer/print_start_checks.cpp` (rename `has_detail_view` to `has_file_facts`; every reader updated)
+- Modify: `include/ui_print_start_controller.h`, `src/ui/ui_print_start_controller.cpp` (`set_prep_manager()`, `set_file_facts()`; every way a start ends without a print reaches `on_print_cancelled_`)
+- Modify: `src/ui/ui_print_select_detail_view.cpp`, `include/ui_print_select_detail_view.h` (its headless tools/palette/grams scan runs through `FileStartFactsLoader` with its shared download; seeded options read through `saved_option_state()`)
+- Modify: `src/ui/ui_panel_print_select.cpp` (`process_metadata_result()` takes its palette from `file_palette_from_metadata()`; `finish_pending_queued_job()` delegates to `finish_started_queued_job()`)
+- Modify: `firmware/helixscreen-esp32/components/helixapp/app_srcs.txt` (both new `.cpp` files)
+- Test: `tests/unit/test_print_start_inputs.cpp` (new), `tests/unit/test_queued_job_start.cpp` (new), `tests/unit/test_print_start_controller_no_detail.cpp` (new), `tests/test_helpers/queued_job_starter_test_access.h` (new), `tests/unit/test_preprint_skip_toggles.cpp`, `tests/unit/test_job_queue_start_guard.cpp`, and every test that names `has_detail_view`
 
 **Interfaces:**
-- Consumes: `load_queued_job_options()`, `delete_queued_job_options()`, `QueuedJobOptions` (`include/queued_job_options.h`); `PrintPreparationManager::set_dependencies()`, `set_option_state_provider()`, `scan_file_for_operations()`, `set_on_scan_answered()`, `has_scan_result_for()` (`include/ui_print_preparation_manager.h`); `PrintStartController::set_file()`, `initiate()`, `set_on_print_started()`, `set_on_print_cancelled()` (`include/ui_print_start_controller.h`); `api->queue().remove_jobs()`; `get_job_queue_state()`; `PrinterState::print_state().can_start_new_print()`.
+- Consumes: `FilamentMappingCard::build_used_tool_info()`, `AmsState::seed_tool_mappings()`, `collect_available_slots()`, `collect_firmware_routing()`, `any_bypass_active()`, `FilamentMapper::identity_filtered_remap()`, `PreflightValidator::validate()`, `helix::gcode::footer_read_need()`, `parse_gcode_footer_summary()`, `scan_tools_used_from_file()`, `ToolsUsedCache`, `api->files().get_file_metadata()`; `load_queued_job_options()`, `delete_queued_job_options()`; `PrintPreparationManager` (`set_dependencies`, `set_option_state_provider`, `scan_file_for_operations`, `set_on_scan_answered`, `has_scan_result_for`); `PrintStartController` (`set_file`, `initiate`, `set_on_print_started`, `set_on_print_cancelled`); `helix::ui::PreflightCheckModal` (`set_checks`, `set_on_force`, `set_on_remap`, `Modal::show_owned`); `start_next_queued_job()`.
 - Produces (exact, syntax-checked):
+
+```cpp
+// include/print_start_inputs.h
+namespace helix {
+
+class IMoonrakerAPI;
+
+/// The slicer palette Moonraker's metadata carries: per-tool colors as given,
+/// per-tool materials split from the ';'-separated filament_type.
+struct FilePalette {
+    std::vector<std::string> colors;
+    std::vector<std::string> materials;
+};
+
+[[nodiscard]] FilePalette file_palette_from_metadata(const FileMetadata& metadata);
+
+/// The file half of the pre-start checks' input.
+struct FileStartFacts {
+    std::string filename; ///< gcodes-relative
+    std::optional<FileMetadata> metadata;
+    FilePalette palette;
+    std::set<int> tools_used;       ///< empty when the scan could not answer
+    std::vector<double> tool_grams; ///< empty means unknown, never zero
+};
+
+/// Fill the file fields of @p ctx from @p facts and the live filament state,
+/// the derivation the file view uses when its mapping card holds no user edit:
+/// FilamentMappingCard::build_used_tool_info(), AmsState::seed_tool_mappings(),
+/// AmsState::collect_available_slots(), FilamentMapper::identity_filtered_remap().
+/// Sets ctx.has_file_facts.
+void fill_file_context(PrintStartContext& ctx, const FileStartFacts& facts);
+
+/// The empty-slot pre-flight for @p facts, computed with the same inputs.
+[[nodiscard]] PreflightResult preflight_for(const FileStartFacts& facts);
+
+/// Gathers FileStartFacts for one file: metadata, then the tools/palette/grams
+/// footer read, then a whole-file tools scan when the footer cannot answer.
+/// The file view runs its own scan through the same steps, handing in its
+/// shared download so the viewer preview and the scan use one transfer.
+class FileStartFactsLoader {
+  public:
+    /// Downloads the file and answers ok plus a local path the scan may read.
+    using DownloadFn =
+        std::function<void(std::function<void(bool ok, const std::string& local_path)>)>;
+    using ReadyFn = std::function<void(FileStartFacts facts)>;
+
+    explicit FileStartFactsLoader(IMoonrakerAPI* api);
+    ~FileStartFactsLoader();
+    FileStartFactsLoader(const FileStartFactsLoader&) = delete;
+    FileStartFactsLoader& operator=(const FileStartFactsLoader&) = delete;
+
+    void set_api(IMoonrakerAPI* api);
+
+    /// Gather facts for @p filename and answer once, on the main thread. A
+    /// failed metadata read, footer read or download still answers, with what
+    /// it has. A later load() supersedes an unanswered one.
+    void load(const std::string& filename, ReadyFn on_ready, DownloadFn download = nullptr);
+
+  private:
+    IMoonrakerAPI* api_ = nullptr;
+    uint32_t generation_ = 0;
+    AsyncLifetimeGuard lifetime_;
+};
+
+} // namespace helix
+```
 
 ```cpp
 // include/queued_job_start.h  (class QueuedJobStarterTestAccess is forward-declared at global scope)
@@ -322,6 +404,7 @@ class QueuedJobStarter {
         Refused,    ///< not attempted: printer busy, a start in flight, no API
         NotStarted, ///< the controller ended without a print (a gate, a refusal, a
                     ///< failed start); the job and its options stay
+        OpenedFileView, ///< a check needed the file view; the job opened there
     };
     using DoneCallback = std::function<void(Outcome outcome)>;
 
@@ -336,7 +419,8 @@ class QueuedJobStarter {
     /// Read @p job's saved options from the store, then start_with_options().
     void start(const JobQueueEntry& job, DoneCallback done = nullptr);
 
-    /// Scan the file, run the gates, start with @p saved answering every option.
+    /// Gather the file's facts and scan it, check the empty-slot pre-flight, run
+    /// the gates, and start with @p saved answering every option.
     void start_with_options(const JobQueueEntry& job, QueuedJobOptions saved,
                             DoneCallback done = nullptr);
 
@@ -353,6 +437,7 @@ class QueuedJobStarter {
     IMoonrakerAPI* api_ = nullptr;
     std::unique_ptr<ui::PrintPreparationManager> prep_;
     std::unique_ptr<ui::PrintStartController> controller_;
+    FileStartFactsLoader facts_loader_;
     QueuedJobOptions saved_;
     std::string job_id_;
     DoneCallback done_;
@@ -368,10 +453,14 @@ QueuedJobStarter& queued_job_starter();
 ```
 
 ```cpp
-// include/ui_print_start_controller.h, class PrintStartController (helix::ui)
-// forward declaration beside PrintSelectDetailView: class PrintPreparationManager;
-void set_prep_manager(PrintPreparationManager* prep);   // public, next to set_detail_view()
-PrintPreparationManager* prep_manager_ = nullptr;       // private: used only while detail_view_ is null
+// include/print_start_checks.h, struct PrintStartContext
+bool has_file_facts = false;   // replaces has_detail_view; same meaning: the file fields are valid
+
+// include/ui_print_start_controller.h, class PrintStartController (helix::ui); includes print_start_inputs.h
+void set_prep_manager(PrintPreparationManager* prep);   // used only while detail_view_ is null
+void set_file_facts(helix::FileStartFacts facts);       // used only while detail_view_ is null
+PrintPreparationManager* prep_manager_ = nullptr;       // private
+std::optional<helix::FileStartFacts> file_facts_;       // private
 
 // tests/test_helpers/queued_job_starter_test_access.h (global scope)
 class QueuedJobStarterTestAccess {
@@ -381,49 +470,54 @@ class QueuedJobStarterTestAccess {
 ```
 
 Rules:
-- `saved_option_state(saved, id)`: `saved.options` holds `id` → `1` or `0`; otherwise `-1`. The detail view's application of seeded states (`seed_option_states()` in `src/ui/ui_print_select_detail_view.cpp`) reads each row's state through this function, so the file view and the starter cannot disagree about what a saved entry means.
-- `finish_started_queued_job(lifetime, api, job_id)` is today's body of `PrintSelectPanel::finish_pending_queued_job()` after its `pending_queued_start_.reset()`, moved verbatim in behaviour: `remove_jobs({job_id})`; on success `delete_queued_job_options(api, job_id)` then `jqs->fetch()`; on failure log, `NOTIFY_WARNING(lv_tr("Could not remove the job from the queue"))`, `jqs->fetch()`. Callbacks through `lifetime.bg_cb(...)`. `finish_pending_queued_job()` keeps its reset and calls this with `object_lifetime_`.
-- `PrintStartController`: `execute_print_start()` and `gather_print_start_context()` take the manager as `detail_view_ ? detail_view_->get_prep_manager() : prep_manager_`, so the printer-stop scan result reaches the gates with no detail view. `is_ready()` is true with a filename and either a detail view or a prep manager. Every way `initiate()` ends without a print calls `on_print_cancelled_` when set: the startup grace refusal, the spool-removal divert, the `can_start_new_print()` refusal, a missing prep manager, a cancelled gate (already does), the U1 pre-send failure (already does), and a `start_print()` completion with `success == false`. Print-select sets no cancelled callback, so nothing changes there.
+- **One derivation, two callers.** `file_palette_from_metadata()` is the ';'-split and color copy now inline in `PrintSelectPanel::process_metadata_result()`, moved; print-select calls it. `fill_file_context()` fills `metadata`, `tool_info` (`build_used_tool_info(palette.colors, palette.materials, tools_used)`), `available_slots`, `mappings` (`AmsState::seed_tool_mappings(tool_info, slots)`), `filament_materials`, `tools_used`, `effective_remap` (`identity_filtered_remap(mappings, collect_firmware_routing())`), `tool_grams`, and `has_file_facts = true`. These are the calls `PrintSelectDetailView::get_used_tool_info()`, `effective_mappings()` (its no-card-edit branch) and `get_effective_remap()` already make; `preflight_for()` passes the same inputs `recompute_preflight()` passes to `PreflightValidator::validate()` with `any_bypass_active()`. A parity test pins that the two give identical results for the same file.
+- **One scan, two callers.** `FileStartFactsLoader::load()` is `kick_off_headless_tools_scan()`, `start_tail_summary_scan()` and `start_full_tools_scan()` moved out of the detail view, preceded by the metadata read: metadata → palette → `ToolsUsedCache::lookup` → `footer_read_need()` → the footer range read → the whole-file scan when `need` allows it, through `download` (default: download to a temp file the loader deletes after the scan). Results write back to `ToolsUsedCache` under the same authoritative rule. The detail view calls `load()` with `ensure_gcode_downloaded` as `download`, so the viewer preview and the scan still share one transfer, and its `finish_scan()` applies the answer to the view exactly as now. Callbacks marshal through `lifetime_` (`bg_cb` / `tok.defer`); the scan runs on `HttpExecutor::slow()` as now; a superseded load (generation) never answers.
+- `saved_option_state(saved, id)`: `1`/`0` when `saved.options` holds `id`, else `-1`. The detail view's seeded-row lookup reads through it.
+- `finish_started_queued_job(lifetime, api, job_id)`: today's body of `finish_pending_queued_job()` after its reset, moved: `remove_jobs({job_id})`; on success `delete_queued_job_options()` then `jqs->fetch()`; on failure log, `NOTIFY_WARNING(lv_tr("Could not remove the job from the queue"))`, `jqs->fetch()`.
+- `PrintStartController`: the prep manager is `detail_view_ ? detail_view_->get_prep_manager() : prep_manager_`; `gather_print_start_context()` fills the file fields from the detail view when set, else `fill_file_context(ctx, *file_facts_)` when facts are set, and takes `printer_stop` from the same prep manager either way. `is_ready()` is true with a filename and either a detail view or a prep manager. Every way `initiate()` ends without a print calls `on_print_cancelled_` when set: the startup grace refusal, the spool-removal divert, the `can_start_new_print()` refusal, a missing prep manager, a cancelled or blocked gate (already does), the U1 pre-send failure (already does), and a `start_print()` completion with `success == false`. Print-select sets no cancelled callback, so it sees no change.
 - `QueuedJobStarter`:
-  - Constructor: builds its own `PrintPreparationManager` (`set_dependencies(api, &printer_state)`) and `PrintStartController(printer_state, api)` with `set_prep_manager(prep_.get())`, no detail view, no navigation callback (the user stays on home; the print-status tile shows the print), `set_on_print_started` → `finish_started_queued_job(lifetime_, api_, job_id_)` then `finish(Started)`, `set_on_print_cancelled` → `finish(NotStarted)`.
-  - `start(job, done)`: refuse (`done(Refused)`, nothing sent) when `in_flight_`, `!api_`, or `!can_start_new_print()`; the busy refusal posts the same `lv_tr("Printer is busy - {} stays in the queue")` warning print-select posts. Otherwise mark in flight and `load_queued_job_options(lifetime_, api_, job.job_id, ...)`; the deferred answer calls `start_with_options(job, saved, done)`. A missing or malformed entry decodes to an empty `QueuedJobOptions` (`decode_queued_job_entry`'s rule), which starts with each option's default.
-  - `start_with_options(job, saved, done)`: store `saved_`, `job_id_`, `done_`; provider `[this](const std::string& id) { return saved_option_state(saved_, id); }`; split `job.filename` into file and directory at the last `/`; if `!prep_->has_scan_result_for(file)`, `scan_file_for_operations(file, dir)` and continue from `set_on_scan_answered` (answered whether the scan succeeded or not, as a Print tap does not wait on a failed scan either); then `controller_->set_file(file, dir, {}, "")` and `controller_->initiate()`.
-  - `finish(outcome)`: clear in flight, take `done_` and call it once.
-  - `set_api()` while in flight is ignored; otherwise it rebinds both owned objects.
-  - `queued_job_starter()`: a function-local `static QueuedJobStarter* s = new QueuedJobStarter(get_printer_state(), get_moonraker_api());`, `s->set_api(get_moonraker_api())` on each call, never deleted (teardown runs after `lv_deinit()`, the same reason `src/ui/job_queue_start.cpp#queue_modal` gives).
+  - Constructor builds its `PrintPreparationManager` and `PrintStartController` (`set_prep_manager`, no detail view, no navigation: the user stays on home), `set_on_print_started` → `finish_started_queued_job(lifetime_, api_, job_id_)` then `finish(Started)`, `set_on_print_cancelled` → `finish(NotStarted)`.
+  - `start(job, done)`: `done(Refused)` with nothing sent when `in_flight_`, `!api_`, or `!can_start_new_print()` (the busy case posts print-select's own `"Printer is busy - {} stays in the queue"` warning). Otherwise mark in flight and `load_queued_job_options()`; its answer calls `start_with_options()`. A missing entry is an empty `QueuedJobOptions`: every option at its default.
+  - `start_with_options(job, saved, done)`: provider `saved_option_state(saved_, id)`; in parallel, `facts_loader_.load(job.filename, ...)` and (unless `prep_->has_scan_result_for(file)`) `prep_->scan_file_for_operations(file, dir)`; when both have answered: `preflight_for(facts)`. If it `has_block()`, show `PreflightCheckModal` with those checks: **Force** → continue, **Remap** → `start_next_queued_job()` and `finish(OpenedFileView)`, dismiss → `finish(NotStarted)`. Then `controller_->set_file_facts(facts)`, `set_file(file, dir, facts.palette.colors, "")`, `initiate()`.
+  - `queued_job_starter()`: function-local `static QueuedJobStarter* s = new QueuedJobStarter(get_printer_state(), get_moonraker_api())`, `set_api(get_moonraker_api())` per call (ignored while in flight), never deleted, for the reason `src/ui/job_queue_start.cpp#queue_modal` gives.
 
 - [ ] **Step 1: Write the failing tests**
+  - `tests/unit/test_print_start_inputs.cpp`, `[print_start_inputs]`:
+    - `file_palette_from_metadata`: `filament_type "PLA;PLA;PETG"` → materials `{"PLA","PLA","PETG"}`; colors copied; empty type → no materials.
+    - "fill_file_context matches the file view": with a mock AMS (`AmsBackendMock`, slots PLA red / PETG blue) and facts for a two-tool file (palette `#FF0000;#0000FF`, `PLA;PETG`, tools `{0,1}`), `fill_file_context()`'s `tool_info`, `mappings`, `effective_remap` and `preflight_for()` equal what a `PrintSelectDetailView` reports for the same file with no card edit (`get_used_tool_info()`, `effective_mappings()`, `get_effective_remap()`, `preflight_result()`). This is the parity pin.
+    - `has_file_facts` is set and a material mismatch (facts say PETG for tool 0, slot holds PLA) makes `material_mismatches_in(ctx)` non-empty; with `has_file_facts` false it is empty (the early return the rename keeps).
+    - Loader: against the mock client, a file whose footer names its tools answers without a whole-file download (`call_count` of the download path unchanged) with `tools_used`, palette and grams; `fail_next("server.files.metadata")` still answers with no metadata; a second `load()` before the first answers suppresses the first.
+  - Detail view keeps passing: `make t F='[detail_view]'` (the footer, gcode-cache, printer-stop and download-integrity cases in `tests/unit/test_detail_gcode_download_integrity.cpp` and its neighbours) and `make t F='[gcode][footer]'` stay green, which pins the loader's second caller.
   - `tests/unit/test_queued_job_start.cpp`, `[queued_job_start]`:
-    - "a saved entry answers its options and leaves the rest to their defaults": saved `{bed_mesh: false, qgl: true}` → `bed_mesh` 0, `qgl` 1, `z_tilt` -1; an empty entry → -1 for all three.
-    - "a busy printer refuses before anything is sent" (on `QueuedStartFixture`'s pieces: mock API, `JobQueueState`, a print in progress set as "a queued job refuses to start while the printer is busy" does): `start()` → `done(Refused)` synchronously, `WarningLog` holds the busy warning, `mock_client_.call_count("server.database.get_item")` unchanged, the job still queued.
-    - "a second start while one is in flight is refused": `client.defer_next("server.database.get_item")`, `start(job A)`, then `start(job A)` → second `done(Refused)`, `in_flight()` true; `fire_deferred` and let the first finish.
-    - "a controller refusal ends the start": `client.defer_next("server.database.get_item")`, `start(job)` (idle, so it is accepted), then put a print in progress, `fire_deferred(...)`, drain: the controller's `can_start_new_print()` refusal ends it with `done(NotStarted)`, `in_flight()` false, job and options untouched. (The 1-second startup grace in `include/app_constants.h` is not drivable from a test; the busy refusal exercises the same callback.)
-  - `tests/unit/test_preprint_skip_toggles.cpp`, on `SkipToggleFixture` (its `RecordingAPI` records every gcode send), `[queued_job_start][skip_wrappers][preprint]`:
-    - "a queued job's saved options reach the start": `wrappers_loaded(); gates_open();` build a `QueuedJobStarter(state, api.get())`, inject a scan for `part.gcode` with `QueuedJobStarterTestAccess::prep(starter).set_cached_scan_result(scan, "part.gcode")`, `start_with_options({"0001", "part.gcode", 0, 0}, QueuedJobOptions{"part.gcode", {{"qgl", false}}})`, drain. `api->sent` holds `"SET_GCODE_VARIABLE MACRO=_HELIX_PREP VARIABLE=run_qgl VALUE=0"` and `"... run_bed_mesh VALUE=1"`.
-    - "a job with nothing saved starts with the defaults": the same with an empty `QueuedJobOptions`; `api->sent` holds `run_qgl VALUE=1` and no `VALUE=0` line.
-  - `tests/unit/test_job_queue_start_guard.cpp`, `[job_queue][queue_start]`, both callers through the shared bookkeeping:
-    - "the starter removes the job and its options once the print starts": `PlantedGcode file(...)`, `seed_store("0001", file.name(), {{"bed_mesh", false}})`, queue it, `queued_job_starter()`-equivalent local `QueuedJobStarter(state(), api_.get())`, `start(job)`, `wait_until(!in_flight())`; the outcome is Started, `queue_has("0001")` false, `read_store()` has no `0001`.
-    - "a refused removal after a starter start keeps the job and its options": as the print-select case "a refused queue removal keeps the job and its saved options" does, with `fail_next` on the removal; outcome Started, the job and options still there, the warning posted.
-    - The existing print-select cases ("a refused queue removal keeps the job and its saved options" and the confirmed-start removal case) stay unchanged and green: they now pin `finish_started_queued_job()` through the print-select caller.
-  - `tests/unit/test_print_start_controller_no_detail.cpp` (new, `[print_start_controller]`): with `set_prep_manager()` and no detail view, `is_ready()` is true once a file is set, and the `can_start_new_print()` refusal and a `start_print()` completion with `success == false` (drive it with a `MoonrakerAPIMock` subclass that fails the start) each fire `on_print_cancelled_` exactly once, and a successful start fires `on_print_started_` and not the cancelled callback.
+    - `saved_option_state`: `{bed_mesh:false, qgl:true}` → 0, 1, and -1 for `z_tilt`; empty → -1.
+    - "a busy printer refuses before anything is sent": `done(Refused)`, the busy warning (`WarningLog`), no database read, job still queued.
+    - "a second start while one is in flight is refused".
+    - "a controller refusal ends the start": `defer_next("server.database.get_item")`, `start()`, put a print in progress, `fire_deferred`, drain → `done(NotStarted)`.
+    - **"a material mismatch from the tile warns and does not start until confirmed"**: mock AMS slot 0 loaded PLA, a planted two-line G-code whose metadata says `PETG` for tool 0 and whose footer names tool 0, saved options empty. `start()`, drain until the gate dialog is up: `ModalStack` top is the gate `modal_confirm` with the material mismatch gate's title, `call_count("printer.print.start")` is 0, `in_flight()` true. Press the dialog's cancel: `done(NotStarted)`, still 0 starts, job and options untouched. Repeat and press Proceed: the start goes out (`printer.print.start` count 1), `done(Started)`, job removed.
+    - **"an empty-slot block offers Force and Remap; Remap opens the file view"**: tool 0 mapped to an empty slot. `start()` → `PreflightCheckModal` on `ModalStack`, no start sent. Remap → `PrintSelectPanelTestAccess::pending_queued_job_id(...) == "0001"`, `done(OpenedFileView)`, no start sent. Repeat with Force → the gates run and the print starts.
+  - `tests/unit/test_preprint_skip_toggles.cpp` on `SkipToggleFixture`, `[queued_job_start][skip_wrappers][preprint]`: "a queued job's saved options reach the start" (inject a scan through `QueuedJobStarterTestAccess::prep()` and facts through a `FileStartFacts` with no tools so the file gates pass; saved `{qgl:false}` → `api->sent` holds `run_qgl VALUE=0` and `run_bed_mesh VALUE=1`); "a job with nothing saved starts with the defaults" (`run_qgl VALUE=1`, no `VALUE=0`).
+  - `tests/unit/test_job_queue_start_guard.cpp`, `[job_queue][queue_start]`: "the starter removes the job and its options once the print starts" and "a refused removal after a starter start keeps the job and its options"; the existing print-select removal cases stay unchanged, now pinning the same `finish_started_queued_job()`.
+  - `tests/unit/test_print_start_controller_no_detail.cpp`, `[print_start_controller]`: with `set_prep_manager()` + `set_file_facts()` and no detail view, `is_ready()` is true, `gather_print_start_context()` (through `PrintStartControllerTestAccess`) carries the facts' mappings and `has_file_facts`, and the `can_start_new_print()` refusal and a failed `start_print()` each fire `on_print_cancelled_` once while a success fires only `on_print_started_`.
 
-- [ ] **Step 2: Run and watch them fail**: `make t F='[queued_job_start]'`, `make t F='[queue_start]'`, `make t F='[print_start_controller]'`.
+- [ ] **Step 2: Run and watch them fail**: `make t F='[print_start_inputs]'`, `make t F='[queued_job_start]'`, `make t F='[queue_start]'`, `make t F='[print_start_controller]'`.
 
-- [ ] **Step 3: Implement** per the rules. Move the bookkeeping out of `PrintSelectPanel::finish_pending_queued_job()` rather than copying it.
+- [ ] **Step 3: Implement.** Move, never copy: the palette split, the three scan functions and the removal bookkeeping leave their old homes in the same commit. Rename `has_detail_view` with the compiler's help (`grep -rn has_detail_view src include tests` must be empty afterwards).
 
-- [ ] **Step 4: Run until green**: the three tags, then `make t F='[job_queue]'`, `make t F='[skip_wrappers]'`, `make t F='[preprint]'`, `make t F='[print_select]'`.
+- [ ] **Step 4: Run until green**: the four tags, then `make t F='[print_select]'`, `make t F='[job_queue]'`, `make t F='[skip_wrappers]'`, `make t F='[preprint]'`, `make t F='[print_start]'`, `make t F='[detail_view]'`, `make t F='[gcode][footer]'`.
 
-- [ ] **Step 5: Prove the shared pieces are load-bearing**: (a) make the starter's provider return -1 always; "saved options reach the start" goes red. (b) skip `delete_queued_job_options` in `finish_started_queued_job()`; the starter removal case AND the print-select confirmed-start case both go red, which is what proves both callers reach it. (c) drop the `on_print_cancelled_` call from the `can_start_new_print()` refusal; "a controller refusal ends the start" goes red. Restore all three.
+- [ ] **Step 5: Prove the shared pieces are load-bearing**: (a) make `fill_file_context()` leave `filament_materials` empty: the tile material-mismatch case goes red, and the parity case goes red. (b) skip `delete_queued_job_options()` in `finish_started_queued_job()`: the starter removal case and the print-select confirmed-start case both go red. (c) make the starter's provider return -1: "saved options reach the start" goes red. (d) make Remap call `finish(NotStarted)` without opening the file view: the fallback case goes red. Restore all four.
 
-- [ ] **Step 6: Translations**: none expected (both warnings reuse existing keys); run `make translation-sync-dry-run` to confirm.
+- [ ] **Step 6: Translations**: none expected (every dialog and warning reuses existing keys); `make translation-sync-dry-run` confirms.
 
 - [ ] **Step 7: Commit**
 
 ```bash
-git add -N include/queued_job_start.h src/ui/queued_job_start.cpp tests/unit/test_queued_job_start.cpp tests/unit/test_print_start_controller_no_detail.cpp tests/test_helpers/queued_job_starter_test_access.h
-git commit -m "refactor(job-queue): one shared queued-job start that applies saved options with or without the file view" -- include/queued_job_start.h src/ui/queued_job_start.cpp include/ui_print_start_controller.h src/ui/ui_print_start_controller.cpp src/ui/ui_panel_print_select.cpp src/ui/ui_print_select_detail_view.cpp firmware/helixscreen-esp32/components/helixapp/app_srcs.txt tests/unit/test_queued_job_start.cpp tests/unit/test_print_start_controller_no_detail.cpp tests/test_helpers/queued_job_starter_test_access.h tests/unit/test_preprint_skip_toggles.cpp tests/unit/test_job_queue_start_guard.cpp
+git add -N include/print_start_inputs.h src/printer/print_start_inputs.cpp include/queued_job_start.h src/ui/queued_job_start.cpp tests/unit/test_print_start_inputs.cpp tests/unit/test_queued_job_start.cpp tests/unit/test_print_start_controller_no_detail.cpp tests/test_helpers/queued_job_starter_test_access.h
+git commit -m "refactor(print-start): pre-start checks and queued-job starts no longer need the file view" -- include/print_start_inputs.h src/printer/print_start_inputs.cpp include/queued_job_start.h src/ui/queued_job_start.cpp include/print_start_checks.h src/printer/print_start_checks.cpp include/ui_print_start_controller.h src/ui/ui_print_start_controller.cpp include/ui_print_select_detail_view.h src/ui/ui_print_select_detail_view.cpp src/ui/ui_panel_print_select.cpp firmware/helixscreen-esp32/components/helixapp/app_srcs.txt tests
 git show --stat HEAD
 ```
+
+(`tests` as a pathspec covers the renamed field's readers; check `git show --stat` lists only files this task touched.)
 
 ---
 
@@ -903,7 +997,7 @@ HELIX_HEADLESS=1 SDL_VIDEODRIVER=dummy ./build/bin/helix-screen --test -s 800x48
 ### Task 10: Docs, plan clean-up, and the mutation gate
 
 **Files:**
-- Modify: `docs/user/guide/home-panel.md` (the Print Stats and Job Queue rows of "Print & Status": description, Min `1x0.5`, Hardware Required for Job Queue "Moonraker `[job_queue]`"; remove both names from the "two-cell minimum width" sentence; add a short "Job Queue widget" subsection before "Job Queue Manager": what each state shows; Bed clear · Start next starts the next job in one tap with the pre-print options it was queued with, or the defaults when it has none, and the job leaves the queue once the print starts; checks that need the file view (material match, spool weight) run only when the job is started from there; "starts automatically" appears only while a print runs with Moonraker's `automatic_transition` on; tap elsewhere opens the manager; Print Stats tap opens Print History)
+- Modify: `docs/user/guide/home-panel.md` (the Print Stats and Job Queue rows of "Print & Status": description, Min `1x0.5`, Hardware Required for Job Queue "Moonraker `[job_queue]`"; remove both names from the "two-cell minimum width" sentence; add a short "Job Queue widget" subsection before "Job Queue Manager": what each state shows; Bed clear · Start next starts the next job in one tap with the pre-print options it was queued with, or the defaults when it has none, and the job leaves the queue once the print starts; the same checks run as from the file view (a material or spool warning asks first), and if a tool has no loaded slot the Remap choice opens the job in the file view; "starts automatically" appears only while a print runs with Moonraker's `automatic_transition` on; tap elsewhere opens the manager; Print Stats tap opens Print History)
 - Modify: `docs/devel/PANEL_WIDGET_GUIDE.md` § "The sized-widget family" (two rows: `job_queue` with `job_queue_tile_layout.h` and `include/job_queue_tile_state.h`, gate `printer_has_job_queue`; `print_stats` with `print_stats_tile_layout.h` and `include/print_activity.h`, no gate) and the count in "All seven offer half-cell spans" (now nine)
 - Modify: `docs/devel/CHANGELOG_1_1_DRAFT.md` (one user-facing entry per tile, in `docs/devel/CHANGELOG_STYLE.md` voice)
 - Delete: `docs/devel/plans/2026-10-14-queue-stats-tiles-design.md`, `docs/devel/plans/2026-10-14-queue-stats-tiles.md` (shipped scaffolding, `docs/CLAUDE.md` § "Plans and Specs")
@@ -919,7 +1013,7 @@ git show --stat HEAD
 - [ ] **Step 3: Mutation gate, once, for the whole branch.** Push the feature branch (never main): `git push -u origin feature/queue-stats-tiles`. Then:
 
 ```bash
-scripts/test-host-run.sh mutate --tests '[job_queue_tile],[next_media],[queued_job_start],[print_start_controller],[queue_start],[widget_size][job_queue],[print_activity],[print_stats_tile],[widget_size][print_stats],[print_stats],[queue_stats],[content_fits]'
+scripts/test-host-run.sh mutate --tests '[job_queue_tile],[next_media],[print_start_inputs],[queued_job_start],[print_start_controller],[queue_start],[widget_size][job_queue],[print_activity],[print_stats_tile],[widget_size][print_stats],[print_stats],[queue_stats],[content_fits]'
 ```
 
 Expected: `CLEAN`. A `SURVIVED` hunk gets a test in the task that owns it and a rerun of that tag; an `INCOMPLETE` names paths it could not mutate (XML under `ui_xml/` is mutated in place; `lib/` and `tests/` are not). Record one line per mutation in the last commit's body, e.g. `mutation: dropped the Ready term from AutoNext in job_queue_tile_state(); test_job_queue_tile_state went red`.
