@@ -20,8 +20,10 @@
     <!-- sits in a fixed-width sidebar on the right instead of stretching. -->
     <style name="bt_flow_column" layout="flex" flex_flow="column"/>
     <style name="bt_flow_row" layout="flex" flex_flow="row"/>
-    <style name="bt_main_full" width="100%" height="100%" flex_grow="1"/>
-    <style name="bt_main_side" width="#belt_sidebar_w" height="100%" flex_grow="0" pad_left="#space_md"/>
+    <style name="bt_main_full" width="100%" height="100%" flex_grow="1" pad_all="0"/>
+    <style name="bt_main_side"
+           width="#belt_sidebar_w" height="100%" flex_grow="0" pad_top="0" pad_bottom="0" pad_right="0"
+           pad_left="#space_md"/>
     <style name="bt_full_w" width="100%"/>
     <style name="bt_half_w" width="50%"/>
     <style name="bt_side_w" width="#belt_sidebar_w"/>
@@ -51,7 +53,7 @@
                       flag="hidden"/>
       </lv_obj>
       <!-- Everything but the wide chart: the whole panel, or the ultrawide sidebar -->
-      <lv_obj name="bt_main" style_pad_all="0" flex_flow="column" style_pad_gap="#space_sm" scrollable="false">
+      <lv_obj name="bt_main" flex_flow="column" style_pad_gap="#space_sm" scrollable="false">
         <bind_style_if name="bt_main_full"
                        cond="ui_is_ultrawide eq 0 or bt_chart_available eq 0 or belt_tension_state eq 0 or belt_tension_state eq 3"/>
         <bind_style_if name="bt_main_side"
