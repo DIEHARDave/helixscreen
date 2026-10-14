@@ -1795,7 +1795,6 @@ translations:
   Lanes: Каналы
   Language: Язык
   Language & Time: Язык и время
-  Last: Последняя
   # Source: history_dashboard_panel.xml:114
   Last 12 months: 'Последние 12 месяцев'
   Last 24 hours: 'Последние 24 часа'
@@ -1825,7 +1824,6 @@ translations:
   Level: Уровень
   Leveling Gantry...: Выравнивание портала...
   Library: Библиотека
-  Lifetime Print Stats: Статистика за всё время
   Light: Подсветка
   Light Mode: Светлый режим
   Light will switch when the current operation finishes: Подсветка переключится после
@@ -3806,7 +3804,6 @@ translations:
   Webcam: Веб-камера
   Website (optional): Веб-сайт (необязательно)
   Week: Неделя
-  Weekly Print Stats: Статистика за неделю
   ? Weight data is synced from Spoolman to display remaining filament. Changes are
     also synced when prints start, pause, or complete.
   : Данные о весе синхронизируются из Spoolman для отображения оставшегося филамента.

@@ -53,9 +53,8 @@ struct Box {
 };
 
 // Just above the smallest box each rung needs with the fixture's fonts (heading 34px,
-// small 22px) and the tile's 3px padding. The hero over its label does not fit the
-// 114x54 a 2x1 tile gets at the medium tier, so these are taller than that grid's cells.
-constexpr Box kStrip{114, 70, SizeRung::Strip};
+// small 22px) and the tile's 3px padding. The Strip is the medium tier's 2x1 cell.
+constexpr Box kStrip{114, 54, SizeRung::Strip};
 constexpr Box kCell{114, 142, SizeRung::Cell};
 constexpr Box kWide{236, 95, SizeRung::Wide};
 constexpr Box kFull{236, 182, SizeRung::Full};
@@ -396,4 +395,22 @@ TEST_CASE_METHOD(PrintStatsTileFixture, "print stats tile: fits_at refuses below
     PrintStatsWidget probe;
     CHECK_FALSE(probe.fits_at(60, 30));
     CHECK(probe.fits_at(kStrip.w, kStrip.h));
+}
+
+TEST_CASE_METHOD(PrintStatsTileFixture,
+                 "print stats tile: the Strip shows hero and label on one line",
+                 "[widget_size][print_stats]") {
+    seed({job(0, 3600)});
+    PanelWidgetHarness<PrintStatsWidget> h(test_screen());
+    h.resize(1, 1, kStrip.w, kStrip.h);
+    settle();
+    h.resize(1, 1, kStrip.w, kStrip.h);
+    lv_area_t hero, label, tile;
+    lv_obj_get_coords(h.child("ps_hero"), &hero);
+    lv_obj_get_coords(h.child("ps_hero_label"), &label);
+    lv_obj_get_coords(h.root(), &tile);
+    CHECK(label.x1 >= hero.x2);
+    CHECK(label.x2 <= tile.x2);
+    CHECK(label.y2 <= tile.y2);
+    CHECK(hero.y2 <= tile.y2);
 }

@@ -1633,7 +1633,6 @@
   <translation tag="Lanes" zh="耗材通道"/>
   <translation tag="Language" zh="语言"/>
   <translation tag="Language &amp; Time" zh="语言与时间"/>
-  <translation tag="Last" zh="最近"/>
   <translation tag="Last 12 months" zh="最近 12 个月"/>
   <translation tag="Last 24 hours" zh="最近 24 小时"/>
   <translation tag="Last 30 days" zh="最近 30 天"/>
@@ -1659,7 +1658,6 @@
   <translation tag="Level" zh="级别"/>
   <translation tag="Leveling Gantry..." zh="正在调平龙门..."/>
   <translation tag="Library" zh="库"/>
-  <translation tag="Lifetime Print Stats" zh="累计打印统计"/>
   <translation tag="Light" zh="浅色"/>
   <translation tag="Light Mode" zh="浅色模式"/>
   <translation tag="Light will switch when the current operation finishes" zh="灯光将在当前操作完成后切换"/>
@@ -3438,7 +3436,6 @@
   <translation tag="Webcam" zh="摄像头"/>
   <translation tag="Website (optional)" zh="网站（可选）"/>
   <translation tag="Week" zh="周"/>
-  <translation tag="Weekly Print Stats" zh="本周打印统计"/>
   <translation tag="Weight data is synced from Spoolman to display remaining filament. Changes are also synced when prints start, pause, or complete." zh="重量数据从 Spoolman 同步以显示剩余耗材。打印开始、暂停或完成时也会同步更改。"/>
   <translation tag="Welcome to HelixScreen" zh="欢迎使用 HelixScreen"/>
   <translation tag="What We Collect" zh="我们收集的内容"/>

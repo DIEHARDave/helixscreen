@@ -1633,7 +1633,6 @@
   <translation tag="Lanes" ru="Каналы"/>
   <translation tag="Language" ru="Язык"/>
   <translation tag="Language &amp; Time" ru="Язык и время"/>
-  <translation tag="Last" ru="Последняя"/>
   <translation tag="Last 12 months" ru="Последние 12 месяцев"/>
   <translation tag="Last 24 hours" ru="Последние 24 часа"/>
   <translation tag="Last 30 days" ru="Последние 30 дней"/>
@@ -1659,7 +1658,6 @@
   <translation tag="Level" ru="Уровень"/>
   <translation tag="Leveling Gantry..." ru="Выравнивание портала..."/>
   <translation tag="Library" ru="Библиотека"/>
-  <translation tag="Lifetime Print Stats" ru="Статистика за всё время"/>
   <translation tag="Light" ru="Подсветка"/>
   <translation tag="Light Mode" ru="Светлый режим"/>
   <translation tag="Light will switch when the current operation finishes" ru="Подсветка переключится после завершения текущей операции"/>
@@ -3438,7 +3436,6 @@
   <translation tag="Webcam" ru="Веб-камера"/>
   <translation tag="Website (optional)" ru="Веб-сайт (необязательно)"/>
   <translation tag="Week" ru="Неделя"/>
-  <translation tag="Weekly Print Stats" ru="Статистика за неделю"/>
   <translation tag="Weight data is synced from Spoolman to display remaining filament. Changes are also synced when prints start, pause, or complete." ru="Данные о весе синхронизируются из Spoolman для отображения оставшегося филамента. Изменения также синхронизируются при начале, паузе или завершении печати."/>
   <translation tag="Welcome to HelixScreen" ru="Добро пожаловать в HelixScreen"/>
   <translation tag="What We Collect" ru="Что мы собираем"/>

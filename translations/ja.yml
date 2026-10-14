@@ -1696,7 +1696,6 @@ translations:
   Lanes: レーン
   Language: 言語
   Language & Time: 言語と時刻
-  Last: 最後
   # Source: history_dashboard_panel.xml:114
   Last 12 months: '過去12か月'
   Last 24 hours: '過去24時間'
@@ -1724,7 +1723,6 @@ translations:
   Level: レベル
   Leveling Gantry...: ガントリーレベリング中...
   Library: ライブラリ
-  Lifetime Print Stats: 累計印刷統計
   Light: ライト
   Light Mode: ライトモード
   Light will switch when the current operation finishes: 現在の操作が完了したらライトを切り替えます
@@ -3599,7 +3597,6 @@ translations:
   Webcam: ウェブカメラ
   Website (optional): ウェブサイト（オプション）
   Week: 週
-  Weekly Print Stats: 週間印刷統計
   ? Weight data is synced from Spoolman to display remaining filament. Changes are
     also synced when prints start, pause, or complete.
   : 残りのフィラメントを表示するために、重量データが Spoolman から同期されます。印刷の開始、一時停止、完了時にも変更が同期されます。

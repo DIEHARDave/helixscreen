@@ -134,7 +134,10 @@ helix::RungNeeds measure_needs(const helix::ContentChrome& chrome) {
         helix::format_lifetime_line({88888, 8888, 88888000.0}, true).c_str(), small);
 
     helix::RungNeeds needs;
-    needs.strip = rung_box(text_w, heading_h + small_h + row_gap);
+    // The hero and its label share one line; the label ellipsizes, so only its first
+    // letters are budgeted.
+    const int label_min_w = measure_text_px("th…", small);
+    needs.strip = rung_box(hero_w + col_gap + label_min_w, heading_h);
     needs.cell = rung_box(std::max({text_w, bars_w, count_w}),
                           heading_h + small_h + 2 * small_h + small_h + 3 * row_gap);
     needs.wide = rung_box(std::max(text_w + col_gap + bars_w, full_line_w),

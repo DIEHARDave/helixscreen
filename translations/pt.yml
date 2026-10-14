@@ -1816,7 +1816,6 @@ translations:
   Lanes: Lanes
   Language: Idioma
   Language & Time: Idioma e hora
-  Last: Última
   # Source: history_dashboard_panel.xml:114
   Last 12 months: 'Últimos 12 meses'
   Last 24 hours: 'Últimas 24 horas'
@@ -1845,7 +1844,6 @@ translations:
   Level: Nível
   Leveling Gantry...: Nivelando pórtico...
   Library: Biblioteca
-  Lifetime Print Stats: Estatísticas de Impressão Totais
   Light: Claro
   Light Mode: Modo Claro
   Light will switch when the current operation finishes: A luz será alternada quando
@@ -3851,7 +3849,6 @@ translations:
   Webcam: Webcam
   Website (optional): Site (opcional)
   Week: Semana
-  Weekly Print Stats: Estatísticas Semanais de Impressão
   ? Weight data is synced from Spoolman to display remaining filament. Changes are
     also synced when prints start, pause, or complete.
   : Dados de peso são sincronizados do Spoolman para exibir filamento restante. Alterações

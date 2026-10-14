@@ -1812,7 +1812,6 @@ translations:
   Lanes: Corsie
   Language: Lingua
   Language & Time: Lingua e ora
-  Last: Ultima
   # Source: history_dashboard_panel.xml:114
   Last 12 months: 'Ultimi 12 mesi'
   Last 24 hours: 'Ultime 24 ore'
@@ -1843,7 +1842,6 @@ translations:
   Level: Livello
   Leveling Gantry...: Livellamento gantry...
   Library: Libreria
-  Lifetime Print Stats: Statistiche stampe totali
   Light: Chiaro
   Light Mode: Modalità chiara
   Light will switch when the current operation finishes: La luce si attiverà al termine
@@ -3847,7 +3845,6 @@ translations:
   Webcam: Webcam
   Website (optional): Sito web (facoltativo)
   Week: Settimana
-  Weekly Print Stats: Statistiche stampe settimanali
   ? Weight data is synced from Spoolman to display remaining filament. Changes are
     also synced when prints start, pause, or complete.
   : I dati del peso sono sincronizzati da Spoolman per mostrare il filamento rimanente.

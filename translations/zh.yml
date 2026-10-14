@@ -1691,7 +1691,6 @@ translations:
   Lanes: 耗材通道
   Language: 语言
   Language & Time: 语言与时间
-  Last: 最近
   # Source: history_dashboard_panel.xml:114
   Last 12 months: '最近 12 个月'
   Last 24 hours: '最近 24 小时'
@@ -1718,7 +1717,6 @@ translations:
   Level: 级别
   Leveling Gantry...: 正在调平龙门...
   Library: 库
-  Lifetime Print Stats: 累计打印统计
   Light: 浅色
   Light Mode: 浅色模式
   Light will switch when the current operation finishes: 灯光将在当前操作完成后切换
@@ -3590,7 +3588,6 @@ translations:
   Webcam: 摄像头
   Website (optional): 网站（可选）
   Week: 周
-  Weekly Print Stats: 本周打印统计
   ? Weight data is synced from Spoolman to display remaining filament. Changes are
     also synced when prints start, pause, or complete.
   : 重量数据从 Spoolman 同步以显示剩余耗材。打印开始、暂停或完成时也会同步更改。
