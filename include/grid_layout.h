@@ -113,10 +113,8 @@ class GridLayout {
     /// orientation. Dividing each screen axis by the same number is what makes
     /// the cell square: a rotated panel transposes its grid exactly.
     ///
-    /// The XXLarge rung has to exist: without its own entry a 1080p panel
-    /// would clamp onto XLarge and draw the same physical widget size as a
-    /// 1280x720 panel. It shares XLarge's 72px edge, so 1920x1080 yields a
-    /// 12x7-cell (24x14-track) grid with room for dense layouts.
+    /// The XXLarge rung carries its own entry, equal to XLarge's 72px edge, so
+    /// 1920x1080 yields a 12x7-cell (24x14-track) grid.
     static constexpr int GRID_CELL[NUM_BREAKPOINTS] = {34, 40, 40, 60, 60, 72, 72};
     static_assert(std::size(GRID_CELL) == static_cast<size_t>(to_int(UiBreakpoint::XXLarge)) + 1,
                   "GRID_CELL must carry one track edge per UiBreakpoint tier");
