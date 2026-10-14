@@ -69,8 +69,8 @@ struct UiButtonData {
     bool label_line_cb{false};
 };
 
-/// One line of the label's current font, the height a bounded label beside
-/// its icon keeps.
+/// One line of the label's current font, the height a bounded label in a row
+/// keeps so its text stays centred and ellipsizes on that line.
 void fit_label_line(lv_obj_t* label) {
     const lv_font_t* font = lv_obj_get_style_text_font(label, LV_PART_MAIN);
     if (!font) {
@@ -82,8 +82,8 @@ void fit_label_line(lv_obj_t* label) {
     }
 }
 
-/// The label's font is inherited, so a style added to the button later (a
-/// cell style setting text_font) changes it after the label was bounded.
+/// The label's font is inherited, so a style added to the button after the
+/// label was bounded (a cell style setting text_font) changes its line height.
 void label_line_style_cb(lv_event_t* e) {
     auto* label = static_cast<lv_obj_t*>(lv_event_get_target(e));
     lv_obj_t* btn = lv_obj_get_parent(label);
@@ -112,6 +112,25 @@ void apply_label_bound(UiButtonData* data, bool beside_icon) {
     } else {
         lv_obj_set_height(data->label, LV_SIZE_CONTENT);
     }
+}
+
+/// Hide one part of @p btn while @p subject_name equals @p ref: the observer
+/// behind label_hidden_subject and icon_hidden_subject.
+void bind_part_hidden(lv_xml_parser_state_t* state, lv_obj_t* btn, const char* subject_name,
+                      const char* ref, const char* part, lv_observer_cb_t cb) {
+    if (!subject_name || subject_name[0] == '\0') {
+        return;
+    }
+    lv_subject_t* subject = lv_xml_get_subject(&state->scope, subject_name);
+    if (!subject || !ref) {
+        spdlog::warn("[ui_button] {}_hidden_subject '{}' {}", part, subject_name,
+                     subject ? "has no _if_eq value" : "not found");
+        return;
+    }
+    const intptr_t ref_val = static_cast<intptr_t>(atoi(ref));
+    lv_subject_add_observer_obj(subject, cb, btn, reinterpret_cast<void*>(ref_val));
+    spdlog::trace("[ui_button] {} hidden while {} == {}", part, subject_name,
+                  static_cast<int>(ref_val));
 }
 
 // Monotonic source of per-button identity tokens. Buttons are created on the
@@ -1212,25 +1231,27 @@ void ui_button_apply(lv_xml_parser_state_t* state, const char** attrs) {
         label_hidden_subject = "ui_breakpoint";
         label_hidden_ref = label_hidden_bp;
     }
-    if (label_hidden_subject && label_hidden_subject[0] != '\0' && data &&
-        data->magic == UiButtonData::MAGIC && data->label) {
-        lv_subject_t* subject = lv_xml_get_subject(&state->scope, label_hidden_subject);
-        if (subject && label_hidden_ref) {
-            intptr_t ref_val = static_cast<intptr_t>(atoi(label_hidden_ref));
-            lv_subject_add_observer_obj(
-                subject,
-                [](lv_observer_t* o, lv_subject_t* s) {
-                    auto* target = static_cast<lv_obj_t*>(lv_observer_get_target_obj(o));
-                    intptr_t ref = reinterpret_cast<intptr_t>(lv_observer_get_user_data(o));
-                    ui_button_set_label_hidden(target, lv_subject_get_int(s) == ref);
-                },
-                btn, reinterpret_cast<void*>(ref_val));
-            spdlog::trace("[ui_button] label hidden while {} == {}", label_hidden_subject,
-                          static_cast<int>(ref_val));
-        } else {
-            spdlog::warn("[ui_button] label_hidden_subject '{}' {}", label_hidden_subject,
-                         subject ? "has no label_hidden_if_eq" : "not found");
-        }
+    if (data && data->magic == UiButtonData::MAGIC && data->label) {
+        bind_part_hidden(state, btn, label_hidden_subject, label_hidden_ref, "label",
+                         [](lv_observer_t* o, lv_subject_t* s) {
+                             auto* target = static_cast<lv_obj_t*>(lv_observer_get_target_obj(o));
+                             intptr_t ref =
+                                 reinterpret_cast<intptr_t>(lv_observer_get_user_data(o));
+                             ui_button_set_label_hidden(target, lv_subject_get_int(s) == ref);
+                         });
+    }
+
+    // The icon's spelling of label_hidden_subject: a button that reads as text
+    // alone at some sizes keeps one declaration instead of two instances.
+    if (data && data->magic == UiButtonData::MAGIC && data->icon) {
+        bind_part_hidden(state, btn, lv_xml_get_value_of(attrs, "icon_hidden_subject"),
+                         lv_xml_get_value_of(attrs, "icon_hidden_if_eq"), "icon",
+                         [](lv_observer_t* o, lv_subject_t* s) {
+                             auto* target = static_cast<lv_obj_t*>(lv_observer_get_target_obj(o));
+                             intptr_t ref =
+                                 reinterpret_cast<intptr_t>(lv_observer_get_user_data(o));
+                             ui_button_set_icon_hidden(target, lv_subject_get_int(s) == ref);
+                         });
     }
 
     // Attribute-level sibling of label_hidden_if_bp_eq for the opposite
@@ -1360,6 +1381,22 @@ void ui_button_set_label_hidden(lv_obj_t* btn, bool hidden) {
         lv_obj_add_flag(data->label, LV_OBJ_FLAG_HIDDEN);
     } else {
         lv_obj_remove_flag(data->label, LV_OBJ_FLAG_HIDDEN);
+    }
+}
+
+// NAMESPACE_OK: joins this header's global ui_button_* free-function API
+void ui_button_set_icon_hidden(lv_obj_t* btn, bool hidden) {
+    if (!btn) {
+        return;
+    }
+    auto* data = static_cast<UiButtonData*>(lv_obj_get_user_data(btn));
+    if (!data || data->magic != UiButtonData::MAGIC || !data->icon) {
+        return;
+    }
+    if (hidden) {
+        lv_obj_add_flag(data->icon, LV_OBJ_FLAG_HIDDEN);
+    } else {
+        lv_obj_remove_flag(data->icon, LV_OBJ_FLAG_HIDDEN);
     }
 }
 

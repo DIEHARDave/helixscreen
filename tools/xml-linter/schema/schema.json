@@ -1543,6 +1543,12 @@
         "label_hidden_if_eq": {
           "type": "int"
         },
+        "icon_hidden_subject": {
+          "type": "string"
+        },
+        "icon_hidden_if_eq": {
+          "type": "string"
+        },
         "stacked_if_bp_lte": {
           "type": "int"
         },
@@ -2926,6 +2932,11 @@
     "ams_action_label_font_tiny",
     "ams_action_label_font_xlarge",
     "ams_action_label_font_xxlarge",
+    "ams_action_pad_hor",
+    "ams_action_pad_hor_large",
+    "ams_action_pad_hor_medium",
+    "ams_action_pad_hor_small",
+    "ams_action_pad_hor_xlarge",
     "ams_badge_bg",
     "ams_bars_height",
     "ams_bars_height_large",

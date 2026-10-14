@@ -72,23 +72,6 @@ class ScopedLanguage {
     ScopedLanguage& operator=(const ScopedLanguage&) = delete;
 };
 
-/// Labels whose standard term outruns a half-width cell at 800x480, where the
-/// shared catalog term is used app-wide and no shorter standard word exists.
-/// They ellipsize until the wording is decided; every other label must fit.
-bool awaiting_short_term(const char* lang, const std::string& key) {
-    static const std::pair<const char*, const char*> kPending[] = {
-        {"de", "Settings"}, // Einstellungen
-        {"pt", "Settings"}, // Configurações
-        {"de", "Reset"},    // Zurücksetzen
-    };
-    for (const auto& [l, k] : kPending) {
-        if (std::strcmp(lang, l) == 0 && key == k) {
-            return true;
-        }
-    }
-    return false;
-}
-
 /// The button's own text label: the child that is not its icon.
 lv_obj_t* button_label(lv_obj_t* btn) {
     lv_obj_t* label = nullptr;
@@ -262,10 +245,6 @@ TEST_CASE_METHOD(XMLTestFixture,
                 // dots label rewrites its own text), and that text fits its width.
                 const std::string want = lv_tr(key.c_str());
                 CAPTURE(want);
-                if (awaiting_short_term(lang, key)) {
-                    ++checked;
-                    continue;
-                }
                 CHECK(std::string(lv_label_get_text(label)) == want);
                 const lv_font_t* font = lv_obj_get_style_text_font(label, LV_PART_MAIN);
                 lv_point_t natural;

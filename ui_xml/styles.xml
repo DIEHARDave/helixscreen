@@ -122,11 +122,11 @@
     <style name="buffer_trace_area" bg_opa="0" border_width="0" pad_all="#space_xxs"/>
 
     <!-- Action buttons in a grid, two to a row: action_grid on the container,
-         action_cell on each button. A cell's label is font_small whether the icon
-         sits beside it or over it, and the cell's side padding is narrow: at
-         body size "Check slots" beside its icon outgrows a half-width cell. The
-         buttons ellipsize (long_mode="dots") a translation that still does not
-         fit. A stacked ui_button asks for 100% of a
+         action_cell on each button. From medium up in landscape the sidebar shows the
+         label alone (ams_actions_text_only), at medium's body size and with the
+         side padding ams_action_pad_hor allows (ams_tokens.xml), so a half-width
+         cell holds every locale's label whole; long_mode="dots" keeps any label
+         that still would not fit inside its button. A stacked ui_button asks for 100% of a
          content-height parent, which inside a wrapping row never settles, so the
          cell pins its height to the touch target. No flex_grow on a cell: a
          growing item counts as zero width when the row wraps, which puts every
@@ -137,8 +137,8 @@
            layout="flex" flex_flow="row_wrap" flex_main_place="center" flex_cross_place="center"
            flex_track_place="start"/>
     <style name="action_cell"
-           width="48%" min_height="#touch_target_min" max_height="#touch_target_min" pad_ver="#space_xxs" pad_hor="0"
-           text_font="#ams_action_label_font"/>
+           width="48%" min_height="#touch_target_min" max_height="#touch_target_min" pad_ver="#space_xxs"
+           pad_hor="#ams_action_pad_hor" text_font="#ams_action_label_font"/>
     <!-- Four to a row, for a narrow portrait screen with no height for two rows. -->
     <style name="action_cell_quarter" width="23%"/>
   </styles>

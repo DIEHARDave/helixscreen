@@ -30,15 +30,20 @@
     <px name="ams_right_col_w_large" value="300"/>
     <px name="ams_right_col_w_xlarge" value="330"/>
 
-    <!-- The sidebar action buttons' label: font_small through medium, then held
-         at 16px, since a half-width cell grows less than the type does. -->
-    <string name="ams_action_label_font_micro" value="noto_sans_light_10"/>
-    <string name="ams_action_label_font_tiny" value="noto_sans_light_11"/>
-    <string name="ams_action_label_font_small" value="noto_sans_light_12"/>
-    <string name="ams_action_label_font_medium" value="noto_sans_light_16"/>
-    <string name="ams_action_label_font_large" value="noto_sans_light_16"/>
-    <string name="ams_action_label_font_xlarge" value="noto_sans_light_16"/>
-    <string name="ams_action_label_font_xxlarge" value="noto_sans_light_20"/>
+    <!-- The sidebar action buttons' label from medium up: medium's body face at
+         every size, since the column grows less than the type does, and the
+         side padding the longest label leaves ("Configurações" at medium). -->
+    <string name="ams_action_label_font_micro" value="noto_sans_12"/>
+    <string name="ams_action_label_font_tiny" value="noto_sans_12"/>
+    <string name="ams_action_label_font_small" value="noto_sans_14"/>
+    <string name="ams_action_label_font_medium" value="noto_sans_18"/>
+    <string name="ams_action_label_font_large" value="noto_sans_18"/>
+    <string name="ams_action_label_font_xlarge" value="noto_sans_18"/>
+    <string name="ams_action_label_font_xxlarge" value="noto_sans_24"/>
+    <px name="ams_action_pad_hor_small" value="4"/>
+    <px name="ams_action_pad_hor_medium" value="1"/>
+    <px name="ams_action_pad_hor_large" value="6"/>
+    <px name="ams_action_pad_hor_xlarge" value="8"/>
 
     <!-- A meter tile's reading on the loaded card: bold, one step above the
          caption under it (font_small's size). -->
