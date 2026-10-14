@@ -46,11 +46,13 @@ const Info* find(const std::string& key) {
     return nullptr;
 }
 
-std::vector<std::string> release_asset_keys(const std::string& key, bool ad5x_board) {
-    if (key == "mips") {
-        return {key, ad5x_board ? "ad5x" : "k1"};
+std::vector<std::string> release_asset_keys(const std::string& key, board::Board board) {
+    std::vector<std::string> keys{key};
+    const char* legacy = board::info(board).legacy_release_asset;
+    if (legacy != nullptr && key != legacy) {
+        keys.emplace_back(legacy);
     }
-    return {key};
+    return keys;
 }
 
 std::string display_name(const std::string& key) {

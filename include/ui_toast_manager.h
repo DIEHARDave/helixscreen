@@ -72,6 +72,9 @@ class ToastManager {
     /**
      * Show a toast with an action button. Each toast has its own callback, so
      * multiple action toasts can coexist in the stack.
+     *
+     * @p duration_ms of 0 means the toast never auto-dismisses, as for
+     * show_with_detail(): it stays until its button or close button is tapped.
      */
     void show_with_action(ToastSeverity severity, const char* message, const char* action_text,
                           toast_action_callback_t action_callback, void* user_data,
@@ -79,6 +82,11 @@ class ToastManager {
 
     /** Dismiss all currently visible toasts (animated). */
     void hide();
+
+    /** Dismiss only the action toasts whose button runs @p action_callback on
+     *  @p user_data (animated): the pair show_with_action() was given. For a
+     *  sticky toast whose question was answered somewhere else. */
+    void hide(toast_action_callback_t action_callback, void* user_data);
 
     /** Deinit LVGL resources; safe to call before lv_deinit. */
     void deinit_subjects();
@@ -172,6 +180,7 @@ class ToastManager {
         return active_.end();
     }
     void begin_exit(ToastList::iterator it);
+    template <typename Pred> void hide_where(Pred pred);
     void force_remove(ToastList::iterator it); // no animation
     void finalize_remove(lv_obj_t* widget);    // called from exit-anim completion
 

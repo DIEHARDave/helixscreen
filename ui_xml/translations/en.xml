@@ -2598,6 +2598,7 @@
   <translation tag="Retraction distance to clear extruder gears" en="Retraction distance to clear extruder gears"/>
   <translation tag="Retry" en="Retry"/>
   <translation tag="Reverse Multiplier" en="Reverse Multiplier"/>
+  <translation tag="Review" en="Review"/>
   <translation tag="Review detected hardware validation issues" en="Review detected hardware validation issues"/>
   <translation tag="Review your configuration below, then click Finish to save" en="Review your configuration below, then click Finish to save"/>
   <translation tag="Rewinding" en="Rewinding"/>
@@ -2679,6 +2680,7 @@
   <translation tag="Scan Spool QR Code" en="Scan Spool QR Code"/>
   <translation tag="Scan and select a Bluetooth printer first" en="Scan and select a Bluetooth printer first"/>
   <translation tag="Scan for Printers" en="Scan for Printers"/>
+  <translation tag="Scan the spool label with your barcode scanner" en="Scan the spool label with your barcode scanner"/>
   <translation tag="Scan with your phone to save these values" en="Scan with your phone to save these values"/>
   <translation tag="Scanner" en="Scanner"/>
   <translation tag="Scanner bonded but didn&apos;t attach as a keyboard. Try turning the scanner off and on, then tap Pair again. If that fails, add ClassicBondedOnly=false to /etc/bluetooth/input.conf." en="Scanner bonded but didn&apos;t attach as a keyboard. Try turning the scanner off and on, then tap Pair again. If that fails, add ClassicBondedOnly=false to /etc/bluetooth/input.conf."/>
@@ -3146,6 +3148,7 @@
   <translation tag="This is an emergency stop: the printer halts and Klipper restarts." en="This is an emergency stop: the printer halts and Klipper restarts."/>
   <translation tag="This is exactly the data that will be sent" en="This is exactly the data that will be sent"/>
   <translation tag="This is what data would be sent if enabled" en="This is what data would be sent if enabled"/>
+  <translation tag="This looks like a {}, but it is set up as a {}" en="This looks like a {}, but it is set up as a {}"/>
   <translation tag="This may take up to 30 seconds" en="This may take up to 30 seconds"/>
   <translation tag="This plugin asks for no special permissions." en="This plugin asks for no special permissions."/>
   <translation tag="This plugin lets HelixScreen control print start options like bed mesh and QGL." en="This plugin lets HelixScreen control print start options like bed mesh and QGL."/>
@@ -3609,6 +3612,7 @@
   <translation tag="tool(s)" en="tool(s)"/>
   <translation tag="used" en="used"/>
   <translation tag="v%s available" en="v%s available"/>
+  <translation tag="v%s has no build for the %s, so it can&apos;t be installed here. Pick a channel with a newer release." en="v%s has no build for the %s, so it can&apos;t be installed here. Pick a channel with a newer release."/>
   <translation tag="v{} installed! Restarting..." en="v{} installed! Restarting..."/>
   <translation tag="v{} is available. Tap to update." en="v{} is available. Tap to update."/>
   <translation tag="wpa_supplicant is not running. WiFi features unavailable." en="wpa_supplicant is not running. WiFi features unavailable."/>

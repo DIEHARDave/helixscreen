@@ -682,6 +682,18 @@ class UpdateChecker {
     /// `path:` must resolve to it.
     void sync_moonraker_channel_for(const std::string& install_root);
 
+#ifdef __ANDROID__
+    /**
+     * @brief On a Play install, report what Google Play will serve instead of the manifest
+     *
+     * @param manifest The fetched manifest release (empty version if the fetch failed)
+     * @param manifest_error Why the manifest fetch failed (empty on success)
+     * @return true if the check was reported here; false for a non-Play install,
+     *         whose manifest result the caller reports as usual
+     */
+    bool report_play_verdict(ReleaseInfo manifest, const std::string& manifest_error);
+#endif
+
     void init_subjects();
 
     // State (protected by mutex_)
@@ -857,17 +869,37 @@ bool parse_github_release(const std::string& json_str, UpdateChecker::ReleaseInf
  * @brief Parse a release manifest (R2 and dev channel schema) into ReleaseInfo
  *
  * The asset is the entry under the first of @p asset_keys the manifest lists.
- * A manifest listing none of them is an error: offering a version with nothing
- * to download leaves Install failing with "No update available".
+ * A manifest listing none of them parses like a GitHub release with no matching
+ * asset: the version is filled in and download_url stays empty (see
+ * release_unavailable_message()).
  *
  * @param json_str Manifest body
  * @param info Parsed release info, download URLs included on success
  * @param error Failure reason
  * @param asset_keys Keys this build's asset may sit under, best match first
- * @return true when the manifest names a version and an asset for this build
+ * @return true when the manifest names a version
  */
 bool parse_release_manifest(const std::string& json_str, UpdateChecker::ReleaseInfo& info,
                             std::string& error, const std::vector<std::string>& asset_keys);
+
+/// The user-facing refusal for a release @p info that carries no download for
+/// @p board_name ("FlashForge Creator 5"); empty when it does. Offering it would
+/// leave Install failing, and borrowing another board's asset would brick it.
+std::string release_unavailable_message(const UpdateChecker::ReleaseInfo& info,
+                                        const std::string& board_name);
+
+/// What a check that fetched @p info concludes on a build at @p installed running
+/// on @p board_name. A newer or older release with no download for this board is
+/// an Error carrying release_unavailable_message(); the same version is UpToDate
+/// whether or not it has one.
+struct CheckOutcome {
+    UpdateChecker::Status status = UpdateChecker::Status::UpToDate;
+    bool is_downgrade = false; ///< UpdateAvailable only: the channel is behind the install
+    std::string error;         ///< Error only: the user-visible refusal
+};
+CheckOutcome decide_check_outcome(const std::string& installed,
+                                  const UpdateChecker::ReleaseInfo& info,
+                                  const std::string& board_name);
 
 /**
  * @brief Strip a leading 'v' or 'V' from a GitHub release tag

@@ -105,9 +105,9 @@ Runs on the K2's built-in screen and, unlike the K1, **works with stock firmware
 
 ---
 
-### QIDI Plus 4 / Q2 / Max 4
+### QIDI Plus 4 / Q2 / Plus 5 / Max 4
 
-The 4-series QIDI printers integrate the **QIDI Box** filament changer. The Q2 and Max 4 can run HelixScreen on-device; the Plus 4 (and the 3-series X-Smart 3 / X-Plus 3 / X-Max 3 / Q1 Pro) use a serial TJC display that HelixScreen can't drive on-device, so those are **remote-control only** — run HelixScreen on a separate device pointed at the printer's Moonraker.
+The 4-series QIDI printers integrate the **QIDI Box** filament changer. The Q2, Plus 5 and Max 4 can run HelixScreen on-device; the Plus 4 (and the 3-series X-Smart 3 / X-Plus 3 / X-Max 3 / Q1 Pro) use a serial TJC display that HelixScreen can't drive on-device, so those are **remote-control only** — run HelixScreen on a separate device pointed at the printer's Moonraker.
 
 **What works:**
 - **QIDI Box filament changer** (4, 8, 12, or 16 slots) — per-slot status, tool-to-slot mapping, and load / unload / change-tool control
@@ -116,7 +116,7 @@ The 4-series QIDI printers integrate the **QIDI Box** filament changer. The Q2 a
 - **QIDI-specific print-start tracking** (homing → bed heat → nozzle clean → Z-tilt → mesh → nozzle heat → chamber heat)
 - WiFi configuration works out of the box
 
-**Requirements:** Stock firmware works (runs standard Moonraker); community stacks like FreeDi and FreeQIDI are also supported. On-device install applies to the Q2 and Max 4 only; everything else is [remote control](../INSTALL.md#remote-screen-setup-run-on-a-separate-device).
+**Requirements:** Stock firmware works (runs standard Moonraker); community stacks like FreeDi and FreeQIDI are also supported. On-device install applies to the Q2, Plus 5 and Max 4 only; everything else is [remote control](../INSTALL.md#remote-screen-setup-run-on-a-separate-device).
 
 **Status:** Supported.
 

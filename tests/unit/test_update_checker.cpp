@@ -29,6 +29,7 @@
 #include "app_constants.h"
 #include "config.h"
 #include "lvgl.h"
+#include "platform_info.h"
 #include "platform_table.h"
 #include "runtime_config.h"
 #include "version.h"
@@ -259,13 +260,86 @@ TEST_CASE("GitHub release JSON parsing", "[update_checker][json]") {
 // Release Asset Keys (prestonbrown/helixscreen#1789)
 // ============================================================================
 
-TEST_CASE("Unified MIPS build also answers to its board's pre-unification key",
+TEST_CASE("release_asset_keys gives a Creator 5 no legacy asset",
           "[update_checker][platform][1789]") {
+    using helix::board::Board;
     using helix::platform::release_asset_keys;
-    CHECK(release_asset_keys("mips", false) == std::vector<std::string>{"mips", "k1"});
-    CHECK(release_asset_keys("mips", true) == std::vector<std::string>{"mips", "ad5x"});
-    CHECK(release_asset_keys("pi", true) == std::vector<std::string>{"pi"});
-    CHECK(release_asset_keys("k1", false) == std::vector<std::string>{"k1"});
+    using Keys = std::vector<std::string>;
+
+    CHECK(release_asset_keys("mips", Board::Creator5) == Keys{"mips"});
+    CHECK(release_asset_keys("mips", Board::Creator5Pro) == Keys{"mips"});
+    // The AD5X by machine id or by a layout naming no machine (Forge-X), and the K1.
+    CHECK(release_asset_keys("mips", Board::Ad5x) == Keys{"mips", "ad5x"});
+    CHECK(release_asset_keys("mips", Board::K1) == Keys{"mips", "k1"});
+    // A dedicated build of a board whose legacy asset is its own key is not listed twice.
+    CHECK(release_asset_keys("k1", Board::K1) == Keys{"k1"});
+    CHECK(release_asset_keys("pi", Board::Generic) == Keys{"pi"});
+}
+
+TEST_CASE("A release with no asset for this board is refused, never given another board's build",
+          "[update_checker][platform][json]") {
+    using helix::FlashForgeMachine;
+    using helix::platform::release_asset_keys;
+    const auto c5_keys = release_asset_keys("mips", helix::board::Board::Creator5);
+
+    // v1.0.5 stable shape: per-board assets only, no "mips".
+    const std::string manifest = R"({"version": "1.0.5", "tag": "v1.0.5", "assets": {
+        "ad5x": {"url": "https://r/ad5x.tar.gz", "sha256": "aa"},
+        "k1":   {"url": "https://r/k1.tar.gz",   "sha256": "kk"}}})";
+    const std::string github = R"({"tag_name": "v1.0.5", "assets": [)" +
+                               asset_json("helixscreen-ad5x-v1.0.5.tar.gz") + "," +
+                               asset_json("helixscreen-k1-v1.0.5.tar.gz") + R"(]})";
+
+    UpdateChecker::ReleaseInfo from_manifest;
+    UpdateChecker::ReleaseInfo from_github;
+    std::string error;
+    REQUIRE(helix::parse_release_manifest(manifest, from_manifest, error, c5_keys));
+    REQUIRE(helix::parse_github_release(github, from_github, error, c5_keys));
+
+    SECTION("both parsers hand back the version with no download URL") {
+        CHECK(from_manifest.version == "1.0.5");
+        CHECK(from_manifest.download_url.empty());
+        CHECK(from_github.version == "1.0.5");
+        CHECK(from_github.download_url.empty());
+    }
+
+    SECTION("the refusal names the version and the board") {
+        const std::string msg = helix::release_unavailable_message(
+            from_manifest, helix::flashforge_machine_display_name(FlashForgeMachine::Creator5));
+        CHECK(msg == "v1.0.5 has no build for the FlashForge Creator 5, so it can't be installed "
+                     "here. Pick a channel with a newer release.");
+    }
+
+    SECTION("a check refuses a newer or older release with no asset, never a same one") {
+        const std::string board = "FlashForge Creator 5";
+        const std::string want = "v1.0.5 has no build for the FlashForge Creator 5, so it can't "
+                                 "be installed here. Pick a channel with a newer release.";
+        auto newer = helix::decide_check_outcome("1.0.4", from_manifest, board);
+        CHECK(newer.status == UpdateChecker::Status::Error);
+        CHECK(newer.error == want);
+        auto older = helix::decide_check_outcome("1.1.0", from_github, board);
+        CHECK(older.status == UpdateChecker::Status::Error);
+        CHECK(older.error == want);
+        CHECK(helix::decide_check_outcome("1.0.5", from_manifest, board).status ==
+              UpdateChecker::Status::UpToDate);
+
+        UpdateChecker::ReleaseInfo with_asset = from_manifest;
+        with_asset.download_url = "https://r/mips.zip";
+        auto up = helix::decide_check_outcome("1.0.4", with_asset, board);
+        CHECK(up.status == UpdateChecker::Status::UpdateAvailable);
+        CHECK_FALSE(up.is_downgrade);
+        CHECK(up.error.empty());
+        auto down = helix::decide_check_outcome("1.1.0", with_asset, board);
+        CHECK(down.status == UpdateChecker::Status::UpdateAvailable);
+        CHECK(down.is_downgrade);
+    }
+
+    SECTION("a release that has an asset is not refused") {
+        UpdateChecker::ReleaseInfo ok;
+        ok.version = "1.1.0";
+        ok.download_url = "https://r/mips.zip";
+        CHECK(helix::release_unavailable_message(ok, "FlashForge Creator 5").empty());
+    }
 }
 
 TEST_CASE("Release manifest takes the first asset key it lists", "[update_checker][json][1789]") {
@@ -310,13 +384,10 @@ TEST_CASE("Release manifest takes the first asset key it lists", "[update_checke
         CHECK(release.sha256 == "mz");
     }
 
-    SECTION("no listed key is an error naming every key tried") {
-        REQUIRE_FALSE(helix::parse_release_manifest(board_only, release, error, {"mips"}));
-        CHECK(error.find("'mips'") != std::string::npos);
+    SECTION("no listed key leaves the download empty, as the GitHub parser does") {
+        REQUIRE(helix::parse_release_manifest(board_only, release, error, {"mips"}));
+        CHECK(release.version == "1.0.4");
         CHECK(release.download_url.empty());
-
-        REQUIRE_FALSE(helix::parse_release_manifest(board_only, release, error, {"k2", "x86"}));
-        CHECK(error.find("'k2' or 'x86'") != std::string::npos);
     }
 
     SECTION("a manifest without a version is refused") {
@@ -432,6 +503,7 @@ TEST_CASE("Update checker error scenarios", "[update_checker][error]") {
 #include "ui_update_queue.h"
 
 #include "app_globals.h"
+#include "platform_info.h"
 #include "platform_table.h"
 #include "print_lifecycle_state.h"
 #include "printer_state.h"

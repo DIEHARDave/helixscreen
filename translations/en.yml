@@ -2780,6 +2780,7 @@ translations:
   Retraction distance to clear extruder gears: Retraction distance to clear extruder gears
   Retry: Retry
   Reverse Multiplier: Reverse Multiplier
+  Review: Review
   Review detected hardware validation issues: Review detected hardware validation
     issues
   Review your configuration below, then click Finish to save: Review your configuration
@@ -2876,6 +2877,7 @@ translations:
   Scan Spool QR Code: Scan Spool QR Code
   Scan and select a Bluetooth printer first: Scan and select a Bluetooth printer first
   Scan for Printers: Scan for Printers
+  Scan the spool label with your barcode scanner: Scan the spool label with your barcode scanner
   Scan with your phone to save these values: Scan with your phone to save these values
   Scanner: Scanner
   ? Scanner bonded but didn't attach as a keyboard. Try turning the scanner off and
@@ -3412,6 +3414,7 @@ translations:
   This is exactly the data that will be sent: This is exactly the data that will be
     sent
   This is what data would be sent if enabled: This is what data would be sent if enabled
+  This looks like a {}, but it is set up as a {}: This looks like a {}, but it is set up as a {}
   This may take up to 30 seconds: This may take up to 30 seconds
   This plugin asks for no special permissions.: This plugin asks for no special permissions.
   This plugin lets HelixScreen control print start options like bed mesh and QGL.: This plugin lets HelixScreen control print start options like bed mesh and QGL.
@@ -3918,6 +3921,7 @@ translations:
   tool(s): tool(s)
   used: used
   v%s available: v%s available
+  v%s has no build for the %s, so it can't be installed here. Pick a channel with a newer release.: v%s has no build for the %s, so it can't be installed here. Pick a channel with a newer release.
   v{} installed! Restarting...: v{} installed! Restarting...
   v{} is available. Tap to update.: v{} is available. Tap to update.
   wpa_supplicant is not running. WiFi features unavailable.: wpa_supplicant is not running. WiFi features unavailable.
