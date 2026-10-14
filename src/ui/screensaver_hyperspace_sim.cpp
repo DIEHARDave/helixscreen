@@ -31,7 +31,11 @@ constexpr float STAR_SIZE = 0.02f; // sprite radius at z = 1, as a share of the 
 constexpr float FLARE_SIZE = 0.05f;
 constexpr float MAX_SPRITE_PX = 28.0f;
 
-constexpr float BASE_SPEED = 1.6f;  // depth units per second
+constexpr float BASE_SPEED = 1.6f; // depth units per second
+// Two slow sways make up the roll, as shares of HYPERSPACE_MAX_ROLL that never sum past it.
+constexpr float ROLL_SLOW = 0.65f;
+constexpr float ROLL_FAST = 0.25f;
+static_assert(ROLL_SLOW + ROLL_FAST <= 1.0f, "the roll must stay within HYPERSPACE_MAX_ROLL");
 constexpr float DRIFT_SHARE = 0.1f; // vanishing point's largest offset, as a share of the height
 // The tunnel lookup reaches this far past half the frame, so the drift never runs off it.
 constexpr float MARGIN_SHARE = DRIFT_SHARE + 0.01f;
@@ -97,14 +101,13 @@ Rgb hue_color(uint32_t h) {
     }
 }
 
-/// `c` packed in `format`: XRGB8888 with `x` as its X byte, or RGB565.
-uint32_t pack(Rgb c, PixelFormat format, uint8_t x = 0xFF) {
-    if (format == PixelFormat::RGB565) {
-        return static_cast<uint32_t>((c.r >> 3) << 11 | (c.g >> 2) << 5 | (c.b >> 3));
-    }
-    return static_cast<uint32_t>(x) << 24 | static_cast<uint32_t>(c.r) << 16 |
-           static_cast<uint32_t>(c.g) << 8 | c.b;
-}
+// The frame rows are written as whole uint32_t / uint16_t pixels, which match PixelWriter's byte
+// layout only on a little-endian CPU.
+static_assert(__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__,
+              "pixels are written as little-endian words");
+
+/// An XRGB8888 word's X byte, which goo colours leave 0 so they add onto an opaque colour.
+constexpr uint32_t X_BYTE = 0xFF000000u;
 
 uint8_t scale8(uint32_t v, uint32_t amount) {
     return static_cast<uint8_t>(std::min<uint32_t>(255, v * amount / 255));
@@ -155,44 +158,6 @@ void HyperspaceSim::init(const FrameTarget& frame, std::minstd_rand& rng, size_t
     camera_ = {};
     scroll_ = 0.0f;
 
-    // The finest level's lookup is the largest; coarser levels reuse the front of it.
-    const int32_t margin = static_cast<int32_t>(std::ceil(MARGIN_SHARE * static_cast<float>(h_)));
-    quad_w_ = (w_ + 1) / 2 + margin + 1;
-    quad_h_ = (h_ + 1) / 2 + margin + 1;
-    const size_t quad = static_cast<size_t>(quad_w_) * static_cast<size_t>(quad_h_);
-    depth_.assign(quad, 0);
-    angle_.assign(quad, 0);
-
-    shade_of_depth_.resize(DEPTH_LEVELS);
-    const float nearest = TUNNEL_DEPTH / 2.0f;
-    for (int d = 0; d < DEPTH_LEVELS; d++) {
-        const float fog = std::exp(-(static_cast<float>(d) - nearest) / FOG_DEPTH);
-        shade_of_depth_[static_cast<size_t>(d)] = static_cast<uint8_t>(
-            std::clamp(fog * (SHADE_LEVELS - 1) + 0.5f, 0.0f, SHADE_LEVELS - 1.0f));
-    }
-
-    // Ribbons of light that wind along the tunnel, brightening in rings. A texel's high nibble is
-    // its brightness and its low nibble how far round the wheel its colour sits, in bands that
-    // flow along the tunnel and bend with the ribbons.
-    texture_.resize(256 * 256);
-    for (int v = 0; v < 256; v++) {
-        for (int u = 0; u < 256; u++) {
-            const float fu = static_cast<float>(u) / 256.0f;
-            const float fv = static_cast<float>(v) / 256.0f;
-            const float wind = 1.6f * std::sin(2.0f * PI * (4.0f * fv + fu));
-            const float ribbon = 0.5f + 0.5f * std::sin(2.0f * PI * 3.0f * fu + wind);
-            const float rings = 0.7f + 0.3f * std::sin(2.0f * PI * 8.0f * fv);
-            const float glow = std::clamp((0.3f + 0.7f * ribbon * ribbon) * rings, 0.0f, 1.0f);
-            const float band = 2.0f * fv + 0.15f * wind;
-            const float tri = 1.0f - std::fabs(2.0f * (band - std::floor(band)) - 1.0f);
-            const auto bright = static_cast<uint32_t>(glow * 15.0f + 0.5f);
-            const auto shift = static_cast<uint32_t>(tri * 15.0f + 0.5f);
-            texture_[static_cast<size_t>(v) * 256 + static_cast<size_t>(u)] =
-                static_cast<uint8_t>(bright << 4 | shift);
-        }
-    }
-
-    tunnel_palette_.resize(static_cast<size_t>(SHADE_LEVELS) * 256);
     goo_palette_.resize(256);
     goo_col_.resize(static_cast<size_t>(w_));
     goo_row_.resize(static_cast<size_t>(h_));
@@ -254,14 +219,17 @@ void HyperspaceSim::clear() {
     quad_h_ = 0;
 }
 
-size_t HyperspaceSim::heap_bytes() const {
+size_t HyperspaceSim::tunnel_bytes() const {
     return depth_.capacity() * sizeof(uint16_t) + angle_.capacity() * sizeof(uint16_t) +
            shade_of_depth_.capacity() + texture_.capacity() +
-           tunnel_palette_.capacity() * sizeof(uint32_t) +
-           goo_palette_.capacity() * sizeof(uint32_t) + goo_col_.capacity() + goo_row_.capacity() +
-           goo_diag_.capacity() + row_.capacity() * sizeof(uint32_t) + sprites_.capacity() +
-           sprite_at_.capacity() * sizeof(uint32_t) + stars_.capacity() * sizeof(Star) +
-           flares_.capacity() * sizeof(Flare);
+           tunnel_palette_.capacity() * sizeof(uint32_t);
+}
+
+size_t HyperspaceSim::heap_bytes() const {
+    return tunnel_bytes() + goo_palette_.capacity() * sizeof(uint32_t) + goo_col_.capacity() +
+           goo_row_.capacity() + goo_diag_.capacity() + row_.capacity() * sizeof(uint32_t) +
+           sprites_.capacity() + sprite_at_.capacity() * sizeof(uint32_t) +
+           stars_.capacity() * sizeof(Star) + flares_.capacity() * sizeof(Flare);
 }
 
 void HyperspaceSim::request_level(size_t level) {
@@ -375,7 +343,8 @@ void HyperspaceSim::advance(uint32_t dt_ms, std::minstd_rand& rng) {
         return static_cast<float>(std::sin(t * rate + phase));
     };
     camera_.speed = BASE_SPEED * (1.0f + 0.3f * wave(0.21, 0.0) + 0.15f * wave(0.53, 1.0));
-    camera_.roll = 0.2f * wave(0.13, 0.5) + 0.08f * wave(0.31, 1.0);
+    camera_.roll =
+        HYPERSPACE_MAX_ROLL * (ROLL_SLOW * wave(0.13, 0.5) + ROLL_FAST * wave(0.31, 1.0));
     const float drift = DRIFT_SHARE * static_cast<float>(h_);
     camera_.drift_x = drift * (0.7f * wave(0.17, 0.0) + 0.3f * wave(0.41, 2.0));
     camera_.drift_y = drift * 0.6f * (0.7f * wave(0.23, 1.0) + 0.3f * wave(0.37, 0.0));
@@ -411,14 +380,68 @@ void HyperspaceSim::advance(uint32_t dt_ms, std::minstd_rand& rng) {
     advance_phase(dt_ms, rng);
 }
 
+void HyperspaceSim::build_texture() {
+    shade_of_depth_.resize(DEPTH_LEVELS);
+    const float nearest = TUNNEL_DEPTH / 2.0f;
+    for (int d = 0; d < DEPTH_LEVELS; d++) {
+        const float fog = std::exp(-(static_cast<float>(d) - nearest) / FOG_DEPTH);
+        shade_of_depth_[static_cast<size_t>(d)] = static_cast<uint8_t>(
+            std::clamp(fog * (SHADE_LEVELS - 1) + 0.5f, 0.0f, SHADE_LEVELS - 1.0f));
+    }
+
+    // Ribbons of light that wind along the tunnel, brightening in rings. A texel's high nibble is
+    // its brightness and its low nibble how far round the wheel its colour sits, in bands that
+    // flow along the tunnel and bend with the ribbons.
+    texture_.resize(256 * 256);
+    for (int v = 0; v < 256; v++) {
+        for (int u = 0; u < 256; u++) {
+            const float fu = static_cast<float>(u) / 256.0f;
+            const float fv = static_cast<float>(v) / 256.0f;
+            const float wind = 1.6f * std::sin(2.0f * PI * (4.0f * fv + fu));
+            const float ribbon = 0.5f + 0.5f * std::sin(2.0f * PI * 3.0f * fu + wind);
+            const float rings = 0.7f + 0.3f * std::sin(2.0f * PI * 8.0f * fv);
+            const float glow = std::clamp((0.3f + 0.7f * ribbon * ribbon) * rings, 0.0f, 1.0f);
+            const float band = 2.0f * fv + 0.15f * wind;
+            const float tri = 1.0f - std::fabs(2.0f * (band - std::floor(band)) - 1.0f);
+            const auto bright = static_cast<uint32_t>(glow * 15.0f + 0.5f);
+            const auto shift = static_cast<uint32_t>(tri * 15.0f + 0.5f);
+            texture_[static_cast<size_t>(v) * 256 + static_cast<size_t>(u)] =
+                static_cast<uint8_t>(bright << 4 | shift);
+        }
+    }
+
+    tunnel_palette_.resize(static_cast<size_t>(SHADE_LEVELS) * 256);
+}
+
 void HyperspaceSim::build_tables() {
     const int32_t block = HYPERSPACE_LEVELS[level_].block;
     tables_stale_ = false;
     if (block == 0) {
+        free_buffer(depth_);
+        free_buffer(angle_);
+        free_buffer(shade_of_depth_);
+        free_buffer(texture_);
+        free_buffer(tunnel_palette_);
+        quad_w_ = 0;
+        quad_h_ = 0;
         return;
     }
-    // Each entry is the block centred (ax + 0.5, ay + 0.5) blocks from the vanishing point. A
-    // coarser level reads only the front of each row.
+    if (texture_.empty()) {
+        build_texture();
+    }
+    // One quadrant at this level's block size, reaching past half the frame by the drift.
+    const int32_t margin =
+        (static_cast<int32_t>(std::ceil(MARGIN_SHARE * static_cast<float>(h_))) + block - 1) /
+        block;
+    quad_w_ = ((w_ + block - 1) / block + 1) / 2 + margin + 2;
+    quad_h_ = ((h_ + block - 1) / block + 1) / 2 + margin + 2;
+    const size_t quad = static_cast<size_t>(quad_w_) * static_cast<size_t>(quad_h_);
+    if (depth_.size() != quad) {
+        std::vector<uint16_t>(quad).swap(depth_);
+        std::vector<uint16_t>(quad).swap(angle_);
+    }
+
+    // Each entry is the block centred (ax + 0.5, ay + 0.5) blocks from the vanishing point.
     const float half_h = static_cast<float>(h_) / 2.0f;
     for (int32_t ay = 0; ay < quad_h_; ay++) {
         for (int32_t ax = 0; ax < quad_w_; ax++) {
@@ -443,7 +466,8 @@ void HyperspaceSim::build_palettes() {
     const uint32_t fade = tunnel_amount_;
     // Each texel's colour band sits up to 3/4 of the way round the wheel, and the brightest
     // texels burn toward white.
-    for (uint32_t texel = 0; texel < 256; texel++) {
+    // A level without a tunnel holds no tunnel palette.
+    for (uint32_t texel = 0; texel < tunnel_palette_.size() / SHADE_LEVELS; texel++) {
         const uint32_t bright = (texel >> 4) * 255 / 15;
         const Rgb base = hue_color(hue + (texel & 15) * 12);
         const uint32_t white = bright * bright / 255 * bright / 255 / 3;
@@ -453,7 +477,7 @@ void HyperspaceSim::build_palettes() {
         for (uint32_t shade = 0; shade < SHADE_LEVELS; shade++) {
             const uint32_t amount =
                 bright * shade / (SHADE_LEVELS - 1) * fade / 255 * TUNNEL_MAX / 255;
-            tunnel_palette_[shade << 8 | texel] = pack(
+            tunnel_palette_[shade << 8 | texel] = PixelWriter::pack(
                 {scale8(lit.r, amount), scale8(lit.g, amount), scale8(lit.b, amount)}, format_);
         }
     }
@@ -464,8 +488,10 @@ void HyperspaceSim::build_palettes() {
         const auto amount =
             static_cast<uint32_t>(band > 0.0f ? band * band * band * GOO_MAX : 0.0f);
         const Rgb base = hue_color(hue + 128 + g / 2);
-        goo_palette_[g] = pack(
-            {scale8(base.r, amount), scale8(base.g, amount), scale8(base.b, amount)}, format_, 0);
+        goo_palette_[g] =
+            PixelWriter::pack(
+                {scale8(base.r, amount), scale8(base.g, amount), scale8(base.b, amount)}, format_) &
+            ~X_BYTE;
     }
 }
 

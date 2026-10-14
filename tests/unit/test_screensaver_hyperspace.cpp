@@ -380,23 +380,89 @@ TEST_CASE("a starburst of flares bursts ahead within the first few seconds",
     REQUIRE(flight.run_until([&] { return flight.sim.burst_flares_alive() == 0; }, 15000));
 }
 
-TEST_CASE("a hyperspace level change applies at the next frame and allocates nothing",
+TEST_CASE("a hyperspace level change applies at the next frame and frames allocate nothing",
           "[screensaver][hyperspace_sim]") {
     Flight flight(41, 0);
     flight.step();
-    const size_t bytes = flight.sim.heap_bytes();
-    REQUIRE(bytes > 0);
+    REQUIRE(flight.sim.heap_bytes() > 0);
+    std::vector<size_t> tunnel(HYPERSPACE_LEVEL_COUNT);
     for (size_t level = 0; level < HYPERSPACE_LEVEL_COUNT + 1; level++) {
+        CAPTURE(level);
         flight.sim.request_level(level);
         flight.step();
-        CHECK(flight.sim.level() == std::min(level, HYPERSPACE_LEVEL_COUNT - 1));
+        const size_t at = std::min(level, HYPERSPACE_LEVEL_COUNT - 1);
+        CHECK(flight.sim.level() == at);
+        const size_t bytes = flight.sim.heap_bytes();
+        tunnel[at] = flight.sim.tunnel_bytes();
         for (int i = 0; i < 20; i++) {
             flight.step();
         }
         CHECK(flight.sim.heap_bytes() == bytes);
     }
+    // The tunnel's tables shrink with its block size, and a level without it holds none.
+    CHECK(tunnel[2] < tunnel[0]);
+    CHECK(tunnel[4] < tunnel[2]);
+    CHECK(tunnel[4] > 0);
+    CHECK(tunnel[HYPERSPACE_LEVEL_COUNT - 1] == 0);
+    flight.sim.request_level(0);
+    flight.step();
+    CHECK(flight.sim.tunnel_bytes() == tunnel[0]);
+
     flight.sim.clear();
     CHECK(flight.sim.heap_bytes() == 0);
+}
+
+TEST_CASE("an odd-sized hyperspace frame fills every pixel and never writes past a row",
+          "[screensaver][hyperspace_sim]") {
+    const PixelFormat format = GENERATE(PixelFormat::XRGB8888, PixelFormat::RGB565);
+    const size_t level = GENERATE(size_t{0}, size_t{2}, size_t{4});
+    CAPTURE(static_cast<int>(format), level);
+    constexpr uint32_t OW = 321;
+    constexpr uint32_t OH = 203;
+    constexpr uint8_t SENTINEL = 0xA5;
+    const uint32_t bpp = bytes_per_pixel(format);
+    const uint32_t stride = OW * bpp + 7;
+    // One spare row past the frame catches a block written below its last row.
+    std::vector<uint8_t> bytes(static_cast<size_t>(stride) * (OH + 1), SENTINEL);
+    FrameTarget frame{bytes.data(), stride, OW, OH, format};
+    std::minstd_rand rng(43);
+    HyperspaceSim sim;
+    sim.init(frame, rng, level);
+    std::vector<DirtyRect> dirty;
+    bool tunnel_seen = false;
+    for (uint32_t t = 0; t < 30000 && !tunnel_seen; t += FRAME_MS) {
+        sim.step(FRAME_MS, frame, rng, dirty);
+        tunnel_seen = sim.tunnel_amount() == 255;
+    }
+    REQUIRE(tunnel_seen);
+
+    size_t padding_changed = 0;
+    for (uint32_t y = 0; y <= OH; y++) {
+        const uint32_t from = y < OH ? OW * bpp : 0;
+        for (uint32_t i = from; i < stride; i++) {
+            padding_changed += bytes[static_cast<size_t>(y) * stride + i] != SENTINEL ? 1 : 0;
+        }
+    }
+    CHECK(padding_changed == 0);
+    if (format == PixelFormat::XRGB8888) {
+        size_t not_opaque = 0;
+        for (uint32_t y = 0; y < OH; y++) {
+            for (uint32_t x = 0; x < OW; x++) {
+                not_opaque += bytes[static_cast<size_t>(y) * stride + x * 4 + 3] != 0xFF ? 1 : 0;
+            }
+        }
+        CHECK(not_opaque == 0);
+    }
+    // The last column and row, which a block only partly covers, are drawn too.
+    const PixelWriter writer(frame);
+    size_t edge_lit = 0;
+    for (int32_t y = 0; y < static_cast<int32_t>(OH); y++) {
+        edge_lit += max_channel(writer.get(OW - 1, y)) > 0 ? 1 : 0;
+    }
+    for (int32_t x = 0; x < static_cast<int32_t>(OW); x++) {
+        edge_lit += max_channel(writer.get(x, OH - 1)) > 0 ? 1 : 0;
+    }
+    CHECK(edge_lit > (OW + OH) / 2);
 }
 
 TEST_CASE("hyperspace frame cost per level", "[.][hyperspace_bench]") {

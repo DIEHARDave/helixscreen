@@ -19,8 +19,8 @@
  * point ahead; and a slow plasma of iridescent goo glows behind it all.
  *
  * No LVGL, no clock and no shared random sequence: the saver passes the frame time, its own
- * random sequence and the frame, so a seed replays exactly. Every buffer is sized in init() for
- * the frame and reused by every level, so neither a frame nor a level change allocates.
+ * random sequence and the frame, so a seed replays exactly. Buffers are sized in init() for the
+ * frame; only a level change resizes the tunnel's, and a frame allocates nothing.
  */
 
 namespace helix::ui {
@@ -107,8 +107,13 @@ class HyperspaceSim {
     /// Hue the palettes are centred on now, 0 to 255 around the colour wheel.
     uint8_t hue() const;
 
-    /// Heap bytes the sim holds, fixed from init() to clear().
+    /// Heap bytes the sim holds. Constant from frame to frame; a level change may resize the
+    /// tunnel's share once.
     size_t heap_bytes() const;
+
+    /// Heap bytes of the tunnel's lookup tables, texture and palette: sized for the level's block
+    /// size, and none at a level without a tunnel.
+    size_t tunnel_bytes() const;
 
     /// Frees every buffer.
     void clear();
@@ -140,6 +145,7 @@ class HyperspaceSim {
     void advance_phase(uint32_t dt_ms, std::minstd_rand& rng);
     void throw_starburst(std::minstd_rand& rng);
     void place_star(Star& star, std::minstd_rand& rng, bool anywhere);
+    void build_texture();
     void build_tables();
     void build_palettes();
 
@@ -158,7 +164,7 @@ class HyperspaceSim {
     PixelFormat format_ = PixelFormat::XRGB8888;
     float scale_ = 1.0f; ///< frame height over the 480 px the distances are tuned for
 
-    uint32_t elapsed_ms_ = 0;
+    uint64_t elapsed_ms_ = 0; ///< wide enough never to wrap
     HyperspaceCamera camera_{};
     float scroll_ = 0.0f; ///< distance flown, in texture rows
 
