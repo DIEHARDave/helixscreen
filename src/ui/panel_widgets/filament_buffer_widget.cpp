@@ -12,8 +12,12 @@
 #include "panel_widget_registry.h"
 #include "static_subject_registry.h"
 #include "subject_managed_panel.h"
+#include "text_measure.h"
+#include "theme_manager.h"
 
 #include <spdlog/spdlog.h>
+
+#include <algorithm>
 
 namespace {
 
@@ -78,6 +82,18 @@ void FilamentBufferWidget::detach() {
 void FilamentBufferWidget::on_size_changed(int colspan, int /*rowspan*/, int /*width_px*/,
                                            int /*height_px*/) {
     lv_subject_set_int(&s_wide_subject, colspan >= 2 * GridLayout::TRACKS_PER_CELL ? 1 : 0);
+}
+
+bool FilamentBufferWidget::fits_at(int width_px, int /*height_px*/) const {
+    // One row of padding, slider, gap and reading, and the reading never wraps.
+    // A synced buffer's bias reads up to "+100%" (buffer_short_text).
+    const lv_font_t* value_font = theme_manager_get_font("font_body_bold");
+    const int reading_px = std::max(ui::measure_text_px("+100%", value_font),
+                                    ui::measure_text_px("-100%", value_font));
+    const int need = 2 * theme_manager_get_spacing("buffer_tile_pad") +
+                     theme_manager_get_spacing("buffer_slider_w") +
+                     theme_manager_get_spacing("space_sm") + reading_px;
+    return width_px >= need;
 }
 
 } // namespace helix
