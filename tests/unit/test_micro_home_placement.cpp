@@ -165,29 +165,32 @@ const AuthoredAnchor kMicroAnchors[] = {
     {"bed_temperature",  8,  0,  2, 2},
     {"notifications",   10,  0,  2, 2},
     {"fan_stack",        6,  2,  2, 2},
-    {"led",              8,  2,  2, 2},
-    {"filament",        10,  2,  2, 2},
-    {"print_status",     0,  4, 12, 4},
+    {"filament",         8,  2,  2, 2},
+    {"led",             10,  2,  2, 2},
+    {"print_status",     0,  4,  8, 4},
+    {"temp_graph",       8,  4,  4, 4},
 };
 
 /// The medium table's fixed anchors: 800x480 is the regression guard for the
 /// larger tiers, where the whole-cell floor does not apply and placement is
-/// already correct. Tracks (8,0) to (11,1) are the spool slot, whose occupants
+/// already correct. Tracks (4,2) to (7,3) are the spool slot, whose occupants
 /// depend on the printer's capabilities, so the test checks them separately.
 const AuthoredAnchor kMediumAnchors[] = {
     {"printer_image",    0, 0, 4, 4},
     {"temperature",      4, 0, 2, 2},
     {"bed_temperature",  6, 0, 2, 2},
-    {"fan_stack",        4, 2, 2, 2},
-    {"notifications",    6, 2, 2, 2},
+    {"fan_stack",        8, 0, 2, 2},
+    {"notifications",   10, 0, 2, 2},
+    {"temp_graph",       8, 2, 4, 6},
     {"print_status",     0, 4, 8, 4},
 };
 
-/// The micro@8x6 table's fixed anchors. Tracks (4,0) to (7,1) are the spool
-/// slot, whose occupants depend on the printer's capabilities.
+/// The micro@8x6 table's fixed anchors. Tracks (4,0) to (5,1) are the readout
+/// slot, whose occupant depends on the printer's capabilities.
 const AuthoredAnchor kMicro8x6Anchors[] = {
     {"temperature",     0, 0, 2, 2},
     {"bed_temperature", 2, 0, 2, 2},
+    {"notifications",   6, 0, 2, 2},
     {"print_status",    0, 2, 8, 4},
 };
 // clang-format on
@@ -202,7 +205,7 @@ TEST_CASE_METHOD(DefaultPlacementFixture, "micro default layout lands exactly at
     lv_subject_t* bp_subj = theme_manager_get_breakpoint_subject();
     REQUIRE(bp_subj != nullptr);
     REQUIRE(lv_subject_get_int(bp_subj) == static_cast<int>(UiBreakpoint::Micro));
-    REQUIRE(theme_manager_get_spacing("space_xs") > 0);
+    REQUIRE(helix::GridLayout::gutter_px() > 0);
     require_font_tokens_distinct();
 
     TestModeGuard test_mode_guard(get_runtime_config());
@@ -219,6 +222,15 @@ TEST_CASE_METHOD(DefaultPlacementFixture, "micro default layout lands exactly at
     REQUIRE(dims.rows == 8);
     const CellMetrics tracks = grid_cell_metrics(430, 264, dims.cols, dims.rows, 2);
     REQUIRE(tracks.cell_h < 34.0f);
+
+    // The spool slot's occupants follow the capability subjects: no AMS
+    // (seed_topology()), a filament sensor and an LED.
+    helix::test::ScopedIntSubject dryer("home_dryer_available", 0);
+    helix::test::ScopedIntSubject chamber("printer_has_chamber", 0);
+    helix::test::ScopedIntSubject enclosed("printer_is_enclosed", 0);
+    helix::test::ScopedIntSubject led("led_controllable", 1);
+    helix::test::ScopedIntSubject fil("filament_sensor_count", 1);
+    helix::test::ScopedIntSubject spoolman("printer_has_spoolman", 0);
 
     populate_fresh_defaults("test_micro_home_480", container);
     lv_obj_update_layout(container);
@@ -242,7 +254,7 @@ TEST_CASE_METHOD(DefaultPlacementFixture, "micro default layout lands exactly at
     lv_subject_t* bp_subj = theme_manager_get_breakpoint_subject();
     REQUIRE(bp_subj != nullptr);
     REQUIRE(lv_subject_get_int(bp_subj) == static_cast<int>(UiBreakpoint::Micro));
-    REQUIRE(theme_manager_get_spacing("space_xs") > 0);
+    REQUIRE(helix::GridLayout::gutter_px() > 0);
     require_font_tokens_distinct();
 
     TestModeGuard test_mode_guard(get_runtime_config());
@@ -271,7 +283,7 @@ TEST_CASE_METHOD(DefaultPlacementFixture, "micro default layout lands exactly at
 
     // The table switches these off on this grid rather than leaving them to
     // auto-placement, which has no free track to give them.
-    for (const char* id : {"printer_image", "fan_stack", "notifications"}) {
+    for (const char* id : {"printer_image", "fan_stack"}) {
         INFO("widget '" << id << "' placed on a full grid");
         CHECK(lv_obj_find_by_name(container, id) == nullptr);
     }
@@ -289,7 +301,7 @@ TEST_CASE_METHOD(DefaultPlacementFixture, "medium default layout is unchanged at
     lv_subject_t* bp_subj = theme_manager_get_breakpoint_subject();
     REQUIRE(bp_subj != nullptr);
     REQUIRE(lv_subject_get_int(bp_subj) == static_cast<int>(UiBreakpoint::Medium));
-    REQUIRE(theme_manager_get_spacing("space_xs") > 0);
+    REQUIRE(helix::GridLayout::gutter_px() > 0);
     require_font_tokens_distinct();
 
     TestModeGuard test_mode_guard(get_runtime_config());
@@ -304,9 +316,10 @@ TEST_CASE_METHOD(DefaultPlacementFixture, "medium default layout is unchanged at
 
     // The spool slot's occupants follow the capability subjects, so pin every
     // one it consults: with ams_slot_count at 0 (seed_topology()) it takes its
-    // second alternative, led in the ENV cell and filament in the FIL cell.
+    // second alternative, filament in the cell beside the graph, then led.
     helix::test::ScopedIntSubject dryer("home_dryer_available", 0);
     helix::test::ScopedIntSubject chamber("printer_has_chamber", 0);
+    helix::test::ScopedIntSubject enclosed("printer_is_enclosed", 0);
     helix::test::ScopedIntSubject led("led_controllable", 1);
     helix::test::ScopedIntSubject fil("filament_sensor_count", 1);
     helix::test::ScopedIntSubject spoolman("printer_has_spoolman", 0);
@@ -321,8 +334,8 @@ TEST_CASE_METHOD(DefaultPlacementFixture, "medium default layout is unchanged at
     }
 
     CHECK(lv_obj_find_by_name(container, "ams") == nullptr);
-    check_anchor(container, {"led", 8, 0, 2, 2});
-    check_anchor(container, {"filament", 10, 0, 2, 2});
+    check_anchor(container, {"filament", 6, 2, 2, 2});
+    check_anchor(container, {"led", 4, 2, 2, 2});
 
     PanelWidgetManager::instance().clear_panel_config("test_medium_home_800");
 }

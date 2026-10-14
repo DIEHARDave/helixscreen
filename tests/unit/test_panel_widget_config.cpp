@@ -1495,8 +1495,9 @@ TEST_CASE("PanelWidgetConfig: build_default_grid produces correct layout",
     };
 
     // The micro landscape table: printer image 3x2 cells top-left, six 1x1
-    // readouts filling the rest of the top two rows, print_status full width
-    // below. Tracks are half-cells, so a cell span of 3x2 reads as 6x4.
+    // readouts filling the rest of the top two rows, print_status (4x2 cells)
+    // beside the temperature graph (2x2) below. Tracks are half-cells, so a
+    // cell span of 3x2 reads as 6x4.
     auto* pi = find_entry("printer_image");
     REQUIRE(pi);
     REQUIRE(pi->enabled);
@@ -1505,25 +1506,26 @@ TEST_CASE("PanelWidgetConfig: build_default_grid produces correct layout",
     REQUIRE(pi->colspan == 6);
     REQUIRE(pi->rowspan == 4);
 
-    // Print status spans the full 12-track width of the micro grid.
     auto* ps = find_entry("print_status");
     REQUIRE(ps);
     REQUIRE(ps->enabled);
     REQUIRE(ps->col == 0);
     REQUIRE(ps->row == 4);
-    REQUIRE(ps->colspan == 12);
+    REQUIRE(ps->colspan == 8);
     REQUIRE(ps->rowspan == 4);
+    auto* graph = find_entry("temp_graph");
+    REQUIRE(graph);
+    REQUIRE(graph->enabled);
+    REQUIRE(graph->col == 8);
+    REQUIRE(graph->row == 4);
+    REQUIRE(graph->colspan == 4);
+    REQUIRE(graph->rowspan == 4);
 
-    // tips and temp_graph are switched off on the 480-class tiers: four cell
-    // rows only pay for the image block plus a two-cell print_status, and the
-    // graph's axis labels collide at a 68px cell.
-    for (const char* id : {"tips", "temp_graph"}) {
-        auto* off = find_entry(id);
-        REQUIRE(off);
-        INFO("widget " << id);
-        REQUIRE_FALSE(off->enabled);
-        REQUIRE_FALSE(off->has_grid_position());
-    }
+    // Four cell rows only pay for the image block and the bottom band.
+    auto* tips = find_entry("tips");
+    REQUIRE(tips);
+    REQUIRE_FALSE(tips->enabled);
+    REQUIRE_FALSE(tips->has_grid_position());
 
     // Positions are all-or-nothing. Which ids the shipped table anchors is the
     // table's business and differs per tier; a half-placed entry is a bug.
