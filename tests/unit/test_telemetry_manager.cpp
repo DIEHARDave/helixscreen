@@ -15,6 +15,7 @@
 #include "ui_update_queue.h"
 
 #include "../lvgl_test_fixture.h"
+#include "../test_helpers/scoped_board.h"
 #include "../test_helpers/scoped_moonraker_client.h"
 #include "../test_helpers/telemetry_manager_test_access.h"
 #include "app_globals.h"
@@ -22,6 +23,7 @@
 #include "config.h"
 #include "moonraker_api.h"
 #include "moonraker_client_mock.h"
+#include "platform_table.h"
 #include "printer_state.h"
 #include "system/sha256_util.h"
 #include "system/telemetry_manager.h"
@@ -407,6 +409,19 @@ TEST_CASE_METHOD(TelemetryTestFixture, "Session event: has app section with vers
     REQUIRE(event["app"].contains("platform"));
     REQUIRE(event["app"]["version"].is_string());
     REQUIRE(event["app"]["platform"].is_string());
+}
+
+TEST_CASE_METHOD(TelemetryTestFixture, "Session event: app.board is the resolved board",
+                 "[telemetry][session]") {
+    helix::test::ScopedBoard board(helix::board::Board::Creator5Pro);
+    auto& tm = TelemetryManager::instance();
+    tm.set_enabled(true);
+
+    tm.record_session();
+    auto event = tm.get_queue_snapshot()[0];
+
+    CHECK(event["app"]["board"] == "creator5-pro");
+    CHECK(event["app"]["platform"] == helix::platform::current_key());
 }
 
 TEST_CASE_METHOD(TelemetryTestFixture, "Session event: app.zip_tool reports zip capability",

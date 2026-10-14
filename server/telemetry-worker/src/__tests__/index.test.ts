@@ -830,6 +830,24 @@ describe("mapEventToDataPoints", () => {
     expect(dp.blobs).toHaveLength(12);
   });
 
+  it("maps session app.board into blob11", () => {
+    const event = {
+      event: "session",
+      device_id: "dev-board",
+      app: { version: "1.1.0", platform: "mips", board: "creator5-pro" },
+    };
+    const dp = mapEventToDataPoints(event)[0];
+    expect(dp.blobs![10]).toBe("creator5-pro");
+    expect(dp.blobs![2]).toBe("mips");
+    expect(dp.blobs).toHaveLength(12);
+  });
+
+  it("leaves session board empty for clients that do not send it", () => {
+    const event = { event: "session", device_id: "dev-old", app: { version: "1.0.5" } };
+    const dp = mapEventToDataPoints(event)[0];
+    expect(dp.blobs![10]).toBe("");
+  });
+
   it("leaves session zip_tool empty for clients that do not send it", () => {
     const event = { event: "session", device_id: "dev-old", app: { version: "0.99.90" } };
     const dp = mapEventToDataPoints(event)[0];

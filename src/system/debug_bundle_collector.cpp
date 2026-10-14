@@ -413,6 +413,7 @@ json DebugBundleCollector::build_diagnostics_info(const diagnostics::Diagnostics
 
     out["identity"] = json{
         {"platform_key", diag.identity.platform_key},
+        {"board", diag.identity.board},
         {"mod_flavor", diag.identity.mod_flavor},
         {"printer_model", diag.identity.printer_model},
         {"host_arch", diag.identity.host_arch},
@@ -587,6 +588,19 @@ PrinterSnapshot DebugBundleCollector::snapshot_printer_state() {
     return snap;
 }
 
+std::string DebugBundleCollector::platform_model_for(const platform::Info* platform,
+                                                     board::Board board) {
+    if (platform == nullptr || !platform->has_printer_hardware) {
+        return {};
+    }
+    // The unified MIPS row names a board family, not hardware; the mismatch check
+    // against the user's printer model needs the actual board.
+    if (std::string(platform->key) == "mips") {
+        return board::info(board).display_name;
+    }
+    return platform->display_name;
+}
+
 json DebugBundleCollector::collect_printer_info(const PrinterSnapshot& snap) {
     json printer;
 
@@ -601,26 +615,8 @@ json DebugBundleCollector::collect_printer_info(const PrinterSnapshot& snap) {
         // case — same Klipper config, different hardware). Dashboard title
         // generation should prefer platform_model when it differs from model
         // so AD5X devices stop showing as "5M Pro" in the bundle list.
-        const std::string platform = helix::platform::current_key();
-        std::string display = helix::platform::display_name(platform);
-        if (platform == "mips") {
-            // The unified MIPS key names a board family, not hardware; the
-            // mismatch check below needs the actual board. Name it the way the
-            // installer does (the MACHINE= line or the Z-Mod chroot's os-release
-            // codename — flashforge_machine_id, mirroring ff_machine_id in
-            // scripts/lib/installer/platform.sh), which is what tells the
-            // FlashForge boards apart; a board that names itself neither way
-            // (the K1 series) falls back to the mod-layout probe.
-            if (auto machine = helix::flashforge_machine_id()) {
-                display = helix::flashforge_machine_display_name(*machine);
-            } else {
-                display = helix::platform::display_name(
-                    helix::flashforge_mod_tree() != helix::FlashForgeModTree::None ? "ad5x" : "k1");
-            }
-        }
-        const auto* row = helix::platform::find(platform);
-        const std::string platform_model =
-            row && row->has_printer_hardware ? display : std::string{};
+        const std::string platform_model = platform_model_for(
+            helix::platform::find(helix::platform::current_key()), helix::board::current());
         if (!platform_model.empty()) {
             printer["platform_model"] = platform_model;
             // Substring match handles trim variations ("5M" vs "5M Pro"). If

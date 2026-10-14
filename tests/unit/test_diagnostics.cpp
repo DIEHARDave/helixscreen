@@ -13,6 +13,7 @@
 #include "system/debug_bundle_collector.h"
 #include "system/diagnostics.h"
 #include "test_helpers/flashforge_layout_fixture.h"
+#include "test_helpers/scoped_board.h"
 #include "test_helpers/unique_temp_dir.h"
 
 #include <cstdlib>
@@ -153,6 +154,17 @@ TEST_CASE("the mod flavor separates the layouts one platform key serves", "[diag
     CHECK(name_of("forgex") == "Forge-X");
     CHECK(name_of("forgex-host") == "Forge-X");
     CHECK(name_of("plain") == "none");
+}
+
+TEST_CASE("diagnostics names the board", "[diagnostics]") {
+    helix::test::ScopedBoard board(helix::board::Board::Creator5Pro);
+    CHECK(helix::diagnostics::collect().identity.board == "creator5-pro");
+}
+
+TEST_CASE("the bundle form carries the board", "[diagnostics]") {
+    helix::diagnostics::Diagnostics d;
+    d.identity.board = "k1";
+    CHECK(helix::DebugBundleCollector::build_diagnostics_info(d)["identity"]["board"] == "k1");
 }
 
 TEST_CASE("collect() reports a mod flavor for every host", "[diagnostics]") {

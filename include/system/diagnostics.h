@@ -46,6 +46,8 @@ struct Identity {
     /// serve several filesystem layouts — "mips" is the K1 series and both
     /// AD5X firmware populations — which is what mod_flavor separates.
     std::string platform_key;
+    /// helix::board::current_info().key ("creator5-pro", "k1", "generic").
+    std::string board;
     std::string mod_flavor;    ///< "none", "ZMOD" or "Forge-X"
     std::string printer_model; ///< printer type as configured in HelixScreen
     std::string host_arch;     ///< helix::host_arch_string()

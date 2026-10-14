@@ -12,6 +12,7 @@
 
 #include "app_constants.h"
 #include "app_globals.h"
+#include "board_identity.h"
 #include "config.h"
 #include "data_root_resolver.h"
 #include "i_moonraker_api.h"
@@ -141,6 +142,7 @@ Diagnostics collect() {
 
     // --- Identity ----------------------------------------------------------
     d.identity.platform_key = helix::platform::current_key();
+    d.identity.board = board::current_info().key;
     d.identity.mod_flavor = flashforge_mod_tree_name(flashforge_mod_tree());
     d.identity.printer_model = get_saved_printer_type();
     d.identity.host_arch = host_arch_string();
@@ -164,8 +166,8 @@ Diagnostics collect() {
 void log_diagnostics() {
     const Diagnostics d = collect();
 
-    spdlog::info("[Diagnostics] Platform: {} ({}), {} — {}", d.identity.platform_key,
-                 d.identity.mod_flavor, d.identity.host_arch,
+    spdlog::info("[Diagnostics] Platform: {} / {} ({}), {} — {}", d.identity.platform_key,
+                 d.identity.board, d.identity.mod_flavor, d.identity.host_arch,
                  d.identity.printer_model.empty() ? "no printer configured"
                                                   : d.identity.printer_model);
     spdlog::info("[Diagnostics] Machine: {} x{}, {} MB RAM ({} MB available), load {}, up {:.0f}s",
