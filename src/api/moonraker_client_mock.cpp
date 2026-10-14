@@ -2422,6 +2422,23 @@ MoonrakerClientMock::GcodeResult MoonrakerClientMock::gcode_zmod(const std::stri
         dispatch_status_update({{"zmod_color", {{"active_tool_id", tool}}}});
         return 0;
     }
+    if (cmd == "CHANGE_TOOL") {
+        // The afclite shim's load: it mounts the lane's head and feeds it. Lanes
+        // are the E0..E3 objects the persona publishes.
+        const std::string lane = param("LANE");
+        int tool = -1;
+        if (lane.size() == 2 && lane[0] == 'E' && lane[1] >= '0' && lane[1] <= '3') {
+            tool = lane[1] - '0';
+        }
+        if (tool < 0) {
+            return refuse("Unknown lane: " + lane);
+        }
+        dispatch_gcode_response("// Grab attempt for T" + std::to_string(tool) + ": 1 of 5...");
+        dispatch_gcode_response("// X-Offset: 0.0000 _T_IN");
+        zmod_active_tool_.store(tool);
+        dispatch_status_update({{"zmod_color", {{"active_tool_id", tool}}}});
+        return 0;
+    }
     if (cmd == "_T_OUT") {
         const int parked = zmod_active_tool_.load();
         if (parked >= 0) {

@@ -200,14 +200,29 @@ its activity word and lane map are logged for field visibility and acted on for 
 (vocabulary unverified — a debug bundle captured during a real load shows both); and
 `zmod_color.slots[].hasFilament` stamps a docked head without filament as Empty.
 
-**The filament-feed macros are deliberately not wired.** `LOAD_FILAMENT`,
+**Load feeds through the afclite shim's `CHANGE_TOOL`.** `LOAD_FILAMENT`,
 `UNLOAD_FILAMENT`, `LOAD_MATERIAL`, `TOOL_UNLOAD` and `LANE_UNLOAD` all exist on this
-firmware and all move hardware (heat, feed, cut, wipe), but no capture shows their
-parameter shapes — which of `T=`, `SLOT=`, `LANE=` or bare-operates-on-active each takes —
-and a guessed parameter can drive the wrong head's feed motor. The afclite state logging
-above is the instrument that settles it: once a capture shows the words and the
-parameters, wiring them is a provider-row change. Until then the macros remain reachable
-through the Macros panel, which is where they are safe.
+firmware and all move hardware (heat, feed, cut, wipe), and none of them is called. A
+contributor's on-device test (prestonbrown/helixscreen#1779, Z-Mod 1.7.4) showed that
+`CHANGE_TOOL LANE=E<n>` is Z-Mod's own Load for head `n`: the afclite shim heats only the
+selected head and feeds it. With `zmod_afclite` present, the UI's Load for head `n` sends
+exactly that command and nothing else. `_T_IN_ZCOLOR` is not called directly: it is defined
+in the unpublished `zmod_color` plugin, the C5 configs call it with a 1-based `SLOT`
+(ghzserg/z_c5pro `translate/en/c5pro_display_off.cfg`, `_T_USE`), and the AD5X
+zmod_color.py plugin (its cmd_IN_ZCOLOR handler) reads `NAPR=0` as load, so a guessed `SLOT` or `NAPR` could
+feed the wrong head. The shim owns that mapping. Head `n` maps to the shim's lane `E<n>` by
+name only; no published field ties a lane to a head, and a lane the shim did not publish
+gets no command. Without the shim (Z-Mod older than 1.7.4) Load stays a tool mount.
+
+Load stays enabled while a head reads loaded, since the printer cannot tell an inserted
+strand from a fed one, and the UI does not preheat (the shim heats the head it feeds).
+Mounting a head is the slot menu's **Select slot**, which sends `_T_IN T=<n>`.
+
+**There is no automatic unload on the Creator 5.** The user cuts the filament at the head
+and pulls it out by hand; the firmware's `TOOL_UNLOAD` says so only after heating. The
+Z-Mod row answers `AmsBackend::unload_is_manual()` true, so the filament panel and AMS
+sidebar Unload controls show a notice up front and send and heat nothing. Unmount in the
+slot menu remains a `_T_OUT` tool park.
 
 One upstream dependency: [ghzserg/z_c5pro#1](https://github.com/ghzserg/z_c5pro/pull/1)
 adds `slots`, `palette` and a live `active_tool_id` to `zmod_color.get_status()`. Without

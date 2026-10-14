@@ -412,7 +412,10 @@ jobs:
 
     - name: Install dependencies
       run: |
-        brew install sdl2 libusb ccache
+        brew install sdl2 libusb ccache make
+        # The Makefile needs GNU make >= 4.2; the runner's /usr/bin/make is Apple's 3.81.
+        # gnubin puts GNU make first as plain `make` for every later step and script.
+        echo "$(brew --prefix make)/libexec/gnubin" >> "$GITHUB_PATH"
         # node/npm usually pre-installed on GitHub Actions macOS runners
 
     - name: Cache compiled dependencies

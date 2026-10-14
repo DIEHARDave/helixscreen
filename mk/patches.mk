@@ -592,6 +592,7 @@ $(PATCHES_STAMP): $(PATCH_FILES) $(LVGL_HEAD) $(LIBHV_HEAD) $(LUA_HEAD) $(APPLIE
 	$(Q)$(APPLY_PATCH) $(LVGL_DIR) $(PATCH_DIR)/lvgl_async_del_crumb.patch "LVGL async-delete breadcrumb patch (#840/#906 sync+async diagnostic)"
 	$(Q)$(APPLY_PATCH) $(LVGL_DIR) $(PATCH_DIR)/lvgl_translation_warn_once.patch "LVGL translation warn-once patch (missing-language warning once per language)"
 	$(Q)$(APPLY_PATCH) $(LVGL_DIR) $(PATCH_DIR)/lvgl_translation_threadsafe.patch "LVGL translation lock patch (lv_tr safe from any thread)"
+	$(Q)$(APPLY_PATCH) $(LVGL_DIR) $(PATCH_DIR)/lvgl_translation_tail_packs.patch "LVGL translation tail packs patch (plugin packs consulted after the app's)"
 	$(Q)$(APPLY_PATCH) $(LVGL_DIR) $(PATCH_DIR)/lvgl_label_text_transform.patch "LVGL label text transform patch"
 	$(Q)$(APPLY_PATCH) $(LVGL_DIR) $(PATCH_DIR)/lvgl-sw-draw-wait-for-finish.patch "LVGL SW draw wait_for_finish + NULL guard patch (#739)"
 	$(Q)$(APPLY_PATCH) $(LVGL_DIR) $(PATCH_DIR)/lvgl-image-cache-oversize-uncached.patch "LVGL oversize-image uncached-draw patch (image larger than the cache draws instead of vanishing)"

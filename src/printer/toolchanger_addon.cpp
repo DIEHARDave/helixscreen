@@ -41,6 +41,10 @@ struct Provider {
     /// Stores a slot's material and colour in firmware, or nullptr when the
     /// firmware keeps no such record.
     std::string (*material_write_gcode)(int slot_index, const std::string& type, std::uint32_t rgb);
+    /// Feeds filament into one head, or nullptr when the firmware has no such
+    /// command. Returns empty when this printer does not offer it for @p head
+    /// (the shim that owns it is absent, or published no lane for the head).
+    std::string (*feed_gcode)(const PrinterDiscovery& hw, int head);
 };
 
 // --- MedusaHC ---------------------------------------------------------------
@@ -142,6 +146,24 @@ std::string zmod_c5_material_write(int slot_index, const std::string& type, std:
                        rgb & 0xFFFFFFu, type);
 }
 
+/// Z-Mod's afclite shim runs `CHANGE_TOOL LANE=<lane>` as the same load the
+/// COLOR dialog starts: it heats only that head and feeds it. The lane is named
+/// by the shim's own `AFC_lane` object, which is the only thing sent, so
+/// `_T_IN_ZCOLOR` and its SLOT/NAPR arguments stay the shim's business. The
+/// head-to-lane relation is the lane name: head n is lane `E<n>`, and a lane
+/// the shim did not publish yields no command.
+std::string zmod_c5_feed_gcode(const PrinterDiscovery& hw, int head) {
+    if (!hw.has_zmod_afclite() || head < 0) {
+        return {};
+    }
+    const std::string lane = fmt::format("E{}", head);
+    const auto& lanes = hw.afc_lane_names();
+    if (std::find(lanes.begin(), lanes.end(), lane) == lanes.end()) {
+        return {};
+    }
+    return "CHANGE_TOOL LANE=" + lane;
+}
+
 const std::vector<Provider>& providers() {
     static const std::vector<Provider> table = {
         // T<n> and DROP_TOOL are what the extra registers when it runs the swap
@@ -152,9 +174,9 @@ const std::vector<Provider>& providers() {
         // the way the feeder macros are, and naming it here is the whole point of
         // this table.
         {"MedusaHC", medusa_detect, medusa_status_objects, medusa_open_gcode, medusa_close_gcode,
-         "T", "DROP_TOOL", nullptr},
+         "T", "DROP_TOOL", nullptr, nullptr},
         {kZmodC5ProviderName, zmod_c5_detect, zmod_c5_status_objects, nullptr, nullptr,
-         "_T_IN T=", "_T_OUT", zmod_c5_material_write},
+         "_T_IN T=", "_T_OUT", zmod_c5_material_write, zmod_c5_feed_gcode},
     };
     return table;
 }
@@ -562,6 +584,22 @@ std::vector<std::string> feeder_macro_candidates(const PrinterDiscovery& hw) {
 std::vector<std::string> required_status_objects(const PrinterDiscovery& hw) {
     const Provider* p = match(hw);
     return p ? p->status_objects(hw) : std::vector<std::string>{};
+}
+
+ToolFeed resolve_tool_feed(const PrinterDiscovery& hw) {
+    const Provider* p = match(hw);
+    if (!p || !p->feed_gcode) {
+        return {};
+    }
+    ToolFeed feed;
+    feed.provider_name = p->name;
+    const int heads = static_cast<int>(hw.afc_lane_names().size());
+    for (int head = 0; head < heads; ++head) {
+        feed.head_gcode.push_back(p->feed_gcode(hw, head));
+    }
+    feed.present = std::any_of(feed.head_gcode.begin(), feed.head_gcode.end(),
+                               [](const std::string& g) { return !g.empty(); });
+    return feed;
 }
 
 MaterialSource resolve_material_source(const PrinterDiscovery& hw) {

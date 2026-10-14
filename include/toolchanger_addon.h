@@ -169,6 +169,20 @@ struct MaterialSource {
                                std::uint32_t rgb) = nullptr;
 };
 
+/// Filament feed through a changer's own shim, where the firmware offers one.
+/// Default-constructed means a head's Load is only a tool mount.
+struct ToolFeed {
+    bool present = false;
+    std::string provider_name; ///< Machine it came from, for logs
+    /// The gcode that feeds head n, indexed by head. An empty entry means the
+    /// printer published nothing to feed that head with; callers refuse rather
+    /// than build a command of their own.
+    std::vector<std::string> head_gcode;
+};
+
+/// The feed this printer offers, or an absent capability.
+ToolFeed resolve_tool_feed(const PrinterDiscovery& hw);
+
 /// The firmware material source this printer has, or an absent capability.
 MaterialSource resolve_material_source(const PrinterDiscovery& hw);
 

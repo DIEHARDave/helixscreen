@@ -3114,6 +3114,7 @@
   <translation tag="This printer cannot calibrate tool offsets automatically" es="Esta impresora no puede calibrar los offsets de herramienta automáticamente"/>
   <translation tag="This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman." es="Esta impresora llena sus gates desde Spoolman. HelixScreen borró su propia copia; quita la bobina en Spoolman."/>
   <translation tag="This printer fills its gates from Spoolman. Make colour, material and spool changes in Spoolman." es="Esta impresora llena sus gates desde Spoolman. Haz los cambios de color, material y bobina en Spoolman."/>
+  <translation tag="This printer has no automatic unload. Cut the filament at the head and pull it out by hand." es="Esta impresora no tiene descarga automática. Corte el filamento en el cabezal y sáquelo a mano."/>
   <translation tag="This printer looks like a {} ({}% confidence), but it is set up as a {}. A wrong type applies incorrect pre-print options and presets." es="Esta impresora parece una {} ({}% de confianza), pero está configurada como {}. Un tipo erróneo aplica opciones y preajustes de preimpresión incorrectos."/>
   <translation tag="This printer&apos;s network service controls the WiFi radio" es="El servicio de red de esta impresora controla la radio WiFi"/>
   <translation tag="This printer&apos;s network service manages saved WiFi networks" es="El servicio de red de esta impresora gestiona las redes WiFi guardadas"/>

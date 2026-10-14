@@ -123,6 +123,10 @@ struct OpButtonState {
     /// affordance and AmsSubscriptionBackend::refuse_if_printing() cannot drift.
     bool print_blocks_op = false;
 
+    /// Load feeds filament into a head the machine already shows as loaded
+    /// (AmsBackend::load_feeds_filament()), so "loaded" does not refuse it.
+    bool load_feeds_filament = false;
+
     /// This surface's Unload button runs a COLD lane op (Eject / Recover) rather
     /// than a heated toolhead unload. Deliberate asymmetry, not an oversight:
     /// #995 / #1199 keep the cold lane ops reachable mid-print because they move
@@ -171,8 +175,8 @@ using helix::print_blocks_filament_op;
  */
 [[nodiscard]] inline OpButtonGating compute_op_button_gating(const OpButtonState& s) {
     const bool nothing_to_feed = s.slot_has_filament.has_value() && !*s.slot_has_filament;
-    return {/*load_disabled=*/s.system_busy || s.print_blocks_op || s.slot_is_loaded ||
-                nothing_to_feed,
+    return {/*load_disabled=*/s.system_busy || s.print_blocks_op ||
+                (s.slot_is_loaded && !s.load_feeds_filament) || nothing_to_feed,
             /*unload_disabled=*/s.system_busy || !s.unload_available ||
                 (s.print_blocks_op && !s.unload_is_cold_lane_op),
             /*purge_disabled=*/s.system_busy || s.print_blocks_op};

@@ -4,6 +4,7 @@
 #include "filament_op_execute.h"
 
 #include "ui_error_reporting.h"
+#include "ui_manual_pull_prompt.h"
 #include "ui_temperature_utils.h"
 #include "ui_update_queue.h"
 
@@ -63,6 +64,7 @@ BackendCaps read_backend_caps(AmsBackend* backend, AmsSystemInfo& info_out, int 
     caps.requires_slot_selection_for_load = backend->requires_slot_selection_for_load();
     caps.needs_unload_before_load = backend->needs_unload_before_load(info_out, target_slot);
     caps.is_tool_changer = backend->get_type() == AmsType::TOOL_CHANGER;
+    caps.load_feeds_filament = backend->load_feeds_filament();
     // Distinct from !requires_slot_selection_for_load(): plan_load() needs to
     // tell "bypass is suppressing the lane tier" apart from "this backend
     // never wanted a slot", because a named lane wants opposite treatment.
@@ -432,6 +434,11 @@ void execute_filament_unload(AmsBackend* backend, int slot, bool target_is_loade
 void execute_filament_unload(AmsBackend* backend, int slot, bool target_is_loaded,
                              const FilamentOpSurface& surface) {
     const char* log_tag = surface.log_tag;
+    // Every caller here means "take the filament out". Where that is manual,
+    // saying so is the whole operation: no plan, no spinner, nothing sent.
+    if (helix::ui::notify_if_unload_is_manual(backend)) {
+        return;
+    }
     // plan_unload() reads only `present` and `toolhead_unaccounted`, so the full
     // read_backend_caps() call (whose needs_unload_before_load() is a per-lane
     // backend query) buys nothing here.

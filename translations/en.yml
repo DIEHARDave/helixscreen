@@ -3380,6 +3380,7 @@ translations:
   This printer cannot calibrate tool offsets automatically: This printer cannot calibrate tool offsets automatically
   This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman.: This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman.
   This printer fills its gates from Spoolman. Make colour, material and spool changes in Spoolman.: This printer fills its gates from Spoolman. Make colour, material and spool changes in Spoolman.
+  This printer has no automatic unload. Cut the filament at the head and pull it out by hand.: This printer has no automatic unload. Cut the filament at the head and pull it out by hand.
   ? This printer looks like a {} ({}% confidence), but it is set up as a {}. A wrong type applies incorrect pre-print options and presets.
   : This printer looks like a {} ({}% confidence), but it is set up as a {}. A wrong type applies incorrect pre-print options and presets.
   This printer's network service controls the WiFi radio: This printer's network service controls the WiFi radio

@@ -70,7 +70,9 @@ The `--test` flag runs a mock printer, so nothing touches a real machine. Then:
 
 Saving any file of the plugin reloads it within about a second in native dev builds (the
 same `HELIX_HOT_RELOAD` gate as XML hot reload; `HELIX_PLUGIN_DIR` documents it in
-`ENVIRONMENT_VARIABLES.md`). Cross-compiled release builds do not poll.
+`ENVIRONMENT_VARIABLES.md`). Cross-compiled release builds do not poll. The one exception
+is `i18n/*.xml`: a pack registers once per path, so an edited pack needs an app restart
+(§13 Translations).
 
 `HELIX_PLUGIN_DIR` replaces the printer's plugin source with your directory while it is
 set, so the fastest loop is: edit, save, watch the log line naming your plugin reload.
@@ -122,8 +124,8 @@ proves a name belongs to a plugin, and a plugin can reach only its own names.
 Parsed by `src/plugin/plugin_manifest.cpp#parse_manifest`. Any error in one field rejects
 the whole manifest; Settings > Plugins shows the reasons.
 
-Every user-facing string in the manifest - `name`, `description`, settings
-`label`s, widget `name`/`description` - is English source: the file stays
+Every user-facing string in the manifest - `name`, settings `label`s, widget
+`name`/`description` - is English source: the file stays
 English and the render sites translate it through the plugin's `i18n/` pack
 (§13 Translations), falling back to the literal text.
 
@@ -133,7 +135,7 @@ English and the render sites translate it through the plugin's `i18n/` pack
 | `name` | string | required | single line, at most 48 bytes; shown in the UI |
 | `version` | string | required | single line, at most 32 bytes |
 | `author` | string | empty | single line, at most 64 bytes |
-| `description` | string | empty | shown in the Plugins screen |
+| `description` | string | empty | parsed and kept, but no screen displays it; the Plugins screen shows `name` and the plugin's status |
 | `helix_version` | string | empty | a HelixScreen version constraint; a plugin whose constraint fails the running version shows as *incompatible* |
 | `permissions` | array | `[]` | zero or more of `gcode`, `moonraker_write`, `http`, `storage` (§9) |
 | `memory_mb` | integer | `2` | 1 to 64; the plugin's share of the plugin memory budget |
@@ -422,7 +424,7 @@ Read-only methods callable through `helix.moonraker.call` without any permission
 `true` or a field-name list, and `fn(status)` receives a table `{[object] = {field = value}}`.
 The first delivery carries the queried current values; later ones carry each change, so
 the tile always shows what Klipper reports, including changes made elsewhere. The
-returned handle's `cancel()` stops it. Limits, each raising an error that names it: at
+returned handle's `cancel` method (`handle:cancel()`) stops it. Limits, each raising an error that names it: at
 most 8 subscriptions per plugin totalling 16 objects, 32 fields per object, object names
 at most 64 bytes of printable ASCII.
 
@@ -459,7 +461,7 @@ memory cap comes back as an error.
 
 | Call | Returns | Notes |
 |---|---|---|
-| `helix.i18n.t(s)` | string | resolves the English source through the plugin's `i18n/` pack, then the app catalog, then returns `s` unchanged |
+| `helix.i18n.t(s)` | string | resolves the English source through the app's own catalog first, then the plugin's `i18n/` pack for strings the app does not translate, then returns `s` unchanged |
 | `helix.i18n.locale()` | string | the active language code (`"en"`, `"de"`, ...) |
 | `helix.i18n.on_change(fn)` | | `fn(code)` after a language change, once the formatting tables are updated; several handlers allowed |
 
@@ -467,8 +469,8 @@ memory cap comes back as an error.
 
 | Call | Returns | Notes |
 |---|---|---|
-| `helix.timer.after(ms, fn)` | handle | one shot; `handle.cancel()` |
-| `helix.timer.every(ms, fn)` | handle | repeating; `handle.cancel()` |
+| `helix.timer.after(ms, fn)` | handle | one shot; `handle:cancel()` |
+| `helix.timer.every(ms, fn)` | handle | repeating; `handle:cancel()` |
 | `helix.sleep(ms)` | | async; yields the entry and resumes after the delay |
 
 Intervals are 1 ms to 24 h; a plugin holds at most 64 live timers.
@@ -721,27 +723,33 @@ with one or more LVGL translation packs:
 ```
 
 The host registers every `i18n/*.xml` when the plugin loads. Packs cannot be
-unregistered (LVGL keeps them until the app exits), so a reload reuses what is
-already loaded, and two plugins mapping the same English string differently is
-last-registered-wins - keep translations faithful to the source.
+unregistered (LVGL keeps them until the app exits), so a path registers once: a
+reload reuses what is already loaded, and an edited pack takes effect on the
+next app start (plugin hot reload does not re-read it). A pack file over 256 KiB
+is skipped with a warning.
 
 English is the identity locale: `lv_tr()` returns the key itself when nothing
-translates it, so an English-only plugin ships no `i18n/` at all, and a pack
-with a missing entry simply falls back. Lookup order is the plugin's pack, then
-the app's own catalog - words the app already says (`Started`, `Paused`,
-`Completed`, `Cancelled`, `Failed`, common settings vocabulary) translate for
-free and **must not be duplicated in a plugin pack**: the pack is consulted
-first, so a duplicate tag does not "also translate" that string, it silently
-overrides the system's translation for the whole UI while the plugin is
-loaded. `scripts/check_plugin_i18n_shadow.py` (run from quality-checks) fails
+translates it, so an English-only plugin ships no `i18n/` at all. A pack
+declaring `en` is refused, because the English text is the tag.
+
+Lookup order is the app's own catalog first, then plugin packs. A plugin pack
+only supplies tags the app does not translate: a pack entry for a tag the app
+already translates (`Cancel`, `Started`, `Paused`, common settings vocabulary)
+is never used in a language whose app pack translates it, and an empty slot in
+a multi-language pack cannot hide an app string. That holds whether the
+language was the boot language or was switched to later. Such an entry is dead
+weight, so `scripts/check_plugin_i18n_shadow.py` (run from quality-checks) fails
 on any example or fixture pack entry whose tag exists in
-`translations/<lang>.yml`.
+`translations/<lang>.yml`. Two plugins mapping the same English string
+differently is first-registered-wins among plugin packs - keep translations
+faithful to the source.
 
 Where strings resolve:
 
-- **manifest.json** `name`, `description`, settings `label`s and widget
-  `name`/`description` translate at render time (the Plugins screen, the
-  generated settings rows, the widget catalog). The file stays English.
+- **manifest.json** `name`, settings `label`s and widget `name`/`description`
+  translate at render time (the Plugins screen, the generated settings rows,
+  the widget catalog). The top-level `description` is not displayed. The file
+  stays English.
 - **XML** static text: add `translation_tag="English text"` to a widget; the
   engine resolves and hot-reloads it on a language change like any app string.
 - **Lua**: `helix.i18n.t("English text")` resolves through the same table.

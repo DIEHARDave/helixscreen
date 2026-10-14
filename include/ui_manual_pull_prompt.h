@@ -38,6 +38,10 @@
  *     on failure:  disarm_manual_pull_prompt();
  */
 
+namespace helix {
+class AmsBackend;
+}
+
 namespace helix::ui {
 
 /**
@@ -67,5 +71,19 @@ void manual_pull_unload_finished();
  * prompt waiting to fire on the next unrelated sensor edge.
  */
 void disarm_manual_pull_prompt();
+
+/**
+ * @brief Tell the user there is no automatic unload, when the backend says so.
+ *
+ * For an Unload control whose intent is "take the filament out" on a machine
+ * where nothing can (AmsBackend::unload_is_manual()). Raises one info toast and
+ * returns true; the caller then sends nothing and heats nothing. A repeat tap
+ * folds into the toast already showing instead of stacking another. Returns
+ * false, silently, for a null backend or one with an automatic unload.
+ *
+ * Not for an explicit unmount/park control: that is a tool operation, not a
+ * filament one, and stays available.
+ */
+bool notify_if_unload_is_manual(const AmsBackend* backend);
 
 } // namespace helix::ui

@@ -4,6 +4,8 @@
 #include "moonraker_gcode_guards.h"
 
 #include "gcode_homing.h"
+#include "json_utils.h"
+#include "moonraker_validation.h"
 #include "printer_state.h"
 #include "spdlog/spdlog.h"
 #include "spool_latch_gate.h"
@@ -102,6 +104,41 @@ bool reject_restart_while_spools_on_bed(
         on_error(MoonrakerError::refusal(method, helix::spool_latch_restart_message()));
     }
     return true;
+}
+
+bool reject_plugin_rpc(helix::PrinterState& state, const std::string& method,
+                       const nlohmann::json& params,
+                       const std::function<void(const MoonrakerError&)>& on_error) {
+    static constexpr const char* kTag = "[Plugin]";
+    const auto str = [&params](const char* key) {
+        return helix::json_util::safe_string(params, key, "");
+    };
+
+    if (method == "printer.print.start") {
+        return moonraker_internal::reject_invalid_path(str("filename"), method.c_str(), on_error) ||
+               reject_job_while_spools_on_bed(&state, method.c_str(), on_error);
+    }
+    if (method == "server.helix.print_modified") {
+        return moonraker_internal::reject_invalid_path(str("original_filename"), method.c_str(),
+                                                       on_error) ||
+               moonraker_internal::reject_invalid_path(str("temp_file_path"), method.c_str(),
+                                                       on_error) ||
+               reject_job_while_spools_on_bed(&state, method.c_str(), on_error);
+    }
+    if (method == "printer.print.resume" || method == "server.job_queue.start") {
+        return reject_job_while_spools_on_bed(&state, method.c_str(), on_error);
+    }
+    if (method == "printer.restart" || method == "printer.firmware_restart" ||
+        (method == "machine.services.restart" &&
+         str("service").find("klipper") != std::string::npos)) {
+        return reject_restart_while_spools_on_bed(&state, method.c_str(), on_error);
+    }
+    if (method == "printer.gcode.script") {
+        const std::string script = str("script");
+        return reject_homing_during_active_print(script, state, false, on_error, kTag) ||
+               reject_motion_while_spools_on_bed(script, state, false, on_error, kTag);
+    }
+    return false;
 }
 
 } // namespace helix::api

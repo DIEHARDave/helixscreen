@@ -1,8 +1,9 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0"?>
 <translations languages="de">
   <!-- Manifest fields -->
   <translation tag="Calibration Bridge" de="Kalibrationsbrücke"/>
-  <translation tag="Run slicer-side filament calibrations at the printer: a companion (an OrcaSlicer plugin) posts the wizard context, the screen starts the pre-sliced print, asks which result is best, and sends the answer back." de="Slicer-seitige Filamentkalibrierung am Drucker: ein Begleitprozess (ein OrcaSlicer-Plugin) liefert den Kontext, der Bildschirm startet den vor-geslicten Druck, fragt nach dem besten Ergebnis und sendet die Antwort zurück."/>
+  <translation tag="Run slicer-side filament calibrations at the printer: a companion (an OrcaSlicer plugin) posts the wizard context, the screen starts the pre-sliced print, asks which result is best, and sends the answer back."
+               de="Slicer-seitige Filamentkalibrierung am Drucker: ein Begleitprozess (ein OrcaSlicer-Plugin) liefert den Kontext, der Bildschirm startet den vor-geslicten Druck, fragt nach dem besten Ergebnis und sendet die Antwort zurück."/>
   <translation tag="Companion result URL" de="Ergebnis-URL des Begleitprozesses"/>
   <translation tag="Open when a calibration arrives" de="Öffnen, wenn eine Kalibrierung ankommt"/>
   <translation tag="Open the picker when the print finishes" de="Auswahl öffnen, wenn der Druck endet"/>
@@ -22,4 +23,8 @@
   <translation tag="no print file in the event" de="keine Druckdatei im Ereignis"/>
   <translation tag="bad event" de="fehlerhaftes Ereignis"/>
   <translation tag="Profile" de="Profil"/>
+  <translation tag="Stop the calibration print?" de="Kalibrierungsdruck stoppen?"/>
+  <translation tag="This cancels the running print." de="Dadurch wird der laufende Druck abgebrochen."/>
+  <translation tag="Stop print" de="Druck stoppen"/>
+  <translation tag="could not cancel the print" de="Druck konnte nicht abgebrochen werden"/>
 </translations>

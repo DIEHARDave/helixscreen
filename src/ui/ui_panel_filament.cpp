@@ -1591,6 +1591,12 @@ void FilamentPanel::handle_unload_button() {
         return;
     }
 
+    // Before the preheat: a machine with no automatic unload must not warm up
+    // for an operation that will not happen.
+    if (helix::ui::notify_if_unload_is_manual(AmsState::instance().get_backend())) {
+        return;
+    }
+
     snapshot_prior_heater_target();
 
     if (needs_ui_preheat(current_unload_plan(), StandardMacroSlot::UnloadFilament)) {
@@ -2108,6 +2114,7 @@ void FilamentPanel::update_filament_op_buttons() {
     helix::ui::OpButtonState state;
     state.print_blocks_op = print_blocks_op;
     state.system_busy = sys.is_busy();
+    state.load_feeds_filament = backend->load_feeds_filament();
     // unload_target_is_loaded() with is_current_slot=false keeps the narrow
     // per-slot rule this gating has always used for lanes (the recovery arm
     // belongs to the runout dialog, not to a resting panel) while routing the

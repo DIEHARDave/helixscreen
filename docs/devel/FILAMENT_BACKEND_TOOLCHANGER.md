@@ -269,6 +269,43 @@ edits stay local, as on any tool changer.
   needs both `HEX` and `TYPE` to write without a prompt, so a colour-only edit sends the
   slot's current type and a material-only edit sends its current (snapped) colour.
 
+### Filament feed and unload
+
+Z-Mod's own Load for a head is `CHANGE_TOOL LANE=E<n>`: with the afclite shim present
+(Z-Mod 1.7.4+, `zmod_afclite`) that command heats only the selected head and feeds it,
+verified on a Creator 5 Pro by a contributor (prestonbrown/helixscreen#1779). The Z-Mod
+row builds exactly that command through `toolchanger_addon::resolve_tool_feed()`, and
+`AmsBackendToolChanger::do_load_filament()` sends it. The shim runs `_T_IN_ZCOLOR` itself;
+HelixScreen never calls `_T_IN_ZCOLOR` directly, because its `SLOT` base and `NAPR`
+polarity are not confirmed for the C5 (the plugin is not published, and the AD5X source
+reads the opposite way).
+
+The head-to-lane relation is the **lane name**: head `n` is the shim's `AFC_lane E<n>`.
+Discovery does not read any field that ties a lane to a head (the `lanes[].map` word is
+logged only), so the name is the whole basis. A lane the shim did not publish yields no
+command and the Load is refused; a lane name is never constructed for an object the
+printer lacks.
+
+Without the shim (Z-Mod older than 1.7.4, or no `zmod_afclite` object) there is no feed:
+Load stays a tool mount, `_T_IN T=<n>`.
+
+With the feed present the backend answers capability questions the generic code asks:
+`load_feeds_filament()` (Load is a feed, so a head that reads loaded still accepts it and
+the planner does not refuse the mounted tool or swap another in first),
+`supports_auto_heat_on_load()` (the shim heats the right head, so the UI does not
+preheat, which would heat the active head), and `supports_gate_select()`. Mounting a tool
+is then the context menu's **Select slot**, which sends `_T_IN T=<n>` like every
+other explicit tool change. Busy and printing refusals are unchanged. Other tool changers
+keep Load as a mount.
+
+There is **no automatic unload** on the Creator 5: the user cuts the filament at the head
+and pulls it out. The row answers `AmsBackend::unload_is_manual()` true, and every UI
+control that means "take the filament out" (the filament panel's Unload, the AMS sidebar's
+Unload button, the runout and sensor-widget unload actions, all through
+`notify_if_unload_is_manual`) shows one info toast saying so and sends nothing, heating
+included. The context menu's **Unmount** and the tool-change flow are explicit tool
+operations: they still send `_T_OUT` and are not gated.
+
 ### Mock
 
 `HELIX_MOCK_PRINTER=creator5_zmod` exercises this path against mock hardware: the persona
