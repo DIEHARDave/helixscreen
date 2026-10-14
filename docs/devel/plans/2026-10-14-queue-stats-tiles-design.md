@@ -32,15 +32,14 @@ Outputs:
 |---|---|---|---|
 | Unavailable | Moonraker has no job_queue component | Widget is unavailable, with the reason "Job queue not enabled in Moonraker", like other gated widgets | none |
 | Empty | 0 jobs | Quiet "Queue empty" | none |
-| WaitingForStart | printer not printing, jobs queued, auto transition off | Next job's thumbnail and name, "+N more", estimated time if known | **"Bed clear · Start next"**: one tap, no extra dialog |
-| AutoNext | printer not printing, jobs queued, auto transition on | Next job and "Starts automatically" | none |
-| Printing | a print is running, jobs queued | Hero "N queued" and "Next: name" | none |
+| WaitingForStart | printer not printing, jobs queued, whatever `automatic_transition` and `queue_state` say | Next job's thumbnail and name, "+N more", estimated time if known | **"Bed clear · Start next"**: one tap starts the job, no extra dialog |
+| AutoNext | a print is running, jobs queued, auto transition on, queue ready | Hero "N queued" and "Next: name (starts automatically)" | none |
+| Printing | a print is running, jobs queued, and the queue will not start the next job by itself | Hero "N queued" and "Next: name" | none |
 | Starting | queue_state loading or starting | "Starting name…" | none |
-| UserPaused | queue paused by the user while not waiting for a bed-clear | "Queue paused", next job | "Resume queue" |
 
-The implementation has to verify from Moonraker how `queue_state` reports the post-job wait versus a user pause, and map both. If Moonraker can't tell them apart, both show "Bed clear · Start next".
+Moonraker sets `queue_state` to "paused" after every job it loads unless automatic transition is on, and starts in "paused", so a post-job wait and a user pause cannot be told apart. Neither needs to be: an idle printer with jobs queued always offers the same start button. "Starts automatically" is only true while a print is running with automatic transition on and the queue ready, because Moonraker transitions only when a job completes.
 
-**Start action:** reuse `src/ui/job_queue_start.cpp#handle_up_next_tap`, the path the print status "Up next" row and the print-complete dialog already use. Don't fork a second start path.
+**Start action:** the button calls Moonraker's `server.job_queue.start` through the queue API (`IMoonrakerQueueAPI::start_queue`), so one tap starts the next queued job on the printer. It does not go through the print-select file view. The print status "Up next" row and the print-complete dialog's "Start next" keep their current behaviour (`src/ui/job_queue_start.cpp#handle_up_next_tap`).
 
 **Tapping elsewhere** on the tile opens the existing queue modal.
 
@@ -66,7 +65,7 @@ The implementation has to verify from Moonraker how `queue_state` reports the po
 - It sums `print_duration` rather than `total_duration`, so pauses don't count.
 - The source is PrintHistoryManager's cache, which already covers 7 days through `ensure_covers_since`.
 
-**Supporting line:** lifetime prints and lifetime hours from the server totals (`server.history.totals`). From 4x2 up it adds lifetime filament from the totals' `total_filament_used`, shown in kg, or g under 1 kg.
+**Supporting line:** lifetime prints and lifetime hours from the server totals (`server.history.totals`). From 4x2 up it adds lifetime filament from the totals' `total_filament_used`, shown as a length in meters (e.g. "412 m"), with no conversion to mass.
 
 **7-day bars:** from 2x2 up, a seven-bar sparkline of hours per day, with today on the right and a quiet baseline.
 - It's drawn by an existing chart or bar primitive if one fits; otherwise it's a canvas draw hook, which is a structural exception in the declarative rules.
@@ -105,7 +104,7 @@ Both tiles stay out of the default layouts (the no-fillers ruling). The redesign
 
 ## Testing
 
-- Unit tests for `job_queue_tile_state` cover every row of the table, plus the edge cases: 1 job, a job being added while printing, and the post-print wait versus a user pause.
+- Unit tests for `job_queue_tile_state` cover every row of the table, plus the edge cases: 1 job, a job being added while printing, and an idle printer with automatic transition on (paused or ready) showing the start button.
 - Unit tests for the weekly-hours, per-day bucket and filament formatting functions. They're pure functions over job lists, with day boundaries in local time.
 - Widget tests for each state (subjects, visibility, button presence) at 2x1, 2x2, 4x2 and 4x4.
 - Content-fits sweep rows for both tiles at every shipping geometry, including 1920x1080.

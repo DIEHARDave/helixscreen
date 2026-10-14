@@ -15,10 +15,10 @@
 - Spans are in grid tracks (half a cell each). The spec's "2x1 / 2x2 / 4x2 / 4x4" are track spans and map to `SizeRung::Strip / Cell / Wide / Full` (`src/ui/panel_widgets/size_rung.h`).
 - Both tiles: minimum span **2x1**; default span stays 4x4; max spans unchanged (job_queue 8x6, print_stats 6x4); `default_enabled` stays false (the no-fillers ruling).
 - Job queue gate: `hardware_gate_subject = "printer_has_job_queue"`, hint `"Job queue not enabled in Moonraker"` (wrapped in `TR_NOOP`).
-- Primary start action reuses `helix::handle_up_next_tap()` (`src/ui/job_queue_start.cpp#handle_up_next_tap`); no second start path.
-- WaitingForStart button label: **"Bed clear · Start next"**. Other copy, verbatim: "Queue empty", "Starts automatically", "Queue paused", "Resume queue", "Starting {}…", "Next: {}", "{} queued", "+{} more", "this week", "No prints this week", "No prints yet".
+- The tile's start button calls Moonraker's `server.job_queue.start` through `IMoonrakerQueueAPI::start_queue()` (`include/i_moonraker_sub_apis.h`, implemented by `MoonrakerQueueAPI`), wrapped once as `helix::start_job_queue()`. It never goes through `handle_up_next_tap()` or print-select. The print-status "Up next" row and the print-complete "Start next" keep `handle_up_next_tap()` unchanged.
+- WaitingForStart button label: **"Bed clear · Start next"**. Other copy, verbatim: "Queue empty", "Next: {} (starts automatically)", "Starting {}…", "Next: {}", "Could not start the next job", "{} queued", "+{} more", "this week", "No prints this week", "No prints yet".
 - Stats hero sums `print_duration`, never `total_duration`. Lifetime line comes only from `server.history.totals`; if totals are unknown or failed, the lifetime line is hidden, never computed from the job cache.
-- Filament from 4x2 up, in kg, or g under 1 kg.
+- Filament from 4x2 up, as a length in meters ("412 m"). No mass conversion, no diameter or density assumption.
 - XML: no `lv_obj_create`, `lv_label_set_text`, `lv_obj_add_flag`/`remove_flag` for visibility, `lv_obj_set_style_*` in either widget (`.claude/rules/declarative-ui.md`). Repeated parts use `<repeat>` with `${i}` subjects. Pressed feedback is `<style name="styles.press_wash" selector="pressed"/>`, never C++ opacity.
 - Design tokens only: `#space_*`, `#font_*` via `text_*` components, theme colors; `scripts/check_hardcoded_pixels.py` must not rise.
 - At most one accent color per tile (the action button, the bars).
@@ -45,15 +45,15 @@
 
 These are recorded so a reviewer can overturn them; each is a one-line change in the named task.
 
-1. **Moonraker cannot tell the post-job wait from a user pause when `automatic_transition` is off.** Moonraker's `job_queue.py` (`_pop_job`, `start_queue`) sets `queue_state` to `"paused"` after every job it loads unless automatic transition is on, and it also starts in `"paused"`. So with auto off, idle + jobs is always WaitingForStart, whatever `queue_state` says (the spec's own fallback). UserPaused exists only with auto on.
-2. **AutoNext while idle.** With auto on, Moonraker transitions only on a job *completing*; an idle printer with a `"ready"` queue does not start by itself. The plan keeps the spec's AutoNext ("Starts automatically", no action) for idle + auto + ready. Moonraker starts its queue in `"paused"`, so the common idle-with-auto case is UserPaused, whose "Resume queue" does start it. Flagged for Preston.
-3. **"One tap, no extra dialog."** `handle_up_next_tap()` → `start_next_queued_job()` opens the print-select file view for the job, with its saved options, and the user taps Print there (`src/ui/ui_panel_print_select.cpp#start_queued_job`). The spec forbids a second start path, so the tile adds no dialog of its own and lands in that file view, as the "Up next" row and the completion dialog do. Flagged for Preston.
+1. **An idle printer with jobs always offers Start (Preston's ruling).** Moonraker's `job_queue.py` sets `queue_state` to `"paused"` after every job it loads unless automatic transition is on, and also starts in `"paused"`, so a post-job wait and a user pause cannot be told apart. They need not be: idle with jobs is WaitingForStart whatever `automatic_transition` and `queue_state` say. There is no UserPaused state and no "Resume queue".
+2. **"Starts automatically" only while printing (Preston's ruling).** Moonraker transitions only when a job completes, so AutoNext is a print running with automatic transition on and the queue `"ready"`. A running print with the queue paused, or with auto off, is Printing.
+3. **The button starts the job on the printer (Preston's ruling).** `start_job_queue()` sends `server.job_queue.start`; Moonraker loads the first queued file itself and, with auto off, returns the queue to `"paused"` after that one job. Open point for Preston: HelixScreen's stored per-job pre-print options (`include/queued_job_options.h`) are applied only by the print-select path (`src/ui/ui_panel_print_select.cpp#start_queued_job`), so a job started from the tile prints the file as queued, without them. The plan does not build an option-applying path; it records this in the user guide.
 4. **A NotLoaded state.** The spec removes the old "Ready / Queue empty" shown before data. Before the first queue response the tile shows only its icon and "Job Queue" label (state `NotLoaded`). After that, a dropped socket keeps the last known queue (`JobQueueState::has_ever_loaded()`).
 5. **No shared metadata cache exists.** Print-select keeps metadata per directory listing; the print-status media manager fetches per active print. "Reuse that cache" is read as: the same `api->files().get_file_metadata()` call and the shared `ThumbnailCache` (`get_thumbnail_cache().fetch(req, ctx, ...)`), owned by `JobQueueState` and fetched once per change of first job. On `HELIX_PLATFORM_ESP32` the thumbnail fetch is skipped (that path uses a PSRAM-specific loader) and the placeholder shows; the estimate still shows.
-6. **Filament mass.** `server.history.totals.total_filament_used` is a length in mm. Mass is `filament::length_to_weight_g(mm, PLA density, printer diameter)` with PLA's density from `filament::find_material("PLA")` and the diameter from `get_printer_state().get_discovery().filament_diameter_mm()`. A PLA-equivalent approximation; flagged.
+6. **Filament as length (Preston's ruling).** `server.history.totals.total_filament_used` is millimetres; the tile shows meters, one decimal under 10 m, whole meters from there ("412 m", "12346 m"). `HistoryDashboardPanel::format_filament()` (`src/ui/ui_panel_history_dashboard.cpp`) prints mm/m/km untranslated with no space, a different output for a different screen, so the tile's formatter is its own.
 7. **"Last 7 days."** The hero is the sum of the seven local-day bars (today plus the six days before), so hero and bars always agree. The history cache is asked to cover from the oldest bar's local midnight.
 8. **Hours format.** "0 h", whole minutes under an hour ("45 min"), one decimal under ten hours with a trailing ".0" dropped ("2.5 h", "2 h"), whole hours from ten ("23 h").
-9. **Cell button label.** A 1x1 tile cannot hold "Bed clear · Start next" at body size; Cell shows `action_short` ("Start next"), Wide and Full show the full label. Strip shows an icon-only button.
+9. **Cell button label.** A 1x1 tile cannot hold "Bed clear · Start next" at body size; Cell shows `action_short` ("Start next"), Wide and Full show the full label. Strip shows an icon-only button. All three call `start_job_queue()`.
 10. **1920x1080 in the content-fits sweep.** `kShipping` on main lacks it; the unmerged `feature/default-home-layouts` (b6d86b0b4) adds `{"1920x1080", 1920, 1080, 1720, 1056, 10}`. Task 7 adds that identical row if it is still missing, so the two branches merge clean.
 
 ---
@@ -64,12 +64,12 @@ These are recorded so a reviewer can overturn them; each is a one-line change in
 |------|--------|----------------|
 | `include/job_queue_tile_state.h` | create | Pure queue-tile state and action decision; `QueueRunState` parse |
 | `include/job_queue_state.h`, `src/ui/job_queue_state.cpp` | modify | Publish run state and next-job media; compose tile text; retire `job_queue_state_text` / `job_queue_summary_text` (Task 3) |
-| `include/job_queue_start.h`, `src/ui/job_queue_start.cpp` | modify | `resume_job_queue()`, `open_job_queue_modal()` |
+| `include/job_queue_start.h`, `src/ui/job_queue_start.cpp` | modify | `start_job_queue()`, `open_job_queue_modal()` |
 | `src/ui/panel_widgets/job_queue_tile_layout.h` | create | Pure rung and part decision for the queue tile |
 | `src/ui/panel_widgets/job_queue_widget.h/.cpp` | rewrite | Measure, decide, publish; no imperative UI |
 | `ui_xml/components/panel_widget_job_queue.xml` | rewrite | One tree bound to `jq_tile_*` subjects |
 | `ui_xml/components/job_queue_row.xml` | modify | Read-only form: `hide_delete`, `row_clickable`, `name_subject` props |
-| `include/print_activity.h`, `src/print/print_activity.cpp` | create | Day bucketing, bar scaling, hours/count/mass formatting |
+| `include/print_activity.h`, `src/print/print_activity.cpp` | create | Day bucketing, bar scaling, hours/count/length formatting |
 | `include/locale_formats.h`, `src/ui/locale_formats.cpp` | modify | Export the weekday abbreviation |
 | `src/ui/panel_widgets/print_stats_tile_layout.h` | create | Pure content, rung and part decision for the stats tile |
 | `src/ui/panel_widgets/print_stats_widget.h/.cpp` | rewrite | Measure, decide, publish; tap opens the history dashboard |
@@ -101,9 +101,9 @@ enum class QueueRunState : int { Ready = 0, Loading = 1, Starting = 2, Paused = 
 [[nodiscard]] constexpr QueueRunState parse_queue_run_state(std::string_view state);
 enum class JobQueueTileState : int {
     Unavailable = 0, NotLoaded = 1, Empty = 2, WaitingForStart = 3,
-    AutoNext = 4, Printing = 5, Starting = 6, UserPaused = 7,
+    AutoNext = 4, Printing = 5, Starting = 6,
 };
-enum class JobQueueTileAction : int { None = 0, StartNext = 1, ResumeQueue = 2 };
+enum class JobQueueTileAction : int { None = 0, StartNext = 1 };
 struct JobQueueTileInputs {
     bool component_available = false;
     bool loaded = false;
@@ -142,14 +142,13 @@ Decision rules, first match wins (this order is the contract the tests pin):
 2. `!loaded` → `NotLoaded`
 3. `job_count <= 0` → `Empty`
 4. `queue_state` is `Loading` or `Starting` → `Starting`
-5. `printer_busy` → `Printing`
-6. `!automatic_transition` → `WaitingForStart` (whether `queue_state` is Ready or Paused)
-7. `queue_state == Paused` → `UserPaused`
-8. otherwise → `AutoNext`
+5. `printer_busy && automatic_transition && queue_state == Ready` → `AutoNext`
+6. `printer_busy` → `Printing`
+7. otherwise → `WaitingForStart` (idle with jobs, whatever `automatic_transition` and `queue_state` say)
 
 `parse_queue_run_state`: `"ready"` → Ready, `"loading"` → Loading, `"starting"` → Starting, anything else (including `"paused"` and `""`) → Paused.
 
-`job_queue_tile_action`: WaitingForStart → StartNext; UserPaused → ResumeQueue; every other state → None.
+`job_queue_tile_action`: WaitingForStart → StartNext; every other state → None.
 
 `compose_job_queue_tile_text` (N = `queued_count`, name = `next_display_name`):
 
@@ -159,12 +158,11 @@ Decision rules, first match wins (this order is the contract the tests pin):
 | NotLoaded | "" | "" | "" | "" | "" |
 | Empty | "Queue empty" | "" | "" | "" | "" |
 | WaitingForStart | name | `format::duration(est)` or "" when est is 0 | "+{N-1} more" when N ≥ 2 | "Bed clear · Start next" | "Start next" |
-| AutoNext | name | "Starts automatically" | "+{N-1} more" when N ≥ 2 | "" | "" |
+| AutoNext | "{N} queued" | "Next: {name} (starts automatically)" | "" | "" | "" |
 | Printing | "{N} queued" | "Next: {name}" | "" | "" | "" |
 | Starting | "Starting {name}…" | "" | "" | "" | "" |
-| UserPaused | "Queue paused" | "Next: {name}" | "+{N-1} more" when N ≥ 2 | "Resume queue" | "Resume queue" |
 
-Each format string is one `lv_tr()` key: `"{} queued"`, `"+{} more"`, `"Next: {}"`, `"Starting {}…"` (U+2026).
+Each format string is one `lv_tr()` key: `"{} queued"`, `"+{} more"`, `"Next: {}"`, `"Next: {} (starts automatically)"`, `"Starting {}…"` (U+2026).
 
 `JobQueueState::update_subjects()` publishes `job_queue_run_state` **before** `job_queue_count` (the count stays last, as its comment requires). `init_subjects()` registers it with `SubjectDebugRegistry` like its siblings. `job_queue_state_text` and `job_queue_summary_text` stay in this task (the old tile still binds them); Task 3 removes them.
 
@@ -176,14 +174,13 @@ Each format string is one `lv_tr()` key: `"{} queued"`, `"+{} more"`, `"Next: {}
 - NotLoaded: `{true, loaded=false, 3, Ready, false, false}` → NotLoaded.
 - Empty beats Starting: `{true, true, 0, Loading, false, false}` → Empty.
 - Starting from Loading and from Starting, while busy: `{true, true, 2, Loading, true, false}` → Starting; same with `Starting` → Starting.
-- Printing with auto off and with auto on and Paused: `{true, true, 1, Ready, true, false}` → Printing; `{true, true, 3, Paused, true, true}` → Printing.
-- WaitingForStart for both queue states (the post-job wait and a user pause are indistinguishable with auto off): `{true, true, 1, Paused, false, false}` and `{true, true, 1, Ready, false, false}` → WaitingForStart.
-- UserPaused: `{true, true, 2, Paused, false, true}` → UserPaused.
-- AutoNext: `{true, true, 2, Ready, false, true}` → AutoNext.
+- AutoNext only while printing: `{true, true, 2, Ready, true, true}` → AutoNext.
+- Printing when the queue will not start the next job by itself: `{true, true, 1, Ready, true, false}` (auto off) and `{true, true, 3, Paused, true, true}` (auto on, queue paused) → Printing.
+- WaitingForStart for every idle combination (Preston's ruling: idle with jobs always offers Start): `{true, true, 1, Paused, false, false}`, `{true, true, 1, Ready, false, false}`, `{true, true, 2, Paused, false, true}`, `{true, true, 2, Ready, false, true}` → WaitingForStart.
 - Edge cases the spec names: one job (`job_count=1`) in WaitingForStart; "a job added while printing": inputs go from `{.., 0, Ready, busy=true, ..}` (Empty) to `{.., 1, Ready, busy=true, ..}` (Printing).
 - `parse_queue_run_state`: the four Moonraker strings, `""` and `"bogus"` → Paused.
-- `job_queue_tile_action`: StartNext only for WaitingForStart, ResumeQueue only for UserPaused, None for the other six (loop over all eight enumerators).
-- Text, one case per state row, with name `"Benchy"`, N = 3, est = 4500 (expect detail `"1h 15m"` in WaitingForStart), and these extra cases: N = 1 → `more` empty in WaitingForStart, AutoNext, UserPaused; est = 0 → WaitingForStart detail empty; `action_short` is `"Start next"` while `action` is `"Bed clear · Start next"`.
+- `job_queue_tile_action`: StartNext only for WaitingForStart, None for the other six (loop over all seven enumerators).
+- Text, one case per state row, with name `"Benchy"`, N = 3, est = 4500 (expect detail `"1h 15m"` in WaitingForStart), and these extra cases: N = 1 → `more` empty in WaitingForStart; est = 0 → WaitingForStart detail empty; `action_short` is `"Start next"` while `action` is `"Bed clear · Start next"`.
 
 Extend `tests/unit/test_job_queue_count_subject.cpp`: a case that delivers `{queue_state="paused", 2 jobs}` then `{queue_state="ready", 2 jobs}` through `JobQueueStateTestAccess::deliver_status()` and asserts `job_queue_run_state` reads `3` then `0` while `job_queue_count` stays `2`; and a case that an observer of `job_queue_count` (synchronous `observe<int>`) already reads the new `job_queue_run_state` when it fires. Add a case: after `deliver_status`, `invalidate()` → `is_loaded()` is false and `has_ever_loaded()` is still true.
 
@@ -202,7 +199,7 @@ Run: `make t F='[job_queue_tile]'` and `make t F='[job_queue][subjects]'`. Expec
 
 - [ ] **Step 5: Prove one test can fail**
 
-Swap rules 5 and 6 in `job_queue_tile_state()`; rerun `[job_queue_tile]`; the Printing-with-auto-off case must go red. Restore.
+Drop the `queue_state == Ready` term from rule 5; rerun `[job_queue_tile]`; the auto-on-paused Printing case must go red. Then make rule 7 require `!automatic_transition`; the idle auto-on cases must go red. Restore.
 
 - [ ] **Step 6: Translations**
 
@@ -297,7 +294,7 @@ git show --stat HEAD
 - Translations
 
 **Interfaces:**
-- Consumes: Task 1 (`job_queue_tile_state()`, `job_queue_tile_action()`, `compose_job_queue_tile_text()`, `JobQueueState::has_ever_loaded()`, `run_state()`, subject `job_queue_run_state`), Task 2 (`job_queue_next_estimate`, `job_queue_next_thumbnail`, `next_estimated_seconds()`), `helix::handle_up_next_tap()`, `choose_size_rung()` / `holds_any_rung()` / `rung_box()` (`src/ui/panel_widgets/size_rung.h`), `measure_content_chrome()` (`src/ui/panel_widgets/content_chrome.h`), `measure_text_px()` (`src/ui/panel_widgets/text_measure.h`), `LiveTileOwner<W>` (`src/ui/panel_widgets/live_tile_owner.h`), `ui::observe_language_change()` (`include/observe_language.h`), `get_printer_state().print_state().get_print_active_subject()` with `get_printer_state().get_subjects_lifetime()`, subject `printer_has_job_queue`.
+- Consumes: Task 1 (`job_queue_tile_state()`, `job_queue_tile_action()`, `compose_job_queue_tile_text()`, `JobQueueState::has_ever_loaded()`, `run_state()`, subject `job_queue_run_state`), Task 2 (`job_queue_next_estimate`, `job_queue_next_thumbnail`, `next_estimated_seconds()`), `api->queue().start_queue(on_ok, on_err)` (`include/i_moonraker_sub_apis.h`, already present on `IMoonrakerQueueAPI` and `MoonrakerQueueAPI`; no API change needed), `choose_size_rung()` / `holds_any_rung()` / `rung_box()` (`src/ui/panel_widgets/size_rung.h`), `measure_content_chrome()` (`src/ui/panel_widgets/content_chrome.h`), `measure_text_px()` (`src/ui/panel_widgets/text_measure.h`), `LiveTileOwner<W>` (`src/ui/panel_widgets/live_tile_owner.h`), `ui::observe_language_change()` (`include/observe_language.h`), `get_printer_state().print_state().get_print_active_subject()` with `get_printer_state().get_subjects_lifetime()`, subject `printer_has_job_queue`.
 - Produces (exact, syntax-checked):
 
 ```cpp
@@ -324,7 +321,10 @@ struct JobQueueTileVerdict {
 }
 
 // include/job_queue_start.h
-void resume_job_queue();      // api->queue().start_queue(); errors logged; the queue notification refreshes
+void start_job_queue();       // server.job_queue.start: Moonraker loads the first queued job itself.
+                              // Error callback marshals to the main thread and shows
+                              // NOTIFY_WARNING(lv_tr("Could not start the next job")); success needs
+                              // nothing, notify_job_queue_changed refreshes JobQueueState.
 void open_job_queue_modal();  // the existing process-wide queue_modal().show(lv_screen_active())
 
 // src/ui/panel_widgets/job_queue_widget.h
@@ -362,7 +362,7 @@ void register_job_queue_widget();
 The widget no longer owns a `JobQueueModal`, a `job_list_container_`, a `widget_obj_` or a `parent_screen_`; the tile tap calls `open_job_queue_modal()`.
 
 Layout rules (`decide_job_queue_tile_layout`), with `r = choose_size_rung(w, h, needs)` and `fits = holds_any_rung(w, h, needs)`:
-- `show_thumbnail` = `r >= Cell` and state ∈ {WaitingForStart, AutoNext, Starting, UserPaused}.
+- `show_thumbnail` = `r >= Cell` and state ∈ {WaitingForStart, Starting}.
 - `show_detail` = `r >= Cell`, except WaitingForStart (its detail is the estimate) needs `r >= Wide`.
 - `show_more` = `r >= Cell` and `job_count >= 2`.
 - `list_rows` = `r == Full` ? `min(kJobQueueTileListRows, max(0, job_count - 1))` : 0, and 0 in Empty, NotLoaded, Unavailable.
@@ -394,14 +394,14 @@ Refresh: observers on `job_queue_count`, `job_queue_run_state`, `job_queue_autom
 
 `read_inputs()`: `component_available` = `printer_has_job_queue` subject value != 0; `loaded` = `jqs && jqs->has_ever_loaded()`; `job_count` = `jqs->get_jobs().size()`; `queue_state` = `jqs->run_state()`; `printer_busy` = `print_active != 0`; `automatic_transition` = `jqs->automatic_transition()`.
 
-`on_action_clicked`: `lv_event_stop_bubbling(e)`; read `jq_tile_action`; StartNext → `handle_up_next_tap()`; ResumeQueue → `resume_job_queue()`; None → nothing.
+`on_action_clicked`: `lv_event_stop_bubbling(e)`; read `jq_tile_action`; StartNext → `start_job_queue()`; None → nothing. The doc comment on `start_next_queued_job()` in `include/job_queue_start.h` ("no caller starts a queued job any other way") becomes: it is the file-view path the "Up next" row and the completion dialog use, and `start_job_queue()` is the tile's direct path.
 
 XML (`panel_widget_job_queue.xml`), one tree. Names are the contract the tests read:
 - Root: same root padding and gap as `ui_xml/components/panel_widget_speed_flow.xml`'s root; `<event_cb trigger="clicked" callback="on_job_queue_widget_clicked"/>`; `<style name="styles.press_wash" selector="pressed"/>`.
 - `jq_label_row`: `progress_clock` icon + `text_small` "Job Queue" (`translation_tag`), muted; shown only in NotLoaded (`bind_flag_if_not_eq subject="jq_tile_state" ref_value="1"`).
 - `jq_body` (row, `flex_track_place="center"`): `jq_thumb` (`lv_image bind_src="job_queue_next_thumbnail"`, `inner_align="contain"`, hidden unless `jq_tile_show_thumb` is 1); `jq_text` column holding `jq_hero` (`text_heading`, `bind_text="jq_tile_hero"`, `long_mode="dots"`), `jq_detail` (`text_small`, muted, hidden unless `jq_tile_show_detail` is 1), `jq_more` (`text_small`, muted, hidden unless `jq_tile_show_more` is 1), `jq_action_wide` (`ui_button`, `bind_text="jq_tile_action_text"`, shown at rung Wide or Full and action ≠ 0); then `jq_action_icon` (icon-only `ui_button`, `play` icon for StartNext, shown at Strip and action ≠ 0).
 - `jq_action_cell`: full-width `ui_button` under `jq_body`, shown at rung Cell and action ≠ 0.
-- All three action buttons: `callback="on_job_queue_tile_action"`, `moves_machine="true"` (Resume starts a print through Moonraker), the accent color is theirs alone.
+- All three action buttons: `callback="on_job_queue_tile_action"`, `moves_machine="true"` (they start a print through Moonraker), the accent color is theirs alone.
 - `jq_list`: a column holding `<repeat count="3">` of `<job_queue_row hide_delete="true" row_clickable="false" name_subject="jq_tile_after_${i}">`, each hidden by `bind_flag_if` with `cond="jq_tile_list_rows le ${i}"`. Visibility conditions on several subjects use `cond=` expressions (`docs/devel/LVGL9_XML_GUIDE.md` § "Expression conditionals"), not C++ observers.
 - `job_queue_row.xml` gains props `hide_delete` (boolean, default false) on `job_delete`'s `hidden`, `row_clickable` (boolean, default true) on the row's `clickable`, and `name_subject` (string, default "") on `job_filename`'s `bind_text`; the modal's existing use is unchanged and still sets the name from C++.
 
@@ -416,9 +416,12 @@ XML (`panel_widget_job_queue.xml`), one tree. Names are the contract the tests r
 
 - [ ] **Step 2: Widget tests** (`tests/unit/test_widget_size_job_queue_tile.cpp`, `[widget_size][job_queue]`), fixture from `LVGLUITestFixture` with `PanelWidgetManager::instance().init_widget_subjects()`, a `JobQueueState` installed through `set_job_queue_state()` in a scoped guard (copy `ScopedJobQueueState` from the deleted `test_widget_size_job_queue.cpp`), statuses delivered with `JobQueueStateTestAccess::deliver_status()`, `printer_has_job_queue` set to 1, and `PanelWidgetHarness<JobQueueWidget> h(test_screen())`. Medium-tier boxes from `docs/devel/PANEL_WIDGET_GUIDE.md` § "Rules every sized widget follows": 114x54, 114x113, 234x113, 234x232.
   - "medium-tier budgets land on their rung": the four boxes give `jq_tile_rung` Strip, Cell, Wide, Full.
-  - "each state draws its parts at each rung" (subjects, visibility via a `shown()` helper as in `test_widget_size_speed_flow.cpp`, and button presence): WaitingForStart (3 jobs, auto off) at all four boxes; AutoNext; Printing (`print_active` = 1); Starting (`queue_state` "loading"); UserPaused (auto on: add `JobQueueStateTestAccess::set_automatic_transition(JobQueueState&, bool)`, which sets `automatic_transition_` and the `job_queue_automatic_transition` subject the way the `server.config` callback in `src/ui/job_queue_state.cpp#fetch_automatic_transition` does, then deliver `queue_state` "paused"); Empty; NotLoaded (fresh state, nothing delivered).
-  - "a queue pause redraws without a count change": UserPaused → deliver the same jobs with `"ready"` → AutoNext, with `jq_tile_action` going 2 → 0.
-  - "the action button starts the next job through the shared path": put this case in `tests/unit/test_job_queue_start_guard.cpp` on its `QueuedStartFixture` (it already has the mock API, `StaticPanelRegistry` handling and `PrintSelectPanelTestAccess`). Seed the mock's default queue as "start next routes the queue's front job through the panel entry point" does, build the tile in a `PanelWidgetHarness<JobQueueWidget>` at 114x113 (Cell), `lv_obj_send_event(<jq_action_cell's button>, LV_EVENT_CLICKED)`, drain; expect `PrintSelectPanelTestAccess::pending_queued_job_id(get_global_print_select_panel())` to be `"0001"` and `ModalStack` to hold no dialog (the tile's own tap did not also open the queue modal). Tag it `[job_queue][queue_start][widget_size]`.
+  - "each state draws its parts at each rung" (subjects, visibility via a `shown()` helper as in `test_widget_size_speed_flow.cpp`, and button presence): WaitingForStart (3 jobs, auto off) at all four boxes; AutoNext; Printing (`print_active` = 1); Starting (`queue_state` "loading"); idle with auto on and `queue_state` "paused" and "ready" (both WaitingForStart with the Start button: add `JobQueueStateTestAccess::set_automatic_transition(JobQueueState&, bool)`, which sets `automatic_transition_` and the `job_queue_automatic_transition` subject the way the `server.config` callback in `src/ui/job_queue_state.cpp#fetch_automatic_transition` does); AutoNext (auto on, `print_active` = 1, "ready"); Empty; NotLoaded (fresh state, nothing delivered).
+  - "a queue state change redraws without a count change": auto on, printing, deliver `"paused"` (Printing, detail "Next: …") then the same jobs with `"ready"` → AutoNext, detail ends in "(starts automatically)".
+  - "print end turns AutoNext into the Start button": AutoNext, then `print_active` = 0 → WaitingForStart, `jq_tile_action` 0 → 1.
+  - "the start button sends server.job_queue.start and nothing else": put this case in `tests/unit/test_job_queue_start_guard.cpp` on its `QueuedStartFixture` (mock client, `StaticPanelRegistry` handling, `PrintSelectPanelTestAccess`). Seed the mock's default queue as "start next routes the queue's front job through the panel entry point" does, build the tile in a `PanelWidgetHarness<JobQueueWidget>` at 114x113 (Cell), read `mock_client_.call_count("server.job_queue.start")`, `lv_obj_send_event(<jq_action_cell's button>, LV_EVENT_CLICKED)`, drain. Expect the count up by exactly 1, `PrintSelectPanelTestAccess::pending_queued_job_id(*get_print_select_panel(get_printer_state(), api_.get()))` to be null (print-select was not involved), and `ModalStack` to hold no dialog (the tile's own tap did not also open the queue modal). Repeat at 114x54 through `jq_action_icon` and at 234x113 through `jq_action_wide`. Tag it `[job_queue][queue_start][widget_size]`.
+  - "a refused start says so": `mock_client_.fail_next("server.job_queue.start")`, click, drain; a warning is posted: capture it with the file's `WarningLog` as "a queued job refuses to start while the printer is busy" does, and expect it to contain the translated "Could not start the next job".
+  - "Up next keeps the file-view path": `handle_up_next_tap()` with the printer idle still leaves `pending_queued_job_id` at `"0001"` and does not send `server.job_queue.start`.
   - "a 90-character filename stays on one line beside the icon button": at 114x54, a name of 90 characters with no spaces; `jq_hero` holds one line (`held_to_one_line()` from `tests/test_helpers/one_line_label.h`) and `jq_action_icon`'s right edge is inside the root's content box (`lv_obj_get_coords`).
   - "a dropped socket keeps the last known queue on the tile": WaitingForStart, then `jqs.invalidate()`, drain; `jq_tile_state` still 3 and `jq_tile_hero` unchanged.
   - "the following jobs list shows jobs 2 to 4 at Full": 5 jobs; `jq_tile_after_0..2` are jobs 2, 3, 4's display names; the three rows are shown; with 2 jobs only row 0 is shown.
@@ -429,11 +432,11 @@ Rewrite the job queue case in `tests/unit/test_label_one_line_call_sites.cpp` to
 
 - [ ] **Step 3: Run and watch them fail**: `make t F='[job_queue_tile]'`, `make t F='[widget_size][job_queue]'`. Expected: compile errors.
 
-- [ ] **Step 4: Implement** the layout header, the widget, the XML, the row props, `resume_job_queue()` and `open_job_queue_modal()` (move the existing `open_job_queue_modal()` out of the anonymous namespace and declare it), and remove the retired subjects from `JobQueueState`. Delete `tests/unit/test_widget_size_job_queue.cpp`.
+- [ ] **Step 4: Implement** the layout header, the widget, the XML, the row props, `start_job_queue()` and `open_job_queue_modal()` (move the existing `open_job_queue_modal()` out of the anonymous namespace and declare it), and remove the retired subjects from `JobQueueState`. Delete `tests/unit/test_widget_size_job_queue.cpp`.
 
 - [ ] **Step 5: Run until green**: both tags, then `make t F='[job_queue]'`, `make t F='[one_line]'`, `make t F='[job_holds_machine]'`, `make t F='[queue_start]'`, `make t F='[content_fits][sweep]'` (the old minimum still applies; it must stay green).
 
-- [ ] **Step 6: Prove two tests can fail**: (a) make `show_detail` ignore the WaitingForStart exception; the Cell flags case must go red. (b) remove `lv_event_stop_bubbling` from `on_action_clicked`; the "shared path" case must go red. Restore both.
+- [ ] **Step 6: Prove three tests can fail**: (a) make `show_detail` ignore the WaitingForStart exception; the Cell flags case must go red. (b) remove `lv_event_stop_bubbling` from `on_action_clicked`; the "sends server.job_queue.start and nothing else" case must go red on the modal check. (c) route StartNext to `handle_up_next_tap()`; that case goes red on the call count. Restore all three.
 
 - [ ] **Step 7: Lint and translations**: `python3 scripts/check_imperative_ui.py --summary` count must not rise; `python3 scripts/check_hardcoded_pixels.py` clean for the touched files; `python3 scripts/format-xml.py --check ui_xml/components/panel_widget_job_queue.xml ui_xml/components/job_queue_row.xml`; translation-sync, fill nine locales, `make translations`.
 
@@ -476,8 +479,8 @@ struct WeekActivity {
 [[nodiscard]] std::array<int, kActivityDays> scale_day_bars(const std::array<double, kActivityDays>& hours);
 [[nodiscard]] std::string format_print_hours(double hours);
 [[nodiscard]] std::string format_print_count(uint64_t prints);
-[[nodiscard]] std::string format_filament_mass(double grams);
-struct LifetimeSummary { uint64_t prints = 0; double hours = 0.0; double filament_grams = 0.0; };
+[[nodiscard]] std::string format_filament_length(double mm);
+struct LifetimeSummary { uint64_t prints = 0; double hours = 0.0; double filament_mm = 0.0; };
 [[nodiscard]] std::string format_lifetime_line(const LifetimeSummary& summary, bool with_filament);
 [[nodiscard]] std::string weekday_initial(std::string_view abbreviation);
 }
@@ -494,8 +497,8 @@ Rules:
 - `scale_day_bars`: max = largest hour value; max ≤ 0 → all 0; else `round(100 * h / max)`, and any `h > 0` that rounds below `kMinVisibleBarPct` becomes `kMinVisibleBarPct`.
 - `format_print_hours(h)`: `h <= 0` or not finite → "0 h"; `h < 1` → `"{} min"` with minutes = `max(1, round(h*60))` (and 60 → "1 h"); `h < 10` → one decimal, rounded, ".0" dropped, and a value that rounds to 10.0 goes to the whole-hour branch; else `round(h)` whole. Keys: `"{} h"`, `"{} min"`.
 - `format_print_count`: `"1 print"` for 1, `"{} prints"` otherwise (0 included).
-- `format_filament_mass(g)`: `g <= 0` or not finite → ""; `round(g) < 1000` → `"{} g"`; `g < 100000` → one decimal `"{} kg"`; else whole `"{} kg"`.
-- `format_lifetime_line`: `format_print_count(prints) + " · " + format_print_hours(hours)`, plus `" · " + format_filament_mass(g)` when `with_filament` and the mass string is non-empty.
+- `format_filament_length(mm)`: `mm <= 0` or not finite → ""; `m = mm / 1000`; `m < 10` → one decimal, rounded, ".0" dropped, never below "0.1 m" for a positive length, and a value that rounds to 10.0 goes to the whole branch; else `round(m)` whole. Key `"{} m"`.
+- `format_lifetime_line`: `format_print_count(prints) + " · " + format_print_hours(hours)`, plus `" · " + format_filament_length(mm)` when `with_filament` and the length string is non-empty.
 - `weekday_initial`: empty → ""; take the first UTF-8 code point by its lead byte (1 to 4 bytes); uppercase it if ASCII `a`..`z`.
 
 - [ ] **Step 1: Write the failing tests** (`[print_activity]`). Day-boundary cases set `TZ` with an RAII guard that saves and restores `TZ` and calls `tzset()` (see `tests/unit/test_timezone_env.cpp#EnvGuard`), using the POSIX rule string `"EST5EDT,M3.2.0,M11.1.0"` so no zoneinfo files are needed:
@@ -511,8 +514,8 @@ Rules:
   - `scale_day_bars`: `{0,0,0,0,0,0,0}` → all 0; `{1,2,4,0,0,0,8}` → `{13,25,50,0,0,0,100}`; `{0.01,0,0,0,0,0,10}` → `{6,0,0,0,0,0,100}`.
   - `format_print_hours`: `0 → "0 h"`, `-3 → "0 h"`, `0.004 → "1 min"`, `0.75 → "45 min"`, `0.999 → "1 h"`, `1.0 → "1 h"`, `2.54 → "2.5 h"`, `2.04 → "2 h"`, `9.96 → "10 h"`, `23.4 → "23 h"`, `1204.6 → "1205 h"`.
   - `format_print_count`: `0 → "0 prints"`, `1 → "1 print"`, `128 → "128 prints"`.
-  - `format_filament_mass`: `0 → ""`, `-1 → ""`, `340.4 → "340 g"`, `999.4 → "999 g"`, `999.6 → "1.0 kg"`, `1234 → "1.2 kg"`, `123456 → "123 kg"`.
-  - `format_lifetime_line({128, 412.0, 3200.0}, true)` → `"128 prints · 412 h · 3.2 kg"`; same with `false` → `"128 prints · 412 h"`; with grams 0 and `true` → `"128 prints · 412 h"`.
+  - `format_filament_length`: `0 → ""`, `-5 → ""`, `30 → "0.1 m"`, `2540 → "2.5 m"`, `2040 → "2 m"`, `9960 → "10 m"`, `412300 → "412 m"`, `12345678 → "12346 m"`.
+  - `format_lifetime_line({128, 412.0, 412300.0}, true)` → `"128 prints · 412 h · 412 m"`; same with `false` → `"128 prints · 412 h"`; with filament 0 and `true` → `"128 prints · 412 h"`.
   - `weekday_initial`: `"Mon" → "M"`, `"mié." → "M"`, `"dim." → "D"`, `"пн" → "п"`, `"月" → "月"`, `"" → ""`.
   - `format_localized_weekday_abbr`: with the language set to `en` through `locale_set_language("en")`, a `tm` with `tm_wday = 1` gives a string whose `weekday_initial` is `"M"`.
 
@@ -520,7 +523,7 @@ Rules:
 - [ ] **Step 3: Implement.** `src/print/print_activity.cpp` uses `lv_tr()` for the unit keys (as `src/ui/job_queue_state.cpp#format_up_next_text` does) and `<spdlog/fmt/fmt.h>` for formatting.
 - [ ] **Step 4: Run until green**: `make t F='[print_activity]'`.
 - [ ] **Step 5: Prove a test can fail**: bucket by `start_time` instead of `job_timestamp()`; the spanning-midnight case must go red. Restore.
-- [ ] **Step 6: Translations**: the keys `"{} h"`, `"{} min"`, `"1 print"`, `"{} prints"`, `"{} g"`, `"{} kg"`.
+- [ ] **Step 6: Translations**: the keys `"{} h"`, `"{} min"`, `"1 print"`, `"{} prints"`, `"{} m"`.
 - [ ] **Step 7: Commit**
 
 ```bash
@@ -542,7 +545,7 @@ git show --stat HEAD
 - Translations
 
 **Interfaces:**
-- Consumes: Task 4 (all of `print_activity.h`, `format_localized_weekday_abbr`), `PrintHistoryManager::get_jobs()`, `is_loaded(HistoryScope::RECENT)`, `ensure_covers_since()`, `add_observer()` / `remove_observer()` (`include/print_history_manager.h`), `api->history().get_history_totals()` (as today), `filament::length_to_weight_g()` and `filament::find_material()` (`include/filament_database.h`), `get_printer_state().get_discovery().filament_diameter_mm()`, `get_global_history_dashboard_panel().show(lv_obj_t*)` (`include/ui_panel_history_dashboard.h`), the size-ladder helpers listed in Task 3.
+- Consumes: Task 4 (all of `print_activity.h`, `format_localized_weekday_abbr`), `PrintHistoryManager::get_jobs()`, `is_loaded(HistoryScope::RECENT)`, `ensure_covers_since()`, `add_observer()` / `remove_observer()` (`include/print_history_manager.h`), `api->history().get_history_totals()` (as today), `get_global_history_dashboard_panel().show(lv_obj_t*)` (`include/ui_panel_history_dashboard.h`), the size-ladder helpers listed in Task 3.
 - Produces (exact, syntax-checked):
 
 ```cpp
@@ -620,20 +623,19 @@ Published subjects (module level, `HELIX_PSRAM_BSS`, owner-only writes through a
 | `print_stats_show_bars`, `print_stats_show_day_labels`, `print_stats_side_by_side` | int 0/1 | verdict |
 | `print_stats_hero` | string | `format_print_hours(week_hours)`; "--" while Loading |
 | `print_stats_hero_label` | string | "this week"; "No prints this week" when `week_prints == 0`; "No prints yet" in NoHistory |
-| `print_stats_support_text` | string | PrintsOnly: `format_print_count(totals.total_jobs)`; Full: `format_lifetime_line({total_jobs, total_time/3600.0, grams}, true)`; None: "" |
+| `print_stats_support_text` | string | PrintsOnly: `format_print_count(totals.total_jobs)`; Full: `format_lifetime_line({total_jobs, total_time/3600.0, total_filament_used}, true)`; None: "" |
 | `print_stats_day_0` .. `print_stats_day_6` | int 0..100 | `scale_day_bars()`, oldest first |
 | `print_stats_day_label_0` .. `print_stats_day_label_6` | string | `weekday_initial(format_localized_weekday_abbr(localtime of starts[i]))` |
 
 The retired subjects (`print_stats_size_mode`, `_view_mode`, `_title`, `_total_prints`, `_total_time`, `_total_time_short`, `_success_rate`, `_weekly`, `_last_print`) are deleted, with the view-mode toggle and `lv_obj_set_style_opa` pressed feedback.
 
-Grams: `filament::length_to_weight_g(static_cast<float>(totals.total_filament_used), pla_density, diameter)` with `pla_density = filament::find_material("PLA")->density_g_cm3` (guard the optional) and `diameter = get_printer_state().get_discovery().filament_diameter_mm()`.
 
 Lifecycle: `attach()` claims the `LiveTileOwner`, installs the delete hook, adds the history and language observers, and calls `refresh()` (direct subject writes only; it runs inside a ScopedFreeze, so nothing is queued and nothing is fetched there). `detach()` and `on_hooked_root_deleted()` keep today's teardown (`lifetime_.invalidate()`, the in-flight flag cleared, pointers dropped) and release the tile; a returned previous owner republishes. Coverage window: `on_activate()` asks `ensure_covers_since(local_day_starts(time(nullptr))[0])` on the next tick (keep the existing `run_next_tick` and its ScopedFreeze comment); the history observer and the totals callback call `refresh()` and `fetch_lifetime_totals()` as today; the language observer calls `refresh()`.
 
 Measured needs, budgeted against the hero sample `format_print_hours(888.0)` in `font_heading` and the label "this week" in `font_small`; `bar_w = space_xs`, `bars_w = 7*bar_w + 6*space_xxs`:
 - Strip: `w = max(hero_w, label_w)`, `h = line(heading) + line(small) + row_gap`.
 - Cell: `w = max(hero_w, label_w, bars_w, count_sample_w)` with `count_sample_w` = width of `format_print_count(88888)` in `font_small`; `h = line(heading) + line(small) + 2*line(small) /*bars*/ + line(small) /*support*/ + 3*row_gap`.
-- Wide: `w = max(hero_w, label_w) + col_gap + bars_w`, plus room for the full line: `w = max(that, full_line_sample_w)` with `format_lifetime_line({88888, 8888, 8888}, true)` in `font_small`; `h = line(heading) + line(small) + line(small) + 2*row_gap`.
+- Wide: `w = max(hero_w, label_w) + col_gap + bars_w`, plus room for the full line: `w = max(that, full_line_sample_w)` with `format_lifetime_line({88888, 8888, 88888000.0}, true)` in `font_small`; `h = line(heading) + line(small) + line(small) + 2*row_gap`.
 - Full: Cell's box plus `line(font_xs)` for day labels, bars minimum `3*line(small)`, raised to the 2x2 size class with `widget_size::w_wide()` / `widget_size::h_taller()`.
 - `fits_at()` refuses unless the Strip box fits for Activity.
 
@@ -654,7 +656,7 @@ XML (`panel_widget_print_stats.xml`), one tree:
   - "no history at all": empty cache, totals `total_jobs` 0 → content NoHistory, label "No prints yet", `ps_hero` hidden, bars hidden at Full.
   - "lifetime line appears when totals land after the week": `client.defer_next("server.history.totals")` before activation, load the history → hero shows, support text "" and `ps_support` hidden at Wide; then `client.fire_deferred("server.history.totals")` and drain → support text equals `format_lifetime_line(...)` for the mock's totals, with no `h.resize()` in between.
   - "the lifetime line never comes from the job cache": `client.fail_next("server.history.totals")`, cache holds 3 jobs → support text stays "" at Cell and Wide.
-  - "filament shows from Wide, as mass": totals `total_filament_used` 400000 mm → at Wide the support text ends in `format_filament_mass(<the same length_to_weight_g>)`; at Cell it equals `format_print_count(total_jobs)`.
+  - "filament shows from Wide, in meters": totals `total_filament_used` 412300 mm → at Wide the support text ends in `" · 412 m"`; at Cell it equals `format_print_count(total_jobs)`.
   - "day labels only at Full": `print_stats_show_day_labels` 0 at Wide, 1 at Full; `print_stats_day_label_6` equals today's initial.
   - "tap opens the history dashboard": send `LV_EVENT_CLICKED` to the tile root and assert the dashboard overlay is on the `NavigationManager` stack (register it as tests/CLAUDE.md requires).
   - "a language switch recomposes the label": `SystemSettingsManager::instance().set_language("de")`, drain; `print_stats_hero_label` equals `lv_tr("this week")` read under `de` and differs from "this week"; set `"en"` back.
@@ -719,7 +721,7 @@ git show --stat HEAD
 
 - [ ] **Step 2: Seed both tiles for the existing minimum sweep.** Add `JobQueueSeed` and `PrintHistorySeed` RAII seeds beside `BufferReadingSeed` / `ClogReadingSeed` and enable them for `def.id == "job_queue"` and `"print_stats"` in "every home widget renders its content at its authored minimum": the queue seed installs a `JobQueueState` with 4 jobs whose first name is 90 characters with no spaces, auto off, idle, `printer_has_job_queue` = 1; the history seed loads a week of jobs and valid totals with `total_filament_used` 12'345'678 mm and `total_jobs` 88888 (the widest numbers the tiles budget for).
 
-- [ ] **Step 3: Write the rung sweep** as a new case, `"queue and stats tiles render every rung on every shipping geometry"`, `[content_fits][queue_stats]`: for each `kShipping` geometry, for spans 2x1, 2x2, 4x2, 4x4 (each capped by the grid; skip a span the widget's `fits_at` refuses at that geometry, recording it in an INFO list), for each queue state (WaitingForStart, Printing, UserPaused, Empty) and the stats tile with Activity, render with `render_at()` and `CHECK(report.clean())`. No `kKnownClipping` entries may be added for these two widgets; a clip is fixed in the tile.
+- [ ] **Step 3: Write the rung sweep** as a new case, `"queue and stats tiles render every rung on every shipping geometry"`, `[content_fits][queue_stats]`: for each `kShipping` geometry, for spans 2x1, 2x2, 4x2, 4x4 (each capped by the grid; skip a span the widget's `fits_at` refuses at that geometry, recording it in an INFO list), for each queue state (WaitingForStart, AutoNext, Printing, Empty) and the stats tile with Activity, render with `render_at()` and `CHECK(report.clean())`. No `kKnownClipping` entries may be added for these two widgets; a clip is fixed in the tile.
 
 - [ ] **Step 4: Run**: `make t F='[content_fits]'`. Expected: the new case passes after any fixes the sweep forces in Tasks 3 and 5 files; the existing sweep stays green.
 
@@ -750,7 +752,7 @@ HELIX_HEADLESS=1 SDL_VIDEODRIVER=dummy ./build/bin/helix-screen --test -s 800x48
 ```
 
 - [ ] **Step 3: Place and capture.** `ctl -s "$HELIX_SOCK" navigate home`; clear the plugin modal if it is up (`ctl click btn_done`); free space with `ctl home remove <id>` as needed; then for each size in cells `1 0.5`, `1 1`, `2 1`, `2 2`: `ctl home place job_queue <col> <row> <w> <h>`, `ctl home place print_stats ...`, `ctl screenshot <scratch>/<state>-<size>-800x480.png`. Read exact text with `ctl text jq_hero`, `ctl text ps_hero` alongside each shot.
-  - States: WaitingForStart (default mock: 3 jobs, auto off); AutoNext and UserPaused (relaunch with `HELIX_MOCK_JOB_QUEUE_AUTOMATIC_TRANSITION=1`; pause through the tile's modal: tap the tile, `ctl click btn_toggle_queue`, close); Printing (relaunch with `HELIX_MOCK_AUTO_PRINT=1 --sim-speed 6`, capture once the log shows Printing); Empty (remove the three jobs with the modal's trash icons); stats Activity (default mock history).
+  - States: WaitingForStart (default mock: 3 jobs, auto off); Printing (relaunch with `HELIX_MOCK_AUTO_PRINT=1 --sim-speed 6`, capture once the log shows Printing); AutoNext (the same with `HELIX_MOCK_JOB_QUEUE_AUTOMATIC_TRANSITION=1`); WaitingForStart with auto on (that flag, no auto print: the same Start button as auto off); Empty (remove the three jobs with the modal's trash icons); stats Activity (default mock history).
 - [ ] **Step 4: Repeat at 480x272** (`-s 480x272`; half-cell sizes are declined at that tier, so start at `1 1`).
 - [ ] **Step 5: Stop only your instance**: `for p in $(pgrep -x helix-screen); do grep -qz "$HELIX_SOCK" /proc/$p/cmdline && kill $p; done`.
 - [ ] **Step 6: Show the renders** with `show_image` (one per state and size, grouped), and tell Preston exactly what to judge: hero weight, the accent on the button and the bars, the Cell button label, the bars' baseline.
@@ -760,7 +762,7 @@ HELIX_HEADLESS=1 SDL_VIDEODRIVER=dummy ./build/bin/helix-screen --test -s 800x48
 ### Task 9: Docs, plan clean-up, and the mutation gate
 
 **Files:**
-- Modify: `docs/user/guide/home-panel.md` (the Print Stats and Job Queue rows of "Print & Status": description, Min `1x0.5`, Hardware Required for Job Queue "Moonraker `[job_queue]`"; remove both names from the "two-cell minimum width" sentence; add a short "Job Queue widget" subsection before "Job Queue Manager": what each state shows, Bed clear · Start next lands in the file view, Resume queue, tap elsewhere opens the manager; Print Stats tap opens Print History)
+- Modify: `docs/user/guide/home-panel.md` (the Print Stats and Job Queue rows of "Print & Status": description, Min `1x0.5`, Hardware Required for Job Queue "Moonraker `[job_queue]`"; remove both names from the "two-cell minimum width" sentence; add a short "Job Queue widget" subsection before "Job Queue Manager": what each state shows; Bed clear · Start next starts the next job on the printer in one tap, as queued, without the pre-print options a job carries when started from the file view (say so plainly); "starts automatically" appears only while a print runs with Moonraker's `automatic_transition` on; tap elsewhere opens the manager; Print Stats tap opens Print History)
 - Modify: `docs/devel/PANEL_WIDGET_GUIDE.md` § "The sized-widget family" (two rows: `job_queue` with `job_queue_tile_layout.h` and `include/job_queue_tile_state.h`, gate `printer_has_job_queue`; `print_stats` with `print_stats_tile_layout.h` and `include/print_activity.h`, no gate) and the count in "All seven offer half-cell spans" (now nine)
 - Modify: `docs/devel/CHANGELOG_1_1_DRAFT.md` (one user-facing entry per tile, in `docs/devel/CHANGELOG_STYLE.md` voice)
 - Delete: `docs/devel/plans/2026-10-14-queue-stats-tiles-design.md`, `docs/devel/plans/2026-10-14-queue-stats-tiles.md` (shipped scaffolding, `docs/CLAUDE.md` § "Plans and Specs")
@@ -779,6 +781,6 @@ git show --stat HEAD
 scripts/test-host-run.sh mutate --tests '[job_queue_tile],[next_media],[widget_size][job_queue],[print_activity],[print_stats_tile],[widget_size][print_stats],[print_stats],[queue_stats],[content_fits]'
 ```
 
-Expected: `CLEAN`. A `SURVIVED` hunk gets a test in the task that owns it and a rerun of that tag; an `INCOMPLETE` names paths it could not mutate (XML under `ui_xml/` is mutated in place; `lib/` and `tests/` are not). Record one line per mutation in the last commit's body, e.g. `mutation: swapped rules 5 and 6 in job_queue_tile_state(); test_job_queue_tile_state went red`.
+Expected: `CLEAN`. A `SURVIVED` hunk gets a test in the task that owns it and a rerun of that tag; an `INCOMPLETE` names paths it could not mutate (XML under `ui_xml/` is mutated in place; `lib/` and `tests/` are not). Record one line per mutation in the last commit's body, e.g. `mutation: dropped the Ready term from AutoNext in job_queue_tile_state(); test_job_queue_tile_state went red`.
 
 - [ ] **Step 4: Hand off.** The landing session runs `make full-test-run` once on the batch (CLAUDE.md § "Land in batches and gate once"). Release the `worktree:queue-stats-tiles` claim.
