@@ -166,7 +166,7 @@
           <bind_flag_if_eq subject="bed_mesh_tile_calibrating" flag="hidden" ref_value="1"/>
           <event_cb trigger="clicked" callback="bed_mesh_tile_calibrate_cb"/>
         </ui_button>
-        <ui_button name="bed_mesh_tile_load" width="content" height="#button_height_sm" text="Load profile">
+        <ui_button name="bed_mesh_tile_load" width="content" height="#button_height_sm" text="Load Profile">
           <bind_flag_if_eq subject="bed_mesh_tile_show_load" flag="hidden" ref_value="0"/>
           <event_cb trigger="clicked" callback="bed_mesh_tile_load_cb"/>
         </ui_button>

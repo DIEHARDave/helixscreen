@@ -473,7 +473,7 @@ translations:
   Calibrate Purge Chute: Calibrer la goulotte de purge
   Calibrate X: Calibrer X
   Calibrate Y: Calibrer Y
-  Calibrate all tools: Calibrer tous les outils
+  Calibrate All Tools: Calibrer tous les outils
   Calibrate input shaping to reduce ringing artifacts in prints: Calibrer l'input
     shaping pour réduire les artefacts d'ondulation
   Calibrate tool offsets?: Calibrer les offsets d'outil ?
@@ -601,9 +601,9 @@ translations:
   Check failed: Échec de la vérification
   Check filament: Vérifier le filament
   Check for Updates: Vérifier les mises à jour
-  Check slot: Vérifier le slot
+  Check Slot: Vérifier le slot
   Check slot failed: Échec de la vérification du slot
-  Check slots: Vérifier les slots
+  Check Slots: Vérifier
   Check slots failed: Échec de la vérification des slots
   Check that only one filament path is active: Vérifiez qu'un seul chemin de filament est actif
   Check that the cutter mechanism is properly installed: Vérifiez que le mécanisme de coupe est correctement installé
@@ -880,9 +880,6 @@ translations:
   'Current name:': 'Nom actuel :'
   'Current:': 'Actuel :'
   'Current: %d°C | Target: %d°C': 'Actuel : %d°C | Cible : %d°C'
-  'Current: %s': 'Actuel : %s'
-  'Current: %s · %s': 'Actuel : %s · %s'
-  'Current: Bypass': 'Actuel : Bypass'
   Currently Loaded: Actuellement chargé
   Currently printing: Impression en cours
   Custom: Personnalisé
@@ -1588,7 +1585,7 @@ translations:
   Home and sweep the cutter to re-find its position: Prend l'origine et balaie le coupeur pour retrouver sa position
   Home failed: Échec de la référence
   Home printer first?: Référencer l'imprimante d'abord ?
-  Home selector: Origine du sélecteur
+  Home Selector: Origine du sélecteur
   Homing AFC system...: Référence du système AFC...
   Homing Failed: 'Échec de la prise d''origine'
   Homing X...: Référence X...
@@ -1874,7 +1871,7 @@ translations:
   Load filament: 'Charger le filament'
   Load filament first: Chargez d'abord du filament
   Load or unload filament.: Chargez ou déchargez du filament.
-  Load profile: 'Charger un profil'
+  Load Profile: 'Charger un profil'
   Load the required filaments or start anyway?: Charger les filaments requis ou démarrer
     quand même ?
   'Load, unload, and swap spools. View your multi-filament system at a glance, map colors to slots, and monitor runout sensors.': 'Chargez, déchargez et changez les bobines. Visualisez votre système multi-filaments en un coup d''œil, associez les couleurs aux emplacements et surveillez les capteurs de fin de filament.'
@@ -2813,6 +2810,7 @@ translations:
   Reset failed: Échec de la réinitialisation
   Reset motor run-time counter: 'Réinitialiser le compteur d''heures de fonctionnement du moteur'
   Reset tags: Réinitialiser les repères
+  Reset Tags: Réinitialiser les repères
   Reset to Default: Réinitialiser par défaut
   Reset to defaults: Réinitialiser par défaut
   Reset to original values: Réinitialiser aux valeurs d'origine
@@ -2948,7 +2946,7 @@ translations:
   Save changes to persist them across restarts?: Enregistrer les modifications pour
     les conserver après redémarrage ?
   'Save failed: {}': 'Échec de l''enregistrement : {}'
-  Save offsets: Enregistrer les offsets
+  Save Offsets: Enregistrer les offsets
   Save offsets?: Enregistrer les offsets ?
   Save to Spoolman: Enregistrer dans Spoolman
   Saved Z-Offset: Z-Offset enregistré
@@ -3040,7 +3038,7 @@ translations:
   Select macro for third button: Sélectionner la macro pour le troisième bouton
   Select material to begin: Sélectionnez un matériau pour commencer
   Select sensor: Sélectionner un capteur
-  Select slot: Sélectionner le slot
+  Select Slot: Sélectionner le slot
   Select slot failed: Échec de la sélection du slot
   Select the heaters Klipper uses for your bed and hotend: Sélectionnez les chauffages
     utilisés par Klipper pour votre plateau et hotend
@@ -3149,7 +3147,7 @@ translations:
     pas suivi.
   Size: Taille
   Skip: Passer
-  Skip objects...: 'Passer des objets...'
+  Skip Objects...: 'Passer des objets...'
   Skipped: 'Ignoré'
   Sleep While Printing: Veille pendant impression
   Sleep adjusted to match dim timeout: Délai de veille ajusté
@@ -3252,7 +3250,7 @@ translations:
   Start Probing: Démarrer le palpage
   Start anyway?: 'Démarrer quand même ?'
   Start at: Commencer à
-  Start check: Lancer la vérification
+  Start Check: Lancer la vérification
   Start drying: Démarrer le séchage
 
   Start failed: Échec du démarrage
@@ -3343,7 +3341,6 @@ translations:
   TOOLS: OUTILS
   TPU: TPU
   Tag Parts: Repérer les éléments
-  Tag parts: Repérer les éléments
   Takes 3-5 min. Do not interrupt.: Prend 3-5 min. Ne pas interrompre.
   Tangle prevention active: Anti-nœud actif
   Tangle prevention boosted: Anti-nœud renforcé
@@ -3400,7 +3397,7 @@ translations:
   Test RS-485 link to CFS units: 'Tester la liaison RS-485 vers les unités CFS'
   Test Screensaver: Tester l'économiseur d'écran
   Test Tracker: Test Tracker
-  Test both: Tester les deux
+  Test Both: Tester les deux
   Test label printed: Étiquette de test imprimée
   'Testing rotation: %d° (%d/%d) - %ds remaining': 'Test de rotation : %d°
     (%d/%d) - %ds restantes'
@@ -3679,7 +3676,7 @@ translations:
   Trigger: Déclencheur
   'Troubleshooting:': 'Dépannage :'
   Try adjusting your search or filters: Essayez d'ajuster votre recherche ou vos filtres
-  Try again: 'Réessayer'
+  Try Again: 'Réessayer'
   Try the operation again. If it persists, check for mechanical issues.: Réessayez l'opération. Si le problème persiste, vérifiez s'il y a des problèmes mécaniques.
   Tune: Régler
   Tuning tower enabled - start a print to test: Tour de réglage activée - lancez une
@@ -3795,7 +3792,7 @@ translations:
   Use first HID scanner found: 'Utiliser le premier scanner HID trouvé'
   Use printer type to select image: Utiliser le type d'imprimante pour sélectionner
     l'image
-  Use scan: Utiliser le scan
+  Use Scan: Utiliser le scan
   User intervention required: 'Intervention manuelle requise'
   VM Peak: Pic de mémoire virtuelle
   VM Size: Taille de la mémoire virtuelle

@@ -241,6 +241,8 @@ void AmsState::init_subjects(bool register_xml) {
                                                       &current_has_weight_);
 
     INIT_SUBJECT_INT(current_color, 0x505050, subjects_, register_xml);
+    INIT_SUBJECT_INT(current_fill_pct, 0, subjects_,
+                     register_xml); // SUBJECT_OK: AmsOperationSidebar draws it on the loaded spool
 
     // Clog detection meter subjects
     INIT_SUBJECT_INT(clog_meter_mode, 0, subjects_, register_xml);
@@ -701,6 +703,9 @@ void AmsState::register_xml_subject_names() {
     helix::xml::register_subject_in_current_scope("ams_current_weight_text", &current_weight_text_);
     helix::xml::register_subject_in_current_scope("ams_current_has_weight", &current_has_weight_);
     helix::xml::register_subject_in_current_scope("current_color", &current_color_);
+    helix::xml::register_subject_in_current_scope(
+        "current_fill_pct",
+        &current_fill_pct_); // SUBJECT_OK: AmsOperationSidebar draws it on the loaded spool
 
     // Clog detection meter subjects
     helix::xml::register_subject_in_current_scope("clog_meter_mode", &clog_meter_mode_);

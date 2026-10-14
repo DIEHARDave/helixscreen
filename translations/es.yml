@@ -468,7 +468,7 @@ translations:
   Calibrate Purge Chute: Calibrar conducto de purga
   Calibrate X: Calibrar X
   Calibrate Y: Calibrar Y
-  Calibrate all tools: Calibrar todas las herramientas
+  Calibrate All Tools: Calibrar todas las herramientas
   Calibrate input shaping to reduce ringing artifacts in prints: Calibrar input shaping
     para reducir artefactos de resonancia en impresiones
   Calibrate tool offsets?: ¿Calibrar los offsets de herramienta?
@@ -594,9 +594,9 @@ translations:
   Check failed: Error al verificar
   Check filament: Comprobar filamento
   Check for Updates: Buscar actualizaciones
-  Check slot: Comprobar ranura
+  Check Slot: Comprobar ranura
   Check slot failed: Error al comprobar ranura
-  Check slots: Comprobar ranuras
+  Check Slots: Comprobar
   Check slots failed: Error al comprobar ranuras
   Check that only one filament path is active: Compruebe que solo haya una ruta de filamento activa
   Check that the cutter mechanism is properly installed: Compruebe que el mecanismo de corte esté correctamente instalado
@@ -875,9 +875,6 @@ translations:
   'Current name:': 'Nombre actual:'
   'Current:': 'Actual:'
   'Current: %d°C | Target: %d°C': 'Actual: %d°C | Objetivo: %d°C'
-  'Current: %s': 'Actual: %s'
-  'Current: %s · %s': 'Actual: %s · %s'
-  'Current: Bypass': 'Actual: Bypass'
   Currently Loaded: Actualmente cargado
   Currently printing: Imprimiendo actualmente
   Custom: Personalizado
@@ -1575,7 +1572,7 @@ translations:
   Home and sweep the cutter to re-find its position: Referencia y barrido del cortador para volver a encontrar su posición
   Home failed: Error en referencia
   Home printer first?: ¿Referenciar la impresora primero?
-  Home selector: Referenciar selector
+  Home Selector: Referenciar selector
   Homing AFC system...: Referenciando sistema AFC...
   Homing Failed: 'Fallo de homing'
   Homing X...: Posicionando X...
@@ -1859,7 +1856,7 @@ translations:
   Load filament: 'Cargar filamento'
   Load filament first: Cargue filamento primero
   Load or unload filament.: Carga o descarga filamento.
-  Load profile: 'Cargar perfil'
+  Load Profile: 'Cargar perfil'
   Load the required filaments or start anyway?: ¿Cargar los filamentos requeridos
     o iniciar de todos modos?
   'Load, unload, and swap spools. View your multi-filament system at a glance, map colors to slots, and monitor runout sensors.': 'Carga, descarga e intercambia bobinas. Ve tu sistema multi-filamento de un vistazo, asigna colores a los slots y monitoriza los sensores de agotamiento.'
@@ -2795,6 +2792,7 @@ translations:
   Reset failed: Error al restablecer
   Reset motor run-time counter: 'Restablecer el contador de horas de funcionamiento del motor'
   Reset tags: Restablecer marcas
+  Reset Tags: Restablecer marcas
   Reset to Default: Restablecer valores predeterminados
   Reset to defaults: Restablecer valores predeterminados
   Reset to original values: Restaurar valores originales
@@ -2931,7 +2929,7 @@ translations:
   Save changes to persist them across restarts?: ¿Guardar cambios para mantenerlos
     entre reinicios?
   'Save failed: {}': 'Error al guardar: {}'
-  Save offsets: Guardar offsets
+  Save Offsets: Guardar offsets
   Save offsets?: ¿Guardar offsets?
   Save to Spoolman: Guardar en Spoolman
   Saved Z-Offset: Z-Offset guardado
@@ -3021,7 +3019,7 @@ translations:
   Select macro for third button: Seleccionar macro para el tercer botón
   Select material to begin: Selecciona un material para empezar
   Select sensor: Seleccionar sensor
-  Select slot: Seleccionar ranura
+  Select Slot: Seleccionar ranura
   Select slot failed: Error al seleccionar ranura
   Select the heaters Klipper uses for your bed and hotend: Selecciona los calentadores
     que Klipper usa para tu cama y hotend
@@ -3125,7 +3123,7 @@ translations:
     no se rastrea.
   Size: Tamaño
   Skip: Omitir
-  Skip objects...: 'Omitir objetos...'
+  Skip Objects...: 'Omitir objetos...'
   Skipped: 'Omitido'
   Sleep While Printing: Apagar pantalla al imprimir
   Sleep adjusted to match dim timeout: Tiempo de suspensión ajustado
@@ -3228,7 +3226,7 @@ translations:
   Start Probing: Iniciar Sondeo
   Start anyway?: '¿Iniciar de todos modos?'
   Start at: Comenzar en
-  Start check: Iniciar verificación
+  Start Check: Iniciar verificación
   Start drying: Iniciar secado
 
   Start failed: Inicio fallido
@@ -3319,7 +3317,6 @@ translations:
   TOOLS: HERRAMIENTAS
   TPU: TPU
   Tag Parts: Marcar Componentes
-  Tag parts: Marcar componentes
   Takes 3-5 min. Do not interrupt.: Tarda 3-5 min. No interrumpa.
   Tangle prevention active: Prevención de enredos activa
   Tangle prevention boosted: Prevención de enredos reforzada
@@ -3376,7 +3373,7 @@ translations:
   Test RS-485 link to CFS units: 'Probar el enlace RS-485 con las unidades CFS'
   Test Screensaver: Probar Salvapantallas
   Test Tracker: Rastreador de Pruebas
-  Test both: Probar ambos
+  Test Both: Probar ambos
   Test label printed: Etiqueta de prueba impresa
   'Testing rotation: %d° (%d/%d) - %ds remaining': 'Probando rotación: %d°
     (%d/%d) - %ds restantes'
@@ -3648,7 +3645,7 @@ translations:
   Trigger: Disparador
   'Troubleshooting:': 'Solución de problemas:'
   Try adjusting your search or filters: Intente ajustar su búsqueda o filtros
-  Try again: 'Reintentar'
+  Try Again: 'Reintentar'
   Try the operation again. If it persists, check for mechanical issues.: Intente la operación de nuevo. Si persiste, compruebe si hay problemas mecánicos.
   Tune: Ajustar
   Tuning tower enabled - start a print to test: Torre de ajuste activada - inicie
@@ -3763,7 +3760,7 @@ translations:
   Use Unload before Eject: 'Use Descargar antes de Expulsar'
   Use first HID scanner found: 'Usar el primer escáner HID encontrado'
   Use printer type to select image: Usar tipo de impresora para seleccionar imagen
-  Use scan: Usar escaneo
+  Use Scan: Usar escaneo
   User intervention required: 'Se requiere intervención manual'
   VM Peak: Pico de VM
   VM Size: Tamaño de VM

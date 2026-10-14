@@ -1302,6 +1302,15 @@ class AmsState {
         return &current_color_;
     }
 
+    /**
+     * @brief Get current fill percent subject
+     * @return Subject holding the loaded spool's fill in the
+     *         SlotInfo::display_fill_pct() encoding (0-100, -1 = no data)
+     */
+    lv_subject_t* get_current_fill_pct_subject() {
+        return &current_fill_pct_;
+    }
+
     // ========================================================================
     // Per-Slot Subject Accessors
     // ========================================================================
@@ -1704,8 +1713,9 @@ class AmsState {
      */
     void sync_current_loaded_from_backend(const AmsSystemInfo& primary_info);
 
-    /// Writes the "Current: ..." header for @p slot_index on @p backend, with
-    /// the unit name on multi-unit systems. @p info is @p backend's system info.
+    /// Writes the loaded card's position header ("Gate 1") for @p slot_index on
+    /// @p backend, prefixed with the unit name on multi-unit systems. @p info is @p backend's
+    /// system info.
     void set_current_slot_header(AmsBackend& backend, const AmsSystemInfo& info, int slot_index);
 
     /**
@@ -2384,6 +2394,7 @@ class AmsState {
     char current_weight_text_buf_[32];
     lv_subject_t current_has_weight_{};
     lv_subject_t current_color_{};
+    lv_subject_t current_fill_pct_{};
 
     // Per-slot subjects (color, status, remaining filament)
     lv_subject_t slot_colors_[MAX_SLOTS]{};

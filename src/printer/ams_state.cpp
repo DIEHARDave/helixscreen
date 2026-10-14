@@ -1851,6 +1851,7 @@ void AmsState::set_current_loaded_defaults(bool write_header) {
     }
     lv_subject_set_int(&current_has_weight_, 0);
     lv_subject_set_int(&current_color_, 0x505050);
+    lv_subject_set_int(&current_fill_pct_, 0);
 }
 
 void AmsState::sync_current_loaded_from_backend() {
@@ -1871,7 +1872,7 @@ void AmsState::set_current_slot_header(AmsBackend& backend, const AmsSystemInfo&
     char tmp[64];
     if (is_tool_changer(sys.type) && sys.units.empty()) {
         // Pure tool changer with no AMS units: show the physical toolhead position
-        snprintf(tmp, sizeof(tmp), lv_tr("Current: %s"),
+        snprintf(tmp, sizeof(tmp), "%s",
                  helix::ui::lane_label(helix::ui::active_tool_noun(), slot_index).c_str());
     } else {
         std::string unit_display;
@@ -1887,10 +1888,9 @@ void AmsState::set_current_slot_header(AmsBackend& backend, const AmsSystemInfo&
         const std::string slot_label = helix::ui::lane_label(backend.lane_noun(), slot_index);
         if (!unit_display.empty() && sys.units.size() > 1) {
             // Multi-unit: show unit name + slot label on one line
-            snprintf(tmp, sizeof(tmp), lv_tr("Current: %s · %s"), unit_display.c_str(),
-                     slot_label.c_str());
+            snprintf(tmp, sizeof(tmp), "%s · %s", unit_display.c_str(), slot_label.c_str());
         } else {
-            snprintf(tmp, sizeof(tmp), lv_tr("Current: %s"), slot_label.c_str());
+            snprintf(tmp, sizeof(tmp), "%s", slot_label.c_str());
         }
     }
     if (strcmp(lv_subject_get_string(&current_slot_text_), tmp) != 0) {
@@ -1989,7 +1989,7 @@ void AmsState::sync_current_loaded_from_backend(const AmsSystemInfo& primary_inf
 
     // Check for bypass mode (slot_index == -2)
     if (slot_index == -2 && loaded_backend->is_bypass_active()) {
-        const char* bypass_text = lv_tr("Current: Bypass");
+        const char* bypass_text = lv_tr("Bypass");
         if (strcmp(lv_subject_get_string(&current_slot_text_), bypass_text) != 0) {
             lv_subject_copy_string(&current_slot_text_, bypass_text);
         }
@@ -2000,6 +2000,7 @@ void AmsState::sync_current_loaded_from_backend(const AmsSystemInfo& primary_inf
             const auto& ext = ext_spool.value();
             int ext_color = static_cast<int>(ext.color_rgb);
             lv_subject_set_int(&current_color_, ext_color);
+            lv_subject_set_int(&current_fill_pct_, ext.display_fill_pct());
 
             // Build label from spool info — same resolver as the loaded-slot
             // card below. Precedence and brand/material dedup live in
@@ -2036,6 +2037,7 @@ void AmsState::sync_current_loaded_from_backend(const AmsSystemInfo& primary_inf
             }
             lv_subject_set_int(&current_has_weight_, 0);
             lv_subject_set_int(&current_color_, 0x888888);
+            lv_subject_set_int(&current_fill_pct_, -1);
         }
     } else if (slot_index >= 0 && filament_loaded) {
         // Filament is loaded - show slot info from the backend that has it loaded
@@ -2061,6 +2063,7 @@ void AmsState::sync_current_loaded_from_backend(const AmsSystemInfo& primary_inf
         // Set color
         int slot_color = static_cast<int>(slot_info.color_rgb);
         lv_subject_set_int(&current_color_, slot_color);
+        lv_subject_set_int(&current_fill_pct_, slot_info.display_fill_pct());
 
         // Build the material label. The slot's own name/brand/material win, the
         // cached Spoolman identity fills the gaps (it is the only source of a

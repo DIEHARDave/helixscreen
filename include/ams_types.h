@@ -1496,8 +1496,8 @@ struct AmsSystemInfo {
     /// The head a load/unload operation is working on right now: the batch
     /// cursor while a batch runs, else the head whose channel is mid-op, else
     /// -1. current_slot stays the carriage answer ("tool on the carriage"),
-    /// which is what its other consumers read; only the "Current: ..." header
-    /// follows the work through this field.
+    /// which is what its other consumers read; only the loaded card's position
+    /// header follows the work through this field.
     int operation_working_slot = -1;
 
     /// Whether a toolhead is on the carriage. UNKNOWN on machines without one,
