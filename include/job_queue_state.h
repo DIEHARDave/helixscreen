@@ -37,9 +37,11 @@ std::string format_up_next_text(const std::string& display_name, int queued_coun
 std::string format_start_next_text(const std::string& display_name, int queued_count);
 
 /// The queue tile's strings for one JobQueueTileState. Fields a state does not
-/// show are empty. @p next_estimated_s of 0 means unknown.
+/// show are empty. @p next_estimated_s of 0 means unknown. @p more_count is how many
+/// queued jobs the tile neither names nor lists; "+N more" is empty at 0.
 struct JobQueueTileText {
     std::string hero;
+    std::string count; ///< the queued count alone, for the Strip
     std::string detail;
     std::string more;
     std::string action;
@@ -47,7 +49,7 @@ struct JobQueueTileText {
 };
 JobQueueTileText compose_job_queue_tile_text(JobQueueTileState state,
                                              const std::string& next_display_name, int queued_count,
-                                             int next_estimated_s);
+                                             int next_estimated_s, int more_count);
 } // namespace helix
 
 /**

@@ -4,9 +4,8 @@
 
 namespace helix::test {
 
-/// The medium-tier pixel widths the job queue tile's rungs need, with the fixture's
-/// fonts: the Cell rung holds "Start next" in a button, the Wide rung the longer text.
-inline constexpr int kJobQueueCellW = 124;
-inline constexpr int kJobQueueWideW = 244;
+/// The medium-tier (800x480) home grid's tile widths: one cell and two cells across.
+inline constexpr int kJobQueueCellW = 114;
+inline constexpr int kJobQueueWideW = 233;
 
 } // namespace helix::test

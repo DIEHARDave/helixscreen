@@ -1905,7 +1905,6 @@
   <translation tag="New profile name" zh="新配置名称"/>
   <translation tag="Next" zh="下一步"/>
   <translation tag="Next: {}" zh="下一个：{}"/>
-  <translation tag="Next: {} (starts automatically)" zh="下一个：{}（自动开始）"/>
   <translation tag="Niimbot (Bluetooth)" zh="Niimbot（蓝牙）"/>
   <translation tag="No" zh="否"/>
   <translation tag="No AMS Detected" zh="未检测到 AMS"/>
@@ -2943,6 +2942,7 @@
   <translation tag="Starting {}…" zh="正在开始 {}…"/>
   <translation tag="Starting..." zh="正在启动..."/>
   <translation tag="Starts after the current print" zh="当前打印完成后开始"/>
+  <translation tag="Starts automatically" zh="自动开始"/>
   <translation tag="Startup Brightness" zh="启动亮度"/>
   <translation tag="Startup, auto-control, and macro devices" zh="启动、自动控制和宏设备"/>
   <translation tag="State" zh="状态"/>

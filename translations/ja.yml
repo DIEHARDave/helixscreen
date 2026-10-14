@@ -1976,7 +1976,6 @@ translations:
   New profile name: 新しいプロファイル名
   Next: 次へ
   'Next: {}': '次の印刷：{}'
-  'Next: {} (starts automatically)': '次の印刷：{}（自動で開始）'
   Niimbot (Bluetooth): Niimbot (Bluetooth)
   'No': いいえ
   No AMS Detected: 'AMS が検出されません'
@@ -3061,6 +3060,7 @@ translations:
   Starting {}…: '{} を開始中…'
   Starting...: 開始中...
   Starts after the current print: 現在の印刷が終わったら開始します
+  Starts automatically: '自動で開始'
   Startup Brightness: 起動時の明るさ
   Startup, auto-control, and macro devices: 起動、自動制御、マクロデバイス
   State: 状態

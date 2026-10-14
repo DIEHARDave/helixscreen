@@ -15,10 +15,10 @@ struct ContentChrome {
     int h = 0;
 };
 
-/// The width a text button adds around its label: button_padding and a border pixel on
-/// each side.
-inline int button_label_chrome_w() {
-    return 2 * (theme_manager_get_spacing("button_padding") + 1);
+/// The width a text button adds around its label: its side padding token (button_padding
+/// unless the XML sets another) and a border pixel on each side.
+inline int button_label_chrome_w(const char* pad_token = "button_padding") {
+    return 2 * (theme_manager_get_spacing(pad_token) + 1);
 }
 
 /// The chrome of the single-child chain from `root` down to the first container

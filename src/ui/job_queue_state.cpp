@@ -388,8 +388,11 @@ std::string format_start_next_text(const std::string& display_name, int queued_c
 
 JobQueueTileText compose_job_queue_tile_text(JobQueueTileState state,
                                              const std::string& next_display_name, int queued_count,
-                                             int next_estimated_s) {
+                                             int next_estimated_s, int more_count) {
     JobQueueTileText t;
+    if (queued_count > 0) {
+        t.count = std::to_string(queued_count);
+    }
     switch (state) {
     case JobQueueTileState::Unavailable:
         t.hero = lv_tr("Job queue not enabled in Moonraker");
@@ -404,15 +407,15 @@ JobQueueTileText compose_job_queue_tile_text(JobQueueTileState state,
         if (next_estimated_s > 0) {
             t.detail = format::duration(next_estimated_s);
         }
-        if (queued_count >= 2) {
-            t.more = fmt::format(lv_tr("+{} more"), queued_count - 1);
+        if (more_count > 0) {
+            t.more = fmt::format(lv_tr("+{} more"), more_count);
         }
         t.action = lv_tr("Bed clear · Start next");
         t.action_short = lv_tr("Start next");
         break;
     case JobQueueTileState::AutoNext:
         t.hero = fmt::format(lv_tr("{} queued"), queued_count);
-        t.detail = fmt::format(lv_tr("Next: {} (starts automatically)"), next_display_name);
+        t.detail = fmt::format(lv_tr("Next: {}"), next_display_name);
         break;
     case JobQueueTileState::Printing:
         t.hero = fmt::format(lv_tr("{} queued"), queued_count);

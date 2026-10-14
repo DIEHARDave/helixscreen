@@ -1905,7 +1905,6 @@
   <translation tag="New profile name" ja="新しいプロファイル名"/>
   <translation tag="Next" ja="次へ"/>
   <translation tag="Next: {}" ja="次の印刷：{}"/>
-  <translation tag="Next: {} (starts automatically)" ja="次の印刷：{}（自動で開始）"/>
   <translation tag="Niimbot (Bluetooth)" ja="Niimbot (Bluetooth)"/>
   <translation tag="No" ja="いいえ"/>
   <translation tag="No AMS Detected" ja="AMS が検出されません"/>
@@ -2943,6 +2942,7 @@
   <translation tag="Starting {}…" ja="{} を開始中…"/>
   <translation tag="Starting..." ja="開始中..."/>
   <translation tag="Starts after the current print" ja="現在の印刷が終わったら開始します"/>
+  <translation tag="Starts automatically" ja="自動で開始"/>
   <translation tag="Startup Brightness" ja="起動時の明るさ"/>
   <translation tag="Startup, auto-control, and macro devices" ja="起動、自動制御、マクロデバイス"/>
   <translation tag="State" ja="状態"/>

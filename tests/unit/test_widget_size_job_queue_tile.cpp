@@ -7,9 +7,9 @@
  * the published verdict and texts, which parts carry HIDDEN, and the re-decision when
  * the queue, the run state or the printer's activity changes.
  *
- * Boxes are the medium-tier pixel budgets (114x54 and the Cell and Wide widths in
- * job_queue_tile_boxes.h). The decision is job_queue_tile_layout.h's and the state is
- * job_queue_tile_state.h's; these tests pin their wiring to the real fonts and XML.
+ * Boxes are the medium-tier home grid's tiles: 1x0.5, 1x1, 2x1 and 2x2 cells. The decision is
+ * job_queue_tile_layout.h's and the state is job_queue_tile_state.h's; these tests pin their wiring
+ * to the real fonts and XML.
  *
  * Run with: ./build/bin/helix-tests "[widget_size][job_queue]"
  */
@@ -128,7 +128,7 @@ std::ostream& operator<<(std::ostream& os, const Parts& p) {
 
 Parts parts_of(PanelWidgetHarness<JobQueueWidget>& h) {
     Parts p;
-    p.label_row = shown(h, "jq_label_row");
+    p.label_row = shown(h, "jq_label");
     p.thumb = shown(h, "jq_thumb");
     p.detail = shown(h, "jq_detail");
     p.more = shown(h, "jq_more");
@@ -147,12 +147,16 @@ struct Expect {
     Parts at[4];
 };
 
-void check_parts(PanelWidgetHarness<JobQueueWidget>& h, const Expect& expect) {
+/// @p check_rung is false for the quiet states, whose caption is small enough to draw a
+/// larger rung in a smaller tile.
+void check_parts(PanelWidgetHarness<JobQueueWidget>& h, const Expect& expect,
+                 bool check_rung = true) {
     const Box boxes[] = {kStrip, kCell, kWide, kFull};
     for (int i = 0; i < 4; ++i) {
         INFO(boxes[i].w << "x" << boxes[i].h);
         h.resize(1, 1, boxes[i].w, boxes[i].h);
-        CHECK(subject_int("jq_tile_rung") == static_cast<int>(boxes[i].rung));
+        if (check_rung)
+            CHECK(subject_int("jq_tile_rung") == static_cast<int>(boxes[i].rung));
         CHECK(parts_of(h) == expect.at[i]);
     }
 }
@@ -186,10 +190,15 @@ TEST_CASE_METHOD(JobQueueTileFixture, "job queue tile: a waiting job at each run
     CHECK(subject_text("jq_tile_hero") == "file-0");
     CHECK(subject_text("jq_tile_detail") == "1h");
     CHECK(subject_text("jq_tile_more") == "+2 more");
+    CHECK(subject_text("jq_tile_count") == "3");
+    // Full lists both following jobs, so "+N more" has nothing left to count.
     check_parts(h, {{parts(false, false, false, false, true, false, false, 0),
-                     parts(false, true, false, true, false, true, false, 0),
+                     parts(false, false, false, true, false, true, false, 0),
                      parts(false, true, true, true, false, false, true, 0),
-                     parts(false, true, true, true, false, false, true, 2)}});
+                     parts(false, true, true, false, false, false, true, 2)}});
+    h.resize(1, 1, kStrip.w, kStrip.h);
+    CHECK(shown(h, "jq_count"));
+    CHECK_FALSE(shown(h, "jq_hero"));
     h.resize(1, 1, kCell.w, kCell.h);
     CHECK(subject_text("jq_tile_action_text") == "Start next");
     h.resize(1, 1, kWide.w, kWide.h);
@@ -207,11 +216,19 @@ TEST_CASE_METHOD(JobQueueTileFixture,
     CHECK(subject_int("jq_tile_state") == static_cast<int>(JobQueueTileState::AutoNext));
     CHECK(subject_int("jq_tile_action") == static_cast<int>(JobQueueTileAction::None));
     CHECK(subject_text("jq_tile_hero") == "3 queued");
-    CHECK(subject_text("jq_tile_detail") == "Next: file-0 (starts automatically)");
+    CHECK(subject_text("jq_tile_detail") == "Next: file-0");
     check_parts(h, {{parts(false, false, false, false, false, false, false, 0),
                      parts(false, false, true, false, false, false, false, 0),
                      parts(false, false, true, false, false, false, false, 0),
                      parts(false, false, true, false, false, false, false, 2)}});
+    for (const Box& b : {kCell, kWide, kFull}) {
+        INFO(b.w << "x" << b.h);
+        h.resize(1, 1, b.w, b.h);
+        CHECK(shown(h, "jq_auto"));
+    }
+    h.resize(1, 1, kStrip.w, kStrip.h);
+    CHECK_FALSE(shown(h, "jq_auto"));
+    CHECK(shown(h, "jq_count"));
 }
 
 TEST_CASE_METHOD(JobQueueTileFixture, "job queue tile: printing shows what is next",
@@ -227,6 +244,7 @@ TEST_CASE_METHOD(JobQueueTileFixture, "job queue tile: printing shows what is ne
                      parts(false, false, true, false, false, false, false, 0),
                      parts(false, false, true, false, false, false, false, 0),
                      parts(false, false, true, false, false, false, false, 2)}});
+    CHECK_FALSE(shown(h, "jq_auto"));
 }
 
 TEST_CASE_METHOD(JobQueueTileFixture, "job queue tile: a job being loaded shows its thumbnail",
@@ -237,7 +255,7 @@ TEST_CASE_METHOD(JobQueueTileFixture, "job queue tile: a job being loaded shows 
     CHECK(subject_int("jq_tile_state") == static_cast<int>(JobQueueTileState::Starting));
     CHECK(subject_text("jq_tile_hero") == "Starting file-0…");
     check_parts(h, {{parts(false, false, false, false, false, false, false, 0),
-                     parts(false, true, false, false, false, false, false, 0),
+                     parts(false, false, false, false, false, false, false, 0),
                      parts(false, true, false, false, false, false, false, 0),
                      parts(false, true, false, false, false, false, false, 1)}});
 }
@@ -264,10 +282,14 @@ TEST_CASE_METHOD(JobQueueTileFixture, "job queue tile: an empty queue says so an
     h.resize(1, 1, kWide.w, kWide.h);
     CHECK(subject_int("jq_tile_state") == static_cast<int>(JobQueueTileState::Empty));
     CHECK(subject_text("jq_tile_hero") == "Queue empty");
-    check_parts(h, {{parts(false, false, false, false, false, false, false, 0),
-                     parts(false, false, false, false, false, false, false, 0),
-                     parts(false, false, false, false, false, false, false, 0),
-                     parts(false, false, false, false, false, false, false, 0)}});
+    CHECK(shown(h, "jq_quiet_text"));
+    CHECK_FALSE(shown(h, "jq_body"));
+    check_parts(h,
+                {{parts(false, false, false, false, false, false, false, 0),
+                  parts(false, false, false, false, false, false, false, 0),
+                  parts(false, false, false, false, false, false, false, 0),
+                  parts(false, false, false, false, false, false, false, 0)}},
+                false);
 }
 
 TEST_CASE_METHOD(JobQueueTileFixture,
@@ -277,10 +299,12 @@ TEST_CASE_METHOD(JobQueueTileFixture,
     h.resize(1, 1, kWide.w, kWide.h);
     CHECK(subject_int("jq_tile_state") == static_cast<int>(JobQueueTileState::NotLoaded));
     CHECK(subject_text("jq_tile_hero").empty());
-    check_parts(h, {{parts(true, false, false, false, false, false, false, 0),
-                     parts(true, false, false, false, false, false, false, 0),
-                     parts(true, false, false, false, false, false, false, 0),
-                     parts(true, false, false, false, false, false, false, 0)}});
+    check_parts(h,
+                {{parts(true, false, false, false, false, false, false, 0),
+                  parts(true, false, false, false, false, false, false, 0),
+                  parts(true, false, false, false, false, false, false, 0),
+                  parts(true, false, false, false, false, false, false, 0)}},
+                false);
 }
 
 TEST_CASE_METHOD(JobQueueTileFixture, "job queue tile: without the component it says so",
@@ -306,7 +330,7 @@ TEST_CASE_METHOD(JobQueueTileFixture,
 
     deliver(3, "ready");
     CHECK(subject_int("jq_tile_state") == static_cast<int>(JobQueueTileState::AutoNext));
-    CHECK(subject_text("jq_tile_detail").find("(starts automatically)") != std::string::npos);
+    CHECK(subject_int("jq_tile_show_auto") == 1);
 }
 
 TEST_CASE_METHOD(JobQueueTileFixture,
@@ -327,7 +351,7 @@ TEST_CASE_METHOD(JobQueueTileFixture,
 }
 
 TEST_CASE_METHOD(JobQueueTileFixture,
-                 "job queue tile: a 90-character filename stays on one line beside the icon button",
+                 "job queue tile: a 90-character filename stays on one line above its button",
                  "[widget_size][job_queue]") {
     JobQueueStatus status;
     status.queue_state = "ready";
@@ -336,15 +360,23 @@ TEST_CASE_METHOD(JobQueueTileFixture,
     settle();
 
     PanelWidgetHarness<JobQueueWidget> h(test_screen());
+    lv_area_t content;
+    for (const Box& b : {kCell, kWide}) {
+        INFO(b.w << "x" << b.h);
+        h.resize(1, 1, b.w, b.h);
+        REQUIRE(subject_int("jq_tile_rung") == static_cast<int>(b.rung));
+        lv_obj_t* hero = h.child("jq_hero");
+        REQUIRE(hero != nullptr);
+        CHECK(helix::test::held_to_one_line(hero));
+        lv_obj_get_content_coords(h.root(), &content);
+        lv_area_t hero_box;
+        lv_obj_get_coords(hero, &hero_box);
+        CHECK(hero_box.x2 <= content.x2);
+    }
     h.resize(1, 1, kStrip.w, kStrip.h);
-    REQUIRE(subject_int("jq_tile_rung") == static_cast<int>(SizeRung::Strip));
-    lv_obj_t* hero = h.child("jq_hero");
-    REQUIRE(hero != nullptr);
-    CHECK(helix::test::held_to_one_line(hero));
     lv_obj_t* icon = h.child("jq_action_icon");
     REQUIRE(icon != nullptr);
     REQUIRE(shown(icon));
-    lv_area_t content;
     lv_obj_get_content_coords(h.root(), &content);
     lv_area_t icon_box;
     lv_obj_get_coords(icon, &icon_box);
@@ -366,7 +398,7 @@ TEST_CASE_METHOD(JobQueueTileFixture, "job queue tile: a dropped socket keeps th
 }
 
 TEST_CASE_METHOD(JobQueueTileFixture,
-                 "job queue tile: the following jobs list shows jobs 2 to 4 at Full",
+                 "job queue tile: the following jobs list shows the rows that fit at Full",
                  "[widget_size][job_queue]") {
     deliver(5);
     PanelWidgetHarness<JobQueueWidget> h(test_screen());
@@ -374,7 +406,15 @@ TEST_CASE_METHOD(JobQueueTileFixture,
     CHECK(subject_text("jq_tile_after_0") == "file-1");
     CHECK(subject_text("jq_tile_after_1") == "file-2");
     CHECK(subject_text("jq_tile_after_2") == "file-3");
-    CHECK(parts_of(h).list_rows == 3);
+    // The rows the tile does not have the height for are counted instead.
+    const int rows = parts_of(h).list_rows;
+    CHECK(rows >= 1);
+    CHECK(subject_int("jq_tile_list_rows") == rows);
+    const int unseen = 4 - rows;
+    CHECK(shown(h, "jq_more") == (unseen > 0));
+    if (unseen > 0) {
+        CHECK(subject_text("jq_tile_more") == fmt::format("+{} more", unseen));
+    }
     lv_obj_t* name = lv_obj_find_by_name(h.child("jq_after_0"), "job_filename");
     REQUIRE(name != nullptr);
     CHECK(std::string(lv_label_get_text(name)) == "file-1");

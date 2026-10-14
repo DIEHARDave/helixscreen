@@ -86,7 +86,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "tile text: one row per state", "[job_queue_ti
     const std::string name = "Benchy";
 
     SECTION("Unavailable") {
-        auto t = compose_job_queue_tile_text(S::Unavailable, name, 3, 4500);
+        auto t = compose_job_queue_tile_text(S::Unavailable, name, 3, 4500, 2);
         CHECK(t.hero == "Job queue not enabled in Moonraker");
         CHECK(t.detail.empty());
         CHECK(t.more.empty());
@@ -94,7 +94,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "tile text: one row per state", "[job_queue_ti
         CHECK(t.action_short.empty());
     }
     SECTION("NotLoaded") {
-        auto t = compose_job_queue_tile_text(S::NotLoaded, name, 3, 4500);
+        auto t = compose_job_queue_tile_text(S::NotLoaded, name, 3, 4500, 2);
         CHECK(t.hero.empty());
         CHECK(t.detail.empty());
         CHECK(t.more.empty());
@@ -102,42 +102,48 @@ TEST_CASE_METHOD(LVGLTestFixture, "tile text: one row per state", "[job_queue_ti
         CHECK(t.action_short.empty());
     }
     SECTION("Empty") {
-        auto t = compose_job_queue_tile_text(S::Empty, "", 0, 0);
+        auto t = compose_job_queue_tile_text(S::Empty, "", 0, 0, 0);
         CHECK(t.hero == "Queue empty");
         CHECK(t.detail.empty());
         CHECK(t.action.empty());
     }
     SECTION("WaitingForStart") {
-        auto t = compose_job_queue_tile_text(S::WaitingForStart, name, 3, 4500);
+        auto t = compose_job_queue_tile_text(S::WaitingForStart, name, 3, 4500, 2);
         CHECK(t.hero == "Benchy");
+        CHECK(t.count == "3");
         CHECK(t.detail == "1h 15m");
         CHECK(t.more == "+2 more");
         CHECK(t.action == "Bed clear · Start next");
         CHECK(t.action_short == "Start next");
     }
-    SECTION("WaitingForStart with one job has no more line") {
-        auto t = compose_job_queue_tile_text(S::WaitingForStart, name, 1, 4500);
+    SECTION("WaitingForStart with nothing unseen has no more line") {
+        auto t = compose_job_queue_tile_text(S::WaitingForStart, name, 3, 4500, 0);
         CHECK(t.more.empty());
     }
+    SECTION("WaitingForStart counts only the jobs it does not show") {
+        auto t = compose_job_queue_tile_text(S::WaitingForStart, name, 6, 4500, 3);
+        CHECK(t.more == "+3 more");
+    }
     SECTION("WaitingForStart with an unknown estimate has no detail") {
-        auto t = compose_job_queue_tile_text(S::WaitingForStart, name, 3, 0);
+        auto t = compose_job_queue_tile_text(S::WaitingForStart, name, 3, 0, 2);
         CHECK(t.detail.empty());
     }
     SECTION("AutoNext") {
-        auto t = compose_job_queue_tile_text(S::AutoNext, name, 3, 4500);
+        auto t = compose_job_queue_tile_text(S::AutoNext, name, 3, 4500, 2);
         CHECK(t.hero == "3 queued");
-        CHECK(t.detail == "Next: Benchy (starts automatically)");
+        CHECK(t.count == "3");
+        CHECK(t.detail == "Next: Benchy");
         CHECK(t.more.empty());
         CHECK(t.action.empty());
     }
     SECTION("Printing") {
-        auto t = compose_job_queue_tile_text(S::Printing, name, 3, 4500);
+        auto t = compose_job_queue_tile_text(S::Printing, name, 3, 4500, 2);
         CHECK(t.hero == "3 queued");
         CHECK(t.detail == "Next: Benchy");
         CHECK(t.action.empty());
     }
     SECTION("Starting") {
-        auto t = compose_job_queue_tile_text(S::Starting, name, 3, 4500);
+        auto t = compose_job_queue_tile_text(S::Starting, name, 3, 4500, 2);
         CHECK(t.hero == "Starting Benchy…");
         CHECK(t.detail.empty());
         CHECK(t.action.empty());

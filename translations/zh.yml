@@ -1970,7 +1970,6 @@ translations:
   New profile name: 新配置名称
   Next: 下一步
   'Next: {}': '下一个：{}'
-  'Next: {} (starts automatically)': '下一个：{}（自动开始）'
   Niimbot (Bluetooth): Niimbot（蓝牙）
   'No': 否
   No AMS Detected: '未检测到 AMS'
@@ -3052,6 +3051,7 @@ translations:
   Starting {}…: '正在开始 {}…'
   Starting...: 正在启动...
   Starts after the current print: 当前打印完成后开始
+  Starts automatically: '自动开始'
   Startup Brightness: 启动亮度
   Startup, auto-control, and macro devices: 启动、自动控制和宏设备
   State: 状态

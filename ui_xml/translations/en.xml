@@ -1905,7 +1905,6 @@
   <translation tag="New profile name" en="New profile name"/>
   <translation tag="Next" en="Next"/>
   <translation tag="Next: {}" en="Next: {}"/>
-  <translation tag="Next: {} (starts automatically)" en="Next: {} (starts automatically)"/>
   <translation tag="Niimbot (Bluetooth)" en="Niimbot (Bluetooth)"/>
   <translation tag="No" en="No"/>
   <translation tag="No AMS Detected" en="No AMS Detected"/>
@@ -2943,6 +2942,7 @@
   <translation tag="Starting {}…" en="Starting {}…"/>
   <translation tag="Starting..." en="Starting..."/>
   <translation tag="Starts after the current print" en="Starts after the current print"/>
+  <translation tag="Starts automatically" en="Starts automatically"/>
   <translation tag="Startup Brightness" en="Startup Brightness"/>
   <translation tag="Startup, auto-control, and macro devices" en="Startup, auto-control, and macro devices"/>
   <translation tag="State" en="State"/>

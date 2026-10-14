@@ -2108,7 +2108,6 @@ translations:
   New profile name: Novo nome do perfil
   Next: Próximo
   'Next: {}': 'A seguir: {}'
-  'Next: {} (starts automatically)': 'A seguir: {} (inicia automaticamente)'
   Niimbot (Bluetooth): Niimbot (Bluetooth)
   'No': Não
   No AMS Detected: 'Nenhum AMS detectado'
@@ -3264,6 +3263,7 @@ translations:
   Starting {}…: 'Iniciando {}…'
   Starting...: Iniciando...
   Starts after the current print: Começa depois da impressão atual
+  Starts automatically: 'Inicia automaticamente'
   Startup Brightness: Brilho na inicialização
   Startup, auto-control, and macro devices: Inicialização, controle automático e dispositivos
     de macro

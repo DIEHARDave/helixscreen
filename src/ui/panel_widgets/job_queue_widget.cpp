@@ -46,14 +46,17 @@ struct Subjects {
     lv_subject_t rung{};
     lv_subject_t show_thumb{};
     lv_subject_t show_detail{};
+    lv_subject_t show_auto{};
     lv_subject_t show_more{};
     lv_subject_t list_rows{};
     lv_subject_t hero{};
+    lv_subject_t count{};
     lv_subject_t detail{};
     lv_subject_t more{};
     lv_subject_t action_text{};
     lv_subject_t after[helix::kJobQueueTileListRows]{};
     char hero_buf[320]{};
+    char count_buf[16]{};
     char detail_buf[320]{};
     char more_buf[64]{};
     char action_text_buf[96]{};
@@ -77,9 +80,11 @@ void job_queue_init_subjects() {
                            s_subjects);
     UI_MANAGED_SUBJECT_INT(s_subj.show_thumb, 0, "jq_tile_show_thumb", s_subjects);
     UI_MANAGED_SUBJECT_INT(s_subj.show_detail, 0, "jq_tile_show_detail", s_subjects);
+    UI_MANAGED_SUBJECT_INT(s_subj.show_auto, 0, "jq_tile_show_auto", s_subjects);
     UI_MANAGED_SUBJECT_INT(s_subj.show_more, 0, "jq_tile_show_more", s_subjects);
     UI_MANAGED_SUBJECT_INT(s_subj.list_rows, 0, "jq_tile_list_rows", s_subjects);
     UI_MANAGED_SUBJECT_STRING(s_subj.hero, s_subj.hero_buf, "", "jq_tile_hero", s_subjects);
+    UI_MANAGED_SUBJECT_STRING(s_subj.count, s_subj.count_buf, "", "jq_tile_count", s_subjects);
     UI_MANAGED_SUBJECT_STRING(s_subj.detail, s_subj.detail_buf, "", "jq_tile_detail", s_subjects);
     UI_MANAGED_SUBJECT_STRING(s_subj.more, s_subj.more_buf, "", "jq_tile_more", s_subjects);
     UI_MANAGED_SUBJECT_STRING(s_subj.action_text, s_subj.action_text_buf, "", "jq_tile_action_text",
@@ -105,46 +110,109 @@ int line_px(const lv_font_t* font) {
     return font ? static_cast<int>(lv_font_get_line_height(font)) : 0;
 }
 
-/// The minimum content box each rung draws in. Mirrors panel_widget_job_queue.xml: the
-/// body's gap is space_xs and the root's is space_xxs. Names and the hero ellipsize, so
-/// text widths are budgeted at the least they can show (the rung must hold while names
-/// change) and the action button's label, which does not ellipsize, at its full width.
-helix::RungNeeds measure_needs(const helix::ContentChrome& chrome) {
-    using helix::rung_box;
+/// The widest single word of @p text: the least width a wrapping label needs.
+int widest_word_px(const std::string& text, const lv_font_t* font) {
+    int widest = 0;
+    size_t start = 0;
+    while (start <= text.size()) {
+        const size_t end = std::min(text.find(' ', start), text.size());
+        if (end > start) {
+            widest =
+                std::max(widest, measure_text_px(text.substr(start, end - start).c_str(), font));
+        }
+        start = end + 1;
+    }
+    return widest;
+}
+
+/// The fonts, spacing and line heights panel_widget_job_queue.xml draws with.
+struct TileMetrics {
     const lv_font_t* heading = theme_manager_get_font("font_heading");
     const lv_font_t* body = theme_manager_get_font("font_body");
     const lv_font_t* small = theme_manager_get_font("font_small");
-    const int row_gap = theme_manager_get_spacing("space_xxs");
-    const int col_gap = theme_manager_get_spacing("space_xs");
-    const int pad_sm = theme_manager_get_spacing("space_sm");
-    const int btn = theme_manager_get_spacing("button_height_sm");
-    const int heading_h = line_px(heading);
-    const int small_h = line_px(small);
+    int row_gap = theme_manager_get_spacing("space_xxs");
+    int col_gap = theme_manager_get_spacing("space_xs");
+    int btn = theme_manager_get_spacing("button_height_sm");
+    int icon = line_px(theme_manager_get_font("icon_font_xs"));
+    int heading_h = line_px(heading);
+    int body_h = line_px(body);
+    int small_h = line_px(small);
+    /// One read-only job_queue_row: a body line padded space_sm above and below, and the
+    /// list's gap before it.
+    int list_row_h = line_px(body) + 2 * theme_manager_get_spacing("space_sm") + row_gap;
+};
 
-    // A two-digit count is the least a hero can show; anything longer ellipsizes.
-    const int hero_w = measure_text_px("88…", heading);
-    const int button_chrome = helix::button_label_chrome_w();
-    const int action_short_w = measure_text_px(lv_tr("Start next"), body) + button_chrome;
-    const int action_w = measure_text_px(lv_tr("Bed clear · Start next"), body) + button_chrome;
-    // The thumbnail is a button-height square (jq_thumb).
-    const int thumb_w = btn;
-    // The text column is the hero over one line of small text.
-    const int body_h = std::max(thumb_w, heading_h + small_h);
-    const int text_w = thumb_w + col_gap + hero_w;
+/// The minimum content box each rung draws in for @p state. Mirrors
+/// panel_widget_job_queue.xml: the root's gap is space_xxs, the rows' space_xs, and the
+/// text column stacks with no gap. Names ellipsize, so they are budgeted at the least
+/// they can show; the queued count, "Starts automatically" and the button labels do not,
+/// so they are budgeted at their full width in the current language. @p hero is the
+/// composed hero text, which for the count states is what the Cell and Wide rungs draw.
+helix::RungNeeds measure_needs(const helix::ContentChrome& chrome, helix::JobQueueTileState state,
+                               const std::string& hero) {
+    using helix::JobQueueTileState;
+    using helix::rung_box;
+    const TileMetrics m;
+    const bool waiting = state == JobQueueTileState::WaitingForStart;
+    const bool counting =
+        state == JobQueueTileState::AutoNext || state == JobQueueTileState::Printing;
+    const bool automatic = state == JobQueueTileState::AutoNext;
+    const bool quiet = !waiting && !counting && state != JobQueueTileState::Starting;
 
     helix::RungNeeds needs;
-    needs.strip = rung_box(hero_w + col_gap + btn, std::max(heading_h, btn));
-    // The root's gap is already in the content chrome, so the one between the body and
-    // the button is not repeated here.
-    needs.cell = rung_box(std::max(text_w, action_short_w), body_h + btn);
-    needs.wide = rung_box(std::max(text_w, action_w), body_h + btn);
+    if (quiet) {
+        // The caption alone on one line at Strip, under the muted icon from Cell, where
+        // it wraps between words, so its widest word is the width budgeted there.
+        const std::string caption =
+            state == JobQueueTileState::NotLoaded ? std::string(lv_tr("Job Queue")) : hero;
+        const int caption_w = widest_word_px(caption, m.small);
+        needs.strip = rung_box(caption_w, m.small_h);
+        needs.cell = rung_box(std::max(m.icon, caption_w), m.icon + m.row_gap + m.small_h);
+        needs.wide = needs.cell;
+        needs.full =
+            rung_box(needs.wide.w, std::max(needs.wide.h, helix::widget_size::h_tall() - chrome.h));
+        return needs;
+    }
 
-    const int list_row_h = line_px(body) + 2 * pad_sm;
-    const int list_h =
-        helix::kJobQueueTileListRows * list_row_h + (helix::kJobQueueTileListRows - 1) * row_gap;
-    // Full is a size class as well as a content fit: a 2x1 tile can hold the content,
-    // but the rung is for 2x2 and up.
-    needs.full = rung_box(needs.wide.w, std::max(needs.wide.h + row_gap + list_h,
+    // Strip: the queue icon and the count, with the icon-only start button while a job
+    // waits. A two-digit count is budgeted so the rung holds while jobs come and go.
+    const int count_w = m.icon + m.col_gap + measure_text_px("88", m.heading);
+    needs.strip = waiting ? rung_box(count_w + m.col_gap + m.btn, std::max(m.heading_h, m.btn))
+                          : rung_box(count_w, m.heading_h);
+
+    const int name_body_w = measure_text_px("88…", m.body);
+    const int name_heading_w = measure_text_px("88…", m.heading);
+    if (!counting) {
+        // Waiting, and Starting, which draws the same name and thumbnail for the seconds
+        // the job loads and keeps the button's room so the tile does not change rung.
+        const int short_w =
+            measure_text_px(lv_tr("Start next"), m.body) + helix::button_label_chrome_w("space_xs");
+        const int action_w = measure_text_px(lv_tr("Bed clear · Start next"), m.body) +
+                             helix::button_label_chrome_w("space_xs");
+        // Cell: the name over the short button. Wide: the thumbnail beside the name and
+        // its estimate line, over the long button. The root's gap sits between.
+        needs.cell = rung_box(std::max(name_body_w, short_w), m.body_h + m.row_gap + m.btn);
+        needs.wide = rung_box(std::max(m.btn + m.col_gap + name_heading_w, action_w),
+                              std::max(m.btn, m.heading_h + m.small_h) + m.row_gap + m.btn);
+    } else {
+        // "N queued" over "Next: name", and while the queue advances by itself
+        // "Starts automatically", which wraps at Cell where the height allows it
+        // (auto_line_h) and stays one line from Wide.
+        const std::string auto_text = lv_tr("Starts automatically");
+        const int detail_w = measure_text_px("Ne…", m.small);
+        const int cell_auto_w = automatic ? widest_word_px(auto_text, m.small) : 0;
+        const int wide_auto_w = automatic ? measure_text_px(auto_text.c_str(), m.small) : 0;
+        needs.cell =
+            rung_box(std::max({measure_text_px(hero.c_str(), m.body), detail_w, cell_auto_w}),
+                     m.body_h + m.small_h);
+        needs.wide =
+            rung_box(std::max({measure_text_px(hero.c_str(), m.heading), detail_w, wide_auto_w}),
+                     m.heading_h + m.small_h + (automatic ? m.small_h : 0));
+    }
+
+    // Full lists at least one following job. It is a size class as well as a content
+    // fit: a 2x1 tile can hold the content, but the rung is for 2x2 and up.
+    needs.full = rung_box(needs.wide.w, std::max(needs.wide.h + m.list_row_h,
                                                  helix::widget_size::h_tall() - chrome.h));
     return needs;
 }
@@ -186,15 +254,24 @@ JobQueueTileVerdict JobQueueWidget::decide(int width_px, int height_px,
     if (root()) {
         chrome = measure_content_chrome(root(), 0);
     } else {
-        const int pad = theme_manager_get_spacing("space_xxs");
-        chrome = {2 * pad, 3 * pad};
+        const int pad_hor = theme_manager_get_spacing("space_sm");
+        const int pad_ver = theme_manager_get_spacing("space_xxs");
+        chrome = {2 * pad_hor, 2 * pad_ver + pad_ver};
     }
+    const TileMetrics m;
     JobQueueTileLayoutInput li;
     li.content_w = width_px - chrome.w;
     li.content_h = height_px - chrome.h;
     li.state = job_queue_tile_state(in);
     li.job_count = in.job_count;
-    li.needs = measure_needs(chrome);
+    const std::string hero =
+        compose_job_queue_tile_text(li.state, next_display_name(get_job_queue_state(), 0),
+                                    in.job_count, 0, 0)
+            .hero;
+    li.needs = measure_needs(chrome, li.state, hero);
+    li.more_line_h = m.small_h;
+    li.list_row_h = m.list_row_h;
+    li.auto_line_h = 2 * m.small_h;
     const auto& n = li.needs;
     spdlog::trace("[JobQueueWidget] box {}x{} chrome {}x{} needs s{}x{} c{}x{} w{}x{} f{}x{} "
                   "state={}",
@@ -309,8 +386,9 @@ void JobQueueWidget::refresh() {
 void JobQueueWidget::publish(const JobQueueTileInputs& in) {
     auto* jqs = get_job_queue_state();
     const JobQueueTileState state = job_queue_tile_state(in);
-    const JobQueueTileText text = compose_job_queue_tile_text(
-        state, next_display_name(jqs, 0), in.job_count, jqs ? jqs->next_estimated_seconds() : 0);
+    const JobQueueTileText text =
+        compose_job_queue_tile_text(state, next_display_name(jqs, 0), in.job_count,
+                                    jqs ? jqs->next_estimated_seconds() : 0, verdict_.more_count);
 
     helix::ui::set_int_if_changed(&s_subj.state, static_cast<int>(state));
     helix::ui::set_int_if_changed(&s_subj.action, static_cast<int>(job_queue_tile_action(state)));
@@ -319,10 +397,12 @@ void JobQueueWidget::publish(const JobQueueTileInputs& in) {
     helix::ui::set_int_if_changed(&s_subj.show_thumb, verdict_.show_thumbnail ? 1 : 0);
     helix::ui::set_int_if_changed(&s_subj.show_detail,
                                   verdict_.show_detail && !text.detail.empty() ? 1 : 0);
+    helix::ui::set_int_if_changed(&s_subj.show_auto, verdict_.show_auto_line ? 1 : 0);
     helix::ui::set_int_if_changed(&s_subj.show_more,
                                   verdict_.show_more && !text.more.empty() ? 1 : 0);
     helix::ui::set_int_if_changed(&s_subj.list_rows, verdict_.list_rows);
     helix::ui::copy_string_if_changed(&s_subj.hero, text.hero.c_str());
+    helix::ui::copy_string_if_changed(&s_subj.count, text.count.c_str());
     helix::ui::copy_string_if_changed(&s_subj.detail, text.detail.c_str());
     helix::ui::copy_string_if_changed(&s_subj.more, text.more.c_str());
     helix::ui::copy_string_if_changed(
