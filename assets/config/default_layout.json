@@ -1,5 +1,24 @@
 {
-  "_comment": "Default widget layout anchors in half-cell tracks (TRACKS_PER_CELL = 2). Spans are authored per tier against the square-cell track counts (each axis derived independently from the content box), NOT the pre-square-cell values doubled. Widgets not listed for a tier are auto-placed at their registry default_enabled, so switching one off needs an explicit entry in 'disabled'. 'anchors' is the base (landscape) table; 'variants' holds per-layout overrides keyed by LayoutManager::variant_chain(). Breakpoint keys: micro(0), tiny(1), small(2), medium(3), large(4), xlarge(5), xxlarge(6). See include/ui_breakpoint.h.",
+  "_comment": "Default widget layout anchors in half-cell tracks (TRACKS_PER_CELL = 2). Spans are authored per tier against the square-cell track counts (each axis derived independently from the content box), NOT the pre-square-cell values doubled. Widgets not listed for a tier are auto-placed at their registry default_enabled, so switching one off needs an explicit entry in 'disabled'. A 'slot' entry fills its region with the first alternative whose lead candidate qualifies (gate open, every 'requires' subject non-zero, not already placed); 'candidates' is an inline list or a name in 'candidate_lists', and every candidate the slot passes over is switched off. 'at' is [col, row, colspan, rowspan] relative to the region. 'anchors' is the base (landscape) table; 'variants' holds per-layout overrides keyed by LayoutManager::variant_chain(). Breakpoint keys: micro(0), tiny(1), small(2), medium(3), large(4), xlarge(5), xxlarge(6). See include/ui_breakpoint.h.",
+  "candidate_lists": {
+    "ENV": [
+      "dryer",
+      "chamber_temperature",
+      "led",
+      "clock"
+    ],
+    "FIL": [
+      "filament",
+      "led",
+      {
+        "id": "active_spool",
+        "requires": [
+          "printer_has_spoolman"
+        ]
+      },
+      "clock"
+    ]
+  },
   "anchors": [
     {
       "id": "printer_image",
@@ -152,8 +171,8 @@
           "rowspan": 2
         },
         "medium": {
-          "col": 10,
-          "row": 0,
+          "col": 6,
+          "row": 2,
           "colspan": 2,
           "rowspan": 2
         },
@@ -245,12 +264,6 @@
           "colspan": 2,
           "rowspan": 2
         },
-        "medium": {
-          "col": 8,
-          "row": 0,
-          "colspan": 2,
-          "rowspan": 2
-        },
         "tiny": {
           "col": 6,
           "row": 2,
@@ -288,12 +301,6 @@
       "placements": {
         "micro": {
           "col": 10,
-          "row": 2,
-          "colspan": 2,
-          "rowspan": 2
-        },
-        "medium": {
-          "col": 6,
           "row": 2,
           "colspan": 2,
           "rowspan": 2
@@ -437,6 +444,56 @@
           "rowspan": 2
         }
       }
+    },
+    {
+      "slot": "spool_env",
+      "placements": {
+        "medium": {
+          "col": 8,
+          "row": 0,
+          "colspan": 4,
+          "rowspan": 2
+        }
+      },
+      "alternatives": [
+        {
+          "cells": [
+            {
+              "candidates": [
+                "ams"
+              ],
+              "at": [
+                0,
+                0,
+                4,
+                2
+              ]
+            }
+          ]
+        },
+        {
+          "cells": [
+            {
+              "candidates": "ENV",
+              "at": [
+                0,
+                0,
+                2,
+                2
+              ]
+            },
+            {
+              "candidates": "FIL",
+              "at": [
+                2,
+                0,
+                2,
+                2
+              ]
+            }
+          ]
+        }
+      ]
     }
   ],
   "variants": {
@@ -1194,17 +1251,6 @@
               "col": 0,
               "row": 12,
               "colspan": 4,
-              "rowspan": 2
-            }
-          }
-        },
-        {
-          "id": "ams",
-          "placements": {
-            "xxlarge@6x14": {
-              "col": 0,
-              "row": 12,
-              "colspan": 6,
               "rowspan": 2
             }
           }

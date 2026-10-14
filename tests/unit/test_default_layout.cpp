@@ -808,11 +808,9 @@ TEST_CASE("default_layout: unanchored bed_temperature survives AMS at medium bre
 // scope. AMS tests (LVGLUITestFixture + AmsState::init_subjects(true)) drive
 // slot discovery, setting it >0, and it never returns to 0 on its own — so it
 // leaks into later tests. Tests above read this global subject via
-// build_default_grid() and assume it is 0/absent; a leaked value silently swaps
-// the filament widget for the AMS widget, failing only in the full
-// single-process suite (passes in isolation / sharded runs). bed_temperature
-// used to be gated on the same subject and is no longer, but the filament/AMS
-// swap keeps the leak load-bearing.
+// build_default_grid() and assume it is 0/absent; a leaked value silently fills
+// the spool slot with the AMS widget instead of the filament widget, failing
+// only in the full single-process suite (passes in isolation / sharded runs).
 //
 // HelixTestFixture::reset_all() — run on every fixture test's ctor + dtor — must
 // clear it so leakers clean up after themselves. FAILS before the reset_all fix
@@ -1104,12 +1102,6 @@ struct PlacementKey {
     }
 };
 
-/// The one pair of widgets a table may seat on top of each other, because
-/// build_default_grid() enables exactly one of them per printer.
-bool mutually_exclusive(const std::string& a, const std::string& b) {
-    return (a == "ams" && b == "filament") || (a == "filament" && b == "ams");
-}
-
 PlacementKey parse_placement_key(const std::string& key) {
     const auto at = key.find('@');
     if (at == std::string::npos) {
@@ -1170,7 +1162,11 @@ void check_table_at_tier(const nlohmann::json& table, int bp_idx, const std::str
     std::vector<AnchorRect> placed;
     std::set<std::string> keys_used;
     for (const auto& anchor : anchors) {
-        const std::string id = anchor.value("id", std::string{});
+        // A slot's region is checked like an anchor's rectangle: whatever fills
+        // it stays inside it.
+        const std::string id = anchor.contains("slot")
+                                   ? "slot:" + anchor.value("slot", std::string{})
+                                   : anchor.value("id", std::string{});
         if (off.count(id)) {
             continue;
         }
@@ -1656,14 +1652,6 @@ TEST_CASE("default_layout: every grid-qualified table fits the grid it names",
                 CHECK(r.rowspan <= def->effective_max_rowspan());
 
                 for (const auto& other : placed) {
-                    // ams and filament are mutually exclusive: the swap at the
-                    // end of build_default_grid() enables exactly one, on the
-                    // hardware it found. Sharing a slot is how a table gives
-                    // both the same spot without spending it twice, so an
-                    // overlap between those two is the intent, not a clash.
-                    if (mutually_exclusive(r.id, other.id)) {
-                        continue;
-                    }
                     INFO("overlaps anchor " << other.id);
                     CHECK_FALSE(anchors_overlap(r, other));
                 }
@@ -1676,4 +1664,203 @@ TEST_CASE("default_layout: every grid-qualified table fits the grid it names",
     // Guards the loop against passing by finding nothing: the shipped file
     // carries at least one grid-qualified table.
     CHECK(checked > 0);
+}
+
+// ============================================================================
+// Capability slots resolved by build_default_grid()
+// ============================================================================
+
+namespace {
+
+/// Pins one integer subject in the global XML scope for the guard's life. An
+/// already-registered subject gets its value set and put back; an absent one is
+/// registered here and unregistered again, so a later test still finds it
+/// absent.
+class ScopedIntSubject {
+  public:
+    ScopedIntSubject(const char* name, int value) : name_(name) {
+        if (!lv_xml_component_get_scope("globals")) {
+            lv_xml_component_init();
+        }
+        existing_ = lv_xml_get_subject(nullptr, name);
+        if (existing_) {
+            saved_ = lv_subject_get_int(existing_);
+            lv_subject_set_int(existing_, value);
+        } else {
+            lv_subject_init_int(&own_, value);
+            lv_xml_register_subject(nullptr, name, &own_);
+        }
+    }
+
+    ~ScopedIntSubject() {
+        if (existing_) {
+            lv_subject_set_int(existing_, saved_);
+        } else {
+            lv_xml_unregister_subject(nullptr, name_.c_str());
+            lv_subject_deinit(&own_);
+        }
+        helix::ui::UpdateQueue::instance().drain();
+    }
+
+    ScopedIntSubject(const ScopedIntSubject&) = delete;
+    ScopedIntSubject& operator=(const ScopedIntSubject&) = delete;
+
+  private:
+    std::string name_;
+    lv_subject_t* existing_ = nullptr;
+    lv_subject_t own_{};
+    int saved_ = 0;
+};
+
+/// The medium landscape grid of an 800x480 panel: 12x8 tracks.
+constexpr int kMediumCols = 12;
+constexpr int kMediumRows = 8;
+
+void require_every_default_widget_placed_or_off(const std::vector<PanelWidgetEntry>& entries) {
+    for (const auto& e : entries) {
+        const auto* def = helix::find_widget_def(e.id);
+        REQUIRE(def != nullptr);
+        if (!def->default_enabled) {
+            continue;
+        }
+        INFO("default-enabled widget " << e.id << " at (" << e.col << "," << e.row << ")");
+        CHECK((e.is_placed() || !e.enabled));
+    }
+}
+
+} // namespace
+
+TEST_CASE("default_layout: an AMS printer fills the medium spool slot with the AMS",
+          "[default_layout][slot][shipped]") {
+    helix::test::ScopedBreakpoint bp(UiBreakpoint::Medium);
+    LayoutTypeGuard landscape(800, 480);
+    AmsSubjectGuard ams(4);
+    ScopedIntSubject dryer("home_dryer_available", 0);
+    ScopedIntSubject chamber("printer_has_chamber", 0);
+    ScopedIntSubject led("led_controllable", 1);
+    ScopedIntSubject fil("filament_sensor_count", 1);
+    ScopedIntSubject spoolman("printer_has_spoolman", 0);
+
+    auto entries = PanelWidgetConfig::build_default_grid(kMediumCols, kMediumRows);
+
+    auto* a = find_entry(entries, "ams");
+    REQUIRE(a);
+    CHECK(a->enabled);
+    CHECK(a->col == 8);
+    CHECK(a->row == 0);
+    CHECK(a->colspan == 4);
+    CHECK(a->rowspan == 2);
+
+    // The slot's other alternative lost, so its candidates are switched off
+    // rather than left for auto-placement to squeeze into a full grid.
+    for (const char* id : {"filament", "led", "dryer", "chamber_temperature", "clock"}) {
+        auto* off = find_entry(entries, id);
+        REQUIRE(off);
+        INFO("candidate " << id);
+        CHECK_FALSE(off->enabled);
+        CHECK_FALSE(off->has_grid_position());
+    }
+    require_every_default_widget_placed_or_off(entries);
+}
+
+TEST_CASE("default_layout: a printer without an AMS fills the medium spool slot from ENV and FIL",
+          "[default_layout][slot][shipped]") {
+    helix::test::ScopedBreakpoint bp(UiBreakpoint::Medium);
+    LayoutTypeGuard landscape(800, 480);
+    AmsSubjectGuard ams(0);
+    ScopedIntSubject dryer("home_dryer_available", 0);
+    ScopedIntSubject chamber("printer_has_chamber", 0);
+    ScopedIntSubject led("led_controllable", 1);
+    ScopedIntSubject fil("filament_sensor_count", 1);
+    ScopedIntSubject spoolman("printer_has_spoolman", 0);
+
+    auto entries = PanelWidgetConfig::build_default_grid(kMediumCols, kMediumRows);
+
+    auto* l = find_entry(entries, "led");
+    REQUIRE(l);
+    CHECK(l->is_placed());
+    CHECK(l->col == 8);
+    CHECK(l->row == 0);
+    auto* f = find_entry(entries, "filament");
+    REQUIRE(f);
+    CHECK(f->is_placed());
+    CHECK(f->col == 10);
+    CHECK(f->row == 0);
+
+    auto* a = find_entry(entries, "ams");
+    REQUIRE(a);
+    CHECK_FALSE(a->enabled);
+    CHECK_FALSE(a->has_grid_position());
+    require_every_default_widget_placed_or_off(entries);
+}
+
+TEST_CASE("default_layout: a gate closed on every ENV candidate falls through to the clock",
+          "[default_layout][slot][shipped]") {
+    helix::test::ScopedBreakpoint bp(UiBreakpoint::Medium);
+    LayoutTypeGuard landscape(800, 480);
+    AmsSubjectGuard ams(0);
+    ScopedIntSubject dryer("home_dryer_available", 0);
+    ScopedIntSubject chamber("printer_has_chamber", 0);
+    ScopedIntSubject led("led_controllable", 0);
+    ScopedIntSubject fil("filament_sensor_count", 0);
+    ScopedIntSubject spoolman("printer_has_spoolman", 0);
+
+    std::string signature;
+    auto entries = PanelWidgetConfig::build_default_grid(kMediumCols, kMediumRows, &signature);
+
+    auto* c = find_entry(entries, "clock");
+    REQUIRE(c);
+    CHECK(c->is_placed());
+    CHECK(c->col == 8);
+    CHECK(c->row == 0);
+    CHECK(c->colspan == 2);
+    CHECK(c->rowspan == 2);
+    for (const char* id : {"led", "filament"}) {
+        auto* off = find_entry(entries, id);
+        REQUIRE(off);
+        INFO("candidate " << id);
+        CHECK_FALSE(off->enabled);
+    }
+    // The signature names what the resolution consulted.
+    CHECK(signature.find("medium|12|8|") == 0);
+    CHECK(signature.find("led_controllable=0") != std::string::npos);
+    CHECK(signature.find("ams_slot_count=0") != std::string::npos);
+    require_every_default_widget_placed_or_off(entries);
+}
+
+TEST_CASE("default_layout: snapshot reads an absent gate as open and an absent requires as off",
+          "[default_layout][slot]") {
+    const auto table = nlohmann::json::parse(R"({
+        "anchors": [],
+        "candidate_lists": {
+            "X": ["dryer", {"id": "active_spool", "requires": ["zz_test_absent_capability"]},
+                  {"id": "clock", "requires": ["zz_test_present_capability"]}]
+        }
+    })");
+    ScopedIntSubject present("zz_test_present_capability", 7);
+    REQUIRE(lv_xml_get_subject(nullptr, "zz_test_absent_capability") == nullptr);
+
+    const bool dryer_registered = lv_xml_get_subject(nullptr, "home_dryer_available") != nullptr;
+    const auto snap = PanelWidgetConfig::snapshot_capabilities(table);
+
+    CHECK(snap.subjects.count("zz_test_absent_capability") == 1);
+    CHECK(snap.get("zz_test_absent_capability") == 0);
+    CHECK(snap.get("zz_test_present_capability") == 7);
+    if (!dryer_registered) {
+        CHECK(snap.get("home_dryer_available") == 1);
+    }
+    {
+        ScopedIntSubject dryer("home_dryer_available", 0);
+        CHECK(PanelWidgetConfig::snapshot_capabilities(table).get("home_dryer_available") == 0);
+    }
+
+    // An overlay's subjects are read as well as the table's.
+    const auto overlay = nlohmann::json::parse(R"({
+        "candidate_lists": { "Y": [{"id": "clock", "requires": ["zz_test_overlay_capability"]}] }
+    })");
+    ScopedIntSubject ov("zz_test_overlay_capability", 3);
+    CHECK(PanelWidgetConfig::snapshot_capabilities(table, &overlay)
+              .get("zz_test_overlay_capability") == 3);
+    CHECK(PanelWidgetConfig::snapshot_capabilities(table).subjects.count(
+              "zz_test_overlay_capability") == 0);
 }

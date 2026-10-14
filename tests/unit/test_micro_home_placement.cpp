@@ -86,9 +86,9 @@ class DefaultPlacementFixture : public LVGLUITestFixture {
         state().temperature_state().init_extruders({"extruder"});
         helix::ui::UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
 
-        // The AMS/filament swap in build_default_grid() keys off this subject;
-        // pin it so the filament anchor exists regardless of what an earlier
-        // case in this binary left behind. Subjects are process-global.
+        // The default table's spool slot resolves off this subject; pin it so
+        // the slot does not take the AMS because of what an earlier case in
+        // this binary left behind. Subjects are process-global.
         if (lv_subject_t* ams = lv_xml_get_subject(nullptr, "ams_slot_count")) {
             lv_subject_set_int(ams, 0);
         }
@@ -164,16 +164,16 @@ const AuthoredAnchor kMicroAnchors[] = {
     {"print_status",     0,  4, 12, 4},
 };
 
-/// The medium table: 800x480 is the regression guard for the larger tiers,
-/// where the whole-cell floor does not apply and placement is already correct.
+/// The medium table's fixed anchors: 800x480 is the regression guard for the
+/// larger tiers, where the whole-cell floor does not apply and placement is
+/// already correct. Tracks (8,0) to (11,1) are the spool slot, whose occupant
+/// depends on the printer's capabilities.
 const AuthoredAnchor kMediumAnchors[] = {
     {"printer_image",    0, 0, 4, 4},
     {"temperature",      4, 0, 2, 2},
     {"bed_temperature",  6, 0, 2, 2},
-    {"led",              8, 0, 2, 2},
-    {"notifications",   10, 0, 2, 2},
     {"fan_stack",        4, 2, 2, 2},
-    {"filament",         6, 2, 2, 2},
+    {"notifications",    6, 2, 2, 2},
     {"print_status",     0, 4, 8, 4},
 };
 
@@ -305,6 +305,24 @@ TEST_CASE_METHOD(DefaultPlacementFixture, "medium default layout is unchanged at
 
     for (const auto& a : kMediumAnchors) {
         check_anchor(container, a);
+    }
+
+    // The spool slot is filled whatever the capabilities: an AMS across it, or
+    // one tile at each of its two cells.
+    const auto tile_at = [&](int col, int row) {
+        const uint32_t n = lv_obj_get_child_count(container);
+        for (uint32_t i = 0; i < n; ++i) {
+            lv_obj_t* child = lv_obj_get_child(container, static_cast<int32_t>(i));
+            if (lv_obj_get_style_grid_cell_column_pos(child, LV_PART_MAIN) == col &&
+                lv_obj_get_style_grid_cell_row_pos(child, LV_PART_MAIN) == row) {
+                return true;
+            }
+        }
+        return false;
+    };
+    CHECK(tile_at(8, 0));
+    if (lv_obj_find_by_name(container, "ams") == nullptr) {
+        CHECK(tile_at(10, 0));
     }
 
     PanelWidgetManager::instance().clear_panel_config("test_medium_home_800");

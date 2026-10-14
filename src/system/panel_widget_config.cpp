@@ -47,11 +47,16 @@ bool PanelWidgetConfig::has_uninterpretable_coordinates(const nlohmann::json& pa
     if (pages == panel_node.end() || !pages->is_array()) {
         return false;
     }
-    // "anchors": "pending" names the defaults builder's own placement, saved before a grid
-    // was measured and re-anchored once one is.
+    // A `default` block (or its older spelling, "anchors": "pending") names the
+    // defaults builder's own placement, saved before a grid was measured and
+    // re-anchored once one is.
     if (!helix::json_util::safe_string(panel_node, "grid").empty() ||
         !helix::json_util::safe_string(panel_node, "layout_units").empty() ||
         helix::json_util::safe_string(panel_node, "anchors") == "pending") {
+        return false;
+    }
+    if (const json* block = helix::json_util::find_member(panel_node, "default");
+        block && block->is_object()) {
         return false;
     }
 
@@ -205,7 +210,7 @@ void PanelWidgetConfig::load() {
     pages_.clear();
     main_page_index_ = 0;
     next_page_id_ = 1;
-    pending_anchors_ = false;
+    read_default_block(json());
     grid_signature_.clear();
     parked_grids_ = json::object();
     legacy_units_ = false;
@@ -217,8 +222,8 @@ void PanelWidgetConfig::load() {
         PageConfig page;
         page.id = "main";
         page.widgets = build_defaults();
-        pending_anchors_ = true;
         pages_.push_back(std::move(page));
+        stamp_default("");
         loaded_ = true;
         return;
     }
@@ -275,11 +280,11 @@ void PanelWidgetConfig::load() {
         // layout — a pre-v22 layout is not a freshly-defaulted one — but both
         // are read here so whichever is present survives to populate.
         //
-        // Defaults written before any grid was measured. Compared against the
-        // one value build_defaults() writes, so anything else — including the
-        // key being absent, which is every layout that predates this — reads as
-        // "already placed" and is left alone.
-        pending_anchors_ = helix::json_util::safe_string(saved, "anchors") == "pending";
+        // The defaults builder's own arrangement, possibly still waiting for a
+        // measured grid. Anything else, including the block being absent, which
+        // is every layout that predates it, reads as "already placed" and is
+        // left alone.
+        read_default_block(saved);
 
         // Which grid `pages` counts against, and the arrangements parked for
         // other grids. Absent on every layout written before per-grid storage,
@@ -336,8 +341,8 @@ void PanelWidgetConfig::load() {
             PageConfig page;
             page.id = "main";
             page.widgets = build_defaults();
-            pending_anchors_ = true;
             pages_.push_back(std::move(page));
+            stamp_default("");
             save();
         }
 
@@ -352,10 +357,11 @@ void PanelWidgetConfig::load() {
     // Legacy format: flat JSON array or null/missing
     if (saved.is_array()) {
         auto entries = parse_widget_array(saved);
+        bool defaulted = false;
 
         if (entries.empty()) {
             entries = build_defaults();
-            pending_anchors_ = true;
+            defaulted = true;
         } else {
             // If no entries have grid positions, this is a pre-grid config — reset to defaults.
             bool has_any_grid =
@@ -366,7 +372,7 @@ void PanelWidgetConfig::load() {
                              "grid for '{}'",
                              panel_id_);
                 entries = build_defaults();
-                pending_anchors_ = true;
+                defaulted = true;
             }
         }
 
@@ -376,6 +382,9 @@ void PanelWidgetConfig::load() {
         page.widgets = std::move(entries);
         pages_.push_back(std::move(page));
         next_page_id_ = 1;
+        if (defaulted) {
+            stamp_default("");
+        }
 
         if (panel_id_ == "home") {
             migrate_stuck_ams_filament_swap();
@@ -398,9 +407,9 @@ void PanelWidgetConfig::load() {
     PageConfig page;
     page.id = "main";
     page.widgets = build_defaults();
-    pending_anchors_ = true;
     pages_.push_back(std::move(page));
     next_page_id_ = 1;
+    stamp_default("");
     save(); // Persist default grid positions for future launches
     loaded_ = true;
 }
@@ -522,7 +531,45 @@ nlohmann::json PanelWidgetConfig::serialize_pages() const {
     out["pages"] = std::move(pages_json);
     out["main_page_index"] = main_page_index_;
     out["next_page_id"] = next_page_id_;
+    // Inside the payload so a parked grid carries the block its own
+    // arrangement was stamped with.
+    if (has_default_) {
+        out["default"] = {{"signature", default_signature_}, {"hash", default_hash_}};
+    }
     return out;
+}
+
+void PanelWidgetConfig::stamp_default(std::string signature) {
+    has_default_ = true;
+    default_signature_ = std::move(signature);
+    default_hash_ = helix::layout::arrangement_hash(serialize_pages());
+}
+
+void PanelWidgetConfig::read_default_block(const nlohmann::json& node) {
+    has_default_ = false;
+    default_signature_.clear();
+    default_hash_.clear();
+    if (const json* block = helix::json_util::find_member(node, "default");
+        block && block->is_object()) {
+        has_default_ = true;
+        default_signature_ = helix::json_util::safe_string(*block, "signature");
+        default_hash_ = helix::json_util::safe_string(*block, "hash");
+        return;
+    }
+    // The older spelling of a block still waiting for a measured grid. It
+    // carries no hash, so it never reads as an unedited default.
+    if (helix::json_util::safe_string(node, "anchors") == "pending") {
+        has_default_ = true;
+    }
+}
+
+bool PanelWidgetConfig::is_unedited_default() const {
+    return has_default_ && !default_hash_.empty() &&
+           default_hash_ == helix::layout::arrangement_hash(serialize_pages());
+}
+
+std::string PanelWidgetConfig::default_signature() const {
+    return has_default_ ? default_signature_ : std::string{};
 }
 
 void PanelWidgetConfig::mark_dirty() {
@@ -590,7 +637,8 @@ void PanelWidgetConfig::write_to(const std::string& panel_path) {
     // Every key below is rewritten from member state, and the conditional ones
     // are cleared first: a key this build owns must not outlive the state that
     // asked for it just because an earlier save wrote it.
-    for (const char* owned : {"anchors", "layout_units", "legacy_rows", "grid", "parked_grids"}) {
+    for (const char* owned :
+         {"anchors", "default", "layout_units", "legacy_rows", "grid", "parked_grids"}) {
         root.erase(owned);
     }
     // Named, not iterated straight off the call: items() is a proxy that does
@@ -600,12 +648,6 @@ void PanelWidgetConfig::write_to(const std::string& panel_path) {
         root[key] = std::move(value);
     }
 
-    // Has to survive a save that lands before the anchors are applied: the
-    // placement engine writes auto-placed positions back on every populate, so
-    // dropping the tag here would make an unanchored default look arranged.
-    if (pending_anchors_) {
-        root["anchors"] = "pending";
-    }
     // Survives a save that happens before the port has run — the placement
     // engine writes back auto-placed positions on every populate, so dropping
     // the tag here would silently re-read cell coordinates as tracks.
@@ -676,9 +718,9 @@ void PanelWidgetConfig::reset_to_defaults() {
     pages_.resize(1);
     pages_[0].id = "main";
     pages_[0].widgets = build_defaults();
-    pending_anchors_ = true;
     main_page_index_ = 0;
     next_page_id_ = 1;
+    stamp_default("");
 }
 
 std::string PanelWidgetConfig::mint_instance_id(const std::string& base_id) {
@@ -931,36 +973,37 @@ bool anchor_fits_grid(int col, int row, int colspan, int rowspan, int cols, int 
            row + rowspan <= rows;
 }
 
-/// Read a table's `disabled` map — `{ "<breakpoint>": ["id", ...] }` — into `out`.
-///
-/// The base table and every variant carry the same optional key, so both go
-/// through this rather than the variant branch owning a private copy. `table` is
-/// the object holding `anchors`: the top-level document for the base table, the
-/// variant object otherwise.
-void collect_disabled(const nlohmann::json& table, UiBreakpoint breakpoint,
-                      std::set<std::string>& out) {
-    auto d = table.find("disabled");
-    if (d == table.end() || !d->is_object()) {
-        return;
-    }
-    const char* key = choose_breakpoint_key(*d, breakpoint);
-    if (!key) {
-        return;
-    }
-    const auto& ids = (*d)[key];
-    if (!ids.is_array()) {
-        return;
-    }
-    for (const auto& id : ids) {
-        if (id.is_string()) {
-            out.insert(id.get<std::string>());
-        }
-    }
-}
-
 } // namespace
 
-std::vector<PanelWidgetEntry> PanelWidgetConfig::build_default_grid(int grid_cols, int grid_rows) {
+helix::layout::CapabilitySnapshot
+PanelWidgetConfig::snapshot_capabilities(const nlohmann::json& table,
+                                         const nlohmann::json* overlay) {
+    std::set<std::string> gates;
+    for (const auto& def : get_all_widget_defs()) {
+        if (def.hardware_gate_subject) {
+            gates.insert(def.hardware_gate_subject);
+        }
+    }
+
+    std::vector<std::string> names = helix::layout::subjects_named_by(table);
+    if (overlay) {
+        const auto more = helix::layout::subjects_named_by(*overlay);
+        names.insert(names.end(), more.begin(), more.end());
+    }
+
+    helix::layout::CapabilitySnapshot snap;
+    for (const auto& name : names) {
+        if (lv_subject_t* subj = lv_xml_get_subject(nullptr, name.c_str())) {
+            snap.subjects[name] = lv_subject_get_int(subj);
+        } else {
+            snap.subjects[name] = gates.count(name) ? 1 : 0;
+        }
+    }
+    return snap;
+}
+
+std::vector<PanelWidgetEntry> PanelWidgetConfig::build_default_grid(int grid_cols, int grid_rows,
+                                                                    std::string* signature) {
     const auto& defs = get_all_widget_defs();
 
     // Determine current breakpoint for per-breakpoint anchor sizing
@@ -979,161 +1022,54 @@ std::vector<PanelWidgetEntry> PanelWidgetConfig::build_default_grid(int grid_col
     // Anchor tables are keyed by layout variant in the same most-specific-first
     // order LayoutManager uses for ui_xml/ overrides: "variants": { "portrait":
     // [...] } wins over the top-level (landscape) "anchors" on a portrait panel,
-    // and TINY_PORTRAIT falls through tiny_portrait → portrait → base.
-    //
-    // Without this a 480x800 portrait panel — cramped axis 480, i.e. breakpoint
-    // MEDIUM — got the LANDSCAPE medium anchors, authored against a 6-column
-    // grid. `tips` (col 2, colspan 4) and the col-3 temperature anchors do not
-    // exist on a 3-column portrait grid, so three of five anchors were
-    // unreachable and silently fell through to auto-place (#1216).
+    // and TINY_PORTRAIT falls through tiny_portrait → portrait → base (#1216).
     const bool portrait = is_portrait_layout(LayoutManager::instance().type());
 
-    // Load anchor placements from config/default_layout.json (runtime-editable).
-    // Falls back to registry defaults if file is missing or malformed.
-    struct AnchorPlacement {
-        std::string id;
-        int col, row, colspan, rowspan;
-        nlohmann::json config; // per-widget config carried by the anchor, may be null
-    };
-    std::vector<AnchorPlacement> anchors;
-
-    // Widgets the chosen variant switches off at this breakpoint. Leaving a
-    // widget out of the anchor list does NOT disable it — parse_widget_array()
-    // appends every registry widget that is missing, at its default_enabled — so
-    // "not on this tier" needs saying explicitly.
-    std::set<std::string> disabled_ids;
-
-    const auto layout_text = helix::text_io::read_file(helix::find_readable("default_layout.json"));
-    if (layout_text) {
-        nlohmann::json layout = nlohmann::json::parse(*layout_text, nullptr, false);
+    // config/default_layout.json is runtime-editable; a missing or malformed
+    // file leaves `layout` null, which the resolver reports as unusable.
+    nlohmann::json layout;
+    if (const auto layout_text =
+            helix::text_io::read_file(helix::find_readable("default_layout.json"))) {
+        layout = nlohmann::json::parse(*layout_text, nullptr, false);
         if (layout.is_discarded()) {
             spdlog::warn("[PanelWidgetConfig] Failed to parse default_layout.json: not valid JSON");
-        } else {
-            // find + is_array rather than .value("anchors", array()): default_
-            // layout.json is runtime-editable, and .value() throws type_error
-            // .302 on a key present with a null value; one failed read would
-            // cost every anchor rather than the one bad key. Each read below
-            // degrades to its own default instead.
-            auto anchors_it = layout.is_object() ? layout.find("anchors") : layout.end();
-            const nlohmann::json empty_array = nlohmann::json::array();
-            const nlohmann::json* anchor_list =
-                (anchors_it != layout.end() && anchors_it->is_array()) ? &*anchors_it
-                                                                       : &empty_array;
-
-            // Most-specific variant table wins; the base "anchors" array is the
-            // final fallback, exactly as ui_xml/ resolves an override.
-            //
-            // A variant is either a bare anchor array (the original shape) or an
-            // object carrying "anchors" plus optional "disabled". Both are
-            // accepted: the file is runtime-editable and shipped copies predate
-            // the object form.
-            std::string variant_used = "base";
-            auto variants_it = layout.is_object() ? layout.find("variants") : layout.end();
-            if (variants_it != layout.end() && variants_it->is_object()) {
-                for (const auto& dir : LayoutManager::instance().variant_chain()) {
-                    auto v = variants_it->find(dir);
-                    if (v == variants_it->end()) {
-                        continue;
-                    }
-                    if (v->is_array() && !v->empty()) {
-                        anchor_list = &*v;
-                        variant_used = dir;
-                        break;
-                    }
-                    if (!v->is_object()) {
-                        continue;
-                    }
-                    auto va = v->find("anchors");
-                    if (va == v->end() || !va->is_array() || va->empty()) {
-                        continue;
-                    }
-                    anchor_list = &*va;
-                    variant_used = dir;
-
-                    collect_disabled(*v, breakpoint, disabled_ids);
-                    break;
-                }
-            }
-            // Whichever table won owns the disable list. Without the base case a
-            // landscape tier could never switch a widget off: LayoutType
-            // STANDARD has an empty variant chain, so no variant object is ever
-            // consulted, and leaving a widget out of the anchors does not
-            // disable it — parse_widget_array() appends it at its registry
-            // default_enabled.
-            if (variant_used == "base") {
-                collect_disabled(layout, breakpoint, disabled_ids);
-            }
-
-            for (const auto& anchor : *anchor_list) {
-                if (!anchor.is_object())
-                    continue;
-                std::string id = helix::json_util::safe_string(anchor, "id");
-                const auto* def = id.empty() ? nullptr : find_widget_def(id);
-                if (!def)
-                    continue;
-
-                auto placements_it = anchor.find("placements");
-                if (placements_it == anchor.end() || !placements_it->is_object())
-                    continue;
-                const nlohmann::json& placements = *placements_it;
-
-                const std::string chosen_name = helix::layout::choose_placement_key(
-                    placements, breakpoint, grid_cols, grid_rows);
-                if (!chosen_name.empty()) {
-                    // find, not operator[]: `placements` is a const reference
-                    // now, and const operator[] on a missing key is only
-                    // JSON_ASSERT-guarded — under NDEBUG it dereferences end().
-                    auto p_it = placements.find(chosen_name);
-                    if (p_it == placements.end() || !p_it->is_object())
-                        continue;
-                    const nlohmann::json& p = *p_it;
-                    // A placement that omits a span takes the registry span, not
-                    // one track: one track is a quarter of the area every
-                    // widget now declares as its minimum, and this file is
-                    // runtime-editable, so a hand-authored placement can leave
-                    // the spans out. Matches parse_widget_array().
-                    //
-                    // "config" rides on the anchor so a default layout can pick a
-                    // widget's variant — portrait print_status ships Detailed —
-                    // without a C++ branch per widget. Anchor-level first, then
-                    // placement-level so a single tier can override.
-                    nlohmann::json cfg;
-                    if (auto ac = anchor.find("config"); ac != anchor.end() && ac->is_object()) {
-                        cfg = *ac;
-                    }
-                    if (auto pc = p.find("config"); pc != p.end() && pc->is_object()) {
-                        for (auto it2 = pc->begin(); it2 != pc->end(); ++it2) {
-                            cfg[it2.key()] = it2.value();
-                        }
-                    }
-                    anchors.push_back({id, helix::json_util::safe_int(p, "col", 0),
-                                       helix::json_util::safe_int(p, "row", 0),
-                                       helix::json_util::safe_int(p, "colspan", def->colspan),
-                                       helix::json_util::safe_int(p, "rowspan", def->rowspan),
-                                       std::move(cfg)});
-                }
-            }
-            spdlog::debug(
-                "[PanelWidgetConfig] Loaded {} anchors from default_layout.json (bp={}, table={})",
-                anchors.size(), bp_name, variant_used);
+            layout = nlohmann::json();
         }
     }
 
-    // Fallback: if no anchors loaded, use hardcoded defaults so the dashboard
-    // always has printer_image, print_status, and tips placed sensibly.
-    if (anchors.empty()) {
+    const Config* cfg = Config::get_instance();
+    const std::string preset = cfg ? cfg->get_preset() : std::string{};
+    const auto caps = snapshot_capabilities(layout);
+    auto resolved = helix::layout::resolve_default_layout(
+        layout, nullptr, bp_name, grid_cols, grid_rows, LayoutManager::instance().variant_chain(),
+        preset, caps);
+    if (signature) {
+        *signature = resolved.signature;
+    }
+
+    // Widgets the table switches off here: the tier's `disabled` list and every
+    // slot candidate that was passed over. Leaving a widget out of the anchors
+    // does NOT disable it, since the registry pass below appends it at its
+    // default_enabled, so this has to be said explicitly.
+    const std::set<std::string> disabled_ids(resolved.disabled.begin(), resolved.disabled.end());
+
+    std::vector<helix::layout::ResolvedPlacement> anchors = std::move(resolved.placed);
+
+    // Fallback: if the table placed nothing, use hardcoded defaults so the
+    // dashboard always has printer_image, print_status, and tips placed sensibly.
+    if (!resolved.ok) {
         spdlog::debug("[PanelWidgetConfig] Using hardcoded anchor fallback (bp={}, {})", bp_name,
                       portrait ? "portrait" : "landscape");
         if (portrait) {
             anchors = {
-                {"printer_image", 0, 0, 8, 4},
-                {"print_status", 0, 4, 8, 4},
+                {"printer_image", 0, 0, 8, 4, {}},
+                {"print_status", 0, 4, 8, 4, {}},
             };
         } else {
             anchors = {
-                {"printer_image", 0, 0, 4, 4},
-                {"print_status", 0, 4, 4, 4},
-                {"tips", 4, 0, 4, 4},
+                {"printer_image", 0, 0, 4, 4, {}},
+                {"print_status", 0, 4, 4, 4, {}},
+                {"tips", 4, 0, 4, 4, {}},
             };
         }
     }
@@ -1150,13 +1086,9 @@ std::vector<PanelWidgetEntry> PanelWidgetConfig::build_default_grid(int grid_col
         std::string rejected;
         int rejected_count = 0;
         anchors.erase(std::remove_if(anchors.begin(), anchors.end(),
-                                     [&](const AnchorPlacement& a) {
+                                     [&](const helix::layout::ResolvedPlacement& a) {
                                          // A widget this tier switches off is never placed, so
                                          // whether its anchor fits is not a fact about anything.
-                                         // `tips` on micro reaches here only because it has no
-                                         // micro placement and inherits small's, which is authored
-                                         // for a taller grid — warning about it would put a false
-                                         // alarm in every CC1 log.
                                          if (disabled_ids.count(a.id) > 0) {
                                              return false;
                                          }
@@ -1188,8 +1120,8 @@ std::vector<PanelWidgetEntry> PanelWidgetConfig::build_default_grid(int grid_col
     for (const auto& a : anchors) {
         if (!find_widget_def(a.id))
             continue;
-        result.push_back({a.id, true, a.config.is_object() ? a.config : nlohmann::json{}, a.col,
-                          a.row, a.colspan, a.rowspan});
+        result.push_back({a.id, true, a.config.is_object() ? a.config : nlohmann::json::object(),
+                          a.col, a.row, a.colspan, a.rowspan});
         fixed_ids.insert(a.id);
     }
 
@@ -1203,47 +1135,15 @@ std::vector<PanelWidgetEntry> PanelWidgetConfig::build_default_grid(int grid_col
         result.push_back({def.id, def.default_enabled, {}, -1, -1, def.colspan, def.rowspan});
     }
 
-    // Variant-scoped disable: a widget the layout switches off at this
-    // breakpoint. Applied after the registry pass so it reaches widgets that
-    // were appended by default rather than anchored, and before the AMS swap so
-    // that swap still has the final say on filament vs ams.
-    if (!disabled_ids.empty()) {
-        for (auto& entry : result) {
-            if (disabled_ids.count(entry.id) == 0) {
-                continue;
-            }
-            entry.enabled = false;
-            entry.col = -1;
-            entry.row = -1;
-            spdlog::debug("[PanelWidgetConfig] '{}' disabled by layout variant at bp={}", entry.id,
-                          bp_name);
+    // Applied after the registry pass so it reaches widgets that were appended
+    // by default rather than anchored.
+    for (auto& entry : result) {
+        if (disabled_ids.count(entry.id) == 0) {
+            continue;
         }
-    }
-
-    bool ams_present = false;
-    int ams_slot_count = 0;
-    {
-        lv_subject_t* ams_subj = lv_xml_get_subject(nullptr, "ams_slot_count");
-        if (ams_subj) {
-            ams_slot_count = lv_subject_get_int(ams_subj);
-            if (ams_slot_count > 0)
-                ams_present = true;
-        }
-        spdlog::debug("[PanelWidgetConfig] build_default_grid: ams_slot_count={} ({})",
-                      ams_slot_count, ams_present ? "AMS widget" : "filament widget");
-    }
-
-    // Filament/AMS swap: the AMS widget subsumes the role of the filament sensor
-    // widget on printers with multi-material hardware, so enable one or the other.
-    if (ams_present) {
-        auto fil_it = std::find_if(result.begin(), result.end(),
-                                   [](const PanelWidgetEntry& e) { return e.id == "filament"; });
-        auto ams_it = std::find_if(result.begin(), result.end(),
-                                   [](const PanelWidgetEntry& e) { return e.id == "ams"; });
-        if (fil_it != result.end())
-            fil_it->enabled = false;
-        if (ams_it != result.end())
-            ams_it->enabled = true;
+        entry.disable_and_unplace();
+        spdlog::debug("[PanelWidgetConfig] '{}' disabled by the default layout at bp={}", entry.id,
+                      bp_name);
     }
 
     // Bed temperature: move to end so it is the last widget placed.
@@ -1318,6 +1218,7 @@ std::vector<PanelWidgetEntry> PanelWidgetConfig::build_defaults() {
 
 void PanelWidgetConfig::restore_pages(const nlohmann::json& payload) {
     pages_.clear();
+    read_default_block(payload);
     main_page_index_ = static_cast<size_t>(helix::json_util::safe_int(payload, "main_page_index"));
     next_page_id_ = helix::json_util::safe_int(payload, "next_page_id");
     if (payload.contains("pages") && payload["pages"].is_array()) {
@@ -1338,8 +1239,8 @@ void PanelWidgetConfig::restore_pages(const nlohmann::json& payload) {
         PageConfig page;
         page.id = "main";
         page.widgets = build_defaults();
-        pending_anchors_ = true;
         pages_.push_back(std::move(page));
+        stamp_default("");
     }
     if (main_page_index_ >= pages_.size()) {
         main_page_index_ = 0;
@@ -1422,7 +1323,7 @@ void PanelWidgetConfig::switch_to_grid(int cols, int rows) {
 }
 
 void PanelWidgetConfig::apply_pending_anchors(int grid_cols, int grid_rows) {
-    if (!pending_anchors_ || grid_cols <= 0 || grid_rows <= 0) {
+    if (!has_pending_anchors() || grid_cols <= 0 || grid_rows <= 0) {
         return;
     }
 
@@ -1433,7 +1334,8 @@ void PanelWidgetConfig::apply_pending_anchors(int grid_cols, int grid_rows) {
     //
     // Page 0 only. Extra pages are user-made, and a user who has built one has
     // arranged page 0 too, so a layout still tagged pending has exactly one.
-    const auto rebuilt = build_default_grid(grid_cols, grid_rows);
+    std::string signature;
+    const auto rebuilt = build_default_grid(grid_cols, grid_rows, &signature);
     if (!rebuilt.empty() && !pages_.empty()) {
         pages_[0].widgets = rebuilt;
     }
@@ -1448,7 +1350,7 @@ void PanelWidgetConfig::apply_pending_anchors(int grid_cols, int grid_rows) {
                  "{} widget(s) placed",
                  panel_id_, grid_cols, grid_rows, anchored, pages_[0].widgets.size());
 
-    pending_anchors_ = false;
+    stamp_default(signature);
     grid_signature_ = std::to_string(grid_cols) + "x" + std::to_string(grid_rows);
     save();
 }

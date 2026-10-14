@@ -2680,7 +2680,9 @@ TEST_CASE_METHOD(PanelWidgetConfigFixture,
     // ...and the rebuild is what a later load reads, not a one-run repair.
     auto root = get_saved_root();
     REQUIRE(root.is_object());
-    CHECK(root.value("anchors", "") == "pending");
+    REQUIRE(root.contains("default"));
+    CHECK(root["default"].value("signature", "x").empty());
+    CHECK_FALSE(root.contains("anchors"));
     bool found = false;
     for (const auto& w : get_saved_page0_widgets()) {
         if (w.value("id", "") == id) {
@@ -2943,7 +2945,8 @@ TEST_CASE_METHOD(PanelWidgetConfigFixture,
     PanelWidgetConfig first("home", config);
     first.load();
     const json saved = get_printer_data()["panel_widgets"]["home"];
-    REQUIRE(saved.value("anchors", "") == "pending");
+    REQUIRE(saved.contains("default"));
+    REQUIRE(saved["default"].value("signature", "x").empty());
     REQUIRE_FALSE(saved.contains("grid"));
 
     CHECK_FALSE(PanelWidgetConfig::has_uninterpretable_coordinates(saved, 30));
@@ -3056,4 +3059,119 @@ TEST_CASE_METHOD(PanelWidgetConfigFixture,
     const auto saved = get_saved_page0_widgets();
     CHECK(std::none_of(saved.begin(), saved.end(),
                        [&](const json& item) { return item["id"] == off_def->id; }));
+}
+
+// ============================================================================
+// The default block: which arrangement the defaults builder produced
+// ============================================================================
+
+TEST_CASE_METHOD(PanelWidgetConfigFixture,
+                 "PanelWidgetConfig: reset stamps a default block whose hash matches",
+                 "[panel_widget_config][default_block]") {
+    setup_empty_config();
+    PanelWidgetConfig wc("home", config);
+    wc.load();
+    wc.add_page();
+    REQUIRE(wc.place_entry("clock", 1, 0, 0, 2, 2) >= 0);
+    REQUIRE_FALSE(wc.is_unedited_default());
+
+    wc.reset_to_defaults();
+    CHECK(wc.is_unedited_default());
+    CHECK(wc.has_pending_anchors());
+    CHECK(wc.default_signature().empty());
+
+    wc.save();
+    const json saved = get_saved_root();
+    REQUIRE(saved.contains("default"));
+    REQUIRE(saved["default"].is_object());
+    CHECK(saved["default"].value("hash", "") == helix::layout::arrangement_hash(saved));
+    CHECK_FALSE(saved.contains("anchors"));
+}
+
+TEST_CASE_METHOD(PanelWidgetConfigFixture,
+                 "PanelWidgetConfig: applying the anchors stamps the signature and hash",
+                 "[panel_widget_config][default_block]") {
+    setup_empty_config();
+    PanelWidgetConfig wc("home", config);
+    wc.load();
+    REQUIRE(wc.has_pending_anchors());
+
+    wc.apply_pending_anchors(12, 8);
+    CHECK_FALSE(wc.has_pending_anchors());
+    CHECK_FALSE(wc.default_signature().empty());
+    CHECK(wc.default_signature().find("|12|8|") != std::string::npos);
+    CHECK(wc.is_unedited_default());
+
+    // A reload reads the block back unchanged.
+    PanelWidgetConfig again("home", config);
+    again.load();
+    CHECK(again.default_signature() == wc.default_signature());
+    CHECK(again.is_unedited_default());
+
+    // Moving a placed widget makes the layout the user's.
+    const auto& page = again.page_entries(0);
+    auto placed = std::find_if(page.begin(), page.end(),
+                               [](const PanelWidgetEntry& e) { return e.is_placed(); });
+    REQUIRE(placed != page.end());
+    const std::string id = placed->id;
+    again.place_entry(id, 0, placed->col, placed->row + 1, placed->colspan, placed->rowspan);
+    CHECK_FALSE(again.is_unedited_default());
+    // ...while per-widget config is outside the hash.
+    PanelWidgetConfig third("home", config);
+    third.load();
+    third.set_widget_config(id, json{{"style", "x"}});
+    CHECK(third.is_unedited_default());
+}
+
+TEST_CASE_METHOD(PanelWidgetConfigFixture,
+                 "PanelWidgetConfig: the older pending tag reads as a pending default block",
+                 "[panel_widget_config][default_block]") {
+    json node = placed_home_node("printer_image");
+    node["anchors"] = "pending";
+    setup_with_widgets(node);
+    get_data()["config_version"] = 30;
+
+    PanelWidgetConfig wc("home", config);
+    wc.load();
+    CHECK(wc.has_pending_anchors());
+    CHECK(wc.default_signature().empty());
+
+    wc.save();
+    const json saved = get_saved_root();
+    CHECK_FALSE(saved.contains("anchors"));
+    REQUIRE(saved.contains("default"));
+    CHECK(saved["default"].value("signature", "x").empty());
+}
+
+TEST_CASE_METHOD(PanelWidgetConfigFixture,
+                 "PanelWidgetConfig: a parked grid carries its own default block",
+                 "[panel_widget_config][default_block]") {
+    setup_empty_config();
+    PanelWidgetConfig wc("home", config);
+    wc.load();
+    wc.apply_pending_anchors(12, 8);
+    const std::string sig = wc.default_signature();
+    REQUIRE_FALSE(sig.empty());
+
+    wc.switch_to_grid(10, 8);
+    const json parked = get_saved_root()["parked_grids"]["12x8"];
+    REQUIRE(parked.contains("default"));
+    CHECK(parked["default"].value("signature", "") == sig);
+
+    wc.switch_to_grid(12, 8);
+    CHECK(wc.default_signature() == sig);
+    CHECK(wc.is_unedited_default());
+}
+
+TEST_CASE_METHOD(PanelWidgetConfigFixture,
+                 "PanelWidgetConfig: a layout without a default block is not an unedited default",
+                 "[panel_widget_config][default_block]") {
+    json node = placed_home_node("printer_image");
+    node["grid"] = "12x8";
+    setup_with_widgets(node);
+    PanelWidgetConfig wc("home", config);
+    wc.load();
+    CHECK_FALSE(wc.is_unedited_default());
+    CHECK(wc.default_signature().empty());
+    CHECK_FALSE(wc.has_pending_anchors());
 }

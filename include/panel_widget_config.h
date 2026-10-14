@@ -5,6 +5,8 @@
 
 #include "ui_breakpoint.h"
 
+#include "default_layout_resolver.h"
+
 #include <string>
 #include <vector>
 
@@ -243,7 +245,37 @@ class PanelWidgetConfig {
     /// does not fit is dropped to auto-placement instead of being handed to
     /// clamp_to_grid, which would shove its origin back until the span fitted
     /// and seat it on top of a neighbour looking deliberate.
-    static std::vector<PanelWidgetEntry> build_default_grid(int grid_cols = 0, int grid_rows = 0);
+    ///
+    /// The table is resolved by helix::layout::resolve_default_layout() against
+    /// a snapshot_capabilities() of the live subjects: fixed anchors, then each
+    /// slot's first qualifying alternative. Every candidate the resolver passed
+    /// over, and every id the tier's `disabled` list names, comes back disabled
+    /// and unplaced. A registry widget the table never names comes back at its
+    /// default_enabled with no position. @p signature, when given, receives the
+    /// resolver's signature for this result.
+    static std::vector<PanelWidgetEntry> build_default_grid(int grid_cols = 0, int grid_rows = 0,
+                                                            std::string* signature = nullptr);
+
+    /// Values of every capability subject @p table (and @p overlay, a preset
+    /// seed, when given) names, read from the live XML subject registry.
+    ///
+    /// A registry gate subject that is not registered reads 1, the way the home
+    /// panel treats a widget whose gate subject does not exist: ungated. A
+    /// `requires` subject that is not registered reads 0, since nothing has
+    /// said the capability is there.
+    static helix::layout::CapabilitySnapshot
+    snapshot_capabilities(const nlohmann::json& table, const nlohmann::json* overlay = nullptr);
+
+    /// True while the saved pages are exactly the arrangement the resolver
+    /// produced: a default block is stamped and its hash matches
+    /// helix::layout::arrangement_hash() of the current pages. Any change to
+    /// what is placed where, or to the page count, makes the layout the user's.
+    /// Per-widget config is outside the hash.
+    bool is_unedited_default() const;
+
+    /// The resolver signature stamped with the default block, or "" when there
+    /// is no block or the block is still pending a measured grid.
+    std::string default_signature() const;
 
     /// True when @p panel_node places widgets but names no system for the
     /// numbers it places them at.
@@ -251,13 +283,12 @@ class PanelWidgetConfig {
     /// A saved layout is coordinates, and a coordinate means nothing on its
     /// own. From config version 24 on, the node says which system it counts in:
     /// `grid` names the track grid, `layout_units` marks pre-v22 cells, and
-    /// `anchors: "pending"` marks the shipped defaults saved before any grid was
-    /// measured. A node holding `pages` with a placed widget and none of these is one that only a
-    /// build older than its own version stamp can produce — such a build
-    /// re-serializes the panel as `pages`/`main_page_index`/`next_page_id` and
-    /// nothing else, so every key naming the system is gone while the numbers
-    /// stay. Reading them as tracks seats each widget at a coordinate it never
-    /// meant, so load() rebuilds the panel from defaults instead.
+    /// a `default` block marks the shipped defaults (`anchors: "pending"` is
+    /// its older spelling). A node holding `pages` with a placed widget and none of these is one
+    /// that only a build older than its own version stamp can produce — such a build re-serializes
+    /// the panel as `pages`/`main_page_index`/`next_page_id` and nothing else, so every key naming
+    /// the system is gone while the numbers stay. Reading them as tracks seats each widget at a
+    /// coordinate it never meant, so load() rebuilds the panel from defaults instead.
     ///
     /// Static and pure so the ways a layout stays legitimate — a named grid, a
     /// cells tag, pending default anchors, a version below 24 — are testable
@@ -273,13 +304,14 @@ class PanelWidgetConfig {
     /// box, not the panel extent, is what the track count divides (1042x2141
     /// against 1080x2400 on a scaled phone, 6x14 tracks against 8x16). So the
     /// anchors cannot be chosen there. PanelWidgetManager applies them at the
-    /// first measured populate and clears the tag.
+    /// first measured populate and stamps the signature it resolved for.
     ///
-    /// A positive tag, written only by the defaults path, so a layout that
-    /// predates this or that a user has since arranged reads as "already
-    /// placed" and is never overwritten.
+    /// Persisted as a `default` block with an empty signature, written only by
+    /// the defaults path, so a layout that predates this or that a user has
+    /// since arranged reads as "already placed" and is never overwritten. The
+    /// older `anchors: "pending"` key reads the same way.
     bool has_pending_anchors() const {
-        return pending_anchors_;
+        return has_default_ && default_signature_.empty();
     }
 
     /// Grid signature the saved coordinates are expressed in ("6x14"), or ""
@@ -312,8 +344,8 @@ class PanelWidgetConfig {
     /// guess would discard a real arrangement. No-op when already active.
     void switch_to_grid(int cols, int rows);
 
-    /// Apply the default anchors for a now-known grid, then persist and clear
-    /// the tag. No-op unless has_pending_anchors().
+    /// Apply the default anchors for a now-known grid, stamp the default block
+    /// with their signature and hash, and persist. No-op unless has_pending_anchors().
     void apply_pending_anchors(int grid_cols, int grid_rows);
 
     /// Check if config uses grid format (has any entries with col/row fields)
@@ -369,7 +401,12 @@ class PanelWidgetConfig {
     size_t main_page_index_ = 0;
     int next_page_id_ = 1;
     bool loaded_ = false;
-    bool pending_anchors_ = false;
+    /// The `default` block: present when the pages came from the defaults
+    /// builder. An empty signature means the anchors still wait for a measured
+    /// grid; the hash is arrangement_hash() of the pages as stamped.
+    bool has_default_ = false;
+    std::string default_signature_;
+    std::string default_hash_;
     std::string grid_signature_;
     /// Arrangements for grids that are not active, keyed by signature. Each
     /// value has the same shape as the active layout's persisted form.
@@ -397,6 +434,14 @@ class PanelWidgetConfig {
     void write_to(const std::string& panel_path);
 
     static std::vector<PanelWidgetEntry> build_defaults();
+
+    /// Record the current pages as the defaults builder's output for
+    /// @p signature ("" while no grid has been measured).
+    void stamp_default(std::string signature);
+
+    /// Read the `default` block (or the older `anchors: "pending"` key) from a
+    /// serialize_pages() payload or a saved panel node; clears it when absent.
+    void read_default_block(const nlohmann::json& node);
 
     /// The pages payload as it is persisted. Shared by save() and by
     /// switch_to_grid(), which parks exactly what save() would have written.
