@@ -1,20 +1,13 @@
 # Vendor branches in generic code, per file and shape. Ratchet: may fall, never rise.
 # Lower one by asking the owning module instead, then re-run with --write-baseline.
 12 src/api/moonraker_discovery_sequence.cpp:amstype-branch
-1 src/application/display_manager.cpp:board-probe
 1 src/print/filament_sensor_manager.cpp:amstype-branch
 2 src/printer/hardware_validator.cpp:amstype-branch
 11 src/printer/printer_discovery_parse.cpp:amstype-branch
-2 src/system/debug_bundle_collector.cpp:board-probe
-5 src/system/helix_cache_dir.cpp:platform-macro
-1 src/system/jz_pwm_sound_backend.cpp:board-probe
 18 src/system/runtime_config.cpp:amstype-branch
 11 src/system/telemetry_manager.cpp:amstype-branch
-1 src/system/update_checker.cpp:board-probe
 1 src/ui/filament_op_execute.cpp:amstype-branch
-1 src/ui/filament_tube_stroker.cpp:platform-macro
 2 src/ui/modals/buffer_status_modal.cpp:amstype-branch
-2 src/ui/touch_calibration.cpp:platform-macro
 1 src/ui/ui_ams_context_menu.cpp:amstype-branch
 1 src/ui/ui_ams_detail.cpp:amstype-branch
 3 src/ui/ui_ams_device_section_detail_overlay.cpp:amstype-branch
