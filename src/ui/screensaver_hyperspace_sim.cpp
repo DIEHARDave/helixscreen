@@ -225,9 +225,7 @@ void HyperspaceSim::init(const FrameTarget& frame, std::minstd_rand& rng, size_t
     for (Star& star : stars_) {
         place_star(star, rng, true);
     }
-    for (Flare& flare : flares_) {
-        flare = {};
-    }
+    flares_.assign(BURST_FLARES, Flare{});
 
     phase_ = Phase::OPEN;
     phase_left_ms_ = FIRST_OPEN_MIN_MS + random_below(rng, 2000);
@@ -251,6 +249,7 @@ void HyperspaceSim::clear() {
     free_buffer(sprites_);
     free_buffer(sprite_at_);
     free_buffer(stars_);
+    free_buffer(flares_);
     quad_w_ = 0;
     quad_h_ = 0;
 }
@@ -261,7 +260,8 @@ size_t HyperspaceSim::heap_bytes() const {
            tunnel_palette_.capacity() * sizeof(uint32_t) +
            goo_palette_.capacity() * sizeof(uint32_t) + goo_col_.capacity() + goo_row_.capacity() +
            goo_diag_.capacity() + row_.capacity() * sizeof(uint32_t) + sprites_.capacity() +
-           sprite_at_.capacity() * sizeof(uint32_t) + stars_.capacity() * sizeof(Star);
+           sprite_at_.capacity() * sizeof(uint32_t) + stars_.capacity() * sizeof(Star) +
+           flares_.capacity() * sizeof(Flare);
 }
 
 void HyperspaceSim::request_level(size_t level) {
@@ -269,8 +269,8 @@ void HyperspaceSim::request_level(size_t level) {
 }
 
 size_t HyperspaceSim::burst_flares_alive() const {
-    return static_cast<size_t>(std::count_if(std::begin(flares_), std::end(flares_),
-                                             [](const Flare& f) { return f.alive; }));
+    return static_cast<size_t>(
+        std::count_if(flares_.begin(), flares_.end(), [](const Flare& f) { return f.alive; }));
 }
 
 uint8_t HyperspaceSim::hue() const {

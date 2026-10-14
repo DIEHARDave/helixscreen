@@ -191,7 +191,7 @@ class HyperspaceSim {
     std::vector<uint32_t> sprite_at_; ///< offset of each radius in sprites_
 
     std::vector<Star> stars_;
-    Flare flares_[BURST_FLARES]{};
+    std::vector<Flare> flares_; ///< BURST_FLARES, reused by every starburst
 };
 
 } // namespace helix::ui

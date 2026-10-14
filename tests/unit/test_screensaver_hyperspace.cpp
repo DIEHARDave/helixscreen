@@ -34,6 +34,20 @@ using helix::ui::PixelFormat;
 using helix::ui::PixelWriter;
 using helix::ui::Rgb;
 
+namespace helix::ui {
+
+/// Reads the sim a HyperspaceScreensaver owns.
+class HyperspaceScreensaverTestAccess {
+  public:
+    static const HyperspaceSim& sim(const HyperspaceScreensaver& saver) {
+        return saver.sim_;
+    }
+};
+
+} // namespace helix::ui
+
+using helix::ui::HyperspaceScreensaverTestAccess;
+
 namespace {
 
 constexpr uint32_t W = 320;
@@ -450,6 +464,22 @@ TEST_CASE_METHOD(LVGLTestFixture,
     lv_tick_inc(33);
     fire(SaverTestAccess::timer(ss));
     CHECK(ss.is_active());
+}
+
+TEST_CASE_METHOD(LVGLTestFixture, "a stopped hyperspace saver holds no buffers",
+                 "[screensaver][screensaver_hyperspace]") {
+    HyperspaceScreensaver ss;
+    CHECK(HyperspaceScreensaverTestAccess::sim(ss).heap_bytes() == 0);
+    {
+        ScreensaverStopOnExit<HyperspaceScreensaver> stop_on_exit{ss};
+        ss.start();
+        REQUIRE(ss.is_active());
+        lv_tick_inc(16);
+        fire(SaverTestAccess::timer(ss));
+        REQUIRE(HyperspaceScreensaverTestAccess::sim(ss).heap_bytes() > 0);
+    }
+    CHECK_FALSE(ss.is_active());
+    CHECK(HyperspaceScreensaverTestAccess::sim(ss).heap_bytes() == 0);
 }
 
 TEST_CASE("hyperspace is registered by name at both depths",

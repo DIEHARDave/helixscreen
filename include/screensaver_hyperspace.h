@@ -43,6 +43,8 @@ class HyperspaceScreensaver : public SaverBase {
     void on_level_request(size_t level) override;
 
   private:
+    friend class HyperspaceScreensaverTestAccess;
+
     HyperspaceSim sim_;
 };
 
