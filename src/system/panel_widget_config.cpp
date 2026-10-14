@@ -7,6 +7,7 @@
 
 #include "config.h"
 #include "data_root_resolver.h"
+#include "default_layout_resolver.h"
 #include "grid_layout.h"
 #include "helix-xml/src/xml/lv_xml.h"
 #include "json_utils.h"
@@ -911,54 +912,6 @@ const char* choose_breakpoint_key(const nlohmann::json& by_bp, UiBreakpoint brea
 
 namespace {
 
-/// Placement key for a tier on a measured grid, or "" when nothing matches.
-///
-/// Walks the same tier fallback chain, but tries the grid-qualified form
-/// ("<tier>@<cols>x<rows>") before the bare tier name at each rung. Tier
-/// specificity still dominates: a table entry for this tier on some other grid
-/// beats one for a coarser tier on this exact grid, because the tier is what
-/// decides how much text has to fit. The grid breaks ties within a tier, which
-/// is the case the UI scale creates - one panel, one tier, a different track
-/// count per scale.
-///
-/// With @p grid_cols / @p grid_rows at 0 this is exactly choose_breakpoint_key,
-/// so a caller that cannot measure a grid resolves as it always did.
-std::string choose_placement_key(const nlohmann::json& by_bp, UiBreakpoint breakpoint,
-                                 int grid_cols, int grid_rows) {
-    static const char* fallback_order[][3] = {
-        {"micro", "tiny", "small"},     // bp=0 Micro
-        {"tiny", "small", nullptr},     // bp=1 Tiny
-        {"small", nullptr},             // bp=2 Small
-        {"medium", nullptr},            // bp=3 Medium
-        {"large", nullptr},             // bp=4 Large
-        {"xlarge", "large", nullptr},   // bp=5 XLarge
-        {"xxlarge", "xlarge", "large"}, // bp=6 XXLarge
-    };
-    static_assert(std::size(fallback_order) == to_int(UiBreakpoint::XXLarge) + 1,
-                  "fallback_order must cover every UiBreakpoint tier");
-
-    const int bp_idx = to_int(breakpoint);
-    if (bp_idx < 0 || bp_idx >= static_cast<int>(std::size(fallback_order))) {
-        return {};
-    }
-
-    const bool have_grid = grid_cols > 0 && grid_rows > 0;
-    const std::string suffix =
-        have_grid ? "@" + std::to_string(grid_cols) + "x" + std::to_string(grid_rows)
-                  : std::string{};
-
-    for (int i = 0; i < 3 && fallback_order[bp_idx][i]; ++i) {
-        const std::string tier = fallback_order[bp_idx][i];
-        if (have_grid && by_bp.contains(tier + suffix)) {
-            return tier + suffix;
-        }
-        if (by_bp.contains(tier)) {
-            return tier;
-        }
-    }
-    return {};
-}
-
 /// One axis of a "<cols>x<rows>" signature, or 0 when it does not parse.
 int parse_grid_axis(const std::string& signature, bool want_cols) {
     const auto x = signature.find('x');
@@ -1124,8 +1077,8 @@ std::vector<PanelWidgetEntry> PanelWidgetConfig::build_default_grid(int grid_col
                     continue;
                 const nlohmann::json& placements = *placements_it;
 
-                const std::string chosen_name =
-                    choose_placement_key(placements, breakpoint, grid_cols, grid_rows);
+                const std::string chosen_name = helix::layout::choose_placement_key(
+                    placements, breakpoint, grid_cols, grid_rows);
                 if (!chosen_name.empty()) {
                     // find, not operator[]: `placements` is a const reference
                     // now, and const operator[] on a missing key is only
