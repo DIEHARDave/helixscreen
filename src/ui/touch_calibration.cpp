@@ -162,10 +162,11 @@ TouchCalibration platform_default_calibration() {
     // set capture_rotation to that rotation, or the matrix is placed in a basis it
     // was never solved in and every tap lands a quarter turn out.
 #if defined(HELIX_PLATFORM_MIPS)
-    // One binary serves K1 and AD5X: the AD5X fit applies only on that board,
-    // detected by the mod-layout probe. K1 boards ship no default fit — the
-    // calibration wizard owns the first run there.
-    if (helix::ad5x_mod_layout_present()) {
+    // One binary serves K1, AD5X and the Creator 5 line: the AD5X fit applies
+    // only on that board. The Creator 5's digitizer already spans its panel, so
+    // this fit would throw its taps off-screen. K1 and Creator 5 boards ship no
+    // default fit; the calibration wizard owns the first run there.
+    if (helix::ad5x_board_present()) {
         cal.valid = true;
         cal.a = 1.171731f;
         cal.b = -0.043628f;

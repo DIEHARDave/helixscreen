@@ -180,6 +180,14 @@ std::optional<FlashForgeMachine> flashforge_machine_id(const std::string& probe_
         last_assignment_value(rooted(probe_root, "/etc/os-release"), "VERSION_CODENAME", true));
 }
 
+bool ad5x_board_present(const std::string& probe_root) {
+    if (!ad5x_mod_layout_present(probe_root)) {
+        return false;
+    }
+    const auto machine = flashforge_machine_id(probe_root);
+    return !machine.has_value() || *machine == FlashForgeMachine::Ad5x;
+}
+
 bool local_camera_probe_safe(const std::string& probe_root) {
 #ifdef HELIX_PLATFORM_AD5X
     (void)probe_root;
