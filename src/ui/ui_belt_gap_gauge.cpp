@@ -198,6 +198,11 @@ void ui_belt_gap_gauge_set(lv_obj_t* gauge, float gap_hz, std::optional<float> p
     lv_obj_invalidate(gauge);
 }
 
+float ui_belt_gap_gauge_get_gap(lv_obj_t* gauge) {
+    const GaugeState* st = gauge ? state_of(gauge) : nullptr;
+    return st ? st->gap_hz : 0.0f;
+}
+
 void register_belt_gap_gauge_widget() {
     lv_xml_register_widget("belt_gap_gauge", gauge_xml_create, lv_xml_obj_apply);
     spdlog::trace("[BeltGapGauge] Widget registered with XML system");

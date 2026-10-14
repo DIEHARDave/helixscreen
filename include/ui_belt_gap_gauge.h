@@ -19,6 +19,9 @@ void register_belt_gap_gauge_widget();
 void ui_belt_gap_gauge_set(lv_obj_t* gauge, float gap_hz, std::optional<float> previous_gap_hz,
                            float tolerance_hz, float range_hz);
 
+/// The gap the gauge was last fed, 0 when it never was.
+float ui_belt_gap_gauge_get_gap(lv_obj_t* gauge);
+
 /// Track x offset (0 .. track_px-1) for a gap; zero is centred, gaps beyond
 /// +/- range_hz clamp to the ends.
 int belt_gap_gauge_x(float gap_hz, float range_hz, int track_px);

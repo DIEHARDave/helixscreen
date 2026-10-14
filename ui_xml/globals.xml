@@ -405,9 +405,9 @@
     <!-- belt_tune_hero_h: the Belt Tension tuning hero (instruction, turn
          stepper, gap, round facts). Fixed, so the chart below keeps its height
          whatever the hero says. Each value is the tallest column's measured
-         height, the stepper column in ADJUST. The hero shows from medium up:
-         480-wide screens use the one-line hero, so _small only completes the
-         required triplet. -->
+         height, the stepper column in ADJUST. Only landscape medium and up show
+         this hero; below medium and in portrait the panel uses its one-line
+         hero, so _small only completes the required triplet. -->
     <px name="belt_tune_hero_h_small" value="94"/>
     <px name="belt_tune_hero_h_medium" value="94"/>
     <px name="belt_tune_hero_h_large" value="101"/>

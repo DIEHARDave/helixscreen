@@ -400,6 +400,10 @@ void BeltTensionPanel::on_activate() {
 void BeltTensionPanel::on_deactivating(DeactivateReason reason) {
     spdlog::debug("[BeltTension] on_deactivating({})", deactivate_reason_name(reason));
 
+    // The menu hangs off the screen, not the panel: left up, a tap on it would
+    // start a sweep with no belt UI on screen.
+    hide_retest_menu();
+
     // An idle screen is not a walk-away. A sweep means nobody is touching the
     // screen, so the screensaver lands mid-measurement; the run has to survive
     // it.
@@ -430,7 +434,7 @@ void BeltTensionPanel::cleanup() {
     spdlog::debug("[BeltTension] Cleaning up");
 
     cancel_run();
-    retest_menu_.hide();
+    hide_retest_menu();
 
     // Expire all outstanding async tokens
     lifetime_.invalidate();
@@ -581,6 +585,11 @@ void BeltTensionPanel::handle_retest_menu_clicked(lv_obj_t* anchor) {
         }
     });
     retest_menu_.show_below_widget(lv_obj_get_screen(anchor), anchor);
+}
+
+void BeltTensionPanel::hide_retest_menu() {
+    retest_menu_.set_action_callback(nullptr);
+    retest_menu_.hide();
 }
 
 bool BeltTensionPanel::gate_allows_sweep(const char* action) {

@@ -1185,25 +1185,26 @@ TEST_CASE("a wrong-way line names the advice the user acted on", "[belt][panel][
 }
 
 // ============================================================================
-// Smallest screens
+// Compact layouts: below medium, or portrait
 // ============================================================================
 
 namespace {
 
-/// Pins ui_breakpoint for one case and puts it back after.
-class ScopedBreakpoint {
+/// Pins one int layout subject (ui_breakpoint, ui_is_portrait) for a case and
+/// puts it back after.
+class ScopedLayoutSubject {
   public:
-    explicit ScopedBreakpoint(int breakpoint)
-        : subject_(lv_xml_get_subject(nullptr, "ui_breakpoint")) {
+    ScopedLayoutSubject(const char* name, int value) : subject_(lv_xml_get_subject(nullptr, name)) {
+        INFO("layout subject not registered: " << name);
         REQUIRE(subject_ != nullptr);
         original_ = lv_subject_get_int(subject_);
-        lv_subject_set_int(subject_, breakpoint);
+        lv_subject_set_int(subject_, value);
     }
-    ~ScopedBreakpoint() {
+    ~ScopedLayoutSubject() {
         lv_subject_set_int(subject_, original_);
     }
-    void set(int breakpoint) {
-        lv_subject_set_int(subject_, breakpoint);
+    void set(int value) {
+        lv_subject_set_int(subject_, value);
     }
 
   private:
@@ -1211,63 +1212,89 @@ class ScopedBreakpoint {
     int original_ = 0;
 };
 
-std::vector<std::string> visible_results_buttons(BeltPanelFixture& fx) {
+constexpr int BP_MICRO = 0;
+constexpr int BP_SMALL = 2;
+constexpr int BP_MEDIUM = 3;
+
+lv_obj_t* named_in(BeltPanelFixture& fx, const char* name) {
+    lv_obj_t* obj = lv_obj_find_by_name(fx.view(), name);
+    INFO("missing: " << name);
+    REQUIRE(obj != nullptr);
+    return obj;
+}
+
+std::vector<std::string> visible_of(BeltPanelFixture& fx,
+                                    std::initializer_list<const char*> names) {
     std::vector<std::string> out;
-    for (const char* name :
-         {"btn_retest_a", "btn_retest_b", "btn_retest_menu", "btn_test_both", "btn_tune"}) {
-        lv_obj_t* btn = lv_obj_find_by_name(fx.view(), name);
-        INFO("missing results button: " << name);
-        REQUIRE(btn != nullptr);
-        if (!lv_hidden(btn)) {
+    for (const char* name : names) {
+        if (!lv_hidden(named_in(fx, name))) {
             out.emplace_back(name);
         }
     }
     return out;
 }
 
-/// Opens the Re-test menu and taps one of its rows.
-void pick_retest(BeltPanelFixture& fx, const char* row) {
-    lv_obj_t* opener = lv_obj_find_by_name(fx.view(), "btn_retest_menu");
-    REQUIRE(opener != nullptr);
-    lv_obj_send_event(opener, LV_EVENT_CLICKED, nullptr);
+std::vector<std::string> visible_results_buttons(BeltPanelFixture& fx) {
+    return visible_of(
+        fx, {"btn_retest_a", "btn_retest_b", "btn_retest_menu", "btn_test_both", "btn_tune"});
+}
+
+const std::vector<std::string> FOLDED{"btn_retest_menu", "btn_test_both", "btn_tune"};
+const std::vector<std::string> UNFOLDED{"btn_retest_a", "btn_retest_b", "btn_test_both",
+                                        "btn_tune"};
+
+/// Opens the Re-test menu, returning the row named `row` inside it.
+lv_obj_t* open_retest_menu(BeltPanelFixture& fx, const char* row) {
+    lv_obj_send_event(named_in(fx, "btn_retest_menu"), LV_EVENT_CLICKED, nullptr);
     fx.pump_ms(100);
     REQUIRE(helix::ui::ContextMenu::active() != nullptr);
     lv_obj_t* item = lv_obj_find_by_name(lv_obj_get_screen(fx.view()), row);
     INFO("menu row: " << row);
     REQUIRE(item != nullptr);
-    lv_obj_send_event(item, LV_EVENT_CLICKED, nullptr);
+    return item;
+}
+
+/// Opens the Re-test menu and taps one of its rows.
+void pick_retest(BeltPanelFixture& fx, const char* row) {
+    lv_obj_send_event(open_retest_menu(fx, row), LV_EVENT_CLICKED, nullptr);
     UpdateQueue::instance().drain();
     CHECK(helix::ui::ContextMenu::active() == nullptr);
 }
 
-} // namespace
-
-TEST_CASE("RESULTS folds Re-test A/B into one menu on the smallest screens",
-          "[belt][panel][micro]") {
-    BeltPanelFixture fx;
+void enter_results_with_menu(BeltPanelFixture& fx) {
     helix::ui::ContextMenu::register_shared_callbacks();
     REQUIRE(fx.register_component("belt_retest_menu"));
-    ScopedBreakpoint bp(0);
     REQUIRE(fx.wait_gate_open());
     fx.panel().handle_start_clicked();
     REQUIRE(fx.pump_until_state(RESULTS));
+}
 
-    CHECK(visible_results_buttons(fx) ==
-          std::vector<std::string>{"btn_retest_menu", "btn_test_both", "btn_tune"});
+} // namespace
 
-    SECTION("every 480-wide screen folds them") {
-        for (int narrow : {1, 2}) {
+TEST_CASE("RESULTS folds Re-test A/B into one menu below medium and in portrait",
+          "[belt][panel][compact]") {
+    BeltPanelFixture fx;
+    ScopedLayoutSubject bp("ui_breakpoint", BP_MICRO);
+    ScopedLayoutSubject portrait("ui_is_portrait", 0);
+    enter_results_with_menu(fx);
+
+    CHECK(visible_results_buttons(fx) == FOLDED);
+
+    SECTION("every breakpoint below medium folds them") {
+        for (int narrow : {1, BP_SMALL}) {
             bp.set(narrow);
             INFO("ui_breakpoint " << narrow);
-            CHECK(visible_results_buttons(fx) ==
-                  std::vector<std::string>{"btn_retest_menu", "btn_test_both", "btn_tune"});
+            CHECK(visible_results_buttons(fx) == FOLDED);
         }
     }
-    SECTION("a medium screen keeps the two Re-test buttons") {
-        bp.set(3);
-        CHECK(visible_results_buttons(fx) == std::vector<std::string>{"btn_retest_a",
-                                                                      "btn_retest_b",
-                                                                      "btn_test_both", "btn_tune"});
+    SECTION("landscape medium keeps the two Re-test buttons") {
+        bp.set(BP_MEDIUM);
+        CHECK(visible_results_buttons(fx) == UNFOLDED);
+    }
+    SECTION("portrait medium folds them") {
+        bp.set(BP_MEDIUM);
+        portrait.set(1);
+        CHECK(visible_results_buttons(fx) == FOLDED);
     }
     SECTION("Re-test A from the menu re-measures A") {
         pick_retest(fx, "btn_retest_path_a");
@@ -1283,20 +1310,40 @@ TEST_CASE("RESULTS folds Re-test A/B into one menu on the smallest screens",
     }
 }
 
-TEST_CASE("TUNING on a 480-wide screen is one tappable line over the chart",
-          "[belt][panel][micro][tune]") {
+TEST_CASE("leaving the panel closes the Re-test menu so it cannot start a sweep",
+          "[belt][panel][compact]") {
+    BeltPanelFixture fx;
+    ScopedLayoutSubject bp("ui_breakpoint", BP_MICRO);
+    enter_results_with_menu(fx);
+
+    lv_obj_t* row = open_retest_menu(fx, "btn_retest_path_a");
+    fx.panel().on_deactivate(DeactivateReason::NavigateAway);
+    UpdateQueue::instance().drain();
+    fx.pump_ms(100);
+    CHECK(helix::ui::ContextMenu::active() == nullptr);
+    CHECK(lv_obj_find_by_name(lv_obj_get_screen(fx.view()), "btn_retest_path_a") == nullptr);
+
+    // A tap that was already in flight on the row: nothing may start.
+    fx.mock().clear_gcode_script_history();
+    if (lv_obj_is_valid(row)) {
+        lv_obj_send_event(row, LV_EVENT_CLICKED, nullptr);
+    }
+    fx.pump_ms(2000);
+    CHECK(resonance_lines(fx).empty());
+    CHECK(fx.state_int("belt_tension_state") !=
+          static_cast<int>(BeltTensionPanel::ViewState::RUNNING));
+}
+
+TEST_CASE("TUNING below medium is one tappable line over the chart",
+          "[belt][panel][compact][tune]") {
     BeltPanelFixture fx;
     get_printer_state().set_printer_type_sync("Voron 2.4");
-    ScopedBreakpoint bp(0);
+    ScopedLayoutSubject bp("ui_breakpoint", BP_MICRO);
+    ScopedLayoutSubject portrait("ui_is_portrait", 0);
     enter_tuning(fx);
     REQUIRE(fx.state_int("bt_tune_kind") == 1);
 
-    auto named = [&](const char* name) {
-        lv_obj_t* obj = lv_obj_find_by_name(fx.view(), name);
-        INFO("missing: " << name);
-        REQUIRE(obj != nullptr);
-        return obj;
-    };
+    auto named = [&](const char* name) { return named_in(fx, name); };
     CHECK(lv_hidden(named("bt_tune_hero")));
     CHECK_FALSE(lv_hidden(named("bt_tune_line")));
     // The stepper and the short Re-measure share the button row; the swap
@@ -1317,11 +1364,72 @@ TEST_CASE("TUNING on a 480-wide screen is one tappable line over the chart",
     CHECK(fx.state_int("bt_tune_path") == 0);
     CHECK(fx.text("bt_tune_swap_label") == "Adjust B instead");
 
-    SECTION("a medium screen keeps the full hero") {
-        bp.set(3);
+    SECTION("landscape medium keeps the full hero") {
+        bp.set(BP_MEDIUM);
         CHECK_FALSE(lv_hidden(named("bt_tune_hero")));
         CHECK(lv_hidden(named("bt_tune_line")));
         CHECK(lv_hidden(named("bt_tune_row_stepper")));
         CHECK_FALSE(lv_hidden(named("btn_tune_swap")));
+    }
+    SECTION("portrait medium uses the one-line hero") {
+        bp.set(BP_MEDIUM);
+        portrait.set(1);
+        CHECK(lv_hidden(named("bt_tune_hero")));
+        CHECK_FALSE(lv_hidden(named("bt_tune_line")));
+        CHECK_FALSE(lv_hidden(named("bt_tune_row_stepper")));
+        CHECK(lv_hidden(named("btn_tune_swap")));
+    }
+}
+
+TEST_CASE("the one-line hero's gauge shows the round's gap", "[belt][panel][compact][tune]") {
+    BeltPanelFixture fx;
+    ScopedLayoutSubject bp("ui_breakpoint", BP_MICRO);
+    enter_tuning(fx);
+    tune_round(fx);
+    REQUIRE(fx.state_int("bt_tune_phase") == PHASE_ADJUST);
+
+    lv_obj_t* line_gauge = named_in(fx, "bt_tune_line_gauge");
+    CHECK_FALSE(lv_hidden(line_gauge));
+    const float hero_gap = helix::ui::ui_belt_gap_gauge_get_gap(named_in(fx, "bt_tune_gauge"));
+    INFO("hero gauge gap " << hero_gap);
+    REQUIRE(std::abs(hero_gap) > 1.0f);
+    CHECK(helix::ui::ui_belt_gap_gauge_get_gap(line_gauge) == Catch::Approx(hero_gap));
+}
+
+TEST_CASE("Confirm drops its duration on compact layouts and beside Next zone",
+          "[belt][panel][compact][tune]") {
+    BeltPanelFixture fx;
+    fx.mock().set_belt_tune_script('B', {102.1f, 107.6f, 109.8f});
+    ScopedLayoutSubject bp("ui_breakpoint", BP_MEDIUM);
+    ScopedLayoutSubject portrait("ui_is_portrait", 0);
+    enter_tuning(fx);
+    for (int i = 0; i < 3 && fx.state_int("bt_tune_phase") != PHASE_MATCHED; ++i) {
+        tune_round(fx);
+    }
+    REQUIRE(fx.state_int("bt_tune_phase") == PHASE_MATCHED);
+    lv_subject_t* next_zone = lv_xml_get_subject(nullptr, "bt_tune_has_next_zone");
+    REQUIRE(next_zone != nullptr);
+    const auto confirms = [&] {
+        return visible_of(fx, {"btn_tune_confirm", "btn_tune_confirm_short"});
+    };
+    const std::vector<std::string> full{"btn_tune_confirm"};
+    const std::vector<std::string> shortened{"btn_tune_confirm_short"};
+
+    lv_subject_set_int(next_zone, 0);
+    CHECK(confirms() == full);
+    CHECK(lv_hidden(named_in(fx, "btn_tune_next_zone")));
+
+    SECTION("Next zone beside it at medium") {
+        lv_subject_set_int(next_zone, 1);
+        CHECK_FALSE(lv_hidden(named_in(fx, "btn_tune_next_zone")));
+        CHECK(confirms() == shortened);
+    }
+    SECTION("micro, no Next zone") {
+        bp.set(BP_MICRO);
+        CHECK(confirms() == shortened);
+    }
+    SECTION("portrait medium, no Next zone") {
+        portrait.set(1);
+        CHECK(confirms() == shortened);
     }
 }
