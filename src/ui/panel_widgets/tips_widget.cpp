@@ -213,8 +213,9 @@ void TipsWidget::on_size_changed(int /*colspan*/, int /*rowspan*/, int width_px,
         return;
 
     // The tip text label (named). Its height is capped at what the tile leaves
-    // inside the container's padding, so a long title ends in its ellipsis
-    // instead of growing the container past the tile.
+    // inside the container's padding: the XML max height resolves against a
+    // content-height row, so without the cap a long title stops at one line
+    // instead of wrapping into a tall tile and ending in its ellipsis there.
     if (tip_label_) {
         lv_obj_set_style_text_font(tip_label_, text_font, 0);
         const int32_t pad_v = lv_obj_get_style_pad_top(tip_container, LV_PART_MAIN) +
