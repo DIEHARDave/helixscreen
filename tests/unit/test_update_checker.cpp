@@ -320,6 +320,30 @@ TEST_CASE("A release with no asset for this board is refused, never given anothe
                      "here. Pick a channel with a newer release.");
     }
 
+    SECTION("a check refuses a newer or older release with no asset, never a same one") {
+        const std::string board = "FlashForge Creator 5";
+        const std::string want = "v1.0.5 has no build for the FlashForge Creator 5, so it can't "
+                                 "be installed here. Pick a channel with a newer release.";
+        auto newer = helix::decide_check_outcome("1.0.4", from_manifest, board);
+        CHECK(newer.status == UpdateChecker::Status::Error);
+        CHECK(newer.error == want);
+        auto older = helix::decide_check_outcome("1.1.0", from_github, board);
+        CHECK(older.status == UpdateChecker::Status::Error);
+        CHECK(older.error == want);
+        CHECK(helix::decide_check_outcome("1.0.5", from_manifest, board).status ==
+              UpdateChecker::Status::UpToDate);
+
+        UpdateChecker::ReleaseInfo with_asset = from_manifest;
+        with_asset.download_url = "https://r/mips.zip";
+        auto up = helix::decide_check_outcome("1.0.4", with_asset, board);
+        CHECK(up.status == UpdateChecker::Status::UpdateAvailable);
+        CHECK_FALSE(up.is_downgrade);
+        CHECK(up.error.empty());
+        auto down = helix::decide_check_outcome("1.1.0", with_asset, board);
+        CHECK(down.status == UpdateChecker::Status::UpdateAvailable);
+        CHECK(down.is_downgrade);
+    }
+
     SECTION("a release that has an asset is not refused") {
         UpdateChecker::ReleaseInfo ok;
         ok.version = "1.1.0";

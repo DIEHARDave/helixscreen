@@ -708,6 +708,33 @@ std::string release_unavailable_message(const UpdateChecker::ReleaseInfo& info,
     return buf;
 }
 
+CheckOutcome decide_check_outcome(const std::string& installed,
+                                  const UpdateChecker::ReleaseInfo& info,
+                                  const std::string& board_name) {
+    CheckOutcome out;
+    switch (compare_channel_version(installed, info.version)) {
+    case ChannelVersionRelation::Older:
+        out.is_downgrade = true;
+        [[fallthrough]];
+    case ChannelVersionRelation::Newer:
+        // A release offered with nothing this board can install is refused up
+        // front, rather than as a dead Install button.
+        out.error = release_unavailable_message(info, board_name);
+        out.status = out.error.empty() ? UpdateChecker::Status::UpdateAvailable
+                                       : UpdateChecker::Status::Error;
+        if (out.status == UpdateChecker::Status::Error) {
+            out.is_downgrade = false;
+        }
+        break;
+    case ChannelVersionRelation::Same:
+    case ChannelVersionRelation::Unknown:
+    default:
+        out.status = UpdateChecker::Status::UpToDate;
+        break;
+    }
+    return out;
+}
+
 bool parse_release_manifest(const std::string& json_str, UpdateChecker::ReleaseInfo& info,
                             std::string& error, const std::vector<std::string>& asset_keys) {
     try {
@@ -2923,48 +2950,21 @@ void UpdateChecker::do_check() {
         std::string current_version = HELIX_VERSION;
         spdlog::debug("[UpdateChecker] Current: {}, Latest: {}", current_version, info.version);
 
-        // A release offered with nothing this board can install is refused up front,
-        // rather than as a dead Install button.
-        auto refuse_without_asset = [&]() {
-            std::string refusal =
-                helix::release_unavailable_message(info, this_board_display_name());
-            if (refusal.empty()) {
-                return false;
-            }
-            spdlog::warn("[UpdateChecker] {}", refusal);
-            report_result(Status::Error, std::nullopt, refusal);
-            return true;
-        };
-
-        switch (compare_channel_version(current_version, info.version)) {
-        case ChannelVersionRelation::Newer:
-            if (refuse_without_asset()) {
-                break;
-            }
-            info.is_downgrade = false;
-            spdlog::info("[UpdateChecker] Update available: {} -> {}", current_version,
-                         info.version);
-            report_result(Status::UpdateAvailable, info, "");
-            break;
-
-        case ChannelVersionRelation::Older:
-            // The selected channel is behind this install — almost always
-            // because the user just moved from a faster channel back to a
-            // slower one. Offer it, or they are stranded on the old channel's
-            // build with the check reporting "up to date" forever. Flagged so
-            // the auto-check never raises this unprompted and the install path
-            // asks first.
-            if (refuse_without_asset()) {
-                break;
-            }
-            info.is_downgrade = true;
-            spdlog::info("[UpdateChecker] Channel is behind: {} -> {} (downgrade offered)",
+        const auto outcome =
+            helix::decide_check_outcome(current_version, info, this_board_display_name());
+        info.is_downgrade = outcome.is_downgrade;
+        switch (outcome.status) {
+        case Status::UpdateAvailable:
+            spdlog::info("[UpdateChecker] {}: {} -> {}",
+                         info.is_downgrade ? "Channel is behind (downgrade offered)"
+                                           : "Update available",
                          current_version, info.version);
             report_result(Status::UpdateAvailable, info, "");
             break;
-
-        case ChannelVersionRelation::Same:
-        case ChannelVersionRelation::Unknown:
+        case Status::Error:
+            spdlog::warn("[UpdateChecker] {}", outcome.error);
+            report_result(Status::Error, std::nullopt, outcome.error);
+            break;
         default:
             spdlog::info("[UpdateChecker] Already up to date ({})", current_version);
             // Pass info even for UpToDate so callbacks (e.g., --release-notes) can access it

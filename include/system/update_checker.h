@@ -876,6 +876,19 @@ bool parse_release_manifest(const std::string& json_str, UpdateChecker::ReleaseI
 std::string release_unavailable_message(const UpdateChecker::ReleaseInfo& info,
                                         const std::string& board_name);
 
+/// What a check that fetched @p info concludes on a build at @p installed running
+/// on @p board_name. A newer or older release with no download for this board is
+/// an Error carrying release_unavailable_message(); the same version is UpToDate
+/// whether or not it has one.
+struct CheckOutcome {
+    UpdateChecker::Status status = UpdateChecker::Status::UpToDate;
+    bool is_downgrade = false; ///< UpdateAvailable only: the channel is behind the install
+    std::string error;         ///< Error only: the user-visible refusal
+};
+CheckOutcome decide_check_outcome(const std::string& installed,
+                                  const UpdateChecker::ReleaseInfo& info,
+                                  const std::string& board_name);
+
 /**
  * @brief Strip a leading 'v' or 'V' from a GitHub release tag
  *
