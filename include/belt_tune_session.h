@@ -31,7 +31,9 @@ inline constexpr float TURN_STEP = 0.125f;
 inline constexpr float TURN_MAX = 1.0f;
 inline constexpr int STALL_ROUNDS = 8;        ///< unmatched rounds before the mechanical hint
 inline constexpr int SPRING_STALL_ROUNDS = 2; ///< the same, for spring tensioners
-inline constexpr float GAUGE_WARN_HZ = 3.0f;  ///< gap gauge: warning colour up to here
+/// A window's maximum must reach this multiple of its minimum to hold a peak.
+inline constexpr float PEAK_MIN_PROMINENCE = 1.5f;
+inline constexpr float GAUGE_WARN_HZ = 3.0f; ///< gap gauge: warning colour up to here
 } // namespace belt_tune
 
 enum class BeltZoneSource {
@@ -79,8 +81,9 @@ enum class BeltTuneOutcome {
     WRONG_WAY,     ///< the adjusted peak moved against the advice by MIN_MOVE_HZ or more
     NO_MOVEMENT,   ///< the adjusted peak moved less than MIN_MOVE_HZ
     MATCHED,       ///< |gap| within the matched tolerance
-    NO_PEAK,       ///< a path's window holds no peak; nothing measured
+    NO_PEAK,       ///< a path's window holds no clear peak; nothing measured
     OUT_OF_WINDOW, ///< the adjusted peak sits on the window edge; the window moved
+                   ///< (once: a second in a row is NO_PEAK and the window stays)
 };
 
 enum class BeltTurnDirection { TIGHTEN, LOOSEN };

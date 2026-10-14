@@ -491,6 +491,35 @@ TEST_CASE("tune round outcomes", "[belt][tune]") {
         CHECK(*s.previous_gap_hz() == Catch::Approx(-12.0f).margin(0.1f));
     }
 
+    SECTION("a gentle slope to the edge is NO_PEAK, a steep one OUT_OF_WINDOW") {
+        const auto w = s.zone()->window;
+        const auto ramp = [&](float top) {
+            BeltCurve c;
+            for (float f = w.freq_start_hz; f <= w.freq_end_hz; f += 0.78125f) {
+                const float t = (f - w.freq_start_hz) / (w.freq_end_hz - w.freq_start_hz);
+                c.emplace_back(f, 10.0f + (top - 10.0f) * t);
+            }
+            return c;
+        };
+        const auto ref = one_peak(112.0f, w.freq_start_hz, w.freq_end_hz + 0.5f);
+        // Rises to 1.4x its minimum at the edge: under PEAK_MIN_PROMINENCE.
+        CHECK(s.add_round(ref, ramp(14.0f)).outcome == BeltTuneOutcome::NO_PEAK);
+        CHECK(s.zone()->window.freq_start_hz == Catch::Approx(w.freq_start_hz));
+        CHECK(s.zone()->window.freq_end_hz == Catch::Approx(w.freq_end_hz));
+        CHECK(s.add_round(ref, ramp(20.0f)).outcome == BeltTuneOutcome::OUT_OF_WINDOW);
+    }
+
+    SECTION("a second OUT_OF_WINDOW in a row is NO_PEAK and the window stays") {
+        // B at 125 is past both the first window and the widened one.
+        CHECK(sweep(s, 112.0f, 125.0f).outcome == BeltTuneOutcome::OUT_OF_WINDOW);
+        const auto w = s.zone()->window;
+        REQUIRE(w.freq_end_hz < 125.0f);
+        CHECK(sweep(s, 112.0f, 125.0f).outcome == BeltTuneOutcome::NO_PEAK);
+        CHECK(s.zone()->window.freq_start_hz == Catch::Approx(w.freq_start_hz));
+        CHECK(s.zone()->window.freq_end_hz == Catch::Approx(w.freq_end_hz));
+        CHECK(s.gap_hz() == Catch::Approx(-12.0f).margin(0.1f));
+    }
+
     SECTION("OUT_OF_WINDOW stays inside the band") {
         auto edge = session_for(130.0f, 118.0f, BeltTensionerKind::UNKNOWN);
         REQUIRE(edge.zone().has_value());

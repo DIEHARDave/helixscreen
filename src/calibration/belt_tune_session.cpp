@@ -136,6 +136,22 @@ std::optional<float> edge_maximum(const BeltCurve& curve, BeltSweepWindow window
     return std::nullopt;
 }
 
+/// Whether the in-window maximum stands PEAK_MIN_PROMINENCE above the
+/// in-window minimum. A flat or gently sloped window holds no clear peak.
+bool prominent(const BeltCurve& curve, BeltSweepWindow window) {
+    const auto [first, last] = window_bins(curve, window);
+    if (curve.empty() || first > last || last >= curve.size()) {
+        return false;
+    }
+    float lo = curve[first].second;
+    float hi = curve[first].second;
+    for (size_t i = first + 1; i <= last; ++i) {
+        lo = std::min(lo, curve[i].second);
+        hi = std::max(hi, curve[i].second);
+    }
+    return hi > 0.0f && hi >= PEAK_MIN_PROMINENCE * lo;
+}
+
 float round_to_turn_step(float turns) {
     return std::clamp(std::round(turns / TURN_STEP) * TURN_STEP, TURN_STEP, TURN_MAX);
 }
@@ -385,11 +401,18 @@ const BeltTuneRound& BeltTuneSession::add_round(const BeltCurve& a_window,
     const BeltSweepWindow window = zone_->window;
     const BeltCurve& ref_curve = adjusted_ == BeltPath::PATH_A ? b_window : a_window;
     const BeltCurve& adj_curve = adjusted_ == BeltPath::PATH_A ? a_window : b_window;
+    if (!prominent(ref_curve, window) || !prominent(adj_curve, window)) {
+        return finish(BeltTuneOutcome::NO_PEAK);
+    }
     const auto ref = refine_peak_in_window(ref_curve, window, ref_hz_);
     const auto adj = refine_peak_in_window(adj_curve, window, adj_hz_);
 
     if (!adj) {
         if (const auto edge = edge_maximum(adj_curve, window)) {
+            // A peak still past the edge after one move is not chased further.
+            if (!rounds_.empty() && rounds_.back().outcome == BeltTuneOutcome::OUT_OF_WINDOW) {
+                return finish(BeltTuneOutcome::NO_PEAK);
+            }
             // Re-centre on the reference, reaching past the edge the adjusted
             // peak ran into, so the next sweep covers it. No gap from an edge bin.
             const float centre = ref.value_or(ref_hz_);
