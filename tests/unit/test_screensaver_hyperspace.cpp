@@ -12,6 +12,7 @@
 #include "screensaver_registry.h"
 
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cmath>
 #include <cstring>
@@ -131,31 +132,47 @@ double uniform_block_share(const SimFrame& frame, int32_t block) {
     return static_cast<double>(uniform) / static_cast<double>(blocks);
 }
 
-/// Hue, in degrees, of the average colour of the pixels at least `threshold` bright.
-double mean_hue_degrees(const SimFrame& frame, int threshold) {
+constexpr int HUE_BINS = 12;
+
+/// How many of the pixels at least `threshold` bright fall in each 30-degree slice of the wheel,
+/// red first and turning through yellow toward green.
+std::array<double, HUE_BINS> hue_histogram(const SimFrame& frame, int threshold) {
     const PixelWriter writer(frame.target);
-    double r = 0;
-    double g = 0;
-    double b = 0;
+    std::array<double, HUE_BINS> bins{};
     for (int32_t y = 0; y < static_cast<int32_t>(frame.target.h); y++) {
         for (int32_t x = 0; x < static_cast<int32_t>(frame.target.w); x++) {
             const Rgb c = writer.get(x, y);
-            if (max_channel(c) >= threshold) {
-                r += c.r;
-                g += c.g;
-                b += c.b;
+            if (max_channel(c) < threshold) {
+                continue;
             }
+            // The angle of the colour in the chroma plane.
+            const double alpha = c.r - 0.5 * (c.g + c.b);
+            const double beta = std::sqrt(3.0) / 2.0 * (c.g - c.b);
+            double degrees = std::atan2(beta, alpha) * 180.0 / M_PI;
+            degrees = degrees < 0 ? degrees + 360.0 : degrees;
+            bins[static_cast<size_t>(degrees / (360.0 / HUE_BINS)) % HUE_BINS] += 1.0;
         }
     }
-    // The angle of the colour in the chroma plane.
-    const double alpha = r - 0.5 * (g + b);
-    const double beta = std::sqrt(3.0) / 2.0 * (g - b);
-    return std::atan2(beta, alpha) * 180.0 / M_PI;
+    return bins;
 }
 
-double hue_distance(double a, double b) {
-    const double d = std::fmod(std::fabs(a - b), 360.0);
-    return std::min(d, 360.0 - d);
+/// Slices round the wheel that `before` must turn to best match `after`.
+int best_hue_turn(const std::array<double, HUE_BINS>& before,
+                  const std::array<double, HUE_BINS>& after) {
+    int best = 0;
+    double best_score = -1.0;
+    for (int turn = 0; turn < HUE_BINS; turn++) {
+        double score = 0.0;
+        for (int i = 0; i < HUE_BINS; i++) {
+            score +=
+                before[static_cast<size_t>(i)] * after[static_cast<size_t>((i + turn) % HUE_BINS)];
+        }
+        if (score > best_score) {
+            best_score = score;
+            best = turn;
+        }
+    }
+    return best;
 }
 
 void fire(lv_timer_t* timer) {
@@ -301,12 +318,15 @@ TEST_CASE("the hyperspace colours cycle around the wheel over a few seconds",
     Flight flight(29, 0);
     REQUIRE(flight.run_to_tunnel());
     const uint8_t hue_then = flight.sim.hue();
-    const double seen_then = mean_hue_degrees(flight.frame, 64);
+    const auto seen_then = hue_histogram(flight.frame, 64);
     flight.run_until([] { return false; }, 6000);
     REQUIRE(flight.sim.tunnel_amount() == 255);
-    const double seen_now = mean_hue_degrees(flight.frame, 64);
-    CAPTURE(seen_then, seen_now, static_cast<int>(hue_then), static_cast<int>(flight.sim.hue()));
-    CHECK(hue_distance(seen_then, seen_now) > 30.0);
+    const auto seen_now = hue_histogram(flight.frame, 64);
+    const int turn = best_hue_turn(seen_then, seen_now);
+    CAPTURE(turn, static_cast<int>(hue_then), static_cast<int>(flight.sim.hue()));
+    // Six seconds turn the colours a quarter of the way round, give or take a slice.
+    CHECK(turn >= 2);
+    CHECK(turn <= 4);
     CHECK(flight.sim.hue() != hue_then);
 }
 

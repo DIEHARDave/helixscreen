@@ -28,7 +28,7 @@ constexpr float Z_FAR = 6.0f;
 constexpr float SPREAD = 1.6f;     // stars sit within this of the path on either axis
 constexpr float CLEARANCE = 0.12f; // ...and no nearer than this, so none flies into the lens
 constexpr float STAR_SIZE = 0.02f; // sprite radius at z = 1, as a share of the frame height
-constexpr float FLARE_SIZE = 0.03f;
+constexpr float FLARE_SIZE = 0.05f;
 constexpr float MAX_SPRITE_PX = 28.0f;
 
 constexpr float BASE_SPEED = 1.6f;  // depth units per second
@@ -171,7 +171,9 @@ void HyperspaceSim::init(const FrameTarget& frame, std::minstd_rand& rng, size_t
             std::clamp(fog * (SHADE_LEVELS - 1) + 0.5f, 0.0f, SHADE_LEVELS - 1.0f));
     }
 
-    // Ribbons of light that wind along the tunnel, brightening in rings.
+    // Ribbons of light that wind along the tunnel, brightening in rings. A texel's high nibble is
+    // its brightness and its low nibble how far round the wheel its colour sits, in bands that
+    // flow along the tunnel and bend with the ribbons.
     texture_.resize(256 * 256);
     for (int v = 0; v < 256; v++) {
         for (int u = 0; u < 256; u++) {
@@ -180,9 +182,13 @@ void HyperspaceSim::init(const FrameTarget& frame, std::minstd_rand& rng, size_t
             const float wind = 1.6f * std::sin(2.0f * PI * (4.0f * fv + fu));
             const float ribbon = 0.5f + 0.5f * std::sin(2.0f * PI * 3.0f * fu + wind);
             const float rings = 0.7f + 0.3f * std::sin(2.0f * PI * 8.0f * fv);
-            const float glow = 0.4f + 0.6f * ribbon * ribbon;
+            const float glow = std::clamp((0.3f + 0.7f * ribbon * ribbon) * rings, 0.0f, 1.0f);
+            const float band = 2.0f * fv + 0.15f * wind;
+            const float tri = 1.0f - std::fabs(2.0f * (band - std::floor(band)) - 1.0f);
+            const auto bright = static_cast<uint32_t>(glow * 15.0f + 0.5f);
+            const auto shift = static_cast<uint32_t>(tri * 15.0f + 0.5f);
             texture_[static_cast<size_t>(v) * 256 + static_cast<size_t>(u)] =
-                static_cast<uint8_t>(std::clamp(glow * rings * 255.0f, 0.0f, 255.0f));
+                static_cast<uint8_t>(bright << 4 | shift);
         }
     }
 
@@ -278,7 +284,7 @@ void HyperspaceSim::place_star(Star& star, std::minstd_rand& rng, bool anywhere)
     } while (star.x * star.x + star.y * star.y < CLEARANCE * CLEARANCE);
     star.z =
         anywhere ? Z_NEAR + unit_random(rng) * (Z_FAR - Z_NEAR) : Z_FAR - unit_random(rng) * 0.4f;
-    star.hue_offset = static_cast<uint8_t>(random_below(rng, 72) - 36);
+    star.hue_offset = static_cast<uint8_t>(random_below(rng, 112) - 56);
 }
 
 void HyperspaceSim::throw_starburst(std::minstd_rand& rng) {
@@ -435,16 +441,18 @@ void HyperspaceSim::build_tables() {
 void HyperspaceSim::build_palettes() {
     const uint32_t hue = this->hue();
     const uint32_t fade = tunnel_amount_;
-    // Brighter texels run further round the wheel, and the brightest burn toward white.
+    // Each texel's colour band sits up to 3/4 of the way round the wheel, and the brightest
+    // texels burn toward white.
     for (uint32_t texel = 0; texel < 256; texel++) {
-        const Rgb base = hue_color(hue + texel * 160 / 256);
-        const uint32_t white = texel * texel / 255 * texel / 255 / 3;
+        const uint32_t bright = (texel >> 4) * 255 / 15;
+        const Rgb base = hue_color(hue + (texel & 15) * 12);
+        const uint32_t white = bright * bright / 255 * bright / 255 / 3;
         const Rgb lit = {static_cast<uint8_t>(std::min<uint32_t>(255, base.r + white)),
                          static_cast<uint8_t>(std::min<uint32_t>(255, base.g + white)),
                          static_cast<uint8_t>(std::min<uint32_t>(255, base.b + white))};
         for (uint32_t shade = 0; shade < SHADE_LEVELS; shade++) {
             const uint32_t amount =
-                texel * shade / (SHADE_LEVELS - 1) * fade / 255 * TUNNEL_MAX / 255;
+                bright * shade / (SHADE_LEVELS - 1) * fade / 255 * TUNNEL_MAX / 255;
             tunnel_palette_[shade << 8 | texel] = pack(
                 {scale8(lit.r, amount), scale8(lit.g, amount), scale8(lit.b, amount)}, format_);
         }
