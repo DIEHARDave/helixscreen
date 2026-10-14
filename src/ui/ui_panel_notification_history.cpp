@@ -293,8 +293,10 @@ void NotificationHistoryPanel::dispatch_action(const char* action) {
 
 namespace {
 
-std::map<std::string, std::function<void()>>& notification_action_handlers() {
-    static std::map<std::string, std::function<void()>> handlers;
+using ActionHandler = std::function<void(const std::string&)>;
+
+std::map<std::string, ActionHandler>& notification_action_handlers() {
+    static std::map<std::string, ActionHandler> handlers;
     return handlers;
 }
 
@@ -302,7 +304,7 @@ std::map<std::string, std::function<void()>>& notification_action_handlers() {
 
 namespace helix::ui {
 
-void set_notification_action_handler(const std::string& id, std::function<void()> handler) {
+void set_notification_action_handler(const std::string& id, ActionHandler handler) {
     if (handler) {
         notification_action_handlers()[id] = std::move(handler);
     } else {
@@ -310,10 +312,16 @@ void set_notification_action_handler(const std::string& id, std::function<void()
     }
 }
 
-std::function<void()> notification_action_handler(const std::string& id) {
+std::function<void()> notification_action_handler(const std::string& action) {
+    const auto colon = action.find(':');
+    const std::string id = action.substr(0, colon);
+    const std::string arg = colon == std::string::npos ? std::string{} : action.substr(colon + 1);
     auto& handlers = notification_action_handlers();
     auto it = handlers.find(id);
-    return it == handlers.end() ? std::function<void()>{} : it->second;
+    if (it == handlers.end()) {
+        return {};
+    }
+    return [handler = it->second, arg] { handler(arg); };
 }
 
 } // namespace helix::ui

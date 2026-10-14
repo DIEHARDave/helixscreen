@@ -6,6 +6,7 @@
 #include "lvgl/lvgl.h"
 #include "wizard_step.h" // helix::wizard::StepId
 
+#include <cstdint>
 #include <functional>
 #include <optional>
 #include <string>
@@ -101,11 +102,12 @@ class HardwareSetupPrompter {
     /// internally; safe to call from a main-thread on_complete.
     void reapply_hardware_roles();
 
-    /// Open the Choose Model / Keep current review for the mismatch warned about this
-    /// session. Reached from the warning toast's button and from its notification-history
-    /// entry. Shows nothing, and says so at info, when no warning is pending or the saved
-    /// type has since changed or been settled.
-    void show_type_mismatch_review();
+    /// Open the Choose Model / Keep current review for the mismatch warning numbered
+    /// @p generation. Reached from that warning's toast button and history entry. Shows
+    /// nothing, and says so at info, when that warning is no longer the pending one (a
+    /// printer switch or a newer warning replaced it), or the saved type has since
+    /// changed or been settled.
+    void show_type_mismatch_review(uint32_t generation);
 
   private:
     friend class HardwareSetupPrompterTestAccess;
@@ -126,6 +128,10 @@ class HardwareSetupPrompter {
     void warn_type_mismatch(TypeMismatchReview review);
     void launch_type_reidentify_wizard();
     void settle_type_mismatch_warning();
+    /// Run @p launch once the confirming modal's exit animation is over. One launch is
+    /// pending at a time; the destructor cancels it.
+    void launch_after_modal_exit(void (HardwareSetupPrompter::*launch)());
+    void cancel_launch_timer();
 
     AsyncLifetimeGuard& lifetime_;
     std::function<lv_obj_t*()> screen_;
@@ -135,8 +141,16 @@ class HardwareSetupPrompter {
     std::vector<wizard::StepId> pending_steps_;
 
     std::optional<TypeMismatchReview> pending_review_;
+    /// Numbers each warning; bumped by every warning and by a printer switch, so a
+    /// toast or history entry left from an earlier one cannot open a later review.
+    uint32_t review_generation_ = 0;
     bool review_handler_registered_ = false;
-    lv_obj_t* review_dialog_ = nullptr; ///< compared against ModalStack only, never dereferenced
+    /// The review modal is up: set when it opens, cleared by either button and by any
+    /// other dismissal.
+    bool review_open_ = false;
+
+    lv_timer_t* launch_timer_ = nullptr;
+    void (HardwareSetupPrompter::*pending_launch_)() = nullptr;
 };
 
 } // namespace helix

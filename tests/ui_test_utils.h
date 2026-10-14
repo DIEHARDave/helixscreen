@@ -193,6 +193,14 @@ void set_test_toast_hook(std::function<void(ToastSeverity, const std::string&, u
  */
 bool fire_last_toast_action();
 
+/**
+ * @brief True when the most recent action toast was dismissed through
+ *        ToastManager::hide(action_callback, user_data) with its own pair.
+ *
+ * Cleared, like the last action, by set_test_toast_hook().
+ */
+bool last_action_toast_dismissed();
+
 } // namespace ui
 } // namespace helix
 

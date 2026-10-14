@@ -205,7 +205,7 @@ class TypeMismatchFixture : public LVGLUITestFixture {
             Modal::hide(top);
             drain();
         }
-        delete_prompter();
+        prompter_.reset();
         helix::ui::set_test_toast_hook(nullptr);
         helix::ui::set_test_notification_action_hook(nullptr);
         helix::ConfigTestAccess::data(*cfg_) = saved_data_;
@@ -239,21 +239,15 @@ class TypeMismatchFixture : public LVGLUITestFixture {
         drain();
     }
 
-    /// Destroys the prompter and the one-shot wizard launch Choose Model leaves
-    /// behind, which holds it raw.
-    void delete_prompter() {
-        if (!prompter_) {
-            return;
-        }
-        lv_timer_t* t = lv_timer_get_next(nullptr);
-        while (t) {
-            lv_timer_t* next = lv_timer_get_next(t);
-            if (lv_timer_get_user_data(t) == prompter_.get()) {
-                lv_timer_delete(t);
+    /// Timers holding @p owner that can still fire.
+    static int armed_timers_for(const void* owner) {
+        int armed = 0;
+        for (lv_timer_t* t = lv_timer_get_next(nullptr); t; t = lv_timer_get_next(t)) {
+            if (t->user_data == owner && t->timer_cb && t->repeat_count != 0) {
+                ++armed;
             }
-            t = next;
         }
-        prompter_.reset();
+        return armed;
     }
 
     static void drain() {
@@ -289,7 +283,7 @@ TEST_CASE_METHOD(TypeMismatchFixture,
 
     REQUIRE(history_.has_value());
     CHECK(history_->severity == ToastSeverity::WARNING);
-    CHECK(history_->action == REVIEW_PRINTER_TYPE_ACTION);
+    CHECK(history_->action.rfind(std::string(REVIEW_PRINTER_TYPE_ACTION) + ":", 0) == 0);
     CHECK(history_->message == toast_->message);
 
     // Warning is not answering: nothing is settled yet.
@@ -307,11 +301,15 @@ TEST_CASE_METHOD(TypeMismatchFixture,
     REQUIRE(dialog != nullptr);
     CHECK(dismissed_for().empty());
 
+    CHECK_FALSE(helix::ui::last_action_toast_dismissed());
+
     click(dialog, "btn_secondary");
 
     CHECK(Modal::get_top() == nullptr);
     CHECK(dismissed_for() == SAVED);
     CHECK(writes_.writes() > 0);
+    // Answered, so the sticky toast goes too.
+    CHECK(helix::ui::last_action_toast_dismissed());
 }
 
 TEST_CASE_METHOD(TypeMismatchFixture,
@@ -327,6 +325,7 @@ TEST_CASE_METHOD(TypeMismatchFixture,
     click(dialog, "btn_primary");
 
     CHECK(dismissed_for() == SAVED);
+    CHECK(helix::ui::last_action_toast_dismissed());
 }
 
 TEST_CASE_METHOD(TypeMismatchFixture,
@@ -342,9 +341,16 @@ TEST_CASE_METHOD(TypeMismatchFixture,
 
     REQUIRE(Modal::get_top() == nullptr);
     CHECK(dismissed_for().empty());
+    CHECK_FALSE(helix::ui::last_action_toast_dismissed());
 
-    // Still reachable: the next tap asks again.
-    tap_history_entry();
+    // Still reachable from either entry point: the next tap asks again.
+    const bool from_toast = GENERATE(false, true);
+    if (from_toast) {
+        REQUIRE(helix::ui::fire_last_toast_action());
+        drain();
+    } else {
+        tap_history_entry();
+    }
     CHECK(Modal::get_top() != nullptr);
 }
 
@@ -392,11 +398,55 @@ TEST_CASE_METHOD(TypeMismatchFixture,
                  "Type mismatch: a toast or entry outliving the prompter does nothing",
                  "[type-mismatch][hardware_setup]") {
     warn();
-    delete_prompter();
+    prompter_.reset();
 
     CHECK_FALSE(helix::ui::notification_action_handler(REVIEW_PRINTER_TYPE_ACTION));
     REQUIRE(helix::ui::fire_last_toast_action());
     drain();
     tap_history_entry();
     CHECK(Modal::get_top() == nullptr);
+}
+
+TEST_CASE_METHOD(TypeMismatchFixture,
+                 "Type mismatch: after a printer switch the old warning's Review is a no-op",
+                 "[type-mismatch][hardware_setup]") {
+    warn();
+    REQUIRE(history_.has_value());
+    const std::string old_action = history_->action;
+
+    // The next printer mismatches too, under a different saved type.
+    prompter_->reset_for_new_connection();
+    set_config(helix::wizard::PRINTER_TYPE, "Prusa MK4");
+    HardwareSetupPrompterTestAccess::warn_type_mismatch(*prompter_, "Bambu X1", 90, "Prusa MK4");
+    drain();
+    REQUIRE(history_->action != old_action);
+
+    // The first printer's entry opens nothing, not the second printer's review.
+    NotificationHistoryPanel panel(get_printer_state(), nullptr);
+    NotificationHistoryPanelTestAccess::dispatch_action(panel, old_action.c_str());
+    drain();
+    CHECK(Modal::get_top() == nullptr);
+
+    // The second's toast and entry still work.
+    REQUIRE(helix::ui::fire_last_toast_action());
+    drain();
+    lv_obj_t* dialog = Modal::get_top();
+    REQUIRE(dialog != nullptr);
+    click(dialog, "btn_secondary");
+    CHECK(dismissed_for() == "Prusa MK4");
+}
+
+TEST_CASE_METHOD(TypeMismatchFixture,
+                 "Type mismatch: a prompter destroyed during Choose Model's delay launches nothing",
+                 "[type-mismatch][hardware_setup]") {
+    warn();
+    tap_history_entry();
+    lv_obj_t* dialog = Modal::get_top();
+    REQUIRE(dialog != nullptr);
+    click(dialog, "btn_primary");
+
+    const void* owner = prompter_.get();
+    REQUIRE(armed_timers_for(owner) == 1);
+    prompter_.reset();
+    CHECK(armed_timers_for(owner) == 0);
 }

@@ -185,12 +185,16 @@ NotificationHistoryPanel& get_global_notification_history_panel();
 
 namespace helix::ui {
 
-/// Handler for a history entry's action id, for modules the panel cannot name (one
-/// compiled out of a build, or owned per printer session). Registering replaces any
-/// handler for @p id; an empty @p handler removes it. Main thread only.
-void set_notification_action_handler(const std::string& id, std::function<void()> handler);
+/// Handler for a history entry's action, for modules the panel cannot name (one
+/// compiled out of a build, or owned per printer session). An action reads
+/// `<id>` or `<id>:<arg>`; the handler registered for `<id>` receives `<arg>`
+/// (empty when there is none), so one handler can tell its own entries apart.
+/// Registering replaces any handler for @p id; an empty @p handler removes it.
+/// Main thread only.
+void set_notification_action_handler(const std::string& id,
+                                     std::function<void(const std::string& arg)> handler);
 
-/// The handler registered for @p id, empty when none is.
-std::function<void()> notification_action_handler(const std::string& id);
+/// The registered handler for @p action, bound to its argument; empty when none is.
+std::function<void()> notification_action_handler(const std::string& action);
 
 } // namespace helix::ui
