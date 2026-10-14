@@ -813,6 +813,7 @@
   <translation tag="DISABLED" de="DEAKTIVIERT" en="DISABLED" es="DESACTIVADO" fr="DÉSACTIVÉ" it="DISABILITATO" ja="無効" pt="DESABILITADO" ru="ОТКЛЮЧЕНО" zh="已禁用"/>
   <translation tag="DISCOVERED PRINTERS" de="GEFUNDENE DRUCKER" en="DISCOVERED PRINTERS" es="IMPRESORAS DESCUBIERTAS" fr="IMPRIMANTES DÉCOUVERTES" it="STAMPANTI SCOPERTE" ja="検出されたプリンター" pt="IMPRESSORAS DESCOBERTAS" ru="НАЙДЕННЫЕ ПРИНТЕРЫ" zh="已发现的打印机"/>
   <translation tag="DISPLAY" de="ANZEIGE" en="DISPLAY" es="PANTALLA" fr="AFFICHAGE" it="SCHERMO" ja="ディスプレイ" pt="TELA" ru="ДИСПЛЕЙ" zh="显示"/>
+  <translation tag="DONE" de="FERTIG" en="DONE" es="LISTO" fr="TERMINÉ" it="FATTO" ja="完了" pt="CONCLUÍDO" ru="ГОТОВО" zh="完成"/>
   <translation tag="Damping (Kd)" de="Dämpfung (Kd)" en="Damping (Kd)" es="Amortiguación (Kd)" fr="Amortissement (Kd)" it="Smorzamento (Kd)" ja="減衰 (Kd)" pt="Amortecimento (Kd)" ru="Демпфирование (Kd)" zh="阻尼 (Kd)"/>
   <translation tag="Danger" de="Gefahr" en="Danger" es="Peligro" fr="Danger" it="Pericolo" ja="危険" pt="Perigo" ru="Опасность" zh="危险"/>
   <translation tag="Danger Zone" de="Gefahrenbereich" en="Danger Zone" es="Zona de peligro" fr="Zone dangereuse" it="Zona pericolosa" ja="危険ゾーン" pt="Zona de Perigo" ru="Опасная зона" zh="危险区域"/>
@@ -1288,6 +1289,7 @@
   <translation tag="FlashForge Creator 5 Pro" de="FlashForge Creator 5 Pro" en="FlashForge Creator 5 Pro" es="FlashForge Creator 5 Pro" fr="FlashForge Creator 5 Pro" it="FlashForge Creator 5 Pro" ja="FlashForge Creator 5 Pro" pt="FlashForge Creator 5 Pro" ru="FlashForge Creator 5 Pro" zh="FlashForge Creator 5 Pro"/>
   <translation tag="FlashForge IFS" de="FlashForge IFS" en="FlashForge IFS" es="FlashForge IFS" fr="FlashForge IFS" it="FlashForge IFS" ja="FlashForge IFS" pt="FlashForge IFS" ru="FlashForge IFS" zh="FlashForge IFS"/>
   <translation tag="Flip" de="Spiegeln" en="Flip" es="Voltear" fr="Retourner" it="Capovolgi" ja="反転" pt="Inverter" ru="Отразить" zh="翻转"/>
+  <translation tag="Flip Clock" de="Klappzahluhr" en="Flip Clock" es="Reloj de paletas" fr="Horloge à volets" it="Orologio a palette" ja="パタパタ時計" pt="Relógio de palhetas" ru="Перекидные часы" zh="翻页时钟"/>
   <translation tag="Flip the spools" de="Spulen wenden" en="Flip the spools" es="Dar la vuelta a las bobinas" fr="Retourner les bobines" it="Gira le bobine" ja="スプールを裏返す" pt="Vire os carretéis" ru="Переверните катушки" zh="翻转料盘"/>
   <translation tag="Flow" de="Fluss" en="Flow" es="Flujo" fr="Débit" it="Flusso" ja="フロー" pt="Fluxo" ru="Поток" zh="流量"/>
   <translation tag="Flow Compensation" de="Durchflusskompensation" en="Flow Compensation" es="Compensación de flujo" fr="Compensation de débit" it="Compensazione di flusso" ja="フロー補正" pt="Compensação de fluxo" ru="Компенсация потока" zh="流量补偿"/>
@@ -2109,6 +2111,7 @@
   <translation tag="PA" de="PA" en="PA" es="PA" fr="PA" it="PA" ja="PA" pt="PA" ru="PA" zh="PA"/>
   <translation tag="PATH A · 1,-1" de="PFAD A · 1,-1" en="PATH A · 1,-1" es="RUTA A · 1,-1" fr="CHEMIN A · 1,-1" it="PERCORSO A · 1,-1" ja="パス A · 1,-1" pt="CAMINHO A · 1,-1" ru="ПУТЬ A · 1,-1" zh="路径 A · 1,-1"/>
   <translation tag="PATH B · 1,1" de="PFAD B · 1,1" en="PATH B · 1,1" es="RUTA B · 1,1" fr="CHEMIN B · 1,1" it="PERCORSO B · 1,1" ja="パス B · 1,1" pt="CAMINHO B · 1,1" ru="ПУТЬ B · 1,1" zh="路径 B · 1,1"/>
+  <translation tag="PAUSED" de="PAUSIERT" en="PAUSED" es="PAUSADO" fr="EN PAUSE" it="IN PAUSA" ja="一時停止" pt="PAUSADO" ru="ПАУЗА" zh="已暂停"/>
   <translation tag="PETG" de="PETG" en="PETG" es="PETG" fr="PETG" it="PETG" ja="PETG" pt="PETG" ru="PETG" zh="PETG"/>
   <translation tag="PID" de="PID" en="PID" es="PID" fr="PID" it="PID" ja="PID" pt="PID" ru="PID" zh="PID"/>
   <translation tag="PIN must be 4-6 digits" de="PIN muss 4-6 Ziffern haben" en="PIN must be 4-6 digits" es="El PIN debe tener 4-6 dígitos" fr="Le code PIN doit comporter 4 à 6 chiffres" it="Il PIN deve avere 4-6 cifre" ja="PIN は 4〜6 桁にしてください" pt="O PIN deve ter 4-6 dígitos" ru="PIN должен содержать 4-6 цифр" zh="PIN 码必须为 4-6 位数字"/>
@@ -3538,6 +3541,7 @@
   <translation tag="direct drive" de="Direct-Drive" en="direct drive" es="de accionamiento directo" fr="à entraînement direct" it="direct drive" ja="ダイレクトドライブ" pt="de acionamento direto" ru="с прямой подачей" zh="直驱"/>
   <translation tag="disable" de="deaktivieren" en="disable" es="deshabilitar" fr="désactiver" it="disabilita" ja="無効化" pt="desabilitar" ru="отключить" zh="禁用"/>
   <translation tag="disabled" de="deaktiviert" en="disabled" es="desactivado" fr="désactivé" it="disabilitato" ja="無効" pt="desabilitado" ru="отключено" zh="已禁用"/>
+  <translation tag="done at {} · {}%" de="fertig um {} · {}%" en="done at {} · {}%" es="termina a las {} · {}%" fr="fin à {} · {}%" it="finisce alle {} · {}%" ja="{} に完了 · {}%" pt="termina às {} · {}%" ru="готово в {} · {}%" zh="{} 完成 · {}%"/>
   <translation tag="drying" de="trocknen" en="drying" es="secando" fr="en séchage" it="in essiccazione" ja="乾燥中" pt="secando" ru="сушатся" zh="烘干中"/>
   <translation tag="e.g. Jet Black" de="z.B. Tiefschwarz" en="e.g. Jet Black" es="p. ej. Negro Azabache" fr="p. ex. Noir profond" it="es. Nero intenso" ja="例：ジェットブラック" pt="ex. Preto Fosco" ru="напр. Чёрный" zh="例如 炭黑"/>
   <translation tag="e.g. NAME=my_var VALUE=123" de="z. B. NAME=my_var VALUE=123" en="e.g. NAME=my_var VALUE=123" es="p. ej. NAME=mi_var VALUE=123" fr="ex. NAME=ma_var VALUE=123" it="es. NAME=mia_var VALUE=123" ja="例: NAME=my_var VALUE=123" pt="ex. NAME=minha_var VALUE=123" ru="напр. NAME=my_var VALUE=123" zh="例如 NAME=my_var VALUE=123"/>

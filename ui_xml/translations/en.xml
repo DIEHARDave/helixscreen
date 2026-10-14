@@ -813,6 +813,7 @@
   <translation tag="DISABLED" en="DISABLED"/>
   <translation tag="DISCOVERED PRINTERS" en="DISCOVERED PRINTERS"/>
   <translation tag="DISPLAY" en="DISPLAY"/>
+  <translation tag="DONE" en="DONE"/>
   <translation tag="Damping (Kd)" en="Damping (Kd)"/>
   <translation tag="Danger" en="Danger"/>
   <translation tag="Danger Zone" en="Danger Zone"/>
@@ -1288,6 +1289,7 @@
   <translation tag="FlashForge Creator 5 Pro" en="FlashForge Creator 5 Pro"/>
   <translation tag="FlashForge IFS" en="FlashForge IFS"/>
   <translation tag="Flip" en="Flip"/>
+  <translation tag="Flip Clock" en="Flip Clock"/>
   <translation tag="Flip the spools" en="Flip the spools"/>
   <translation tag="Flow" en="Flow"/>
   <translation tag="Flow Compensation" en="Flow Compensation"/>
@@ -2109,6 +2111,7 @@
   <translation tag="PA" en="PA"/>
   <translation tag="PATH A · 1,-1" en="PATH A · 1,-1"/>
   <translation tag="PATH B · 1,1" en="PATH B · 1,1"/>
+  <translation tag="PAUSED" en="PAUSED"/>
   <translation tag="PETG" en="PETG"/>
   <translation tag="PID" en="PID"/>
   <translation tag="PIN must be 4-6 digits" en="PIN must be 4-6 digits"/>
@@ -3538,6 +3541,7 @@
   <translation tag="direct drive" en="direct drive"/>
   <translation tag="disable" en="disable"/>
   <translation tag="disabled" en="disabled"/>
+  <translation tag="done at {} · {}%" en="done at {} · {}%"/>
   <translation tag="drying" en="drying"/>
   <translation tag="e.g. Jet Black" en="e.g. Jet Black"/>
   <translation tag="e.g. NAME=my_var VALUE=123" en="e.g. NAME=my_var VALUE=123"/>

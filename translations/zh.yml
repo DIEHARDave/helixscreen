@@ -833,6 +833,7 @@ translations:
   DISABLED: 已禁用
   DISCOVERED PRINTERS: 已发现的打印机
   DISPLAY: 显示
+  DONE: 完成
   Damping (Kd): 阻尼 (Kd)
   Danger: 危险
   Danger Zone: 危险区域
@@ -1325,6 +1326,7 @@ translations:
   FlashForge Creator 5 Pro: FlashForge Creator 5 Pro
   FlashForge IFS: FlashForge IFS
   Flip: 翻转
+  Flip Clock: 翻页时钟
   Flip the spools: 翻转料盘
 
   Flow: 流量
@@ -2182,6 +2184,7 @@ translations:
   PA: PA
   PATH A · 1,-1: "路径 A · 1,-1"
   PATH B · 1,1: "路径 B · 1,1"
+  PAUSED: 已暂停
   PETG: PETG
   PID: PID
   PIN must be 4-6 digits: PIN 码必须为 4-6 位数字
@@ -3693,6 +3696,7 @@ translations:
   direct drive: 直驱
   disable: 禁用
   disabled: 已禁用
+  done at {} · {}%: "{} 完成 · {}%"
   drying: 烘干中
   e.g. Jet Black: 例如 炭黑
   e.g. NAME=my_var VALUE=123: 例如 NAME=my_var VALUE=123

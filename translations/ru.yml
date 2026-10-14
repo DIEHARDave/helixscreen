@@ -891,6 +891,7 @@ translations:
   DISABLED: ОТКЛЮЧЕНО
   DISCOVERED PRINTERS: НАЙДЕННЫЕ ПРИНТЕРЫ
   DISPLAY: ДИСПЛЕЙ
+  DONE: ГОТОВО
   Damping (Kd): Демпфирование (Kd)
   Danger: Опасность
   Danger Zone: Опасная зона
@@ -1402,6 +1403,7 @@ translations:
   FlashForge Creator 5 Pro: FlashForge Creator 5 Pro
   FlashForge IFS: FlashForge IFS
   Flip: Отразить
+  Flip Clock: Перекидные часы
   Flip the spools: Переверните катушки
 
   Flow: Поток
@@ -2306,6 +2308,7 @@ translations:
   PA: PA
   PATH A · 1,-1: "ПУТЬ A · 1,-1"
   PATH B · 1,1: "ПУТЬ B · 1,1"
+  PAUSED: ПАУЗА
   PETG: PETG
   PID: PID
   PIN must be 4-6 digits: PIN должен содержать 4-6 цифр
@@ -3918,6 +3921,7 @@ translations:
   direct drive: с прямой подачей
   disable: отключить
   disabled: отключено
+  done at {} · {}%: "готово в {} · {}%"
   drying: сушатся
   e.g. Jet Black: напр. Чёрный
   e.g. NAME=my_var VALUE=123: напр. NAME=my_var VALUE=123

@@ -248,6 +248,8 @@ src/ui/screensaver_canvas.cpp  # not in the v1 Core+AMS cut
 src/ui/screensaver_cpu_clock.cpp  # not in the v1 Core+AMS cut
 src/ui/screensaver_fireworks.cpp  # not in the v1 Core+AMS cut
 src/ui/screensaver_fireworks_sim.cpp  # not in the v1 Core+AMS cut
+src/ui/screensaver_flip_clock.cpp  # not in the v1 Core+AMS cut
+src/ui/screensaver_flip_clock_sim.cpp  # not in the v1 Core+AMS cut
 src/ui/screensaver_hyperspace.cpp  # not in the v1 Core+AMS cut
 src/ui/screensaver_hyperspace_sim.cpp  # not in the v1 Core+AMS cut
 src/ui/screensaver_frame.cpp  # not in the v1 Core+AMS cut

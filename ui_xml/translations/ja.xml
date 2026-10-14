@@ -813,6 +813,7 @@
   <translation tag="DISABLED" ja="無効"/>
   <translation tag="DISCOVERED PRINTERS" ja="検出されたプリンター"/>
   <translation tag="DISPLAY" ja="ディスプレイ"/>
+  <translation tag="DONE" ja="完了"/>
   <translation tag="Damping (Kd)" ja="減衰 (Kd)"/>
   <translation tag="Danger" ja="危険"/>
   <translation tag="Danger Zone" ja="危険ゾーン"/>
@@ -1288,6 +1289,7 @@
   <translation tag="FlashForge Creator 5 Pro" ja="FlashForge Creator 5 Pro"/>
   <translation tag="FlashForge IFS" ja="FlashForge IFS"/>
   <translation tag="Flip" ja="反転"/>
+  <translation tag="Flip Clock" ja="パタパタ時計"/>
   <translation tag="Flip the spools" ja="スプールを裏返す"/>
   <translation tag="Flow" ja="フロー"/>
   <translation tag="Flow Compensation" ja="フロー補正"/>
@@ -2109,6 +2111,7 @@
   <translation tag="PA" ja="PA"/>
   <translation tag="PATH A · 1,-1" ja="パス A · 1,-1"/>
   <translation tag="PATH B · 1,1" ja="パス B · 1,1"/>
+  <translation tag="PAUSED" ja="一時停止"/>
   <translation tag="PETG" ja="PETG"/>
   <translation tag="PID" ja="PID"/>
   <translation tag="PIN must be 4-6 digits" ja="PIN は 4〜6 桁にしてください"/>
@@ -3538,6 +3541,7 @@
   <translation tag="direct drive" ja="ダイレクトドライブ"/>
   <translation tag="disable" ja="無効化"/>
   <translation tag="disabled" ja="無効"/>
+  <translation tag="done at {} · {}%" ja="{} に完了 · {}%"/>
   <translation tag="drying" ja="乾燥中"/>
   <translation tag="e.g. Jet Black" ja="例：ジェットブラック"/>
   <translation tag="e.g. NAME=my_var VALUE=123" ja="例: NAME=my_var VALUE=123"/>

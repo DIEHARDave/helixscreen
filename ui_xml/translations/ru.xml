@@ -813,6 +813,7 @@
   <translation tag="DISABLED" ru="ОТКЛЮЧЕНО"/>
   <translation tag="DISCOVERED PRINTERS" ru="НАЙДЕННЫЕ ПРИНТЕРЫ"/>
   <translation tag="DISPLAY" ru="ДИСПЛЕЙ"/>
+  <translation tag="DONE" ru="ГОТОВО"/>
   <translation tag="Damping (Kd)" ru="Демпфирование (Kd)"/>
   <translation tag="Danger" ru="Опасность"/>
   <translation tag="Danger Zone" ru="Опасная зона"/>
@@ -1288,6 +1289,7 @@
   <translation tag="FlashForge Creator 5 Pro" ru="FlashForge Creator 5 Pro"/>
   <translation tag="FlashForge IFS" ru="FlashForge IFS"/>
   <translation tag="Flip" ru="Отразить"/>
+  <translation tag="Flip Clock" ru="Перекидные часы"/>
   <translation tag="Flip the spools" ru="Переверните катушки"/>
   <translation tag="Flow" ru="Поток"/>
   <translation tag="Flow Compensation" ru="Компенсация потока"/>
@@ -2109,6 +2111,7 @@
   <translation tag="PA" ru="PA"/>
   <translation tag="PATH A · 1,-1" ru="ПУТЬ A · 1,-1"/>
   <translation tag="PATH B · 1,1" ru="ПУТЬ B · 1,1"/>
+  <translation tag="PAUSED" ru="ПАУЗА"/>
   <translation tag="PETG" ru="PETG"/>
   <translation tag="PID" ru="PID"/>
   <translation tag="PIN must be 4-6 digits" ru="PIN должен содержать 4-6 цифр"/>
@@ -3538,6 +3541,7 @@
   <translation tag="direct drive" ru="с прямой подачей"/>
   <translation tag="disable" ru="отключить"/>
   <translation tag="disabled" ru="отключено"/>
+  <translation tag="done at {} · {}%" ru="готово в {} · {}%"/>
   <translation tag="drying" ru="сушатся"/>
   <translation tag="e.g. Jet Black" ru="напр. Чёрный"/>
   <translation tag="e.g. NAME=my_var VALUE=123" ru="напр. NAME=my_var VALUE=123"/>

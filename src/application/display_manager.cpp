@@ -45,6 +45,7 @@
 #ifdef HELIX_ENABLE_SCREENSAVER
 
 #include "screensaver.h"
+#include "screensaver_flip_clock.h"
 #endif
 
 #include "pending_startup_warnings.h"
@@ -858,6 +859,15 @@ helix::ui::SaverHost DisplayManager::screensaver_host(const DisplayBackend* back
     helix::ui::SaverHost host;
     host.is_printing = [] {
         return job_holds_machine(get_printer_state().print_state().get_print_lifecycle());
+    };
+    // The remaining time the print status panel shows, smoothed by PrintEtaEstimator.
+    host.print_status = [] {
+        helix::PrinterPrintState& print = get_printer_state().print_state();
+        helix::ui::FlipClockPrint status;
+        status.phase = helix::ui::flip_print_phase(print.get_print_lifecycle());
+        status.remaining_s = lv_subject_get_int(print.get_print_time_left_subject());
+        status.progress_pct = lv_subject_get_int(print.get_print_progress_display_subject());
+        return status;
     };
     host.display_backend =
         backend ? helix::ui::display_backend_key(backend->type(), backend->is_gpu_accelerated())

@@ -813,6 +813,7 @@
   <translation tag="DISABLED" zh="已禁用"/>
   <translation tag="DISCOVERED PRINTERS" zh="已发现的打印机"/>
   <translation tag="DISPLAY" zh="显示"/>
+  <translation tag="DONE" zh="完成"/>
   <translation tag="Damping (Kd)" zh="阻尼 (Kd)"/>
   <translation tag="Danger" zh="危险"/>
   <translation tag="Danger Zone" zh="危险区域"/>
@@ -1288,6 +1289,7 @@
   <translation tag="FlashForge Creator 5 Pro" zh="FlashForge Creator 5 Pro"/>
   <translation tag="FlashForge IFS" zh="FlashForge IFS"/>
   <translation tag="Flip" zh="翻转"/>
+  <translation tag="Flip Clock" zh="翻页时钟"/>
   <translation tag="Flip the spools" zh="翻转料盘"/>
   <translation tag="Flow" zh="流量"/>
   <translation tag="Flow Compensation" zh="流量补偿"/>
@@ -2109,6 +2111,7 @@
   <translation tag="PA" zh="PA"/>
   <translation tag="PATH A · 1,-1" zh="路径 A · 1,-1"/>
   <translation tag="PATH B · 1,1" zh="路径 B · 1,1"/>
+  <translation tag="PAUSED" zh="已暂停"/>
   <translation tag="PETG" zh="PETG"/>
   <translation tag="PID" zh="PID"/>
   <translation tag="PIN must be 4-6 digits" zh="PIN 码必须为 4-6 位数字"/>
@@ -3538,6 +3541,7 @@
   <translation tag="direct drive" zh="直驱"/>
   <translation tag="disable" zh="禁用"/>
   <translation tag="disabled" zh="已禁用"/>
+  <translation tag="done at {} · {}%" zh="{} 完成 · {}%"/>
   <translation tag="drying" zh="烘干中"/>
   <translation tag="e.g. Jet Black" zh="例如 炭黑"/>
   <translation tag="e.g. NAME=my_var VALUE=123" zh="例如 NAME=my_var VALUE=123"/>

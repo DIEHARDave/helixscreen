@@ -80,6 +80,7 @@ An animation that plays while the screen is idle. It starts when the screen woul
 | **Fireworks** | Fireworks over hills at night |
 | **Bouncing Logo** | The HelixScreen logo drifts around a black screen and bounces off the edges, in its own colors |
 | **Hyperspace** | A flight through glowing rainbow space: star flares stream past, a shimmering wormhole sweeps in and out, and now and then a shell of flares bursts ahead |
+| **Flip Clock** | A split-flap clock in the 12- or 24-hour format you chose under Time Format. While a print runs it counts down the time left as hours, minutes and seconds, with the finish time and progress underneath. A paused print freezes the count under PAUSED; a finished one shows DONE for a minute, then the clock comes back |
 
 Each screensaver checks how much processor time it takes on your printer. If it would slow the printer down, it lowers its frame rate or detail. If that's still too much, it shows a black screen instead. It remembers the result and checks again after an update.
 

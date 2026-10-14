@@ -18,8 +18,9 @@ This doc is the map: which file owns what, how the gate decides, and how to add 
 | `include/screensaver_gate.h`, `include/screensaver_cpu_clock.h` | Budget, decision, idle baseline, windows, environment switches, the CPU clock seam |
 | `include/screensaver_level_store.h` | Board fingerprint and the stored level per saver |
 | `include/screensaver.h`, `src/ui/screensaver_manager.cpp` | `ScreensaverManager`: factories, holds, the gate, the black-screen fallback |
-| `include/ui_screensaver.h`, `include/screensaver_starfield.h`, `include/screensaver_pipes.h`, `include/screensaver_bounce.h`, `include/screensaver_fireworks.h`, `include/screensaver_hyperspace.h` | The savers |
+| `include/ui_screensaver.h`, `include/screensaver_starfield.h`, `include/screensaver_pipes.h`, `include/screensaver_bounce.h`, `include/screensaver_fireworks.h`, `include/screensaver_hyperspace.h`, `include/screensaver_flip_clock.h` | The savers |
 | `include/screensaver_maze_sim.h`, `include/screensaver_maze.h` | The 3D maze: maze generation, the wall-following walk, and the raycaster that draws it. No LVGL in the sim |
+| `include/screensaver_flip_clock_sim.h` | Flip clock: what it shows (`FlipClockState`), the card layout, and the drawing (`FlipClockSim`). No LVGL |
 | `scripts/screensaver-perf/` | Measuring a saver on a real board |
 
 ## The foundation
@@ -40,7 +41,8 @@ bouncing printer and bouncing logo (one class; `BouncingLogoScreensaver` swaps t
 `FIREWORKS_LEVELS`; the 3D maze per `MAZE_LEVELS`: full resolution at 16 ms, then half resolution at
 33 ms, the same with flat floor and ceiling, and quarter resolution at 50 ms; hyperspace per `HYPERSPACE_LEVELS`, which keeps 33 ms past level 0
 and then draws its tunnel and goo in 2x2 blocks, drops the goo, draws the tunnel in 4x4 blocks, and
-last drops the tunnel and flies 96 of its 160 stars. While a saver runs, `helix::RefreshPeriodHold` refreshes the display at
+last drops the tunnel and flies 96 of its 160 stars; the flip clock per `FLIP_CLOCK_LEVELS`: the folding
+flip at 33 ms, then an instant digit swap checked every 250 ms. While a saver runs, `helix::RefreshPeriodHold` refreshes the display at
 the saver's current period (`follow`), so the display and the saver stay equal at every level. Device measurements assume the pacing that keeps 16 ms even: EGL vsync and a 1 ms
 main-loop floor, which every device run sets explicitly (`scripts/screensaver-perf/arm_measure.sh`).
 
@@ -126,3 +128,25 @@ build draws at its depth, otherwise the first registered saver that does, and Of
    `.rodata` are fine). Everything is allocated in `on_start()` and released, capacity included,
    in `on_stop()`; `clear()` on a vector keeps its capacity, so swap it with an empty one. Check
    with `size build/obj/ui/screensaver_<name>*.o`.
+
+## Flip clock
+
+The flip clock is the one saver that reads app state. `SaverHost::print_status` hands it the
+print lifecycle, the remaining time the print status panel shows (`print_time_left`, smoothed
+by `PrintEtaEstimator`) and the displayed progress; `flip_clock_now()` adds the local time and
+the Time Format setting. `FlipClockState` turns that into a face:
+
+- Idle, cancelled, failed, or preparing with no estimate yet: the time of day, HH:MM, with
+  AM/PM on the hour card in 12-hour mode.
+- A print with an estimate: H:MM:SS counting down at wall-clock rate, with "done at
+  <time> · <n>%" under the cards. An estimate within `FLIP_COUNTDOWN_RESYNC_S` of the running
+  count is ignored, so estimator jitter never flips the seconds backwards.
+- Paused: the count freezes under PAUSED.
+- A print the clock saw finish: 0:00:00 and DONE for `FLIP_DONE_HOLD_MS`, then the clock.
+
+`FlipClockSim` draws the digits from strokes (lines and arcs) into a coverage cache sized to
+the layout, so they scale to any screen and draw at both depths. It writes only the cards
+that change and nothing between changes; the layout drifts every `FLIP_DRIFT_STEP_MS` and is
+then repainted whole. The caption and AM/PM marker are `lv_draw_label` text on the canvas,
+which is why its canvas uses the pipes format.
+

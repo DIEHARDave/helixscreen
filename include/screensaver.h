@@ -7,6 +7,7 @@
 #ifdef HELIX_ENABLE_SCREENSAVER
 
 #include "screensaver_cpu_clock.h"
+#include "screensaver_flip_clock_sim.h"
 #include "screensaver_gate.h"
 #include "screensaver_overlay.h"
 
@@ -100,6 +101,8 @@ struct SaverHost {
     std::function<bool()> is_printing;
     /// Running display path for the board fingerprint: "sdl", "fbdev", "drm" or "egl".
     std::string display_backend;
+    /// The print's phase, time left and progress; unset reads as no print.
+    std::function<FlipClockPrint()> print_status;
 };
 
 } // namespace helix::ui

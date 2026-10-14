@@ -87,6 +87,7 @@ perf_saver_type() {
     logo) echo 6 ;;
     maze) echo 7 ;;
     hyperspace) echo 8 ;;
+    flipclock) echo 9 ;;
     *)
         echo "perf_saver_type: unknown workload '$1'" >&2
         return 1

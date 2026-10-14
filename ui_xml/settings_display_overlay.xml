@@ -90,8 +90,8 @@
         <!-- Screensaver -->
         <setting_dropdown_row name="row_screensaver"
                               label="Screensaver" icon="television_classic" description="Show instead of dimming"
-                              options="Off&#10;Flying Toasters&#10;Starfield&#10;3D Pipes&#10;Bouncing Printer&#10;Fireworks&#10;Bouncing Logo&#10;3D Maze&#10;Hyperspace"
-                              options_tag="Off&#10;Flying Toasters&#10;Starfield&#10;3D Pipes&#10;Bouncing Printer&#10;Fireworks&#10;Bouncing Logo&#10;3D Maze&#10;Hyperspace"
+                              options="Off&#10;Flying Toasters&#10;Starfield&#10;3D Pipes&#10;Bouncing Printer&#10;Fireworks&#10;Bouncing Logo&#10;3D Maze&#10;Hyperspace&#10;Flip Clock"
+                              options_tag="Off&#10;Flying Toasters&#10;Starfield&#10;3D Pipes&#10;Bouncing Printer&#10;Fireworks&#10;Bouncing Logo&#10;3D Maze&#10;Hyperspace&#10;Flip Clock"
                               bind_selected="settings_screensaver_type" callback="on_screensaver_changed"/>
         <!-- Test Screensaver button (hidden when Off is selected) -->
         <lv_obj name="container_test_screensaver"

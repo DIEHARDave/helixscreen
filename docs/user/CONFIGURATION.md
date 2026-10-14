@@ -484,7 +484,7 @@ The K2 build default applies only when the backlight is a sysfs device (`/sys/cl
 ### `screensaver_type`
 **Type:** integer
 **Default:** `1`
-**Values:** `0` = Off, `1` = Flying Toasters, `2` = Starfield, `3` = 3D Pipes, `4` = Bouncing Printer, `5` = Fireworks, `6` = Bouncing Logo, `7` = 3D Maze, `8` = Hyperspace
+**Values:** `0` = Off, `1` = Flying Toasters, `2` = Starfield, `3` = 3D Pipes, `4` = Bouncing Printer, `5` = Fireworks, `6` = Bouncing Logo, `7` = 3D Maze, `8` = Hyperspace, `9` = Flip Clock
 **Description:** Which screensaver plays when the screen has been idle. Choose it in **Settings > Display**. It starts at the `dim_sec` mark, alongside dimming, and stops when `sleep_sec` takes the display down. On a panel with no backlight control the screensaver is the only idle indication you get. A fresh install selects Flying Toasters on every device that has screensavers. Each screensaver checks its own cost on your device and lowers its frame rate or detail, or shows a plain black screen, if it would slow the printer (see `screensaver_levels`).
 
 ### `screensaver_levels`

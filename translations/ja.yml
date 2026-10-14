@@ -835,6 +835,7 @@ translations:
   DISABLED: 無効
   DISCOVERED PRINTERS: 検出されたプリンター
   DISPLAY: ディスプレイ
+  DONE: 完了
   Damping (Kd): 減衰 (Kd)
   Danger: 危険
   Danger Zone: 危険ゾーン
@@ -1329,6 +1330,7 @@ translations:
   FlashForge Creator 5 Pro: FlashForge Creator 5 Pro
   FlashForge IFS: FlashForge IFS
   Flip: 反転
+  Flip Clock: パタパタ時計
   Flip the spools: スプールを裏返す
 
   Flow: フロー
@@ -2189,6 +2191,7 @@ translations:
   PA: PA
   PATH A · 1,-1: "パス A · 1,-1"
   PATH B · 1,1: "パス B · 1,1"
+  PAUSED: 一時停止
   PETG: PETG
   PID: PID
   PIN must be 4-6 digits: PIN は 4〜6 桁にしてください
@@ -3703,6 +3706,7 @@ translations:
   direct drive: ダイレクトドライブ
   disable: 無効化
   disabled: 無効
+  done at {} · {}%: "{} に完了 · {}%"
   drying: 乾燥中
   e.g. Jet Black: 例：ジェットブラック
   e.g. NAME=my_var VALUE=123: '例: NAME=my_var VALUE=123'
