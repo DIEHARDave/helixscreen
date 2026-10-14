@@ -150,6 +150,27 @@ void apply_image_cache_env() {
 
 } // namespace
 
+void DisplayManager::schedule_brightness_reassert() {
+    // Schedule delayed brightness override to counteract ForgeX's delayed_gcode.
+    // On AD5M, Klipper's reset_screen fires ~3s after Klipper becomes READY.
+    // Klipper typically becomes ready 10-20s after boot, so a 20s delay ensures
+    // we fire AFTER the delayed_gcode dims the screen.
+    // Only the FlashForge firmwares dim behind our back.
+    if (helix::board::current_info().firmware_dims_backlight_after_boot) {
+        lv_timer_create(
+            [](lv_timer_t* t) {
+                auto* dm = static_cast<DisplayManager*>(lv_timer_get_user_data(t));
+                if (dm && dm->m_backlight && dm->m_backlight->is_available()) {
+                    const int brightness = DisplaySettingsManager::instance().user_brightness();
+                    dm->m_backlight->set_brightness(brightness);
+                    spdlog::info("[DisplayManager] Delayed brightness override: {}%", brightness);
+                }
+                lv_timer_delete(t);
+            },
+            20000, this);
+    }
+}
+
 bool DisplayManager::init(const Config& config) {
     if (m_initialized) {
         spdlog::warn("[DisplayManager] Already initialized, call shutdown() first");
@@ -495,25 +516,7 @@ bool DisplayManager::init(const Config& config) {
         m_backlight->set_brightness(100);
         spdlog::debug("[DisplayManager] Backlight forced ON at 100% for startup");
 
-        // Schedule delayed brightness override to counteract ForgeX's delayed_gcode.
-        // On AD5M, Klipper's reset_screen fires ~3s after Klipper becomes READY.
-        // Klipper typically becomes ready 10-20s after boot, so a 20s delay ensures
-        // we fire AFTER the delayed_gcode dims the screen.
-        // Only the FlashForge firmwares dim behind our back.
-        if (helix::board::current_info().firmware_dims_backlight_after_boot) {
-            lv_timer_create(
-                [](lv_timer_t* t) {
-                    auto* dm = static_cast<DisplayManager*>(lv_timer_get_user_data(t));
-                    if (dm && dm->m_backlight && dm->m_backlight->is_available()) {
-                        const int brightness = DisplaySettingsManager::instance().user_brightness();
-                        dm->m_backlight->set_brightness(brightness);
-                        spdlog::info("[DisplayManager] Delayed brightness override: {}%",
-                                     brightness);
-                    }
-                    lv_timer_delete(t);
-                },
-                20000, this);
-        }
+        schedule_brightness_reassert();
     }
 
     // Dim and sleep behavior

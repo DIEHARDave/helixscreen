@@ -32,6 +32,10 @@ class DisplayManagerTestAccess {
         dm.m_sleep.m_use_power_off = use_power_off;
     }
 
+    static void schedule_brightness_reassert(DisplayManager& dm) {
+        dm.schedule_brightness_reassert();
+    }
+
     static void set_backlight(DisplayManager& dm, std::unique_ptr<BacklightBackend> backlight) {
         dm.m_backlight = std::move(backlight);
     }

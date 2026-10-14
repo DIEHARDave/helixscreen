@@ -566,6 +566,10 @@ class DisplayManager : public helix::ICalibrationSink {
     }
 
   private:
+    /// Re-apply the user's brightness 20 s after startup on boards whose stock firmware
+    /// dims the panel behind our back (board::Info::firmware_dims_backlight_after_boot).
+    void schedule_brightness_reassert();
+
     // Test-only seam (#1049): grants the test harness access to the private
     // sleep/wake/power-off members so the idle paths can be exercised without a
     // full init(). See tests/test_helpers/display_manager_test_access.h.

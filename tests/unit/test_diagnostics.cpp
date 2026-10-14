@@ -16,9 +16,13 @@
 #include "test_helpers/scoped_board.h"
 #include "test_helpers/unique_temp_dir.h"
 
+#include <spdlog/sinks/ostream_sink.h>
+#include <spdlog/spdlog.h>
+
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <sstream>
 #include <string>
 
 #include "../catch_amalgamated.hpp"
@@ -159,6 +163,21 @@ TEST_CASE("the mod flavor separates the layouts one platform key serves", "[diag
 TEST_CASE("diagnostics names the board", "[diagnostics]") {
     helix::test::ScopedBoard board(helix::board::Board::Creator5Pro);
     CHECK(helix::diagnostics::collect().identity.board == "creator5-pro");
+}
+
+TEST_CASE("the startup log line names the board", "[diagnostics]") {
+    helix::test::ScopedBoard board(helix::board::Board::Creator5Pro);
+    std::ostringstream captured;
+    auto sink = std::make_shared<spdlog::sinks::ostream_sink_mt>(captured);
+    sink->set_pattern("%v");
+    auto capture = std::make_shared<spdlog::logger>("diag_capture", sink);
+    capture->set_level(spdlog::level::trace);
+    auto original = spdlog::default_logger();
+    spdlog::set_default_logger(capture);
+    helix::diagnostics::log_diagnostics();
+    spdlog::set_default_logger(original);
+
+    CHECK(captured.str().find("creator5-pro") != std::string::npos);
 }
 
 TEST_CASE("the bundle form carries the board", "[diagnostics]") {

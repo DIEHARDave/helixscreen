@@ -8,6 +8,7 @@
 #include "platform_info.h"
 #include "platform_table.h"
 #include "test_helpers/flashforge_layout_fixture.h"
+#include "test_helpers/scoped_board.h"
 #include "test_helpers/unique_temp_dir.h"
 
 #include <filesystem>
@@ -27,6 +28,16 @@ TEST_CASE("only FlashForge firmware re-asserts brightness after boot", "[board]"
         CHECK(info(b).firmware_dims_backlight_after_boot);
     for (Board b : {Board::Cc1, Board::K1, Board::K2, Board::SnapmakerU1, Board::Generic})
         CHECK_FALSE(info(b).firmware_dims_backlight_after_boot);
+}
+
+TEST_CASE("only a board whose firmware manages updates defaults to external updates", "[board]") {
+    helix::set_external_updates_default_override(-1);
+    for (int i = 0; i < helix::board::kBoardCount; ++i) {
+        const auto b = static_cast<Board>(i);
+        helix::test::ScopedBoard scoped(b);
+        INFO("board: " << info(b).key);
+        CHECK(helix::platform_defaults_to_external_updates() == (b == Board::SnapmakerU1));
+    }
 }
 
 TEST_CASE("the AD5M has no jz_pwm piezo", "[board]") {
