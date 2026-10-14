@@ -5,7 +5,11 @@ translations:
   ' (timed out)': （超时）
   ' frames': ' 帧'
   ' left': ' 剩余'
+  ' · Tuned in {} round': " · 用 {} 轮调好"
+  ' · Tuned in {} rounds': " · 用 {} 轮调好"
   ' · was {:.0f}%': ' · 原为 {:.0f}%'
+  ' · {} loosened about {}': " · {} 放松约 {}"
+  ' · {} tightened about {}': " · {} 拉紧约 {}"
   '"%s" failed to load': '"%s" 加载失败'
   '%d additional fan%s': '%d 个额外风扇%s'
   '%d feeders': '%d 个送料器'
@@ -199,6 +203,7 @@ translations:
   Address: 地址
   Adjust screen brightness level: 调整屏幕亮度
   Adjust screws, then re-probe.: 调整螺丝，然后重新探测。
+  Adjust {} instead: "改为调整 {}"
   Adjustments stay active until restart. Save after print completes.: 调整在重启前保持有效。打印完成后保存。
   Adjusts individual characteristics of your heaters for optimal control: 调整加热器的各项参数以实现最佳控制
   Advanced: 高级
@@ -669,6 +674,7 @@ translations:
   Configured hardware no longer present: '已配置的硬件已不存在'
   Configured in the backup-spool package, not from here: 在备用料盘插件中配置，而非此处
   Configuring Moonraker...: 正在配置 Moonraker...
+  Confirm (full, ~{} min): "确认(完整,约 {} 分钟)"
   Confirm PIN: 确认 PIN 码
   Confirm before running macros: 运行宏前进行确认
   Connect: 连接
@@ -806,6 +812,7 @@ translations:
   'Current: Bypass': '当前: 旁通'
   Currently Loaded: 当前已装载
   Currently printing: 正在打印
+  Curves differ in shape. Steering by each path's tallest peak.: "曲线形状不同。按各路径的最高峰调整。"
   Custom: 自定义
   Custom...: 自定义...
   Customize Macro Button: 自定义宏按钮
@@ -1302,6 +1309,7 @@ translations:
   Fine: 细调
   Fine Inner: 细调内圈
   Fine Outer: 细调外圈
+  Fine-tune: "微调"
   Finish: 完成
   Finish or cancel the print before loading, unloading, or changing filament: 在装载、卸载或更换耗材之前，请先完成或取消打印
   Finishing clean...: 即将完成清洁...
@@ -1369,6 +1377,7 @@ translations:
   Global: 全局
   Good: 良好
   Good Accuracy: 精度良好
+  Good enough: "足够了"
   Good match: "匹配良好"
   Got it: 知道了
   Gray: 灰色
@@ -1628,6 +1637,7 @@ translations:
 
   Keep its own data on this screen (up to 256 KB).: '在此屏幕上保存自己的数据（最多256 KB）。'
   Keep the bypass spool visible when bypass is off: 旁路关闭时保持料盘可见
+  Keep tuning: "继续调整"
   Kick away: '拨除废料'
   Kinematics: 运动学
   Klipper: Klipper
@@ -1762,6 +1772,7 @@ translations:
   'Long-press any tile to enter edit mode — rearrange, resize, remove, or add widgets, and add extra pages for your preferred layout.': 长按任意磁贴进入编辑模式 — 重新排列、调整大小、移除或添加小组件，并为您喜欢的布局添加额外页面。
   Long-press the home grid to rearrange widgets (turn off if it triggers by accident): '长按主屏幕网格可重新排列小组件（若误触请关闭）'
   Longest Disconnect: 最长断开时长
+  Loosen {}: "放松 {}"
   Lost connection during print — try again: 打印过程中连接丢失 — 请重试
   Lost connection to CFS unit: 与 CFS 单元的连接已断开
   'Lot # (optional)': 批号（可选）
@@ -1836,6 +1847,9 @@ translations:
   Master volume level: 主音量
   Match Mode: '匹配模式'
   Match your typical print fan speed: 匹配您常用的打印风扇速度
+  Matched at {:.1f} Hz: "在 {:.1f} Hz 处匹配"
+  ? "Matched belts give curves of the same shape. When the tallest peak on one path has no partner on the other, something besides tension is shaping the response:\n\n- a worn, frayed or mis-tracking belt\n- a loose or slipping pulley grub screw\n- an idler or bearing that binds\n- debris in the teeth, or a belt rubbing a flange\n- a loose accelerometer mount\n\nTuning still steers by each path's tallest peak, but check these before chasing a perfect match."
+  : "张力一致的皮带会得到形状相同的曲线。当一条路径的最高峰在另一条路径上没有对应峰时,说明除张力外还有其他因素在影响响应:\n\n- 皮带磨损、起毛或跑偏\n- 同步轮顶丝松动或打滑\n- 惰轮或轴承卡滞\n- 齿间有杂物,或皮带摩擦挡边\n- 加速度计安装松动\n\n调整仍以各路径的最高峰为准,但在追求完美匹配之前请先检查这些。"
   Matching printers: 匹配的打印机
   Material: 材料
   'Material Comfort:': 材料适配度：
@@ -1854,6 +1868,7 @@ translations:
   Measure: '测量'
   Measure every tool's XYZ offset automatically: 自动测量每个工具的 XYZ 偏移
   Measure pressure advance automatically: '自动测量压力提前'
+  Measure this zone first: "请先测量此区间"
   Measured (shaper off): 实测（关闭整形）
   Measured filament diameter: 测量的耗材直径
   Measured pressure advance: '测得的压力提前'
@@ -1957,6 +1972,7 @@ translations:
   New printer successfully added: 新打印机已成功添加
   New profile name: 新配置名称
   Next: 下一步
+  Next zone: "下一区间"
   Niimbot (Bluetooth): Niimbot（蓝牙）
   'No': 否
   No AMS Detected: '未检测到 AMS'
@@ -1985,6 +2001,7 @@ translations:
   No camera — use USB barcode scanner: 无摄像头 — 请使用 USB 条码扫描器
   No chamber temperature sensor detected: '未检测到腔体温度传感器'
   No changes to revert: 没有可撤销的更改
+  No clear peak in this zone: "此区间没有明显的峰"
   No color: 无颜色
   No dryer available. Store filament in a sealed dry box with desiccant for best results.: 无可用烘干机。建议将耗材存放在带干燥剂的密封干燥箱中。
   No effects available: 无可用特效
@@ -2077,6 +2094,7 @@ translations:
   Not yet calibrated: 尚未校准
   Notes: 备注
   Notes (optional): 备注（可选）
+  Nothing left to tune: "没有需要调整的了"
   Nothing loaded: 未装载耗材
   Nothing starred yet. Tap the star on a filament to add it here.: '还没有收藏。点击耗材行的星标即可收藏到这里。'
   Nothing to remap: 没有可重新映射的内容
@@ -2212,8 +2230,11 @@ translations:
   Password: 密码
   Password cannot be empty: 密码不能为空
   Password is required for secured networks: 加密网络需要密码
+  Path A tensioner: "路径 A 张紧器"
+  Path B tensioner: "路径 B 张紧器"
   Path {}: 路径 {}
   Path {} before: 路径 {}（之前）
+  Path {} earlier round: "路径 {} 上一轮"
   Pause: 暂停
   Pause macro not configured: 暂停宏未配置
   Pause on Detection: 检测到故障时暂停
@@ -2498,6 +2519,7 @@ translations:
   Raspberry Pi (32-bit): Raspberry Pi (32-bit)
   Re-identify: 重新识别
   Re-measure: '重新测量'
+  Re-measure (~{} min): "重新测量(约 {} 分钟)"
   Re-measuring Path {}: 正在重新测量路径 {}
   Re-probe: 重新探测
   Re-read spool RFID tags and remaining length: '重新读取料盘 RFID 标签与剩余长度'
@@ -2549,6 +2571,7 @@ translations:
   Release filament: 松开耗材
   Release or grip the filament by hand: 手动松开或夹持耗材
   Release the filament: 松开耗材
+  Release {}'s tensioner, let the spring settle, lock it: "松开 {} 的张紧器,让弹簧复位,再锁紧"
   Remaining: '剩余'
   Remaining (g): 剩余 (g)
   Remaining Weight (g): 剩余重量（克）
@@ -2686,6 +2709,7 @@ translations:
   Rotation: 旋转
   'Rotation: %d° - %ds remaining (or wait to retry)': '旋转: %d° - 剩余%ds
     (或等待重试)'
+  Round {}: "第 {} 轮"
   Rounded: 圆角
   Run: 运行
   Run Calibration Wizard: '运行校准向导'
@@ -3184,6 +3208,8 @@ translations:
   : 耗材未到达喷嘴。CFS 未报告错误，但工具头传感器仍未检测到耗材。请检查料盘是否放置到位、路径是否畅通，然后重试。
   The filament may not have fully retracted — try again or manually pull: 耗材可能未完全回抽。请重试或手动抽出
   The filament system reported an error: 耗材系统报告错误
+  The gap didn't close (moved {:.1f} Hz). Try a bigger turn.: "差距没有缩小(移动了 {:.1f} Hz)。请转得更多一些。"
+  The gap is not closing. Something besides tension may be shaping it.: "差距没有缩小。可能有张力以外的因素在影响。"
   The heater will cycle on and off several times.: 加热器将多次开关循环。
   The helper macros are installed and activate after Klipper restarts.: '帮助宏已安装，将在 Klipper 重启后启用。'
   The left RFID reader in this CFS unit may need service: 此 CFS 单元的左侧 RFID 读取器可能需要维修
@@ -3317,6 +3343,7 @@ translations:
   Thorough: 全面
   Thumbnail Only: 仅缩略图
   'Thumbnail: ': '缩略图: '
+  Tighten {}: "拉紧 {}"
   Time: 时间
   Time Format: 时间格式
   Time to wait before escalating to emergency stop: 升级为紧急停止前的等待时间
@@ -3393,6 +3420,7 @@ translations:
   Try again: '重试'
   Try the operation again. If it persists, check for mechanical issues.: 请重试该操作。如果问题持续存在，请检查是否有机械故障。
   Tune: 调优
+  Tune belts: "调整皮带"
   Tuning tower enabled - start a print to test: 调优塔已启用 - 开始打印以测试
   Turbo: 极速
   Turbo Inner: 极速内圈
@@ -3570,6 +3598,7 @@ translations:
     also synced when prints start, pause, or complete.
   : 重量数据从 Spoolman 同步以显示剩余耗材。打印开始、暂停或完成时也会同步更改。
   Welcome to HelixScreen: 欢迎使用 HelixScreen
+  Went past {} by {:.1f} Hz. Back it off a little.: "超过 {} {:.1f} Hz。请稍微回调。"
   What We Collect: 我们收集的内容
   When enabled, only the macro runs. When disabled, temperatures are set first, then the macro runs.: 启用时仅运行宏。禁用时先设置温度，然后运行宏。
   Where UI sounds play: 界面声音的播放位置
@@ -3577,6 +3606,8 @@ translations:
   Which macro the Close feeder button sends: “关闭送料器”按钮发送的宏
   Which macro the Open feeder button sends: “打开送料器”按钮发送的宏
   White: 白色
+  Why the curves differ: "曲线为何不同"
+  Why?: "为什么?"
   Wi-Fi: WiFi
   Wi-Fi or ethernet connection status: WiFi 或以太网连接状态
   Wi-Fi {}: WiFi {}
@@ -3670,6 +3701,7 @@ translations:
   Z-offset saved - Klipper restarting...: Z 偏移已保存 - Klipper 重启中...
   'Z:': 'Z:'
   'Z: 0.000': 'Z: 0.000'
+  Zone {:.0f}-{:.0f} Hz: "区间 {:.0f}-{:.0f} Hz"
   already loaded: '已加载'
   attempt {}: '第 {} 次尝试'
   bed: 热床
@@ -3714,6 +3746,7 @@ translations:
   just now: 刚刚
   last 60 s · LOOSE up, TIGHT down: '最近 60 秒 · 上松下紧'
   last 60 s · pressure, target dashed: 最近 60 秒 · 压力，目标为虚线
+  'last turn: {:.1f} Hz closer': "上一次: 接近 {:.1f} Hz"
   layers: 层
   left: 剩余
   loaded: '已加载'
@@ -3759,8 +3792,12 @@ translations:
   v%s available: v%s 可用
   v{} installed! Restarting...: 已安装 v{}！正在重启...
   v{} is available. Tap to update.: v{} 可用。点击以更新。
+  what you turned: "你转动的量"
+  within one bin: "在一个频点内"
   wpa_supplicant is not running. WiFi features unavailable.: wpa_supplicant 未运行。WiFi 功能不可用。
   you have: 您有
+  "{0}'s peak went down after tightening. Check you turned Path {0}'s tensioner.": "拉紧后 {0} 的峰下降了。请确认转动的是路径 {0} 的张紧器。"
+  "{0}'s peak went up after loosening. Check you turned Path {0}'s tensioner.": "放松后 {0} 的峰上升了。请确认转动的是路径 {0} 的张紧器。"
   '{:.0f}-{:.0f} Hz · about {} min': '{:.0f}-{:.0f} Hz · 约 {} 分钟'
   '{} ({})': '{}（{}）'
   '{} Hardware Issues': '{} 个硬件问题'
@@ -3796,6 +3833,7 @@ translations:
   '{} lines in helixscreen.env were ignored': 'helixscreen.env 中有 {} 行被忽略'
   '{} kept crashing the panel; switched back to {}': '{} 反复导致屏幕崩溃，已切换回 {}'
   '{} kept crashing the panel; pick a printer to connect': '{} 反复导致屏幕崩溃，请选择要连接的打印机'
+  '{} looser than {}': "{} 比 {} 松"
   '{} macro not configured': '{} 宏未配置'
   '{} matches.': '{} 匹配。'
   '{} may cause unintended changes. Are you sure?': '{} 可能导致意外更改。确定吗？'
@@ -3814,6 +3852,9 @@ translations:
   '{} spool cleared': '{} 料盘已清除'
   '{} started': '已开始{}'
   '{} target set to {}°C': '{} 目标已设为 {}°C'
+  '{} tighter than {}': "{} 比 {} 紧"
+  '{} turn': "{} 圈"
+  '{} turns': "{} 圈"
   '{} updated': '{} 已更新'
   '{} widgets': '{} 个小组件'
   ? '{} will switch to a slot whose filament type AND colour both match the active spool and whose own port sensor reads filament present.'
@@ -3822,4 +3863,6 @@ translations:
   '{} · {} · {}': '{} · {} · {}'
   '{} — response timed out': '{} — 响应超时'
   '{} → {}: no filament loaded.': '{} → {}: 未加载耗材。'
+  "{}'s peak moved out of the zone. Widening it.": "{} 的峰移出了区间。正在扩大区间。"
   '{}:{:02} elapsed': 已用时 {}:{:02}
+  ~{:.0f} Hz / turn: "约 {:.0f} Hz / 圈"

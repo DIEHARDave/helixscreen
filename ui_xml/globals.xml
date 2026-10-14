@@ -393,6 +393,16 @@
     <px name="buffer_trace_h_large" value="98"/>
     <px name="buffer_trace_h_xlarge" value="112"/>
     <px name="buffer_trace_h_xxlarge" value="122"/>
+    <!-- belt_tune_hero_h: the Belt Tension tuning hero (instruction, turn
+         stepper, gap, round facts). Fixed, so the chart below keeps its height
+         whatever the hero says. -->
+    <px name="belt_tune_hero_h_micro" value="56"/>
+    <px name="belt_tune_hero_h_tiny" value="64"/>
+    <px name="belt_tune_hero_h_small" value="86"/>
+    <px name="belt_tune_hero_h_medium" value="94"/>
+    <px name="belt_tune_hero_h_large" value="98"/>
+    <px name="belt_tune_hero_h_xlarge" value="110"/>
+    <px name="belt_tune_hero_h_xxlarge" value="124"/>
 
     <!-- Spinner arc widths - proportional to size -->
     <px name="spinner_arc_lg_small" value="3"/>

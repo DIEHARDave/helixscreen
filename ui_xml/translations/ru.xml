@@ -3,7 +3,11 @@
   <translation tag=" (timed out)" ru=" (время ожидания истекло)"/>
   <translation tag=" frames" ru=" кадров"/>
   <translation tag=" left" ru=" осталось"/>
+  <translation tag=" · Tuned in {} round" ru=" · Настроено за {} раунд(ов)"/>
+  <translation tag=" · Tuned in {} rounds" ru=" · Настроено за {} раунд(ов)"/>
   <translation tag=" · was {:.0f}%" ru=" · было {:.0f}%"/>
+  <translation tag=" · {} loosened about {}" ru=" · {} ослаблен примерно на {}"/>
+  <translation tag=" · {} tightened about {}" ru=" · {} натянут примерно на {}"/>
   <translation tag="&quot;%s&quot; failed to load" ru="Не удалось загрузить «%s»"/>
   <translation tag="%d additional fan%s" ru="%d дополнительный вентилятор%s"/>
   <translation tag="%d feeders" ru="%d фидеров"/>
@@ -199,6 +203,7 @@
   <translation tag="Address" ru="Адрес"/>
   <translation tag="Adjust screen brightness level" ru="Настроить уровень яркости экрана"/>
   <translation tag="Adjust screws, then re-probe." ru="Отрегулируйте винты, затем перепроверьте."/>
+  <translation tag="Adjust {} instead" ru="Регулировать {}"/>
   <translation tag="Adjustments stay active until restart. Save after print completes." ru="Настройки активны до перезагрузки. Сохраните после завершения печати."/>
   <translation tag="Adjusts individual characteristics of your heaters for optimal control" ru="Настраивает индивидуальные характеристики нагревателей для оптимального контроля"/>
   <translation tag="Advanced" ru="Дополнительно"/>
@@ -657,6 +662,7 @@
   <translation tag="Configured hardware no longer present" ru="Настроенное оборудование больше не обнаруживается"/>
   <translation tag="Configured in the backup-spool package, not from here" ru="Настраивается в плагине резервной катушки, не здесь"/>
   <translation tag="Configuring Moonraker..." ru="Настройка Moonraker..."/>
+  <translation tag="Confirm (full, ~{} min)" ru="Подтвердить (полный, ~{} мин)"/>
   <translation tag="Confirm PIN" ru="Подтвердите PIN"/>
   <translation tag="Confirm before running macros" ru="Подтверждать перед запуском макросов"/>
   <translation tag="Connect" ru="Подключить"/>
@@ -786,6 +792,7 @@
   <translation tag="Current: Bypass" ru="Текущий: Обход"/>
   <translation tag="Currently Loaded" ru="Загружено"/>
   <translation tag="Currently printing" ru="Сейчас печатается"/>
+  <translation tag="Curves differ in shape. Steering by each path&apos;s tallest peak." ru="Формы кривых различаются. Ориентир — самый высокий пик каждого пути."/>
   <translation tag="Custom" ru="Свой"/>
   <translation tag="Custom..." ru="Настроить..."/>
   <translation tag="Customize Macro Button" ru="Настроить кнопку макроса"/>
@@ -1265,6 +1272,7 @@
   <translation tag="Fine" ru="Точно"/>
   <translation tag="Fine Inner" ru="Точно (внутренний)"/>
   <translation tag="Fine Outer" ru="Точно (внешний)"/>
+  <translation tag="Fine-tune" ru="Точная настройка"/>
   <translation tag="Finish" ru="Завершить"/>
   <translation tag="Finish or cancel the print before loading, unloading, or changing filament" ru="Завершите или отмените печать перед загрузкой, выгрузкой или сменой филамента"/>
   <translation tag="Finishing clean..." ru="Завершение очистки..."/>
@@ -1330,6 +1338,7 @@
   <translation tag="Global" ru="Общий"/>
   <translation tag="Good" ru="Хорошо"/>
   <translation tag="Good Accuracy" ru="Хорошая точность"/>
+  <translation tag="Good enough" ru="Достаточно"/>
   <translation tag="Good match" ru="Хорошее совпадение"/>
   <translation tag="Got it" ru="Понятно"/>
   <translation tag="Gray" ru="Серый"/>
@@ -1576,6 +1585,7 @@
   <translation tag="Keep hands clear. The printer moves on its own." ru="Держите руки подальше. Принтер двигается сам."/>
   <translation tag="Keep its own data on this screen (up to 256 KB)." ru="Хранит собственные данные на этом экране (до 256 КБ)."/>
   <translation tag="Keep the bypass spool visible when bypass is off" ru="Показывать катушку байпаса, даже когда байпас выключен"/>
+  <translation tag="Keep tuning" ru="Продолжить настройку"/>
   <translation tag="Kick away" ru="Сброс остатка"/>
   <translation tag="Kinematics" ru="Кинематика"/>
   <translation tag="Klipper" ru="Klipper"/>
@@ -1703,6 +1713,7 @@
   <translation tag="Long-press any tile to enter edit mode — rearrange, resize, remove, or add widgets, and add extra pages for your preferred layout." ru="Долгое нажатие на любую плитку переводит в режим редактирования — переставляйте, изменяйте размер, удаляйте или добавляйте виджеты, а также добавляйте дополнительные страницы под свой макет."/>
   <translation tag="Long-press the home grid to rearrange widgets (turn off if it triggers by accident)" ru="Долгое нажатие на сетку главного экрана переставляет виджеты (отключите, если срабатывает случайно)"/>
   <translation tag="Longest Disconnect" ru="Самое долгое отключение"/>
+  <translation tag="Loosen {}" ru="Ослабить {}"/>
   <translation tag="Lost connection during print — try again" ru="Потеряно соединение во время печати — попробуйте снова"/>
   <translation tag="Lost connection to CFS unit" ru="Потеряна связь с блоком CFS"/>
   <translation tag="Lot # (optional)" ru="Партия # (необязательно)"/>
@@ -1775,6 +1786,8 @@
   <translation tag="Master volume level" ru="Основной уровень громкости"/>
   <translation tag="Match Mode" ru="Режим сопоставления"/>
   <translation tag="Match your typical print fan speed" ru="Настройте типичную скорость вентилятора печати"/>
+  <translation tag="Matched at {:.1f} Hz" ru="Совпадает на {:.1f} Гц"/>
+  <translation tag="Matched belts give curves of the same shape. When the tallest peak on one path has no partner on the other, something besides tension is shaping the response:&#10;&#10;- a worn, frayed or mis-tracking belt&#10;- a loose or slipping pulley grub screw&#10;- an idler or bearing that binds&#10;- debris in the teeth, or a belt rubbing a flange&#10;- a loose accelerometer mount&#10;&#10;Tuning still steers by each path&apos;s tallest peak, but check these before chasing a perfect match." ru="Одинаково натянутые ремни дают кривые одной формы. Если у самого высокого пика одного пути нет пары на другом, ответ формирует что-то помимо натяжения:&#10;&#10;- изношенный, разлохмаченный или уходящий в сторону ремень&#10;- ослабленный или проскальзывающий винт шкива&#10;- заедающий ролик или подшипник&#10;- мусор в зубьях или ремень, трущийся о буртик&#10;- ослабленное крепление акселерометра&#10;&#10;Настройка по-прежнему ориентируется на самый высокий пик каждого пути, но проверьте это, прежде чем добиваться идеального совпадения."/>
   <translation tag="Matching printers" ru="Подходящие принтеры"/>
   <translation tag="Material" ru="Материал"/>
   <translation tag="Material Comfort:" ru="Комфорт материала:"/>
@@ -1793,6 +1806,7 @@
   <translation tag="Measure" ru="Измерить"/>
   <translation tag="Measure every tool&apos;s XYZ offset automatically" ru="Автоматически измеряет смещение XYZ каждого инструмента"/>
   <translation tag="Measure pressure advance automatically" ru="Автоматически измеряет Pressure Advance"/>
+  <translation tag="Measure this zone first" ru="Сначала измерьте эту зону"/>
   <translation tag="Measured (shaper off)" ru="Измерено (шейпер выключен)"/>
   <translation tag="Measured filament diameter" ru="Измеренный диаметр филамента"/>
   <translation tag="Measured pressure advance" ru="Измеренный Pressure Advance"/>
@@ -1894,6 +1908,7 @@
   <translation tag="New printer successfully added" ru="Новый принтер успешно добавлен"/>
   <translation tag="New profile name" ru="Новое имя профиля"/>
   <translation tag="Next" ru="Далее"/>
+  <translation tag="Next zone" ru="Следующая зона"/>
   <translation tag="Niimbot (Bluetooth)" ru="Niimbot (Bluetooth)"/>
   <translation tag="No" ru="Нет"/>
   <translation tag="No AMS Detected" ru="AMS не обнаружен"/>
@@ -1921,6 +1936,7 @@
   <translation tag="No camera — use USB barcode scanner" ru="Нет камеры — используйте USB сканер штрих-кодов"/>
   <translation tag="No chamber temperature sensor detected" ru="Датчик температуры камеры не обнаружен"/>
   <translation tag="No changes to revert" ru="Нет изменений для отката"/>
+  <translation tag="No clear peak in this zone" ru="В этой зоне нет чёткого пика"/>
   <translation tag="No color" ru="Без цвета"/>
   <translation tag="No dryer available. Store filament in a sealed dry box with desiccant for best results." ru="Сушилка недоступна. Храните филамент в герметичном контейнере с влагопоглотителем для лучших результатов."/>
   <translation tag="No effects available" ru="Нет доступных эффектов"/>
@@ -2010,6 +2026,7 @@
   <translation tag="Not yet calibrated" ru="Ещё не откалибровано"/>
   <translation tag="Notes" ru="Заметки"/>
   <translation tag="Notes (optional)" ru="Заметки (необязательно)"/>
+  <translation tag="Nothing left to tune" ru="Настраивать больше нечего"/>
   <translation tag="Nothing loaded" ru="Ничего не загружено"/>
   <translation tag="Nothing starred yet. Tap the star on a filament to add it here." ru="Пока ничего не отмечено. Нажмите звезду у филамента, чтобы добавить его сюда."/>
   <translation tag="Nothing to remap" ru="Нечего переназначать"/>
@@ -2138,8 +2155,11 @@
   <translation tag="Password" ru="Пароль"/>
   <translation tag="Password cannot be empty" ru="Пароль не может быть пустым"/>
   <translation tag="Password is required for secured networks" ru="Для защищённых сетей требуется пароль"/>
+  <translation tag="Path A tensioner" ru="Натяжитель Пути A"/>
+  <translation tag="Path B tensioner" ru="Натяжитель Пути B"/>
   <translation tag="Path {}" ru="Путь {}"/>
   <translation tag="Path {} before" ru="Путь {} раньше"/>
+  <translation tag="Path {} earlier round" ru="Путь {} прошлый раунд"/>
   <translation tag="Pause" ru="Пауза"/>
   <translation tag="Pause macro not configured" ru="Макрос паузы не настроен"/>
   <translation tag="Pause on Detection" ru="Пауза при обнаружении"/>
@@ -2415,6 +2435,7 @@
   <translation tag="Raspberry Pi (32-bit)" ru="Raspberry Pi (32-bit)"/>
   <translation tag="Re-identify" ru="Определить снова"/>
   <translation tag="Re-measure" ru="Измерить снова"/>
+  <translation tag="Re-measure (~{} min)" ru="Измерить снова (~{} мин)"/>
   <translation tag="Re-measuring Path {}" ru="Повторное измерение Пути {}"/>
   <translation tag="Re-probe" ru="Перепроверить"/>
   <translation tag="Re-read spool RFID tags and remaining length" ru="Перечитать RFID-метки катушек и остаток"/>
@@ -2465,6 +2486,7 @@
   <translation tag="Release filament" ru="Отпустить филамент"/>
   <translation tag="Release or grip the filament by hand" ru="Отпустите или зажмите филамент вручную"/>
   <translation tag="Release the filament" ru="Отпустить филамент"/>
+  <translation tag="Release {}&apos;s tensioner, let the spring settle, lock it" ru="Отпустите натяжитель {}, дайте пружине сесть, зафиксируйте"/>
   <translation tag="Remaining" ru="Осталось"/>
   <translation tag="Remaining (g)" ru="Осталось (г)"/>
   <translation tag="Remaining Weight (g)" ru="Оставшийся вес (г)"/>
@@ -2596,6 +2618,7 @@
   <translation tag="Rotating tips for using your printer" ru="Сменяющиеся советы по печати"/>
   <translation tag="Rotation" ru="Поворот"/>
   <translation tag="Rotation: %d° - %ds remaining (or wait to retry)" ru="Поворот: %d° - осталось %ds (или подождите для повтора)"/>
+  <translation tag="Round {}" ru="Раунд {}"/>
   <translation tag="Rounded" ru="Скруглённый"/>
   <translation tag="Run" ru="Запуск"/>
   <translation tag="Run Calibration Wizard" ru="Запустить мастер калибровки"/>
@@ -3061,6 +3084,8 @@
   <translation tag="The filament did not reach the nozzle. The CFS reported no error, but the toolhead sensor still sees no filament. Check that the spool is seated and the path is clear, then try again." ru="Филамент не дошёл до сопла. CFS не сообщила об ошибке, но датчик печатающей головки по-прежнему не видит филамент. Проверьте, что катушка установлена правильно и путь свободен, затем повторите попытку."/>
   <translation tag="The filament may not have fully retracted — try again or manually pull" ru="Возможно, филамент втянут не полностью. Повторите или вытяните вручную"/>
   <translation tag="The filament system reported an error" ru="Система филамента сообщила об ошибке"/>
+  <translation tag="The gap didn&apos;t close (moved {:.1f} Hz). Try a bigger turn." ru="Разница не сократилась (сдвиг {:.1f} Гц). Поверните сильнее."/>
+  <translation tag="The gap is not closing. Something besides tension may be shaping it." ru="Разница не сокращается. Возможно, влияет что-то помимо натяжения."/>
   <translation tag="The heater will cycle on and off several times." ru="Нагреватель будет несколько раз включаться и выключаться."/>
   <translation tag="The helper macros are installed and activate after Klipper restarts." ru="Вспомогательные макросы установлены и активируются после перезапуска Klipper."/>
   <translation tag="The left RFID reader in this CFS unit may need service" ru="Левому RFID-считывателю этого блока CFS может требоваться обслуживание"/>
@@ -3168,6 +3193,7 @@
   <translation tag="Thorough" ru="Тщательно"/>
   <translation tag="Thumbnail Only" ru="Только миниатюра"/>
   <translation tag="Thumbnail: " ru="Миниатюра: "/>
+  <translation tag="Tighten {}" ru="Натянуть {}"/>
   <translation tag="Time" ru="Время"/>
   <translation tag="Time Format" ru="Формат времени"/>
   <translation tag="Time to wait before escalating to emergency stop" ru="Время ожидания перед эскалацией до аварийной остановки"/>
@@ -3243,6 +3269,7 @@
   <translation tag="Try again" ru="Повторить"/>
   <translation tag="Try the operation again. If it persists, check for mechanical issues." ru="Повторите операцию. Если проблема не исчезает, проверьте механические неисправности."/>
   <translation tag="Tune" ru="Настройка"/>
+  <translation tag="Tune belts" ru="Настроить ремни"/>
   <translation tag="Tuning tower enabled - start a print to test" ru="Башня настройки включена — начните печать для теста"/>
   <translation tag="Turbo" ru="Турбо"/>
   <translation tag="Turbo Inner" ru="Турбо (внутренний)"/>
@@ -3417,6 +3444,7 @@
   <translation tag="Weekly Print Stats" ru="Статистика за неделю"/>
   <translation tag="Weight data is synced from Spoolman to display remaining filament. Changes are also synced when prints start, pause, or complete." ru="Данные о весе синхронизируются из Spoolman для отображения оставшегося филамента. Изменения также синхронизируются при начале, паузе или завершении печати."/>
   <translation tag="Welcome to HelixScreen" ru="Добро пожаловать в HelixScreen"/>
+  <translation tag="Went past {} by {:.1f} Hz. Back it off a little." ru="Перешли {} на {:.1f} Гц. Немного верните назад."/>
   <translation tag="What We Collect" ru="Что мы собираем"/>
   <translation tag="When enabled, only the macro runs. When disabled, temperatures are set first, then the macro runs." ru="Когда включено, запускается только макрос. Когда выключено, сначала задаются температуры, затем запускается макрос."/>
   <translation tag="Where UI sounds play" ru="Где воспроизводятся звуки интерфейса"/>
@@ -3425,6 +3453,8 @@
   <translation tag="Which macro the Close feeder button sends" ru="Какой макрос отправляет кнопка «Закрыть фидер»"/>
   <translation tag="Which macro the Open feeder button sends" ru="Какой макрос отправляет кнопка «Открыть фидер»"/>
   <translation tag="White" ru="Белый"/>
+  <translation tag="Why the curves differ" ru="Почему кривые различаются"/>
+  <translation tag="Why?" ru="Почему?"/>
   <translation tag="Wi-Fi" ru="WiFi"/>
   <translation tag="Wi-Fi or ethernet connection status" ru="Статус подключения Wi-Fi или Ethernet"/>
   <translation tag="Wi-Fi {}" ru="WiFi {}"/>
@@ -3515,6 +3545,7 @@
   <translation tag="Z-offset saved - Klipper restarting..." ru="Z-смещение сохранено — Klipper перезапускается..."/>
   <translation tag="Z:" ru="Z:"/>
   <translation tag="Z: 0.000" ru="Z: 0.000"/>
+  <translation tag="Zone {:.0f}-{:.0f} Hz" ru="Зона {:.0f}-{:.0f} Гц"/>
   <translation tag="already loaded" ru="уже загружен"/>
   <translation tag="attempt {}" ru="попытка {}"/>
   <translation tag="bed" ru="стол"/>
@@ -3559,6 +3590,7 @@
   <translation tag="just now" ru="только что"/>
   <translation tag="last 60 s · LOOSE up, TIGHT down" ru="последние 60 с · вверху ОСЛАБЛЕН, внизу НАТЯНУТ"/>
   <translation tag="last 60 s · pressure, target dashed" ru="последние 60 с · давление, цель пунктиром"/>
+  <translation tag="last turn: {:.1f} Hz closer" ru="последний поворот: ближе на {:.1f} Гц"/>
   <translation tag="layers" ru="слои"/>
   <translation tag="left" ru="осталось"/>
   <translation tag="loaded" ru="загружен"/>
@@ -3598,8 +3630,12 @@
   <translation tag="v%s available" ru="Доступна v%s"/>
   <translation tag="v{} installed! Restarting..." ru="v{} установлена! Перезапуск..."/>
   <translation tag="v{} is available. Tap to update." ru="v{} доступна. Нажмите для обновления."/>
+  <translation tag="what you turned" ru="сколько повернули"/>
+  <translation tag="within one bin" ru="в пределах одного бина"/>
   <translation tag="wpa_supplicant is not running. WiFi features unavailable." ru="wpa_supplicant не запущен. Функции WiFi недоступны."/>
   <translation tag="you have" ru="у вас"/>
+  <translation tag="{0}&apos;s peak went down after tightening. Check you turned Path {0}&apos;s tensioner." ru="Пик {0} опустился после натяжения. Проверьте, что вы крутили натяжитель Пути {0}."/>
+  <translation tag="{0}&apos;s peak went up after loosening. Check you turned Path {0}&apos;s tensioner." ru="Пик {0} поднялся после ослабления. Проверьте, что вы крутили натяжитель Пути {0}."/>
   <translation tag="{:.0f}-{:.0f} Hz · about {} min" ru="{:.0f}-{:.0f} Гц · примерно {} мин"/>
   <translation tag="{} ({})" ru="{} ({})"/>
   <translation tag="{} Hardware Issues" ru="Проблем с оборудованием: {}"/>
@@ -3635,6 +3671,7 @@
   <translation tag="{} kept crashing the panel; pick a printer to connect" ru="{} постоянно вызывал сбой экрана; выберите принтер для подключения"/>
   <translation tag="{} kept crashing the panel; switched back to {}" ru="{} постоянно вызывал сбой экрана; возврат к {}"/>
   <translation tag="{} lines in helixscreen.env were ignored" ru="В helixscreen.env проигнорировано строк: {}"/>
+  <translation tag="{} looser than {}" ru="{} слабее, чем {}"/>
   <translation tag="{} macro not configured" ru="Макрос {} не настроен"/>
   <translation tag="{} matches." ru="{} подходит."/>
   <translation tag="{} may cause unintended changes. Are you sure?" ru="{} может привести к непреднамеренным изменениям. Вы уверены?"/>
@@ -3653,6 +3690,9 @@
   <translation tag="{} spool cleared" ru="{}: катушка удалена"/>
   <translation tag="{} started" ru="{} запущено"/>
   <translation tag="{} target set to {}°C" ru="Целевая температура {} — {}°C"/>
+  <translation tag="{} tighter than {}" ru="{} туже, чем {}"/>
+  <translation tag="{} turn" ru="{} об."/>
+  <translation tag="{} turns" ru="{} об."/>
   <translation tag="{} updated" ru="{}: обновлено"/>
   <translation tag="{} widgets" ru="Виджетов: {}"/>
   <translation tag="{} will switch to a slot whose filament type AND colour both match the active spool and whose own port sensor reads filament present." ru="{} переключится на слот, у которого тип филамента И цвет совпадают с активной катушкой, а собственный датчик порта видит филамент."/>
@@ -3660,5 +3700,7 @@
   <translation tag="{} · {} · {}" ru="{} · {} · {}"/>
   <translation tag="{} — response timed out" ru="{} — время ожидания ответа истекло"/>
   <translation tag="{} → {}: no filament loaded." ru="{} → {}: филамент не загружен."/>
+  <translation tag="{}&apos;s peak moved out of the zone. Widening it." ru="Пик {} вышел из зоны. Расширяем её."/>
   <translation tag="{}:{:02} elapsed" ru="прошло {}:{:02}"/>
+  <translation tag="~{:.0f} Hz / turn" ru="~{:.0f} Гц / оборот"/>
 </translations>

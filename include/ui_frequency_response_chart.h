@@ -47,6 +47,7 @@
 #include "platform_capabilities.h"
 
 #include <cstddef>
+#include <utility>
 #include <vector>
 
 // Forward declaration
@@ -394,6 +395,13 @@ ui_frequency_response_chart_get_markers(ui_frequency_response_chart_t* chart, in
  */
 void ui_frequency_response_chart_set_freq_range(ui_frequency_response_chart_t* chart, float min,
                                                 float max);
+
+/**
+ * @brief The frequency axis range last set, as {min, max} ({0, 0} for null)
+ */
+// NAMESPACE_OK: joins this header's global ui_frequency_response_chart_* API
+[[nodiscard]] std::pair<float, float>
+ui_frequency_response_chart_get_freq_range(ui_frequency_response_chart_t* chart);
 
 /**
  * @brief Set the amplitude axis range

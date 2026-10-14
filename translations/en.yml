@@ -5,7 +5,11 @@ translations:
   ' (timed out)': ' (timed out)'
   ' frames': ' frames'
   ' left': ' left'
+  ' · Tuned in {} round': ' · Tuned in {} round'
+  ' · Tuned in {} rounds': ' · Tuned in {} rounds'
   ' · was {:.0f}%': ' · was {:.0f}%'
+  ' · {} loosened about {}': ' · {} loosened about {}'
+  ' · {} tightened about {}': ' · {} tightened about {}'
   '"%s" failed to load': '"%s" failed to load'
   '%d additional fan%s': '%d additional fan%s'
   '%d feeders': '%d feeders'
@@ -202,6 +206,7 @@ translations:
   Address: Address
   Adjust screen brightness level: Adjust screen brightness level
   Adjust screws, then re-probe.: Adjust screws, then re-probe.
+  Adjust {} instead: Adjust {} instead
   Adjustments stay active until restart. Save after print completes.: Adjustments
     stay active until restart. Save after print completes.
   Adjusts individual characteristics of your heaters for optimal control: Adjusts
@@ -706,6 +711,7 @@ translations:
   Configured hardware no longer present: Configured hardware no longer present
   Configured in the backup-spool package, not from here: Configured in the backup-spool package, not from here
   Configuring Moonraker...: Configuring Moonraker...
+  Confirm (full, ~{} min): Confirm (full, ~{} min)
   Confirm PIN: Confirm PIN
   Confirm before running macros: Confirm before running macros
   Connect: Connect
@@ -844,6 +850,7 @@ translations:
   'Current: Bypass': 'Current: Bypass'
   Currently Loaded: Currently Loaded
   Currently printing: Currently printing
+  Curves differ in shape. Steering by each path's tallest peak.: Curves differ in shape. Steering by each path's tallest peak.
   Custom: Custom
   Custom...: Custom...
   Customize Macro Button: Customize Macro Button
@@ -1348,6 +1355,7 @@ translations:
   Fine: Fine
   Fine Inner: Fine Inner
   Fine Outer: Fine Outer
+  Fine-tune: Fine-tune
   Finish: Finish
   Finish or cancel the print before loading, unloading, or changing filament: Finish or cancel the print before loading, unloading, or changing filament
   'Finishing clean...': 'Finishing clean...'
@@ -1414,6 +1422,7 @@ translations:
   Global: Global
   Good: Good
   Good Accuracy: Good Accuracy
+  Good enough: Good enough
   Good match: Good match
   Got it: Got it
   Gray: Gray
@@ -1690,6 +1699,7 @@ translations:
   Keep hands clear. The printer moves on its own.: Keep hands clear. The printer moves on its own.
   Keep its own data on this screen (up to 256 KB).: Keep its own data on this screen (up to 256 KB).
   Keep the bypass spool visible when bypass is off: Keep the bypass spool visible when bypass is off
+  Keep tuning: Keep tuning
   Kick away: Kick away
   Kinematics: Kinematics
   Klipper: Klipper
@@ -1830,6 +1840,7 @@ translations:
   'Long-press any tile to enter edit mode — rearrange, resize, remove, or add widgets, and add extra pages for your preferred layout.': 'Long-press any tile to enter edit mode — rearrange, resize, remove, or add widgets, and add extra pages for your preferred layout.'
   Long-press the home grid to rearrange widgets (turn off if it triggers by accident): Long-press the home grid to rearrange widgets (turn off if it triggers by accident)
   Longest Disconnect: Longest Disconnect
+  Loosen {}: Loosen {}
   Lost connection during print — try again: Lost connection during print — try again
   Lost connection to CFS unit: Lost connection to CFS unit
   'Lot # (optional)': 'Lot # (optional)'
@@ -1905,6 +1916,9 @@ translations:
   Master volume level: Master volume level
   Match Mode: Match Mode
   Match your typical print fan speed: Match your typical print fan speed
+  Matched at {:.1f} Hz: Matched at {:.1f} Hz
+  ? "Matched belts give curves of the same shape. When the tallest peak on one path has no partner on the other, something besides tension is shaping the response:\n\n- a worn, frayed or mis-tracking belt\n- a loose or slipping pulley grub screw\n- an idler or bearing that binds\n- debris in the teeth, or a belt rubbing a flange\n- a loose accelerometer mount\n\nTuning still steers by each path's tallest peak, but check these before chasing a perfect match."
+  : "Matched belts give curves of the same shape. When the tallest peak on one path has no partner on the other, something besides tension is shaping the response:\n\n- a worn, frayed or mis-tracking belt\n- a loose or slipping pulley grub screw\n- an idler or bearing that binds\n- debris in the teeth, or a belt rubbing a flange\n- a loose accelerometer mount\n\nTuning still steers by each path's tallest peak, but check these before chasing a perfect match."
   Matching printers: Matching printers
   Material: Material
   'Material Comfort:': 'Material Comfort:'
@@ -1923,6 +1937,7 @@ translations:
   Measure: Measure
   Measure every tool's XYZ offset automatically: Measure every tool's XYZ offset automatically
   Measure pressure advance automatically: Measure pressure advance automatically
+  Measure this zone first: Measure this zone first
   Measured (shaper off): Measured (shaper off)
   Measured filament diameter: Measured filament diameter
   Measured pressure advance: Measured pressure advance
@@ -2033,6 +2048,7 @@ translations:
   New printer successfully added: New printer successfully added
   New profile name: New profile name
   Next: Next
+  Next zone: Next zone
   Niimbot (Bluetooth): Niimbot (Bluetooth)
   'No': 'No'
   No AMS Detected: No AMS Detected
@@ -2062,6 +2078,7 @@ translations:
   No camera — use USB barcode scanner: No camera — use USB barcode scanner
   No chamber temperature sensor detected: No chamber temperature sensor detected
   No changes to revert: No changes to revert
+  No clear peak in this zone: No clear peak in this zone
   No color: No color
   No dryer available. Store filament in a sealed dry box with desiccant for best results.: No
     dryer available. Store filament in a sealed dry box with desiccant for best results.
@@ -2155,6 +2172,7 @@ translations:
   Not yet calibrated: Not yet calibrated
   Notes: Notes
   Notes (optional): Notes (optional)
+  Nothing left to tune: Nothing left to tune
   Nothing loaded: Nothing loaded
   Nothing starred yet. Tap the star on a filament to add it here.: Nothing starred yet. Tap the star on a filament to add it here.
   Nothing to remap: Nothing to remap
@@ -2291,8 +2309,11 @@ translations:
   Password: Password
   Password cannot be empty: Password cannot be empty
   Password is required for secured networks: Password is required for secured networks
+  Path A tensioner: Path A tensioner
+  Path B tensioner: Path B tensioner
   Path {}: Path {}
   Path {} before: Path {} before
+  Path {} earlier round: Path {} earlier round
   Pause: Pause
   Pause macro not configured: Pause macro not configured
   Pause on Detection: Pause on Detection
@@ -2587,6 +2608,7 @@ translations:
   Raspberry Pi (32-bit): Raspberry Pi (32-bit)
   Re-identify: Re-identify
   Re-measure: Re-measure
+  Re-measure (~{} min): Re-measure (~{} min)
   Re-measuring Path {}: Re-measuring Path {}
   Re-probe: Re-probe
   Re-read spool RFID tags and remaining length: Re-read spool RFID tags and remaining length
@@ -2643,6 +2665,7 @@ translations:
   Release filament: Release filament
   Release or grip the filament by hand: Release or grip the filament by hand
   Release the filament: Release the filament
+  Release {}'s tensioner, let the spring settle, lock it: Release {}'s tensioner, let the spring settle, lock it
   Remaining: Remaining
   Remaining (g): Remaining (g)
   Remaining Weight (g): Remaining Weight (g)
@@ -2781,6 +2804,7 @@ translations:
   Rotation: Rotation
   'Rotation: %d° - %ds remaining (or wait to retry)': 'Rotation: %d°
     - %ds remaining (or wait to retry)'
+  Round {}: Round {}
   Rounded: Rounded
   Run: Run
   Run Calibration Wizard: Run Calibration Wizard
@@ -3306,6 +3330,8 @@ translations:
   : The filament did not reach the nozzle. The CFS reported no error, but the toolhead sensor still sees no filament. Check that the spool is seated and the path is clear, then try again.
   The filament may not have fully retracted — try again or manually pull: The filament may not have fully retracted — try again or manually pull
   The filament system reported an error: The filament system reported an error
+  The gap didn't close (moved {:.1f} Hz). Try a bigger turn.: The gap didn't close (moved {:.1f} Hz). Try a bigger turn.
+  The gap is not closing. Something besides tension may be shaping it.: The gap is not closing. Something besides tension may be shaping it.
   The heater will cycle on and off several times.: The heater will cycle on and off
     several times.
   The helper macros are installed and activate after Klipper restarts.: The helper macros are installed and activate after Klipper restarts.
@@ -3456,6 +3482,7 @@ translations:
   Thorough: Thorough
   Thumbnail Only: Thumbnail Only
   'Thumbnail: ': 'Thumbnail: '
+  Tighten {}: Tighten {}
   Time: Time
   Time Format: Time Format
   Time to wait before escalating to emergency stop: Time to wait before escalating
@@ -3533,6 +3560,7 @@ translations:
   Try again: Try again
   Try the operation again. If it persists, check for mechanical issues.: Try the operation again. If it persists, check for mechanical issues.
   Tune: Tune
+  Tune belts: Tune belts
   Tuning tower enabled - start a print to test: Tuning tower enabled - start a print
     to test
   Turbo: Turbo
@@ -3717,6 +3745,7 @@ translations:
   : Weight data is synced from Spoolman to display remaining filament. Changes are
     also synced when prints start, pause, or complete.
   Welcome to HelixScreen: Welcome to HelixScreen
+  Went past {} by {:.1f} Hz. Back it off a little.: Went past {} by {:.1f} Hz. Back it off a little.
   What We Collect: What We Collect
   When enabled, only the macro runs. When disabled, temperatures are set first, then the macro runs.: When
     enabled, only the macro runs. When disabled, temperatures are set first, then
@@ -3726,6 +3755,8 @@ translations:
   Which macro the Close feeder button sends: Which macro the Close feeder button sends
   Which macro the Open feeder button sends: Which macro the Open feeder button sends
   White: White
+  Why the curves differ: Why the curves differ
+  Why?: Why?
   Wi-Fi: Wi-Fi
   Wi-Fi or ethernet connection status: Wi-Fi or ethernet connection status
   Wi-Fi {}: Wi-Fi {}
@@ -3824,6 +3855,7 @@ translations:
   Z-offset saved - Klipper restarting...: Z-offset saved - Klipper restarting...
   'Z:': 'Z:'
   'Z: 0.000': 'Z: 0.000'
+  Zone {:.0f}-{:.0f} Hz: Zone {:.0f}-{:.0f} Hz
   already loaded: already loaded
   attempt {}: attempt {}
   bed: bed
@@ -3868,6 +3900,7 @@ translations:
   just now: just now
   last 60 s · LOOSE up, TIGHT down: last 60 s · LOOSE up, TIGHT down
   last 60 s · pressure, target dashed: last 60 s · pressure, target dashed
+  'last turn: {:.1f} Hz closer': 'last turn: {:.1f} Hz closer'
   layers: layers
   left: left
   loaded: loaded
@@ -3907,8 +3940,12 @@ translations:
   v%s available: v%s available
   v{} installed! Restarting...: v{} installed! Restarting...
   v{} is available. Tap to update.: v{} is available. Tap to update.
+  what you turned: what you turned
+  within one bin: within one bin
   wpa_supplicant is not running. WiFi features unavailable.: wpa_supplicant is not running. WiFi features unavailable.
   you have: you have
+  "{0}'s peak went down after tightening. Check you turned Path {0}'s tensioner.": "{0}'s peak went down after tightening. Check you turned Path {0}'s tensioner."
+  "{0}'s peak went up after loosening. Check you turned Path {0}'s tensioner.": "{0}'s peak went up after loosening. Check you turned Path {0}'s tensioner."
   '{:.0f}-{:.0f} Hz · about {} min': '{:.0f}-{:.0f} Hz · about {} min'
   '{} ({})': '{} ({})'
   '{} Hardware Issues': '{} Hardware Issues'
@@ -3944,6 +3981,7 @@ translations:
   '{} lines in helixscreen.env were ignored': '{} lines in helixscreen.env were ignored'
   '{} kept crashing the panel; switched back to {}': '{} kept crashing the panel; switched back to {}'
   '{} kept crashing the panel; pick a printer to connect': '{} kept crashing the panel; pick a printer to connect'
+  '{} looser than {}': '{} looser than {}'
   '{} macro not configured': '{} macro not configured'
   '{} matches.': '{} matches.'
   '{} may cause unintended changes. Are you sure?': '{} may cause unintended changes.
@@ -3963,6 +4001,9 @@ translations:
   '{} spool cleared': '{} spool cleared'
   '{} started': '{} started'
   '{} target set to {}°C': '{} target set to {}°C'
+  '{} tighter than {}': '{} tighter than {}'
+  '{} turn': '{} turn'
+  '{} turns': '{} turns'
   '{} updated': '{} updated'
   '{} widgets': '{} widgets'
   ? '{} will switch to a slot whose filament type AND colour both match the active spool and whose own port sensor reads filament present.'
@@ -3971,4 +4012,6 @@ translations:
   '{} · {} · {}': '{} · {} · {}'
   '{} — response timed out': '{} — response timed out'
   '{} → {}: no filament loaded.': '{} → {}: no filament loaded.'
+  "{}'s peak moved out of the zone. Widening it.": "{}'s peak moved out of the zone. Widening it."
   '{}:{:02} elapsed': '{}:{:02} elapsed'
+  ~{:.0f} Hz / turn: ~{:.0f} Hz / turn

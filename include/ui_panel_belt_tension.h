@@ -9,6 +9,7 @@
 #include "belt_gating.h"
 #include "belt_tension_calibrator.h"
 #include "belt_tension_types.h"
+#include "belt_tune_session.h"
 #include "memory_utils.h"
 #include "operation_timeout_guard.h"
 #include "overlay_base.h"
@@ -44,11 +45,14 @@ class BeltPanelFixture;
  * @brief Belt tension panel: two resonance sweeps, compared
  *
  * Runs Klipper's TEST_RESONANCES down each CoreXY belt diagonal and compares
- * the resulting curves. Four view states drive one XML layout:
+ * the resulting curves. Five view states drive one XML layout:
  * - START: gate result + hardware summary + start button
  * - RUNNING: one sweep at a time, live chart cursor + elapsed time
  * - RESULTS: strongest peak pair, verdict, similarity, ghost of the previous run
  * - ERROR: the failure, with retry
+ * - TUNING: the guided loop (#1736). BeltTuneSession decides the zone, the
+ *   advice and each round's outcome; the panel sweeps both paths over the
+ *   zone's window per round and renders what the session says.
  *
  * START's action is gated on `bt_can_start`, which is driven solely by
  * evaluate_belt_gate() plus a klippy-READY leg. Hiding the Advanced-panel menu
@@ -71,6 +75,14 @@ class BeltTensionPanel : public OverlayBase {
         RUNNING = 1, ///< sweeping one path
         RESULTS = 2, ///< both paths measured, compared
         ERROR = 3,
+        TUNING = 4, ///< guided tuning loop, phased by TunePhase
+    };
+
+    /// bt_tune_phase: what the TUNING view is waiting on.
+    enum class TunePhase {
+        ADJUST = 0,   ///< the user turns a tensioner, then re-measures
+        SWEEPING = 1, ///< a windowed round is running
+        MATCHED = 2,  ///< the zone is matched (or none is left)
     };
 
     /// A sweep that goes this long without a progress line is treated as
@@ -132,6 +144,19 @@ class BeltTensionPanel : public OverlayBase {
     void handle_retry_clicked();
     void handle_retest_clicked(helix::calibration::BeltPath path);
 
+    // Tuning loop
+    void handle_tune_clicked();
+    void handle_tune_measure_clicked();
+    /// "Good enough": back to RESULTS as last shown, no sweep.
+    void handle_tune_done_clicked();
+    void handle_tune_swap_clicked();
+    /// The turn stepper: +1 / -1 steps of belt_tune::TURN_STEP, clamped.
+    void handle_tune_amount_step(int direction);
+    void handle_tune_next_zone_clicked();
+    /// A full A+B check against the round-0 similarity, landing on RESULTS.
+    void handle_tune_confirm_clicked();
+    void handle_tune_keep_clicked();
+
   private:
     /// One path's measurement history. `previous` holds the curve the
     /// re-test is measuring against, so RESULTS can ghost it.
@@ -153,8 +178,11 @@ class BeltTensionPanel : public OverlayBase {
 
     /// Queue paths for measurement and switch to RUNNING. `clear_previous`
     /// drops both paths' ghost history (Start runs fresh); a single-path
-    /// re-test keeps the sibling's.
-    void begin_run(const std::vector<helix::calibration::BeltPath>& queue, bool clear_previous);
+    /// re-test keeps the sibling's. With a `window` the run is a tuning round:
+    /// the view stays on TUNING (phase SWEEPING) and the curves feed the
+    /// session instead of `runs_`.
+    void begin_run(const std::vector<helix::calibration::BeltPath>& queue, bool clear_previous,
+                   std::optional<helix::calibration::BeltSweepWindow> window = std::nullopt);
     void start_next_measurement();
     void on_sweep_progress(int percent, float freq_hz);
     void on_sweep_complete(helix::calibration::BeltPath path, helix::calibration::BeltCurve curve);
@@ -168,6 +196,29 @@ class BeltTensionPanel : public OverlayBase {
     /// Cancel the sweep, the stall guard, the elapsed timer and the queue.
     void cancel_run();
     void back_to_start();
+    /// RUNNING, or TUNING while a round sweeps.
+    [[nodiscard]] bool measuring() const;
+
+    //
+    // === Tuning loop ===
+    //
+
+    /// Sweep both paths over the session's current window.
+    void start_tune_round();
+    /// Both windowed sweeps are in: score the round and leave SWEEPING.
+    void finish_tune_round();
+    void set_tune_phase(TunePhase phase);
+    /// Every bt_tune_* subject, and the gauge, from the session.
+    void refresh_tune();
+    [[nodiscard]] std::string tune_last_message() const;
+    /// The stepper's value restarts at the session's suggestion.
+    void reset_tune_turns();
+    /// The gauge's half-span for this zone: wide enough for its first gap.
+    void reset_tune_gauge_range();
+    /// Drop the session and its curves.
+    void end_tuning();
+    /// Minutes a full A+B check takes at the printer's sweep rate.
+    [[nodiscard]] int full_check_minutes() const;
 
     //
     // === Subject refresh ===
@@ -214,6 +265,11 @@ class BeltTensionPanel : public OverlayBase {
     /// Fit the chart's axes to the curves it holds (or the sweep range before any).
     void push_chart_data();
     void push_chart_markers(const helix::calibration::BeltComparison& cmp);
+    /// TUNING: both paths over the zone window, the adjusted path's earlier
+    /// rounds muted, hollow rings at the session's refined peaks.
+    void push_tune_chart_data();
+    /// One curve into a series as a percentage of `tallest`; hidden when empty.
+    void push_series_data(int series_id, const helix::calibration::BeltCurve& curve, float tallest);
     void run_after_ram_check(std::function<void()> go);
 
     // Subject manager for RAII cleanup
@@ -246,7 +302,7 @@ class BeltTensionPanel : public OverlayBase {
     lv_subject_t verdict_text_subject_{};
     char verdict_text_buf_[128] = {};
     lv_subject_t facts_subject_{};
-    char facts_buf_[96] = {};
+    char facts_buf_[192] = {};
     lv_subject_t unpaired_subject_{};
     char unpaired_buf_[128] = {};
     lv_subject_t has_unpaired_subject_{};
@@ -255,6 +311,44 @@ class BeltTensionPanel : public OverlayBase {
     lv_subject_t chart_available_subject_{};
     lv_subject_t error_message_subject_{};
     char error_message_buf_[256] = {};
+
+    // Tuning loop
+    lv_subject_t tune_cta_subject_{};
+    char tune_cta_buf_[32] = {};
+    lv_subject_t tune_phase_subject_{};
+    lv_subject_t tune_kind_subject_{};
+    lv_subject_t tune_dir_subject_{};
+    lv_subject_t tune_path_subject_{};
+    lv_subject_t tune_severity_subject_{};
+    lv_subject_t tune_baseline_subject_{};
+    lv_subject_t tune_has_zone_subject_{};
+    lv_subject_t tune_has_next_zone_subject_{};
+    lv_subject_t tune_shape_warning_subject_{};
+    lv_subject_t tune_instruction_subject_{};
+    char tune_instruction_buf_[96] = {};
+    lv_subject_t tune_amount_subject_{};
+    char tune_amount_buf_[32] = {};
+    lv_subject_t tune_gap_subject_{};
+    char tune_gap_buf_[24] = {};
+    lv_subject_t tune_gap_caption_subject_{};
+    char tune_gap_caption_buf_[64] = {};
+    lv_subject_t tune_round_subject_{};
+    char tune_round_buf_[32] = {};
+    lv_subject_t tune_zone_subject_{};
+    char tune_zone_buf_[48] = {};
+    lv_subject_t tune_rate_subject_{};
+    char tune_rate_buf_[32] = {};
+    lv_subject_t tune_last_subject_{};
+    char tune_last_buf_[160] = {};
+    lv_subject_t tune_has_last_subject_{};
+    lv_subject_t tune_hint_subject_{};
+    char tune_hint_buf_[128] = {};
+    lv_subject_t tune_swap_label_subject_{};
+    char tune_swap_label_buf_[48] = {};
+    lv_subject_t tune_measure_label_subject_{};
+    char tune_measure_label_buf_[48] = {};
+    lv_subject_t tune_confirm_label_subject_{};
+    char tune_confirm_label_buf_[48] = {};
 
     // Gate observers. Every one carries PrinterState's own SubjectLifetime -
     // the observe<V> factory requires it as its fourth parameter; a
@@ -281,8 +375,11 @@ class BeltTensionPanel : public OverlayBase {
     ui_frequency_response_chart_t* chart_ = nullptr;
     int series_[2] = {-1, -1};
     int ghost_series_[2] = {-1, -1};
+    /// Per path, the adjusted path's two previous tuning rounds, oldest first.
+    int tune_ghost_series_[2][2] = {{-1, -1}, {-1, -1}};
     lv_obj_t* chart_host_running_ = nullptr;
     lv_obj_t* chart_host_results_ = nullptr;
+    lv_obj_t* chart_host_tuning_ = nullptr;
 
     /// Render tier override for tests; nullopt reads PlatformCapabilities.
     std::optional<helix::PlatformTier> tier_override_;
@@ -312,6 +409,29 @@ class BeltTensionPanel : public OverlayBase {
     uint32_t run_started_ms_ = 0;
     helix::ui::LvglTimerGuard elapsed_timer_;
     OperationTimeoutGuard stall_guard_;
+    /// The window of the tuning round in flight; nullopt for a full check.
+    std::optional<helix::calibration::BeltSweepWindow> run_window_;
+
+    // Tuning loop
+    /// The comparison RESULTS shows; round 0 of a tuning session.
+    helix::calibration::BeltComparison last_cmp_;
+    std::optional<helix::calibration::BeltTuneSession> tune_;
+    TunePhase tune_phase_ = TunePhase::ADJUST;
+    /// The latest round's windowed curves; valid once tune_has_curves_.
+    helix::calibration::BeltCurve tune_curves_[2];
+    bool tune_has_curves_ = false;
+    /// The adjusted path's curves from earlier rounds of this zone, oldest
+    /// first, at most two.
+    std::vector<helix::calibration::BeltCurve> tune_adj_history_;
+    std::optional<helix::calibration::BeltTuneOutcome> tune_last_outcome_;
+    /// How far the adjusted peak moved in the last round, Hz.
+    float tune_last_move_hz_ = 0.0f;
+    float tune_turns_ = helix::calibration::belt_tune::FIRST_TURN; ///< the stepper
+    float tune_gauge_range_hz_ = 2.0f * helix::calibration::belt_tune::GAUGE_WARN_HZ;
+    bool tune_shape_differs_ = false; ///< round 0's tallest peaks are unpaired
+    float tune_round0_similarity_ = 0.0f;
+    /// Appended to the facts line by the Confirm run's RESULTS.
+    std::string tune_facts_suffix_;
 
     friend class BeltPanelFixture;
 };

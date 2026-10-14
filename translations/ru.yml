@@ -5,7 +5,11 @@ translations:
   ' (timed out)': ' (время ожидания истекло)'
   ' frames': ' кадров'
   ' left': ' осталось'
+  ' · Tuned in {} round': " · Настроено за {} раунд(ов)"
+  ' · Tuned in {} rounds': " · Настроено за {} раунд(ов)"
   ' · was {:.0f}%': ' · было {:.0f}%'
+  ' · {} loosened about {}': " · {} ослаблен примерно на {}"
+  ' · {} tightened about {}': " · {} натянут примерно на {}"
   '"%s" failed to load': Не удалось загрузить «%s»
   '%d additional fan%s': '%d дополнительный вентилятор%s'
   '%d feeders': '%d фидеров'
@@ -205,6 +209,7 @@ translations:
   Address: Адрес
   Adjust screen brightness level: Настроить уровень яркости экрана
   Adjust screws, then re-probe.: Отрегулируйте винты, затем перепроверьте.
+  Adjust {} instead: "Регулировать {}"
   Adjustments stay active until restart. Save after print completes.: Настройки активны
     до перезагрузки. Сохраните после завершения печати.
   Adjusts individual characteristics of your heaters for optimal control: Настраивает
@@ -722,6 +727,7 @@ translations:
   Configured hardware no longer present: 'Настроенное оборудование больше не обнаруживается'
   Configured in the backup-spool package, not from here: Настраивается в плагине резервной катушки, не здесь
   Configuring Moonraker...: Настройка Moonraker...
+  Confirm (full, ~{} min): "Подтвердить (полный, ~{} мин)"
   Confirm PIN: Подтвердите PIN
   Confirm before running macros: Подтверждать перед запуском макросов
   Connect: Подключить
@@ -864,6 +870,7 @@ translations:
   'Current: Bypass': 'Текущий: Обход'
   Currently Loaded: Загружено
   Currently printing: Сейчас печатается
+  Curves differ in shape. Steering by each path's tallest peak.: "Формы кривых различаются. Ориентир — самый высокий пик каждого пути."
   Custom: Свой
   Custom...: Настроить...
   Customize Macro Button: Настроить кнопку макроса
@@ -1379,6 +1386,7 @@ translations:
   Fine: Точно
   Fine Inner: Точно (внутренний)
   Fine Outer: Точно (внешний)
+  Fine-tune: "Точная настройка"
   Finish: Завершить
   Finish or cancel the print before loading, unloading, or changing filament: Завершите или отмените печать перед загрузкой, выгрузкой или сменой филамента
   Finishing clean...: Завершение очистки...
@@ -1446,6 +1454,7 @@ translations:
   Global: Общий
   Good: Хорошо
   Good Accuracy: Хорошая точность
+  Good enough: "Достаточно"
   Good match: "Хорошее совпадение"
   Got it: Понятно
   Gray: Серый
@@ -1727,6 +1736,7 @@ translations:
 
   Keep its own data on this screen (up to 256 KB).: 'Хранит собственные данные на этом экране (до 256 КБ).'
   Keep the bypass spool visible when bypass is off: Показывать катушку байпаса, даже когда байпас выключен
+  Keep tuning: "Продолжить настройку"
   Kick away: 'Сброс остатка'
   Kinematics: Кинематика
   Klipper: Klipper
@@ -1871,6 +1881,7 @@ translations:
   'Long-press any tile to enter edit mode — rearrange, resize, remove, or add widgets, and add extra pages for your preferred layout.': 'Долгое нажатие на любую плитку переводит в режим редактирования — переставляйте, изменяйте размер, удаляйте или добавляйте виджеты, а также добавляйте дополнительные страницы под свой макет.'
   Long-press the home grid to rearrange widgets (turn off if it triggers by accident): 'Долгое нажатие на сетку главного экрана переставляет виджеты (отключите, если срабатывает случайно)'
   Longest Disconnect: Самое долгое отключение
+  Loosen {}: "Ослабить {}"
   Lost connection during print — try again: Потеряно соединение во время печати —
     попробуйте снова
   Lost connection to CFS unit: Потеряна связь с блоком CFS
@@ -1950,6 +1961,9 @@ translations:
   Master volume level: Основной уровень громкости
   Match Mode: 'Режим сопоставления'
   Match your typical print fan speed: Настройте типичную скорость вентилятора печати
+  Matched at {:.1f} Hz: "Совпадает на {:.1f} Гц"
+  ? "Matched belts give curves of the same shape. When the tallest peak on one path has no partner on the other, something besides tension is shaping the response:\n\n- a worn, frayed or mis-tracking belt\n- a loose or slipping pulley grub screw\n- an idler or bearing that binds\n- debris in the teeth, or a belt rubbing a flange\n- a loose accelerometer mount\n\nTuning still steers by each path's tallest peak, but check these before chasing a perfect match."
+  : "Одинаково натянутые ремни дают кривые одной формы. Если у самого высокого пика одного пути нет пары на другом, ответ формирует что-то помимо натяжения:\n\n- изношенный, разлохмаченный или уходящий в сторону ремень\n- ослабленный или проскальзывающий винт шкива\n- заедающий ролик или подшипник\n- мусор в зубьях или ремень, трущийся о буртик\n- ослабленное крепление акселерометра\n\nНастройка по-прежнему ориентируется на самый высокий пик каждого пути, но проверьте это, прежде чем добиваться идеального совпадения."
   Matching printers: Подходящие принтеры
   Material: Материал
   'Material Comfort:': 'Комфорт материала:'
@@ -1968,6 +1982,7 @@ translations:
   Measure: 'Измерить'
   Measure every tool's XYZ offset automatically: Автоматически измеряет смещение XYZ каждого инструмента
   Measure pressure advance automatically: 'Автоматически измеряет Pressure Advance'
+  Measure this zone first: "Сначала измерьте эту зону"
   Measured (shaper off): Измерено (шейпер выключен)
   Measured filament diameter: Измеренный диаметр филамента
   Measured pressure advance: 'Измеренный Pressure Advance'
@@ -2074,6 +2089,7 @@ translations:
   New printer successfully added: Новый принтер успешно добавлен
   New profile name: Новое имя профиля
   Next: Далее
+  Next zone: "Следующая зона"
   Niimbot (Bluetooth): Niimbot (Bluetooth)
   'No': Нет
   No AMS Detected: 'AMS не обнаружен'
@@ -2104,6 +2120,7 @@ translations:
   No camera — use USB barcode scanner: Нет камеры — используйте USB сканер штрих-кодов
   No chamber temperature sensor detected: 'Датчик температуры камеры не обнаружен'
   No changes to revert: Нет изменений для отката
+  No clear peak in this zone: "В этой зоне нет чёткого пика"
   No color: Без цвета
   No dryer available. Store filament in a sealed dry box with desiccant for best results.: Сушилка
     недоступна. Храните филамент в герметичном контейнере с влагопоглотителем для
@@ -2200,6 +2217,7 @@ translations:
   Not yet calibrated: Ещё не откалибровано
   Notes: Заметки
   Notes (optional): Заметки (необязательно)
+  Nothing left to tune: "Настраивать больше нечего"
   Nothing loaded: Ничего не загружено
   Nothing starred yet. Tap the star on a filament to add it here.: 'Пока ничего не отмечено. Нажмите звезду у филамента, чтобы добавить его сюда.'
   Nothing to remap: Нечего переназначать
@@ -2337,8 +2355,11 @@ translations:
   Password: Пароль
   Password cannot be empty: Пароль не может быть пустым
   Password is required for secured networks: Для защищённых сетей требуется пароль
+  Path A tensioner: "Натяжитель Пути A"
+  Path B tensioner: "Натяжитель Пути B"
   Path {}: Путь {}
   Path {} before: Путь {} раньше
+  Path {} earlier round: "Путь {} прошлый раунд"
   Pause: Пауза
   Pause macro not configured: Макрос паузы не настроен
   Pause on Detection: Пауза при обнаружении
@@ -2638,6 +2659,7 @@ translations:
   Raspberry Pi (32-bit): Raspberry Pi (32-bit)
   Re-identify: Определить снова
   Re-measure: 'Измерить снова'
+  Re-measure (~{} min): "Измерить снова (~{} мин)"
   Re-measuring Path {}: Повторное измерение Пути {}
   Re-probe: Перепроверить
   Re-read spool RFID tags and remaining length: 'Перечитать RFID-метки катушек и остаток'
@@ -2694,6 +2716,7 @@ translations:
   Release filament: Отпустить филамент
   Release or grip the filament by hand: Отпустите или зажмите филамент вручную
   Release the filament: Отпустить филамент
+  Release {}'s tensioner, let the spring settle, lock it: "Отпустите натяжитель {}, дайте пружине сесть, зафиксируйте"
   Remaining: 'Осталось'
   Remaining (g): Осталось (г)
   Remaining Weight (g): Оставшийся вес (г)
@@ -2835,6 +2858,7 @@ translations:
   Rotation: Поворот
   'Rotation: %d° - %ds remaining (or wait to retry)': 'Поворот: %d°
     - осталось %ds (или подождите для повтора)'
+  Round {}: "Раунд {}"
   Rounded: Скруглённый
   Run: Запуск
   Run Calibration Wizard: 'Запустить мастер калибровки'
@@ -3373,6 +3397,8 @@ translations:
   : Филамент не дошёл до сопла. CFS не сообщила об ошибке, но датчик печатающей головки по-прежнему не видит филамент. Проверьте, что катушка установлена правильно и путь свободен, затем повторите попытку.
   The filament may not have fully retracted — try again or manually pull: Возможно, филамент втянут не полностью. Повторите или вытяните вручную
   The filament system reported an error: Система филамента сообщила об ошибке
+  The gap didn't close (moved {:.1f} Hz). Try a bigger turn.: "Разница не сократилась (сдвиг {:.1f} Гц). Поверните сильнее."
+  The gap is not closing. Something besides tension may be shaping it.: "Разница не сокращается. Возможно, влияет что-то помимо натяжения."
   The heater will cycle on and off several times.: Нагреватель будет несколько раз
     включаться и выключаться.
   The helper macros are installed and activate after Klipper restarts.: 'Вспомогательные макросы установлены и активируются после перезапуска Klipper.'
@@ -3526,6 +3552,7 @@ translations:
   Thorough: Тщательно
   Thumbnail Only: Только миниатюра
   'Thumbnail: ': 'Миниатюра: '
+  Tighten {}: "Натянуть {}"
   Time: Время
   Time Format: Формат времени
   Time to wait before escalating to emergency stop: Время ожидания перед эскалацией
@@ -3603,6 +3630,7 @@ translations:
   Try again: 'Повторить'
   Try the operation again. If it persists, check for mechanical issues.: Повторите операцию. Если проблема не исчезает, проверьте механические неисправности.
   Tune: Настройка
+  Tune belts: "Настроить ремни"
   Tuning tower enabled - start a print to test: Башня настройки включена — начните
     печать для теста
   Turbo: Турбо
@@ -3787,6 +3815,7 @@ translations:
   : Данные о весе синхронизируются из Spoolman для отображения оставшегося филамента.
     Изменения также синхронизируются при начале, паузе или завершении печати.
   Welcome to HelixScreen: Добро пожаловать в HelixScreen
+  Went past {} by {:.1f} Hz. Back it off a little.: "Перешли {} на {:.1f} Гц. Немного верните назад."
   What We Collect: Что мы собираем
   When enabled, only the macro runs. When disabled, temperatures are set first, then the macro runs.: Когда
     включено, запускается только макрос. Когда выключено, сначала задаются температуры,
@@ -3796,6 +3825,8 @@ translations:
   Which macro the Close feeder button sends: Какой макрос отправляет кнопка «Закрыть фидер»
   Which macro the Open feeder button sends: Какой макрос отправляет кнопка «Открыть фидер»
   White: Белый
+  Why the curves differ: "Почему кривые различаются"
+  Why?: "Почему?"
   Wi-Fi: WiFi
   Wi-Fi or ethernet connection status: Статус подключения Wi-Fi или Ethernet
   Wi-Fi {}: WiFi {}
@@ -3895,6 +3926,7 @@ translations:
   Z-offset saved - Klipper restarting...: Z-смещение сохранено — Klipper перезапускается...
   'Z:': 'Z:'
   'Z: 0.000': 'Z: 0.000'
+  Zone {:.0f}-{:.0f} Hz: "Зона {:.0f}-{:.0f} Гц"
   already loaded: 'уже загружен'
   attempt {}: 'попытка {}'
   bed: стол
@@ -3939,6 +3971,7 @@ translations:
   just now: только что
   last 60 s · LOOSE up, TIGHT down: 'последние 60 с · вверху ОСЛАБЛЕН, внизу НАТЯНУТ'
   last 60 s · pressure, target dashed: последние 60 с · давление, цель пунктиром
+  'last turn: {:.1f} Hz closer': "последний поворот: ближе на {:.1f} Гц"
   layers: слои
   left: осталось
   loaded: 'загружен'
@@ -3984,8 +4017,12 @@ translations:
   v%s available: Доступна v%s
   v{} installed! Restarting...: v{} установлена! Перезапуск...
   v{} is available. Tap to update.: v{} доступна. Нажмите для обновления.
+  what you turned: "сколько повернули"
+  within one bin: "в пределах одного бина"
   wpa_supplicant is not running. WiFi features unavailable.: wpa_supplicant не запущен. Функции WiFi недоступны.
   you have: у вас
+  "{0}'s peak went down after tightening. Check you turned Path {0}'s tensioner.": "Пик {0} опустился после натяжения. Проверьте, что вы крутили натяжитель Пути {0}."
+  "{0}'s peak went up after loosening. Check you turned Path {0}'s tensioner.": "Пик {0} поднялся после ослабления. Проверьте, что вы крутили натяжитель Пути {0}."
   '{:.0f}-{:.0f} Hz · about {} min': '{:.0f}-{:.0f} Гц · примерно {} мин'
   '{} ({})': '{} ({})'
   '{} Hardware Issues': 'Проблем с оборудованием: {}'
@@ -4021,6 +4058,7 @@ translations:
   '{} lines in helixscreen.env were ignored': 'В helixscreen.env проигнорировано строк: {}'
   '{} kept crashing the panel; switched back to {}': '{} постоянно вызывал сбой экрана; возврат к {}'
   '{} kept crashing the panel; pick a printer to connect': '{} постоянно вызывал сбой экрана; выберите принтер для подключения'
+  '{} looser than {}': "{} слабее, чем {}"
   '{} macro not configured': Макрос {} не настроен
   '{} matches.': '{} подходит.'
   '{} may cause unintended changes. Are you sure?': '{} может привести к непреднамеренным
@@ -4040,6 +4078,9 @@ translations:
   '{} spool cleared': '{}: катушка удалена'
   '{} started': '{} запущено'
   '{} target set to {}°C': Целевая температура {} — {}°C
+  '{} tighter than {}': "{} туже, чем {}"
+  '{} turn': "{} об."
+  '{} turns': "{} об."
   '{} updated': '{}: обновлено'
   '{} widgets': 'Виджетов: {}'
   ? '{} will switch to a slot whose filament type AND colour both match the active spool and whose own port sensor reads filament present.'
@@ -4048,4 +4089,6 @@ translations:
   '{} · {} · {}': '{} · {} · {}'
   '{} — response timed out': '{} — время ожидания ответа истекло'
   '{} → {}: no filament loaded.': '{} → {}: филамент не загружен.'
+  "{}'s peak moved out of the zone. Widening it.": "Пик {} вышел из зоны. Расширяем её."
   '{}:{:02} elapsed': прошло {}:{:02}
+  ~{:.0f} Hz / turn: "~{:.0f} Гц / оборот"

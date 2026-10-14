@@ -907,3 +907,23 @@ TEST_CASE("tune session: a round with no zone books no turns", "[belt][tune]") {
     CHECK(s.total_turns(BeltPath::PATH_A) == Catch::Approx(0.0f));
     CHECK(s.total_turns(BeltPath::PATH_B) == Catch::Approx(0.0f));
 }
+
+TEST_CASE("turn counts read as eighth-fraction glyphs", "[belt][tune]") {
+    using helix::calibration::format_belt_turns;
+    CHECK(format_belt_turns(0.125f) == "⅛");
+    CHECK(format_belt_turns(0.25f) == "¼");
+    CHECK(format_belt_turns(0.375f) == "⅜");
+    CHECK(format_belt_turns(0.5f) == "½");
+    CHECK(format_belt_turns(0.625f) == "⅝");
+    CHECK(format_belt_turns(0.75f) == "¾");
+    CHECK(format_belt_turns(0.875f) == "⅞");
+    CHECK(format_belt_turns(1.0f) == "1");
+    CHECK(format_belt_turns(1.25f) == "1¼");
+    CHECK(format_belt_turns(2.0f) == "2");
+    // Loosening totals are negative; the words carry the direction.
+    CHECK(format_belt_turns(-0.875f) == "⅞");
+    // Rounds to the nearest eighth.
+    CHECK(format_belt_turns(0.3f) == "¼");
+    CHECK(format_belt_turns(0.33f) == "⅜");
+    CHECK(format_belt_turns(0.04f) == "0");
+}

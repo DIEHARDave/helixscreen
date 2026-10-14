@@ -5,7 +5,11 @@ translations:
   ' (timed out)': （タイムアウト）
   ' frames': ' フレーム'
   ' left': ' 残り'
+  ' · Tuned in {} round': " · {} ラウンドで調整"
+  ' · Tuned in {} rounds': " · {} ラウンドで調整"
   ' · was {:.0f}%': ' · 以前は {:.0f}%'
+  ' · {} loosened about {}': " · {}を約{}緩めた"
+  ' · {} tightened about {}': " · {}を約{}締めた"
   '"%s" failed to load': '"%s" の読み込みに失敗しました'
   '%d additional fan%s': 追加ファン %d 個%s
   '%d feeders': '%d フィーダー'
@@ -200,6 +204,7 @@ translations:
   Address: アドレス
   Adjust screen brightness level: 画面の明るさを調整します
   Adjust screws, then re-probe.: ネジを調整して、再度プローブしてください。
+  Adjust {} instead: "代わりに{}を調整"
   Adjustments stay active until restart. Save after print completes.: 調整は再起動まで有効です。印刷完了後に保存してください。
   Adjusts individual characteristics of your heaters for optimal control: ヒーターの個別特性を調整して最適な制御を実現します
   Advanced: 詳細設定
@@ -671,6 +676,7 @@ translations:
   Configured hardware no longer present: '設定済みのハードウェアが見つかりません'
   Configured in the backup-spool package, not from here: バックアップスプール用プラグイン側で設定します
   Configuring Moonraker...: Moonrakerを設定中...
+  Confirm (full, ~{} min): "確認(フル、約{}分)"
   Confirm PIN: PIN を確認
   Confirm before running macros: マクロ実行前に確認する
   Connect: 接続
@@ -808,6 +814,7 @@ translations:
   'Current: Bypass': '現在: バイパス'
   Currently Loaded: 現在ロード中
   Currently printing: 印刷中
+  Curves differ in shape. Steering by each path's tallest peak.: "カーブの形が異なります。各パスの最も高いピークで調整します。"
   Custom: カスタム
   Custom...: カスタム...
   Customize Macro Button: マクロボタンをカスタマイズ
@@ -1306,6 +1313,7 @@ translations:
   Fine: 微動
   Fine Inner: 微動・内側
   Fine Outer: 微動・外側
+  Fine-tune: "微調整"
   Finish: 完了
   Finish or cancel the print before loading, unloading, or changing filament: フィラメントの装填・排出・交換の前に、印刷を完了またはキャンセルしてください
   Finishing clean...: 清掃の仕上げ中...
@@ -1373,6 +1381,7 @@ translations:
   Global: グローバル
   Good: 良好
   Good Accuracy: 良好な精度
+  Good enough: "これで十分"
   Good match: "良好な一致"
   Got it: 了解
   Gray: グレー
@@ -1633,6 +1642,7 @@ translations:
 
   Keep its own data on this screen (up to 256 KB).: 'この画面に独自のデータを保存します（最大256 KB）。'
   Keep the bypass spool visible when bypass is off: バイパスオフ時もバイパススプールの表示を維持
+  Keep tuning: "調整を続ける"
   Kick away: 'かき出し'
   Kinematics: キネマティクス
   Klipper: Klipper
@@ -1768,6 +1778,7 @@ translations:
   'Long-press any tile to enter edit mode — rearrange, resize, remove, or add widgets, and add extra pages for your preferred layout.': タイルを長押しして編集モードに入ります — ウィジェットの並べ替え、サイズ変更、削除、追加や、好みのレイアウトに合わせたページの追加ができます。
   Long-press the home grid to rearrange widgets (turn off if it triggers by accident): 'ホーム画面のグリッドを長押しするとウィジェットを並べ替えできます（誤動作する場合はオフにしてください）'
   Longest Disconnect: 最長切断時間
+  Loosen {}: "{}を緩める"
   Lost connection during print — try again: 印刷中に接続が切断されました — もう一度お試しください
   Lost connection to CFS unit: CFS ユニットとの接続が切断されました
   'Lot # (optional)': ロット番号（オプション）
@@ -1842,6 +1853,9 @@ translations:
   Master volume level: マスター音量
   Match Mode: '一致モード'
   Match your typical print fan speed: 通常の印刷ファン速度に合わせてください
+  Matched at {:.1f} Hz: "{:.1f} Hzで一致"
+  ? "Matched belts give curves of the same shape. When the tallest peak on one path has no partner on the other, something besides tension is shaping the response:\n\n- a worn, frayed or mis-tracking belt\n- a loose or slipping pulley grub screw\n- an idler or bearing that binds\n- debris in the teeth, or a belt rubbing a flange\n- a loose accelerometer mount\n\nTuning still steers by each path's tallest peak, but check these before chasing a perfect match."
+  : "張力のそろったベルトは同じ形のカーブになります。一方のパスの最も高いピークに、もう一方で対になるピークがない場合、張力以外の何かが応答に影響しています:\n\n- 摩耗、ほつれ、または片寄って走るベルト\n- プーリーのイモネジの緩みや滑り\n- 引っかかるアイドラーやベアリング\n- 歯の中のごみ、またはフランジに擦れるベルト\n- 加速度センサーの取り付けの緩み\n\n調整は引き続き各パスの最も高いピークを基準にしますが、完全な一致を目指す前にこれらを確認してください。"
   Matching printers: 一致するプリンター
   Material: 素材
   'Material Comfort:': '素材の適合度:'
@@ -1860,6 +1874,7 @@ translations:
   Measure: '測定'
   Measure every tool's XYZ offset automatically: 各ツールの XYZ オフセットを自動で測定します
   Measure pressure advance automatically: 'Pressure Advance を自動で測定します'
+  Measure this zone first: "まずこのゾーンを測定"
   Measured (shaper off): 測定値（シェーパーオフ時）
   Measured filament diameter: 測定したフィラメント直径
   Measured pressure advance: '測定された Pressure Advance'
@@ -1963,6 +1978,7 @@ translations:
   New printer successfully added: 新しいプリンターを追加しました
   New profile name: 新しいプロファイル名
   Next: 次へ
+  Next zone: "次のゾーン"
   Niimbot (Bluetooth): Niimbot (Bluetooth)
   'No': いいえ
   No AMS Detected: 'AMS が検出されません'
@@ -1992,6 +2008,7 @@ translations:
   No camera — use USB barcode scanner: カメラなし — USB バーコードスキャナーを使用してください
   No chamber temperature sensor detected: 'チャンバー温度センサーが検出されません'
   No changes to revert: 元に戻す変更はありません
+  No clear peak in this zone: "このゾーンに明確なピークなし"
   No color: 色なし
   No dryer available. Store filament in a sealed dry box with desiccant for best results.: 乾燥機がありません。最良の結果を得るには、乾燥剤入りの密封ドライボックスにフィラメントを保管してください。
   No effects available: 利用可能なエフェクトがありません
@@ -2084,6 +2101,7 @@ translations:
   Not yet calibrated: 未キャリブレーション
   Notes: メモ
   Notes (optional): メモ（オプション）
+  Nothing left to tune: "調整する項目はありません"
   Nothing loaded: 装填されていません
   Nothing starred yet. Tap the star on a filament to add it here.: 'まだ何も登録されていません。フィラメントの星をタップしてここに追加してください。'
   Nothing to remap: リマップするものがありません
@@ -2219,8 +2237,11 @@ translations:
   Password: パスワード
   Password cannot be empty: パスワードを入力してください
   Password is required for secured networks: セキュリティ保護されたネットワークにはパスワードが必要です
+  Path A tensioner: "パスAのテンショナー"
+  Path B tensioner: "パスBのテンショナー"
   Path {}: パス {}
   Path {} before: パス{}（以前）
+  Path {} earlier round: "パス {} 前のラウンド"
   Pause: 一時停止
   Pause macro not configured: 一時停止マクロが未設定です
   Pause on Detection: 検出時に一時停止
@@ -2507,6 +2528,7 @@ translations:
   Raspberry Pi (32-bit): Raspberry Pi (32-bit)
   Re-identify: 再識別
   Re-measure: '再測定'
+  Re-measure (~{} min): "再測定(約{}分)"
   Re-measuring Path {}: パス{}を再測定中
   Re-probe: 再プローブ
   Re-read spool RFID tags and remaining length: 'スプールのRFIDタグと残量を再読み込み'
@@ -2558,6 +2580,7 @@ translations:
   Release filament: フィラメントを解放
   Release or grip the filament by hand: 手でフィラメントを解放または把持
   Release the filament: フィラメントを解放
+  Release {}'s tensioner, let the spring settle, lock it: "{}のテンショナーを緩め、バネをなじませてから固定"
   Remaining: '残り'
   Remaining (g): 残量 (g)
   Remaining Weight (g): 残量（g）
@@ -2695,6 +2718,7 @@ translations:
   Rotation: 回転
   'Rotation: %d° - %ds remaining (or wait to retry)': '回転: %d° - %ds残り
     (待つと再試行)'
+  Round {}: "ラウンド {}"
   Rounded: ラウンド
   Run: 実行
   Run Calibration Wizard: 'キャリブレーションウィザードを実行'
@@ -3193,6 +3217,8 @@ translations:
   : フィラメントがノズルに到達しませんでした。CFSはエラーを報告していませんが、ツールヘッドセンサーはまだフィラメントを検出していません。スプールが正しく取り付けられ、フィラメント経路が塞がれていないことを確認して、再試行してください。
   The filament may not have fully retracted — try again or manually pull: フィラメントが完全に戻っていない可能性があります。再試行するか手で引き抜いてください
   The filament system reported an error: フィラメントシステムがエラーを報告しました
+  The gap didn't close (moved {:.1f} Hz). Try a bigger turn.: "差が縮まりませんでした({:.1f} Hz移動)。もっと大きく回してください。"
+  The gap is not closing. Something besides tension may be shaping it.: "差が縮まりません。張力以外の何かが影響している可能性があります。"
   The heater will cycle on and off several times.: ヒーターは数回オン/オフを繰り返します。
   The helper macros are installed and activate after Klipper restarts.: 'ヘルパーマクロはインストール済みで、Klipper の再起動後に有効になります。'
   The left RFID reader in this CFS unit may need service: この CFS ユニットの左側 RFID リーダーは修理が必要な可能性があります
@@ -3326,6 +3352,7 @@ translations:
   Thorough: 徹底的
   Thumbnail Only: サムネイルのみ
   'Thumbnail: ': 'サムネイル: '
+  Tighten {}: "{}を締める"
   Time: 時間
   Time Format: 時間形式
   Time to wait before escalating to emergency stop: 緊急停止にエスカレートするまでの待機時間
@@ -3402,6 +3429,7 @@ translations:
   Try again: '再試行'
   Try the operation again. If it persists, check for mechanical issues.: もう一度お試しください。解決しない場合は機械的な問題がないか確認してください。
   Tune: チューニング
+  Tune belts: "ベルトを調整"
   Tuning tower enabled - start a print to test: チューニングタワー有効 - 印刷を開始してテストしてください
   Turbo: ターボ
   Turbo Inner: ターボ・内側
@@ -3579,6 +3607,7 @@ translations:
     also synced when prints start, pause, or complete.
   : 残りのフィラメントを表示するために、重量データが Spoolman から同期されます。印刷の開始、一時停止、完了時にも変更が同期されます。
   Welcome to HelixScreen: HelixScreen へようこそ
+  Went past {} by {:.1f} Hz. Back it off a little.: "{}を{:.1f} Hz超えました。少し戻してください。"
   What We Collect: 収集する情報
   When enabled, only the macro runs. When disabled, temperatures are set first, then the macro runs.: 有効時はマクロのみ実行されます。無効時は先に温度を設定してからマクロが実行されます。
   Where UI sounds play: UIサウンドの再生先
@@ -3586,6 +3615,8 @@ translations:
   Which macro the Close feeder button sends: 「フィーダーを閉じる」ボタンが送信するマクロ
   Which macro the Open feeder button sends: 「フィーダーを開く」ボタンが送信するマクロ
   White: ホワイト
+  Why the curves differ: "カーブが異なる理由"
+  Why?: "なぜ?"
   Wi-Fi: WiFi
   Wi-Fi or ethernet connection status: WiFi またはイーサネットの接続状態
   Wi-Fi {}: WiFi {}
@@ -3680,6 +3711,7 @@ translations:
   Z-offset saved - Klipper restarting...: Z-offset を保存しました - Klipper を再起動中...
   'Z:': 'Z:'
   'Z: 0.000': 'Z: 0.000'
+  Zone {:.0f}-{:.0f} Hz: "ゾーン {:.0f}-{:.0f} Hz"
   already loaded: '装填済み'
   attempt {}: '試行 {}'
   bed: ベッド
@@ -3724,6 +3756,7 @@ translations:
   just now: たった今
   last 60 s · LOOSE up, TIGHT down: '直近60秒 · 上が緩み、下が張り'
   last 60 s · pressure, target dashed: 直近60秒 · 圧力、目標は破線
+  'last turn: {:.1f} Hz closer': "前回: {:.1f} Hz接近"
   layers: レイヤー
   left: 残り
   loaded: '装填済み'
@@ -3769,8 +3802,12 @@ translations:
   v%s available: v%s が利用可能です
   v{} installed! Restarting...: v{} をインストールしました！再起動中...
   v{} is available. Tap to update.: v{} が利用可能です。タップして更新してください。
+  what you turned: "回した量"
+  within one bin: "1ビン以内"
   wpa_supplicant is not running. WiFi features unavailable.: wpa_supplicant が動作していません。WiFi 機能は利用できません。
   you have: 現在は
+  "{0}'s peak went down after tightening. Check you turned Path {0}'s tensioner.": "締めた後に{0}のピークが下がりました。パス{0}のテンショナーを回したか確認してください。"
+  "{0}'s peak went up after loosening. Check you turned Path {0}'s tensioner.": "緩めた後に{0}のピークが上がりました。パス{0}のテンショナーを回したか確認してください。"
   '{:.0f}-{:.0f} Hz · about {} min': '{:.0f}-{:.0f} Hz · 約{}分'
   '{} ({})': '{}（{}）'
   '{} Hardware Issues': 'ハードウェアの問題 {} 件'
@@ -3806,6 +3843,7 @@ translations:
   '{} lines in helixscreen.env were ignored': 'helixscreen.env の{}行が無視されました'
   '{} kept crashing the panel; switched back to {}': '{} で画面のクラッシュが繰り返されたため、{} に戻しました'
   '{} kept crashing the panel; pick a printer to connect': '{} で画面のクラッシュが繰り返されました。接続するプリンターを選んでください'
+  '{} looser than {}': "{}は{}より緩い"
   '{} macro not configured': '{} マクロが未設定です'
   '{} matches.': '{} が一致します。'
   '{} may cause unintended changes. Are you sure?': '{} は意図しない変更を引き起こす可能性があります。よろしいですか？'
@@ -3824,6 +3862,9 @@ translations:
   '{} spool cleared': '{} のスプールをクリアしました'
   '{} started': '{} を開始しました'
   '{} target set to {}°C': '{} 目標温度を {}°C に設定しました'
+  '{} tighter than {}': "{}は{}より張っている"
+  '{} turn': "{}回転"
+  '{} turns': "{}回転"
   '{} updated': '{} を更新しました'
   '{} widgets': ウィジェット {} 個
   ? '{} will switch to a slot whose filament type AND colour both match the active spool and whose own port sensor reads filament present.'
@@ -3832,4 +3873,6 @@ translations:
   '{} · {} · {}': '{} · {} · {}'
   '{} — response timed out': '{} — 応答タイムアウト'
   '{} → {}: no filament loaded.': '{} → {}: フィラメントが装填されていません。'
+  "{}'s peak moved out of the zone. Widening it.": "{}のピークがゾーン外に出ました。ゾーンを広げます。"
   '{}:{:02} elapsed': 経過 {}:{:02}
+  ~{:.0f} Hz / turn: "約{:.0f} Hz / 回転"

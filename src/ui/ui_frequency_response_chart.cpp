@@ -568,6 +568,12 @@ ui_frequency_response_chart_get_series_amplitudes(ui_frequency_response_chart_t*
 }
 
 // NAMESPACE_OK: joins the header's global ui_frequency_response_chart_* API
+std::pair<float, float>
+ui_frequency_response_chart_get_freq_range(ui_frequency_response_chart_t* chart) {
+    return chart ? std::pair{chart->freq_min, chart->freq_max} : std::pair{0.0f, 0.0f};
+}
+
+// NAMESPACE_OK: joins the header's global ui_frequency_response_chart_* API
 bool ui_frequency_response_chart_is_series_visible(
     ui_frequency_response_chart_t* chart, // NAMESPACE_OK: matches this file's C-style chart API
     int series_id) {
@@ -1435,9 +1441,14 @@ static void draw_x_axis_labels_cb(lv_event_t* e) {
         return;
     }
 
-    // Choose frequency tick interval based on range
+    // Choose frequency tick interval based on range; a zoomed range (a belt
+    // tuning zone is 20-40 Hz wide) still needs a few ticks to read.
     float tick_interval = 50.0f;
-    if (freq_range <= 150.0f) {
+    if (freq_range <= 40.0f) {
+        tick_interval = 5.0f;
+    } else if (freq_range <= 80.0f) {
+        tick_interval = 10.0f;
+    } else if (freq_range <= 150.0f) {
         tick_interval = 25.0f;
     }
 
@@ -1459,9 +1470,10 @@ static void draw_x_axis_labels_cb(lv_event_t* e) {
 
         // Center label on tick position
         lv_area_t label_area;
-        label_area.x1 = x - 24;
+        // Wide enough that "100 Hz" stays on one line.
+        label_area.x1 = x - 32;
         label_area.y1 = label_y;
-        label_area.x2 = x + 24;
+        label_area.x2 = x + 32;
         label_area.y2 = label_y + label_height;
 
         label_dsc.text = buf;

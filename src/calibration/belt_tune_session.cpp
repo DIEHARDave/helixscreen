@@ -616,4 +616,15 @@ int BeltTuneSession::total_rounds() const {
     return total_rounds_;
 }
 
+std::string format_belt_turns(float turns) {
+    static constexpr const char* EIGHTHS[] = {"", "⅛", "¼", "⅜", "½", "⅝", "¾", "⅞"};
+    const long eighths = std::lround(std::abs(turns) * 8.0f);
+    const long whole = eighths / 8;
+    const char* frac = EIGHTHS[eighths % 8];
+    if (whole == 0) {
+        return *frac ? frac : "0";
+    }
+    return std::to_string(whole) + frac;
+}
+
 } // namespace helix::calibration

@@ -171,6 +171,7 @@ static constexpr const char* VERTICAL_AXIS_TOKENS[] = {
     "dialog_content_recovery_max",
     "spinner_lg",
     "header_button_height",
+    "belt_tune_hero_h",
 };
 
 bool theme_manager_token_uses_vertical_axis(const char* base_name) {

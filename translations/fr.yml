@@ -5,7 +5,11 @@ translations:
   ' (timed out)': ' (délai dépassé)'
   ' frames': ' images'
   ' left': ' restant'
+  ' · Tuned in {} round': " · Réglé en {} tour"
+  ' · Tuned in {} rounds': " · Réglé en {} tours"
   ' · was {:.0f}%': ' · était {:.0f}%'
+  ' · {} loosened about {}': " · {} détendue d'environ {}"
+  ' · {} tightened about {}': " · {} tendue d'environ {}"
   '"%s" failed to load': '"%s" n''a pas pu se charger'
   '%d additional fan%s': '%d ventilateur%s supplémentaire'
   '%d feeders': '%d alimentateurs'
@@ -210,6 +214,7 @@ translations:
   Address: Adresse
   Adjust screen brightness level: Ajuster le niveau de luminosité de l'écran
   Adjust screws, then re-probe.: Ajustez les vis, puis re-palpez.
+  Adjust {} instead: "Régler {} à la place"
   Adjustments stay active until restart. Save after print completes.: Les ajustements
     restent actifs jusqu'au redémarrage. Enregistrez après la fin de l'impression.
   Adjusts individual characteristics of your heaters for optimal control: Ajuste les
@@ -738,6 +743,7 @@ translations:
   Configured hardware no longer present: 'Le matériel configuré n''est plus présent'
   Configured in the backup-spool package, not from here: Se configure dans le plugin de bobine de secours, pas ici
   Configuring Moonraker...: Configuration de Moonraker...
+  Confirm (full, ~{} min): "Confirmer (complet, ~{} min)"
   Confirm PIN: Confirmer le code PIN
   Confirm before running macros: Confirmer avant d'exécuter les macros
   Connect: Connecter
@@ -882,6 +888,7 @@ translations:
   'Current: Bypass': 'Actuel : Bypass'
   Currently Loaded: Actuellement chargé
   Currently printing: Impression en cours
+  Curves differ in shape. Steering by each path's tallest peak.: "Les courbes diffèrent de forme. Guidage par le pic le plus haut de chaque chemin."
   Custom: Personnalisé
   Custom...: Personnalisé...
   Customize Macro Button: Personnaliser le bouton de macro
@@ -1409,6 +1416,7 @@ translations:
   Fine: Fin
   Fine Inner: Fin intérieur
   Fine Outer: Fin extérieur
+  Fine-tune: "Affiner"
   Finish: Terminer
   Finish or cancel the print before loading, unloading, or changing filament: Terminez ou annulez l'impression avant de charger, décharger ou changer le filament
   Finishing clean...: Finalisation du nettoyage...
@@ -1476,6 +1484,7 @@ translations:
   Global: Global
   Good: Bon
   Good Accuracy: Bonne précision
+  Good enough: "Suffisant"
   Good match: "Bonne correspondance"
   Got it: Compris
   Gray: Gris
@@ -1759,6 +1768,7 @@ translations:
 
   Keep its own data on this screen (up to 256 KB).: 'Conserve ses propres données sur cet écran (jusqu''à 256 Ko).'
   Keep the bypass spool visible when bypass is off: Garder la bobine de bypass visible lorsque le bypass est désactivé
+  Keep tuning: "Continuer le réglage"
   Kick away: 'Éjecter'
   Kinematics: Cinématique
   Klipper: Klipper
@@ -1903,6 +1913,7 @@ translations:
   'Long-press any tile to enter edit mode — rearrange, resize, remove, or add widgets, and add extra pages for your preferred layout.': 'Appui long sur n''importe quelle tuile pour entrer en mode édition — réorganisez, redimensionnez, supprimez ou ajoutez des widgets, et ajoutez des pages supplémentaires pour votre disposition préférée.'
   Long-press the home grid to rearrange widgets (turn off if it triggers by accident): 'Appui long sur la grille d''accueil pour réorganiser les widgets (désactivez si cela se déclenche par accident)'
   Longest Disconnect: Déconnexion la plus longue
+  Loosen {}: "Détendre {}"
   Lost connection during print — try again: Connexion perdue pendant l'impression
     — réessayez
   Lost connection to CFS unit: Connexion perdue avec l'unité CFS
@@ -1983,6 +1994,9 @@ translations:
   Match Mode: 'Mode de correspondance'
   Match your typical print fan speed: Correspondre à votre vitesse de ventilateur
     habituelle
+  Matched at {:.1f} Hz: "Égalisées à {:.1f} Hz"
+  ? "Matched belts give curves of the same shape. When the tallest peak on one path has no partner on the other, something besides tension is shaping the response:\n\n- a worn, frayed or mis-tracking belt\n- a loose or slipping pulley grub screw\n- an idler or bearing that binds\n- debris in the teeth, or a belt rubbing a flange\n- a loose accelerometer mount\n\nTuning still steers by each path's tallest peak, but check these before chasing a perfect match."
+  : "Des courroies égales donnent des courbes de même forme. Quand le pic le plus haut d'un chemin n'a pas d'équivalent sur l'autre, autre chose que la tension façonne la réponse :\n\n- une courroie usée, effilochée ou qui dévie\n- une vis sans tête de poulie desserrée ou qui patine\n- un galet ou un roulement qui accroche\n- des débris dans les dents, ou une courroie qui frotte une joue\n- un support d'accéléromètre desserré\n\nLe réglage se guide toujours sur le pic le plus haut de chaque chemin, mais vérifiez ces points avant de viser un accord parfait."
   Matching printers: Imprimantes correspondantes
   Material: Matériau
   'Material Comfort:': 'Confort du matériau :'
@@ -2001,6 +2015,7 @@ translations:
   Measure: 'Mesurer'
   Measure every tool's XYZ offset automatically: Mesure automatiquement l'offset XYZ de chaque outil
   Measure pressure advance automatically: 'Mesure automatiquement le Pressure Advance'
+  Measure this zone first: "Mesurez d'abord cette zone"
   Measured (shaper off): Mesuré (shaper désactivé)
   Measured filament diameter: Diamètre du filament mesuré
   Measured pressure advance: 'Pressure Advance mesuré'
@@ -2108,6 +2123,7 @@ translations:
   New printer successfully added: Nouvelle imprimante ajoutée avec succès
   New profile name: Nouveau nom de profil
   Next: Suivant
+  Next zone: "Zone suivante"
   Niimbot (Bluetooth): Niimbot (Bluetooth)
   'No': Non
   No AMS Detected: 'Aucun AMS détecté'
@@ -2139,6 +2155,7 @@ translations:
     USB
   No chamber temperature sensor detected: 'Aucun capteur de température d''enceinte détecté'
   No changes to revert: Aucune modification à annuler
+  No clear peak in this zone: "Aucun pic net dans cette zone"
   No color: Aucune couleur
   No dryer available. Store filament in a sealed dry box with desiccant for best results.: Aucun
     sécheur disponible. Stockez le filament dans une boîte étanche avec du dessiccant
@@ -2235,6 +2252,7 @@ translations:
   Not yet calibrated: Pas encore calibré
   Notes: Notes
   Notes (optional): Notes (facultatif)
+  Nothing left to tune: "Plus rien à régler"
   Nothing loaded: Rien de chargé
   Nothing starred yet. Tap the star on a filament to add it here.: 'Rien d''étoilé pour le moment. Touchez l''étoile d''un filament pour l''ajouter ici.'
   Nothing to remap: Rien à réaffecter
@@ -2374,8 +2392,11 @@ translations:
   Password cannot be empty: Le mot de passe ne peut pas être vide
   Password is required for secured networks: Un mot de passe est requis pour les réseaux
     sécurisés
+  Path A tensioner: "Tendeur du Chemin A"
+  Path B tensioner: "Tendeur du Chemin B"
   Path {}: Chemin {}
   Path {} before: Chemin {} avant
+  Path {} earlier round: "Chemin {} tour précédent"
   Pause: Pause
   Pause macro not configured: Macro de pause non configurée
   Pause on Detection: Pause à la détection
@@ -2679,6 +2700,7 @@ translations:
   Raspberry Pi (32-bit): Raspberry Pi (32-bit)
   Re-identify: Ré-identifier
   Re-measure: 'Remesurer'
+  Re-measure (~{} min): "Remesurer (~{} min)"
   Re-measuring Path {}: Nouvelle mesure du Chemin {}
   Re-probe: Re-palper
   Re-read spool RFID tags and remaining length: 'Relire les étiquettes RFID des bobines et la longueur restante'
@@ -2737,6 +2759,7 @@ translations:
   Release filament: Relâcher le filament
   Release or grip the filament by hand: Relâcher ou saisir le filament à la main
   Release the filament: Relâcher le filament
+  Release {}'s tensioner, let the spring settle, lock it: "Relâchez le tendeur de {}, laissez le ressort se placer, bloquez-le"
   Remaining: 'Restant'
   Remaining (g): Restant (g)
   Remaining Weight (g): Poids restant (g)
@@ -2879,6 +2902,7 @@ translations:
   Rotation: Rotation
   'Rotation: %d° - %ds remaining (or wait to retry)': 'Rotation : %d°
     - %ds restantes (ou attendre pour réessayer)'
+  Round {}: "Tour {}"
   Rounded: Arrondi
   Run: Exécuter
   Run Calibration Wizard: 'Lancer l''assistant de calibration'
@@ -3428,6 +3452,8 @@ translations:
   : Le filament n'est pas arrivé à la buse. Le CFS n'a signalé aucune erreur, mais le capteur de tête d'outil ne détecte toujours pas de filament. Vérifiez que la bobine est bien en place et que le chemin est dégagé, puis réessayez.
   The filament may not have fully retracted — try again or manually pull: Le filament n'est peut-être pas entièrement rétracté. Réessayez ou tirez à la main
   The filament system reported an error: Le système de filament a signalé une erreur
+  The gap didn't close (moved {:.1f} Hz). Try a bigger turn.: "L'écart ne s'est pas réduit (déplacé de {:.1f} Hz). Tournez davantage."
+  The gap is not closing. Something besides tension may be shaping it.: "L'écart ne se réduit pas. Autre chose que la tension peut en être la cause."
   The heater will cycle on and off several times.: Le chauffage s'allumera et s'éteindra
     plusieurs fois.
   The helper macros are installed and activate after Klipper restarts.: 'Les macros d''aide sont installées et s''activent après un redémarrage de Klipper.'
@@ -3595,6 +3621,7 @@ translations:
   Thorough: Approfondi
   Thumbnail Only: Miniature uniquement
   'Thumbnail: ': 'Miniature : '
+  Tighten {}: "Tendre {}"
   Time: Temps
   Time Format: Format de l'heure
   Time to wait before escalating to emergency stop: Temps d'attente avant d'escalader
@@ -3673,6 +3700,7 @@ translations:
   Try again: 'Réessayer'
   Try the operation again. If it persists, check for mechanical issues.: Réessayez l'opération. Si le problème persiste, vérifiez s'il y a des problèmes mécaniques.
   Tune: Régler
+  Tune belts: "Régler les courroies"
   Tuning tower enabled - start a print to test: Tour de réglage activée - lancez une
     impression pour tester
   Turbo: Turbo
@@ -3861,6 +3889,7 @@ translations:
     restant. Les modifications sont également synchronisées au démarrage, à la pause
     ou à la fin des impressions.
   Welcome to HelixScreen: Bienvenue sur HelixScreen
+  Went past {} by {:.1f} Hz. Back it off a little.: "{} dépassée de {:.1f} Hz. Revenez un peu."
   What We Collect: Ce que nous collectons
   When enabled, only the macro runs. When disabled, temperatures are set first, then the macro runs.: Quand
     activé, seule la macro s'exécute. Quand désactivé, les températures sont définies
@@ -3870,6 +3899,8 @@ translations:
   Which macro the Close feeder button sends: Macro envoyée par le bouton Fermer l'alimentateur
   Which macro the Open feeder button sends: Macro envoyée par le bouton Ouvrir l'alimentateur
   White: Blanc
+  Why the curves differ: "Pourquoi les courbes diffèrent"
+  Why?: "Pourquoi ?"
   Wi-Fi: WiFi
   Wi-Fi or ethernet connection status: État de la connexion WiFi ou Ethernet
   Wi-Fi {}: WiFi {}
@@ -3971,6 +4002,7 @@ translations:
   Z-offset saved - Klipper restarting...: Z-offset enregistré - Redémarrage de Klipper...
   'Z:': 'Z:'
   'Z: 0.000': 'Z: 0.000'
+  Zone {:.0f}-{:.0f} Hz: "Zone {:.0f}-{:.0f} Hz"
   already loaded: 'déjà chargé'
   attempt {}: 'essai {}'
   bed: plateau
@@ -4015,6 +4047,7 @@ translations:
   just now: à l'instant
   last 60 s · LOOSE up, TIGHT down: '60 dernières s · DÉTENDU en haut, TENDU en bas'
   last 60 s · pressure, target dashed: 60 dernières s · pression, cible en pointillés
+  'last turn: {:.1f} Hz closer': "dernier tour : {:.1f} Hz plus près"
   layers: couches
   left: restant
   loaded: 'chargé'
@@ -4061,8 +4094,12 @@ translations:
   v%s available: v%s disponible
   v{} installed! Restarting...: v{} installée ! Redémarrage...
   v{} is available. Tap to update.: v{} est disponible. Appuyez pour mettre à jour.
+  what you turned: "ce que vous avez tourné"
+  within one bin: "à moins d'un bin"
   wpa_supplicant is not running. WiFi features unavailable.: wpa_supplicant ne fonctionne pas. Les fonctions WiFi sont indisponibles.
   you have: vous avez
+  "{0}'s peak went down after tightening. Check you turned Path {0}'s tensioner.": "Le pic de {0} a baissé après tension. Vérifiez que vous avez tourné le tendeur du Chemin {0}."
+  "{0}'s peak went up after loosening. Check you turned Path {0}'s tensioner.": "Le pic de {0} a monté après détente. Vérifiez que vous avez tourné le tendeur du Chemin {0}."
   '{:.0f}-{:.0f} Hz · about {} min': '{:.0f}-{:.0f} Hz · environ {} min'
   '{} ({})': '{} ({})'
   '{} Hardware Issues': '{} problèmes matériels'
@@ -4098,6 +4135,7 @@ translations:
   '{} lines in helixscreen.env were ignored': '{} lignes de helixscreen.env ont été ignorées'
   '{} kept crashing the panel; switched back to {}': '{} a planté l''écran à plusieurs reprises ; retour à {}'
   '{} kept crashing the panel; pick a printer to connect': '{} a planté l''écran à plusieurs reprises ; choisissez une imprimante à connecter'
+  '{} looser than {}': "{} plus lâche que {}"
   '{} macro not configured': Macro {} non configurée
   '{} matches.': '{} correspond.'
   '{} may cause unintended changes. Are you sure?': '{} peut entraîner des modifications
@@ -4118,6 +4156,9 @@ translations:
   '{} spool cleared': '{} : bobine effacée'
   '{} started': '{} démarré'
   '{} target set to {}°C': Cible {} réglée à {}°C
+  '{} tighter than {}': "{} plus tendue que {}"
+  '{} turn': "{} tour"
+  '{} turns': "{} tours"
   '{} updated': '{} : mise à jour'
   '{} widgets': '{} widgets'
   ? '{} will switch to a slot whose filament type AND colour both match the active spool and whose own port sensor reads filament present.'
@@ -4126,4 +4167,6 @@ translations:
   '{} · {} · {}': '{} · {} · {}'
   '{} — response timed out': '{} — réponse expirée'
   '{} → {}: no filament loaded.': '{} → {} : aucun filament chargé.'
+  "{}'s peak moved out of the zone. Widening it.": "Le pic de {} est sorti de la zone. Élargissement."
   '{}:{:02} elapsed': '{}:{:02} écoulé'
+  ~{:.0f} Hz / turn: "~{:.0f} Hz / tour"

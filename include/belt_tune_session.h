@@ -4,6 +4,7 @@
 #include "belt_tension_types.h"
 
 #include <optional>
+#include <string>
 #include <vector>
 
 /**
@@ -93,6 +94,10 @@ pick_tune_zone(const BeltComparison& cmp, BeltPath adjusted, float band_min_hz, 
 [[nodiscard]] std::optional<float>
 refine_peak_in_window(const BeltCurve& curve, BeltSweepWindow window, std::optional<float> near_hz,
                       std::optional<float> floor_psd = std::nullopt);
+
+/// A turn count to the nearest belt_tune::TURN_STEP, in fraction glyphs:
+/// "⅛", "¾", "1", "1¼". The sign is dropped.
+[[nodiscard]] std::string format_belt_turns(float turns);
 
 /// max(MATCHED_MIN_HZ, the curve's mean bin spacing).
 [[nodiscard]] float matched_tolerance_hz(const BeltCurve& curve);
