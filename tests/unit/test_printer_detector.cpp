@@ -4446,7 +4446,7 @@ TEST_CASE("PrinterDetector: wrong-typed entry fields read as absent", "[printer]
                         "calibration": "none", "thermal_rates": [1],
                         "print_start_default_phases": { "HOMING": "slow" },
                         "console_filters": "noise", "console_filter_patterns": [3],
-                        "aliases": 9
+                        "aliases": 9, "belt_tensioner": 3
                     }
                 ]
             })";
@@ -4463,6 +4463,8 @@ TEST_CASE("PrinterDetector: wrong-typed entry fields read as absent", "[printer]
         REQUIRE(PrinterDetector::get_toolhead_style(name).empty());
         REQUIRE(PrinterDetector::get_preset_for_name(name).empty());
         REQUIRE_FALSE(PrinterDetector::is_enclosed(name));
+        REQUIRE(PrinterDetector::get_belt_tensioner(name) ==
+                helix::calibration::BeltTensionerKind::UNKNOWN);
         REQUIRE(PrinterDetector::get_bed_mesh_calibrate_gcode(name).empty());
         REQUIRE_FALSE(PrinterDetector::get_bed_mesh_self_prepares(name));
         REQUIRE(PrinterDetector::get_thermal_rates(name).empty());
@@ -4470,6 +4472,62 @@ TEST_CASE("PrinterDetector: wrong-typed entry fields read as absent", "[printer]
         REQUIRE(PrinterDetector::get_console_filter_patterns(name).empty());
         REQUIRE(PrinterDetector::canonical_type_name("Old Name") == "Old Name");
         REQUIRE(PrinterDetector::get_name_for_preset("5").empty());
+    }
+}
+
+TEST_CASE("PrinterDetector: belt_tensioner maps the database string to a kind",
+          "[printer][belt_tension]") {
+    using helix::calibration::BeltTensionerKind;
+
+    SECTION("Voron 2.4 and Trident are screw-tensioned") {
+        REQUIRE(PrinterDetector::get_belt_tensioner("Voron 2.4") == BeltTensionerKind::SCREW);
+        REQUIRE(PrinterDetector::get_belt_tensioner("Voron Trident") == BeltTensionerKind::SCREW);
+    }
+
+    SECTION("a printer with no belt_tensioner entry is UNKNOWN") {
+        REQUIRE(PrinterDetector::get_belt_tensioner("Creality K1C") == BeltTensionerKind::UNKNOWN);
+    }
+
+    SECTION("an unknown printer name is UNKNOWN") {
+        REQUIRE(PrinterDetector::get_belt_tensioner("Not A Real Printer") ==
+                BeltTensionerKind::UNKNOWN);
+    }
+
+    SECTION("screw, spring, empty and unrecognised strings") {
+        namespace fs = std::filesystem;
+        auto temp_root =
+            fs::temp_directory_path() / ("test_printer_detector_belt_" + std::to_string(getpid()));
+        struct RestoreDatabase {
+            fs::path root;
+            ~RestoreDatabase() {
+                PrinterDetector::reload();
+                fs::remove_all(root);
+            }
+        } restore{temp_root};
+        EnvGuard data_g("HELIX_DATA_DIR");
+        EnvGuard config_g("HELIX_CONFIG_DIR");
+        CwdGuard cwd_g;
+
+        fs::remove_all(temp_root);
+        fs::create_directories(temp_root / "assets" / "config");
+        fs::create_directories(temp_root / "config_dir");
+        std::ofstream(temp_root / "assets" / "config" / "printer_database.json") << R"({
+                "printers": [
+                    { "id": "a", "name": "Screw Printer", "belt_tensioner": "screw" },
+                    { "id": "b", "name": "Spring Printer", "belt_tensioner": "spring" },
+                    { "id": "c", "name": "Empty Printer", "belt_tensioner": "" },
+                    { "id": "d", "name": "Odd Printer", "belt_tensioner": "cam" }
+                ]
+            })";
+        setenv("HELIX_DATA_DIR", temp_root.c_str(), 1);
+        setenv("HELIX_CONFIG_DIR", (temp_root / "config_dir").c_str(), 1);
+        REQUIRE(chdir(temp_root.c_str()) == 0);
+        PrinterDetector::reload();
+
+        REQUIRE(PrinterDetector::get_belt_tensioner("Screw Printer") == BeltTensionerKind::SCREW);
+        REQUIRE(PrinterDetector::get_belt_tensioner("Spring Printer") == BeltTensionerKind::SPRING);
+        REQUIRE(PrinterDetector::get_belt_tensioner("Empty Printer") == BeltTensionerKind::UNKNOWN);
+        REQUIRE(PrinterDetector::get_belt_tensioner("Odd Printer") == BeltTensionerKind::UNKNOWN);
     }
 }
 

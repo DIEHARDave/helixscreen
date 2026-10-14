@@ -858,6 +858,7 @@
       "enclosed": true,
       "name": "Voron 2.4",
       "manufacturer": "Voron",
+      "belt_tensioner": "screw",
       "image": "voron-v2.png",
       "_print_start_default_phases_comment": "Estimates for a 350mm-class gantry machine with a probe-based mesh: G28 plus a four-point QUAD_GANTRY_LEVEL (the 2.4 levels its gantry, never Z_TILT), then a mesh sweep, a brush wipe and a purge line. Heating is omitted - the thermal model owns those.",
       "print_start_default_phases": {
@@ -1108,6 +1109,7 @@
       "enclosed": true,
       "name": "Voron Trident",
       "manufacturer": "Voron",
+      "belt_tensioner": "screw",
       "image": "voron-trident.png",
       "_print_start_default_phases_comment": "Estimates for a 350mm-class machine with a probe-based mesh: G28 plus a three-point Z_TILT_ADJUST (the Trident tilts its bed, it has no gantry to QGL), then a mesh sweep, a brush wipe and a purge line. Heating is omitted - the thermal model owns those.",
       "print_start_default_phases": {
