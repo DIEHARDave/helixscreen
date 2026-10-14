@@ -49,6 +49,12 @@ void remember_printer_hostname(const std::string& hostname) {
     }
 }
 
+void reload_sensor_roles_after_preset() {
+    FilamentSensorManager::instance().load_config_from_file();
+    helix::sensors::ProbeSensorManager::instance().load_config_from_file();
+    helix::sensors::WidthSensorManager::instance().load_config_from_file();
+}
+
 void init_subsystems_from_hardware(const PrinterDiscovery& hardware, IMoonrakerAPI* api,
                                    IMoonrakerClient* client) {
     spdlog::debug("[PrinterDiscovery] Initializing subsystems from hardware discovery");
