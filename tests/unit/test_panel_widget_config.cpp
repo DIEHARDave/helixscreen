@@ -2506,70 +2506,126 @@ TEST_CASE_METHOD(PanelWidgetConfigFixture,
     REQUIRE(fil->col == 3);
 }
 
-// =============================================================================
-// Preset seed layouts: every placed widget fits the grid and none overlap.
-// Presets ship on 800x480 = medium = 12x8 tracks.
-// =============================================================================
+// ============================================================================
+// Preset seeds are default-layout overlays
+// ============================================================================
 
-TEST_CASE("preset seeds: placed widgets fit the medium grid", "[panel_widget_config][preset]") {
-    // Medium 800x480 = 12 cols x 8 rows (measured, see test_grid_square_cells.cpp)
-    const int cols = 12, rows = 8;
-    for (const char* preset : {"ad5x", "ad5x_zmod", "cc1"}) {
-        std::string rel = std::string("panel_widgets/") + preset + "/home.json";
-        std::ifstream in(find_readable(rel));
-        INFO("preset " << preset);
-        REQUIRE(in.is_open());
-        nlohmann::json seed = nlohmann::json::parse(in);
-        REQUIRE(seed.contains("pages"));
-        for (const auto& page : seed["pages"]) {
-            REQUIRE(page.contains("widgets"));
-            for (const auto& w : page["widgets"]) {
-                int col = w.value("col", -1);
-                int row = w.value("row", -1);
-                if (col < 0 || row < 0)
-                    continue;
-                INFO("preset " << preset << " widget " << w.value("id", std::string{}));
-                CHECK(col + w.value("colspan", 1) <= cols);
-                CHECK(row + w.value("rowspan", 1) <= rows);
-            }
-        }
-    }
+namespace {
+
+/// Writes panel_widgets/<preset>/home.json under the guard's config dir.
+void write_seed(const ConfigDirGuard& guard, const std::string& preset, const json& seed) {
+    std::filesystem::create_directories(guard.dir / "panel_widgets" / preset);
+    std::ofstream out(guard.dir / "panel_widgets" / preset / "home.json");
+    out << seed.dump();
 }
 
-TEST_CASE("preset seeds: placed widgets do not overlap", "[panel_widget_config][preset]") {
-    for (const char* preset : {"ad5x", "ad5x_zmod", "cc1"}) {
-        std::ifstream in(find_readable(std::string("panel_widgets/") + preset + "/home.json"));
-        REQUIRE(in.is_open());
-        nlohmann::json seed = nlohmann::json::parse(in);
-        INFO("preset " << preset);
-        // Guarded rather than seed["pages"][0]["widgets"]: const operator[] on a
-        // missing key is only JSON_ASSERT-guarded, so under NDEBUG a renamed or
-        // truncated preset dereferences end() instead of failing the test.
-        REQUIRE(seed.contains("pages"));
-        REQUIRE(seed["pages"].is_array());
-        REQUIRE_FALSE(seed["pages"].empty());
-        REQUIRE(seed["pages"][0].contains("widgets"));
-        struct Rect {
-            int col, row, colspan, rowspan;
-        };
-        std::vector<Rect> placed;
-        for (const auto& w : seed["pages"][0]["widgets"]) {
-            int col = w.value("col", -1);
-            int row = w.value("row", -1);
-            if (col < 0 || row < 0 || !w.value("enabled", false))
-                continue;
-            placed.push_back({col, row, w.value("colspan", 1), w.value("rowspan", 1)});
+const json* find_placed_widget(const json& widgets, const std::string& id) {
+    for (const auto& w : widgets) {
+        if (w.value("id", std::string{}) == id && w.value("enabled", false) &&
+            w.value("col", -1) >= 0) {
+            return &w;
         }
-        for (size_t i = 0; i < placed.size(); i++) {
-            for (size_t j = i + 1; j < placed.size(); j++) {
-                const auto& a = placed[i];
-                const auto& b = placed[j];
-                bool overlap = !(a.col + a.colspan <= b.col || b.col + b.colspan <= a.col ||
-                                 a.row + a.rowspan <= b.row || b.row + b.rowspan <= a.row);
-                INFO("preset " << preset << " widgets at (" << a.col << "," << a.row << ") and ("
-                               << b.col << "," << b.row << ")");
-                CHECK_FALSE(overlap);
-            }
+    }
+    return nullptr;
+}
+
+} // namespace
+
+TEST_CASE_METHOD(PanelWidgetConfigFixture,
+                 "a preset seed overlay removes an anchor and replaces a slot",
+                 "[panel_widget_config][preset]") {
+    ConfigDirGuard guard("preset-overlay");
+    helix::test::ScopedBreakpoint bp(UiBreakpoint::Large);
+
+    // Without a seed the large table places tips and no clock.
+    setup_empty_config();
+    PanelWidgetConfig plain("home", config);
+    plain.load();
+    const json base = get_saved_page0_widgets();
+    REQUIRE(find_placed_widget(base, "tips") != nullptr);
+    REQUIRE(find_placed_widget(base, "clock") == nullptr);
+
+    const json seed = {
+        {"anchors",
+         {{{"id", "tips"}, {"remove", true}},
+          {{"slot", "spool_env"},
+           {"placements", {{"large", {{"col", 8}, {"row", 0}, {"colspan", 4}, {"rowspan", 2}}}}},
+           {"alternatives", {{{"cells", {{{"candidates", {"clock"}}, {"at", {0, 0, 4, 2}}}}}}}}}}},
+        {"disabled", {{"large", {"tips"}}}}};
+    write_seed(guard, "testp", seed);
+    setup_empty_config();
+    ConfigTestAccess::data(config)["printers"]["default"]["preset"] = "testp";
+
+    PanelWidgetConfig wc("home", config);
+    wc.load();
+
+    const json widgets = get_saved_page0_widgets();
+    CHECK(find_placed_widget(widgets, "tips") == nullptr);
+    const json* clock = find_placed_widget(widgets, "clock");
+    REQUIRE(clock != nullptr);
+    CHECK((*clock)["col"] == 8);
+    CHECK((*clock)["row"] == 0);
+    CHECK((*clock)["colspan"] == 4);
+    CHECK((*clock)["rowspan"] == 2);
+    // The rest of the base table still stands.
+    CHECK(find_placed_widget(widgets, "printer_image") != nullptr);
+    CHECK(find_placed_widget(widgets, "print_status") != nullptr);
+}
+
+TEST_CASE_METHOD(PanelWidgetConfigFixture, "a preset seed overlay yields a live stamped default",
+                 "[panel_widget_config][preset]") {
+    ConfigDirGuard guard("preset-overlay-stamp");
+    helix::test::ScopedBreakpoint bp(UiBreakpoint::Large);
+    write_seed(guard, "testp", json{{"anchors", {{{"id", "tips"}, {"remove", true}}}}});
+    setup_empty_config();
+    ConfigTestAccess::data(config)["printers"]["default"]["preset"] = "testp";
+
+    PanelWidgetConfig wc("home", config);
+    wc.load();
+
+    // The block is what lets the layout re-resolve when a capability changes
+    // and what a Reset re-arms; an unstamped seed would read as a user edit.
+    CHECK(wc.is_unedited_default());
+    const json saved = get_printer_data()["panel_widgets"]["home"];
+    REQUIRE(saved.contains("default"));
+    CHECK(saved["default"].contains("hash"));
+}
+
+TEST_CASE_METHOD(PanelWidgetConfigFixture, "a preset without a seed file falls back to the base",
+                 "[panel_widget_config][preset]") {
+    ConfigDirGuard guard("preset-no-seed");
+    helix::test::ScopedBreakpoint bp(UiBreakpoint::Large);
+
+    setup_empty_config();
+    PanelWidgetConfig plain("home", config);
+    plain.load();
+    const json base = get_saved_page0_widgets();
+
+    setup_empty_config();
+    ConfigTestAccess::data(config)["printers"]["default"]["preset"] = "no_such_seed";
+    PanelWidgetConfig wc("home", config);
+    wc.load();
+
+    CHECK(get_saved_page0_widgets() == base);
+}
+
+TEST_CASE("preset seeds: shipped seeds are overlays that place no excluded widget",
+          "[panel_widget_config][preset]") {
+    const std::filesystem::path root =
+        std::filesystem::path(find_readable("default_layout.json")).parent_path() / "panel_widgets";
+    std::error_code ec;
+    for (const auto& dir : std::filesystem::directory_iterator(root, ec)) {
+        std::ifstream in(dir.path() / "home.json");
+        if (!in.is_open()) {
+            continue;
+        }
+        INFO("seed " << dir.path().filename().string());
+        const json seed = json::parse(in, nullptr, false);
+        REQUIRE(seed.is_object());
+        CHECK_FALSE(seed.contains("pages"));
+        const std::string text = seed.dump();
+        for (const char* id : {"toolhead", "host_health", "exclude_map"}) {
+            CHECK(text.find(std::string("\"") + id + "\"") == std::string::npos);
         }
     }
 }
@@ -2897,38 +2953,6 @@ TEST_CASE_METHOD(PanelWidgetConfigFixture, "restoring a parked layout keeps its 
     wc.load();
     wc.switch_to_grid(12, 6);  // parks the 24x12 arrangement, seeds 12x6 from it
     wc.switch_to_grid(24, 12); // restores the parked 24x12 arrangement
-    bool kept = false;
-    for (const auto& item : get_saved_page0_widgets())
-        kept = kept || item == unknown;
-    CHECK(kept);
-}
-
-TEST_CASE_METHOD(PanelWidgetConfigFixture, "a preset seed keeps unknown ids",
-                 "[panel_widget][widget_config]") {
-    ConfigDirGuard guard("preset-retain");
-    json unknown = {{"id", "gone-plug__tile"},
-                    {"enabled", true},
-                    {"col", 2},
-                    {"row", 0},
-                    {"colspan", 2},
-                    {"rowspan", 2}};
-    json seed;
-    seed["pages"] = json::array(
-        {json{{"id", "main"},
-              {"widgets", json::array({{{"id", "print_status"}, {"enabled", true}}, unknown})}}});
-    seed["main_page_index"] = 0;
-    seed["next_page_id"] = 1;
-    std::filesystem::create_directories(guard.dir / "panel_widgets" / "testp");
-    {
-        std::ofstream out(guard.dir / "panel_widgets" / "testp" / "home.json");
-        out << seed.dump();
-    }
-    setup_empty_config();
-    ConfigTestAccess::data(config)["printers"]["default"]["preset"] = "testp";
-
-    PanelWidgetConfig wc("home", config);
-    wc.load(); // no saved layout: seeds from panel_widgets/testp/home.json and saves
-
     bool kept = false;
     for (const auto& item : get_saved_page0_widgets())
         kept = kept || item == unknown;

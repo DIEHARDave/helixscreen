@@ -1934,6 +1934,14 @@ void PanelWidgetManager::setup_gate_observers(const std::string& panel_id,
     for (auto& name : helix::layout::subjects_named_by(PanelWidgetConfig::load_default_table())) {
         gate_names.push_back(std::move(name));
     }
+    const Config* cfg = Config::get_instance();
+    if (const nlohmann::json overlay =
+            PanelWidgetConfig::load_preset_overlay(cfg ? cfg->get_preset() : std::string{});
+        !overlay.is_null()) {
+        for (auto& name : helix::layout::subjects_named_by(overlay)) {
+            gate_names.push_back(std::move(name));
+        }
+    }
     std::sort(gate_names.begin(), gate_names.end());
     gate_names.erase(std::unique(gate_names.begin(), gate_names.end()), gate_names.end());
 

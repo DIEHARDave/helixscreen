@@ -256,8 +256,12 @@ class PanelWidgetConfig {
     /// measured grid cannot seat stays enabled with no position, for
     /// auto-placement. @p signature, when given, receives the
     /// resolver's signature for this result.
-    static std::vector<PanelWidgetEntry> build_default_grid(int grid_cols = 0, int grid_rows = 0,
-                                                            std::string* signature = nullptr);
+    ///
+    /// @p overlay, a preset seed from load_preset_overlay(), is applied over the
+    /// table; null resolves the table alone.
+    static std::vector<PanelWidgetEntry>
+    build_default_grid(int grid_cols = 0, int grid_rows = 0, std::string* signature = nullptr,
+                       const nlohmann::json* overlay = nullptr);
 
     /// Values of every capability subject @p table (and @p overlay, a preset
     /// seed, when given) names, read from the live XML subject registry.
@@ -274,6 +278,11 @@ class PanelWidgetConfig {
     /// file's mtime or size changes, so edits to the runtime-editable table
     /// still apply. LVGL thread only.
     static nlohmann::json load_default_table();
+
+    /// The seed of @p preset (panel_widgets/<preset>/home.json), parsed: an
+    /// overlay build_default_grid() applies over the default table. Null when
+    /// the preset is empty, has no seed file, or the file is not a JSON object.
+    static nlohmann::json load_preset_overlay(const std::string& preset);
 
     /// How many times load_default_table() has read the file from disk.
     static int default_table_reads();
@@ -480,7 +489,7 @@ class PanelWidgetConfig {
     /// Write the current state to @p panel_path and save the config file.
     void write_to(const std::string& panel_path);
 
-    static std::vector<PanelWidgetEntry> build_defaults();
+    std::vector<PanelWidgetEntry> build_defaults() const;
 
     /// Record the current pages as the defaults builder's output for
     /// @p signature ("" while no grid has been measured).
@@ -515,9 +524,10 @@ class PanelWidgetConfig {
                                                      bool append_registry_defaults = true,
                                                      nlohmann::json* retained = nullptr);
 
-    /// Attempt to populate pages_ from a preset-shipped seed file at
-    /// assets/config/panel_widgets/<preset>/<panel_id>.json. Returns true if a
-    /// seed was found and applied. Used only on fresh installs (no saved config).
+    /// Populate pages_ from the default layout with the preset's seed overlay
+    /// (assets/config/panel_widgets/<preset>/home.json) applied, stamped as a
+    /// live default. Returns false when the panel has no seed. Used only on
+    /// fresh installs (no saved config).
     bool try_populate_from_preset_seed();
 
     /// One-shot migration for installs stuck in the pre-ef580203d state where

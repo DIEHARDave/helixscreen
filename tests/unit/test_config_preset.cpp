@@ -970,3 +970,18 @@ TEST_CASE_METHOD(PresetConfigFixture,
 
     TearDown();
 }
+
+// A preset's layout would be stored as raw track coordinates with no grid
+// named, which load() refuses to read; the home arrangement comes from the
+// default layout tables instead (prestonbrown/helixscreen#1216).
+TEST_CASE_METHOD(PresetConfigFixture, "snapmaker_u1 preset carries no home panel layout",
+                 "[config][preset][snapmaker_u1]") {
+    SetUp();
+
+    copy_shipped_preset("snapmaker_u1");
+    REQUIRE(config.apply_preset_file("snapmaker_u1") == true);
+
+    CHECK_FALSE(printer_data().contains("panel_widgets"));
+
+    TearDown();
+}

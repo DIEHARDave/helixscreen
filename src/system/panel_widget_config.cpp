@@ -420,68 +420,20 @@ void PanelWidgetConfig::load() {
 }
 
 bool PanelWidgetConfig::try_populate_from_preset_seed() {
-    std::string preset = config_.get_preset();
-    if (preset.empty()) {
+    // Only the home panel has a default layout table for a seed to overlay.
+    if (panel_id_ != "home" || load_preset_overlay(config_.get_preset()).is_null()) {
         return false;
     }
 
-    std::string rel_path = "panel_widgets/" + preset + "/" + panel_id_ + ".json";
-    std::string seed_path = helix::find_readable(rel_path);
-    const auto seed_text = helix::text_io::read_file(seed_path);
-    if (!seed_text) {
-        return false;
-    }
+    PageConfig page;
+    page.id = "main";
+    page.widgets = build_defaults();
+    pages_.push_back(std::move(page));
+    next_page_id_ = 1;
+    stamp_default("");
 
-    nlohmann::json seed = nlohmann::json::parse(*seed_text, nullptr, false);
-    if (seed.is_discarded()) {
-        spdlog::warn("[PanelWidgetConfig] Failed to parse preset seed '{}': not valid JSON",
-                     seed_path);
-        return false;
-    }
-
-    if (!seed.is_object() || !seed.contains("pages") || !seed["pages"].is_array()) {
-        spdlog::warn("[PanelWidgetConfig] Preset seed '{}' missing 'pages' array", seed_path);
-        return false;
-    }
-
-    // These reads face the same null/non-object hazard as the settings.json
-    // path in load(); see the comments there. A seed that fails here would
-    // otherwise unwind out of load(), taking dashboard construction with it.
-    main_page_index_ = static_cast<size_t>(helix::json_util::safe_int(seed, "main_page_index"));
-    next_page_id_ = helix::json_util::safe_int(seed, "next_page_id");
-
-    size_t page_idx = 0;
-    for (const auto& page_json : seed["pages"]) {
-        if (!page_json.is_object()) {
-            spdlog::warn("[PanelWidgetConfig] Preset seed '{}': skipping non-object page entry "
-                         "at index {}",
-                         seed_path, page_idx);
-            ++page_idx;
-            continue;
-        }
-        PageConfig page;
-        page.id = helix::json_util::safe_string(page_json, "id");
-        if (page_json.contains("widgets") && page_json["widgets"].is_array()) {
-            bool append_defaults = pages_.empty();
-            page.widgets =
-                parse_widget_array(page_json["widgets"], append_defaults, &page.retained);
-        }
-        pages_.push_back(std::move(page));
-        ++page_idx;
-    }
-
-    if (pages_.empty()) {
-        return false;
-    }
-    if (next_page_id_ <= 0) {
-        next_page_id_ = static_cast<int>(pages_.size());
-    }
-    if (main_page_index_ >= pages_.size()) {
-        main_page_index_ = 0;
-    }
-
-    spdlog::info("[PanelWidgetConfig] Seeded panel '{}' from preset '{}' ({})", panel_id_, preset,
-                 seed_path);
+    spdlog::info("[PanelWidgetConfig] Seeded panel '{}' from preset '{}'", panel_id_,
+                 config_.get_preset());
     return true;
 }
 
@@ -1037,6 +989,23 @@ nlohmann::json PanelWidgetConfig::load_default_table() {
     return layout;
 }
 
+nlohmann::json PanelWidgetConfig::load_preset_overlay(const std::string& preset) {
+    if (preset.empty()) {
+        return nlohmann::json();
+    }
+    const std::string seed_path = helix::find_readable("panel_widgets/" + preset + "/home.json");
+    const auto seed_text = helix::text_io::read_file(seed_path);
+    if (!seed_text) {
+        return nlohmann::json();
+    }
+    nlohmann::json seed = nlohmann::json::parse(*seed_text, nullptr, false);
+    if (!seed.is_object()) {
+        spdlog::warn("[PanelWidgetConfig] Preset seed '{}' is not a JSON object", seed_path);
+        return nlohmann::json();
+    }
+    return seed;
+}
+
 helix::layout::CapabilitySnapshot
 PanelWidgetConfig::snapshot_capabilities(const nlohmann::json& table,
                                          const nlohmann::json* overlay) {
@@ -1065,7 +1034,8 @@ PanelWidgetConfig::snapshot_capabilities(const nlohmann::json& table,
 }
 
 std::vector<PanelWidgetEntry> PanelWidgetConfig::build_default_grid(int grid_cols, int grid_rows,
-                                                                    std::string* signature) {
+                                                                    std::string* signature,
+                                                                    const nlohmann::json* overlay) {
     const auto& defs = get_all_widget_defs();
 
     // Determine current breakpoint for per-breakpoint anchor sizing
@@ -1093,9 +1063,9 @@ std::vector<PanelWidgetEntry> PanelWidgetConfig::build_default_grid(int grid_col
 
     const Config* cfg = Config::get_instance();
     const std::string preset = cfg ? cfg->get_preset() : std::string{};
-    const auto caps = snapshot_capabilities(layout);
+    const auto caps = snapshot_capabilities(layout, overlay);
     auto resolved = helix::layout::resolve_default_layout(
-        layout, nullptr, bp_name, grid_cols, grid_rows, LayoutManager::instance().variant_chain(),
+        layout, overlay, bp_name, grid_cols, grid_rows, LayoutManager::instance().variant_chain(),
         preset, caps);
     if (signature) {
         *signature = resolved.signature;
@@ -1273,8 +1243,9 @@ bool PanelWidgetConfig::is_grid_format() const {
     return false;
 }
 
-std::vector<PanelWidgetEntry> PanelWidgetConfig::build_defaults() {
-    return build_default_grid();
+std::vector<PanelWidgetEntry> PanelWidgetConfig::build_defaults() const {
+    const nlohmann::json overlay = load_preset_overlay(config_.get_preset());
+    return build_default_grid(0, 0, nullptr, overlay.is_null() ? nullptr : &overlay);
 }
 
 void PanelWidgetConfig::restore_pages(const nlohmann::json& payload) {
@@ -1400,7 +1371,9 @@ void PanelWidgetConfig::apply_pending_anchors(int grid_cols, int grid_rows) {
     // Page 0 only. Extra pages are user-made, and a user who has built one has
     // arranged page 0 too, so a layout still tagged pending has exactly one.
     std::string signature;
-    auto rebuilt = build_default_grid(grid_cols, grid_rows, &signature);
+    const nlohmann::json overlay = load_preset_overlay(config_.get_preset());
+    auto rebuilt = build_default_grid(grid_cols, grid_rows, &signature,
+                                      overlay.is_null() ? nullptr : &overlay);
     if (rebuilt.empty() || pages_.empty()) {
         return;
     }
@@ -1462,7 +1435,9 @@ bool PanelWidgetConfig::reresolve_default_if_changed(int cols, int rows) {
     }
 
     std::string signature;
-    auto rebuilt = build_default_grid(cols, rows, &signature);
+    const nlohmann::json overlay = load_preset_overlay(config_.get_preset());
+    auto rebuilt =
+        build_default_grid(cols, rows, &signature, overlay.is_null() ? nullptr : &overlay);
     if (rebuilt.empty()) {
         return false;
     }
