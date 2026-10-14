@@ -781,9 +781,6 @@
   <translation tag="Current name:" zh="当前名称："/>
   <translation tag="Current:" zh="当前："/>
   <translation tag="Current: %d°C | Target: %d°C" zh="当前: %d°C | 目标: %d°C"/>
-  <translation tag="Current: %s" zh="当前: %s"/>
-  <translation tag="Current: %s · %s" zh="当前: %s · %s"/>
-  <translation tag="Current: Bypass" zh="当前: 旁通"/>
   <translation tag="Currently Loaded" zh="当前已装载"/>
   <translation tag="Currently printing" zh="正在打印"/>
   <translation tag="Custom" zh="自定义"/>

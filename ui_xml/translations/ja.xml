@@ -781,9 +781,6 @@
   <translation tag="Current name:" ja="現在の名前:"/>
   <translation tag="Current:" ja="現在:"/>
   <translation tag="Current: %d°C | Target: %d°C" ja="現在: %d°C | 目標: %d°C"/>
-  <translation tag="Current: %s" ja="現在: %s"/>
-  <translation tag="Current: %s · %s" ja="現在: %s · %s"/>
-  <translation tag="Current: Bypass" ja="現在: バイパス"/>
   <translation tag="Currently Loaded" ja="現在ロード中"/>
   <translation tag="Currently printing" ja="印刷中"/>
   <translation tag="Custom" ja="カスタム"/>

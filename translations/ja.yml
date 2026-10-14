@@ -803,9 +803,6 @@ translations:
   'Current name:': '現在の名前:'
   'Current:': '現在:'
   'Current: %d°C | Target: %d°C': '現在: %d°C | 目標: %d°C'
-  'Current: %s': '現在: %s'
-  'Current: %s · %s': '現在: %s · %s'
-  'Current: Bypass': '現在: バイパス'
   Currently Loaded: 現在ロード中
   Currently printing: 印刷中
   Custom: カスタム

@@ -472,8 +472,10 @@ void AmsOperationSidebar::init_observers() {
         AmsState::instance().get_subjects_lifetime());
 
     // Fill observer: how much is left on the loaded spool, in the
-    // SlotInfo::display_fill_pct() encoding. With no data the spool draws full,
-    // as every unweighed spool does elsewhere.
+    // SlotInfo::display_fill_pct() encoding. -1 (no weight data) draws a full
+    // spool rather than leaving the render as it is: this one spool shows
+    // whatever is loaded now, so an untouched render would keep the previous
+    // load's fill.
     fill_observer_ = observe<int>(
         AmsState::instance().get_current_fill_pct_subject(), this,
         [](AmsOperationSidebar* self, int pct) {

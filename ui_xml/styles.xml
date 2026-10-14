@@ -123,8 +123,10 @@
 
     <!-- Action buttons in a grid, two to a row: action_grid on the container,
          action_cell on each button. A cell's label is font_small whether the icon
-         sits beside it or over it: at body size "Check slots" beside its icon
-         outgrows a half-width cell. A stacked ui_button asks for 100% of a
+         sits beside it or over it, and the cell's side padding is narrow: at
+         body size "Check slots" beside its icon outgrows a half-width cell. The
+         buttons ellipsize (long_mode="dots") a translation that still does not
+         fit. A stacked ui_button asks for 100% of a
          content-height parent, which inside a wrapping row never settles, so the
          cell pins its height to the touch target. No flex_grow on a cell: a
          growing item counts as zero width when the row wraps, which puts every
@@ -136,7 +138,7 @@
            flex_track_place="start"/>
     <style name="action_cell"
            width="48%" min_height="#touch_target_min" max_height="#touch_target_min" pad_ver="#space_xxs"
-           text_font="#font_small"/>
+           pad_hor="#space_xs" text_font="#font_small"/>
     <!-- Four to a row, for a narrow portrait screen with no height for two rows. -->
     <style name="action_cell_quarter" width="23%"/>
   </styles>

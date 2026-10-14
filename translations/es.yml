@@ -872,9 +872,6 @@ translations:
   'Current name:': 'Nombre actual:'
   'Current:': 'Actual:'
   'Current: %d°C | Target: %d°C': 'Actual: %d°C | Objetivo: %d°C'
-  'Current: %s': 'Actual: %s'
-  'Current: %s · %s': 'Actual: %s · %s'
-  'Current: Bypass': 'Actual: Bypass'
   Currently Loaded: Actualmente cargado
   Currently printing: Imprimiendo actualmente
   Custom: Personalizado

@@ -781,9 +781,6 @@
   <translation tag="Current name:" en="Current name:"/>
   <translation tag="Current:" en="Current:"/>
   <translation tag="Current: %d°C | Target: %d°C" en="Current: %d°C | Target: %d°C"/>
-  <translation tag="Current: %s" en="Current: %s"/>
-  <translation tag="Current: %s · %s" en="Current: %s · %s"/>
-  <translation tag="Current: Bypass" en="Current: Bypass"/>
   <translation tag="Currently Loaded" en="Currently Loaded"/>
   <translation tag="Currently printing" en="Currently printing"/>
   <translation tag="Custom" en="Custom"/>

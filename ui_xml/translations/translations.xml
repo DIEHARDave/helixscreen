@@ -781,9 +781,6 @@
   <translation tag="Current name:" de="Aktueller Name:" en="Current name:" es="Nombre actual:" fr="Nom actuel :" it="Nome attuale:" ja="現在の名前:" pt="Nome atual:" ru="Текущее имя:" zh="当前名称："/>
   <translation tag="Current:" de="Aktuell:" en="Current:" es="Actual:" fr="Actuel :" it="Attuale:" ja="現在:" pt="Atual:" ru="Текущий:" zh="当前："/>
   <translation tag="Current: %d°C | Target: %d°C" de="Aktuell: %d°C | Ziel: %d°C" en="Current: %d°C | Target: %d°C" es="Actual: %d°C | Objetivo: %d°C" fr="Actuel : %d°C | Cible : %d°C" it="Attuale: %d°C | Obiettivo: %d°C" ja="現在: %d°C | 目標: %d°C" pt="Atual: %d°C | Alvo: %d°C" ru="Текущая: %d°C | Целевая: %d°C" zh="当前: %d°C | 目标: %d°C"/>
-  <translation tag="Current: %s" de="Aktuell: %s" en="Current: %s" es="Actual: %s" fr="Actuel : %s" it="Attuale: %s" ja="現在: %s" pt="Atual: %s" ru="Текущий: %s" zh="当前: %s"/>
-  <translation tag="Current: %s · %s" de="Aktuell: %s · %s" en="Current: %s · %s" es="Actual: %s · %s" fr="Actuel : %s · %s" it="Attuale: %s · %s" ja="現在: %s · %s" pt="Atual: %s · %s" ru="Текущий: %s · %s" zh="当前: %s · %s"/>
-  <translation tag="Current: Bypass" de="Aktuell: Bypass" en="Current: Bypass" es="Actual: Bypass" fr="Actuel : Bypass" it="Attuale: Bypass" ja="現在: バイパス" pt="Atual: Bypass" ru="Текущий: Обход" zh="当前: 旁通"/>
   <translation tag="Currently Loaded" de="Aktuell geladen" en="Currently Loaded" es="Actualmente cargado" fr="Actuellement chargé" it="Attualmente caricato" ja="現在ロード中" pt="Atualmente carregado" ru="Загружено" zh="当前已装载"/>
   <translation tag="Currently printing" de="Aktueller Druck" en="Currently printing" es="Imprimiendo actualmente" fr="Impression en cours" it="Stampa in corso" ja="印刷中" pt="Imprimindo atualmente" ru="Сейчас печатается" zh="正在打印"/>
   <translation tag="Custom" de="Benutzerdefiniert" en="Custom" es="Personalizado" fr="Personnalisé" it="Personalizzato" ja="カスタム" pt="Personalizado" ru="Свой" zh="自定义"/>

@@ -60,7 +60,26 @@ struct UiButtonData {
     // glyph can be restored after busy/done.
     lv_obj_t* op_spinner{nullptr};
     char op_idle_glyph[8]{}; // MDI glyph is 4-byte UTF-8 + NUL; 8 is generous
+
+    // long_mode was given: the label is bounded so it can ellipsize or wrap.
+    bool label_bounded{false};
 };
+
+/// Bound the label of a long_mode button. Stacked or text-only, it spans the
+/// button. Beside an icon it takes what the icon leaves (a flex grow item, whose
+/// width the row decides) and one line of its font, so a label too long for
+/// that ellipsizes inside the button instead of pushing past its edge: a
+/// label's dots mode only cuts text that overruns its height.
+void apply_label_bound(UiButtonData* data, bool beside_icon) {
+    lv_obj_set_flex_grow(data->label, beside_icon ? 1 : 0);
+    lv_obj_set_width(data->label, lv_pct(100));
+    if (beside_icon) {
+        const lv_font_t* font = lv_obj_get_style_text_font(data->label, LV_PART_MAIN);
+        lv_obj_set_height(data->label, font ? lv_font_get_line_height(font) : LV_SIZE_CONTENT);
+    } else {
+        lv_obj_set_height(data->label, LV_SIZE_CONTENT);
+    }
+}
 
 // Monotonic source of per-button identity tokens. Buttons are created on the
 // main thread, so a plain non-atomic counter is sufficient.
@@ -1127,7 +1146,10 @@ void ui_button_apply(lv_xml_parser_state_t* state, const char** attrs) {
             mode = LV_LABEL_LONG_MODE_SCROLL_CIRCULAR;
         lv_label_set_long_mode(data->label, mode);
         // Label must have a bounded width for long_mode to take effect
-        lv_obj_set_width(data->label, lv_pct(100));
+        data->label_bounded = true;
+        apply_label_bound(data,
+                          data->icon != nullptr &&
+                              lv_obj_get_style_flex_flow(btn, LV_PART_MAIN) == LV_FLEX_FLOW_ROW);
         // Center text within the expanded label
         lv_obj_set_style_text_align(data->label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
         spdlog::trace("[ui_button] Set long_mode to '{}'", long_mode);
@@ -1330,6 +1352,8 @@ void ui_button_set_stacked(lv_obj_t* btn, bool stacked) {
         lv_obj_move_to_index(data->icon, data->icon_on_bottom ? -1 : 0);
         lv_obj_set_style_text_font(data->label, theme_manager_get_font("font_small"), LV_PART_MAIN);
         lv_obj_set_style_pad_top(data->label, theme_manager_get_spacing("space_xxs"), LV_PART_MAIN);
+        if (data->label_bounded)
+            apply_label_bound(data, false);
     } else {
         // Icon beside label, the create-time row recipe, at the fixed
         // button_height the row layout expects.
@@ -1341,6 +1365,8 @@ void ui_button_set_stacked(lv_obj_t* btn, bool stacked) {
         lv_obj_move_to_index(data->icon, data->icon_on_right ? -1 : 0);
         lv_obj_remove_local_style_prop(data->label, LV_STYLE_TEXT_FONT, LV_PART_MAIN);
         lv_obj_remove_local_style_prop(data->label, LV_STYLE_PAD_TOP, LV_PART_MAIN);
+        if (data->label_bounded)
+            apply_label_bound(data, true);
     }
 }
 

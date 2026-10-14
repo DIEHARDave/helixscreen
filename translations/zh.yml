@@ -801,9 +801,6 @@ translations:
   'Current name:': 当前名称：
   'Current:': 当前：
   'Current: %d°C | Target: %d°C': '当前: %d°C | 目标: %d°C'
-  'Current: %s': '当前: %s'
-  'Current: %s · %s': '当前: %s · %s'
-  'Current: Bypass': '当前: 旁通'
   Currently Loaded: 当前已装载
   Currently printing: 正在打印
   Custom: 自定义

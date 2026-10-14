@@ -1695,8 +1695,9 @@ class AmsState {
      */
     void sync_current_loaded_from_backend(const AmsSystemInfo& primary_info);
 
-    /// Writes the "Current: ..." header for @p slot_index on @p backend, with
-    /// the unit name on multi-unit systems. @p info is @p backend's system info.
+    /// Writes the loaded card's position header ("Gate 1") for @p slot_index on
+    /// @p backend, prefixed with the unit name on multi-unit systems. @p info is @p backend's
+    /// system info.
     void set_current_slot_header(AmsBackend& backend, const AmsSystemInfo& info, int slot_index);
 
     /**

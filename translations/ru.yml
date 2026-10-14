@@ -859,9 +859,6 @@ translations:
   'Current name:': 'Текущее имя:'
   'Current:': 'Текущий:'
   'Current: %d°C | Target: %d°C': 'Текущая: %d°C | Целевая: %d°C'
-  'Current: %s': 'Текущий: %s'
-  'Current: %s · %s': 'Текущий: %s · %s'
-  'Current: Bypass': 'Текущий: Обход'
   Currently Loaded: Загружено
   Currently printing: Сейчас печатается
   Custom: Свой

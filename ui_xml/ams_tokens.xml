@@ -26,8 +26,8 @@
     <px name="ams_right_col_w_micro" value="145"/>
     <px name="ams_right_col_w_tiny" value="145"/>
     <px name="ams_right_col_w_small" value="200"/>
-    <px name="ams_right_col_w_medium" value="240"/>
-    <px name="ams_right_col_w_large" value="240"/>
+    <px name="ams_right_col_w_medium" value="280"/>
+    <px name="ams_right_col_w_large" value="300"/>
     <px name="ams_right_col_w_xlarge" value="330"/>
 
     <!-- ===================================================================== -->
@@ -74,18 +74,16 @@
     <px name="ams_loaded_name_line_h_xlarge" value="28"/>
     <px name="ams_loaded_name_line_h_xxlarge" value="36"/>
 
-    <!-- One line of font_body_bold: the loaded strip's position line from medium up. -->
-    <px name="ams_loaded_title_line_h_micro" value="20"/>
-    <px name="ams_loaded_title_line_h_tiny" value="20"/>
+    <!-- One line of font_body_bold: the loaded strip's position line from medium up.
+         _small is only the required base tier; nothing below medium shows the line. -->
     <px name="ams_loaded_title_line_h_small" value="20"/>
     <px name="ams_loaded_title_line_h_medium" value="25"/>
     <px name="ams_loaded_title_line_h_large" value="28"/>
     <px name="ams_loaded_title_line_h_xlarge" value="33"/>
     <px name="ams_loaded_title_line_h_xxlarge" value="44"/>
 
-    <!-- The loaded strip's spool, from medium up: about two text lines tall. -->
-    <px name="ams_loaded_spool_size_micro" value="32"/>
-    <px name="ams_loaded_spool_size_tiny" value="32"/>
+    <!-- The loaded strip's spool, from medium up: about two text lines tall.
+         _small is only the required base tier; below medium the spool is hidden. -->
     <px name="ams_loaded_spool_size_small" value="36"/>
     <px name="ams_loaded_spool_size_medium" value="44"/>
     <px name="ams_loaded_spool_size_large" value="48"/>

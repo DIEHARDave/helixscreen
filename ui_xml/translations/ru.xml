@@ -781,9 +781,6 @@
   <translation tag="Current name:" ru="Текущее имя:"/>
   <translation tag="Current:" ru="Текущий:"/>
   <translation tag="Current: %d°C | Target: %d°C" ru="Текущая: %d°C | Целевая: %d°C"/>
-  <translation tag="Current: %s" ru="Текущий: %s"/>
-  <translation tag="Current: %s · %s" ru="Текущий: %s · %s"/>
-  <translation tag="Current: Bypass" ru="Текущий: Обход"/>
   <translation tag="Currently Loaded" ru="Загружено"/>
   <translation tag="Currently printing" ru="Сейчас печатается"/>
   <translation tag="Custom" ru="Свой"/>

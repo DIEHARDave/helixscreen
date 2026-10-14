@@ -108,7 +108,7 @@
            the toolhead disables it like every other filament op. -->
       <ui_button name="btn_batch_load"
                  variant="secondary" icon="arrow_down" text="Load..." stacked_subject="ams_actions_stacked"
-                 stacked_if_eq="1">
+                 stacked_if_eq="1" long_mode="dots">
         <style name="styles.action_cell"/>
         <bind_style_if name="styles.action_cell_quarter" cond="ui_is_portrait eq 1 and ui_breakpoint lt 3"/>
         <bind_flag_if_eq subject="ams_sidebar_supports_batch" flag="hidden" ref_value="0"/>
@@ -130,7 +130,7 @@
            a print owning the toolhead. -->
       <ui_button name="btn_unload"
                  variant="secondary" icon="tray_arrow_up" text="Unload" stacked_subject="ams_actions_stacked"
-                 stacked_if_eq="1">
+                 stacked_if_eq="1" long_mode="dots">
         <style name="styles.action_cell"/>
         <bind_style_if name="styles.action_cell_quarter" cond="ui_is_portrait eq 1 and ui_breakpoint lt 3"/>
         <bind_flag_if cond="ams_is_filament_system eq 0 or ams_sidebar_supports_batch eq 1" flag="hidden"/>
@@ -139,7 +139,7 @@
       </ui_button>
       <ui_button name="btn_batch_unload"
                  variant="secondary" icon="tray_arrow_up" text="Unload..." stacked_subject="ams_actions_stacked"
-                 stacked_if_eq="1">
+                 stacked_if_eq="1" long_mode="dots">
         <style name="styles.action_cell"/>
         <bind_style_if name="styles.action_cell_quarter" cond="ui_is_portrait eq 1 and ui_breakpoint lt 3"/>
         <bind_flag_if_eq subject="ams_sidebar_supports_batch" flag="hidden" ref_value="0"/>
@@ -153,7 +153,8 @@
            backends and stays live mid-job so it can clear a latched fault; it
            greys only where reset_moves_filament() is true. -->
       <ui_button name="btn_reset"
-                 variant="secondary" icon="refresh" text="Reset" stacked_subject="ams_actions_stacked" stacked_if_eq="1">
+                 variant="secondary" icon="refresh" text="Reset" stacked_subject="ams_actions_stacked" stacked_if_eq="1"
+                 long_mode="dots">
         <style name="styles.action_cell"/>
         <bind_style_if name="styles.action_cell_quarter" cond="ui_is_portrait eq 1 and ui_breakpoint lt 3"/>
         <bind_flag_if_eq subject="ams_is_tool_changer" flag="hidden" ref_value="1"/>
@@ -166,7 +167,7 @@
            machine disables it via ams_sidebar_check_gates_disabled. -->
       <ui_button name="btn_check_gates"
                  variant="secondary" icon="refresh" text="Check slots" hidden="true"
-                 stacked_subject="ams_actions_stacked" stacked_if_eq="1">
+                 stacked_subject="ams_actions_stacked" stacked_if_eq="1" long_mode="dots">
         <style name="styles.action_cell"/>
         <bind_style_if name="styles.action_cell_quarter" cond="ui_is_portrait eq 1 and ui_breakpoint lt 3"/>
         <bind_state_if_eq subject="ams_sidebar_check_gates_disabled" state="disabled" ref_value="1"/>
@@ -174,7 +175,8 @@
       </ui_button>
       <!-- Settings Button (full width) -->
       <ui_button name="btn_settings"
-                 icon="settings" text="Settings" stacked_subject="ams_actions_stacked" stacked_if_eq="1">
+                 icon="settings" text="Settings" stacked_subject="ams_actions_stacked" stacked_if_eq="1"
+                 long_mode="dots">
         <style name="styles.action_cell"/>
         <bind_style_if name="styles.action_cell_quarter" cond="ui_is_portrait eq 1 and ui_breakpoint lt 3"/>
         <event_cb trigger="clicked" callback="ams_sidebar_settings_clicked"/>
