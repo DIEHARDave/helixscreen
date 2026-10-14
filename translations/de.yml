@@ -553,6 +553,7 @@ translations:
     nicht mit Drucker verbunden'
   'Cannot start print: printer is {}': 'Druck kann nicht gestartet werden: Drucker
     ist {}'
+  'Cannot start {}: its pre-print check was for another file': '{} kann nicht gestartet werden: Die Prüfung vor dem Druck galt einer anderen Datei'
   Cannot save offsets while printing: Offsets können während des Drucks nicht gespeichert werden
   Cannot unload while a print is active: Entladen während eines aktiven Drucks nicht möglich
   'Capabilities: ': 'Fähigkeiten: '
@@ -824,6 +825,7 @@ translations:
     konnte nicht analysiert werden. Einige Druckoptionen sind möglicherweise nicht
     verfügbar.
   Could not answer the connection request: 'Verbindungsanfrage konnte nicht beantwortet werden'
+  'Could not check {} - it stays in the queue': '{} konnte nicht geprüft werden – bleibt in der Warteschlange'
   ? "Could not check webcam status.\nCheck printer connection."
   : "Webcam-Status konnte nicht geprüft werden.\nDruckerverbindung prüfen."
   Could not confirm cancel: Abbruch konnte nicht bestätigt werden

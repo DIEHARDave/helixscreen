@@ -496,6 +496,7 @@
   <translation tag="Cannot start print: internal error" ru="Невозможно начать печать: внутренняя ошибка"/>
   <translation tag="Cannot start print: not connected to printer" ru="Невозможно начать печать: не подключено к принтеру"/>
   <translation tag="Cannot start print: printer is {}" ru="Невозможно начать печать: принтер {}"/>
+  <translation tag="Cannot start {}: its pre-print check was for another file" ru="Не удалось запустить {}: предварительная проверка относилась к другому файлу"/>
   <translation tag="Cannot unload while a print is active" ru="Нельзя выгрузить во время печати"/>
   <translation tag="Capabilities: " ru="Возможности: "/>
   <translation tag="Carriage empty" ru="Каретка пуста"/>
@@ -737,6 +738,7 @@
   <translation tag="Could not analyze PRINT_START macro. Some print options may be unavailable." ru="Не удалось проанализировать макрос PRINT_START. Некоторые параметры печати могут быть недоступны."/>
   <translation tag="Could not answer the connection request" ru="Не удалось ответить на запрос подключения"/>
   <translation tag="Could not check webcam status.&#10;Check printer connection." ru="Не удалось проверить статус веб-камеры.&#10;Проверьте подключение принтера."/>
+  <translation tag="Could not check {} - it stays in the queue" ru="Не удалось проверить {} – остаётся в очереди"/>
   <translation tag="Could not confirm cancel" ru="Не удалось подтвердить отмену"/>
   <translation tag="Could not copy {} from USB: {}" ru="Не удалось скопировать {} с USB: {}"/>
   <translation tag="Could not disconnect from WiFi" ru="Не удалось отключиться от WiFi"/>

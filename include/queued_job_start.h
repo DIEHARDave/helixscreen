@@ -11,6 +11,8 @@
  * bookkeeping, with the file view's inputs computed from FileStartFacts.
  */
 
+#include "ui_timer_guard.h"
+
 #include "async_lifetime_guard.h"
 #include "i_moonraker_sub_apis.h" // JobQueueEntry
 #include "print_start_inputs.h"
@@ -95,10 +97,26 @@ class QueuedJobStarter {
     /// the start in flight and keeps @p done.
     bool begin(const JobQueueEntry& job, DoneCallback& done);
 
-    /// Gather the file's facts and wait for print-select's prep manager to be
-    /// ready (its operations scan of the file, the PRINT_START analysis), then
-    /// run_checks().
+    /// Gather the file's facts, then wait_for_scan().
     void gather(const JobQueueEntry& job, QueuedJobOptions saved);
+
+    /// Wait for print-select's prep manager to answer for this file's own path
+    /// (its operations scan, the PRINT_START analysis), then run_checks().
+    void wait_for_scan();
+
+    /// End a start that could not be checked: warn that the job stays queued.
+    void give_up(const char* why);
+
+    /// (Re)arm the one-shot that gives up a start whose gathering stalls.
+    void arm_stall_watchdog(uint32_t ms);
+
+    /// Each gathering step (the options read, the metadata, the footer read,
+    /// the operations scan) answers within this, as an upload must report
+    /// progress within the USB copy's stall window.
+    static constexpr uint32_t kStallMs = 30000;
+    /// A footer that cannot answer falls back to reading the whole file; that
+    /// read is allowed the file's size at this rate on top of kStallMs.
+    static constexpr uint64_t kSlowestReadBytesPerMs = 100; // 100 kB/s
 
     /// What the start in flight is still waiting on.
     struct Pending {
@@ -106,11 +124,8 @@ class QueuedJobStarter {
         std::string name; ///< the file's basename
         std::string dir;  ///< its directory under gcodes, or empty
         std::optional<FileStartFacts> facts;
-        bool scanned = false;
     };
     std::unique_ptr<Pending> pending_;
-
-    void run_checks_when_gathered();
 
     /// The empty-slot pre-flight, then the controller's gates and start.
     void run_checks(const Pending& pending, FileStartFacts facts);
@@ -126,8 +141,13 @@ class QueuedJobStarter {
     FileStartFactsLoader facts_loader_;
     QueuedJobOptions saved_;
     std::string job_id_;
+    std::string job_filename_;
     DoneCallback done_;
     bool in_flight_ = false;
+    /// Bumped per start and at its end, so an answer for an earlier start
+    /// never acts on a later one.
+    uint32_t start_generation_ = 0;
+    ui::LvglTimerGuard stall_watchdog_;
     AsyncLifetimeGuard lifetime_;
 };
 

@@ -501,6 +501,7 @@ translations:
   'Cannot start print: internal error': '无法开始打印: 内部错误'
   'Cannot start print: not connected to printer': '无法开始打印: 未连接打印机'
   'Cannot start print: printer is {}': '无法开始打印: 打印机状态为 {}'
+  'Cannot start {}: its pre-print check was for another file': '无法启动 {}：打印前检查针对的是另一个文件'
   Cannot save offsets while printing: 打印时无法保存偏移
   Cannot unload while a print is active: 打印时无法卸载
   'Capabilities: ': '功能: '
@@ -751,6 +752,7 @@ translations:
   Could not analyze PRINT_START macro. Some print options may be unavailable.: 无法分析
     PRINT_START 宏。部分打印选项可能不可用。
   Could not answer the connection request: '无法响应连接请求'
+  'Could not check {} - it stays in the queue': '无法检查 {} – 保留在队列中'
   ? "Could not check webcam status.\nCheck printer connection."
   : "无法检查摄像头状态。\n请检查打印机连接。"
   Could not confirm cancel: 无法确认取消

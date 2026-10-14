@@ -547,6 +547,7 @@ translations:
     no conectado a la impresora'
   'Cannot start print: printer is {}': 'No se puede iniciar impresión: la impresora
     está {}'
+  'Cannot start {}: its pre-print check was for another file': 'No se puede iniciar {}: la comprobación previa era de otro archivo'
   Cannot save offsets while printing: No se pueden guardar los offsets durante la impresión
   Cannot unload while a print is active: No se puede descargar mientras hay una impresión activa
   'Capabilities: ': 'Capacidades: '
@@ -821,6 +822,7 @@ translations:
     se pudo analizar la macro PRINT_START. Algunas opciones de impresión pueden no
     estar disponibles.
   Could not answer the connection request: 'No se pudo responder a la solicitud de conexión'
+  'Could not check {} - it stays in the queue': 'No se pudo comprobar {}: permanece en la cola'
   ? "Could not check webcam status.\nCheck printer connection."
   : "No se pudo verificar la webcam.\nCompruebe la conexión."
   Could not confirm cancel: No se pudo confirmar la cancelación

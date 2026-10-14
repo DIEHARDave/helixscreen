@@ -21,6 +21,10 @@ class QueuedJobStarterTestAccess {
         return s.prep_source_();
     }
 
+    static lv_timer_t* stall_watchdog(helix::queue::QueuedJobStarter& s) {
+        return s.stall_watchdog_.get();
+    }
+
     /// Point the starter at @p prep instead of print-select's.
     static void set_prep(helix::queue::QueuedJobStarter& s,
                          helix::ui::PrintPreparationManager* prep) {

@@ -496,6 +496,7 @@
   <translation tag="Cannot start print: internal error" pt="Não é possível iniciar impressão: erro interno"/>
   <translation tag="Cannot start print: not connected to printer" pt="Não é possível iniciar impressão: não conectado à impressora"/>
   <translation tag="Cannot start print: printer is {}" pt="Não é possível iniciar impressão: impressora está {}"/>
+  <translation tag="Cannot start {}: its pre-print check was for another file" pt="Não é possível iniciar {}: a verificação prévia era de outro arquivo"/>
   <translation tag="Cannot unload while a print is active" pt="Não é possível descarregar enquanto uma impressão está ativa"/>
   <translation tag="Capabilities: " pt="Capacidades: "/>
   <translation tag="Carriage empty" pt="Carro vazio"/>
@@ -737,6 +738,7 @@
   <translation tag="Could not analyze PRINT_START macro. Some print options may be unavailable." pt="Não foi possível analisar a macro PRINT_START. Algumas opções de impressão podem estar indisponíveis."/>
   <translation tag="Could not answer the connection request" pt="Não foi possível responder à solicitação de conexão"/>
   <translation tag="Could not check webcam status.&#10;Check printer connection." pt="Não foi possível verificar status da webcam.&#10;Verifique a conexão da impressora."/>
+  <translation tag="Could not check {} - it stays in the queue" pt="Não foi possível verificar {} – permanece na fila"/>
   <translation tag="Could not confirm cancel" pt="Não foi possível confirmar o cancelamento"/>
   <translation tag="Could not copy {} from USB: {}" pt="Não foi possível copiar {} do USB: {}"/>
   <translation tag="Could not disconnect from WiFi" pt="Não foi possível desconectar do WiFi"/>

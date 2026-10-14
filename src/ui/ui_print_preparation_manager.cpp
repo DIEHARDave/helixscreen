@@ -581,6 +581,15 @@ void PrintPreparationManager::set_cached_scan_result(const gcode::ScanResult& sc
 // G-code Scanning
 // ============================================================================
 
+std::string PrintPreparationManager::scan_key(const std::string& filename,
+                                              const std::string& current_path,
+                                              const std::string& local_path) {
+    if (!local_path.empty()) {
+        return local_path;
+    }
+    return current_path.empty() ? filename : current_path + "/" + filename;
+}
+
 void PrintPreparationManager::scan_file_for_operations(const std::string& filename,
                                                        const std::string& current_path,
                                                        const std::string& local_path) {
@@ -588,10 +597,10 @@ void PrintPreparationManager::scan_file_for_operations(const std::string& filena
     // answer still holds. An answer computed before the printer's macros were
     // read, or against a macro set it has since replaced, says nothing about
     // this printer, so the file is scanned again.
-    const std::string file_path = current_path.empty() ? filename : current_path + "/" + filename;
-    const std::string key = local_path.empty() ? file_path : local_path;
+    const std::string file_path = scan_key(filename, current_path);
+    const std::string key = scan_key(filename, current_path, local_path);
     if (cached_scan_key_ == key && cached_scan_filename_ == filename &&
-        cached_scan_result_.has_value() && has_printer_stop_answer_for(filename)) {
+        cached_scan_result_.has_value() && scan_answered_for(key)) {
         spdlog::debug("[PrintPreparationManager] Using cached scan result for {}", key);
         return;
     }
@@ -602,11 +611,14 @@ void PrintPreparationManager::scan_file_for_operations(const std::string& filena
         cached_scan_result_.reset();
         cached_scan_filename_.clear();
         printer_stop_check_filename_.clear();
+        printer_stop_check_key_.clear();
     }
+    const bool local = !local_path.empty();
 
     if (!api_) {
         spdlog::warn("[PrintPreparationManager] Cannot scan G-code - no API connection");
-        answer_printer_stop_check(filename, helix::printer_stop_not_run("no printer connection"));
+        answer_printer_stop_check(filename, key,
+                                  helix::printer_stop_not_run("no printer connection"));
         return;
     }
 
@@ -616,7 +628,8 @@ void PrintPreparationManager::scan_file_for_operations(const std::string& filena
         cached_scan_result_ = gcode::ScanResult{};
         cached_scan_filename_ = filename;
         cached_scan_key_ = key;
-        answer_printer_stop_check(filename,
+        cached_scan_local_ = local;
+        answer_printer_stop_check(filename, key,
                                   printer_stop_not_run("a .3mf project holds no G-code to scan"));
         return;
     }
@@ -631,7 +644,7 @@ void PrintPreparationManager::scan_file_for_operations(const std::string& filena
     // downloading multi-MB files just to scan the first few hundred lines.
     // Both callbacks run on a background thread: parse there, then defer the
     // shared state updates to the main thread.
-    auto on_content = [this, token, filename, key](const std::string& content) {
+    auto on_content = [this, token, filename, key, local](const std::string& content) {
         gcode::GCodeOpsDetector detector;
         auto scan_result = detector.scan_content(content);
         // The whole downloaded head, not the detector's shorter op window:
@@ -657,14 +670,15 @@ void PrintPreparationManager::scan_file_for_operations(const std::string& filena
         }
 
         token.defer("PrintPreparationManager::scan_success",
-                    [this, filename, key, scan_result, stop_check]() {
+                    [this, filename, key, local, scan_result, stop_check]() {
                         if (key != requested_scan_key_) {
                             return;
                         }
                         cached_scan_result_ = scan_result;
                         cached_scan_filename_ = filename;
                         cached_scan_key_ = key;
-                        answer_printer_stop_check(filename, stop_check);
+                        cached_scan_local_ = local;
+                        answer_printer_stop_check(filename, key, stop_check);
                     });
     };
     // A failed read just logs; it never blocks the UI.
@@ -678,7 +692,7 @@ void PrintPreparationManager::scan_file_for_operations(const std::string& filena
             cached_scan_result_.reset();
             cached_scan_filename_.clear();
             cached_scan_key_.clear();
-            answer_printer_stop_check(filename, helix::printer_stop_not_run(reason));
+            answer_printer_stop_check(filename, key, helix::printer_stop_not_run(reason));
         });
     };
 
@@ -709,6 +723,7 @@ void PrintPreparationManager::clear_scan_cache() {
     cached_file_size_.reset();
     printer_stop_check_ = {};
     printer_stop_check_filename_.clear();
+    printer_stop_check_key_.clear();
 }
 
 helix::PrinterStopCheck
@@ -730,41 +745,80 @@ void PrintPreparationManager::set_on_scan_answered(std::function<void()> cb) {
 }
 
 void PrintPreparationManager::answer_printer_stop_check(const std::string& filename,
+                                                        const std::string& key,
                                                         helix::PrinterStopCheck check) {
     printer_stop_check_ = std::move(check);
     printer_stop_check_filename_ = filename;
+    printer_stop_check_key_ = key;
     if (on_scan_answered_) {
         on_scan_answered_();
     }
-    start_waiter_needs_scan_ = false;
-    notify_start_waiter();
+    on_scan_answered_for_waiter(key);
+}
+
+bool PrintPreparationManager::scan_answered_for(const std::string& key) const {
+    return !key.empty() && printer_stop_check_key_ == key &&
+           printer_stop_check_.macro_generation == helix::MacroParamCache::instance().generation();
 }
 
 void PrintPreparationManager::when_ready_to_start(const std::string& filename,
                                                   const std::string& current_path,
-                                                  std::function<void()> ready) {
-    start_waiter_ = std::move(ready);
-    if (!start_waiter_) {
+                                                  StartReadyCallback ready) {
+    if (!ready) {
+        start_waiter_.reset();
         return;
     }
-    start_waiter_needs_scan_ = !has_scan_result_for(filename);
-    if (start_waiter_needs_scan_) {
-        scan_file_for_operations(filename, current_path);
-        // A cached answer returns without calling back.
-        if (has_scan_result_for(filename) || has_printer_stop_answer_for(filename)) {
-            start_waiter_needs_scan_ = false;
-        }
+    start_waiter_ =
+        StartWaiter{filename, current_path, scan_key(filename, current_path), false, 1, ready};
+    request_start_waiter_scan();
+    notify_start_waiter();
+}
+
+void PrintPreparationManager::request_start_waiter_scan() {
+    const std::string filename = start_waiter_->filename;
+    const std::string path = start_waiter_->current_path;
+    const std::string key = start_waiter_->key;
+    if (!scan_answered_for(key)) {
+        // An answer given while this runs lands in on_scan_answered_for_waiter().
+        scan_file_for_operations(filename, path);
+    }
+    if (start_waiter_ && start_waiter_->key == key && scan_answered_for(key)) {
+        start_waiter_->answered = true;
+    }
+}
+
+void PrintPreparationManager::on_scan_answered_for_waiter(const std::string& key) {
+    if (!start_waiter_ || start_waiter_->answered) {
+        notify_start_waiter();
+        return;
+    }
+    if (key == start_waiter_->key) {
+        start_waiter_->answered = true;
+    } else if (start_waiter_->rescans_left > 0) {
+        // Only the newest request is answered, so another file's answer means
+        // this file's scan was dropped: ask again now that one has landed.
+        --start_waiter_->rescans_left;
+        spdlog::info("[PrintPreparationManager] Scan of {} was pre-empted by {} - scanning again",
+                     start_waiter_->key, key);
+        request_start_waiter_scan();
+    } else {
+        spdlog::warn("[PrintPreparationManager] Scan of {} was pre-empted twice - giving up",
+                     start_waiter_->key);
+        auto ready = std::move(start_waiter_->ready);
+        start_waiter_.reset();
+        ready(std::nullopt);
+        return;
     }
     notify_start_waiter();
 }
 
 void PrintPreparationManager::notify_start_waiter() {
-    if (!start_waiter_ || start_waiter_needs_scan_ || macro_analysis_in_progress_) {
+    if (!start_waiter_ || !start_waiter_->answered || macro_analysis_in_progress_) {
         return;
     }
-    auto ready = std::move(start_waiter_);
-    start_waiter_ = nullptr;
-    ready();
+    auto ready = std::move(start_waiter_->ready);
+    start_waiter_.reset();
+    ready(printer_stop_check_);
 }
 
 bool PrintPreparationManager::has_scan_result_for(const std::string& filename) const {
@@ -867,6 +921,22 @@ void PrintPreparationManager::start_print(const std::string& filename,
         return;
     }
 
+    // The scan rewrites the file by line number, so a scan of any other file
+    // must never reach this start. A stick file's scan stands for its copy on
+    // the printer, whose path differs.
+    const std::string start_key = scan_key(filename, current_path);
+    if (cached_scan_result_ && !cached_scan_local_ && cached_scan_key_ != start_key) {
+        spdlog::error("[PrintPreparationManager] Refusing to start {} with the scan of {}",
+                      start_key, cached_scan_key_);
+        if (on_completion) {
+            on_completion(false, fmt::format(fmt::runtime(lv_tr("Cannot start {}: its pre-print "
+                                                                "check was for another file")),
+                                             filename));
+        }
+        return;
+    }
+    start_scan_ = cached_scan_result_;
+
     // Mark this as an in-app print for telemetry source tracking
     TelemetryManager::instance().notify_print_started_in_app();
 
@@ -933,7 +1003,8 @@ void PrintPreparationManager::start_print(const std::string& filename,
     }
 
     // Check if user disabled operations that are embedded in the G-code file
-    std::vector<gcode::OperationType> ops_to_disable = collect_ops_to_disable();
+    std::vector<gcode::OperationType> ops_to_disable =
+        collect_ops_to_disable(start_scan_ ? &*start_scan_ : nullptr);
 
     // Check if user disabled operations that are in the PRINT_START macro
     // These need skip params appended to the PRINT_START call
@@ -1099,10 +1170,11 @@ void queue_busy_hide() {
 
 } // namespace
 
-std::vector<gcode::OperationType> PrintPreparationManager::collect_ops_to_disable() const {
+std::vector<gcode::OperationType>
+PrintPreparationManager::collect_ops_to_disable(const gcode::ScanResult* scan) const {
     std::vector<gcode::OperationType> ops_to_disable;
 
-    if (!cached_scan_result_.has_value()) {
+    if (!scan) {
         return ops_to_disable; // No scan result, nothing to disable
     }
 
@@ -1111,8 +1183,7 @@ std::vector<gcode::OperationType> PrintPreparationManager::collect_ops_to_disabl
     // State resolution flows through the new framework via get_option_state(id).
     for (const char* id : {"bed_mesh", "qgl", "z_tilt", "nozzle_clean"}) {
         const std::optional<gcode::OperationType> op = file_embeddable_op_for_id(id);
-        if (get_option_state(id) != PrePrintOptionState::DISABLED ||
-            !cached_scan_result_->has_operation(*op)) {
+        if (get_option_state(id) != PrePrintOptionState::DISABLED || !scan->has_operation(*op)) {
             continue;
         }
         const PrePrintOption* opt = get_cached_options().find(id);
@@ -1681,7 +1752,7 @@ void PrintPreparationManager::modify_and_print(
         return;
     }
 
-    if (!cached_scan_result_.has_value()) {
+    if (!start_scan_.has_value()) {
         spdlog::error("[PrintPreparationManager] modify_and_print called without scan result");
         NOTIFY_ERROR(lv_tr("Internal error: no scan result"));
         abandon_start("modify_no_scan_result");
@@ -1730,8 +1801,8 @@ void PrintPreparationManager::modify_and_print_streaming(
     const std::vector<std::pair<std::string, std::string>>& macro_skip_params,
     const std::vector<std::string>& mod_names, NavigateToStatusCallback on_navigate_to_status,
     bool use_plugin) {
-    auto token = lifetime_.token();         // Capture for lifetime checking in async callbacks
-    auto scan_result = cached_scan_result_; // Copy for lambda capture
+    auto token = lifetime_.token(); // Capture for lifetime checking in async callbacks
+    auto scan_result = start_scan_; // Copy for lambda capture
 
     // Validate scan_result before proceeding (SERIOUS-3 fix)
     if (!scan_result.has_value()) {

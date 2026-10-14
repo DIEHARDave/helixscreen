@@ -21,6 +21,7 @@
 #include "../test_helpers/print_start_grace.h"
 #include "../test_helpers/queued_job_starter_test_access.h"
 #include "../test_helpers/queued_start_fixture.h"
+#include "../test_helpers/scoped_macros_read.h"
 #include "../test_helpers/scoped_mock_ams.h"
 #include "moonraker_api_mock.h"
 #include "moonraker_client_mock.h"
@@ -115,6 +116,7 @@ class StarterFixture : public helix::test::QueuedStartFixture {
         return mock_client_.call_count("printer.print.start");
     }
 
+    helix::test::ScopedMacrosRead macros;
     std::unique_ptr<QueuedJobStarter> starter;
     std::optional<Outcome> outcome;
 
@@ -263,6 +265,56 @@ TEST_CASE_METHOD(StarterFixture,
     StaticPanelRegistry::instance().destroy_all();
 }
 
+TEST_CASE_METHOD(StarterFixture, "a printer-stop check that did not run never starts from the tile",
+                 "[queued_job_start]") {
+    PlantedGcode file("tile_unchecked.gcode", "", kPetgFile);
+    // Unread macros leave the file's printer-stopping command check NotRun.
+    helix::MacroParamCache::instance().clear();
+
+    WarningLog warnings;
+    start(entry("0001", file.name()));
+
+    REQUIRE(outcome.has_value());
+    CHECK(*outcome == Outcome::NotStarted);
+    CHECK(warnings.contains("Could not check"));
+    CHECK(warnings.contains(file.name()));
+    CHECK(starts() == 0);
+    CHECK(ModalStack::instance().stack_empty());
+    CHECK(queue_has("0001"));
+    CHECK_FALSE(starter->in_flight());
+}
+
+TEST_CASE_METHOD(StarterFixture, "a stalled start gives up, and a later tap starts again",
+                 "[queued_job_start]") {
+    mock_client_.defer_next("server.database.get_item");
+    start(entry("0001", "3DBenchy.gcode"));
+    REQUIRE(starter->in_flight());
+    lv_timer_t* watchdog = QueuedJobStarterTestAccess::stall_watchdog(*starter);
+    REQUIRE(watchdog != nullptr);
+
+    WarningLog warnings;
+    lv_timer_ready(watchdog);
+    lv_timer_handler();
+    settle();
+
+    REQUIRE(outcome.has_value());
+    CHECK(*outcome == Outcome::NotStarted);
+    CHECK(warnings.contains("Could not check"));
+    CHECK_FALSE(starter->in_flight());
+    CHECK(queue_has("0001"));
+
+    // The held options read answering late must not revive the start.
+    mock_client_.fire_deferred("server.database.get_item");
+    settle();
+    CHECK_FALSE(starter->in_flight());
+
+    const int reads = mock_client_.call_count("server.database.get_item");
+    mock_client_.defer_next("server.database.get_item");
+    start(entry("0001", "3DBenchy.gcode"));
+    CHECK(starter->in_flight());
+    CHECK(mock_client_.call_count("server.database.get_item") == reads + 1);
+}
+
 // ============================================================================
 // One PrintPreparationManager for the app
 // ============================================================================
@@ -350,6 +402,7 @@ class OneManagerFixture : private helix::PrintSelectGlobalStateReset, public LVG
         return client.call_count("printer.gcode.script") - before;
     }
 
+    helix::test::ScopedMacrosRead macros;
     MoonrakerClientMock client;
     std::unique_ptr<MoonrakerAPIMock> api;
     PrintSelectPanel* panel = nullptr;

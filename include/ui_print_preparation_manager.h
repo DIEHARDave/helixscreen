@@ -297,18 +297,30 @@ class PrintPreparationManager {
     /// Called on the main thread each time a scan answers, success or failure.
     void set_on_scan_answered(std::function<void()> cb);
 
+    /// The identity a scan and a start share: current_path/filename, or the
+    /// file on this host (@p local_path) when Moonraker has no copy.
+    [[nodiscard]] static std::string scan_key(const std::string& filename,
+                                              const std::string& current_path,
+                                              const std::string& local_path = {});
+
+    /// Answers when_ready_to_start(): the file's printer-stopping command
+    /// check, or nullopt when other files' scans pre-empted this one's twice.
+    using StartReadyCallback = std::function<void(std::optional<helix::PrinterStopCheck> check)>;
+
     /**
-     * @brief Run @p ready once a start may read this manager for @p filename.
+     * @brief Run @p ready once a start may read this manager for one file.
      *
-     * Ready means the operations scan has answered (an answer for any file
-     * ends the wait, so a scan the detail view starts meanwhile cannot strand
-     * it) and no PRINT_START analysis is running. Starts the scan when no
-     * result for @p filename is cached; runs @p ready at once when nothing is
-     * outstanding. Main thread. One waiter: a later call replaces it, and a
-     * null @p ready cancels it. Independent of set_on_scan_answered().
+     * Ready means the operations scan has answered for exactly this file,
+     * matched by scan_key(), and no PRINT_START analysis is running. Starts
+     * the scan unless this file's answer is already held. When another
+     * file's scan pre-empts it (the detail view opened a different file),
+     * the scan is requested once more after that file's answer lands; a
+     * second pre-emption answers nullopt. Main thread. One waiter: a later
+     * call replaces it, and a null @p ready cancels it. Independent of
+     * set_on_scan_answered().
      */
     void when_ready_to_start(const std::string& filename, const std::string& current_path,
-                             std::function<void()> ready);
+                             StartReadyCallback ready);
 
     /**
      * @brief Check if scan result is available for a file
@@ -571,10 +583,22 @@ class PrintPreparationManager {
     std::string requested_scan_key_;
     helix::PrinterStopCheck printer_stop_check_;
     std::string printer_stop_check_filename_; ///< The file printer_stop_check_ answers for
+    std::string printer_stop_check_key_;      ///< Its scan_key()
+    /// The cached scan read the file on this host (a USB stick). Such a file
+    /// is printed from a copy on the printer with another path, so its scan
+    /// stands for that start.
+    bool cached_scan_local_ = false;
     std::function<void()> on_scan_answered_;
 
-    /// Record the scan's printer-stopping command answer for @p filename and report it.
-    void answer_printer_stop_check(const std::string& filename, helix::PrinterStopCheck check);
+    /// The scan this start checked was its own file's, copied at start_print()
+    /// so every later step (the modify and upload) reads it, never whatever the
+    /// cache holds by then.
+    std::optional<gcode::ScanResult> start_scan_;
+
+    /// Record the scan's printer-stopping command answer for @p filename (whose
+    /// scan_key() is @p key) and report it.
+    void answer_printer_stop_check(const std::string& filename, const std::string& key,
+                                   helix::PrinterStopCheck check);
     std::optional<size_t> cached_file_size_; ///< File size from Moonraker metadata
     /// Job temps for {bed_temp}/{extruder_temp} come from the scan cache's
     /// print_start call (the file's own START_PRINT line) — see
@@ -601,8 +625,20 @@ class PrintPreparationManager {
     OptionStateProvider start_option_override_;
 
     // === when_ready_to_start() waiter ===
-    std::function<void()> start_waiter_;
-    bool start_waiter_needs_scan_ = false;
+    struct StartWaiter {
+        std::string filename;
+        std::string current_path;
+        std::string key;
+        bool answered = false;
+        int rescans_left = 1;
+        StartReadyCallback ready;
+    };
+    std::optional<StartWaiter> start_waiter_;
+    /// The printer-stop answer held is @p key's and still current.
+    [[nodiscard]] bool scan_answered_for(const std::string& key) const;
+    void request_start_waiter_scan();
+    /// A scan answered for @p key: resolve, re-request or give up the waiter.
+    void on_scan_answered_for_waiter(const std::string& key);
     void notify_start_waiter();
 
     // === PRINT_START Analysis Cache ===
@@ -711,12 +747,14 @@ class PrintPreparationManager {
     /**
      * @brief Collect operations that user wants to disable
      *
-     * Compares checkbox states against cached scan result to identify
-     * operations that are embedded in the file but disabled by user. An option
+     * Compares checkbox states against @p scan (the file being started's; null
+     * when it has none) to identify operations that are embedded in the file
+     * but disabled by user. An option
      * whose value a self-storing firmware holds strips nothing: that firmware
      * gates the file's own command on its setting.
      */
-    [[nodiscard]] std::vector<gcode::OperationType> collect_ops_to_disable() const;
+    [[nodiscard]] std::vector<gcode::OperationType>
+    collect_ops_to_disable(const gcode::ScanResult* scan) const;
 
     /**
      * @brief Download, modify, and print a G-code file

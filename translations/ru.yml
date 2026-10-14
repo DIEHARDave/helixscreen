@@ -539,6 +539,7 @@ translations:
   'Cannot start print: not connected to printer': 'Невозможно начать печать: не подключено
     к принтеру'
   'Cannot start print: printer is {}': 'Невозможно начать печать: принтер {}'
+  'Cannot start {}: its pre-print check was for another file': 'Не удалось запустить {}: предварительная проверка относилась к другому файлу'
   Cannot save offsets while printing: Нельзя сохранить смещения во время печати
   Cannot unload while a print is active: Нельзя выгрузить во время печати
   'Capabilities: ': 'Возможности: '
@@ -809,6 +810,7 @@ translations:
     удалось проанализировать макрос PRINT_START. Некоторые параметры печати могут
     быть недоступны.
   Could not answer the connection request: 'Не удалось ответить на запрос подключения'
+  'Could not check {} - it stays in the queue': 'Не удалось проверить {} – остаётся в очереди'
   ? "Could not check webcam status.\nCheck printer connection."
   : "Не удалось проверить статус веб-камеры.\nПроверьте подключение принтера."
   Could not confirm cancel: Не удалось подтвердить отмену

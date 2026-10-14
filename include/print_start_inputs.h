@@ -92,10 +92,15 @@ class FileStartFactsLoader {
 
     void set_api(IMoonrakerAPI* api);
 
+    /// Hears the metadata read's answer (nullopt when it failed) before the
+    /// file is read, so a caller can size its wait from the file.
+    using MetadataFn = std::function<void(const std::optional<FileMetadata>& metadata)>;
+
     /// Gather facts for @p filename and answer once, on the main thread. A
     /// failed metadata read, footer read or download still answers, with what
     /// it has. A later load() supersedes an unanswered one.
-    void load(const std::string& filename, ReadyFn on_ready, DownloadFn download = nullptr);
+    void load(const std::string& filename, ReadyFn on_ready, DownloadFn download = nullptr,
+              MetadataFn on_metadata = nullptr);
 
     /// One file's tools/palette/grams read: the half of load() after the metadata.
     struct ScanRequest {
@@ -140,7 +145,9 @@ class FileStartFactsLoader {
   private:
     void start_tail_read(uint32_t generation, ScanRequest req, ScanHooks hooks);
     void start_full_scan(uint32_t generation, ScanRequest req, ScanHooks hooks);
-    void download_to_temp(const std::string& file_key,
+    /// Download to a temp file named for this scan (@p generation), so an
+    /// earlier scan of the same file deleting its own copy cannot take this one.
+    void download_to_temp(const std::string& file_key, uint32_t generation,
                           std::function<void(bool ok, const std::string& local_path)> done);
 
     IMoonrakerAPI* api_ = nullptr;

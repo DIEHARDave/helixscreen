@@ -15,6 +15,7 @@
 #include "ui_print_preparation_manager.h"
 #include "ui_update_queue.h"
 
+#include "../test_helpers/planted_gcode.h"
 #include "../test_helpers/print_preparation_manager_test_access.h"
 #include "../test_helpers/print_start_grace.h"
 #include "../test_helpers/printer_state_test_access.h"
@@ -330,14 +331,14 @@ TEST_CASE("the mock without the knob has no wrappers", "[skip_wrappers][mock]") 
 namespace {
 
 /// Start part.gcode through a QueuedJobStarter driving the fixture's manager,
-/// with @p saved answering its options. The operations scan is injected, and
-/// the file itself cannot be read, so its facts name no tools and every file
-/// gate passes.
+/// with @p saved answering its options. The planted file has one tool, no
+/// palette and no printer-stopping command, so every file gate passes.
 void start_queued_part(SkipToggleFixture& f, QueuedJobOptions saved) {
     helix::test::wait_out_print_start_grace();
+    // Its footer names its one tool, so no whole-file read is needed.
+    helix::PlantedGcode file("part.gcode", "", "G28\n; filament used [g] = 1.50\n");
     QueuedJobStarter starter(f.state, f.api.get());
     QueuedJobStarterTestAccess::set_prep(starter, &f.manager);
-    f.manager.set_cached_scan_result(gcode::ScanResult{}, "part.gcode");
     starter.start_with_options(helix::JobQueueEntry{"0001", "part.gcode", 0.0, 0.0},
                                std::move(saved));
     for (int i = 0; i < 6; ++i) {

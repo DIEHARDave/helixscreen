@@ -3,6 +3,7 @@
 #include "queued_job_start.h"
 
 #include "ui_error_reporting.h"
+#include "ui_filename_utils.h"
 #include "ui_modal.h"
 #include "ui_panel_print_select.h"
 #include "ui_preflight_check_modal.h"
@@ -85,6 +86,7 @@ QueuedJobStarter::QueuedJobStarter(PrinterState& printer_state, IMoonrakerAPI* a
 }
 
 QueuedJobStarter::~QueuedJobStarter() {
+    stall_watchdog_.reset();
     release_prep();
 }
 
@@ -117,9 +119,39 @@ bool QueuedJobStarter::begin(const JobQueueEntry& job, DoneCallback& done) {
         return false;
     }
     in_flight_ = true;
+    ++start_generation_;
     done_ = std::move(done);
     job_id_ = job.job_id;
+    job_filename_ = job.filename;
+    arm_stall_watchdog(kStallMs);
     return true;
+}
+
+void QueuedJobStarter::arm_stall_watchdog(uint32_t ms) {
+    if (lv_timer_t* timer = stall_watchdog_.get()) {
+        lv_timer_set_period(timer, ms);
+        lv_timer_reset(timer);
+        return;
+    }
+    lv_timer_t* timer = lv_timer_create(
+        [](lv_timer_t* t) {
+            auto* self = static_cast<QueuedJobStarter*>(lv_timer_get_user_data(t));
+            // LVGL deletes a finished one-shot itself.
+            self->stall_watchdog_.release();
+            self->give_up("its file checks did not answer in time");
+        },
+        ms, this);
+    lv_timer_set_repeat_count(timer, 1);
+    stall_watchdog_.reset(timer);
+}
+
+void QueuedJobStarter::give_up(const char* why) {
+    if (!in_flight_) {
+        return;
+    }
+    spdlog::warn("[QueuedJobStart] Not starting queued job {}: {}", job_id_, why);
+    NOTIFY_WARNING(lv_tr("Could not check {} - it stays in the queue"), job_filename_);
+    finish(Outcome::NotStarted);
 }
 
 void QueuedJobStarter::start(const JobQueueEntry& job, DoneCallback done) {
@@ -129,7 +161,11 @@ void QueuedJobStarter::start(const JobQueueEntry& job, DoneCallback done) {
     spdlog::info("[QueuedJobStart] Starting queued job {} -> '{}'", job.job_id, job.filename);
     // A missing entry answers defaults: every option at its default.
     load_queued_job_options(lifetime_, api_, job.job_id,
-                            [this, job](QueuedJobOptions saved) { gather(job, std::move(saved)); });
+                            [this, job, gen = start_generation_](QueuedJobOptions saved) {
+                                if (in_flight_ && gen == start_generation_) {
+                                    gather(job, std::move(saved));
+                                }
+                            });
 }
 
 void QueuedJobStarter::start_with_options(const JobQueueEntry& job, QueuedJobOptions saved,
@@ -142,14 +178,14 @@ void QueuedJobStarter::start_with_options(const JobQueueEntry& job, QueuedJobOpt
 
 void QueuedJobStarter::gather(const JobQueueEntry& job, QueuedJobOptions saved) {
     saved_ = std::move(saved);
+    arm_stall_watchdog(kStallMs);
 
     auto pending = std::make_unique<Pending>();
     pending->job = job;
-    const size_t slash = job.filename.rfind('/');
-    pending->name = slash == std::string::npos ? job.filename : job.filename.substr(slash + 1);
-    pending->dir = slash == std::string::npos ? std::string{} : job.filename.substr(0, slash);
-    const std::string name = pending->name;
-    const std::string dir = pending->dir;
+    pending->name = gcode::get_filename_basename(job.filename);
+    if (pending->name.size() < job.filename.size()) {
+        pending->dir = job.filename.substr(0, job.filename.size() - pending->name.size() - 1);
+    }
     pending_ = std::move(pending);
 
     prep_ = prep_source_();
@@ -160,32 +196,55 @@ void QueuedJobStarter::gather(const JobQueueEntry& job, QueuedJobOptions saved) 
         return;
     }
     controller_->set_prep_manager(prep_);
-    // The operations scan answers the printer-stopping command check, and
-    // macro-analysis option rows exist only once the analysis lands.
-    auto tok = lifetime_.token();
-    prep_->when_ready_to_start(name, dir, [this, tok]() {
-        if (tok.expired() || !pending_) {
-            return;
-        }
-        pending_->scanned = true;
-        run_checks_when_gathered();
-    });
 
-    facts_loader_.load(job.filename, [this](FileStartFacts facts) {
-        if (pending_) {
-            pending_->facts = std::move(facts);
-            run_checks_when_gathered();
-        }
-    });
+    const uint32_t gen = start_generation_;
+    facts_loader_.load(
+        job.filename,
+        [this, gen](FileStartFacts facts) {
+            if (gen == start_generation_ && pending_) {
+                pending_->facts = std::move(facts);
+                wait_for_scan();
+            }
+        },
+        nullptr,
+        [this, gen](const std::optional<FileMetadata>& metadata) {
+            // A footer that cannot answer falls back to reading the whole file.
+            if (gen == start_generation_ && in_flight_ && metadata) {
+                arm_stall_watchdog(kStallMs +
+                                   static_cast<uint32_t>(metadata->size / kSlowestReadBytesPerMs));
+            }
+        });
 }
 
-void QueuedJobStarter::run_checks_when_gathered() {
-    if (!pending_ || !pending_->facts || !pending_->scanned) {
-        return;
-    }
-    auto pending = std::move(pending_);
-    FileStartFacts facts = std::move(*pending->facts);
-    run_checks(*pending, std::move(facts));
+void QueuedJobStarter::wait_for_scan() {
+    arm_stall_watchdog(kStallMs);
+    // The operations scan answers the printer-stopping command check, and
+    // macro-analysis option rows exist only once the analysis lands. The
+    // answer is for this file's path, never another file the view opened.
+    const uint32_t gen = start_generation_;
+    prep_->when_ready_to_start(
+        pending_->name, pending_->dir, [this, gen](std::optional<PrinterStopCheck> check) {
+            if (gen != start_generation_ || !pending_ || !pending_->facts) {
+                return;
+            }
+            if (!check) {
+                give_up("other files' scans pre-empted its own");
+                return;
+            }
+            // The tile has no screen to show what an unread file holds, so a
+            // start whose printer-stopping command check did not run waits for
+            // the file view.
+            if (check->state == PrinterStopCheck::State::NotRun) {
+                spdlog::info("[QueuedJobStart] Printer-stop check did not run: {}",
+                             check->not_run_reason);
+                give_up("its printer-stopping command check did not run");
+                return;
+            }
+            stall_watchdog_.reset();
+            auto pending = std::move(pending_);
+            FileStartFacts facts = std::move(*pending->facts);
+            run_checks(*pending, std::move(facts));
+        });
 }
 
 void QueuedJobStarter::run_checks(const Pending& pending, FileStartFacts facts) {
@@ -244,7 +303,10 @@ void QueuedJobStarter::finish(Outcome outcome) {
         return;
     }
     in_flight_ = false;
+    ++start_generation_;
+    stall_watchdog_.reset();
     pending_.reset();
+    facts_loader_.cancel();
     release_prep();
     auto done = std::move(done_);
     done_ = nullptr;

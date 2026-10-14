@@ -27,8 +27,10 @@ class ToolsUsedCache {
                                         time_t modified);
 
     /// Persist an entry (also compacts when over MAX_ENTRIES — drop
-    /// least-recently-LOOKED-UP first). Writes through to disk immediately;
-    /// a failed write logs a warning and keeps the in-memory entry.
+    /// least-recently-LOOKED-UP first). Re-reads the file before writing it,
+    /// so entries another instance stored since this one loaded survive.
+    /// Writes through to disk immediately; a failed write logs a warning and
+    /// keeps the in-memory entry.
     void store(const std::string& file_path, uint64_t size_bytes, time_t modified,
                const std::set<int>& tools);
 

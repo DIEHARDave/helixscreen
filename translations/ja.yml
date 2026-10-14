@@ -502,6 +502,7 @@ translations:
   'Cannot start print: internal error': '印刷を開始できません: 内部エラー'
   'Cannot start print: not connected to printer': '印刷を開始できません: プリンター未接続'
   'Cannot start print: printer is {}': '印刷を開始できません: プリンターは {} 状態です'
+  'Cannot start {}: its pre-print check was for another file': '{} を開始できません: 印刷前チェックは別のファイルのものでした'
   Cannot save offsets while printing: 印刷中はオフセットを保存できません
   Cannot unload while a print is active: 印刷中は排出できません
   'Capabilities: ': '機能: '
@@ -753,6 +754,7 @@ translations:
   Could not analyze PRINT_START macro. Some print options may be unavailable.: PRINT_START
     マクロを分析できませんでした。一部の印刷オプションが利用できない場合があります。
   Could not answer the connection request: '接続リクエストに応答できませんでした'
+  'Could not check {} - it stays in the queue': '{} を確認できませんでした – キューに残ります'
   ? "Could not check webcam status.\nCheck printer connection."
   : "ウェブカメラの状態を確認できませんでした。\nプリンター接続を確認してください。"
   Could not confirm cancel: キャンセルを確認できませんでした

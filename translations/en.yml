@@ -528,6 +528,7 @@ translations:
   'Cannot start print: not connected to printer': 'Cannot start print: not connected
     to printer'
   'Cannot start print: printer is {}': 'Cannot start print: printer is {}'
+  'Cannot start {}: its pre-print check was for another file': 'Cannot start {}: its pre-print check was for another file'
   Cannot save offsets while printing: Cannot save offsets while printing
   Cannot unload while a print is active: Cannot unload while a print is active
   'Capabilities: ': 'Capabilities: '
@@ -792,6 +793,7 @@ translations:
   Could not analyze PRINT_START macro. Some print options may be unavailable.: Could
     not analyze PRINT_START macro. Some print options may be unavailable.
   Could not answer the connection request: Could not answer the connection request
+  'Could not check {} - it stays in the queue': 'Could not check {} - it stays in the queue'
   ? "Could not check webcam status.\nCheck printer connection."
   : "Could not check webcam status.\nCheck printer connection."
   Could not confirm cancel: Could not confirm cancel

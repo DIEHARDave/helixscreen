@@ -113,8 +113,10 @@ std::optional<std::set<int>> ToolsUsedCache::lookup(const std::string& file_path
 
 void ToolsUsedCache::store(const std::string& file_path, uint64_t size_bytes, time_t modified,
                            const std::set<int>& tools) {
-    if (!loaded_ && !load_from_disk()) {
-    }
+    // Re-read the file first, every time: other instances (the print-select
+    // view's and the queued-start loader's) write it too, and saving this
+    // instance's map alone would drop their entries.
+    load_from_disk();
     Entry& e = entries_[file_path];
     e.size_bytes = size_bytes;
     e.modified = modified;

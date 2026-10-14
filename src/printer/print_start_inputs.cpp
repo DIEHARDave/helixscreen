@@ -139,8 +139,8 @@ void FileStartFactsLoader::cancel() {
     ++generation_;
 }
 
-void FileStartFactsLoader::load(const std::string& filename, ReadyFn on_ready,
-                                DownloadFn download) {
+void FileStartFactsLoader::load(const std::string& filename, ReadyFn on_ready, DownloadFn download,
+                                MetadataFn on_metadata) {
     const uint32_t generation = ++generation_;
     if (!api_) {
         FileStartFacts facts;
@@ -150,9 +150,13 @@ void FileStartFactsLoader::load(const std::string& filename, ReadyFn on_ready,
     }
 
     auto after_metadata = [this, generation, filename, on_ready = std::move(on_ready),
-                           download = std::move(download)](std::optional<FileMetadata> metadata) {
+                           download = std::move(download), on_metadata = std::move(on_metadata)](
+                              std::optional<FileMetadata> metadata) {
         if (generation != generation_) {
             return;
+        }
+        if (on_metadata) {
+            on_metadata(metadata);
         }
         auto facts = std::make_shared<FileStartFacts>();
         facts->filename = filename;
@@ -396,6 +400,13 @@ void FileStartFactsLoader::start_full_scan(uint32_t generation, ScanRequest req,
         // Line by line on the slow HTTP lane: off the main thread, and the
         // scanner never holds the whole file.
         helix::http::HttpExecutor::slow().submit([finish, stop_set, own_copy, path]() {
+            // A copy gone before the scan reads it is no file at all, not an
+            // empty one.
+            if (!tio::open_file(path, "rb")) {
+                spdlog::debug("[FileStartFacts] Tools scan: {} is gone - degrading", path);
+                finish({}, false);
+                return;
+            }
             std::set<int> tools = gcode::scan_tools_used_from_file(path, stop_set);
             if (own_copy) {
                 std::remove(path.c_str());
@@ -409,19 +420,21 @@ void FileStartFactsLoader::start_full_scan(uint32_t generation, ScanRequest req,
     if (req.download) {
         req.download(on_downloaded);
     } else {
-        download_to_temp(req.file_key, on_downloaded);
+        download_to_temp(req.file_key, generation, on_downloaded);
     }
 }
 
 void FileStartFactsLoader::download_to_temp(
-    const std::string& file_key, std::function<void(bool ok, const std::string& local_path)> done) {
+    const std::string& file_key, uint32_t generation,
+    std::function<void(bool ok, const std::string& local_path)> done) {
     const std::string dir = get_helix_cache_dir("gcode_temp");
     if (!api_ || dir.empty() || !api_->transfers().supports_local_copies()) {
         done(false, {});
         return;
     }
-    const std::string path =
-        dir + "/" + ui::GcodePreviewFetcher::cache_file_name("start_", file_key);
+    const std::string path = dir + "/" +
+                             ui::GcodePreviewFetcher::cache_file_name(
+                                 "start_", file_key + "#" + std::to_string(generation));
     api_->transfers().download_file_to_path(
         "gcodes", file_key, path, [done, path](const std::string&) { done(true, path); },
         [done, path](const MoonrakerError& error) {
