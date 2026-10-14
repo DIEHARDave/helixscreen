@@ -218,10 +218,8 @@ TEST_CASE_METHOD(LVGLUITestFixture, "a count observer already reads the new run 
         },
         &run_state_seen);
 
-    auto paused = status_with(3);
-    paused.queue_state = "paused";
-    JobQueueStateTestAccess::deliver_status(jqs, paused);
-    CHECK(run_state_seen == 3);
+    JobQueueStateTestAccess::deliver_status(jqs, status_with(3)); // "ready"
+    CHECK(run_state_seen == static_cast<int>(QueueRunState::Ready));
 
     lv_observer_remove(obs);
 }

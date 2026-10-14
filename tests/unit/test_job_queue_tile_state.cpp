@@ -39,6 +39,11 @@ TEST_CASE("tile state: Starting from Loading and Starting, even while busy", "[j
     CHECK(job_queue_tile_state(in(true, true, 2, QRS::Starting, true, false)) == S::Starting);
 }
 
+TEST_CASE("tile state: Starting while the printer is idle", "[job_queue_tile]") {
+    CHECK(job_queue_tile_state(in(true, true, 2, QRS::Starting, false, false)) == S::Starting);
+    CHECK(job_queue_tile_state(in(true, true, 2, QRS::Loading, false, true)) == S::Starting);
+}
+
 TEST_CASE("tile state: AutoNext only while printing", "[job_queue_tile]") {
     CHECK(job_queue_tile_state(in(true, true, 2, QRS::Ready, true, true)) == S::AutoNext);
 }
