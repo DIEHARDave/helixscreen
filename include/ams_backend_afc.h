@@ -266,6 +266,9 @@ class AmsBackendAfc : public AmsSubscriptionBackend {
         t.has_firmware_spool_persistence = true;
         // AFC publishes a lane spool_id in its status
         t.printer_reports_spool_ids = true;
+        // classify_error() + current_error() raise the runout, while a job runs too.
+        t.raises_runout_fault = true;
+        t.raises_runout_fault_during_job = true;
         return t;
     }();
     [[nodiscard]] BackendTraits traits() const override {

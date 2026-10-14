@@ -160,6 +160,10 @@ class AmsBackendHappyHare : public AmsSubscriptionBackend {
         // mmu.action stays Idle until MMU_LOAD/MMU_UNLOAD starts, and through
         // the UI's own preheat before it.
         t.holds_optimistic_action = true;
+        // classify_error() raises the pause as a fault, and it fires while a job runs,
+        // so the generic runout modal and the sensor-edge toast both stand down.
+        t.raises_runout_fault = true;
+        t.raises_runout_fault_during_job = true;
         return t;
     }();
     [[nodiscard]] BackendTraits traits() const override {

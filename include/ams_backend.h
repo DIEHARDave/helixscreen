@@ -102,6 +102,9 @@ struct BackendTraits {
     bool recovers_filament_on_resume = false;
     bool has_environment_sensors = false;
     bool holds_optimistic_action = false;
+    bool raises_runout_fault = false;
+    bool raises_runout_fault_during_job = false;
+    bool unloads_to_hub_between_prints = false;
 
     // All-bool with no padding, so the bytes are the value.
     bool operator==(const BackendTraits& o) const {
@@ -2712,6 +2715,48 @@ class AmsBackend {
      */
     [[nodiscard]] bool should_suppress_idle_runout_modal() const {
         return traits().should_suppress_idle_runout_modal;
+    }
+
+    /**
+     * @brief Whether this backend surfaces its own runout fault, and so owns the
+     *        runout surface for the printer it is on.
+     *
+     * One rule for both channels of the error architecture
+     * (docs/devel/FILAMENT_MANAGEMENT.md, "Two error channels"): exactly one
+     * surface per printer. A backend that raises its own runout event through
+     * classify_error() or current_error() already tells the user what happened,
+     * with recovery buttons derived from live hardware state, so the generic
+     * sensor-driven runout modal stands down for it. A backend that raises no
+     * runout fault owns nothing: suppressing the generic modal for it would leave
+     * the user with no runout notification at all, so it stays false.
+     *
+     * @return true if the generic runout modal must stand down for this backend
+     */
+    [[nodiscard]] bool raises_runout_fault() const {
+        return traits().raises_runout_fault;
+    }
+
+    /**
+     * @brief Whether the backend's runout fault is already on screen WHILE A JOB
+     *        HOLDS THE MACHINE.
+     *
+     * The phase-aware sibling of raises_runout_fault(): when true, the sensor-edge
+     * runout toast only restates the backend's own prompt and stands down. A backend
+     * whose fault arrives later than the sensor edge (AD5X IFS) leaves this false,
+     * because quieting the toast there would open a silent window.
+     */
+    [[nodiscard]] bool raises_runout_fault_during_job() const {
+        return traits().raises_runout_fault_during_job;
+    }
+
+    /**
+     * @brief Whether the firmware unloads filament back to the hub between prints.
+     *
+     * The toolhead sensor going empty while the printer is idle is then firmware
+     * behaviour rather than a user-facing event, and its removal toast is not shown.
+     */
+    [[nodiscard]] bool unloads_to_hub_between_prints() const {
+        return traits().unloads_to_hub_between_prints;
     }
 
     /**

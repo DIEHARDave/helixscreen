@@ -189,6 +189,10 @@ class AmsBackendCfs : public AmsSubscriptionBackend {
         // because a stood-down box has no answer for a bay operation. An
         // unaccounted toolhead is that same lane-free situation.
         t.can_clear_unaccounted_toolhead = true;
+        // classify_error() raises the auto-refill give-up messages as a fault, and it
+        // does so while a job runs.
+        t.raises_runout_fault = true;
+        t.raises_runout_fault_during_job = true;
         return t;
     }();
     [[nodiscard]] BackendTraits traits() const override {
