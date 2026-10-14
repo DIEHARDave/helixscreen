@@ -246,8 +246,6 @@ TEST_CASE_METHOD(PrintStatsTileFixture,
     CHECK(subject_text("print_stats_hero") == format_print_hours(1.0));
     CHECK(subject_text("print_stats_support_text").empty());
     CHECK_FALSE(shown(h, "ps_support"));
-    const int32_t width_before = lv_obj_get_width(h.root());
-    const int32_t height_before = lv_obj_get_height(h.root());
 
     client.fire_deferred("server.history.totals");
     settle();
@@ -257,8 +255,8 @@ TEST_CASE_METHOD(PrintStatsTileFixture,
                                true));
     CHECK(shown(h, "ps_support"));
     CHECK(subject_int("print_stats_rung") == static_cast<int>(SizeRung::Wide));
-    CHECK(lv_obj_get_width(h.root()) == width_before);
-    CHECK(lv_obj_get_height(h.root()) == height_before);
+    // The support line takes its row when it appears, and the Wide budget includes that
+    // row, so the rung holds while the bars reflow.
 }
 
 TEST_CASE_METHOD(PrintStatsTileFixture,

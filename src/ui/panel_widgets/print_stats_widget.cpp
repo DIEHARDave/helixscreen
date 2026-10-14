@@ -329,7 +329,7 @@ void PrintStatsWidget::fetch_lifetime_totals() {
 }
 
 void PrintStatsWidget::refresh() {
-    if (granted_w_ <= 0 || granted_h_ <= 0)
+    if (granted_w_ <= 0 || granted_h_ <= 0 || !s_tile.is_owner(this))
         return;
 
     auto* hm = get_print_history_manager();
@@ -340,8 +340,6 @@ void PrintStatsWidget::refresh() {
     const PrintStatsContent content = print_stats_content(loaded, cached_jobs, lifetime_prints);
     const PrintStatsTileVerdict verdict =
         decide(granted_w_, granted_h_, content, lifetime_totals_valid_);
-    if (!s_tile.is_owner(this))
-        return;
 
     const ActivityDayStarts starts = local_day_starts(std::time(nullptr));
     const WeekActivity week = hm ? summarize_week(hm->get_jobs(), starts) : WeekActivity{};
