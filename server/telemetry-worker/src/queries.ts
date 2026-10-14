@@ -13,11 +13,13 @@ export interface FilterParams {
 }
 
 /**
- * Sanitize a filter value to prevent SQL injection.
- * Only allows alphanumeric, dots, hyphens, and underscores.
+ * Sanitize a filter value for interpolation into a single-quoted SQL literal.
+ * Keeps spaces, letters, digits and . - _ ( ) / + (what printer model names
+ * and versions contain); drops everything else, including quotes, backslashes
+ * and semicolons.
  */
-function sanitizeFilterValue(val: string): string {
-  return val.replace(/[^a-zA-Z0-9.\-_]/g, "");
+export function sanitizeFilterValue(val: string): string {
+  return val.replace(/[^a-zA-Z0-9 .\-_()/+]/g, "");
 }
 
 /**
@@ -249,7 +251,7 @@ export function crashesQueries(days: number, filters?: FilterParams): string[] {
     `SELECT
       blob4 as platform,
       count() as crash_count,
-      uniqExact(blob1) as device_count
+      count(DISTINCT blob1) as device_count
     FROM ${dataset}
     WHERE timestamp >= NOW() - INTERVAL '${days}' DAY AND index1 = 'crash' AND blob4 != ''${f}
     GROUP BY platform
@@ -260,7 +262,7 @@ export function crashesQueries(days: number, filters?: FilterParams): string[] {
     `SELECT
       blob3 as platform,
       count() as session_count,
-      uniqExact(blob1) as device_count
+      count(DISTINCT blob1) as device_count
     FROM ${dataset}
     WHERE timestamp >= NOW() - INTERVAL '${days}' DAY AND index1 = 'session' AND blob3 != ''${sessF}
     GROUP BY platform

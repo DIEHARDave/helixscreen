@@ -2,9 +2,12 @@
 // Tests for telemetry worker endpoints.
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import worker from "../index";
+import worker, { toYesNo } from "../index";
 import { mapEventToDataPoints } from "../analytics";
-import { parseRange } from "../queries";
+import * as queries from "../queries";
+import { parseRange, buildFilterClause } from "../queries";
+import { compareVersions } from "../versions";
+import { compareVersions as dashboardCompareVersions } from "../../../analytics-dashboard/src/utils/chart";
 
 // Mock the executeQuery function so dashboard tests don't hit real Cloudflare API
 vi.mock("../queries", async (importOriginal) => {
@@ -147,7 +150,12 @@ describe("GET /health", () => {
     const res = await worker.fetch(makeRequest("/health"), createEnv());
     expect(res.status).toBe(200);
     const data = await res.json();
-    expect(data).toEqual({ status: "healthy" });
+    expect(data).toEqual({ status: "healthy", git_sha: "unknown" });
+  });
+
+  it("reports the deployed git sha", async () => {
+    const res = await worker.fetch(makeRequest("/health"), { ...createEnv(), GIT_SHA: "abc1234" });
+    expect(await res.json()).toEqual({ status: "healthy", git_sha: "abc1234" });
   });
 
   it("includes CORS headers", async () => {
@@ -1716,5 +1724,98 @@ describe("POST /v1/admin/backfill", () => {
     const events = [{ event: "session", device_id: "dev-1" }];
     await worker.fetch(backfillRequest({ events }), env);
     expect(putSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe("client field names reach the right Analytics Engine slot", () => {
+  it("connection_stability reads total_connected_sec and total_disconnected_sec", () => {
+    const dp = mapEventToDataPoints({
+      event: "connection_stability",
+      device_id: "dev-1",
+      total_connected_sec: 3600,
+      total_disconnected_sec: 120,
+    })[0];
+    expect(dp.doubles![3]).toBe(3600);
+    expect(dp.doubles![4]).toBe(120);
+  });
+
+  it("settings_snapshot reads auto_update_channel and screen_blank_timeout_sec", () => {
+    const dp = mapEventToDataPoints({
+      event: "settings_snapshot",
+      device_id: "dev-1",
+      auto_update_channel: "beta",
+      screen_blank_timeout_sec: 300,
+    })[0];
+    expect(dp.blobs![5]).toBe("beta");
+    expect(dp.doubles![2]).toBe(300);
+  });
+
+  it("print_start_context reads estimated_duration_bucket", () => {
+    const dp = mapEventToDataPoints({
+      event: "print_start_context",
+      device_id: "dev-1",
+      estimated_duration_bucket: "1-4h",
+    })[0];
+    expect(dp.blobs![5]).toBe("1-4h");
+  });
+});
+
+describe("SQL builders", () => {
+  it("never emit uniqExact", () => {
+    const builders = Object.entries(queries).filter(([name]) => /Quer(y|ies)$/.test(name) && name !== "executeQuery");
+    expect(builders.length).toBeGreaterThan(10);
+    for (const [name, fn] of builders) {
+      const out =
+        name === "crashListQuery"
+          ? (fn as (d: number, l: number) => string)(30, 10)
+          : name === "releasesQueries"
+            ? (fn as (v: string[]) => string[])(["1.0.0"])
+            : (fn as (d: number) => string | string[])(30);
+      for (const sql of Array.isArray(out) ? out : [out]) {
+        expect(sql, name).not.toContain("uniqExact");
+      }
+    }
+  });
+});
+
+describe("toYesNo", () => {
+  it("counts numeric 1 and 0 names as yes and no", () => {
+    const res = { data: [{ name: 1, count: 3 }, { name: 0, count: 1 }] };
+    expect(toYesNo(res, "installed", "not_installed")).toEqual({ installed: 3, not_installed: 1, reported: 4 });
+  });
+
+  it("counts string names the same way", () => {
+    const res = { data: [{ name: "1", count: 2 }, { name: "0", count: 5 }] };
+    expect(toYesNo(res, "local", "remote")).toEqual({ local: 2, remote: 5, reported: 7 });
+  });
+});
+
+describe("buildFilterClause sanitizing", () => {
+  it("keeps spaces and parentheses in a model name", () => {
+    expect(buildFilterClause({ model: "Voron 2.4" })).toContain("'Voron 2.4'");
+    expect(buildFilterClause({ model: "Creality K1 (Max)/A+" })).toContain("'Creality K1 (Max)/A+'");
+  });
+
+  it("strips quotes, backslashes and semicolons", () => {
+    const clause = buildFilterClause({ model: "x'; DROP\\\"" });
+    expect(clause).toBe(" AND blob4 = 'x DROP'");
+  });
+});
+
+describe("compareVersions", () => {
+  const input = ["1.1.0", "1.1.0-beta.10", "1.0.5", "1.1.0-beta.9", "0.99.118"];
+  const sorted = ["0.99.118", "1.0.5", "1.1.0-beta.9", "1.1.0-beta.10", "1.1.0"];
+
+  it("orders prereleases numerically and releases after their prereleases (worker)", () => {
+    expect([...input].sort(compareVersions)).toEqual(sorted);
+  });
+
+  it("orders them the same way in the dashboard copy", () => {
+    expect([...input].sort(dashboardCompareVersions)).toEqual(sorted);
+  });
+
+  it("ignores a leading v", () => {
+    expect(compareVersions("v1.2.0", "1.2.0")).toBe(0);
+    expect(dashboardCompareVersions("v1.2.0", "1.2.0")).toBe(0);
   });
 });

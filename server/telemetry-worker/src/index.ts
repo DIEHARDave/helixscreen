@@ -56,7 +56,22 @@ interface Env {
   CLOUDFLARE_ACCOUNT_ID: string; // Set in wrangler.toml [vars]
   HELIX_ANALYTICS_READ_TOKEN?: string; // Cloudflare secret: wrangler secret put HELIX_ANALYTICS_READ_TOKEN
   CDN_ZONE_ID?: string; // Set in wrangler.toml [vars]
+  GIT_SHA?: string; // Set at deploy: wrangler deploy --var GIT_SHA:$(git rev-parse --short HEAD)
   CF_ZONE_ANALYTICS_TOKEN?: string; // Cloudflare secret: needs Zone Analytics:Read on helixscreen.org
+}
+
+/**
+ * Collapse a "1"/"0" tri-state column into a labelled yes/no split.
+ * Rows with an empty name never reach here (the query filters them), so
+ * `reported` counts only devices that actually answered. Analytics Engine
+ * returns the name as a number or a string depending on the column type.
+ */
+export function toYesNo(res: unknown, yesKey: string, noKey: string) {
+  const d = res as { data?: Array<{ name: string | number; count: number }> };
+  const rows = d.data ?? [];
+  const yes = rows.find((r) => String(r.name) === "1")?.count ?? 0;
+  const no = rows.find((r) => String(r.name) === "0")?.count ?? 0;
+  return { [yesKey]: yes, [noKey]: no, reported: yes + no };
 }
 
 const CORS_HEADERS: Record<string, string> = {
@@ -196,7 +211,7 @@ export default {
 
     // Health check
     if (url.pathname === "/health" && request.method === "GET") {
-      return json({ status: "healthy" });
+      return json({ status: "healthy", git_sha: env.GIT_SHA ?? "unknown" });
     }
 
     // Event ingestion
@@ -780,16 +795,6 @@ export default {
           const toList = (res: unknown) => {
             const d = res as { data: Array<{ name: string; count: number }> };
             return (d.data ?? []).map((r) => ({ name: r.name, count: r.count }));
-          };
-
-          // Collapse a "1"/"0" tri-state column into a labelled yes/no split.
-          // Rows with an empty name never reach here (the query filters them),
-          // so `reported` counts only devices that actually answered.
-          const toYesNo = (res: unknown, yesKey: string, noKey: string) => {
-            const rows = toList(res);
-            const yes = rows.find((r) => r.name === "1")?.count ?? 0;
-            const no = rows.find((r) => r.name === "0")?.count ?? 0;
-            return { [yesKey]: yes, [noKey]: no, reported: yes + no };
           };
 
           const capsData = capsRes as { data: Array<Record<string, number>> };
