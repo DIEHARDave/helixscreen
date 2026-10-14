@@ -156,10 +156,26 @@ TEST_CASE_METHOD(BeltMockFixture,
 TEST_CASE_METHOD(BeltMockFixture, "full sweeps keep the re-measure walk when a script is set",
                  "[belt][mock]") {
     mock.set_belt_peaks_hz(110.0f, 98.0f);
-    mock.set_belt_tune_script('B', {102.0f});
-    run("TEST_RESONANCES AXIS=1,-1 OUTPUT=resonances NAME=helix_belt_a");
-    run("TEST_RESONANCES AXIS=1,-1 OUTPUT=resonances NAME=helix_belt_a");
-    CHECK(mock.belt_peak_hz('A') == Catch::Approx(106.0f));
+    mock.set_belt_tune_script('A', {101.0f, 103.0f});
+    const char* full = "TEST_RESONANCES AXIS=1,-1 OUTPUT=resonances NAME=helix_belt_a";
+    run(full);
+    run(full);
+    CHECK(mock.belt_peak_hz('A') == Catch::Approx(106.0f)); // the walk still applies
+    // The full sweeps consumed none of the script.
+    auto path = run(WINDOW_A);
+    REQUIRE(path);
+    CHECK(csv_peak(*path) == Catch::Approx(101.0f).margin(0.8f));
+}
+
+TEST_CASE_METHOD(BeltMockFixture, "windowed sweeps never apply the re-measure walk",
+                 "[belt][mock]") {
+    mock.set_belt_peaks_hz(110.0f, 98.0f);
+    for (int i = 0; i < 4; ++i) {
+        auto path = run(WINDOW_A);
+        REQUIRE(path);
+        CHECK(csv_peak(*path) == Catch::Approx(110.0f).margin(0.8f));
+    }
+    CHECK(mock.belt_peak_hz('A') == Catch::Approx(110.0f));
 }
 
 TEST_CASE_METHOD(BeltMockFixture, "a malformed script is ignored item by item", "[belt][mock]") {
