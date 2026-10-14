@@ -28,6 +28,7 @@
     <px name="ams_right_col_w_small" value="200"/>
     <px name="ams_right_col_w_medium" value="240"/>
     <px name="ams_right_col_w_large" value="240"/>
+    <px name="ams_right_col_w_xlarge" value="330"/>
 
     <!-- ===================================================================== -->
     <!-- Unit paging (the overview's unit view, ams_overview_panel.xml)         -->
@@ -70,6 +71,26 @@
     <px name="ams_loaded_name_line_h_small" value="18"/>
     <px name="ams_loaded_name_line_h_medium" value="22"/>
     <px name="ams_loaded_name_line_h_large" value="24"/>
+    <px name="ams_loaded_name_line_h_xlarge" value="28"/>
+    <px name="ams_loaded_name_line_h_xxlarge" value="36"/>
+
+    <!-- One line of font_body_bold: the loaded strip's position line from medium up. -->
+    <px name="ams_loaded_title_line_h_micro" value="20"/>
+    <px name="ams_loaded_title_line_h_tiny" value="20"/>
+    <px name="ams_loaded_title_line_h_small" value="20"/>
+    <px name="ams_loaded_title_line_h_medium" value="25"/>
+    <px name="ams_loaded_title_line_h_large" value="28"/>
+    <px name="ams_loaded_title_line_h_xlarge" value="33"/>
+    <px name="ams_loaded_title_line_h_xxlarge" value="44"/>
+
+    <!-- The loaded strip's spool, from medium up: about two text lines tall. -->
+    <px name="ams_loaded_spool_size_micro" value="32"/>
+    <px name="ams_loaded_spool_size_tiny" value="32"/>
+    <px name="ams_loaded_spool_size_small" value="36"/>
+    <px name="ams_loaded_spool_size_medium" value="44"/>
+    <px name="ams_loaded_spool_size_large" value="48"/>
+    <px name="ams_loaded_spool_size_xlarge" value="56"/>
+    <px name="ams_loaded_spool_size_xxlarge" value="72"/>
 
     <!-- Unit / system logo in the AMS screens' headers -->
     <px name="ams_header_logo_size_small" value="20"/>

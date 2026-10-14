@@ -1284,6 +1284,15 @@ class AmsState {
         return &current_color_;
     }
 
+    /**
+     * @brief Get current fill percent subject
+     * @return Subject holding the loaded spool's fill in the
+     *         SlotInfo::display_fill_pct() encoding (0-100, -1 = no data)
+     */
+    lv_subject_t* get_current_fill_pct_subject() {
+        return &current_fill_pct_;
+    }
+
     // ========================================================================
     // Per-Slot Subject Accessors
     // ========================================================================
@@ -2365,6 +2374,7 @@ class AmsState {
     char current_weight_text_buf_[32];
     lv_subject_t current_has_weight_{};
     lv_subject_t current_color_{};
+    lv_subject_t current_fill_pct_{};
 
     // Per-slot subjects (color, status, remaining filament)
     lv_subject_t slot_colors_[MAX_SLOTS]{};
