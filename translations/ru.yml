@@ -2091,6 +2091,7 @@ translations:
   New profile name: Новое имя профиля
   Next: Далее
   Next zone: "Следующая зона"
+  Next zone (~{} min): "След. зона (~{} мин)"
   Niimbot (Bluetooth): Niimbot (Bluetooth)
   'No': Нет
   No AMS Detected: 'AMS не обнаружен'
@@ -2358,6 +2359,7 @@ translations:
   Password is required for secured networks: Для защищённых сетей требуется пароль
   Path A tensioner: "Натяжитель Пути A"
   Path B tensioner: "Натяжитель Пути B"
+  Path {0}'s peak left the zone. Check that only Path {1}'s tensioner was turned.: "Пик Пути {0} вышел из зоны. Проверьте, что крутили только натяжитель Пути {1}."
   Path {}: Путь {}
   Path {} before: Путь {} раньше
   Path {} earlier round: "Путь {} прошлый раунд"
@@ -3400,6 +3402,8 @@ translations:
   The filament may not have fully retracted — try again or manually pull: Возможно, филамент втянут не полностью. Повторите или вытяните вручную
   The filament system reported an error: Система филамента сообщила об ошибке
   The gap didn't close (moved {:.1f} Hz). Try a bigger turn.: "Разница не сократилась (сдвиг {:.1f} Гц). Поверните сильнее."
+  The gap grew after loosening {0}. Check you turned Path {0}'s tensioner.: "Разница выросла после ослабления {0}. Проверьте, что вы крутили натяжитель Пути {0}."
+  The gap grew after tightening {0}. Check you turned Path {0}'s tensioner.: "Разница выросла после натяжения {0}. Проверьте, что вы крутили натяжитель Пути {0}."
   The gap is not closing. Something besides tension may be shaping it.: "Разница не сокращается. Возможно, влияет что-то помимо натяжения."
   The heater will cycle on and off several times.: Нагреватель будет несколько раз
     включаться и выключаться.
@@ -4023,8 +4027,6 @@ translations:
   within one bin: "в пределах одного бина"
   wpa_supplicant is not running. WiFi features unavailable.: wpa_supplicant не запущен. Функции WiFi недоступны.
   you have: у вас
-  "{0}'s peak went down after tightening. Check you turned Path {0}'s tensioner.": "Пик {0} опустился после натяжения. Проверьте, что вы крутили натяжитель Пути {0}."
-  "{0}'s peak went up after loosening. Check you turned Path {0}'s tensioner.": "Пик {0} поднялся после ослабления. Проверьте, что вы крутили натяжитель Пути {0}."
   '{:.0f}-{:.0f} Hz · about {} min': '{:.0f}-{:.0f} Гц · примерно {} мин'
   '{} ({})': '{} ({})'
   '{} Hardware Issues': 'Проблем с оборудованием: {}'

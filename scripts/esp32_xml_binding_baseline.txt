@@ -234,6 +234,7 @@ subject:bt_tune_instruction
 subject:bt_tune_kind
 subject:bt_tune_last
 subject:bt_tune_measure_label
+subject:bt_tune_next_zone_label
 subject:bt_tune_path
 subject:bt_tune_phase
 subject:bt_tune_rate

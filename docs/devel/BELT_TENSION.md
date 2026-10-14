@@ -254,7 +254,18 @@ carries " · Tuned in N rounds" plus, on SCREW printers, the net turns per path
 Start is gated at every sweep, not only at Start: `gate_allows_sweep` re-checks the Start
 gate on **Re-measure**, **Next zone** and **Confirm**, so a print that began, a klippy that
 dropped or an accelerometer that vanished mid-tuning refuses the sweep with the gate's own
-message.
+message. `begin_run` checks it again, and so does Continue on the low-RAM warning, so a print
+that starts while that warning is up still refuses the sweep. On a low-RAM board the warning
+is asked once per tuning session; later rounds and Confirm skip it. When a sweep ends the
+gate is recomputed, since a gate subject that changed mid-sweep read the calibrator as busy.
+
+The screensaver does not end a tuning session. A `Suspended` deactivation keeps the view, the
+run and the session, and the wake's `on_activate` refreshes the gate and the subjects without
+returning to START or re-detecting hardware. A confirmed **Stop** acts only while a sweep is
+still running; a short round can finish while the dialog is up.
+
+**Next zone** sweeps at once (a baseline round over the next zone's window), so its button
+shows that round's duration the way Re-measure does (`peek_next_zone`).
 
 ### Zone choice
 
@@ -299,17 +310,20 @@ outside bins. A window failing it is `NO_PEAK`.
 
 ### Outcomes
 
-`BeltTuneSession::add_round` classifies each round. The panel's message
-(`BeltTensionPanel::tune_last_message`) follows from the outcome:
+`BeltTuneSession::add_round` classifies each round by the gap's change, never the adjusted
+peak's own move. Only the adjusted belt is turned, so drift that moves both peaks together
+cancels out of the gap, and a reference that moved (the wrong belt was turned) reads as the
+gap moving. The panel's message (`BeltTensionPanel::tune_last_message`) follows from the
+outcome:
 
 | `BeltTuneOutcome` | Condition | Message |
 |-------------------|-----------|---------|
 | `MATCHED` | `|gap|` within the matched tolerance (`matched_tolerance_hz`: the curve's mean bin spacing, at least 1 Hz) | Matched at N Hz |
 | `CLOSER` | the gap shrank and kept its sign | "last turn: N Hz closer" |
 | `OVERSHOT` | the gap changed sign | "Went past X by N Hz. Back it off a little." |
-| `WRONG_WAY` | the adjusted peak moved against the advice by `MIN_MOVE_HZ` (0.5 Hz) or more | "X's peak went down after tightening. Check you turned Path X's tensioner." (mirrored for loosening) |
-| `NO_MOVEMENT` | the peak moved under `MIN_MOVE_HZ`, or moved the advised way while the reference moved with it so the gap did not close | "The gap didn't close (moved N Hz). Try a bigger turn." |
-| `NO_PEAK` | a path's window holds no clear peak (`window_holds_peak`), or a peak is still past the edge after one widening | "No clear peak in this zone" |
+| `WRONG_WAY` | the gap moved against the advice by `MIN_MOVE_HZ` (0.5 Hz) or more | "The gap grew after tightening X. Check you turned Path X's tensioner." (mirrored for loosening) |
+| `NO_MOVEMENT` | the gap moved under `MIN_MOVE_HZ` | "The gap didn't close (moved N Hz). Try a bigger turn." |
+| `NO_PEAK` | a path's window holds no clear peak (`window_holds_peak`), or a peak is still past the edge after one widening. `reference_lost` marks the case where only the reference lost its peak | "No clear peak in this zone", or with `reference_lost` "Path R's peak left the zone. Check that only Path X's tensioner was turned." |
 | `OUT_OF_WINDOW` | the adjusted peak sits on a window edge; the window re-centres on the reference and widens, once per zone until a peak is measured again, then `NO_PEAK` | "X's peak moved out of the zone. Widening it." |
 | `BASELINE` | the first measurement after `next_zone`: no gap history yet, so no outcome against it | (none; the zone's gap shows) |
 
@@ -321,10 +335,11 @@ zone's turns moved this zone's peaks, so the panel measures before advising, and
 ### Rate learning and advice
 
 On SCREW printers each measured round that follows recorded turns yields a sample,
-`|peak move| / turns`, in Hz per turn. `hz_per_turn` is the median of the samples, and the
+`|gap move| / turns`, in Hz per turn. `hz_per_turn` is the median of the samples, and the
 advised amount is `|gap| / rate`, rounded to `TURN_STEP` (an eighth) and clamped to
 `TURN_STEP .. TURN_MAX` (one full turn). A sample is rejected unless the move and the turns
-behind it come from the same zone and all turned one way:
+behind it come from the same zone. They always turned one way: only a measured round can
+flip the advised direction, and it clears the tally.
 
 - `WRONG_WAY`, `NO_PEAK`, `OUT_OF_WINDOW` and `BASELINE` rounds teach nothing: the first says
   the turn went elsewhere, the others measured no move.
@@ -333,7 +348,9 @@ behind it come from the same zone and all turned one way:
 
 Without a rate the first advised turn is `FIRST_TURN` (a quarter); after a `NO_MOVEMENT`
 round it doubles the turn that did nothing. The user sets the amount actually turned on a
-stepper; `record_turns` stores it for the next round, defaulting to the advice. The panel
+stepper, from 0 to one turn; `record_turns` stores it for the next round, defaulting to the
+advice. Zero books no turn: a re-measure to check repeatability doubles nothing and adds
+nothing to the Confirm facts. The panel
 formats amounts with `format_belt_turns` (the text fonts carry the eighth-fraction glyphs).
 
 ### Tensioner kinds

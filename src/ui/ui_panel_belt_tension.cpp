@@ -54,10 +54,11 @@ BeltPath other_path(BeltPath path) {
     return path == BeltPath::PATH_A ? BeltPath::PATH_B : BeltPath::PATH_A;
 }
 
-/// "¼ turn", "1¼ turns".
+/// "0 turns", "¼ turn", "1¼ turns".
 std::string format_turn_amount(float turns) {
-    return fmt::format(fmt::runtime(std::abs(turns) > 1.0f ? lv_tr("{} turns") : lv_tr("{} turn")),
-                       helix::calibration::format_belt_turns(turns));
+    const std::string amount = helix::calibration::format_belt_turns(turns);
+    const bool singular = std::abs(turns) <= 1.0f && amount != "0";
+    return fmt::format(fmt::runtime(singular ? lv_tr("{} turn") : lv_tr("{} turns")), amount);
 }
 
 } // namespace
@@ -264,6 +265,8 @@ void BeltTensionPanel::init_subjects() {
                               "bt_tune_measure_label", subjects_);
     UI_MANAGED_SUBJECT_STRING(tune_confirm_label_subject_, tune_confirm_label_buf_, "",
                               "bt_tune_confirm_label", subjects_);
+    UI_MANAGED_SUBJECT_STRING(tune_next_zone_label_subject_, tune_next_zone_label_buf_, "",
+                              "bt_tune_next_zone_label", subjects_);
 
     subjects_initialized_ = true;
 
@@ -359,6 +362,19 @@ void BeltTensionPanel::on_activate() {
 
     spdlog::debug("[BeltTension] on_activate()");
 
+    if (suspended_) {
+        // A wake from the screensaver: the user was at the tensioner, or a
+        // sweep was running. Keep the view, the run and the tuning session,
+        // and leave the calibrator alone: re-detecting hardware mid-sweep
+        // would overwrite its MEASURING state.
+        suspended_ = false;
+        ensure_gate_observers();
+        refresh_gate();
+        refresh_notes();
+        refresh_tune();
+        return;
+    }
+
     set_view_state(ViewState::START);
     refresh_notes();
 
@@ -408,8 +424,10 @@ void BeltTensionPanel::on_deactivating(DeactivateReason reason) {
     // screen, so the screensaver lands mid-measurement; the run has to survive
     // it.
     if (reason == DeactivateReason::Suspended) {
+        suspended_ = true;
         return;
     }
+    suspended_ = false;
     theme_observer_.reset();
 
     // A rebuild frees the whole widget tree without firing on_ui_destroyed(),
@@ -617,15 +635,31 @@ void BeltTensionPanel::run_after_ram_check(std::function<void()> go) {
         return;
     }
     // Klipper analyses the sweep on this same host, and on a small board that
-    // analysis can run out of memory and leave Klipper stuck.
+    // analysis can run out of memory and leave Klipper stuck. One answer
+    // covers a tuning session's rounds.
+    if (tune_ && tune_low_ram_accepted_) {
+        go();
+        return;
+    }
     if (low_ram_dialog_) {
         return; // the warning is already up
     }
     helix::ui::ConfirmOptions opts;
     opts.owner_token = lifetime_.token();
-    helix::ui::show_low_ram_resonance_warning(mem.total_mb(), &low_ram_dialog_, go, opts);
+    // The gate can close while the warning is up (a print starts from another
+    // client), so Continue re-checks it before anything changes.
+    auto accepted = [this, go = std::move(go)]() {
+        if (!gate_allows_sweep("Continue")) {
+            return;
+        }
+        if (tune_) {
+            tune_low_ram_accepted_ = true;
+        }
+        go();
+    };
+    helix::ui::show_low_ram_resonance_warning(mem.total_mb(), &low_ram_dialog_, accepted, opts);
     if (!low_ram_dialog_) {
-        go(); // the modal failed to build; do not silently block the check
+        accepted(); // the modal failed to build; do not silently block the check
     }
 }
 
@@ -641,6 +675,12 @@ void BeltTensionPanel::handle_stop_clicked() {
         lv_tr("This is an emergency stop: the printer halts and Klipper restarts."),
         ModalSeverity::Warning, lv_tr("Stop"),
         [this]() {
+            // A short tuning round can end while the dialog is up; an
+            // emergency stop then would restart an idle printer.
+            if (!measuring()) {
+                spdlog::info("[BeltTension] Stop confirmed after the sweep ended; nothing to stop");
+                return;
+            }
             spdlog::warn("[BeltTension] Emergency abort confirmed");
             if (calibrator_) {
                 calibrator_->emergency_abort();
@@ -664,6 +704,11 @@ void BeltTensionPanel::begin_run(const std::vector<helix::calibration::BeltPath>
                                  bool clear_previous,
                                  std::optional<helix::calibration::BeltSweepWindow> window) {
     if (queue.empty()) {
+        return;
+    }
+    // Every sweep starts here, so every path into one passes the gate,
+    // including a start deferred behind a dialog.
+    if (!gate_allows_sweep(window ? "Tuning round" : "Sweep")) {
         return;
     }
     run_window_ = window;
@@ -826,6 +871,8 @@ void BeltTensionPanel::finish_run() {
     spdlog::info("[BeltTension] Results: similarity={:.0f}% verdict={} pairs={} unpaired={}/{}",
                  cmp.similarity_percent, static_cast<int>(cmp.verdict), cmp.peaks.pairs.size(),
                  cmp.peaks.unpaired_a.size(), cmp.peaks.unpaired_b.size());
+    // A gate subject that changed mid-sweep read the calibrator as busy.
+    refresh_gate();
 }
 
 void BeltTensionPanel::populate_results(const helix::calibration::BeltComparison& cmp) {
@@ -1090,8 +1137,8 @@ void BeltTensionPanel::handle_tune_amount_step(int direction) {
         return;
     }
     namespace bt = helix::calibration::belt_tune;
-    tune_turns_ = std::clamp(tune_turns_ + (direction > 0 ? bt::TURN_STEP : -bt::TURN_STEP),
-                             bt::TURN_STEP, bt::TURN_MAX);
+    tune_turns_ = std::clamp(tune_turns_ + (direction > 0 ? bt::TURN_STEP : -bt::TURN_STEP), 0.0f,
+                             bt::TURN_MAX);
     refresh_tune();
 }
 
@@ -1184,12 +1231,12 @@ void BeltTensionPanel::finish_tune_round() {
         return;
     }
     const bool baseline = tune_->needs_baseline();
-    const float adj_before = tune_->adjusted_hz();
+    const float gap_before = tune_->gap_hz();
     tune_last_direction_ = tune_->advice().direction;
     const auto& round = tune_->add_round(tune_curves_[0], tune_curves_[1]);
     tune_has_curves_ = true;
     tune_last_outcome_ = round.outcome;
-    tune_last_move_hz_ = std::abs(tune_->adjusted_hz() - adj_before);
+    tune_last_move_hz_ = std::abs(tune_->gap_hz() - gap_before);
     if (baseline && !tune_->needs_baseline()) {
         reset_tune_gauge_range();
     }
@@ -1198,6 +1245,8 @@ void BeltTensionPanel::finish_tune_round() {
                  tune_->gap_hz(), static_cast<int>(round.outcome));
     set_tune_phase(tune_->zone_matched() ? TunePhase::MATCHED : TunePhase::ADJUST);
     push_chart_data();
+    // A gate subject that changed mid-sweep read the calibrator as busy.
+    refresh_gate();
 }
 
 void BeltTensionPanel::set_tune_phase(TunePhase phase) {
@@ -1220,6 +1269,7 @@ void BeltTensionPanel::reset_tune_gauge_range() {
 
 void BeltTensionPanel::end_tuning() {
     tune_.reset();
+    tune_low_ram_accepted_ = false;
     tune_has_curves_ = false;
     tune_curves_[0].clear();
     tune_curves_[1].clear();
@@ -1229,6 +1279,16 @@ void BeltTensionPanel::end_tuning() {
     if (subjects_initialized_) {
         lv_subject_set_int(&tune_phase_subject_, static_cast<int>(tune_phase_));
     }
+}
+
+int BeltTensionPanel::round_minutes(const helix::calibration::BeltSweepWindow& window) const {
+    if (sweep_cfg_.hz_per_sec <= 0.0f) {
+        return 1;
+    }
+    // Both paths sweep the window once each.
+    const float seconds =
+        2.0f * (window.freq_end_hz - window.freq_start_hz) / sweep_cfg_.hz_per_sec;
+    return std::max(1, static_cast<int>(std::lround(seconds / 60.0f)));
 }
 
 int BeltTensionPanel::full_check_minutes() const {
@@ -1261,7 +1321,7 @@ void BeltTensionPanel::refresh_tune() {
     lv_subject_set_int(&tune_dir_subject_, advice.direction == BeltTurnDirection::LOOSEN ? 1 : 0);
     lv_subject_set_int(&tune_baseline_subject_, baseline ? 1 : 0);
     lv_subject_set_int(&tune_has_zone_subject_, zone ? 1 : 0);
-    lv_subject_set_int(&tune_has_next_zone_subject_, t.has_next_zone() ? 1 : 0);
+    lv_subject_set_int(&tune_has_next_zone_subject_, t.peek_next_zone() ? 1 : 0);
     lv_subject_set_int(&tune_shape_warning_subject_, t.show_mechanical_hint() ? 1 : 0);
     lv_subject_set_int(&tune_severity_subject_,
                        static_cast<int>(helix::ui::belt_gap_severity(gap, tolerance)));
@@ -1327,15 +1387,17 @@ void BeltTensionPanel::refresh_tune() {
         &tune_swap_label_subject_,
         fmt::format(fmt::runtime(lv_tr("Adjust {} instead")), ref_letter).c_str());
 
-    int measure_minutes = 1;
-    if (zone && sweep_cfg_.hz_per_sec > 0.0f) {
-        const float seconds =
-            2.0f * (zone->window.freq_end_hz - zone->window.freq_start_hz) / sweep_cfg_.hz_per_sec;
-        measure_minutes = std::max(1, static_cast<int>(std::lround(seconds / 60.0f)));
-    }
+    lv_subject_copy_string(&tune_measure_label_subject_,
+                           fmt::format(fmt::runtime(lv_tr("Re-measure (~{} min)")),
+                                       zone ? round_minutes(zone->window) : 1)
+                               .c_str());
+    // Next zone sweeps at once: its baseline round over the next zone's window.
+    const auto next = t.peek_next_zone();
     lv_subject_copy_string(
-        &tune_measure_label_subject_,
-        fmt::format(fmt::runtime(lv_tr("Re-measure (~{} min)")), measure_minutes).c_str());
+        &tune_next_zone_label_subject_,
+        next ? fmt::format(fmt::runtime(lv_tr("Next zone (~{} min)")), round_minutes(next->window))
+                   .c_str()
+             : "");
     lv_subject_copy_string(
         &tune_confirm_label_subject_,
         fmt::format(fmt::runtime(lv_tr("Confirm (full, ~{} min)")), full_check_minutes()).c_str());
@@ -1371,9 +1433,9 @@ std::string BeltTensionPanel::tune_last_message() const {
     case BeltTuneOutcome::WRONG_WAY:
         return fmt::format(
             fmt::runtime(tune_last_direction_ == helix::calibration::BeltTurnDirection::TIGHTEN
-                             ? lv_tr("{0}'s peak went down after tightening. Check you turned "
+                             ? lv_tr("The gap grew after tightening {0}. Check you turned "
                                      "Path {0}'s tensioner.")
-                             : lv_tr("{0}'s peak went up after loosening. Check you turned "
+                             : lv_tr("The gap grew after loosening {0}. Check you turned "
                                      "Path {0}'s tensioner.")),
             adj_letter);
     case BeltTuneOutcome::NO_MOVEMENT:
@@ -1381,6 +1443,11 @@ std::string BeltTensionPanel::tune_last_message() const {
             fmt::runtime(lv_tr("The gap didn't close (moved {:.1f} Hz). Try a bigger turn.")),
             tune_last_move_hz_);
     case BeltTuneOutcome::NO_PEAK:
+        if (!t.rounds().empty() && t.rounds().back().reference_lost) {
+            return fmt::format(fmt::runtime(lv_tr("Path {0}'s peak left the zone. Check that only "
+                                                  "Path {1}'s tensioner was turned.")),
+                               ref_letter, adj_letter);
+        }
         return lv_tr("No clear peak in this zone");
     case BeltTuneOutcome::OUT_OF_WINDOW:
         return fmt::format(fmt::runtime(lv_tr("{}'s peak moved out of the zone. Widening it.")),

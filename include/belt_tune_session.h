@@ -167,6 +167,8 @@ class BeltTuneSession {
     /// False, changing nothing, when no unmatched zone remains.
     bool next_zone();
     [[nodiscard]] bool has_next_zone() const;
+    /// The zone next_zone() would move to, seen from PATH_A; nullopt when none.
+    [[nodiscard]] std::optional<BeltTuneZone> peek_next_zone() const;
     /// True from next_zone() until a round measures both peaks.
     [[nodiscard]] bool needs_baseline() const;
     [[nodiscard]] std::optional<float> hz_per_turn() const;

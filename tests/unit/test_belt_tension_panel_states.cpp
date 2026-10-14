@@ -40,15 +40,18 @@
 #include "app_globals.h"
 #include "belt_tension_types.h"
 #include "lvgl/lvgl.h"
+#include "lvgl/src/others/translation/lv_translation.h"
 #include "moonraker_api_mock.h"
 #include "moonraker_client_mock.h"
 #include "printer_detector.h"
 #include "printer_state.h"
+#include "translation_loader.h"
 
 #include <algorithm>
 #include <cmath>
 #include <filesystem>
 #include <fstream>
+#include <limits>
 #include <optional>
 #include <string>
 #include <unistd.h>
@@ -155,6 +158,24 @@ class BeltPanelFixture : public XMLTestFixture {
     }
     lv_obj_t* panel_low_ram_dialog() {
         return panel_->low_ram_dialog_;
+    }
+    bool panel_detection_pending() {
+        return panel_->detection_pending_;
+    }
+    size_t facts_buf_size() const {
+        return sizeof(panel_->facts_buf_);
+    }
+    size_t instruction_buf_size() const {
+        return sizeof(panel_->tune_instruction_buf_);
+    }
+    size_t confirm_label_buf_size() const {
+        return sizeof(panel_->tune_confirm_label_buf_);
+    }
+    size_t next_zone_label_buf_size() const {
+        return sizeof(panel_->tune_next_zone_label_buf_);
+    }
+    size_t last_buf_size() const {
+        return sizeof(panel_->tune_last_buf_);
     }
 
     int state_int(const char* name) {
@@ -843,8 +864,7 @@ TEST_CASE("each outcome has its own last-turn line", "[belt][panel][tune]") {
         const char* instruction;
     };
     for (const Case c : {
-             Case{96.0f,
-                  "B's peak went down after tightening. Check you turned Path B's tensioner.",
+             Case{96.0f, "The gap grew after tightening B. Check you turned Path B's tensioner.",
                   "Tighten B"},
              Case{113.0f, "Went past A by 3", "Loosen B"},
              Case{98.1f, "Try a bigger turn.", "Tighten B"},
@@ -907,10 +927,15 @@ TEST_CASE("the turn stepper shows only for screw tensioners", "[belt][panel][tun
             fx.panel().handle_tune_amount_step(+1);
         }
         CHECK(fx.text("bt_tune_amount") == "1 turn");
-        for (int i = 0; i < 10; ++i) {
+        for (int i = 0; i < 7; ++i) {
             fx.panel().handle_tune_amount_step(-1);
         }
         CHECK(fx.text("bt_tune_amount") == "⅛ turn");
+        // Zero re-measures without a turn; the stepper stops there.
+        fx.panel().handle_tune_amount_step(-1);
+        CHECK(fx.text("bt_tune_amount") == "0 turns");
+        fx.panel().handle_tune_amount_step(-1);
+        CHECK(fx.text("bt_tune_amount") == "0 turns");
     }
 }
 
@@ -1174,20 +1199,359 @@ TEST_CASE("a closed gate stops the tuning sweeps", "[belt][panel][tune][gating]"
     CHECK(fx.state_int("bt_tune_phase") == PHASE_ADJUST);
 }
 
-TEST_CASE("a wrong-way line names the advice the user acted on", "[belt][panel][tune]") {
-    // Told to tighten B, B's peak drops 98 -> 96.5 while A's falls 110 -> 95:
-    // the gap flips sign, so the NEXT advice is to loosen B, but the turn just
-    // made was a tightening.
+TEST_CASE("a wrong-way line names the turn the user made", "[belt][panel][tune]") {
+    // Told to tighten B, B holds at 98 while A rises 110 -> 113: the gap grew,
+    // which is what tightening A instead of B does.
     BeltPanelFixture fx;
-    fx.mock().set_belt_tune_script('A', {95.0f});
-    fx.mock().set_belt_tune_script('B', {96.5f});
+    fx.mock().set_belt_tune_script('A', {113.0f});
     enter_tuning(fx);
     REQUIRE(fx.text("bt_tune_instruction") == "Tighten B");
     tune_round(fx);
     INFO("last: " << fx.text("bt_tune_last"));
-    CHECK(fx.text("bt_tune_instruction") == "Loosen B");
+    CHECK(fx.text("bt_tune_instruction") == "Tighten B");
     CHECK(fx.text("bt_tune_last") ==
-          "B's peak went down after tightening. Check you turned Path B's tensioner.");
+          "The gap grew after tightening B. Check you turned Path B's tensioner.");
+}
+
+TEST_CASE("both peaks drifting together is no move", "[belt][panel][tune]") {
+    // No turn: A and B both read 1.5 Hz higher. The gap held at -12.
+    BeltPanelFixture fx;
+    fx.mock().set_belt_tune_script('A', {111.5f});
+    fx.mock().set_belt_tune_script('B', {99.5f});
+    enter_tuning(fx);
+    tune_round(fx);
+    INFO("last: " << fx.text("bt_tune_last"));
+    CHECK(fx.text("bt_tune_last").find("The gap didn't close (moved 0.") == 0);
+    CHECK(fx.text("bt_tune_instruction") == "Tighten B");
+}
+
+TEST_CASE("a reference peak that leaves the zone names the reference", "[belt][panel][tune]") {
+    constexpr float FLAT = std::numeric_limits<float>::quiet_NaN();
+    BeltPanelFixture fx;
+    SECTION("the reference's window is flat") {
+        // Told to tighten B; A, the reference, shows no peak.
+        fx.mock().set_belt_tune_script('A', {FLAT});
+        enter_tuning(fx);
+        tune_round(fx);
+        CHECK(fx.text("bt_tune_last") ==
+              "Path A's peak left the zone. Check that only Path B's tensioner was turned.");
+    }
+    SECTION("the adjusted path losing its peak keeps the generic line") {
+        fx.mock().set_belt_tune_script('B', {FLAT});
+        enter_tuning(fx);
+        tune_round(fx);
+        CHECK(fx.text("bt_tune_last") == "No clear peak in this zone");
+    }
+}
+
+TEST_CASE("waking the screen mid-tuning keeps the session", "[belt][panel][tune]") {
+    BeltPanelFixture fx;
+    fx.mock().set_belt_tune_script('B', {102.1f, 107.6f, 109.8f});
+    enter_tuning(fx);
+    tune_round(fx);
+    REQUIRE(fx.text("bt_tune_round") == "Round 2");
+    const std::string zone = fx.text("bt_tune_zone");
+    const std::string last = fx.text("bt_tune_last");
+    REQUIRE_FALSE(fx.panel_detection_pending());
+
+    SECTION("between rounds, at the tensioner") {
+        fx.panel().on_deactivate(DeactivateReason::Suspended);
+        fx.panel().on_activate();
+        fx.pump_ms(500);
+        CHECK(fx.state_int("belt_tension_state") == TUNING);
+        CHECK(fx.state_int("bt_tune_phase") == PHASE_ADJUST);
+        CHECK(fx.text("bt_tune_round") == "Round 2");
+        CHECK(fx.text("bt_tune_zone") == zone);
+        CHECK(fx.text("bt_tune_last") == last);
+        // The calibrator is not asked to detect hardware again.
+        CHECK_FALSE(fx.panel_detection_pending());
+        // The loop carries on from where it was.
+        tune_round(fx);
+        CHECK(fx.text("bt_tune_round") == "Round 3");
+    }
+    SECTION("while a round sweeps") {
+        fx.panel().handle_tune_measure_clicked();
+        REQUIRE(fx.state_int("bt_tune_phase") == PHASE_SWEEPING);
+        fx.pump_ms(300);
+        fx.panel().on_deactivate(DeactivateReason::Suspended);
+        fx.panel().on_activate();
+        CHECK(fx.state_int("belt_tension_state") == TUNING);
+        CHECK(fx.state_int("bt_tune_phase") == PHASE_SWEEPING);
+        CHECK_FALSE(fx.panel_detection_pending());
+        for (uint32_t t = 0; t < 60000 && fx.state_int("bt_tune_phase") == PHASE_SWEEPING;
+             t += 100) {
+            fx.pump_ms(100);
+        }
+        CHECK(fx.state_int("belt_tension_state") == TUNING);
+        CHECK(fx.text("bt_tune_round") == "Round 3");
+    }
+    SECTION("leaving after a suspension makes the next entry a fresh one") {
+        fx.panel().on_deactivate(DeactivateReason::Suspended);
+        fx.panel().on_deactivate(DeactivateReason::NavigateAway);
+        fx.panel().on_activate();
+        fx.pump_ms(200);
+        CHECK(fx.state_int("belt_tension_state") ==
+              static_cast<int>(BeltTensionPanel::ViewState::START));
+    }
+}
+
+TEST_CASE("Continue on the low-RAM warning re-checks the gate", "[belt][panel][tune][gating]") {
+    BeltPanelFixture fx;
+    helix::ui::modal_init_subjects();
+    REQUIRE(fx.register_component("modal_dialog"));
+    helix::MemoryInfo small;
+    small.total_kb = 128 * 1024;
+    small.available_kb = 80 * 1024;
+
+    const auto continue_dialog = [&] {
+        lv_obj_t* dialog = ModalStack::instance().top_dialog();
+        REQUIRE(dialog != nullptr);
+        REQUIRE(fx.panel_low_ram_dialog() == dialog);
+        // A print starts from another client while the warning is up.
+        lv_subject_set_int(get_printer_state().print_state().get_print_active_subject(), 1);
+        fx.pump_ms(200);
+        fx.mock().clear_gcode_script_history();
+        lv_obj_send_event(lv_obj_find_by_name(dialog, "btn_primary"), LV_EVENT_CLICKED, nullptr);
+        fx.pump_ms(2000);
+        CHECK(resonance_lines(fx).empty());
+    };
+
+    SECTION("a tuning round") {
+        enter_tuning(fx);
+        fx.panel().set_memory_for_test(small);
+        fx.panel().handle_tune_measure_clicked();
+        fx.pump_ms(200);
+        continue_dialog();
+        CHECK(fx.state_int("belt_tension_state") == TUNING);
+        CHECK(fx.state_int("bt_tune_phase") == PHASE_ADJUST);
+        CHECK(fx.text("bt_tune_round") == "Round 1");
+    }
+    SECTION("a Re-test leaves both results in place") {
+        REQUIRE(fx.wait_gate_open());
+        fx.panel().handle_start_clicked();
+        REQUIRE(fx.pump_until_state(RESULTS));
+        const std::string note_a = fx.text("bt_note_a");
+        fx.panel().set_memory_for_test(small);
+        fx.panel().handle_retest_clicked(helix::calibration::BeltPath::PATH_A);
+        fx.pump_ms(200);
+        continue_dialog();
+        CHECK(fx.state_int("belt_tension_state") == RESULTS);
+        CHECK(fx.text("bt_note_a") == note_a);
+        // Path A's result survived: Tune can still start from the comparison.
+        lv_subject_set_int(get_printer_state().print_state().get_print_active_subject(), 0);
+        fx.pump_ms(200);
+        fx.panel().handle_tune_clicked();
+        CHECK(fx.state_int("belt_tension_state") == TUNING);
+    }
+}
+
+TEST_CASE("the low-RAM warning is asked once per tuning session", "[belt][panel][tune]") {
+    BeltPanelFixture fx;
+    helix::ui::modal_init_subjects();
+    REQUIRE(fx.register_component("modal_dialog"));
+    enter_tuning(fx);
+    helix::MemoryInfo small;
+    small.total_kb = 128 * 1024;
+    small.available_kb = 80 * 1024;
+    fx.panel().set_memory_for_test(small);
+
+    fx.panel().handle_tune_measure_clicked();
+    fx.pump_ms(200);
+    lv_obj_t* dialog = ModalStack::instance().top_dialog();
+    REQUIRE(dialog != nullptr);
+    REQUIRE(fx.panel_low_ram_dialog() == dialog);
+    REQUIRE(fx.state_int("bt_tune_phase") == PHASE_ADJUST);
+    lv_obj_send_event(lv_obj_find_by_name(dialog, "btn_primary"), LV_EVENT_CLICKED, nullptr);
+    fx.pump_ms(200);
+    REQUIRE(fx.state_int("bt_tune_phase") == PHASE_SWEEPING);
+    for (uint32_t t = 0; t < 60000 && fx.state_int("bt_tune_phase") == PHASE_SWEEPING; t += 100) {
+        fx.pump_ms(100);
+    }
+    REQUIRE(fx.state_int("bt_tune_phase") == PHASE_ADJUST);
+
+    // The next round sweeps at once.
+    fx.panel().handle_tune_measure_clicked();
+    CHECK(fx.panel_low_ram_dialog() == nullptr);
+    CHECK(fx.state_int("bt_tune_phase") == PHASE_SWEEPING);
+    for (uint32_t t = 0; t < 60000 && fx.state_int("bt_tune_phase") == PHASE_SWEEPING; t += 100) {
+        fx.pump_ms(100);
+    }
+
+    // A new tuning session asks again.
+    fx.panel().handle_tune_done_clicked();
+    fx.panel().handle_tune_clicked();
+    REQUIRE(fx.state_int("belt_tension_state") == TUNING);
+    fx.panel().handle_tune_measure_clicked();
+    fx.pump_ms(200);
+    CHECK(fx.panel_low_ram_dialog() != nullptr);
+    CHECK(fx.state_int("bt_tune_phase") == PHASE_ADJUST);
+}
+
+TEST_CASE("a Stop confirmed after the round ended stops nothing", "[belt][panel][tune]") {
+    BeltPanelFixture fx;
+    helix::ui::modal_init_subjects();
+    REQUIRE(fx.register_component("modal_dialog"));
+    enter_tuning(fx);
+    fx.panel().handle_tune_measure_clicked();
+    REQUIRE(fx.state_int("bt_tune_phase") == PHASE_SWEEPING);
+    fx.panel().handle_stop_clicked();
+    fx.pump_ms(200);
+    lv_obj_t* dialog = ModalStack::instance().top_dialog();
+    REQUIRE(dialog != nullptr);
+
+    // The round finishes while the dialog is still up.
+    for (uint32_t t = 0; t < 60000 && fx.state_int("bt_tune_phase") == PHASE_SWEEPING; t += 100) {
+        fx.pump_ms(100);
+    }
+    REQUIRE(fx.state_int("bt_tune_phase") == PHASE_ADJUST);
+    const std::string round = fx.text("bt_tune_round");
+
+    fx.mock().clear_gcode_script_history();
+    lv_obj_send_event(lv_obj_find_by_name(dialog, "btn_primary"), LV_EVENT_CLICKED, nullptr);
+    fx.pump_ms(2000);
+    CHECK(fx.state_int("belt_tension_state") == TUNING);
+    CHECK(fx.text("bt_tune_round") == round);
+    for (const auto& g : std::vector<std::string>(fx.mock().gcode_script_history())) {
+        INFO(g);
+        CHECK(g.find("FIRMWARE_RESTART") == std::string::npos);
+    }
+}
+
+TEST_CASE("a zero-turn Re-measure books no turn", "[belt][panel][tune]") {
+    BeltPanelFixture fx;
+    get_printer_state().set_printer_type_sync("Voron 2.4");
+    // B barely moves: the round reads NO_MOVEMENT.
+    fx.mock().set_belt_tune_script('B', {98.1f, 102.1f, 107.6f, 109.8f});
+    enter_tuning(fx);
+    REQUIRE(fx.text("bt_tune_amount") == "¼ turn");
+    fx.panel().handle_tune_amount_step(-1);
+    fx.panel().handle_tune_amount_step(-1);
+    REQUIRE(fx.text("bt_tune_amount") == "0 turns");
+    tune_round(fx);
+    INFO("last: " << fx.text("bt_tune_last"));
+    REQUIRE(fx.text("bt_tune_last").find("The gap didn't close") == 0);
+    // Nothing was turned, so the advice does not double to half a turn.
+    CHECK(fx.text("bt_tune_amount") == "¼ turn");
+
+    for (int i = 0; i < 3 && fx.state_int("bt_tune_phase") != PHASE_MATCHED; ++i) {
+        tune_round(fx);
+    }
+    REQUIRE(fx.state_int("bt_tune_phase") == PHASE_MATCHED);
+    fx.panel().handle_tune_confirm_clicked();
+    REQUIRE(fx.pump_until_state(RESULTS));
+    // The three turned rounds booked ¼ + ½ + ⅛; the zero-turn round added nothing.
+    INFO("facts: " << fx.text("bt_facts"));
+    CHECK(fx.text("bt_facts").find("Tuned in 4 rounds · B tightened about ⅞ turn") !=
+          std::string::npos);
+}
+
+TEST_CASE("the gate re-reads the calibrator when a sweep ends", "[belt][panel][gating]") {
+    BeltPanelFixture fx;
+    lv_subject_t* print_active = get_printer_state().print_state().get_print_active_subject();
+    // A gate subject notifying mid-sweep reads the calibrator as busy.
+    const auto notify_mid_sweep = [&] {
+        fx.pump_ms(300);
+        lv_subject_notify(print_active);
+        fx.pump_ms(100);
+        REQUIRE(fx.state_int("bt_can_start") == 0);
+    };
+
+    SECTION("a full check") {
+        REQUIRE(fx.wait_gate_open());
+        fx.panel().handle_start_clicked();
+        notify_mid_sweep();
+        REQUIRE(fx.pump_until_state(RESULTS));
+        CHECK(fx.state_int("bt_can_start") == 1);
+    }
+    SECTION("a tuning round") {
+        enter_tuning(fx);
+        fx.panel().handle_tune_measure_clicked();
+        notify_mid_sweep();
+        for (uint32_t t = 0; t < 60000 && fx.state_int("bt_tune_phase") == PHASE_SWEEPING;
+             t += 100) {
+            fx.pump_ms(100);
+        }
+        REQUIRE(fx.state_int("bt_tune_phase") == PHASE_ADJUST);
+        CHECK(fx.state_int("bt_can_start") == 1);
+    }
+}
+
+TEST_CASE("Next zone names how long its sweep takes", "[belt][panel][tune]") {
+    // Two pairs: 100/94 (tuned first) and 60/56.
+    const std::string csv_a = "/tmp/helix-belt-nzlabel-a-" + std::to_string(getpid()) + ".csv";
+    const std::string csv_b = "/tmp/helix-belt-nzlabel-b-" + std::to_string(getpid()) + ".csv";
+    write_two_peak_csv(csv_a, {60.0f, 100.0f});
+    write_two_peak_csv(csv_b, {56.0f, 94.0f});
+    helix::ScopedEnv replay_a("HELIX_MOCK_BELT_CSV_A", csv_a.c_str());
+    helix::ScopedEnv replay_b("HELIX_MOCK_BELT_CSV_B", csv_b.c_str());
+
+    BeltPanelFixture fx;
+    enter_tuning(fx);
+    write_two_peak_csv(csv_b, {56.0f, 100.0f});
+    tune_round(fx);
+    REQUIRE(fx.state_int("bt_tune_has_next_zone") == 1);
+    // The 56/60 zone is 46-70 Hz: two 24 Hz sweeps at the mock's 1 Hz/s.
+    CHECK(fx.text("bt_tune_next_zone_label") == "Next zone (~1 min)");
+
+    fx.panel().handle_tune_next_zone_clicked();
+    const auto [lo, hi] = zone_range(fx.text("bt_tune_zone"));
+    REQUIRE(lo > 0);
+    const int minutes = std::max(1, static_cast<int>(std::lround(2.0 * (hi - lo) / 60.0)));
+    CHECK(fx.text("bt_tune_measure_label") == "Re-measure (~" + std::to_string(minutes) + " min)");
+    for (uint32_t t = 0; t < 60000 && fx.state_int("bt_tune_phase") == PHASE_SWEEPING; t += 100) {
+        fx.pump_ms(100);
+    }
+    // No third zone: the label empties with the button.
+    CHECK(fx.state_int("bt_tune_has_next_zone") == 0);
+    CHECK(fx.text("bt_tune_next_zone_label").empty());
+
+    std::remove(csv_a.c_str());
+    std::remove(csv_b.c_str());
+}
+
+TEST_CASE("every locale's tuning strings fit their buffers", "[belt][panel][tune][i18n]") {
+    BeltPanelFixture fx;
+    constexpr int MAX_LISTED = 3;
+    // The longest each line can get: three-digit peaks, two-digit counts,
+    // turn totals past one.
+    for (const char* lang : {"en", "de", "es", "fr", "it", "ja", "pt", "ru", "zh"}) {
+        INFO("locale " << lang);
+        if (std::string(lang) != "en") {
+            helix::ui::ensure_translation_loaded(lang);
+            lv_translation_set_language(lang);
+            REQUIRE(std::string(lv_tr("Next zone")) != "Next zone");
+        }
+        const auto f = [](const char* tag, auto... args) {
+            return fmt::format(fmt::runtime(lv_tr(tag)), args...);
+        };
+        std::string pairs;
+        for (int i = 0; i < MAX_LISTED; ++i) {
+            pairs += std::string(i == 0 ? "" : " · ") + "133/132";
+        }
+        const std::string turns = f("{} turns", "10⅞");
+        std::string facts = f("Peaks {} Hz", pairs) + f(" · Tuned in {} rounds", 99);
+        for (const char* per_belt : {" · {} tightened about {}", " · {} loosened about {}"}) {
+            facts += f(per_belt, 'A', turns);
+        }
+        CHECK(facts.size() < fx.facts_buf_size());
+
+        for (const char* instruction : {"Release {}'s tensioner, let the spring settle, lock it",
+                                        "Tighten {}", "Loosen {}"}) {
+            CHECK(f(instruction, 'A').size() < fx.instruction_buf_size());
+        }
+        CHECK(f("Matched at {:.1f} Hz", 133.3).size() < fx.instruction_buf_size());
+        CHECK(f("Confirm (full, ~{} min)", 99).size() < fx.confirm_label_buf_size());
+        CHECK(f("Next zone (~{} min)", 99).size() < fx.next_zone_label_buf_size());
+        for (const char* last :
+             {"The gap grew after tightening {0}. Check you turned Path {0}'s tensioner.",
+              "The gap grew after loosening {0}. Check you turned Path {0}'s tensioner."}) {
+            CHECK(f(last, 'A').size() < fx.last_buf_size());
+        }
+        CHECK(f("Path {0}'s peak left the zone. Check that only Path {1}'s tensioner was turned.",
+                'A', 'B')
+                  .size() < fx.last_buf_size());
+    }
+    lv_translation_set_language(helix::ui::kIdentityLocale);
 }
 
 // ============================================================================

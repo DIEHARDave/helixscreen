@@ -1910,6 +1910,7 @@
   <translation tag="New profile name" fr="Nouveau nom de profil"/>
   <translation tag="Next" fr="Suivant"/>
   <translation tag="Next zone" fr="Zone suivante"/>
+  <translation tag="Next zone (~{} min)" fr="Zone suivante (~{} min)"/>
   <translation tag="Niimbot (Bluetooth)" fr="Niimbot (Bluetooth)"/>
   <translation tag="No" fr="Non"/>
   <translation tag="No AMS Detected" fr="Aucun AMS détecté"/>
@@ -2158,6 +2159,7 @@
   <translation tag="Password is required for secured networks" fr="Un mot de passe est requis pour les réseaux sécurisés"/>
   <translation tag="Path A tensioner" fr="Tendeur du Chemin A"/>
   <translation tag="Path B tensioner" fr="Tendeur du Chemin B"/>
+  <translation tag="Path {0}&apos;s peak left the zone. Check that only Path {1}&apos;s tensioner was turned." fr="Le pic du Chemin {0} a quitté la zone. Vérifiez que seul le tendeur du Chemin {1} a été tourné."/>
   <translation tag="Path {}" fr="Chemin {}"/>
   <translation tag="Path {} before" fr="Chemin {} avant"/>
   <translation tag="Path {} earlier round" fr="Chemin {} tour précédent"/>
@@ -3087,6 +3089,8 @@
   <translation tag="The filament may not have fully retracted — try again or manually pull" fr="Le filament n&apos;est peut-être pas entièrement rétracté. Réessayez ou tirez à la main"/>
   <translation tag="The filament system reported an error" fr="Le système de filament a signalé une erreur"/>
   <translation tag="The gap didn&apos;t close (moved {:.1f} Hz). Try a bigger turn." fr="L&apos;écart ne s&apos;est pas réduit (déplacé de {:.1f} Hz). Tournez davantage."/>
+  <translation tag="The gap grew after loosening {0}. Check you turned Path {0}&apos;s tensioner." fr="L&apos;écart a grandi après détente de {0}. Vérifiez que vous avez tourné le tendeur du Chemin {0}."/>
+  <translation tag="The gap grew after tightening {0}. Check you turned Path {0}&apos;s tensioner." fr="L&apos;écart a grandi après tension de {0}. Vérifiez que vous avez tourné le tendeur du Chemin {0}."/>
   <translation tag="The gap is not closing. Something besides tension may be shaping it." fr="L&apos;écart ne se réduit pas. Autre chose que la tension peut en être la cause."/>
   <translation tag="The heater will cycle on and off several times." fr="Le chauffage s&apos;allumera et s&apos;éteindra plusieurs fois."/>
   <translation tag="The helper macros are installed and activate after Klipper restarts." fr="Les macros d&apos;aide sont installées et s&apos;activent après un redémarrage de Klipper."/>
@@ -3636,8 +3640,6 @@
   <translation tag="within one bin" fr="à moins d&apos;un bin"/>
   <translation tag="wpa_supplicant is not running. WiFi features unavailable." fr="wpa_supplicant ne fonctionne pas. Les fonctions WiFi sont indisponibles."/>
   <translation tag="you have" fr="vous avez"/>
-  <translation tag="{0}&apos;s peak went down after tightening. Check you turned Path {0}&apos;s tensioner." fr="Le pic de {0} a baissé après tension. Vérifiez que vous avez tourné le tendeur du Chemin {0}."/>
-  <translation tag="{0}&apos;s peak went up after loosening. Check you turned Path {0}&apos;s tensioner." fr="Le pic de {0} a monté après détente. Vérifiez que vous avez tourné le tendeur du Chemin {0}."/>
   <translation tag="{:.0f}-{:.0f} Hz · about {} min" fr="{:.0f}-{:.0f} Hz · environ {} min"/>
   <translation tag="{} ({})" fr="{} ({})"/>
   <translation tag="{} Hardware Issues" fr="{} problèmes matériels"/>

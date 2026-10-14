@@ -1910,6 +1910,7 @@
   <translation tag="New profile name" ru="Новое имя профиля"/>
   <translation tag="Next" ru="Далее"/>
   <translation tag="Next zone" ru="Следующая зона"/>
+  <translation tag="Next zone (~{} min)" ru="След. зона (~{} мин)"/>
   <translation tag="Niimbot (Bluetooth)" ru="Niimbot (Bluetooth)"/>
   <translation tag="No" ru="Нет"/>
   <translation tag="No AMS Detected" ru="AMS не обнаружен"/>
@@ -2158,6 +2159,7 @@
   <translation tag="Password is required for secured networks" ru="Для защищённых сетей требуется пароль"/>
   <translation tag="Path A tensioner" ru="Натяжитель Пути A"/>
   <translation tag="Path B tensioner" ru="Натяжитель Пути B"/>
+  <translation tag="Path {0}&apos;s peak left the zone. Check that only Path {1}&apos;s tensioner was turned." ru="Пик Пути {0} вышел из зоны. Проверьте, что крутили только натяжитель Пути {1}."/>
   <translation tag="Path {}" ru="Путь {}"/>
   <translation tag="Path {} before" ru="Путь {} раньше"/>
   <translation tag="Path {} earlier round" ru="Путь {} прошлый раунд"/>
@@ -3087,6 +3089,8 @@
   <translation tag="The filament may not have fully retracted — try again or manually pull" ru="Возможно, филамент втянут не полностью. Повторите или вытяните вручную"/>
   <translation tag="The filament system reported an error" ru="Система филамента сообщила об ошибке"/>
   <translation tag="The gap didn&apos;t close (moved {:.1f} Hz). Try a bigger turn." ru="Разница не сократилась (сдвиг {:.1f} Гц). Поверните сильнее."/>
+  <translation tag="The gap grew after loosening {0}. Check you turned Path {0}&apos;s tensioner." ru="Разница выросла после ослабления {0}. Проверьте, что вы крутили натяжитель Пути {0}."/>
+  <translation tag="The gap grew after tightening {0}. Check you turned Path {0}&apos;s tensioner." ru="Разница выросла после натяжения {0}. Проверьте, что вы крутили натяжитель Пути {0}."/>
   <translation tag="The gap is not closing. Something besides tension may be shaping it." ru="Разница не сокращается. Возможно, влияет что-то помимо натяжения."/>
   <translation tag="The heater will cycle on and off several times." ru="Нагреватель будет несколько раз включаться и выключаться."/>
   <translation tag="The helper macros are installed and activate after Klipper restarts." ru="Вспомогательные макросы установлены и активируются после перезапуска Klipper."/>
@@ -3636,8 +3640,6 @@
   <translation tag="within one bin" ru="в пределах одного бина"/>
   <translation tag="wpa_supplicant is not running. WiFi features unavailable." ru="wpa_supplicant не запущен. Функции WiFi недоступны."/>
   <translation tag="you have" ru="у вас"/>
-  <translation tag="{0}&apos;s peak went down after tightening. Check you turned Path {0}&apos;s tensioner." ru="Пик {0} опустился после натяжения. Проверьте, что вы крутили натяжитель Пути {0}."/>
-  <translation tag="{0}&apos;s peak went up after loosening. Check you turned Path {0}&apos;s tensioner." ru="Пик {0} поднялся после ослабления. Проверьте, что вы крутили натяжитель Пути {0}."/>
   <translation tag="{:.0f}-{:.0f} Hz · about {} min" ru="{:.0f}-{:.0f} Гц · примерно {} мин"/>
   <translation tag="{} ({})" ru="{} ({})"/>
   <translation tag="{} Hardware Issues" ru="Проблем с оборудованием: {}"/>

@@ -501,8 +501,16 @@
             <event_cb trigger="clicked" callback="belt_tension_tune_keep_cb"/>
           </ui_button>
           <ui_button name="btn_tune_next_zone"
+                     width="0" height="#button_height" flex_grow="1" bind_text="bt_tune_next_zone_label"
+                     variant="secondary">
+            <bind_flag_if cond="bt_tune_has_next_zone eq 0 or ui_breakpoint le 2 or ui_is_portrait eq 1" flag="hidden"/>
+            <bind_state_if_eq subject="bt_can_start" state="disabled" ref_value="0"/>
+            <event_cb trigger="clicked" callback="belt_tension_tune_next_zone_cb"/>
+          </ui_button>
+          <ui_button name="btn_tune_next_zone_short"
                      width="0" height="#button_height" flex_grow="1" text="Next zone" variant="secondary">
-            <bind_flag_if_eq subject="bt_tune_has_next_zone" flag="hidden" ref_value="0"/>
+            <bind_flag_if cond="bt_tune_has_next_zone eq 0 or (ui_breakpoint gt 2 and ui_is_portrait eq 0)"
+                          flag="hidden"/>
             <bind_state_if_eq subject="bt_can_start" state="disabled" ref_value="0"/>
             <event_cb trigger="clicked" callback="belt_tension_tune_next_zone_cb"/>
           </ui_button>

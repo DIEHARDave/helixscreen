@@ -2120,6 +2120,7 @@ translations:
   New profile name: Neuer Profilname
   Next: Weiter
   Next zone: "Nächste Zone"
+  Next zone (~{} min): "Nächste Zone (~{} Min)"
   Niimbot (Bluetooth): Niimbot (Bluetooth)
   'No': Nein
   No AMS Detected: 'Kein AMS erkannt'
@@ -2389,6 +2390,7 @@ translations:
     erforderlich
   Path A tensioner: "Spanner von Pfad A"
   Path B tensioner: "Spanner von Pfad B"
+  Path {0}'s peak left the zone. Check that only Path {1}'s tensioner was turned.: "Die Spitze von Pfad {0} hat die Zone verlassen. Prüfe, dass nur der Spanner von Pfad {1} gedreht wurde."
   Path {}: Pfad {}
   Path {} before: Pfad {} zuvor
   Path {} earlier round: "Pfad {} frühere Runde"
@@ -3437,6 +3439,8 @@ translations:
   The filament may not have fully retracted — try again or manually pull: Das Filament wurde möglicherweise nicht vollständig eingezogen. Erneut versuchen oder von Hand ziehen
   The filament system reported an error: Das Filamentsystem meldete einen Fehler
   The gap didn't close (moved {:.1f} Hz). Try a bigger turn.: "Der Abstand hat sich nicht verringert ({:.1f} Hz bewegt). Stärker drehen."
+  The gap grew after loosening {0}. Check you turned Path {0}'s tensioner.: "Der Abstand wuchs nach dem Lockern von {0}. Prüfe, ob du den Spanner von Pfad {0} gedreht hast."
+  The gap grew after tightening {0}. Check you turned Path {0}'s tensioner.: "Der Abstand wuchs nach dem Spannen von {0}. Prüfe, ob du den Spanner von Pfad {0} gedreht hast."
   The gap is not closing. Something besides tension may be shaping it.: "Der Abstand schließt sich nicht. Etwas anderes als die Spannung könnte ihn prägen."
   The heater will cycle on and off several times.: Die Heizung wird mehrmals ein-
     und ausschalten.
@@ -4075,8 +4079,6 @@ translations:
   within one bin: "innerhalb eines Bins"
   wpa_supplicant is not running. WiFi features unavailable.: wpa_supplicant läuft nicht. WiFi-Funktionen sind nicht verfügbar.
   you have: Sie haben
-  "{0}'s peak went down after tightening. Check you turned Path {0}'s tensioner.": "Die Spitze von {0} sank nach dem Spannen. Prüfe, ob du den Spanner von Pfad {0} gedreht hast."
-  "{0}'s peak went up after loosening. Check you turned Path {0}'s tensioner.": "Die Spitze von {0} stieg nach dem Lockern. Prüfe, ob du den Spanner von Pfad {0} gedreht hast."
   '{:.0f}-{:.0f} Hz · about {} min': '{:.0f}-{:.0f} Hz · ca. {} Min.'
   '{} ({})': '{} ({})'
   '{} Hardware Issues': '{} Hardware-Probleme'

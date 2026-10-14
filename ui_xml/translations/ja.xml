@@ -1910,6 +1910,7 @@
   <translation tag="New profile name" ja="新しいプロファイル名"/>
   <translation tag="Next" ja="次へ"/>
   <translation tag="Next zone" ja="次のゾーン"/>
+  <translation tag="Next zone (~{} min)" ja="次のゾーン(約{}分)"/>
   <translation tag="Niimbot (Bluetooth)" ja="Niimbot (Bluetooth)"/>
   <translation tag="No" ja="いいえ"/>
   <translation tag="No AMS Detected" ja="AMS が検出されません"/>
@@ -2158,6 +2159,7 @@
   <translation tag="Password is required for secured networks" ja="セキュリティ保護されたネットワークにはパスワードが必要です"/>
   <translation tag="Path A tensioner" ja="パスAのテンショナー"/>
   <translation tag="Path B tensioner" ja="パスBのテンショナー"/>
+  <translation tag="Path {0}&apos;s peak left the zone. Check that only Path {1}&apos;s tensioner was turned." ja="パス{0}のピークがゾーンから外れました。パス{1}のテンショナーだけを回したか確認してください。"/>
   <translation tag="Path {}" ja="パス {}"/>
   <translation tag="Path {} before" ja="パス{}（以前）"/>
   <translation tag="Path {} earlier round" ja="パス {} 前のラウンド"/>
@@ -3087,6 +3089,8 @@
   <translation tag="The filament may not have fully retracted — try again or manually pull" ja="フィラメントが完全に戻っていない可能性があります。再試行するか手で引き抜いてください"/>
   <translation tag="The filament system reported an error" ja="フィラメントシステムがエラーを報告しました"/>
   <translation tag="The gap didn&apos;t close (moved {:.1f} Hz). Try a bigger turn." ja="差が縮まりませんでした({:.1f} Hz移動)。もっと大きく回してください。"/>
+  <translation tag="The gap grew after loosening {0}. Check you turned Path {0}&apos;s tensioner." ja="{0}を緩めた後に差が広がりました。パス{0}のテンショナーを回したか確認してください。"/>
+  <translation tag="The gap grew after tightening {0}. Check you turned Path {0}&apos;s tensioner." ja="{0}を締めた後に差が広がりました。パス{0}のテンショナーを回したか確認してください。"/>
   <translation tag="The gap is not closing. Something besides tension may be shaping it." ja="差が縮まりません。張力以外の何かが影響している可能性があります。"/>
   <translation tag="The heater will cycle on and off several times." ja="ヒーターは数回オン/オフを繰り返します。"/>
   <translation tag="The helper macros are installed and activate after Klipper restarts." ja="ヘルパーマクロはインストール済みで、Klipper の再起動後に有効になります。"/>
@@ -3636,8 +3640,6 @@
   <translation tag="within one bin" ja="1ビン以内"/>
   <translation tag="wpa_supplicant is not running. WiFi features unavailable." ja="wpa_supplicant が動作していません。WiFi 機能は利用できません。"/>
   <translation tag="you have" ja="現在は"/>
-  <translation tag="{0}&apos;s peak went down after tightening. Check you turned Path {0}&apos;s tensioner." ja="締めた後に{0}のピークが下がりました。パス{0}のテンショナーを回したか確認してください。"/>
-  <translation tag="{0}&apos;s peak went up after loosening. Check you turned Path {0}&apos;s tensioner." ja="緩めた後に{0}のピークが上がりました。パス{0}のテンショナーを回したか確認してください。"/>
   <translation tag="{:.0f}-{:.0f} Hz · about {} min" ja="{:.0f}-{:.0f} Hz · 約{}分"/>
   <translation tag="{} ({})" ja="{}（{}）"/>
   <translation tag="{} Hardware Issues" ja="ハードウェアの問題 {} 件"/>

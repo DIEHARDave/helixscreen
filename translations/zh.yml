@@ -1974,6 +1974,7 @@ translations:
   New profile name: 新配置名称
   Next: 下一步
   Next zone: "下一区间"
+  Next zone (~{} min): "下一区间(约 {} 分钟)"
   Niimbot (Bluetooth): Niimbot（蓝牙）
   'No': 否
   No AMS Detected: '未检测到 AMS'
@@ -2233,6 +2234,7 @@ translations:
   Password is required for secured networks: 加密网络需要密码
   Path A tensioner: "路径 A 张紧器"
   Path B tensioner: "路径 B 张紧器"
+  Path {0}'s peak left the zone. Check that only Path {1}'s tensioner was turned.: "路径 {0} 的峰离开了区间。请确认只转动了路径 {1} 的张紧器。"
   Path {}: 路径 {}
   Path {} before: 路径 {}（之前）
   Path {} earlier round: "路径 {} 上一轮"
@@ -3211,6 +3213,8 @@ translations:
   The filament may not have fully retracted — try again or manually pull: 耗材可能未完全回抽。请重试或手动抽出
   The filament system reported an error: 耗材系统报告错误
   The gap didn't close (moved {:.1f} Hz). Try a bigger turn.: "差距没有缩小(移动了 {:.1f} Hz)。请转得更多一些。"
+  The gap grew after loosening {0}. Check you turned Path {0}'s tensioner.: "放松 {0} 后差距变大了。请确认转动的是路径 {0} 的张紧器。"
+  The gap grew after tightening {0}. Check you turned Path {0}'s tensioner.: "拉紧 {0} 后差距变大了。请确认转动的是路径 {0} 的张紧器。"
   The gap is not closing. Something besides tension may be shaping it.: "差距没有缩小。可能有张力以外的因素在影响。"
   The heater will cycle on and off several times.: 加热器将多次开关循环。
   The helper macros are installed and activate after Klipper restarts.: '帮助宏已安装，将在 Klipper 重启后启用。'
@@ -3798,8 +3802,6 @@ translations:
   within one bin: "在一个频点内"
   wpa_supplicant is not running. WiFi features unavailable.: wpa_supplicant 未运行。WiFi 功能不可用。
   you have: 您有
-  "{0}'s peak went down after tightening. Check you turned Path {0}'s tensioner.": "拉紧后 {0} 的峰下降了。请确认转动的是路径 {0} 的张紧器。"
-  "{0}'s peak went up after loosening. Check you turned Path {0}'s tensioner.": "放松后 {0} 的峰上升了。请确认转动的是路径 {0} 的张紧器。"
   '{:.0f}-{:.0f} Hz · about {} min': '{:.0f}-{:.0f} Hz · 约 {} 分钟'
   '{} ({})': '{}（{}）'
   '{} Hardware Issues': '{} 个硬件问题'

@@ -545,11 +545,15 @@ bool BeltTuneSession::next_zone() {
 }
 
 bool BeltTuneSession::has_next_zone() const {
+    return peek_next_zone().has_value();
+}
+
+std::optional<BeltTuneZone> BeltTuneSession::peek_next_zone() const {
     std::vector<float> matched = matched_centres_hz_;
     if (zone_) {
         matched.push_back((zone_->ref_hz + zone_->adj_hz) / 2.0f);
     }
-    return find_zone(std::move(matched)).has_value();
+    return find_zone(std::move(matched));
 }
 
 bool BeltTuneSession::needs_baseline() const {

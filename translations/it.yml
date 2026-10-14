@@ -2110,6 +2110,7 @@ translations:
   New profile name: Nome nuovo profilo
   Next: Avanti
   Next zone: "Zona successiva"
+  Next zone (~{} min): "Zona successiva (~{} min)"
   Niimbot (Bluetooth): Niimbot (Bluetooth)
   'No': 'No'
   No AMS Detected: 'Nessun AMS rilevato'
@@ -2380,6 +2381,7 @@ translations:
     protette
   Path A tensioner: "Tenditore Percorso A"
   Path B tensioner: "Tenditore Percorso B"
+  Path {0}'s peak left the zone. Check that only Path {1}'s tensioner was turned.: "Il picco del Percorso {0} è uscito dalla zona. Verifica di aver girato solo il tenditore del Percorso {1}."
   Path {}: Percorso {}
   Path {} before: Percorso {} prima
   Path {} earlier round: "Percorso {} giro precedente"
@@ -3429,6 +3431,8 @@ translations:
   The filament may not have fully retracted — try again or manually pull: Il filamento potrebbe non essersi ritratto completamente. Riprovare o estrarlo a mano
   The filament system reported an error: Il sistema filamento ha segnalato un errore
   The gap didn't close (moved {:.1f} Hz). Try a bigger turn.: "La differenza non si è ridotta (spostata di {:.1f} Hz). Prova a girare di più."
+  The gap grew after loosening {0}. Check you turned Path {0}'s tensioner.: "La differenza è cresciuta dopo l'allentamento di {0}. Verifica di aver girato il tenditore del Percorso {0}."
+  The gap grew after tightening {0}. Check you turned Path {0}'s tensioner.: "La differenza è cresciuta dopo il tensionamento di {0}. Verifica di aver girato il tenditore del Percorso {0}."
   The gap is not closing. Something besides tension may be shaping it.: "La differenza non si chiude. Qualcosa oltre alla tensione potrebbe influire."
   The heater will cycle on and off several times.: Il riscaldatore si accenderà e
     spegnerà diverse volte.
@@ -4066,8 +4070,6 @@ translations:
   within one bin: "entro un bin"
   wpa_supplicant is not running. WiFi features unavailable.: wpa_supplicant non è in esecuzione. Le funzioni WiFi non sono disponibili.
   you have: hai
-  "{0}'s peak went down after tightening. Check you turned Path {0}'s tensioner.": "Il picco di {0} è sceso dopo il tensionamento. Verifica di aver girato il tenditore del Percorso {0}."
-  "{0}'s peak went up after loosening. Check you turned Path {0}'s tensioner.": "Il picco di {0} è salito dopo l'allentamento. Verifica di aver girato il tenditore del Percorso {0}."
   '{:.0f}-{:.0f} Hz · about {} min': '{:.0f}-{:.0f} Hz · circa {} min'
   '{} ({})': '{} ({})'
   '{} Hardware Issues': '{} problemi hardware'

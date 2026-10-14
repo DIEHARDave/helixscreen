@@ -153,7 +153,8 @@ class BeltTensionPanel : public OverlayBase {
     /// "Good enough": back to RESULTS as last shown, no sweep.
     void handle_tune_done_clicked();
     void handle_tune_swap_clicked();
-    /// The turn stepper: +1 / -1 steps of belt_tune::TURN_STEP, clamped.
+    /// The turn stepper: +1 / -1 steps of belt_tune::TURN_STEP, clamped to
+    /// [0, TURN_MAX]. Zero re-measures without a turn.
     void handle_tune_amount_step(int direction);
     void handle_tune_next_zone_clicked();
     /// A full A+B check against the round-0 similarity, landing on RESULTS.
@@ -222,6 +223,8 @@ class BeltTensionPanel : public OverlayBase {
     void end_tuning();
     /// Minutes a full A+B check takes at the printer's sweep rate.
     [[nodiscard]] int full_check_minutes() const;
+    /// Minutes a tuning round (both paths) takes over `window`.
+    [[nodiscard]] int round_minutes(const helix::calibration::BeltSweepWindow& window) const;
 
     //
     // === Subject refresh ===
@@ -308,7 +311,7 @@ class BeltTensionPanel : public OverlayBase {
     lv_subject_t verdict_text_subject_{};
     char verdict_text_buf_[128] = {};
     lv_subject_t facts_subject_{};
-    char facts_buf_[192] = {};
+    char facts_buf_[256] = {};
     lv_subject_t unpaired_subject_{};
     char unpaired_buf_[128] = {};
     lv_subject_t has_unpaired_subject_{};
@@ -331,7 +334,7 @@ class BeltTensionPanel : public OverlayBase {
     lv_subject_t tune_has_next_zone_subject_{};
     lv_subject_t tune_shape_warning_subject_{};
     lv_subject_t tune_instruction_subject_{};
-    char tune_instruction_buf_[96] = {};
+    char tune_instruction_buf_[160] = {};
     lv_subject_t tune_amount_subject_{};
     char tune_amount_buf_[32] = {};
     lv_subject_t tune_gap_subject_{};
@@ -354,7 +357,9 @@ class BeltTensionPanel : public OverlayBase {
     lv_subject_t tune_measure_label_subject_{};
     char tune_measure_label_buf_[48] = {};
     lv_subject_t tune_confirm_label_subject_{};
-    char tune_confirm_label_buf_[48] = {};
+    char tune_confirm_label_buf_[64] = {};
+    lv_subject_t tune_next_zone_label_subject_{};
+    char tune_next_zone_label_buf_[64] = {};
 
     // Gate observers. Every one carries PrinterState's own SubjectLifetime -
     // the observe<V> factory requires it as its fourth parameter; a
@@ -406,6 +411,12 @@ class BeltTensionPanel : public OverlayBase {
     float was_similarity_percent_ = 0.0f;
     std::optional<helix::MemoryInfo> mem_override_;
     lv_obj_t* low_ram_dialog_ = nullptr;
+    /// The low-RAM warning was accepted in this tuning session; later rounds
+    /// do not ask again.
+    bool tune_low_ram_accepted_ = false;
+    /// Deactivated for the screensaver: the next activation is a wake, which
+    /// keeps the view, the run and the tuning session.
+    bool suspended_ = false;
     /// RESULTS's Re-test menu on compact layouts.
     helix::ui::BeltRetestMenu retest_menu_;
     /// Close the Re-test menu and drop its callback, so nothing it dispatches
@@ -438,7 +449,7 @@ class BeltTensionPanel : public OverlayBase {
     /// The direction the last round's turn was advised in: what the user acted on.
     helix::calibration::BeltTurnDirection tune_last_direction_ =
         helix::calibration::BeltTurnDirection::TIGHTEN;
-    /// How far the adjusted peak moved in the last round, Hz.
+    /// How far the gap moved in the last round, Hz.
     float tune_last_move_hz_ = 0.0f;
     float tune_turns_ = helix::calibration::belt_tune::FIRST_TURN; ///< the stepper
     float tune_gauge_range_hz_ = 2.0f * helix::calibration::belt_tune::GAUGE_WARN_HZ;

@@ -1910,6 +1910,7 @@
   <translation tag="New profile name" en="New profile name"/>
   <translation tag="Next" en="Next"/>
   <translation tag="Next zone" en="Next zone"/>
+  <translation tag="Next zone (~{} min)" en="Next zone (~{} min)"/>
   <translation tag="Niimbot (Bluetooth)" en="Niimbot (Bluetooth)"/>
   <translation tag="No" en="No"/>
   <translation tag="No AMS Detected" en="No AMS Detected"/>
@@ -2158,6 +2159,7 @@
   <translation tag="Password is required for secured networks" en="Password is required for secured networks"/>
   <translation tag="Path A tensioner" en="Path A tensioner"/>
   <translation tag="Path B tensioner" en="Path B tensioner"/>
+  <translation tag="Path {0}&apos;s peak left the zone. Check that only Path {1}&apos;s tensioner was turned." en="Path {0}&apos;s peak left the zone. Check that only Path {1}&apos;s tensioner was turned."/>
   <translation tag="Path {}" en="Path {}"/>
   <translation tag="Path {} before" en="Path {} before"/>
   <translation tag="Path {} earlier round" en="Path {} earlier round"/>
@@ -3087,6 +3089,8 @@
   <translation tag="The filament may not have fully retracted — try again or manually pull" en="The filament may not have fully retracted — try again or manually pull"/>
   <translation tag="The filament system reported an error" en="The filament system reported an error"/>
   <translation tag="The gap didn&apos;t close (moved {:.1f} Hz). Try a bigger turn." en="The gap didn&apos;t close (moved {:.1f} Hz). Try a bigger turn."/>
+  <translation tag="The gap grew after loosening {0}. Check you turned Path {0}&apos;s tensioner." en="The gap grew after loosening {0}. Check you turned Path {0}&apos;s tensioner."/>
+  <translation tag="The gap grew after tightening {0}. Check you turned Path {0}&apos;s tensioner." en="The gap grew after tightening {0}. Check you turned Path {0}&apos;s tensioner."/>
   <translation tag="The gap is not closing. Something besides tension may be shaping it." en="The gap is not closing. Something besides tension may be shaping it."/>
   <translation tag="The heater will cycle on and off several times." en="The heater will cycle on and off several times."/>
   <translation tag="The helper macros are installed and activate after Klipper restarts." en="The helper macros are installed and activate after Klipper restarts."/>
@@ -3636,8 +3640,6 @@
   <translation tag="within one bin" en="within one bin"/>
   <translation tag="wpa_supplicant is not running. WiFi features unavailable." en="wpa_supplicant is not running. WiFi features unavailable."/>
   <translation tag="you have" en="you have"/>
-  <translation tag="{0}&apos;s peak went down after tightening. Check you turned Path {0}&apos;s tensioner." en="{0}&apos;s peak went down after tightening. Check you turned Path {0}&apos;s tensioner."/>
-  <translation tag="{0}&apos;s peak went up after loosening. Check you turned Path {0}&apos;s tensioner." en="{0}&apos;s peak went up after loosening. Check you turned Path {0}&apos;s tensioner."/>
   <translation tag="{:.0f}-{:.0f} Hz · about {} min" en="{:.0f}-{:.0f} Hz · about {} min"/>
   <translation tag="{} ({})" en="{} ({})"/>
   <translation tag="{} Hardware Issues" en="{} Hardware Issues"/>

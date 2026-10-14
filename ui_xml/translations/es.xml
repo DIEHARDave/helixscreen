@@ -1910,6 +1910,7 @@
   <translation tag="New profile name" es="Nombre del nuevo perfil"/>
   <translation tag="Next" es="Siguiente"/>
   <translation tag="Next zone" es="Siguiente zona"/>
+  <translation tag="Next zone (~{} min)" es="Siguiente zona (~{} min)"/>
   <translation tag="Niimbot (Bluetooth)" es="Niimbot (Bluetooth)"/>
   <translation tag="No" es="No"/>
   <translation tag="No AMS Detected" es="No se detectó AMS"/>
@@ -2158,6 +2159,7 @@
   <translation tag="Password is required for secured networks" es="Se requiere contraseña para redes protegidas"/>
   <translation tag="Path A tensioner" es="Tensor de la Ruta A"/>
   <translation tag="Path B tensioner" es="Tensor de la Ruta B"/>
+  <translation tag="Path {0}&apos;s peak left the zone. Check that only Path {1}&apos;s tensioner was turned." es="El pico de la Ruta {0} salió de la zona. Comprueba que solo giraste el tensor de la Ruta {1}."/>
   <translation tag="Path {}" es="Ruta {}"/>
   <translation tag="Path {} before" es="Ruta {} antes"/>
   <translation tag="Path {} earlier round" es="Ruta {} ronda anterior"/>
@@ -3087,6 +3089,8 @@
   <translation tag="The filament may not have fully retracted — try again or manually pull" es="Puede que el filamento no se haya retraído por completo. Reintente o tire a mano"/>
   <translation tag="The filament system reported an error" es="El sistema de filamento informó un error"/>
   <translation tag="The gap didn&apos;t close (moved {:.1f} Hz). Try a bigger turn." es="La diferencia no se cerró (se movió {:.1f} Hz). Prueba un giro mayor."/>
+  <translation tag="The gap grew after loosening {0}. Check you turned Path {0}&apos;s tensioner." es="La diferencia creció tras aflojar {0}. Comprueba que giraste el tensor de la Ruta {0}."/>
+  <translation tag="The gap grew after tightening {0}. Check you turned Path {0}&apos;s tensioner." es="La diferencia creció tras tensar {0}. Comprueba que giraste el tensor de la Ruta {0}."/>
   <translation tag="The gap is not closing. Something besides tension may be shaping it." es="La diferencia no se cierra. Algo distinto de la tensión puede estar influyendo."/>
   <translation tag="The heater will cycle on and off several times." es="El calentador se encenderá y apagará varias veces."/>
   <translation tag="The helper macros are installed and activate after Klipper restarts." es="Las macros de ayuda están instaladas y se activan tras reiniciar Klipper."/>
@@ -3636,8 +3640,6 @@
   <translation tag="within one bin" es="dentro de un bin"/>
   <translation tag="wpa_supplicant is not running. WiFi features unavailable." es="wpa_supplicant no se está ejecutando. Las funciones WiFi no están disponibles."/>
   <translation tag="you have" es="tienes"/>
-  <translation tag="{0}&apos;s peak went down after tightening. Check you turned Path {0}&apos;s tensioner." es="El pico de {0} bajó tras tensar. Comprueba que giraste el tensor de la Ruta {0}."/>
-  <translation tag="{0}&apos;s peak went up after loosening. Check you turned Path {0}&apos;s tensioner." es="El pico de {0} subió tras aflojar. Comprueba que giraste el tensor de la Ruta {0}."/>
   <translation tag="{:.0f}-{:.0f} Hz · about {} min" es="{:.0f}-{:.0f} Hz · unos {} min"/>
   <translation tag="{} ({})" es="{} ({})"/>
   <translation tag="{} Hardware Issues" es="{} problemas de hardware"/>
