@@ -15,6 +15,7 @@ import {
   adoptionQueries,
   releasesQueries,
   overviewQueries,
+  SQL_FALSE,
   wAvg,
   wCount,
   wCountIf,
@@ -31,8 +32,8 @@ describe("filterFor", () => {
   });
 
   it("excludes a kind that lacks the filtered field", () => {
-    expect(filterFor("memory_warning", { model: "Voron 2.4" })).toBe(" AND 0");
-    expect(filterFor("memory_snapshot", { board: "k1" })).toBe(" AND 0");
+    expect(filterFor("memory_warning", { model: "Voron 2.4" })).toBe(` AND ${SQL_FALSE}`);
+    expect(filterFor("memory_snapshot", { board: "k1" })).toBe(` AND ${SQL_FALSE}`);
   });
 
   it("resolves model to the detected printer model on session and hardware_profile", () => {
@@ -102,7 +103,7 @@ describe("filterForKinds", () => {
   });
 
   it("excludes everything when no kind has the field", () => {
-    expect(filterForKinds(["memory_warning", "crash"], { model: "Voron 2.4" })).toBe(" AND 0");
+    expect(filterForKinds(["memory_warning", "crash"], { model: "Voron 2.4" })).toBe(` AND ${SQL_FALSE}`);
   });
 
   it("restricts to the listed kinds with one IN list when no filter is active", () => {
@@ -380,5 +381,28 @@ describe("distinct devices per field", () => {
         ` FROM helixscreen_telemetry WHERE timestamp >= NOW() - INTERVAL '7' DAY AND index1 = 'session'` +
         ` AND ${col("session", "app_platform")} != '' GROUP BY name ORDER BY count DESC`,
     );
+  });
+});
+
+describe("constant predicates", () => {
+  const filterSets: FilterParams[] = [
+    { model: "Voron 2.4" },
+    { board: "k1" },
+    { platform: "pi" },
+    { version: "1.0.0" },
+  ];
+  it("never emit a bare integer as a boolean", () => {
+    const builders = Object.entries(queries).filter(
+      ([name, fn]) => name.endsWith("Queries") && name !== "releasesQueries" && typeof fn === "function",
+    ) as [string, (days: number, f?: FilterParams) => string[]][];
+    expect(builders.length).toBeGreaterThan(5);
+    for (const [name, build] of builders) {
+      for (const f of filterSets) {
+        for (const sql of build(7, f)) {
+          expect(sql, `${name} ${JSON.stringify(f)}`).not.toMatch(/AND 0\b|OR 0\b|AND 1\b(?! =)/);
+        }
+      }
+    }
+    for (const sql of releasesQueries([])) expect(sql).not.toMatch(/AND 0\b|OR 0\b|AND 1\b(?! =)|\bWHERE 0\b/);
   });
 });
