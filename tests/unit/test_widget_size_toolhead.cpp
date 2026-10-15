@@ -20,6 +20,7 @@
 #include "../lvgl_ui_test_fixture.h"
 #include "../test_helpers/panel_widget_size_harness.h"
 #include "../test_helpers/scoped_breakpoint.h"
+#include "../test_helpers/tile_boxes.h"
 #include "../test_helpers/update_queue_test_access.h"
 #include "app_globals.h"
 #include "moonraker_api.h"
@@ -38,6 +39,13 @@
 #include "hv/json.hpp"
 
 using namespace helix;
+using helix::test::Box;
+using helix::test::kCell;
+using helix::test::kColumn;
+using helix::test::kFull;
+using helix::test::kGlance;
+using helix::test::kStrip;
+using helix::test::kWide;
 using nlohmann::json;
 
 namespace {
@@ -167,28 +175,12 @@ bool shown(lv_obj_t* obj) {
     return true;
 }
 
-struct Box {
-    int w;
-    int h;
-    SizeRung rung;
-};
-
-constexpr Box kWide{234, 113, SizeRung::Wide};
-constexpr Box kFull{234, 232, SizeRung::Full};
-
 } // namespace
 
 TEST_CASE_METHOD(ToolheadFixture, "toolhead: medium-tier budgets land on their rung",
                  "[widget_size][toolhead]") {
     PanelWidgetHarness<ToolheadWidget> h(test_screen(), state());
-    const Box boxes[] = {
-        {55, 54, SizeRung::Glance},
-        {114, 54, SizeRung::Strip},
-        {55, 113, SizeRung::Column},
-        {114, 113, SizeRung::Cell},
-        kWide,
-        kFull,
-    };
+    const auto& boxes = test::kMediumLadder;
     for (const auto& b : boxes) {
         INFO(b.w << "x" << b.h);
         h.resize(1, 1, b.w, b.h);
@@ -257,7 +249,7 @@ TEST_CASE_METHOD(ToolheadFixture,
     set_position(10000, 10000, 1234);
     PanelWidgetHarness<ToolheadWidget> h(test_screen(), state());
 
-    for (const auto& b : {Box{55, 54, SizeRung::Glance}, Box{114, 54, SizeRung::Strip}}) {
+    for (const auto& b : {kGlance, kStrip}) {
         INFO(b.w << "x" << b.h);
         h.resize(1, 1, b.w, b.h);
         CHECK(shown(part(h, "toolhead_letters")));
@@ -377,10 +369,10 @@ TEST_CASE_METHOD(ToolheadFixture, "toolhead: content sits vertically centred at 
         Box box;
         const char* section;
     };
-    const Case cases[] = {{{55, 54, SizeRung::Glance}, "toolhead_letters"},
-                          {{114, 54, SizeRung::Strip}, "toolhead_letters"},
-                          {{55, 113, SizeRung::Column}, "toolhead_rows"},
-                          {{114, 113, SizeRung::Cell}, "toolhead_rows"}};
+    const Case cases[] = {{kGlance, "toolhead_letters"},
+                          {kStrip, "toolhead_letters"},
+                          {kColumn, "toolhead_rows"},
+                          {kCell, "toolhead_rows"}};
     for (const auto& c : cases) {
         INFO(c.box.w << "x" << c.box.h << " " << c.section);
         h.resize(1, 1, c.box.w, c.box.h);

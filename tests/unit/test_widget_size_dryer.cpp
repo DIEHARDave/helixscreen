@@ -17,6 +17,7 @@
 
 #include "../lvgl_ui_test_fixture.h"
 #include "../test_helpers/panel_widget_size_harness.h"
+#include "../test_helpers/tile_boxes.h"
 #include "../test_helpers/update_queue_test_access.h"
 #include "dryer_summary.h"
 #include "panel_widget_manager.h"
@@ -29,6 +30,10 @@
 using namespace helix;
 using helix::printer::EnvironmentZone;
 using helix::printer::ZoneDryingState;
+using helix::test::Box;
+using helix::test::kCell;
+using helix::test::kGlance;
+using helix::test::kWide;
 
 namespace {
 
@@ -126,17 +131,6 @@ lv_obj_t* part(PanelWidgetHarness<DryerWidget>& h, const char* name) {
     return obj;
 }
 
-struct Box {
-    int w;
-    int h;
-    SizeRung rung;
-};
-
-constexpr Box kMedium[] = {
-    {55, 54, SizeRung::Glance}, {114, 54, SizeRung::Strip}, {55, 113, SizeRung::Column},
-    {114, 113, SizeRung::Cell}, {234, 113, SizeRung::Wide}, {234, 232, SizeRung::Full},
-};
-
 } // namespace
 
 TEST_CASE_METHOD(DryerFixture, "dryer: medium-tier budgets land on their rung, idle and drying",
@@ -144,7 +138,7 @@ TEST_CASE_METHOD(DryerFixture, "dryer: medium-tier budgets land on their rung, i
     PanelWidgetHarness<DryerWidget> h(test_screen());
     for (const auto& input : {one_box_idle(), one_box_drying(), two_drying()}) {
         publish(input);
-        for (const auto& b : kMedium) {
+        for (const auto& b : test::kMediumLadder) {
             INFO(b.w << "x" << b.h << " drying=" << summarize_dryers(input).drying_count);
             h.resize(1, 1, b.w, b.h);
             CHECK(rung_subject() == static_cast<int>(b.rung));
@@ -240,8 +234,7 @@ TEST_CASE_METHOD(DryerFixture, "dryer: an unknown progress draws the time with n
     publish(in);
     PanelWidgetHarness<DryerWidget> h(test_screen());
 
-    for (const auto& b : {Box{55, 54, SizeRung::Glance}, Box{114, 113, SizeRung::Cell},
-                          Box{234, 113, SizeRung::Wide}}) {
+    for (const auto& b : {kGlance, kCell, kWide}) {
         INFO(b.w << "x" << b.h);
         h.resize(1, 1, b.w, b.h);
         CHECK_FALSE(shown(part(h, "dryer_ring_box")));
@@ -413,7 +406,7 @@ TEST_CASE_METHOD(DryerFixture, "dryer: content sits at the vertical centre of th
     for (const auto& input : {one_box_idle(), one_box_drying()}) {
         publish(input);
         PanelWidgetHarness<DryerWidget> h(test_screen());
-        for (const auto& b : kMedium) {
+        for (const auto& b : test::kMediumLadder) {
             if (b.rung == SizeRung::Full)
                 continue;
             INFO(b.w << "x" << b.h << " drying=" << summarize_dryers(input).drying_count);
