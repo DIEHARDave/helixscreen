@@ -282,10 +282,11 @@ TEST_CASE("ThermalRateModel blends a short measured climb with the known rate", 
     // A measured span as long as the one asked about stands on its own.
     REQUIRE(model.estimate_seconds(30.0f, 50.0f) == Catch::Approx(20.0f).margin(2.0f));
 
-    // A guessed default is no better than the fast start and is not blended.
+    // A guessed default is no better than the fast start and is not blended,
+    // however slow it says the bed is.
     ThermalRateModel guessed;
     guessed.reset(30.0f);
-    guessed.set_default_rate(1.0f);
+    guessed.set_default_rate(6.0f);
     tick = 5000;
     for (float temp = 30.0f; temp <= 50.0f; tick += 5000, temp += 5.0f) {
         guessed.record_sample(temp, tick);
@@ -294,6 +295,37 @@ TEST_CASE("ThermalRateModel blends a short measured climb with the known rate", 
     // A database rate is a measurement of this printer and is.
     guessed.set_default_rate(6.0f, /*measured=*/true);
     REQUIRE(guessed.estimate_seconds(30.0f, 105.0f) >= 0.6f * 6.0f * 75.0f);
+
+    // This printer's own history beats a database rate for the model.
+    guessed.set_default_rate(2.0f, /*measured=*/true);
+    const float from_database = guessed.estimate_seconds(30.0f, 105.0f);
+    guessed.load_history(6.0f);
+    CAPTURE(from_database);
+    REQUIRE(from_database < 0.6f * 6.0f * 75.0f);
+    REQUIRE(guessed.estimate_seconds(30.0f, 105.0f) >= 0.6f * 6.0f * 75.0f);
+}
+
+TEST_CASE("ThermalRateModel counts the step that arrives at the target", "[thermal_rate]") {
+    // A nozzle climbs 30C -> 205C at 0.2 s/C, then takes 15s for its last 15C.
+    ThermalRateModel model;
+    model.reset(30.0f);
+    uint32_t tick = 5000;
+    float temp = 30.0f;
+    model.note_target(220.0f, temp, tick);
+    model.record_sample(temp, tick);
+    while (temp < 205.0f) {
+        tick += 5000;
+        temp += 25.0f;
+        model.note_target(220.0f, temp, tick);
+        model.record_sample(temp, tick);
+    }
+    tick += 15000;
+    model.note_target(220.0f, 224.0f, tick); // overshot: only 15C were toward the target
+    model.record_sample(224.0f, tick);
+
+    // 50s for 190C: the slow arrival is part of the climb.
+    CAPTURE(model.climb_rate());
+    REQUIRE(model.climb_rate() == Catch::Approx(50.0f / 190.0f).margin(0.002f));
 }
 
 TEST_CASE("ThermalRateModel no measurement returns 0 for save", "[thermal_rate]") {

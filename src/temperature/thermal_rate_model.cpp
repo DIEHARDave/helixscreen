@@ -21,10 +21,10 @@ void ThermalRateModel::record_sample(float temp_c, uint32_t tick_ms) {
         return;
     }
 
-    // With a target reported, only a reading under a positive target is the
-    // heater heating; a heater warming beside its neighbour at target 0, or
-    // above its target, would add its seconds to the climb for good.
-    if (target_known_ && !(target_c_ > 0.0f && temp_c < target_c_)) {
+    // With a target reported, only a step that starts under a positive target
+    // is the heater heating; a heater warming beside its neighbour at target
+    // 0, or above its target, would add its seconds to the climb for good.
+    if (target_known_ && !(target_c_ > 0.0f && last_temp_ < target_c_)) {
         last_temp_ = temp_c;
         last_tick_ = tick_ms;
         high_temp_ = temp_c;
@@ -47,7 +47,10 @@ void ThermalRateModel::record_sample(float temp_c, uint32_t tick_ms) {
         return;
     }
 
-    float delta_from_last = temp_c - last_temp_;
+    // The step that arrives counts up to the target, its slowest degrees
+    // included; an overshoot past it is not heating toward it.
+    const float counted_temp = target_known_ ? std::min(temp_c, target_c_) : temp_c;
+    float delta_from_last = counted_temp - last_temp_;
 
     if (delta_from_last >= MIN_DELTA_FROM_LAST && tick_ms > last_tick_) {
         const float step_s = static_cast<float>(tick_ms - last_tick_) / 1000.0f;
