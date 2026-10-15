@@ -47,7 +47,8 @@ step() {
         echo "  FAIL: $log" >&2
         grep -E 'error:|undefined reference|\*\*\* \[' "$log" | head -n 20 >&2 || tail -n 25 "$log" >&2
     fi
-    ROWS+=("$(printf '%-4s  %-24s %6ss  %s' "$status" "$name" $((SECONDS - t0)) "$log")")
+    LAST_SECS=$((SECONDS - t0))
+    ROWS+=("$(printf '%-4s  %-24s %6ss  %s' "$status" "$name" "$LAST_SECS" "$log")")
     [ "$status" = PASS ]
 }
 
@@ -101,6 +102,11 @@ fast() {
         skip release-health "RELEASE_HEALTH=0"
     else
         step release-health scripts/release-health.sh
+        warnings=$(grep -c '^WARN ' "$LOGDIR/release-health.log" || true)
+        if [ "${warnings:-0}" -gt 0 ]; then
+            noun=warnings; [ "$warnings" -eq 1 ] && noun=warning
+            ROWS[$((${#ROWS[@]} - 1))]="$(printf '%-4s  %-24s %6ss  %s' PASS "release-health ($warnings $noun)" "$LAST_SECS" "$LOGDIR/release-health.log")"
+        fi
     fi
 }
 

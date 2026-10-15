@@ -18,11 +18,12 @@ row() { # version devices crash_free
 @test "a candidate trailing stable prints a WARN line and exits 0" {
     ver=$(tr -d '[:space:]' <VERSION.txt)
     core=${ver%%-*}
-    printf '{"stable":"0.0.1","versions":[%s,%s]}' "$(row "$core-beta.99" 50 0.90)" "$(row 0.0.1 500 0.99)" >"$FIXTURE"
+    printf '{"stable":"0.0.1","seen":["%s-beta.98","%s-beta.99","0.0.1"],"versions":[%s,%s]}' "$core" "$core" "$(row "$core-beta.99" 50 0.90)" "$(row 0.0.1 500 0.99)" >"$FIXTURE"
     RELEASE_HEALTH_FIXTURE="$FIXTURE" run scripts/release-health.sh
     [ "$status" -eq 0 ] || fail "$output"
     [[ "$output" == *"WARN crash-free devices"* ]] || fail "$output"
     [[ "$output" == *"$core-beta.99"* ]] || fail "$output"
+    [[ "$output" == *"warns on"* ]] || fail "$output"
 }
 
 @test "a small candidate sample is noted" {

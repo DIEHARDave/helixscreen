@@ -120,3 +120,10 @@ FAKE
     echo "$output" | grep -qE "^  SKIP  release-health " || fail "$output"
     [ ! -e build/release-gate/release-health.log ] || fail "ran anyway"
 }
+
+@test "release-health warnings show on its row, which still passes" {
+    printf '#!/usr/bin/env bash\necho "WARN a"\necho "WARN b"\n' >scripts/release-health.sh
+    run scripts/release-gate.sh fast
+    [ "$status" -eq 0 ] || fail "$output"
+    echo "$output" | grep -qE "^  PASS  release-health \(2 warnings\) " || fail "$output"
+}

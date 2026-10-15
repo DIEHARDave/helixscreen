@@ -18,47 +18,53 @@ const row = (over: Partial<ReleaseRow> = {}): ReleaseRow => ({
 const warned = (c: ReleaseRow, b: ReleaseRow) => compareRelease(c, b).filter((v) => v.warn).map((v) => v.metric);
 
 describe("compareRelease", () => {
+  const W = RELEASE_WARN;
+  const over = 0.0005;
+
   it("is quiet when the candidate matches the baseline", () => {
     expect(warned(row(), row())).toEqual([]);
   });
 
-  it("warns on a crash-free drop at the threshold, not below it", () => {
+  it("warns on a crash-free drop only past the threshold", () => {
     const b = row({ crash_free_devices: 0.98 });
-    expect(warned(row({ crash_free_devices: 0.98 - RELEASE_WARN.crashFreeDrop }), b)).toContain("crash-free devices");
-    expect(warned(row({ crash_free_devices: 0.98 - RELEASE_WARN.crashFreeDrop + 0.001 }), b)).not.toContain("crash-free devices");
+    expect(warned(row({ crash_free_devices: 0.98 - W.crashFreeDrop }), b)).not.toContain("crash-free devices");
+    expect(warned(row({ crash_free_devices: 0.98 - W.crashFreeDrop - over }), b)).toContain("crash-free devices");
   });
 
-  it("warns on a crash rate at the ratio only when the absolute rise also counts", () => {
+  it("warns on a crash rate only past the ratio and past the minimum delta", () => {
     const b = row({ crash_rate: 0.02 });
-    expect(warned(row({ crash_rate: 0.02 * RELEASE_WARN.crashRateRatio }), b)).toContain("crash rate");
-    expect(warned(row({ crash_rate: 0.02 * RELEASE_WARN.crashRateRatio - 0.001 }), b)).not.toContain("crash rate");
+    expect(warned(row({ crash_rate: 0.02 * W.crashRateRatio }), b)).not.toContain("crash rate");
+    expect(warned(row({ crash_rate: 0.02 * W.crashRateRatio + over }), b)).toContain("crash rate");
     // A tiny base makes any rise a big ratio; the minimum delta keeps it quiet.
     const tiny = row({ crash_rate: 0.0001 });
-    expect(warned(row({ crash_rate: 0.0001 * 3 }), tiny)).not.toContain("crash rate");
-    expect(warned(row({ crash_rate: RELEASE_WARN.crashRateMinDelta }), row({ crash_rate: 0 }))).toContain("crash rate");
-    expect(warned(row({ crash_rate: RELEASE_WARN.crashRateMinDelta / 2 }), row({ crash_rate: 0 }))).not.toContain("crash rate");
+    expect(warned(row({ crash_rate: 0.0001 + W.crashRateMinDelta }), tiny)).not.toContain("crash rate");
+    expect(warned(row({ crash_rate: 0.0001 + W.crashRateMinDelta + 0.0001 }), tiny)).toContain("crash rate");
+    // From zero the ratio is unbounded, so the delta decides alone.
+    const zero = row({ crash_rate: 0 });
+    expect(warned(row({ crash_rate: W.crashRateMinDelta }), zero)).not.toContain("crash rate");
+    expect(warned(row({ crash_rate: W.crashRateMinDelta + 0.0001 }), zero)).toContain("crash rate");
   });
 
-  it("warns on an update failure rise at the threshold", () => {
+  it("warns on an update failure rise only past the threshold", () => {
     const b = row({ update_failure_rate: 0.02 });
-    expect(warned(row({ update_failure_rate: 0.02 + RELEASE_WARN.updateFailureRise }), b)).toContain("update failure rate");
-    expect(warned(row({ update_failure_rate: 0.02 + RELEASE_WARN.updateFailureRise - 0.01 }), b)).not.toContain("update failure rate");
+    expect(warned(row({ update_failure_rate: 0.02 + W.updateFailureRise }), b)).not.toContain("update failure rate");
+    expect(warned(row({ update_failure_rate: 0.02 + W.updateFailureRise + over }), b)).toContain("update failure rate");
   });
 
-  it("warns on a print success drop at the threshold", () => {
+  it("warns on a print success drop only past the threshold", () => {
     const b = row({ print_success_rate: 0.9 });
-    expect(warned(row({ print_success_rate: 0.9 - RELEASE_WARN.printSuccessDrop }), b)).toContain("print success rate");
-    expect(warned(row({ print_success_rate: 0.9 - RELEASE_WARN.printSuccessDrop + 0.01 }), b)).not.toContain("print success rate");
+    expect(warned(row({ print_success_rate: 0.9 - W.printSuccessDrop }), b)).not.toContain("print success rate");
+    expect(warned(row({ print_success_rate: 0.9 - W.printSuccessDrop - over }), b)).toContain("print success rate");
   });
 
-  it("warns on a frame time rise at the threshold", () => {
-    expect(warned(row({ p95_frame_ms: 20 * (1 + RELEASE_WARN.frameRise) }), row())).toContain("p95 frame ms");
-    expect(warned(row({ p95_frame_ms: 20 * (1 + RELEASE_WARN.frameRise) - 0.5 }), row())).not.toContain("p95 frame ms");
+  it("warns on a frame time rise only past the threshold", () => {
+    expect(warned(row({ p95_frame_ms: 20 * (1 + W.frameRise) }), row())).not.toContain("p95 frame ms");
+    expect(warned(row({ p95_frame_ms: 20 * (1 + W.frameRise) + 0.1 }), row())).toContain("p95 frame ms");
   });
 
-  it("warns on an RSS rise at the threshold", () => {
-    expect(warned(row({ p95_rss_kb: 100000 * (1 + RELEASE_WARN.rssRise) }), row())).toContain("p95 rss kb");
-    expect(warned(row({ p95_rss_kb: 100000 * (1 + RELEASE_WARN.rssRise) - 100 }), row())).not.toContain("p95 rss kb");
+  it("warns on an RSS rise only past the threshold", () => {
+    expect(warned(row({ p95_rss_kb: 100000 * (1 + W.rssRise) }), row())).not.toContain("p95 rss kb");
+    expect(warned(row({ p95_rss_kb: 100000 * (1 + W.rssRise) + 100 }), row())).toContain("p95 rss kb");
   });
 
   it("never warns on a metric either side lacks", () => {
@@ -73,6 +79,13 @@ describe("compareRelease", () => {
     expect(warned(row(nulls), row())).toEqual([]);
     expect(warned(row(), row(nulls))).toEqual([]);
     expect(compareRelease(row(nulls), row(nulls))).toHaveLength(6);
+  });
+
+  it("shows the update failure counts beside the rate", () => {
+    const v = compareRelease(row({ update_failure_rate: 0, update_failures: 0, update_successes: 98 }), row())
+      .find((x) => x.metric === "update failure rate")!;
+    expect(v.candidate).toBe("0.00% (0/98)");
+    expect(v.baseline).toBe("2.00% (2/100)");
   });
 });
 
@@ -100,5 +113,9 @@ describe("formatTable", () => {
     expect(out).toContain("1.1.0-beta.4");
     expect(out).toContain("1.0.3");
     expect(out).toMatch(/WARN.*crash-free devices/);
+    // Every metric row carries the threshold it is judged by.
+    for (const v of compareRelease(c, row())) {
+      expect(out.split("\n").find((l) => l.startsWith(v.metric))).toContain(v.threshold);
+    }
   });
 });
