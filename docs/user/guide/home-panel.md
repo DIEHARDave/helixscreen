@@ -517,6 +517,8 @@ Two cases open the job in the file view instead, with a notice saying why: a job
 
 Tap anywhere else on the widget to open the [Job Queue Manager](#job-queue-manager).
 
+![Job Queue widget at 2x1 - the next job, its time estimate, how many wait behind it, and the Bed clear · Start next button](../../images/user/home-job-queue-tile.png)
+
 ## Job Queue Manager
 
 Tap the **Job Queue** widget to open the queue manager — a full-screen modal for managing your print queue.
