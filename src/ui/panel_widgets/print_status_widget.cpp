@@ -9,7 +9,6 @@
 #include "ui_filename_utils.h"
 #include "ui_format_utils.h"
 #include "ui_nav.h"
-#include "ui_next_tick.h"
 #include "ui_overlay_temp_graph.h"
 #include "ui_panel_print_select.h"
 #include "ui_panel_print_status.h"
@@ -433,8 +432,8 @@ void PrintStatusWidget::detach() {
     // Invalidate lifetime guard FIRST to abort in-flight async fetches
     lifetime_.invalidate();
     live_instances().erase(this);
-    idle_reset_pending_ = false;
-    active_apply_pending_ = false;
+    idle_reset_timer_.cancel();
+    active_apply_timer_.cancel();
     // The next attach may bring fresh XML thumbs that show nothing of this.
     shown_idle_thumb_ = {};
 
@@ -1006,44 +1005,29 @@ time_t PrintStatusWidget::get_last_print_source_modified() const {
 }
 
 void PrintStatusWidget::defer_reset_print_card_to_idle() {
-    if (idle_reset_pending_) {
-        return;
-    }
-    idle_reset_pending_ = true;
-    // run_next_tick escapes the UpdateQueue::process_pending() batch (see
-    // CLAUDE.md "Safe escape routes"). detach() invalidates lifetime_, so a
-    // callback queued before it is skipped and the next attach queues its own.
-    helix::ui::run_next_tick(lifetime_.token(), [this]() {
-        if (widget_obj_ && idle_reset_pending_) {
-            idle_reset_pending_ = false;
+    // A zero-period timer fires on the next LVGL tick, outside the
+    // UpdateQueue::process_pending() batch the callers run in. detach() cancels
+    // it, so a recycled instance never sees a tick queued by its previous
+    // attach.
+    idle_reset_timer_.schedule_once([this]() {
+        if (widget_obj_) {
             reset_print_card_to_idle();
         }
     });
 }
 
 void PrintStatusWidget::defer_apply_active_thumbnail() {
-    if (active_apply_pending_) {
-        return;
-    }
-    active_apply_pending_ = true;
-    // run_next_tick escapes the UpdateQueue::process_pending() batch the
-    // observers run in, the same escape defer_reset_print_card_to_idle() makes
-    // for the idle sibling. detach() invalidates lifetime_, so a callback queued
-    // before it is skipped and the next attach queues its own.
-    helix::ui::run_next_tick(lifetime_.token(), [this]() {
-        if (!active_apply_pending_) {
-            return;
-        }
-        active_apply_pending_ = false;
+    // Same next-tick escape as defer_reset_print_card_to_idle().
+    active_apply_timer_.schedule_once([this]() {
         if (!widget_obj_ || !print_card_active_thumb_) {
             return;
         }
         // Trigger hardening (#1001), matching reset_print_card_to_idle(): by the
         // time the tick fires, populate_page's safe_clean_children() may have
         // reparented this subtree onto lv_layer_top() to await deletion.
-        // lv_image_set_src → update_align → lv_obj_update_layout would then walk
+        // lv_image_set_src -> update_align -> lv_obj_update_layout would then walk
         // the whole layer and recurse into sibling condemned grid subtrees whose
-        // children may already be freed → SIGSEGV in grid calc().
+        // children may already be freed -> SIGSEGV in grid calc().
         if (!helix::ui::is_on_active_screen(print_card_active_thumb_)) {
             spdlog::debug("[PrintStatusWidget] Skip active thumbnail: off active screen "
                           "(mid-teardown)");

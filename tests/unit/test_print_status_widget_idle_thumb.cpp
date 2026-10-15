@@ -238,6 +238,27 @@ TEST_CASE_METHOD(PrintStatusIdleThumbFixture,
     widget.detach();
 }
 
+TEST_CASE_METHOD(PrintStatusIdleThumbFixture,
+                 "PrintStatusWidget: detach cancels a queued idle reset and runs nothing",
+                 "[print_status_widget][idle_thumb]") {
+    auto* subj = PrintStatusWidgetTestAccess::idle_thumb_path_subject();
+    static constexpr const char* SENTINEL = "A:assets/images/__test_seed__.png";
+
+    PrintStatusWidget widget;
+    lv_obj_t* container = create_mock_print_card(test_screen());
+
+    widget.attach(container, test_screen());
+    widget.on_activate();
+    REQUIRE(PrintStatusWidgetTestAccess::idle_reset_pending(widget));
+
+    widget.detach();
+    CHECK_FALSE(PrintStatusWidgetTestAccess::idle_reset_pending(widget));
+
+    lv_subject_copy_string(subj, SENTINEL);
+    process_lvgl(200);
+    CHECK(std::string(static_cast<const char*>(subj->value.pointer)) == SENTINEL);
+}
+
 // attach() resolves the idle thumbnail, and so does the print-state observer's
 // first notification; on_activate() follows attach on a dashboard rebuild. On a
 // cache miss each resolve is its own HTTP request for the same file, so the

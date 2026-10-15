@@ -87,6 +87,14 @@ class PrintStatusWidgetTestAccess {
         return widget.print_card_active_thumb_;
     }
 
+    static bool idle_reset_pending(const PrintStatusWidget& widget) {
+        return widget.idle_reset_timer_.pending();
+    }
+
+    static bool active_apply_pending(const PrintStatusWidget& widget) {
+        return widget.active_apply_timer_.pending();
+    }
+
     static lv_obj_t* library_row_last(const PrintStatusWidget& widget) {
         return widget.library_row_last_;
     }
