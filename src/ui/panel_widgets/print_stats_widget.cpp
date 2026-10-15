@@ -225,10 +225,7 @@ std::string PrintStatsWidget::count_line() const {
 }
 
 std::string PrintStatsWidget::full_line() const {
-    return format_lifetime_line({lifetime_totals_.total_jobs,
-                                 static_cast<double>(lifetime_totals_.total_time) / 3600.0,
-                                 lifetime_totals_.total_filament_used},
-                                true);
+    return format_lifetime_line(lifetime_totals_, true);
 }
 
 void PrintStatsWidget::attach(lv_obj_t* widget_obj, lv_obj_t* parent_screen) {

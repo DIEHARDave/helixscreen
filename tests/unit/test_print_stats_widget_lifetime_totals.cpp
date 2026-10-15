@@ -55,9 +55,7 @@ constexpr int kWideH = 95;
 
 /// The lifetime line the tile composes for @p totals at Wide and up.
 std::string lifetime_line(const PrintHistoryTotals& totals) {
-    return format_lifetime_line({totals.total_jobs, static_cast<double>(totals.total_time) / 3600.0,
-                                 totals.total_filament_used},
-                                true);
+    return format_lifetime_line(totals, true);
 }
 
 class PrintStatsLifetimeFixture : public LVGLUITestFixture {
@@ -162,8 +160,8 @@ TEST_CASE_METHOD(PrintStatsLifetimeFixture,
     widget.on_activate();
 
     const std::string expected = lifetime_line(server);
-    const std::string from_cache = format_lifetime_line(
-        {manager_->get_jobs().size(), static_cast<double>(cached_time) / 3600.0, 0.0}, true);
+    const std::string from_cache =
+        format_lifetime_line({manager_->get_jobs().size(), cached_time, 0.0}, true);
     REQUIRE(expected != from_cache);
 
     bool settled =

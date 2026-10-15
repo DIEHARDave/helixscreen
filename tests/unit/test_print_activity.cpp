@@ -220,9 +220,10 @@ TEST_CASE("format_filament_meters", "[print_activity]") {
 }
 
 TEST_CASE("format_lifetime_line", "[print_activity]") {
-    CHECK(format_lifetime_line({128, 412.0, 412300.0}, true) == "128 prints · 412 h · 412 m");
-    CHECK(format_lifetime_line({128, 412.0, 412300.0}, false) == "128 prints · 412 h");
-    CHECK(format_lifetime_line({128, 412.0, 0.0}, true) == "128 prints · 412 h");
+    constexpr uint64_t k412Hours = 412 * 3600;
+    CHECK(format_lifetime_line({128, k412Hours, 412300.0}, true) == "128 prints · 412 h · 412 m");
+    CHECK(format_lifetime_line({128, k412Hours, 412300.0}, false) == "128 prints · 412 h");
+    CHECK(format_lifetime_line({128, k412Hours, 0.0}, true) == "128 prints · 412 h");
 }
 
 TEST_CASE("weekday_initial", "[print_activity]") {

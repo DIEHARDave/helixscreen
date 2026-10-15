@@ -53,14 +53,10 @@ scale_day_bars(const std::array<double, kActivityDays>& hours);
 /// the stats tile compares lengths across prints and needs one unit.
 [[nodiscard]] std::string format_filament_meters(double mm);
 
-struct LifetimeSummary {
-    uint64_t prints = 0;
-    double hours = 0.0;
-    double filament_mm = 0.0;
-};
-
-/// "128 prints · 412 h", plus " · 412 m" when with_filament and there is filament.
-[[nodiscard]] std::string format_lifetime_line(const LifetimeSummary& summary, bool with_filament);
+/// "128 prints · 412 h" from @p totals' jobs and time, plus " · 412 m" when
+/// with_filament and there is filament.
+[[nodiscard]] std::string format_lifetime_line(const PrintHistoryTotals& totals,
+                                               bool with_filament);
 
 /// First character of a weekday abbreviation, uppercased when ASCII.
 [[nodiscard]] std::string weekday_initial(std::string_view abbreviation);

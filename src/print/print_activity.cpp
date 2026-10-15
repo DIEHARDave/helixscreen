@@ -4,6 +4,7 @@
 #include "print_activity.h"
 
 #include "lvgl/src/others/translation/lv_translation.h"
+#include "text_io.h"
 
 #include <spdlog/fmt/fmt.h>
 
@@ -117,11 +118,11 @@ std::string format_filament_meters(double mm) {
     return fmt::format(lv_tr("{} m"), format_compact_number(mm / 1000.0, 0.1));
 }
 
-std::string format_lifetime_line(const LifetimeSummary& summary, bool with_filament) {
-    std::string line =
-        format_print_count(summary.prints) + " · " + format_print_hours(summary.hours);
+std::string format_lifetime_line(const PrintHistoryTotals& totals, bool with_filament) {
+    std::string line = format_print_count(totals.total_jobs) + " · " +
+                       format_print_hours(static_cast<double>(totals.total_time) / kSecondsPerHour);
     if (with_filament) {
-        const std::string length = format_filament_meters(summary.filament_mm);
+        const std::string length = format_filament_meters(totals.total_filament_used);
         if (!length.empty()) {
             line += " · " + length;
         }
@@ -130,23 +131,7 @@ std::string format_lifetime_line(const LifetimeSummary& summary, bool with_filam
 }
 
 std::string weekday_initial(std::string_view abbreviation) {
-    if (abbreviation.empty()) {
-        return {};
-    }
-    const auto lead = static_cast<unsigned char>(abbreviation.front());
-    size_t length = 1;
-    if (lead >= 0xF0) {
-        length = 4;
-    } else if (lead >= 0xE0) {
-        length = 3;
-    } else if (lead >= 0xC0) {
-        length = 2;
-    }
-    std::string initial(abbreviation.substr(0, length));
-    if (initial.size() == 1 && initial[0] >= 'a' && initial[0] <= 'z') {
-        initial[0] = static_cast<char>(initial[0] - 'a' + 'A');
-    }
-    return initial;
+    return text_io::to_upper(text_io::utf8_first_codepoint(abbreviation));
 }
 
 } // namespace helix

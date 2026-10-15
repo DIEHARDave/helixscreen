@@ -184,10 +184,7 @@ TEST_CASE_METHOD(PrintStatsTileFixture,
 
     history_client.fire_deferred("server.history.totals");
     settle();
-    CHECK(subject_text("print_stats_support_text") ==
-          format_lifetime_line({totals.total_jobs, static_cast<double>(totals.total_time) / 3600.0,
-                                totals.total_filament_used},
-                               true));
+    CHECK(subject_text("print_stats_support_text") == format_lifetime_line(totals, true));
     CHECK(shown(h, "ps_support"));
     CHECK(subject_int("print_stats_rung") == static_cast<int>(SizeRung::Wide));
     // The support line takes its row when it appears, and the Wide budget includes that
