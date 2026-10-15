@@ -112,11 +112,6 @@ class JobQueueState {
         return next_estimated_s_;
     }
 
-    /// Get queue state string
-    const std::string& get_queue_state() const {
-        return queue_state_;
-    }
-
     /// Whether Moonraker starts the next queued job by itself on completion
     ///
     /// Read from `server.config` (`config.job_queue.automatic_transition`)

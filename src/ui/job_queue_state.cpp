@@ -287,18 +287,13 @@ void JobQueueState::on_next_job_metadata(const std::string& filename,
     req.api = api_;
     req.source_modified = static_cast<time_t>(metadata.modified);
 
-    auto token = lifetime_.token();
+    // The cache answers on the main thread, and only while this owner lives
+    // and the first job has not changed since.
     auto ctx = ThumbnailLoadContext::create(lifetime_, &next_thumbnail_generation_);
     get_thumbnail_cache().fetch(
         req, ctx,
-        [this, token, ctx](const std::string& lvgl_path, bool /*degraded*/) {
-            token.defer("JobQueueState::apply_next_thumbnail", [this, ctx, lvgl_path]() {
-                // A later change of first job can land in the hop this defer adds.
-                if (!ctx.is_valid()) {
-                    return;
-                }
-                lv_subject_copy_string(&job_queue_next_thumbnail_subject_, lvgl_path.c_str());
-            });
+        [this](const std::string& lvgl_path, bool /*degraded*/) {
+            lv_subject_copy_string(&job_queue_next_thumbnail_subject_, lvgl_path.c_str());
         },
         [thumb_path](const std::string& error) {
             spdlog::debug("[JobQueueState] Next job thumbnail '{}' failed: {}", thumb_path, error);
@@ -455,9 +450,6 @@ JobQueueTileText compose_job_queue_tile_text(JobQueueTileState state,
         t.action_short = lv_tr("Start next");
         break;
     case JobQueueTileState::AutoNext:
-        t.hero = fmt::format(lv_tr("{} queued"), queued_count);
-        t.detail = fmt::format(lv_tr("Next: {}"), next_display_name);
-        break;
     case JobQueueTileState::Printing:
         t.hero = fmt::format(lv_tr("{} queued"), queued_count);
         t.detail = fmt::format(lv_tr("Next: {}"), next_display_name);
