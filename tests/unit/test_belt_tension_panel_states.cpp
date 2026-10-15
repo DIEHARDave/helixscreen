@@ -41,6 +41,7 @@
 #include "belt_tension_types.h"
 #include "lvgl/lvgl.h"
 #include "lvgl/src/others/translation/lv_translation.h"
+#include "mock_persona.h"
 #include "moonraker_api_mock.h"
 #include "moonraker_client_mock.h"
 #include "printer_detector.h"
@@ -48,6 +49,7 @@
 #include "translation_loader.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdlib>
 #include <filesystem>
@@ -90,6 +92,8 @@ class BeltPanelFixture : public XMLTestFixture {
         get_printer_state().set_klippy_state_sync(KlippyState::READY);
         lv_subject_set_int(get_printer_state().print_state().get_print_active_subject(), 0);
         lv_subject_copy_string(get_printer_state().motion_state().get_homed_axes_subject(), "xyz");
+        // The settling laps plan from the toolhead's limits and max velocity.
+        set_toolhead_limits(500.0);
         set_accel_subject(1);
 
         panel_ = &get_global_belt_tension_panel();
@@ -227,6 +231,17 @@ class BeltPanelFixture : public XMLTestFixture {
         }
         return state_int(name) == want;
     }
+    bool pump_until_text(const char* name, const std::string& want, uint32_t budget_ms = 60000) {
+        for (uint32_t t = 0; t < budget_ms; t += 100) {
+            if (text(name) == want) {
+                return true;
+            }
+            lv_tick_inc(100);
+            lv_timer_handler_safe();
+            UpdateQueue::instance().drain();
+        }
+        return text(name) == want;
+    }
     /// Pumps until the gate opens (hardware detect + config probe answered).
     bool wait_gate_open(uint32_t budget_ms = 10000) {
         for (uint32_t t = 0; t < budget_ms; t += 100) {
@@ -238,6 +253,17 @@ class BeltPanelFixture : public XMLTestFixture {
             UpdateQueue::instance().drain();
         }
         return state_int("bt_can_start") == 1;
+    }
+
+    /// The persona's travel and a max velocity, as a toolhead status frame.
+    void set_toolhead_limits(double max_velocity) {
+        const auto axis_max = helix::mock::descriptor(client_.get_printer_type()).axis_max;
+        get_printer_state().update_from_status(
+            {{"toolhead",
+              {{"axis_minimum", {0.0, 0.0, 0.0, 0.0}},
+               {"axis_maximum", {axis_max.x, axis_max.y, axis_max.z, 0.0}},
+               {"max_velocity", max_velocity}}}});
+        UpdateQueue::instance().drain();
     }
 
     void set_klippy_ready(bool ready) {
@@ -319,13 +345,30 @@ TEST_CASE("belt tension panel binds only subjects that exist", "[belt][panel][xm
 // Run flow
 // ============================================================================
 
-TEST_CASE("Start runs A then B and lands on RESULTS", "[belt][panel]") {
+TEST_CASE("Start settles, then runs A then B and lands on RESULTS", "[belt][panel]") {
     BeltPanelFixture fx;
     fx.mock().set_belt_peaks_hz(104.0f, 98.0f);
     REQUIRE(fx.wait_gate_open());
+    fx.mock().clear_gcode_script_history();
 
     fx.panel().handle_start_clicked();
     REQUIRE(fx.pump_until_state(static_cast<int>(BeltTensionPanel::ViewState::RESULTS)));
+
+    // The mock records a script line by line: the laps, then A, then B.
+    const auto history = std::vector<std::string>(fx.mock().gcode_script_history());
+    REQUIRE_FALSE(history.empty());
+    CHECK(history.front() == "SAVE_GCODE_STATE NAME=helix_belt_settle");
+    std::vector<std::string> order;
+    for (const auto& g : history) {
+        if (g == "SAVE_GCODE_STATE NAME=helix_belt_settle") {
+            order.push_back("settle");
+        } else if (g.rfind("TEST_RESONANCES AXIS=1,-1 ", 0) == 0) {
+            order.push_back("A");
+        } else if (g.rfind("TEST_RESONANCES AXIS=1,1 ", 0) == 0) {
+            order.push_back("B");
+        }
+    }
+    CHECK(order == std::vector<std::string>{"settle", "A", "B"});
 
     // With no previous run the note names the age and nothing else.
     CHECK(fx.text("bt_note_a") == "just now");
@@ -368,7 +411,8 @@ TEST_CASE("Re-test A keeps B and ghosts the old A", "[belt][panel][chart]") {
     fx.panel().handle_retest_clicked(helix::calibration::BeltPath::PATH_A);
     REQUIRE(fx.state_int("belt_tension_state") ==
             static_cast<int>(BeltTensionPanel::ViewState::RUNNING));
-    CHECK(fx.text("bt_run_title") == "Re-measuring Path A");
+    CHECK(fx.text("bt_run_title") == "Settling belts");
+    CHECK(fx.pump_until_text("bt_run_title", "Re-measuring Path A"));
     // A re-measure walks A toward B by at most 4 Hz: 110 -> 106, now 8 Hz from
     // B, inside the cap: the belt-hump pair outranks the 42 Hz one.
     REQUIRE(fx.pump_until_state(static_cast<int>(BeltTensionPanel::ViewState::RESULTS)));
@@ -1719,13 +1763,13 @@ TEST_CASE("RESULTS folds Re-test A/B into one menu below medium and in portrait"
         pick_retest(fx, "btn_retest_path_a");
         CHECK(fx.state_int("belt_tension_state") ==
               static_cast<int>(BeltTensionPanel::ViewState::RUNNING));
-        CHECK(fx.text("bt_run_title") == "Re-measuring Path A");
+        CHECK(fx.pump_until_text("bt_run_title", "Re-measuring Path A"));
     }
     SECTION("Re-test B from the menu re-measures B") {
         pick_retest(fx, "btn_retest_path_b");
         CHECK(fx.state_int("belt_tension_state") ==
               static_cast<int>(BeltTensionPanel::ViewState::RUNNING));
-        CHECK(fx.text("bt_run_title") == "Re-measuring Path B");
+        CHECK(fx.pump_until_text("bt_run_title", "Re-measuring Path B"));
     }
 }
 
@@ -2172,4 +2216,202 @@ TEST_CASE("portrait shows the full tuning hero, stacked", "[belt][panel][portrai
         CHECK_FALSE(lv_hidden(named("bt_tune_hint")));
         CHECK(lv_hidden(named("bt_tune_hint_wrap")));
     }
+}
+
+// ============================================================================
+// Settling laps
+// ============================================================================
+
+namespace {
+
+constexpr const char* SETTLE_START = "SAVE_GCODE_STATE NAME=helix_belt_settle";
+
+/// What the run sent, in order: "settle" per lap script, "sweep" per resonance test.
+std::vector<std::string> run_steps(BeltPanelFixture& fx) {
+    std::vector<std::string> out;
+    for (const auto& g : std::vector<std::string>(fx.mock().gcode_script_history())) {
+        if (g == SETTLE_START) {
+            out.push_back("settle");
+        } else if (g.find("TEST_RESONANCES") != std::string::npos) {
+            out.push_back("sweep");
+        }
+    }
+    return out;
+}
+
+} // namespace
+
+TEST_CASE("the run title reads Settling belts while the laps run", "[belt][panel][settle]") {
+    BeltPanelFixture fx;
+    REQUIRE(fx.wait_gate_open());
+
+    SECTION("a full check") {
+        fx.panel().handle_start_clicked();
+        REQUIRE(fx.state_int("belt_tension_state") ==
+                static_cast<int>(BeltTensionPanel::ViewState::RUNNING));
+        CHECK(fx.text("bt_run_title") == "Settling belts");
+        CHECK(fx.state_int("bt_running_path") == 2); // neither path is sweeping
+        CHECK(fx.text("bt_note_a") != "sweeping");
+        CHECK(fx.text("bt_run_detail").find("elapsed") != std::string::npos);
+        CHECK(fx.pump_until_text("bt_run_title", "Measuring Path A"));
+        CHECK(fx.state_int("bt_running_path") == 0);
+    }
+    SECTION("a tuning round, in the sweeping row") {
+        fx.panel().handle_start_clicked();
+        REQUIRE(fx.pump_until_state(RESULTS));
+        fx.panel().handle_tune_clicked();
+        REQUIRE(fx.state_int("belt_tension_state") == TUNING);
+        fx.panel().handle_tune_measure_clicked();
+        REQUIRE(fx.state_int("bt_tune_phase") == PHASE_SWEEPING);
+        lv_obj_t* title = lv_obj_find_by_name(fx.view(), "tune_run_title");
+        REQUIRE(title != nullptr);
+        CHECK(std::string(lv_label_get_text(title)) == "Settling belts");
+        REQUIRE(fx.pump_until_text("bt_run_title", "Measuring Path A"));
+        CHECK(std::string(lv_label_get_text(title)) == "Measuring Path A");
+    }
+}
+
+TEST_CASE("Re-test settles once before its single sweep", "[belt][panel][settle]") {
+    BeltPanelFixture fx;
+    REQUIRE(fx.wait_gate_open());
+    fx.panel().handle_start_clicked();
+    REQUIRE(fx.pump_until_state(RESULTS));
+
+    fx.mock().clear_gcode_script_history();
+    fx.panel().handle_retest_clicked(helix::calibration::BeltPath::PATH_B);
+    REQUIRE(fx.pump_until_state(RESULTS));
+    CHECK(run_steps(fx) == std::vector<std::string>{"settle", "sweep"});
+}
+
+TEST_CASE("Confirm settles once before its pair", "[belt][panel][settle][tune]") {
+    BeltPanelFixture fx;
+    get_printer_state().set_printer_type_sync("Voron 2.4");
+    fx.mock().set_belt_tune_script('B', {102.1f, 107.6f, 109.8f});
+    enter_tuning(fx);
+
+    SECTION("a tuning round settles before both sweeps") {
+        fx.mock().clear_gcode_script_history();
+        tune_round(fx);
+        CHECK(run_steps(fx) == std::vector<std::string>{"settle", "sweep", "sweep"});
+    }
+    SECTION("Confirm") {
+        fx.mock().clear_gcode_script_history();
+        fx.panel().handle_tune_confirm_clicked();
+        REQUIRE(fx.pump_until_state(RESULTS));
+        CHECK(run_steps(fx) == std::vector<std::string>{"settle", "sweep", "sweep"});
+    }
+}
+
+TEST_CASE("a refused settle lands on ERROR and sends no sweep", "[belt][panel][settle]") {
+    BeltPanelFixture fx;
+    fx.mock().set_resonance_probe_points(false);
+    REQUIRE(fx.wait_gate_open());
+    fx.mock().clear_gcode_script_history();
+
+    fx.panel().handle_start_clicked();
+    REQUIRE(fx.pump_until_state(static_cast<int>(BeltTensionPanel::ViewState::ERROR)));
+    CHECK(fx.text("bt_error_message") ==
+          "[resonance_tester] has no probe_points, so the toolhead has no safe height for the "
+          "settling laps.");
+    CHECK(fx.mock().gcode_script_history().empty());
+}
+
+TEST_CASE("a settle the printer rejects lands on ERROR", "[belt][panel][settle]") {
+    BeltPanelFixture fx;
+    REQUIRE(fx.wait_gate_open());
+    fx.mock().force_next_gcode_error(MoonrakerErrorType::JSON_RPC_ERROR, "Move out of range",
+                                     SETTLE_START);
+    fx.mock().clear_gcode_script_history();
+
+    fx.panel().handle_start_clicked();
+    REQUIRE(fx.pump_until_state(static_cast<int>(BeltTensionPanel::ViewState::ERROR)));
+    CHECK(fx.text("bt_error_message").find("Move out of range") != std::string::npos);
+    CHECK(run_steps(fx) == std::vector<std::string>{"settle"});
+}
+
+TEST_CASE("Stop during the laps lands on START", "[belt][panel][settle]") {
+    BeltPanelFixture fx;
+    helix::ui::modal_init_subjects();
+    REQUIRE(fx.register_component("modal_dialog"));
+    REQUIRE(fx.wait_gate_open());
+    // The laps' ack never arrives, so the run stays in its laps.
+    fx.mock().force_next_gcode_dropped_response(SETTLE_START);
+    fx.mock().clear_gcode_script_history();
+
+    fx.panel().handle_start_clicked();
+    fx.pump_ms(500);
+    REQUIRE(run_steps(fx) == std::vector<std::string>{"settle"});
+    REQUIRE(fx.text("bt_run_title") == "Settling belts");
+
+    fx.panel().handle_stop_clicked();
+    fx.pump_ms(200);
+    lv_obj_t* dialog = ModalStack::instance().top_dialog();
+    REQUIRE(dialog != nullptr);
+    lv_obj_send_event(lv_obj_find_by_name(dialog, "btn_primary"), LV_EVENT_CLICKED, nullptr);
+    fx.pump_ms(200);
+    CHECK(fx.state_int("belt_tension_state") ==
+          static_cast<int>(BeltTensionPanel::ViewState::START));
+    fx.pump_ms(5000);
+    CHECK(fx.state_int("belt_tension_state") ==
+          static_cast<int>(BeltTensionPanel::ViewState::START));
+    CHECK(run_steps(fx) == std::vector<std::string>{"settle"});
+}
+
+TEST_CASE("destroying the panel during the laps drops the late ack", "[belt][panel][settle]") {
+    BeltPanelFixture fx;
+    REQUIRE(fx.wait_gate_open());
+    fx.mock().clear_gcode_script_history();
+
+    fx.panel().handle_start_clicked();
+    // One drain runs the probe-point query's answer, which sends the laps; their
+    // ack is still queued.
+    UpdateQueue::instance().drain();
+    REQUIRE(run_steps(fx) == std::vector<std::string>{"settle"});
+
+    REQUIRE(fx.panel().rebuild());
+    UpdateQueue::instance().drain();
+    fx.pump_ms(5000);
+    CHECK(fx.state_int("belt_tension_state") ==
+          static_cast<int>(BeltTensionPanel::ViewState::START));
+    CHECK(run_steps(fx) == std::vector<std::string>{"settle"});
+}
+
+TEST_CASE("the sweep fact line counts the laps", "[belt][panel][settle]") {
+    BeltPanelFixture fx;
+    // 10 mm/s max velocity laps at 6 mm/s: minutes instead of seconds.
+    fx.set_toolhead_limits(10.0);
+    fx.panel().on_deactivate(DeactivateReason::NavigateAway);
+    fx.panel().on_activate();
+    fx.pump_ms(500); // the [resonance_tester] query answers
+
+    const auto axis_max =
+        helix::mock::descriptor(MoonrakerClientMock::PrinterType::VORON_24).axis_max;
+    helix::calibration::BeltSettleInputs in;
+    in.x_max = static_cast<float>(axis_max.x);
+    in.y_max = static_cast<float>(axis_max.y);
+    in.has_xy_limits = true;
+    in.probe_point = std::array<float, 3>{in.x_max / 2.0f, in.y_max / 2.0f, 20.0f};
+    in.max_velocity_mm_s = 10.0f;
+    in.xy_homed = true;
+    const auto plan = helix::calibration::plan_belt_settle(in);
+    REQUIRE(plan.refusal == helix::calibration::BeltSettleRefusal::NONE);
+    // Mock defaults 5-135 Hz at 1 Hz/s: two 130 s sweeps, then the laps.
+    const int minutes = static_cast<int>(std::ceil((260.0f + plan.seconds) / 60.0f));
+    REQUIRE(minutes != 5); // the laps change the answer
+    CHECK(fx.text("bt_hw_sweep") == "5-135 Hz · about " + std::to_string(minutes) + " min");
+}
+
+TEST_CASE("a wake re-asks the probe point the suspension expired", "[belt][panel][settle]") {
+    BeltPanelFixture fx;
+    REQUIRE(fx.wait_gate_open());
+    fx.mock().clear_gcode_script_history();
+
+    fx.panel().handle_start_clicked();
+    // The screen sleeps before the query answers; its callback expires.
+    fx.panel().on_deactivate(DeactivateReason::Suspended);
+    fx.pump_ms(500);
+    REQUIRE(run_steps(fx).empty());
+    fx.panel().on_activate();
+    REQUIRE(fx.pump_until_state(RESULTS));
+    CHECK(run_steps(fx) == std::vector<std::string>{"settle", "sweep", "sweep"});
 }

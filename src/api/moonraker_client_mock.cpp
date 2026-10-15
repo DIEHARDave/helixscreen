@@ -6009,6 +6009,19 @@ void MoonrakerClientMock::remove_shaper_csvs() {
     std::remove(shaper_csv_path('y').c_str());
 }
 
+json MoonrakerClientMock::resonance_tester_settings() const {
+    json rt = {{"min_freq", resonance_min_freq_},
+               {"max_freq", resonance_max_freq_},
+               {"accel_per_hz", 75.0},
+               {"hz_per_sec", resonance_hz_per_sec_}};
+    if (resonance_probe_points_) {
+        // The belt settling laps run at this height.
+        const auto axis_max = helix::mock::descriptor(printer_type_).axis_max;
+        rt["probe_points"] = json::array({json::array({axis_max.x / 2.0, axis_max.y / 2.0, 20.0})});
+    }
+    return rt;
+}
+
 float MoonrakerClientMock::belt_peak_hz(char path) const {
     return belt_peaks_hz_[(path == 'A' || path == 'a') ? 0 : 1];
 }

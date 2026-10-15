@@ -1582,6 +1582,7 @@ translations:
   Home: Início
   Home & Continue: Fazer home e continuar
   Home All: "Posicionar tudo"
+  Home X and Y first.: 'Posicione X e Y primeiro.'
   Home all axes to use the map: Referencie todos os eixos para usar o mapa
   Home and sweep the cutter to re-find its position: Referencia e varre o cortador para reencontrar sua posição
   Home failed: Homing falhou
@@ -3118,6 +3119,7 @@ translations:
   Settings Snapshot: Captura de Configurações
   Settings reset to defaults. Restarting...: Configurações restauradas para os padrões.
     Reiniciando...
+  Settling belts: 'Assentando correias'
   Setup: 'Configuração'
   Setup Timelapse: Configurar Timelapse
   Several printers match - choose yours: Várias impressoras correspondem - escolha a sua
@@ -3438,6 +3440,7 @@ translations:
     nas impressões. Você pode reativá-lo em Configurações > Tela.
   The bed has cooled. Take the spools off the plate, then confirm.: A mesa esfriou. Tire os carretéis da mesa e depois confirme.
 
+  The bed is too small for settling laps.: 'A mesa é pequena demais para as voltas de assentamento.'
   The bed turns off. The spools stay latched on the bed until you confirm they are off.: A mesa desliga. Os carretéis continuam registrados na mesa até você confirmar que foram retirados.
 
   The bed was reported dirty, so this print cannot resume.: 'A mesa foi reportada como suja, portanto esta impressão não pode ser retomada.'
@@ -3472,6 +3475,8 @@ translations:
   The printer finishes this measurement on its own.: 'A impressora conclui esta medição por conta própria.'
   The printer halted this print and cannot resume it. Restart from the beginning?: A
     impressora parou esta impressão e não pode retomá-la. Reiniciar do início?
+  The printer has not reported its axis limits yet.: 'A impressora ainda não informou os limites dos eixos.'
+  The printer has not reported its maximum velocity yet.: 'A impressora ainda não informou a velocidade máxima.'
   ? The printer heats the nozzle, extrudes a few short test moves in a corner of the plate, and measures them itself. It repeats until the readings agree, then reports one number.
   : 'A impressora aquece o bico, faz alguns movimentos curtos de teste num canto da placa e os mede sozinha. Repete até as leituras coincidirem e então informa um único número.'
   The printer homes and sweeps the cutter (about 1 minute). Keep the filament path clear.: A impressora referencia e varre o cortador (cerca de 1 minuto). Mantenha o caminho do filamento livre.
@@ -3993,6 +3998,7 @@ translations:
   'Z:': 'Z:'
   'Z: 0.000': 'Z: 0.000'
   Zone {:.0f}-{:.0f} Hz: "Zona {:.0f}-{:.0f} Hz"
+  '[resonance_tester] has no probe_points, so the toolhead has no safe height for the settling laps.': '[resonance_tester] não tem probe_points, então o cabeçote não tem uma altura segura para as voltas de assentamento.'
   already loaded: 'já carregado'
   attempt {}: 'tentativa {}'
   bed: mesa

@@ -1437,6 +1437,7 @@
   <translation tag="Home &amp; Continue" ja="ホーミングして続行"/>
   <translation tag="Home All" ja="全軸ホーミング"/>
   <translation tag="Home Selector" ja="セレクターをホーミング"/>
+  <translation tag="Home X and Y first." ja="先にXとYをホーミングしてください。"/>
   <translation tag="Home all axes to use the map" ja="マップを使うには全軸をホーミングしてください"/>
   <translation tag="Home and sweep the cutter to re-find its position" ja="原点復帰後にカッターを走査して位置を再検出します"/>
   <translation tag="Home failed" ja="ホーミング失敗"/>
@@ -2817,6 +2818,7 @@
   <translation tag="Settings" ja="設定"/>
   <translation tag="Settings Snapshot" ja="設定スナップショット"/>
   <translation tag="Settings reset to defaults. Restarting..." ja="設定をデフォルトにリセットしました。再起動中..."/>
+  <translation tag="Settling belts" ja="ベルトをなじませ中"/>
   <translation tag="Setup" ja="セットアップ"/>
   <translation tag="Setup Timelapse" ja="タイムラプスを設定"/>
   <translation tag="Several printers match - choose yours" ja="複数のプリンターが一致します - 選択してください"/>
@@ -3092,6 +3094,7 @@
   <translation tag="The Spoolman spool currently loaded" ja="現在装填中の Spoolman スプール"/>
   <translation tag="The animated screensaver has been turned off on this device to prevent it from interfering with prints. You can re-enable it in Settings &gt; Display." ja="アニメーション付きスクリーンセーバーが印刷に干渉しないよう、このデバイスではオフになっています。設定 &gt; ディスプレイで再度有効にできます。"/>
   <translation tag="The bed has cooled. Take the spools off the plate, then confirm." ja="ベッドが冷えました。スプールをベッドから取り出してから確認してください。"/>
+  <translation tag="The bed is too small for settling laps." ja="ベッドが小さすぎて、なじませ周回ができません。"/>
   <translation tag="The bed turns off. The spools stay latched on the bed until you confirm they are off." ja="ベッドをオフにします。取り出したことを確認するまで、スプールはベッド上にあるものとして扱われます。"/>
   <translation tag="The bed was reported dirty, so this print cannot resume." ja="ベッドが汚れていると報告されたため、この印刷を再開できません。"/>
   <translation tag="The buffer may be disconnected, stuck, or faulty. Check it before retrying" ja="バッファーが未接続、固着、または故障している可能性があります。再試行前に確認してください"/>
@@ -3118,6 +3121,8 @@
   <translation tag="The printer extrudes in a corner and repeats until the readings agree. You do not judge anything by eye." ja="プリンターは隅で押出しを行い、測定値が一致するまで繰り返します。目視での判断は不要です。"/>
   <translation tag="The printer finishes this measurement on its own." ja="この測定はプリンターが最後まで行います。"/>
   <translation tag="The printer halted this print and cannot resume it. Restart from the beginning?" ja="プリンターはこの印刷を停止し、再開できません。最初からやり直しますか？"/>
+  <translation tag="The printer has not reported its axis limits yet." ja="プリンターがまだ軸の範囲を報告していません。"/>
+  <translation tag="The printer has not reported its maximum velocity yet." ja="プリンターがまだ最大速度を報告していません。"/>
   <translation tag="The printer heats the nozzle, extrudes a few short test moves in a corner of the plate, and measures them itself. It repeats until the readings agree, then reports one number." ja="プリンターはノズルを加熱し、プレートの隅で短いテスト移動を数回行って自ら測定します。測定値が一致するまで繰り返し、最後にひとつの数値を報告します。"/>
   <translation tag="The printer homes and sweeps the cutter (about 1 minute). Keep the filament path clear." ja="プリンターが原点復帰してカッターを走査します（約1分）。フィラメントの経路を空けてください。"/>
   <translation tag="The printer homes, then moves the plate as far from the nozzle as it goes. Some spools are not heat-resistant enough and can deform. Nothing moves from this screen until you confirm the spools are off the bed; Mainsail, macros and prints sent from a slicer are not blocked." ja="プリンターはホームに戻ってから、ベッドをノズルからできるだけ離します。耐熱性が足りずに変形するスプールもあります。スプールをベッドから取り出したことを確認するまで、この画面からは何も動きません。Mainsail、マクロ、スライサーから送られた印刷はブロックされません。"/>
@@ -3567,6 +3572,7 @@
   <translation tag="Z:" ja="Z:"/>
   <translation tag="Z: 0.000" ja="Z: 0.000"/>
   <translation tag="Zone {:.0f}-{:.0f} Hz" ja="ゾーン {:.0f}-{:.0f} Hz"/>
+  <translation tag="[resonance_tester] has no probe_points, so the toolhead has no safe height for the settling laps." ja="[resonance_tester] に probe_points がないため、なじませ周回を行う安全な高さがありません。"/>
   <translation tag="already loaded" ja="装填済み"/>
   <translation tag="attempt {}" ja="試行 {}"/>
   <translation tag="bed" ja="ベッド"/>

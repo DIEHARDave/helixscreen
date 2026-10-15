@@ -1484,6 +1484,7 @@ translations:
   Home: ホーム
   Home & Continue: ホーミングして続行
   Home All: "全軸ホーミング"
+  Home X and Y first.: '先にXとYをホーミングしてください。'
   Home all axes to use the map: マップを使うには全軸をホーミングしてください
   Home and sweep the cutter to re-find its position: 原点復帰後にカッターを走査して位置を再検出します
   Home failed: ホーミング失敗
@@ -2928,6 +2929,7 @@ translations:
   Settings: 設定
   Settings Snapshot: 設定スナップショット
   Settings reset to defaults. Restarting...: 設定をデフォルトにリセットしました。再起動中...
+  Settling belts: 'ベルトをなじませ中'
   Setup: 'セットアップ'
   Setup Timelapse: タイムラプスを設定
   Several printers match - choose yours: 複数のプリンターが一致します - 選択してください
@@ -3223,6 +3225,7 @@ translations:
   : アニメーション付きスクリーンセーバーが印刷に干渉しないよう、このデバイスではオフになっています。設定 > ディスプレイで再度有効にできます。
   The bed has cooled. Take the spools off the plate, then confirm.: ベッドが冷えました。スプールをベッドから取り出してから確認してください。
 
+  The bed is too small for settling laps.: 'ベッドが小さすぎて、なじませ周回ができません。'
   The bed turns off. The spools stay latched on the bed until you confirm they are off.: ベッドをオフにします。取り出したことを確認するまで、スプールはベッド上にあるものとして扱われます。
 
   The bed was reported dirty, so this print cannot resume.: 'ベッドが汚れていると報告されたため、この印刷を再開できません。'
@@ -3254,6 +3257,8 @@ translations:
   The printer extrudes in a corner and repeats until the readings agree. You do not judge anything by eye.: 'プリンターは隅で押出しを行い、測定値が一致するまで繰り返します。目視での判断は不要です。'
   The printer finishes this measurement on its own.: 'この測定はプリンターが最後まで行います。'
   The printer halted this print and cannot resume it. Restart from the beginning?: プリンターはこの印刷を停止し、再開できません。最初からやり直しますか？
+  The printer has not reported its axis limits yet.: 'プリンターがまだ軸の範囲を報告していません。'
+  The printer has not reported its maximum velocity yet.: 'プリンターがまだ最大速度を報告していません。'
   ? The printer heats the nozzle, extrudes a few short test moves in a corner of the plate, and measures them itself. It repeats until the readings agree, then reports one number.
   : 'プリンターはノズルを加熱し、プレートの隅で短いテスト移動を数回行って自ら測定します。測定値が一致するまで繰り返し、最後にひとつの数値を報告します。'
   The printer homes and sweeps the cutter (about 1 minute). Keep the filament path clear.: プリンターが原点復帰してカッターを走査します（約1分）。フィラメントの経路を空けてください。
@@ -3733,6 +3738,7 @@ translations:
   'Z:': 'Z:'
   'Z: 0.000': 'Z: 0.000'
   Zone {:.0f}-{:.0f} Hz: "ゾーン {:.0f}-{:.0f} Hz"
+  '[resonance_tester] has no probe_points, so the toolhead has no safe height for the settling laps.': '[resonance_tester] に probe_points がないため、なじませ周回を行う安全な高さがありません。'
   already loaded: '装填済み'
   attempt {}: '試行 {}'
   bed: ベッド

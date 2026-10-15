@@ -8,6 +8,7 @@
 #include "ui_timer_guard.h"
 
 #include "belt_gating.h"
+#include "belt_settle.h"
 #include "belt_tension_calibrator.h"
 #include "belt_tension_types.h"
 #include "belt_tune_session.h"
@@ -48,7 +49,8 @@ class BeltPanelFixture;
  * Runs Klipper's TEST_RESONANCES down each CoreXY belt diagonal and compares
  * the resulting curves. Five view states drive one XML layout:
  * - START: gate result + hardware summary + start button
- * - RUNNING: one sweep at a time, live chart cursor + elapsed time
+ * - RUNNING: the settling laps, then one sweep at a time, live chart cursor +
+ *   elapsed time
  * - RESULTS: strongest peak pair, verdict, similarity, ghost of the previous run
  * - ERROR: the failure, with retry
  * - TUNING: the guided loop (#1736). BeltTuneSession decides the zone, the
@@ -82,7 +84,7 @@ class BeltTensionPanel : public OverlayBase {
     /// bt_tune_phase: what the TUNING view is waiting on.
     enum class TunePhase {
         ADJUST = 0,   ///< the user turns a tensioner, then re-measures
-        SWEEPING = 1, ///< a windowed round is running
+        SWEEPING = 1, ///< settling, then a windowed round
         MATCHED = 2,  ///< the zone is matched (or none is left)
     };
 
@@ -188,6 +190,16 @@ class BeltTensionPanel : public OverlayBase {
     void begin_run(const std::vector<helix::calibration::BeltPath>& queue, bool clear_previous,
                    std::optional<helix::calibration::BeltSweepWindow> window = std::nullopt);
     void start_next_measurement();
+    /// Re-read [resonance_tester] for its probe point, then run the settling
+    /// laps; the run's first sweep starts on their ack.
+    void start_settle();
+    void on_settle_done();
+    void on_settle_refused(helix::calibration::BeltSettleRefusal refusal);
+    /// The laps' inputs from the printer's limits, homing origin, max velocity
+    /// and homed axes, with the probe point from sweep_cfg_.
+    [[nodiscard]] helix::calibration::BeltSettleInputs settle_inputs() const;
+    /// Seconds the laps take on this printer; 0 when they cannot be planned.
+    [[nodiscard]] float settle_seconds() const;
     void on_sweep_progress(int percent, float freq_hz);
     void on_sweep_complete(helix::calibration::BeltPath path, helix::calibration::BeltCurve curve);
     void on_sweep_error(const std::string& message);
@@ -200,7 +212,7 @@ class BeltTensionPanel : public OverlayBase {
     /// Cancel the sweep, the stall guard, the elapsed timer and the queue.
     void cancel_run();
     void back_to_start();
-    /// RUNNING, or TUNING while a round sweeps.
+    /// RUNNING, or TUNING while a round sweeps (the settling laps included).
     [[nodiscard]] bool measuring() const;
 
     //
@@ -221,9 +233,9 @@ class BeltTensionPanel : public OverlayBase {
     void reset_tune_gauge_range();
     /// Drop the session and its curves.
     void end_tuning();
-    /// Minutes a full A+B check takes at the printer's sweep rate.
+    /// Minutes a full A+B check takes at the printer's sweep rate, laps included.
     [[nodiscard]] int full_check_minutes() const;
-    /// Minutes a tuning round (both paths) takes over `window`.
+    /// Minutes a tuning round (both paths) takes over `window`, laps included.
     [[nodiscard]] int round_minutes(const helix::calibration::BeltSweepWindow& window) const;
 
     //
@@ -441,6 +453,14 @@ class BeltTensionPanel : public OverlayBase {
     /// a cancel belong to a run this panel has already abandoned.
     bool run_active_ = false;
     uint32_t run_started_ms_ = 0;
+    /// The run is in its settling laps; no sweep has started yet.
+    bool settling_ = false;
+    /// The settle is waiting on its [resonance_tester] query, which a
+    /// suspension expires; a wake re-asks it.
+    bool settle_query_pending_ = false;
+    /// Bumped by every start_settle() and cancel_run(); a query answer acts
+    /// only while it still holds the current value.
+    uint32_t settle_generation_ = 0;
     helix::ui::LvglTimerGuard elapsed_timer_;
     OperationTimeoutGuard stall_guard_;
     /// The window of the tuning round in flight; nullopt for a full check.

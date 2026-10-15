@@ -1437,6 +1437,7 @@
   <translation tag="Home &amp; Continue" fr="Référencer et continuer"/>
   <translation tag="Home All" fr="Tout référencer"/>
   <translation tag="Home Selector" fr="Origine du sélecteur"/>
+  <translation tag="Home X and Y first." fr="Référencez d&apos;abord X et Y."/>
   <translation tag="Home all axes to use the map" fr="Référencez tous les axes pour utiliser la carte"/>
   <translation tag="Home and sweep the cutter to re-find its position" fr="Prend l&apos;origine et balaie le coupeur pour retrouver sa position"/>
   <translation tag="Home failed" fr="Échec de la référence"/>
@@ -2817,6 +2818,7 @@
   <translation tag="Settings" fr="Paramètres"/>
   <translation tag="Settings Snapshot" fr="Instantané des paramètres"/>
   <translation tag="Settings reset to defaults. Restarting..." fr="Paramètres réinitialisés par défaut. Redémarrage..."/>
+  <translation tag="Settling belts" fr="Mise en place des courroies"/>
   <translation tag="Setup" fr="Configuration"/>
   <translation tag="Setup Timelapse" fr="Configurer le timelapse"/>
   <translation tag="Several printers match - choose yours" fr="Plusieurs imprimantes correspondent - choisissez la vôtre"/>
@@ -3092,6 +3094,7 @@
   <translation tag="The Spoolman spool currently loaded" fr="La bobine Spoolman actuellement chargée"/>
   <translation tag="The animated screensaver has been turned off on this device to prevent it from interfering with prints. You can re-enable it in Settings &gt; Display." fr="L&apos;économiseur d&apos;écran animé a été désactivé sur cet appareil pour éviter qu&apos;il n&apos;interfère avec les impressions. Vous pouvez le réactiver dans Paramètres &gt; Affichage et son."/>
   <translation tag="The bed has cooled. Take the spools off the plate, then confirm." fr="Le plateau a refroidi. Retirez les bobines du plateau, puis confirmez."/>
+  <translation tag="The bed is too small for settling laps." fr="Le plateau est trop petit pour les tours de mise en place."/>
   <translation tag="The bed turns off. The spools stay latched on the bed until you confirm they are off." fr="Le plateau s&apos;éteint. Les bobines restent signalées sur le plateau jusqu&apos;à ce que vous confirmiez les avoir retirées."/>
   <translation tag="The bed was reported dirty, so this print cannot resume." fr="Le plateau a été signalé comme sale, cette impression ne peut donc pas reprendre."/>
   <translation tag="The buffer may be disconnected, stuck, or faulty. Check it before retrying" fr="Le tampon est peut-être débranché, bloqué ou défectueux. Vérifiez-le avant de réessayer"/>
@@ -3118,6 +3121,8 @@
   <translation tag="The printer extrudes in a corner and repeats until the readings agree. You do not judge anything by eye." fr="L&apos;imprimante extrude dans un coin et répète jusqu&apos;à ce que les mesures concordent. Vous ne jugez rien à l&apos;œil."/>
   <translation tag="The printer finishes this measurement on its own." fr="L&apos;imprimante termine cette mesure d&apos;elle-même."/>
   <translation tag="The printer halted this print and cannot resume it. Restart from the beginning?" fr="L&apos;imprimante a arrêté cette impression et ne peut pas la reprendre. Redémarrer depuis le début ?"/>
+  <translation tag="The printer has not reported its axis limits yet." fr="L&apos;imprimante n&apos;a pas encore signalé les limites de ses axes."/>
+  <translation tag="The printer has not reported its maximum velocity yet." fr="L&apos;imprimante n&apos;a pas encore signalé sa vitesse maximale."/>
   <translation tag="The printer heats the nozzle, extrudes a few short test moves in a corner of the plate, and measures them itself. It repeats until the readings agree, then reports one number." fr="L&apos;imprimante chauffe la buse, fait quelques mouvements de test dans un coin du plateau et les mesure elle-même. Elle répète jusqu&apos;à ce que les mesures concordent, puis indique un seul chiffre."/>
   <translation tag="The printer homes and sweeps the cutter (about 1 minute). Keep the filament path clear." fr="L&apos;imprimante prend l&apos;origine et balaie le coupeur (environ 1 minute). Laissez le chemin du filament dégagé."/>
   <translation tag="The printer homes, then moves the plate as far from the nozzle as it goes. Some spools are not heat-resistant enough and can deform. Nothing moves from this screen until you confirm the spools are off the bed; Mainsail, macros and prints sent from a slicer are not blocked." fr="L&apos;imprimante fait sa prise d&apos;origine, puis éloigne le plateau de la buse autant que possible. Certaines bobines ne supportent pas assez la chaleur et peuvent se déformer. Rien ne bouge depuis cet écran tant que vous n&apos;avez pas confirmé que les bobines ne sont plus sur le plateau ; Mainsail, les macros et les impressions envoyées depuis un slicer ne sont pas bloqués."/>
@@ -3567,6 +3572,7 @@
   <translation tag="Z:" fr="Z:"/>
   <translation tag="Z: 0.000" fr="Z: 0.000"/>
   <translation tag="Zone {:.0f}-{:.0f} Hz" fr="Zone {:.0f}-{:.0f} Hz"/>
+  <translation tag="[resonance_tester] has no probe_points, so the toolhead has no safe height for the settling laps." fr="[resonance_tester] n&apos;a pas de probe_points, la tête n&apos;a donc pas de hauteur sûre pour les tours de mise en place."/>
   <translation tag="already loaded" fr="déjà chargé"/>
   <translation tag="attempt {}" fr="essai {}"/>
   <translation tag="bed" fr="plateau"/>

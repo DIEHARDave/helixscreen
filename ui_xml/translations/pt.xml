@@ -1437,6 +1437,7 @@
   <translation tag="Home &amp; Continue" pt="Fazer home e continuar"/>
   <translation tag="Home All" pt="Posicionar tudo"/>
   <translation tag="Home Selector" pt="Fazer home do seletor"/>
+  <translation tag="Home X and Y first." pt="Posicione X e Y primeiro."/>
   <translation tag="Home all axes to use the map" pt="Referencie todos os eixos para usar o mapa"/>
   <translation tag="Home and sweep the cutter to re-find its position" pt="Referencia e varre o cortador para reencontrar sua posição"/>
   <translation tag="Home failed" pt="Homing falhou"/>
@@ -2817,6 +2818,7 @@
   <translation tag="Settings" pt="Configurações"/>
   <translation tag="Settings Snapshot" pt="Captura de Configurações"/>
   <translation tag="Settings reset to defaults. Restarting..." pt="Configurações restauradas para os padrões. Reiniciando..."/>
+  <translation tag="Settling belts" pt="Assentando correias"/>
   <translation tag="Setup" pt="Configuração"/>
   <translation tag="Setup Timelapse" pt="Configurar Timelapse"/>
   <translation tag="Several printers match - choose yours" pt="Várias impressoras correspondem - escolha a sua"/>
@@ -3092,6 +3094,7 @@
   <translation tag="The Spoolman spool currently loaded" pt="O carretel do Spoolman em uso"/>
   <translation tag="The animated screensaver has been turned off on this device to prevent it from interfering with prints. You can re-enable it in Settings &gt; Display." pt="O protetor de tela animado foi desativado neste dispositivo para evitar que interfira nas impressões. Você pode reativá-lo em Configurações &gt; Tela."/>
   <translation tag="The bed has cooled. Take the spools off the plate, then confirm." pt="A mesa esfriou. Tire os carretéis da mesa e depois confirme."/>
+  <translation tag="The bed is too small for settling laps." pt="A mesa é pequena demais para as voltas de assentamento."/>
   <translation tag="The bed turns off. The spools stay latched on the bed until you confirm they are off." pt="A mesa desliga. Os carretéis continuam registrados na mesa até você confirmar que foram retirados."/>
   <translation tag="The bed was reported dirty, so this print cannot resume." pt="A mesa foi reportada como suja, portanto esta impressão não pode ser retomada."/>
   <translation tag="The buffer may be disconnected, stuck, or faulty. Check it before retrying" pt="O buffer pode estar desconectado, travado ou com defeito. Verifique antes de tentar novamente"/>
@@ -3118,6 +3121,8 @@
   <translation tag="The printer extrudes in a corner and repeats until the readings agree. You do not judge anything by eye." pt="A impressora extruda num canto e repete até as leituras coincidirem. Você não julga nada a olho."/>
   <translation tag="The printer finishes this measurement on its own." pt="A impressora conclui esta medição por conta própria."/>
   <translation tag="The printer halted this print and cannot resume it. Restart from the beginning?" pt="A impressora parou esta impressão e não pode retomá-la. Reiniciar do início?"/>
+  <translation tag="The printer has not reported its axis limits yet." pt="A impressora ainda não informou os limites dos eixos."/>
+  <translation tag="The printer has not reported its maximum velocity yet." pt="A impressora ainda não informou a velocidade máxima."/>
   <translation tag="The printer heats the nozzle, extrudes a few short test moves in a corner of the plate, and measures them itself. It repeats until the readings agree, then reports one number." pt="A impressora aquece o bico, faz alguns movimentos curtos de teste num canto da placa e os mede sozinha. Repete até as leituras coincidirem e então informa um único número."/>
   <translation tag="The printer homes and sweeps the cutter (about 1 minute). Keep the filament path clear." pt="A impressora referencia e varre o cortador (cerca de 1 minuto). Mantenha o caminho do filamento livre."/>
   <translation tag="The printer homes, then moves the plate as far from the nozzle as it goes. Some spools are not heat-resistant enough and can deform. Nothing moves from this screen until you confirm the spools are off the bed; Mainsail, macros and prints sent from a slicer are not blocked." pt="A impressora faz o home e depois afasta a mesa do bico o máximo possível. Alguns carretéis não resistem ao calor o suficiente e podem deformar. Nada se move a partir desta tela até você confirmar que os carretéis saíram da mesa; Mainsail, macros e impressões enviadas por um fatiador não são bloqueados."/>
@@ -3567,6 +3572,7 @@
   <translation tag="Z:" pt="Z:"/>
   <translation tag="Z: 0.000" pt="Z: 0.000"/>
   <translation tag="Zone {:.0f}-{:.0f} Hz" pt="Zona {:.0f}-{:.0f} Hz"/>
+  <translation tag="[resonance_tester] has no probe_points, so the toolhead has no safe height for the settling laps." pt="[resonance_tester] não tem probe_points, então o cabeçote não tem uma altura segura para as voltas de assentamento."/>
   <translation tag="already loaded" pt="já carregado"/>
   <translation tag="attempt {}" pt="tentativa {}"/>
   <translation tag="bed" pt="mesa"/>

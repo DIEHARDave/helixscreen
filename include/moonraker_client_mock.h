@@ -746,6 +746,16 @@ class MoonrakerClientMock : public helix::MoonrakerClient {
         return resonance_hz_per_sec_;
     }
 
+    /// Whether `[resonance_tester]` reports probe_points (at the bed centre,
+    /// 20 mm up). Klipper requires them; off reproduces a fork that omits them.
+    void set_resonance_probe_points(bool reported) {
+        resonance_probe_points_ = reported;
+    }
+
+    /// `configfile.settings.resonance_tester` as the query and subscribe
+    /// responses report it.
+    [[nodiscard]] json resonance_tester_settings() const;
+
     /**
      * @name TEST_RESONANCES belt simulation
      * @{
@@ -2180,9 +2190,10 @@ class MoonrakerClientMock : public helix::MoonrakerClient {
     json extra_config_settings_ = json::object();   ///< set_config_settings_section() sections
     std::atomic<int> skip_flags_[3] = {1, 1, 1};    ///< `_HELIX_PREP` run_* by skip_wrappers::Op
     json object_status_overrides_ = json::object(); ///< set_object_status() statuses
-    double resonance_min_freq_{5.0};   ///< [resonance_tester] min_freq the mock reports/sweeps
-    double resonance_max_freq_{135.0}; ///< [resonance_tester] max_freq the mock reports/sweeps
-    double resonance_hz_per_sec_{1.0}; ///< [resonance_tester] hz_per_sec the mock reports/sweeps
+    double resonance_min_freq_{5.0};    ///< [resonance_tester] min_freq the mock reports/sweeps
+    double resonance_max_freq_{135.0};  ///< [resonance_tester] max_freq the mock reports/sweeps
+    double resonance_hz_per_sec_{1.0};  ///< [resonance_tester] hz_per_sec the mock reports/sweeps
+    bool resonance_probe_points_{true}; ///< [resonance_tester] reports probe_points
     /// Simulated belt peaks, index 0 = path A ('1,1'), 1 = path B ('1,-1').
     float belt_peaks_hz_[2]{110.0f, 98.0f};
     /// Measurements taken per path; every one after the first walks that

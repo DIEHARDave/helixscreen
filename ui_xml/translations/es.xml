@@ -1437,6 +1437,7 @@
   <translation tag="Home &amp; Continue" es="Referenciar y continuar"/>
   <translation tag="Home All" es="Posicionar todo"/>
   <translation tag="Home Selector" es="Referenciar selector"/>
+  <translation tag="Home X and Y first." es="Primero posicione X e Y."/>
   <translation tag="Home all axes to use the map" es="Lleva todos los ejes al origen para usar el mapa"/>
   <translation tag="Home and sweep the cutter to re-find its position" es="Referencia y barrido del cortador para volver a encontrar su posición"/>
   <translation tag="Home failed" es="Error en referencia"/>
@@ -2817,6 +2818,7 @@
   <translation tag="Settings" es="Ajustes"/>
   <translation tag="Settings Snapshot" es="Instantánea de ajustes"/>
   <translation tag="Settings reset to defaults. Restarting..." es="Ajustes restablecidos a valores predeterminados. Reiniciando..."/>
+  <translation tag="Settling belts" es="Asentando correas"/>
   <translation tag="Setup" es="Configuración inicial"/>
   <translation tag="Setup Timelapse" es="Configurar Timelapse"/>
   <translation tag="Several printers match - choose yours" es="Varias impresoras coinciden - elija la suya"/>
@@ -3092,6 +3094,7 @@
   <translation tag="The Spoolman spool currently loaded" es="La bobina de Spoolman cargada ahora"/>
   <translation tag="The animated screensaver has been turned off on this device to prevent it from interfering with prints. You can re-enable it in Settings &gt; Display." es="El salvapantallas animado se ha desactivado en este dispositivo para evitar que interfiera con las impresiones. Puede volver a activarlo en Ajustes &gt; Pantalla."/>
   <translation tag="The bed has cooled. Take the spools off the plate, then confirm." es="La cama se ha enfriado. Quita las bobinas de la cama y luego confirma."/>
+  <translation tag="The bed is too small for settling laps." es="La cama es demasiado pequeña para las vueltas de asentamiento."/>
   <translation tag="The bed turns off. The spools stay latched on the bed until you confirm they are off." es="La cama se apaga. Las bobinas siguen registradas en la cama hasta que confirmes que las has quitado."/>
   <translation tag="The bed was reported dirty, so this print cannot resume." es="La cama se ha notificado como sucia, por lo que esta impresión no puede reanudarse."/>
   <translation tag="The buffer may be disconnected, stuck, or faulty. Check it before retrying" es="Puede que el búfer esté desconectado, atascado o averiado. Compruébelo antes de reintentar"/>
@@ -3118,6 +3121,8 @@
   <translation tag="The printer extrudes in a corner and repeats until the readings agree. You do not judge anything by eye." es="La impresora extruye en una esquina y repite hasta que las lecturas coinciden. Tú no juzgas nada a ojo."/>
   <translation tag="The printer finishes this measurement on its own." es="La impresora termina esta medición por su cuenta."/>
   <translation tag="The printer halted this print and cannot resume it. Restart from the beginning?" es="La impresora detuvo esta impresión y no puede reanudarla. ¿Reiniciar desde el principio?"/>
+  <translation tag="The printer has not reported its axis limits yet." es="La impresora aún no ha informado los límites de sus ejes."/>
+  <translation tag="The printer has not reported its maximum velocity yet." es="La impresora aún no ha informado su velocidad máxima."/>
   <translation tag="The printer heats the nozzle, extrudes a few short test moves in a corner of the plate, and measures them itself. It repeats until the readings agree, then reports one number." es="La impresora calienta la boquilla, hace unos movimientos de prueba cortos en una esquina de la placa y los mide ella misma. Repite hasta que las lecturas coinciden y luego informa de un número."/>
   <translation tag="The printer homes and sweeps the cutter (about 1 minute). Keep the filament path clear." es="La impresora referencia y barre el cortador (unos 60 segundos). Mantenga despejada la ruta del filamento."/>
   <translation tag="The printer homes, then moves the plate as far from the nozzle as it goes. Some spools are not heat-resistant enough and can deform. Nothing moves from this screen until you confirm the spools are off the bed; Mainsail, macros and prints sent from a slicer are not blocked." es="La impresora hace home y luego aleja la cama de la boquilla todo lo posible. Algunas bobinas no resisten suficiente calor y pueden deformarse. Nada se mueve desde esta pantalla hasta que confirmes que las bobinas no están en la cama; Mainsail, las macros y las impresiones enviadas desde un slicer no se bloquean."/>
@@ -3567,6 +3572,7 @@
   <translation tag="Z:" es="Z:"/>
   <translation tag="Z: 0.000" es="Z: 0.000"/>
   <translation tag="Zone {:.0f}-{:.0f} Hz" es="Zona {:.0f}-{:.0f} Hz"/>
+  <translation tag="[resonance_tester] has no probe_points, so the toolhead has no safe height for the settling laps." es="[resonance_tester] no tiene probe_points, así que el cabezal no tiene una altura segura para las vueltas de asentamiento."/>
   <translation tag="already loaded" es="ya cargado"/>
   <translation tag="attempt {}" es="intento {}"/>
   <translation tag="bed" es="cama"/>

@@ -1437,6 +1437,7 @@
   <translation tag="Home &amp; Continue" zh="归位并继续"/>
   <translation tag="Home All" zh="全部归位"/>
   <translation tag="Home Selector" zh="选择器归位"/>
+  <translation tag="Home X and Y first." zh="请先将 X 和 Y 归位。"/>
   <translation tag="Home all axes to use the map" zh="请先归位所有轴以使用地图"/>
   <translation tag="Home and sweep the cutter to re-find its position" zh="归零并扫过切刀以重新找到其位置"/>
   <translation tag="Home failed" zh="归位失败"/>
@@ -2817,6 +2818,7 @@
   <translation tag="Settings" zh="设置"/>
   <translation tag="Settings Snapshot" zh="设置快照"/>
   <translation tag="Settings reset to defaults. Restarting..." zh="设置已重置为默认值。正在重启..."/>
+  <translation tag="Settling belts" zh="正在稳定皮带"/>
   <translation tag="Setup" zh="设置向导"/>
   <translation tag="Setup Timelapse" zh="设置延时摄影"/>
   <translation tag="Several printers match - choose yours" zh="多台打印机匹配 - 请选择您的打印机"/>
@@ -3092,6 +3094,7 @@
   <translation tag="The Spoolman spool currently loaded" zh="当前装载的 Spoolman 料盘"/>
   <translation tag="The animated screensaver has been turned off on this device to prevent it from interfering with prints. You can re-enable it in Settings &gt; Display." zh="为防止动画屏保干扰打印，已在此设备上将其关闭。您可以在设置 &gt; 显示中重新启用。"/>
   <translation tag="The bed has cooled. Take the spools off the plate, then confirm." zh="热床已冷却。请从热床上取下料盘,然后确认。"/>
+  <translation tag="The bed is too small for settling laps." zh="打印床太小，无法进行稳定绕圈。"/>
   <translation tag="The bed turns off. The spools stay latched on the bed until you confirm they are off." zh="热床将关闭。在你确认取下之前,料盘仍视为在热床上。"/>
   <translation tag="The bed was reported dirty, so this print cannot resume." zh="热床被报告为脏污，因此无法恢复此次打印。"/>
   <translation tag="The buffer may be disconnected, stuck, or faulty. Check it before retrying" zh="缓冲器可能未连接、卡住或损坏。请检查后重试"/>
@@ -3118,6 +3121,8 @@
   <translation tag="The printer extrudes in a corner and repeats until the readings agree. You do not judge anything by eye." zh="打印机在角落挤出并重复，直到读数一致为止。你无需用肉眼判断任何东西。"/>
   <translation tag="The printer finishes this measurement on its own." zh="打印机会自行完成这次测量。"/>
   <translation tag="The printer halted this print and cannot resume it. Restart from the beginning?" zh="打印机已停止此打印且无法恢复。从头重新开始？"/>
+  <translation tag="The printer has not reported its axis limits yet." zh="打印机尚未报告其轴限位。"/>
+  <translation tag="The printer has not reported its maximum velocity yet." zh="打印机尚未报告其最大速度。"/>
   <translation tag="The printer heats the nozzle, extrudes a few short test moves in a corner of the plate, and measures them itself. It repeats until the readings agree, then reports one number." zh="打印机会加热喷嘴，在打印板角落进行几次短促的测试挤出并自行测量。它会重复直到读数一致，然后给出一个数值。"/>
   <translation tag="The printer homes and sweeps the cutter (about 1 minute). Keep the filament path clear." zh="打印机将归零并扫过切刀（约1分钟）。请保持料路畅通。"/>
   <translation tag="The printer homes, then moves the plate as far from the nozzle as it goes. Some spools are not heat-resistant enough and can deform. Nothing moves from this screen until you confirm the spools are off the bed; Mainsail, macros and prints sent from a slicer are not blocked." zh="打印机会先归位,然后让热床尽量远离喷嘴。有些料盘耐热性不足,可能会变形。在你确认料盘已从热床上取下之前,此屏幕不会移动任何部件;Mainsail、宏以及切片软件发送的打印不会被阻止。"/>
@@ -3567,6 +3572,7 @@
   <translation tag="Z:" zh="Z:"/>
   <translation tag="Z: 0.000" zh="Z: 0.000"/>
   <translation tag="Zone {:.0f}-{:.0f} Hz" zh="区间 {:.0f}-{:.0f} Hz"/>
+  <translation tag="[resonance_tester] has no probe_points, so the toolhead has no safe height for the settling laps." zh="[resonance_tester] 没有 probe_points，因此打印头没有进行稳定绕圈的安全高度。"/>
   <translation tag="already loaded" zh="已加载"/>
   <translation tag="attempt {}" zh="第 {} 次尝试"/>
   <translation tag="bed" zh="热床"/>

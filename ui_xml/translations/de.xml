@@ -1437,6 +1437,7 @@
   <translation tag="Home &amp; Continue" de="Referenzieren &amp; Fortfahren"/>
   <translation tag="Home All" de="Alle referenzieren"/>
   <translation tag="Home Selector" de="Selektor referenzieren"/>
+  <translation tag="Home X and Y first." de="Zuerst X und Y referenzieren."/>
   <translation tag="Home all axes to use the map" de="Alle Achsen referenzieren, um die Karte zu nutzen"/>
   <translation tag="Home and sweep the cutter to re-find its position" de="Referenzfahrt und Messfahrt des Schneiders, um seine Position neu zu ermitteln"/>
   <translation tag="Home failed" de="Referenzfahrt fehlgeschlagen"/>
@@ -2817,6 +2818,7 @@
   <translation tag="Settings" de="Einstellungen"/>
   <translation tag="Settings Snapshot" de="Einstellungen-Momentaufnahme"/>
   <translation tag="Settings reset to defaults. Restarting..." de="Einstellungen auf Standardwerte zurückgesetzt. Neustart..."/>
+  <translation tag="Settling belts" de="Riemen setzen sich"/>
   <translation tag="Setup" de="Einrichtung"/>
   <translation tag="Setup Timelapse" de="Zeitraffer einrichten"/>
   <translation tag="Several printers match - choose yours" de="Mehrere Drucker passen - Drucker auswählen"/>
@@ -3092,6 +3094,7 @@
   <translation tag="The Spoolman spool currently loaded" de="Aktuell geladene Spoolman-Spule"/>
   <translation tag="The animated screensaver has been turned off on this device to prevent it from interfering with prints. You can re-enable it in Settings &gt; Display." de="Der animierte Bildschirmschoner wurde auf diesem Gerät ausgeschaltet, um zu verhindern, dass er Drucke stört. Sie können ihn unter Einstellungen &gt; Anzeige wieder aktivieren."/>
   <translation tag="The bed has cooled. Take the spools off the plate, then confirm." de="Das Heizbett ist abgekühlt. Nimm die Spulen vom Heizbett und bestätige dann."/>
+  <translation tag="The bed is too small for settling laps." de="Das Bett ist zu klein für Setzrunden."/>
   <translation tag="The bed turns off. The spools stay latched on the bed until you confirm they are off." de="Das Heizbett schaltet ab. Die Spulen bleiben als auf dem Heizbett liegend gesperrt, bis du bestätigst, dass sie entnommen sind."/>
   <translation tag="The bed was reported dirty, so this print cannot resume." de="Das Heizbett wurde als verschmutzt gemeldet, daher kann dieser Druck nicht fortgesetzt werden."/>
   <translation tag="The buffer may be disconnected, stuck, or faulty. Check it before retrying" de="Der Puffer ist möglicherweise nicht angeschlossen, klemmt oder ist defekt. Vor dem erneuten Versuch prüfen"/>
@@ -3118,6 +3121,8 @@
   <translation tag="The printer extrudes in a corner and repeats until the readings agree. You do not judge anything by eye." de="Der Drucker extrudiert in einer Ecke und wiederholt, bis die Messwerte übereinstimmen. Du beurteilst nichts mit dem Auge."/>
   <translation tag="The printer finishes this measurement on its own." de="Der Drucker beendet diese Messung selbst."/>
   <translation tag="The printer halted this print and cannot resume it. Restart from the beginning?" de="Der Drucker hat diesen Druck angehalten und kann ihn nicht fortsetzen. Von vorne neu starten?"/>
+  <translation tag="The printer has not reported its axis limits yet." de="Der Drucker hat seine Achsgrenzen noch nicht gemeldet."/>
+  <translation tag="The printer has not reported its maximum velocity yet." de="Der Drucker hat seine Höchstgeschwindigkeit noch nicht gemeldet."/>
   <translation tag="The printer heats the nozzle, extrudes a few short test moves in a corner of the plate, and measures them itself. It repeats until the readings agree, then reports one number." de="Der Drucker heizt die Düse, macht ein paar kurze Testbewegungen in einer Ecke der Platte und misst sie selbst. Er wiederholt, bis die Messwerte übereinstimmen, und meldet dann eine Zahl."/>
   <translation tag="The printer homes and sweeps the cutter (about 1 minute). Keep the filament path clear." de="Der Drucker referenziert und vermisst den Schneider (ca. 1 Minute). Halten Sie den Filamentweg frei."/>
   <translation tag="The printer homes, then moves the plate as far from the nozzle as it goes. Some spools are not heat-resistant enough and can deform. Nothing moves from this screen until you confirm the spools are off the bed; Mainsail, macros and prints sent from a slicer are not blocked." de="Der Drucker referenziert und fährt das Heizbett dann so weit wie möglich von der Düse weg. Manche Spulen sind nicht hitzebeständig genug und können sich verformen. Von diesem Bildschirm aus bewegt sich nichts, bis du bestätigst, dass die Spulen vom Heizbett sind; Mainsail, Makros und von einem Slicer gesendete Drucke werden nicht blockiert."/>
@@ -3567,6 +3572,7 @@
   <translation tag="Z:" de="Z:"/>
   <translation tag="Z: 0.000" de="Z: 0.000"/>
   <translation tag="Zone {:.0f}-{:.0f} Hz" de="Zone {:.0f}-{:.0f} Hz"/>
+  <translation tag="[resonance_tester] has no probe_points, so the toolhead has no safe height for the settling laps." de="[resonance_tester] hat keine probe_points, daher hat der Druckkopf keine sichere Höhe für die Setzrunden."/>
   <translation tag="already loaded" de="bereits geladen"/>
   <translation tag="attempt {}" de="Versuch {}"/>
   <translation tag="bed" de="Bett"/>

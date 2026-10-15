@@ -1590,6 +1590,7 @@ translations:
   Home: Home
   Home & Continue: Referenzieren & Fortfahren
   Home All: "Alle referenzieren"
+  Home X and Y first.: 'Zuerst X und Y referenzieren.'
   Home all axes to use the map: Alle Achsen referenzieren, um die Karte zu nutzen
   Home and sweep the cutter to re-find its position: Referenzfahrt und Messfahrt des Schneiders, um seine Position neu zu ermitteln
   Home failed: Referenzfahrt fehlgeschlagen
@@ -3124,6 +3125,7 @@ translations:
   Settings Snapshot: Einstellungen-Momentaufnahme
   Settings reset to defaults. Restarting...: Einstellungen auf Standardwerte zurückgesetzt.
     Neustart...
+  Settling belts: 'Riemen setzen sich'
   Setup: 'Einrichtung'
   Setup Timelapse: Zeitraffer einrichten
   Several printers match - choose yours: Mehrere Drucker passen - Drucker auswählen
@@ -3440,6 +3442,7 @@ translations:
     dass er Drucke stört. Sie können ihn unter Einstellungen > Anzeige wieder aktivieren.
   The bed has cooled. Take the spools off the plate, then confirm.: Das Heizbett ist abgekühlt. Nimm die Spulen vom Heizbett und bestätige dann.
 
+  The bed is too small for settling laps.: 'Das Bett ist zu klein für Setzrunden.'
   The bed turns off. The spools stay latched on the bed until you confirm they are off.: Das Heizbett schaltet ab. Die Spulen bleiben als auf dem Heizbett liegend gesperrt, bis du bestätigst, dass sie entnommen sind.
 
   The bed was reported dirty, so this print cannot resume.: 'Das Heizbett wurde als verschmutzt gemeldet, daher kann dieser Druck nicht fortgesetzt werden.'
@@ -3476,6 +3479,8 @@ translations:
   The printer halted this print and cannot resume it. Restart from the beginning?: Der
     Drucker hat diesen Druck angehalten und kann ihn nicht fortsetzen. Von vorne neu
     starten?
+  The printer has not reported its axis limits yet.: 'Der Drucker hat seine Achsgrenzen noch nicht gemeldet.'
+  The printer has not reported its maximum velocity yet.: 'Der Drucker hat seine Höchstgeschwindigkeit noch nicht gemeldet.'
   ? The printer heats the nozzle, extrudes a few short test moves in a corner of the plate, and measures them itself. It repeats until the readings agree, then reports one number.
   : 'Der Drucker heizt die Düse, macht ein paar kurze Testbewegungen in einer Ecke der Platte und misst sie selbst. Er wiederholt, bis die Messwerte übereinstimmen, und meldet dann eine Zahl.'
   The printer homes and sweeps the cutter (about 1 minute). Keep the filament path clear.: Der Drucker referenziert und vermisst den Schneider (ca. 1 Minute). Halten Sie den Filamentweg frei.
@@ -3999,6 +4004,7 @@ translations:
   'Z:': 'Z:'
   'Z: 0.000': 'Z: 0.000'
   Zone {:.0f}-{:.0f} Hz: "Zone {:.0f}-{:.0f} Hz"
+  '[resonance_tester] has no probe_points, so the toolhead has no safe height for the settling laps.': '[resonance_tester] hat keine probe_points, daher hat der Druckkopf keine sichere Höhe für die Setzrunden.'
   already loaded: 'bereits geladen'
   attempt {}: 'Versuch {}'
   bed: Bett

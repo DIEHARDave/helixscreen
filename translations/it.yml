@@ -1578,6 +1578,7 @@ translations:
   Home: Home
   Home & Continue: Homing e continua
   Home All: "Homing tutto"
+  Home X and Y first.: 'Esegui prima l''homing di X e Y.'
   Home all axes to use the map: Porta tutti gli assi in posizione per usare la mappa
   Home and sweep the cutter to re-find its position: Azzera e fa scorrevolare la taglierina per ritrovare la sua posizione
   Home failed: Homing fallito
@@ -3113,6 +3114,7 @@ translations:
   Settings Snapshot: Istantanea delle impostazioni
   Settings reset to defaults. Restarting...: Impostazioni ripristinate ai valori predefiniti.
     Riavvio...
+  Settling belts: 'Assestamento cinghie'
   Setup: 'Configurazione'
   Setup Timelapse: Configura timelapse
   Several printers match - choose yours: Più stampanti corrispondono - scegli la tua
@@ -3432,6 +3434,7 @@ translations:
     che interferisca con le stampe. Puoi riattivarlo in Impostazioni > Schermo.
   The bed has cooled. Take the spools off the plate, then confirm.: Il piano si è raffreddato. Togli le bobine dal piano, poi conferma.
 
+  The bed is too small for settling laps.: 'Il piano è troppo piccolo per i giri di assestamento.'
   The bed turns off. The spools stay latched on the bed until you confirm they are off.: Il piano si spegne. Le bobine restano registrate sul piano finché non confermi di averle tolte.
 
   The bed was reported dirty, so this print cannot resume.: 'Il piano è stato segnalato come sporco, quindi questa stampa non può riprendere.'
@@ -3466,6 +3469,8 @@ translations:
   The printer finishes this measurement on its own.: 'La stampante completa questa misurazione da sola.'
   The printer halted this print and cannot resume it. Restart from the beginning?: La
     stampante ha interrotto questa stampa e non può riprenderla. Riavviare dall'inizio?
+  The printer has not reported its axis limits yet.: 'La stampante non ha ancora comunicato i limiti degli assi.'
+  The printer has not reported its maximum velocity yet.: 'La stampante non ha ancora comunicato la velocità massima.'
   ? The printer heats the nozzle, extrudes a few short test moves in a corner of the plate, and measures them itself. It repeats until the readings agree, then reports one number.
   : 'La stampante riscalda l''ugello, fa alcuni brevi movimenti di prova in un angolo del piano e li misura da sola. Ripete finché le letture concordano, poi riporta un unico numero.'
   The printer homes and sweeps the cutter (about 1 minute). Keep the filament path clear.: La stampante si azzera e fa scorrevolare la taglierina (circa 1 minuto). Mantenere libero il percorso del filamento.
@@ -3990,6 +3995,7 @@ translations:
   'Z:': 'Z:'
   'Z: 0.000': 'Z: 0.000'
   Zone {:.0f}-{:.0f} Hz: "Zona {:.0f}-{:.0f} Hz"
+  '[resonance_tester] has no probe_points, so the toolhead has no safe height for the settling laps.': '[resonance_tester] non ha probe_points, quindi la testina non ha un''altezza sicura per i giri di assestamento.'
   already loaded: 'già caricato'
   attempt {}: 'tentativo {}'
   bed: piano

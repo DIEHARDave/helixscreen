@@ -1437,6 +1437,7 @@
   <translation tag="Home &amp; Continue" ru="Запарковать и продолжить"/>
   <translation tag="Home All" ru="Парковка всех осей"/>
   <translation tag="Home Selector" ru="Парковать селектор"/>
+  <translation tag="Home X and Y first." ru="Сначала выполните парковку X и Y."/>
   <translation tag="Home all axes to use the map" ru="Выполните парковку всех осей, чтобы использовать карту"/>
   <translation tag="Home and sweep the cutter to re-find its position" ru="Ищет ноль и прощупывает резак, чтобы заново найти его позицию"/>
   <translation tag="Home failed" ru="Парковка не удалась"/>
@@ -2817,6 +2818,7 @@
   <translation tag="Settings" ru="Настройки"/>
   <translation tag="Settings Snapshot" ru="Снимок настроек"/>
   <translation tag="Settings reset to defaults. Restarting..." ru="Настройки сброшены к значениям по умолчанию. Перезапуск..."/>
+  <translation tag="Settling belts" ru="Приработка ремней"/>
   <translation tag="Setup" ru="Настройка"/>
   <translation tag="Setup Timelapse" ru="Настроить таймлапс"/>
   <translation tag="Several printers match - choose yours" ru="Подходят несколько принтеров - выберите свой"/>
@@ -3092,6 +3094,7 @@
   <translation tag="The Spoolman spool currently loaded" ru="Текущая катушка Spoolman"/>
   <translation tag="The animated screensaver has been turned off on this device to prevent it from interfering with prints. You can re-enable it in Settings &gt; Display." ru="Анимированная заставка была отключена на данном устройстве, чтобы она не мешала печати. Вы можете снова включить её в Настройки &gt; Дисплей."/>
   <translation tag="The bed has cooled. Take the spools off the plate, then confirm." ru="Стол остыл. Снимите катушки со стола, затем подтвердите."/>
+  <translation tag="The bed is too small for settling laps." ru="Стол слишком мал для кругов приработки."/>
   <translation tag="The bed turns off. The spools stay latched on the bed until you confirm they are off." ru="Стол выключится. Катушки считаются лежащими на столе, пока вы не подтвердите, что сняли их."/>
   <translation tag="The bed was reported dirty, so this print cannot resume." ru="Стол помечен как загрязнённый, поэтому печать не может быть продолжена."/>
   <translation tag="The buffer may be disconnected, stuck, or faulty. Check it before retrying" ru="Буфер может быть отключён, заклинен или неисправен. Проверьте его перед повтором"/>
@@ -3118,6 +3121,8 @@
   <translation tag="The printer extrudes in a corner and repeats until the readings agree. You do not judge anything by eye." ru="Принтер выдавливает пластик в углу и повторяет, пока показания не сойдутся. Ничего не нужно оценивать на глаз."/>
   <translation tag="The printer finishes this measurement on its own." ru="Принтер завершит это измерение сам."/>
   <translation tag="The printer halted this print and cannot resume it. Restart from the beginning?" ru="Принтер остановил эту печать и не может её возобновить. Начать с начала?"/>
+  <translation tag="The printer has not reported its axis limits yet." ru="Принтер ещё не сообщил пределы осей."/>
+  <translation tag="The printer has not reported its maximum velocity yet." ru="Принтер ещё не сообщил максимальную скорость."/>
   <translation tag="The printer heats the nozzle, extrudes a few short test moves in a corner of the plate, and measures them itself. It repeats until the readings agree, then reports one number." ru="Принтер нагревает сопло, делает несколько коротких тестовых перемещений в углу стола и сам их измеряет. Он повторяет, пока показания не сойдутся, и затем сообщает одно число."/>
   <translation tag="The printer homes and sweeps the cutter (about 1 minute). Keep the filament path clear." ru="Принтер ищет ноль и прощупывает резак (около 1 минуты). Держите путь филамента свободным."/>
   <translation tag="The printer homes, then moves the plate as far from the nozzle as it goes. Some spools are not heat-resistant enough and can deform. Nothing moves from this screen until you confirm the spools are off the bed; Mainsail, macros and prints sent from a slicer are not blocked." ru="Принтер выполнит парковку, затем отведёт стол как можно дальше от сопла. Некоторые катушки недостаточно термостойкие и могут деформироваться. С этого экрана ничего не будет двигаться, пока вы не подтвердите, что катушки сняты со стола; Mainsail, макросы и печать, отправленная из слайсера, не блокируются."/>
@@ -3567,6 +3572,7 @@
   <translation tag="Z:" ru="Z:"/>
   <translation tag="Z: 0.000" ru="Z: 0.000"/>
   <translation tag="Zone {:.0f}-{:.0f} Hz" ru="Зона {:.0f}-{:.0f} Гц"/>
+  <translation tag="[resonance_tester] has no probe_points, so the toolhead has no safe height for the settling laps." ru="В [resonance_tester] нет probe_points, поэтому у головы нет безопасной высоты для кругов приработки."/>
   <translation tag="already loaded" ru="уже загружен"/>
   <translation tag="attempt {}" ru="попытка {}"/>
   <translation tag="bed" ru="стол"/>

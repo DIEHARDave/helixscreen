@@ -1480,6 +1480,7 @@ translations:
   Home: 归位
   Home & Continue: 归位并继续
   Home All: "全部归位"
+  Home X and Y first.: '请先将 X 和 Y 归位。'
   Home all axes to use the map: 请先归位所有轴以使用地图
   Home and sweep the cutter to re-find its position: 归零并扫过切刀以重新找到其位置
   Home failed: 归位失败
@@ -2919,6 +2920,7 @@ translations:
   Settings: 设置
   Settings Snapshot: 设置快照
   Settings reset to defaults. Restarting...: 设置已重置为默认值。正在重启...
+  Settling belts: '正在稳定皮带'
   Setup: '设置向导'
   Setup Timelapse: 设置延时摄影
   Several printers match - choose yours: 多台打印机匹配 - 请选择您的打印机
@@ -3214,6 +3216,7 @@ translations:
   : 为防止动画屏保干扰打印，已在此设备上将其关闭。您可以在设置 > 显示中重新启用。
   The bed has cooled. Take the spools off the plate, then confirm.: 热床已冷却。请从热床上取下料盘,然后确认。
 
+  The bed is too small for settling laps.: '打印床太小，无法进行稳定绕圈。'
   The bed turns off. The spools stay latched on the bed until you confirm they are off.: 热床将关闭。在你确认取下之前,料盘仍视为在热床上。
 
   The bed was reported dirty, so this print cannot resume.: '热床被报告为脏污，因此无法恢复此次打印。'
@@ -3245,6 +3248,8 @@ translations:
   The printer extrudes in a corner and repeats until the readings agree. You do not judge anything by eye.: '打印机在角落挤出并重复，直到读数一致为止。你无需用肉眼判断任何东西。'
   The printer finishes this measurement on its own.: '打印机会自行完成这次测量。'
   The printer halted this print and cannot resume it. Restart from the beginning?: 打印机已停止此打印且无法恢复。从头重新开始？
+  The printer has not reported its axis limits yet.: '打印机尚未报告其轴限位。'
+  The printer has not reported its maximum velocity yet.: '打印机尚未报告其最大速度。'
   ? The printer heats the nozzle, extrudes a few short test moves in a corner of the plate, and measures them itself. It repeats until the readings agree, then reports one number.
   : '打印机会加热喷嘴，在打印板角落进行几次短促的测试挤出并自行测量。它会重复直到读数一致，然后给出一个数值。'
   The printer homes and sweeps the cutter (about 1 minute). Keep the filament path clear.: 打印机将归零并扫过切刀（约1分钟）。请保持料路畅通。
@@ -3723,6 +3728,7 @@ translations:
   'Z:': 'Z:'
   'Z: 0.000': 'Z: 0.000'
   Zone {:.0f}-{:.0f} Hz: "区间 {:.0f}-{:.0f} Hz"
+  '[resonance_tester] has no probe_points, so the toolhead has no safe height for the settling laps.': '[resonance_tester] 没有 probe_points，因此打印头没有进行稳定绕圈的安全高度。'
   already loaded: '已加载'
   attempt {}: '第 {} 次尝试'
   bed: 热床

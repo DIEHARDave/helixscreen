@@ -23,6 +23,7 @@
 #include "static_panel_registry.h"
 #include "static_subject_registry.h"
 #include "theme_manager.h"
+#include "toolhead_homing.h"
 #include "ui/ui_widget_helpers.h"
 
 #include <spdlog/fmt/fmt.h>
@@ -52,6 +53,26 @@ char path_letter(BeltPath path) {
 
 BeltPath other_path(BeltPath path) {
     return path == BeltPath::PATH_A ? BeltPath::PATH_B : BeltPath::PATH_A;
+}
+
+/// Why the settling laps cannot run, for the ERROR view.
+const char* settle_refusal_message(helix::calibration::BeltSettleRefusal refusal) {
+    using helix::calibration::BeltSettleRefusal;
+    switch (refusal) {
+    case BeltSettleRefusal::NOT_HOMED_XY:
+        return lv_tr("Home X and Y first.");
+    case BeltSettleRefusal::NO_AXIS_LIMITS:
+        return lv_tr("The printer has not reported its axis limits yet.");
+    case BeltSettleRefusal::NO_PROBE_POINT:
+        return lv_tr("[resonance_tester] has no probe_points, so the toolhead has no safe height "
+                     "for the settling laps.");
+    case BeltSettleRefusal::NO_VELOCITY:
+        return lv_tr("The printer has not reported its maximum velocity yet.");
+    case BeltSettleRefusal::SPAN_TOO_SMALL:
+    case BeltSettleRefusal::NONE:
+        break;
+    }
+    return lv_tr("The bed is too small for settling laps.");
 }
 
 /// "0 turns", "¼ turn", "1¼ turns".
@@ -372,6 +393,9 @@ void BeltTensionPanel::on_activate() {
         // overwrite the calibrator's MEASURING state.
         suspended_ = false;
         ensure_gate_observers();
+        if (settle_query_pending_) {
+            start_settle();
+        }
         if (!measuring()) {
             probe_klippy_socket();
             query_hw_facts();
@@ -801,7 +825,99 @@ void BeltTensionPanel::begin_run(const std::vector<helix::calibration::BeltPath>
     }
     refresh_notes();
     start_elapsed_timer();
+    start_settle();
+}
+
+void BeltTensionPanel::start_settle() {
+    settling_ = true;
+    const uint32_t generation = ++settle_generation_;
+    lv_subject_set_int(&running_path_subject_, 2); // neither path's colour
+    lv_subject_copy_string(&run_title_subject_, lv_tr("Settling belts"));
+    refresh_run_detail();
+    refresh_notes();
+
+    if (!calibrator_) {
+        on_error(lv_tr("No printer connection"));
+        return;
+    }
+
+    // The laps run at the probe point's height, so the probe point is re-read
+    // rather than trusted from a query that may not have answered yet. The
+    // stall guard stays off: the script's own timeout covers the laps.
+    auto go = [this, generation]() {
+        if (!run_active_ || !settling_ || generation != settle_generation_) {
+            return;
+        }
+        settle_query_pending_ = false;
+        if (!calibrator_) {
+            on_error(lv_tr("No printer connection"));
+            return;
+        }
+        calibrator_->settle(
+            settle_inputs(), [this]() { on_settle_done(); },
+            [this](helix::calibration::BeltSettleRefusal refusal) { on_settle_refused(refusal); },
+            [this](const std::string& message) { on_sweep_error(message); });
+    };
+    if (!client_) {
+        go();
+        return;
+    }
+    settle_query_pending_ = true;
+    helix::calibration::query_resonance_tester_config(
+        *client_, lifetime_.bg_cb("BeltTension::settle_resonance_cfg",
+                                  [this, go](helix::calibration::ResonanceTesterConfig cfg) {
+                                      // A failed query answers with defaults; keep
+                                      // what the printer said before.
+                                      if (cfg.from_printer) {
+                                          sweep_cfg_ = cfg;
+                                      }
+                                      go();
+                                  }));
+}
+
+void BeltTensionPanel::on_settle_done() {
+    if (!run_active_ || !settling_) {
+        return;
+    }
+    settling_ = false;
     start_next_measurement();
+}
+
+void BeltTensionPanel::on_settle_refused(helix::calibration::BeltSettleRefusal refusal) {
+    if (!run_active_) {
+        return;
+    }
+    on_error(settle_refusal_message(refusal));
+}
+
+helix::calibration::BeltSettleInputs BeltTensionPanel::settle_inputs() const {
+    auto& ps = get_printer_state();
+    auto& motion = ps.motion_state();
+    const AxisBounds machine = motion.get_axis_bounds();
+    const AxisBounds gcode = motion.get_gcode_axis_bounds();
+
+    helix::calibration::BeltSettleInputs in;
+    in.x_min = machine.x_min;
+    in.x_max = machine.x_max;
+    in.y_min = machine.y_min;
+    in.y_max = machine.y_max;
+    in.has_xy_limits = machine.has_x && machine.has_y;
+    in.probe_point = sweep_cfg_.probe_point;
+    // machine = gcode + homing_origin
+    in.origin_x = machine.x_min - gcode.x_min;
+    in.origin_y = machine.y_min - gcode.y_min;
+    in.origin_z = machine.z_min - gcode.z_min;
+    in.max_velocity_mm_s =
+        static_cast<float>(lv_subject_get_int(motion.get_max_velocity_subject()));
+    in.xy_homed = axis_is_homed(ps, Axis::X) && axis_is_homed(ps, Axis::Y);
+    return in;
+}
+
+float BeltTensionPanel::settle_seconds() const {
+    auto in = settle_inputs();
+    in.xy_homed = true; // a run homes before it settles
+    const auto plan = helix::calibration::plan_belt_settle(in);
+    return plan.refusal == helix::calibration::BeltSettleRefusal::NONE ? plan.seconds : 0.0f;
 }
 
 void BeltTensionPanel::start_next_measurement() {
@@ -1042,6 +1158,9 @@ void BeltTensionPanel::push_chart_markers(const helix::calibration::BeltComparis
 
 void BeltTensionPanel::cancel_run() {
     run_active_ = false;
+    settling_ = false;
+    settle_query_pending_ = false;
+    ++settle_generation_;
     run_window_.reset();
     if (calibrator_) {
         calibrator_->cancel();
@@ -1081,7 +1200,7 @@ void BeltTensionPanel::refresh_notes() {
         auto& note_buf = idx == 0 ? note_a_buf_ : note_b_buf_;
 
         std::string note = "--";
-        if (running && !queue_.empty() && queue_.front() == path_at(idx)) {
+        if (running && !settling_ && !queue_.empty() && queue_.front() == path_at(idx)) {
             note = lv_tr("sweeping");
         } else if (run.has) {
             const uint32_t age_s = (lv_tick_get() - run.measured_at_ms) / 1000;
@@ -1100,7 +1219,7 @@ void BeltTensionPanel::refresh_notes() {
 }
 
 void BeltTensionPanel::refresh_run_detail() {
-    if (run_queue_total_ > 1) {
+    if (run_queue_total_ > 1 && !settling_) {
         snprintf(run_detail_buf_, sizeof(run_detail_buf_), "%zu of %zu · %u:%02u",
                  run_queue_total_ - queue_.size() + 1, run_queue_total_,
                  (lv_tick_get() - run_started_ms_) / 1000 / 60,
@@ -1344,15 +1463,17 @@ int BeltTensionPanel::round_minutes(const helix::calibration::BeltSweepWindow& w
     if (sweep_cfg_.hz_per_sec <= 0.0f) {
         return 1;
     }
-    // Both paths sweep the window once each.
+    // Both paths sweep the window once each, after the laps.
     const float seconds =
-        2.0f * (window.freq_end_hz - window.freq_start_hz) / sweep_cfg_.hz_per_sec;
+        2.0f * (window.freq_end_hz - window.freq_start_hz) / sweep_cfg_.hz_per_sec +
+        settle_seconds();
     return std::max(1, static_cast<int>(std::lround(seconds / 60.0f)));
 }
 
 int BeltTensionPanel::full_check_minutes() const {
-    // Both paths sweep once each, hence the 2x.
-    return std::max(1, static_cast<int>(std::ceil(2.0f * sweep_cfg_.sweep_seconds() / 60.0f)));
+    // Both paths sweep once each, hence the 2x, after the laps.
+    return std::max(1, static_cast<int>(std::ceil(
+                           (2.0f * sweep_cfg_.sweep_seconds() + settle_seconds()) / 60.0f)));
 }
 
 void BeltTensionPanel::refresh_tune() {

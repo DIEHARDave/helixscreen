@@ -1437,6 +1437,7 @@
   <translation tag="Home &amp; Continue" en="Home &amp; Continue"/>
   <translation tag="Home All" en="Home All"/>
   <translation tag="Home Selector" en="Home Selector"/>
+  <translation tag="Home X and Y first." en="Home X and Y first."/>
   <translation tag="Home all axes to use the map" en="Home all axes to use the map"/>
   <translation tag="Home and sweep the cutter to re-find its position" en="Home and sweep the cutter to re-find its position"/>
   <translation tag="Home failed" en="Home failed"/>
@@ -2817,6 +2818,7 @@
   <translation tag="Settings" en="Settings"/>
   <translation tag="Settings Snapshot" en="Settings Snapshot"/>
   <translation tag="Settings reset to defaults. Restarting..." en="Settings reset to defaults. Restarting..."/>
+  <translation tag="Settling belts" en="Settling belts"/>
   <translation tag="Setup" en="Setup"/>
   <translation tag="Setup Timelapse" en="Setup Timelapse"/>
   <translation tag="Several printers match - choose yours" en="Several printers match - choose yours"/>
@@ -3092,6 +3094,7 @@
   <translation tag="The Spoolman spool currently loaded" en="The Spoolman spool currently loaded"/>
   <translation tag="The animated screensaver has been turned off on this device to prevent it from interfering with prints. You can re-enable it in Settings &gt; Display." en="The animated screensaver has been turned off on this device to prevent it from interfering with prints. You can re-enable it in Settings &gt; Display."/>
   <translation tag="The bed has cooled. Take the spools off the plate, then confirm." en="The bed has cooled. Take the spools off the plate, then confirm."/>
+  <translation tag="The bed is too small for settling laps." en="The bed is too small for settling laps."/>
   <translation tag="The bed turns off. The spools stay latched on the bed until you confirm they are off." en="The bed turns off. The spools stay latched on the bed until you confirm they are off."/>
   <translation tag="The bed was reported dirty, so this print cannot resume." en="The bed was reported dirty, so this print cannot resume."/>
   <translation tag="The buffer may be disconnected, stuck, or faulty. Check it before retrying" en="The buffer may be disconnected, stuck, or faulty. Check it before retrying"/>
@@ -3118,6 +3121,8 @@
   <translation tag="The printer extrudes in a corner and repeats until the readings agree. You do not judge anything by eye." en="The printer extrudes in a corner and repeats until the readings agree. You do not judge anything by eye."/>
   <translation tag="The printer finishes this measurement on its own." en="The printer finishes this measurement on its own."/>
   <translation tag="The printer halted this print and cannot resume it. Restart from the beginning?" en="The printer halted this print and cannot resume it. Restart from the beginning?"/>
+  <translation tag="The printer has not reported its axis limits yet." en="The printer has not reported its axis limits yet."/>
+  <translation tag="The printer has not reported its maximum velocity yet." en="The printer has not reported its maximum velocity yet."/>
   <translation tag="The printer heats the nozzle, extrudes a few short test moves in a corner of the plate, and measures them itself. It repeats until the readings agree, then reports one number." en="The printer heats the nozzle, extrudes a few short test moves in a corner of the plate, and measures them itself. It repeats until the readings agree, then reports one number."/>
   <translation tag="The printer homes and sweeps the cutter (about 1 minute). Keep the filament path clear." en="The printer homes and sweeps the cutter (about 1 minute). Keep the filament path clear."/>
   <translation tag="The printer homes, then moves the plate as far from the nozzle as it goes. Some spools are not heat-resistant enough and can deform. Nothing moves from this screen until you confirm the spools are off the bed; Mainsail, macros and prints sent from a slicer are not blocked." en="The printer homes, then moves the plate as far from the nozzle as it goes. Some spools are not heat-resistant enough and can deform. Nothing moves from this screen until you confirm the spools are off the bed; Mainsail, macros and prints sent from a slicer are not blocked."/>
@@ -3567,6 +3572,7 @@
   <translation tag="Z:" en="Z:"/>
   <translation tag="Z: 0.000" en="Z: 0.000"/>
   <translation tag="Zone {:.0f}-{:.0f} Hz" en="Zone {:.0f}-{:.0f} Hz"/>
+  <translation tag="[resonance_tester] has no probe_points, so the toolhead has no safe height for the settling laps." en="[resonance_tester] has no probe_points, so the toolhead has no safe height for the settling laps."/>
   <translation tag="already loaded" en="already loaded"/>
   <translation tag="attempt {}" en="attempt {}"/>
   <translation tag="bed" en="bed"/>

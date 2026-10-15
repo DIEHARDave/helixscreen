@@ -1562,6 +1562,7 @@ translations:
   Home: Главная
   Home & Continue: Запарковать и продолжить
   Home All: "Парковка всех осей"
+  Home X and Y first.: 'Сначала выполните парковку X и Y.'
   Home all axes to use the map: Выполните парковку всех осей, чтобы использовать карту
   Home and sweep the cutter to re-find its position: Ищет ноль и прощупывает резак, чтобы заново найти его позицию
   Home failed: Парковка не удалась
@@ -3087,6 +3088,7 @@ translations:
   Settings Snapshot: Снимок настроек
   Settings reset to defaults. Restarting...: Настройки сброшены к значениям по умолчанию.
     Перезапуск...
+  Settling belts: 'Приработка ремней'
   Setup: 'Настройка'
   Setup Timelapse: Настроить таймлапс
   Several printers match - choose yours: Подходят несколько принтеров - выберите свой
@@ -3403,6 +3405,7 @@ translations:
     печати. Вы можете снова включить её в Настройки > Дисплей.
   The bed has cooled. Take the spools off the plate, then confirm.: Стол остыл. Снимите катушки со стола, затем подтвердите.
 
+  The bed is too small for settling laps.: 'Стол слишком мал для кругов приработки.'
   The bed turns off. The spools stay latched on the bed until you confirm they are off.: Стол выключится. Катушки считаются лежащими на столе, пока вы не подтвердите, что сняли их.
 
   The bed was reported dirty, so this print cannot resume.: 'Стол помечен как загрязнённый, поэтому печать не может быть продолжена.'
@@ -3436,6 +3439,8 @@ translations:
   The printer finishes this measurement on its own.: 'Принтер завершит это измерение сам.'
   The printer halted this print and cannot resume it. Restart from the beginning?: Принтер
     остановил эту печать и не может её возобновить. Начать с начала?
+  The printer has not reported its axis limits yet.: 'Принтер ещё не сообщил пределы осей.'
+  The printer has not reported its maximum velocity yet.: 'Принтер ещё не сообщил максимальную скорость.'
   ? The printer heats the nozzle, extrudes a few short test moves in a corner of the plate, and measures them itself. It repeats until the readings agree, then reports one number.
   : 'Принтер нагревает сопло, делает несколько коротких тестовых перемещений в углу стола и сам их измеряет. Он повторяет, пока показания не сойдутся, и затем сообщает одно число.'
   The printer homes and sweeps the cutter (about 1 minute). Keep the filament path clear.: Принтер ищет ноль и прощупывает резак (около 1 минуты). Держите путь филамента свободным.
@@ -3948,6 +3953,7 @@ translations:
   'Z:': 'Z:'
   'Z: 0.000': 'Z: 0.000'
   Zone {:.0f}-{:.0f} Hz: "Зона {:.0f}-{:.0f} Гц"
+  '[resonance_tester] has no probe_points, so the toolhead has no safe height for the settling laps.': 'В [resonance_tester] нет probe_points, поэтому у головы нет безопасной высоты для кругов приработки.'
   already loaded: 'уже загружен'
   attempt {}: 'попытка {}'
   bed: стол

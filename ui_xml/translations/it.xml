@@ -1437,6 +1437,7 @@
   <translation tag="Home &amp; Continue" it="Homing e continua"/>
   <translation tag="Home All" it="Homing tutto"/>
   <translation tag="Home Selector" it="Homing selettore"/>
+  <translation tag="Home X and Y first." it="Esegui prima l&apos;homing di X e Y."/>
   <translation tag="Home all axes to use the map" it="Porta tutti gli assi in posizione per usare la mappa"/>
   <translation tag="Home and sweep the cutter to re-find its position" it="Azzera e fa scorrevolare la taglierina per ritrovare la sua posizione"/>
   <translation tag="Home failed" it="Homing fallito"/>
@@ -2817,6 +2818,7 @@
   <translation tag="Settings" it="Impostazioni"/>
   <translation tag="Settings Snapshot" it="Istantanea delle impostazioni"/>
   <translation tag="Settings reset to defaults. Restarting..." it="Impostazioni ripristinate ai valori predefiniti. Riavvio..."/>
+  <translation tag="Settling belts" it="Assestamento cinghie"/>
   <translation tag="Setup" it="Configurazione"/>
   <translation tag="Setup Timelapse" it="Configura timelapse"/>
   <translation tag="Several printers match - choose yours" it="Più stampanti corrispondono - scegli la tua"/>
@@ -3092,6 +3094,7 @@
   <translation tag="The Spoolman spool currently loaded" it="La bobina Spoolman caricata"/>
   <translation tag="The animated screensaver has been turned off on this device to prevent it from interfering with prints. You can re-enable it in Settings &gt; Display." it="Il salvaschermo animato è stato disattivato su questo dispositivo per evitare che interferisca con le stampe. Puoi riattivarlo in Impostazioni &gt; Schermo."/>
   <translation tag="The bed has cooled. Take the spools off the plate, then confirm." it="Il piano si è raffreddato. Togli le bobine dal piano, poi conferma."/>
+  <translation tag="The bed is too small for settling laps." it="Il piano è troppo piccolo per i giri di assestamento."/>
   <translation tag="The bed turns off. The spools stay latched on the bed until you confirm they are off." it="Il piano si spegne. Le bobine restano registrate sul piano finché non confermi di averle tolte."/>
   <translation tag="The bed was reported dirty, so this print cannot resume." it="Il piano è stato segnalato come sporco, quindi questa stampa non può riprendere."/>
   <translation tag="The buffer may be disconnected, stuck, or faulty. Check it before retrying" it="Il buffer potrebbe essere scollegato, bloccato o guasto. Controllarlo prima di riprovare"/>
@@ -3118,6 +3121,8 @@
   <translation tag="The printer extrudes in a corner and repeats until the readings agree. You do not judge anything by eye." it="La stampante estrude in un angolo e ripete finché le letture concordano. Non giudichi nulla a occhio."/>
   <translation tag="The printer finishes this measurement on its own." it="La stampante completa questa misurazione da sola."/>
   <translation tag="The printer halted this print and cannot resume it. Restart from the beginning?" it="La stampante ha interrotto questa stampa e non può riprenderla. Riavviare dall&apos;inizio?"/>
+  <translation tag="The printer has not reported its axis limits yet." it="La stampante non ha ancora comunicato i limiti degli assi."/>
+  <translation tag="The printer has not reported its maximum velocity yet." it="La stampante non ha ancora comunicato la velocità massima."/>
   <translation tag="The printer heats the nozzle, extrudes a few short test moves in a corner of the plate, and measures them itself. It repeats until the readings agree, then reports one number." it="La stampante riscalda l&apos;ugello, fa alcuni brevi movimenti di prova in un angolo del piano e li misura da sola. Ripete finché le letture concordano, poi riporta un unico numero."/>
   <translation tag="The printer homes and sweeps the cutter (about 1 minute). Keep the filament path clear." it="La stampante si azzera e fa scorrevolare la taglierina (circa 1 minuto). Mantenere libero il percorso del filamento."/>
   <translation tag="The printer homes, then moves the plate as far from the nozzle as it goes. Some spools are not heat-resistant enough and can deform. Nothing moves from this screen until you confirm the spools are off the bed; Mainsail, macros and prints sent from a slicer are not blocked." it="La stampante esegue l&apos;homing, poi allontana il piano dall&apos;ugello il più possibile. Alcune bobine non resistono abbastanza al calore e possono deformarsi. Da questa schermata non si muove nulla finché non confermi che le bobine non sono più sul piano; Mainsail, le macro e le stampe inviate da uno slicer non vengono bloccati."/>
@@ -3567,6 +3572,7 @@
   <translation tag="Z:" it="Z:"/>
   <translation tag="Z: 0.000" it="Z: 0.000"/>
   <translation tag="Zone {:.0f}-{:.0f} Hz" it="Zona {:.0f}-{:.0f} Hz"/>
+  <translation tag="[resonance_tester] has no probe_points, so the toolhead has no safe height for the settling laps." it="[resonance_tester] non ha probe_points, quindi la testina non ha un&apos;altezza sicura per i giri di assestamento."/>
   <translation tag="already loaded" it="già caricato"/>
   <translation tag="attempt {}" it="tentativo {}"/>
   <translation tag="bed" it="piano"/>

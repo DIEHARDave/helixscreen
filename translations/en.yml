@@ -1529,6 +1529,7 @@ translations:
   Home: Home
   Home & Continue: Home & Continue
   Home All: Home All
+  Home X and Y first.: Home X and Y first.
   Home all axes to use the map: Home all axes to use the map
   Home and sweep the cutter to re-find its position: Home and sweep the cutter to re-find its position
   Home failed: Home failed
@@ -3028,6 +3029,7 @@ translations:
   Settings: Settings
   Settings Snapshot: Settings Snapshot
   Settings reset to defaults. Restarting...: Settings reset to defaults. Restarting...
+  Settling belts: Settling belts
   Setup: Setup
   Setup Timelapse: Setup Timelapse
   Several printers match - choose yours: Several printers match - choose yours
@@ -3337,6 +3339,7 @@ translations:
   : The animated screensaver has been turned off on this device to prevent it from
     interfering with prints. You can re-enable it in Settings > Display.
   The bed has cooled. Take the spools off the plate, then confirm.: The bed has cooled. Take the spools off the plate, then confirm.
+  The bed is too small for settling laps.: The bed is too small for settling laps.
   The bed turns off. The spools stay latched on the bed until you confirm they are off.: The bed turns off. The spools stay latched on the bed until you confirm they are off.
   The bed was reported dirty, so this print cannot resume.: The bed was reported dirty, so this print cannot resume.
   The buffer may be disconnected, stuck, or faulty. Check it before retrying: The buffer may be disconnected, stuck, or faulty. Check it before retrying
@@ -3368,6 +3371,8 @@ translations:
   The printer finishes this measurement on its own.: 'The printer finishes this measurement on its own.'
   The printer halted this print and cannot resume it. Restart from the beginning?: The
     printer halted this print and cannot resume it. Restart from the beginning?
+  The printer has not reported its axis limits yet.: The printer has not reported its axis limits yet.
+  The printer has not reported its maximum velocity yet.: The printer has not reported its maximum velocity yet.
   ? The printer heats the nozzle, extrudes a few short test moves in a corner of the plate, and measures them itself. It repeats until the readings agree, then reports one number.
   : The printer heats the nozzle, extrudes a few short test moves in a corner of the plate, and measures them itself. It repeats until the readings agree, then reports one number.
   The printer homes and sweeps the cutter (about 1 minute). Keep the filament path clear.: The printer homes and sweeps the cutter (about 1 minute). Keep the filament path clear.
@@ -3877,6 +3882,7 @@ translations:
   'Z:': 'Z:'
   'Z: 0.000': 'Z: 0.000'
   Zone {:.0f}-{:.0f} Hz: Zone {:.0f}-{:.0f} Hz
+  '[resonance_tester] has no probe_points, so the toolhead has no safe height for the settling laps.': '[resonance_tester] has no probe_points, so the toolhead has no safe height for the settling laps.'
   already loaded: already loaded
   attempt {}: attempt {}
   bed: bed
