@@ -219,8 +219,8 @@ So any change to what the client sends fails the golden test until its file is r
 The rewritten file then fails the worker test if it carries a field the table neither maps
 nor lists in `R2_ONLY`, or if an `R2_ONLY` entry names a field the client no longer sends.
 
-`print_outcome`, `print_start_context`, `error_encountered`, `connection_stability` and
-`hardware_profile` keep their original slots and carry `app_platform` and `app_board` in
+`print_outcome`, `print_start_context`, `error_encountered`, `connection_stability`,
+`hardware_profile` and the delta kinds keep their original slots and carry `app_platform` and `app_board` in
 slots 13 and up, so rows written before those fields were added read empty there.
 
 ## Filters
@@ -474,9 +474,35 @@ npm run build
 wrangler pages deploy dist --project-name=helixscreen-analytics
 ```
 
-`tsconfig.json` here only holds a project reference (`"files": []`), so a bare
-`vue-tsc --noEmit` (which `npm run build` runs first) type-checks nothing. Pass
-`-p tsconfig.app.json` to check the `src/` tree.
+`tsconfig.json` here only holds a project reference (`"files": []`), so the build script
+passes `-p tsconfig.app.json` to type-check the `src/` tree.
+
+### Order and checks
+
+The worker and the dashboard Pages project deploy together: the `/v1/dashboard/features`
+response shape is `features[].id` plus `configured`, with no `total_devices` or `by_version`,
+so either half alone breaks the Features view. After deploying, `/health` `git_sha` must match.
+
+Before the first deploy of a SQL change, run the Analytics Engine smoke below with a read
+token (or a staging worker). A failure shows as a 502 on that endpoint.
+
+1. `GET /v1/admin/ae-counts?date=<yesterday>`: `count() AS rows`, `sum(_sample_interval) AS weighted`, `toDate(timestamp) = 'YYYY-MM-DD'`.
+2. Phase 0 decision: `scripts/reconcile.ts <day>` compares expected and AE counts per kind. Weighted counting is safe either way (it equals `count()` when unsampled), but if AE is still short when weighted, investigate the write path before trusting any number.
+3. A filter-excluded kind: `... AND 0` in WHERE (overview with `model=X`: print success, total events).
+4. Releases with no usable versions: `WHERE index1 IN (...) AND 0`.
+5. Multi-kind OR filter: overview total events with `version=X` (about 19 `(index1 = 'k' AND blobN IN (...))` branches) and crash rate with `platform=X`.
+6. `sumIf(_sample_interval, cond)` and `sum((expr) * _sample_interval)`, and ratios of them (prints, overview).
+7. `deltaSource`: `GROUP BY blob1, blob13, double10[, blob4]` (a double in the GROUP BY), `argMax(doubleN, timestamp)`, `argMax(_sample_interval, timestamp)`, `min(timestamp) AS written_at`.
+8. Outer queries over `deltaSource`: `toDate(written_at)` grouping, `count(DISTINCT boot_id)`, `count(DISTINCT device_id)` on subquery aliases (engagement, reliability, features).
+9. Per-device subqueries exposing `argMax(_sample_interval, timestamp) AS device_weight` with outer `sum((toUInt32(bitAnd(...)) > 0) * device_weight)` (hardware caps) and `wAvg` over it (build volume, fan/sensor/macro, RAM).
+10. `HAVING total > 0 AND dropped / total > 0.05` where both are weighted-sum aliases (performance query 5).
+11. `double9 >= 3` on rows that never wrote double9, and reads of blob13-15 on rows written with 12 blobs: expect 0 / `''`, not an error or a NULL that breaks `!= ''`.
+12. Every `/v1/dashboard/*` endpoint once unfiltered and once each with `platform`, `version`, `model` (and `board` via URL): 200, and delta endpoints return `filter_not_applicable` as expected.
+13. Ingest round trip with a throwaway device id: post one schema-3 `panel_usage` and `connection_stability`, then read back `blob13, double9, double10` for that device; post the same batch again and confirm the engagement numbers for that device do not double. This writes two test rows into production AE; use staging if that is not acceptable.
+14. Deploy worker and dashboard Pages together (see above); `/health` `git_sha` matches.
+
+After the deploy, once a full UTC day has been written, run `scripts/reconcile.ts` for
+yesterday's UTC date and confirm expected and AE counts agree per kind.
 
 ### Creating the Analytics Engine API Token
 
