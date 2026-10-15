@@ -344,9 +344,15 @@ static void ui_text_apply(lv_xml_parser_state_t* state, const char** attrs) {
 
     bind_long_mode_to_animations_pref(state, label);
 
-    // A dotted label meant for one line must not grow to fit its wrapped text,
-    // or it never ellipsizes (prestonbrown/helixscreen#1775).
-    helix::ui::label_hold_one_line_if_dotted(label);
+    // A dotted label must not grow to fit its wrapped text, or it never
+    // ellipsizes (prestonbrown/helixscreen#1775): max_lines="N" lets it wrap
+    // to N lines first, and without it the label holds to one.
+    const char* max_lines = lv_xml_get_value_of(attrs, "max_lines");
+    if (max_lines && lv_label_get_long_mode(label) == LV_LABEL_LONG_MODE_DOTS) {
+        helix::ui::label_hold_lines(label, lv_xml_atoi(max_lines));
+    } else {
+        helix::ui::label_hold_one_line_if_dotted(label);
+    }
 
     // Apply stroke attributes (stroke_width, stroke_color, stroke_opa)
     apply_stroke_attrs(label, attrs);
@@ -570,7 +576,7 @@ std::string middle_ellipsize(const char* text, int32_t max_width, const lv_font_
 
 namespace {
 
-void apply_one_line_height(lv_obj_t* label) {
+void apply_line_cap(lv_obj_t* label, int32_t lines) {
     // A held label that has since left DOTS keeps whatever height its owner
     // gives it.
     if (lv_label_get_long_mode(label) != LV_LABEL_LONG_MODE_DOTS) {
@@ -580,31 +586,44 @@ void apply_one_line_height(lv_obj_t* label) {
     if (!font) {
         return;
     }
-    const int32_t height = lv_font_get_line_height(font) +
-                           lv_obj_get_style_space_top(label, LV_PART_MAIN) +
-                           lv_obj_get_style_space_bottom(label, LV_PART_MAIN);
-    // Setting the height refreshes the style and re-sends STYLE_CHANGED, which
-    // lands back here; comparing first is what ends that loop.
-    if (lv_obj_get_style_height(label, LV_PART_MAIN) != height) {
+    const int32_t cap = lv_font_get_line_height(font) * lines +
+                        lv_obj_get_style_text_line_space(label, LV_PART_MAIN) * (lines - 1) +
+                        lv_obj_get_style_space_top(label, LV_PART_MAIN) +
+                        lv_obj_get_style_space_bottom(label, LV_PART_MAIN);
+    // Setting a size refreshes the style and re-sends STYLE_CHANGED, which
+    // lands back here; comparing first is what ends that loop. One line is a
+    // fixed height; more is a ceiling, so shorter text keeps its own height.
+    if (lines == 1) {
+        if (lv_obj_get_style_height(label, LV_PART_MAIN) != cap) {
+            // DECLARATIVE_OK: measured from the label's computed font, which XML cannot name
+            lv_obj_set_height(label, cap);
+        }
+    } else if (lv_obj_get_style_max_height(label, LV_PART_MAIN) != cap) {
         // DECLARATIVE_OK: measured from the label's computed font, which XML cannot name
-        lv_obj_set_height(label, height);
+        lv_obj_set_style_max_height(label, cap, LV_PART_MAIN);
     }
 }
 
-void one_line_style_changed_cb(lv_event_t* e) {
-    apply_one_line_height(static_cast<lv_obj_t*>(lv_event_get_current_target(e)));
+void line_cap_style_changed_cb(lv_event_t* e) {
+    apply_line_cap(static_cast<lv_obj_t*>(lv_event_get_current_target(e)),
+                   static_cast<int32_t>(reinterpret_cast<intptr_t>(lv_event_get_user_data(e))));
 }
 
 } // namespace
 
-void label_hold_one_line(lv_obj_t* label) {
-    if (!label) {
+void label_hold_lines(lv_obj_t* label, int32_t lines) {
+    if (!label || lines < 1) {
         return;
     }
     // One hook per label however often it is held.
-    lv_obj_remove_event_cb(label, one_line_style_changed_cb);
-    lv_obj_add_event_cb(label, one_line_style_changed_cb, LV_EVENT_STYLE_CHANGED, nullptr);
-    apply_one_line_height(label);
+    lv_obj_remove_event_cb(label, line_cap_style_changed_cb);
+    lv_obj_add_event_cb(label, line_cap_style_changed_cb, LV_EVENT_STYLE_CHANGED,
+                        reinterpret_cast<void*>(static_cast<intptr_t>(lines)));
+    apply_line_cap(label, lines);
+}
+
+void label_hold_one_line(lv_obj_t* label) {
+    label_hold_lines(label, 1);
 }
 
 void label_hold_one_line_if_dotted(lv_obj_t* label) {

@@ -1182,7 +1182,7 @@ A row of chips shows detected hardware capabilities: Probe, Bed Mesh, Heated Bed
 
 > Requires [beta features](beta-features.md) to be enabled and at least two printers configured.
 
-When you have multiple printers configured, the Printer Manager overlay shows a **Manage Printers** button at the bottom. Tap it to open the printer management screen (same as Settings > Connection > Printers).
+When you have multiple printers configured, the Printer Manager overlay shows a **Manage Printers** button in its top bar. Tap it to open the printer management screen (same as Settings > Connection > Printers).
 
 You can also switch printers directly from the **navigation bar**. When multiple printers are configured, a badge with your printer's name appears in the nav bar. Tap it to see a quick-switch menu listing all your printers — tap any printer to switch instantly.
 

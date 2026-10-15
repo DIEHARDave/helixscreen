@@ -117,6 +117,19 @@ std::string middle_ellipsize(const char* text, int32_t max_width, const lv_font_
 void label_hold_one_line(lv_obj_t* label);
 
 /**
+ * Let a dotted label wrap to at most @p lines lines of its own font, then ellipsize
+ *
+ * label_hold_one_line() generalised: one line is held as a fixed height, more
+ * as a max_height, so text that fits in fewer lines keeps its own height. The
+ * cap follows font and padding changes the same way. XML reaches it through
+ * `max_lines="N"` on any text_* widget with `long_mode="dots"`.
+ *
+ * @param label Label to hold; nullptr is ignored
+ * @param lines Line ceiling; below 1 is ignored
+ */
+void label_hold_lines(lv_obj_t* label, int32_t lines);
+
+/**
  * Hold a dotted, content-height label to one line
  *
  * The rule text_* and ui_button apply after their attributes: a label whose

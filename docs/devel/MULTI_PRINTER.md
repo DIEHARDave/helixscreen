@@ -37,7 +37,7 @@ Key properties:
 | `ui_xml/printer_list_overlay.xml` | Overlay layout (overlay_panel, list container, add button) |
 | `ui_xml/printer_list_item.xml` | Reusable row component (name, check icon, delete button, active state) |
 | `ui_xml/navigation_bar.xml` | Navbar badge (`nav_printer_badge`) gated on the `show_printer_switcher` subject |
-| `ui_xml/printer_manager_overlay.xml` | Section 4: "Manage Printers" button (`pm_manage_printers_btn`) |
+| `ui_xml/printer_manager_overlay.xml` | "Manage Printers" header action button |
 
 ---
 
@@ -374,7 +374,7 @@ if (data["printers"].size() <= 1) {
 Visibility is driven by the `show_printer_switcher` user setting (toggled from
 Settings > Connection > Printers). Entry points:
 - **Navbar printer badge** (`nav_printer_badge`) -- gated on the `show_printer_switcher` subject
-- **Printer Manager > Manage Printers** button (`pm_manage_printers_btn`) -- always present in the Printer Manager overlay
+- **Printer Manager > Manage Printers** header button (`action_button`) -- always present in the Printer Manager overlay
 
 The `show_printer_switcher` setting persists to `/printers/show_printer_switcher` in config
 (default false) and is mirrored into an LVGL subject by `SettingsManager`.
@@ -534,7 +534,7 @@ The list is repopulated on every `on_activate()` to reflect config changes.
 
 ### PrinterManagerOverlay (Manage Printers Button)
 
-Section 4 of the Printer Manager overlay contains a "Manage Printers" button (`pm_manage_printers_btn`). Clicking it opens the `PrinterListOverlay`.
+The Printer Manager overlay's header bar carries a "Manage Printers" action button (`action_button`, callback `pm_manage_printers_clicked`). Clicking it opens the `PrinterListOverlay`.
 
 ---
 
