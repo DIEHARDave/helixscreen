@@ -5,7 +5,6 @@
 
 #include "ui_event_safety.h"
 #include "ui_filename_utils.h"
-#include "ui_next_tick.h"
 #include "ui_subject_registry.h"
 
 #include "app_globals.h"
@@ -34,6 +33,7 @@
 #include <string>
 
 using helix::ui::measure_text_px;
+using helix::ui::widest_word_px;
 
 namespace {
 
@@ -112,21 +112,6 @@ void job_queue_init_subjects() {
 }
 
 using helix::line_px;
-
-/// The widest single word of @p text: the least width a wrapping label needs.
-int widest_word_px(const std::string& text, const lv_font_t* font) {
-    int widest = 0;
-    size_t start = 0;
-    while (start <= text.size()) {
-        const size_t end = std::min(text.find(' ', start), text.size());
-        if (end > start) {
-            widest =
-                std::max(widest, measure_text_px(text.substr(start, end - start).c_str(), font));
-        }
-        start = end + 1;
-    }
-    return widest;
-}
 
 /// @p text as it fits @p width in @p font on at most @p max_lines wrapped lines, cut at
 /// the end with an ellipsis when it does not. @p lines_out gets the lines it takes.
@@ -359,10 +344,8 @@ void JobQueueWidget::attach(lv_obj_t* widget_obj, lv_obj_t* /*parent_screen*/) {
 }
 
 void JobQueueWidget::detach() {
-    // Invalidating drops a queued refresh, so the coalescing flag goes with it, or a
-    // recycled instance would never queue another.
     lifetime_.invalidate();
-    refresh_pending_ = false;
+    refresh_timer_.cancel();
     count_observer_.reset();
     revision_observer_.reset();
     start_observer_.reset();
@@ -378,7 +361,7 @@ void JobQueueWidget::detach() {
 
 void JobQueueWidget::on_hooked_root_deleted() {
     lifetime_.invalidate();
-    refresh_pending_ = false;
+    refresh_timer_.cancel();
 }
 
 void JobQueueWidget::on_activate() {
@@ -406,13 +389,7 @@ bool JobQueueWidget::fits_at(int width_px, int height_px) const {
 }
 
 void JobQueueWidget::schedule_refresh() {
-    if (refresh_pending_)
-        return;
-    refresh_pending_ = true;
-    ui::run_next_tick(lifetime_.token(), [this]() {
-        refresh_pending_ = false;
-        refresh();
-    });
+    refresh_timer_.schedule_once([this]() { refresh(); });
 }
 
 void JobQueueWidget::refresh() {

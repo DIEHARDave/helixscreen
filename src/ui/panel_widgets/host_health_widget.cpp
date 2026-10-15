@@ -145,10 +145,6 @@ Fonts load_fonts() {
 
 using helix::line_px;
 
-int text_px(const char* text, const lv_font_t* font) {
-    return measure_text_px(text, font);
-}
-
 /// The height of the sparklines in a row, and the least width a row gives one. Mirrors
 /// panel_widget_host_health.xml and host_health_mcu_row.xml; the Cell rung's graph is a
 /// button tall.
@@ -180,17 +176,17 @@ helix::RungNeeds measure_needs(bool printing, int* mcu_row_pitch) {
     // The small rungs hold one short number under a glyph; they get the least margin.
     const int tight = std::max<int>(2, theme_manager_get_spacing("space_xxs") / 2);
 
-    const int icon_w = text_px(helix::ui::icon::lookup_codepoint("gauge"), f.icon);
+    const int icon_w = measure_text_px(helix::ui::icon::lookup_codepoint("gauge"), f.icon);
     const int icon_h = line_px(f.icon);
     const int xs_h = line_px(f.xs);
     const int body_h = line_px(f.body);
     const int spark_h = row_spark_px();
     const int spark_min = spark_min_px();
 
-    const int pct_xs = text_px("100%", f.xs);
-    const int temp_xs = text_px("100\xc2\xb0"
-                                "C",
-                                f.xs);
+    const int pct_xs = measure_text_px("100%", f.xs);
+    const int temp_xs = measure_text_px("100\xc2\xb0"
+                                        "C",
+                                        f.xs);
     const std::string ram_caption = lv_tr("RAM");
     const std::string mem_label = lv_tr("Memory");
     const std::string cpu_label = lv_tr("CPU");
@@ -199,40 +195,45 @@ helix::RungNeeds measure_needs(bool printing, int* mcu_row_pitch) {
 
     {
         const int text_w =
-            std::max({text_px("100%", f.xs), text_px("112\xc2\xb0", f.xs), text_px("999M", f.xs)});
+            std::max({measure_text_px("100%", f.xs), measure_text_px("112\xc2\xb0", f.xs),
+                      measure_text_px("999M", f.xs)});
         needs.glance = rung_box(std::max(icon_w, text_w) + tight, icon_h + xs_h + 1);
     }
     needs.strip =
         rung_box(icon_w + col_gap + pct_xs + col_gap + temp_xs + tight, std::max(icon_h, xs_h) + 1);
     {
-        const int w = std::max({icon_w, pct_xs, temp_xs, text_px(ram_caption.c_str(), f.xs)});
+        const int w =
+            std::max({icon_w, pct_xs, temp_xs, measure_text_px(ram_caption.c_str(), f.xs)});
         needs.column = rung_box(w + tight, icon_h + 4 * xs_h + 4 * row_gap + 1);
     }
     {
-        const int detail_w = text_px("100\xc2\xb0"
-                                     "C \xc2\xb7 100%",
-                                     f.xs);
-        const int first_w = text_px("100%", f.body) + col_gap + spark_min;
+        const int detail_w = measure_text_px("100\xc2\xb0"
+                                             "C \xc2\xb7 100%",
+                                             f.xs);
+        const int first_w = measure_text_px("100%", f.body) + col_gap + spark_min;
         needs.cell = rung_box(std::max(detail_w, first_w) + comfort,
                               std::max(body_h, cell_spark_px()) + row_gap + xs_h + 1);
     }
     const int row_h = std::max(xs_h, spark_h);
-    const int label_w = std::max({text_px(cpu_label.c_str(), f.xs),
-                                  text_px(mem_label.c_str(), f.xs), text_px("mcu sb", f.xs)});
+    const int label_w =
+        std::max({measure_text_px(cpu_label.c_str(), f.xs),
+                  measure_text_px(mem_label.c_str(), f.xs), measure_text_px("mcu sb", f.xs)});
     {
-        const int value_w = printing ? text_px(kWidestMcuText, f.xs) : text_px("100%", f.xs);
+        const int value_w =
+            printing ? measure_text_px(kWidestMcuText, f.xs) : measure_text_px("100%", f.xs);
         // The label column is a quarter of the row, so the row is at least four labels wide.
         needs.wide = rung_box(
             std::max(label_w + col_gap + spark_min + col_gap + value_w + comfort, 4 * label_w),
             2 * row_h + row_gap + 1);
     }
     {
-        const int value_w = std::max(text_px(kWidestMcuText, f.xs), text_px("9999 MB free", f.xs));
+        const int value_w =
+            std::max(measure_text_px(kWidestMcuText, f.xs), measure_text_px("9999 MB free", f.xs));
         const int row_w = label_w + col_gap + spark_min + col_gap + value_w;
-        const int detail_w = text_px("100.0\xc2\xb0"
-                                     "C",
-                                     f.xs) +
-                             col_gap + text_px("18.4 GB free", f.xs);
+        const int detail_w = measure_text_px("100.0\xc2\xb0"
+                                             "C",
+                                             f.xs) +
+                             col_gap + measure_text_px("18.4 GB free", f.xs);
         // Throttle line (shown, for the worst case), CPU, Memory, detail, then the first
         // MCU row.
         const int h = 2 * xs_h + 3 * row_h + 4 * row_gap + 1;
@@ -335,13 +336,7 @@ HostHealthVerdict HostHealthWidget::decide(int width_px, int height_px, bool pri
                                            int mcu_count) const {
     // The tree's own padding where it exists; before it does (the load path asks
     // fits_at then) the root's padding on each side.
-    ContentChrome chrome;
-    if (root()) {
-        chrome = measure_content_chrome(root(), 0);
-    } else {
-        const int pad = theme_manager_get_spacing("space_xxs");
-        chrome = {2 * pad, 2 * pad};
-    }
+    const ContentChrome chrome = content_chrome_or_estimate(root(), "space_xxs", "space_xxs");
     HostHealthLayoutInput in;
     in.content_w = width_px - chrome.w;
     in.content_h = height_px - chrome.h;

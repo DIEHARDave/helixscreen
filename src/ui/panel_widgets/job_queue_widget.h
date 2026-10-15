@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ui_coalesced_timer.h"
 #include "ui_observer_guard.h"
 
 #include "async_lifetime_guard.h"
@@ -54,7 +55,7 @@ class JobQueueWidget : public PanelWidget {
     int granted_h_ = 0;
     JobQueueTileVerdict verdict_{};
     std::string cell_name_; ///< the next job's name wrapped for the Cell, empty elsewhere
-    bool refresh_pending_ = false;
+    ui::CoalescedTimer refresh_timer_{0}; ///< next tick, like lv_async_call
 
     ObserverGuard count_observer_;
     ObserverGuard revision_observer_;

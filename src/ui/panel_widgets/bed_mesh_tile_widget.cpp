@@ -47,6 +47,7 @@
 using helix::ui::copy_string_if_changed;
 using helix::ui::measure_text_px;
 using helix::ui::set_int_if_changed;
+using helix::ui::widest_word_px;
 
 namespace {
 
@@ -163,10 +164,6 @@ Fonts load_fonts() {
 
 using helix::line_px;
 
-int text_px(const std::string& text, const lv_font_t* font) {
-    return measure_text_px(text.c_str(), font);
-}
-
 /// The state a rung's content depends on.
 struct MeasureState {
     bool loaded = false;
@@ -192,9 +189,9 @@ helix::RungNeeds measure_needs(const MeasureState& m, const helix::ContentChrome
     constexpr int kSlackPx = 1;
     const int button_px = theme_manager_get_spacing("button_height_sm");
 
-    const int icon_w = text_px(helix::ui::icon::lookup_codepoint("grid_large"), f.icon_xs);
+    const int icon_w = measure_text_px(helix::ui::icon::lookup_codepoint("grid_large"), f.icon_xs);
     const int icon_h = line_px(f.icon_xs);
-    const int icon_lg_w = text_px(helix::ui::icon::lookup_codepoint("grid_off"), f.icon_lg);
+    const int icon_lg_w = measure_text_px(helix::ui::icon::lookup_codepoint("grid_off"), f.icon_lg);
     const int icon_lg_h = line_px(f.icon_lg);
     const int xs_h = line_px(f.xs);
     const int small_h = line_px(f.small);
@@ -205,18 +202,12 @@ helix::RungNeeds measure_needs(const MeasureState& m, const helix::ContentChrome
     const int map_min = kCanvasAvailable ? 2 * xs_h + 2 : icon_h;
 
     // The widest values the labels can show, so the rung does not change as the numbers do.
-    const int range2_w = text_px(helix::format_mesh_range(8.88f, 2), f.xs);
-    const int range3_xs_w = text_px(helix::format_mesh_range(8.888f, 3), f.xs);
-    const int range3_small_w = text_px(helix::format_mesh_range(8.888f, 3), f.small);
+    const int range2_w = measure_text_px(helix::format_mesh_range(8.88f, 2), f.xs);
+    const int range3_xs_w = measure_text_px(helix::format_mesh_range(8.888f, 3), f.xs);
+    const int range3_small_w = measure_text_px(helix::format_mesh_range(8.888f, 3), f.small);
     const std::string empty_text = lv_tr("No mesh loaded");
-    const int empty_w = text_px(empty_text, f.small);
-    int widest_word_w = 0;
-    for (size_t pos = 0; pos < empty_text.size();) {
-        const size_t end = std::min<size_t>(empty_text.find(' ', pos), empty_text.size());
-        widest_word_w =
-            std::max<int>(widest_word_w, text_px(empty_text.substr(pos, end - pos), f.small));
-        pos = end + 1;
-    }
+    const int empty_w = measure_text_px(empty_text, f.small);
+    const int widest_word_w = widest_word_px(empty_text, f.small);
 
     helix::RungNeeds needs;
     if (!m.loaded) {
@@ -233,8 +224,8 @@ helix::RungNeeds measure_needs(const MeasureState& m, const helix::ContentChrome
         if (!m.print_active) {
             // The buttons stack, each as wide as its label in the body face plus padding.
             const int button_label_pad = 2 * theme_manager_get_spacing("space_lg");
-            const int calibrate_w = text_px(lv_tr("Calibrate"), f.body) + button_label_pad;
-            const int load_w = text_px(lv_tr("Load Profile"), f.body) + button_label_pad;
+            const int calibrate_w = measure_text_px(lv_tr("Calibrate"), f.body) + button_label_pad;
+            const int load_w = measure_text_px(lv_tr("Load Profile"), f.body) + button_label_pad;
             const bool offers_load = m.profile_count > 0 && m.panel_available;
             const int buttons = offers_load ? 2 : 1;
             full_w =
@@ -255,21 +246,21 @@ helix::RungNeeds measure_needs(const MeasureState& m, const helix::ContentChrome
             rung_box(map_min + 3 * comfort, map_min + row_gap + small_h + comfort + kSlackPx);
 
         const std::string range_unit = helix::format_mesh_range(8.888f, 3) + " mm";
-        const int name_cap_w = text_px("MMMMMMMM", f.small);
-        const int name_w = std::min<int>(text_px(m.profile_name, f.small), name_cap_w);
+        const int name_cap_w = measure_text_px("MMMMMMMM", f.small);
+        const int name_w = std::min<int>(measure_text_px(m.profile_name, f.small), name_cap_w);
         const int details_w =
-            std::max<int>({name_w, text_px(range_unit, f.body),
-                           text_px(helix::format_mesh_extent(-8.88f, 8.88f), f.xs),
-                           text_px("88x88 points", f.xs)});
+            std::max<int>({name_w, measure_text_px(range_unit, f.body),
+                           measure_text_px(helix::format_mesh_extent(-8.88f, 8.88f), f.xs),
+                           measure_text_px("88x88 points", f.xs)});
         const int details_h = small_h + body_h + 2 * xs_h + 3 * row_gap;
         needs.wide = rung_box(map_min + col_gap + details_w + comfort,
                               std::max<int>(map_min, details_h) + comfort + kSlackPx);
 
         const int scale_h = std::max<int>(theme_manager_get_spacing("space_xs"), xs_h);
         const int footer_h = small_h + xs_h;
-        const int footer_w = name_w + col_gap + text_px(range_unit, f.small);
+        const int footer_w = name_w + col_gap + measure_text_px(range_unit, f.small);
         const int scale_w =
-            2 * text_px(helix::format_mesh_extent(-8.88f, 8.88f), f.xs) / 2 + 6 * col_gap;
+            2 * measure_text_px(helix::format_mesh_extent(-8.88f, 8.88f), f.xs) / 2 + 6 * col_gap;
         needs.full =
             rung_box(std::max<int>(footer_w, scale_w) + comfort,
                      2 * map_min + 2 * row_gap + (kCanvasAvailable ? scale_h + row_gap : 0) +
@@ -325,13 +316,8 @@ BedMeshTileVerdict BedMeshTileWidget::decide(int width_px, int height_px,
                                              const LiveState& live) const {
     // The tree's own padding where it exists; before it does (the load path asks fits_at
     // then) the root's padding on each side plus the body's gap.
-    ContentChrome chrome;
-    if (root()) {
-        chrome = measure_content_chrome(root(), 0);
-    } else {
-        const int pad = theme_manager_get_spacing("space_xxs");
-        chrome = {2 * pad + theme_manager_get_spacing("space_xs"), 3 * pad};
-    }
+    const ContentChrome chrome =
+        content_chrome_or_estimate(root(), "space_xxs", "space_xxs", "space_xxs", "space_xs");
     BedMeshTileInput in;
     in.content_w = width_px - chrome.w;
     in.content_h = height_px - chrome.h;

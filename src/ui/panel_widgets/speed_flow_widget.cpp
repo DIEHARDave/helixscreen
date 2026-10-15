@@ -264,13 +264,8 @@ SpeedFlowVerdict SpeedFlowWidget::decide(int width_px, int height_px, bool print
                                          bool physical) const {
     // The tree's own padding where it exists; before it does (the load path asks
     // fits_at then) the root's padding on each side plus the body's gap.
-    ContentChrome chrome;
-    if (root()) {
-        chrome = measure_content_chrome(root(), 0);
-    } else {
-        const int pad = theme_manager_get_spacing("space_xxs");
-        chrome = {3 * pad, 3 * pad};
-    }
+    const ContentChrome chrome =
+        content_chrome_or_estimate(root(), "space_xxs", "space_xxs", "space_xxs", "space_xxs");
     SpeedFlowInput in;
     in.content_w = width_px - chrome.w;
     in.content_h = height_px - chrome.h;

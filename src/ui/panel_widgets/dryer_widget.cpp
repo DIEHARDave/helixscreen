@@ -272,10 +272,6 @@ Fonts load_fonts() {
 
 using helix::line_px;
 
-int text_px(const std::string& text, const lv_font_t* font) {
-    return measure_text_px(text.c_str(), font);
-}
-
 int widest(std::initializer_list<int> widths) {
     return widths.size() ? *std::max_element(widths.begin(), widths.end()) : 0;
 }
@@ -309,7 +305,7 @@ helix::RungNeeds measure_needs(DState state) {
     const int ring_md = theme_manager_get_spacing("button_height");
 
     const std::string icon = helix::ui::icon::lookup_codepoint("heat_wave");
-    const int icon_w = text_px(icon, f.icon);
+    const int icon_w = measure_text_px(icon, f.icon);
     const int icon_h = line_px(f.icon);
     const int xs_h = line_px(f.xs);
     const int small_h = line_px(f.small);
@@ -331,18 +327,21 @@ helix::RungNeeds measure_needs(DState state) {
     helix::RungNeeds needs;
     switch (state) {
     case DState::Idle: {
-        needs.glance = rung_box(std::max(icon_w, text_px(rh_short, f.xs)) + tight,
+        needs.glance = rung_box(std::max(icon_w, measure_text_px(rh_short, f.xs)) + tight,
                                 icon_h + row_gap + xs_h + 1);
-        needs.strip =
-            rung_box(icon_w + col_gap + text_px(rh_long, f.xs) + tight, std::max(icon_h, xs_h) + 1);
-        needs.column =
-            rung_box(widest({icon_w, text_px(rh_short, f.xs), text_px(lv_tr("RH"), f.xs)}) + tight,
-                     icon_h + 2 * row_gap + 2 * xs_h + 1);
-        needs.cell = rung_box(
-            widest({icon_w, text_px(rh_long, f.body), text_px(not_drying, f.small)}) + comfort,
-            icon_h + body_h + small_h + 2 * row_gap + 1);
+        needs.strip = rung_box(icon_w + col_gap + measure_text_px(rh_long, f.xs) + tight,
+                               std::max(icon_h, xs_h) + 1);
+        needs.column = rung_box(
+            widest({icon_w, measure_text_px(rh_short, f.xs), measure_text_px(lv_tr("RH"), f.xs)}) +
+                tight,
+            icon_h + 2 * row_gap + 2 * xs_h + 1);
+        needs.cell = rung_box(widest({icon_w, measure_text_px(rh_long, f.body),
+                                      measure_text_px(not_drying, f.small)}) +
+                                  comfort,
+                              icon_h + body_h + small_h + 2 * row_gap + 1);
         needs.wide = rung_box(
-            icon_w + col_gap + widest({text_px(rh_long, f.heading), text_px(not_drying, f.body)}) +
+            icon_w + col_gap +
+                widest({measure_text_px(rh_long, f.heading), measure_text_px(not_drying, f.body)}) +
                 comfort,
             heading_h + body_h + row_gap + 1);
         break;
@@ -351,22 +350,25 @@ helix::RungNeeds measure_needs(DState state) {
     case DState::Multi: {
         needs.glance = rung_box(ring_sm + tight, ring_sm + 1);
         needs.strip =
-            rung_box(text_px(time_w, f.xs) + col_gap + text_px(temps, f.xs) + tight, xs_h + 1);
+            rung_box(measure_text_px(time_w, f.xs) + col_gap + measure_text_px(temps, f.xs) + tight,
+                     xs_h + 1);
         // The icon on top keeps a half cell square a Glance ring and a tall one a column.
-        needs.column =
-            rung_box(widest({icon_w, text_px(time_w, f.xs), text_px(current, f.xs)}) + tight,
-                     icon_h + 2 * row_gap + 2 * xs_h + 1);
-        needs.cell = rung_box(std::max(ring_md, text_px(temps, f.small)) + comfort,
+        needs.column = rung_box(
+            widest({icon_w, measure_text_px(time_w, f.xs), measure_text_px(current, f.xs)}) + tight,
+            icon_h + 2 * row_gap + 2 * xs_h + 1);
+        needs.cell = rung_box(std::max(ring_md, measure_text_px(temps, f.small)) + comfort,
                               ring_md + row_gap + small_h + 1);
         if (state == DState::Single) {
-            const int text_w = widest({text_px(name_w, f.body), text_px(temps, f.small),
-                                       text_px(rh_long, f.small), text_px(end_w, f.small)});
+            const int text_w =
+                widest({measure_text_px(name_w, f.body), measure_text_px(temps, f.small),
+                        measure_text_px(rh_long, f.small), measure_text_px(end_w, f.small)});
             needs.wide = rung_box(ring_md + col_gap + text_w + comfort,
                                   std::max(ring_md, body_h + 3 * small_h + 3 * row_gap) + 1);
         } else {
-            needs.wide =
-                rung_box(std::max(text_px(count_w, f.heading), text_px(times_w, f.small)) + comfort,
-                         heading_h + small_h + row_gap + 1);
+            needs.wide = rung_box(
+                std::max(measure_text_px(count_w, f.heading), measure_text_px(times_w, f.small)) +
+                    comfort,
+                heading_h + small_h + row_gap + 1);
         }
         break;
     }
@@ -374,8 +376,9 @@ helix::RungNeeds measure_needs(DState state) {
     // Full lists at least three sources' worth of rows, so a 2x1 tile stays Wide.
     const RowMetrics rows = measure_rows(f);
     const std::string detail_w = fmt::format("88/88°C  100% {}", lv_tr("RH"));
-    const int row_w = std::max(text_px(name_w, f.small) + col_gap + text_px("9:59", f.small),
-                               text_px(detail_w, f.xs));
+    const int row_w =
+        std::max(measure_text_px(name_w, f.small) + col_gap + measure_text_px("9:59", f.small),
+                 measure_text_px(detail_w, f.xs));
     needs.full = rung_box(row_w + comfort, 3 * rows.row_h + 2 * rows.row_gap + 1);
     return needs;
 }
@@ -418,13 +421,8 @@ DryerWidget::~DryerWidget() {
 DryerVerdict DryerWidget::decide(int width_px, int height_px, const SummaryState& state) const {
     // The tree's own padding where it exists; before it does (the load path asks fits_at
     // then) the root's padding on each side plus the body's gap.
-    ContentChrome chrome;
-    if (root()) {
-        chrome = measure_content_chrome(root(), 0);
-    } else {
-        const int pad = theme_manager_get_spacing("space_xxs");
-        chrome = {3 * pad, 3 * pad};
-    }
+    const ContentChrome chrome =
+        content_chrome_or_estimate(root(), "space_xxs", "space_xxs", "space_xxs", "space_xxs");
     const DState dstate =
         !state.drying ? DState::Idle : (state.multi ? DState::Multi : DState::Single);
     const Fonts f = load_fonts();

@@ -59,18 +59,18 @@ inline ContentChrome measure_content_chrome(lv_obj_t* root, int reserve_px, int 
 }
 
 /// measure_content_chrome() of @p root once its tree exists. Before it does (the load
-/// path asks fits_at() then), the chrome of a column root padded @p pad_hor_token on
-/// each side and @p pad_ver_token above and below, with @p row_gap_token between its
-/// rows.
+/// path asks fits_at() then), the chrome of a root padded @p pad_hor_token on each side
+/// and @p pad_ver_token above and below, with @p row_gap_token between its rows and
+/// @p col_gap_token between its columns. A null gap token is no gap.
 inline ContentChrome content_chrome_or_estimate(lv_obj_t* root, const char* pad_hor_token,
                                                 const char* pad_ver_token,
-                                                const char* row_gap_token) {
+                                                const char* row_gap_token = nullptr,
+                                                const char* col_gap_token = nullptr) {
     if (root) {
         return measure_content_chrome(root, 0);
     }
-    return {2 * theme_manager_get_spacing(pad_hor_token),
-            2 * theme_manager_get_spacing(pad_ver_token) +
-                theme_manager_get_spacing(row_gap_token)};
+    const auto px = [](const char* token) { return token ? theme_manager_get_spacing(token) : 0; };
+    return {2 * px(pad_hor_token) + px(col_gap_token), 2 * px(pad_ver_token) + px(row_gap_token)};
 }
 
 } // namespace helix
