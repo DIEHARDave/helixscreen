@@ -1315,6 +1315,8 @@ Two kinds of remote machine help here, and both are optional:
   `tsan`, `mutate`) in a container: `scripts/test-host-run.sh`. It mirrors your
   working tree as it is on disk, uncommitted edits included, into a per-tree
   directory whose `build/` persists, so a warm run rebuilds only what changed.
+  A tree's first run copies the nearest warm mirror first, so it starts warm
+  too (below).
   With one configured, `make full-test-run` runs the C++ sweep there while bats
   runs locally whenever the link makes that pay (`TEST_HOST=1` forces it,
   `TEST_HOST=0` or `HELIX_TEST_HOST_AUTO=0` keeps both local).
@@ -1355,7 +1357,9 @@ host simply runs both suites locally, without a word.
 | `HELIX_TEST_TREES_HOST` | same | mirror root on the host, relative to the ssh user's home unless absolute (`helix-test/trees`) |
 | `HELIX_TEST_TREES` | same | the same directory inside the container (`/work/trees`) |
 | `HELIX_TEST_CCACHE` | same | ccache dir inside the container (`/work/ccache`) |
-| `HELIX_TEST_WORKDIR` | `test-host-run.sh --commit`, `mutate` | git checkout inside the container (`/work/helixscreen`) |
+| `HELIX_TEST_WORKDIR` | `test-host-run.sh --commit` | the shared git checkout inside the container (`/work/helixscreen`); mutate checkouts copy it |
+| `HELIX_TEST_SEED` | `test-host-run.sh` | `0` starts a new mirror cold instead of copying the nearest warm one (`1`) |
+| `HELIX_TEST_PRUNE_DAYS` | `test-host-run.sh` | creating a mirror or mutate checkout removes those unused this many days; `0` never (`14`) |
 | `HELIX_TEST_LOCK_DIR` | `test-host-run.sh` | lock directory on the host (`/tmp`) |
 | `HELIX_TEST_HOST_AUTO` | `full-test-run` | `0` keeps an unforced gate local even with a test host configured (`1`) |
 | `REMOTE_HOST`, `REMOTE_USER` | `mk/remote.mk`, `remote-build.sh` | remote build host and optional user (none) |
@@ -1387,9 +1391,46 @@ The setup builds the image from `docker/Dockerfile.sanitizer` in your tree,
 streamed over ssh, and starts the container with the parent of
 `HELIX_TEST_TREES_HOST` mounted at the parent of `HELIX_TEST_TREES`. Re-run it
 after the Dockerfile changes; `--recreate` swaps the container for one from the
-new image. `scripts/test-host-run.sh --prune [DAYS]` removes mirrors nobody has
-synced for DAYS (14), and `teardown-worktree.sh` drops a tree's mirror with the
-tree.
+new image.
+
+**Mirrors start warm.** A tree whose mirror has no `build/` yet (a new worktree)
+is seeded before its first sync: the run copies the mirror whose recorded HEAD
+is fewest commits away from yours (each run writes the HEAD it synced to
+`.helix-mirror-head` in its mirror; a mirror qualifies once it has linked
+`helix-tests` and is not mid-run), then syncs over it, and make rebuilds only
+what differs. On zeus that turns a first `sweep` from about 14 minutes into a
+couple. The copy is `cp -a --reflink=auto`: on a ZFS (2.2 or later, with
+`feature@block_cloning`) or btrfs host the copy shares blocks and takes
+seconds, elsewhere it is a plain copy. A per-mirror ZFS dataset and `zfs clone`
+would cost the same, but would tie each clone to its origin's snapshot, so the
+seed could not be pruned while any clone lived. The build's own dependency
+files and compile-command fragments name the mirror's absolute path; the copy
+rewrites them to the new mirror's path. `HELIX_TEST_SEED=0` starts a mirror
+cold.
+
+The sync compares files by content (`rsync -c`) and writes a changed file with
+the test host's clock rather than its local time. That is what makes a copied
+`build/` trustworthy: an unchanged file keeps the time make last saw, and a
+changed one is always newer than its object, even when its local time is older
+(a seeded mirror, a checkout that restored an old time, two machines' clocks).
+It costs a few seconds of checksumming a run.
+
+**mutate gets a checkout per tree.** mutate needs git history, so it runs the
+pushed HEAD as `--commit` does, but in `<parent of HELIX_TEST_TREES>/mutate/<tree>`
+under that tree's own lock instead of the one shared `HELIX_TEST_WORKDIR`: two
+trees mutate at once, one tree's second mutate waits for its first. The
+checkout's first run copies the most recently used checkout (another tree's,
+or the shared one), `build/` included, and refreshes git's index before the
+reset, so only files that differ are rewritten and rebuilt. With every
+checkout busy it waits for the newest. `--commit` with any other job still
+runs in the shared checkout.
+
+**Cleanup.** `scripts/test-host-run.sh --prune [DAYS]` removes mirrors and
+mutate checkouts nobody has run for DAYS (14); a run that creates either one
+does the same pass with `HELIX_TEST_PRUNE_DAYS` (14, `0` never), so the copies
+do not accumulate. One whose lock is held is in use and stays. `--drop TREE`
+removes one tree's mirror and mutate checkout, and `teardown-worktree.sh` runs
+it with the tree.
 
 ## Font Generation
 

@@ -104,9 +104,14 @@ scripts/test-host-run.sh sweep                   # make unit-sweep on the test h
 #   nothing. The container has no ld.so.preload and its image matches CI's.
 #   It runs your tree as it is on disk, uncommitted edits included: an rsync to
 #   a per-tree mirror (/work/trees/<tree>) whose build/ persists, so a warm run
-#   rebuilds only what changed, and different trees run at once. The output says
+#   rebuilds only what changed, and different trees run at once. A new tree's
+#   first run copies the warm mirror nearest in history (reflinked, seconds),
+#   so it does not cold-build; HELIX_TEST_SEED=0 opts out. The output says
 #   HEAD + clean or + dirty <hash>. `--commit` runs the pushed HEAD instead, for a
-#   verdict others must reproduce (mutate always does). `make full-test-run`
+#   verdict others must reproduce. mutate always runs the pushed HEAD, in a
+#   checkout per tree (/work/mutate/<tree>), so trees no longer queue for one
+#   slot. Copies unused 14 days are pruned when a new one is made; --prune and
+#   --drop TREE do it by hand. `make full-test-run`
 #   runs the sweep there while bats runs here when the link pays (TEST_HOST=1
 #   forces it, TEST_HOST=0 keeps both local). On a ZFS host keep
 #   build headroom with the zfs_arc_sys_free tunable (zeus keeps 64 GiB). The
