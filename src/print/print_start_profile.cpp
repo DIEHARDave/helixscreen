@@ -235,6 +235,20 @@ bool PrintStartProfile::match_pattern_list(const std::vector<ResponsePattern>& p
     return false;
 }
 
+std::string PrintStartProfile::innermost_context(const nlohmann::json& value) {
+    if (value.is_string()) {
+        return value.get<std::string>();
+    }
+    if (value.is_array() && !value.empty() && value.back().is_string()) {
+        return value.back().get<std::string>();
+    }
+    return {};
+}
+
+std::string PrintStartProfile::qualify_state(const std::string& context, const std::string& state) {
+    return context + "/" + state;
+}
+
 std::vector<std::string> PrintStartProfile::required_status_objects() const {
     std::vector<std::string> objects;
     if (has_phase_object()) {
@@ -405,6 +419,24 @@ bool PrintStartProfile::parse_json(const json& j, const std::string& source_path
                              source_path);
                 phase_object_name_.clear();
                 phase_object_field_.clear();
+            }
+            // A bad context qualifier drops the whole phase object: its
+            // state_patterns are written against "<context>/<state>" keys, so
+            // matching bare states against them would only ever miss.
+            if (po.contains("context_field")) {
+                const auto& cf = po["context_field"];
+                if (cf.is_string() && !cf.get_ref<const std::string&>().empty()) {
+                    phase_object_context_field_ = cf.get<std::string>();
+                } else {
+                    spdlog::warn("[PrintStartProfile] phase_object context_field must be a "
+                                 "non-empty string in {} - phase_object ignored",
+                                 source_path);
+                    phase_object_name_.clear();
+                    phase_object_field_.clear();
+                }
+            }
+            if (phase_object_name_.empty()) {
+                phase_object_context_field_.clear();
             }
         } else {
             spdlog::warn(

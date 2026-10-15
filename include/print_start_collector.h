@@ -20,6 +20,7 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <set>
 #include <string>
 #include <vector>
@@ -317,9 +318,13 @@ class PrintStartCollector : public std::enable_shared_from_this<PrintStartCollec
      *   flag picks the quiet gate the match refreshes: narration holds every
      *   timeout, inference only the deadline timeouts (note_signal() and
      *   note_inferred_activity()).
+     * @param live_state Whether the match names the step running now rather
+     *   than an event that happened. A context-qualified phase-object state is
+     *   live: it may move the display to any phase, an earlier one included,
+     *   since the printer reports what it is doing, not a line that arrived late.
      */
     void apply_profile_match(const PrintStartProfile::MatchResult& match,
-                             bool marks_real_signal = true);
+                             bool marks_real_signal = true, bool live_state = false);
 
     /// Show a gantry-leveling / Z-tilt phase inferred from the configured
     /// probe points. Inference, not narration: it never mutes the proactive
@@ -335,10 +340,23 @@ class PrintStartCollector : public std::enable_shared_from_this<PrintStartCollec
      * the match through apply_profile_match(). An unchanged state string does
      * not re-fire; profiles without a phase object ignore every frame.
      *
+     * With a context field declared, the state is matched as
+     * "<innermost context>/<state>". Klipper sends only the fields that
+     * changed, so each field's last value is cached and a frame carrying
+     * either one re-matches the pair.
+     *
      * Thread-safe: runs on the WebSocket background thread, like the other
      * notify_status_update handling in start().
+     *
+     * @param seed True for the query start() sends: its values fill only the
+     *   fields no frame has delivered yet, since a frame may be newer.
      */
-    void handle_phase_object_status(const nlohmann::json& status);
+    void handle_phase_object_status(const nlohmann::json& status, bool seed = false);
+
+    /// Fetch the phase object's current state and context once at start():
+    /// a context opened before the collector armed is never sent again
+    /// until it changes, and every state inside it would match without it.
+    void query_phase_object();
 
     /**
      * @brief Check a status frame against the profile's status-signal rules
@@ -704,6 +722,18 @@ class PrintStartCollector : public std::enable_shared_from_this<PrintStartCollec
     /// notifies on every field change in the object, so the same state
     /// re-arrives; it must not re-fire the phase. Cleared in start()/reset().
     std::string last_phase_object_state_;
+
+    /// Last value of the phase object's state and context fields seen in
+    /// any frame; nullopt until one arrives. A null or absent-in-firmware
+    /// state caches as "". Guarded by state_mutex_; cleared in start().
+    std::optional<std::string> phase_object_state_cache_;
+    std::optional<std::string> phase_object_context_cache_;
+
+    /// Phase the latest matched context-qualified phase-object state maps
+    /// to; IDLE when none has matched. While it names a pre-print step the
+    /// deadline timeouts wait for the printer to leave it. Guarded by
+    /// state_mutex_; cleared in start().
+    helix::PrintStartPhase live_object_phase_ = helix::PrintStartPhase::IDLE;
 
     /// Status-signal rules whose predicate held on the last frame carrying
     /// their object — the edge-trigger latch, keyed by rule name. A rule in

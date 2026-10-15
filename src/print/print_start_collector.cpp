@@ -313,6 +313,8 @@ void PrintStartCollector::start() {
         spdlog::debug("[PrintStartCollector] ETA timer created ({}ms interval)",
                       ETA_UPDATE_INTERVAL_MS);
     }
+    query_phase_object();
+
     // Run first update immediately
     update_eta_display();
 
@@ -420,6 +422,9 @@ void PrintStartCollector::reset_run_locked() {
     pre_wait_phase_ = PrintStartPhase::IDLE;
     pre_wait_message_.clear();
     last_phase_object_state_.clear();
+    phase_object_state_cache_.reset();
+    phase_object_context_cache_.reset();
+    live_object_phase_ = PrintStartPhase::IDLE;
     held_status_signal_rules_.clear();
     bed_mesh_present_ = false;
     temps_ready_time_ = {};
@@ -989,13 +994,23 @@ void PrintStartCollector::check_fallback_completion() {
     // Temps count only at target, the same 2C test that completes a heating
     // phase: a bed at 90% of its target can be minutes short of it. An unknown
     // nozzle target (ext_target=0) cannot be confirmed, so it never counts.
+    //
+    // A heater far above its target is cooling toward it (a nozzle cooled for
+    // probing), which a wait blocks on as surely as a climb.
     const bool nozzle_target_set = ext_target > 0;
+    const bool bed_cooling = bed_target > 0 && bed_temp > bed_target + TEMP_TOLERANCE_DECIDEGREES;
+    const bool nozzle_cooling =
+        ext_target > 0 && ext_temp > ext_target + TEMP_TOLERANCE_DECIDEGREES;
     bool temps_at_target;
+    bool in_live_step;
     {
         std::lock_guard<std::mutex> lock(state_mutex_);
-        temps_at_target = nozzle_target_set &&
+        temps_at_target = nozzle_target_set && !nozzle_cooling && !bed_cooling &&
                           heating_target_reached_locked(PrintStartPhase::HEATING_NOZZLE) &&
                           heating_target_reached_locked(PrintStartPhase::HEATING_BED);
+        // The printer's live state names a pre-print step it has not left.
+        in_live_step = live_object_phase_ != PrintStartPhase::IDLE &&
+                       live_object_phase_ != PrintStartPhase::COMPLETE;
     }
 
     // A pre-print that is still narrating itself is not stuck, however long it
@@ -1004,7 +1019,9 @@ void PrintStartCollector::check_fallback_completion() {
     // for PREPRINT_QUIET_TIMEOUT without activity as well as for the clock. The
     // ceiling ignores temperatures and inferred activity, since a heater that
     // never settles must not hold Preparing open, but still waits that long
-    // without a matched line or probe line.
+    // without a matched line or probe line. A pre-print step the printer
+    // reports live holds the deadline timeouts until it ends: a silent cool-down
+    // inside one outlasts the quiet gate.
     const auto now = helix::sim::SimulatedClock::now();
     helix::sim::SimulatedClock::duration quiet_for;
     helix::sim::SimulatedClock::duration signal_quiet_for;
@@ -1022,7 +1039,7 @@ void PrintStartCollector::check_fallback_completion() {
         predicted_total > 0
             ? std::chrono::seconds(static_cast<int>(predicted_total * ADAPTIVE_TIMEOUT_MARGIN))
             : FALLBACK_TIMEOUT;
-    if (elapsed > deadline && temps_at_target && quiet) {
+    if (elapsed > deadline && temps_at_target && quiet && !in_live_step) {
         spdlog::info("[PrintStartCollector] Fallback: timeout ({} sec, predicted={:.0f}s, "
                      "quiet={}s)",
                      elapsed_sec, predicted_total, quiet_sec);
@@ -1136,6 +1153,7 @@ void PrintStartCollector::on_gcode_response(const json& msg) {
         PrintStartProfile::MatchResult match;
         if (profile_->try_match_signal(line, match)) {
             real_signal_seen_.store(true, std::memory_order_relaxed);
+            note_signal();
             // Profile messages are English tags — resolve through the pack.
             match.message = lv_tr(match.message.c_str());
             if (profile_->progress_mode() == PrintStartProfile::ProgressMode::SEQUENTIAL) {
@@ -1443,7 +1461,7 @@ void PrintStartCollector::check_phase_patterns(const std::string& line) {
 }
 
 void PrintStartCollector::apply_profile_match(const PrintStartProfile::MatchResult& match,
-                                              bool marks_real_signal) {
+                                              bool marks_real_signal, bool live_state) {
     marks_real_signal = marks_real_signal && match.narrates;
     if (marks_real_signal) {
         real_signal_seen_.store(true, std::memory_order_relaxed);
@@ -1475,6 +1493,10 @@ void PrintStartCollector::apply_profile_match(const PrintStartProfile::MatchResu
         if (detected_phases_.find(match.phase) == detected_phases_.end()) {
             detected_phases_.insert(match.phase);
             should_update = true;
+        } else if (live_state && (match.phase != current_phase_ ||
+                                  trim_trailing_ellipsis(match.message) !=
+                                      trim_trailing_ellipsis(current_message_))) {
+            should_update = true;
         } else if ((marks_real_signal || (match.phase == PrintStartPhase::BED_MESH &&
                                           current_phase_ == PrintStartPhase::BED_MESH)) &&
                    static_cast<int>(match.phase) >= static_cast<int>(current_phase_) &&
@@ -1502,7 +1524,7 @@ void PrintStartCollector::apply_leveling_phase(helix::PrintStartPhase phase) {
     apply_profile_match(match, /*marks_real_signal=*/false);
 }
 
-void PrintStartCollector::handle_phase_object_status(const json& status) {
+void PrintStartCollector::handle_phase_object_status(const json& status, bool seed) {
     if (!profile_ || !profile_->has_phase_object()) {
         return;
     }
@@ -1514,13 +1536,36 @@ void PrintStartCollector::handle_phase_object_status(const json& status) {
     if (object == status.end() || !object->is_object()) {
         return; // this frame does not carry the phase object (delta-only update)
     }
+    const std::string& context_field = profile_->phase_object_context_field();
+    const bool qualified = !context_field.empty();
+
+    // A null state is a step that has begun without naming one yet; it
+    // replaces the previous step's state rather than leaving it standing.
     const auto field = object->find(profile_->phase_object_field());
-    if (field == object->end() || !field->is_string()) {
+    const bool has_state =
+        field != object->end() && (field->is_string() || (qualified && field->is_null()));
+    const auto context = qualified ? object->find(context_field) : object->end();
+    const bool has_context = context != object->end();
+    if (!has_state && !has_context) {
         return;
     }
-    const std::string state = field->get_ref<const std::string&>();
-    if (state.empty()) {
-        return;
+
+    std::string state;
+    {
+        std::lock_guard<std::mutex> lock(state_mutex_);
+        if (has_state && !(seed && phase_object_state_cache_)) {
+            phase_object_state_cache_ = field->is_string() ? field->get<std::string>() : "";
+        }
+        if (has_context && !(seed && phase_object_context_cache_)) {
+            phase_object_context_cache_ = PrintStartProfile::innermost_context(*context);
+        }
+        if (!phase_object_state_cache_ || phase_object_state_cache_->empty()) {
+            return;
+        }
+        state = qualified
+                    ? PrintStartProfile::qualify_state(phase_object_context_cache_.value_or(""),
+                                                       *phase_object_state_cache_)
+                    : *phase_object_state_cache_;
     }
 
     PrintStartProfile::MatchResult match;
@@ -1538,11 +1583,42 @@ void PrintStartCollector::handle_phase_object_status(const json& status) {
             return;
         }
         last_phase_object_state_ = state;
+        if (qualified) {
+            live_object_phase_ = match.phase;
+        }
     }
 
     spdlog::debug("[PrintStartCollector] Phase-object state '{}' -> phase {}", state,
                   static_cast<int>(match.phase));
-    apply_profile_match(match);
+    apply_profile_match(match, /*marks_real_signal=*/true, /*live_state=*/qualified);
+}
+
+void PrintStartCollector::query_phase_object() {
+    if (!profile_ || !profile_->has_phase_object() ||
+        profile_->phase_object_context_field().empty()) {
+        return;
+    }
+    const std::string& name = profile_->phase_object_name();
+    json params = {
+        {"objects", json::object({{name, json::array({profile_->phase_object_field(),
+                                                      profile_->phase_object_context_field()})}})}};
+    auto self = shared_from_this();
+    client_.send_jsonrpc(
+        "printer.objects.query", params,
+        [self](const json& response) {
+            if (!self->active_.load()) {
+                return;
+            }
+            const json* result = json_util::find_member(response, "result");
+            const json* status =
+                result != nullptr ? json_util::find_member(*result, "status") : nullptr;
+            if (status != nullptr) {
+                self->handle_phase_object_status(*status, /*seed=*/true);
+            }
+        },
+        [](const MoonrakerError& /*err*/) {
+            spdlog::debug("[PrintStartCollector] Failed to query the phase object");
+        });
 }
 
 void PrintStartCollector::handle_status_signals(const json& status) {

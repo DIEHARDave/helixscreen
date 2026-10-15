@@ -301,6 +301,24 @@ class PrintStartProfile {
         return phase_object_field_;
     }
 
+    /// The field inside the phase object naming the step the state belongs
+    /// to; empty when the profile declares none. Firmware that nests steps
+    /// reuses one state string across them (LEVELING while a print decides
+    /// how to level, LEVELING while a mesh runs), so with this set the
+    /// state_patterns match "<innermost context>/<state>" instead of the bare
+    /// state (see qualify_state()).
+    const std::string& phase_object_context_field() const {
+        return phase_object_context_field_;
+    }
+
+    /// The innermost step named by a context field's value: the last element
+    /// of an array (a stack, outermost first), a string as-is, and empty for
+    /// null, an empty stack or any other shape.
+    static std::string innermost_context(const nlohmann::json& value);
+
+    /// The text state_patterns match for a context-qualified phase object.
+    static std::string qualify_state(const std::string& context, const std::string& state);
+
     /// Klipper status objects that must be subscribed for this profile's
     /// phase-object source to ever see a frame: the declared object name, or
     /// an empty list when the profile declares none. The subscription builder
@@ -350,6 +368,7 @@ class PrintStartProfile {
     std::vector<SilentPhaseEntry> silent_progression_;
     std::string phase_object_name_;
     std::string phase_object_field_;
+    std::string phase_object_context_field_;
     std::vector<StatusSignalRule> status_signals_;
 
     /**

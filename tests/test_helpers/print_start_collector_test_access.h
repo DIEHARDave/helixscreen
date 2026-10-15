@@ -128,6 +128,12 @@ class PrintStartCollectorTestAccess {
         return c.mesh_extrapolation_armed_;
     }
 
+    /// Hand the collector a phase-object status as the answer to its
+    /// start-up query, whenever that answer arrives.
+    static void feed_phase_object_seed(PrintStartCollector& c, const nlohmann::json& status) {
+        c.handle_phase_object_status(status, /*seed=*/true);
+    }
+
     /// Inject predictor history (deterministic per-phase durations) instead of
     /// relying on the theoretical-duration path.
     static void load_prediction_entries(PrintStartCollector& c,
