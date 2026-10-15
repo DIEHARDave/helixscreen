@@ -1,8 +1,11 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import type { LocationQuery, Router } from 'vue-router'
+import { planActivation } from '@/utils/drill'
+import type { Grouped } from '@/utils/versions'
 import {
   applyDrill,
+  applyDrills,
   buildDashQuery,
   parseDashQuery,
   sameDashQuery,
@@ -91,6 +94,16 @@ export const useFiltersStore = defineStore('filters', () => {
     return router.push({ query: buildDashQuery(next) })
   }
 
+  /**
+   * The click handler for every drillable row, cell and card: expands or
+   * collapses a group, or sets each drillable row's filter in one navigation.
+   */
+  function activate(router: Router, entries: [DashFilterKey, Grouped][]) {
+    const plan = planActivation(entries)
+    if (plan?.kind === 'expand') toggleExpand(plan.key)
+    else if (plan?.kind === 'drill') return router.push({ query: buildDashQuery(applyDrills(state.value, plan.filters)) })
+  }
+
   function toggleExpand(groupKey: string) {
     const i = expand.value.indexOf(groupKey)
     expand.value =
@@ -119,6 +132,7 @@ export const useFiltersStore = defineStore('filters', () => {
     syncFromRoute,
     syncToRoute,
     drill,
+    activate,
     toggleExpand,
     remove
   }

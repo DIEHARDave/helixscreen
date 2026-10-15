@@ -24,27 +24,27 @@ import NoData from '@/components/NoData.vue'
 import { useDashData } from '@/composables/useDashData'
 import { api } from '@/services/api'
 import { successBarOpts, type SuccessRow } from '@/utils/chart'
-import { canonicalModels, isFilterable } from '@/utils/models'
+import { canonicalModels } from '@/utils/models'
 import { barChartHeight } from '@/utils/series'
 
 const { data, loading, error, span, filters } = useDashData(api.getPrints)
 const router = useRouter()
 
-// Canonical models, each with the outcome totals of its raw spellings.
+// Canonical models, each recombined from the outcome counts of its raw spellings.
 const rows = computed((): SuccessRow[] => {
   const byModel = new Map((data.value?.by_model ?? []).map((m) => [m.model, m]))
   return canonicalModels((data.value?.by_model ?? []).map((m) => ({ name: m.model, count: m.total }))).map((g) => {
     const successes = g.members.reduce((sum, m) => sum + (byModel.get(m)?.successes ?? 0), 0)
-    return { label: g.label, members: g.members, total: g.count, rate: g.count > 0 ? successes / g.count : null }
+    return { ...g, rate: g.count > 0 ? successes / g.count : null }
   })
 })
 
 const chartData = computed(() => ({
-  labels: rows.value.map((r) => `${r.label} (${r.total.toLocaleString()})`),
+  labels: rows.value.map((r) => `${r.label} (${r.count.toLocaleString()})`),
   datasets: [{ label: 'Success rate', data: rows.value.map((r) => r.rate), backgroundColor: '#10b981' }]
 }))
 
 function drillRow(row: SuccessRow | undefined) {
-  if (row && row.members.every(isFilterable)) filters.drill(router, 'model', row.members)
+  if (row) filters.activate(router, [['model', row]])
 }
 </script>

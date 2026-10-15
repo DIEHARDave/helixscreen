@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { groupVersions, ungrouped } from '../../../analytics-dashboard/src/utils/versions'
+import { groupVersionRates, groupVersions, olderLines, ungrouped } from '../../../analytics-dashboard/src/utils/versions'
+import { planActivation, rowAction, rowHint, rowLabel, single } from '../../../analytics-dashboard/src/utils/drill'
 import { mergeOptions, rateAxis } from '../../../analytics-dashboard/src/utils/chart'
 import { emptyPlaceholder, rangeLabel } from '../../../analytics-dashboard/src/utils/format'
 import { canonicalModelKey, canonicalModels, isFilterable } from '../../../analytics-dashboard/src/utils/models'
@@ -39,17 +40,24 @@ describe('groupVersions', () => {
     ])
   })
 
-  it('expands a collapsed line to its members, newest first', () => {
+  it('expands a collapsed line to a header and its members, newest first', () => {
     const out = groupVersions(rows(LIVE), new Set(['line:0.99']))
-    expect(out.slice(-2).map((g) => [g.label, g.expandable])).toEqual([
-      ['0.99.118', false],
-      ['0.99.30', false]
+    expect(out.slice(-3).map((g) => [g.label, g.expandable, g.expanded ?? false])).toEqual([
+      ['0.99.x ▾', true, true],
+      ['0.99.118', false, false],
+      ['0.99.30', false, false]
     ])
+    expect(out[out.length - 3]).toMatchObject({ key: 'line:0.99', count: 6 + 7, members: ['0.99.118', '0.99.30'] })
   })
 
-  it('expands a beta group', () => {
+  it('expands a beta group under a header that collapses it', () => {
     const out = groupVersions(rows(LIVE), new Set(['betas:1.1.0']))
-    expect(out.slice(0, 2).map((g) => g.label)).toEqual(['1.1.0-beta.9', '1.1.0-beta.8'])
+    expect(out.slice(0, 3).map((g) => g.label)).toEqual(['1.1.0 betas ▾', '1.1.0-beta.9', '1.1.0-beta.8'])
+    expect(out[0]).toMatchObject({ key: 'betas:1.1.0', expandable: true, expanded: true })
+    expect(rowAction(out[0])).toBe('expand')
+    expect(planActivation([['version', out[0]]])).toEqual({ kind: 'expand', key: 'betas:1.1.0' })
+    expect(rowHint(out[0])).toBe('click to collapse')
+    expect(rowLabel(out[0])).toBe('1.1.0 betas ▾')
   })
 
   it('returns nothing for no rows', () => {
@@ -196,5 +204,72 @@ describe('rateAxis', () => {
   it('labels 0-1 ticks as percentages', () => {
     expect(rateAxis(1).ticks.callback(0.025)).toBe('2.5%')
     expect(rateAxis().ticks.callback('0.5')).toBe('50%')
+  })
+})
+
+describe('olderLines', () => {
+  it('judges current lines from the reference list, not the filtered rows', () => {
+    const filtered = rows(['0.99.118'])
+    expect(olderLines(filtered, rows(LIVE), new Set()).map((g) => g.label)).toEqual(['0.99.118'])
+    expect(olderLines(rows(LIVE), rows(LIVE), new Set()).map((g) => g.label)).toEqual(['0.99.x (2 versions)'])
+  })
+  it('keeps an expanded old line, header included', () => {
+    expect(olderLines(rows(LIVE), rows(LIVE), new Set(['line:0.99'])).map((g) => g.label)).toEqual([
+      '0.99.x ▾',
+      '0.99.118',
+      '0.99.30'
+    ])
+  })
+})
+
+describe('groupVersionRates', () => {
+  const r = (version: string, numerator: number, denominator: number, rate: number | null = numerator / denominator) => ({
+    version,
+    numerator,
+    denominator,
+    rate
+  })
+  it('recombines a group from member counts, not by averaging rates', () => {
+    const out = groupVersionRates(
+      [r('1.1.0', 0, 5), r('1.0.5', 1, 10), r('1.0.4', 1, 10), r('0.99.2', 9, 10), r('0.99.1', 1, 990)],
+      new Set()
+    )
+    const line = out.find((g) => g.key === 'line:0.99')!
+    expect(line).toMatchObject({ numerator: 10, denominator: 1000, members: ['0.99.2', '0.99.1'] })
+    expect(line.rate).toBeCloseTo(0.01)
+    expect(out.find((g) => g.key === '1.0.5')!.rate).toBeCloseTo(0.1)
+  })
+  it('keeps null when the filters make every member inapplicable or nothing was counted', () => {
+    const out = groupVersionRates([r('1.0.5', 0, 4, null), r('1.0.4', 0, 0, null)], new Set())
+    expect(out.map((g) => g.rate)).toEqual([null, null])
+    expect(groupVersionRates([r('1.0.5', 0, 0, 0)], new Set())[0].rate).toBeNull()
+  })
+})
+
+describe('rowAction', () => {
+  it('drills a filterable row, refuses a sanitized or empty one', () => {
+    expect(rowAction(single('Voron 2.4'))).toBe('drill')
+    expect(rowAction(single("CdO - Cubo dell'Odio"))).toBe('none')
+    expect(rowAction(single(''))).toBe('none')
+    expect(rowHint(single("CdO - Cubo dell'Odio"))).toBe('not filterable')
+    expect(rowHint(single('pi'))).toBe('click to filter')
+    expect(rowLabel({ ...single('x'), expandable: true })).toBe('x ▸')
+  })
+  it('refuses a group when any member is not filterable', () => {
+    expect(rowAction({ ...single('a'), members: ['Voron 2.4', "Cubo dell'Odio"] })).toBe('none')
+  })
+})
+
+describe('planActivation', () => {
+  it('drills several keys in one step and skips the ones it cannot', () => {
+    expect(planActivation([['version', single('1.0.5')], ['board', single('k1')]])).toEqual({
+      kind: 'drill',
+      filters: { version: ['1.0.5'], board: ['k1'] }
+    })
+    expect(planActivation([['version', single('1.0.5')], ['board', single('')]])).toEqual({
+      kind: 'drill',
+      filters: { version: ['1.0.5'] }
+    })
+    expect(planActivation([['board', single('')]])).toBeNull()
   })
 })

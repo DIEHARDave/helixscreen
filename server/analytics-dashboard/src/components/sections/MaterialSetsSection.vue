@@ -17,7 +17,7 @@
         <BarChart
           v-else
           :data="chartData"
-          :options="successBarOpts(rows)"
+          :options="successBarOpts(rows, false)"
           :height="barChartHeight(rows.length)"
         />
       </div>
@@ -43,9 +43,7 @@ const { data, loading, error, span } = useDashData(api.getPrints)
 
 const sets = computed(() => groupMaterialSets(data.value?.by_filament ?? []))
 
-const rows = computed((): SuccessRow[] =>
-  sets.value.map((s) => ({ label: s.label, members: s.members, total: s.count, rate: s.success_rate }))
-)
+const rows = computed((): SuccessRow[] => sets.value.map((s) => ({ ...s, rate: s.success_rate })))
 
 const multiShare = computed((): number | null => {
   const total = sets.value.reduce((sum, s) => sum + s.count, 0)
@@ -54,7 +52,7 @@ const multiShare = computed((): number | null => {
 })
 
 const chartData = computed(() => ({
-  labels: rows.value.map((r) => `${r.label} (${r.total.toLocaleString()})`),
+  labels: rows.value.map((r) => `${r.label} (${r.count.toLocaleString()})`),
   datasets: [{
     label: 'Success rate',
     data: rows.value.map((r) => r.rate),

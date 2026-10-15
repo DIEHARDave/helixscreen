@@ -23,7 +23,7 @@ import NoData from '@/components/NoData.vue'
 import type { DeltaEra } from '@/services/api'
 import { useFiltersStore } from '@/stores/filters'
 import { horizontalBarOpts } from '@/utils/chart'
-import { isFilterable } from '@/utils/models'
+import { rowHint, rowLabel } from '@/utils/drill'
 import { barChartHeight, seriesColor } from '@/utils/series'
 import type { DashFilterKey } from '@/utils/urlState'
 import type { Grouped } from '@/utils/versions'
@@ -44,10 +44,8 @@ const props = withDefaults(
 const filters = useFiltersStore()
 const router = useRouter()
 
-const filterable = (row: Grouped) => row.members.every(isFilterable)
-
 const chartData = computed(() => ({
-  labels: props.rows.map((r) => (r.expandable ? `${r.label} ▸` : r.label)),
+  labels: props.rows.map(rowLabel),
   datasets: [{
     label: props.valueLabel,
     data: props.rows.map((r) => r.count),
@@ -61,12 +59,7 @@ const options = computed((): ChartOptions<'bar'> => ({
     legend: { display: false },
     tooltip: {
       callbacks: {
-        afterLabel: (ctx) => {
-          const row = props.rows[ctx.dataIndex]
-          if (!row) return ''
-          if (row.expandable) return 'click to expand'
-          return filterable(row) ? 'click to filter' : 'not filterable'
-        }
+        afterLabel: (ctx) => rowHint(props.rows[ctx.dataIndex])
       }
     }
   },
@@ -78,8 +71,6 @@ const options = computed((): ChartOptions<'bar'> => ({
 
 function onSelect(index: number) {
   const row = props.rows[index]
-  if (!row) return
-  if (row.expandable) filters.toggleExpand(row.key)
-  else if (filterable(row)) filters.drill(router, props.filterKey, row.members)
+  if (row) filters.activate(router, [[props.filterKey, row]])
 }
 </script>

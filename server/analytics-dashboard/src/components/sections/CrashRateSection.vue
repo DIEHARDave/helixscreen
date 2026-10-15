@@ -35,6 +35,7 @@
             :key="p.platform"
             class="platform-card"
             :class="platformRateClass(p.rate)"
+            :title="rowHint(single(p.platform))"
             @click="drillPlatform(p.platform)"
           >
             <div class="platform-name">{{ p.platform }}</div>
@@ -52,11 +53,13 @@
           Limited-data platforms (&lt; 100 sessions)
           <span class="hint">small N; rates may be noisy</span>
         </h3>
+        <ChartCaption :text="`Sample-weighted crashes over sessions per platform, ${span}; click a card to filter`" />
         <div class="platform-grid">
           <button
             v-for="p in limitedPlatforms"
             :key="p.platform"
             class="platform-card limited"
+            :title="rowHint(single(p.platform))"
             @click="drillPlatform(p.platform)"
           >
             <div class="platform-name">{{ p.platform }}</div>
@@ -79,14 +82,14 @@
 
       <div class="chart-section">
         <h3>Crash Rate by Version</h3>
-        <ChartCaption :text="`Sample-weighted crashes over sessions per version, ${span}; click a bar to filter`" />
+        <ChartCaption :text="`Sample-weighted crashes over sessions per version, ${span}; older lines and unreleased betas are grouped, their rate recombined from counts; click a bar to expand or filter`" />
         <NoData v-if="byVersion.length === 0" />
         <BarChart
           v-else
           :data="versionChartData"
           :options="versionOpts"
           :height="barChartHeight(byVersion.length)"
-          @select="(i) => drillVersion(byVersion[i]?.version)"
+          @select="(i) => drillVersion(byVersion[i])"
         />
       </div>
     </template>
@@ -105,10 +108,11 @@ import MetricCard from '@/components/MetricCard.vue'
 import NoData from '@/components/NoData.vue'
 import { useDashData } from '@/composables/useDashData'
 import { api } from '@/services/api'
-import { compareVersions, rateAxis } from '@/utils/chart'
+import { rateAxis } from '@/utils/chart'
+import { rowHint, rowLabel, single } from '@/utils/drill'
 import { formatRate } from '@/utils/format'
-import { isFilterable } from '@/utils/models'
 import { barChartHeight, todayUtc, trimPartialDays } from '@/utils/series'
+import { groupVersionRates, type Grouped } from '@/utils/versions'
 
 const crashes = useDashData(api.getCrashes)
 const stab = useDashData(api.getStability)
@@ -122,11 +126,11 @@ const router = useRouter()
 const filters = crashes.filters
 
 function drillPlatform(platform: string) {
-  if (isFilterable(platform)) filters.drill(router, 'platform', [platform])
+  filters.activate(router, [['platform', single(platform)]])
 }
 
-function drillVersion(version: string | undefined) {
-  if (version && isFilterable(version)) filters.drill(router, 'version', [version])
+function drillVersion(row: Grouped | undefined) {
+  if (row) filters.activate(router, [['version', row]])
 }
 
 // 0-1 over the whole window, or null when the filters make the crash rate inapplicable.
@@ -170,10 +174,18 @@ const crashRateChartData = computed(() => ({
 }))
 
 const byVersion = computed(() =>
-  [...(data.value?.by_version ?? [])].sort((a, b) => compareVersions(b.version, a.version))
+  groupVersionRates(
+    (data.value?.by_version ?? []).map((v) => ({
+      version: v.version,
+      numerator: v.crash_count,
+      denominator: v.session_count,
+      rate: v.rate
+    })),
+    new Set(filters.expand)
+  )
 )
 
-const versionOpts: ChartOptions<'bar'> = {
+const versionOpts = computed((): ChartOptions<'bar'> => ({
   indexAxis: 'y',
   scales: { x: rateAxis(1), y: { ticks: { autoSkip: false } } },
   plugins: {
@@ -182,15 +194,16 @@ const versionOpts: ChartOptions<'bar'> = {
       callbacks: {
         label: (ctx) => {
           const v = byVersion.value[ctx.dataIndex]
-          return v ? `${formatRate(v.rate, 2)} (${v.crash_count} crashes / ${v.session_count} sessions)` : ''
-        }
+          return v ? `${formatRate(v.rate, 2)} (${v.numerator} crashes / ${v.denominator} sessions)` : ''
+        },
+        afterLabel: (ctx) => rowHint(byVersion.value[ctx.dataIndex])
       }
     }
   }
-}
+}))
 
 const versionChartData = computed(() => ({
-  labels: byVersion.value.map(v => v.version),
+  labels: byVersion.value.map(rowLabel),
   datasets: [{
     label: 'Crash Rate',
     data: byVersion.value.map(v => v.rate),

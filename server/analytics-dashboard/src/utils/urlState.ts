@@ -62,11 +62,24 @@ export function buildDashQuery(s: DashQuery): Record<string, string> {
 }
 
 export function applyDrill(s: DashQuery, key: DashFilterKey, members: string[]): DashQuery {
-  return {
-    range: s.range,
-    filters: { ...s.filters, [key]: [...new Set(members)] },
-    expand: [...s.expand]
+  return applyDrills(s, { [key]: members })
+}
+
+/** Sets several filters in one step, so one navigation (one history entry) carries them all. */
+export function applyDrills(s: DashQuery, drills: Partial<Record<DashFilterKey, string[]>>): DashQuery {
+  const filters = { ...s.filters }
+  for (const key of DASH_FILTER_KEYS) {
+    const members = drills[key]
+    if (members) filters[key] = [...new Set(members)]
   }
+  return { range: s.range, filters, expand: [...s.expand] }
+}
+
+/** A worker query string with one filter removed, for data that must ignore it. */
+export function withoutFilter(queryString: string, key: DashFilterKey): string {
+  const params = new URLSearchParams(queryString)
+  params.delete(key)
+  return params.toString()
 }
 
 export function legacyRedirect(path: string): string | null {

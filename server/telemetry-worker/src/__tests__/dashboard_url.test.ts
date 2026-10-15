@@ -2,12 +2,14 @@
 import { describe, expect, it } from 'vitest'
 import {
   applyDrill,
+  applyDrills,
   buildDashQuery,
   LEGACY_ROUTES,
   legacyLocation,
   legacyRedirect,
   parseDashQuery,
   sameDashQuery,
+  withoutFilter,
   type DashQuery
 } from '../../../analytics-dashboard/src/utils/urlState'
 
@@ -132,5 +134,32 @@ describe('sameDashQuery', () => {
     expect(sameDashQuery(parseDashQuery({ model: 'a' }), parseDashQuery({ model: 'b' }))).toBe(false)
     expect(sameDashQuery(parseDashQuery({ model: 'a' }), parseDashQuery({}))).toBe(false)
     expect(sameDashQuery(parseDashQuery({ expand: 'x' }), parseDashQuery({}))).toBe(false)
+  })
+})
+
+describe('applyDrills', () => {
+  it('sets version and board in one step and keeps the rest', () => {
+    const before = parseDashQuery({ range: '7d', platform: 'pi', version: '0.99.1', expand: 'line:0.99' })
+    const after = applyDrills(before, { version: ['1.0.5', '1.0.5'], board: ['k1'] })
+    expect(buildDashQuery(after)).toEqual({
+      range: '7d',
+      platform: 'pi',
+      version: '1.0.5',
+      board: 'k1',
+      expand: 'line:0.99'
+    })
+    expect(before.filters.version).toEqual(['0.99.1'])
+  })
+
+  it('is applyDrill for a single key', () => {
+    const s = parseDashQuery({ model: 'a' })
+    expect(applyDrill(s, 'model', ['b', 'c'])).toEqual(applyDrills(s, { model: ['b', 'c'] }))
+  })
+})
+
+describe('withoutFilter', () => {
+  it('drops one filter and keeps the rest', () => {
+    expect(withoutFilter('range=30d&version=1.0.5%2C1.0.4&platform=pi', 'version')).toBe('range=30d&platform=pi')
+    expect(withoutFilter('range=30d', 'version')).toBe('range=30d')
   })
 })

@@ -1,5 +1,7 @@
 import type { ActiveElement, Chart, ChartEvent, ChartOptions } from 'chart.js'
 import { formatRate } from './format'
+import { rowHint } from './drill'
+import type { Grouped } from './versions'
 
 export const horizontalBarOpts: ChartOptions<'bar'> = {
   indexAxis: 'y',
@@ -88,16 +90,14 @@ export function compareVersions(a: string, b: string): number {
   return ia.length - ib.length
 }
 
-/** One bar of a success-rate chart: `total` outcomes, `members` the raw values it filters on. */
-export interface SuccessRow {
-  label: string
-  members: string[]
-  total: number
-  rate: number | null
-}
+/** One bar of a success-rate chart: `count` outcomes, `members` the raw values it filters on. */
+export type SuccessRow = Grouped & { rate: number | null }
 
-/** Options for a horizontal bar chart of 0-1 success rates whose tooltip gives the sample size. */
-export function successBarOpts(rows: SuccessRow[]): ChartOptions<'bar'> {
+/**
+ * Options for a horizontal bar chart of 0-1 success rates whose tooltip gives
+ * the sample size and, when the bars are clickable, what a click does.
+ */
+export function successBarOpts(rows: SuccessRow[], clickable = true): ChartOptions<'bar'> {
   return {
     indexAxis: 'y',
     scales: { x: { ...rateAxis(), max: 1 }, y: { ticks: { autoSkip: false } } },
@@ -107,8 +107,9 @@ export function successBarOpts(rows: SuccessRow[]): ChartOptions<'bar'> {
         callbacks: {
           label: (ctx) => {
             const row = rows[ctx.dataIndex]
-            return row ? `${formatRate(row.rate)} of ${row.total.toLocaleString()} prints` : ''
-          }
+            return row ? `${formatRate(row.rate)} of ${row.count.toLocaleString()} prints` : ''
+          },
+          afterLabel: (ctx) => (clickable ? rowHint(rows[ctx.dataIndex]) : '')
         }
       }
     }

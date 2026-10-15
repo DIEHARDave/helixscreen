@@ -44,7 +44,7 @@ import { useDashData } from '@/composables/useDashData'
 import { api } from '@/services/api'
 import { rateAxis } from '@/utils/chart'
 import { formatRate } from '@/utils/format'
-import { isFilterable } from '@/utils/models'
+import { rowHint, single } from '@/utils/drill'
 import { barChartHeight } from '@/utils/series'
 
 const { data, loading, error, span, filters } = useDashData(api.getPerformance)
@@ -53,17 +53,22 @@ const router = useRouter()
 const platforms = computed(() => data.value?.drop_rate_by_platform ?? [])
 
 function drillPlatform(platform: string | undefined) {
-  if (platform && isFilterable(platform)) filters.drill(router, 'platform', [platform])
+  if (platform !== undefined) filters.activate(router, [['platform', single(platform)]])
 }
 
-const dropOpts: ChartOptions<'bar'> = {
+const dropOpts = computed((): ChartOptions<'bar'> => ({
   indexAxis: 'y',
   scales: { x: rateAxis(1), y: { ticks: { autoSkip: false } } },
   plugins: {
     legend: { display: false },
-    tooltip: { callbacks: { label: (ctx) => formatRate(Number(ctx.raw), 2) } }
+    tooltip: {
+      callbacks: {
+        label: (ctx) => formatRate(Number(ctx.raw), 2),
+        afterLabel: (ctx) => rowHint(single(platforms.value[ctx.dataIndex]?.platform ?? ''))
+      }
+    }
   }
-}
+}))
 
 const dropByPlatformData = computed(() => ({
   labels: platforms.value.map(p => p.platform),

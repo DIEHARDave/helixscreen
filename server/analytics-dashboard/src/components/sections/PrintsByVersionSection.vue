@@ -1,7 +1,7 @@
 <template>
   <DashSection title="Success by version" :loading="loading" :error="error">
     <template v-if="data">
-      <ChartCaption :text="`Sample-weighted print outcomes per HelixScreen version, ${span}; click a bar to filter`" />
+      <ChartCaption :text="`Sample-weighted print outcomes per HelixScreen version, ${span}; older lines and unreleased betas are grouped, their rate recombined from counts; click a bar to expand or filter`" />
       <NoData v-if="rows.length === 0" />
       <BarChart
         v-else
@@ -23,25 +23,33 @@ import ChartCaption from '@/components/ChartCaption.vue'
 import NoData from '@/components/NoData.vue'
 import { useDashData } from '@/composables/useDashData'
 import { api } from '@/services/api'
-import { compareVersions, successBarOpts, type SuccessRow } from '@/utils/chart'
-import { isFilterable } from '@/utils/models'
+import { successBarOpts, type SuccessRow } from '@/utils/chart'
+import { rowLabel } from '@/utils/drill'
+import { groupVersionRates } from '@/utils/versions'
 import { barChartHeight } from '@/utils/series'
 
 const { data, loading, error, span, filters } = useDashData(api.getPrints)
 const router = useRouter()
 
+// Grouped like every version list; a group's rate is recombined from its members' counts.
 const rows = computed((): SuccessRow[] =>
-  [...(data.value?.by_version ?? [])]
-    .sort((a, b) => compareVersions(b.version, a.version))
-    .map((v) => ({ label: v.version, members: [v.version], total: v.total, rate: v.rate }))
+  groupVersionRates(
+    (data.value?.by_version ?? []).map((v) => ({
+      version: v.version,
+      numerator: v.successes,
+      denominator: v.total,
+      rate: v.rate
+    })),
+    new Set(filters.expand)
+  )
 )
 
 const chartData = computed(() => ({
-  labels: rows.value.map((r) => `${r.label} (${r.total.toLocaleString()})`),
+  labels: rows.value.map((r) => `${rowLabel(r)} (${r.count.toLocaleString()})`),
   datasets: [{ label: 'Success rate', data: rows.value.map((r) => r.rate), backgroundColor: '#3b82f6' }]
 }))
 
 function drillRow(row: SuccessRow | undefined) {
-  if (row && row.members.every(isFilterable)) filters.drill(router, 'version', row.members)
+  if (row) filters.activate(router, [['version', row]])
 }
 </script>
