@@ -487,7 +487,7 @@ Before the first deploy of a SQL change, run the Analytics Engine smoke below wi
 token (or a staging worker). A failure shows as a 502 on that endpoint.
 
 1. `GET /v1/admin/ae-counts?date=<yesterday>`: `count() AS rows`, `sum(_sample_interval) AS weighted`, `toDate(timestamp) = 'YYYY-MM-DD'`.
-2. Phase 0 decision: `scripts/reconcile.ts <day>` compares expected and AE counts per kind. Weighted counting is safe either way (it equals `count()` when unsampled), but if AE is still short when weighted, investigate the write path before trusting any number.
+2. Phase 0 decision: `server/telemetry-worker/scripts/reconcile.ts <day>` compares expected and AE counts per kind. Weighted counting is safe either way (it equals `count()` when unsampled), but if AE is still short when weighted, investigate the write path before trusting any number.
 3. A filter-excluded kind: `... AND 0` in WHERE (overview with `model=X`: print success, total events).
 4. Releases with no usable versions: `WHERE index1 IN (...) AND 0`.
 5. Multi-kind OR filter: overview total events with `version=X` (about 19 `(index1 = 'k' AND blobN IN (...))` branches) and crash rate with `platform=X`.
@@ -501,7 +501,7 @@ token (or a staging worker). A failure shows as a 502 on that endpoint.
 13. Ingest round trip with a throwaway device id: post one schema-3 `panel_usage` and `connection_stability`, then read back `blob13, double9, double10` for that device; post the same batch again and confirm the engagement numbers for that device do not double. This writes two test rows into production AE; use staging if that is not acceptable.
 14. Deploy worker and dashboard Pages together (see above); `/health` `git_sha` matches.
 
-After the deploy, once a full UTC day has been written, run `scripts/reconcile.ts` for
+After the deploy, once a full UTC day has been written, run `server/telemetry-worker/scripts/reconcile.ts` for
 yesterday's UTC date and confirm expected and AE counts agree per kind.
 
 ### Creating the Analytics Engine API Token
