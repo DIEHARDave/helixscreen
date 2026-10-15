@@ -589,6 +589,9 @@ void DisplayManager::set_active_instance(DisplayManager* dm) {
 }
 
 void DisplayManager::shutdown() {
+    // Ahead of the initialized check: a handler can be installed on a manager that
+    // never ran init(), and its event callback holds this manager either way.
+    remove_resize_handler();
     if (!m_initialized) {
         return;
     }
@@ -618,7 +621,6 @@ void DisplayManager::shutdown() {
 
     m_sleep.abandon_lvgl_state();
     m_brightness_reassert_timer.reset();
-    m_resize_debounce_timer.reset();
 
     // Release backends
     m_backlight.reset();
@@ -1199,69 +1201,59 @@ void DisplayManager::settle_display_rotation(lv_display_rotation_t rot, int phys
 // Window Resize Handler (Desktop/SDL)
 // ============================================================================
 
-void DisplayManager::resize_timer_cb(lv_timer_t* timer) {
-    auto* self = static_cast<DisplayManager*>(lv_timer_get_user_data(timer));
-    // One-shot: LVGL deletes it after this call on the paths that do not delete it here.
-    self->m_resize_debounce_timer.release();
-    if (self->m_shutting_down) {
+void DisplayManager::fan_out_resize() {
+    if (m_shutting_down) {
         return;
     }
 
     // A timer armed before the suspension began must not fan out either - the
     // rotation probe polls for taps through lv_timer_handler(), and this is the
     // callback that can sit in a multi-second theme refresh while it does.
-    if (self->m_resize_fanout_suspended) {
+    if (m_resize_fanout_suspended) {
         spdlog::debug("[DisplayManager] Resize fanout suspended - dropping pending debounce");
-        lv_timer_delete(timer);
         return;
     }
 
     spdlog::debug(
         "[DisplayManager] Resize debounce complete: {}x{}, calling {} registered callbacks",
-        self->width(), self->height(), self->m_resize_callbacks.size());
+        width(), height(), m_resize_callbacks.size());
 
-    // Call all registered callbacks
-    for (auto callback : self->m_resize_callbacks) {
+    // The debounce is disarmed before this runs, so a SIZE_CHANGED raised by a
+    // callback arms a fresh one.
+    for (auto callback : m_resize_callbacks) {
         if (callback) {
             callback();
         }
     }
+}
 
-    // Delete one-shot timer
-    lv_timer_delete(timer);
+void DisplayManager::on_screen_size_changed(lv_obj_t* screen) {
+    if (m_shutting_down) {
+        return;
+    }
+
+    lv_coord_t width = lv_obj_get_width(screen);
+    lv_coord_t height = lv_obj_get_height(screen);
+
+    if (m_resize_fanout_suspended) {
+        spdlog::debug("[DisplayManager] Screen size changed to {}x{} while resize fanout "
+                      "suspended - no debounce armed",
+                      width, height);
+        return;
+    }
+
+    spdlog::debug("[DisplayManager] Screen size changed to {}x{}, resetting debounce timer", width,
+                  height);
+    m_resize_debounce.schedule([this]() { fan_out_resize(); });
 }
 
 void DisplayManager::resize_event_cb(lv_event_t* e) {
-    lv_event_code_t code = lv_event_get_code(e);
-
-    if (code == LV_EVENT_SIZE_CHANGED) {
-        auto* self = static_cast<DisplayManager*>(lv_event_get_user_data(e));
-        if (!self || self->m_shutting_down) {
-            return;
-        }
-
-        lv_obj_t* screen = static_cast<lv_obj_t*>(lv_event_get_target(e));
-        lv_coord_t width = lv_obj_get_width(screen);
-        lv_coord_t height = lv_obj_get_height(screen);
-
-        if (self->m_resize_fanout_suspended) {
-            spdlog::debug("[DisplayManager] Screen size changed to {}x{} while resize fanout "
-                          "suspended - no debounce armed",
-                          width, height);
-            return;
-        }
-
-        spdlog::debug("[DisplayManager] Screen size changed to {}x{}, resetting debounce timer",
-                      width, height);
-
-        // Reset or create debounce timer
-        if (self->m_resize_debounce_timer) {
-            lv_timer_reset(self->m_resize_debounce_timer.get());
-        } else {
-            self->m_resize_debounce_timer.reset(
-                lv_timer_create(resize_timer_cb, RESIZE_DEBOUNCE_MS, self));
-            lv_timer_set_repeat_count(self->m_resize_debounce_timer.get(), 1); // One-shot
-        }
+    if (lv_event_get_code(e) != LV_EVENT_SIZE_CHANGED) {
+        return;
+    }
+    auto* self = static_cast<DisplayManager*>(lv_event_get_user_data(e));
+    if (self) {
+        self->on_screen_size_changed(static_cast<lv_obj_t*>(lv_event_get_target(e)));
     }
 }
 
@@ -1271,10 +1263,21 @@ void DisplayManager::init_resize_handler(lv_obj_t* screen) {
         return;
     }
 
-    // Add SIZE_CHANGED event listener to screen
+    remove_resize_handler();
     lv_obj_add_event_cb(screen, resize_event_cb, LV_EVENT_SIZE_CHANGED, this);
+    m_resize_screen = screen;
 
     spdlog::trace("[DisplayManager] Resize handler initialized on screen");
+}
+
+void DisplayManager::remove_resize_handler() {
+    m_resize_debounce.cancel();
+    // The screen may already be gone (deleted by its owner, or by lv_deinit()), and
+    // lv_obj_is_valid() finds it without dereferencing the pointer.
+    if (m_resize_screen && lv_is_initialized() && lv_obj_is_valid(m_resize_screen)) {
+        lv_obj_remove_event_cb_with_user_data(m_resize_screen, resize_event_cb, this);
+    }
+    m_resize_screen = nullptr;
 }
 
 void DisplayManager::set_resize_fanout_suspended(bool suspended) {

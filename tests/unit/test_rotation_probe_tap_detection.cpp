@@ -56,12 +56,36 @@ void count_resize() {
     g_resize_calls++;
 }
 
-int timers_pointing_at(const void* owner) {
+/// Timers whose user data points anywhere inside @p owner, members included.
+int timers_pointing_into(const DisplayManager& owner) {
+    const auto* lo = reinterpret_cast<const char*>(&owner);
+    const auto* hi = lo + sizeof(DisplayManager);
     int n = 0;
     for (lv_timer_t* t = lv_timer_get_next(nullptr); t != nullptr; t = lv_timer_get_next(t)) {
-        n += lv_timer_get_user_data(t) == owner ? 1 : 0;
+        const auto* ud = static_cast<const char*>(lv_timer_get_user_data(t));
+        n += (ud >= lo && ud < hi) ? 1 : 0;
     }
     return n;
+}
+
+/// Event callbacks on @p obj whose user data is @p owner.
+int event_cbs_pointing_at(lv_obj_t* obj, const void* owner) {
+    int n = 0;
+    for (uint32_t i = 0; i < lv_obj_get_event_count(obj); i++) {
+        n += lv_event_dsc_get_user_data(lv_obj_get_event_dsc(obj, i)) == owner ? 1 : 0;
+    }
+    return n;
+}
+
+// A resize callback that raises one more SIZE_CHANGED on g_reentrant_target from
+// inside the fan-out, the way a layout refresh resizing the screen does.
+lv_obj_t* g_reentrant_target = nullptr;
+int g_reentrant_calls = 0;
+
+void resize_and_resize_again() {
+    if (g_reentrant_calls++ == 0) {
+        lv_obj_send_event(g_reentrant_target, LV_EVENT_SIZE_CHANGED, nullptr);
+    }
 }
 
 } // namespace
@@ -254,16 +278,117 @@ TEST_CASE_METHOD(ResizeFixture, "a destroyed DisplayManager leaves no resize deb
                  "[display][rotation_probe][resize]") {
     // The debounce's callback dereferences its DisplayManager, so a timer that survives
     // the manager fires into freed memory, in whichever test is running then.
+    lv_obj_t* screen = nullptr;
+    {
+        DisplayManager mgr;
+        screen = attach_resize_handler(mgr);
+        lv_obj_send_event(screen, LV_EVENT_SIZE_CHANGED, nullptr);
+        process_lvgl(50); // timer armed, not yet expired
+        REQUIRE(timers_pointing_into(mgr) == 1);
+    }
+    process_lvgl(400); // past the debounce window
+    CHECK(g_resize_calls == 0);
+
+    lv_obj_delete(screen);
+}
+
+TEST_CASE_METHOD(ResizeFixture, "a destroyed DisplayManager is detached from its screen",
+                 "[display][rotation_probe][resize]") {
+    // The screen outlives the manager here, so a SIZE_CHANGED after destruction must
+    // not reach the freed manager through the event callback's user data.
     const void* mgr_addr = nullptr;
+    lv_obj_t* screen = nullptr;
     {
         DisplayManager mgr;
         mgr_addr = &mgr;
-        lv_obj_t* screen = attach_resize_handler(mgr);
-        lv_obj_send_event(screen, LV_EVENT_SIZE_CHANGED, nullptr);
-        process_lvgl(50); // timer armed, not yet expired
-        REQUIRE(timers_pointing_at(mgr_addr) == 1);
-        lv_obj_delete(screen);
+        screen = attach_resize_handler(mgr);
+        REQUIRE(event_cbs_pointing_at(screen, mgr_addr) == 1);
     }
-    process_lvgl(1); // a cancelled timer is reaped on the next handler pass
-    CHECK(timers_pointing_at(mgr_addr) == 0);
+    CHECK(event_cbs_pointing_at(screen, mgr_addr) == 0);
+
+    lv_obj_send_event(screen, LV_EVENT_SIZE_CHANGED, nullptr);
+    process_lvgl(400);
+    CHECK(g_resize_calls == 0);
+
+    lv_obj_delete(screen);
+}
+
+TEST_CASE_METHOD(ResizeFixture, "shutdown detaches the resize handler and cancels the debounce",
+                 "[display][rotation_probe][resize]") {
+    DisplayManager mgr;
+    lv_obj_t* screen = attach_resize_handler(mgr);
+    lv_obj_send_event(screen, LV_EVENT_SIZE_CHANGED, nullptr);
+    process_lvgl(50);
+    REQUIRE(timers_pointing_into(mgr) == 1);
+
+    mgr.shutdown();
+
+    CHECK(event_cbs_pointing_at(screen, &mgr) == 0);
+    CHECK(timers_pointing_into(mgr) == 0);
+    process_lvgl(400);
+    CHECK(g_resize_calls == 0);
+
+    lv_obj_delete(screen);
+}
+
+TEST_CASE_METHOD(ResizeFixture, "shutdown after the screen is deleted is safe",
+                 "[display][rotation_probe][resize]") {
+    DisplayManager mgr;
+    lv_obj_t* screen = attach_resize_handler(mgr);
+    lv_obj_delete(screen);
+
+    mgr.shutdown();
+    SUCCEED("shutdown did not touch the deleted screen");
+}
+
+TEST_CASE_METHOD(ResizeFixture,
+                 "Resize debounce is trailing-edge: a resize inside the window "
+                 "pushes the fan-out back",
+                 "[display][rotation_probe][resize]") {
+    DisplayManager mgr;
+    lv_obj_t* screen = attach_resize_handler(mgr);
+
+    lv_obj_send_event(screen, LV_EVENT_SIZE_CHANGED, nullptr);
+    process_lvgl(150);
+    lv_obj_send_event(screen, LV_EVENT_SIZE_CHANGED, nullptr);
+    process_lvgl(150); // 300ms after the first resize, 150ms after the second
+    CHECK(g_resize_calls == 0);
+
+    process_lvgl(250);
+    CHECK(g_resize_calls == 1);
+
+    process_lvgl(400);
+    CHECK(g_resize_calls == 1);
+
+    lv_obj_delete(screen);
+}
+
+TEST_CASE_METHOD(ResizeFixture, "A resize raised during the fan-out arms a fresh debounce",
+                 "[display][rotation_probe][resize]") {
+    DisplayManager mgr;
+    lv_obj_t* screen = attach_resize_handler(mgr);
+    mgr.register_resize_callback(resize_and_resize_again);
+    g_reentrant_target = screen;
+    g_reentrant_calls = 0;
+
+    lv_obj_send_event(screen, LV_EVENT_SIZE_CHANGED, nullptr);
+    process_lvgl(400);
+    REQUIRE(g_reentrant_calls == 1);
+    REQUIRE(timers_pointing_into(mgr) == 1);
+
+    SECTION("the fresh debounce fans out") {
+        process_lvgl(400);
+        CHECK(g_reentrant_calls == 2);
+        CHECK(g_resize_calls == 2);
+    }
+
+    SECTION("the fresh debounce is owned, so shutdown cancels it") {
+        mgr.shutdown();
+        CHECK(timers_pointing_into(mgr) == 0);
+        process_lvgl(400);
+        CHECK(g_reentrant_calls == 1);
+    }
+
+    g_reentrant_target = nullptr;
+    lv_obj_delete(screen);
 }
