@@ -186,6 +186,22 @@ struct ToolSwitcherBand {
     return cell;
 }
 
+/// How much label the feeder cell shows under its lock. The values are the
+/// published subject's ints, which the cell XML compares against literal
+/// ref_values.
+enum class FeederLabelForm : int { Icon = 0, Short = 1, Long = 2 };
+
+/// The fullest feeder label that fits @p room px: the action a tap takes
+/// ("Open feeder" / "Close feeder", the wider measuring @p long_px), else
+/// "Feeder" (@p short_px), else none, the lock alone carrying the state.
+[[nodiscard]] inline FeederLabelForm feeder_label_form(int room, int long_px, int short_px) {
+    if (long_px <= room)
+        return FeederLabelForm::Long;
+    if (short_px <= room)
+        return FeederLabelForm::Short;
+    return FeederLabelForm::Icon;
+}
+
 /// The look a head's cell takes. The values are the per-head state subject's
 /// ints, which the cell XML compares against literal ref_values.
 enum class ToolSwitcherCellState : int { Idle = 0, Mounted = 1, Fault = 2 };

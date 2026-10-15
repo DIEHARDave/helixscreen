@@ -637,3 +637,14 @@ TEST_CASE("Tool picker: balancing never adds a row and uses the fewest columns t
     CHECK(g.cols == 2);
     CHECK(g.rows == 3);
 }
+
+TEST_CASE("feeder_label_form: the fullest label that fits, else the lock alone",
+          "[tool_switcher][feeder]") {
+    // The action needs 80 px, "Feeder" 44.
+    CHECK(helix::feeder_label_form(120, 80, 44) == helix::FeederLabelForm::Long);
+    CHECK(helix::feeder_label_form(80, 80, 44) == helix::FeederLabelForm::Long);
+    CHECK(helix::feeder_label_form(79, 80, 44) == helix::FeederLabelForm::Short);
+    CHECK(helix::feeder_label_form(44, 80, 44) == helix::FeederLabelForm::Short);
+    CHECK(helix::feeder_label_form(43, 80, 44) == helix::FeederLabelForm::Icon);
+    CHECK(helix::feeder_label_form(0, 80, 44) == helix::FeederLabelForm::Icon);
+}

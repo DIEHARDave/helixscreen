@@ -537,9 +537,9 @@ void map_heads_to_lanes(int heads) {
 } // namespace
 
 TEST_CASE_METHOD(LVGLUITestFixture,
-                 "tool_switcher: the picker lays out only the heads the per-head pools hold",
+                 "tool_switcher: the picker reaches every head where the rail cannot",
                  "[tool_switcher][1784]") {
-    constexpr int kHeads = ToolSwitcherWidget::kPoolSize + 2;
+    constexpr int kHeads = ToolSwitcherWidget::kMaxRailHeads + 2;
     ToolChangerRig rig(kHeads);
     map_heads_to_lanes(kHeads);
     PanelWidgetHarness<ToolSwitcherWidget> h(test_screen(), state());
@@ -547,12 +547,28 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     h.resize(2, 2, 160, 60);
     process_lvgl(30);
 
-    // A cell binds its head's subjects by index, so a head past the pools has
-    // none to bind and gets no cell.
+    // More heads than the rail draws: the face, and no rail cells behind it.
+    CHECK(mode() >= static_cast<int>(ToolSwitcherMode::Pair));
+    lv_obj_t* rail = named(h, "tool_switcher_rail");
+    REQUIRE(rail != nullptr);
+    CHECK(lv_obj_get_child_count(rail) == 0);
+
+    // The picker has a cell for every head, the last one named for its head.
     ToolSwitcherTestAccess::show_picker(h.widget());
     lv_obj_t* list = ToolSwitcherTestAccess::picker_list(h.widget());
     REQUIRE(list != nullptr);
-    CHECK(lv_obj_get_child_count(list) == static_cast<uint32_t>(ToolSwitcherWidget::kPoolSize));
+    CHECK(lv_obj_get_child_count(list) == static_cast<uint32_t>(kHeads));
+    const std::string last = "tool_picker_cell_" + std::to_string(kHeads - 1);
+    CHECK(lv_obj_find_by_name(list, last.c_str()) != nullptr);
+    // Its G-code name is on one of its two lines, whichever form they read in.
+    const std::string seg = "tool_switcher_seg_" + std::to_string(kHeads - 1);
+    lv_subject_t* label = lv_xml_get_subject(nullptr, (seg + "_pick").c_str());
+    lv_subject_t* sub = lv_xml_get_subject(nullptr, (seg + "_pick_sub").c_str());
+    REQUIRE(label != nullptr);
+    REQUIRE(sub != nullptr);
+    const std::string text =
+        std::string(lv_subject_get_string(label)) + " " + lv_subject_get_string(sub);
+    CHECK(text.find(ToolState::instance().tools()[kHeads - 1].name) != std::string::npos);
     ToolSwitcherTestAccess::hide_picker(h.widget());
     process_lvgl(30);
 }
@@ -987,6 +1003,60 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     }
     ToolSwitcherTestAccess::hide_picker(h.widget());
     process_lvgl(30);
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture, "tool_switcher: the rail feeder cell never truncates its label",
+                 "[tool_switcher][feeder]") {
+    lv_display_t* disp = lv_display_get_default();
+    for (const auto& [w, hpx] : {std::pair{800, 480}, std::pair{1024, 600}}) {
+        CAPTURE(w, hpx);
+        ScopedResolution res(disp, w, hpx);
+        theme_manager_refresh_layout_constants(disp);
+        ToolChangerRig rig(4);
+        rig.backend->has_feeder = true;
+        PanelWidgetHarness<ToolSwitcherWidget> h(test_screen(), state());
+        process_lvgl(30);
+
+        // Four heads, Park and the feeder in one row, from the touch floor up.
+        const int floor = resolve_px("touch_target_min", 48);
+        std::vector<int> forms_seen;
+        for (int cell = floor; cell <= 3 * floor; cell += 3) {
+            CAPTURE(cell);
+            resize_content(h, 6 * cell + 5 * 2, 84);
+            process_lvgl(30);
+            REQUIRE(mode() == static_cast<int>(ToolSwitcherMode::RailWithActions));
+            REQUIRE(subject_value("tool_switcher_cols") == 6);
+            lv_obj_update_layout(h.root());
+            const int form = subject_value("tool_switcher_feeder_label");
+            forms_seen.push_back(form);
+            lv_obj_t* btn = named(h, "tool_switcher_rail_feeder_btn_3");
+            REQUIRE(btn != nullptr);
+            int labels_shown = 0;
+            for (const char* name :
+                 {"tool_switcher_feeder_label", "tool_switcher_feeder_open_label",
+                  "tool_switcher_feeder_close_label"}) {
+                lv_obj_t* label = lv_obj_find_by_name(btn, name);
+                REQUIRE(label != nullptr);
+                if (!shown(label))
+                    continue;
+                ++labels_shown;
+                // Truncation rewrites the label's text with dots.
+                const std::string text = lv_label_get_text(label);
+                CAPTURE(name, text);
+                CHECK(text.find("...") == std::string::npos);
+                CHECK(
+                    ui::text_width(text.c_str(), lv_obj_get_style_text_font(label, LV_PART_MAIN)) <=
+                    lv_obj_get_content_width(label));
+            }
+            const bool labelled = subject_value("tool_switcher_two_line") == 1 &&
+                                  form != static_cast<int>(FeederLabelForm::Icon);
+            CHECK(labels_shown == (labelled ? 1 : 0));
+        }
+        // The sweep crosses from the lock alone to the action's name.
+        CHECK(forms_seen.front() < static_cast<int>(FeederLabelForm::Long));
+        CHECK(forms_seen.back() == static_cast<int>(FeederLabelForm::Long));
+    }
+    theme_manager_refresh_layout_constants(disp);
 }
 
 TEST_CASE_METHOD(

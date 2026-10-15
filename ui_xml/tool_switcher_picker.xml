@@ -9,8 +9,8 @@
          one word, the X carries the dismiss. -->
     <context_menu_card title="Tool" pad_all="#space_xs" pad_gap="#space_xs" hide_divider="true">
       <!-- Every head as a square cell, the rail's own segment at the picker's
-           size. Up to eight heads never scroll; beyond that the grid scrolls
-           under its bound max height. -->
+           size. The grid scrolls under its bound max height where its rows
+           do not fit the screen. -->
       <!-- SIZE_OK: the 2 px gap is kRailGap, which the widget measures cells with -->
       <lv_obj name="tool_list"
               height="content" flex_flow="row_wrap" style_pad_all="0" style_pad_gap="2" style_radius="#border_radius"
@@ -42,7 +42,7 @@
         <tool_switcher_feeder_segment name="tool_feeder_btn"
                                       height="content" flex_grow="1" style_min_height="#touch_target_min"
                                       style_pad_ver="#space_xxs" two_line="tool_switcher_footer_labels"
-                                      long="tool_switcher_picker_feeder_long">
+                                      label_form="tool_switcher_picker_feeder_label">
           <bind_flag_if_eq subject="tool_switcher_feeder_supported" flag="hidden" ref_value="0"/>
         </tool_switcher_feeder_segment>
       </lv_obj>

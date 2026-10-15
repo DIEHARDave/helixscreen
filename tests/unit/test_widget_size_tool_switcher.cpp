@@ -405,23 +405,19 @@ TEST_CASE_METHOD(ToolSwitcherFixture,
     CHECK(subject_string(seg(4, "label")) == expected_seg_label(4));
     CHECK(subject_string(seg(5, "label")) == expected_seg_label(5));
 
-    // The pools are sized once, whatever the count, and never past it.
-    CHECK(lv_xml_get_subject(nullptr, seg(ToolSwitcherWidget::kPoolSize - 1, "label").c_str()) !=
-          nullptr);
-    CHECK(lv_xml_get_subject(nullptr, seg(ToolSwitcherWidget::kPoolSize, "label").c_str()) ==
-          nullptr);
-
-    // More heads than the pools hold: the last slot is filled, nothing past
-    // it is touched, and the tile shows the face, whose sheet lists every head.
-    update_tools(ToolSwitcherWidget::kPoolSize + 4, 0);
+    // More heads than the rail draws: the pools grow to every head, the last
+    // is filled, and the tile shows the face, whose picker lists them all.
+    constexpr int kHeads = ToolSwitcherWidget::kMaxRailHeads + 4;
+    update_tools(kHeads, 0);
     process_lvgl(30);
     resize_content(h, 2000, 400);
     process_lvgl(30);
     CHECK(mode() != static_cast<int>(ToolSwitcherMode::Rail));
     CHECK(mode() != static_cast<int>(ToolSwitcherMode::RailWithActions));
-    CHECK(subject_string(seg(ToolSwitcherWidget::kPoolSize - 1, "label")) ==
-          expected_seg_label(ToolSwitcherWidget::kPoolSize - 1));
-    CHECK(subject_int("tool_switcher_detail_rows") <= ToolSwitcherWidget::kPoolSize);
+    CHECK(subject_int("tool_switcher_heads") == kHeads);
+    CHECK(subject_int("tool_switcher_rail_heads") == 0);
+    REQUIRE(lv_xml_get_subject(nullptr, seg(kHeads - 1, "label").c_str()) != nullptr);
+    CHECK(subject_string(seg(kHeads - 1, "label")) == expected_seg_label(kHeads - 1));
 }
 
 // ============================================================================

@@ -54,8 +54,8 @@ lv_subject_t s_detail_rows_subject{};
 lv_subject_t s_label_form_subject{};
 lv_subject_t s_park_supported_subject{};
 lv_subject_t s_feeder_supported_subject{};
-// 1 where the rail's feeder cell has room for "Open feeder" / "Close feeder".
-lv_subject_t s_feeder_long_subject{};
+// The rail feeder cell's FeederLabelForm.
+lv_subject_t s_feeder_label_subject{};
 lv_subject_t s_change_blocked_subject{};
 // The mounted head as the Pair and Single faces read it.
 lv_subject_t s_face_label_subject{};
@@ -77,9 +77,11 @@ lv_subject_t s_band_labelled_subject{};
 // 1 where every cell shown holds its second line (a segment's sub, the face's
 // temperature) below its label, on both axes.
 lv_subject_t s_two_line_subject{};
-// The physical heads the rail and the picker lay out (ToolState::
-// physical_heads()), up to kPoolSize.
+// The physical heads (ToolState::physical_heads()): every one, which the
+// picker lays out, and the rail's share, which is all of them where the rail
+// can draw them and none where the tile shows the face instead.
 lv_subject_t s_heads_subject{};
+lv_subject_t s_rail_heads_subject{};
 // The picker: its grid (fit_tool_picker_grid()) and its cells' band and second
 // line.
 lv_subject_t s_picker_cell_w_subject{};
@@ -89,7 +91,7 @@ lv_subject_t s_picker_grid_max_h_subject{};
 lv_subject_t s_picker_band_h_subject{};
 lv_subject_t s_picker_band_labelled_subject{};
 lv_subject_t s_picker_two_line_subject{};
-lv_subject_t s_picker_feeder_long_subject{};
+lv_subject_t s_picker_feeder_label_subject{};
 // The picker footer's buttons grow to their content, so their labels always
 // show: the second-line subject they bind is constantly 1.
 lv_subject_t s_footer_labels_subject{};
@@ -166,8 +168,8 @@ void tool_switcher_widget_init_subjects() {
             s_subjects.publish("tool_switcher_park_supported", &s_park_supported_subject);
             lv_subject_init_int(&s_feeder_supported_subject, 0);
             s_subjects.publish("tool_switcher_feeder_supported", &s_feeder_supported_subject);
-            lv_subject_init_int(&s_feeder_long_subject, 0);
-            s_subjects.publish("tool_switcher_feeder_long", &s_feeder_long_subject);
+            lv_subject_init_int(&s_feeder_label_subject, 0);
+            s_subjects.publish("tool_switcher_feeder_label", &s_feeder_label_subject);
             lv_subject_init_int(&s_change_blocked_subject, 0);
             s_subjects.publish("tool_switcher_change_blocked", &s_change_blocked_subject);
             lv_subject_init_string(&s_face_label_subject, s_face_label_buf, nullptr,
@@ -197,6 +199,7 @@ void tool_switcher_widget_init_subjects() {
             s_subjects.publish("tool_switcher_two_line", &s_two_line_subject);
             const std::pair<lv_subject_t*, const char*> picker_ints[] = {
                 {&s_heads_subject, "tool_switcher_heads"},
+                {&s_rail_heads_subject, "tool_switcher_rail_heads"},
                 {&s_picker_cell_w_subject, "tool_switcher_picker_cell_w"},
                 {&s_picker_cell_h_subject, "tool_switcher_picker_cell_h"},
                 {&s_picker_grid_w_subject, "tool_switcher_picker_grid_w"},
@@ -204,7 +207,7 @@ void tool_switcher_widget_init_subjects() {
                 {&s_picker_band_h_subject, "tool_switcher_picker_band_h"},
                 {&s_picker_band_labelled_subject, "tool_switcher_picker_band_labelled"},
                 {&s_picker_two_line_subject, "tool_switcher_picker_two_line"},
-                {&s_picker_feeder_long_subject, "tool_switcher_picker_feeder_long"},
+                {&s_picker_feeder_label_subject, "tool_switcher_picker_feeder_label"},
             };
             for (const auto& [subject, name] : picker_ints) {
                 lv_subject_init_int(subject, 0);
@@ -212,9 +215,11 @@ void tool_switcher_widget_init_subjects() {
             }
             lv_subject_init_int(&s_footer_labels_subject, 1);
             s_subjects.publish("tool_switcher_footer_labels", &s_footer_labels_subject);
-            // Every slot exists before a row can bind it, whatever the head count.
+            // Every slot a rail row can bind exists before any XML is parsed;
+            // publish_heads() grows the pools past this before it publishes
+            // a head count that needs more.
             for (IndexedSubjectPool* pool : s_pools) {
-                pool->ensure_size(helix::ToolSwitcherWidget::kPoolSize);
+                pool->ensure_size(helix::ToolSwitcherWidget::kMaxRailHeads);
             }
         },
         [] {
@@ -303,12 +308,19 @@ uint32_t band_text_rgb(uint32_t rgb) {
     return lv_color_to_u32(theme_manager_get_readable_on(lv_color_hex(rgb))) & 0xFFFFFF;
 }
 
-/// Whether the feeder's long labels ("Open feeder", "Close feeder") both fit
-/// @p room px in the small font.
-bool feeder_label_fits(int room) {
+/// The feeder cell's border (style_border_width in
+/// tool_switcher_feeder_segment.xml).
+constexpr int kFeederBorder = 2;
+
+/// The feeder label form (feeder_label_form()) whose text fits a feeder cell
+/// @p cell_w px wide: its content less the label's own space_xxs padding,
+/// measured in the small font.
+helix::FeederLabelForm feeder_label_form_for(int cell_w) {
+    const int room = cell_w - 2 * (kFeederBorder + resolve_px_token("space_xxs", 2));
     const lv_font_t* small = theme_manager_get_font("font_small");
-    return helix::ui::text_width(lv_tr("Open feeder"), small) <= room &&
-           helix::ui::text_width(lv_tr("Close feeder"), small) <= room;
+    const int long_px = std::max(helix::ui::text_width(lv_tr("Open feeder"), small),
+                                 helix::ui::text_width(lv_tr("Close feeder"), small));
+    return helix::feeder_label_form(room, long_px, helix::ui::text_width(lv_tr("Feeder"), small));
 }
 
 /// Heads at or above this read hot (decidegrees).
@@ -534,7 +546,7 @@ void ToolSwitcherWidget::publish() {
 }
 
 void ToolSwitcherWidget::publish_layout() {
-    const auto heads = ToolState::instance().physical_heads();
+    const auto& heads = ToolState::instance().physical_heads();
     const int count = static_cast<int>(heads.size());
     const int inset = resolve_px_token("space_md", 10);
     const int min_target = resolve_px_token("touch_target_min", 48);
@@ -545,9 +557,9 @@ void ToolSwitcherWidget::publish_layout() {
     const int content_w = current_width_px_ - 2 * inset;
     const int content_h = current_height_px_ - 2 * inset;
 
-    // The rail draws a segment per head from pools of kPoolSize, so a printer
-    // with more heads than that gets the face and reaches them in the sheet.
-    const int decided_heads = count > kPoolSize ? kUnrailableHeads : count;
+    // A printer with more heads than the rail draws gets the face, whose
+    // picker lists every head.
+    const int decided_heads = count > kMaxRailHeads ? kUnrailableHeads : count;
     // Only the action cells the backend offers are reserved.
     ToolSwitcherActions actions;
     actions.park = lv_subject_get_int(&s_park_supported_subject) != 0;
@@ -592,7 +604,8 @@ void ToolSwitcherWidget::publish_layout() {
         tool_switcher_band(layout_.cell_h, small_px, resolve_px_token("space_xxs", 2));
     set_int_if_changed(&s_band_h_subject, band.px);
     set_int_if_changed(&s_band_labelled_subject, band.labelled ? 1 : 0);
-    set_int_if_changed(&s_feeder_long_subject, feeder_label_fits(label_room) ? 1 : 0);
+    set_int_if_changed(&s_feeder_label_subject,
+                       static_cast<int>(feeder_label_form_for(layout_.cell_w)));
 
     // The face takes its cell along a Pair's long axis and fills the view
     // across it, so it matches Park even where the box the tile was told
@@ -613,8 +626,8 @@ void ToolSwitcherWidget::publish_layout() {
 
 void ToolSwitcherWidget::rebuild_head_temps() {
     head_temps_.clear();
-    const auto all_heads = ToolState::instance().physical_heads();
-    const size_t heads = std::min(all_heads.size(), static_cast<size_t>(kPoolSize));
+    const auto& all_heads = ToolState::instance().physical_heads();
+    const size_t heads = all_heads.size();
     head_temps_.resize(heads);
     auto token = lifetime_.token();
     for (size_t i = 0; i < heads; ++i) {
@@ -671,11 +684,16 @@ std::string ToolSwitcherWidget::detail_head_text(int i, const ToolInfo& tool, bo
 void ToolSwitcherWidget::publish_heads() {
     if (!s_subjects.initialized())
         return;
-    const auto all_heads = ToolState::instance().physical_heads();
-    const int count = static_cast<int>(all_heads.size());
-    const int heads = std::min(count, kPoolSize);
+    const auto& all_heads = ToolState::instance().physical_heads();
+    const int heads = static_cast<int>(all_heads.size());
     const int active = mounted_head(all_heads, ToolState::instance().active_tool_index());
     const bool fault = changer_fault();
+    const std::vector<int> order = tool_switcher_detail_order(heads, active);
+    // Every head and detail row gets its slots before a count that reaches
+    // them is published.
+    for (IndexedSubjectPool* pool : s_pools) {
+        pool->ensure_size(order.size());
+    }
 
     std::vector<HeadFilament> filament(static_cast<size_t>(heads));
     head_materials_.assign(static_cast<size_t>(heads), std::string());
@@ -705,10 +723,10 @@ void ToolSwitcherWidget::publish_heads() {
                            static_cast<int>(tool_switcher_cell_state(i, active, fault)));
     }
     set_int_if_changed(&s_heads_subject, heads);
+    set_int_if_changed(&s_rail_heads_subject, heads <= kMaxRailHeads ? heads : 0);
 
     // Detail rows, mounted head first.
-    const std::vector<int> order = tool_switcher_detail_order(heads, active);
-    const int rows = std::min(static_cast<int>(order.size()), kPoolSize);
+    const int rows = static_cast<int>(order.size());
     const int content_w = current_width_px_ - 2 * resolve_px_token("space_md", 10);
     const lv_font_t* body = theme_manager_get_font("font_body");
     const lv_font_t* small = theme_manager_get_font("font_small");
@@ -752,15 +770,15 @@ void ToolSwitcherWidget::publish_heads() {
     std::string face;
     std::string face_sub;
     HeadFilament face_filament;
-    if (count == 0) {
+    if (heads == 0) {
         // Nothing discovered yet: the face names nothing.
-    } else if (active >= 0 && active < count) {
+    } else if (active >= 0 && active < heads) {
         const ToolInfo mounted = head_tool(all_heads, active);
         face = tool_text(mounted, ui::ToolLabelForm::Full);
         if (ui::text_width(face.c_str(), body) > room)
             face = short_text(mounted);
         face_sub = head_temp_text(active);
-        face_filament = active < heads ? filament[active] : head_filament(mounted);
+        face_filament = filament[active];
     } else if (active == -1) {
         face = lv_tr("Choose head");
         if (ui::text_width(face.c_str(), body) > room)
@@ -783,9 +801,9 @@ void ToolSwitcherWidget::publish_heads() {
 void ToolSwitcherWidget::publish_head_temp(int i) {
     if (!s_subjects.initialized())
         return;
-    const auto all_heads = ToolState::instance().physical_heads();
-    const int heads = std::min(static_cast<int>(all_heads.size()), kPoolSize);
-    if (i < 0 || i >= heads)
+    const auto& all_heads = ToolState::instance().physical_heads();
+    const int heads = static_cast<int>(all_heads.size());
+    if (i < 0 || i >= heads || static_cast<size_t>(i) >= s_seg_temp.size())
         return;
     const int active = mounted_head(all_heads, ToolState::instance().active_tool_index());
 
@@ -800,7 +818,7 @@ void ToolSwitcherWidget::publish_head_temp(int i) {
     }
 
     const std::vector<int> order = tool_switcher_detail_order(heads, active);
-    const int rows = std::min(static_cast<int>(order.size()), kPoolSize);
+    const int rows = static_cast<int>(std::min(order.size(), s_detail_text.size()));
     for (int r = 0; r < rows; ++r) {
         if (order[r] != i)
             continue;
@@ -844,8 +862,7 @@ void ToolSwitcherWidget::publish_two_line() {
         layout_.mode == ToolSwitcherMode::RailWithActions || layout_.mode == ToolSwitcherMode::Rail;
     auto fits = [&](const char* text) { return ui::text_width(text, small) <= room; };
     if (rail) {
-        const int heads =
-            std::min(static_cast<int>(ToolState::instance().physical_heads().size()), kPoolSize);
+        const int heads = lv_subject_get_int(&s_rail_heads_subject);
         for (int i = 0; i < heads && two_line; ++i) {
             two_line = fits(lv_subject_get_string(s_seg_sub.at(i)));
         }
@@ -901,8 +918,10 @@ void ToolSwitcherWidget::ToolPicker::on_created(lv_obj_t* backdrop) {
         return;
     }
 
-    const auto all_heads = ToolState::instance().physical_heads();
-    const int heads = std::min(static_cast<int>(all_heads.size()), kPoolSize);
+    const auto& all_heads = ToolState::instance().physical_heads();
+    // The cells the repeat built: one per head publish_heads() last counted.
+    const int heads = std::min(static_cast<int>(lv_subject_get_int(&s_heads_subject)),
+                               static_cast<int>(all_heads.size()));
     const int min_target = resolve_px_token("touch_target_min", 48);
     const int margin = resolve_px_token("space_md", 10);
     const lv_font_t* body = theme_manager_get_font("font_body");
@@ -966,15 +985,16 @@ void ToolSwitcherWidget::ToolPicker::on_created(lv_obj_t* backdrop) {
     const int footer_w = buttons > 0 ? buttons * fit.cell + (buttons - 1) * kRailGap : 0;
     const int inner_w = std::max(fit.width, footer_w);
     lv_obj_set_width(menu_card, inner_w + pad_w);
-    const int footer_room = (inner_w - (buttons > 1 ? kRailGap : 0)) / std::max(buttons, 1) -
-                            2 * resolve_px_token("space_xxs", 2);
-    set_int_if_changed(&s_picker_feeder_long_subject, feeder_label_fits(footer_room) ? 1 : 0);
+    const int button_w = (inner_w - (buttons > 1 ? kRailGap : 0)) / std::max(buttons, 1);
+    set_int_if_changed(&s_picker_feeder_label_subject,
+                       static_cast<int>(feeder_label_form_for(button_w)));
 
     // Scroll the mounted head into view when the grid scrolls.
     const int active = mounted_head(all_heads, ToolState::instance().active_tool_index());
     if (fit.scrolls && active >= 0 && active < heads) {
         lv_obj_update_layout(grid);
-        if (lv_obj_t* cell = lv_obj_get_child(grid, active)) {
+        const std::string cell_name = fmt::format("tool_picker_cell_{}", active);
+        if (lv_obj_t* cell = lv_obj_find_by_name(grid, cell_name.c_str())) {
             lv_obj_scroll_to_view(cell, LV_ANIM_OFF);
         }
     }

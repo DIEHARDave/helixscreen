@@ -26,10 +26,10 @@ struct ToolInfo;
 /// part in the TileSizing ladder.
 class ToolSwitcherWidget : public PanelWidget {
   public:
-    /// Heads the per-head subject pools hold. Every pool is sized to this
-    /// when the subjects are registered, before any XML binds a row; a printer
-    /// with more heads reaches the rest through the picker.
-    static constexpr int kPoolSize = 16;
+    /// The most heads the rail draws. A printer with more gets the face, and
+    /// the picker lists every head: the per-head subject pools start at this
+    /// size and grow to the head count before any cell binds them.
+    static constexpr int kMaxRailHeads = 16;
 
     explicit ToolSwitcherWidget(PrinterState& printer_state);
     ~ToolSwitcherWidget() override;
