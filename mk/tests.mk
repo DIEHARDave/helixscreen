@@ -298,77 +298,30 @@ DNS_RESOLV_OBJ := $(OBJ_DIR)/tests/dns_resolv.o
 # AUTOMATIC APP OBJECT DISCOVERY
 # ============================================================================
 # Include ALL application objects except those that conflict with tests.
-# This replaces ~150 lines of manual object listings that needed constant updates.
+# A test double for a filtered object may be inert, or the object may be
+# linked; it may not be a copy of the logic (tests/CLAUDE.md).
 #
 # Exclusions (add files here ONLY if they cause linker conflicts):
 #
 # Group 1: App entry point
 # - main.o: Has main() function, tests have their own entry point
 #
-# Group 2: Files where ui_test_utils.o provides stub implementations
-# - ui_notification.o: ui_test_utils.o stubs the ui_notification_* entry points
-# - ui_toast.o, ui_toast_manager.o: ui_test_utils.o provides stub toast functions
-# ui_text_input.o WAS here too, stubbed by a hand-written copy in ui_test_utils.cpp
-# that registered its own <text_input> widget. Same drift as ui_emergency_stop.o:
-# the copy never grew bind_text two-way binding, the multiline pre-scan,
-# show_clear_button/clear_callback or KeyboardManager::register_textarea(), so every
-# <text_input> in the 31 ui_xml files that use one was exercised as the fake. The real
-# object is linked now and registers itself through the shipped ui_text_input_init().
-#
-# ui_emergency_stop.o WAS here, stubbed by a hand-written copy in
-# ui_test_utils.cpp. That copy silently drifted from production — it kept
-# mutating recovery state inline after show_recovery_for() was changed to
-# marshal to the main thread — so the "unified recovery dialog" tests were
-# asserting against the duplicate rather than the shipped code. The real object
-# is linked now and the copy is gone.
-#
-# Group 3: Test-specific conflicts
+# Group 2: Test-specific conflicts
 # - ui_switch.o: test_ui_switch.cpp includes the .cpp directly for unit testing
 # - ui_button.o: test_ui_button_defer_reuse.cpp includes the .cpp directly to
 #   reach anonymous-namespace internals (defer_button_contrast_update, #924)
 #
-# Group 4: remote_client.o — undocumented, and no conflict was found
+# Group 3: remote_client.o — undocumented, and no conflict was found
 #   `nm -g --defined-only` over remote_client.o intersected against every object
 #   under $(OBJ_DIR)/tests/ yields the empty set, and nothing in the test link
 #   references it, so it is inert either way. Left excluded only because nothing
 #   needs it; it is NOT load-bearing. Drop it from this list the moment a test
 #   wants helix::RemoteClient.
 #
-# NOT excluded any more — application.o and its four link-time dependencies.
-#   These were listed here with no rationale, which left Application (app
-#   lifecycle, shutdown, teardown, printer-state init — four of the five
-#   "Critical Paths" in CLAUDE.md) structurally untestable: nothing in the test
-#   binary could even name it. The stated rule for this list is "ONLY if they
-#   cause linker conflicts", so the claim was checked symbol by symbol:
-#
-#     object                    strong symbols also defined by a test object
-#     ------------------------  -------------------------------------------
-#     application.o             helix_notify_app_backgrounded/_foregrounded
-#     moonraker_manager.o       MoonrakerManager::connect, ::macro_analysis
-#     subject_initializer.o     (none)
-#     panel_factory.o           (none)
-#     remote_control_server.o   (none)
-#
-#   Four real duplicates, all of them test-side stubs standing in for the
-#   production code that is now linked, so all four stubs were deleted
-#   (tests/test_fixtures.cpp, tests/ui_test_utils.cpp). The other three objects
-#   had no conflict at all — they are here because application.o references
-#   SubjectInitializer, PanelFactory and RemoteControlServer and the link needs
-#   their definitions.
-#
-#   application.o also pulls in symbols from ui_notification.o, still on this
-#   list; ui_test_utils.cpp stubs those.
-#
-#   lvgl_initializer.o was also removed: no such source or object has ever
-#   existed in the tree, so the entry filtered nothing.
-#
 # Everything else is automatically included - new files just work!
 
 TEST_APP_OBJS := $(filter-out \
     $(OBJ_DIR)/main.o \
-    $(OBJ_DIR)/ui/ui_notification.o \
-    $(OBJ_DIR)/ui/ui_toast.o \
-    $(OBJ_DIR)/ui/ui_toast_manager.o \
     $(OBJ_DIR)/ui/ui_switch.o \
     $(OBJ_DIR)/ui/ui_button.o \
     $(OBJ_DIR)/remote/remote_client.o \
@@ -1599,10 +1552,10 @@ check-tautology:
 TAUTOLOGY_MAX ?= 0
 # One ratchet per signal, so fixing one kind cannot buy slack for another. Each
 # may fall, never rise; an unnamed signal (shadow-include, mirror-comment)
-# allows 0. stub-logic is tests/ui_test_utils.cpp standing in for
-# ui_notification.o and ui_toast_manager.o.
+# allows 0. stub-logic is a branching stand-in for an object this file filters
+# out of the test link.
 MIRROR_MAX_REDEFINED_SYMBOL ?= 0
-MIRROR_MAX_STUB_LOGIC ?= 15
+MIRROR_MAX_STUB_LOGIC ?= 0
 MIRROR_MAX_ARGS = --max redefined-symbol=$(MIRROR_MAX_REDEFINED_SYMBOL) \
 	--max stub-logic=$(MIRROR_MAX_STUB_LOGIC)
 

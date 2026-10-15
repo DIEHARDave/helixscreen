@@ -324,6 +324,7 @@ size_t ToastManager::visible_count() const {
 // ============================================================================
 
 void ToastManager::show(ToastSeverity severity, const char* message, uint32_t duration_ms) {
+    report(Event{Event::Kind::Show, severity, message ? message : "", "", duration_ms});
     struct ToastParams {
         ToastSeverity severity;
         std::string message;
@@ -342,6 +343,8 @@ void ToastManager::show(ToastSeverity severity, const char* message, uint32_t du
 
 void ToastManager::show_with_detail(ToastSeverity severity, const char* message, const char* detail,
                                     uint32_t duration_ms) {
+    report(Event{Event::Kind::Show, severity, message ? message : "", detail ? detail : "",
+                 duration_ms});
     struct ToastDetailParams {
         ToastSeverity severity;
         std::string message;
@@ -367,6 +370,8 @@ void ToastManager::show_with_action(ToastSeverity severity, const char* message,
         show(severity, message, duration_ms);
         return;
     }
+    report(Event{Event::Kind::Show, severity, message ? message : "", "", duration_ms, callback,
+                 user_data});
 
     struct ToastActionParams {
         ToastSeverity severity;
@@ -402,6 +407,8 @@ void ToastManager::hide() {
 }
 
 void ToastManager::hide(toast_action_callback_t action_callback, void* user_data) {
+    report(
+        Event{Event::Kind::HideAction, ToastSeverity::INFO, "", "", 0, action_callback, user_data});
     hide_where([action_callback, user_data](const ToastInstance& t) {
         return t.action_cb == action_callback && t.action_user_data == user_data;
     });
@@ -421,6 +428,12 @@ void ToastManager::create_toast_internal(ToastSeverity severity, const char* mes
                                          const char* action_text) {
     if (!message) {
         spdlog::warn("[ToastManager] Attempted to show toast with null message");
+        return;
+    }
+    // Before init() the toast_notification component and its button callbacks
+    // are not registered, so there is nothing a toast could be built from.
+    if (!is_initialized()) {
+        spdlog::debug("[ToastManager] Not initialized; dropping toast: {}", message);
         return;
     }
 

@@ -50,6 +50,26 @@ static bool should_show_toast(ToastSeverity sev) {
 // RAII observer guard for automatic cleanup
 static ObserverGuard s_notification_observer;
 
+// Function-local so a static constructor elsewhere can install an observer
+// before this file's own dynamic initialization has run.
+static std::function<void(const helix::ui::NotificationEvent&)>& event_observer() {
+    static std::function<void(const helix::ui::NotificationEvent&)> observer;
+    return observer;
+}
+
+static void report_event(ToastSeverity severity, const char* message, const char* action = nullptr,
+                         bool sticky = false) {
+    auto& observer = event_observer();
+    if (observer) {
+        observer(helix::ui::NotificationEvent{severity, message, action ? action : "", sticky});
+    }
+}
+
+void helix::ui::set_notification_observer(
+    std::function<void(const helix::ui::NotificationEvent&)> observer) {
+    event_observer() = std::move(observer);
+}
+
 // Check if we're on the LVGL main thread
 static bool is_main_thread() {
     if (!g_main_thread_id_initialized.load()) {
@@ -299,6 +319,7 @@ static void show_notification(const char* title, const char* message, ToastSever
         spdlog::warn("[Notification] Attempted to show notification with null message");
         return;
     }
+    report_event(severity, message);
 
     const bool has_title = title && *title;
     std::string display_msg = has_title ? (std::string(title) + ": " + message) : message;
@@ -362,6 +383,7 @@ static void add_history_action_entry(ToastSeverity severity, const char* title, 
         spdlog::warn("[Notification] with_action called with null message or action");
         return;
     }
+    report_event(severity, message, action);
 
     // Build entry directly — no toast, history only
     NotificationHistoryEntry entry = {};
@@ -423,6 +445,7 @@ struct DetailNotification {
     std::string message;
     std::string detail;
     uint32_t duration_ms;
+    std::string joined; ///< The history row: both halves on one line
 };
 
 /// Two-line toast + a joined history row.
@@ -450,13 +473,14 @@ void show_detail_notification(ToastSeverity severity, const char* message, const
         return;
     }
 
-    auto params = std::make_unique<DetailNotification>(
-        DetailNotification{severity, message, detail, duration_ms});
+    // A history row is one line, and the pre-init startup queue only carries
+    // one string, so both get the halves joined.
+    auto params = std::make_unique<DetailNotification>(DetailNotification{
+        severity, message, detail, duration_ms, std::string(message) + " - " + detail});
+    report_event(severity, params->joined.c_str(), nullptr, duration_ms == 0);
 
     helix::ui::queue_update<DetailNotification>(std::move(params), [](DetailNotification* p) {
-        // A history row is one line, and the pre-init startup queue only carries
-        // one string, so both get the halves joined.
-        const std::string joined = p->message + " - " + p->detail;
+        const std::string& joined = p->joined;
 
         if (try_defer_to_startup_queue(p->severity, joined.c_str(), p->duration_ms))
             return;
@@ -508,6 +532,7 @@ static void show_error_notification(const char* title, const char* message, bool
         spdlog::warn("[Notification] Attempted to show error notification with null message");
         return;
     }
+    report_event(ToastSeverity::ERROR, message);
 
     // Pre-init (before ToastManager::init() and modal XML registration) route to
     // the startup queue. The queue drains as plain toasts — modal dialogs are

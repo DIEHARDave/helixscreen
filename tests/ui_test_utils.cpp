@@ -506,189 +506,115 @@ int count_children_with_marker(lv_obj_t* parent, const char* marker) {
 
 } // namespace UITest
 
-// Optional hook installed by tests to observe warning toasts (the UI is stubbed
-// out in the test build, so warnings would otherwise be invisible).
+#include "ui_notification.h"
+#include "ui_toast_manager.h"
+
+#include "app_globals.h"
+
 namespace {
-std::function<void(const std::string&)> g_test_warning_hook;
-std::function<void(const std::string&)> g_test_sticky_warning_hook;
-std::function<void(const std::string&)> g_test_error_hook;
-std::function<void(const std::string&)> g_test_success_hook;
-std::function<void(const std::string&)> g_test_info_hook;
+
+using MessageHook = std::function<void(const std::string&)>;
+
+MessageHook g_test_warning_hook;
+MessageHook g_test_sticky_warning_hook;
+MessageHook g_test_error_hook;
+MessageHook g_test_success_hook;
+MessageHook g_test_info_hook;
 std::function<void(ToastSeverity, const std::string&, const std::string&)> g_test_action_hook;
+
+std::function<void(ToastSeverity, const std::string&, uint32_t)> g_test_toast_hook;
+// The last action toast shown, which a fire consumes.
+toast_action_callback_t g_last_toast_action = nullptr;
+void* g_last_toast_action_data = nullptr;
+// The last action toast shown and the last pair hide(action) was given, for
+// last_action_toast_dismissed(). A fire leaves these alone.
+toast_action_callback_t g_shown_toast_action = nullptr;
+void* g_shown_toast_action_data = nullptr;
+toast_action_callback_t g_dismissed_toast_action = nullptr;
+void* g_dismissed_toast_action_data = nullptr;
+
+void call(const MessageHook& hook, const std::string& message) {
+    if (hook) {
+        hook(message);
+    }
+}
+
+// Hands each event the real ui_notification.o reports to the hook a test
+// installed for its kind.
+void route_notification(const helix::ui::NotificationEvent& e) {
+    if (!e.action.empty()) {
+        if (g_test_action_hook) {
+            g_test_action_hook(e.severity, e.message, e.action);
+        }
+        return;
+    }
+    switch (e.severity) {
+    case ToastSeverity::INFO:
+        call(g_test_info_hook, e.message);
+        break;
+    case ToastSeverity::SUCCESS:
+        call(g_test_success_hook, e.message);
+        break;
+    case ToastSeverity::WARNING:
+        call(e.sticky ? g_test_sticky_warning_hook : g_test_warning_hook, e.message);
+        break;
+    case ToastSeverity::ERROR:
+        call(g_test_error_hook, e.message);
+        break;
+    }
+}
+
+// Records what the real ToastManager was asked to show or dismiss.
+void route_toast(const ToastManager::Event& e) {
+    if (e.kind == ToastManager::Event::Kind::HideAction) {
+        g_dismissed_toast_action = e.action_cb;
+        g_dismissed_toast_action_data = e.action_user_data;
+        return;
+    }
+    if (e.action_cb) {
+        g_last_toast_action = e.action_cb;
+        g_last_toast_action_data = e.action_user_data;
+        g_shown_toast_action = e.action_cb;
+        g_shown_toast_action_data = e.action_user_data;
+    }
+    if (g_test_toast_hook) {
+        // One string per toast: the detail line follows the message.
+        g_test_toast_hook(e.severity, e.detail.empty() ? e.message : e.message + " - " + e.detail,
+                          e.duration_ms);
+    }
+}
+
+// Both observers stay installed for the life of the binary; each hook is
+// empty until a test sets it.
+__attribute__((constructor)) void install_test_observers() {
+    helix::ui::set_notification_observer(route_notification);
+    ToastManager::instance().set_observer(route_toast);
+}
+
 } // namespace
 
 namespace helix {
 namespace ui {
-void set_test_notification_warning_hook(std::function<void(const std::string&)> hook) {
+
+void set_test_notification_warning_hook(MessageHook hook) {
     g_test_warning_hook = std::move(hook);
 }
-void set_test_notification_sticky_warning_hook(std::function<void(const std::string&)> hook) {
+void set_test_notification_sticky_warning_hook(MessageHook hook) {
     g_test_sticky_warning_hook = std::move(hook);
 }
-void set_test_notification_error_hook(std::function<void(const std::string&)> hook) {
+void set_test_notification_error_hook(MessageHook hook) {
     g_test_error_hook = std::move(hook);
 }
-
-void set_test_notification_info_hook(std::function<void(const std::string&)> hook) {
+void set_test_notification_info_hook(MessageHook hook) {
     g_test_info_hook = std::move(hook);
 }
-void set_test_notification_success_hook(std::function<void(const std::string&)> hook) {
+void set_test_notification_success_hook(MessageHook hook) {
     g_test_success_hook = std::move(hook);
 }
 void set_test_notification_action_hook(
     std::function<void(ToastSeverity, const std::string&, const std::string&)> hook) {
     g_test_action_hook = std::move(hook);
 }
-} // namespace ui
-} // namespace helix
-
-namespace {
-// Both *_with_action stubs: history rows only, so log and feed the hook.
-void report_test_action(ToastSeverity severity, const char* title, const char* message,
-                        const char* action) {
-    spdlog::debug("[Test Stub] ui_notification_*_with_action: {} - {} (action: {})",
-                  title ? title : "(null)", message ? message : "(null)",
-                  action ? action : "(null)");
-    if (g_test_action_hook) {
-        g_test_action_hook(severity, message ? message : "", action ? action : "");
-    }
-}
-} // namespace
-
-// Stub implementations for notification functions (tests don't display UI)
-void ui_notification_init() {
-    // No-op in tests
-}
-
-void ui_notification_info(const char* message) {
-    spdlog::debug("[Test Stub] ui_notification_info: {}", message ? message : "(null)");
-    if (g_test_info_hook) {
-        g_test_info_hook(message ? message : "");
-    }
-}
-
-void ui_notification_info(const char* title, const char* message) {
-    spdlog::debug("[Test Stub] ui_notification_info: {} - {}", title ? title : "(null)",
-                  message ? message : "(null)");
-    if (g_test_info_hook) {
-        g_test_info_hook(message ? message : "");
-    }
-}
-
-void ui_notification_info_with_action(const char* title, const char* message, const char* action) {
-    report_test_action(ToastSeverity::INFO, title, message, action);
-}
-
-void ui_notification_warning_with_action(const char* title, const char* message,
-                                         const char* action) {
-    report_test_action(ToastSeverity::WARNING, title, message, action);
-}
-
-void ui_notification_success(const char* message) {
-    spdlog::debug("[Test Stub] ui_notification_success: {}", message ? message : "(null)");
-    if (g_test_success_hook) {
-        g_test_success_hook(message ? message : "");
-    }
-}
-
-void ui_notification_success(const char* title, const char* message) {
-    spdlog::debug("[Test Stub] ui_notification_success: {} - {}", title ? title : "(null)",
-                  message ? message : "(null)");
-    if (g_test_success_hook) {
-        g_test_success_hook(message ? message : "");
-    }
-}
-
-void ui_notification_warning(const char* message) {
-    spdlog::debug("[Test Stub] ui_notification_warning: {}", message ? message : "(null)");
-    if (g_test_warning_hook) {
-        g_test_warning_hook(message ? message : "");
-    }
-}
-
-void ui_notification_warning(const char* title, const char* message) {
-    spdlog::debug("[Test Stub] ui_notification_warning: {} - {}", title ? title : "(null)",
-                  message ? message : "(null)");
-    if (g_test_warning_hook) {
-        g_test_warning_hook(message ? message : "");
-    }
-}
-
-void ui_notification_error(const char* title, const char* message, bool modal) {
-    spdlog::debug("[Test Stub] ui_notification_error: {} - {} (modal={})", title ? title : "(null)",
-                  message ? message : "(null)", modal);
-    if (g_test_error_hook) {
-        g_test_error_hook(message ? message : "");
-    }
-}
-
-// Feeds the same hook as ui_notification_error: to a test asserting WHAT was
-// surfaced, a printer fault is an error notification. What it cannot reproduce
-// is the real function's call to helix::ui::track_fault_modal() — no modal is
-// built here at all. Coverage of the sweep therefore drives the registry
-// directly (test_fault_modal_dismiss.cpp), which is the linked, real code.
-void ui_notification_printer_fault(const char* title, const char* message) {
-    spdlog::debug("[Test Stub] ui_notification_printer_fault: {} - {}", title ? title : "(null)",
-                  message ? message : "(null)");
-    if (g_test_error_hook) {
-        g_test_error_hook(message ? message : "");
-    }
-}
-
-// The two-line variants hand the hook the SAME text the toast renders, joined,
-// so a test can assert that the suggestion actually reached the user instead of
-// only that the message did. Matches ui_notification.cpp's history-row join.
-static std::string join_detail(const char* message, const char* detail) {
-    std::string joined = message ? message : "";
-    if (detail && *detail) {
-        joined += " - ";
-        joined += detail;
-    }
-    return joined;
-}
-
-void ui_notification_error_with_detail(const char* message, const char* detail) {
-    const std::string joined = join_detail(message, detail);
-    spdlog::debug("[Test Stub] ui_notification_error_with_detail: {}", joined);
-    if (g_test_error_hook) {
-        g_test_error_hook(joined);
-    }
-}
-
-void ui_notification_warning_with_detail(const char* message, const char* detail) {
-    const std::string joined = join_detail(message, detail);
-    spdlog::debug("[Test Stub] ui_notification_warning_with_detail: {}", joined);
-    if (g_test_warning_hook) {
-        g_test_warning_hook(joined);
-    }
-}
-
-void ui_notification_warning_sticky(const char* message, const char* detail) {
-    const std::string joined = join_detail(message, detail);
-    spdlog::debug("[Test Stub] ui_notification_warning_sticky: {}", joined);
-    if (g_test_sticky_warning_hook) {
-        g_test_sticky_warning_hook(joined);
-    }
-}
-
-// Stub ToastManager class for tests
-#include "ui_toast_manager.h"
-
-// Fed by the ToastManager stub below, for tests asserting on direct
-// ToastManager::show() calls. See set_test_toast_hook in the header.
-static std::function<void(ToastSeverity, const std::string&, uint32_t)> g_test_toast_hook;
-static toast_action_callback_t g_last_toast_action = nullptr;
-static void* g_last_toast_action_data = nullptr;
-// The last action toast shown and the last one dismissed by its action, for
-// last_action_toast_dismissed(). Kept apart from the pair above, which a fire
-// consumes.
-static toast_action_callback_t g_shown_toast_action = nullptr;
-static void* g_shown_toast_action_data = nullptr;
-static toast_action_callback_t g_dismissed_toast_action = nullptr;
-static void* g_dismissed_toast_action_data = nullptr;
-
-namespace helix {
-namespace ui {
 
 void set_test_toast_hook(std::function<void(ToastSeverity, const std::string&, uint32_t)> hook) {
     g_test_toast_hook = std::move(hook);
@@ -714,99 +640,6 @@ bool fire_last_toast_action() {
 
 } // namespace ui
 } // namespace helix
-
-// Stub ToastManager class for tests
-// The real ToastManager is excluded from test build, so we need a stub singleton
-static ToastManager* s_test_toast_manager_instance = nullptr;
-
-ToastManager& ToastManager::instance() {
-    if (!s_test_toast_manager_instance) {
-        s_test_toast_manager_instance = new ToastManager();
-    }
-    return *s_test_toast_manager_instance;
-}
-
-ToastManager::~ToastManager() {
-    // Stub destructor
-}
-
-void ToastManager::init() {
-    spdlog::debug("[Test Stub] ToastManager::init()");
-    initialized_.store(true, std::memory_order_release);
-}
-
-void ToastManager::deinit_subjects() {
-    initialized_.store(false, std::memory_order_release);
-}
-
-void ToastManager::show(ToastSeverity severity, const char* message, uint32_t duration_ms) {
-    spdlog::debug("[Test Stub] ToastManager::show: {}", message ? message : "(null)");
-    if (g_test_toast_hook) {
-        g_test_toast_hook(severity, message ? message : "", duration_ms);
-    }
-}
-
-void ToastManager::show_with_detail(ToastSeverity severity, const char* message, const char* detail,
-                                    uint32_t duration_ms) {
-    const std::string joined = join_detail(message, detail);
-    spdlog::debug("[Test Stub] ToastManager::show_with_detail: {}", joined);
-    if (g_test_toast_hook) {
-        g_test_toast_hook(severity, joined, duration_ms);
-    }
-}
-
-void ToastManager::show_with_action(ToastSeverity severity, const char* message,
-                                    const char* action_text,
-                                    toast_action_callback_t action_callback, void* user_data,
-                                    uint32_t duration_ms) {
-    (void)action_text;
-    g_last_toast_action = action_callback;
-    g_last_toast_action_data = user_data;
-    g_shown_toast_action = action_callback;
-    g_shown_toast_action_data = user_data;
-    spdlog::debug("[Test Stub] ToastManager::show_with_action: {}", message ? message : "(null)");
-    if (g_test_toast_hook) {
-        g_test_toast_hook(severity, message ? message : "", duration_ms);
-    }
-}
-
-void ToastManager::hide() {
-    spdlog::debug("[Test Stub] ToastManager::hide()");
-}
-
-void ToastManager::hide(toast_action_callback_t action_callback, void* user_data) {
-    spdlog::debug("[Test Stub] ToastManager::hide(action)");
-    g_dismissed_toast_action = action_callback;
-    g_dismissed_toast_action_data = user_data;
-}
-
-bool ToastManager::is_visible() const {
-    return false;
-}
-
-// refresh_duplicate() and find_owning_toast() are NOT stubbed here — they are
-// defined inline in include/ui_toast_manager.h so the test binary links the
-// same implementations the real app uses. See the comments on those declarations.
-
-// Text input widget implementation for tests
-// This is a full implementation, not a stub, because tests need to actually
-// test the text_input widget's placeholder and max_length attributes.
-#include "ui_notification.h"
-#include "ui_text_input.h"
-
-#include "helix-xml/src/xml/lv_xml.h"
-#include "helix-xml/src/xml/lv_xml_parser.h"
-#include "helix-xml/src/xml/lv_xml_utils.h"
-#include "helix-xml/src/xml/lv_xml_widget.h"
-#include "helix-xml/src/xml/parsers/lv_xml_textarea_parser.h"
-
-// PrinterSession::tear_down_printer_state() calls this; ui_notification.o stays
-// out of the test link (see mk/tests.mk Group 2).
-void ui_notification_deinit() {
-    spdlog::debug("[Test Stub] ui_notification_deinit: no-op in tests");
-}
-
-#include "app_globals.h"
 
 // Answers root_escalation_available()'s sudo probe "no" for the whole binary, so
 // no test forks `sudo -n true` on the developer's machine. A run as root still
