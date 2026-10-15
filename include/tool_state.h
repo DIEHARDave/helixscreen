@@ -218,10 +218,13 @@ class ToolState {
 
     /// The printing ends behind the tool list (helix::physical_heads()). What
     /// a surface that draws one control per head counts, where tool_count()
-    /// would draw one per filament lane on a hub-fed rig.
-    [[nodiscard]] std::vector<PhysicalHead> physical_heads() const {
-        return helix::physical_heads(tools_);
-    }
+    /// would draw one per filament lane on a hub-fed rig. Built once per tool
+    /// list: the reference stays valid until the list next changes.
+    [[nodiscard]] const std::vector<PhysicalHead>& physical_heads() const;
+
+    /// The physical heads that name an extruder, in physical_heads() order:
+    /// the ones a heater target can be aimed at.
+    [[nodiscard]] std::vector<PhysicalHead> heated_heads() const;
 
     /// Returns "Nozzle" for single-tool, "Nozzle 1" for multi-tool (active tool),
     /// or the tool's configured Klipper name ("Nozzle Left") when it has one.
@@ -426,6 +429,11 @@ class ToolState {
     lv_subject_t any_tool_offset_dirty_{};
 
     std::vector<ToolInfo> tools_;
+    /// physical_heads() of tools_, built on first ask after the list changes.
+    mutable std::optional<std::vector<PhysicalHead>> heads_cache_;
+    /// The extruder heaters init_tools() found, sorted: the names a backend's
+    /// per-tool extruder must be one of to be taken as a Klipper extruder.
+    std::vector<std::string> discovered_extruders_;
     int active_tool_index_ = 0;
     std::string config_dir_ = "config";     ///< Directory for local JSON persistence
     bool config_dir_explicit_ = false;      ///< set_config_dir() pinned it; don't re-derive
