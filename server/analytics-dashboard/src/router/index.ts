@@ -43,12 +43,7 @@ export const router = createRouter({
       component: ReleasesView,
       meta: { requiresAuth: true }
     },
-    {
-      path: '/memory',
-      name: 'memory',
-      component: () => import('@/views/MemoryView.vue'),
-      meta: { requiresAuth: true }
-    },
+    { path: '/memory', redirect: (to) => ({ path: legacyRedirect(to.path)!, query: to.query }) },
     {
       path: '/engagement',
       name: 'engagement',

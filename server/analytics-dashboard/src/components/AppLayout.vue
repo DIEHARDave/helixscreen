@@ -21,9 +21,6 @@
           Releases
         </router-link>
         <div class="nav-separator"></div>
-        <router-link :to="navTo('/memory')" class="nav-link" :class="{ active: route.path === '/memory' }">
-          Memory
-        </router-link>
         <router-link :to="navTo('/engagement')" class="nav-link" :class="{ active: route.path === '/engagement' }">
           Engagement
         </router-link>
