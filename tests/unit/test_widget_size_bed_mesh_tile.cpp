@@ -18,6 +18,7 @@
 #include "../lvgl_ui_test_fixture.h"
 #include "../test_helpers/panel_widget_size_harness.h"
 #include "../test_helpers/scoped_breakpoint.h"
+#include "../test_helpers/tile_boxes.h"
 #include "../test_helpers/update_queue_test_access.h"
 #include "app_globals.h"
 #include "bed_mesh_state.h"
@@ -30,6 +31,14 @@
 #include "../catch_amalgamated.hpp"
 
 using namespace helix;
+using helix::test::Box;
+using helix::test::kCell;
+using helix::test::kColumn;
+using helix::test::kFull;
+using helix::test::kGlance;
+using helix::test::kLarge;
+using helix::test::kStrip;
+using helix::test::kWide;
 
 namespace {
 
@@ -160,31 +169,13 @@ bool shown(lv_obj_t* obj) {
     return true;
 }
 
-struct Box {
-    int w;
-    int h;
-    SizeRung rung;
-};
-
-constexpr Box kWide{234, 113, SizeRung::Wide};
-constexpr Box kFull{234, 232, SizeRung::Full};
-constexpr Box kLarge{350, 340, SizeRung::Large};
-
 } // namespace
 
 TEST_CASE_METHOD(BedMeshTileFixture, "bed_mesh_tile: medium-tier budgets land on their rung",
                  "[widget_size][bed_mesh_tile]") {
     load_mesh(0.10f);
     Harness h(test_screen(), state());
-    const Box boxes[] = {
-        {55, 54, SizeRung::Glance},
-        {114, 54, SizeRung::Strip},
-        {55, 113, SizeRung::Column},
-        {114, 113, SizeRung::Cell},
-        kWide,
-        kFull,
-        kLarge,
-    };
+    const Box boxes[] = {kGlance, kStrip, kColumn, kCell, kWide, kFull, kLarge};
     for (const auto& b : boxes) {
         INFO(b.w << "x" << b.h);
         h.resize(1, 1, b.w, b.h);
@@ -236,8 +227,7 @@ TEST_CASE_METHOD(BedMeshTileFixture,
     CHECK_FALSE(shown(part(h, "bed_mesh_tile_scale")));
     CHECK_FALSE(shown(part(h, "bed_mesh_tile_footer")));
 
-    for (const Box b : {Box{114, 54, SizeRung::Strip}, Box{55, 113, SizeRung::Column},
-                        Box{114, 113, SizeRung::Cell}}) {
+    for (const Box b : {kStrip, kColumn, kCell}) {
         INFO(b.w << "x" << b.h);
         h.resize(1, 1, b.w, b.h);
         CHECK_FALSE(shown(part(h, "bed_mesh_tile_glyph")));
@@ -272,8 +262,7 @@ TEST_CASE_METHOD(BedMeshTileFixture, "bed_mesh_tile: with no mesh the heatmap gi
                  "[widget_size][bed_mesh_tile]") {
     Harness h(test_screen(), state());
 
-    for (const Box b : {Box{55, 54, SizeRung::Glance}, Box{114, 54, SizeRung::Strip},
-                        Box{55, 113, SizeRung::Column}}) {
+    for (const Box b : {kGlance, kStrip, kColumn}) {
         INFO(b.w << "x" << b.h);
         h.resize(1, 1, b.w, b.h);
         CHECK(shown(part(h, "bed_mesh_tile_glyph_off")));
@@ -284,7 +273,7 @@ TEST_CASE_METHOD(BedMeshTileFixture, "bed_mesh_tile: with no mesh the heatmap gi
         CHECK_FALSE(shown(part(h, "bed_mesh_tile_empty_text")));
     }
 
-    for (const Box b : {Box{114, 113, SizeRung::Cell}, kWide, kFull}) {
+    for (const Box b : {kCell, kWide, kFull}) {
         INFO(b.w << "x" << b.h);
         h.resize(1, 1, b.w, b.h);
         CHECK(shown(part(h, "bed_mesh_tile_glyph_empty")));
@@ -303,7 +292,7 @@ TEST_CASE_METHOD(BedMeshTileFixture,
     clear_mesh(2);
     Harness h(test_screen(), state());
 
-    for (const Box b : {Box{114, 113, SizeRung::Cell}, kWide}) {
+    for (const Box b : {kCell, kWide}) {
         h.resize(1, 1, b.w, b.h);
         CHECK_FALSE(shown(part(h, "bed_mesh_tile_actions")));
     }
@@ -580,8 +569,7 @@ TEST_CASE_METHOD(BedMeshTileFixture, "bed_mesh_tile: a tap anywhere opens the Be
                  "[widget_size][bed_mesh_tile][actions]") {
     load_mesh(0.10f);
     Harness h(test_screen(), state());
-    for (const Box b :
-         {Box{55, 54, SizeRung::Glance}, Box{114, 113, SizeRung::Cell}, kWide, kFull}) {
+    for (const Box b : {kGlance, kCell, kWide, kFull}) {
         opened = 0;
         h.resize(1, 1, b.w, b.h);
         tap(h.root());

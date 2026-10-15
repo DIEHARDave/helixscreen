@@ -336,3 +336,37 @@ TEST_CASE("strip_gcode_extension() removes a whole .gcode.3mf", "[filename_utils
     CHECK(strip_gcode_extension("Foo.gcode") == "Foo");
     CHECK(get_display_filename("dir/Foo (PETG).gcode.3mf") == "Foo (PETG)");
 }
+
+namespace {
+// The inline splits that call sites spelled out by hand before sharing the helpers.
+std::string inline_basename(const std::string& path) {
+    const size_t slash = path.rfind('/');
+    return slash == std::string::npos ? path : path.substr(slash + 1);
+}
+std::string inline_dir(const std::string& path) {
+    const size_t slash = path.rfind('/');
+    return slash == std::string::npos ? std::string() : path.substr(0, slash);
+}
+} // namespace
+
+TEST_CASE("get_filename_basename() and gcode_dir_of() split at the last slash only",
+          "[filename_utils][path_split]") {
+    const std::pair<std::string, std::pair<std::string, std::string>> cases[] = {
+        {"a.gcode", {"a.gcode", ""}},
+        {"/a.gcode", {"a.gcode", ""}},
+        {"dir/", {"", "dir"}},
+        {"/", {"", ""}},
+        {"a/b/c.gcode", {"c.gcode", "a/b"}},
+        {"", {"", ""}},
+        {"x.gcode/y.gcode", {"y.gcode", "x.gcode"}},
+        {"sub.gcode/", {"", "sub.gcode"}},
+        {"a\\b.gcode", {"a\\b.gcode", ""}},
+    };
+    for (const auto& [path, want] : cases) {
+        INFO("path='" << path << "'");
+        CHECK(helix::gcode::get_filename_basename(path) == want.first);
+        CHECK(helix::gcode_dir_of(path) == want.second);
+        CHECK(helix::gcode::get_filename_basename(path) == inline_basename(path));
+        CHECK(helix::gcode_dir_of(path) == inline_dir(path));
+    }
+}

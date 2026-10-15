@@ -20,6 +20,7 @@
 #include "../test_helpers/panel_widget_size_harness.h"
 #include "../test_helpers/performance_state_test_access.h"
 #include "../test_helpers/scoped_breakpoint.h"
+#include "../test_helpers/tile_boxes.h"
 #include "../test_helpers/update_queue_test_access.h"
 #include "app_globals.h"
 #include "panel_widget_manager.h"
@@ -119,21 +120,12 @@ bool shown(lv_obj_t* obj) {
     return true;
 }
 
-struct Box {
-    int w;
-    int h;
-    SizeRung rung;
-};
-
 } // namespace
 
 TEST_CASE_METHOD(HostHealthFixture, "host_health: medium-tier budgets land on their rung",
                  "[widget_size][host_health]") {
     PanelWidgetHarness<HostHealthWidget> h(test_screen(), state());
-    const Box boxes[] = {
-        {55, 54, SizeRung::Glance}, {114, 54, SizeRung::Strip}, {55, 113, SizeRung::Column},
-        {114, 113, SizeRung::Cell}, {234, 113, SizeRung::Wide}, {234, 232, SizeRung::Full},
-    };
+    const auto& boxes = test::kMediumLadder;
     for (const auto& b : boxes) {
         for (const bool printing : {false, true}) {
             INFO(b.w << "x" << b.h << " printing=" << printing);

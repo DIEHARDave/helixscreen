@@ -20,6 +20,7 @@
 #include "../test_helpers/panel_widget_size_harness.h"
 #include "../test_helpers/printer_state_test_access.h"
 #include "../test_helpers/scoped_breakpoint.h"
+#include "../test_helpers/tile_boxes.h"
 #include "../test_helpers/update_queue_test_access.h"
 #include "app_globals.h"
 #include "moonraker_api.h"
@@ -36,6 +37,9 @@
 #include "hv/json.hpp"
 
 using namespace helix;
+using helix::test::Box;
+using helix::test::kFull;
+using helix::test::kWide;
 using nlohmann::json;
 
 namespace {
@@ -167,28 +171,12 @@ bool shown(lv_obj_t* obj) {
     return true;
 }
 
-struct Box {
-    int w;
-    int h;
-    SizeRung rung;
-};
-
-constexpr Box kWide{234, 113, SizeRung::Wide};
-constexpr Box kFull{234, 232, SizeRung::Full};
-
 } // namespace
 
 TEST_CASE_METHOD(ZOffsetFixture, "z_offset: medium-tier budgets land on their rung",
                  "[widget_size][z_offset]") {
     PanelWidgetHarness<ZOffsetWidget> h(test_screen(), state());
-    const Box boxes[] = {
-        {55, 54, SizeRung::Glance},
-        {114, 54, SizeRung::Strip},
-        {55, 113, SizeRung::Column},
-        {114, 113, SizeRung::Cell},
-        kWide,
-        kFull,
-    };
+    const auto& boxes = test::kMediumLadder;
     for (const auto& b : boxes) {
         INFO(b.w << "x" << b.h);
         h.resize(1, 1, b.w, b.h);
@@ -337,12 +325,7 @@ TEST_CASE_METHOD(ZOffsetFixture,
 
     set_offset_microns(-100);
     REQUIRE(subject_int("z_offset_status") == 1);
-    for (const Box& b : std::initializer_list<Box>{{55, 54, SizeRung::Glance},
-                                                   {114, 54, SizeRung::Strip},
-                                                   {55, 113, SizeRung::Column},
-                                                   {114, 113, SizeRung::Cell},
-                                                   kWide,
-                                                   kFull}) {
+    for (const Box& b : test::kMediumLadder) {
         INFO(b.w << "x" << b.h);
         h.resize(1, 1, b.w, b.h);
         REQUIRE(rung_subject() == static_cast<int>(b.rung));

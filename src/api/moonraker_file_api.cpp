@@ -4,6 +4,7 @@
 #include "moonraker_file_api.h"
 
 #include "ui_error_reporting.h"
+#include "ui_filename_utils.h"
 
 #include "i_moonraker_client.h"
 #include "json_utils.h"
@@ -433,9 +434,7 @@ std::optional<std::vector<FileInfo>> MoonrakerFileAPI::parse_file_list(const jso
             info.path = get_string(item, "path");
             if (!info.path.empty()) {
                 // filename is the last component of the path
-                size_t last_slash = info.path.rfind('/');
-                info.filename = (last_slash != std::string::npos) ? info.path.substr(last_slash + 1)
-                                                                  : info.path;
+                info.filename = helix::gcode::get_filename_basename(info.path);
             } else {
                 info.filename = get_string(item, "filename");
             }

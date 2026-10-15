@@ -6,8 +6,8 @@
 #include "ui_modal.h"
 #include "ui_toast_manager.h"
 
+#include "helix/ui/text_metrics.h"
 #include "lua_bindings.h"
-#include "lvgl/src/misc/lv_text_private.h" // lv_text_get_width
 #include "plugin_canvas.h"
 #include "plugin_overlay_host.h"
 #include "plugin_xml_policy.h"
@@ -229,9 +229,7 @@ int ui_text_width(lua_State* L) {
                           "helix.ui.text_width: font token '%s' must be a base token; a "
                           "size-suffixed variant renders as the default font below its tier",
                           name);
-    lv_text_attributes_t attributes = {};
-    attributes.max_width = LV_COORD_MAX;
-    lua_pushinteger(L, lv_text_get_width(str, static_cast<uint32_t>(len), font, &attributes));
+    lua_pushinteger(L, helix::ui::text_width_n(str, static_cast<uint32_t>(len), font));
     return 1;
 }
 

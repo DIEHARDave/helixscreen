@@ -1376,8 +1376,7 @@ void PrinterPrintState::reconcile_preparing() {
     // file the user chose.
     auto bare = [](const std::string& p) {
         const std::string resolved = gcode::resolve_gcode_filename(p);
-        const size_t slash = resolved.find_last_of('/');
-        return slash == std::string::npos ? resolved : resolved.substr(slash + 1);
+        return gcode::get_filename_basename(resolved);
     };
 
     const bool mine = bare(reported) == bare(preparing_job_.filename);

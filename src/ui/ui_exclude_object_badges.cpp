@@ -6,6 +6,7 @@
 #include "display_numbering.h"
 #include "gcode_parser.h"
 #include "printer_excluded_objects_state.h"
+#include "src/ui/panel_widgets/content_chrome.h"
 #include "theme_manager.h"
 
 namespace helix::ui {
@@ -76,7 +77,7 @@ const lv_font_t* object_badge_font() {
 
 int32_t object_badge_diameter() {
     const lv_font_t* font = object_badge_font();
-    return font ? lv_font_get_line_height(font) : 0;
+    return helix::line_px(font);
 }
 
 static int look_subject_int(lv_subject_t* subject) {
