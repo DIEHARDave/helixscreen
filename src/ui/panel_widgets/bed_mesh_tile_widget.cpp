@@ -29,12 +29,12 @@
 #include "src/ui/panel_widgets/content_chrome.h"
 #include "src/ui/panel_widgets/live_tile_owner.h"
 #include "standard_macros.h"
-#include "static_subject_registry.h"
 #include "subject_managed_panel.h"
 #include "text_measure.h"
 #include "theme_manager.h"
 #include "toolhead_homing.h"
 #include "value_status.h"
+#include "widget_subjects.h"
 
 #include <spdlog/spdlog.h>
 
@@ -76,8 +76,7 @@ HELIX_PSRAM_BSS char s_extent_text_buf[32];
 HELIX_PSRAM_BSS char s_scale_low_text_buf[16];
 HELIX_PSRAM_BSS char s_scale_high_text_buf[16];
 HELIX_PSRAM_BSS char s_count_text_buf[32];
-bool s_subjects_initialized = false;
-SubjectManager s_subjects;
+helix::WidgetSubjects s_subjects{"BedMeshTileWidgetSubjects"};
 // The instance bound to the live tile. Only it publishes and acts: a transient instance
 // (a fits_at probe, a rebuild's outgoing widget) must not overwrite the tile's verdict.
 helix::LiveTileOwner<helix::BedMeshTileWidget> s_tile;
@@ -86,37 +85,30 @@ std::optional<bool> s_panel_available_override;
 std::function<void()> s_open_hook;
 
 void bed_mesh_tile_init_subjects() {
-    if (s_subjects_initialized)
-        return;
-    UI_MANAGED_SUBJECT_INT(s_rung_subject, static_cast<int>(helix::SizeRung::Cell),
-                           "bed_mesh_tile_rung", s_subjects);
-    UI_MANAGED_SUBJECT_INT(s_show_map_subject, 0, "bed_mesh_tile_show_map", s_subjects);
-    UI_MANAGED_SUBJECT_INT(s_show_range_subject, 0, "bed_mesh_tile_show_range", s_subjects);
-    UI_MANAGED_SUBJECT_INT(s_show_empty_subject, 0, "bed_mesh_tile_show_empty", s_subjects);
-    UI_MANAGED_SUBJECT_INT(s_show_details_subject, 0, "bed_mesh_tile_show_details", s_subjects);
-    UI_MANAGED_SUBJECT_INT(s_show_scale_subject, 0, "bed_mesh_tile_show_scale", s_subjects);
-    UI_MANAGED_SUBJECT_INT(s_show_footer_subject, 0, "bed_mesh_tile_show_footer", s_subjects);
-    UI_MANAGED_SUBJECT_INT(s_show_calibrate_subject, 0, "bed_mesh_tile_show_calibrate", s_subjects);
-    UI_MANAGED_SUBJECT_INT(s_show_load_subject, 0, "bed_mesh_tile_show_load", s_subjects);
-    UI_MANAGED_SUBJECT_INT(s_calibrating_subject, 0, "bed_mesh_tile_calibrating", s_subjects);
-    UI_MANAGED_SUBJECT_INT(s_status_subject, 0, "bed_mesh_tile_status", s_subjects);
-    UI_MANAGED_SUBJECT_STRING(s_range_text_subject, s_range_text_buf, "",
-                              "bed_mesh_tile_range_text", s_subjects);
-    UI_MANAGED_SUBJECT_STRING(s_extent_text_subject, s_extent_text_buf, "",
-                              "bed_mesh_tile_extent_text", s_subjects);
-    UI_MANAGED_SUBJECT_STRING(s_scale_low_text_subject, s_scale_low_text_buf, "",
-                              "bed_mesh_tile_scale_low_text", s_subjects);
-    UI_MANAGED_SUBJECT_STRING(s_scale_high_text_subject, s_scale_high_text_buf, "",
-                              "bed_mesh_tile_scale_high_text", s_subjects);
-    UI_MANAGED_SUBJECT_STRING(s_count_text_subject, s_count_text_buf, "",
-                              "bed_mesh_tile_count_text", s_subjects);
-    s_subjects_initialized = true;
-
-    StaticSubjectRegistry::instance().register_deinit("BedMeshTileWidgetSubjects", []() {
-        if (s_subjects_initialized && lv_is_initialized()) {
-            s_subjects.deinit_all();
-            s_subjects_initialized = false;
-        }
+    s_subjects.ensure_init([] {
+        UI_MANAGED_SUBJECT_INT(s_rung_subject, static_cast<int>(helix::SizeRung::Cell),
+                               "bed_mesh_tile_rung", s_subjects);
+        UI_MANAGED_SUBJECT_INT(s_show_map_subject, 0, "bed_mesh_tile_show_map", s_subjects);
+        UI_MANAGED_SUBJECT_INT(s_show_range_subject, 0, "bed_mesh_tile_show_range", s_subjects);
+        UI_MANAGED_SUBJECT_INT(s_show_empty_subject, 0, "bed_mesh_tile_show_empty", s_subjects);
+        UI_MANAGED_SUBJECT_INT(s_show_details_subject, 0, "bed_mesh_tile_show_details", s_subjects);
+        UI_MANAGED_SUBJECT_INT(s_show_scale_subject, 0, "bed_mesh_tile_show_scale", s_subjects);
+        UI_MANAGED_SUBJECT_INT(s_show_footer_subject, 0, "bed_mesh_tile_show_footer", s_subjects);
+        UI_MANAGED_SUBJECT_INT(s_show_calibrate_subject, 0, "bed_mesh_tile_show_calibrate",
+                               s_subjects);
+        UI_MANAGED_SUBJECT_INT(s_show_load_subject, 0, "bed_mesh_tile_show_load", s_subjects);
+        UI_MANAGED_SUBJECT_INT(s_calibrating_subject, 0, "bed_mesh_tile_calibrating", s_subjects);
+        UI_MANAGED_SUBJECT_INT(s_status_subject, 0, "bed_mesh_tile_status", s_subjects);
+        UI_MANAGED_SUBJECT_STRING(s_range_text_subject, s_range_text_buf, "",
+                                  "bed_mesh_tile_range_text", s_subjects);
+        UI_MANAGED_SUBJECT_STRING(s_extent_text_subject, s_extent_text_buf, "",
+                                  "bed_mesh_tile_extent_text", s_subjects);
+        UI_MANAGED_SUBJECT_STRING(s_scale_low_text_subject, s_scale_low_text_buf, "",
+                                  "bed_mesh_tile_scale_low_text", s_subjects);
+        UI_MANAGED_SUBJECT_STRING(s_scale_high_text_subject, s_scale_high_text_buf, "",
+                                  "bed_mesh_tile_scale_high_text", s_subjects);
+        UI_MANAGED_SUBJECT_STRING(s_count_text_subject, s_count_text_buf, "",
+                                  "bed_mesh_tile_count_text", s_subjects);
     });
 }
 

@@ -16,11 +16,11 @@
 #include "lvgl/src/others/translation/lv_translation.h"
 #include "panel_widget_registry.h"
 #include "panel_widget_size.h"
-#include "static_subject_registry.h"
 #include "subject_debug_registry.h"
 #include "subject_managed_panel.h"
 #include "text_measure.h"
 #include "theme_manager.h"
+#include "widget_subjects.h"
 
 #include <spdlog/spdlog.h>
 
@@ -36,8 +36,7 @@ static constexpr uint32_t TIP_FADE_DURATION_MS = 300;
 // Subject owned by TipsWidget module — created before XML bindings resolve
 static lv_subject_t s_status_subject;
 static char s_status_buffer[512];
-static bool s_subjects_initialized = false;
-static SubjectManager s_subjects;
+static helix::WidgetSubjects s_subjects{"TipsWidgetSubjects"};
 
 /// Widest unbreakable run of any tip title in `font`. LVGL wraps after any of
 /// LV_TXT_BREAK_CHARS (a space is dropped at the line end, the others stay on
@@ -68,28 +67,15 @@ static int tips_component_px(const char* name) {
 }
 
 static void tips_widget_init_subjects() {
-    if (s_subjects_initialized) {
-        return;
-    }
+    s_subjects.ensure_init([] {
+        lv_subject_init_string(&s_status_subject, s_status_buffer, nullptr, sizeof(s_status_buffer),
+                               "Welcome to HelixScreen");
+        s_subjects.publish("status_text", &s_status_subject);
+        SubjectDebugRegistry::instance().register_subject(
+            &s_status_subject, "status_text", LV_SUBJECT_TYPE_STRING, __FILE__, __LINE__);
 
-    lv_subject_init_string(&s_status_subject, s_status_buffer, nullptr, sizeof(s_status_buffer),
-                           "Welcome to HelixScreen");
-    s_subjects.publish("status_text", &s_status_subject);
-    SubjectDebugRegistry::instance().register_subject(&s_status_subject, "status_text",
-                                                      LV_SUBJECT_TYPE_STRING, __FILE__, __LINE__);
-
-    s_subjects_initialized = true;
-
-    // Self-register cleanup with StaticSubjectRegistry (co-located with init)
-    StaticSubjectRegistry::instance().register_deinit("TipsWidgetSubjects", []() {
-        if (s_subjects_initialized && lv_is_initialized()) {
-            s_subjects.deinit_all();
-            s_subjects_initialized = false;
-            spdlog::trace("[TipsWidget] Subjects deinitialized");
-        }
+        spdlog::debug("[TipsWidget] Subjects initialized (status_text)");
     });
-
-    spdlog::debug("[TipsWidget] Subjects initialized (status_text)");
 }
 
 namespace helix {

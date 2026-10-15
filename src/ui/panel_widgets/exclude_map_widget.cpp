@@ -23,10 +23,10 @@
 #include "printer_state.h"
 #include "src/ui/panel_widgets/content_chrome.h"
 #include "src/ui/panel_widgets/live_tile_owner.h"
-#include "static_subject_registry.h"
 #include "subject_managed_panel.h"
 #include "text_measure.h"
 #include "theme_manager.h"
+#include "widget_subjects.h"
 
 #include <spdlog/spdlog.h>
 
@@ -60,41 +60,32 @@ HELIX_PSRAM_BSS char s_skipped_text_buf[32];
 HELIX_PSRAM_BSS char s_printing_text_buf[48];
 HELIX_PSRAM_BSS char s_current_name_buf[96];
 HELIX_PSRAM_BSS char s_placeholder_text_buf[32];
-bool s_subjects_initialized = false;
-SubjectManager s_subjects;
+helix::WidgetSubjects s_subjects{"ExcludeMapWidgetSubjects"};
 // The instance bound to the live tile. Only it publishes and acts: a transient instance
 // (a fits_at probe, a rebuild's outgoing widget) must not overwrite the tile's verdict.
 helix::LiveTileOwner<helix::ExcludeMapWidget> s_tile;
 
 void exclude_map_init_subjects() {
-    if (s_subjects_initialized)
-        return;
-    UI_MANAGED_SUBJECT_INT(s_rung_subject, static_cast<int>(helix::SizeRung::Wide),
-                           "exclude_map_rung", s_subjects);
-    UI_MANAGED_SUBJECT_INT(s_placeholder_subject, 1, "exclude_map_placeholder", s_subjects);
-    UI_MANAGED_SUBJECT_INT(s_show_map_subject, 0, "exclude_map_show_map", s_subjects);
-    UI_MANAGED_SUBJECT_INT(s_show_skip_subject, 0, "exclude_map_show_skip", s_subjects);
-    UI_MANAGED_SUBJECT_INT(s_show_name_subject, 0, "exclude_map_show_name", s_subjects);
-    UI_MANAGED_SUBJECT_INT(s_has_current_subject, 0, "exclude_map_has_current", s_subjects);
-    UI_MANAGED_SUBJECT_STRING(s_count_text_subject, s_count_text_buf, "", "exclude_map_count_text",
-                              s_subjects);
-    UI_MANAGED_SUBJECT_STRING(s_objects_text_subject, s_objects_text_buf, "",
-                              "exclude_map_objects_text", s_subjects);
-    UI_MANAGED_SUBJECT_STRING(s_skipped_text_subject, s_skipped_text_buf, "",
-                              "exclude_map_skipped_text", s_subjects);
-    UI_MANAGED_SUBJECT_STRING(s_printing_text_subject, s_printing_text_buf, "",
-                              "exclude_map_printing_text", s_subjects);
-    UI_MANAGED_SUBJECT_STRING(s_current_name_subject, s_current_name_buf, "",
-                              "exclude_map_current_name", s_subjects);
-    UI_MANAGED_SUBJECT_STRING(s_placeholder_text_subject, s_placeholder_text_buf, "",
-                              "exclude_map_placeholder_text", s_subjects);
-    s_subjects_initialized = true;
-
-    StaticSubjectRegistry::instance().register_deinit("ExcludeMapWidgetSubjects", []() {
-        if (s_subjects_initialized && lv_is_initialized()) {
-            s_subjects.deinit_all();
-            s_subjects_initialized = false;
-        }
+    s_subjects.ensure_init([] {
+        UI_MANAGED_SUBJECT_INT(s_rung_subject, static_cast<int>(helix::SizeRung::Wide),
+                               "exclude_map_rung", s_subjects);
+        UI_MANAGED_SUBJECT_INT(s_placeholder_subject, 1, "exclude_map_placeholder", s_subjects);
+        UI_MANAGED_SUBJECT_INT(s_show_map_subject, 0, "exclude_map_show_map", s_subjects);
+        UI_MANAGED_SUBJECT_INT(s_show_skip_subject, 0, "exclude_map_show_skip", s_subjects);
+        UI_MANAGED_SUBJECT_INT(s_show_name_subject, 0, "exclude_map_show_name", s_subjects);
+        UI_MANAGED_SUBJECT_INT(s_has_current_subject, 0, "exclude_map_has_current", s_subjects);
+        UI_MANAGED_SUBJECT_STRING(s_count_text_subject, s_count_text_buf, "",
+                                  "exclude_map_count_text", s_subjects);
+        UI_MANAGED_SUBJECT_STRING(s_objects_text_subject, s_objects_text_buf, "",
+                                  "exclude_map_objects_text", s_subjects);
+        UI_MANAGED_SUBJECT_STRING(s_skipped_text_subject, s_skipped_text_buf, "",
+                                  "exclude_map_skipped_text", s_subjects);
+        UI_MANAGED_SUBJECT_STRING(s_printing_text_subject, s_printing_text_buf, "",
+                                  "exclude_map_printing_text", s_subjects);
+        UI_MANAGED_SUBJECT_STRING(s_current_name_subject, s_current_name_buf, "",
+                                  "exclude_map_current_name", s_subjects);
+        UI_MANAGED_SUBJECT_STRING(s_placeholder_text_subject, s_placeholder_text_buf, "",
+                                  "exclude_map_placeholder_text", s_subjects);
     });
 }
 

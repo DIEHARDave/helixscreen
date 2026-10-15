@@ -31,13 +31,13 @@
 #include "printer_image_regions.h"
 #include "printer_images.h"
 #include "printer_state.h"
-#include "static_subject_registry.h"
 #include "subject_debug_registry.h"
 #include "subject_managed_panel.h"
 #include "text_measure.h"
 #include "theme_manager.h"
 #include "tool_state.h"
 #include "ui/fan_spin_animation.h"
+#include "widget_subjects.h"
 #include "wizard_config_paths.h"
 
 #include <lvgl/src/misc/cache/lv_cache.h>
@@ -74,8 +74,7 @@ static char s_callout_fan_text_buf[32];
 static lv_subject_t s_callout_toolhead_text;
 static char s_callout_toolhead_text_buf[32];
 
-static bool s_subjects_initialized = false;
-static SubjectManager s_subjects;
+static helix::WidgetSubjects s_subjects{"PrinterImageWidgetSubjects"};
 
 namespace {
 
@@ -119,90 +118,79 @@ const CalloutTextSubject kCalloutTexts[] = {
 } // namespace
 
 static void printer_image_widget_init_subjects() {
-    if (s_subjects_initialized) {
-        return;
-    }
+    s_subjects.ensure_init([] {
+        // String subject for printer model name
+        lv_subject_init_string(&s_printer_type_subject, s_printer_type_buffer, nullptr,
+                               sizeof(s_printer_type_buffer), "");
+        s_subjects.publish("printer_type_text", &s_printer_type_subject);
+        SubjectDebugRegistry::instance().register_subject(
+            &s_printer_type_subject, "printer_type_text", LV_SUBJECT_TYPE_STRING, __FILE__,
+            __LINE__);
 
-    // String subject for printer model name
-    lv_subject_init_string(&s_printer_type_subject, s_printer_type_buffer, nullptr,
-                           sizeof(s_printer_type_buffer), "");
-    s_subjects.publish("printer_type_text", &s_printer_type_subject);
-    SubjectDebugRegistry::instance().register_subject(&s_printer_type_subject, "printer_type_text",
-                                                      LV_SUBJECT_TYPE_STRING, __FILE__, __LINE__);
+        // String subject for hostname/IP
 
-    // String subject for hostname/IP
+        // Integer subject: 0=hidden, 1=visible
+        lv_subject_init_int(&s_printer_info_visible, 0);
+        s_subjects.publish("printer_info_visible", &s_printer_info_visible);
+        SubjectDebugRegistry::instance().register_subject(&s_printer_info_visible,
+                                                          "printer_info_visible",
+                                                          LV_SUBJECT_TYPE_INT, __FILE__, __LINE__);
 
-    // Integer subject: 0=hidden, 1=visible
-    lv_subject_init_int(&s_printer_info_visible, 0);
-    s_subjects.publish("printer_info_visible", &s_printer_info_visible);
-    SubjectDebugRegistry::instance().register_subject(
-        &s_printer_info_visible, "printer_info_visible", LV_SUBJECT_TYPE_INT, __FILE__, __LINE__);
-
-    // Live callout subjects. Every int starts at 0 (CalloutMode::ImageOnly for
-    // the mode subject, "not shown" for the rest) so the callout layer and
-    // every chip parse hidden, matching the widget's default idle state. A
-    // callout_<kind>_shown int is 0 hidden, 1 active, 2 residual (a heater off
-    // but still hot, its chip text greyed).
-    static const struct {
-        lv_subject_t* subject;
-        const char* name;
-    } int_subjects[] = {
-        {&s_printer_callout_mode, "printer_callout_mode"},
-        {&s_callout_toolhead_merged, "callout_toolhead_merged"},
-        {&s_callout_nozzle_shown, "callout_nozzle_shown"},
-        {&s_callout_bed_shown, "callout_bed_shown"},
-        {&s_callout_chamber_shown, "callout_chamber_shown"},
-        {&s_callout_fan_shown, "callout_fan_shown"},
-        {&s_callout_light_shown, "callout_light_shown"},
-        {&s_callout_light_on, "callout_light_on"},
-        {&s_callout_bed_heating, "callout_bed_heating"},
-    };
-    for (const auto& s : int_subjects) {
-        // 0 doubles as CalloutMode::ImageOnly for the mode subject and as
-        // "not shown"/"not merged"/"not heating" for the rest.
-        lv_subject_init_int(s.subject, 0);
-        s_subjects.publish(s.name, s.subject);
-        SubjectDebugRegistry::instance().register_subject(s.subject, s.name, LV_SUBJECT_TYPE_INT,
-                                                          __FILE__, __LINE__);
-    }
-
-    static const struct {
-        lv_subject_t* subject;
-        char* buf;
-        size_t buf_size;
-        const char* name;
-    } text_subjects[] = {
-        {&s_callout_nozzle_text, s_callout_nozzle_text_buf, sizeof(s_callout_nozzle_text_buf),
-         "callout_nozzle_text"},
-        {&s_callout_bed_text, s_callout_bed_text_buf, sizeof(s_callout_bed_text_buf),
-         "callout_bed_text"},
-        {&s_callout_chamber_text, s_callout_chamber_text_buf, sizeof(s_callout_chamber_text_buf),
-         "callout_chamber_text"},
-        {&s_callout_fan_text, s_callout_fan_text_buf, sizeof(s_callout_fan_text_buf),
-         "callout_fan_text"},
-        {&s_callout_toolhead_text, s_callout_toolhead_text_buf, sizeof(s_callout_toolhead_text_buf),
-         "callout_toolhead_text"},
-    };
-    for (const auto& s : text_subjects) {
-        lv_subject_init_string(s.subject, s.buf, nullptr, s.buf_size, "");
-        s_subjects.publish(s.name, s.subject);
-        SubjectDebugRegistry::instance().register_subject(s.subject, s.name, LV_SUBJECT_TYPE_STRING,
-                                                          __FILE__, __LINE__);
-    }
-
-    s_subjects_initialized = true;
-
-    // Self-register cleanup with StaticSubjectRegistry (co-located with init)
-    StaticSubjectRegistry::instance().register_deinit("PrinterImageWidgetSubjects", []() {
-        if (s_subjects_initialized && lv_is_initialized()) {
-            s_subjects.deinit_all();
-            s_subjects_initialized = false;
-            spdlog::trace("[PrinterImageWidget] Subjects deinitialized");
+        // Live callout subjects. Every int starts at 0 (CalloutMode::ImageOnly for
+        // the mode subject, "not shown" for the rest) so the callout layer and
+        // every chip parse hidden, matching the widget's default idle state. A
+        // callout_<kind>_shown int is 0 hidden, 1 active, 2 residual (a heater off
+        // but still hot, its chip text greyed).
+        static const struct {
+            lv_subject_t* subject;
+            const char* name;
+        } int_subjects[] = {
+            {&s_printer_callout_mode, "printer_callout_mode"},
+            {&s_callout_toolhead_merged, "callout_toolhead_merged"},
+            {&s_callout_nozzle_shown, "callout_nozzle_shown"},
+            {&s_callout_bed_shown, "callout_bed_shown"},
+            {&s_callout_chamber_shown, "callout_chamber_shown"},
+            {&s_callout_fan_shown, "callout_fan_shown"},
+            {&s_callout_light_shown, "callout_light_shown"},
+            {&s_callout_light_on, "callout_light_on"},
+            {&s_callout_bed_heating, "callout_bed_heating"},
+        };
+        for (const auto& s : int_subjects) {
+            // 0 doubles as CalloutMode::ImageOnly for the mode subject and as
+            // "not shown"/"not merged"/"not heating" for the rest.
+            lv_subject_init_int(s.subject, 0);
+            s_subjects.publish(s.name, s.subject);
+            SubjectDebugRegistry::instance().register_subject(
+                s.subject, s.name, LV_SUBJECT_TYPE_INT, __FILE__, __LINE__);
         }
-    });
 
-    spdlog::debug(
-        "[PrinterImageWidget] Subjects initialized (type + host + info_visible + callouts)");
+        static const struct {
+            lv_subject_t* subject;
+            char* buf;
+            size_t buf_size;
+            const char* name;
+        } text_subjects[] = {
+            {&s_callout_nozzle_text, s_callout_nozzle_text_buf, sizeof(s_callout_nozzle_text_buf),
+             "callout_nozzle_text"},
+            {&s_callout_bed_text, s_callout_bed_text_buf, sizeof(s_callout_bed_text_buf),
+             "callout_bed_text"},
+            {&s_callout_chamber_text, s_callout_chamber_text_buf,
+             sizeof(s_callout_chamber_text_buf), "callout_chamber_text"},
+            {&s_callout_fan_text, s_callout_fan_text_buf, sizeof(s_callout_fan_text_buf),
+             "callout_fan_text"},
+            {&s_callout_toolhead_text, s_callout_toolhead_text_buf,
+             sizeof(s_callout_toolhead_text_buf), "callout_toolhead_text"},
+        };
+        for (const auto& s : text_subjects) {
+            lv_subject_init_string(s.subject, s.buf, nullptr, s.buf_size, "");
+            s_subjects.publish(s.name, s.subject);
+            SubjectDebugRegistry::instance().register_subject(
+                s.subject, s.name, LV_SUBJECT_TYPE_STRING, __FILE__, __LINE__);
+        }
+
+        spdlog::debug(
+            "[PrinterImageWidget] Subjects initialized (type + host + info_visible + callouts)");
+    });
 }
 
 namespace helix {

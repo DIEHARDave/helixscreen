@@ -20,10 +20,10 @@
 #include "print_activity.h"
 #include "src/ui/panel_widgets/content_chrome.h"
 #include "src/ui/panel_widgets/live_tile_owner.h"
-#include "static_subject_registry.h"
 #include "subject_managed_panel.h"
 #include "text_measure.h"
 #include "theme_manager.h"
+#include "widget_subjects.h"
 
 #include <spdlog/spdlog.h>
 
@@ -58,55 +58,48 @@ struct Subjects {
     char day_label_buf[helix::kActivityDays][16]{};
 };
 HELIX_PSRAM_BSS Subjects s_subj;
-bool s_subjects_initialized = false;
-SubjectManager s_subjects;
+helix::WidgetSubjects s_subjects{"PrintStatsWidgetSubjects"};
 // The instance bound to the live tile. Only it publishes: a transient instance (a
 // rebuild's outgoing widget) must not overwrite the tile's verdict.
 helix::LiveTileOwner<helix::PrintStatsWidget> s_tile;
 
 void print_stats_init_subjects() {
-    if (s_subjects_initialized)
-        return;
-    UI_MANAGED_SUBJECT_INT(s_subj.rung, static_cast<int>(helix::SizeRung::Cell), "print_stats_rung",
-                           s_subjects);
-    UI_MANAGED_SUBJECT_INT(s_subj.content, static_cast<int>(helix::PrintStatsContent::Loading),
-                           "print_stats_content", s_subjects);
-    UI_MANAGED_SUBJECT_INT(s_subj.support, static_cast<int>(helix::PrintStatsSupport::None),
-                           "print_stats_support", s_subjects);
-    UI_MANAGED_SUBJECT_INT(s_subj.show_bars, 0, "print_stats_show_bars", s_subjects);
-    UI_MANAGED_SUBJECT_INT(s_subj.show_day_labels, 0, "print_stats_show_day_labels", s_subjects);
-    UI_MANAGED_SUBJECT_INT(s_subj.side_by_side, 0, "print_stats_side_by_side", s_subjects);
-    UI_MANAGED_SUBJECT_INT(s_subj.strip_text,
-                           static_cast<int>(helix::PrintStatsStripText::HeadingWeek),
-                           "print_stats_strip_text", s_subjects);
-    UI_MANAGED_SUBJECT_STRING(s_subj.hero, s_subj.hero_buf, "--", "print_stats_hero", s_subjects);
-    UI_MANAGED_SUBJECT_STRING(s_subj.hero_label, s_subj.hero_label_buf, "",
-                              "print_stats_hero_label", s_subjects);
-    UI_MANAGED_SUBJECT_STRING(s_subj.support_text, s_subj.support_text_buf, "",
-                              "print_stats_support_text", s_subjects);
-    // Subject names are held by pointer, so they must outlive this function.
-    static const char* const kDayNames[helix::kActivityDays] = {
-        "print_stats_day_0", "print_stats_day_1", "print_stats_day_2", "print_stats_day_3",
-        "print_stats_day_4", "print_stats_day_5", "print_stats_day_6"};
-    static const char* const kDayLabelNames[helix::kActivityDays] = {
-        "print_stats_day_label_0", "print_stats_day_label_1", "print_stats_day_label_2",
-        "print_stats_day_label_3", "print_stats_day_label_4", "print_stats_day_label_5",
-        "print_stats_day_label_6"};
-    for (int i = 0; i < helix::kActivityDays; ++i) {
-        UI_MANAGED_SUBJECT_INT(s_subj.day[i], 0, kDayNames[i], s_subjects);
-        UI_MANAGED_SUBJECT_STRING(s_subj.day_label[i], s_subj.day_label_buf[i], "",
-                                  kDayLabelNames[i], s_subjects);
-    }
-    s_subjects_initialized = true;
-
-    StaticSubjectRegistry::instance().register_deinit("PrintStatsWidgetSubjects", []() {
-        if (s_subjects_initialized && lv_is_initialized()) {
-            s_subjects.deinit_all();
-            s_subjects_initialized = false;
+    s_subjects.ensure_init([] {
+        UI_MANAGED_SUBJECT_INT(s_subj.rung, static_cast<int>(helix::SizeRung::Cell),
+                               "print_stats_rung", s_subjects);
+        UI_MANAGED_SUBJECT_INT(s_subj.content, static_cast<int>(helix::PrintStatsContent::Loading),
+                               "print_stats_content", s_subjects);
+        UI_MANAGED_SUBJECT_INT(s_subj.support, static_cast<int>(helix::PrintStatsSupport::None),
+                               "print_stats_support", s_subjects);
+        UI_MANAGED_SUBJECT_INT(s_subj.show_bars, 0, "print_stats_show_bars", s_subjects);
+        UI_MANAGED_SUBJECT_INT(s_subj.show_day_labels, 0, "print_stats_show_day_labels",
+                               s_subjects);
+        UI_MANAGED_SUBJECT_INT(s_subj.side_by_side, 0, "print_stats_side_by_side", s_subjects);
+        UI_MANAGED_SUBJECT_INT(s_subj.strip_text,
+                               static_cast<int>(helix::PrintStatsStripText::HeadingWeek),
+                               "print_stats_strip_text", s_subjects);
+        UI_MANAGED_SUBJECT_STRING(s_subj.hero, s_subj.hero_buf, "--", "print_stats_hero",
+                                  s_subjects);
+        UI_MANAGED_SUBJECT_STRING(s_subj.hero_label, s_subj.hero_label_buf, "",
+                                  "print_stats_hero_label", s_subjects);
+        UI_MANAGED_SUBJECT_STRING(s_subj.support_text, s_subj.support_text_buf, "",
+                                  "print_stats_support_text", s_subjects);
+        // Subject names are held by pointer, so they must outlive this function.
+        static const char* const kDayNames[helix::kActivityDays] = {
+            "print_stats_day_0", "print_stats_day_1", "print_stats_day_2", "print_stats_day_3",
+            "print_stats_day_4", "print_stats_day_5", "print_stats_day_6"};
+        static const char* const kDayLabelNames[helix::kActivityDays] = {
+            "print_stats_day_label_0", "print_stats_day_label_1", "print_stats_day_label_2",
+            "print_stats_day_label_3", "print_stats_day_label_4", "print_stats_day_label_5",
+            "print_stats_day_label_6"};
+        for (int i = 0; i < helix::kActivityDays; ++i) {
+            UI_MANAGED_SUBJECT_INT(s_subj.day[i], 0, kDayNames[i], s_subjects);
+            UI_MANAGED_SUBJECT_STRING(s_subj.day_label[i], s_subj.day_label_buf[i], "",
+                                      kDayLabelNames[i], s_subjects);
         }
-    });
 
-    spdlog::debug("[PrintStatsWidget] Subjects initialized");
+        spdlog::debug("[PrintStatsWidget] Subjects initialized");
+    });
 }
 
 using helix::line_px;
