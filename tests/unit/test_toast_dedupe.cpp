@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "ui_panel_common.h"
 #include "ui_toast_manager.h"
+#include "ui_update_queue.h"
 
 #include "../lvgl_test_fixture.h"
 #include "../lvgl_ui_test_fixture.h"
@@ -217,9 +218,9 @@ class ScopedUnknownAttrCounter {
 
 // A typo'd attribute name in a component's XML is silently ignored by the
 // engine: the style value never applies and the only trace is an "Unknown
-// attribute ... (typo?)" warning per render. ToastManager is stubbed out of
-// the test link, so build the registered component the way it does —
-// lv_xml_create with the toast's props — and pin the engine log clean: every
+// attribute ... (typo?)" warning per render. Build the registered component
+// the way ToastManager does — lv_xml_create with the toast's props — and pin
+// the engine log clean: every
 // style attribute on the card, shadow offset included, must be a name a
 // parser claims.
 TEST_CASE_METHOD(LVGLUITestFixture, "toast_notification renders without engine attribute warnings",
@@ -236,8 +237,8 @@ TEST_CASE_METHOD(LVGLUITestFixture, "toast_notification renders without engine a
     lv_obj_delete(toast);
 }
 
-// The real ToastManager is not in the test link; the toast is built the way it
-// builds one, into a stack sized and anchored like its own.
+// The toast is built the way ToastManager builds one, into a stack sized and
+// anchored like its own, so the redraw can be measured without its animation.
 TEST_CASE_METHOD(LVGLUITestFixture, "A new toast redraws only the area it ends up in",
                  "[toast][xml]") {
     lv_obj_t* stack = lv_obj_create(lv_layer_top());
@@ -274,4 +275,23 @@ TEST_CASE_METHOD(LVGLUITestFixture, "A new toast redraws only the area it ends u
     }
 
     lv_obj_delete(stack);
+}
+
+// Before init() the toast_notification component is not registered in the
+// app, so ToastManager must not try to build one. Here the component IS
+// registered, which is what makes a toast built anyway observable.
+TEST_CASE_METHOD(LVGLUITestFixture, "ToastManager builds no toast before init()", "[toast]") {
+    auto& tm = ToastManager::instance();
+    REQUIRE_FALSE(tm.is_initialized());
+
+    tm.show(ToastSeverity::INFO, "before init", 4000);
+    helix::ui::UpdateQueue::instance().drain();
+    CHECK_FALSE(tm.is_visible());
+
+    tm.init();
+    tm.show(ToastSeverity::INFO, "after init", 4000);
+    helix::ui::UpdateQueue::instance().drain();
+    CHECK(tm.is_visible());
+
+    tm.deinit_subjects();
 }
