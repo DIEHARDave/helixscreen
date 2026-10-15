@@ -1,12 +1,13 @@
 <template>
-  <div class="delta-era-waiting">{{ waitingForNewClient(devices) }}</div>
+  <div class="delta-era-waiting">{{ deltaEraPlaceholder(era) }}</div>
 </template>
 
 <script setup lang="ts">
-import { waitingForNewClient } from '@/utils/format'
+import type { DeltaEra } from '@/services/api'
+import { deltaEraPlaceholder } from '@/utils/format'
 
 defineProps<{
-  devices: number
+  era: DeltaEra
 }>()
 </script>
 

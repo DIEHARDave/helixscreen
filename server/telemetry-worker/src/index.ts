@@ -5,6 +5,8 @@ import { mapEventToDataPoints } from "./analytics";
 import {
   executeQuery,
   excludedBy,
+  filterNotApplicable,
+  ENDPOINT_DELTA_KINDS,
   aeCountsQuery,
   isIsoDate,
   parseRange,
@@ -75,6 +77,19 @@ export function toYesNo(res: unknown, yesKey: string, noKey: string) {
   const yes = rows.find((r) => String(r.name) === "1")?.count ?? 0;
   const no = rows.find((r) => String(r.name) === "0")?.count ?? 0;
   return { [yesKey]: yes, [noKey]: no, reported: yes + no };
+}
+
+/**
+ * The fields every delta-era endpoint returns beside its values: how many
+ * devices on a delta-era client reported, and the filter, if any, that the
+ * endpoint's delta kinds cannot be filtered by (their values then read "not
+ * reported per <filter>" rather than "waiting").
+ */
+function deltaEraFields(endpoint: keyof typeof ENDPOINT_DELTA_KINDS, deltaEraDevices: number, filters: FilterParams) {
+  return {
+    delta_era_devices: deltaEraDevices,
+    filter_not_applicable: filterNotApplicable([...ENDPOINT_DELTA_KINDS[endpoint]], filters),
+  };
 }
 
 /** The `delta_era_devices` count a query returned; no row means none. */
@@ -978,7 +993,7 @@ export default {
           const overlayVisitsData = overlayVisitsRes as { data: Array<{ overlay: string; total_visits: number }> };
 
           return json({
-            delta_era_devices: deltaEraDevices,
+            ...deltaEraFields("engagement", deltaEraDevices, filters),
             avg_session_sec: deltaValue(deltaEraDevices, avgSession.data?.[0]?.avg_session_sec),
             panel_time: (panelTimeData.data ?? []).map((r) => ({
               panel: r.panel,
@@ -1029,7 +1044,7 @@ export default {
           const errorCodesData = errorCodesRes as { data: Array<{ category: string; code: string; count: number }> };
 
           return json({
-            delta_era_devices: deltaEraDevices,
+            ...deltaEraFields("reliability", deltaEraDevices, filters),
             uptime_trend: (uptimeData.data ?? []).map((r) => ({
               date: r.date,
               avg_uptime_pct: r.avg_uptime_pct,
@@ -1170,7 +1185,7 @@ export default {
             : 0;
 
           return json({
-            delta_era_devices: deltaEraDevices,
+            ...deltaEraFields("stability", deltaEraDevices, filters),
             crash_rate_trend,
             by_version,
             by_signal,
@@ -1342,7 +1357,7 @@ export default {
           const uses = (res: unknown) => ((res as { data?: FeatureUse[] }).data ?? []);
 
           return json({
-            delta_era_devices: deltaEraDevices,
+            ...deltaEraFields("features", deltaEraDevices, filters),
             features: deriveFeatureAdoption(uses(overlayRes), uses(widgetRes), deltaEraDevices),
           });
         }
@@ -1370,7 +1385,7 @@ export default {
           const leastVisited = panels.length > 0 ? panels[panels.length - 1].panel : "";
 
           return json({
-            delta_era_devices: deltaEraDevices,
+            ...deltaEraFields("ux", deltaEraDevices, filters),
             avg_session_sec: deltaValue(deltaEraDevices, avgSession.data?.[0]?.avg_session_sec),
             most_visited_panel: mostVisited,
             least_visited_panel: leastVisited,

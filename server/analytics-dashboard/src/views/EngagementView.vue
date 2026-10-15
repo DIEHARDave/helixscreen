@@ -17,32 +17,32 @@
           <MetricCard
             title="Avg Session"
             :value="data.avg_session_sec === null ? '\u2014' : formatDuration(data.avg_session_sec)"
-            :subtitle="data.avg_session_sec === null ? waitingForNewClient(data.delta_era_devices) : 'per boot'"
+            :subtitle="data.avg_session_sec === null ? deltaEraPlaceholder(data) : 'per boot'"
             color="var(--accent-blue)"
           />
         </div>
 
         <div class="chart-section">
           <h3>Time per Panel</h3>
-          <DeltaEraWaiting v-if="data.delta_era_devices === 0" :devices="data.delta_era_devices" />
+          <DeltaEraWaiting v-if="data.delta_era_devices === 0" :era="data" />
           <BarChart v-else :data="panelTimeChartData" :options="horizontalBarOpts" />
         </div>
 
         <div class="chart-section">
           <h3>Visit Count per Panel</h3>
-          <DeltaEraWaiting v-if="data.delta_era_devices === 0" :devices="data.delta_era_devices" />
+          <DeltaEraWaiting v-if="data.delta_era_devices === 0" :era="data" />
           <BarChart v-else :data="panelVisitsChartData" :options="horizontalBarOpts" />
         </div>
 
         <div class="chart-section" v-if="data.delta_era_devices === 0 || overlayVisitsChartData.labels.length">
           <h3>Visit Count per Overlay</h3>
-          <DeltaEraWaiting v-if="data.delta_era_devices === 0" :devices="data.delta_era_devices" />
+          <DeltaEraWaiting v-if="data.delta_era_devices === 0" :era="data" />
           <BarChart v-else :data="overlayVisitsChartData" :options="horizontalBarOpts" />
         </div>
 
         <div class="chart-section">
           <h3>Avg Session Duration Over Time</h3>
-          <DeltaEraWaiting v-if="data.delta_era_devices === 0" :devices="data.delta_era_devices" />
+          <DeltaEraWaiting v-if="data.delta_era_devices === 0" :era="data" />
           <LineChart v-else :data="sessionDurationChartData" />
         </div>
 
@@ -64,7 +64,7 @@
 
         <div class="chart-section">
           <h3>Widget Interactions</h3>
-          <DeltaEraWaiting v-if="data.delta_era_devices === 0" :devices="data.delta_era_devices" />
+          <DeltaEraWaiting v-if="data.delta_era_devices === 0" :era="data" />
           <BarChart v-else :data="widgetInteractionChartData" :options="verticalWidgetBarOpts" />
         </div>
 
@@ -92,7 +92,7 @@ import { api } from '@/services/api'
 import type { EngagementData } from '@/services/api'
 import type { ChartOptions } from 'chart.js'
 import { horizontalBarOpts } from '@/utils/chart'
-import { formatDuration, waitingForNewClient } from '@/utils/format'
+import { formatDuration, deltaEraPlaceholder } from '@/utils/format'
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16']
 

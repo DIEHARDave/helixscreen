@@ -24,7 +24,7 @@
           <MetricCard
             title="Crash Rate"
             :value="formatRate(data.crash_rate)"
-            :color="data.crash_rate !== null && data.crash_rate * 100 > 5 ? 'var(--accent-red)' : 'var(--accent-green)'"
+            :color="data.crash_rate === null ? 'var(--text-secondary)' : data.crash_rate * 100 > 5 ? 'var(--accent-red)' : 'var(--accent-green)'"
           />
           <MetricCard
             title="Print Success Rate"

@@ -63,7 +63,7 @@ export function wCountIf(cond: string, weight = SAMPLE_WEIGHT): string {
 // ---------- Filters ----------
 
 const FILTER_KEYS = ["platform", "version", "model", "board"] as const;
-type FilterKey = (typeof FILTER_KEYS)[number];
+export type FilterKey = (typeof FILTER_KEYS)[number];
 
 /**
  * Update events carry two versions. The one a version filter, or a per-version
@@ -113,6 +113,20 @@ export function filterFor(kind: string, filters?: FilterParams): string {
     clause += ` AND ${col(kind, field)} IN (${values.map((v) => `'${v}'`).join(", ")})`;
   }
   return clause;
+}
+
+/**
+ * The active filter that leaves none of `kinds` in the query, because no kind
+ * has the field it filters on, or null when at least one kind can match. A
+ * value read from those kinds then means "not reported per this dimension",
+ * not "nothing reported yet".
+ */
+export function filterNotApplicable(kinds: string[], filters?: FilterParams): FilterKey | null {
+  for (const key of FILTER_KEYS) {
+    if (filterValues(filters?.[key]).length === 0) continue;
+    if (kinds.every((kind) => !hasCol(kind, FILTER_FIELD[key](kind)))) return key;
+  }
+  return null;
 }
 
 /** True when the active filters name a field this kind does not have, so none of its rows can match. */
@@ -292,6 +306,25 @@ export const DELTA_KINDS: readonly string[] = Object.keys(POINT_KINDS).filter((k
 /** The kinds the panel_usage event writes; a device with any of them reported UI activity. */
 const PANEL_EVENT_KINDS = EVENT_FANOUT.panel_usage;
 
+/**
+ * The delta kinds each dashboard endpoint reads, and so the kinds its
+ * `delta_era_devices` count covers.
+ */
+export const ENDPOINT_DELTA_KINDS = {
+  engagement: PANEL_EVENT_KINDS,
+  ux: ["panel_usage"],
+  features: PANEL_EVENT_KINDS,
+  reliability: ["connection_stability"],
+  stability: ["connection_stability"],
+} as const satisfies Record<string, readonly string[]>;
+
+/**
+ * deltaSource names each metric after its schema field, except a field named
+ * after an aggregate function: `count` becomes `visit_count`.
+ */
+const METRIC_ALIAS: Record<string, string> = { count: "visit_count" };
+const metricAlias = (field: string) => METRIC_ALIAS[field] ?? field;
+
 /** The time the snapshot was first written, as deltaSource exposes it. */
 const WRITTEN_AT = "written_at";
 
@@ -300,9 +333,13 @@ const WRITTEN_AT = "written_at";
  * one row per (device, boot, snapshot_seq, ...dims). A resent batch stores an
  * identical second row, so every other column keeps one copy (argMax on write
  * time). Exposes the key and dims under their field names, each metric double
- * under its field name, `written_at` (first write) and `delta_weight` (the
- * row's _sample_interval). Rows from older clients are cumulative, never
- * deltas, so they are left out rather than summed.
+ * under its field name (see METRIC_ALIAS), `written_at` (first write) and
+ * `delta_weight` (the row's _sample_interval). Rows from older clients are
+ * cumulative, never deltas, so they are left out rather than summed.
+ *
+ * A metric is meaningful only at the grain of the dims: with no dims a
+ * panel_usage row stands for one snapshot, so session_duration_sec is that
+ * window, but time_sec and visits are one arbitrary panel's values.
  */
 export function deltaSource(kind: string, dims: string[], days: number, filters?: FilterParams): string {
   if (!DELTA_KINDS.includes(kind)) throw new Error(`${kind} is not a delta kind`);
@@ -310,7 +347,7 @@ export function deltaSource(kind: string, dims: string[], days: number, filters?
   const key = [...DELTA_KEY, ...dims];
   const metrics = POINT_KINDS[kind].columns
     .filter((def) => def.type === "double" && !key.includes(def.field) && def.field !== "schema_version")
-    .map((def) => `argMax(${c(def.field)}, timestamp) as ${def.field}`);
+    .map((def) => `argMax(${c(def.field)}, timestamp) as ${metricAlias(def.field)}`);
   const select = [
     ...key.map((field) => `${c(field)} as ${field}`),
     ...metrics,
@@ -324,9 +361,9 @@ export function deltaSource(kind: string, dims: string[], days: number, filters?
 }
 
 /** Distinct devices with schema-3 rows of any of `kinds` in the window, as `delta_era_devices`. */
-function deltaEraDevices(kinds: string[], days: number, filters?: FilterParams): string {
-  const schema = sharedCol(kinds, () => "schema_version");
-  return `SELECT count(DISTINCT ${DEVICE_ID}) as delta_era_devices FROM ${DATASET} WHERE ${inRange(days)} AND ${schema} >= ${DELTA_SCHEMA}${filterForKinds(kinds, filters)}`;
+function deltaEraDevices(kinds: readonly string[], days: number, filters?: FilterParams): string {
+  const schema = sharedCol([...kinds], () => "schema_version");
+  return `SELECT count(DISTINCT ${DEVICE_ID}) as delta_era_devices FROM ${DATASET} WHERE ${inRange(days)} AND ${schema} >= ${DELTA_SCHEMA}${filterForKinds([...kinds], filters)}`;
 }
 
 /**
@@ -733,13 +770,13 @@ export function engagementQueries(days: number, filters?: FilterParams): string[
     // 7: Widget placement (unique per device)
     `SELECT ${widgetPlacement("widget_id")} as widget, count(DISTINCT ${widgetPlacement("device_id")}) as devices FROM ${dataset} WHERE timestamp >= NOW() - INTERVAL '${days}' DAY AND index1 = 'widget_placement' AND ${widgetPlacement("widget_id")} != ''${filterFor("widget_placement", filters)} GROUP BY widget ORDER BY devices DESC`,
     // 8: Widget interactions
-    `SELECT widget_id as widget, ${wSum("count", DELTA_WEIGHT)} as interactions FROM (${deltaSource("widget_interaction", ["widget_id"], days, filters)}) WHERE widget_id != '' GROUP BY widget ORDER BY interactions DESC`,
+    `SELECT widget_id as widget, ${wSum(metricAlias("count"), DELTA_WEIGHT)} as interactions FROM (${deltaSource("widget_interaction", ["widget_id"], days, filters)}) WHERE widget_id != '' GROUP BY widget ORDER BY interactions DESC`,
     // 9: Overlay visits
-    `SELECT overlay_name as overlay, ${wSum("count", DELTA_WEIGHT)} as total_visits FROM (${deltaSource("overlay_visit", ["overlay_name"], days, filters)}) WHERE overlay_name != '' GROUP BY overlay ORDER BY total_visits DESC`,
+    `SELECT overlay_name as overlay, ${wSum(metricAlias("count"), DELTA_WEIGHT)} as total_visits FROM (${deltaSource("overlay_visit", ["overlay_name"], days, filters)}) WHERE overlay_name != '' GROUP BY overlay ORDER BY total_visits DESC`,
     // 10: Avg session duration over the whole window
     `SELECT ${perBootAvg("session_duration_sec")} as avg_session_sec FROM (${snapshots})`,
     // 11: Devices on a delta-era client
-    deltaEraDevices(PANEL_EVENT_KINDS, days, filters),
+    deltaEraDevices(ENDPOINT_DELTA_KINDS.engagement, days, filters),
   ];
 }
 
@@ -770,7 +807,7 @@ export function reliabilityQueries(days: number, filters?: FilterParams): string
     // 4: Error codes
     `SELECT ${category} as category, ${errorEnc("code")} as code, ${wCount()} as count FROM ${dataset} WHERE timestamp >= NOW() - INTERVAL '${days}' DAY AND index1 = 'error_encountered' AND ${category} != ''${errF} GROUP BY category, code ORDER BY count DESC LIMIT 50`,
     // 5: Devices on a delta-era client
-    deltaEraDevices(["connection_stability"], days, filters),
+    deltaEraDevices(ENDPOINT_DELTA_KINDS.reliability, days, filters),
   ];
 }
 
@@ -814,7 +851,7 @@ export function stabilityQueries(days: number, filters?: FilterParams): string[]
     // 14: Display anomaly affected devices count
     `SELECT count(DISTINCT ${errorEnc("device_id")}) as affected_devices FROM ${dataset} WHERE timestamp >= NOW() - INTERVAL '${days}' DAY AND ${display}${errF}`,
     // 15: Devices on a delta-era client
-    deltaEraDevices(["connection_stability"], days, filters),
+    deltaEraDevices(ENDPOINT_DELTA_KINDS.stability, days, filters),
   ];
 }
 
@@ -912,14 +949,14 @@ export function performanceQueries(days: number, filters?: FilterParams): string
  */
 export function featuresQueries(days: number, filters?: FilterParams): string[] {
   const usedBy = (kind: string, idField: string) =>
-    `SELECT ${idField} as id, count(DISTINCT device_id) as devices FROM (${deltaSource(kind, [idField], days, filters)}) WHERE ${idField} != '' AND count > 0 GROUP BY id ORDER BY devices DESC`;
+    `SELECT ${idField} as id, count(DISTINCT device_id) as devices FROM (${deltaSource(kind, [idField], days, filters)}) WHERE ${idField} != '' AND ${metricAlias("count")} > 0 GROUP BY id ORDER BY devices DESC`;
   return [
     // 0: Overlays, by stable overlay id
     usedBy("overlay_visit", "overlay_name"),
     // 1: Home widgets, by widget id
     usedBy("widget_interaction", "widget_id"),
     // 2: Devices on a delta-era client
-    deltaEraDevices(PANEL_EVENT_KINDS, days, filters),
+    deltaEraDevices(ENDPOINT_DELTA_KINDS.features, days, filters),
   ];
 }
 
@@ -966,7 +1003,7 @@ export function uxInsightsQueries(days: number, filters?: FilterParams): string[
     FROM ${dataset}
     WHERE timestamp >= NOW() - INTERVAL '${days}' DAY AND index1 = 'settings_change'${changeF}`,
     // 7: Devices on a delta-era client
-    deltaEraDevices(["panel_usage"], days, filters),
+    deltaEraDevices(ENDPOINT_DELTA_KINDS.ux, days, filters),
   ];
 }
 

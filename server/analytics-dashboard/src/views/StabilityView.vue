@@ -30,7 +30,7 @@
           <MetricCard
             title="Klippy Errors"
             :value="data.delta_era_devices > 0 ? totalKlippyErrors.toLocaleString() : '\u2014'"
-            :subtitle="data.delta_era_devices > 0 ? 'in period' : waitingForNewClient(data.delta_era_devices)"
+            :subtitle="data.delta_era_devices > 0 ? 'in period' : deltaEraPlaceholder(data)"
             color="#f97316"
           />
         </div>
@@ -54,7 +54,7 @@
         <div class="grid-2col">
           <div class="chart-section">
             <h3>Klippy Errors &amp; Shutdowns</h3>
-            <DeltaEraWaiting v-if="data.delta_era_devices === 0" :devices="data.delta_era_devices" />
+            <DeltaEraWaiting v-if="data.delta_era_devices === 0" :era="data" />
             <LineChart v-else :data="klippyChartData" />
           </div>
           <div class="chart-section">
@@ -224,7 +224,7 @@ import { api } from '@/services/api'
 import type { StabilityData } from '@/services/api'
 import type { ChartOptions } from 'chart.js'
 import { horizontalBarOpts, compareVersions } from '@/utils/chart'
-import { formatDuration, formatRate, formatTimestamp, shortDeviceId, waitingForNewClient } from '@/utils/format'
+import { formatDuration, formatRate, formatTimestamp, shortDeviceId, deltaEraPlaceholder } from '@/utils/format'
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16']
 

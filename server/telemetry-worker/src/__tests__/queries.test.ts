@@ -9,6 +9,7 @@ import {
   engagementQueries,
   excludedBy,
   featuresQueries,
+  filterNotApplicable,
   filterFor,
   filterForKinds,
   adoptionQueries,
@@ -249,6 +250,21 @@ describe("overviewQueries", () => {
   });
 });
 
+describe("filterNotApplicable", () => {
+  it("names the filter that excludes every one of the kinds", () => {
+    expect(filterNotApplicable(["panel_usage", "overlay_visit"], { model: "Voron 2.4" })).toBe("model");
+    expect(filterNotApplicable(["panel_usage"], { board: "k1" })).toBe("board");
+    expect(filterNotApplicable(["connection_stability"], { model: "Voron 2.4", board: "k1" })).toBe("model");
+  });
+
+  it("is null when a kind still carries every filtered field", () => {
+    expect(filterNotApplicable(["connection_stability"], { board: "k1" })).toBeNull();
+    expect(filterNotApplicable(["panel_usage"], { platform: "pi" })).toBeNull();
+    expect(filterNotApplicable(["panel_usage"])).toBeNull();
+    expect(filterNotApplicable(["panel_usage", "session"], { model: "Voron 2.4" })).toBeNull();
+  });
+});
+
 describe("excludedBy", () => {
   it("is true only when a filter names a field the kind lacks", () => {
     expect(excludedBy("crash", { model: "Voron 2.4" })).toBe(true);
@@ -286,6 +302,11 @@ describe("deltaSource", () => {
     expect(sql).toContain(`argMax(${col("panel_usage", "time_sec")}, timestamp) as time_sec`);
     expect(sql).toContain(`argMax(${col("panel_usage", "session_duration_sec")}, timestamp) as session_duration_sec`);
     expect(sql).toContain("argMax(_sample_interval, timestamp) as delta_weight");
+    // An alias named after an aggregate function is avoided.
+    expect(deltaSource("overlay_visit", ["overlay_name"], 30)).toContain(
+      `argMax(${col("overlay_visit", "count")}, timestamp) as visit_count`,
+    );
+    expect(deltaSource("overlay_visit", ["overlay_name"], 30)).not.toMatch(/ as count\b/);
     expect(sql).toContain(`${col("panel_usage", "panel_name")} as panel_name`);
     expect(sql).not.toContain("schema_version,");
   });
@@ -327,7 +348,7 @@ describe("queries over delta kinds", () => {
     expect(checked).toBeGreaterThan(10);
   });
 
-  it("no longer read the feature_adoption kind", () => {
+  it("features are derived from overlay and widget deltas, not the feature_adoption kind", () => {
     for (const sql of featuresQueries(30)) expect(sql).not.toContain("feature_adoption");
   });
 

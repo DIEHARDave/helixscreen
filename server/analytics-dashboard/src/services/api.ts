@@ -10,6 +10,17 @@ const API_BASE = import.meta.env.VITE_API_BASE || 'https://telemetry.helixscreen
 //   use, connection stability) is null until a device on a delta-era client
 //   has reported; `delta_era_devices` says how many have.
 
+export type FilterKey = 'platform' | 'version' | 'model' | 'board'
+
+// Returned by every endpoint that reads delta kinds. `filter_not_applicable`
+// names an active filter none of those kinds carry (no panel or connection row
+// has a printer model), so their values are "not reported per <filter>" rather
+// than waiting on the rollout.
+export interface DeltaEra {
+  delta_era_devices: number
+  filter_not_applicable: FilterKey | null
+}
+
 export interface OverviewData {
   active_devices: number
   total_events: number
@@ -132,8 +143,7 @@ export interface HardwareData {
   moonraker_locality: { local: number; remote: number; reported: number }
 }
 
-export interface EngagementData {
-  delta_era_devices: number
+export interface EngagementData extends DeltaEra {
   avg_session_sec: number | null
   panel_time: { panel: string; total_time_sec: number }[]
   panel_visits: { panel: string; total_visits: number }[]
@@ -147,8 +157,7 @@ export interface EngagementData {
   overlay_visits: { overlay: string; total_visits: number }[]
 }
 
-export interface ReliabilityData {
-  delta_era_devices: number
+export interface ReliabilityData extends DeltaEra {
   uptime_trend: { date: string; avg_uptime_pct: number }[]
   disconnect_trend: { date: string; avg_disconnects: number }[]
   max_disconnect_sec: number | null
@@ -164,8 +173,7 @@ export interface DisplayAnomalyData {
   recent: { timestamp: string; device_id: string; version: string; platform: string; code: string; context: string; uptime_sec: number }[]
 }
 
-export interface StabilityData {
-  delta_era_devices: number
+export interface StabilityData extends DeltaEra {
   crash_rate_trend: { date: string; crashes: number; sessions: number; rate: number | null }[]
   by_version: { version: string; crash_count: number; session_count: number; rate: number | null }[]
   by_signal: { signal: string; count: number }[]
@@ -201,13 +209,11 @@ export interface PerformanceData {
 // Adoption derived from overlay and widget use: `devices` used the overlay or
 // widget `id` at least once in the range, out of `delta_era_devices`. Empty
 // until a delta-era device has reported.
-export interface FeaturesData {
-  delta_era_devices: number
+export interface FeaturesData extends DeltaEra {
   features: { id: string; devices: number; adoption_rate: number }[]
 }
 
-export interface UxInsightsData {
-  delta_era_devices: number
+export interface UxInsightsData extends DeltaEra {
   avg_session_sec: number | null
   most_visited_panel: string
   least_visited_panel: string

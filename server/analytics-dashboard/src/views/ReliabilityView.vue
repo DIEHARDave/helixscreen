@@ -12,20 +12,20 @@
           <MetricCard
             title="Worst-Case Outage"
             :value="data.max_disconnect_sec === null ? '\u2014' : formatDuration(data.max_disconnect_sec)"
-            :subtitle="data.max_disconnect_sec === null ? waitingForNewClient(data.delta_era_devices) : 'longest single outage'"
+            :subtitle="data.max_disconnect_sec === null ? deltaEraPlaceholder(data) : 'longest single outage'"
             color="var(--accent-red)"
           />
         </div>
 
         <div class="chart-section">
           <h3>Uptime % Over Time</h3>
-          <DeltaEraWaiting v-if="data.delta_era_devices === 0" :devices="data.delta_era_devices" />
+          <DeltaEraWaiting v-if="data.delta_era_devices === 0" :era="data" />
           <LineChart v-else :data="uptimeChartData" :options="uptimeOpts" />
         </div>
 
         <div class="chart-section">
           <h3>Disconnects per Session Over Time</h3>
-          <DeltaEraWaiting v-if="data.delta_era_devices === 0" :devices="data.delta_era_devices" />
+          <DeltaEraWaiting v-if="data.delta_era_devices === 0" :era="data" />
           <LineChart v-else :data="disconnectChartData" />
         </div>
 
@@ -73,7 +73,7 @@ import { api } from '@/services/api'
 import type { ReliabilityData } from '@/services/api'
 import type { ChartOptions } from 'chart.js'
 import { horizontalBarOpts } from '@/utils/chart'
-import { formatDuration, waitingForNewClient } from '@/utils/format'
+import { formatDuration, deltaEraPlaceholder } from '@/utils/format'
 
 const filters = useFiltersStore()
 const data = ref<ReliabilityData | null>(null)

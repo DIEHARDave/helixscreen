@@ -7,7 +7,7 @@
 
       <div v-if="loading" class="loading">Loading...</div>
       <div v-else-if="error" class="error">{{ error }}</div>
-      <DeltaEraWaiting v-else-if="data && data.delta_era_devices === 0" :devices="data.delta_era_devices" />
+      <DeltaEraWaiting v-else-if="data && data.delta_era_devices === 0" :era="data" />
       <template v-else-if="data">
         <div class="metrics-row">
           <MetricCard

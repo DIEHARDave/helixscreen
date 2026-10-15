@@ -1495,6 +1495,37 @@ describe("Dashboard endpoints", () => {
     });
   });
 
+  describe("a filter the delta kinds do not carry", () => {
+    const ENDPOINTS = ["engagement", "ux", "features", "reliability", "stability"];
+
+    it("is named on every delta-era endpoint under model=", async () => {
+      for (const name of ENDPOINTS) {
+        mockBySql([]);
+        const data = await dashboard(`/v1/dashboard/${name}?model=Voron`);
+        expect(data.filter_not_applicable, name).toBe("model");
+      }
+    });
+
+    it("is null with no filter", async () => {
+      for (const name of ENDPOINTS) {
+        mockBySql([]);
+        const data = await dashboard(`/v1/dashboard/${name}`);
+        expect(data.filter_not_applicable, name).toBeNull();
+      }
+    });
+
+    it("follows each endpoint's own kinds under board=", async () => {
+      for (const name of ["engagement", "ux", "features"]) {
+        mockBySql([]);
+        expect((await dashboard(`/v1/dashboard/${name}?board=k1`)).filter_not_applicable, name).toBe("board");
+      }
+      for (const name of ["reliability", "stability"]) {
+        mockBySql([]);
+        expect((await dashboard(`/v1/dashboard/${name}?board=k1`)).filter_not_applicable, name).toBeNull();
+      }
+    });
+  });
+
   describe("crash rate under a filter that excludes crashes", () => {
     const crashRows: Array<[string, Array<Record<string, unknown>>]> = [
       ["as crash_count", [{ crash_count: 0, session_count: 10 }]],
