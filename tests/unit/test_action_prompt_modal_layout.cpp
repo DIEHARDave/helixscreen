@@ -19,6 +19,7 @@
 // real LVGL layout pass, which is the only way the wrap actually manifests.
 
 #include "ui_modal.h"
+#include "ui_swatch.h"
 
 #include "../lvgl_ui_test_fixture.h"
 #include "action_prompt_manager.h"
@@ -358,6 +359,18 @@ TEST_CASE_METHOD(ActionPromptLayoutFixture,
 
     CHECK(lv_obj_get_style_border_width(btns[0], LV_PART_MAIN) > 0);
     CHECK(lv_obj_get_style_border_width(btns[1], LV_PART_MAIN) == 0);
+
+    // The tile is painted by the filament swatch painter: same fill and edge as
+    // a swatch it paints directly.
+    lv_obj_t* reference = lv_obj_create(test_screen());
+    helix::ui::apply_swatch_color(reference, 0xffffff, "");
+    CHECK(lv_color_eq(lv_obj_get_style_bg_color(btns[0], LV_PART_MAIN), lv_color_hex(0xffffff)));
+    CHECK(lv_obj_get_style_bg_opa(btns[0], LV_PART_MAIN) == LV_OPA_COVER);
+    CHECK(lv_color_eq(lv_obj_get_style_border_color(btns[0], LV_PART_MAIN),
+                      lv_obj_get_style_border_color(reference, LV_PART_MAIN)));
+    CHECK(lv_obj_get_style_border_opa(btns[0], LV_PART_MAIN) ==
+          lv_obj_get_style_border_opa(reference, LV_PART_MAIN));
+    lv_obj_delete(reference);
 
     modal_.hide();
 }

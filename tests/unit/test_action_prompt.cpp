@@ -17,6 +17,7 @@
 
 #include "../lvgl_test_fixture.h"
 #include "action_prompt_manager.h"
+#include "color_utils.h"
 
 #include <functional>
 #include <memory>
@@ -536,6 +537,25 @@ TEST_CASE("parse_button_spec: Hex color in the 3rd field",
     SECTION("A legacy 4th-field hex wins over a 3rd-field hex") {
         auto button = ActionPromptManager::parse_button_spec("L|G|ff0000|00ff00");
         REQUIRE(button.hex_color == "00ff00");
+    }
+
+    SECTION("8-digit hex with alpha is a fill; the RGB is what renders") {
+        auto button = ActionPromptManager::parse_button_spec("A|G|#ff5722cc");
+        REQUIRE(button.hex_color == "#ff5722cc");
+        REQUIRE(button.color.empty());
+        REQUIRE(parse_hex_color(button.hex_color) == std::optional<uint32_t>(0xff5722));
+    }
+
+    SECTION("0x prefix is accepted") {
+        auto button = ActionPromptManager::parse_button_spec("A|G|0xff5722");
+        REQUIRE(button.color.empty());
+        REQUIRE(parse_hex_color(button.hex_color) == std::optional<uint32_t>(0xff5722));
+    }
+
+    SECTION("Whitespace around the hex field is tolerated") {
+        auto button = ActionPromptManager::parse_button_spec("A|G| ff5722 ");
+        REQUIRE(button.color.empty());
+        REQUIRE(parse_hex_color(button.hex_color) == std::optional<uint32_t>(0xff5722));
     }
 
     SECTION("A garbage 4th field leaves the 3rd-field hex in place") {
