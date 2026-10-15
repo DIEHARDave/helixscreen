@@ -249,6 +249,12 @@ export interface UxInsightsData extends DeltaEra {
   settings_defaults: { setting: string; pct_changed: number; devices_changed: number }[]
 }
 
+export class ApiError extends Error {
+  constructor(readonly status: number, statusText: string) {
+    super(`API error: ${status} ${statusText}`)
+  }
+}
+
 async function apiFetch<T>(path: string, params?: Record<string, string>): Promise<T> {
   const auth = useAuthStore()
   let url = `${API_BASE}${path}`
@@ -269,7 +275,7 @@ async function apiFetch<T>(path: string, params?: Record<string, string>): Promi
   }
 
   if (!res.ok) {
-    throw new Error(`API error: ${res.status} ${res.statusText}`)
+    throw new ApiError(res.status, res.statusText)
   }
 
   return res.json() as Promise<T>

@@ -161,9 +161,6 @@ function handleLogout() {
   padding: 16px 32px;
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
-}
-
-.content-header {
   display: flex;
   align-items: center;
   justify-content: space-between;

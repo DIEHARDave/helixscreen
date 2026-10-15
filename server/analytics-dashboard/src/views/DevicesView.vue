@@ -28,7 +28,7 @@
                 <tr
                   v-for="d in data.devices"
                   :key="d.device_id"
-                  class="cluster-row"
+                  class="clickable-row"
                   @click="open(d.device_id)"
                 >
                   <td class="mono">{{ shortDeviceId(d.device_id) }}</td>

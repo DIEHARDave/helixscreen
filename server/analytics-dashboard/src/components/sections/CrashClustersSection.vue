@@ -21,7 +21,7 @@
               <tr
                 v-for="(c, i) in data.crash_clusters"
                 :key="i"
-                class="cluster-row"
+                class="clickable-row"
                 :title="activationHint(clusterEntries(c))"
                 @click="filters.activate(router, clusterEntries(c))"
               >
@@ -133,10 +133,6 @@ const signalChartData = computed(() => ({
 </script>
 
 <style scoped>
-.cluster-row {
-  cursor: pointer;
-}
-
 .badge.signal-segv {
   background: rgba(239, 68, 68, 0.15);
   color: #f87171;

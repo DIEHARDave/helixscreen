@@ -49,7 +49,7 @@
 
           <div class="chart-section">
             <h3>Version History</h3>
-            <ChartCaption text="Releases this device has reported, oldest first" />
+            <ChartCaption text="Releases this device has reported, newest first" />
             <div v-if="data.versions.length === 0" class="empty-state">No version history</div>
             <div v-else class="table-wrapper">
               <table class="data-table">
@@ -95,7 +95,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { api, type DevicePageData } from '@/services/api'
+import { api, ApiError, type DevicePageData } from '@/services/api'
 import { formatTimestamp, shortDeviceId, titleCase } from '@/utils/format'
 import AppLayout from '@/components/AppLayout.vue'
 import ChartCaption from '@/components/ChartCaption.vue'
@@ -113,7 +113,7 @@ let latest = 0
 
 // The worker answers 400 for a malformed id and 404 for one with no rows in the
 // retention window; both mean there is nothing to show.
-const NOT_FOUND = /API error: (400|404)\b/
+const isNotFound = (e: unknown) => e instanceof ApiError && (e.status === 400 || e.status === 404)
 
 watch(id, async (deviceId) => {
   const ticket = ++latest
@@ -126,9 +126,8 @@ watch(id, async (deviceId) => {
     if (ticket === latest) data.value = result
   } catch (e) {
     if (ticket !== latest) return
-    const message = e instanceof Error ? e.message : 'Failed to load data'
-    if (NOT_FOUND.test(message)) missing.value = true
-    else error.value = message
+    if (isNotFound(e)) missing.value = true
+    else error.value = e instanceof Error ? e.message : 'Failed to load data'
   } finally {
     if (ticket === latest) loading.value = false
   }
