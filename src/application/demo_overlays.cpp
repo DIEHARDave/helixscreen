@@ -290,15 +290,10 @@ bool show_demo_overlay(const std::string& name) {
     }
 
     if (name == "bed-check") {
-        // The modal a U1 dirty-bed pause raises, through the real presenter.
-        helix::detection::DetectionEvent e;
-        e.source_id = "u1_stock";
-        e.kind = helix::detection::DetectionKind::DirtyBed;
-        e.attributable = true;
-        e.already_paused = true;
-        e.message = "detected dirty bed";
-        helix::detection::present_detection(e, helix::detection::DetectionPolicy::DeferToSource);
-        return true;
+        // The modal a printer's bed check raises. Left unbound: the presenter
+        // binds it to the paused job, and a mock with no paused job would
+        // close it at once.
+        return Modal::show_owned(std::make_unique<helix::detection::BedCheckModal>(), screen);
     }
 
     if (name == "ams-error-toast") {

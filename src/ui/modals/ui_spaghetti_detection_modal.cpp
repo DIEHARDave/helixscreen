@@ -11,6 +11,7 @@
 #include "app_globals.h"
 #include "display_manager.h"
 #include "i_moonraker_api.h"
+#include "observer_factory.h"
 #include "printer_state.h"
 #include "settings_manager.h"
 #include "static_subject_registry.h"
@@ -116,6 +117,63 @@ void SpaghettiDetectionModal::request_camera_frame(const helix::CameraFrameSourc
 
 namespace helix::detection {
 
+bool BedCheckModal::job_still_paused() const {
+    if (!bound_) {
+        return true;
+    }
+    auto& ps = get_printer_state().print_state();
+    // RAW_PRINT_STATE_OK: the printer's own paused state is what the bed check
+    // left behind; nothing the app committed to stands in for it.
+    const bool paused = lv_subject_get_int(ps.get_print_state_enum_subject()) ==
+                        static_cast<int>(PrintJobState::PAUSED);
+    const char* current = lv_subject_get_string(ps.get_print_filename_subject());
+    return paused && current && bound_filename_ == current;
+}
+
+void BedCheckModal::on_show() {
+    wire_ok_button("btn_primary");
+    wire_cancel_button("btn_secondary");
+    wire_tertiary_button("btn_tertiary");
+    if (!bound_) {
+        return;
+    }
+    // RAW_PRINT_STATE_OK: the dialog answers the printer's pause, so it closes
+    // on the wire state leaving PAUSED.
+    pause_observer_ = helix::ui::observe_print_state<BedCheckModal>(
+        get_printer_state().print_state().get_print_state_enum_subject(), this,
+        [](BedCheckModal* self, PrintJobState state) {
+            if (state != PrintJobState::PAUSED && self->is_visible()) {
+                spdlog::info("[BedCheckModal] the print left the pause - closing");
+                self->hide();
+            }
+        },
+        get_printer_state().get_subjects_lifetime());
+}
+
+void BedCheckModal::on_hide() {
+    pause_observer_.reset();
+}
+
+void BedCheckModal::act_on_job(const Action& action, const char* what) {
+    if (!job_still_paused()) {
+        spdlog::warn("[BedCheckModal] {} refused: the printer is no longer paused on '{}'", what,
+                     bound_filename_);
+        ToastManager::instance().show(ToastSeverity::WARNING,
+                                      lv_tr("That print is no longer paused"), 4000);
+    } else if (action) {
+        action();
+    }
+    hide();
+}
+
+void BedCheckModal::on_ok() {
+    act_on_job(on_restart_, "Restart");
+}
+
+void BedCheckModal::on_cancel() {
+    act_on_job(on_cancel_print_, "Cancel");
+}
+
 namespace {
 void present_bed_check(const DetectionEvent& e) {
     spdlog::info("[Detection] bed check stopped the print: {}", e.message);
@@ -127,11 +185,12 @@ void present_bed_check(const DetectionEvent& e) {
     get_global_print_status_panel().dismiss_runout_guidance();
 
     auto modal = std::make_unique<BedCheckModal>();
-    // The file is read when the user answers, not when the modal opens: the
-    // job's identity is what the printer reports at that moment.
-    modal->set_on_restart([] {
-        const std::string filename =
-            lv_subject_get_string(get_printer_state().print_state().get_print_filename_subject());
+    // The job is the one paused now; Restart reprints that file even if the
+    // printer reports another by the time the user answers (it then refuses).
+    const std::string filename =
+        lv_subject_get_string(get_printer_state().print_state().get_print_filename_subject());
+    modal->bind_to_paused_job(filename);
+    modal->set_on_restart([filename] {
         helix::ui::restart_print_from_beginning(get_moonraker_api(), filename, "[BedCheck]",
                                                 nullptr);
     });

@@ -4,6 +4,7 @@
 #pragma once
 
 #include "ui_modal.h"
+#include "ui_observer_guard.h"
 
 #include "camera_frame.h"
 #include "detection_manager.h"
@@ -159,6 +160,11 @@ namespace helix::detection {
  *   - Turn off bed check (tertiary / on_tertiary): leaves the modal open, so
  *     the print still gets its Restart/Cancel decision. The button rides
  *     detection_bed_check_enabled and hides once the check is off.
+ *
+ * Bound to the paused job it was raised for (bind_to_paused_job()), the modal
+ * closes when the printer leaves PAUSED, and Restart/Cancel refuse unless the
+ * printer is still paused on that same file: a job cancelled elsewhere and a
+ * new one started must never be the one these buttons act on.
  */
 class BedCheckModal : public Modal {
   public:
@@ -181,29 +187,34 @@ class BedCheckModal : public Modal {
         on_disable_check_ = std::move(a);
     }
 
+    /// Tie the modal to the job paused on @p filename (see the class comment).
+    void bind_to_paused_job(std::string filename) {
+        bound_filename_ = std::move(filename);
+        bound_ = true;
+    }
+
+    /// Whether the printer is still paused on the bound job. Always true for
+    /// an unbound modal.
+    bool job_still_paused() const;
+
   protected:
-    void on_show() override {
-        wire_ok_button("btn_primary");
-        wire_cancel_button("btn_secondary");
-        wire_tertiary_button("btn_tertiary");
-    }
-    void on_ok() override {
-        if (on_restart_)
-            on_restart_();
-        hide();
-    }
-    void on_cancel() override {
-        if (on_cancel_print_)
-            on_cancel_print_();
-        hide();
-    }
+    void on_show() override;
+    void on_hide() override;
+    void on_ok() override;
+    void on_cancel() override;
     void on_tertiary() override {
         if (on_disable_check_)
             on_disable_check_();
     }
 
   private:
+    /// Run @p action only while the bound job is still the paused one.
+    void act_on_job(const Action& action, const char* what);
+
     Action on_restart_, on_cancel_print_, on_disable_check_;
+    bool bound_ = false;
+    std::string bound_filename_;
+    ObserverGuard pause_observer_;
 };
 
 } // namespace helix::detection
