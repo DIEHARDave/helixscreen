@@ -2509,6 +2509,17 @@ describe("feedback loop wiring", () => {
       expect(reportKeys(env)).toEqual(["reports/2026-W42.json"]);
     });
 
+    it("logs the run's alertsSent and skipped, as an error when something was skipped", async () => {
+      const log = vi.spyOn(console, "log").mockImplementation(() => {});
+      const err = vi.spyOn(console, "error").mockImplementation(() => {});
+      await runScheduled(LOOP_CRON, TUESDAY, createEnv());
+      expect(log.mock.calls.map((c) => c.join(" ")).join("\n")).toContain("alertsSent=[]");
+      expect(err).not.toHaveBeenCalled();
+      // Monday's weekly run has no mailer configured, so it skips the email.
+      await runScheduled(LOOP_CRON, MONDAY, createEnv());
+      expect(err.mock.calls.map((c) => c.join(" ")).join("\n")).toContain("email: not configured");
+    });
+
     it("logs a loop failure with console.error and does not throw", async () => {
       const env = createEnv();
       const err = vi.spyOn(console, "error").mockImplementation(() => {});

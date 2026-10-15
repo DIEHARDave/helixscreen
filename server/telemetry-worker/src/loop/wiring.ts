@@ -56,7 +56,10 @@ export async function runScheduledLoop(env: LoopWorkerEnv, now: Date): Promise<v
   const modes: Array<"daily" | "weekly"> = isMonday(now) ? ["daily", "weekly"] : ["daily"];
   for (const mode of modes) {
     try {
-      await runLoop(mode, loopDeps(env, config, now), false);
+      const result = await runLoop(mode, loopDeps(env, config, now), false);
+      const line = `[loop] ${new Date().toISOString()} ${mode} run: alertsSent=${JSON.stringify(result.alertsSent)} skipped=${JSON.stringify(result.skipped)}`;
+      if (result.skipped.length) console.error(line);
+      else console.log(line);
     } catch (err) {
       console.error(`[loop] ${new Date().toISOString()} ${mode} run failed: ${err instanceof Error ? err.message : String(err)}`);
     }
