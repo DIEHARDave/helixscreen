@@ -699,6 +699,9 @@ class AmsBackendCfs : public AmsSubscriptionBackend {
     // from the static helpers (load_gcode/unload_gcode/swap_gcode), so this
     // is read on the script-build side, not in hot paths.
     CfsMacroVariant macro_variant_ = CfsMacroVariant::K2;
+    /// The dialect the ctor read from the model, which macro_variant_ returns
+    /// to when a box that spoke the Fork dialect reports stock units again.
+    CfsMacroVariant model_macro_variant_ = CfsMacroVariant::K2;
 
     /// Save-response line captured by the last chute save (main thread only:
     /// written when the save completes, read by last_chute_saved_position).

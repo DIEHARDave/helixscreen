@@ -384,6 +384,7 @@ AmsBackendCfs::AmsBackendCfs(IMoonrakerAPI* api, helix::IMoonrakerClient* client
     macro_variant_ = (PrinterDetector::is_creality_k1() || PrinterDetector::is_creality_hi())
                          ? CfsMacroVariant::K1
                          : CfsMacroVariant::K2;
+    model_macro_variant_ = macro_variant_;
 
     spdlog::info("[AMS CFS] Backend created — macro variant: {}",
                  macro_variant_ == CfsMacroVariant::K1 ? "K1 (BOX_*)" : "K2 (CR_BOX_*)");
@@ -1582,9 +1583,19 @@ void AmsBackendCfs::handle_box_frame(const nlohmann::json& box, bool print_holds
     const auto shape = cfs::classify_box_frame(box);
     const bool has_unit_data = shape.has_unit_data;
     // A `slots` array or a T{n} unit names the frame's schema. A frame with
-    // neither is a delta of whichever schema the box already speaks: once it
-    // has spoken flat, a frame carrying only temp_c is a flat frame, and every
-    // flat frame updates the state the parse reads.
+    // neither is a delta of whichever schema the box spoke last: after a flat
+    // frame, a frame carrying only temp_c is a flat frame, and after a T{n}
+    // one, a frame carrying only filament_useup or map is a stock one.
+    //
+    // The Fork dialect belongs to the flat module, so a box speaking stock
+    // again takes back the model's own dialect along with the schema.
+    if (has_unit_data && schema_ != CfsSchema::Stock) {
+        schema_ = CfsSchema::Stock;
+        if (macro_variant_ == CfsMacroVariant::Fork) {
+            macro_variant_ = model_macro_variant_;
+        }
+        spdlog::info("[AMS CFS] Stock box schema reported, flat state dropped");
+    }
     const bool is_flat =
         detect_schema(box) == CfsSchema::Flat || (schema_ == CfsSchema::Flat && !has_unit_data);
     const bool is_full_update = shape.has_top_level || has_unit_data || is_flat;
@@ -1600,7 +1611,9 @@ void AmsBackendCfs::handle_box_frame(const nlohmann::json& box, bool print_holds
     // recursive merge would keep a key that left a nested object (a deleted
     // `materials` entry) and erase an explicit null instead of storing it.
     if (is_flat) {
-        stock_box_state_ = nlohmann::json::object();
+        if (!stock_box_state_.empty()) {
+            stock_box_state_ = nlohmann::json::object();
+        }
         if (!flat_box_state_.is_object()) {
             flat_box_state_ = nlohmann::json::object();
         }
@@ -1608,7 +1621,9 @@ void AmsBackendCfs::handle_box_frame(const nlohmann::json& box, bool print_holds
             flat_box_state_[key] = value;
         }
     } else {
-        flat_box_state_ = nlohmann::json::object();
+        if (!flat_box_state_.empty()) {
+            flat_box_state_ = nlohmann::json::object();
+        }
         if (!stock_box_state_.is_object()) {
             stock_box_state_ = nlohmann::json::object();
         }

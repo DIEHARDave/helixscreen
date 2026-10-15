@@ -1162,3 +1162,88 @@ TEST_CASE_METHOD(CfsGoldenFixture, "CFS flat: a delta field replaces its predece
     CHECK(info.units[0].slots[0].material == "PLA");
     CHECK(info.units[0].slots[0].nozzle_temp_max != stated);
 }
+
+namespace {
+
+/// The four-box fixture with bay 2 threaded through to the toolhead.
+json flat_box_with_bay_2_loaded() {
+    json box = load_box_fixture("cfs_fork_four_box_L8MMBCCK.json");
+    box["loaded_slot"] = 2;
+    box["slots"][2]["loaded"] = true;
+    return box;
+}
+
+} // namespace
+
+TEST_CASE_METHOD(CfsGoldenFixture, "CFS flat: a slots-only edit keeps the loaded bay",
+                 "[ams][cfs][flat]") {
+    const json full = flat_box_with_bay_2_loaded();
+    feed(box_frame(full));
+    REQUIRE(backend.get_system_info().current_slot == 2);
+
+    json edited = full;
+    edited["slots"][0]["material"] = "PETG";
+    const json delta = klipper_delta(full, edited);
+    REQUIRE(delta.size() == 1);
+    feed(box_frame(delta));
+
+    const auto info = backend.get_system_info();
+    CHECK(info.current_slot == 2);
+    CHECK(info.current_tool == 2);
+    CHECK(info.units[0].slots[0].material == "PETG");
+}
+
+TEST_CASE_METHOD(CfsGoldenFixture,
+                 "CFS flat: a delta before the new session's first full frame changes nothing",
+                 "[ams][cfs][flat]") {
+    const json full = flat_box_with_bay_2_loaded();
+    feed(box_frame(full));
+    REQUIRE(backend.get_system_info().current_slot == 2);
+
+    CfsTestAccess::start_load(backend);
+
+    // A notify can beat the initial query's answer. It names no slots, so
+    // there is no box to parse yet.
+    feed(box_frame(json{{"temp_c", 31}}));
+    auto info = backend.get_system_info();
+    CHECK(info.current_slot == 2);
+    CHECK(info.units.size() == 4);
+
+    // The query's full frame lands, and the delta's field is in the merge.
+    json answered = full;
+    answered.erase("temp_c");
+    feed(box_frame(answered));
+    info = backend.get_system_info();
+    CHECK(info.current_slot == 2);
+    REQUIRE(units_with_environment(info) == std::vector<int>{0});
+    CHECK(info.units[0].environment->temperature_c == 31.0f);
+}
+
+TEST_CASE_METHOD(CfsGoldenFixture, "CFS: a stock unit frame after flat ones returns to stock",
+                 "[ams][cfs][flat]") {
+    feed(box_frame(load_box_fixture("cfs_fork_four_box_L8MMBCCK.json")));
+    REQUIRE(CfsTestAccess::macro_variant(backend) == CfsMacroVariant::Fork);
+
+    feed(box_frame(json{{"state", "connect"},
+                        {"filament", 1},
+                        {"auto_refill", 1},
+                        {"filament_useup", 0},
+                        {"map", json{{"T1A", "T1A"}, {"T1B", "T1B"}}},
+                        {"T1", golden_unit("None", {"Creality", "Creality", "none", "none"})}}));
+    auto info = backend.get_system_info();
+    REQUIRE(info.units.size() == 1);
+    CHECK(CfsTestAccess::macro_variant(backend) != CfsMacroVariant::Fork);
+    CHECK_FALSE(info.filament_runout);
+
+    // Stock deltas that name no unit read as stock: the runout latch and the
+    // tool map come from them, and the merged units survive.
+    feed(box_frame(json{{"filament", 1}, {"filament_useup", 1}}));
+    feed(box_frame(json{{"map", json{{"T1A", "T1B"}, {"T1B", "T1A"}}}}));
+    info = backend.get_system_info();
+    CHECK(info.filament_runout);
+    REQUIRE(info.units.size() == 1);
+    CHECK(info.units[0].slots[0].brand == "Creality");
+    REQUIRE(info.tool_to_slot_map.size() >= 2);
+    CHECK(info.tool_to_slot_map[0] == 1);
+    CHECK(info.tool_to_slot_map[1] == 0);
+}
