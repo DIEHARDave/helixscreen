@@ -910,9 +910,13 @@ void PrintStatusPanel::init_subjects() {
                       initial_phase, prog);
     }
 
-    // Self-register cleanup — ensures deinit runs before lv_deinit()
-    StaticPanelRegistry::instance().register_destroy(
-        "PrintStatusPanelSubjects", []() { get_global_print_status_panel().deinit_subjects(); });
+    // Self-register cleanup — ensures deinit runs before lv_deinit(). It reaches the
+    // global only if one exists: building it here, inside destroy_all(), would leave a
+    // panel with live observers behind the teardown.
+    StaticPanelRegistry::instance().register_destroy("PrintStatusPanelSubjects", []() {
+        if (auto* panel = helix::lazy_global_if_exists<PrintStatusPanel>())
+            panel->deinit_subjects();
+    });
 
     spdlog::debug("[{}] Subjects initialized (20 subjects)", get_name());
 }
