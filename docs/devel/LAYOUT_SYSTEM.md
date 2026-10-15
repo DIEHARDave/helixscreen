@@ -492,7 +492,13 @@ exist so a cell can hold whichever widget this printer can use:
   candidate is an id or `{"id", "requires": ["subject", ...]}`. The shipped table has one
   list, `ENV_FIL`: filament, led, dryer, chamber_temperature requiring `printer_is_enclosed` (a
   chamber sensor on an open frame reads the room), and active_spool requiring
-  `printer_has_spoolman`. The bed mesh and the AMS are inline single-candidate lists.
+  `printer_has_spoolman`. The bed mesh and the AMS are inline single-candidate lists, and so is
+  the tool switcher, which requires `ams_is_tool_changer`: below large it is the first
+  alternative of the spool slot, so a tool changer gets it in place of the AMS tile; from large
+  up it has a `tool_strip` slot of its own, the 8x2-track strip in the upper half of the planned
+  block, whose lower half stays the declared gap. A printer that is not a tool changer resolves
+  exactly as it would with no switcher in the table (the "not a tool changer" case in
+  `test_default_layout.cpp`), though its signature names `ams_is_tool_changer=0`.
 - **A candidate qualifies** when its registry gate subject is open, every subject in its
   `requires` is non-zero, and no earlier cell placed it. A gate subject that is not registered
   reads open; a `requires` subject that is not registered reads 0.
