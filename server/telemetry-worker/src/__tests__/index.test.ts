@@ -1281,18 +1281,20 @@ describe("Dashboard endpoints", () => {
         .mockResolvedValueOnce({ data: [{ name: "linux-arm", count: 100 }] })
         .mockResolvedValueOnce({ data: [{ name: "0.9.19", count: 80 }] })
         .mockResolvedValueOnce({ data: [{ name: "Voron 2.4", count: 50 }] })
-        .mockResolvedValueOnce({ data: [{ name: "corexy", count: 90 }] });
+        .mockResolvedValueOnce({ data: [{ name: "corexy", count: 90 }] })
+        .mockResolvedValueOnce({ data: [{ name: "btt-octopus", count: 12 }] });
 
       const res = await worker.fetch(
         dashboardRequest("/v1/dashboard/adoption?range=7d"),
         env,
       );
       expect(res.status).toBe(200);
-      const data = await res.json();
+      const data = (await res.json()) as Record<string, unknown>;
       expect(data.platforms).toEqual([{ name: "linux-arm", count: 100 }]);
       expect(data.versions).toEqual([{ name: "0.9.19", count: 80 }]);
       expect(data.printer_models).toEqual([{ name: "Voron 2.4", count: 50 }]);
       expect(data.kinematics).toEqual([{ name: "corexy", count: 90 }]);
+      expect(data.boards).toEqual([{ name: "btt-octopus", count: 12 }]);
     });
   });
 
@@ -1493,6 +1495,50 @@ describe("Dashboard endpoints", () => {
       expect(data.klippy_trend).toEqual([{ date: "2026-10-14", errors: 2, shutdowns: 1 }]);
     });
 
+    it("stability lists crash clusters over the range, largest first", async () => {
+      mockBySql([
+        [
+          "as fault",
+          [
+            { sig: "SIGSEGV", fault: "NULL_DEREF", ver: "1.0.5", board: "k1", count: 2, devices: 2 },
+            { sig: "SIGABRT", fault: "", ver: "1.0.4", board: "pi", count: 7, devices: 3 },
+            { sig: "SIGBUS", fault: "", ver: "1.0.4", board: "pi", count: 0, devices: 0 },
+          ],
+        ],
+      ]);
+      const data = await dashboard("/v1/dashboard/stability?range=7d&board=k1,pi");
+      expect(data.crash_clusters).toEqual([
+        { signal: "SIGABRT", fault_code: "", version: "1.0.4", board: "pi", count: 7, devices: 3 },
+        { signal: "SIGSEGV", fault_code: "NULL_DEREF", version: "1.0.5", board: "k1", count: 2, devices: 2 },
+      ]);
+      const sql = mockExecuteQuery.mock.calls.map(([, q]) => q as string).find((q) => q.includes("as fault"))!;
+      expect(sql).toContain("INTERVAL '7' DAY");
+      expect(sql).toContain(`${col("crash", "app_board")} IN ('k1', 'pi')`);
+      expect(sql).toContain("GROUP BY sig, fault, ver, board");
+    });
+
+    it("stability lists error codes per version", async () => {
+      mockBySql([
+        [
+          "GROUP BY category, code, version",
+          [
+            { category: "ui", code: "E1", version: "1.0.4", count: 1, devices: 1 },
+            { category: "net", code: "E2", version: "1.0.5", count: 5, devices: 2 },
+          ],
+        ],
+      ]);
+      const data = await dashboard("/v1/dashboard/stability?platform=pi");
+      expect(data.errors_by_version).toEqual([
+        { category: "net", code: "E2", version: "1.0.5", count: 5, devices: 2 },
+        { category: "ui", code: "E1", version: "1.0.4", count: 1, devices: 1 },
+      ]);
+      const sql = mockExecuteQuery.mock.calls
+        .map(([, q]) => q as string)
+        .find((q) => q.includes("GROUP BY category, code, version"))!;
+      expect(sql).toContain(`${col("error_encountered", "app_version")} as version`);
+      expect(sql).toContain(`${col("error_encountered", "app_platform")} IN ('pi')`);
+    });
+
     it("features are adoption derived from overlay and widget deltas", async () => {
       mockBySql([
         ["as delta_era_devices", [{ delta_era_devices: 4 }]],
@@ -1577,6 +1623,156 @@ describe("Dashboard endpoints", () => {
       const data = await dashboard("/v1/dashboard/stability?model=Voron");
       expect(data.crash_rate_trend.length).toBeGreaterThan(0);
       for (const d of data.crash_rate_trend) expect(d.rate).toBeNull();
+    });
+  });
+
+  describe("a model filter, which crash, error and print rows do not carry", () => {
+    it("health reports n/a crash rates and names the unreported blocks", async () => {
+      mockBySql([
+        ["LIMIT 8", [{ ver: "1.0.4", devices: 10 }]],
+        ["as update_successes", [{ ver: "1.0.4", sessions: 20, crashes: 0, update_failures: 0, update_successes: 0 }]],
+        ["index1 as event", [{ ver: "1.0.4", event: "session", devices: 10 }]],
+      ]);
+      const data = await dashboard("/v1/dashboard/health?model=Voron");
+      expect(data.releases[0].cur.devices).toBe(10);
+      expect(data.releases[0].cur.crash_rate).toBeNull();
+      expect(data.releases[0].cur.crash_free).toBeNull();
+      expect(data.not_applicable).toEqual({ crashes: "model", errors: "model", prints: "model", updates: "model" });
+    });
+
+    it("health keeps real crash rates under a filter crashes carry", async () => {
+      mockBySql([
+        ["LIMIT 8", [{ ver: "1.0.4", devices: 10 }]],
+        ["as update_successes", [{ ver: "1.0.4", sessions: 20, crashes: 0, update_failures: 0, update_successes: 0 }]],
+        ["index1 as event", [{ ver: "1.0.4", event: "session", devices: 10 }]],
+      ]);
+      const data = await dashboard("/v1/dashboard/health?platform=pi");
+      expect(data.releases[0].cur.crash_rate).toBe(0);
+      expect(data.releases[0].cur.crash_free).toBe(1);
+      expect(data.not_applicable.crashes).toBeNull();
+    });
+
+    it("releases reports n/a crash rates and names the unreported blocks", async () => {
+      mockBySql([
+        ["as update_successes", [{ ver: "1.0.4", sessions: 20, crashes: 0 }]],
+        ["as active_devices", [{ ver: "1.0.4", active_devices: 10 }]],
+      ]);
+      const data = await dashboard("/v1/dashboard/releases?versions=1.0.4&model=Voron");
+      const v = data.versions[0];
+      expect(v.active_devices).toBe(10);
+      expect(v.crash_rate).toBeNull();
+      expect(v.crash_free_devices).toBeNull();
+      expect(data.not_applicable).toEqual({ crashes: "model", prints: "model", updates: "model", performance: "model" });
+    });
+
+    it("stability names crashes and errors as unreported", async () => {
+      mockBySql([]);
+      expect((await dashboard("/v1/dashboard/stability?model=Voron")).not_applicable).toEqual({ crashes: "model", errors: "model" });
+      mockBySql([]);
+      expect((await dashboard("/v1/dashboard/stability?board=k1")).not_applicable).toEqual({ crashes: null, errors: null });
+    });
+
+    it("prints names prints as unreported", async () => {
+      mockBySql([]);
+      expect((await dashboard("/v1/dashboard/prints?model=Voron")).not_applicable).toEqual({ prints: "model" });
+      mockBySql([]);
+      expect((await dashboard("/v1/dashboard/prints")).not_applicable).toEqual({ prints: null });
+    });
+
+    it("devices names the crash and print columns as unreported", async () => {
+      mockBySql([]);
+      expect((await dashboard("/v1/dashboard/devices?model=Voron")).not_applicable).toEqual({ crashes: "model", prints: "model" });
+      mockBySql([]);
+      expect((await dashboard("/v1/dashboard/devices?platform=pi")).not_applicable).toEqual({ crashes: null, prints: null });
+    });
+  });
+
+  // -- GET /v1/dashboard/devices and /device/<id> --
+
+  describe("device endpoints", () => {
+    const ID = "ab".repeat(32);
+
+    it("device page 400s on a bad id before any query", async () => {
+      for (const bad of ["abc", ID.toUpperCase(), ID + "a", "x'%20OR%201=1"]) {
+        const res = await worker.fetch(dashboardRequest(`/v1/dashboard/device/${bad}`), env as never);
+        expect(res.status).toBe(400);
+        expect(await res.json()).toEqual({ error: "invalid device id" });
+      }
+      expect(mockExecuteQuery).not.toHaveBeenCalled();
+    });
+
+    it("device page requires the admin key", async () => {
+      const res = await worker.fetch(dashboardRequest(`/v1/dashboard/device/${ID}`, "nope"), env as never);
+      expect(res.status).toBe(401);
+    });
+
+    it("device page 404s when the device has no rows", async () => {
+      mockExecuteQuery.mockResolvedValue({ data: [] });
+      const res = await worker.fetch(dashboardRequest(`/v1/dashboard/device/${ID}`), env as never);
+      expect(res.status).toBe(404);
+    });
+
+    it("device page returns the page for canned rows", async () => {
+      mockExecuteQuery
+        .mockResolvedValueOnce({
+          data: [{ timestamp: "2026-10-03 00:00:00", index1: "crash", blob1: ID, blob2: "1.0.0", blob3: "SIGSEGV", double1: 9 }],
+        })
+        .mockResolvedValueOnce({ data: [{ version: "1.0.0", first_seen: "2026-10-01 00:00:00", last_seen: "2026-10-03 00:00:00" }] });
+      const res = await worker.fetch(dashboardRequest(`/v1/dashboard/device/${ID}`), env as never);
+      expect(res.status).toBe(200);
+      const page = (await res.json()) as any;
+      expect(page.device_id).toBe(ID);
+      expect(page.versions).toHaveLength(1);
+      expect(page.timeline[0]).toEqual({
+        timestamp: "2026-10-03 00:00:00",
+        kind: "crash",
+        fields: { app_version: "1.0.0", signal_name: "SIGSEGV", uptime_sec: 9 },
+      });
+      expect(mockExecuteQuery.mock.calls[0][1]).toContain(`blob1 = '${ID}'`);
+    });
+
+    it("device list joins counts and carries the filter into the session queries", async () => {
+      mockExecuteQuery.mockImplementation(async (_c, sql) => {
+        if (sql.includes("argMax")) return { data: [{ device_id: "d1", last_seen: "t", version: "1", platform: "pi", board: "", model: "m", sessions: 2 }] };
+        if (sql.includes("count(DISTINCT")) return { data: [{ total: 12 }] };
+        if (sql.includes("'crash'")) return { data: [{ device_id: "d1", crashes: 4 }] };
+        return { data: [] };
+      });
+      const res = await worker.fetch(dashboardRequest("/v1/dashboard/devices?platform=pi"), env as never);
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as any;
+      expect(body.total).toBe(12);
+      expect(body.devices).toEqual([
+        { device_id: "d1", last_seen: "t", version: "1", platform: "pi", board: "", model: "m", sessions: 2, crashes: 4, prints: 0 },
+      ]);
+      const sessionSql = mockExecuteQuery.mock.calls[0][1] as string;
+      expect(sessionSql).toContain(queries.filterFor("session", { platform: "pi" }));
+    });
+  });
+
+  // -- GET /v1/dashboard/health --
+
+  describe("GET /v1/dashboard/health", () => {
+    it("runs top_versions first, then the rest with those versions, and returns all five blocks", async () => {
+      mockExecuteQuery.mockImplementation(async (_c, sql) => {
+        if (sql.includes("LIMIT 8")) return { data: [{ ver: "1.0.4", devices: 10 }] };
+        if (sql.includes("'cdn_fleet_daily'") && sql.includes("LIMIT 1")) return { data: [{ date: "2026-10-14", sources: 7 }] };
+        if (sql.includes("index1 IN ('session', 'crash', 'update_failed'")) {
+          return { data: [{ ver: "1.0.4", sessions: 20, crashes: 1, update_failures: 0, update_successes: 0 }] };
+        }
+        return { data: [] };
+      });
+      const res = await worker.fetch(dashboardRequest("/v1/dashboard/health?version=1.0.4"), env as never);
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as any;
+      expect(Object.keys(body).sort()).toEqual(["crash_clusters", "data_health", "errors", "fleet", "not_applicable", "releases"]);
+      expect(body.not_applicable).toEqual({ crashes: null, errors: null, prints: null, updates: null });
+      expect(body.releases[0].version).toBe("1.0.4");
+      expect(body.releases[0].cur.crash_rate).toBeCloseTo(0.05);
+      expect(body.fleet.cdn_sources).toBe(7);
+      const sqls = mockExecuteQuery.mock.calls.map((c) => c[1] as string);
+      expect(sqls[0]).toContain("LIMIT 8");
+      expect(sqls.slice(1).some((s) => s.includes("'1.0.4'"))).toBe(true);
     });
   });
 
@@ -1680,100 +1876,207 @@ describe("Dashboard endpoints", () => {
   // -- GET /v1/dashboard/releases --
 
   describe("GET /v1/dashboard/releases", () => {
-    it("returns release comparison data", async () => {
-      mockExecuteQuery
-        .mockResolvedValueOnce({
-          data: [{ ver: "0.9.19", total_sessions: 200, total_crashes: 4 }],
-        })
-        .mockResolvedValueOnce({
-          data: [{ ver: "0.9.19", active_devices: 50 }],
-        })
-        .mockResolvedValueOnce({
-          data: [{ ver: "0.9.19", print_successes: 88, print_total: 100 }],
-        });
+    // Answers each scorecard query by its shape, so tests do not depend on call order.
+    function scorecardMock(rows: {
+      stats?: unknown[];
+      actives?: unknown[];
+      prints?: unknown[];
+      crashers?: unknown[];
+      frame?: unknown[];
+      rss?: unknown[];
+      adoption?: unknown[];
+      top?: unknown[];
+    }) {
+      mockExecuteQuery.mockImplementation(async (_c, sql: string) => {
+        if (sql.includes("LIMIT 8")) return { data: rows.top ?? [] };
+        if (sql.includes("as update_successes")) return { data: rows.stats ?? [] };
+        if (sql.includes("as active_devices")) return { data: rows.actives ?? [] };
+        if (sql.includes("as print_successes")) return { data: rows.prints ?? [] };
+        if (sql.includes("as crashing_devices")) return { data: rows.crashers ?? [] };
+        if (sql.includes("as p95_frame_ms")) return { data: rows.frame ?? [] };
+        if (sql.includes("as p95_rss_kb")) return { data: rows.rss ?? [] };
+        if (sql.includes("as devices") && sql.includes("toDate(timestamp) as date")) return { data: rows.adoption ?? [] };
+        return { data: [] };
+      });
+    }
 
-      const res = await worker.fetch(
-        dashboardRequest("/v1/dashboard/releases?versions=v0.9.19"),
-        env,
-      );
+    it("returns release comparison data", async () => {
+      scorecardMock({
+        stats: [{ ver: "0.9.19", sessions: 200, crashes: 4 }],
+        actives: [{ ver: "0.9.19", active_devices: 50 }],
+        prints: [{ ver: "0.9.19", print_successes: 88, print_total: 100 }],
+        crashers: [{ ver: "0.9.19", crashing_devices: 5 }],
+        frame: [{ ver: "0.9.19", p95_frame_ms: 33.4 }],
+        rss: [{ ver: "0.9.19", p95_rss_kb: 90000 }],
+        adoption: [{ date: "2026-10-01", ver: "0.9.19", devices: 12 }],
+      });
+
+      const res = await worker.fetch(dashboardRequest("/v1/dashboard/releases?versions=v0.9.19"), env as never);
       expect(res.status).toBe(200);
-      const data = await res.json();
+      const data = (await res.json()) as any;
       expect(data.versions).toHaveLength(1);
-      expect(data.versions[0].version).toBe("0.9.19");
-      expect(data.versions[0].active_devices).toBe(50);
-      expect(data.versions[0].crash_rate).toBeCloseTo(0.02);
-      expect(data.versions[0].print_success_rate).toBeCloseTo(0.88);
-      expect(data.versions[0].total_sessions).toBe(200);
-      expect(data.versions[0].total_crashes).toBe(4);
-      // Absent update columns must degrade to 0/null, not NaN or undefined —
-      // rows predating the update_* mapping still come back from the dataset.
-      expect(data.versions[0].update_failures).toBe(0);
-      expect(data.versions[0].update_successes).toBe(0);
-      expect(data.versions[0].update_success_rate).toBeNull();
+      const v = data.versions[0];
+      expect(v.version).toBe("0.9.19");
+      expect(v.active_devices).toBe(50);
+      expect(v.crash_rate).toBeCloseTo(0.02);
+      expect(v.crash_free_devices).toBeCloseTo(0.9);
+      expect(v.p95_frame_ms).toBeCloseTo(33.4);
+      expect(v.p95_rss_kb).toBe(90000);
+      expect(v.print_success_rate).toBeCloseTo(0.88);
+      expect(v.total_sessions).toBe(200);
+      expect(v.total_crashes).toBe(4);
+      expect(v.update_failures).toBe(0);
+      expect(v.update_successes).toBe(0);
+      expect(v.update_failure_rate).toBeNull();
+      expect(data.adoption).toEqual([{ date: "2026-10-01", version: "0.9.19", devices: 12 }]);
+    });
+
+    it("picks the versions itself when the param is absent", async () => {
+      scorecardMock({
+        top: [{ ver: "1.0.4", devices: 9 }],
+        stats: [{ ver: "1.0.4", sessions: 10, crashes: 1 }],
+        actives: [{ ver: "1.0.4", active_devices: 9 }],
+      });
+      const res = await worker.fetch(dashboardRequest("/v1/dashboard/releases"), env as never);
+      expect(res.status).toBe(200);
+      const data = (await res.json()) as any;
+      expect(data.versions[0].version).toBe("1.0.4");
+      const sqls = mockExecuteQuery.mock.calls.map((c) => c[1] as string);
+      expect(sqls[0]).toContain("LIMIT 8");
+      expect(sqls.slice(1).some((s) => s.includes("'1.0.4'"))).toBe(true);
+    });
+
+    it("reports a null crash rate and crash-free share with no sessions or devices", async () => {
+      scorecardMock({
+        stats: [{ ver: "0.9.18", sessions: 0, crashes: 0 }],
+        actives: [],
+      });
+      const res = await worker.fetch(dashboardRequest("/v1/dashboard/releases?versions=v0.9.18"), env as never);
+      expect(res.status).toBe(200);
+      const v = ((await res.json()) as any).versions[0];
+      expect(v.crash_rate).toBeNull();
+      expect(v.crash_free_devices).toBeNull();
+      expect(v.p95_frame_ms).toBeNull();
+      expect(v.p95_rss_kb).toBeNull();
+    });
+
+    it("clamps crash-free devices at 0 when more devices crashed than were active", async () => {
+      scorecardMock({
+        stats: [{ ver: "1.0.0", sessions: 10, crashes: 9 }],
+        actives: [{ ver: "1.0.0", active_devices: 2 }],
+        crashers: [{ ver: "1.0.0", crashing_devices: 5 }],
+      });
+      const res = await worker.fetch(dashboardRequest("/v1/dashboard/releases?versions=1.0.0"), env as never);
+      expect(((await res.json()) as any).versions[0].crash_free_devices).toBe(0);
+    });
+
+    it("returns empty lists when no version has sessions", async () => {
+      scorecardMock({ top: [] });
+      const res = await worker.fetch(dashboardRequest("/v1/dashboard/releases"), env as never);
+      expect(await res.json()).toEqual({
+        versions: [],
+        adoption: [],
+        not_applicable: { crashes: null, prints: null, updates: null, performance: null },
+      });
+      expect(mockExecuteQuery).toHaveBeenCalledTimes(1);
     });
 
     it("reports self-update health per running version", async () => {
-      mockExecuteQuery
-        .mockResolvedValueOnce({
-          data: [
-            {
-              ver: "0.99.97",
-              total_sessions: 100,
-              total_crashes: 1,
-              update_failures: 9,
-              update_successes: 1,
-            },
-          ],
-        })
-        .mockResolvedValueOnce({ data: [{ ver: "0.99.97", active_devices: 40 }] })
-        .mockResolvedValueOnce({
-          data: [{ ver: "0.99.97", print_successes: 10, print_total: 10 }],
-        });
-
-      const res = await worker.fetch(
-        dashboardRequest("/v1/dashboard/releases?versions=v0.99.97"),
-        env,
-      );
+      scorecardMock({
+        stats: [{ ver: "0.99.97", sessions: 100, crashes: 1, update_failures: 9, update_successes: 1 }],
+        actives: [{ ver: "0.99.97", active_devices: 40 }],
+        prints: [{ ver: "0.99.97", print_successes: 10, print_total: 10 }],
+      });
+      const res = await worker.fetch(dashboardRequest("/v1/dashboard/releases?versions=v0.99.97"), env as never);
       expect(res.status).toBe(200);
-      const data = await res.json();
-      // A version that cannot update itself — the helixscreen#993 signature.
+      const data = (await res.json()) as any;
       expect(data.versions[0].update_failures).toBe(9);
       expect(data.versions[0].update_successes).toBe(1);
-      expect(data.versions[0].update_success_rate).toBeCloseTo(0.1);
+      expect(data.versions[0].update_failure_rate).toBeCloseTo(0.9);
     });
 
     it("reports a null print success rate for a version with no prints", async () => {
-      mockExecuteQuery
-        .mockResolvedValueOnce({
-          data: [{ ver: "0.9.18", total_sessions: 10, total_crashes: 0 }],
-        })
-        .mockResolvedValueOnce({ data: [{ ver: "0.9.18", active_devices: 5 }] })
-        .mockResolvedValueOnce({ data: [] });
-
-      const res = await worker.fetch(
-        dashboardRequest("/v1/dashboard/releases?versions=v0.9.18"),
-        env,
-      );
-      const data = await res.json();
-      expect(data.versions[0].print_success_rate).toBeNull();
-    });
-
-    it("requires versions parameter", async () => {
-      const res = await worker.fetch(
-        dashboardRequest("/v1/dashboard/releases"),
-        env,
-      );
-      expect(res.status).toBe(400);
-      const data = await res.json();
-      expect(data.error).toContain("versions parameter required");
+      scorecardMock({
+        stats: [{ ver: "0.9.18", sessions: 10, crashes: 0 }],
+        actives: [{ ver: "0.9.18", active_devices: 5 }],
+      });
+      const res = await worker.fetch(dashboardRequest("/v1/dashboard/releases?versions=v0.9.18"), env as never);
+      expect(((await res.json()) as any).versions[0].print_success_rate).toBeNull();
     });
 
     it("rejects empty versions parameter", async () => {
-      const res = await worker.fetch(
-        dashboardRequest("/v1/dashboard/releases?versions="),
-        env,
-      );
+      const res = await worker.fetch(dashboardRequest("/v1/dashboard/releases?versions="), env as never);
       expect(res.status).toBe(400);
+    });
+
+    it("rejects more than 20 versions", async () => {
+      const many = Array.from({ length: 21 }, (_, i) => `1.0.${i}`).join(",");
+      const res = await worker.fetch(dashboardRequest(`/v1/dashboard/releases?versions=${many}`), env as never);
+      expect(res.status).toBe(400);
+    });
+  });
+
+  describe("GET /v1/dashboard/fleet/retention", () => {
+    it("returns cohorts from per-device first and last days", async () => {
+      const today = new Date().toISOString().slice(0, 10);
+      mockExecuteQuery.mockResolvedValue({ data: [{ first_day: today, last_day: today }] });
+      const res = await worker.fetch(dashboardRequest("/v1/dashboard/fleet/retention"), env as never);
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as any;
+      expect(body.cohorts).toHaveLength(13);
+      expect(body.cohorts[0].label).toBe("before window");
+      expect(body.cohorts[12].size).toBe(1);
+      expect(mockExecuteQuery.mock.calls[0][1]).toContain("min(toDate(timestamp))");
+    });
+  });
+
+  describe("prints and performance additions", () => {
+    it("prints sums per-device outcomes into models through the session join", async () => {
+      mockExecuteQuery.mockImplementation(async (_c, sql: string) => {
+        if (sql.includes("argMax") && sql.includes("as model")) {
+          return { data: [{ device_id: "a", model: "Voron 2.4" }, { device_id: "b", model: "Voron 2.4" }] };
+        }
+        if (sql.includes("as device_id") && sql.includes("as successes")) {
+          return { data: [
+            { device_id: "a", successes: 8, total: 10 },
+            { device_id: "b", successes: 2, total: 10 },
+            { device_id: "z", successes: 1, total: 4 },
+          ] };
+        }
+        if (sql.includes("as version") && sql.includes("as successes")) {
+          return { data: [{ version: "1.0.0", successes: "11", total: "24" }] };
+        }
+        return { data: [] };
+      });
+      const res = await worker.fetch(dashboardRequest("/v1/dashboard/prints"), env as never);
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as any;
+      const byModel = Object.fromEntries(body.by_model.map((m: any) => [m.model, m]));
+      expect(byModel["Voron 2.4"]).toEqual({ model: "Voron 2.4", successes: 10, total: 20, rate: 0.5 });
+      expect(byModel["Unknown"]).toEqual({ model: "Unknown", successes: 1, total: 4, rate: 0.25 });
+      expect(body.by_version).toEqual([{ version: "1.0.0", successes: 11, total: 24, rate: 11 / 24 }]);
+    });
+
+    it("performance returns per-platform version and panel breakdowns", async () => {
+      mockExecuteQuery.mockImplementation(async (_c, sql: string) => {
+        if (sql.includes("memory_snapshot") || sql.includes("as avg_rss_kb")) {
+          return { data: [{ platform: "pi", version: "1.0.0", avg_rss_kb: 70000.4 }] };
+        }
+        if (sql.includes("GROUP BY platform, version")) {
+          return { data: [{ platform: "pi", version: "1.0.0", p95_frame_ms: 31.2, devices: 6 }] };
+        }
+        if (sql.includes("GROUP BY platform, panel")) {
+          return { data: [{ platform: "pi", panel: "home", times_worst: 3, avg_p95_ms: 40.6 }] };
+        }
+        return { data: [] };
+      });
+      const res = await worker.fetch(dashboardRequest("/v1/dashboard/performance"), env as never);
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as any;
+      expect(body.by_platform_version).toEqual([
+        { platform: "pi", version: "1.0.0", p95_frame_ms: 31.2, avg_rss_kb: 70000.4, devices: 6 },
+      ]);
+      expect(body.jankiest_by_platform).toEqual([{ platform: "pi", panel: "home", times_worst: 3, avg_p95_ms: 41 }]);
     });
   });
 
@@ -2026,9 +2329,13 @@ describe("SQL builders", () => {
       const out =
         name === "crashListQuery"
           ? (fn as (d: number, l: number) => string)(30, 10)
-          : name === "releasesQueries"
-            ? (fn as (v: string[]) => string[])(["1.0.0"])
-            : (fn as (d: number) => string | string[])(30);
+          : name === "releaseScorecardQueries"
+            ? (fn as (v: string[], d: number) => string[])(["1.0.0"], 30)
+            : name === "retentionQuery"
+              ? (fn as () => string)()
+            : name === "deviceQueries"
+              ? (fn as unknown as (id: string) => string[])("0".repeat(64))
+              : (fn as (d: number) => string | string[])(30);
       for (const sql of Array.isArray(out) ? out : [out]) {
         expect(sql, name).not.toContain("uniqExact");
       }

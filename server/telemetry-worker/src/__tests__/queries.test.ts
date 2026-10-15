@@ -13,7 +13,12 @@ import {
   filterFor,
   filterForKinds,
   adoptionQueries,
-  releasesQueries,
+  releaseScorecardQueries,
+  retentionQuery,
+  topVersionsQuery,
+  performanceQueries,
+  printsQueries,
+  hardwareQueries,
   overviewQueries,
   SQL_FALSE,
   wAvg,
@@ -182,12 +187,19 @@ describe("query builders", () => {
   );
 
   function run(name: string, fn: unknown, filters?: FilterParams): string[] {
+    if (name === "healthQueries") {
+      return Object.values((fn as (f?: FilterParams, v?: string[]) => Record<string, string>)(filters, ["1.0.0", "v1.1.0"]));
+    }
     const out =
       name === "crashListQuery"
         ? (fn as (d: number, l: number, f?: FilterParams) => string)(30, 10, filters)
-        : name === "releasesQueries"
-          ? (fn as (v: string[]) => string[])(["1.0.0", "v1.1.0"])
-          : (fn as (d: number, f?: FilterParams) => string | string[])(30, filters);
+        : name === "releaseScorecardQueries"
+          ? (fn as (v: string[], d: number, f?: FilterParams) => string[])(["1.0.0", "v1.1.0"], 30, filters)
+          : name === "retentionQuery"
+          ? (fn as (f?: FilterParams) => string)(filters)
+          : name === "deviceQueries"
+            ? (fn as unknown as (id: string) => string[])("0".repeat(64))
+            : (fn as (d: number, f?: FilterParams) => string | string[])(30, filters);
     return Array.isArray(out) ? out : [out];
   }
 
@@ -220,17 +232,73 @@ describe("query builders", () => {
   });
 });
 
-describe("releasesQueries", () => {
+describe("releaseScorecardQueries", () => {
   it("sanitizes the version list", () => {
-    const sql = releasesQueries(["v1.0.0'; DROP TABLE x --"]).join("\n");
+    const sql = releaseScorecardQueries(["v1.0.0'; DROP TABLE x --"], 30).join("\n");
     expect(sql).toContain("'1.0.0 DROP TABLE x --'");
     expect(sql).not.toContain("';");
   });
 
   it("matches nothing rather than emitting an empty IN list", () => {
-    for (const sql of releasesQueries(["';"])) {
+    for (const sql of releaseScorecardQueries(["';"], 30)) {
       expect(sql).not.toMatch(/IN \(\s*\)/);
     }
+  });
+
+  it("returns the seven scorecard queries, windowed by days", () => {
+    const sqls = releaseScorecardQueries(["1.0.0"], 14);
+    expect(sqls).toHaveLength(7);
+    for (const sql of sqls) expect(sql).toContain("INTERVAL '14' DAY");
+  });
+
+  it("applies the filters per kind", () => {
+    const sqls = releaseScorecardQueries(["1.0.0"], 30, { platform: "pi" });
+    expect(sqls[1]).toContain(queries.filterFor("session", { platform: "pi" }));
+    expect(sqls[3]).toContain(queries.filterFor("crash", { platform: "pi" }));
+  });
+});
+
+describe("topVersionsQuery", () => {
+  it("ranks versions by distinct session devices and caps at the limit", () => {
+    const sql = topVersionsQuery(30, { platform: "pi" }, 5);
+    expect(sql).toContain("count(DISTINCT");
+    expect(sql).toContain("LIMIT 5");
+    expect(sql).toContain("INTERVAL '30' DAY");
+    expect(sql).toContain(queries.filterFor("session", { platform: "pi" }));
+  });
+});
+
+describe("retentionQuery", () => {
+  it("reads first and last session day per device over 90 days", () => {
+    const sql = retentionQuery({ model: "Voron 2.4" });
+    expect(sql).toContain("min(toDate(timestamp)) as first_day");
+    expect(sql).toContain("max(toDate(timestamp)) as last_day");
+    expect(sql).toContain("INTERVAL '90' DAY");
+    expect(sql).toContain(queries.filterFor("session", { model: "Voron 2.4" }));
+  });
+});
+
+describe("appended performance and prints queries", () => {
+  it("performanceQueries keeps its six and appends three", () => {
+    const sqls = performanceQueries(30);
+    expect(sqls).toHaveLength(9);
+    expect(sqls[6]).toContain("GROUP BY platform, version");
+    expect(sqls[7]).toContain("GROUP BY platform, panel");
+    expect(sqls[8]).toContain("memory_snapshot");
+  });
+
+  it("printsQueries keeps its three and appends three", () => {
+    const sqls = printsQueries(30);
+    expect(sqls).toHaveLength(6);
+    expect(sqls[3]).toContain("argMax");
+    expect(sqls[4]).toContain("print_outcome");
+    expect(sqls[5]).toContain("GROUP BY version");
+  });
+});
+
+describe("hardwareQueries", () => {
+  it("does not cut the model and MCU distributions", () => {
+    for (const sql of hardwareQueries(30)) expect(sql).not.toContain("LIMIT 20");
   });
 });
 
@@ -325,7 +393,7 @@ describe("deltaSource", () => {
 });
 
 describe("queries over delta kinds", () => {
-  const SKIP = new Set(["overviewQueries", "releasesQueries", "aeCountsQuery", "executeQuery"]);
+  const SKIP = new Set(["overviewQueries", "releaseScorecardQueries", "retentionQuery", "aeCountsQuery", "executeQuery", "deviceQueries", "healthQueries"]);
   const builders = Object.entries(queries).filter(
     ([name]) => /Quer(y|ies)$/.test(name) && !SKIP.has(name),
   ) as Array<[string, (d: number, l: number | undefined) => string | string[]]>;
@@ -393,7 +461,7 @@ describe("constant predicates", () => {
   ];
   it("never emit a bare integer as a boolean", () => {
     const builders = Object.entries(queries).filter(
-      ([name, fn]) => name.endsWith("Queries") && name !== "releasesQueries" && typeof fn === "function",
+      ([name, fn]) => name.endsWith("Queries") && name !== "releaseScorecardQueries" && name !== "retentionQuery" && name !== "deviceQueries" && name !== "healthQueries" && typeof fn === "function",
     ) as [string, (days: number, f?: FilterParams) => string[]][];
     expect(builders.length).toBeGreaterThan(5);
     for (const [name, build] of builders) {
@@ -403,6 +471,11 @@ describe("constant predicates", () => {
         }
       }
     }
-    for (const sql of releasesQueries([])) expect(sql).not.toMatch(/AND 0\b|OR 0\b|AND 1\b(?! =)|\bWHERE 0\b/);
+    for (const sql of releaseScorecardQueries([], 30)) expect(sql).not.toMatch(/AND 0\b|OR 0\b|AND 1\b(?! =)|\bWHERE 0\b/);
+    for (const f of filterSets) {
+      for (const [k, sql] of Object.entries(queries.healthQueries(f, ["1.0.0"]))) {
+        expect(sql, `healthQueries.${k} ${JSON.stringify(f)}`).not.toMatch(/AND 0\b|OR 0\b|AND 1\b(?! =)|\bWHERE 0\b/);
+      }
+    }
   });
 });

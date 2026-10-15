@@ -1,5 +1,10 @@
 import { useAuthStore } from '@/stores/auth'
 import { router } from '@/router'
+import type { HealthPayload } from '../../../telemetry-worker/src/health'
+import type { DeviceList, DevicePage } from '../../../telemetry-worker/src/devices'
+import type { NotApplicable } from '../../../telemetry-worker/src/schema'
+import type { RetentionCohort } from '../../../telemetry-worker/src/retention'
+import { withNotApplicable, type WireNotApplicable } from '@/utils/notApplicable'
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'https://telemetry.helixscreen.org'
 
@@ -42,13 +47,17 @@ export interface AdoptionData {
   versions: { name: string; count: number }[]
   printer_models: { name: string; count: number }[]
   kinematics: { name: string; count: number }[]
+  boards: { name: string; count: number }[]
 }
 
 export interface PrintsData {
   success_rate_over_time: { date: string; rate: number; total: number }[]
   by_filament: { type: string; success_rate: number; count: number }[]
   avg_duration_sec: number
+  by_model: { model: string; successes: number; total: number; rate: number | null }[]
+  by_version: { version: string; successes: number; total: number; rate: number | null }[]
   start_context?: PrintStartData
+  not_applicable: NotApplicable<'prints'>
 }
 
 export interface CrashesData {
@@ -76,27 +85,30 @@ export interface CrashesData {
   }
 }
 
-export interface CrashListData {
-  crashes: {
-    timestamp: string
-    device_id: string
-    version: string
-    signal: string
-    platform: string
-    uptime_sec: number
-    occurrences: number
-  }[]
-}
-
 export interface ReleasesData {
   versions: {
     version: string
     active_devices: number
-    crash_rate: number
+    crash_rate: number | null
+    crash_free_devices: number | null
+    p95_frame_ms: number | null
+    p95_rss_kb: number | null
     print_success_rate: number | null
     total_sessions: number
     total_crashes: number
+    update_failures: number
+    update_successes: number
+    update_failure_rate: number | null
   }[]
+  adoption: { date: string; version: string; devices: number }[]
+  not_applicable: NotApplicable<'crashes' | 'prints' | 'updates' | 'performance'>
+}
+
+export type HealthData = HealthPayload
+export type DevicePageData = DevicePage
+export type DeviceListData = DeviceList
+export interface RetentionData {
+  cohorts: RetentionCohort[]
 }
 
 export interface MemoryData {
@@ -183,7 +195,13 @@ export interface StabilityData extends DeltaEra {
   error_categories: { category: string; count: number }[]
   error_codes: { category: string; code: string; count: number }[]
   recent_crashes: { timestamp: string; device_id: string; version: string; signal: string; platform: string; uptime_sec: number; occurrences: number }[]
+  /** Crashes grouped by signal, fault code, version and board over the range; sample-weighted count, largest first. */
+  crash_clusters: { signal: string; fault_code: string; version: string; board: string; count: number; devices: number }[]
+  /** Error reports per category, code and version over the range; sample-weighted count, largest first. */
+  errors_by_version: { category: string; code: string; version: string; count: number; devices: number }[]
   display_anomalies?: DisplayAnomalyData
+  /** Crash and error blocks a filter leaves unreported; `filter_not_applicable` covers only the delta kinds. */
+  not_applicable: NotApplicable<'crashes' | 'errors'>
 }
 
 export interface PrintStartData {
@@ -204,6 +222,14 @@ export interface PerformanceData {
   drop_rate_by_platform: { platform: string; rate: number; dropped: number; total: number }[]
   drop_rate_by_version: { date: string; version: string; rate: number }[]
   jankiest_panels: { panel: string; times_worst: number; avg_p95_ms: number }[]
+  by_platform_version: {
+    platform: string
+    version: string
+    p95_frame_ms: number
+    avg_rss_kb: number | null
+    devices: number
+  }[]
+  jankiest_by_platform: { platform: string; panel: string; times_worst: number; avg_p95_ms: number }[]
 }
 
 // Adoption derived from overlay and widget use: `devices` used the overlay or
@@ -226,6 +252,12 @@ export interface UxInsightsData extends DeltaEra {
   settings_defaults: { setting: string; pct_changed: number; devices_changed: number }[]
 }
 
+export class ApiError extends Error {
+  constructor(readonly status: number, statusText: string) {
+    super(`API error: ${status} ${statusText}`)
+  }
+}
+
 async function apiFetch<T>(path: string, params?: Record<string, string>): Promise<T> {
   const auth = useAuthStore()
   let url = `${API_BASE}${path}`
@@ -246,11 +278,18 @@ async function apiFetch<T>(path: string, params?: Record<string, string>): Promi
   }
 
   if (!res.ok) {
-    throw new Error(`API error: ${res.status} ${res.statusText}`)
+    throw new ApiError(res.status, res.statusText)
   }
 
   return res.json() as Promise<T>
 }
+
+// Each endpoint's not_applicable blocks; the normalized return types require every one.
+const PRINTS_BLOCKS = ['prints'] as const
+const RELEASES_BLOCKS = ['crashes', 'prints', 'updates', 'performance'] as const
+const HEALTH_BLOCKS = ['crashes', 'errors', 'prints', 'updates'] as const
+const STABILITY_BLOCKS = ['crashes', 'errors'] as const
+const DEVICES_BLOCKS = ['crashes', 'prints'] as const
 
 export const api = {
   getOverview(queryString: string): Promise<OverviewData> {
@@ -261,21 +300,39 @@ export const api = {
     return apiFetch(`/v1/dashboard/adoption?${queryString}`)
   },
 
-  getPrints(queryString: string): Promise<PrintsData> {
-    return apiFetch(`/v1/dashboard/prints?${queryString}`)
+  async getPrints(queryString: string): Promise<PrintsData> {
+    const wire = await apiFetch<WireNotApplicable<PrintsData>>(`/v1/dashboard/prints?${queryString}`)
+    return withNotApplicable(wire, PRINTS_BLOCKS)
   },
 
   getCrashes(queryString: string): Promise<CrashesData> {
     return apiFetch(`/v1/dashboard/crashes?${queryString}`)
   },
 
-  getCrashList(queryString: string, limit = 50): Promise<CrashListData> {
-    return apiFetch(`/v1/dashboard/crash-list?${queryString}&limit=${limit}`)
+  // Without `versions` the worker picks the most active releases itself.
+  async getReleases(queryString: string, versions?: string[]): Promise<ReleasesData> {
+    const list = versions ? `&versions=${versions.map(v => encodeURIComponent(v)).join(',')}` : ''
+    const wire = await apiFetch<WireNotApplicable<ReleasesData>>(`/v1/dashboard/releases?${queryString}${list}`)
+    return withNotApplicable(wire, RELEASES_BLOCKS)
   },
 
-  getReleases(versions: string[]): Promise<ReleasesData> {
-    const params = `versions=${versions.map(v => encodeURIComponent(v)).join(',')}`
-    return apiFetch(`/v1/dashboard/releases?${params}`)
+  async getHealth(queryString: string): Promise<HealthData> {
+    const wire = await apiFetch<WireNotApplicable<HealthData>>(`/v1/dashboard/health?${queryString}`)
+    return withNotApplicable(wire, HEALTH_BLOCKS)
+  },
+
+  async getDevices(queryString: string): Promise<DeviceListData> {
+    const wire = await apiFetch<WireNotApplicable<DeviceListData>>(`/v1/dashboard/devices?${queryString}`)
+    return withNotApplicable(wire, DEVICES_BLOCKS)
+  },
+
+  // One device over a fixed 90 days: no filters apply.
+  getDevice(id: string): Promise<DevicePageData> {
+    return apiFetch(`/v1/dashboard/device/${encodeURIComponent(id)}`)
+  },
+
+  getRetention(queryString: string): Promise<RetentionData> {
+    return apiFetch(`/v1/dashboard/fleet/retention?${queryString}`)
   },
 
   getMemory(queryString: string): Promise<MemoryData> {
@@ -298,8 +355,9 @@ export const api = {
     return apiFetch(`/v1/dashboard/reliability?${queryString}`)
   },
 
-  getStability(queryString: string): Promise<StabilityData> {
-    return apiFetch(`/v1/dashboard/stability?${queryString}`)
+  async getStability(queryString: string): Promise<StabilityData> {
+    const wire = await apiFetch<WireNotApplicable<StabilityData>>(`/v1/dashboard/stability?${queryString}`)
+    return withNotApplicable(wire, STABILITY_BLOCKS)
   },
 
   getPerformance(queryString: string): Promise<PerformanceData> {

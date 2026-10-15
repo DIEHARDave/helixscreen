@@ -24,7 +24,7 @@ Administration guide for HelixScreen's telemetry pipeline and analytics dashboar
 
 ## Fleet size: two numbers that do not agree
 
-The dashboard Overview shows two population figures, and they measure different
+The dashboard shows two population figures, and they measure different
 things. Quoting the wrong one understates the project by roughly half.
 
 | Tile | Source | What it counts |
@@ -150,28 +150,73 @@ This is auto-loaded by `telemetry-pull.sh`.
 
 Enter the `ADMIN_API_KEY` value. Stored in browser sessionStorage (clears when tab closes).
 
-### Views
+### Tabs
 
-| View | Shows |
-|------|-------|
-| **Overview** | Active devices, total events, crash rate, print success rate, events-over-time chart, CDN fleet |
-| **Adoption** | Platform, version, printer model, kinematics distributions |
-| **Prints** | Print success rate over time, by filament type, average duration |
-| **Stability** | Crash rate over time, by version and by signal; klippy errors and shutdowns; memory warnings; error hotspots; display anomalies; recent crashes (`/crashes` redirects here) |
-| **Releases** | Side-by-side version comparison (select versions to compare) |
-| **Memory** | RSS over time and by platform, memory warnings |
-| **Hardware** | Printer models, kinematics, MCUs, capabilities, host RAM, AMS backends, Helix macros, Moonraker topology |
-| **Engagement** | Panel time and visits, overlay visits, widget placement and interactions, themes, locales, brightness |
-| **Reliability** | Uptime, disconnects per boot, longest outage, error categories and codes |
-| **Performance** | Frame-time percentiles, dropped frames, worst panels |
-| **Features** | Feature adoption derived from overlay and widget use, and the `settings_snapshot` flags for features that are configured rather than visited |
-| **UX Insights** | Most and least visited panels, settings change rate, settings left at default |
+Seven tabs, each built around one question. Health is the home tab.
 
-All views support 7d / 30d / 90d time range selection. Platform, version, printer
+| Tab | Question it answers | Shows |
+|-----|---------------------|-------|
+| **Health** (`/`) | Is anything getting worse this week? | This week against last week: fleet size (opt-in actives and CDN sources), a scorecard delta per release, new and rising error codes, crash clusters, and a data-health line that flags a point kind whose newest day dropped under half its prior 7-day median |
+| **Releases** (`/releases`) | Is the newest release better than the one before it? | Scorecard per version (active devices, crash-free devices, crash rate, update failure rate, print success, p95 frame time, p95 RSS), the adoption curve, devices stuck on old versions. Opens on the newest eight versions with traffic in the range; the picker adds others |
+| **Stability** (`/stability`) | What crashes and errors, and where? | Crash clusters (signal, fault code, version, board), crash rate by version and platform, error codes by version, memory warnings by platform, connection stability, recent crashes, display anomalies |
+| **Performance** (`/performance`) | Is the UI fast enough on each platform? | Frame time p50 and p95 trend, drop rate by platform, p95 frame time and RSS per platform and version, jankiest panels per platform, RSS trend |
+| **Fleet** (`/fleet`) | Who runs it, on what? | Platforms, boards, printer models, kinematics, MCUs, AMS backends, host RAM, capabilities, CDN fleet, daily actives, weekly retention cohorts over 90 days |
+| **Usage** (`/usage`) | What do people use and change? | Panels, overlays and widgets per device, settings changed from default, configured features, themes and locales |
+| **Prints** (`/prints`) | Do prints succeed, and with what? | Success rate trend, success by model, version and material set, multi-material share, slicer, thumbnails, print source |
+
+Old routes redirect to the tab that holds their content and keep their query
+string: `/adoption` and `/hardware` go to `/fleet`; `/memory`, `/crashes` and
+`/reliability` go to `/stability`; `/engagement`, `/features` and `/ux` go to
+`/usage`.
+
+All tabs support 7d / 30d / 90d time range selection. Platform, version, printer
 model and board filters apply per point kind (see [Filters](#filters)).
 
-Engagement, Reliability, Stability, UX Insights and Features read the delta point
-kinds, so they show a "Waiting for devices on the new client (N so far)" state until
+### Drill-down
+
+Every step is a URL, so back and forward walk the path and a link reproduces a view.
+
+1. **Click a bar, slice or row** in a distribution. The value becomes a filter
+   (platform, version, model or board) in the URL. A grouped bar, such as a
+   version line or a canonical model, filters on every raw value in the group.
+   A model whose raw name contains a character the filter sanitizer strips
+   renders as not filterable.
+2. **Devices link**, one link in the page header, opens `/devices?<filters>`: the devices
+   matching the current filters, with short id, last seen, version, platform,
+   board, model, and sessions, crashes and prints within the range. It is sorted
+   by last seen, capped at 200 rows, and shows the true total above the table.
+3. **Device page** `/device/:id`: model, platform, board, current version, first
+   and last seen within Analytics Engine's 90 days, the latest hardware profile
+   and settings snapshot, the version history, and a timeline of the newest 500
+   events with each kind's non-empty fields by schema name. The id is the hashed
+   device id; the page shows nothing the device did not send.
+
+A breadcrumb above each tab shows the tab and the active filters, each removable. On a
+device page it shows the filters, a "Devices" link back to the filtered device list, and
+the device's short id. It does not record which tab a drill started from.
+
+### Readability rules
+
+Pure functions in `server/analytics-dashboard/src/utils/`, shared by every chart.
+
+- **Versions.** The two newest `major.minor` lines show each version. Older
+  lines collapse to one row (`0.99.x (34 versions)`). Prereleases collapse to
+  `1.1.0 betas (9)` until that release exists, then fold into its line. A
+  collapsed row expands in place on click.
+- **Material sets.** `filament_type` is a `;`-separated slot list. A set is the
+  distinct materials, uppercased, sorted and joined with ` + `, so
+  `PLA;PLA;PETG;PLA` is `PETG + PLA`. Two or more materials is multi-material.
+- **Canonical models.** Names are lowercased, a trailing parenthesized variant
+  removed, runs of space, `-` and `_` folded, then mapped through a small alias
+  table. The label is the most common raw spelling.
+- **Every value is shown.** No top-N cut and no "Other" bucket; grouping controls length.
+- **Partial days.** Daily series drop the first day of the window and today.
+- **Percentages.** Every ratio goes through one formatter; a missing ratio reads `n/a`.
+- **Chart height** follows the row count so every label stays legible.
+- **Captions.** Each chart states what it counts and over what window.
+
+The Usage, Stability and Performance sections that read the delta point
+kinds show a "Waiting for devices on the new client (N so far)" state until
 devices on a schema-3 client have reported (see [Delta-era
 queries](#delta-era-queries-and-the-waiting-state)).
 
@@ -243,7 +288,11 @@ whatever column shares that slot. A query over several kinds gets
 
 When a filter excludes every kind an endpoint reads, the endpoint's `filter_not_applicable`
 names it and the view says "Not reported per printer model" (or platform, version,
-board) instead of showing 0. Filter values keep spaces, so `model=Voron 2.4` matches; only
+board) instead of showing 0. Endpoints whose blocks read different kinds say it per block
+in `not_applicable`: `health` (crashes, errors, prints, updates), `releases` (crashes,
+prints, updates, performance), `stability` (crashes, errors), `prints` (prints) and
+`devices` (the crashes and prints columns). Under such a filter a crash rate or crash-free
+share is `null`, never 0% or 100%. Filter values keep spaces, so `model=Voron 2.4` matches; only
 characters outside letters, digits, space and `. - _ ( ) / +` are stripped.
 
 ## Weighted counts
@@ -331,6 +380,23 @@ the root has none; widgets by their id. Flags with no overlay or widget to visit
 fields on `settings_snapshot` (see below), reported beside the derived adoption. The `feature_adoption` point kind stays in the
 schema table so rows stored by older clients remain readable.
 
+## Smoke test
+
+`server/telemetry-worker/scripts/smoke.ts` hits every `/v1/dashboard/` endpoint across the
+ranges `7d`, `30d` and `90d` with no filter, then `platform=pi`, the newest version and top model
+from `adoption`, and `board=rpi4`. It also requests `releases?versions=` with the two newest
+versions from `adoption`, then `devices`, `device/<first id>`, and checks that
+`device/<64 zeros>` is 404 and `device/xyz` is 400. It prints a PASS/FAIL table and exits non-zero on
+any unexpected status. Run it after every worker deploy:
+
+```bash
+(cd server/telemetry-worker && npx vite-node scripts/smoke.ts [base-url])
+```
+
+The base URL defaults to `https://telemetry.helixscreen.org`. The admin key comes from
+`HELIX_TELEMETRY_ADMIN_KEY` or `.env.telemetry`, as for `reconcile.ts`. A 200 proves the
+endpoint's SQL runs under every filter; it does not prove the numbers are right.
+
 ## Reconciling AE against R2
 
 R2 keeps every accepted batch; Analytics Engine can shed or sample writes, so a
@@ -399,8 +465,14 @@ Content-Type: application/json
 | `/v1/dashboard/prints?range=30d` | GET | Print reliability metrics |
 | `/v1/dashboard/crashes?range=30d` | GET | Crash analytics |
 | `/v1/dashboard/releases?versions=v0.9.18,v0.9.19` | GET | Per-version comparison |
-| `/v1/dashboard/{crash-list,memory,memory-warnings,hardware,performance}` | GET | The remaining views' data |
-| `/v1/dashboard/{engagement,reliability,stability,ux,features}` | GET | Delta-era views: return `delta_era_devices` and `filter_not_applicable`, and `null` values while no schema-3 device has reported |
+| `/v1/dashboard/{crash-list,memory,memory-warnings,hardware,performance}` | GET | The remaining sections' data |
+| `/v1/dashboard/{engagement,reliability,stability,ux,features}` | GET | Delta-era data: return `delta_era_devices` and `filter_not_applicable`, and `null` values while no schema-3 device has reported. `stability` also returns `crash_clusters` and `errors_by_version` |
+| `/v1/dashboard/health` | GET | Health tab: this week against last week (`cur` and `prev`), release scorecards, error codes, crash clusters, data health |
+| `/v1/dashboard/devices` | GET | Devices matching the filters (200 rows, true `total`) |
+| `/v1/dashboard/device/<64 hex id>` | GET | One device's page; 400 for any other id, 404 for an unknown one |
+| `/v1/dashboard/fleet/retention` | GET | Weekly cohorts over 90 days |
+
+`releases` takes an optional `versions` list and defaults to the eight versions with the most active devices in the range.
 
 Dashboard endpoints take `range` (`7d`, `30d`, `90d`) and the `platform`, `version`,
 `model` and `board` filters.
@@ -481,7 +553,7 @@ passes `-p tsconfig.app.json` to type-check the `src/` tree.
 
 The worker and the dashboard Pages project deploy together: the `/v1/dashboard/features`
 response shape is `features[].id` plus `configured`, with no `total_devices` or `by_version`,
-so either half alone breaks the Features view. After deploying, `/health` `git_sha` must match.
+so either half alone breaks the Usage tab. After deploying, `/health` `git_sha` must match.
 
 Before the first deploy of a SQL change, run the Analytics Engine smoke below with a read
 token (or a staging worker). A failure shows as a 502 on that endpoint.
@@ -497,7 +569,7 @@ token (or a staging worker). A failure shows as a 502 on that endpoint.
 9. Per-device subqueries exposing `argMax(_sample_interval, timestamp) AS device_weight` with outer `sum((toUInt32(bitAnd(...)) > 0) * device_weight)` (hardware caps) and `wAvg` over it (build volume, fan/sensor/macro, RAM).
 10. `HAVING total > 0 AND dropped / total > 0.05` where both are weighted-sum aliases (performance query 5).
 11. `double9 >= 3` on rows that never wrote double9, and reads of blob13-15 on rows written with 12 blobs: expect 0 / `''`, not an error or a NULL that breaks `!= ''`.
-12. Every `/v1/dashboard/*` endpoint once unfiltered and once each with `platform`, `version`, `model` (and `board` via URL): 200, and delta endpoints return `filter_not_applicable` as expected.
+12. `server/telemetry-worker/scripts/smoke.ts` (see [Smoke test](#smoke-test)): every dashboard endpoint across ranges and filters returns 200.
 13. Ingest round trip with a throwaway device id: post one schema-3 `panel_usage` and `connection_stability`, then read back `blob13, double9, double10` for that device; post the same batch again and confirm the engagement numbers for that device do not double. This writes two test rows into production AE; use staging if that is not acceptable.
 14. Deploy worker and dashboard Pages together (see above); `/health` `git_sha` matches.
 

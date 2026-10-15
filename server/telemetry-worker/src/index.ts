@@ -15,7 +15,9 @@ import {
   printsQueries,
   crashesQueries,
   crashListQuery,
-  releasesQueries,
+  releaseScorecardQueries,
+  retentionQuery,
+  topVersionsQuery,
   memoryQueries,
   memoryWarningQueries,
   hardwareQueries,
@@ -27,9 +29,17 @@ import {
   featuresQueries,
   CONFIGURED_FEATURE_FLAGS,
   uxInsightsQueries,
+  devicesQueries,
+  healthQueries,
+  deviceQueries,
+  notApplicableFor,
   type QueryConfig,
   type FilterParams,
 } from "./queries";
+import { buildDeviceList, buildDevicePage, isDeviceId, type DeviceCountColumn } from "./devices";
+import { buildHealth, releaseRates, type HealthBlock, type HealthRowKey } from "./health";
+import { num, rowsOf } from "./schema";
+import { buildRetention } from "./retention";
 import {
   snapshotDay,
   snapshotToDataPoints,
@@ -117,6 +127,15 @@ function crashRate(crashes: number, sessions: number, applies: boolean): number 
   if (!applies) return null;
   return sessions > 0 ? crashes / sessions : 0;
 }
+
+/** The scorecard blocks a filter can leave unreported. */
+const RELEASE_BLOCKS = ["crashes", "prints", "updates", "performance"] as const;
+
+/** The Health blocks a filter can leave unreported. */
+const HEALTH_BLOCKS = ["crashes", "errors", "prints", "updates"] as const satisfies readonly HealthBlock[];
+
+/** Device list count columns a filter can leave unreported. */
+const DEVICE_LIST_BLOCKS = ["crashes", "prints"] as const satisfies readonly DeviceCountColumn[];
 
 /** Devices that used one overlay or widget id in the window. */
 export interface FeatureUse {
@@ -531,7 +550,7 @@ export default {
         // GET /v1/dashboard/adoption
         if (url.pathname === "/v1/dashboard/adoption") {
           const queries = adoptionQueries(days, filters);
-          const [platformsRes, versionsRes, modelsRes, kinematicsRes] =
+          const [platformsRes, versionsRes, modelsRes, kinematicsRes, boardsRes] =
             await Promise.all(queries.map((q) => executeQuery(queryConfig, q)));
 
           const toList = (res: unknown) => {
@@ -544,6 +563,7 @@ export default {
             versions: toList(versionsRes),
             printer_models: toList(modelsRes),
             kinematics: toList(kinematicsRes),
+            boards: toList(boardsRes),
           });
         }
 
@@ -555,11 +575,15 @@ export default {
             [...queries, ...startQueries].map((q) => executeQuery(queryConfig, q)),
           );
 
-          const [rateTimeRes, filamentRes, avgDurRes, slicerRes, fileSizeRes, thumbRes, amsRes, sourceRes] = allResults;
+          const [rateTimeRes, filamentRes, avgDurRes, modelOfDeviceRes, outcomeByDeviceRes, outcomeByVersionRes,
+                 slicerRes, fileSizeRes, thumbRes, amsRes, sourceRes] = allResults;
 
           const rateTimeData = rateTimeRes as { data: Array<{ date: string; rate: number; total: number }> };
           const filamentData = filamentRes as { data: Array<{ type: string; success_rate: number; count: number }> };
           const avgDurData = avgDurRes as { data: Array<{ avg_duration_sec: number }> };
+          const modelOfDevice = modelOfDeviceRes as { data: Array<{ device_id: string; model: string }> };
+          const outcomeByDevice = outcomeByDeviceRes as { data: Array<{ device_id: string; successes: number; total: number }> };
+          const outcomeByVersion = outcomeByVersionRes as { data: Array<{ version: string; successes: number; total: number }> };
           const slicerData = slicerRes as { data: Array<{ name: string; count: number }> };
           const fileSizeData = fileSizeRes as { data: Array<{ name: string; count: number }> };
           const thumbData = thumbRes as { data: Array<{ thumbnail_rate: number }> };
@@ -608,7 +632,29 @@ export default {
                 }))
                 .sort((a, b) => b.count - a.count);
             })(),
+            not_applicable: notApplicableFor(["prints"], filters),
             avg_duration_sec: avgDurData.data?.[0]?.avg_duration_sec ?? 0,
+            by_model: (() => {
+              const modelOf = new Map<string, string>();
+              for (const r of modelOfDevice.data ?? []) modelOf.set(r.device_id, r.model || "Unknown");
+              const byModel = new Map<string, { successes: number; total: number }>();
+              for (const r of outcomeByDevice.data ?? []) {
+                const model = modelOf.get(r.device_id) ?? "Unknown";
+                const entry = byModel.get(model) ?? { successes: 0, total: 0 };
+                entry.successes += Number(r.successes);
+                entry.total += Number(r.total);
+                byModel.set(model, entry);
+              }
+              return [...byModel.entries()]
+                .map(([model, { successes, total }]) => ({ model, successes, total, rate: total > 0 ? successes / total : null }))
+                .sort((a, b) => b.total - a.total);
+            })(),
+            by_version: (outcomeByVersion.data ?? []).map((r) => ({
+              version: r.version,
+              successes: Number(r.successes),
+              total: Number(r.total),
+              rate: Number(r.total) > 0 ? Number(r.successes) / Number(r.total) : null,
+            })),
             start_context: {
               slicers: (slicerData.data ?? []).map((r) => ({ name: r.name, count: r.count })),
               file_size_buckets: (fileSizeData.data ?? []).map((r) => ({ name: r.name, count: r.count })),
@@ -1107,6 +1153,8 @@ export default {
             executeQuery(queryConfig, queries[13]), // recent display anomalies
             executeQuery(queryConfig, queries[14]), // display affected devices
             executeQuery(queryConfig, queries[15]), // delta-era devices
+            executeQuery(queryConfig, queries[16]), // crash clusters
+            executeQuery(queryConfig, queries[17]), // error codes per version
           ]);
           const deltaEraDevices = deltaEraCount(allResults[12]);
 
@@ -1143,6 +1191,12 @@ export default {
           };
 
           const dedupedCrashes = deduplicateCrashes(crashListRes.data ?? []);
+          const clusterRes = allResults[13] as {
+            data?: Array<{ sig: string; fault: string; ver: string; board: string; count: number; devices: number }>;
+          };
+          const errorsByVerRes = allResults[14] as {
+            data?: Array<{ category: string; code: string; version: string; count: number; devices: number }>;
+          };
 
           // Compute crash aggregates from the deduplicated crash list
           // Crash count by date (from deduped crash timestamps)
@@ -1201,6 +1255,7 @@ export default {
 
           return json({
             ...deltaEraFields("stability", deltaEraDevices, filters),
+            not_applicable: notApplicableFor(["crashes", "errors"], filters),
             crash_rate_trend,
             by_version,
             by_signal,
@@ -1223,6 +1278,26 @@ export default {
               code: r.code,
               count: r.count,
             })),
+            crash_clusters: (clusterRes.data ?? [])
+              .map((r) => ({
+                signal: String(r.sig ?? ""),
+                fault_code: String(r.fault ?? ""),
+                version: String(r.ver ?? ""),
+                board: String(r.board ?? ""),
+                count: Number(r.count),
+                devices: Number(r.devices),
+              }))
+              .filter((c) => c.count > 0)
+              .sort((a, b) => b.count - a.count),
+            errors_by_version: (errorsByVerRes.data ?? [])
+              .map((r) => ({
+                category: String(r.category ?? ""),
+                code: String(r.code ?? ""),
+                version: String(r.version ?? ""),
+                count: Number(r.count),
+                devices: Number(r.devices),
+              }))
+              .sort((a, b) => b.count - a.count),
             recent_crashes: dedupedCrashes.slice(0, displayLimit).map((r) => ({
               timestamp: r.timestamp,
               device_id: r.device_id,
@@ -1259,78 +1334,92 @@ export default {
           });
         }
 
-        // GET /v1/dashboard/releases?versions=v0.9.18,v0.9.19
+        // GET /v1/dashboard/releases[?versions=v0.9.18,v0.9.19]
         if (url.pathname === "/v1/dashboard/releases") {
           const versionsParam = url.searchParams.get("versions");
-          if (!versionsParam) {
-            return json({ error: "versions parameter required" }, 400);
-          }
-          const versions = versionsParam.split(",").map((v) => v.trim()).filter(Boolean);
-          if (versions.length === 0 || versions.length > 20) {
-            return json({ error: "Provide 1-20 comma-separated versions" }, 400);
-          }
-
-          const queries = releasesQueries(versions);
-          const [statsRes, devicesRes, printStatsRes] =
-            await Promise.all(queries.map((q) => executeQuery(queryConfig, q)));
-
-          const statsData = statsRes as {
-            data: Array<{
-              ver: string;
-              total_sessions: number;
-              total_crashes: number;
-              update_failures: number;
-              update_successes: number;
-            }>;
-          };
-          const devicesData = devicesRes as {
-            data: Array<{ ver: string; active_devices: number }>;
-          };
-          const printStatsData = printStatsRes as {
-            data: Array<{ ver: string; print_successes: number; print_total: number }>;
-          };
-
-          // Build device count lookup
-          const deviceMap = new Map<string, number>();
-          for (const row of devicesData.data ?? []) {
-            deviceMap.set(row.ver, row.active_devices);
+          let versions: string[];
+          if (versionsParam === null) {
+            const topRes = (await executeQuery(queryConfig, topVersionsQuery(days, filters))) as {
+              data?: Array<{ ver: string }>;
+            };
+            versions = (topRes.data ?? []).map((r) => String(r.ver));
+            if (versions.length === 0) {
+              return json({ versions: [], adoption: [], not_applicable: notApplicableFor(RELEASE_BLOCKS, filters) });
+            }
+          } else {
+            versions = versionsParam.split(",").map((v) => v.trim()).filter(Boolean);
+            if (versions.length === 0 || versions.length > 20) {
+              return json({ error: "Provide 1-20 comma-separated versions" }, 400);
+            }
           }
 
-          // Build print stats lookup
-          const printMap = new Map<string, { successes: number; total: number }>();
-          for (const row of printStatsData.data ?? []) {
-            printMap.set(row.ver, { successes: row.print_successes, total: row.print_total });
-          }
+          const [statsRes, devicesRes, printStatsRes, crashingRes, frameRes, rssRes, adoptionRes] =
+            await Promise.all(releaseScorecardQueries(versions, days, filters).map((q) => executeQuery(queryConfig, q)));
+
+          const not_applicable = notApplicableFor(RELEASE_BLOCKS, filters);
+          const byVersion = (res: unknown) => new Map(rowsOf(res).map((r) => [String(r.ver), r]));
+          const deviceMap = byVersion(devicesRes);
+          const printMap = byVersion(printStatsRes);
+          const crashingMap = byVersion(crashingRes);
+          const frameMap = byVersion(frameRes);
+          const rssMap = byVersion(rssRes);
+          const nullable = (v: unknown): number | null => (v === undefined || v === null ? null : num(v));
 
           return json({
-            versions: (statsData.data ?? []).map((r) => {
-              const prints = printMap.get(r.ver) ?? { successes: 0, total: 0 };
+            versions: rowsOf(statsRes).map((r) => {
+              const ver = String(r.ver);
+              const prints = printMap.get(ver);
+              const active = num(deviceMap.get(ver)?.active_devices);
+              const counts = {
+                sessions: num(r.sessions),
+                crashes: num(r.crashes),
+                session_devices: active,
+                crash_devices: num(crashingMap.get(ver)?.crashing_devices),
+                update_failures: num(r.update_failures),
+                update_successes: num(r.update_successes),
+                print_successes: num(prints?.print_successes),
+                print_total: num(prints?.print_total),
+              };
+              const rates = releaseRates(counts, not_applicable.crashes === null);
               return {
-                version: r.ver,
-                active_devices: deviceMap.get(r.ver) ?? 0,
-                crash_rate: r.total_sessions > 0 ? r.total_crashes / r.total_sessions : 0,
-                print_success_rate: prints.total > 0 ? prints.successes / prints.total : null,
-                total_sessions: r.total_sessions,
-                total_crashes: r.total_crashes,
+                version: ver,
+                active_devices: active,
+                crash_rate: rates.crash_rate,
+                crash_free_devices: rates.crash_free,
+                p95_frame_ms: nullable(frameMap.get(ver)?.p95_frame_ms),
+                p95_rss_kb: nullable(rssMap.get(ver)?.p95_rss_kb),
+                print_success_rate: rates.print_success,
+                total_sessions: counts.sessions,
+                total_crashes: counts.crashes,
                 // Self-update health for devices RUNNING this version. A version
-                // whose update_success_rate collapses is one that cannot upgrade
-                // itself — the helixscreen#993 signature.
-                update_failures: r.update_failures ?? 0,
-                update_successes: r.update_successes ?? 0,
-                update_success_rate:
-                  (r.update_successes ?? 0) + (r.update_failures ?? 0) > 0
-                    ? (r.update_successes ?? 0) /
-                      ((r.update_successes ?? 0) + (r.update_failures ?? 0))
-                    : null,
+                // whose update_failure_rate climbs is one that cannot upgrade
+                // itself (prestonbrown/helixscreen#993).
+                update_failures: counts.update_failures,
+                update_successes: counts.update_successes,
+                update_failure_rate: rates.update_failure_rate,
               };
             }),
+            adoption: rowsOf(adoptionRes).map((r) => ({
+              date: r.date,
+              version: r.ver,
+              devices: r.devices,
+            })),
+            not_applicable,
           });
+        }
+
+        // GET /v1/dashboard/fleet/retention
+        if (url.pathname === "/v1/dashboard/fleet/retention") {
+          const res = (await executeQuery(queryConfig, retentionQuery(filters))) as {
+            data?: Array<{ first_day: string; last_day: string }>;
+          };
+          return json({ cohorts: buildRetention(res.data ?? [], new Date().toISOString().slice(0, 10)) });
         }
 
         // GET /v1/dashboard/performance
         if (url.pathname === "/v1/dashboard/performance") {
           const queries = performanceQueries(days, filters);
-          const [timeRes, platRes, verRes, worstRes, fleetRes, highDropRes] =
+          const [timeRes, platRes, verRes, worstRes, fleetRes, highDropRes, platVerRes, panelByPlatRes, rssByPlatVerRes] =
             await Promise.all(queries.map((q) => executeQuery(queryConfig, q)));
 
           const timeData = timeRes as { data: Array<{ date: string; avg_p50: number; avg_p95: number; avg_p99: number }> };
@@ -1339,6 +1428,10 @@ export default {
           const worstData = worstRes as { data: Array<{ panel: string; times_worst: number; avg_p95_ms: number }> };
           const fleetData = fleetRes as { data: Array<{ fleet_p50: number; total_dropped: number; total_frames: number; total_devices: number }> };
           const highDropData = highDropRes as { data: Array<{ high_drop_devices: number }> };
+          const platVerData = platVerRes as { data: Array<{ platform: string; version: string; p95_frame_ms: number; devices: number }> };
+          const panelByPlatData = panelByPlatRes as { data: Array<{ platform: string; panel: string; times_worst: number; avg_p95_ms: number }> };
+          const rssByPlatVerData = rssByPlatVerRes as { data: Array<{ platform: string; version: string; avg_rss_kb: number }> };
+          const rssOf = new Map((rssByPlatVerData.data ?? []).map((r) => [`${r.platform}\u0000${r.version}`, r.avg_rss_kb]));
 
           const fleet = fleetData.data?.[0] ?? { fleet_p50: 0, total_dropped: 0, total_frames: 0, total_devices: 0 };
 
@@ -1359,6 +1452,16 @@ export default {
             })),
             jankiest_panels: (worstData.data ?? []).map(r => ({
               panel: r.panel, times_worst: r.times_worst, avg_p95_ms: Math.round(r.avg_p95_ms),
+            })),
+            by_platform_version: (platVerData.data ?? []).map(r => ({
+              platform: r.platform,
+              version: r.version,
+              p95_frame_ms: r.p95_frame_ms,
+              avg_rss_kb: rssOf.get(`${r.platform}\u0000${r.version}`) ?? null,
+              devices: r.devices,
+            })),
+            jankiest_by_platform: (panelByPlatData.data ?? []).map(r => ({
+              platform: r.platform, panel: r.panel, times_worst: r.times_worst, avg_p95_ms: Math.round(r.avg_p95_ms),
             })),
           });
         }
@@ -1418,6 +1521,44 @@ export default {
               devices_changed: r.devices_changed,
             })),
           });
+        }
+
+        // GET /v1/dashboard/health
+        if (url.pathname === "/v1/dashboard/health") {
+          // top_versions first: the per-release queries are restricted to its versions.
+          const topRes = (await executeQuery(queryConfig, healthQueries(filters).top_versions)) as {
+            data?: Array<{ ver: string }>;
+          };
+          const versions = (topRes.data ?? []).map((r) => String(r.ver));
+          const queries = healthQueries(filters, versions);
+          const rest = Object.keys(queries).filter((k) => k !== "top_versions") as HealthRowKey[];
+          const results = await Promise.all(rest.map((k) => executeQuery(queryConfig, queries[k])));
+          const rows = { top_versions: topRes.data ?? [] } as Record<HealthRowKey, unknown[]>;
+          rest.forEach((k, i) => {
+            rows[k] = (results[i] as { data?: unknown[] } | null)?.data ?? [];
+          });
+          return json(buildHealth(rows, new Date().toISOString().slice(0, 10), notApplicableFor(HEALTH_BLOCKS, filters)));
+        }
+
+        // GET /v1/dashboard/devices
+        if (url.pathname === "/v1/dashboard/devices") {
+          const [sessionsRes, totalRes, crashesRes, printsRes] = await Promise.all(
+            devicesQueries(days, filters).map((q) => executeQuery(queryConfig, q)),
+          );
+          return json(
+            buildDeviceList(sessionsRes, crashesRes, printsRes, totalRes, notApplicableFor(DEVICE_LIST_BLOCKS, filters)),
+          );
+        }
+
+        // GET /v1/dashboard/device/<64 hex id>
+        if (url.pathname.startsWith("/v1/dashboard/device/")) {
+          const id = url.pathname.slice("/v1/dashboard/device/".length);
+          if (!isDeviceId(id)) return json({ error: "invalid device id" }, 400);
+          const [rowsRes, versionsRes] = await Promise.all(
+            deviceQueries(id).map((q) => executeQuery(queryConfig, q)),
+          );
+          const page = buildDevicePage(id, rowsRes, versionsRes);
+          return page ? json(page) : json({ error: "device not found" }, 404);
         }
 
         return json({ error: "Not found" }, 404);

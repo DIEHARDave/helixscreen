@@ -736,3 +736,42 @@ export function col(kindName: string, field: string): string {
 export function hasCol(kindName: string, field: string): boolean {
   return findColumn(kindName, field) !== undefined;
 }
+
+/** One Analytics Engine row as the SQL API returns it: every slot plus timestamp and index1. */
+export type RawRow = Record<string, unknown>;
+
+/** The rows of one SQL API result; a missing or failed result has none. */
+export function rowsOf<T = RawRow>(res: unknown): T[] {
+  return (res as { data?: T[] } | null)?.data ?? [];
+}
+
+/** A cell read as a number; missing or non-numeric reads 0. */
+export const num = (v: unknown): number => Number(v ?? 0) || 0;
+
+/** A cell read as a string; missing reads "". */
+export const str = (v: unknown): string => String(v ?? "");
+
+/** The dashboard filters. Each one matches a schema field that differs per point kind (queries.ts). */
+export const FILTER_KEYS = ["platform", "version", "model", "board"] as const;
+export type FilterKey = (typeof FILTER_KEYS)[number];
+
+/**
+ * Per payload block, the active filter none of the block's point kinds carry,
+ * or null. A block with one reads "not reported per <filter>": its zeros are
+ * not measurements.
+ */
+export type NotApplicable<K extends string> = Record<K, FilterKey | null>;
+
+/**
+ * Every column of a kind read from its slot in a raw row, keyed by field name.
+ * Empty strings and zero doubles are kept; a missing slot reads as "" or 0.
+ */
+export function decodeRow(kindName: string, row: RawRow): Record<string, string | number> {
+  if (!hasKind(kindName)) throw new Error(`unknown point kind: ${kindName}`);
+  const out: Record<string, string | number> = {};
+  for (const c of POINT_KINDS[kindName].columns) {
+    const raw = row[`${c.type}${c.slot}`];
+    out[c.field] = c.type === "blob" ? String(raw ?? "") : Number(raw ?? 0) || 0;
+  }
+  return out;
+}

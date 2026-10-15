@@ -2,7 +2,19 @@
 // SQL query builders for Analytics Engine dashboard endpoints. Every column is
 // named through the schema table (col), never by position.
 
-import { EVENT_FANOUT, POINT_KINDS, col, hasCol, hasKind } from "./schema";
+import {
+  EVENT_FANOUT,
+  FILTER_KEYS,
+  MAX_SLOT,
+  POINT_KINDS,
+  col,
+  hasCol,
+  hasKind,
+  type FilterKey,
+  type NotApplicable,
+} from "./schema";
+import { isDeviceId } from "./devices";
+import type { HealthRowKey } from "./health";
 
 export interface QueryConfig {
   accountId: string;
@@ -62,8 +74,7 @@ export function wCountIf(cond: string, weight = SAMPLE_WEIGHT): string {
 
 // ---------- Filters ----------
 
-const FILTER_KEYS = ["platform", "version", "model", "board"] as const;
-export type FilterKey = (typeof FILTER_KEYS)[number];
+export type { FilterKey };
 
 /**
  * Update events carry two versions. The one a version filter, or a per-version
@@ -87,7 +98,8 @@ const FILTER_FIELD: Record<FilterKey, (kind: string) => string> = {
   board: () => "app_board",
 };
 
-function filterValues(raw?: string): string[] {
+/** The values one filter parameter names: split on commas, trimmed, sanitized, empties dropped. */
+export function filterValues(raw?: string): string[] {
   if (!raw) return [];
   return raw
     .split(",")
@@ -132,6 +144,23 @@ export function filterNotApplicable(kinds: string[], filters?: FilterParams): Fi
   return null;
 }
 
+/** The point kinds behind each payload block that a filter can leave unreported. */
+export const BLOCK_KINDS = {
+  crashes: ["crash"],
+  errors: ["error_encountered"],
+  prints: ["print_outcome"],
+  updates: ["update_failed", "update_success"],
+  performance: ["performance_snapshot", "memory_snapshot"],
+} as const satisfies Record<string, readonly string[]>;
+export type Block = keyof typeof BLOCK_KINDS;
+
+/** filterNotApplicable for each named block, as a payload's `not_applicable` field. */
+export function notApplicableFor<K extends Block>(blocks: readonly K[], filters?: FilterParams): NotApplicable<K> {
+  return Object.fromEntries(
+    blocks.map((b) => [b, filterNotApplicable([...BLOCK_KINDS[b]], filters)]),
+  ) as NotApplicable<K>;
+}
+
 /** True when the active filters name a field this kind does not have, so none of its rows can match. */
 export function excludedBy(kind: string, filters?: FilterParams): boolean {
   return filterFor(kind, filters) === EXCLUDED;
@@ -153,7 +182,7 @@ export function filterForKinds(kinds: string[], filters?: FilterParams): string 
 }
 
 /** Every point kind a device event writes, in table order. */
-const EVENT_KINDS: string[] = Object.keys(POINT_KINDS).filter((kind) =>
+export const EVENT_KINDS: string[] = Object.keys(POINT_KINDS).filter((kind) =>
   Object.values(EVENT_FANOUT).some((kinds) => kinds.includes(kind)),
 );
 
@@ -459,6 +488,8 @@ export function adoptionQueries(days: number, filters?: FilterParams): string[] 
     distribution("printer_model"),
     // Kinematics
     distribution("kinematics"),
+    // Boards
+    distribution("app_board"),
   ];
 }
 
@@ -487,6 +518,22 @@ export function printsQueries(days: number, filters?: FilterParams): string[] {
     ORDER BY count DESC`,
     // Average duration
     `SELECT ${wAvg(printOutcome("duration_sec"))} as avg_duration_sec FROM ${dataset} WHERE timestamp >= NOW() - INTERVAL '${days}' DAY AND index1 = 'print_outcome'${f}`,
+    // print_outcome carries no printer_model: the handler joins this per-device
+    // model onto the per-device outcomes below.
+    `SELECT ${session("device_id")} as device_id, argMax(${session("printer_model")}, timestamp) as model
+    FROM ${dataset}
+    WHERE ${inRange(days)} AND index1 = 'session'${filterFor("session", filters)}
+    GROUP BY device_id`,
+    // Outcomes per device
+    `SELECT ${printOutcome("device_id")} as device_id, ${success} as successes, ${wCount()} as total
+    FROM ${dataset}
+    WHERE ${inRange(days)} AND index1 = 'print_outcome'${f}
+    GROUP BY device_id`,
+    // Outcomes per version
+    `SELECT ${printOutcome("app_version")} as version, ${success} as successes, ${wCount()} as total
+    FROM ${dataset}
+    WHERE ${inRange(days)} AND index1 = 'print_outcome' AND ${printOutcome("app_version")} != ''${f}
+    GROUP BY version`,
   ];
 }
 
@@ -665,8 +712,7 @@ export function hardwareQueries(days: number, filters?: FilterParams): string[] 
   const dataset = "helixscreen_telemetry";
   const f = filterFor("hardware_profile", filters);
   const dev = hardware("device_id");
-  const distribution = (field: string, limit = "") =>
-    distinctDevicesBy("hardware_profile", field, days, filters, limit);
+  const distribution = (field: string) => distinctDevicesBy("hardware_profile", field, days, filters);
   const capBits = Array.from(
     { length: 13 },
     (_, i) => `      ${wSum(`toUInt32(bitAnd(toUInt32(caps), ${1 << i}) > 0)`, DEVICE_WEIGHT)} as cap_${i},`,
@@ -675,12 +721,12 @@ export function hardwareQueries(days: number, filters?: FilterParams): string[] 
   const sensors = hardware("sensor_count");
   const macros = hardware("macro_count");
   return [
-    // Printer models (top 20, deduplicated by device_id)
-    distribution("printer_model", " LIMIT 20"),
+    // Printer models (deduplicated by device_id)
+    distribution("printer_model"),
     // Kinematics (deduplicated by device_id)
     distribution("kinematics"),
     // MCU chips (deduplicated by device_id)
-    distribution("mcu_chip", " LIMIT 20"),
+    distribution("mcu_chip"),
     // Capabilities bitmask — deduplicate: subquery gets latest row per device, outer query aggregates
     `SELECT
 ${capBits}
@@ -855,6 +901,10 @@ export function stabilityQueries(days: number, filters?: FilterParams): string[]
     `SELECT count(DISTINCT ${errorEnc("device_id")}) as affected_devices FROM ${dataset} WHERE timestamp >= NOW() - INTERVAL '${days}' DAY AND ${display}${errF}`,
     // 15: Devices on a delta-era client
     deltaEraDevices(ENDPOINT_DELTA_KINDS.stability, days, filters),
+    // 16: Crash clusters over the range
+    crashClustersSql([0, days], filters),
+    // 17: Error codes per version over the range
+    errorCodesSql([0, days], filters, true),
   ];
 }
 
@@ -941,6 +991,33 @@ export function performanceQueries(days: number, filters?: FilterParams): string
       GROUP BY ${dev}
       HAVING total > 0 AND dropped / total > 0.05
     )`,
+    // 6: Frame time p95 per platform and version
+    `SELECT
+      ${perf("app_platform")} as platform,
+      ${perf("app_version")} as version,
+      ${wAvg(perf("frame_time_p95_ms"))} as p95_frame_ms,
+      count(DISTINCT ${dev}) as devices
+    FROM ${dataset}
+    WHERE timestamp >= NOW() - INTERVAL '${days}' DAY AND index1 = 'performance_snapshot' AND ${perf("app_platform")} != '' AND ${perf("app_version")} != ''${f}
+    GROUP BY platform, version`,
+    // 7: Worst panel per platform
+    `SELECT
+      ${perf("app_platform")} as platform,
+      ${perf("worst_panel")} as panel,
+      ${wCount()} as times_worst,
+      ${wAvg(perf("worst_panel_p95_ms"))} as avg_p95_ms
+    FROM ${dataset}
+    WHERE timestamp >= NOW() - INTERVAL '${days}' DAY AND index1 = 'performance_snapshot' AND ${perf("app_platform")} != '' AND ${perf("worst_panel")} != ''${f}
+    GROUP BY platform, panel
+    ORDER BY times_worst DESC`,
+    // 8: Average RSS per platform and version
+    `SELECT
+      ${memSnap("app_platform")} as platform,
+      ${memSnap("app_version")} as version,
+      ${wAvg(memSnap("rss_kb"))} as avg_rss_kb
+    FROM ${dataset}
+    WHERE timestamp >= NOW() - INTERVAL '${days}' DAY AND index1 = 'memory_snapshot' AND ${memSnap("app_platform")} != '' AND ${memSnap("app_version")} != ''${filterFor("memory_snapshot", filters)}
+    GROUP BY platform, version`,
   ];
 }
 
@@ -1016,45 +1093,299 @@ export function uxInsightsQueries(days: number, filters?: FilterParams): string[
   ];
 }
 
+/**
+ * "<column> IN ('a', 'b')" over the sanitized versions (a leading 'v' is
+ * stripped; a version that sanitizes to nothing is dropped), or SQL_FALSE
+ * when none remain.
+ */
+export function versionInClause(column: string, versions: string[]): string {
+  const clean = versions.map((v) => sanitizeFilterValue(v.trim().replace(/^v/, ""))).filter(Boolean);
+  return clean.length > 0 ? `${column} IN (${clean.map((v) => `'${v}'`).join(", ")})` : SQL_FALSE;
+}
+
 const RELEASE_KINDS = ["session", "crash", "update_failed", "update_success"];
 
-export function releasesQueries(versions: string[]): string[] {
-  const dataset = "helixscreen_telemetry";
-  // Strip a 'v' prefix for matching; a version that sanitizes to nothing is dropped.
-  const clean = versions.map((v) => sanitizeFilterValue(v.trim().replace(/^v/, ""))).filter(Boolean);
-  const inVersions = (column: string) =>
-    clean.length > 0 ? `${column} IN (${clean.map((v) => `'${v}'`).join(", ")})` : SQL_FALSE;
-  // Per-version stats group every kind by the version the device was RUNNING:
-  // for update_failed that is from_version, because keying on the target
-  // would bucket every failure under the newest release and hide which
-  // deployed versions are broken (prestonbrown/helixscreen#993).
+/** Versions shown when a release query names none. */
+const SCORECARD_TOP_VERSIONS = 8;
+
+/** The most-installed versions among session devices in the last `days` days. */
+export function topVersionsQuery(days: number, filters?: FilterParams, limit = SCORECARD_TOP_VERSIONS): string {
+  return `SELECT ${session("app_version")} as ver, count(DISTINCT ${session("device_id")}) as devices
+    FROM ${DATASET}
+    WHERE ${inRange(days)} AND index1 = 'session' AND ${session("app_version")} != ''${filterFor("session", filters)}
+    GROUP BY ver
+    ORDER BY devices DESC
+    LIMIT ${limit}`;
+}
+
+/**
+ * Sessions, crashes and self-update outcomes per version in the window `when`
+ * (a timestamp predicate), as rows { ver, sessions, crashes, update_failures,
+ * update_successes }. Every kind groups by the version the device was RUNNING:
+ * for update_failed that is from_version, because keying on the target would
+ * bucket every failure under the newest release and hide which deployed
+ * versions are broken (prestonbrown/helixscreen#993).
+ */
+export function releaseStatsSql(when: string, versions: string[], filters?: FilterParams): string {
   const running = sharedCol(RELEASE_KINDS, runningVersionField);
   const kindList = RELEASE_KINDS.map((k) => `'${k}'`).join(", ");
-  return [
-    // Per-version stats: sessions, crashes, self-update outcomes.
-    `SELECT
+  const perKind = RELEASE_KINDS.map((k) => `(index1 = '${k}'${filterFor(k, filters)})`).join(" OR ");
+  return `SELECT
       ${running} as ver,
-      ${wCountIf("index1 = 'session'")} as total_sessions,
-      ${wCountIf("index1 = 'crash'")} as total_crashes,
+      ${wCountIf("index1 = 'session'")} as sessions,
+      ${wCountIf("index1 = 'crash'")} as crashes,
       ${wCountIf("index1 = 'update_failed'")} as update_failures,
       ${wCountIf("index1 = 'update_success'")} as update_successes
-    FROM ${dataset}
-    WHERE index1 IN (${kindList}) AND ${inVersions(running)}
-    GROUP BY ver`,
-    // Per-version active devices (count distinct requires separate query)
-    `SELECT
-      ${session("app_version")} as ver,
-      count(DISTINCT ${session("device_id")}) as active_devices
-    FROM ${dataset}
-    WHERE index1 = 'session' AND ${inVersions(session("app_version"))}
-    GROUP BY ver`,
-    // Per-version print stats
-    `SELECT
+    FROM ${DATASET}
+    WHERE ${when} AND index1 IN (${kindList}) AND ${versionInClause(running, versions)} AND (${perKind})
+    GROUP BY ver`;
+}
+
+/** Print outcomes per version in the window `when`, as rows { ver, print_successes, print_total }. */
+export function releasePrintsSql(when: string, versions: string[], filters?: FilterParams): string {
+  return `SELECT
       ${printOutcome("app_version")} as ver,
       ${wCountIf(`${printOutcome("outcome")} = 'success'`)} as print_successes,
       ${wCount()} as print_total
-    FROM ${dataset}
-    WHERE index1 = 'print_outcome' AND ${inVersions(printOutcome("app_version"))}
+    FROM ${DATASET}
+    WHERE ${when} AND index1 = 'print_outcome' AND ${versionInClause(printOutcome("app_version"), versions)}${filterFor("print_outcome", filters)}
+    GROUP BY ver`;
+}
+
+/** Per-version release scorecard over the last `days` days. */
+export function releaseScorecardQueries(versions: string[], days: number, filters?: FilterParams): string[] {
+  const inVersions = (column: string) => versionInClause(column, versions);
+  const sessF = filterFor("session", filters);
+  return [
+    // 0: sessions, crashes, self-update outcomes
+    releaseStatsSql(inRange(days), versions, filters),
+    // 1: active devices
+    `SELECT
+      ${session("app_version")} as ver,
+      count(DISTINCT ${session("device_id")}) as active_devices
+    FROM ${DATASET}
+    WHERE ${inRange(days)} AND index1 = 'session' AND ${inVersions(session("app_version"))}${sessF}
     GROUP BY ver`,
+    // 2: print outcomes
+    releasePrintsSql(inRange(days), versions, filters),
+    // 3: devices that crashed
+    `SELECT
+      ${crash("app_version")} as ver,
+      count(DISTINCT ${crash("device_id")}) as crashing_devices
+    FROM ${DATASET}
+    WHERE ${inRange(days)} AND index1 = 'crash' AND ${inVersions(crash("app_version"))}${filterFor("crash", filters)}
+    GROUP BY ver`,
+    // 4: frame time p95
+    `SELECT
+      ${perf("app_version")} as ver,
+      ${wAvg(perf("frame_time_p95_ms"))} as p95_frame_ms
+    FROM ${DATASET}
+    WHERE ${inRange(days)} AND index1 = 'performance_snapshot' AND ${inVersions(perf("app_version"))}${filterFor("performance_snapshot", filters)}
+    GROUP BY ver`,
+    // 5: RSS p95
+    `SELECT
+      ${memSnap("app_version")} as ver,
+      quantileExactWeighted(0.95)(${memSnap("rss_kb")}, ${SAMPLE_WEIGHT}) as p95_rss_kb
+    FROM ${DATASET}
+    WHERE ${inRange(days)} AND index1 = 'memory_snapshot' AND ${inVersions(memSnap("app_version"))}${filterFor("memory_snapshot", filters)}
+    GROUP BY ver`,
+    // 6: adoption curve, devices per day and version
+    `SELECT
+      toDate(timestamp) as date,
+      ${session("app_version")} as ver,
+      count(DISTINCT ${session("device_id")}) as devices
+    FROM ${DATASET}
+    WHERE ${inRange(days)} AND index1 = 'session' AND ${inVersions(session("app_version"))}${sessF}
+    GROUP BY date, ver
+    ORDER BY date`,
   ];
+}
+
+/** First and last session day per device, for retention cohorts. */
+export function retentionQuery(filters?: FilterParams): string {
+  return `SELECT
+      min(toDate(timestamp)) as first_day,
+      max(toDate(timestamp)) as last_day
+    FROM ${DATASET}
+    WHERE ${inRange(DEVICE_WINDOW_DAYS)} AND index1 = 'session'${filterFor("session", filters)}
+    GROUP BY ${session("device_id")}`;
+}
+
+// ---------- Devices ----------
+
+/** Devices listed per page of the fleet table. */
+const DEVICE_LIST_LIMIT = 200;
+
+/** How far back a device page reads; Analytics Engine keeps 90 days. */
+const DEVICE_WINDOW_DAYS = 90;
+
+/** Newest rows kept for one device's timeline. */
+const DEVICE_TIMELINE_LIMIT = 500;
+
+export function devicesQueries(days: number, filters?: FilterParams): string[] {
+  const sessF = filterFor("session", filters);
+  const sessionWhere = `${inRange(days)} AND index1 = 'session'${sessF}`;
+  return [
+    `SELECT
+      ${session("device_id")} as device_id,
+      max(timestamp) as last_seen,
+      argMax(${session("app_version")}, timestamp) as version,
+      argMax(${session("app_platform")}, timestamp) as platform,
+      argMax(${session("app_board")}, timestamp) as board,
+      argMax(${session("printer_model")}, timestamp) as model,
+      ${wCount()} as sessions
+    FROM ${DATASET}
+    WHERE ${sessionWhere}
+    GROUP BY device_id
+    ORDER BY last_seen DESC
+    LIMIT ${DEVICE_LIST_LIMIT}`,
+    `SELECT count(DISTINCT ${session("device_id")}) as total FROM ${DATASET} WHERE ${sessionWhere}`,
+    `SELECT ${crash("device_id")} as device_id, ${wCount()} as crashes
+    FROM ${DATASET}
+    WHERE ${inRange(days)} AND index1 = 'crash'${filterFor("crash", filters)}
+    GROUP BY device_id`,
+    `SELECT ${printOutcome("device_id")} as device_id, ${wCount()} as prints
+    FROM ${DATASET}
+    WHERE ${inRange(days)} AND index1 = 'print_outcome'${filterFor("print_outcome", filters)}
+    GROUP BY device_id`,
+  ];
+}
+
+export function deviceQueries(id: string): string[] {
+  if (!isDeviceId(id)) throw new Error("invalid device id");
+  // Every slot is selected so decodeRow can read any kind; every event kind keeps
+  // device_id in the first blob slot (asserted in the tests), which the filter names directly.
+  const slots = Array.from({ length: MAX_SLOT }, (_, i) => `blob${i + 1}`)
+    .concat(Array.from({ length: MAX_SLOT }, (_, i) => `double${i + 1}`))
+    .join(", ");
+  const kinds = EVENT_KINDS.map((k) => `'${k}'`).join(", ");
+  return [
+    `SELECT timestamp, index1, ${slots}
+    FROM ${DATASET}
+    WHERE ${inRange(DEVICE_WINDOW_DAYS)} AND index1 IN (${kinds}) AND ${DEVICE_ID} = '${id}'
+    ORDER BY timestamp DESC
+    LIMIT ${DEVICE_TIMELINE_LIMIT}`,
+    `SELECT ${session("app_version")} as version, min(timestamp) as first_seen, max(timestamp) as last_seen
+    FROM ${DATASET}
+    WHERE ${inRange(DEVICE_WINDOW_DAYS)} AND index1 = 'session' AND ${session("device_id")} = '${id}'
+    GROUP BY version`,
+  ];
+}
+
+// ---------- Health ----------
+
+/** Health windows as [newerDaysAgo, olderDaysAgo]; baseline holds the 28 days before cur and contains prev. */
+export const HEALTH_WINDOWS = { cur: [0, 7], prev: [7, 14], baseline: [7, 35] } as const;
+
+export type HealthQueryKey = HealthRowKey;
+
+/** The timestamp predicate for one [newerDaysAgo, olderDaysAgo] window. */
+export function windowClause(w: readonly [number, number]): string {
+  const [newer, older] = w;
+  const from = `timestamp >= NOW() - INTERVAL '${older}' DAY`;
+  return newer === 0 ? from : `${from} AND timestamp < NOW() - INTERVAL '${newer}' DAY`;
+}
+
+/** Versions shown on the Health tab. */
+const HEALTH_TOP_VERSIONS = 8;
+
+/** Days the Health tab's top_versions ranks over: the current window. */
+const HEALTH_WINDOW_DAYS = HEALTH_WINDOWS.cur[1];
+
+/** Complete days read for the data-health block: today's partial day, the latest day, and the 7 before it. */
+const HEALTH_KIND_DAYS = 9;
+
+/**
+ * Crashes grouped by (signal, fault code, version, board) in window `w`:
+ * sample-weighted count and distinct devices per cluster, as rows
+ * { sig, fault, ver, board, count, devices }.
+ */
+export function crashClustersSql(w: readonly [number, number], filters?: FilterParams): string {
+  return `SELECT
+      ${crash("signal_name")} as sig,
+      ${crash("fault_code_name")} as fault,
+      ${crash("app_version")} as ver,
+      ${crash("app_board")} as board,
+      ${wCount()} as count,
+      count(DISTINCT ${crash("device_id")}) as devices
+    FROM ${DATASET}
+    WHERE ${windowClause(w)} AND index1 = 'crash'${filterFor("crash", filters)}
+    GROUP BY sig, fault, ver, board`;
+}
+
+/**
+ * Error reports grouped by (category, code), and by version too when
+ * `byVersion` is set, in window `w`: sample-weighted count and distinct
+ * devices, as rows { category, code, [version,] count, devices }.
+ */
+export function errorCodesSql(w: readonly [number, number], filters?: FilterParams, byVersion = false): string {
+  const version = byVersion ? `\n      ${errorEnc("app_version")} as version,` : "";
+  return `SELECT
+      ${errorEnc("category")} as category,
+      ${errorEnc("code")} as code,${version}
+      ${wCount()} as count,
+      count(DISTINCT ${errorEnc("device_id")}) as devices
+    FROM ${DATASET}
+    WHERE ${windowClause(w)} AND index1 = 'error_encountered'${filterFor("error_encountered", filters)}
+    GROUP BY category, code${byVersion ? ", version" : ""}`;
+}
+
+/**
+ * Every Health tab query. `versions` restricts the per-release queries and
+ * comes from running `top_versions` first; filters apply per kind, while
+ * `cdn_latest` and `kind_days` ignore them.
+ */
+export function healthQueries(filters?: FilterParams, versions: string[] = []): Record<HealthQueryKey, string> {
+  const inVersions = (column: string) => versionInClause(column, versions);
+  const sessF = filterFor("session", filters);
+  const crashF = filterFor("crash", filters);
+  const crashSession = sharedCol(["session", "crash"], () => "app_version");
+  const crashSessionDevice = sharedCol(["session", "crash"], () => "device_id");
+  const crashSessionKinds = `index1 IN ('session', 'crash')`;
+  const crashSessionFilter = `((index1 = 'session'${sessF}) OR (index1 = 'crash'${crashF}))`;
+
+  const actives = (w: readonly [number, number]) =>
+    `SELECT count(DISTINCT ${session("device_id")}) as actives FROM ${DATASET} WHERE ${windowClause(w)} AND index1 = 'session'${sessF}`;
+  const release = (w: readonly [number, number]) => releaseStatsSql(windowClause(w), versions, filters);
+  const releaseDevices = (w: readonly [number, number]) =>
+    `SELECT
+      ${crashSession} as ver,
+      index1 as event,
+      count(DISTINCT ${crashSessionDevice}) as devices
+    FROM ${DATASET}
+    WHERE ${windowClause(w)} AND ${crashSessionKinds} AND ${inVersions(crashSession)} AND ${crashSessionFilter}
+    GROUP BY ver, event`;
+  const prints = (w: readonly [number, number]) => releasePrintsSql(windowClause(w), versions, filters);
+  const errors = (w: readonly [number, number]) => errorCodesSql(w, filters);
+  const crashes = (w: readonly [number, number]) => crashClustersSql(w, filters);
+
+  const { cur, prev, baseline } = HEALTH_WINDOWS;
+  return {
+    actives_cur: actives(cur),
+    actives_prev: actives(prev),
+    top_versions: topVersionsQuery(HEALTH_WINDOW_DAYS, filters, HEALTH_TOP_VERSIONS),
+    release_cur: release(cur),
+    release_prev: release(prev),
+    release_devices_cur: releaseDevices(cur),
+    release_devices_prev: releaseDevices(prev),
+    prints_cur: prints(cur),
+    prints_prev: prints(prev),
+    errors_cur: errors(cur),
+    errors_prev: errors(prev),
+    errors_baseline: errors(baseline),
+    crashes_cur: crashes(cur),
+    crashes_prev: crashes(prev),
+    // The newest daily row; the window is wider than a day because the row's
+    // timestamp is the snapshot time, after the day it describes.
+    cdn_latest: `SELECT ${cdnFleet("date")} as date, max(${cdnFleet("sources")}) as sources
+    FROM ${DATASET}
+    WHERE ${inRange(HEALTH_KIND_DAYS)} AND index1 = 'cdn_fleet_daily' AND ${cdnFleet("channel")} = 'stable'
+    GROUP BY date
+    ORDER BY date DESC
+    LIMIT 1`,
+    kind_days: `SELECT toDate(timestamp) as day, index1 as event, ${wCount()} as count
+    FROM ${DATASET}
+    WHERE ${inRange(HEALTH_KIND_DAYS)} AND index1 != 'cdn_fleet_daily'
+    GROUP BY day, event`,
+  };
 }
