@@ -124,9 +124,9 @@ The built-in catalog (gate subjects from the def table; "-" means always availab
 | `camera` | `CameraWidget`, `HELIX_HAS_CAMERA` builds only | - |
 | `notifications` | `TileWidget` (sizing only) | - |
 
-That catalog, rendered: the stock grid a fresh mock instance builds from the [`assets/config/default_layout.json`](../../../assets/config/default_layout.json) anchors, with the print-library and status tiles at the top and everything else auto-placed below:
+That catalog, rendered: the stock grid a fresh mock instance resolves from the [`assets/config/default_layout.json`](../../../assets/config/default_layout.json) table at 800x480 (see [LAYOUT_SYSTEM.md](../LAYOUT_SYSTEM.md)):
 
-<img src="../../images/screenshot-home-panel.png" alt="Home panel grid: print library card and status card (nozzle temp, fan rows, LED strip, notifications) on a dark theme with a left nav bar" width="800"/>
+<img src="../../images/screenshot-home-panel.png" alt="Home panel grid: printer image with light bulb chip, nozzle and bed temperatures, fans, notifications corner, AMS spools, temperature graph and print status card on a dark theme with a left nav bar" width="800"/>
 
 ### populate_widgets(): from saved layout to attached grid
 
