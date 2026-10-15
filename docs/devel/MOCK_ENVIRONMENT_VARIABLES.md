@@ -659,8 +659,12 @@ timed cycle.
 | **File** | `src/printer/ams_backend.cpp` |
 
 ```bash
-HELIX_MOCK_DRYER_HUMIDITY_TARGET=1 ./build/bin/helix-screen --test --ams-environment
+HELIX_MOCK_DRYER=1 HELIX_MOCK_DRYER_HUMIDITY_TARGET=1 ./build/bin/helix-screen --test
 ```
+
+Reach the field from the AMS panel's environment indicator (`ctl demo ams`, then
+`ctl click env_indicator`). Blank, it reads **Auto**: no target is sent and the
+printer's own default applies.
 
 ### `HELIX_MOCK_DRYING`
 

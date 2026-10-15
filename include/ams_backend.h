@@ -2307,7 +2307,7 @@ class AmsBackend {
      * The cycle runs at most @p duration_min and ends sooner once the box's relative
      * humidity reads at or below @p humidity_pct. Only a backend whose
      * get_dryer_info(unit).supports_humidity_target is true implements this; callers
-     * with no target use start_drying().
+     * with no target use start_drying(), which leaves any target to the dryer's own default.
      *
      * @param humidity_pct Target relative humidity, % (positive)
      */

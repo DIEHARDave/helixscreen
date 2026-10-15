@@ -8,6 +8,7 @@
  */
 
 #include "ui_ams_environment_overlay.h"
+#include "ui_nav_manager.h"
 #include "ui_update_queue.h"
 #include "ui_utils.h"
 
@@ -72,7 +73,7 @@ EnvironmentZone dryer_zone(const AmsBackend& backend) {
     return zone;
 }
 
-lv_obj_t* find(const char* name) {
+lv_obj_t* find_widget(const char* name) {
     lv_obj_t* obj = lv_obj_find_by_name(lv_screen_active(), name);
     REQUIRE(obj != nullptr);
     return obj;
@@ -94,7 +95,7 @@ RecordingDryerMock* show_overlay_with(bool humidity_target) {
 }
 
 void press_start() {
-    lv_obj_send_event(find("btn_start_stop"), LV_EVENT_CLICKED, nullptr);
+    lv_obj_send_event(find_widget("btn_start_stop"), LV_EVENT_CLICKED, nullptr);
 }
 
 } // namespace
@@ -135,11 +136,11 @@ TEST_CASE_METHOD(XMLTestFixture, "The humidity target field is hidden for a drye
     auto* backend = show_overlay_with(false);
 
     CHECK(subject_int("ams_env_overlay_humidity_target_visible") == 0);
-    CHECK(lv_obj_has_flag(find("humidity_target_column"), LV_OBJ_FLAG_HIDDEN));
-    CHECK_FALSE(lv_obj_has_flag(find("duration_input"), LV_OBJ_FLAG_HIDDEN));
+    CHECK(lv_obj_has_flag(find_widget("humidity_target_column"), LV_OBJ_FLAG_HIDDEN));
+    CHECK_FALSE(lv_obj_has_flag(find_widget("duration_input"), LV_OBJ_FLAG_HIDDEN));
 
     // Text left in the hidden field still sends the plain temp + time start.
-    lv_textarea_set_text(find("humidity_target_input"), "20");
+    lv_textarea_set_text(find_widget("humidity_target_input"), "20");
     press_start();
     REQUIRE(backend->starts.size() == 1);
     CHECK_FALSE(backend->starts[0].humidity_pct);
@@ -155,9 +156,9 @@ TEST_CASE_METHOD(XMLTestFixture,
     auto* backend = show_overlay_with(true);
 
     CHECK(subject_int("ams_env_overlay_humidity_target_visible") == 1);
-    CHECK_FALSE(lv_obj_has_flag(find("humidity_target_column"), LV_OBJ_FLAG_HIDDEN));
+    CHECK_FALSE(lv_obj_has_flag(find_widget("humidity_target_column"), LV_OBJ_FLAG_HIDDEN));
 
-    lv_obj_t* input = find("humidity_target_input");
+    lv_obj_t* input = find_widget("humidity_target_input");
     CHECK(std::string(lv_textarea_get_text(input)).empty());
 
     SECTION("blank sends the plain temp + time start") {
@@ -172,6 +173,30 @@ TEST_CASE_METHOD(XMLTestFixture,
         REQUIRE(backend->starts[0].humidity_pct);
         CHECK(*backend->starts[0].humidity_pct == 18.0f);
     }
+
+    reset_overlay_singleton();
+    AmsState::instance().set_backend(nullptr);
+}
+
+TEST_CASE_METHOD(XMLTestFixture, "A humidity target applies to one start, not the next open",
+                 "[ams][dryer][dryer_humidity][overlay]") {
+    reset_overlay_singleton();
+    auto* backend = show_overlay_with(true);
+
+    lv_obj_t* input = find_widget("humidity_target_input");
+    lv_textarea_set_text(input, "18");
+    NavigationManager::instance().go_back();
+    helix::ui::UpdateQueue::instance().drain();
+
+    get_ams_environment_overlay().show_zone(lv_screen_active(), {dryer_zone(*backend)}, 0, false);
+    helix::ui::UpdateQueue::instance().drain();
+
+    // The same widget, so a blank field is the reopen clearing it, not a rebuild.
+    REQUIRE(find_widget("humidity_target_input") == input);
+    CHECK(std::string(lv_textarea_get_text(input)).empty());
+    press_start();
+    REQUIRE(backend->starts.size() == 1);
+    CHECK_FALSE(backend->starts[0].humidity_pct);
 
     reset_overlay_singleton();
     AmsState::instance().set_backend(nullptr);

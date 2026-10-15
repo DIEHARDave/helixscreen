@@ -262,7 +262,8 @@ void AmsEnvironmentOverlay::restore_remembered_dryer_inputs() {
                  config->get<int>(config->df() + "ams/dryer_last_duration", 240));
         lv_textarea_set_text(duration_input_, buf);
     }
-    // Blank is the default: no humidity target unless one is asked for on this start.
+    // Blank leaves the target to the printer's own default; a chosen target applies to
+    // one start only.
     if (humidity_target_input_) {
         lv_textarea_set_text(humidity_target_input_, "");
     }
@@ -1001,7 +1002,8 @@ void AmsEnvironmentOverlay::handle_start_stop() {
                 if (text && text[0])
                     duration_min = atoi(text);
             }
-            // Blank, or a dryer that takes no target, is a plain temp + time cycle.
+            // Blank, or a dryer that takes no target, sends the plain temp + time command,
+            // and the printer applies its own default target, if it has one.
             float humidity_pct = 0.0f;
             if (humidity_target_input_) {
                 const char* text = lv_textarea_get_text(humidity_target_input_);

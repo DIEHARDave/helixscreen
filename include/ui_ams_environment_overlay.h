@@ -203,7 +203,7 @@ class AmsEnvironmentOverlay : public OverlayBase {
     lv_obj_t* preset_dropdown_ = nullptr;
     lv_obj_t* temp_input_ = nullptr;
     lv_obj_t* duration_input_ = nullptr;
-    lv_obj_t* humidity_target_input_ = nullptr; ///< Blank = no humidity target
+    lv_obj_t* humidity_target_input_ = nullptr; ///< Blank = the printer's default target
 
     // === Subjects (managed by SubjectManager) ===
 
