@@ -14,6 +14,7 @@ import {
   filterForKinds,
   adoptionQueries,
   releaseScorecardQueries,
+  releaseStatsSql,
   retentionQuery,
   topVersionsQuery,
   performanceQueries,
@@ -476,5 +477,13 @@ describe("constant predicates", () => {
         expect(sql, `healthQueries.${k} ${JSON.stringify(f)}`).not.toMatch(/AND 0\b|OR 0\b|AND 1\b(?! =)|\bWHERE 0\b/);
       }
     }
+  });
+});
+
+describe("release update failures", () => {
+  it("does not count an update deferred because a print is running", () => {
+    const sql = releaseStatsSql("timestamp >= NOW() - INTERVAL '7' DAY", ["1.0.4"]);
+    const reason = col("update_failed", "reason");
+    expect(sql).toContain(`sumIf(_sample_interval, index1 = 'update_failed' AND ${reason} != 'print_in_progress') as update_failures`);
   });
 });

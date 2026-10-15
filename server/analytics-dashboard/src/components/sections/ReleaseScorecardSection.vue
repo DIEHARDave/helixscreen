@@ -33,7 +33,9 @@
               {{ formatRate(ver.crash_rate) }}
               <DeltaTag :change="changeFromOlder(i, 'crash_rate', false)" />
             </td>
-            <td class="mono">{{ formatRate(ver.update_failure_rate) }}</td>
+            <td class="mono">
+              {{ formatRateOf(ver.update_failure_rate, ver.update_failures, ver.update_failures + ver.update_successes) }}
+            </td>
             <td class="mono" :class="successRateClass(ver.print_success_rate)">
               {{ formatRate(ver.print_success_rate) }}
               <DeltaTag :change="changeFromOlder(i, 'print_success_rate', true)" />
@@ -90,7 +92,7 @@ import { api } from '@/services/api'
 import type { ReleasesData } from '@/services/api'
 import { useFiltersStore } from '@/stores/filters'
 import { rowHint, rowLabel } from '@/utils/drill'
-import { formatMB, formatRate, ppChange, unreportedNote } from '@/utils/format'
+import { formatMB, formatRate, formatRateOf, ppChange, unreportedNote } from '@/utils/format'
 import { seriesColor } from '@/utils/series'
 import { versionChips, type Grouped } from '@/utils/versions'
 

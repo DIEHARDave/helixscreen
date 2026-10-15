@@ -157,7 +157,7 @@ Seven tabs, each built around one question. Health is the home tab.
 | Tab | Question it answers | Shows |
 |-----|---------------------|-------|
 | **Health** (`/`) | Is anything getting worse this week? | This week against last week: fleet size (opt-in actives and CDN sources), a scorecard delta per release, new and rising error codes, crash clusters, and a data-health line that flags a point kind whose newest day dropped under half its prior 7-day median |
-| **Releases** (`/releases`) | Is the newest release better than the one before it? | Scorecard per version (active devices, crash-free devices, crash rate, update failure rate, print success, p95 frame time, p95 RSS), the adoption curve, devices stuck on old versions. Opens on the newest eight versions with traffic in the range; the picker adds others, its older lines and betas collapsed to one chip as on the charts (a chip holding a shown version says how many) |
+| **Releases** (`/releases`) | Is the newest release better than the one before it? | Scorecard per version (active devices, crash-free devices, crash rate, update failure rate with its failed and attempted counts, print success, p95 frame time, p95 RSS), the adoption curve, devices stuck on old versions. Opens on the newest eight versions with traffic in the range; the picker adds others, its older lines and betas collapsed to one chip as on the charts (a chip holding a shown version says how many) |
 | **Stability** (`/stability`) | What crashes and errors, and where? | Crash clusters (signal, fault code, version, board), crash rate by version and platform, error codes by version, memory warnings by platform, connection stability, recent crashes, display anomalies |
 | **Performance** (`/performance`) | Is the UI fast enough on each platform? | Frame time p50 and p95 trend, drop rate by platform, p95 frame time and RSS per platform and version, jankiest panels per platform, RSS trend |
 | **Fleet** (`/fleet`) | Who runs it, on what? | Platforms, boards, printer models, kinematics, MCUs, AMS backends, host RAM, capabilities, CDN fleet, daily actives, weekly retention cohorts over 90 days |
@@ -214,6 +214,9 @@ Pure functions in `server/analytics-dashboard/src/utils/`, shared by every chart
 - **Every value is shown.** No top-N cut and no "Other" bucket; grouping controls length.
 - **Partial days.** Daily series drop the first day of the window and today.
 - **Percentages.** Every ratio goes through one formatter; a missing ratio reads `n/a`.
+  Update failure, whose denominators are small, shows its counts beside it (`100.0% (1/1)`).
+  It counts `update_failed` rows except reason `print_in_progress`, which is the updater
+  deferring while a print runs, over failures plus `update_success` rows.
 - **Chart height** follows the row count so every label stays legible.
 - **Captions.** Each chart states what it counts and over what window.
 

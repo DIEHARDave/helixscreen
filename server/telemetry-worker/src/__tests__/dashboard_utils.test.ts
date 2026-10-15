@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { groupVersionRates, groupVersions, olderLines, ungrouped, versionChips } from '../../../analytics-dashboard/src/utils/versions'
 import { planActivation, rowAction, rowHint, rowLabel, single } from '../../../analytics-dashboard/src/utils/drill'
 import { mergeOptions, rateAxis } from '../../../analytics-dashboard/src/utils/chart'
-import { emptyPlaceholder, notReportedPer, ppChange, rangeLabel, unreportedNote } from '../../../analytics-dashboard/src/utils/format'
+import { emptyPlaceholder, formatRateOf, notReportedPer, ppChange, rangeLabel, unreportedNote } from '../../../analytics-dashboard/src/utils/format'
 import { canonicalModelKey, canonicalModels, isFilterable } from '../../../analytics-dashboard/src/utils/models'
 import { LOW_COUNT_PRINTS, groupMaterialSets, isLowCount, materialSet } from '../../../analytics-dashboard/src/utils/materials'
 import { filterValues } from '../queries'
@@ -395,5 +395,20 @@ describe('low-count material sets', () => {
   it('dims a series color by giving it an alpha', () => {
     expect(dimmed('#3b82f6')).toBe('#3b82f659')
     expect(dimmed(seriesColor(1))).toBe(`${seriesColor(1)}59`)
+  })
+})
+
+describe('formatRateOf', () => {
+  it('shows the counts a rate rests on beside it', () => {
+    expect(formatRateOf(1, 1, 1)).toBe('100.0% (1/1)')
+    expect(formatRateOf(0.25, 1, 4)).toBe('25.0% (1/4)')
+    expect(formatRateOf(0.5, 1200, 2400)).toBe('50.0% (1,200/2,400)')
+  })
+  it('rounds weighted counts and reads n/a with no denominator', () => {
+    expect(formatRateOf(0.5, 1.6, 3.2)).toBe('50.0% (2/3)')
+    expect(formatRateOf(null, 0, 0)).toBe('n/a')
+  })
+  it('shows the rate alone when the payload carries no counts', () => {
+    expect(formatRateOf(0.5, undefined as unknown as number, NaN)).toBe('50.0%')
   })
 })

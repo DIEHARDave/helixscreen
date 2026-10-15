@@ -305,6 +305,7 @@ const printStart = colsOf("print_start_context");
 const perf = colsOf("performance_snapshot");
 const settingsChange = colsOf("settings_change");
 const cdnFleet = colsOf("cdn_fleet_daily");
+const updateFailed = colsOf("update_failed");
 
 const DATASET = "helixscreen_telemetry";
 
@@ -1114,6 +1115,13 @@ export function topVersionsQuery(days: number, filters?: FilterParams, limit = S
  * bucket every failure under the newest release and hide which deployed
  * versions are broken (prestonbrown/helixscreen#993).
  */
+/**
+ * The update_failed reason the updater sends when it defers an update because a
+ * print is running (src/system/update_checker.cpp). It is not a failure, so the
+ * release update failure count leaves it out.
+ */
+const UPDATE_DEFERRED_REASON = "print_in_progress";
+
 export function releaseStatsSql(when: string, versions: string[], filters?: FilterParams): string {
   const running = sharedCol(RELEASE_KINDS, runningVersionField);
   const kindList = RELEASE_KINDS.map((k) => `'${k}'`).join(", ");
@@ -1122,7 +1130,7 @@ export function releaseStatsSql(when: string, versions: string[], filters?: Filt
       ${running} as ver,
       ${wCountIf("index1 = 'session'")} as sessions,
       ${wCountIf("index1 = 'crash'")} as crashes,
-      ${wCountIf("index1 = 'update_failed'")} as update_failures,
+      ${wCountIf(`index1 = 'update_failed' AND ${updateFailed("reason")} != '${UPDATE_DEFERRED_REASON}'`)} as update_failures,
       ${wCountIf("index1 = 'update_success'")} as update_successes
     FROM ${DATASET}
     WHERE ${when} AND index1 IN (${kindList}) AND ${versionInClause(running, versions)} AND (${perKind})

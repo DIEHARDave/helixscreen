@@ -35,6 +35,9 @@ export interface ReleaseRates {
 
 export interface ReleaseWindow extends ReleaseRates {
   devices: number;
+  /** The counts update_failure_rate is computed from. */
+  update_failures: number;
+  update_successes: number;
 }
 
 /** The Health payload blocks a filter can leave unreported. */
@@ -114,21 +117,22 @@ function releaseWindow(
   const pr = prints.find((r) => str(r.ver) === ver);
   const deviceCount = (event: string) =>
     num(devices.find((r) => str(r.ver) === ver && str(r.event) === event)?.devices);
-  const session_devices = deviceCount("session");
-  const rates = releaseRates(
-    {
-      sessions: num(st?.sessions),
-      crashes: num(st?.crashes),
-      session_devices,
-      crash_devices: deviceCount("crash"),
-      update_failures: num(st?.update_failures),
-      update_successes: num(st?.update_successes),
-      print_successes: num(pr?.print_successes),
-      print_total: num(pr?.print_total),
-    },
-    crashesReported,
-  );
-  return { devices: session_devices, ...rates };
+  const counts: ReleaseCounts = {
+    sessions: num(st?.sessions),
+    crashes: num(st?.crashes),
+    session_devices: deviceCount("session"),
+    crash_devices: deviceCount("crash"),
+    update_failures: num(st?.update_failures),
+    update_successes: num(st?.update_successes),
+    print_successes: num(pr?.print_successes),
+    print_total: num(pr?.print_total),
+  };
+  return {
+    devices: counts.session_devices,
+    update_failures: counts.update_failures,
+    update_successes: counts.update_successes,
+    ...releaseRates(counts, crashesReported),
+  };
 }
 
 const STATUS_ORDER = { new: 0, rising: 1, steady: 2 } as const;

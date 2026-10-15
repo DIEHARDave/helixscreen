@@ -69,6 +69,17 @@ export function formatRate(rate: number | null, digits = 1): string {
   return rate === null ? 'n/a' : `${(rate * 100).toFixed(digits)}%`
 }
 
+/**
+ * A rate with the counts it rests on, e.g. "100.0% (1/1)"; "n/a" when the
+ * rate is null, and the rate alone when a worker older than the dashboard
+ * sent no counts.
+ */
+export function formatRateOf(rate: number | null, numerator: number, denominator: number, digits = 1): string {
+  if (rate === null || !Number.isFinite(numerator) || !Number.isFinite(denominator)) return formatRate(rate, digits)
+  const n = (v: number) => Math.round(v).toLocaleString()
+  return `${formatRate(rate, digits)} (${n(numerator)}/${n(denominator)})`
+}
+
 /** A change smaller than this many percentage points reads as no change. */
 const PP_ZERO = 0.05
 
