@@ -115,6 +115,9 @@ TileVerdict TileSizing::decide(int width_px, int height_px) const {
     // A label with no translation (a device's own name) comes back unchanged.
     const char* label = content_.label.empty() ? "" : lv_tr(content_.label.c_str());
 
+    const int detail_h =
+        content_.detail_font ? line_px(theme_manager_get_font(content_.detail_font)) : 0;
+
     TileRungMetrics rungs[kTileRungs];
     for (int r = 0; r < kTileRungs; ++r) {
         const ui::TileFace icon_face = ui::tile_rung_face(
@@ -139,13 +142,17 @@ TileVerdict TileSizing::decide(int width_px, int height_px) const {
         rungs[r].value_h = line_px(value_face);
         rungs[r].label_w = ui::text_width(label, label_face);
         rungs[r].label_h = line_px(label_face);
+        rungs[r].detail_h = detail_h;
     }
 
     const int gap = theme_manager_get_spacing("space_xs");
 
     // The chrome between the tile's outer box and the box its content draws in
-    // (measure_content_chrome). Before the tree exists (the load path asks fits_at
-    // then) a gap on each side is the conservative stand-in.
+    // (measure_content_chrome): padding alone. decide_tile_layout prices a gap
+    // of `gap` between every pair of parts each candidate draws, which covers
+    // the flex gap the tile draws between them, so the verdict reads nothing the
+    // last verdict hid or showed. Before the tree exists (the load path asks
+    // fits_at then) a gap on each side is the conservative stand-in.
     // A gap on each side on top of whatever is measured. A measured-exact fit
     // renders as an overlap by a pixel or two, and the walk cannot see a
     // container that is not on the single-child chain, so the reservation is
@@ -156,7 +163,8 @@ TileVerdict TileSizing::decide(int width_px, int height_px) const {
     int chrome_w = 2 * gap;
     int chrome_h = 2 * gap;
     if (content_root_) {
-        const ContentChrome chrome = measure_content_chrome(content_root_, gap, row_inset);
+        const ContentChrome chrome =
+            measure_content_chrome(content_root_, gap, row_inset, BranchGap::None);
         chrome_w = chrome.w;
         chrome_h = chrome.h;
     }
@@ -233,13 +241,14 @@ void TileSizing::follow_label_setting() {
         return;
     }
     label_setting_observer_ = ui::observe<int>(
-        shown, this,
-        [](TileSizing* self, int /*shown*/) {
-            if (self->last_width_px_ >= 0) {
-                self->measure_and_publish(self->last_width_px_, self->last_height_px_);
-            }
-        },
+        shown, this, [](TileSizing* self, int /*shown*/) { self->remeasure(); },
         settings.get_subjects_lifetime());
+}
+
+void TileSizing::remeasure() {
+    if (last_width_px_ >= 0) {
+        measure_and_publish(last_width_px_, last_height_px_);
+    }
 }
 
 void TileSizing::measure_and_publish(int width_px, int height_px) {
