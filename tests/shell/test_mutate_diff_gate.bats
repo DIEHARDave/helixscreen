@@ -1014,7 +1014,8 @@ reset_to() {
     git -C "$WORK" add include/feature.h
     git -C "$WORK" commit -qm "add header"
     BASE=$(git -C "$WORK" rev-parse HEAD)
-    printf 'int g(int n);\nint h(int n);\n' > "$WORK/include/feature.h"
+    # An inline body, so the header hunk is behaviour and not declaration-only.
+    printf 'int g(int n);\ninline int h(int n) { return n; }\n' > "$WORK/include/feature.h"
     printf 'int f(int n) {\n    return n + 3;\n}\n' > "$WORK/src/feature.cpp"
 
     run mutate --list-only
@@ -1041,7 +1042,7 @@ int f(int n) {
 '
     run mutate
     [ "$status" -eq 0 ]
-    contains "include only" "$output"
+    contains "skipped (declaration-only): include" "$output"
     [[ "$output" != *"SURVIVED"* ]]
 }
 
@@ -1058,7 +1059,7 @@ int f(int n) {
 }
 '
     run mutate
-    [[ "$output" != *"include only"* ]]
+    [[ "$output" != *"declaration-only"* ]]
 }
 
 @test "a whitespace-only hunk is skipped" {
