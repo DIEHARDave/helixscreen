@@ -1281,7 +1281,8 @@ describe("Dashboard endpoints", () => {
         .mockResolvedValueOnce({ data: [{ name: "linux-arm", count: 100 }] })
         .mockResolvedValueOnce({ data: [{ name: "0.9.19", count: 80 }] })
         .mockResolvedValueOnce({ data: [{ name: "Voron 2.4", count: 50 }] })
-        .mockResolvedValueOnce({ data: [{ name: "corexy", count: 90 }] });
+        .mockResolvedValueOnce({ data: [{ name: "corexy", count: 90 }] })
+        .mockResolvedValueOnce({ data: [{ name: "btt-octopus", count: 12 }] });
 
       const res = await worker.fetch(
         dashboardRequest("/v1/dashboard/adoption?range=7d"),
@@ -1293,6 +1294,7 @@ describe("Dashboard endpoints", () => {
       expect(data.versions).toEqual([{ name: "0.9.19", count: 80 }]);
       expect(data.printer_models).toEqual([{ name: "Voron 2.4", count: 50 }]);
       expect(data.kinematics).toEqual([{ name: "corexy", count: 90 }]);
+      expect(data.boards).toEqual([{ name: "btt-octopus", count: 12 }]);
     });
   });
 

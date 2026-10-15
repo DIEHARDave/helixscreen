@@ -1,25 +1,47 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import type { LocationQuery, Router } from 'vue-router'
+import {
+  applyDrill,
+  buildDashQuery,
+  parseDashQuery,
+  type DashFilterKey,
+  type DashQuery
+} from '@/utils/urlState'
 
 export const useFiltersStore = defineStore('filters', () => {
   const range = ref('30d')
   const platform = ref<string[]>([])
   const version = ref<string[]>([])
   const model = ref<string[]>([])
+  const board = ref<string[]>([])
+  const expand = ref<string[]>([])
 
-  const queryParams = computed(() => {
-    const params: Record<string, string> = { range: range.value }
-    if (platform.value.length) params.platform = platform.value.join(',')
-    if (version.value.length) params.version = version.value.join(',')
-    if (model.value.length) params.model = model.value.join(',')
-    return params
-  })
+  const filterRefs: Record<DashFilterKey, typeof platform> = { platform, version, model, board }
 
-  const queryString = computed(() => {
-    const p = new URLSearchParams(queryParams.value)
-    return p.toString()
-  })
+  const state = computed<DashQuery>(() => ({
+    range: range.value,
+    filters: {
+      platform: platform.value,
+      version: version.value,
+      model: model.value,
+      board: board.value
+    },
+    expand: expand.value
+  }))
+
+  // The query sent to the worker: expansion state is view-only, so it stays out.
+  const queryParams = computed(() => buildDashQuery({ ...state.value, expand: [] }))
+
+  const queryString = computed(() => new URLSearchParams(queryParams.value).toString())
+
+  function apply(s: DashQuery) {
+    range.value = s.range
+    for (const key of Object.keys(filterRefs) as DashFilterKey[]) {
+      filterRefs[key].value = s.filters[key]
+    }
+    expand.value = s.expand
+  }
 
   function setRange(r: string) {
     range.value = r
@@ -37,23 +59,41 @@ export const useFiltersStore = defineStore('filters', () => {
     model.value = vals
   }
 
+  function setBoard(vals: string[]) {
+    board.value = vals
+  }
+
   function clearFilters() {
     platform.value = []
     version.value = []
     model.value = []
+    board.value = []
   }
 
   function syncFromRoute(query: LocationQuery) {
-    if (query.range && typeof query.range === 'string') {
-      range.value = query.range
-    }
-    platform.value = query.platform ? String(query.platform).split(',') : []
-    version.value = query.version ? String(query.version).split(',') : []
-    model.value = query.model ? String(query.model).split(',') : []
+    apply(parseDashQuery(query))
   }
 
-  function syncToRoute(router: Router) {
-    router.replace({ query: queryParams.value })
+  function syncToRoute(router: Router, mode: 'replace' | 'push' = 'replace') {
+    const query = buildDashQuery(state.value)
+    if (mode === 'push') return router.push({ query })
+    return router.replace({ query })
+  }
+
+  // Pushes, so the back button walks the drill path.
+  function drill(router: Router, key: DashFilterKey, members: string[]) {
+    apply(applyDrill(state.value, key, members))
+    return syncToRoute(router, 'push')
+  }
+
+  function toggleExpand(groupKey: string) {
+    const i = expand.value.indexOf(groupKey)
+    expand.value =
+      i >= 0 ? expand.value.filter((k) => k !== groupKey) : [...expand.value, groupKey]
+  }
+
+  function remove(key: DashFilterKey, value: string) {
+    filterRefs[key].value = filterRefs[key].value.filter((v) => v !== value)
   }
 
   return {
@@ -61,14 +101,20 @@ export const useFiltersStore = defineStore('filters', () => {
     platform,
     version,
     model,
+    board,
+    expand,
     queryParams,
     queryString,
     setRange,
     setPlatform,
     setVersion,
     setModel,
+    setBoard,
     clearFilters,
     syncFromRoute,
-    syncToRoute
+    syncToRoute,
+    drill,
+    toggleExpand,
+    remove
   }
 })

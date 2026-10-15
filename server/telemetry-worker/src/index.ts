@@ -531,7 +531,7 @@ export default {
         // GET /v1/dashboard/adoption
         if (url.pathname === "/v1/dashboard/adoption") {
           const queries = adoptionQueries(days, filters);
-          const [platformsRes, versionsRes, modelsRes, kinematicsRes] =
+          const [platformsRes, versionsRes, modelsRes, kinematicsRes, boardsRes] =
             await Promise.all(queries.map((q) => executeQuery(queryConfig, q)));
 
           const toList = (res: unknown) => {
@@ -544,6 +544,7 @@ export default {
             versions: toList(versionsRes),
             printer_models: toList(modelsRes),
             kinematics: toList(kinematicsRes),
+            boards: toList(boardsRes),
           });
         }
 

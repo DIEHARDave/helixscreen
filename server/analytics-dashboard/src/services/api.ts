@@ -42,6 +42,7 @@ export interface AdoptionData {
   versions: { name: string; count: number }[]
   printer_models: { name: string; count: number }[]
   kinematics: { name: string; count: number }[]
+  boards: { name: string; count: number }[]
 }
 
 export interface PrintsData {

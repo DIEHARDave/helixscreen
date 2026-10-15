@@ -459,6 +459,8 @@ export function adoptionQueries(days: number, filters?: FilterParams): string[] 
     distribution("printer_model"),
     // Kinematics
     distribution("kinematics"),
+    // Boards
+    distribution("app_board"),
   ];
 }
 
