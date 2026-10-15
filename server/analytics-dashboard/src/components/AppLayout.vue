@@ -21,17 +21,11 @@
           Releases
         </router-link>
         <div class="nav-separator"></div>
-        <router-link :to="navTo('/engagement')" class="nav-link" :class="{ active: route.path === '/engagement' }">
-          Engagement
-        </router-link>
         <router-link :to="navTo('/performance')" class="nav-link" :class="{ active: route.path === '/performance' }">
           Performance
         </router-link>
-        <router-link :to="navTo('/features')" class="nav-link" :class="{ active: route.path === '/features' }">
-          Features
-        </router-link>
-        <router-link :to="navTo('/ux')" class="nav-link" :class="{ active: route.path === '/ux' }">
-          UX Insights
+        <router-link :to="navTo('/usage')" class="nav-link" :class="{ active: route.path === '/usage' }">
+          Usage
         </router-link>
       </nav>
       <div class="sidebar-footer">

@@ -45,11 +45,12 @@ export const router = createRouter({
     },
     { path: '/memory', redirect: (to) => ({ path: legacyRedirect(to.path)!, query: to.query }) },
     {
-      path: '/engagement',
-      name: 'engagement',
-      component: () => import('@/views/EngagementView.vue'),
+      path: '/usage',
+      name: 'usage',
+      component: () => import('@/views/UsageView.vue'),
       meta: { requiresAuth: true }
     },
+    { path: '/engagement', redirect: (to) => ({ path: legacyRedirect(to.path)!, query: to.query }) },
     { path: '/reliability', redirect: (to) => ({ path: legacyRedirect(to.path)!, query: to.query }) },
     {
       path: '/performance',
@@ -57,18 +58,8 @@ export const router = createRouter({
       component: () => import('@/views/PerformanceView.vue'),
       meta: { requiresAuth: true }
     },
-    {
-      path: '/features',
-      name: 'features',
-      component: () => import('@/views/FeaturesView.vue'),
-      meta: { requiresAuth: true }
-    },
-    {
-      path: '/ux',
-      name: 'ux',
-      component: () => import('@/views/UxInsightsView.vue'),
-      meta: { requiresAuth: true }
-    },
+    { path: '/features', redirect: (to) => ({ path: legacyRedirect(to.path)!, query: to.query }) },
+    { path: '/ux', redirect: (to) => ({ path: legacyRedirect(to.path)!, query: to.query }) },
   ]
 })
 
