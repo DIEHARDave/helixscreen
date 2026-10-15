@@ -95,12 +95,15 @@ function filterValues(raw?: string): string[] {
     .filter(Boolean);
 }
 
-const EXCLUDED = " AND 0";
+/** Analytics Engine rejects a bare 0/1 as a boolean ("cannot combine the Boolean and Integer types"), so a constant predicate is a comparison. */
+export const SQL_FALSE = "1 = 0";
+export const SQL_TRUE = "1 = 1";
+const EXCLUDED = ` AND ${SQL_FALSE}`;
 
 /**
  * The filter clause for one point kind: " AND <column> IN (...)" per filter,
  * each on that kind's own column. A kind that lacks a filtered field gets
- * " AND 0": it cannot be matched against a column that means something else.
+ * " AND 1 = 0": it cannot be matched against a column that means something else.
  */
 export function filterFor(kind: string, filters?: FilterParams): string {
   if (!hasKind(kind)) throw new Error(`unknown point kind: ${kind}`);
@@ -137,7 +140,7 @@ export function excludedBy(kind: string, filters?: FilterParams): boolean {
 /**
  * The filter clause for a query over several point kinds, whose columns differ:
  * " AND ((index1 = 'a' AND ...) OR (index1 = 'b' AND ...))". A kind the
- * filters exclude drops out of the OR; when every kind does, " AND 0". With
+ * filters exclude drops out of the OR; when every kind does, " AND 1 = 0". With
  * no active filter it is the plain " AND index1 IN ('a', 'b')".
  */
 export function filterForKinds(kinds: string[], filters?: FilterParams): string {
@@ -244,13 +247,13 @@ export function aeCountsQuery(date: string): string {
   }
   return `SELECT
       index1 AS kind,
-      count() AS rows,
+      count() AS row_count,
       sum(_sample_interval) AS weighted,
       count(DISTINCT ${DEVICE_ID}) AS devices
     FROM helixscreen_telemetry
     WHERE toDate(timestamp) = '${date}'
-    GROUP BY index1
-    ORDER BY index1`;
+    GROUP BY kind
+    ORDER BY kind`;
 }
 
 // SQL query builders for each dashboard endpoint
@@ -1020,7 +1023,7 @@ export function releasesQueries(versions: string[]): string[] {
   // Strip a 'v' prefix for matching; a version that sanitizes to nothing is dropped.
   const clean = versions.map((v) => sanitizeFilterValue(v.trim().replace(/^v/, ""))).filter(Boolean);
   const inVersions = (column: string) =>
-    clean.length > 0 ? `${column} IN (${clean.map((v) => `'${v}'`).join(", ")})` : "0";
+    clean.length > 0 ? `${column} IN (${clean.map((v) => `'${v}'`).join(", ")})` : SQL_FALSE;
   // Per-version stats group every kind by the version the device was RUNNING:
   // for update_failed that is from_version, because keying on the target
   // would bucket every failure under the newest release and hide which
