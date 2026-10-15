@@ -15,4 +15,19 @@ export interface WeeklyReport {
   issues: IssueOutcome[]
 }
 
-export const reportKey = (week: string): string => `reports/${week}.json`
+export const REPORT_PREFIX = 'reports/'
+
+export const reportKey = (week: string): string => `${REPORT_PREFIX}${week}.json`
+
+/** A week key as `reportKey` writes it, e.g. 2026-W42. */
+export const WEEK_PATTERN = /^\d{4}-W\d{2}$/
+
+/** The weeks held in a listing of REPORT_PREFIX, newest first; keys that are not reports are ignored. */
+export function reportWeeks(keys: string[]): string[] {
+  return keys
+    .filter((k) => k.startsWith(REPORT_PREFIX) && k.endsWith('.json'))
+    .map((k) => k.slice(REPORT_PREFIX.length, -'.json'.length))
+    .filter((w) => WEEK_PATTERN.test(w))
+    .sort()
+    .reverse()
+}

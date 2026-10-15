@@ -56,6 +56,7 @@ function createMockBucket() {
         key: obj.key,
         size: obj.size,
         uploaded: obj.uploaded,
+        text: async () => obj.body,
         body: new ReadableStream({
           start(controller) {
             controller.enqueue(new TextEncoder().encode(obj.body));
@@ -2454,5 +2455,168 @@ describe("deriveFeatureAdoption", () => {
 
   it("drops empty ids", () => {
     expect(deriveFeatureAdoption([{ id: "", devices: 2 }], [], 4)).toEqual([]);
+  });
+});
+
+// ---------- Feedback loop: cron dispatch, admin run, report endpoints ----------
+
+describe("feedback loop wiring", () => {
+  const CDN_CRON = "10 2 * * *";
+  const LOOP_CRON = "0 13 * * *";
+  const TUESDAY = new Date("2026-10-20T13:00:00Z");
+  const MONDAY = new Date("2026-10-19T13:00:00Z");
+
+  /** Runs scheduled() and settles every promise it handed to waitUntil. */
+  async function runScheduled(cron: string, at: Date, env: unknown) {
+    const waits: Promise<unknown>[] = [];
+    const ctx = { waitUntil: (p: Promise<unknown>) => void waits.push(p), passThroughOnException() {} };
+    await worker.scheduled({ cron, scheduledTime: at.getTime(), noRetry() {} } as never, env as never, ctx as never);
+    return Promise.allSettled(waits);
+  }
+
+  const reportKeys = (env: ReturnType<typeof createEnv>) =>
+    [...env.TELEMETRY_BUCKET._storage.keys()].filter((k) => k.startsWith("reports/"));
+
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    mockExecuteQuery.mockReset();
+    mockExecuteQuery.mockResolvedValue({ data: [] });
+  });
+
+  describe("scheduled", () => {
+    it("runs the daily loop only, on a weekday 13:00 cron", async () => {
+      const env = createEnv();
+      const fetchSpy = vi.spyOn(globalThis, "fetch");
+      const settled = await runScheduled(LOOP_CRON, TUESDAY, env);
+      expect(settled.every((s) => s.status === "fulfilled")).toBe(true);
+      expect(mockExecuteQuery).toHaveBeenCalled();
+      expect(reportKeys(env)).toEqual([]);
+      expect(fetchSpy).not.toHaveBeenCalled();
+    });
+
+    it("runs the weekly loop as well on a Monday", async () => {
+      const env = createEnv();
+      await runScheduled(LOOP_CRON, MONDAY, env);
+      expect(reportKeys(env)).toEqual(["reports/2026-W42.json"]);
+    });
+
+    it("still runs the weekly loop when the daily one fails", async () => {
+      const env = createEnv();
+      const err = vi.spyOn(console, "error").mockImplementation(() => {});
+      mockExecuteQuery.mockRejectedValueOnce(new Error("daily boom"));
+      await runScheduled(LOOP_CRON, MONDAY, env);
+      expect(err).toHaveBeenCalledTimes(1);
+      expect(reportKeys(env)).toEqual(["reports/2026-W42.json"]);
+    });
+
+    it("logs a loop failure with console.error and does not throw", async () => {
+      const env = createEnv();
+      const err = vi.spyOn(console, "error").mockImplementation(() => {});
+      mockExecuteQuery.mockRejectedValue(new Error("analytics down"));
+      const settled = await runScheduled(LOOP_CRON, TUESDAY, env);
+      expect(settled.every((s) => s.status === "fulfilled")).toBe(true);
+      expect(err).toHaveBeenCalled();
+      expect(String(err.mock.calls[0].join(" "))).toContain("analytics down");
+    });
+
+    it("runs the CDN snapshot, not the loop, on the 02:10 cron", async () => {
+      const env = createEnv();
+      const settled = await runScheduled(CDN_CRON, new Date("2026-10-20T02:10:00Z"), env);
+      expect(mockExecuteQuery).not.toHaveBeenCalled();
+      expect(settled).toHaveLength(1);
+      // The snapshot's rejection is left visible to Cloudflare, not swallowed.
+      expect(settled[0]).toMatchObject({ status: "rejected" });
+      expect(String((settled[0] as PromiseRejectedResult).reason)).toContain("CDN fleet snapshot not configured");
+    });
+  });
+
+  describe("POST /v1/admin/loop/run", () => {
+    const post = (qs: string, key: string | null = "test-admin-key") =>
+      makeRequest(`/v1/admin/loop/run${qs}`, { method: "POST", headers: key ? { "X-API-Key": key } : {} });
+
+    it("rejects a missing or wrong key", async () => {
+      expect((await worker.fetch(post("?mode=daily", null), createEnv() as never)).status).toBe(401);
+      expect((await worker.fetch(post("?mode=daily", "nope"), createEnv() as never)).status).toBe(401);
+      expect(mockExecuteQuery).not.toHaveBeenCalled();
+    });
+
+    it("rejects a mode that is not daily or weekly", async () => {
+      const res = await worker.fetch(post("?mode=hourly"), createEnv() as never);
+      expect(res.status).toBe(400);
+    });
+
+    it("treats an absent dry as a dry run and writes nothing", async () => {
+      const env = createEnv();
+      const res = await worker.fetch(post("?mode=weekly"), env as never);
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as any;
+      expect(body.mode).toBe("weekly");
+      expect(body.week).toMatch(/^\d{4}-W\d{2}$/);
+      expect(env.TELEMETRY_BUCKET._storage.size).toBe(0);
+    });
+
+    it("writes only when dry=0 is explicit", async () => {
+      const env = createEnv();
+      expect((await worker.fetch(post("?mode=weekly&dry=1"), env as never)).status).toBe(200);
+      expect(env.TELEMETRY_BUCKET._storage.size).toBe(0);
+      expect((await worker.fetch(post("?mode=weekly&dry=0"), env as never)).status).toBe(200);
+      expect(reportKeys(env)).toHaveLength(1);
+    });
+
+    it("returns 502 with the reason when a read fails", async () => {
+      mockExecuteQuery.mockRejectedValue(new Error("analytics down"));
+      const res = await worker.fetch(post("?mode=daily"), createEnv() as never);
+      expect(res.status).toBe(502);
+      expect(((await res.json()) as any).error).toContain("analytics down");
+    });
+
+    it("is 503 when Analytics Engine is not configured", async () => {
+      const env = createEnv({ HELIX_ANALYTICS_READ_TOKEN: "" });
+      expect((await worker.fetch(post("?mode=daily"), env as never)).status).toBe(503);
+    });
+  });
+
+  describe("GET /v1/dashboard/reports", () => {
+    const get = (path: string, key = "test-admin-key") => makeRequest(path, { headers: { "X-API-Key": key } });
+    const seed = (env: ReturnType<typeof createEnv>, week: string, extra = {}) =>
+      env.TELEMETRY_BUCKET.put(`reports/${week}.json`, JSON.stringify({ week, ...extra }));
+
+    it("needs the admin key", async () => {
+      expect((await worker.fetch(get("/v1/dashboard/reports", "nope"), createEnv() as never)).status).toBe(401);
+    });
+
+    it("lists the stored weeks newest first, ignoring other keys", async () => {
+      const env = createEnv();
+      await seed(env, "2026-W41");
+      await seed(env, "2026-W43");
+      await seed(env, "2025-W52");
+      await env.TELEMETRY_BUCKET.put("reports/notes.txt", "x");
+      await env.TELEMETRY_BUCKET.put("loop/state.json", "{}");
+      const res = await worker.fetch(get("/v1/dashboard/reports"), env as never);
+      expect(await res.json()).toEqual({ weeks: ["2026-W43", "2026-W41", "2025-W52"] });
+    });
+
+    it("returns an empty list when nothing is stored", async () => {
+      const res = await worker.fetch(get("/v1/dashboard/reports"), createEnv() as never);
+      expect(await res.json()).toEqual({ weeks: [] });
+    });
+
+    it("returns one stored report", async () => {
+      const env = createEnv();
+      await seed(env, "2026-W42", { findings: [] });
+      const res = await worker.fetch(get("/v1/dashboard/reports/2026-W42"), env as never);
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({ week: "2026-W42", findings: [] });
+    });
+
+    it.each(["2026-W4", "latest", "2026-W42.json", "..%2Floop", "2026-w42"])("rejects the week %s with 400", async (week) => {
+      const res = await worker.fetch(get(`/v1/dashboard/reports/${week}`), createEnv() as never);
+      expect(res.status).toBe(400);
+    });
+
+    it("is 404 for a well-formed week that is not stored", async () => {
+      const res = await worker.fetch(get("/v1/dashboard/reports/2026-W42"), createEnv() as never);
+      expect(res.status).toBe(404);
+    });
   });
 });

@@ -30,14 +30,18 @@ import {
   CONFIGURED_FEATURE_FLAGS,
   uxInsightsQueries,
   devicesQueries,
-  healthQueries,
   deviceQueries,
   notApplicableFor,
   type QueryConfig,
   type FilterParams,
 } from "./queries";
 import { buildDeviceList, buildDevicePage, isDeviceId, type DeviceCountColumn } from "./devices";
-import { buildHealth, releaseRates, type HealthBlock, type HealthRowKey } from "./health";
+import { releaseRates } from "./health";
+import { fetchHealth } from "./health_source";
+import { loopDeps, queryConfigOf, runScheduledLoop } from "./loop/wiring";
+import { runLoop } from "./loop/run";
+import { r2Store, type LoopEnv } from "./loop/ports";
+import { reportKey, reportWeeks, REPORT_PREFIX, WEEK_PATTERN } from "./loop/report";
 import { num, rowsOf, str } from "./schema";
 import { attributePrints, printsByVersion } from "./prints";
 import { buildRetention } from "./retention";
@@ -64,7 +68,7 @@ interface AnalyticsEngineDataset {
   }): void;
 }
 
-interface Env {
+interface Env extends LoopEnv {
   TELEMETRY_BUCKET: R2Bucket;
   INGEST_API_KEY: string; // Cloudflare secret: wrangler secret put INGEST_API_KEY
   ADMIN_API_KEY: string; // Cloudflare secret: wrangler secret put ADMIN_API_KEY (for analytics)
@@ -75,6 +79,8 @@ interface Env {
   CDN_ZONE_ID?: string; // Set in wrangler.toml [vars]
   GIT_SHA?: string; // Set at deploy: wrangler deploy --var GIT_SHA:$(git rev-parse --short HEAD)
   CF_ZONE_ANALYTICS_TOKEN?: string; // Cloudflare secret: needs Zone Analytics:Read on helixscreen.org
+  // The feedback loop's settings are LoopEnv: [vars] in wrangler.toml, plus the secrets
+  // RESEND_API_KEY and GITHUB_APP_PRIVATE_KEY.
 }
 
 /**
@@ -131,9 +137,6 @@ function crashRate(crashes: number, sessions: number, applies: boolean): number 
 
 /** The scorecard blocks a filter can leave unreported. */
 const RELEASE_BLOCKS = ["crashes", "prints", "updates", "performance"] as const;
-
-/** The Health blocks a filter can leave unreported. */
-const HEALTH_BLOCKS = ["crashes", "errors", "prints", "updates"] as const satisfies readonly HealthBlock[];
 
 /** Device list count columns a filter can leave unreported. */
 const DEVICE_LIST_BLOCKS = ["crashes", "prints"] as const satisfies readonly DeviceCountColumn[];
@@ -307,6 +310,8 @@ async function captureCdnFleetDay(env: Env, date: string): Promise<FleetDaySnaps
 
   return snap;
 }
+
+const LOOP_CRON = "0 13 * * *";
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -1513,19 +1518,21 @@ export default {
 
         // GET /v1/dashboard/health
         if (url.pathname === "/v1/dashboard/health") {
-          // top_versions first: the per-release queries are restricted to its versions.
-          const topRes = (await executeQuery(queryConfig, healthQueries(filters).top_versions)) as {
-            data?: Array<{ ver: string }>;
-          };
-          const versions = (topRes.data ?? []).map((r) => String(r.ver));
-          const queries = healthQueries(filters, versions);
-          const rest = Object.keys(queries).filter((k) => k !== "top_versions") as HealthRowKey[];
-          const results = await Promise.all(rest.map((k) => executeQuery(queryConfig, queries[k])));
-          const rows = { top_versions: topRes.data ?? [] } as Record<HealthRowKey, unknown[]>;
-          rest.forEach((k, i) => {
-            rows[k] = (results[i] as { data?: unknown[] } | null)?.data ?? [];
-          });
-          return json(buildHealth(rows, new Date().toISOString().slice(0, 10), notApplicableFor(HEALTH_BLOCKS, filters)));
+          return json(await fetchHealth(queryConfig, new Date().toISOString().slice(0, 10), filters));
+        }
+
+        // GET /v1/dashboard/reports
+        if (url.pathname === "/v1/dashboard/reports") {
+          return json({ weeks: reportWeeks(await r2Store(env.TELEMETRY_BUCKET).list(REPORT_PREFIX)) });
+        }
+
+        // GET /v1/dashboard/reports/<YYYY-Www>
+        if (url.pathname.startsWith("/v1/dashboard/reports/")) {
+          const week = url.pathname.slice("/v1/dashboard/reports/".length);
+          if (!WEEK_PATTERN.test(week)) return json({ error: "week must be YYYY-Www" }, 400);
+          const stored = await r2Store(env.TELEMETRY_BUCKET).get(reportKey(week));
+          if (stored === null) return json({ error: "Not found" }, 404);
+          return new Response(stored, { headers: { "Content-Type": "application/json", ...CORS_HEADERS } });
         }
 
         // GET /v1/dashboard/devices
@@ -1553,6 +1560,32 @@ export default {
       } catch (err) {
         const message = err instanceof Error ? err.message : "Unknown error";
         return json({ error: `Analytics query failed: ${message}` }, 502);
+      }
+    }
+
+    // Runs the feedback loop with real reads. Nothing is sent, filed or written unless
+    // dry=0 is explicit.
+    // POST /v1/admin/loop/run?mode=daily|weekly[&dry=0]
+    if (url.pathname === "/v1/admin/loop/run" && request.method === "POST") {
+      const apiKey = request.headers.get("x-api-key") ?? "";
+      if (!env.ADMIN_API_KEY || apiKey !== env.ADMIN_API_KEY) {
+        return json({ error: "Unauthorized" }, 401);
+      }
+
+      const mode = url.searchParams.get("mode");
+      if (mode !== "daily" && mode !== "weekly") {
+        return json({ error: "mode must be daily or weekly" }, 400);
+      }
+
+      const config = queryConfigOf(env);
+      if (!config) return json({ error: "Analytics Engine not configured" }, 503);
+
+      try {
+        const dryRun = url.searchParams.get("dry") !== "0";
+        return json(await runLoop(mode, loopDeps(env, config, new Date()), dryRun));
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Unknown error";
+        return json({ error: `Loop run failed: ${message}` }, 502);
       }
     }
 
@@ -1672,19 +1705,25 @@ export default {
   },
 
   /**
-   * Daily CDN fleet snapshot (see wrangler.toml [triggers]).
+   * Cron dispatch (see wrangler.toml [triggers]). The 13:00 UTC cron runs the feedback
+   * loop; every other one is the daily CDN fleet snapshot.
    *
-   * Snapshots the UTC day that just closed. Zone analytics retain roughly 8
-   * days, so a missed run is recoverable via POST /v1/admin/cdn-snapshot for
+   * The CDN snapshot snapshots the UTC day that just closed. Zone analytics retain
+   * roughly 8 days, so a missed run is recoverable via POST /v1/admin/cdn-snapshot for
    * a few days and unrecoverable after that.
    *
-   * Failures are deliberately NOT caught. An expired or re-scoped token would
+   * Its failures are deliberately NOT caught. An expired or re-scoped token would
    * otherwise stop the metric silently and the tile would simply stop advancing
    * with nothing to explain why - which is the exact failure mode this whole
    * metric exists to avoid. Letting it reject marks the cron invocation as
-   * errored in Cloudflare's observability, where it can be seen.
+   * errored in Cloudflare's observability, where it can be seen. The loop is the
+   * opposite: it logs its own failures and never rejects.
    */
-  async scheduled(_event: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
+  async scheduled(event: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
+    if (event.cron === LOOP_CRON) {
+      ctx.waitUntil(runScheduledLoop(env, new Date(event.scheduledTime)));
+      return;
+    }
     const date = previousUtcDay(new Date());
     ctx.waitUntil(captureCdnFleetDay(env, date));
   },
