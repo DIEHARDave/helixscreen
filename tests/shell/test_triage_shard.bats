@@ -12,6 +12,7 @@
 #   composition  VICTIM fails only after POLLUTER ran in the same process
 #   pinned       VICTIM fails only under the fake taskset
 #   composition-pinned  both conditions at once
+#   hang         every re-run outlives the timeout
 #   never        every re-run passes
 # The fake taskset reports an affinity list and records the core it pinned to.
 
@@ -65,6 +66,7 @@ case ${FAKE_MODE:-never} in
     composition) has polluter && fail=1 ;;
     pinned) [ "${FAKE_PINNED:-0}" = 1 ] && fail=1 ;;
     composition-pinned) has polluter && [ "${FAKE_PINNED:-0}" = 1 ] && fail=1 ;;
+    hang) sleep 30 ;;
 esac
 if [ "$fail" = 1 ]; then
     echo "tests/unit/test_b.cpp:33: FAILED:"
@@ -91,7 +93,12 @@ FAKE_PINNED=1 exec "$@"
 EOF
     chmod +x "$TASKSET"
     export TRIAGE_TASKSET="$TASKSET"
-    unset TRIAGE_CPU TRIAGE_RETRIES TRIAGE_BUDGET TRIAGE_TIMEOUT FAKE_MODE
+    unset TRIAGE_CPU TRIAGE_RETRIES TRIAGE_BUDGET TRIAGE_TIMEOUT TRIAGE_DEADLINE FAKE_MODE
+    # Two /proc/stat samples in which CPU 4 idled most of the allowed 4-7,9.
+    write_stat before 100 100 100 100 100 100
+    write_stat after 100 900 180 170 160 150
+    export TRIAGE_STAT_BEFORE="$BATS_TEST_TMPDIR/stat.before"
+    export TRIAGE_STAT_AFTER="$BATS_TEST_TMPDIR/stat.after"
     write_failing_log
 }
 
@@ -116,6 +123,21 @@ test cases: 3 | 2 passed | 1 failed
 EOF
 }
 
+# write_stat NAME IDLE2 IDLE4 IDLE5 IDLE6 IDLE7 IDLE9: a /proc/stat with those
+# idle counts (CPU 2 lies outside the fake affinity list).
+write_stat() {
+    local name=$1
+    shift
+    {
+        echo "cpu  1 2 3 4 5 6 7"
+        local c
+        for c in 2 4 5 6 7 9; do
+            echo "cpu$c 10 0 10 $1 0 0 0 0 0 0"
+            shift
+        done
+    } > "$BATS_TEST_TMPDIR/stat.$name"
+}
+
 triage() {
     run bash "$SCRIPT" "$FAKE" "$DIR" 5 12 "~[.] ~[slow]" "$@"
 }
@@ -136,8 +158,33 @@ triage() {
     contains "alone: failed 0/3" "$output"
     contains "alone-pinned: failed 3/3" "$output"
     contains "verdict: fails only pinned" "$output"
+    contains "pinned to CPU 4" "$output"
     contains "repro: $TASKSET -c 4 $FAKE --input-file" "$output"
     [ "$(sort -u "$PINS")" = 4 ]
+}
+
+@test "the pinned core is the allowed one that sat idle longest" {
+    write_stat after 9000 300 200 200 800 100
+    FAKE_MODE=pinned triage
+    contains "repro: $TASKSET -c 7 " "$output"
+    contains "pinned to CPU 7" "$output"
+}
+
+@test "a run that outlives the timeout is reported as timed out, never as a reproduction" {
+    FAKE_MODE=hang TRIAGE_TIMEOUT=1 TRIAGE_BUDGET=30 TRIAGE_RETRIES=1 triage
+    [ "$status" -eq 0 ]
+    lacks "verdict: fails" "$output"
+    contains "verdict: did not reproduce" "$output"
+    contains "alone: failed 0/1, 1 timed out at 1s" "$output"
+    contains "timed out: 4 run(s) at 1s" "$output"
+}
+
+@test "a passed sweep-wide deadline skips the re-runs" {
+    FAKE_MODE=alone TRIAGE_DEADLINE=$(date +%s) triage
+    [ "$status" -eq 0 ]
+    contains "skipped: alone (budget)" "$output"
+    contains "failing case(s)" "$output"
+    lacks "alone: failed" "$output"
 }
 
 @test "a case that fails only after an earlier case is order dependence, with the shard repro" {

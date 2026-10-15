@@ -45,6 +45,10 @@ timeout_run = $(if $(TIMEOUT_CMD),$(TIMEOUT_CMD) -k $(TIMEOUT_KILL_AFTER) $(1))
 # scan per shard; a run typed at the shell keeps it.
 export HELIX_TESTS_NO_STALE_CHECK ?= 1
 
+# Where the helix-tests stale-binary stamp and the list of files it covers live.
+TEST_STAMP_DIR = $(OBJ_DIR)
+TEST_STAMP_BASE = $(TEST_STAMP_DIR)/$(notdir $(TEST_BIN))
+
 # Where per-shard logs land. Kept (not deleted) whenever a shard fails, crashes,
 # or times out, so there is something to read afterwards — see diagnose_shards.
 # Override to collect artifacts elsewhere, e.g. SHARD_ARTIFACT_ROOT=$(PWD)/build
@@ -59,6 +63,12 @@ SHARD_ARTIFACT_ROOT ?= /tmp
 # reproduction is a single sample. Repeating turns the verdict into an observed
 # rate. Raise it when chasing something rare.
 SHARD_RETRIES ?= 3
+
+# Seconds diagnose_shards spends triaging every failed shard of one sweep
+# together. A broken header fails most shards at once, and triaging each in
+# turn would take an hour; past this the remaining shards are still named and
+# listed, but not re-run.
+TRIAGE_TOTAL_BUDGET ?= 900
 
 # Shard count for the [slow] tier in test-all and test-slow. Deliberately far
 # below NPROCS: most [slow] cases wait on wall-clock deadlines, and a busy box
@@ -174,10 +184,12 @@ define diagnose_shards
 	echo ""; \
 	echo "$(CYAN)$(BOLD)── shard diagnostics ──$(RESET)"; \
 	echo "$(CYAN)logs preserved: $(1)$(RESET)"; \
+	triage_deadline=$$(( $$(date +%s) + $(TRIAGE_TOTAL_BUDGET) )); \
 	for s in $(2); do \
 		echo ""; \
 		echo "$(BOLD)shard $$s$(RESET)"; \
-		TRIAGE_RETRIES=$(SHARD_RETRIES) scripts/triage_shard.sh "$(TEST_BIN)" "$(1)" "$$s" "$(4)" $(3) $(5); \
+		TRIAGE_RETRIES=$(SHARD_RETRIES) TRIAGE_TIMEOUT=$(SHARD_TIMEOUT) TRIAGE_DEADLINE=$$triage_deadline \
+			scripts/triage_shard.sh "$(TEST_BIN)" "$(1)" "$$s" "$(4)" $(3) $(5); \
 	done; \
 	echo ""
 endef
@@ -893,40 +905,53 @@ else
 # whose archive predates the current libhv patches links it silently. Both are
 # filtered out of the command line — the archive is already in LDFLAGS, and
 # repeating it changes link order.
-$(TEST_BIN): $(TEST_CORE_DEPS) \
-             $(TEST_LVGL_DEPS) \
-             $(TEST_APP_OBJS) \
-             $(TEST_TOOL_OBJS) \
-             $(DNS_RESOLV_OBJ) \
-             $(MOCK_OBJS) \
-             $(LV_MARKDOWN_OBJS) \
-             $(QUIRC_OBJS) \
-             $(LUA_OBJS) \
-             $(FONT_OBJS) \
-             $(TRANS_OBJS) \
-             $(OBJCPP_OBJS) \
-             $(LIBHV_LIB) \
-             $(LIBHV_JSON_HEADER) \
-             $(TEST_PLATFORM_DEPS)
+TEST_LINK_INPUTS = $(TEST_CORE_DEPS) $(TEST_LVGL_DEPS) $(TEST_APP_OBJS) $(TEST_TOOL_OBJS) \
+                   $(DNS_RESOLV_OBJ) $(MOCK_OBJS) $(LV_MARKDOWN_OBJS) $(QUIRC_OBJS) \
+                   $(LUA_OBJS) $(FONT_OBJS) $(TRANS_OBJS) $(OBJCPP_OBJS) \
+                   $(LIBHV_LIB) $(LIBHV_JSON_HEADER) $(TEST_PLATFORM_DEPS)
+
+# The source tree this build compiles, measured once as this make starts and
+# before anything compiles, so an edit saved mid-build is not recorded as
+# built. Only the files the link is built from count (the objects' .d files,
+# scripts/test_link_sources.py): an app-only source such as src/main.cpp is
+# not in the binary, and a stamp covering it would warn that `make test`
+# cannot fix. The link compiles it in (tests/test_helpers/stale_binary_check.h).
+ifneq ($(filter $(TEST_BIN),$(MAKECMDGOALS)),)
+TEST_STAMP_MKDIR := $(shell mkdir -p $(TEST_STAMP_DIR))
+$(file >$(TEST_STAMP_BASE).stamp-objs,$(filter %.o,$(TEST_LINK_INPUTS)))
+TEST_TREE_STAMP_AT_START := $(shell python3 scripts/test_link_sources.py $(OBJ_DIR) \
+    < $(TEST_STAMP_BASE).stamp-objs > $(TEST_STAMP_BASE).stamp-paths.next 2>/dev/null && \
+    scripts/tree_stamp.sh --paths $(TEST_STAMP_BASE).stamp-paths.next 2>/dev/null)
+endif
+
+$(TEST_BIN): $(TEST_LINK_INPUTS)
 	$(call check_abi_unchanged)
 	$(Q)mkdir -p $(BIN_DIR)
 	$(ECHO) "$(MAGENTA)$(BOLD)[LD]$(RESET) helix-tests"
 	@# The object list goes through a response file: inline, the recipe line
 	@# exceeds Linux's 128 KB per-argument limit once object paths grow (the
 	@# ASAN build's do), and bash refuses it with "Argument list too long".
-	$(file >$(OBJ_DIR)/$(notdir $@).objs,$(filter-out %.a %.h %.hh %.hpp %.hxx,$(sort $^)) $(OBJ_DIR)/$(notdir $@).tree-stamp.o)
-	@# The source tree this link is built from, compiled in as helix_build_tree_stamp.
-	@# At startup the binary re-measures the tree it runs in and warns when they
-	@# differ (tests/test_helpers/stale_binary_check.h). Measured here, at link
-	@# time, and not as a prerequisite, so it never forces a relink by itself.
-	$(Q)stamp=$$(scripts/tree_stamp.sh 2>/dev/null) || stamp=unknown; \
-	printf 'const char helix_build_tree_stamp[] = "%s";\n' "$${stamp:-unknown}" \
-		> $(OBJ_DIR)/$(notdir $@).tree-stamp.c && \
-	$(CC) $(CFLAGS) -c $(OBJ_DIR)/$(notdir $@).tree-stamp.c -o $(OBJ_DIR)/$(notdir $@).tree-stamp.o
+	$(file >$(OBJ_DIR)/$(notdir $@).objs,$(filter-out %.a %.h %.hh %.hpp %.hxx,$(sort $^)) $(TEST_STAMP_BASE).tree-stamp.o)
+	@# Compile in the stamp taken as this make started, and the list of files it
+	@# covers, which the binary re-measures at startup. A list that is not a
+	@# prerequisite never forces a relink by itself.
+	$(Q)stamp='$(TEST_TREE_STAMP_AT_START)'; \
+	cp -f $(TEST_STAMP_BASE).stamp-paths.next $(TEST_STAMP_BASE).stamp-paths 2>/dev/null || stamp=unknown; \
+	printf 'const char helix_build_tree_stamp[] = "%s";\nconst char helix_build_tree_stamp_paths[] = "%s";\n' \
+		"$${stamp:-unknown}" "$(TEST_STAMP_BASE).stamp-paths" > $(TEST_STAMP_BASE).tree-stamp.c && \
+	$(CC) $(CFLAGS) -c $(TEST_STAMP_BASE).tree-stamp.c -o $(TEST_STAMP_BASE).tree-stamp.o
 	$(Q)$(CXX) $(CXXFLAGS) @$(OBJ_DIR)/$(notdir $@).objs -o $@ $(LDFLAGS) || { \
 		echo "$(RED)$(BOLD)✗ Test linking failed!$(RESET)"; \
 		exit 1; \
 	}
+	@# A source saved while this make compiled may or may not be in the binary.
+	@# Its stamp names the tree as the build started, so the binary warns; dating
+	@# the binary back makes the next `make test` relink and re-stamp it.
+	$(Q)now=$$(scripts/tree_stamp.sh --paths $(TEST_STAMP_BASE).stamp-paths 2>/dev/null); \
+	if [ -n '$(TEST_TREE_STAMP_AT_START)' ] && [ "$$now" != '$(TEST_TREE_STAMP_AT_START)' ]; then \
+		touch -t 200001010000 $@; \
+		echo "$(YELLOW)⚠ sources changed during the build: the next make test relinks helix-tests$(RESET)"; \
+	fi
 	$(ECHO) "$(GREEN)✓ Unit test binary ready$(RESET)"
 endif
 

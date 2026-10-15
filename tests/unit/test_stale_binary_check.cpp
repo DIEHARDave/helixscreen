@@ -89,6 +89,7 @@ TEST_CASE("stale binary warning: changed sources since the link warn once, namin
         "helix-tests", kBuilt, measured("a54377f64211b56c1e215f174a47a461ea8e80df 3f2a9c1e"));
     REQUIRE_FALSE(w.empty());
     CHECK(w.rfind("WARNING: helix-tests is stale", 0) == 0);
+    CHECK(w.find("a source it is built from changed") != std::string::npos);
     CHECK(w.find("built clean, now 3f2a9c1e") != std::string::npos);
     CHECK(w.find("a54377f64") != std::string::npos);
     CHECK(w.find("make test") != std::string::npos);
@@ -116,6 +117,21 @@ TEST_CASE("read_tree_stamp measures against the commit the binary recorded", "[s
     const TreeStampReading r = read_tree_stamp(kBuilt);
     REQUIRE(r.kind == TreeStampReading::Kind::Measured);
     CHECK(r.stamp == "a54377f64211b56c1e215f174a47a461ea8e80df from-script");
+}
+
+TEST_CASE("read_tree_stamp hands the script the binary's source list", "[stale_binary]") {
+    FakeTreeStampDir dir("echo \"$*\"");
+    std::ofstream("link.paths") << "src/a.cpp\n";
+    const TreeStampReading r = read_tree_stamp(kBuilt, "link.paths");
+    REQUIRE(r.kind == TreeStampReading::Kind::Measured);
+    CHECK(r.stamp == "--paths link.paths a54377f64211b56c1e215f174a47a461ea8e80df");
+}
+
+TEST_CASE("read_tree_stamp without the source list has nothing to compare", "[stale_binary]") {
+    FakeTreeStampDir dir("echo \"$1 ran\"");
+    CHECK(read_tree_stamp(kBuilt, "missing.paths").kind == TreeStampReading::Kind::Unavailable);
+    std::ofstream("odd name.paths") << "src/a.cpp\n";
+    CHECK(read_tree_stamp(kBuilt, "odd name.paths").kind == TreeStampReading::Kind::Unavailable);
 }
 
 TEST_CASE("read_tree_stamp maps the script's exit status", "[stale_binary]") {

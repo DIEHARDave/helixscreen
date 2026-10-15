@@ -56,7 +56,7 @@ inline std::string stale_binary_warning(std::string_view binary, std::string_vie
         if (now.stamp == built)
             return {};
         return "WARNING: " + std::string(binary) +
-               " is stale: src/, include/ or tests/ changed since it was linked (against " +
+               " is stale: a source it is built from changed since its build (against " +
                short_base + ": built " + std::string(built_content) + ", now " +
                std::string(split(now.stamp).second) + ")" + advice;
     }
@@ -64,17 +64,28 @@ inline std::string stale_binary_warning(std::string_view binary, std::string_vie
 }
 
 /// Run scripts/tree_stamp.sh, relative to the working directory, against the
-/// commit in `built`. A run from outside a checkout (an rsynced mirror, an
-/// unpacked CI artifact) finds no script or no git tree and reads Unavailable.
-inline TreeStampReading read_tree_stamp(std::string_view built) {
+/// commit in `built`, over the files `paths` lists (the set the link was built
+/// from; empty measures every source). A run from outside a checkout (an
+/// rsynced mirror, an unpacked CI artifact) finds no script, no list or no git
+/// tree and reads Unavailable.
+inline TreeStampReading read_tree_stamp(std::string_view built, std::string_view paths = {}) {
     TreeStampReading reading;
     const char* script = "scripts/tree_stamp.sh";
     if (built.empty() || built == "unknown" || access(script, X_OK) != 0)
         return reading;
     const std::string base(built.substr(0, built.find(' ')));
-    if (base.find_first_not_of("0123456789abcdef") != std::string::npos)
+    if (base.empty() || base.find_first_not_of("0123456789abcdef") != std::string::npos)
         return reading;
-    const std::string cmd = std::string(script) + " " + base + " 2>/dev/null";
+    std::string cmd = script;
+    if (!paths.empty()) {
+        const std::string list(paths);
+        if (list.find_first_not_of("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+                                   "0123456789_./+-") != std::string::npos ||
+            access(list.c_str(), R_OK) != 0)
+            return reading;
+        cmd += " --paths " + list;
+    }
+    cmd += " " + base + " 2>/dev/null";
     FILE* pipe = popen(cmd.c_str(), "r");
     if (!pipe)
         return reading;
@@ -97,11 +108,12 @@ inline TreeStampReading read_tree_stamp(std::string_view built) {
 }
 
 /// Print stale_binary_warning() to stderr unless HELIX_TESTS_NO_STALE_CHECK=1.
-inline void warn_if_binary_stale(std::string_view binary, std::string_view built) {
+inline void warn_if_binary_stale(std::string_view binary, std::string_view built,
+                                 std::string_view paths = {}) {
     const char* opt_out = getenv("HELIX_TESTS_NO_STALE_CHECK");
     if (opt_out && std::string_view(opt_out) == "1")
         return;
-    const std::string warning = stale_binary_warning(binary, built, read_tree_stamp(built));
+    const std::string warning = stale_binary_warning(binary, built, read_tree_stamp(built, paths));
     if (!warning.empty())
         fprintf(stderr, "%s\n", warning.c_str());
 }

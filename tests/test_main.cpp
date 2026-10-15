@@ -16,9 +16,11 @@
 
 #include "catch_amalgamated.hpp"
 
-/// "<base> <content-hash>" for the tree this binary was linked from, written by
-/// the link rule in mk/tests.mk (scripts/tree_stamp.sh).
+/// "<base> <content-hash>" for the sources this binary was built from, and the
+/// file listing them, written by the link rule in mk/tests.mk
+/// (scripts/tree_stamp.sh, scripts/test_link_sources.py).
 extern "C" const char helix_build_tree_stamp[];
+extern "C" const char helix_build_tree_stamp_paths[];
 
 namespace {
 
@@ -141,7 +143,8 @@ class CacheSandboxListener : public Catch::EventListenerBase {
     using Catch::EventListenerBase::EventListenerBase;
 
     void testRunStarting(Catch::TestRunInfo const&) override {
-        helix::test::warn_if_binary_stale("helix-tests", helix_build_tree_stamp);
+        helix::test::warn_if_binary_stale("helix-tests", helix_build_tree_stamp,
+                                          helix_build_tree_stamp_paths);
     }
 
     void testCaseStarting(Catch::TestCaseInfo const&) override {

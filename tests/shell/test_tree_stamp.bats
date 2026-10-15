@@ -50,10 +50,44 @@ stamp() { (cd "$R/${2:-}" && "$STAMP" ${1:+"$1"}); }
     [ "$(stamp)" = "$clean" ]
 }
 
+# A file whose stat no longer matches the index but whose content does: what
+# clang-format, a mutant revert or an rsync leaves behind.
+make_stat_dirty() {
+    touch -d '2001-01-01' "$R/src/a.cpp"
+    # Age the index past the racy-git window so git trusts its stat data.
+    touch -d '2000-01-01' "$R/.git/index"
+}
+
+index_state() { stat -c '%Y %s' "$R/.git/index" && sha256sum < "$R/.git/index"; }
+
 @test "touching a file without changing it leaves the stamp alone" {
     clean=$(stamp)
-    touch -d '2001-01-01' "$R/src/a.cpp"
+    make_stat_dirty
     [ "$(stamp)" = "$clean" ]
+}
+
+@test "a stamp run never writes the index, even with stat-dirty entries" {
+    make_stat_dirty
+    before=$(index_state)
+    stamp > /dev/null
+    stamp "$(git -C "$R" rev-parse HEAD)" > /dev/null
+    [ "$(index_state)" = "$before" ]
+    [ ! -e "$R/.git/index.lock" ]
+}
+
+@test "--paths measures only the files listed" {
+    printf 'src/a.cpp\n' > "$BATS_TEST_TMPDIR/paths"
+    clean=$(stamp)
+    echo '#define X 1' >> "$R/include/a.h"
+    [ "$(cd "$R" && "$STAMP" --paths "$BATS_TEST_TMPDIR/paths")" = "$clean" ]
+    echo 'int b;' >> "$R/src/a.cpp"
+    [ "$(cd "$R" && "$STAMP" --paths "$BATS_TEST_TMPDIR/paths")" != "$clean" ]
+}
+
+@test "--paths with a missing list exits 1 and prints nothing" {
+    run bash -c "cd '$R' && '$STAMP' --paths '$BATS_TEST_TMPDIR/absent'"
+    [ "$status" -eq 1 ]
+    [ -z "$output" ]
 }
 
 @test "committing already-stamped edits keeps the stamp measured against the old base" {
