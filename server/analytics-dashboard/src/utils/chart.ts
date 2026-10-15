@@ -87,3 +87,30 @@ export function compareVersions(a: string, b: string): number {
   }
   return ia.length - ib.length
 }
+
+/** One bar of a success-rate chart: `total` outcomes, `members` the raw values it filters on. */
+export interface SuccessRow {
+  label: string
+  members: string[]
+  total: number
+  rate: number | null
+}
+
+/** Options for a horizontal bar chart of 0-1 success rates whose tooltip gives the sample size. */
+export function successBarOpts(rows: SuccessRow[]): ChartOptions<'bar'> {
+  return {
+    indexAxis: 'y',
+    scales: { x: { ...rateAxis(), max: 1 }, y: { ticks: { autoSkip: false } } },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: (ctx) => {
+            const row = rows[ctx.dataIndex]
+            return row ? `${formatRate(row.rate)} of ${row.total.toLocaleString()} prints` : ''
+          }
+        }
+      }
+    }
+  }
+}
