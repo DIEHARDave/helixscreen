@@ -70,6 +70,20 @@ FireworksPacing busy_pacing() {
     return pacing;
 }
 
+/// One shell at 50 ms, then nothing for ten minutes.
+FireworksPacing single_shell_pacing() {
+    FireworksPacing pacing;
+    pacing.first_launch_ms = 50;
+    pacing.min_gap_ms = 600000;
+    pacing.max_gap_ms = 600000;
+    pacing.finale_every_ms = 600000;
+    return pacing;
+}
+
+uint8_t only(FireworksSim::BurstKind kind) {
+    return static_cast<uint8_t>(1u << static_cast<unsigned>(kind));
+}
+
 bool box_covers(const std::vector<DirtyRect>& boxes, int32_t x, int32_t y) {
     return std::any_of(boxes.begin(), boxes.end(), [&](const DirtyRect& b) {
         return x >= b.x1 && x <= b.x2 && y >= b.y1 && y <= b.y2;
@@ -225,12 +239,16 @@ TEST_CASE("a fireworks show replays exactly from a seed, and another seed differ
 
 TEST_CASE("every pixel a fireworks frame changes lies in one of its dirty boxes",
           "[screensaver][fireworks_sim]") {
+    using Kind = FireworksSim::BurstKind;
     const PixelFormat format = GENERATE(PixelFormat::XRGB8888, PixelFormat::RGB565);
-    CAPTURE(static_cast<int>(format));
+    const uint8_t kinds = GENERATE(FireworksSim::ALL_KINDS, only(Kind::PALM), only(Kind::CROSSETTE),
+                                   only(Kind::STROBE));
+    CAPTURE(static_cast<int>(format), static_cast<int>(kinds));
     std::minstd_rand rng(21);
     FireworksSim sim;
     SimFrame frame(format);
     sim.init(frame.target, rng, 0, busy_pacing());
+    sim.set_kinds(kinds);
 
     std::vector<DirtyRect> dirty;
     size_t changed = 0;
@@ -256,6 +274,110 @@ TEST_CASE("every pixel a fireworks frame changes lies in one of its dirty boxes"
     CHECK(most_boxes > 1);
     CHECK(most_boxes <= 2 * FireworksSim::MAX_BURSTS);
     CHECK(most_lit > 0);
+}
+
+TEST_CASE("each crossette star splits into a cross of four fragments",
+          "[screensaver][fireworks_sim]") {
+    std::minstd_rand rng(12);
+    FireworksSim sim;
+    SimFrame frame(PixelFormat::XRGB8888);
+    sim.init(frame.target, rng, 0, single_shell_pacing());
+    sim.set_kinds(only(FireworksSim::BurstKind::CROSSETTE));
+
+    std::vector<DirtyRect> dirty;
+    size_t stars = 0;
+    size_t most = 0;
+    for (int i = 0; i < 300; i++) {
+        sim.step(16, frame.target, rng, dirty);
+        if (stars == 0) {
+            stars = sim.sparks_in_use();
+        }
+        most = std::max(most, sim.sparks_in_use());
+    }
+    REQUIRE(stars > 0);
+    // A few stars, far fewer than the level's sparks per burst, so the split has room.
+    CHECK(stars <= FIREWORKS_LEVELS[0].sparks_per_burst / 4);
+    // Every star has split before the first fragment burns out.
+    CHECK(most == 4 * stars);
+    CHECK(sim.sparks_in_use() == 0);
+}
+
+TEST_CASE("a palm throws a few comets with long tails", "[screensaver][fireworks_sim]") {
+    const size_t level = GENERATE(as<size_t>{}, 0, FIREWORKS_LEVEL_COUNT - 1);
+    CAPTURE(level);
+    std::minstd_rand rng(17);
+    FireworksSim sim;
+    SimFrame frame(PixelFormat::XRGB8888);
+    sim.init(frame.target, rng, level, single_shell_pacing());
+    sim.set_kinds(only(FireworksSim::BurstKind::PALM));
+
+    std::vector<DirtyRect> dirty;
+    size_t comets = 0;
+    int frames_since_burst = 0;
+    for (int i = 0; i < 2000 && frames_since_burst < 20; i++) {
+        sim.step(16, frame.target, rng, dirty);
+        if (comets == 0) {
+            comets = sim.sparks_in_use();
+        } else {
+            frames_since_burst++;
+        }
+    }
+    REQUIRE(frames_since_burst == 20);
+    CHECK(comets >= 7);
+    CHECK(comets <= 12);
+    // A 2x2 head alone lights at most 4 pixels, so more than 5 per comet is a tail, even at
+    // the level that gives other shells none.
+    CHECK(lit_pixels(frame) > 5 * comets);
+}
+
+TEST_CASE("strobe stars hang and blink white", "[screensaver][fireworks_sim]") {
+    std::minstd_rand rng(31);
+    FireworksSim sim;
+    SimFrame frame(PixelFormat::XRGB8888);
+    sim.init(frame.target, rng, 0, single_shell_pacing());
+    sim.set_kinds(only(FireworksSim::BurstKind::STROBE));
+
+    std::vector<DirtyRect> dirty;
+    int burst_frame = -1;
+    size_t fewest_lit = SIZE_MAX;
+    size_t most_lit = 0;
+    size_t white_at_most = 0;
+    size_t sparks_at_start = 0;
+    size_t fewest_sparks = SIZE_MAX;
+    for (int i = 0; i < 400; i++) {
+        sim.step(16, frame.target, rng, dirty);
+        if (burst_frame < 0 && sim.sparks_in_use() > 0) {
+            burst_frame = i;
+        }
+        // One to one and a half seconds after the burst every star is blinking.
+        if (burst_frame < 0 || i < burst_frame + 62 || i > burst_frame + 94) {
+            continue;
+        }
+        if (sparks_at_start == 0) {
+            sparks_at_start = sim.sparks_in_use();
+        }
+        fewest_sparks = std::min(fewest_sparks, sim.sparks_in_use());
+        const size_t lit = lit_pixels(frame);
+        fewest_lit = std::min(fewest_lit, lit);
+        if (lit > most_lit) {
+            most_lit = lit;
+            const PixelWriter writer(frame.target);
+            white_at_most = 0;
+            for (int32_t y = 0; y < static_cast<int32_t>(H); y++) {
+                for (int32_t x = 0; x < static_cast<int32_t>(W); x++) {
+                    const Rgb c = writer.get(x, y);
+                    white_at_most += (c.r > 200 && c.g > 200 && c.b > 200) ? 1 : 0;
+                }
+            }
+        }
+    }
+    REQUIRE(sparks_at_start > 0);
+    // Every star is still alive, yet most are dark on any one frame.
+    CHECK(fewest_sparks == sparks_at_start);
+    CHECK(most_lit > 0);
+    CHECK(most_lit < sparks_at_start);
+    CHECK(fewest_lit < most_lit);
+    CHECK(white_at_most * 2 > most_lit);
 }
 
 TEST_CASE("the spark pool is sized at start, never grows, and a full pool drops sparks",
