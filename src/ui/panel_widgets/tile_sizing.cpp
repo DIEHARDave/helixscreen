@@ -159,22 +159,17 @@ TileVerdict TileSizing::decide(int width_px, int height_px) const {
     const int row_inset = 2 * theme_manager_get_spacing("space_sm");
     int chrome_w = 2 * gap;
     int chrome_h = 2 * gap;
-    int part_gap = gap;
     if (content_root_) {
-        // The branching container is the glyph/label stack, and decide prices
-        // the gap between those parts per candidate. Charging it here as well
-        // would cost a glyph-only candidate a gap it never draws.
         const ContentChrome chrome = measure_content_chrome(content_root_, gap, row_inset);
-        chrome_w = chrome.w - chrome.branch_gap_w;
-        chrome_h = chrome.h - chrome.branch_gap_h;
-        part_gap = std::max(chrome.branch_gap_w, chrome.branch_gap_h);
+        chrome_w = chrome.w;
+        chrome_h = chrome.h;
     }
 
     const int avail_w = std::max(width_px - chrome_w, 1);
     const int avail_h = std::max(height_px - chrome_h, 1);
 
     TileVerdict verdict =
-        decide_tile_layout(avail_w, avail_h, part_gap, rungs, content_.has_value, label_drawn(),
+        decide_tile_layout(avail_w, avail_h, gap, rungs, content_.has_value, label_drawn(),
                            authored_rung(), row_inset, content_.label_is_identity);
 
     // At micro and tiny a whole cell is barely wider than the glyph itself, so
