@@ -36,9 +36,9 @@
             <tbody>
               <tr v-for="(crash, i) in data.recent_crashes" :key="i">
                 <td class="mono">{{ formatTimestamp(crash.timestamp) }}</td>
-                <td><span class="badge version">{{ crash.version || '—' }}</span></td>
-                <td><span class="badge" :class="signalClass(crash.signal)">{{ crash.signal || '—' }}</span></td>
-                <td>{{ crash.platform || '—' }}</td>
+                <td><span class="badge version">{{ crash.version || '-' }}</span></td>
+                <td><span class="badge" :class="signalClass(crash.signal)">{{ crash.signal || '-' }}</span></td>
+                <td>{{ crash.platform || '-' }}</td>
                 <td class="mono">{{ formatDuration(crash.uptime_sec) }}</td>
                 <td class="mono device-id">{{ shortDeviceId(crash.device_id) }}</td>
                 <td class="mono">

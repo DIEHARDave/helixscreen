@@ -1,6 +1,6 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { legacyRedirect } from '@/utils/urlState'
+import { LEGACY_ROUTES, legacyLocation } from '@/utils/urlState'
 import LoginView from '@/views/LoginView.vue'
 import OverviewView from '@/views/OverviewView.vue'
 import PrintsView from '@/views/PrintsView.vue'
@@ -17,17 +17,9 @@ export const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
-      path: '/fleet',
-      name: 'fleet',
-      component: () => import('@/views/FleetView.vue'),
-      meta: { requiresAuth: true }
-    },
-    { path: '/adoption', redirect: (to) => ({ path: legacyRedirect(to.path)!, query: to.query }) },
-    { path: '/hardware', redirect: (to) => ({ path: legacyRedirect(to.path)!, query: to.query }) },
-    {
-      path: '/prints',
-      name: 'prints',
-      component: PrintsView,
+      path: '/releases',
+      name: 'releases',
+      component: ReleasesView,
       meta: { requiresAuth: true }
     },
     {
@@ -36,30 +28,35 @@ export const router = createRouter({
       component: () => import('@/views/StabilityView.vue'),
       meta: { requiresAuth: true }
     },
-    { path: '/crashes', redirect: (to) => ({ path: legacyRedirect(to.path)!, query: to.query }) },
-    {
-      path: '/releases',
-      name: 'releases',
-      component: ReleasesView,
-      meta: { requiresAuth: true }
-    },
-    { path: '/memory', redirect: (to) => ({ path: legacyRedirect(to.path)!, query: to.query }) },
-    {
-      path: '/usage',
-      name: 'usage',
-      component: () => import('@/views/UsageView.vue'),
-      meta: { requiresAuth: true }
-    },
-    { path: '/engagement', redirect: (to) => ({ path: legacyRedirect(to.path)!, query: to.query }) },
-    { path: '/reliability', redirect: (to) => ({ path: legacyRedirect(to.path)!, query: to.query }) },
     {
       path: '/performance',
       name: 'performance',
       component: () => import('@/views/PerformanceView.vue'),
       meta: { requiresAuth: true }
     },
-    { path: '/features', redirect: (to) => ({ path: legacyRedirect(to.path)!, query: to.query }) },
-    { path: '/ux', redirect: (to) => ({ path: legacyRedirect(to.path)!, query: to.query }) },
+    {
+      path: '/fleet',
+      name: 'fleet',
+      component: () => import('@/views/FleetView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/usage',
+      name: 'usage',
+      component: () => import('@/views/UsageView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/prints',
+      name: 'prints',
+      component: PrintsView,
+      meta: { requiresAuth: true }
+    },
+    // Old bookmarks land on the tab that holds their content, filters intact.
+    ...LEGACY_ROUTES.map((path): RouteRecordRaw => ({
+      path,
+      redirect: (to) => legacyLocation(to.path, to.query)!
+    }))
   ]
 })
 

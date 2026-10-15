@@ -4,7 +4,7 @@
       <div class="metrics-row">
         <MetricCard
           title="Avg Session"
-          :value="data.avg_session_sec === null ? '—' : formatDuration(data.avg_session_sec)"
+          :value="data.avg_session_sec === null ? '-' : formatDuration(data.avg_session_sec)"
           :subtitle="data.avg_session_sec === null ? deltaEraPlaceholder(data) : `per boot, ${span}`"
           color="var(--accent-blue)"
         />

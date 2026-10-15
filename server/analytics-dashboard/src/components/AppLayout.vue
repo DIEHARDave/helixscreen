@@ -5,27 +5,14 @@
         <h1>HelixScreen Analytics</h1>
       </div>
       <nav class="sidebar-nav">
-        <router-link :to="navTo('/')" class="nav-link" :class="{ active: route.path === '/' }">
-          Overview
-        </router-link>
-        <router-link :to="navTo('/fleet')" class="nav-link" :class="{ active: route.path === '/fleet' }">
-          Fleet
-        </router-link>
-        <router-link :to="navTo('/prints')" class="nav-link" :class="{ active: route.path === '/prints' }">
-          Prints
-        </router-link>
-        <router-link :to="navTo('/stability')" class="nav-link" :class="{ active: route.path === '/stability' }">
-          Stability
-        </router-link>
-        <router-link :to="navTo('/releases')" class="nav-link" :class="{ active: route.path === '/releases' }">
-          Releases
-        </router-link>
-        <div class="nav-separator"></div>
-        <router-link :to="navTo('/performance')" class="nav-link" :class="{ active: route.path === '/performance' }">
-          Performance
-        </router-link>
-        <router-link :to="navTo('/usage')" class="nav-link" :class="{ active: route.path === '/usage' }">
-          Usage
+        <router-link
+          v-for="tab in TABS"
+          :key="tab.path"
+          :to="navTo(tab.path)"
+          class="nav-link"
+          :class="{ active: route.path === tab.path }"
+        >
+          {{ tab.label }}
         </router-link>
       </nav>
       <div class="sidebar-footer">
@@ -37,6 +24,7 @@
         <FilterBar />
       </div>
       <div class="content-body">
+        <Breadcrumb class="content-breadcrumb" />
         <slot />
       </div>
     </main>
@@ -50,6 +38,18 @@ import { useAuthStore } from '@/stores/auth'
 import { useFiltersStore } from '@/stores/filters'
 import { router } from '@/router'
 import FilterBar from '@/components/FilterBar.vue'
+import Breadcrumb from '@/components/Breadcrumb.vue'
+
+// The Health tab is served at '/'.
+const TABS = [
+  { path: '/', label: 'Health' },
+  { path: '/releases', label: 'Releases' },
+  { path: '/stability', label: 'Stability' },
+  { path: '/performance', label: 'Performance' },
+  { path: '/fleet', label: 'Fleet' },
+  { path: '/usage', label: 'Usage' },
+  { path: '/prints', label: 'Prints' }
+]
 
 const route = useRoute()
 const auth = useAuthStore()
@@ -128,12 +128,6 @@ function handleLogout() {
   font-weight: 500;
 }
 
-.nav-separator {
-  height: 1px;
-  background: var(--border);
-  margin: 8px 16px;
-}
-
 .sidebar-footer {
   padding: 16px 20px;
   border-top: 1px solid var(--border);
@@ -172,5 +166,9 @@ function handleLogout() {
   flex: 1;
   overflow-y: auto;
   padding: 32px;
+}
+
+.content-breadcrumb {
+  margin-bottom: 16px;
 }
 </style>

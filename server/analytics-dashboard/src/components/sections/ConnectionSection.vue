@@ -4,7 +4,7 @@
       <div class="metrics-row">
         <MetricCard
           title="Worst-Case Outage"
-          :value="data.max_disconnect_sec === null ? '—' : formatDuration(data.max_disconnect_sec)"
+          :value="data.max_disconnect_sec === null ? '-' : formatDuration(data.max_disconnect_sec)"
           :subtitle="data.max_disconnect_sec === null ? deltaEraPlaceholder(data) : `longest single outage, ${span}`"
           color="var(--accent-red)"
         />

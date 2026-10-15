@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest'
 import {
   applyDrill,
   buildDashQuery,
+  LEGACY_ROUTES,
+  legacyLocation,
   legacyRedirect,
   parseDashQuery,
   sameDashQuery,
@@ -102,6 +104,24 @@ describe('legacyRedirect', () => {
     for (const p of ['/fleet', '/stability', '/usage', '/', '/devices', '/device/abc']) {
       expect(legacyRedirect(p), p).toBeNull()
     }
+  })
+})
+
+describe('legacyLocation', () => {
+  it('keeps the filters of an old bookmark', () => {
+    const query = { platform: 'pi', range: '7d', model: 'Voron 2.4,Prusa MK4' }
+    expect(legacyLocation('/adoption', query)).toEqual({ path: '/fleet', query })
+    expect(legacyLocation('/reliability', { version: '1.0.5' })).toEqual({
+      path: '/stability',
+      query: { version: '1.0.5' }
+    })
+  })
+
+  it('routes every legacy path and nothing else', () => {
+    expect([...LEGACY_ROUTES].sort()).toEqual(
+      ['/adoption', '/crashes', '/engagement', '/features', '/hardware', '/memory', '/reliability', '/ux']
+    )
+    expect(legacyLocation('/fleet', {})).toBeNull()
   })
 })
 

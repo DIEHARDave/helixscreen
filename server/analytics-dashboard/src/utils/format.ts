@@ -1,4 +1,10 @@
-import type { DeltaEra, FilterKey } from '@/services/api'
+import type { DashFilterKey } from './urlState'
+
+/** The DeltaEra fields these formatters read; services/api's DeltaEra satisfies it. */
+interface EraFields {
+  delta_era_devices: number
+  filter_not_applicable: DashFilterKey | null
+}
 
 export function formatDuration(seconds: number): string {
   if (!seconds) return '0s'
@@ -29,7 +35,7 @@ export function titleCase(snakeId: string): string {
   return snakeId.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
 }
 
-const FILTER_LABEL: Record<FilterKey, string> = {
+const FILTER_LABEL: Record<DashFilterKey, string> = {
   platform: 'platform',
   version: 'version',
   model: 'printer model',
@@ -37,7 +43,7 @@ const FILTER_LABEL: Record<FilterKey, string> = {
 }
 
 /** What a view shows in place of a delta-era value it has no number for. */
-export function deltaEraPlaceholder(era: DeltaEra): string {
+export function deltaEraPlaceholder(era: EraFields): string {
   if (era.filter_not_applicable) return `Not reported per ${FILTER_LABEL[era.filter_not_applicable]}`
   return `Waiting for devices on the new client (${era.delta_era_devices} so far)`
 }
@@ -58,7 +64,7 @@ export function rangeLabel(range: string): string {
  * What a section shows when its endpoint returned no rows: the filter the
  * endpoint says it cannot apply, else whether any filter is active.
  */
-export function emptyPlaceholder(era: DeltaEra | null, activeFilters: FilterKey[]): string {
+export function emptyPlaceholder(era: EraFields | null, activeFilters: DashFilterKey[]): string {
   if (era?.filter_not_applicable) return deltaEraPlaceholder(era)
   return activeFilters.length > 0 ? 'No data for this filter' : 'No data in this range'
 }

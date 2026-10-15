@@ -73,6 +73,15 @@ export function legacyRedirect(path: string): string | null {
   return LEGACY_PATHS[path] ?? null
 }
 
+/** Every path that redirects to a tab. */
+export const LEGACY_ROUTES: string[] = Object.keys(LEGACY_PATHS)
+
+/** Where an old bookmark lands: its tab, with the query (filters, range) carried over unchanged. */
+export function legacyLocation<Q>(path: string, query: Q): { path: string; query: Q } | null {
+  const target = legacyRedirect(path)
+  return target === null ? null : { path: target, query }
+}
+
 export function sameDashQuery(a: DashQuery, b: DashQuery): boolean {
   const qa = buildDashQuery(a)
   const qb = buildDashQuery(b)

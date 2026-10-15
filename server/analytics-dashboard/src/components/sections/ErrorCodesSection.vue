@@ -4,7 +4,7 @@
       <div class="metrics-row">
         <MetricCard
           title="Klippy Errors"
-          :value="data.delta_era_devices > 0 ? totalKlippyErrors.toLocaleString() : '—'"
+          :value="data.delta_era_devices > 0 ? totalKlippyErrors.toLocaleString() : '-'"
           :subtitle="data.delta_era_devices > 0 ? span : deltaEraPlaceholder(data)"
           color="#f97316"
         />

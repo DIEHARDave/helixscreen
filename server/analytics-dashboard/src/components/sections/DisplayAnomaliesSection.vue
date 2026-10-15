@@ -77,8 +77,8 @@
               <tbody>
                 <tr v-for="(row, i) in anomalies.recent" :key="i">
                   <td class="mono">{{ formatTimestamp(row.timestamp) }}</td>
-                  <td><span class="badge version">{{ row.version || '—' }}</span></td>
-                  <td>{{ row.platform || '—' }}</td>
+                  <td><span class="badge version">{{ row.version || '-' }}</span></td>
+                  <td>{{ row.platform || '-' }}</td>
                   <td><span class="badge anomaly-code">{{ row.code }}</span></td>
                   <td class="mono">{{ formatDuration(row.uptime_sec) }}</td>
                   <td class="mono device-id">{{ shortDeviceId(row.device_id) }}</td>
@@ -149,7 +149,7 @@ const versionRows = computed(() =>
 
 // The descriptive part before the backtrace; the cell's CSS ellipsis trims the rest.
 function truncateContext(ctx: string): string {
-  if (!ctx) return '—'
+  if (!ctx) return '-'
   const btIdx = ctx.indexOf(' | bt=')
   return btIdx >= 0 ? ctx.slice(0, btIdx) : ctx
 }
