@@ -23,7 +23,7 @@ def _load(filename, name):
 
 issues = _load("telemetry-printer-issues.py", "telemetry_printer_issues")
 
-FIXTURE = ROOT / "tests" / "fixtures" / "telemetry" / "printer_analysis_sample.json"
+FIXTURE = Path(__file__).parent / "fixtures" / "printer_analysis_sample.json"
 EMPTY_DB = {"printers": []}
 
 
