@@ -30,7 +30,7 @@ protocol itself is Klipper's: [G-Codes: action commands](https://www.klipper3d.o
 | `ui_xml/action_prompt_button_row.xml` | One row of regular buttons: a button group, or a run of ungrouped buttons |
 | `src/application/gcode_response_routing.cpp#attach` | Wiring: creates manager and modal, registers the `notify_gcode_response` handler, sends button gcode and `prompt_end` |
 | `src/application/application_sdl_shortcuts.cpp` | `A` and `N` keys raise a test prompt and a test notification in `--test` |
-| `src/application/demo_overlays.cpp` | `ctl demo action-prompt-worst` and `action-prompt-many` |
+| `src/application/demo_overlays.cpp` | `ctl demo action-prompt-worst`, `action-prompt-many` and `action-prompt-hex` |
 | `src/printer/ams_backend_mock.cpp#execute_device_action` | Mock AFC calibration wizard that injects a full prompt sequence |
 | `tests/unit/test_action_prompt.cpp` | Parser, button spec, state machine, callbacks, static accessors, line sink, `closed_on_screen()` for every close kind |
 | `tests/unit/test_action_prompt_dismiss.cpp` | Empty-gcode button closes without sending; which closes reach the dismiss callback |
@@ -135,11 +135,18 @@ splits on `|`:
 | `Continue\|RESUME` | `Continue` | `RESUME` | empty | empty |
 | `Cancel\|CANCEL_PRINT\|error` | `Cancel` | `CANCEL_PRINT` | `error` | empty |
 | `Retry\|\|warning` | `Retry` | `Retry` | `warning` | empty |
+| `Dark\|GCODE_CMD_2\|ff5722` | `Dark` | `GCODE_CMD_2` | empty | `ff5722` |
+| `_ \|CHANGE_ZCOLOR SLOT=1 ...\|21cc3d` | empty | `CHANGE_ZCOLOR SLOT=1 ...` | empty | `21cc3d` |
 | `_\|CHANGE_ZCOLOR SLOT=1 ...\|primary\|F72224` | empty | `CHANGE_ZCOLOR SLOT=1 ...` | `primary` | `F72224` |
 
-An empty gcode field falls back to the label, which is Klipper's convention. The fourth field is
-a ZMOD extension for color-grid tiles: a hex color that overrides the named color, and a label made
-only of `_`, `-` and spaces is cleared so the swatch is not painted with a placeholder.
+An empty gcode field falls back to the label, which is Klipper's convention. The third field is
+either a named style or a hex fill color (`RRGGBB`, `#RRGGBB` or `#RGB`, anything
+`helix::parse_hex_color` accepts), the form Fluidd, Mainsail and Z-Mod send (#1806). The fourth
+field is the older spelling of the same fill; when it parses as a color it wins, and when it does
+not it is ignored. A hex-filled button with a label made only of `_`, `-` and spaces has the label
+cleared, and the modal draws it as a swatch with the filament swatch edge
+(`helix::ui::apply_swatch_color`). Text on a hex fill takes the same contrast-adjusted text color
+as every other button.
 
 ### State machine
 
@@ -341,6 +348,7 @@ In a running mock (`--test`):
 | `HELIX_MOCK_AMS=afc`, then the AFC device action "Run Calibration Wizard" | The mock backend replays an `AFC Calibration` prompt through `AmsState`'s gcode response callback, with four grouped lane buttons, a "Calibrate All" button and a Cancel footer |
 | `helix-screen ctl -s "$HELIX_SOCK" demo action-prompt-worst` | Tallest shape: AFC diagram, three wrapping text lines, three buttons and a footer, error severity. Used for the chrome budget in `ui_xml/action_prompt_modal.xml` |
 | `helix-screen ctl -s "$HELIX_SOCK" demo action-prompt-many` | Seven long-label buttons that must wrap |
+| `helix-screen ctl -s "$HELIX_SOCK" demo action-prompt-hex` | Third-field hex buttons and a Z-Mod swatch grid, built through `parse_button_spec` |
 
 The `ctl demo` screens construct `PromptData` directly and skip the manager. `HELIX_MOCK_AMS` is
 documented in [MOCK_ENVIRONMENT_VARIABLES.md](MOCK_ENVIRONMENT_VARIABLES.md); `ctl` in
