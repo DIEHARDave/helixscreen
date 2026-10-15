@@ -232,9 +232,8 @@ class CfsCalibHelper : public CfsLifecycleHelper {
     }
 };
 
-// Each drain() runs only the batch of deferred work swapped in at its start,
-// so a defer chain (home done -> PREPARE sent -> prepare done) needs one drain
-// per hop. Eight covers the longest chain these tests drive (save: two hops).
+// A defer chain (home done -> PREPARE sent -> prepare done) needs one queue
+// pass per hop; drain_all() repeats until the queue is empty.
 void drain_calib_queue() {
     helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
 }
