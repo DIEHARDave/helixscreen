@@ -45,6 +45,6 @@ claim_tree() {
         return 0
     fi
     scripts/helix-claim take "$_tree" "$1" \
-        --pid "$PPID" --note "git hook running; may take many minutes" >/dev/null 2>&1
+        --pid "$PPID" --ack-red-main --note "git hook running; may take many minutes" >/dev/null 2>&1
     return 0
 }
