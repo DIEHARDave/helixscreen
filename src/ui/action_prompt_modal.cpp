@@ -109,6 +109,11 @@ struct SwatchGridFit {
  * the touch target, while the free height holds that; otherwise they take
  * the largest height that fits. Below button_height they stop shrinking and
  * the grid scrolls instead.
+ *
+ * This is the one place touch_target_min yields on height: a color picker
+ * that shows every color at once beats one that scrolls to reach 48px tiles,
+ * so height drops toward button_height first while width still holds the
+ * touch target (prestonbrown/helixscreen#1806).
  */
 SwatchGridFit fit_swatch_grid(const SwatchGridGeometry& g) {
     SwatchGridFit fit;
