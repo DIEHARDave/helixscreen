@@ -1202,3 +1202,137 @@ TEST_CASE_METHOD(LVGLUITestFixture,
         process_lvgl(30);
     }
 }
+
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "tool_switcher: the face's band names the mounted lane's material legibly",
+                 "[tool_switcher][band]") {
+    ToolChangerRig rig(4);
+    map_heads_to_lanes(4);
+    PanelWidgetHarness<ToolSwitcherWidget> h(test_screen(), state());
+    process_lvgl(30);
+    resize_content(h, 90, 90);
+    process_lvgl(30);
+    REQUIRE(mode() == static_cast<int>(ToolSwitcherMode::Single));
+
+    auto text_of = [](const std::string& name) {
+        return std::string(lv_subject_get_string(lv_xml_get_subject(nullptr, name.c_str())));
+    };
+    auto color_of = [](const std::string& name) {
+        return lv_color_to_u32(lv_subject_get_color(lv_xml_get_subject(nullptr, name.c_str())));
+    };
+    // Mounted in turn: a dark lane, a light one, then the dark one again, so
+    // the face's text colour has to change both ways.
+    for (const int head : {0, 1, 0}) {
+        CAPTURE(head);
+        ToolState::instance().set_ams_topology(helix::test::make_head_topology(4, head));
+        process_lvgl(30);
+        const std::string seg = "tool_switcher_seg_" + std::to_string(head);
+        REQUIRE_FALSE(text_of(seg + "_material").empty());
+        CHECK(text_of("tool_switcher_face_material") == text_of(seg + "_material"));
+        CHECK(color_of("tool_switcher_face_color") == color_of(seg + "_color"));
+        CHECK(color_of("tool_switcher_face_band_text") == color_of(seg + "_band_text"));
+        CHECK(color_of("tool_switcher_face_band_text") ==
+              lv_color_to_u32(theme_manager_get_readable_on(
+                  lv_subject_get_color(lv_xml_get_subject(nullptr, "tool_switcher_face_color")))));
+    }
+    REQUIRE(color_of("tool_switcher_seg_0_band_text") != color_of("tool_switcher_seg_1_band_text"));
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "tool_switcher: a mount that renames a shared head re-decides the label form",
+                 "[tool_switcher][physical-heads]") {
+    ToolChangerRig rig(3);
+    // Two named tools on one head, so the head reads as whichever is mounted.
+    PrinterDiscovery hw;
+    hw.parse_objects(
+        nlohmann::json::array({"toolchanger", "heater_bed", "tool L", "extruder",
+                               "tool VeryLongToolName", "extruder1", "tool C", "extruder2"}));
+    ToolState::instance().init_tools(hw);
+    ToolState::instance().update_from_status(
+        nlohmann::json{{"tool VeryLongToolName", {{"extruder", "extruder"}}}});
+    const auto& heads = ToolState::instance().physical_heads();
+    REQUIRE(heads.size() == 2);
+    const auto& tools = ToolState::instance().tools();
+    const auto tool_named = [&tools](const char* name) {
+        for (const auto& t : tools) {
+            if (t.name == name)
+                return t.index;
+        }
+        return -1;
+    };
+    const int short_tool = heads[0].tool_indices.front();
+    const int long_tool = tool_named("VeryLongToolName");
+    REQUIRE(heads[0].holds_tool(long_tool));
+    REQUIRE(short_tool != long_tool);
+    // The backend reports the mount, which changes no tool and so bumps no
+    // tool-list version.
+    auto mount = [](int tool) { ToolState::instance().set_backend_active_tool(tool); };
+
+    PanelWidgetHarness<ToolSwitcherWidget> h(test_screen(), state());
+    process_lvgl(30);
+    auto labels = []() {
+        std::vector<std::string> out;
+        for (const char* name : {"tool_switcher_seg_0_label", "tool_switcher_seg_0_sub",
+                                 "tool_switcher_seg_1_label", "tool_switcher_seg_1_sub"}) {
+            out.emplace_back(lv_subject_get_string(lv_xml_get_subject(nullptr, name)));
+        }
+        return out;
+    };
+    auto rail = []() {
+        return mode() == static_cast<int>(ToolSwitcherMode::Rail) ||
+               mode() == static_cast<int>(ToolSwitcherMode::RailWithActions);
+    };
+
+    int flips = 0;
+    for (int w = 100; w <= 600; w += 4) {
+        CAPTURE(w);
+        mount(short_tool);
+        resize_content(h, w, 60);
+        process_lvgl(30);
+        if (!rail())
+            continue;
+        const auto short_name = labels();
+        mount(long_tool);
+        process_lvgl(30);
+        const auto after_mount = labels();
+        // The same box laid out from scratch with the long name mounted.
+        resize_content(h, w + 50, 60);
+        process_lvgl(30);
+        resize_content(h, w, 60);
+        process_lvgl(30);
+        REQUIRE(rail());
+        CHECK(after_mount == labels());
+        // Head 1 is never renamed: its label changes only with the form.
+        if (short_name[2] != after_mount[2])
+            ++flips;
+    }
+    mount(short_tool);
+    process_lvgl(30);
+    // Some box fits the short name and not the long one.
+    REQUIRE(flips > 0);
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture, "tool_switcher: the feeder state follows the backend",
+                 "[tool_switcher][feeder]") {
+    ToolChangerRig rig(2);
+    rig.backend->has_feeder = true;
+    lv_subject_t* open = AmsState::instance().get_feeder_open_subject();
+
+    rig.backend->feeder_is_open = true;
+    AmsState::instance().sync_from_backend();
+    CHECK(lv_subject_get_int(open) == 1);
+
+    rig.backend->feeder_is_open = false;
+    AmsState::instance().sync_from_backend();
+    CHECK(lv_subject_get_int(open) == 0);
+
+    // A printer switch takes the backend away: its feeder is no one's.
+    rig.backend->feeder_is_open = true;
+    AmsState::instance().sync_from_backend();
+    REQUIRE(lv_subject_get_int(open) == 1);
+    rig.backend->wait_for_operation_thread();
+    rig.backend->stop();
+    rig.backend = nullptr;
+    AmsState::instance().clear_backends();
+    CHECK(lv_subject_get_int(open) == 0);
+}

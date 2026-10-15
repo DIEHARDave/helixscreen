@@ -2,11 +2,27 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #pragma once
 
+#include "printer_discovery.h"
 #include "tool_state.h"
 
 #include <string>
 
+#include "hv/json.hpp"
+
 namespace helix::test {
+
+/// A klipper-toolchanger printer with @p heads heads as discovery enumerates
+/// it: tool Ti on extruder i ("extruder", "extruder1", ...).
+inline PrinterDiscovery make_head_discovery(int heads) {
+    nlohmann::json objects = nlohmann::json::array({"toolchanger"});
+    for (int i = 0; i < heads; ++i) {
+        objects.push_back("tool T" + std::to_string(i));
+        objects.push_back(i == 0 ? std::string("extruder") : "extruder" + std::to_string(i));
+    }
+    PrinterDiscovery disc;
+    disc.parse_objects(objects);
+    return disc;
+}
 
 /// @p heads heads, one tool each, every tool printing through its own
 /// extruder ("extruder", "extruder1", ...) and sourcing lane i.
