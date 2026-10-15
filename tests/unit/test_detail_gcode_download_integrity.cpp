@@ -52,6 +52,7 @@
 #include "print_start_checks.h"
 #include "print_status_preview_decision.h"
 #include "printer_state.h"
+#include "test_helpers/scoped_env.h"
 #include "tools_used_cache.h"
 
 #include <cstdio>
@@ -99,28 +100,6 @@ struct CacheDirGuard {
         }
         std::error_code ec;
         std::filesystem::remove_all(dir, ec);
-    }
-};
-
-/// Save/set/restore one environment variable (used for
-/// HELIX_FORCE_GCODE_MEMORY_FAIL — read per-call by memory_utils).
-struct EnvGuard {
-    std::string name_;
-    std::string prev_env_;
-    bool had_prev_ = false;
-    EnvGuard(std::string name, std::string value) : name_(std::move(name)) {
-        if (const char* old = ::getenv(name_.c_str())) {
-            prev_env_ = old;
-            had_prev_ = true;
-        }
-        ::setenv(name_.c_str(), value.c_str(), 1);
-    }
-    ~EnvGuard() {
-        if (had_prev_) {
-            ::setenv(name_.c_str(), prev_env_.c_str(), 1);
-        } else {
-            ::unsetenv(name_.c_str());
-        }
     }
 };
 
@@ -360,7 +339,7 @@ TEST_CASE_METHOD(DetailDownloadFixture,
                  "successful scan of a zero-tool file persists the empty set",
                  "[print_select][detail_view][gcode_cache]") {
     CacheDirGuard guard;
-    EnvGuard mem_fail("HELIX_FORCE_GCODE_MEMORY_FAIL", "1");
+    helix::ScopedEnv mem_fail("HELIX_FORCE_GCODE_MEMORY_FAIL", "1");
 
     const std::string asset = find_test_asset("3DBenchy.gcode");
     REQUIRE_FALSE(asset.empty()); // tests must run from repo/build cwd
@@ -397,7 +376,7 @@ TEST_CASE_METHOD(DetailDownloadFixture,
                  "stale on-disk copy with a mismatched size is re-downloaded",
                  "[print_select][detail_view][gcode_cache]") {
     CacheDirGuard guard;
-    EnvGuard mem_fail("HELIX_FORCE_GCODE_MEMORY_FAIL", "1");
+    helix::ScopedEnv mem_fail("HELIX_FORCE_GCODE_MEMORY_FAIL", "1");
 
     const std::string asset = find_test_asset("3DBenchy.gcode");
     REQUIRE_FALSE(asset.empty());
@@ -438,7 +417,7 @@ TEST_CASE_METHOD(DetailDownloadFixture,
                  "oversize reject removes the canonical file once the scan no longer needs it",
                  "[print_select][detail_view][gcode_cache]") {
     CacheDirGuard guard;
-    EnvGuard mem_fail("HELIX_FORCE_GCODE_MEMORY_FAIL", "1");
+    helix::ScopedEnv mem_fail("HELIX_FORCE_GCODE_MEMORY_FAIL", "1");
 
     const std::string asset = find_test_asset("3DBenchy.gcode");
     REQUIRE_FALSE(asset.empty());
@@ -473,7 +452,7 @@ TEST_CASE_METHOD(DetailDownloadFixture,
                  "scan",
                  "[print_select][detail_view][gcode_cache]") {
     CacheDirGuard guard;
-    EnvGuard mem_fail("HELIX_FORCE_GCODE_MEMORY_FAIL", "1");
+    helix::ScopedEnv mem_fail("HELIX_FORCE_GCODE_MEMORY_FAIL", "1");
 
     // u1_4color_ring.gcode carries standalone T0–T3 lines: a correct scan
     // yields {0,1,2,3}; a scan whose file was deleted mid-run yields {} —
@@ -545,7 +524,7 @@ TEST_CASE_METHOD(DetailDownloadFixture,
                  "footer read answers tools_used without downloading the whole file",
                  "[print_select][detail_view][gcode_footer]") {
     CacheDirGuard guard;
-    EnvGuard mem_fail("HELIX_FORCE_GCODE_MEMORY_FAIL", "1");
+    helix::ScopedEnv mem_fail("HELIX_FORCE_GCODE_MEMORY_FAIL", "1");
 
     // ssr_heat_sink_orca's footer says `filament used [g] = 0.00, 0.00, 0.00,
     // 0.00, 10.16` — only T4 prints, out of a 5-slot palette.
@@ -581,7 +560,7 @@ TEST_CASE_METHOD(DetailDownloadFixture,
 TEST_CASE_METHOD(DetailDownloadFixture, "footer read sizes its window from gcode_end_byte",
                  "[print_select][detail_view][gcode_footer]") {
     CacheDirGuard guard;
-    EnvGuard mem_fail("HELIX_FORCE_GCODE_MEMORY_FAIL", "1");
+    helix::ScopedEnv mem_fail("HELIX_FORCE_GCODE_MEMORY_FAIL", "1");
 
     // u1_4color_ring's usage line sits 26 KB from EOF — past a 20 KB guess,
     // inside both the exact gcode_end_byte window and the 64 KB default.
@@ -609,7 +588,7 @@ TEST_CASE_METHOD(DetailDownloadFixture,
                  "footer read backfills the palette when metadata carried none",
                  "[print_select][detail_view][gcode_footer]") {
     CacheDirGuard guard;
-    EnvGuard mem_fail("HELIX_FORCE_GCODE_MEMORY_FAIL", "1");
+    helix::ScopedEnv mem_fail("HELIX_FORCE_GCODE_MEMORY_FAIL", "1");
 
     // calicat_calico: `filament used [g] = 6.34, 0.00, 0.00, 0.00` and
     // `filament_colour = #E7BD00;#00C502;#F4E2C1;#ED1C24`.
@@ -642,7 +621,7 @@ TEST_CASE_METHOD(DetailDownloadFixture,
                  "a footer read that cannot answer falls back to the full scan",
                  "[print_select][detail_view][gcode_footer]") {
     CacheDirGuard guard;
-    EnvGuard mem_fail("HELIX_FORCE_GCODE_MEMORY_FAIL", "1");
+    helix::ScopedEnv mem_fail("HELIX_FORCE_GCODE_MEMORY_FAIL", "1");
 
     const std::string asset = find_test_asset("u1_4color_ring.gcode");
     REQUIRE_FALSE(asset.empty());
@@ -690,7 +669,7 @@ TEST_CASE_METHOD(DetailDownloadFixture,
     // async parse thread that outlives the test (the isolation listener flags it,
     // and an unjoined hv/std::async thread is a real cross-test hazard, not just
     // noise). Same guard the whole-file-scan case above uses.
-    EnvGuard mem_fail("HELIX_FORCE_GCODE_MEMORY_FAIL", "1");
+    helix::ScopedEnv mem_fail("HELIX_FORCE_GCODE_MEMORY_FAIL", "1");
 
     const std::string asset = find_test_asset("3DBenchy.gcode");
     REQUIRE_FALSE(asset.empty()); // tests must run from repo/build cwd
@@ -735,7 +714,7 @@ TEST_CASE_METHOD(DetailDownloadFixture, "nothing outstanding issues no footer re
     // async parse thread that outlives the test (the isolation listener flags it,
     // and an unjoined hv/std::async thread is a real cross-test hazard, not just
     // noise). Same guard the whole-file-scan case above uses.
-    EnvGuard mem_fail("HELIX_FORCE_GCODE_MEMORY_FAIL", "1");
+    helix::ScopedEnv mem_fail("HELIX_FORCE_GCODE_MEMORY_FAIL", "1");
 
     const std::string asset = find_test_asset("3DBenchy.gcode");
     REQUIRE_FALSE(asset.empty());
@@ -775,7 +754,7 @@ TEST_CASE_METHOD(DetailDownloadFixture,
                  "A Print tap waits for the file scan's printer-stopping command check",
                  "[print_select][detail_view][printer_stop]") {
     CacheDirGuard guard;
-    EnvGuard mem_fail("HELIX_FORCE_GCODE_MEMORY_FAIL", "1");
+    helix::ScopedEnv mem_fail("HELIX_FORCE_GCODE_MEMORY_FAIL", "1");
     StopMacroCache macros;
 
     // Tools scan settles, the operations scan is held, the tap waits; releasing
@@ -881,7 +860,7 @@ TEST_CASE_METHOD(DetailDownloadFixture,
                  "A .3mf opened after a G-code file carries none of its embedded operations",
                  "[print_select][detail_view][qidi_3mf]") {
     CacheDirGuard guard;
-    EnvGuard mem_fail("HELIX_FORCE_GCODE_MEMORY_FAIL", "1");
+    helix::ScopedEnv mem_fail("HELIX_FORCE_GCODE_MEMORY_FAIL", "1");
     const std::string pid = std::to_string(::getpid());
     const std::string gcode_name = "embedded_mesh_" + pid + ".gcode";
     const std::string gcode = "G28\nBED_MESH_CALIBRATE\nG1 X10 Y10 E1\n";
@@ -1030,7 +1009,7 @@ TEST_CASE_METHOD(DetailDownloadFixture,
                  "A USB file named like a printer file gets its own operations scan",
                  "[print_select][detail_view][usb]") {
     CacheDirGuard guard;
-    EnvGuard mem_fail("HELIX_FORCE_GCODE_MEMORY_FAIL", "1");
+    helix::ScopedEnv mem_fail("HELIX_FORCE_GCODE_MEMORY_FAIL", "1");
     const std::string name = "same_name_" + std::to_string(::getpid()) + ".gcode";
     const std::string printer_gcode = "G28\nBED_MESH_CALIBRATE\nG1 X10 Y10 E1\n";
     PlantedGcode printer_file(name, "", printer_gcode);
@@ -1058,7 +1037,7 @@ TEST_CASE_METHOD(DetailDownloadFixture,
                  "A USB file's operations scan does not wait on the slow lane",
                  "[print_select][detail_view][usb]") {
     CacheDirGuard guard;
-    EnvGuard mem_fail("HELIX_FORCE_GCODE_MEMORY_FAIL", "1");
+    helix::ScopedEnv mem_fail("HELIX_FORCE_GCODE_MEMORY_FAIL", "1");
     const std::string name = "busy_lane_" + std::to_string(::getpid()) + ".gcode";
     const std::string content = "G28\nBED_MESH_CALIBRATE\nG1 X10 Y10 E1\n";
     StickFile stick(name, content);
