@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ui_coalesced_timer.h"
 #include "ui_context_menu.h"
 #include "ui_heater_icon_binder.h"
 #include "ui_job_queue_modal.h"
@@ -445,9 +446,9 @@ class PrintStatusWidget : public PanelWidget {
     // An idle resolve is queued and has not run yet. Every trigger in the same
     // tick (attach, the print-state observer's first notification, activation)
     // joins it rather than issuing its own request for the same file.
-    bool idle_reset_pending_ = false;
+    helix::ui::CoalescedTimer idle_reset_timer_{0};
     // Same coalescing for the active-print thumbnail write.
-    bool active_apply_pending_ = false;
+    helix::ui::CoalescedTimer active_apply_timer_{0};
 
     // Thermal tint for the detailed-active heater icons. Plain by-value members
     // of THIS instance — never on the shared/refcounted s_formatter_ below.
