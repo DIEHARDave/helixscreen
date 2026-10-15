@@ -1,3 +1,5 @@
+import type { DeltaEra, FilterKey } from '@/services/api'
+
 export function formatDuration(seconds: number): string {
   if (!seconds) return '0s'
   if (seconds < 60) return `${Math.round(seconds)}s`
@@ -25,4 +27,22 @@ export function shortDeviceId(id: string): string {
 
 export function titleCase(snakeId: string): string {
   return snakeId.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+}
+
+const FILTER_LABEL: Record<FilterKey, string> = {
+  platform: 'platform',
+  version: 'version',
+  model: 'printer model',
+  board: 'board',
+}
+
+/** What a view shows in place of a delta-era value it has no number for. */
+export function deltaEraPlaceholder(era: DeltaEra): string {
+  if (era.filter_not_applicable) return `Not reported per ${FILTER_LABEL[era.filter_not_applicable]}`
+  return `Waiting for devices on the new client (${era.delta_era_devices} so far)`
+}
+
+/** A 0-1 rate as a percentage, or "n/a" when the filters make it inapplicable. */
+export function formatRate(rate: number | null, digits = 1): string {
+  return rate === null ? 'n/a' : `${(rate * 100).toFixed(digits)}%`
 }
