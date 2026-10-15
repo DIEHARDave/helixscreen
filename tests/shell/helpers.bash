@@ -19,6 +19,12 @@ if [ -z "$BATS_TEST_TMPDIR" ]; then
     BATS_TEST_TMPDIR=$(mktemp -d "${BATS_TMPDIR:-/tmp}/bats-test-XXXXXX")
 fi
 
+# helix-claim treats two claims carrying one session id as one owner. A suite
+# run from inside a session would otherwise make every claim a test takes the
+# same owner, and each "another session holds it" case would pass the take. A
+# test that needs a session id sets it on the command.
+unset HELIX_SESSION_ID CLAUDE_CODE_SESSION_ID
+
 # Where the installer writes systemd drop-ins. A test run as root (the CI and
 # zeus containers) would otherwise write into the real /etc/systemd/system.
 export HELIX_SYSTEMD_UNIT_DIR="$BATS_TEST_TMPDIR/etc/systemd/system"

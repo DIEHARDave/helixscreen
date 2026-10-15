@@ -20,9 +20,18 @@
 # green push should mean a green Code Quality job.
 #
 # Fast path: when the tree already matches the commit being pushed there is
-# nothing to isolate, so the sweep runs in place exactly as it always did.
-# Otherwise the commit is checked out into a throwaway worktree, with the heavy
-# build inputs shared by symlink rather than rebuilt.
+# nothing to isolate, so the sweep runs in place. Otherwise the commit is
+# checked out into a throwaway worktree, with the heavy build inputs shared by
+# symlink rather than rebuilt.
+#
+# Patch drift is asked in the tree that owns lib/, on both paths. A landing that
+# adds or edits a patch is pushed from a tree that has not built it yet; drift
+# confined to patches the pushed commits changed is reported, not rejected
+# (lib/push-range.sh).
+#
+# One push, one gated ref: when several refs go up together, the last one read
+# is the commit swept and the range drift is measured over. Push refs one at a
+# time to gate each.
 #
 # Escape hatches: HELIX_PREPUSH_IN_PLACE=1 forces the old in-place behaviour,
 # and `git push --no-verify` skips the hook entirely. Expect CI to find whatever
@@ -57,19 +66,20 @@ while read -r _local_ref local_sha _remote_ref remote_sha; do
 done
 [ -n "$TARGET" ] || exit 0
 
+# shellcheck source=lib/push-range.sh
+. "$(dirname "$0")/lib/push-range.sh"
+BASE="$(push_base "$REMOTE_SHA" "$TARGET")" || BASE=""
+
 # Code that compiles on the host can still fail on the ESP32 image: int32_t is
 # long on Xtensa and the image builds -fno-exceptions. This syntax-checks the
 # firmware units the pushed commits reach, measured from what the remote has;
 # a new branch measures from its merge-base with origin/main.
 esp32_syntax_check() {
-    local tree="$1" base="$REMOTE_SHA"
+    local tree="$1"
     [ -f "$tree/scripts/esp32_syntax_check.py" ] || return 0
-    case "$base" in *[!0]*) ;; *) base="" ;; esac
-    if [ -z "$base" ] || ! git cat-file -e "$base^{commit}" 2>/dev/null; then
-        base="$(git merge-base "$TARGET" origin/main 2>/dev/null)" || return 0
-    fi
+    [ -n "$BASE" ] || return 0
     echo ""
-    python3 "$tree/scripts/esp32_syntax_check.py" --tree "$tree" --base "$base" --head "$TARGET"
+    python3 "$tree/scripts/esp32_syntax_check.py" --tree "$tree" --base "$BASE" --head "$TARGET"
 }
 
 # Paths excluded from the comparison are ones no gate reads: agent bookkeeping
@@ -80,7 +90,10 @@ TREE_DIFFERS="$(git diff --name-only "$TARGET" -- . ':(exclude).claude-recall' |
 if [ -n "${HELIX_PREPUSH_IN_PLACE:-}" ] || [ -z "$TREE_DIFFERS" ]; then
     echo "🚦 pre-push: full quality sweep (pre-commit only checked what you staged)"
     STATUS=0
-    ./scripts/quality-checks.sh || STATUS=$?
+    # Drift is asked once, below, where patches the push ships can be told
+    # apart from drift the push does not explain.
+    HELIX_QC_SKIP_PATCH_DRIFT=1 ./scripts/quality-checks.sh || STATUS=$?
+    prepush_patch_drift "$REPO_ROOT" "$BASE" "$TARGET" || STATUS=1
     esp32_syntax_check "$REPO_ROOT" || STATUS=1
     doc_anchor_advisory
     exit "$STATUS"
@@ -160,16 +173,7 @@ if [ "$STATUS" -ne 0 ]; then
     echo "   working tree - so this is a real finding in ${TARGET:0:9}."
 fi
 
-if [ -f "$REPO_ROOT/scripts/check_patch_drift.py" ]; then
-    echo ""
-    echo "🩹 Checking patch drift in your working tree (it owns lib/)..."
-    if ! ( cd "$REPO_ROOT" && python3 scripts/check_patch_drift.py ); then
-        echo ""
-        echo "❌ Patch drift is in YOUR WORKING TREE, not in ${TARGET:0:9}."
-        echo "   Repair it where it lives:  make reapply-patches"
-        STATUS=1
-    fi
-fi
+prepush_patch_drift "$REPO_ROOT" "$BASE" "$TARGET" || STATUS=1
 
 if [ -f "$REPO_ROOT/scripts/check_clang_diagnostics.py" ]; then
     echo ""
