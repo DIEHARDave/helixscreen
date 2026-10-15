@@ -2016,6 +2016,22 @@ struct DryerInfo {
     bool supports_live_temp = false;     ///< Target temp re-sends without stopping
     bool supports_live_duration = false; ///< Remaining time changes without stopping
 
+    /// Can a cycle also end early once the box reads at or below a target relative
+    /// humidity? The duration still bounds the cycle; the target only shortens it.
+    bool supports_humidity_target = false;
+
+    /// Highest humidity target, in %RH, a surface offers.
+    static constexpr float kMaxHumidityTargetPct = 99.0f;
+
+    /// @p pct as a humidity target this dryer takes, or nullopt for none: the dryer
+    /// cannot take one, or @p pct is unset (0 or below). Above the ceiling clamps to it.
+    [[nodiscard]] std::optional<float> humidity_target(float pct) const {
+        if (!supports_humidity_target || !(pct > 0.0f)) {
+            return std::nullopt;
+        }
+        return std::min(pct, kMaxHumidityTargetPct);
+    }
+
     /// @p temp_c inside this dryer's settable range. A bound of 0 is unset and
     /// clamps nothing on its side. Every surface offering a preset clamps
     /// through here, so the value it shows is the value it sends.

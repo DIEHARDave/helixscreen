@@ -7022,3 +7022,77 @@ TEST_CASE("Happy Hare empty gate_vendor keeps a user-declared brand", "[ams][hap
     helper.feed_mmu_status({{"gate_vendor", nlohmann::json::array({"", ""})}});
     CHECK(helper.get_slot_info(0).brand == "Polymaker");
 }
+
+TEST_CASE("Happy Hare v4 takes a drying humidity target, v3 does not",
+          "[ams][happy_hare][hh_v4][dryer_humidity]") {
+    QueryCapturingClient client;
+    helix::test::RegisteredBackend<AmsBackendHappyHareTestHelper> helper_reg(nullptr, &client);
+    AmsBackendHappyHareTestHelper& helper = *helper_reg;
+
+    SECTION("v3: no capability, and the temp + time command is unchanged") {
+        helper.initialize_test_gates(4);
+        helper.set_config_defaults_for_test();
+        HappyHareTestAccess::dryer_info(helper).supported = true;
+        CHECK_FALSE(helper.get_dryer_info(0).supports_humidity_target);
+
+        helper.clear_captured_gcodes();
+        const auto refused = helper.start_drying_to_humidity(50.0f, 60, 15.0f, -1, 0);
+        CHECK(refused.result == AmsResult::NOT_SUPPORTED);
+        CHECK(helper.captured_gcodes.empty());
+
+        CHECK(helper.start_drying(50.0f, 60, -1, 0).success());
+        CHECK(helper.captured_gcodes ==
+              std::vector<std::string>{"MMU_HEATER DRY=1 TEMP=50 TIMER=60"});
+    }
+    SECTION("v4 single unit") {
+        connect_with_fixture(
+            helper, client, helix::test::load_happy_hare_fixture("happy_hare_v4_single_unit.json"));
+        HappyHareTestAccess::dryer_info(helper).supported = true;
+        CHECK(helper.get_dryer_info(0).supports_humidity_target);
+
+        helper.clear_captured_gcodes();
+        CHECK(helper.start_drying(50.0f, 60, -1, 0).success());
+        CHECK(helper.captured_gcodes ==
+              std::vector<std::string>{"MMU_HEATER DRY=1 TEMP=50 TIMER=60"});
+
+        CHECK(helper.stop_drying(0).success());
+        helper.clear_captured_gcodes();
+        CHECK(helper.start_drying_to_humidity(50.0f, 60, 15.0f, -1, 0).success());
+        CHECK(helper.captured_gcodes ==
+              std::vector<std::string>{"MMU_HEATER DRY=1 TEMP=50 TIMER=60 HUMIDITY=15"});
+    }
+    SECTION("v4: a duration change restarts the cycle with the same humidity target") {
+        connect_with_fixture(
+            helper, client, helix::test::load_happy_hare_fixture("happy_hare_v4_single_unit.json"));
+        HappyHareTestAccess::dryer_info(helper).supported = true;
+        CHECK(helper.start_drying_to_humidity(50.0f, 60, 15.0f, -1, 0).success());
+        HappyHareTestAccess::dryer_info(helper).target_temp_c = 50.0f;
+
+        helper.clear_captured_gcodes();
+        CHECK(helper.update_drying(-1.0f, 90, -1, 0).success());
+        CHECK(helper.captured_gcodes ==
+              std::vector<std::string>{"MMU_HEATER STOP=1",
+                                       "MMU_HEATER DRY=1 TEMP=50 TIMER=90 HUMIDITY=15"});
+
+        // A plain start afterwards carries no target forward.
+        CHECK(helper.stop_drying(0).success());
+        helper.clear_captured_gcodes();
+        CHECK(helper.start_drying(50.0f, 60, -1, 0).success());
+        CHECK(helper.update_drying(-1.0f, 90, -1, 0).success());
+        CHECK(helper.captured_gcodes ==
+              std::vector<std::string>{"MMU_HEATER DRY=1 TEMP=50 TIMER=60", "MMU_HEATER STOP=1",
+                                       "MMU_HEATER DRY=1 TEMP=50 TIMER=90"});
+    }
+    SECTION("v4 two units: the target sits before the unit and gate suffix") {
+        const auto fx = helix::test::load_happy_hare_fixture("happy_hare_v4_two_unit.json");
+        helper.test_parse_mmu_state(fx["mmu_status"]);
+        connect_with_fixture(helper, client, fx);
+        HappyHareTestAccess::dryer_info(helper).supported = true;
+
+        helper.clear_captured_gcodes();
+        CHECK(helper.start_drying_to_humidity(50.0f, 60, 15.0f, -1, 1).success());
+        CHECK(helper.captured_gcodes ==
+              std::vector<std::string>{
+                  "MMU_HEATER DRY=1 TEMP=50 TIMER=60 HUMIDITY=15 UNIT=1 GATES=6,7,8,9"});
+    }
+}

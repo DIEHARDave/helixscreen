@@ -2302,6 +2302,26 @@ class AmsBackend {
     }
 
     /**
+     * @brief Start drying that also ends once the box reaches a humidity target
+     *
+     * The cycle runs at most @p duration_min and ends sooner once the box's relative
+     * humidity reads at or below @p humidity_pct. Only a backend whose
+     * get_dryer_info(unit).supports_humidity_target is true implements this; callers
+     * with no target use start_drying().
+     *
+     * @param humidity_pct Target relative humidity, % (positive)
+     */
+    virtual AmsError start_drying_to_humidity(float temp_c, int duration_min, float humidity_pct,
+                                              int fan_pct = -1, int unit = 0) {
+        (void)temp_c;
+        (void)duration_min;
+        (void)humidity_pct;
+        (void)fan_pct;
+        (void)unit;
+        return AmsErrorHelper::not_supported("Dryer humidity target");
+    }
+
+    /**
      * @brief Stop drying operation
      *
      * Stops any active drying and turns off heater/fan.
