@@ -187,24 +187,53 @@ escape() {
 # make` run from a directory named by a variable holding the tree escapes both.
 # This catches that shape in the source. A reviewed exception writes
 # `# REAL_TREE_MAKE_OK: <reason>` inside the @test that needs it, which exempts
-# that test and nothing else.
-@test "sandbox: no test runs make in the tree through a repo-root variable" {
-    local offenders
+# that test's body and nothing else: the exemption ends at the body's closing
+# `}`, so a helper defined after it is still checked.
+real_tree_make_lint() { # <files...>: prints file:line:text for each offender
     # A directory naming the tree: a repo-root variable, or the path up from
     # the test file.
     local tree='"?\\$\\{?((REPO|REPO_ROOT|ROOT|WORKTREE_ROOT|HELIX_TEST_REPO_ROOT)\\}?"?|BATS_TEST_DIRNAME\\}?/\\.\\./\\.\\.)'
-    offenders=$(awk -v tree="$tree" '
+    awk -v tree="$tree" '
         FNR == 1 || /^@test/ { reviewed = 0 }
         /REAL_TREE_MAKE_OK:/ { reviewed = 1 }
+        /^}/ { reviewed = 0; next }
         /^[[:space:]]*#/ || reviewed { next }
         /(^|[^A-Za-z_-])g?make[[:space:]]/ {
-            if ($0 ~ "cd " tree "[^|;]*&&.*(^|[^A-Za-z_-])g?make[[:space:]]" ||
+            if ($0 ~ "cd " tree "[^|]*(&&|;).*(^|[^A-Za-z_-])g?make[[:space:]]" ||
                 $0 ~ "(^|[^A-Za-z_-])g?make[[:space:]].*(-[A-Za-z]*C|--di[a-z]*=?)[[:space:]]*" tree)
                 printf "%s:%d:%s\n", FILENAME, FNR, $0
         }
-    ' "$BATS_TEST_DIRNAME"/*.bats "$BATS_TEST_DIRNAME/helpers.bash")
+    ' "$@"
+}
+
+@test "sandbox: no test runs make in the tree through a repo-root variable" {
+    local offenders
+    offenders=$(real_tree_make_lint "$BATS_TEST_DIRNAME"/*.bats "$BATS_TEST_DIRNAME/helpers.bash")
     [ -z "$offenders" ] || fail "make run in the tree under test; use scratch_tree (helpers.bash):
 $offenders"
+}
+
+@test "sandbox: the lint's exemption ends with the marked test's body" {
+    local f="$BATS_TEST_TMPDIR/synthetic.bats"
+    # Split words keep the fixture's lines from matching the lint over this file.
+    local mk='ma''ke' ok='REAL_TREE_MAKE''_OK:'
+    printf '%s\n' \
+        '@test "marked" {' \
+        "    # $ok reviewed" \
+        "    (cd \"\$REPO\" && $mk -n help)" \
+        '}' \
+        '' \
+        'helper_after() {' \
+        "    (cd \"\$REPO\" && $mk -n help)" \
+        '}' \
+        '' \
+        'semicolon() {' \
+        "    cd \"\$ROOT\"; $mk -n help" \
+        '}' > "$f"
+    run real_tree_make_lint "$f"
+    lacks "synthetic.bats:3:" "$output"
+    contains "synthetic.bats:7:" "$output"
+    contains "synthetic.bats:11:" "$output"
 }
 
 # --- the deliberate escapes -------------------------------------------------
