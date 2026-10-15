@@ -24,8 +24,9 @@ struct PersistedSetting {
     Scope scope;
     bool is_bool;
     int def, min, max;
-    /// Key reported to TelemetryManager::notify_setting_changed() on set;
-    /// nullptr for a setting that is not reported.
+    /// Stable snake_case key, unique across all managers, reported to
+    /// TelemetryManager::notify_setting_changed() on set. Only int and bool
+    /// values are ever sent. nullptr for a setting that is not reported.
     const char* telemetry_key;
 };
 

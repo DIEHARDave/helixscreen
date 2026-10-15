@@ -62,11 +62,11 @@ using settings::Scope;
 // Row order is SystemSettingsManager::Key.
 static constexpr settings::PersistedSetting SYSTEM_SETTINGS[] = {
     // 0=Stable, 1=Beta, 2=Dev
-    {"update_channel", "/update/channel", Scope::Global, false, 0, 0, 2, nullptr},
-    // Opt-in, default off
+    {"update_channel", "/update/channel", Scope::Global, false, 0, 0, 2, "update_channel"},
+    // Opt-in, default off. Unreported: its change switches the collector that would carry it.
     {"settings_telemetry_enabled", "/telemetry_enabled", Scope::Global, true, 0, 0, 1, nullptr},
     // Default on: a device that has never seen this setting comes up with WiFi enabled
-    {"settings_wifi_enabled", "/wifi_enabled", Scope::Global, true, 1, 0, 1, nullptr},
+    {"settings_wifi_enabled", "/wifi_enabled", Scope::Global, true, 1, 0, 1, "wifi_enabled"},
 };
 
 SystemSettingsManager& SystemSettingsManager::instance() {

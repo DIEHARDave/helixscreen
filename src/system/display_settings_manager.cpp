@@ -190,29 +190,29 @@ using settings::Scope;
 // Row order is DisplaySettingsManager::Key.
 static constexpr settings::PersistedSetting DISPLAY_SETTINGS[] = {
     {"settings_sleep_while_printing", "/display/sleep_while_printing", Scope::Global, true, 1, 0, 1,
-     nullptr},
+     "sleep_while_printing"},
     // Minimum 10% prevents a black screen; DisplayManager drives the hardware.
-    {"settings_brightness", "/brightness", Scope::Global, false, 80, 10, 100, nullptr},
+    {"settings_brightness", "/brightness", Scope::Global, false, 80, 10, 100, "brightness"},
     {"settings_use_system_keyboard", "/display/use_system_keyboard", Scope::Global, true, 0, 0, 1,
-     nullptr},
+     "use_system_keyboard"},
     // Opt-in: an unlisted barcode scanner is a HID keyboard too.
     {"settings_hide_keyboard_with_hardware", "/display/hide_keyboard_with_hardware", Scope::Global,
-     true, 0, 0, 1, nullptr},
+     true, 0, 0, 1, "hide_keyboard_with_hardware"},
     {"settings_page_scroll_buttons", "/display/page_scroll_buttons", Scope::Global, true,
-     PAGE_SCROLL_DEFAULT, 0, 1, nullptr},
+     PAGE_SCROLL_DEFAULT, 0, 1, "page_scroll_buttons"},
     {"settings_speed_flow_physical_units", "/display/speed_flow_physical_units", Scope::Global,
-     true, 0, 0, 1, nullptr},
+     true, 0, 0, 1, "speed_flow_physical_units"},
     // Android only (#908)
     {"settings_keep_navbar_visible", "/display/keep_navbar_visible", Scope::Global, true, 0, 0, 1,
-     nullptr},
+     "keep_navbar_visible"},
     // 0=Auto, 1=3D, 2=2D
     {"settings_bed_mesh_render_mode", "/display/bed_mesh_render_mode", Scope::Global, false, 0, 0,
-     2, nullptr},
+     2, "bed_mesh_render_mode"},
     // 0=Auto, 1=3D, 2=2D, 3=Thumbnail Only
     {"settings_gcode_render_mode", "/display/gcode_render_mode", Scope::Global, false, 0, 0, 3,
-     nullptr},
+     "gcode_render_mode"},
     // 0=12H, 1=24H
-    {"settings_time_format", "/display/time_format", Scope::Global, false, 0, 0, 1, nullptr},
+    {"settings_time_format", "/display/time_format", Scope::Global, false, 0, 0, 1, "time_format"},
 };
 
 DisplaySettingsManager& DisplaySettingsManager::instance() {
