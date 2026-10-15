@@ -34,6 +34,10 @@ setup() {
     export HELIX_TEST_ARC_PARAM="$BATS_TEST_TMPDIR/no-zfs/zfs_arc_max"
     export HELIX_TEST_ARC_SYS_FREE="$BATS_TEST_TMPDIR/no-zfs/zfs_arc_sys_free"
     export HELIX_TEST_ARC_MARK="$BATS_TEST_TMPDIR/arc-mark"
+    # mutate runs in a checkout per tree beside the mirrors; this one already
+    # exists, so no case here copies one (test_test_host_run_seed.bats does).
+    export HELIX_TEST_TREES_HOST="$BATS_TEST_TMPDIR/host/trees"
+    mkdir -p "$BATS_TEST_TMPDIR/host/mutate/tree-x/.git"
 
     # ssh [-o opt]... <host> bash -se: drop the options and the host, and run
     # the heredoc locally.
@@ -50,6 +54,7 @@ shift; exec "$@"'
 case "$*" in
     "rev-parse HEAD") echo 0123456789abcdef0123456789abcdef01234567 ;;
     "rev-parse --short HEAD") echo 0123456 ;;
+    "rev-parse --show-toplevel") echo "$BATS_TEST_TMPDIR/tree-x" ;;
     "branch -r --contains "*) echo origin/fake ;;
     *) echo "unhandled git call: $*" >&2; exit 1 ;;
 esac'

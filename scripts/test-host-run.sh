@@ -37,20 +37,37 @@
 # What runs is the working tree as it is on disk: uncommitted edits and
 # untracked files included, ignored files excluded. It is copied to a mirror on
 # the test host, one per tree (<HELIX_TEST_TREES>/<tree> in the container),
-# whose build/ persists between runs, so a run rebuilds only what changed. Each
-# mirror has its own lock: two trees run at once, two runs of one tree queue.
-# Every run prints and logs the HEAD it started from and whether the tree was
-# dirty, with a hash of the difference, since a dirty verdict is not one anybody
-# else can reproduce.
+# whose build/ persists, so a run rebuilds only what changed. Each mirror has its
+# own lock: two trees run at once, two runs of one tree queue. Every run prints
+# and logs the HEAD it started from and whether the tree was dirty, with a hash
+# of the difference, since a dirty verdict is not one anybody else can reproduce.
+#
+# A mirror's file times are the test host's own: the sync compares content
+# (rsync -c) and does not carry the local times, so a file is rewritten, and
+# stamped with the host's clock, exactly when its bytes change. That is what
+# lets make trust a build/ it did not write.
+#
+# A tree's first run seeds its mirror from the warm mirror nearest in history
+# (fewest commits between the two HEADs; each mirror records the HEAD it last
+# ran), copied with cp --reflink=auto, which on a ZFS or btrfs host shares the
+# blocks instead of copying them. The sync then makes the files exact and make
+# rebuilds what differs, instead of building the whole tree cold.
+# HELIX_TEST_SEED=0 skips it.
 #
 #   scripts/test-host-run.sh --commit sweep    # the pushed HEAD, in the shared checkout
-#   scripts/test-host-run.sh --prune [DAYS]    # remove mirrors unused for DAYS (14)
-#   scripts/test-host-run.sh --drop TREE       # remove one tree's mirror
+#   scripts/test-host-run.sh --prune [DAYS]    # remove mirrors and mutate checkouts unused for DAYS (14)
+#   scripts/test-host-run.sh --drop TREE       # remove one tree's mirror and mutate checkout
 #   scripts/test-host-run.sh --probe           # exit 0 when offloading to the test host pays
+#
+# A run that creates a mirror or a mutate checkout also prunes those unused for
+# HELIX_TEST_PRUNE_DAYS (14; 0 never), so the copies do not accumulate.
 #
 # --commit runs a pushed commit in the shared checkout (HELIX_TEST_WORKDIR)
 # instead, for a verdict someone else must be able to reproduce. mutate always
-# does: mutate_diff.py reads git history, and a mirror is files only.
+# runs the pushed commit too, since mutate_diff.py reads git history and a
+# mirror is files only, but in a checkout of this tree's own
+# (<parent of HELIX_TEST_TREES>/mutate/<tree>), so two trees mutate at once.
+# Its first run copies the most recently used checkout, build/ included.
 #
 # The patched submodules are mirrored as they are on disk, patches applied,
 # not pristine: `make reapply-patches` resets them with git, which a mirror
@@ -74,13 +91,24 @@ TREES_HOST="${HELIX_TEST_TREES_HOST:-helix-test/trees}"
 TREES="${HELIX_TEST_TREES:-/work/trees}"                 # TREES_HOST, in the container
 CCACHE="${HELIX_TEST_CCACHE:-/work/ccache}"              # in the container
 LOCK_DIR="${HELIX_TEST_LOCK_DIR:-/tmp}"                  # on the test host
-# Locks in LOCK_DIR: <prefix>.tree-<tree>.lock (a mirror) and <prefix>.global.lock
-# (no jobpool). --commit takes COMMIT_LOCK_PREFIX-<checkout>.lock instead, the
-# name zeus-run.sh (this script's former name, still in older worktrees) takes
-# for the same checkout: both reset it, so both must take one lock.
+# Locks in LOCK_DIR: <prefix>.tree-<tree>.lock (a mirror), <prefix>.mutate-<tree>.lock
+# (a mutate checkout) and <prefix>.global.lock (no jobpool). --commit takes
+# COMMIT_LOCK_PREFIX-<checkout>.lock instead, the name zeus-run.sh (still in
+# older worktrees) takes for the same checkout: both reset it, so both must take
+# one lock.
 LOCK_PREFIX=helix-test-host-run
 COMMIT_LOCK_PREFIX=helix-zeus-run
 MANIFEST=.helix-mirror-files                             # in each mirror: what the last sync sent
+HEAD_FILE=.helix-mirror-head                             # in each mirror: the HEAD its last run synced
+SEED="${HELIX_TEST_SEED:-1}"                             # 0: a new mirror or mutate checkout starts cold
+PRUNE_DAYS="${HELIX_TEST_PRUNE_DAYS:-14}"                # 0: creating one never prunes the others
+# The container mounts the parent of TREES_HOST at the parent of TREES
+# (test-host-setup.sh), so a container path under WORK has a host path under
+# WORK_HOST. Mutate checkouts sit beside the mirrors.
+WORK_HOST=$(dirname "$TREES_HOST")
+WORK=$(dirname "$TREES")
+MUTATE_HOST=$WORK_HOST/mutate
+MUTATE=$WORK/mutate
 RSYNC_PATH="sudo -n rsync"                               # the container writes mirrors as root
 # BatchMode: never a password prompt. The keepalives bound a link that dies
 # mid-run; ConnectTimeout bounds one that never answers.
@@ -160,9 +188,14 @@ mirror_file_list() {
 # --force lets a directory give way to a file of the same name. Exit 24 is
 # files that vanished mid-transfer, which a tree being edited always risks: the
 # next sync settles them, so it is not a failure.
+# -c --no-times: a file is compared by content and, when it differs, written
+# with the test host's time, never the local one. A local time can be older
+# than the mirror's object for that file (a seeded mirror, a checkout that
+# restored an old time, two clocks), and make would then keep the stale object.
+# Checksumming costs a few seconds a run; a missed rebuild costs a wrong verdict.
 sync_files() { # <list file> [rsync args...]
     local list=$1 rc=0; shift
-    rsync -a --mkpath --force --from0 --files-from="$list" --delete-missing-args \
+    rsync -a --no-times -c --mkpath --force --from0 --files-from="$list" --delete-missing-args \
         -e "ssh ${SSH_OPTS[*]}" --rsync-path="$RSYNC_PATH" "$@" ./ "$HOST:$TREES_HOST/$TREE/" || rc=$?
     [ "$rc" -eq 24 ] && return 0
     return "$rc"
@@ -182,6 +215,27 @@ fi
 SNIPPET
 }
 
+# The remote command that succeeds while a make in the container has its cwd
+# in <dir>. <dir> is spliced as remote shell text inside double quotes, so it
+# may name a variable of the remote script.
+live_make_in() { # <container dir>
+    printf '%s' "sudo -n docker exec -w / \"$CONTAINER\" bash -lc 'for p in \$(pgrep -x -r R,S,D,T,t make); do case \"\$(readlink /proc/\$p/cwd)\" in '\"$1\"'|'\"$1\"'/*) exit 0 ;; esac; done; exit 1'"
+}
+
+# The remote snippet that waits for a seeding copy into <tree> to finish. The
+# copying shell holds <prefix>.seed-<kind>-<tree>.lock for its whole life, and it
+# outlives a client that was killed mid-copy, so whatever touches that tree
+# next waits here instead of racing its cp and mv.
+seed_lock_wait() { # <kind: tree|mutate> <tree>
+    cat <<SNIPPET
+exec 6>>"$LOCK_DIR/$LOCK_PREFIX.seed-$1-$2.lock"
+if ! flock -n 6; then
+    echo "→ a copy into $2 is still running on \$(hostname); waiting for it" >&2
+    flock 6
+fi
+SNIPPET
+}
+
 # The remote snippet that waits out any make whose cwd is in RUNDIR. A run
 # whose ssh side died leaves its build running in the container while the lock
 # is already released, and changing files under that build is the corruption
@@ -190,7 +244,7 @@ SNIPPET
 # container's PID 1, which never reaps it, so counting it would wait forever.
 orphan_wait() {
     cat <<SNIPPET
-while sudo -n docker exec -w / "$CONTAINER" bash -lc 'for p in \$(pgrep -x -r R,S,D,T,t make); do case "\$(readlink /proc/\$p/cwd)" in $RUNDIR|$RUNDIR/*) exit 0 ;; esac; done; exit 1'; do
+while $(live_make_in "$RUNDIR"); do
     echo "→ orphaned build still running in $CONTAINER; waiting"
     sleep $ORPHAN_POLL_SECS
 done
@@ -210,8 +264,17 @@ prepare_mirror() { # <list file>
     ssh "${SSH_OPTS[@]}" "$HOST" bash -se <<REMOTE
 set -euo pipefail
 $(container_up)
+$(seed_lock_wait tree "$TREE")
 $(orphan_wait)
 cd "$TREES_HOST/$TREE"
+# A mirror with no HEAD_FILE was synced with local file times, which can be
+# older than its objects for files that changed, and a content-compared sync
+# never rewrites a file whose bytes already match. Stamping every synced file
+# now costs one rebuild (ccache serves most of it) and makes the build exact.
+if [ -d build ] && [ ! -e $HEAD_FILE ] && [ -f $MANIFEST ]; then
+    echo "→ $TREE's mirror predates content-compared syncs: rebuilding it once" >&2
+    sudo -n xargs -0 -r touch -c -h -- < $MANIFEST || true
+fi
 if [ -f $MANIFEST ]; then
     comm -z -23 <(sort -z $MANIFEST) <(sort -z $MANIFEST.new) | sudo -n xargs -0 -r rm -f -- || true
 fi
@@ -219,8 +282,10 @@ sudo -n mv $MANIFEST.new $MANIFEST
 REMOTE
 }
 
-# Removes mirrors under TREES_HOST: those named, or with no names, those whose
-# last sync is older than DAYS. A mirror whose lock is held is in use and stays.
+# Removes mirrors under TREES_HOST and mutate checkouts under MUTATE_HOST: those
+# named, or with no names, those whose last run is older than DAYS (a mirror's
+# sync rewrites its manifest, a mutate run rewrites the checkout's index). One
+# whose lock is held is in use and stays.
 remove_mirrors() { # <days|-> [tree...]
     local days=$1 n; shift
     for n in "$@"; do valid_tree_name "$n" || { echo "✗ '$n' is not a tree name" >&2; return 2; }; done
@@ -228,29 +293,200 @@ remove_mirrors() { # <days|-> [tree...]
     ssh "${SSH_OPTS[@]}" "$HOST" bash -se <<REMOTE
 set -uo pipefail
 rc=0
-if [ -n "$*" ]; then set -- $*; else set -- "$TREES_HOST"/*/; fi
-for d in "\$@"; do
-    name=\$(basename "\$d")
-    d="$TREES_HOST/\$name"
-    [ -d "\$d" ] || { [ -z "$*" ] || echo "→ no mirror \$name"; continue; }
-    if [ "$days" != - ]; then
-        stamp="\$d/$MANIFEST"; [ -e "\$stamp" ] || stamp="\$d"
-        [ -n "\$(find "\$stamp" -maxdepth 0 -mmin +$(( ${days/-/0} * 1440 )))" ] || continue
-    fi
-    lock="$LOCK_DIR/$LOCK_PREFIX.tree-\$name.lock"
-    exec 9>>"\$lock"
-    if ! flock -n 9; then
-        echo "→ kept \$name: in use (\$(tail -n 1 "\$lock"))"
-        [ -z "$*" ] || rc=1
-    elif sudo -n rm -rf -- "\$d"; then
-        echo "→ removed \$name"
-    else
-        echo "✗ could not remove \$d" >&2; rc=1
-    fi
-    exec 9>&-
-done
+sweep() { # <root> <lock kind> <stamp, relative> <what> [name...]
+    local root=\$1 kind=\$2 stamp_rel=\$3 what=\$4 d name stamp lock
+    shift 4
+    [ \$# -gt 0 ] || set -- "\$root"/*/
+    for d in "\$@"; do
+        name=\$(basename "\$d")
+        d="\$root/\$name"
+        [ -d "\$d" ] || { [ -z "$*" ] || [ "\$kind" != tree ] || echo "→ no \$what \$name"; continue; }
+        # <tree>+seeding is a copy in progress, or one a dead run left behind.
+        case "\$name" in *+*) [ -n "\$(find "\$d" -maxdepth 0 -mmin +1440)" ] || continue ;; esac
+        if [ "$days" != - ]; then
+            stamp="\$d/\$stamp_rel"; [ -e "\$stamp" ] || stamp="\$d"
+            [ -n "\$(find "\$stamp" -maxdepth 0 -mmin +$(( ${days/-/0} * 1440 )))" ] || continue
+        fi
+        lock="$LOCK_DIR/$LOCK_PREFIX.\$kind-\$name.lock"
+        exec 9>>"\$lock"
+        if ! flock -n 9; then
+            echo "→ kept \$what \$name: in use (\$(tail -n 1 "\$lock"))"
+            [ -z "$*" ] || rc=1
+        elif sudo -n rm -rf -- "\$d"; then
+            echo "→ removed \$what \$name"
+        else
+            echo "✗ could not remove \$d" >&2; rc=1
+        fi
+        exec 9>&-
+    done
+}
+sweep "$TREES_HOST" tree $MANIFEST mirror $*
+sweep "$MUTATE_HOST" mutate .git/index "mutate checkout" $*
 exit \$rc
 REMOTE
+}
+
+# The root half of seeding: copy <src> to <dst> through <dst>+seeding, so an
+# interrupted copy never looks like a mirror, and point every text file in its
+# build/ (dependency files, compile-command fragments) at <dst>'s own path
+# in the container. A build file naming the source's path would hand make the
+# source's dependency graph. '+' is not in a tree name, so the temporary name
+# cannot collide with a real tree.
+seed_copy_snippet() {
+    cat <<'SNIPPET'
+seed_copy() { # <src> <dst> <src in the container> <dst in the container>
+    set -e
+    local tmp="$2+seeding" re f t
+    rm -rf -- "$tmp" "$2"
+    mkdir -p -- "$(dirname "$2")"
+    cp -a --reflink=auto -- "$1" "$tmp"
+    # The copy's age is now, not the source's last run, for a prune that
+    # meets it mid-copy or once it is in place.
+    touch -c -- "$tmp/.helix-mirror-files" "$tmp/.git/index"
+    re=$(printf '%s' "$3" | sed 's/[][\.*^$#]/\\&/g')
+    {
+        [ ! -d "$tmp/build" ] || grep -rIlZF -- "$3" "$tmp/build" || true
+        [ ! -f "$tmp/compile_commands.json" ] || printf '%s\0' "$tmp/compile_commands.json"
+    } | while IFS= read -r -d '' f; do
+        t=$(stat -c %y -- "$f")
+        sed -i "s#$re\([^A-Za-z0-9._+-]\|\$\)#$4\1#g" -- "$f"
+        touch -d "$t" -- "$f"
+    done
+    mv -T -- "$tmp" "$2"
+}
+SNIPPET
+}
+
+# Orders seed candidates, best first: those whose HEAD this repository knows,
+# by the commits between it and ours (both sides of the fork), then the rest by
+# their last run, newest first.
+rank_seeds() { # stdin: "<name> <head|-> <epoch>" lines
+    local name head stamp d
+    while read -r name head stamp; do
+        d=""
+        if [ "$head" != - ] && git cat-file -e "$head^{commit}" 2>/dev/null; then
+            d=$(git rev-list --count "HEAD...$head" 2>/dev/null) || d=""
+        fi
+        if [ -n "$d" ]; then echo "0 $d $(( -stamp )) $name"; else echo "1 0 $(( -stamp )) $name"; fi
+    done | sort -k1,1n -k2,2n -k3,3n | awk '{ print $4 }'
+}
+
+# A tree with no build/ in its mirror copies the nearest warm one first. A
+# candidate has a linked helix-tests (a build that got that far) and is not
+# mid-run (its lock is free); a busy one is passed over rather than waited for.
+# With none, the run builds cold, as it would have anyway.
+seed_mirror() {
+    local cands order t0 out
+    # shellcheck disable=SC2087  # the paths resolve here
+    cands=$(ssh "${SSH_OPTS[@]}" "$HOST" bash -se <<REMOTE
+set -uo pipefail
+$(seed_lock_wait tree "$TREE")
+cd "$TREES_HOST" 2>/dev/null || exit 0
+[ ! -d "$TREE/build" ] || { echo WARM; exit 0; }
+[ "$SEED" != 0 ] || { echo OFF; exit 0; }
+for d in */; do
+    n=\${d%/}
+    case "\$n" in "$TREE"|*+*) continue ;; esac
+    # A mirror without HEAD_FILE has not yet had its rebuild under
+    # content-compared syncs (prepare_mirror), so its objects are not trusted.
+    [ -e "\$n/build/bin/helix-tests" ] && [ -e "\$n/$HEAD_FILE" ] || continue
+    printf '%s %s %s\n' "\$n" "\$(head -c 40 "\$n/$HEAD_FILE" 2>/dev/null || echo -)" "\$(stat -c %Y "\$n/$MANIFEST" 2>/dev/null || echo 0)"
+done
+REMOTE
+) || return 0
+    case "$cands" in WARM*|OFF*) return 0 ;; "") echo "→ no warm mirror on $HOST to seed $TREE from: building cold"; return 0 ;; esac
+    order=$(printf '%s\n' "$cands" | rank_seeds | tr '\n' ' ')
+    t0=$(date +%s)
+    # shellcheck disable=SC2087  # the names and the paths resolve here
+    out=$(ssh "${SSH_OPTS[@]}" "$HOST" bash -se <<REMOTE
+set -uo pipefail
+$(seed_copy_snippet)
+$(seed_lock_wait tree "$TREE")
+dst="$TREES_HOST/$TREE"
+[ ! -d "\$dst/build" ] || exit 0
+for n in $order; do
+    exec 7>>"$LOCK_DIR/$LOCK_PREFIX.tree-\$n.lock"
+    if ! flock -n 7; then echo "→ seed candidate \$n is busy; trying the next" >&2; exec 7>&-; continue; fi
+    # A free lock is not an idle tree: a run whose ssh died leaves its make
+    # writing there, and a copy would take its half-written files.
+    if $(live_make_in "$TREES/\$n"); then echo "→ seed candidate \$n has an orphaned build running; trying the next" >&2; exec 7>&-; continue; fi
+    if sudo -n bash -c "\$(declare -f seed_copy); "'seed_copy "\$@"' _ "$TREES_HOST/\$n" "\$dst" "$TREES/\$n" "$TREES/$TREE"; then
+        echo "SEEDED \$n"; exit 0
+    fi
+    echo "✗ copying mirror \$n failed; trying the next" >&2
+    exec 7>&-
+done
+REMOTE
+) || true
+    case "$out" in
+        *"SEEDED "*) echo "→ seeded $TREE's mirror from ${out##*SEEDED } in $(( $(date +%s) - t0 ))s"
+                     prune_after_create ;;
+        *)           echo "→ no idle warm mirror to seed $TREE from: building cold" ;;
+    esac
+}
+
+# Creating a copy is when disk use grows, so that is when the stale ones go.
+prune_after_create() {
+    [ "$PRUNE_DAYS" != 0 ] || return 0
+    remove_mirrors "$PRUNE_DAYS" | sed 's/^→ removed /→ pruned (unused for '"$PRUNE_DAYS"' days) /' | grep -v '^→ kept ' || true
+}
+
+# A mutate checkout that does not exist yet copies the most recently used one
+# (another tree's, or the shared --commit checkout), whose build/ is warm and
+# whose index git refreshes rather than rewriting every file. Busy ones are
+# passed over; when every one is busy the run waits for the newest.
+seed_mutate_checkout() {
+    local t0 out
+    t0=$(date +%s)
+    # shellcheck disable=SC2087  # the names and the paths resolve here
+    out=$(ssh "${SSH_OPTS[@]}" "$HOST" bash -se <<REMOTE
+set -uo pipefail
+$(seed_copy_snippet)
+$(seed_lock_wait mutate "$TREE")
+dst="$MUTATE_HOST/$TREE"
+[ ! -d "\$dst/.git" ] || exit 0
+shared="$WORK_HOST${WORKDIR#"$WORK"}"
+lock_of() { # <host path>
+    if [ "\$1" = "\$shared" ]; then echo "$LOCK_DIR/$COMMIT_LOCK_PREFIX-$(basename "$WORKDIR").lock"
+    else echo "$LOCK_DIR/$LOCK_PREFIX.mutate-\$(basename "\$1").lock"; fi
+}
+ctr_of() { # <host path>
+    if [ "\$1" = "\$shared" ]; then echo "$WORKDIR"; else echo "$MUTATE/\$(basename "\$1")"; fi
+}
+cands=()
+while IFS= read -r g; do
+    c=\${g%/.git}
+    [ "\$c" != "\$dst" ] && [ "\$c" = "\${c%+seeding}" ] && cands+=("\$c")
+done < <(ls -1dt "$MUTATE_HOST"/*/.git "\$shared/.git" 2>/dev/null)
+[ \${#cands[@]} -gt 0 ] || { echo "NONE"; exit 0; }
+pick=""
+for c in "\${cands[@]}"; do
+    exec 7>>"\$(lock_of "\$c")"
+    if flock -n 7; then
+        _c=\$(ctr_of "\$c")
+        if ! $(live_make_in "\$_c"); then pick=\$c; break; fi
+        echo "→ \$(basename "\$c") has an orphaned build running; trying the next" >&2
+    fi
+    exec 7>&-
+done
+if [ -z "\$pick" ]; then
+    pick=\${cands[0]}
+    echo "→ every mutate checkout is busy; waiting for \$(basename "\$pick") to copy it" >&2
+    exec 7>>"\$(lock_of "\$pick")"
+    flock 7
+fi
+sudo -n bash -c "\$(declare -f seed_copy); "'seed_copy "\$@"' _ "\$pick" "\$dst" "\$(ctr_of "\$pick")" "$RUNDIR" &&
+    echo "SEEDED \$(basename "\$pick")"
+REMOTE
+) || true
+    case "$out" in
+        *"SEEDED "*) echo "→ seeded $RUNDIR from ${out##*SEEDED } in $(( $(date +%s) - t0 ))s"
+                     prune_after_create ;;
+        *NONE*)      echo "✗ no checkout on $HOST to copy for $RUNDIR: run scripts/test-host-setup.sh --commit-checkout" >&2
+                     return 1 ;;
+        "")          ;;
+        *)           echo "✗ could not create $RUNDIR on $HOST" >&2; return 1 ;;
+    esac
 }
 
 # Takes the lock named <name> on the test host and holds it until this script exits:
@@ -341,7 +577,7 @@ WHAT="${1:-}"
 shift
 
 if [ "$WHAT" = mutate ] && [ "$MODE" = mirror ]; then
-    echo "→ mutate reads git history, which a mirror does not carry: running the pushed commit"
+    echo "→ mutate reads git history, which a mirror does not carry: running the pushed commit in this tree's mutate checkout"
     MODE=commit
 fi
 
@@ -352,10 +588,19 @@ if [ "$MODE" = commit ]; then
         echo "✗ $SHORT is not on any remote branch — push it first, or $HOST cannot fetch it" >&2
         exit 1
     fi
-    RUNDIR=$WORKDIR
-    TREE=""
-    LOCK_FILE="$COMMIT_LOCK_PREFIX-$(basename "$WORKDIR").lock"
-    LABEL=$SHORT
+    if [ "$WHAT" = mutate ]; then
+        # A checkout per tree, so one tree's mutate never queues behind another's.
+        TREE=$(basename "$(git rev-parse --show-toplevel)")
+        valid_tree_name "$TREE" || { echo "✗ tree directory '$TREE' is not a plain name (letters, digits, . _ -)" >&2; exit 2; }
+        RUNDIR=$MUTATE/$TREE
+        LOCK_FILE="$LOCK_PREFIX.mutate-$TREE.lock"
+        LABEL="$TREE-$SHORT"
+    else
+        RUNDIR=$WORKDIR
+        TREE=""
+        LOCK_FILE="$COMMIT_LOCK_PREFIX-$(basename "$WORKDIR").lock"
+        LABEL=$SHORT
+    fi
     PROVENANCE="$SHA (pushed)"
 else
     TOP=$(git rev-parse --show-toplevel)
@@ -460,10 +705,13 @@ if [ "$MODE" = mirror ]; then
     LIST="${TMPDIR:-/tmp}/test-host-mirror-$TREE.$$"
     trap 'rm -f "$LIST"' EXIT
     mirror_file_list > "$LIST"
+    seed_mirror
     _t0=$(date +%s)
     prepare_mirror "$LIST"
     sync_files "$LIST"
     echo "→ synced $(tr -cd '\0' < "$LIST" | wc -c) files to $HOST:$TREES_HOST/$TREE in $(( $(date +%s) - _t0 ))s"
+elif [ "$WHAT" = mutate ]; then
+    seed_mutate_checkout || exit 1
 fi
 
 # The heredoc runs on the test host. docker needs sudo -n there (the ssh user
@@ -475,6 +723,8 @@ fi
 ssh "${SSH_OPTS[@]}" "$HOST" bash -se <<REMOTE | tee "$LOG"
 set -euo pipefail
 echo "→ $PROVENANCE"
+# What a later tree's first run reads to pick the nearest mirror to seed from.
+[ "$MODE" != mirror ] || printf '%s\n' "$SHA" | sudo -n tee "$TREES_HOST/$TREE/$HEAD_FILE" >/dev/null
 
 # --- jobpool: join the host's machine pool when it is installed ---------
 # The container sees the FIFO through whichever bind
@@ -561,6 +811,10 @@ if [ "$MODE" = commit ]; then
     # before everything since, so the run is handed foreign hunks and refuses. Bring
     # it level with the remote before the reset below.
     D 'git fetch --quiet origin main && git update-ref refs/heads/main FETCH_HEAD'
+    # A copied checkout's index holds the source's inode and ctime for every
+    # file. Refreshed first, git compares content and rewrites only what
+    # differs; unrefreshed, the reset rewrites every file and make rebuilds all.
+    D 'git update-index -q --refresh >/dev/null; git submodule foreach --quiet --recursive "git update-index -q --refresh >/dev/null; true"'
     D 'git reset --hard --quiet $SHA && git submodule update --init --recursive --quiet'
     # A submodule already at its pin keeps the patches an earlier job applied, so a
     # commit that edits a patch in patches/ meets the old revision and the build's
