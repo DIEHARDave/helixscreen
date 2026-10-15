@@ -181,3 +181,17 @@ input {
   background: rgba(139, 92, 246, 0.15);
   color: #a78bfa;
 }
+
+/* Per-event lists (recent crashes, warnings, anomalies) scroll inside a fixed
+   height with the header row pinned; distributions never use this. */
+.event-log {
+  max-height: 480px;
+  overflow-y: auto;
+}
+
+.event-log thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--bg-card);
+}

@@ -61,7 +61,7 @@
           <h3>Recent Display Anomalies</h3>
           <ChartCaption :text="`Newest display anomaly reports, ${span}`" />
           <NoData v-if="!anomalies.recent?.length" />
-          <div v-else class="table-wrapper">
+          <div v-else class="table-wrapper event-log">
             <table class="data-table">
               <thead>
                 <tr>

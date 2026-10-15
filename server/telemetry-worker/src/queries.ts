@@ -1258,11 +1258,6 @@ const HEALTH_WINDOW_DAYS = HEALTH_WINDOWS.cur[1];
 const HEALTH_KIND_DAYS = 9;
 
 /**
- * Every Health tab query. `versions` restricts the per-release queries and
- * comes from running `top_versions` first; filters apply per kind, while
- * `cdn_latest` and `kind_days` ignore them.
- */
-/**
  * Crashes grouped by (signal, fault code, version, board) in window `w`:
  * sample-weighted count and distinct devices per cluster, as rows
  * { sig, fault, ver, board, count, devices }.
@@ -1297,6 +1292,11 @@ export function errorCodesSql(w: readonly [number, number], filters?: FilterPara
     GROUP BY category, code${byVersion ? ", version" : ""}`;
 }
 
+/**
+ * Every Health tab query. `versions` restricts the per-release queries and
+ * comes from running `top_versions` first; filters apply per kind, while
+ * `cdn_latest` and `kind_days` ignore them.
+ */
 export function healthQueries(filters?: FilterParams, versions: string[] = []): Record<HealthQueryKey, string> {
   const inVersions = (column: string) => versionInClause(column, versions);
   const sessF = filterFor("session", filters);

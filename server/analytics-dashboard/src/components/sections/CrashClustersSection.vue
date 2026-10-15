@@ -56,7 +56,7 @@
         <h3>Recent Crashes</h3>
         <ChartCaption :text="`Newest crash reports, ${span}; repeats of one crash collapse into a count`" />
         <NoData v-if="data.recent_crashes.length === 0" />
-        <div v-else class="table-wrapper">
+        <div v-else class="table-wrapper event-log">
           <table class="data-table">
             <thead>
               <tr>

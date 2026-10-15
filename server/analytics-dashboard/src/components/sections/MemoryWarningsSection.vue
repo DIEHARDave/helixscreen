@@ -57,7 +57,7 @@
         <div class="chart-section">
           <h3>Recent Warnings</h3>
           <ChartCaption :text="`Newest memory warnings, ${span}; click a row for its breakdown`" />
-          <div class="table-container">
+          <div class="table-container event-log">
             <table class="warnings-table">
               <thead>
                 <tr>
