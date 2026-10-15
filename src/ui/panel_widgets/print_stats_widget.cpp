@@ -109,9 +109,7 @@ void print_stats_init_subjects() {
     spdlog::debug("[PrintStatsWidget] Subjects initialized");
 }
 
-int line_px(const lv_font_t* font) {
-    return font ? static_cast<int>(lv_font_get_line_height(font)) : 0;
-}
+using helix::line_px;
 
 /// The Strip's short label: "/wk" for this week's figure, the label itself otherwise.
 std::string strip_short_label(helix::PrintStatsContent content, const std::string& label) {
@@ -182,16 +180,9 @@ PrintStatsTileVerdict PrintStatsWidget::decide(int width_px, int height_px,
                                                PrintStatsContent content, bool lifetime_known,
                                                const std::string& hero,
                                                const std::string& label) const {
-    // The tree's own padding where it exists; before it does (the load path asks
-    // fits_at then) the root's padding on each side plus its row gap.
-    ContentChrome chrome;
-    if (root()) {
-        chrome = measure_content_chrome(root(), 0);
-    } else {
-        const int pad_hor = theme_manager_get_spacing("space_sm");
-        const int pad_ver = theme_manager_get_spacing("space_xxs");
-        chrome = {2 * pad_hor, 2 * pad_ver + pad_ver};
-    }
+    // The root's padding and row gap, as panel_widget_print_stats.xml sets them.
+    const ContentChrome chrome =
+        content_chrome_or_estimate(root(), "space_sm", "space_xxs", "space_xxs");
     const lv_font_t* small = theme_manager_get_font("font_small");
     PrintStatsTileLayoutInput li;
     li.content_w = width_px - chrome.w;

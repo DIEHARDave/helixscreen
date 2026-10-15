@@ -23,6 +23,7 @@
 #include "src/ui/panel_widgets/live_tile_owner.h"
 #include "static_subject_registry.h"
 #include "subject_managed_panel.h"
+#include "text_io.h"
 #include "text_measure.h"
 #include "theme_manager.h"
 
@@ -110,9 +111,7 @@ void job_queue_init_subjects() {
     });
 }
 
-int line_px(const lv_font_t* font) {
-    return font ? static_cast<int>(lv_font_get_line_height(font)) : 0;
-}
+using helix::line_px;
 
 /// The widest single word of @p text: the least width a wrapping label needs.
 int widest_word_px(const std::string& text, const lv_font_t* font) {
@@ -143,11 +142,8 @@ std::string fit_text_to_lines(const std::string& text, const lv_font_t* font, in
     int lines = lines_of(fitted);
     std::string base = text;
     while (lines > max_lines && !base.empty()) {
-        // Drop one UTF-8 character: its continuation bytes, then its lead byte.
-        while (!base.empty() && (static_cast<unsigned char>(base.back()) & 0xC0) == 0x80)
-            base.pop_back();
-        if (!base.empty())
-            base.pop_back();
+        // Drop one UTF-8 character.
+        base = std::string(helix::text_io::utf8_prefix(base, base.size() - 1));
         fitted = base + "…";
         lines = lines_of(fitted);
     }
@@ -283,16 +279,9 @@ JobQueueTileVerdict JobQueueWidget::decide(int width_px, int height_px,
                                            std::string* cell_name) const {
     if (cell_name)
         cell_name->clear();
-    // The tree's own padding where it exists; before it does (the load path asks
-    // fits_at then) the root's padding on each side plus its row gap.
-    ContentChrome chrome;
-    if (root()) {
-        chrome = measure_content_chrome(root(), 0);
-    } else {
-        const int pad_hor = theme_manager_get_spacing("space_sm");
-        const int pad_ver = theme_manager_get_spacing("space_xxs");
-        chrome = {2 * pad_hor, 2 * pad_ver + pad_ver};
-    }
+    // The root's padding and row gap, as panel_widget_job_queue.xml sets them.
+    const ContentChrome chrome =
+        content_chrome_or_estimate(root(), "space_sm", "space_xxs", "space_xxs");
     const TileMetrics m;
     JobQueueTileLayoutInput li;
     li.content_w = width_px - chrome.w;

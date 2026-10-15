@@ -15,6 +15,11 @@ struct ContentChrome {
     int h = 0;
 };
 
+/// One line of @p font, in pixels; 0 for a font that is not loaded.
+inline int line_px(const lv_font_t* font) {
+    return font ? static_cast<int>(lv_font_get_line_height(font)) : 0;
+}
+
 /// The width a text button adds around its label: its side padding token (button_padding
 /// unless the XML sets another) and a border pixel on each side.
 inline int button_label_chrome_w(const char* pad_token = "button_padding") {
@@ -51,6 +56,21 @@ inline ContentChrome measure_content_chrome(lv_obj_t* root, int reserve_px, int 
         }
     }
     return chrome;
+}
+
+/// measure_content_chrome() of @p root once its tree exists. Before it does (the load
+/// path asks fits_at() then), the chrome of a column root padded @p pad_hor_token on
+/// each side and @p pad_ver_token above and below, with @p row_gap_token between its
+/// rows.
+inline ContentChrome content_chrome_or_estimate(lv_obj_t* root, const char* pad_hor_token,
+                                                const char* pad_ver_token,
+                                                const char* row_gap_token) {
+    if (root) {
+        return measure_content_chrome(root, 0);
+    }
+    return {2 * theme_manager_get_spacing(pad_hor_token),
+            2 * theme_manager_get_spacing(pad_ver_token) +
+                theme_manager_get_spacing(row_gap_token)};
 }
 
 } // namespace helix

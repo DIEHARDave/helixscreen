@@ -143,9 +143,7 @@ Fonts load_fonts() {
             theme_manager_get_font("icon_font_xs")};
 }
 
-int line_px(const lv_font_t* font) {
-    return font ? static_cast<int>(lv_font_get_line_height(font)) : 0;
-}
+using helix::line_px;
 
 int text_px(const char* text, const lv_font_t* font) {
     return measure_text_px(text, font);
