@@ -150,7 +150,9 @@ escape() {
     # REAL_TREE_MAKE_OK: make --version in the tree is allowed, and asserted here
     run escape make -C "$(scratch_tree)" --no-print-directory print-var-LVGL_DIR
     [ "$status" -eq 0 ]
-    [ "$output" = lib/lvgl ]
+    # Parse-time $(info) notes (the clang++ -> g++ fallback) print ahead of the
+    # recipe's echo, so the value is the last line, not the whole output.
+    [ "${lines[${#lines[@]}-1]}" = lib/lvgl ]
     run escape bash -c 'cd "$HELIX_TEST_REPO_ROOT" && make --version'
     [ "$status" -eq 0 ]
     contains "GNU Make" "$output"
