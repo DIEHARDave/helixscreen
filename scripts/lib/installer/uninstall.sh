@@ -267,6 +267,7 @@ undo_klipper_includes() {
                 ;;
         esac
     done < "$state_file"
+    remove_state_file "$state_file"
 }
 
 # Undo per-printer settings seeding recorded at install time (#986).
@@ -297,7 +298,7 @@ undo_seeded_settings() {
     done < "$state_file"
 
     # Remove only the marker; settings.json is left untouched on purpose.
-    $(path_sudo "$state_file") rm -f "$state_file" 2>/dev/null || true
+    remove_state_file "$state_file"
 }
 
 # Restore whatever screen UI HelixScreen displaced at install time, for the

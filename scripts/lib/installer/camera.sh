@@ -856,8 +856,8 @@ PYEOF
         else
             log_warn "Webcam backup missing or python unavailable — only removed our entry"
         fi
-        $(path_sudo "$backup") rm -f "$backup" 2>/dev/null || true
-        $(path_sudo "$marker") rm -f "$marker" 2>/dev/null || true
+        remove_state_file "$backup"
+        remove_state_file "$marker"
     fi
 
     # (c) Re-enable the K2-Camera-main [webcam Default] entry we commented out, if
@@ -880,7 +880,7 @@ PYEOF
             rm -f "$tmp"
         done < "$k2cam_marker"
         [ "$restored" = true ] && _restart_moonraker
-        $(path_sudo "$k2cam_marker") rm -f "$k2cam_marker" 2>/dev/null || true
+        remove_state_file "$k2cam_marker"
     fi
 
     log_success "K2 ustreamer camera removed (stock WebRTC re-enabled on reboot)"

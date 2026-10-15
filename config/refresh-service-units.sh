@@ -113,7 +113,7 @@ systemctl daemon-reload
 # Runs as root (inherited from the calling service unit), so no sudo needed.
 
 # Keep in sync with scripts/lib/installer/platform.sh.
-HELIX_USER_CONFIG_FILES="settings.json helixscreen.env .disabled_services tool_spools.json crash_history.json user_filaments.json"
+HELIX_USER_CONFIG_FILES="settings.json helixscreen.env .disabled_services tool_spools.json crash_history.json user_filaments.json .webcams_backup.json .camera_migrated .klipper_includes .k2cam_webcam_disabled .seeded_settings"
 HELIX_USER_CONFIG_DIRS="custom_images themes printer_database.d"
 
 # Discover printer_data/config/helixscreen/ from the service user's home.
@@ -241,6 +241,17 @@ restore_config_symlinks() {
             [ "$target" = "$pd_file" ] && continue
             rm -f "$install_file"
         fi
+
+        # A dotfile is runtime state no release zip ships. A real one here with
+        # nothing in printer_data is a ledger written before it was relocated:
+        # move it across so the next rmtree cannot take it.
+        case "$file" in
+            .*)
+                if [ ! -e "$pd_file" ] && [ -f "$install_file" ] && [ ! -L "$install_file" ]; then
+                    cp -p "$install_file" "$pd_file" 2>/dev/null || continue
+                fi
+                ;;
+        esac
 
         # User's config exists in printer_data — replace the default with a symlink
         if [ -f "$pd_file" ]; then

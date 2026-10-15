@@ -171,6 +171,18 @@ path_sudo() {
     [ -w "$dir" ] && echo "" || echo "$SUDO"
 }
 
+# Remove an install-dir state file. When it is a symlink into printer_data the
+# target goes too; unlinking only the link would leave a stale ledger behind
+# that a later install reads as its own.
+# Args: $1 = path
+remove_state_file() {
+    local f="$1" t=""
+    [ -L "$f" ] && t="$(readlink "$f" 2>/dev/null)"
+    $(path_sudo "$f") rm -f "$f" 2>/dev/null || true
+    [ -n "$t" ] && { $(path_sudo "$t") rm -f "$t" 2>/dev/null || true; }
+    return 0
+}
+
 # Pin the trust properties of helixscreen.env: the launcher's env-file parse
 # evaluates the file's lines, so its owner and mode decide who can run code as
 # the launcher's user (root on every SysV firmware device). State 0644 and
