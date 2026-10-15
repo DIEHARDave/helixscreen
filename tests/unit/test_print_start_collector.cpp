@@ -6415,6 +6415,7 @@ class ForgeXPrintStartReplayFixture : public ForgeXCollectorFixture {
         float first_prediction_s{0}; ///< prediction once the bed target is set
         float cooldown_prediction_s{0};
         float max_prediction_s{0};        ///< highest prediction once the bed target is set
+        float min_prediction_s{1.0e9f};   ///< lowest prediction once the bed target is set
         bool live_step_at_priming{false}; ///< in_live_preprint_step() once priming starts
         bool live_step_at_complete{true};
         std::string predictions; ///< "second:total" at every heater sample
@@ -6543,6 +6544,7 @@ class ForgeXPrintStartReplayFixture : public ForgeXCollectorFixture {
                 }
                 if (bed_target > 0) {
                     result.max_prediction_s = std::max(result.max_prediction_s, predicted);
+                    result.min_prediction_s = std::min(result.min_prediction_s, predicted);
                 }
                 result.predictions += std::to_string(now_ms / 1000) + ":" +
                                       std::to_string(static_cast<int>(predicted)) + " ";
@@ -6628,6 +6630,9 @@ TEST_CASE_METHOD(ForgeXPrintStartReplayFixture,
 
     REQUIRE(result.first_prediction_s >= min_prediction_s);
     REQUIRE(result.first_prediction_s <= max_prediction_s);
+    // With the database rates the bed's fast first degrees do not drag the
+    // estimate down while it climbs.
+    REQUIRE(result.min_prediction_s >= min_prediction_s);
     // The prediction holds near the real length through the whole pre-print,
     // the slow last degrees of the bed included.
     INFO(result.predictions);

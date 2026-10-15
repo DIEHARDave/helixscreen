@@ -261,6 +261,41 @@ TEST_CASE("ThermalRateModel without reported targets counts every climb", "[ther
     REQUIRE(model.climb_rate() == Catch::Approx(0.5f).margin(0.05f));
 }
 
+TEST_CASE("ThermalRateModel blends a short measured climb with the known rate", "[thermal_rate]") {
+    // A bed with 6 s/C of history heats 30C -> 105C; its first 20C go at
+    // 1 s/C, as a bed's first degrees do.
+    ThermalRateModel model;
+    model.reset(30.0f);
+    model.load_history(6.0f);
+    uint32_t tick = 5000;
+    for (float temp = 30.0f; temp <= 50.0f; tick += 5000, temp += 5.0f) {
+        model.record_sample(temp, tick);
+    }
+    REQUIRE(model.climb_rate() == Catch::Approx(1.0f).margin(0.05f));
+
+    // 20 of 75 degrees measured: mostly the history still.
+    const float early = model.estimate_seconds(30.0f, 105.0f);
+    CAPTURE(early);
+    REQUIRE(early >= 0.6f * 6.0f * 75.0f);
+    REQUIRE(early < 6.0f * 75.0f);
+
+    // A measured span as long as the one asked about stands on its own.
+    REQUIRE(model.estimate_seconds(30.0f, 50.0f) == Catch::Approx(20.0f).margin(2.0f));
+
+    // A guessed default is no better than the fast start and is not blended.
+    ThermalRateModel guessed;
+    guessed.reset(30.0f);
+    guessed.set_default_rate(1.0f);
+    tick = 5000;
+    for (float temp = 30.0f; temp <= 50.0f; tick += 5000, temp += 5.0f) {
+        guessed.record_sample(temp, tick);
+    }
+    REQUIRE(guessed.estimate_seconds(30.0f, 105.0f) == Catch::Approx(75.0f).margin(5.0f));
+    // A database rate is a measurement of this printer and is.
+    guessed.set_default_rate(6.0f, /*measured=*/true);
+    REQUIRE(guessed.estimate_seconds(30.0f, 105.0f) >= 0.6f * 6.0f * 75.0f);
+}
+
 TEST_CASE("ThermalRateModel no measurement returns 0 for save", "[thermal_rate]") {
     ThermalRateModel model;
     model.reset(25.0f);

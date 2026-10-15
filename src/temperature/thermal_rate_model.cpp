@@ -89,7 +89,7 @@ float ThermalRateModel::estimate_seconds(float current, float target) const {
         return 0.0f;
 
     float remaining_degrees = target - current;
-    return std::max(0.0f, remaining_degrees * climb_rate());
+    return std::max(0.0f, remaining_degrees * climb_rate_for(remaining_degrees));
 }
 
 std::optional<float> ThermalRateModel::measured_rate() const {
@@ -104,6 +104,24 @@ float ThermalRateModel::best_rate() const {
     if (has_history_ && hist_heat_rate_ > 0)
         return hist_heat_rate_;
     return default_rate_;
+}
+
+float ThermalRateModel::climb_rate_for(float span_c) const {
+    const float measured = climb_rate();
+    if (!has_measured_heat_rate_ || climb_degrees_ <= 0.0f || span_c <= 0.0f) {
+        return measured;
+    }
+    float known = 0.0f;
+    if (has_history_ && hist_heat_rate_ > 0) {
+        known = hist_heat_rate_;
+    } else if (default_measured_) {
+        known = default_rate_;
+    }
+    if (known <= 0.0f) {
+        return measured;
+    }
+    const float share = std::min(climb_degrees_ / span_c, 1.0f);
+    return share * measured + (1.0f - share) * known;
 }
 
 float ThermalRateModel::climb_rate() const {
@@ -128,8 +146,9 @@ float ThermalRateModel::blended_rate_for_save() const {
     return measured;
 }
 
-void ThermalRateModel::set_default_rate(float rate_s_per_deg) {
+void ThermalRateModel::set_default_rate(float rate_s_per_deg, bool measured) {
     default_rate_ = rate_s_per_deg;
+    default_measured_ = measured;
 }
 
 void ThermalRateModel::reset(float start_temp) {
@@ -215,7 +234,7 @@ void ThermalRateManager::apply_archetype_defaults(float bed_x_max,
                  bed_rate, bed_x_max);
 
     for (const auto& [heater, rate] : PrinterDetector::get_thermal_rates(printer_type)) {
-        models_[heater].set_default_rate(rate);
+        models_[heater].set_default_rate(rate, /*measured=*/true);
         spdlog::info("thermal: {} default {:.2f} s/°C from the database entry for '{}'", heater,
                      rate, printer_type);
     }

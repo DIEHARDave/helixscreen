@@ -333,9 +333,15 @@ real pre-print. `best_rate()` stays for the degrees just ahead
 are reported a sample counts only while a positive target sits above the reading, so the minutes
 a nozzle idles or warms beside the bed at target 0 never enter its rate. A model given no
 targets (the PID calibration tracker) counts every rise. Early in a climb the
-measured average covers only the fast part and the total reads low (a 220mm bed from cold
-read 631s against 849s until its tail was measured); it rises toward the real length as the
-climb goes on and does not overshoot.
+measured average covers only the fast part, so `climb_rate_for(span)` blends it with a known
+rate - the saved history, or a database `thermal_rates` entry - weighted by the share of the
+span measured so far; a measured span as long as the one asked about stands alone. A
+size-guessed default is never blended in: it is no better than the fast start. With the AD5M
+Pro's database rates the Forge-X replay's estimate stays between 842s and 879s against a real
+849s; with only the size guess it reads 631s until the bed's tail is measured, then 849s.
+The PA calibration's heat countdown asks for the remaining span from the live temperature,
+which is what `climb_rate_for()` prices; nothing feeds the model during that heat, so the
+recent-steps rate there would be the last pre-print's tail.
 
 The live countdown is the collector's, not the predictor's: `PrintStartCollector#update_eta_display`. The predictor supplies the historical shape (per-phase weights and a wall-clock total); the collector is what turns that into a number on screen, because three of the four inputs are live printer state the predictor never sees.
 
