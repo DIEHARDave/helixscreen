@@ -542,3 +542,29 @@ make_module_gitdir() {
     [ "$status" -eq 0 ]
     contains "Teardown complete" "$output"
 }
+
+@test "submodule commits the --into branch already pins are pushed, whatever the tracking refs say" {
+    make_worktree pinnedmod
+    make_module_gitdir pinnedmod yes
+    local admin pin
+    admin="$(git -C "$MAIN" rev-parse --path-format=absolute --git-common-dir)/worktrees/pinnedmod"
+    pin="$(git --git-dir="$admin/modules/lib/helix-xml" rev-parse HEAD)"
+    git -C "$MAIN" update-index --add --cacheinfo "160000,$pin,lib/helix-xml"
+    git -C "$MAIN" commit -qm "pin helix-xml" --no-verify
+    run "$SCRIPT" pinnedmod --into master
+    [ "$status" -eq 0 ]
+    lacks "unpushed-work" "$output"
+    contains "Teardown complete" "$output"
+}
+
+@test "only lib/helix-xml is checked: a third-party module's local history never blocks" {
+    make_worktree luamod
+    make_module_gitdir luamod yes
+    local admin
+    admin="$(git -C "$MAIN" rev-parse --path-format=absolute --git-common-dir)/worktrees/luamod"
+    mv "$admin/modules/lib/helix-xml" "$admin/modules/lib/lua"
+    run "$SCRIPT" luamod --into master
+    [ "$status" -eq 0 ]
+    lacks "lib/lua has" "$output"
+    contains "Teardown complete" "$output"
+}

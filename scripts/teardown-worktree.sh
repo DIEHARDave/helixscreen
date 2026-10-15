@@ -251,19 +251,32 @@ if (( GIT_POINTER_OK )); then
     # `git worktree prune` is what finally deletes them.
     ADMIN_DIR="$(sed -n 's/^gitdir: //p' "$WT_ABS/.git" 2>/dev/null | head -1)"
     if [[ -n "$ADMIN_DIR" && -d "$ADMIN_DIR/modules" ]]; then
-        for modgit in "$ADMIN_DIR"/modules/lib/*/; do
-            modgit="${modgit%/}"
+        OWNED_SUBMODULES=(helix-xml)
+        for owned in "${OWNED_SUBMODULES[@]}"; do
+            modgit="$ADMIN_DIR/modules/lib/$owned"
             [[ -f "$modgit/HEAD" ]] || continue
             # A module with no remote has nothing it could be behind.
             [[ -n "$(git --git-dir="$modgit" for-each-ref --count=1 refs/remotes 2>/dev/null)" ]] || continue
-            unpushed="$( { git --git-dir="$modgit" log --oneline HEAD --branches --not --remotes 2>/dev/null || true; } | wc -l | tr -d ' ')"
+            # A private checkout's remote-tracking refs are as old as the
+            # worktree, so refresh them; a failed fetch leaves them as they are.
+            if command -v timeout >/dev/null 2>&1; then
+                timeout 20 git --git-dir="$modgit" fetch -q 2>/dev/null || true
+            fi
+            # Work already pinned by $INTO's gitlink was pushed before that pin
+            # could land, whatever this checkout's tracking refs say.
+            not_pinned=()
+            pin="$(git -C "$MAIN_ABS" rev-parse -q --verify "$INTO:lib/$(basename "$modgit")" 2>/dev/null || true)"
+            if [[ -n "$pin" ]] && git --git-dir="$modgit" cat-file -e "$pin^{commit}" 2>/dev/null; then
+                not_pinned=("$pin")
+            fi
+            unpushed="$( { git --git-dir="$modgit" log --oneline HEAD --branches --not --remotes ${not_pinned[@]+"${not_pinned[@]}"} 2>/dev/null || true; } | wc -l | tr -d ' ')"
             [[ "$unpushed" != "0" ]] || continue
             if (( FORCE )); then
                 say "${YELLOW}! lib/$(basename "$modgit") has $unpushed commit(s) no remote has; they will be DISCARDED (--force).${RESET}"
                 continue
             fi
             say "${RED}Error: lib/$(basename "$modgit") has $unpushed commit(s) no remote has.${RESET}"
-            { git --git-dir="$modgit" log --oneline HEAD --branches --not --remotes 2>/dev/null || true; } | head -5 | sed 's/^/    /'
+            { git --git-dir="$modgit" log --oneline HEAD --branches --not --remotes ${not_pinned[@]+"${not_pinned[@]}"} 2>/dev/null || true; } | head -5 | sed 's/^/    /'
             say "Push them from the worktree's lib/$(basename "$modgit") first (or pass ${CYAN}--force${RESET} to discard them); this script will not discard them silently."
             exit 1
         done
