@@ -253,12 +253,13 @@ describe("overviewQueries", () => {
 describe("filterNotApplicable", () => {
   it("names the filter that excludes every one of the kinds", () => {
     expect(filterNotApplicable(["panel_usage", "overlay_visit"], { model: "Voron 2.4" })).toBe("model");
-    expect(filterNotApplicable(["panel_usage"], { board: "k1" })).toBe("board");
+    expect(filterNotApplicable(["crash"], { model: "Voron 2.4", board: "k1" })).toBe("model");
     expect(filterNotApplicable(["connection_stability"], { model: "Voron 2.4", board: "k1" })).toBe("model");
   });
 
   it("is null when a kind still carries every filtered field", () => {
     expect(filterNotApplicable(["connection_stability"], { board: "k1" })).toBeNull();
+    expect(filterNotApplicable(["panel_usage", "widget_interaction", "overlay_visit"], { board: "k1" })).toBeNull();
     expect(filterNotApplicable(["panel_usage"], { platform: "pi" })).toBeNull();
     expect(filterNotApplicable(["panel_usage"])).toBeNull();
     expect(filterNotApplicable(["panel_usage", "session"], { model: "Voron 2.4" })).toBeNull();

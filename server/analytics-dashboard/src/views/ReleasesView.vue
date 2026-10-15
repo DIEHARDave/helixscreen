@@ -68,7 +68,7 @@
                 class="metric-value"
                 :class="successRateClass(ver.print_success_rate)"
               >
-                {{ (ver.print_success_rate * 100).toFixed(1) }}%
+                {{ formatRate(ver.print_success_rate) }}
                 <span v-if="successDelta(ver) !== null" class="delta" :class="successDelta(ver)! > 0 ? 'delta-good' : 'delta-bad'">
                   {{ successDelta(ver)! > 0 ? '+' : '' }}{{ successDelta(ver)!.toFixed(1) }}pp
                 </span>
@@ -95,6 +95,7 @@ import { useFiltersStore } from '@/stores/filters'
 import { api } from '@/services/api'
 import type { ReleasesData } from '@/services/api'
 import { compareVersions } from '@/utils/chart'
+import { formatRate } from '@/utils/format'
 
 const MAX_SELECTIONS = 5
 
@@ -138,10 +139,11 @@ function crashDelta(ver: { version: string; crash_rate: number }): number | null
   return (ver.crash_rate - prev.crash_rate) * 100
 }
 
-function successDelta(ver: { version: string; print_success_rate: number }): number | null {
+function successDelta(ver: { version: string; print_success_rate: number | null }): number | null {
   const idx = sortedVersions.value.findIndex(v => v.version === ver.version)
   if (idx <= 0) return null
   const prev = sortedVersions.value[idx - 1]
+  if (ver.print_success_rate === null || prev.print_success_rate === null) return null
   return (ver.print_success_rate - prev.print_success_rate) * 100
 }
 
@@ -152,7 +154,8 @@ function crashRateClass(rate: number): string {
   return 'rate-good'
 }
 
-function successRateClass(rate: number): string {
+function successRateClass(rate: number | null): string {
+  if (rate === null) return ''
   const pct = rate * 100
   if (pct >= 80) return 'rate-good'
   if (pct >= 60) return 'rate-warn'

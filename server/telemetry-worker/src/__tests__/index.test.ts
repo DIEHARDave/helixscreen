@@ -1255,8 +1255,21 @@ describe("Dashboard endpoints", () => {
       expect(data.active_devices).toBe(0);
       expect(data.total_events).toBe(0);
       expect(data.crash_rate).toBe(0);
-      expect(data.print_success_rate).toBe(0);
+      expect(data.print_success_rate).toBeNull();
       expect(data.events_over_time).toEqual([]);
+    });
+
+    it("reports no print success rate under a filter that excludes print_outcome", async () => {
+      mockExecuteQuery.mockResolvedValue({
+        data: [{ active_devices: 1, total_events: 1, crash_count: 0, session_count: 1, successes: 5, total: 10 }],
+      });
+      const res = await worker.fetch(
+        dashboardRequest("/v1/dashboard/overview?model=Voron"),
+        env,
+      );
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.print_success_rate).toBeNull();
     });
   });
 
@@ -1530,12 +1543,8 @@ describe("Dashboard endpoints", () => {
       }
     });
 
-    it("follows each endpoint's own kinds under board=", async () => {
-      for (const name of ["engagement", "ux", "features"]) {
-        mockBySql([]);
-        expect((await dashboard(`/v1/dashboard/${name}?board=k1`)).filter_not_applicable, name).toBe("board");
-      }
-      for (const name of ["reliability", "stability"]) {
+    it("is null under board= because every delta kind carries it", async () => {
+      for (const name of ENDPOINTS) {
         mockBySql([]);
         expect((await dashboard(`/v1/dashboard/${name}?board=k1`)).filter_not_applicable, name).toBeNull();
       }
@@ -1733,6 +1742,22 @@ describe("Dashboard endpoints", () => {
       expect(data.versions[0].update_success_rate).toBeCloseTo(0.1);
     });
 
+    it("reports a null print success rate for a version with no prints", async () => {
+      mockExecuteQuery
+        .mockResolvedValueOnce({
+          data: [{ ver: "0.9.18", total_sessions: 10, total_crashes: 0 }],
+        })
+        .mockResolvedValueOnce({ data: [{ ver: "0.9.18", active_devices: 5 }] })
+        .mockResolvedValueOnce({ data: [] });
+
+      const res = await worker.fetch(
+        dashboardRequest("/v1/dashboard/releases?versions=v0.9.18"),
+        env,
+      );
+      const data = await res.json();
+      expect(data.versions[0].print_success_rate).toBeNull();
+    });
+
     it("requires versions parameter", async () => {
       const res = await worker.fetch(
         dashboardRequest("/v1/dashboard/releases"),
@@ -1764,10 +1789,10 @@ describe("Dashboard endpoints", () => {
   });
 });
 
-// ---------- Removed admin routes ----------
+// ---------- Admin routes that do not exist ----------
 
 describe("POST /v1/admin/backfill", () => {
-  it("is gone: even an authenticated request gets 404", async () => {
+  it("returns 404 even for an authenticated request", async () => {
     const res = await worker.fetch(
       makeRequest("/v1/admin/backfill", {
         method: "POST",

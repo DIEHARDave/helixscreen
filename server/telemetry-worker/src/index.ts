@@ -502,7 +502,10 @@ export default {
             active_devices: devicesData.data?.[0]?.active_devices ?? 0,
             total_events: totalData.data?.[0]?.total_events ?? 0,
             crash_rate: crashRate(crashRow.crash_count, crashRow.session_count, crashRateApplies),
-            print_success_rate: printRow.total > 0 ? printRow.successes / printRow.total : 0,
+            print_success_rate:
+              printRow.total > 0 && !excludedBy("print_outcome", filters)
+                ? printRow.successes / printRow.total
+                : null,
             events_over_time: (timeData.data ?? []).map((r) => ({
               date: r.date,
               count: r.count,
@@ -1306,7 +1309,7 @@ export default {
                 version: r.ver,
                 active_devices: deviceMap.get(r.ver) ?? 0,
                 crash_rate: r.total_sessions > 0 ? r.total_crashes / r.total_sessions : 0,
-                print_success_rate: prints.total > 0 ? prints.successes / prints.total : 0,
+                print_success_rate: prints.total > 0 ? prints.successes / prints.total : null,
                 total_sessions: r.total_sessions,
                 total_crashes: r.total_crashes,
                 // Self-update health for devices RUNNING this version. A version

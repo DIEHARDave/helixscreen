@@ -172,6 +172,7 @@ describe("POINT_KINDS table", () => {
           "vm_size_kb": "double3",
         },
         "overlay_visit": {
+          "app_board": "blob14",
           "app_platform": "blob3",
           "app_version": "blob2",
           "boot_id": "blob13",
@@ -183,6 +184,7 @@ describe("POINT_KINDS table", () => {
           "snapshot_seq": "double10",
         },
         "panel_usage": {
+          "app_board": "blob14",
           "app_platform": "blob3",
           "app_version": "blob2",
           "boot_id": "blob13",
@@ -295,6 +297,7 @@ describe("POINT_KINDS table", () => {
           "version": "blob2",
         },
         "widget_interaction": {
+          "app_board": "blob14",
           "app_platform": "blob3",
           "app_version": "blob2",
           "boot_id": "blob13",

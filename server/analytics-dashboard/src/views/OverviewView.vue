@@ -28,8 +28,8 @@
           />
           <MetricCard
             title="Print Success Rate"
-            :value="`${(data.print_success_rate * 100).toFixed(1)}%`"
-            color="var(--accent-green)"
+            :value="formatRate(data.print_success_rate)"
+            :color="data.print_success_rate === null ? 'var(--text-secondary)' : 'var(--accent-green)'"
           />
         </div>
 

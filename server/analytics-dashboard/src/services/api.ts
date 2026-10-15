@@ -25,7 +25,7 @@ export interface OverviewData {
   active_devices: number
   total_events: number
   crash_rate: number | null
-  print_success_rate: number
+  print_success_rate: number | null
   events_over_time: { date: string; count: number }[]
   daily_active_devices: { date: string; devices: number }[]
   cumulative_devices: { date: string; total: number }[]
@@ -93,7 +93,7 @@ export interface ReleasesData {
     version: string
     active_devices: number
     crash_rate: number
-    print_success_rate: number
+    print_success_rate: number | null
     total_sessions: number
     total_crashes: number
   }[]

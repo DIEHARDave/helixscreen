@@ -258,6 +258,7 @@ const versionPlatform = [
 /** Idempotency key parts for delta point kinds: (device_id, boot_id, snapshot_seq). */
 const deltaColumns = [
   blob(13, "boot_id"),
+  blob(14, "app_board", appBoard),
   dbl(9, "schema_version"),
   dbl(10, "snapshot_seq"),
 ];
@@ -602,7 +603,6 @@ export const R2_ONLY: Record<string, string[]> = mergeLists(
     memory_warning: ["boot_id", "schema_version", "app_board"],
     hardware_profile: ["boot_id", "schema_version"],
     settings_snapshot: ["boot_id", "schema_version", "app_board"],
-    panel_usage: ["app_board"],
     print_start_context: ["boot_id", "schema_version"],
     error_encountered: ["boot_id", "schema_version"],
     performance_snapshot: ["boot_id", "schema_version", "app_board"],
