@@ -217,12 +217,14 @@ PrintStatusPanel::PrintStatusPanel(PrinterState& printer_state, IMoonrakerAPI* a
                 },
                 [this]() { return is_active_; }}),
       progress_text_(printer_state, lifecycle_),
-      layout_fitter_(
-          get_name(), printer_state,
-          {&fan_row_density_subject_, &aux_icon_visible_subject_, &aux_full_visible_subject_,
-           &aux_short_visible_subject_, &fans_fit_subject_, &graph_fits_subject_},
-          {[this]() { return overlay_root_; }, [this]() { return subjects_initialized_; },
-           [this]() { return !aux_fan_name_.empty(); }}) {
+      layout_fitter_(get_name(), printer_state,
+                     {&fan_row_density_subject_, &aux_icon_visible_subject_,
+                      &aux_full_visible_subject_, &aux_short_visible_subject_, &fans_fit_subject_,
+                      &graph_fits_subject_, &row1_stacked_subject_, &row1_tall_subject_,
+                      &row2_stacked_subject_, &row2_tall_subject_},
+                     {[this]() { return overlay_root_; },
+                      [this]() { return subjects_initialized_; },
+                      [this]() { return !aux_fan_name_.empty(); }}) {
     preview_.set_api(api);
     // Pre-init local subject used by observer callback below (fires immediately on subscribe)
     lv_subject_init_int(&exclude_objects_available_subject_, 0);
@@ -616,6 +618,10 @@ void PrintStatusPanel::init_subjects() {
     // graph stays hidden until the first measured recompute after attach —
     // landscape and every non-capped portrait size never leave that state.
     UI_MANAGED_SUBJECT_INT(graph_fits_subject_, 0, "print_status_graph_fits", subjects_);
+    UI_MANAGED_SUBJECT_INT(row1_stacked_subject_, 0, "print_status_row1_stacked", subjects_);
+    UI_MANAGED_SUBJECT_INT(row1_tall_subject_, 0, "print_status_row1_tall", subjects_);
+    UI_MANAGED_SUBJECT_INT(row2_stacked_subject_, 0, "print_status_row2_stacked", subjects_);
+    UI_MANAGED_SUBJECT_INT(row2_tall_subject_, 0, "print_status_row2_tall", subjects_);
     UI_MANAGED_SUBJECT_INT(aux_fan_present_subject_, 0, "print_status_aux_fan_present", subjects_);
 
     // Density + composite subjects for 3-tier adaptive content.
@@ -664,6 +670,7 @@ void PrintStatusPanel::init_subjects() {
                         return;
                     self->layout_fitter_.recompute_fans_density();
                     self->layout_fitter_.recompute_fans_fit();
+                    self->layout_fitter_.recompute_actions_crowded();
                 },
                 subject_never_freed());
         }
@@ -1280,6 +1287,7 @@ void PrintStatusPanel::on_activate() {
         token.defer("PrintStatusPanel::on_activate_fan_row_recompute", [this]() {
             layout_fitter_.recompute_fans_density();
             layout_fitter_.recompute_fans_fit();
+            layout_fitter_.recompute_actions_crowded();
         });
     }
 

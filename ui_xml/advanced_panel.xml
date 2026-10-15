@@ -28,9 +28,9 @@
        container runs no layout at all and all three buttons land on top of
        each other at the same y. -->
   <styles>
-    <style name="estop_bar_row" layout="flex" flex_flow="row"/>
+    <style name="estop_bar_row" layout="flex" flex_flow="row_wrap"/>
     <style name="estop_bar_column" layout="flex" flex_flow="column"/>
-    <style name="estop_btn_inline" flex_grow="1"/>
+    <style name="estop_btn_inline" flex_grow="1" min_width="content" pad_hor="#space_sm"/>
     <style name="estop_btn_stacked" width="100%" flex_grow="0"/>
   </styles>
   <view name="advanced_panel"

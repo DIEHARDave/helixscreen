@@ -92,6 +92,22 @@ ALLOWED_OMISSIONS: dict[str, dict[str, dict[str, str]]] = {
             "filament+AMS cluster into ONE row that fits at every portrait width, so there is "
             "nothing left to hide — the row is rendered unconditionally, not dropped.",
         },
+        "condition": {
+            # Only for the conds CONDITION_ALLOWANCE_SCOPE below names.
+            "bind_style_if@cond": "the base's two action rows take a fixed height when "
+            "print_status_rowN_tall says their labels must stack. Portrait has ONE action row "
+            "whose buttons are always icon over label at button_height, so it has no height to "
+            "switch.",
+        },
+    },
+}
+
+# A condition allowance covers only base expressions matching its pattern: a new
+# condition of the same element in the base, binding anything else, still has to
+# reach the variant.
+CONDITION_ALLOWANCE_SCOPE: dict[str, dict[str, re.Pattern]] = {
+    "ui_xml/portrait/print_status_panel.xml": {
+        "bind_style_if@cond": re.compile(r"^print_status_row\d_tall eq 1$"),
     },
 }
 
@@ -115,6 +131,8 @@ class Collected:
         self.callbacks: set[str] = set()
         self.props: set[str] = set()
         self.conds: set[str] = set()
+        # The expression text behind each condition key, for scoped allowances.
+        self.cond_values: dict[str, set[str]] = {}
 
 
 def collect(path: Path) -> Collected:
@@ -160,6 +178,7 @@ def collect(path: Path) -> Collected:
                 # still resolves to a live expression at instantiation, so it
                 # counts as present like any other value would.
                 out.conds.add(f"{el.tag}@{attr}")
+                out.cond_values.setdefault(f"{el.tag}@{attr}", set()).add(value)
 
     return out
 
@@ -235,7 +254,16 @@ def main() -> int:
         bad |= report("subject", base_rel, variant_rel, base.subjects, var.subjects)
         bad |= report("callback", base_rel, variant_rel, base.callbacks, var.callbacks)
         bad |= report("api prop", base_rel, variant_rel, base.props, var.props)
-        bad |= report("condition", base_rel, variant_rel, base.conds, var.conds)
+        # A scoped condition allowance stops covering a key once the base binds
+        # anything outside its pattern; report then names it as missing.
+        base_conds = set(base.conds)
+        for key, pattern in CONDITION_ALLOWANCE_SCOPE.get(variant_rel, {}).items():
+            if key in base_conds and key not in var.conds:
+                stray = sorted(v for v in base.cond_values.get(key, ()) if not pattern.match(v))
+                if stray:
+                    print(f"\n  {variant_rel}: {key} allowance does not cover {stray}")
+                    bad = True
+        bad |= report("condition", base_rel, variant_rel, base_conds, var.conds)
         if bad:
             failures += 1
 
