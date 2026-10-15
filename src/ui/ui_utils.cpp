@@ -287,7 +287,7 @@ static void clear_slot_cb(lv_event_t* e) {
     }
 }
 
-void clear_slot_on_delete(lv_obj_t** slot, lv_obj_t* obj) {
+void store_until_deleted(lv_obj_t** slot, lv_obj_t* obj) {
     *slot = obj;
     if (obj) {
         lv_obj_remove_event_cb_with_user_data(obj, clear_slot_cb, slot);

@@ -99,7 +99,7 @@ void set_fault_carrier(lv_obj_t* dialog) {
     if (dialog == s_fault_carrier) {
         return;
     }
-    helix::ui::clear_slot_on_delete(&s_fault_carrier, dialog);
+    helix::ui::store_until_deleted(&s_fault_carrier, dialog);
     if (!dialog) {
         return;
     }

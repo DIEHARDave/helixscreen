@@ -588,6 +588,6 @@ void refresh_overhang_chain(lv_obj_t* child);
  * an old object lands after a new one has been stored. Remembering the same object
  * twice leaves one handler. Pass nullptr to store nullptr.
  */
-void clear_slot_on_delete(lv_obj_t** slot, lv_obj_t* obj);
+void store_until_deleted(lv_obj_t** slot, lv_obj_t* obj);
 
 } // namespace helix::ui
