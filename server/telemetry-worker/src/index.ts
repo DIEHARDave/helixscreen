@@ -195,7 +195,8 @@ async function captureCdnFleetDay(env: Env, date: string): Promise<FleetDaySnaps
         env.TELEMETRY_ANALYTICS.writeDataPoint(point);
       }
     } catch {
-      // R2 already holds the day; re-running the snapshot for the day rewrites the AE rows.
+      // R2 already holds the day; re-running the snapshot appends rows for the day
+      // that the queries collapse with max().
     }
   }
 

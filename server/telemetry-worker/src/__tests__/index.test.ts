@@ -6,7 +6,7 @@ import worker, { toYesNo } from "../index";
 import { mapEventToDataPoints } from "../analytics";
 import * as queries from "../queries";
 import { parseRange, buildFilterClause } from "../queries";
-import { buildReconcileTable, countR2Points } from "../../scripts/reconcile";
+import { buildReconcileTable, countR2Points, parseEnvValue } from "../../scripts/reconcile";
 import { compareVersions } from "../versions";
 import { compareVersions as dashboardCompareVersions } from "../../../analytics-dashboard/src/utils/chart";
 
@@ -1707,6 +1707,27 @@ describe("buildReconcileTable", () => {
   });
 });
 
+describe("parseEnvValue", () => {
+  const text = [
+    "# comment",
+    "OTHER=nope",
+    "HELIX_TELEMETRY_ADMIN_KEY=abc123",
+    "",
+  ].join("\n");
+
+  it("reads a plain KEY=VALUE line, as .env.telemetry is written", () => {
+    expect(parseEnvValue(text, "HELIX_TELEMETRY_ADMIN_KEY")).toBe("abc123");
+  });
+
+  it("accepts export prefix, quotes and CRLF, and the last assignment wins", () => {
+    expect(parseEnvValue('A=1\r\nexport A="two"\r\n', "A")).toBe("two");
+  });
+
+  it("returns undefined for a missing name or a commented-out line", () => {
+    expect(parseEnvValue("# A=1\nB=2", "A")).toBeUndefined();
+  });
+});
+
 describe("countR2Points", () => {
   it("counts mapped data points per event kind across batches", () => {
     const counts = countR2Points([
@@ -1717,6 +1738,34 @@ describe("countR2Points", () => {
       [{ event: "session", device_id: "d2" }],
     ]);
     expect(counts).toEqual({ session: 2, crash: 1 });
+  });
+
+  it("counts by the AE kind a point lands in, not by the event name", () => {
+    const counts = countR2Points([
+      [
+        { event: "settings_snapshot", device_id: "d1", home_widgets: ["temp", "temp", "fan"] },
+        {
+          event: "panel_usage",
+          device_id: "d1",
+          panel_time_sec: { home: 5, motion: 3 },
+          panel_visits: { home: 1, motion: 1, settings: 2 },
+        },
+        {
+          event: "settings_changes",
+          device_id: "d1",
+          changes: [
+            { setting: "a", old_value: "1", new_value: "2" },
+            { setting: "b", old_value: "x", new_value: "y" },
+          ],
+        },
+      ],
+    ]);
+    expect(counts).toEqual({
+      settings_snapshot: 1,
+      widget_placement: 2,
+      panel_usage: 3,
+      settings_change: 2,
+    });
   });
 
   it("tolerates a batch shaped as {events: [...]} and skips non-objects", () => {

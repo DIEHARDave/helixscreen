@@ -169,11 +169,11 @@ day's AE rows may be fewer than the points its R2 events map to. To measure the
 gap for one UTC day:
 
 ```bash
-source .env.telemetry   # HELIX_TELEMETRY_ADMIN_KEY
 (cd server/telemetry-worker && npx vite-node scripts/reconcile.ts 2026-10-12)
 ```
 
-The script lists and fetches that day's R2 batches over the admin API, maps
+The script reads `HELIX_TELEMETRY_ADMIN_KEY` from the environment, else from
+`.env.telemetry` in the repo root. It lists and fetches that day's R2 batches over the admin API, maps
 them with the worker's own `mapEventToDataPoints`, fetches `/v1/admin/ae-counts`
 for the same day, and prints one row per kind:
 

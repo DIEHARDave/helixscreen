@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Compare one UTC day of raw R2 batches against what Analytics Engine kept.
 //
-//   export HELIX_TELEMETRY_ADMIN_KEY=...   (or: source .env.telemetry)
+//   HELIX_TELEMETRY_ADMIN_KEY comes from the environment, else from the repo
+//   root's .env.telemetry (KEY=VALUE lines).
 //   (cd server/telemetry-worker && npx vite-node scripts/reconcile.ts 2026-10-12)
 //
 // R2 holds every accepted batch; AE sheds writes past its per-invocation
@@ -9,7 +10,11 @@
 // points the R2 events map to next to the rows AE holds, and kept% = how much
 // of R2 survived into AE (ae_weighted / r2_points).
 
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { mapEventToDataPoints } from "../src/analytics";
+import { isIsoDate } from "../src/queries";
 
 const BASE_URL = "https://telemetry.helixscreen.org";
 const FETCH_CONCURRENCY = 16;
@@ -77,6 +82,31 @@ export function buildReconcileTable(
   });
 }
 
+/**
+ * Value of NAME in KEY=VALUE text, or undefined. Blank lines, # comments, an
+ * optional `export ` prefix and one layer of matching quotes are understood;
+ * nothing is evaluated. The last assignment wins, as in a sourced file.
+ */
+export function parseEnvValue(text: string, name: string): string | undefined {
+  let value: string | undefined;
+  for (const raw of text.split(/\r?\n/)) {
+    const m = raw.match(/^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$/);
+    if (!m || m[1] !== name) continue;
+    let v = m[2];
+    if (v.length >= 2 && (v[0] === '"' || v[0] === "'") && v.endsWith(v[0])) v = v.slice(1, -1);
+    value = v;
+  }
+  return value;
+}
+
+function adminKeyFromEnvOrFile(): string | undefined {
+  const fromEnv = process.env.HELIX_TELEMETRY_ADMIN_KEY;
+  if (fromEnv) return fromEnv;
+  const envFile = resolve(dirname(fileURLToPath(import.meta.url)), "../../../.env.telemetry");
+  if (!existsSync(envFile)) return undefined;
+  return parseEnvValue(readFileSync(envFile, "utf8"), "HELIX_TELEMETRY_ADMIN_KEY") || undefined;
+}
+
 async function adminGet(path: string, adminKey: string): Promise<Response> {
   const res = await fetch(`${BASE_URL}${path}`, { headers: { "X-API-Key": adminKey } });
   if (!res.ok) {
@@ -119,13 +149,13 @@ async function fetchBatches(keys: string[], adminKey: string): Promise<unknown[]
 
 async function main(): Promise<void> {
   const date = process.argv[2] ?? "";
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+  if (!isIsoDate(date)) {
     console.error("usage: vite-node scripts/reconcile.ts YYYY-MM-DD");
     process.exit(2);
   }
-  const adminKey = process.env.HELIX_TELEMETRY_ADMIN_KEY;
+  const adminKey = adminKeyFromEnvOrFile();
   if (!adminKey) {
-    console.error("HELIX_TELEMETRY_ADMIN_KEY is not set");
+    console.error("HELIX_TELEMETRY_ADMIN_KEY is not set in the environment or .env.telemetry");
     process.exit(2);
   }
 
