@@ -282,9 +282,45 @@ notice, and the run stops and says so rather than spending the builds
 `MUTATE_ARGS="--base origin/release/1.0"`, which is taken as given and never
 second-guessed.
 
-Stop a run with **Ctrl-C**, never `kill`. Each mutant is put back by a `finally:`
-that needs the interpreter to keep running; SIGINT unwinds it, SIGTERM does not
-and leaves that hunk reverted in your working tree.
+**A run is bounded, and any stop leaves the tree as it found it.**
+
+- `--max-minutes N` (default 45, `0` for none) caps the whole run, baseline
+  included. At the cap the in-flight hunk is stopped and restored, and it and
+  every hunk after it are listed `UNEXAMINED`: the run is `INCOMPLETE`, never
+  `CLEAN`.
+- SIGINT, SIGTERM and SIGHUP all stop it the same way: every child (make and
+  its compilers, `git apply`, the suites) runs in its own process group and is
+  stopped and reaped first, then every mutated file is written back from the
+  bytes captured at the start, then it exits `128+signo`. Ctrl-C and a plain
+  `kill` are equally safe; only `kill -9` can strand a mutant. An inherited
+  SIGHUP ignore (`nohup`) is kept.
+- A run whose parent process exits stops before its next hunk instead of
+  mutating a tree nobody is watching. `--allow-orphan` for a deliberate detach.
+
+**Landing a fix mutates the fix, not the branch again.** A run that leaves
+nothing unexamined (every mutatable hunk killed or declaration-only) records HEAD
+as proven in `refs/notes/mutate-proven`, but only when all of these hold: its
+base is the fork point or itself a proven commit, HEAD did not move during the
+run, the tracked tree matches HEAD, and nothing untracked sits under `tests/`,
+`src/` or `include/`. Commit before the run if you want it recorded. The next
+run with no `--base` starts from the newest proven commit on the branch, and its
+first line says so (`<- last commit proven by mutate-diff on this branch`). The
+note carries the run's `NOT COVERED` paths and the next run reports them again,
+so a delta run is as INCOMPLETE as the branch it continues. A delta that removes
+or edits a line under `tests/` can undo the kills the proof rests on, so it falls
+back to the fork point and prints why.
+
+| Flag | Scope |
+|------|-------|
+| (none) | since the last proven commit, else the fork point |
+| `--since <sha>` | since a commit you name; must be an ancestor of HEAD, and records nothing unless it is proven |
+| `--whole-branch` | everything since the fork point, ignoring the record |
+| `--base <ref>` | exactly `<ref>`, taken as given; records only if it is the fork point or proven |
+| `--no-record` | run as usual, record nothing |
+
+The record lives in the repo that ran the gate, so a run on the test host
+(`scripts/test-host-run.sh mutate`) records there; pass `--since` explicitly to
+carry a proof between machines.
 
 The verdicts are not interchangeable:
 
@@ -294,11 +330,15 @@ The verdicts are not interchangeable:
 | `killed (timeout)` | the mutant hung the suite at a limit derived from the baseline (`max(60s, 5x baseline)`, or `--timeout`) AND hung again when re-run at twice that limit. One stall alone is a machine under load, not a detection. The whole process group dies with each timeout |
 | `SURVIVED` | the mutant ran and the suite stayed green: NO test detects it |
 | `uncompilable` / `unreversible` | a mutant was attempted but no test ever judged it. Never a kill: a compiler error proves the code is load-bearing for the build, not that anything tests its behaviour |
+| `skipped (declaration-only)` | every changed line of a C/C++ hunk is one of: a forward declaration (`class X;`, `enum class E : int;`), an access specifier or `friend class`, a `static_assert`, `#pragma once`, a class head with no `alignas` or base that is not changed between `class` and `struct`, or a member function or destructor declaration that is not `virtual` or `explicit` (changes to its signature, `const`, `noexcept` or `= delete` included, as long as `static`/`constexpr`/`inline` match the other side). Its revert can only fail to compile, so it is not built and never counts as a kill. Everything else is mutated: every `#include`, every data member, namespace-scope prototypes, aliases and externs, friend functions and operators, explicit specialisations and instantiations, initialisers, default arguments, inline bodies, enumerators, `#define`. `--no-skip-declarations` mutates them all |
+| `UNEXAMINED` | the run stopped (`--max-minutes`, or its parent exited) before reaching this hunk |
 | `NOT COVERED` | nothing here can mutate that file, so the gate did not look at it |
 
-The run answers `CLEAN` only when every changed hunk was mutated and every mutant
-died. Anything short of that is `INCOMPLETE` (exit 3) and names the paths it did
-not examine, because a clean answer about a file the tool never opened is
+The run answers `CLEAN` only when every hunk it built was mutated and every
+mutant died. Declaration-only skips do not stop a run being `CLEAN`, but they are
+unexamined and the verdict says so: `CLEAN (N hunk(s) not built: declaration-only,
+unexamined)`. Anything short of that is `INCOMPLETE` (exit 3) and names what it
+did not examine, because a clean answer about a file the tool never opened is
 precisely what a commit body would go on to cite as proof.
 
 What it mutates, and what pays for what:
@@ -369,7 +409,8 @@ Only reverting the hunk and watching for red finds it.
 ### When to run it, and where the record goes
 
 Run `make mutate-diff` once, over the whole branch, when the feature or change is done and
-before the final review. Never run it per task or per commit while work is in progress: each
+before the final review. A review fix after that is the delta since the proven commit, which
+the next run picks up on its own. Never run it per task or per commit while work is in progress: each
 run costs minutes per hunk, and hunks a later commit rewrites get mutated twice for nothing.
 
 Red-green is invisible after the fact. A test that was mutated and verified is

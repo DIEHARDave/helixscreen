@@ -72,6 +72,17 @@
 #                Dropped before it costs a build, and kept out of the tally
 #                rather than padding it with unkillable survivors.
 #                --no-skip-comments mutates them anyway.
+#   skipped (declaration-only)
+#                every changed line of a C/C++ hunk is a declaration whose
+#                revert can only fail to compile: a forward declaration, a
+#                non-virtual member function or destructor declaration, an
+#                access specifier, a static_assert, #pragma once. A build
+#                would spend minutes to reach `uncompilable`, which judges
+#                nothing; the behaviour lives in the definition, whose own
+#                hunk is mutated. Never a kill. These hunks do not stop a run
+#                being CLEAN, and the CLEAN line says how many were not built
+#                and so are unexamined. See DECLARATION-ONLY below for the
+#                exact list. --no-skip-declarations mutates them anyway.
 #   EXCLUDED     scripts/untestable_paths.txt names the file, with a reason.
 #                A reviewed, in-tree decision rather than an omission.
 #
@@ -101,6 +112,24 @@
 # automatically chosen base stops the run instead of spending an hour proving it.
 # `--base` overrides all of it and is never second-guessed.
 #
+# THE DELTA SINCE A PROVEN COMMIT
+#
+# A run that finds nothing unexamined (every mutatable hunk killed or skipped)
+# records the HEAD it proved as a git note under refs/notes/mutate-proven. Only
+# when its base is the fork point or itself a proven commit, so nothing before
+# the base goes uncertified; only when HEAD is still the commit the hunks came
+# from, the tracked tree matches it, and nothing untracked sits under tests/,
+# src/ or include/. The note lists the run's NOT COVERED paths, and a run that
+# starts from that proof reports them again, so a CLEAN delta cannot stand in for
+# the whole branch. The next run with no --base starts from the newest proven
+# commit on the branch instead of the fork point, so landing a fix mutates the
+# fix rather than the whole branch again. The proof holds only while the tests
+# that killed those mutants do, so a delta that removes or edits a line under
+# tests/ falls back to the fork point and says why. --since <sha> names the
+# proven commit by hand (it must be an ancestor of HEAD, and a commit no run
+# proved is accepted but records nothing); --whole-branch ignores the record;
+# --no-record writes none.
+#
 # SAFETY
 #
 # The working tree is restored by writing back bytes saved in memory -- never by
@@ -118,12 +147,27 @@
 # is checked as well, either side of each mutant's build, because a build with
 # nothing to do leaves the previous mutant's binary under this mutant's suite.
 #
-# That restore is a `finally:` in the per-hunk loop, so it needs the interpreter
-# to keep running long enough to execute it. Interrupt this script with SIGINT
-# (Ctrl-C, or `kill -INT`) and the hunk in flight is put back. SIGTERM (a bare
-# `kill`, or a harness reaping the process) kills Python without unwinding, and
-# leaves that hunk REVERTED in the working tree -- a silent, plausible-looking
-# edit that gets committed. SIGKILL likewise, and cannot be helped.
+# SIGINT, SIGTERM and SIGHUP all stop the run the same way, from the moment it
+# starts: every child the run launched (make and its compilers, git apply, the
+# suites) leads its own process group, and each group is sent SIGTERM, then
+# SIGKILL after a grace period, and reaped; only then is every file the run had
+# mutated written back from the captured bytes, and the process exits 128+signo
+# without unwinding further. The order matters: a `git apply` still running
+# after the restore would write the mutant back. A second signal during that
+# shutdown is ignored rather than allowed to cut the restore short. SIGKILL
+# cannot be caught, so it alone can still strand a mutant.
+#
+# A run whose parent exits (a harness that reaps the shell but not its children)
+# is reparented, and it stops before its next hunk instead of mutating a tree
+# nobody is watching. --allow-orphan keeps it going for a deliberate detach.
+#
+# BOUNDS
+#
+# --max-minutes (default 45, 0 for none) caps the whole run, baseline included.
+# At the cap the in-flight hunk's processes are stopped, its file is restored,
+# and that hunk and every one after it are reported UNEXAMINED: the run is
+# INCOMPLETE, never CLEAN, and the list says exactly what is left for a rerun
+# (--since the last proven commit, or --only).
 #
 # EXIT CODES
 #
@@ -135,8 +179,9 @@
 #      build did not leave one, or a file the run may mutate stopped matching
 #      the tree the run started from
 #   3  nothing survived, but the run did not examine the whole change -- an
-#      uncovered path, a hunk deferred by --only/--limit, or a hunk whose suite
-#      exited without a verdict
+#      uncovered path, a hunk deferred by --only/--limit, a hunk left unexamined
+#      by --max-minutes or by the parent exiting, or a hunk whose suite exited
+#      without a verdict
 #      (--allow-incomplete downgrades this to 0 once a human has read why)
 #   4  refused to start: the automatically chosen base yields more hunks than
 #      --max-hunks, and nothing confirmed it. Not a verdict; nothing ran.
@@ -146,6 +191,8 @@
 #   python3 scripts/mutate_diff.py                      # full run vs merge-base
 #   python3 scripts/mutate_diff.py --tests "[ams]"      # scope the suite
 #   python3 scripts/mutate_diff.py --base origin/release/1.0
+#   python3 scripts/mutate_diff.py --since <proven-sha>  # only what changed since
+#   python3 scripts/mutate_diff.py --whole-branch       # ignore the proven record
 #   make mutate-diff
 
 import argparse
@@ -164,7 +211,7 @@ from pathlib import Path
 # not. scripts/diff_base.py is the single answer, and a fixture that copies this
 # script has to copy that module beside it.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from diff_base import base_line, resolve_base  # noqa: E402
+from diff_base import base_line, resolve_base, short_sha  # noqa: E402
 
 HUNK_RE = re.compile(r'^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,(\d+))? @@')
 RAW_RE = re.compile(r'^:(\d+) (\d+) [0-9a-f]+ [0-9a-f]+ (\w)\d*\t(.*)$')
@@ -517,14 +564,16 @@ def code_only_lines(text, syntax='c'):
 HEADER_SUFFIXES = ('.h', '.hpp', '.hh', '.hxx', '.inc')
 
 
-def hunk_changed_code_lines(root, base, h, cache):
-    """(removed, added) code lines for a hunk, comments stripped, or False.
+def hunk_changed_lines(root, base, h, cache):
+    """(pre, post, removed, added) for a hunk, or False.
 
-    Both cheap-skip predicates below ask the same question of a hunk and differ
-    only in what they conclude, so the diff is walked once here. False means the
-    walk hit a surprise -- unreadable pre-image, a body that does not line up
-    with the files -- and the caller must mutate the hunk as usual rather than
-    guess from a partial read.
+    pre/post are both sides of the file with comments blanked (code_only_lines);
+    removed/added are the 0-based indices, into pre and post respectively, of
+    the hunk's changed lines that still hold code once comments are gone. Every
+    cheap-skip predicate below asks this of a hunk, so the diff is walked once
+    here. False means the walk hit a surprise -- unreadable pre-image, a body
+    that does not line up with the files -- and the caller must mutate the hunk
+    as usual rather than guess from a partial read.
     """
     path = h['file']
     syntax = comment_syntax(path)
@@ -548,6 +597,8 @@ def hunk_changed_code_lines(root, base, h, cache):
 
     removed, added = [], []
     old_i, new_i = h['old_line'] - 1, h['line'] - 1
+    # A new file's hunk is `-0,0`, and its first line is still line 1.
+    old_i, new_i = max(old_i, 0), max(new_i, 0)
     try:
         for raw in h['body'][1:]:          # body[0] is the @@ header
             if raw.startswith('\\'):        # "\ No newline at end of file"
@@ -557,17 +608,18 @@ def hunk_changed_code_lines(root, base, h, cache):
                 old_i += 1
                 new_i += 1
             elif tag == '-':
-                removed.append(pre[old_i])
+                if pre[old_i].strip():
+                    removed.append(old_i)
                 old_i += 1
             elif tag == '+':
-                added.append(post[new_i])
+                if post[new_i].strip():
+                    added.append(new_i)
                 new_i += 1
             else:
                 return False
     except IndexError:
         return False
-    keep = lambda xs: [t for t in (x.strip() for x in xs) if t]
-    return keep(removed), keep(added)
+    return pre, post, removed, added
 
 
 def hunk_is_comment_only(root, base, h, cache):
@@ -578,37 +630,397 @@ def hunk_is_comment_only(root, base, h, cache):
     compile and a whole-program link to prove something no test could ever
     detect, so it is skipped rather than reported as a survivor.
     """
-    sides_ = hunk_changed_code_lines(root, base, h, cache)
+    sides_ = hunk_changed_lines(root, base, h, cache)
     if not sides_:
         return False
-    removed, added = sides_
-    return removed == added
+    pre, post, removed, added = sides_
+    return [pre[i].strip() for i in removed] == [post[i].strip() for i in added]
 
 
-def hunk_is_include_only(root, base, h, cache):
-    """True when a hunk only adds or removes #include lines.
+# ---------------------------------------------------------------------------
+# DECLARATION-ONLY
+#
+# A hunk qualifies when every changed code line, on both sides, belongs only to
+# declarations whose revert can fail to compile but cannot compile into
+# different behaviour. The scanner below is not a C++ parser: it splits a file
+# into statements and brace blocks well enough to tell which scope a line is in
+# (namespace, class body, or code), and every shape it does not recognise is
+# CODE. The same rule as the comment scanner: a wrong "code" costs one build,
+# a wrong "declaration" drops a behavioural change unexamined.
+#
+# The only shapes skipped, and why each is compile-or-nothing:
+#
+#   #pragma once              no behaviour
+#   forward declaration       `class X;`, `enum class E : int;`: a name, whose
+#                             absence is a compile error
+#   access specifier,         access only gates what compiles
+#   friend class
+#   static_assert             a compile-time check by definition
+#   member function or        the out-of-line definition needs a matching
+#   destructor declaration    declaration, so removing one or changing its
+#                             signature, `const` or `noexcept` fails to compile.
+#                             `= delete` included. Never when it is `virtual`
+#                             (pure or not) or `explicit`, which compile without
+#                             it into different dispatch or conversions, nor when
+#                             its static/constexpr/inline differ from the same
+#                             declaration on the other side, touched or not
+#   class head                no alignas, no base clause, and not changed
+#                             between the sides (class <-> struct moves default
+#                             access and aggregate-ness)
+#
+# Everything else is CODE, including: every #include (a dropped one can flip an
+# #if, change which overload a call picks, or lose a specialisation), data
+# members of any kind (a removed member lets an outer name take over in member
+# bodies, and a base class's can shadow), namespace-scope prototypes, aliases
+# and externs (another file's overload or outer alias can take over), friend
+# functions and operators (found by ADL), explicit specialisations and
+# instantiations, initialisers, default arguments, `= default`, inline bodies,
+# enumerators and every other preprocessor line.
+# ---------------------------------------------------------------------------
+_PP_DECL = re.compile(r'^#\s*pragma\s+once\s*$')
+_ACCESS = ('public', 'private', 'protected')
+_FUNC_SPECS = frozenset(('virtual', 'explicit', 'static', 'constexpr', 'consteval', 'inline'))
+_FUNDAMENTAL = frozenset((
+    'const', 'volatile', 'mutable', 'static', 'unsigned', 'signed', 'short',
+    'long', 'int', 'char', 'bool', 'float', 'double', 'wchar_t', 'char8_t',
+    'char16_t', 'char32_t', 'size_t', 'ssize_t', 'ptrdiff_t', 'void'))
+_FUNC_POST = re.compile(
+    r'^(?:(?:const|volatile|noexcept(?:\s*\([^()]*\))?|override|final|&&|&'
+    r'|->\s*[\w:\s*&]+?|=\s*0|=\s*delete)\s*)*$')
+_OPERATOR = re.compile(
+    r'\boperator\s*(?:\(\)|\[\]|new\b(?:\s*\[\])?|delete\b(?:\s*\[\])?'
+    r'|[^\w\s(]+|[A-Za-z_][\w:\s<>*&]*?(?=\s*\())')
+_IDENT = re.compile(r'[A-Za-z_]\w*')
 
-    An include has no behaviour to detect, and reverting one usually still
-    compiles because the symbol arrives transitively. That combination makes it
-    the one hunk shape guaranteed to cost a full build and come back SURVIVED,
-    which reads as real debt in the tally. It is the same argument the
-    comment-only skip above makes, applied to the other zero-behaviour edit.
+
+class DeclAtom:
+    """One statement, block head or brace, and whether it is a pure declaration."""
+    __slots__ = ('first', 'last', 'ok', 'what', 'name', 'group', 'specs', 'scope')
+
+    def __init__(self, first, last, ok, what, name=None, group=None, specs=frozenset(),
+                 scope=None):
+        self.first, self.last, self.ok, self.what = first, last, ok, what
+        # group 'func': a member function declaration (the specifier rule);
+        # group 'named': a class head (the name rule).
+        self.name, self.group, self.specs, self.scope = name, group, specs, scope
+
+
+def _strip_angles(t):
+    """Template arguments removed, or None when brackets do not balance."""
+    prev = None
+    while prev != t:
+        prev = t
+        t = re.sub(r'<[^<>]*>', '', t)
+    return None if ('<' in t or '>' in t) else t
+
+
+def _strip_prefixes(t):
+    """Leading attributes and template headers, which change nothing here."""
+    t = re.sub(r'\[\[.*?\]\]', ' ', t)
+    while True:
+        m = re.match(r'^\s*template\s*<', t)
+        if not m:
+            break
+        depth, i = 0, m.end() - 1
+        while i < len(t):
+            depth += {'<': 1, '>': -1}.get(t[i], 0)
+            if depth == 0:
+                break
+            i += 1
+        if depth:
+            return None
+        t = t[i + 1:]
+    return ' '.join(t.split())
+
+
+def _classify_statement(text, block, first, last):
+    """DeclAtom for one `;`-terminated statement in a class or namespace scope."""
+    # `template <>` and `template class X<int>;`: an explicit specialisation or
+    # instantiation chooses which definition a call gets.
+    if re.match(r'^\s*(?:\[\[.*?\]\]\s*)*template\s*(?:<\s*>|(?!<))', text, re.S):
+        return DeclAtom(first, last, False, 'explicit specialisation or instantiation')
+    t = _strip_prefixes(text.strip().rstrip(';'))
+    if t is None:
+        return DeclAtom(first, last, False, 'unbalanced template header')
+    in_class = block['kind'] == 'class'
+    if not t:
+        return DeclAtom(first, last, True, 'empty statement')
+    if t.startswith('static_assert'):
+        return DeclAtom(first, last, True, 'static_assert')
+    if t.startswith('friend'):
+        # A friend function or operator is found by ADL; removing it can hand
+        # the call to another overload. A friend class only gates access.
+        if in_class and re.match(r'^friend\s+(?:class|struct|union)\s+[\w:]+$', t):
+            return DeclAtom(first, last, True, 'access specifier')
+        return DeclAtom(first, last, False, 'friend function')
+    if re.match(r'^(?:class|struct|union)\s+[A-Za-z_]\w*$', t) or \
+            re.match(r'^enum(?:\s+(?:class|struct))?\s+[A-Za-z_]\w*\s*:\s*[\w:\s]+$', t):
+        return DeclAtom(first, last, True, 'forward declaration')
+    if t.startswith(('using ', 'namespace ', 'typedef ')):
+        # An alias or using-declaration removed lets an outer one take over.
+        return DeclAtom(first, last, False, 'alias or using-declaration')
+
+    t2 = _strip_angles(_OPERATOR.sub('operator_', t))
+    if t2 is None or '?' in t2 or '{' in t2:
+        return DeclAtom(first, last, False, 'expression')
+    if '(' in t2:
+        m = re.match(r'^(?P<pre>[^()=]*?)(?P<name>~?[A-Za-z_]\w*)\s*'
+                     r'\((?P<args>(?:[^()]|\([^()]*\))*)\)\s*(?P<post>.*)$', t2)
+        if not m or not _FUNC_POST.match(m.group('post')) or '=' in m.group('args'):
+            return DeclAtom(first, last, False, 'not a plain function declaration')
+        if re.search(r'::\s*~?[A-Za-z_]\w*\s*\($', m.group('pre') + m.group('name') + '('):
+            return DeclAtom(first, last, False, 'qualified name')
+        words = m.group('pre').replace('*', ' * ').replace('&', ' & ').split()
+        specs = frozenset(w for w in words if w in _FUNC_SPECS)
+        typed = [w for w in words if w not in _FUNC_SPECS and w != 'friend']
+        name = m.group('name')
+        if not typed:
+            # No return type: a constructor or destructor, or a macro call.
+            if not (in_class and name.lstrip('~') == block.get('name')):
+                return DeclAtom(first, last, False, 'macro invocation')
+        elif not all(re.match(r'^(?:[A-Za-z_][\w:]*|\*|&|&&)$', w) for w in typed):
+            return DeclAtom(first, last, False, 'not a plain function declaration')
+        if not in_class:
+            # Removing a prototype can let a call compile against an overload
+            # declared somewhere else.
+            return DeclAtom(first, last, False, 'namespace-scope prototype')
+        if specs & {'virtual', 'explicit'}:
+            # Dispatch and implicit conversion: dropping either still compiles.
+            return DeclAtom(first, last, False, 'virtual or explicit declaration')
+        if re.search(r'=\s*0$', m.group('post')):
+            return DeclAtom(first, last, False, 'pure virtual declaration')
+        what = ('deleted function declaration' if re.search(r'=\s*delete$', m.group('post'))
+                else 'destructor declaration' if name.startswith('~')
+                else 'member function declaration')
+        return DeclAtom(first, last, True, what, name, 'func', specs, block.get('name'))
+    return DeclAtom(first, last, False, 'data or variable declaration')
+
+
+def _classify_block_head(head, first, last):
+    """(block kind, block name, DeclAtom) for the text before a `{`."""
+    t = _strip_prefixes(head)
+    if t is None:
+        return 'code', None, DeclAtom(first, last, False, 'unbalanced template header')
+    if re.match(r'^(?:inline\s+)?namespace(?:\s+[\w:]+)?$', t) or re.match(r'^extern\s+"C(?:\+\+)?"$', t):
+        return 'namespace', None, DeclAtom(first, last, True, 'namespace')
+    m = re.match(r'^(class|struct|union)(\s+alignas\s*\([^()]*\))?(?:\s+([A-Za-z_]\w*))?'
+                 r'(?:\s+final)?\s*(:(?!:).*)?$', t)
+    if m:
+        kind, name = m.group(1), m.group(3)
+        if m.group(2) or m.group(4):
+            return 'class:' + kind, name, DeclAtom(first, last, False, 'class head with alignas or a base')
+        # Named, so a head changed between class and struct (default access,
+        # aggregate-ness) meets itself on both sides and is mutated.
+        return 'class:' + kind, name, DeclAtom(first, last, True, 'class head', name, 'named')
+    return 'code', None, DeclAtom(first, last, False, 'code block')
+
+
+def cxx_decl_atoms(lines):
+    """[DeclAtom] for a C/C++ file already passed through code_only_lines().
+
+    Atoms cover every line holding code. A line inside a function body, an
+    initializer or an enum is covered by a CODE atom; see DECLARATION-ONLY.
     """
-    sides_ = hunk_changed_code_lines(root, base, h, cache)
+    atoms = []
+    lines = list(lines)
+    i = 0
+    while i < len(lines):                  # the preprocessor is line-based
+        if lines[i].strip().startswith('#'):
+            first = i
+            while lines[i].rstrip().endswith('\\') and i + 1 < len(lines):
+                i += 1
+            ok = first == i and bool(_PP_DECL.match(lines[first].strip()))
+            atoms.append(DeclAtom(first, i, ok, 'include' if ok else 'preprocessor directive'))
+            for k in range(first, i + 1):
+                lines[k] = ''
+        i += 1
+
+    src = '\n'.join(lines)
+    n = len(src)
+    code_lines = set()                     # lines holding anything inside a body
+    stack = [{'kind': 'namespace', 'access': None, 'name': None}]
+    code_depth, code_first, resume_stmt = 0, 0, False
+    stmt_start, stmt_line, paren, tainted = None, 0, 0, False
+    ln, i = 0, 0
+
+    def skip_literal(i):
+        """Index just past the string/char literal starting at src[i]."""
+        nonlocal ln
+        q = src[i]
+        j = i - 1
+        while j >= 0 and (src[j].isalnum() or src[j] == '_'):
+            j -= 1
+        prefix = src[j + 1:i]
+        if q == "'" and prefix and prefix[0].isdigit():
+            return i + 1                    # digit separator
+        if q == '"' and prefix.endswith('R'):
+            k = src.find('(', i)
+            if k != -1:
+                end = src.find(')' + src[i + 1:k] + '"', k)
+                if end != -1:
+                    stop = end + len(src[i + 1:k]) + 2
+                    ln += src.count('\n', i, stop)
+                    return stop
+        k = i + 1
+        while k < n and src[k] != q:
+            if src[k] == '\\':
+                k += 1
+            elif src[k] == '\n':
+                break                       # unterminated: stop at the line end
+            k += 1
+        return k + 1
+
+    while i < n:
+        c = src[i]
+        if c == '\n':
+            ln += 1
+            i += 1
+            continue
+        if c in ' \t\r\f\v':
+            i += 1
+            continue
+        if code_depth:
+            code_lines.add(ln)
+            if c in '"\'':
+                start_ln = ln
+                i = skip_literal(i)
+                code_lines.update(range(start_ln, ln + 1))
+                continue
+            if c == '{':
+                code_depth += 1
+            elif c == '}':
+                code_depth -= 1
+                if not code_depth:
+                    if resume_stmt:
+                        resume_stmt = False     # back inside the statement it interrupted
+                    else:
+                        stmt_start, paren, tainted = None, 0, False
+            i += 1
+            continue
+        block = stack[-1]
+        if stmt_start is None:
+            stmt_start, stmt_line = i, ln
+        if c in '"\'':
+            # Kept in the statement text: `extern "C" int f();` then fails the
+            # declaration shapes and reads as code, a static_assert message
+            # does not matter, and an initialising literal comes with an `=`.
+            i = skip_literal(i)
+            continue
+        if c == '(':
+            paren += 1
+        elif c == ')':
+            paren -= 1
+        elif c == ':' and paren == 0 and block['kind'] == 'class' and \
+                src[i - 1:i] != ':' and src[i + 1:i + 2] != ':' and \
+                src[stmt_start:i].strip() in _ACCESS:
+            block['access'] = src[stmt_start:i].strip()
+            atoms.append(DeclAtom(stmt_line, ln, True, 'access specifier'))
+            stmt_start = None
+        elif c == ';' and paren == 0:
+            text = src[stmt_start:i + 1]
+            if tainted:
+                atoms.append(DeclAtom(stmt_line, ln, False, 'statement with a body or literal'))
+            else:
+                atoms.append(_classify_statement(text, block, stmt_line, ln))
+            stmt_start, tainted = None, False
+        elif c == '{':
+            if paren > 0:
+                # A brace inside parentheses: a braced default argument or the
+                # like. The statement is code; carry on scanning it afterwards.
+                tainted, resume_stmt = True, True
+                code_depth = 1
+                atoms.append(DeclAtom(stmt_line, ln, False, 'braced expression'))
+            else:
+                kind, name, atom = _classify_block_head(src[stmt_start:i], stmt_line, ln)
+                atoms.append(atom)
+                if kind.startswith('class:'):
+                    stack.append({'kind': 'class', 'name': name,
+                                  'access': 'private' if kind == 'class:class' else 'public'})
+                    stmt_start = None
+                elif kind == 'namespace':
+                    stack.append({'kind': 'namespace', 'access': None, 'name': None})
+                    stmt_start = None
+                else:
+                    code_depth, resume_stmt = 1, False
+        elif c == '}':
+            if src[stmt_start:i].strip():
+                atoms.append(DeclAtom(stmt_line, ln, False, 'unterminated statement'))
+            closing = stack.pop() if len(stack) > 1 else None
+            atoms.append(DeclAtom(ln, ln, closing is not None, 'closing brace'))
+            stmt_start, tainted, paren = None, False, 0
+        i += 1
+    if stmt_start is not None and src[stmt_start:].strip():
+        atoms.append(DeclAtom(stmt_line, ln, False, 'unterminated statement'))
+    atoms += [DeclAtom(line, line, False, 'code') for line in sorted(code_lines)]
+    return atoms
+
+
+def declaration_only_reason(pre, post, removed, added, path=''):
+    """Why this hunk is declaration-only, or None when it may carry behaviour.
+
+    pre/post are the code-only lines of the two sides, removed/added the
+    changed line indices into each (hunk_changed_lines). Pure, so the rule is
+    testable without git or a build.
+    """
+    if not removed and not added:
+        return None
+    pre_atoms, post_atoms = cxx_decl_atoms(pre), cxx_decl_atoms(post)
+
+    def touching(atoms, idx):
+        by_line = {}
+        for a in atoms:
+            for line in range(a.first, a.last + 1):
+                by_line.setdefault(line, []).append(a)
+        hit = []
+        for line in idx:
+            over = by_line.get(line, [])
+            if not over or not all(a.ok for a in over):
+                return None
+            hit += [a for a in over if a not in hit]
+        return hit
+
+    old, new = touching(pre_atoms, removed), touching(post_atoms, added)
+    if old is None or new is None:
+        return None
+
+    named = lambda atoms: {a.name for a in atoms if a.group == 'named'}
+    if named(old) & named(new):
+        return None                         # a class head that changed form
+    # A member function declaration whose specifiers differ from its
+    # counterpart on the other side, touched by the hunk or not: a lone
+    # `static` or `constexpr` line changes the declaration it belongs to.
+    for side, other in ((old, post_atoms), (new, pre_atoms)):
+        for a in side:
+            if a.group != 'func':
+                continue
+            twins = {b.specs for b in other
+                     if b.group == 'func' and b.name == a.name and b.scope == a.scope}
+            if twins and a.specs not in twins:
+                return None
+    kinds = sorted({a.what for a in old + new
+                    if a.what not in ('empty statement', 'closing brace', 'namespace', 'class head')})
+    return ', '.join(kinds) if kinds else 'declaration scaffolding'
+
+
+def hunk_declaration_only(root, base, h, cache):
+    """The declaration-only reason for a C/C++ hunk, or None."""
+    if comment_syntax(h['file']) != 'c':
+        return None
+    sides_ = hunk_changed_lines(root, base, h, cache)
     if not sides_:
-        return False
-    removed, added = sides_
-    changed = [ln for ln in removed + added if ln not in removed or ln not in added]
-    if not changed:
-        return False
-    return all(ln.lstrip().startswith('#include') for ln in changed)
+        return None
+    pre, post, removed, added = sides_
+    try:
+        return declaration_only_reason(pre, post, removed, added, h['file'])
+    except Exception:
+        return None                         # a scanner surprise is a mutant, never a skip
 
 
 def apply_reverse(root, patch_text):
-    p = subprocess.run(['git', 'apply', '-R', '--recount', '-'],
-                       cwd=root, input=patch_text, text=True,
-                       stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    return p.returncode == 0, p.stdout
+    # Tracked like a build: a stop must reap a `git apply` before restoring,
+    # or the apply finishes afterwards and writes the mutant back.
+    rc, out = run_tracked(['git', 'apply', '-R', '--recount', '-'], root, stdin=patch_text)
+    return rc == 0, out
 
 
 # ---------------------------------------------------------------------------
@@ -703,9 +1115,9 @@ def build(root, jobs, log, make=None):
     # `make` is injectable because the bats tests drive this through a PATH
     # mock named `make`; make_bin()'s own probe would sidestep the mock on any
     # host that also has a gmake.
-    r = run([make or make_bin(), *jflag, 'test-build'], cwd=root)
-    log.write(r.stdout or '')
-    return r.returncode == 0, time.time() - t
+    rc, out = run_tracked([make or make_bin(), *jflag, 'test-build'], root)
+    log.write(out)
+    return rc == 0, time.time() - t
 
 
 def syntax_rejects(root, path, log):
@@ -723,48 +1135,135 @@ def syntax_rejects(root, path, log):
     checker = root / 'scripts' / 'syntax_check.py'
     if not checker.exists():
         return False
-    r = run([sys.executable, str(checker), path], cwd=root)
-    log.write(r.stdout or '')
-    return r.returncode != 0
+    rc, out = run_tracked([sys.executable, str(checker), path], root)
+    log.write(out)
+    return rc != 0
 
 
-# Suite runners lead their own sessions, so a timeout (or an interrupt) can
-# kill the whole process group at once: helix-tests runs shards as children,
-# bats farms files out to workers, and reaping only the runner leaves orphans
-# holding the tree.
-_live_suite_procs = []
+# Every child that builds, runs a suite or writes the tree leads its own
+# session, so one killpg reaches everything under it: helix-tests runs shards as
+# children, bats farms files out to workers, make runs compilers, and reaping
+# only the leader leaves orphans holding the tree.
+_live_procs = []
 
 
-def tracked_suite_proc(cmd, cwd):
-    """Start one suite runner as its own process-group leader."""
-    p = subprocess.Popen(
+class OutOfTime(RuntimeError):
+    """--max-minutes ran out: start nothing new, report what is left."""
+
+
+class _RunState:
+    out_of_time = False
+
+
+RUN_STATE = _RunState()
+
+
+def tracked_proc(cmd, cwd, stdin=False):
+    """Start one child as its own process-group leader, and remember it.
+
+    Refuses once the run is out of time, so nothing new starts between the
+    deadline and the loop noticing it.
+    """
+    if RUN_STATE.out_of_time:
+        raise OutOfTime()
+    # A stop signal between Popen returning and the append would leave a child
+    # the handler cannot see, still writing after the restore. The signals are
+    # held across both; the child unblocks them before exec, or it would start
+    # deaf to the SIGTERM a stop sends it.
+    old_mask = signal.pthread_sigmask(signal.SIG_BLOCK, STOP_SIGNALS)
+    try:
+        p = _popen_tracked(cmd, cwd, stdin)
+        _live_procs.append(p)
+    finally:
+        signal.pthread_sigmask(signal.SIG_SETMASK, old_mask)
+    return p
+
+
+def _unblock_stop_signals():
+    signal.pthread_sigmask(signal.SIG_UNBLOCK, STOP_SIGNALS)
+
+
+def _popen_tracked(cmd, cwd, stdin):
+    return subprocess.Popen(
         cmd,
         # errors='replace': a mutant can make the code under test dump raw
         # bytes into a Catch2 failure message, and a strict decode turns that
         # into a crash that loses the verdict for the one hunk most likely
-        # to be killed.
+        # to be killed. A compiler quoting a source line can do the same.
         cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
-        errors='replace', start_new_session=True)
-    _live_suite_procs.append(p)
-    return p
+        stdin=subprocess.PIPE if stdin else subprocess.DEVNULL,
+        errors='replace', start_new_session=True, preexec_fn=_unblock_stop_signals)
 
 
-def untrack_suite_proc(p):
-    """Forget a finished runner, so a later kill cannot hit a reused pid."""
+def untrack_proc(p):
+    """Forget a finished child, so a later kill cannot hit a reused pid."""
     try:
-        _live_suite_procs.remove(p)
+        _live_procs.remove(p)
     except ValueError:
         pass
 
 
-def kill_live_suite_procs():
-    """SIGKILL every suite runner still alive, group and children together."""
-    while _live_suite_procs:
-        p = _live_suite_procs.pop()
+
+def run_tracked(cmd, cwd, stdin=None):
+    """(returncode, output) of a child that dies with the run."""
+    p = tracked_proc(cmd, cwd, stdin=stdin is not None)
+    try:
+        out, _ = p.communicate(input=stdin)
+    finally:
+        untrack_proc(p)
+    return p.returncode, out or ''
+
+
+def signal_live_procs(sig):
+    """Send `sig` to every live child's whole group."""
+    for p in list(_live_procs):
         try:
-            os.killpg(p.pid, signal.SIGKILL)
-        except ProcessLookupError:
-            pass          # already gone; the kill is for the ones that are not
+            os.killpg(p.pid, sig)
+        except (ProcessLookupError, PermissionError):
+            pass          # already gone; the signal is for the ones that are not
+
+
+def kill_live_procs():
+    """SIGKILL every child still alive, group and children together."""
+    signal_live_procs(signal.SIGKILL)
+    _live_procs.clear()
+
+
+def terminate_live_procs(grace=5.0):
+    """Stop every child and reap each leader, for a run that is exiting.
+
+    SIGTERM first, so make deletes the half-written target it was building
+    instead of leaving a truncated object with a fresh mtime for the next
+    build to trust; SIGKILL for whatever is still there after `grace`. The
+    leaders are reaped with waitpid directly: this runs from a signal handler
+    that may have interrupted Popen.communicate() on the same object, and
+    Popen's own wait would block on the lock that call holds.
+    """
+    leaders = [p.pid for p in _live_procs]
+    signal_live_procs(signal.SIGTERM)
+    deadline = time.monotonic() + grace
+    pending = set(leaders)
+    while pending and time.monotonic() < deadline:
+        for pid in list(pending):
+            try:
+                done, _ = os.waitpid(pid, os.WNOHANG)
+            except ChildProcessError:
+                done = pid
+            if done:
+                pending.discard(pid)
+        if pending:
+            time.sleep(0.05)
+    for pid in leaders:                    # stragglers in a group whose leader left
+        try:
+            os.killpg(pid, signal.SIGKILL)
+        except (ProcessLookupError, PermissionError):
+            pass
+    for pid in pending:
+        try:
+            os.waitpid(pid, 0)
+        except ChildProcessError:
+            pass
+    _live_procs.clear()
 
 
 def run_catch2(root, test_bin, filt, shards, log, timeout=None):
@@ -781,7 +1280,7 @@ def run_catch2(root, test_bin, filt, shards, log, timeout=None):
         (f'catch2 shard {i}',
          argv + ['--shard-count', str(shards), '--shard-index', str(i)])
         for i in range(shards)]
-    procs = [(who, tracked_suite_proc(cmd, root)) for who, cmd in planned]
+    procs = [(who, tracked_proc(cmd, root)) for who, cmd in planned]
     deadline = None if timeout is None else time.monotonic() + timeout
     detected, unexplained = False, ''
     for who, p in procs:
@@ -794,12 +1293,12 @@ def run_catch2(root, test_bin, filt, shards, log, timeout=None):
         except subprocess.TimeoutExpired:
             # Every runner dies with the hung one; a survivor would hold the
             # tree for a run that has already recorded its verdict.
-            kill_live_suite_procs()
+            kill_live_procs()
             out, _ = p.communicate()
             log.write(out or '')
             return DETECTED, TIMED_OUT
         finally:
-            untrack_suite_proc(p)
+            untrack_proc(p)
         out = out or ''
         log.write(out)
         state, why = suite_outcome('catch2', p.returncode, out, who)
@@ -931,6 +1430,8 @@ class Suites:
         if self.catch2_bin.is_file():
             return None
         _, secs = build(self.root, self.jobs, self.log)
+        if RUN_STATE.out_of_time:
+            raise OutOfTime()                 # the deadline stopped this build
         if not self.catch2_bin.is_file():
             raise BuildUnavailable(
                 f'{self.catch2_bin} is not there after a build, so the Catch2 '
@@ -965,16 +1466,16 @@ class Suites:
         The runner is killed with its whole group at the timeout: bats farms
         files out to workers, and a runner killed alone leaves them running.
         """
-        p = tracked_suite_proc(cmd, self.root)
+        p = tracked_proc(cmd, self.root)
         try:
             out, _ = p.communicate(timeout=timeout)
         except subprocess.TimeoutExpired:
-            kill_live_suite_procs()
+            kill_live_procs()
             out, _ = p.communicate()
             self.log.write(out or '')
             return DETECTED, TIMED_OUT
         finally:
-            untrack_suite_proc(p)
+            untrack_proc(p)
         out = out or ''
         self.log.write(out)
         return suite_outcome(name, p.returncode, out, who)
@@ -1068,13 +1569,21 @@ def restore_file(root, rel, original):
     touch(1)ed because make compares mtimes: a byte-identical restore with an
     older mtime leaves make nothing to do, and the next mutant's suite runs the
     previous mutant's binary.
+
+    Returns whether anything had to be written. A file already holding its
+    original bytes is left alone, mtime included: it never held a mutant, so
+    no build has seen one, and touching it would only recompile it.
     """
     target = root / rel
+    current = target.read_bytes() if target.is_file() else None
+    if current == original:
+        return False
     if original is None:
         target.unlink(missing_ok=True)
-        return
+        return True
     target.write_bytes(original)
     os.utime(target, None)
+    return True
 
 
 def verify_pristine(root, pristine, when):
@@ -1101,6 +1610,116 @@ def verify_pristine(root, pristine, when):
             f'expect before rerunning.')
 
 
+class TreeGuard:
+    """The bytes every mutable file held when the run started, and which of
+    those files may hold a mutant right now.
+
+    A file is marked before its hunk is reversed and cleared after it is put
+    back, so a stop at any instant in between, a signal handler included,
+    knows exactly what to restore.
+    """
+
+    def __init__(self, root):
+        self.root, self.pristine, self.dirty = root, {}, set()
+
+    def capture(self, rel):
+        target = self.root / rel
+        self.pristine.setdefault(rel, target.read_bytes() if target.is_file() else None)
+
+    def mark(self, rel):
+        self.dirty.add(rel)
+
+    def restore(self, rel):
+        restore_file(self.root, rel, self.pristine[rel])
+        self.dirty.discard(rel)
+
+    def restore_all(self):
+        """Restore every marked file; the paths that needed writing."""
+        written = [rel for rel in sorted(self.dirty)
+                   if restore_file(self.root, rel, self.pristine[rel])]
+        self.dirty.clear()
+        return written
+
+
+# ---------------------------------------------------------------------------
+# THE PROVEN-COMMIT RECORD (see "THE DELTA SINCE A PROVEN COMMIT")
+# ---------------------------------------------------------------------------
+PROOF_REF = 'refs/notes/mutate-proven'
+
+
+def proven_commits(root):
+    """Every commit a run has recorded as proven."""
+    r = run(['git', 'notes', '--ref', PROOF_REF, 'list'], cwd=root)
+    if r.returncode != 0:
+        return set()
+    return {parts[1] for parts in (ln.split() for ln in r.stdout.splitlines())
+            if len(parts) == 2}
+
+
+def latest_proven(root, base):
+    """The newest proven commit in base..HEAD, or None."""
+    proven = proven_commits(root)
+    if not proven:
+        return None
+    r = run(['git', 'rev-list', 'HEAD', f'^{base}'], cwd=root)
+    if r.returncode != 0:
+        return None
+    return next((sha for sha in r.stdout.split() if sha in proven), None)
+
+
+def tests_weakened_since(root, sha):
+    """True when the tree removes or edits a line under tests/ that `sha` had.
+
+    A proof is the record that tests killed each mutant. A delta that only adds
+    tests leaves those kills standing; one that edits or deletes a test can
+    undo one, and only the full range would show it.
+    """
+    r = run(['git', 'diff', '-U0', sha, '--', 'tests/'], cwd=root)
+    return any(ln.startswith('-') and not ln.startswith('---')
+               for ln in r.stdout.splitlines())
+
+
+NOTE_UNCOVERED = 'not-covered: '
+
+
+def proof_uncovered(root, sha):
+    """The NOT COVERED paths a proof was recorded with, from its note."""
+    r = run(['git', 'notes', '--ref', PROOF_REF, 'show', sha], cwd=root)
+    if r.returncode != 0:
+        return []
+    return [ln[len(NOTE_UNCOVERED):].strip() for ln in r.stdout.splitlines()
+            if ln.startswith(NOTE_UNCOVERED)]
+
+
+def proof_message(summary, uncovered_paths):
+    """A note body: the summary line, then one line per NOT COVERED path."""
+    return '\n'.join([summary] + [NOTE_UNCOVERED + p_ for p_ in sorted(set(uncovered_paths))])
+
+
+def record_proof(root, message, head):
+    """(recorded, why not) for noting `head`, the commit the hunks came from.
+
+    Refused when HEAD moved during the run (the hunks were not that commit's),
+    when the tracked tree differs from it, or when an untracked file sits where
+    a build or a suite would read it: any of those means what was proven is not
+    the commit the note would name.
+    """
+    now = run(['git', 'rev-parse', 'HEAD'], cwd=root).stdout.strip()
+    if now != head:
+        return False, f'HEAD moved during the run ({head[:12]} -> {now[:12]})'
+    if run(['git', 'diff', '--quiet', '--ignore-submodules=all', 'HEAD'], cwd=root).returncode != 0:
+        return False, 'the tracked tree differs from HEAD, so HEAD is not what was proven'
+    untracked = run(['git', 'ls-files', '--others', '--exclude-standard', '--',
+                     'tests', 'src', 'include'], cwd=root).stdout.split()
+    if untracked:
+        return False, (f'untracked files under tests/, src/ or include/ ({untracked[0]}'
+                       f'{" ..." if len(untracked) > 1 else ""}) were part of what ran')
+    r = run(['git', 'notes', '--ref', PROOF_REF, 'add', '-f', '-m', message, head], cwd=root)
+    if r.returncode != 0:
+        return False, (r.stdout.strip().splitlines() or ['git notes failed'])[-1]
+    return True, ''
+
+
 # The progress line each verdict gets. `killed` is deliberately the quiet one:
 # it is the expected outcome, and everything else wants reading.
 LOUD_VERDICT = {'survived': 'SURVIVED', 'inconclusive': 'INCONCLUSIVE'}
@@ -1120,16 +1739,172 @@ def verdict_line(verdict, note):
     return 'killed'
 
 
+STOP_SIGNALS = (signal.SIGINT, signal.SIGTERM, signal.SIGHUP)
+
+# How long a deadline stop gives make and the suites to exit on SIGTERM before
+# they are sent SIGKILL.
+STOP_GRACE_SECS = 10.0
+
+
+def install_stop_handlers(guard, log_holder):
+    """SIGINT, SIGTERM and SIGHUP: stop children, restore the tree, exit.
+
+    Installed before anything is built, so no window exists in which a signal
+    takes the interpreter down without restoring. The handler does the restore
+    itself and leaves with os._exit rather than unwinding: an exception raised
+    into an arbitrary frame can land inside the restore it is meant to protect,
+    and `finally` blocks downstream of that frame would start new work.
+    """
+    def stop(signum, _frame):
+        for sig in STOP_SIGNALS:
+            signal.signal(sig, signal.SIG_IGN)       # a second Ctrl-C cannot cut this short
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        terminate_live_procs()
+        restored = guard.restore_all()
+        name = signal.Signals(signum).name
+        where = ', '.join(restored) if restored else 'nothing was mutated at the time'
+        try:
+            print(f'\n\nSTOPPED by {name}: child processes stopped, tree restored '
+                  f'({where}).\n'
+                  f'  The test binary may hold a mutant: run `make test-build` before '
+                  f'trusting it.', flush=True)
+            if log_holder:
+                log_holder[0].flush()
+        except (OSError, ValueError):
+            pass          # a closed stdout must not keep the exit from happening
+        os._exit(128 + signum)
+
+    for sig in STOP_SIGNALS:
+        # nohup's ignored SIGHUP is a deliberate detach; keep honouring it.
+        if sig == signal.SIGHUP and signal.getsignal(sig) == signal.SIG_IGN:
+            continue
+        signal.signal(sig, stop)
+
+
+def arm_deadline(seconds):
+    """Mark the run out of time at `seconds`, and stop its children.
+
+    The handler raises nothing: it sets a flag and sends SIGTERM to every child
+    group, so whatever the main flow is waiting on returns, and the loop then
+    discards that hunk's result rather than judging it. A child that ignores
+    SIGTERM is sent SIGKILL STOP_GRACE_SECS later.
+    """
+    def on_deadline(_signum, _frame):
+        if not RUN_STATE.out_of_time:
+            RUN_STATE.out_of_time = True
+            signal.setitimer(signal.ITIMER_REAL, STOP_GRACE_SECS)
+            signal_live_procs(signal.SIGTERM)
+        else:
+            signal_live_procs(signal.SIGKILL)
+
+    signal.signal(signal.SIGALRM, on_deadline)
+    signal.setitimer(signal.ITIMER_REAL, max(seconds, 0.001))
+
+
+def disarm_deadline():
+    signal.setitimer(signal.ITIMER_REAL, 0)
+
+
+class RunBase:
+    """What a run measures against, and whether its result may be recorded.
+
+    A proof certifies HEAD, so it may only be written when everything before
+    the base is already certified: the base is the fork point, or itself a
+    proven commit. Anything else (an arbitrary --base, a --since nobody proved)
+    would certify commits the run never mutated.
+    """
+
+    def __init__(self, base, why, auto, recordable=True, not_recordable='', carried=()):
+        self.base, self.why, self.auto = base, why, auto
+        self.recordable, self.not_recordable = recordable, not_recordable
+        # NOT COVERED paths the proof this run starts from was recorded with:
+        # still unexamined, so they are reported again rather than dropped.
+        self.carried = list(carried)
+
+
+def _same_commit(root, a, b):
+    ra = run(['git', 'rev-parse', '--verify', '-q', f'{a}^{{commit}}'], cwd=root).stdout.strip()
+    rb = run(['git', 'rev-parse', '--verify', '-q', f'{b}^{{commit}}'], cwd=root).stdout.strip()
+    return bool(ra) and ra == rb
+
+
+def resolve_run_base(root, args):
+    """RunBase for this run, or (None, error) when the arguments cannot stand.
+
+    `auto` is whether nothing the author typed chose the base, which is what the
+    --max-hunks guard asks.
+    """
+    fork, fork_why = resolve_base(root, None)
+    fork_ok = fork != 'HEAD'
+    no_fork = 'no fork point resolved, so the run cannot cover the branch'
+    proven_set = proven_commits(root)
+
+    def proven_sha(ref):
+        sha = run(['git', 'rev-parse', '--verify', '-q', f'{ref}^{{commit}}'], cwd=root).stdout.strip()
+        return sha if sha in proven_set else None
+
+    if args.since:
+        if run(['git', 'merge-base', '--is-ancestor', args.since, 'HEAD'],
+               cwd=root).returncode != 0:
+            return None, (f'--since {args.since} is not an ancestor of HEAD, so the '
+                          f'delta since it is not this branch\'s change. Pass the '
+                          f'commit the last clean run proved, or --base.')
+        why = f'--since {args.since} (only what changed after it)'
+        sha = proven_sha(args.since)
+        if sha:
+            return RunBase(args.since, why, False, carried=proof_uncovered(root, sha))
+        return RunBase(args.since, why, False, False,
+                       f'--since {args.since} is not a proven commit, so the commits '
+                       f'before it were never mutated')
+    if args.base:
+        base, why = resolve_base(root, args.base)
+        sha = proven_sha(base)
+        if sha:
+            return RunBase(base, why, False, carried=proof_uncovered(root, sha))
+        if fork_ok and _same_commit(root, base, fork):
+            return RunBase(base, why, False)
+        return RunBase(base, why, False, False,
+                       f'--base {args.base} is neither the fork point nor a proven commit')
+    if args.whole_branch or not fork_ok:
+        return RunBase(fork, fork_why, True, fork_ok, no_fork)
+    proven = latest_proven(root, fork)
+    if not proven:
+        return RunBase(fork, fork_why, True)
+    if tests_weakened_since(root, proven):
+        print(f'proven commit {short_sha(root, proven)} not used: tests/ has lines removed '
+              f'or edited since it, which can undo the kills it recorded')
+        return RunBase(fork, fork_why, True)
+    return RunBase(proven, (f'last commit proven by mutate-diff on this branch '
+                            f'(--whole-branch for everything since {short_sha(root, fork)})'),
+                   True, carried=proof_uncovered(root, proven))
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument('--base', default=None,
-                    help='diff base (default: nearest fork point among the branch upstream, '
-                         'release branches and main)')
+    scope = ap.add_mutually_exclusive_group()
+    scope.add_argument('--base', default=None,
+                       help='diff base (default: the newest commit a run proved on this '
+                            'branch, else the nearest fork point among the branch upstream, '
+                            'release branches and main)')
+    scope.add_argument('--since', default=None, metavar='SHA',
+                       help='mutate only what changed after SHA, a commit an earlier run '
+                            'proved; it must be an ancestor of HEAD')
+    scope.add_argument('--whole-branch', action='store_true',
+                       help='ignore the proven-commit record and mutate everything since '
+                            'the fork point')
+    ap.add_argument('--no-record', action='store_true',
+                    help='do not record HEAD as proven when nothing is left unexamined')
     # 58 hunks out of a 3-hunk change is what a base from the wrong trunk looks
     # like, and it costs a build each to find that out one verdict at a time.
     ap.add_argument('--max-hunks', type=int, default=25,
                     help='confirm before mutating more than N hunks off an auto-chosen '
                          'base (0 disables the check)')
+    ap.add_argument('--max-minutes', type=float, default=45,
+                    help='stop after this many minutes, baseline included, and report the '
+                         'hunks not reached as UNEXAMINED (0: no cap)')
+    ap.add_argument('--allow-orphan', action='store_true',
+                    help='keep going when the parent process exits (default: stop before '
+                         'the next hunk)')
     ap.add_argument('--tests', default='~[.]~[slow]', help='Catch2 filter for the scoped suite')
     ap.add_argument('--jobs', type=int, default=6, help='make -j (link is memory-gated; 6 is safe here)')
     ap.add_argument('--shards', type=int, default=8, help='parallel test shards per mutant')
@@ -1147,6 +1922,9 @@ def main():
                     help='pytest path run for a python/tooling mutant; a single file scopes it')
     ap.add_argument('--no-skip-comments', action='store_true',
                     help='mutate comment/whitespace-only hunks too (they can never be killed)')
+    ap.add_argument('--no-skip-declarations', action='store_true',
+                    help='mutate declaration-only C/C++ hunks too (they can only come back '
+                         'uncompilable or survive)')
     ap.add_argument('--allow-incomplete', action='store_true',
                     help='exit 0 when nothing survived but part of the change was not examined')
     ap.add_argument('--list-only', action='store_true', help='list hunks, mutate nothing')
@@ -1156,7 +1934,20 @@ def main():
     args = ap.parse_args()
 
     root = repo_root()
-    base, base_why = resolve_base(root, args.base)
+    guard = TreeGuard(root)
+    log_holder = []
+    # Before anything can be mutated or built: see SAFETY.
+    install_stop_handlers(guard, log_holder)
+    parent = os.getppid()
+    started = time.monotonic()
+
+    rb = resolve_run_base(root, args)
+    if isinstance(rb, tuple):
+        print(f'FAIL: {rb[1]}', file=sys.stderr)
+        return 2
+    base, base_why, auto_base_ = rb.base, rb.why, rb.auto
+    # The commit a proof would name: the one the hunks are computed against.
+    head_at_start = run(['git', 'rev-parse', 'HEAD'], cwd=root).stdout.strip()
     hunks = collect_hunks(root, base)
     files = changed_files(root, base)
     untestable = load_untestable(root)
@@ -1199,16 +1990,20 @@ def main():
             mutable.remove(h)
     # A comment-only hunk costs a compile plus a 5 GB link to produce a mutant
     # no test could possibly detect, then lands in the tally as a survivor and
-    # reads as real debt. Drop it before it costs anything.
-    skipped_comment, skipped_include = [], []
-    if not args.no_skip_comments:
-        code_cache = {}
-        for h in list(mutable):
-            if hunk_is_comment_only(root, base, h, code_cache):
-                skipped_comment.append(f"{h['file']}:{h['line']}")
-                mutable.remove(h)
-            elif hunk_is_include_only(root, base, h, code_cache):
-                skipped_include.append(f"{h['file']}:{h['line']}")
+    # reads as real debt. A declaration-only hunk costs the same to come back
+    # uncompilable. Drop both before they cost anything.
+    skipped_comment, skipped_decl = [], []
+    code_cache = {}
+    for h in list(mutable):
+        label = f"{h['file']}:{h['line']}"
+        if not args.no_skip_comments and hunk_is_comment_only(root, base, h, code_cache):
+            skipped_comment.append(label)
+            mutable.remove(h)
+            continue
+        if not args.no_skip_declarations and verdict_of[h['file']][1] == 'cxx':
+            why = hunk_declaration_only(root, base, h, code_cache)
+            if why:
+                skipped_decl.append((label, why))
                 mutable.remove(h)
 
     # Reverting a header invalidates every consuming translation unit, so it
@@ -1238,6 +2033,7 @@ def main():
     else:
         rotate_log(args.log)
         log = open(args.log, 'w')
+    log_holder.append(log)
     suites = Suites(root, args, log)
 
     # A strategy whose suite is not installed here cannot judge its hunks. Move
@@ -1253,13 +2049,18 @@ def main():
             continue
         needed.update(STRATEGIES[strategy]['suites'])
     uncovered += [(label, 1, why) for label, why in unrunnable]
+    # What the proof this run starts from left unexamined is still unexamined:
+    # a delta run must not read as clean about the whole branch.
+    seen = {path for path, _, _ in uncovered}
+    uncovered += [(path, 0, f'not covered when {base[:12]} was proven')
+                  for path in rb.carried if path not in seen]
 
     for label, reason in skipped_untestable:
         print(f'  EXCLUDED    {label} - {reason}')
     for label in skipped_comment:
         print(f'  SKIPPED     {label} - comment/whitespace only')
-    for label in skipped_include:
-        print(f'  SKIPPED     {label} - include only, nothing to detect')
+    for label, why in skipped_decl:
+        print(f'  SKIPPED     {label} - skipped (declaration-only): {why}')
     for path, n, reason in inert:
         print(f'  not behavioural  {path} - {reason}')
     for path, n, reason in uncovered:
@@ -1277,21 +2078,49 @@ def main():
         for h in mutable:
             print(f'  {h["file"]}:{h["line"]}  [{verdict_of[h["file"]][1]}]')
 
+    def finish_proof(n_killed):
+        """Record HEAD as proven when nothing mutatable was left unexamined."""
+        if args.no_record or args.list_only:
+            return
+        if unrunnable:
+            print('not recorded as proven: some hunks had no suite installed to judge them')
+            return
+        if not rb.recordable:
+            print(f'not recorded as proven: {rb.not_recordable}')
+            return
+        ok, why = record_proof(
+            root, proof_message(
+                f'mutate-diff: every mutatable hunk vs {base[:12]} killed or skipped '
+                f'({n_killed} killed, {len(skipped_decl)} declaration-only, '
+                f'{len(uncovered)} path(s) not covered); tests {args.tests!r}',
+                [path for path, _, _ in uncovered]),
+            head_at_start)
+        if ok:
+            print(f'proven: HEAD {head_at_start[:12]} recorded in {PROOF_REF}; '
+                  f'the next run starts from it (--whole-branch to override)')
+        else:
+            print(f'not recorded as proven: {why}')
+
     if args.list_only:
         if incomplete:
             print(report_incomplete(uncovered, deferred))
         return 0
     if not mutable:
+        if not deferred:
+            finish_proof(0)
         if incomplete:
             print(report_incomplete(uncovered, deferred))
             return 0 if args.allow_incomplete else 3
-        print('\nVERDICT: nothing in this change is mutatable, and nothing was skipped.')
+        print('\nVERDICT: nothing in this change is mutatable, and nothing was skipped.'
+              if not skipped_decl else
+              f'\nVERDICT: CLEAN ({len(skipped_decl)} hunk(s) not built: declaration-only, '
+              f'unexamined) - no other hunk to mutate.')
         return 0
 
     # A count far above the size of the change means the base is wrong, and the
     # bill for finding out later is a build per hunk. An explicit --base is the
     # author saying what they mean, so it is never questioned.
-    if not args.base and args.max_hunks and len(mutable) > args.max_hunks:
+    if auto_base_ and args.max_hunks and len(mutable) > args.max_hunks:
         print(f'\n{len(mutable)} hunk(s) is more than --max-hunks {args.max_hunks}, '
               f'off a base nothing confirmed:')
         print(f'  {base_line(root, base, base_why)}')
@@ -1306,70 +2135,90 @@ def main():
             return 4
 
     needs_build = any(STRATEGIES[verdict_of[h['file']][1]]['build'] for h in mutable)
+    cap_note = f' (cap {args.max_minutes:g}m)' if args.max_minutes > 0 else ''
+    if args.max_minutes > 0:
+        arm_deadline(args.max_minutes * 60 - (time.monotonic() - started))
+
+    def out_of_time_report(left):
+        """Name what a run the deadline cut short never reached."""
+        disarm_deadline()
+        terminate_live_procs()
+        guard.restore_all()
+        # The cut is done; what follows (the baseline rebuild) must be able to run.
+        RUN_STATE.out_of_time = False
+        print(f'\n\n--max-minutes {args.max_minutes:g} reached; '
+              f'{len(left)} hunk(s) not examined:')
+        for h in left:
+            print(f'  UNEXAMINED    {h["file"]}:{h["line"]}')
 
     # A red baseline makes every mutant look killed. Establish green first.
     print('\n=== baseline: build + suites must be GREEN before mutating ===')
-    if needs_build or 'catch2' in needed:
-        ok, secs = build(root, args.jobs, log)
-        if not ok:
-            print(f'FAIL: baseline build is broken. See {args.log}', file=sys.stderr)
-            return 2
-        print(f'  build ok ({secs:.0f}s)')
-    for suite in sorted(needed):
-        state, why = suites.run(suite)
-        if state == DETECTED:
-            print(f'FAIL: baseline {suite} suite is RED. Fix it first, or every '
-                  f'mutant will read as killed. See {args.log}', file=sys.stderr)
-            return 2
-        if state == INCONCLUSIVE:
-            # No re-run here: the baseline exists to show the harness works, and
-            # a runner that cannot report is a reason to stop rather than to ask
-            # a second time.
-            print(f'FAIL: baseline {suite} suite judged nothing - {why}. Every '
-                  f'mutant would be measured by a suite that cannot report. '
-                  f'See {args.log}', file=sys.stderr)
-            return 2
-        limit = suites.adopt_baseline(suite, suites.last_secs)
-        print(f'  {suite} green (mutant timeout {limit:.0f}s)')
+    try:
+        if needs_build or 'catch2' in needed:
+            ok, secs = build(root, args.jobs, log)
+            if RUN_STATE.out_of_time:
+                raise OutOfTime()
+            if not ok:
+                print(f'FAIL: baseline build is broken. See {args.log}', file=sys.stderr)
+                return 2
+            print(f'  build ok ({secs:.0f}s)')
+        for suite in sorted(needed):
+            state, why = suites.run(suite)
+            if RUN_STATE.out_of_time:
+                raise OutOfTime()
+            if state == DETECTED:
+                print(f'FAIL: baseline {suite} suite is RED. Fix it first, or every '
+                      f'mutant will read as killed. See {args.log}', file=sys.stderr)
+                return 2
+            if state == INCONCLUSIVE:
+                # No re-run here: the baseline exists to show the harness works, and
+                # a runner that cannot report is a reason to stop rather than to ask
+                # a second time.
+                print(f'FAIL: baseline {suite} suite judged nothing - {why}. Every '
+                      f'mutant would be measured by a suite that cannot report. '
+                      f'See {args.log}', file=sys.stderr)
+                return 2
+            limit = suites.adopt_baseline(suite, suites.last_secs)
+            print(f'  {suite} green (mutant timeout {limit:.0f}s)')
+    except OutOfTime:
+        out_of_time_report(mutable)
+        print(report_incomplete(uncovered, deferred, unexamined=len(mutable),
+                                stop_reason=f'--max-minutes {args.max_minutes:g} reached '
+                                            f'during the baseline'))
+        return 0 if args.allow_incomplete else 3
 
     # Read once, before the first mutation: see SAFETY.
-    pristine = {}
     for h in mutable:
-        target = root / h['file']
-        pristine.setdefault(h['file'],
-                            target.read_bytes() if target.is_file() else None)
-    print('  baseline established\n')
+        guard.capture(h['file'])
+    pristine = guard.pristine
+    print(f'  baseline established{cap_note}\n')
 
     results, judged_by = [], set()
-    # A run that is killed mid-hunk must not leave the reverted hunk behind.
-    # The restore below lives in a finally, which an uncaught SIGTERM walks
-    # straight past, stranding the tree in a state that reads as half-applied
-    # work. Turning the signal into SystemExit unwinds through that finally.
-    def stop_on_signal(signum, _frame):
-        # Suite runners lead their own sessions, so they do not see a terminal
-        # Ctrl-C; killing them here keeps an interrupt from orphaning them.
-        kill_live_suite_procs()
-        sys.exit(128 + signum)
-
-    for _sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
-        signal.signal(_sig, stop_on_signal)
-
-    started = time.time()
+    unexamined, stop_reason, mutated_build = [], '', False
     for n, h in enumerate(mutable, 1):
+        if RUN_STATE.out_of_time:
+            unexamined, stop_reason = mutable[n - 1:], f'--max-minutes {args.max_minutes:g} reached'
+            break
+        if not args.allow_orphan and os.getppid() != parent:
+            # Nobody is reading this run any more; mutating on would leave a
+            # tree in flux under whoever picks the worktree up next.
+            unexamined, stop_reason = mutable[n - 1:], 'the parent process exited'
+            print(f'\nparent process {parent} exited; stopping before the next hunk '
+                  f'(--allow-orphan to keep going)')
+            break
         strategy = verdict_of[h['file']][1]
         plan = STRATEGIES[strategy]
         # A pristine entry of None means the change deletes the file: reverting
-        # recreates it, and restoring means removing it again.
-        original = pristine[h['file']]
+        # recreates it, and restoring means removing it again (TreeGuard).
         label = f'{h["file"]}:{h["line"]}'
         print(f'[{n}/{len(mutable)}] reverting {label} ... ', end='', flush=True)
-        judged_by.update(plan['suites'])
-        applied, why = apply_reverse(root, h['patch'])
         verdict, note = '', ''
-        if not applied:
-            verdict, note = 'unreversible', why.strip().splitlines()[:1]
-        else:
-            try:
+        try:
+            guard.mark(h['file'])
+            applied, why = apply_reverse(root, h['patch'])
+            if not applied:
+                verdict, note = 'unreversible', why.strip().splitlines()[:1]
+            else:
                 # Only a mutant whose strategy builds, judged by the suite that
                 # binary IS, can be measured against the wrong one.
                 fingerprinted = plan['build'] and 'catch2' in plan['suites']
@@ -1377,13 +2226,14 @@ def main():
                 if plan['build'] and syntax_rejects(root, h['file'], log):
                     verdict, note = 'uncompilable', 'syntax'
                 elif plan['build']:
+                    mutated_build = True
                     was = binary_fingerprint(suites.catch2_bin)
                     built, secs = build(root, args.jobs, log)
                     if not built:
                         verdict, note = 'uncompilable', f'{secs:.0f}s'
                     elif fingerprinted:
                         rebuilt = binary_fingerprint(suites.catch2_bin) != was
-                if not verdict:
+                if not verdict and not RUN_STATE.out_of_time:
                     state, unexplained = judge(suites, plan['suites'])
                     if state == DETECTED and not rebuilt:
                         state, unexplained = INCONCLUSIVE, UNBUILT_MUTANT
@@ -1392,37 +2242,63 @@ def main():
                     if verdict == 'killed' and unexplained == TIMED_OUT:
                         verdict = 'killed (timeout)'
                     note = unexplained
-            finally:
-                restore_file(root, h['file'], original)
+        except OutOfTime:
+            pass
+        finally:
+            guard.restore(h['file'])
+        if RUN_STATE.out_of_time:
+            # Whatever this hunk reached was cut off by the deadline, so it is
+            # not a verdict: the hunk goes back on the unexamined list.
+            print('stopped (--max-minutes)')
+            unexamined, stop_reason = mutable[n - 1:], f'--max-minutes {args.max_minutes:g} reached'
+            break
+        judged_by.update(plan['suites'])
         verify_pristine(root, pristine, f'after restoring {label}')
-        spent = time.time() - started
+        spent = time.monotonic() - started
         left = (spent / n) * (len(mutable) - n)
         eta = f', ~{left / 60:.0f}m left' if n < len(mutable) and left >= 60 else ''
-        print(f'{verdict_line(verdict, note)}  [{spent / 60:.0f}m elapsed{eta}]')
+        print(f'{verdict_line(verdict, note)}  [{spent / 60:.0f}m elapsed{eta}{cap_note}]')
         results.append((label, verdict, note))
 
+    disarm_deadline()
+    if unexamined and RUN_STATE.out_of_time:
+        out_of_time_report(unexamined)
+    elif unexamined:
+        print(f'\n{len(unexamined)} hunk(s) not examined:')
+        for h in unexamined:
+            print(f'  UNEXAMINED    {h["file"]}:{h["line"]}')
+
     # Leave the tree as found, with a rebuilt baseline binary so the next
-    # `make full-test-run` is not testing the last mutant.
-    if needs_build:
-        print('\n=== restoring baseline binary ===')
-        build(root, args.jobs, log)
+    # `make full-test-run` is not testing the last mutant. An orphaned run has
+    # nobody to wait for that build, so it only says so.
+    if needs_build and mutated_build:
+        if stop_reason == 'the parent process exited':
+            print('the test binary may hold a mutant: run `make test-build`')
+        else:
+            print('\n=== restoring baseline binary ===')
+            build(root, args.jobs, log)
 
     print('\n' + '=' * 68)
     for label, verdict, extra in results:
         mark = LOUD_VERDICT.get(verdict, verdict)
         why = f'  - {extra}' if verdict == 'inconclusive' and extra else ''
         print(f'  {mark:<13} {label}{why}')
+    for label, why in skipped_decl:
+        print(f'  {"skipped":<13} {label}  - declaration-only: {why}')
     tally = {}
     for _, v, _ in results:
         tally[v] = tally.get(v, 0) + 1
     print(f'\n{len(results)} hunk(s) mutated: '
           + ', '.join(f'{v}={n}' for v, n in sorted(tally.items())))
+    if skipped_decl:
+        print(f'{len(skipped_decl)} hunk(s) skipped (declaration-only): every changed '
+              f'line is a declaration whose revert can only fail to compile')
     print(f'log: {args.log}')
 
     survived = [r for r in results if r[1] == 'survived']
     unproven = [r for r in results if r[1] in ('uncompilable', 'unreversible')]
     unjudged = [r for r in results if r[1] == 'inconclusive']
-    if unproven or unjudged or uncovered or deferred:
+    if unproven or unjudged or uncovered or deferred or unexamined:
         incomplete = True
 
     if survived:
@@ -1437,18 +2313,28 @@ def main():
         for label, _, _ in survived:
             print(f'  {label}', file=sys.stderr)
         return 1
+    n_killed = sum(1 for r in results if r[1].startswith('killed'))
+    if not (unproven or unjudged or deferred or unexamined):
+        finish_proof(n_killed)
     if incomplete:
-        print(report_incomplete(uncovered, deferred, unproven, unjudged))
+        print(report_incomplete(uncovered, deferred, unproven, unjudged,
+                                unexamined=len(unexamined), stop_reason=stop_reason))
         return 0 if args.allow_incomplete else 3
     n_by_timeout = sum(1 for r in results if r[1] == 'killed (timeout)')
     timeout_note = (f' ({n_by_timeout} by timeout: re-confirmed hang)'
                     if n_by_timeout else '')
-    print(f'\nVERDICT: CLEAN{timeout_note} - every changed hunk was mutated and '
-          f'every mutant was killed.')
+    if skipped_decl:
+        print(f'\nVERDICT: CLEAN ({len(skipped_decl)} hunk(s) not built: declaration-only, '
+              f'unexamined){timeout_note} - every other hunk was mutated and every '
+              f'mutant was killed.')
+    else:
+        print(f'\nVERDICT: CLEAN{timeout_note} - every changed hunk was mutated and '
+              f'every mutant was killed.')
     return 0
 
 
-def report_incomplete(uncovered, deferred, unproven=(), unjudged=()):
+def report_incomplete(uncovered, deferred, unproven=(), unjudged=(), unexamined=0,
+                      stop_reason=''):
     """The line that stops a partial run from reading like a whole one."""
     parts = []
     if uncovered:
@@ -1459,6 +2345,8 @@ def report_incomplete(uncovered, deferred, unproven=(), unjudged=()):
         parts.append(f'{len(unjudged)} hunk(s) whose suite exited without a verdict')
     if deferred:
         parts.append(f'{deferred} hunk(s) deferred by --only/--limit')
+    if unexamined:
+        parts.append(f'{unexamined} hunk(s) UNEXAMINED: {stop_reason}')
     return ('\nVERDICT: INCOMPLETE - this run did not examine the whole change: '
             + '; '.join(parts) + '.\n'
             'Nothing survived, but that is not evidence for the part above. '

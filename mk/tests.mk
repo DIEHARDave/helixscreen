@@ -1591,6 +1591,8 @@ cov-diff: cov-build cov-run
 # only its suite, since nothing has to be rebuilt to see it. Scope a heavy range
 # with --limit N or --tests. It answers CLEAN only when it examined the whole
 # change: a path it cannot mutate is reported NOT COVERED and the run exits 3.
+# Bounded by --max-minutes (default 45), and by default it mutates only what
+# changed since the last commit a run proved (--whole-branch for all of it).
 .PHONY: mutate-diff
 mutate-diff:
 	$(Q)python3 scripts/mutate_diff.py $(MUTATE_ARGS)
