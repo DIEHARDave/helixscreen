@@ -22,7 +22,7 @@ import { useFiltersStore } from '@/stores/filters'
 import { DASH_FILTER_KEYS } from '@/utils/urlState'
 
 const TAB_LABELS: Record<string, string> = {
-  overview: 'Health',
+  health: 'Health',
   releases: 'Releases',
   stability: 'Stability',
   performance: 'Performance',

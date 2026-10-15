@@ -16,7 +16,7 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, onMounted, watch } from 'vue'
+import { nextTick, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useFiltersStore } from '@/stores/filters'
 import AppLayout from '@/components/AppLayout.vue'
@@ -32,14 +32,17 @@ const filters = useFiltersStore()
 
 // Sections load their own data, so the hash target appears after the page does.
 // Retry until the element exists.
+let retry: ReturnType<typeof setTimeout> | undefined
 function scrollToHash(attempts = 20) {
+  clearTimeout(retry)
   const id = route.hash.slice(1)
   if (!id) return
   const el = document.getElementById(id)
   if (el) el.scrollIntoView({ block: 'center' })
-  else if (attempts > 0) setTimeout(() => scrollToHash(attempts - 1), 150)
+  else if (attempts > 0) retry = setTimeout(() => scrollToHash(attempts - 1), 150)
 }
 
+onUnmounted(() => clearTimeout(retry))
 onMounted(() => nextTick(() => scrollToHash()))
 watch(() => [route.hash, filters.queryString], () => nextTick(() => scrollToHash()))
 </script>
