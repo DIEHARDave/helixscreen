@@ -109,6 +109,15 @@ describe('runLoop daily', () => {
     expect(r.store.data.has(STATE_KEY)).toBe(false)
   })
 
+  it('keeps the result and lists the failure when saving the state fails after the send', async () => {
+    const r = rig()
+    r.store.failPut = (key) => key === STATE_KEY
+    const out = await runLoop('daily', r.deps, false)
+    expect(r.mailer.sent).toHaveLength(1)
+    expect(out.alertsSent).toEqual([])
+    expect(out.skipped.join('\n')).toContain(`state: injected put failure: ${STATE_KEY}`)
+  })
+
   it('sends nothing when reading the state fails', async () => {
     const r = rig()
     r.store.failGet = (key) => key === STATE_KEY
@@ -205,6 +214,16 @@ describe('runLoop weekly', () => {
     await expect(runLoop('weekly', r.deps, false)).rejects.toThrow('injected put failure')
     expect(r.mailer.attempts).toEqual([])
     expect(Object.keys((await loadState(r.store)).issueComments)).toHaveLength(2)
+  })
+
+  it('keeps the stored report, the email and the result when saving the state fails', async () => {
+    const r = rig()
+    r.store.failPut = (key) => key === STATE_KEY
+    const out = await runLoop('weekly', r.deps, false)
+    expect(r.store.data.has(reportKey(WEEK))).toBe(true)
+    expect(r.mailer.sent).toHaveLength(1)
+    expect(out.issues.map((i) => i.action)).toEqual(['created', 'created'])
+    expect(out.skipped.join('\n')).toContain(`state: injected put failure: ${STATE_KEY}`)
   })
 
   it('says so when no mailer is configured', async () => {

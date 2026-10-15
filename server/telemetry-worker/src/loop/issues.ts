@@ -4,7 +4,7 @@
 
 import type { Finding } from './findings'
 import { markerFor, type FindingKind } from './fingerprint'
-import type { IssueTracker } from './ports'
+import type { IssueTracker } from './types'
 import type { LoopState } from './state'
 import { NEW_ISSUES_PER_RUN } from './thresholds'
 

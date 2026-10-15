@@ -9,9 +9,9 @@ import type { HealthPayload } from '../health'
 import { alertEmail, weeklyEmail } from './email'
 import { findingsFromHealth, type Finding, type UpdateFailureGroup } from './findings'
 import { syncIssues, type IssueOutcome } from './issues'
-import type { IssueTracker, Mailer, ObjectStore } from './ports'
+import type { IssueTracker, Mailer, ObjectStore } from './types'
 import { reportKey, type WeeklyReport } from './report'
-import { alertDue, loadState, saveState } from './state'
+import { alertDue, loadState, saveState, type LoopState } from './state'
 import { isoWeek, previousIsoWeek } from './week'
 
 export interface LoopDeps {
@@ -64,6 +64,18 @@ async function deliver(mailer: Mailer | null, email: EmailMessage, skipped: stri
   }
 }
 
+/** Saves the state, or logs the failure and lists it in `skipped`. True only when saved. */
+async function persist(store: ObjectStore, state: LoopState, skipped: string[]): Promise<boolean> {
+  try {
+    await saveState(store, state)
+    return true
+  } catch (err) {
+    warn('state save failed', err)
+    skipped.push(`state: ${message(err)}`)
+    return false
+  }
+}
+
 async function runDaily(deps: LoopDeps, dryRun: boolean): Promise<LoopResult> {
   const today = deps.now.toISOString().slice(0, 10)
   const state = await loadState(deps.store)
@@ -78,8 +90,7 @@ async function runDaily(deps: LoopDeps, dryRun: boolean): Promise<LoopResult> {
   // An alert is recorded only once its email went out, so a failed send retries tomorrow.
   if (!(await deliver(deps.mailer, result.email, result.skipped))) return result
   for (const f of due) state.alerts[f.fingerprint] = today
-  await saveState(deps.store, state)
-  result.alertsSent = due.map((f) => f.fingerprint)
+  if (await persist(deps.store, state, result.skipped)) result.alertsSent = due.map((f) => f.fingerprint)
   return result
 }
 
@@ -122,11 +133,11 @@ async function runWeekly(deps: LoopDeps, dryRun: boolean): Promise<LoopResult> {
     await deps.store.put(key, JSON.stringify(report))
   } catch (err) {
     // Issues were already filed or commented on; keep that record so a re-run does not comment twice.
-    await saveState(deps.store, state).catch((e) => warn('state save failed', e))
+    await persist(deps.store, state, skipped)
     throw err
   }
   await deliver(deps.mailer, email, skipped)
-  await saveState(deps.store, state)
+  await persist(deps.store, state, skipped)
   return result
 }
 

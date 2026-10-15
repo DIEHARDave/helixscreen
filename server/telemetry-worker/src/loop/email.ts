@@ -5,7 +5,7 @@
 
 import { escapeHtml, type EmailMessage } from '../../../shared/email'
 import type { Finding } from './findings'
-import { dashboardLink } from './issues'
+import { dashboardLink, type IssueOutcome } from './issues'
 import type { WeeklyReport } from './report'
 
 interface Link {
@@ -148,17 +148,20 @@ function dataHealthSection(report: WeeklyReport): Section {
   }
 }
 
-const ISSUE_ACTIONS: Record<string, string> = { created: 'Opened', commented: 'Commented', reopened: 'Reopened' }
+const ISSUE_ACTIONS: Partial<Record<IssueOutcome['action'], string>> = { created: 'Opened', commented: 'Commented', reopened: 'Reopened' }
 
 function issueSections(report: WeeklyReport): Section[] {
   const titles = new Map(report.findings.map((f) => [f.fingerprint, f.title]))
   const titleOf = (fp: string): string => titles.get(fp) ?? 'Untitled finding'
-  const touched = report.issues.filter((o) => o.issue && ISSUE_ACTIONS[o.action])
+  const touched = report.issues.flatMap((o) => {
+    const label = ISSUE_ACTIONS[o.action]
+    return o.issue && label ? [{ label, title: titleOf(o.fingerprint), url: o.issue.url }] : []
+  })
   const held = report.issues.filter((o) => o.action === 'held')
   return [
     {
       title: 'Issues opened or commented on',
-      rows: touched.map((o) => [ISSUE_ACTIONS[o.action], { text: titleOf(o.fingerprint), href: o.issue!.url }]),
+      rows: touched.map((t) => [t.label, { text: t.title, href: t.url }]),
     },
     {
       title: 'Held back',

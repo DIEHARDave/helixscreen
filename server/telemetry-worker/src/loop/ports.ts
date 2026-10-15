@@ -1,37 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// The loop's three outside dependencies (GitHub, email, R2) as small interfaces, plus
-// the production adapters. Loop logic depends on the interfaces only.
+// Production adapters for the loop's outside dependencies (GitHub, email, R2). The
+// interfaces live in types.ts; loop logic depends on those only.
 
 import { githubFetch, getInstallationToken } from '../../../shared/github'
-import { sendEmail, type EmailMessage } from '../../../shared/email'
+import { sendEmail } from '../../../shared/email'
 import { fingerprintInBody } from './fingerprint'
+import type { IssueRef, IssueTracker, Mailer, ObjectStore } from './types'
 
-export interface IssueRef {
-  number: number
-  state: 'open' | 'closed'
-  url: string
-  body: string
-  /** ISO week of the last telemetry comment. Filled from LoopState by the caller, never by the tracker. */
-  lastTelemetryCommentWeek: string | null
-}
-
-export interface IssueTracker {
-  /** Searches open and closed issues labelled telemetry for the fingerprint's marker. */
-  findByFingerprint(fp: string): Promise<IssueRef | null>
-  create(title: string, body: string, labels: string[]): Promise<IssueRef>
-  comment(issue: number, body: string): Promise<void>
-  reopen(issue: number): Promise<void>
-}
-
-export interface Mailer {
-  send(message: EmailMessage): Promise<void>
-}
-
-export interface ObjectStore {
-  get(key: string): Promise<string | null>
-  put(key: string, value: string): Promise<void>
-  list(prefix: string): Promise<string[]>
-}
+export type { IssueRef, IssueTracker, Mailer, ObjectStore } from './types'
 
 export interface LoopEnv {
   GITHUB_REPO?: string

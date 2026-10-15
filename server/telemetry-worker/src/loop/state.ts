@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // What the loop remembers between runs, kept as one JSON object in R2.
 
-import type { ObjectStore } from './ports'
+import type { ObjectStore } from './types'
 import { ALERT_REPEAT_DAYS } from './thresholds'
 
 const STATE_KEY = 'loop/state.json'
