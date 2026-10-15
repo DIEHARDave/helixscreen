@@ -22,6 +22,10 @@
 // returns before it builds a request. The gate still runs, which is the part
 // under test.
 //
+// advance_clock(), fire_auto_send_tick() and simulate_unclean_exit() let a
+// test walk a boot through hours of snapshots and a power cut. set_in_flight()
+// stands in for a send that has claimed the front of the queue.
+//
 // Kept out of the production header so no shipped code path can suppress a
 // send or rewrite the send clock (the "no _for_testing methods in headers"
 // lint, L065/L088).
@@ -77,5 +81,71 @@ class TelemetryManagerTestAccess {
 
     static void clear_pending_setting_changes(TelemetryManager& t) {
         t.pending_settings_changes_.clear();
+    }
+
+    /// Stop the session trackers' clock: from here it moves only by
+    /// advance_clock(). It survives init(), as time does across a reboot.
+    static void freeze_clock(TelemetryManager& t) {
+        t.manual_clock_ = std::chrono::steady_clock::now();
+    }
+
+    static void unfreeze_clock(TelemetryManager& t) {
+        t.manual_clock_.reset();
+    }
+
+    /// Move the session trackers' clock forward, so a test can place a
+    /// disconnect at hour 3:50 without waiting for it.
+    static void advance_clock(TelemetryManager& t, std::chrono::steady_clock::duration by) {
+        if (!t.manual_clock_) {
+            freeze_clock(t);
+        }
+        *t.manual_clock_ += by;
+    }
+
+    /// Run the hourly auto-send timer's body once.
+    static void fire_auto_send_tick(TelemetryManager& t) {
+        t.on_auto_send_tick();
+    }
+
+    /// End the boot the way a power cut does: no shutdown(), so nothing is
+    /// flushed or deleted, and the next init() starts a new boot.
+    static void simulate_unclean_exit(TelemetryManager& t) {
+        if (t.send_thread_.joinable()) {
+            t.send_thread_.join();
+        }
+        if (lv_is_initialized()) {
+            t.stop_auto_send();
+        }
+        t.initialized_.store(false);
+    }
+
+    /// Mark the first @p count queued events as the batch a send has in flight.
+    static void set_in_flight(TelemetryManager& t, size_t count) {
+        std::lock_guard<std::mutex> lock(t.mutex_);
+        t.in_flight_ = count;
+    }
+
+    /// A send that claimed the front batch and ended without a confirmed
+    /// removal: a non-2xx, a timeout, or a 2xx that arrived during shutdown.
+    static void fail_send(TelemetryManager& t) {
+        t.claim_batch();
+        t.release_in_flight();
+    }
+
+    /// A send that has claimed the front batch and not yet ended.
+    static void claim_batch(TelemetryManager& t) {
+        t.claim_batch();
+    }
+
+    /// Wait for the send thread try_send() spawned, so its end-of-send state
+    /// is settled before a test reads the queue.
+    static void join_send_thread(TelemetryManager& t) {
+        if (t.send_thread_.joinable()) {
+            t.send_thread_.join();
+        }
+    }
+
+    static std::string boot_id(const TelemetryManager& t) {
+        return t.boot_id_;
     }
 };

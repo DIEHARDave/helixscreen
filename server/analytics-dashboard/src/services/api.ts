@@ -3,11 +3,29 @@ import { router } from '@/router'
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'https://telemetry.helixscreen.org'
 
+// Null-valued fields:
+// - A crash rate is null when the filters exclude every crash or session row
+//   (a model filter matches no crash), rendered "n/a".
+// - A value aggregated from delta point kinds (panel usage, overlay and widget
+//   use, connection stability) is null until a device on a delta-era client
+//   has reported; `delta_era_devices` says how many have.
+
+export type FilterKey = 'platform' | 'version' | 'model' | 'board'
+
+// Returned by every endpoint that reads delta kinds. `filter_not_applicable`
+// names an active filter none of those kinds carry (no panel or connection row
+// has a printer model), so their values are "not reported per <filter>" rather
+// than waiting on the rollout.
+export interface DeltaEra {
+  delta_era_devices: number
+  filter_not_applicable: FilterKey | null
+}
+
 export interface OverviewData {
   active_devices: number
   total_events: number
-  crash_rate: number
-  print_success_rate: number
+  crash_rate: number | null
+  print_success_rate: number | null
   events_over_time: { date: string; count: number }[]
   daily_active_devices: { date: string; devices: number }[]
   cumulative_devices: { date: string; total: number }[]
@@ -34,7 +52,7 @@ export interface PrintsData {
 }
 
 export interface CrashesData {
-  by_version: { version: string; crash_count: number; session_count: number; rate: number }[]
+  by_version: { version: string; crash_count: number; session_count: number; rate: number | null }[]
   by_signal: { signal: string; count: number }[]
   avg_uptime_sec: number
   by_platform?: {
@@ -43,17 +61,17 @@ export interface CrashesData {
     session_count: number
     crashing_devices: number
     session_devices: number
-    rate: number
+    rate: number | null
   }[]
   trailing_14d?: {
     crash_count: number
     session_count: number
-    rate: number
+    rate: number | null
     by_platform: {
       platform: string
       crash_count: number
       session_count: number
-      rate: number
+      rate: number | null
     }[]
   }
 }
@@ -75,7 +93,7 @@ export interface ReleasesData {
     version: string
     active_devices: number
     crash_rate: number
-    print_success_rate: number
+    print_success_rate: number | null
     total_sessions: number
     total_crashes: number
   }[]
@@ -125,7 +143,8 @@ export interface HardwareData {
   moonraker_locality: { local: number; remote: number; reported: number }
 }
 
-export interface EngagementData {
+export interface EngagementData extends DeltaEra {
+  avg_session_sec: number | null
   panel_time: { panel: string; total_time_sec: number }[]
   panel_visits: { panel: string; total_visits: number }[]
   session_duration_trend: { date: string; avg_session_sec: number }[]
@@ -138,10 +157,10 @@ export interface EngagementData {
   overlay_visits: { overlay: string; total_visits: number }[]
 }
 
-export interface ReliabilityData {
+export interface ReliabilityData extends DeltaEra {
   uptime_trend: { date: string; avg_uptime_pct: number }[]
   disconnect_trend: { date: string; avg_disconnects: number }[]
-  max_disconnect_sec: number
+  max_disconnect_sec: number | null
   error_categories: { category: string; count: number }[]
   error_codes: { category: string; code: string; count: number }[]
 }
@@ -154,9 +173,9 @@ export interface DisplayAnomalyData {
   recent: { timestamp: string; device_id: string; version: string; platform: string; code: string; context: string; uptime_sec: number }[]
 }
 
-export interface StabilityData {
-  crash_rate_trend: { date: string; crashes: number; sessions: number; rate: number }[]
-  by_version: { version: string; crash_count: number; session_count: number; rate: number }[]
+export interface StabilityData extends DeltaEra {
+  crash_rate_trend: { date: string; crashes: number; sessions: number; rate: number | null }[]
+  by_version: { version: string; crash_count: number; session_count: number; rate: number | null }[]
   by_signal: { signal: string; count: number }[]
   avg_uptime_sec: number
   klippy_trend: { date: string; errors: number; shutdowns: number }[]
@@ -187,14 +206,17 @@ export interface PerformanceData {
   jankiest_panels: { panel: string; times_worst: number; avg_p95_ms: number }[]
 }
 
-export interface FeaturesData {
-  total_devices: number
-  features: { name: string; adoption_rate: number }[]
-  by_version: { version: string; devices: number; macros: number; camera: number; bed_mesh: number }[]
+// Adoption derived from overlay and widget use: `devices` used the overlay or
+// widget `id` at least once in the range, out of `delta_era_devices`. Empty
+// until a delta-era device has reported.
+export interface FeaturesData extends DeltaEra {
+  features: { id: string; devices: number; adoption_rate: number }[]
+  /** Settings flags: devices with it on over devices reporting it; null rate before any report. */
+  configured: { id: string; devices: number; reported: number; adoption_rate: number | null }[]
 }
 
-export interface UxInsightsData {
-  avg_session_sec: number
+export interface UxInsightsData extends DeltaEra {
+  avg_session_sec: number | null
   most_visited_panel: string
   least_visited_panel: string
   settings_change_rate_per_device_per_week: number

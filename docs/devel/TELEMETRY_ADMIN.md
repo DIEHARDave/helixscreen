@@ -120,7 +120,7 @@ matters more than it does today.
 | Secret | Purpose |
 |--------|---------|
 | `INGEST_API_KEY` | Baked into the HelixScreen binary. Write-only ingest access. |
-| `ADMIN_API_KEY` | Server-side secret. Read access to events, dashboard queries, backfill. |
+| `ADMIN_API_KEY` | Server-side secret. Read access to events, dashboard queries, AE counts. |
 | `HELIX_ANALYTICS_READ_TOKEN` | Cloudflare API token for Analytics Engine SQL queries. |
 | `CF_ZONE_ANALYTICS_TOKEN` | Optional. Cloudflare API token with **Zone Analytics:Read** on `helixscreen.org`, for the daily CDN fleet snapshot. Falls back to `HELIX_ANALYTICS_READ_TOKEN` if unset - which works only if that token also carries zone analytics scope (Account Analytics:Read alone is not enough). |
 
@@ -138,7 +138,7 @@ Create `.env.telemetry` in the project root (gitignored):
 HELIX_TELEMETRY_ADMIN_KEY=your-admin-api-key-here
 ```
 
-This is auto-loaded by `telemetry-pull.sh` and `telemetry-backfill.sh`.
+This is auto-loaded by `telemetry-pull.sh`.
 
 ## Dashboard
 
@@ -154,13 +154,219 @@ Enter the `ADMIN_API_KEY` value. Stored in browser sessionStorage (clears when t
 
 | View | Shows |
 |------|-------|
-| **Overview** | Active devices, total events, crash rate, print success rate, events-over-time chart |
+| **Overview** | Active devices, total events, crash rate, print success rate, events-over-time chart, CDN fleet |
 | **Adoption** | Platform, version, printer model, kinematics distributions |
 | **Prints** | Print success rate over time, by filament type, average duration |
-| **Crashes** | Crash rate by version, by signal type, average uptime before crash |
+| **Stability** | Crash rate over time, by version and by signal; klippy errors and shutdowns; memory warnings; error hotspots; display anomalies; recent crashes (`/crashes` redirects here) |
 | **Releases** | Side-by-side version comparison (select versions to compare) |
+| **Memory** | RSS over time and by platform, memory warnings |
+| **Hardware** | Printer models, kinematics, MCUs, capabilities, host RAM, AMS backends, Helix macros, Moonraker topology |
+| **Engagement** | Panel time and visits, overlay visits, widget placement and interactions, themes, locales, brightness |
+| **Reliability** | Uptime, disconnects per boot, longest outage, error categories and codes |
+| **Performance** | Frame-time percentiles, dropped frames, worst panels |
+| **Features** | Feature adoption derived from overlay and widget use, and the `settings_snapshot` flags for features that are configured rather than visited |
+| **UX Insights** | Most and least visited panels, settings change rate, settings left at default |
 
-All views support 7d / 30d / 90d time range selection.
+All views support 7d / 30d / 90d time range selection. Platform, version, printer
+model and board filters apply per point kind (see [Filters](#filters)).
+
+Engagement, Reliability, Stability, UX Insights and Features read the delta point
+kinds, so they show a "Waiting for devices on the new client (N so far)" state until
+devices on a schema-3 client have reported (see [Delta-era
+queries](#delta-era-queries-and-the-waiting-state)).
+
+## Analytics Engine schema table
+
+`server/telemetry-worker/src/schema.ts#POINT_KINDS` declares every Analytics Engine point kind (the
+`index1` value) once: its blob and double fields, each with a stable name and a slot
+position. Two things read it, so they cannot disagree about where a field lives:
+
+- The writer (`server/telemetry-worker/src/analytics.ts#mapEventToDataPoints`) fills
+  the blob and double arrays from the kind's columns.
+- Queries name columns with `server/telemetry-worker/src/schema.ts#col` (`col(kind, field)`), never a literal `blobN`.
+
+`server/telemetry-worker/src/schema.ts#EVENT_FANOUT` lists the point kinds each event type writes (`panel_usage` fans out to
+`panel_usage`, `widget_interaction` and `overlay_visit`; `settings_snapshot` to
+`settings_snapshot` and `widget_placement`; `settings_changes` to one `settings_change`
+point per change). `server/telemetry-worker/src/schema.ts#R2_ONLY` lists fields kept out of Analytics Engine on purpose.
+
+**Slots are append-only.** Analytics Engine rows are read by position for 90 days, so a
+field never changes its `blobN` / `doubleN`. A new field takes the next unused slot of its
+own kind (blobs 13-20, doubles 9-20; delta kinds already hold blob 13 and doubles 9-10);
+a retired field leaves its slot empty. `server/telemetry-worker/src/__tests__/schema.test.ts`
+("keeps every column in its slot") pins every existing position.
+
+To add a field: add a `blob(slot, field)` or `dbl(slot, field)` entry to the kind, add a
+reader if the event nests it, add the key to the client builder, and use `col(kind, field)`
+in the query. A client field the table neither maps nor lists in `R2_ONLY` never reaches
+a query.
+
+**The client and the table are checked against each other.** Each column records the client
+fields it is written from (`ColumnDef.paths`: the field itself, or what its reader reads).
+`tests/fixtures/telemetry/<event>.json` holds one event of each type as the client builds
+it, and two tests share those files:
+
+- `tests/unit/test_telemetry_contract.cpp` (`[telemetry][contract]`) rebuilds every event
+  from fixed inputs and compares it to its file. Values from the clock, the host or the
+  build (timestamps, ids, memory figures, version strings) are pinned to placeholders.
+  After a deliberate client change, `HELIX_UPDATE_GOLDENS=1 ./build/bin/helix-tests
+  "[telemetry][contract]"` rewrites the files.
+- `server/telemetry-worker/src/__tests__/contract.test.ts` requires every field in each file
+  to match a column path of the event's kinds or an `R2_ONLY` entry, and every `R2_ONLY`
+  entry to match a field the event carries.
+
+So any change to what the client sends fails the golden test until its file is rewritten.
+The rewritten file then fails the worker test if it carries a field the table neither maps
+nor lists in `R2_ONLY`, or if an `R2_ONLY` entry names a field the client no longer sends.
+
+`print_outcome`, `print_start_context`, `error_encountered`, `connection_stability`,
+`hardware_profile` and the delta kinds keep their original slots and carry `app_platform` and `app_board` in
+slots 13 and up, so rows written before those fields were added read empty there.
+
+## Filters
+
+Dashboard requests take `platform`, `version`, `model` and `board` (comma-separated
+values). `server/telemetry-worker/src/queries.ts#filterFor` resolves
+each one to that kind's own column through the schema table:
+
+| Filter | Field read | Notes |
+|--------|-----------|-------|
+| `platform` | `app_platform` | |
+| `version` | `app_version` | `update_failed` reads `from_version`: the version the device was running |
+| `model` | `printer_model` | Only `session` and `hardware_profile` report it |
+| `board` | `app_board` | |
+
+A kind that lacks the filtered field is excluded (`AND 0`) rather than matched against
+whatever column shares that slot. A query over several kinds gets
+`((index1='a' AND blobX IN (...)) OR (index1='b' AND blobY IN (...)))` from
+`server/telemetry-worker/src/queries.ts#filterForKinds`, with excluded kinds dropped from the OR.
+
+When a filter excludes every kind an endpoint reads, the endpoint's `filter_not_applicable`
+names it and the view says "Not reported per printer model" (or platform, version,
+board) instead of showing 0. Filter values keep spaces, so `model=Voron 2.4` matches; only
+characters outside letters, digits, space and `. - _ ( ) / +` are stripped.
+
+## Weighted counts
+
+Analytics Engine samples rows under load and records, in `_sample_interval`, how many
+rows each stored row stands for. Every count and sum in `queries.ts` is weighted by it:
+
+| Plain SQL | Used here |
+|-----------|-----------|
+| `count()` | `sum(_sample_interval)` (`server/telemetry-worker/src/queries.ts#wCount`) |
+| `sum(x)` | `sum(x * _sample_interval)` (`server/telemetry-worker/src/queries.ts#wSum`) |
+| `avg(x)` | `sum(x * _sample_interval) / sum(_sample_interval)` (`server/telemetry-worker/src/queries.ts#wAvg`) |
+
+`count(DISTINCT ...)` stays as it is: a device is one device however it was sampled.
+Delta queries weight by `delta_weight`, the `_sample_interval` of the deduplicated row.
+Quantiles use `quantileExactWeighted(q)(x, _sample_interval)`.
+
+The time axis is Analytics Engine's own write time (`timestamp`). The client's
+`timestamp` field is never used for bucketing: uploads lag by hours and a device without
+a real-time clock reports arbitrary dates.
+
+## Delta snapshots and the idempotency key
+
+`panel_usage` and `connection_stability` report what accumulated in one window, not
+lifetime totals. Each event carries:
+
+- `boot_id`: 16 random hex characters, new for every process start and never stored on
+  the device
+- `snapshot_seq`: 0, 1, 2... per boot
+- `schema_version`: 3, which marks a delta-era client
+
+`session_duration_sec` on a delta event is the length of the window it covers, so a boot's
+length is the sum over its rows. `longest_disconnect_sec` is the longest outage of the
+window; an outage that spans snapshots keeps its start time, so the maximum over rows is
+the real one.
+
+The idempotency key is `(device_id, boot_id, snapshot_seq)` (plus the panel, widget or
+overlay id for fan-out kinds). A lost response makes the client resend a batch, and the
+worker stores the resend as a second row; queries remove it (below) rather than the
+ingest path trying to.
+
+Client delivery (`src/system/telemetry_manager.cpp#fire_periodic_snapshot`, `#on_auto_send_tick` and `#enqueue_event`):
+
+- Each periodic snapshot (`SNAPSHOT_INTERVAL_MS`, 4h) saves the event queue and the
+  unsent accumulator together.
+- The accumulator is also rewritten hourly by the auto-send timer. After an unclean exit the next boot sends it
+  under its original `boot_id` and `snapshot_seq`, so the window is neither lost nor
+  counted twice.
+- At the queue cap (`MAX_QUEUE_SIZE`) a new delta first tries to merge into the newest
+  queued row of the same kind and the same `boot_id` that no send has attempted, adding
+  counts and extending the window. Rows a send has attempted are never merge targets, since
+  the server may already hold them. With no merge target, the oldest non-delta event is
+  evicted instead. Only when the queue holds nothing evictable is the incoming delta
+  dropped, with a warning that its window is lost.
+
+Rows from clients before schema 3 hold lifetime totals that were resent every 4h and
+carried over unclean exits. They are excluded from delta queries, not salvaged.
+
+### Delta-era queries and the waiting state
+
+`server/telemetry-worker/src/queries.ts#deltaSource` is
+the one subquery every delta aggregate reads:
+
+1. Keep only rows with `schema_version >= 3`.
+2. Group by the key (`device_id`, `boot_id`, `snapshot_seq`, plus dims) so a resend
+   collapses to one row. Each metric takes `argMax(metric, timestamp)`, the write time is
+   `min(timestamp)`, and the weight is the `_sample_interval` of the kept row.
+3. Aggregate over that result with the delta weight.
+
+Endpoints over delta kinds (`engagement`, `reliability`, `stability`, `ux`, `features`)
+return `delta_era_devices`, the distinct devices with schema-3 rows of those kinds in the
+window. While it is 0 every value derived from deltas is `null`, and `features` is an
+empty list; the dashboard renders `null` as "Waiting for devices on the new client (N so
+far)". The fields are typed `number | null` in `server/analytics-dashboard/src/services/api.ts`.
+If a filter excludes the delta kinds outright, `filter_not_applicable` is set and the
+placeholder reads "Not reported per <filter>" instead.
+
+### Feature adoption
+
+The client sends no `feature_adoption` event. Adoption is derived: a feature counts as adopted on
+a device when its overlay or widget has a count above 0 in the window, over
+`delta_era_devices` (`server/telemetry-worker/src/index.ts#deriveFeatureAdoption`, served at `/v1/dashboard/features`). Overlays are
+identified by the overlay root's object name, falling back to the lifecycle name only when
+the root has none; widgets by their id. Flags with no overlay or widget to visit are
+fields on `settings_snapshot` (see below), reported beside the derived adoption. The `feature_adoption` point kind stays in the
+schema table so rows stored by older clients remain readable.
+
+## Reconciling AE against R2
+
+R2 keeps every accepted batch; Analytics Engine can shed or sample writes, so a
+day's AE rows may be fewer than the points its R2 events map to. Two pieces measure
+the gap for one UTC write day:
+
+- `GET /v1/admin/ae-counts?date=YYYY-MM-DD` (admin key) returns, per point kind,
+  `rows` (raw `count()`), `weighted` (`sum(_sample_interval)`) and `devices`
+  (`count(DISTINCT device_id)`).
+- `server/telemetry-worker/scripts/reconcile.ts` compares that with R2:
+
+```bash
+(cd server/telemetry-worker && npx vite-node scripts/reconcile.ts 2026-10-12)
+```
+
+The script reads `HELIX_TELEMETRY_ADMIN_KEY` from the environment, else from
+`.env.telemetry` in the repo root. It lists and fetches that day's R2 batches over
+the admin API, maps them with the worker's own `mapEventToDataPoints`, calls
+`ae-counts` for the same day, and prints one row per kind. The R2 side runs
+locally because a day is hundreds of objects, near the Worker's per-invocation
+subrequest cap, and grows with the fleet.
+
+| Column | Meaning |
+|--------|---------|
+| `r2_points` | Analytics Engine points the day's R2 events map to |
+| `ae_rows` | Raw `count()` of rows AE holds for the kind |
+| `ae_weighted` | `sum(_sample_interval)`: rows after correcting for AE sampling |
+| `kept%` | `ae_weighted / r2_points`; well below 100 means AE dropped writes |
+
+`ae_rows` next to `ae_weighted` shows how much AE sampled; `r2_points` next to
+`ae_weighted` shows how much was lost outright. If `ae_weighted` matches
+`r2_points`, the weighted queries above already account for the gap. If it stays
+below, rows were dropped on write: investigate the write path rather than
+adjusting a query. Lost AE rows are not re-written (there is no backfill:
+`writeDataPoint` takes no timestamp, so a replay would land on the wrong day and
+duplicate rows AE already holds). R2 stays the source of truth for the day.
 
 ## Worker API Endpoints
 
@@ -171,10 +377,13 @@ POST /v1/events
 X-API-Key: <INGEST_API_KEY>
 Content-Type: application/json
 
-[{ "schema_version": 2, "event": "session", "device_id": "...", "timestamp": "...", ... }]
+[{ "schema_version": 3, "event": "session", "device_id": "...", "timestamp": "...",
+   "app_version": "...", "app_platform": "...", "app_board": "...", "boot_id": "...", ... }]
 ```
 
 - Batch of 1-20 events per request
+- Validation checks only `schema_version` (number), `event`, `device_id` and `timestamp`;
+  the rest of the envelope is not enforced, so older clients keep ingesting
 - Rate limited: 10 requests/min per IP
 - Dual-writes to R2 (permanent) + Analytics Engine (90-day)
 
@@ -184,18 +393,23 @@ Content-Type: application/json
 |----------|--------|-------------|
 | `/v1/events/list?prefix=events/2026/01/` | GET | List R2 event files |
 | `/v1/events/get?key=events/2026/01/15/...json` | GET | Download a single event file |
-| `/v1/admin/backfill` | POST | Write events to Analytics Engine (for backfill) |
+| `/v1/admin/ae-counts?date=2026-10-12` | GET | Per-kind Analytics Engine row counts for one UTC day (`kind`, `rows`, `weighted`, `devices`) |
 | `/v1/dashboard/overview?range=30d` | GET | Dashboard overview metrics |
 | `/v1/dashboard/adoption?range=7d` | GET | Adoption/distribution metrics |
 | `/v1/dashboard/prints?range=30d` | GET | Print reliability metrics |
 | `/v1/dashboard/crashes?range=30d` | GET | Crash analytics |
 | `/v1/dashboard/releases?versions=v0.9.18,v0.9.19` | GET | Per-version comparison |
+| `/v1/dashboard/{crash-list,memory,memory-warnings,hardware,performance}` | GET | The remaining views' data |
+| `/v1/dashboard/{engagement,reliability,stability,ux,features}` | GET | Delta-era views: return `delta_era_devices` and `filter_not_applicable`, and `null` values while no schema-3 device has reported |
+
+Dashboard endpoints take `range` (`7d`, `30d`, `90d`) and the `platform`, `version`,
+`model` and `board` filters.
 
 ### Other
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/health` | GET | Health check |
+| `/health` | GET | Health check; reports `git_sha`, the commit the worker was deployed from (`unknown` if deployed without `GIT_SHA`) |
 | `/v1/symbols/:version` | GET | List symbol files for crash resolution |
 
 ## Scripts
@@ -219,21 +433,6 @@ Pull raw event data from R2 to local disk for offline analysis.
 
 Downloaded to `.telemetry-data/events/` (gitignored).
 
-### telemetry-backfill.sh
-
-Backfill Analytics Engine from existing R2 data. Use after first enabling Analytics Engine, or if data gets out of sync.
-
-```bash
-# Backfill last 90 days (default, max Analytics Engine retention)
-./scripts/telemetry-backfill.sh
-
-# Backfill specific range
-./scripts/telemetry-backfill.sh --since 2025-12-01 --until 2026-02-13
-
-# Preview without writing
-./scripts/telemetry-backfill.sh --dry-run
-```
-
 ### telemetry-analyze.py / telemetry-crashes.py
 
 Offline Python analysis of pulled event data. Requires `.venv/`:
@@ -256,16 +455,54 @@ python3 scripts/telemetry-crashes.py .telemetry-data/events/
 
 ```bash
 cd server/telemetry-worker
-wrangler deploy
+npx vitest run
+wrangler deploy --var GIT_SHA:$(git rev-parse --short HEAD)
+curl -s https://telemetry.helixscreen.org/health   # git_sha must match the commit just deployed
 ```
+
+Always pass `GIT_SHA`: a deploy without it reports `"git_sha": "unknown"`, and then
+nothing says which code is serving ingest. Deploys are manual and confirmed with the
+maintainer first. A schema-table change deploys before any client that writes the new
+fields, and a worker query change needs no client release.
 
 ### Dashboard
 
 ```bash
 cd server/analytics-dashboard
+npx vue-tsc --noEmit -p tsconfig.app.json   # the typecheck that actually checks
 npm run build
 wrangler pages deploy dist --project-name=helixscreen-analytics
 ```
+
+`tsconfig.json` here only holds a project reference (`"files": []`), so the build script
+passes `-p tsconfig.app.json` to type-check the `src/` tree.
+
+### Order and checks
+
+The worker and the dashboard Pages project deploy together: the `/v1/dashboard/features`
+response shape is `features[].id` plus `configured`, with no `total_devices` or `by_version`,
+so either half alone breaks the Features view. After deploying, `/health` `git_sha` must match.
+
+Before the first deploy of a SQL change, run the Analytics Engine smoke below with a read
+token (or a staging worker). A failure shows as a 502 on that endpoint.
+
+1. `GET /v1/admin/ae-counts?date=<yesterday>`: `count() AS rows`, `sum(_sample_interval) AS weighted`, `toDate(timestamp) = 'YYYY-MM-DD'`.
+2. Phase 0 decision: `server/telemetry-worker/scripts/reconcile.ts <day>` compares expected and AE counts per kind. Weighted counting is safe either way (it equals `count()` when unsampled), but if AE is still short when weighted, investigate the write path before trusting any number.
+3. A filter-excluded kind: `... AND 0` in WHERE (overview with `model=X`: print success, total events).
+4. Releases with no usable versions: `WHERE index1 IN (...) AND 0`.
+5. Multi-kind OR filter: overview total events with `version=X` (about 19 `(index1 = 'k' AND blobN IN (...))` branches) and crash rate with `platform=X`.
+6. `sumIf(_sample_interval, cond)` and `sum((expr) * _sample_interval)`, and ratios of them (prints, overview).
+7. `deltaSource`: `GROUP BY blob1, blob13, double10[, blob4]` (a double in the GROUP BY), `argMax(doubleN, timestamp)`, `argMax(_sample_interval, timestamp)`, `min(timestamp) AS written_at`.
+8. Outer queries over `deltaSource`: `toDate(written_at)` grouping, `count(DISTINCT boot_id)`, `count(DISTINCT device_id)` on subquery aliases (engagement, reliability, features).
+9. Per-device subqueries exposing `argMax(_sample_interval, timestamp) AS device_weight` with outer `sum((toUInt32(bitAnd(...)) > 0) * device_weight)` (hardware caps) and `wAvg` over it (build volume, fan/sensor/macro, RAM).
+10. `HAVING total > 0 AND dropped / total > 0.05` where both are weighted-sum aliases (performance query 5).
+11. `double9 >= 3` on rows that never wrote double9, and reads of blob13-15 on rows written with 12 blobs: expect 0 / `''`, not an error or a NULL that breaks `!= ''`.
+12. Every `/v1/dashboard/*` endpoint once unfiltered and once each with `platform`, `version`, `model` (and `board` via URL): 200, and delta endpoints return `filter_not_applicable` as expected.
+13. Ingest round trip with a throwaway device id: post one schema-3 `panel_usage` and `connection_stability`, then read back `blob13, double9, double10` for that device; post the same batch again and confirm the engagement numbers for that device do not double. This writes two test rows into production AE; use staging if that is not acceptable.
+14. Deploy worker and dashboard Pages together (see above); `/health` `git_sha` matches.
+
+After the deploy, once a full UTC day has been written, run `server/telemetry-worker/scripts/reconcile.ts` for
+yesterday's UTC date and confirm expected and AE counts agree per kind.
 
 ### Creating the Analytics Engine API Token
 
@@ -286,6 +523,25 @@ If `HELIX_ANALYTICS_READ_TOKEN` needs to be recreated:
 
 ## Event Types
 
+### Envelope
+
+Every event is built through `src/system/telemetry_manager.cpp#stamp_envelope`,
+so these fields are on all of them and builders never set them by hand:
+
+| Field | Meaning |
+|-------|---------|
+| `schema_version` | `3` marks a delta-era client; `2` and earlier are older clients |
+| `app_version` | HelixScreen version that sent the event |
+| `app_platform` | Platform key (`mips` and similar are shared by several printers) |
+| `app_board` | Resolved printer board, which splits a shared platform key |
+| `boot_id` | 16 random hex characters, new per process start, never stored on the device |
+
+Plus the per-event `event`, `device_id` (double-hashed) and `timestamp`. The update events
+also carry their own `version` (the release moved to) and `from_version`; the worker maps
+those explicitly, so the stamped `app_version` never overwrites the update's target.
+
+### Events
+
 | Event | Description | Key Fields |
 |-------|-------------|------------|
 | `session` | App startup | platform, board, version, printer_model, kinematics, display, ram, cpu_cores |
@@ -296,13 +552,12 @@ If `HELIX_ANALYTICS_READ_TOKEN` needs to be recreated:
 | `memory_snapshot` | Periodic memory check | trigger, uptime_sec, rss_kb, vm_size_kb, vm_peak_kb, vm_hwm_kb, private_dirty_kb, private_clean_kb, shared_clean_kb, pss_kb, system_total_mb, system_available_mb |
 | `memory_warning` | Memory threshold breach | level, reason, rss_kb, vm_size_kb, vm_hwm_kb, vm_swap_kb, system_total_mb, system_available_mb, growth_5min_kb, private_dirty_kb, pss_kb |
 | `hardware_profile` | Hardware/feature inventory | printer.*, mcus.*, extruders.*, fans.*, steppers.*, leds.*, sensors.*, probe.*, capabilities.*, ams.*, tools.*, macros.*, printer_objects[] |
-| `settings_snapshot` | User configuration | theme, brightness_pct, locale, animations_enabled, time_format |
-| `panel_usage` | Session navigation summary | session_duration_sec, panel_time_sec.*, panel_visits.*, overlay_open_count |
-| `connection_stability` | Connection lifecycle | connect_count, disconnect_count, total_connected_sec, klippy_error_count |
+| `settings_snapshot` | User configuration | theme, theme_name, brightness_pct, screensaver_timeout_sec, screen_blank_timeout_sec, locale, sound_enabled, auto_update_channel, animations_enabled, time_format, home_widgets[], spoolman_configured, theme_changed, multi_printer |
+| `panel_usage` | Navigation delta for one window | boot_id, snapshot_seq, session_duration_sec (window length), panel_time_sec.*, panel_visits.*, widget_interactions.*, overlay_visits.*, overlay_open_count |
+| `connection_stability` | Connection delta for one window | boot_id, snapshot_seq, session_duration_sec, connect_count, disconnect_count, total_connected_sec, total_disconnected_sec, longest_disconnect_sec, klippy_error_count, klippy_shutdown_count |
 | `print_start_context` | Print metadata at start | source, has_thumbnail, file_size_bucket, slicer, ams_active |
 | `error_encountered` | Rate-limited error log | category, code, context, uptime_sec |
-| `performance_snapshot` | Frame-time percentiles and dropped-frame counts | frame_time_p50/p95/p99_ms, dropped_frame_count, total_frame_count, worst_panel |
-| `feature_adoption` | Which built-in features are in use | features{} boolean flags |
+| `performance_snapshot` | Frame-time percentiles and dropped-frame counts for the window | frame_time_p50/p95/p99_ms, dropped_frame_count, total_frame_count, worst_panel |
 | `settings_changes` | Batched setting diffs | changes[]: setting, old_value, new_value |
 | `async_lifetime_skips` | Deferred async work skipped at shutdown | skips[], window stats |
 
@@ -315,20 +570,36 @@ If `HELIX_ANALYTICS_READ_TOKEN` needs to be recreated:
 | `settings_snapshot` | After printer discovery | Once per launch |
 | `memory_snapshot` | Session start + hourly timer | ~1/hour |
 | `memory_warning` | Memory threshold breach | Rate-limited: 1/level/5min |
-| `panel_usage` | Periodic snapshot (4h) and app shutdown | ~every 4h |
-| `connection_stability` | Periodic snapshot (4h) and app shutdown | ~every 4h |
+| `panel_usage` | Periodic snapshot (4h) and app shutdown | ~every 4h; each carries only its own window |
+| `connection_stability` | Periodic snapshot (4h) and app shutdown | ~every 4h; each carries only its own window |
 | `print_outcome` | Print reaches terminal state | Per print |
 | `print_start_context` | Print starts (metadata callback) | Per print |
 | `error_encountered` | On non-fatal error | Rate-limited: 1/category/5min |
 | `performance_snapshot` | Hourly timer and app shutdown | ~1/hour |
-| `feature_adoption` | 5 minutes after startup | Once per session |
 | `settings_changes` | Debounced after a setting change | ~30s after the last change |
 | `async_lifetime_skips` | Periodic snapshot and app shutdown | With each `panel_usage` |
 | `crash` | Next boot after crash | Once per crash |
 | `update_failed` | Update failure | Per failure |
 | `update_success` | Next boot after update | Once per update |
 
-> **Note:** The dashboard views (Overview, Adoption, Prints, Crashes, Releases) currently query `session`, `print_outcome`, and `crash` events. Dashboard views for the newer event types (`hardware_profile`, `settings_snapshot`, `memory_snapshot`, `memory_warning`, `panel_usage`, `connection_stability`, `print_start_context`, `error_encountered`, `update_failed`, `update_success`) will be added in a future update.
+`panel_usage` and `connection_stability` are the delta events: see [Delta snapshots and
+the idempotency key](#delta-snapshots-and-the-idempotency-key). The client sends no `feature_adoption` event. Adoption is derived from the `overlay_visit` and `widget_interaction` points
+that `panel_usage` fans out to (see [Feature adoption](#feature-adoption)).
+
+### settings_snapshot adoption flags
+
+Three booleans cover features with no overlay or widget to visit:
+
+| Field | True when |
+|-------|-----------|
+| `spoolman_configured` | Moonraker reports Spoolman available |
+| `theme_changed` | The active theme is not the default |
+| `multi_printer` | The config holds more than one printer |
+
+Each is a tri-state `settings_snapshot` column (blobs 13-15): `"1"`, `"0"`, or empty for a
+client too old to send it. The Features view lists them under `configured`: devices that
+reported the flag on over devices that reported it at all
+(`server/telemetry-worker/src/index.ts#configuredFeature`).
 
 ### hardware_profile Event Details
 

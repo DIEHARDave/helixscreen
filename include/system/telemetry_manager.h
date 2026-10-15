@@ -96,6 +96,24 @@ extern std::atomic<int> active_panel_int;
 extern std::atomic<bool> gcode_renderer_loaded;
 } // namespace telemetry_context
 
+/**
+ * @brief Stable telemetry id for an overlay
+ *
+ * The root object's name is the XML component's identity and does not change
+ * with wording or translation; the lifecycle name is the fallback for roots
+ * that carry none. Both missing or empty yields "unnamed".
+ *
+ * @param root_obj_name Overlay root's lv_obj name (may be null)
+ * @param lifecycle_name IPanelLifecycle::get_name() (may be null)
+ */
+inline std::string overlay_telemetry_id(const char* root_obj_name, const char* lifecycle_name) {
+    if (root_obj_name && *root_obj_name)
+        return root_obj_name;
+    if (lifecycle_name && *lifecycle_name)
+        return lifecycle_name;
+    return "unnamed";
+}
+
 } // namespace helix
 
 /**
@@ -106,8 +124,9 @@ extern std::atomic<bool> gcode_renderer_loaded;
  * active after explicit user opt-in via the settings UI.
  *
  * Events are persisted to disk so they survive restarts. The event
- * queue is capped at MAX_QUEUE_SIZE; oldest events are dropped when
- * the cap is reached.
+ * queue is capped at MAX_QUEUE_SIZE; at the cap, delta events merge into
+ * a queued one of the same kind and other events evict the oldest
+ * non-delta event.
  */
 class TelemetryManager {
   public:
@@ -288,10 +307,12 @@ class TelemetryManager {
     void record_settings_snapshot();
 
     /**
-     * @brief Record a panel usage summary event at shutdown
+     * @brief Enqueue a panel_usage delta and start a new window
      *
-     * Finalizes panel time tracking and enqueues a panel_usage event
-     * with per-panel visit counts, time spent, and overlay count.
+     * The event carries the per-panel visit counts, time, widget interactions
+     * and overlay visits accumulated since this kind's previous delta, and
+     * session_duration_sec is that window's length. The accumulators reset to
+     * zero afterwards, so summing a boot's rows gives its totals.
      * No-op if telemetry is disabled.
      *
      * Must be called from the LVGL/main thread only (accesses session trackers).
@@ -315,7 +336,7 @@ class TelemetryManager {
      * Increments the overlay open counter and per-overlay visit count.
      * Always tracks regardless of enabled state.
      *
-     * @param overlay_name Human-readable overlay name (from IPanelLifecycle::get_name())
+     * @param overlay_name Stable overlay id (see overlay_telemetry_id())
      */
     void notify_overlay_opened(const std::string& overlay_name);
 
@@ -384,7 +405,9 @@ class TelemetryManager {
      *
      * Thread-safe: may be called from any thread.
      *
-     * @param category Error category ("moonraker_api", "websocket", "file_io", "display")
+     * @param category Error category, a short identifier matching [a-z0-9_]{1,32}
+     *                 (e.g. "moonraker_api", "websocket", "file_io", "display"); anything
+     *                 else is dropped
      * @param code Error code ("timeout", "http_4xx", "http_5xx", "parse_error",
      * "connection_refused")
      * @param context Pre-defined context string (not user data)
@@ -393,10 +416,12 @@ class TelemetryManager {
                       const std::string& context);
 
     /**
-     * @brief Record a connection stability summary event at shutdown
+     * @brief Enqueue a connection_stability delta and start a new window
      *
-     * Finalizes connection time tracking and enqueues a connection_stability
-     * event with connect/disconnect counts, durations, and Klippy errors.
+     * Counts and durations cover the window since this kind's previous delta.
+     * An outage still open at the window's end keeps its start, so
+     * longest_disconnect_sec measures it whole: to now while it is open, and
+     * in full in the window where it closes.
      * No-op if telemetry is disabled.
      *
      * Must be called from the LVGL/main thread only (accesses session trackers).
@@ -433,17 +458,6 @@ class TelemetryManager {
      * Must be called from the LVGL/main thread only (accesses frame ring buffer).
      */
     void record_performance_snapshot();
-
-    /**
-     * @brief Record a feature adoption event
-     *
-     * Captures which optional features (AMS, camera, macros, etc.) are actively
-     * used, recorded once per session after FEATURE_ADOPTION_DELAY_MS. No-op if
-     * telemetry is disabled.
-     *
-     * Must be called from the LVGL/main thread only.
-     */
-    void record_feature_adoption();
 
     /**
      * @brief Record an AsyncLifetimeGuard skip-rate snapshot
@@ -488,10 +502,12 @@ class TelemetryManager {
     void record_frame_time(uint32_t frame_time_us);
 
     /**
-     * @brief Trigger an immediate performance snapshot (e.g., at shutdown)
+     * @brief Emit this window's delta events and persist them
      *
-     * Fires the snapshot logic outside the normal timer cadence. Resets
-     * the snapshot timer if it is running. No-op if telemetry is disabled.
+     * Enqueues the panel_usage and connection_stability deltas under the
+     * current snapshot_seq, advances it, then saves the queue and the (now
+     * empty) accumulator so a power cut cannot lose or repeat the window.
+     * No-op if telemetry is disabled.
      *
      * Must be called from the LVGL/main thread only.
      */
@@ -745,7 +761,7 @@ class TelemetryManager {
     static constexpr uint32_t AUTO_SEND_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
 
     /** @brief Schema version for event JSON structure */
-    static constexpr int SCHEMA_VERSION = 2;
+    static constexpr int SCHEMA_VERSION = 3;
 
     /** @brief HTTPS endpoint for telemetry submission */
     static constexpr const char* ENDPOINT_URL = "https://telemetry.helixscreen.org/v1/events";
@@ -810,9 +826,6 @@ class TelemetryManager {
      *  wider period costs resolution, not samples. */
     static constexpr uint32_t FRAME_PERF_INTERVAL_MS = 60 * 60 * 1000;
 
-    /** @brief Delay after session start before recording feature adoption */
-    static constexpr uint32_t FEATURE_ADOPTION_DELAY_MS = 5 * 60 * 1000;
-
     /** @brief Debounce window for aggregating settings changes before recording */
     static constexpr uint32_t SETTINGS_DEBOUNCE_MS = 30 * 1000;
 
@@ -871,13 +884,47 @@ class TelemetryManager {
     nlohmann::json build_crash_event(const nlohmann::json& crash_data) const;
 
     /**
+     * @brief Write the envelope keys every event carries.
+     *
+     * Sets schema_version, app_version, app_platform, app_board and boot_id.
+     * Every build_*_event calls this first; a builder whose event describes a
+     * version other than the running binary's overwrites app_version afterwards.
+     */
+    void stamp_envelope(nlohmann::json& event) const;
+
+    /// 16 lowercase hex characters from the same RNG as generate_uuid_v4().
+    static std::string generate_boot_id();
+
+    /**
      * @brief Add an event to the queue (mutex-protected)
      *
-     * Drops the oldest event if the queue is at MAX_QUEUE_SIZE.
+     * At MAX_QUEUE_SIZE a delta event (panel_usage, connection_stability)
+     * merges into the newest queued one of its kind and boot that no send has
+     * attempted; any other event evicts the oldest non-delta event. Delta
+     * events are never evicted, since a lost delta is gone for good. Events in
+     * the batch a send has in flight are never touched: the send removes them
+     * by count.
      *
      * @param event JSON event object to enqueue
      */
     void enqueue_event(nlohmann::json event);
+
+    /// Copy the next batch from the front of the queue and mark it in flight
+    /// and attempted.
+    nlohmann::json claim_batch();
+
+    /// The body of build_batch() and claim_batch(). Caller holds mutex_.
+    nlohmann::json front_batch_locked() const;
+
+    /// Clear the in-flight mark once a send has finished with its batch.
+    void release_in_flight();
+
+    /// The hourly auto-send timer's work: send, memory snapshot, persistence.
+    void on_auto_send_tick();
+
+    /// The clock every session tracker reads: steady_clock, or the manual clock
+    /// TelemetryManagerTestAccess sets so a test can cover hours without waiting.
+    std::chrono::steady_clock::time_point tracker_now() const;
 
     /**
      * @brief Build a session start event JSON object
@@ -944,29 +991,28 @@ class TelemetryManager {
      */
     nlohmann::json build_settings_snapshot_event() const;
 
-    /**
-     * @brief Build a panel usage summary event JSON object
-     * @return JSON event with per-panel visit counts, time, and overlay count
-     */
-    nlohmann::json build_panel_usage_event() const;
+    /// The panel_usage fields accumulated since the window began, as of @p now.
+    nlohmann::json panel_usage_delta(std::chrono::steady_clock::time_point now) const;
 
-    /**
-     * @brief Build a connection stability summary event JSON object
-     * @return JSON event with connect/disconnect counts and durations
-     */
-    nlohmann::json build_connection_stability_event() const;
+    /// The connection_stability fields accumulated since the window began, as
+    /// of @p now. An open outage is measured from its real start.
+    nlohmann::json connection_stability_delta(std::chrono::steady_clock::time_point now) const;
+
+    /// Zero the panel accumulators and start a new window at @p now.
+    void reset_panel_usage_window(std::chrono::steady_clock::time_point now);
+
+    /// Zero the connection accumulators and start a new window at @p now.
+    /// The open outage, if any, keeps its start.
+    void reset_connection_window(std::chrono::steady_clock::time_point now);
+
+    /// Envelope, identity and sequence around a delta payload of @p kind.
+    nlohmann::json build_delta_event(const char* kind, const nlohmann::json& payload) const;
 
     /**
      * @brief Build a performance snapshot event JSON object
      * @return JSON event with frame time stats, dropped frame count, and uptime
      */
     nlohmann::json build_performance_snapshot_event() const;
-
-    /**
-     * @brief Build a feature adoption event JSON object
-     * @return JSON event listing which optional features are actively used
-     */
-    nlohmann::json build_feature_adoption_event() const;
 
     /**
      * @brief Build a settings changes event JSON object
@@ -995,17 +1041,14 @@ class TelemetryManager {
     /** @brief Stop the frame performance snapshot timer */
     void stop_frame_perf_timer();
 
-    /// Persist snapshot sequence counter to disk so it survives restarts
-    void save_snapshot_state() const;
+    /// Persist the unsent accumulator with this boot's id and next
+    /// snapshot_seq, so an unclean exit loses only the time since the save.
+    void save_accumulator() const;
 
-    /// Load snapshot sequence counter from disk (called from init())
-    void load_snapshot_state();
-
-    /// Create and arm the feature adoption delay LVGL timer
-    void start_feature_adoption_timer();
-
-    /// Delete the feature adoption delay LVGL timer (safe if nullptr)
-    void stop_feature_adoption_timer();
+    /// Emit a previous boot's persisted accumulator as one delta per kind under
+    /// that boot's id and next snapshot_seq, then delete the file. A delta the
+    /// loaded queue already holds under the same key is not emitted twice.
+    void recover_accumulator();
 
     /// Create and arm the settings debounce LVGL timer
     void start_settings_debounce_timer();
@@ -1101,12 +1144,16 @@ class TelemetryManager {
     /// Random salt for double-hashing, stored alongside UUID
     std::string device_salt_;
 
+    /// 16 lowercase hex characters minted by init(), never persisted. Identifies
+    /// one process lifetime so the server can tell a restart from a retry.
+    std::string boot_id_;
+
     // =========================================================================
     // EVENT QUEUE (mutex-protected)
     // =========================================================================
 
-    /// Protects queue_, events_dropped_since_send_, device_uuid_, device_salt_,
-    /// error_rate_limit_
+    /// Protects queue_, events_dropped_since_send_, in_flight_, attempted_, device_uuid_,
+    /// device_salt_, error_rate_limit_
     mutable std::mutex mutex_;
 
     /// Pending events awaiting transmission
@@ -1115,6 +1162,16 @@ class TelemetryManager {
     /// Events enqueue_event() discarded since the last batch reached the
     /// server. Non-zero means the next batch under-reports its window.
     size_t events_dropped_since_send_ = 0;
+
+    /// Leading queue_ entries a send has in flight. enqueue_event() leaves
+    /// them alone, because the send removes them by count when it succeeds.
+    size_t in_flight_ = 0;
+
+    /// Leading queue_ entries a send has POSTed, or a previous process loaded,
+    /// without a confirmed removal. The server may already hold them, so they
+    /// are only ever resent as they are and never merged into. Cleared only by
+    /// remove_sent_events(), never by a failed send.
+    size_t attempted_ = 0;
 
     // =========================================================================
     // CONFIGURATION
@@ -1171,7 +1228,8 @@ class TelemetryManager {
     // =========================================================================
     // SESSION TRACKERS (panel usage + connection stability)
     // All accessed from LVGL/main thread only — no mutex needed.
-    // notify_*() called via LVGL observers, record_*() called from shutdown().
+    // notify_*() called via LVGL observers; record_*() from the snapshot timer
+    // and shutdown(). Each holds only the window since that kind's last delta.
     // =========================================================================
 
     // Panel usage tracking
@@ -1198,6 +1256,18 @@ class TelemetryManager {
     int klippy_shutdown_count_{0};
     bool connection_tracking_connected_{false};
     std::chrono::steady_clock::time_point connection_state_start_time_;
+    /// Start of the outage in progress. Never moved by a snapshot, so an
+    /// outage spanning one is measured whole.
+    std::chrono::steady_clock::time_point outage_start_time_;
+
+    /// Start of the window the next delta of each kind covers.
+    std::chrono::steady_clock::time_point panel_window_start_;
+    std::chrono::steady_clock::time_point connection_window_start_;
+
+    /// Set only by TelemetryManagerTestAccess. When present, tracker_now()
+    /// returns it instead of steady_clock, so a window holds exactly the time a
+    /// test steps and none of the real time the test spends running.
+    std::optional<std::chrono::steady_clock::time_point> manual_clock_;
 
     // =========================================================================
     // PERIODIC SNAPSHOT STATE (LVGL/main thread only)
@@ -1209,7 +1279,8 @@ class TelemetryManager {
     /// LVGL timer that fires every FRAME_PERF_INTERVAL_MS for frame performance snapshots
     lv_timer_t* frame_perf_timer_{nullptr};
 
-    /// Monotonically increasing sequence number for snapshot events (persisted)
+    /// Sequence number of the next delta snapshot. Starts at 0 every boot;
+    /// with device_id and boot_id it is the delta's idempotency key.
     int snapshot_seq_{0};
 
     /// True when fire_periodic_snapshot() is called from shutdown path
@@ -1231,7 +1302,8 @@ class TelemetryManager {
     /// Write index for the next sample (mod FRAME_RING_SIZE)
     size_t frame_ring_idx_{0};
 
-    /// Number of valid samples currently in the ring (capped at FRAME_RING_SIZE)
+    /// Qualifying frames recorded since the last snapshot; exceeds FRAME_RING_SIZE once the
+    /// ring wraps, so the retained sample count is min(this, FRAME_RING_SIZE)
     size_t frame_ring_count_{0};
 
     /// Ordered list of panel names for panel_id → name lookup
@@ -1239,13 +1311,6 @@ class TelemetryManager {
 
     /// ID of the panel active at the time of the most recent frame sample
     uint16_t current_panel_id_{0};
-
-    // =========================================================================
-    // FEATURE ADOPTION STATE (LVGL/main thread only)
-    // =========================================================================
-
-    /// One-shot LVGL timer that fires after FEATURE_ADOPTION_DELAY_MS
-    lv_timer_t* feature_adoption_timer_{nullptr};
 
     // =========================================================================
     // SETTINGS CHANGE DEBOUNCE STATE (LVGL/main thread only)

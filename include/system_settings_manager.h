@@ -26,6 +26,9 @@ class SystemSettingsManager {
   public:
     static SystemSettingsManager& instance();
 
+    /// The static PersistedSetting table this manager is built from.
+    static settings::TableView persisted_table();
+
     // Non-copyable
     SystemSettingsManager(const SystemSettingsManager&) = delete;
     SystemSettingsManager& operator=(const SystemSettingsManager&) = delete;

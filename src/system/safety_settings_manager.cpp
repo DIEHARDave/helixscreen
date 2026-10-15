@@ -10,6 +10,7 @@
 #include "static_subject_registry.h"
 
 #include <algorithm>
+#include <iterator>
 
 using namespace helix;
 
@@ -19,18 +20,22 @@ using settings::Scope;
 // Row order is SafetySettingsManager::Key.
 static constexpr settings::PersistedSetting SAFETY_SETTINGS[] = {
     {"settings_estop_confirm", "/safety/estop_require_confirmation", Scope::Global, true, 1, 0, 1,
-     nullptr},
+     "estop_confirm"},
     {"settings_cancel_escalation_enabled", "/safety/cancel_escalation_enabled", Scope::Global, true,
-     0, 0, 1, nullptr},
+     0, 0, 1, "cancel_escalation_enabled"},
     {"settings_macro_confirm", "/safety/macro_require_confirmation", Scope::Global, true, 1, 0, 1,
-     nullptr},
+     "macro_confirm"},
     {"settings_allow_cold_extrude", "/safety/allow_cold_extrude", Scope::Global, true, 0, 0, 1,
-     nullptr},
+     "allow_cold_extrude"},
 };
 
 SafetySettingsManager& SafetySettingsManager::instance() {
     static SafetySettingsManager instance;
     return instance;
+}
+
+settings::TableView SafetySettingsManager::persisted_table() {
+    return {SAFETY_SETTINGS, std::size(SAFETY_SETTINGS)};
 }
 
 SafetySettingsManager::SafetySettingsManager() : settings_(SAFETY_SETTINGS) {

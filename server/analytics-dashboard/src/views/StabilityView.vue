@@ -11,7 +11,7 @@
         <div class="metrics-row">
           <MetricCard
             title="Crash Rate"
-            :value="`${overallCrashRate.toFixed(1)}%`"
+            :value="formatRate(overallCrashRate)"
             subtitle="of sessions"
             color="var(--accent-red)"
           />
@@ -29,8 +29,8 @@
           />
           <MetricCard
             title="Klippy Errors"
-            :value="totalKlippyErrors.toLocaleString()"
-            subtitle="in period"
+            :value="data.delta_era_devices > 0 ? totalKlippyErrors.toLocaleString() : '\u2014'"
+            :subtitle="data.delta_era_devices > 0 ? 'in period' : deltaEraPlaceholder(data)"
             color="#f97316"
           />
         </div>
@@ -54,7 +54,8 @@
         <div class="grid-2col">
           <div class="chart-section">
             <h3>Klippy Errors &amp; Shutdowns</h3>
-            <LineChart :data="klippyChartData" />
+            <DeltaEraWaiting v-if="data.delta_era_devices === 0" :era="data" />
+            <LineChart v-else :data="klippyChartData" />
           </div>
           <div class="chart-section">
             <h3>Memory Warnings Over Time</h3>
@@ -214,6 +215,7 @@
 import { ref, watch, computed } from 'vue'
 import AppLayout from '@/components/AppLayout.vue'
 import MetricCard from '@/components/MetricCard.vue'
+import DeltaEraWaiting from '@/components/DeltaEraWaiting.vue'
 import LineChart from '@/components/LineChart.vue'
 import BarChart from '@/components/BarChart.vue'
 import PieChart from '@/components/PieChart.vue'
@@ -222,7 +224,7 @@ import { api } from '@/services/api'
 import type { StabilityData } from '@/services/api'
 import type { ChartOptions } from 'chart.js'
 import { horizontalBarOpts, compareVersions } from '@/utils/chart'
-import { formatDuration, formatTimestamp, shortDeviceId } from '@/utils/format'
+import { formatDuration, formatRate, formatTimestamp, shortDeviceId, deltaEraPlaceholder } from '@/utils/format'
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16']
 
@@ -237,11 +239,13 @@ function signalClass(signal: string): string {
   return 'signal-other'
 }
 
-const overallCrashRate = computed(() => {
+// 0-1, or null when the filters make the crash rate inapplicable.
+const overallCrashRate = computed((): number | null => {
   const trend = data.value?.crash_rate_trend ?? []
+  if (trend.some(d => d.rate === null)) return null
   const crashes = trend.reduce((sum, d) => sum + d.crashes, 0)
   const sessions = trend.reduce((sum, d) => sum + d.sessions, 0)
-  return sessions > 0 ? (crashes / sessions) * 100 : 0
+  return sessions > 0 ? crashes / sessions : 0
 })
 
 const totalMemoryWarnings = computed(() =>
@@ -274,7 +278,7 @@ const crashRateOpts: ChartOptions<'line'> = {
           const trend = data.value?.crash_rate_trend ?? []
           const point = trend[idx]
           if (point) {
-            return `Rate: ${(point.rate * 100).toFixed(2)}% (${point.crashes} crashes / ${point.sessions} sessions)`
+            return `Rate: ${formatRate(point.rate, 2)} (${point.crashes} crashes / ${point.sessions} sessions)`
           }
           return `${ctx.formattedValue}%`
         }
@@ -303,7 +307,7 @@ const crashRateChartData = computed(() => ({
   labels: data.value?.crash_rate_trend.map(d => d.date) ?? [],
   datasets: [{
     label: 'Crash Rate %',
-    data: data.value?.crash_rate_trend.map(d => d.rate * 100) ?? [],
+    data: data.value?.crash_rate_trend.map(d => (d.rate === null ? null : d.rate * 100)) ?? [],
     borderColor: '#ef4444',
     backgroundColor: 'rgba(239, 68, 68, 0.1)',
     fill: true,
@@ -317,7 +321,7 @@ const versionChartData = computed(() => {
     labels: sorted.map(v => v.version),
     datasets: [{
       label: 'Crash Rate %',
-      data: sorted.map(v => v.rate * 100),
+      data: sorted.map(v => (v.rate === null ? null : v.rate * 100)),
       backgroundColor: '#ef4444'
     }]
   }

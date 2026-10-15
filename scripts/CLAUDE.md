@@ -74,7 +74,6 @@ what each script is for; the script's own header carries the reasoning behind it
 | `telemetry-printer-profiles.py` | Printer detection analysis: model distribution, name clustering, candidate heuristics, DB validation |
 | `telemetry-update-printer-db.py` | Interactive updater: walks the operator through `printer_database.json` entries and presets from a profile analysis |
 | `telemetry-crashes.py` | Resolve ASLR crash addresses → function names, group by signature. `--anomalies` surfaces non-fatal `error_encountered` events. Resolution uses the bundle's `runtime_anchor=` field; older bundles fall back to raw hex |
-| `telemetry-backfill.sh` | Backfill Analytics Engine from R2 (90-day retention limit) |
 | `resolve-backtrace.sh` | Resolve raw backtrace addresses with the `.sym` files from R2. `--bundle <debug-bundle.json>` (warns when its `crash_report` is not the `crash_txt` crash), `--crash-file`, `--issue <N>` (both worker output shapes; frames only, never register tables). Prints the app-code call spine and a crash-context analysis: crashing thread, `LV_EVENT_*` decode, a warning when the LVGL header fields belong to the main thread rather than the crashing one |
 | `debug-bundle.sh` | Fetch and display debug bundles from `crash.helixscreen.org` |
 | `freeze-drops.sh` | Aggregate UpdateQueue `DROPPED` events across device logs, debug bundles or files (`--ssh <host>`, `--bundle <file>`), cross-referencing each tag to its source and whether it already uses `defer_critical` |

@@ -23,13 +23,13 @@
           <MetricCard title="Total Events" :value="data.total_events.toLocaleString()" />
           <MetricCard
             title="Crash Rate"
-            :value="`${(data.crash_rate * 100).toFixed(1)}%`"
-            :color="data.crash_rate * 100 > 5 ? 'var(--accent-red)' : 'var(--accent-green)'"
+            :value="formatRate(data.crash_rate)"
+            :color="data.crash_rate === null ? 'var(--text-secondary)' : data.crash_rate * 100 > 5 ? 'var(--accent-red)' : 'var(--accent-green)'"
           />
           <MetricCard
             title="Print Success Rate"
-            :value="`${(data.print_success_rate * 100).toFixed(1)}%`"
-            color="var(--accent-green)"
+            :value="formatRate(data.print_success_rate)"
+            :color="data.print_success_rate === null ? 'var(--text-secondary)' : 'var(--accent-green)'"
           />
         </div>
 
@@ -56,6 +56,7 @@
 import { ref, watch, computed } from 'vue'
 import AppLayout from '@/components/AppLayout.vue'
 import MetricCard from '@/components/MetricCard.vue'
+import { formatRate } from '@/utils/format'
 import LineChart from '@/components/LineChart.vue'
 import { useFiltersStore } from '@/stores/filters'
 import { api } from '@/services/api'

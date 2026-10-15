@@ -7,10 +7,17 @@
 
       <div v-if="loading" class="loading">Loading...</div>
       <div v-else-if="error" class="error">{{ error }}</div>
+      <DeltaEraWaiting v-else-if="data && data.delta_era_devices === 0" :era="data" />
       <template v-else-if="data">
         <div class="metrics-row">
           <MetricCard
-            title="Features Tracked"
+            title="Devices on New Client"
+            :value="data.delta_era_devices.toLocaleString()"
+            subtitle="the adoption denominator"
+            color="var(--accent-yellow)"
+          />
+          <MetricCard
+            title="Features Used"
             :value="String(data.features.length)"
             color="var(--accent-blue)"
           />
@@ -27,21 +34,38 @@
         </div>
 
         <div class="chart-section">
-          <h3>Feature Adoption Rates (% of devices)</h3>
+          <h3>Overlay and Widget Adoption (% of devices that used each at least once)</h3>
           <BarChart :data="adoptionChartData" :options="horizontalBarOpts" />
         </div>
 
         <div class="chart-section">
-          <h3>Never Touched (lowest adoption)</h3>
+          <h3>Configured in Settings (% of devices reporting each)</h3>
+          <table class="data-table">
+            <thead>
+              <tr><th>Setting</th><th>Adoption %</th><th>Devices On</th><th>Devices Reporting</th></tr>
+            </thead>
+            <tbody>
+              <tr v-for="f in data.configured" :key="f.id">
+                <td>{{ titleCase(f.id) }}</td>
+                <td>{{ f.adoption_rate === null ? 'No reports yet' : `${(f.adoption_rate * 100).toFixed(1)}%` }}</td>
+                <td>{{ f.devices }}</td>
+                <td>{{ f.reported }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="chart-section">
+          <h3>Least Adopted</h3>
           <table class="data-table">
             <thead>
               <tr><th>Feature</th><th>Adoption %</th><th>Devices Using</th></tr>
             </thead>
             <tbody>
-              <tr v-for="f in neverTouched" :key="f.name">
-                <td>{{ titleCase(f.name) }}</td>
+              <tr v-for="f in leastAdopted" :key="f.id">
+                <td>{{ titleCase(f.id) }}</td>
                 <td>{{ (f.adoption_rate * 100).toFixed(1) }}%</td>
-                <td>{{ Math.round(f.adoption_rate * data.total_devices) }}</td>
+                <td>{{ f.devices }}</td>
               </tr>
             </tbody>
           </table>
@@ -55,6 +79,7 @@
 import { ref, watch, computed } from 'vue'
 import AppLayout from '@/components/AppLayout.vue'
 import MetricCard from '@/components/MetricCard.vue'
+import DeltaEraWaiting from '@/components/DeltaEraWaiting.vue'
 import BarChart from '@/components/BarChart.vue'
 import { useFiltersStore } from '@/stores/filters'
 import { api } from '@/services/api'
@@ -69,19 +94,19 @@ const error = ref('')
 
 const mostUsed = computed(() => {
   const f = data.value?.features[0]
-  return f ? `${titleCase(f.name)} (${(f.adoption_rate * 100).toFixed(0)}%)` : 'N/A'
+  return f ? `${titleCase(f.id)} (${(f.adoption_rate * 100).toFixed(0)}%)` : 'N/A'
 })
 
 const leastUsed = computed(() => {
   const features = data.value?.features ?? []
   const f = features[features.length - 1]
-  return f ? `${titleCase(f.name)} (${(f.adoption_rate * 100).toFixed(0)}%)` : 'N/A'
+  return f ? `${titleCase(f.id)} (${(f.adoption_rate * 100).toFixed(0)}%)` : 'N/A'
 })
 
 const adoptionChartData = computed(() => {
   const sorted = [...(data.value?.features ?? [])].sort((a, b) => b.adoption_rate - a.adoption_rate)
   return {
-    labels: sorted.map(f => titleCase(f.name)),
+    labels: sorted.map(f => titleCase(f.id)),
     datasets: [{
       label: 'Adoption %',
       data: sorted.map(f => +(f.adoption_rate * 100).toFixed(1)),
@@ -90,7 +115,8 @@ const adoptionChartData = computed(() => {
   }
 })
 
-const neverTouched = computed(() =>
+// Only ids some device used are reported, so this is the tail of what was used.
+const leastAdopted = computed(() =>
   [...(data.value?.features ?? [])]
     .sort((a, b) => a.adoption_rate - b.adoption_rate)
     .slice(0, 10)
@@ -114,7 +140,7 @@ watch(() => filters.queryString, fetchData, { immediate: true })
 <style scoped>
 .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
 .page-header h2 { font-size: 20px; font-weight: 600; }
-.metrics-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+.metrics-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
 .chart-section { margin-bottom: 24px; }
 .chart-section h3 { font-size: 14px; font-weight: 500; color: var(--text-secondary); margin-bottom: 12px; }
 .data-table { width: 100%; border-collapse: collapse; }

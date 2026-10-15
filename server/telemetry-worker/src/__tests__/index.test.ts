@@ -2,9 +2,14 @@
 // Tests for telemetry worker endpoints.
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import worker from "../index";
+import worker, { configuredFeature, deriveFeatureAdoption, toYesNo } from "../index";
+import { col } from "../schema";
 import { mapEventToDataPoints } from "../analytics";
+import * as queries from "../queries";
 import { parseRange } from "../queries";
+import { buildReconcileTable, countR2Points, parseEnvValue } from "../../scripts/reconcile";
+import { compareVersions } from "../versions";
+import { compareVersions as dashboardCompareVersions } from "../../../analytics-dashboard/src/utils/chart";
 
 // Mock the executeQuery function so dashboard tests don't hit real Cloudflare API
 vi.mock("../queries", async (importOriginal) => {
@@ -147,7 +152,12 @@ describe("GET /health", () => {
     const res = await worker.fetch(makeRequest("/health"), createEnv());
     expect(res.status).toBe(200);
     const data = await res.json();
-    expect(data).toEqual({ status: "healthy" });
+    expect(data).toEqual({ status: "healthy", git_sha: "unknown" });
+  });
+
+  it("reports the deployed git sha", async () => {
+    const res = await worker.fetch(makeRequest("/health"), { ...createEnv(), GIT_SHA: "abc1234" });
+    expect(await res.json()).toEqual({ status: "healthy", git_sha: "abc1234" });
   });
 
   it("includes CORS headers", async () => {
@@ -786,7 +796,7 @@ describe("mapEventToDataPoints", () => {
     expect(dp.blobs![1]).toBe("success");
     expect(dp.blobs![2]).toBe("PLA");
     expect(dp.blobs![3]).toBe("0.9.19");
-    expect(dp.blobs).toHaveLength(12);
+    expect(dp.blobs).toHaveLength(14);
     expect(dp.doubles![0]).toBe(3600);
     expect(dp.doubles![1]).toBe(210);
     expect(dp.doubles![2]).toBe(60);
@@ -897,7 +907,7 @@ describe("mapEventToDataPoints", () => {
     expect(dp.blobs![5]).toBe("stm32f446");
     expect(dp.blobs![6]).toBe("beacon");
     expect(dp.blobs![7]).toBe("afc");
-    expect(dp.blobs).toHaveLength(12);
+    expect(dp.blobs).toHaveLength(13);
     expect(dp.doubles![3]).toBe(42);
     expect(dp.doubles).toHaveLength(8);
   });
@@ -1245,8 +1255,21 @@ describe("Dashboard endpoints", () => {
       expect(data.active_devices).toBe(0);
       expect(data.total_events).toBe(0);
       expect(data.crash_rate).toBe(0);
-      expect(data.print_success_rate).toBe(0);
+      expect(data.print_success_rate).toBeNull();
       expect(data.events_over_time).toEqual([]);
+    });
+
+    it("reports no print success rate under a filter that excludes print_outcome", async () => {
+      mockExecuteQuery.mockResolvedValue({
+        data: [{ active_devices: 1, total_events: 1, crash_count: 0, session_count: 1, successes: 5, total: 10 }],
+      });
+      const res = await worker.fetch(
+        dashboardRequest("/v1/dashboard/overview?model=Voron"),
+        env,
+      );
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.print_success_rate).toBeNull();
     });
   });
 
@@ -1373,6 +1396,187 @@ describe("Dashboard endpoints", () => {
       const data = await res.json();
       expect(data.by_version[0].rate).toBe(0);
       expect(data.by_version[0].session_count).toBe(0);
+    });
+  });
+
+  /** Answers each query by the first rule whose text the SQL contains; anything else is empty. */
+  function mockBySql(rules: Array<[string, Array<Record<string, unknown>>]>) {
+    mockExecuteQuery.mockImplementation(async (_config, sql) => {
+      for (const [needle, data] of rules) if (sql.includes(needle)) return { data };
+      return { data: [] };
+    });
+  }
+
+  // `any`: each test reads its own endpoint's response shape.
+  async function dashboard(path: string): Promise<any> {
+    const res = await worker.fetch(dashboardRequest(path), env);
+    expect(res.status).toBe(200);
+    return res.json();
+  }
+
+  // -- Delta-era endpoints --
+
+  describe("delta-era values", () => {
+    it("engagement is null with a device count until a schema-3 client reports", async () => {
+      mockBySql([
+        ["as delta_era_devices", [{ delta_era_devices: 0 }]],
+        ["as avg_session_sec", [{ avg_session_sec: 120 }]],
+      ]);
+      const data = await dashboard("/v1/dashboard/engagement");
+      expect(data.avg_session_sec).toBeNull();
+      expect(data.delta_era_devices).toBe(0);
+    });
+
+    it("engagement reports the boot-average session once devices report", async () => {
+      mockBySql([
+        ["as delta_era_devices", [{ delta_era_devices: 3 }]],
+        ["toDate(written_at)", [{ date: "2026-10-14", avg_session_sec: 90 }]],
+        ["as avg_session_sec", [{ avg_session_sec: 120 }]],
+      ]);
+      const data = await dashboard("/v1/dashboard/engagement");
+      expect(data.avg_session_sec).toBe(120);
+      expect(data.delta_era_devices).toBe(3);
+      expect(data.session_duration_trend).toEqual([{ date: "2026-10-14", avg_session_sec: 90 }]);
+    });
+
+    it("a resent snapshot reaches the panel totals once", async () => {
+      // AE stores the resend as a second identical row; the dedup subquery
+      // returns the panel once, and the endpoint passes that through.
+      mockBySql([
+        ["as delta_era_devices", [{ delta_era_devices: 1 }]],
+        ["as total_time_sec", [{ panel: "controls", total_time_sec: 60 }]],
+      ]);
+      const data = await dashboard("/v1/dashboard/engagement");
+      expect(data.panel_time).toEqual([{ panel: "controls", total_time_sec: 60 }]);
+      const panelSql = mockExecuteQuery.mock.calls
+        .map((c) => c[1] as string)
+        .find((sql) => sql.includes("as total_time_sec"))!;
+      expect(panelSql).toMatch(/FROM \(\s*SELECT .* GROUP BY \S+, \S+, \S+, \S+\s*\)/s);
+    });
+
+    it("ux insights is null until a schema-3 client reports", async () => {
+      mockBySql([
+        ["as delta_era_devices", [{ delta_era_devices: 0 }]],
+        ["as avg_session_sec", [{ avg_session_sec: 120 }]],
+      ]);
+      const data = await dashboard("/v1/dashboard/ux");
+      expect(data.avg_session_sec).toBeNull();
+      expect(data.delta_era_devices).toBe(0);
+    });
+
+    it("reliability's longest outage is null until a schema-3 client reports", async () => {
+      mockBySql([
+        ["as delta_era_devices", [{ delta_era_devices: 0 }]],
+        ["as max_disconnect_sec", [{ max_disconnect_sec: 30 }]],
+      ]);
+      const data = await dashboard("/v1/dashboard/reliability");
+      expect(data.max_disconnect_sec).toBeNull();
+      expect(data.delta_era_devices).toBe(0);
+    });
+
+    it("reliability reports the longest outage once devices report", async () => {
+      mockBySql([
+        ["as delta_era_devices", [{ delta_era_devices: 2 }]],
+        ["as max_disconnect_sec", [{ max_disconnect_sec: 30 }]],
+      ]);
+      const data = await dashboard("/v1/dashboard/reliability");
+      expect(data.max_disconnect_sec).toBe(30);
+    });
+
+    it("stability carries the device count beside the klippy trend", async () => {
+      mockBySql([
+        ["as delta_era_devices", [{ delta_era_devices: 4 }]],
+        ["as shutdowns", [{ date: "2026-10-14", errors: 2, shutdowns: 1 }]],
+      ]);
+      const data = await dashboard("/v1/dashboard/stability");
+      expect(data.delta_era_devices).toBe(4);
+      expect(data.klippy_trend).toEqual([{ date: "2026-10-14", errors: 2, shutdowns: 1 }]);
+    });
+
+    it("features are adoption derived from overlay and widget deltas", async () => {
+      mockBySql([
+        ["as delta_era_devices", [{ delta_era_devices: 4 }]],
+        ["as overlay_name", [{ id: "fan_control_overlay", devices: 2 }]],
+        ["as widget_id", [{ id: "temperature", devices: 1 }]],
+      ]);
+      const data = await dashboard("/v1/dashboard/features");
+      expect(data.delta_era_devices).toBe(4);
+      expect(data.features).toEqual([
+        { id: "fan_control_overlay", devices: 2, adoption_rate: 0.5 },
+        { id: "temperature", devices: 1, adoption_rate: 0.25 },
+      ]);
+      for (const [, sql] of mockExecuteQuery.mock.calls) expect(sql).not.toContain("feature_adoption");
+    });
+
+    it("features report the configured flags beside derived adoption", async () => {
+      const flag = (f: string) => `${col("settings_snapshot", f)} as name`;
+      mockBySql([
+        ["as delta_era_devices", [{ delta_era_devices: 4 }]],
+        [flag("spoolman_configured"), [{ name: "1", count: 1 }, { name: "0", count: 3 }]],
+        [flag("multi_printer"), [{ name: 0, count: 2 }]],
+      ]);
+      const data = await dashboard("/v1/dashboard/features");
+      expect(data.configured).toEqual([
+        { id: "spoolman_configured", devices: 1, reported: 4, adoption_rate: 0.25 },
+        { id: "theme_changed", devices: 0, reported: 0, adoption_rate: null },
+        { id: "multi_printer", devices: 0, reported: 2, adoption_rate: 0 },
+      ]);
+    });
+  });
+
+  describe("a filter the delta kinds do not carry", () => {
+    const ENDPOINTS = ["engagement", "ux", "features", "reliability", "stability"];
+
+    it("is named on every delta-era endpoint under model=", async () => {
+      for (const name of ENDPOINTS) {
+        mockBySql([]);
+        const data = await dashboard(`/v1/dashboard/${name}?model=Voron`);
+        expect(data.filter_not_applicable, name).toBe("model");
+      }
+    });
+
+    it("is null with no filter", async () => {
+      for (const name of ENDPOINTS) {
+        mockBySql([]);
+        const data = await dashboard(`/v1/dashboard/${name}`);
+        expect(data.filter_not_applicable, name).toBeNull();
+      }
+    });
+
+    it("is null under board= because every delta kind carries it", async () => {
+      for (const name of ENDPOINTS) {
+        mockBySql([]);
+        expect((await dashboard(`/v1/dashboard/${name}?board=k1`)).filter_not_applicable, name).toBeNull();
+      }
+    });
+  });
+
+  describe("crash rate under a filter that excludes crashes", () => {
+    const crashRows: Array<[string, Array<Record<string, unknown>>]> = [
+      ["as crash_count", [{ crash_count: 0, session_count: 10 }]],
+      ["as session_count", [{ date: "2026-10-14", ver: "1.0.0", platform: "pi", session_count: 10, device_count: 2 }]],
+    ];
+
+    it("overview reads n/a, not 0%", async () => {
+      mockBySql(crashRows);
+      expect((await dashboard("/v1/dashboard/overview?model=Voron")).crash_rate).toBeNull();
+      mockBySql(crashRows);
+      expect((await dashboard("/v1/dashboard/overview?platform=pi")).crash_rate).toBe(0);
+    });
+
+    it("crashes reads n/a on every rate", async () => {
+      mockBySql(crashRows);
+      const data = await dashboard("/v1/dashboard/crashes?model=Voron");
+      expect(data.trailing_14d.rate).toBeNull();
+      expect(data.by_platform.length).toBeGreaterThan(0);
+      for (const p of data.by_platform) expect(p.rate).toBeNull();
+    });
+
+    it("stability's crash rate trend reads n/a", async () => {
+      mockBySql(crashRows);
+      const data = await dashboard("/v1/dashboard/stability?model=Voron");
+      expect(data.crash_rate_trend.length).toBeGreaterThan(0);
+      for (const d of data.crash_rate_trend) expect(d.rate).toBeNull();
     });
   });
 
@@ -1538,6 +1742,22 @@ describe("Dashboard endpoints", () => {
       expect(data.versions[0].update_success_rate).toBeCloseTo(0.1);
     });
 
+    it("reports a null print success rate for a version with no prints", async () => {
+      mockExecuteQuery
+        .mockResolvedValueOnce({
+          data: [{ ver: "0.9.18", total_sessions: 10, total_crashes: 0 }],
+        })
+        .mockResolvedValueOnce({ data: [{ ver: "0.9.18", active_devices: 5 }] })
+        .mockResolvedValueOnce({ data: [] });
+
+      const res = await worker.fetch(
+        dashboardRequest("/v1/dashboard/releases?versions=v0.9.18"),
+        env,
+      );
+      const data = await res.json();
+      expect(data.versions[0].print_success_rate).toBeNull();
+    });
+
     it("requires versions parameter", async () => {
       const res = await worker.fetch(
         dashboardRequest("/v1/dashboard/releases"),
@@ -1569,152 +1789,346 @@ describe("Dashboard endpoints", () => {
   });
 });
 
-// ---------- Backfill endpoint tests ----------
+// ---------- Admin routes that do not exist ----------
 
 describe("POST /v1/admin/backfill", () => {
-  let env: ReturnType<typeof createEnv>;
+  it("returns 404 even for an authenticated request", async () => {
+    const res = await worker.fetch(
+      makeRequest("/v1/admin/backfill", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-API-Key": "test-admin-key" },
+        body: JSON.stringify({ events: [validEvent()] }),
+      }),
+      createEnv(),
+    );
+    expect(res.status).toBe(404);
+  });
+});
 
-  function backfillRequest(body: unknown, apiKey = "test-admin-key") {
-    return makeRequest("/v1/admin/backfill", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-API-Key": apiKey,
-      },
-      body: JSON.stringify(body),
+// ---------- AE per-kind counts ----------
+
+describe("aeCountsQuery", () => {
+  it("groups by index1 and filters on the given date", () => {
+    const sql = queries.aeCountsQuery("2026-10-12");
+    expect(sql).toContain("toDate(timestamp) = '2026-10-12'");
+    expect(sql).toContain("GROUP BY kind");
+    expect(sql).toContain("count() AS row_count");
+    expect(sql).toContain("sum(_sample_interval) AS weighted");
+    expect(sql).toContain("count(DISTINCT blob1) AS devices");
+    expect(sql).not.toContain("uniqExact");
+  });
+
+  it.each(["2026-10-12'; --", "2026-10-1", "20261012", "", "2026-13-45", "2026-02-30"])(
+    "rejects %j before building any SQL",
+    (bad) => {
+      expect(() => queries.aeCountsQuery(bad)).toThrow();
+    },
+  );
+});
+
+describe("GET /v1/admin/ae-counts", () => {
+  function aeCountsRequest(search: string, apiKey?: string) {
+    return makeRequest(`/v1/admin/ae-counts${search}`, {
+      headers: apiKey ? { "X-API-Key": apiKey } : {},
     });
   }
 
   beforeEach(() => {
-    env = createEnv();
+    mockExecuteQuery.mockReset();
   });
 
-  // -- Auth --
-
-  it("rejects unauthenticated requests", async () => {
-    const req = makeRequest("/v1/admin/backfill", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ events: [] }),
-    });
-    const res = await worker.fetch(req, env);
+  it("rejects a request without the admin key", async () => {
+    const res = await worker.fetch(aeCountsRequest("?date=2026-10-12"), createEnv());
     expect(res.status).toBe(401);
+    expect(mockExecuteQuery).not.toHaveBeenCalled();
   });
 
-  it("rejects INGEST key", async () => {
+  it("rejects the ingest key", async () => {
     const res = await worker.fetch(
-      backfillRequest({ events: [validEvent()] }, "test-ingest-key"),
-      env,
+      aeCountsRequest("?date=2026-10-12", "test-ingest-key"),
+      createEnv(),
     );
     expect(res.status).toBe(401);
   });
 
-  // -- Validation --
+  it.each(["", "?date=nope", "?date=2026-10-12'; --"])(
+    "returns 400 for a bad date (%j)",
+    async (search) => {
+      const res = await worker.fetch(aeCountsRequest(search, "test-admin-key"), createEnv());
+      expect(res.status).toBe(400);
+      expect(mockExecuteQuery).not.toHaveBeenCalled();
+    },
+  );
 
-  it("rejects non-JSON content type", async () => {
-    const req = makeRequest("/v1/admin/backfill", {
-      method: "POST",
-      headers: {
-        "Content-Type": "text/plain",
-        "X-API-Key": "test-admin-key",
-      },
-      body: "not json",
-    });
-    const res = await worker.fetch(req, env);
-    expect(res.status).toBe(400);
-    const data = await res.json();
-    expect(data.error).toContain("application/json");
-  });
-
-  it("rejects invalid JSON", async () => {
-    const req = makeRequest("/v1/admin/backfill", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-API-Key": "test-admin-key",
-      },
-      body: "not json{{{",
-    });
-    const res = await worker.fetch(req, env);
-    expect(res.status).toBe(400);
-    const data = await res.json();
-    expect(data.error).toContain("Invalid JSON");
-  });
-
-  it("rejects array body (must be object)", async () => {
-    const res = await worker.fetch(backfillRequest([validEvent()]), env);
-    expect(res.status).toBe(400);
-    const data = await res.json();
-    expect(data.error).toContain("object");
-  });
-
-  it("rejects body without events array", async () => {
-    const res = await worker.fetch(backfillRequest({ events: "not array" }), env);
-    expect(res.status).toBe(400);
-    const data = await res.json();
-    expect(data.error).toContain("events must be an array");
-  });
-
-  it("rejects empty events array", async () => {
-    const res = await worker.fetch(backfillRequest({ events: [] }), env);
-    expect(res.status).toBe(400);
-    const data = await res.json();
-    expect(data.error).toContain("empty");
-  });
-
-  it("returns 503 when Analytics Engine is not configured", async () => {
-    const noAnalyticsEnv = createEnv();
-    (noAnalyticsEnv as Record<string, unknown>).TELEMETRY_ANALYTICS = undefined;
+  it("returns the per-kind rows for the date", async () => {
+    mockExecuteQuery.mockResolvedValue({
+      data: [
+        { kind: "session", row_count: 10, weighted: 12, devices: 7 },
+        { kind: "panel_usage", row_count: 40, weighted: 40, devices: 5 },
+      ],
+    } as never);
     const res = await worker.fetch(
-      backfillRequest({ events: [validEvent()] }),
-      noAnalyticsEnv,
+      aeCountsRequest("?date=2026-10-12", "test-admin-key"),
+      createEnv(),
     );
-    expect(res.status).toBe(503);
-    const data = await res.json();
-    expect(data.error).toContain("not configured");
-  });
-
-  // -- Happy path --
-
-  it("writes events to Analytics Engine and returns count", async () => {
-    const events = [
-      { event: "session", device_id: "dev-1", version: "0.9.19" },
-      { event: "crash", device_id: "dev-2", signal_name: "SIGSEGV" },
-      { event: "print_outcome", device_id: "dev-3", outcome: "success" },
-    ];
-    const res = await worker.fetch(backfillRequest({ events }), env);
     expect(res.status).toBe(200);
-    const data = await res.json();
-    expect(data.status).toBe("ok");
-    expect(data.written).toBe(3);
-    expect(env.TELEMETRY_ANALYTICS.writeDataPoint).toHaveBeenCalledTimes(3);
-  });
-
-  it("continues backfilling when individual events fail", async () => {
-    const analytics = createMockAnalyticsEngine();
-    let callCount = 0;
-    analytics.writeDataPoint = vi.fn(() => {
-      callCount++;
-      if (callCount === 2) throw new Error("bad event");
+    expect(await res.json()).toEqual({
+      date: "2026-10-12",
+      kinds: [
+        { kind: "session", rows: 10, weighted: 12, devices: 7 },
+        { kind: "panel_usage", rows: 40, weighted: 40, devices: 5 },
+      ],
     });
-    const failEnv = createEnv({ TELEMETRY_ANALYTICS: analytics });
-
-    const events = [
-      { event: "session", device_id: "dev-1" },
-      { event: "bad", device_id: "dev-2" },
-      { event: "session", device_id: "dev-3" },
-    ];
-    const res = await worker.fetch(backfillRequest({ events }), failEnv);
-    expect(res.status).toBe(200);
-    const data = await res.json();
-    expect(data.written).toBe(2); // 1st and 3rd succeed
-    expect(analytics.writeDataPoint).toHaveBeenCalledTimes(3);
+    expect(mockExecuteQuery.mock.calls[0][1]).toBe(queries.aeCountsQuery("2026-10-12"));
   });
 
-  it("does not write to R2 (backfill is Analytics Engine only)", async () => {
-    const putSpy = vi.spyOn(env.TELEMETRY_BUCKET, "put");
-    const events = [{ event: "session", device_id: "dev-1" }];
-    await worker.fetch(backfillRequest({ events }), env);
-    expect(putSpy).not.toHaveBeenCalled();
+  it("returns 502 when the SQL API fails", async () => {
+    mockExecuteQuery.mockRejectedValue(new Error("SQL API down"));
+    const res = await worker.fetch(
+      aeCountsRequest("?date=2026-10-12", "test-admin-key"),
+      createEnv(),
+    );
+    expect(res.status).toBe(502);
+  });
+});
+
+// ---------- reconcile script ----------
+
+describe("buildReconcileTable", () => {
+  it("joins R2 point counts with AE rows and computes kept%", () => {
+    const table = buildReconcileTable(
+      { session: 10, panel_usage: 4, crash: 2 },
+      [
+        { kind: "session", rows: 9, weighted: 10, devices: 5 },
+        { kind: "panel_usage", rows: 1, weighted: 2, devices: 1 },
+        { kind: "ae_only", rows: 3, weighted: 3, devices: 1 },
+      ],
+    );
+    expect(table).toEqual([
+      { kind: "crash", r2_points: 2, ae_rows: 0, ae_weighted: 0, "kept%": "0.0" },
+      { kind: "panel_usage", r2_points: 4, ae_rows: 1, ae_weighted: 2, "kept%": "50.0" },
+      { kind: "session", r2_points: 10, ae_rows: 9, ae_weighted: 10, "kept%": "100.0" },
+      { kind: "ae_only", r2_points: 0, ae_rows: 3, ae_weighted: 3, "kept%": "n/a" },
+    ]);
+  });
+
+  it("sorts kinds present in R2 alphabetically, then AE-only kinds", () => {
+    const table = buildReconcileTable({ b: 1, a: 1 }, [{ kind: "z", rows: 1, weighted: 1, devices: 1 }]);
+    expect(table.map((r) => r.kind)).toEqual(["a", "b", "z"]);
+  });
+});
+
+describe("parseEnvValue", () => {
+  const text = [
+    "# comment",
+    "OTHER=nope",
+    "HELIX_TELEMETRY_ADMIN_KEY=abc123",
+    "",
+  ].join("\n");
+
+  it("reads a plain KEY=VALUE line, as .env.telemetry is written", () => {
+    expect(parseEnvValue(text, "HELIX_TELEMETRY_ADMIN_KEY")).toBe("abc123");
+  });
+
+  it("accepts export prefix, quotes and CRLF, and the last assignment wins", () => {
+    expect(parseEnvValue('A=1\r\nexport A="two"\r\n', "A")).toBe("two");
+  });
+
+  it("returns undefined for a missing name or a commented-out line", () => {
+    expect(parseEnvValue("# A=1\nB=2", "A")).toBeUndefined();
+  });
+});
+
+describe("countR2Points", () => {
+  it("counts mapped data points per event kind across batches", () => {
+    const counts = countR2Points([
+      [
+        { event: "session", device_id: "d1" },
+        { event: "crash", device_id: "d1", signal_name: "SIGSEGV" },
+      ],
+      [{ event: "session", device_id: "d2" }],
+    ]);
+    expect(counts).toEqual({ session: 2, crash: 1 });
+  });
+
+  it("counts by the AE kind a point lands in, not by the event name", () => {
+    const counts = countR2Points([
+      [
+        { event: "settings_snapshot", device_id: "d1", home_widgets: ["temp", "temp", "fan"] },
+        {
+          event: "panel_usage",
+          device_id: "d1",
+          panel_time_sec: { home: 5, motion: 3 },
+          panel_visits: { home: 1, motion: 1, settings: 2 },
+        },
+        {
+          event: "settings_changes",
+          device_id: "d1",
+          changes: [
+            { setting: "a", old_value: "1", new_value: "2" },
+            { setting: "b", old_value: "x", new_value: "y" },
+          ],
+        },
+      ],
+    ]);
+    expect(counts).toEqual({
+      settings_snapshot: 1,
+      widget_placement: 2,
+      panel_usage: 3,
+      settings_change: 2,
+    });
+  });
+
+  it("tolerates a batch shaped as {events: [...]} and skips non-objects", () => {
+    const counts = countR2Points([{ events: [{ event: "session", device_id: "d1" }, null, 7] }, "junk"]);
+    expect(counts).toEqual({ session: 1 });
+  });
+});
+
+describe("client field names reach the right Analytics Engine slot", () => {
+  it("connection_stability reads total_connected_sec and total_disconnected_sec", () => {
+    const dp = mapEventToDataPoints({
+      event: "connection_stability",
+      device_id: "dev-1",
+      total_connected_sec: 3600,
+      total_disconnected_sec: 120,
+    })[0];
+    expect(dp.doubles![3]).toBe(3600);
+    expect(dp.doubles![4]).toBe(120);
+  });
+
+  it("settings_snapshot reads auto_update_channel and screen_blank_timeout_sec", () => {
+    const dp = mapEventToDataPoints({
+      event: "settings_snapshot",
+      device_id: "dev-1",
+      auto_update_channel: "beta",
+      screen_blank_timeout_sec: 300,
+    })[0];
+    expect(dp.blobs![5]).toBe("beta");
+    expect(dp.doubles![2]).toBe(300);
+  });
+
+  it("print_start_context reads estimated_duration_bucket", () => {
+    const dp = mapEventToDataPoints({
+      event: "print_start_context",
+      device_id: "dev-1",
+      estimated_duration_bucket: "1-4h",
+    })[0];
+    expect(dp.blobs![5]).toBe("1-4h");
+  });
+});
+
+describe("SQL builders", () => {
+  it("never emit uniqExact", () => {
+    const builders = Object.entries(queries).filter(([name]) => /Quer(y|ies)$/.test(name) && name !== "executeQuery" && name !== "aeCountsQuery");
+    expect(builders.length).toBeGreaterThan(10);
+    for (const [name, fn] of builders) {
+      const out =
+        name === "crashListQuery"
+          ? (fn as (d: number, l: number) => string)(30, 10)
+          : name === "releasesQueries"
+            ? (fn as (v: string[]) => string[])(["1.0.0"])
+            : (fn as (d: number) => string | string[])(30);
+      for (const sql of Array.isArray(out) ? out : [out]) {
+        expect(sql, name).not.toContain("uniqExact");
+      }
+    }
+  });
+});
+
+describe("toYesNo", () => {
+  it("counts numeric 1 and 0 names as yes and no", () => {
+    const res = { data: [{ name: 1, count: 3 }, { name: 0, count: 1 }] };
+    expect(toYesNo(res, "installed", "not_installed")).toEqual({ installed: 3, not_installed: 1, reported: 4 });
+  });
+
+  it("counts string names the same way", () => {
+    const res = { data: [{ name: "1", count: 2 }, { name: "0", count: 5 }] };
+    expect(toYesNo(res, "local", "remote")).toEqual({ local: 2, remote: 5, reported: 7 });
+  });
+});
+
+describe("compareVersions", () => {
+  // The worker and the dashboard each carry their own comparator; every case
+  // runs against both so the two cannot drift apart.
+  const copies: Array<[string, (a: string, b: string) => number]> = [
+    ["worker", compareVersions],
+    ["dashboard", dashboardCompareVersions],
+  ];
+  // [a, b, sign of compare(a, b)]
+  const cases: Array<[string, string, -1 | 0 | 1]> = [
+    ["1.2.3", "1.2.3", 0],
+    ["1.2", "1.2.0", 0],
+    ["1.10.0", "1.9.0", 1],
+    ["1.0.5", "1.1.0", -1],
+    ["1.1.0-beta.9", "1.1.0-beta.10", -1],
+    ["1.1.0-beta", "1.1.0-beta.1", -1],
+    ["1.1.0-rc", "1.1.0-beta", 1],
+    ["1.1.0-rc.1", "1.1.0-beta.9", 1],
+    ["1.1.0-1", "1.1.0-alpha", -1],
+    ["1.1.0-beta.1", "1.1.0-beta.alpha", -1],
+    ["1.1.0-beta.2", "1.1.0", -1],
+    ["1.0.9", "1.1.0-beta.1", -1],
+    ["v1.2.0", "1.2.0", 0],
+    ["v1.2.0-beta.1", "1.2.0-beta.1", 0],
+    ["1.2.0+build5", "1.2.0", 0],
+    ["1.2.0-beta.1+abc", "1.2.0-beta.1", 0],
+    ["1.2.0-beta.1+abc", "1.2.0-beta.2+aaa", -1],
+  ];
+
+  for (const [name, cmp] of copies) {
+    describe(name, () => {
+      for (const [a, b, want] of cases) {
+        it(`${a} vs ${b} is ${want}`, () => {
+          expect(Math.sign(cmp(a, b))).toBe(want);
+          expect(Math.sign(cmp(b, a))).toBe(-want || 0);
+        });
+      }
+
+      it("sorts a mixed list", () => {
+        const input = ["1.1.0", "1.1.0-beta.10", "1.0.5", "1.1.0-beta.9", "0.99.118"];
+        expect([...input].sort(cmp)).toEqual(["0.99.118", "1.0.5", "1.1.0-beta.9", "1.1.0-beta.10", "1.1.0"]);
+      });
+    });
+  }
+});
+
+describe("configuredFeature", () => {
+  it("is the share of reporting devices with the flag on", () => {
+    expect(configuredFeature("x", { data: [{ name: "1", count: 3 }, { name: "0", count: 1 }] })).toEqual({
+      id: "x",
+      devices: 3,
+      reported: 4,
+      adoption_rate: 0.75,
+    });
+  });
+
+  it("has no rate before any device reports", () => {
+    expect(configuredFeature("x", { data: [] }).adoption_rate).toBeNull();
+  });
+});
+
+describe("deriveFeatureAdoption", () => {
+  it("rates each id against the delta-era devices, highest first", () => {
+    expect(
+      deriveFeatureAdoption([{ id: "a_overlay", devices: 1 }], [{ id: "b", devices: 3 }], 4),
+    ).toEqual([
+      { id: "b", devices: 3, adoption_rate: 0.75 },
+      { id: "a_overlay", devices: 1, adoption_rate: 0.25 },
+    ]);
+  });
+
+  it("is empty before any schema-3 device reports", () => {
+    expect(deriveFeatureAdoption([{ id: "a", devices: 1 }], [], 0)).toEqual([]);
+  });
+
+  it("an id reported as both overlay and widget appears once", () => {
+    expect(deriveFeatureAdoption([{ id: "x", devices: 2 }], [{ id: "x", devices: 3 }], 4)).toEqual([
+      { id: "x", devices: 3, adoption_rate: 0.75 },
+    ]);
+  });
+
+  it("drops empty ids", () => {
+    expect(deriveFeatureAdoption([{ id: "", devices: 2 }], [], 4)).toEqual([]);
   });
 });

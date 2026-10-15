@@ -11,7 +11,8 @@
         <div class="metrics-row">
           <MetricCard
             title="Avg Session Duration"
-            :value="formatDuration(data.avg_session_sec)"
+            :value="data.avg_session_sec === null ? '\u2014' : formatDuration(data.avg_session_sec)"
+            :subtitle="data.avg_session_sec === null ? deltaEraPlaceholder(data) : undefined"
             color="var(--accent-blue)"
           />
           <MetricCard
@@ -34,11 +35,13 @@
         <div class="grid-2col">
           <div class="chart-section">
             <h3>Time per Panel</h3>
-            <PieChart :data="panelTimePieData" />
+            <DeltaEraWaiting v-if="data.delta_era_devices === 0" :era="data" />
+            <PieChart v-else :data="panelTimePieData" />
           </div>
           <div class="chart-section">
             <h3>Visits per Panel (per device)</h3>
-            <BarChart :data="panelVisitsBarData" :options="horizontalBarOpts" />
+            <DeltaEraWaiting v-if="data.delta_era_devices === 0" :era="data" />
+            <BarChart v-else :data="panelVisitsBarData" :options="horizontalBarOpts" />
           </div>
         </div>
 
@@ -71,13 +74,14 @@
 import { ref, watch, computed } from 'vue'
 import AppLayout from '@/components/AppLayout.vue'
 import MetricCard from '@/components/MetricCard.vue'
+import DeltaEraWaiting from '@/components/DeltaEraWaiting.vue'
 import BarChart from '@/components/BarChart.vue'
 import PieChart from '@/components/PieChart.vue'
 import { useFiltersStore } from '@/stores/filters'
 import { api } from '@/services/api'
 import type { UxInsightsData } from '@/services/api'
 import { horizontalBarOpts } from '@/utils/chart'
-import { formatDuration, titleCase } from '@/utils/format'
+import { formatDuration, titleCase, deltaEraPlaceholder } from '@/utils/format'
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16']
 

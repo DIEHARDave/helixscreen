@@ -28,6 +28,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <iterator>
 
 using namespace helix;
 
@@ -115,7 +116,8 @@ static constexpr settings::PersistedSetting SETTINGS[] = {
     {"settings_z_movement_style", "z_movement_style", Scope::PerPrinter, false, 0, 0, 2,
      "z_movement_style"},
     // bed_drying::EnclosureStyle: 0=Auto, 1=Enclosed, 2=Open
-    {"settings_enclosure_style", "enclosure_style", Scope::PerPrinter, false, 0, 0, 2, nullptr},
+    {"settings_enclosure_style", "enclosure_style", Scope::PerPrinter, false, 0, 0, 2,
+     "enclosure_style"},
     // mm/s
     {"settings_extrude_speed", "filament/extrude_speed", Scope::PerPrinter, false, 5, 1, 50,
      "extrude_speed"},
@@ -141,28 +143,32 @@ static constexpr settings::PersistedSetting SETTINGS[] = {
     {"settings_toolhead_style", "appearance/toolhead_style", Scope::PerPrinter, false, 0, 0, 7,
      "toolhead_style"},
     {"show_printer_switcher", "/printers/show_printer_switcher", Scope::Global, true, 0, 0, 1,
-     nullptr},
-    {"show_widget_labels", "/appearance/show_widget_labels", Scope::Global, true, 0, 0, 1, nullptr},
+     "show_printer_switcher"},
+    {"show_widget_labels", "/appearance/show_widget_labels", Scope::Global, true, 0, 0, 1,
+     "show_widget_labels"},
     // Off: positional filament mapping
-    {"auto_color_map", "filament/auto_color_map", Scope::PerPrinter, true, 0, 0, 1, nullptr},
+    {"auto_color_map", "filament/auto_color_map", Scope::PerPrinter, true, 0, 0, 1,
+     "auto_color_map"},
     {"afc_unload_after_print", "ams/afc_unload_after_print", Scope::PerPrinter, true, 0, 0, 1,
-     nullptr},
+     "afc_unload_after_print"},
     // #1229
     {"ams_always_show_bypass_spool", "ams/always_show_bypass_spool", Scope::PerPrinter, true, 0, 0,
-     1, nullptr},
+     1, "ams_always_show_bypass_spool"},
     // On: retention is the designed behavior
     {"ams_keep_spool_info_on_eject", "ams/keep_spool_info_on_eject", Scope::PerPrinter, true, 1, 0,
-     1, nullptr},
+     1, "ams_keep_spool_info_on_eject"},
     {"ams_force_bypass_controls", "ams/force_bypass_controls", Scope::PerPrinter, true, 0, 0, 1,
-     nullptr},
+     "ams_force_bypass_controls"},
     // Filament systems that run their own cooldown (AFC) want ours off.
-    {"filament_auto_cooldown", "filament/auto_cooldown", Scope::PerPrinter, true, 1, 0, 1, nullptr},
+    {"filament_auto_cooldown", "filament/auto_cooldown", Scope::PerPrinter, true, 1, 0, 1,
+     "filament_auto_cooldown"},
     // #1335. Off: a popup the user did not ask for is opt-in.
     {"filament_auto_open_editor", "filament/auto_open_editor", Scope::PerPrinter, true, 0, 0, 1,
-     nullptr},
-    {"console_filter_temps", "/console/filter_temps", Scope::Global, true, 1, 0, 1, nullptr},
+     "filament_auto_open_editor"},
+    {"console_filter_temps", "/console/filter_temps", Scope::Global, true, 1, 0, 1,
+     "console_filter_temps"},
     {"console_filter_firmware_noise", "/console/filter_firmware_noise", Scope::Global, true, 1, 0,
-     1, nullptr},
+     1, "console_filter_firmware_noise"},
     {"detection_enabled", "/detection/enabled", Scope::Global, true, 1, 0, 1, "detection_enabled"},
     // Off = warn only for prints HelixScreen pauses; a firmware-paused print
     // always gets the response modal.
@@ -177,6 +183,10 @@ static constexpr settings::PersistedSetting SETTINGS[] = {
 SettingsManager& SettingsManager::instance() {
     static SettingsManager instance;
     return instance;
+}
+
+settings::TableView SettingsManager::persisted_table() {
+    return {SETTINGS, std::size(SETTINGS)};
 }
 
 SettingsManager::SettingsManager() : settings_(SETTINGS) {
