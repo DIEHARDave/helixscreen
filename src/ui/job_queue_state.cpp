@@ -46,6 +46,9 @@ void JobQueueState::invalidate() {
     // store-then-queue read, so collecting a reconnect's orphans costs one
     // round trip.
     pruned_this_connect_ = false;
+    // The next job's file may have been re-sliced, or its read lost, while the
+    // socket was down: ask again on the next fetch.
+    next_media_stale_ = true;
 }
 
 void JobQueueState::watch_connection_state() {
@@ -221,11 +224,15 @@ void JobQueueState::refresh_next_job_media() {
         return;
     }
     const std::string& filename = cached_jobs_.front().filename;
-    if (filename == next_media_filename_) {
+    if (filename == next_media_filename_ && !next_media_stale_) {
         return;
     }
-    clear_next_job_media();
-    next_media_filename_ = filename;
+    // The same job asked again keeps what it shows until the answer lands.
+    if (filename != next_media_filename_) {
+        clear_next_job_media();
+        next_media_filename_ = filename;
+    }
+    next_media_stale_ = false;
     if (!api_) {
         return;
     }
@@ -237,9 +244,15 @@ void JobQueueState::refresh_next_job_media() {
             token.defer("JobQueueState::on_next_job_metadata",
                         [this, filename, metadata]() { on_next_job_metadata(filename, metadata); });
         },
-        [filename](const MoonrakerError& err) {
+        [this, token, filename](const MoonrakerError& err) {
             spdlog::debug("[JobQueueState] Metadata for next job '{}' unavailable: {}", filename,
                           err.message);
+            // A failed read is asked again on the next fetch.
+            token.defer("JobQueueState::next_job_metadata_failed", [this, filename]() {
+                if (filename == next_media_filename_) {
+                    next_media_stale_ = true;
+                }
+            });
         });
 }
 

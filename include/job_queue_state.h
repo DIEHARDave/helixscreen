@@ -239,6 +239,9 @@ class JobQueueState {
     // thumbnail path. The thumbnail is never "": it holds the placeholder
     // until a real image is cached.
     std::string next_media_filename_;
+    /// Set by invalidate() and by a failed read: the next fetch asks again for
+    /// the same first job.
+    bool next_media_stale_ = false;
     int next_estimated_s_ = 0;
     std::atomic<uint32_t> next_thumbnail_generation_{0};
     lv_subject_t job_queue_next_estimate_subject_{};

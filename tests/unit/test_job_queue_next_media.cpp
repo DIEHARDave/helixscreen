@@ -13,11 +13,13 @@
 #include "../test_helpers/job_queue_state_test_access.h"
 #include "../test_helpers/job_queue_subjects_fixture.h"
 #include "../test_helpers/thumbnail_test_png.h"
+#include "connection_state.h"
 #include "helix-xml/src/xml/lv_xml.h"
 #include "job_queue_state.h"
 #include "moonraker_api.h"
 #include "moonraker_client_mock.h"
 #include "printer_print_state.h"
+#include "printer_state.h"
 #include "thumbnail_cache.h"
 #include "thumbnail_processor.h"
 
@@ -42,6 +44,11 @@ struct NextMediaFixture : public LVGLUITestFixture {
 
     NextMediaFixture() {
         jqs.init_subjects();
+        // Connected, with the connection watcher's first answer already in: a
+        // drop is what a test says, never what an earlier test left behind.
+        lv_subject_set_int(state().network_state().get_printer_connection_state_subject(),
+                           static_cast<int>(ConnectionState::CONNECTED));
+        drain();
     }
 
     void drain() {
@@ -191,6 +198,36 @@ TEST_CASE_METHOD(NextMediaFixture, "a failed metadata read leaves the job unknow
 
     CHECK(estimate_subject() == 0);
     CHECK(thumbnail_subject() == PrinterPrintState::no_thumbnail_placeholder());
+}
+
+TEST_CASE_METHOD(NextMediaFixture, "a failed read is asked again on the next fetch",
+                 "[job_queue][next_media]") {
+    const int expected = mock_estimate(kFileA);
+    const int before = client.call_count(kMetadataMethod);
+    client.fail_next(kMetadataMethod);
+    deliver({kFileA});
+    REQUIRE(estimate_subject() == 0);
+
+    deliver({kFileA});
+    CHECK(client.call_count(kMetadataMethod) == before + 2);
+    CHECK(estimate_subject() == expected);
+}
+
+TEST_CASE_METHOD(NextMediaFixture, "a reconnect asks again for the same first job",
+                 "[job_queue][next_media]") {
+    const int expected = mock_estimate(kFileA);
+    const int before = client.call_count(kMetadataMethod);
+    deliver({kFileA});
+    REQUIRE(estimate_subject() == expected);
+
+    jqs.invalidate(); // the socket dropped
+    deliver({kFileA});
+    CHECK(client.call_count(kMetadataMethod) == before + 2);
+    // What it showed stays until the new answer, which is the same here.
+    CHECK(estimate_subject() == expected);
+
+    deliver({kFileA});
+    CHECK(client.call_count(kMetadataMethod) == before + 2);
 }
 
 TEST_CASE_METHOD(NextMediaFixture, "an emptied queue refetches when the same job returns",
