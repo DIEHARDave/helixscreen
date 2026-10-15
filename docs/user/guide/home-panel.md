@@ -1180,19 +1180,16 @@ A row of chips shows detected hardware capabilities: Probe, Bed Mesh, Heated Bed
 
 ### Managing Multiple Printers
 
-> Requires [beta features](beta-features.md) to be enabled and at least two printers configured.
+The Printer Manager overlay always shows a **Manage Printers** button in its top bar (a printer icon on a portrait screen). Tap it to open the printer management screen (same as Settings > Connection > Printers), where you add, switch and remove printers.
 
-When you have multiple printers configured, the Printer Manager overlay shows a **Manage Printers** button in its top bar. Tap it to open the printer management screen (same as Settings > Connection > Printers).
-
-You can also switch printers directly from the **navigation bar**. When multiple printers are configured, a badge with your printer's name appears in the nav bar. Tap it to see a quick-switch menu listing all your printers — tap any printer to switch instantly.
+You can also switch printers directly from the **navigation bar**. Turn on **Show Printer Switcher** on the printer management screen and a badge with your printer's name appears in the nav bar. Tap it to see a quick-switch menu listing all your printers — tap any printer to switch instantly.
 
 #### Adding Your First Extra Printer
 
-1. Enable [beta features](beta-features.md) if you haven't already
-2. Go to **Settings** > **Printers** (under the Printer section)
-3. Tap **Add Printer**
-4. The Setup Wizard launches — enter the new printer's IP address and port, select hardware, and complete the wizard
-5. After the wizard finishes, you're connected to the new printer
+1. Go to **Settings** > **Printers** (under the Printer section)
+2. Tap **Add Printer**
+3. The Setup Wizard launches — enter the new printer's IP address and port, select hardware, and complete the wizard
+4. After the wizard finishes, you're connected to the new printer
 
 #### Switching Between Printers
 

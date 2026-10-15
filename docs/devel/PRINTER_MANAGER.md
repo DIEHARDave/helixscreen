@@ -498,6 +498,6 @@ Tests cover:
 
 ## Multi-Printer Management
 
-When beta features are enabled and multiple printers are configured, a **Manage Printers** button appears in the Printer Manager overlay's header bar: the labelled `action_button` in landscape, the round `printer_3d` icon `action_button_2` in portrait, where the label would crowd out the title. This navigates to the Printer List overlay for switching, adding, and deleting printers.
+A **Manage Printers** button always appears in the Printer Manager overlay's header bar: the labelled `action_button` in landscape, the round `printer_3d` icon `action_button_2` in portrait, where the label would crowd out the title. This navigates to the Printer List overlay for switching, adding, and deleting printers.
 
 See [Multi-Printer Management](MULTI_PRINTER.md) for the full developer guide on the multi-printer system.
