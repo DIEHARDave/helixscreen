@@ -589,10 +589,12 @@ void PrintPreparationManager::set_cached_scan_result(const gcode::ScanResult& sc
 std::string PrintPreparationManager::scan_key(const std::string& filename,
                                               const std::string& current_path,
                                               const std::string& local_path) {
+    // A stick file has no Moonraker path; its own path keeps same-named files
+    // in different folders apart.
     if (!local_path.empty()) {
         return local_path;
     }
-    return current_path.empty() ? filename : current_path + "/" + filename;
+    return gcode::join_gcode_path(current_path, filename);
 }
 
 void PrintPreparationManager::scan_file_for_operations(const std::string& filename,

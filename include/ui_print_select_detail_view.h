@@ -984,8 +984,7 @@ class PrintSelectDetailView : public OverlayBase {
     std::string current_filament_type_;
     std::vector<std::string> current_filament_colors_;
     std::vector<std::string> current_filament_materials_;
-    size_t current_file_size_bytes_ = 0;
-    time_t current_file_modified_ = 0; // mtime of the shown file (cache key part)
+    helix::FileVersion current_file_version_; ///< the shown file's size and mtime
     // Offset where the G-code body ends (Moonraker metadata). Everything after
     // it is the slicer's footer, so it sizes the footer read exactly. 0 = the
     // server didn't report it; the tail read falls back to a fixed window.
@@ -1071,9 +1070,8 @@ class PrintSelectDetailView : public OverlayBase {
 
     void reclaim_download(const std::string& path);
 
-    /// The key the prep manager keeps this file's operations scan under.
-    [[nodiscard]] std::string current_scan_key() const;
-
+    /// The shown file's identity, PrintPreparationManager::scan_key(): the key
+    /// of its operations scan and of its ToolsUsedCache entry.
     [[nodiscard]] std::string current_file_key() const;
 
     /**
@@ -1105,22 +1103,15 @@ class PrintSelectDetailView : public OverlayBase {
      *
      * Stores the result, renders the color swatches (2D-only platforms),
      * recomputes pre-flight, restricts the mapping card and releases any
-     * deferred preflight-ready attempt. When @p authoritative is true (the
-     * scan actually read the file) the result is also written through to the
-     * tools-used cache, including a legitimate empty set (single-extruder
-     * file). A degraded finish (download failed, authoritative=false) must NOT
-     * persist: its empty set carries no information and, on 2D-only platforms
-     * where no viewer parse ever repairs it, would freeze "no tools" for the
-     * file permanently.
+     * deferred preflight-ready attempt. The loader has already cached a set
+     * it read from the file.
      */
-    void apply_scan_result(std::set<int> tools, bool authoritative);
+    void apply_scan_result(std::set<int> tools);
 
-    /// Apply whatever a footer read managed to answer. `need` says what the
-    /// read was issued for: when it did NOT include the tools question, the
-    /// used-tool set is already settled (cache hit) and must not be re-derived
-    /// from this summary — only the palette and grams are taken.
-    void apply_footer_summary(const helix::gcode::GcodeFooterSummary& summary,
-                              helix::gcode::FooterReadNeed need);
+    /// Apply whatever a footer read managed to answer. Without
+    /// @p tools_answered the used-tool set is settled elsewhere (cache hit) or
+    /// still unknown, and only the palette and grams are taken.
+    void apply_footer_summary(const helix::gcode::GcodeFooterSummary& summary, bool tools_answered);
 
     /**
      * @brief Show or hide the gcode viewer

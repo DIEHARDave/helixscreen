@@ -109,8 +109,7 @@ class FileStartFactsLoader {
     /// One file's tools/palette/grams read: the half of load() after the metadata.
     struct ScanRequest {
         std::string file_key; ///< ToolsUsedCache key; the Moonraker path unless a USB file
-        uint64_t size_bytes = 0;
-        time_t modified = 0;
+        FileVersion version;  ///< the ToolsUsedCache entry's version
         uint64_t gcode_end_byte = 0;
         gcode::FooterReadNeed need;
         size_t palette_size = 0; ///< the whole-file scan stops once every palette tool is seen
@@ -122,11 +121,15 @@ class FileStartFactsLoader {
     };
 
     /// What a scan reports. Each runs on the main thread, and none runs once a
-    /// later scan(), load() or cancel() has superseded the scan.
+    /// later scan(), load() or cancel() has superseded the scan. A tool set
+    /// read from the file is in the ToolsUsedCache, under the request's
+    /// file_key and version, before its hook runs; the empty set of a file
+    /// that could not be had is never cached.
     struct ScanHooks {
-        /// The footer answered what it was read for. Its tools answer, when
-        /// it gave one, is already in the ToolsUsedCache.
-        std::function<void(const gcode::GcodeFooterSummary& summary)> on_footer;
+        /// The footer answered what it was read for. @p tools_answered: it
+        /// was read for the tools and its summary.tools_used is the answer.
+        std::function<void(const gcode::GcodeFooterSummary& summary, bool tools_answered)>
+            on_footer;
         /// The footer did not answer. @p full_scan_follows is need.full_scan_justified().
         std::function<void(bool full_scan_follows)> on_footer_unanswered;
         /// The whole-file scan finished. @p read_file is false when the file

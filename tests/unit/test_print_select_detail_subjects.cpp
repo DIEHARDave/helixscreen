@@ -410,7 +410,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "detail_mapping_ready tracks cache seed and 
 
     SECTION("warmed cache: ready=1 and tools_used seeded before activation") {
         auto& warmer = helix::tools_used_cache();
-        warmer.store("sub/flash.gcode", kSize, kMtime, {0, 2});
+        warmer.store("sub/flash.gcode", {kSize, kMtime}, {0, 2});
 
         view.show("flash.gcode", "sub", "PLA", colors, {}, kSize, kMtime);
 
@@ -450,7 +450,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "detail_mapping_ready tracks cache seed and 
         // degrade path settles it and the latch still opens rather than
         // hanging on the skeleton forever.
         auto& warmer = helix::tools_used_cache();
-        warmer.store("sub/flash.gcode", kSize, kMtime, {0, 2});
+        warmer.store("sub/flash.gcode", {kSize, kMtime}, {0, 2});
 
         view.show("flash.gcode", "sub", "PLA", /*filament_colors=*/{}, {}, kSize, kMtime);
 
@@ -472,7 +472,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "detail_mapping_ready tracks cache seed and 
         // carried colors settles the palette question during show(), so a
         // re-print still renders final chips on the first frame.
         auto& warmer = helix::tools_used_cache();
-        warmer.store("sub/flash.gcode", kSize, kMtime, {0, 2});
+        warmer.store("sub/flash.gcode", {kSize, kMtime}, {0, 2});
 
         view.show("flash.gcode", "sub", "PLA", colors, {}, kSize, kMtime);
         REQUIRE(lv_subject_get_int(ready) == 1);
@@ -482,7 +482,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "detail_mapping_ready tracks cache seed and 
 
     SECTION("stale cache entry (mtime changed) is a miss") {
         auto& warmer = helix::tools_used_cache();
-        warmer.store("sub/flash.gcode", kSize, kMtime, {0, 2});
+        warmer.store("sub/flash.gcode", {kSize, kMtime}, {0, 2});
 
         view.show("flash.gcode", "sub", "PLA", colors, {}, kSize, kMtime + 1);
         REQUIRE(lv_subject_get_int(ready) == 0); // re-sliced file → skeleton
@@ -771,7 +771,7 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     constexpr size_t kSize = 4321;
     constexpr time_t kMtime = 8765;
     auto& warmer = helix::tools_used_cache();
-    warmer.store("sub/one_tool.gcode", kSize, kMtime, {0});
+    warmer.store("sub/one_tool.gcode", {kSize, kMtime}, {0});
 
     // T0 prints red PLA, per the slicer palette show() is handed.
     const std::vector<std::string> colors{"#FF0000"};
@@ -936,7 +936,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "A bypassed single-lane print renders no fil
     constexpr size_t kSize = 999;
     constexpr time_t kMtime = 1111;
     auto& warmer = helix::tools_used_cache();
-    warmer.store("sub/bypass_one.gcode", kSize, kMtime, {0});
+    warmer.store("sub/bypass_one.gcode", {kSize, kMtime}, {0});
 
     // THREE palette entries against ONE used tool, deliberately. The card
     // decides visibility from print_lane_requirement(), which prefers the used
@@ -1026,8 +1026,8 @@ TEST_CASE_METHOD(LVGLUITestFixture, "The tap chevron tracks the card, and the ba
     constexpr size_t kSize = 2468;
     constexpr time_t kMtime = 1357;
     auto& warmer = helix::tools_used_cache();
-    warmer.store("sub/two_tools.gcode", kSize, kMtime, {0, 1});
-    warmer.store("sub/no_palette.gcode", kSize, kMtime, {0});
+    warmer.store("sub/two_tools.gcode", {kSize, kMtime}, {0, 1});
+    warmer.store("sub/no_palette.gcode", {kSize, kMtime}, {0});
 
     lv_subject_t* const visible = lv_xml_get_subject(nullptr, "filament_mapping_visible");
     lv_subject_t* const remappable = lv_xml_get_subject(nullptr, "color_card_remappable");
@@ -1238,7 +1238,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "A tap on the filament card opens the remap 
     constexpr size_t kSize = 1122;
     constexpr time_t kMtime = 3344;
     auto& warmer = helix::tools_used_cache();
-    warmer.store("sub/two_tools.gcode", kSize, kMtime, {0, 1});
+    warmer.store("sub/two_tools.gcode", {kSize, kMtime}, {0, 1});
     view.show("two_tools.gcode", "sub", "PLA", {"#FF0000", "#00FF00"}, {"PLA", "PETG"}, kSize,
               kMtime);
 

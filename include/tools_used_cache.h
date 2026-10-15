@@ -25,14 +25,12 @@ class ToolsUsedCache {
 
     /// nullopt = miss / stale / malformed. An EMPTY set is a legitimate
     /// cached value (single-extruder file) and is returned as such.
-    std::optional<std::set<int>> lookup(const std::string& file_path, uint64_t size_bytes,
-                                        time_t modified);
+    std::optional<std::set<int>> lookup(const std::string& file_path, FileVersion version);
 
     /// Persist an entry (also compacts when over MAX_ENTRIES — drop
     /// least-recently-LOOKED-UP first). Writes through to disk immediately;
     /// a failed write logs a warning and keeps the in-memory entry.
-    void store(const std::string& file_path, uint64_t size_bytes, time_t modified,
-               const std::set<int>& tools);
+    void store(const std::string& file_path, FileVersion version, const std::set<int>& tools);
 
     static constexpr size_t MAX_ENTRIES = 256;
 

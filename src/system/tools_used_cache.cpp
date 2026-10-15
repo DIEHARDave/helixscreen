@@ -95,7 +95,7 @@ void ToolsUsedCache::save_to_disk() {
 }
 
 std::optional<std::set<int>> ToolsUsedCache::lookup(const std::string& file_path,
-                                                    uint64_t size_bytes, time_t modified) {
+                                                    FileVersion version) {
     if (!loaded_) {
         load_from_disk();
     }
@@ -104,20 +104,20 @@ std::optional<std::set<int>> ToolsUsedCache::lookup(const std::string& file_path
         return std::nullopt;
     }
     const Entry& e = it->second;
-    if (e.version != FileVersion{size_bytes, modified}) {
+    if (e.version != version) {
         return std::nullopt; // stale — same key, changed file
     }
     it->second.last_used_ctr = next_ctr_++;
     return e.tools;
 }
 
-void ToolsUsedCache::store(const std::string& file_path, uint64_t size_bytes, time_t modified,
+void ToolsUsedCache::store(const std::string& file_path, FileVersion version,
                            const std::set<int>& tools) {
     if (!loaded_) {
         load_from_disk();
     }
     Entry& e = entries_[file_path];
-    e.version = {size_bytes, modified};
+    e.version = version;
     e.tools = tools;
     e.last_used_ctr = next_ctr_++;
 

@@ -205,7 +205,7 @@ TEST_CASE_METHOD(DetailDownloadFixture,
     // …but the empty set is NOT an answer about this file: nothing may be
     // persisted under its (path, size, mtime) key.
     auto& fresh = helix::tools_used_cache();
-    REQUIRE(fresh.lookup("no_such_mock_file.gcode", kSize, kMtime) == std::nullopt);
+    REQUIRE(fresh.lookup("no_such_mock_file.gcode", {kSize, kMtime}) == std::nullopt);
 
     pop_and_drain();
 }
@@ -234,7 +234,7 @@ TEST_CASE_METHOD(DetailDownloadFixture,
     REQUIRE(wait_until([this]() { return ready(); }, 15000));
 
     auto& fresh = helix::tools_used_cache();
-    const auto got = fresh.lookup("3DBenchy.gcode", benchy_size, kMtime);
+    const auto got = fresh.lookup("3DBenchy.gcode", {benchy_size, kMtime});
     // The empty set must be a HIT, not a miss — else every open of every
     // single-extruder file re-scans, and the fix over-corrected.
     REQUIRE(got.has_value());
@@ -304,7 +304,7 @@ TEST_CASE_METHOD(DetailDownloadFixture,
     // leak scenario (every open re-downloads, viewer rejects, file lingers).
     {
         auto& warmer = helix::tools_used_cache();
-        warmer.store("3DBenchy.gcode", benchy_size, kMtime, {0});
+        warmer.store("3DBenchy.gcode", {benchy_size, kMtime}, {0});
     }
 
     view_.show("3DBenchy.gcode", "", "PLA", {"#FF0000"}, {}, benchy_size, kMtime);
@@ -380,11 +380,11 @@ TEST_CASE_METHOD(DetailDownloadFixture,
     REQUIRE(wait_until(
         [&]() {
             auto& fresh = helix::tools_used_cache();
-            return fresh.lookup(key, file_size, kMtime).has_value();
+            return fresh.lookup(key, {file_size, kMtime}).has_value();
         },
         15000));
     auto& fresh = helix::tools_used_cache();
-    const auto got = fresh.lookup(key, file_size, kMtime);
+    const auto got = fresh.lookup(key, {file_size, kMtime});
     REQUIRE(got.has_value());
     REQUIRE(*got == std::set<int>{0, 1, 2, 3});
 
@@ -424,7 +424,7 @@ TEST_CASE_METHOD(DetailDownloadFixture,
 
     // Authoritative: the next open of this file renders final chips instantly.
     auto& fresh = helix::tools_used_cache();
-    const auto cached = fresh.lookup(key, size, kMtime);
+    const auto cached = fresh.lookup(key, {size, kMtime});
     REQUIRE(cached.has_value());
     REQUIRE(*cached == std::set<int>{4});
 
@@ -555,7 +555,7 @@ TEST_CASE_METHOD(DetailDownloadFixture,
     // exactly what a second open of an already-viewed file sees.
     {
         auto& warmer = helix::tools_used_cache();
-        warmer.store("3DBenchy.gcode", size, kMtime, {0});
+        warmer.store("3DBenchy.gcode", {size, kMtime}, {0});
     }
 
     REQUIRE(transfers_.tail_read_count == 0);

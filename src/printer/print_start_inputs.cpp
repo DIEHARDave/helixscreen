@@ -156,18 +156,15 @@ void FileStartFactsLoader::load(const std::string& filename, ReadyFn on_ready, D
             facts->palette = file_palette_from_metadata(*metadata);
         }
         const FileVersion version = file_version_of(metadata);
-        const uint64_t size = version.size_bytes;
-        const time_t modified = version.modified;
 
-        auto cached = tools_used_cache().lookup(filename, size, modified);
+        auto cached = tools_used_cache().lookup(filename, version);
         if (cached) {
             facts->tools_used = *cached;
         }
 
         ScanRequest req;
         req.file_key = filename;
-        req.size_bytes = size;
-        req.modified = modified;
+        req.version = version;
         req.gcode_end_byte = metadata ? metadata->gcode_end_byte : 0;
         req.need =
             gcode::footer_read_need(cached.has_value(), !facts->palette.colors.empty(), false);
@@ -175,24 +172,12 @@ void FileStartFactsLoader::load(const std::string& filename, ReadyFn on_ready, D
         req.download = download;
 
         auto answer = [facts, on_ready]() { on_ready(std::move(*facts)); };
-        // The authoritative rule: an answer read from the file is cached, the
-        // empty set of a file that could not be had is not.
-        auto remember = [filename, size, modified](const std::set<int>& tools) {
-            tools_used_cache().store(filename, size, modified, tools);
-        };
-        const auto need = req.need;
 
         ScanHooks hooks;
-        hooks.on_footer = [facts, answer, remember, need](const gcode::GcodeFooterSummary& s) {
-            if (facts->palette.colors.empty()) {
-                facts->palette.colors = s.colours;
-            }
-            if (facts->tool_grams.empty()) {
-                facts->tool_grams = s.grams_per_tool;
-            }
-            if (need.tools && s.usable()) {
+        hooks.on_footer = [facts, answer](const gcode::GcodeFooterSummary& s, bool tools_answered) {
+            gcode::backfill_from_footer(s, facts->palette.colors, facts->tool_grams);
+            if (tools_answered) {
                 facts->tools_used = s.tools_used;
-                remember(facts->tools_used);
             }
             answer();
         };
@@ -201,11 +186,8 @@ void FileStartFactsLoader::load(const std::string& filename, ReadyFn on_ready, D
                 answer();
             }
         };
-        hooks.on_tools_scanned = [facts, answer, remember](std::set<int> tools, bool read_file) {
+        hooks.on_tools_scanned = [facts, answer](std::set<int> tools, bool /*read_file*/) {
             facts->tools_used = std::move(tools);
-            if (read_file) {
-                remember(facts->tools_used);
-            }
             answer();
         };
         if (scan(std::move(req), std::move(hooks)) != ScanStart::Started) {
@@ -254,14 +236,15 @@ void FileStartFactsLoader::start_tail_read(uint32_t generation, ScanRequest req,
     // Sized from Moonraker's gcode_end_byte when it reported one (the footer
     // starts exactly there), otherwise a fixed window. Everything after that
     // offset is the slicer's settings block.
-    const size_t window = gcode::gcode_tail_window_bytes(req.size_bytes, req.gcode_end_byte);
+    const size_t window =
+        gcode::gcode_tail_window_bytes(req.version.size_bytes, req.gcode_end_byte);
     const std::string file_path = req.file_key;
     const auto need = req.need;
 
     spdlog::debug("[FileStartFacts] Footer read: last {} bytes of {} (size={}, gcode_end_byte={}, "
                   "need tools={} palette={} grams={})",
-                  window, file_path, req.size_bytes, req.gcode_end_byte, need.tools, need.palette,
-                  need.grams);
+                  window, file_path, req.version.size_bytes, req.gcode_end_byte, need.tools,
+                  need.palette, need.grams);
 
     auto tok = lifetime_.token();
     auto shared_req = std::make_shared<const ScanRequest>(std::move(req));
@@ -295,7 +278,7 @@ void FileStartFactsLoader::start_tail_read(uint32_t generation, ScanRequest req,
     };
 
     // === Runs on a background thread: pure parse over a local ===
-    auto on_tail = [this, tok, generation, shared_hooks, fall_back,
+    auto on_tail = [this, tok, generation, shared_req, shared_hooks, fall_back,
                     need](const std::string& tail) mutable {
         const gcode::GcodeFooterSummary summary = gcode::parse_gcode_footer_summary(tail);
 
@@ -311,14 +294,22 @@ void FileStartFactsLoader::start_tail_read(uint32_t generation, ScanRequest req,
                                              : "no per-tool usage line");
             return;
         }
-        tok.defer("FileStartFacts::footer_answered", [this, generation, shared_hooks, summary]() {
-            if (generation != generation_) {
-                return;
-            }
-            if (shared_hooks->on_footer) {
-                shared_hooks->on_footer(summary);
-            }
-        });
+        const bool tools_answered = need.tools && summary.usable();
+        tok.defer("FileStartFacts::footer_answered",
+                  [this, generation, shared_req, shared_hooks, summary, tools_answered]() {
+                      if (generation != generation_) {
+                          return;
+                      }
+                      // The slicer's own accounting of what it emitted is the
+                      // file's answer, cached like a completed scan.
+                      if (tools_answered) {
+                          tools_used_cache().store(shared_req->file_key, shared_req->version,
+                                                   summary.tools_used);
+                      }
+                      if (shared_hooks->on_footer) {
+                          shared_hooks->on_footer(summary, tools_answered);
+                      }
+                  });
     };
 
     // The file is on this machine (a USB stick, or Moonraker's own copy): read
@@ -367,13 +358,23 @@ void FileStartFactsLoader::start_full_scan(uint32_t generation, ScanRequest req,
     // Our own temp copy goes once the scan has read it; a caller's download is
     // the caller's to keep (the file view's preview reads the same copy).
     const bool own_copy = !req.download;
+    const std::string file_key = req.file_key;
+    const FileVersion version = req.version;
 
     // Callable from any thread: `this` is only dereferenced inside the defer.
-    auto finish = [this, tok, generation, shared_hooks](std::set<int> tools, bool read_file) {
+    auto finish = [this, tok, generation, shared_hooks, file_key, version](std::set<int> tools,
+                                                                           bool read_file) {
         tok.defer("FileStartFacts::tools_scanned",
-                  [this, generation, shared_hooks, tools = std::move(tools), read_file]() mutable {
+                  [this, generation, shared_hooks, file_key, version, tools = std::move(tools),
+                   read_file]() mutable {
                       if (generation != generation_) {
                           return;
+                      }
+                      // Even an empty set read from the file is its answer (a
+                      // single-extruder file); a file that could not be had
+                      // answered nothing.
+                      if (read_file) {
+                          tools_used_cache().store(file_key, version, tools);
                       }
                       if (shared_hooks->on_tools_scanned) {
                           shared_hooks->on_tools_scanned(std::move(tools), read_file);

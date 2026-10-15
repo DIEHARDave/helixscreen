@@ -131,7 +131,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "fill_file_context matches the file view",
     constexpr size_t kSize = 2468;
     constexpr time_t kMtime = 1357;
     // A warmed cache renders the authoritative state inside show().
-    helix::tools_used_cache().store(facts.filename, kSize, kMtime, facts.tools_used);
+    helix::tools_used_cache().store(facts.filename, {kSize, kMtime}, facts.tools_used);
     view.show("two_tool.gcode", "sub", "PLA", facts.palette.colors, facts.palette.materials, kSize,
               kMtime);
     view.recompute_preflight();
