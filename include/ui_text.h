@@ -141,4 +141,13 @@ void label_hold_lines(lv_obj_t* label, int32_t lines);
  */
 void label_hold_one_line_if_dotted(lv_obj_t* label);
 
+/**
+ * label_hold_one_line_if_dotted() with a ceiling of @p lines lines
+ *
+ * The same opt-outs apply: an explicit height or a max_height leaves the label
+ * alone. text_* apply it with their `max_lines` attribute (1 when absent or
+ * below 1); text_button only when `max_lines` is given.
+ */
+void label_hold_lines_if_dotted(lv_obj_t* label, int32_t lines);
+
 } // namespace helix::ui

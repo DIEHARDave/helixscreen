@@ -19,6 +19,7 @@
 
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
@@ -336,6 +337,12 @@ static void bind_long_mode_to_animations_pref(lv_xml_parser_state_t* state, lv_o
  * NOTE: Translation auto-tagging is handled in lv_xml_label_parser.c -
  * any text= attribute automatically becomes a translation lookup key.
  */
+/// The max_lines attribute, at least 1; 1 when absent.
+static int32_t max_lines_attr(const char** attrs) {
+    const char* value = lv_xml_get_value_of(attrs, "max_lines");
+    return value ? std::max<int32_t>(1, lv_xml_atoi(value)) : 1;
+}
+
 static void ui_text_apply(lv_xml_parser_state_t* state, const char** attrs) {
     // Apply label properties (text, long_mode, etc.) and base object properties
     lv_xml_label_apply(state, attrs);
@@ -347,12 +354,7 @@ static void ui_text_apply(lv_xml_parser_state_t* state, const char** attrs) {
     // A dotted label must not grow to fit its wrapped text, or it never
     // ellipsizes (prestonbrown/helixscreen#1775): max_lines="N" lets it wrap
     // to N lines first, and without it the label holds to one.
-    const char* max_lines = lv_xml_get_value_of(attrs, "max_lines");
-    if (max_lines && lv_label_get_long_mode(label) == LV_LABEL_LONG_MODE_DOTS) {
-        helix::ui::label_hold_lines(label, lv_xml_atoi(max_lines));
-    } else {
-        helix::ui::label_hold_one_line_if_dotted(label);
-    }
+    helix::ui::label_hold_lines_if_dotted(label, max_lines_attr(attrs));
 
     // Apply stroke attributes (stroke_width, stroke_color, stroke_opa)
     apply_stroke_attrs(label, attrs);
@@ -448,6 +450,11 @@ static void ui_text_button_apply(lv_xml_parser_state_t* state, const char** attr
     lv_obj_t* label = static_cast<lv_obj_t*>(lv_xml_state_get_item(state));
 
     bind_long_mode_to_animations_pref(state, label);
+
+    // Only on request: a dotted text_button has always sized itself.
+    if (lv_xml_get_value_of(attrs, "max_lines")) {
+        helix::ui::label_hold_lines_if_dotted(label, max_lines_attr(attrs));
+    }
 
     lv_obj_t* parent = lv_obj_get_parent(label);
 
@@ -626,7 +633,7 @@ void label_hold_one_line(lv_obj_t* label) {
     label_hold_lines(label, 1);
 }
 
-void label_hold_one_line_if_dotted(lv_obj_t* label) {
+void label_hold_lines_if_dotted(lv_obj_t* label, int32_t lines) {
     if (!label || lv_label_get_long_mode(label) != LV_LABEL_LONG_MODE_DOTS) {
         return;
     }
@@ -634,7 +641,11 @@ void label_hold_one_line_if_dotted(lv_obj_t* label) {
         lv_obj_get_style_max_height(label, LV_PART_MAIN) != LV_COORD_MAX) {
         return;
     }
-    label_hold_one_line(label);
+    label_hold_lines(label, lines);
+}
+
+void label_hold_one_line_if_dotted(lv_obj_t* label) {
+    label_hold_lines_if_dotted(label, 1);
 }
 
 } // namespace helix::ui
