@@ -180,13 +180,30 @@ sibling_file() {
     printf '%s/%s.json' "$CLAIM_DIR" "$(slug "$other:$name")"
 }
 
+# True when pid is this process or one of its ancestors: a subagent running under
+# its parent session's claim is the same owner as that session.
+is_self_or_ancestor() {
+    local p=$$ ppid hops=0
+    while [ "$p" -gt 1 ] && [ "$hops" -lt 40 ]; do
+        [ "$p" = "$1" ] && return 0
+        ppid=$(pid_ppid "$p")
+        case "$ppid" in ''|*[!0-9]*) return 1;; esac
+        [ "$ppid" = "$p" ] && return 1
+        p=$ppid; hops=$((hops+1))
+    done
+    return 1
+}
+
 # Echoes the sibling's file when a DIFFERENT live session holds the same tree.
+# A holder that is an ancestor of the caller counts as the same session.
 blocking_sibling() {
     local f; f=$(sibling_file "$1") || return 1
     [ -f "$f" ] || return 1
     [ "$(state_of "$f")" = "LIVE" ] || return 1
     local body; body=$(tr -d '\n' < "$f")
-    [ "$(json_get "$body" pid)" = "$2" ] && return 1
+    local owner; owner=$(json_get "$body" pid)
+    [ "$owner" = "$2" ] && return 1
+    is_self_or_ancestor "$owner" && return 1
     printf '%s' "$f"
 }
 

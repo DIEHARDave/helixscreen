@@ -242,3 +242,33 @@ teardown() {
     run "$CLAIM" check worktree:mainrepo
     contains "owner=$(hostname)-$OWNER pid=$OWNER" "$output"
 }
+
+# A subagent runs as a descendant of the session that holds worktree:<tree>.
+# It is the same owner, so its own build: take must not be refused.
+@test "a descendant of the worktree: holder may take build: on the same tree" {
+    run bash -c '
+        "$1" take worktree:mainrepo "parent session" --pid $$ >/dev/null || exit 10
+        bash -c '"'"'"$1" take build:mainrepo "subagent build"'"'"' _ "$1"
+        rc=$?
+        "$1" release worktree:mainrepo >/dev/null
+        exit $rc' _ "$CLAIM"
+    [ "$status" -eq 0 ]
+    contains "CLAIMED build:" "$output"
+}
+
+@test "a descendant of the build: holder may take worktree: on the same tree" {
+    run bash -c '
+        "$1" take build:mainrepo "parent build" --pid $$ >/dev/null || exit 10
+        bash -c '"'"'"$1" take worktree:mainrepo "subagent edit"'"'"' _ "$1"
+        rc=$?
+        "$1" release build:mainrepo >/dev/null
+        exit $rc' _ "$CLAIM"
+    [ "$status" -eq 0 ]
+}
+
+@test "an unrelated session is still refused build: under another's worktree: claim" {
+    "$CLAIM" take worktree:mainrepo "parent session" --pid "$OWNER" >/dev/null
+    run bash -c '"$1" take build:mainrepo "stranger"' _ "$CLAIM"
+    [ "$status" -ne 0 ]
+    contains "REFUSED" "$output"
+}
