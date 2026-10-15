@@ -106,6 +106,17 @@ platform_pre_start() { :; }
 platform_post_stop() { :; }
 platform_wait_for_boot_complete() { :; }
 
+# A Moonraker type:web update replaces the install dir, taking the config
+# symlinks into printer_data and platform/hooks.sh with it. Put them back before
+# the hooks are sourced below. Idempotent and quick; a failure never blocks start.
+case "$1" in
+    start|restart|reload)
+        if [ -f "${DAEMON_DIR}/config/restore-user-config.sh" ]; then
+            sh "${DAEMON_DIR}/config/restore-user-config.sh" >/dev/null 2>&1 || true
+        fi
+        ;;
+esac
+
 # Source platform hooks if available
 PLATFORM_HOOKS="${DAEMON_DIR}/platform/hooks.sh"
 if [ -f "$PLATFORM_HOOKS" ]; then

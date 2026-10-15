@@ -8,7 +8,7 @@
 # empty seeded marker would read as "migrated".
 
 WORKTREE_ROOT="$(cd "$BATS_TEST_DIRNAME/../.." && pwd)"
-REFRESH="$WORKTREE_ROOT/config/refresh-service-units.sh"
+RESTORE="$WORKTREE_ROOT/config/restore-user-config.sh"
 LEDGERS=".webcams_backup.json .camera_migrated .klipper_includes .k2cam_webcam_disabled .seeded_settings"
 
 
@@ -26,11 +26,9 @@ setup() {
     PD="$KLIPPER_HOME/printer_data/config/helixscreen"
     mkdir -p "$KLIPPER_HOME/printer_data/config" "$INSTALL_DIR/config"
 
-    # Pull the real restore code out of the update script; it is not sourceable
-    # as a whole (set -e, systemctl).
-    awk '/^# Keep in sync with/{on=1} /^restore_config_symlinks$/{on=0} on' "$REFRESH" \
-        > "$BATS_TEST_TMPDIR/restore.sh"
-    . "$BATS_TEST_TMPDIR/restore.sh"
+    # The real restore code, defined without running it.
+    HELIX_RESTORE_LIB_ONLY=1 . "$RESTORE"
+    IDIR="$INSTALL_DIR"
     # Skip the user-home probing: point it at the sandbox.
     discover_pd_helix() { printf '%s' "$PD"; }
 }
@@ -101,14 +99,14 @@ simulate_web_update() {
     [ -f "$PD/.klipper_includes" ]
 }
 
-@test "the installer and the update script list the same user config files and dirs" {
+@test "the installer and the restore script list the same user config files and dirs" {
     local a b
     a="$(grep '^HELIX_USER_CONFIG_FILES=' "$WORKTREE_ROOT/scripts/lib/installer/platform.sh")"
-    b="$(grep '^HELIX_USER_CONFIG_FILES=' "$REFRESH")"
+    b="$(grep '^HELIX_USER_CONFIG_FILES=' "$RESTORE")"
     [ -n "$a" ]
     [ "$a" = "$b" ]
     a="$(grep '^HELIX_USER_CONFIG_DIRS=' "$WORKTREE_ROOT/scripts/lib/installer/platform.sh")"
-    b="$(grep '^HELIX_USER_CONFIG_DIRS=' "$REFRESH")"
+    b="$(grep '^HELIX_USER_CONFIG_DIRS=' "$RESTORE")"
     [ -n "$a" ]
     [ "$a" = "$b" ]
 }
@@ -173,4 +171,86 @@ hooks_fixture() {
     rm "$INSTALL_DIR/platform/hooks.sh"
     restore_platform_hooks
     [ ! -e "$INSTALL_DIR/platform/hooks.sh" ]
+}
+
+# --- SysV and procd: no systemd unit, restore runs from the init script ---
+
+sysv_start_restore() {
+    # What helixscreen.init does at start: run the sibling script by path.
+    sh "$INSTALL_DIR/config/restore-user-config.sh"
+}
+
+@test "a SysV web update (no systemd unit) gets env, themes, ledgers and hooks back" {
+    . "$WORKTREE_ROOT/scripts/lib/installer/service.sh"
+    mkdir -p "$INSTALL_DIR/assets/config/platform" "$PD"
+    echo '# k1 hooks' > "$INSTALL_DIR/assets/config/platform/hooks-k1.sh"
+    echo 'HELIX_X=1' > "$INSTALL_DIR/config/helixscreen.env"
+    mkdir -p "$INSTALL_DIR/config/themes"; echo mine > "$INSTALL_DIR/config/themes/mine.json"
+    write_ledgers
+    deploy_platform_hooks "$INSTALL_DIR" k1
+    setup_config_symlink
+    [ -L "$INSTALL_DIR/config/themes" ]
+
+    # Moonraker: rmtree, then a zip holding defaults, the scripts and the template.
+    simulate_web_update
+    echo 'HELIX_X=default' > "$INSTALL_DIR/config/helixscreen.env"
+    mkdir -p "$INSTALL_DIR/config/themes" "$INSTALL_DIR/assets/config/platform"
+    echo shipped > "$INSTALL_DIR/config/themes/shipped.json"
+    echo '# k1 hooks' > "$INSTALL_DIR/assets/config/platform/hooks-k1.sh"
+    cp "$RESTORE" "$INSTALL_DIR/config/restore-user-config.sh"
+    # No /etc/systemd/system unit is consulted: the restore never reads one.
+    HELIX_RESTORE_LIB_ONLY=1 . "$INSTALL_DIR/config/restore-user-config.sh"
+    discover_pd_helix() { printf '%s' "$PD"; }
+    restore_config_symlinks
+    restore_platform_hooks
+
+    [ -L "$INSTALL_DIR/config/helixscreen.env" ]
+    [ "$(cat "$INSTALL_DIR/config/helixscreen.env")" = "HELIX_X=1" ]
+    [ -L "$INSTALL_DIR/config/themes" ]
+    [ -f "$INSTALL_DIR/config/themes/mine.json" ]
+    [ -f "$INSTALL_DIR/config/themes/shipped.json" ]
+    [ -L "$INSTALL_DIR/config/.camera_migrated" ]
+    [ -x "$INSTALL_DIR/platform/hooks.sh" ]
+}
+
+@test "running restore-user-config.sh as the init script does relinks config and hooks" {
+    . "$WORKTREE_ROOT/scripts/lib/installer/service.sh"
+    mkdir -p "$INSTALL_DIR/assets/config/platform"
+    echo '# k1 hooks' > "$INSTALL_DIR/assets/config/platform/hooks-k1.sh"
+    echo 'HELIX_X=1' > "$INSTALL_DIR/config/helixscreen.env"
+    write_ledgers
+    deploy_platform_hooks "$INSTALL_DIR" k1
+    setup_config_symlink
+    simulate_web_update
+    echo 'HELIX_X=default' > "$INSTALL_DIR/config/helixscreen.env"
+    mkdir -p "$INSTALL_DIR/assets/config/platform"
+    echo '# k1 hooks' > "$INSTALL_DIR/assets/config/platform/hooks-k1.sh"
+    cp "$RESTORE" "$INSTALL_DIR/config/restore-user-config.sh"
+
+    HELIX_PD_HELIX_DIR="$PD" run sh "$INSTALL_DIR/config/restore-user-config.sh"
+    [ "$status" -eq 0 ]
+    [ "$(cat "$INSTALL_DIR/config/helixscreen.env")" = "HELIX_X=1" ]
+    [ -L "$INSTALL_DIR/config/.camera_migrated" ]
+    [ -x "$INSTALL_DIR/platform/hooks.sh" ]
+}
+
+@test "restore-user-config.sh runs standalone, exits 0 and finds nothing to do" {
+    cp "$RESTORE" "$INSTALL_DIR/config/restore-user-config.sh"
+    run sysv_start_restore
+    [ "$status" -eq 0 ]
+}
+
+@test "helixscreen.init runs the restore before it sources the platform hooks" {
+    local init="$WORKTREE_ROOT/config/helixscreen.init"
+    local call src
+    call="$(grep -n 'restore-user-config.sh' "$init" | head -1 | cut -d: -f1)"
+    src="$(grep -n '^    \. "\$PLATFORM_HOOKS"' "$init" | head -1 | cut -d: -f1)"
+    [ -n "$call" ] && [ -n "$src" ]
+    [ "$call" -lt "$src" ]
+}
+
+@test "refresh-service-units.sh still templates units and delegates the restore" {
+    grep -q 'template_unit "\$SRC" "\$DEST"' "$WORKTREE_ROOT/config/refresh-service-units.sh"
+    grep -q 'systemctl daemon-reload' "$WORKTREE_ROOT/config/refresh-service-units.sh"
+    grep -q 'restore-user-config.sh' "$WORKTREE_ROOT/config/refresh-service-units.sh"
 }
