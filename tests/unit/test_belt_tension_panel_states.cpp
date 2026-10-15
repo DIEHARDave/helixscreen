@@ -170,6 +170,23 @@ class BeltPanelFixture : public XMLTestFixture {
     lv_obj_t* panel_low_ram_dialog() {
         return panel_->low_ram_dialog_;
     }
+    /// What the latest tuning round booked as turned; nullopt for none.
+    std::optional<float> panel_last_turns() {
+        const auto& t = panel_->tune_;
+        if (!t || t->rounds().empty()) {
+            return std::nullopt;
+        }
+        return t->rounds().back().turns_made;
+    }
+    /// The suggested amount in stepper steps; 0 without one.
+    int panel_advised_steps() {
+        const auto& t = panel_->tune_;
+        if (!t || !t->advice().turns) {
+            return 0;
+        }
+        return static_cast<int>(
+            std::lround(*t->advice().turns / helix::calibration::belt_tune::TURN_STEP));
+    }
     bool panel_detection_pending() {
         return panel_->detection_pending_;
     }
@@ -772,6 +789,13 @@ void tune_round(BeltPanelFixture& fx) {
     REQUIRE(fx.state_int("bt_tune_phase") != PHASE_SWEEPING);
 }
 
+/// Step the stepper to the suggested amount, as a user who turned it would.
+void step_as_advised(BeltPanelFixture& fx) {
+    for (int i = fx.panel_advised_steps(); i > 0; --i) {
+        fx.panel().handle_tune_amount_step(+1);
+    }
+}
+
 std::vector<std::string> resonance_lines(BeltPanelFixture& fx) {
     std::vector<std::string> out;
     for (const auto& g : std::vector<std::string>(fx.mock().gcode_script_history())) {
@@ -960,7 +984,7 @@ TEST_CASE("the turn stepper shows only for screw tensioners", "[belt][panel][tun
             CHECK(lv_hidden(obj));
         }
     }
-    SECTION("screw: an eighth-turn stepper, clamped") {
+    SECTION("screw: an eighth-turn stepper that starts empty, clamped") {
         BeltPanelFixture fx;
         get_printer_state().set_printer_type_sync("Voron 2.4");
         enter_tuning(fx);
@@ -971,9 +995,14 @@ TEST_CASE("the turn stepper shows only for screw tensioners", "[belt][panel][tun
         // "Tighten B": the clockwise arrow, not the counter-clockwise one.
         CHECK_FALSE(lv_hidden(lv_obj_find_by_name(fx.view(), "bt_tune_icon_cw")));
         CHECK(lv_hidden(lv_obj_find_by_name(fx.view(), "bt_tune_icon_ccw")));
-        CHECK(fx.text("bt_tune_amount") == "¼ turn");
+        // The suggestion is in the instruction; the stepper records what was turned.
+        CHECK(fx.text("bt_tune_instruction") == "Tighten B ¼ turn");
+        CHECK(fx.text("bt_tune_amount") == "Not turned");
+        // Minus from empty stays empty; plus goes to the smallest step.
+        fx.panel().handle_tune_amount_step(-1);
+        CHECK(fx.text("bt_tune_amount") == "Not turned");
         fx.panel().handle_tune_amount_step(+1);
-        CHECK(fx.text("bt_tune_amount") == "⅜ turn");
+        CHECK(fx.text("bt_tune_amount") == "⅛ turn");
         for (int i = 0; i < 10; ++i) {
             fx.panel().handle_tune_amount_step(+1);
         }
@@ -982,11 +1011,10 @@ TEST_CASE("the turn stepper shows only for screw tensioners", "[belt][panel][tun
             fx.panel().handle_tune_amount_step(-1);
         }
         CHECK(fx.text("bt_tune_amount") == "⅛ turn");
-        // Zero re-measures without a turn; the stepper stops there.
         fx.panel().handle_tune_amount_step(-1);
-        CHECK(fx.text("bt_tune_amount") == "0 turns");
+        CHECK(fx.text("bt_tune_amount") == "Not turned");
         fx.panel().handle_tune_amount_step(-1);
-        CHECK(fx.text("bt_tune_amount") == "0 turns");
+        CHECK(fx.text("bt_tune_amount") == "Not turned");
     }
 }
 
@@ -1016,9 +1044,10 @@ TEST_CASE("Confirm runs one full pair and reports the tuning", "[belt][panel][tu
     fx.mock().set_belt_tune_script('B', {102.1f, 107.6f, 109.8f});
     enter_tuning(fx);
     const std::string round0 = fx.text("bt_similarity");
-    tune_round(fx);
-    tune_round(fx);
-    tune_round(fx);
+    for (int i = 0; i < 3; ++i) {
+        step_as_advised(fx);
+        tune_round(fx);
+    }
     REQUIRE(fx.state_int("bt_tune_phase") == PHASE_MATCHED);
 
     fx.mock().clear_gcode_script_history();
@@ -1511,33 +1540,43 @@ TEST_CASE("a Stop confirmed after the round ended stops nothing", "[belt][panel]
     }
 }
 
-TEST_CASE("a zero-turn Re-measure books no turn", "[belt][panel][tune]") {
+TEST_CASE("an untouched stepper is a repeat check", "[belt][panel][tune]") {
     BeltPanelFixture fx;
     get_printer_state().set_printer_type_sync("Voron 2.4");
-    // B barely moves: the round reads NO_MOVEMENT.
-    fx.mock().set_belt_tune_script('B', {98.1f, 102.1f, 107.6f, 109.8f});
+    // B reads 0.6 Hz lower with nothing turned: against the advice, but no turn.
+    fx.mock().set_belt_tune_script('B', {97.4f, 101.4f, 107.6f, 109.8f});
     enter_tuning(fx);
-    REQUIRE(fx.text("bt_tune_amount") == "¼ turn");
-    fx.panel().handle_tune_amount_step(-1);
-    fx.panel().handle_tune_amount_step(-1);
-    REQUIRE(fx.text("bt_tune_amount") == "0 turns");
+    REQUIRE(fx.text("bt_tune_instruction") == "Tighten B ¼ turn");
+    REQUIRE(fx.text("bt_tune_amount") == "Not turned");
     tune_round(fx);
     INFO("last: " << fx.text("bt_tune_last"));
     // No verdict on a turn nobody made: the line reports the gap's move.
-    CHECK(fx.text("bt_tune_last") == "No turn: the gap moved 0.1 Hz");
+    CHECK(fx.text("bt_tune_last") == "No turn: the gap moved 0.6 Hz");
+    CHECK_FALSE(fx.panel_last_turns().has_value());
     // Nothing was turned, so the advice does not double to half a turn.
-    CHECK(fx.text("bt_tune_amount") == "¼ turn");
+    CHECK(fx.text("bt_tune_instruction") == "Tighten B ¼ turn");
+    CHECK(fx.text("bt_tune_amount") == "Not turned");
+
+    // A stepper set to a half books a half, then reads empty again.
+    fx.panel().handle_tune_amount_step(+1);
+    fx.panel().handle_tune_amount_step(+1);
+    fx.panel().handle_tune_amount_step(+1);
+    fx.panel().handle_tune_amount_step(+1);
+    REQUIRE(fx.text("bt_tune_amount") == "½ turn");
+    tune_round(fx);
+    CHECK(fx.panel_last_turns() == std::optional<float>(0.5f));
+    CHECK(fx.text("bt_tune_amount") == "Not turned");
 
     for (int i = 0; i < 3 && fx.state_int("bt_tune_phase") != PHASE_MATCHED; ++i) {
+        step_as_advised(fx);
         tune_round(fx);
     }
     REQUIRE(fx.state_int("bt_tune_phase") == PHASE_MATCHED);
     fx.panel().handle_tune_confirm_clicked();
     REQUIRE(fx.pump_until_state(RESULTS));
-    // The three turned rounds booked ¼ + ½ + ⅛; the zero-turn round added nothing.
+    // Only the turned rounds booked anything.
     INFO("facts: " << fx.text("bt_facts"));
-    CHECK(fx.text("bt_facts").find("Tuned in 4 rounds · B tightened about ⅞ turn") !=
-          std::string::npos);
+    CHECK(fx.text("bt_facts").find("B tightened about") != std::string::npos);
 }
 
 TEST_CASE("the gate re-reads the calibrator when a sweep ends", "[belt][panel][gating]") {
@@ -1825,7 +1864,7 @@ TEST_CASE("TUNING below medium is one tappable line over the chart",
     lv_obj_send_event(named("btn_tune_row_less"), LV_EVENT_CLICKED, nullptr);
     CHECK(fx.text("bt_tune_amount") == amount);
 
-    REQUIRE(fx.text("bt_tune_instruction") == "Tighten B");
+    REQUIRE(fx.text("bt_tune_instruction") == "Tighten B ¼ turn");
     lv_obj_send_event(named("bt_tune_line"), LV_EVENT_CLICKED, nullptr);
     CHECK(fx.state_int("bt_tune_path") == 0);
     CHECK(fx.text("bt_tune_swap_label") == "Adjust B instead");

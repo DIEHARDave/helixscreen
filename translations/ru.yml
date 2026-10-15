@@ -1887,6 +1887,7 @@ translations:
   'Long-press any tile to enter edit mode — rearrange, resize, remove, or add widgets, and add extra pages for your preferred layout.': 'Долгое нажатие на любую плитку переводит в режим редактирования — переставляйте, изменяйте размер, удаляйте или добавляйте виджеты, а также добавляйте дополнительные страницы под свой макет.'
   Long-press the home grid to rearrange widgets (turn off if it triggers by accident): 'Долгое нажатие на сетку главного экрана переставляет виджеты (отключите, если срабатывает случайно)'
   Longest Disconnect: Самое долгое отключение
+  Loosen {0} {1}: 'Ослабить {0} на {1}'
   Loosen {}: "Ослабить {}"
   Lost connection during print — try again: Потеряно соединение во время печати —
     попробуйте снова
@@ -2222,6 +2223,7 @@ translations:
   Not enough room for this widget. Rearrange or remove widgets to make space.: Недостаточно места для этого виджета. Измените раскладку или удалите виджеты, чтобы освободить место.
   Not in your spools? Set it up: Нет в ваших катушках? Настроить
   Not now: Не сейчас
+  Not turned: 'Не повёрнут'
   Not yet available on this display: 'Пока недоступно на этом дисплее'
   Not yet calibrated: Ещё не откалибровано
   Notes: Заметки
@@ -3577,6 +3579,7 @@ translations:
   Thorough: Тщательно
   Thumbnail Only: Только миниатюра
   'Thumbnail: ': 'Миниатюра: '
+  Tighten {0} {1}: 'Натянуть {0} на {1}'
   Tighten {}: "Натянуть {}"
   Time: Время
   Time Format: Формат времени

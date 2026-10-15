@@ -420,14 +420,12 @@ const BeltTuneRound& BeltTuneSession::add_round(const BeltCurve& a_window,
         return finish(BeltTuneOutcome::NO_PEAK);
     }
     if (kind_ == BeltTensionerKind::SCREW) {
-        // No turn is advised before a baseline, so only a recorded one counts.
-        // A recorded zero is a round with no turn.
-        if (pending) {
-            r.turns_made = *pending > 0.0f ? pending : std::nullopt;
-            r.no_turn = !r.turns_made;
-        } else if (!needs_baseline_) {
-            r.turns_made = advised.turns;
+        // Only a recorded turn counts: a round with none, or a recorded zero,
+        // checks repeatability. No turn is advised before a baseline.
+        if (pending && *pending > 0.0f) {
+            r.turns_made = pending;
         }
+        r.no_turn = !r.turns_made && !needs_baseline_;
         if (r.turns_made) {
             const float signed_turns =
                 advised.direction == BeltTurnDirection::TIGHTEN ? *r.turns_made : -*r.turns_made;
@@ -505,6 +503,10 @@ const BeltTuneRound& BeltTuneSession::add_round(const BeltCurve& a_window,
     BeltTuneOutcome outcome;
     if (std::abs(gap) <= tolerance_hz_) {
         outcome = BeltTuneOutcome::MATCHED;
+    } else if (r.no_turn) {
+        // Nothing was turned, so however far the gap moved, it says how well a
+        // reading repeats, not what a turn did.
+        outcome = BeltTuneOutcome::NO_MOVEMENT;
     } else if (std::abs(move) < MIN_MOVE_HZ) {
         outcome = BeltTuneOutcome::NO_MOVEMENT;
     } else if (move * expected < 0.0f) {
@@ -519,7 +521,7 @@ const BeltTuneRound& BeltTuneSession::add_round(const BeltCurve& a_window,
     }
     // A gap that moved against the advice says the turn went elsewhere (the
     // other belt, the other way), so it teaches nothing about this belt.
-    if (outcome != BeltTuneOutcome::WRONG_WAY && std::abs(move) >= MIN_MOVE_HZ &&
+    if (!r.no_turn && outcome != BeltTuneOutcome::WRONG_WAY && std::abs(move) >= MIN_MOVE_HZ &&
         turns_behind > 0.0f) {
         rate_samples_.push_back(std::abs(move) / turns_behind);
     }

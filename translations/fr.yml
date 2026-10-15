@@ -1919,6 +1919,7 @@ translations:
   'Long-press any tile to enter edit mode — rearrange, resize, remove, or add widgets, and add extra pages for your preferred layout.': 'Appui long sur n''importe quelle tuile pour entrer en mode édition — réorganisez, redimensionnez, supprimez ou ajoutez des widgets, et ajoutez des pages supplémentaires pour votre disposition préférée.'
   Long-press the home grid to rearrange widgets (turn off if it triggers by accident): 'Appui long sur la grille d''accueil pour réorganiser les widgets (désactivez si cela se déclenche par accident)'
   Longest Disconnect: Déconnexion la plus longue
+  Loosen {0} {1}: 'Détendre {0} de {1}'
   Loosen {}: "Détendre {}"
   Lost connection during print — try again: Connexion perdue pendant l'impression
     — réessayez
@@ -2257,6 +2258,7 @@ translations:
   Not enough room for this widget. Rearrange or remove widgets to make space.: Pas assez de place pour ce widget. Réorganisez ou supprimez des widgets pour libérer de l'espace.
   Not in your spools? Set it up: Pas dans vos bobines ? Configurez-la
   Not now: Pas maintenant
+  Not turned: 'Pas tourné'
   Not yet available on this display: 'Pas encore disponible sur cet écran'
   Not yet calibrated: Pas encore calibré
   Notes: Notes
@@ -3646,6 +3648,7 @@ translations:
   Thorough: Approfondi
   Thumbnail Only: Miniature uniquement
   'Thumbnail: ': 'Miniature : '
+  Tighten {0} {1}: 'Tendre {0} de {1}'
   Tighten {}: "Tendre {}"
   Time: Temps
   Time Format: Format de l'heure

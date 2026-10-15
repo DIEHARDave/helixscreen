@@ -1434,10 +1434,7 @@ void BeltTensionPanel::set_tune_phase(TunePhase phase) {
 }
 
 void BeltTensionPanel::reset_tune_turns() {
-    tune_turns_ = helix::calibration::belt_tune::FIRST_TURN;
-    if (tune_ && tune_->zone() && !tune_->needs_baseline()) {
-        tune_turns_ = tune_->advice().turns.value_or(tune_turns_);
-    }
+    tune_turns_ = 0.0f;
 }
 
 void BeltTensionPanel::reset_tune_gauge_range() {
@@ -1517,6 +1514,12 @@ void BeltTensionPanel::refresh_tune() {
         instruction = fmt::format(
             fmt::runtime(lv_tr("Release {}'s tensioner, let the spring settle, lock it")),
             adj_letter);
+    } else if (advice.turns) {
+        // The suggestion lives here; the stepper records what was turned.
+        instruction = fmt::format(fmt::runtime(advice.direction == BeltTurnDirection::TIGHTEN
+                                                   ? lv_tr("Tighten {0} {1}")
+                                                   : lv_tr("Loosen {0} {1}")),
+                                  adj_letter, format_turn_amount(*advice.turns));
     } else {
         instruction = fmt::format(fmt::runtime(advice.direction == BeltTurnDirection::TIGHTEN
                                                    ? lv_tr("Tighten {}")
@@ -1525,8 +1528,11 @@ void BeltTensionPanel::refresh_tune() {
     }
     lv_subject_copy_string(&tune_instruction_subject_, instruction.c_str());
 
-    lv_subject_copy_string(&tune_amount_subject_,
-                           screw && measured ? format_turn_amount(tune_turns_).c_str() : "");
+    std::string amount;
+    if (screw && measured) {
+        amount = tune_turns_ > 0.0f ? format_turn_amount(tune_turns_) : lv_tr("Not turned");
+    }
+    lv_subject_copy_string(&tune_amount_subject_, amount.c_str());
     lv_subject_copy_string(&tune_gap_subject_,
                            measured ? fmt::format("{:.1f} Hz", std::abs(gap)).c_str() : "--");
 

@@ -135,8 +135,9 @@ struct BeltTuneRound {
     /// NO_PEAK with a peak on the adjusted path only: the reference's peak
     /// left the window, which a turn of the wrong belt does.
     bool reference_lost = false;
-    /// SCREW: the stepper recorded zero, so the round checks repeatability
-    /// rather than a turn. It never counts toward the stall.
+    /// SCREW: nothing was turned (the stepper was left at, or set to, zero),
+    /// so the round checks repeatability rather than a turn. It never counts
+    /// toward the stall. Never set on a BASELINE round.
     bool no_turn = false;
 };
 
@@ -157,9 +158,10 @@ class BeltTuneSession {
     [[nodiscard]] float gap_hz() const; ///< signed, adjusted - reference
     /// Meaningless while needs_baseline(): measure the zone first.
     [[nodiscard]] BeltTuneAdvice advice() const;
-    /// The stepper's value for the next round; SCREW only. Without it a round
-    /// records the suggested amount (nothing on a BASELINE round). Zero
-    /// records a round with no turn.
+    /// The stepper's value for the next round; SCREW only. A SCREW round with
+    /// no recorded turn, or a recorded zero, is a no-turn round: it adopts the
+    /// reading, teaches no rate and reads NO_MOVEMENT unless MATCHED, NO_PEAK
+    /// or OUT_OF_WINDOW.
     void record_turns(float turns);
     /// Both paths swept over the current window.
     const BeltTuneRound& add_round(const BeltCurve& a_window, const BeltCurve& b_window);

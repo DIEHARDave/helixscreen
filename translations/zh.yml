@@ -1778,6 +1778,7 @@ translations:
   'Long-press any tile to enter edit mode — rearrange, resize, remove, or add widgets, and add extra pages for your preferred layout.': 长按任意磁贴进入编辑模式 — 重新排列、调整大小、移除或添加小组件，并为您喜欢的布局添加额外页面。
   Long-press the home grid to rearrange widgets (turn off if it triggers by accident): '长按主屏幕网格可重新排列小组件（若误触请关闭）'
   Longest Disconnect: 最长断开时长
+  Loosen {0} {1}: '放松 {0} {1}'
   Loosen {}: "放松 {}"
   Lost connection during print — try again: 打印过程中连接丢失 — 请重试
   Lost connection to CFS unit: 与 CFS 单元的连接已断开
@@ -2099,6 +2100,7 @@ translations:
   Not enough room for this widget. Rearrange or remove widgets to make space.: 没有足够的空间放置此小组件。请重新排列或移除小组件以腾出空间。
   'Not in your spools? Set it up': 不在您的料盘中？立即设置
   Not now: 暂不
+  Not turned: '未转动'
   Not yet available on this display: '此屏幕暂不支持'
   Not yet calibrated: 尚未校准
   Notes: 备注
@@ -3368,6 +3370,7 @@ translations:
   Thorough: 全面
   Thumbnail Only: 仅缩略图
   'Thumbnail: ': '缩略图: '
+  Tighten {0} {1}: '拉紧 {0} {1}'
   Tighten {}: "拉紧 {}"
   Time: 时间
   Time Format: 时间格式

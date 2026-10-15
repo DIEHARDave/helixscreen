@@ -1719,6 +1719,7 @@
   <translation tag="Long-press any tile to enter edit mode — rearrange, resize, remove, or add widgets, and add extra pages for your preferred layout." zh="长按任意磁贴进入编辑模式 — 重新排列、调整大小、移除或添加小组件，并为您喜欢的布局添加额外页面。"/>
   <translation tag="Long-press the home grid to rearrange widgets (turn off if it triggers by accident)" zh="长按主屏幕网格可重新排列小组件（若误触请关闭）"/>
   <translation tag="Longest Disconnect" zh="最长断开时长"/>
+  <translation tag="Loosen {0} {1}" zh="放松 {0} {1}"/>
   <translation tag="Loosen {}" zh="放松 {}"/>
   <translation tag="Lost connection during print — try again" zh="打印过程中连接丢失 — 请重试"/>
   <translation tag="Lost connection to CFS unit" zh="与 CFS 单元的连接已断开"/>
@@ -2031,6 +2032,7 @@
   <translation tag="Not enough room for this widget. Rearrange or remove widgets to make space." zh="没有足够的空间放置此小组件。请重新排列或移除小组件以腾出空间。"/>
   <translation tag="Not in your spools? Set it up" zh="不在您的料盘中？立即设置"/>
   <translation tag="Not now" zh="暂不"/>
+  <translation tag="Not turned" zh="未转动"/>
   <translation tag="Not yet available on this display" zh="此屏幕暂不支持"/>
   <translation tag="Not yet calibrated" zh="尚未校准"/>
   <translation tag="Notes" zh="备注"/>
@@ -3218,6 +3220,7 @@
   <translation tag="Thorough" zh="全面"/>
   <translation tag="Thumbnail Only" zh="仅缩略图"/>
   <translation tag="Thumbnail: " zh="缩略图: "/>
+  <translation tag="Tighten {0} {1}" zh="拉紧 {0} {1}"/>
   <translation tag="Tighten {}" zh="拉紧 {}"/>
   <translation tag="Time" zh="时间"/>
   <translation tag="Time Format" zh="时间格式"/>

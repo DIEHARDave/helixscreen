@@ -227,7 +227,7 @@ class BeltTensionPanel : public OverlayBase {
     /// Every bt_tune_* subject, and the gauge, from the session.
     void refresh_tune();
     [[nodiscard]] std::string tune_last_message() const;
-    /// The stepper's value restarts at the session's suggestion.
+    /// The stepper restarts at zero: "not turned".
     void reset_tune_turns();
     /// The gauge's half-span for this zone: wide enough for its first gap.
     void reset_tune_gauge_range();
@@ -487,7 +487,7 @@ class BeltTensionPanel : public OverlayBase {
         helix::calibration::BeltTurnDirection::TIGHTEN;
     /// How far the gap moved in the last round, Hz.
     float tune_last_move_hz_ = 0.0f;
-    float tune_turns_ = helix::calibration::belt_tune::FIRST_TURN; ///< the stepper
+    float tune_turns_ = 0.0f; ///< the stepper; zero is "not turned"
     float tune_gauge_range_hz_ = 2.0f * helix::calibration::belt_tune::GAUGE_WARN_HZ;
     bool tune_shape_differs_ = false; ///< round 0's tallest peaks are unpaired
     float tune_round0_similarity_ = 0.0f;

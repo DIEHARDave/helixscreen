@@ -355,10 +355,12 @@ flip the advised direction, and it clears the tally.
   belt changes, so no sample spans zones.
 
 Without a rate the first advised turn is `FIRST_TURN` (a quarter); after a `NO_MOVEMENT`
-round it doubles the turn that did nothing. The user sets the amount actually turned on a
-stepper, from 0 to one turn; `record_turns` stores it for the next round, defaulting to the
-advice. Zero books no turn: a re-measure to check repeatability doubles nothing and adds
-nothing to the Confirm facts. The panel
+round it doubles the turn that did nothing. The instruction carries the advised amount
+("Tighten B ¼ turn"); the user sets the amount actually turned on a stepper that starts
+every round at "Not turned" and runs to one turn, and `record_turns` stores it for the next
+round. A round with no recorded turn, or zero, is a no-turn round: it adopts the reading,
+reads `NO_MOVEMENT` unless `MATCHED`, `NO_PEAK` or `OUT_OF_WINDOW`, teaches no rate, doubles
+nothing and adds nothing to the Confirm facts. The panel
 formats amounts with `format_belt_turns` (the text fonts carry the eighth-fraction glyphs).
 
 ### Tensioner kinds

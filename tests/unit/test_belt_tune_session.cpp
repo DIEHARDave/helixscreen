@@ -67,6 +67,13 @@ const BeltTuneRound& sweep(BeltTuneSession& s, float a_hz, float b_hz) {
     return sweep_curves(s, one_peak(a_hz), one_peak(b_hz));
 }
 
+/// The user turned the suggested amount and recorded it on the stepper.
+void turn_as_advised(BeltTuneSession& s) {
+    if (const auto turns = s.advice().turns) {
+        s.record_turns(*turns);
+    }
+}
+
 BeltPeak pk(float hz, float amp) {
     return BeltPeak{hz, amp};
 }
@@ -357,6 +364,7 @@ TEST_CASE("tune session: the looser path is adjusted, and swapping flips it", "[
 
     SECTION("turns are totalled per belt across a swap") {
         // B tightened a quarter, then A, now adjusted and higher, loosened an eighth.
+        turn_as_advised(s);
         sweep(s, 104.0f, 101.0f);
         s.swap_adjusted_path();
         REQUIRE(s.advice().direction == BeltTurnDirection::LOOSEN);
@@ -367,7 +375,8 @@ TEST_CASE("tune session: the looser path is adjusted, and swapping flips it", "[
     }
 
     SECTION("swap clears the learned rate; the amount restarts at a quarter turn") {
-        sweep(s, 104.0f, 101.0f); // B moved 1 Hz for the default quarter turn
+        turn_as_advised(s);
+        sweep(s, 104.0f, 101.0f); // B moved 1 Hz for the suggested quarter turn
         REQUIRE(s.hz_per_turn().has_value());
         CHECK(*s.hz_per_turn() == Catch::Approx(4.0f).margin(0.4f));
         const auto window = s.zone()->window;
@@ -387,6 +396,7 @@ TEST_CASE("tune advice: amounts for screws only, spring re-seat", "[belt][tune]"
         CHECK(*s.advice().turns == Catch::Approx(0.25f));
         CHECK_FALSE(s.advice().spring_reseat);
         // 4.1 Hz for a quarter turn is 16.4 Hz/turn; 7.9 Hz left rounds to a half.
+        turn_as_advised(s);
         sweep(s, 112.0f, 104.1f);
         REQUIRE(s.hz_per_turn().has_value());
         CHECK(*s.hz_per_turn() == Catch::Approx(16.4f).margin(0.5f));
@@ -398,6 +408,7 @@ TEST_CASE("tune advice: amounts for screws only, spring re-seat", "[belt][tune]"
         auto s = session_for(112.0f, 100.0f, BeltTensionerKind::SCREW);
         s.record_turns(0.125f);
         sweep(s, 112.0f, 108.0f); // 8 Hz for an eighth: 64 Hz/turn
+        turn_as_advised(s);
         sweep(s, 112.0f, 110.0f); // the suggested eighth moved 2 Hz: median 40 Hz/turn
         // 2 Hz / 40 = 0.05 turn, which rounds to zero eighths.
         REQUIRE(s.advice().turns.has_value());
@@ -416,6 +427,7 @@ TEST_CASE("tune advice: amounts for screws only, spring re-seat", "[belt][tune]"
         sweep(s, 112.0f, 104.0f); // 4 Hz for half a turn, 8 Hz left: one turn
         REQUIRE(s.advice().turns.has_value());
         CHECK(*s.advice().turns == Catch::Approx(1.0f));
+        turn_as_advised(s);
         sweep(s, 112.0f, 109.0f); // the suggested turn moved 5 Hz: median 6.5 Hz/turn
         // 3 Hz / 6.5 = 0.46 turn: the nearest eighth is a half, not the 0.375 below it.
         REQUIRE(s.advice().turns.has_value());
@@ -424,6 +436,7 @@ TEST_CASE("tune advice: amounts for screws only, spring re-seat", "[belt][tune]"
 
     SECTION("screw: a turn that moved nothing, before any rate, doubles") {
         auto s = session_for(112.0f, 100.0f, BeltTensionerKind::SCREW);
+        turn_as_advised(s);
         CHECK(sweep(s, 112.0f, 100.2f).outcome == BeltTuneOutcome::NO_MOVEMENT);
         CHECK_FALSE(s.hz_per_turn().has_value());
         REQUIRE(s.advice().turns.has_value());
@@ -613,7 +626,8 @@ TEST_CASE("tune round outcomes", "[belt][tune]") {
 
 TEST_CASE("tune rate: median of real moves, recorded turns win", "[belt][tune]") {
     auto s = session_for(112.0f, 100.0f, BeltTensionerKind::SCREW);
-    // Default quarter turn: +4 Hz, 16 Hz/turn.
+    // The suggested quarter turn: +4 Hz, 16 Hz/turn.
+    turn_as_advised(s);
     CHECK(sweep(s, 112.0f, 104.0f).turns_made == std::optional<float>(0.25f));
     // Half a turn barely moved it: excluded from the rate.
     s.record_turns(0.5f);
@@ -639,6 +653,7 @@ TEST_CASE("tune rate: common drift teaches nothing", "[belt][tune]") {
     auto s = session_for(112.0f, 100.0f, BeltTensionerKind::SCREW);
     // A quarter turn booked, but both peaks rose 1.5 Hz: the gap held, so the
     // turn did nothing and no rate is learned.
+    turn_as_advised(s);
     const auto& r = sweep(s, 113.5f, 101.5f);
     REQUIRE(r.turns_made == std::optional<float>(0.25f));
     CHECK(r.outcome == BeltTuneOutcome::NO_MOVEMENT);
@@ -686,12 +701,14 @@ TEST_CASE("tune rate: a wrong-way round teaches nothing", "[belt][tune]") {
     auto s = session_for(112.0f, 100.0f, BeltTensionerKind::SCREW);
     // A quarter turn moved B 2 Hz the wrong way: no rate, so the next
     // amount is the default, not |gap| over 8 Hz/turn.
+    turn_as_advised(s);
     const auto& wrong = sweep(s, 112.0f, 98.0f);
     REQUIRE(wrong.outcome == BeltTuneOutcome::WRONG_WAY);
     CHECK_FALSE(s.hz_per_turn().has_value());
     REQUIRE(s.advice().turns.has_value());
     CHECK(*s.advice().turns == Catch::Approx(0.25f));
     // The next real move is the only sample: a quarter turn for 4 Hz.
+    turn_as_advised(s);
     REQUIRE(sweep(s, 112.0f, 102.0f).outcome == BeltTuneOutcome::CLOSER);
     REQUIRE(s.hz_per_turn().has_value());
     CHECK(*s.hz_per_turn() == Catch::Approx(16.0f).margin(0.4f));
@@ -723,9 +740,11 @@ TEST_CASE("tune hints: unpaired zones and stalled rounds", "[belt][tune]") {
             auto s = session_for(104.0f, 100.0f, kind);
             REQUIRE(s.zone()->source == BeltZoneSource::PAIRED);
             for (int i = 0; i < 7; ++i) {
+                turn_as_advised(s);
                 sweep(s, 104.0f, 100.0f);
             }
             CHECK_FALSE(s.show_mechanical_hint());
+            turn_as_advised(s);
             sweep(s, 104.0f, 100.0f);
             CHECK(s.show_mechanical_hint());
         }
@@ -754,6 +773,7 @@ TEST_CASE("tune next_zone walks the unmatched pairs, then stops", "[belt][tune]"
     CHECK(s.has_next_zone());
 
     const auto w = s.zone()->window;
+    turn_as_advised(s);
     s.add_round(one_peak(104.0f, w.freq_start_hz, w.freq_end_hz + 0.5f),
                 one_peak(104.0f, w.freq_start_hz, w.freq_end_hz + 0.5f));
     REQUIRE(s.zone_matched());
@@ -936,6 +956,7 @@ TEST_CASE("tune zones: a later zone starts from its own measurement", "[belt][tu
     REQUIRE_FALSE(s.needs_baseline());
 
     // A quarter turn takes A's 100 Hz mode to 104: 16 Hz/turn, matched.
+    turn_as_advised(s);
     REQUIRE(sweep_curves(s, lorentzian_curve({{48.5f, 1e4f}, {104.0f, 1e4f}}, LO, HI), b).outcome ==
             BeltTuneOutcome::MATCHED);
     REQUIRE(s.hz_per_turn() == Catch::Approx(16.0f).margin(0.5f));
@@ -957,6 +978,7 @@ TEST_CASE("tune zones: a later zone starts from its own measurement", "[belt][tu
 
     // The next round measures this zone alone: the suggested eighth moved A
     // 1 Hz, 8 Hz/turn; the median of 16 and 8 is 12.
+    turn_as_advised(s);
     const auto& r = sweep_curves(s, lorentzian_curve({{49.5f, 1e4f}, {104.0f, 1e4f}}, LO, HI), b);
     CHECK(r.outcome == BeltTuneOutcome::MATCHED);
     REQUIRE(s.previous_gap_hz().has_value());
@@ -1025,4 +1047,38 @@ TEST_CASE("turn counts read as eighth-fraction glyphs", "[belt][tune]") {
     CHECK(format_belt_turns(0.3f) == "¼");
     CHECK(format_belt_turns(0.33f) == "⅜");
     CHECK(format_belt_turns(0.04f) == "0");
+}
+
+TEST_CASE("tune session: an unrecorded stepper is a round with no turn", "[belt][tune]") {
+    auto s = session_for(112.0f, 100.0f, BeltTensionerKind::SCREW);
+    REQUIRE(s.advice().turns == std::optional<float>(belt_tune::FIRST_TURN));
+
+    SECTION("a small move the wrong way is no movement, not a wrong way") {
+        // The gap moved 0.6 Hz against the TIGHTEN advice with nothing turned.
+        const auto& r = sweep(s, 112.0f, 99.4f);
+        CHECK(r.no_turn);
+        CHECK_FALSE(r.turns_made.has_value());
+        CHECK(r.outcome == BeltTuneOutcome::NO_MOVEMENT);
+        // The reading is adopted.
+        CHECK(s.gap_hz() == Catch::Approx(-12.6f).margin(0.1f));
+        CHECK(s.total_turns(BeltPath::PATH_B) == Catch::Approx(0.0f));
+    }
+    SECTION("a large move either way is still no movement and teaches no rate") {
+        CHECK(sweep(s, 112.0f, 98.0f).outcome == BeltTuneOutcome::NO_MOVEMENT);
+        CHECK(sweep(s, 112.0f, 102.0f).outcome == BeltTuneOutcome::NO_MOVEMENT);
+        CHECK_FALSE(s.hz_per_turn().has_value());
+        // Nothing was turned, so nothing doubles.
+        CHECK(s.advice().turns == std::optional<float>(belt_tune::FIRST_TURN));
+    }
+    SECTION("a match is still a match") {
+        CHECK(sweep(s, 112.0f, 111.9f).outcome == BeltTuneOutcome::MATCHED);
+    }
+    SECTION("a recorded half turn is booked") {
+        s.record_turns(0.5f);
+        const auto& r = sweep(s, 112.0f, 104.0f);
+        CHECK_FALSE(r.no_turn);
+        CHECK(r.turns_made == std::optional<float>(0.5f));
+        CHECK(r.outcome == BeltTuneOutcome::CLOSER);
+        CHECK(s.total_turns(BeltPath::PATH_B) == Catch::Approx(0.5f));
+    }
 }

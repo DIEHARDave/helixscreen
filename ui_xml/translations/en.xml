@@ -1719,6 +1719,7 @@
   <translation tag="Long-press any tile to enter edit mode — rearrange, resize, remove, or add widgets, and add extra pages for your preferred layout." en="Long-press any tile to enter edit mode — rearrange, resize, remove, or add widgets, and add extra pages for your preferred layout."/>
   <translation tag="Long-press the home grid to rearrange widgets (turn off if it triggers by accident)" en="Long-press the home grid to rearrange widgets (turn off if it triggers by accident)"/>
   <translation tag="Longest Disconnect" en="Longest Disconnect"/>
+  <translation tag="Loosen {0} {1}" en="Loosen {0} {1}"/>
   <translation tag="Loosen {}" en="Loosen {}"/>
   <translation tag="Lost connection during print — try again" en="Lost connection during print — try again"/>
   <translation tag="Lost connection to CFS unit" en="Lost connection to CFS unit"/>
@@ -2031,6 +2032,7 @@
   <translation tag="Not enough room for this widget. Rearrange or remove widgets to make space." en="Not enough room for this widget. Rearrange or remove widgets to make space."/>
   <translation tag="Not in your spools? Set it up" en="Not in your spools? Set it up"/>
   <translation tag="Not now" en="Not now"/>
+  <translation tag="Not turned" en="Not turned"/>
   <translation tag="Not yet available on this display" en="Not yet available on this display"/>
   <translation tag="Not yet calibrated" en="Not yet calibrated"/>
   <translation tag="Notes" en="Notes"/>
@@ -3218,6 +3220,7 @@
   <translation tag="Thorough" en="Thorough"/>
   <translation tag="Thumbnail Only" en="Thumbnail Only"/>
   <translation tag="Thumbnail: " en="Thumbnail: "/>
+  <translation tag="Tighten {0} {1}" en="Tighten {0} {1}"/>
   <translation tag="Tighten {}" en="Tighten {}"/>
   <translation tag="Time" en="Time"/>
   <translation tag="Time Format" en="Time Format"/>
