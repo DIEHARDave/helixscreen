@@ -50,29 +50,10 @@ case "$1" in take) exit "${CLAIM_TAKE_RC:-0}" ;; esac'
     export TEST_HOST=0
 }
 
-# No test here runs make in the real tree: a second make there races the gate's
-# own lanes (prune-orphan-test-objs deletes the test binary they run). A recipe
-# is checked by copying its fragment of mk/tests.mk into a scratch Makefile.
-# mk_fragment <first-line-regex> <target>: from the first line through <target>'s recipe.
-mk_fragment() {
-    awk -v first="$1" -v tgt="^$2:" '
-        $0 ~ first { on = 1 }
-        on { print }
-        on && $0 ~ tgt { intgt = 1; next }
-        intgt && /^$/ { exit }' "$REPO_ROOT/mk/tests.mk"
-}
-
-run_fragment() { # <first-line-regex> <target> <make args...>
-    local dir="$BATS_TEST_TMPDIR/mkfrag"
-    mkdir -p "$dir"
-    { printf 'ECHO := @echo\nQ := @\n'; mk_fragment "$1" "$2"; } >"$dir/Makefile"
-    grep -q "^$2:" "$dir/Makefile" || { echo "no $2 recipe in the fragment" >&2; return 1; }
-    shift
-    # A suite run from `make test-shell BATS_REQUIRED=1` carries that variable in
-    # both MAKEFLAGS and the environment, and either would override the test's own.
-    (cd "$dir" && env -u MAKEFLAGS -u MFLAGS -u MAKELEVEL -u MAKEOVERRIDES \
-        -u BATS_REQUIRED -u BATS_BIN \
-        JOBPOOL=0 make --no-print-directory -f Makefile "$@")
+# No test here runs make in the real tree: a recipe is checked by copying its
+# fragment of mk/tests.mk into a scratch Makefile (run_mk_fragment, helpers.bash).
+run_fragment() { # <first-line-regex> <target> [make args...]
+    run_mk_fragment "$REPO_ROOT/mk/tests.mk" "$@"
 }
 
 row() { # <status> <step>: the table row for step has that status

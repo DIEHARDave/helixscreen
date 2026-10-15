@@ -471,7 +471,7 @@ print('ok')
     # compiled dependencies it cannot. Only APPLIED_STAMPS feeds the id, so a
     # stamp variable defined but left out of it watches nothing.
     local db
-    db="$(make -pn help 2>/dev/null | grep '^APPLIED_STAMPS := ')"
+    db="$(make_db | grep '^APPLIED_STAMPS := ')"
     # Anchored: a path that merely starts with the name is a different file,
     # and make would be watching something the gate never writes.
     grep -qE 'modules/lvgl/helix-patches-applied\.json( |$)' <<<"$db" \

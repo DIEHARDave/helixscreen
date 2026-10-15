@@ -631,3 +631,99 @@ platform_branch() {
         inside
     ' "$script"
 }
+
+# ---------------------------------------------------------------------------
+# make, kept out of the tree under test.
+#
+# setup_suite blocks a make whose directory is the tree (it races a gate's own
+# lanes, and even a dry run writes there), so a test that needs the real
+# Makefile runs it here instead.
+
+# Prints this file's stand-in for the repo: every top-level entry symlinked,
+# except build/, which is its own and starts empty, .git, left out so nothing
+# reaches the tree's index through it, and .fonts.stamp, copied with its mtime
+# so the fonts read as current exactly when they do in the tree.
+#
+# It is safe for parsing, for print-style targets, and for recipes that write
+# only under build/ or to paths the test overrides. Everything else is a plain
+# link a recipe writes straight through into the tree: compile_commands.json,
+# src/ (the default TRANS_GEN_DIR), .venv, assets/.
+#
+# Built beside its final name and published with one symlink creation, so
+# tests running in parallel in one file see either no tree or a whole one.
+# What it prints is the physical path, which is what pwd -P and make report.
+scratch_tree() {
+    local link="$BATS_FILE_TMPDIR/scratch-tree" root e tmp
+    if [ ! -L "$link" ]; then
+        root="${HELIX_TEST_REPO_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)}"
+        tmp="$(mktemp -d "$BATS_FILE_TMPDIR/scratch-tree.XXXXXX")"
+        mkdir "$tmp/build"
+        for e in "$root"/* "$root"/.[!.]*; do
+            case "${e##*/}" in
+                build | .git | .worktrees) continue ;;
+                .fonts.stamp) cp -p "$e" "$tmp/" ;;
+                *) ln -s "$e" "$tmp/${e##*/}" ;;
+            esac
+        done
+        ln -sn "$tmp" "$link" 2>/dev/null || rm -rf "$tmp"
+    fi
+    (cd "$link" && pwd -P)
+}
+
+# scratch_make [make args...]: make in scratch_tree.
+scratch_make() {
+    make -C "$(scratch_tree)" --no-print-directory "$@"
+}
+
+# A PATH with no jobpool on it, for a test of a box that never installed one.
+# The sandbox's own directory holds a jobpool blocker, so it is swapped, in
+# place, for a copy of the sandbox without that one entry: the make guard and
+# every other blocker stay on PATH.
+path_without_jobpool() {
+    local d p="" keep="$BATS_TEST_TMPDIR/sandbox-no-jobpool" f
+    if [ -n "${HELIX_TEST_SANDBOX_BIN:-}" ] && [ ! -d "$keep" ]; then
+        mkdir -p "$keep"
+        for f in "$HELIX_TEST_SANDBOX_BIN"/*; do
+            [ "${f##*/}" = jobpool ] || ln -s "$f" "$keep/${f##*/}"
+        done
+    fi
+    local IFS=:
+    for d in $PATH; do
+        if [ -n "${HELIX_TEST_SANDBOX_BIN:-}" ] && [ "$d" = "$HELIX_TEST_SANDBOX_BIN" ]; then
+            d=$keep
+        elif [ -e "$d/jobpool" ]; then
+            continue
+        fi
+        p=${p:+$p:}$d
+    done
+    printf '%s' "$p"
+}
+
+# make_db [make args...]: the Makefile's database, parsed in scratch_tree. The
+# goal is `help`, whose recipe only echoes: with no goal a dry run walks `all`,
+# whose recipe names $(MAKE) and so really runs.
+make_db() {
+    scratch_make -pn help "$@" 2>/dev/null
+}
+
+# mk_fragment <mk file> <first-line-regex> <target>: the lines of <mk file>
+# from the first match through <target>'s recipe.
+mk_fragment() {
+    awk -v first="$2" -v tgt="^$3:" '
+        $0 ~ first { on = 1 }
+        on { print }
+        on && $0 ~ tgt { intgt = 1; next }
+        intgt && /^$/ { exit }' "$1"
+}
+
+# run_mk_fragment <mk file> <first-line-regex> <target> [make args...]: runs
+# make on that fragment alone, as a scratch Makefile under BATS_TEST_TMPDIR,
+# so a recipe is checked without the rest of the build.
+run_mk_fragment() {
+    local dir="$BATS_TEST_TMPDIR/mkfrag"
+    mkdir -p "$dir"
+    { printf 'ECHO := @echo\nQ := @\n'; mk_fragment "$1" "$2" "$3"; } >"$dir/Makefile"
+    grep -q "^$3:" "$dir/Makefile" || { echo "no $3 recipe in the fragment" >&2; return 1; }
+    shift 3
+    (cd "$dir" && make --no-print-directory -f Makefile "$@")
+}
