@@ -1748,12 +1748,8 @@ bool Application::init_translations() {
     // are expected and produce many "language is missing from tag" warnings
     helix::logging::set_suppress_translation_warnings(true);
 
-    // NOTE: lv_i18n (src/generated/lv_i18n_translations.c) was a parallel i18n
-    // subsystem kept alongside LVGL's native lv_translation_* API. It was never
-    // read from — lv_i18n_get_text() has no callers in the tree. Removing the
-    // init/set_locale calls lets LTO strip the ~1 MB of compiled language pack
-    // rodata. All real language switching goes through lv_translation_set_language
-    // and the per-locale XML files loaded below.
+    // All language switching goes through lv_translation_set_language and the
+    // per-locale XML files loaded below.
 
     // Load ONLY the current locale's translations. Parsing the combined
     // translations.xml with all 9 languages at startup burns ~500-700 KB of

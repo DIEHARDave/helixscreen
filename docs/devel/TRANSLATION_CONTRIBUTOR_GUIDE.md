@@ -252,7 +252,7 @@ Submit the PR without local testing. Note in the PR description that you didn't 
    - What language / what area
    - Your qualifications (native speaker? professional translator? just fluent?)
    - Anything you were uncertain about and want a second opinion on
-4. **Commit the regenerated artifacts too.** The source `translations/*.yml` plus the runtime XML packs (`ui_xml/translations/*.xml`) belong in the same PR — they're not gitignored because the running app loads them directly. If you changed any Chinese or Japanese strings, also commit the regenerated CJK runtime fonts (`assets/fonts/cjk/*.bin`) — that font is subset to exactly the characters used, so new glyphs need `make regen-fonts`. (There's no `src/generated/lv_i18n_translations.*` to commit anymore — that legacy table was removed.) If you didn't run the build, note that and we'll regenerate during review.
+4. **Commit the regenerated artifacts too.** The source `translations/*.yml` plus the runtime XML packs (`ui_xml/translations/*.xml`) belong in the same PR — they're not gitignored because the running app loads them directly. If you changed any Chinese or Japanese strings, also commit the regenerated CJK runtime fonts (`assets/fonts/cjk/*.bin`) — that font is subset to exactly the characters used, so new glyphs need `make regen-fonts`. If you didn't run the build, note that and we'll regenerate during review.
 
 Translations don't need to be complete in a single PR. If you want to translate a panel's worth of strings and submit, then do another panel next week, that's welcome. Partial translations are better than no translation.
 

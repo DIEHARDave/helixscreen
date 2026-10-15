@@ -80,7 +80,7 @@ if [ -n "$FILES" ]; then
       CF_TOTAL=$(grep -c . "$CF_CAND")
       # Skipping auto-generated sources is part of the parallel pass: their
       # on-disk format is owned by the generator (e.g.
-      # src/generated/lv_i18n_translations.c from generate_translations.py), and
+      # src/generated/theme_token_table.cpp), and
       # reformatting them fights the generator on every build.
       #
       # The candidate list arrives on stdin: reading it with the -a flag is a
