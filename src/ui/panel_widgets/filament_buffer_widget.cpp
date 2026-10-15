@@ -10,10 +10,10 @@
 #include "grid_layout.h"
 #include "helix-xml/src/xml/lv_xml.h"
 #include "panel_widget_registry.h"
-#include "static_subject_registry.h"
 #include "subject_managed_panel.h"
 #include "text_measure.h"
 #include "theme_manager.h"
+#include "widget_subjects.h"
 
 #include <spdlog/spdlog.h>
 
@@ -24,22 +24,12 @@ namespace {
 // 1 when the tile is two cells wide, which is what draws the trace and the
 // lean in words. Registered before the XML that binds it is parsed.
 lv_subject_t s_wide_subject{};
-bool s_subjects_initialized = false;
-SubjectManager s_subjects;
+helix::WidgetSubjects s_subjects{"FilamentBufferWidgetSubjects"};
 
 void filament_buffer_widget_init_subjects() {
-    if (s_subjects_initialized)
-        return;
-
-    lv_subject_init_int(&s_wide_subject, 0);
-    s_subjects.publish("filament_buffer_wide", &s_wide_subject);
-    s_subjects_initialized = true;
-
-    StaticSubjectRegistry::instance().register_deinit("FilamentBufferWidgetSubjects", []() {
-        if (s_subjects_initialized && lv_is_initialized()) {
-            s_subjects.deinit_all();
-            s_subjects_initialized = false;
-        }
+    s_subjects.ensure_init([] {
+        lv_subject_init_int(&s_wide_subject, 0);
+        s_subjects.publish("filament_buffer_wide", &s_wide_subject);
     });
 }
 

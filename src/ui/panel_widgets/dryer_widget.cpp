@@ -23,10 +23,10 @@
 #include "src/ui/panel_widgets/content_chrome.h"
 #include "src/ui/panel_widgets/dryer_model.h"
 #include "src/ui/panel_widgets/live_tile_owner.h"
-#include "static_subject_registry.h"
 #include "subject_managed_panel.h"
 #include "text_measure.h"
 #include "theme_manager.h"
+#include "widget_subjects.h"
 
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
@@ -80,8 +80,7 @@ struct RowSubjects {
 };
 HELIX_PSRAM_BSS RowSubjects s_rows[kMaxRows];
 
-bool s_subjects_initialized = false;
-SubjectManager s_subjects;
+helix::WidgetSubjects s_subjects{"DryerWidgetSubjects"};
 bool s_rows_composed = false;
 
 // The instance bound to the live tile is the only one that publishes.
@@ -105,51 +104,42 @@ void dryer_init_subjects() {
     // gate subject before any widget exists. Every call, so a model that was deinited on
     // its own comes back with its sources attached.
     helix::dryer_model::init_subjects();
-    if (s_subjects_initialized)
-        return;
-
-    init_int(s_flags.rung, static_cast<int>(helix::SizeRung::Cell), "home_dryer_rung");
-    init_int(s_flags.show_icon, 1, "home_dryer_show_icon");
-    init_int(s_flags.show_ring, 0, "home_dryer_show_ring");
-    init_int(s_flags.ring_pct, 0, "home_dryer_ring_pct");
-    init_int(s_flags.show_info, 1, "home_dryer_show_info");
-    init_int(s_flags.show_time, 0, "home_dryer_show_time");
-    init_int(s_flags.show_name, 0, "home_dryer_show_name");
-    init_int(s_flags.show_temp, 0, "home_dryer_show_temp");
-    init_int(s_flags.show_rh_detail, 0, "home_dryer_show_rh_detail");
-    init_int(s_flags.show_rh, 0, "home_dryer_show_rh");
-    init_int(s_flags.show_status, 0, "home_dryer_show_status");
-    init_int(s_flags.show_end, 0, "home_dryer_show_end");
-    init_int(s_flags.show_count, 0, "home_dryer_show_count");
-    init_int(s_flags.show_times, 0, "home_dryer_show_times");
-    init_int(s_flags.row_count, 0, "home_dryer_row_count");
-    init_text(s_texts.time, "home_dryer_time_text");
-    init_text(s_texts.name, "home_dryer_name_text");
-    init_text(s_texts.temp, "home_dryer_temp_text");
-    init_text(s_texts.rh_detail, "home_dryer_rh_detail_text");
-    init_text(s_texts.rh, "home_dryer_rh_text");
-    init_text(s_texts.status, "home_dryer_status_text");
-    init_text(s_texts.end, "home_dryer_end_text");
-    init_text(s_texts.count, "home_dryer_count_text");
-    init_text(s_texts.times, "home_dryer_times_text");
-    for (int i = 0; i < kMaxRows; ++i) {
-        // The names must outlive the registration, so they live in a static table.
-        static HELIX_PSRAM_BSS char names[kMaxRows][4][32];
-        snprintf(names[i][0], sizeof(names[i][0]), "home_dryer_row_%d_name", i);
-        snprintf(names[i][1], sizeof(names[i][1]), "home_dryer_row_%d_time", i);
-        snprintf(names[i][2], sizeof(names[i][2]), "home_dryer_row_%d_detail", i);
-        snprintf(names[i][3], sizeof(names[i][3]), "home_dryer_row_%d_pct", i);
-        init_text(s_rows[i].name, names[i][0]);
-        init_text(s_rows[i].time, names[i][1]);
-        init_text(s_rows[i].detail, names[i][2]);
-        init_int(s_rows[i].pct, -1, names[i][3]);
-    }
-    s_subjects_initialized = true;
-
-    StaticSubjectRegistry::instance().register_deinit("DryerWidgetSubjects", []() {
-        if (s_subjects_initialized && lv_is_initialized()) {
-            s_subjects.deinit_all();
-            s_subjects_initialized = false;
+    s_subjects.ensure_init([] {
+        init_int(s_flags.rung, static_cast<int>(helix::SizeRung::Cell), "home_dryer_rung");
+        init_int(s_flags.show_icon, 1, "home_dryer_show_icon");
+        init_int(s_flags.show_ring, 0, "home_dryer_show_ring");
+        init_int(s_flags.ring_pct, 0, "home_dryer_ring_pct");
+        init_int(s_flags.show_info, 1, "home_dryer_show_info");
+        init_int(s_flags.show_time, 0, "home_dryer_show_time");
+        init_int(s_flags.show_name, 0, "home_dryer_show_name");
+        init_int(s_flags.show_temp, 0, "home_dryer_show_temp");
+        init_int(s_flags.show_rh_detail, 0, "home_dryer_show_rh_detail");
+        init_int(s_flags.show_rh, 0, "home_dryer_show_rh");
+        init_int(s_flags.show_status, 0, "home_dryer_show_status");
+        init_int(s_flags.show_end, 0, "home_dryer_show_end");
+        init_int(s_flags.show_count, 0, "home_dryer_show_count");
+        init_int(s_flags.show_times, 0, "home_dryer_show_times");
+        init_int(s_flags.row_count, 0, "home_dryer_row_count");
+        init_text(s_texts.time, "home_dryer_time_text");
+        init_text(s_texts.name, "home_dryer_name_text");
+        init_text(s_texts.temp, "home_dryer_temp_text");
+        init_text(s_texts.rh_detail, "home_dryer_rh_detail_text");
+        init_text(s_texts.rh, "home_dryer_rh_text");
+        init_text(s_texts.status, "home_dryer_status_text");
+        init_text(s_texts.end, "home_dryer_end_text");
+        init_text(s_texts.count, "home_dryer_count_text");
+        init_text(s_texts.times, "home_dryer_times_text");
+        for (int i = 0; i < kMaxRows; ++i) {
+            // The names must outlive the registration, so they live in a static table.
+            static HELIX_PSRAM_BSS char names[kMaxRows][4][32];
+            snprintf(names[i][0], sizeof(names[i][0]), "home_dryer_row_%d_name", i);
+            snprintf(names[i][1], sizeof(names[i][1]), "home_dryer_row_%d_time", i);
+            snprintf(names[i][2], sizeof(names[i][2]), "home_dryer_row_%d_detail", i);
+            snprintf(names[i][3], sizeof(names[i][3]), "home_dryer_row_%d_pct", i);
+            init_text(s_rows[i].name, names[i][0]);
+            init_text(s_rows[i].time, names[i][1]);
+            init_text(s_rows[i].detail, names[i][2]);
+            init_int(s_rows[i].pct, -1, names[i][3]);
         }
     });
 }

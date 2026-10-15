@@ -22,13 +22,13 @@
 #include "printer_state.h"
 #include "src/ui/panel_widgets/content_chrome.h"
 #include "src/ui/panel_widgets/live_tile_owner.h"
-#include "static_subject_registry.h"
 #include "subject_managed_panel.h"
 #include "text_measure.h"
 #include "theme_manager.h"
 #include "tool_state.h"
 #include "toolhead_homing.h"
 #include "unit_conversions.h"
+#include "widget_subjects.h"
 
 #include <spdlog/spdlog.h>
 
@@ -66,8 +66,7 @@ HELIX_PSRAM_BSS char s_y_text_buf[16];
 HELIX_PSRAM_BSS char s_z_text_buf[16];
 HELIX_PSRAM_BSS char s_tool_text_buf[32];
 HELIX_PSRAM_BSS char s_speed_text_buf[24];
-bool s_subjects_initialized = false;
-SubjectManager s_subjects;
+helix::WidgetSubjects s_subjects{"ToolheadWidgetSubjects"};
 // The instance bound to the live tile. Only it publishes and acts: a transient
 // instance (a fits_at probe, a rebuild's outgoing widget) must not overwrite the
 // tile's verdict.
@@ -77,33 +76,28 @@ constexpr const char* kHomedSubjectNames[3] = {"toolhead_homed_x", "toolhead_hom
                                                "toolhead_homed_z"};
 
 void toolhead_init_subjects() {
-    if (s_subjects_initialized)
-        return;
-    UI_MANAGED_SUBJECT_INT(s_rung_subject, static_cast<int>(helix::SizeRung::Wide), "toolhead_rung",
-                           s_subjects);
-    UI_MANAGED_SUBJECT_INT(s_show_letters_subject, 0, "toolhead_show_letters", s_subjects);
-    UI_MANAGED_SUBJECT_INT(s_z_only_subject, 0, "toolhead_z_only", s_subjects);
-    UI_MANAGED_SUBJECT_INT(s_show_rows_subject, 0, "toolhead_show_rows", s_subjects);
-    UI_MANAGED_SUBJECT_INT(s_show_plate_subject, 0, "toolhead_show_plate", s_subjects);
-    UI_MANAGED_SUBJECT_INT(s_show_home_subject, 0, "toolhead_show_home", s_subjects);
-    UI_MANAGED_SUBJECT_INT(s_show_status_subject, 0, "toolhead_show_status", s_subjects);
-    for (int i = 0; i < 3; ++i) {
-        UI_MANAGED_SUBJECT_INT(s_homed_subjects[i], 0, kHomedSubjectNames[i], s_subjects);
-    }
-    UI_MANAGED_SUBJECT_STRING(s_x_text_subject, s_x_text_buf, "--", "toolhead_x_text", s_subjects);
-    UI_MANAGED_SUBJECT_STRING(s_y_text_subject, s_y_text_buf, "--", "toolhead_y_text", s_subjects);
-    UI_MANAGED_SUBJECT_STRING(s_z_text_subject, s_z_text_buf, "--", "toolhead_z_text", s_subjects);
-    UI_MANAGED_SUBJECT_STRING(s_tool_text_subject, s_tool_text_buf, "", "toolhead_tool_text",
-                              s_subjects);
-    UI_MANAGED_SUBJECT_STRING(s_speed_text_subject, s_speed_text_buf, "", "toolhead_speed_text",
-                              s_subjects);
-    s_subjects_initialized = true;
-
-    StaticSubjectRegistry::instance().register_deinit("ToolheadWidgetSubjects", []() {
-        if (s_subjects_initialized && lv_is_initialized()) {
-            s_subjects.deinit_all();
-            s_subjects_initialized = false;
+    s_subjects.ensure_init([] {
+        UI_MANAGED_SUBJECT_INT(s_rung_subject, static_cast<int>(helix::SizeRung::Wide),
+                               "toolhead_rung", s_subjects);
+        UI_MANAGED_SUBJECT_INT(s_show_letters_subject, 0, "toolhead_show_letters", s_subjects);
+        UI_MANAGED_SUBJECT_INT(s_z_only_subject, 0, "toolhead_z_only", s_subjects);
+        UI_MANAGED_SUBJECT_INT(s_show_rows_subject, 0, "toolhead_show_rows", s_subjects);
+        UI_MANAGED_SUBJECT_INT(s_show_plate_subject, 0, "toolhead_show_plate", s_subjects);
+        UI_MANAGED_SUBJECT_INT(s_show_home_subject, 0, "toolhead_show_home", s_subjects);
+        UI_MANAGED_SUBJECT_INT(s_show_status_subject, 0, "toolhead_show_status", s_subjects);
+        for (int i = 0; i < 3; ++i) {
+            UI_MANAGED_SUBJECT_INT(s_homed_subjects[i], 0, kHomedSubjectNames[i], s_subjects);
         }
+        UI_MANAGED_SUBJECT_STRING(s_x_text_subject, s_x_text_buf, "--", "toolhead_x_text",
+                                  s_subjects);
+        UI_MANAGED_SUBJECT_STRING(s_y_text_subject, s_y_text_buf, "--", "toolhead_y_text",
+                                  s_subjects);
+        UI_MANAGED_SUBJECT_STRING(s_z_text_subject, s_z_text_buf, "--", "toolhead_z_text",
+                                  s_subjects);
+        UI_MANAGED_SUBJECT_STRING(s_tool_text_subject, s_tool_text_buf, "", "toolhead_tool_text",
+                                  s_subjects);
+        UI_MANAGED_SUBJECT_STRING(s_speed_text_subject, s_speed_text_buf, "", "toolhead_speed_text",
+                                  s_subjects);
     });
 }
 

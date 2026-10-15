@@ -17,12 +17,12 @@
 #include "printer_state.h"
 #include "src/ui/panel_widgets/content_chrome.h"
 #include "src/ui/panel_widgets/live_tile_owner.h"
-#include "static_subject_registry.h"
 #include "subject_managed_panel.h"
 #include "text_measure.h"
 #include "theme_manager.h"
 #include "tune_controller.h"
 #include "value_status.h"
+#include "widget_subjects.h"
 
 #include <spdlog/spdlog.h>
 
@@ -52,36 +52,27 @@ char s_speed_text_buf[32];
 char s_flow_text_buf[32];
 char s_speed_measured_buf[32];
 char s_flow_measured_buf[32];
-bool s_subjects_initialized = false;
-SubjectManager s_subjects;
+helix::WidgetSubjects s_subjects{"SpeedFlowWidgetSubjects"};
 // The instance bound to the live tile. Only it publishes: a transient instance (a
 // rebuild's outgoing widget) must not overwrite the tile's verdict.
 helix::LiveTileOwner<helix::SpeedFlowWidget> s_tile;
 
 void speed_flow_init_subjects() {
-    if (s_subjects_initialized)
-        return;
-    UI_MANAGED_SUBJECT_INT(s_rung_subject, static_cast<int>(helix::SizeRung::Wide),
-                           "speed_flow_rung", s_subjects);
-    UI_MANAGED_SUBJECT_INT(s_show_measured_subject, 0, "speed_flow_show_measured", s_subjects);
-    UI_MANAGED_SUBJECT_INT(s_show_steppers_subject, 0, "speed_flow_show_steppers", s_subjects);
-    UI_MANAGED_SUBJECT_INT(s_speed_status_subject, 0, "speed_flow_speed_status", s_subjects);
-    UI_MANAGED_SUBJECT_INT(s_flow_status_subject, 0, "speed_flow_flow_status", s_subjects);
-    UI_MANAGED_SUBJECT_STRING(s_speed_text_subject, s_speed_text_buf, "", "speed_flow_speed_text",
-                              s_subjects);
-    UI_MANAGED_SUBJECT_STRING(s_flow_text_subject, s_flow_text_buf, "", "speed_flow_flow_text",
-                              s_subjects);
-    UI_MANAGED_SUBJECT_STRING(s_speed_measured_subject, s_speed_measured_buf, "",
-                              "speed_flow_speed_measured", s_subjects);
-    UI_MANAGED_SUBJECT_STRING(s_flow_measured_subject, s_flow_measured_buf, "",
-                              "speed_flow_flow_measured", s_subjects);
-    s_subjects_initialized = true;
-
-    StaticSubjectRegistry::instance().register_deinit("SpeedFlowWidgetSubjects", []() {
-        if (s_subjects_initialized && lv_is_initialized()) {
-            s_subjects.deinit_all();
-            s_subjects_initialized = false;
-        }
+    s_subjects.ensure_init([] {
+        UI_MANAGED_SUBJECT_INT(s_rung_subject, static_cast<int>(helix::SizeRung::Wide),
+                               "speed_flow_rung", s_subjects);
+        UI_MANAGED_SUBJECT_INT(s_show_measured_subject, 0, "speed_flow_show_measured", s_subjects);
+        UI_MANAGED_SUBJECT_INT(s_show_steppers_subject, 0, "speed_flow_show_steppers", s_subjects);
+        UI_MANAGED_SUBJECT_INT(s_speed_status_subject, 0, "speed_flow_speed_status", s_subjects);
+        UI_MANAGED_SUBJECT_INT(s_flow_status_subject, 0, "speed_flow_flow_status", s_subjects);
+        UI_MANAGED_SUBJECT_STRING(s_speed_text_subject, s_speed_text_buf, "",
+                                  "speed_flow_speed_text", s_subjects);
+        UI_MANAGED_SUBJECT_STRING(s_flow_text_subject, s_flow_text_buf, "", "speed_flow_flow_text",
+                                  s_subjects);
+        UI_MANAGED_SUBJECT_STRING(s_speed_measured_subject, s_speed_measured_buf, "",
+                                  "speed_flow_speed_measured", s_subjects);
+        UI_MANAGED_SUBJECT_STRING(s_flow_measured_subject, s_flow_measured_buf, "",
+                                  "speed_flow_flow_measured", s_subjects);
     });
 }
 

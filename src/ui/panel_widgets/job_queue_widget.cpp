@@ -20,11 +20,11 @@
 #include "queued_job_start.h"
 #include "src/ui/panel_widgets/content_chrome.h"
 #include "src/ui/panel_widgets/live_tile_owner.h"
-#include "static_subject_registry.h"
 #include "subject_managed_panel.h"
 #include "text_io.h"
 #include "text_measure.h"
 #include "theme_manager.h"
+#include "widget_subjects.h"
 
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
@@ -66,47 +66,39 @@ struct Subjects {
     char after_buf[helix::kJobQueueTileListRows][320]{};
 };
 HELIX_PSRAM_BSS Subjects s_subj;
-bool s_subjects_initialized = false;
-SubjectManager s_subjects;
+helix::WidgetSubjects s_subjects{"JobQueueWidgetSubjects"};
 // The instance bound to the live tile. Only it publishes: a transient instance (a
 // rebuild's outgoing widget) must not overwrite the tile's verdict.
 helix::LiveTileOwner<helix::JobQueueWidget> s_tile;
 
 void job_queue_init_subjects() {
-    if (s_subjects_initialized)
-        return;
-    UI_MANAGED_SUBJECT_INT(s_subj.state, static_cast<int>(helix::JobQueueTileState::NotLoaded),
-                           "jq_tile_state", s_subjects);
-    UI_MANAGED_SUBJECT_INT(s_subj.action, static_cast<int>(helix::JobQueueTileAction::None),
-                           "jq_tile_action", s_subjects);
-    UI_MANAGED_SUBJECT_INT(s_subj.rung, static_cast<int>(helix::SizeRung::Cell), "jq_tile_rung",
-                           s_subjects);
-    UI_MANAGED_SUBJECT_INT(s_subj.show_thumb, 0, "jq_tile_show_thumb", s_subjects);
-    UI_MANAGED_SUBJECT_INT(s_subj.show_detail, 0, "jq_tile_show_detail", s_subjects);
-    UI_MANAGED_SUBJECT_INT(s_subj.show_auto, 0, "jq_tile_show_auto", s_subjects);
-    UI_MANAGED_SUBJECT_INT(s_subj.show_more, 0, "jq_tile_show_more", s_subjects);
-    UI_MANAGED_SUBJECT_INT(s_subj.list_rows, 0, "jq_tile_list_rows", s_subjects);
-    UI_MANAGED_SUBJECT_STRING(s_subj.hero, s_subj.hero_buf, "", "jq_tile_hero", s_subjects);
-    UI_MANAGED_SUBJECT_STRING(s_subj.count, s_subj.count_buf, "", "jq_tile_count", s_subjects);
-    UI_MANAGED_SUBJECT_STRING(s_subj.cell_name, s_subj.cell_name_buf, "", "jq_tile_cell_name",
-                              s_subjects);
-    UI_MANAGED_SUBJECT_STRING(s_subj.detail, s_subj.detail_buf, "", "jq_tile_detail", s_subjects);
-    UI_MANAGED_SUBJECT_STRING(s_subj.more, s_subj.more_buf, "", "jq_tile_more", s_subjects);
-    UI_MANAGED_SUBJECT_STRING(s_subj.action_text, s_subj.action_text_buf, "", "jq_tile_action_text",
-                              s_subjects);
-    // Subject names are held by pointer, so they must outlive this function.
-    static const char* const kAfterNames[helix::kJobQueueTileListRows] = {
-        "jq_tile_after_0", "jq_tile_after_1", "jq_tile_after_2"};
-    for (int i = 0; i < helix::kJobQueueTileListRows; ++i) {
-        UI_MANAGED_SUBJECT_STRING(s_subj.after[i], s_subj.after_buf[i], "", kAfterNames[i],
+    s_subjects.ensure_init([] {
+        UI_MANAGED_SUBJECT_INT(s_subj.state, static_cast<int>(helix::JobQueueTileState::NotLoaded),
+                               "jq_tile_state", s_subjects);
+        UI_MANAGED_SUBJECT_INT(s_subj.action, static_cast<int>(helix::JobQueueTileAction::None),
+                               "jq_tile_action", s_subjects);
+        UI_MANAGED_SUBJECT_INT(s_subj.rung, static_cast<int>(helix::SizeRung::Cell), "jq_tile_rung",
+                               s_subjects);
+        UI_MANAGED_SUBJECT_INT(s_subj.show_thumb, 0, "jq_tile_show_thumb", s_subjects);
+        UI_MANAGED_SUBJECT_INT(s_subj.show_detail, 0, "jq_tile_show_detail", s_subjects);
+        UI_MANAGED_SUBJECT_INT(s_subj.show_auto, 0, "jq_tile_show_auto", s_subjects);
+        UI_MANAGED_SUBJECT_INT(s_subj.show_more, 0, "jq_tile_show_more", s_subjects);
+        UI_MANAGED_SUBJECT_INT(s_subj.list_rows, 0, "jq_tile_list_rows", s_subjects);
+        UI_MANAGED_SUBJECT_STRING(s_subj.hero, s_subj.hero_buf, "", "jq_tile_hero", s_subjects);
+        UI_MANAGED_SUBJECT_STRING(s_subj.count, s_subj.count_buf, "", "jq_tile_count", s_subjects);
+        UI_MANAGED_SUBJECT_STRING(s_subj.cell_name, s_subj.cell_name_buf, "", "jq_tile_cell_name",
                                   s_subjects);
-    }
-    s_subjects_initialized = true;
-
-    StaticSubjectRegistry::instance().register_deinit("JobQueueWidgetSubjects", []() {
-        if (s_subjects_initialized && lv_is_initialized()) {
-            s_subjects.deinit_all();
-            s_subjects_initialized = false;
+        UI_MANAGED_SUBJECT_STRING(s_subj.detail, s_subj.detail_buf, "", "jq_tile_detail",
+                                  s_subjects);
+        UI_MANAGED_SUBJECT_STRING(s_subj.more, s_subj.more_buf, "", "jq_tile_more", s_subjects);
+        UI_MANAGED_SUBJECT_STRING(s_subj.action_text, s_subj.action_text_buf, "",
+                                  "jq_tile_action_text", s_subjects);
+        // Subject names are held by pointer, so they must outlive this function.
+        static const char* const kAfterNames[helix::kJobQueueTileListRows] = {
+            "jq_tile_after_0", "jq_tile_after_1", "jq_tile_after_2"};
+        for (int i = 0; i < helix::kJobQueueTileListRows; ++i) {
+            UI_MANAGED_SUBJECT_STRING(s_subj.after[i], s_subj.after_buf[i], "", kAfterNames[i],
+                                      s_subjects);
         }
     });
 }
