@@ -68,7 +68,25 @@ _has_no_new_privs() {
 # resolve_chroot_daemon_dir). Use the in-chroot one when we have it.
 _set_init_script_daemon_dir() {
     _daemon_dir="${HELIX_CHROOT_DAEMON_DIR:-$INSTALL_DIR}"
-    _sed_inplace "s|DAEMON_DIR=.*|DAEMON_DIR=\"${_daemon_dir}\"|" "$INIT_SCRIPT_DEST"
+    _sed_inplace "s|DAEMON_DIR=.*|DAEMON_DIR=\"$(_init_assignment_value "$_daemon_dir")\"|" "$INIT_SCRIPT_DEST"
+    _set_init_script_pd_helix "$INIT_SCRIPT_DEST"
+}
+
+# Record where user config lives in an init script, beside DAEMON_DIR, so
+# restore-user-config.sh finds it after a web update has removed the install
+# dir. An init script without the line (an older copy) is left untouched.
+# Args: $1 = init script path
+_set_init_script_pd_helix() {
+    grep -q '^HELIX_PD_HELIX=' "$1" 2>/dev/null || return 0
+    _sed_inplace "s|^HELIX_PD_HELIX=.*|HELIX_PD_HELIX=\"$(_init_assignment_value "$(helix_pd_helix_dir)")\"|" "$1"
+}
+
+# A value for the inside of a double-quoted assignment in an init script and
+# the replacement half of a sed command: the shell's own specials are escaped
+# first, then sed's.
+# Args: $1 = value
+_init_assignment_value() {
+    sed_escape_replacement "$(printf '%s' "$1" | sed 's/[\\"$`]/\\&/g')"
 }
 
 # Remove a HOST-side init script this install superseded. The payload's own
@@ -394,7 +412,8 @@ install_service_snapmaker_u1() {
         exit 1
     fi
     chmod +x "$init_script"
-    _sed_inplace "s|DAEMON_DIR=.*|DAEMON_DIR=\"${INSTALL_DIR}\"|" "$init_script"
+    _sed_inplace "s|DAEMON_DIR=.*|DAEMON_DIR=\"$(_init_assignment_value "$INSTALL_DIR")\"|" "$init_script"
+    _set_init_script_pd_helix "$init_script"
 
     # --- Patch S99screen to delegate to helixscreen.init on boot ---
     if [ -f "${INSTALL_DIR}/scripts/snapmaker-u1-setup-autostart.sh" ]; then
@@ -462,6 +481,7 @@ install_service_systemd() {
 
     _sed_inplace "s|@@HELIX_USER@@|${helix_user}|g" "$service_dest"
     _sed_inplace "s|@@HELIX_GROUP@@|${helix_group}|g" "$service_dest"
+    _sed_inplace "s|@@HELIX_PD_HELIX@@|$(sed_escape_replacement "$(helix_pd_helix_dir)")|g" "$service_dest"
     _template_install_paths "$service_dest"
 
     if ! run_logged $SUDO systemctl daemon-reload; then
@@ -815,6 +835,13 @@ deploy_platform_hooks() {
     mkdir -p "${install_dir}/platform" 2>/dev/null || $SUDO mkdir -p "${install_dir}/platform" 2>/dev/null || true
     cp "$hooks_src" "${install_dir}/platform/hooks.sh" 2>/dev/null || $SUDO cp "$hooks_src" "${install_dir}/platform/hooks.sh" 2>/dev/null || true
     chmod +x "${install_dir}/platform/hooks.sh" 2>/dev/null || $SUDO chmod +x "${install_dir}/platform/hooks.sh" 2>/dev/null || true
+
+    # Record the key so refresh-service-units.sh can re-deploy the hooks after
+    # a Moonraker web update removes platform/. Written to the install dir and
+    # relocated into printer_data with the other user config files.
+    if [ -d "${install_dir}/config" ]; then
+        printf '%s\n' "$platform" | $(file_sudo "${install_dir}/config") tee "${install_dir}/config/.platform_hook" >/dev/null 2>&1 || true
+    fi
 
     # Every copy above is non-fatal, so success has to be observed rather than
     # assumed. A missing hooks.sh leaves each platform_* function the no-op stub

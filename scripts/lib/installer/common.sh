@@ -171,6 +171,18 @@ path_sudo() {
     [ -w "$dir" ] && echo "" || echo "$SUDO"
 }
 
+# Remove an install-dir state file. When it is a symlink into printer_data the
+# target goes too; unlinking only the link would leave a stale ledger behind
+# that a later install reads as its own.
+# Args: $1 = path
+remove_state_file() {
+    local f="$1" t=""
+    [ -L "$f" ] && t="$(readlink "$f" 2>/dev/null)"
+    $(path_sudo "$f") rm -f "$f" 2>/dev/null || true
+    [ -n "$t" ] && { $(path_sudo "$t") rm -f "$t" 2>/dev/null || true; }
+    return 0
+}
+
 # Pin the trust properties of helixscreen.env: the launcher's env-file parse
 # evaluates the file's lines, so its owner and mode decide who can run code as
 # the launcher's user (root on every SysV firmware device). State 0644 and
@@ -235,6 +247,75 @@ klipper_config_dir() {
         return 0
     fi
     echo ""
+}
+
+# printer_data/config/helixscreen/ for this install, or empty when no Klipper
+# config dir is known. The single definition of where user config lives; the
+# installed init script and systemd unit record it for restore-user-config.sh.
+helix_pd_helix_dir() {
+    local cfg
+    cfg="$(klipper_config_dir)"
+    [ -n "$cfg" ] && echo "${cfg}/helixscreen"
+    return 0
+}
+
+# Where a ledger named $1 (a file under config/, such as .klipper_includes) can
+# be, in the order they are trusted: the install dir, then printer_data. Both
+# are the same file on a completed install (a symlink); after a web update has
+# removed the install dir, only the printer_data copy is left. With a second
+# argument the stranded-copy locations described above follow, which only the
+# disabled-services ledger needs.
+#
+# A location this run cannot resolve (no Klipper config dir known) is omitted
+# rather than probed with an empty prefix.
+# Args: $1 = ledger file name, $2 = "wide" to include the backup forms
+_ledger_candidates() {
+    local _name="$1" _pd_config="" _newest_old _rollback_mount
+    if type klipper_config_dir >/dev/null 2>&1; then
+        _pd_config="$(klipper_config_dir)"
+    fi
+    echo "${INSTALL_DIR}/config/${_name}"
+    if [ -n "$_pd_config" ]; then
+        echo "${_pd_config}/helixscreen/${_name}"
+        [ "$_name" = ".disabled_services" ] && echo "${_pd_config}/${_name}.clean-keep"
+    fi
+    [ "${2:-}" = "wide" ] || return 0
+    echo "${INSTALL_DIR}.old/config/${_name}"
+    _newest_old="$(_newest_timestamped_install_backup)"
+    [ -n "$_newest_old" ] && echo "${_newest_old}/config/${_name}"
+    for _rollback_mount in ${HELIX_ROLLBACK_CANDIDATES:-$HELIX_ROLLBACK_CANDIDATES_DEFAULT}; do
+        echo "${_rollback_mount}/helixscreen-rollback/helixscreen/config/${_name}"
+    done
+    return 0
+}
+
+# The existing copy of ledger $1, else where a new one belongs (the install
+# dir). Writers and readers both go through this, so a ledger that survived in
+# printer_data is the one that is appended to and later undone.
+# Args: $1 = ledger file name
+_ledger_path() {
+    local _candidate _list
+    _list="$(_ledger_candidates "$1")"
+    while IFS= read -r _candidate; do
+        # A .clean-keep carry is a stranded copy for the uninstaller to find,
+        # never a place to write.
+        case "$_candidate" in *.clean-keep) continue ;; esac
+        if [ -n "$_candidate" ] && [ -f "$_candidate" ]; then
+            echo "$_candidate"
+            return 0
+        fi
+    done <<EOF
+$_list
+EOF
+    echo "${INSTALL_DIR}/config/$1"
+}
+
+# Escape a value for the replacement half of a sed s||| command (backslash, the
+# delimiter and & are special there). One helper for every installer sed that
+# writes a path.
+# Args: $1 = value
+sed_escape_replacement() {
+    printf '%s' "$1" | sed 's/[\\&|]/\\&/g'
 }
 
 # Track what we've done for cleanup

@@ -573,9 +573,11 @@ path: ~/helixscreen
 ```
 
 > **Important:** Do not add `install_script`, `managed_services`, or `persistent_files`
-> to this section; these options are not supported with `type: web` and Moonraker will
-> log warnings about unparsed config options. Service restart after updates is handled
-> automatically by a systemd path unit installed during setup.
+> to this section. The first two are ignored by `type: web` and Moonraker logs warnings
+> about them; `persistent_files` cannot keep your settings because the update replaces
+> the whole install folder. Your settings are kept in `printer_data/config/helixscreen/`
+> instead, and service restart after updates is handled automatically by a systemd path
+> unit installed during setup.
 
 Then restart Moonraker:
 ```bash

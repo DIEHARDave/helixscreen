@@ -1123,6 +1123,11 @@ apply_install() {
     fi
     seed_update_channel
 
+    # The camera, include and seed steps above record their uninstall ledgers
+    # as plain files in the install dir. Relocate them into printer_data now,
+    # or a Moonraker web update would delete them before the next installer run.
+    setup_config_symlink quiet
+
     # Configure ALSA "default" when the board has no card 0 (e.g. Pi + HDMI-audio
     # screens like the BTT HDMI5, whose only outputs are vc4hdmi0/vc4hdmi1 at
     # indices 1/2). Safe no-op when "default" already works or /etc/asound.conf

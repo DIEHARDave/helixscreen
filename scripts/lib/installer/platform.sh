@@ -1398,7 +1398,7 @@ resolve_platform_hook_key() {
 # These are the files users may want to edit from Fluidd/Mainsail, and that
 # the app writes to at runtime. All other files in INSTALL_DIR/config/ are
 # static assets reinstalled on each update.
-HELIX_USER_CONFIG_FILES="settings.json helixscreen.env .disabled_services tool_spools.json crash_history.json user_filaments.json"
+HELIX_USER_CONFIG_FILES="settings.json helixscreen.env .disabled_services tool_spools.json crash_history.json user_filaments.json .webcams_backup.json .camera_migrated .klipper_includes .k2cam_webcam_disabled .seeded_settings .platform_hook .nginx_webcam_accesslog"
 
 # User-writable config DIRECTORIES that live in printer_data/config/helixscreen/.
 #
@@ -1569,6 +1569,7 @@ _safe_remove_migrated_config_dir() {
 #   ~/helixscreen/config/settings.json → above          (symlink)
 #
 # On upgrade from old layout, migrates files from install dir to printer_data.
+# Args: $1 = "quiet" to skip the success line (a repeat pass).
 # Reads: KLIPPER_HOME / KLIPPER_CONFIG_DIR (via klipper_config_dir), INSTALL_DIR
 setup_config_symlink() {
     # Only proceed if we have a Klipper config dir and an install directory
@@ -1750,7 +1751,7 @@ setup_config_symlink() {
         fi
     done
 
-    log_success "Config directory: $pd_helix"
+    [ "${1:-}" = "quiet" ] || log_success "Config directory: $pd_helix"
     # shellcheck disable=SC2034  # consumed by plan.sh (print_summary)
     HELIX_CONFIG_EDITABLE="$pd_helix"
     return 0

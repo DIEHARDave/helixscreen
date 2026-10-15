@@ -50,6 +50,11 @@ Type=simple
 User=@@HELIX_USER@@
 Group=@@HELIX_GROUP@@
 
+# Where the user's config lives (printer_data/config/helixscreen), recorded here
+# so refresh-service-units.sh can read it back after a web update removes the
+# install dir. A comment on purpose: nothing at runtime consumes it.
+# HELIX_PD_HELIX=@@HELIX_PD_HELIX@@
+
 # Working directory for config/assets
 WorkingDirectory=@@INSTALL_DIR@@
 
