@@ -32,7 +32,7 @@ export interface LoopResult {
   /** Fingerprints whose alert was emailed and recorded by this run. */
   alertsSent: string[]
   issues: IssueOutcome[]
-  /** The email this run sent, or would send in a dry run. */
+  /** The email this run built. It went out unless the run was dry or reused, or `skipped` names the email step. */
   email?: EmailMessage
   /** True when the week's report was already stored and was returned unchanged. */
   reused?: boolean
