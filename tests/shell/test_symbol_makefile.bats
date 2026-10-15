@@ -10,8 +10,8 @@ load helpers
 setup_file() {
     export MAKE_DB_CACHE="$BATS_FILE_TMPDIR/make_db.txt"
     export MAKE_DB_STRIP_CACHE="$BATS_FILE_TMPDIR/make_db_strip.txt"
-    make -n -p 2>/dev/null > "$MAKE_DB_CACHE" || true
-    make -n -p STRIP_BINARY=yes CROSS_COMPILE=fake- 2>/dev/null > "$MAKE_DB_STRIP_CACHE" || true
+    make_db > "$MAKE_DB_CACHE" || true
+    make_db STRIP_BINARY=yes CROSS_COMPILE=fake- > "$MAKE_DB_STRIP_CACHE" || true
 }
 
 @test "symbols target is defined in Makefile" {

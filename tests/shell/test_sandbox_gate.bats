@@ -79,6 +79,71 @@ escape() {
     [ "$output" = "MOCK-MAKE install PLATFORM_TARGET=pi" ]
 }
 
+# --- make stays out of the tree under test ----------------------------------
+
+@test "sandbox: the suite sees none of an enclosing make's state" {
+    local v
+    for v in MAKEFLAGS MFLAGS GNUMAKEFLAGS MAKELEVEL MAKEOVERRIDES BATS_REQUIRED BATS_BIN \
+        ABI_STAMPED_FOR HELIX_PATCHES_FROM_CLEAN HELIX_FROM_CLEAN_SENTINEL HELIX_TESTS_NO_STALE_CHECK; do
+        [ -z "${!v+set}" ] || fail "$v reached the suite: ${!v}"
+    done
+}
+
+@test "sandbox: a make in the tree under test is blocked and recorded" {
+    run escape bash -c 'cd "$HELIX_TEST_REPO_ROOT" && make -n help'
+    [ "$status" -ne 0 ]
+    contains "blocked make in the tree under test" "$output"
+    run escape make -C "$HELIX_TEST_REPO_ROOT" -n help
+    [ "$status" -ne 0 ]
+    run escape make --directory="$HELIX_TEST_REPO_ROOT/mk" -n help
+    [ "$status" -ne 0 ]
+    run escape sh -c 'cd /tmp && make -C"$HELIX_TEST_REPO_ROOT" -n help'
+    [ "$status" -ne 0 ]
+    [ "$(grep -c 'make .*-n help' "$PRIVATE_LEDGER")" -eq 4 ]
+}
+
+@test "sandbox: a make in the tree survives a callee that REPLACES PATH" {
+    run escape env PATH="/usr/bin:/bin" bash -c 'cd "$HELIX_TEST_REPO_ROOT" && make -n help'
+    [ "$status" -ne 0 ]
+    grep -q 'make -n help' "$PRIVATE_LEDGER"
+}
+
+@test "sandbox: a make in scratch_tree, or asking make about itself, runs" {
+    run escape make -C "$(scratch_tree)" --no-print-directory print-var-LVGL_DIR
+    [ "$status" -eq 0 ]
+    [ "$output" = lib/lvgl ]
+    run escape bash -c 'cd "$HELIX_TEST_REPO_ROOT" && make --version'
+    [ "$status" -eq 0 ]
+    contains "GNU Make" "$output"
+    [ ! -s "$PRIVATE_LEDGER" ]
+}
+
+@test "sandbox: scratch_tree has a build/ of its own and reads the rest from the tree" {
+    local tree
+    tree="$(scratch_tree)"
+    [ -d "$tree/build" ] && [ ! -L "$tree/build" ]
+    [ ! -e "$tree/.git" ]
+    [ "$(readlink "$tree/Makefile")" = "$HELIX_TEST_REPO_ROOT/Makefile" ]
+}
+
+# The guard is a PATH shim plus a bash function, so `env PATH=<no sandbox>
+# make` run from a directory named by a variable holding the tree escapes both.
+# This catches that shape in the source. A reviewed exception carries
+# `# REAL_TREE_MAKE_OK: <reason>` on the line.
+@test "sandbox: no test runs make in the tree through a repo-root variable" {
+    local offenders
+    offenders=$(awk '
+        /^[[:space:]]*#/ || /REAL_TREE_MAKE_OK:/ { next }
+        /(^|[^A-Za-z_-])make[[:space:]]/ {
+            if ($0 ~ /cd "?\$\{?(REPO|REPO_ROOT|ROOT|WORKTREE_ROOT)\}?"?[^|;]*&&.*(^|[^A-Za-z_-])make[[:space:]]/ ||
+                $0 ~ /(^|[^A-Za-z_-])make[[:space:]].*(-C|--directory=?)[[:space:]]*"?\$\{?(REPO|REPO_ROOT|ROOT|WORKTREE_ROOT|BATS_TEST_DIRNAME)/)
+                printf "%s:%d:%s\n", FILENAME, FNR, $0
+        }
+    ' "$BATS_TEST_DIRNAME"/*.bats "$BATS_TEST_DIRNAME/helpers.bash")
+    [ -z "$offenders" ] || fail "make run in the tree under test; use scratch_tree (helpers.bash):
+$offenders"
+}
+
 # --- the deliberate escapes -------------------------------------------------
 
 @test "sandbox: a bare killall is blocked and recorded" {

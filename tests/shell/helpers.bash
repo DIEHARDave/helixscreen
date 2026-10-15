@@ -625,3 +625,56 @@ platform_branch() {
         inside
     ' "$script"
 }
+
+# ---------------------------------------------------------------------------
+# make, kept out of the tree under test.
+#
+# setup_suite blocks a make whose directory is the tree (it races a gate's own
+# lanes, and even a dry run writes there), so a test that needs the real
+# Makefile runs it here instead.
+
+# Prints this file's stand-in for the repo: every top-level entry symlinked,
+# except build/, which is its own and starts empty, and .git and .fonts.stamp,
+# which make and git would otherwise write through the link. Recipes that
+# write under build/ write here; the rest of the tree is read through the links.
+scratch_tree() {
+    local tree="$BATS_FILE_TMPDIR/scratch-tree" root e
+    if [ ! -d "$tree" ]; then
+        root="${HELIX_TEST_REPO_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)}"
+        mkdir -p "$tree/build"
+        for e in "$root"/* "$root"/.[!.]*; do
+            case "${e##*/}" in build | .git | .fonts.stamp | .worktrees) continue ;; esac
+            ln -s "$e" "$tree/${e##*/}"
+        done
+    fi
+    printf '%s\n' "$tree"
+}
+
+# make_db [make args...]: the Makefile's database, parsed in scratch_tree. The
+# goal is `help`, whose recipe only echoes: with no goal a dry run walks `all`,
+# whose recipe names $(MAKE) and so really runs.
+make_db() {
+    (cd "$(scratch_tree)" && make -pn help "$@" 2>/dev/null)
+}
+
+# mk_fragment <mk file> <first-line-regex> <target>: the lines of <mk file>
+# from the first match through <target>'s recipe.
+mk_fragment() {
+    awk -v first="$2" -v tgt="^$3:" '
+        $0 ~ first { on = 1 }
+        on { print }
+        on && $0 ~ tgt { intgt = 1; next }
+        intgt && /^$/ { exit }' "$1"
+}
+
+# run_mk_fragment <mk file> <first-line-regex> <target> [make args...]: runs
+# make on that fragment alone, as a scratch Makefile under BATS_TEST_TMPDIR,
+# so a recipe is checked without the rest of the build.
+run_mk_fragment() {
+    local dir="$BATS_TEST_TMPDIR/mkfrag"
+    mkdir -p "$dir"
+    { printf 'ECHO := @echo\nQ := @\n'; mk_fragment "$1" "$2" "$3"; } >"$dir/Makefile"
+    grep -q "^$3:" "$dir/Makefile" || { echo "no $3 recipe in the fragment" >&2; return 1; }
+    shift 3
+    (cd "$dir" && make --no-print-directory -f Makefile "$@")
+}

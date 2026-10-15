@@ -78,41 +78,93 @@ SHIM
 
     export PATH="$HELIX_TEST_SANDBOX_BIN:$PATH"
 
+    # The suite runs the same inside a make as outside one. `make test-shell`,
+    # full-test-run and land-gate hand every test their jobserver, their
+    # command-line variables (BATS_REQUIRED=1 among them, through MAKEFLAGS
+    # and the plain environment alike) and the variables the Makefile exports,
+    # and a make a test runs would read all of it as its own.
+    unset MAKEFLAGS MFLAGS GNUMAKEFLAGS MAKELEVEL MAKEOVERRIDES BATS_REQUIRED BATS_BIN \
+        ABI_STAMPED_FOR HELIX_PATCHES_FROM_CLEAN HELIX_FROM_CLEAN_SENTINEL HELIX_TESTS_NO_STALE_CHECK
+
+    # make never runs in the tree under test. A gate runs this suite while its
+    # own lanes build there, and a second make in that tree deletes the test
+    # binary they are about to run (prune-orphan-test-objs). A dry run is no
+    # safer: make still runs every recipe line that names $(MAKE), and parsing
+    # the Makefile writes stamps under build/. A test runs make in
+    # scratch_tree (helpers.bash) or in a directory of its own; one whose
+    # directory, after any -C, is this tree or inside it is blocked and
+    # recorded like the commands above.
+    #
     # A macOS host's /usr/bin/make is GNU make 3.81 (Homebrew's 4.x installs
-    # as gmake), and the repo Makefile hard-errors below 4.2, so every test
-    # that runs make would fail on the environment alone. Forward make to
-    # gmake for the whole suite when bare make is too old and gmake exists.
-    # A Linux make, and the jobpool shim (which execs a modern make), parse as
-    # 4.2+ and are left untouched.
-    local mk_ver mk_major mk_minor gmake_bin
-    mk_ver="$(make --version 2>/dev/null | head -1)"
+    # as gmake), and the repo Makefile hard-errors below 4.2, so the guard
+    # hands such a host's make calls to gmake. A Linux make, and the jobpool
+    # shim (which execs a modern make), parse as 4.2+ and are used as found.
+    export HELIX_TEST_REPO_ROOT
+    HELIX_TEST_REPO_ROOT="$(cd "$repo" && pwd -P)"
+    # The guard execs the first make on PATH that is neither itself nor a
+    # jobpool shim: such a shim execs the next make on PATH, which is the guard
+    # again. JOBPOOL=0 below makes a shim a passthrough anyway.
+    local mk_ver mk_major mk_minor real_make="" d
+    local IFS=:
+    for d in ${PATH#"$HELIX_TEST_SANDBOX_BIN:"}; do
+        [ -n "$d" ] && [ -x "$d/make" ] && [ ! -d "$d/make" ] || continue
+        head -n 2 "$d/make" 2>/dev/null | grep -q '^# jobpool shim' && continue
+        real_make="$d/make"
+        break
+    done
+    unset IFS
+    mk_ver="$("$real_make" --version 2>/dev/null | head -1)"
     mk_major="$(printf '%s\n' "$mk_ver" | sed -n 's/^GNU Make \([0-9]*\)\..*$/\1/p')"
     mk_minor="$(printf '%s\n' "$mk_ver" | sed -n 's/^GNU Make [0-9]*\.\([0-9]*\).*$/\1/p')"
     if { [ -z "$mk_major" ] || [ "$mk_major" -lt 4 ] ||
          { [ "$mk_major" -eq 4 ] && [ "${mk_minor:-0}" -lt 2 ]; }; } &&
-        gmake_bin="$(command -v gmake)"; then
-        cat > "$HELIX_TEST_SANDBOX_BIN/make" <<SHIM
-#!/bin/sh
-exec '$gmake_bin' "\$@"
-SHIM
-        chmod +x "$HELIX_TEST_SANDBOX_BIN/make"
-        # The function layer, for the same reason as the blocked commands: a
-        # callee that REPLACES PATH loses the shim. A function outranks PATH,
-        # so it must hand control back to a test's own make mock, which is
-        # whatever PATH resolves to under the bats run directory.
-        eval "make() {
-            local resolved
-            resolved=\"\$(type -P make 2>/dev/null)\"
-            if [ -n \"\$resolved\" ] && [ \"\$resolved\" != \"\$HELIX_TEST_SANDBOX_BIN/make\" ] &&
-               [ \"\${resolved#\"\$BATS_RUN_TMPDIR\"/}\" != \"\$resolved\" ]; then
-                \"\$resolved\" \"\$@\"
-            else
-                '$gmake_bin' \"\$@\"
-            fi
-        }"
-        # shellcheck disable=SC2163  # the name is fixed, by design
-        export -f make
+        command -v gmake >/dev/null 2>&1; then
+        real_make="$(command -v gmake)"
     fi
+    cat > "$HELIX_TEST_SANDBOX_BIN/make" <<SHIM
+#!/bin/sh
+dir=\$(pwd -P)
+info=
+prev=
+for a in "\$@"; do
+    case "\$prev" in
+        -C|--directory) dir=\$(cd "\$dir" && cd "\$a" 2>/dev/null && pwd -P) || dir= ;;
+    esac
+    case "\$a" in
+        -C?*) dir=\$(cd "\$dir" && cd "\${a#-C}" 2>/dev/null && pwd -P) || dir= ;;
+        --directory=*) dir=\$(cd "\$dir" && cd "\${a#--directory=}" 2>/dev/null && pwd -P) || dir= ;;
+        --version|-v|--help|-h) info=1 ;;
+    esac
+    prev=\$a
+done
+case "\$dir/" in
+    "\$HELIX_TEST_REPO_ROOT"/*)
+        if [ -z "\$info" ]; then
+            printf '%s\t%s\tmake %s (in %s)\n' \
+                "\${BATS_TEST_FILENAME##*/}" "\${BATS_TEST_NAME:-(file setup)}" "\$*" "\$dir" \
+                >> "\$HELIX_TEST_SANDBOX_LEDGER"
+            printf 'helix sandbox: blocked make in the tree under test (%s): run it in scratch_tree\n' "\$dir" >&2
+            [ "\$HELIX_TEST_SANDBOX_MODE" = permissive ] && exit 0
+            exit 1
+        fi ;;
+esac
+exec '$real_make' "\$@"
+SHIM
+    chmod +x "$HELIX_TEST_SANDBOX_BIN/make"
+    # The function layer, for the same reason as the blocked commands: a
+    # callee that REPLACES PATH loses the shim. It hands control back to a
+    # test's own make mock, as _helix_sandbox_dispatch below does.
+    make() {
+        local resolved
+        resolved="$(type -P make 2>/dev/null)"
+        if [ -n "$resolved" ] && [ "$resolved" != "$HELIX_TEST_SANDBOX_BIN/make" ] &&
+           [ "${resolved#"$BATS_RUN_TMPDIR"/}" != "$resolved" ]; then
+            "$resolved" "$@"
+        else
+            "$HELIX_TEST_SANDBOX_BIN/make" "$@"
+        fi
+    }
+    export -f make
 
     # The host's build pool is shared with every other session on the box. A
     # make the suite runs bypasses it (JOBPOOL=0 turns the shim into a plain
@@ -173,6 +225,7 @@ teardown_suite() {
         echo
         echo "Mock the command in that test's setup() - mock_command_script"
         echo "\"killall\" 'exit 0' - or call it on a pid the test owns instead."
+        echo "A make in the tree under test runs in scratch_tree (helpers.bash) instead."
     } >&2
 
     [ "$HELIX_TEST_SANDBOX_MODE" = permissive ] && return 0

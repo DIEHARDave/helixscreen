@@ -208,7 +208,7 @@ qc_jobs() {
 # make, with no jobpool shim in front of it, printing what the sweep and the
 # build would size from.
 sizes() {
-    (cd "$REPO" && env PATH="$(path_without_jobpool)" make --no-print-directory \
+    (cd "$(scratch_tree)" && env PATH="$(path_without_jobpool)" make --no-print-directory \
         --eval 'jp-sizes: ; @echo SHARDS=$(SHARD_CONCURRENCY) JOBS=$(JOBS)' jp-sizes)
 }
 
@@ -234,7 +234,7 @@ sizes() {
 # dry-run with the sub-make replaced by an echo of its command line, and clear
 # of any jobserver the suite itself runs under (`make test-shell`).
 reinvoke() {
-    (cd "$REPO" && env -u MAKEFLAGS -u MFLAGS -u MAKELEVEL PATH="$(path_without_jobpool)" \
+    (cd "$(scratch_tree)" && env -u MAKEFLAGS -u MFLAGS -u MAKELEVEL PATH="$(path_without_jobpool)" \
         make -n --no-print-directory MAKE='echo SUBMAKE' "$@" 2>&1)
 }
 
@@ -268,7 +268,7 @@ jobs_query_with() {
     mkdir -p "$dir/scripts"
     printf '#!/bin/sh\nprintf '\''%s'\''\nexit %s\n' "$1" "$2" > "$dir/scripts/helix-claim"
     chmod +x "$dir/scripts/helix-claim"
-    q=$(cd "$REPO" && env PATH="$(path_without_jobpool)" make --no-print-directory -n \
+    q=$(cd "$(scratch_tree)" && env PATH="$(path_without_jobpool)" make --no-print-directory -n \
         --eval 'jq-show: ; $(info JOBS_QUERY:$(JOBS_QUERY))' jq-show 2>/dev/null |
         sed -n 's/^JOBS_QUERY://p')
     [ -n "$q" ]

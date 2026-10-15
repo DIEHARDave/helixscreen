@@ -1388,7 +1388,7 @@ check_deinit_all_does_not_log() {
     # STDOUT around the echoed value. --no-print-directory cancels that inherited
     # -w; -s alone does not. make's stderr is kept for the failure message: a red
     # here must say what make said.
-    out="$(make --no-print-directory -s print-vacuous-max \
+    out="$(make -C "$(scratch_tree)" --no-print-directory -s print-vacuous-max \
         2>"$BATS_TEST_TMPDIR/vacuous-max.err")" || true
     [[ "$out" =~ ^[0-9]+$ ]] && return 0
     err="$(cat "$BATS_TEST_TMPDIR/vacuous-max.err")" || true

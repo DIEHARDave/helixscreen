@@ -11,7 +11,10 @@
 load helpers
 
 setup() {
-    cd "$BATS_TEST_DIRNAME/../.." || return 1
+    cd "$(scratch_tree)" || return 1
+    # The docker targets' recipes probe for their toolchain image on lines that
+    # also name $(MAKE), which a dry run executes.
+    mock_command_script docker 'exit 0'
 }
 
 # --- HELIX_GIT_HASH override -----------------------------------------------
