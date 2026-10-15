@@ -1811,8 +1811,8 @@ describe("aeCountsQuery", () => {
   it("groups by index1 and filters on the given date", () => {
     const sql = queries.aeCountsQuery("2026-10-12");
     expect(sql).toContain("toDate(timestamp) = '2026-10-12'");
-    expect(sql).toContain("GROUP BY index1");
-    expect(sql).toContain("count() AS rows");
+    expect(sql).toContain("GROUP BY kind");
+    expect(sql).toContain("count() AS row_count");
     expect(sql).toContain("sum(_sample_interval) AS weighted");
     expect(sql).toContain("count(DISTINCT blob1) AS devices");
     expect(sql).not.toContain("uniqExact");
@@ -1863,8 +1863,8 @@ describe("GET /v1/admin/ae-counts", () => {
   it("returns the per-kind rows for the date", async () => {
     mockExecuteQuery.mockResolvedValue({
       data: [
-        { kind: "session", rows: 10, weighted: 12, devices: 7 },
-        { kind: "panel_usage", rows: 40, weighted: 40, devices: 5 },
+        { kind: "session", row_count: 10, weighted: 12, devices: 7 },
+        { kind: "panel_usage", row_count: 40, weighted: 40, devices: 5 },
       ],
     } as never);
     const res = await worker.fetch(

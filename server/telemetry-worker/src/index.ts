@@ -1449,12 +1449,12 @@ export default {
         const res = (await executeQuery(
           { accountId: env.CLOUDFLARE_ACCOUNT_ID, apiToken: env.HELIX_ANALYTICS_READ_TOKEN },
           aeCountsQuery(date),
-        )) as { data?: Array<{ kind: string; rows: number; weighted: number; devices: number }> };
+        )) as { data?: Array<{ kind: string; row_count: number; weighted: number; devices: number }> };
         return json({
           date,
           kinds: (res.data ?? []).map((r) => ({
             kind: r.kind,
-            rows: r.rows,
+            rows: r.row_count,
             weighted: r.weighted,
             devices: r.devices,
           })),

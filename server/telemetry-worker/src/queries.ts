@@ -247,13 +247,13 @@ export function aeCountsQuery(date: string): string {
   }
   return `SELECT
       index1 AS kind,
-      count() AS rows,
+      count() AS row_count,
       sum(_sample_interval) AS weighted,
       count(DISTINCT ${DEVICE_ID}) AS devices
     FROM helixscreen_telemetry
     WHERE toDate(timestamp) = '${date}'
-    GROUP BY index1
-    ORDER BY index1`;
+    GROUP BY kind
+    ORDER BY kind`;
 }
 
 // SQL query builders for each dashboard endpoint
