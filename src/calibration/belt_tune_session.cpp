@@ -381,12 +381,19 @@ BeltTuneAdvice BeltTuneSession::advice() const {
     }
     if (const auto rate = hz_per_turn()) {
         out.turns = round_to_turn_step(std::abs(gap_hz()) / *rate);
-    } else if (!rounds_.empty() && rounds_.back().outcome == BeltTuneOutcome::NO_MOVEMENT &&
-               rounds_.back().turns_made) {
-        // Nothing learned yet and the last turn did nothing: try a bigger one.
-        out.turns = round_to_turn_step(2.0f * *rounds_.back().turns_made);
     } else {
+        // Nothing learned yet. If the last turn did nothing, try a bigger one;
+        // repeat checks in between change nothing.
         out.turns = FIRST_TURN;
+        for (auto it = rounds_.rbegin(); it != rounds_.rend(); ++it) {
+            if (it->no_turn) {
+                continue;
+            }
+            if (it->outcome == BeltTuneOutcome::NO_MOVEMENT && it->turns_made) {
+                out.turns = round_to_turn_step(2.0f * *it->turns_made);
+            }
+            break;
+        }
     }
     return out;
 }
@@ -420,18 +427,19 @@ const BeltTuneRound& BeltTuneSession::add_round(const BeltCurve& a_window,
         return finish(BeltTuneOutcome::NO_PEAK);
     }
     if (kind_ == BeltTensionerKind::SCREW) {
-        // Only a recorded turn counts: a round with none, or a recorded zero,
-        // checks repeatability. No turn is advised before a baseline.
+        // Only a recorded turn counts. No turn is advised before a baseline.
         if (pending && *pending > 0.0f) {
             r.turns_made = pending;
         }
-        r.no_turn = !r.turns_made && !needs_baseline_;
         if (r.turns_made) {
             const float signed_turns =
                 advised.direction == BeltTurnDirection::TIGHTEN ? *r.turns_made : -*r.turns_made;
             (adjusted_ == BeltPath::PATH_A ? total_turns_a_ : total_turns_b_) += signed_turns;
             unmeasured_turns_ += *r.turns_made;
         }
+        // A repeatability check only when nothing was turned since the last
+        // measured round: a turn whose round found no peak still moved the belt.
+        r.no_turn = unmeasured_turns_ <= 0.0f && !needs_baseline_;
     }
 
     const BeltSweepWindow window = zone_->window;
@@ -521,7 +529,7 @@ const BeltTuneRound& BeltTuneSession::add_round(const BeltCurve& a_window,
     }
     // A gap that moved against the advice says the turn went elsewhere (the
     // other belt, the other way), so it teaches nothing about this belt.
-    if (!r.no_turn && outcome != BeltTuneOutcome::WRONG_WAY && std::abs(move) >= MIN_MOVE_HZ &&
+    if (outcome != BeltTuneOutcome::WRONG_WAY && std::abs(move) >= MIN_MOVE_HZ &&
         turns_behind > 0.0f) {
         rate_samples_.push_back(std::abs(move) / turns_behind);
     }

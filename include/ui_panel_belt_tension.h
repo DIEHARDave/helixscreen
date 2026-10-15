@@ -441,9 +441,8 @@ class BeltTensionPanel : public OverlayBase {
 
     // Run state
     PathRun runs_[2];
-    // The similarity of the latest comparison, and the one a single-path
-    // re-test is measuring against: the re-tested path's note reads
-    // " · was N%" from it.
+    // The similarity of the latest comparison, and the one a re-test or
+    // Confirm is measuring against: bt_similarity_was reads "was N%" from it.
     float similarity_percent_ = 0.0f;
     float was_similarity_percent_ = 0.0f;
     std::optional<helix::MemoryInfo> mem_override_;

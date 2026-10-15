@@ -267,9 +267,10 @@ What the screen shows:
 To work through it:
 
 1. Tap **Tune Belts**. The first zone comes straight from your results, so the instruction is ready at once
-2. Follow the instruction: turn the named tensioner by the amount shown, then tap **Re-measure**. The printer sweeps both paths over the zone only
+2. Follow the instruction: turn the named tensioner by the amount shown, set what you actually turned on the stepper below it, then tap **Re-measure**. The printer sweeps both paths over the zone only. Leaving the stepper at "Not turned" makes the round a repeat check: it shows how much the reading wanders on its own, and nothing is counted as a turn
 3. Read the note under the gauge:
    - "last turn: N Hz closer": keep going
+   - "No turn: the gap moved N Hz": a repeat check with the stepper at "Not turned"; that is how far a reading wanders by itself
    - "Went past X": the turn was too big, back it off a little
    - "The gap didn't close": try a bigger turn
    - "The gap grew after tightening": the other belt, or the other direction, probably moved. Check which tensioner you turned

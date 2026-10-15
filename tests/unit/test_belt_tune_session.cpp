@@ -1082,3 +1082,58 @@ TEST_CASE("tune session: an unrecorded stepper is a round with no turn", "[belt]
         CHECK(s.total_turns(BeltPath::PATH_B) == Catch::Approx(0.5f));
     }
 }
+
+TEST_CASE("tune session: a turn carried past a peakless round is still a turn", "[belt][tune]") {
+    auto s = session_for(112.0f, 100.0f, BeltTensionerKind::SCREW);
+
+    SECTION("OUT_OF_WINDOW, then an untouched round that closed the gap") {
+        s.record_turns(0.25f);
+        REQUIRE(sweep(s, 112.0f, 125.0f).outcome == BeltTuneOutcome::OUT_OF_WINDOW);
+        const auto& r = sweep(s, 112.0f, 105.0f); // stepper left untouched
+        CHECK_FALSE(r.no_turn);
+        CHECK(r.outcome == BeltTuneOutcome::CLOSER);
+        // The quarter turn moved the gap 5 Hz: 20 Hz/turn.
+        REQUIRE(s.hz_per_turn().has_value());
+        CHECK(*s.hz_per_turn() == Catch::Approx(20.0f).margin(0.5f));
+    }
+    SECTION("OUT_OF_WINDOW, then an untouched round that widened the gap") {
+        s.record_turns(0.25f);
+        REQUIRE(sweep(s, 112.0f, 125.0f).outcome == BeltTuneOutcome::OUT_OF_WINDOW);
+        // The widened window starts above 100, so the gap widens from A.
+        const auto& r = sweep(s, 117.0f, 104.0f);
+        CHECK_FALSE(r.no_turn);
+        CHECK(r.outcome == BeltTuneOutcome::WRONG_WAY);
+        CHECK_FALSE(s.hz_per_turn().has_value());
+    }
+    SECTION("NO_PEAK, then an untouched round that closed the gap") {
+        s.record_turns(0.25f);
+        const auto w = s.zone()->window;
+        BeltCurve flat;
+        for (float f = w.freq_start_hz; f <= w.freq_end_hz; f += 0.78125f) {
+            flat.emplace_back(f, 5.0f);
+        }
+        REQUIRE(
+            s.add_round(one_peak(112.0f, w.freq_start_hz, w.freq_end_hz + 0.5f), flat).outcome ==
+            BeltTuneOutcome::NO_PEAK);
+        const auto& r = sweep(s, 112.0f, 104.0f);
+        CHECK_FALSE(r.no_turn);
+        CHECK(r.outcome == BeltTuneOutcome::CLOSER);
+        REQUIRE(s.hz_per_turn().has_value());
+        CHECK(*s.hz_per_turn() == Catch::Approx(16.0f).margin(0.5f));
+    }
+    SECTION("the round after a measured one is a repeat check again") {
+        s.record_turns(0.25f);
+        REQUIRE(sweep(s, 112.0f, 104.0f).outcome == BeltTuneOutcome::CLOSER);
+        CHECK(sweep(s, 112.0f, 104.1f).no_turn);
+    }
+}
+
+TEST_CASE("tune advice: a repeat check keeps the doubled turn", "[belt][tune]") {
+    auto s = session_for(112.0f, 100.0f, BeltTensionerKind::SCREW);
+    s.record_turns(0.25f);
+    REQUIRE(sweep(s, 112.0f, 100.2f).outcome == BeltTuneOutcome::NO_MOVEMENT);
+    REQUIRE(s.advice().turns == std::optional<float>(0.5f));
+    // A repeat check in between changes nothing.
+    REQUIRE(sweep(s, 112.0f, 100.1f).no_turn);
+    CHECK(s.advice().turns == std::optional<float>(0.5f));
+}

@@ -187,6 +187,19 @@ class BeltPanelFixture : public XMLTestFixture {
         return static_cast<int>(
             std::lround(*t->advice().turns / helix::calibration::belt_tune::TURN_STEP));
     }
+    /// The tallest in-band bin of a path's current curve.
+    float panel_run_peak(int path_index) {
+        float tallest = 0.0f;
+        for (const auto& [f, v] : panel_->runs_[path_index].curve) {
+            if (f >= panel_->sweep_cfg_.min_freq && f <= panel_->sweep_cfg_.max_freq) {
+                tallest = std::max(tallest, v);
+            }
+        }
+        return tallest;
+    }
+    void panel_set_similarity(float percent) {
+        panel_->similarity_percent_ = percent;
+    }
     lv_timer_t* panel_note_age_timer() {
         return panel_->note_age_timer_.get();
     }
@@ -1071,8 +1084,8 @@ TEST_CASE("Confirm runs one full pair and reports the tuning", "[belt][panel][tu
         CHECK(fx.text(note).find("was") == std::string::npos);
     }
     INFO("facts: " << fx.text("bt_facts"));
-    CHECK(fx.text("bt_facts").find("Tuned in 3 rounds") != std::string::npos);
-    CHECK(fx.text("bt_facts").find("B tightened about") != std::string::npos);
+    CHECK(fx.text("bt_facts").find("Tuned in 3 rounds · B tightened about ⅞ turn") !=
+          std::string::npos);
     CHECK(fx.text("bt_facts").find("A tightened") == std::string::npos);
     CHECK(fx.text("bt_facts").find("A loosened") == std::string::npos);
 }
@@ -2581,43 +2594,85 @@ TEST_CASE("was N% sits under the similarity only after a re-test", "[belt][panel
     CHECK(lv_hidden(was));
 }
 
-TEST_CASE("a ghost keeps its own scale", "[belt][panel][chart]") {
-    // Path A's first sweep replays a capture a tenth the height of the mock's
-    // own curve; its re-test is the mock's, so the ghost is the quiet one.
-    const std::string csv_a = "/tmp/helix-belt-quiet-" + std::to_string(getpid()) + ".csv";
-    {
-        std::ofstream out(csv_a);
-        out << "freq,psd_x,psd_y,psd_z,psd_xyz\n";
-        for (double freq = 5.0; freq <= 135.0; freq += 3200.0 / 4096.0) {
-            const double df = freq - 104.0;
-            const double psd = 15.0 + 3.0e3 / (1.0 + df * df / 100.0);
-            out << freq << ',' << psd * 0.45 << ',' << psd * 0.45 << ',' << psd * 0.1 << ',' << psd
-                << '\n';
-        }
+namespace {
+
+/// A capture-shaped CSV with one peak at @p centre_hz, @p height tall over a
+/// floor a two-hundredth of it.
+void write_peak_csv(const std::string& path, double centre_hz, double height) {
+    std::ofstream out(path);
+    out << "freq,psd_x,psd_y,psd_z,psd_xyz\n";
+    for (double freq = 5.0; freq <= 135.0; freq += 3200.0 / 4096.0) {
+        const double df = freq - centre_hz;
+        const double psd = height / 200.0 + height / (1.0 + df * df / 100.0);
+        out << freq << ',' << psd * 0.45 << ',' << psd * 0.45 << ',' << psd * 0.1 << ',' << psd
+            << '\n';
     }
+}
+
+float series_peak(ui_frequency_response_chart_t* chart, int id) {
+    const auto amps = ui_frequency_response_chart_get_series_amplitudes(chart, id);
+    REQUIRE_FALSE(amps.empty());
+    return *std::max_element(amps.begin(), amps.end());
+}
+
+} // namespace
+
+TEST_CASE("a ghost keeps its own scale", "[belt][panel][chart]") {
+    // Path A replays a capture a tenth the height of the mock's own curves, in
+    // both its sweeps, so its ghost and its current curve are both quiet.
+    const std::string csv_a = "/tmp/helix-belt-quiet-" + std::to_string(getpid()) + ".csv";
+    write_peak_csv(csv_a, 104.0, 3.0e3);
+    helix::ScopedEnv replay("HELIX_MOCK_BELT_CSV_A", csv_a.c_str());
     BeltPanelFixture fx;
     REQUIRE(fx.wait_gate_open());
-    {
-        helix::ScopedEnv replay("HELIX_MOCK_BELT_CSV_A", csv_a.c_str());
-        fx.panel().handle_start_clicked();
-        REQUIRE(fx.pump_until_state(RESULTS));
-    }
-    std::remove(csv_a.c_str());
+    fx.panel().handle_start_clicked();
+    REQUIRE(fx.pump_until_state(RESULTS));
     fx.panel().handle_retest_clicked(helix::calibration::BeltPath::PATH_A);
     REQUIRE(fx.pump_until_state(RESULTS));
+    std::remove(csv_a.c_str());
 
     auto* chart = fx.panel_chart();
     REQUIRE(chart != nullptr);
-    const auto peak = [chart](int id) {
-        const auto amps = ui_frequency_response_chart_get_series_amplitudes(chart, id);
-        REQUIRE_FALSE(amps.empty());
-        return *std::max_element(amps.begin(), amps.end());
-    };
     REQUIRE(ui_frequency_response_chart_is_series_visible(chart, fx.panel_ghost_id(0)));
-    CHECK(peak(fx.panel_ghost_id(0)) == Catch::Approx(100.0f).margin(0.5f));
-    // The current curves still share one scale: the taller reads 100%.
-    CHECK(std::max(peak(fx.panel_series_id(0)), peak(fx.panel_series_id(1))) ==
-          Catch::Approx(100.0f).margin(0.5f));
+    // The ghost on its own scale.
+    CHECK(series_peak(chart, fx.panel_ghost_id(0)) == Catch::Approx(100.0f).margin(0.5f));
+    // The current curves on one scale, set by the taller (B).
+    const float shared = std::max(fx.panel_run_peak(0), fx.panel_run_peak(1));
+    const float a_share = 100.0f * fx.panel_run_peak(0) / shared;
+    REQUIRE(a_share < 50.0f);
+    CHECK(series_peak(chart, fx.panel_series_id(0)) == Catch::Approx(a_share).margin(1.0f));
+    CHECK(series_peak(chart, fx.panel_series_id(1)) == Catch::Approx(100.0f).margin(0.5f));
+}
+
+TEST_CASE("a tuning ghost keeps its own scale", "[belt][panel][chart][tune]") {
+    // B's round-0 sweep replays a quiet capture (loud enough to name a zone);
+    // the tuning round's sweep is the mock's own, about three times taller. With B adjusted, the
+    // quiet round-0 curve becomes its ghost.
+    const std::string csv_b = "/tmp/helix-belt-quiet-b-" + std::to_string(getpid()) + ".csv";
+    write_peak_csv(csv_b, 98.0, 9.0e3);
+    BeltPanelFixture fx;
+    REQUIRE(fx.wait_gate_open());
+    {
+        helix::ScopedEnv replay("HELIX_MOCK_BELT_CSV_B", csv_b.c_str());
+        fx.panel().handle_start_clicked();
+        REQUIRE(fx.pump_until_state(RESULTS));
+    }
+    std::remove(csv_b.c_str());
+    fx.panel().handle_tune_clicked();
+    REQUIRE(fx.state_int("belt_tension_state") == TUNING);
+    INFO("phase " << fx.state_int("bt_tune_phase") << " instr " << fx.text("bt_tune_instruction")
+                  << " zone " << fx.text("bt_tune_zone"));
+    if (fx.state_int("bt_tune_path") != 1) {
+        fx.panel().handle_tune_swap_clicked();
+    }
+    REQUIRE(fx.state_int("bt_tune_path") == 1);
+    tune_round(fx);
+
+    auto* chart = fx.panel_chart();
+    REQUIRE(chart != nullptr);
+    const int ghost = fx.panel_tune_ghost_id(1, 0);
+    REQUIRE(ui_frequency_response_chart_is_series_visible(chart, ghost));
+    CHECK(series_peak(chart, ghost) == Catch::Approx(100.0f).margin(0.5f));
 }
 
 namespace {
@@ -2647,4 +2702,16 @@ TEST_CASE("the tuning buttons read in Title Case", "[belt][panel][tune]") {
         INFO(text);
         CHECK(std::find(labels.begin(), labels.end(), text) == labels.end());
     }
+}
+
+TEST_CASE("a genuine 0% earlier similarity still shows", "[belt][panel]") {
+    BeltPanelFixture fx;
+    REQUIRE(fx.wait_gate_open());
+    fx.panel().handle_start_clicked();
+    REQUIRE(fx.pump_until_state(RESULTS));
+    fx.panel_set_similarity(0.0f);
+    fx.panel().handle_retest_clicked(helix::calibration::BeltPath::PATH_B);
+    REQUIRE(fx.pump_until_state(RESULTS));
+    CHECK(fx.text("bt_similarity_was") == "was 0%");
+    CHECK(fx.state_int("bt_has_similarity_was") == 1);
 }

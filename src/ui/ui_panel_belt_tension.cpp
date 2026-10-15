@@ -680,7 +680,7 @@ void BeltTensionPanel::handle_retest_clicked(helix::calibration::BeltPath path) 
         auto& run = runs_[idx];
 
         // The curve being replaced becomes the ghost this run compares against,
-        // and the similarity the last comparison showed becomes the note's "was".
+        // and the similarity the last comparison showed becomes bt_similarity_was.
         run.previous = std::move(run.curve);
         run.curve.clear();
         run.has_previous = run.has;
@@ -1246,7 +1246,7 @@ void BeltTensionPanel::refresh_notes() {
 void BeltTensionPanel::refresh_similarity_was() {
     const bool replaced = runs_[0].has_previous || runs_[1].has_previous;
     std::string was;
-    if (replaced && was_similarity_percent_ > 0.0f) {
+    if (replaced) {
         was = fmt::format(fmt::runtime(lv_tr("was {:.0f}%")), was_similarity_percent_);
     }
     snprintf(similarity_was_buf_, sizeof(similarity_was_buf_), "%s", was.c_str());
@@ -1407,7 +1407,7 @@ void BeltTensionPanel::handle_tune_confirm_clicked() {
     const float round0 = tune_round0_similarity_;
 
     run_after_ram_check([this, summary, round0]() {
-        // Both notes read " · was N%" against the comparison tuning started from.
+        // bt_similarity_was reads against the comparison tuning started from.
         for (auto& run : runs_) {
             run.previous = run.curve;
             run.has_previous = run.has;
