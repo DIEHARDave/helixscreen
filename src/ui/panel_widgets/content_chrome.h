@@ -12,6 +12,11 @@ namespace helix {
 struct ContentChrome {
     int w = 0;
     int h = 0;
+    /// The branching container's own flex gaps, already counted in w and h. A
+    /// caller that prices the gap between its parts itself takes these back out
+    /// and uses them as that gap, so a hidden part's gap is never charged.
+    int branch_gap_w = 0;
+    int branch_gap_h = 0;
 };
 
 /// The chrome of the single-child chain from `root` down to the first container
@@ -38,8 +43,10 @@ inline ContentChrome measure_content_chrome(lv_obj_t* root, int reserve_px, int 
         chrome.h += static_cast<int>(lv_obj_get_style_pad_top(o, LV_PART_MAIN)) +
                     static_cast<int>(lv_obj_get_style_pad_bottom(o, LV_PART_MAIN));
         if (lv_obj_get_child_count(o) != 1) {
-            chrome.w += static_cast<int>(lv_obj_get_style_pad_column(o, LV_PART_MAIN));
-            chrome.h += static_cast<int>(lv_obj_get_style_pad_row(o, LV_PART_MAIN));
+            chrome.branch_gap_w = static_cast<int>(lv_obj_get_style_pad_column(o, LV_PART_MAIN));
+            chrome.branch_gap_h = static_cast<int>(lv_obj_get_style_pad_row(o, LV_PART_MAIN));
+            chrome.w += chrome.branch_gap_w;
+            chrome.h += chrome.branch_gap_h;
             break;
         }
     }

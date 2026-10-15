@@ -159,17 +159,22 @@ TileVerdict TileSizing::decide(int width_px, int height_px) const {
     const int row_inset = 2 * theme_manager_get_spacing("space_sm");
     int chrome_w = 2 * gap;
     int chrome_h = 2 * gap;
+    int part_gap = gap;
     if (content_root_) {
+        // The branching container is the glyph/label stack, and decide prices
+        // the gap between those parts per candidate. Charging it here as well
+        // would cost a glyph-only candidate a gap it never draws.
         const ContentChrome chrome = measure_content_chrome(content_root_, gap, row_inset);
-        chrome_w = chrome.w;
-        chrome_h = chrome.h;
+        chrome_w = chrome.w - chrome.branch_gap_w;
+        chrome_h = chrome.h - chrome.branch_gap_h;
+        part_gap = std::max(chrome.branch_gap_w, chrome.branch_gap_h);
     }
 
     const int avail_w = std::max(width_px - chrome_w, 1);
     const int avail_h = std::max(height_px - chrome_h, 1);
 
     TileVerdict verdict =
-        decide_tile_layout(avail_w, avail_h, gap, rungs, content_.has_value, label_drawn(),
+        decide_tile_layout(avail_w, avail_h, part_gap, rungs, content_.has_value, label_drawn(),
                            authored_rung(), row_inset, content_.label_is_identity);
 
     // At micro and tiny a whole cell is barely wider than the glyph itself, so
@@ -194,15 +199,15 @@ int TileSizing::whole_cell_px() const {
 bool TileSizing::fits(int width_px, int height_px) const {
     // Where half a cell is offered at all. A track is 34px at micro and 40px at
     // tiny. Neither can carry a glyph and a reading together at any rung, so a
-    // tile with a reading floors at a whole cell on both. An icon-only tile
-    // draws its glyph alone in a tiny track, but a micro track is within a
-    // pixel of the widest glyph, so micro floors every tile. Declining the size
-    // here rather than lowering the registry minimum keeps one floor for every
-    // screen and lets the resize clamp and the load path grow past it, which
-    // they both already do through grow_span_to_fit.
+    // tile with a reading floors at a whole cell on both. An icon-only tile is
+    // left to decide(), which drops the label and measures its own glyph against
+    // the box: a micro track is within a pixel of the widest glyph, so that
+    // verdict differs from tile to tile. Declining the size here rather than
+    // lowering the registry minimum keeps one floor for every screen and lets
+    // the resize clamp and the load path grow past it, which they both already
+    // do through grow_span_to_fit.
     const UiBreakpoint bp = widget_size::current_breakpoint();
-    const bool small_tier_floor =
-        bp <= UiBreakpoint::Micro || (content_.has_value && bp <= UiBreakpoint::Tiny);
+    const bool small_tier_floor = content_.has_value && bp <= UiBreakpoint::Tiny;
     if (small_tier_floor) {
         const int whole_cell = whole_cell_px();
         if (width_px < whole_cell || height_px < whole_cell) {
