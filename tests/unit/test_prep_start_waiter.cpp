@@ -243,6 +243,17 @@ TEST_CASE_METHOD(WaiterFixture, "a start's option override comes before the atta
     CHECK(manager->get_option_state("qgl") == PrePrintOptionState::ENABLED);
 }
 
+TEST_CASE_METHOD(WaiterFixture, "start_print drops a start's option override when it returns",
+                 "[start_waiter][queued_job_start]") {
+    manager->set_option_state_provider([](const std::string& id) { return id == "qgl" ? 1 : -1; });
+    manager->set_start_option_override([](const std::string& id) { return id == "qgl" ? 0 : -1; });
+    manager->start_print("part.gcode", "", []() {}, [](bool, const std::string&) {});
+    settle();
+    CHECK_FALSE(PrintPreparationManagerTestAccess::has_start_option_override(*manager));
+    // A later Print tap reads the view's own rows.
+    CHECK(manager->get_option_state("qgl") == PrePrintOptionState::ENABLED);
+}
+
 namespace {
 
 /// A head with a bed mesh the file runs itself, at line 2.

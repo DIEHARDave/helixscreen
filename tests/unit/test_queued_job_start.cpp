@@ -17,6 +17,7 @@
 #include "ui_update_queue.h"
 
 #include "../test_helpers/moonraker_client_mock_test_access.h"
+#include "../test_helpers/print_preparation_manager_test_access.h"
 #include "../test_helpers/print_start_controller_test_access.h"
 #include "../test_helpers/print_start_grace.h"
 #include "../test_helpers/queued_job_starter_test_access.h"
@@ -286,6 +287,41 @@ TEST_CASE_METHOD(StarterFixture, "a queued .3mf opens in the file view and start
     CHECK(queue_has("0001"));
 
     StaticPanelRegistry::instance().destroy_all();
+}
+
+TEST_CASE_METHOD(StarterFixture,
+                 "a rewrite that fails ends the start and hands the file view its own options",
+                 "[queued_job_start]") {
+    // The file runs its own bed mesh and the job saved bed mesh off, so with
+    // the plugin present the start rewrites the file.
+    PlantedGcode file("tile_rewrite.gcode", "",
+                      "; filament_type = PLA\nG28\nBED_MESH_CALIBRATE\nG1 X10\n"
+                      "; filament used [g] = 1.50\n");
+    seed_store("0001", file.name(), {{"bed_mesh", false}});
+    get_printer_state().set_helix_plugin_installed(true);
+    settle();
+    auto& job_api = static_cast<MoonrakerAPIMock&>(*api_).job_mock();
+    job_api.mock_fail_modified_prints();
+    auto* prep = panel_->print_preparation_manager();
+
+    start(entry("0001", file.name()));
+
+    REQUIRE(job_api.modified_prints().size() == 1); // the rewrite ran and its start failed
+    REQUIRE(outcome.has_value());
+    CHECK(*outcome == Outcome::NotStarted);
+    CHECK_FALSE(starter->in_flight());
+    CHECK_FALSE(PrintPreparationManagerTestAccess::has_start_option_override(*prep));
+    CHECK(queue_has("0001"));
+    CHECK(read_store().count("0001") == 1);
+
+    // A later tap is not refused as a start in flight.
+    job_api.mock_fail_modified_prints(false);
+    start(entry("0001", file.name()));
+    REQUIRE(outcome.has_value());
+    CHECK(*outcome == Outcome::Started);
+
+    get_printer_state().set_helix_plugin_installed(false);
+    settle();
 }
 
 TEST_CASE_METHOD(StarterFixture, "a stalled start gives up, and a later tap starts again",

@@ -46,6 +46,7 @@
 #include <functional>
 #include <map>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <thread>
 #include <vector>
@@ -3554,13 +3555,12 @@ TEST_CASE_METHOD(HelixTestFixture,
 // ============================================================================
 // A start that dies inside the manager must retire the preparing job
 //
-// The modify and remap routes take NO completion callback — continue_print_start()
-// calls modify_and_print() and returns — so PrintStartController's
-// retire_preparing(Failed) is unreachable from them. Nothing else can retire the
-// job, and `print_in_progress` is now PUBLISHED from that job rather than set by
-// hand, so a leak latches the flag until the 1800s watchdog: can_start_new_print()
-// refuses every later print, job_holds_machine stays 1 (greying jog, levelling,
-// macros and the bypass tile), and the panel sits on "Preparing".
+// The modify and remap routes end without an error message, so
+// PrintStartController's retire_preparing(Failed) is unreachable from them.
+// Nothing else can retire the job, and `print_in_progress` is PUBLISHED from that
+// job rather than set by hand, so a leak latches the flag until the 1800s watchdog:
+// can_start_new_print() refuses every later print, job_holds_machine stays 1 (greying jog,
+// levelling, macros and the bypass tile), and the panel sits on "Preparing".
 //
 // Mutation check: delete the abandon_start() call from the exit this drives and
 // the REQUIRE_FALSE below fails.
@@ -3589,11 +3589,17 @@ TEST_CASE_METHOD(HelixTestFixture,
     // Mutation-verified: deleting abandon_start("modify_no_api") fails the
     // REQUIRE_FALSE below. (Deleting the OTHER guard's call does not, which is
     // the point of naming which exit this drives rather than guessing.)
-    PrintPreparationManagerTestAccess::modify_and_print(manager, "doomed.gcode");
+    std::optional<bool> completed;
+    PrintPreparationManagerTestAccess::modify_and_print(
+        manager, "doomed.gcode", nullptr,
+        [&completed](bool success, const std::string&) { completed = success; });
 
     REQUIRE_FALSE(state.print_state().has_preparing_job());
     REQUIRE(lv_subject_get_int(state.print_state().get_print_in_progress_subject()) == 0);
     REQUIRE(state.print_state().last_preparing_exit() == helix::PreparingExit::Failed);
+    // The caller waiting on the start learns it ended.
+    REQUIRE(completed.has_value());
+    CHECK_FALSE(*completed);
 
     // And the machine is released — this is the user-visible half of the latch.
     REQUIRE(lv_subject_get_int(state.print_state().get_job_holds_machine_subject()) == 0);

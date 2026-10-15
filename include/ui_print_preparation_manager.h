@@ -163,8 +163,10 @@ class PrintPreparationManager {
      * While set, get_option_state() asks @p provider before the attached
      * provider, with the same 0/1/-1 contract. A queued job started from the
      * home tile sets its saved options here for the length of its start and
-     * clears it (nullptr) when the start ends; the detail view's provider
-     * stays attached throughout.
+     * clears it (nullptr) when the start ends; start_print() also drops it on
+     * return, once every option has been read, so it never outlives the one
+     * start it was set for. The detail view's provider stays attached
+     * throughout.
      */
     void set_start_option_override(OptionStateProvider provider) {
         start_option_override_ = std::move(provider);
@@ -807,11 +809,13 @@ class PrintPreparationManager {
      * @param ops_to_disable Operations to comment out in the file
      * @param macro_skip_params Skip params to append to PRINT_START call
      * @param on_navigate_to_status Callback to navigate to print status panel
+     * @param on_completion Answers (false, "") when the attempt dies here
      */
     void modify_and_print(const std::string& file_path,
                           const std::vector<gcode::OperationType>& ops_to_disable,
                           const std::vector<std::pair<std::string, std::string>>& macro_skip_params,
-                          NavigateToStatusCallback on_navigate_to_status);
+                          NavigateToStatusCallback on_navigate_to_status,
+                          PrintCompletionCallback on_completion);
 
     /**
      * @brief Unified streaming modification and print flow
@@ -830,13 +834,14 @@ class PrintPreparationManager {
      * @param mod_names Modification identifiers for tracking
      * @param on_navigate_to_status Callback to navigate to print status panel
      * @param use_plugin Whether to use helix_print plugin for print start
+     * @param on_completion Answers (false, "") when the attempt dies here
      */
     void modify_and_print_streaming(
         const std::string& file_path, const std::string& display_filename,
         const std::vector<gcode::OperationType>& ops_to_disable,
         const std::vector<std::pair<std::string, std::string>>& macro_skip_params,
         const std::vector<std::string>& mod_names, NavigateToStatusCallback on_navigate_to_status,
-        bool use_plugin);
+        bool use_plugin, PrintCompletionCallback on_completion);
 
     /**
      * @brief Start print directly (no pre-print operations)
@@ -848,10 +853,11 @@ class PrintPreparationManager {
     /**
      * @brief Retire the preparing job after a start attempt dies inside here
      *
-     * The modify and remap routes take no completion callback -
-     * continue_print_start() calls modify_and_print() and returns - so
-     * PrintStartController's own retire_preparing(Failed) is unreachable from
-     * them. Whatever ends the attempt here has to retire the job.
+     * The modify and remap routes end without an error message, so
+     * PrintStartController's own retire_preparing(Failed), which only an error
+     * message reaches, does not run for them. Whatever ends the attempt here
+     * has to retire the job, and then answer @p on_completion with
+     * (false, ""), so a caller waiting on the start learns it ended.
      *
      * Getting this wrong is not a cosmetic leak: `print_in_progress` is now
      * PUBLISHED from the preparing job rather than set by hand, so a job left
@@ -864,8 +870,10 @@ class PrintPreparationManager {
      * inside a token.defer() or on a synchronous path.
      *
      * @param where Short tag naming the exit, for the log line.
+     * @param on_completion The start's completion callback; null for the remap
+     *        route, which has none.
      */
-    void abandon_start(const char* where);
+    void abandon_start(const char* where, const PrintCompletionCallback& on_completion = nullptr);
 
     /**
      * @brief Lazy-initialize the prep-time estimate subject.
