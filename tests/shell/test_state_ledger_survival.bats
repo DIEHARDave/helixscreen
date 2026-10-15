@@ -1,0 +1,121 @@
+#!/usr/bin/env bats
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# The install-dir ledgers the uninstaller reads (camera migration, Klipper
+# includes, settings seeds, K2 camera marker) must live in printer_data and be
+# symlinked from the install dir, so Moonraker's type:web rmtree of the install
+# dir cannot delete them. A ledger that was never written must stay absent: an
+# empty seeded marker would read as "migrated".
+
+WORKTREE_ROOT="$(cd "$BATS_TEST_DIRNAME/../.." && pwd)"
+REFRESH="$WORKTREE_ROOT/config/refresh-service-units.sh"
+LEDGERS=".webcams_backup.json .camera_migrated .klipper_includes .k2cam_webcam_disabled .seeded_settings"
+
+setup() {
+    unset _HELIX_PLATFORM_SOURCED _HELIX_COMMON_SOURCED _HELIX_HOST_PROFILE_SOURCED
+    . "$WORKTREE_ROOT/scripts/lib/installer/common.sh"
+    . "$WORKTREE_ROOT/scripts/lib/installer/host_profile.sh"
+    . "$WORKTREE_ROOT/scripts/lib/installer/platform.sh"
+    load helpers
+
+    SUDO=""
+    KLIPPER_HOME="$BATS_TEST_TMPDIR/home/pi"
+    INSTALL_DIR="$BATS_TEST_TMPDIR/helixscreen"
+    IDIR="$INSTALL_DIR"
+    PD="$KLIPPER_HOME/printer_data/config/helixscreen"
+    mkdir -p "$KLIPPER_HOME/printer_data/config" "$INSTALL_DIR/config"
+
+    # Pull the real restore code out of the update script; it is not sourceable
+    # as a whole (set -e, systemctl).
+    awk '/^# Keep in sync with/{on=1} /^restore_config_symlinks$/{on=0} on' "$REFRESH" \
+        > "$BATS_TEST_TMPDIR/restore.sh"
+    . "$BATS_TEST_TMPDIR/restore.sh"
+    # Skip the user-home probing: point it at the sandbox.
+    discover_pd_helix() { printf '%s' "$PD"; }
+}
+
+write_ledgers() {
+    local f
+    for f in $LEDGERS; do echo "content-of-$f" > "$INSTALL_DIR/config/$f"; done
+}
+
+# What Moonraker leaves behind: a fresh tree holding only what the zip ships.
+simulate_web_update() {
+    rm -rf "$INSTALL_DIR"
+    mkdir -p "$INSTALL_DIR/config"
+    echo '{"config_version":0}' > "$INSTALL_DIR/config/settings.json"
+}
+
+@test "ledgers move to printer_data and are symlinked from the install dir" {
+    write_ledgers
+    setup_config_symlink
+    for f in $LEDGERS; do
+        [ -L "$INSTALL_DIR/config/$f" ]
+        [ "$(cat "$PD/$f")" = "content-of-$f" ]
+    done
+}
+
+@test "ledgers survive a Moonraker web update and are relinked" {
+    write_ledgers
+    setup_config_symlink
+    simulate_web_update
+    restore_config_symlinks
+    for f in $LEDGERS; do
+        [ -L "$INSTALL_DIR/config/$f" ]
+        [ "$(cat "$INSTALL_DIR/config/$f")" = "content-of-$f" ]
+    done
+}
+
+@test "service-start restore moves a pre-existing real ledger into printer_data" {
+    mkdir -p "$PD"
+    write_ledgers
+    restore_config_symlinks
+    for f in $LEDGERS; do
+        [ -L "$INSTALL_DIR/config/$f" ]
+        [ "$(cat "$PD/$f")" = "content-of-$f" ]
+    done
+    simulate_web_update
+    restore_config_symlinks
+    [ "$(cat "$INSTALL_DIR/config/.camera_migrated")" = "content-of-.camera_migrated" ]
+}
+
+@test "a ledger that was never written stays absent" {
+    echo '{}' > "$INSTALL_DIR/config/settings.json"
+    setup_config_symlink
+    simulate_web_update
+    restore_config_symlinks
+    for f in $LEDGERS; do
+        [ ! -e "$INSTALL_DIR/config/$f" ]
+        [ ! -L "$INSTALL_DIR/config/$f" ]
+        [ ! -e "$PD/$f" ]
+    done
+}
+
+@test "remove_state_file deletes the printer_data target as well as the link" {
+    write_ledgers
+    setup_config_symlink
+    remove_state_file "$INSTALL_DIR/config/.camera_migrated"
+    [ ! -e "$INSTALL_DIR/config/.camera_migrated" ]
+    [ ! -e "$PD/.camera_migrated" ]
+    [ -f "$PD/.klipper_includes" ]
+}
+
+@test "the installer and the update script list the same user config files and dirs" {
+    local a b
+    a="$(grep '^HELIX_USER_CONFIG_FILES=' "$WORKTREE_ROOT/scripts/lib/installer/platform.sh")"
+    b="$(grep '^HELIX_USER_CONFIG_FILES=' "$REFRESH")"
+    [ -n "$a" ]
+    [ "$a" = "$b" ]
+    a="$(grep '^HELIX_USER_CONFIG_DIRS=' "$WORKTREE_ROOT/scripts/lib/installer/platform.sh")"
+    b="$(grep '^HELIX_USER_CONFIG_DIRS=' "$REFRESH")"
+    [ -n "$a" ]
+    [ "$a" = "$b" ]
+}
+
+@test "main.sh relocates ledgers after the steps that write them" {
+    local seed_line reloc_line
+    seed_line="$(grep -n 'seed_update_channel$' "$WORKTREE_ROOT/scripts/lib/installer/main.sh" | tail -1 | cut -d: -f1)"
+    reloc_line="$(grep -n 'setup_config_symlink quiet' "$WORKTREE_ROOT/scripts/lib/installer/main.sh" | cut -d: -f1)"
+    [ -n "$seed_line" ] && [ -n "$reloc_line" ]
+    [ "$reloc_line" -gt "$seed_line" ]
+}
