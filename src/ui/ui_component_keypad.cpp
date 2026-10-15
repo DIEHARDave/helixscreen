@@ -54,30 +54,6 @@ static lv_subject_t keypad_allow_decimal_subject;
 /// it covered what it failed to dim.
 static lv_obj_t* keypad_backdrop = nullptr;
 
-/// Any of this file's static object pointers can die without this file knowing: deleting
-/// the screen they hang off takes them along. A pointer left behind then names freed
-/// memory, and once the allocator hands that memory to a new object, lv_obj_is_valid()
-/// vouches for it and the next use acts on that unrelated object (a display layer, say).
-/// The event's user data is the static slot; it is cleared only while it still names the
-/// dying object, because a deferred delete of an old object lands after the next show
-/// has stored its replacement.
-static void forget_static_obj_cb(lv_event_t* e) {
-    auto* slot = static_cast<lv_obj_t**>(lv_event_get_user_data(e));
-    if (slot && *slot == lv_event_get_target_obj(e)) {
-        *slot = nullptr;
-    }
-}
-
-/// Stores `obj` in `slot` and keeps `slot` from outliving it.
-static void remember_static_obj(lv_obj_t** slot, lv_obj_t* obj) {
-    *slot = obj;
-    if (obj) {
-        // One handler per slot, however many times the same object is remembered.
-        lv_obj_remove_event_cb_with_user_data(obj, forget_static_obj_cb, slot);
-        lv_obj_add_event_cb(obj, forget_static_obj_cb, LV_EVENT_DELETE, slot);
-    }
-}
-
 static void destroy_keypad_backdrop() {
     if (keypad_backdrop) {
         helix::ui::safe_delete_deferred(keypad_backdrop);
@@ -169,7 +145,7 @@ void ui_keypad_init(lv_obj_t* parent) {
     // it is built. Only the widget tree is deferred.
     ui_keypad_init_subjects();
 
-    remember_static_obj(&keypad_parent, parent);
+    helix::ui::clear_slot_on_delete(&keypad_parent, parent);
     // The in-pad confirm key (phone layout, integer fields) does what the header's Set does.
     register_xml_callbacks({
         {"on_keypad_confirm",
@@ -187,12 +163,13 @@ static bool ensure_keypad_built() {
         return true;
     }
     if (!keypad_parent) {
-        spdlog::error("[Keypad] Cannot build keypad: never initialized with a parent");
+        spdlog::error(
+            "[Keypad] Cannot build keypad: no parent (never initialized, or it was deleted)");
         return false;
     }
 
-    remember_static_obj(&keypad_widget,
-                        (lv_obj_t*)lv_xml_create(keypad_parent, "numeric_keypad_panel", nullptr));
+    helix::ui::clear_slot_on_delete(
+        &keypad_widget, (lv_obj_t*)lv_xml_create(keypad_parent, "numeric_keypad_panel", nullptr));
     if (!keypad_widget) {
         spdlog::error("[Keypad] Failed to create keypad from XML");
         return false;
@@ -259,7 +236,8 @@ void ui_keypad_show(const ui_keypad_config_t* config) {
         // Blur when the platform can afford it, a plain dim when it cannot - the same
         // 40/255 the navigation layer uses for a first overlay, so the pad dims its
         // surroundings exactly as much as any other layer does.
-        remember_static_obj(&keypad_backdrop, helix::ui::create_fullscreen_backdrop(screen, 40));
+        helix::ui::clear_slot_on_delete(&keypad_backdrop,
+                                        helix::ui::create_fullscreen_backdrop(screen, 40));
         if (keypad_backdrop) {
             helix::ui::bring_to_front(keypad_backdrop);
         }

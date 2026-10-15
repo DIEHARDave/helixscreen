@@ -144,21 +144,35 @@ TEST_CASE_METHOD(KeypadBackdropFixture,
 
     lv_obj_delete(widget);
 
+    // Where the allocator recycles the address, the stale pointer would read as a visible
+    // keypad: the recycled object is not hidden.
     lv_obj_t* victim = recycle_address(widget, widget_class, screen);
-    if (victim == nullptr)
-        SKIP("the allocator did not recycle the widget's address");
+    if (victim != nullptr) {
+        CHECK_FALSE(ui_keypad_is_visible());
+        lv_obj_delete(victim);
+    }
 
-    // The recycled object is not hidden, so the stale pointer would report it visible.
-    CHECK_FALSE(ui_keypad_is_visible());
-    lv_obj_delete(victim);
+    // Independent of recycling: with the pointer forgotten, the next show builds a new tree
+    // instead of reusing freed memory.
+    ui_keypad_show(&cfg);
+    helix::ui::UpdateQueue::instance().drain();
+    CHECK(ui_keypad_is_visible());
+    int rebuilt = 0;
+    for (lv_obj_t* c : children_of(screen)) {
+        if (std::find(before.begin(), before.end(), c) == before.end() &&
+            lv_obj_find_by_name(c, "header_title") != nullptr) {
+            rebuilt++;
+        }
+    }
+    CHECK(rebuilt == 1);
 }
 
 // The parent is captured at init and the tree is built under it on first show. If it died
 // meanwhile, a show must not build the keypad inside whatever now sits at that address.
 TEST_CASE_METHOD(KeypadBackdropFixture,
-                 "Keypad: showing after the parent died builds nothing in its recycled address",
-                 "[keypad]") {
+                 "Keypad: showing after the parent died builds nothing under it", "[keypad]") {
     lv_obj_t* screen = lv_screen_active();
+    const std::vector<lv_obj_t*> before = children_of(screen);
     lv_obj_t* holder = lv_obj_create(screen);
     const lv_obj_class_t* holder_class = lv_obj_get_class(holder);
     ui_keypad_init(holder);
@@ -166,8 +180,6 @@ TEST_CASE_METHOD(KeypadBackdropFixture,
     lv_obj_delete(holder);
 
     lv_obj_t* victim = recycle_address(holder, holder_class, screen);
-    if (victim == nullptr)
-        SKIP("the allocator did not recycle the parent's address");
 
     ui_keypad_config_t cfg{};
     cfg.max_value = 300;
@@ -175,7 +187,16 @@ TEST_CASE_METHOD(KeypadBackdropFixture,
     ui_keypad_show(&cfg);
     helix::ui::UpdateQueue::instance().drain();
 
-    CHECK(lv_obj_get_child_count(victim) == 0);
+    // With the parent forgotten there is nowhere to build, whether or not the address
+    // was recycled; a stale parent would build inside freed memory.
     CHECK_FALSE(ui_keypad_is_visible());
-    lv_obj_delete(victim);
+    for (lv_obj_t* c : children_of(screen)) {
+        if (std::find(before.begin(), before.end(), c) == before.end()) {
+            CHECK(lv_obj_find_by_name(c, "header_title") == nullptr);
+        }
+    }
+    if (victim != nullptr) {
+        CHECK(lv_obj_get_child_count(victim) == 0);
+        lv_obj_delete(victim);
+    }
 }
