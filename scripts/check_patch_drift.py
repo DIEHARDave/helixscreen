@@ -55,8 +55,9 @@ Modes:
   --pending-since REV [--pending-head REV]
                 what .githooks/pre-push runs. A patch-unapplied, patch-edited
                 or patch-removed finding whose patch the commits REV..HEAD
-                changed is the tree not having built those commits yet, not a
-                fault in them: it is reported as a note and does not fail.
+                changed, and whose patches/ file on disk is HEAD's, is the tree
+                not having built those commits yet, not a fault in them: it is
+                reported as a note and does not fail.
                 Every other finding fails exactly as in the default mode.
 """
 
@@ -346,13 +347,17 @@ PENDING_KINDS = ("patch-unapplied", "patch-edited", "patch-removed")
 def patches_changed(root: Path, since: str, head: str) -> set[str] | None:
     """Names of patches/ files that differ between SINCE and HEAD.
 
+    Only files directly in patches/, which is where every wired patch lives.
+    --no-renames, because a rename reported under its new name alone would
+    leave the old name's patch-removed unexplained.
+
     None when git cannot answer (an unknown rev, not a repository): the caller
     then treats nothing as pending, so every finding keeps failing.
     """
     try:
         proc = subprocess.run(
-            ["git", "-C", str(root), "diff", "--name-only", since, head,
-             "--", "patches/"],
+            ["git", "-C", str(root), "diff", "--name-only", "--no-renames",
+             since, head, "--", "patches/"],
             capture_output=True,
             text=True,
             env=git_env(),
@@ -361,17 +366,43 @@ def patches_changed(root: Path, since: str, head: str) -> set[str] | None:
         return None
     if proc.returncode != 0:
         return None
-    return {Path(line).name for line in proc.stdout.splitlines() if line}
+    return {
+        Path(line).name
+        for line in proc.stdout.splitlines()
+        if line and Path(line).parent == Path("patches")
+    }
+
+
+def matches_head(root: Path, head: str, name: str) -> bool:
+    """Is patches/NAME on disk exactly what HEAD holds, absence included?
+
+    The range explains the committed revision only. A working-tree edit to the
+    same patch is this tree's own change, and stays drift.
+    """
+    disk = root / "patches" / name
+    proc = subprocess.run(
+        ["git", "-C", str(root), "cat-file", "blob", f"{head}:patches/{name}"],
+        capture_output=True,
+        env=git_env(),
+    )
+    if proc.returncode != 0:
+        return not disk.exists()
+    return disk.is_file() and disk.read_bytes() == proc.stdout
 
 
 def split_pending(
-    findings: list["Finding"], changed: set[str]
+    findings: list["Finding"], changed: set[str], root: Path, head: str
 ) -> tuple[list["Finding"], list["Finding"]]:
-    """(blocking, pending): pending findings are the ones CHANGED explains."""
+    """(blocking, pending): pending findings are the ones CHANGED explains,
+    for a patch whose file on disk is HEAD's."""
     blocking: list[Finding] = []
     pending: list[Finding] = []
     for f in findings:
-        if f.kind in PENDING_KINDS and f.item in changed:
+        if (
+            f.kind in PENDING_KINDS
+            and f.item in changed
+            and matches_head(root, head, f.item)
+        ):
             pending.append(f)
         else:
             blocking.append(f)
@@ -641,7 +672,9 @@ def main(argv: list[str]) -> int:
                 f"{args.pending_head}; every finding is treated as drift"
             )
         else:
-            findings, pending = split_pending(findings, changed)
+            findings, pending = split_pending(
+                findings, changed, root, args.pending_head
+            )
 
     if args.list:
         for f in findings:

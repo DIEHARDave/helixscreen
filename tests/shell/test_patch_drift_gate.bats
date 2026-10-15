@@ -697,7 +697,7 @@ commit_edited_alpha_patch() {
     lacks "❌" "$output"
 }
 
-@test "--pending-since: no rev given keeps today's verdict on the same tree" {
+@test "--pending-since: no rev given keeps the plain verdict on the same tree" {
     init_root_repo
     in_sync
     commit_new_delta_patch
@@ -731,6 +731,66 @@ commit_edited_alpha_patch() {
     run_gate --pending-since "$base"
     [ "$status" -eq 0 ]
     contains "[patch-removed] lib/fake beta.patch" "$output"
+}
+
+@test "--pending-since: a patch the range renames explains both names" {
+    init_root_repo
+    in_sync
+    base=$(git -C "$ROOT" rev-parse HEAD)
+    git -C "$ROOT" mv patches/beta.patch patches/beta2.patch
+    write_patches_mk alpha beta2 gamma
+    commit_root "rename beta"
+
+    run_gate --pending-since "$base"
+    [ "$status" -eq 0 ]
+    contains "[patch-removed] lib/fake beta.patch" "$output"
+    contains "[patch-unapplied] lib/fake beta2.patch" "$output"
+}
+
+@test "--pending-since: an uncommitted edit to a patch the range changed still fails" {
+    # The range explains the committed revision; bytes on disk that differ
+    # from the pushed commit are this tree's own edit, not the push.
+    init_root_repo
+    in_sync
+    base=$(git -C "$ROOT" rev-parse HEAD)
+    commit_edited_alpha_patch
+    printf '# in flight\n' >> "$ROOT/patches/alpha.patch"
+
+    run_gate --pending-since "$base"
+    [ "$status" -eq 1 ]
+    contains "[patch-edited] lib/fake alpha.patch" "$output"
+    lacks "pushed commits explain" "$output"
+}
+
+@test "--pending-since: a patch the range removed but still on disk fails" {
+    init_root_repo
+    in_sync
+    base=$(git -C "$ROOT" rev-parse HEAD)
+    git -C "$ROOT" rm -q --cached patches/beta.patch
+    write_patches_mk alpha gamma
+    git -C "$ROOT" add mk/patches.mk
+    git -C "$ROOT" commit -qm "drop beta"
+    [ -z "$(git -C "$ROOT" ls-files patches/beta.patch)" ]
+    # Unwired, so it reads as removed, but its file is still on disk.
+    [ -f "$ROOT/patches/beta.patch" ]
+
+    run_gate --pending-since "$base"
+    [ "$status" -eq 1 ]
+    contains "[patch-removed] lib/fake beta.patch" "$output"
+}
+
+@test "--pending-since: a same-named file in a patches/ subdirectory explains nothing" {
+    init_root_repo
+    in_sync
+    commit_edited_alpha_patch
+    base=$(git -C "$ROOT" rev-parse HEAD)
+    mkdir -p "$ROOT/patches/old"
+    printf 'archived\n' > "$ROOT/patches/old/alpha.patch"
+    commit_root "archive"
+
+    run_gate --pending-since "$base"
+    [ "$status" -eq 1 ]
+    contains "[patch-edited] lib/fake alpha.patch" "$output"
 }
 
 @test "--pending-since: an edited patch outside the range still fails" {
@@ -908,4 +968,63 @@ run_hook() {
     run_hook 0000000000000000000000000000000000000000
     [ "$status" -eq 1 ]
     contains "never applied" "$output"
+}
+
+# --- push_base: where the pushed range starts ---
+
+PUSH_RANGE_LIB="$BATS_TEST_DIRNAME/../../.githooks/lib/push-range.sh"
+
+# main and release/1.0 fork at m0; feat is cut from release/1.0.
+setup_fork_fixture() {
+    P="$BATS_TEST_TMPDIR/forks"
+    git init -q -b main "$P"
+    git -C "$P" config user.email t@example.invalid
+    git -C "$P" config user.name Fixture
+    git -C "$P" commit -q --allow-empty -m m0
+    M0=$(git -C "$P" rev-parse HEAD)
+    git -C "$P" checkout -q -b release/1.0
+    git -C "$P" commit -q --allow-empty -m r1
+    R1=$(git -C "$P" rev-parse HEAD)
+    git -C "$P" checkout -q main
+    git -C "$P" commit -q --allow-empty -m m1
+    git -C "$P" update-ref refs/remotes/origin/main main
+    git -C "$P" checkout -q -b feat release/1.0
+    git -C "$P" commit -q --allow-empty -m f1
+    F1=$(git -C "$P" rev-parse HEAD)
+}
+
+run_push_base() { # <remote sha> <target>
+    run env -u GIT_DIR -u GIT_WORK_TREE -u GIT_INDEX_FILE \
+        bash -c 'cd "$1" && . "$2" && push_base "$3" "$4"' _ "$P" "$PUSH_RANGE_LIB" "$1" "$2"
+}
+
+@test "push_base takes the remote's sha when this clone has it" {
+    setup_fork_fixture
+    run_push_base "$R1" "$F1"
+    [ "$status" -eq 0 ]
+    [ "$output" = "$R1" ]
+}
+
+@test "push_base measures a new branch from its nearest fork, not from main" {
+    setup_fork_fixture
+    mkdir -p "$P/scripts"
+    cp scripts/diff_base.py "$P/scripts/"
+    run_push_base 0000000000000000000000000000000000000000 "$F1"
+    [ "$status" -eq 0 ]
+    [ "$output" = "$R1" ]
+}
+
+@test "push_base in a tree without diff_base.py falls back to origin/main" {
+    setup_fork_fixture
+    run_push_base 0000000000000000000000000000000000000000 "$F1"
+    [ "$status" -eq 0 ]
+    [ "$output" = "$M0" ]
+}
+
+@test "diff_base.py --head measures from the named rev, not HEAD" {
+    setup_fork_fixture
+    git -C "$P" checkout -q main
+    run python3 scripts/diff_base.py --root "$P" --head "$F1"
+    [ "$status" -eq 0 ]
+    [ "$output" = "$R1" ]
 }

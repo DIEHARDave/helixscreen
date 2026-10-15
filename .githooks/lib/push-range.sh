@@ -4,16 +4,24 @@
 # Sourced by pre-push: what the push publishes, and the patch-drift question
 # asked where lib/ is owned.
 
-# push_base REMOTE_SHA TARGET: the commit the pushed range starts from. What the
-# remote already has; for a new branch, or a remote sha this clone has never
-# fetched, the merge-base of TARGET with origin/main. Fails when neither exists.
+# push_base REMOTE_SHA TARGET: the commit the pushed range starts from, run in
+# the pushing tree. What the remote already has; for a new branch, or a remote
+# sha this clone has never fetched, TARGET's nearest fork among the branches it
+# could have been cut from (scripts/diff_base.py), so a branch cut from a
+# release line is not measured against trunk. A tree whose diff_base.py has no
+# --head falls back to the merge-base with origin/main. Fails when none exists.
 push_base() {
     local base="$1" target="$2"
     case "$base" in *[!0]*) ;; *) base="" ;; esac
-    if [ -z "$base" ] || ! git cat-file -e "$base^{commit}" 2>/dev/null; then
-        base="$(git merge-base "$target" origin/main 2>/dev/null)" || return 1
+    if [ -n "$base" ] && git cat-file -e "$base^{commit}" 2>/dev/null; then
+        printf '%s\n' "$base"
+        return 0
     fi
-    printf '%s\n' "$base"
+    if [ -f scripts/diff_base.py ] && grep -q -- "'--head'" scripts/diff_base.py; then
+        python3 scripts/diff_base.py --head "$target" 2>/dev/null
+        return
+    fi
+    git merge-base "$target" origin/main 2>/dev/null
 }
 
 # prepush_patch_drift TREE BASE TARGET: patch drift in TREE, the checkout that

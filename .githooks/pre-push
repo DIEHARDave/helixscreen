@@ -20,13 +20,18 @@
 # green push should mean a green Code Quality job.
 #
 # Fast path: when the tree already matches the commit being pushed there is
-# nothing to isolate, so the sweep runs in place. Otherwise the commit is checked out into a throwaway worktree, with the heavy
-# build inputs shared by symlink rather than rebuilt.
+# nothing to isolate, so the sweep runs in place. Otherwise the commit is
+# checked out into a throwaway worktree, with the heavy build inputs shared by
+# symlink rather than rebuilt.
 #
 # Patch drift is asked in the tree that owns lib/, on both paths. A landing that
 # adds or edits a patch is pushed from a tree that has not built it yet; drift
 # confined to patches the pushed commits changed is reported, not rejected
 # (lib/push-range.sh).
+#
+# One push, one gated ref: when several refs go up together, the last one read
+# is the commit swept and the range drift is measured over. Push refs one at a
+# time to gate each.
 #
 # Escape hatches: HELIX_PREPUSH_IN_PLACE=1 forces the old in-place behaviour,
 # and `git push --no-verify` skips the hook entirely. Expect CI to find whatever
