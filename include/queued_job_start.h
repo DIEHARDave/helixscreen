@@ -103,6 +103,9 @@ class QueuedJobStarter {
     void publish_in_flight() const;
 
     void finish(Outcome outcome);
+    /// The reset every end of a start shares: nothing in flight, every
+    /// answer still owed to this start dropped.
+    void end_start();
 
     /// Hand the shared prep manager back: drop the waiter and the option
     /// override this start set on it.
