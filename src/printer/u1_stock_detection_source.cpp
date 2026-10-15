@@ -25,29 +25,44 @@ void U1StockSource::tune() {
         nullptr, nullptr);
 }
 
-void U1StockSource::read_bed_check(BedCheckCallback done) {
+void U1StockSource::read_bed_check(BedCheckReadCallback done) {
     json params = {{"objects", {{"defect_detection", nullptr}}}};
     get_moonraker_client()->send_jsonrpc(
         "printer.objects.query", params,
         [done](const json& resp) {
-            const json* clean_bed = nullptr;
+            const json* module = nullptr;
             if (auto r = resp.find("result"); r != resp.end() && r->is_object()) {
                 if (auto st = r->find("status"); st != r->end() && st->is_object()) {
                     if (auto dd = st->find("defect_detection");
                         dd != st->end() && dd->is_object()) {
-                        if (auto cb = dd->find("clean_bed"); cb != dd->end() && cb->is_object()) {
-                            clean_bed = &*cb;
-                        }
+                        module = &*dd;
                     }
                 }
             }
-            if (!clean_bed) {
+            const json* clean_bed = nullptr;
+            if (module) {
+                if (auto cb = module->find("clean_bed"); cb != module->end() && cb->is_object()) {
+                    clean_bed = &*cb;
+                }
+            }
+            const json* enable = nullptr;
+            if (clean_bed) {
+                if (auto en = clean_bed->find("enable");
+                    en != clean_bed->end() && en->is_boolean()) {
+                    enable = &*en;
+                }
+            }
+            if (!enable) {
                 done(std::nullopt);
                 return;
             }
-            auto en = clean_bed->find("enable");
-            done(en != clean_bed->end() && en->is_boolean() ? std::optional<bool>(en->get<bool>())
-                                                            : std::nullopt);
+            BedCheckState state;
+            state.enabled = enable->get<bool>();
+            if (auto main = module->find("main_enable");
+                main != module->end() && main->is_boolean()) {
+                state.module_enabled = main->get<bool>();
+            }
+            done(state);
         },
         [done](const MoonrakerError& err) {
             spdlog::warn("[U1StockSource] bed check state unreadable: {}", err.message);
@@ -55,15 +70,16 @@ void U1StockSource::read_bed_check(BedCheckCallback done) {
         });
 }
 
-void U1StockSource::set_bed_check(bool enabled, BedCheckCallback done) {
+void U1StockSource::set_bed_check(bool enabled, BedCheckSetCallback done) {
     const std::string script =
         std::string("DEFECT_DETECTION_CONFIG CLEAN_BED_ENABLE=") + (enabled ? "1" : "0");
+    // The error callback carries Klipper's reason to the caller, which shows
+    // it with its own revert; that is why it is not left null.
     get_moonraker_client()->send_jsonrpc(
-        "printer.gcode.script", json{{"script", script}},
-        [done, enabled](const json&) { done(enabled); },
+        "printer.gcode.script", json{{"script", script}}, [done](const json&) { done(true, {}); },
         [done](const MoonrakerError& err) {
             spdlog::warn("[U1StockSource] bed check switch refused: {}", err.message);
-            done(std::nullopt);
+            done(false, err.message);
         });
 }
 

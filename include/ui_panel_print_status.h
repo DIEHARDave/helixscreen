@@ -224,9 +224,6 @@ class PrintStatusPanel : public OverlayBase {
     lv_obj_t* delete_hook_root_ = nullptr;
 
   public:
-    /// Close the runout guidance dialog, for a pause another surface explains.
-    void dismiss_runout_guidance();
-
     //
     // === Legacy Compatibility ===
 

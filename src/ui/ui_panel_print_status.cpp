@@ -1866,12 +1866,6 @@ void PrintStatusPanel::handle_reprint_button() {
     }
 }
 
-void PrintStatusPanel::dismiss_runout_guidance() {
-    if (runout_handler_) {
-        runout_handler_->hide_modal();
-    }
-}
-
 void PrintStatusPanel::handle_files_click() {
     spdlog::info("[{}] Files clicked - opening print select during active print", get_name());
 

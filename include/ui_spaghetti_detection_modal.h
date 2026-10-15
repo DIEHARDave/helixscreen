@@ -156,7 +156,8 @@ namespace helix::detection {
  * The camera saw something on the bed (often a false alarm) and the firmware
  * stopped a print it cannot resume. Three actions:
  *   - Restart print (primary / on_ok): drop the job and print its file again
- *   - Cancel print (secondary / on_cancel)
+ *   - Cancel print (quaternary / on_quaternary). ESC and a backdrop tap close
+ *     the modal without deciding anything: cancelling a print takes the button.
  *   - Turn off bed check (tertiary / on_tertiary): leaves the modal open, so
  *     the print still gets its Restart/Cancel decision. The button rides
  *     detection_bed_check_enabled and hides once the check is off.
@@ -201,7 +202,7 @@ class BedCheckModal : public Modal {
     void on_show() override;
     void on_hide() override;
     void on_ok() override;
-    void on_cancel() override;
+    void on_quaternary() override;
     void on_tertiary() override {
         if (on_disable_check_)
             on_disable_check_();

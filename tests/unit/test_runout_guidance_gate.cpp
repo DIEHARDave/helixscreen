@@ -42,6 +42,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "../catch_amalgamated.hpp"
@@ -293,6 +294,87 @@ TEST_CASE_METHOD(RunoutGuidanceFixture, "a pause a detection explains shows no r
     CHECK(handler->is_modal_visible());
 
     get_printer_state().update_from_status(nlohmann::json{{"print_stats", {{"state", "standby"}}}});
+    settle();
+    dm.reset_for_test();
+}
+
+namespace {
+nlohmann::json print_stats(nlohmann::json fields) {
+    return nlohmann::json{{"print_stats", std::move(fields)}};
+}
+nlohmann::json defect(int code, const char* message) {
+    return {{"id", 532}, {"index", 0}, {"code", code}, {"message", message}};
+}
+} // namespace
+
+// An exception describes the pause it came with. A later pause whose frames
+// carry none is a pause of its own, and a runout there still gets guidance.
+TEST_CASE_METHOD(RunoutGuidanceFixture, "a plain pause after a detection's pause is not explained",
+                 "[runout_guidance][gate][bed_check]") {
+    auto& dm = helix::detection::DetectionManager::instance();
+    dm.reset_for_test();
+    auto source = std::make_unique<helix::detection::U1StockSource>(&get_printer_state());
+    auto* u1 = source.get();
+    u1->start();
+    dm.register_source(std::move(source));
+    u1->set_capable(true);
+    auto& ps = get_printer_state();
+
+    ps.update_from_status(
+        print_stats({{"state", "printing"}, {"exception", nlohmann::json::object()}}));
+    ps.update_from_status(
+        print_stats({{"state", "paused"}, {"exception", defect(2, "detected noodle")}}));
+    settle();
+    REQUIRE(dm.pause_explained_by_detection());
+
+    // Resumed: the firmware leaves its exception as it was, so no frame
+    // clears it.
+    ps.update_from_status(print_stats({{"state", "printing"}}));
+    settle();
+    CHECK_FALSE(dm.pause_explained_by_detection());
+
+    set_filament_present(false);
+    ps.update_from_status(print_stats({{"state", "paused"}}));
+    settle();
+    CHECK_FALSE(dm.pause_explained_by_detection());
+    transition(::PrintState::Printing, ::PrintState::Paused);
+    CHECK(handler->is_modal_visible());
+
+    ps.update_from_status(print_stats({{"state", "standby"}}));
+    settle();
+    dm.reset_for_test();
+}
+
+// The exception can land a frame after the pause, once the guidance is up
+// for it. The detection then closes it, whichever defect it is.
+TEST_CASE_METHOD(RunoutGuidanceFixture,
+                 "a detection arriving after the pause closes the runout dialog",
+                 "[runout_guidance][gate][bed_check]") {
+    const auto [code, message] = GENERATE(std::pair<int, const char*>{1, "detected dirty bed"},
+                                          std::pair<int, const char*>{2, "detected noodle"});
+    auto& dm = helix::detection::DetectionManager::instance();
+    dm.reset_for_test();
+    auto source = std::make_unique<helix::detection::U1StockSource>(&get_printer_state());
+    auto* u1 = source.get();
+    u1->start();
+    dm.register_source(std::move(source));
+    u1->set_capable(true);
+    auto& ps = get_printer_state();
+
+    set_filament_present(false);
+    ps.update_from_status(
+        print_stats({{"state", "printing"}, {"exception", nlohmann::json::object()}}));
+    ps.update_from_status(print_stats({{"state", "paused"}}));
+    settle();
+    transition(::PrintState::Printing, ::PrintState::Paused);
+    REQUIRE(handler->is_modal_visible());
+
+    ps.update_from_status(print_stats({{"exception", defect(code, message)}}));
+    settle();
+    CHECK(dm.pause_explained_by_detection());
+    CHECK_FALSE(handler->is_modal_visible());
+
+    ps.update_from_status(print_stats({{"state", "standby"}}));
     settle();
     dm.reset_for_test();
 }

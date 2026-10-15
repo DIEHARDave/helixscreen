@@ -29,10 +29,20 @@ namespace helix::ui {
 // ============================================================================
 
 FilamentRunoutHandler::FilamentRunoutHandler(IMoonrakerAPI* api) : api_(api) {
+    // A pause's other cause can arrive after the pause did, by which time the
+    // guidance may already be up for it.
+    helix::non_filament_pause::add_listener(this, [this]() {
+        if (runout_modal_.is_visible()) {
+            spdlog::info("[FilamentRunoutHandler] Pause has a non-filament cause - closing "
+                         "runout guidance");
+            hide_runout_guidance_modal();
+        }
+    });
     spdlog::debug("[FilamentRunoutHandler] Constructed");
 }
 
 FilamentRunoutHandler::~FilamentRunoutHandler() {
+    helix::non_filament_pause::remove_listener(this);
     // lifetime_ destructor calls invalidate() automatically
     spdlog::trace("[FilamentRunoutHandler] Destroyed");
 }

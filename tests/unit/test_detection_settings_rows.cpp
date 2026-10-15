@@ -221,8 +221,20 @@ TEST_CASE_METHOD(DetectionRowsFixture, "Bed check row follows detection_bed_chec
         lv_subject_set_int(bed_enabled, 1);
         process_lvgl(10);
         CHECK(lv_obj_has_state(bed_toggle(), LV_STATE_CHECKED));
+        CHECK_FALSE(lv_obj_has_state(bed_toggle(), LV_STATE_DISABLED));
+    }
+
+    SECTION("a detection module switched off as a whole greys the row") {
+        lv_subject_set_int(avail_, 1);
+        lv_subject_set_int(bed_available, 1);
+        lv_subject_set_int(bed_enabled, 0);
+        lv_subject_set_int(m.subject_bed_check_switchable(), 0);
+        build();
+        CHECK_FALSE(lv_obj_has_flag(bed_container(), LV_OBJ_FLAG_HIDDEN));
+        CHECK(lv_obj_has_state(bed_toggle(), LV_STATE_DISABLED));
     }
 
     lv_subject_set_int(bed_available, 0);
     lv_subject_set_int(bed_enabled, 1);
+    lv_subject_set_int(m.subject_bed_check_switchable(), 1);
 }

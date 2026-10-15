@@ -3256,6 +3256,7 @@ translations:
   : 打印已暂停。现在切换工具会移动工具头并更换喷嘴处的耗材。切换完成后请恢复打印。
   The printer applied this value and keeps it for this tool.: '打印机已应用此值，并为该工具保存。'
   The printer did not change its bed check: '打印机未更改热床检查'
+  'The printer did not change its bed check: {}': '打印机未更改热床检查：{}'
   The printer extrudes in a corner and repeats until the readings agree. You do not judge anything by eye.: '打印机在角落挤出并重复，直到读数一致为止。你无需用肉眼判断任何东西。'
   The printer finishes this measurement on its own.: '打印机会自行完成这次测量。'
   The printer halted this print and cannot resume it. Restart from the beginning?: 打印机已停止此打印且无法恢复。从头重新开始？

@@ -9,28 +9,33 @@ namespace helix::detection {
 
 enum class DetectionKind { Spaghetti, DirtyBed, Residue, DirtyNozzle, Unknown };
 
-/// Map a Snapmaker U1 `print_stats.exception.code` to a kind.
-/// Stock defect_detection.py: 1=dirty-bed, 2=noodle/spaghetti, 3=residue,
-/// 4=dirty-nozzle. 0 / -1 / anything else = not a visual defect we surface.
+/// The Snapmaker U1 defect_detection module raises exception id 532, with
+/// these codes (stock defect_detection.py).
+inline constexpr int U1_DEFECT_EXCEPTION_ID = 532;
+inline constexpr int U1_DEFECT_CODE_DIRTY_BED = 1;
+inline constexpr int U1_DEFECT_CODE_NOODLE = 2;
+inline constexpr int U1_DEFECT_CODE_RESIDUE = 3;
+inline constexpr int U1_DEFECT_CODE_DIRTY_NOZZLE = 4;
+
+/// Map a Snapmaker U1 `print_stats.exception.code` to a kind. 0 / -1 /
+/// anything else = not a visual defect we surface.
 inline DetectionKind kind_from_u1_code(int code) {
     switch (code) {
-    case 1:
+    case U1_DEFECT_CODE_DIRTY_BED:
         return DetectionKind::DirtyBed;
-    case 2:
+    case U1_DEFECT_CODE_NOODLE:
         return DetectionKind::Spaghetti;
-    case 3:
+    case U1_DEFECT_CODE_RESIDUE:
         return DetectionKind::Residue;
-    case 4:
+    case U1_DEFECT_CODE_DIRTY_NOZZLE:
         return DetectionKind::DirtyNozzle;
     default:
         return DetectionKind::Unknown;
     }
 }
 
-/// The U1 defect_detection module raises exception id 532. A code under any
-/// other id belongs to a different module; a frame that carried no id
-/// (-1) is judged by its code alone.
-inline constexpr int U1_DEFECT_EXCEPTION_ID = 532;
+/// A code under any id but U1_DEFECT_EXCEPTION_ID belongs to a different
+/// module; a frame that carried no id (-1) is judged by its code alone.
 inline DetectionKind kind_from_u1_exception(int exception_id, int code) {
     if (exception_id >= 0 && exception_id != U1_DEFECT_EXCEPTION_ID) {
         return DetectionKind::Unknown;
@@ -96,10 +101,19 @@ class DetectionSource {
         return false;
     }
 
-    /// Callback for the bed check's state: the printer's own value, or nullopt
-    /// when the printer could not be asked or did not answer. Called on any
-    /// thread; the caller marshals.
-    using BedCheckCallback = std::function<void(std::optional<bool>)>;
+    /// The bed check as the printer reports it. A detection module switched off
+    /// as a whole runs no bed check, whatever its own flag says.
+    struct BedCheckState {
+        bool enabled = false;
+        bool module_enabled = true;
+    };
+    /// Callback for a read: the printer's state, or nullopt when the printer
+    /// could not be asked or did not answer. Called on any thread; the caller
+    /// marshals.
+    using BedCheckReadCallback = std::function<void(std::optional<BedCheckState>)>;
+    /// Callback for a switch: whether the printer accepted it, and when it did
+    /// not, the printer's own reason (empty when it gave none). Any thread.
+    using BedCheckSetCallback = std::function<void(bool accepted, std::string refusal)>;
     /// Whether the printer runs a pre-print check for objects left on the bed
     /// that the user can switch on and off.
     virtual bool has_bed_check() const {
@@ -107,14 +121,13 @@ class DetectionSource {
     }
     /// Ask the printer whether its bed check is on. Called only while
     /// has_bed_check() is true.
-    virtual void read_bed_check(BedCheckCallback done) {
+    virtual void read_bed_check(BedCheckReadCallback done) {
         done(std::nullopt);
     }
-    /// Switch the printer's bed check. @p done receives the value the printer
-    /// accepted, or nullopt when it refused. Called only while has_bed_check().
-    virtual void set_bed_check(bool enabled, BedCheckCallback done) {
+    /// Switch the printer's bed check. Called only while has_bed_check().
+    virtual void set_bed_check(bool enabled, BedCheckSetCallback done) {
         (void)enabled;
-        done(std::nullopt);
+        done(false, {});
     }
     /// Callback fires on the MAIN thread (already marshaled).
     virtual void set_callback(Callback cb) = 0;

@@ -74,7 +74,8 @@
           <setting_toggle_row name="row_bed_check"
                               label="Bed Clear Check" icon="train_flatbed"
                               description="Camera checks the bed is empty before each print"
-                              subject="detection_bed_check_enabled" callback="on_bed_check_changed"/>
+                              subject="detection_bed_check_enabled" callback="on_bed_check_changed"
+                              disabled="detection_bed_check_switchable" disabled_ref_value="0"/>
         </lv_obj>
         <!-- ================================================================== -->
         <!-- PRINT COMPLETION ALERT -->

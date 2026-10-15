@@ -491,7 +491,7 @@ TEST_CASE_METHOD(BedCheckPresenterFixture,
         click("btn_primary");
     }
     SECTION("Cancel") {
-        click("btn_secondary");
+        click("btn_quaternary");
         CHECK_FALSE(helix::AbortManager::instance().is_aborting());
     }
     CHECK(mock_client.gcode_script_history().empty());
@@ -500,4 +500,17 @@ TEST_CASE_METHOD(BedCheckPresenterFixture,
     CHECK(toasts[0].first == ToastSeverity::WARNING);
     CHECK(toasts[0].second == "That print is no longer paused");
     CHECK(ModalStack::instance().top_component_name() != "bed_check_modal");
+}
+
+TEST_CASE_METHOD(BedCheckPresenterFixture, "ESC closes the bed check modal without cancelling",
+                 "[detection][modal][presenter][bed_check]") {
+    lv_obj_t* backdrop = ModalStack::instance().backdrop_for(dialog);
+    REQUIRE(backdrop != nullptr);
+    uint32_t key = LV_KEY_ESC;
+    lv_obj_send_event(backdrop, LV_EVENT_KEY, &key);
+    settle();
+
+    CHECK(ModalStack::instance().top_component_name() != "bed_check_modal");
+    CHECK_FALSE(helix::AbortManager::instance().is_aborting());
+    CHECK(mock_client.gcode_script_history().empty());
 }

@@ -2366,7 +2366,7 @@ nlohmann::json MoonrakerClientMock::defect_detection_status() const {
     auto feature = [](bool enable) {
         return nlohmann::json{{"enable", enable}, {"sensitivity", "low"}};
     };
-    return nlohmann::json{{"main_enable", true},
+    return nlohmann::json{{"main_enable", u1_defect_main_enable_.load()},
                           {"clean_bed", feature(u1_clean_bed_enable_.load())},
                           {"noodle", feature(true)},
                           {"residue", feature(false)},

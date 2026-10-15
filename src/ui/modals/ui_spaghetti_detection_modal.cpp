@@ -3,7 +3,6 @@
 
 #include "ui_spaghetti_detection_modal.h"
 
-#include "ui_panel_print_status.h"
 #include "ui_resume_dispatch.h"
 #include "ui_toast_manager.h"
 
@@ -132,8 +131,8 @@ bool BedCheckModal::job_still_paused() const {
 
 void BedCheckModal::on_show() {
     wire_ok_button("btn_primary");
-    wire_cancel_button("btn_secondary");
     wire_tertiary_button("btn_tertiary");
+    wire_quaternary_button("btn_quaternary");
     if (!bound_) {
         return;
     }
@@ -170,7 +169,7 @@ void BedCheckModal::on_ok() {
     act_on_job(on_restart_, "Restart");
 }
 
-void BedCheckModal::on_cancel() {
+void BedCheckModal::on_quaternary() {
     act_on_job(on_cancel_print_, "Cancel");
 }
 
@@ -180,10 +179,6 @@ void present_bed_check(const DetectionEvent& e) {
     if (auto* dm = DisplayManager::instance()) {
         dm->wake_display();
     }
-    // This pause has its explanation; a runout dialog raised for it before
-    // the detection arrived would put a second, wrong one on top.
-    get_global_print_status_panel().dismiss_runout_guidance();
-
     auto modal = std::make_unique<BedCheckModal>();
     // The job is the one paused now; Restart reprints that file even if the
     // printer reports another by the time the user answers (it then refuses).
@@ -196,9 +191,9 @@ void present_bed_check(const DetectionEvent& e) {
     });
     modal->set_on_cancel_print([] { helix::AbortManager::instance().start_abort(); });
     modal->set_on_disable_check([] {
-        if (DetectionManager::instance().set_bed_check_enabled(false)) {
+        DetectionManager::instance().set_bed_check_enabled(false, [] {
             ToastManager::instance().show(ToastSeverity::INFO, lv_tr("Bed check turned off"), 4000);
-        }
+        });
     });
     Modal::show_owned(std::move(modal), lv_screen_active());
 }

@@ -942,7 +942,8 @@ and applies its preset; no printer type is saved for it. Its default `HELIX_MOCK
 `snapmaker`, the mock Snapmaker simulation. It does not publish `filament_detect`, which
 would make discovery stand up the production Snapmaker backend. It does publish
 `defect_detection`, answering `printer.objects.query` with the module's stored config, whose
-`clean_bed.enable` follows `DEFECT_DETECTION_CONFIG CLEAN_BED_ENABLE=0|1`.
+`main_enable` and `clean_bed.enable` follow `DEFECT_DETECTION_CONFIG MAIN_ENABLE=0|1` and
+`CLEAN_BED_ENABLE=0|1`.
 
 The `delta` persona changes the kinematics and hardware only. Its build volume is the same 0-based 250x250x300 box the other generic personas report, not a real delta's centred round bed, so it does not exercise negative coordinates or a round bed mesh.
 

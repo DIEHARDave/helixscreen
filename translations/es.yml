@@ -3477,6 +3477,7 @@ translations:
     el filamento en la boquilla. Reanude la impresión una vez que el cambio termine.
   The printer applied this value and keeps it for this tool.: 'La impresora aplicó este valor y lo conserva para esta herramienta.'
   The printer did not change its bed check: 'La impresora no cambió su comprobación de cama'
+  'The printer did not change its bed check: {}': 'La impresora no cambió su comprobación de cama: {}'
   The printer extrudes in a corner and repeats until the readings agree. You do not judge anything by eye.: 'La impresora extruye en una esquina y repite hasta que las lecturas coinciden. Tú no juzgas nada a ojo.'
   The printer finishes this measurement on its own.: 'La impresora termina esta medición por su cuenta.'
   The printer halted this print and cannot resume it. Restart from the beginning?: La

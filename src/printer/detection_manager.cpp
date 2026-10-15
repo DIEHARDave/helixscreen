@@ -10,6 +10,7 @@
 #include "settings_manager.h"
 #include "u1_stock_detection_source.h"
 
+#include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
 
 #include "hv/json.hpp"
@@ -38,6 +39,9 @@ void DetectionManager::ensure_availability_subject() {
     lv_subject_init_int(&bed_check_enabled_subject_, 1);
     helix::xml::register_subject_in_current_scope("detection_bed_check_enabled",
                                                   &bed_check_enabled_subject_);
+    lv_subject_init_int(&bed_check_switchable_subject_, 1);
+    helix::xml::register_subject_in_current_scope("detection_bed_check_switchable",
+                                                  &bed_check_switchable_subject_);
     // The Safety & Alerts row's toggle. Registered with its subject so the
     // row and what it drives exist together.
     register_xml_callbacks({
@@ -72,15 +76,20 @@ void DetectionManager::refresh_bed_check() {
     if (!src) {
         return;
     }
-    src->read_bed_check(
-        lifetime_.bg_cb("DetectionManager::on_bed_check_read", [this](std::optional<bool> enabled) {
-            if (enabled && availability_subject_ready_) {
-                lv_subject_set_int(&bed_check_enabled_subject_, *enabled ? 1 : 0);
+    src->read_bed_check(lifetime_.bg_cb(
+        "DetectionManager::on_bed_check_read",
+        [this](std::optional<DetectionSource::BedCheckState> state) {
+            if (!state || !availability_subject_ready_) {
+                return;
             }
+            // With the module off, the check is off and its own switch does nothing.
+            lv_subject_set_int(&bed_check_enabled_subject_,
+                               state->enabled && state->module_enabled ? 1 : 0);
+            lv_subject_set_int(&bed_check_switchable_subject_, state->module_enabled ? 1 : 0);
         }));
 }
 
-bool DetectionManager::set_bed_check_enabled(bool enabled) {
+bool DetectionManager::set_bed_check_enabled(bool enabled, std::function<void()> on_accepted) {
     DetectionSource* src = bed_check_source();
     if (!src) {
         spdlog::warn("DetectionManager: no bed check to switch");
@@ -90,17 +99,27 @@ bool DetectionManager::set_bed_check_enabled(bool enabled) {
     lv_subject_set_int(&bed_check_enabled_subject_, enabled ? 1 : 0);
     spdlog::info("DetectionManager: bed check -> {}", enabled ? "on" : "off");
     src->set_bed_check(
-        enabled, lifetime_.bg_cb("DetectionManager::on_bed_check_set",
-                                 [this, before](std::optional<bool> accepted) {
-                                     if (accepted) {
-                                         return;
-                                     }
-                                     lv_subject_set_int(&bed_check_enabled_subject_, before);
-                                     ToastManager::instance().show(
-                                         ToastSeverity::ERROR,
-                                         lv_tr("The printer did not change its bed check"), 5000);
-                                 }));
+        enabled,
+        lifetime_.bg_cb("DetectionManager::on_bed_check_set",
+                        [this, before, on_accepted](bool accepted, const std::string& refusal) {
+                            if (accepted) {
+                                if (on_accepted) {
+                                    on_accepted();
+                                }
+                                return;
+                            }
+                            lv_subject_set_int(&bed_check_enabled_subject_, before);
+                            show_bed_check_refusal(refusal);
+                        }));
     return true;
+}
+
+void DetectionManager::show_bed_check_refusal(const std::string& refusal) {
+    const std::string text =
+        refusal.empty()
+            ? std::string(lv_tr("The printer did not change its bed check"))
+            : fmt::format(lv_tr("The printer did not change its bed check: {}"), refusal);
+    ToastManager::instance().show(ToastSeverity::ERROR, text.c_str(), 6000);
 }
 
 bool DetectionManager::pause_explained_by_detection() const {
@@ -234,6 +253,11 @@ void DetectionManager::tune_source(const std::string& source_id) {
 }
 
 void DetectionManager::on_event(const DetectionEvent& e) {
+    if (e.already_paused) {
+        // The pause is this detection's, whatever the policy shows of it: a
+        // runout surface that answered it first stands down.
+        helix::non_filament_pause::announce();
+    }
     DetectionPolicy p = policy(e.source_id);
     // A dirty bed stops a print the printer cannot resume: the user owes it a
     // decision whatever the policy says about defects found mid-print.
@@ -332,6 +356,7 @@ void DetectionManager::reset_for_test() {
         lv_subject_set_int(&detection_pause_applicable_subject_, 0);
         lv_subject_set_int(&bed_check_available_subject_, 0);
         lv_subject_set_int(&bed_check_enabled_subject_, 1);
+        lv_subject_set_int(&bed_check_switchable_subject_, 1);
     }
 }
 

@@ -60,8 +60,8 @@ class U1StockSource : public DetectionSource {
     bool has_bed_check() const override {
         return capable_;
     }
-    void read_bed_check(BedCheckCallback done) override;
-    void set_bed_check(bool enabled, BedCheckCallback done) override;
+    void read_bed_check(BedCheckReadCallback done) override;
+    void set_bed_check(bool enabled, BedCheckSetCallback done) override;
 
     /// Install the print-state observer. Called once.
     void start();

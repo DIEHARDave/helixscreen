@@ -3,6 +3,7 @@
 #include "../helix_test_fixture.h"
 #include "../test_helpers/config_test_access.h"
 #include "../test_helpers/update_queue_test_access.h"
+#include "../ui_test_utils.h"
 #include "app_globals.h"
 #include "detection_manager.h"
 #include "moonraker_client_mock.h"
@@ -48,6 +49,14 @@ struct StubSource : DetectionSource {
     bool explains = false; ///< returned by explains_current_pause()
     bool explains_current_pause() const override {
         return explains;
+    }
+    bool bed = false; ///< returned by has_bed_check()
+    bool has_bed_check() const override {
+        return bed;
+    }
+    BedCheckSetCallback pending_set; ///< the last switch, held until a test answers it
+    void set_bed_check(bool, BedCheckSetCallback done) override {
+        pending_set = std::move(done);
     }
     Callback saved;
 };
@@ -328,6 +337,17 @@ TEST_CASE_METHOD(HelixTestFixture, "DetectionManager bed check follows the print
         m.refresh_bed_check();
         drain();
         CHECK(lv_subject_get_int(enabled) == 1);
+        CHECK(lv_subject_get_int(m.subject_bed_check_switchable()) == 1);
+    }
+
+    SECTION("the module switched off as a whole reads off, and the row cannot switch it") {
+        m.apply_objects_list_for_test(json::array({"defect_detection"}));
+        client.gcode_script("DEFECT_DETECTION_CONFIG MAIN_ENABLE=0");
+        m.refresh_bed_check();
+        drain();
+        // clean_bed.enable is still true, but nothing runs it.
+        CHECK(lv_subject_get_int(enabled) == 0);
+        CHECK(lv_subject_get_int(m.subject_bed_check_switchable()) == 0);
     }
 
     SECTION("the switch sends CLEAN_BED_ENABLE and the subject follows") {
@@ -403,4 +423,45 @@ TEST_CASE_METHOD(HelixTestFixture, "A detection's pause is not open to the runou
 
     m.reset_for_test();
     CHECK_FALSE(helix::non_filament_pause::explained());
+}
+
+TEST_CASE_METHOD(HelixTestFixture, "DetectionManager bed check switch waits for the printer",
+                 "[detection][manager][bed_check]") {
+    auto& m = DetectionManager::instance();
+    m.reset_for_test();
+    auto stub = std::make_unique<StubSource>();
+    auto* raw = stub.get();
+    raw->bed = true;
+    m.register_source(std::move(stub));
+    lv_subject_t* enabled = m.subject_bed_check_enabled();
+    REQUIRE(lv_subject_get_int(enabled) == 1);
+
+    std::vector<std::string> toasts;
+    helix::ui::set_test_toast_hook(
+        [&](ToastSeverity, const std::string& msg, uint32_t) { toasts.push_back(msg); });
+    int accepted = 0;
+    REQUIRE(m.set_bed_check_enabled(false, [&] { ++accepted; }));
+    REQUIRE(raw->pending_set);
+    // The row follows at once; the confirmation waits for the printer.
+    CHECK(lv_subject_get_int(enabled) == 0);
+    CHECK(accepted == 0);
+
+    SECTION("accepted: the confirmation runs, the value stands") {
+        raw->pending_set(true, {});
+        drain();
+        CHECK(accepted == 1);
+        CHECK(lv_subject_get_int(enabled) == 0);
+        CHECK(toasts.empty());
+    }
+    SECTION("refused: the value goes back and the printer's reason is shown") {
+        raw->pending_set(false, "Unknown command:\"DEFECT_DETECTION_CONFIG\"");
+        drain();
+        CHECK(accepted == 0);
+        CHECK(lv_subject_get_int(enabled) == 1);
+        REQUIRE(toasts.size() == 1);
+        CHECK(toasts[0].find("Unknown command") != std::string::npos);
+    }
+
+    helix::ui::set_test_toast_hook(nullptr);
+    m.reset_for_test();
 }

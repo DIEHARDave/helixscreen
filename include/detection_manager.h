@@ -89,10 +89,18 @@ class DetectionManager {
         return &bed_check_enabled_subject_;
     }
 
+    /// 0 while the printer's detection module is switched off as a whole: the
+    /// bed check is then off and its own switch does nothing, so the row greys.
+    lv_subject_t* subject_bed_check_switchable() {
+        return &bed_check_switchable_subject_;
+    }
+
     /// Switch the printer's bed check. The subject follows at once and goes
-    /// back, with a toast, if the printer refuses. Main thread.
+    /// back, with a toast carrying the printer's reason, if the printer
+    /// refuses. @p on_accepted runs on the main thread once it accepts.
+    /// Main thread.
     /// @return false when no capable source has a bed check, so nothing was sent
-    bool set_bed_check_enabled(bool enabled);
+    bool set_bed_check_enabled(bool enabled, std::function<void()> on_accepted = {});
 
     /// Ask the capable source for the bed check's state and publish it.
     void refresh_bed_check();
@@ -145,10 +153,13 @@ class DetectionManager {
     /// The capable source with a bed check, or nullptr.
     DetectionSource* bed_check_source() const;
 
+    static void show_bed_check_refusal(const std::string& refusal);
+
     lv_subject_t detection_available_subject_{};
     lv_subject_t detection_pause_applicable_subject_{};
     lv_subject_t bed_check_available_subject_{};
     lv_subject_t bed_check_enabled_subject_{};
+    lv_subject_t bed_check_switchable_subject_{};
     bool availability_subject_ready_ = false;
 
     helix::IMoonrakerClient* client_ = nullptr;

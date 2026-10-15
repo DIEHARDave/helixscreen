@@ -3,6 +3,7 @@
 
 #include <functional>
 #include <utility>
+#include <vector>
 
 namespace helix::non_filament_pause {
 
@@ -29,6 +30,39 @@ inline void set_explainer(Explainer explainer) {
 inline bool explained() {
     const Explainer& explainer = explainer_slot();
     return explainer && explainer();
+}
+
+/// Told when a pause the runout surfaces may already have answered turns out
+/// to have another cause (its explanation can land a frame after the pause),
+/// so a runout dialog raised for it can close. Keyed by owner for removal.
+using Listener = std::function<void()>;
+
+inline std::vector<std::pair<const void*, Listener>>& listener_slots() {
+    static std::vector<std::pair<const void*, Listener>> listeners;
+    return listeners;
+}
+
+inline void add_listener(const void* owner, Listener listener) {
+    listener_slots().emplace_back(owner, std::move(listener));
+}
+
+inline void remove_listener(const void* owner) {
+    auto& slots = listener_slots();
+    for (auto it = slots.begin(); it != slots.end();) {
+        it = it->first == owner ? slots.erase(it) : it + 1;
+    }
+}
+
+/// Tell every listener the current pause has a non-filament cause.
+inline void announce() {
+    // A copy: a listener may remove itself (or another) while it runs.
+    const auto listeners = listener_slots();
+    for (const auto& [owner, listener] : listeners) {
+        (void)owner;
+        if (listener) {
+            listener();
+        }
+    }
 }
 
 } // namespace helix::non_filament_pause

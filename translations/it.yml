@@ -3476,6 +3476,7 @@ translations:
     filamento all'ugello. Riprendi la stampa al termine del cambio.
   The printer applied this value and keeps it for this tool.: 'La stampante ha applicato questo valore e lo conserva per questo strumento.'
   The printer did not change its bed check: 'La stampante non ha modificato il controllo del piano'
+  'The printer did not change its bed check: {}': 'La stampante non ha modificato il controllo del piano: {}'
   The printer extrudes in a corner and repeats until the readings agree. You do not judge anything by eye.: 'La stampante estrude in un angolo e ripete finché le letture concordano. Non giudichi nulla a occhio.'
   The printer finishes this measurement on its own.: 'La stampante completa questa misurazione da sola.'
   The printer halted this print and cannot resume it. Restart from the beginning?: La
