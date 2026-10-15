@@ -205,6 +205,17 @@ class PrintStartCollector : public std::enable_shared_from_this<PrintStartCollec
     }
 
     /**
+     * @brief Whether the printer reports a pre-print step still under way
+     *
+     * True while the latest matched context-qualified phase-object state maps
+     * to a phase short of COMPLETE (a priming line, a cool-down for probing).
+     * Such a step holds the deadline timeouts and the first-extrusion
+     * fallback. A bare phase-object state never counts: a display label
+     * outlives its step.
+     */
+    [[nodiscard]] bool in_live_preprint_step() const;
+
+    /**
      * @brief Record the printer's live bed-mesh presence
      *
      * Fed from the bed_mesh status stream. A mesh that disappears while the

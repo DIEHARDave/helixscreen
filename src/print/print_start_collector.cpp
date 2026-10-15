@@ -1002,16 +1002,13 @@ void PrintStartCollector::check_fallback_completion() {
     const bool nozzle_cooling =
         ext_target > 0 && ext_temp > ext_target + TEMP_TOLERANCE_DECIDEGREES;
     bool temps_at_target;
-    bool in_live_step;
     {
         std::lock_guard<std::mutex> lock(state_mutex_);
         temps_at_target = nozzle_target_set && !nozzle_cooling && !bed_cooling &&
                           heating_target_reached_locked(PrintStartPhase::HEATING_NOZZLE) &&
                           heating_target_reached_locked(PrintStartPhase::HEATING_BED);
-        // The printer's live state names a pre-print step it has not left.
-        in_live_step = live_object_phase_ != PrintStartPhase::IDLE &&
-                       live_object_phase_ != PrintStartPhase::COMPLETE;
     }
+    const bool in_live_step = in_live_preprint_step();
 
     // A pre-print that is still narrating itself is not stuck, however long it
     // runs, and a timeout that ends it saves no phase timings, so a deadline
@@ -1591,6 +1588,12 @@ void PrintStartCollector::handle_phase_object_status(const json& status, bool se
     spdlog::debug("[PrintStartCollector] Phase-object state '{}' -> phase {}", state,
                   static_cast<int>(match.phase));
     apply_profile_match(match, /*marks_real_signal=*/true, /*live_state=*/qualified);
+}
+
+bool PrintStartCollector::in_live_preprint_step() const {
+    std::lock_guard<std::mutex> lock(state_mutex_);
+    return live_object_phase_ != PrintStartPhase::IDLE &&
+           live_object_phase_ != PrintStartPhase::COMPLETE;
 }
 
 void PrintStartCollector::query_phase_object() {

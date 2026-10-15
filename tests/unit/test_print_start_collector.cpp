@@ -11,6 +11,7 @@
  */
 
 #include "../test_helpers/print_start_collector_test_access.h"
+#include "moonraker_manager.h"
 #include "print_start_profile.h"
 
 #include <algorithm>
@@ -6309,8 +6310,10 @@ class ForgeXPrintStartReplayFixture : public ForgeXCollectorFixture {
         std::string mesh_message;    ///< the last mesh label
         float first_prediction_s{0}; ///< prediction once the bed target is set
         float cooldown_prediction_s{0};
-        float max_prediction_s{0}; ///< highest prediction once the bed target is set
-        std::string predictions;   ///< "second:total" at every heater sample
+        float max_prediction_s{0};        ///< highest prediction once the bed target is set
+        bool live_step_at_priming{false}; ///< in_live_preprint_step() once priming starts
+        bool live_step_at_complete{true};
+        std::string predictions; ///< "second:total" at every heater sample
     };
 
     ForgeXPrintStartReplayFixture() {
@@ -6356,6 +6359,9 @@ class ForgeXPrintStartReplayFixture : public ForgeXCollectorFixture {
                          [](const Event& a, const Event& b) { return a.ms < b.ms; });
 
         const int t0 = forgex_clock_ms("16:19:28.442"); // SDCARD_PRINT_FILE
+        // The priming line's first extrusion: print_duration starts counting.
+        const int priming_ms = forgex_clock_ms("16:33:23.130") - t0;
+        bool priming_seen = false;
         const int cooldown_ms = forgex_clock_ms("16:29:30.000") - t0;
         Result result;
         int now_ms = 0;
@@ -6441,7 +6447,12 @@ class ForgeXPrintStartReplayFixture : public ForgeXCollectorFixture {
             }
             }
             note_phase();
+            if (!priming_seen && now_ms >= priming_ms) {
+                priming_seen = true;
+                result.live_step_at_priming = collector().in_live_preprint_step();
+            }
             if (result.completed_at_ms >= 0) {
+                result.live_step_at_complete = collector().in_live_preprint_step();
                 break;
             }
         }
@@ -6501,6 +6512,15 @@ TEST_CASE_METHOD(ForgeXPrintStartReplayFixture,
     REQUIRE(result.mesh_probe_total == 25);
     REQUIRE(result.mesh_probe_current == 25);
     REQUIRE(result.mesh_message == "Creating bed mesh (25/25)");
+
+    // The priming line starts print_duration 14s before PRINTING. This printer
+    // reports layers, so only layer 1 completes; one that did not would fall
+    // back to first extrusion, which the priming step holds.
+    REQUIRE(result.live_step_at_priming);
+    REQUIRE_FALSE(MoonrakerManager::should_complete_preprint(
+        /*printer_reports_layers=*/false, /*current_layer=*/0, /*print_duration=*/1,
+        /*seen_layer_zero=*/false, /*layer_advanced=*/false, result.live_step_at_priming));
+    REQUIRE_FALSE(result.live_step_at_complete);
 
     REQUIRE(result.first_prediction_s >= min_prediction_s);
     REQUIRE(result.first_prediction_s <= max_prediction_s);

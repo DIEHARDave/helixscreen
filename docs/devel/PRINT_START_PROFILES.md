@@ -543,7 +543,7 @@ For printers that don't emit any G-code layer markers (like Forge-X), the system
 | Fallback | Condition | When |
 |----------|-----------|------|
 | Layer edge | `print_stats.info.current_layer` 0 -> 1 (or the counter advancing) while >= 1 | Authoritative when the printer reports layers; the gate rejects a stale value carried over from the previous print |
-| First extrusion | `print_stats.print_duration > 0` | Printers that never report a layer field |
+| First extrusion | `print_stats.print_duration > 0` and no context-qualified phase-object step under way (a priming line extrudes before the print) | Printers that never report a layer field |
 | Adaptive timeout + temps | Elapsed past the predicted total (x1.5 margin) AND both heaters at target (within 2°C, and not cooling from more than 5°C above it) AND 90s without pre-print activity AND no context-qualified phase-object step under way | Predictions available |
 | Flat timeout + temps | Elapsed > 300s, same temp, activity and step gates | No prediction data |
 | Ceiling | Elapsed past `max(predicted x2.5, 1800s)` AND 90s without a matched line or probe line, no temp gate | Always - stuck detection for a heater that never settles |
