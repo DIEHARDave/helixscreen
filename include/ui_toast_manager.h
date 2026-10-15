@@ -120,6 +120,10 @@ class ToastManager {
         observer_ = std::move(observer);
     }
 
+    /** Before init(), queue @p text for the drain that follows init() and
+     *  return true; after it, return false and queue nothing. Thread-safe. */
+    bool defer_until_initialized(ToastSeverity severity, const char* text, uint32_t duration_ms);
+
     /** Whether init() has completed. Callers before phase 9d should route
      *  through PendingStartupWarnings — see ui_notification.cpp. Atomic
      *  because ui_notification may read this from background threads. */
@@ -217,12 +221,6 @@ class ToastManager {
     size_t max_visible_ = MAX_VISIBLE;
     std::atomic<bool> initialized_{false};
     std::function<void(const Event&)> observer_;
-
-    void report(const Event& event) const {
-        if (observer_) {
-            observer_(event);
-        }
-    }
 
     friend class ToastManagerTestAccess;
 };

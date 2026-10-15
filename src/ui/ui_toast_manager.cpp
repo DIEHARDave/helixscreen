@@ -12,6 +12,7 @@
 #include "ui_utils.h"
 
 #include "display_settings_manager.h"
+#include "pending_startup_warnings.h"
 #include "sound_manager.h"
 #include "static_subject_registry.h"
 #include "theme_manager.h"
@@ -324,7 +325,9 @@ size_t ToastManager::visible_count() const {
 // ============================================================================
 
 void ToastManager::show(ToastSeverity severity, const char* message, uint32_t duration_ms) {
-    report(Event{Event::Kind::Show, severity, message ? message : "", "", duration_ms});
+    if (observer_) {
+        observer_(Event{Event::Kind::Show, severity, message ? message : "", "", duration_ms});
+    }
     struct ToastParams {
         ToastSeverity severity;
         std::string message;
@@ -343,8 +346,10 @@ void ToastManager::show(ToastSeverity severity, const char* message, uint32_t du
 
 void ToastManager::show_with_detail(ToastSeverity severity, const char* message, const char* detail,
                                     uint32_t duration_ms) {
-    report(Event{Event::Kind::Show, severity, message ? message : "", detail ? detail : "",
-                 duration_ms});
+    if (observer_) {
+        observer_(Event{Event::Kind::Show, severity, message ? message : "", detail ? detail : "",
+                        duration_ms});
+    }
     struct ToastDetailParams {
         ToastSeverity severity;
         std::string message;
@@ -370,8 +375,10 @@ void ToastManager::show_with_action(ToastSeverity severity, const char* message,
         show(severity, message, duration_ms);
         return;
     }
-    report(Event{Event::Kind::Show, severity, message ? message : "", "", duration_ms, callback,
-                 user_data});
+    if (observer_) {
+        observer_(Event{Event::Kind::Show, severity, message ? message : "", "", duration_ms,
+                        callback, user_data});
+    }
 
     struct ToastActionParams {
         ToastSeverity severity;
@@ -407,8 +414,10 @@ void ToastManager::hide() {
 }
 
 void ToastManager::hide(toast_action_callback_t action_callback, void* user_data) {
-    report(
-        Event{Event::Kind::HideAction, ToastSeverity::INFO, "", "", 0, action_callback, user_data});
+    if (observer_) {
+        observer_(Event{Event::Kind::HideAction, ToastSeverity::INFO, "", "", 0, action_callback,
+                        user_data});
+    }
     hide_where([action_callback, user_data](const ToastInstance& t) {
         return t.action_cb == action_callback && t.action_user_data == user_data;
     });
@@ -416,6 +425,30 @@ void ToastManager::hide(toast_action_callback_t action_callback, void* user_data
 
 bool ToastManager::is_visible() const {
     return visible_count() > 0;
+}
+
+bool ToastManager::defer_until_initialized(ToastSeverity severity, const char* text,
+                                           uint32_t duration_ms) {
+    if (is_initialized()) {
+        return false;
+    }
+    PendingStartupWarnings::Severity sev = PendingStartupWarnings::Severity::INFO;
+    switch (severity) {
+    case ToastSeverity::INFO:
+        sev = PendingStartupWarnings::Severity::INFO;
+        break;
+    case ToastSeverity::SUCCESS:
+        sev = PendingStartupWarnings::Severity::SUCCESS;
+        break;
+    case ToastSeverity::WARNING:
+        sev = PendingStartupWarnings::Severity::WARNING;
+        break;
+    case ToastSeverity::ERROR:
+        sev = PendingStartupWarnings::Severity::ERROR;
+        break;
+    }
+    PendingStartupWarnings::instance().enqueue(sev, text ? text : "", duration_ms);
+    return true;
 }
 
 // ============================================================================
@@ -430,10 +463,19 @@ void ToastManager::create_toast_internal(ToastSeverity severity, const char* mes
         spdlog::warn("[ToastManager] Attempted to show toast with null message");
         return;
     }
-    // Before init() the toast_notification component and its button callbacks
-    // are not registered, so there is nothing a toast could be built from.
+    // init() registers the close button's callback and the deinit that tears
+    // toasts down; a toast built before it would outlive both. Queue it for the
+    // drain that follows init() instead. An action toast cannot be queued: the
+    // startup queue carries text, not a callback.
     if (!is_initialized()) {
-        spdlog::debug("[ToastManager] Not initialized; dropping toast: {}", message);
+        if (with_action) {
+            spdlog::warn("[ToastManager] Not initialized; dropping action toast: {}", message);
+            return;
+        }
+        const bool has_detail_line = detail && *detail;
+        const std::string text =
+            has_detail_line ? std::string(message) + " - " + detail : std::string(message);
+        defer_until_initialized(severity, text.c_str(), duration_ms);
         return;
     }
 

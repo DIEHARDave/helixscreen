@@ -8,6 +8,7 @@
 #include "../lvgl_ui_test_fixture.h"
 #include "lvgl/src/core/lv_obj_draw_private.h"
 #include "lvgl/src/misc/lv_area_private.h"
+#include "pending_startup_warnings.h"
 
 #include <string>
 #include <vector>
@@ -277,16 +278,26 @@ TEST_CASE_METHOD(LVGLUITestFixture, "A new toast redraws only the area it ends u
     lv_obj_delete(stack);
 }
 
-// Before init() the toast_notification component is not registered in the
-// app, so ToastManager must not try to build one. Here the component IS
-// registered, which is what makes a toast built anyway observable.
-TEST_CASE_METHOD(LVGLUITestFixture, "ToastManager builds no toast before init()", "[toast]") {
+// A toast shown before init() waits in PendingStartupWarnings for the drain
+// that follows init(), rather than being built before init() has registered
+// its close-button callback and teardown. The component is registered here,
+// so a toast built anyway would be visible.
+TEST_CASE_METHOD(LVGLUITestFixture, "ToastManager queues a toast shown before init()", "[toast]") {
     auto& tm = ToastManager::instance();
     REQUIRE_FALSE(tm.is_initialized());
 
-    tm.show(ToastSeverity::INFO, "before init", 4000);
+    tm.show_with_detail(ToastSeverity::WARNING, "before init", "detail line", 4000);
     helix::ui::UpdateQueue::instance().drain();
     CHECK_FALSE(tm.is_visible());
+
+    std::vector<std::string> queued;
+    helix::PendingStartupWarnings::instance().drain(
+        [&queued](helix::PendingStartupWarnings::Severity sev, const std::string& m, uint32_t d) {
+            CHECK(sev == helix::PendingStartupWarnings::Severity::WARNING);
+            CHECK(d == 4000);
+            queued.push_back(m);
+        });
+    CHECK(queued == std::vector<std::string>{"before init - detail line"});
 
     tm.init();
     tm.show(ToastSeverity::INFO, "after init", 4000);
