@@ -30,12 +30,6 @@ namespace helix {
 
 namespace {
 
-// Split-button dropdown indices (must match XML option order:
-// "Both\nPrinter\nScreen" in shutdown_modal.xml).
-constexpr uint32_t SCOPE_BOTH = 0;
-constexpr uint32_t SCOPE_PRINTER = 1;
-constexpr uint32_t SCOPE_SCREEN = 2;
-
 // After a successful machine.shutdown/reboot, Moonraker replies OK but the
 // OS-level shutdown can silently no-op on some firmwares (observed on SonicPad
 // Jpe230 — logind.PowerOff returns without initiating the shutdown). If the
@@ -238,7 +232,7 @@ void execute_both_reboot(IMoonrakerAPI* api, AsyncLifetimeGuard& lifetime) {
 }
 
 // Split-button dispatchers (dual-scope mode). The split button's selected
-// dropdown index encodes the scope (SCOPE_BOTH/SCOPE_PRINTER/SCOPE_SCREEN).
+// dropdown index encodes the scope (ShutdownScope).
 void on_restart_split_clicked(lv_event_t* e) {
     LVGL_SAFE_EVENT_CB_BEGIN("[ShutdownModal] restart_split");
     auto* m = find_shutdown_modal(e);
@@ -246,13 +240,13 @@ void on_restart_split_clicked(lv_event_t* e) {
     if (!m || !sb)
         return;
     switch (ui_split_button_get_selected(sb)) {
-    case SCOPE_BOTH:
+    case static_cast<uint32_t>(ShutdownScope::Both):
         m->fire_both_reboot();
         break;
-    case SCOPE_PRINTER:
+    case static_cast<uint32_t>(ShutdownScope::Printer):
         m->fire_printer_reboot();
         break;
-    case SCOPE_SCREEN:
+    case static_cast<uint32_t>(ShutdownScope::Screen):
         m->fire_screen_reboot();
         break;
     }
@@ -265,13 +259,13 @@ void on_shutdown_split_clicked(lv_event_t* e) {
     if (!m || !sb)
         return;
     switch (ui_split_button_get_selected(sb)) {
-    case SCOPE_BOTH:
+    case static_cast<uint32_t>(ShutdownScope::Both):
         m->fire_both_shutdown();
         break;
-    case SCOPE_PRINTER:
+    case static_cast<uint32_t>(ShutdownScope::Printer):
         m->fire_printer_shutdown();
         break;
-    case SCOPE_SCREEN:
+    case static_cast<uint32_t>(ShutdownScope::Screen):
         m->fire_screen_shutdown();
         break;
     }
@@ -379,6 +373,17 @@ bool handle_machine_power_failure(const std::string& err_message, bool is_reboot
     return false;
 }
 
+ShutdownDialogPlan plan_shutdown_dialog(bool api_connected, bool live_moonraker_remote,
+                                        bool configured_host_same) {
+    const bool same_host = api_connected ? !live_moonraker_remote : configured_host_same;
+    if (!same_host) {
+        return {ShutdownDialogMode::Dual, ShutdownScope::Screen};
+    }
+    return {api_connected ? ShutdownDialogMode::SingleViaMoonraker
+                          : ShutdownDialogMode::SingleViaLocalPower,
+            ShutdownScope::Screen};
+}
+
 void show_shutdown_dialog(IMoonrakerAPI* api, ShutdownModal& modal, AsyncLifetimeGuard& lifetime,
                           lv_obj_t* parent_screen) {
     // Backstop behind the UI gating (home-grid widget + Advanced POWER rows):
@@ -394,42 +399,38 @@ void show_shutdown_dialog(IMoonrakerAPI* api, ShutdownModal& modal, AsyncLifetim
         return;
     }
 
-    // Same-host single-scope follows the LIVE connection verdict, but only
-    // when there is one: before the first CONNECTED edge the subject sits at
-    // its default (local), which on a remote screen would silently collapse
-    // the dual dialog into screen-only power actions.
     Config* cfg = Config::get_instance();
     const std::string host = cfg->get<std::string>(cfg->df() + "moonraker_host", "localhost");
-    const bool same_host = api->is_connected() ? !get_printer_state().is_moonraker_remote()
-                                               : helix::is_moonraker_on_same_host(host);
-    if (same_host) {
-        // Same-host single-scope: normally Moonraker's machine.shutdown brings
-        // the whole device down. If Moonraker isn't connected (e.g., Klipper
-        // failed to boot, or the user runs SonicPad as a screen-only with the
-        // local Moonraker disabled), fall back to SystemPower so the user
-        // isn't forced to use the hardware switch.
-        //
-        // Connected but incapable is the other half of the same problem:
-        // Moonraker with `provider: none` answers machine.shutdown by shelling
-        // out to sudo/systemctl, which OpenWrt/procd firmwares don't ship. Pass
+    const ShutdownDialogPlan plan =
+        plan_shutdown_dialog(api->is_connected(), get_printer_state().is_moonraker_remote(),
+                             helix::is_moonraker_on_same_host(host));
+    switch (plan.mode) {
+    case ShutdownDialogMode::SingleViaMoonraker:
+        // Normally Moonraker's machine.shutdown brings the whole device down.
+        // Moonraker with `provider: none` answers it by shelling out to
+        // sudo/systemctl, which OpenWrt/procd firmwares don't ship. Pass
         // allow_local_fallback so a rejected RPC retries through SystemPower
         // instead of dead-ending in a toast.
-        if (api->is_connected()) {
-            modal.set_single_callbacks(
-                [api]() { execute_printer_shutdown(api, /*allow_local_fallback=*/true); },
-                [api]() { execute_printer_reboot(api, /*allow_local_fallback=*/true); });
-        } else {
-            spdlog::info(
-                "[ShutdownDialog] Moonraker not connected — using local SystemPower fallback");
-            modal.set_single_callbacks([]() { execute_screen_shutdown(); },
-                                       []() { execute_screen_reboot(); });
-        }
-    } else {
-        modal.set_dual_callbacks(
-            [api, &lifetime]() { execute_both_shutdown(api, lifetime); },
-            [api, &lifetime]() { execute_both_reboot(api, lifetime); },
-            [api]() { execute_printer_shutdown(api); }, [api]() { execute_printer_reboot(api); },
-            []() { execute_screen_shutdown(); }, []() { execute_screen_reboot(); });
+        modal.set_single_callbacks(
+            [api]() { execute_printer_shutdown(api, /*allow_local_fallback=*/true); },
+            [api]() { execute_printer_reboot(api, /*allow_local_fallback=*/true); });
+        break;
+    case ShutdownDialogMode::SingleViaLocalPower:
+        // Klipper failed to boot, or the user runs a SonicPad as a screen-only
+        // with the local Moonraker disabled: SystemPower spares the user the
+        // hardware switch.
+        spdlog::info("[ShutdownDialog] Moonraker not connected — using local SystemPower fallback");
+        modal.set_single_callbacks([]() { execute_screen_shutdown(); },
+                                   []() { execute_screen_reboot(); });
+        break;
+    case ShutdownDialogMode::Dual:
+        modal.set_dual_callbacks([api, &lifetime]() { execute_both_shutdown(api, lifetime); },
+                                 [api, &lifetime]() { execute_both_reboot(api, lifetime); },
+                                 [api]() { execute_printer_shutdown(api); },
+                                 [api]() { execute_printer_reboot(api); },
+                                 []() { execute_screen_shutdown(); },
+                                 []() { execute_screen_reboot(); }, plan.dual_default);
+        break;
     }
 
     modal.show(parent_screen);

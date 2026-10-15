@@ -52,6 +52,31 @@ class ShutdownWidget : public TiledPanelWidget {
 
 void register_shutdown_widget();
 
+/// Which power dialog a screen gets.
+enum class ShutdownDialogMode {
+    SingleViaMoonraker,  ///< Same host, Moonraker up: machine.shutdown takes the device down.
+    SingleViaLocalPower, ///< Same host, Moonraker down: SystemPower on this host.
+    Dual,                ///< Different hosts: Both / Printer / Screen split buttons.
+};
+
+struct ShutdownDialogPlan {
+    ShutdownDialogMode mode;
+    /// Scope the split buttons open on. Read only in Dual mode.
+    ShutdownScope dual_default;
+};
+
+/// Decide the dialog for this screen. Pure.
+///
+/// While connected, the live verdict (@p live_moonraker_remote, published on
+/// every CONNECTED edge) decides same-host vs remote. Before the first
+/// CONNECTED edge that verdict sits at its default (local), so the configured
+/// host (@p configured_host_same, from is_moonraker_on_same_host()) decides.
+///
+/// A remote screen opens on Screen: the user is standing at the screen, and
+/// powering down a printer on another machine has to be chosen on purpose.
+ShutdownDialogPlan plan_shutdown_dialog(bool api_connected, bool live_moonraker_remote,
+                                        bool configured_host_same);
+
 /// Configure @p modal with single-/dual-scope callbacks for @p api (matching
 /// the home-panel widget's behavior — including local-fallback when Moonraker
 /// is disconnected) and show it as a child of @p parent_screen.
