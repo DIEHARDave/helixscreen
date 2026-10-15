@@ -329,8 +329,10 @@ the EMA of the latest steps: a bed's last degrees are its slowest, and weights r
 while it crawls them would price the whole climb at that tail rate, two to three times the
 real pre-print. `best_rate()` stays for the degrees just ahead
 (the PID calibration's remaining heat). A raised target starts a new step
-(`ThermalRateModel::note_target()`, fed by the collector before each sample), so the minutes a
-nozzle idles at ambient while the bed heats never enter its rate. Early in a climb the
+(`ThermalRateModel::note_target()`, fed by the collector before each sample), and once targets
+are reported a sample counts only while a positive target sits above the reading, so the minutes
+a nozzle idles or warms beside the bed at target 0 never enter its rate. A model given no
+targets (the PID calibration tracker) counts every rise. Early in a climb the
 measured average covers only the fast part and the total reads low (a 220mm bed from cold
 read 631s against 849s until its tail was measured); it rises toward the real length as the
 climb goes on and does not overshoot.

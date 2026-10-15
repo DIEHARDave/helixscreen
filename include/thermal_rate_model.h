@@ -49,7 +49,9 @@ class ThermalRateModel {
     /// Report the heater's target before a sample. A raised target starts a
     /// new step at this reading: the time the heater idled under its old
     /// target is not heating, and a step spanning it reads seconds per degree
-    /// several times too slow.
+    /// several times too slow. Once a target has been reported, a sample
+    /// counts toward the climb only while that target is positive and above
+    /// the reading.
     void note_target(float target_c, float temp_c, uint32_t tick_ms);
 
     /// Estimate seconds for a climb from `current` to `target` at
@@ -106,7 +108,10 @@ class ThermalRateModel {
     uint32_t last_rise_tick_ = 0;
     bool holding_ = false;
 
-    float target_c_ = 0.0f;      ///< last target note_target() reported
+    float target_c_ = 0.0f; ///< last target note_target() reported
+    /// Whether a caller reports targets. Without them (the PID tracker) every
+    /// rise counts; with them only a rise under a positive target does.
+    bool target_known_ = false;
     float climb_seconds_ = 0.0f; ///< time across counted steps
     float climb_degrees_ = 0.0f; ///< degrees across counted steps
 };

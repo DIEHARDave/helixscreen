@@ -21,6 +21,18 @@ void ThermalRateModel::record_sample(float temp_c, uint32_t tick_ms) {
         return;
     }
 
+    // With a target reported, only a reading under a positive target is the
+    // heater heating; a heater warming beside its neighbour at target 0, or
+    // above its target, would add its seconds to the climb for good.
+    if (target_known_ && !(target_c_ > 0.0f && temp_c < target_c_)) {
+        last_temp_ = temp_c;
+        last_tick_ = tick_ms;
+        high_temp_ = temp_c;
+        last_rise_tick_ = tick_ms;
+        holding_ = false;
+        return;
+    }
+
     if (temp_c > high_temp_ + RISE_EPSILON_C) {
         high_temp_ = temp_c;
         last_rise_tick_ = tick_ms;
@@ -61,6 +73,7 @@ void ThermalRateModel::record_sample(float temp_c, uint32_t tick_ms) {
 void ThermalRateModel::note_target(float target_c, float temp_c, uint32_t tick_ms) {
     const bool raised = target_c > target_c_ + RISE_EPSILON_C;
     target_c_ = target_c;
+    target_known_ = true;
     if (!raised || start_tick_ == 0) {
         return;
     }
@@ -131,6 +144,7 @@ void ThermalRateModel::reset(float start_temp) {
     climb_seconds_ = 0.0f;
     climb_degrees_ = 0.0f;
     target_c_ = 0.0f;
+    target_known_ = false;
 }
 
 // --- ThermalRateManager ---

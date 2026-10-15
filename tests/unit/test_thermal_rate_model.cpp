@@ -5,6 +5,8 @@
 #include "preprint_predictor.h"
 #include "printer_state.h"
 
+#include <algorithm>
+
 #include "../catch_amalgamated.hpp"
 
 TEST_CASE("ThermalRateModel basic rate measurement", "[thermal_rate]") {
@@ -220,6 +222,43 @@ TEST_CASE("ThermalRateModel leaves the wait before a raised target out of the cl
 
     CAPTURE(model.climb_rate());
     REQUIRE(model.climb_rate() == Catch::Approx(0.2f).margin(0.03f));
+}
+
+TEST_CASE("ThermalRateModel leaves a heater warming with no target out of the climb",
+          "[thermal_rate]") {
+    // The nozzle warms 0.5C every 5s for five minutes beside a heating bed,
+    // target 0, then its target is set and it climbs at 0.2 s/C.
+    ThermalRateModel model;
+    model.reset(25.0f);
+    uint32_t tick = 5000;
+    float temp = 25.0f;
+    for (int i = 0; i < 60; ++i, tick += 5000, temp += 0.5f) {
+        model.note_target(0.0f, temp, tick);
+        model.record_sample(temp, tick);
+    }
+    model.note_target(220.0f, temp, tick);
+    model.record_sample(temp, tick);
+    while (temp < 220.0f) {
+        tick += 5000;
+        temp = std::min(220.0f, temp + 25.0f);
+        model.note_target(220.0f, temp, tick);
+        model.record_sample(temp, tick);
+    }
+
+    CAPTURE(model.climb_rate(), model.blended_rate_for_save());
+    REQUIRE(model.climb_rate() == Catch::Approx(0.2f).margin(0.03f));
+    REQUIRE(model.blended_rate_for_save() == Catch::Approx(0.2f).margin(0.03f));
+}
+
+TEST_CASE("ThermalRateModel without reported targets counts every climb", "[thermal_rate]") {
+    // The PID calibration tracker never reports a target.
+    ThermalRateModel model;
+    model.reset(25.0f);
+    uint32_t tick = 5000;
+    for (float temp = 25.0f; temp <= 75.0f; tick += 5000, temp += 10.0f) {
+        model.record_sample(temp, tick);
+    }
+    REQUIRE(model.climb_rate() == Catch::Approx(0.5f).margin(0.05f));
 }
 
 TEST_CASE("ThermalRateModel no measurement returns 0 for save", "[thermal_rate]") {
