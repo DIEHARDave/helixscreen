@@ -22,6 +22,7 @@
 #include "ui_runout_guidance_modal.h"
 #include "ui_spaghetti_detection_modal.h"
 
+#include "action_prompt_manager.h"
 #include "action_prompt_modal.h"
 #include "ams_error.h"
 #include "ams_types.h"
@@ -220,6 +221,38 @@ bool show_demo_overlay(const std::string& name) {
             {"Nylon 260/80", "SET_MATERIAL M=NYLON", "primary", "", false, -1},
             {"Cancel", "", "error", "", true, -1},
         };
+        helix::ui::ActionPromptModal::show_owned_prompt(screen, data);
+        return true;
+    }
+
+    if (name == "action-prompt-hex") {
+        // Buttons colored by hex in the third field, as Fluidd, Mainsail and
+        // Z-Mod send them, plus a Z-Mod color-picker grid of "_ " swatch tiles
+        // (prestonbrown/helixscreen#1806). The specs go through the real
+        // parser, so this shows exactly what a wire prompt would.
+        using helix::ActionPromptManager;
+        helix::PromptData data;
+        data.title = "Select color";
+        data.text_lines = {"Pick a color for slot 1."};
+        for (const char* spec :
+             {"Standard|GCODE_CMD_1|error", "HEX Dark (White Text)|GCODE_CMD_2|ff5722",
+              "HEX Light (Black Text)|GCODE_CMD_3|e0e0e0"}) {
+            data.buttons.push_back(ActionPromptManager::parse_button_spec(spec));
+        }
+        const char* const palette[] = {"ffffff", "fef043", "0acc38", "21cc3d", "2750e0", "a03cf7",
+                                       "f330f9", "f72224", "7c4b00", "898989", "161616", "#0de2a0"};
+        int group = 0;
+        for (size_t i = 0; i < std::size(palette); ++i) {
+            if (i % 6 == 0) {
+                ++group;
+            }
+            auto btn = ActionPromptManager::parse_button_spec(
+                std::string("_ |CHANGE_ZCOLOR SLOT=1 HEX=") + palette[i] + "|" + palette[i]);
+            btn.group_id = group;
+            data.buttons.push_back(std::move(btn));
+        }
+        data.buttons.push_back(ActionPromptManager::parse_button_spec("Back||secondary"));
+        data.buttons.back().is_footer = true;
         helix::ui::ActionPromptModal::show_owned_prompt(screen, data);
         return true;
     }
