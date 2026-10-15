@@ -320,7 +320,7 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     lv_obj_t* list = ToolSwitcherTestAccess::picker_list(h.widget());
     REQUIRE(list != nullptr);
     REQUIRE(lv_obj_get_child_count(list) == 3);
-    lv_obj_t* head_row = lv_obj_find_by_name(lv_obj_get_child(list, 1), "tool_btn");
+    lv_obj_t* head_row = lv_obj_get_child(list, 1);
     lv_obj_t* park_row = lv_obj_find_by_name(lv_obj_get_parent(list), "tool_park_btn");
     REQUIRE(head_row != nullptr);
     REQUIRE(park_row != nullptr);

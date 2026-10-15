@@ -244,6 +244,14 @@ class AmsBackendToolChanger : public AmsSubscriptionBackend {
         return !tool_commands_.present || !tool_commands_.unselect.empty();
     }
 
+    /// Sends the feeder's own open or close command, refused while a print or
+    /// a swap holds the machine: the gripper is all that holds the filament.
+    AmsError set_feeder_open(bool open) override;
+    [[nodiscard]] bool supports_feeder_control() const override {
+        return feeder_.present;
+    }
+    [[nodiscard]] bool feeder_open() const override;
+
     /**
      * @brief Offer Unload only for the tool currently on the carriage.
      *

@@ -499,9 +499,9 @@ pattern with touch size as the constraint instead of text width
 (prestonbrown/helixscreen#1784). The pure decision is `helix::decide_tool_switcher_layout()`
 (`src/ui/panel_widgets/tool_switcher_layout.h`): from the content box (the tile less
 `#space_md` each side), the head count, the `#touch_target_min` floor (48 px), the 2 px
-cell gap, the body and small line heights and whether the backend can park, it returns a
-`ToolSwitcherLayout` whose mode is the first that fits: a segment per head plus Park
-(`RailWithPark`), a segment per head (`Rail`), the mounted head's face beside Park
+cell gap, the body and small line heights and the action cells the backend offers
+(`ToolSwitcherActions`: Park, the feeder), it returns a `ToolSwitcherLayout` whose mode is
+the first that fits: a segment per head plus every action cell (`RailWithActions`), a segment per head (`Rail`), the mounted head's face beside Park
 (`Pair`), or the face alone (`Single`). Every cell it hands back clears the floor on both
 axes, and `fits_at()` refuses a tile whose content box cannot hold one face, so no size
 draws a target a finger cannot hit. The widget publishes the verdict as
@@ -511,14 +511,17 @@ and the face's text (`tool_switcher_face_label`, `_sub`, `_color`, `_has_color`)
 XML (`ui_xml/components/panel_widget_tool_switcher.xml`) sizes segments with
 `bind_style_prop` off `_cell_w`/`_cell_h`. The face sizes itself off `tool_switcher_face_w`
 and `tool_switcher_face_h`: its cell along a `Pair`'s long axis, the whole view across it.
-Colour strips are `tool_switcher_strip_h` on a segment or the face, from the cell height,
-and `tool_switcher_row_strip_h` on a sheet row, from the 48 px `#touch_target_min` floor
-every row clears. The sheet (`ToolSwitcherWidget::ToolPicker`,
-`ui_xml/tool_switcher_picker.xml`) is the fallback for whatever the tile does not show:
-it lists every head and Park in rows at least `#touch_target_min` tall, opens from the face or from
-the mounted segment, and is the only way to Park in `Rail` or `Single`. A printer with
-more heads than the segment pools hold (`ToolSwitcherWidget::kPoolSize`) is decided as
-unrailable and gets the face and the sheet.
+Every cell carries its filament colour as one band (`ui_xml/components/tool_switcher_band.xml`),
+sized per surface by the pure `tool_switcher_band()`: the lower part of the cell with the
+material name on it where one small line fits, else a plain bar. Each head's look follows
+`tool_switcher_seg_<i>_state` (`tool_switcher_cell_state()`): idle, mounted, or faulted while
+the changer reports an error. The picker (`ToolSwitcherWidget::ToolPicker`,
+`ui_xml/tool_switcher_picker.xml`) is the fallback for whatever the tile does not show: a grid
+of the rail's own segments sized by `fit_tool_picker_grid()` (three columns up to six heads,
+four beyond, never scrolling up to eight), with Park and the feeder in a footer under it. It
+opens from the face or from the mounted segment. A printer with more heads than the segment
+pools hold (`ToolSwitcherWidget::kPoolSize`) is decided as unrailable and gets the face and
+the picker.
 
 ### Engine contracts this pattern relies on
 

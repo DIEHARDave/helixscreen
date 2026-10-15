@@ -906,6 +906,15 @@ class AmsState {
     }
 
     /**
+     * @brief Get feeder open subject
+     * @return Subject holding 1 while the backend's frame-side feeder reports
+     *         itself open (filament released), 0 when closed or absent
+     */
+    lv_subject_t* get_feeder_open_subject() {
+        return &ams_feeder_open_;
+    }
+
+    /**
      * @brief Get slot count subject
      * @return Subject holding total number of slots
      */
@@ -2034,11 +2043,13 @@ class AmsState {
     void reset_backend_subjects();
     void sync_system_subjects(const AmsSystemInfo& info);
     /// Push or drop the AMS tool topology in ToolState.
-    void sync_tool_topology(AmsBackend* backend);
+    void sync_tool_topology(AmsBackend* backend, const AmsSystemInfo& info);
     /// filament_loaded, the runout indicator's edge state, and the unload grace.
     void sync_filament_runout(const AmsSystemInfo& info);
     /// The bypass subjects, the bypass edge, and the external spool subjects.
     void sync_bypass(AmsBackend* backend, const AmsSystemInfo& info);
+    /// ams_feeder_open from the backend's frame-side feeder, 0 without one.
+    void sync_feeder(AmsBackend* backend);
     /// Bump tool_map_version when the physical or applied routing moved.
     void sync_tool_routing(AmsBackend* backend, const AmsSystemInfo& info);
     /// The slot <-> ToolState spool bridge, both directions, and its save.
@@ -2234,6 +2245,7 @@ class AmsState {
     lv_subject_t supports_bypass_{};
     lv_subject_t ams_slot_count_{};
     lv_subject_t ams_cards_compact_{};
+    lv_subject_t ams_feeder_open_{};
     lv_subject_t slots_version_{};
     lv_subject_t tool_map_version_{};
     /// First-gate (port) filament-present flag for the ACTIVE tool (#991).

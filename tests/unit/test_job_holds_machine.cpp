@@ -344,7 +344,7 @@ constexpr GuardedFile kGuardedFiles[] = {
     {"ui_xml/probe_bltouch_panel.xml", 2},
     {"ui_xml/probe_beacon_panel.xml", 2},
     {"ui_xml/temp_graph_overlay.xml", 2},
-    {"ui_xml/tool_switcher_picker.xml", 1},
+    {"ui_xml/components/tool_switcher_feeder_segment.xml", 1},
     {"ui_xml/components/tool_switcher_park_segment.xml", 1},
 };
 
@@ -472,7 +472,6 @@ constexpr const char* kNoMachineControlFiles[] = {
     // refuses the change, or spools on the bed) rather than moves_machine,
     // which also holds through a pause, where the change is offered behind a
     // confirmation.
-    "ui_xml/components/tool_picker_button.xml",
     "ui_xml/components/tool_switcher_face.xml",
     "ui_xml/components/tool_switcher_segment.xml",
     "ui_xml/components/upgrade_banner.xml",

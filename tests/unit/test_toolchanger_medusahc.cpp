@@ -187,6 +187,37 @@ TEST_CASE("Feeder actions send the provider's gcode", "[ams][toolchanger][feeder
     CHECK(h.sent()[1] == "CLOSE");
 }
 
+TEST_CASE("The feeder answers the generic feeder questions from its live state",
+          "[ams][toolchanger][feeder]") {
+    ToolChangerHelper h(4);
+    h.set_tool_sensor(toolchanger_addon::resolve_tool_sensor(medusahc_discovery()));
+    h.set_feeder(helix::toolchanger_addon::resolve_feeder(medusahc_discovery()));
+    h.feed_status("ready", 0);
+    REQUIRE(h.supports_feeder_control());
+
+    h.feed(json{{"medusahc", {{"operation", "idle"}, {"current_tool", 0}, {"feeder_open", true}}}});
+    CHECK(h.feeder_open());
+    h.feed(
+        json{{"medusahc", {{"operation", "idle"}, {"current_tool", 0}, {"feeder_open", false}}}});
+    CHECK_FALSE(h.feeder_open());
+
+    REQUIRE(h.set_feeder_open(true).success());
+    REQUIRE(h.set_feeder_open(false).success());
+    REQUIRE(h.sent().size() == 2);
+    CHECK(h.sent()[0] == "OPEN");
+    CHECK(h.sent()[1] == "CLOSE");
+}
+
+TEST_CASE("A tool changer without a feeder refuses the generic feeder calls",
+          "[ams][toolchanger][feeder]") {
+    ToolChangerHelper h(4);
+    h.feed_status("ready", 0);
+    CHECK_FALSE(h.supports_feeder_control());
+    CHECK_FALSE(h.feeder_open());
+    CHECK_FALSE(h.set_feeder_open(true).success());
+    CHECK(h.sent().empty());
+}
+
 TEST_CASE("A tool changer without a feeder exposes no device actions",
           "[ams][toolchanger][feeder]") {
     // Every non-MedusaHC klipper-toolchanger printer must be exactly as it was.

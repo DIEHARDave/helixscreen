@@ -488,6 +488,7 @@
   <translation tag="Cannot delete file: printer not connected" zh="无法删除文件: 打印机未连接"/>
   <translation tag="Cannot modify G-code: no temp directory available" zh="无法修改 G-code: 无可用临时目录"/>
   <translation tag="Cannot modify G-code: scan result not available" zh="无法修改 G-code: 扫描结果不可用"/>
+  <translation tag="Cannot open or close the feeder while a print is active" zh="打印时无法打开或关闭送料器"/>
   <translation tag="Cannot park while a print is active" zh="打印时无法停放"/>
   <translation tag="Cannot perform this action now" zh="当前无法执行此操作"/>
   <translation tag="Cannot remap G-code: no temp directory available" zh="无法重新映射 G-code：没有可用的临时目录"/>

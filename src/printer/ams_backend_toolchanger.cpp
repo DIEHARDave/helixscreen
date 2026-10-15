@@ -1865,20 +1865,37 @@ std::vector<helix::printer::DeviceAction> AmsBackendToolChanger::get_device_acti
     return actions;
 }
 
+AmsError AmsBackendToolChanger::set_feeder_open(bool open) {
+    if (!feeder_.present) {
+        return AmsErrorHelper::not_supported("Feeder");
+    }
+    // On a hotend changer the feeder gripper is the only thing holding the
+    // filament, so opening it mid-print drops the strand and kills the job.
+    // Callers reach this with no gate of their own (the device-operations
+    // overlay calls straight through), so this is the one place that refuses.
+    // requires_toolhead_motion=true also covers the mid-tool-change window,
+    // since the AMS is busy for its duration.
+    if (auto refused = check_preconditions(/*requires_toolhead_motion=*/true); !refused) {
+        return refused;
+    }
+    std::string gcode;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        gcode = open ? feeder_.open_gcode : feeder_.close_gcode;
+    }
+    return execute_gcode(gcode);
+}
+
+bool AmsBackendToolChanger::feeder_open() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return feeder_open_;
+}
+
 AmsError AmsBackendToolChanger::execute_device_action(const std::string& action_id,
                                                       const std::any& value) {
     (void)value;
     if (feeder_.present && (action_id == "open_feeder" || action_id == "close_feeder")) {
-        // On a hotend changer the feeder gripper is the only thing holding the
-        // filament, so opening it mid-print drops the strand and kills the job.
-        // The device-operations overlay calls straight through with no gate of
-        // its own, so this is the only place that can refuse. requires_toolhead
-        // _motion=true also covers the mid-tool-change window, since the AMS is
-        // busy for its duration.
-        if (auto refused = check_preconditions(/*requires_toolhead_motion=*/true); !refused) {
-            return refused;
-        }
-        return execute_gcode(action_id == "open_feeder" ? feeder_.open_gcode : feeder_.close_gcode);
+        return set_feeder_open(action_id == "open_feeder");
     }
     if (feeder_.present &&
         (action_id == "feeder_open_macro" || action_id == "feeder_close_macro")) {

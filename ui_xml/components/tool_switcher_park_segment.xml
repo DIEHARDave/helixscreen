@@ -1,12 +1,17 @@
 <?xml version="1.0"?>
 <!-- Copyright (C) 2025-2026 356C LLC -->
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
-<!-- Docks the mounted tool: an outlined cell beside the heads, in the rail's
-     last cell or beside the mounted head's face. Its caller sizes it. Disabled
+<!-- Docks the mounted tool: an outlined cell beside the heads, in the rail
+     after them, beside the mounted head's face, or in the picker's footer. Its
+     caller sizes it. Disabled
      while nothing is mounted (active_tool is -1) and, through moves_machine,
      while a job holds the machine; it keeps its cell either way, so the rail
      never changes width. -->
 <component>
+  <api>
+    <!-- 1 where the cell has room for its label under the icon. -->
+    <prop name="two_line" type="string" default="tool_switcher_two_line"/>
+  </api>
   <styles>
     <style name="park_disabled" opa="50%"/>
   </styles>
@@ -19,7 +24,7 @@
     <bind_state_if_lt subject="active_tool" state="disabled" ref_value="0"/>
     <icon name="tool_switcher_park_icon" src="eject" size="sm" variant="primary" clickable="false" event_bubble="true"/>
     <text_small name="tool_switcher_park_label" text="Park" clickable="false" event_bubble="true">
-      <bind_flag_if_eq subject="tool_switcher_two_line" flag="hidden" ref_value="0"/>
+      <bind_flag_if_eq subject="$two_line" flag="hidden" ref_value="0"/>
     </text_small>
     <event_cb trigger="clicked" callback="tool_switcher_park_cb"/>
   </view>

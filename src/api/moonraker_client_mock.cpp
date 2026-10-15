@@ -162,6 +162,9 @@ MoonrakerClientMock::MoonrakerClientMock(PrinterType type, double speedup_factor
         set_config_settings_section("gcode_macro product_param", {{"variable_bed_size_x", "350"},
                                                                   {"variable_bed_size_y", "350"}});
     }
+    // The MedusaHC dock sensors disagree from the first frame: the changer
+    // fault every head but the mounted one is drawn under.
+    medusa_sensor_error_.store(helix::env_flag("HELIX_MOCK_MEDUSA_SENSOR_ERROR"));
     dragonbreath_fault_ = helix::env_flag("HELIX_MOCK_DRAGONBREATH_FAULT");
     dragonbreath_offline_ = helix::env_flag("HELIX_MOCK_DRAGONBREATH_OFFLINE");
     dragonbreath_external_ = helix::env_flag("HELIX_MOCK_DRAGONBREATH_EXTERNAL");
