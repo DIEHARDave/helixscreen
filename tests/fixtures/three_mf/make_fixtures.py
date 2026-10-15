@@ -8,6 +8,9 @@ single_plate.gcode.3mf  plate 9 of a larger project sliced alone, as a slicer
 multi_plate.gcode.3mf   plates 2 and 5 sliced, with a slice_info block each
 project.3mf             renders and settings, no sliced plate
 commented.gcode.3mf     single_plate's entries behind an archive comment
+bad_md5.gcode.3mf       single_plate with a .md5 naming other bytes
+far_info.gcode.3mf      slice_info.config further from the end than one tail read
+wide_cd.gcode.3mf       a central directory larger than one tail read
 
 Run from anywhere: python3 tests/fixtures/three_mf/make_fixtures.py
 """
@@ -86,6 +89,20 @@ def main():
              plate_entries(2, gcode, small) + plate_entries(5, gcode_b, small_b) +
              [("Metadata/slice_info.config", multi_info, True)])
     write("multi_plate.gcode.3mf", multi)
+
+    bad = [e if not e[0].endswith(".md5") else (e[0], b"0" * 32, True) for e in single]
+    write("bad_md5.gcode.3mf", bad)
+
+    # 80KB of incompressible bytes between slice_info and the central directory.
+    filler = hashlib.sha256(b"filler").digest() * (80 * 1024 // 32)
+    far = ([e for e in single if e[0] != "Metadata/slice_info.config"] +
+           [("Metadata/slice_info.config", slice_info, True),
+            ("Metadata/filler.bin", filler, False)])
+    write("far_info.gcode.3mf", far)
+
+    # Enough long-named empty entries that the central directory outgrows 64KB.
+    pad = [(f"Metadata/padding/{i:04d}_" + "x" * 80, b"", False) for i in range(600)]
+    write("wide_cd.gcode.3mf", pad + single)
 
     project = [("[Content_Types].xml", types, True),
                ("Metadata/plate_1.png", small, False),

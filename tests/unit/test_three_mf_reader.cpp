@@ -1,0 +1,273 @@
+// Copyright (C) 2025-2026 356C LLC
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+#include "../test_helpers/archive_transfers.h"
+#include "three_mf_reader.h"
+
+#include <cstdio>
+#include <fstream>
+#include <iterator>
+#include <string>
+#include <unistd.h>
+
+#include "../catch_amalgamated.hpp"
+
+using helix::three_mf::ArchiveSummary;
+using helix::three_mf::ThreeMfReader;
+using helix::zip::ZipError;
+
+namespace {
+
+std::string fixture_dir() {
+    std::string dir = __FILE__;
+    const auto pos = dir.rfind("/tests/unit/");
+    return pos != std::string::npos ? dir.substr(0, pos) + "/tests/fixtures/three_mf/"
+                                    : "tests/fixtures/three_mf/";
+}
+
+std::string disk_text(const std::string& path) {
+    std::ifstream in(path, std::ios::binary);
+    return {std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>()};
+}
+
+std::string fixture(const char* name) {
+    std::string bytes = disk_text(fixture_dir() + name);
+    REQUIRE(!bytes.empty());
+    return bytes;
+}
+
+/// A scratch path removed when the test ends.
+struct TempFile {
+    std::string path;
+    explicit TempFile(const char* stem) {
+        path = "/tmp/helix_three_mf_test_" + std::to_string(::getpid()) + "_" + stem;
+    }
+    ~TempFile() {
+        std::remove(path.c_str());
+    }
+};
+
+void write_file(const std::string& path, const std::string& bytes) {
+    std::ofstream out(path, std::ios::binary);
+    out << bytes;
+}
+
+struct ReaderFixture {
+    MoonrakerClientMock client{MoonrakerClientMock::PrinterType::VORON_24};
+    ArchiveTransfers transfers{client, ""};
+    ThreeMfReader reader{transfers};
+
+    struct Result {
+        bool done = false;
+        bool ok = false;
+        ArchiveSummary summary;
+        std::string error;
+    };
+
+    Result summarise(const std::string& path, double modified = 1.0) {
+        Result r;
+        const uint64_t size = read_size(path);
+        reader.read_summary(
+            path, size, modified,
+            [&r](const ArchiveSummary& s) {
+                r.done = true;
+                r.ok = true;
+                r.summary = s;
+            },
+            [&r](const std::string& e) {
+                r.done = true;
+                r.error = e;
+            });
+        REQUIRE(r.done);
+        return r;
+    }
+
+    std::map<std::string, uint64_t> sizes;
+    void put(const std::string& path, std::string bytes) {
+        sizes[path] = bytes.size();
+        transfers.put(path, std::move(bytes));
+    }
+    uint64_t read_size(const std::string& path) {
+        return sizes.count(path) ? sizes[path] : 0;
+    }
+};
+
+} // namespace
+
+TEST_CASE_METHOD(ReaderFixture, "a summary of one sliced plate costs one tail read",
+                 "[three_mf][reader]") {
+    put("a.gcode.3mf", fixture("single_plate.gcode.3mf"));
+    const auto r = summarise("a.gcode.3mf");
+    REQUIRE(r.ok);
+    REQUIRE(r.summary.plates.size() == 1);
+    const auto& plate = r.summary.plates[0];
+    CHECK(plate.index == 9);
+    REQUIRE(plate.has_info);
+    CHECK(plate.info.prediction_s == Catch::Approx(5238));
+    CHECK(plate.info.weight_g == Catch::Approx(23.73));
+    REQUIRE(plate.info.filaments.size() == 1);
+    CHECK(plate.info.filaments[0].type == "ABS");
+    REQUIRE(plate.thumb);
+    CHECK(plate.thumb->name == "Metadata/plate_9.png");
+    REQUIRE(plate.thumb_small);
+    // The fixture is smaller than one tail read, so slice_info came with it.
+    CHECK(transfers.ranges == 1);
+}
+
+TEST_CASE_METHOD(ReaderFixture, "slice_info outside the tail read costs one more read",
+                 "[three_mf][reader]") {
+    put("f.gcode.3mf", fixture("far_info.gcode.3mf"));
+    const auto r = summarise("f.gcode.3mf");
+    REQUIRE(r.ok);
+    REQUIRE(r.summary.plates.size() == 1);
+    CHECK(r.summary.plates[0].has_info);
+    CHECK(r.summary.plates[0].info.prediction_s == Catch::Approx(5238));
+    CHECK(transfers.ranges == 2);
+    // The tail plus slice_info's own span, nowhere near the 111KB archive.
+    CHECK(transfers.range_bytes < 64 * 1024 + 4096);
+}
+
+TEST_CASE_METHOD(ReaderFixture, "a central directory larger than the tail read is read again whole",
+                 "[three_mf][reader]") {
+    put("w.gcode.3mf", fixture("wide_cd.gcode.3mf"));
+    const auto r = summarise("w.gcode.3mf");
+    REQUIRE(r.ok);
+    REQUIRE(r.summary.plates.size() == 1);
+    CHECK(r.summary.plates[0].index == 9);
+    CHECK(r.summary.plates[0].has_info);
+    // The tail, the whole central directory, then slice_info ahead of it.
+    CHECK(transfers.ranges == 3);
+}
+
+TEST_CASE_METHOD(ReaderFixture, "several sliced plates each get their own summary",
+                 "[three_mf][reader]") {
+    put("m.gcode.3mf", fixture("multi_plate.gcode.3mf"));
+    const auto r = summarise("m.gcode.3mf");
+    REQUIRE(r.ok);
+    REQUIRE(r.summary.plates.size() == 2);
+    CHECK(r.summary.plates[0].index == 2);
+    CHECK(r.summary.plates[0].info.prediction_s == Catch::Approx(5238));
+    CHECK(r.summary.plates[1].index == 5);
+    CHECK(r.summary.plates[1].info.prediction_s == Catch::Approx(1800));
+    REQUIRE(r.summary.plates[1].info.filaments.size() == 2);
+    CHECK(r.summary.plates[1].info.filaments[1].type == "PLA");
+}
+
+TEST_CASE_METHOD(ReaderFixture, "a project with nothing sliced summarises to no plates",
+                 "[three_mf][reader]") {
+    put("p.3mf", fixture("project.3mf"));
+    const auto r = summarise("p.3mf");
+    REQUIRE(r.ok);
+    CHECK(r.summary.plates.empty());
+}
+
+TEST_CASE_METHOD(ReaderFixture, "a summary is kept until the file's size or time changes",
+                 "[three_mf][reader]") {
+    put("a.gcode.3mf", fixture("single_plate.gcode.3mf"));
+    REQUIRE(summarise("a.gcode.3mf", 1.0).ok);
+    REQUIRE(transfers.ranges == 1);
+    REQUIRE(summarise("a.gcode.3mf", 1.0).ok);
+    CHECK(transfers.ranges == 1);
+    REQUIRE(summarise("a.gcode.3mf", 2.0).ok);
+    CHECK(transfers.ranges == 2);
+    reader.clear_cache();
+    REQUIRE(summarise("a.gcode.3mf", 2.0).ok);
+    CHECK(transfers.ranges == 3);
+}
+
+TEST_CASE_METHOD(ReaderFixture, "a file that is not a zip, or that fails to read, is an error",
+                 "[three_mf][reader]") {
+    put("bad.gcode.3mf", std::string(5000, 'G'));
+    auto r = summarise("bad.gcode.3mf");
+    CHECK_FALSE(r.ok);
+    CHECK(r.error.find("not a zip") != std::string::npos);
+
+    put("a.gcode.3mf", fixture("single_plate.gcode.3mf"));
+    transfers.fail_ranges = true;
+    r = summarise("a.gcode.3mf");
+    CHECK_FALSE(r.ok);
+
+    // A listing size larger than the file: the tail comes back short.
+    transfers.fail_ranges = false;
+    sizes["a.gcode.3mf"] += 10;
+    r = summarise("a.gcode.3mf");
+    CHECK_FALSE(r.ok);
+}
+
+TEST_CASE_METHOD(ReaderFixture, "read_entry returns a stored thumbnail's bytes in one read",
+                 "[three_mf][reader]") {
+    const std::string zip = fixture("single_plate.gcode.3mf");
+    put("a.gcode.3mf", zip);
+    const auto r = summarise("a.gcode.3mf");
+    REQUIRE(r.ok);
+    const auto* thumb = helix::three_mf::plate_thumbnail(r.summary.plates[0]);
+    REQUIRE(thumb);
+    const int before = transfers.ranges;
+
+    std::string got;
+    std::string error;
+    reader.read_entry(
+        "a.gcode.3mf", *thumb, [&got](const std::string& b) { got = b; },
+        [&error](const std::string& e) { error = e; });
+    CHECK(error.empty());
+    CHECK(transfers.ranges == before + 1);
+    CHECK(got == disk_text(fixture_dir() + "src/plate_small.png"));
+}
+
+TEST_CASE("extract_plate writes the plate's G-code from a local archive",
+          "[three_mf][reader][extract]") {
+    TempFile zip("in.gcode.3mf");
+    TempFile out("out.gcode");
+    write_file(zip.path, fixture("multi_plate.gcode.3mf"));
+
+    CHECK(ThreeMfReader::extract_plate(zip.path, 5, out.path) == ZipError::None);
+    const std::string got = disk_text(out.path);
+    std::string want = disk_text(fixture_dir() + "src/plate.gcode");
+    const auto at = want.find("total layer number: 200");
+    REQUIRE(at != std::string::npos);
+    want.replace(at, 23, "total layer number: 90");
+    CHECK(got == want);
+
+    SECTION("a plate the archive does not hold") {
+        CHECK(ThreeMfReader::extract_plate(zip.path, 3, out.path) == ZipError::Missing);
+        CHECK(disk_text(out.path).empty());
+    }
+}
+
+TEST_CASE("extract_plate refuses a plate whose bytes do not match its checksums",
+          "[three_mf][reader][extract]") {
+    TempFile zip("in.gcode.3mf");
+    TempFile out("out.gcode");
+
+    SECTION("a .md5 that names other bytes") {
+        write_file(zip.path, fixture("bad_md5.gcode.3mf"));
+        CHECK(ThreeMfReader::extract_plate(zip.path, 9, out.path) == ZipError::Md5);
+        CHECK(disk_text(out.path).empty());
+    }
+    SECTION("the matching .md5 passes, upper-case hex and all") {
+        write_file(zip.path, fixture("single_plate.gcode.3mf"));
+        CHECK(ThreeMfReader::extract_plate(zip.path, 9, out.path) == ZipError::None);
+        CHECK(disk_text(out.path) == disk_text(fixture_dir() + "src/plate.gcode"));
+    }
+    SECTION("a corrupt deflate stream fails the CRC or the inflate") {
+        std::string bytes = fixture("single_plate.gcode.3mf");
+        // The G-code's local header name: the first "plate_9.gcode" not
+        // followed by ".md5". Its compressed data follows it.
+        const std::string name = "Metadata/plate_9.gcode";
+        size_t at = bytes.find(name);
+        while (at != std::string::npos && bytes[at + name.size()] == '.') {
+            at = bytes.find(name, at + 1);
+        }
+        REQUIRE(at != std::string::npos);
+        for (size_t i = 0; i < 32; ++i) {
+            bytes[at + 400 + i] ^= 0x5A;
+        }
+        write_file(zip.path, bytes);
+        const ZipError err = ThreeMfReader::extract_plate(zip.path, 9, out.path);
+        CHECK((err == ZipError::Crc || err == ZipError::Inflate));
+        CHECK(disk_text(out.path).empty());
+    }
+    SECTION("a missing archive") {
+        CHECK(ThreeMfReader::extract_plate(zip.path + ".absent", 9, out.path) == ZipError::Io);
+    }
+}

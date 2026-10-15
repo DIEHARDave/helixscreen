@@ -129,6 +129,7 @@ src/print/thumbnail_rules.cpp
 src/print/thumbnail_slot_pool.cpp
 src/print/thumbnail_target.cpp
 src/print/three_mf.cpp
+src/print/three_mf_reader.cpp
 src/print/zip_reader.cpp
 src/printer/active_material_provider.cpp
 src/printer/afc_config_manager.cpp
