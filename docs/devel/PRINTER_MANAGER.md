@@ -40,7 +40,7 @@ It follows the standard OverlayBase lifecycle and uses the `overlay_panel` XML c
 ## Architecture
 
 ```
-PrinterManagerOverlay (overlay_panel; header action button: Manage Printers)
+PrinterManagerOverlay (overlay_panel; header: Manage Printers, a text button in landscape, an icon in portrait)
   |
   +-- Section 1: Printer Identity (pm_identity_card)
   |     +-- Printer image (lv_image, clickable -> PrinterImageOverlay)
@@ -498,6 +498,6 @@ Tests cover:
 
 ## Multi-Printer Management
 
-When beta features are enabled and multiple printers are configured, a **Manage Printers** button appears in the Printer Manager overlay's header bar (the `overlay_panel` action button). This navigates to the Printer List overlay for switching, adding, and deleting printers.
+When beta features are enabled and multiple printers are configured, a **Manage Printers** button appears in the Printer Manager overlay's header bar: the labelled `action_button` in landscape, the round `printer_3d` icon `action_button_2` in portrait, where the label would crowd out the title. This navigates to the Printer List overlay for switching, adding, and deleting printers.
 
 See [Multi-Printer Management](MULTI_PRINTER.md) for the full developer guide on the multi-printer system.

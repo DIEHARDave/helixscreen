@@ -47,7 +47,13 @@
   </styles>
   <view name="printer_manager_overlay"
         extends="overlay_panel" title="Printer Manager" bg_color="#screen_bg" hide_action_button="false"
-        action_button_text="Manage Printers" action_button_callback="pm_manage_printers_clicked">
+        action_button_text="Manage Printers" action_button_callback="pm_manage_printers_clicked"
+        action_button_hidden_subject="ui_is_portrait" hide_action_button_2="false" action_button_2_icon="printer_3d"
+        action_button_2_icon_size="sm" action_button_2_bg_color="#elevated_bg" action_button_2_radius="9999"
+        action_button_2_width="#button_height_sm" action_button_2_min_width="0"
+        action_button_2_hidden_cond="ui_is_portrait eq 0" action_button_2_callback="pm_manage_printers_clicked">
+    <!-- Manage Printers: the labelled button in landscape; portrait is too narrow
+         for it beside the title, so the round icon button takes its place. -->
     <!-- Body. Tapping it while the name is being edited saves the edit (C++). -->
     <lv_obj name="overlay_content"
             width="100%" flex_grow="1" style_pad_all="0" style_pad_top="#space_sm" style_pad_gap="0" scrollable="true">
