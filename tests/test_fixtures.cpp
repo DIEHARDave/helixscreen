@@ -15,6 +15,7 @@
 #include "ui_text_input.h"
 #include "ui_tile_rung.h"
 
+#include "app_globals.h"
 #include "material_settings_manager.h"
 #include "preset_materials.h"
 #include "spdlog/spdlog.h"
@@ -126,6 +127,11 @@ XMLTestFixture::XMLTestFixture() : LVGLTestFixture() {
     // global LVGL XML scope, overwriting any prior test's entries with valid
     // pointers for the duration of this test.
     m_state.init_subjects(true);
+
+    // The app's global subjects (home_edit_mode, platform gates, ...) are live before
+    // any XML is built. A fixture that tore them down leaves the names registered
+    // against deinitialized subjects, which refuse the bindings built here.
+    app_globals_init_subjects();
 
     // Quick-preset material subjects (preset_material_N_name/_temps). The
     // filament panel, all three temp panels, the temp graph overlay and the PID
