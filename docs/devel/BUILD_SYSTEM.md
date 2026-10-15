@@ -1397,8 +1397,12 @@ new image.
 is seeded before its first sync: the run copies the mirror whose recorded HEAD
 is fewest commits away from yours (each run writes the HEAD it synced to
 `.helix-mirror-head` in its mirror; a mirror qualifies once it has linked
-`helix-tests` and is not mid-run), then syncs over it, and make rebuilds only
-what differs. On zeus a fresh worktree's first `sweep` took 15 minutes cold and
+`helix-tests`, records a HEAD, is not locked by a run, and has no orphaned
+make in it), then syncs over it, and make rebuilds only what differs. A mirror
+that predates the HEAD record rebuilds once on its next run (ccache serves most
+of it), since its file times came from the local tree. A run that is killed
+mid-copy leaves the copying shell running on the host; it holds a seed lock
+that the tree's next run waits on. On zeus a fresh worktree's first `sweep` took 15 minutes cold and
 2 minutes 20 seeded (a 28 s copy). The copy is `cp -a --reflink=auto`: on a ZFS (2.2 or later, with
 `feature@block_cloning`) or btrfs host the copy shares blocks and takes
 seconds, elsewhere it is a plain copy. A per-mirror ZFS dataset and `zfs clone`

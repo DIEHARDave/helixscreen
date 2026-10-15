@@ -49,6 +49,10 @@ case "$1" in
     exec)
         case "$*" in
             *pgrep*)
+                # MOCK_LIVE_MAKE_DIR: a make (an orphan) runs in that tree.
+                if [ -n "${MOCK_LIVE_MAKE_DIR:-}" ]; then
+                    case "$*" in *"$MOCK_LIVE_MAKE_DIR|"*) exit 0 ;; esac
+                fi
                 # MOCK_PGREP_HITS: the first poll sees a live make, and
                 # records what the mirror held at that moment.
                 if [ -n "${MOCK_PGREP_HITS:-}" ]; then
@@ -569,6 +573,7 @@ warm_build() { # <tree name>
     mkdir -p "$m/build/bin" "$m/build/obj"
     echo bin > "$m/build/bin/helix-tests"
     printf '/work/trees/%s/build/obj/x.o: src/x.c /work/trees/%s-1.0/keep.h\n' "$1" "$1" > "$m/build/obj/x.d"
+    printf "{'d':'/work/trees/%s','i':\"-I/work/trees/%s:x\"}\n" "$1" "$1" > "$m/build/obj/x.ccj"
     touch -d '1 hour ago' "$m/build/bin/helix-tests" "$m/build/obj/x.d"
 }
 
@@ -640,6 +645,7 @@ warm_build() { # <tree name>
     # merely starts the same way is left alone, and its time is kept.
     [ "$(cat "$mb/build/obj/x.d")" = "/work/trees/tree-b/build/obj/x.o: src/x.c /work/trees/tree-a-1.0/keep.h" ]
     [ "$(mtime_of "$mb/build/obj/x.d")" -eq "$(mtime_of "$ma/build/obj/x.d")" ]
+    [ "$(cat "$mb/build/obj/x.ccj")" = "{'d':'/work/trees/tree-b','i':\"-I/work/trees/tree-b:x\"}" ]
     # The files are exact: b's edit, a's extra file gone, an unchanged file
     # keeps the seed's time while a changed one is newer than the seed's build.
     [ "$(cat "$mb/tracked.txt")" = b-edit ]
@@ -816,4 +822,70 @@ shared_checkout() {
     [ ! -e "$BATS_TEST_TMPDIR/mutate/gone" ]
     [ ! -e "$HELIX_TEST_TREES_HOST/gone" ]
     [ -d "$BATS_TEST_TMPDIR/mutate/fresh" ]
+}
+
+@test "a seed candidate with an orphaned build running in it is passed over" {
+    local a b
+    a=$(make_tree tree-a)
+    git -C "$a" worktree add -q -b b "$BATS_TEST_TMPDIR/tree-b"
+    b=$BATS_TEST_TMPDIR/tree-b
+    (cd "$a" && "$TEST_HOST_RUN" test >/dev/null)
+    warm_build tree-a
+    cd "$b"
+    MOCK_LIVE_MAKE_DIR=/work/trees/tree-a run "$TEST_HOST_RUN" test
+    [ "$status" -eq 0 ]
+    contains "seed candidate tree-a has an orphaned build running" "$output"
+    [ ! -e "$(mirror_of tree-b)/build" ]
+}
+
+@test "a mirror without a recorded HEAD is no seed, and its next run stamps its files once" {
+    local a b ma
+    a=$(make_tree tree-a)
+    git -C "$a" worktree add -q -b b "$BATS_TEST_TMPDIR/tree-b"
+    b=$BATS_TEST_TMPDIR/tree-b
+    (cd "$a" && "$TEST_HOST_RUN" test >/dev/null)
+    warm_build tree-a
+    ma=$(mirror_of tree-a)
+    rm "$ma/.helix-mirror-head"
+    touch -d '3 hours ago' "$ma/tracked.txt"
+    (cd "$b" && run "$TEST_HOST_RUN" test && [ "$status" -eq 0 ] && lacks "seeded" "$output")
+    [ ! -e "$(mirror_of tree-b)/build" ]
+
+    cd "$a"
+    run "$TEST_HOST_RUN" test
+    [ "$status" -eq 0 ]
+    contains "predates content-compared syncs" "$output"
+    [ "$(mtime_of "$ma/tracked.txt")" -gt "$(mtime_of "$ma/build/bin/helix-tests")" ]
+    [ -e "$ma/.helix-mirror-head" ]
+    # Once only: the HEAD it now records ends it.
+    touch -d '3 hours ago' "$ma/tracked.txt"
+    run "$TEST_HOST_RUN" test
+    lacks "predates" "$output"
+    [ "$(mtime_of "$ma/tracked.txt")" -lt "$(mtime_of "$ma/build/bin/helix-tests")" ]
+}
+
+@test "a run waits for a copy into its mirror that a killed run left going" {
+    local t out runner holder
+    t=$(make_tree tree-a)
+    holder=$(hold_lock "$HELIX_TEST_LOCK_DIR/helix-test-host-run.seed-tree-tree-a.lock" "$BATS_TEST_TMPDIR/ready")
+    wait_for_file "$BATS_TEST_TMPDIR/ready"
+    out="$BATS_TEST_TMPDIR/waiting.log"
+    (cd "$t" && HELIX_TEST_SEED=0 "$TEST_HOST_RUN" test >"$out" 2>&1) &
+    runner=$!
+    wait_for_line "a copy into tree-a is still running" "$out"
+    sleep 0.5
+    [ ! -e "$(mirror_of tree-a)/tracked.txt" ]
+    kill "$holder"; wait "$holder" 2>/dev/null || true
+    wait "$runner"
+    [ -e "$(mirror_of tree-a)/tracked.txt" ]
+}
+
+@test "prune leaves a copy in progress alone and collects one a dead run left a day ago" {
+    mkdir -p "$HELIX_TEST_TREES_HOST/new+seeding" "$HELIX_TEST_TREES_HOST/dead+seeding"
+    touch -d '30 days ago' "$HELIX_TEST_TREES_HOST/new+seeding/.helix-mirror-files"
+    touch -d '2 days ago' "$HELIX_TEST_TREES_HOST/dead+seeding"
+    run "$TEST_HOST_RUN" --prune 0
+    [ "$status" -eq 0 ]
+    [ -d "$HELIX_TEST_TREES_HOST/new+seeding" ]
+    [ ! -e "$HELIX_TEST_TREES_HOST/dead+seeding" ]
 }

@@ -215,6 +215,27 @@ fi
 SNIPPET
 }
 
+# The remote command that succeeds while a make in the container has its cwd
+# in <dir>. <dir> is spliced as remote shell text inside double quotes, so it
+# may name a variable of the remote script.
+live_make_in() { # <container dir>
+    printf '%s' "sudo -n docker exec -w / \"$CONTAINER\" bash -lc 'for p in \$(pgrep -x -r R,S,D,T,t make); do case \"\$(readlink /proc/\$p/cwd)\" in '\"$1\"'|'\"$1\"'/*) exit 0 ;; esac; done; exit 1'"
+}
+
+# The remote snippet that waits for a seeding copy into <tree> to finish. The
+# copying shell holds <prefix>.seed-<kind>-<tree>.lock for its whole life, and it
+# outlives a client that was killed mid-copy, so whatever touches that tree
+# next waits here instead of racing its cp and mv.
+seed_lock_wait() { # <kind: tree|mutate> <tree>
+    cat <<SNIPPET
+exec 6>>"$LOCK_DIR/$LOCK_PREFIX.seed-$1-$2.lock"
+if ! flock -n 6; then
+    echo "→ a copy into $2 is still running on \$(hostname); waiting for it" >&2
+    flock 6
+fi
+SNIPPET
+}
+
 # The remote snippet that waits out any make whose cwd is in RUNDIR. A run
 # whose ssh side died leaves its build running in the container while the lock
 # is already released, and changing files under that build is the corruption
@@ -223,7 +244,7 @@ SNIPPET
 # container's PID 1, which never reaps it, so counting it would wait forever.
 orphan_wait() {
     cat <<SNIPPET
-while sudo -n docker exec -w / "$CONTAINER" bash -lc 'for p in \$(pgrep -x -r R,S,D,T,t make); do case "\$(readlink /proc/\$p/cwd)" in $RUNDIR|$RUNDIR/*) exit 0 ;; esac; done; exit 1'; do
+while $(live_make_in "$RUNDIR"); do
     echo "→ orphaned build still running in $CONTAINER; waiting"
     sleep $ORPHAN_POLL_SECS
 done
@@ -243,8 +264,17 @@ prepare_mirror() { # <list file>
     ssh "${SSH_OPTS[@]}" "$HOST" bash -se <<REMOTE
 set -euo pipefail
 $(container_up)
+$(seed_lock_wait tree "$TREE")
 $(orphan_wait)
 cd "$TREES_HOST/$TREE"
+# A mirror with no HEAD_FILE was synced with local file times, which can be
+# older than its objects for files that changed, and a content-compared sync
+# never rewrites a file whose bytes already match. Stamping every synced file
+# now costs one rebuild (ccache serves most of it) and makes the build exact.
+if [ -d build ] && [ ! -e $HEAD_FILE ] && [ -f $MANIFEST ]; then
+    echo "→ $TREE's mirror predates content-compared syncs: rebuilding it once" >&2
+    sudo -n xargs -0 -r touch -c -h -- < $MANIFEST || true
+fi
 if [ -f $MANIFEST ]; then
     comm -z -23 <(sort -z $MANIFEST) <(sort -z $MANIFEST.new) | sudo -n xargs -0 -r rm -f -- || true
 fi
@@ -271,6 +301,8 @@ sweep() { # <root> <lock kind> <stamp, relative> <what> [name...]
         name=\$(basename "\$d")
         d="\$root/\$name"
         [ -d "\$d" ] || { [ -z "$*" ] || [ "\$kind" != tree ] || echo "→ no \$what \$name"; continue; }
+        # <tree>+seeding is a copy in progress, or one a dead run left behind.
+        case "\$name" in *+*) [ -n "\$(find "\$d" -maxdepth 0 -mmin +1440)" ] || continue ;; esac
         if [ "$days" != - ]; then
             stamp="\$d/\$stamp_rel"; [ -e "\$stamp" ] || stamp="\$d"
             [ -n "\$(find "\$stamp" -maxdepth 0 -mmin +$(( ${days/-/0} * 1440 )))" ] || continue
@@ -308,16 +340,19 @@ seed_copy() { # <src> <dst> <src in the container> <dst in the container>
     rm -rf -- "$tmp" "$2"
     mkdir -p -- "$(dirname "$2")"
     cp -a --reflink=auto -- "$1" "$tmp"
+    # The copy's age is now, not the source's last run, for a prune that
+    # meets it mid-copy or once it is in place.
+    touch -c -- "$tmp/.helix-mirror-files" "$tmp/.git/index"
     re=$(printf '%s' "$3" | sed 's/[][\.*^$#]/\\&/g')
     {
         [ ! -d "$tmp/build" ] || grep -rIlZF -- "$3" "$tmp/build" || true
         [ ! -f "$tmp/compile_commands.json" ] || printf '%s\0' "$tmp/compile_commands.json"
     } | while IFS= read -r -d '' f; do
         t=$(stat -c %y -- "$f")
-        sed -i "s#$re\([/\"]\|\$\)#$4\1#g" -- "$f"
+        sed -i "s#$re\([^A-Za-z0-9._+-]\|\$\)#$4\1#g" -- "$f"
         touch -d "$t" -- "$f"
     done
-    mv -- "$tmp" "$2"
+    mv -T -- "$tmp" "$2"
 }
 SNIPPET
 }
@@ -341,33 +376,40 @@ rank_seeds() { # stdin: "<name> <head|-> <epoch>" lines
 # mid-run (its lock is free); a busy one is passed over rather than waited for.
 # With none, the run builds cold, as it would have anyway.
 seed_mirror() {
-    [ "$SEED" != 0 ] || return 0
     local cands order t0 out
     # shellcheck disable=SC2087  # the paths resolve here
     cands=$(ssh "${SSH_OPTS[@]}" "$HOST" bash -se <<REMOTE
 set -uo pipefail
+$(seed_lock_wait tree "$TREE")
 cd "$TREES_HOST" 2>/dev/null || exit 0
 [ ! -d "$TREE/build" ] || { echo WARM; exit 0; }
+[ "$SEED" != 0 ] || { echo OFF; exit 0; }
 for d in */; do
     n=\${d%/}
     case "\$n" in "$TREE"|*+*) continue ;; esac
-    [ -e "\$n/build/bin/helix-tests" ] || continue
+    # A mirror without HEAD_FILE has not yet had its rebuild under
+    # content-compared syncs (prepare_mirror), so its objects are not trusted.
+    [ -e "\$n/build/bin/helix-tests" ] && [ -e "\$n/$HEAD_FILE" ] || continue
     printf '%s %s %s\n' "\$n" "\$(head -c 40 "\$n/$HEAD_FILE" 2>/dev/null || echo -)" "\$(stat -c %Y "\$n/$MANIFEST" 2>/dev/null || echo 0)"
 done
 REMOTE
 ) || return 0
-    case "$cands" in WARM*) return 0 ;; "") echo "→ no warm mirror on $HOST to seed $TREE from: building cold"; return 0 ;; esac
+    case "$cands" in WARM*|OFF*) return 0 ;; "") echo "→ no warm mirror on $HOST to seed $TREE from: building cold"; return 0 ;; esac
     order=$(printf '%s\n' "$cands" | rank_seeds | tr '\n' ' ')
     t0=$(date +%s)
     # shellcheck disable=SC2087  # the names and the paths resolve here
     out=$(ssh "${SSH_OPTS[@]}" "$HOST" bash -se <<REMOTE
 set -uo pipefail
 $(seed_copy_snippet)
+$(seed_lock_wait tree "$TREE")
 dst="$TREES_HOST/$TREE"
 [ ! -d "\$dst/build" ] || exit 0
 for n in $order; do
     exec 7>>"$LOCK_DIR/$LOCK_PREFIX.tree-\$n.lock"
     if ! flock -n 7; then echo "→ seed candidate \$n is busy; trying the next" >&2; exec 7>&-; continue; fi
+    # A free lock is not an idle tree: a run whose ssh died leaves its make
+    # writing there, and a copy would take its half-written files.
+    if $(live_make_in "$TREES/\$n"); then echo "→ seed candidate \$n has an orphaned build running; trying the next" >&2; exec 7>&-; continue; fi
     if sudo -n bash -c "\$(declare -f seed_copy); "'seed_copy "\$@"' _ "$TREES_HOST/\$n" "\$dst" "$TREES/\$n" "$TREES/$TREE"; then
         echo "SEEDED \$n"; exit 0
     fi
@@ -400,6 +442,7 @@ seed_mutate_checkout() {
     out=$(ssh "${SSH_OPTS[@]}" "$HOST" bash -se <<REMOTE
 set -uo pipefail
 $(seed_copy_snippet)
+$(seed_lock_wait mutate "$TREE")
 dst="$MUTATE_HOST/$TREE"
 [ ! -d "\$dst/.git" ] || exit 0
 shared="$WORK_HOST${WORKDIR#"$WORK"}"
@@ -419,7 +462,11 @@ done < <(ls -1dt "$MUTATE_HOST"/*/.git "\$shared/.git" 2>/dev/null)
 pick=""
 for c in "\${cands[@]}"; do
     exec 7>>"\$(lock_of "\$c")"
-    if flock -n 7; then pick=\$c; break; fi
+    if flock -n 7; then
+        _c=\$(ctr_of "\$c")
+        if ! $(live_make_in "\$_c"); then pick=\$c; break; fi
+        echo "→ \$(basename "\$c") has an orphaned build running; trying the next" >&2
+    fi
     exec 7>&-
 done
 if [ -z "\$pick" ]; then
