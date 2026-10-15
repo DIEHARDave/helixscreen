@@ -1,5 +1,8 @@
 import { useAuthStore } from '@/stores/auth'
 import { router } from '@/router'
+import type { HealthPayload } from '../../../telemetry-worker/src/health'
+import type { DeviceListRow, DevicePage } from '../../../telemetry-worker/src/devices'
+import type { RetentionCohort } from '../../../telemetry-worker/src/retention'
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'https://telemetry.helixscreen.org'
 
@@ -49,6 +52,8 @@ export interface PrintsData {
   success_rate_over_time: { date: string; rate: number; total: number }[]
   by_filament: { type: string; success_rate: number; count: number }[]
   avg_duration_sec: number
+  by_model: { model: string; successes: number; total: number; rate: number | null }[]
+  by_version: { version: string; successes: number; total: number; rate: number | null }[]
   start_context?: PrintStartData
 }
 
@@ -93,11 +98,28 @@ export interface ReleasesData {
   versions: {
     version: string
     active_devices: number
-    crash_rate: number
+    crash_rate: number | null
+    crash_free_devices: number | null
+    p95_frame_ms: number | null
+    p95_rss_kb: number | null
     print_success_rate: number | null
     total_sessions: number
     total_crashes: number
+    update_failures: number
+    update_successes: number
+    update_success_rate: number | null
   }[]
+  adoption: { date: string; version: string; devices: number }[]
+}
+
+export type HealthData = HealthPayload
+export type DevicePageData = DevicePage
+export interface DeviceListData {
+  total: number
+  devices: DeviceListRow[]
+}
+export interface RetentionData {
+  cohorts: RetentionCohort[]
 }
 
 export interface MemoryData {
@@ -205,6 +227,14 @@ export interface PerformanceData {
   drop_rate_by_platform: { platform: string; rate: number; dropped: number; total: number }[]
   drop_rate_by_version: { date: string; version: string; rate: number }[]
   jankiest_panels: { panel: string; times_worst: number; avg_p95_ms: number }[]
+  by_platform_version: {
+    platform: string
+    version: string
+    p95_frame_ms: number
+    avg_rss_kb: number | null
+    devices: number
+  }[]
+  jankiest_by_platform: { platform: string; panel: string; times_worst: number; avg_p95_ms: number }[]
 }
 
 // Adoption derived from overlay and widget use: `devices` used the overlay or
@@ -274,9 +304,27 @@ export const api = {
     return apiFetch(`/v1/dashboard/crash-list?${queryString}&limit=${limit}`)
   },
 
-  getReleases(versions: string[]): Promise<ReleasesData> {
-    const params = `versions=${versions.map(v => encodeURIComponent(v)).join(',')}`
-    return apiFetch(`/v1/dashboard/releases?${params}`)
+  // Without `versions` the worker picks the most active releases itself.
+  getReleases(queryString: string, versions?: string[]): Promise<ReleasesData> {
+    const list = versions ? `&versions=${versions.map(v => encodeURIComponent(v)).join(',')}` : ''
+    return apiFetch(`/v1/dashboard/releases?${queryString}${list}`)
+  },
+
+  getHealth(queryString: string): Promise<HealthData> {
+    return apiFetch(`/v1/dashboard/health?${queryString}`)
+  },
+
+  getDevices(queryString: string): Promise<DeviceListData> {
+    return apiFetch(`/v1/dashboard/devices?${queryString}`)
+  },
+
+  // One device over a fixed 90 days: no filters apply.
+  getDevice(id: string): Promise<DevicePageData> {
+    return apiFetch(`/v1/dashboard/device/${encodeURIComponent(id)}`)
+  },
+
+  getRetention(queryString: string): Promise<RetentionData> {
+    return apiFetch(`/v1/dashboard/fleet/retention?${queryString}`)
   },
 
   getMemory(queryString: string): Promise<MemoryData> {

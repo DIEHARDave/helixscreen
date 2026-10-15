@@ -54,7 +54,7 @@
                 class="metric-value"
                 :class="crashRateClass(ver.crash_rate)"
               >
-                {{ (ver.crash_rate * 100).toFixed(1) }}%
+                {{ formatRate(ver.crash_rate) }}
                 <span v-if="crashDelta(ver) !== null" class="delta" :class="crashDelta(ver)! > 0 ? 'delta-bad' : 'delta-good'">
                   {{ crashDelta(ver)! > 0 ? '+' : '' }}{{ crashDelta(ver)!.toFixed(1) }}pp
                 </span>
@@ -132,10 +132,11 @@ const sortedVersions = computed(() =>
 )
 
 // Delta helpers: compare each version to its predecessor in the sorted list
-function crashDelta(ver: { version: string; crash_rate: number }): number | null {
+function crashDelta(ver: { version: string; crash_rate: number | null }): number | null {
   const idx = sortedVersions.value.findIndex(v => v.version === ver.version)
   if (idx <= 0) return null
   const prev = sortedVersions.value[idx - 1]
+  if (ver.crash_rate === null || prev.crash_rate === null) return null
   return (ver.crash_rate - prev.crash_rate) * 100
 }
 
@@ -147,7 +148,8 @@ function successDelta(ver: { version: string; print_success_rate: number | null 
   return (ver.print_success_rate - prev.print_success_rate) * 100
 }
 
-function crashRateClass(rate: number): string {
+function crashRateClass(rate: number | null): string {
+  if (rate === null) return ''
   const pct = rate * 100
   if (pct > 10) return 'rate-bad'
   if (pct > 5) return 'rate-warn'
@@ -170,7 +172,7 @@ async function fetchReleases() {
   loading.value = true
   error.value = ''
   try {
-    data.value = await api.getReleases(selectedVersions.value)
+    data.value = await api.getReleases(filters.queryString, selectedVersions.value)
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Failed to load data'
   } finally {
