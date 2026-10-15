@@ -26,8 +26,8 @@
     <style name="ps_hero_stacked"
            width="content" layout="flex" flex_flow="column" flex_main_place="start" flex_cross_place="start"
            flex_track_place="start"/>
-    <style name="ps_label_inline" flex_grow="1"/>
-    <style name="ps_grow" flex_grow="1"/>
+    <!-- Fonts stay per component: a component registers again at a new breakpoint and
+         re-reads its font tokens, while ui_xml/styles.xml is read once. -->
     <style name="ps_font_body" text_font="#font_body"/>
     <style name="ps_font_small" text_font="#font_small"/>
     <style name="ps_font_xs" text_font="#font_xs"/>
@@ -45,7 +45,7 @@
       <bind_style_if_eq name="ps_main_row" subject="print_stats_side_by_side" ref_value="1"/>
       <bind_style_if_eq name="ps_main_column" subject="print_stats_side_by_side" ref_value="0"/>
       <!-- With the bars showing, the chart takes the height the lines leave. -->
-      <bind_style_if_eq name="ps_grow" subject="print_stats_show_bars" ref_value="1"/>
+      <bind_style_if_eq name="styles.tile_fill" subject="print_stats_show_bars" ref_value="1"/>
 
       <lv_obj name="ps_hero_block"
               height="content" style_pad_all="0" style_pad_row="0" style_pad_column="#space_xs" style_bg_opa="0"
@@ -61,7 +61,7 @@
         <text_small name="ps_hero_label"
                     bind_text="print_stats_hero_label" long_mode="dots" style_text_color="#text_muted" clickable="false"
                     event_bubble="true">
-          <bind_style_if_eq name="ps_label_inline" subject="print_stats_rung" ref_value="1"/>
+          <bind_style_if_eq name="styles.tile_fill" subject="print_stats_rung" ref_value="1"/>
           <bind_style_if name="ps_font_xs"
                          cond="print_stats_strip_text eq 2 or print_stats_strip_text eq 3 or print_stats_strip_text eq 6 or print_stats_strip_text eq 7"/>
         </text_small>
