@@ -251,6 +251,10 @@ Klipper publishes as `display_status.message`. The generic profile therefore dec
 (`assets/config/print_start_profiles/default.json`) and matches the human-readable text
 the macro is already putting on the screen. The declared object is subscribed
 automatically during discovery, via `PrintStartProfile::required_status_objects()`.
+Firmware that publishes its own step stack (Forge-X's `operation_context`) declares a
+`context_field` as well, so a state is matched together with the step it belongs to and a
+step the printer reports as under way holds the deadline timeouts
+([PRINT_START_PROFILES.md](PRINT_START_PROFILES.md#field-details)).
 
 A profile that declares a phase object but no `state_patterns` matches the state string
 against its `response_patterns` instead
