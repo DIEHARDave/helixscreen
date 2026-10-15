@@ -32,8 +32,8 @@ _rcd_dir()   { echo "${HELIX_RCD_DIR:-/etc/rc.d}"; }
 
 # Marker recording that we migrated moonraker's webcam list (so uninstall knows
 # to restore from the backup). Lives in INSTALL_DIR/config alongside the backup.
-_camera_marker_file()  { echo "${INSTALL_DIR}/config/.camera_migrated"; }
-_camera_backup_file()  { echo "${INSTALL_DIR}/config/.webcams_backup.json"; }
+_camera_marker_file()  { _ledger_path .camera_migrated; }
+_camera_backup_file()  { _ledger_path .webcams_backup.json; }
 
 # Our webcam entry name in moonraker.
 HELIX_WEBCAM_NAME="HelixScreen Camera"
@@ -41,7 +41,7 @@ HELIX_WEBCAM_NAME="HelixScreen Camera"
 # Marker recording which moonraker.conf we reversibly commented out the
 # community "K2-Camera-main" mod's [webcam Default] iframe entry in (so uninstall
 # can un-comment it). Lives in INSTALL_DIR/config; one conf path per line.
-_k2cam_marker_file() { echo "${INSTALL_DIR}/config/.k2cam_webcam_disabled"; }
+_k2cam_marker_file() { _ledger_path .k2cam_webcam_disabled; }
 
 # The reversible prefix used to comment out the K2-Camera-main [webcam Default]
 # block. Uninstall strips this exact prefix back off.
@@ -86,7 +86,7 @@ _nginx_access_log_path() { echo "${HELIX_NGINX_ACCESS_LOG:-/var/log/nginx/fluidd
 
 # Marker recording that we edited the block. Name kept as-is for compatibility
 # with installs made before proxy_buffering was added to the same edit.
-_nginx_accesslog_marker_file() { echo "${INSTALL_DIR}/config/.nginx_webcam_accesslog"; }
+_nginx_accesslog_marker_file() { _ledger_path .nginx_webcam_accesslog; }
 
 # Tag embedded in every line we insert, making both the idempotency check and
 # the removal exact rather than pattern-guessed. Deliberately a PREFIX of the

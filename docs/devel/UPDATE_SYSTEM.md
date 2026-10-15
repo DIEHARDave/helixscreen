@@ -514,7 +514,7 @@ path: /opt/helixscreen
 Key points:
 - `type: web` -- Moonraker downloads ZIP assets from GitHub releases (workaround for mainsail-crew/mainsail#2444 where `type: zip` always shows UP-TO-DATE)
 - Do not add `install_script` or `managed_services`: a `type: web` stanza does not read them and Moonraker warns about unparsed config. Do not add `persistent_files` either: it is read, but it matches top-level names of `path:` only and the release zip ships a top-level `config/`, so it cannot preserve anything useful (listing `config` restores it to `config/config`, nested entries never match)
-- User config files live in `printer_data/config/helixscreen/` (outside the managed path) and `$INSTALL_DIR/config/<file>` are symlinks into it, so the targets survive Moonraker's `shutil.rmtree`; `refresh-service-units.sh` re-creates the symlinks after extraction
+- User config files live in `printer_data/config/helixscreen/` (outside the managed path) and `$INSTALL_DIR/config/<file>` are symlinks into it, so the targets survive Moonraker's `shutil.rmtree`; `config/restore-user-config.sh` re-creates the symlinks after extraction (run by `refresh-service-units.sh` on systemd and by `helixscreen.init` `start` elsewhere)
 - release_info.json -- Written to the install directory so Moonraker can detect the installed version
 - A systemd path unit (`helixscreen-update.path`) watches release_info.json and restarts the service after Moonraker extracts an update
 - As a self-healing fallback, `helixscreen.service` runs `refresh-service-units.sh` on every start to re-template systemd units and install missing watcher units

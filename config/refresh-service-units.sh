@@ -67,6 +67,7 @@ wait_for_install_stable || true
 # Read current identity from the installed service file BEFORE overwriting
 USER_VAL="$(grep "^User=" "$DEST" | cut -d= -f2)"
 GROUP_VAL="$(grep "^Group=" "$DEST" | cut -d= -f2)"
+PD_HELIX_VAL="$(sed -n 's/^# HELIX_PD_HELIX=//p' "$DEST" | head -n1)"
 
 template_unit() {
     local src="$1" dest="$2"
@@ -76,6 +77,7 @@ template_unit() {
         -e "s|@@HELIX_GROUP@@|${GROUP_VAL:-root}|g" \
         -e "s|@@INSTALL_DIR@@|${IDIR}|g" \
         -e "s|@@INSTALL_PARENT@@|${PDIR}|g" \
+        -e "s|@@HELIX_PD_HELIX@@|${PD_HELIX_VAL}|g" \
         "$dest"
 }
 
@@ -107,4 +109,4 @@ systemctl daemon-reload
 # The same restore runs from the SysV init script, so it lives in its own file.
 # Failure is not fatal here: the units above are already refreshed.
 [ -f "${SCRIPT_DIR}/restore-user-config.sh" ] && \
-    USER_VAL="$USER_VAL" sh "${SCRIPT_DIR}/restore-user-config.sh" || true
+    USER_VAL="$USER_VAL" HELIX_PD_HELIX_DIR="$PD_HELIX_VAL" sh "${SCRIPT_DIR}/restore-user-config.sh" || true

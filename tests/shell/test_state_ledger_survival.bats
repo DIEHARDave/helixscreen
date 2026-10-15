@@ -234,23 +234,151 @@ sysv_start_restore() {
     [ -x "$INSTALL_DIR/platform/hooks.sh" ]
 }
 
-@test "restore-user-config.sh runs standalone, exits 0 and finds nothing to do" {
+@test "a standalone run touches only the printer_data it was pointed at" {
+    mkdir -p "$PD"
+    echo mine > "$INSTALL_DIR/config/.camera_migrated"
     cp "$RESTORE" "$INSTALL_DIR/config/restore-user-config.sh"
-    run sysv_start_restore
+    find "$BATS_TEST_TMPDIR" | sort > "$BATS_TEST_TMPDIR/before.list"
+
+    HELIX_PD_HELIX_DIR="$PD" run sh "$INSTALL_DIR/config/restore-user-config.sh"
     [ "$status" -eq 0 ]
+
+    # It ran: the real ledger moved into the sandbox and was linked back.
+    [ "$(cat "$PD/.camera_migrated")" = "mine" ]
+    [ -L "$INSTALL_DIR/config/.camera_migrated" ]
+    # Every new path is inside the install dir or the printer_data it was given.
+    find "$BATS_TEST_TMPDIR" -not -name '*.list' | sort > "$BATS_TEST_TMPDIR/after.list"
+    run comm -13 "$BATS_TEST_TMPDIR/before.list" "$BATS_TEST_TMPDIR/after.list"
+    [ "$status" -eq 0 ]
+    run sh -c 'printf "%s\n" "$1" | grep -v -e "^$2/" -e "^$3/"' _ "$output" "$INSTALL_DIR" "$PD"
+    [ -z "$output" ]
 }
 
-@test "helixscreen.init runs the restore before it sources the platform hooks" {
+@test "helixscreen.init restores before it reads the env file and before it sources the hooks" {
     local init="$WORKTREE_ROOT/config/helixscreen.init"
-    local call src
+    local call src env
     call="$(grep -n 'restore-user-config.sh' "$init" | head -1 | cut -d: -f1)"
     src="$(grep -n '^    \. "\$PLATFORM_HOOKS"' "$init" | head -1 | cut -d: -f1)"
-    [ -n "$call" ] && [ -n "$src" ]
+    env="$(grep -n -e 'LAUNCHER" --print-env HELIX_NO_SPLASH' "$init" | head -1 | cut -d: -f1)"
+    [ -n "$call" ] && [ -n "$src" ] && [ -n "$env" ]
     [ "$call" -lt "$src" ]
+    [ "$call" -lt "$env" ]
 }
 
 @test "refresh-service-units.sh still templates units and delegates the restore" {
     grep -q 'template_unit "\$SRC" "\$DEST"' "$WORKTREE_ROOT/config/refresh-service-units.sh"
     grep -q 'systemctl daemon-reload' "$WORKTREE_ROOT/config/refresh-service-units.sh"
     grep -q 'restore-user-config.sh' "$WORKTREE_ROOT/config/refresh-service-units.sh"
+}
+
+# --- where printer_data is ---
+
+@test "a recorded printer_data wins over scanning" {
+    mkdir -p "$BATS_TEST_TMPDIR/elsewhere"
+    HELIX_PD_HELIX_DIR="$BATS_TEST_TMPDIR/elsewhere"
+    unset -f discover_pd_helix
+    HELIX_RESTORE_LIB_ONLY=1 . "$RESTORE"
+    [ "$(discover_pd_helix)" = "$BATS_TEST_TMPDIR/elsewhere" ]
+}
+
+@test "the scan list covers the U1 and puts /mnt/UDISK before /root, without layouts the installer never makes" {
+    grep -q '/home/lava/printer_data/config/helixscreen' "$RESTORE"
+    ! grep -q '/usr/data/config/printer_data' "$RESTORE"
+    ! grep -q '/opt/config/printer_data' "$RESTORE"
+    local udisk root
+    udisk="$(grep -n '^        /mnt/UDISK/printer_data' "$RESTORE" | cut -d: -f1)"
+    root="$(grep -n '^        /root/printer_data' "$RESTORE" | cut -d: -f1)"
+    [ "$udisk" -lt "$root" ]
+}
+
+@test "the installer writes the resolved printer_data into the init script" {
+    . "$WORKTREE_ROOT/scripts/lib/installer/service.sh"
+    local init="$BATS_TEST_TMPDIR/S99helixscreen"
+    printf 'DAEMON_DIR="/opt/helixscreen"\nHELIX_PD_HELIX=""  # Updated by installer\n' > "$init"
+    _set_init_script_pd_helix "$init"
+    grep -qx "HELIX_PD_HELIX=\"$PD\"" "$init"
+}
+
+@test "the unit records printer_data and refresh-service-units.sh reads it back and re-templates it" {
+    grep -q '^# HELIX_PD_HELIX=@@HELIX_PD_HELIX@@' "$WORKTREE_ROOT/config/helixscreen.service"
+    grep -q "s/^# HELIX_PD_HELIX=//p" "$WORKTREE_ROOT/config/refresh-service-units.sh"
+    grep -q '@@HELIX_PD_HELIX@@' "$WORKTREE_ROOT/config/refresh-service-units.sh"
+    grep -q 'HELIX_PD_HELIX_DIR="$PD_HELIX_VAL"' "$WORKTREE_ROOT/config/refresh-service-units.sh"
+}
+
+# --- a real file that differs from its printer_data copy ---
+
+# $1 name  $2 real content  $3 pd content  $4 real_newer | pd_newer
+real_vs_pd() {
+    mkdir -p "$PD"
+    printf '%s' "$3" > "$PD/$1"
+    printf '%s' "$2" > "$INSTALL_DIR/config/$1"
+    if [ "$4" = real_newer ]; then
+        touch -d '2026-01-01 00:00:00' "$PD/$1"
+        touch -d '2026-06-01 00:00:00' "$INSTALL_DIR/config/$1"
+    else
+        touch -d '2026-06-01 00:00:00' "$PD/$1"
+        touch -d '2026-01-01 00:00:00' "$INSTALL_DIR/config/$1"
+    fi
+    restore_config_symlinks
+}
+
+@test "an app-written settings.json newer than the printer_data copy wins, and the old copy is kept" {
+    real_vs_pd settings.json '{"config_version":7,"a":2}' '{"config_version":6,"a":1}' real_newer
+    [ -L "$INSTALL_DIR/config/settings.json" ]
+    [ "$(cat "$PD/settings.json")" = '{"config_version":7,"a":2}' ]
+    [ "$(cat "$PD/settings.json.pre-restore")" = '{"config_version":6,"a":1}' ]
+}
+
+@test "the release's default settings.json never replaces the user's, and is not kept" {
+    real_vs_pd settings.json '{"default":true}' '{"config_version":6,"a":1}' real_newer
+    [ -L "$INSTALL_DIR/config/settings.json" ]
+    [ "$(cat "$PD/settings.json")" = '{"config_version":6,"a":1}' ]
+    [ ! -e "$PD/settings.json.pre-restore" ]
+}
+
+@test "an app-written settings.json older than the printer_data copy loses but is kept" {
+    real_vs_pd settings.json '{"config_version":5,"a":0}' '{"config_version":6,"a":1}' pd_newer
+    [ "$(cat "$PD/settings.json")" = '{"config_version":6,"a":1}' ]
+    [ "$(cat "$PD/settings.json.pre-restore")" = '{"config_version":5,"a":0}' ]
+}
+
+@test "a differing real file other than settings.json is kept beside the printer_data copy" {
+    real_vs_pd helixscreen.env 'HELIX_X=default' 'HELIX_X=mine' real_newer
+    [ -L "$INSTALL_DIR/config/helixscreen.env" ]
+    [ "$(cat "$PD/helixscreen.env")" = 'HELIX_X=mine' ]
+    [ "$(cat "$PD/helixscreen.env.pre-restore")" = 'HELIX_X=default' ]
+}
+
+@test "an identical real file leaves no pre-restore copy" {
+    real_vs_pd helixscreen.env 'HELIX_X=1' 'HELIX_X=1' real_newer
+    [ -L "$INSTALL_DIR/config/helixscreen.env" ]
+    [ ! -e "$PD/helixscreen.env.pre-restore" ]
+}
+
+# --- uninstall finds the printer_data copy ---
+
+@test "undo_klipper_includes reads and removes the printer_data ledger when the install dir has none" {
+    . "$WORKTREE_ROOT/scripts/lib/installer/uninstall.sh"
+    mkdir -p "$PD"
+    echo snippet > "$BATS_TEST_TMPDIR/snippet.cfg"
+    echo "cfg:$BATS_TEST_TMPDIR/snippet.cfg" > "$PD/.klipper_includes"
+    [ ! -e "$INSTALL_DIR/config/.klipper_includes" ]
+    undo_klipper_includes
+    [ ! -e "$BATS_TEST_TMPDIR/snippet.cfg" ]
+    [ ! -e "$PD/.klipper_includes" ]
+}
+
+@test "_ledger_path prefers the install dir and falls back to printer_data" {
+    . "$WORKTREE_ROOT/scripts/lib/installer/uninstall.sh"
+    mkdir -p "$PD"
+    echo x > "$PD/.seeded_settings"
+    [ "$(_ledger_path .seeded_settings)" = "$PD/.seeded_settings" ]
+    echo y > "$INSTALL_DIR/config/.seeded_settings"
+    [ "$(_ledger_path .seeded_settings)" = "$INSTALL_DIR/config/.seeded_settings" ]
+    [ "$(_ledger_path .never_written)" = "$INSTALL_DIR/config/.never_written" ]
+}
+
+@test "uninstall removes the platform hook record from printer_data too" {
+    grep -q 'remove_state_file "$(_ledger_path .platform_hook)"' "$WORKTREE_ROOT/scripts/lib/installer/uninstall.sh"
 }

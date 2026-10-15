@@ -55,6 +55,10 @@ cpp	.platform_hook	written by the installer on the device, never exists in a bui
 gradle	.platform_hook	written by the installer on the device, never exists in a build tree
 strip	.platform_hook	written by the installer on the device, never exists in a build tree
 deploy	.platform_hook	written by the installer on the device, never exists in a build tree
+cpp	.nginx_webcam_accesslog	written by the installer on the device, never exists in a build tree
+gradle	.nginx_webcam_accesslog	written by the installer on the device, never exists in a build tree
+strip	.nginx_webcam_accesslog	written by the installer on the device, never exists in a build tree
+deploy	.nginx_webcam_accesslog	written by the installer on the device, never exists in a build tree
 TABLE
 )"
 

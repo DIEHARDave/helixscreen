@@ -69,6 +69,16 @@ _has_no_new_privs() {
 _set_init_script_daemon_dir() {
     _daemon_dir="${HELIX_CHROOT_DAEMON_DIR:-$INSTALL_DIR}"
     _sed_inplace "s|DAEMON_DIR=.*|DAEMON_DIR=\"${_daemon_dir}\"|" "$INIT_SCRIPT_DEST"
+    _set_init_script_pd_helix "$INIT_SCRIPT_DEST"
+}
+
+# Record where user config lives in an init script, beside DAEMON_DIR, so
+# restore-user-config.sh finds it after a web update has removed the install
+# dir. An init script without the line (an older copy) is left untouched.
+# Args: $1 = init script path
+_set_init_script_pd_helix() {
+    grep -q '^HELIX_PD_HELIX=' "$1" 2>/dev/null || return 0
+    _sed_inplace "s|^HELIX_PD_HELIX=.*|HELIX_PD_HELIX=\"$(helix_pd_helix_dir)\"|" "$1"
 }
 
 # Remove a HOST-side init script this install superseded. The payload's own
@@ -395,6 +405,7 @@ install_service_snapmaker_u1() {
     fi
     chmod +x "$init_script"
     _sed_inplace "s|DAEMON_DIR=.*|DAEMON_DIR=\"${INSTALL_DIR}\"|" "$init_script"
+    _set_init_script_pd_helix "$init_script"
 
     # --- Patch S99screen to delegate to helixscreen.init on boot ---
     if [ -f "${INSTALL_DIR}/scripts/snapmaker-u1-setup-autostart.sh" ]; then
@@ -462,6 +473,7 @@ install_service_systemd() {
 
     _sed_inplace "s|@@HELIX_USER@@|${helix_user}|g" "$service_dest"
     _sed_inplace "s|@@HELIX_GROUP@@|${helix_group}|g" "$service_dest"
+    _sed_inplace "s|@@HELIX_PD_HELIX@@|$(helix_pd_helix_dir)|g" "$service_dest"
     _template_install_paths "$service_dest"
 
     if ! run_logged $SUDO systemctl daemon-reload; then

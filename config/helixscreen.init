@@ -27,6 +27,7 @@ export PATH="/usr/sbin:/usr/bin:/sbin:/bin:${PATH:-}"
 NAME="helixscreen"
 DESC="HelixScreen 3D Printer Touch UI"
 DAEMON_DIR="/opt/helixscreen"  # Updated by installer for different firmware
+HELIX_PD_HELIX=""  # Updated by installer: printer_data/config/helixscreen
 DAEMON="${DAEMON_DIR}/bin/helix-screen"
 SPLASH="${DAEMON_DIR}/bin/helix-splash"
 WATCHDOG="${DAEMON_DIR}/bin/helix-watchdog"
@@ -81,6 +82,19 @@ mkdir -p /var/lib/helixscreen 2>/dev/null || mkdir -p "${HOME}/.helixscreen" 2>/
 # Check if binary exists
 [ -x "$DAEMON" ] || exit 0
 
+# A Moonraker type:web update replaces the install dir, taking the config
+# symlinks into printer_data and platform/hooks.sh with it. Put them back before
+# anything below reads helixscreen.env or sources the hooks. Idempotent and
+# quick; a failure never blocks start.
+case "$1" in
+    start|restart|reload)
+        if [ -f "${DAEMON_DIR}/config/restore-user-config.sh" ]; then
+            HELIX_PD_HELIX_DIR="$HELIX_PD_HELIX" \
+                sh "${DAEMON_DIR}/config/restore-user-config.sh" >/dev/null 2>&1 || true
+        fi
+        ;;
+esac
+
 # HELIX_NO_SPLASH is the one operator-settable variable this script consumes
 # before the launcher runs: the early splash gate inside start(). Init runs
 # ahead of the launcher's env-file read, so without this the gate would see
@@ -105,17 +119,6 @@ platform_wait_for_services() { :; }
 platform_pre_start() { :; }
 platform_post_stop() { :; }
 platform_wait_for_boot_complete() { :; }
-
-# A Moonraker type:web update replaces the install dir, taking the config
-# symlinks into printer_data and platform/hooks.sh with it. Put them back before
-# the hooks are sourced below. Idempotent and quick; a failure never blocks start.
-case "$1" in
-    start|restart|reload)
-        if [ -f "${DAEMON_DIR}/config/restore-user-config.sh" ]; then
-            sh "${DAEMON_DIR}/config/restore-user-config.sh" >/dev/null 2>&1 || true
-        fi
-        ;;
-esac
 
 # Source platform hooks if available
 PLATFORM_HOOKS="${DAEMON_DIR}/platform/hooks.sh"

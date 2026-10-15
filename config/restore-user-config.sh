@@ -30,16 +30,21 @@ USER_VAL="${USER_VAL:-}"
 # Runs as root (inherited from the calling service unit), so no sudo needed.
 
 # Keep in sync with scripts/lib/installer/platform.sh.
-HELIX_USER_CONFIG_FILES="settings.json helixscreen.env .disabled_services tool_spools.json crash_history.json user_filaments.json .webcams_backup.json .camera_migrated .klipper_includes .k2cam_webcam_disabled .seeded_settings .platform_hook"
+HELIX_USER_CONFIG_FILES="settings.json helixscreen.env .disabled_services tool_spools.json crash_history.json user_filaments.json .webcams_backup.json .camera_migrated .klipper_includes .k2cam_webcam_disabled .seeded_settings .platform_hook .nginx_webcam_accesslog"
 HELIX_USER_CONFIG_DIRS="custom_images themes printer_database.d"
 
-# Discover printer_data/config/helixscreen/ from the service user's home.
-# Try the service user's home first, then scan common locations.
+# Locate printer_data/config/helixscreen/.
+#
+# The installer records the directory it resolved (HELIX_PD_HELIX_DIR, from the
+# init script or the systemd unit), and that record is the answer. The scan
+# below only serves an install that predates the record; it lists the roots
+# the installer can resolve a Klipper home to, most specific first. /root is
+# last because the K2 and AD5M roots (/mnt/UDISK, /usr/data) sit beside a
+# /root that is not where their config lives.
 # Echoes the path, or nothing when none is found.
 discover_pd_helix() {
-    local user_home=""
+    local user_home="" candidate
 
-    # An explicit location wins (also how the tests point it at a sandbox).
     if [ -n "${HELIX_PD_HELIX_DIR:-}" ] && [ -d "$HELIX_PD_HELIX_DIR" ]; then
         printf '%s' "$HELIX_PD_HELIX_DIR"
         return 0
@@ -49,18 +54,17 @@ discover_pd_helix() {
         user_home=$(eval echo "~${USER_VAL}" 2>/dev/null || echo "")
     fi
 
-    # Check user home first, then common Klipper user homes, then /root
     for candidate in \
         "${user_home}/printer_data/config/helixscreen" \
         /home/pi/printer_data/config/helixscreen \
         /home/biqu/printer_data/config/helixscreen \
         /home/mks/printer_data/config/helixscreen \
-        /root/printer_data/config/helixscreen \
+        /home/qidi/printer_data/config/helixscreen \
+        /home/lava/printer_data/config/helixscreen \
         /usr/data/printer_data/config/helixscreen \
-        /usr/data/config/printer_data/config/helixscreen \
-        /opt/config/printer_data/config/helixscreen \
         /mnt/UDISK/printer_data/config/helixscreen \
-        /etc/klipper/config/helixscreen; do
+        /etc/klipper/config/helixscreen \
+        /root/printer_data/config/helixscreen; do
         [ -z "$candidate" ] && continue
         if [ -d "$candidate" ]; then
             printf '%s' "$candidate"
@@ -149,6 +153,47 @@ install_config_path_ok() {
     return 1
 }
 
+# True when settings.json holds a non-zero config_version: the app wrote it. The
+# release's packaged default carries none, and Config discards such a file in
+# favour of its rolling backup.
+is_app_written_settings() {
+    grep -Eq '"config_version"[[:space:]]*:[[:space:]]*[1-9]' "$1" 2>/dev/null
+}
+
+# Decide between a real file in the install dir and its printer_data twin
+# before the real one is replaced by a symlink. On SysV this runs at the next
+# start, possibly days after the update, so the running app may already have
+# saved into the real file. Neither copy is ever discarded unseen:
+#   - identical content: nothing to keep.
+#   - the real file is newer settings the app wrote: it becomes the
+#     printer_data copy, the old copy is kept as <name>.pre-restore.
+#   - otherwise printer_data wins and the real file is kept as
+#     <name>.pre-restore. A zip's default settings.json is the exception: it
+#     holds nothing of the user's, so it is dropped without a copy.
+# Newer is judged by mtime, but only a file the app wrote can win: zip
+# extraction stamps the release's defaults with the extraction time, which
+# would otherwise always beat the user's file.
+# Returns non-zero when a copy could not be saved; the caller then leaves the
+# real file in place.
+reconcile_real_file() {
+    local name="$1" real="$2" pd="$3"
+
+    cmp -s "$real" "$pd" 2>/dev/null && return 0
+
+    if [ "$name" = "settings.json" ] && ! is_app_written_settings "$real"; then
+        return 0
+    fi
+
+    if [ "$name" = "settings.json" ] && [ -n "$(find "$real" -newer "$pd" 2>/dev/null)" ]; then
+        cp -p "$pd" "${pd}.pre-restore" 2>/dev/null || return 1
+        cp -p "$real" "$pd" 2>/dev/null || return 1
+        return 0
+    fi
+
+    cp -p "$real" "${pd}.pre-restore" 2>/dev/null || return 1
+    return 0
+}
+
 restore_config_symlinks() {
     local install_config="${IDIR}/config"
     [ -d "$install_config" ] || return 0
@@ -171,7 +216,10 @@ restore_config_symlinks() {
 
         # A dotfile is runtime state no release zip ships. A real one here with
         # nothing in printer_data is a ledger written before it was relocated:
-        # move it across so the next rmtree cannot take it.
+        # move it across so the next rmtree cannot take it. Only dotfiles: this
+        # runs after a zip extraction, so any other real file here is the
+        # release's default, not the user's (the installer's own migration,
+        # which runs on a tree the user has been editing, moves every file).
         case "$file" in
             .*)
                 if [ ! -e "$pd_file" ] && [ -f "$install_file" ] && [ ! -L "$install_file" ]; then
@@ -180,9 +228,12 @@ restore_config_symlinks() {
                 ;;
         esac
 
-        # User's config exists in printer_data — replace the default with a symlink
+        # User's config exists in printer_data — replace the real file with a
+        # symlink, after keeping whatever it held that printer_data lacks.
         if [ -f "$pd_file" ]; then
-            # Remove the default file shipped in the ZIP
+            if [ -f "$install_file" ] && [ ! -L "$install_file" ]; then
+                reconcile_real_file "$file" "$install_file" "$pd_file" || continue
+            fi
             rm -f "$install_file" 2>/dev/null
             ln -s "$pd_file" "$install_file" 2>/dev/null || true
         fi
