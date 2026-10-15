@@ -38,7 +38,8 @@ import {
 } from "./queries";
 import { buildDeviceList, buildDevicePage, isDeviceId, type DeviceCountColumn } from "./devices";
 import { buildHealth, releaseRates, type HealthBlock, type HealthRowKey } from "./health";
-import { num, rowsOf } from "./schema";
+import { num, rowsOf, str } from "./schema";
+import { attributePrints, printsByVersion } from "./prints";
 import { buildRetention } from "./retention";
 import {
   snapshotDay,
@@ -575,15 +576,14 @@ export default {
             [...queries, ...startQueries].map((q) => executeQuery(queryConfig, q)),
           );
 
-          const [rateTimeRes, filamentRes, avgDurRes, modelOfDeviceRes, outcomeByDeviceRes, outcomeByVersionRes,
+          const [rateTimeRes, filamentRes, avgDurRes, devicePrintsRes, deviceSessionsRes,
                  slicerRes, fileSizeRes, thumbRes, amsRes, sourceRes] = allResults;
 
           const rateTimeData = rateTimeRes as { data: Array<{ date: string; rate: number; total: number }> };
           const filamentData = filamentRes as { data: Array<{ type: string; success_rate: number; count: number }> };
           const avgDurData = avgDurRes as { data: Array<{ avg_duration_sec: number }> };
-          const modelOfDevice = modelOfDeviceRes as { data: Array<{ device_id: string; model: string }> };
-          const outcomeByDevice = outcomeByDeviceRes as { data: Array<{ device_id: string; successes: number; total: number }> };
-          const outcomeByVersion = outcomeByVersionRes as { data: Array<{ version: string; successes: number; total: number }> };
+          const devicePrints = rowsOf(devicePrintsRes);
+          const deviceSessions = rowsOf(deviceSessionsRes);
           const slicerData = slicerRes as { data: Array<{ name: string; count: number }> };
           const fileSizeData = fileSizeRes as { data: Array<{ name: string; count: number }> };
           const thumbData = thumbRes as { data: Array<{ thumbnail_rate: number }> };
@@ -634,26 +634,14 @@ export default {
             })(),
             not_applicable: notApplicableFor(["prints"], filters),
             avg_duration_sec: avgDurData.data?.[0]?.avg_duration_sec ?? 0,
-            by_model: (() => {
-              const modelOf = new Map<string, string>();
-              for (const r of modelOfDevice.data ?? []) modelOf.set(r.device_id, r.model || "Unknown");
-              const byModel = new Map<string, { successes: number; total: number }>();
-              for (const r of outcomeByDevice.data ?? []) {
-                const model = modelOf.get(r.device_id) ?? "Unknown";
-                const entry = byModel.get(model) ?? { successes: 0, total: 0 };
-                entry.successes += Number(r.successes);
-                entry.total += Number(r.total);
-                byModel.set(model, entry);
-              }
-              return [...byModel.entries()]
-                .map(([model, { successes, total }]) => ({ model, successes, total, rate: total > 0 ? successes / total : null }))
-                .sort((a, b) => b.total - a.total);
-            })(),
-            by_version: (outcomeByVersion.data ?? []).map((r) => ({
-              version: r.version,
-              successes: Number(r.successes),
-              total: Number(r.total),
-              rate: Number(r.total) > 0 ? Number(r.successes) / Number(r.total) : null,
+            by_model: [...attributePrints(devicePrints, deviceSessions, "model", "Unknown")]
+              .map(([model, { successes, total }]) => ({ model, successes, total, rate: total > 0 ? successes / total : null }))
+              .sort((a, b) => b.total - a.total),
+            by_version: printsByVersion(devicePrints, deviceSessions).map((r) => ({
+              version: str(r.ver),
+              successes: num(r.print_successes),
+              total: num(r.print_total),
+              rate: num(r.print_total) > 0 ? num(r.print_successes) / num(r.print_total) : null,
             })),
             start_context: {
               slicers: (slicerData.data ?? []).map((r) => ({ name: r.name, count: r.count })),
@@ -1353,13 +1341,13 @@ export default {
             }
           }
 
-          const [statsRes, devicesRes, printStatsRes, crashingRes, frameRes, rssRes, adoptionRes] =
+          const [statsRes, devicesRes, devicePrintsRes, crashingRes, frameRes, rssRes, adoptionRes, deviceSessionsRes] =
             await Promise.all(releaseScorecardQueries(versions, days, filters).map((q) => executeQuery(queryConfig, q)));
 
           const not_applicable = notApplicableFor(RELEASE_BLOCKS, filters);
           const byVersion = (res: unknown) => new Map(rowsOf(res).map((r) => [String(r.ver), r]));
           const deviceMap = byVersion(devicesRes);
-          const printMap = byVersion(printStatsRes);
+          const printMap = byVersion({ data: printsByVersion(rowsOf(devicePrintsRes), rowsOf(deviceSessionsRes)) });
           const crashingMap = byVersion(crashingRes);
           const frameMap = byVersion(frameRes);
           const rssMap = byVersion(rssRes);

@@ -295,6 +295,20 @@ prints, updates, performance), `stability` (crashes, errors), `prints` (prints) 
 share is `null`, never 0% or 100%. Filter values keep spaces, so `model=Voron 2.4` matches; only
 characters outside letters, digits, space and `. - _ ( ) / +` are stripped.
 
+### Print outcomes per version and model
+
+`print_outcome` rows carry no `printer_model`, and rows from current clients carry an empty
+`app_version`. Print success per model (Prints), per version (Prints, the Releases scorecard
+and the Health release windows) therefore joins through sessions in TypeScript:
+`server/telemetry-worker/src/queries.ts#releasePrintsSql` returns weighted outcomes per
+device and per the version the rows carry, `server/telemetry-worker/src/queries.ts#deviceSessionsSql`
+each device's latest session model and version over the same window, and
+`server/telemetry-worker/src/prints.ts#attributePrints` folds them. A row's own version
+wins; an empty one takes its device's session version; a device with no session in the
+window lands under `unknown` (model `Unknown`), which per-version rates leave out. Each
+Health window attributes through its own window's sessions. A `version` filter still reads
+the print rows' own column, so it drops rows with an empty version.
+
 ## Weighted counts
 
 Analytics Engine samples rows under load and records, in `_sample_interval`, how many

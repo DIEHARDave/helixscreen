@@ -245,9 +245,9 @@ describe("releaseScorecardQueries", () => {
     }
   });
 
-  it("returns the seven scorecard queries, windowed by days", () => {
+  it("returns the eight scorecard queries, windowed by days", () => {
     const sqls = releaseScorecardQueries(["1.0.0"], 14);
-    expect(sqls).toHaveLength(7);
+    expect(sqls).toHaveLength(8);
     for (const sql of sqls) expect(sql).toContain("INTERVAL '14' DAY");
   });
 
@@ -287,12 +287,11 @@ describe("appended performance and prints queries", () => {
     expect(sqls[8]).toContain("memory_snapshot");
   });
 
-  it("printsQueries keeps its three and appends three", () => {
+  it("printsQueries keeps its three and appends the device prints and sessions", () => {
     const sqls = printsQueries(30);
-    expect(sqls).toHaveLength(6);
-    expect(sqls[3]).toContain("argMax");
-    expect(sqls[4]).toContain("print_outcome");
-    expect(sqls[5]).toContain("GROUP BY version");
+    expect(sqls).toHaveLength(5);
+    expect(sqls[3]).toContain("GROUP BY device_id, ver");
+    expect(sqls[4]).toContain("argMax");
   });
 });
 

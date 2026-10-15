@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Health tab payload types and the row folding that builds them. SQL lives in
-// queries.ts. Imports only versions and schema so the dashboard can import
+// queries.ts. Imports only versions, prints and schema so the dashboard can import
 // these types without Worker runtime types.
 
 import { num, str, type NotApplicable, type RawRow } from "./schema";
+import { printsByVersion } from "./prints";
 import { compareVersions } from "./versions";
 
 /** The counts one release's rates are computed from, over one window. */
@@ -54,6 +55,7 @@ export type HealthRowKey =
   | "release_cur" | "release_prev"
   | "release_devices_cur" | "release_devices_prev"
   | "prints_cur" | "prints_prev"
+  | "print_sessions_cur" | "print_sessions_prev"
   | "errors_cur" | "errors_prev" | "errors_baseline"
   | "crashes_cur" | "crashes_prev"
   | "cdn_latest" | "kind_days";
@@ -145,6 +147,8 @@ export function buildHealth(
 ): HealthPayload {
   const r = (k: HealthRowKey): RawRow[] => (rows[k] ?? []) as RawRow[];
   const crashesReported = notApplicable.crashes === null;
+  const printsCur = printsByVersion(r("prints_cur"), r("print_sessions_cur"));
+  const printsPrev = printsByVersion(r("prints_prev"), r("print_sessions_prev"));
 
   const releases = r("top_versions")
     .map((t) => str(t.ver))
@@ -152,8 +156,8 @@ export function buildHealth(
     .sort((a, b) => compareVersions(b, a))
     .map((version) => ({
       version,
-      cur: releaseWindow(version, r("release_cur"), r("release_devices_cur"), r("prints_cur"), crashesReported),
-      prev: releaseWindow(version, r("release_prev"), r("release_devices_prev"), r("prints_prev"), crashesReported),
+      cur: releaseWindow(version, r("release_cur"), r("release_devices_cur"), printsCur, crashesReported),
+      prev: releaseWindow(version, r("release_prev"), r("release_devices_prev"), printsPrev, crashesReported),
     }));
 
   const errKey = (x: RawRow) => `${str(x.category)}\u0000${str(x.code)}`;
