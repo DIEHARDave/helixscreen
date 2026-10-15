@@ -64,9 +64,7 @@ class JobQueueStalenessFixture : public LVGLTestFixture {
 
   protected:
     void pump(int rounds = 10) {
-        for (int i = 0; i < rounds; ++i) {
-            UpdateQueueTestAccess::drain(helix::ui::UpdateQueue::instance());
-        }
+        UpdateQueueTestAccess::drain_all(UpdateQueue::instance(), rounds);
     }
 
     MoonrakerClientMock client_;

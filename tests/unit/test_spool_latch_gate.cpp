@@ -15,6 +15,7 @@
 #include "../../include/ui_probe_overlay.h"
 #include "../../src/api/moonraker_gcode_guards.h"
 #include "../lvgl_test_fixture.h"
+#include "../test_helpers/update_queue_test_access.h"
 #include "../ui_test_utils.h"
 #include "app_globals.h"
 
@@ -180,14 +181,10 @@ TEST_CASE_METHOD(SpoolLatchFixture, "machine_motion_blocked is job_holds_machine
     CHECK(lv_subject_get_int(blocked) == 0);
 
     state.print_state().set_print_start_state(PrintStartPhase::BED_MESH, "", 0);
-    for (int pass = 0; pass < 8; ++pass) {
-        helix::ui::UpdateQueue::instance().drain();
-    }
+    helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
     CHECK(lv_subject_get_int(blocked) == 1);
     state.print_state().set_print_start_state(PrintStartPhase::IDLE, "", 0);
-    for (int pass = 0; pass < 8; ++pass) {
-        helix::ui::UpdateQueue::instance().drain();
-    }
+    helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
     CHECK(lv_subject_get_int(blocked) == 0);
 }
 

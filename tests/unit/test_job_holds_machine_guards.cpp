@@ -37,6 +37,7 @@
 #include "../lvgl_test_fixture.h"
 #include "../test_helpers/post_unload_grace_test_access.h"
 #include "../test_helpers/trait_probe_backend.h"
+#include "../test_helpers/update_queue_test_access.h"
 #include "../ui_test_utils.h"
 #include "ams_backend_ad5x_ifs.h"
 #include "ams_backend_cfs.h"
@@ -83,9 +84,7 @@ void drive_lifecycle(PrinterState& ps, const char* wire_state,
     ps.update_from_status(json{{"print_stats", {{"state", wire_state}}}});
     ps.print_state().set_print_start_state(phase, "", 0);
     // set_print_start_state defers, and its callback publishes the lifecycle.
-    for (int i = 0; i < 8; ++i) {
-        helix::ui::UpdateQueue::instance().drain();
-    }
+    helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
 }
 
 PrintState published_lifecycle(PrinterState& ps) {

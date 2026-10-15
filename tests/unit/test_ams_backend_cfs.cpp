@@ -11,6 +11,7 @@
 #include "../lvgl_ui_test_fixture.h"
 #include "../test_helpers/filament_slot_override_store_test_access.h"
 #include "../test_helpers/mock_printer.h"
+#include "../test_helpers/update_queue_test_access.h"
 #include "../ui_test_utils.h"
 #include "ams_backend_cfs.h"
 #include "ams_remap.h"
@@ -235,9 +236,7 @@ class CfsCalibHelper : public CfsLifecycleHelper {
 // so a defer chain (home done -> PREPARE sent -> prepare done) needs one drain
 // per hop. Eight covers the longest chain these tests drive (save: two hops).
 void drain_calib_queue() {
-    for (int i = 0; i < 8; ++i) {
-        helix::ui::UpdateQueue::instance().drain();
-    }
+    helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
 }
 } // namespace
 
@@ -6704,9 +6703,7 @@ TEST_CASE("CFS: a failed pre-op G28 does not send the envelope unwind", "[ams][c
     CfsTestAccess::dispatch_action_script(backend, "CR_BOX_LOAD TNN=0");
     // token.defer() can queue from inside a drain, so drain until quiet or the
     // callback is left behind and the isolation-leak gate names this test.
-    for (int i = 0; i < 4; ++i) {
-        helix::ui::UpdateQueue::instance().drain();
-    }
+    helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
 
     // The G28 went out and failed, so the payload never shipped.
     REQUIRE(api.contains("G28"));
@@ -6732,9 +6729,7 @@ TEST_CASE("CFS: a failed payload still sends the envelope unwind", "[ams][cfs][h
     CfsTestAccess::dispatch_action_script(backend, "CR_BOX_LOAD TNN=0");
     // token.defer() can queue from inside a drain, so drain until quiet or the
     // callback is left behind and the isolation-leak gate names this test.
-    for (int i = 0; i < 4; ++i) {
-        helix::ui::UpdateQueue::instance().drain();
-    }
+    helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
 
     REQUIRE(api.contains("G28"));
     REQUIRE(api.contains("CR_BOX_LOAD"));

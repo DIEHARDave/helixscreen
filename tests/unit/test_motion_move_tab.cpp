@@ -23,6 +23,7 @@
 #include "ui_utils.h"
 
 #include "../lvgl_ui_test_fixture.h"
+#include "../test_helpers/update_queue_test_access.h"
 #include "../ui_test_utils.h"
 #include "app_globals.h"
 #include "moonraker_api.h"
@@ -135,9 +136,7 @@ class MoveTabFixture : public LVGLUITestFixture {
     }
 
     static void drain() {
-        for (int i = 0; i < 8; ++i) {
-            helix::ui::UpdateQueue::instance().drain();
-        }
+        helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
     }
 
     static void click(lv_obj_t* widget) {

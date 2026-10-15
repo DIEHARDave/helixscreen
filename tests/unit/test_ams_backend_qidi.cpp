@@ -2591,9 +2591,7 @@ TEST_CASE("QIDI Box clear writes the firmware zeros while a print is active", "[
     REQUIRE(QidiBoxTestAccess::get_override(backend, 0).has_value());
 
     helix::test::set_wire_state(state, helix::PrintJobState::PRINTING);
-    for (int i = 0; i < 8; ++i) {
-        helix::ui::UpdateQueue::instance().drain();
-    }
+    helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
     REQUIRE(state.print_state().get_print_lifecycle() == PrintState::Printing);
 
     backend.clear_slot_override(0);

@@ -242,9 +242,7 @@ TEST_CASE_METHOD(HelixTestFixture,
 
     auto card = [&state]() {
         // The plugin lands through the queue and its observer queues the count.
-        for (int i = 0; i < 4; ++i) {
-            helix::ui::UpdateQueue::instance().drain();
-        }
+        helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
         return lv_subject_get_int(
             state.composite_visibility_state().get_has_any_preprint_options_subject());
     };
@@ -286,18 +284,14 @@ TEST_CASE_METHOD(HelixTestFixture,
     state.set_helix_plugin_installed(true);
     helix::ui::UpdateQueue::instance().drain();
     device.reset();
-    for (int i = 0; i < 4; ++i) {
-        helix::ui::UpdateQueue::instance().drain();
-    }
+    helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
     CHECK(manager.gcode_rewrite_block() == helix::GcodeRewriteBlock::None);
 
     // Clearing the dependencies drops the observer, so a later change queues
     // nothing for this manager.
     manager.set_dependencies(nullptr, nullptr);
     state.set_helix_plugin_installed(false);
-    for (int i = 0; i < 4; ++i) {
-        helix::ui::UpdateQueue::instance().drain();
-    }
+    helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
 }
 
 TEST_CASE("PrintPreparationManager: get_temp_directory", "[print_preparation][safety]") {
@@ -3635,9 +3629,7 @@ namespace {
 /// Run queued callbacks until nothing new is enqueued. Each drain() swaps out
 /// one batch, and these stages enqueue their successor from inside a batch.
 void drain_until_quiet() {
-    for (int i = 0; i < 16; ++i) {
-        UpdateQueue::instance().drain();
-    }
+    UpdateQueueTestAccess::drain_all(UpdateQueue::instance(), 16);
 }
 
 /// Number of lines equal to @p want once any trailing CR is stripped.
