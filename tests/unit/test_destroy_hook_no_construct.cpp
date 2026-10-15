@@ -57,6 +57,15 @@ class DestroyHookFixture : public LVGLUITestFixture {
         StaticPanelRegistry::instance().destroy_all();
         UpdateQueue::instance().drain();
     }
+
+  protected:
+    // Written by a check hook registered in the test body. Members, not
+    // locals: a failed REQUIRE skips the test's destroy_all(), and the
+    // destructor's free_globals() then runs the hook after the body's locals
+    // are gone.
+    const void* expected_panel_ = nullptr;
+    bool alive_at_check_ = false;
+    bool subject_at_check_ = true;
 };
 
 bool xml_subject_exists(const char* name) {
@@ -100,19 +109,18 @@ TEST_CASE_METHOD(DestroyHookFixture,
 TEST_CASE_METHOD(DestroyHookFixture, "HomePanelSubjects hook deinits the live global's subjects",
                  "[destroy_hook][home]") {
     HomePanel& panel = get_global_home_panel();
-    bool alive_at_check = false;
-    bool subject_at_check = true;
+    expected_panel_ = &panel;
     // Runs between the subjects hook and the panel's own destruction.
-    StaticPanelRegistry::instance().register_destroy("HomeHookCheck", [&] {
-        alive_at_check = lazy_global_if_exists<HomePanel>() == &panel;
-        subject_at_check = xml_subject_exists("home_populated_pages");
+    StaticPanelRegistry::instance().register_destroy("HomeHookCheck", [this] {
+        alive_at_check_ = lazy_global_if_exists<HomePanel>() == expected_panel_;
+        subject_at_check_ = xml_subject_exists("home_populated_pages");
     });
     panel.init_subjects();
     REQUIRE(xml_subject_exists("home_populated_pages"));
 
     StaticPanelRegistry::instance().destroy_all();
-    CHECK(alive_at_check);
-    CHECK_FALSE(subject_at_check);
+    CHECK(alive_at_check_);
+    CHECK_FALSE(subject_at_check_);
 }
 
 // ---------------------------------------------------------------------------
@@ -149,18 +157,17 @@ TEST_CASE_METHOD(DestroyHookFixture,
 TEST_CASE_METHOD(DestroyHookFixture, "BedMeshPanelSubjects hook deinits the live global's subjects",
                  "[destroy_hook][bed_mesh]") {
     BedMeshPanel& panel = get_global_bed_mesh_panel();
-    bool alive_at_check = false;
-    bool subject_at_check = true;
-    StaticPanelRegistry::instance().register_destroy("BedMeshHookCheck", [&] {
-        alive_at_check = lazy_global_if_exists<BedMeshPanel>() == &panel;
-        subject_at_check = xml_subject_exists("bed_mesh_calibrate_state");
+    expected_panel_ = &panel;
+    StaticPanelRegistry::instance().register_destroy("BedMeshHookCheck", [this] {
+        alive_at_check_ = lazy_global_if_exists<BedMeshPanel>() == expected_panel_;
+        subject_at_check_ = xml_subject_exists("bed_mesh_calibrate_state");
     });
     panel.init_subjects();
     REQUIRE(xml_subject_exists("bed_mesh_calibrate_state"));
 
     StaticPanelRegistry::instance().destroy_all();
-    CHECK(alive_at_check);
-    CHECK_FALSE(subject_at_check);
+    CHECK(alive_at_check_);
+    CHECK_FALSE(subject_at_check_);
 }
 
 // ---------------------------------------------------------------------------
