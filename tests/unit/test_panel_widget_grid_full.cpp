@@ -27,6 +27,7 @@
 
 #include "../test_fixtures.h"
 #include "../test_helpers/layout_manager_test_access.h"
+#include "../test_helpers/scoped_xml_component_stub.h"
 #include "../ui_test_utils.h"
 #include "config.h"
 #include "connection_state.h"
@@ -108,9 +109,6 @@ class ScopedSpyFactories {
 void register_spy_component() {
     lv_xml_register_component_from_data(
         "test_grid_full_spy_widget",
-        "<component><view extends=\"lv_obj\" width=\"100%\" height=\"100%\"/></component>");
-    lv_xml_register_component_from_data(
-        "panel_widget_firmware_restart",
         "<component><view extends=\"lv_obj\" width=\"100%\" height=\"100%\"/></component>");
 }
 
@@ -286,6 +284,10 @@ class GridFullFixture : public XMLTestFixture {
     ~GridFullFixture() override {
         LayoutManagerTestAccess::reset(helix::LayoutManager::instance());
     }
+
+    // populate_widgets() injects the firmware_restart tile while Klipper is not
+    // READY; a quiet stand-in keeps that build path free of its dependencies.
+    helix::test::ScopedXmlComponentStub firmware_restart_stub_{"panel_widget_firmware_restart"};
 
     WarningSpy warnings;
 

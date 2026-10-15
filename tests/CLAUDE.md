@@ -21,7 +21,12 @@ make land-gate                 # full-test-run + CI's 8-shard layout + tests/ui 
 ```
 
 `make -j` builds **only** the app binary. Run `make test` before `./build/bin/helix-tests`
-or you are testing a stale binary.
+or you are testing a stale binary. The binary says so: run from a checkout where a file it
+is compiled from differs from its build, it prints a one-line `WARNING: helix-tests is
+stale` to stderr before the run (build-time stamp from `scripts/tree_stamp.sh`, over the
+files `scripts/test_link_sources.py` lists; `HELIX_TESTS_NO_STALE_CHECK=1` skips it, and
+runs make starts skip it because make just rebuilt the binary). A run from a tree with no `.git` (an rsynced
+mirror, an unpacked artifact) checks nothing. ui_xml/ and assets/ are read at run time and never stale it.
 
 ---
 
