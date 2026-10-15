@@ -497,6 +497,24 @@ TEST_CASE("CFS auto-refill device action sends an explicit ENABLE", "[ams][cfs]"
     }
 }
 
+TEST_CASE("CFS actions name their guided flows", "[ams][cfs][calib]") {
+    CfsK1RemapHelper backend;
+
+    const auto cutter = find_action(backend, "calibrate_cutter");
+    REQUIRE(cutter.has_value());
+    CHECK(cutter->guided_flow == "cfs_cutter");
+
+    const auto chute = find_action(backend, "calibrate_purge_chute");
+    REQUIRE(chute.has_value());
+    CHECK(chute->guided_flow == "cfs_purge_chute");
+
+    // An ordinary action runs straight through the backend.
+    const auto refill = find_action(backend, "toggle_auto_refill");
+    if (refill.has_value()) {
+        CHECK(refill->guided_flow.empty());
+    }
+}
+
 TEST_CASE("CFS calibration section and actions are K1-stock only (#1282)", "[ams][cfs][calib]") {
     SECTION("K1 dialect exposes both calibration actions in one section") {
         CfsK1RemapHelper backend;
@@ -2596,6 +2614,19 @@ TEST_CASE("CFS override loaded at init is applied over firmware data",
     CHECK(info.color_rgb == 0xFF5500u);
 }
 
+TEST_CASE("a CFS backend start migrates the legacy override namespace",
+          "[ams][cfs][filament_slot_override][migration]") {
+    MockPrinter mock_printer;
+    mock_printer.client.mock_db_set(
+        "helix-screen", "cfs_slot_overrides",
+        json{{"0", json{{"brand", "Polymaker"}, {"material", "PLA"}, {"color_rgb", 0xFF5500}}}});
+
+    helix::printer::AmsBackendCfs backend(&mock_printer.api, nullptr);
+    CfsTestAccess::start_load(backend);
+
+    CHECK(mock_printer.client.mock_db_get("helix-screen", "cfs_slot_overrides").is_null());
+}
+
 TEST_CASE("CFS migrates from helix-screen:cfs_slot_overrides on first startup",
           "[ams][cfs][filament_slot_override][migration]") {
     // Pre-Task-8 CFS wrote per-slot overrides to
@@ -2622,7 +2653,8 @@ TEST_CASE("CFS migrates from helix-screen:cfs_slot_overrides on first startup",
     };
     mock_printer.client.mock_db_set("helix-screen", "cfs_slot_overrides", legacy);
 
-    helix::ams::FilamentSlotOverrideStore store(&api, "cfs");
+    helix::ams::FilamentSlotOverrideStore store(&api, "cfs", helix::ams::LaneKeyStyle::Lane,
+                                                "lane_data", true);
     FilamentSlotOverrideStoreTestAccess::set_cache_directory(store, tmp.path);
     auto loaded = store.load_blocking();
 

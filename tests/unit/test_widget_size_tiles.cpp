@@ -248,13 +248,50 @@ TEST_CASE("half a cell at the small tiers depends on whether the tile shows a re
         CHECK_FALSE(reading.fits(40, 76));
     }
 
-    SECTION("micro: every tile floors at a whole cell") {
+    SECTION("micro: a lone glyph takes half a cell, a reading floors at a whole one") {
         helix::test::ScopedBreakpoint bp(UiBreakpoint::Micro);
         const CellMetrics m{34.0f, 30.0f, 2, 12, 8};
         icon_only.set_cell_metrics(m);
-        CHECK_FALSE(icon_only.fits(34, 64));
-        CHECK(icon_only.fits(70, 64));
+        reading.set_cell_metrics(m);
+        CHECK(icon_only.fits(34, 30));
+        CHECK_FALSE(reading.fits(34, 64));
+        CHECK_FALSE(reading.fits(70, 30));
+        CHECK(reading.fits(70, 64));
     }
+}
+
+TEST_CASE("a glyph-only tile is not charged its stack's gap", "[widget_size][tile]") {
+    // Two tiles identical but for the gap between glyph and label. With the
+    // label off, the glyph is the only part drawn, so the gap must not shrink it.
+    LVGLUITestFixture fixture;
+    helix::test::ScopedBreakpoint bp(UiBreakpoint::Micro);
+    const CellMetrics m{34.0f, 30.0f, 2, 12, 8};
+
+    auto make_stack = [&](int row_gap) {
+        lv_obj_t* root = lv_obj_create(fixture.test_screen());
+        lv_obj_set_style_pad_all(root, 0, LV_PART_MAIN);
+        lv_obj_set_flex_flow(root, LV_FLEX_FLOW_COLUMN);
+        lv_obj_set_style_pad_row(root, row_gap, LV_PART_MAIN);
+        lv_obj_set_style_pad_column(root, row_gap, LV_PART_MAIN);
+        lv_obj_create(root);
+        lv_obj_t* label = lv_obj_create(root);
+        lv_obj_add_flag(label, LV_OBJ_FLAG_HIDDEN);
+        return root;
+    };
+
+    helix::TileSizing tight("lock:tight");
+    helix::TileSizing loose("lock:loose");
+    tight.set_content({"", "", "", false});
+    loose.set_content({"", "", "", false});
+    tight.set_cell_metrics(m);
+    loose.set_cell_metrics(m);
+    tight.set_content_root(make_stack(1));
+    loose.set_content_root(make_stack(16));
+
+    tight.measure_and_publish(50, 50);
+    loose.measure_and_publish(50, 50);
+    REQUIRE(tight.icon_rung() > 0);
+    CHECK(loose.icon_rung() == tight.icon_rung());
 }
 
 TEST_CASE("every centred-icon tile resolves a different glyph at two sizes",

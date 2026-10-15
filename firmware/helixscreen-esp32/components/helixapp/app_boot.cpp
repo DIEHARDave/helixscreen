@@ -40,6 +40,7 @@
 #include "ui_dialog.h"
 #include "ui_gcode_viewer.h"
 #include "ui_gradient_canvas.h"
+#include "ui_guided_device_flow.h"
 #include "ui_icon.h"
 #include "ui_nav_manager.h"
 #include "ui_notification_history.h"
@@ -943,6 +944,7 @@ extern "C" void app_boot_ui(void) {
     // expat parse each) — the milestone brackets it so the HIL profile can
     // separate registration cost from panel-build cost (subjects-up → home).
     helix::register_xml_components();
+    helix::ui::register_cfs_device_flows();
     log_heap_milestone("xml-registered");
 
     // The bell opens the notification history panel. Registered BEFORE

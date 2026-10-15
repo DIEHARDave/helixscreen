@@ -298,7 +298,7 @@
         <event_cb trigger="clicked" callback="advanced_restart_klipper_clicked"/>
       </ui_button>
       <ui_button name="advanced_firmware_restart_btn"
-                 height="#button_height_sm" icon="update" text="Firmware Restart" variant="secondary">
+                 height="#button_height_sm" icon="cog_refresh" text="Firmware Restart" variant="secondary">
         <bind_style_if name="estop_btn_stacked" cond="ui_is_portrait"/>
         <bind_style_if name="estop_btn_inline" cond="ui_is_portrait" invert="true"/>
         <event_cb trigger="clicked" callback="advanced_firmware_restart_clicked"/>

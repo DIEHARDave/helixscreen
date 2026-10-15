@@ -80,12 +80,12 @@
             <bind_state_if_eq subject="ams_slot_can_purge" state="disabled" ref_value="0"/>
             <event_cb trigger="clicked" callback="ams_context_purge_cb"/>
           </ui_button>
-          <!-- Eject hint (QIDI Box): a lane has ejectable filament but
-               [force_move] enable_force_move is off, so eject is unavailable.
-               Revealed from C++ instead of silently omitting the action (#1041). -->
+          <!-- Eject refusal the user can act on. Text and visibility both come from
+               AmsBackend::eject_unavailable_reason(). -->
           <text_small name="eject_force_move_hint"
-                      width="100%" long_mode="wrap" text="Eject needs [force_move] enabled in printer config"
-                      style_text_color="#text_muted" hidden="true"/>
+                      width="100%" long_mode="wrap" bind_text="ams_slot_eject_hint" style_text_color="#text_muted">
+            <bind_flag_if_eq subject="ams_slot_eject_hint_visible" flag="hidden" ref_value="0"/>
+          </text_small>
           <!-- Unload/Unmount refusal the user can act on (e.g. a tool changer
                whose dock sensors cannot identify the mounted tool). Text and
                visibility both come from AmsBackend::unload_blocked_reason(). -->

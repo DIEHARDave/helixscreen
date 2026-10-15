@@ -436,7 +436,8 @@ void AmsBackendCfs::on_started() {
     // lane_data is empty (Task 8).
     if (api_) {
         auto loaded =
-            helix::ams::make_loaded_override_store(api_, "cfs", get_type(), backend_log_tag());
+            helix::ams::make_loaded_override_store(api_, "cfs", get_type(), backend_log_tag(),
+                                                   "lane_data", /*migrates_legacy_namespace=*/true);
         if (loaded.store) {
             helix::ams::ingest_legacy_records(*loaded.store, helix::ams::LegacyLockKeys::LaneData,
                                               backend_index());
@@ -1253,14 +1254,22 @@ AmsSystemInfo AmsBackendCfs::parse_flat_box_status(const nlohmann::json& box_jso
         }
     }
 
-    // One environment reading covers the chain; giving it to every box would
-    // show the same sensor as several zones.
-    bool environment_placed = false;
+    // The payload carries one environment reading, taken from the box named by
+    // load_path.box_addr (1-based; null when nothing is loaded). Only that box
+    // shows it; giving it to every box would show one sensor as several zones.
+    // With no usable address it stays on the first box.
+    int environment_address = boxes.empty() ? -1 : boxes.begin()->first;
+    if (auto path_it = box_json.find("load_path");
+        path_it != box_json.end() && path_it->is_object()) {
+        const int box_addr = helix::json_util::safe_int(*path_it, "box_addr", 0);
+        if (boxes.count(box_addr - 1) != 0) {
+            environment_address = box_addr - 1;
+        }
+    }
     for (auto& [address, box] : boxes) {
-        if (environment_placed) {
+        if (address != environment_address) {
             box.environment.reset();
         }
-        environment_placed = environment_placed || box.environment.has_value();
         info.units.push_back(std::move(box));
     }
     reserve_address_gaps(info);
@@ -4273,10 +4282,13 @@ std::vector<helix::printer::DeviceAction> AmsBackendCfs::get_device_actions() co
         if (print_blocks) {
             reason = "Printer is busy with a print";
         }
-        for (DA a : {DA::button("calibrate_cutter", "Calibrate Cutter", "calibration", "",
-                                "Home and sweep the cutter to re-find its position"),
-                     DA::button("calibrate_purge_chute", "Calibrate Purge Chute", "calibration", "",
-                                "Guide the toolhead to the chute's extrude position")}) {
+        DA cutter = DA::button("calibrate_cutter", "Calibrate Cutter", "calibration", "",
+                               "Home and sweep the cutter to re-find its position");
+        cutter.guided_flow = "cfs_cutter";
+        DA chute = DA::button("calibrate_purge_chute", "Calibrate Purge Chute", "calibration", "",
+                              "Guide the toolhead to the chute's extrude position");
+        chute.guided_flow = "cfs_purge_chute";
+        for (DA a : {std::move(cutter), std::move(chute)}) {
             a.enabled = !print_blocks;
             a.disable_reason = reason;
             actions.push_back(std::move(a));

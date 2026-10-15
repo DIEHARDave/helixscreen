@@ -425,6 +425,8 @@ src/ui/ui_ams_current_tool.cpp
 src/ui/ui_ams_device_operations_overlay.cpp
 src/ui/ui_ams_device_section_detail_overlay.cpp
 src/ui/ui_cfs_chute_calibration_overlay.cpp
+src/ui/ui_cfs_device_flows.cpp
+src/ui/ui_guided_device_flow.cpp
 src/ui/ui_ams_edit_overlay.cpp
 src/ui/ui_ams_environment_overlay.cpp
 src/ui/ui_ams_zone_overview_overlay.cpp

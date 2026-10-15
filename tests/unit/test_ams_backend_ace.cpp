@@ -1341,6 +1341,20 @@ TEST_CASE("ACE override loaded at init is applied over firmware data",
     CHECK(info.material == "PLA");
 }
 
+TEST_CASE("an ACE backend start migrates the legacy override namespace",
+          "[ams][ace][filament_slot_override][migration]") {
+    AceTmpCacheDir tmp("start_migration");
+    MockPrinter mock_printer;
+    mock_printer.client.mock_db_set(
+        "helix-screen", "ace_slot_overrides",
+        json{{"0", json{{"brand", "Polymaker"}, {"material", "PLA"}, {"color_rgb", 0xFF5500}}}});
+
+    AmsBackendAce backend(&mock_printer.api, nullptr);
+    helix::AceTestAccess::start_load(backend);
+
+    CHECK(mock_printer.client.mock_db_get("helix-screen", "ace_slot_overrides").is_null());
+}
+
 TEST_CASE("ACE migrates from helix-screen:ace_slot_overrides on first startup",
           "[ams][ace][filament_slot_override][migration]") {
     // Pre-Task-8 ACE wrote per-slot overrides to
@@ -1367,7 +1381,8 @@ TEST_CASE("ACE migrates from helix-screen:ace_slot_overrides on first startup",
     };
     mock_printer.client.mock_db_set("helix-screen", "ace_slot_overrides", legacy);
 
-    helix::ams::FilamentSlotOverrideStore store(&api, "ace");
+    helix::ams::FilamentSlotOverrideStore store(&api, "ace", helix::ams::LaneKeyStyle::Lane,
+                                                "lane_data", true);
     FilamentSlotOverrideStoreTestAccess::set_cache_directory(store, tmp.path);
     auto loaded = store.load_blocking();
 

@@ -45,6 +45,9 @@ lv_subject_t AmsContextMenu::slot_mounts_tool_subject_;
 lv_subject_t AmsContextMenu::slot_unload_hint_subject_;
 lv_subject_t AmsContextMenu::slot_unload_hint_visible_subject_;
 char AmsContextMenu::slot_unload_hint_buf_[128];
+lv_subject_t AmsContextMenu::slot_eject_hint_subject_;
+lv_subject_t AmsContextMenu::slot_eject_hint_visible_subject_;
+char AmsContextMenu::slot_eject_hint_buf_[128];
 lv_subject_t AmsContextMenu::slot_can_clear_subject_;
 lv_subject_t AmsContextMenu::slot_clear_hint_subject_;
 lv_subject_t AmsContextMenu::slot_clear_hint_visible_subject_;
@@ -66,6 +69,9 @@ void AmsContextMenu::init_subjects() {
     lv_subject_init_int(&slot_unload_hint_visible_subject_, 0);
     lv_subject_init_string(&slot_unload_hint_subject_, slot_unload_hint_buf_, nullptr,
                            sizeof(slot_unload_hint_buf_), "");
+    lv_subject_init_int(&slot_eject_hint_visible_subject_, 0);
+    lv_subject_init_string(&slot_eject_hint_subject_, slot_eject_hint_buf_, nullptr,
+                           sizeof(slot_eject_hint_buf_), "");
     lv_subject_init_int(&slot_can_clear_subject_, 1);
     lv_subject_init_int(&slot_clear_hint_visible_subject_, 0);
     lv_subject_init_string(&slot_clear_hint_subject_, slot_clear_hint_buf_, nullptr,
@@ -79,6 +85,9 @@ void AmsContextMenu::init_subjects() {
     lv_xml_register_subject(nullptr, "ams_slot_unload_hint", &slot_unload_hint_subject_);
     lv_xml_register_subject(nullptr, "ams_slot_unload_hint_visible",
                             &slot_unload_hint_visible_subject_);
+    lv_xml_register_subject(nullptr, "ams_slot_eject_hint", &slot_eject_hint_subject_);
+    lv_xml_register_subject(nullptr, "ams_slot_eject_hint_visible",
+                            &slot_eject_hint_visible_subject_);
     lv_xml_register_subject(nullptr, "ams_slot_can_clear", &slot_can_clear_subject_);
     lv_xml_register_subject(nullptr, "ams_slot_clear_hint", &slot_clear_hint_subject_);
     lv_xml_register_subject(nullptr, "ams_slot_clear_hint_visible",
@@ -245,6 +254,8 @@ void AmsContextMenu::on_created(lv_obj_t* menu_obj) {
         lv_subject_set_int(&slot_mounts_tool_subject_, 0);
         lv_subject_copy_string(&slot_unload_hint_subject_, "");
         lv_subject_set_int(&slot_unload_hint_visible_subject_, 0);
+        lv_subject_copy_string(&slot_eject_hint_subject_, "");
+        lv_subject_set_int(&slot_eject_hint_visible_subject_, 0);
 
         lv_subject_set_int(&slot_can_purge_subject_, ext_gating.purge_disabled ? 0 : 1);
         if (lv_obj_t* btn_purge =
@@ -396,19 +407,14 @@ void AmsContextMenu::on_created(lv_obj_t* menu_obj) {
     lv_subject_copy_string(&slot_unload_hint_subject_, unload_hint.c_str());
     lv_subject_set_int(&slot_unload_hint_visible_subject_, unload_hint.empty() ? 0 : 1);
 
-    // QIDI Box: a lane with ejectable filament but [force_move] enable_force_move
-    // off means eject is unavailable (supports_lane_eject() is false). Surface a
-    // one-line hint pointing at the config instead of silently omitting the
-    // action — for QIDI, !supports_eject here can only mean force_move is off
-    // (the box always supports eject otherwise). See #1041.
-    if (backend_ && backend_->get_type() == AmsType::QIDI_BOX && !backend_->supports_lane_eject() &&
-        !pending_is_loaded_ && ops.presence.value_or(false)) {
-        lv_obj_t* hint =
-            helix::ui::find_required(menu_obj, "eject_force_move_hint", "AmsContextMenu");
-        if (hint) {
-            lv_obj_remove_flag(hint, LV_OBJ_FLAG_HIDDEN);
-        }
-    }
+    // Eject is offered only on a lane that is not the loaded one (the loaded lane shows
+    // Unload). When the backend cannot eject it, it says why instead of the action
+    // silently disappearing.
+    const std::string eject_hint = (backend_ && !pending_is_loaded_)
+                                       ? backend_->eject_unavailable_reason(slot_index)
+                                       : std::string();
+    lv_subject_copy_string(&slot_eject_hint_subject_, eject_hint.c_str());
+    lv_subject_set_int(&slot_eject_hint_visible_subject_, eject_hint.empty() ? 0 : 1);
 
     lv_subject_set_int(&slot_can_load_subject_, ops.can_load ? 1 : 0);
     if (!ops.can_load) {

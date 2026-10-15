@@ -1,0 +1,43 @@
+// Copyright (C) 2026 356C LLC
+// SPDX-License-Identifier: GPL-3.0-or-later
+#pragma once
+
+#include "lvgl/lvgl.h"
+
+#include <functional>
+#include <string>
+
+namespace helix::ui {
+
+/**
+ * @brief A device action's multi-step UI, registered by id.
+ *
+ * A DeviceAction that names a flow in `guided_flow` is started through it instead of
+ * being executed and toasted. A vendor module registers its flows once at startup, so the
+ * generic section overlay never names the vendor or its dialogs.
+ *
+ * @threading Main thread only
+ */
+struct GuidedDeviceFlow {
+    /// Appends the flow's status widgets to the section's action container, once per
+    /// section build. Null when the flow has nothing to show in the section.
+    std::function<void(lv_obj_t* actions_container)> attach_status;
+    /// Runs the flow when its action's button is clicked. @p label is the action's label.
+    std::function<void(const std::string& label)> start;
+};
+
+/// Registers @p flow under @p id, replacing any earlier registration.
+void register_guided_device_flow(const std::string& id, GuidedDeviceFlow flow);
+
+/// Removes the registration for @p id, if any.
+void unregister_guided_device_flow(const std::string& id);
+
+/// The flow registered under @p id, or null. The pointer is valid until the next
+/// register/unregister call.
+const GuidedDeviceFlow* find_guided_device_flow(const std::string& id);
+
+/// Registers the Creality CFS calibration flows (`cfs_purge_chute`, `cfs_cutter`). Does
+/// nothing in a build without CFS support.
+void register_cfs_device_flows();
+
+} // namespace helix::ui

@@ -311,7 +311,7 @@ empty head and cancels the print on runout (`include/ams_backend_snapmaker.h#Ams
 
 Send ordering is guaranteed on our side of the wire. Both start paths gate on
 `requires_preprint_send()` and hand the real start step to
-`send_snapmaker_preprint_then()` as its completion continuation, then `return` - the
+`send_backend_preprint_then()` as its completion continuation, then `return` - the
 start cannot fire first (`src/ui/ui_print_start_controller.cpp#execute_print_start`, reprint
 `:454-471`). The built gcode goes out as a single `printer.gcode.script` JSON-RPC with a
 15 s timeout (`:355-404`, dispatched at `src/api/moonraker_api_controls.cpp#execute_gcode`); the

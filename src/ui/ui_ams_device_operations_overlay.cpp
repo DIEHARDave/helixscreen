@@ -84,7 +84,8 @@ void AmsDeviceOperationsOverlay::init_subjects() {
                                "ams_device_ops_printer_retains_spool_info", subjects_);
 
         // QIDI Box gating + eject distance/velocity value displays
-        UI_MANAGED_SUBJECT_INT(is_qidi_subject_, 0, "ams_device_ops_is_qidi", subjects_);
+        UI_MANAGED_SUBJECT_INT(has_eject_params_subject_, 0, "ams_device_ops_has_eject_params",
+                               subjects_);
         UI_MANAGED_SUBJECT_STRING(qidi_eject_distance_display_subject_, qidi_eject_distance_buf_,
                                   "", "ams_device_ops_qidi_eject_distance_display", subjects_);
         UI_MANAGED_SUBJECT_STRING(qidi_eject_velocity_display_subject_, qidi_eject_velocity_buf_,
@@ -347,7 +348,7 @@ void AmsDeviceOperationsOverlay::update_from_backend() {
         lv_subject_set_int(&bypass_is_virtual_subject_, 0);
         lv_subject_set_int(&reports_spool_ids_subject_, 0);
         lv_subject_set_int(&printer_retains_spool_info_subject_, 0);
-        lv_subject_set_int(&is_qidi_subject_, 0);
+        lv_subject_set_int(&has_eject_params_subject_, 0);
         lv_subject_set_int(&can_reset_endless_spool_subject_, 0);
         lv_subject_set_int(&can_abort_subject_, 0);
         details_buf_[0] = '\0';
@@ -434,7 +435,7 @@ void AmsDeviceOperationsOverlay::update_from_backend() {
     // The eject distance/velocity rows apply only to backends with configurable
     // eject params (QIDI Box). Sync the sliders + value displays from settings.
     bool show_eject_params = backend->supports_configurable_eject_params();
-    lv_subject_set_int(&is_qidi_subject_, show_eject_params ? 1 : 0);
+    lv_subject_set_int(&has_eject_params_subject_, show_eject_params ? 1 : 0);
     if (show_eject_params && overlay_) {
         int eject_distance = SettingsManager::instance().get_qidi_eject_distance();
         int eject_velocity = SettingsManager::instance().get_qidi_eject_velocity();

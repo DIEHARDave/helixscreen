@@ -10,20 +10,11 @@
 
 #include "ui_error_reporting.h"
 #include "ui_event_safety.h"
+#include "ui_guided_device_flow.h"
 #include "ui_keyboard_manager.h"
 #include "ui_text.h"
 #include "ui_text_input.h"
 #include "ui_utils.h"
-
-#include "ui/ui_widget_helpers.h"
-
-#if HELIX_HAS_CFS
-#include "ui_cfs_chute_calibration_overlay.h"
-#include "ui_modal.h"
-#include "ui_subject_registry.h"
-
-#include "ams_backend_cfs.h"
-#endif
 
 #include "ams_backend.h"
 #include "ams_state.h"
@@ -32,10 +23,12 @@
 #include "static_panel_registry.h"
 #include "text_io.h"
 #include "theme_manager.h"
+#include "ui/ui_widget_helpers.h"
 
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
 #include <cctype>
 #include <memory>
 
@@ -45,46 +38,19 @@ namespace helix::ui {
 // SINGLETON ACCESSOR
 // ============================================================================
 
-#if HELIX_HAS_CFS
-// The cutter sweep runs ~60s with no other visible progress, so a bound
-// status line under the calibration buttons carries the flow's state: running,
-// then the found position or the failure. A toast result would expire, and one
-// queued behind a "started" toast stays hidden for its whole lifetime. The
-// buttons' labels never change; ui_xml/components/cfs_cutter_status.xml
-// renders these subjects (phase: 0 nothing to report, 1 running, 2 result).
-static lv_subject_t s_cfs_cutter_phase;
-static lv_subject_t s_cfs_cutter_status;
-static char s_cfs_cutter_status_buf[128];
-static bool s_cfs_cutter_subjects_ready = false;
-#endif
-
 // ============================================================================
 // DESTRUCTOR
 // ============================================================================
 
-AmsDeviceSectionDetailOverlay::~AmsDeviceSectionDetailOverlay() {
-    // The CFS status line's subjects are file-static (see set_cutter_row_state),
-    // so they outlive every overlay instance and need no deinit here.
-}
+AmsDeviceSectionDetailOverlay::~AmsDeviceSectionDetailOverlay() = default;
 
 // ============================================================================
 // INITIALIZATION
 // ============================================================================
 
 void AmsDeviceSectionDetailOverlay::init_subjects() {
-    init_subjects_guarded([this]() {
-#if HELIX_HAS_CFS
-        // Calibration status line subjects, consumed by
-        // ui_xml/components/cfs_cutter_status.xml. Init once per process: a second
-        // overlay instance must not memzero a subject whose observers are live.
-        if (!s_cfs_cutter_subjects_ready) {
-            s_cfs_cutter_subjects_ready = true;
-            UI_SUBJECT_INIT_AND_REGISTER_INT(s_cfs_cutter_phase, 0, "cfs_cutter_phase");
-            UI_SUBJECT_INIT_AND_REGISTER_STRING(s_cfs_cutter_status, s_cfs_cutter_status_buf, "",
-                                                "cfs_cutter_status");
-        }
-#endif
-    });
+    // The overlay binds no subjects of its own; guided flows own theirs.
+    init_subjects_guarded([]() {});
 }
 
 // ============================================================================
@@ -181,14 +147,21 @@ void AmsDeviceSectionDetailOverlay::refresh() {
         count++;
     }
 
-#if HELIX_HAS_CFS
-    // The calibration section's status line sits below the button rows. The
-    // buttons are backend-driven so they are built above; this line is pure
-    // bound appearance and comes from XML, driven by the file-static subjects.
-    if (section_id_ == "calibration" && backend->get_type() == AmsType::CFS) {
-        lv_xml_create(actions_container_, "cfs_cutter_status", nullptr);
+    // Status widgets of the guided flows this section's actions name, once per flow, below
+    // the button rows.
+    std::vector<std::string> attached_flows;
+    for (const auto& action : cached_actions_) {
+        if (action.section != section_id_ || action.guided_flow.empty() ||
+            std::find(attached_flows.begin(), attached_flows.end(), action.guided_flow) !=
+                attached_flows.end()) {
+            continue;
+        }
+        attached_flows.push_back(action.guided_flow);
+        const GuidedDeviceFlow* flow = find_guided_device_flow(action.guided_flow);
+        if (flow && flow->attach_status) {
+            flow->attach_status(actions_container_);
+        }
     }
-#endif
 
     spdlog::debug("[{}] Created {} controls for section '{}'", get_name(), count, section_id_);
 }
@@ -457,69 +430,6 @@ void AmsDeviceSectionDetailOverlay::create_button_in_row(
 // STATIC CALLBACKS
 // ============================================================================
 
-#if HELIX_HAS_CFS
-/// Cutter calibration confirm: BOX_FIND_CUT_POS homes X/Y and takes about a
-/// minute, so the click asks before moving the printer.
-namespace {
-
-void set_cutter_row_state(const char* status_text, bool busy) {
-    lv_subject_copy_string(&s_cfs_cutter_status, status_text);
-    // 0 = nothing to report (line hidden), 1 = sweep running, 2 = result.
-    lv_subject_set_int(&s_cfs_cutter_phase, busy ? 1 : (status_text[0] != '\0' ? 2 : 0));
-    // Both calibration actions home the machine; neither may start while a
-    // sweep owns it. The buttons are built dynamically from backend data
-    // (this file's documented exception), so their state is set here.
-    lv_obj_t* screen = lv_screen_active();
-    for (const char* name : {"calibrate_cutter", "calibrate_purge_chute"}) {
-        if (lv_obj_t* btn = lv_obj_find_by_name(screen, name)) {
-            if (busy) {
-                lv_obj_add_state(btn, LV_STATE_DISABLED);
-            } else {
-                lv_obj_remove_state(btn, LV_STATE_DISABLED);
-            }
-        }
-    }
-}
-} // namespace
-
-static void confirm_cutter_calibration(const std::string& label) {
-    helix::ui::ConfirmOptions opts;
-    helix::ui::modal_confirm(
-        lv_tr("Calibrate Cutter"),
-        lv_tr("The printer homes and sweeps the cutter (about 1 minute). Keep the filament "
-              "path clear."),
-        ModalSeverity::Warning, lv_tr("Start"),
-        [label]() {
-            AmsBackend* backend = AmsState::instance().get_backend();
-            if (!backend) {
-                return;
-            }
-            set_cutter_row_state(lv_tr("Calibrating... (about 1 minute)"), true);
-            AmsError result = backend->calibrate_cutter([](bool ok, const std::string& line) {
-                char axis = '\0';
-                double value_mm = 0.0;
-                std::string text;
-                if (ok &&
-                    helix::printer::AmsBackendCfs::parse_cut_found_line(line, axis, value_mm)) {
-                    text = fmt::format(
-                        lv_tr("Cut position saved: {}"),
-                        fmt::format("{} {:.1f}", static_cast<char>(std::toupper(axis)), value_mm));
-                } else if (ok) {
-                    text = lv_tr("Cutter calibration completed");
-                } else {
-                    text = fmt::format(lv_tr("Cutter calibration failed: {}"), line);
-                }
-                set_cutter_row_state(text.c_str(), false);
-            });
-            if (!result.success()) {
-                set_cutter_row_state("", false);
-                helix::ui::notify_ams_error(result);
-            }
-        },
-        opts);
-}
-#endif
-
 void AmsDeviceSectionDetailOverlay::on_action_clicked(lv_event_t* e) {
     LVGL_SAFE_EVENT_CB_BEGIN("[AmsDeviceSectionDetailOverlay] on_action_clicked");
 
@@ -541,31 +451,31 @@ void AmsDeviceSectionDetailOverlay::on_action_clicked(lv_event_t* e) {
             if (!backend) {
                 spdlog::warn("[AmsDeviceSectionDetailOverlay] No backend available for action");
             } else {
-                // Find label for the toast
+                // Find label and guided flow for the action
                 std::string label = action_id;
+                std::string guided_flow;
                 for (const auto& act : overlay.cached_actions_) {
                     if (act.id == action_id) {
                         label = act.label;
+                        guided_flow = act.guided_flow;
                         break;
                     }
                 }
 
-#if HELIX_HAS_CFS
-                // K1 CFS calibration actions route away from the plain
-                // execute-and-toast shape: the chute flow is a guided overlay,
-                // and the cutter sweep homes the printer, which deserves a
-                // confirmation before it moves anything.
-                const bool calibrate_purge_chute =
-                    backend->get_type() == AmsType::CFS && action_id == "calibrate_purge_chute";
-                const bool calibrate_cutter =
-                    backend->get_type() == AmsType::CFS && action_id == "calibrate_cutter";
-                if (calibrate_purge_chute) {
-                    get_cfs_chute_calibration_overlay().show(lv_screen_active());
-                } else if (calibrate_cutter) {
-                    confirm_cutter_calibration(label);
-                } else
-#endif
-                {
+                // An action that names a guided flow starts it. The flow owns whatever
+                // confirmation the action needs, so a flow that is not registered must
+                // never fall through to a direct execute.
+                const GuidedDeviceFlow* flow =
+                    guided_flow.empty() ? nullptr : find_guided_device_flow(guided_flow);
+                if (!guided_flow.empty() && !flow) {
+                    spdlog::warn("[AmsDeviceSectionDetailOverlay] Action '{}' names unregistered "
+                                 "guided flow '{}'; not executing",
+                                 action_id, guided_flow);
+                } else if (flow) {
+                    if (flow->start) {
+                        flow->start(label);
+                    }
+                } else {
                     AmsError result = backend->execute_device_action(action_id);
                     if (result.success()) {
                         // Whole sentence, not "{} {}" over two separately translated

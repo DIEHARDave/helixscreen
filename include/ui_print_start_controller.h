@@ -222,7 +222,7 @@ class PrintStartController {
     void execute_print_start();
 
     /**
-     * @brief Send the Snapmaker U1 firmware-native print_task_config gcode, then continue.
+     * @brief Send the backend's firmware-native pre-print config gcode, then continue.
      *
      * When the active AMS backend's RemapStrategy is PrePrintSend, the U1
      * firmware requires SET_PRINT_USED_EXTRUDERS / SET_PRINT_EXTRUDER_MAP to be
@@ -240,10 +240,9 @@ class PrintStartController {
      * @param on_done     Called on success — proceeds with the actual print start.
      * @param on_abort    Called on error — caller is responsible for re-enabling UI state.
      */
-    void send_snapmaker_preprint_then(const std::set<int>& tools_used,
-                                      const std::map<int, int>& remap,
-                                      std::function<void()> on_done,
-                                      std::function<void()> on_abort);
+    void send_backend_preprint_then(const std::set<int>& tools_used,
+                                    const std::map<int, int>& remap, std::function<void()> on_done,
+                                    std::function<void()> on_abort);
 
     /// Ordered gate pipeline. Runs gates[index..], shows ONE modal at the
     /// first non-Pass verdict; proceed resumes at the next index with a

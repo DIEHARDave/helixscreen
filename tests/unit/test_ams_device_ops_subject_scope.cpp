@@ -40,7 +40,7 @@ const char* const kDeviceOpsSubjects[] = {
     "ams_device_ops_bypass_is_virtual",
     "ams_device_ops_reports_spool_ids",
     "ams_device_ops_printer_retains_spool_info",
-    "ams_device_ops_is_qidi",
+    "ams_device_ops_has_eject_params",
     "ams_device_ops_qidi_eject_distance_display",
     "ams_device_ops_qidi_eject_velocity_display",
     "ams_device_ops_can_reset_endless_spool",

@@ -3437,3 +3437,13 @@ CPP
     [ "$status" -eq 1 ] || fail "name() compares not counted"
     contains "2 branch" "$output"
 }
+
+# A device action naming a guided flow is refused when the flow is unregistered, so every
+# boot path that registers XML components must also register the flows.
+@test "every boot path registers the guided device flows" {
+    local f
+    for f in src/application/application.cpp firmware/helixscreen-esp32/components/helixapp/app_boot.cpp; do
+        run grep -c 'register_cfs_device_flows();' "$f"
+        [ "$output" = "1" ] || fail "$f does not register the CFS guided flows"
+    done
+}

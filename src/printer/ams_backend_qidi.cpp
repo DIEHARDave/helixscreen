@@ -1446,6 +1446,15 @@ std::optional<helix::ErrorEvent> AmsBackendQidi::current_error() const {
     return e;
 }
 
+std::string AmsBackendQidi::eject_unavailable_reason(int slot_index) const {
+    if (supports_lane_eject() || !get_slot_info(slot_index).is_present()) {
+        return {};
+    }
+    // Translated here: the extractor reads literals, and lv_tr() on a runtime string would
+    // leave this untranslatable.
+    return lv_tr("Eject needs [force_move] enabled in printer config");
+}
+
 AmsError AmsBackendQidi::eject_lane(int slot_index) {
     spdlog::info("{} eject_lane(slot={})", backend_log_tag(), slot_index);
     {

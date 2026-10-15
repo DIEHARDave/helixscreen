@@ -2450,6 +2450,9 @@ struct DeviceAction {
     int slot_index = -1;              ///< If action is per-slot (-1 = system-wide)
     bool enabled = true;              ///< Whether action is currently available
     std::string disable_reason;       ///< Why disabled (if applicable)
+    /// Id of a registered guided flow (ui_guided_device_flow.h) the UI starts instead of
+    /// executing the action directly. Empty for an ordinary action.
+    std::string guided_flow;
 
     // Factories for the four control types. Argument order is fixed: id, label, section, the
     // type-specific fields, then optional icon and description. scripts/translations/

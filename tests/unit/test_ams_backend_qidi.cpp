@@ -6,6 +6,7 @@
 #include "../test_helpers/filament_slot_override_store_test_access.h"
 #include "../test_helpers/mock_printer.h"
 #include "../test_helpers/print_state_test_drivers.h"
+#include "ams_backend_mock.h"
 #include "ams_backend_qidi.h"
 #include "ams_error.h"
 #include "ams_types.h"
@@ -2743,4 +2744,34 @@ TEST_CASE("clearing a QIDI Box slot takes the linked spool's brand off it",
 
     CHECK(backend.get_slot_info(0).brand.empty());
     CHECK(backend.get_slot_info(0).spool_name.empty());
+}
+
+TEST_CASE("QIDI Box explains an unavailable eject", "[ams][qidi_box]") {
+    AmsBackendQidi backend(nullptr, nullptr);
+    QidiBoxTestAccess::parse_vars(backend, json{{"slot0", 0}, {"slot1", 1}});
+
+    SECTION("force_move off with filament in the lane") {
+        QidiBoxTestAccess::set_force_move(backend, false);
+        REQUIRE_FALSE(backend.supports_lane_eject());
+        CHECK_FALSE(backend.eject_unavailable_reason(1).empty());
+        // An empty lane has nothing to eject, so there is nothing to explain.
+        CHECK(backend.eject_unavailable_reason(0).empty());
+    }
+
+    SECTION("force_move on") {
+        QidiBoxTestAccess::set_force_move(backend, true);
+        REQUIRE(backend.supports_lane_eject());
+        CHECK(backend.eject_unavailable_reason(1).empty());
+    }
+
+    SECTION("an out-of-range slot") {
+        QidiBoxTestAccess::set_force_move(backend, false);
+        CHECK(backend.eject_unavailable_reason(-1).empty());
+        CHECK(backend.eject_unavailable_reason(99).empty());
+    }
+
+    SECTION("the base backend has no reason") {
+        helix::AmsBackendMock mock(4);
+        CHECK(mock.eject_unavailable_reason(1).empty());
+    }
 }
