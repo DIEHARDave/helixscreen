@@ -12,8 +12,9 @@
 #include "helix-xml/src/xml/parsers/lv_xml_label_parser.h"
 #include "helix-xml/src/xml/parsers/lv_xml_obj_parser.h"
 #include "helix/ui/shared_font_style.h"
+#include "helix/ui/text_metrics.h"
 #include "lvgl/lvgl.h"
-#include "lvgl/src/misc/lv_text_private.h" // lv_text_get_width, lv_text_encoded_next/prev
+#include "lvgl/src/misc/lv_text_private.h" // lv_text_encoded_next/prev
 #include "theme_manager.h"
 
 #include <spdlog/spdlog.h>
@@ -491,19 +492,6 @@ void ui_text_apply_transform(lv_obj_t* label, const char* transform) {
     }
 }
 
-/// Drawn width of the first @p len bytes of @p txt, as lv_draw_label lays them out.
-static int32_t text_width(const char* txt, uint32_t len, const lv_font_t* font,
-                          int32_t letter_space) {
-    if (len == 0) {
-        return 0;
-    }
-    lv_text_attributes_t attributes = {};
-    attributes.letter_space = letter_space;
-    attributes.max_width = LV_COORD_MAX;
-    attributes.text_flags = LV_TEXT_FLAG_NONE;
-    return lv_text_get_width(txt, len, font, &attributes);
-}
-
 /// "…" when @p font has the glyph, else the three-dot spelling LVGL's own DOTS mode uses.
 static const char* ellipsis_for(const lv_font_t* font) {
     static constexpr const char* ELLIPSIS = "\xE2\x80\xA6"; // U+2026
@@ -526,13 +514,14 @@ std::string middle_ellipsize(const char* text, int32_t max_width, const lv_font_
         return source;
     }
     const auto len = static_cast<uint32_t>(source.size());
-    if (text_width(text, len, font, letter_space) <= max_width) {
+    if (helix::ui::text_width_n(text, len, font, letter_space) <= max_width) {
         return source;
     }
 
     const char* ellipsis = ellipsis_for(font);
-    const int32_t budget = max_width - text_width(ellipsis, static_cast<uint32_t>(strlen(ellipsis)),
-                                                  font, letter_space);
+    const int32_t budget =
+        max_width - helix::ui::text_width_n(ellipsis, static_cast<uint32_t>(strlen(ellipsis)), font,
+                                            letter_space);
     if (budget <= 0) {
         return ellipsis;
     }
@@ -544,20 +533,21 @@ std::string middle_ellipsize(const char* text, int32_t max_width, const lv_font_
     while (head_end < len) {
         uint32_t next = head_end;
         lv_text_encoded_next(text, &next);
-        if (next > len || text_width(text, next, font, letter_space) > head_budget) {
+        if (next > len || helix::ui::text_width_n(text, next, font, letter_space) > head_budget) {
             break;
         }
         head_end = next;
     }
 
     // Tail: whole glyphs from the end, into whatever the head left over.
-    const int32_t tail_budget = budget - text_width(text, head_end, font, letter_space);
+    const int32_t tail_budget =
+        budget - helix::ui::text_width_n(text, head_end, font, letter_space);
     uint32_t tail_start = len;
     while (tail_start > head_end) {
         uint32_t prev = tail_start;
         lv_text_encoded_prev(text, &prev);
         if (prev <= head_end ||
-            text_width(text + prev, len - prev, font, letter_space) > tail_budget) {
+            helix::ui::text_width_n(text + prev, len - prev, font, letter_space) > tail_budget) {
             break;
         }
         tail_start = prev;
@@ -568,8 +558,9 @@ std::string middle_ellipsize(const char* text, int32_t max_width, const lv_font_
     std::string fitted;
     for (;;) {
         fitted = source.substr(0, head_end) + ellipsis + source.substr(tail_start);
-        if (tail_start >= len || text_width(fitted.c_str(), static_cast<uint32_t>(fitted.size()),
-                                            font, letter_space) <= max_width) {
+        if (tail_start >= len ||
+            helix::ui::text_width_n(fitted.c_str(), static_cast<uint32_t>(fitted.size()), font,
+                                    letter_space) <= max_width) {
             break;
         }
         lv_text_encoded_next(text, &tail_start);

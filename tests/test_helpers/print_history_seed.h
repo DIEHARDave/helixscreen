@@ -112,7 +112,13 @@ struct PrintHistorySeed {
         j.job_id = "job-" + std::to_string(days_ago) + "-" + std::to_string(print_seconds);
         j.filename = "a.gcode";
         j.status = PrintJobStatus::COMPLETED;
-        j.start_time = starts[static_cast<size_t>(kActivityDays - 1 - days_ago)] + 10.0;
+        // Days outside the activity window step back from its oldest start by whole
+        // days; they only need to land before the window, not on a local midnight.
+        const int oldest = kActivityDays - 1;
+        const double day_start = days_ago <= oldest
+                                     ? starts[static_cast<size_t>(oldest - days_ago)]
+                                     : starts[0] - static_cast<double>(days_ago - oldest) * 86400.0;
+        j.start_time = day_start + 10.0;
         j.end_time = j.start_time + print_seconds;
         j.print_duration = print_seconds;
         j.total_duration = total_seconds > 0 ? total_seconds : print_seconds;

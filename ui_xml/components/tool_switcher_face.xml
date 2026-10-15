@@ -33,10 +33,9 @@
                bind_text="tool_switcher_face_label" style_text_align="center" clickable="false" event_bubble="true">
       <bind_style_if name="face_mounted_text" cond="active_tool ge 0 and tool_count gt 0"/>
     </text_body>
-    <lv_obj name="tool_switcher_face_sub_row"
-            width="content" height="content" style_max_width="100%" flex_flow="row" style_flex_cross_place="center"
-            style_pad_all="0" style_pad_gap="#space_xs" style_bg_opa="0" style_border_width="0" clickable="false"
-            event_bubble="true" scrollable="false">
+    <pass_through name="tool_switcher_face_sub_row"
+                  width="content" height="content" style_max_width="100%" flex_flow="row"
+                  style_flex_cross_place="center" style_pad_gap="#space_xs">
       <bind_flag_if_eq subject="tool_switcher_two_line" flag="hidden" ref_value="0"/>
       <lv_obj name="tool_switcher_face_dot"
               width="#space_sm" height="#space_sm" style_radius="9999" style_bg_opa="255" style_border_width="0"
@@ -48,7 +47,7 @@
                   bind_text="tool_switcher_face_sub" long_mode="dots" clickable="false" event_bubble="true">
         <bind_style_if name="face_mounted_text" cond="active_tool ge 0 and tool_count gt 0"/>
       </text_small>
-    </lv_obj>
+    </pass_through>
     <lv_obj name="tool_switcher_face_strip"
             width="100%" align="bottom_mid" floating="true" style_radius="0" style_border_width="0" style_bg_opa="255"
             clickable="false" event_bubble="true" scrollable="false">

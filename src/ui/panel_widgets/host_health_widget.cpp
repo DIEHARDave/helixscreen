@@ -21,12 +21,12 @@
 #include "printer_state.h"
 #include "src/ui/panel_widgets/content_chrome.h"
 #include "src/ui/panel_widgets/live_tile_owner.h"
-#include "static_subject_registry.h"
 #include "subject_managed_panel.h"
 #include "text_io.h"
 #include "text_measure.h"
 #include "theme_manager.h"
 #include "value_status.h"
+#include "widget_subjects.h"
 
 #include <spdlog/spdlog.h>
 
@@ -70,47 +70,39 @@ HELIX_PSRAM_BSS char s_mem_text_buf[16];
 HELIX_PSRAM_BSS char s_detail_text_buf[48];
 HELIX_PSRAM_BSS char s_busiest_name_buf[48];
 HELIX_PSRAM_BSS char s_busiest_text_buf[64];
-bool s_subjects_initialized = false;
-SubjectManager s_subjects;
+helix::WidgetSubjects s_subjects{"HostHealthWidgetSubjects"};
 // The instance bound to the live tile. Only it publishes: a transient instance (a
 // rebuild's outgoing widget) must not overwrite the tile's verdict.
 helix::LiveTileOwner<helix::HostHealthWidget> s_tile;
 
 void host_health_init_subjects() {
-    if (s_subjects_initialized)
-        return;
-    UI_MANAGED_SUBJECT_INT(s_rung_subject, static_cast<int>(helix::SizeRung::Wide),
-                           "host_health_rung", s_subjects);
-    UI_MANAGED_SUBJECT_INT(s_show_mcu_row_subject, 0, "host_health_show_mcu_row", s_subjects);
-    UI_MANAGED_SUBJECT_INT(s_mcu_rows_subject, 0, "host_health_mcu_rows", s_subjects);
-    UI_MANAGED_SUBJECT_INT(s_status_subject, 0, "host_health_status", s_subjects);
-    UI_MANAGED_SUBJECT_INT(s_cause_subject, 0, "host_health_cause", s_subjects);
-    UI_MANAGED_SUBJECT_INT(s_cpu_status_subject, 0, "host_health_cpu_status", s_subjects);
-    UI_MANAGED_SUBJECT_INT(s_temp_status_subject, 0, "host_health_temp_status", s_subjects);
-    UI_MANAGED_SUBJECT_INT(s_throttle_status_subject, 0, "host_health_throttle_status", s_subjects);
-    UI_MANAGED_SUBJECT_INT(s_disk_status_subject, 0, "host_health_disk_status", s_subjects);
-    UI_MANAGED_SUBJECT_INT(s_busiest_load_subject, 0, "host_health_busiest_load", s_subjects);
-    UI_MANAGED_SUBJECT_STRING(s_glance_text_subject, s_glance_text_buf, "",
-                              "host_health_glance_text", s_subjects);
-    UI_MANAGED_SUBJECT_STRING(s_cpu_text_subject, s_cpu_text_buf, "", "host_health_cpu_text",
-                              s_subjects);
-    UI_MANAGED_SUBJECT_STRING(s_temp_text_subject, s_temp_text_buf, "", "host_health_temp_text",
-                              s_subjects);
-    UI_MANAGED_SUBJECT_STRING(s_mem_text_subject, s_mem_text_buf, "", "host_health_mem_text",
-                              s_subjects);
-    UI_MANAGED_SUBJECT_STRING(s_detail_text_subject, s_detail_text_buf, "",
-                              "host_health_detail_text", s_subjects);
-    UI_MANAGED_SUBJECT_STRING(s_busiest_name_subject, s_busiest_name_buf, "",
-                              "host_health_busiest_name", s_subjects);
-    UI_MANAGED_SUBJECT_STRING(s_busiest_text_subject, s_busiest_text_buf, "",
-                              "host_health_busiest_text", s_subjects);
-    s_subjects_initialized = true;
-
-    StaticSubjectRegistry::instance().register_deinit("HostHealthWidgetSubjects", []() {
-        if (s_subjects_initialized && lv_is_initialized()) {
-            s_subjects.deinit_all();
-            s_subjects_initialized = false;
-        }
+    s_subjects.ensure_init([] {
+        UI_MANAGED_SUBJECT_INT(s_rung_subject, static_cast<int>(helix::SizeRung::Wide),
+                               "host_health_rung", s_subjects);
+        UI_MANAGED_SUBJECT_INT(s_show_mcu_row_subject, 0, "host_health_show_mcu_row", s_subjects);
+        UI_MANAGED_SUBJECT_INT(s_mcu_rows_subject, 0, "host_health_mcu_rows", s_subjects);
+        UI_MANAGED_SUBJECT_INT(s_status_subject, 0, "host_health_status", s_subjects);
+        UI_MANAGED_SUBJECT_INT(s_cause_subject, 0, "host_health_cause", s_subjects);
+        UI_MANAGED_SUBJECT_INT(s_cpu_status_subject, 0, "host_health_cpu_status", s_subjects);
+        UI_MANAGED_SUBJECT_INT(s_temp_status_subject, 0, "host_health_temp_status", s_subjects);
+        UI_MANAGED_SUBJECT_INT(s_throttle_status_subject, 0, "host_health_throttle_status",
+                               s_subjects);
+        UI_MANAGED_SUBJECT_INT(s_disk_status_subject, 0, "host_health_disk_status", s_subjects);
+        UI_MANAGED_SUBJECT_INT(s_busiest_load_subject, 0, "host_health_busiest_load", s_subjects);
+        UI_MANAGED_SUBJECT_STRING(s_glance_text_subject, s_glance_text_buf, "",
+                                  "host_health_glance_text", s_subjects);
+        UI_MANAGED_SUBJECT_STRING(s_cpu_text_subject, s_cpu_text_buf, "", "host_health_cpu_text",
+                                  s_subjects);
+        UI_MANAGED_SUBJECT_STRING(s_temp_text_subject, s_temp_text_buf, "", "host_health_temp_text",
+                                  s_subjects);
+        UI_MANAGED_SUBJECT_STRING(s_mem_text_subject, s_mem_text_buf, "", "host_health_mem_text",
+                                  s_subjects);
+        UI_MANAGED_SUBJECT_STRING(s_detail_text_subject, s_detail_text_buf, "",
+                                  "host_health_detail_text", s_subjects);
+        UI_MANAGED_SUBJECT_STRING(s_busiest_name_subject, s_busiest_name_buf, "",
+                                  "host_health_busiest_name", s_subjects);
+        UI_MANAGED_SUBJECT_STRING(s_busiest_text_subject, s_busiest_text_buf, "",
+                                  "host_health_busiest_text", s_subjects);
     });
 }
 

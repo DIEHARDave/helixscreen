@@ -21,10 +21,11 @@
 #include "print_lifecycle_state.h"
 #include "printer_state.h"
 #include "spool_latch_gate.h"
-#include "static_subject_registry.h"
+#include "src/ui/panel_widgets/content_chrome.h"
 #include "theme_manager.h"
 #include "tool_state.h"
 #include "ui/ui_widget_helpers.h"
+#include "widget_subjects.h"
 
 #include <spdlog/spdlog.h>
 
@@ -69,8 +70,7 @@ lv_subject_t s_row_strip_h_subject{};
 // 1 where every cell shown holds its second line (a segment's sub, the face's
 // temperature) below its label, on both axes.
 lv_subject_t s_two_line_subject{};
-bool s_subjects_initialized = false;
-SubjectManager s_subjects;
+helix::WidgetSubjects s_subjects{"ToolSwitcherWidgetSubjects"};
 
 // Per head, indexed by tool: tool_switcher_seg_<i>_label and so on.
 IndexedSubjectPool s_seg_label{"tool_switcher_seg", IndexedSubjectPool::Type::String, 48, "_label"};
@@ -95,77 +95,73 @@ IndexedSubjectPool* const s_pools[] = {
     &s_detail_text, &s_detail_color, &s_detail_has_color, &s_detail_hot,    &s_detail_main};
 
 void tool_switcher_widget_init_subjects() {
-    if (s_subjects_initialized)
-        return;
-
-    lv_subject_init_int(&s_mode_subject, static_cast<int>(helix::ToolSwitcherMode::Single));
-    s_subjects.publish("tool_switcher_mode",
-                       &s_mode_subject); // SUBJECT_OK: published for the rail XML (#1784)
-    lv_subject_init_int(&s_cols_subject, 0);
-    s_subjects.publish("tool_switcher_cols",
-                       &s_cols_subject); // SUBJECT_OK: published for the rail XML (#1784)
-    lv_subject_init_int(&s_rows_subject, 0);
-    s_subjects.publish("tool_switcher_rows",
-                       &s_rows_subject); // SUBJECT_OK: published for the rail XML (#1784)
-    lv_subject_init_int(&s_cell_w_subject, 0);
-    s_subjects.publish("tool_switcher_cell_w",
-                       &s_cell_w_subject); // SUBJECT_OK: published for the rail XML (#1784)
-    lv_subject_init_int(&s_cell_h_subject, 0);
-    s_subjects.publish("tool_switcher_cell_h",
-                       &s_cell_h_subject); // SUBJECT_OK: published for the rail XML (#1784)
-    lv_subject_init_int(&s_rail_h_subject, 0);
-    s_subjects.publish("tool_switcher_rail_h",
-                       &s_rail_h_subject); // SUBJECT_OK: published for the rail XML (#1784)
-    lv_subject_init_int(&s_detail_subject, 0);
-    s_subjects.publish("tool_switcher_detail",
-                       &s_detail_subject); // SUBJECT_OK: published for the rail XML (#1784)
-    lv_subject_init_int(&s_detail_rows_subject, 0);
-    s_subjects.publish("tool_switcher_detail_rows",
-                       &s_detail_rows_subject); // SUBJECT_OK: published for the rail XML (#1784)
-    lv_subject_init_int(&s_label_form_subject, 0);
-    s_subjects.publish("tool_switcher_label_form",
-                       &s_label_form_subject); // SUBJECT_OK: published for the rail XML (#1784)
-    lv_subject_init_int(&s_park_supported_subject, 0);
-    s_subjects.publish("tool_switcher_park_supported", &s_park_supported_subject);
-    lv_subject_init_int(&s_change_blocked_subject, 0);
-    s_subjects.publish("tool_switcher_change_blocked", &s_change_blocked_subject);
-    lv_subject_init_int(&s_picker_code_form_subject, 0);
-    s_subjects.publish("tool_switcher_picker_code_form", &s_picker_code_form_subject);
-    lv_subject_init_string(&s_face_label_subject, s_face_label_buf, nullptr,
-                           sizeof(s_face_label_buf), "");
-    s_subjects.publish("tool_switcher_face_label", &s_face_label_subject);
-    lv_subject_init_string(&s_face_sub_subject, s_face_sub_buf, nullptr, sizeof(s_face_sub_buf),
-                           "");
-    s_subjects.publish("tool_switcher_face_sub", &s_face_sub_subject);
-    lv_subject_init_color(&s_face_color_subject, lv_color_hex(0));
-    s_subjects.publish("tool_switcher_face_color", &s_face_color_subject);
-    lv_subject_init_int(&s_face_has_color_subject, 0);
-    s_subjects.publish("tool_switcher_face_has_color", &s_face_has_color_subject);
-    lv_subject_init_int(&s_face_w_subject, LV_PCT(100));
-    s_subjects.publish("tool_switcher_face_w", &s_face_w_subject);
-    lv_subject_init_int(&s_face_h_subject, LV_PCT(100));
-    s_subjects.publish("tool_switcher_face_h", &s_face_h_subject);
-    lv_subject_init_int(&s_strip_h_subject, helix::tool_switcher_strip_px(0));
-    s_subjects.publish("tool_switcher_strip_h", &s_strip_h_subject);
-    lv_subject_init_int(&s_row_strip_h_subject, helix::tool_switcher_strip_px(0));
-    s_subjects.publish("tool_switcher_row_strip_h", &s_row_strip_h_subject);
-    lv_subject_init_int(&s_two_line_subject, 0);
-    s_subjects.publish("tool_switcher_two_line", &s_two_line_subject);
-    // Every slot exists before a row can bind it, whatever the head count.
-    for (IndexedSubjectPool* pool : s_pools) {
-        pool->ensure_size(helix::ToolSwitcherWidget::kPoolSize);
-    }
-    s_subjects_initialized = true;
-
-    StaticSubjectRegistry::instance().register_deinit("ToolSwitcherWidgetSubjects", []() {
-        if (s_subjects_initialized && lv_is_initialized()) {
-            s_subjects.deinit_all();
+    s_subjects.ensure_init(
+        [] {
+            lv_subject_init_int(&s_mode_subject, static_cast<int>(helix::ToolSwitcherMode::Single));
+            s_subjects.publish("tool_switcher_mode",
+                               &s_mode_subject); // SUBJECT_OK: published for the rail XML (#1784)
+            lv_subject_init_int(&s_cols_subject, 0);
+            s_subjects.publish("tool_switcher_cols",
+                               &s_cols_subject); // SUBJECT_OK: published for the rail XML (#1784)
+            lv_subject_init_int(&s_rows_subject, 0);
+            s_subjects.publish("tool_switcher_rows",
+                               &s_rows_subject); // SUBJECT_OK: published for the rail XML (#1784)
+            lv_subject_init_int(&s_cell_w_subject, 0);
+            s_subjects.publish("tool_switcher_cell_w",
+                               &s_cell_w_subject); // SUBJECT_OK: published for the rail XML (#1784)
+            lv_subject_init_int(&s_cell_h_subject, 0);
+            s_subjects.publish("tool_switcher_cell_h",
+                               &s_cell_h_subject); // SUBJECT_OK: published for the rail XML (#1784)
+            lv_subject_init_int(&s_rail_h_subject, 0);
+            s_subjects.publish("tool_switcher_rail_h",
+                               &s_rail_h_subject); // SUBJECT_OK: published for the rail XML (#1784)
+            lv_subject_init_int(&s_detail_subject, 0);
+            s_subjects.publish("tool_switcher_detail",
+                               &s_detail_subject); // SUBJECT_OK: published for the rail XML (#1784)
+            lv_subject_init_int(&s_detail_rows_subject, 0);
+            s_subjects.publish(
+                "tool_switcher_detail_rows",
+                &s_detail_rows_subject); // SUBJECT_OK: published for the rail XML (#1784)
+            lv_subject_init_int(&s_label_form_subject, 0);
+            s_subjects.publish(
+                "tool_switcher_label_form",
+                &s_label_form_subject); // SUBJECT_OK: published for the rail XML (#1784)
+            lv_subject_init_int(&s_park_supported_subject, 0);
+            s_subjects.publish("tool_switcher_park_supported", &s_park_supported_subject);
+            lv_subject_init_int(&s_change_blocked_subject, 0);
+            s_subjects.publish("tool_switcher_change_blocked", &s_change_blocked_subject);
+            lv_subject_init_int(&s_picker_code_form_subject, 0);
+            s_subjects.publish("tool_switcher_picker_code_form", &s_picker_code_form_subject);
+            lv_subject_init_string(&s_face_label_subject, s_face_label_buf, nullptr,
+                                   sizeof(s_face_label_buf), "");
+            s_subjects.publish("tool_switcher_face_label", &s_face_label_subject);
+            lv_subject_init_string(&s_face_sub_subject, s_face_sub_buf, nullptr,
+                                   sizeof(s_face_sub_buf), "");
+            s_subjects.publish("tool_switcher_face_sub", &s_face_sub_subject);
+            lv_subject_init_color(&s_face_color_subject, lv_color_hex(0));
+            s_subjects.publish("tool_switcher_face_color", &s_face_color_subject);
+            lv_subject_init_int(&s_face_has_color_subject, 0);
+            s_subjects.publish("tool_switcher_face_has_color", &s_face_has_color_subject);
+            lv_subject_init_int(&s_face_w_subject, LV_PCT(100));
+            s_subjects.publish("tool_switcher_face_w", &s_face_w_subject);
+            lv_subject_init_int(&s_face_h_subject, LV_PCT(100));
+            s_subjects.publish("tool_switcher_face_h", &s_face_h_subject);
+            lv_subject_init_int(&s_strip_h_subject, helix::tool_switcher_strip_px(0));
+            s_subjects.publish("tool_switcher_strip_h", &s_strip_h_subject);
+            lv_subject_init_int(&s_row_strip_h_subject, helix::tool_switcher_strip_px(0));
+            s_subjects.publish("tool_switcher_row_strip_h", &s_row_strip_h_subject);
+            lv_subject_init_int(&s_two_line_subject, 0);
+            s_subjects.publish("tool_switcher_two_line", &s_two_line_subject);
+            // Every slot exists before a row can bind it, whatever the head count.
+            for (IndexedSubjectPool* pool : s_pools) {
+                pool->ensure_size(helix::ToolSwitcherWidget::kPoolSize);
+            }
+        },
+        [] {
             for (IndexedSubjectPool* pool : s_pools) {
                 pool->reclaim();
             }
-            s_subjects_initialized = false;
-        }
-    });
+        });
 }
 
 void set_int_if_changed(lv_subject_t* subject, int value) {
@@ -432,8 +428,8 @@ void ToolSwitcherWidget::publish_layout() {
     const int min_target = resolve_px_token("touch_target_min", 48);
     const lv_font_t* body = theme_manager_get_font("font_body");
     const lv_font_t* small = theme_manager_get_font("font_small");
-    const int body_px = body ? lv_font_get_line_height(body) : 0;
-    const int small_px = small ? lv_font_get_line_height(small) : 0;
+    const int body_px = line_px(body);
+    const int small_px = line_px(small);
     const int content_w = current_width_px_ - 2 * inset;
     const int content_h = current_height_px_ - 2 * inset;
 
@@ -556,7 +552,7 @@ std::string ToolSwitcherWidget::detail_head_text(const ToolInfo& tool, bool main
 }
 
 void ToolSwitcherWidget::publish_heads() {
-    if (!s_subjects_initialized)
+    if (!s_subjects.initialized())
         return;
     auto& tool_state = ToolState::instance();
     const auto& tools = tool_state.tools();
@@ -593,8 +589,8 @@ void ToolSwitcherWidget::publish_heads() {
     const int content_w = current_width_px_ - 2 * resolve_px_token("space_md", 10);
     const lv_font_t* body = theme_manager_get_font("font_body");
     const lv_font_t* small = theme_manager_get_font("font_small");
-    const int body_px = body ? lv_font_get_line_height(body) : 0;
-    const int small_px = small ? lv_font_get_line_height(small) : 0;
+    const int body_px = line_px(body);
+    const int small_px = line_px(small);
     for (int r = 0; r < rows; ++r) {
         const int i = order[r];
         const bool main = r == 0 && (i == active || i == kToolSwitcherEmptyCarriageRow);
@@ -659,7 +655,7 @@ void ToolSwitcherWidget::publish_heads() {
 }
 
 void ToolSwitcherWidget::publish_head_temp(int i) {
-    if (!s_subjects_initialized)
+    if (!s_subjects.initialized())
         return;
     auto& tool_state = ToolState::instance();
     const auto& tools = tool_state.tools();
@@ -697,8 +693,8 @@ void ToolSwitcherWidget::publish_two_line() {
     // over its colour strip, and every shown second line is narrow enough.
     const lv_font_t* body = theme_manager_get_font("font_body");
     const lv_font_t* small = theme_manager_get_font("font_small");
-    const int body_px = body ? lv_font_get_line_height(body) : 0;
-    const int small_px = small ? lv_font_get_line_height(small) : 0;
+    const int body_px = line_px(body);
+    const int small_px = line_px(small);
     const int room = layout_.cell_w - 2 * resolve_px_token("space_xs", 4);
     bool two_line = layout_.cell_h - tool_switcher_strip_px(layout_.cell_h) >= body_px + small_px;
     const bool rail =

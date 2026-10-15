@@ -17,12 +17,12 @@
 #include "observer_factory.h"
 #include "panel_widget_registry.h"
 #include "printer_state.h"
-#include "static_subject_registry.h"
 #include "subject_managed_panel.h"
 #include "text_measure.h"
 #include "theme_manager.h"
 #include "tool_state.h"
 #include "ui/ui_widget_helpers.h"
+#include "widget_subjects.h"
 
 #include <spdlog/spdlog.h>
 
@@ -44,27 +44,18 @@ namespace {
 lv_subject_t s_label_mode_subject{};
 lv_subject_t s_columns_subject{};
 lv_subject_t s_compact_font_subject{};
-bool s_subjects_initialized = false;
-SubjectManager s_subjects;
+helix::WidgetSubjects s_subjects{"NozzleTempsWidgetSubjects"};
 
 void nozzle_temps_widget_init_subjects() {
-    if (s_subjects_initialized)
-        return;
-
-    lv_subject_init_int(&s_label_mode_subject,
-                        static_cast<int>(helix::NozzleLabelMode::Long)); // the degenerate default
-    s_subjects.publish("nozzle_row_label_mode", &s_label_mode_subject);
-    lv_subject_init_int(&s_columns_subject, 1);
-    s_subjects.publish("nozzle_row_columns", &s_columns_subject);
-    lv_subject_init_int(&s_compact_font_subject, 0);
-    s_subjects.publish("nozzle_row_compact", &s_compact_font_subject);
-    s_subjects_initialized = true;
-
-    StaticSubjectRegistry::instance().register_deinit("NozzleTempsWidgetSubjects", []() {
-        if (s_subjects_initialized && lv_is_initialized()) {
-            s_subjects.deinit_all();
-            s_subjects_initialized = false;
-        }
+    s_subjects.ensure_init([] {
+        lv_subject_init_int(
+            &s_label_mode_subject,
+            static_cast<int>(helix::NozzleLabelMode::Long)); // the degenerate default
+        s_subjects.publish("nozzle_row_label_mode", &s_label_mode_subject);
+        lv_subject_init_int(&s_columns_subject, 1);
+        s_subjects.publish("nozzle_row_columns", &s_columns_subject);
+        lv_subject_init_int(&s_compact_font_subject, 0);
+        s_subjects.publish("nozzle_row_compact", &s_compact_font_subject);
     });
 }
 

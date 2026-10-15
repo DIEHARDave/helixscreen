@@ -18,12 +18,12 @@
 #include "printer_state.h"
 #include "src/ui/panel_widgets/content_chrome.h"
 #include "src/ui/panel_widgets/live_tile_owner.h"
-#include "static_subject_registry.h"
 #include "subject_managed_panel.h"
 #include "text_measure.h"
 #include "theme_manager.h"
 #include "tool_state.h"
 #include "value_status.h"
+#include "widget_subjects.h"
 #include "z_offset_utils.h"
 
 #include <spdlog/spdlog.h>
@@ -55,37 +55,29 @@ char s_value_text_buf[32];
 char s_caption_text_buf[48];
 char s_step_text_buf[16];
 char s_tool_text_buf[32];
-bool s_subjects_initialized = false;
-SubjectManager s_subjects;
+helix::WidgetSubjects s_subjects{"ZOffsetWidgetSubjects"};
 // The instance bound to the live tile. Only it publishes and acts: a transient
 // instance (a fits_at probe, a rebuild's outgoing widget) must not overwrite the
 // tile's verdict.
 helix::LiveTileOwner<helix::ZOffsetWidget> s_tile;
 
 void z_offset_init_subjects() {
-    if (s_subjects_initialized)
-        return;
-    UI_MANAGED_SUBJECT_INT(s_rung_subject, static_cast<int>(helix::SizeRung::Wide), "z_offset_rung",
-                           s_subjects);
-    UI_MANAGED_SUBJECT_INT(s_show_save_subject, 0, "z_offset_show_save", s_subjects);
-    UI_MANAGED_SUBJECT_INT(s_show_steppers_subject, 0, "z_offset_show_steppers", s_subjects);
-    UI_MANAGED_SUBJECT_INT(s_show_tool_label_subject, 0, "z_offset_show_tool_label", s_subjects);
-    UI_MANAGED_SUBJECT_INT(s_status_subject, 0, "z_offset_status", s_subjects);
-    UI_MANAGED_SUBJECT_STRING(s_value_text_subject, s_value_text_buf, "", "z_offset_value_text",
-                              s_subjects);
-    UI_MANAGED_SUBJECT_STRING(s_caption_text_subject, s_caption_text_buf, "",
-                              "z_offset_caption_text", s_subjects);
-    UI_MANAGED_SUBJECT_STRING(s_step_text_subject, s_step_text_buf, "", "z_offset_step_text",
-                              s_subjects);
-    UI_MANAGED_SUBJECT_STRING(s_tool_text_subject, s_tool_text_buf, "", "z_offset_tool_text",
-                              s_subjects);
-    s_subjects_initialized = true;
-
-    StaticSubjectRegistry::instance().register_deinit("ZOffsetWidgetSubjects", []() {
-        if (s_subjects_initialized && lv_is_initialized()) {
-            s_subjects.deinit_all();
-            s_subjects_initialized = false;
-        }
+    s_subjects.ensure_init([] {
+        UI_MANAGED_SUBJECT_INT(s_rung_subject, static_cast<int>(helix::SizeRung::Wide),
+                               "z_offset_rung", s_subjects);
+        UI_MANAGED_SUBJECT_INT(s_show_save_subject, 0, "z_offset_show_save", s_subjects);
+        UI_MANAGED_SUBJECT_INT(s_show_steppers_subject, 0, "z_offset_show_steppers", s_subjects);
+        UI_MANAGED_SUBJECT_INT(s_show_tool_label_subject, 0, "z_offset_show_tool_label",
+                               s_subjects);
+        UI_MANAGED_SUBJECT_INT(s_status_subject, 0, "z_offset_status", s_subjects);
+        UI_MANAGED_SUBJECT_STRING(s_value_text_subject, s_value_text_buf, "", "z_offset_value_text",
+                                  s_subjects);
+        UI_MANAGED_SUBJECT_STRING(s_caption_text_subject, s_caption_text_buf, "",
+                                  "z_offset_caption_text", s_subjects);
+        UI_MANAGED_SUBJECT_STRING(s_step_text_subject, s_step_text_buf, "", "z_offset_step_text",
+                                  s_subjects);
+        UI_MANAGED_SUBJECT_STRING(s_tool_text_subject, s_tool_text_buf, "", "z_offset_tool_text",
+                                  s_subjects);
     });
 }
 

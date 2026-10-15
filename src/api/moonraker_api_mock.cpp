@@ -257,8 +257,7 @@ void MoonrakerFileAPIMock::list_files(const std::string& root, const std::string
         for (const auto& [file_path, content] : config_files_) {
             FileInfo info;
             info.path = file_path;
-            auto slash = file_path.rfind('/');
-            info.filename = (slash == std::string::npos) ? file_path : file_path.substr(slash + 1);
+            info.filename = helix::gcode::get_filename_basename(file_path);
             info.size = content.size();
             info.is_dir = false;
             listing.push_back(info);
@@ -385,11 +384,7 @@ void MoonrakerFileTransferAPIMock::download_file(const std::string& root, const 
     }
 
     // Strip any leading directory components to get just the filename
-    std::string filename = path;
-    size_t last_slash = path.rfind('/');
-    if (last_slash != std::string::npos) {
-        filename = path.substr(last_slash + 1);
-    }
+    std::string filename = helix::gcode::get_filename_basename(path);
 
     spdlog::debug("[MoonrakerAPIMock] download_file: root='{}', path='{}' -> filename='{}'", root,
                   path, filename);
@@ -474,11 +469,7 @@ void MoonrakerFileTransferAPIMock::download_file_partial(const std::string& root
     }
 
     // Strip any leading directory components to get just the filename
-    std::string filename = path;
-    size_t last_slash = path.rfind('/');
-    if (last_slash != std::string::npos) {
-        filename = path.substr(last_slash + 1);
-    }
+    std::string filename = helix::gcode::get_filename_basename(path);
 
     // Find the test file using fallback path search
     std::string local_path = find_test_file(filename);
@@ -522,11 +513,7 @@ void MoonrakerFileTransferAPIMock::download_file_tail(const std::string& root,
                                                       const std::string& path, size_t max_bytes,
                                                       StringCallback on_success,
                                                       ErrorCallback on_error) {
-    std::string filename = path;
-    size_t last_slash = path.rfind('/');
-    if (last_slash != std::string::npos) {
-        filename = path.substr(last_slash + 1);
-    }
+    std::string filename = helix::gcode::get_filename_basename(path);
 
     spdlog::debug("[MoonrakerAPIMock] download_file_tail: root='{}', path='{}', max_bytes={}", root,
                   path, max_bytes);
@@ -605,11 +592,7 @@ void MoonrakerFileTransferAPIMock::download_file_to_path(
     }
 
     // Extract just the filename from the path
-    std::string filename = path;
-    size_t last_slash = path.find_last_of('/');
-    if (last_slash != std::string::npos) {
-        filename = path.substr(last_slash + 1);
-    }
+    std::string filename = helix::gcode::get_filename_basename(path);
 
     spdlog::debug(
         "[MoonrakerAPIMock] download_file_to_path: root='{}', path='{}' -> filename='{}', "
