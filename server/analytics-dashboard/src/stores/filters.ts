@@ -5,6 +5,7 @@ import {
   applyDrill,
   buildDashQuery,
   parseDashQuery,
+  sameDashQuery,
   type DashFilterKey,
   type DashQuery
 } from '@/utils/urlState'
@@ -70,20 +71,24 @@ export const useFiltersStore = defineStore('filters', () => {
     board.value = []
   }
 
+  // A no-op when the route already describes the store, which breaks the
+  // route -> store -> route loop.
   function syncFromRoute(query: LocationQuery) {
-    apply(parseDashQuery(query))
+    const parsed = parseDashQuery(query)
+    if (!sameDashQuery(parsed, state.value)) apply(parsed)
   }
 
-  function syncToRoute(router: Router, mode: 'replace' | 'push' = 'replace') {
+  function syncToRoute(router: Router) {
     const query = buildDashQuery(state.value)
-    if (mode === 'push') return router.push({ query })
+    if (sameDashQuery(parseDashQuery(router.currentRoute.value.query), state.value)) return
     return router.replace({ query })
   }
 
-  // Pushes, so the back button walks the drill path.
+  // Pushes without touching the store: the route watcher feeds it back, so the
+  // back button walks the drill path.
   function drill(router: Router, key: DashFilterKey, members: string[]) {
-    apply(applyDrill(state.value, key, members))
-    return syncToRoute(router, 'push')
+    const next = applyDrill(state.value, key, members)
+    return router.push({ query: buildDashQuery(next) })
   }
 
   function toggleExpand(groupKey: string) {

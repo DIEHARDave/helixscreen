@@ -5,6 +5,7 @@ import {
   buildDashQuery,
   legacyRedirect,
   parseDashQuery,
+  sameDashQuery,
   type DashQuery
 } from '../../../analytics-dashboard/src/utils/urlState'
 
@@ -101,5 +102,15 @@ describe('legacyRedirect', () => {
     for (const p of ['/fleet', '/stability', '/usage', '/', '/devices', '/device/abc']) {
       expect(legacyRedirect(p), p).toBeNull()
     }
+  })
+})
+
+describe('sameDashQuery', () => {
+  it('ignores key order and defaults, sees any real difference', () => {
+    expect(sameDashQuery(parseDashQuery({}), parseDashQuery({ range: '30d' }))).toBe(true)
+    expect(sameDashQuery(parseDashQuery({ model: 'a,b', range: '7d' }), parseDashQuery({ range: '7d', model: 'a,b' }))).toBe(true)
+    expect(sameDashQuery(parseDashQuery({ model: 'a' }), parseDashQuery({ model: 'b' }))).toBe(false)
+    expect(sameDashQuery(parseDashQuery({ model: 'a' }), parseDashQuery({}))).toBe(false)
+    expect(sameDashQuery(parseDashQuery({ expand: 'x' }), parseDashQuery({}))).toBe(false)
   })
 })

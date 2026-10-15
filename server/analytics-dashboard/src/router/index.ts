@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { DASH_FILTER_KEYS } from '@/utils/urlState'
 import LoginView from '@/views/LoginView.vue'
 import OverviewView from '@/views/OverviewView.vue'
 import AdoptionView from '@/views/AdoptionView.vue'
@@ -87,9 +88,15 @@ export const router = createRouter({
   ]
 })
 
-router.beforeEach((to) => {
+router.beforeEach((to, from) => {
   const auth = useAuthStore()
   if (to.meta.requiresAuth && !auth.isAuthenticated) {
     return { name: 'login' }
+  }
+  // Moving between tabs keeps the active filters: a link without a query
+  // inherits the one the user was on.
+  const carries = (q: typeof to.query) => ['range', 'expand', ...DASH_FILTER_KEYS].some((k) => k in q)
+  if (to.path !== from.path && carries(from.query) && !carries(to.query)) {
+    return { path: to.path, query: from.query, hash: to.hash }
   }
 })

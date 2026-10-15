@@ -72,3 +72,10 @@ export function applyDrill(s: DashQuery, key: DashFilterKey, members: string[]):
 export function legacyRedirect(path: string): string | null {
   return LEGACY_PATHS[path] ?? null
 }
+
+export function sameDashQuery(a: DashQuery, b: DashQuery): boolean {
+  const qa = buildDashQuery(a)
+  const qb = buildDashQuery(b)
+  const keys = Object.keys(qa)
+  return keys.length === Object.keys(qb).length && keys.every((k) => qa[k] === qb[k])
+}

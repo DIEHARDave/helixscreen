@@ -1289,7 +1289,7 @@ describe("Dashboard endpoints", () => {
         env,
       );
       expect(res.status).toBe(200);
-      const data = await res.json();
+      const data = (await res.json()) as Record<string, unknown>;
       expect(data.platforms).toEqual([{ name: "linux-arm", count: 100 }]);
       expect(data.versions).toEqual([{ name: "0.9.19", count: 80 }]);
       expect(data.printer_models).toEqual([{ name: "Voron 2.4", count: 50 }]);

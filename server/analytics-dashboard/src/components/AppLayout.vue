@@ -56,13 +56,25 @@
 </template>
 
 <script setup lang="ts">
+import { watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useFiltersStore } from '@/stores/filters'
 import { router } from '@/router'
 import FilterBar from '@/components/FilterBar.vue'
 
 const route = useRoute()
 const auth = useAuthStore()
+const filters = useFiltersStore()
+
+// The URL is the source of truth: route changes (links, back/forward) feed the
+// store, and store edits are written back with replace.
+watch(() => route.query, (q) => filters.syncFromRoute(q), { immediate: true })
+watch(
+  () => [filters.range, filters.platform, filters.version, filters.model, filters.board, filters.expand],
+  () => filters.syncToRoute(router),
+  { deep: true }
+)
 
 function handleLogout() {
   auth.logout()
