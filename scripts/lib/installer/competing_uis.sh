@@ -62,7 +62,8 @@ record_disabled_service() {
     local type="$1"
     local target="$2"
     local entry="${type}:${target}"
-    local state_file="${INSTALL_DIR}/config/.disabled_services"
+    local state_file
+    state_file="$(_ledger_path .disabled_services)"
 
     # Ensure config directory exists
     if [ -n "${INSTALL_DIR:-}" ] && [ ! -d "${INSTALL_DIR}/config" ]; then

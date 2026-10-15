@@ -28,6 +28,18 @@ NAME="helixscreen"
 DESC="HelixScreen 3D Printer Touch UI"
 DAEMON_DIR="/opt/helixscreen"  # Updated by installer for different firmware
 HELIX_PD_HELIX=""  # Updated by installer: printer_data/config/helixscreen
+
+# Run in place (the Snapmaker U1 starts this script from the install dir's
+# config/), a Moonraker update replaces it with the template, which names the
+# default install dir. When that has no binary but this script's own install
+# dir does, the script belongs to the install dir it sits in.
+if [ ! -x "${DAEMON_DIR}/bin/helix-screen" ]; then
+    _self_dir=$(cd "$(dirname "$0")/.." 2>/dev/null && pwd -P)
+    if [ -n "$_self_dir" ] && [ -x "${_self_dir}/bin/helix-screen" ]; then
+        DAEMON_DIR="$_self_dir"
+    fi
+    unset _self_dir
+fi
 DAEMON="${DAEMON_DIR}/bin/helix-screen"
 SPLASH="${DAEMON_DIR}/bin/helix-splash"
 WATCHDOG="${DAEMON_DIR}/bin/helix-watchdog"

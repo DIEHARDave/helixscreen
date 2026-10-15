@@ -294,14 +294,28 @@ _ledger_candidates() {
 # printer_data is the one that is appended to and later undone.
 # Args: $1 = ledger file name
 _ledger_path() {
-    local _candidate
-    for _candidate in $(_ledger_candidates "$1"); do
-        if [ -f "$_candidate" ]; then
+    local _candidate _list
+    _list="$(_ledger_candidates "$1")"
+    while IFS= read -r _candidate; do
+        # A .clean-keep carry is a stranded copy for the uninstaller to find,
+        # never a place to write.
+        case "$_candidate" in *.clean-keep) continue ;; esac
+        if [ -n "$_candidate" ] && [ -f "$_candidate" ]; then
             echo "$_candidate"
             return 0
         fi
-    done
+    done <<EOF
+$_list
+EOF
     echo "${INSTALL_DIR}/config/$1"
+}
+
+# Escape a value for the replacement half of a sed s||| command (backslash, the
+# delimiter and & are special there). One helper for every installer sed that
+# writes a path.
+# Args: $1 = value
+sed_escape_replacement() {
+    printf '%s' "$1" | sed 's/[\\&|]/\\&/g'
 }
 
 # Track what we've done for cleanup

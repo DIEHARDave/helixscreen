@@ -175,11 +175,6 @@ hooks_fixture() {
 
 # --- SysV and procd: no systemd unit, restore runs from the init script ---
 
-sysv_start_restore() {
-    # What helixscreen.init does at start: run the sibling script by path.
-    sh "$INSTALL_DIR/config/restore-user-config.sh"
-}
-
 @test "a SysV web update (no systemd unit) gets env, themes, ledgers and hooks back" {
     . "$WORKTREE_ROOT/scripts/lib/installer/service.sh"
     mkdir -p "$INSTALL_DIR/assets/config/platform" "$PD"
@@ -299,61 +294,123 @@ sysv_start_restore() {
     grep -qx "HELIX_PD_HELIX=\"$PD\"" "$init"
 }
 
-@test "the unit records printer_data and refresh-service-units.sh reads it back and re-templates it" {
-    grep -q '^# HELIX_PD_HELIX=@@HELIX_PD_HELIX@@' "$WORKTREE_ROOT/config/helixscreen.service"
-    grep -q "s/^# HELIX_PD_HELIX=//p" "$WORKTREE_ROOT/config/refresh-service-units.sh"
-    grep -q '@@HELIX_PD_HELIX@@' "$WORKTREE_ROOT/config/refresh-service-units.sh"
-    grep -q 'HELIX_PD_HELIX_DIR="$PD_HELIX_VAL"' "$WORKTREE_ROOT/config/refresh-service-units.sh"
+@test "the unit records printer_data and the update script's templating carries it across" {
+    . "$WORKTREE_ROOT/scripts/lib/installer/service.sh"
+    local pd_odd="$BATS_TEST_TMPDIR/we&ird|dir/printer_data/config/helixscreen"
+    local installed="$BATS_TEST_TMPDIR/installed.service" refreshed="$BATS_TEST_TMPDIR/refreshed.service"
+
+    # What the installer wrote into the installed unit.
+    cp "$WORKTREE_ROOT/config/helixscreen.service" "$installed"
+    _sed_inplace "s|@@HELIX_PD_HELIX@@|$(sed_escape_replacement "$pd_odd")|g" "$installed"
+    grep -qF "# HELIX_PD_HELIX=$pd_odd" "$installed"
+
+    # What the update script reads back and re-templates from the fresh unit.
+    local script="$WORKTREE_ROOT/config/refresh-service-units.sh"
+    eval "$(grep '^PD_HELIX_' "$script" | sed 's|"\$DEST"|"$installed"|')"
+    eval "$(awk '/^template_unit\(\) \{/{on=1} on{print} on&&/^}/{exit}' "$script")"
+    [ "$PD_HELIX_VAL" = "$pd_odd" ]
+    USER_VAL=pi GROUP_VAL=pi IDIR="$INSTALL_DIR" PDIR="$(dirname "$INSTALL_DIR")"
+    template_unit "$WORKTREE_ROOT/config/helixscreen.service" "$refreshed"
+    grep -qF "# HELIX_PD_HELIX=$pd_odd" "$refreshed"
+    ! grep -q '@@HELIX_PD_HELIX@@' "$refreshed"
+}
+
+@test "init-script values with shell and sed metacharacters survive the installer's sed" {
+    . "$WORKTREE_ROOT/scripts/lib/installer/service.sh"
+    local init="$BATS_TEST_TMPDIR/init" odd='/opt/a&b|c"d$e`f\g'
+    printf 'DAEMON_DIR="/opt/helixscreen"\nHELIX_PD_HELIX=""\n' > "$init"
+    _sed_inplace "s|DAEMON_DIR=.*|DAEMON_DIR=\"$(_init_assignment_value "$odd")\"|" "$init"
+    ( . "$init"; [ "$DAEMON_DIR" = "$odd" ] )
+}
+
+# --- a template init script run in place ---
+
+@test "a template init script run from inside an install dir adopts that dir" {
+    local root="$BATS_TEST_TMPDIR/custom/helixscreen"
+    mkdir -p "$root/bin" "$root/config"
+    printf '#!/bin/sh\nexit 0\n' > "$root/bin/helix-screen"; chmod +x "$root/bin/helix-screen"
+    cp "$WORKTREE_ROOT/config/helixscreen.init" "$root/config/helixscreen.init"
+    # The template names /opt/helixscreen, which has no binary here.
+    [ ! -x /opt/helixscreen/bin/helix-screen ]
+    # An unknown action reaches the usage line only when the script went on
+    # past its binary check.
+    run sh "$root/config/helixscreen.init" noop
+    echo "$output" | grep -q "^Usage:"
+}
+
+@test "the same template run where no install dir holds a binary exits silently" {
+    local root="$BATS_TEST_TMPDIR/empty/helixscreen"
+    mkdir -p "$root/config"
+    cp "$WORKTREE_ROOT/config/helixscreen.init" "$root/config/helixscreen.init"
+    run sh "$root/config/helixscreen.init" noop
+    [ -z "$output" ]
 }
 
 # --- a real file that differs from its printer_data copy ---
 
-# $1 name  $2 real content  $3 pd content  $4 real_newer | pd_newer
+# $1 name  $2 real content  $3 pd content  $4 after | before
+# "after": the real file was written after the zip was extracted (newer than
+# release_info.json); "before": it is the packaged copy.
 real_vs_pd() {
     mkdir -p "$PD"
     printf '%s' "$3" > "$PD/$1"
     printf '%s' "$2" > "$INSTALL_DIR/config/$1"
-    if [ "$4" = real_newer ]; then
-        touch -d '2026-01-01 00:00:00' "$PD/$1"
+    echo '{}' > "$INSTALL_DIR/release_info.json"
+    touch -d '2026-03-01 00:00:00' "$INSTALL_DIR/release_info.json"
+    if [ "$4" = after ]; then
         touch -d '2026-06-01 00:00:00' "$INSTALL_DIR/config/$1"
     else
-        touch -d '2026-06-01 00:00:00' "$PD/$1"
         touch -d '2026-01-01 00:00:00' "$INSTALL_DIR/config/$1"
     fi
     restore_config_symlinks
 }
 
-@test "an app-written settings.json newer than the printer_data copy wins, and the old copy is kept" {
-    real_vs_pd settings.json '{"config_version":7,"a":2}' '{"config_version":6,"a":1}' real_newer
+@test "printer_data always wins; a fresh-preset settings.json written after the update is kept aside" {
+    real_vs_pd settings.json '{"config_version":9,"wizard_completed":false}' '{"config_version":6,"wizard_completed":true}' after
     [ -L "$INSTALL_DIR/config/settings.json" ]
-    [ "$(cat "$PD/settings.json")" = '{"config_version":7,"a":2}' ]
-    [ "$(cat "$PD/settings.json.pre-restore")" = '{"config_version":6,"a":1}' ]
+    [ "$(cat "$PD/settings.json")" = '{"config_version":6,"wizard_completed":true}' ]
+    [ "$(cat "$PD/settings.json.pre-restore")" = '{"config_version":9,"wizard_completed":false}' ]
 }
 
-@test "the release's default settings.json never replaces the user's, and is not kept" {
-    real_vs_pd settings.json '{"default":true}' '{"config_version":6,"a":1}' real_newer
-    [ -L "$INSTALL_DIR/config/settings.json" ]
-    [ "$(cat "$PD/settings.json")" = '{"config_version":6,"a":1}' ]
-    [ ! -e "$PD/settings.json.pre-restore" ]
-}
-
-@test "an app-written settings.json older than the printer_data copy loses but is kept" {
-    real_vs_pd settings.json '{"config_version":5,"a":0}' '{"config_version":6,"a":1}' pd_newer
-    [ "$(cat "$PD/settings.json")" = '{"config_version":6,"a":1}' ]
-    [ "$(cat "$PD/settings.json.pre-restore")" = '{"config_version":5,"a":0}' ]
-}
-
-@test "a differing real file other than settings.json is kept beside the printer_data copy" {
-    real_vs_pd helixscreen.env 'HELIX_X=default' 'HELIX_X=mine' real_newer
+@test "a packaged copy older than the release is dropped without a copy" {
+    real_vs_pd helixscreen.env 'HELIX_X=default' 'HELIX_X=mine' before
     [ -L "$INSTALL_DIR/config/helixscreen.env" ]
     [ "$(cat "$PD/helixscreen.env")" = 'HELIX_X=mine' ]
-    [ "$(cat "$PD/helixscreen.env.pre-restore")" = 'HELIX_X=default' ]
+    [ ! -e "$PD/helixscreen.env.pre-restore" ]
+}
+
+@test "an existing pre-restore copy is rotated, not overwritten" {
+    mkdir -p "$PD"
+    echo first > "$PD/helixscreen.env.pre-restore"
+    real_vs_pd helixscreen.env 'HELIX_X=second' 'HELIX_X=mine' after
+    [ "$(cat "$PD/helixscreen.env.pre-restore")" = 'HELIX_X=second' ]
+    [ "$(cat "$PD/helixscreen.env.pre-restore.1")" = 'first' ]
 }
 
 @test "an identical real file leaves no pre-restore copy" {
-    real_vs_pd helixscreen.env 'HELIX_X=1' 'HELIX_X=1' real_newer
+    real_vs_pd helixscreen.env 'HELIX_X=1' 'HELIX_X=1' after
     [ -L "$INSTALL_DIR/config/helixscreen.env" ]
     [ ! -e "$PD/helixscreen.env.pre-restore" ]
+}
+
+@test "a copy that cannot be saved still relinks to printer_data" {
+    cp() { return 1; }
+    real_vs_pd helixscreen.env 'HELIX_X=second' 'HELIX_X=mine' after
+    unset -f cp
+    [ -L "$INSTALL_DIR/config/helixscreen.env" ]
+    [ "$(cat "$INSTALL_DIR/config/helixscreen.env")" = 'HELIX_X=mine' ]
+    [ ! -e "$PD/helixscreen.env.pre-restore" ]
+}
+
+@test "a ledger present in both places is merged line by line into printer_data" {
+    real_vs_pd .disabled_services $'b\nc\n' $'a\nb\n' after
+    [ -L "$INSTALL_DIR/config/.disabled_services" ]
+    [ "$(cat "$PD/.disabled_services")" = $'a\nb\nc' ]
+}
+
+@test "a JSON ledger is a snapshot: printer_data keeps it" {
+    real_vs_pd .webcams_backup.json '[{"n":2}]' '[{"n":1}]' after
+    [ "$(cat "$PD/.webcams_backup.json")" = '[{"n":1}]' ]
 }
 
 # --- uninstall finds the printer_data copy ---

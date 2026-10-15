@@ -153,44 +153,82 @@ install_config_path_ok() {
     return 1
 }
 
-# True when settings.json holds a non-zero config_version: the app wrote it. The
-# release's packaged default carries none, and Config discards such a file in
-# favour of its rolling backup.
-is_app_written_settings() {
-    grep -Eq '"config_version"[[:space:]]*:[[:space:]]*[1-9]' "$1" 2>/dev/null
+# Log a restore decision. The init script discards this script's stdout, so
+# the syslog is the only place a skipped or saved copy is visible.
+restore_log() {
+    if command -v logger >/dev/null 2>&1; then
+        logger -t helixscreen "restore-user-config: $*" 2>/dev/null || true
+    fi
+    echo "restore-user-config: $*"
 }
 
-# Decide between a real file in the install dir and its printer_data twin
-# before the real one is replaced by a symlink. On SysV this runs at the next
-# start, possibly days after the update, so the running app may already have
-# saved into the real file. Neither copy is ever discarded unseen:
-#   - identical content: nothing to keep.
-#   - the real file is newer settings the app wrote: it becomes the
-#     printer_data copy, the old copy is kept as <name>.pre-restore.
-#   - otherwise printer_data wins and the real file is kept as
-#     <name>.pre-restore. A zip's default settings.json is the exception: it
-#     holds nothing of the user's, so it is dropped without a copy.
-# Newer is judged by mtime, but only a file the app wrote can win: zip
-# extraction stamps the release's defaults with the extraction time, which
-# would otherwise always beat the user's file.
-# Returns non-zero when a copy could not be saved; the caller then leaves the
-# real file in place.
+# Write FILE's content to DEST through a temporary file, so DEST is never seen
+# half-written. Plain cp: the copy is owned by whoever runs this, so DEST's
+# owner is applied afterwards when it can be read.
+# Args: SRC DEST [OWNER_REF]  (OWNER_REF is a file whose owner DEST takes)
+atomic_copy() {
+    local src="$1" dest="$2" ref="${3:-}" tmp owner
+    tmp="${dest}.tmp"
+    cp "$src" "$tmp" 2>/dev/null || { rm -f "$tmp" 2>/dev/null; return 1; }
+    touch -r "$src" "$tmp" 2>/dev/null || true
+    if [ -n "$ref" ] && [ -e "$ref" ]; then
+        owner=$(stat -c %u:%g "$ref" 2>/dev/null || true)
+        [ -n "$owner" ] && chown "$owner" "$tmp" 2>/dev/null || true
+    fi
+    mv -f "$tmp" "$dest" 2>/dev/null || { rm -f "$tmp" 2>/dev/null; return 1; }
+    return 0
+}
+
+# Decide what to do with a real file in the install dir whose printer_data twin
+# exists, before the real file is replaced by a symlink. printer_data always
+# wins: the user's file is the one the app must read. The real file is kept as
+# <name>.pre-restore only when something wrote it after the zip was extracted
+# (it is newer than release_info.json, which the extraction writes), because
+# otherwise it is the packaged copy and holds nothing of the user's. Such a
+# copy does not replace an earlier one: that moves to <name>.pre-restore.1.
+#
+# A ledger (a dotfile that is not JSON) is line-oriented state both copies may
+# have appended to, so its two copies are merged line by line into printer_data
+# instead. A JSON dotfile is a snapshot, and printer_data keeps it.
+#
+# Never fails the caller: a copy that cannot be saved is logged and the real
+# file is still replaced by the link, since the user's file must win.
+# Args: NAME REAL PD
 reconcile_real_file() {
-    local name="$1" real="$2" pd="$3"
+    local name="$1" real="$2" pd="$3" merged
 
     cmp -s "$real" "$pd" 2>/dev/null && return 0
 
-    if [ "$name" = "settings.json" ] && ! is_app_written_settings "$real"; then
+    case "$name" in
+        *.json) ;;
+        .*)
+            merged="${pd}.merge"
+            if sort -u "$pd" "$real" > "$merged" 2>/dev/null \
+                && atomic_copy "$merged" "$pd" "$pd"; then
+                restore_log "merged $name into printer_data"
+            else
+                restore_log "could not merge $name; printer_data copy kept"
+            fi
+            rm -f "$merged" 2>/dev/null
+            return 0
+            ;;
+    esac
+
+    if [ -f "${IDIR}/release_info.json" ] \
+        && [ -z "$(find "$real" -newer "${IDIR}/release_info.json" 2>/dev/null)" ]; then
+        restore_log "dropped packaged $name (older than the release)"
         return 0
     fi
 
-    if [ "$name" = "settings.json" ] && [ -n "$(find "$real" -newer "$pd" 2>/dev/null)" ]; then
-        cp -p "$pd" "${pd}.pre-restore" 2>/dev/null || return 1
-        cp -p "$real" "$pd" 2>/dev/null || return 1
-        return 0
+    if [ -e "${pd}.pre-restore" ]; then
+        mv -f "${pd}.pre-restore" "${pd}.pre-restore.1" 2>/dev/null \
+            || rm -f "${pd}.pre-restore" 2>/dev/null
     fi
-
-    cp -p "$real" "${pd}.pre-restore" 2>/dev/null || return 1
+    if atomic_copy "$real" "${pd}.pre-restore"; then
+        restore_log "kept the install-dir $name as $(basename "$pd").pre-restore"
+    else
+        restore_log "could not save the install-dir $name; printer_data copy kept"
+    fi
     return 0
 }
 
@@ -232,7 +270,7 @@ restore_config_symlinks() {
         # symlink, after keeping whatever it held that printer_data lacks.
         if [ -f "$pd_file" ]; then
             if [ -f "$install_file" ] && [ ! -L "$install_file" ]; then
-                reconcile_real_file "$file" "$install_file" "$pd_file" || continue
+                reconcile_real_file "$file" "$install_file" "$pd_file"
             fi
             rm -f "$install_file" 2>/dev/null
             ln -s "$pd_file" "$install_file" 2>/dev/null || true

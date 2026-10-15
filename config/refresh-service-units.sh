@@ -68,6 +68,7 @@ wait_for_install_stable || true
 USER_VAL="$(grep "^User=" "$DEST" | cut -d= -f2)"
 GROUP_VAL="$(grep "^Group=" "$DEST" | cut -d= -f2)"
 PD_HELIX_VAL="$(sed -n 's/^# HELIX_PD_HELIX=//p' "$DEST" | head -n1)"
+PD_HELIX_SED="$(printf '%s' "$PD_HELIX_VAL" | sed 's/[\\&|]/\\&/g')"
 
 template_unit() {
     local src="$1" dest="$2"
@@ -77,7 +78,7 @@ template_unit() {
         -e "s|@@HELIX_GROUP@@|${GROUP_VAL:-root}|g" \
         -e "s|@@INSTALL_DIR@@|${IDIR}|g" \
         -e "s|@@INSTALL_PARENT@@|${PDIR}|g" \
-        -e "s|@@HELIX_PD_HELIX@@|${PD_HELIX_VAL}|g" \
+        -e "s|@@HELIX_PD_HELIX@@|${PD_HELIX_SED}|g" \
         "$dest"
 }
 
