@@ -6,7 +6,8 @@ import { mergeOptions, rateAxis } from '../../../analytics-dashboard/src/utils/c
 import { emptyPlaceholder, notReportedPer, ppChange, rangeLabel, unreportedNote } from '../../../analytics-dashboard/src/utils/format'
 import { canonicalModelKey, canonicalModels, isFilterable } from '../../../analytics-dashboard/src/utils/models'
 import { groupMaterialSets, materialSet } from '../../../analytics-dashboard/src/utils/materials'
-import { sanitizeFilterValue } from '../queries'
+import { filterValues } from '../queries'
+import { withNotApplicable } from '../../../analytics-dashboard/src/utils/notApplicable'
 import { barChartHeight, seriesColor, todayUtc, trimPartialDays } from '../../../analytics-dashboard/src/utils/series'
 
 const rows = (names: string[]) => names.map((name, i) => ({ name, count: i + 1 }))
@@ -98,10 +99,9 @@ describe('isFilterable', () => {
     expect(isFilterable('')).toBe(false)
   })
 
-  // Filterable exactly when the worker's parse of the value (split on commas,
-  // trim, sanitize, drop empties) gives back the value itself.
+  // Filterable exactly when the worker's parse of the value gives back the value itself.
   const workerKeeps = (raw: string) => {
-    const parsed = raw.split(',').map((v) => sanitizeFilterValue(v.trim())).filter(Boolean)
+    const parsed = filterValues(raw)
     return parsed.length === 1 && parsed[0] === raw
   }
   const printable = Array.from({ length: 95 }, (_, i) => String.fromCharCode(32 + i))
@@ -204,6 +204,17 @@ describe('emptyPlaceholder', () => {
   })
   it('blames the range when no filter is active', () => {
     expect(emptyPlaceholder(null, [])).toBe('No data in this range')
+  })
+})
+
+describe('withNotApplicable', () => {
+  it('fills every block with null when the payload has no not_applicable', () => {
+    const out = withNotApplicable({ total: 3, devices: [] }, ['crashes', 'prints'] as const)
+    expect(out).toEqual({ total: 3, devices: [], not_applicable: { crashes: null, prints: null } })
+  })
+  it('keeps what the worker sent and fills only the missing blocks', () => {
+    const out = withNotApplicable({ not_applicable: { crashes: 'model' as const } }, ['crashes', 'errors'] as const)
+    expect(out.not_applicable).toEqual({ crashes: 'model', errors: null })
   })
 })
 

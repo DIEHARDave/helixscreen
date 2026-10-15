@@ -4,6 +4,7 @@ import type { HealthPayload } from '../../../telemetry-worker/src/health'
 import type { DeviceList, DevicePage } from '../../../telemetry-worker/src/devices'
 import type { NotApplicable } from '../../../telemetry-worker/src/schema'
 import type { RetentionCohort } from '../../../telemetry-worker/src/retention'
+import { withNotApplicable, type WireNotApplicable } from '@/utils/notApplicable'
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'https://telemetry.helixscreen.org'
 
@@ -283,6 +284,13 @@ async function apiFetch<T>(path: string, params?: Record<string, string>): Promi
   return res.json() as Promise<T>
 }
 
+// Each endpoint's not_applicable blocks; the normalized return types require every one.
+const PRINTS_BLOCKS = ['prints'] as const
+const RELEASES_BLOCKS = ['crashes', 'prints', 'updates', 'performance'] as const
+const HEALTH_BLOCKS = ['crashes', 'errors', 'prints', 'updates'] as const
+const STABILITY_BLOCKS = ['crashes', 'errors'] as const
+const DEVICES_BLOCKS = ['crashes', 'prints'] as const
+
 export const api = {
   getOverview(queryString: string): Promise<OverviewData> {
     return apiFetch(`/v1/dashboard/overview?${queryString}`)
@@ -292,8 +300,9 @@ export const api = {
     return apiFetch(`/v1/dashboard/adoption?${queryString}`)
   },
 
-  getPrints(queryString: string): Promise<PrintsData> {
-    return apiFetch(`/v1/dashboard/prints?${queryString}`)
+  async getPrints(queryString: string): Promise<PrintsData> {
+    const wire = await apiFetch<WireNotApplicable<PrintsData>>(`/v1/dashboard/prints?${queryString}`)
+    return withNotApplicable(wire, PRINTS_BLOCKS)
   },
 
   getCrashes(queryString: string): Promise<CrashesData> {
@@ -301,17 +310,20 @@ export const api = {
   },
 
   // Without `versions` the worker picks the most active releases itself.
-  getReleases(queryString: string, versions?: string[]): Promise<ReleasesData> {
+  async getReleases(queryString: string, versions?: string[]): Promise<ReleasesData> {
     const list = versions ? `&versions=${versions.map(v => encodeURIComponent(v)).join(',')}` : ''
-    return apiFetch(`/v1/dashboard/releases?${queryString}${list}`)
+    const wire = await apiFetch<WireNotApplicable<ReleasesData>>(`/v1/dashboard/releases?${queryString}${list}`)
+    return withNotApplicable(wire, RELEASES_BLOCKS)
   },
 
-  getHealth(queryString: string): Promise<HealthData> {
-    return apiFetch(`/v1/dashboard/health?${queryString}`)
+  async getHealth(queryString: string): Promise<HealthData> {
+    const wire = await apiFetch<WireNotApplicable<HealthData>>(`/v1/dashboard/health?${queryString}`)
+    return withNotApplicable(wire, HEALTH_BLOCKS)
   },
 
-  getDevices(queryString: string): Promise<DeviceListData> {
-    return apiFetch(`/v1/dashboard/devices?${queryString}`)
+  async getDevices(queryString: string): Promise<DeviceListData> {
+    const wire = await apiFetch<WireNotApplicable<DeviceListData>>(`/v1/dashboard/devices?${queryString}`)
+    return withNotApplicable(wire, DEVICES_BLOCKS)
   },
 
   // One device over a fixed 90 days: no filters apply.
@@ -343,8 +355,9 @@ export const api = {
     return apiFetch(`/v1/dashboard/reliability?${queryString}`)
   },
 
-  getStability(queryString: string): Promise<StabilityData> {
-    return apiFetch(`/v1/dashboard/stability?${queryString}`)
+  async getStability(queryString: string): Promise<StabilityData> {
+    const wire = await apiFetch<WireNotApplicable<StabilityData>>(`/v1/dashboard/stability?${queryString}`)
+    return withNotApplicable(wire, STABILITY_BLOCKS)
   },
 
   getPerformance(queryString: string): Promise<PerformanceData> {

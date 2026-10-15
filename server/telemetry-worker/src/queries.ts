@@ -98,7 +98,8 @@ const FILTER_FIELD: Record<FilterKey, (kind: string) => string> = {
   board: () => "app_board",
 };
 
-function filterValues(raw?: string): string[] {
+/** The values one filter parameter names: split on commas, trimmed, sanitized, empties dropped. */
+export function filterValues(raw?: string): string[] {
   if (!raw) return [];
   return raw
     .split(",")
