@@ -3,6 +3,8 @@
 
 #include "ui_filename_utils.h"
 
+#include "three_mf.h"
+
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
@@ -249,16 +251,7 @@ bool is_native_3mf_shadow(const std::string& name) {
 }
 
 std::string qidi_3mf_extract_name(const std::string& print_filename) {
-    std::string name = get_filename_basename(print_filename);
-    if (is_3mf(name)) {
-        name.resize(name.size() - 4);
-    }
-    static const std::string gcode = ".gcode";
-    if (name.size() < gcode.size() ||
-        name.compare(name.size() - gcode.size(), gcode.size(), gcode) != 0) {
-        name += gcode;
-    }
-    return name;
+    return get_filename_basename(three_mf::extracted_gcode_name(print_filename, 0, false));
 }
 
 bool is_qidi_3mf_extract(const std::string& entry, const std::string& print_filename) {
