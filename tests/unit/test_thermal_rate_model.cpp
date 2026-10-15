@@ -167,6 +167,61 @@ TEST_CASE("ThermalRateModel keeps the rate of the whole climb, not its last appr
     REQUIRE(model.blended_rate_for_save() == Catch::Approx(80.0f / 70.0f).margin(0.15f));
 }
 
+TEST_CASE("ThermalRateModel estimates a whole climb at its average, not its last approach",
+          "[thermal_rate]") {
+    // The climb above: 0.5 s/C for 60C, then 5 s/C for the last 10C.
+    ThermalRateModel model;
+    model.reset(30.0f);
+    uint32_t tick = 5000;
+    for (float temp = 30.0f; temp <= 90.0f; tick += 5000, temp += 10.0f) {
+        model.record_sample(temp, tick);
+    }
+    tick += 5000;
+    for (float temp = 92.0f; temp <= 100.0f; tick += 10000, temp += 2.0f) {
+        model.record_sample(temp, tick);
+    }
+
+    CAPTURE(model.climb_rate(), model.best_rate());
+    REQUIRE(model.climb_rate() == Catch::Approx(80.0f / 70.0f).margin(0.15f));
+    REQUIRE(model.estimate_seconds(30.0f, 100.0f) == Catch::Approx(80.0f).margin(10.0f));
+    // The rate for the degrees just ahead stays the tail's.
+    REQUIRE(model.best_rate() > 3.0f);
+}
+
+TEST_CASE("ThermalRateModel climb rate falls back to history, then the default", "[thermal_rate]") {
+    ThermalRateModel model;
+    model.reset(25.0f);
+    model.set_default_rate(1.5f);
+    REQUIRE(model.climb_rate() == Catch::Approx(1.5f));
+    model.load_history(6.4f);
+    REQUIRE(model.climb_rate() == Catch::Approx(6.4f));
+    REQUIRE(model.estimate_seconds(30.0f, 105.0f) == Catch::Approx(75.0f * 6.4f));
+}
+
+TEST_CASE("ThermalRateModel leaves the wait before a raised target out of the climb",
+          "[thermal_rate]") {
+    // A nozzle sits at ambient while the bed heats, drifting up a little more
+    // than a degree, then its target is set and it climbs 5C a second.
+    ThermalRateModel model;
+    model.reset(34.5f);
+    uint32_t tick = 5000;
+    float temp = 34.5f;
+    model.note_target(0.0f, temp, tick);
+    for (int i = 0; i < 10; ++i, tick += 5000, temp += 0.15f) {
+        model.note_target(0.0f, temp, tick);
+        model.record_sample(temp, tick);
+    }
+    model.note_target(265.0f, temp, tick);
+    model.record_sample(temp, tick);
+    for (tick += 5000, temp += 25.0f; temp < 260.0f; tick += 5000, temp += 25.0f) {
+        model.note_target(265.0f, temp, tick);
+        model.record_sample(temp, tick);
+    }
+
+    CAPTURE(model.climb_rate());
+    REQUIRE(model.climb_rate() == Catch::Approx(0.2f).margin(0.03f));
+}
+
 TEST_CASE("ThermalRateModel no measurement returns 0 for save", "[thermal_rate]") {
     ThermalRateModel model;
     model.reset(25.0f);

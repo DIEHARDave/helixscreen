@@ -6309,6 +6309,8 @@ class ForgeXPrintStartReplayFixture : public ForgeXCollectorFixture {
         std::string mesh_message;    ///< the last mesh label
         float first_prediction_s{0}; ///< prediction once the bed target is set
         float cooldown_prediction_s{0};
+        float max_prediction_s{0}; ///< highest prediction once the bed target is set
+        std::string predictions;   ///< "second:total" at every heater sample
     };
 
     ForgeXPrintStartReplayFixture() {
@@ -6424,10 +6426,16 @@ class ForgeXPrintStartReplayFixture : public ForgeXCollectorFixture {
                     result.first_prediction_s =
                         PrintStartCollectorTestAccess::get_predicted_total(collector());
                 }
+                const float predicted =
+                    PrintStartCollectorTestAccess::get_predicted_total(collector());
                 if (now_ms >= cooldown_ms && result.cooldown_prediction_s == 0.0f) {
-                    result.cooldown_prediction_s =
-                        PrintStartCollectorTestAccess::get_predicted_total(collector());
+                    result.cooldown_prediction_s = predicted;
                 }
+                if (bed_target > 0) {
+                    result.max_prediction_s = std::max(result.max_prediction_s, predicted);
+                }
+                result.predictions += std::to_string(now_ms / 1000) + ":" +
+                                      std::to_string(static_cast<int>(predicted)) + " ";
                 PrintStartCollectorTestAccess::run_eta_update(collector());
                 break;
             }
@@ -6452,6 +6460,7 @@ TEST_CASE_METHOD(ForgeXPrintStartReplayFixture,
     int history_total_s = 0;
     float min_prediction_s = 0.0f;
     float max_prediction_s = 1.0e6f;
+    float max_whole_run_s = 849.0f * 1.3f;
 
     SECTION("with the size-guess heating rates") {
         ThermalRateManager::instance().apply_archetype_defaults(BED_X_MAX, "");
@@ -6495,6 +6504,61 @@ TEST_CASE_METHOD(ForgeXPrintStartReplayFixture,
 
     REQUIRE(result.first_prediction_s >= min_prediction_s);
     REQUIRE(result.first_prediction_s <= max_prediction_s);
+    // The prediction holds near the real length through the whole pre-print,
+    // the slow last degrees of the bed included.
+    INFO(result.predictions);
+    REQUIRE(result.max_prediction_s <= max_whole_run_s);
+}
+
+TEST_CASE_METHOD(PrintStartCollectorHeaterFixture,
+                 "A bed's slow last degrees do not inflate the predicted pre-print",
+                 "[print][collector][eta][thermal_rate]") {
+    // A generic printer: the bed heats from cold toward 100C the way a bed
+    // does, fast then crawling (100 - 75*e^(-t/150)), and only once it is
+    // within 2C does the macro set the nozzle target. The predicted total is
+    // recomputed then, with the bed deep in its tail.
+    helix::sim::SimulatedClock::ManualScope clock(helix::sim::SimSpeed::of(1.0));
+    PreprintConfigScope config{""};
+    ThermalRateManager::instance().reset();
+    ThermalRateManager::instance().apply_archetype_defaults(235.0f, "");
+
+    set_all_temps(250, 0, 250, 0);
+    collector().start();
+    drain_async_updates();
+    collector().enable_fallbacks();
+
+    float max_prediction = 0.0f;
+    int nozzle_set_at = -1;
+    int done_at = -1;
+    float ext = 25.0f;
+    for (int t = 1; t <= 900 && done_at < 0; ++t) {
+        clock.advance(std::chrono::seconds(1));
+        const float bed = 100.0f - 75.0f * std::exp(-static_cast<float>(t) / 150.0f);
+        if (nozzle_set_at < 0 && bed >= 98.0f) {
+            nozzle_set_at = t;
+        }
+        if (nozzle_set_at >= 0) {
+            ext = std::min(220.0f, ext + 4.0f);
+            if (ext >= 220.0f) {
+                done_at = t;
+            }
+        }
+        set_all_temps(static_cast<int>(bed * 10), 1000, static_cast<int>(ext * 10),
+                      nozzle_set_at >= 0 ? 2200 : 0);
+        collector().check_fallback_completion();
+        PrintStartCollectorTestAccess::run_eta_update(collector());
+        drain_async_updates();
+        if (t >= 5) {
+            max_prediction = std::max(
+                max_prediction, PrintStartCollectorTestAccess::get_predicted_total(collector()));
+        }
+    }
+    REQUIRE(done_at > 0);
+    CAPTURE(nozzle_set_at, done_at, max_prediction);
+    // The generic default phases (homing, mesh, QGL, Z tilt, clean, purge:
+    // 260s) count toward the total whether or not this start runs them.
+    constexpr float GENERIC_DEFAULT_PHASES_S = 260.0f;
+    REQUIRE(max_prediction <= 1.3f * static_cast<float>(done_at) + GENERIC_DEFAULT_PHASES_S);
 }
 
 TEST_CASE_METHOD(PrintStartCollectorHeaterFixture,

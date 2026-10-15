@@ -321,6 +321,20 @@ bed-first macro issues its `M109` long after preparation begins and the nozzle p
 no weight until it does, and a provisional 0°C-targets estimate must not freeze the display
 when the real one arrives a second later.
 
+A heating phase's duration is a whole climb, from the temperature the heater had when the
+collector started to its target, so `ThermalRateModel::estimate_seconds()` prices it at
+`climb_rate()`: seconds per degree across every step measured so far, else the saved or
+database rate (both whole-climb rates too), else the default. It never uses `best_rate()`,
+the EMA of the latest steps: a bed's last degrees are its slowest, and weights recomputed
+while it crawls them would price the whole climb at that tail rate, two to three times the
+real pre-print. `best_rate()` stays for the degrees just ahead
+(the PID calibration's remaining heat). A raised target starts a new step
+(`ThermalRateModel::note_target()`, fed by the collector before each sample), so the minutes a
+nozzle idles at ambient while the bed heats never enter its rate. Early in a climb the
+measured average covers only the fast part and the total reads low (a 220mm bed from cold
+read 631s against 849s until its tail was measured); it rises toward the real length as the
+climb goes on and does not overshoot.
+
 The live countdown is the collector's, not the predictor's: `PrintStartCollector#update_eta_display`. The predictor supplies the historical shape (per-phase weights and a wall-clock total); the collector is what turns that into a number on screen, because three of the four inputs are live printer state the predictor never sees.
 
 Each phase's duration is `weight * predicted_total_seconds_`, and each phase contributes:

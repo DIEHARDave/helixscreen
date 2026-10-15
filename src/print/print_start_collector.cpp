@@ -2515,13 +2515,17 @@ void PrintStartCollector::feed_thermal_sample() {
 
     if (phase == PrintStartPhase::HEATING_BED || phase == PrintStartPhase::HEATING_NOZZLE) {
         // Temps are in decidegrees (value * 10)
-        int ext_temp =
-            lv_subject_get_int(state_.temperature_state().get_active_extruder_temp_subject());
-        int bed_temp = lv_subject_get_int(state_.temperature_state().get_bed_temp_subject());
-        mgr.get_model("extruder")
-            .record_sample(helix::ui::temperature::deci_to_degrees_f(ext_temp), now_ms);
-        mgr.get_model("heater_bed")
-            .record_sample(helix::ui::temperature::deci_to_degrees_f(bed_temp), now_ms);
+        auto& temps = state_.temperature_state();
+        const auto feed = [&](const char* heater, lv_subject_t* temp, lv_subject_t* target) {
+            auto& model = mgr.get_model(heater);
+            const float t = helix::ui::temperature::deci_to_degrees_f(lv_subject_get_int(temp));
+            model.note_target(helix::ui::temperature::deci_to_degrees_f(lv_subject_get_int(target)),
+                              t, now_ms);
+            model.record_sample(t, now_ms);
+        };
+        feed("extruder", temps.get_active_extruder_temp_subject(),
+             temps.get_active_extruder_target_subject());
+        feed("heater_bed", temps.get_bed_temp_subject(), temps.get_bed_target_subject());
     }
 }
 

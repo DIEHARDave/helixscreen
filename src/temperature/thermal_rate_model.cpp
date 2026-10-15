@@ -58,12 +58,25 @@ void ThermalRateModel::record_sample(float temp_c, uint32_t tick_ms) {
     }
 }
 
+void ThermalRateModel::note_target(float target_c, float temp_c, uint32_t tick_ms) {
+    const bool raised = target_c > target_c_ + RISE_EPSILON_C;
+    target_c_ = target_c;
+    if (!raised || start_tick_ == 0) {
+        return;
+    }
+    last_temp_ = temp_c;
+    last_tick_ = tick_ms;
+    high_temp_ = temp_c;
+    last_rise_tick_ = tick_ms;
+    holding_ = false;
+}
+
 float ThermalRateModel::estimate_seconds(float current, float target) const {
     if (current >= target)
         return 0.0f;
 
     float remaining_degrees = target - current;
-    return std::max(0.0f, remaining_degrees * best_rate());
+    return std::max(0.0f, remaining_degrees * climb_rate());
 }
 
 std::optional<float> ThermalRateModel::measured_rate() const {
@@ -80,6 +93,14 @@ float ThermalRateModel::best_rate() const {
     return default_rate_;
 }
 
+float ThermalRateModel::climb_rate() const {
+    if (has_measured_heat_rate_ && climb_degrees_ > 0.0f)
+        return climb_seconds_ / climb_degrees_;
+    if (has_history_ && hist_heat_rate_ > 0)
+        return hist_heat_rate_;
+    return default_rate_;
+}
+
 void ThermalRateModel::load_history(float rate_s_per_deg) {
     hist_heat_rate_ = rate_s_per_deg;
     has_history_ = true;
@@ -88,10 +109,10 @@ void ThermalRateModel::load_history(float rate_s_per_deg) {
 float ThermalRateModel::blended_rate_for_save() const {
     if (!has_measured_heat_rate_ || climb_degrees_ <= 0.0f)
         return 0.0f;
-    const float climb_rate = climb_seconds_ / climb_degrees_;
+    const float measured = climb_rate();
     if (has_history_ && hist_heat_rate_ > 0)
-        return SAVE_NEW_WEIGHT * climb_rate + SAVE_OLD_WEIGHT * hist_heat_rate_;
-    return climb_rate;
+        return SAVE_NEW_WEIGHT * measured + SAVE_OLD_WEIGHT * hist_heat_rate_;
+    return measured;
 }
 
 void ThermalRateModel::set_default_rate(float rate_s_per_deg) {
@@ -109,6 +130,7 @@ void ThermalRateModel::reset(float start_temp) {
     holding_ = false;
     climb_seconds_ = 0.0f;
     climb_degrees_ = 0.0f;
+    target_c_ = 0.0f;
 }
 
 // --- ThermalRateManager ---
