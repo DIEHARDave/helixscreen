@@ -135,10 +135,49 @@ static std::string escape_path(const std::string& path) {
     return out;
 }
 
-static std::string unescape_path(const std::string& name) {
+// A copy extracted from one plate of an archive ends "~p<plate>.gcode" after
+// the original's name: Klipper prints only G-code names, and the plate goes
+// with it. Escaping never yields "~p", so in an escaped name it is unambiguous.
+static const std::string plate_marker = "~p";
+static const std::string plate_ext = ".gcode";
+
+static std::string plate_suffix(int plate) {
+    return plate_marker + std::to_string(plate) + plate_ext;
+}
+
+/// The plate @p name ends with, removed from it, or 0 when it carries none.
+static int take_plate_suffix(std::string& name) {
+    if (name.size() < plate_ext.size() ||
+        name.compare(name.size() - plate_ext.size(), plate_ext.size(), plate_ext) != 0) {
+        return 0;
+    }
+    size_t digits = name.size() - plate_ext.size();
+    while (digits > 0 && std::isdigit(static_cast<unsigned char>(name[digits - 1]))) {
+        --digits;
+    }
+    if (digits == name.size() - plate_ext.size() || digits < plate_marker.size() ||
+        name.compare(digits - plate_marker.size(), plate_marker.size(), plate_marker) != 0) {
+        return 0;
+    }
+    const int plate = std::atoi(name.c_str() + digits);
+    name.resize(digits - plate_marker.size());
+    return plate;
+}
+
+/// Unescapes @p name, ending at a plate suffix, whose plate goes to @p plate.
+static std::string unescape_path(const std::string& name, int& plate) {
     std::string out;
+    plate = 0;
     for (size_t i = 0; i < name.size(); ++i) {
         if (name[i] == '~' && i + 1 < name.size()) {
+            if (name[i + 1] == 'p') {
+                std::string rest = name.substr(i);
+                plate = take_plate_suffix(rest);
+                if (plate > 0 && rest.empty()) {
+                    break;
+                }
+                plate = 0;
+            }
             out += name[i + 1] == 's' ? '/' : name[i + 1];
             ++i;
         } else {
@@ -155,6 +194,7 @@ namespace {
 struct ParsedRewrite {
     std::string original;
     bool full_path = false;
+    int plate = 0; ///< the archive plate a copy was extracted from, or 0
 };
 } // namespace
 
@@ -179,7 +219,9 @@ static std::optional<ParsedRewrite> parse_rewrite(const std::string& path) {
         const size_t underscore = path.find('_', prefix_end);
         if (underscore != std::string::npos && underscore > prefix_end &&
             path[underscore - 1] == path_marker && underscore + 1 < path.size()) {
-            return ParsedRewrite{unescape_path(path.substr(underscore + 1)), true};
+            int plate = 0;
+            std::string original = unescape_path(path.substr(underscore + 1), plate);
+            return ParsedRewrite{std::move(original), true, plate};
         }
     } else if (const size_t mod = path.find(gcode_mod_prefix); mod != std::string::npos) {
         // */gcode_mod/mod_123456_OriginalName.gcode -> OriginalName.gcode
@@ -195,7 +237,9 @@ static std::optional<ParsedRewrite> parse_rewrite(const std::string& path) {
     if (underscore == std::string::npos || underscore + 1 >= path.size()) {
         return std::nullopt;
     }
-    return ParsedRewrite{path.substr(underscore + 1), false};
+    std::string original = path.substr(underscore + 1);
+    const int plate = take_plate_suffix(original);
+    return ParsedRewrite{std::move(original), false, plate};
 }
 
 std::string resolve_gcode_filename(const std::string& path) {
@@ -262,13 +306,15 @@ bool is_qidi_3mf_extract(const std::string& entry, const std::string& print_file
                                                      });
 }
 
-std::string make_rewritten_gcode_path(const std::string& original_path) {
+// The staged name for @p original_path, ending in @p suffix (empty, or a plate suffix).
+static std::string staged_path(const std::string& original_path, const std::string& suffix) {
     // One path component on the printer's filesystem, so it must fit NAME_MAX.
     constexpr size_t name_max = 255;
     static const std::string staging_dir = ".helix_temp/";
     const std::string stamp = std::to_string(static_cast<long long>(std::time(nullptr)));
 
-    std::string staged = helix_temp_prefix + stamp + path_marker + "_" + escape_path(original_path);
+    std::string staged =
+        helix_temp_prefix + stamp + path_marker + "_" + escape_path(original_path) + suffix;
     if (staged.size() - staging_dir.size() <= name_max) {
         return staged;
     }
@@ -276,7 +322,7 @@ std::string make_rewritten_gcode_path(const std::string& original_path) {
     // trusted_original_path() refuses to read as the original's location.
     staged = helix_temp_prefix + stamp + "_";
     std::string name = get_filename_basename(original_path);
-    const size_t room = name_max - (staged.size() - staging_dir.size());
+    const size_t room = name_max - (staged.size() - staging_dir.size()) - suffix.size();
     if (name.size() > room) {
         // Keep the extension, and start on a UTF-8 lead byte: a name cut inside
         // a multibyte character is not a valid filename to upload.
@@ -286,7 +332,20 @@ std::string make_rewritten_gcode_path(const std::string& original_path) {
         }
         name = name.substr(start);
     }
-    return staged + name;
+    return staged + name + suffix;
+}
+
+std::string make_rewritten_gcode_path(const std::string& original_path) {
+    return staged_path(original_path, "");
+}
+
+std::string make_extracted_plate_path(const std::string& archive_path, int plate) {
+    return staged_path(archive_path, plate_suffix(plate));
+}
+
+int rewritten_archive_plate(const std::string& path) {
+    const auto parsed = parse_rewrite(path);
+    return parsed ? parsed->plate : 0;
 }
 
 bool is_uploaded_rewrite_path(const std::string& path) {

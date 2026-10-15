@@ -192,6 +192,46 @@ TEST_CASE("trusted_original_path() answers only for names that place the origina
     CHECK(resolve_gcode_filename(".helix_print/full/parts/benchy.gcode") == "parts/benchy.gcode");
 }
 
+TEST_CASE("make_extracted_plate_path() stages a .gcode that maps back to its archive",
+          "[filename_utils][identity][three_mf]") {
+    using helix::gcode::make_extracted_plate_path;
+    using helix::gcode::rewritten_archive_plate;
+    using helix::gcode::trusted_original_path;
+    for (const std::string original :
+         {"X.gcode.3mf", "parts/X.gcode.3mf", "odd~p9~s/x~~.3mf", "a~p3.gcode.3mf"}) {
+        const std::string staged = make_extracted_plate_path(original, 9);
+        INFO(staged);
+        CHECK(staged.rfind(".helix_temp/modified_", 0) == 0);
+        CHECK(staged.size() > 6);
+        CHECK(staged.compare(staged.size() - 6, 6, ".gcode") == 0);
+        CHECK(helix::gcode::is_uploaded_rewrite_path(staged));
+        CHECK(resolve_gcode_filename(staged) == original);
+        CHECK(trusted_original_path(staged) == original);
+        CHECK(rewritten_archive_plate(staged) == 9);
+    }
+    // An ordinary staged copy names no plate.
+    CHECK(rewritten_archive_plate(helix::gcode::make_rewritten_gcode_path("X.gcode")) == 0);
+    CHECK(rewritten_archive_plate("X.gcode") == 0);
+    CHECK(rewritten_archive_plate(make_extracted_plate_path("X.gcode.3mf", 12)) == 12);
+}
+
+TEST_CASE("make_extracted_plate_path() keeps its plate suffix within NAME_MAX",
+          "[filename_utils][identity][three_mf]") {
+    std::string deep;
+    for (int i = 0; i < 30; ++i) {
+        deep += "folder_" + std::to_string(i) + "/";
+    }
+    const std::string staged =
+        helix::gcode::make_extracted_plate_path(deep + "Long_Part.gcode.3mf", 4);
+    INFO(staged);
+    CHECK(staged.size() - std::string(".helix_temp/").size() <= 255);
+    CHECK(staged.compare(staged.size() - 9, 9, "~p4.gcode") == 0);
+    // Too long to place the archive: a bare name, which is not vouched for.
+    CHECK_FALSE(helix::gcode::trusted_original_path(staged));
+    CHECK(resolve_gcode_filename(staged) == "Long_Part.gcode.3mf");
+    CHECK(helix::gcode::rewritten_archive_plate(staged) == 4);
+}
+
 TEST_CASE("make_rewritten_gcode_path() keeps a staged name within NAME_MAX",
           "[filename_utils][identity][reprint]") {
     std::string deep;

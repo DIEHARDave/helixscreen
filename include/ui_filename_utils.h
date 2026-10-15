@@ -158,6 +158,21 @@ bool is_rewritten_gcode_path(const std::string& path);
 std::string make_rewritten_gcode_path(const std::string& original_path);
 
 /**
+ * @brief The staged path for plate @p plate's G-code, extracted from @p archive_path.
+ *
+ * The sibling of make_rewritten_gcode_path() for a .3mf: the same staging
+ * prefix, so the same cleanup reaps it, and a name ending "~p<plate>.gcode" so
+ * Klipper takes it as G-code. resolve_gcode_filename() and
+ * trusted_original_path() map it back to the archive.
+ *
+ * @return e.g. "<staging dir>/modified_1766807545p_parts~sX.gcode.3mf~p9.gcode"
+ */
+std::string make_extracted_plate_path(const std::string& archive_path, int plate);
+
+/// The plate a staged copy was extracted from (make_extracted_plate_path()), or 0.
+int rewritten_archive_plate(const std::string& path);
+
+/**
  * @brief Is this a copy WE staged on the printer, i.e. ours to delete?
  *
  * Narrower than is_rewritten_gcode_path(), which also answers true for our
