@@ -1803,19 +1803,46 @@ describe("buildFilterClause sanitizing", () => {
 });
 
 describe("compareVersions", () => {
-  const input = ["1.1.0", "1.1.0-beta.10", "1.0.5", "1.1.0-beta.9", "0.99.118"];
-  const sorted = ["0.99.118", "1.0.5", "1.1.0-beta.9", "1.1.0-beta.10", "1.1.0"];
+  // The worker and the dashboard each carry their own comparator; every case
+  // runs against both so the two cannot drift apart.
+  const copies: Array<[string, (a: string, b: string) => number]> = [
+    ["worker", compareVersions],
+    ["dashboard", dashboardCompareVersions],
+  ];
+  // [a, b, sign of compare(a, b)]
+  const cases: Array<[string, string, -1 | 0 | 1]> = [
+    ["1.2.3", "1.2.3", 0],
+    ["1.2", "1.2.0", 0],
+    ["1.10.0", "1.9.0", 1],
+    ["1.0.5", "1.1.0", -1],
+    ["1.1.0-beta.9", "1.1.0-beta.10", -1],
+    ["1.1.0-beta", "1.1.0-beta.1", -1],
+    ["1.1.0-rc", "1.1.0-beta", 1],
+    ["1.1.0-rc.1", "1.1.0-beta.9", 1],
+    ["1.1.0-1", "1.1.0-alpha", -1],
+    ["1.1.0-beta.1", "1.1.0-beta.alpha", -1],
+    ["1.1.0-beta.2", "1.1.0", -1],
+    ["1.0.9", "1.1.0-beta.1", -1],
+    ["v1.2.0", "1.2.0", 0],
+    ["v1.2.0-beta.1", "1.2.0-beta.1", 0],
+    ["1.2.0+build5", "1.2.0", 0],
+    ["1.2.0-beta.1+abc", "1.2.0-beta.1", 0],
+    ["1.2.0-beta.1+abc", "1.2.0-beta.2+aaa", -1],
+  ];
 
-  it("orders prereleases numerically and releases after their prereleases (worker)", () => {
-    expect([...input].sort(compareVersions)).toEqual(sorted);
-  });
+  for (const [name, cmp] of copies) {
+    describe(name, () => {
+      for (const [a, b, want] of cases) {
+        it(`${a} vs ${b} is ${want}`, () => {
+          expect(Math.sign(cmp(a, b))).toBe(want);
+          expect(Math.sign(cmp(b, a))).toBe(-want || 0);
+        });
+      }
 
-  it("orders them the same way in the dashboard copy", () => {
-    expect([...input].sort(dashboardCompareVersions)).toEqual(sorted);
-  });
-
-  it("ignores a leading v", () => {
-    expect(compareVersions("v1.2.0", "1.2.0")).toBe(0);
-    expect(dashboardCompareVersions("v1.2.0", "1.2.0")).toBe(0);
-  });
+      it("sorts a mixed list", () => {
+        const input = ["1.1.0", "1.1.0-beta.10", "1.0.5", "1.1.0-beta.9", "0.99.118"];
+        expect([...input].sort(cmp)).toEqual(["0.99.118", "1.0.5", "1.1.0-beta.9", "1.1.0-beta.10", "1.1.0"]);
+      });
+    });
+  }
 });
