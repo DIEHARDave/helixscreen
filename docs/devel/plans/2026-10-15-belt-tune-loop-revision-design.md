@@ -70,6 +70,13 @@ gap moved most beyond 1.5 Hz becomes the zone. That move seeds Hz/turn. If nothi
 past 1.5 Hz, the loop says the turn did not register and asks for another full turn before
 any advice.
 
+### 2a. Already matched at entry
+
+Before asking for a calibration turn, the loop checks the in-plane belt band (the strongest
+in-plane candidate) on the round-0 curves. If the A-B centroid gap there is within the
+single-sweep noise, Tune Belts says the belts already match and offers Good Enough, with
+"Calibrate anyway" as the secondary action. No turn is requested from a tuned state.
+
 ### 3. Narrow baseline at entry; analyse the zone only
 
 Once the zone is known, the first narrow round is a BASELINE (no verdict), so every verdict
