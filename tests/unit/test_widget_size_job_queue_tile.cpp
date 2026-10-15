@@ -31,6 +31,8 @@
 #include "printer_state.h"
 #include "src/ui/panel_widgets/job_queue_widget.h"
 #include "system_settings_manager.h"
+#include "theme_manager.h"
+#include "xml_registration.h"
 
 #include <spdlog/fmt/fmt.h>
 
@@ -54,7 +56,13 @@ constexpr Box kWide{test::kJobQueueWideW, 113, SizeRung::Wide};
 constexpr Box kFull{test::kJobQueueWideW, 232, SizeRung::Full};
 
 struct JobQueueTileFixture : public LVGLUITestFixture, public JobQueueTileSeed {
-    JobQueueTileFixture() : JobQueueTileSeed([this] { settle(); }) {}
+    JobQueueTileFixture() : JobQueueTileSeed([this] { settle(); }) {
+        // The boxes are the medium tier's. A component registers its fonts and px
+        // tokens once, so one left registered at another geometry is dropped here and
+        // registers again at this one.
+        theme_manager_refresh_layout_constants(lv_display_get_default());
+        helix::unregister_idle_xml_components();
+    }
     ~JobQueueTileFixture() override {
         SystemSettingsManager::instance().set_language("en");
         drain();

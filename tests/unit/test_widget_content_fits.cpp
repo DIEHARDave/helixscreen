@@ -271,9 +271,11 @@ struct ContentFitsFixture : public LVGLUITestFixture {
         ToolState::instance().deinit_subjects();
         helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
         // The sweep drives the display through eight resolutions; put the token
-        // table back where the rest of the suite expects it.
+        // table back where the rest of the suite expects it, and drop the components
+        // registered at the last one so their next use takes the restored tokens.
         if (lv_display_t* d = lv_display_get_default()) {
             theme_manager_refresh_layout_constants(d);
+            helix::unregister_idle_xml_components();
         }
     }
 };

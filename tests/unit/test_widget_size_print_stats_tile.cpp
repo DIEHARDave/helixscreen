@@ -33,6 +33,8 @@
 #include "printer_state.h"
 #include "src/ui/panel_widgets/print_stats_widget.h"
 #include "system_settings_manager.h"
+#include "theme_manager.h"
+#include "xml_registration.h"
 
 #include <array>
 #include <ctime>
@@ -62,6 +64,11 @@ constexpr Box kFull{233, 232, SizeRung::Full};
 
 struct PrintStatsTileFixture : public LVGLUITestFixture, public PrintHistorySeed {
     PrintStatsTileFixture() : PrintHistorySeed(state(), [this] { settle(); }) {
+        // The boxes are the medium tier's. A component registers its fonts and px
+        // tokens once, so one left registered at another geometry is dropped here and
+        // registers again at this one.
+        theme_manager_refresh_layout_constants(lv_display_get_default());
+        helix::unregister_idle_xml_components();
         PanelWidgetManager::instance().init_widget_subjects();
         connect(state());
     }
