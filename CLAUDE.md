@@ -60,6 +60,7 @@ make t F='[tag]'                     # Build, then run ONE tag or case (the inne
 #   Correct only when you have not edited code since the last `make test`:
 #   `make -j` builds the app alone, so after an edit the bare binary reports the
 #   PREVIOUS build's numbers. `make t` costs 5-18s and buys exactly that guarantee.
+#   A stale binary prints `WARNING: helix-tests is stale` on stderr first: believe it.
 make unit-sweep                      # C++ unit tests only, sharded (~50s idle)
 make full-test-run                   # unit-sweep + the bats suite (~2m) - the completion gate
 #   Nothing else runs bats locally: not the commit hook, not test-xml. Without this

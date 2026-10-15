@@ -39,19 +39,25 @@ SUITE_TIMEOUT ?= 3600
 TIMEOUT_KILL_AFTER ?= 30
 timeout_run = $(if $(TIMEOUT_CMD),$(TIMEOUT_CMD) -k $(TIMEOUT_KILL_AFTER) $(1))
 
+# helix-tests warns at startup when the sources changed since its link
+# (tests/test_helpers/stale_binary_check.h). A run make starts follows the build
+# that just brought the binary up to date, so the check would only cost a git
+# scan per shard; a run typed at the shell keeps it.
+export HELIX_TESTS_NO_STALE_CHECK ?= 1
+
 # Where per-shard logs land. Kept (not deleted) whenever a shard fails, crashes,
 # or times out, so there is something to read afterwards — see diagnose_shards.
 # Override to collect artifacts elsewhere, e.g. SHARD_ARTIFACT_ROOT=$(PWD)/build
 # in CI so the logs are inside the workspace and get uploaded.
 SHARD_ARTIFACT_ROOT ?= /tmp
 
-# How many times diagnose_shards re-runs a suspect shard sequentially.
+# How many times diagnose_shards re-runs a suspect shard in each triage stage
+# (scripts/triage_shard.sh; TRIAGE_BUDGET caps the total time).
 #
 # Must be >1: a single re-run cannot tell a real fault from an intermittent one
-# in either direction. A ~10% crash passes one retry ~90% of the time and used
-# to be reported as a confirmed FLAKE; conversely one reproduction was reported
-# as "a real fault, not a flake" on a single sample. Repeating turns the verdict
-# into an observed rate. Raise it when chasing something rare.
+# in either direction. A ~10% crash passes one retry ~90% of the time, and one
+# reproduction is a single sample. Repeating turns the verdict into an observed
+# rate. Raise it when chasing something rare.
 SHARD_RETRIES ?= 3
 
 # Shard count for the [slow] tier in test-all and test-slow. Deliberately far
@@ -151,16 +157,16 @@ endef
 
 # Post-mortem for shards that failed, crashed, or timed out.
 #
-# Exists because the harness used to delete its scratch dir unconditionally: a
-# shard could abort *after* every assertion passed and leave nothing to read,
-# so "is this my diff or a flake?" cost a manual re-run cycle every time. Now
-# the evidence survives and the question is answered inline.
-#
-# For each suspect shard: keep its log, name the tests it ran, and re-run it
-# alone. A shard that is green in isolation but red under a full parallel run
-# is a load/timing flake, not a fault in the diff under review — and adding or
-# removing ANY test reshuffles Catch2's shard composition, so the shard number
-# moving between runs is not evidence either.
+# The scratch dir survives any failure, so the evidence is there to read. For
+# each suspect shard scripts/triage_shard.sh names the failing case(s) and
+# re-runs them alone, alone on one pinned CPU, as the same shard again, and as
+# the same shard pinned, then prints one verdict: fails alone, fails only
+# pinned (timing), fails only in shard composition (order dependence or leaked
+# state, with the exact repro command), or did not reproduce. An idle re-run
+# with free cores is the one condition a timing flake never fails under, which
+# is what the pinned runs are for. Adding or removing ANY test reshuffles
+# Catch2's shard composition, so the shard number moving between runs is not
+# evidence either way.
 #
 # Args: $(1) = shard dir, $(2) = space-separated shard indices, $(3) = filter,
 #       $(4) = the shard count the run used, $(5) = its Catch2 order flags
@@ -171,46 +177,7 @@ define diagnose_shards
 	for s in $(2); do \
 		echo ""; \
 		echo "$(BOLD)shard $$s$(RESET)"; \
-		$(TEST_BIN) $(3) $(5) --shard-count $(4) --shard-index $$s --list-tests --reporter xml 2>/dev/null \
-			| python3 scripts/catch2_shard_tests.py > "$(1)/$$s.tests" 2>/dev/null || true; \
-		n=$$(wc -l < "$(1)/$$s.tests" 2>/dev/null | tr -d ' '); \
-		echo "  ran $${n:-?} test case(s) → $(1)/$$s.tests ($(TEST_BIN) --input-file replays it)"; \
-		fails=$$(grep -oE '^[A-Za-z0-9_/.-]+\.cpp:[0-9]+: FAILED' "$(1)/$$s.log" 2>/dev/null \
-			| sed 's/: FAILED$$//' | sort -u | tr '\n' ' '); \
-		if [ -n "$$fails" ]; then \
-			echo "  failing assertion(s): $$fails"; \
-		else \
-			echo "  no FAILED marker — died after its assertions passed (teardown/static dtor)"; \
-		fi; \
-		printf '  reproduce: %s %s %s--shard-count %s --shard-index %s\n' \
-			"$(TEST_BIN)" '$(3)' "$(if $(5),$(5) )" "$(4)" "$$s"; \
-		echo "  $(CYAN)re-running this shard sequentially x$(SHARD_RETRIES)…$(RESET)"; \
-		hits=0; last_rc=0; \
-		for attempt in $$(seq 1 $(SHARD_RETRIES)); do \
-			if $(call timeout_run,$(SHARD_TIMEOUT)) $(TEST_BIN) $(3) $(5) \
-					--shard-count $(4) --shard-index $$s > "$(1)/$$s.retry.log" 2>&1; then \
-				: ; \
-			else \
-				last_rc=$$?; hits=$$((hits+1)); \
-				cp -f "$(1)/$$s.retry.log" "$(1)/$$s.repro.log" 2>/dev/null || true; \
-			fi; \
-		done; \
-		if [ $$hits -eq 0 ]; then \
-			echo "  $(YELLOW)→ did not reproduce in $(SHARD_RETRIES) sequential re-runs$(RESET)"; \
-			echo "     Consistent with a load/timing flake under parallel shards, but an"; \
-			echo "     intermittent fault can also pass $(SHARD_RETRIES) times — this does not"; \
-			echo "     prove the diff is clean. Raise SHARD_RETRIES to sample harder."; \
-			echo "     (shard composition shifts whenever tests are added or removed)"; \
-		else \
-			echo "  $(RED)$(BOLD)→ reproduced $$hits/$(SHARD_RETRIES) sequential re-runs (last exit $$last_rc)$(RESET)"; \
-			echo "     Sequential means no sibling shards ran concurrently. The shard still"; \
-			echo "     ran ALL $${n:-?} of its test cases in one process, so this does NOT"; \
-			echo "     isolate the named test — a leak from an earlier test in the same"; \
-			echo "     shard lands on whichever test runs next. Confirm by running the"; \
-			echo "     named test on its own before blaming it."; \
-			echo "     repro log: $(1)/$$s.repro.log"; \
-			tail -25 "$(1)/$$s.repro.log" | sed 's/^/     | /'; \
-		fi; \
+		TRIAGE_RETRIES=$(SHARD_RETRIES) scripts/triage_shard.sh "$(TEST_BIN)" "$(1)" "$$s" "$(4)" $(3) $(5); \
 	done; \
 	echo ""
 endef
@@ -947,7 +914,15 @@ $(TEST_BIN): $(TEST_CORE_DEPS) \
 	@# The object list goes through a response file: inline, the recipe line
 	@# exceeds Linux's 128 KB per-argument limit once object paths grow (the
 	@# ASAN build's do), and bash refuses it with "Argument list too long".
-	$(file >$(OBJ_DIR)/$(notdir $@).objs,$(filter-out %.a %.h %.hh %.hpp %.hxx,$(sort $^)))
+	$(file >$(OBJ_DIR)/$(notdir $@).objs,$(filter-out %.a %.h %.hh %.hpp %.hxx,$(sort $^)) $(OBJ_DIR)/$(notdir $@).tree-stamp.o)
+	@# The source tree this link is built from, compiled in as helix_build_tree_stamp.
+	@# At startup the binary re-measures the tree it runs in and warns when they
+	@# differ (tests/test_helpers/stale_binary_check.h). Measured here, at link
+	@# time, and not as a prerequisite, so it never forces a relink by itself.
+	$(Q)stamp=$$(scripts/tree_stamp.sh 2>/dev/null) || stamp=unknown; \
+	printf 'const char helix_build_tree_stamp[] = "%s";\n' "$${stamp:-unknown}" \
+		> $(OBJ_DIR)/$(notdir $@).tree-stamp.c && \
+	$(CC) $(CFLAGS) -c $(OBJ_DIR)/$(notdir $@).tree-stamp.c -o $(OBJ_DIR)/$(notdir $@).tree-stamp.o
 	$(Q)$(CXX) $(CXXFLAGS) @$(OBJ_DIR)/$(notdir $@).objs -o $@ $(LDFLAGS) || { \
 		echo "$(RED)$(BOLD)✗ Test linking failed!$(RESET)"; \
 		exit 1; \
@@ -963,7 +938,7 @@ FORCE:
 
 # Compile test main (Catch2 runner)
 # Note: No DEPFLAGS for Catch2 infrastructure - rarely changes
-$(TEST_MAIN_OBJ): $(TEST_DIR)/test_main.cpp $(ABI_STAMP)
+$(TEST_MAIN_OBJ): $(TEST_DIR)/test_main.cpp $(TEST_DIR)/test_helpers/stale_binary_check.h $(ABI_STAMP)
 	$(Q)mkdir -p $(dir $@)
 	$(ECHO) "$(BLUE)[TEST-MAIN]$(RESET) $<"
 	$(Q)$(CXX) $(CXXFLAGS) -I$(TEST_DIR) -c $< -o $@

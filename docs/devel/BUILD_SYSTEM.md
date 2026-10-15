@@ -905,6 +905,8 @@ make libs-clean     # Clean all library artifacts at once
 
 `helix-tests` links through a response file: make's `$(file ...)` function writes the object list to `$(OBJ_DIR)/<binary>.objs` (for the plain build, `build/obj/helix-tests.objs`) and the compiler reads it as `@<that file>`. Inline, the list passes Linux's 128 KiB per-argument limit once object paths grow, as the ASAN build's do, and bash refuses the recipe with "Argument list too long".
 
+The link also compiles in `helix_build_tree_stamp`, the output of `scripts/tree_stamp.sh` at link time: the HEAD commit and a hash of every source under `src/`, `include/` and `tests/` whose content differs from it, tracked or untracked (`$(OBJ_DIR)/<binary>.tree-stamp.c`). At startup the binary runs `scripts/tree_stamp.sh <that commit>` from its working directory and prints `WARNING: helix-tests is stale` when the answer differs, so running `./build/bin/helix-tests` after an edit without `make test` says so instead of quietly reporting the previous build's results. Measuring against the recorded commit keeps a commit of already-built edits from reading as stale. The stamp is computed in the link recipe, not as a prerequisite, so it never forces a relink. `HELIX_TESTS_NO_STALE_CHECK=1` skips the check, and `mk/tests.mk` exports it for every run make starts. `helix-screen` carries no stamp: its link rule is shared by every cross and packaging target, and `scripts/check_link_parity.py` requires the fbdev and EGL variant links to carry every object the main link has.
+
 ### Test Harness
 
 The dependency system includes a comprehensive test suite:

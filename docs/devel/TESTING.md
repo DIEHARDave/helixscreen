@@ -154,31 +154,56 @@ Use `make test-serial` when debugging failures or reading output.
 
 ### When a shard fails, crashes, or times out
 
-The harness diagnoses it for you instead of leaving you to re-run by hand. For
-each suspect shard it prints:
+The harness diagnoses it for you instead of leaving you to re-run by hand
+(`scripts/triage_shard.sh`, called from `diagnose_shards` in `mk/tests.mk`).
+For each suspect shard it names the failing case(s) and re-runs them, cheapest
+first, stopping at the first way that fails:
+
+| Stage | What runs |
+|-------|-----------|
+| `alone` | only the failing case(s), via `--input-file` |
+| `alone-pinned` | the same on one CPU (`taskset -c N`) |
+| `composition` | the whole shard again: same filter, order flags, `--shard-count`/`--shard-index` |
+| `composition-pinned` | the whole shard on one CPU |
 
 ```
 ── shard diagnostics ──
 logs preserved: /tmp/helix-shards-TINI6P
 
 shard 95
-  ran 194 test case(s) → /tmp/helix-shards-TINI6P/95.tests
-  failing assertion(s): tests/unit/test_foo.cpp:27
-  reproduce: build/bin/helix-tests "~[.] ~[slow]" --shard-count 96 --shard-index 95
-  re-running alone…
-  → REPRODUCED alone (exit 1): a real fault, not a flake
+  ran 194 test case(s) -> /tmp/helix-shards-TINI6P/95.tests (build/bin/helix-tests --input-file replays it)
+  failing assertion(s): tests/unit/test_widget_content_fits.cpp:858
+  failing case(s) -> /tmp/helix-shards-TINI6P/95.failed:
+    firmware_restart tile fits its cell
+  shard repro: build/bin/helix-tests '~[.] ~[slow]' --shard-count 96 --shard-index 95
+  alone: failed 0/3
+  alone-pinned: failed 0/3
+  composition: failed 3/3
+  verdict: fails only in shard composition: order dependence or state leaked by an earlier case
+  repro: build/bin/helix-tests '~[.] ~[slow]' --shard-count 96 --shard-index 95
 ```
 
+| Verdict | Means |
+|---------|-------|
+| `fails alone` | a real bug in the case or the code it covers |
+| `fails only pinned` | timing: the case needs a slow or contended CPU, which a loaded sweep is and an idle re-run is not |
+| `fails only in shard composition` | order dependence or state an earlier case in the shard leaked; the printed command reproduces it |
+| `did not reproduce` | not proof the diff is clean; raise `TRIAGE_RETRIES`/`TRIAGE_BUDGET` to sample harder |
+
+- **A re-run on an idle machine is the one condition a timing flake never fails
+  under**, which is why the pinned stages exist. Without `taskset` (macOS) they
+  are skipped and the output says so.
+- **Bounded.** `SHARD_RETRIES` (default 3) runs per stage, `TRIAGE_TIMEOUT`
+  (default 60s) per run, `TRIAGE_BUDGET` (default 150s) per shard; a stage that
+  would start past the budget is named as skipped. `TRIAGE_CPU` picks the core.
 - **Logs are kept** (`$SHARD_ARTIFACT_ROOT`, default `/tmp`) whenever anything
   goes wrong, and deleted only on a fully clean run. `<n>.log` is the shard's
-  output, `<n>.tests` the test cases it ran, `<n>.retry.log` the isolation re-run.
+  output, `<n>.tests` the test cases it ran, `<n>.failed` the failing ones,
+  `<n>.<stage>.log` the re-run that reproduced it.
   Set `SHARD_ARTIFACT_ROOT=$(PWD)/build` in CI to collect them as artifacts.
-- **Each suspect shard is re-run alone.** Green in isolation but red under the
-  full parallel run means a load/timing flake, not a fault in the diff under
-  review. Red both times is real.
 - **A shard that dies with no `FAILED` marker** crashed *after* its assertions
   passed — a teardown or static-destructor fault. It is reported as a warning
-  and does not fail the run, but the log survives so it can be investigated.
+  and does not fail the run; only the composition stages can re-run it.
 
 > **Shard numbers are not stable.** Catch2 distributes test cases across shards
 > by position, so adding or removing *any* test reshuffles every shard's
