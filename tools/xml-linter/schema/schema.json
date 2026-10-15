@@ -1740,6 +1740,9 @@
         "hide_target_when_off": {
           "type": "bool"
         },
+        "align_current": {
+          "type": "string"
+        },
         "hide_target_below_bp": {
           "type": "string"
         },

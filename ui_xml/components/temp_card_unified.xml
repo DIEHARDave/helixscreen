@@ -39,8 +39,9 @@
         <bind_flag_if_lt subject="ui_breakpoint" flag="hidden" ref_value="3"/>
       </text_small>
       <temp_display name="nozzle_temp"
-                    size="md" show_target="true" bind_current="extruder_temp" bind_target="extruder_target"
-                    flex_grow="1" style_flex_main_place="start" clickable="false" event_bubble="true"/>
+                    size="md" show_target="true" align_current="true" bind_current="extruder_temp"
+                    bind_target="extruder_target" flex_grow="1" style_flex_main_place="start" clickable="false"
+                    event_bubble="true"/>
       <lv_obj height="content" style_pad_all="0" scrollable="false" clickable="false" event_bubble="true">
         <bind_style_if_lt name="temp_status_col_compact" subject="ui_breakpoint" ref_value="3"/>
         <bind_style_if_ge name="temp_status_col_wide" subject="ui_breakpoint" ref_value="3"/>
@@ -61,8 +62,8 @@
         <bind_flag_if_lt subject="ui_breakpoint" flag="hidden" ref_value="3"/>
       </text_small>
       <temp_display name="bed_temp"
-                    size="md" show_target="true" bind_current="bed_temp" bind_target="bed_target" flex_grow="1"
-                    style_flex_main_place="start" clickable="false" event_bubble="true"/>
+                    size="md" show_target="true" align_current="true" bind_current="bed_temp" bind_target="bed_target"
+                    flex_grow="1" style_flex_main_place="start" clickable="false" event_bubble="true"/>
       <lv_obj height="content" style_pad_all="0" scrollable="false" clickable="false" event_bubble="true">
         <bind_style_if_lt name="temp_status_col_compact" subject="ui_breakpoint" ref_value="3"/>
         <bind_style_if_ge name="temp_status_col_wide" subject="ui_breakpoint" ref_value="3"/>
@@ -84,9 +85,9 @@
         <bind_flag_if_lt subject="ui_breakpoint" flag="hidden" ref_value="3"/>
       </text_small>
       <temp_display name="chamber_temp_display"
-                    size="md" show_target="true" bind_current="chamber_temp" bind_target="chamber_effective_target"
-                    bind_mode="chamber_mode" flex_grow="1" style_flex_main_place="start" clickable="false"
-                    event_bubble="true"/>
+                    size="md" show_target="true" align_current="true" bind_current="chamber_temp"
+                    bind_target="chamber_effective_target" bind_mode="chamber_mode" flex_grow="1"
+                    style_flex_main_place="start" clickable="false" event_bubble="true"/>
       <lv_obj height="content" style_pad_all="0" scrollable="false" clickable="false" event_bubble="true">
         <bind_style_if_lt name="temp_status_col_compact" subject="ui_breakpoint" ref_value="3"/>
         <bind_style_if_ge name="temp_status_col_wide" subject="ui_breakpoint" ref_value="3"/>
