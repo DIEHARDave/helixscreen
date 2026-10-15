@@ -88,10 +88,14 @@
   <translation tag="1. Printer homes and probes the bed" de="1. Drucker referenziert und prüft das Bett"/>
   <translation tag="1. Printer will home and probe each screw" de="1. Drucker referenziert und prüft jede Schraube"/>
   <translation tag="10 minutes" de="10 Minuten"/>
+  <translation tag="100 h" de="100 Std"/>
+  <translation tag="1000 h" de="1000 Std"/>
   <translation tag="12 Hour" de="12 Stunden"/>
   <translation tag="12-hour" de="12-Stunden"/>
   <translation tag="120 seconds" de="120 Sekunden"/>
   <translation tag="15 seconds" de="15 Sekunden"/>
+  <translation tag="150 h" de="150 Std"/>
+  <translation tag="1500 h" de="1500 Std"/>
   <translation tag="170-300 °C" de="170-300 °C"/>
   <translation tag="180°" de="180°"/>
   <translation tag="180° Upside Down" de="180° kopfüber"/>
@@ -101,8 +105,12 @@
   <translation tag="2. Place paper between nozzle and bed" de="2. Papier zwischen Düse und Bett legen"/>
   <translation tag="2. Results show how much to turn each screw" de="2. Ergebnisse zeigen, wie viel jede Schraube gedreht werden muss"/>
   <translation tag="20 minutes" de="20 Minuten"/>
+  <translation tag="200 h" de="200 Std"/>
+  <translation tag="2000 h" de="2000 Std"/>
   <translation tag="24 Hour" de="24 Stunden"/>
   <translation tag="24-hour" de="24-Stunden"/>
+  <translation tag="25 h" de="25 Std"/>
+  <translation tag="250 h" de="250 Std"/>
   <translation tag="270°" de="270°"/>
   <translation tag="270° Clockwise" de="270° im Uhrzeigersinn"/>
   <translation tag="2D Heatmap" de="2D-Heatmap"/>
@@ -112,16 +120,21 @@
   <translation tag="3. Save the position" de="3. Position speichern"/>
   <translation tag="30 minutes" de="30 Minuten"/>
   <translation tag="30 seconds" de="30 Sekunden"/>
+  <translation tag="300 h" de="300 Std"/>
   <translation tag="3D Maze" de="3D-Labyrinth"/>
   <translation tag="3D Pipes" de="3D Pipes"/>
   <translation tag="3D View" de="3D-Ansicht"/>
   <translation tag="4. Paper should move but with resistance" de="4. Papier sollte sich bewegen, aber mit Widerstand"/>
   <translation tag="4. Repeat until bed is level" de="4. Wiederholen bis das Bett nivelliert ist"/>
+  <translation tag="400 h" de="400 Std"/>
   <translation tag="5 min" de="5 Min"/>
   <translation tag="5 minutes" de="5 Minuten"/>
+  <translation tag="50 h" de="50 Std"/>
+  <translation tag="500 h" de="500 Std"/>
   <translation tag="50W" de="50W"/>
   <translation tag="5V" de="5V"/>
   <translation tag="60 seconds" de="60 Sekunden"/>
+  <translation tag="750 h" de="750 Std"/>
   <translation tag="90°" de="90°"/>
   <translation tag="90° Clockwise" de="90° im Uhrzeigersinn"/>
   <translation tag="= Loosen" de="= Lösen"/>
@@ -1350,6 +1363,9 @@
   <translation tag="Guides and reference" de="Anleitungen und Referenz"/>
   <translation tag="H" de="H"/>
   <translation tag="HELIXSCREEN" de="HELIXSCREEN"/>
+  <translation tag="HEPA" de="HEPA"/>
+  <translation tag="HEPA filter" de="HEPA-Filter"/>
+  <translation tag="HEPA filter interval" de="Intervall HEPA-Filter"/>
   <translation tag="HOST" de="Host"/>
   <translation tag="HTTP Code" de="HTTP-Code"/>
   <translation tag="HTTP error: {} {}" de="HTTP-Fehler: {} {}"/>
@@ -1665,6 +1681,8 @@
   <translation tag="Lights that follow the printer&apos;s state" de="Leuchten, die sich nach dem Druckerstatus richten"/>
   <translation tag="Line the nozzle up with the purge chute so purged filament drops straight in." de="Richten Sie die Düse über der Entlüftungsrinne aus, damit das entlüftete Filament direkt hineinfällt."/>
   <translation tag="Line {} calls {}, which this printer treats as an emergency stop. Re-slice the file with a profile made for this printer." de="Zeile {} ruft {} auf, das dieser Drucker als Notaus behandelt. Slicen Sie die Datei mit einem Profil für diesen Drucker neu."/>
+  <translation tag="Linear rails" de="Linearschienen"/>
+  <translation tag="Linear rails interval" de="Intervall Linearschienen"/>
   <translation tag="Listen to all theme sounds" de="Alle Themensounds anhören"/>
   <translation tag="Live Z-offset, with baby steps and Save" de="Live-Z-Offset mit Feinjustierung und Speichern"/>
   <translation tag="Live view from your webcam" de="Livebild Ihrer Webcam"/>
@@ -2050,6 +2068,7 @@
   <translation tag="Nozzle clean complete" de="Düsenreinigung abgeschlossen"/>
   <translation tag="Nozzle clog detected" de="Verstopfte Düse erkannt"/>
   <translation tag="Nozzle did not reach {}°C — {} cancelled" de="Düse erreichte {}°C nicht — {} abgebrochen"/>
+  <translation tag="Nozzle interval" de="Intervall Düse"/>
   <translation tag="Nozzle min cannot exceed max" de="Düse min darf max nicht überschreiten"/>
   <translation tag="Nozzle target set to {}°C" de="Düsen-Zieltemperatur auf {}°C gesetzt"/>
   <translation tag="Nozzle temp must be 100-%d°C" de="Düsentemperatur muss 100-%d°C betragen"/>
@@ -2287,6 +2306,9 @@
   <translation tag="Print error" de="Druckfehler"/>
   <translation tag="Print failed" de="Druck fehlgeschlagen"/>
   <translation tag="Print history will show the rewritten name" de="Im Druckverlauf wird der umgeschriebene Name angezeigt"/>
+  <translation tag="Print hours between filter changes. Off hides this meter." de="Druckstunden zwischen Filterwechseln. Aus blendet diesen Zähler aus."/>
+  <translation tag="Print hours between nozzle changes. Off hides this meter." de="Druckstunden zwischen Düsenwechseln. Aus blendet diesen Zähler aus."/>
+  <translation tag="Print hours between rail cleaning and lubrication. Off hides this meter." de="Druckstunden zwischen Reinigen und Schmieren der Linearschienen. Aus blendet diesen Zähler aus."/>
   <translation tag="Print hours this week and lifetime totals" de="Druckstunden dieser Woche und Gesamtwerte"/>
   <translation tag="Print issue detected" de="Druckproblem erkannt"/>
   <translation tag="Print jobs waiting to run" de="Wartende Druckaufträge"/>
@@ -2429,6 +2451,7 @@
   <translation tag="RH" de="rF"/>
   <translation tag="RSS" de="RSS"/>
   <translation tag="RSS:" de="RSS:"/>
+  <translation tag="Rails" de="Schienen"/>
   <translation tag="Ramming Volume" de="Ramming-Volumen"/>
   <translation tag="Raspberry Pi" de="Raspberry Pi"/>
   <translation tag="Raspberry Pi (32-bit)" de="Raspberry Pi (32-bit)"/>
@@ -2550,6 +2573,7 @@
   <translation tag="Reset to Default" de="Auf Standard zurücksetzen"/>
   <translation tag="Reset to defaults" de="Auf Standardwerte zurücksetzen"/>
   <translation tag="Reset to original values" de="Auf Originalwerte zurücksetzen"/>
+  <translation tag="Reset {}?" de="{} zurücksetzen?"/>
   <translation tag="Resetting" de="Zurücksetzen"/>
   <translation tag="Resetting system" de="System wird zurückgesetzt"/>
   <translation tag="Resetting..." de="Wird zurückgesetzt..."/>
@@ -2776,6 +2800,7 @@
   <translation tag="Sensors" de="Sensoren"/>
   <translation tag="Separate on/off macros. HelixScreen tracks the state." de="Separate Ein-/Aus-Makros. HelixScreen verfolgt den Status."/>
   <translation tag="Server Setup" de="Server-Einrichtung"/>
+  <translation tag="Service hours for the filter, nozzle, and rails" de="Wartungsstunden für Filter, Düse und Schienen"/>
   <translation tag="Servo" de="Servo"/>
   <translation tag="Servo Down" de="Servo runter"/>
   <translation tag="Servo Move" de="Servo bewegen"/>
@@ -2928,6 +2953,7 @@
   <translation tag="Start Drying" de="Trocknung starten"/>
   <translation tag="Start Print" de="Druck starten"/>
   <translation tag="Start Probing" de="Abtasten starten"/>
+  <translation tag="Start a new {} h interval? The hours counted so far are discarded." de="Ein neues Intervall von {} Std beginnen? Die bisher gezählten Stunden werden verworfen."/>
   <translation tag="Start anyway?" de="Trotzdem starten?"/>
   <translation tag="Start at" de="Beginnen bei"/>
   <translation tag="Start drying" de="Trocknung starten"/>
@@ -3255,6 +3281,7 @@
   <translation tag="Tools Used" de="Verwendete Werkzeuge"/>
   <translation tag="Tools: " de="Werkzeuge: "/>
   <translation tag="Total Prints" de="Gesamte Drucke"/>
+  <translation tag="Total print time: {} h" de="Gesamte Druckzeit: {} Std"/>
   <translation tag="Touch &amp; Input" de="Touch &amp; Eingabe"/>
   <translation tag="Touch Cal" de="Touch-Kal."/>
   <translation tag="Touch Calibration" de="Touch-Kalibrierung"/>
@@ -3614,6 +3641,7 @@
   <translation tag="remaining" de="verbleibend"/>
   <translation tag="remaining before clog detection triggers" de="verbleibend bis Verstopfungserkennung auslöst"/>
   <translation tag="rendering" de="wird gerendert"/>
+  <translation tag="reset at {} h" de="zurückgesetzt bei {} Std"/>
   <translation tag="sleep {} min" de="Ruhezustand nach {} Min."/>
   <translation tag="slots)" de="Slots)"/>
   <translation tag="started" de="gestartet"/>
@@ -3657,9 +3685,11 @@
   <translation tag="{} filament • {}" de="{} Filament • {}"/>
   <translation tag="{} firmware" de="{} Firmware"/>
   <translation tag="{} h" de="{} Std"/>
+  <translation tag="{} h of {} h" de="{} Std von {} Std"/>
   <translation tag="{} heater turned off" de="{}-Heizung ausgeschaltet"/>
   <translation tag="{} is asking to connect to this printer." de="{} möchte sich mit diesem Drucker verbinden."/>
   <translation tag="{} is blocked — manual intervention required" de="{} ist blockiert — manueller Eingriff erforderlich"/>
+  <translation tag="{} is due: {} h reached" de="{} ist fällig: {} Std erreicht"/>
   <translation tag="{} is feeding the current print. Clear it after the print ends." de="{}: versorgt den laufenden Druck. Erst nach Druckende löschen."/>
   <translation tag="{} is installed but its backup-spool switching is turned off, so no automatic swap will happen." de="{} ist installiert, aber der Wechsel zur Ersatzspule ist ausgeschaltet, daher findet kein automatischer Wechsel statt."/>
   <translation tag="{} is installed, but its backup-spool setting could not be read - do not count on an automatic swap." de="{} ist installiert, aber die Ersatzspulen-Einstellung konnte nicht gelesen werden - verlasse dich nicht auf einen automatischen Wechsel."/>
@@ -3673,6 +3703,7 @@
   <translation tag="{} macro not configured" de="{}-Makro nicht konfiguriert"/>
   <translation tag="{} matches." de="{} passt."/>
   <translation tag="{} may cause unintended changes. Are you sure?" de="{} kann unbeabsichtigte Änderungen verursachen. Sind Sie sicher?"/>
+  <translation tag="{} meter reset" de="Zähler {} zurückgesetzt"/>
   <translation tag="{} min" de="{} Min"/>
   <translation tag="{} min ago" de="vor {} Min."/>
   <translation tag="{} missing" de="{} fehlend"/>
@@ -3698,5 +3729,6 @@
   <translation tag="{} · {} · {}" de="{} · {} · {}"/>
   <translation tag="{} — response timed out" de="{} – Antwort-Zeitüberschreitung"/>
   <translation tag="{} → {}: no filament loaded." de="{} → {}: kein Filament geladen."/>
+  <translation tag="{}% left" de="{}% übrig"/>
   <translation tag="{}:{:02} elapsed" de="{}:{:02} vergangen"/>
 </translations>

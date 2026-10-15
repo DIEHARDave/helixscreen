@@ -90,10 +90,14 @@ translations:
   1. Printer will home and probe each screw: 1. A impressora fará home e sondará cada
     parafuso
   10 minutes: 10 minutos
+  100 h: '100 h'
+  1000 h: '1000 h'
   12 Hour: 12 horas
   12-hour: 12 horas
   120 seconds: 120 segundos
   15 seconds: 15 segundos
+  150 h: '150 h'
+  1500 h: '1500 h'
   170-300 °C: '170-300 °C'
   180°: 180°
   180° Upside Down: 180° invertido
@@ -105,8 +109,12 @@ translations:
   2. Results show how much to turn each screw: 2. Os resultados mostram quanto girar
     cada parafuso
   20 minutes: 20 minutos
+  200 h: '200 h'
+  2000 h: '2000 h'
   24 Hour: 24 horas
   24-hour: 24 horas
+  25 h: '25 h'
+  250 h: '250 h'
   270°: 270°
   270° Clockwise: 270° no sentido horário
   2D Heatmap: Mapa de calor 2D
@@ -119,16 +127,21 @@ translations:
 
   30 minutes: 30 minutos
   30 seconds: 30 segundos
+  300 h: '300 h'
   3D Maze: Labirinto 3D
   3D Pipes: Canos 3D
   3D View: Vista 3D
   4. Paper should move but with resistance: 4. O papel deve se mover, mas com resistência
   4. Repeat until bed is level: 4. Repita até a mesa estar nivelada
+  400 h: '400 h'
   5 min: '5 min'
   5 minutes: 5 minutos
+  50 h: '50 h'
+  500 h: '500 h'
   50W: 50W
   5V: 5V
   60 seconds: 60 segundos
+  750 h: '750 h'
   90°: 90°
   90° Clockwise: 90° no sentido horário
   = Loosen: = Afrouxar
@@ -826,6 +839,9 @@ translations:
     indisponíveis.
   Could not answer the connection request: 'Não foi possível responder à solicitação de conexão'
   'Could not check {} - it stays in the queue': 'Não foi possível verificar {} – permanece na fila'
+  Print hours between filter changes. Off hides this meter.: 'Horas de impressão entre trocas de filtro. Desligado oculta este contador.'
+  Print hours between nozzle changes. Off hides this meter.: 'Horas de impressão entre trocas de bico. Desligado oculta este contador.'
+  Print hours between rail cleaning and lubrication. Off hides this meter.: 'Horas de impressão entre limpeza e lubrificação dos trilhos. Desligado oculta este contador.'
   Print hours this week and lifetime totals: 'Horas de impressão desta semana e totais acumulados'
   '{} could not be checked from Home - review it and tap Print': 'Não foi possível verificar {} pela tela inicial – revise e toque em Imprimir'
   ? "Could not check webcam status.\nCheck printer connection."
@@ -1484,6 +1500,9 @@ translations:
   Guides and reference: Guias e referência
   H: H
   HELIXSCREEN: HELIXSCREEN
+  HEPA: 'HEPA'
+  HEPA filter: 'Filtro HEPA'
+  HEPA filter interval: 'Intervalo do filtro HEPA'
   HOST: Host
   HTTP Code: Código HTTP
   'HTTP error: {} {}': 'Erro HTTP: {} {}'
@@ -1854,6 +1873,8 @@ translations:
   Line the nozzle up with the purge chute so purged filament drops straight in.: Alinhe o bocal sobre a calha de purga para que o filamento purgado caia direto dentro.
 
   Line {} calls {}, which this printer treats as an emergency stop. Re-slice the file with a profile made for this printer.: 'A linha {} chama {}, que esta impressora trata como uma parada de emergência. Fatie o arquivo novamente com um perfil feito para esta impressora.'
+  Linear rails: 'Trilhos lineares'
+  Linear rails interval: 'Intervalo dos trilhos lineares'
   Listen to all theme sounds: Ouvir todos os sons do tema
   Live Z-offset, with baby steps and Save: Z-Offset ao vivo, com passos finos e Salvar
   Live view from your webcam: Visão ao vivo da sua webcam
@@ -2266,6 +2287,7 @@ translations:
   Nozzle clean complete: Limpeza do bico concluída
   Nozzle clog detected: Entupimento do bico detectado
   Nozzle did not reach {}°C — {} cancelled: O bico não atingiu {}°C — {} cancelado
+  Nozzle interval: 'Intervalo do bico'
   Nozzle min cannot exceed max: O mínimo do bico não pode exceder o máximo
   Nozzle target set to {}°C: Bico configurado para {}°C
   Nozzle temp must be 100-%d°C: A temperatura do bico deve ser 100-%d°C
@@ -2678,6 +2700,7 @@ translations:
   RH: UR
   RSS: RSS
   'RSS:': 'RSS:'
+  Rails: 'Trilhos'
   Ramming Volume: 'Volume de compactação'
   Raspberry Pi: Raspberry Pi
   Raspberry Pi (32-bit): Raspberry Pi (32-bit)
@@ -2813,6 +2836,7 @@ translations:
   Reset to Default: Restaurar Padrão
   Reset to defaults: Restaurar padrões
   Reset to original values: Restaurar valores originais
+  Reset {}?: 'Resetar {}?'
   Resetting: Restaurando
   Resetting system: 'Redefinindo o sistema'
   Resetting...: Resetando...
@@ -3073,6 +3097,7 @@ translations:
   Separate on/off macros. HelixScreen tracks the state.: Macros ligado/desligado separadas.
     HelixScreen rastreia o estado.
   Server Setup: Configuração do Servidor
+  Service hours for the filter, nozzle, and rails: 'Horas de serviço do filtro, bico e trilhos'
   Servo: Servo
   Servo Down: 'Servo para baixo'
   Servo Move: 'Mover o servo'
@@ -3247,6 +3272,7 @@ translations:
   Start Drying: Iniciar secagem
   Start Print: Iniciar Impressão
   Start Probing: Iniciar Sondagem
+  Start a new {} h interval? The hours counted so far are discarded.: 'Iniciar um novo intervalo de {} h? As horas contadas até agora são descartadas.'
   Start anyway?: 'Iniciar mesmo assim?'
   Start at: Começar em
   Start Check: Iniciar verificação
@@ -3658,6 +3684,7 @@ translations:
   Tools Used: Ferramentas Usadas
   'Tools: ': 'Ferramentas: '
   Total Prints: Total de Impressões
+  'Total print time: {} h': 'Tempo total de impressão: {} h'
   Touch & Input: Toque e entrada
   Touch Cal: Cal de Toque
   Touch Calibration: Calibração de Toque
@@ -4047,6 +4074,7 @@ translations:
   remaining before clog detection triggers: restante antes da detecção de obstrução
     ser acionada
   rendering: renderizando
+  reset at {} h: 'resetado em {} h'
   sleep {} min: suspender em {} min
   slots): slots)
   started: iniciado
@@ -4089,9 +4117,11 @@ translations:
   '{} filament • {}': '{} de filamento • {}'
   '{} firmware': 'Firmware de {}'
   '{} h': '{} h'
+  '{} h of {} h': '{} h de {} h'
   '{} heater turned off': Aquecedor {} desligado
   '{} is asking to connect to this printer.': '{} quer conectar-se a esta impressora.'
   '{} is blocked — manual intervention required': '{}: bloqueio — intervenção manual necessária'
+  '{} is due: {} h reached': '{} precisa de manutenção: {} h atingidas'
   '{} is feeding the current print. Clear it after the print ends.': '{}: alimenta a impressão atual. Remova a bobina após o fim da impressão.'
   '{} is installed but its backup-spool switching is turned off, so no automatic swap will happen.': '{} está instalado mas sua troca para carretel reserva está desligada, então não haverá troca automática.'
   '{} is installed, but its backup-spool setting could not be read - do not count on an automatic swap.': '{} está instalado, mas não foi possível ler sua configuração de carretel reserva - não conte com uma troca automática.'
@@ -4106,6 +4136,7 @@ translations:
   '{} matches.': '{} corresponde.'
   '{} may cause unintended changes. Are you sure?': '{} pode causar alterações não
     intencionais. Tem certeza?'
+  '{} meter reset': 'Contador de {} resetado'
   '{} min': '{} min'
   '{} min ago': há {} min
   '{} missing': '{} ausente(s)'
@@ -4132,4 +4163,5 @@ translations:
   '{} · {} · {}': '{} · {} · {}'
   '{} — response timed out': '{} — tempo esgotado'
   '{} → {}: no filament loaded.': '{} → {}: nenhum filamento carregado.'
+  '{}% left': '{}% restante'
   '{}:{:02} elapsed': '{}:{:02} decorrido'

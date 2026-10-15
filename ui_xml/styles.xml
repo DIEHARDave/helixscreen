@@ -122,6 +122,16 @@
     <style name="buffer_ok" text_color="#text_muted"/>
     <style name="buffer_warning" text_color="#warning"/>
     <style name="buffer_danger" text_color="#danger"/>
+    <!-- A maintenance meter's colour by its status (maintenance_*_status), shared by the
+         home tile and the detail overlay: the hours, the ring's indicator and the bar's.
+         Bind the indicator ones with selector="indicator". -->
+    <style name="maint_text_warn" text_color="#warning"/>
+    <style name="maint_text_danger" text_color="#danger"/>
+    <style name="maint_arc_warn" arc_color="#warning"/>
+    <style name="maint_arc_danger" arc_color="#danger"/>
+    <style name="maint_bar_normal" bg_color="#primary"/>
+    <style name="maint_bar_warn" bg_color="#warning"/>
+    <style name="maint_bar_danger" bg_color="#danger"/>
     <!-- The inset a buffer trace draws into: no fill, so only the line shows. -->
     <style name="buffer_trace_area" bg_opa="0" border_width="0" pad_all="#space_xxs"/>
 

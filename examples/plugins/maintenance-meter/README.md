@@ -1,5 +1,9 @@
 # maintenance-meter
 
+HelixScreen ships these meters as a built-in home widget, **Maintenance**, in the
+widget catalog's System category; it takes over this plugin's saved hours and
+intervals the first time it runs. This plugin stays as an example of the plugin API.
+
 Hour meters for consumable parts - a HEPA filter, a nozzle, linear rails -
 as one adaptive home tile. Elapsed hours accrue from print time, persist on
 the screen, and survive restarts; a ring gauge shows the meter closest to

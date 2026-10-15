@@ -161,6 +161,7 @@ it with `bind_style_if_eq` to whatever that widget draws.
 | `status::override_status(pct)` | a speed or flow override | Warn whenever it is off 100% |
 | `status::z_offset_status(save_available)` | whether an unsaved offset exists | Warn while there is one to save |
 | `status::mesh_flatness_status(range_mm)` | a bed mesh's Z range | Normal below 0.15 mm, Warn below 0.30, Danger above |
+| `status::maintenance_status(used_fraction)` | a maintenance meter's used share of its interval | Normal below 0.75, Warn from there, Danger once due |
 | `status::host_health_status(HostHealthInput)` | host CPU, CPU temperature, Pi throttle bits, busiest MCU load, MCU retransmits, gcodes disk free | the worst status, with the `HealthCause` that set it |
 
 A metric the printer does not report stays at its `-1` default in `HostHealthInput` and is
@@ -207,8 +208,9 @@ is pure and has a boundary test; the widget measures, decides and publishes.
 | `exclude_map` | `exclude_map_layout.h` | `printer_has_exclude_object` | counts of skipped and remaining objects; the mini exclude-object map from Column up; the object printing now at Wide and above; a "Skip objects..." button at Full |
 | `job_queue` | `job_queue_tile_layout.h`, `include/job_queue_tile_state.h` | `printer_has_job_queue` | the next job and the queued count; Start next from Strip (icon only at Strip), with the thumbnail and estimate from Wide, and up to three following jobs at Full; "Starts automatically" only while a print runs under `automatic_transition` |
 | `print_stats` | `print_stats_tile_layout.h`, `include/print_activity.h` | - | this week's hours on one line at Strip; hours stacked over "this week" at Cell; seven day bars beside the hours at Wide; bars with weekday initials under them at Full; a lifetime line (prints, hours, filament in meters) where it fits whole |
+| `maintenance` | `maintenance_tile_layout.h`, `maintenance_model.h`, `include/maintenance_meters.h` | - | the ring of the meter closest to due with its hours left at Glance; its name and hours on one line at Strip; the ring over the name at Column and Cell; the ring beside a row per meter at Wide; a title, a row and a bar per meter and the total print time at Full. The ring is a square whose side the widget publishes (`maintenance_ring_d`), because an arc draws its circle from its top-left corner |
 
-All nine offer half-cell spans: their registry rows in `src/ui/panel_widget_registry.cpp`
+All ten offer half-cell spans: their registry rows in `src/ui/panel_widget_registry.cpp`
 set `supports_half_col` and `supports_half_row` and a one-track minimum, which is the
 combination `PanelWidgetDef` requires for a minimum below a whole cell (the flag on that
 axis AND a `fits_at()` that can refuse). A Glance tile is therefore a legal 0.5x0.5
@@ -234,6 +236,13 @@ The shared decisions around them:
   (`src/ui/panel_widgets/dryer_model.h`), and `summarize_dryers()` in
   `include/dryer_summary.h` is the only place box, chamber and bed drying are folded
   together. See [FILAMENT_ENVIRONMENT_ZONES.md](FILAMENT_ENVIRONMENT_ZONES.md#the-dryer-summary).
+- **State that outlives the tile lives in a model.** The maintenance meters accrue print
+  time whether or not their tile is on a page, so `helix::maintenance_model`
+  (`src/ui/panel_widgets/maintenance_model.h`) owns the state, its subjects and its
+  persistence, and is brought up from the widget's `register_widget_subjects()` hook once
+  per session. The rules (accrual, the due latch, intervals, the persisted form, the
+  plugin-store migration) are pure, in `include/maintenance_meters.h`; the tile only
+  measures and publishes its rung.
 
 ### Rules every sized widget follows
 

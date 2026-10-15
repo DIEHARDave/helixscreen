@@ -91,10 +91,14 @@ translations:
   1. Printer will home and probe each screw: 1. Drucker referenziert und prüft jede
     Schraube
   10 minutes: 10 Minuten
+  100 h: '100 Std'
+  1000 h: '1000 Std'
   12 Hour: 12 Stunden
   12-hour: 12-Stunden
   120 seconds: 120 Sekunden
   15 seconds: 15 Sekunden
+  150 h: '150 Std'
+  1500 h: '1500 Std'
   170-300 °C: '170-300 °C'
   180°: 180°
   180° Upside Down: 180° kopfüber
@@ -106,8 +110,12 @@ translations:
   2. Results show how much to turn each screw: 2. Ergebnisse zeigen, wie viel jede
     Schraube gedreht werden muss
   20 minutes: 20 Minuten
+  200 h: '200 Std'
+  2000 h: '2000 Std'
   24 Hour: 24 Stunden
   24-hour: 24-Stunden
+  25 h: '25 Std'
+  250 h: '250 Std'
   270°: 270°
   270° Clockwise: 270° im Uhrzeigersinn
   2D Heatmap: 2D-Heatmap
@@ -120,17 +128,22 @@ translations:
 
   30 minutes: 30 Minuten
   30 seconds: 30 Sekunden
+  300 h: '300 Std'
   3D Maze: 3D-Labyrinth
   3D Pipes: 3D Pipes
   3D View: 3D-Ansicht
   4. Paper should move but with resistance: 4. Papier sollte sich bewegen, aber mit
     Widerstand
   4. Repeat until bed is level: 4. Wiederholen bis das Bett nivelliert ist
+  400 h: '400 Std'
   5 min: '5 Min'
   5 minutes: 5 Minuten
+  50 h: '50 Std'
+  500 h: '500 Std'
   50W: 50W
   5V: 5V
   60 seconds: 60 Sekunden
+  750 h: '750 Std'
   90°: 90°
   90° Clockwise: 90° im Uhrzeigersinn
   = Loosen: = Lösen
@@ -829,6 +842,9 @@ translations:
     verfügbar.
   Could not answer the connection request: 'Verbindungsanfrage konnte nicht beantwortet werden'
   'Could not check {} - it stays in the queue': '{} konnte nicht geprüft werden – bleibt in der Warteschlange'
+  Print hours between filter changes. Off hides this meter.: 'Druckstunden zwischen Filterwechseln. Aus blendet diesen Zähler aus.'
+  Print hours between nozzle changes. Off hides this meter.: 'Druckstunden zwischen Düsenwechseln. Aus blendet diesen Zähler aus.'
+  Print hours between rail cleaning and lubrication. Off hides this meter.: 'Druckstunden zwischen Reinigen und Schmieren der Linearschienen. Aus blendet diesen Zähler aus.'
   Print hours this week and lifetime totals: 'Druckstunden dieser Woche und Gesamtwerte'
   '{} could not be checked from Home - review it and tap Print': '{} konnte von der Startseite aus nicht geprüft werden – prüfe die Datei und tippe auf Drucken'
   ? "Could not check webcam status.\nCheck printer connection."
@@ -1494,6 +1510,9 @@ translations:
   Guides and reference: Anleitungen und Referenz
   H: H
   HELIXSCREEN: HELIXSCREEN
+  HEPA: 'HEPA'
+  HEPA filter: 'HEPA-Filter'
+  HEPA filter interval: 'Intervall HEPA-Filter'
   HOST: Host
   HTTP Code: HTTP-Code
   'HTTP error: {} {}': 'HTTP-Fehler: {} {}'
@@ -1862,6 +1881,8 @@ translations:
   Line the nozzle up with the purge chute so purged filament drops straight in.: Richten Sie die Düse über der Entlüftungsrinne aus, damit das entlüftete Filament direkt hineinfällt.
 
   Line {} calls {}, which this printer treats as an emergency stop. Re-slice the file with a profile made for this printer.: 'Zeile {} ruft {} auf, das dieser Drucker als Notaus behandelt. Slicen Sie die Datei mit einem Profil für diesen Drucker neu.'
+  Linear rails: 'Linearschienen'
+  Linear rails interval: 'Intervall Linearschienen'
   Listen to all theme sounds: Alle Themensounds anhören
   Live Z-offset, with baby steps and Save: Live-Z-Offset mit Feinjustierung und Speichern
   Live view from your webcam: Livebild Ihrer Webcam
@@ -2273,6 +2294,7 @@ translations:
   Nozzle clean complete: Düsenreinigung abgeschlossen
   Nozzle clog detected: Verstopfte Düse erkannt
   Nozzle did not reach {}°C — {} cancelled: Düse erreichte {}°C nicht — {} abgebrochen
+  Nozzle interval: 'Intervall Düse'
   Nozzle min cannot exceed max: Düse min darf max nicht überschreiten
   Nozzle target set to {}°C: Düsen-Zieltemperatur auf {}°C gesetzt
   Nozzle temp must be 100-%d°C: Düsentemperatur muss 100-%d°C betragen
@@ -2685,6 +2707,7 @@ translations:
   RH: rF
   RSS: RSS
   'RSS:': 'RSS:'
+  Rails: 'Schienen'
   Ramming Volume: 'Ramming-Volumen'
   Raspberry Pi: Raspberry Pi
   Raspberry Pi (32-bit): Raspberry Pi (32-bit)
@@ -2819,6 +2842,7 @@ translations:
   Reset to Default: Auf Standard zurücksetzen
   Reset to defaults: Auf Standardwerte zurücksetzen
   Reset to original values: Auf Originalwerte zurücksetzen
+  Reset {}?: '{} zurücksetzen?'
   Resetting: Zurücksetzen
   Resetting system: 'System wird zurückgesetzt'
   Resetting...: Wird zurückgesetzt...
@@ -3080,6 +3104,7 @@ translations:
   Separate on/off macros. HelixScreen tracks the state.: Separate Ein-/Aus-Makros.
     HelixScreen verfolgt den Status.
   Server Setup: Server-Einrichtung
+  Service hours for the filter, nozzle, and rails: 'Wartungsstunden für Filter, Düse und Schienen'
   Servo: Servo
   Servo Down: 'Servo runter'
   Servo Move: 'Servo bewegen'
@@ -3252,6 +3277,7 @@ translations:
   Start Drying: Trocknung starten
   Start Print: Druck starten
   Start Probing: Abtasten starten
+  Start a new {} h interval? The hours counted so far are discarded.: 'Ein neues Intervall von {} Std beginnen? Die bisher gezählten Stunden werden verworfen.'
   Start anyway?: 'Trotzdem starten?'
   Start at: Beginnen bei
   Start Check: Prüfung starten
@@ -3661,6 +3687,7 @@ translations:
   Tools Used: Verwendete Werkzeuge
   'Tools: ': 'Werkzeuge: '
   Total Prints: Gesamte Drucke
+  'Total print time: {} h': 'Gesamte Druckzeit: {} Std'
   Touch & Input: Touch & Eingabe
   Touch Cal: Touch-Kal.
   Touch Calibration: Touch-Kalibrierung
@@ -4053,6 +4080,7 @@ translations:
   remaining before clog detection triggers: verbleibend bis Verstopfungserkennung
     auslöst
   rendering: wird gerendert
+  reset at {} h: 'zurückgesetzt bei {} Std'
   sleep {} min: Ruhezustand nach {} Min.
   slots): Slots)
   started: gestartet
@@ -4095,9 +4123,11 @@ translations:
   '{} filament • {}': '{} Filament • {}'
   '{} firmware': '{} Firmware'
   '{} h': '{} Std'
+  '{} h of {} h': '{} Std von {} Std'
   '{} heater turned off': '{}-Heizung ausgeschaltet'
   '{} is asking to connect to this printer.': '{} möchte sich mit diesem Drucker verbinden.'
   '{} is blocked — manual intervention required': '{} ist blockiert — manueller Eingriff erforderlich'
+  '{} is due: {} h reached': '{} ist fällig: {} Std erreicht'
   '{} is feeding the current print. Clear it after the print ends.': '{}: versorgt den laufenden Druck. Erst nach Druckende löschen.'
   '{} is installed but its backup-spool switching is turned off, so no automatic swap will happen.': '{} ist installiert, aber der Wechsel zur Ersatzspule ist ausgeschaltet, daher findet kein automatischer Wechsel statt.'
   '{} is installed, but its backup-spool setting could not be read - do not count on an automatic swap.': '{} ist installiert, aber die Ersatzspulen-Einstellung konnte nicht gelesen werden - verlasse dich nicht auf einen automatischen Wechsel.'
@@ -4112,6 +4142,7 @@ translations:
   '{} matches.': '{} passt.'
   '{} may cause unintended changes. Are you sure?': '{} kann unbeabsichtigte Änderungen
     verursachen. Sind Sie sicher?'
+  '{} meter reset': 'Zähler {} zurückgesetzt'
   '{} min': '{} Min'
   '{} min ago': vor {} Min.
   '{} missing': '{} fehlend'
@@ -4139,4 +4170,5 @@ translations:
   '{} · {} · {}': '{} · {} · {}'
   '{} — response timed out': '{} – Antwort-Zeitüberschreitung'
   '{} → {}: no filament loaded.': '{} → {}: kein Filament geladen.'
+  '{}% left': '{}% übrig'
   '{}:{:02} elapsed': '{}:{:02} vergangen'
