@@ -134,6 +134,17 @@ class PrintStartCollectorTestAccess {
         c.handle_phase_object_status(status, /*seed=*/true);
     }
 
+    /// The run a start-up query sent now would belong to.
+    static uint64_t run_generation(PrintStartCollector& c) {
+        return c.run_generation_.load();
+    }
+
+    /// Deliver a start-up query answer tagged with run `run`.
+    static void answer_phase_object_query(PrintStartCollector& c, const nlohmann::json& response,
+                                          uint64_t run) {
+        c.apply_phase_object_query(response, run);
+    }
+
     /// Inject predictor history (deterministic per-phase durations) instead of
     /// relying on the theoretical-duration path.
     static void load_prediction_entries(PrintStartCollector& c,

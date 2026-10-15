@@ -17,6 +17,7 @@
 
 #include <atomic>
 #include <chrono>
+#include <cstdint>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -368,6 +369,13 @@ class PrintStartCollector : public std::enable_shared_from_this<PrintStartCollec
     /// a context opened before the collector armed is never sent again
     /// until it changes, and every state inside it would match without it.
     void query_phase_object();
+
+    /// The start-up query's answer for run `run`; ignored once a later
+    /// start() has begun another run.
+    void apply_phase_object_query(const nlohmann::json& response, uint64_t run);
+
+    /// Bumped by every start(), so an answer can tell which run asked.
+    std::atomic<uint64_t> run_generation_{0};
 
     /**
      * @brief Check a status frame against the profile's status-signal rules

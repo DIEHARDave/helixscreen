@@ -159,6 +159,7 @@ void PrintStartCollector::start() {
         return;
     }
 
+    run_generation_.fetch_add(1);
     {
         std::lock_guard<std::mutex> lock(state_mutex_);
         reset_run_locked();
@@ -1555,6 +1556,10 @@ void PrintStartCollector::handle_phase_object_status(const json& status, bool se
         }
         if (has_context && !(seed && phase_object_context_cache_)) {
             phase_object_context_cache_ = PrintStartProfile::innermost_context(*context);
+            // An empty stack is no step at all: nothing is left to hold.
+            if (phase_object_context_cache_->empty()) {
+                live_object_phase_ = PrintStartPhase::IDLE;
+            }
         }
         if (!phase_object_state_cache_ || phase_object_state_cache_->empty()) {
             return;
@@ -1568,6 +1573,12 @@ void PrintStartCollector::handle_phase_object_status(const json& status, bool se
     PrintStartProfile::MatchResult match;
     if (!profile_->try_match_state(state, match)) {
         return; // a state the profile has no mapping for is not a phase signal
+    }
+    // The start-up answer can be the last print's final state: a file that
+    // never ran its end macro leaves that print's stack standing until the
+    // next start pushes its own. Only a frame the new run sees may complete it.
+    if (seed && match.phase == PrintStartPhase::COMPLETE) {
+        return;
     }
 
     // Klipper notifies on every field change in the object, so an unchanged
@@ -1596,6 +1607,18 @@ bool PrintStartCollector::in_live_preprint_step() const {
            live_object_phase_ != PrintStartPhase::COMPLETE;
 }
 
+void PrintStartCollector::apply_phase_object_query(const json& response, uint64_t run) {
+    // An answer to an earlier run's query describes that run's printer.
+    if (!active_.load() || run != run_generation_.load()) {
+        return;
+    }
+    const json* result = json_util::find_member(response, "result");
+    const json* status = result != nullptr ? json_util::find_member(*result, "status") : nullptr;
+    if (status != nullptr) {
+        handle_phase_object_status(*status, /*seed=*/true);
+    }
+}
+
 void PrintStartCollector::query_phase_object() {
     if (!profile_ || !profile_->has_phase_object() ||
         profile_->phase_object_context_field().empty()) {
@@ -1606,19 +1629,10 @@ void PrintStartCollector::query_phase_object() {
         {"objects", json::object({{name, json::array({profile_->phase_object_field(),
                                                       profile_->phase_object_context_field()})}})}};
     auto self = shared_from_this();
+    const uint64_t run = run_generation_.load();
     client_.send_jsonrpc(
         "printer.objects.query", params,
-        [self](const json& response) {
-            if (!self->active_.load()) {
-                return;
-            }
-            const json* result = json_util::find_member(response, "result");
-            const json* status =
-                result != nullptr ? json_util::find_member(*result, "status") : nullptr;
-            if (status != nullptr) {
-                self->handle_phase_object_status(*status, /*seed=*/true);
-            }
-        },
+        [self, run](const json& response) { self->apply_phase_object_query(response, run); },
         [](const MoonrakerError& /*err*/) {
             spdlog::debug("[PrintStartCollector] Failed to query the phase object");
         });

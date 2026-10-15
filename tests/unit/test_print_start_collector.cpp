@@ -5418,6 +5418,53 @@ TEST_CASE_METHOD(ForgeXCollectorFixture,
     REQUIRE(get_current_phase() == PrintStartPhase::BED_MESH);
 }
 
+TEST_CASE_METHOD(ForgeXCollectorFixture,
+                 "The last print's leftover PRINTING does not complete the next one",
+                 "[print][collector][phase_object][forge_x]") {
+    // A file without an end macro leaves its print context standing at
+    // PRINTING; the collector arms a moment before the next START_PRINT
+    // pushes its own context, so the start-up query answers with the old one.
+    client().set_object_status("operation_context",
+                               {{"context_types", {"print"}}, {"current_state", "PRINTING"}});
+    collector().start();
+    drain_async_updates();
+    REQUIRE(get_current_phase() == PrintStartPhase::INITIALIZING);
+    REQUIRE_FALSE(collector().in_live_preprint_step());
+
+    context({{"context_types", {"print", "print"}}, {"current_state", nullptr}});
+    context({{"current_state", "CHECKING FILE"}});
+    REQUIRE(get_current_message() == "Verifying file...");
+
+    // The new print's own PRINTING still completes it.
+    context({{"current_state", "PRINTING"}});
+    REQUIRE(get_current_phase() == PrintStartPhase::COMPLETE);
+}
+
+TEST_CASE_METHOD(ForgeXCollectorFixture,
+                 "A late start-up answer from an earlier run does not seed the next",
+                 "[print][collector][phase_object][forge_x]") {
+    const json answer = {
+        {"result",
+         {{"status",
+           {{"operation_context",
+             {{"context_types", {"print", "kamp"}}, {"current_state", "LEVELING"}}}}}}}};
+    collector().start();
+    drain_async_updates();
+    const uint64_t first_run = PrintStartCollectorTestAccess::run_generation(collector());
+    collector().stop();
+    collector().start();
+    drain_async_updates();
+
+    PrintStartCollectorTestAccess::answer_phase_object_query(collector(), answer, first_run);
+    drain_async_updates();
+    REQUIRE(get_current_phase() == PrintStartPhase::INITIALIZING);
+
+    PrintStartCollectorTestAccess::answer_phase_object_query(
+        collector(), answer, PrintStartCollectorTestAccess::run_generation(collector()));
+    drain_async_updates();
+    REQUIRE(get_current_phase() == PrintStartPhase::BED_MESH);
+}
+
 TEST_CASE_METHOD(ForgeXCollectorFixture, "A live pre-print step holds the deadline timeouts",
                  "[print][collector][phase_object][forge_x][timeout]") {
     // Heaters at target, the printer silent past the quiet gate and the
@@ -5452,6 +5499,16 @@ TEST_CASE_METHOD(ForgeXCollectorFixture, "A live pre-print step holds the deadli
         PrintStartCollectorTestAccess::set_elapsed_seconds(collector(), 600);
         tick_fallbacks();
         REQUIRE(get_current_phase() == PrintStartPhase::CLEANING);
+    }
+
+    SECTION("an empty context stack releases the hold") {
+        // Every context ended (an error or a restart reset the stack): no
+        // step is under way any more.
+        context({{"context_types", json::array()}, {"current_state", nullptr}});
+        REQUIRE_FALSE(collector().in_live_preprint_step());
+        PrintStartCollectorTestAccess::set_elapsed_seconds(collector(), 600);
+        tick_fallbacks();
+        REQUIRE(get_current_phase() == PrintStartPhase::COMPLETE);
     }
 }
 
