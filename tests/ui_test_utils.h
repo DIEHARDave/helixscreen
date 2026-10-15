@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ui_notification.h"
 #include "ui_toast_manager.h"
 
 #include "lvgl/lvgl.h"
@@ -167,6 +168,13 @@ void set_test_notification_action_hook(
     std::function<void(ToastSeverity, const std::string&, const std::string&)> hook);
 
 /**
+ * @brief Hook for every ui_notification_* call, as the whole event: title,
+ *        severity, history-row text, action and stickiness. Runs before the
+ *        per-kind hooks above.
+ */
+void set_test_notification_event_hook(std::function<void(const NotificationEvent&)> hook);
+
+/**
  * @brief Hook for every ToastManager::show*() call, including the ones
  *        ui_notification_* makes once the toast system is initialized.
  *
@@ -193,6 +201,14 @@ bool fire_last_toast_action();
  * Cleared, like the last action, by set_test_toast_hook().
  */
 bool last_action_toast_dismissed();
+
+/**
+ * @brief Clear every hook above and the recorded action toasts.
+ *
+ * HelixTestFixture::reset_all() runs it, so a hook capturing a test's stack
+ * locals cannot outlive the test case.
+ */
+void clear_test_hooks();
 
 } // namespace ui
 } // namespace helix

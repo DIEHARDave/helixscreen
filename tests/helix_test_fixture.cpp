@@ -437,10 +437,12 @@ void HelixTestFixture::reset_all() {
     // Delete any tracked modal widgets and clear the modal stack.
     ModalStack::instance().clear();
 
-    // Toasts and notifications are process-wide. A test that initialized the
-    // toast system would otherwise have every later test build real toast
-    // widgets, and a notification row one test raised would read back in the next.
+    // Toasts, notifications and their test hooks are process-wide. A test that
+    // initialized the toast system would otherwise have every later test build
+    // real toast widgets, a notification row one test raised would read back in
+    // the next, and a hook capturing a finished test's locals would still run.
     ToastManager::instance().deinit_subjects();
+    helix::ui::clear_test_hooks();
     helix::PendingStartupWarnings::instance().clear();
     NotificationHistory::instance().clear();
 

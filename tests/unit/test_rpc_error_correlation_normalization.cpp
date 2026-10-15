@@ -23,8 +23,9 @@
  * These tests drive the REAL tracker and the REAL router -- not the mock's
  * inline gcode_script() dispatch -- so they exercise the production comparison.
  *
- * The router's toast is observed through the error-notification hook
- * (tests/ui_test_utils.h).
+ * The router's toast is observed through the notification event hook
+ * (tests/ui_test_utils.h), counting only error notifications titled
+ * "Klipper Error", the router's title.
  */
 
 #include "ui_update_queue.h"
@@ -108,8 +109,12 @@ class CorrelationFixture : public LVGLTestFixture {
 
         ChannelResult out;
         int error_notifications = 0;
-        helix::ui::set_test_notification_error_hook(
-            [&error_notifications](const std::string&) { ++error_notifications; });
+        helix::ui::set_test_notification_event_hook(
+            [&error_notifications](const helix::ui::NotificationEvent& e) {
+                if (e.severity == ToastSeverity::ERROR && e.title == "Klipper Error") {
+                    ++error_notifications;
+                }
+            });
         {
             LogCapture log(512);
 
@@ -135,7 +140,7 @@ class CorrelationFixture : public LVGLTestFixture {
                                log.count_containing("Suppressing duplicate (RPC-handled)");
         }
 
-        helix::ui::set_test_notification_error_hook(nullptr);
+        helix::ui::set_test_notification_event_hook(nullptr);
         mock.stop_temperature_simulation();
         rpc_error_correlation::clear_for_test();
         return out;
@@ -158,8 +163,12 @@ class CorrelationFixture : public LVGLTestFixture {
 
         ChannelResult out;
         int error_notifications = 0;
-        helix::ui::set_test_notification_error_hook(
-            [&error_notifications](const std::string&) { ++error_notifications; });
+        helix::ui::set_test_notification_event_hook(
+            [&error_notifications](const helix::ui::NotificationEvent& e) {
+                if (e.severity == ToastSeverity::ERROR && e.title == "Klipper Error") {
+                    ++error_notifications;
+                }
+            });
         {
             LogCapture log(512);
 
@@ -198,7 +207,7 @@ class CorrelationFixture : public LVGLTestFixture {
                                log.count_containing("Suppressing duplicate (RPC-handled)");
         }
 
-        helix::ui::set_test_notification_error_hook(nullptr);
+        helix::ui::set_test_notification_event_hook(nullptr);
         mock.stop_temperature_simulation();
         rpc_error_correlation::clear_for_test();
         return out;

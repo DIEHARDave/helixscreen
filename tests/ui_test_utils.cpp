@@ -521,6 +521,7 @@ MessageHook g_test_error_hook;
 MessageHook g_test_success_hook;
 MessageHook g_test_info_hook;
 std::function<void(ToastSeverity, const std::string&, const std::string&)> g_test_action_hook;
+std::function<void(const helix::ui::NotificationEvent&)> g_test_notification_event_hook;
 
 std::function<void(ToastSeverity, const std::string&, uint32_t)> g_test_toast_hook;
 // The last action toast shown, which a fire consumes.
@@ -542,6 +543,9 @@ void call(const MessageHook& hook, const std::string& message) {
 // Hands each event the real ui_notification.o reports to the hook a test
 // installed for its kind.
 void route_notification(const helix::ui::NotificationEvent& e) {
+    if (g_test_notification_event_hook) {
+        g_test_notification_event_hook(e);
+    }
     if (!e.action.empty()) {
         if (g_test_action_hook) {
             g_test_action_hook(e.severity, e.message, e.action);
@@ -614,6 +618,21 @@ void set_test_notification_success_hook(MessageHook hook) {
 void set_test_notification_action_hook(
     std::function<void(ToastSeverity, const std::string&, const std::string&)> hook) {
     g_test_action_hook = std::move(hook);
+}
+
+void set_test_notification_event_hook(std::function<void(const NotificationEvent&)> hook) {
+    g_test_notification_event_hook = std::move(hook);
+}
+
+void clear_test_hooks() {
+    g_test_warning_hook = nullptr;
+    g_test_sticky_warning_hook = nullptr;
+    g_test_error_hook = nullptr;
+    g_test_info_hook = nullptr;
+    g_test_success_hook = nullptr;
+    g_test_action_hook = nullptr;
+    g_test_notification_event_hook = nullptr;
+    set_test_toast_hook(nullptr);
 }
 
 void set_test_toast_hook(std::function<void(ToastSeverity, const std::string&, uint32_t)> hook) {

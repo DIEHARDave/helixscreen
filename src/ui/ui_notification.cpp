@@ -23,7 +23,6 @@
 
 #include "app_globals.h"
 #include "fault_modal_registry.h"
-#include "pending_startup_warnings.h"
 
 #include <spdlog/spdlog.h>
 
@@ -57,11 +56,12 @@ static std::function<void(const helix::ui::NotificationEvent&)>& event_observer(
     return observer;
 }
 
-static void report_event(ToastSeverity severity, const char* message, const char* action = nullptr,
-                         bool sticky = false) {
+static void report_event(ToastSeverity severity, const char* title, const char* message,
+                         const char* action = nullptr, bool sticky = false) {
     auto& observer = event_observer();
     if (observer) {
-        observer(helix::ui::NotificationEvent{severity, message, action ? action : "", sticky});
+        observer(helix::ui::NotificationEvent{severity, title ? title : "", message,
+                                              action ? action : "", sticky});
     }
 }
 
@@ -90,26 +90,7 @@ static bool try_defer_to_startup_queue(ToastSeverity severity, const char* displ
                                        uint32_t duration_ms = 8000) {
     if (!display_msg || !*display_msg)
         return false;
-    if (ToastManager::instance().is_initialized())
-        return false;
-
-    helix::PendingStartupWarnings::Severity sev;
-    switch (severity) {
-    case ToastSeverity::INFO:
-        sev = helix::PendingStartupWarnings::Severity::INFO;
-        break;
-    case ToastSeverity::SUCCESS:
-        sev = helix::PendingStartupWarnings::Severity::SUCCESS;
-        break;
-    case ToastSeverity::WARNING:
-        sev = helix::PendingStartupWarnings::Severity::WARNING;
-        break;
-    case ToastSeverity::ERROR:
-        sev = helix::PendingStartupWarnings::Severity::ERROR;
-        break;
-    }
-    helix::PendingStartupWarnings::instance().enqueue(sev, display_msg, duration_ms);
-    return true;
+    return ToastManager::instance().defer_until_initialized(severity, display_msg, duration_ms);
 }
 
 // ============================================================================
@@ -319,7 +300,7 @@ static void show_notification(const char* title, const char* message, ToastSever
         spdlog::warn("[Notification] Attempted to show notification with null message");
         return;
     }
-    report_event(severity, message);
+    report_event(severity, title, message);
 
     const bool has_title = title && *title;
     std::string display_msg = has_title ? (std::string(title) + ": " + message) : message;
@@ -383,7 +364,7 @@ static void add_history_action_entry(ToastSeverity severity, const char* title, 
         spdlog::warn("[Notification] with_action called with null message or action");
         return;
     }
-    report_event(severity, message, action);
+    report_event(severity, title, message, action);
 
     // Build entry directly — no toast, history only
     NotificationHistoryEntry entry = {};
@@ -477,7 +458,7 @@ void show_detail_notification(ToastSeverity severity, const char* message, const
     // one string, so both get the halves joined.
     auto params = std::make_unique<DetailNotification>(DetailNotification{
         severity, message, detail, duration_ms, std::string(message) + " - " + detail});
-    report_event(severity, params->joined.c_str(), nullptr, duration_ms == 0);
+    report_event(severity, nullptr, params->joined.c_str(), nullptr, duration_ms == 0);
 
     helix::ui::queue_update<DetailNotification>(std::move(params), [](DetailNotification* p) {
         const std::string& joined = p->joined;
@@ -532,7 +513,7 @@ static void show_error_notification(const char* title, const char* message, bool
         spdlog::warn("[Notification] Attempted to show error notification with null message");
         return;
     }
-    report_event(ToastSeverity::ERROR, message);
+    report_event(ToastSeverity::ERROR, title, message);
 
     // Pre-init (before ToastManager::init() and modal XML registration) route to
     // the startup queue. The queue drains as plain toasts — modal dialogs are

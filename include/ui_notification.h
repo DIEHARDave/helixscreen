@@ -254,6 +254,7 @@ namespace ui {
  */
 struct NotificationEvent {
     ToastSeverity severity = ToastSeverity::INFO;
+    std::string title;   ///< The title the call was given; empty when untitled
     std::string message; ///< The text of the history row the call adds
     std::string action;  ///< Set only for the history-only *_with_action rows
     bool sticky = false; ///< Stays on screen until dismissed
