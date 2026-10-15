@@ -25,6 +25,7 @@
 #include "panel_widget_registry.h"
 #include "theme_manager.h"
 
+#include <algorithm>
 #include <string>
 #include <utility>
 #include <vector>
@@ -232,4 +233,62 @@ TEST_CASE_METHOD(GrowNeighbourFixture,
     CHECK(tips.rowspan == 4);
 
     PanelWidgetManager::instance().clear_panel_config(panel_id);
+}
+
+TEST_CASE_METHOD(GrowNeighbourFixture,
+                 "A shifted grown seat is drawn but never persisted over the saved origin",
+                 "[panel_widget][manager][grow_neighbour]") {
+    ScopedGrowFactories f({{"tips", five_tracks_px}, {"shutdown", 0}, {"lock", 0}});
+    const std::string panel_id = "test_grow_neighbour_persist";
+    auto* cfg = Config::get_instance();
+    const std::string panel_path = cfg->df() + "panel_widgets/" + panel_id;
+
+    nlohmann::json widgets = nlohmann::json::array();
+    widgets.push_back(entry("tips", 4, 0, 4, 4));
+    widgets.push_back(entry("shutdown", 8, 0, 2, 2));
+    // Unpositioned, so its auto-placement makes this populate save.
+    widgets.push_back(entry("lock", -1, -1, 2, 2));
+    lv_obj_t* c = populate(panel_id, std::move(widgets));
+
+    // Premise: this grid draws tips shifted left and grown.
+    const Cell tips = placed_cell(c, "tips");
+    REQUIRE(tips.col == 3);
+    REQUIRE(tips.colspan == 5);
+
+    // Reload from the JSON store.
+    auto& mgr = PanelWidgetManager::instance();
+    mgr.get_widget_config(panel_id).mark_dirty();
+    mgr.clear_panel_config(panel_id);
+    const nlohmann::json after = cfg->get<nlohmann::json>(panel_path, nlohmann::json());
+    INFO("persisted layout: " << after.dump());
+    REQUIRE(after.contains("pages"));
+
+    const nlohmann::json* saved_tips = nullptr;
+    const nlohmann::json* saved_lock = nullptr;
+    for (const auto& w : after["pages"][1]["widgets"]) {
+        if (w["id"] == "tips")
+            saved_tips = &w;
+        if (w["id"] == "lock")
+            saved_lock = &w;
+    }
+    REQUIRE(saved_tips != nullptr);
+    REQUIRE(saved_lock != nullptr);
+    // The save really happened: the auto-placed widget got a position.
+    REQUIRE((*saved_lock)["col"].get<int>() >= 0);
+
+    CHECK((*saved_tips)["col"].get<int>() == 4);
+    CHECK((*saved_tips)["row"].get<int>() == 0);
+    CHECK((*saved_tips)["colspan"].get<int>() == 4);
+    CHECK((*saved_tips)["rowspan"].get<int>() == 4);
+
+    const auto& entries = mgr.get_widget_config(panel_id).page_entries(1);
+    const auto it = std::find_if(entries.begin(), entries.end(),
+                                 [](const PanelWidgetEntry& e) { return e.id == "tips"; });
+    REQUIRE(it != entries.end());
+    CHECK(it->col == 4);
+    CHECK(it->row == 0);
+    CHECK(it->colspan == 4);
+    CHECK(it->rowspan == 4);
+
+    mgr.clear_panel_config(panel_id);
 }

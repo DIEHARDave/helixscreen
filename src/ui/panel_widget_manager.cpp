@@ -955,6 +955,12 @@ PanelWidgetManager::populate_widgets(const std::string& panel_id, lv_obj_t* cont
         // width after rotating to landscape (#1216).
         int want_colspan = 1;
         int want_rowspan = 1;
+        // The origin to persist when it differs from where this grid drew the
+        // widget: a grown anchor may shift toward a free side, which is as much
+        // a property of the current screen as the growth itself. -1 persists
+        // the placed origin.
+        int want_col = -1;
+        int want_row = -1;
     };
     std::vector<PlacedSlot> placed;
     std::vector<size_t> auto_place_indices; // Widgets needing dynamic placement
@@ -1012,6 +1018,8 @@ PanelWidgetManager::populate_widgets(const std::string& panel_id, lv_obj_t* cont
             int row = fitted.row;
             int colspan = fitted.colspan;
             int rowspan = fitted.rowspan;
+            const int anchor_col = col;
+            const int anchor_row = row;
 
             // Reading fits_at here is safe only because of the ordering this
             // pass runs in, all within one tick: the previous tree is detached
@@ -1048,8 +1056,8 @@ PanelWidgetManager::populate_widgets(const std::string& panel_id, lv_obj_t* cont
             }
 
             if (grid.place({slot.widget_id, col, row, colspan, rowspan})) {
-                placed.push_back(
-                    {i, col, row, colspan, rowspan, entry_it->colspan, entry_it->rowspan});
+                placed.push_back({i, col, row, colspan, rowspan, entry_it->colspan,
+                                  entry_it->rowspan, anchor_col, anchor_row});
             } else {
                 spdlog::warn("[PanelWidgetManager] Cannot place widget '{}' at ({},{} {}x{})",
                              slot.widget_id, col, row, colspan, rowspan);
@@ -1343,11 +1351,13 @@ PanelWidgetManager::populate_widgets(const std::string& panel_id, lv_obj_t* cont
                 std::find_if(mut_entries.begin(), mut_entries.end(),
                              [&](const PanelWidgetEntry& e) { return e.id == slot.widget_id; });
             if (entry_it != mut_entries.end() && entry_it->enabled) {
-                if (entry_it->col != p.col || entry_it->row != p.row) {
+                const int keep_col = p.want_col >= 0 ? p.want_col : p.col;
+                const int keep_row = p.want_row >= 0 ? p.want_row : p.row;
+                if (entry_it->col != keep_col || entry_it->row != keep_row) {
                     any_written = true;
                 }
-                entry_it->col = p.col;
-                entry_it->row = p.row;
+                entry_it->col = keep_col;
+                entry_it->row = keep_row;
                 // Never persist a span that was cut down just to fit THIS grid.
                 // The reduction is a property of the current screen, not of the
                 // user's layout; writing it back would strand the widget at the
