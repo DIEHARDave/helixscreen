@@ -1,7 +1,9 @@
 // Copyright (C) 2025-2026 356C LLC
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "../lvgl_test_fixture.h"
+#include "belt_settle.h"
 #include "lvgl/lvgl.h"
+#include "mock_persona.h"
 #include "moonraker_client_mock.h"
 #include "resonance_console.h"
 #include "shaper_csv_parser.h"
@@ -227,4 +229,100 @@ TEST_CASE_METHOD(BeltMockFixture, "a flat script item writes a curve with no pea
         REQUIRE(path);
         CHECK(in_window_flatness(*path) > 2.0f);
     }
+}
+
+namespace {
+
+/// The persona's configfile.settings, as the panel's query reads them.
+nlohmann::json mock_settings(MoonrakerClientMock& mock) {
+    nlohmann::json settings;
+    mock.send_jsonrpc(
+        "printer.objects.query",
+        nlohmann::json{{"objects", {{"configfile", nlohmann::json::array({"settings"})}}}},
+        [&settings](const nlohmann::json& r) {
+            settings = r["result"]["status"]["configfile"]["settings"];
+        },
+        [](const MoonrakerError&) {});
+    return settings;
+}
+
+/// Settle inputs from the persona's own limits and probe point.
+BeltSettleInputs mock_settle_inputs(MoonrakerClientMock& mock, float grow_mm = 0.0f) {
+    const auto axis_max = helix::mock::descriptor(mock.get_printer_type()).axis_max;
+    BeltSettleInputs in;
+    in.x_max = static_cast<float>(axis_max.x) + grow_mm;
+    in.y_max = static_cast<float>(axis_max.y) + grow_mm;
+    in.has_xy_limits = true;
+    in.probe_point = parse_resonance_tester_config(mock_settings(mock)).probe_point;
+    in.max_velocity_mm_s = 500.0f;
+    in.xy_homed = true;
+    return in;
+}
+
+} // namespace
+
+TEST_CASE_METHOD(BeltMockFixture,
+                 "the mock's resonance_tester names a probe point at the bed centre",
+                 "[belt][mock][settle]") {
+    const auto axis_max = helix::mock::descriptor(mock.get_printer_type()).axis_max;
+    const auto cfg = parse_resonance_tester_config(mock_settings(mock));
+    REQUIRE(cfg.probe_point.has_value());
+    CHECK((*cfg.probe_point)[0] == Catch::Approx(axis_max.x / 2.0));
+    CHECK((*cfg.probe_point)[1] == Catch::Approx(axis_max.y / 2.0));
+    CHECK((*cfg.probe_point)[2] == Catch::Approx(20.0));
+}
+
+TEST_CASE_METHOD(BeltMockFixture,
+                 "settling laps inside the travel are accepted and end at the probe point",
+                 "[belt][mock][settle]") {
+    const auto inputs = mock_settle_inputs(mock);
+    REQUIRE(inputs.probe_point.has_value());
+    const auto plan = plan_belt_settle(inputs);
+    REQUIRE(plan.refusal == BeltSettleRefusal::NONE);
+    mock.gcode_script("G28");
+    // The mock's toolhead query serves a fixed position; its moves report
+    // through notify_status_update, as Klipper's do.
+    nlohmann::json position;
+    mock.register_method_callback(
+        "notify_status_update", "belt_settle_test", [&position](const nlohmann::json& msg) {
+            const auto& status = msg["params"][0];
+            if (status.contains("toolhead") && status["toolhead"].contains("position")) {
+                position = status["toolhead"]["position"];
+            }
+        });
+
+    lines.clear();
+    bool acked = false;
+    bool failed = false;
+    mock.send_jsonrpc(
+        "printer.gcode.script", nlohmann::json{{"script", plan.gcode}},
+        [&acked](const nlohmann::json&) { acked = true; },
+        [&failed](const MoonrakerError&) { failed = true; });
+    CHECK(acked);
+    CHECK_FALSE(failed);
+    CHECK(std::none_of(lines.begin(), lines.end(),
+                       [](const std::string& l) { return l.rfind("!!", 0) == 0; }));
+
+    REQUIRE(position.is_array());
+    REQUIRE(position.size() >= 3);
+    CHECK(position[0].get<double>() == Catch::Approx((*inputs.probe_point)[0]));
+    CHECK(position[1].get<double>() == Catch::Approx((*inputs.probe_point)[1]));
+    CHECK(position[2].get<double>() == Catch::Approx((*inputs.probe_point)[2]));
+}
+
+TEST_CASE_METHOD(BeltMockFixture, "a lap outside the travel is rejected", "[belt][mock][settle]") {
+    // 100 mm past the travel: the inset grows too, but not enough to cover it.
+    const auto plan = plan_belt_settle(mock_settle_inputs(mock, 100.0f));
+    REQUIRE(plan.refusal == BeltSettleRefusal::NONE);
+    mock.gcode_script("G28");
+
+    lines.clear();
+    std::string error;
+    mock.send_jsonrpc(
+        "printer.gcode.script", nlohmann::json{{"script", plan.gcode}},
+        [](const nlohmann::json&) {}, [&error](const MoonrakerError& e) { error = e.message; });
+    CHECK(error.find("Move out of range") != std::string::npos);
+    CHECK(std::any_of(lines.begin(), lines.end(), [](const std::string& l) {
+        return l.rfind("!! Move out of range", 0) == 0;
+    }));
 }

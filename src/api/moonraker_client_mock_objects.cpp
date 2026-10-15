@@ -414,7 +414,11 @@ void register_object_handlers(std::unordered_map<std::string, MethodHandler>& re
                        {{"min_freq", self->get_resonance_min_freq()},
                         {"max_freq", self->get_resonance_max_freq()},
                         {"accel_per_hz", 75.0},
-                        {"hz_per_sec", self->get_resonance_hz_per_sec()}}},
+                        {"hz_per_sec", self->get_resonance_hz_per_sec()},
+                        // Klipper requires probe_points; the belt settling
+                        // laps run at its height.
+                        {"probe_points",
+                         json::array({json::array({axis_max.x / 2.0, axis_max.y / 2.0, 20.0})})}}},
                       // Bed screw geometry — the screws-tilt panel reads
                       // screw_thread from here to size its level tolerance.
                       {"screws_tilt_adjust",
@@ -997,7 +1001,11 @@ void register_object_handlers(std::unordered_map<std::string, MethodHandler>& re
                        {{"min_freq", self->get_resonance_min_freq()},
                         {"max_freq", self->get_resonance_max_freq()},
                         {"accel_per_hz", 75.0},
-                        {"hz_per_sec", self->get_resonance_hz_per_sec()}}},
+                        {"hz_per_sec", self->get_resonance_hz_per_sec()},
+                        // Klipper requires probe_points; the belt settling
+                        // laps run at its height.
+                        {"probe_points",
+                         json::array({json::array({axis_max.x / 2.0, axis_max.y / 2.0, 20.0})})}}},
                       {"heater_bed",
                        {{"min_temp", 0.0},
                         {"max_temp", 120.0},
