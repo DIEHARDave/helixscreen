@@ -58,11 +58,11 @@ struct JobQueueTileSeed {
     }
     /// A response whose first job is named @p first_name.
     void deliver_named(int n, const std::string& first_name) {
-        JobQueueStatus status = status_with(n);
-        if (!status.queued_jobs.empty()) {
-            status.queued_jobs.front().filename = first_name;
+        std::vector<std::string> files = numbered_files(n);
+        if (!files.empty()) {
+            files.front() = first_name;
         }
-        JobQueueStateTestAccess::deliver_status(jqs, status);
+        JobQueueStateTestAccess::deliver_status(jqs, status_of(files));
         settle_();
     }
     void set_automatic(bool on) {

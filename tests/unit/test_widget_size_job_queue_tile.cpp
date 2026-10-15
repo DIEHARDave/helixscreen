@@ -19,10 +19,10 @@
 #include "../lvgl_ui_test_fixture.h"
 #include "../test_helpers/job_queue_state_test_access.h"
 #include "../test_helpers/job_queue_subjects_fixture.h"
-#include "../test_helpers/job_queue_tile_boxes.h"
 #include "../test_helpers/job_queue_tile_seed.h"
 #include "../test_helpers/one_line_label.h"
 #include "../test_helpers/panel_widget_size_harness.h"
+#include "../test_helpers/tile_boxes.h"
 #include "../test_helpers/update_queue_test_access.h"
 #include "app_globals.h"
 #include "job_queue_state.h"
@@ -44,16 +44,11 @@ using namespace helix;
 
 namespace {
 
-struct Box {
-    int w;
-    int h;
-    SizeRung rung;
-};
-
-constexpr Box kStrip{114, 54, SizeRung::Strip};
-constexpr Box kCell{test::kJobQueueCellW, 113, SizeRung::Cell};
-constexpr Box kWide{test::kJobQueueWideW, 113, SizeRung::Wide};
-constexpr Box kFull{test::kJobQueueWideW, 232, SizeRung::Full};
+using test::Box;
+using test::kCell;
+using test::kFull;
+using test::kStrip;
+using test::kWide;
 
 struct JobQueueTileFixture : public LVGLUITestFixture, public JobQueueTileSeed {
     JobQueueTileFixture() : JobQueueTileSeed([this] { settle(); }) {

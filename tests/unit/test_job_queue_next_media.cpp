@@ -13,6 +13,7 @@
 #include "../test_helpers/job_queue_state_test_access.h"
 #include "../test_helpers/job_queue_subjects_fixture.h"
 #include "../test_helpers/thumbnail_test_png.h"
+#include "../test_helpers/update_queue_test_access.h"
 #include "connection_state.h"
 #include "helix-xml/src/xml/lv_xml.h"
 #include "job_queue_state.h"
@@ -52,23 +53,11 @@ struct NextMediaFixture : public LVGLUITestFixture {
     }
 
     void drain() {
-        for (int i = 0; i < 8; ++i) {
-            helix::ui::UpdateQueue::instance().drain();
-        }
+        helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance(), 8);
     }
 
-    static JobQueueStatus queue_of(std::initializer_list<const char*> files) {
-        JobQueueStatus s;
-        s.queue_state = "ready";
-        int i = 0;
-        for (const char* f : files) {
-            s.queued_jobs.push_back({"job-" + std::to_string(i++), f, 1000.0, 30.0});
-        }
-        return s;
-    }
-
-    void deliver(std::initializer_list<const char*> files) {
-        JobQueueStateTestAccess::deliver_status(jqs, queue_of(files));
+    void deliver(const std::vector<std::string>& files) {
+        JobQueueStateTestAccess::deliver_status(jqs, status_of(files));
         drain();
     }
 
@@ -278,7 +267,7 @@ TEST_CASE_METHOD(NextMediaFixture, "a thumbnail still loading for a superseded j
 
     // A's pre-scale finishes and parks its result in the UpdateQueue; what
     // happens to the queue next decides whether that result may land.
-    JobQueueStateTestAccess::deliver_status(jqs, queue_of({kFileA}));
+    JobQueueStateTestAccess::deliver_status(jqs, status_of({kFileA}));
     helix::ui::UpdateQueue::instance().drain();
     ThumbnailProcessor::instance().wait_for_completion();
     REQUIRE(thumbnail_subject() == placeholder);
@@ -290,14 +279,14 @@ TEST_CASE_METHOD(NextMediaFixture, "a thumbnail still loading for a superseded j
     REQUIRE_FALSE(path_a.empty());
 
     SECTION("the queue empties while it loads") {
-        JobQueueStateTestAccess::deliver_status(jqs, queue_of({}));
+        JobQueueStateTestAccess::deliver_status(jqs, status_of({}));
         settle([] { return false; });
 
         CHECK(thumbnail_subject() == placeholder);
     }
 
     SECTION("a different job becomes first while it loads") {
-        JobQueueStateTestAccess::deliver_status(jqs, queue_of({kFileB}));
+        JobQueueStateTestAccess::deliver_status(jqs, status_of({kFileB}));
         settle([&] { return thumbnail_subject() != placeholder; });
 
         CHECK(thumbnail_subject() != path_a);

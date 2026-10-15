@@ -16,6 +16,7 @@
 #include "../test_helpers/active_print_media_manager_test_access.h"
 #include "../test_helpers/moonraker_client_test_access.h"
 #include "../test_helpers/printer_state_test_access.h"
+#include "../test_helpers/thumbnail_test_png.h"
 #include "../ui_test_utils.h"
 #include "active_print_media_manager.h"
 #include "async_lifetime_guard.h"
@@ -1211,19 +1212,6 @@ TEST_CASE_METHOD(ActivePrintMediaAsyncFixture,
 
 namespace {
 
-/// Smallest PNG both the cache and the processor accept: a 10x10 solid square.
-/// Same bytes as tests/unit/test_thumbnail_cache_request.cpp.
-// clang-format off
-const std::vector<uint8_t> FRESHNESS_PNG = {
-    0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D,
-    0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x0A, 0x00, 0x00, 0x00, 0x0A,
-    0x08, 0x02, 0x00, 0x00, 0x00, 0x02, 0x50, 0x58, 0xEA, 0x00, 0x00, 0x00,
-    0x12, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9C, 0x63, 0x68, 0x70, 0x50, 0xC0,
-    0x83, 0x18, 0x46, 0xA5, 0xB1, 0x21, 0x00, 0x24, 0x51, 0x57, 0x81, 0xF7,
-    0xEC, 0xA3, 0x23, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE,
-    0x42, 0x60, 0x82};
-// clang-format on
-
 /// The target ActivePrintMediaManager builds its request from. Planting under
 /// any other target would produce a .bin the manager never looks for, and the
 /// "not served" assertion below would then hold for the wrong reason.
@@ -1252,8 +1240,8 @@ TEST_CASE_METHOD(ActivePrintMediaAsyncFixture,
                  "ActivePrintMediaManager: a cached thumbnail older than the source is served",
                  "[ActivePrintMediaManager][async][thumbnail]") {
     const std::string key = unique_thumb_path("freshness_control");
-    const auto planted = helix::ThumbnailProcessor::instance().process_sync(FRESHNESS_PNG, key,
-                                                                            active_print_target());
+    const auto planted =
+        helix::ThumbnailProcessor::instance().process_sync(TINY_PNG, key, active_print_target());
     REQUIRE(planted.success);
     REQUIRE(ThumbnailCache::is_lvgl_path(planted.output_path));
 
@@ -1277,8 +1265,8 @@ TEST_CASE_METHOD(ActivePrintMediaAsyncFixture,
                  "from cache",
                  "[ActivePrintMediaManager][async][thumbnail]") {
     const std::string key = unique_thumb_path("freshness_stale");
-    const auto planted = helix::ThumbnailProcessor::instance().process_sync(FRESHNESS_PNG, key,
-                                                                            active_print_target());
+    const auto planted =
+        helix::ThumbnailProcessor::instance().process_sync(TINY_PNG, key, active_print_target());
     REQUIRE(planted.success);
     REQUIRE(ThumbnailCache::is_lvgl_path(planted.output_path));
 

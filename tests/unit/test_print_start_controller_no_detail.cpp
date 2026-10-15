@@ -20,6 +20,7 @@
 #include "../test_helpers/print_start_controller_test_access.h"
 #include "../test_helpers/print_start_grace.h"
 #include "../test_helpers/print_state_test_drivers.h"
+#include "../test_helpers/update_queue_test_access.h"
 #include "app_globals.h"
 #include "moonraker_api.h"
 #include "moonraker_client_mock.h"
@@ -64,9 +65,7 @@ class NoDetailFixture : private helix::PrintSelectGlobalStateReset, public LVGLU
     }
 
     static void drain() {
-        for (int i = 0; i < 6; ++i) {
-            helix::ui::UpdateQueue::instance().drain();
-        }
+        helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance(), 6);
     }
 
     /// printer.print.start answers with @p ok.

@@ -20,6 +20,7 @@
 #include "../test_helpers/one_line_label.h"
 #include "../test_helpers/panel_widget_size_harness.h"
 #include "../test_helpers/print_history_seed.h"
+#include "../test_helpers/tile_boxes.h"
 #include "../test_helpers/update_queue_test_access.h"
 #include "app_globals.h"
 #include "locale_formats.h"
@@ -49,18 +50,11 @@ using namespace helix;
 
 namespace {
 
-struct Box {
-    int w;
-    int h;
-    SizeRung rung;
-};
-
-// Just above the smallest box each rung needs with the fixture's fonts (heading 34px,
-// small 22px) and the tile's 3px padding. The Strip is the medium tier's 2x1 cell.
-constexpr Box kStrip{114, 54, SizeRung::Strip};
-constexpr Box kCell{114, 113, SizeRung::Cell};
-constexpr Box kWide{233, 113, SizeRung::Wide};
-constexpr Box kFull{233, 232, SizeRung::Full};
+using test::Box;
+using test::kCell;
+using test::kFull;
+using test::kStrip;
+using test::kWide;
 
 struct PrintStatsTileFixture : public LVGLUITestFixture, public PrintHistorySeed {
     PrintStatsTileFixture() : PrintHistorySeed(state(), [this] { settle(); }) {

@@ -39,7 +39,6 @@
 #include "../test_helpers/grid_edit_mode_test_access.h"
 #include "../test_helpers/home_panel_test_access.h"
 #include "../test_helpers/mock_config_storage.h"
-#include "../test_helpers/scope_exit.h"
 #include "../test_helpers/scoped_animations_enabled.h"
 #include "../test_helpers/scoped_config_write_counter.h"
 #include "../test_helpers/scoped_pointer_indev.h"
@@ -59,6 +58,7 @@
 #include "panel_widget_config.h"
 #include "panel_widget_manager.h"
 #include "panel_widget_registry.h"
+#include "scope_exit.h"
 #include "setting_group.h"
 #include "theme_manager.h"
 #include "xml_registration.h"
@@ -4561,7 +4561,7 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     static constexpr std::array<const char*, 2> PAGE_COMPONENTS = {"home_page_container",
                                                                    "home_next_page_slot"};
     lv_xml_set_component_loader(nullptr);
-    helix::test::ScopeExit restore_loader([] { helix::register_xml_on_first_use(); });
+    helix::ScopeExit restore_loader([] { helix::register_xml_on_first_use(); });
     for (const char* name : PAGE_COMPONENTS) {
         INFO(name);
         lv_xml_component_unregister(name);

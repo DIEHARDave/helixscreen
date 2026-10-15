@@ -13,19 +13,25 @@
 
 namespace helix::test {
 
-/// A mock AMS installed on AmsState for one test, its lanes loaded with
-/// {rgb, material} in order, removed again on destruction.
+/// A started mock AMS installed on AmsState for one test, removed again on
+/// destruction.
 struct ScopedMockAms {
     AmsBackendMock* backend = nullptr;
 
-    explicit ScopedMockAms(const std::vector<std::pair<uint32_t, const char*>>& lanes) {
+    /// @p slot_count slots, as the mock seeds them.
+    explicit ScopedMockAms(int slot_count) {
         auto& ams = AmsState::instance();
         ams.init_subjects(false);
-        auto owned = std::make_unique<AmsBackendMock>(static_cast<int>(lanes.size()));
+        auto owned = std::make_unique<AmsBackendMock>(slot_count);
         backend = owned.get();
         backend->set_operation_delay(0);
         ams.set_backend(std::move(owned));
         backend->start();
+    }
+
+    /// One slot per lane, loaded with {rgb, material} in order.
+    explicit ScopedMockAms(const std::vector<std::pair<uint32_t, const char*>>& lanes)
+        : ScopedMockAms(static_cast<int>(lanes.size())) {
         for (size_t i = 0; i < lanes.size(); ++i) {
             load(static_cast<int>(i), lanes[i].first, lanes[i].second, SlotStatus::LOADED);
         }

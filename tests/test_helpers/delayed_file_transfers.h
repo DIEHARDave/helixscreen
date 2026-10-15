@@ -35,11 +35,11 @@ class DelayedFileTransfers : public MoonrakerFileTransferAPIMock {
                 root, path, dest_path, std::move(on_success), std::move(on_error));
             return;
         }
-        held_.push_back([this, root, path, dest_path, on_success = std::move(on_success),
-                         on_error = std::move(on_error)]() {
-            MoonrakerFileTransferAPIMock::download_file_to_path(root, path, dest_path, on_success,
-                                                                on_error);
-        });
+        held_.push_back({path, [this, root, path, dest_path, on_success = std::move(on_success),
+                                on_error = std::move(on_error)]() {
+                             MoonrakerFileTransferAPIMock::download_file_to_path(
+                                 root, path, dest_path, on_success, on_error);
+                         }});
     }
 
     /// When set, every footer read reports failure. The detail view then
@@ -114,12 +114,34 @@ class DelayedFileTransfers : public MoonrakerFileTransferAPIMock {
         auto held = std::move(held_);
         held_.clear();
         for (auto& h : held) {
-            h();
+            h.finish();
         }
     }
 
+    /// Complete the held download of @p path alone, so two downloads can land
+    /// in either order. False when none is held.
+    bool release(const std::string& path) {
+        for (auto it = held_.begin(); it != held_.end(); ++it) {
+            if (it->path == path) {
+                auto finish = std::move(it->finish);
+                held_.erase(it);
+                finish();
+                return true;
+            }
+        }
+        return false;
+    }
+
+    [[nodiscard]] size_t held_count() const {
+        return held_.size();
+    }
+
   private:
-    std::vector<std::function<void()>> held_;
+    struct Held {
+        std::string path;
+        std::function<void()> finish;
+    };
+    std::vector<Held> held_;
     std::vector<std::function<void()>> held_partials_;
 };
 

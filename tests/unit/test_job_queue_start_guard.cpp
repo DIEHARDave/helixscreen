@@ -32,7 +32,6 @@
 #include "../test_helpers/job_queue_modal_test_access.h"
 #include "../test_helpers/job_queue_state_test_access.h"
 #include "../test_helpers/job_queue_subjects_fixture.h"
-#include "../test_helpers/job_queue_tile_boxes.h"
 #include "../test_helpers/moonraker_client_mock_test_access.h"
 #include "../test_helpers/panel_widget_size_harness.h"
 #include "../test_helpers/print_select_panel_fixture.h"
@@ -41,6 +40,7 @@
 #include "../test_helpers/print_state_test_drivers.h"
 #include "../test_helpers/queued_job_starter_test_access.h"
 #include "../test_helpers/queued_start_fixture.h"
+#include "../test_helpers/tile_boxes.h"
 #include "../ui_test_utils.h"
 #include "app_globals.h"
 #include "job_queue_start.h"
@@ -633,9 +633,9 @@ TEST_CASE_METHOD(TileStartFixture,
         int h;
         const char* name;
     };
-    const Button button =
-        GENERATE(Button{114, 54, "jq_action_icon"}, Button{test::kJobQueueCellW, 113, "jq_action"},
-                 Button{test::kJobQueueWideW, 113, "jq_action"});
+    const Button button = GENERATE(Button{test::kStrip.w, test::kStrip.h, "jq_action_icon"},
+                                   Button{test::kCell.w, test::kCell.h, "jq_action"},
+                                   Button{test::kWide.w, test::kWide.h, "jq_action"});
     INFO(button.name);
 
     PlantedGcode file("tile_start_button.gcode");
@@ -659,7 +659,7 @@ TEST_CASE_METHOD(TileStartFixture, "the tile reads Starting with no button while
     PlantedGcode file("tile_start_busy.gcode");
     show_queue(entry("0001", file.name()));
     PanelWidgetHarness<JobQueueWidget> tile(test_screen());
-    tile.resize(1, 1, test::kJobQueueCellW, 113);
+    tile.resize(1, 1, test::kCell.w, test::kCell.h);
     lv_obj_t* button = tile.child("jq_action");
     REQUIRE(button != nullptr);
     REQUIRE_FALSE(lv_obj_has_flag(button, LV_OBJ_FLAG_HIDDEN));
@@ -688,7 +688,7 @@ TEST_CASE_METHOD(TileStartFixture, "a tap on the tile outside the button opens t
     PlantedGcode file("tile_tap_modal.gcode");
     show_queue(entry("0001", file.name()));
     PanelWidgetHarness<JobQueueWidget> tile(test_screen());
-    tile.resize(1, 1, test::kJobQueueCellW, 113);
+    tile.resize(1, 1, test::kCell.w, test::kCell.h);
 
     REQUIRE(ModalStack::instance().top_dialog() == nullptr);
     lv_obj_send_event(tile.root(), LV_EVENT_CLICKED, nullptr);

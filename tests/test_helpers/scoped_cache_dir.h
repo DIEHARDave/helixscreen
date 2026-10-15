@@ -3,11 +3,11 @@
 
 #include "scoped_env.h"
 #include "tools_used_cache.h"
+#include "unique_temp_dir.h"
 
+#include <cstdlib>
 #include <filesystem>
-#include <string>
 #include <system_error>
-#include <unistd.h>
 
 namespace helix::test {
 
@@ -18,8 +18,7 @@ namespace helix::test {
 /// the next test.
 struct ScopedCacheDir {
     ScopedEnv restore{"HELIX_CACHE_DIR"};
-    std::filesystem::path dir =
-        std::filesystem::temp_directory_path() / ("helix_cache_test_" + std::to_string(::getpid()));
+    std::filesystem::path dir = unique_temp_dir("helix_cache_test");
 
     ScopedCacheDir() {
         std::error_code ec;

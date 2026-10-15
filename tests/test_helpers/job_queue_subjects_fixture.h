@@ -8,6 +8,7 @@
 #include "static_subject_registry.h"
 
 #include <string>
+#include <vector>
 
 namespace helix {
 
@@ -43,15 +44,28 @@ struct ScopedJobQueueState {
     ScopedJobQueueState& operator=(const ScopedJobQueueState&) = delete;
 };
 
-/// A "ready" queue with n jobs: ids job-0.., filenames file-N.gcode.
-inline JobQueueStatus status_with(int n) {
+/// A "ready" queue of @p files in order, ids job-0...
+inline JobQueueStatus status_of(const std::vector<std::string>& files) {
     JobQueueStatus s;
     s.queue_state = "ready";
-    for (int i = 0; i < n; ++i) {
-        s.queued_jobs.push_back({"job-" + std::to_string(i), "file-" + std::to_string(i) + ".gcode",
-                                 1000.0 + i, 30.0 * (i + 1)});
+    for (size_t i = 0; i < files.size(); ++i) {
+        s.queued_jobs.push_back({"job-" + std::to_string(i), files[i], 1000.0 + i, 30.0 * (i + 1)});
     }
     return s;
+}
+
+/// The file names status_with(n) queues: file-0.gcode...
+inline std::vector<std::string> numbered_files(int n) {
+    std::vector<std::string> files;
+    for (int i = 0; i < n; ++i) {
+        files.push_back("file-" + std::to_string(i) + ".gcode");
+    }
+    return files;
+}
+
+/// A "ready" queue with n jobs: ids job-0.., filenames file-N.gcode.
+inline JobQueueStatus status_with(int n) {
+    return status_of(numbered_files(n));
 }
 
 } // namespace helix

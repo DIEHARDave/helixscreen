@@ -12,7 +12,6 @@
 #include "../test_helpers/log_capture.h"
 #include "../test_helpers/plugin_host_test_support.h"
 #include "../test_helpers/plugin_test_support.h"
-#include "../test_helpers/scope_exit.h"
 #include "helix-xml/src/xml/lv_xml.h"
 #include "helix-xml/src/xml/lv_xml_component.h"
 #include "layout_manager.h"
@@ -21,6 +20,7 @@
 #include "lvgl_log_handler.h"
 #include "plugin_canvas.h"
 #include "plugin_overlay_host.h"
+#include "scope_exit.h"
 #include "xml_registration.h"
 
 #include "../catch_amalgamated.hpp"
@@ -111,7 +111,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "creating a plugin subject logs no missing-sub
 
     lv_subject_t app_subject;
     lv_subject_init_int(&app_subject, 5);
-    helix::test::ScopeExit cleanup([&app_subject] {
+    helix::ScopeExit cleanup([&app_subject] {
         lv_xml_unregister_subject(nullptr, "test-plugin__taken");
         lv_subject_deinit(&app_subject);
     });
@@ -195,7 +195,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "runtime close leaves an app subject that took
                  "[plugin][bindings][ui]") {
     lv_subject_t app_subject;
     lv_subject_init_int(&app_subject, 5);
-    helix::test::ScopeExit cleanup([&app_subject] {
+    helix::ScopeExit cleanup([&app_subject] {
         if (lv_xml_get_subject(nullptr, "test-plugin__x") == &app_subject)
             lv_xml_unregister_subject(nullptr, "test-plugin__x");
         lv_subject_deinit(&app_subject);
@@ -301,7 +301,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "a bound object outlives its plugin's runtime 
     sweep_retired_subjects();
     size_t before = retired_subject_count();
     lv_obj_t* root = bind_label_to_doomed_subject();
-    helix::test::ScopeExit cleanup([&root] {
+    helix::ScopeExit cleanup([&root] {
         if (root && lv_obj_is_valid(root))
             lv_obj_delete(root);
         lv_xml_component_unregister("test-plugin__bindrow");
@@ -323,7 +323,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "a plugin load sweeps retired subjects",
     sweep_retired_subjects();
     size_t before = retired_subject_count();
     lv_obj_t* root = bind_label_to_doomed_subject();
-    helix::test::ScopeExit cleanup([&root] {
+    helix::ScopeExit cleanup([&root] {
         if (root && lv_obj_is_valid(root))
             lv_obj_delete(root);
         lv_xml_component_unregister("test-plugin__bindrow");
