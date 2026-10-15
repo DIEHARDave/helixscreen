@@ -534,6 +534,7 @@ translations:
     diretório temporário indisponível'
   'Cannot modify G-code: scan result not available': 'Não é possível modificar G-code:
     resultado da análise indisponível'
+  Cannot open or close the feeder while a print is active: 'Não é possível abrir ou fechar o alimentador enquanto uma impressão está ativa'
   Cannot park while a print is active: 'Não é possível estacionar enquanto uma impressão está ativa'
   Cannot perform this action now: Não é possível executar esta ação agora
   'Cannot remap G-code: no temp directory available': 'Não é possível remapear o G-code:

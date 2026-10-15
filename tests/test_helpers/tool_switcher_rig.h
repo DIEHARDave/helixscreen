@@ -83,6 +83,24 @@ class GateBackend : public AmsBackendMock {
         return AmsErrorHelper::success();
     }
 
+    bool has_feeder = false;
+    bool feeder_is_open = false;
+    /// Every set_feeder_open() request, in order: true opens, false closes.
+    std::vector<bool> feeder_requests;
+
+    bool supports_feeder_control() const override {
+        return has_feeder;
+    }
+
+    bool feeder_open() const override {
+        return feeder_is_open;
+    }
+
+    AmsError set_feeder_open(bool open) override {
+        feeder_requests.push_back(open);
+        return AmsErrorHelper::success();
+    }
+
     AmsError change_tool(int tool_number) override {
         ++change_tool_calls;
         last_tool = tool_number;

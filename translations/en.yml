@@ -518,6 +518,7 @@ translations:
     directory available'
   'Cannot modify G-code: scan result not available': 'Cannot modify G-code: scan result
     not available'
+  Cannot open or close the feeder while a print is active: Cannot open or close the feeder while a print is active
   Cannot park while a print is active: Cannot park while a print is active
   Cannot perform this action now: Cannot perform this action now
   'Cannot remap G-code: no temp directory available': 'Cannot remap G-code: no temp

@@ -487,6 +487,7 @@
   <translation tag="Cannot delete file: printer not connected" ru="Невозможно удалить файл: принтер не подключён"/>
   <translation tag="Cannot modify G-code: no temp directory available" ru="Невозможно изменить G-code: временная директория недоступна"/>
   <translation tag="Cannot modify G-code: scan result not available" ru="Невозможно изменить G-code: результат сканирования недоступен"/>
+  <translation tag="Cannot open or close the feeder while a print is active" ru="Нельзя открыть или закрыть фидер во время печати"/>
   <translation tag="Cannot park while a print is active" ru="Нельзя припарковать во время печати"/>
   <translation tag="Cannot perform this action now" ru="Сейчас это действие выполнить нельзя"/>
   <translation tag="Cannot remap G-code: no temp directory available" ru="Не удалось переназначить G-code: нет доступной временной директории"/>

@@ -487,6 +487,7 @@
   <translation tag="Cannot delete file: printer not connected" es="No se puede eliminar archivo: impresora no conectada"/>
   <translation tag="Cannot modify G-code: no temp directory available" es="No se puede modificar G-code: directorio temporal no disponible"/>
   <translation tag="Cannot modify G-code: scan result not available" es="No se puede modificar G-code: resultado de escaneo no disponible"/>
+  <translation tag="Cannot open or close the feeder while a print is active" es="No se puede abrir ni cerrar el alimentador mientras hay una impresión activa"/>
   <translation tag="Cannot park while a print is active" es="No se puede aparcar mientras hay una impresión activa"/>
   <translation tag="Cannot perform this action now" es="Esta acción no se puede realizar ahora"/>
   <translation tag="Cannot remap G-code: no temp directory available" es="No se puede reasignar G-code: directorio temporal no disponible"/>

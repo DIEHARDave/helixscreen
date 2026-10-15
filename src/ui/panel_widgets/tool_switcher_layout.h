@@ -5,18 +5,30 @@
 //
 // Free of LVGL so it can be unit-tested without a display. The widget measures
 // its content box and fonts and feeds them here; this header decides whether
-// the tile draws a rail of head segments (with or without a Park segment), a
-// mounted-head face beside Park, or the face alone, and how the rail's cells
-// are arranged. Every cell it hands back is at least min_target on both axes,
-// so no mode ever draws a touch target smaller than the floor.
+// the tile draws a rail of head segments (with or without its action cells,
+// Park and the feeder), a mounted-head face beside Park, or the face alone, and
+// how the rail's cells are arranged. It also sizes the picker's grid and the
+// filament-colour band every cell carries. Every cell it hands back is at least min_target on both
+// axes, so no mode ever draws a touch target smaller than the floor.
 
+#include <algorithm>
 #include <vector>
 
 namespace helix {
 
 /// The values are the widget's published mode subject ints. The XML compares
 /// that subject against literal ref_values, which must match these values.
-enum class ToolSwitcherMode : int { RailWithPark = 0, Rail = 1, Pair = 2, Single = 3 };
+/// RailWithActions draws the action cells (Park, the feeder) after the heads.
+enum class ToolSwitcherMode : int { RailWithActions = 0, Rail = 1, Pair = 2, Single = 3 };
+
+/// The action cells the backend offers beside the heads, in rail order.
+struct ToolSwitcherActions {
+    bool park = false;   ///< it can dock the mounted head
+    bool feeder = false; ///< it has a frame-side feeder the user opens and closes
+    [[nodiscard]] int cells() const {
+        return (park ? 1 : 0) + (feeder ? 1 : 0);
+    }
+};
 
 struct ToolSwitcherLayout {
     ToolSwitcherMode mode = ToolSwitcherMode::Single;
@@ -66,16 +78,17 @@ struct ToolSwitcherGrid {
 /// @param gap         px between adjacent cells
 /// @param body_px     line height of the breakpoint's body font
 /// @param small_px    line height of the breakpoint's small font
-/// @param park_available  the backend can dock the mounted head; without it
-///                    there is no Park cell to draw, so no mode reserves one
+/// @param actions     the action cells the backend offers; an absent one is
+///                    never reserved
 ///
-/// The first mode that fits wins: a segment per head plus Park, a segment per
-/// head, the mounted head's face beside Park along the long axis, and the face
-/// alone, which takes whatever box there is. The two Park modes need
-/// @p park_available.
+/// The first mode that fits wins: a segment per head plus every action cell, a
+/// segment per head, the mounted head's face beside Park along the long axis,
+/// and the face alone, which takes whatever box there is. RailWithActions needs
+/// at least one action and Pair needs Park; the feeder is reached from the
+/// picker in every mode that has no cell for it.
 [[nodiscard]] inline ToolSwitcherLayout
 decide_tool_switcher_layout(int tool_count, int content_w, int content_h, int min_target, int gap,
-                            int body_px, int small_px, bool park_available) {
+                            int body_px, int small_px, ToolSwitcherActions actions) {
     ToolSwitcherLayout out;
     if (content_w <= 0 || content_h <= 0)
         return out;
@@ -85,9 +98,10 @@ decide_tool_switcher_layout(int tool_count, int content_w, int content_h, int mi
     if (tool_count < 1)
         return out;
 
-    const ToolSwitcherMode rail_modes[2] = {ToolSwitcherMode::RailWithPark, ToolSwitcherMode::Rail};
-    const int rail_cells[2] = {tool_count + 1, tool_count};
-    for (int i = park_available ? 0 : 1; i < 2; i++) {
+    const ToolSwitcherMode rail_modes[2] = {ToolSwitcherMode::RailWithActions,
+                                            ToolSwitcherMode::Rail};
+    const int rail_cells[2] = {tool_count + actions.cells(), tool_count};
+    for (int i = actions.cells() > 0 ? 0 : 1; i < 2; i++) {
         const ToolSwitcherGrid g =
             fit_tool_switcher_cells(rail_cells[i], content_w, content_h, min_target, gap);
         if (!g.fits)
@@ -126,7 +140,7 @@ decide_tool_switcher_layout(int tool_count, int content_w, int content_h, int mi
     if (park_px < min_target)
         park_px = min_target;
     const int face_px = long_px - gap - park_px;
-    if (park_available && short_px >= min_target && face_px >= min_target) {
+    if (actions.park && short_px >= min_target && face_px >= min_target) {
         out.mode = ToolSwitcherMode::Pair;
         out.pair_horizontal = horizontal;
         out.cols = horizontal ? 2 : 1;
@@ -142,6 +156,98 @@ decide_tool_switcher_layout(int tool_count, int content_w, int content_h, int mi
 [[nodiscard]] inline int tool_switcher_strip_px(int cell_h) {
     const int px = (cell_h * 9 + 50) / 100;
     return px < 3 ? 3 : px;
+}
+
+/// How a cell shows its head's filament colour along its foot.
+struct ToolSwitcherBand {
+    bool labelled = false; ///< the band carries the material name
+    int px = 0;            ///< band height
+};
+
+/// The band for a cell @p cell_h tall. The lower 36% of the cell, carrying the
+/// material name, where that holds one @p small_px line plus @p pad above and
+/// below it; else a plain bar about one small line tall, capped at 30% of the
+/// cell so the label above keeps its room, and never thinner than
+/// tool_switcher_strip_px().
+[[nodiscard]] inline ToolSwitcherBand tool_switcher_band(int cell_h, int small_px, int pad) {
+    const int labelled_px = cell_h * 36 / 100;
+    if (labelled_px >= small_px + 2 * pad)
+        return {true, labelled_px};
+    int px = std::min(small_px, cell_h * 3 / 10);
+    return {false, std::max(px, tool_switcher_strip_px(cell_h))};
+}
+
+/// The picker's preferred cell: half again the touch floor, or the smallest
+/// cell whose band carries the material name, whichever is larger.
+[[nodiscard]] inline int tool_picker_preferred_cell(int min_target, int small_px, int pad) {
+    int cell = min_target * 3 / 2;
+    while (!tool_switcher_band(cell, small_px, pad).labelled)
+        cell++;
+    return cell;
+}
+
+/// The look a head's cell takes. The values are the per-head state subject's
+/// ints, which the cell XML compares against literal ref_values.
+enum class ToolSwitcherCellState : int { Idle = 0, Mounted = 1, Fault = 2 };
+
+/// Head @p index's look: the mounted head reads mounted whatever else is
+/// wrong, and while the changer reports a fault every other head reads
+/// faulted, since none of them can be trusted to be where the changer thinks.
+[[nodiscard]] inline ToolSwitcherCellState tool_switcher_cell_state(int index, int active_tool,
+                                                                    bool changer_fault) {
+    if (index == active_tool)
+        return ToolSwitcherCellState::Mounted;
+    return changer_fault ? ToolSwitcherCellState::Fault : ToolSwitcherCellState::Idle;
+}
+
+/// The picker grid's columns for @p heads: three up to six heads, four from
+/// seven on, so eight heads take two rows and only a ninth starts a third.
+[[nodiscard]] inline int tool_picker_columns(int heads) {
+    return heads <= 6 ? 3 : 4;
+}
+
+/// The picker's grid of square head cells.
+struct ToolPickerGrid {
+    int cols = 0;
+    int rows = 0;
+    int cell = 0;       ///< px, both axes
+    int width = 0;      ///< px of the whole grid
+    int height = 0;     ///< px of every row, which may exceed the visible height
+    int max_height = 0; ///< px the grid may show before it scrolls
+    bool scrolls = false;
+};
+
+/// Lay @p heads square cells of up to @p preferred px into @p avail_w x
+/// @p avail_h. Starts at tool_picker_columns() and drops columns only while
+/// even floor-sized cells would not fit the width; shrinks the cells toward
+/// @p min_target until every row fits the height, and scrolls what still does
+/// not. No cell is ever under @p min_target.
+[[nodiscard]] inline ToolPickerGrid fit_tool_picker_grid(int heads, int avail_w, int avail_h,
+                                                         int min_target, int gap, int preferred) {
+    ToolPickerGrid g;
+    if (heads < 1)
+        return g;
+    int cols = tool_picker_columns(heads);
+    while (cols > 1 && cols * min_target + (cols - 1) * gap > avail_w)
+        cols--;
+    const int rows = (heads + cols - 1) / cols;
+    int cell = std::min(preferred, (avail_w - (cols - 1) * gap) / cols);
+    const int fit_h = (avail_h - (rows - 1) * gap) / rows;
+    cell = std::min(cell, fit_h);
+    cell = std::max(cell, min_target);
+    g.cols = cols;
+    g.rows = rows;
+    g.cell = cell;
+    g.width = cols * cell + (cols - 1) * gap;
+    g.height = rows * cell + (rows - 1) * gap;
+    g.scrolls = g.height > avail_h;
+    // A scrolling grid shows whole rows where at least one fits.
+    g.max_height = g.height;
+    if (g.scrolls) {
+        const int visible = std::max(1, (avail_h + gap) / (cell + gap));
+        g.max_height = visible * cell + (visible - 1) * gap;
+    }
+    return g;
 }
 
 /// A detail row that is the empty-carriage line rather than a head.

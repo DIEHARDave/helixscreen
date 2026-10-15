@@ -13,6 +13,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace helix {
@@ -52,9 +53,10 @@ class ToolSwitcherWidget : public PanelWidget {
   private:
     friend class ToolSwitcherTestAccess;
 
-    /// Single-select list of the printer's tools and Park, raised by a tap on
-    /// the face or the mounted segment. Picking a row issues the change; a tap
-    /// outside it chooses nothing.
+    /// Every head as a grid of the rail's own cells (fit_tool_picker_grid()),
+    /// with Park and the feeder under it, raised by a tap on the face or the
+    /// mounted segment. Picking a head issues the change; a tap outside it
+    /// chooses nothing.
     class ToolPicker : public helix::ui::ContextMenu {
         HELIX_CONTEXT_MENU_KIND(ToolPicker)
 
@@ -95,6 +97,8 @@ class ToolSwitcherWidget : public PanelWidget {
     /// The verdict last published, and the label form the segments read in.
     ToolSwitcherLayout layout_{};
     ui::ToolLabelForm label_form_ = ui::ToolLabelForm::Full;
+    /// The form the open picker's cells read in.
+    ui::ToolLabelForm picker_form_ = ui::ToolLabelForm::Full;
 
     /// Indexed by tool, sized to the tool count; rebuilt when it changes.
     std::vector<HeadTemp> head_temps_;
@@ -108,6 +112,7 @@ class ToolSwitcherWidget : public PanelWidget {
     ObserverGuard spool_latch_observer_;
     ObserverGuard slots_observer_;
     ObserverGuard extruders_observer_;
+    ObserverGuard ams_action_observer_;
 
     // MUST stay declared LAST: reverse-declaration destruction makes this the
     // first member torn down, invalidating every captured token before any
@@ -143,6 +148,10 @@ class ToolSwitcherWidget : public PanelWidget {
     /// it is mounted, and whether the second lines still fit. Labels, colours
     /// and materials keep what publish_heads() last published.
     void publish_head_temp(int i);
+    /// Head @p i's two lines in a picker cell: in the Full form its name over
+    /// its G-code name and temperature, in the Code form its G-code name over
+    /// its temperature.
+    std::pair<std::string, std::string> picker_lines(int i, ui::ToolLabelForm form) const;
     /// Whether every cell shown holds its second line.
     void publish_two_line();
     /// Observe each head's extruder temperature; the set follows the tools.
@@ -195,19 +204,32 @@ class ToolSwitcherWidget : public PanelWidget {
     /// lands first.
     [[nodiscard]] bool refuse_while_spools_on_bed() const;
 
-    /// Whether the connected backend can dock the mounted tool, which is what
-    /// puts a Park action beside the tools.
-    static bool park_offered();
-    /// Publish park_offered() for the picker's Park row.
-    void refresh_park_support();
+    /// The action cells the connected backend offers: Park where it can dock
+    /// the mounted tool, the feeder where it has one the user can open.
+    static ToolSwitcherActions actions_offered();
+    /// Publish actions_offered() for the rail's action cells and the picker's
+    /// footer.
+    void refresh_action_support();
+    /// Whether the changer reports a fault, which marks every head but the
+    /// mounted one.
+    static bool changer_fault();
+    /// Whether a job holding the machine or spools on the bed refuse an action
+    /// that moves it, telling the user so when they do. @p technical is the
+    /// log text, @p while_printing the user's copy for the print case.
+    [[nodiscard]] bool refuse_machine_action(const char* technical,
+                                             const char* while_printing) const;
     /// Dock the mounted tool, refusing while a print holds the machine or
     /// nothing is mounted. Every Park tap lands here.
     void handle_park_requested();
+    /// Open the feeder when it is closed and close it when it is open,
+    /// refusing while a print holds the machine. Every feeder tap lands here.
+    void handle_feeder_toggled();
 
   public:
     static void tool_segment_cb(lv_event_t* e);
     static void tool_face_cb(lv_event_t* e);
     static void tool_park_cb(lv_event_t* e);
+    static void tool_feeder_cb(lv_event_t* e);
 };
 
 void register_tool_switcher_widget();

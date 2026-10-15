@@ -540,6 +540,7 @@ translations:
     G-Code : aucun répertoire temporaire disponible'
   'Cannot modify G-code: scan result not available': 'Impossible de modifier le G-Code
     : résultat du scan non disponible'
+  Cannot open or close the feeder while a print is active: 'Impossible d''ouvrir ou de fermer l''alimentateur : une impression est en cours'
   Cannot park while a print is active: 'Impossible de parquer : une impression est en cours'
   Cannot perform this action now: Impossible d'effectuer cette action maintenant
   'Cannot remap G-code: no temp directory available': 'Impossible de remapper le G-Code
