@@ -1449,6 +1449,15 @@ int32_t ui_frequency_response_chart_x_label_half_width(const lv_font_t* font) {
     return std::max(MIN_HALF, text_width(font, "100 Hz") / 2 + 2);
 }
 
+// NAMESPACE_OK: joins the header's global ui_frequency_response_chart_* API
+int32_t ui_frequency_response_chart_x_label_center(int32_t tick_x, int32_t half_w, int32_t x_min,
+                                                   int32_t x_max) {
+    if (x_max - x_min < 2 * half_w) {
+        return tick_x;
+    }
+    return std::clamp(tick_x, x_min + half_w, x_max - half_w);
+}
+
 static void draw_x_axis_labels_cb(lv_event_t* e) {
     lv_obj_t* chart_obj = lv_event_get_target_obj(e);
     lv_layer_t* layer = lv_event_get_layer(e);
@@ -1526,11 +1535,13 @@ static void draw_x_axis_labels_cb(lv_event_t* e) {
         snprintf(buf, 12, label_idx == 0 ? "%.0f Hz" : "%.0f", freq);
         ++label_idx;
 
-        // Center label on tick position
+        // Center label on tick position, kept inside the chart's own box
+        const int32_t cx =
+            ui_frequency_response_chart_x_label_center(x, half_w, coords.x1, coords.x2);
         lv_area_t label_area;
-        label_area.x1 = x - half_w;
+        label_area.x1 = cx - half_w;
         label_area.y1 = label_y;
-        label_area.x2 = x + half_w;
+        label_area.x2 = cx + half_w;
         label_area.y2 = label_y + label_height;
 
         label_dsc.text = buf;

@@ -1168,3 +1168,12 @@ TEST_CASE_METHOD(XMLTestFixture, "a configured chart pads its gutter for the the
 
     ui_frequency_response_chart_destroy(chart);
 }
+
+TEST_CASE("frequency labels stay inside the chart's box", "[frequency_response_chart][axis]") {
+    // A 300 px chart from x=100 to x=400 and a 32 px half box.
+    CHECK(ui_frequency_response_chart_x_label_center(250, 32, 100, 400) == 250);
+    CHECK(ui_frequency_response_chart_x_label_center(392, 32, 100, 400) == 368);
+    CHECK(ui_frequency_response_chart_x_label_center(110, 32, 100, 400) == 132);
+    // Narrower than one box: nowhere to move it, so it stays on the tick.
+    CHECK(ui_frequency_response_chart_x_label_center(120, 32, 100, 140) == 120);
+}

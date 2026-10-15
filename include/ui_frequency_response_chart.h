@@ -195,6 +195,16 @@ int32_t ui_frequency_response_chart_y_gutter_width(const lv_font_t* font);
 int32_t ui_frequency_response_chart_x_label_half_width(const lv_font_t* font);
 
 /**
+ * @brief Centre of a frequency label's box for a tick at @p tick_x
+ *
+ * The tick itself, moved in just enough that a box of @p half_w either side
+ * stays within [@p x_min, @p x_max]; the chart clips anything past its edges.
+ */
+// NAMESPACE_OK: matches this file's C-style chart API
+int32_t ui_frequency_response_chart_x_label_center(int32_t tick_x, int32_t half_w, int32_t x_min,
+                                                   int32_t x_max);
+
+/**
  * @brief Label the amplitude gridlines as percentages
  *
  * For callers that normalise their data to 0-100 and set the amplitude range
