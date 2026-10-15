@@ -41,9 +41,8 @@
   <view name="panel_widget_bed_mesh_tile"
         extends="lv_obj" width="100%" height="100%" style_pad_all="#space_xxs" scrollable="false">
     <event_cb trigger="clicked" callback="bed_mesh_tile_clicked_cb"/>
-    <lv_obj name="bed_mesh_tile_body"
-            width="100%" height="100%" style_pad_all="0" style_pad_row="#space_xxs" style_pad_column="#space_xs"
-            style_bg_opa="0" style_border_width="0" scrollable="false" clickable="false" event_bubble="true">
+    <pass_through name="bed_mesh_tile_body"
+                  width="100%" height="100%" style_pad_row="#space_xxs" style_pad_column="#space_xs">
       <bind_style_if name="bm_inline" cond="bed_mesh_tile_rung eq 1 or bed_mesh_tile_rung eq 4"/>
       <bind_style_if name="bm_stacked" cond="bed_mesh_tile_rung ne 1 and bed_mesh_tile_rung ne 4"/>
 
@@ -65,15 +64,13 @@
       </icon>
 
       <!-- The heatmap's slot takes whatever the other parts leave, along the flow. -->
-      <lv_obj name="bed_mesh_tile_slot"
-              flex_grow="1" style_pad_all="0" style_bg_opa="0" style_border_width="0" scrollable="false"
-              clickable="false" event_bubble="true">
+      <pass_through name="bed_mesh_tile_slot" flex_grow="1">
         <bind_flag_if_eq subject="bed_mesh_tile_show_map" flag="hidden" ref_value="0"/>
         <bind_style_if name="bm_slot_row" cond="bed_mesh_tile_rung eq 1 or bed_mesh_tile_rung eq 4"/>
         <bind_style_if name="bm_slot_column" cond="bed_mesh_tile_rung ne 1 and bed_mesh_tile_rung ne 4"/>
         <bed_mesh name="bed_mesh_tile_map"
                   width="100%" height="100%" clickable="false" event_bubble="true" style_border_width="0"/>
-      </lv_obj>
+      </pass_through>
 
       <text_small name="bed_mesh_tile_range" bind_text="bed_mesh_tile_range_text" clickable="false" event_bubble="true">
         <bind_flag_if_eq subject="bed_mesh_tile_show_range" flag="hidden" ref_value="0"/>
@@ -93,10 +90,9 @@
 
       <!-- Wide: the profile beside its numbers. The numbers size the column; a longer
            profile name ellipsizes to their width. -->
-      <lv_obj name="bed_mesh_tile_details"
-              width="content" height="content" flex_flow="column" style_flex_main_place="center"
-              style_flex_cross_place="start" style_pad_all="0" style_pad_row="#space_xxs" style_bg_opa="0"
-              style_border_width="0" scrollable="false" clickable="false" event_bubble="true">
+      <pass_through name="bed_mesh_tile_details"
+                    width="content" height="content" flex_flow="column" style_flex_main_place="center"
+                    style_flex_cross_place="start" style_pad_row="#space_xxs">
         <bind_flag_if_eq subject="bed_mesh_tile_show_details" flag="hidden" ref_value="0"/>
         <text_small name="bed_mesh_tile_details_name"
                     width="100%" bind_text="bed_mesh_profile_name" long_mode="dots" clickable="false"
@@ -112,13 +108,12 @@
                    event_bubble="true"/>
         <text_tiny name="bed_mesh_tile_details_grid"
                    bind_text="bed_mesh_dimensions" style_text_color="#text_muted" clickable="false" event_bubble="true"/>
-      </lv_obj>
+      </pass_through>
 
       <!-- Full and up: the colour scale under the heatmap, low to high. -->
-      <lv_obj name="bed_mesh_tile_scale"
-              width="100%" height="content" flex_flow="row" style_flex_main_place="space_between"
-              style_flex_cross_place="center" style_pad_all="0" style_pad_column="#space_xs" style_bg_opa="0"
-              style_border_width="0" scrollable="false" clickable="false" event_bubble="true">
+      <pass_through name="bed_mesh_tile_scale"
+                    width="100%" height="content" flex_flow="row" style_flex_main_place="space_between"
+                    style_flex_cross_place="center" style_pad_column="#space_xs">
         <bind_flag_if_eq subject="bed_mesh_tile_show_scale" flag="hidden" ref_value="0"/>
         <text_tiny name="bed_mesh_tile_scale_low"
                    bind_text="bed_mesh_tile_scale_low_text" style_text_color="#text_muted" clickable="false"
@@ -129,17 +124,15 @@
         <text_tiny name="bed_mesh_tile_scale_high"
                    bind_text="bed_mesh_tile_scale_high_text" style_text_color="#text_muted" clickable="false"
                    event_bubble="true"/>
-      </lv_obj>
+      </pass_through>
 
-      <lv_obj name="bed_mesh_tile_footer"
-              width="100%" height="content" flex_flow="column" style_flex_main_place="center"
-              style_flex_cross_place="start" style_pad_all="0" style_pad_row="0" style_bg_opa="0" style_border_width="0"
-              scrollable="false" clickable="false" event_bubble="true">
+      <pass_through name="bed_mesh_tile_footer"
+                    width="100%" height="content" flex_flow="column" style_flex_main_place="center"
+                    style_flex_cross_place="start" style_pad_row="0">
         <bind_flag_if_eq subject="bed_mesh_tile_show_footer" flag="hidden" ref_value="0"/>
-        <lv_obj name="bed_mesh_tile_footer_top"
-                width="100%" height="content" flex_flow="row" style_flex_main_place="space_between"
-                style_flex_cross_place="center" style_pad_all="0" style_pad_column="#space_xs" style_bg_opa="0"
-                style_border_width="0" scrollable="false" clickable="false" event_bubble="true">
+        <pass_through name="bed_mesh_tile_footer_top"
+                      width="100%" height="content" flex_flow="row" style_flex_main_place="space_between"
+                      style_flex_cross_place="center" style_pad_column="#space_xs">
           <text_small name="bed_mesh_tile_footer_name"
                       bind_text="bed_mesh_profile_name" flex_grow="1" long_mode="dots" clickable="false"
                       event_bubble="true"/>
@@ -149,18 +142,16 @@
             <bind_style_if_eq name="bm_warn" subject="bed_mesh_tile_status" ref_value="1"/>
             <bind_style_if_eq name="bm_danger" subject="bed_mesh_tile_status" ref_value="2"/>
           </text_small>
-        </lv_obj>
+        </pass_through>
         <text_tiny name="bed_mesh_tile_footer_count"
                    bind_text="bed_mesh_tile_count_text" style_text_color="#text_muted" clickable="false"
                    event_bubble="true"/>
-      </lv_obj>
+      </pass_through>
 
       <!-- No mesh and nothing printing: start one, or load a stored profile. -->
-      <lv_obj name="bed_mesh_tile_actions"
-              width="100%" height="content" flex_flow="column" style_flex_main_place="center"
-              style_flex_cross_place="center" style_flex_track_place="center" style_pad_all="0"
-              style_pad_row="#space_xs" style_bg_opa="0" style_border_width="0" scrollable="false" clickable="false"
-              event_bubble="true">
+      <pass_through name="bed_mesh_tile_actions"
+                    width="100%" height="content" flex_flow="column" style_flex_main_place="center"
+                    style_flex_cross_place="center" style_flex_track_place="center" style_pad_row="#space_xs">
         <bind_flag_if_eq subject="bed_mesh_tile_show_calibrate" flag="hidden" ref_value="0"/>
         <ui_button name="bed_mesh_tile_calibrate"
                    width="content" height="#button_height_sm" variant="primary" text="Calibrate" moves_machine="true">
@@ -171,7 +162,7 @@
           <bind_flag_if_eq subject="bed_mesh_tile_show_load" flag="hidden" ref_value="0"/>
           <event_cb trigger="clicked" callback="bed_mesh_tile_load_cb"/>
         </ui_button>
-      </lv_obj>
-    </lv_obj>
+      </pass_through>
+    </pass_through>
   </view>
 </component>

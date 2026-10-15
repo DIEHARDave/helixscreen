@@ -28,14 +28,12 @@
   <view name="panel_widget_dryer"
         extends="lv_obj" width="100%" height="100%" style_pad_all="#space_xxs" scrollable="false">
     <event_cb trigger="clicked" callback="dryer_clicked_cb"/>
-    <lv_obj name="dryer_body"
-            width="100%" height="100%" style_pad_all="0" style_pad_row="0" style_pad_column="0" flex_flow="column"
-            style_flex_main_place="center" style_flex_cross_place="center" style_bg_opa="0" style_border_width="0"
-            scrollable="false" clickable="false" event_bubble="true">
+    <pass_through name="dryer_body"
+                  width="100%" height="100%" style_pad_row="0" style_pad_column="0" flex_flow="column"
+                  style_flex_main_place="center" style_flex_cross_place="center">
       <!-- Glance to Wide -->
-      <lv_obj name="dryer_single"
-              width="100%" height="content" style_pad_all="0" style_pad_row="#space_xxs" style_pad_column="#space_xs"
-              style_bg_opa="0" style_border_width="0" scrollable="false" clickable="false" event_bubble="true">
+      <pass_through name="dryer_single"
+                    width="100%" height="content" style_pad_row="#space_xxs" style_pad_column="#space_xs">
         <bind_flag_if_eq subject="home_dryer_rung" flag="hidden" ref_value="5"/>
         <bind_style_if name="df_stack" cond="home_dryer_rung eq 0 or home_dryer_rung eq 2 or home_dryer_rung eq 3"/>
         <bind_style_if name="df_beside" cond="home_dryer_rung eq 1 or home_dryer_rung eq 4"/>
@@ -43,9 +41,7 @@
           <bind_flag_if_eq subject="home_dryer_show_icon" flag="hidden" ref_value="0"/>
         </icon>
         <!-- The time left inside a ring of the cycle's progress. -->
-        <lv_obj name="dryer_ring_box"
-                style_pad_all="0" style_bg_opa="0" style_border_width="0" scrollable="false" clickable="false"
-                event_bubble="true">
+        <pass_through name="dryer_ring_box">
           <bind_flag_if_eq subject="home_dryer_show_ring" flag="hidden" ref_value="0"/>
           <bind_style_if_eq name="df_ring_sm" subject="home_dryer_rung" ref_value="0"/>
           <bind_style_if_not_eq name="df_ring_md" subject="home_dryer_rung" ref_value="0"/>
@@ -57,11 +53,9 @@
                      align="center" bind_text="home_dryer_time_text" clickable="false" event_bubble="true">
             <bind_style_if_ge name="df_small" subject="home_dryer_rung" ref_value="3"/>
           </text_tiny>
-        </lv_obj>
-        <lv_obj name="dryer_info"
-                width="content" height="content" style_pad_all="0" style_pad_row="#space_xxs"
-                style_pad_column="#space_xs" style_bg_opa="0" style_border_width="0" scrollable="false"
-                clickable="false" event_bubble="true">
+        </pass_through>
+        <pass_through name="dryer_info"
+                      width="content" height="content" style_pad_row="#space_xxs" style_pad_column="#space_xs">
           <bind_flag_if_eq subject="home_dryer_show_info" flag="hidden" ref_value="0"/>
           <bind_style_if_not_eq name="df_stack" subject="home_dryer_rung" ref_value="1"/>
           <bind_style_if_eq name="df_beside" subject="home_dryer_rung" ref_value="1"/>
@@ -107,13 +101,12 @@
                       event_bubble="true">
             <bind_flag_if_eq subject="home_dryer_show_times" flag="hidden" ref_value="0"/>
           </text_small>
-        </lv_obj>
-      </lv_obj>
+        </pass_through>
+      </pass_through>
       <!-- Full: one row per source -->
-      <lv_obj name="dryer_list"
-              width="100%" height="content" flex_flow="column" style_flex_main_place="center"
-              style_flex_cross_place="start" style_pad_all="0" style_pad_row="#space_xs" style_bg_opa="0"
-              style_border_width="0" scrollable="false" clickable="false" event_bubble="true">
+      <pass_through name="dryer_list"
+                    width="100%" height="content" flex_flow="column" style_flex_main_place="center"
+                    style_flex_cross_place="start" style_pad_row="#space_xs">
         <bind_flag_if_not_eq subject="home_dryer_rung" flag="hidden" ref_value="5"/>
         <repeat count="8">
           <lv_obj name="dryer_row_${i}"
@@ -121,16 +114,15 @@
                   style_bg_opa="0" style_border_width="0" scrollable="false" clickable="true">
             <bind_flag_if_lt subject="home_dryer_row_count" flag="hidden" ref_value="${i + 1}"/>
             <event_cb trigger="clicked" callback="dryer_row_clicked_cb" user_data="$i"/>
-            <lv_obj width="100%"
-                    height="content" flex_flow="row" style_flex_main_place="space_between"
-                    style_flex_cross_place="center" style_pad_all="0" style_pad_column="#space_xs" style_bg_opa="0"
-                    style_border_width="0" scrollable="false" clickable="false" event_bubble="true">
+            <pass_through width="100%"
+                          height="content" flex_flow="row" style_flex_main_place="space_between"
+                          style_flex_cross_place="center" style_pad_column="#space_xs">
               <text_small name="dryer_row_name_${i}"
                           bind_text="home_dryer_row_${i}_name" flex_grow="1" long_mode="dots" clickable="false"
                           event_bubble="true"/>
               <text_small name="dryer_row_time_${i}"
                           bind_text="home_dryer_row_${i}_time" clickable="false" event_bubble="true"/>
-            </lv_obj>
+            </pass_through>
             <progress_bar name="dryer_row_bar_${i}"
                           height="#space_xs" bind_value="home_dryer_row_${i}_pct" clickable="false" event_bubble="true">
               <bind_flag_if_lt subject="home_dryer_row_${i}_pct" flag="hidden" ref_value="0"/>
@@ -140,7 +132,7 @@
                        event_bubble="true"/>
           </lv_obj>
         </repeat>
-      </lv_obj>
-    </lv_obj>
+      </pass_through>
+    </pass_through>
   </view>
 </component>
