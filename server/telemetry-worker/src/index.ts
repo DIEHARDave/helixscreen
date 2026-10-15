@@ -158,9 +158,11 @@ function parseFilters(searchParams: URLSearchParams): FilterParams {
   const platform = searchParams.get("platform");
   const version = searchParams.get("version");
   const model = searchParams.get("model");
+  const board = searchParams.get("board");
   if (platform) filters.platform = platform;
   if (version) filters.version = version;
   if (model) filters.model = model;
+  if (board) filters.board = board;
   return filters;
 }
 

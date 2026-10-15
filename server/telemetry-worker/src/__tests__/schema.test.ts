@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { describe, it, expect } from "vitest";
 import { mapEventToDataPoints } from "../analytics";
+import { snapshotToDataPoints } from "../cdn_fleet";
 import {
   EVENT_FANOUT,
   MAX_SLOT,
@@ -60,6 +61,15 @@ describe("POINT_KINDS table", () => {
           "other_count": "double3",
           "total_skips": "double2",
           "uptime_sec": "double1",
+        },
+        "cdn_fleet_daily": {
+          "channel": "blob2",
+          "countries": "double3",
+          "date": "blob1",
+          "errors": "double4",
+          "polls": "double1",
+          "sources": "double2",
+          "truncated": "blob3",
         },
         "connection_stability": {
           "app_board": "blob14",
@@ -301,6 +311,23 @@ describe("POINT_KINDS table", () => {
         },
       }
     `);
+  });
+});
+
+describe("cdn_fleet_daily", () => {
+  it("is declared where the cron writes it", () => {
+    const [dp] = snapshotToDataPoints({
+      date: "2026-10-13",
+      channels: [{ channel: "stable", polls: 11, sources: 7, countries: 3, errors: 2, truncated: true }],
+    });
+    expect(dp.indexes).toEqual(["cdn_fleet_daily"]);
+    const at = (field: string): unknown => {
+      const c = col("cdn_fleet_daily", field);
+      const slot = Number(c.replace(/^\D+/, "")) - 1;
+      return c.startsWith("blob") ? dp.blobs[slot] : dp.doubles[slot];
+    };
+    expect([at("date"), at("channel"), at("truncated")]).toEqual(["2026-10-13", "stable", "truncated"]);
+    expect([at("polls"), at("sources"), at("countries"), at("errors")]).toEqual([11, 7, 3, 2]);
   });
 });
 

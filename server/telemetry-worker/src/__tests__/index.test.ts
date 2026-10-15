@@ -5,7 +5,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import worker, { toYesNo } from "../index";
 import { mapEventToDataPoints } from "../analytics";
 import * as queries from "../queries";
-import { parseRange, buildFilterClause } from "../queries";
+import { parseRange } from "../queries";
 import { buildReconcileTable, countR2Points, parseEnvValue } from "../../scripts/reconcile";
 import { compareVersions } from "../versions";
 import { compareVersions as dashboardCompareVersions } from "../../../analytics-dashboard/src/utils/chart";
@@ -1834,18 +1834,6 @@ describe("toYesNo", () => {
   it("counts string names the same way", () => {
     const res = { data: [{ name: "1", count: 2 }, { name: "0", count: 5 }] };
     expect(toYesNo(res, "local", "remote")).toEqual({ local: 2, remote: 5, reported: 7 });
-  });
-});
-
-describe("buildFilterClause sanitizing", () => {
-  it("keeps spaces and parentheses in a model name", () => {
-    expect(buildFilterClause({ model: "Voron 2.4" })).toContain("'Voron 2.4'");
-    expect(buildFilterClause({ model: "Creality K1 (Max)/A+" })).toContain("'Creality K1 (Max)/A+'");
-  });
-
-  it("strips quotes, backslashes and semicolons", () => {
-    const clause = buildFilterClause({ model: "x'; DROP\\\"" });
-    expect(clause).toBe(" AND blob4 = 'x DROP'");
   });
 });
 

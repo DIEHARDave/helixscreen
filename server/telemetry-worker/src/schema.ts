@@ -254,8 +254,8 @@ const KINDS: PointKind[] = [
     dbl(3, "backtrace_depth", crashBacktraceDepth),
   ]),
 
-  // blob2 is the version the device was RUNNING (the default version filter
-  // reads blob2 for every kind); the release it tried to move to is blob5.
+  // blob2 is the version the device was RUNNING, which the version filter and
+  // per-version release stats read; the release it tried to move to is blob5.
   kind("update_failed", [
     device,
     blob(2, "from_version", fromVersion),
@@ -463,6 +463,19 @@ const KINDS: PointKind[] = [
     dbl(2, "total_skips"),
     dbl(3, "other_count"),
     dbl(4, "is_shutdown"),
+  ]),
+
+  // Written by the daily cron (cdn_fleet.ts snapshotToDataPoints), never by a
+  // device event, so no event fans out to it. Slot 1 is the UTC day described,
+  // not a device_id.
+  kind("cdn_fleet_daily", [
+    blob(1, "date"),
+    blob(2, "channel"),
+    blob(3, "truncated"),
+    dbl(1, "polls"),
+    dbl(2, "sources"),
+    dbl(3, "countries"),
+    dbl(4, "errors"),
   ]),
 ];
 
