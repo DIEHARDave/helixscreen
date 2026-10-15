@@ -2,7 +2,8 @@
 // SQL query builders for Analytics Engine dashboard endpoints. Every column is
 // named through the schema table (col), never by position.
 
-import { EVENT_FANOUT, POINT_KINDS, col, hasCol, hasKind } from "./schema";
+import { EVENT_FANOUT, MAX_SLOT, POINT_KINDS, col, hasCol, hasKind } from "./schema";
+import { isDeviceId } from "./devices";
 
 export interface QueryConfig {
   accountId: string;
@@ -153,7 +154,7 @@ export function filterForKinds(kinds: string[], filters?: FilterParams): string 
 }
 
 /** Every point kind a device event writes, in table order. */
-const EVENT_KINDS: string[] = Object.keys(POINT_KINDS).filter((kind) =>
+export const EVENT_KINDS: string[] = Object.keys(POINT_KINDS).filter((kind) =>
   Object.values(EVENT_FANOUT).some((kinds) => kinds.includes(kind)),
 );
 
@@ -1058,5 +1059,66 @@ export function releasesQueries(versions: string[]): string[] {
     FROM ${dataset}
     WHERE index1 = 'print_outcome' AND ${inVersions(printOutcome("app_version"))}
     GROUP BY ver`,
+  ];
+}
+
+// ---------- Devices ----------
+
+/** Devices listed per page of the fleet table. */
+const DEVICE_LIST_LIMIT = 200;
+
+/** How far back a device page reads; Analytics Engine keeps 90 days. */
+const DEVICE_WINDOW_DAYS = 90;
+
+/** Newest rows kept for one device's timeline. */
+const DEVICE_TIMELINE_LIMIT = 500;
+
+export function devicesQueries(days: number, filters?: FilterParams): string[] {
+  const sessF = filterFor("session", filters);
+  const sessionWhere = `${inRange(days)} AND index1 = 'session'${sessF}`;
+  return [
+    `SELECT
+      ${session("device_id")} as device_id,
+      max(timestamp) as last_seen,
+      argMax(${session("app_version")}, timestamp) as version,
+      argMax(${session("app_platform")}, timestamp) as platform,
+      argMax(${session("app_board")}, timestamp) as board,
+      argMax(${session("printer_model")}, timestamp) as model,
+      ${wCount()} as sessions
+    FROM ${DATASET}
+    WHERE ${sessionWhere}
+    GROUP BY device_id
+    ORDER BY last_seen DESC
+    LIMIT ${DEVICE_LIST_LIMIT}`,
+    `SELECT count(DISTINCT ${session("device_id")}) as total FROM ${DATASET} WHERE ${sessionWhere}`,
+    `SELECT ${crash("device_id")} as device_id, ${wCount()} as crashes
+    FROM ${DATASET}
+    WHERE ${inRange(days)} AND index1 = 'crash'${filterFor("crash", filters)}
+    GROUP BY device_id`,
+    `SELECT ${printOutcome("device_id")} as device_id, ${wCount()} as prints
+    FROM ${DATASET}
+    WHERE ${inRange(days)} AND index1 = 'print_outcome'${filterFor("print_outcome", filters)}
+    GROUP BY device_id`,
+  ];
+}
+
+export function deviceQueries(id: string): string[] {
+  if (!isDeviceId(id)) throw new Error("invalid device id");
+  // Every slot is selected so decodeRow can read any kind; every event kind keeps
+  // device_id in the first blob slot (asserted in the tests), which the filter names directly.
+  const slots = Array.from({ length: MAX_SLOT }, (_, i) => `blob${i + 1}`)
+    .concat(Array.from({ length: MAX_SLOT }, (_, i) => `double${i + 1}`))
+    .join(", ");
+  const kinds = EVENT_KINDS.map((k) => `'${k}'`).join(", ");
+  return [
+    `SELECT timestamp, index1, ${slots}
+    FROM ${DATASET}
+    WHERE ${inRange(DEVICE_WINDOW_DAYS)} AND index1 IN (${kinds}) AND ${DEVICE_ID} = '${id}'
+    ORDER BY timestamp DESC
+    LIMIT ${DEVICE_TIMELINE_LIMIT}`,
+    `SELECT ${session("app_version")} as version, min(timestamp) as first_seen, max(timestamp) as last_seen
+    FROM ${DATASET}
+    WHERE ${inRange(DEVICE_WINDOW_DAYS)} AND index1 = 'session' AND ${session("device_id")} = '${id}'
+    GROUP BY version`,
   ];
 }

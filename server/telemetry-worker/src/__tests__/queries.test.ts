@@ -187,7 +187,9 @@ describe("query builders", () => {
         ? (fn as (d: number, l: number, f?: FilterParams) => string)(30, 10, filters)
         : name === "releasesQueries"
           ? (fn as (v: string[]) => string[])(["1.0.0", "v1.1.0"])
-          : (fn as (d: number, f?: FilterParams) => string | string[])(30, filters);
+          : name === "deviceQueries"
+            ? (fn as unknown as (id: string) => string[])("0".repeat(64))
+            : (fn as (d: number, f?: FilterParams) => string | string[])(30, filters);
     return Array.isArray(out) ? out : [out];
   }
 
@@ -325,7 +327,7 @@ describe("deltaSource", () => {
 });
 
 describe("queries over delta kinds", () => {
-  const SKIP = new Set(["overviewQueries", "releasesQueries", "aeCountsQuery", "executeQuery"]);
+  const SKIP = new Set(["overviewQueries", "releasesQueries", "aeCountsQuery", "executeQuery", "deviceQueries"]);
   const builders = Object.entries(queries).filter(
     ([name]) => /Quer(y|ies)$/.test(name) && !SKIP.has(name),
   ) as Array<[string, (d: number, l: number | undefined) => string | string[]]>;
@@ -393,7 +395,7 @@ describe("constant predicates", () => {
   ];
   it("never emit a bare integer as a boolean", () => {
     const builders = Object.entries(queries).filter(
-      ([name, fn]) => name.endsWith("Queries") && name !== "releasesQueries" && typeof fn === "function",
+      ([name, fn]) => name.endsWith("Queries") && name !== "releasesQueries" && name !== "deviceQueries" && typeof fn === "function",
     ) as [string, (days: number, f?: FilterParams) => string[]][];
     expect(builders.length).toBeGreaterThan(5);
     for (const [name, build] of builders) {

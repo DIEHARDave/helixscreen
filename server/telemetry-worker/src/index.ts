@@ -27,9 +27,12 @@ import {
   featuresQueries,
   CONFIGURED_FEATURE_FLAGS,
   uxInsightsQueries,
+  devicesQueries,
+  deviceQueries,
   type QueryConfig,
   type FilterParams,
 } from "./queries";
+import { buildDeviceList, buildDevicePage, isDeviceId } from "./devices";
 import {
   snapshotDay,
   snapshotToDataPoints,
@@ -1419,6 +1422,25 @@ export default {
               devices_changed: r.devices_changed,
             })),
           });
+        }
+
+        // GET /v1/dashboard/devices
+        if (url.pathname === "/v1/dashboard/devices") {
+          const [sessionsRes, totalRes, crashesRes, printsRes] = await Promise.all(
+            devicesQueries(days, filters).map((q) => executeQuery(queryConfig, q)),
+          );
+          return json(buildDeviceList(sessionsRes, crashesRes, printsRes, totalRes));
+        }
+
+        // GET /v1/dashboard/device/<64 hex id>
+        if (url.pathname.startsWith("/v1/dashboard/device/")) {
+          const id = url.pathname.slice("/v1/dashboard/device/".length);
+          if (!isDeviceId(id)) return json({ error: "invalid device id" }, 400);
+          const [rowsRes, versionsRes] = await Promise.all(
+            deviceQueries(id).map((q) => executeQuery(queryConfig, q)),
+          );
+          const page = buildDevicePage(id, rowsRes, versionsRes);
+          return page ? json(page) : json({ error: "device not found" }, 404);
         }
 
         return json({ error: "Not found" }, 404);

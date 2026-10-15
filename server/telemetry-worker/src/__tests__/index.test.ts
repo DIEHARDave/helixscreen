@@ -1582,6 +1582,69 @@ describe("Dashboard endpoints", () => {
     });
   });
 
+  // -- GET /v1/dashboard/devices and /device/<id> --
+
+  describe("device endpoints", () => {
+    const ID = "ab".repeat(32);
+
+    it("device page 400s on a bad id before any query", async () => {
+      for (const bad of ["abc", ID.toUpperCase(), ID + "a", "x'%20OR%201=1"]) {
+        const res = await worker.fetch(dashboardRequest(`/v1/dashboard/device/${bad}`), env as never);
+        expect(res.status).toBe(400);
+        expect(await res.json()).toEqual({ error: "invalid device id" });
+      }
+      expect(mockExecuteQuery).not.toHaveBeenCalled();
+    });
+
+    it("device page requires the admin key", async () => {
+      const res = await worker.fetch(dashboardRequest(`/v1/dashboard/device/${ID}`, "nope"), env as never);
+      expect(res.status).toBe(401);
+    });
+
+    it("device page 404s when the device has no rows", async () => {
+      mockExecuteQuery.mockResolvedValue({ data: [] });
+      const res = await worker.fetch(dashboardRequest(`/v1/dashboard/device/${ID}`), env as never);
+      expect(res.status).toBe(404);
+    });
+
+    it("device page returns the page for canned rows", async () => {
+      mockExecuteQuery
+        .mockResolvedValueOnce({
+          data: [{ timestamp: "2026-10-03 00:00:00", index1: "crash", blob1: ID, blob2: "1.0.0", blob3: "SIGSEGV", double1: 9 }],
+        })
+        .mockResolvedValueOnce({ data: [{ version: "1.0.0", first_seen: "2026-10-01 00:00:00", last_seen: "2026-10-03 00:00:00" }] });
+      const res = await worker.fetch(dashboardRequest(`/v1/dashboard/device/${ID}`), env as never);
+      expect(res.status).toBe(200);
+      const page = (await res.json()) as any;
+      expect(page.device_id).toBe(ID);
+      expect(page.versions).toHaveLength(1);
+      expect(page.timeline[0]).toEqual({
+        timestamp: "2026-10-03 00:00:00",
+        kind: "crash",
+        fields: { app_version: "1.0.0", signal_name: "SIGSEGV", uptime_sec: 9 },
+      });
+      expect(mockExecuteQuery.mock.calls[0][1]).toContain(`blob1 = '${ID}'`);
+    });
+
+    it("device list joins counts and carries the filter into the session queries", async () => {
+      mockExecuteQuery.mockImplementation(async (_c, sql) => {
+        if (sql.includes("argMax")) return { data: [{ device_id: "d1", last_seen: "t", version: "1", platform: "pi", board: "", model: "m", sessions: 2 }] };
+        if (sql.includes("count(DISTINCT")) return { data: [{ total: 12 }] };
+        if (sql.includes("'crash'")) return { data: [{ device_id: "d1", crashes: 4 }] };
+        return { data: [] };
+      });
+      const res = await worker.fetch(dashboardRequest("/v1/dashboard/devices?platform=pi"), env as never);
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as any;
+      expect(body.total).toBe(12);
+      expect(body.devices).toEqual([
+        { device_id: "d1", last_seen: "t", version: "1", platform: "pi", board: "", model: "m", sessions: 2, crashes: 4, prints: 0 },
+      ]);
+      const sessionSql = mockExecuteQuery.mock.calls[0][1] as string;
+      expect(sessionSql).toContain(queries.filterFor("session", { platform: "pi" }));
+    });
+  });
+
   // -- GET /v1/dashboard/crash-list --
 
   describe("GET /v1/dashboard/crash-list", () => {
@@ -2030,7 +2093,9 @@ describe("SQL builders", () => {
           ? (fn as (d: number, l: number) => string)(30, 10)
           : name === "releasesQueries"
             ? (fn as (v: string[]) => string[])(["1.0.0"])
-            : (fn as (d: number) => string | string[])(30);
+            : name === "deviceQueries"
+              ? (fn as unknown as (id: string) => string[])("0".repeat(64))
+              : (fn as (d: number) => string | string[])(30);
       for (const sql of Array.isArray(out) ? out : [out]) {
         expect(sql, name).not.toContain("uniqExact");
       }
