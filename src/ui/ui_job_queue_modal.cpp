@@ -5,6 +5,7 @@
 
 #include "ui_button.h"
 #include "ui_error_reporting.h"
+#include "ui_filename_utils.h"
 #include "ui_panel_print_select.h"
 #include "ui_row_text.h"
 #include "ui_utils.h"
@@ -214,11 +215,7 @@ void JobQueueModal::populate_job_list() {
 
     for (const auto& job : jobs) {
         // Extract just the filename
-        std::string display_name = job.filename;
-        auto slash = display_name.rfind('/');
-        if (slash != std::string::npos) {
-            display_name = display_name.substr(slash + 1);
-        }
+        std::string display_name = helix::gcode::get_filename_basename(job.filename);
 
         std::string queued;
         if (job.time_in_queue > 0) {

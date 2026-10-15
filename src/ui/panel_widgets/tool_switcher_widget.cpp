@@ -21,6 +21,7 @@
 #include "print_lifecycle_state.h"
 #include "printer_state.h"
 #include "spool_latch_gate.h"
+#include "src/ui/panel_widgets/content_chrome.h"
 #include "static_subject_registry.h"
 #include "theme_manager.h"
 #include "tool_state.h"
@@ -432,8 +433,8 @@ void ToolSwitcherWidget::publish_layout() {
     const int min_target = resolve_px_token("touch_target_min", 48);
     const lv_font_t* body = theme_manager_get_font("font_body");
     const lv_font_t* small = theme_manager_get_font("font_small");
-    const int body_px = body ? lv_font_get_line_height(body) : 0;
-    const int small_px = small ? lv_font_get_line_height(small) : 0;
+    const int body_px = line_px(body);
+    const int small_px = line_px(small);
     const int content_w = current_width_px_ - 2 * inset;
     const int content_h = current_height_px_ - 2 * inset;
 
@@ -593,8 +594,8 @@ void ToolSwitcherWidget::publish_heads() {
     const int content_w = current_width_px_ - 2 * resolve_px_token("space_md", 10);
     const lv_font_t* body = theme_manager_get_font("font_body");
     const lv_font_t* small = theme_manager_get_font("font_small");
-    const int body_px = body ? lv_font_get_line_height(body) : 0;
-    const int small_px = small ? lv_font_get_line_height(small) : 0;
+    const int body_px = line_px(body);
+    const int small_px = line_px(small);
     for (int r = 0; r < rows; ++r) {
         const int i = order[r];
         const bool main = r == 0 && (i == active || i == kToolSwitcherEmptyCarriageRow);
@@ -697,8 +698,8 @@ void ToolSwitcherWidget::publish_two_line() {
     // over its colour strip, and every shown second line is narrow enough.
     const lv_font_t* body = theme_manager_get_font("font_body");
     const lv_font_t* small = theme_manager_get_font("font_small");
-    const int body_px = body ? lv_font_get_line_height(body) : 0;
-    const int small_px = small ? lv_font_get_line_height(small) : 0;
+    const int body_px = line_px(body);
+    const int small_px = line_px(small);
     const int room = layout_.cell_w - 2 * resolve_px_token("space_xs", 4);
     bool two_line = layout_.cell_h - tool_switcher_strip_px(layout_.cell_h) >= body_px + small_px;
     const bool rail =

@@ -44,10 +44,6 @@ int authored_rung() {
     return 2;
 }
 
-int line_height_of(const lv_font_t* font) {
-    return font ? static_cast<int>(lv_font_get_line_height(font)) : 0;
-}
-
 } // namespace
 
 TileSizing::TileSizing(const std::string& instance_id)
@@ -112,7 +108,7 @@ TileVerdict TileSizing::decide(int width_px, int height_px) const {
         const lv_font_t* badge_face = theme_manager_get_font("font_body_bold");
         badge_w = ui::text_width(content_.icon_badge.c_str(), badge_face) +
                   theme_manager_get_spacing("space_xxs");
-        badge_h = line_height_of(badge_face);
+        badge_h = line_px(badge_face);
     }
 
     // The component draws the caption translated, so that is what is measured.
@@ -140,9 +136,9 @@ TileVerdict TileSizing::decide(int width_px, int height_px) const {
         rungs[r].icon_h = std::max(glyph_h, badge_h);
         rungs[r].value_full_w = ui::text_width(content_.widest_value.c_str(), value_face);
         rungs[r].value_current_w = ui::text_width(content_.widest_current.c_str(), value_face);
-        rungs[r].value_h = line_height_of(value_face);
+        rungs[r].value_h = line_px(value_face);
         rungs[r].label_w = ui::text_width(label, label_face);
-        rungs[r].label_h = line_height_of(label_face);
+        rungs[r].label_h = line_px(label_face);
     }
 
     const int gap = theme_manager_get_spacing("space_xs");

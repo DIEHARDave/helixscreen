@@ -4,6 +4,7 @@
 #include "moonraker_file_transfer_api.h"
 
 #include "ui_error_reporting.h"
+#include "ui_filename_utils.h"
 #include "ui_notification.h"
 
 #include "http_executor.h"
@@ -404,12 +405,7 @@ void MoonrakerFileTransferAPI::upload_file_with_name(
 
         // Add path parameter if uploading to subdirectory
         if (path.find('/') != std::string::npos) {
-            // Extract directory from path
-            size_t last_slash = path.rfind('/');
-            if (last_slash != std::string::npos) {
-                std::string directory = path.substr(0, last_slash);
-                req->SetFormData("path", directory);
-            }
+            req->SetFormData("path", helix::gcode_dir_of(path));
         }
 
         // Add file content with filename
@@ -462,17 +458,10 @@ void MoonrakerFileTransferAPI::upload_file_from_path(
     }
 
     // Extract filename from dest_path (may differ from local_path basename)
-    std::string filename = dest_path;
-    size_t last_slash = dest_path.rfind('/');
-    if (last_slash != std::string::npos) {
-        filename = dest_path.substr(last_slash + 1);
-    }
+    std::string filename = helix::gcode::get_filename_basename(dest_path);
 
-    // Extract directory from path (if any)
-    std::string directory;
-    if (last_slash != std::string::npos) {
-        directory = dest_path.substr(0, last_slash);
-    }
+    // The directory part of dest_path, empty for a bare name
+    std::string directory = helix::gcode_dir_of(dest_path);
 
     std::string url = http_base_url_ + "/server/files/upload";
 
