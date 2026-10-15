@@ -3688,6 +3688,7 @@ translations:
   'Z: 0.000': 'Z: 0.000'
   already loaded: '已加载'
   attempt {}: '第 {} 次尝试'
+  auto: 自动
   bed: 热床
   busy: '正忙'
   by: '作者：'

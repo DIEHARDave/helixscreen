@@ -3955,6 +3955,7 @@ translations:
   'Z: 0.000': 'Z: 0.000'
   already loaded: 'già caricato'
   attempt {}: 'tentativo {}'
+  auto: auto
   bed: piano
   busy: 'occupato'
   by: 'di'

@@ -197,14 +197,14 @@
                 </lv_obj>
                 <!-- Optional humidity target: the cycle also ends once the box reads at or
                      below it. Only for a dryer that takes one; blank leaves the target to the
-                     printer's own default, hence "Auto". -->
+                     printer's own default, which C++ shows as the placeholder when known. -->
                 <lv_obj name="humidity_target_column"
                         width="1" height="content" flex_grow="1" style_pad_all="0" flex_flow="column"
                         style_pad_gap="#space_xxs" scrollable="false" hidden="true">
                   <bind_flag_if_eq subject="ams_env_overlay_humidity_target_visible" flag="hidden" ref_value="0"/>
                   <text_small text="Target RH" style_text_color="#text_muted"/>
                   <text_input name="humidity_target_input"
-                              width="100%" text="" placeholder_text="Auto" placeholder_tag="Auto" one_line="true"
+                              width="100%" text="" placeholder_text="auto" placeholder_tag="auto" one_line="true"
                               max_length="2">
                     <event_cb trigger="clicked" callback="on_ams_env_humidity_target_clicked"/>
                   </text_input>

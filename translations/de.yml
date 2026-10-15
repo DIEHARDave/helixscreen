@@ -3964,6 +3964,7 @@ translations:
   'Z: 0.000': 'Z: 0.000'
   already loaded: 'bereits geladen'
   attempt {}: 'Versuch {}'
+  auto: auto
   bed: Bett
   busy: 'belegt'
   by: 'von'

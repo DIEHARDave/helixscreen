@@ -689,6 +689,12 @@ create_mock_with_features(int gate_count, IMoonrakerClient* mock_client = nullpt
             hum && std::string(hum) != "0" && std::string(hum) != "false") {
             mock->set_dryer_humidity_target(true);
         }
+        // HELIX_MOCK_DRYER_DEFAULT_HUMIDITY=<pct>: the target a start with none applies.
+        if (const char* def = std::getenv("HELIX_MOCK_DRYER_DEFAULT_HUMIDITY")) {
+            if (const auto pct = helix::text_io::parse_leading<float>(def); pct && *pct > 0.0f) {
+                mock->set_dryer_default_humidity(*pct);
+            }
+        }
 
         // Optionally run an active drying session so the countdown ticks live
         // (HELIX_MOCK_DRYING). Uses the real countdown thread, so it respects

@@ -3913,6 +3913,7 @@ translations:
   'Z: 0.000': 'Z: 0.000'
   already loaded: 'уже загружен'
   attempt {}: 'попытка {}'
+  auto: авто
   bed: стол
   busy: 'занят'
   by: 'автор:'

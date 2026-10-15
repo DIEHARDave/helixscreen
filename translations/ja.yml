@@ -3698,6 +3698,7 @@ translations:
   'Z: 0.000': 'Z: 0.000'
   already loaded: '装填済み'
   attempt {}: '試行 {}'
+  auto: 自動
   bed: ベッド
   busy: 'ビジー状態'
   by: '作成者:'

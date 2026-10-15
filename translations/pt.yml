@@ -3958,6 +3958,7 @@ translations:
   'Z: 0.000': 'Z: 0.000'
   already loaded: 'já carregado'
   attempt {}: 'tentativa {}'
+  auto: auto
   bed: mesa
   busy: 'ocupado'
   by: 'por'

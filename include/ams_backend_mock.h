@@ -478,6 +478,14 @@ class AmsBackendMock : public AmsBackend {
     void set_dryer_humidity_target(bool enabled);
 
     /**
+     * @brief The target a start with none applies, reported as
+     *        DryerInfo::default_humidity_target while the dryers take a target
+     *
+     * Unset by default. Can also be set via HELIX_MOCK_DRYER_DEFAULT_HUMIDITY=<pct>.
+     */
+    void set_dryer_default_humidity(std::optional<float> pct);
+
+    /**
      * @brief Set dryer simulation speed multiplier
      * @param speed_x Speed multiplier (default 60 = 1 real second = 1 simulated minute)
      *
@@ -1040,10 +1048,11 @@ class AmsBackendMock : public AmsBackend {
     std::string environment_mode_; ///< "passive", "dryer", "slot", or "" (auto)
 
     // Dryer simulation state
-    bool dryer_enabled_ = false;         ///< Whether dryer is simulated
-    int dryer_initial_elapsed_min_ = 0;  ///< One-shot head start for next start_drying()
-    bool dryer_humidity_target_ = false; ///< Dryers report supports_humidity_target
-    DryerInfo dryer_state_;              ///< Current dryer state
+    bool dryer_enabled_ = false;                  ///< Whether dryer is simulated
+    int dryer_initial_elapsed_min_ = 0;           ///< One-shot head start for next start_drying()
+    bool dryer_humidity_target_ = false;          ///< Dryers report supports_humidity_target
+    std::optional<float> dryer_default_humidity_; ///< Reported default humidity target
+    DryerInfo dryer_state_;                       ///< Current dryer state
     /// Per-unit dryer overrides. Empty = every unit reports dryer_state_, which is the
     /// single-enclosure shape. A rig with a heated box beside a passive one fills this.
     std::vector<DryerInfo> unit_dryers_;

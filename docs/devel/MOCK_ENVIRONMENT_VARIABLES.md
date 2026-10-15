@@ -663,8 +663,25 @@ HELIX_MOCK_DRYER=1 HELIX_MOCK_DRYER_HUMIDITY_TARGET=1 ./build/bin/helix-screen -
 ```
 
 Reach the field from the AMS panel's environment indicator (`ctl demo ams`, then
-`ctl click env_indicator`). Blank, it reads **Auto**: no target is sent and the
-printer's own default applies.
+`ctl click env_indicator`). Blank, it sends no target and the printer's own
+default applies; the placeholder shows that default when the mock reports one
+(`HELIX_MOCK_DRYER_DEFAULT_HUMIDITY`), else `auto`.
+
+### `HELIX_MOCK_DRYER_DEFAULT_HUMIDITY`
+
+The target, in %RH, the mock dryer reports applying to a start that names none
+(`DryerInfo::default_humidity_target`), the way Happy Hare 4 reports
+`heater_default_dry_humidity`. Only shown with `HELIX_MOCK_DRYER_HUMIDITY_TARGET`.
+
+| Property | Value |
+|----------|-------|
+| **Values** | a positive number, e.g. `25` |
+| **Default** | unset (the field's placeholder reads `auto`) |
+| **File** | `src/printer/ams_backend.cpp` |
+
+```bash
+HELIX_MOCK_DRYER=1 HELIX_MOCK_DRYER_HUMIDITY_TARGET=1 HELIX_MOCK_DRYER_DEFAULT_HUMIDITY=25 ./build/bin/helix-screen --test
+```
 
 ### `HELIX_MOCK_DRYING`
 

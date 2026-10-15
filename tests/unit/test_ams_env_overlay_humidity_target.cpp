@@ -40,9 +40,11 @@ class RecordingDryerMock : public AmsBackendMock {
         std::optional<float> humidity_pct;
     };
 
-    explicit RecordingDryerMock(bool humidity_target) {
+    explicit RecordingDryerMock(bool humidity_target,
+                                std::optional<float> default_humidity = std::nullopt) {
         set_dryer_enabled(true);
         set_dryer_humidity_target(humidity_target);
+        set_dryer_default_humidity(default_humidity);
     }
 
     AmsError start_drying(float, int, int, int) override {
@@ -85,8 +87,9 @@ int subject_int(const char* name) {
     return lv_subject_get_int(subj);
 }
 
-RecordingDryerMock* show_overlay_with(bool humidity_target) {
-    auto backend = std::make_unique<RecordingDryerMock>(humidity_target);
+RecordingDryerMock* show_overlay_with(bool humidity_target,
+                                      std::optional<float> default_humidity = std::nullopt) {
+    auto backend = std::make_unique<RecordingDryerMock>(humidity_target, default_humidity);
     auto* raw = backend.get();
     AmsState::instance().set_backend(std::move(backend));
     get_ams_environment_overlay().show_zone(lv_screen_active(), {dryer_zone(*raw)}, 0, false);
@@ -200,4 +203,34 @@ TEST_CASE_METHOD(XMLTestFixture, "A humidity target applies to one start, not th
 
     reset_overlay_singleton();
     AmsState::instance().set_backend(nullptr);
+}
+
+TEST_CASE_METHOD(XMLTestFixture, "The blank humidity target shows the target the dryer applies",
+                 "[ams][dryer][dryer_humidity][overlay]") {
+    reset_overlay_singleton();
+
+    SECTION("a known default reads as its percentage") {
+        show_overlay_with(true, 25.0f);
+        CHECK(std::string(lv_textarea_get_placeholder_text(find_widget("humidity_target_input"))) ==
+              "25%");
+    }
+    SECTION("an unknown default reads as the dryer deciding") {
+        show_overlay_with(true);
+        CHECK(std::string(lv_textarea_get_placeholder_text(find_widget("humidity_target_input"))) ==
+              lv_tr("auto"));
+    }
+
+    reset_overlay_singleton();
+    AmsState::instance().set_backend(nullptr);
+}
+
+TEST_CASE("A dryer reports its default humidity target only alongside the capability",
+          "[ams][dryer][dryer_humidity]") {
+    AmsBackendMock mock;
+    mock.set_dryer_enabled(true);
+    mock.set_dryer_default_humidity(25.0f);
+    CHECK_FALSE(mock.get_dryer_info(0).default_humidity_target);
+    mock.set_dryer_humidity_target(true);
+    REQUIRE(mock.get_dryer_info(0).default_humidity_target);
+    CHECK(*mock.get_dryer_info(0).default_humidity_target == 25.0f);
 }

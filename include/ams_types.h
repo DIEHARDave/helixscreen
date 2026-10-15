@@ -2020,6 +2020,10 @@ struct DryerInfo {
     /// humidity? The duration still bounds the cycle; the target only shortens it.
     bool supports_humidity_target = false;
 
+    /// The target, in %RH, a start with none applies, when the backend knows it.
+    /// Unset means the dryer either applies no target or does not say which.
+    std::optional<float> default_humidity_target;
+
     /// Highest humidity target, in %RH, a surface offers.
     static constexpr float kMaxHumidityTargetPct = 99.0f;
 

@@ -277,6 +277,23 @@ void AmsEnvironmentOverlay::on_dryer_keypad_confirmed(float value, void* user_da
     self->apply_dryer_keypad_value(self->keypad_field_, value);
 }
 
+void AmsEnvironmentOverlay::publish_humidity_target_placeholder(const DryerInfo& dryer) {
+    if (!humidity_target_input_) {
+        return;
+    }
+    // Blank sends no target, so the field shows the one the dryer applies instead.
+    char buf[16];
+    if (dryer.default_humidity_target) {
+        snprintf(buf, sizeof(buf), "%.0f%%", *dryer.default_humidity_target);
+    } else {
+        snprintf(buf, sizeof(buf), "%s", lv_tr("auto"));
+    }
+    // DECLARATIVE_OK: the XML engine has no placeholder binding. The XML's
+    // placeholder_tag carries the same fallback through a language change, and every
+    // publish re-asserts the dryer's own default.
+    lv_textarea_set_placeholder_text(humidity_target_input_, buf);
+}
+
 lv_obj_t* AmsEnvironmentOverlay::dryer_input(DryerField field) const {
     switch (field) {
     case DryerField::Temperature:
@@ -666,6 +683,7 @@ void AmsEnvironmentOverlay::publish_selected_zone() {
     lv_subject_set_int(&no_dryer_visible_subject_, dryer.supported ? 0 : 1);
     lv_subject_set_int(&humidity_target_visible_subject_,
                        dryer.supported && dryer.supports_humidity_target ? 1 : 0);
+    publish_humidity_target_placeholder(dryer);
 
     // Drying active state
     lv_subject_set_int(&drying_active_subject_, dryer.active ? 1 : 0);

@@ -1968,6 +1968,15 @@ void AmsBackendHappyHare::apply_heater_config(const nlohmann::json& settings,
             spdlog::warn("[AMS HappyHare] Could not parse heater_max_temp");
         }
     }
+
+    // heater_default_dry_humidity: v4's unit parameters only. Klipper reports the
+    // configured default too, so a v4 install always carries it.
+    if (const auto humidity = happy_hare::read_config_number(
+            happy_hare::find_config_param(settings, layout, "heater_default_dry_humidity"))) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        dryer_info_.default_humidity_target = *humidity;
+        spdlog::info("[AMS HappyHare] Default drying humidity target: {:.1f}%", *humidity);
+    }
 }
 
 // ============================================================================
@@ -3331,6 +3340,9 @@ DryerInfo AmsBackendHappyHare::dryer_capabilities_locked() const {
     DryerInfo out = dryer_info_;
     // MMU_HEATER takes HUMIDITY= from Happy Hare 4 on.
     out.supports_humidity_target = out.supported && is_v4_locked();
+    if (!out.supports_humidity_target) {
+        out.default_humidity_target.reset();
+    }
     return out;
 }
 

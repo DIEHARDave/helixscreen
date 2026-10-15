@@ -3989,6 +3989,7 @@ translations:
   'Z: 0.000': 'Z: 0.000'
   already loaded: 'déjà chargé'
   attempt {}: 'essai {}'
+  auto: auto
   bed: plateau
   busy: 'occupé'
   by: 'par'

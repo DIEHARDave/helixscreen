@@ -145,6 +145,8 @@ class AmsEnvironmentOverlay : public OverlayBase {
 
     /// Open the numeric keypad over one input, ranged by what the shown box accepts.
     void show_dryer_keypad(DryerField field);
+    /// Show, in the blank humidity target field, the target a start without one gets.
+    void publish_humidity_target_placeholder(const DryerInfo& dryer);
     /// The text field @p field edits.
     [[nodiscard]] lv_obj_t* dryer_input(DryerField field) const;
     /// Write a confirmed keypad value back into its input.

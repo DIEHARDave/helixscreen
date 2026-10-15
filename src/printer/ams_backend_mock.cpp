@@ -1815,12 +1815,21 @@ void AmsBackendMock::set_dryer_humidity_target(bool enabled) {
     spdlog::info("[AmsBackendMock] Dryer humidity target {}", enabled ? "enabled" : "disabled");
 }
 
+void AmsBackendMock::set_dryer_default_humidity(std::optional<float> pct) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    dryer_default_humidity_ = pct;
+    spdlog::info("[AmsBackendMock] Dryer default humidity target {}",
+                 pct ? fmt::format("{:.0f}%", *pct) : std::string("unset"));
+}
+
 DryerInfo AmsBackendMock::get_dryer_info(int unit) const {
     std::lock_guard<std::mutex> lock(mutex_);
     DryerInfo out = (unit >= 0 && static_cast<size_t>(unit) < unit_dryers_.size())
                         ? unit_dryers_[static_cast<size_t>(unit)]
                         : dryer_state_;
     out.supports_humidity_target = out.supported && dryer_humidity_target_;
+    out.default_humidity_target =
+        out.supports_humidity_target ? dryer_default_humidity_ : std::nullopt;
     return out;
 }
 
