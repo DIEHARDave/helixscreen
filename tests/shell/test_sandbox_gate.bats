@@ -8,6 +8,8 @@
 # file. A blocked call recorded in the suite ledger fails the run, and these
 # tests must not do that.
 
+bats_require_minimum_version 1.5.0
+
 SANDBOX_COMMANDS_DOC="killall pkill pidof reboot shutdown halt poweroff telinit launchctl crontab mount umount diskutil mkfs addr2line systemctl jobpool"
 
 setup() {
@@ -148,10 +150,13 @@ escape() {
 
 @test "sandbox: a make in scratch_tree, or asking make about itself, runs" {
     # REAL_TREE_MAKE_OK: make --version in the tree is allowed, and asserted here
-    run escape make -C "$(scratch_tree)" --no-print-directory print-var-LVGL_DIR
+    run --separate-stderr escape make -C "$(scratch_tree)" --no-print-directory print-var-LVGL_DIR
+    echo "stdout: [$output]"
+    echo "stderr: [$stderr]"
     [ "$status" -eq 0 ]
-    # Parse-time $(info) notes (the clang++ -> g++ fallback) print ahead of the
-    # recipe's echo, so the value is the last line, not the whole output.
+    # Parsing the Makefile can talk on either stream before the recipe runs:
+    # $(shell) diagnostics on stderr, and $(info) notes such as the clang++ ->
+    # g++ fallback on stdout. The value is the last line of stdout.
     [ "${lines[${#lines[@]}-1]}" = lib/lvgl ]
     run escape bash -c 'cd "$HELIX_TEST_REPO_ROOT" && make --version'
     [ "$status" -eq 0 ]
