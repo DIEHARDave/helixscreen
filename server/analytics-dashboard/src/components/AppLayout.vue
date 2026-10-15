@@ -10,7 +10,7 @@
           :key="tab.path"
           :to="navTo(tab.path)"
           class="nav-link"
-          :class="{ active: route.path === tab.path }"
+          :class="{ active: isActive(tab.path) }"
         >
           {{ tab.label }}
         </router-link>
@@ -49,7 +49,8 @@ const TABS = [
   { path: '/performance', label: 'Performance' },
   { path: '/fleet', label: 'Fleet' },
   { path: '/usage', label: 'Usage' },
-  { path: '/prints', label: 'Prints' }
+  { path: '/prints', label: 'Prints' },
+  { path: '/reports', label: 'Reports' }
 ]
 
 const route = useRoute()
@@ -59,6 +60,11 @@ const filters = useFiltersStore()
 // The URL is the source of truth: route changes (links, back/forward) feed the
 // store, and store edits are written back with replace.
 // A deliberate nav click carries the active filters; history entries stay as recorded.
+// A tab with sub-pages (/reports/<week>) stays lit on them; '/' matches only itself.
+function isActive(path: string): boolean {
+  return route.path === path || (path !== '/' && route.path.startsWith(`${path}/`))
+}
+
 function navTo(path: string) {
   return { path, query: filters.queryParams }
 }
