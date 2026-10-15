@@ -8,6 +8,7 @@ import {
   formatSmokeTable,
   passed,
   pickMatrix,
+  releasesVersionsPath,
 } from "../../scripts/smoke";
 
 describe("formatSmokeTable", () => {
@@ -45,7 +46,17 @@ describe("pickMatrix / filterSets", () => {
         { name: "Voron 2.4", count: 9 },
       ],
     });
-    expect(m).toEqual({ newestVersion: "1.0.10", topModel: "Voron 2.4" });
+    expect(m).toEqual({ newestVersion: "1.0.10", newestTwo: ["1.0.10", "1.0.4"], topModel: "Voron 2.4" });
+  });
+
+  it("names the two newest versions in the releases request, or skips it with none", () => {
+    expect(releasesVersionsPath(pickMatrix({ versions: [{ name: "1.0.4" }, { name: "1.0.10" }, { name: "0.99.118" }] }))).toBe(
+      "/v1/dashboard/releases?range=30d&versions=1.0.10,1.0.4",
+    );
+    expect(releasesVersionsPath(pickMatrix({ versions: [{ name: "1.1.0-beta.8" }] }))).toBe(
+      "/v1/dashboard/releases?range=30d&versions=1.1.0-beta.8",
+    );
+    expect(releasesVersionsPath(pickMatrix({}))).toBeNull();
   });
 
   it("encodes the values and drops filters it has no value for", () => {

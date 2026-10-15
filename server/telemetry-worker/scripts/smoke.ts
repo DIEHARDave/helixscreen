@@ -61,6 +61,8 @@ export function formatSmokeTable(results: SmokeResult[]): string {
 
 export interface Matrix {
   newestVersion?: string;
+  /** The two newest versions, newest first, for the explicit-versions releases request. */
+  newestTwo?: string[];
   topModel?: string;
 }
 
@@ -79,7 +81,17 @@ export function pickMatrix(adoption: {
 }): Matrix {
   const versions = (adoption.versions ?? []).map((v) => v.name).sort(compareVersions);
   const models = [...(adoption.printer_models ?? [])].sort((a, b) => b.count - a.count);
-  return { newestVersion: versions[versions.length - 1], topModel: models[0]?.name };
+  return {
+    newestVersion: versions[versions.length - 1],
+    newestTwo: versions.slice(-2).reverse(),
+    topModel: models[0]?.name,
+  };
+}
+
+/** The releases request that names its versions, or null when adoption listed none. */
+export function releasesVersionsPath(m: Matrix): string | null {
+  if (!m.newestTwo?.length) return null;
+  return `/v1/dashboard/releases?range=30d&versions=${m.newestTwo.map(encodeURIComponent).join(",")}`;
 }
 
 async function get(base: string, path: string, key: string): Promise<{ status: number; body: unknown }> {
@@ -124,6 +136,9 @@ async function main(): Promise<void> {
       }
     }
   }
+
+  const releasesPath = releasesVersionsPath(matrix);
+  if (releasesPath) await check("releases two newest versions", releasesPath);
 
   const devices = (await check("devices (for id)", "/v1/dashboard/devices?range=90d")) as {
     devices?: Array<{ device_id: string }>;
