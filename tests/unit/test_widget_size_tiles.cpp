@@ -1027,3 +1027,55 @@ TEST_CASE("an engaged bypass tile's spool row fits the box it is given",
     // The row is drawn somewhere in the sweep, so the fit check measured it.
     CHECK(row_drawn > 0);
 }
+
+TEST_CASE("a bypass tile re-decides its box when bypass engages and disengages",
+          "[widget_size][tile][1805]") {
+    LVGLUITestFixture fixture;
+    helix::init_widget_registrations();
+    helix::test::BypassEngagedSeed seed;
+    helix::test::ScopedWidgetLabelsShown labels;
+    lv_subject_t* engaged = helix::AmsState::instance().get_bypass_active_subject();
+    lv_subject_set_int(engaged, 0);
+
+    const auto* def = find_widget_def("bypass");
+    REQUIRE(def != nullptr);
+    RegistryWidgetHarness h(fixture.test_screen(), *def);
+    REQUIRE(h.created());
+    lv_obj_t* row = h.child("bypass_active_row");
+    REQUIRE(row != nullptr);
+    auto verdict = [&] {
+        return "rung " +
+               std::to_string(lv_subject_get_int(lv_xml_get_subject(nullptr, "bypass_tile_icon"))) +
+               " label " +
+               std::to_string(
+                   lv_subject_get_int(lv_xml_get_subject(nullptr, "bypass_tile_label"))) +
+               " row " + (lv_obj_has_flag(row, LV_OBJ_FLAG_HIDDEN) ? "hidden" : "drawn");
+    };
+
+    int differing = 0;
+    for (int edge = 40; edge <= 240; edge += 2) {
+        INFO("bypass at " << edge << "px");
+        lv_subject_set_int(engaged, 0);
+        h.resize(1, 1, edge, edge);
+        const std::string off = verdict();
+
+        // Engaged with no resize: the tile decides as a fresh resize engaged would.
+        lv_subject_set_int(engaged, 1);
+        lv_obj_update_layout(h.root());
+        const std::string flipped_on = verdict();
+        h.resize(1, 1, edge, edge);
+        const std::string on = verdict();
+        CHECK(flipped_on == on);
+        if (on != off) {
+            ++differing;
+        }
+
+        // Disengaged again with no resize: back to the disengaged verdict.
+        lv_subject_set_int(engaged, 0);
+        lv_obj_update_layout(h.root());
+        CHECK(verdict() == off);
+    }
+    // Some box decides differently with the row than without it, so the flips are
+    // proved to re-decide rather than agreeing by coincidence.
+    CHECK(differing > 0);
+}

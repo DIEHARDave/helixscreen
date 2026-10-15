@@ -65,6 +65,8 @@ void BypassWidget::attach(lv_obj_t* widget_obj, lv_obj_t* parent_screen) {
         AmsState::instance().get_bypass_active_subject(), this,
         [](BypassWidget* self, int active) {
             TileSizing::Content content = self->sizing_.content();
+            // The row's text is panel_widget_bypass.xml#bypass_material_label, a
+            // text_tiny, which draws in font_xs; the row is one line of it.
             content.detail_font = active != 0 ? "font_xs" : nullptr;
             self->sizing_.set_content(std::move(content));
             self->sizing_.remeasure();

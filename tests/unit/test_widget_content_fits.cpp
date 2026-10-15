@@ -47,6 +47,7 @@
 #include "../test_helpers/job_queue_tile_seed.h"
 #include "../test_helpers/panel_widget_size_harness.h"
 #include "../test_helpers/print_history_seed.h"
+#include "../test_helpers/scoped_widget_labels.h"
 #include "../test_helpers/tips_manager_test_access.h"
 #include "../test_helpers/update_queue_test_access.h"
 #include "ams_backend_mock.h"
@@ -58,6 +59,7 @@
 #include "panel_widget_registry.h"
 #include "printer_state.h"
 #include "runtime_config.h"
+#include "src/ui/panel_widgets/content_chrome.h"
 #include "src/ui/panel_widgets/print_status_widget.h"
 #include "theme_manager.h"
 #include "tool_state.h"
@@ -1076,4 +1078,85 @@ TEST_CASE_METHOD(ContentFitsFixture,
     };
     CHECK_FALSE(probe->fits_at(w_px(def->effective_min_colspan()), h_px));
     CHECK(probe->fits_at(w_px(dims.cols), h_px));
+}
+
+TEST_CASE_METHOD(ContentFitsFixture,
+                 "a micro favorite macro takes half a cell's height and draws its row unclipped",
+                 "[content_fits][favorite_macro][1805]") {
+    lv_display_t* disp = lv_display_get_default();
+    REQUIRE(disp != nullptr);
+    TestModeGuard test_mode_guard(get_runtime_config());
+    PanelWidgetManager::instance().init_widget_subjects();
+    require_font_tokens_distinct();
+    test::ScopedWidgetLabelsShown labels;
+
+    const auto g = std::find_if(kShipping.begin(), kShipping.end(),
+                                [](const Geometry& x) { return std::string(x.name) == "480x272"; });
+    REQUIRE(g != kShipping.end());
+    ScopedResolution res(disp, g->panel_w, g->panel_h);
+    theme_manager_refresh_layout_constants(disp);
+    helix::unregister_idle_xml_components();
+    const UiBreakpoint bp = breakpoint_for(std::min(g->panel_w, g->panel_h));
+    REQUIRE(bp == UiBreakpoint::Micro);
+    const GridDimensions dims = GridLayout::get_dimensions(bp, g->content_w, g->content_h);
+    const CellMetrics m =
+        grid_cell_metrics(g->content_w, g->content_h, dims.cols, dims.rows, g->gutter);
+
+    const PanelWidgetDef* def = find_widget_def("favorite_macro");
+    REQUIRE(def != nullptr);
+    // One track tall, one to four tracks wide: the half-height spans the grid offers. A
+    // track is 31 or 32px tall depending on which row it lands on (the grid's float edge
+    // rounds per row), so both are checked.
+    struct Box {
+        int tracks;
+        int w;
+    };
+    int names_drawn = 0;
+    for (const Box box : {Box{2, 70}, Box{4, 142}, Box{3, 106}, Box{1, 34}}) {
+        for (const int h : {31, 32}) {
+            const int w = static_cast<int>(grid_track_extent(m.cell_w, m.gutter, box.tracks));
+            INFO("favorite_macro at " << w << "x" << h);
+            REQUIRE(w == box.w);
+            REQUIRE(std::abs(static_cast<int>(grid_track_extent(m.cell_h, m.gutter, 1)) - h) <= 1);
+
+            auto probe = def->factory(def->id);
+            REQUIRE(probe != nullptr);
+            REQUIRE(probe->tile_sizing() != nullptr);
+            probe->tile_sizing()->set_cell_metrics(m);
+            CHECK(probe->fits_at(w, h));
+
+            RegistryWidgetHarness harness(test_screen(), *def, &m);
+            REQUIRE(harness.created());
+            harness.resize(box.tracks, 1, w, h);
+            helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
+            lv_obj_update_layout(harness.root());
+            require_no_overflow(harness.root(), exceptions(), "favorite_macro micro half height");
+
+            lv_obj_t* badge = harness.child("fav_macro_badge");
+            lv_obj_t* name = harness.child("fav_macro_name");
+            REQUIRE(badge != nullptr);
+            REQUIRE(name != nullptr);
+            CHECK_FALSE(lv_obj_has_flag(badge, LV_OBJ_FLAG_HIDDEN));
+            // Whether the name fits beside the disc depends on the tier's faces; wherever it
+            // is drawn it must be whole.
+            if (!lv_obj_has_flag(name, LV_OBJ_FLAG_HIDDEN)) {
+                ++names_drawn;
+                // Inside the tile's content box on every edge, and a whole line of its face
+                // tall: its dots ellipsize the width by design, never the height.
+                lv_area_t content;
+                lv_obj_get_content_coords(harness.root(), &content);
+                lv_area_t a;
+                lv_obj_get_coords(name, &a);
+                CHECK(a.x1 >= content.x1);
+                CHECK(a.x2 <= content.x2);
+                CHECK(a.y1 >= content.y1);
+                CHECK(a.y2 <= content.y2);
+                CHECK(lv_obj_get_height(name) >=
+                      line_px(lv_obj_get_style_text_font(name, LV_PART_MAIN)));
+            }
+        }
+    }
+    // The wider strips draw the name, so the bounds checks above ran.
+    CHECK(names_drawn > 0);
+    helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
 }
