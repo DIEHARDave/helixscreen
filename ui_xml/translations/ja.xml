@@ -88,14 +88,10 @@
   <translation tag="1. Printer homes and probes the bed" ja="1. プリンターがホーミングしてベッドをプローブします"/>
   <translation tag="1. Printer will home and probe each screw" ja="1. プリンターがホーミングして各ネジをプローブします"/>
   <translation tag="10 minutes" ja="10分"/>
-  <translation tag="100 h" ja="100 時間"/>
-  <translation tag="1000 h" ja="1000 時間"/>
   <translation tag="12 Hour" ja="12時間"/>
   <translation tag="12-hour" ja="12時間制"/>
   <translation tag="120 seconds" ja="120秒"/>
   <translation tag="15 seconds" ja="15秒"/>
-  <translation tag="150 h" ja="150 時間"/>
-  <translation tag="1500 h" ja="1500 時間"/>
   <translation tag="170-300 °C" ja="170-300 °C"/>
   <translation tag="180°" ja="180°"/>
   <translation tag="180° Upside Down" ja="180° 上下反転"/>
@@ -105,12 +101,8 @@
   <translation tag="2. Place paper between nozzle and bed" ja="2. ノズルとベッドの間に紙を置いてください"/>
   <translation tag="2. Results show how much to turn each screw" ja="2. 各ネジをどれだけ回すか結果が表示されます"/>
   <translation tag="20 minutes" ja="20分"/>
-  <translation tag="200 h" ja="200 時間"/>
-  <translation tag="2000 h" ja="2000 時間"/>
   <translation tag="24 Hour" ja="24時間"/>
   <translation tag="24-hour" ja="24時間制"/>
-  <translation tag="25 h" ja="25 時間"/>
-  <translation tag="250 h" ja="250 時間"/>
   <translation tag="270°" ja="270°"/>
   <translation tag="270° Clockwise" ja="270° 時計回り"/>
   <translation tag="2D Heatmap" ja="2Dヒートマップ"/>
@@ -120,21 +112,16 @@
   <translation tag="3. Save the position" ja="3. 位置を保存します"/>
   <translation tag="30 minutes" ja="30分"/>
   <translation tag="30 seconds" ja="30秒"/>
-  <translation tag="300 h" ja="300 時間"/>
   <translation tag="3D Maze" ja="3D迷路"/>
   <translation tag="3D Pipes" ja="3Dパイプ"/>
   <translation tag="3D View" ja="3Dビュー"/>
   <translation tag="4. Paper should move but with resistance" ja="4. 紙が抵抗を感じながら動く状態が適切です"/>
   <translation tag="4. Repeat until bed is level" ja="4. ベッドが水平になるまで繰り返してください"/>
-  <translation tag="400 h" ja="400 時間"/>
   <translation tag="5 min" ja="5分"/>
   <translation tag="5 minutes" ja="5分"/>
-  <translation tag="50 h" ja="50 時間"/>
-  <translation tag="500 h" ja="500 時間"/>
   <translation tag="50W" ja="50W"/>
   <translation tag="5V" ja="5V"/>
   <translation tag="60 seconds" ja="60秒"/>
-  <translation tag="750 h" ja="750 時間"/>
   <translation tag="90°" ja="90°"/>
   <translation tag="90° Clockwise" ja="90° 時計回り"/>
   <translation tag="= Loosen" ja="= 緩める"/>

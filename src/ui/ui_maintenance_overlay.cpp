@@ -8,6 +8,8 @@
 
 #include "src/ui/panel_widgets/maintenance_model.h"
 
+#include <string>
+
 namespace helix {
 
 namespace {
@@ -19,6 +21,28 @@ template <int Meter> void on_interval_changed(lv_event_t* e) {
 }
 
 } // namespace
+
+void MaintenanceOverlay::apply_interval_options(lv_obj_t* root) {
+    if (!root)
+        return;
+    const std::string options = maintenance_model::interval_options();
+    for (int i = 0; i < maintenance::kMeterCount; ++i) {
+        const std::string row_name = "row_interval_" + std::to_string(i);
+        lv_obj_t* row = lv_obj_find_by_name(root, row_name.c_str());
+        lv_obj_t* dropdown = row ? lv_obj_find_by_name(row, "dropdown") : nullptr;
+        if (!dropdown)
+            continue;
+        // DECLARATIVE_OK: the options are data, built from the one interval table
+        lv_dropdown_set_options(dropdown, options.c_str());
+        const auto& meter = maintenance_model::state().meters[static_cast<size_t>(i)];
+        lv_dropdown_set_selected(
+            dropdown, static_cast<uint32_t>(maintenance::interval_choice_index(meter.interval_h)));
+    }
+}
+
+void MaintenanceOverlay::before_show() {
+    apply_interval_options(overlay_root_);
+}
 
 void MaintenanceOverlay::register_callbacks() {
     register_xml_callbacks({

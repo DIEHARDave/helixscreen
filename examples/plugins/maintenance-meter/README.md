@@ -2,7 +2,9 @@
 
 HelixScreen ships these meters as a built-in home widget, **Maintenance**, in the
 widget catalog's System category; it takes over this plugin's saved hours and
-intervals the first time it runs. This plugin stays as an example of the plugin API.
+intervals the first time each printer connects. The built-in widget offers a fixed
+list of intervals, so an interval not on it snaps to the nearest choice. This plugin
+stays as an example of the plugin API.
 
 Hour meters for consumable parts - a HEPA filter, a nozzle, linear rails -
 as one adaptive home tile. Elapsed hours accrue from print time, persist on

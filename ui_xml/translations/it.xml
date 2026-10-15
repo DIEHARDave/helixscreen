@@ -88,14 +88,10 @@
   <translation tag="1. Printer homes and probes the bed" it="1. La stampante esegue homing e sonda il piano"/>
   <translation tag="1. Printer will home and probe each screw" it="1. La stampante eseguirà homing e sonderà ogni vite"/>
   <translation tag="10 minutes" it="10 minuti"/>
-  <translation tag="100 h" it="100 h"/>
-  <translation tag="1000 h" it="1000 h"/>
   <translation tag="12 Hour" it="12 ore"/>
   <translation tag="12-hour" it="12 ore"/>
   <translation tag="120 seconds" it="120 secondi"/>
   <translation tag="15 seconds" it="15 secondi"/>
-  <translation tag="150 h" it="150 h"/>
-  <translation tag="1500 h" it="1500 h"/>
   <translation tag="170-300 °C" it="170-300 °C"/>
   <translation tag="180°" it="180°"/>
   <translation tag="180° Upside Down" it="180° capovolto"/>
@@ -105,12 +101,8 @@
   <translation tag="2. Place paper between nozzle and bed" it="2. Posizionare carta tra ugello e piano"/>
   <translation tag="2. Results show how much to turn each screw" it="2. I risultati mostrano quanto girare ogni vite"/>
   <translation tag="20 minutes" it="20 minuti"/>
-  <translation tag="200 h" it="200 h"/>
-  <translation tag="2000 h" it="2000 h"/>
   <translation tag="24 Hour" it="24 ore"/>
   <translation tag="24-hour" it="24 ore"/>
-  <translation tag="25 h" it="25 h"/>
-  <translation tag="250 h" it="250 h"/>
   <translation tag="270°" it="270°"/>
   <translation tag="270° Clockwise" it="270° in senso orario"/>
   <translation tag="2D Heatmap" it="Mappa termica 2D"/>
@@ -120,21 +112,16 @@
   <translation tag="3. Save the position" it="3. Salva la posizione"/>
   <translation tag="30 minutes" it="30 minuti"/>
   <translation tag="30 seconds" it="30 secondi"/>
-  <translation tag="300 h" it="300 h"/>
   <translation tag="3D Maze" it="Labirinto 3D"/>
   <translation tag="3D Pipes" it="Tubi 3D"/>
   <translation tag="3D View" it="Vista 3D"/>
   <translation tag="4. Paper should move but with resistance" it="4. La carta dovrebbe muoversi ma con resistenza"/>
   <translation tag="4. Repeat until bed is level" it="4. Ripetere fino a quando il piano è livellato"/>
-  <translation tag="400 h" it="400 h"/>
   <translation tag="5 min" it="5 min"/>
   <translation tag="5 minutes" it="5 minuti"/>
-  <translation tag="50 h" it="50 h"/>
-  <translation tag="500 h" it="500 h"/>
   <translation tag="50W" it="50W"/>
   <translation tag="5V" it="5V"/>
   <translation tag="60 seconds" it="60 secondi"/>
-  <translation tag="750 h" it="750 h"/>
   <translation tag="90°" it="90°"/>
   <translation tag="90° Clockwise" it="90° in senso orario"/>
   <translation tag="= Loosen" it="= Allentare"/>

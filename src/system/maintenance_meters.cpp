@@ -222,7 +222,13 @@ int DurationTracker::observe(int duration_s) {
         last_s_ = duration_s;
         return 0;
     }
-    const int delta = duration_s >= *last_s_ ? duration_s - *last_s_ : duration_s;
+    if (duration_s < *last_s_) {
+        // A drop is a new job, or the screen zeroing its copy of the value before
+        // Klipper's arrives; either way the next reading is the baseline.
+        last_s_.reset();
+        return 0;
+    }
+    const int delta = duration_s - *last_s_;
     last_s_ = duration_s;
     return delta;
 }

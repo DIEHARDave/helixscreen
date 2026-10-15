@@ -88,14 +88,10 @@ translations:
   1. Printer homes and probes the bed: 1. 打印机归位并探测热床
   1. Printer will home and probe each screw: 1. 打印机将归位并探测每个螺丝位置
   10 minutes: 10 分钟
-  100 h: '100 小时'
-  1000 h: '1000 小时'
   12 Hour: 12 小时
   12-hour: 12小时制
   120 seconds: 120 秒
   15 seconds: 15 秒
-  150 h: '150 小时'
-  1500 h: '1500 小时'
   170-300 °C: '170-300 °C'
   180°: 180°
   180° Upside Down: 180° 上下颠倒
@@ -106,12 +102,8 @@ translations:
   2. Place paper between nozzle and bed: 2. 将纸张放在喷嘴和热床之间
   2. Results show how much to turn each screw: 2. 结果显示每个螺丝需要旋转多少
   20 minutes: 20分钟
-  200 h: '200 小时'
-  2000 h: '2000 小时'
   24 Hour: 24 小时
   24-hour: 24小时制
-  25 h: '25 小时'
-  250 h: '250 小时'
   270°: 270°
   270° Clockwise: 顺时针 270°
   2D Heatmap: 2D 热图
@@ -122,21 +114,16 @@ translations:
 
   30 minutes: 30 分钟
   30 seconds: 30 秒
-  300 h: '300 小时'
   3D Maze: 3D 迷宫
   3D Pipes: 3D 管道
   3D View: 3D 视图
   4. Paper should move but with resistance: 4. 纸张应能移动但有阻力
   4. Repeat until bed is level: 4. 重复直到热床水平
-  400 h: '400 小时'
   5 min: '5分钟'
   5 minutes: 5 分钟
-  50 h: '50 小时'
-  500 h: '500 小时'
   50W: 50W
   5V: 5V
   60 seconds: 60 秒
-  750 h: '750 小时'
   90°: 90°
   90° Clockwise: 顺时针 90°
   = Loosen: = 松开

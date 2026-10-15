@@ -113,7 +113,9 @@ void set_interval(State& s, int meter, int hours);
 ///
 /// The first value after construction or reset() only seeds the baseline: the time it
 /// carries was printed before this screen was watching, or was already counted. After
-/// that, a rise is printing time and a drop means a new job started from zero.
+/// that, a rise is printing time. A drop forgets the baseline and the reading after it
+/// seeds a new one: a new job loses at most one reading, and the screen writing 0 locally
+/// at a print start before Klipper's running value arrives counts nothing twice.
 class DurationTracker {
   public:
     /// Seconds of printing to accrue for this reading.

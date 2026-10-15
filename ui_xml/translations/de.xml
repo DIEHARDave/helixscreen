@@ -88,14 +88,10 @@
   <translation tag="1. Printer homes and probes the bed" de="1. Drucker referenziert und prüft das Bett"/>
   <translation tag="1. Printer will home and probe each screw" de="1. Drucker referenziert und prüft jede Schraube"/>
   <translation tag="10 minutes" de="10 Minuten"/>
-  <translation tag="100 h" de="100 Std"/>
-  <translation tag="1000 h" de="1000 Std"/>
   <translation tag="12 Hour" de="12 Stunden"/>
   <translation tag="12-hour" de="12-Stunden"/>
   <translation tag="120 seconds" de="120 Sekunden"/>
   <translation tag="15 seconds" de="15 Sekunden"/>
-  <translation tag="150 h" de="150 Std"/>
-  <translation tag="1500 h" de="1500 Std"/>
   <translation tag="170-300 °C" de="170-300 °C"/>
   <translation tag="180°" de="180°"/>
   <translation tag="180° Upside Down" de="180° kopfüber"/>
@@ -105,12 +101,8 @@
   <translation tag="2. Place paper between nozzle and bed" de="2. Papier zwischen Düse und Bett legen"/>
   <translation tag="2. Results show how much to turn each screw" de="2. Ergebnisse zeigen, wie viel jede Schraube gedreht werden muss"/>
   <translation tag="20 minutes" de="20 Minuten"/>
-  <translation tag="200 h" de="200 Std"/>
-  <translation tag="2000 h" de="2000 Std"/>
   <translation tag="24 Hour" de="24 Stunden"/>
   <translation tag="24-hour" de="24-Stunden"/>
-  <translation tag="25 h" de="25 Std"/>
-  <translation tag="250 h" de="250 Std"/>
   <translation tag="270°" de="270°"/>
   <translation tag="270° Clockwise" de="270° im Uhrzeigersinn"/>
   <translation tag="2D Heatmap" de="2D-Heatmap"/>
@@ -120,21 +112,16 @@
   <translation tag="3. Save the position" de="3. Position speichern"/>
   <translation tag="30 minutes" de="30 Minuten"/>
   <translation tag="30 seconds" de="30 Sekunden"/>
-  <translation tag="300 h" de="300 Std"/>
   <translation tag="3D Maze" de="3D-Labyrinth"/>
   <translation tag="3D Pipes" de="3D Pipes"/>
   <translation tag="3D View" de="3D-Ansicht"/>
   <translation tag="4. Paper should move but with resistance" de="4. Papier sollte sich bewegen, aber mit Widerstand"/>
   <translation tag="4. Repeat until bed is level" de="4. Wiederholen bis das Bett nivelliert ist"/>
-  <translation tag="400 h" de="400 Std"/>
   <translation tag="5 min" de="5 Min"/>
   <translation tag="5 minutes" de="5 Minuten"/>
-  <translation tag="50 h" de="50 Std"/>
-  <translation tag="500 h" de="500 Std"/>
   <translation tag="50W" de="50W"/>
   <translation tag="5V" de="5V"/>
   <translation tag="60 seconds" de="60 Sekunden"/>
-  <translation tag="750 h" de="750 Std"/>
   <translation tag="90°" de="90°"/>
   <translation tag="90° Clockwise" de="90° im Uhrzeigersinn"/>
   <translation tag="= Loosen" de="= Lösen"/>

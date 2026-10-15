@@ -5,7 +5,8 @@
      while its interval is Off) with a ring of the interval used, the hours left inside
      it, the used hours and the last reset, and a Reset that asks first; the total print
      time; then the service interval per meter. Everything binds maintenance_model's
-     subjects (src/ui/panel_widgets/maintenance_model.h). -->
+     subjects (src/ui/panel_widgets/maintenance_model.h). The interval dropdowns' options
+     come from kIntervalChoices (MaintenanceOverlay::apply_interval_options). -->
 <component>
   <styles>
     <style name="mt_font_small" text_font="#font_small"/>
@@ -63,20 +64,14 @@
         <setting_dropdown_row name="row_interval_0"
                               label="HEPA filter interval" icon="fan"
                               description="Print hours between filter changes. Off hides this meter."
-                              options="Off&#10;25 h&#10;50 h&#10;100 h&#10;150 h&#10;200 h&#10;250 h&#10;300 h&#10;400 h&#10;500 h&#10;750 h&#10;1000 h&#10;1500 h&#10;2000 h"
-                              options_tag="Off&#10;25 h&#10;50 h&#10;100 h&#10;150 h&#10;200 h&#10;250 h&#10;300 h&#10;400 h&#10;500 h&#10;750 h&#10;1000 h&#10;1500 h&#10;2000 h"
                               bind_selected="maintenance_m0_interval" callback="maintenance_interval_0_cb"/>
         <setting_dropdown_row name="row_interval_1"
                               label="Nozzle interval" icon="filament"
                               description="Print hours between nozzle changes. Off hides this meter."
-                              options="Off&#10;25 h&#10;50 h&#10;100 h&#10;150 h&#10;200 h&#10;250 h&#10;300 h&#10;400 h&#10;500 h&#10;750 h&#10;1000 h&#10;1500 h&#10;2000 h"
-                              options_tag="Off&#10;25 h&#10;50 h&#10;100 h&#10;150 h&#10;200 h&#10;250 h&#10;300 h&#10;400 h&#10;500 h&#10;750 h&#10;1000 h&#10;1500 h&#10;2000 h"
                               bind_selected="maintenance_m1_interval" callback="maintenance_interval_1_cb"/>
         <setting_dropdown_row name="row_interval_2"
                               label="Linear rails interval" icon="axis_arrow"
                               description="Print hours between rail cleaning and lubrication. Off hides this meter."
-                              options="Off&#10;25 h&#10;50 h&#10;100 h&#10;150 h&#10;200 h&#10;250 h&#10;300 h&#10;400 h&#10;500 h&#10;750 h&#10;1000 h&#10;1500 h&#10;2000 h"
-                              options_tag="Off&#10;25 h&#10;50 h&#10;100 h&#10;150 h&#10;200 h&#10;250 h&#10;300 h&#10;400 h&#10;500 h&#10;750 h&#10;1000 h&#10;1500 h&#10;2000 h"
                               bind_selected="maintenance_m2_interval" callback="maintenance_interval_2_cb"/>
       </setting_group>
     </lv_obj>

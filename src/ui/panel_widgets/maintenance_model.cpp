@@ -84,6 +84,8 @@ maintenance::DurationTracker s_tracker;
 /// active printer changes.
 std::string s_prefix;
 int s_unsaved_s = 0;
+/// s_unsaved_s at which the next periodic save is due.
+int s_save_at_s = kSaveEverySeconds;
 
 std::vector<ObserverGuard> s_observers;
 ObserverGuard s_language_observer;
@@ -112,28 +114,40 @@ const Meter& meter_at(int i) {
 void save() {
     if (s_prefix.empty())
         return;
-    if (SettingsManager::instance().set_maintenance_record(s_prefix, s_state))
+    if (SettingsManager::instance().set_maintenance_record(s_prefix, s_state)) {
         s_unsaved_s = 0;
+        s_save_at_s = kSaveEverySeconds;
+    } else {
+        // A disk that refused this write gets the next attempt a full interval later,
+        // not on every reading.
+        s_save_at_s = s_unsaved_s + kSaveEverySeconds;
+    }
 }
 
 void publish() {
     if (!s_subjects.initialized())
         return;
+    // Readings arrive about once a second and most change nothing shown; the version
+    // bumps only when something did, so the tile does not re-measure on every one.
+    bool changed = false;
     bool any_on = false;
     for (int i = 0; i < kMeterCount; ++i) {
         const Meter& m = meter_at(i);
         MeterSubjects& ms = s_subj.meter[i];
         const bool on = maintenance::enabled(m);
         any_on = any_on || on;
-        ui::set_int_if_changed(&ms.on, on ? 1 : 0);
-        ui::set_int_if_changed(
+        changed |= ui::set_int_if_changed(&ms.on, on ? 1 : 0);
+        changed |= ui::set_int_if_changed(
             &ms.pct, static_cast<int>(std::lround(maintenance::used_fraction(m) * 100.0)));
-        ui::set_int_if_changed(&ms.status, static_cast<int>(maintenance::meter_status(m)));
-        ui::set_int_if_changed(&ms.interval, maintenance::interval_choice_index(m.interval_h));
-        ui::copy_string_if_changed(&ms.name, meter_name(i).c_str());
-        ui::copy_string_if_changed(&ms.short_name, meter_short_name(i).c_str());
-        ui::copy_string_if_changed(&ms.left, hours_text(maintenance::hours_left(m)).c_str());
-        ui::copy_string_if_changed(
+        changed |=
+            ui::set_int_if_changed(&ms.status, static_cast<int>(maintenance::meter_status(m)));
+        changed |=
+            ui::set_int_if_changed(&ms.interval, maintenance::interval_choice_index(m.interval_h));
+        changed |= ui::copy_string_if_changed(&ms.name, meter_name(i).c_str());
+        changed |= ui::copy_string_if_changed(&ms.short_name, meter_short_name(i).c_str());
+        changed |=
+            ui::copy_string_if_changed(&ms.left, hours_text(maintenance::hours_left(m)).c_str());
+        changed |= ui::copy_string_if_changed(
             &ms.line,
             fmt::format(lv_tr("{} h of {} h"), maintenance::hours_used(m), m.interval_h).c_str());
         const int left_pct =
@@ -144,28 +158,31 @@ void publish() {
             note +=
                 fmt::format(lv_tr("reset at {} h"), static_cast<int>(std::lround(*m.reset_at_h)));
         }
-        ui::copy_string_if_changed(&ms.note, note.c_str());
+        changed |= ui::copy_string_if_changed(&ms.note, note.c_str());
     }
 
     const auto worst = maintenance::most_due(s_state);
-    ui::set_int_if_changed(&s_subj.any_on, any_on ? 1 : 0);
+    changed |= ui::set_int_if_changed(&s_subj.any_on, any_on ? 1 : 0);
     if (worst) {
         const Meter& m = meter_at(*worst);
-        ui::set_int_if_changed(&s_subj.worst_pct, static_cast<int>(std::lround(
-                                                      maintenance::used_fraction(m) * 100.0)));
-        ui::set_int_if_changed(&s_subj.worst_status,
-                               static_cast<int>(maintenance::meter_status(m)));
-        ui::copy_string_if_changed(&s_subj.worst_left,
-                                   hours_text(maintenance::hours_left(m)).c_str());
-        ui::copy_string_if_changed(&s_subj.worst_name, meter_short_name(*worst).c_str());
+        changed |= ui::set_int_if_changed(
+            &s_subj.worst_pct,
+            static_cast<int>(std::lround(maintenance::used_fraction(m) * 100.0)));
+        changed |= ui::set_int_if_changed(&s_subj.worst_status,
+                                          static_cast<int>(maintenance::meter_status(m)));
+        changed |= ui::copy_string_if_changed(&s_subj.worst_left,
+                                              hours_text(maintenance::hours_left(m)).c_str());
+        changed |= ui::copy_string_if_changed(&s_subj.worst_name, meter_short_name(*worst).c_str());
     } else {
-        ui::set_int_if_changed(&s_subj.worst_pct, 0);
-        ui::set_int_if_changed(&s_subj.worst_status, static_cast<int>(ValueStatus::Normal));
-        ui::copy_string_if_changed(&s_subj.worst_left, "--");
-        ui::copy_string_if_changed(&s_subj.worst_name, lv_tr("Off"));
+        changed |= ui::set_int_if_changed(&s_subj.worst_pct, 0);
+        changed |=
+            ui::set_int_if_changed(&s_subj.worst_status, static_cast<int>(ValueStatus::Normal));
+        changed |= ui::copy_string_if_changed(&s_subj.worst_left, "--");
+        changed |= ui::copy_string_if_changed(&s_subj.worst_name, lv_tr("Off"));
     }
-    ui::copy_string_if_changed(&s_subj.total_text, total_line().c_str());
-    lv_subject_set_int(&s_subj.version, lv_subject_get_int(&s_subj.version) + 1);
+    changed |= ui::copy_string_if_changed(&s_subj.total_text, total_line().c_str());
+    if (changed)
+        lv_subject_set_int(&s_subj.version, lv_subject_get_int(&s_subj.version) + 1);
 }
 
 void notify_due(int i) {
@@ -184,7 +201,7 @@ void on_print_duration(int*, int seconds) {
     s_unsaved_s += delta;
     for (int i : due)
         notify_due(i);
-    if (!due.empty() || s_unsaved_s >= kSaveEverySeconds)
+    if (!due.empty() || s_unsaved_s >= s_save_at_s)
         save();
     publish();
 }
@@ -221,6 +238,7 @@ void load() {
     Config* config = Config::get_instance();
     s_prefix = config ? config->df() : std::string();
     s_unsaved_s = 0;
+    s_save_at_s = kSaveEverySeconds;
     s_tracker.reset();
     if (s_prefix.empty()) {
         s_state = maintenance::default_state();
@@ -373,9 +391,14 @@ void set_interval_choice(int meter, int choice_index) {
     publish();
 }
 
-void reload_for_test() {
-    load();
-    publish();
+std::string interval_options() {
+    std::string options;
+    for (int hours : maintenance::kIntervalChoices) {
+        if (!options.empty())
+            options += '\n';
+        options += hours == 0 ? std::string(lv_tr("Off")) : hours_text(hours);
+    }
+    return options;
 }
 
 } // namespace helix::maintenance_model

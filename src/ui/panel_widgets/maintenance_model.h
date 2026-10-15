@@ -63,7 +63,8 @@ std::string total_line();
 std::string meter_name(int meter);
 std::string meter_short_name(int meter);
 
-/// Loads the active printer's meters again, as a new session would, and republishes.
-void reload_for_test();
+/// The interval dropdown's options, one line per kIntervalChoices entry in its order
+/// ("Off", then "25 h" and up), translated.
+std::string interval_options();
 
 } // namespace helix::maintenance_model

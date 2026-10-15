@@ -21,6 +21,13 @@ class MaintenanceOverlay : public OverlayBase {
     }
 
     void register_callbacks() override;
+
+    /// Fills each interval dropdown under @p root with interval_options() and selects
+    /// its meter's interval. The choices are kIntervalChoices, so the list lives once.
+    static void apply_interval_options(lv_obj_t* root);
+
+  protected:
+    void before_show() override;
 };
 
 inline MaintenanceOverlay& get_maintenance_overlay() {

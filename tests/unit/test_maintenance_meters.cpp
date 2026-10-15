@@ -257,19 +257,31 @@ TEST_CASE("the plugin's store and settings migrate", "[maintenance][meters][migr
     }
 }
 
-TEST_CASE("DurationTracker: the first reading seeds, rises accrue, a drop is a new job",
+TEST_CASE("DurationTracker: the first reading seeds, rises accrue, a drop re-seeds",
           "[maintenance][meters]") {
     DurationTracker t;
     CHECK(t.observe(3600) == 0);
     CHECK(t.observe(3600) == 0);
     CHECK(t.observe(3630) == 30);
     CHECK(t.observe(3631) == 1);
-    CHECK(t.observe(5) == 5);
-    CHECK(t.observe(65) == 60);
+    CHECK(t.observe(5) == 0);
+    CHECK(t.observe(65) == 0);
+    CHECK(t.observe(125) == 60);
     CHECK(t.observe(-1) == 0);
-    CHECK(t.observe(70) == 5);
+    CHECK(t.observe(130) == 5);
 
     t.reset();
     CHECK(t.observe(9000) == 0);
     CHECK(t.observe(9010) == 10);
+}
+
+TEST_CASE("DurationTracker: a local zero before Klipper's running value counts nothing twice",
+          "[maintenance][meters]") {
+    DurationTracker t;
+    CHECK(t.observe(1000) == 0);
+    CHECK(t.observe(1060) == 60);
+    // The screen zeroes its copy at a print start; Klipper's value is still 1060.
+    CHECK(t.observe(0) == 0);
+    CHECK(t.observe(1060) == 0);
+    CHECK(t.observe(1120) == 60);
 }

@@ -13,6 +13,7 @@
  * Run with: ./build/bin/helix-tests "[maintenance][model]"
  */
 
+#include "ui_maintenance_overlay.h"
 #include "ui_toast_manager.h"
 
 #include "../helix_test_fixture.h"
@@ -28,6 +29,7 @@
 
 #include <filesystem>
 #include <fstream>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -170,10 +172,18 @@ TEST_CASE_METHOD(MaintenanceModelFixture,
         printed(3600);
         CHECK(maintenance_model::state().total_h == Catch::Approx(1.0));
     }
-    SECTION("a new job counts from its own zero") {
+    SECTION("a new job counts from its first reading") {
         set_duration(0);
-        set_duration(1800);
+        set_duration(1);
+        set_duration(1 + 1800);
         CHECK(maintenance_model::state().total_h == Catch::Approx(1.5));
+    }
+    SECTION("a local zero before Klipper's running value is not counted again") {
+        set_duration(0);
+        printed(3600);
+        CHECK(maintenance_model::state().total_h == Catch::Approx(1.0));
+        printed(3600 + 360);
+        CHECK(maintenance_model::state().total_h == Catch::Approx(1.1));
     }
     SECTION("a connection change re-seeds instead of counting the gap") {
         toggle_connection();
@@ -337,6 +347,71 @@ TEST_CASE_METHOD(MaintenanceModelFixture,
 
     printed(30 * 3600);
     CHECK(toasts.size() == 1);
+}
+
+TEST_CASE_METHOD(
+    MaintenanceModelFixture,
+    "maintenance model: a reading that changes nothing shown does not bump the version",
+    "[maintenance][model]") {
+    seed();
+    printed(2 * 3600);
+    const int version = subject_int("maintenance_version");
+    printed(2 * 3600 + 1);
+    CHECK(maintenance_model::state().total_h > 2.0);
+    CHECK(subject_int("maintenance_version") == version);
+    printed(3 * 3600);
+    CHECK(subject_int("maintenance_version") > version);
+}
+
+TEST_CASE_METHOD(MaintenanceModelFixture,
+                 "maintenance model: a failed save waits a full interval before the next try",
+                 "[maintenance][model]") {
+    Config& cfg = *Config::get_instance();
+    seed();
+    ConfigTestAccess::read_only_mode(cfg) = true;
+    printed(7 * 60); // past the save point: the attempt fails
+    ConfigTestAccess::read_only_mode(cfg) = false;
+    // An attempt writes the record into memory before the disk refuses it, so the
+    // in-memory record shows which readings tried.
+    const auto tried = SettingsManager::instance().get_maintenance_record(prefix());
+    REQUIRE(tried.has_value());
+    CHECK(tried->total_h == Catch::Approx(7.0 / 60.0));
+
+    printed(8 * 60);
+    CHECK(SettingsManager::instance().get_maintenance_record(prefix())->total_h ==
+          Catch::Approx(7.0 / 60.0));
+    printed(13 * 60);
+    CHECK(SettingsManager::instance().get_maintenance_record(prefix())->total_h ==
+          Catch::Approx(13.0 / 60.0));
+}
+
+TEST_CASE_METHOD(MaintenanceModelFixture,
+                 "maintenance model: the interval dropdowns offer exactly kIntervalChoices",
+                 "[maintenance][model]") {
+    maintenance_model::set_interval_choice(kNozzle, maintenance::interval_choice_index(750));
+    lv_obj_t* overlay =
+        static_cast<lv_obj_t*>(lv_xml_create(test_screen(), "maintenance_overlay", nullptr));
+    REQUIRE(overlay != nullptr);
+    MaintenanceOverlay::apply_interval_options(overlay);
+    for (int i = 0; i < maintenance::kMeterCount; ++i) {
+        INFO("meter " << i);
+        const std::string row_name = "row_interval_" + std::to_string(i);
+        lv_obj_t* row = lv_obj_find_by_name(overlay, row_name.c_str());
+        REQUIRE(row != nullptr);
+        lv_obj_t* dropdown = lv_obj_find_by_name(row, "dropdown");
+        REQUIRE(dropdown != nullptr);
+        std::vector<std::string> options;
+        std::stringstream lines(lv_dropdown_get_options(dropdown));
+        for (std::string line; std::getline(lines, line);)
+            options.push_back(line);
+        REQUIRE(options.size() == maintenance::kIntervalChoices.size());
+        CHECK(options.front() == "Off");
+        for (size_t k = 1; k < options.size(); ++k)
+            CHECK(options[k] == std::to_string(maintenance::kIntervalChoices[k]) + " h");
+        CHECK(static_cast<int>(lv_dropdown_get_selected(dropdown)) ==
+              maintenance::interval_choice_index(meter(i).interval_h));
+    }
+    lv_obj_delete(overlay);
 }
 
 #if HELIX_HAS_PLUGINS

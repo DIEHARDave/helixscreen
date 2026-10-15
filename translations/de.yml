@@ -91,14 +91,10 @@ translations:
   1. Printer will home and probe each screw: 1. Drucker referenziert und prüft jede
     Schraube
   10 minutes: 10 Minuten
-  100 h: '100 Std'
-  1000 h: '1000 Std'
   12 Hour: 12 Stunden
   12-hour: 12-Stunden
   120 seconds: 120 Sekunden
   15 seconds: 15 Sekunden
-  150 h: '150 Std'
-  1500 h: '1500 Std'
   170-300 °C: '170-300 °C'
   180°: 180°
   180° Upside Down: 180° kopfüber
@@ -110,12 +106,8 @@ translations:
   2. Results show how much to turn each screw: 2. Ergebnisse zeigen, wie viel jede
     Schraube gedreht werden muss
   20 minutes: 20 Minuten
-  200 h: '200 Std'
-  2000 h: '2000 Std'
   24 Hour: 24 Stunden
   24-hour: 24-Stunden
-  25 h: '25 Std'
-  250 h: '250 Std'
   270°: 270°
   270° Clockwise: 270° im Uhrzeigersinn
   2D Heatmap: 2D-Heatmap
@@ -128,22 +120,17 @@ translations:
 
   30 minutes: 30 Minuten
   30 seconds: 30 Sekunden
-  300 h: '300 Std'
   3D Maze: 3D-Labyrinth
   3D Pipes: 3D Pipes
   3D View: 3D-Ansicht
   4. Paper should move but with resistance: 4. Papier sollte sich bewegen, aber mit
     Widerstand
   4. Repeat until bed is level: 4. Wiederholen bis das Bett nivelliert ist
-  400 h: '400 Std'
   5 min: '5 Min'
   5 minutes: 5 Minuten
-  50 h: '50 Std'
-  500 h: '500 Std'
   50W: 50W
   5V: 5V
   60 seconds: 60 Sekunden
-  750 h: '750 Std'
   90°: 90°
   90° Clockwise: 90° im Uhrzeigersinn
   = Loosen: = Lösen

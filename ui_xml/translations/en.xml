@@ -88,14 +88,10 @@
   <translation tag="1. Printer homes and probes the bed" en="1. Printer homes and probes the bed"/>
   <translation tag="1. Printer will home and probe each screw" en="1. Printer will home and probe each screw"/>
   <translation tag="10 minutes" en="10 minutes"/>
-  <translation tag="100 h" en="100 h"/>
-  <translation tag="1000 h" en="1000 h"/>
   <translation tag="12 Hour" en="12 Hour"/>
   <translation tag="12-hour" en="12-hour"/>
   <translation tag="120 seconds" en="120 seconds"/>
   <translation tag="15 seconds" en="15 seconds"/>
-  <translation tag="150 h" en="150 h"/>
-  <translation tag="1500 h" en="1500 h"/>
   <translation tag="170-300 °C" en="170-300 °C"/>
   <translation tag="180°" en="180°"/>
   <translation tag="180° Upside Down" en="180° Upside Down"/>
@@ -105,12 +101,8 @@
   <translation tag="2. Place paper between nozzle and bed" en="2. Place paper between nozzle and bed"/>
   <translation tag="2. Results show how much to turn each screw" en="2. Results show how much to turn each screw"/>
   <translation tag="20 minutes" en="20 minutes"/>
-  <translation tag="200 h" en="200 h"/>
-  <translation tag="2000 h" en="2000 h"/>
   <translation tag="24 Hour" en="24 Hour"/>
   <translation tag="24-hour" en="24-hour"/>
-  <translation tag="25 h" en="25 h"/>
-  <translation tag="250 h" en="250 h"/>
   <translation tag="270°" en="270°"/>
   <translation tag="270° Clockwise" en="270° Clockwise"/>
   <translation tag="2D Heatmap" en="2D Heatmap"/>
@@ -120,21 +112,16 @@
   <translation tag="3. Save the position" en="3. Save the position"/>
   <translation tag="30 minutes" en="30 minutes"/>
   <translation tag="30 seconds" en="30 seconds"/>
-  <translation tag="300 h" en="300 h"/>
   <translation tag="3D Maze" en="3D Maze"/>
   <translation tag="3D Pipes" en="3D Pipes"/>
   <translation tag="3D View" en="3D View"/>
   <translation tag="4. Paper should move but with resistance" en="4. Paper should move but with resistance"/>
   <translation tag="4. Repeat until bed is level" en="4. Repeat until bed is level"/>
-  <translation tag="400 h" en="400 h"/>
   <translation tag="5 min" en="5 min"/>
   <translation tag="5 minutes" en="5 minutes"/>
-  <translation tag="50 h" en="50 h"/>
-  <translation tag="500 h" en="500 h"/>
   <translation tag="50W" en="50W"/>
   <translation tag="5V" en="5V"/>
   <translation tag="60 seconds" en="60 seconds"/>
-  <translation tag="750 h" en="750 h"/>
   <translation tag="90°" en="90°"/>
   <translation tag="90° Clockwise" en="90° Clockwise"/>
   <translation tag="= Loosen" en="= Loosen"/>

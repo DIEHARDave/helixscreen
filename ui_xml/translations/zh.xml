@@ -88,14 +88,10 @@
   <translation tag="1. Printer homes and probes the bed" zh="1. 打印机归位并探测热床"/>
   <translation tag="1. Printer will home and probe each screw" zh="1. 打印机将归位并探测每个螺丝位置"/>
   <translation tag="10 minutes" zh="10 分钟"/>
-  <translation tag="100 h" zh="100 小时"/>
-  <translation tag="1000 h" zh="1000 小时"/>
   <translation tag="12 Hour" zh="12 小时"/>
   <translation tag="12-hour" zh="12小时制"/>
   <translation tag="120 seconds" zh="120 秒"/>
   <translation tag="15 seconds" zh="15 秒"/>
-  <translation tag="150 h" zh="150 小时"/>
-  <translation tag="1500 h" zh="1500 小时"/>
   <translation tag="170-300 °C" zh="170-300 °C"/>
   <translation tag="180°" zh="180°"/>
   <translation tag="180° Upside Down" zh="180° 上下颠倒"/>
@@ -105,12 +101,8 @@
   <translation tag="2. Place paper between nozzle and bed" zh="2. 将纸张放在喷嘴和热床之间"/>
   <translation tag="2. Results show how much to turn each screw" zh="2. 结果显示每个螺丝需要旋转多少"/>
   <translation tag="20 minutes" zh="20分钟"/>
-  <translation tag="200 h" zh="200 小时"/>
-  <translation tag="2000 h" zh="2000 小时"/>
   <translation tag="24 Hour" zh="24 小时"/>
   <translation tag="24-hour" zh="24小时制"/>
-  <translation tag="25 h" zh="25 小时"/>
-  <translation tag="250 h" zh="250 小时"/>
   <translation tag="270°" zh="270°"/>
   <translation tag="270° Clockwise" zh="顺时针 270°"/>
   <translation tag="2D Heatmap" zh="2D 热图"/>
@@ -120,21 +112,16 @@
   <translation tag="3. Save the position" zh="3. 保存位置"/>
   <translation tag="30 minutes" zh="30 分钟"/>
   <translation tag="30 seconds" zh="30 秒"/>
-  <translation tag="300 h" zh="300 小时"/>
   <translation tag="3D Maze" zh="3D 迷宫"/>
   <translation tag="3D Pipes" zh="3D 管道"/>
   <translation tag="3D View" zh="3D 视图"/>
   <translation tag="4. Paper should move but with resistance" zh="4. 纸张应能移动但有阻力"/>
   <translation tag="4. Repeat until bed is level" zh="4. 重复直到热床水平"/>
-  <translation tag="400 h" zh="400 小时"/>
   <translation tag="5 min" zh="5分钟"/>
   <translation tag="5 minutes" zh="5 分钟"/>
-  <translation tag="50 h" zh="50 小时"/>
-  <translation tag="500 h" zh="500 小时"/>
   <translation tag="50W" zh="50W"/>
   <translation tag="5V" zh="5V"/>
   <translation tag="60 seconds" zh="60 秒"/>
-  <translation tag="750 h" zh="750 小时"/>
   <translation tag="90°" zh="90°"/>
   <translation tag="90° Clockwise" zh="顺时针 90°"/>
   <translation tag="= Loosen" zh="= 松开"/>

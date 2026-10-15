@@ -88,14 +88,10 @@
   <translation tag="1. Printer homes and probes the bed" de="1. Drucker referenziert und prüft das Bett" en="1. Printer homes and probes the bed" es="1. La impresora hace origen y sondea la cama" fr="1. L&apos;imprimante fait l&apos;origine et palpe le plateau" it="1. La stampante esegue homing e sonda il piano" ja="1. プリンターがホーミングしてベッドをプローブします" pt="1. A impressora faz home e sonda a mesa" ru="1. Принтер паркуется и зондирует стол" zh="1. 打印机归位并探测热床"/>
   <translation tag="1. Printer will home and probe each screw" de="1. Drucker referenziert und prüft jede Schraube" en="1. Printer will home and probe each screw" es="1. La impresora hará origen y sondeará cada tornillo" fr="1. L&apos;imprimante fera l&apos;origine et palpera chaque vis" it="1. La stampante eseguirà homing e sonderà ogni vite" ja="1. プリンターがホーミングして各ネジをプローブします" pt="1. A impressora fará home e sondará cada parafuso" ru="1. Принтер запаркуется и проверит каждый винт" zh="1. 打印机将归位并探测每个螺丝位置"/>
   <translation tag="10 minutes" de="10 Minuten" en="10 minutes" es="10 minutos" fr="10 minutes" it="10 minuti" ja="10分" pt="10 minutos" ru="10 минут" zh="10 分钟"/>
-  <translation tag="100 h" de="100 Std" en="100 h" es="100 h" fr="100 h" it="100 h" ja="100 時間" pt="100 h" ru="100 ч" zh="100 小时"/>
-  <translation tag="1000 h" de="1000 Std" en="1000 h" es="1000 h" fr="1000 h" it="1000 h" ja="1000 時間" pt="1000 h" ru="1000 ч" zh="1000 小时"/>
   <translation tag="12 Hour" de="12 Stunden" en="12 Hour" es="12 horas" fr="12 heures" it="12 ore" ja="12時間" pt="12 horas" ru="12 часов" zh="12 小时"/>
   <translation tag="12-hour" de="12-Stunden" en="12-hour" es="12 horas" fr="12 heures" it="12 ore" ja="12時間制" pt="12 horas" ru="12-часовой" zh="12小时制"/>
   <translation tag="120 seconds" de="120 Sekunden" en="120 seconds" es="120 segundos" fr="120 secondes" it="120 secondi" ja="120秒" pt="120 segundos" ru="120 секунд" zh="120 秒"/>
   <translation tag="15 seconds" de="15 Sekunden" en="15 seconds" es="15 segundos" fr="15 secondes" it="15 secondi" ja="15秒" pt="15 segundos" ru="15 секунд" zh="15 秒"/>
-  <translation tag="150 h" de="150 Std" en="150 h" es="150 h" fr="150 h" it="150 h" ja="150 時間" pt="150 h" ru="150 ч" zh="150 小时"/>
-  <translation tag="1500 h" de="1500 Std" en="1500 h" es="1500 h" fr="1500 h" it="1500 h" ja="1500 時間" pt="1500 h" ru="1500 ч" zh="1500 小时"/>
   <translation tag="170-300 °C" de="170-300 °C" en="170-300 °C" es="170-300 °C" fr="170-300 °C" it="170-300 °C" ja="170-300 °C" pt="170-300 °C" ru="170-300 °C" zh="170-300 °C"/>
   <translation tag="180°" de="180°" en="180°" es="180°" fr="180°" it="180°" ja="180°" pt="180°" ru="180°" zh="180°"/>
   <translation tag="180° Upside Down" de="180° kopfüber" en="180° Upside Down" es="180° invertido" fr="180° à l&apos;envers" it="180° capovolto" ja="180° 上下反転" pt="180° invertido" ru="180° вверх ногами" zh="180° 上下颠倒"/>
@@ -105,12 +101,8 @@
   <translation tag="2. Place paper between nozzle and bed" de="2. Papier zwischen Düse und Bett legen" en="2. Place paper between nozzle and bed" es="2. Coloque papel entre la boquilla y la cama" fr="2. Placez du papier entre la buse et le plateau" it="2. Posizionare carta tra ugello e piano" ja="2. ノズルとベッドの間に紙を置いてください" pt="2. Coloque papel entre o bico e a mesa" ru="2. Положите бумагу между соплом и столом" zh="2. 将纸张放在喷嘴和热床之间"/>
   <translation tag="2. Results show how much to turn each screw" de="2. Ergebnisse zeigen, wie viel jede Schraube gedreht werden muss" en="2. Results show how much to turn each screw" es="2. Los resultados muestran cuánto girar cada tornillo" fr="2. Les résultats indiquent combien tourner chaque vis" it="2. I risultati mostrano quanto girare ogni vite" ja="2. 各ネジをどれだけ回すか結果が表示されます" pt="2. Os resultados mostram quanto girar cada parafuso" ru="2. Результаты покажут, насколько повернуть каждый винт" zh="2. 结果显示每个螺丝需要旋转多少"/>
   <translation tag="20 minutes" de="20 Minuten" en="20 minutes" es="20 minutos" fr="20 minutes" it="20 minuti" ja="20分" pt="20 minutos" ru="20 минут" zh="20分钟"/>
-  <translation tag="200 h" de="200 Std" en="200 h" es="200 h" fr="200 h" it="200 h" ja="200 時間" pt="200 h" ru="200 ч" zh="200 小时"/>
-  <translation tag="2000 h" de="2000 Std" en="2000 h" es="2000 h" fr="2000 h" it="2000 h" ja="2000 時間" pt="2000 h" ru="2000 ч" zh="2000 小时"/>
   <translation tag="24 Hour" de="24 Stunden" en="24 Hour" es="24 horas" fr="24 heures" it="24 ore" ja="24時間" pt="24 horas" ru="24 часа" zh="24 小时"/>
   <translation tag="24-hour" de="24-Stunden" en="24-hour" es="24 horas" fr="24 heures" it="24 ore" ja="24時間制" pt="24 horas" ru="24-часовой" zh="24小时制"/>
-  <translation tag="25 h" de="25 Std" en="25 h" es="25 h" fr="25 h" it="25 h" ja="25 時間" pt="25 h" ru="25 ч" zh="25 小时"/>
-  <translation tag="250 h" de="250 Std" en="250 h" es="250 h" fr="250 h" it="250 h" ja="250 時間" pt="250 h" ru="250 ч" zh="250 小时"/>
   <translation tag="270°" de="270°" en="270°" es="270°" fr="270°" it="270°" ja="270°" pt="270°" ru="270°" zh="270°"/>
   <translation tag="270° Clockwise" de="270° im Uhrzeigersinn" en="270° Clockwise" es="270° en sentido horario" fr="270° dans le sens horaire" it="270° in senso orario" ja="270° 時計回り" pt="270° no sentido horário" ru="270° по часовой стрелке" zh="顺时针 270°"/>
   <translation tag="2D Heatmap" de="2D-Heatmap" en="2D Heatmap" es="Mapa de calor 2D" fr="Carte thermique 2D" it="Mappa termica 2D" ja="2Dヒートマップ" pt="Mapa de calor 2D" ru="2D тепловая карта" zh="2D 热图"/>
@@ -120,21 +112,16 @@
   <translation tag="3. Save the position" de="3. Position speichern" en="3. Save the position" es="3. Guarde la posición" fr="3. Enregistrez la position" it="3. Salva la posizione" ja="3. 位置を保存します" pt="3. Salve a posição" ru="3. Сохраните позицию" zh="3. 保存位置"/>
   <translation tag="30 minutes" de="30 Minuten" en="30 minutes" es="30 minutos" fr="30 minutes" it="30 minuti" ja="30分" pt="30 minutos" ru="30 минут" zh="30 分钟"/>
   <translation tag="30 seconds" de="30 Sekunden" en="30 seconds" es="30 segundos" fr="30 secondes" it="30 secondi" ja="30秒" pt="30 segundos" ru="30 секунд" zh="30 秒"/>
-  <translation tag="300 h" de="300 Std" en="300 h" es="300 h" fr="300 h" it="300 h" ja="300 時間" pt="300 h" ru="300 ч" zh="300 小时"/>
   <translation tag="3D Maze" de="3D-Labyrinth" en="3D Maze" es="Laberinto 3D" fr="Labyrinthe 3D" it="Labirinto 3D" ja="3D迷路" pt="Labirinto 3D" ru="3D лабиринт" zh="3D 迷宫"/>
   <translation tag="3D Pipes" de="3D Pipes" en="3D Pipes" es="3D Pipes" fr="3D Pipes" it="Tubi 3D" ja="3Dパイプ" pt="Canos 3D" ru="3D трубы" zh="3D 管道"/>
   <translation tag="3D View" de="3D-Ansicht" en="3D View" es="Vista 3D" fr="Vue 3D" it="Vista 3D" ja="3Dビュー" pt="Vista 3D" ru="3D вид" zh="3D 视图"/>
   <translation tag="4. Paper should move but with resistance" de="4. Papier sollte sich bewegen, aber mit Widerstand" en="4. Paper should move but with resistance" es="4. El papel debe moverse pero con resistencia" fr="4. Le papier doit bouger mais avec résistance" it="4. La carta dovrebbe muoversi ma con resistenza" ja="4. 紙が抵抗を感じながら動く状態が適切です" pt="4. O papel deve se mover, mas com resistência" ru="4. Бумага должна двигаться, но с сопротивлением" zh="4. 纸张应能移动但有阻力"/>
   <translation tag="4. Repeat until bed is level" de="4. Wiederholen bis das Bett nivelliert ist" en="4. Repeat until bed is level" es="4. Repita hasta que la cama esté nivelada" fr="4. Répétez jusqu&apos;à ce que le plateau soit niveau" it="4. Ripetere fino a quando il piano è livellato" ja="4. ベッドが水平になるまで繰り返してください" pt="4. Repita até a mesa estar nivelada" ru="4. Повторяйте, пока стол не выровняется" zh="4. 重复直到热床水平"/>
-  <translation tag="400 h" de="400 Std" en="400 h" es="400 h" fr="400 h" it="400 h" ja="400 時間" pt="400 h" ru="400 ч" zh="400 小时"/>
   <translation tag="5 min" de="5 Min" en="5 min" es="5 min" fr="5 min" it="5 min" ja="5分" pt="5 min" ru="5 мин" zh="5分钟"/>
   <translation tag="5 minutes" de="5 Minuten" en="5 minutes" es="5 minutos" fr="5 minutes" it="5 minuti" ja="5分" pt="5 minutos" ru="5 минут" zh="5 分钟"/>
-  <translation tag="50 h" de="50 Std" en="50 h" es="50 h" fr="50 h" it="50 h" ja="50 時間" pt="50 h" ru="50 ч" zh="50 小时"/>
-  <translation tag="500 h" de="500 Std" en="500 h" es="500 h" fr="500 h" it="500 h" ja="500 時間" pt="500 h" ru="500 ч" zh="500 小时"/>
   <translation tag="50W" de="50W" en="50W" es="50W" fr="50W" it="50W" ja="50W" pt="50W" ru="50W" zh="50W"/>
   <translation tag="5V" de="5V" en="5V" es="5V" fr="5V" it="5V" ja="5V" pt="5V" ru="5V" zh="5V"/>
   <translation tag="60 seconds" de="60 Sekunden" en="60 seconds" es="60 segundos" fr="60 secondes" it="60 secondi" ja="60秒" pt="60 segundos" ru="60 секунд" zh="60 秒"/>
-  <translation tag="750 h" de="750 Std" en="750 h" es="750 h" fr="750 h" it="750 h" ja="750 時間" pt="750 h" ru="750 ч" zh="750 小时"/>
   <translation tag="90°" de="90°" en="90°" es="90°" fr="90°" it="90°" ja="90°" pt="90°" ru="90°" zh="90°"/>
   <translation tag="90° Clockwise" de="90° im Uhrzeigersinn" en="90° Clockwise" es="90° en sentido horario" fr="90° dans le sens horaire" it="90° in senso orario" ja="90° 時計回り" pt="90° no sentido horário" ru="90° по часовой стрелке" zh="顺时针 90°"/>
   <translation tag="= Loosen" de="= Lösen" en="= Loosen" es="= Aflojar" fr="= Desserrer" it="= Allentare" ja="= 緩める" pt="= Afrouxar" ru="= Ослабить" zh="= 松开"/>

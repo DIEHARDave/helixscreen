@@ -88,14 +88,10 @@
   <translation tag="1. Printer homes and probes the bed" fr="1. L&apos;imprimante fait l&apos;origine et palpe le plateau"/>
   <translation tag="1. Printer will home and probe each screw" fr="1. L&apos;imprimante fera l&apos;origine et palpera chaque vis"/>
   <translation tag="10 minutes" fr="10 minutes"/>
-  <translation tag="100 h" fr="100 h"/>
-  <translation tag="1000 h" fr="1000 h"/>
   <translation tag="12 Hour" fr="12 heures"/>
   <translation tag="12-hour" fr="12 heures"/>
   <translation tag="120 seconds" fr="120 secondes"/>
   <translation tag="15 seconds" fr="15 secondes"/>
-  <translation tag="150 h" fr="150 h"/>
-  <translation tag="1500 h" fr="1500 h"/>
   <translation tag="170-300 °C" fr="170-300 °C"/>
   <translation tag="180°" fr="180°"/>
   <translation tag="180° Upside Down" fr="180° à l&apos;envers"/>
@@ -105,12 +101,8 @@
   <translation tag="2. Place paper between nozzle and bed" fr="2. Placez du papier entre la buse et le plateau"/>
   <translation tag="2. Results show how much to turn each screw" fr="2. Les résultats indiquent combien tourner chaque vis"/>
   <translation tag="20 minutes" fr="20 minutes"/>
-  <translation tag="200 h" fr="200 h"/>
-  <translation tag="2000 h" fr="2000 h"/>
   <translation tag="24 Hour" fr="24 heures"/>
   <translation tag="24-hour" fr="24 heures"/>
-  <translation tag="25 h" fr="25 h"/>
-  <translation tag="250 h" fr="250 h"/>
   <translation tag="270°" fr="270°"/>
   <translation tag="270° Clockwise" fr="270° dans le sens horaire"/>
   <translation tag="2D Heatmap" fr="Carte thermique 2D"/>
@@ -120,21 +112,16 @@
   <translation tag="3. Save the position" fr="3. Enregistrez la position"/>
   <translation tag="30 minutes" fr="30 minutes"/>
   <translation tag="30 seconds" fr="30 secondes"/>
-  <translation tag="300 h" fr="300 h"/>
   <translation tag="3D Maze" fr="Labyrinthe 3D"/>
   <translation tag="3D Pipes" fr="3D Pipes"/>
   <translation tag="3D View" fr="Vue 3D"/>
   <translation tag="4. Paper should move but with resistance" fr="4. Le papier doit bouger mais avec résistance"/>
   <translation tag="4. Repeat until bed is level" fr="4. Répétez jusqu&apos;à ce que le plateau soit niveau"/>
-  <translation tag="400 h" fr="400 h"/>
   <translation tag="5 min" fr="5 min"/>
   <translation tag="5 minutes" fr="5 minutes"/>
-  <translation tag="50 h" fr="50 h"/>
-  <translation tag="500 h" fr="500 h"/>
   <translation tag="50W" fr="50W"/>
   <translation tag="5V" fr="5V"/>
   <translation tag="60 seconds" fr="60 secondes"/>
-  <translation tag="750 h" fr="750 h"/>
   <translation tag="90°" fr="90°"/>
   <translation tag="90° Clockwise" fr="90° dans le sens horaire"/>
   <translation tag="= Loosen" fr="= Desserrer"/>

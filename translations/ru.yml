@@ -90,14 +90,10 @@ translations:
   1. Printer will home and probe each screw: 1. Принтер запаркуется и проверит каждый
     винт
   10 minutes: 10 минут
-  100 h: '100 ч'
-  1000 h: '1000 ч'
   12 Hour: 12 часов
   12-hour: 12-часовой
   120 seconds: 120 секунд
   15 seconds: 15 секунд
-  150 h: '150 ч'
-  1500 h: '1500 ч'
   170-300 °C: '170-300 °C'
   180°: 180°
   180° Upside Down: 180° вверх ногами
@@ -109,12 +105,8 @@ translations:
   2. Results show how much to turn each screw: 2. Результаты покажут, насколько повернуть
     каждый винт
   20 minutes: 20 минут
-  200 h: '200 ч'
-  2000 h: '2000 ч'
   24 Hour: 24 часа
   24-hour: 24-часовой
-  25 h: '25 ч'
-  250 h: '250 ч'
   270°: 270°
   270° Clockwise: 270° по часовой стрелке
   2D Heatmap: 2D тепловая карта
@@ -126,21 +118,16 @@ translations:
 
   30 minutes: 30 минут
   30 seconds: 30 секунд
-  300 h: '300 ч'
   3D Maze: 3D лабиринт
   3D Pipes: 3D трубы
   3D View: 3D вид
   4. Paper should move but with resistance: 4. Бумага должна двигаться, но с сопротивлением
   4. Repeat until bed is level: 4. Повторяйте, пока стол не выровняется
-  400 h: '400 ч'
   5 min: '5 мин'
   5 minutes: 5 минут
-  50 h: '50 ч'
-  500 h: '500 ч'
   50W: 50W
   5V: 5V
   60 seconds: 60 секунд
-  750 h: '750 ч'
   90°: 90°
   90° Clockwise: 90° по часовой стрелке
   = Loosen: = Ослабить

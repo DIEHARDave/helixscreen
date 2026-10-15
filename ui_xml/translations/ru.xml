@@ -88,14 +88,10 @@
   <translation tag="1. Printer homes and probes the bed" ru="1. Принтер паркуется и зондирует стол"/>
   <translation tag="1. Printer will home and probe each screw" ru="1. Принтер запаркуется и проверит каждый винт"/>
   <translation tag="10 minutes" ru="10 минут"/>
-  <translation tag="100 h" ru="100 ч"/>
-  <translation tag="1000 h" ru="1000 ч"/>
   <translation tag="12 Hour" ru="12 часов"/>
   <translation tag="12-hour" ru="12-часовой"/>
   <translation tag="120 seconds" ru="120 секунд"/>
   <translation tag="15 seconds" ru="15 секунд"/>
-  <translation tag="150 h" ru="150 ч"/>
-  <translation tag="1500 h" ru="1500 ч"/>
   <translation tag="170-300 °C" ru="170-300 °C"/>
   <translation tag="180°" ru="180°"/>
   <translation tag="180° Upside Down" ru="180° вверх ногами"/>
@@ -105,12 +101,8 @@
   <translation tag="2. Place paper between nozzle and bed" ru="2. Положите бумагу между соплом и столом"/>
   <translation tag="2. Results show how much to turn each screw" ru="2. Результаты покажут, насколько повернуть каждый винт"/>
   <translation tag="20 minutes" ru="20 минут"/>
-  <translation tag="200 h" ru="200 ч"/>
-  <translation tag="2000 h" ru="2000 ч"/>
   <translation tag="24 Hour" ru="24 часа"/>
   <translation tag="24-hour" ru="24-часовой"/>
-  <translation tag="25 h" ru="25 ч"/>
-  <translation tag="250 h" ru="250 ч"/>
   <translation tag="270°" ru="270°"/>
   <translation tag="270° Clockwise" ru="270° по часовой стрелке"/>
   <translation tag="2D Heatmap" ru="2D тепловая карта"/>
@@ -120,21 +112,16 @@
   <translation tag="3. Save the position" ru="3. Сохраните позицию"/>
   <translation tag="30 minutes" ru="30 минут"/>
   <translation tag="30 seconds" ru="30 секунд"/>
-  <translation tag="300 h" ru="300 ч"/>
   <translation tag="3D Maze" ru="3D лабиринт"/>
   <translation tag="3D Pipes" ru="3D трубы"/>
   <translation tag="3D View" ru="3D вид"/>
   <translation tag="4. Paper should move but with resistance" ru="4. Бумага должна двигаться, но с сопротивлением"/>
   <translation tag="4. Repeat until bed is level" ru="4. Повторяйте, пока стол не выровняется"/>
-  <translation tag="400 h" ru="400 ч"/>
   <translation tag="5 min" ru="5 мин"/>
   <translation tag="5 minutes" ru="5 минут"/>
-  <translation tag="50 h" ru="50 ч"/>
-  <translation tag="500 h" ru="500 ч"/>
   <translation tag="50W" ru="50W"/>
   <translation tag="5V" ru="5V"/>
   <translation tag="60 seconds" ru="60 секунд"/>
-  <translation tag="750 h" ru="750 ч"/>
   <translation tag="90°" ru="90°"/>
   <translation tag="90° Clockwise" ru="90° по часовой стрелке"/>
   <translation tag="= Loosen" ru="= Ослабить"/>

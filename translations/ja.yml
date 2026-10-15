@@ -89,14 +89,10 @@ translations:
   1. Printer homes and probes the bed: 1. プリンターがホーミングしてベッドをプローブします
   1. Printer will home and probe each screw: 1. プリンターがホーミングして各ネジをプローブします
   10 minutes: 10分
-  100 h: '100 時間'
-  1000 h: '1000 時間'
   12 Hour: 12時間
   12-hour: 12時間制
   120 seconds: 120秒
   15 seconds: 15秒
-  150 h: '150 時間'
-  1500 h: '1500 時間'
   170-300 °C: '170-300 °C'
   180°: 180°
   180° Upside Down: 180° 上下反転
@@ -107,12 +103,8 @@ translations:
   2. Place paper between nozzle and bed: 2. ノズルとベッドの間に紙を置いてください
   2. Results show how much to turn each screw: 2. 各ネジをどれだけ回すか結果が表示されます
   20 minutes: 20分
-  200 h: '200 時間'
-  2000 h: '2000 時間'
   24 Hour: 24時間
   24-hour: 24時間制
-  25 h: '25 時間'
-  250 h: '250 時間'
   270°: 270°
   270° Clockwise: 270° 時計回り
   2D Heatmap: 2Dヒートマップ
@@ -123,21 +115,16 @@ translations:
 
   30 minutes: 30分
   30 seconds: 30秒
-  300 h: '300 時間'
   3D Maze: 3D迷路
   3D Pipes: 3Dパイプ
   3D View: 3Dビュー
   4. Paper should move but with resistance: 4. 紙が抵抗を感じながら動く状態が適切です
   4. Repeat until bed is level: 4. ベッドが水平になるまで繰り返してください
-  400 h: '400 時間'
   5 min: '5分'
   5 minutes: 5分
-  50 h: '50 時間'
-  500 h: '500 時間'
   50W: 50W
   5V: 5V
   60 seconds: 60秒
-  750 h: '750 時間'
   90°: 90°
   90° Clockwise: 90° 時計回り
   = Loosen: = 緩める
