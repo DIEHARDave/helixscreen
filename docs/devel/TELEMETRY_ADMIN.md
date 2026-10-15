@@ -122,6 +122,7 @@ matters more than it does today.
 | `INGEST_API_KEY` | Baked into the HelixScreen binary. Write-only ingest access. |
 | `ADMIN_API_KEY` | Server-side secret. Read access to events, dashboard queries, AE counts. |
 | `HELIX_ANALYTICS_READ_TOKEN` | Cloudflare API token for Analytics Engine SQL queries. |
+| `RESEND_API_KEY`, `GITHUB_APP_PRIVATE_KEY` | Feedback loop email and issue filing; see Feedback loop. |
 | `CF_ZONE_ANALYTICS_TOKEN` | Optional. Cloudflare API token with **Zone Analytics:Read** on `helixscreen.org`, for the daily CDN fleet snapshot. Falls back to `HELIX_ANALYTICS_READ_TOKEN` if unset - which works only if that token also carries zone analytics scope (Account Analytics:Read alone is not enough). |
 
 ### Worker Config (in `wrangler.toml`)
@@ -494,6 +495,8 @@ Content-Type: application/json
 | `/v1/dashboard/{crash-list,memory,memory-warnings,hardware,performance}` | GET | The remaining sections' data |
 | `/v1/dashboard/{engagement,reliability,stability,ux,features}` | GET | Delta-era data: return `delta_era_devices` and `filter_not_applicable`, and `null` values while no schema-3 device has reported. `stability` also returns `crash_clusters` and `errors_by_version` |
 | `/v1/dashboard/health` | GET | Health tab: this week against last week (`cur` and `prev`), release scorecards, error codes, crash clusters, data health |
+| `/v1/dashboard/reports`, `/v1/dashboard/reports/<YYYY-Www>` | GET | The stored weekly reports: the list, and one week |
+| `/v1/admin/loop/run?mode=daily\|weekly[&dry=0]` | POST | Run the feedback loop; dry unless `dry=0` (see Feedback loop) |
 | `/v1/dashboard/devices` | GET | Devices matching the filters (200 rows, true `total`) |
 | `/v1/dashboard/device/<64 hex id>` | GET | One device's page; 400 for any other id, 404 for an unknown one |
 | `/v1/dashboard/fleet/retention` | GET | Weekly cohorts over 90 days |
@@ -509,6 +512,78 @@ Dashboard endpoints take `range` (`7d`, `30d`, `90d`) and the `platform`, `versi
 |----------|--------|-------------|
 | `/health` | GET | Health check; reports `git_sha`, the commit the worker was deployed from (`unknown` if deployed without `GIT_SHA`) |
 | `/v1/symbols/:version` | GET | List symbol files for crash resolution |
+
+## Feedback loop
+
+The loop turns the Health data into three outputs: an email (a weekly report and daily alerts), GitHub issues for patterns worth fixing, and printer-database candidate issues. It reads the same Health payload as the dashboard's Health tab, so what the email says is what the tab shows. The code is `server/telemetry-worker/src/loop/`.
+
+### What runs when
+
+| When (UTC) | What | Where |
+|------------|------|-------|
+| Daily 13:00 | Alert check: email the findings that carry an alert and were not alerted in the last `ALERT_REPEAT_DAYS` | Worker cron (`wrangler.toml` `[triggers]`, dispatched in `scheduled()` in `src/index.ts`) |
+| Mondays 13:00 | Weekly run, after the daily one: snapshot the ISO week that just closed, sync its issues, email the summary | Same cron |
+| Mondays 14:00 | Printer-database candidate issues | `.github/workflows/telemetry-printers.yml` |
+
+The 02:10 cron is the unrelated CDN snapshot. Each loop run is isolated: a failure is logged as `[loop] ...` and neither stops the other run nor fails the cron.
+
+### Findings and thresholds
+
+`findings.ts` turns the Health payload and the update-failure groups into findings. Each finding has a kind (crash cluster, error code, update failure, release regression, data health, printer), a fingerprint, and the actions it earns: every finding appears in the report, some also raise an alert or file an issue. Every number that decides this lives in `server/telemetry-worker/src/loop/thresholds.ts`, with a comment each; change them there and nowhere else. That file also holds the cap on new issues per run (the rest wait for the next run) and the alert repeat interval.
+
+### Fingerprints and dedupe
+
+A fingerprint is `<kind>:` plus the identifying parts lowercased and joined with `|` (`fingerprint.ts`). Issues carry it in the body as `<!-- telemetry-fp: ... -->`. The Worker finds an issue by searching the repository for that marker among `label:telemetry` issues and keeping only exact marker matches, so a fuzzy search hit is never mistaken for the same finding. An open issue gets at most one count comment per ISO week. A closed issue is reopened with a comment when its finding returns. Alerts are deduped by the fingerprint's last-emailed date in the loop state.
+
+Issue titles and bodies carry counts and a dashboard link, never device ids.
+
+### Reports
+
+The weekly run stores its report as `reports/<YYYY-Www>.json` in the telemetry R2 bucket (`src/loop/report.ts`): the Health payload, the findings and the issue outcomes. A stored report is immutable. The dashboard serves them at `/reports` and `/reports/<week>`, backed by `GET /v1/dashboard/reports` and `GET /v1/dashboard/reports/<YYYY-Www>`. The email links to the report page.
+
+### Loop state
+
+The R2 object loop/state.json in the same bucket holds two maps: fingerprint to the date it was last alerted, and fingerprint to the ISO week of its last issue comment. A missing or unparsable file reads as empty, which only means alerts and comments may repeat once. An alert is recorded only after its email went out, so a failed send retries the next day.
+
+### Printer candidates
+
+`scripts/telemetry-printer-issues.py` reads the output of `scripts/telemetry-printer-profiles.py --json --candidates` and files one issue per unrecognized hardware cluster with a draft `printer_database.json` entry (built by `scripts/telemetry-update-printer-db.py`). It uses the same fingerprint form as the Worker, with kind `printer`. It looks issues up by listing `label:telemetry` issues and matching the marker locally. The device threshold and the new-issue cap are constants at the top of the script and mirror `PRINTER_ISSUE_DEVICES` and `NEW_ISSUES_PER_RUN`.
+
+The workflow pulls the last 28 days of telemetry with `HELIX_TELEMETRY_ADMIN_KEY` and skips itself when that secret is unset. A scheduled run files for real only when the repository variable `TELEMETRY_PRINTER_ISSUES_LIVE` is `true`; otherwise it prints what it would file. A manual `workflow_dispatch` is dry unless `dry_run` is set to false. A printer issue is closed when its database entry lands, and unlike the Worker's issues it is not reopened.
+
+### Release check
+
+`scripts/release-health.sh` compares the newest beta of the `VERSION.txt` release with the current stable in telemetry and prints a table plus a `WARN` line per trailing metric. `scripts/release-gate.sh fast` runs it; see `docs/devel/RELEASE_PROCESS.md`. It is informational, always exits 0, and prints one line saying why when there is nothing to compare. It reads the admin key from `HELIX_TELEMETRY_ADMIN_KEY` or `.env.telemetry`.
+
+### Operating it
+
+**Secrets and variables.** Worker secrets, set with `wrangler secret put`:
+
+| Name | Purpose |
+|------|---------|
+| `RESEND_API_KEY` | Sends the weekly report and alerts. Unset: the run reports `email: not configured` in `skipped` and sends nothing. |
+| `GITHUB_APP_PRIVATE_KEY` | Private key of the GitHub App (`GITHUB_APP_ID` in `wrangler.toml`) that files issues. Unset: findings are held and the run lists the failures in `skipped`. |
+
+The recipient, sender, repository and dashboard URL are plain vars in `wrangler.toml` (`NOTIFICATION_EMAIL`, `EMAIL_FROM`, `GITHUB_REPO`, `DASHBOARD_URL`). In the GitHub repository, set the Actions secret `HELIX_TELEMETRY_ADMIN_KEY` (same value as the Worker's `ADMIN_API_KEY`) and, when ready for real issues, the Actions variable `TELEMETRY_PRINTER_ISSUES_LIVE=true`.
+
+**Dry run.** The admin route runs the loop with real reads and returns what it would do. Dry is the default: nothing is emailed, filed or written. Pass `dry=0` to act.
+
+```bash
+curl -s -X POST -H "X-API-Key: $HELIX_TELEMETRY_ADMIN_KEY" \
+  "https://telemetry.helixscreen.org/v1/admin/loop/run?mode=weekly" | jq
+curl -s -X POST -H "X-API-Key: $HELIX_TELEMETRY_ADMIN_KEY" \
+  "https://telemetry.helixscreen.org/v1/admin/loop/run?mode=daily&dry=0"   # sends for real
+```
+
+The response carries `findings`, `issues` (each `created`, `commented`, `reopened`, `unchanged` or `held`), the built `email`, `alertsSent` and `skipped`. `mode` is `daily` or `weekly`.
+
+**First run.** Deploy, then dry-run `weekly` and `daily` and read the issues and email they would produce. Fix thresholds if they are noisy. Set the secrets, run `weekly&dry=0` once, and check the issues, the email and the stored report. Leave `TELEMETRY_PRINTER_ISSUES_LIVE` unset until a manual `workflow_dispatch` dry run of the printer workflow looks right.
+
+**Re-running a week.** The weekly run returns a stored report unchanged (`reused: true`) and does not file, comment or email again. To regenerate a week, delete `reports/<YYYY-Www>.json` from the bucket first (`wrangler r2 object delete helixscreen-telemetry/reports/<YYYY-Www>.json`), then run `weekly&dry=0`. The week is the ISO week before the run's date.
+
+**Silencing a finding.** Close its issue. The Worker will not touch a closed issue until the finding appears again, then it reopens it with a comment. To silence an alert, there is no switch: it repeats at most every `ALERT_REPEAT_DAYS`, and the real lever is the threshold. A closed printer issue stays closed.
+
+**Where things live.** State and reports are in the `helixscreen-telemetry` R2 bucket under `loop/` and `reports/`. Cron and run failures log with a `[loop]` prefix in the Worker logs (`wrangler tail`).
 
 ## Scripts
 
