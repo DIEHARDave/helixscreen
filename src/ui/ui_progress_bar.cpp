@@ -59,7 +59,8 @@ void on_progress_bar_draw(lv_event_t* e) {
 int32_t fill_end_x(lv_obj_t* bar, const lv_area_t& track) {
     const int32_t min_val = lv_bar_get_min_value(bar);
     const int32_t range = lv_bar_get_max_value(bar) - min_val;
-    const int32_t val = std::clamp(lv_bar_get_value(bar) - min_val, 0, std::max(range, 0));
+    const int32_t val =
+        std::clamp<int32_t>(lv_bar_get_value(bar) - min_val, 0, std::max<int32_t>(range, 0));
     if (range <= 0) {
         return track.x1;
     }
