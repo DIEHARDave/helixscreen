@@ -113,6 +113,10 @@ class PrintStatusLayoutFitter {
     void ensure_temp_graph();
 
     static void action_label_resized_cb(lv_event_t* e);
+    /// Hook @p row's layout and its labels' sizes to recompute_actions_crowded().
+    /// The hooks hold `this`, which outlives every widget tree (the panel owns
+    /// the fitter for the process), and die with the widgets they sit on.
+    void watch_action_row(int index, lv_obj_t* row);
     /// One row of recompute_actions_crowded(): the row holding @p anchor.
     void fit_action_row(int index, const char* anchor, bool tiny, lv_subject_t* stacked_subject,
                         lv_subject_t* tall_subject);

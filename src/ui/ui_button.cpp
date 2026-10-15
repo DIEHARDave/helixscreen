@@ -41,6 +41,7 @@ namespace {
 struct UiButtonData {
     static constexpr uint32_t MAGIC = 0x42544E31; // "BTN1"
     uint32_t magic{MAGIC};
+
     uint64_t id{0};     // Defer-time identity token (see note above, #924)
     lv_obj_t* icon;     // Icon widget (or nullptr if none)
     lv_obj_t* label;    // Label widget (always present)
@@ -78,6 +79,9 @@ struct UiButtonData {
     bool label_beside{false};
     bool label_line_cb{false};
 };
+
+void fit_column_min_width(lv_obj_t* btn, UiButtonData* data);
+void part_resized_cb(lv_event_t* e);
 
 /// One line of the label's current font, the height a bounded label in a row
 /// keeps so its text stays centred and ellipsizes on that line.
@@ -442,6 +446,9 @@ void drain_pending_contrast() {
         if (!d || d->magic != UiButtonData::MAGIC || d->id != p.gen)
             continue;
         update_button_text_contrast(p.btn);
+        // A style bound after create (bind_style, bind_style_if) can bring a
+        // content minimum to a column button.
+        fit_column_min_width(p.btn, d);
     }
 }
 
@@ -504,14 +511,14 @@ void button_clicked_sound_cb(lv_event_t* e) {
     SoundManager::instance().play("button_tap");
 }
 
-/// A flex_grow button with style_min_width="content" takes at least its
-/// label's width from its row. The row only reruns its layout when one of its
-/// own children resizes, and a grow item keeps the width the row gave it, so a
-/// label that grows (a language switch, a bound text) asks the row directly.
-/// A stacked button that asked for style_min_width="content" holds the wider
-/// of its icon and label instead, measured from the parts themselves. A column
-/// measures its content from where its centered items sit, which moves as the
-/// button resizes, so a content minimum there feeds back into itself.
+/// Is the button laid out as a column (icon over label)?
+bool is_column(lv_obj_t* btn) {
+    return lv_obj_get_style_layout(btn, LV_PART_MAIN) == LV_LAYOUT_FLEX &&
+           (lv_obj_get_style_flex_flow(btn, LV_PART_MAIN) & LV_FLEX_COLUMN) != 0;
+}
+
+/// The wider of the icon and label plus the button's padding and border: the
+/// minimum a column button holds in place of style_min_width="content".
 void apply_stacked_min_width(lv_obj_t* btn, UiButtonData* data) {
     int32_t inner = 0;
     if (data->icon && !lv_obj_has_flag(data->icon, LV_OBJ_FLAG_HIDDEN)) {
@@ -523,22 +530,45 @@ void apply_stacked_min_width(lv_obj_t* btn, UiButtonData* data) {
     const int32_t min_w = inner + lv_obj_get_style_space_left(btn, LV_PART_MAIN) +
                           lv_obj_get_style_space_right(btn, LV_PART_MAIN);
     if (lv_obj_get_style_min_width(btn, LV_PART_MAIN) != min_w) {
-        // DECLARATIVE_OK: measured from the stacked label, which XML cannot name
+        // DECLARATIVE_OK: measured from the button's own parts, which XML cannot name
         lv_obj_set_style_min_width(btn, min_w, LV_PART_MAIN);
     }
 }
 
-void label_resized_cb(lv_event_t* e) {
-    auto* label = static_cast<lv_obj_t*>(lv_event_get_current_target(e));
-    lv_obj_t* btn = lv_obj_get_parent(label);
+/// A column button cannot take style_min_width="content" as written: LVGL
+/// measures a column's content width from where its centered items sit, which
+/// moves as the button resizes, so the minimum feeds back into the width and
+/// the layout can loop forever. Whichever way the content minimum arrives (the
+/// XML attribute, a bind_style, a restack), a column button holds the measured
+/// minimum of apply_stacked_min_width() instead, and gets the content minimum
+/// back when it returns to a row.
+void fit_column_min_width(lv_obj_t* btn, UiButtonData* data) {
+    if (!is_column(btn)) {
+        return;
+    }
+    if (lv_obj_get_style_min_width(btn, LV_PART_MAIN) == LV_SIZE_CONTENT) {
+        data->min_width_content = true;
+    }
+    if (data->min_width_content) {
+        apply_stacked_min_width(btn, data);
+    }
+}
+
+/// The label or icon of a button changed size. A flex_grow button with a
+/// content minimum takes at least that width from its row, but the row only
+/// reruns its layout when one of its own children resizes, and a grow item
+/// keeps the width the row gave it, so the button asks the row directly. A
+/// column button re-measures the minimum it holds first.
+void part_resized_cb(lv_event_t* e) {
+    auto* part = static_cast<lv_obj_t*>(lv_event_get_current_target(e));
+    lv_obj_t* btn = lv_obj_get_parent(part);
     lv_obj_t* row = btn ? lv_obj_get_parent(btn) : nullptr;
     if (!row) {
         return;
     }
     auto* data = static_cast<UiButtonData*>(lv_obj_get_user_data(btn));
     if (data && data->magic == UiButtonData::MAGIC && data->min_width_content &&
-        data->label == label &&
-        lv_obj_get_style_flex_flow(btn, LV_PART_MAIN) == LV_FLEX_FLOW_COLUMN) {
+        (data->label == part || data->icon == part) && is_column(btn)) {
         apply_stacked_min_width(btn, data);
         lv_obj_mark_layout_as_dirty(row);
     } else if (lv_obj_get_style_min_width(btn, LV_PART_MAIN) == LV_SIZE_CONTENT) {
@@ -611,6 +641,8 @@ lv_obj_t* create_button_icon(lv_obj_t* btn, const char* icon_name,
     lv_obj_t* icon = lv_label_create(btn);
     lv_label_set_text(icon, codepoint);
     lv_obj_set_style_text_font(icon, font, LV_PART_MAIN);
+    // DECLARATIVE_OK: the widget's own icon relays its size (see part_resized_cb)
+    lv_obj_add_event_cb(icon, part_resized_cb, LV_EVENT_SIZE_CHANGED, nullptr);
 
     spdlog::trace("[ui_button] Created icon '{}' -> codepoint", icon_name);
     return icon;
@@ -833,8 +865,8 @@ void* ui_button_create(lv_xml_parser_state_t* state, const char** attrs) {
     // else: No icon, no text, no layout - leave button empty for XML children
 
     if (data->label) {
-        // DECLARATIVE_OK: the widget's own label relays its size to the row (see label_resized_cb)
-        lv_obj_add_event_cb(data->label, label_resized_cb, LV_EVENT_SIZE_CHANGED, nullptr);
+        // DECLARATIVE_OK: the widget's own label relays its size to the row (see part_resized_cb)
+        lv_obj_add_event_cb(data->label, part_resized_cb, LV_EVENT_SIZE_CHANGED, nullptr);
     }
 
     // Apply translation tag if provided (for i18n hot-reload support)
@@ -1067,6 +1099,10 @@ void ui_button_apply(lv_xml_parser_state_t* state, const char** attrs) {
     void* item = lv_xml_state_get_item(state);
     lv_obj_t* btn = static_cast<lv_obj_t*>(item);
     UiButtonData* data = static_cast<UiButtonData*>(lv_obj_get_user_data(btn));
+    if (data && data->magic == UiButtonData::MAGIC) {
+        // icon_position="top" or layout="column" with style_min_width="content"
+        fit_column_min_width(btn, data);
+    }
 
     // Text binding convention:
     //   text="literal"       → static text (set during create, no action here)
@@ -1095,6 +1131,8 @@ void ui_button_apply(lv_xml_parser_state_t* state, const char** attrs) {
         if (!data->label) {
             data->label = lv_label_create(btn);
             lv_obj_center(data->label);
+            // DECLARATIVE_OK: the widget's own label relays its size (see part_resized_cb)
+            lv_obj_add_event_cb(data->label, part_resized_cb, LV_EVENT_SIZE_CHANGED, nullptr);
         }
 
         lv_subject_t* subject = lv_xml_get_subject(&state->scope, subject_name);
@@ -1138,6 +1176,8 @@ void ui_button_apply(lv_xml_parser_state_t* state, const char** attrs) {
             if (!data->icon) {
                 data->icon = lv_label_create(btn);
                 lv_obj_set_style_text_font(data->icon, get_button_icon_font(), LV_PART_MAIN);
+                // DECLARATIVE_OK: the widget's own icon relays its size (see part_resized_cb)
+                lv_obj_add_event_cb(data->icon, part_resized_cb, LV_EVENT_SIZE_CHANGED, nullptr);
 
                 // Position icon appropriately
                 if (data->label) {
@@ -1445,6 +1485,9 @@ void ui_button_set_label_hidden(lv_obj_t* btn, bool hidden) {
     } else {
         lv_obj_remove_flag(data->label, LV_OBJ_FLAG_HIDDEN);
     }
+    if (data->min_width_content) {
+        fit_column_min_width(btn, data);
+    }
 }
 
 // NAMESPACE_OK: joins this header's global ui_button_* free-function API
@@ -1460,6 +1503,9 @@ void ui_button_set_icon_hidden(lv_obj_t* btn, bool hidden) {
         lv_obj_add_flag(data->icon, LV_OBJ_FLAG_HIDDEN);
     } else {
         lv_obj_remove_flag(data->icon, LV_OBJ_FLAG_HIDDEN);
+    }
+    if (data->min_width_content) {
+        fit_column_min_width(btn, data);
     }
 }
 
@@ -1482,12 +1528,7 @@ void ui_button_set_stacked(lv_obj_t* btn, bool stacked) {
         // No pad_row - the label carries pad_top instead
         lv_obj_set_style_pad_row(btn, 0, LV_PART_MAIN);
         lv_obj_set_style_height(btn, lv_pct(100), LV_PART_MAIN);
-        if (lv_obj_get_style_min_width(btn, LV_PART_MAIN) == LV_SIZE_CONTENT) {
-            data->min_width_content = true;
-        }
-        if (data->min_width_content) {
-            apply_stacked_min_width(btn, data);
-        }
+        fit_column_min_width(btn, data);
         lv_obj_move_to_index(data->icon, data->icon_on_bottom ? -1 : 0);
         lv_obj_set_style_text_font(data->label, theme_manager_get_font("font_small"), LV_PART_MAIN);
         lv_obj_set_style_pad_top(data->label, theme_manager_get_spacing("space_xxs"), LV_PART_MAIN);

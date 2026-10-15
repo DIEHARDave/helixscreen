@@ -1043,3 +1043,61 @@ TEST_CASE_METHOD(UiButtonTestFixture, "ui_button stacked keeps a measured minimu
     lv_obj_delete(row);
     lv_subject_deinit(&stack_when);
 }
+
+// A column button cannot hold style_min_width="content" (LVGL measures a
+// column's content from its centered items, which feeds back into the width).
+// However the minimum arrives, at create or from a style added later, the
+// button holds the wider of its icon and label plus its padding instead.
+TEST_CASE_METHOD(UiButtonTestFixture, "ui_button column holds a measured minimum, not content",
+                 "[ui_button][xml][quick]") {
+    lv_obj_t* row = make_button_row(test_screen(), 300);
+    const auto measured = [](lv_obj_t* btn) {
+        return lv_obj_get_width(UITest::button_label(btn)) +
+               lv_obj_get_style_space_left(btn, LV_PART_MAIN) +
+               lv_obj_get_style_space_right(btn, LV_PART_MAIN);
+    };
+
+    SECTION("from the XML attribute") {
+        const char* attrs[] = {"width",
+                               "0",
+                               "flex_grow",
+                               "1",
+                               "icon",
+                               "tune",
+                               "icon_position",
+                               "top",
+                               "text",
+                               "Firmware Restart Now",
+                               "style_min_width",
+                               "content",
+                               nullptr};
+        lv_obj_t* btn = static_cast<lv_obj_t*>(lv_xml_create(row, "ui_button", attrs));
+        make_sharing_button(row, "X");
+        lv_obj_update_layout(test_screen());
+        CHECK(lv_obj_get_style_min_width(btn, LV_PART_MAIN) == measured(btn));
+        CHECK(label_inside(btn));
+    }
+
+    SECTION("from a style added after create") {
+        const char* attrs[] = {"width",         "0",
+                               "flex_grow",     "1",
+                               "icon",          "tune",
+                               "icon_position", "top",
+                               "text",          "Firmware Restart Now",
+                               nullptr};
+        lv_obj_t* btn = static_cast<lv_obj_t*>(lv_xml_create(row, "ui_button", attrs));
+        make_sharing_button(row, "X");
+        lv_obj_update_layout(test_screen());
+        static lv_style_t content_min;
+        lv_style_init(&content_min);
+        lv_style_set_min_width(&content_min, LV_SIZE_CONTENT);
+        lv_obj_add_style(btn, &content_min, LV_PART_MAIN);
+        helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
+        lv_refr_now(nullptr);
+        lv_obj_update_layout(test_screen());
+        CHECK(lv_obj_get_style_min_width(btn, LV_PART_MAIN) == measured(btn));
+        CHECK(label_inside(btn));
+        lv_obj_remove_style(btn, &content_min, LV_PART_MAIN);
+    }
+    lv_obj_delete(row);
+}
