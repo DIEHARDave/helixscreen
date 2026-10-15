@@ -11,6 +11,7 @@ WORKTREE_ROOT="$(cd "$BATS_TEST_DIRNAME/../.." && pwd)"
 REFRESH="$WORKTREE_ROOT/config/refresh-service-units.sh"
 LEDGERS=".webcams_backup.json .camera_migrated .klipper_includes .k2cam_webcam_disabled .seeded_settings"
 
+
 setup() {
     unset _HELIX_PLATFORM_SOURCED _HELIX_COMMON_SOURCED _HELIX_HOST_PROFILE_SOURCED
     . "$WORKTREE_ROOT/scripts/lib/installer/common.sh"
@@ -118,4 +119,58 @@ simulate_web_update() {
     reloc_line="$(grep -n 'setup_config_symlink quiet' "$WORKTREE_ROOT/scripts/lib/installer/main.sh" | cut -d: -f1)"
     [ -n "$seed_line" ] && [ -n "$reloc_line" ]
     [ "$reloc_line" -gt "$seed_line" ]
+}
+
+# --- platform/hooks.sh ---
+
+hooks_fixture() {
+    mkdir -p "$INSTALL_DIR/assets/config/platform" "$INSTALL_DIR/platform"
+    echo '# k1 hooks' > "$INSTALL_DIR/assets/config/platform/hooks-k1.sh"
+    echo '# k1 hooks' > "$INSTALL_DIR/platform/hooks.sh"
+}
+
+@test "deploy_platform_hooks records the hook key as a relocatable ledger" {
+    . "$WORKTREE_ROOT/scripts/lib/installer/service.sh"
+    hooks_fixture
+    rm -f "$INSTALL_DIR/platform/hooks.sh"
+    deploy_platform_hooks "$INSTALL_DIR" k1
+    [ -s "$INSTALL_DIR/platform/hooks.sh" ]
+    [ "$(cat "$INSTALL_DIR/config/.platform_hook")" = "k1" ]
+    setup_config_symlink
+    [ -L "$INSTALL_DIR/config/.platform_hook" ]
+    [ "$(cat "$PD/.platform_hook")" = "k1" ]
+}
+
+@test "restore re-deploys platform/hooks.sh after a web update" {
+    . "$WORKTREE_ROOT/scripts/lib/installer/service.sh"
+    hooks_fixture
+    echo k1 > "$INSTALL_DIR/config/.platform_hook"
+    setup_config_symlink
+    simulate_web_update
+    mkdir -p "$INSTALL_DIR/assets/config/platform"
+    echo '# k1 hooks' > "$INSTALL_DIR/assets/config/platform/hooks-k1.sh"
+    [ ! -e "$INSTALL_DIR/platform/hooks.sh" ]
+    restore_config_symlinks
+    restore_platform_hooks
+    [ -x "$INSTALL_DIR/platform/hooks.sh" ]
+    [ "$(cat "$INSTALL_DIR/platform/hooks.sh")" = "# k1 hooks" ]
+}
+
+@test "restore leaves an existing hooks file alone and ignores a hostile key" {
+    hooks_fixture
+    echo '# custom' > "$INSTALL_DIR/platform/hooks.sh"
+    echo k1 > "$INSTALL_DIR/config/.platform_hook"
+    restore_platform_hooks
+    [ "$(cat "$INSTALL_DIR/platform/hooks.sh")" = "# custom" ]
+    rm "$INSTALL_DIR/platform/hooks.sh"
+    echo '../../etc/x' > "$INSTALL_DIR/config/.platform_hook"
+    restore_platform_hooks
+    [ ! -e "$INSTALL_DIR/platform/hooks.sh" ]
+}
+
+@test "restore without a recorded key deploys nothing" {
+    hooks_fixture
+    rm "$INSTALL_DIR/platform/hooks.sh"
+    restore_platform_hooks
+    [ ! -e "$INSTALL_DIR/platform/hooks.sh" ]
 }

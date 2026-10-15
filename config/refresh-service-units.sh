@@ -113,7 +113,7 @@ systemctl daemon-reload
 # Runs as root (inherited from the calling service unit), so no sudo needed.
 
 # Keep in sync with scripts/lib/installer/platform.sh.
-HELIX_USER_CONFIG_FILES="settings.json helixscreen.env .disabled_services tool_spools.json crash_history.json user_filaments.json .webcams_backup.json .camera_migrated .klipper_includes .k2cam_webcam_disabled .seeded_settings"
+HELIX_USER_CONFIG_FILES="settings.json helixscreen.env .disabled_services tool_spools.json crash_history.json user_filaments.json .webcams_backup.json .camera_migrated .klipper_includes .k2cam_webcam_disabled .seeded_settings .platform_hook"
 HELIX_USER_CONFIG_DIRS="custom_images themes printer_database.d"
 
 # Discover printer_data/config/helixscreen/ from the service user's home.
@@ -300,4 +300,32 @@ restore_config_symlinks() {
     done
 }
 
+# Moonraker's rmtree also deletes platform/hooks.sh, which only the installer
+# writes. Without it every platform_* function is the init script's no-op stub
+# (the stock UI is no longer stopped, the cache dir falls back to tmpfs). The
+# installer records which hook key it deployed in config/.platform_hook, a user
+# config file restored above; the matching template ships in the release.
+restore_platform_hooks() {
+    local hooks="${IDIR}/platform/hooks.sh" keyfile="${IDIR}/config/.platform_hook"
+    local key src owner
+
+    [ -s "$hooks" ] && return 0
+    [ -f "$keyfile" ] || return 0
+    key=$(head -n1 "$keyfile" 2>/dev/null | tr -d ' \r\n')
+    case "$key" in
+        ""|*[!A-Za-z0-9_-]*) return 0 ;;
+    esac
+    src="${IDIR}/assets/config/platform/hooks-${key}.sh"
+    [ -f "$src" ] || return 0
+
+    mkdir -p "${IDIR}/platform" 2>/dev/null || return 0
+    cp "$src" "$hooks" 2>/dev/null || return 0
+    chmod +x "$hooks" 2>/dev/null || true
+    owner=$(stat -c %u:%g "$IDIR" 2>/dev/null || true)
+    if [ -n "$owner" ]; then
+        chown "$owner" "${IDIR}/platform" "$hooks" 2>/dev/null || true
+    fi
+}
+
 restore_config_symlinks
+restore_platform_hooks

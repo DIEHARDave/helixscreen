@@ -51,6 +51,10 @@ cpp	.seeded_settings	written by the installer on the device, never exists in a b
 gradle	.seeded_settings	written by the installer on the device, never exists in a build tree
 strip	.seeded_settings	written by the installer on the device, never exists in a build tree
 deploy	.seeded_settings	written by the installer on the device, never exists in a build tree
+cpp	.platform_hook	written by the installer on the device, never exists in a build tree
+gradle	.platform_hook	written by the installer on the device, never exists in a build tree
+strip	.platform_hook	written by the installer on the device, never exists in a build tree
+deploy	.platform_hook	written by the installer on the device, never exists in a build tree
 TABLE
 )"
 

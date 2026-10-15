@@ -816,6 +816,13 @@ deploy_platform_hooks() {
     cp "$hooks_src" "${install_dir}/platform/hooks.sh" 2>/dev/null || $SUDO cp "$hooks_src" "${install_dir}/platform/hooks.sh" 2>/dev/null || true
     chmod +x "${install_dir}/platform/hooks.sh" 2>/dev/null || $SUDO chmod +x "${install_dir}/platform/hooks.sh" 2>/dev/null || true
 
+    # Record the key so refresh-service-units.sh can re-deploy the hooks after
+    # a Moonraker web update removes platform/. Written to the install dir and
+    # relocated into printer_data with the other user config files.
+    if [ -d "${install_dir}/config" ]; then
+        printf '%s\n' "$platform" | $(file_sudo "${install_dir}/config") tee "${install_dir}/config/.platform_hook" >/dev/null 2>&1 || true
+    fi
+
     # Every copy above is non-fatal, so success has to be observed rather than
     # assumed. A missing hooks.sh leaves each platform_* function the no-op stub
     # the init script declares, and nothing else reports that.
