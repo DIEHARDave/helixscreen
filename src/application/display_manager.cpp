@@ -157,17 +157,18 @@ void DisplayManager::schedule_brightness_reassert() {
     // we fire AFTER the delayed_gcode dims the screen.
     // Only the FlashForge firmwares dim behind our back.
     if (helix::board::current_info().firmware_dims_backlight_after_boot) {
-        lv_timer_create(
+        m_brightness_reassert_timer.reset(lv_timer_create(
             [](lv_timer_t* t) {
                 auto* dm = static_cast<DisplayManager*>(lv_timer_get_user_data(t));
-                if (dm && dm->m_backlight && dm->m_backlight->is_available()) {
+                dm->m_brightness_reassert_timer.release();
+                if (dm->m_backlight && dm->m_backlight->is_available()) {
                     const int brightness = DisplaySettingsManager::instance().user_brightness();
                     dm->m_backlight->set_brightness(brightness);
                     spdlog::info("[DisplayManager] Delayed brightness override: {}%", brightness);
                 }
                 lv_timer_delete(t);
             },
-            20000, this);
+            20000, this));
     }
 }
 
@@ -616,6 +617,7 @@ void DisplayManager::shutdown() {
     m_display = nullptr;
 
     m_sleep.abandon_lvgl_state();
+    m_brightness_reassert_timer.reset();
 
     // Release backends
     m_backlight.reset();

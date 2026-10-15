@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "ui_timer_guard.h"
+
 #include "backlight_backend.h"
 #include "color_transform.h"
 #include "display_backend.h"
@@ -627,6 +629,8 @@ class DisplayManager : public helix::ICalibrationSink {
     // Resize handler state
     std::vector<ResizeCallback> m_resize_callbacks;
     lv_timer_t* m_resize_debounce_timer = nullptr;
+    // Its callback dereferences this manager, so it must not outlive it.
+    helix::ui::LvglTimerGuard m_brightness_reassert_timer;
     bool m_resize_fanout_suspended = false;
     static constexpr uint32_t RESIZE_DEBOUNCE_MS = 250;
 
