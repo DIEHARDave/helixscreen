@@ -1561,8 +1561,10 @@ void PrintStartCollector::handle_phase_object_status(const json& status,
         return;
     }
 
-    // An answer checks its run under the same lock as its writes, so a start()
-    // in between cannot let it into the next run.
+    // An answer checks its run under the same lock as its cache writes and its
+    // latch, so a start() before either keeps it out of the next run. A start()
+    // after the latch can still meet the one match already on its way, as it
+    // can a frame that arrived just before it.
     const auto stale_seed_locked = [&] { return seed && *seed_run != run_generation_.load(); };
     std::string state;
     {
