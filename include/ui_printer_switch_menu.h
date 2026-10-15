@@ -46,6 +46,14 @@ class PrinterSwitchMenu : public ContextMenu {
     void on_created(lv_obj_t* menu) override;
     void on_backdrop_clicked() override;
 
+    /// As wide as the longest printer name, up to half the screen; past that, names ellipsize.
+    CardWidth card_width() const override {
+        return {50, 160, 0, true};
+    }
+    int32_t content_width() const override {
+        return widest_row_;
+    }
+
   private:
     void populate_printer_list();
     void handle_printer_selected(const std::string& printer_id);
@@ -53,6 +61,9 @@ class PrinterSwitchMenu : public ContextMenu {
     void dispatch_switch_action(MenuAction action, const std::string& printer_id = "");
 
     SwitchCallback switch_callback_;
+
+    /// Widest printer row populate_printer_list() built, inside the card's padding
+    int32_t widest_row_ = 0;
 
     static bool s_callbacks_registered_;
 

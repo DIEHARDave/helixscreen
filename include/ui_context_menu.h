@@ -72,11 +72,17 @@ class ContextMenu {
      * A zero `pct` leaves the card at whatever width its XML declared, which is
      * what a `width="content"` menu wants. Menus whose rows are `width="100%"`
      * must be sized before those children can resolve, so they state a policy.
+     *
+     * With `fit_content` the card is as wide as its rows ask (content_width(),
+     * plus the card's own padding), never narrower than `min`, and `pct` of the
+     * screen becomes the ceiling, along with `max` when set and the screen less a
+     * margin each side. Text wider than the ceiling ellipsizes in its row.
      */
     struct CardWidth {
         int pct = 0;
         int min = 0;
         int max = 0;
+        bool fit_content = false;
 
         [[nodiscard]] bool is_set() const {
             return pct > 0;
@@ -252,6 +258,27 @@ class ContextMenu {
     }
 
     /**
+     * @brief Width the card's rows need, inside the card's padding
+     *
+     * Read only under a `fit_content` policy, after on_created(), so a menu that
+     * builds its rows there can measure them. Default: nothing to fit.
+     */
+    virtual int32_t content_width() const {
+        return 0;
+    }
+
+    /**
+     * @brief How wide @p row must be to show @p text in @p label without dots
+     *
+     * A dotted label reports its clipped width, and its own text may already
+     * carry the dots, so the text is measured from the caller's copy. Every other
+     * visible child counts at its laid-out width, plus the row's padding, the
+     * label's padding and the flex gaps between children.
+     */
+    [[nodiscard]] static int32_t row_width_for_text(lv_obj_t* row, lv_obj_t* label,
+                                                    const char* text);
+
+    /**
      * @brief Called when the backdrop is clicked (before hide)
      *
      * This is where a menu states what a tap outside it means. The default is
@@ -336,6 +363,9 @@ class ContextMenu {
     /** @brief Apply card_width() to the card, before its children resolve */
     void apply_card_width(lv_obj_t* menu_card);
 
+    /** @brief Apply a `fit_content` card_width() once on_created() has built the rows */
+    void apply_fit_card_width(lv_obj_t* menu_card);
+
     /**
      * @brief Name of the optional column-group container inside a menu card
      *
@@ -386,6 +416,17 @@ class ContextMenu {
     void position_card(lv_obj_t* menu_card);
 
   public:
+    /**
+     * @brief Card width for @p policy, factored out so it can be tested
+     *
+     * Without `fit_content`: `pct` of @p screen_w clamped to [min, max].
+     * With it: @p content_w, raised to `min`, then capped at `pct` of the screen,
+     * at `max` when set, and at the screen less @p margin each side. The cap wins
+     * over `min`, so the card never leaves the screen.
+     */
+    static int32_t compute_card_width(const CardWidth& policy, int32_t screen_w, int32_t content_w,
+                                      int32_t margin);
+
     /**
      * @brief Geometry of position_card(), factored out so it can be tested
      *

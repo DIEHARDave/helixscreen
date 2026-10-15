@@ -15,6 +15,8 @@
 
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
+
 namespace helix::ui {
 
 // Static member initialization
@@ -27,15 +29,19 @@ bool PrinterSwitchMenu::s_callbacks_registered_ = false;
 void PrinterSwitchMenu::show(lv_obj_t* parent, lv_obj_t* near_widget) {
     register_callbacks();
 
-    // Set click point to right edge center of the badge widget
-    lv_point_t pt;
-    pt.x = lv_obj_get_x(near_widget) + lv_obj_get_width(near_widget);
-    pt.y = lv_obj_get_y(near_widget) + lv_obj_get_height(near_widget) / 2;
-    set_click_point(pt);
-
-    // show_near_widget() also claims the active-menu slot the static callbacks
-    // resolve through.
-    show_near_widget(parent, 0, near_widget);
+    // Both paths below also claim the active-menu slot the static callbacks resolve
+    // through. A badge with room to its right (the side navbar) hangs the card off its
+    // right edge; one at the right end of the bottom navbar has none, so the card
+    // sits above it instead and grows leftward from the screen edge.
+    lv_area_t badge;
+    lv_obj_get_coords(near_widget, &badge);
+    const int32_t screen_w = lv_obj_get_width(parent);
+    if (screen_w - badge.x2 >= badge.x1) {
+        set_click_point({badge.x2, (badge.y1 + badge.y2) / 2});
+        show_near_widget(parent, 0, near_widget);
+    } else {
+        show_below_widget(parent, 0, near_widget);
+    }
 
     spdlog::debug("[PrinterSwitchMenu] Shown");
 }
@@ -75,6 +81,10 @@ void PrinterSwitchMenu::populate_printer_list() {
     // Get check icon codepoint from our icon system
     const char* check_codepoint = helix::ui::icon::lookup_codepoint("check");
 
+    widest_row_ = 0;
+    const int32_t list_space = lv_obj_get_style_space_left(printer_list, LV_PART_MAIN) +
+                               lv_obj_get_style_space_right(printer_list, LV_PART_MAIN);
+
     for (const auto& id : printer_ids) {
         bool is_active = (id == active_id);
         std::string name = cfg->get_printer_display_name(id, id);
@@ -90,6 +100,10 @@ void PrinterSwitchMenu::populate_printer_list() {
             continue;
         }
         helix::ui::set_row_label_text(row, "printer_name", name.c_str());
+        widest_row_ =
+            std::max(widest_row_,
+                     list_space + row_width_for_text(row, lv_obj_find_by_name(row, "printer_name"),
+                                                     name.c_str()));
 
         // Store printer ID for click handler
         lv_obj_set_name(row, id.c_str());

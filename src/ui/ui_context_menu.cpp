@@ -7,6 +7,7 @@
 #include "ui_event_safety.h"
 #include "ui_utils.h"
 
+#include "helix/ui/text_metrics.h"
 #include "theme_manager.h"
 
 #include <spdlog/spdlog.h>
@@ -198,6 +199,11 @@ bool ContextMenu::show_impl(lv_obj_t* parent, int item_index, lv_obj_t* anchor, 
     // Let subclass configure the menu
     on_created(menu_);
 
+    // A card fitted to its rows can only be sized once on_created() has built them.
+    if (menu_card) {
+        apply_fit_card_width(menu_card);
+    }
+
     // Fit the card to the screen, widen its action rows, then position it. Order
     // matters: the column layout decides the row widths, and both decide the height
     // the positioner has to place.
@@ -232,9 +238,24 @@ void ContextMenu::hide() {
     spdlog::debug("[ContextMenu] hide()");
 }
 
+int32_t ContextMenu::compute_card_width(const CardWidth& policy, int32_t screen_w,
+                                        int32_t content_w, int32_t margin) {
+    const int32_t share = screen_w * policy.pct / 100;
+    if (!policy.fit_content) {
+        return std::clamp(share, static_cast<int32_t>(policy.min),
+                          static_cast<int32_t>(policy.max));
+    }
+    int32_t ceiling = std::min(share, screen_w - (margin * 2));
+    if (policy.max > 0) {
+        ceiling = std::min(ceiling, static_cast<int32_t>(policy.max));
+    }
+    return std::max(std::min(std::max(content_w, static_cast<int32_t>(policy.min)), ceiling),
+                    static_cast<int32_t>(0));
+}
+
 void ContextMenu::apply_card_width(lv_obj_t* menu_card) {
     const CardWidth policy = card_width();
-    if (!policy.is_set()) {
+    if (!policy.is_set() || policy.fit_content) {
         return;
     }
     lv_obj_t* backdrop = lv_obj_get_parent(menu_card);
@@ -242,11 +263,64 @@ void ContextMenu::apply_card_width(lv_obj_t* menu_card) {
         return;
     }
     const int32_t screen_w = lv_obj_get_width(backdrop);
-    const int32_t width = std::clamp(screen_w * policy.pct / 100, static_cast<int32_t>(policy.min),
-                                     static_cast<int32_t>(policy.max));
+    const int32_t width = compute_card_width(policy, screen_w, 0, 0);
     lv_obj_set_width(menu_card, width);
     spdlog::trace("[ContextMenu] Card width {}px ({}% of {} clamped to [{},{}])", width, policy.pct,
                   screen_w, policy.min, policy.max);
+}
+
+void ContextMenu::apply_fit_card_width(lv_obj_t* menu_card) {
+    const CardWidth policy = card_width();
+    if (!policy.is_set() || !policy.fit_content) {
+        return;
+    }
+    lv_obj_t* backdrop = lv_obj_get_parent(menu_card);
+    if (!backdrop) {
+        return;
+    }
+    const int32_t screen_w = lv_obj_get_width(backdrop);
+    const int32_t content_w = content_width() +
+                              lv_obj_get_style_space_left(menu_card, LV_PART_MAIN) +
+                              lv_obj_get_style_space_right(menu_card, LV_PART_MAIN);
+    const int32_t width =
+        compute_card_width(policy, screen_w, content_w, theme_manager_get_spacing("space_md"));
+    // DECLARATIVE_OK: measured layout — the width of the rows' own text
+    lv_obj_set_width(menu_card, width);
+    spdlog::trace("[ContextMenu] Card fitted to {}px (content {}px, {}% of {}, min {})", width,
+                  content_w, policy.pct, screen_w, policy.min);
+}
+
+int32_t ContextMenu::row_width_for_text(lv_obj_t* row, lv_obj_t* label, const char* text) {
+    if (!row || !label) {
+        return 0;
+    }
+    lv_obj_update_layout(row);
+
+    const lv_font_t* font = lv_obj_get_style_text_font(label, LV_PART_MAIN);
+    const int32_t letter_space = lv_obj_get_style_text_letter_space(label, LV_PART_MAIN);
+    int32_t width = lv_obj_get_style_space_left(row, LV_PART_MAIN) +
+                    lv_obj_get_style_space_right(row, LV_PART_MAIN);
+
+    int32_t visible = 0;
+    const uint32_t child_cnt = lv_obj_get_child_count(row);
+    for (uint32_t i = 0; i < child_cnt; i++) {
+        lv_obj_t* child = lv_obj_get_child(row, i);
+        if (!child || lv_obj_has_flag(child, LV_OBJ_FLAG_HIDDEN)) {
+            continue;
+        }
+        visible++;
+        if (child == label) {
+            width += helix::ui::text_width(text, font, letter_space) +
+                     lv_obj_get_style_space_left(label, LV_PART_MAIN) +
+                     lv_obj_get_style_space_right(label, LV_PART_MAIN);
+        } else {
+            width += lv_obj_get_width(child);
+        }
+    }
+    if (visible > 1) {
+        width += lv_obj_get_style_pad_column(row, LV_PART_MAIN) * (visible - 1);
+    }
+    return width;
 }
 
 // ============================================================================
