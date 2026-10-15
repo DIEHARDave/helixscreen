@@ -211,3 +211,11 @@ def test_tree_files_reads_the_index_not_the_working_tree(tmp_path):
         "ui/a.xml": "staged\n", "ui/sub/b.xml": "nested\n"}
     assert dict(staged_content.tree_files("HEAD", ("ui",), tmp_path, recursive=False)) == {
         "ui/a.xml": "committed\n"}
+
+
+def test_catfile_batch_skips_a_missing_name_containing_spaces(tmp_path):
+    _init_repo(tmp_path)
+    _write(tmp_path, "b.txt", "b\n")
+    _stage(tmp_path)
+    items = [("x", ":no such file here"), ("b", ":b.txt")]
+    assert dict(staged_content.catfile_batch(items, root=tmp_path)) == {"b": "b\n"}

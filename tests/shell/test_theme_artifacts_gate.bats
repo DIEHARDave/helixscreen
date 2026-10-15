@@ -178,6 +178,25 @@ BASE_TOKENS='<px name="space_md" value="6"/>
     [ "$status" -eq 0 ]
 }
 
+@test "a golden regeneration leaves unchanged has a way out" {
+    # primary is a C++ name too: dropping the XML copy changes nothing the
+    # golden records, so the golden never joins the commit.
+    stage_globals "<component><consts>$BASE_TOKENS
+  <color name=\"primary\" value=\"#ff0000\"/></consts></component>"
+    python3 "$GEN" >/dev/null
+    git add -A
+    git commit -qm "xml primary" --no-verify
+    stage_globals "<component><consts>$BASE_TOKENS</consts></component>"
+    python3 "$GEN" >/dev/null
+    git add src/generated/theme_token_table.cpp
+    run_staged
+    [ "$status" -eq 1 ]
+    contains "stale for: primary" "$output"
+    contains "HELIX_GOLDEN_CURRENT=1" "$output"
+    HELIX_GOLDEN_CURRENT=1 run_staged
+    [ "$status" -eq 0 ]
+}
+
 @test "a component's consts and unstaged edits never decide the verdict" {
     printf '<component><consts><px name="row_h" value="48"/></consts></component>\n' \
         > ui_xml/components/row.xml

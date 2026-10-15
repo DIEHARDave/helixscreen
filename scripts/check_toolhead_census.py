@@ -2,12 +2,16 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """The toolhead-safety census from tests/unit/test_job_holds_machine.cpp, in seconds.
 
-Every ui_xml/ file that declares a control must sit in exactly one of the
-test's two census tables, kGuardedFiles (with its moves_machine="true" count)
-or kNoMachineControlFiles. The Catch2 test is the authority; this reads the
-tables, the control markers and the guard spellings out of that same .cpp, so
-the two cannot disagree about what a control is, and answers at commit time
-instead of at the end of a full test run.
+Mirrors the test's five XML cases: every ui_xml/ file that declares a control
+sits in exactly one of the two census tables, kGuardedFiles or
+kNoMachineControlFiles, and no row is stale; each guarded file carries exactly
+its row's moves_machine="true" count, spelled "true"; a no-machine file carries
+no moves_machine attribute; no <bind_state_*> disables a control on the raw
+print_active subject; and no XML names the job_holds_machine subject. The
+Catch2 test is the authority; this reads the tables, markers, constants and the
+print_active subject name out of that same .cpp, so the two cannot disagree,
+and answers at commit time instead of at the end of a full test run. A missing
+or unparseable test file is a failure, never a pass.
 
 usage: check_toolhead_census.py [--staged-only] [--root DIR]
   --staged-only  read ui_xml/ and the test from the tree the commit will create
@@ -53,7 +57,13 @@ def parse_test(src: str) -> dict:
         block(src, "kNoMachineControlFiles[] = {", "};"))]
     markers = [unescape(s) for s in STRING_RE.findall(
         block(src, "bool declares_a_control(const std::string& xml) {", "if (xml.find"))]
+    raw = re.search(r'bind\.find\("((?:[^"\\]|\\.)*)"\) == std::string::npos', src)
+    if not raw:
+        raise ValueError(f"{TEST_PATH}: cannot find the raw print subject the binds are checked for")
     return {
+        "subject": constant(src, "kSubject"),
+        "disabled": constant(src, "kDisabled"),
+        "raw_subject": unescape(raw.group(1)),
         "guarded": guarded,
         "none": none,
         "markers": markers,
@@ -111,7 +121,31 @@ def check(test_src: str, xml: dict[str, str]) -> list[str]:
             problems.append(f"{path} carries {attrs(text)} moves_machine attributes, so a "
                             "control in it does command the printer. Move its row to "
                             "kGuardedFiles with that count.")
+    for path, text in sorted(xml.items()):
+        mentions = text.count(t["subject"])
+        if mentions:
+            problems.append(f'{path} names {t["subject"]} {mentions} times. Carry the guard as '
+                            'moves_machine="true" on the control, and say the rest in words '
+                            'that are not the subject name.')
+        for bind in state_binds(text):
+            if t["disabled"] in bind and t["raw_subject"] in bind:
+                problems.append(f'{path} disables a control on {t["raw_subject"]}, which reads '
+                                '0 throughout a host-side pre-print block while the toolhead '
+                                f'homes and probes: {bind}')
     return problems
+
+
+def state_binds(xml: str) -> list[str]:
+    """Each <bind_state_* element in the file, as raw text, as the test slices it."""
+    binds, pos = [], 0
+    while (pos := xml.find("<bind_state_", pos)) != -1:
+        end = xml.find("/>", pos)
+        if end == -1:
+            binds.append(xml[pos:])
+            break
+        binds.append(xml[pos:end + 2])
+        pos = end + 2
+    return binds
 
 
 def load(root: Path, staged: bool) -> tuple[str, dict[str, str]]:
@@ -120,7 +154,8 @@ def load(root: Path, staged: bool) -> tuple[str, dict[str, str]]:
         xml = {p: s for p, s in tree_files(None, ("ui_xml",), root)
                if p.endswith(".xml") and "/." not in p}
         return test_src, xml
-    test_src = (root / TEST_PATH).read_text(encoding="utf-8")
+    test_file = root / TEST_PATH
+    test_src = test_file.read_text(encoding="utf-8") if test_file.is_file() else ""
     xml = {}
     for f in sorted((root / "ui_xml").rglob("*.xml")):
         rel = f.relative_to(root).as_posix()
@@ -137,7 +172,11 @@ def main() -> int:
     root = Path(args.root).resolve()
     test_src, xml = load(root, args.staged_only)
     if not test_src:
-        return 0
+        where = "the index" if args.staged_only else str(root)
+        print(f"❌ Toolhead-safety census: {TEST_PATH} is not in {where}; the census tables "
+              "live there. Restore it, or update scripts/check_toolhead_census.py to their "
+              "new home.")
+        return 1
     try:
         problems = check(test_src, xml)
     except ValueError as e:

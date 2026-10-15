@@ -12,6 +12,8 @@
 # content in the index: never a working-tree byte, never a peer's edit. A path
 # whose working tree differs from HEAD is left exactly as it is.
 set -u
+# Every path below is a file name, never a glob: `a*.txt` must not also match ab.txt.
+export GIT_LITERAL_PATHSPECS=1
 
 git rev-parse -q --verify HEAD >/dev/null || exit 0
 

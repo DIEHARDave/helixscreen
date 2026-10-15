@@ -85,3 +85,18 @@ setup() {
     run git status --porcelain -- f.txt
     [ -z "$output" ]
 }
+
+@test "a committed path whose name is a glob is judged on that file alone" {
+    # a*.txt as a pathspec would also match ab.txt, whose unstaged edit would
+    # then read as a working-tree change to the committed path.
+    printf '#!/bin/sh\nsed -i "s/$/ fmt/" "a*.txt" && git add -- ":(literal)a*.txt"\nexit 0\n' > .githooks/pre-commit
+    echo star > "a*.txt"
+    echo ab > ab.txt
+    git add "a*.txt" ab.txt
+    git commit -qm globs --no-verify
+    echo ab-wip > ab.txt
+    echo star-edited > "a*.txt"
+    git commit -qm edit -- "a*.txt"
+    [ "$(git rev-parse ':a*.txt')" = "$(git rev-parse 'HEAD:a*.txt')" ] \
+        || fail "a*.txt kept its stale index entry"
+}

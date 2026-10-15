@@ -272,7 +272,7 @@ EOF
 
     run_block true true
 
-    refute output_has "No XML linter inputs staged"
+    output_has "Running helix-xml-linter"
     output_has "helix-xml-linter passed"
 }
 
@@ -286,7 +286,7 @@ EOF
 
     run_block true true
 
-    refute output_has "No XML linter inputs staged"
+    output_has "Running helix-xml-linter"
 }
 
 @test "a staged lv_xml_register_const() anywhere under src/ reaches the check" {
@@ -297,7 +297,7 @@ EOF
 
     run_block true true
 
-    refute output_has "No XML linter inputs staged"
+    output_has "Running helix-xml-linter"
 }
 
 @test "a staged mk/tools.mk reaches the check" {
@@ -310,7 +310,7 @@ EOF
 
     run_block true true
 
-    refute output_has "No XML linter inputs staged"
+    output_has "Running helix-xml-linter"
 }
 
 @test "a staged theme default reaches the check" {
@@ -321,7 +321,7 @@ EOF
 
     run_block true true
 
-    refute output_has "No XML linter inputs staged"
+    output_has "Running helix-xml-linter"
 }
 
 @test "a staged lib/helix-xml pointer bump reaches the check" {
@@ -345,7 +345,7 @@ EOF
     git -C "$FIX" diff --cached --name-only | grep -qx 'lib/helix-xml'
     run_block true true
 
-    refute output_has "No XML linter inputs staged"
+    output_has "Running helix-xml-linter"
 }
 
 # ---------------------------------------------------------------------------
@@ -361,7 +361,7 @@ EOF
 
     run_block true true
 
-    output_has "No XML linter inputs staged"
+    [ "$output" = "BLOCK_EXIT_CODE=0" ] || fail "the gate spoke with nothing to do: $output"
 }
 
 @test "a src/ file merely USING a registered widget does not reach the check" {
@@ -373,7 +373,7 @@ EOF
 
     run_block true true
 
-    output_has "No XML linter inputs staged"
+    [ "$output" = "BLOCK_EXIT_CODE=0" ] || fail "the gate spoke with nothing to do: $output"
 }
 
 @test "a docs-only commit does not reach the check" {
@@ -383,7 +383,7 @@ EOF
 
     run_block true true
 
-    output_has "No XML linter inputs staged"
+    [ "$output" = "BLOCK_EXIT_CODE=0" ] || fail "the gate spoke with nothing to do: $output"
 }
 
 # ---------------------------------------------------------------------------

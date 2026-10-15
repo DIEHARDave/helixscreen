@@ -23,7 +23,9 @@ derives any more, is stale. So is a token whose HEAD value the golden records
 verbatim and whose new value it does not. A value the golden does not record
 verbatim (a responsive variant reads <unset>, its base resolves through
 breakpoints) is left to the test. A golden that is part of the commit was
-regenerated, and is trusted.
+regenerated, and is trusted. One that regeneration leaves byte-identical (a
+dropped XML token whose name C++ also registers) can never join the commit, so
+HELIX_GOLDEN_CURRENT=1 records that it was regenerated and is current.
 
 tools/xml-linter/schema/schema.json is the third artefact these tokens feed;
 scripts/qc/xml_linter.sh owns it.
@@ -35,6 +37,7 @@ usage: check_theme_artifacts.py [--staged-only]
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import subprocess
 import sys
@@ -112,7 +115,8 @@ def main() -> int:
                                   capture_output=True).returncode == 0
         old_golden = blob("HEAD", GOLDEN) if has_head else None
         new_golden = blob(None, GOLDEN)
-        if old_golden is not None and new_golden is not None:
+        if (old_golden is not None and new_golden is not None
+                and os.environ.get("HELIX_GOLDEN_CURRENT") != "1"):
             old_tokens = gen_theme_tokens.collect(xml_files("HEAD"))
             stale = golden_problems(old_tokens, new_tokens, old_golden, new_golden)
             if stale:
@@ -120,6 +124,8 @@ def main() -> int:
                 shown = ", ".join(stale[:12]) + (" ..." if len(stale) > 12 else "")
                 print(f"❌ {GOLDEN} is stale for: {shown}")
                 print(f"   Regenerate it, review the diff and commit it:\n   {GOLDEN_CMD}")
+                print("   If regenerating leaves it unchanged, it is current: commit with "
+                      "HELIX_GOLDEN_CURRENT=1")
 
     if failed:
         return 1

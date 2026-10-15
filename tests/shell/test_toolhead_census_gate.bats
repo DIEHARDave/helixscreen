@@ -25,6 +25,8 @@ setup() {
     git config user.email t@example.com
     git config user.name tester
     cat > tests/unit/test_job_holds_machine.cpp <<'CPP'
+constexpr const char* kSubject = "job_holds_machine";
+constexpr const char* kDisabled = "state=\"disabled\"";
 constexpr const char* kGuardAttribute = "moves_machine=\"true\"";
 constexpr const char* kGuardAttributeName = "moves_machine=\"";
 constexpr const char* kSocketGuard = "moves_machine=\"$";
@@ -38,6 +40,7 @@ bool declares_a_control(const std::string& xml) {
     for (const char* marker :
          {"callback=\"", "clickable=\"true\"", "<lv_button"}) {
         if (xml.find(marker) != std::string::npos) {
+            REQUIRE(bind.find("print_active") == std::string::npos);
 CPP
     printf '<view><lv_button moves_machine="true"/></view>\n' > ui_xml/motion.xml
     printf '<view><lv_obj clickable="true"/></view>\n' > ui_xml/components/about.xml
@@ -111,6 +114,40 @@ run_staged() {
     run_staged
     [ "$status" -eq 0 ]
     lacks "peer_wip" "$output"
+}
+
+@test "a missing census test fails in both modes instead of passing" {
+    git rm -q tests/unit/test_job_holds_machine.cpp
+    run_staged
+    [ "$status" -eq 1 ]
+    contains "test_job_holds_machine.cpp is not in the index" "$output"
+    run python3 "$GATE"
+    [ "$status" -eq 1 ]
+    contains "test_job_holds_machine.cpp is not in" "$output"
+}
+
+@test "an XML file naming the job_holds_machine subject fails" {
+    printf '<view><lv_label text="x"><bind_flag_if_eq subject="job_holds_machine"/></lv_label></view>\n' \
+        > ui_xml/plain.xml
+    git add ui_xml/plain.xml
+    run_staged
+    [ "$status" -eq 1 ]
+    contains "ui_xml/plain.xml names job_holds_machine 1 times" "$output"
+}
+
+@test "a bind_state that disables a control on print_active fails; another subject passes" {
+    printf '<view><lv_button moves_machine="true"><bind_state_if_eq subject="print_active" state="disabled" ref_value="1"/></lv_button></view>\n' \
+        > ui_xml/motion.xml
+    git add ui_xml/motion.xml
+    run_staged
+    [ "$status" -eq 1 ]
+    contains "ui_xml/motion.xml disables a control on print_active" "$output"
+
+    printf '<view><lv_button moves_machine="true"><bind_state_if_eq subject="homed" state="disabled" ref_value="0"/></lv_button></view>\n' \
+        > ui_xml/motion.xml
+    git add ui_xml/motion.xml
+    run_staged
+    [ "$status" -eq 0 ]
 }
 
 @test "the gate is triggered by ui_xml XML and stays off for anything else" {

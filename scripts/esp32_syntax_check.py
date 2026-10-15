@@ -74,22 +74,24 @@ def compile_args(entry):
     return out + ["-fsyntax-only"]
 
 
-def rebase_path(tok, src_root, tree, fallback_root):
+def rebase_path(tok, src_root, tree, *fallback_roots):
     """Point every path under the configured source root at the tree being checked.
 
     Rewrites the root wherever it sits in the token (-I, -isystem, -include,
     -D values such as LV_CONF_PATH="...", -fmacro-prefix-map=). A path that
-    does not exist there (build/generated in a never-built checkout) falls
-    back to the primary checkout's copy.
+    does not exist there (build/generated in a never-built checkout, lib/ in an
+    index overlay) resolves through the fallback roots in order: the checkout,
+    then the primary checkout's copy.
     """
     def sub(m):
         rel = m.group(1)
         if not rel:
             return tree
-        cand = os.path.join(tree, rel)
-        if not os.path.exists(cand) and os.path.exists(os.path.join(fallback_root, rel)):
-            cand = os.path.join(fallback_root, rel)
-        return cand
+        for root in (tree, *fallback_roots):
+            cand = os.path.join(root, rel)
+            if os.path.exists(cand):
+                return cand
+        return os.path.join(tree, rel)
 
     # The root alone (-I<root>, a prefix map's <root>=) is a path too; a longer
     # sibling name (<root>x/) is not.
@@ -125,6 +127,24 @@ def select_units(units, changed, read_source, one_per_header=False):
         elif units_of_h and not picked.intersection(units_of_h):
             picked.add(units_of_h[0])
     return sorted(picked)
+
+
+INDEX_DIRS = ("src", "include", FW_DIR)
+
+
+def index_overlay(tree, dest):
+    """Write the staged copy of every tracked file under INDEX_DIRS into dest.
+
+    The commit hook compiles what the commit will contain. The working tree can
+    hold a fix the index lacks, or a peer's unstaged header, and either would
+    decide the verdict instead. ~0.25s for the ~2200 files.
+    """
+    dest.mkdir(parents=True, exist_ok=True)
+    listing = subprocess.run(["git", "-C", str(tree), "ls-files", "-z", "--", *INDEX_DIRS],
+                             check=True, capture_output=True).stdout
+    subprocess.run(["git", "-C", str(tree), "checkout-index", "-z", "--stdin", "-f",
+                    f"--prefix={dest}/"], input=listing, check=True, capture_output=True)
+    return dest
 
 
 def docker_base(mounts):
@@ -221,9 +241,22 @@ def main():
         if f.startswith(src_root + "/") and f.endswith(SOURCE_EXTS):
             units[f[len(src_root) + 1:]] = entry
 
+    overlay = None
+    source_tree, fallbacks = tree, (primary,)
+    if args.staged:
+        overlay = index_overlay(tree, cache / f"index-{os.getpid()}")
+        source_tree, fallbacks = str(overlay), (tree, primary)
+    try:
+        return check_units(args, units, changed, src_root, source_tree, fallbacks, cache, mounts)
+    finally:
+        if overlay is not None:
+            shutil.rmtree(overlay, ignore_errors=True)
+
+
+def check_units(args, units, changed, src_root, source_tree, fallbacks, cache, mounts):
     def read_source(rel):
         try:
-            return Path(tree, rel).read_text(errors="replace")
+            return Path(source_tree, rel).read_text(errors="replace")
         except OSError:
             return None
 
@@ -234,7 +267,7 @@ def main():
     for rel in picked:
         entry = units[rel]
         specs.append({"rel": rel, "cwd": entry["directory"],
-                      "args": [rebase_path(t, src_root, tree, primary)
+                      "args": [rebase_path(t, src_root, source_tree, *fallbacks)
                                for t in compile_args(entry)]})
     jobs_file = cache / f"jobs-{os.getpid()}.json"
     jobs_file.write_text(json.dumps(specs))

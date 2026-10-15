@@ -138,8 +138,11 @@ def catfile_batch(items: Iterable[tuple[str, str]],
             header = proc.stdout.readline().decode('utf-8', 'replace').split()
             # "<sha> <type> <size>" is followed by the object's bytes whatever
             # its type, so a tree or commit is read past, never yielded.
-            # "missing" and "ambiguous" headers carry no bytes.
-            if len(header) < 3:
+            # "<name> missing" and "<name> ambiguous" carry no bytes, and the
+            # name echoed back may itself contain spaces.
+            if header and header[-1] in ('missing', 'ambiguous'):
+                continue
+            if len(header) != 3 or not header[2].isdigit():
                 continue
             size = int(header[2])
             content = proc.stdout.read(size)
