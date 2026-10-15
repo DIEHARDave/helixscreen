@@ -206,8 +206,10 @@ caller_session_id() { printf '%s' "${CLAUDE_CODE_SESSION_ID:-${HELIX_SESSION_ID:
 # --session, --pid auto or by default under a `claude` ancestor) recorded under
 # the caller's session id. The id is what still ties a process reparented to
 # init (a detached launch whose shell exited) to its session. It never matches
-# a claim owned by a short-lived pid: a session's own gate holding build: must
-# still refuse that session's subagents the tree. Two empty ids never match.
+# a claim owned by an explicit pid, so a build: claim taken with --pid, as
+# land-gate takes it, refuses the tree to that session's subagents. A default
+# take under a claude ancestor records the claude pid instead, and the
+# session's subagents match it by ancestry. Two empty ids never match.
 same_owner() {
     local holder sid
     holder=$(json_get "$1" pid)

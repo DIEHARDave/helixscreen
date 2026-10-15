@@ -17,7 +17,7 @@ push_base() {
         printf '%s\n' "$base"
         return 0
     fi
-    if [ -f scripts/diff_base.py ] && grep -q -- "'--head'" scripts/diff_base.py; then
+    if [ -f scripts/diff_base.py ] && grep -q -- '--head' scripts/diff_base.py; then
         python3 scripts/diff_base.py --head "$target" 2>/dev/null
         return
     fi
