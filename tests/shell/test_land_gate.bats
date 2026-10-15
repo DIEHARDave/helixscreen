@@ -50,6 +50,27 @@ case "$1" in take) exit "${CLAIM_TAKE_RC:-0}" ;; esac'
     export TEST_HOST=0
 }
 
+# No test here runs make in the real tree: a second make there races the gate's
+# own lanes (prune-orphan-test-objs deletes the test binary they run). A recipe
+# is checked by copying its fragment of mk/tests.mk into a scratch Makefile.
+# mk_fragment <first-line-regex> <target>: from the first line through <target>'s recipe.
+mk_fragment() {
+    awk -v first="$1" -v tgt="^$2:" '
+        $0 ~ first { on = 1 }
+        on { print }
+        on && $0 ~ tgt { intgt = 1; next }
+        intgt && /^$/ { exit }' "$REPO_ROOT/mk/tests.mk"
+}
+
+run_fragment() { # <first-line-regex> <target> <make args...>
+    local dir="$BATS_TEST_TMPDIR/mkfrag"
+    mkdir -p "$dir"
+    { printf 'ECHO := @echo\nQ := @\n'; mk_fragment "$1" "$2"; } >"$dir/Makefile"
+    grep -q "^$2:" "$dir/Makefile" || { echo "no $2 recipe in the fragment" >&2; return 1; }
+    shift
+    (cd "$dir" && JOBPOOL=0 make --no-print-directory -f Makefile "$@")
+}
+
 row() { # <status> <step>: the table row for step has that status
     printf '%s\n' "$output" | grep -Eq "^  $1 +$2 "
 }
@@ -139,24 +160,31 @@ row() { # <status> <step>: the table row for step has that status
     [ ! -s "$CALLS" ]
 }
 
+# The recipe names $(MAKE), so make runs it even under -n: the script it calls
+# is a stub in the scratch directory, never the real gate.
 @test "make land-gate hands off to scripts/land-gate.sh with CI_SHARDS" {
-    run make -C "$REPO_ROOT" -n --no-print-directory land-gate
+    mkdir -p "$BATS_TEST_TMPDIR/mkfrag/scripts"
+    printf '#!/bin/sh\necho "stub gate CI_SHARDS=$CI_SHARDS TEST_HOST=$TEST_HOST"\n' \
+        >"$BATS_TEST_TMPDIR/mkfrag/scripts/land-gate.sh"
+    chmod +x "$BATS_TEST_TMPDIR/mkfrag/scripts/land-gate.sh"
+    run run_fragment '^CI_SHARDS [?]=' land-gate land-gate
     [ "$status" -eq 0 ]
-    contains "scripts/land-gate.sh" "$output"
-    contains 'CI_SHARDS="8"' "$output"
+    contains "stub gate CI_SHARDS=8 TEST_HOST=" "$output"
+    run run_fragment '^CI_SHARDS [?]=' land-gate land-gate CI_SHARDS=12 TEST_HOST=1
+    contains "stub gate CI_SHARDS=12 TEST_HOST=1" "$output"
 }
 
 # The gate is only worth its name while it runs what CI runs.
 @test "test-ui-ci runs build.yml's exact tests/ui pytest invocation, headless" {
-    local ci mk args
+    local ci args
     ci=$(grep -E '^\s*run: pytest tests/ui/' "$REPO_ROOT/.github/workflows/build.yml" | sed 's/^ *run: pytest //')
     [ -n "$ci" ]
-    args=$(make -C "$REPO_ROOT" -pn --no-print-directory test-ui-ci 2>/dev/null |
-        sed -n 's/^UI_CI_PYTEST_ARGS := //p')
+    args=$(sed -n 's/^UI_CI_PYTEST_ARGS := //p' "$REPO_ROOT/mk/tests.mk")
     [ "$args" = "$ci" ] || { printf 'CI:   %s\nmake: %s\n' "$ci" "$args"; return 1; }
-    mk=$(make -C "$REPO_ROOT" -n --no-print-directory test-ui-ci 2>/dev/null)
-    contains "pytest $ci;" "$mk"
-    contains "HELIX_HEADLESS=1 SDL_VIDEODRIVER=dummy" "$mk"
+    run run_fragment '^UI_CI_PYTEST_ARGS :=' test-ui-ci -n test-ui-ci
+    [ "$status" -eq 0 ]
+    contains "pytest $ci;" "$output"
+    contains "HELIX_HEADLESS=1 SDL_VIDEODRIVER=dummy" "$output"
 }
 
 @test "CI's unit-test step uses the filter the sweep passes, with explicit shard flags" {
@@ -222,10 +250,10 @@ case "$1" in take) [ "$5" = "$CLAIM_OWNER" ] ;; esac'
 }
 
 @test "test-shell with BATS_REQUIRED=1 fails when bats is missing; without it, skips" {
-    run make -C "$REPO_ROOT" --no-print-directory test-shell BATS_BIN=no-such-bats BATS_REQUIRED=1
+    run run_fragment '^BATS_BIN [?]=' test-shell test-shell BATS_BIN=no-such-bats BATS_REQUIRED=1
     [ "$status" -ne 0 ]
     contains "BATS_REQUIRED=1" "$output"
-    run make -C "$REPO_ROOT" --no-print-directory test-shell BATS_BIN=no-such-bats
+    run run_fragment '^BATS_BIN [?]=' test-shell test-shell BATS_BIN=no-such-bats
     [ "$status" -eq 0 ]
     contains "skipping shell tests" "$output"
 }
