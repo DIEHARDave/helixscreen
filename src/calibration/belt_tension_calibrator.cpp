@@ -153,7 +153,7 @@ void BeltTensionCalibrator::measure_path(
 // settle() - home, then run the settling laps
 // ============================================================================
 
-void BeltTensionCalibrator::settle(BeltSettleInputs inputs, std::function<void()> on_done,
+void BeltTensionCalibrator::settle(const BeltSettleInputs& inputs, std::function<void()> on_done,
                                    std::function<void(BeltSettleRefusal)> on_refused,
                                    BeltErrorCallback on_error) {
     if (!api_) {
@@ -167,9 +167,8 @@ void BeltTensionCalibrator::settle(BeltSettleInputs inputs, std::function<void()
     cancel();
     const uint32_t generation = ++run_generation_;
 
-    // A G28 homes every axis, so the laps are always planned as homed. Planning
-    // once before homing keeps a refusal from sending anything at all.
-    inputs.xy_homed = true;
+    // Planned before homing, so a refusal sends nothing at all. A G28 homes
+    // every axis, so the plan holds once homing is done.
     const BeltSettlePlan plan = plan_belt_settle(inputs);
     if (plan.refusal != BeltSettleRefusal::NONE) {
         spdlog::warn("[BeltTension] Settling refused: {}", static_cast<int>(plan.refusal));

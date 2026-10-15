@@ -26,6 +26,7 @@
 #include "../../include/printer_state.h"
 #include "../../lvgl/lvgl.h"
 #include "../test_helpers/printer_state_test_access.h"
+#include "../test_helpers/script_lines.h"
 #include "../test_helpers/update_queue_test_access.h"
 #include "../ui_test_utils.h"
 #include "app_globals.h"
@@ -515,18 +516,6 @@ TEST_CASE_METHOD(BeltCalibratorFixture, "cancel silences the run's callbacks",
 
 namespace {
 
-/// The mock applies a script line by line and records each line it runs.
-std::vector<std::string> script_lines(const std::string& script) {
-    std::vector<std::string> out;
-    size_t start = 0;
-    while (start <= script.size()) {
-        const size_t nl = std::min(script.find('\n', start), script.size());
-        out.push_back(script.substr(start, nl - start));
-        start = nl + 1;
-    }
-    return out;
-}
-
 /// Settle inputs for the fixture's VORON_24 persona, probe point at the bed centre.
 BeltSettleInputs voron_settle_inputs() {
     const auto axis_max =
@@ -537,7 +526,6 @@ BeltSettleInputs voron_settle_inputs() {
     in.has_xy_limits = true;
     in.probe_point = std::array<float, 3>{in.x_max / 2.0f, in.y_max / 2.0f, 20.0f};
     in.max_velocity_mm_s = 500.0f;
-    in.xy_homed = true;
     return in;
 }
 
@@ -556,19 +544,15 @@ TEST_CASE_METHOD(BeltCalibratorFixture, "settle sends the planned laps and repor
         [&](BeltSettleRefusal r) { FAIL("refused: " << static_cast<int>(r)); },
         [&](const std::string& msg) { FAIL(msg); });
     REQUIRE(pump_until(done));
-    CHECK(mock_client_.gcode_script_history() == script_lines(plan.gcode));
+    CHECK(mock_client_.gcode_script_history() == helix::test::script_lines(plan.gcode));
     CHECK(calibrator_->get_state() == BeltTensionCalibrator::State::IDLE);
 }
 
 TEST_CASE_METHOD(BeltCalibratorFixture, "settle homes first when XY is not homed",
                  "[belt_tension][calibrator][settle]") {
     lv_subject_copy_string(get_printer_state().motion_state().get_homed_axes_subject(), "");
-    auto inputs = voron_settle_inputs();
-    inputs.xy_homed = false;
-    // The G28 homes every axis, so the laps are planned as homed.
-    auto homed = inputs;
-    homed.xy_homed = true;
-    const auto plan = plan_belt_settle(homed);
+    const auto inputs = voron_settle_inputs();
+    const auto plan = plan_belt_settle(inputs);
     REQUIRE(plan.refusal == BeltSettleRefusal::NONE);
     mock_client_.clear_gcode_script_history();
 
@@ -578,9 +562,28 @@ TEST_CASE_METHOD(BeltCalibratorFixture, "settle homes first when XY is not homed
         [&](BeltSettleRefusal r) { FAIL("refused: " << static_cast<int>(r)); },
         [&](const std::string& msg) { FAIL(msg); });
     REQUIRE(pump_until(done));
-    auto expected = script_lines(plan.gcode);
+    auto expected = helix::test::script_lines(plan.gcode);
     expected.insert(expected.begin(), "G28");
     CHECK(mock_client_.gcode_script_history() == expected);
+}
+
+TEST_CASE_METHOD(BeltCalibratorFixture, "settle sends the laps with the plan's timeout",
+                 "[belt_tension][calibrator][settle]") {
+    // 10 mm/s max velocity laps at 6 mm/s: the plan's timeout is far past the
+    // default a G-code request gets.
+    auto inputs = voron_settle_inputs();
+    inputs.max_velocity_mm_s = 10.0f;
+    const auto plan = plan_belt_settle(inputs);
+    REQUIRE(plan.refusal == BeltSettleRefusal::NONE);
+    REQUIRE(plan.timeout_ms > belt_settle::MIN_TIMEOUT_MS);
+
+    std::atomic<bool> done{false};
+    calibrator_->settle(
+        inputs, [&]() { done = true; },
+        [&](BeltSettleRefusal r) { FAIL("refused: " << static_cast<int>(r)); },
+        [&](const std::string& msg) { FAIL(msg); });
+    REQUIRE(pump_until(done));
+    CHECK(mock_client_.last_send_timeout_ms() == plan.timeout_ms);
 }
 
 TEST_CASE_METHOD(BeltCalibratorFixture, "a refused settle sends nothing",
@@ -588,7 +591,6 @@ TEST_CASE_METHOD(BeltCalibratorFixture, "a refused settle sends nothing",
     // Unhomed too: a refusal known before homing must not home either.
     lv_subject_copy_string(get_printer_state().motion_state().get_homed_axes_subject(), "");
     auto inputs = voron_settle_inputs();
-    inputs.xy_homed = false;
     inputs.probe_point.reset();
     mock_client_.clear_gcode_script_history();
 

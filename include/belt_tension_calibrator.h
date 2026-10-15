@@ -121,15 +121,14 @@ class BeltTensionCalibrator {
     /**
      * @brief Home if XY is not homed, then run the settling laps
      *
-     * Homing goes through ensure_homed_then(); a G28 homes every axis, so the
-     * plan is made with xy_homed set after it. plan_belt_settle() decides the
-     * moves; a refusal reaches on_refused and nothing is sent, not even the
-     * G28. Otherwise the script is sent with the plan's timeout and on_done
+     * Homing goes through ensure_homed_then(). plan_belt_settle() decides the
+     * moves before homing; a refusal reaches on_refused and nothing is sent,
+     * not even the G28. Otherwise the script is sent with the plan's timeout and on_done
      * fires on its ack (the script's M400 holds the ack until the laps
      * finish). All callbacks run on the LVGL thread. A run already in
      * progress is cancelled first, and cancel() silences this one the same way.
      */
-    void settle(BeltSettleInputs inputs, std::function<void()> on_done,
+    void settle(const BeltSettleInputs& inputs, std::function<void()> on_done,
                 std::function<void(BeltSettleRefusal)> on_refused, BeltErrorCallback on_error);
 
     // ========================================================================

@@ -1437,7 +1437,6 @@
   <translation tag="Home &amp; Continue" ja="ホーミングして続行"/>
   <translation tag="Home All" ja="全軸ホーミング"/>
   <translation tag="Home Selector" ja="セレクターをホーミング"/>
-  <translation tag="Home X and Y first." ja="先にXとYをホーミングしてください。"/>
   <translation tag="Home all axes to use the map" ja="マップを使うには全軸をホーミングしてください"/>
   <translation tag="Home and sweep the cutter to re-find its position" ja="原点復帰後にカッターを走査して位置を再検出します"/>
   <translation tag="Home failed" ja="ホーミング失敗"/>

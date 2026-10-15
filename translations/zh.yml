@@ -1480,7 +1480,6 @@ translations:
   Home: 归位
   Home & Continue: 归位并继续
   Home All: "全部归位"
-  Home X and Y first.: '请先将 X 和 Y 归位。'
   Home all axes to use the map: 请先归位所有轴以使用地图
   Home and sweep the cutter to re-find its position: 归零并扫过切刀以重新找到其位置
   Home failed: 归位失败

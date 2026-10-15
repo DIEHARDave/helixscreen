@@ -1437,7 +1437,6 @@
   <translation tag="Home &amp; Continue" it="Homing e continua"/>
   <translation tag="Home All" it="Homing tutto"/>
   <translation tag="Home Selector" it="Homing selettore"/>
-  <translation tag="Home X and Y first." it="Esegui prima l&apos;homing di X e Y."/>
   <translation tag="Home all axes to use the map" it="Porta tutti gli assi in posizione per usare la mappa"/>
   <translation tag="Home and sweep the cutter to re-find its position" it="Azzera e fa scorrevolare la taglierina per ritrovare la sua posizione"/>
   <translation tag="Home failed" it="Homing fallito"/>

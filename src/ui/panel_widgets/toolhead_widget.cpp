@@ -405,9 +405,8 @@ ToolheadWidget::LiveState ToolheadWidget::read_live() const {
                                                  lv_subject_get_int(resting[i]));
     }
     auto& tools = ToolState::instance();
-    // Several tools name a tool changer's active tool; AMS slots feeding one hotend are
-    // tools too and need no label.
-    if (tools.is_multi_tool() && (tools.has_multiple_extruders() || !tools.ams_topology_active())) {
+    // Several toolheads name the active one; AMS slots feeding one hotend need no label.
+    if (tools.has_multiple_toolheads()) {
         const auto* active = tools.active_tool();
         s.tool_label = active ? active->display_label
                               : ui::lane_label(ui::active_tool_noun(),

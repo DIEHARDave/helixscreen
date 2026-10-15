@@ -1484,7 +1484,6 @@ translations:
   Home: ホーム
   Home & Continue: ホーミングして続行
   Home All: "全軸ホーミング"
-  Home X and Y first.: '先にXとYをホーミングしてください。'
   Home all axes to use the map: マップを使うには全軸をホーミングしてください
   Home and sweep the cutter to re-find its position: 原点復帰後にカッターを走査して位置を再検出します
   Home failed: ホーミング失敗

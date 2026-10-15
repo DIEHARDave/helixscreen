@@ -22,6 +22,9 @@ inline constexpr int LAPS = 3;
 inline constexpr float INSET_MIN_MM = 20.0f; ///< laps stay at least this far inside the limits
 inline constexpr float INSET_SPAN_FRACTION =
     0.07f; ///< ...or this share of the axis span, if larger
+/// With several tools, the laps keep to the central half of each axis: parked
+/// tools and their docks sit inside the travel.
+inline constexpr float MULTI_TOOL_INSET_SPAN_FRACTION = 0.25f;
 inline constexpr float SPEED_MAX_MM_S = 300.0f;
 inline constexpr float SPEED_VELOCITY_FRACTION = 0.6f; ///< of toolhead max_velocity
 inline constexpr float MIN_SIDE_MM = 20.0f; ///< a shorter lap side cannot run the belt loop
@@ -44,12 +47,11 @@ struct BeltSettleInputs {
     float origin_y = 0.0f;
     float origin_z = 0.0f;
     float max_velocity_mm_s = 0.0f; ///< toolhead max_velocity; 0 when not yet reported
-    bool xy_homed = false;
+    int tool_count = 1;             ///< physical toolheads; docks are in the travel past one
 };
 
 enum class BeltSettleRefusal {
     NONE,
-    NOT_HOMED_XY,
     NO_AXIS_LIMITS,
     NO_PROBE_POINT,
     NO_VELOCITY,

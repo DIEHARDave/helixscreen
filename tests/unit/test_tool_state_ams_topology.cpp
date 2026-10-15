@@ -973,3 +973,32 @@ TEST_CASE("A lane backend's topology does not allow an empty carriage",
     REQUIRE(topo.has_value());
     CHECK_FALSE(topo->allows_empty_carriage);
 }
+
+TEST_CASE_METHOD(ToolStateFixture, "multiple toolheads means a tool changer, never AMS slots",
+                 "[tool-state][ams][ams-topology]") {
+    auto& ts = helix::ToolState::instance();
+
+    SECTION("one hotend") {
+        ts.init_tools(make_single_extruder_discovery());
+        UpdateQueue::instance().drain();
+        CHECK_FALSE(ts.has_multiple_toolheads());
+    }
+    SECTION("a 4-slot AMS feeding one hotend") {
+        ts.init_tools(make_single_extruder_discovery());
+        helix::ToolTopology topo;
+        topo.tool_count = 4;
+        topo.active_tool = 0;
+        topo.tool_to_slot = {0, 1, 2, 3};
+        ts.set_ams_topology(topo);
+        UpdateQueue::instance().drain();
+        REQUIRE(ts.is_multi_tool());
+        CHECK_FALSE(ts.has_multiple_toolheads());
+        ts.clear_ams_topology();
+        UpdateQueue::instance().drain();
+    }
+    SECTION("a 4-tool changer") {
+        ts.init_tools(make_toolchanger_discovery());
+        UpdateQueue::instance().drain();
+        CHECK(ts.has_multiple_toolheads());
+    }
+}

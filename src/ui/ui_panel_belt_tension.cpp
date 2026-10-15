@@ -23,7 +23,7 @@
 #include "static_panel_registry.h"
 #include "static_subject_registry.h"
 #include "theme_manager.h"
-#include "toolhead_homing.h"
+#include "tool_state.h"
 #include "ui/ui_widget_helpers.h"
 
 #include <spdlog/fmt/fmt.h>
@@ -59,8 +59,6 @@ BeltPath other_path(BeltPath path) {
 const char* settle_refusal_message(helix::calibration::BeltSettleRefusal refusal) {
     using helix::calibration::BeltSettleRefusal;
     switch (refusal) {
-    case BeltSettleRefusal::NOT_HOMED_XY:
-        return lv_tr("Home X and Y first.");
     case BeltSettleRefusal::NO_AXIS_LIMITS:
         return lv_tr("The printer has not reported its axis limits yet.");
     case BeltSettleRefusal::NO_PROBE_POINT:
@@ -100,6 +98,7 @@ BeltTensionPanel::~BeltTensionPanel() {
     print_active_observer_.reset();
     connected_observer_.reset();
     klippy_observer_.reset();
+    max_velocity_observer_.reset();
     gate_observers_wired_ = false;
 
     if (subjects_initialized_) {
@@ -309,6 +308,7 @@ void BeltTensionPanel::deinit_subjects() {
     print_active_observer_.reset();
     connected_observer_.reset();
     klippy_observer_.reset();
+    max_velocity_observer_.reset();
     gate_observers_wired_ = false;
 
     if (subjects_initialized_) {
@@ -513,6 +513,7 @@ void BeltTensionPanel::cleanup() {
     print_active_observer_.reset();
     connected_observer_.reset();
     klippy_observer_.reset();
+    max_velocity_observer_.reset();
     theme_observer_.reset();
     ultrawide_observer_.reset();
     gate_observers_wired_ = false;
@@ -909,14 +910,13 @@ helix::calibration::BeltSettleInputs BeltTensionPanel::settle_inputs() const {
     in.origin_z = machine.z_min - gcode.z_min;
     in.max_velocity_mm_s =
         static_cast<float>(lv_subject_get_int(motion.get_max_velocity_subject()));
-    in.xy_homed = axis_is_homed(ps, Axis::X) && axis_is_homed(ps, Axis::Y);
+    const auto& tools = ToolState::instance();
+    in.tool_count = tools.has_multiple_toolheads() ? tools.tool_count() : 1;
     return in;
 }
 
 float BeltTensionPanel::settle_seconds() const {
-    auto in = settle_inputs();
-    in.xy_homed = true; // a run homes before it settles
-    const auto plan = helix::calibration::plan_belt_settle(in);
+    const auto plan = helix::calibration::plan_belt_settle(settle_inputs());
     return plan.refusal == helix::calibration::BeltSettleRefusal::NONE ? plan.seconds : 0.0f;
 }
 
@@ -1740,6 +1740,16 @@ void BeltTensionPanel::ensure_gate_observers() {
     klippy_observer_ = helix::ui::observe<int>(
         ps.network_state().get_klippy_state_subject(), this,
         [](BeltTensionPanel* self, int) { self->refresh_gate(); }, ps.get_subjects_lifetime());
+    // The laps' share of the duration line needs max_velocity and the axis
+    // limits, which can land after the [resonance_tester] answer. Both arrive
+    // in one toolhead frame and max_velocity is applied first, so the refresh
+    // waits for the frame to finish.
+    max_velocity_observer_ = helix::ui::observe<int>(
+        ps.motion_state().get_max_velocity_subject(), this,
+        [](BeltTensionPanel* self, int) {
+            self->lifetime_.defer("BeltTension::hw_sweep", [self]() { self->refresh_hw_sweep(); });
+        },
+        ps.get_subjects_lifetime());
 
     gate_observers_wired_ = true;
     spdlog::debug("[BeltTension] Gate observers attached");
@@ -1793,17 +1803,24 @@ void BeltTensionPanel::query_hw_facts() {
     }
 
     helix::calibration::query_resonance_tester_config(
-        *client_,
-        lifetime_.bg_cb("BeltTension::resonance_cfg",
-                        [this](helix::calibration::ResonanceTesterConfig cfg) {
-                            sweep_cfg_ = cfg;
-                            push_chart_data();
-                            snprintf(hw_sweep_buf_, sizeof(hw_sweep_buf_), "%s",
-                                     fmt::format(lv_tr("{:.0f}-{:.0f} Hz · about {} min"),
-                                                 cfg.min_freq, cfg.max_freq, full_check_minutes())
-                                         .c_str());
-                            lv_subject_copy_string(&hw_sweep_subject_, hw_sweep_buf_);
-                        }));
+        *client_, lifetime_.bg_cb("BeltTension::resonance_cfg",
+                                  [this](helix::calibration::ResonanceTesterConfig cfg) {
+                                      sweep_cfg_ = cfg;
+                                      hw_sweep_known_ = true;
+                                      push_chart_data();
+                                      refresh_hw_sweep();
+                                  }));
+}
+
+void BeltTensionPanel::refresh_hw_sweep() {
+    if (!hw_sweep_known_ || !subjects_initialized_) {
+        return;
+    }
+    snprintf(hw_sweep_buf_, sizeof(hw_sweep_buf_), "%s",
+             fmt::format(lv_tr("{:.0f}-{:.0f} Hz · about {} min"), sweep_cfg_.min_freq,
+                         sweep_cfg_.max_freq, full_check_minutes())
+                 .c_str());
+    lv_subject_copy_string(&hw_sweep_subject_, hw_sweep_buf_);
 }
 
 // ============================================================================

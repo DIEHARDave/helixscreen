@@ -1437,7 +1437,6 @@
   <translation tag="Home &amp; Continue" zh="归位并继续"/>
   <translation tag="Home All" zh="全部归位"/>
   <translation tag="Home Selector" zh="选择器归位"/>
-  <translation tag="Home X and Y first." zh="请先将 X 和 Y 归位。"/>
   <translation tag="Home all axes to use the map" zh="请先归位所有轴以使用地图"/>
   <translation tag="Home and sweep the cutter to re-find its position" zh="归零并扫过切刀以重新找到其位置"/>
   <translation tag="Home failed" zh="归位失败"/>

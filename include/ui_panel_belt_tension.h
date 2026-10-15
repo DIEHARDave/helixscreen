@@ -264,6 +264,8 @@ class BeltTensionPanel : public OverlayBase {
     void probe_klippy_socket();
     /// Ask the printer its [resonance_tester] range for bt_hw_sweep.
     void query_hw_facts();
+    /// bt_hw_sweep from sweep_cfg_ and the laps; nothing until the range is known.
+    void refresh_hw_sweep();
     /// Ask the calibrator for kinematics and the accelerometer; the answer
     /// clears detection_pending_.
     void start_hardware_detection();
@@ -389,6 +391,7 @@ class BeltTensionPanel : public OverlayBase {
     ObserverGuard print_active_observer_;
     ObserverGuard connected_observer_;
     ObserverGuard klippy_observer_;
+    ObserverGuard max_velocity_observer_;
     ObserverGuard theme_observer_;
     ObserverGuard ultrawide_observer_;
     bool gate_observers_wired_ = false;
@@ -420,6 +423,7 @@ class BeltTensionPanel : public OverlayBase {
     bool tier_animations_ = true;
     /// The printer's [resonance_tester] sweep; Klipper defaults until the query lands.
     helix::calibration::ResonanceTesterConfig sweep_cfg_;
+    bool hw_sweep_known_ = false; ///< a [resonance_tester] query has answered
 
     // Hardware detection cache. Feeds BeltGateInputs::is_corexy.
     helix::calibration::BeltTensionHardware detected_hw_;

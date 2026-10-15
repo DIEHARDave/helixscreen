@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <string_view>
 
 namespace helix::calibration {
 
@@ -36,32 +37,28 @@ void query_resonance_tester_config(IMoonrakerClient& client,
 namespace {
 
 /// "x, y, z" from the first non-empty line of a probe_points string.
-std::optional<std::array<float, 3>> parse_probe_point_text(const std::string& text) {
-    size_t start = 0;
-    std::string line;
-    while (start <= text.size()) {
-        const size_t end = std::min(text.find('\n', start), text.size());
-        line = text.substr(start, end - start);
-        if (line.find_first_not_of(" \t\r") != std::string::npos) {
+std::optional<std::array<float, 3>> parse_probe_point_text(std::string_view text) {
+    std::string_view line;
+    for (const std::string_view candidate : text_io::lines(text)) {
+        line = text_io::trim(candidate);
+        if (!line.empty()) {
             break;
         }
-        line.clear();
-        start = end + 1;
     }
     std::array<float, 3> point{};
-    size_t field_start = 0;
-    for (size_t i = 0; i < point.size(); ++i) {
-        if (field_start > line.size()) {
-            return std::nullopt;
+    size_t filled = 0;
+    for (const std::string_view field : text_io::lines(line, ',')) {
+        if (filled == point.size()) {
+            break;
         }
-        const size_t comma = std::min(line.find(',', field_start), line.size());
-        const auto value =
-            text_io::parse_leading<float>(line.substr(field_start, comma - field_start));
+        const auto value = text_io::parse_leading<float>(field);
         if (!value) {
             return std::nullopt;
         }
-        point[i] = *value;
-        field_start = comma + 1;
+        point[filled++] = *value;
+    }
+    if (filled < point.size()) {
+        return std::nullopt;
     }
     return point;
 }

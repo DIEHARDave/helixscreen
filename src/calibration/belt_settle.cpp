@@ -11,7 +11,10 @@ namespace helix::calibration {
 
 namespace {
 
-float inset_for(float span) {
+float inset_for(float span, int tool_count) {
+    if (tool_count > 1) {
+        return belt_settle::MULTI_TOOL_INSET_SPAN_FRACTION * span;
+    }
     return std::max(belt_settle::INSET_MIN_MM, belt_settle::INSET_SPAN_FRACTION * span);
 }
 
@@ -21,10 +24,6 @@ BeltSettlePlan plan_belt_settle(const BeltSettleInputs& in) {
     namespace bs = belt_settle;
     BeltSettlePlan plan;
 
-    if (!in.xy_homed) {
-        plan.refusal = BeltSettleRefusal::NOT_HOMED_XY;
-        return plan;
-    }
     if (!in.has_xy_limits) {
         plan.refusal = BeltSettleRefusal::NO_AXIS_LIMITS;
         return plan;
@@ -38,8 +37,8 @@ BeltSettlePlan plan_belt_settle(const BeltSettleInputs& in) {
         return plan;
     }
 
-    const float inset_x = inset_for(in.x_max - in.x_min);
-    const float inset_y = inset_for(in.y_max - in.y_min);
+    const float inset_x = inset_for(in.x_max - in.x_min, in.tool_count);
+    const float inset_y = inset_for(in.y_max - in.y_min, in.tool_count);
     // Machine-space rectangle corners.
     const float x0 = in.x_min + inset_x;
     const float x1 = in.x_max - inset_x;

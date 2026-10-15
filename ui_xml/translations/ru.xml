@@ -1437,7 +1437,6 @@
   <translation tag="Home &amp; Continue" ru="Запарковать и продолжить"/>
   <translation tag="Home All" ru="Парковка всех осей"/>
   <translation tag="Home Selector" ru="Парковать селектор"/>
-  <translation tag="Home X and Y first." ru="Сначала выполните парковку X и Y."/>
   <translation tag="Home all axes to use the map" ru="Выполните парковку всех осей, чтобы использовать карту"/>
   <translation tag="Home and sweep the cutter to re-find its position" ru="Ищет ноль и прощупывает резак, чтобы заново найти его позицию"/>
   <translation tag="Home failed" ru="Парковка не удалась"/>

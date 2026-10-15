@@ -187,6 +187,13 @@ class ToolState {
         return extruder_count() > 1;
     }
 
+    /// Whether the printer has several physical toolheads: a tool changer or
+    /// more than one hotend. AMS slots feeding one hotend are tools too, and
+    /// do not count.
+    [[nodiscard]] bool has_multiple_toolheads() const {
+        return is_multi_tool() && (has_multiple_extruders() || !ams_topology_active());
+    }
+
     /// Returns "Nozzle" for single-tool, "Nozzle 1" for multi-tool (active tool),
     /// or the tool's configured Klipper name ("Nozzle Left") when it has one.
     [[nodiscard]] std::string nozzle_label() const;

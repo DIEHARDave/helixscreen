@@ -255,7 +255,6 @@ BeltSettleInputs mock_settle_inputs(MoonrakerClientMock& mock, float grow_mm = 0
     in.has_xy_limits = true;
     in.probe_point = parse_resonance_tester_config(mock_settings(mock)).probe_point;
     in.max_velocity_mm_s = 500.0f;
-    in.xy_homed = true;
     return in;
 }
 

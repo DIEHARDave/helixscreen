@@ -45,7 +45,9 @@
 #include "moonraker_api_mock.h"
 #include "moonraker_client_mock.h"
 #include "printer_detector.h"
+#include "printer_discovery.h"
 #include "printer_state.h"
+#include "tool_state.h"
 #include "translation_loader.h"
 
 #include <algorithm>
@@ -54,6 +56,7 @@
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <functional>
 #include <limits>
 #include <optional>
 #include <string>
@@ -2343,6 +2346,7 @@ TEST_CASE("Stop during the laps lands on START", "[belt][panel][settle]") {
     REQUIRE(run_steps(fx) == std::vector<std::string>{"settle"});
     REQUIRE(fx.text("bt_run_title") == "Settling belts");
 
+    const int stops_before = fx.mock().call_count("printer.emergency_stop");
     fx.panel().handle_stop_clicked();
     fx.pump_ms(200);
     lv_obj_t* dialog = ModalStack::instance().top_dialog();
@@ -2351,13 +2355,14 @@ TEST_CASE("Stop during the laps lands on START", "[belt][panel][settle]") {
     fx.pump_ms(200);
     CHECK(fx.state_int("belt_tension_state") ==
           static_cast<int>(BeltTensionPanel::ViewState::START));
+    CHECK(fx.mock().call_count("printer.emergency_stop") == stops_before + 1);
     fx.pump_ms(5000);
     CHECK(fx.state_int("belt_tension_state") ==
           static_cast<int>(BeltTensionPanel::ViewState::START));
     CHECK(run_steps(fx) == std::vector<std::string>{"settle"});
 }
 
-TEST_CASE("destroying the panel during the laps drops the late ack", "[belt][panel][settle]") {
+TEST_CASE("a rebuild during the laps drops the late ack", "[belt][panel][settle]") {
     BeltPanelFixture fx;
     REQUIRE(fx.wait_gate_open());
     fx.mock().clear_gcode_script_history();
@@ -2376,13 +2381,17 @@ TEST_CASE("destroying the panel during the laps drops the late ack", "[belt][pan
     CHECK(run_steps(fx) == std::vector<std::string>{"settle"});
 }
 
-TEST_CASE("the sweep fact line counts the laps", "[belt][panel][settle]") {
+TEST_CASE("the sweep fact line counts the laps, even when the toolhead reports late",
+          "[belt][panel][settle]") {
     BeltPanelFixture fx;
-    // 10 mm/s max velocity laps at 6 mm/s: minutes instead of seconds.
+    REQUIRE(fx.wait_gate_open());
+    // At 500 mm/s the laps take seconds: two 130 s sweeps round to 5 min.
+    REQUIRE(fx.text("bt_hw_sweep") == "5-135 Hz · about 5 min");
+
+    // A toolhead frame after the [resonance_tester] answer: 10 mm/s max
+    // velocity laps at 6 mm/s, minutes instead of seconds.
     fx.set_toolhead_limits(10.0);
-    fx.panel().on_deactivate(DeactivateReason::NavigateAway);
-    fx.panel().on_activate();
-    fx.pump_ms(500); // the [resonance_tester] query answers
+    fx.pump_ms(200);
 
     const auto axis_max =
         helix::mock::descriptor(MoonrakerClientMock::PrinterType::VORON_24).axis_max;
@@ -2392,10 +2401,8 @@ TEST_CASE("the sweep fact line counts the laps", "[belt][panel][settle]") {
     in.has_xy_limits = true;
     in.probe_point = std::array<float, 3>{in.x_max / 2.0f, in.y_max / 2.0f, 20.0f};
     in.max_velocity_mm_s = 10.0f;
-    in.xy_homed = true;
     const auto plan = helix::calibration::plan_belt_settle(in);
     REQUIRE(plan.refusal == helix::calibration::BeltSettleRefusal::NONE);
-    // Mock defaults 5-135 Hz at 1 Hz/s: two 130 s sweeps, then the laps.
     const int minutes = static_cast<int>(std::ceil((260.0f + plan.seconds) / 60.0f));
     REQUIRE(minutes != 5); // the laps change the answer
     CHECK(fx.text("bt_hw_sweep") == "5-135 Hz · about " + std::to_string(minutes) + " min");
@@ -2414,4 +2421,55 @@ TEST_CASE("a wake re-asks the probe point the suspension expired", "[belt][panel
     fx.panel().on_activate();
     REQUIRE(fx.pump_until_state(RESULTS));
     CHECK(run_steps(fx) == std::vector<std::string>{"settle", "sweep", "sweep"});
+}
+
+TEST_CASE("tearing the panel down during the laps drops the late ack", "[belt][panel][settle]") {
+    BeltPanelFixture fx;
+    REQUIRE(fx.wait_gate_open());
+    fx.mock().clear_gcode_script_history();
+
+    fx.panel().handle_start_clicked();
+    UpdateQueue::instance().drain(); // the query answers; the laps go out, their ack queued
+    REQUIRE(run_steps(fx) == std::vector<std::string>{"settle"});
+
+    // Destruction's order: cleanup(), then the members, the calibrator among them.
+    fx.panel().cleanup();
+    fx.panel().set_api(nullptr, nullptr);
+    fx.pump_ms(5000);
+    CHECK(run_steps(fx) == std::vector<std::string>{"settle"});
+}
+
+TEST_CASE("a tool changer's laps keep to the central half", "[belt][panel][settle]") {
+    BeltPanelFixture fx;
+    auto& tools = helix::ToolState::instance();
+    const auto use_tools = [&tools](nlohmann::json objects) {
+        helix::PrinterDiscovery hw;
+        hw.parse_objects(objects);
+        tools.deinit_subjects();
+        tools.init_subjects(/*register_xml=*/false);
+        tools.init_tools(hw);
+        UpdateQueue::instance().drain();
+    };
+    // Later cases expect a single-tool printer, whatever happens here.
+    struct RestoreOneTool {
+        std::function<void(nlohmann::json)> use;
+        ~RestoreOneTool() {
+            use({"extruder", "heater_bed"});
+        }
+    } restore{use_tools};
+    use_tools({"toolchanger", "tool T0", "tool T1", "tool T2", "tool T3", "extruder", "extruder1",
+               "extruder2", "extruder3"});
+    REQUIRE(tools.has_multiple_toolheads());
+    REQUIRE(fx.wait_gate_open());
+    fx.mock().clear_gcode_script_history();
+
+    fx.panel().handle_start_clicked();
+    REQUIRE(fx.pump_until_state(RESULTS));
+    const auto axis_max =
+        helix::mock::descriptor(MoonrakerClientMock::PrinterType::VORON_24).axis_max;
+    // A quarter of the span in from each end.
+    const std::string first_corner =
+        fmt::format("G1 X{:.1f} Y{:.1f} F18000", axis_max.x / 4.0, axis_max.y / 4.0);
+    const auto history = std::vector<std::string>(fx.mock().gcode_script_history());
+    CHECK(std::find(history.begin(), history.end(), first_corner) != history.end());
 }

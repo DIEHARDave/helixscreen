@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
+#include "../test_helpers/script_lines.h"
 #include "belt_settle.h"
 
 #include <cmath>
-#include <sstream>
 #include <string>
 #include <vector>
 
@@ -21,18 +21,7 @@ BeltSettleInputs square_bed(float side, std::array<float, 3> probe, float max_ve
     in.has_xy_limits = true;
     in.probe_point = probe;
     in.max_velocity_mm_s = max_velocity;
-    in.xy_homed = true;
     return in;
-}
-
-std::vector<std::string> lines_of(const std::string& gcode) {
-    std::vector<std::string> out;
-    std::istringstream ss(gcode);
-    std::string line;
-    while (std::getline(ss, line)) {
-        out.push_back(line);
-    }
-    return out;
 }
 
 } // namespace
@@ -70,7 +59,7 @@ TEST_CASE("a Voron 2.4 300 laps 21 mm inside its 300x305 travel at 300 mm/s", "[
     CHECK(plan.speed_mm_s == Catch::Approx(300.0f));
     CHECK(plan.inset_x_mm == Catch::Approx(21.0f));
     CHECK(plan.inset_y_mm == Catch::Approx(21.35f));
-    const auto lines = lines_of(plan.gcode);
+    const auto lines = helix::test::script_lines(plan.gcode);
     REQUIRE(lines.size() == 4 + 4 * belt_settle::LAPS + 3);
     CHECK(lines[3] == "G1 X21.0 Y21.4 F18000");
     CHECK(lines[5] == "G1 X279.0 Y283.6");
@@ -84,7 +73,7 @@ TEST_CASE("a K1C's 229x227 travel takes the 20 mm minimum inset", "[belt][settle
     CHECK(plan.inset_x_mm == Catch::Approx(20.0f));
     CHECK(plan.inset_y_mm == Catch::Approx(20.0f));
     CHECK(plan.speed_mm_s == Catch::Approx(300.0f));
-    const auto lines = lines_of(plan.gcode);
+    const auto lines = helix::test::script_lines(plan.gcode);
     REQUIRE(lines.size() >= 6);
     CHECK(lines[3] == "G1 X20.0 Y20.0 F18000");
     CHECK(lines[5] == "G1 X209.0 Y207.0");
@@ -94,7 +83,7 @@ TEST_CASE("speed is 0.6 x max_velocity below 500", "[belt][settle]") {
     const auto plan = plan_belt_settle(square_bed(350.0f, {175.0f, 175.0f, 20.0f}, 200.0f));
     REQUIRE(plan.refusal == BeltSettleRefusal::NONE);
     CHECK(plan.speed_mm_s == Catch::Approx(120.0f));
-    const auto lines = lines_of(plan.gcode);
+    const auto lines = helix::test::script_lines(plan.gcode);
     REQUIRE(lines.size() >= 4);
     CHECK(lines[2] == "G1 Z20.0 F7200");
     CHECK(lines[3] == "G1 X24.5 Y24.5 F7200");
@@ -105,7 +94,7 @@ TEST_CASE("the inset is 20 mm on a small bed", "[belt][settle]") {
     REQUIRE(plan.refusal == BeltSettleRefusal::NONE);
     CHECK(plan.inset_x_mm == Catch::Approx(20.0f));
     CHECK(plan.inset_y_mm == Catch::Approx(20.0f));
-    const auto lines = lines_of(plan.gcode);
+    const auto lines = helix::test::script_lines(plan.gcode);
     REQUIRE(lines.size() >= 6);
     CHECK(lines[3] == "G1 X20.0 Y20.0 F18000");
     CHECK(lines[5] == "G1 X100.0 Y100.0");
@@ -118,7 +107,7 @@ TEST_CASE("a homing origin shifts every coordinate", "[belt][settle]") {
     in.origin_z = 0.2f;
     const auto plan = plan_belt_settle(in);
     REQUIRE(plan.refusal == BeltSettleRefusal::NONE);
-    const auto lines = lines_of(plan.gcode);
+    const auto lines = helix::test::script_lines(plan.gcode);
     REQUIRE(lines.size() == 4 + 4 * belt_settle::LAPS + 3);
     CHECK(lines[2] == "G1 Z19.8 F18000");
     CHECK(lines[3] == "G1 X19.5 Y27.5 F18000");
@@ -135,11 +124,6 @@ TEST_CASE("settling refuses, and sends nothing, when it cannot plan", "[belt][se
         CHECK(plan.gcode.empty());
     };
 
-    SECTION("not homed in XY") {
-        auto in = good;
-        in.xy_homed = false;
-        expect_refusal(in, BeltSettleRefusal::NOT_HOMED_XY);
-    }
     SECTION("no axis limits") {
         auto in = good;
         in.has_xy_limits = false;
@@ -161,9 +145,10 @@ TEST_CASE("settling refuses, and sends nothing, when it cannot plan", "[belt][se
     }
     SECTION("refusals are checked in enum order") {
         auto in = good;
-        in.xy_homed = false;
+        in.has_xy_limits = false;
         in.probe_point.reset();
-        expect_refusal(in, BeltSettleRefusal::NOT_HOMED_XY);
+        in.max_velocity_mm_s = 0.0f;
+        expect_refusal(in, BeltSettleRefusal::NO_AXIS_LIMITS);
     }
 }
 
@@ -178,4 +163,43 @@ TEST_CASE("a long lap raises the timeout", "[belt][settle]") {
     const double want_ms = 4.0 * static_cast<double>(plan.seconds) * 1000.0;
     CHECK(static_cast<double>(plan.timeout_ms) >= want_ms);
     CHECK(static_cast<double>(plan.timeout_ms) < want_ms + 1.0);
+}
+
+TEST_CASE("a 4-tool printer laps the central half, clear of its docks", "[belt][settle]") {
+    // A U1-sized 270 mm travel: a quarter of each span either side.
+    auto in = square_bed(270.0f, {135.0f, 135.0f, 20.0f}, 500.0f);
+    in.tool_count = 4;
+    const auto plan = plan_belt_settle(in);
+    REQUIRE(plan.refusal == BeltSettleRefusal::NONE);
+    CHECK(plan.inset_x_mm == Catch::Approx(67.5f));
+    CHECK(plan.inset_y_mm == Catch::Approx(67.5f));
+    CHECK(plan.speed_mm_s == Catch::Approx(300.0f));
+    const auto lines = helix::test::script_lines(plan.gcode);
+    REQUIRE(lines.size() == 4 + 4 * belt_settle::LAPS + 3);
+    CHECK(lines[2] == "G1 Z20.0 F18000");
+    CHECK(lines[3] == "G1 X67.5 Y67.5 F18000");
+    CHECK(lines[5] == "G1 X202.5 Y202.5");
+    CHECK(lines[lines.size() - 3] == "G1 X135.0 Y135.0");
+}
+
+TEST_CASE("a 2-tool printer laps the central half too", "[belt][settle]") {
+    auto in = square_bed(350.0f, {175.0f, 175.0f, 20.0f}, 500.0f);
+    in.y_max = 300.0f;
+    in.tool_count = 2;
+    const auto plan = plan_belt_settle(in);
+    REQUIRE(plan.refusal == BeltSettleRefusal::NONE);
+    CHECK(plan.inset_x_mm == Catch::Approx(87.5f));
+    CHECK(plan.inset_y_mm == Catch::Approx(75.0f));
+    const auto lines = helix::test::script_lines(plan.gcode);
+    REQUIRE(lines.size() >= 6);
+    CHECK(lines[3] == "G1 X87.5 Y75.0 F18000");
+    CHECK(lines[5] == "G1 X262.5 Y225.0");
+}
+
+TEST_CASE("one tool keeps the perimeter inset", "[belt][settle]") {
+    auto in = square_bed(350.0f, {175.0f, 175.0f, 20.0f}, 500.0f);
+    in.tool_count = 1;
+    CHECK(plan_belt_settle(in).inset_x_mm == Catch::Approx(24.5f));
+    in.tool_count = 0; // not reported yet reads as one
+    CHECK(plan_belt_settle(in).inset_x_mm == Catch::Approx(24.5f));
 }
