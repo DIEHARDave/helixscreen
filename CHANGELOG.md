@@ -5,6 +5,119 @@ All notable changes to HelixScreen will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0-beta.9] - 2026-10-15
+
+<!-- whatsnew
+The ninth beta of 1.1.
+
+- New Home tiles: toolhead, Z offset, speed and flow, dryer, host health, bed mesh, exclude-object map
+- Tool switcher rebuilt for toolchangers, with Park
+- Four new screensavers
+- Redesigned filament screens, including portrait
+- QIDI Plus 5 support, plus a desktop Linux build
+-->
+
+The ninth beta of 1.1. Home gets a batch of new tiles (toolhead, Z offset, speed and flow, dryer, host health, bed mesh and the exclude-object map) and default layouts that now adapt to the printer and screen size. Toolchanger owners get a rebuilt tool switcher with Park. There are four new screensavers, the filament screens are redone for small and portrait displays, the QIDI Plus 5 is supported, and a windowed build for Linux desktops exists.
+
+**Upgrading from beta.8?**
+
+- **Screensaver:** the setting now stores the saver by name. Your old choice is carried over automatically. A saver too heavy for your board is hidden, and a lighter one runs if your stored choice was one of those.
+- **Home layout:** an unedited default layout re-resolves when your printer's hardware changes. If you have customized Home, your arrangement is left alone.
+
+### Added
+
+**Home**
+
+- **New Home tiles** - Toolhead (homed state, axis positions, Z bar, Home All), Z Offset (value with Save and baby-step buttons), Speed and Flow, Dryer (box, chamber and bed drying with progress), Host Health (status color, sparklines, MCU rows, disk free), Bed Mesh (heatmap, color scale, Calibrate and Load profile) and Exclude Objects (a mini map from the Column size up that opens the full map). Each tile picks a layout that fits the room it is given.
+- **Default layouts adapt** - the default Home layout is built per screen size, takes the tiles your printer actually has, leaves clean gaps instead of filler, and keeps notifications in a corner. It updates itself if you add hardware, until you edit it. The 1920x1080, 1080x2400 and Creality Hi's 320x240 and 320x1480 screens are fully covered.
+- **Chamber light from the printer image** - tap the bulb chip on the printer image to switch the chamber light.
+- **Pre-print progress shows it is alive** - the spinner is gone; while a print is preparing, a soft highlight sweeps the unfilled part of the progress bar, on the Print Status screen and the Home tile, so a long heat-soak never looks frozen.
+- **Half-cell icon tiles on small screens** - on 480x272 and 480x320 panels, icon-only tiles (light, notifications, lock, firmware restart and the like) shrink to half a cell and drop their caption.
+
+**Toolchangers**
+
+- **Tool switcher rebuilt** (#1784) - a segmented strip that keeps every head a finger-sized target, names each head by its G-code number, shows a detail block when there is room, and can Park the mounted head. A paused print still offers a head change, behind a confirmation. A configured tool name shows as its label next to the G-code name (#1769).
+
+**Screensavers**
+
+- **Four new savers** - Hyperspace (a flight through rainbow bands), 3D Maze (a Wolfenstein-style walk through a maze), Flip Clock (each digit flips on its own card, and it counts down a running print) and Bouncing Logo (the HelixScreen logo as the bouncing sprite). Fireworks gain palm, crossette and strobe shells.
+- **Heavy savers step aside** - a saver too heavy for the board is hidden and a lighter one runs in its place. The setting remembers the saver by name.
+
+**Filament systems**
+
+- **Filament screens redone** - the loaded spool leads its card as a strip, readings sit in tiles or a pill on the box, sidebar actions go two to a row (or text alone on larger screens), labels fit whole in every language, and headers name the filament system. Small screens get a compact unit view, and portrait stacks the diagram over a full-width sidebar with page dots floating on the canvas.
+- **Endless spool reads clearly** - groups are drawn as brackets and chains keep arrows, so each hop reads on its own.
+- **OpenAMS logo** (#1786) - OpenAMS units show their own full-color logo.
+
+**Printers and platforms**
+
+- **QIDI Plus 5** - detected and supported, with the QIDI Box and the on-device framebuffer.
+- **FLSUN T1 Pro and S1** - detected, and both are treated as enclosed.
+- **Windowed build for Linux desktops** - an x86 release that runs in a window, with an installer flavour that installs it per user. In-app install is refused there.
+- **Round beds** - the bed mesh (3D surface, zero plane, wireframe and 2D heatmap), the Bed tab in Motion and the exclude-object map draw a round plate on delta printers, with a 50 mm reference grid.
+
+**Plugins**
+
+- **`helix.ui.text_width`** (#1774) - plugins can measure text in the live theme font.
+
+### Fixed
+
+**Updates**
+
+- **A board never gets another board's build** - the updater refuses with a message instead, and a Creator 5 will not install a release that has no build for it.
+- **Update dialog** (#1727) - reopens when an update fails after the download dialog had closed.
+- **Unified MIPS build** (#1789) - finds its download in releases cut before it existed.
+- **Google Play installs** - only announce the update Play will actually serve.
+
+**Home**
+
+- **Upgrading a 1.0 Home layout** - a tile that has to grow to fit (Tips, for whole-word titles) grows only into free space and never pushes a neighbour you placed out of its spot; the file keeps the layout you saved.
+- **Layout fixes** - the Hi's readout cell takes a CFS first, the printer image keeps a margin, tip titles ellipsize instead of breaking mid-word, tiles refuse sizes that cannot hold their widest reading, and Speed and Flow rows no longer overlap in a 2x1 cell.
+- **Temperature card** - rows share columns so values line up.
+- **Clock and navbar** - a short clock shows the date wherever it fits (1.5x1 is usually enough), and on 480x272 the E-stop button keeps a margin inside the navbar with the same tap target.
+- **Tile glyphs** - a tile with its caption hidden draws the same glyph size as its neighbours.
+
+**Toolchangers and filament systems**
+
+- **U1 and Snapmaker tool changes** (#1784) - a parked head is no longer the active tool, and the empty carriage stays empty through rediscovery. Parking refuses a paused job.
+- **Tool numbering** - a tool's slot is its Klipper tool number, not its position in a sorted name list.
+- **AD5X IFS** (#1324) - a failed load or unload macro puts the system in an error state, and unload names the lane even when no live state does. A load preheat shows the nozzle temperature once.
+- **CFS** - the box temperature and humidity show on the box that reported them.
+- **AMS** - the lane count label no longer runs under the unit card's environment box, and AMS reads the system once per change instead of repeatedly (#1777).
+
+**Setup and sensors**
+
+- **Printer type mismatch** - a mismatch now shows a toast and a history entry instead of a boot modal, and the review is per warning.
+- **First-boot presets** - a preset applied at first boot sets filament sensor roles in the same session, and every preset apply reloads filament, probe and width sensor config.
+- **Barcode scanner** (#1793) - a configured scanner skips the camera and bed move.
+- **Camera** (#1788) - the Moonraker webcam list is read on builds without a camera widget, and loopback camera ports are probed on every printer except the FlashForge MIPS boards.
+- **Plugin install on K1** (#1790) - finds a Creality K1 Moonraker and logs why an install fails.
+
+**Display and text**
+
+- **Text input** - typing mid-string no longer jumps the cursor to the end.
+- **Long labels** (#1775) - dotted labels stay on one line and long macro descriptions wrap.
+- **Button labels** - multi-word button labels use Title Case.
+- **Creality K1** - a release build finds its panel's DPI.
+- **Creator 5 and Pro** - skip the backlight call and get FlashForge scroll tuning. The AD5X touch fit no longer applies to a Creator 5.
+- **Exclude-object map** - draws the bed grid and whatever of the edge is in view.
+- **Firmware Restart** - has its own icon everywhere it appears, and the Lock Screen tile always shows a lock, greyed out until a PIN is set.
+
+**Stability**
+
+- **Memory leaks** (#1279) - fixed in grid layout, icon grid cells, split buttons, the camera decoder and the power device teardown.
+- **Wi-Fi** (#1293) - the wpa monitor socket is closed once, after detach.
+- **Crash marker** - one that cannot be removed no longer kills the app.
+- **Sleep** - a sleep controller destroyed while asleep removes its overlay.
+- **3D G-code viewer** (#1742) - makes its context on the display's EGL display, and the crash guard covers driver init.
+- **K-Touch** - home widget data moved out of scarce internal memory.
+- **Display brightness re-assert** - its timer is cancelled when the display shuts down, so it can no longer fire on freed memory.
+
+**Telemetry**
+
+- **Board reporting** - crash reports and telemetry carry the resolved board next to the platform.
+- **More accurate statistics** - every event carries one envelope (version, platform, board, boot id), usage snapshots send deltas that survive a power cut or a full queue, overlays report a stable id, and every error category reaches the server.
+
 ## [1.1.0-beta.8] - 2026-10-11
 
 <!-- whatsnew
@@ -9034,6 +9147,7 @@ Initial tagged release. Foundation for all subsequent development.
 - Automated GitHub Actions release pipeline
 - One-liner installation script with platform auto-detection
 
+[1.1.0-beta.9]: https://github.com/prestonbrown/helixscreen/compare/v1.1.0-beta.8...v1.1.0-beta.9
 [1.1.0-beta.8]: https://github.com/prestonbrown/helixscreen/compare/v1.1.0-beta.7...v1.1.0-beta.8
 [1.1.0-beta.7]: https://github.com/prestonbrown/helixscreen/compare/v1.1.0-beta.6...v1.1.0-beta.7
 [1.1.0-beta.6]: https://github.com/prestonbrown/helixscreen/compare/v1.1.0-beta.5...v1.1.0-beta.6
