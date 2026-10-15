@@ -227,7 +227,8 @@ What is shared here:
   `git diff HEAD -- <path>`. Empty means the committed content is what is on disk, only the
   INDEX holds an older copy, and nothing is in flight. A `git commit -- <paths>` whose
   pre-commit hook reformats the file leaves exactly that: the pre-format copy stranded in the
-  index. Clear it with `git add <path>`: index becomes HEAD, so there is nothing unpublished
+  index. The post-commit hook clears that case itself; one left by a commit made without
+  the hook clears with `git add <path>`: index becomes HEAD, so there is nothing unpublished
   for a peer to sweep, and it discards nothing. A non-empty `git diff HEAD` is the case worth
   waiting on; confirm with `pgrep -x git` plus each pid's cwd and `helix-claim check
   worktree:main` before concluding anything about who owns it.
@@ -285,7 +286,7 @@ What is shared here:
   | Hook | Behaviour |
   |------|-----------|
   | `pre-commit` | If `MERGE_HEAD` exists, claims this tree under the **git process's** pid so the merge announces itself. Prints nothing unless another session already holds the tree. Then runs the existing quality checks unchanged. |
-  | `post-commit` | Releases that claim **only if the claim names this commit's own pid**, so a session claim spanning several commits survives. |
+  | `post-commit` | Points any committed path's stale index entry back at HEAD's blob (the `MM` a reformatting hook leaves after `git commit -- <paths>`; `.githooks/lib/sync-index-to-head.sh`), then releases that claim **only if the claim names this commit's own pid**, so a session claim spanning several commits survives. |
 
   Ordinary human git use stays silent: the hooks speak only on a real conflict. Advisory by
   design; `HELIX_CLAIM_STRICT=1` makes `pre-commit` refuse instead of warn. `--no-verify`
