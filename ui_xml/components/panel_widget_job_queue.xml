@@ -121,18 +121,11 @@
       </lv_obj>
     </lv_obj>
 
-    <ui_button name="jq_action_wide"
+    <ui_button name="jq_action"
                width="100%" height="#button_height_sm" style_pad_ver="0" style_pad_hor="#space_xs"
                style_text_font="#font_body" bind_text="jq_tile_action_text" moves_machine="true">
       <event_cb trigger="clicked" callback="on_job_queue_tile_action"/>
-      <bind_flag_if cond="jq_tile_rung lt 4 or jq_tile_action eq 0" flag="hidden"/>
-    </ui_button>
-
-    <ui_button name="jq_action_cell"
-               width="100%" height="#button_height_sm" style_pad_ver="0" style_pad_hor="#space_xs"
-               style_text_font="#font_body" bind_text="jq_tile_action_text" moves_machine="true">
-      <event_cb trigger="clicked" callback="on_job_queue_tile_action"/>
-      <bind_flag_if cond="jq_tile_rung ne 3 or jq_tile_action eq 0" flag="hidden"/>
+      <bind_flag_if cond="jq_tile_rung lt 3 or jq_tile_action eq 0" flag="hidden"/>
     </ui_button>
 
     <lv_obj name="jq_list"

@@ -93,6 +93,12 @@ void QueuedJobStarter::make_controller() {
         [this]() { open_in_file_view("its printer-stopping command check did not run"); });
 }
 
+void QueuedJobStarter::publish_in_flight() const {
+    if (auto* jqs = get_job_queue_state()) {
+        jqs->set_start_in_flight(in_flight_);
+    }
+}
+
 QueuedJobStarter::~QueuedJobStarter() {
     stall_watchdog_.reset();
     release_prep();
@@ -127,6 +133,7 @@ void QueuedJobStarter::abandon() {
     api_ = nullptr;
     facts_loader_.set_api(nullptr);
     make_controller();
+    publish_in_flight();
 }
 
 void QueuedJobStarter::set_api(IMoonrakerAPI* api) {
@@ -152,6 +159,7 @@ bool QueuedJobStarter::begin(const JobQueueEntry& job, DoneCallback& done) {
     done_ = std::move(done);
     job_ = job;
     arm_stall_watchdog(kStallMs);
+    publish_in_flight();
     return true;
 }
 
@@ -354,6 +362,7 @@ void QueuedJobStarter::finish(Outcome outcome) {
     pending_.reset();
     facts_loader_.cancel();
     release_prep();
+    publish_in_flight();
     auto done = std::move(done_);
     done_ = nullptr;
     if (done) {

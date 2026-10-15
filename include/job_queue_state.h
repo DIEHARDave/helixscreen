@@ -128,6 +128,13 @@ class JobQueueState {
         return automatic_transition_;
     }
 
+    /// Whether the home tile's one-tap start (QueuedJobStarter) is checking
+    /// and starting the first job. Published as job_queue_start_in_flight.
+    void set_start_in_flight(bool in_flight);
+    [[nodiscard]] bool start_in_flight() const {
+        return start_in_flight_;
+    }
+
     /// Initialize LVGL subjects (call before XML creation)
     void init_subjects();
 
@@ -199,6 +206,8 @@ class JobQueueState {
     bool automatic_transition_loaded_ = false;
     // Option-store prune latched per connect — see on_queue_fetched().
     bool pruned_this_connect_ = false;
+    bool start_in_flight_ = false;
+    int jobs_revision_ = 0;
 
     // LVGL subjects
     // "Up next: <name> (+N)" for the print-status panel and home widget; the
@@ -220,6 +229,12 @@ class JobQueueState {
     // helix::QueueRunState as an int. Published before the count so a count
     // observer reads it settled.
     lv_subject_t job_queue_run_state_subject_{};
+    // Bumped whenever the queued jobs change, before the count. A reorder, or
+    // a remove plus an add, leaves the count where it was, so surfaces that
+    // name the jobs observe this.
+    lv_subject_t job_queue_revision_subject_{};
+    // start_in_flight_ as 0/1.
+    lv_subject_t job_queue_start_in_flight_subject_{};
     // The first queued job's estimated time (seconds, 0 = unknown) and
     // thumbnail path. The thumbnail is never "": it holds the placeholder
     // until a real image is cached.

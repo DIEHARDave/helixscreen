@@ -44,6 +44,18 @@ TEST_CASE("tile state: Starting while the printer is idle", "[job_queue_tile]") 
     CHECK(job_queue_tile_state(in(true, true, 2, QRS::Loading, false, true)) == S::Starting);
 }
 
+TEST_CASE("tile state: the tile's own start reads as Starting, with no button",
+          "[job_queue_tile]") {
+    JobQueueTileInputs tapped = in(true, true, 2, QRS::Paused, false, false);
+    REQUIRE(job_queue_tile_state(tapped) == S::WaitingForStart);
+    tapped.start_in_flight = true;
+    CHECK(job_queue_tile_state(tapped) == S::Starting);
+    CHECK(job_queue_tile_action(job_queue_tile_state(tapped)) == JobQueueTileAction::None);
+    // An emptied queue still reads Empty.
+    tapped.job_count = 0;
+    CHECK(job_queue_tile_state(tapped) == S::Empty);
+}
+
 TEST_CASE("tile state: AutoNext only while printing", "[job_queue_tile]") {
     CHECK(job_queue_tile_state(in(true, true, 2, QRS::Ready, true, true)) == S::AutoNext);
 }

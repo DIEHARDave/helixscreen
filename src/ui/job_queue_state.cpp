@@ -84,6 +84,12 @@ void JobQueueState::init_subjects() {
                         static_cast<int>(helix::QueueRunState::Paused));
     subjects_.publish("job_queue_run_state", &job_queue_run_state_subject_);
 
+    lv_subject_init_int(&job_queue_revision_subject_, 0);
+    subjects_.publish("job_queue_revision", &job_queue_revision_subject_);
+
+    lv_subject_init_int(&job_queue_start_in_flight_subject_, start_in_flight_ ? 1 : 0);
+    subjects_.publish("job_queue_start_in_flight", &job_queue_start_in_flight_subject_);
+
     lv_subject_init_string(&job_queue_up_next_text_subject_, up_next_text_buffer_, nullptr,
                            sizeof(up_next_text_buffer_), "");
     subjects_.publish("job_queue_up_next_text", &job_queue_up_next_text_subject_);
@@ -108,6 +114,12 @@ void JobQueueState::init_subjects() {
     SubjectDebugRegistry::instance().register_subject(&job_queue_run_state_subject_,
                                                       "job_queue_run_state", LV_SUBJECT_TYPE_INT,
                                                       __FILE__, __LINE__);
+    SubjectDebugRegistry::instance().register_subject(&job_queue_revision_subject_,
+                                                      "job_queue_revision", LV_SUBJECT_TYPE_INT,
+                                                      __FILE__, __LINE__);
+    SubjectDebugRegistry::instance().register_subject(&job_queue_start_in_flight_subject_,
+                                                      "job_queue_start_in_flight",
+                                                      LV_SUBJECT_TYPE_INT, __FILE__, __LINE__);
     SubjectDebugRegistry::instance().register_subject(&job_queue_next_estimate_subject_,
                                                       "job_queue_next_estimate",
                                                       LV_SUBJECT_TYPE_INT, __FILE__, __LINE__);
@@ -177,6 +189,14 @@ void JobQueueState::fetch() {
 void JobQueueState::on_queue_fetched(const helix::JobQueueStatus& status) {
     // Main-thread only: fetch()'s success callback wraps this call in
     // tok.defer(), so everything below may touch subjects and LVGL state.
+    const bool jobs_changed = !std::equal(
+        cached_jobs_.begin(), cached_jobs_.end(), status.queued_jobs.begin(),
+        status.queued_jobs.end(), [](const helix::JobQueueEntry& a, const helix::JobQueueEntry& b) {
+            return a.job_id == b.job_id && a.filename == b.filename;
+        });
+    if (jobs_changed) {
+        ++jobs_revision_;
+    }
     cached_jobs_ = status.queued_jobs;
     queue_state_ = status.queue_state;
     is_loaded_ = true;
@@ -342,6 +362,7 @@ void JobQueueState::update_subjects() {
     lv_subject_set_int(&job_queue_automatic_transition_subject_, automatic_transition_ ? 1 : 0);
 
     lv_subject_set_int(&job_queue_run_state_subject_, static_cast<int>(run_state()));
+    lv_subject_set_int(&job_queue_revision_subject_, jobs_revision_);
 
     // Count goes LAST, after cached_jobs_ and both text subjects are settled.
     // It is the rebuild trigger the queue surfaces observe, and PrintStatusWidget's
@@ -349,6 +370,13 @@ void JobQueueState::update_subjects() {
     // let that handler re-read a half-updated state. Main-thread only: the sole
     // caller is on_queue_fetched(), which fetch() reaches through tok.defer().
     lv_subject_set_int(&job_queue_count_subject_, count);
+}
+
+void JobQueueState::set_start_in_flight(bool in_flight) {
+    start_in_flight_ = in_flight;
+    if (subjects_initialized_) {
+        lv_subject_set_int(&job_queue_start_in_flight_subject_, in_flight ? 1 : 0);
+    }
 }
 
 void JobQueueState::subscribe_to_notifications() {

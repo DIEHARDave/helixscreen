@@ -99,6 +99,9 @@ class QueuedJobStarter {
     /// replaced controller takes its open gate dialog and its observers with it.
     void make_controller();
 
+    /// Publish in_flight_ on JobQueueState for the queue tile.
+    void publish_in_flight() const;
+
     void finish(Outcome outcome);
 
     /// Hand the shared prep manager back: drop the waiter and the option

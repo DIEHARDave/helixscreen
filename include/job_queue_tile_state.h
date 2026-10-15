@@ -41,11 +41,14 @@ struct JobQueueTileInputs {
     QueueRunState queue_state = QueueRunState::Paused;
     bool printer_busy = false; ///< print_active: printing or paused
     bool automatic_transition = false;
+    bool start_in_flight = false; ///< the tile's own start is checking or starting a job
 };
 
-/// First match wins. An idle printer with queued jobs is always WaitingForStart:
-/// Moonraker leaves the queue "paused" after every job it loads unless automatic
-/// transition is on, so a finished job and a user pause cannot be told apart.
+/// First match wins. The tile's own start reads as Starting from the tap, so
+/// the button is gone while the job is checked. An idle printer with queued
+/// jobs is always WaitingForStart: Moonraker leaves the queue "paused" after
+/// every job it loads unless automatic transition is on, so a finished job
+/// and a user pause cannot be told apart.
 /// AutoNext needs a running print, since Moonraker only advances on completion.
 [[nodiscard]] constexpr JobQueueTileState job_queue_tile_state(const JobQueueTileInputs& in) {
     if (!in.component_available)
@@ -54,7 +57,8 @@ struct JobQueueTileInputs {
         return JobQueueTileState::NotLoaded;
     if (in.job_count <= 0)
         return JobQueueTileState::Empty;
-    if (in.queue_state == QueueRunState::Loading || in.queue_state == QueueRunState::Starting)
+    if (in.start_in_flight || in.queue_state == QueueRunState::Loading ||
+        in.queue_state == QueueRunState::Starting)
         return JobQueueTileState::Starting;
     if (in.printer_busy && in.automatic_transition && in.queue_state == QueueRunState::Ready)
         return JobQueueTileState::AutoNext;

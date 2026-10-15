@@ -633,9 +633,9 @@ TEST_CASE_METHOD(TileStartFixture,
         int h;
         const char* name;
     };
-    const Button button = GENERATE(Button{114, 54, "jq_action_icon"},
-                                   Button{test::kJobQueueCellW, 113, "jq_action_cell"},
-                                   Button{test::kJobQueueWideW, 113, "jq_action_wide"});
+    const Button button =
+        GENERATE(Button{114, 54, "jq_action_icon"}, Button{test::kJobQueueCellW, 113, "jq_action"},
+                 Button{test::kJobQueueWideW, 113, "jq_action"});
     INFO(button.name);
 
     PlantedGcode file("tile_start_button.gcode");
@@ -652,6 +652,35 @@ TEST_CASE_METHOD(TileStartFixture,
     // The file view was not involved, and the tap did not open the queue modal.
     CHECK(pending_job_id() == nullptr);
     CHECK(ModalStack::instance().top_dialog() == nullptr);
+}
+
+TEST_CASE_METHOD(TileStartFixture, "the tile reads Starting with no button while its start runs",
+                 "[job_queue][queue_start][widget_size]") {
+    PlantedGcode file("tile_start_busy.gcode");
+    show_queue(entry("0001", file.name()));
+    PanelWidgetHarness<JobQueueWidget> tile(test_screen());
+    tile.resize(1, 1, test::kJobQueueCellW, 113);
+    lv_obj_t* button = tile.child("jq_action");
+    REQUIRE(button != nullptr);
+    REQUIRE_FALSE(lv_obj_has_flag(button, LV_OBJ_FLAG_HIDDEN));
+    auto state = []() { return lv_subject_get_int(lv_xml_get_subject(nullptr, "jq_tile_state")); };
+
+    mock_client_.defer_next("server.database.get_item"); // hold the saved-options read
+    lv_obj_send_event(button, LV_EVENT_CLICKED, nullptr);
+    settle();
+    process_lvgl(30); // the tile refreshes on the next tick
+    REQUIRE(helix::queue::queued_job_starter().in_flight());
+    CHECK(state() == static_cast<int>(helix::JobQueueTileState::Starting));
+    CHECK(lv_obj_has_flag(button, LV_OBJ_FLAG_HIDDEN));
+
+    // The printer takes another job meanwhile, which ends the start.
+    set_wire_state(get_printer_state(), PrintJobState::PRINTING);
+    mock_client_.fire_deferred("server.database.get_item");
+    REQUIRE(wait_until([] { return !helix::queue::queued_job_starter().in_flight(); }, 5000));
+    settle();
+    process_lvgl(30);
+    CHECK_FALSE(jqs.start_in_flight());
+    CHECK(state() == static_cast<int>(helix::JobQueueTileState::Printing));
 }
 
 TEST_CASE_METHOD(TileStartFixture, "a tap on the tile outside the button opens the queue modal",

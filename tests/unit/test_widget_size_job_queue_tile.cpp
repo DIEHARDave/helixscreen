@@ -117,21 +117,20 @@ struct Parts {
     bool detail = false;
     bool more = false;
     bool action_icon = false;
-    bool action_cell = false;
-    bool action_wide = false;
+    bool action = false;
     int list_rows = 0;
 
     bool operator==(const Parts& o) const {
         return label_row == o.label_row && thumb == o.thumb && detail == o.detail &&
-               more == o.more && action_icon == o.action_icon && action_cell == o.action_cell &&
-               action_wide == o.action_wide && list_rows == o.list_rows;
+               more == o.more && action_icon == o.action_icon && action == o.action &&
+               list_rows == o.list_rows;
     }
 };
 
 std::ostream& operator<<(std::ostream& os, const Parts& p) {
     return os << "{label_row=" << p.label_row << " thumb=" << p.thumb << " detail=" << p.detail
-              << " more=" << p.more << " icon=" << p.action_icon << " cell=" << p.action_cell
-              << " wide=" << p.action_wide << " rows=" << p.list_rows << "}";
+              << " more=" << p.more << " icon=" << p.action_icon << " action=" << p.action
+              << " rows=" << p.list_rows << "}";
 }
 
 Parts parts_of(PanelWidgetHarness<JobQueueWidget>& h) {
@@ -141,8 +140,7 @@ Parts parts_of(PanelWidgetHarness<JobQueueWidget>& h) {
     p.detail = shown(h, "jq_detail") || shown(h, "jq_cell_next");
     p.more = shown(h, "jq_more");
     p.action_icon = shown(h, "jq_action_icon");
-    p.action_cell = shown(h, "jq_action_cell");
-    p.action_wide = shown(h, "jq_action_wide");
+    p.action = shown(h, "jq_action");
     for (int i = 0; i < kJobQueueTileListRows; ++i) {
         if (shown(h, fmt::format("jq_after_{}", i).c_str()))
             ++p.list_rows;
@@ -169,9 +167,9 @@ void check_parts(PanelWidgetHarness<JobQueueWidget>& h, const Expect& expect,
     }
 }
 
-constexpr Parts parts(bool label_row, bool thumb, bool detail, bool more, bool icon, bool cell,
-                      bool wide, int rows) {
-    return Parts{label_row, thumb, detail, more, icon, cell, wide, rows};
+constexpr Parts parts(bool label_row, bool thumb, bool detail, bool more, bool icon, bool action,
+                      int rows) {
+    return Parts{label_row, thumb, detail, more, icon, action, rows};
 }
 
 } // namespace
@@ -200,10 +198,10 @@ TEST_CASE_METHOD(JobQueueTileFixture, "job queue tile: a waiting job at each run
     CHECK(subject_text("jq_tile_more") == "+2 more");
     CHECK(subject_text("jq_tile_count") == "3");
     // Full lists both following jobs, so "+N more" has nothing left to count.
-    check_parts(h, {{parts(false, false, false, false, true, false, false, 0),
-                     parts(false, false, false, true, false, true, false, 0),
-                     parts(false, true, true, true, false, false, true, 0),
-                     parts(false, true, true, false, false, false, true, 2)}});
+    check_parts(h, {{parts(false, false, false, false, true, false, 0),
+                     parts(false, false, false, true, false, true, 0),
+                     parts(false, true, true, true, false, true, 0),
+                     parts(false, true, true, false, false, true, 2)}});
     h.resize(1, 1, kStrip.w, kStrip.h);
     CHECK(shown(h, "jq_count"));
     CHECK_FALSE(shown(h, "jq_hero"));
@@ -225,10 +223,10 @@ TEST_CASE_METHOD(JobQueueTileFixture,
     CHECK(subject_int("jq_tile_action") == static_cast<int>(JobQueueTileAction::None));
     CHECK(subject_text("jq_tile_hero") == "3 queued");
     CHECK(subject_text("jq_tile_detail") == "Next: file-0");
-    check_parts(h, {{parts(false, false, false, false, false, false, false, 0),
-                     parts(false, false, true, false, false, false, false, 0),
-                     parts(false, false, true, false, false, false, false, 0),
-                     parts(false, false, true, false, false, false, false, 2)}});
+    check_parts(h, {{parts(false, false, false, false, false, false, 0),
+                     parts(false, false, true, false, false, false, 0),
+                     parts(false, false, true, false, false, false, 0),
+                     parts(false, false, true, false, false, false, 2)}});
     for (const Box& b : {kCell, kWide, kFull}) {
         INFO(b.w << "x" << b.h);
         h.resize(1, 1, b.w, b.h);
@@ -248,10 +246,10 @@ TEST_CASE_METHOD(JobQueueTileFixture, "job queue tile: printing shows what is ne
     CHECK(subject_int("jq_tile_state") == static_cast<int>(JobQueueTileState::Printing));
     CHECK(subject_text("jq_tile_hero") == "3 queued");
     CHECK(subject_text("jq_tile_detail") == "Next: file-0");
-    check_parts(h, {{parts(false, false, false, false, false, false, false, 0),
-                     parts(false, false, true, false, false, false, false, 0),
-                     parts(false, false, true, false, false, false, false, 0),
-                     parts(false, false, true, false, false, false, false, 2)}});
+    check_parts(h, {{parts(false, false, false, false, false, false, 0),
+                     parts(false, false, true, false, false, false, 0),
+                     parts(false, false, true, false, false, false, 0),
+                     parts(false, false, true, false, false, false, 2)}});
     CHECK_FALSE(shown(h, "jq_auto"));
 }
 
@@ -262,10 +260,10 @@ TEST_CASE_METHOD(JobQueueTileFixture, "job queue tile: a job being loaded shows 
     h.resize(1, 1, kWide.w, kWide.h);
     CHECK(subject_int("jq_tile_state") == static_cast<int>(JobQueueTileState::Starting));
     CHECK(subject_text("jq_tile_hero") == "Starting file-0…");
-    check_parts(h, {{parts(false, false, false, false, false, false, false, 0),
-                     parts(false, false, false, false, false, false, false, 0),
-                     parts(false, true, false, false, false, false, false, 0),
-                     parts(false, true, false, false, false, false, false, 1)}});
+    check_parts(h, {{parts(false, false, false, false, false, false, 0),
+                     parts(false, false, false, false, false, false, 0),
+                     parts(false, true, false, false, false, false, 0),
+                     parts(false, true, false, false, false, false, 1)}});
 }
 
 TEST_CASE_METHOD(JobQueueTileFixture,
@@ -279,7 +277,7 @@ TEST_CASE_METHOD(JobQueueTileFixture,
         h.resize(1, 1, kCell.w, kCell.h);
         CHECK(subject_int("jq_tile_state") == static_cast<int>(JobQueueTileState::WaitingForStart));
         CHECK(subject_int("jq_tile_action") == static_cast<int>(JobQueueTileAction::StartNext));
-        CHECK(shown(h, "jq_action_cell"));
+        CHECK(shown(h, "jq_action"));
     }
 }
 
@@ -293,10 +291,10 @@ TEST_CASE_METHOD(JobQueueTileFixture, "job queue tile: an empty queue says so an
     CHECK(shown(h, "jq_quiet_text"));
     CHECK_FALSE(shown(h, "jq_body"));
     check_parts(h,
-                {{parts(false, false, false, false, false, false, false, 0),
-                  parts(false, false, false, false, false, false, false, 0),
-                  parts(false, false, false, false, false, false, false, 0),
-                  parts(false, false, false, false, false, false, false, 0)}},
+                {{parts(false, false, false, false, false, false, 0),
+                  parts(false, false, false, false, false, false, 0),
+                  parts(false, false, false, false, false, false, 0),
+                  parts(false, false, false, false, false, false, 0)}},
                 false);
 }
 
@@ -308,10 +306,10 @@ TEST_CASE_METHOD(JobQueueTileFixture,
     CHECK(subject_int("jq_tile_state") == static_cast<int>(JobQueueTileState::NotLoaded));
     CHECK(subject_text("jq_tile_hero").empty());
     check_parts(h,
-                {{parts(true, false, false, false, false, false, false, 0),
-                  parts(true, false, false, false, false, false, false, 0),
-                  parts(true, false, false, false, false, false, false, 0),
-                  parts(true, false, false, false, false, false, false, 0)}},
+                {{parts(true, false, false, false, false, false, 0),
+                  parts(true, false, false, false, false, false, 0),
+                  parts(true, false, false, false, false, false, 0),
+                  parts(true, false, false, false, false, false, 0)}},
                 false);
 }
 
@@ -355,7 +353,7 @@ TEST_CASE_METHOD(JobQueueTileFixture,
     set_print_active(false);
     CHECK(subject_int("jq_tile_state") == static_cast<int>(JobQueueTileState::WaitingForStart));
     CHECK(subject_int("jq_tile_action") == 1);
-    CHECK(shown(h, "jq_action_cell"));
+    CHECK(shown(h, "jq_action"));
 }
 
 TEST_CASE_METHOD(JobQueueTileFixture,
@@ -446,6 +444,52 @@ TEST_CASE_METHOD(JobQueueTileFixture,
     CHECK(parts_of(h).list_rows == 1);
     CHECK(shown(h, "jq_after_0"));
     CHECK_FALSE(shown(h, "jq_after_1"));
+}
+
+TEST_CASE_METHOD(JobQueueTileFixture,
+                 "job queue tile: jobs that change without changing the count are renamed",
+                 "[widget_size][job_queue]") {
+    deliver(3);
+    PanelWidgetHarness<JobQueueWidget> h(test_screen());
+    h.resize(1, 1, kFull.w, kFull.h);
+    REQUIRE(subject_text("jq_tile_hero") == "file-0");
+    REQUIRE(subject_text("jq_tile_after_0") == "file-1");
+
+    // The following jobs swap places: the same first job, three jobs before and after.
+    JobQueueStatus status = status_with(3);
+    std::swap(status.queued_jobs[1], status.queued_jobs[2]);
+    JobQueueStateTestAccess::deliver_status(jqs, status);
+    settle();
+    CHECK(subject_text("jq_tile_hero") == "file-0");
+    CHECK(subject_text("jq_tile_after_0") == "file-2");
+    CHECK(subject_text("jq_tile_after_1") == "file-1");
+
+    // Another job moves to the front.
+    std::swap(status.queued_jobs[0], status.queued_jobs[2]);
+    JobQueueStateTestAccess::deliver_status(jqs, status);
+    settle();
+    CHECK(subject_text("jq_tile_hero") == "file-1");
+}
+
+TEST_CASE_METHOD(JobQueueTileFixture,
+                 "job queue tile: its own start reads Starting and takes the button away",
+                 "[widget_size][job_queue]") {
+    deliver(3);
+    PanelWidgetHarness<JobQueueWidget> h(test_screen());
+    h.resize(1, 1, kCell.w, kCell.h);
+    REQUIRE(shown(h, "jq_action"));
+
+    jqs.set_start_in_flight(true);
+    settle();
+    CHECK(subject_int("jq_tile_state") == static_cast<int>(JobQueueTileState::Starting));
+    CHECK(subject_int("jq_tile_action") == static_cast<int>(JobQueueTileAction::None));
+    CHECK(subject_text("jq_tile_hero") == "Starting file-0…");
+    CHECK_FALSE(shown(h, "jq_action"));
+
+    jqs.set_start_in_flight(false);
+    settle();
+    CHECK(subject_int("jq_tile_state") == static_cast<int>(JobQueueTileState::WaitingForStart));
+    CHECK(shown(h, "jq_action"));
 }
 
 TEST_CASE_METHOD(JobQueueTileFixture, "job queue tile: a language switch recomposes the text",

@@ -274,6 +274,7 @@ JobQueueTileInputs JobQueueWidget::read_inputs() const {
     in.printer_busy =
         lv_subject_get_int(get_printer_state().print_state().get_print_active_subject()) != 0;
     in.automatic_transition = jqs && jqs->automatic_transition();
+    in.start_in_flight = jqs && jqs->start_in_flight();
     return in;
 }
 
@@ -348,6 +349,8 @@ void JobQueueWidget::attach(lv_obj_t* widget_obj, lv_obj_t* /*parent_screen*/) {
                        : ObserverGuard{};
     };
     count_observer_ = observe_queue_subject("job_queue_count");
+    revision_observer_ = observe_queue_subject("job_queue_revision");
+    start_observer_ = observe_queue_subject("job_queue_start_in_flight");
     run_state_observer_ = observe_queue_subject("job_queue_run_state");
     automatic_observer_ = observe_queue_subject("job_queue_automatic_transition");
     estimate_observer_ = observe_queue_subject("job_queue_next_estimate");
@@ -372,6 +375,8 @@ void JobQueueWidget::detach() {
     lifetime_.invalidate();
     refresh_pending_ = false;
     count_observer_.reset();
+    revision_observer_.reset();
+    start_observer_.reset();
     run_state_observer_.reset();
     automatic_observer_.reset();
     estimate_observer_.reset();

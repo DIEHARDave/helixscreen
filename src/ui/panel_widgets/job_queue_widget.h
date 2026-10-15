@@ -57,6 +57,8 @@ class JobQueueWidget : public PanelWidget {
     bool refresh_pending_ = false;
 
     ObserverGuard count_observer_;
+    ObserverGuard revision_observer_;
+    ObserverGuard start_observer_;
     ObserverGuard run_state_observer_;
     ObserverGuard automatic_observer_;
     ObserverGuard estimate_observer_;
