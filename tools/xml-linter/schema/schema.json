@@ -4109,6 +4109,7 @@
     "test_switch_width_large",
     "text",
     "text_muted",
+    "text_on_danger",
     "text_on_primary",
     "text_subtle",
     "tg_picker_gap",

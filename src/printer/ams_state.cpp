@@ -423,6 +423,7 @@ void AmsState::reset_backend_subjects() {
     lv_subject_set_int(&filament_runout_, 0);
     lv_subject_set_int(&bypass_active_, 0);
     lv_subject_set_int(&supports_bypass_, 0);
+    lv_subject_set_int(&ams_feeder_open_, 0);
     lv_subject_set_int(&ams_slot_count_, 0);
     lv_subject_set_int(&active_tool_port_present_, 1);
 
@@ -600,6 +601,7 @@ void AmsState::sync_from_backend() {
     sync_tool_topology(backend);
     sync_filament_runout(info);
     sync_bypass(backend, info);
+    sync_feeder(backend);
     lv_subject_set_int(&ams_slot_count_, info.total_slots);
 
     // Update tool change progress raw data (text formatting in UI layer)
@@ -846,6 +848,14 @@ void AmsState::sync_filament_runout(const AmsSystemInfo& info) {
     // removal this unload caused, and anything after a reload is a new event.
     if (info.filament_loaded) {
         runout_grace_.on_filament_loaded();
+    }
+}
+
+void AmsState::sync_feeder(AmsBackend* backend) {
+    const int open = backend->supports_feeder_control() && backend->feeder_open() ? 1 : 0;
+    if (lv_subject_get_int(&ams_feeder_open_) != open) {
+        spdlog::debug("[AmsState] feeder open -> {}", open);
+        lv_subject_set_int(&ams_feeder_open_, open);
     }
 }
 
