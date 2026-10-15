@@ -57,6 +57,7 @@
 #include "print_completion.h"
 #include "print_control_buttons.h"
 #include "print_start_navigation.h"
+#include "printer_image_manager.h"
 #include "printer_state.h"
 #include "runtime_config.h"
 #include "sensor_managers.h"
@@ -78,7 +79,16 @@
 #include <memory>
 
 SubjectInitializer::SubjectInitializer() = default;
-SubjectInitializer::~SubjectInitializer() = default;
+// PanelWidgetManager outlives this object, and the next printer's widget subjects read
+// their shared resources before that printer's SubjectInitializer registers its own, so a
+// slot left naming an object freed here is dereferenced on every printer switch.
+SubjectInitializer::~SubjectInitializer() {
+    auto& widgets = helix::PanelWidgetManager::instance();
+    widgets.unregister_shared_resource<helix::IMoonrakerAPI>(m_registered_api);
+    widgets.unregister_shared_resource<TemperatureService>(m_temp_control_panel.get());
+    widgets.unregister_shared_resource<helix::BedDryingController>(m_bed_drying.get());
+    widgets.unregister_shared_resource<helix::TemperatureController>(m_temp_controller.get());
+}
 
 void SubjectInitializer::init_core_and_state() {
     spdlog::debug("[SubjectInitializer] Initializing core and state subjects...");
@@ -161,6 +171,8 @@ void SubjectInitializer::init_core_subjects() {
     PrinterStatusIcon::instance().init_subjects();  // Printer icon state
     helix::ui::notification_init_subjects();        // Notification badge subjects
     helix::LockManager::instance().init_subjects(); // Lock screen pin_set subject
+    // HomePanel observes it from its constructor, which runs in init_panels().
+    helix::PrinterImageManager::instance().init_subjects();
 
     // Quick-preset material name/temperature subjects. MUST be here in core
     // init: the filament panel, the three temp panels and the temp graph
@@ -326,6 +338,28 @@ void SubjectInitializer::init_panel_subjects(helix::IMoonrakerAPI* api) {
     get_global_zoffset_cal_panel().init_subjects();
 #endif
 
+    init_temperature_control(api);
+
+    // Inject TemperatureService into dependent panels
+    // (HomePanel widgets get it via PanelWidgetManager::shared_resource<TemperatureService>())
+    get_global_controls_panel().set_temp_control_panel(m_temp_control_panel.get());
+    get_global_print_status_panel().set_temp_control_panel(m_temp_control_panel.get());
+    get_global_filament_panel().set_temp_control_panel(m_temp_control_panel.get());
+    get_global_pid_cal_panel().set_temp_control_panel(m_temp_control_panel.get());
+
+    // E-Stop overlay — cleanup self-registered inside init_subjects()
+    EmergencyStopOverlay::instance().init_subjects();
+
+    // AbortManager subjects — cleanup self-registered inside init_subjects()
+    helix::AbortManager::instance().init_subjects();
+
+    // ActivePrintMediaManager needs API for thumbnail loading
+    if (api) {
+        helix::get_active_print_media_manager().set_api(api);
+    }
+}
+
+void SubjectInitializer::init_temperature_control(helix::IMoonrakerAPI* api) {
     // TemperatureController (owned by SubjectInitializer — stateless wiring, no subjects)
     m_temp_controller = std::make_unique<helix::TemperatureController>(get_printer_state(), api);
     helix::PanelWidgetManager::instance().register_shared_resource<helix::TemperatureController>(
@@ -363,29 +397,12 @@ void SubjectInitializer::init_panel_subjects(helix::IMoonrakerAPI* api) {
     m_temp_control_panel->set_controller(m_temp_controller.get());
     m_temp_control_panel->init_subjects();
 
-    // Inject TemperatureService into dependent panels
-    // (HomePanel widgets get it via PanelWidgetManager::shared_resource<TemperatureService>())
-    get_global_controls_panel().set_temp_control_panel(m_temp_control_panel.get());
-    get_global_print_status_panel().set_temp_control_panel(m_temp_control_panel.get());
-    get_global_filament_panel().set_temp_control_panel(m_temp_control_panel.get());
-    get_global_pid_cal_panel().set_temp_control_panel(m_temp_control_panel.get());
-
     // Register shared resources on PanelWidgetManager for self-registered widget factories
     helix::PanelWidgetManager::instance().register_shared_resource<TemperatureService>(
         m_temp_control_panel.get());
     if (api) {
         helix::PanelWidgetManager::instance().register_shared_resource<helix::IMoonrakerAPI>(api);
-    }
-
-    // E-Stop overlay — cleanup self-registered inside init_subjects()
-    EmergencyStopOverlay::instance().init_subjects();
-
-    // AbortManager subjects — cleanup self-registered inside init_subjects()
-    helix::AbortManager::instance().init_subjects();
-
-    // ActivePrintMediaManager needs API for thumbnail loading
-    if (api) {
-        helix::get_active_print_media_manager().set_api(api);
+        m_registered_api = api;
     }
 }
 
