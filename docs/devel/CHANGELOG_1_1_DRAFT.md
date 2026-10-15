@@ -1003,6 +1003,15 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
   names the heater still short of its target, the bed, the nozzle or the chamber, and the
   nozzle keeps its label until it is within 2 degrees. If Klipper shuts down during
   preparation, the progress display stops instead of counting on for up to half an hour.
+- **FlashForge AD5M on Forge-X 1.4: print preparation finished minutes early** - the
+  screen said the print was starting as soon as the nozzle clean ended, skipping the whole
+  bed mesh, the reheat and the priming line, and the time estimate was far off. Preparation
+  now follows the mod's own step reporting through to the first layer: heating, the nozzle
+  clean and its cool-down for probing, the bed mesh with its point count, the reheat and the
+  priming line.
+- **Print preparation time estimates no longer balloon** - on every printer, the estimate
+  could jump to two or three times the real preparation once the bed reached its last slow
+  degrees. It now stays close to how long preparation really takes.
 - **A timed-out print request could start a second print.**
 - **A start macro that heats before replying** (#1451) no longer shows a timeout dialog over a
   print that started fine.
