@@ -3351,8 +3351,10 @@ translations:
   Tap the part cooling fan: Toque na ventoinha de resfriamento da peça
   Tap to assign: Toque para atribuir
   Target: 'Alvo'
+  Target RH: UR alvo
   Target Temperature: Temperatura Alvo
   Target Version: Versão Alvo
+  Target humidity: Umidade alvo
   Telemetry: Telemetria
   Telemetry Data: Dados de Telemetria
   Telemetry Disabled: Telemetria Desativada

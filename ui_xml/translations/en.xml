@@ -3018,8 +3018,10 @@
   <translation tag="Tap the part cooling fan" en="Tap the part cooling fan"/>
   <translation tag="Tap to assign" en="Tap to assign"/>
   <translation tag="Target" en="Target"/>
+  <translation tag="Target RH" en="Target RH"/>
   <translation tag="Target Temperature" en="Target Temperature"/>
   <translation tag="Target Version" en="Target Version"/>
+  <translation tag="Target humidity" en="Target humidity"/>
   <translation tag="Telemetry" en="Telemetry"/>
   <translation tag="Telemetry Data" en="Telemetry Data"/>
   <translation tag="Telemetry Disabled" en="Telemetry Disabled"/>

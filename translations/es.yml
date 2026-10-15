@@ -3346,8 +3346,10 @@ translations:
   Tap the part cooling fan: Toque el ventilador de enfriamiento de pieza
   Tap to assign: Toca para asignar
   Target: 'Objetivo'
+  Target RH: HR objetivo
   Target Temperature: Temperatura Objetivo
   Target Version: Versión objetivo
+  Target humidity: Humedad objetivo
   Telemetry: Telemetría
   Telemetry Data: Datos de telemetría
   Telemetry Disabled: Telemetría desactivada

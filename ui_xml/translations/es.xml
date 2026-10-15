@@ -3018,8 +3018,10 @@
   <translation tag="Tap the part cooling fan" es="Toque el ventilador de enfriamiento de pieza"/>
   <translation tag="Tap to assign" es="Toca para asignar"/>
   <translation tag="Target" es="Objetivo"/>
+  <translation tag="Target RH" es="HR objetivo"/>
   <translation tag="Target Temperature" es="Temperatura Objetivo"/>
   <translation tag="Target Version" es="Versión objetivo"/>
+  <translation tag="Target humidity" es="Humedad objetivo"/>
   <translation tag="Telemetry" es="Telemetría"/>
   <translation tag="Telemetry Data" es="Datos de telemetría"/>
   <translation tag="Telemetry Disabled" es="Telemetría desactivada"/>

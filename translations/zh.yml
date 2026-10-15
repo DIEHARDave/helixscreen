@@ -3131,8 +3131,10 @@ translations:
   Tap the part cooling fan: 点击零件冷却风扇
   Tap to assign: 点击分配
   Target: '目标'
+  Target RH: 目标湿度
   Target Temperature: 目标温度
   Target Version: 目标版本
+  Target humidity: 目标湿度
   Telemetry: 遥测
   Telemetry Data: 遥测数据
   Telemetry Disabled: 遥测已禁用

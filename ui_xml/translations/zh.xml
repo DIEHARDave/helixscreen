@@ -3018,8 +3018,10 @@
   <translation tag="Tap the part cooling fan" zh="点击零件冷却风扇"/>
   <translation tag="Tap to assign" zh="点击分配"/>
   <translation tag="Target" zh="目标"/>
+  <translation tag="Target RH" zh="目标湿度"/>
   <translation tag="Target Temperature" zh="目标温度"/>
   <translation tag="Target Version" zh="目标版本"/>
+  <translation tag="Target humidity" zh="目标湿度"/>
   <translation tag="Telemetry" zh="遥测"/>
   <translation tag="Telemetry Data" zh="遥测数据"/>
   <translation tag="Telemetry Disabled" zh="遥测已禁用"/>

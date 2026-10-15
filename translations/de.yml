@@ -3353,8 +3353,10 @@ translations:
   Tap the part cooling fan: Auf den Teile-Kühllüfter tippen
   Tap to assign: Zum Zuweisen tippen
   Target: 'Ziel'
+  Target RH: Ziel-RF
   Target Temperature: Zieltemperatur
   Target Version: Zielversion
+  Target humidity: Zielfeuchtigkeit
   Telemetry: Telemetrie
   Telemetry Data: Telemetriedaten
   Telemetry Disabled: Telemetrie deaktiviert

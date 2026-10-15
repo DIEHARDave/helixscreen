@@ -3316,8 +3316,10 @@ translations:
   Tap the part cooling fan: Нажмите на вентилятор охлаждения детали
   Tap to assign: Нажмите для назначения
   Target: 'Цель'
+  Target RH: Цель ОВ
   Target Temperature: Целевая температура
   Target Version: Целевая версия
+  Target humidity: Целевая влажность
   Telemetry: Телеметрия
   Telemetry Data: Данные телеметрии
   Telemetry Disabled: Телеметрия отключена
