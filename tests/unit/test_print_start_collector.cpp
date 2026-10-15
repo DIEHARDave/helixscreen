@@ -5546,6 +5546,17 @@ TEST_CASE_METHOD(ForgeXCollectorFixture, "A live pre-print step holds the deadli
         tick_fallbacks();
         REQUIRE(get_current_phase() == PrintStartPhase::COMPLETE);
     }
+
+    SECTION("the same step pushed again after the stack emptied holds again") {
+        context({{"context_types", json::array()}, {"current_state", nullptr}});
+        REQUIRE_FALSE(collector().in_live_preprint_step());
+        context({{"context_types", {"print", "kamp", "nozzle_clean"}},
+                 {"current_state", "COOLING NOZZLE"}});
+        REQUIRE(collector().in_live_preprint_step());
+        PrintStartCollectorTestAccess::set_elapsed_seconds(collector(), 600);
+        tick_fallbacks();
+        REQUIRE(get_current_phase() == PrintStartPhase::CLEANING);
+    }
 }
 
 TEST_CASE_METHOD(PrintStartCollectorHeaterFixture,

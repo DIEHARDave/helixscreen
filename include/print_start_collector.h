@@ -360,10 +360,13 @@ class PrintStartCollector : public std::enable_shared_from_this<PrintStartCollec
      * Thread-safe: runs on the WebSocket background thread, like the other
      * notify_status_update handling in start().
      *
-     * @param seed True for the query start() sends: its values fill only the
-     *   fields no frame has delivered yet, since a frame may be newer.
+     * @param seed_run Set for the answer to the query start() sends, to the
+     *   run that sent it: its values fill only the fields no frame has
+     *   delivered yet, since a frame may be newer, and it is dropped once
+     *   another run has begun.
      */
-    void handle_phase_object_status(const nlohmann::json& status, bool seed = false);
+    void handle_phase_object_status(const nlohmann::json& status,
+                                    std::optional<uint64_t> seed_run = std::nullopt);
 
     /// Fetch the phase object's current state and context once at start():
     /// a context opened before the collector armed is never sent again
@@ -374,7 +377,8 @@ class PrintStartCollector : public std::enable_shared_from_this<PrintStartCollec
     /// start() has begun another run.
     void apply_phase_object_query(const nlohmann::json& response, uint64_t run);
 
-    /// Bumped by every start(), so an answer can tell which run asked.
+    /// Bumped by every start() under state_mutex_, so an answer can tell
+    /// which run asked.
     std::atomic<uint64_t> run_generation_{0};
 
     /**

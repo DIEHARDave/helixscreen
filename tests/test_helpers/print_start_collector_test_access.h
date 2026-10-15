@@ -131,7 +131,7 @@ class PrintStartCollectorTestAccess {
     /// Hand the collector a phase-object status as the answer to its
     /// start-up query, whenever that answer arrives.
     static void feed_phase_object_seed(PrintStartCollector& c, const nlohmann::json& status) {
-        c.handle_phase_object_status(status, /*seed=*/true);
+        c.handle_phase_object_status(status, c.run_generation_.load());
     }
 
     /// The run a start-up query sent now would belong to.

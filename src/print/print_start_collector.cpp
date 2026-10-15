@@ -159,9 +159,9 @@ void PrintStartCollector::start() {
         return;
     }
 
-    run_generation_.fetch_add(1);
     {
         std::lock_guard<std::mutex> lock(state_mutex_);
+        run_generation_.fetch_add(1);
         reset_run_locked();
         leveling_points_ = state_.get_discovery().leveling_probe_points();
         // Snapshot stale subject values so fallbacks only trigger on real changes
@@ -1533,7 +1533,9 @@ void PrintStartCollector::apply_leveling_phase(helix::PrintStartPhase phase) {
     apply_profile_match(match, /*marks_real_signal=*/false);
 }
 
-void PrintStartCollector::handle_phase_object_status(const json& status, bool seed) {
+void PrintStartCollector::handle_phase_object_status(const json& status,
+                                                     std::optional<uint64_t> seed_run) {
+    const bool seed = seed_run.has_value();
     if (!profile_ || !profile_->has_phase_object()) {
         return;
     }
@@ -1559,17 +1561,25 @@ void PrintStartCollector::handle_phase_object_status(const json& status, bool se
         return;
     }
 
+    // An answer checks its run under the same lock as its writes, so a start()
+    // in between cannot let it into the next run.
+    const auto stale_seed_locked = [&] { return seed && *seed_run != run_generation_.load(); };
     std::string state;
     {
         std::lock_guard<std::mutex> lock(state_mutex_);
+        if (stale_seed_locked()) {
+            return;
+        }
         if (has_state && !(seed && phase_object_state_cache_)) {
             phase_object_state_cache_ = field->is_string() ? field->get<std::string>() : "";
         }
         if (has_context && !(seed && phase_object_context_cache_)) {
             phase_object_context_cache_ = PrintStartProfile::innermost_context(*context);
-            // An empty stack is no step at all: nothing is left to hold.
+            // An empty stack is no step at all: nothing is left to hold, and
+            // a step pushed again with the same state is a new one.
             if (phase_object_context_cache_->empty()) {
                 live_object_phase_ = PrintStartPhase::IDLE;
+                last_phase_object_state_.clear();
             }
         }
         if (!phase_object_state_cache_ || phase_object_state_cache_->empty()) {
@@ -1598,7 +1608,7 @@ void PrintStartCollector::handle_phase_object_status(const json& status, bool se
     // not a change of phase.
     {
         std::lock_guard<std::mutex> lock(state_mutex_);
-        if (state == last_phase_object_state_) {
+        if (stale_seed_locked() || state == last_phase_object_state_) {
             return;
         }
         last_phase_object_state_ = state;
@@ -1620,13 +1630,13 @@ bool PrintStartCollector::in_live_preprint_step() const {
 
 void PrintStartCollector::apply_phase_object_query(const json& response, uint64_t run) {
     // An answer to an earlier run's query describes that run's printer.
-    if (!active_.load() || run != run_generation_.load()) {
+    if (!active_.load()) {
         return;
     }
     const json* result = json_util::find_member(response, "result");
     const json* status = result != nullptr ? json_util::find_member(*result, "status") : nullptr;
     if (status != nullptr) {
-        handle_phase_object_status(*status, /*seed=*/true);
+        handle_phase_object_status(*status, run);
     }
 }
 
