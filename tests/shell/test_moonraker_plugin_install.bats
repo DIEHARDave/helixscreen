@@ -449,3 +449,112 @@ setup_creality_k1_layout() {
         printf '%s\n' "$plugin_roots" | grep -qx "$r" || fail "plugin install.sh misses Moonraker root $r"
     done
 }
+
+# Forge-X on an AD5M: Moonraker runs in a chroot at /data/.mod/.forge-x, so
+# its argv names paths inside the chroot, and the installer runs either
+# outside it (ssh) or inside it (HelixScreen's own install, which shares the
+# chroot). moonraker.conf is the mod's own git-tracked file, reached through a
+# symlink, and includes mod_data/user.moonraker.conf for the user's sections.
+# The plugin sits under /opt/config, which the chroot sees at the same path.
+setup_forgex_layout() {
+    local root="$1"
+    local chroot="$root/data/.mod/.forge-x"
+    local pkg="$chroot/root/moonraker-env/moonraker"
+    local cfg="$chroot/root/printer_data/config"
+    mkdir -p "$pkg/components" "$cfg/mod" "$cfg/mod_data" "$root/home" "$root/proc/1925"
+    : > "$pkg/moonraker.py"
+    printf '[server]\nport: 7125\n\n[include mod_data/user.moonraker.conf]\n' > "$cfg/mod/moonraker.conf"
+    ln -s mod/moonraker.conf "$cfg/moonraker.conf"
+    printf '[authorization]\ntrusted_clients:\n  0.0.0.0/0\n' > "$cfg/mod_data/user.moonraker.conf"
+    printf '%s\0' /root/moonraker-env/bin/python3 /root/moonraker-env/moonraker/moonraker.py \
+        -d /root/printer_data > "$root/proc/1925/cmdline"
+    ln -s "$chroot" "$root/proc/1925/root"
+    # The plugin as installed under the bind-mounted /opt/config.
+    mkdir -p "$chroot/opt/config/mod_data/helixscreen"
+    cp -R "$REPO_ROOT/moonraker-plugin" "$chroot/opt/config/mod_data/helixscreen/"
+    for cmd in sudo service curl; do
+        mock_command_script "$cmd" 'exit 0'
+    done
+}
+
+FORGEX_PLUGIN=/opt/config/mod_data/helixscreen/moonraker-plugin
+
+@test "auto install from outside a Forge-X chroot links the plugin as Moonraker sees it" {
+    local root="$BATS_TEST_TMPDIR/fx"
+    setup_forgex_layout "$root"
+    local chroot="$root/data/.mod/.forge-x"
+    local cfg="$chroot/root/printer_data/config"
+    cp "$cfg/mod/moonraker.conf" "$BATS_TEST_TMPDIR/mod.conf.before"
+
+    run env HOME="$root/home" HELIX_PROC_ROOT="$root/proc" \
+        sh "$chroot$FORGEX_PLUGIN/install.sh" --no-restart --auto
+    [ "$status" -eq 0 ] || fail "install failed: $output"
+
+    local link="$chroot/root/moonraker-env/moonraker/components/helix_print.py"
+    [ -L "$link" ] || fail "no plugin link in the chroot's components"
+    [ "$(readlink "$link")" = "$FORGEX_PLUGIN/helix_print.py" ] \
+        || fail "link names $(readlink "$link"), not the in-chroot path"
+    grep -q '^\[helix_print\]' "$cfg/mod_data/user.moonraker.conf" \
+        || fail "section not in user.moonraker.conf"
+    [ -L "$cfg/moonraker.conf" ] || fail "the mod's moonraker.conf symlink was replaced"
+    cmp -s "$BATS_TEST_TMPDIR/mod.conf.before" "$cfg/mod/moonraker.conf" \
+        || fail "the mod's own moonraker.conf was edited"
+}
+
+@test "auto install refuses a plugin Moonraker cannot see from its chroot" {
+    local root="$BATS_TEST_TMPDIR/fx"
+    setup_forgex_layout "$root"
+    local chroot="$root/data/.mod/.forge-x"
+
+    run env HOME="$root/home" HELIX_PROC_ROOT="$root/proc" sh "$SCRIPT" --no-restart --auto
+    [ "$status" -ne 0 ] || fail "installed a link Moonraker cannot follow"
+    contains "cannot see" "$output"
+    [ ! -e "$chroot/root/moonraker-env/moonraker/components/helix_print.py" ] \
+        && [ ! -L "$chroot/root/moonraker-env/moonraker/components/helix_print.py" ]
+}
+
+@test "auto uninstall from outside a Forge-X chroot removes the link and the user section" {
+    local root="$BATS_TEST_TMPDIR/fx"
+    setup_forgex_layout "$root"
+    local chroot="$root/data/.mod/.forge-x"
+    local cfg="$chroot/root/printer_data/config"
+    run env HOME="$root/home" HELIX_PROC_ROOT="$root/proc" \
+        sh "$chroot$FORGEX_PLUGIN/install.sh" --no-restart --auto
+    [ "$status" -eq 0 ] || fail "install failed: $output"
+    cp "$cfg/mod/moonraker.conf" "$BATS_TEST_TMPDIR/mod.conf.before"
+
+    run env HOME="$root/home" HELIX_PROC_ROOT="$root/proc" \
+        sh "$chroot$FORGEX_PLUGIN/install.sh" --no-restart --uninstall-auto
+    [ "$status" -eq 0 ] || fail "uninstall failed: $output"
+    [ ! -L "$chroot/root/moonraker-env/moonraker/components/helix_print.py" ]
+    ! grep -q '^\[helix_print\]' "$cfg/mod_data/user.moonraker.conf"
+    grep -q '^trusted_clients:' "$cfg/mod_data/user.moonraker.conf" \
+        || fail "the user's own sections were lost"
+    [ -L "$cfg/moonraker.conf" ]
+    cmp -s "$BATS_TEST_TMPDIR/mod.conf.before" "$cfg/mod/moonraker.conf"
+}
+
+@test "with no service manager the auto install asks Moonraker to restart itself" {
+    local root="$BATS_TEST_TMPDIR/fx"
+    setup_forgex_layout "$root"
+    local chroot="$root/data/.mod/.forge-x"
+    local log="$BATS_TEST_TMPDIR/curl.log"
+    mock_command_script "curl" "printf '%s\n' \"\$*\" >> '$log'; exit 0"
+
+    local bin="$BATS_TEST_TMPDIR/no-service-path"
+    mkdir -p "$bin"
+    local tool p
+    for tool in sh dirname basename cp mv rm ln grep awk sed tail tr cat date sleep readlink; do
+        p="$(command -v "$tool")" && ln -sf "$p" "$bin/$tool"
+    done
+    ln -sf "$BATS_TEST_TMPDIR/bin/curl" "$bin/curl"
+    # Present but managing no moonraker unit, as a stray systemctl would be.
+    mock_command_script "systemctl" 'exit 1'
+    ln -sf "$BATS_TEST_TMPDIR/bin/systemctl" "$bin/systemctl"
+
+    run env HOME="$root/home" HELIX_PROC_ROOT="$root/proc" PATH="$bin:$HELIX_TEST_SANDBOX_BIN" \
+        sh "$chroot$FORGEX_PLUGIN/install.sh" --auto
+    [ "$status" -eq 0 ] || fail "install failed: $output"
+    grep -q -- '-X POST http://localhost:7125/server/restart' "$log" \
+        || fail "no self-restart request: $(cat "$log")"
+}

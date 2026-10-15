@@ -269,9 +269,36 @@ NET_DEPLOY_NO_ASSET='class NetDeploy(AppDeploy):
     [ "$output" = "supported" ]
 }
 
+@test "find_moonraker_update_manager_dir: finds Moonraker running in a Forge-X chroot" {
+    # The running process names /root/moonraker-env/... inside its own root,
+    # which is /data/.mod/.forge-x from here.
+    local root="$BATS_TEST_TMPDIR/fx"
+    local chroot="$root/data/.mod/.forge-x"
+    mkdir -p "$chroot/root/moonraker-env/moonraker/components/update_manager" "$root/proc/1925"
+    : > "$chroot/root/moonraker-env/moonraker/moonraker.py"
+    printf '%s\0' /root/moonraker-env/bin/python3 /root/moonraker-env/moonraker/moonraker.py \
+        -d /root/printer_data > "$root/proc/1925/cmdline"
+    ln -s "$chroot" "$root/proc/1925/root"
+    # A process merely naming the script, as a grep for it would.
+    mkdir -p "$root/proc/77"
+    printf '%s\0' grep moonraker.py > "$root/proc/77/cmdline"
+    export HELIX_PROC_ROOT="$root/proc"
+    MOONRAKER_SRC_PATHS="/nonexistent/moonraker"
+
+    run find_moonraker_update_manager_dir
+    [ "$status" -eq 0 ]
+    [ "$output" = "$chroot/root/moonraker-env/moonraker/components/update_manager" ]
+
+    touch "$chroot/root/moonraker-env/moonraker/components/helix_print.py"
+    run find_helix_print_plugin
+    [ "$output" = "$chroot/root/moonraker-env/moonraker/components/helix_print.py" ]
+}
+
 @test "find_moonraker_update_manager_dir: nothing found echoes empty string" {
     MOONRAKER_SRC_PATHS="/nonexistent/moonraker"
     KLIPPER_HOME="$BATS_TEST_TMPDIR/nonexistent"
+    export HELIX_PROC_ROOT="$BATS_TEST_TMPDIR/proc-empty"
+    mkdir -p "$HELIX_PROC_ROOT"
 
     run find_moonraker_update_manager_dir
     [ "$status" -eq 0 ]
@@ -828,6 +855,7 @@ MOONEOF
 
 @test "restart_moonraker: warns and succeeds when no restart mechanism exists" {
     mock_command_script "systemctl" 'exit 1'
+    mock_command_script "curl" 'exit 7'
     export HELIX_INITD_DIR="$BATS_TEST_TMPDIR/etc/init.d-empty"
     mkdir -p "$HELIX_INITD_DIR"
 
@@ -836,6 +864,21 @@ MOONEOF
     # Must not abort the install, and must tell the user to restart by hand
     [ "$status" -eq 0 ]
     [[ "$output" == *"manual"* || "$output" == *"manually"* ]]
+}
+
+@test "restart_moonraker: with no service manager, asks Moonraker to restart itself" {
+    # Forge-X: Moonraker runs in the mod's chroot under no init script here.
+    mock_command_script "systemctl" 'exit 1'
+    local log="$BATS_TEST_TMPDIR/curl.log"
+    mock_command_script "curl" "printf '%s\\n' \"\$*\" >> '$log'; exit 0"
+    export HELIX_INITD_DIR="$BATS_TEST_TMPDIR/etc/init.d-empty"
+    mkdir -p "$HELIX_INITD_DIR"
+
+    run restart_moonraker
+
+    [ "$status" -eq 0 ]
+    grep -q -- '-X POST http://127.0.0.1:7125/server/restart' "$log"
+    [[ "$output" != *"manually"* ]]
 }
 
 # =============================================================================

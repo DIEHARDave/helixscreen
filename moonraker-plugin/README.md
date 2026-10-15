@@ -49,6 +49,14 @@ cd /path/to/helixscreen/moonraker-plugin
 ```
 
 The installer creates a symlink from Moonraker's components directory to `helix_print.py`.
+`helix_3mf.py` must stay beside `helix_print.py`: the plugin loads it from the link's target
+directory, and runs without .3mf conversion when it is missing.
+
+When Moonraker runs in a chroot (Forge-X), the installer finds it through
+`/proc/<pid>/root` and links the plugin by the path Moonraker sees. When `moonraker.conf`
+is a symlink that includes a `user.moonraker.conf` (a firmware mod owns the main file),
+`[helix_print]` is added to that user file instead. With no `systemctl` or `service` to
+restart Moonraker, `--auto` asks Moonraker to restart itself (`POST /server/restart`).
 
 ### Update Manager (Auto-Updates)
 

@@ -129,6 +129,29 @@ the functions they call live in `scripts/lib/installer/forgex.sh`. `uninstall_fo
 `unpatch_forgex_screen_drawing`, removes the wrapper with `uninstall_forgex_logged_wrapper`, restores
 the recorded display mode, and re-enables the vendor launchers.
 
+## Moonraker and the HelixPrint plugin on Forge-X
+
+Forge-X runs Moonraker (v0.9.3, Python 3.11) and HelixScreen inside its chroot at
+`/data/.mod/.forge-x`; Klipper (Python 3.7) runs outside it. From outside, the running
+Moonraker's argv names paths inside the chroot (`<chroot>/root/moonraker-env/moonraker/moonraker.py`
+is its script), so every lookup goes through `/proc/<pid>/root`: `running_moonraker_package_dir` in
+`scripts/lib/installer/moonraker.sh` and `running_moonraker_root` in
+`moonraker-plugin/install.sh`. The chroot binds `/opt/config` at the same path, so the
+plugin under `/opt/config/mod_data/helixscreen/moonraker-plugin` is linked by that path.
+
+- `moonraker.conf` is a symlink to the mod's git-tracked `/opt/config/mod/moonraker.conf`, which
+  includes `mod_data/user.moonraker.conf`. The `[helix_print]` section goes in the user file.
+- No init script outside the chroot manages Moonraker, so both installers fall back to
+  `POST /server/restart`, which re-launches Moonraker in place.
+- The gcodes root is all of `/data`, and `file_system_observer: none` is set: Moonraker sees
+  only files that arrive through its API.
+- Klipper's `virtual_sdcard` here skips dot-directories and any name not ending in
+  `.gcode`/`.g`/`.gco` when it resolves `SDCARD_PRINT_FILE`, so a print must be started from a
+  visible `.gcode` path.
+- OrcaSlicer's `use_3mf` printer option uploads `<name>.gcode.3mf`, which this Moonraker stores
+  but cannot print. The plugin converts each upload to `.gcode` (`moonraker-plugin/README.md`,
+  ".3mf Conversion").
+
 ## Backlight
 
 `BacklightBackendAllwinner` (`src/api/backlight_backend.cpp`) drives `/dev/disp` with the DISP2
