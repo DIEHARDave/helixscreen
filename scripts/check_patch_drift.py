@@ -52,6 +52,12 @@ Modes:
   --clear-stamp forget the recorded state; run by `make reset-patches`, which
                 puts the submodule back to pristine and so invalidates it
   --list        one bare finding per line, no remedy text
+  --pending-since REV [--pending-head REV]
+                what .githooks/pre-push runs. A patch-unapplied, patch-edited
+                or patch-removed finding whose patch the commits REV..HEAD
+                changed is the tree not having built those commits yet, not a
+                fault in them: it is reported as a note and does not fail.
+                Every other finding fails exactly as in the default mode.
 """
 
 from __future__ import annotations
@@ -331,6 +337,63 @@ def patch_in_any_ref(root: Path, name: str) -> bool | None:
     return bool(proc.stdout.strip())
 
 
+# The findings a commit range can explain by changing patches/: the tree has
+# simply not applied what the commits ship. A changed submodule file, a missing
+# or unreadable stamp, or a stamp entry no ref holds are never explained by one.
+PENDING_KINDS = ("patch-unapplied", "patch-edited", "patch-removed")
+
+
+def patches_changed(root: Path, since: str, head: str) -> set[str] | None:
+    """Names of patches/ files that differ between SINCE and HEAD.
+
+    None when git cannot answer (an unknown rev, not a repository): the caller
+    then treats nothing as pending, so every finding keeps failing.
+    """
+    try:
+        proc = subprocess.run(
+            ["git", "-C", str(root), "diff", "--name-only", since, head,
+             "--", "patches/"],
+            capture_output=True,
+            text=True,
+            env=git_env(),
+        )
+    except OSError:
+        return None
+    if proc.returncode != 0:
+        return None
+    return {Path(line).name for line in proc.stdout.splitlines() if line}
+
+
+def split_pending(
+    findings: list["Finding"], changed: set[str]
+) -> tuple[list["Finding"], list["Finding"]]:
+    """(blocking, pending): pending findings are the ones CHANGED explains."""
+    blocking: list[Finding] = []
+    pending: list[Finding] = []
+    for f in findings:
+        if f.kind in PENDING_KINDS and f.item in changed:
+            pending.append(f)
+        else:
+            blocking.append(f)
+    return blocking, pending
+
+
+def pending_note(pending: list["Finding"], since: str) -> str:
+    lines = [
+        f"ℹ️  patch drift the pushed commits explain (patches/ changed since "
+        f"{since[:9]}); this tree has not built them yet:"
+    ]
+    lines.extend(f"   [{f.kind}] {f.sub} {f.item}" for f in pending)
+    if any(f.kind == "patch-unapplied" for f in pending):
+        lines.append("   The next `make` here applies the new patches.")
+    if any(f.kind != "patch-unapplied" for f in pending):
+        lines.append(
+            "   An edited or removed patch needs `make reapply-patches` in this "
+            "tree;\n   a plain `make` keeps the old revision's hunks."
+        )
+    return "\n".join(lines)
+
+
 def check_submodule(
     sub: Submodule, patch_dir: Path, pre_apply: bool
 ) -> tuple[list[Finding], str | None]:
@@ -533,6 +596,17 @@ def main(argv: list[str]) -> int:
         help="mk/patches.mk mode: a patch new since the last stamp is not drift",
     )
     ap.add_argument("--list", action="store_true", help="one bare finding per line")
+    ap.add_argument(
+        "--pending-since",
+        metavar="REV",
+        help="pre-push mode: drift in a patch REV..HEAD changed is a note, not a failure",
+    )
+    ap.add_argument(
+        "--pending-head",
+        metavar="REV",
+        default="HEAD",
+        help="the end of the --pending-since range (default HEAD)",
+    )
     args = ap.parse_args(argv[1:])
 
     root = Path(args.repo_root).resolve()
@@ -558,6 +632,17 @@ def main(argv: list[str]) -> int:
         if note:
             notes.append(note)
 
+    pending: list[Finding] = []
+    if args.pending_since and findings:
+        changed = patches_changed(root, args.pending_since, args.pending_head)
+        if changed is None:
+            print(
+                f"⚠️  could not diff patches/ over {args.pending_since}.."
+                f"{args.pending_head}; every finding is treated as drift"
+            )
+        else:
+            findings, pending = split_pending(findings, changed)
+
     if args.list:
         for f in findings:
             print(f.line())
@@ -570,7 +655,14 @@ def main(argv: list[str]) -> int:
             print(f"      {f.detail}")
         print()
         print(remedy(subs, findings, root))
+        if pending:
+            print()
+            print(pending_note(pending, args.pending_since))
         return 1
+
+    if pending:
+        print(pending_note(pending, args.pending_since))
+        return 0
 
     total_patches = sum(len(s.patches) for s in subs)
     print(
