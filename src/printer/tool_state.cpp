@@ -161,6 +161,7 @@ void ToolState::deinit_subjects() {
     backend_owns_active_tool_ = false;
     ams_topology_tool_count_ = 0;
     ams_topology_tool_to_slot_.clear();
+    ams_topology_tool_extruder_.clear();
 
     subjects_.deinit_all();
     subjects_initialized_ = false;
@@ -183,6 +184,7 @@ void ToolState::init_tools(const helix::PrinterDiscovery& hardware) {
     ams_topology_active_ = false;
     ams_topology_tool_count_ = 0;
     ams_topology_tool_to_slot_.clear();
+    ams_topology_tool_extruder_.clear();
 
     // Which offsets this printer keeps per toolhead, and the model that reads
     // them. Asked once, here, because this is the only place ToolState sees
@@ -330,11 +332,13 @@ void ToolState::set_ams_topology(const ToolTopology& topo) {
     }
 
     bool needs_rebuild = !ams_topology_active_ || ams_topology_tool_count_ != topo.tool_count ||
-                         ams_topology_tool_to_slot_ != topo.tool_to_slot;
+                         ams_topology_tool_to_slot_ != topo.tool_to_slot ||
+                         ams_topology_tool_extruder_ != topo.tool_extruder;
 
     ams_topology_active_ = true;
     ams_topology_tool_count_ = topo.tool_count;
     ams_topology_tool_to_slot_ = topo.tool_to_slot;
+    ams_topology_tool_extruder_ = topo.tool_extruder;
 
     if (needs_rebuild) {
         // Snapshot per-tool hardware mappings populated by init_tools() so we can
@@ -354,12 +358,35 @@ void ToolState::set_ams_topology(const ToolTopology& topo) {
             t.backend_index = topo.backend_index;
             t.backend_slot =
                 (i < static_cast<int>(topo.tool_to_slot.size())) ? topo.tool_to_slot[i] : -1;
+            // Carry over the hardware mappings init_tools set up, from the
+            // tool that printed through the same extruder where the backend
+            // names it. A hub feeds several lanes, and so several tools, into
+            // one head, so tool i is not the i-th head and an index carry
+            // would hand a lane another head's extruder, heater and fan.
+            const std::string extruder = i < static_cast<int>(topo.tool_extruder.size())
+                                             ? topo.tool_extruder[static_cast<size_t>(i)]
+                                             : std::string();
+            const ToolInfo* hardware = nullptr;
+            if (!extruder.empty()) {
+                for (const ToolInfo& p : previous) {
+                    if (p.extruder_name && *p.extruder_name == extruder) {
+                        hardware = &p;
+                        break;
+                    }
+                }
+            } else if (i < static_cast<int>(previous.size())) {
+                hardware = &previous[static_cast<size_t>(i)];
+            }
+            if (hardware) {
+                t.extruder_name = hardware->extruder_name;
+                t.heater_name = hardware->heater_name;
+                t.fan_name = hardware->fan_name;
+                t.gcode_offsets = hardware->gcode_offsets;
+            }
+            if (!extruder.empty()) {
+                t.extruder_name = extruder;
+            }
             if (i < static_cast<int>(previous.size())) {
-                // Carry over hardware mappings init_tools set up.
-                t.extruder_name = previous[i].extruder_name;
-                t.heater_name = previous[i].heater_name;
-                t.fan_name = previous[i].fan_name;
-                t.gcode_offsets = previous[i].gcode_offsets;
                 // And the spool record, but ONLY while this tool still sources
                 // the same lane. Which spool is mounted is durable user data and
                 // a rebuild has no business discarding it — dropping it wholesale
@@ -421,6 +448,7 @@ void ToolState::clear_ams_topology() {
     ams_topology_active_ = false;
     ams_topology_tool_count_ = 0;
     ams_topology_tool_to_slot_.clear();
+    ams_topology_tool_extruder_.clear();
     tools_.clear();
     active_tool_index_ = 0;
     lv_subject_set_int(&tool_count_, 0);
@@ -742,14 +770,48 @@ void ToolState::refresh_any_tool_dirty() {
     lv_subject_set_int(&any_tool_offset_dirty_, any);
 }
 
-int ToolState::extruder_count() const {
-    std::set<std::string> names;
-    for (const auto& t : tools_) {
-        if (t.extruder_name && !t.extruder_name->empty()) {
-            names.insert(*t.extruder_name);
+bool PhysicalHead::holds_tool(int tool_index) const {
+    return std::find(tool_indices.begin(), tool_indices.end(), tool_index) != tool_indices.end();
+}
+
+int PhysicalHead::representative_tool(int active_tool) const {
+    return holds_tool(active_tool) ? active_tool : tool_indices.front();
+}
+
+std::vector<PhysicalHead> physical_heads(const std::vector<ToolInfo>& tools) {
+    std::vector<PhysicalHead> heads;
+    for (size_t i = 0; i < tools.size(); ++i) {
+        const auto& extruder = tools[i].extruder_name;
+        const bool named = extruder && !extruder->empty();
+        auto shared = heads.end();
+        if (named) {
+            shared = std::find_if(heads.begin(), heads.end(), [&](const PhysicalHead& h) {
+                return h.extruder_name == extruder;
+            });
+        }
+        if (shared != heads.end()) {
+            shared->tool_indices.push_back(static_cast<int>(i));
+        } else {
+            heads.push_back({named ? extruder : std::nullopt, {static_cast<int>(i)}});
         }
     }
-    return static_cast<int>(names.size());
+    return heads;
+}
+
+int head_index_for_tool(const std::vector<PhysicalHead>& heads, int tool_index) {
+    for (size_t h = 0; h < heads.size(); ++h) {
+        if (heads[h].holds_tool(tool_index)) {
+            return static_cast<int>(h);
+        }
+    }
+    return -1;
+}
+
+int ToolState::extruder_count() const {
+    const auto heads = physical_heads();
+    return static_cast<int>(std::count_if(heads.begin(), heads.end(), [](const PhysicalHead& h) {
+        return h.extruder_name.has_value();
+    }));
 }
 
 const ToolInfo* ToolState::active_tool() const {

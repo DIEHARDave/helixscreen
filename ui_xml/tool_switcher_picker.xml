@@ -17,7 +17,7 @@
               style_clip_corner="true" style_bg_opa="0" style_border_width="0" scrollable="true" clickable="false">
         <bind_style_prop prop="width" subject="tool_switcher_picker_grid_w"/>
         <bind_style_prop prop="max_height" subject="tool_switcher_picker_grid_max_h"/>
-        <repeat count="tool_switcher_picker_heads">
+        <repeat count="tool_switcher_heads">
           <tool_switcher_segment name="tool_picker_cell_${i}"
                                  index="${i}" size="tool_switcher_picker_cell" band_h="tool_switcher_picker_band_h"
                                  band_labelled="tool_switcher_picker_band_labelled"

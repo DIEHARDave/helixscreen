@@ -92,12 +92,9 @@ void register_nozzle_temps_widget() {
 
 std::vector<std::string> helix::distinct_extruder_names(const std::vector<ToolInfo>& tools) {
     std::vector<std::string> result;
-    std::set<std::string> seen;
-    for (const auto& tool : tools) {
-        if (!tool.extruder_name)
-            continue;
-        if (seen.insert(*tool.extruder_name).second)
-            result.push_back(*tool.extruder_name);
+    for (const auto& head : physical_heads(tools)) {
+        if (head.extruder_name)
+            result.push_back(*head.extruder_name);
     }
     return result;
 }

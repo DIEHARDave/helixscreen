@@ -87,7 +87,7 @@ void PreheatWidget::attach(lv_obj_t* widget_obj, lv_obj_t* parent_screen) {
     // Clamp tool_target_ to prevent a stale index when the printer's extruder
     // count changes between sessions. PanelWidget instances are recycled across
     // home-panel rebuilds, so tool_target_ outlives any one attach.
-    if (tool_target_ >= ToolState::instance().extruder_count()) {
+    if (tool_target_ >= static_cast<int>(ToolState::instance().physical_heads().size())) {
         tool_target_ = -1; // Reset to "all" if stale
     }
 
@@ -259,8 +259,8 @@ void PreheatWidget::update_tool_target_label() {
         // collapse, not the lane count.
         std::snprintf(label, sizeof(label), "%s (%d)", lv_tr("All"),
                       ToolState::instance().extruder_count());
-    } else if (tool_target_ >= 0 && tool_target_ < static_cast<int>(tools.size())) {
-        std::snprintf(label, sizeof(label), "%s", tools[tool_target_].display_label.c_str());
+    } else if (const int tool = target_tool_index(); tool >= 0) {
+        std::snprintf(label, sizeof(label), "%s", tools[tool].display_label.c_str());
     } else {
         label[0] = '\0';
     }
@@ -406,7 +406,8 @@ void PreheatWidget::set_temperatures_multi(int nozzle, int bed) {
     if (!c)
         return;
     const auto& tools = ToolState::instance().tools();
-    auto heaters = collect_preheat_heaters(tools, tool_target_);
+    const int target_tool = target_tool_index();
+    auto heaters = collect_preheat_heaters(tools, target_tool);
 
     for (const auto& heater : heaters) {
         spdlog::debug("[PreheatWidget] Setting {} to {}°C", heater, nozzle);
@@ -432,16 +433,23 @@ void PreheatWidget::set_temperatures_multi(int nozzle, int bed) {
     int tool_count = static_cast<int>(heaters.size());
     if (tool_target_ == -1) {
         NOTIFY_SUCCESS(lv_tr("Preheat: all {} tools + bed set"), tool_count);
-    } else if (tool_target_ < static_cast<int>(ToolState::instance().tools().size())) {
-        NOTIFY_SUCCESS(lv_tr("Preheat: {} + bed set"),
-                       ToolState::instance().tools()[tool_target_].display_label);
+    } else if (target_tool >= 0) {
+        NOTIFY_SUCCESS(lv_tr("Preheat: {} + bed set"), tools[target_tool].display_label);
     }
 }
 
+int PreheatWidget::target_tool_index() const {
+    if (tool_target_ < 0)
+        return -1;
+    const auto heads = ToolState::instance().physical_heads();
+    if (tool_target_ >= static_cast<int>(heads.size()))
+        return -1;
+    return heads[static_cast<size_t>(tool_target_)].tool_indices.front();
+}
+
 void PreheatWidget::cycle_tool_target() {
-    // Cycles over nozzles, not lanes: tool_target_ indexes ToolState's tool
-    // list, whose first extruder_count() entries carry the distinct extruders.
-    int tool_count = ToolState::instance().extruder_count();
+    // Cycles over nozzles, not lanes: tool_target_ indexes the physical heads.
+    int tool_count = static_cast<int>(ToolState::instance().physical_heads().size());
     if (tool_count <= 1) {
         tool_target_ = -1; // Single nozzle, always "all"
         return;

@@ -24,6 +24,7 @@
 #include "../test_helpers/panel_widget_size_harness.h"
 #include "../test_helpers/tool_switcher_rig.h"
 #include "../test_helpers/tool_switcher_test_access.h"
+#include "../test_helpers/tool_topologies.h"
 #include "../test_helpers/update_queue_test_access.h"
 #include "ams_backend_mock.h"
 #include "ams_state.h"
@@ -65,21 +66,14 @@ void configure_tools(int count, int active_index = 0) {
     ToolState& ts = ToolState::instance();
     ts.deinit_subjects();
     ts.init_subjects(false);
-
-    ToolTopology topo;
-    topo.tool_count = count;
-    topo.active_tool = active_index;
-    ts.set_ams_topology(topo);
+    ts.set_ams_topology(helix::test::make_head_topology(count, active_index));
 }
 
 /// Re-applies the topology with a new tool_count/active_tool so a later
 /// call only flips the ONE subject the test cares about (tool_count_ or
 /// active_tool_), isolating which observer fires.
 void update_tools(int count, int active_index) {
-    ToolTopology topo;
-    topo.tool_count = count;
-    topo.active_tool = active_index;
-    ToolState::instance().set_ams_topology(topo);
+    ToolState::instance().set_ams_topology(helix::test::make_head_topology(count, active_index));
 }
 
 int subject_int(const char* name) {
@@ -332,9 +326,7 @@ TEST_CASE_METHOD(ToolSwitcherFixture,
     ToolState& ts = ToolState::instance();
     ts.deinit_subjects();
     ts.init_subjects(false);
-    ToolTopology topo;
-    topo.tool_count = 4;
-    topo.active_tool = 0;
+    ToolTopology topo = helix::test::make_head_topology(4);
     topo.backend_index = 0;
     // Head 3 has no slot: nothing knows what it holds.
     topo.tool_to_slot = {0, 1, 2, -1};
@@ -489,9 +481,7 @@ TEST_CASE_METHOD(ToolSwitcherFixture,
     ToolState& ts = ToolState::instance();
     ts.deinit_subjects();
     ts.init_subjects(false);
-    ToolTopology topo;
-    topo.tool_count = 3;
-    topo.active_tool = -1;
+    ToolTopology topo = helix::test::make_head_topology(3, -1);
     topo.allows_empty_carriage = true;
     ts.set_ams_topology(topo);
     REQUIRE(ts.active_tool_index() == -1);

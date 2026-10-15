@@ -89,7 +89,7 @@ class ToolSwitcherWidget : public PanelWidget {
     ToolPicker picker_{*this};
 
     // Physical size the widget was last granted, cached for observer paths
-    // (tool_count_observer_, on_active_tool_changed()) that fire later and
+    // (tools_observer_, on_active_tool_changed()) that fire later and
     // need to re-decide without a size to read.
     int current_width_px_ = 0;
     int current_height_px_ = 0;
@@ -100,14 +100,15 @@ class ToolSwitcherWidget : public PanelWidget {
     /// The form the open picker's cells read in.
     ui::ToolLabelForm picker_form_ = ui::ToolLabelForm::Full;
 
-    /// Indexed by tool, sized to the tool count; rebuilt when it changes.
+    /// Indexed by head (ToolState::physical_heads()), sized to the head
+    /// count; rebuilt when the tool list changes.
     std::vector<HeadTemp> head_temps_;
     /// Each head's material as publish_heads() last read it from its slot, so
     /// a temperature change rewrites a detail line without reading the slots.
     std::vector<std::string> head_materials_;
 
     ObserverGuard active_tool_observer_;
-    ObserverGuard tool_count_observer_;
+    ObserverGuard tools_observer_;
     ObserverGuard print_state_observer_;
     ObserverGuard spool_latch_observer_;
     ObserverGuard slots_observer_;
@@ -123,10 +124,13 @@ class ToolSwitcherWidget : public PanelWidget {
     helix::AsyncLifetimeGuard lifetime_;
 
     void show_tool_picker();
-    void handle_tool_selected(int tool_index);
+    /// Mount head @p head_index (an index into ToolState::physical_heads())
+    /// by its own tool. Every segment and picker index is a head index: the
+    /// switcher draws physical heads, and the filament panel chooses lanes.
+    void handle_tool_selected(int head_index);
     /// A rail segment's tap: mount that head, or raise the sheet when it is
     /// the mounted one.
-    void handle_segment_tapped(int tool_index);
+    void handle_segment_tapped(int head_index);
 
     /// Null every cached widget pointer without touching observers or the
     /// widget tree. Shared by detach() and the raw-delete hook.
@@ -160,9 +164,10 @@ class ToolSwitcherWidget : public PanelWidget {
     std::string head_temp_text(int i) const;
     /// Whether head @p i reads hot.
     bool head_hot(int i) const;
-    /// @p tool's detail line: its name, material and temperature, in the full
-    /// form for the @p main line where the content box has room for it.
-    std::string detail_head_text(const ToolInfo& tool, bool main) const;
+    /// Head @p i's detail line, named for @p tool: its name, material and
+    /// temperature, in the full form for the @p main line where the content
+    /// box has room for it.
+    std::string detail_head_text(int i, const ToolInfo& tool, bool main) const;
 
     /// @p tool's label in @p form, in the connected printer's tool noun.
     static std::string tool_text(const ToolInfo& tool, ui::ToolLabelForm form);

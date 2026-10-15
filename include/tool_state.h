@@ -93,6 +93,31 @@ struct ToolInfo {
     }
 };
 
+/// One printing end the carriage can hold. Several tools share a head where
+/// filament lanes feed one extruder through a hub, so a printer can publish
+/// more tools than it has heads.
+struct PhysicalHead {
+    /// The extruder this head heats, or nullopt where its tool names none.
+    std::optional<std::string> extruder_name;
+    /// Every tool that prints through this head, ascending. Never empty.
+    std::vector<int> tool_indices;
+
+    [[nodiscard]] bool holds_tool(int tool_index) const;
+    /// The tool that stands for this head: @p active_tool when it prints
+    /// through this head, else the head's lowest tool. Selecting the head
+    /// sends this tool, so mounting a head that is already mounted changes
+    /// nothing and mounting another loads its lowest lane.
+    [[nodiscard]] int representative_tool(int active_tool) const;
+};
+
+/// The physical heads behind @p tools, ordered by each head's lowest tool.
+/// Tools naming the same extruder share one head; a tool naming none is a head
+/// of its own, since nothing says it shares one.
+[[nodiscard]] std::vector<PhysicalHead> physical_heads(const std::vector<ToolInfo>& tools);
+
+/// The index into @p heads of the head @p tool_index prints through, or -1.
+[[nodiscard]] int head_index_for_tool(const std::vector<PhysicalHead>& heads, int tool_index);
+
 /// Tool topology sourced from an AMS backend: multiplexing systems (e.g. AFC)
 /// and tool changers both push it. When set, ToolState rebuilds its tool list
 /// from this and ignores extruder enumeration. tool_to_slot[i] is the backend
@@ -104,6 +129,10 @@ struct ToolTopology {
     /// rather than "nothing loaded". True where selecting a slot mounts a tool.
     bool allows_empty_carriage = false;
     std::vector<int> tool_to_slot;
+    /// The extruder each tool's slot feeds, indexed like tool_to_slot. Empty
+    /// where the backend does not say, which leaves the tool the extruder it
+    /// already had.
+    std::vector<std::string> tool_extruder;
     int backend_index = 0; ///< Source backend in AmsState::backends_
 };
 
@@ -185,6 +214,13 @@ class ToolState {
     /// it counts AMS slots fed into one hotend, which need no badge.
     [[nodiscard]] bool has_multiple_extruders() const {
         return extruder_count() > 1;
+    }
+
+    /// The printing ends behind the tool list (helix::physical_heads()). What
+    /// a surface that draws one control per head counts, where tool_count()
+    /// would draw one per filament lane on a hub-fed rig.
+    [[nodiscard]] std::vector<PhysicalHead> physical_heads() const {
+        return helix::physical_heads(tools_);
     }
 
     /// Returns "Nozzle" for single-tool, "Nozzle 1" for multi-tool (active tool),
@@ -408,6 +444,7 @@ class ToolState {
     bool ams_topology_active_ = false;
     int ams_topology_tool_count_ = 0;
     std::vector<int> ams_topology_tool_to_slot_;
+    std::vector<std::string> ams_topology_tool_extruder_;
 
     // Set by set_backend_active_tool(): the backend, not the status frame,
     // says which head is mounted.

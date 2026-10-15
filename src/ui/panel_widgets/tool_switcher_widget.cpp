@@ -77,9 +77,11 @@ lv_subject_t s_band_labelled_subject{};
 // 1 where every cell shown holds its second line (a segment's sub, the face's
 // temperature) below its label, on both axes.
 lv_subject_t s_two_line_subject{};
-// The picker: its grid (fit_tool_picker_grid()), its cells' band and second
-// line, and the heads it lays out.
-lv_subject_t s_picker_heads_subject{};
+// The physical heads the rail and the picker lay out (ToolState::
+// physical_heads()), up to kPoolSize.
+lv_subject_t s_heads_subject{};
+// The picker: its grid (fit_tool_picker_grid()) and its cells' band and second
+// line.
 lv_subject_t s_picker_cell_w_subject{};
 lv_subject_t s_picker_cell_h_subject{};
 lv_subject_t s_picker_grid_w_subject{};
@@ -194,7 +196,7 @@ void tool_switcher_widget_init_subjects() {
             lv_subject_init_int(&s_two_line_subject, 0);
             s_subjects.publish("tool_switcher_two_line", &s_two_line_subject);
             const std::pair<lv_subject_t*, const char*> picker_ints[] = {
-                {&s_picker_heads_subject, "tool_switcher_picker_heads"},
+                {&s_heads_subject, "tool_switcher_heads"},
                 {&s_picker_cell_w_subject, "tool_switcher_picker_cell_w"},
                 {&s_picker_cell_h_subject, "tool_switcher_picker_cell_h"},
                 {&s_picker_grid_w_subject, "tool_switcher_picker_grid_w"},
@@ -271,6 +273,28 @@ HeadFilament head_filament(const helix::ToolInfo& tool) {
     out.color_rgb = slot.color_rgb;
     out.material = slot.material;
     return out;
+}
+
+/// Head @p i of @p heads as the tool it stands for: the mounted tool on the
+/// mounted head, else the head's lowest. It keeps that tool's G-code name, the
+/// one a tap sends, and is numbered as the head, so a hub-fed head reads
+/// "Tool 6" over "T8" rather than after its lane.
+helix::ToolInfo head_tool(const std::vector<helix::PhysicalHead>& heads, int i) {
+    const auto& tool_state = helix::ToolState::instance();
+    const int tool =
+        heads[static_cast<size_t>(i)].representative_tool(tool_state.active_tool_index());
+    helix::ToolInfo info = tool_state.tools()[static_cast<size_t>(tool)];
+    info.index = i;
+    return info;
+}
+
+/// The mounted head's index into @p heads: -1 with the carriage empty, and an
+/// index naming no head where the active tool is one the list does not hold.
+int mounted_head(const std::vector<helix::PhysicalHead>& heads, int active_tool) {
+    if (active_tool == -1)
+        return -1;
+    const int head = helix::head_index_for_tool(heads, active_tool);
+    return head >= 0 ? head : static_cast<int>(heads.size());
 }
 
 /// Text that reads on a band filled with @p rgb: black or white, whichever
@@ -367,11 +391,12 @@ void ToolSwitcherWidget::attach(lv_obj_t* widget_obj, lv_obj_t* parent_screen) {
         },
         tool_state.get_subjects_lifetime());
 
-    // A new head count changes the mode, the label budget and every pool, so
-    // it re-runs the whole size path at the size the tile holds.
-    tool_count_observer_ = helix::ui::observe<int>(
-        tool_state.get_tool_count_subject(), this,
-        [token](ToolSwitcherWidget* self, int /*count*/) {
+    // A rebuilt tool list can change the heads, which changes the mode, the
+    // label budget and every pool, so it re-runs the whole size path at the
+    // size the tile holds.
+    tools_observer_ = helix::ui::observe<int>(
+        tool_state.get_tools_version_subject(), this,
+        [token](ToolSwitcherWidget* self, int /*version*/) {
             if (token.expired())
                 return;
             self->rebuild_head_temps();
@@ -459,7 +484,7 @@ void ToolSwitcherWidget::detach() {
     lifetime_.invalidate();
     picker_.hide();
     active_tool_observer_.reset();
-    tool_count_observer_.reset();
+    tools_observer_.reset();
     print_state_observer_.reset();
     spool_latch_observer_.reset();
     slots_observer_.reset();
@@ -509,8 +534,8 @@ void ToolSwitcherWidget::publish() {
 }
 
 void ToolSwitcherWidget::publish_layout() {
-    const auto& tools = ToolState::instance().tools();
-    const int count = static_cast<int>(tools.size());
+    const auto heads = ToolState::instance().physical_heads();
+    const int count = static_cast<int>(heads.size());
     const int inset = resolve_px_token("space_md", 10);
     const int min_target = resolve_px_token("touch_target_min", 48);
     const lv_font_t* body = theme_manager_get_font("font_body");
@@ -538,7 +563,8 @@ void ToolSwitcherWidget::publish_layout() {
     // every head's fits, else "T0".
     const int label_room = layout_.cell_w - 2 * resolve_px_token("space_xs", 4);
     label_form_ = ui::pick_tool_label_form([&](ui::ToolLabelForm form) {
-        for (const auto& tool : tools) {
+        for (int i = 0; i < count; ++i) {
+            const ToolInfo tool = head_tool(heads, i);
             const std::string code = short_text(tool);
             int widest = 0;
             if (form == ui::ToolLabelForm::Code) {
@@ -587,16 +613,16 @@ void ToolSwitcherWidget::publish_layout() {
 
 void ToolSwitcherWidget::rebuild_head_temps() {
     head_temps_.clear();
-    const auto& tools = ToolState::instance().tools();
-    const size_t heads = std::min(tools.size(), static_cast<size_t>(kPoolSize));
+    const auto all_heads = ToolState::instance().physical_heads();
+    const size_t heads = std::min(all_heads.size(), static_cast<size_t>(kPoolSize));
     head_temps_.resize(heads);
     auto token = lifetime_.token();
     for (size_t i = 0; i < heads; ++i) {
-        if (!tools[i].extruder_name)
+        if (!all_heads[i].extruder_name)
             continue;
         HeadTemp& head = head_temps_[i];
         lv_subject_t* subject = printer_state_.temperature_state().get_extruder_temp_subject(
-            *tools[i].extruder_name, head.lifetime);
+            *all_heads[i].extruder_name, head.lifetime);
         if (!subject)
             continue;
         head.deci = lv_subject_get_int(subject);
@@ -626,11 +652,10 @@ bool ToolSwitcherWidget::head_hot(int i) const {
            head_temps_[i].deci >= kHotDeci;
 }
 
-std::string ToolSwitcherWidget::detail_head_text(const ToolInfo& tool, bool main) const {
+std::string ToolSwitcherWidget::detail_head_text(int i, const ToolInfo& tool, bool main) const {
     // The mounted head's line is in the body font and reads
     // "Tool 2 (T1) · PLA · 215°C" where the content box is wide enough, else
     // "T1 · ..."; the rest are small and always read "T0 · ...".
-    const int i = tool.index;
     const std::string& material =
         i >= 0 && i < static_cast<int>(head_materials_.size()) ? head_materials_[i] : std::string();
     const std::string temp = head_temp_text(i);
@@ -646,26 +671,26 @@ std::string ToolSwitcherWidget::detail_head_text(const ToolInfo& tool, bool main
 void ToolSwitcherWidget::publish_heads() {
     if (!s_subjects.initialized())
         return;
-    auto& tool_state = ToolState::instance();
-    const auto& tools = tool_state.tools();
-    const int count = static_cast<int>(tools.size());
+    const auto all_heads = ToolState::instance().physical_heads();
+    const int count = static_cast<int>(all_heads.size());
     const int heads = std::min(count, kPoolSize);
-    const int active = tool_state.active_tool_index();
+    const int active = mounted_head(all_heads, ToolState::instance().active_tool_index());
     const bool fault = changer_fault();
 
     std::vector<HeadFilament> filament(static_cast<size_t>(heads));
     head_materials_.assign(static_cast<size_t>(heads), std::string());
     for (int i = 0; i < heads; ++i) {
-        filament[i] = head_filament(tools[i]);
+        const ToolInfo tool = head_tool(all_heads, i);
+        filament[i] = head_filament(tool);
         head_materials_[i] = filament[i].material;
 
         // Full: the configured name or "Tool 1", over "T0". Code: "T0" over
         // the temperature, shown where the segment is tall enough.
-        std::string label = short_text(tools[i]);
+        std::string label = short_text(tool);
         std::string sub = head_temp_text(i);
         if (label_form_ == ui::ToolLabelForm::Full) {
-            label = name_text(tools[i]);
-            sub = short_text(tools[i]);
+            label = name_text(tool);
+            sub = short_text(tool);
         }
         ui::copy_string_if_changed(s_seg_label.at(i), label.c_str());
         ui::copy_string_if_changed(s_seg_sub.at(i), sub.c_str());
@@ -679,7 +704,7 @@ void ToolSwitcherWidget::publish_heads() {
         set_int_if_changed(s_seg_state.at(i),
                            static_cast<int>(tool_switcher_cell_state(i, active, fault)));
     }
-    set_int_if_changed(&s_picker_heads_subject, heads);
+    set_int_if_changed(&s_heads_subject, heads);
 
     // Detail rows, mounted head first.
     const std::vector<int> order = tool_switcher_detail_order(heads, active);
@@ -699,7 +724,7 @@ void ToolSwitcherWidget::publish_heads() {
             if (ui::text_width(text.c_str(), body) > content_w)
                 text = lv_tr("Carriage empty");
         } else {
-            text = detail_head_text(tools[i], main);
+            text = detail_head_text(i, head_tool(all_heads, i), main);
         }
         const bool has_color = i >= 0 && filament[i].has_color;
         ui::copy_string_if_changed(s_detail_text.at(r), text.c_str());
@@ -730,11 +755,12 @@ void ToolSwitcherWidget::publish_heads() {
     if (count == 0) {
         // Nothing discovered yet: the face names nothing.
     } else if (active >= 0 && active < count) {
-        face = tool_text(tools[active], ui::ToolLabelForm::Full);
+        const ToolInfo mounted = head_tool(all_heads, active);
+        face = tool_text(mounted, ui::ToolLabelForm::Full);
         if (ui::text_width(face.c_str(), body) > room)
-            face = short_text(tools[active]);
+            face = short_text(mounted);
         face_sub = head_temp_text(active);
-        face_filament = active < heads ? filament[active] : head_filament(tools[active]);
+        face_filament = active < heads ? filament[active] : head_filament(mounted);
     } else if (active == -1) {
         face = lv_tr("Choose head");
         if (ui::text_width(face.c_str(), body) > room)
@@ -757,12 +783,11 @@ void ToolSwitcherWidget::publish_heads() {
 void ToolSwitcherWidget::publish_head_temp(int i) {
     if (!s_subjects.initialized())
         return;
-    auto& tool_state = ToolState::instance();
-    const auto& tools = tool_state.tools();
-    const int heads = std::min(static_cast<int>(tools.size()), kPoolSize);
+    const auto all_heads = ToolState::instance().physical_heads();
+    const int heads = std::min(static_cast<int>(all_heads.size()), kPoolSize);
     if (i < 0 || i >= heads)
         return;
-    const int active = tool_state.active_tool_index();
+    const int active = mounted_head(all_heads, ToolState::instance().active_tool_index());
 
     const std::string temp = head_temp_text(i);
     ui::copy_string_if_changed(s_seg_temp.at(i), temp.c_str());
@@ -780,7 +805,8 @@ void ToolSwitcherWidget::publish_head_temp(int i) {
         if (order[r] != i)
             continue;
         const bool main = r == 0 && i == active;
-        ui::copy_string_if_changed(s_detail_text.at(r), detail_head_text(tools[i], main).c_str());
+        ui::copy_string_if_changed(s_detail_text.at(r),
+                                   detail_head_text(i, head_tool(all_heads, i), main).c_str());
         set_int_if_changed(s_detail_hot.at(r), head_hot(i) ? 1 : 0);
         break;
     }
@@ -794,14 +820,14 @@ void ToolSwitcherWidget::publish_head_temp(int i) {
 
 std::pair<std::string, std::string> ToolSwitcherWidget::picker_lines(int i,
                                                                      ui::ToolLabelForm form) const {
-    const auto& tools = ToolState::instance().tools();
+    const ToolInfo tool = head_tool(ToolState::instance().physical_heads(), i);
     const std::string temp = head_temp_text(i);
     if (form == ui::ToolLabelForm::Code)
-        return {short_text(tools[i]), temp};
-    std::string sub = short_text(tools[i]);
+        return {short_text(tool), temp};
+    std::string sub = short_text(tool);
     if (!temp.empty())
         sub = fmt::format(lv_tr("{} · {}"), sub, temp);
-    return {name_text(tools[i]), sub};
+    return {name_text(tool), sub};
 }
 
 void ToolSwitcherWidget::publish_two_line() {
@@ -819,7 +845,7 @@ void ToolSwitcherWidget::publish_two_line() {
     auto fits = [&](const char* text) { return ui::text_width(text, small) <= room; };
     if (rail) {
         const int heads =
-            std::min(static_cast<int>(ToolState::instance().tools().size()), kPoolSize);
+            std::min(static_cast<int>(ToolState::instance().physical_heads().size()), kPoolSize);
         for (int i = 0; i < heads && two_line; ++i) {
             two_line = fits(lv_subject_get_string(s_seg_sub.at(i)));
         }
@@ -830,6 +856,9 @@ void ToolSwitcherWidget::publish_two_line() {
 }
 
 void ToolSwitcherWidget::on_active_tool_changed(int tool_index) {
+    // A head fed by several lanes is named for the lane it has mounted, so a
+    // change can re-decide the label form as well as move the highlight.
+    publish_layout();
     publish_heads();
     spdlog::debug("[ToolSwitcher] Active tool changed to T{}", tool_index);
 }
@@ -872,9 +901,8 @@ void ToolSwitcherWidget::ToolPicker::on_created(lv_obj_t* backdrop) {
         return;
     }
 
-    auto& tool_state = ToolState::instance();
-    const auto& tools = tool_state.tools();
-    const int heads = std::min(static_cast<int>(tools.size()), kPoolSize);
+    const auto all_heads = ToolState::instance().physical_heads();
+    const int heads = std::min(static_cast<int>(all_heads.size()), kPoolSize);
     const int min_target = resolve_px_token("touch_target_min", 48);
     const int margin = resolve_px_token("space_md", 10);
     const lv_font_t* body = theme_manager_get_font("font_body");
@@ -943,7 +971,7 @@ void ToolSwitcherWidget::ToolPicker::on_created(lv_obj_t* backdrop) {
     set_int_if_changed(&s_picker_feeder_long_subject, feeder_label_fits(footer_room) ? 1 : 0);
 
     // Scroll the mounted head into view when the grid scrolls.
-    const int active = tool_state.active_tool_index();
+    const int active = mounted_head(all_heads, ToolState::instance().active_tool_index());
     if (fit.scrolls && active >= 0 && active < heads) {
         lv_obj_update_layout(grid);
         if (lv_obj_t* cell = lv_obj_get_child(grid, active)) {
@@ -1108,14 +1136,21 @@ void ToolSwitcherWidget::handle_feeder_toggled() {
     }
 }
 
-void ToolSwitcherWidget::handle_tool_selected(int tool_index) {
+void ToolSwitcherWidget::handle_tool_selected(int head_index) {
     auto& tool_state = ToolState::instance();
 
     if (refuse_while_spools_on_bed()) {
         return;
     }
 
-    // Already on this tool
+    const auto heads = tool_state.physical_heads();
+    if (head_index < 0 || head_index >= static_cast<int>(heads.size())) {
+        return;
+    }
+    // The head's own tool: the mounted one when this head is mounted, so a
+    // mounted head is never re-selected through another of its lanes.
+    const int tool_index =
+        heads[static_cast<size_t>(head_index)].representative_tool(tool_state.active_tool_index());
     if (tool_index == tool_state.active_tool_index()) {
         spdlog::debug("[ToolSwitcher] Tool T{} already active, ignoring", tool_index);
         return;
@@ -1183,13 +1218,14 @@ void ToolSwitcherWidget::tool_feeder_cb(lv_event_t* e) {
     LVGL_SAFE_EVENT_CB_END();
 }
 
-void ToolSwitcherWidget::handle_segment_tapped(int tool_index) {
+void ToolSwitcherWidget::handle_segment_tapped(int head_index) {
     // The mounted head's segment raises the sheet, where Park is in Rail mode.
-    if (tool_index == ToolState::instance().active_tool_index()) {
+    const auto heads = ToolState::instance().physical_heads();
+    if (head_index == mounted_head(heads, ToolState::instance().active_tool_index())) {
         show_tool_picker();
         return;
     }
-    handle_tool_selected(tool_index);
+    handle_tool_selected(head_index);
 }
 
 void ToolSwitcherWidget::tool_segment_cb(lv_event_t* e) {

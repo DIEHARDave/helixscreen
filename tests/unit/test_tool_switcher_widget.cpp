@@ -17,6 +17,7 @@
 #include "../test_helpers/print_state_test_drivers.h"
 #include "../test_helpers/tool_switcher_rig.h"
 #include "../test_helpers/tool_switcher_test_access.h"
+#include "../test_helpers/tool_topologies.h"
 #include "helix/ui/text_metrics.h"
 #include "panel_widget_registry.h"
 #include "printer_state.h"
@@ -1079,4 +1080,55 @@ TEST_CASE_METHOD(LVGLUITestFixture,
                        static_cast<int>(AmsAction::IDLE));
     process_lvgl(30);
     CHECK(state_of(1) == static_cast<int>(S::Idle));
+}
+
+// ============================================================================
+// Physical heads only: lanes are chosen in the filament panel
+// ============================================================================
+
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "tool_switcher: a hub-fed rig draws one segment per physical head, not per lane",
+                 "[tool_switcher][physical-heads]") {
+    ToolChangerRig rig(7, 18);
+    ToolState::instance().set_ams_topology(helix::test::make_hub_topology());
+    REQUIRE(ToolState::instance().tool_count() == 18);
+    PanelWidgetHarness<ToolSwitcherWidget> h(test_screen(), state());
+    process_lvgl(30);
+    resize_content(h, 600, 60);
+    process_lvgl(30);
+
+    CHECK(lv_subject_get_int(lv_xml_get_subject(nullptr, "tool_switcher_heads")) == 7);
+    REQUIRE(mode() == static_cast<int>(ToolSwitcherMode::RailWithActions));
+    lv_obj_update_layout(h.root());
+    CHECK(shown(named(h, "tool_switcher_seg_6")));
+    CHECK(named(h, "tool_switcher_seg_7") == nullptr);
+    // The sixth head is numbered as a head and named by the lane a tap sends.
+    const std::string seg5 =
+        std::string(
+            lv_subject_get_string(lv_xml_get_subject(nullptr, "tool_switcher_seg_5_label"))) +
+        "|" + lv_subject_get_string(lv_xml_get_subject(nullptr, "tool_switcher_seg_5_sub"));
+    CAPTURE(seg5);
+    CHECK(seg5.find("T8") != std::string::npos);
+    CHECK(seg5.find('9') == std::string::npos);
+
+    SECTION("a head is mounted by its own lowest lane") {
+        tap(named(h, "tool_switcher_seg_5"));
+        process_lvgl(30);
+        CHECK(rig.backend->change_tool_calls == 1);
+        CHECK(rig.backend->last_tool == 8);
+    }
+    SECTION("the head a lane is mounted on reads mounted, and its tap opens the sheet") {
+        ToolState::instance().set_ams_topology(helix::test::make_hub_topology(9));
+        process_lvgl(30);
+        CHECK(lv_subject_get_int(lv_xml_get_subject(nullptr, "tool_switcher_seg_5_state")) ==
+              static_cast<int>(ToolSwitcherCellState::Mounted));
+        CHECK(lv_subject_get_int(lv_xml_get_subject(nullptr, "tool_switcher_seg_0_state")) ==
+              static_cast<int>(ToolSwitcherCellState::Idle));
+        tap(named(h, "tool_switcher_seg_5"));
+        process_lvgl(30);
+        CHECK(rig.backend->change_tool_calls == 0);
+        CHECK(ToolSwitcherTestAccess::picker_list(h.widget()) != nullptr);
+        ToolSwitcherTestAccess::hide_picker(h.widget());
+        process_lvgl(30);
+    }
 }

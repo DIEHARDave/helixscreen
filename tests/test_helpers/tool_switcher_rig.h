@@ -121,7 +121,9 @@ struct ToolChangerRig {
     std::vector<std::string> warnings;
     std::vector<std::string> errors;
 
-    explicit ToolChangerRig(int heads) {
+    /// @p slots, where given, is the backend's lane count, for a rig whose
+    /// lanes outnumber its heads.
+    explicit ToolChangerRig(int heads, int slots = 0) {
         // Registered by name: the rail's repeat and its bindings read
         // tool_count and active_tool from XML.
         ToolState::instance().deinit_subjects();
@@ -136,7 +138,7 @@ struct ToolChangerRig {
         ToolState::instance().init_tools(hw);
         REQUIRE(ToolState::instance().tool_count() == heads);
 
-        auto owned = std::make_unique<GateBackend>(heads);
+        auto owned = std::make_unique<GateBackend>(slots > 0 ? slots : heads);
         owned->set_tool_changer_mode(true);
         owned->set_operation_delay(0);
         REQUIRE(owned->start());
