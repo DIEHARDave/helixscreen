@@ -8,18 +8,28 @@ allowed-tools: ["Bash", "Read", "Glob", "Grep", "Edit", "Write", "AskUserQuestio
 
 You are automating the HelixScreen release process. Follow each step in order. Hard stop on failures — do not proceed with warnings or partial state.
 
+**A release is cut from the newest commit whose CI is fully green, never from a frozen
+tip.** The branch keeps moving while you release: the version bump and changelog are
+committed on a short-lived branch made from that green commit (`RELEASE_SHA`), the tag goes
+on that commit, and the branch is merged back. Nobody has to stop landing work, and a red
+tip cannot delay the release by hours.
+
 ## CONTEXT (gather first)
 
 Collect all of these before starting:
 
 ```bash
 git rev-parse --abbrev-ref HEAD          # "main", or the release/X.Y line this version belongs to
-git status --porcelain | grep -v -E '\.claude-recall/(LESSONS\.md|LESSONS\.md\.lock|CLAUDE\.md|injection-stats\.json|stats\.json)'  # Must be empty (ignoring recall files)
-git fetch origin && git status -sb        # Must be up-to-date with this branch's upstream
-cat VERSION.txt                           # Current version
-git describe --tags --abbrev=0 2>/dev/null  # Last tag (e.g., v0.9.3)
-git log $(git describe --tags --abbrev=0 2>/dev/null)..HEAD --oneline  # Commits since last tag
+git fetch origin --tags                   # origin/$BRANCH and every tag, as GitHub has them
+RELEASE_SHA=$(scripts/latest-green-sha.sh --branch "$BRANCH")   # newest fully green commit (STEP 0)
+git show "$RELEASE_SHA:VERSION.txt"       # Current version, as the release commit sees it
+git describe --tags --abbrev=0 "$RELEASE_SHA"  # Last tag reachable from it (e.g., v0.9.3)
+git log --oneline "$(git describe --tags --abbrev=0 "$RELEASE_SHA")..$RELEASE_SHA"  # Commits this release ships
+git log --oneline "$RELEASE_SHA..origin/$BRANCH"  # Commits newer than it: they ship next time
 ```
+
+Every `HEAD` and `..HEAD` further down means `$RELEASE_SHA` until STEP 6 makes the
+release commit, and every command from STEP 2 on runs in the release worktree (STEP 0).
 
 Today's date: use `date +%Y-%m-%d` output.
 
@@ -32,9 +42,27 @@ All of these must pass. If ANY fails, STOP and tell the user why.
 | Check | How | Fail action |
 |-------|-----|-------------|
 | Branch is releasable | `git rev-parse --abbrev-ref HEAD` is `main` or `release/X.Y`. Store it as `BRANCH`. | STOP: "{branch} is neither main nor a release/X.Y line" |
-| Clean working tree | `git status --porcelain` is empty after ignoring `LESSONS.md`, `LESSONS.md.lock`, `CLAUDE.md`, `injection-stats.json`, and `stats.json` in `.claude-recall/`. All five are recall's own state, rewritten by any session; since worktrees route their writes here (`PROJECT_DIR`, see `setup-worktree.sh`), they are dirty most of the time and are not a reason to hold a release. Commit them with it. | STOP: "Uncommitted changes - commit them first" |
-| Up to date with origin | `git fetch origin` then check `git status -sb` for "behind" | STOP: "Branch is behind origin/$BRANCH — pull first" |
-| Tags fetched | `git fetch --tags origin` | Just do it silently |
+| Tags fetched | `git fetch origin --tags` | Just do it silently |
+| A green commit exists | `RELEASE_SHA=$(scripts/latest-green-sha.sh --branch "$BRANCH")` exits 0 | STOP: show its stderr, which names each recent push and why it is not green |
+| Release worktree | `scripts/setup-worktree.sh --base "$RELEASE_SHA" release-prep/v{NEW_VERSION}` once STEP 1 has the version, then work in `.worktrees/v{NEW_VERSION}` holding `worktree:v{NEW_VERSION}` | STOP on any setup failure |
+
+**Why a green SHA, and what counts as green.** `scripts/latest-green-sha.sh` takes the
+commits CI ran on for the last 30 pushes to `$BRANCH`, newest first, and prints the first
+one still on `origin/$BRANCH` whose push-triggered runs have all completed as `success` or
+`skipped`, with `Build` and `Code Quality` (the two that run on every push) among them. A
+run still in progress, failed or cancelled (a newer push supersedes one) disqualifies the
+commit; path-filtered workflows such as `XML Lint` count when they ran. `--require` changes
+the required set, `--depth` the window. The release then never waits on the tip: it ships
+what CI has already proven, and whatever landed since rides the next release.
+
+Show the user `RELEASE_SHA`, its subject, and the `RELEASE_SHA..origin/$BRANCH` list, so
+it is clear what this release does NOT contain. If that list holds something the user
+expects in the release, STOP and say which commit it is waiting on: releasing a newer
+commit means waiting for its CI, never skipping the check.
+
+The release worktree is a fresh checkout of `RELEASE_SHA`, so the main tree's state
+(peers' uncommitted work, a red tip, a merge in progress) is irrelevant to the release,
+and nothing in this workflow edits the main tree until STEP 7's merge back.
 
 **Which branch may release which version.** A patch on a shipped line lives on that
 line's branch, never on `main`, because `main` carries the next minor's development.
@@ -43,10 +71,12 @@ patch, and tags only move forward, so there is no taking it back. `main` may rel
 version; a `release/X.Y` branch may release only `X.Y.*`. STEP 1 enforces the pairing
 once the version is resolved.
 
-Every `main` hardcoded below is really `$BRANCH`: the upstream comparison, the CI query,
+Every `main` hardcoded below is really `$BRANCH`: the green-SHA query, the merge back,
 and the push. A release-line branch also lags `main`'s own tooling, so check before
-reaching for it - `scripts/version-compare.sh` and `make full-test-run` may not exist
-there. The equivalents are a careful manual semver comparison and `make test-all`.
+reaching for it - `scripts/version-compare.sh`, `scripts/latest-green-sha.sh` and
+`make land-gate` may not exist there. The equivalents are a careful manual semver
+comparison, `latest-green-sha.sh --branch release/X.Y` run from a `main` checkout (it only
+reads git and gh), and `make test-all` plus CI's UI slice (STEP 2).
 
 ---
 
@@ -73,7 +103,7 @@ there. The equivalents are a careful manual semver comparison and `make test-all
 - PRERELEASE can be: `alpha`, `beta`, `rc.N`
 
 ### If no argument:
-- Compare `VERSION.txt` content with last tag (strip `v` prefix)
+- Compare `VERSION.txt` content at `RELEASE_SHA` with last tag (strip `v` prefix)
 - If VERSION.txt is ALREADY different (higher) than last tag → use VERSION.txt value
 - If VERSION.txt matches last tag → use AskUserQuestion:
   - Question: "No version specified and VERSION.txt matches the last tag (vX.Y.Z). What version should this release be?"
@@ -126,52 +156,37 @@ lint/validation failures surface before the long test build.
   failing check. Look for the `❌` lines; `⚠️` lines (clang-format / XML formatting) are
   advisory and do NOT fail the script.
 
-Do not release on a red branch. Before starting, also confirm CI is green for the commit
-being released:
+CI being green on `RELEASE_SHA` is already established: STEP 0 resolved it that way, so
+there is no separate "is CI red" check here and no reason to look at the branch tip.
+
+### The landing gate
 
 ```bash
-# EVERY workflow, not just Code Quality. CI's toolchains and -Werror set differ from
-# the release machine's, so a diagnostic can be red on CI and green locally -
-# checking one workflow reads as all-clear.
-gh run list --branch "$BRANCH" --limit 20 --json conclusion,status,workflowName,headSha \
-  --jq '.[] | select(.conclusion == "failure") | "\(.workflowName)\t\(.headSha[0:9])"'
+make land-gate
 ```
 
-If ANY workflow's latest run is a `failure`, treat it as a STOP — fix it first.
-`Build Status` prints "tolerated because this is an integration branch" on a red main,
-so nothing else stops a release on a red build.
+Run it in the release worktree. It is the local mirror of CI: the unit sweep, the sweep
+again in CI's 8-shard layout, the bats suite, CI's `tests/ui` pytest slice (headless) and
+the moonraker plugin tests, and the generated-artefact checks: the theme token table
+(`check-theme-tokens`), the XML linter schema against a regeneration (`check-xml-schema`),
+`lint-xml`, and the crash worker's LVGL event-code table. It prints a PASS/FAIL table with
+durations; logs are in `build/land-gate/`.
 
-Without `--branch` this reads whichever branch ran most recently, so on a release line it
-happily reports `main`'s runs as if they were yours. A workflow that does not apply to the
-line being released is not a reason to stop, but say which one you are setting aside and
-why, rather than passing over it silently.
+- All rows PASS → continue
+- A `xml-schema` FAIL alone means the committed snapshot drifted from its inputs, which is
+  release housekeeping, not a code fault: run `make regen-xml-schema`, then `make lint-xml`.
+  If the lint passes, the regenerated `tools/xml-linter/schema/schema.json` goes into the
+  release commit (STEP 6). If it fails, those are real errors (a `#const` reference with no
+  definition anywhere): STOP and fix on `$BRANCH` first.
+- Any other FAIL → STOP: "Land gate failed — fix before releasing." Show the table and the
+  failing step's log tail. A failure here on a commit CI passed is a local-environment or
+  flake question worth settling before tagging, not one to wave through. A fix lands on
+  `$BRANCH` the normal way; then re-resolve `RELEASE_SHA` once its CI is green.
+- A missing `.venv` is `make venv-setup`, not a reason to skip the UI step.
 
-### C++ tests
-```bash
-make full-test-run
-```
-
-- If tests pass → continue
-- If tests fail → STOP: "Tests failed — fix before releasing." Show the failure output.
-
-### Shell tests
-`make full-test-run` already runs the bats suite. Only on a release line that fell back
-to `make test-all` (see above), also run `make test-shell`. A missing bats or a failure
-is a STOP with the make output shown.
-
-### UI tests
-`make full-test-run` does not run the out-of-process UI suite, and CI does. A stale
-`tests/ui/` case passes every local gate and then reds CI's Test job on the release head.
-Run exactly what CI runs: `make test-ui-pytest` also runs the golden-image tests in
-`tests/ui/test_screens.py`, which CI excludes because they are machine-sensitive.
-
-```bash
-make && .venv/bin/python -m pytest tests/ui --ignore=tests/ui/test_screens.py -q
-```
-
-- If it passes → continue
-- If it fails → STOP: "UI tests failed — fix before releasing." Show the failing test.
-- A missing `.venv` is `make venv-setup`, not a reason to skip the suite.
+On a release line without `make land-gate`, run `make test-all` and
+`.venv/bin/python -m pytest tests/ui/ -v --ignore=tests/ui/test_screens.py -m "not slow"`
+instead, and `make regen-xml-schema && make lint-xml` for the schema.
 
 ### Release-only builds
 
@@ -190,32 +205,13 @@ watchdog and mock-symbol checks, under a `heavy:release-gate` claim, and prints 
 PASS/FAIL table. Any FAIL row → STOP: "Release gate failed for {target}." Show the
 table and the tail of the failing step's log (`build/release-gate/<step>.log`).
 
-### Regenerate the XML linter schema
-
-`tools/xml-linter/schema/schema.json` is a committed snapshot of every constant and
-widget attribute the runtime can resolve. The pre-commit hook only regenerates it when a
-lint actually fails, so a snapshot can drift ahead of or behind the tree without any gate
-noticing — it ships stale. A release is the one point where it is worth forcing.
-
-```bash
-make regen-xml-schema
-make lint-xml
-```
-
-- If `make lint-xml` fails → STOP: "XML lint failed against a freshly regenerated schema."
-  These are real errors (a `#const` reference with no definition anywhere), not staleness.
-  Show the failing lines and fix before releasing.
-- If it passes and `git diff --name-only` shows `tools/xml-linter/schema/schema.json`
-  changed, stage it with the release commit (Step 6). A regenerated-but-unchanged snapshot
-  is the normal, expected outcome.
-
 ---
 
 ## STEP 3: CHANGELOG (CHECKPOINT 1)
 
 ### Gather commits
 ```bash
-git log {last_tag}..HEAD --format="%h %s" --no-merges
+git log {last_tag}..$RELEASE_SHA --format="%h %s" --no-merges
 ```
 
 ### Draft changelog entry
@@ -306,14 +302,17 @@ build. Any FAIL row → STOP and fix it before committing.
 ## STEP 6: COMMIT + TAG
 
 ### Commit
-Commit the pathspecs directly; never `git add` in the shared tree (CLAUDE.md § Sharing
-This Tree), where a peer's commit can sweep up whatever sits in the index:
+In the release worktree, on `release-prep/v{NEW_VERSION}` (its parent is `RELEASE_SHA`):
 
 ```bash
 git commit -m "chore(release): v{NEW_VERSION}" -- VERSION.txt CHANGELOG.md
 # Append tools/xml-linter/schema/schema.json if Step 2's regeneration changed it,
 # and any other file modified in Step 5.
+git rev-parse HEAD^    # must print RELEASE_SHA: the release is exactly what CI proved, plus this commit
 ```
+
+The tag goes on this commit. Everything it contains beyond `RELEASE_SHA` is the version,
+the changelog and generated snapshots, so the green CI verdict on `RELEASE_SHA` covers it.
 
 ### Create annotated tag
 The tag annotation becomes the GitHub release body (CI extracts it). Use the changelog entry as the tag message.
@@ -381,11 +380,33 @@ Use AskUserQuestion:
   - "Undo" — reset the commit and delete the tag
 
 ### If "Push it":
+First merge the release commit back into `$BRANCH`, then push the branch and the tag.
+`$BRANCH` has usually moved past `RELEASE_SHA`, so this is a real merge; the only files it
+can conflict on are `VERSION.txt` and `CHANGELOG.md`, and a conflict there is a peer who
+edited them, which means STOP and ask them, not resolve it for them.
+
 ```bash
-git push origin "$BRANCH"
+# In the release worktree: bring the branch's newer commits in, so main only fast-forwards.
+git fetch origin
+git -c merge.autoStash=false merge --no-edit "origin/$BRANCH"
+make land-gate          # only when the merge brought in commits whose CI is not yet green;
+                        # skip it when every one of them already passed CI on $BRANCH
+
+# Then move $BRANCH, under its claim (CLAUDE.md § Sharing This Tree):
+scripts/helix-claim take "worktree:$BRANCH" "release v{NEW_VERSION}: merge back" --pid $$
+git -C <main tree> -c merge.autoStash=false merge --ff-only "release-prep/v{NEW_VERSION}"
+#   Test this command's own exit status; never pipe it. A refusal means $BRANCH moved
+#   again: fetch, merge origin/$BRANCH into the release branch once more, retry.
+git -C <main tree> push origin "$BRANCH"
 git push origin "v{NEW_VERSION}"
+git -C <main tree> rev-parse "$BRANCH" "origin/$BRANCH"   # must match
+scripts/helix-claim release "worktree:$BRANCH"
+scripts/teardown-worktree.sh "v{NEW_VERSION}"
 ```
-Then show: "Pushed! Watch the build: https://github.com/prestonbrown/helixscreen/actions"
+
+The tag push is what starts the Release workflow, and the tagged commit is the release
+commit, now reachable from `$BRANCH` through the merge. Then show: "Pushed! Watch the
+build: https://github.com/prestonbrown/helixscreen/actions"
 
 For stable releases (tag without `-`), the `notify-website` job will fire a
 `repository_dispatch` to helixscreen-website once the release job finishes,
@@ -406,15 +427,19 @@ Prereleases skip this: betas never go to Play. Delete this block once the servic
 exists and the workflow uploads on its own.
 
 ### If "Keep local":
-Show: "Release commit and tag created locally. Push when ready:\n`git push origin $BRANCH && git push origin v{NEW_VERSION}`"
+Show: "Release commit and tag created locally on release-prep/v{NEW_VERSION}. When ready,
+run STEP 7's merge-back block: merge origin/$BRANCH in, fast-forward $BRANCH, push it, then
+`git push origin v{NEW_VERSION}`."
 
 ### If "Undo":
 **Ask for explicit confirmation** before running destructive commands:
 ```bash
 git tag -d "v{NEW_VERSION}"
-git reset --soft HEAD~1
+scripts/teardown-worktree.sh "v{NEW_VERSION}" --force --force-branch
 ```
-Show: "Undone. Commit removed (changes preserved as staged), tag deleted."
+Nothing outside the release worktree changed before STEP 7's merge, so removing the
+worktree and its branch is the whole undo. Show: "Undone. Tag deleted, release branch and
+worktree removed; $BRANCH was never touched."
 
 ---
 
@@ -424,10 +449,11 @@ Show: "Undone. Commit removed (changes preserved as staged), tag deleted."
 |-------|--------|
 | Branch neither `main` nor `release/X.Y` | STOP with message, do not offer to switch |
 | Version does not match the release line | STOP: "v{NEW_VERSION} does not belong to {BRANCH}" |
-| Dirty working tree | STOP with message, do not offer to stash |
-| Behind origin | STOP with message, do not offer to pull |
+| No green commit in the window | STOP with `latest-green-sha.sh`'s stderr: each recent push and why it is not green |
 | Quality checks fail | STOP with the `❌` output — do not release on a red branch |
-| Tests fail | STOP with failure output |
+| Land gate fails | STOP with its PASS/FAIL table and the failing step's log tail |
+| Merge back conflicts | STOP: a peer edited VERSION.txt or CHANGELOG.md; ask them, do not resolve it for them |
+| `--ff-only` refuses | `$BRANCH` moved again: fetch, merge `origin/$BRANCH` into the release branch, retry |
 | Release gate fails | STOP with the PASS/FAIL table and the failing step's log tail |
 | Version not greater | STOP: "v{NEW_VERSION} is not greater than v{LAST_TAG}" |
 | User aborts at any checkpoint | STOP cleanly, no partial state |
