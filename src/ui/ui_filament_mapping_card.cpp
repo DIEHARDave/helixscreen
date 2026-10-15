@@ -147,42 +147,49 @@ bool FilamentMappingCard::shows_mapping_for(size_t palette_colour_count, size_t 
     return true;
 }
 
+FilamentMappingCard::Mapping
+FilamentMappingCard::compute_mapping(const std::vector<std::string>& colors,
+                                     const std::vector<std::string>& materials,
+                                     const std::optional<std::set<int>>& used_tools) {
+    Mapping m;
+    m.palette_colour_count = colors.size();
+    m.palette_tool_count = std::max(colors.size(), materials.size());
+    // A pure function of the palette, built whether or not the card shows:
+    // the print-start gate reads the tools either way.
+    m.tool_info = build_tool_info(colors, materials);
+    m.shows = shows_mapping_for(m.palette_colour_count, m.palette_tool_count, used_tools);
+    if (m.shows) {
+        auto& ams = AmsState::instance();
+        // Seeded through the shared rule, which reads the EFFECTIVE auto-match
+        // predicate: AmsState::effective_auto_match() overrides the raw setting
+        // on backends (Snapmaker U1) where the two differ.
+        m.slots = ams.collect_available_slots();
+        m.mappings = ams.seed_tool_mappings(m.tool_info, m.slots);
+    }
+    // Seeded from the whole palette, then narrowed to the tools the file uses;
+    // nullopt or empty keeps them all.
+    apply_used_tools_filter(m.tool_info, m.mappings, used_tools);
+    return m;
+}
+
 void FilamentMappingCard::update(const std::vector<std::string>& gcode_colors,
                                  const std::vector<std::string>& gcode_materials) {
-    // Stored before the decision, because the decision reads them - and kept,
-    // because set_used_tools() re-runs that decision without a palette to hand.
-    // build_tool_info() emits max(colours, materials) entries, so that max IS
-    // the tool count the rule used to read off tool_info_.size().
-    palette_colour_count_ = gcode_colors.size();
-    palette_tool_count_ = std::max(gcode_colors.size(), gcode_materials.size());
-
-    // Built BEFORE the decision, and unconditionally. It is a pure function of
-    // the arguments, and the print-start gate reads it back through
-    // PrintSelectDetailView::get_filament_tool_info() whether or not the card is
-    // showing - so returning early without it would hand that gate the PREVIOUS
-    // file's tools. The old code only avoided that on one of the four hidden
-    // paths by accident of ordering.
-    tool_info_ = build_tool_info(gcode_colors, gcode_materials);
+    Mapping m = compute_mapping(gcode_colors, gcode_materials, used_tools_);
+    // Kept, because set_used_tools() re-runs the visibility rule without a
+    // palette to hand.
+    palette_colour_count_ = m.palette_colour_count;
+    palette_tool_count_ = m.palette_tool_count;
+    // Assigned before the visibility early-out: PrintSelectDetailView's
+    // get_filament_tool_info() hands it to the print-start gate whether or not
+    // the card shows, and must never hand it the previous file's tools.
+    tool_info_ = std::move(m.tool_info);
 
     if (!recompute_visibility()) {
         return;
     }
 
-    // Collect available slots from AMS backends (canonical accessor — single
-    // source of truth shared with the print detail view's preflight check).
-    available_slots_ = AmsState::instance().collect_available_slots();
-
-    // Seed through the shared rule. Reads the EFFECTIVE auto-match predicate, not
-    // the raw setting this used to read - correct on every backend the card now
-    // shows on, because AmsState::effective_auto_match() itself deliberately
-    // overrides the raw setting on backends (Snapmaker U1) where the two differ.
-    mappings_ = AmsState::instance().seed_tool_mappings(tool_info_, available_slots_);
-
-    // Restrict to the tools the gcode actually uses. update() rebuilds from the
-    // full palette, so re-apply the current set here — a used-tools set pushed
-    // before this (later) update() must survive the rebuild. nullopt/empty is a
-    // no-op (show all).
-    apply_used_tools_filter(tool_info_, mappings_, used_tools_);
+    available_slots_ = std::move(m.slots);
+    mappings_ = std::move(m.mappings);
 
     // Build the compact UI
     rebuild_compact_view();

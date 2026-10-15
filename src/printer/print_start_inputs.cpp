@@ -82,26 +82,10 @@ PreflightResult file_preflight(const std::vector<GcodeToolInfo>& used_tool_info,
 namespace {
 
 /// What the file view's mapping card holds for @p facts when the user has not
-/// edited it: the card's update() and set_used_tools() steps, in their order.
-struct CardMapping {
-    std::vector<GcodeToolInfo> tool_info;
-    std::vector<AvailableSlot> slots;
-    std::vector<ToolMapping> mappings;
-};
-
-CardMapping card_mapping_for(const FileStartFacts& facts) {
-    using ui::FilamentMappingCard;
-    CardMapping card;
-    card.tool_info =
-        FilamentMappingCard::build_tool_info(facts.palette.colors, facts.palette.materials);
-    const std::optional<std::set<int>> used = facts.tools_used;
-    if (FilamentMappingCard::shows_mapping_for(facts.palette.colors.size(), card.tool_info.size(),
-                                               used)) {
-        card.slots = AmsState::instance().collect_available_slots();
-        card.mappings = AmsState::instance().seed_tool_mappings(card.tool_info, card.slots);
-    }
-    FilamentMappingCard::apply_used_tools_filter(card.tool_info, card.mappings, used);
-    return card;
+/// edited it.
+ui::FilamentMappingCard::Mapping card_mapping_for(const FileStartFacts& facts) {
+    return ui::FilamentMappingCard::compute_mapping(facts.palette.colors, facts.palette.materials,
+                                                    facts.tools_used);
 }
 
 std::vector<GcodeToolInfo> used_tool_info_for(const FileStartFacts& facts) {
@@ -112,7 +96,7 @@ std::vector<GcodeToolInfo> used_tool_info_for(const FileStartFacts& facts) {
 } // namespace
 
 void fill_file_context(PrintStartContext& ctx, const FileStartFacts& facts) {
-    CardMapping card = card_mapping_for(facts);
+    auto card = card_mapping_for(facts);
     ctx.has_file_facts = true;
     ctx.metadata = facts.metadata;
     ctx.effective_remap =
