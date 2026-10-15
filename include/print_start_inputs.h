@@ -108,7 +108,7 @@ class FileStartFactsLoader {
 
     /// One file's tools/palette/grams read: the half of load() after the metadata.
     struct ScanRequest {
-        std::string file_key; ///< ToolsUsedCache key; the Moonraker path unless a USB file
+        std::string file_key; ///< ToolsUsedCache key: PrintPreparationManager::scan_key()
         FileVersion version;  ///< the ToolsUsedCache entry's version
         uint64_t gcode_end_byte = 0;
         gcode::FooterReadNeed need;
