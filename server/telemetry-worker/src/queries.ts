@@ -874,6 +874,10 @@ export function stabilityQueries(days: number, filters?: FilterParams): string[]
     `SELECT count(DISTINCT ${errorEnc("device_id")}) as affected_devices FROM ${dataset} WHERE timestamp >= NOW() - INTERVAL '${days}' DAY AND ${display}${errF}`,
     // 15: Devices on a delta-era client
     deltaEraDevices(ENDPOINT_DELTA_KINDS.stability, days, filters),
+    // 16: Crash clusters over the range
+    crashClustersSql([0, days], filters),
+    // 17: Error codes per version over the range
+    errorCodesSql([0, days], filters, true),
   ];
 }
 
@@ -1258,6 +1262,41 @@ const HEALTH_KIND_DAYS = 9;
  * comes from running `top_versions` first; filters apply per kind, while
  * `cdn_latest` and `kind_days` ignore them.
  */
+/**
+ * Crashes grouped by (signal, fault code, version, board) in window `w`:
+ * sample-weighted count and distinct devices per cluster, as rows
+ * { sig, fault, ver, board, count, devices }.
+ */
+export function crashClustersSql(w: readonly [number, number], filters?: FilterParams): string {
+  return `SELECT
+      ${crash("signal_name")} as sig,
+      ${crash("fault_code_name")} as fault,
+      ${crash("app_version")} as ver,
+      ${crash("app_board")} as board,
+      ${wCount()} as count,
+      count(DISTINCT ${crash("device_id")}) as devices
+    FROM ${DATASET}
+    WHERE ${windowClause(w)} AND index1 = 'crash'${filterFor("crash", filters)}
+    GROUP BY sig, fault, ver, board`;
+}
+
+/**
+ * Error reports grouped by (category, code), and by version too when
+ * `byVersion` is set, in window `w`: sample-weighted count and distinct
+ * devices, as rows { category, code, [version,] count, devices }.
+ */
+export function errorCodesSql(w: readonly [number, number], filters?: FilterParams, byVersion = false): string {
+  const version = byVersion ? `\n      ${errorEnc("app_version")} as version,` : "";
+  return `SELECT
+      ${errorEnc("category")} as category,
+      ${errorEnc("code")} as code,${version}
+      ${wCount()} as count,
+      count(DISTINCT ${errorEnc("device_id")}) as devices
+    FROM ${DATASET}
+    WHERE ${windowClause(w)} AND index1 = 'error_encountered'${filterFor("error_encountered", filters)}
+    GROUP BY category, code${byVersion ? ", version" : ""}`;
+}
+
 export function healthQueries(filters?: FilterParams, versions: string[] = []): Record<HealthQueryKey, string> {
   const inVersions = (column: string) => versionInClause(column, versions);
   const sessF = filterFor("session", filters);
@@ -1298,26 +1337,8 @@ export function healthQueries(filters?: FilterParams, versions: string[] = []): 
     FROM ${DATASET}
     WHERE ${windowClause(w)} AND index1 = 'print_outcome' AND ${inVersions(printOutcome("app_version"))}${filterFor("print_outcome", filters)}
     GROUP BY ver`;
-  const errors = (w: readonly [number, number]) =>
-    `SELECT
-      ${errorEnc("category")} as category,
-      ${errorEnc("code")} as code,
-      ${wCount()} as count,
-      count(DISTINCT ${errorEnc("device_id")}) as devices
-    FROM ${DATASET}
-    WHERE ${windowClause(w)} AND index1 = 'error_encountered'${filterFor("error_encountered", filters)}
-    GROUP BY category, code`;
-  const crashes = (w: readonly [number, number]) =>
-    `SELECT
-      ${crash("signal_name")} as sig,
-      ${crash("fault_code_name")} as fault,
-      ${crash("app_version")} as ver,
-      ${crash("app_board")} as board,
-      ${wCount()} as count,
-      count(DISTINCT ${crash("device_id")}) as devices
-    FROM ${DATASET}
-    WHERE ${windowClause(w)} AND index1 = 'crash'${crashF}
-    GROUP BY sig, fault, ver, board`;
+  const errors = (w: readonly [number, number]) => errorCodesSql(w, filters);
+  const crashes = (w: readonly [number, number]) => crashClustersSql(w, filters);
 
   const { cur, prev, baseline } = HEALTH_WINDOWS;
   return {

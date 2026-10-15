@@ -1495,6 +1495,50 @@ describe("Dashboard endpoints", () => {
       expect(data.klippy_trend).toEqual([{ date: "2026-10-14", errors: 2, shutdowns: 1 }]);
     });
 
+    it("stability lists crash clusters over the range, largest first", async () => {
+      mockBySql([
+        [
+          "as fault",
+          [
+            { sig: "SIGSEGV", fault: "NULL_DEREF", ver: "1.0.5", board: "k1", count: 2, devices: 2 },
+            { sig: "SIGABRT", fault: "", ver: "1.0.4", board: "pi", count: 7, devices: 3 },
+            { sig: "SIGBUS", fault: "", ver: "1.0.4", board: "pi", count: 0, devices: 0 },
+          ],
+        ],
+      ]);
+      const data = await dashboard("/v1/dashboard/stability?range=7d&board=k1,pi");
+      expect(data.crash_clusters).toEqual([
+        { signal: "SIGABRT", fault_code: "", version: "1.0.4", board: "pi", count: 7, devices: 3 },
+        { signal: "SIGSEGV", fault_code: "NULL_DEREF", version: "1.0.5", board: "k1", count: 2, devices: 2 },
+      ]);
+      const sql = mockExecuteQuery.mock.calls.map(([, q]) => q as string).find((q) => q.includes("as fault"))!;
+      expect(sql).toContain("INTERVAL '7' DAY");
+      expect(sql).toContain(`${col("crash", "app_board")} IN ('k1', 'pi')`);
+      expect(sql).toContain("GROUP BY sig, fault, ver, board");
+    });
+
+    it("stability lists error codes per version", async () => {
+      mockBySql([
+        [
+          "GROUP BY category, code, version",
+          [
+            { category: "ui", code: "E1", version: "1.0.4", count: 1, devices: 1 },
+            { category: "net", code: "E2", version: "1.0.5", count: 5, devices: 2 },
+          ],
+        ],
+      ]);
+      const data = await dashboard("/v1/dashboard/stability?platform=pi");
+      expect(data.errors_by_version).toEqual([
+        { category: "net", code: "E2", version: "1.0.5", count: 5, devices: 2 },
+        { category: "ui", code: "E1", version: "1.0.4", count: 1, devices: 1 },
+      ]);
+      const sql = mockExecuteQuery.mock.calls
+        .map(([, q]) => q as string)
+        .find((q) => q.includes("GROUP BY category, code, version"))!;
+      expect(sql).toContain(`${col("error_encountered", "app_version")} as version`);
+      expect(sql).toContain(`${col("error_encountered", "app_platform")} IN ('pi')`);
+    });
+
     it("features are adoption derived from overlay and widget deltas", async () => {
       mockBySql([
         ["as delta_era_devices", [{ delta_era_devices: 4 }]],

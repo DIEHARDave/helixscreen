@@ -1141,6 +1141,8 @@ export default {
             executeQuery(queryConfig, queries[13]), // recent display anomalies
             executeQuery(queryConfig, queries[14]), // display affected devices
             executeQuery(queryConfig, queries[15]), // delta-era devices
+            executeQuery(queryConfig, queries[16]), // crash clusters
+            executeQuery(queryConfig, queries[17]), // error codes per version
           ]);
           const deltaEraDevices = deltaEraCount(allResults[12]);
 
@@ -1177,6 +1179,12 @@ export default {
           };
 
           const dedupedCrashes = deduplicateCrashes(crashListRes.data ?? []);
+          const clusterRes = allResults[13] as {
+            data?: Array<{ sig: string; fault: string; ver: string; board: string; count: number; devices: number }>;
+          };
+          const errorsByVerRes = allResults[14] as {
+            data?: Array<{ category: string; code: string; version: string; count: number; devices: number }>;
+          };
 
           // Compute crash aggregates from the deduplicated crash list
           // Crash count by date (from deduped crash timestamps)
@@ -1257,6 +1265,26 @@ export default {
               code: r.code,
               count: r.count,
             })),
+            crash_clusters: (clusterRes.data ?? [])
+              .map((r) => ({
+                signal: String(r.sig ?? ""),
+                fault_code: String(r.fault ?? ""),
+                version: String(r.ver ?? ""),
+                board: String(r.board ?? ""),
+                count: Number(r.count),
+                devices: Number(r.devices),
+              }))
+              .filter((c) => c.count > 0)
+              .sort((a, b) => b.count - a.count),
+            errors_by_version: (errorsByVerRes.data ?? [])
+              .map((r) => ({
+                category: String(r.category ?? ""),
+                code: String(r.code ?? ""),
+                version: String(r.version ?? ""),
+                count: Number(r.count),
+                devices: Number(r.devices),
+              }))
+              .sort((a, b) => b.count - a.count),
             recent_crashes: dedupedCrashes.slice(0, displayLimit).map((r) => ({
               timestamp: r.timestamp,
               device_id: r.device_id,
