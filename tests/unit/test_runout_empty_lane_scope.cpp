@@ -243,6 +243,94 @@ TEST_CASE("has_real_runout: mixed heads 0,2 loaded + head 1 empty", "[runout][sc
     CHECK(fsm.has_real_runout());
 }
 
+namespace {
+
+// The Snapmaker U1 mid-print: heads 0-2 fed through to their toolheads
+// (load_finish), head 3's filament waiting in its feeder (preload_finish), so
+// every lane reads present while head 3's toolhead switch reads empty.
+json u1_feed_heads_0_to_2_loaded() {
+    auto head = [](const char* channel_state) {
+        return json{
+            {"filament_detected", true}, {"channel_state", channel_state}, {"channel_error", "ok"}};
+    };
+    return json{{"filament_feed left",
+                 json{{"extruder0", head("load_finish")}, {"extruder1", head("load_finish")}}},
+                {"filament_feed right",
+                 json{{"extruder2", head("load_finish")}, {"extruder3", head("preload_finish")}}}};
+}
+
+json u1_picked(int tool) {
+    return json{
+        {"toolhead", json{{"extruder", tool == 0 ? "extruder" : fmt::format("extruder{}", tool)}}}};
+}
+
+// A toolhead switch reading, delivered to both of its readers.
+void feed_switch(ScopedSnapmakerBackend& backend, FilamentSensorManager& fsm, int lane,
+                 bool detected) {
+    const json frame = make_sensor_status(lane, detected);
+    RunoutScopeTestAccess::handle_status(*backend.backend, frame);
+    fsm.update_from_status(frame);
+    drain();
+}
+
+void setup_u1_printing_on_head_2(ScopedSnapmakerBackend& backend, FilamentSensorManager& fsm,
+                                 bool pick_head_2) {
+    setup_four_lane_sensors(fsm);
+    RunoutScopeTestAccess::handle_status(*backend.backend, u1_feed_heads_0_to_2_loaded());
+    if (pick_head_2) {
+        RunoutScopeTestAccess::handle_status(*backend.backend, u1_picked(2));
+    }
+    for (int lane = 0; lane < 3; ++lane) {
+        feed_switch(backend, fsm, lane, true);
+    }
+    feed_switch(backend, fsm, 3, false);
+
+    AmsBackend* be = AmsState::instance().get_backend();
+    for (int lane = 0; lane < 4; ++lane) {
+        INFO("lane " << lane);
+        REQUIRE(be->get_slot_info(lane).is_present());
+    }
+}
+
+} // namespace
+
+TEST_CASE("has_real_runout: a preloaded head's empty switch is not a runout while another head "
+          "prints",
+          "[runout][scope]") {
+    HelixTestFixture fx;
+    ScopedSnapmakerBackend backend;
+    auto& fsm = FilamentSensorManager::instance();
+    setup_u1_printing_on_head_2(backend, fsm, /*pick_head_2=*/true);
+    REQUIRE(AmsState::instance().get_backend()->get_current_slot() == 2);
+
+    // Head 3's switch reads empty, so the coarse query fires.
+    CHECK(fsm.has_any_runout());
+    // Head 3 is not the lane being fed: a pause for any other reason (a dirty
+    // bed) is not a runout.
+    CHECK_FALSE(fsm.has_real_runout());
+
+    // The head being fed runs out: that is a runout.
+    feed_switch(backend, fsm, 2, false);
+    CHECK(fsm.has_real_runout());
+
+    // Refilled, and only the idle head reads empty again.
+    feed_switch(backend, fsm, 2, true);
+    CHECK_FALSE(fsm.has_real_runout());
+}
+
+TEST_CASE("has_real_runout: with no current lane every present lane still counts",
+          "[runout][scope]") {
+    HelixTestFixture fx;
+    ScopedSnapmakerBackend backend;
+    auto& fsm = FilamentSensorManager::instance();
+    setup_u1_printing_on_head_2(backend, fsm, /*pick_head_2=*/false);
+    REQUIRE(AmsState::instance().get_backend()->get_current_slot() < 0);
+
+    // Nothing names the lane being fed, so a present lane's empty switch is
+    // taken at its word.
+    CHECK(fsm.has_real_runout());
+}
+
 TEST_CASE("has_real_runout: no AMS backend -> behaves like has_any_runout", "[runout][scope]") {
     HelixTestFixture fx;
     AmsState::instance().set_backend(nullptr);

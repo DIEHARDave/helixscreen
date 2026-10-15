@@ -29,13 +29,18 @@
 
 #include "../lvgl_ui_test_fixture.h"
 #include "../test_helpers/post_unload_grace_test_access.h"
+#include "../test_helpers/snapmaker_test_access.h"
+#include "ams_backend_snapmaker.h"
 #include "ams_state.h"
 #include "app_globals.h"
 #include "filament_sensor_manager.h"
 #include "filament_sensor_types.h"
 #include "runtime_config.h"
+#include "test_helpers/registered_backend.h"
 
 #include <memory>
+#include <string>
+#include <vector>
 
 #include "../catch_amalgamated.hpp"
 #include "hv/json.hpp"
@@ -191,4 +196,61 @@ TEST_CASE_METHOD(RunoutGuidanceFixture, "every terminal state clears the latch, 
 
     CHECK_FALSE(handler->is_modal_shown_for_pause());
     CHECK_FALSE(handler->is_modal_visible());
+}
+
+// A Snapmaker U1 printing on head 2, with head 3's filament waiting in its
+// feeder short of the toolhead (preload_finish), pauses for a reason that is
+// not filament (a dirty bed). Head 3's toolhead switch reads empty, but head 3
+// is not the one being fed.
+TEST_CASE_METHOD(RunoutGuidanceFixture,
+                 "a pause with only an idle head's switch empty shows no dialog; the fed "
+                 "head's does",
+                 "[runout_guidance][gate]") {
+    helix::test::RegisteredBackend<helix::AmsBackendSnapmaker> u1(nullptr, nullptr);
+    auto head_switch = [](int head, bool detected) {
+        return nlohmann::json{{"filament_motion_sensor e" + std::to_string(head) + "_filament",
+                               {{"filament_detected", detected}, {"enabled", true}}}};
+    };
+    auto feed = [](const char* channel_state) {
+        return nlohmann::json{{"filament_detected", true}, {"channel_state", channel_state}};
+    };
+    helix::SnapmakerTestAccess::handle_status(
+        *u1, nlohmann::json{
+                 {"filament_feed left",
+                  {{"extruder0", feed("load_finish")}, {"extruder1", feed("load_finish")}}},
+                 {"filament_feed right",
+                  {{"extruder2", feed("load_finish")}, {"extruder3", feed("preload_finish")}}},
+                 {"toolhead", {{"extruder", "extruder2"}}}});
+    REQUIRE((*u1).get_current_slot() == 2);
+    REQUIRE((*u1).get_slot_info(3).is_present());
+
+    auto& fsm = FilamentSensorManager::instance();
+    std::vector<std::string> heads;
+    for (int h = 0; h < 4; ++h) {
+        heads.push_back("filament_motion_sensor e" + std::to_string(h) + "_filament");
+    }
+    fsm.discover_sensors(heads);
+    for (int h = 0; h < 4; ++h) {
+        fsm.set_sensor_role(heads[h], FilamentSensorRole::RUNOUT);
+        const auto frame = head_switch(h, h != 3);
+        helix::SnapmakerTestAccess::handle_status(*u1, frame);
+        fsm.update_from_status(frame);
+    }
+    settle();
+    REQUIRE(get_runtime_config()->should_show_runout_modal());
+    REQUIRE(fsm.has_any_runout());
+
+    transition(::PrintState::Preparing, ::PrintState::Paused);
+    CHECK_FALSE(handler->is_modal_shown_for_pause());
+    CHECK_FALSE(handler->is_modal_visible());
+
+    // Resumed; then the head being fed runs out and the firmware pauses.
+    transition(::PrintState::Paused, ::PrintState::Printing);
+    const auto empty = head_switch(2, false);
+    helix::SnapmakerTestAccess::handle_status(*u1, empty);
+    fsm.update_from_status(empty);
+    settle();
+    transition(::PrintState::Printing, ::PrintState::Paused);
+    CHECK(handler->is_modal_shown_for_pause());
+    CHECK(handler->is_modal_visible());
 }
