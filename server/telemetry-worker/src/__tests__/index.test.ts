@@ -2344,6 +2344,8 @@ describe("SQL builders", () => {
       const out =
         name === "crashListQuery"
           ? (fn as (d: number, l: number) => string)(30, 10)
+          : name === "updateFailureGroupsQuery"
+            ? (fn as unknown as (w: readonly [number, number]) => string)([0, 7])
           : name === "releaseScorecardQueries"
             ? (fn as (v: string[], d: number) => string[])(["1.0.0"], 30)
             : name === "retentionQuery"
