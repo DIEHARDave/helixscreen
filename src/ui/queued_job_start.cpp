@@ -75,8 +75,12 @@ QueuedJobStarter::QueuedJobStarter(PrinterState& printer_state, IMoonrakerAPI* a
     : printer_state_(printer_state), api_(api), prep_source_([this]() {
           return get_print_select_panel(printer_state_, api_)->print_preparation_manager();
       }),
-      controller_(std::make_unique<ui::PrintStartController>(printer_state, api)),
       facts_loader_(api) {
+    make_controller();
+}
+
+void QueuedJobStarter::make_controller() {
+    controller_ = std::make_unique<ui::PrintStartController>(printer_state_, api_);
     // No detail view and no navigation: the user stays where the tap was.
     controller_->set_on_print_started([this]() {
         finish_started_queued_job(lifetime_, api_, job_.job_id);
@@ -102,6 +106,27 @@ void QueuedJobStarter::release_prep() {
     prep_->set_start_option_override(nullptr);
     controller_->set_prep_manager(nullptr);
     prep_ = nullptr;
+}
+
+void QueuedJobStarter::abandon() {
+    if (in_flight_) {
+        spdlog::info("[QueuedJobStart] Dropping the start of queued job {}: the printer is going",
+                     job_.job_id);
+    }
+    in_flight_ = false;
+    ++start_generation_;
+    stall_watchdog_.reset();
+    pending_.reset();
+    facts_loader_.cancel();
+    // Answers still owed by the old API (the options read, the queue removal)
+    // must not land.
+    lifetime_.invalidate();
+    // Never called into: its owner is being destroyed.
+    prep_ = nullptr;
+    done_ = nullptr;
+    api_ = nullptr;
+    facts_loader_.set_api(nullptr);
+    make_controller();
 }
 
 void QueuedJobStarter::set_api(IMoonrakerAPI* api) {
@@ -285,27 +310,31 @@ void QueuedJobStarter::run_checks(const Pending& pending, FileStartFacts facts) 
     }
 
     spdlog::info("[QueuedJobStart] Queued job {} maps a used tool to an empty slot", job.job_id);
-    auto tok = lifetime_.token();
+    // The starter outlives every start, so the dialog answers only the start
+    // that opened it: a finished or abandoned one has nothing left to drive.
+    const auto current = [this, gen = start_generation_]() {
+        return in_flight_ && gen == start_generation_;
+    };
     auto chosen = std::make_shared<bool>(false);
     auto modal = std::make_unique<ui::PreflightCheckModal>();
     modal->set_checks(preflight);
-    modal->set_on_force([tok, chosen, start_gates]() {
-        if (tok.expired()) {
+    modal->set_on_force([current, chosen, start_gates]() {
+        if (!current()) {
             return;
         }
         *chosen = true;
         start_gates();
     });
     // Remap edits the file view's mapping card, so the job goes there.
-    modal->set_on_remap([this, tok, chosen]() {
-        if (tok.expired()) {
+    modal->set_on_remap([this, current, chosen]() {
+        if (!current()) {
             return;
         }
         *chosen = true;
         open_in_file_view("Remap chosen", false);
     });
-    modal->set_on_closed([this, tok, chosen]() {
-        if (tok.expired() || *chosen) {
+    modal->set_on_closed([this, current, chosen]() {
+        if (!current() || *chosen) {
             return;
         }
         finish(Outcome::NotStarted);
@@ -332,13 +361,24 @@ void QueuedJobStarter::finish(Outcome outcome) {
     }
 }
 
+namespace {
+// Never destructed, for the reason src/ui/job_queue_start.cpp#queue_modal
+// gives: its controller would tear down after lv_deinit().
+QueuedJobStarter* s_starter = nullptr;
+} // namespace
+
 QueuedJobStarter& queued_job_starter() {
-    // Never destructed, for the reason src/ui/job_queue_start.cpp#queue_modal
-    // gives: its controller would tear down after lv_deinit().
-    static QueuedJobStarter* starter =
-        new QueuedJobStarter(get_printer_state(), get_moonraker_api());
-    starter->set_api(get_moonraker_api());
-    return *starter;
+    if (!s_starter) {
+        s_starter = new QueuedJobStarter(get_printer_state(), get_moonraker_api());
+    }
+    s_starter->set_api(get_moonraker_api());
+    return *s_starter;
+}
+
+void abandon_queued_job_start() {
+    if (s_starter) {
+        s_starter->abandon();
+    }
 }
 
 } // namespace helix::queue

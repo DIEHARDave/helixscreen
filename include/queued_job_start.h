@@ -86,8 +86,18 @@ class QueuedJobStarter {
         return in_flight_;
     }
 
+    /// The printer's scope is being torn down: the prep manager and the API a
+    /// start in flight drives are about to be freed. Drop the start without
+    /// calling into either, and let nothing it left pending act later. The
+    /// next start binds afresh through set_api().
+    void abandon();
+
   private:
     friend class ::QueuedJobStarterTestAccess;
+
+    /// Build the controller and wire its outcomes to this starter. A
+    /// replaced controller takes its open gate dialog and its observers with it.
+    void make_controller();
 
     void finish(Outcome outcome);
 
@@ -159,5 +169,9 @@ class QueuedJobStarter {
 /// The process-wide starter the home tile uses, bound to the current API.
 /// Never destructed, like the shared job queue modal.
 QueuedJobStarter& queued_job_starter();
+
+/// QueuedJobStarter::abandon() on the process-wide starter, for printer-scope
+/// teardown. Builds no starter when none exists.
+void abandon_queued_job_start();
 
 } // namespace helix::queue

@@ -240,6 +240,27 @@ TEST_CASE_METHOD(StarterFixture,
     StaticPanelRegistry::instance().destroy_all();
 }
 
+TEST_CASE_METHOD(StarterFixture, "the pre-flight dialog of an abandoned start drives nothing",
+                 "[queued_job_start][teardown]") {
+    helix::test::ScopedMockAms ams({{0xFF0000, "PETG"}});
+    ams.load(0, 0xFF0000, "PETG", helix::SlotStatus::EMPTY);
+    PlantedGcode file("tile_abandon_dialog.gcode", "", kPetgFile);
+    StaticPanelRegistry::instance().destroy_all();
+    start(entry("0001", file.name()));
+    lv_obj_t* dialog = ModalStack::instance().top_dialog();
+    REQUIRE(dialog != nullptr);
+    REQUIRE(lv_obj_find_by_name(dialog, "btn_tertiary") != nullptr); // the pre-flight modal
+
+    starter->abandon();
+    press("btn_primary"); // Print Anyway, after the printer went away
+
+    CHECK(starts() == 0);
+    CHECK_FALSE(starter->in_flight());
+    CHECK_FALSE(outcome.has_value());
+
+    StaticPanelRegistry::instance().destroy_all();
+}
+
 namespace {
 
 /// The job the global print-select panel's file view holds, or "" for none.

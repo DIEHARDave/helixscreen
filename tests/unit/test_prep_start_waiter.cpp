@@ -389,6 +389,45 @@ TEST_CASE_METHOD(WaiterFixture,
     settle();
 }
 
+TEST_CASE_METHOD(WaiterFixture,
+                 "an abandoned start never reaches the prep manager its printer freed",
+                 "[start_waiter][queued_job_start][teardown][uaf]") {
+    PlantedGcode a("tile_abandoned.gcode", "", kPlainFile);
+    make_starter();
+    transfers.hold_partials = true; // the start waits on its scan
+    std::optional<Outcome> outcome;
+    starter->start_with_options(helix::JobQueueEntry{"0001", a.name(), 0.0, 0.0}, {},
+                                [&outcome](Outcome o) { outcome = o; });
+    settle();
+    REQUIRE(starter->in_flight());
+    REQUIRE(QueuedJobStarterTestAccess::stall_watchdog(*starter) != nullptr);
+
+    // A printer switch: the starter lets go, then print-select's manager is freed.
+    starter->abandon();
+    manager.reset();
+    CHECK_FALSE(starter->in_flight());
+    CHECK(QueuedJobStarterTestAccess::stall_watchdog(*starter) == nullptr);
+
+    // Past the stall window, and with the held read answering, nothing runs.
+    lv_tick_inc(helix::app_constants::transfer::STALL_MS * 2);
+    lv_timer_handler();
+    release_scans();
+    CHECK_FALSE(outcome.has_value());
+    CHECK(client.call_count("printer.print.start") == 0);
+
+    // The next printer's start binds afresh.
+    manager = std::make_unique<PrintPreparationManager>();
+    manager->set_dependencies(api.get(), &get_printer_state());
+    QueuedJobStarterTestAccess::set_prep(*starter, manager.get());
+    starter->set_api(api.get());
+    transfers.hold_partials = false;
+    starter->start_with_options(helix::JobQueueEntry{"0002", a.name(), 0.0, 0.0}, {},
+                                [&outcome](Outcome o) { outcome = o; });
+    settle();
+    REQUIRE(outcome.has_value());
+    CHECK(*outcome == Outcome::Started);
+}
+
 TEST_CASE_METHOD(WaiterFixture, "a refused start reads a failed file again, so a retry starts",
                  "[start_waiter][queued_job_start]") {
     PlantedGcode part("retry_part.gcode", "", kMeshFile);
