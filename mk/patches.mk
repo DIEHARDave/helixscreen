@@ -14,6 +14,8 @@ LVGL_PATCHED_FILES := \
 	src/drivers/display/fb/lv_linux_fbdev.h \
 	src/core/lv_refr.c \
 	src/core/lv_observer.c \
+	src/core/lv_observer.h \
+	src/widgets/span/lv_span.c \
 	src/widgets/slider/lv_slider.c \
 	src/widgets/image/lv_image.c \
 	src/stdlib/clib/lv_string_clib.c \
@@ -551,6 +553,7 @@ $(PATCHES_STAMP): $(PATCH_FILES) $(LVGL_HEAD) $(LIBHV_HEAD) $(LUA_HEAD) $(APPLIE
 	$(Q)$(APPLY_PATCH) $(LVGL_DIR) $(PATCH_DIR)/lvgl_observer_debug.patch "LVGL observer debug info patch"
 	$(Q)$(APPLY_PATCH) $(LVGL_DIR) $(PATCH_DIR)/lvgl_observer_remove_null_guard.patch "LVGL observer remove NULL guard patch"
 	$(Q)$(APPLY_PATCH) $(LVGL_DIR) $(PATCH_DIR)/lvgl_observer_null_guards.patch "LVGL observer subject NULL guards patch"
+	$(Q)$(APPLY_PATCH) $(LVGL_DIR) $(PATCH_DIR)/lvgl_subject_deinit_refuses_observers.patch "LVGL subject deinit refuses observers patch (#1279)"
 	$(Q)$(APPLY_PATCH) $(LVGL_DIR) $(PATCH_DIR)/lvgl_slider_scroll_chain.patch "LVGL slider scroll chain patch"
 	$(Q)$(APPLY_PATCH) $(LVGL_DIR) $(PATCH_DIR)/lvgl-strdup-null-guard.patch "LVGL strdup NULL guard patch"
 	$(Q)$(APPLY_PATCH) $(LVGL_DIR) $(PATCH_DIR)/lvgl_blend_null_guard.patch "LVGL blend NULL guard patch"
