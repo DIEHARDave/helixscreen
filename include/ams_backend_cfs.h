@@ -688,6 +688,11 @@ class AmsBackendCfs : public AmsSubscriptionBackend {
     /// parse reads, since one frame carries only the units that changed.
     /// handle_status runs on the main thread only.
     nlohmann::json stock_box_state_ = nlohmann::json::object();
+    /// Every flat `box` frame since the session began or the last stock one,
+    /// merged per top-level field: what the flat parse reads, since a frame
+    /// carries only the fields that changed (a slot edit sends `slots` and no
+    /// temp_c). Main thread only, like stock_box_state_.
+    nlohmann::json flat_box_state_ = nlohmann::json::object();
 
     // K1 vs K2 macro dialect, latched in ctor from PrinterDetector. Most
     // callers route through dispatch_action_script and pull the macro string
