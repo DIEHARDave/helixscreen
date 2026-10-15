@@ -393,3 +393,68 @@ stub_test_host_run() { # <exit code>
     [ "$(cat "$BATS_TEST_TMPDIR/host-calls")" = "--drop plain" ]
     lacks "mirror" "$output"
 }
+
+# A running clangd keeps writing its index under the tree's own .cache/ while
+# the removal runs; that directory is disposable and must not fail the teardown.
+@test "a .cache that keeps being written during removal is retried until gone" {
+    make_worktree cached
+    local wt="$MAIN/.worktrees/cached"
+    mkdir -p "$wt/.cache/clangd/index"
+    (
+        for i in 1 2 3 4 5 6 7 8; do
+            sleep 0.1
+            mkdir -p "$wt/.cache/clangd/index" 2>/dev/null
+            echo x > "$wt/.cache/clangd/index/f$i.idx" 2>/dev/null
+        done
+    ) &
+    local writer=$!
+    HELIX_TEARDOWN_CACHE_RETRY_SLEEP=0.25 run "$SCRIPT" cached --into master
+    wait "$writer" 2>/dev/null || true
+    [ "$status" -eq 0 ]
+    contains "Teardown complete" "$output"
+    lacks "files remain" "$output"
+    [ ! -d "$wt" ]
+}
+
+half_remove() {
+    find "$1" -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+}
+
+@test "a tree holding only .git is finished when its branch is contained in --into" {
+    make_worktree half
+    local wt="$MAIN/.worktrees/half"
+    half_remove "$wt"
+    run git -C "$wt" status --porcelain
+    contains " D README.md" "$output"
+
+    run "$SCRIPT" half --into master
+    [ "$status" -eq 0 ]
+    contains "half-removed tree" "$output"
+    contains "Teardown complete" "$output"
+    [ ! -d "$wt" ]
+}
+
+@test "a half-removed tree whose branch is not contained still refuses" {
+    make_worktree halfwork
+    local wt="$MAIN/.worktrees/halfwork"
+    echo more > "$wt/more.txt"
+    git -C "$wt" add more.txt
+    git -C "$wt" commit -qm unmerged --no-verify
+    half_remove "$wt"
+
+    run "$SCRIPT" halfwork --into master
+    [ "$status" -ne 0 ]
+    contains "uncommitted change" "$output"
+    [ -d "$wt" ]
+}
+
+@test "real modifications next to deletions still refuse" {
+    make_worktree dirty
+    local wt="$MAIN/.worktrees/dirty"
+    echo more >> "$wt/README.md"
+    echo scratch > "$wt/untracked.txt"
+    run "$SCRIPT" dirty --into master
+    [ "$status" -ne 0 ]
+    contains "uncommitted change" "$output"
+    [ -f "$wt/untracked.txt" ]
+}

@@ -215,7 +215,20 @@ say ""
 if (( GIT_POINTER_OK )); then
     # --- what would be lost ---------------------------------------------------
 
-    DIRTY="$( { git -C "$WT_ABS" status --porcelain 2>/dev/null || true; } | wc -l | tr -d ' ')"
+    STATUS_PORCELAIN="$( { git -C "$WT_ABS" status --porcelain 2>/dev/null || true; } )"
+    DIRTY="$(printf '%s' "$STATUS_PORCELAIN" | grep -c . || true)"
+    # A tree whose files are gone but whose .git survives (an earlier teardown
+    # that stopped partway) reads as one big uncommitted deletion. With nothing
+    # modified or untracked and every commit already in $INTO, nothing is lost
+    # by finishing the removal.
+    if [[ "$DIRTY" != "0" ]] && (( ! FORCE )) &&
+       ! printf '%s\n' "$STATUS_PORCELAIN" | grep -qv '^ D ' &&
+       [[ -n "$BRANCH" ]] &&
+       git -C "$MAIN_ABS" merge-base --is-ancestor "$BRANCH" "$INTO" 2>/dev/null; then
+        say "${YELLOW}! $DIRTY tracked file(s) are deleted and nothing else differs; '$BRANCH' is contained in $INTO.${RESET}"
+        say "  This is a half-removed tree from an earlier teardown; finishing the removal."
+        DIRTY=0
+    fi
     if [[ "$DIRTY" != "0" ]]; then
         if (( FORCE )); then
             say "${YELLOW}! $DIRTY uncommitted change(s) will be DISCARDED (--force).${RESET}"
@@ -290,7 +303,16 @@ else
     # build output, say) stops this short, the worktree still has its own
     # .git and keeps identifying itself to git on a rerun, instead of a git
     # command scoped to it silently falling through to the main tree.
-    find "$WT_ABS" -mindepth 1 -maxdepth 1 -not -name '.git' -exec rm -rf {} + 2>/dev/null || true
+    find "$WT_ABS" -mindepth 1 -maxdepth 1 -not -name '.git' -not -name '.cache' -exec rm -rf {} + 2>/dev/null || true
+    # .cache/ is the tree's own disposable tool state, and a running clangd keeps
+    # writing its index into it mid-removal. Remove it last and retry until it
+    # stays gone.
+    for _ in $(seq 20); do
+        [[ -e "$WT_ABS/.cache" ]] || break
+        rm -rf "$WT_ABS/.cache" 2>/dev/null || true
+        sleep "${HELIX_TEARDOWN_CACHE_RETRY_SLEEP:-0.25}"
+        [[ -e "$WT_ABS/.cache" ]] || break
+    done
     LEFTOVER="$(find "$WT_ABS" -mindepth 1 -not -name '.git' 2>/dev/null || true)"
     if [[ -n "$LEFTOVER" ]]; then
         say ""
