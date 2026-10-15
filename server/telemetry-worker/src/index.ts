@@ -15,7 +15,9 @@ import {
   printsQueries,
   crashesQueries,
   crashListQuery,
-  releasesQueries,
+  releaseScorecardQueries,
+  retentionQuery,
+  topVersionsQuery,
   memoryQueries,
   memoryWarningQueries,
   hardwareQueries,
@@ -35,6 +37,7 @@ import {
 } from "./queries";
 import { buildDeviceList, buildDevicePage, isDeviceId } from "./devices";
 import { buildHealth, type HealthRowKey } from "./health";
+import { buildRetention } from "./retention";
 import {
   snapshotDay,
   snapshotToDataPoints,
@@ -561,11 +564,15 @@ export default {
             [...queries, ...startQueries].map((q) => executeQuery(queryConfig, q)),
           );
 
-          const [rateTimeRes, filamentRes, avgDurRes, slicerRes, fileSizeRes, thumbRes, amsRes, sourceRes] = allResults;
+          const [rateTimeRes, filamentRes, avgDurRes, modelOfDeviceRes, outcomeByDeviceRes, outcomeByVersionRes,
+                 slicerRes, fileSizeRes, thumbRes, amsRes, sourceRes] = allResults;
 
           const rateTimeData = rateTimeRes as { data: Array<{ date: string; rate: number; total: number }> };
           const filamentData = filamentRes as { data: Array<{ type: string; success_rate: number; count: number }> };
           const avgDurData = avgDurRes as { data: Array<{ avg_duration_sec: number }> };
+          const modelOfDevice = modelOfDeviceRes as { data: Array<{ device_id: string; model: string }> };
+          const outcomeByDevice = outcomeByDeviceRes as { data: Array<{ device_id: string; successes: number; total: number }> };
+          const outcomeByVersion = outcomeByVersionRes as { data: Array<{ version: string; successes: number; total: number }> };
           const slicerData = slicerRes as { data: Array<{ name: string; count: number }> };
           const fileSizeData = fileSizeRes as { data: Array<{ name: string; count: number }> };
           const thumbData = thumbRes as { data: Array<{ thumbnail_rate: number }> };
@@ -615,6 +622,27 @@ export default {
                 .sort((a, b) => b.count - a.count);
             })(),
             avg_duration_sec: avgDurData.data?.[0]?.avg_duration_sec ?? 0,
+            by_model: (() => {
+              const modelOf = new Map<string, string>();
+              for (const r of modelOfDevice.data ?? []) modelOf.set(r.device_id, r.model || "Unknown");
+              const byModel = new Map<string, { successes: number; total: number }>();
+              for (const r of outcomeByDevice.data ?? []) {
+                const model = modelOf.get(r.device_id) ?? "Unknown";
+                const entry = byModel.get(model) ?? { successes: 0, total: 0 };
+                entry.successes += Number(r.successes);
+                entry.total += Number(r.total);
+                byModel.set(model, entry);
+              }
+              return [...byModel.entries()]
+                .map(([model, { successes, total }]) => ({ model, successes, total, rate: total > 0 ? successes / total : null }))
+                .sort((a, b) => b.total - a.total);
+            })(),
+            by_version: (outcomeByVersion.data ?? []).map((r) => ({
+              version: r.version,
+              successes: r.successes,
+              total: r.total,
+              rate: r.total > 0 ? r.successes / r.total : null,
+            })),
             start_context: {
               slicers: (slicerData.data ?? []).map((r) => ({ name: r.name, count: r.count })),
               file_size_buckets: (fileSizeData.data ?? []).map((r) => ({ name: r.name, count: r.count })),
@@ -1265,62 +1293,62 @@ export default {
           });
         }
 
-        // GET /v1/dashboard/releases?versions=v0.9.18,v0.9.19
+        // GET /v1/dashboard/releases[?versions=v0.9.18,v0.9.19]
         if (url.pathname === "/v1/dashboard/releases") {
           const versionsParam = url.searchParams.get("versions");
-          if (!versionsParam) {
-            return json({ error: "versions parameter required" }, 400);
-          }
-          const versions = versionsParam.split(",").map((v) => v.trim()).filter(Boolean);
-          if (versions.length === 0 || versions.length > 20) {
-            return json({ error: "Provide 1-20 comma-separated versions" }, 400);
-          }
-
-          const queries = releasesQueries(versions);
-          const [statsRes, devicesRes, printStatsRes] =
-            await Promise.all(queries.map((q) => executeQuery(queryConfig, q)));
-
-          const statsData = statsRes as {
-            data: Array<{
-              ver: string;
-              total_sessions: number;
-              total_crashes: number;
-              update_failures: number;
-              update_successes: number;
-            }>;
-          };
-          const devicesData = devicesRes as {
-            data: Array<{ ver: string; active_devices: number }>;
-          };
-          const printStatsData = printStatsRes as {
-            data: Array<{ ver: string; print_successes: number; print_total: number }>;
-          };
-
-          // Build device count lookup
-          const deviceMap = new Map<string, number>();
-          for (const row of devicesData.data ?? []) {
-            deviceMap.set(row.ver, row.active_devices);
+          let versions: string[];
+          if (versionsParam === null) {
+            const topRes = (await executeQuery(queryConfig, topVersionsQuery(days, filters))) as {
+              data?: Array<{ ver: string }>;
+            };
+            versions = (topRes.data ?? []).map((r) => String(r.ver));
+          } else {
+            versions = versionsParam.split(",").map((v) => v.trim()).filter(Boolean);
+            if (versions.length === 0 || versions.length > 20) {
+              return json({ error: "Provide 1-20 comma-separated versions" }, 400);
+            }
           }
 
-          // Build print stats lookup
-          const printMap = new Map<string, { successes: number; total: number }>();
-          for (const row of printStatsData.data ?? []) {
-            printMap.set(row.ver, { successes: row.print_successes, total: row.print_total });
-          }
+          const [statsRes, devicesRes, printStatsRes, crashingRes, frameRes, rssRes, adoptionRes] =
+            await Promise.all(releaseScorecardQueries(versions, days, filters).map((q) => executeQuery(queryConfig, q)));
+
+          const rows = <T>(res: unknown): T[] => (res as { data?: T[] } | null)?.data ?? [];
+          const statsData = rows<{
+            ver: string;
+            total_sessions: number;
+            total_crashes: number;
+            update_failures: number;
+            update_successes: number;
+          }>(statsRes);
+          const byVersion = <T extends { ver: string }>(res: unknown) =>
+            new Map(rows<T>(res).map((r) => [r.ver, r]));
+          const deviceMap = byVersion<{ ver: string; active_devices: number }>(devicesRes);
+          const printMap = byVersion<{ ver: string; print_successes: number; print_total: number }>(printStatsRes);
+          const crashingMap = byVersion<{ ver: string; crashing_devices: number }>(crashingRes);
+          const frameMap = byVersion<{ ver: string; p95_frame_ms: number }>(frameRes);
+          const rssMap = byVersion<{ ver: string; p95_rss_kb: number }>(rssRes);
 
           return json({
-            versions: (statsData.data ?? []).map((r) => {
-              const prints = printMap.get(r.ver) ?? { successes: 0, total: 0 };
+            versions: statsData.map((r) => {
+              const prints = printMap.get(r.ver);
+              const printTotal = prints?.print_total ?? 0;
+              const active = deviceMap.get(r.ver)?.active_devices ?? 0;
+              const crashing = crashingMap.get(r.ver)?.crashing_devices ?? 0;
+              const frame = frameMap.get(r.ver)?.p95_frame_ms;
+              const rss = rssMap.get(r.ver)?.p95_rss_kb;
               return {
                 version: r.ver,
-                active_devices: deviceMap.get(r.ver) ?? 0,
-                crash_rate: r.total_sessions > 0 ? r.total_crashes / r.total_sessions : 0,
-                print_success_rate: prints.total > 0 ? prints.successes / prints.total : null,
+                active_devices: active,
+                crash_rate: r.total_sessions > 0 ? r.total_crashes / r.total_sessions : null,
+                crash_free_devices: active > 0 ? 1 - crashing / active : null,
+                p95_frame_ms: frame ?? null,
+                p95_rss_kb: rss ?? null,
+                print_success_rate: printTotal > 0 ? (prints?.print_successes ?? 0) / printTotal : null,
                 total_sessions: r.total_sessions,
                 total_crashes: r.total_crashes,
                 // Self-update health for devices RUNNING this version. A version
                 // whose update_success_rate collapses is one that cannot upgrade
-                // itself — the helixscreen#993 signature.
+                // itself (prestonbrown/helixscreen#993).
                 update_failures: r.update_failures ?? 0,
                 update_successes: r.update_successes ?? 0,
                 update_success_rate:
@@ -1330,13 +1358,26 @@ export default {
                     : null,
               };
             }),
+            adoption: rows<{ date: string; ver: string; devices: number }>(adoptionRes).map((r) => ({
+              date: r.date,
+              version: r.ver,
+              devices: r.devices,
+            })),
           });
+        }
+
+        // GET /v1/dashboard/fleet/retention
+        if (url.pathname === "/v1/dashboard/fleet/retention") {
+          const res = (await executeQuery(queryConfig, retentionQuery(filters))) as {
+            data?: Array<{ first_day: string; last_day: string }>;
+          };
+          return json({ cohorts: buildRetention(res.data ?? [], new Date().toISOString().slice(0, 10)) });
         }
 
         // GET /v1/dashboard/performance
         if (url.pathname === "/v1/dashboard/performance") {
           const queries = performanceQueries(days, filters);
-          const [timeRes, platRes, verRes, worstRes, fleetRes, highDropRes] =
+          const [timeRes, platRes, verRes, worstRes, fleetRes, highDropRes, platVerRes, panelByPlatRes, rssByPlatVerRes] =
             await Promise.all(queries.map((q) => executeQuery(queryConfig, q)));
 
           const timeData = timeRes as { data: Array<{ date: string; avg_p50: number; avg_p95: number; avg_p99: number }> };
@@ -1345,6 +1386,10 @@ export default {
           const worstData = worstRes as { data: Array<{ panel: string; times_worst: number; avg_p95_ms: number }> };
           const fleetData = fleetRes as { data: Array<{ fleet_p50: number; total_dropped: number; total_frames: number; total_devices: number }> };
           const highDropData = highDropRes as { data: Array<{ high_drop_devices: number }> };
+          const platVerData = platVerRes as { data: Array<{ platform: string; version: string; p95_frame_ms: number; devices: number }> };
+          const panelByPlatData = panelByPlatRes as { data: Array<{ platform: string; panel: string; times_worst: number; avg_p95_ms: number }> };
+          const rssByPlatVerData = rssByPlatVerRes as { data: Array<{ platform: string; version: string; avg_rss_kb: number }> };
+          const rssOf = new Map((rssByPlatVerData.data ?? []).map((r) => [`${r.platform}\u0000${r.version}`, r.avg_rss_kb]));
 
           const fleet = fleetData.data?.[0] ?? { fleet_p50: 0, total_dropped: 0, total_frames: 0, total_devices: 0 };
 
@@ -1365,6 +1410,16 @@ export default {
             })),
             jankiest_panels: (worstData.data ?? []).map(r => ({
               panel: r.panel, times_worst: r.times_worst, avg_p95_ms: Math.round(r.avg_p95_ms),
+            })),
+            by_platform_version: (platVerData.data ?? []).map(r => ({
+              platform: r.platform,
+              version: r.version,
+              p95_frame_ms: r.p95_frame_ms,
+              avg_rss_kb: rssOf.get(`${r.platform}\u0000${r.version}`) ?? null,
+              devices: r.devices,
+            })),
+            jankiest_by_platform: (panelByPlatData.data ?? []).map(r => ({
+              platform: r.platform, panel: r.panel, times_worst: r.times_worst, avg_p95_ms: Math.round(r.avg_p95_ms),
             })),
           });
         }

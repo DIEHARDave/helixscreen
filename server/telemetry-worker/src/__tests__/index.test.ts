@@ -1770,100 +1770,186 @@ describe("Dashboard endpoints", () => {
   // -- GET /v1/dashboard/releases --
 
   describe("GET /v1/dashboard/releases", () => {
-    it("returns release comparison data", async () => {
-      mockExecuteQuery
-        .mockResolvedValueOnce({
-          data: [{ ver: "0.9.19", total_sessions: 200, total_crashes: 4 }],
-        })
-        .mockResolvedValueOnce({
-          data: [{ ver: "0.9.19", active_devices: 50 }],
-        })
-        .mockResolvedValueOnce({
-          data: [{ ver: "0.9.19", print_successes: 88, print_total: 100 }],
-        });
+    // Answers each scorecard query by its shape, so tests do not depend on call order.
+    function scorecardMock(rows: {
+      stats?: unknown[];
+      actives?: unknown[];
+      prints?: unknown[];
+      crashers?: unknown[];
+      frame?: unknown[];
+      rss?: unknown[];
+      adoption?: unknown[];
+      top?: unknown[];
+    }) {
+      mockExecuteQuery.mockImplementation(async (_c, sql: string) => {
+        if (sql.includes("LIMIT 8")) return { data: rows.top ?? [] };
+        if (sql.includes("as total_sessions")) return { data: rows.stats ?? [] };
+        if (sql.includes("as active_devices")) return { data: rows.actives ?? [] };
+        if (sql.includes("as print_successes")) return { data: rows.prints ?? [] };
+        if (sql.includes("as crashing_devices")) return { data: rows.crashers ?? [] };
+        if (sql.includes("as p95_frame_ms")) return { data: rows.frame ?? [] };
+        if (sql.includes("as p95_rss_kb")) return { data: rows.rss ?? [] };
+        if (sql.includes("as devices") && sql.includes("toDate(timestamp) as date")) return { data: rows.adoption ?? [] };
+        return { data: [] };
+      });
+    }
 
-      const res = await worker.fetch(
-        dashboardRequest("/v1/dashboard/releases?versions=v0.9.19"),
-        env,
-      );
+    it("returns release comparison data", async () => {
+      scorecardMock({
+        stats: [{ ver: "0.9.19", total_sessions: 200, total_crashes: 4 }],
+        actives: [{ ver: "0.9.19", active_devices: 50 }],
+        prints: [{ ver: "0.9.19", print_successes: 88, print_total: 100 }],
+        crashers: [{ ver: "0.9.19", crashing_devices: 5 }],
+        frame: [{ ver: "0.9.19", p95_frame_ms: 33.4 }],
+        rss: [{ ver: "0.9.19", p95_rss_kb: 90000 }],
+        adoption: [{ date: "2026-10-01", ver: "0.9.19", devices: 12 }],
+      });
+
+      const res = await worker.fetch(dashboardRequest("/v1/dashboard/releases?versions=v0.9.19"), env as never);
       expect(res.status).toBe(200);
-      const data = await res.json();
+      const data = (await res.json()) as any;
       expect(data.versions).toHaveLength(1);
-      expect(data.versions[0].version).toBe("0.9.19");
-      expect(data.versions[0].active_devices).toBe(50);
-      expect(data.versions[0].crash_rate).toBeCloseTo(0.02);
-      expect(data.versions[0].print_success_rate).toBeCloseTo(0.88);
-      expect(data.versions[0].total_sessions).toBe(200);
-      expect(data.versions[0].total_crashes).toBe(4);
-      // Absent update columns must degrade to 0/null, not NaN or undefined —
-      // rows predating the update_* mapping still come back from the dataset.
-      expect(data.versions[0].update_failures).toBe(0);
-      expect(data.versions[0].update_successes).toBe(0);
-      expect(data.versions[0].update_success_rate).toBeNull();
+      const v = data.versions[0];
+      expect(v.version).toBe("0.9.19");
+      expect(v.active_devices).toBe(50);
+      expect(v.crash_rate).toBeCloseTo(0.02);
+      expect(v.crash_free_devices).toBeCloseTo(0.9);
+      expect(v.p95_frame_ms).toBeCloseTo(33.4);
+      expect(v.p95_rss_kb).toBe(90000);
+      expect(v.print_success_rate).toBeCloseTo(0.88);
+      expect(v.total_sessions).toBe(200);
+      expect(v.total_crashes).toBe(4);
+      expect(v.update_failures).toBe(0);
+      expect(v.update_successes).toBe(0);
+      expect(v.update_success_rate).toBeNull();
+      expect(data.adoption).toEqual([{ date: "2026-10-01", version: "0.9.19", devices: 12 }]);
+    });
+
+    it("picks the versions itself when the param is absent", async () => {
+      scorecardMock({
+        top: [{ ver: "1.0.4", devices: 9 }],
+        stats: [{ ver: "1.0.4", total_sessions: 10, total_crashes: 1 }],
+        actives: [{ ver: "1.0.4", active_devices: 9 }],
+      });
+      const res = await worker.fetch(dashboardRequest("/v1/dashboard/releases"), env as never);
+      expect(res.status).toBe(200);
+      const data = (await res.json()) as any;
+      expect(data.versions[0].version).toBe("1.0.4");
+      const sqls = mockExecuteQuery.mock.calls.map((c) => c[1] as string);
+      expect(sqls[0]).toContain("LIMIT 8");
+      expect(sqls.slice(1).some((s) => s.includes("'1.0.4'"))).toBe(true);
+    });
+
+    it("reports a null crash rate and crash-free share with no sessions or devices", async () => {
+      scorecardMock({
+        stats: [{ ver: "0.9.18", total_sessions: 0, total_crashes: 0 }],
+        actives: [],
+      });
+      const res = await worker.fetch(dashboardRequest("/v1/dashboard/releases?versions=v0.9.18"), env as never);
+      expect(res.status).toBe(200);
+      const v = ((await res.json()) as any).versions[0];
+      expect(v.crash_rate).toBeNull();
+      expect(v.crash_free_devices).toBeNull();
+      expect(v.p95_frame_ms).toBeNull();
+      expect(v.p95_rss_kb).toBeNull();
     });
 
     it("reports self-update health per running version", async () => {
-      mockExecuteQuery
-        .mockResolvedValueOnce({
-          data: [
-            {
-              ver: "0.99.97",
-              total_sessions: 100,
-              total_crashes: 1,
-              update_failures: 9,
-              update_successes: 1,
-            },
-          ],
-        })
-        .mockResolvedValueOnce({ data: [{ ver: "0.99.97", active_devices: 40 }] })
-        .mockResolvedValueOnce({
-          data: [{ ver: "0.99.97", print_successes: 10, print_total: 10 }],
-        });
-
-      const res = await worker.fetch(
-        dashboardRequest("/v1/dashboard/releases?versions=v0.99.97"),
-        env,
-      );
+      scorecardMock({
+        stats: [{ ver: "0.99.97", total_sessions: 100, total_crashes: 1, update_failures: 9, update_successes: 1 }],
+        actives: [{ ver: "0.99.97", active_devices: 40 }],
+        prints: [{ ver: "0.99.97", print_successes: 10, print_total: 10 }],
+      });
+      const res = await worker.fetch(dashboardRequest("/v1/dashboard/releases?versions=v0.99.97"), env as never);
       expect(res.status).toBe(200);
-      const data = await res.json();
-      // A version that cannot update itself — the helixscreen#993 signature.
+      const data = (await res.json()) as any;
       expect(data.versions[0].update_failures).toBe(9);
       expect(data.versions[0].update_successes).toBe(1);
       expect(data.versions[0].update_success_rate).toBeCloseTo(0.1);
     });
 
     it("reports a null print success rate for a version with no prints", async () => {
-      mockExecuteQuery
-        .mockResolvedValueOnce({
-          data: [{ ver: "0.9.18", total_sessions: 10, total_crashes: 0 }],
-        })
-        .mockResolvedValueOnce({ data: [{ ver: "0.9.18", active_devices: 5 }] })
-        .mockResolvedValueOnce({ data: [] });
-
-      const res = await worker.fetch(
-        dashboardRequest("/v1/dashboard/releases?versions=v0.9.18"),
-        env,
-      );
-      const data = await res.json();
-      expect(data.versions[0].print_success_rate).toBeNull();
-    });
-
-    it("requires versions parameter", async () => {
-      const res = await worker.fetch(
-        dashboardRequest("/v1/dashboard/releases"),
-        env,
-      );
-      expect(res.status).toBe(400);
-      const data = await res.json();
-      expect(data.error).toContain("versions parameter required");
+      scorecardMock({
+        stats: [{ ver: "0.9.18", total_sessions: 10, total_crashes: 0 }],
+        actives: [{ ver: "0.9.18", active_devices: 5 }],
+      });
+      const res = await worker.fetch(dashboardRequest("/v1/dashboard/releases?versions=v0.9.18"), env as never);
+      expect(((await res.json()) as any).versions[0].print_success_rate).toBeNull();
     });
 
     it("rejects empty versions parameter", async () => {
-      const res = await worker.fetch(
-        dashboardRequest("/v1/dashboard/releases?versions="),
-        env,
-      );
+      const res = await worker.fetch(dashboardRequest("/v1/dashboard/releases?versions="), env as never);
       expect(res.status).toBe(400);
+    });
+
+    it("rejects more than 20 versions", async () => {
+      const many = Array.from({ length: 21 }, (_, i) => `1.0.${i}`).join(",");
+      const res = await worker.fetch(dashboardRequest(`/v1/dashboard/releases?versions=${many}`), env as never);
+      expect(res.status).toBe(400);
+    });
+  });
+
+  describe("GET /v1/dashboard/fleet/retention", () => {
+    it("returns cohorts from per-device first and last days", async () => {
+      const today = new Date().toISOString().slice(0, 10);
+      mockExecuteQuery.mockResolvedValue({ data: [{ first_day: today, last_day: today }] });
+      const res = await worker.fetch(dashboardRequest("/v1/dashboard/fleet/retention"), env as never);
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as any;
+      expect(body.cohorts).toHaveLength(13);
+      expect(body.cohorts[0].label).toBe("before window");
+      expect(body.cohorts[12].size).toBe(1);
+      expect(mockExecuteQuery.mock.calls[0][1]).toContain("min(toDate(timestamp))");
+    });
+  });
+
+  describe("prints and performance additions", () => {
+    it("prints sums per-device outcomes into models through the session join", async () => {
+      mockExecuteQuery.mockImplementation(async (_c, sql: string) => {
+        if (sql.includes("argMax") && sql.includes("as model")) {
+          return { data: [{ device_id: "a", model: "Voron 2.4" }, { device_id: "b", model: "Voron 2.4" }] };
+        }
+        if (sql.includes("as device_id") && sql.includes("as successes")) {
+          return { data: [
+            { device_id: "a", successes: 8, total: 10 },
+            { device_id: "b", successes: 2, total: 10 },
+            { device_id: "z", successes: 1, total: 4 },
+          ] };
+        }
+        if (sql.includes("as version") && sql.includes("as successes")) {
+          return { data: [{ version: "1.0.0", successes: 11, total: 24 }] };
+        }
+        return { data: [] };
+      });
+      const res = await worker.fetch(dashboardRequest("/v1/dashboard/prints"), env as never);
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as any;
+      const byModel = Object.fromEntries(body.by_model.map((m: any) => [m.model, m]));
+      expect(byModel["Voron 2.4"]).toEqual({ model: "Voron 2.4", successes: 10, total: 20, rate: 0.5 });
+      expect(byModel["Unknown"]).toEqual({ model: "Unknown", successes: 1, total: 4, rate: 0.25 });
+      expect(body.by_version).toEqual([{ version: "1.0.0", successes: 11, total: 24, rate: 11 / 24 }]);
+    });
+
+    it("performance returns per-platform version and panel breakdowns", async () => {
+      mockExecuteQuery.mockImplementation(async (_c, sql: string) => {
+        if (sql.includes("memory_snapshot") || sql.includes("as avg_rss_kb")) {
+          return { data: [{ platform: "pi", version: "1.0.0", avg_rss_kb: 70000.4 }] };
+        }
+        if (sql.includes("GROUP BY platform, version")) {
+          return { data: [{ platform: "pi", version: "1.0.0", p95_frame_ms: 31.2, devices: 6 }] };
+        }
+        if (sql.includes("GROUP BY platform, panel")) {
+          return { data: [{ platform: "pi", panel: "home", times_worst: 3, avg_p95_ms: 40.6 }] };
+        }
+        return { data: [] };
+      });
+      const res = await worker.fetch(dashboardRequest("/v1/dashboard/performance"), env as never);
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as any;
+      expect(body.by_platform_version).toEqual([
+        { platform: "pi", version: "1.0.0", p95_frame_ms: 31.2, avg_rss_kb: 70000.4, devices: 6 },
+      ]);
+      expect(body.jankiest_by_platform).toEqual([{ platform: "pi", panel: "home", times_worst: 3, avg_p95_ms: 41 }]);
     });
   });
 
@@ -2116,8 +2202,10 @@ describe("SQL builders", () => {
       const out =
         name === "crashListQuery"
           ? (fn as (d: number, l: number) => string)(30, 10)
-          : name === "releasesQueries"
-            ? (fn as (v: string[]) => string[])(["1.0.0"])
+          : name === "releaseScorecardQueries"
+            ? (fn as (v: string[], d: number) => string[])(["1.0.0"], 30)
+            : name === "retentionQuery"
+              ? (fn as () => string)()
             : name === "deviceQueries"
               ? (fn as unknown as (id: string) => string[])("0".repeat(64))
               : (fn as (d: number) => string | string[])(30);

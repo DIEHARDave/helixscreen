@@ -491,6 +491,22 @@ export function printsQueries(days: number, filters?: FilterParams): string[] {
     ORDER BY count DESC`,
     // Average duration
     `SELECT ${wAvg(printOutcome("duration_sec"))} as avg_duration_sec FROM ${dataset} WHERE timestamp >= NOW() - INTERVAL '${days}' DAY AND index1 = 'print_outcome'${f}`,
+    // print_outcome carries no printer_model: the handler joins this per-device
+    // model onto the per-device outcomes below.
+    `SELECT ${session("device_id")} as device_id, argMax(${session("printer_model")}, timestamp) as model
+    FROM ${dataset}
+    WHERE ${inRange(days)} AND index1 = 'session'${filterFor("session", filters)}
+    GROUP BY device_id`,
+    // Outcomes per device
+    `SELECT ${printOutcome("device_id")} as device_id, ${success} as successes, ${wCount()} as total
+    FROM ${dataset}
+    WHERE ${inRange(days)} AND index1 = 'print_outcome'${f}
+    GROUP BY device_id`,
+    // Outcomes per version
+    `SELECT ${printOutcome("app_version")} as version, ${success} as successes, ${wCount()} as total
+    FROM ${dataset}
+    WHERE ${inRange(days)} AND index1 = 'print_outcome' AND ${printOutcome("app_version")} != ''${f}
+    GROUP BY version`,
   ];
 }
 
@@ -669,8 +685,7 @@ export function hardwareQueries(days: number, filters?: FilterParams): string[] 
   const dataset = "helixscreen_telemetry";
   const f = filterFor("hardware_profile", filters);
   const dev = hardware("device_id");
-  const distribution = (field: string, limit = "") =>
-    distinctDevicesBy("hardware_profile", field, days, filters, limit);
+  const distribution = (field: string) => distinctDevicesBy("hardware_profile", field, days, filters);
   const capBits = Array.from(
     { length: 13 },
     (_, i) => `      ${wSum(`toUInt32(bitAnd(toUInt32(caps), ${1 << i}) > 0)`, DEVICE_WEIGHT)} as cap_${i},`,
@@ -679,12 +694,12 @@ export function hardwareQueries(days: number, filters?: FilterParams): string[] 
   const sensors = hardware("sensor_count");
   const macros = hardware("macro_count");
   return [
-    // Printer models (top 20, deduplicated by device_id)
-    distribution("printer_model", " LIMIT 20"),
+    // Printer models (deduplicated by device_id)
+    distribution("printer_model"),
     // Kinematics (deduplicated by device_id)
     distribution("kinematics"),
     // MCU chips (deduplicated by device_id)
-    distribution("mcu_chip", " LIMIT 20"),
+    distribution("mcu_chip"),
     // Capabilities bitmask — deduplicate: subquery gets latest row per device, outer query aggregates
     `SELECT
 ${capBits}
@@ -945,6 +960,33 @@ export function performanceQueries(days: number, filters?: FilterParams): string
       GROUP BY ${dev}
       HAVING total > 0 AND dropped / total > 0.05
     )`,
+    // 6: Frame time p95 per platform and version
+    `SELECT
+      ${perf("app_platform")} as platform,
+      ${perf("app_version")} as version,
+      ${wAvg(perf("frame_time_p95_ms"))} as p95_frame_ms,
+      count(DISTINCT ${dev}) as devices
+    FROM ${dataset}
+    WHERE timestamp >= NOW() - INTERVAL '${days}' DAY AND index1 = 'performance_snapshot' AND ${perf("app_platform")} != '' AND ${perf("app_version")} != ''${f}
+    GROUP BY platform, version`,
+    // 7: Worst panel per platform
+    `SELECT
+      ${perf("app_platform")} as platform,
+      ${perf("worst_panel")} as panel,
+      ${wCount()} as times_worst,
+      ${wAvg(perf("worst_panel_p95_ms"))} as avg_p95_ms
+    FROM ${dataset}
+    WHERE timestamp >= NOW() - INTERVAL '${days}' DAY AND index1 = 'performance_snapshot' AND ${perf("app_platform")} != '' AND ${perf("worst_panel")} != ''${f}
+    GROUP BY platform, panel
+    ORDER BY times_worst DESC`,
+    // 8: Average RSS per platform and version
+    `SELECT
+      ${memSnap("app_platform")} as platform,
+      ${memSnap("app_version")} as version,
+      ${wAvg(memSnap("rss_kb"))} as avg_rss_kb
+    FROM ${dataset}
+    WHERE timestamp >= NOW() - INTERVAL '${days}' DAY AND index1 = 'memory_snapshot' AND ${memSnap("app_platform")} != '' AND ${memSnap("app_version")} != ''${filterFor("memory_snapshot", filters)}
+    GROUP BY platform, version`,
   ];
 }
 
@@ -1032,43 +1074,99 @@ export function versionInClause(column: string, versions: string[]): string {
 
 const RELEASE_KINDS = ["session", "crash", "update_failed", "update_success"];
 
-export function releasesQueries(versions: string[]): string[] {
-  const dataset = "helixscreen_telemetry";
-  // Strip a 'v' prefix for matching; a version that sanitizes to nothing is dropped.
+/** Versions shown when a release query names none. */
+const SCORECARD_TOP_VERSIONS = 8;
+
+/** The most-installed versions among session devices in the last `days` days. */
+export function topVersionsQuery(days: number, filters?: FilterParams, limit = SCORECARD_TOP_VERSIONS): string {
+  return `SELECT ${session("app_version")} as ver, count(DISTINCT ${session("device_id")}) as devices
+    FROM ${DATASET}
+    WHERE ${inRange(days)} AND index1 = 'session' AND ${session("app_version")} != ''${filterFor("session", filters)}
+    GROUP BY ver
+    ORDER BY devices DESC
+    LIMIT ${limit}`;
+}
+
+/**
+ * Per-version release scorecard over the last `days` days. Stats group every
+ * kind by the version the device was RUNNING: for update_failed that is
+ * from_version, because keying on the target would bucket every failure under
+ * the newest release and hide which deployed versions are broken
+ * (prestonbrown/helixscreen#993).
+ */
+export function releaseScorecardQueries(versions: string[], days: number, filters?: FilterParams): string[] {
   const inVersions = (column: string) => versionInClause(column, versions);
-  // Per-version stats group every kind by the version the device was RUNNING:
-  // for update_failed that is from_version, because keying on the target
-  // would bucket every failure under the newest release and hide which
-  // deployed versions are broken (prestonbrown/helixscreen#993).
   const running = sharedCol(RELEASE_KINDS, runningVersionField);
   const kindList = RELEASE_KINDS.map((k) => `'${k}'`).join(", ");
+  const perKind = RELEASE_KINDS.map((k) => `(index1 = '${k}'${filterFor(k, filters)})`).join(" OR ");
+  const sessF = filterFor("session", filters);
   return [
-    // Per-version stats: sessions, crashes, self-update outcomes.
+    // 0: sessions, crashes, self-update outcomes
     `SELECT
       ${running} as ver,
       ${wCountIf("index1 = 'session'")} as total_sessions,
       ${wCountIf("index1 = 'crash'")} as total_crashes,
       ${wCountIf("index1 = 'update_failed'")} as update_failures,
       ${wCountIf("index1 = 'update_success'")} as update_successes
-    FROM ${dataset}
-    WHERE index1 IN (${kindList}) AND ${inVersions(running)}
+    FROM ${DATASET}
+    WHERE ${inRange(days)} AND index1 IN (${kindList}) AND ${inVersions(running)} AND (${perKind})
     GROUP BY ver`,
-    // Per-version active devices (count distinct requires separate query)
+    // 1: active devices
     `SELECT
       ${session("app_version")} as ver,
       count(DISTINCT ${session("device_id")}) as active_devices
-    FROM ${dataset}
-    WHERE index1 = 'session' AND ${inVersions(session("app_version"))}
+    FROM ${DATASET}
+    WHERE ${inRange(days)} AND index1 = 'session' AND ${inVersions(session("app_version"))}${sessF}
     GROUP BY ver`,
-    // Per-version print stats
+    // 2: print outcomes
     `SELECT
       ${printOutcome("app_version")} as ver,
       ${wCountIf(`${printOutcome("outcome")} = 'success'`)} as print_successes,
       ${wCount()} as print_total
-    FROM ${dataset}
-    WHERE index1 = 'print_outcome' AND ${inVersions(printOutcome("app_version"))}
+    FROM ${DATASET}
+    WHERE ${inRange(days)} AND index1 = 'print_outcome' AND ${inVersions(printOutcome("app_version"))}${filterFor("print_outcome", filters)}
     GROUP BY ver`,
+    // 3: devices that crashed
+    `SELECT
+      ${crash("app_version")} as ver,
+      count(DISTINCT ${crash("device_id")}) as crashing_devices
+    FROM ${DATASET}
+    WHERE ${inRange(days)} AND index1 = 'crash' AND ${inVersions(crash("app_version"))}${filterFor("crash", filters)}
+    GROUP BY ver`,
+    // 4: frame time p95
+    `SELECT
+      ${perf("app_version")} as ver,
+      ${wAvg(perf("frame_time_p95_ms"))} as p95_frame_ms
+    FROM ${DATASET}
+    WHERE ${inRange(days)} AND index1 = 'performance_snapshot' AND ${inVersions(perf("app_version"))}${filterFor("performance_snapshot", filters)}
+    GROUP BY ver`,
+    // 5: RSS p95
+    `SELECT
+      ${memSnap("app_version")} as ver,
+      quantileExactWeighted(0.95)(${memSnap("rss_kb")}, ${SAMPLE_WEIGHT}) as p95_rss_kb
+    FROM ${DATASET}
+    WHERE ${inRange(days)} AND index1 = 'memory_snapshot' AND ${inVersions(memSnap("app_version"))}${filterFor("memory_snapshot", filters)}
+    GROUP BY ver`,
+    // 6: adoption curve, devices per day and version
+    `SELECT
+      toDate(timestamp) as date,
+      ${session("app_version")} as ver,
+      count(DISTINCT ${session("device_id")}) as devices
+    FROM ${DATASET}
+    WHERE ${inRange(days)} AND index1 = 'session' AND ${inVersions(session("app_version"))}${sessF}
+    GROUP BY date, ver
+    ORDER BY date`,
   ];
+}
+
+/** First and last session day per device, for retention cohorts. */
+export function retentionQuery(filters?: FilterParams): string {
+  return `SELECT
+      min(toDate(timestamp)) as first_day,
+      max(toDate(timestamp)) as last_day
+    FROM ${DATASET}
+    WHERE ${inRange(DEVICE_WINDOW_DAYS)} AND index1 = 'session'${filterFor("session", filters)}
+    GROUP BY ${session("device_id")}`;
 }
 
 // ---------- Devices ----------
@@ -1149,6 +1247,9 @@ export function windowClause(w: readonly [number, number]): string {
 /** Versions shown on the Health tab. */
 const HEALTH_TOP_VERSIONS = 8;
 
+/** Days the Health tab's top_versions ranks over: the current window. */
+const HEALTH_WINDOW_DAYS = HEALTH_WINDOWS.cur[1];
+
 /** Complete days read for the data-health block: today's partial day, the latest day, and the 7 before it. */
 const HEALTH_KIND_DAYS = 9;
 
@@ -1222,12 +1323,7 @@ export function healthQueries(filters?: FilterParams, versions: string[] = []): 
   return {
     actives_cur: actives(cur),
     actives_prev: actives(prev),
-    top_versions: `SELECT ${session("app_version")} as ver, count(DISTINCT ${session("device_id")}) as devices
-    FROM ${DATASET}
-    WHERE ${windowClause(cur)} AND index1 = 'session' AND ${session("app_version")} != ''${sessF}
-    GROUP BY ver
-    ORDER BY devices DESC
-    LIMIT ${HEALTH_TOP_VERSIONS}`,
+    top_versions: topVersionsQuery(HEALTH_WINDOW_DAYS, filters, HEALTH_TOP_VERSIONS),
     release_cur: release(cur),
     release_prev: release(prev),
     release_devices_cur: releaseDevices(cur),
