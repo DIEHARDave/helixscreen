@@ -5,13 +5,14 @@
 // empty app_version, so the join happens here.
 
 import { num, str, type RawRow } from "./schema";
+import { compareVersions } from "./versions";
 
 export interface PrintCounts {
   successes: number;
   total: number;
 }
 
-/** The version of prints from a device that sent no session in the window. */
+/** The version of prints from a device with no session before the window ends. */
 export const UNKNOWN_VERSION = "unknown";
 
 /**
@@ -19,7 +20,7 @@ export const UNKNOWN_VERSION = "unknown";
  * releasePrintsSql rows { device_id, ver, print_successes, print_total };
  * `sessions` are deviceSessionsSql rows { device_id, model, ver }. A print
  * row's own non-empty `field` wins, else its device's latest session value,
- * else `fallback` (a device with no session in the window).
+ * else `fallback` (a device with no session).
  */
 export function attributePrints(
   prints: RawRow[],
@@ -41,11 +42,12 @@ export function attributePrints(
 
 /**
  * Print outcomes per attributed version as rows { ver, print_successes,
- * print_total }. Prints from devices with no session in the window have no
- * version and are left out.
+ * print_total }, newest version first. Prints from devices with no session
+ * have no version and are left out.
  */
 export function printsByVersion(prints: RawRow[], sessions: RawRow[]): RawRow[] {
   return [...attributePrints(prints, sessions, "ver", UNKNOWN_VERSION)]
     .filter(([ver]) => ver !== UNKNOWN_VERSION)
+    .sort(([a], [b]) => compareVersions(b, a))
     .map(([ver, c]) => ({ ver, print_successes: c.successes, print_total: c.total }));
 }

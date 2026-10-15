@@ -246,10 +246,11 @@ describe("releaseScorecardQueries", () => {
     }
   });
 
-  it("returns the eight scorecard queries, windowed by days", () => {
+  it("returns the eight scorecard queries, windowed by days except the session lookup", () => {
     const sqls = releaseScorecardQueries(["1.0.0"], 14);
     expect(sqls).toHaveLength(8);
-    for (const sql of sqls) expect(sql).toContain("INTERVAL '14' DAY");
+    for (const sql of sqls.slice(0, 7)) expect(sql).toContain("INTERVAL '14' DAY");
+    expect(sqls[7]).toContain("INTERVAL '90' DAY");
   });
 
   it("applies the filters per kind", () => {

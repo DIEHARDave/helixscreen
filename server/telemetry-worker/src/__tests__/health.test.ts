@@ -39,7 +39,8 @@ describe("healthQueries", () => {
 
   it("puts each window in every windowed query", () => {
     for (const k of KEYS) {
-      if (k === "cdn_latest" || k === "kind_days") continue;
+      // The session lookup reads up to its window's end; prints.test.ts covers it.
+      if (k === "cdn_latest" || k === "kind_days" || k.startsWith("print_sessions")) continue;
       expect(q[k], k).toContain(win(k));
     }
   });

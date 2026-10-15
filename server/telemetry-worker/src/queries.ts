@@ -522,7 +522,7 @@ export function printsQueries(days: number, filters?: FilterParams): string[] {
     // Outcomes per device and version, attributed to versions and models
     // through the session rows below (prints.ts).
     releasePrintsSql(inRange(days), undefined, filters),
-    deviceSessionsSql(inRange(days), filters),
+    deviceSessionsSql(0, filters),
   ];
 }
 
@@ -1108,6 +1108,13 @@ export function topVersionsQuery(days: number, filters?: FilterParams, limit = S
 }
 
 /**
+ * The update_failed reason the updater sends when it defers an update because a
+ * print is running (src/system/update_checker.cpp). It is not a failure, so the
+ * release update failure count leaves it out.
+ */
+const UPDATE_DEFERRED_REASON = "print_in_progress";
+
+/**
  * Sessions, crashes and self-update outcomes per version in the window `when`
  * (a timestamp predicate), as rows { ver, sessions, crashes, update_failures,
  * update_successes }. Every kind groups by the version the device was RUNNING:
@@ -1115,13 +1122,6 @@ export function topVersionsQuery(days: number, filters?: FilterParams, limit = S
  * bucket every failure under the newest release and hide which deployed
  * versions are broken (prestonbrown/helixscreen#993).
  */
-/**
- * The update_failed reason the updater sends when it defers an update because a
- * print is running (src/system/update_checker.cpp). It is not a failure, so the
- * release update failure count leaves it out.
- */
-const UPDATE_DEFERRED_REASON = "print_in_progress";
-
 export function releaseStatsSql(when: string, versions: string[], filters?: FilterParams): string {
   const running = sharedCol(RELEASE_KINDS, runningVersionField);
   const kindList = RELEASE_KINDS.map((k) => `'${k}'`).join(", ");
@@ -1156,14 +1156,24 @@ export function releasePrintsSql(when: string, versions?: string[], filters?: Fi
     GROUP BY device_id, ver`;
 }
 
-/** Each device's latest session printer model and version in the window `when`, as rows { device_id, model, ver }. */
-export function deviceSessionsSql(when: string, filters?: FilterParams): string {
+/** Analytics Engine keeps 90 days of rows. */
+const AE_RETENTION_DAYS = 90;
+
+/**
+ * Each device's latest session printer model and version before a window
+ * ends, `endDaysAgo` days ago (0: now), as rows { device_id, model, ver }.
+ * A session is sent only on connect, so a device connected all through a
+ * window has none inside it; it cannot change version without restarting,
+ * which sends one, so its latest session before the window's end, over all of
+ * AE's retention, names the version it ran.
+ */
+export function deviceSessionsSql(endDaysAgo: number, filters?: FilterParams): string {
   return `SELECT
       ${session("device_id")} as device_id,
       argMax(${session("printer_model")}, timestamp) as model,
       argMax(${session("app_version")}, timestamp) as ver
     FROM ${DATASET}
-    WHERE ${when} AND index1 = 'session'${filterFor("session", filters)}
+    WHERE ${windowClause([endDaysAgo, AE_RETENTION_DAYS])} AND index1 = 'session'${filterFor("session", filters)}
     GROUP BY device_id`;
 }
 
@@ -1214,7 +1224,7 @@ export function releaseScorecardQueries(versions: string[], days: number, filter
     GROUP BY date, ver
     ORDER BY date`,
     // 7: each device's session version, to attribute print outcomes (2)
-    deviceSessionsSql(inRange(days), filters),
+    deviceSessionsSql(0, filters),
   ];
 }
 
@@ -1373,7 +1383,7 @@ export function healthQueries(filters?: FilterParams, versions: string[] = []): 
     WHERE ${windowClause(w)} AND ${crashSessionKinds} AND ${inVersions(crashSession)} AND ${crashSessionFilter}
     GROUP BY ver, event`;
   const prints = (w: readonly [number, number]) => releasePrintsSql(windowClause(w), versions, filters);
-  const printSessions = (w: readonly [number, number]) => deviceSessionsSql(windowClause(w), filters);
+  const printSessions = (w: readonly [number, number]) => deviceSessionsSql(w[0], filters);
   const errors = (w: readonly [number, number]) => errorCodesSql(w, filters);
   const crashes = (w: readonly [number, number]) => crashClustersSql(w, filters);
 

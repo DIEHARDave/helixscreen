@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { groupVersionRates, groupVersions, olderLines, ungrouped, versionChips } from '../../../analytics-dashboard/src/utils/versions'
 import { planActivation, rowAction, rowHint, rowLabel, single } from '../../../analytics-dashboard/src/utils/drill'
 import { mergeOptions, rateAxis } from '../../../analytics-dashboard/src/utils/chart'
-import { emptyPlaceholder, formatRateOf, notReportedPer, ppChange, rangeLabel, unreportedNote } from '../../../analytics-dashboard/src/utils/format'
+import { emptyPlaceholder, formatRate, formatRateOf, notReportedPer, ppChange, rangeLabel, unreportedNote } from '../../../analytics-dashboard/src/utils/format'
 import { canonicalModelKey, canonicalModels, isFilterable } from '../../../analytics-dashboard/src/utils/models'
 import { LOW_COUNT_PRINTS, groupMaterialSets, isLowCount, materialSet } from '../../../analytics-dashboard/src/utils/materials'
 import { filterValues } from '../queries'
@@ -407,6 +407,12 @@ describe('formatRateOf', () => {
   it('rounds weighted counts and reads n/a with no denominator', () => {
     expect(formatRateOf(0.5, 1.6, 3.2)).toBe('50.0% (2/3)')
     expect(formatRateOf(null, 0, 0)).toBe('n/a')
+  })
+  it('reads n/a for a missing or non-finite rate, in both formatters', () => {
+    expect(formatRate(undefined as never)).toBe('n/a')
+    expect(formatRate(NaN)).toBe('n/a')
+    expect(formatRateOf(undefined as never, 1, 1)).toBe('n/a')
+    expect(formatRateOf(NaN, 1, 1)).toBe('n/a')
   })
   it('shows the rate alone when the payload carries no counts', () => {
     expect(formatRateOf(0.5, undefined as unknown as number, NaN)).toBe('50.0%')

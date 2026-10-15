@@ -2,7 +2,7 @@
 import { describe, it, expect } from "vitest";
 import { attributePrints, printsByVersion, UNKNOWN_VERSION } from "../prints";
 import { buildHealth } from "../health";
-import { deviceSessionsSql, filterFor, healthQueries, releasePrintsSql, releaseScorecardQueries } from "../queries";
+import { deviceSessionsSql, filterFor, healthQueries, printsQueries, releasePrintsSql, releaseScorecardQueries } from "../queries";
 
 const sessions = [
   { device_id: "a", model: "Voron 2.4", ver: "1.0.4" },
@@ -56,6 +56,18 @@ describe("attributePrints", () => {
 });
 
 describe("printsByVersion", () => {
+  it("lists versions newest first", () => {
+    const rows = printsByVersion(
+      [
+        { device_id: "x", ver: "1.0.3", print_successes: 1, print_total: 1 },
+        { device_id: "x", ver: "1.0.10", print_successes: 1, print_total: 1 },
+        { device_id: "x", ver: "1.1.0-beta.2", print_successes: 1, print_total: 1 },
+      ],
+      [],
+    );
+    expect(rows.map((r) => r.ver)).toEqual(["1.1.0-beta.2", "1.0.10", "1.0.3"]);
+  });
+
   it("drops the unknown version from per-version rows", () => {
     const rows = printsByVersion(
       [
@@ -80,22 +92,31 @@ describe("print attribution SQL", () => {
   });
 
   it("reads each device's latest session model and version", () => {
-    const sql = deviceSessionsSql("timestamp >= NOW() - INTERVAL '7' DAY", { platform: "pi" });
+    const sql = deviceSessionsSql(0, { platform: "pi" });
     expect(sql).toMatch(/argMax\(blob\d+, timestamp\) as ver/);
     expect(sql).toMatch(/argMax\(blob\d+, timestamp\) as model/);
     expect(sql).toContain("GROUP BY device_id");
     expect(sql).toContain(filterFor("session", { platform: "pi" }));
   });
 
-  it("gives the releases scorecard the session versions over the same range", () => {
-    const sqls = releaseScorecardQueries(["1.0.4"], 30);
-    expect(sqls).toContain(deviceSessionsSql("timestamp >= NOW() - INTERVAL '30' DAY"));
+  it("looks back over all of AE's 90 days, so a device whose only session is before the window still has a version", () => {
+    const sql = deviceSessionsSql(0);
+    expect(sql).toContain("timestamp >= NOW() - INTERVAL '90' DAY");
+    expect(sql).not.toContain("timestamp < ");
+    for (const days of [7, 30]) {
+      expect(releaseScorecardQueries(["1.0.4"], days)).toContain(deviceSessionsSql(0));
+      expect(printsQueries(days)).toContain(deviceSessionsSql(0));
+    }
   });
 
-  it("gives each health window its own session versions", () => {
+  it("reads no session written after the window ends", () => {
+    expect(deviceSessionsSql(7)).toContain("timestamp >= NOW() - INTERVAL '90' DAY AND timestamp < NOW() - INTERVAL '7' DAY");
+  });
+
+  it("gives each health window the sessions up to its own end", () => {
     const q = healthQueries(undefined, ["1.0.4"]);
-    expect(q.print_sessions_cur).toBe(deviceSessionsSql("timestamp >= NOW() - INTERVAL '7' DAY"));
-    expect(q.print_sessions_prev).toContain("timestamp < NOW() - INTERVAL '7' DAY");
+    expect(q.print_sessions_cur).toBe(deviceSessionsSql(0));
+    expect(q.print_sessions_prev).toBe(deviceSessionsSql(7));
   });
 });
 

@@ -307,11 +307,14 @@ characters outside letters, digits, space and `. - _ ( ) / +` are stripped.
 and the Health release windows) therefore joins through sessions in TypeScript:
 `server/telemetry-worker/src/queries.ts#releasePrintsSql` returns weighted outcomes per
 device and per the version the rows carry, `server/telemetry-worker/src/queries.ts#deviceSessionsSql`
-each device's latest session model and version over the same window, and
-`server/telemetry-worker/src/prints.ts#attributePrints` folds them. A row's own version
-wins; an empty one takes its device's session version; a device with no session in the
-window lands under `unknown` (model `Unknown`), which per-version rates leave out. Each
-Health window attributes through its own window's sessions. A `version` filter still reads
+each device's latest session model and version before the window ends, read over all 90
+days, and `server/telemetry-worker/src/prints.ts#attributePrints` folds them. A session is
+sent only on connect, so a device connected all week has none inside the window; it cannot
+change version without restarting, which sends one, so its latest session before the
+window's end names the version it ran. A row's own version wins; an empty one takes its
+device's session version; a device with no session in 90 days lands under `unknown`
+(model `Unknown`), which per-version rates leave out. The Health previous week reads only
+sessions written before that week ended. A `version` filter still reads
 the print rows' own column, so it drops rows with an empty version.
 
 ## Weighted counts
