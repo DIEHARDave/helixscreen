@@ -7,6 +7,7 @@
 
 #include "async_lifetime_guard.h"
 #include "src/ui/panel_widgets/tiled_panel_widget.h"
+#include "system_power.h"
 
 #include <functional>
 #include <string>
@@ -51,6 +52,11 @@ class ShutdownWidget : public TiledPanelWidget {
 };
 
 void register_shutdown_widget();
+
+/// Translated toast text for a failed screen power action, or nullptr when
+/// @p result is Dispatched. A missing polkit grant gets its own text, since
+/// restarting the service is what installs the rule.
+const char* screen_power_failure_message(PowerResult result, bool is_reboot);
 
 /// Which power dialog a screen gets.
 enum class ShutdownDialogMode {

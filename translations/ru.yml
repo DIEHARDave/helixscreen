@@ -2964,6 +2964,7 @@ translations:
   Screen dims to lower brightness after period of inactivity: Экран затемняется после
     периода простоя
   Screen lock and PIN settings: Блокировка экрана и настройки PIN
+  Screen is not permitted to shut down or reboot. Restart HelixScreen to fix it.: Экрану не разрешено выключаться или перезагружаться. Перезапустите HelixScreen, чтобы исправить это.
   Screen reboot failed: Ошибка перезагрузки экрана
   Screen shutdown failed: Ошибка выключения экрана
   Screen sleeps after the selected period of inactivity: Экран затемнится после выбранного

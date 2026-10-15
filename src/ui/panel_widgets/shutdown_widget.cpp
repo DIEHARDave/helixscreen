@@ -101,9 +101,9 @@ ShutdownModal* find_shutdown_modal(lv_event_t* e) {
 // including the dual-host async ordering for "both shutdown" / "both reboot",
 // where the local SystemPower call is deferred until the printer-side ack.
 
-// Powers this host down. Returns true if the action was initiated. Test mode
-// reports success without touching the dev machine.
-bool invoke_local_power(bool is_reboot) {
+// Powers this host down. Test mode reports success without touching the dev
+// machine.
+PowerResult invoke_local_power(bool is_reboot) {
     if (auto* rc = get_runtime_config(); rc && rc->test_mode) {
         spdlog::warn("[ShutdownDialog] TEST MODE: skipping SystemPower::{}_local() — "
                      "would have {} the dev host",
@@ -111,7 +111,7 @@ bool invoke_local_power(bool is_reboot) {
         ToastManager::instance().show(
             ToastSeverity::INFO,
             is_reboot ? "TEST: would reboot screen" : "TEST: would shut down screen", 4000);
-        return true;
+        return PowerResult::Dispatched;
     }
     return is_reboot ? helix::SystemPower::reboot_local() : helix::SystemPower::shutdown_local();
 }
@@ -122,12 +122,12 @@ bool invoke_local_power(bool is_reboot) {
 void queue_machine_power_failure(const MoonrakerError& err, bool is_reboot,
                                  bool allow_local_fallback) {
     const std::string message = err.message;
-    helix::ui::queue_update("ShutdownDialog::power_failed",
-                            [message, is_reboot, allow_local_fallback]() {
-                                helix::handle_machine_power_failure(
-                                    message, is_reboot, allow_local_fallback,
-                                    [is_reboot]() { return invoke_local_power(is_reboot); });
-                            });
+    helix::ui::queue_update(
+        "ShutdownDialog::power_failed", [message, is_reboot, allow_local_fallback]() {
+            helix::handle_machine_power_failure(
+                message, is_reboot, allow_local_fallback,
+                [is_reboot]() { return invoke_local_power(is_reboot) == PowerResult::Dispatched; });
+        });
 }
 
 // @p allow_local_fallback is set only when Moonraker runs on this same host —
@@ -160,18 +160,20 @@ void execute_printer_reboot(IMoonrakerAPI* api, bool allow_local_fallback = fals
         });
 }
 
-void execute_screen_shutdown() {
-    spdlog::info("[ShutdownDialog] Executing local screen shutdown");
-    if (!invoke_local_power(/*is_reboot=*/false)) {
-        ToastManager::instance().show(ToastSeverity::ERROR, lv_tr("Screen shutdown failed"), 6000);
+void execute_screen_power(bool is_reboot) {
+    spdlog::info("[ShutdownDialog] Executing local screen {}", is_reboot ? "reboot" : "shutdown");
+    const PowerResult result = invoke_local_power(is_reboot);
+    if (const char* msg = screen_power_failure_message(result, is_reboot)) {
+        ToastManager::instance().show(ToastSeverity::ERROR, msg, 6000);
     }
 }
 
+void execute_screen_shutdown() {
+    execute_screen_power(/*is_reboot=*/false);
+}
+
 void execute_screen_reboot() {
-    spdlog::info("[ShutdownDialog] Executing local screen reboot");
-    if (!invoke_local_power(/*is_reboot=*/true)) {
-        ToastManager::instance().show(ToastSeverity::ERROR, lv_tr("Screen reboot failed"), 6000);
-    }
+    execute_screen_power(/*is_reboot=*/true);
 }
 
 // "Both" flows wait for the Moonraker ack before invoking SystemPower locally
@@ -371,6 +373,19 @@ bool handle_machine_power_failure(const std::string& err_message, bool is_reboot
     ToastManager::instance().show(
         ToastSeverity::ERROR, is_reboot ? lv_tr("Reboot failed") : lv_tr("Shutdown failed"), 6000);
     return false;
+}
+
+const char* screen_power_failure_message(PowerResult result, bool is_reboot) {
+    switch (result) {
+    case PowerResult::Dispatched:
+        return nullptr;
+    case PowerResult::NotAuthorized:
+        return lv_tr(
+            "Screen is not permitted to shut down or reboot. Restart HelixScreen to fix it.");
+    case PowerResult::Failed:
+        break;
+    }
+    return is_reboot ? lv_tr("Screen reboot failed") : lv_tr("Screen shutdown failed");
 }
 
 ShutdownDialogPlan plan_shutdown_dialog(bool api_connected, bool live_moonraker_remote,

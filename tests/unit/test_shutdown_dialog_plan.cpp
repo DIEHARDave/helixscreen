@@ -8,6 +8,9 @@
  * host gets the Both / Printer / Screen split buttons, starting on Screen: the
  * user is standing at the screen, and taking a printer down from another
  * machine is the choice that has to be made on purpose.
+ *
+ * A screen whose service user has no polkit grant for logind power-off and
+ * reboot gets a toast that says so, since restarting the service installs it.
  */
 
 #include "ui_split_button.h"
@@ -15,6 +18,9 @@
 #include "../../src/ui/panel_widgets/shutdown_widget.h"
 #include "../test_fixtures.h"
 #include "async_lifetime_guard.h"
+#include "system_power.h"
+
+#include <string>
 
 #include "../catch_amalgamated.hpp"
 
@@ -101,4 +107,28 @@ TEST_CASE_METHOD(XMLTestFixture, "Dual-scope shutdown modal opens on the request
 
     modal.hide();
     process_lvgl(10);
+}
+
+TEST_CASE("logind authorization errors are recognised", "[shutdown][power]") {
+    CHECK(is_authorization_error("org.freedesktop.DBus.Error.InteractiveAuthorizationRequired"));
+    CHECK(is_authorization_error("org.freedesktop.DBus.Error.AccessDenied"));
+    CHECK_FALSE(is_authorization_error("org.freedesktop.DBus.Error.NoReply"));
+    CHECK_FALSE(is_authorization_error("org.freedesktop.login1.OperationInProgress"));
+    CHECK_FALSE(is_authorization_error(""));
+    CHECK_FALSE(is_authorization_error(nullptr));
+}
+
+TEST_CASE("Screen power failure toast names a missing permission", "[shutdown][power]") {
+    CHECK(screen_power_failure_message(PowerResult::Dispatched, false) == nullptr);
+    CHECK(screen_power_failure_message(PowerResult::Dispatched, true) == nullptr);
+
+    const std::string denied = screen_power_failure_message(PowerResult::NotAuthorized, false);
+    CHECK(denied.find("not permitted") != std::string::npos);
+    CHECK(denied.find("Restart HelixScreen") != std::string::npos);
+    CHECK(std::string(screen_power_failure_message(PowerResult::NotAuthorized, true)) == denied);
+
+    CHECK(std::string(screen_power_failure_message(PowerResult::Failed, false)) ==
+          "Screen shutdown failed");
+    CHECK(std::string(screen_power_failure_message(PowerResult::Failed, true)) ==
+          "Screen reboot failed");
 }
