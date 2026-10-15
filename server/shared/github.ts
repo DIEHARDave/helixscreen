@@ -132,9 +132,10 @@ export async function githubFetch(
   path: string,
   token: string,
   options: RequestInit = {},
-  userAgent: string = "HelixScreen-Crash-Reporter"
+  userAgent: string = "HelixScreen-Crash-Reporter",
+  fetchImpl: typeof fetch = fetch
 ): Promise<Response> {
-  return fetch(`${GITHUB_API}${path}`, {
+  return fetchImpl(`${GITHUB_API}${path}`, {
     ...options,
     headers: {
       Accept: "application/vnd.github+json",
