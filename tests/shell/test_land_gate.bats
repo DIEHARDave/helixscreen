@@ -50,29 +50,10 @@ case "$1" in take) exit "${CLAIM_TAKE_RC:-0}" ;; esac'
     export TEST_HOST=0
 }
 
-# No test here runs make in the real tree: a second make there races the gate's
-# own lanes (prune-orphan-test-objs deletes the test binary they run). A recipe
-# is checked by copying its fragment of mk/tests.mk into a scratch Makefile.
-# mk_fragment <first-line-regex> <target>: from the first line through <target>'s recipe.
-mk_fragment() {
-    awk -v first="$1" -v tgt="^$2:" '
-        $0 ~ first { on = 1 }
-        on { print }
-        on && $0 ~ tgt { intgt = 1; next }
-        intgt && /^$/ { exit }' "$REPO_ROOT/mk/tests.mk"
-}
-
-run_fragment() { # <first-line-regex> <target> <make args...>
-    local dir="$BATS_TEST_TMPDIR/mkfrag"
-    mkdir -p "$dir"
-    { printf 'ECHO := @echo\nQ := @\n'; mk_fragment "$1" "$2"; } >"$dir/Makefile"
-    grep -q "^$2:" "$dir/Makefile" || { echo "no $2 recipe in the fragment" >&2; return 1; }
-    shift
-    # A suite run from `make test-shell BATS_REQUIRED=1` carries that variable in
-    # both MAKEFLAGS and the environment, and either would override the test's own.
-    (cd "$dir" && env -u MAKEFLAGS -u MFLAGS -u MAKELEVEL -u MAKEOVERRIDES \
-        -u BATS_REQUIRED -u BATS_BIN \
-        JOBPOOL=0 make --no-print-directory -f Makefile "$@")
+# No test here runs make in the real tree: a recipe is checked by copying its
+# fragment of mk/tests.mk into a scratch Makefile (run_mk_fragment, helpers.bash).
+run_fragment() { # <first-line-regex> <target> [make args...]
+    run_mk_fragment "$REPO_ROOT/mk/tests.mk" "$@"
 }
 
 row() { # <status> <step>: the table row for step has that status
@@ -282,4 +263,51 @@ exit 0'
     grep -q "land-gate is already running" "$LAND_GATE_LOGDIR/bats.log"
     grep -q "fake-make re-entered" "$LAND_GATE_LOGDIR/lint-xml.log"
     [ "$(grep -c '^make' "$CALLS")" -lt 20 ]
+}
+
+# A gate launched detached (`( make land-gate ) &` from a shell that exits) is
+# reparented to init, so the session holding worktree:<tree> is no ancestor of
+# it; only the session id it inherited ties it to that claim. The holder here is
+# no ancestor of the gate either, so only the id can match it.
+detached_gate_fixture() {
+    T="$BATS_TEST_TMPDIR/tree"
+    git init -q "$T"
+    echo a >"$T/f"; git -C "$T" add f
+    git -C "$T" -c user.email=t@t -c user.name=t commit -q -m init
+    export HELIX_CLAIM="$REPO_ROOT/scripts/helix-claim" HELIX_CLAIM_DIR="$BATS_TEST_TMPDIR/claims"
+    # The session's own claim: taken with --session by a stand-in `claude`
+    # process that outlives the take.
+    mkdir -p "$BATS_TEST_TMPDIR/fakebin"
+    ln -sf "$(command -v bash)" "$BATS_TEST_TMPDIR/fakebin/claude"
+    (cd "$T" && exec env HELIX_SESSION_ID=sess-a "$BATS_TEST_TMPDIR/fakebin/claude" -c \
+        '"$1" take worktree:tree "session edit" --session >/dev/null || exit 1; exec sleep 120' \
+        _ "$HELIX_CLAIM") &
+    HOLDER=$!
+    local i
+    for i in $(seq 100); do
+        (cd "$T" && "$HELIX_CLAIM" check worktree:tree >/dev/null 2>&1) || return 0
+        sleep 0.05
+    done
+    return 1
+}
+
+teardown() {
+    [ -n "${HOLDER:-}" ] && kill "$HOLDER" 2>/dev/null
+    return 0
+}
+
+@test "a detached gate runs under its own session's worktree: claim" {
+    detached_gate_fixture
+    run env HELIX_SESSION_ID=sess-a bash -c "cd '$T' && '$GATE'"
+    [ "$status" -eq 0 ]
+    contains "LAND GATE: PASS" "$output"
+}
+
+@test "a detached gate outside any session is refused, and says why" {
+    detached_gate_fixture
+    run env -u HELIX_SESSION_ID -u CLAUDE_CODE_SESSION_ID bash -c "cd '$T' && '$GATE'"
+    [ "$status" -eq 2 ]
+    contains "is held by another session" "$output"
+    contains "outside a session" "$output"
+    refute_grep "^make" "$CALLS"
 }

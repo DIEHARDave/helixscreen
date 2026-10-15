@@ -6,6 +6,7 @@
 #include "ams_types.h"
 #include "bed_drying.h"
 #include "lvgl/lvgl.h"
+#include "maintenance_meters.h"
 #include "persisted_setting.h"
 #include "subject_managed_panel.h"
 
@@ -153,6 +154,18 @@ class SettingsManager {
     /// False when the save failed.
     [[nodiscard]] bool set_bed_drying_record(const helix::bed_drying::RunRecord& record);
     bool clear_bed_drying_record();
+
+    // =========================================================================
+    // MAINTENANCE METERS
+    // =========================================================================
+
+    /// The maintenance meters saved in the printer section @p printer_prefix (a
+    /// Config::df() value); nullopt when none was ever saved there.
+    std::optional<helix::maintenance::State>
+    get_maintenance_record(const std::string& printer_prefix) const;
+    /// Written and saved at once. False when the save failed.
+    bool set_maintenance_record(const std::string& printer_prefix,
+                                const helix::maintenance::State& state);
 
     // =========================================================================
     // CHAMBER ASSIGNMENT (owned by SettingsManager — sensor/heater override)

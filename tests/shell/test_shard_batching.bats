@@ -14,8 +14,6 @@
 bats_require_minimum_version 1.5.0
 load helpers
 
-REPO="$(cd "${BATS_TEST_DIRNAME}/../.." && pwd)"
-
 setup() {
     unset JOBPOOL
     export HELIX_JOBPOOL="$BATS_TEST_TMPDIR/fake-jobpool"
@@ -61,9 +59,9 @@ EOF
 # sweep SHARDS [make overrides...]: run the shard runner alone, no build.
 sweep() {
     local n=$1; shift
-    (cd "$REPO" && make --no-print-directory TEST_BIN="$FAKE_BIN" NPROCS="$n" \
+    scratch_make TEST_BIN="$FAKE_BIN" NPROCS="$n" \
         SHARD_ARTIFACT_ROOT="$BATS_TEST_TMPDIR" SHARD_RETRIES=1 "$@" \
-        --eval 'sweep-under-test: ; @$(call run_tests_parallel,"~[.]")' sweep-under-test)
+        --eval 'sweep-under-test: ; @$(call run_tests_parallel,"~[.]")' sweep-under-test
 }
 
 token_of() { # <shard> <output>

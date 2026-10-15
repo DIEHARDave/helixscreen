@@ -269,6 +269,7 @@ src/system/klipper_config_includes.cpp
 src/system/klipper_config_parser.cpp
 src/system/lock_manager.cpp
 src/system/lvgl_image_writer.cpp
+src/system/maintenance_meters.cpp
 src/system/material_settings_manager.cpp
 src/system/memory_monitor.cpp
 src/system/memory_utils.cpp
@@ -334,6 +335,7 @@ src/ui/queued_job_start.cpp
 src/ui/keyboard_layout_provider.cpp
 src/ui/layout_port.cpp
 src/ui/light_button_config.cpp
+src/ui/i18n_plural.cpp
 src/ui/locale_formats.cpp
 src/ui/modals/buffer_status_modal.cpp
 src/ui/modals/camera_config_modal.cpp
@@ -378,6 +380,8 @@ src/ui/panel_widgets/nozzle_temps_widget.cpp
 src/ui/panel_widgets/preheat_widget.cpp
 src/ui/panel_widgets/dryer_model.cpp
 src/ui/panel_widgets/dryer_widget.cpp
+src/ui/panel_widgets/maintenance_model.cpp
+src/ui/panel_widgets/maintenance_widget.cpp
 src/ui/panel_widgets/print_stats_widget.cpp
 src/ui/panel_widgets/print_status_widget.cpp
 src/ui/panel_widgets/printer_image_widget.cpp
@@ -504,6 +508,7 @@ src/ui/ui_leader_line.cpp
 src/ui/ui_led_chip_factory.cpp
 src/ui/ui_led_control_overlay.cpp
 src/ui/ui_lock_screen.cpp
+src/ui/ui_maintenance_overlay.cpp
 src/ui/ui_manual_pull_prompt.cpp
 src/ui/ui_markdown.cpp
 src/ui/ui_modal.cpp

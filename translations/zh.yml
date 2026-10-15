@@ -7,7 +7,8 @@ translations:
   ' left': ' 剩余'
   ' · was {:.0f}%': ' · 原为 {:.0f}%'
   '"%s" failed to load': '"%s" 加载失败'
-  '%d additional fan%s': '%d 个额外风扇%s'
+  '%d additional fan': '%d 个额外风扇'
+  '%d additional fans': '%d 个额外风扇'
   '%d feeders': '%d 个送料器'
   '%d gates': '%d 个通道'
   '%d lanes': '%d 个耗材通道'
@@ -493,6 +494,7 @@ translations:
   'Cannot delete file: printer not connected': '无法删除文件: 打印机未连接'
   'Cannot modify G-code: no temp directory available': '无法修改 G-code: 无可用临时目录'
   'Cannot modify G-code: scan result not available': '无法修改 G-code: 扫描结果不可用'
+  Cannot open or close the feeder while a print is active: '打印时无法打开或关闭送料器'
   Cannot park while a print is active: '打印时无法停放'
   Cannot perform this action now: 当前无法执行此操作
   'Cannot remap G-code: no temp directory available': 无法重新映射 G-code：没有可用的临时目录
@@ -646,7 +648,8 @@ translations:
   Complete: 完成
   Complete!: 完成！
   Completed: 已完成
-  Completed in %d probe%s: 在 %d 次探测%s内完成
+  'Completed in %d probe': '在 %d 次探测内完成'
+  'Completed in %d probes': '在 %d 次探测内完成'
   Completed just now: '刚刚完成'
   Completed prints will appear here: 已完成的打印将显示在这里
   Completed {}d ago: '{} 天前完成'
@@ -756,6 +759,9 @@ translations:
     PRINT_START 宏。部分打印选项可能不可用。
   Could not answer the connection request: '无法响应连接请求'
   'Could not check {} - it stays in the queue': '无法检查 {} – 保留在队列中'
+  Print hours between filter changes. Off hides this meter.: '两次更换过滤器之间的打印小时数。关闭则隐藏此计数器。'
+  Print hours between nozzle changes. Off hides this meter.: '两次更换喷嘴之间的打印小时数。关闭则隐藏此计数器。'
+  Print hours between rail cleaning and lubrication. Off hides this meter.: '两次清洁和润滑导轨之间的打印小时数。关闭则隐藏此计数器。'
   Print hours this week and lifetime totals: '本周打印时长和累计总数'
   '{} could not be checked from Home - review it and tap Print': '无法从主页检查 {} – 请查看后点按打印'
   ? "Could not check webcam status.\nCheck printer connection."
@@ -1391,6 +1397,9 @@ translations:
   Guides and reference: 指南与参考
   H: 头
   HELIXSCREEN: HELIXSCREEN
+  HEPA: 'HEPA'
+  HEPA filter: 'HEPA 过滤器'
+  HEPA filter interval: 'HEPA 过滤器间隔'
   HOST: 主机
   HTTP Code: HTTP 代码
   'HTTP error: {} {}': 'HTTP 错误: {} {}'
@@ -1726,6 +1735,8 @@ translations:
   Line the nozzle up with the purge chute so purged filament drops straight in.: 将喷嘴对准排料口上方，使排出的料丝垂直落入。
 
   Line {} calls {}, which this printer treats as an emergency stop. Re-slice the file with a profile made for this printer.: '第 {} 行调用 {}，此打印机将其视为紧急停止。请使用为此打印机制作的配置重新切片该文件。'
+  Linear rails: '直线导轨'
+  Linear rails interval: '直线导轨间隔'
   Listen to all theme sounds: 试听所有主题声音
   Live Z-offset, with baby steps and Save: 实时 Z 偏移，支持微调与保存
   Live view from your webcam: 摄像头实时画面
@@ -2121,6 +2132,7 @@ translations:
   Nozzle clean complete: 喷嘴清洁完成
   Nozzle clog detected: 检测到喷嘴堵塞
   Nozzle did not reach {}°C — {} cancelled: 喷嘴未达到 {}°C — {} 已取消
+  Nozzle interval: '喷嘴间隔'
   Nozzle min cannot exceed max: 喷嘴最低温度不能超过最高温度
   Nozzle target set to {}°C: 喷嘴目标已设为 {}°C
   Nozzle temp must be 100-%d°C: 喷嘴温度必须为 100-%d°C
@@ -2376,6 +2388,8 @@ translations:
   'Print setup failed: internal error': 打印设置失败：内部错误
   Print status: 打印状态
   Print timed out waiting for completion: 等待打印完成超时
+  'Printed %d time': '已打印 %d 次'
+  'Printed %d times': '已打印 %d 次'
   Printer: 打印机
   Printer Error: 打印机错误
   Printer Firmware Disconnected: 打印机固件已断开
@@ -2513,6 +2527,7 @@ translations:
   RH: RH
   RSS: RSS
   'RSS:': RSS：
+  Rails: '导轨'
   Ramming Volume: '填充体积'
   Raspberry Pi: Raspberry Pi
   Raspberry Pi (32-bit): Raspberry Pi (32-bit)
@@ -2640,6 +2655,7 @@ translations:
   Reset to Default: 重置为默认
   Reset to defaults: 重置为默认值
   Reset to original values: 重置为原始值
+  Reset {}?: '重置{}？'
   Resetting: 重置中
   Resetting system: '正在重置系统'
   Resetting...: 正在重置...
@@ -2805,6 +2821,7 @@ translations:
   Screen Rotation: 屏幕旋转
   Screen dims to lower brightness after period of inactivity: 一段时间不活动后屏幕会降低亮度
   Screen lock and PIN settings: 屏幕锁定和 PIN 设置
+  Screen is not permitted to shut down or reboot. Restart HelixScreen to fix it.: 屏幕没有关机或重启的权限。重启 HelixScreen 即可修复。
   Screen reboot failed: 屏幕重启失败
   Screen shutdown failed: 屏幕关机失败
   Screen sleeps after the selected period of inactivity: 在选定的不活动时间后屏幕将变暗
@@ -2877,6 +2894,7 @@ translations:
   Sensors: 传感器
   Separate on/off macros. HelixScreen tracks the state.: 独立的开/关宏。HelixScreen 跟踪状态。
   Server Setup: 服务器设置
+  Service hours for the filter, nozzle, and rails: '过滤器、喷嘴和导轨的使用小时数'
   Servo: 舵机
   Servo Down: '舵机落下'
   Servo Move: '移动舵机'
@@ -3010,8 +3028,10 @@ translations:
   Spoolman removed.: Spoolman 已移除。
   Spoolman unavailable — filament weights may be stale: Spoolman不可用 — 耗材重量可能已过期
   Spoolman was not configured.: Spoolman 未配置。
-  'Spoolman: %zu Spool%s': 'Spoolman: %zu 个线轴%s'
-  'Spoolman: %zu/%zu Spool%s': 'Spoolman: %zu/%zu 个线轴%s'
+  'Spoolman: %zu Spool': 'Spoolman: %zu 个线轴'
+  'Spoolman: %zu Spools': 'Spoolman: %zu 个线轴'
+  'Spoolman: %zu/%zu Spool': 'Spoolman: %zu/%zu 个线轴'
+  'Spoolman: %zu/%zu Spools': 'Spoolman: %zu/%zu 个线轴'
   SpoolmanDB search failed: 'SpoolmanDB 搜索失败'
   Spools are off: "料盘已取下"
   'Spools are on the bed: remove them and confirm before moving the printer': 热床上有料盘：请先移除并确认，再移动打印机
@@ -3035,6 +3055,7 @@ translations:
   Start Drying: 开始烘干
   Start Print: 开始打印
   Start Probing: 开始探测
+  Start a new {} h interval? The hours counted so far are discarded.: '开始新的 {} 小时间隔？目前累计的小时数将被清除。'
   Start anyway?: '仍要开始吗？'
   Start at: 从第
   Start Check: 开始检查
@@ -3405,6 +3426,7 @@ translations:
   Tools Used: 已使用工具
   'Tools: ': '工具: '
   Total Prints: 总打印数
+  'Total print time: {} h': '总打印时间：{} 小时'
   Touch & Input: 触摸和输入
   Touch Cal: 触摸校准
   Touch Calibration: 触摸校准
@@ -3776,6 +3798,7 @@ translations:
   remaining: 剩余
   remaining before clog detection triggers: 剩余即触发堵料检测
   rendering: 渲染中
+  reset at {} h: '于 {} 小时时重置'
   sleep {} min: '{} 分钟后休眠'
   slots): 个槽位)
   started: 已启动
@@ -3818,9 +3841,11 @@ translations:
   '{} filament • {}': '耗材 {} • {}'
   '{} firmware': '{} 固件'
   '{} h': '{} 小时'
+  '{} h of {} h': '{} / {} 小时'
   '{} heater turned off': '{} 加热器已关闭'
   '{} is asking to connect to this printer.': '{} 请求连接到此打印机。'
   '{} is blocked — manual intervention required': '{} 被阻塞 — 需要手动干预'
+  '{} is due: {} h reached': '{}需要维护：已达 {} 小时'
   '{} is feeding the current print. Clear it after the print ends.': '{} 正在为当前打印供料。请在打印结束后清除。'
   '{} is installed but its backup-spool switching is turned off, so no automatic swap will happen.': '{} 已安装，但其备用料盘切换已关闭，因此不会自动切换。'
   '{} is installed, but its backup-spool setting could not be read - do not count on an automatic swap.': '{} 已安装，但无法读取其备用料盘设置 - 请勿指望自动切换。'
@@ -3834,6 +3859,7 @@ translations:
   '{} macro not configured': '{} 宏未配置'
   '{} matches.': '{} 匹配。'
   '{} may cause unintended changes. Are you sure?': '{} 可能导致意外更改。确定吗？'
+  '{} meter reset': '{}计数器已重置'
   '{} min': '{} 分钟'
   '{} min ago': '{} 分钟前'
   '{} missing': '{} 个缺失'
@@ -3842,7 +3868,8 @@ translations:
   '{} new': '{} 个新增'
   '{} new hardware available': '{} 个新硬件可用'
   '{} new plugins available. Enable them in Settings > Plugins.': '{} 个新插件可用。请在设置 > 插件中启用。'
-  '{} preset{}': '{} 个预设{}'
+  '{} preset': '{} 个预设'
+  '{} presets': '{} 个预设'
   '{} prints': '{} 次打印'
   '{} queued': '{} 个在队列中'
   '{} serial': '{} 序列号'
@@ -3860,4 +3887,5 @@ translations:
   '{} · {} · {}': '{} · {} · {}'
   '{} — response timed out': '{} — 响应超时'
   '{} → {}: no filament loaded.': '{} → {}: 未加载耗材。'
+  '{}% left': '剩余 {}%'
   '{}:{:02} elapsed': 已用时 {}:{:02}

@@ -5,7 +5,8 @@
   <translation tag=" left" pt=" restante"/>
   <translation tag=" · was {:.0f}%" pt=" · era {:.0f}%"/>
   <translation tag="&quot;%s&quot; failed to load" pt="&quot;%s&quot; falhou ao carregar"/>
-  <translation tag="%d additional fan%s" pt="%d ventoinha%s adicional"/>
+  <translation tag="%d additional fan" pt="%d ventoinha adicional"/>
+  <translation tag="%d additional fans" pt="%d ventoinhas adicionais"/>
   <translation tag="%d feeders" pt="%d alimentadores"/>
   <translation tag="%d gates" pt="%d Gates"/>
   <translation tag="%d lanes" pt="%d lanes"/>
@@ -487,6 +488,7 @@
   <translation tag="Cannot delete file: printer not connected" pt="Não é possível excluir arquivo: impressora não conectada"/>
   <translation tag="Cannot modify G-code: no temp directory available" pt="Não é possível modificar G-code: diretório temporário indisponível"/>
   <translation tag="Cannot modify G-code: scan result not available" pt="Não é possível modificar G-code: resultado da análise indisponível"/>
+  <translation tag="Cannot open or close the feeder while a print is active" pt="Não é possível abrir ou fechar o alimentador enquanto uma impressão está ativa"/>
   <translation tag="Cannot park while a print is active" pt="Não é possível estacionar enquanto uma impressão está ativa"/>
   <translation tag="Cannot perform this action now" pt="Não é possível executar esta ação agora"/>
   <translation tag="Cannot remap G-code: no temp directory available" pt="Não é possível remapear o G-code: nenhum diretório temporário disponível"/>
@@ -634,7 +636,8 @@
   <translation tag="Complete" pt="Concluído"/>
   <translation tag="Complete!" pt="Concluído!"/>
   <translation tag="Completed" pt="Concluído"/>
-  <translation tag="Completed in %d probe%s" pt="Concluído em %d sondagem%s"/>
+  <translation tag="Completed in %d probe" pt="Concluído em %d sondagem"/>
+  <translation tag="Completed in %d probes" pt="Concluído em %d sondagens"/>
   <translation tag="Completed just now" pt="Concluído agora mesmo"/>
   <translation tag="Completed prints will appear here" pt="Impressões concluídas aparecerão aqui"/>
   <translation tag="Completed {}d ago" pt="Concluído há {} dias"/>
@@ -1350,6 +1353,9 @@
   <translation tag="Guides and reference" pt="Guias e referência"/>
   <translation tag="H" pt="H"/>
   <translation tag="HELIXSCREEN" pt="HELIXSCREEN"/>
+  <translation tag="HEPA" pt="HEPA"/>
+  <translation tag="HEPA filter" pt="Filtro HEPA"/>
+  <translation tag="HEPA filter interval" pt="Intervalo do filtro HEPA"/>
   <translation tag="HOST" pt="Host"/>
   <translation tag="HTTP Code" pt="Código HTTP"/>
   <translation tag="HTTP error: {} {}" pt="Erro HTTP: {} {}"/>
@@ -1665,6 +1671,8 @@
   <translation tag="Lights that follow the printer&apos;s state" pt="Luzes que seguem o estado da impressora"/>
   <translation tag="Line the nozzle up with the purge chute so purged filament drops straight in." pt="Alinhe o bocal sobre a calha de purga para que o filamento purgado caia direto dentro."/>
   <translation tag="Line {} calls {}, which this printer treats as an emergency stop. Re-slice the file with a profile made for this printer." pt="A linha {} chama {}, que esta impressora trata como uma parada de emergência. Fatie o arquivo novamente com um perfil feito para esta impressora."/>
+  <translation tag="Linear rails" pt="Trilhos lineares"/>
+  <translation tag="Linear rails interval" pt="Intervalo dos trilhos lineares"/>
   <translation tag="Listen to all theme sounds" pt="Ouvir todos os sons do tema"/>
   <translation tag="Live Z-offset, with baby steps and Save" pt="Z-Offset ao vivo, com passos finos e Salvar"/>
   <translation tag="Live view from your webcam" pt="Visão ao vivo da sua webcam"/>
@@ -2050,6 +2058,7 @@
   <translation tag="Nozzle clean complete" pt="Limpeza do bico concluída"/>
   <translation tag="Nozzle clog detected" pt="Entupimento do bico detectado"/>
   <translation tag="Nozzle did not reach {}°C — {} cancelled" pt="O bico não atingiu {}°C — {} cancelado"/>
+  <translation tag="Nozzle interval" pt="Intervalo do bico"/>
   <translation tag="Nozzle min cannot exceed max" pt="O mínimo do bico não pode exceder o máximo"/>
   <translation tag="Nozzle target set to {}°C" pt="Bico configurado para {}°C"/>
   <translation tag="Nozzle temp must be 100-%d°C" pt="A temperatura do bico deve ser 100-%d°C"/>
@@ -2287,6 +2296,9 @@
   <translation tag="Print error" pt="Erro de impressão"/>
   <translation tag="Print failed" pt="Impressão falhou"/>
   <translation tag="Print history will show the rewritten name" pt="O histórico de impressões mostrará o nome reescrito"/>
+  <translation tag="Print hours between filter changes. Off hides this meter." pt="Horas de impressão entre trocas de filtro. Desligado oculta este contador."/>
+  <translation tag="Print hours between nozzle changes. Off hides this meter." pt="Horas de impressão entre trocas de bico. Desligado oculta este contador."/>
+  <translation tag="Print hours between rail cleaning and lubrication. Off hides this meter." pt="Horas de impressão entre limpeza e lubrificação dos trilhos. Desligado oculta este contador."/>
   <translation tag="Print hours this week and lifetime totals" pt="Horas de impressão desta semana e totais acumulados"/>
   <translation tag="Print issue detected" pt="Problema de impressão detectado"/>
   <translation tag="Print jobs waiting to run" pt="Trabalhos aguardando impressão"/>
@@ -2296,6 +2308,8 @@
   <translation tag="Print setup failed: internal error" pt="Falha na configuração da impressão: erro interno"/>
   <translation tag="Print status" pt="Status da impressão"/>
   <translation tag="Print timed out waiting for completion" pt="A impressão — tempo esgotado aguardando a conclusão"/>
+  <translation tag="Printed %d time" pt="Impresso %d vez"/>
+  <translation tag="Printed %d times" pt="Impresso %d vezes"/>
   <translation tag="Printer" pt="Impressora"/>
   <translation tag="Printer Error" pt="Erro da Impressora"/>
   <translation tag="Printer Firmware Disconnected" pt="Firmware da Impressora Desconectado"/>
@@ -2429,6 +2443,7 @@
   <translation tag="RH" pt="UR"/>
   <translation tag="RSS" pt="RSS"/>
   <translation tag="RSS:" pt="RSS:"/>
+  <translation tag="Rails" pt="Trilhos"/>
   <translation tag="Ramming Volume" pt="Volume de compactação"/>
   <translation tag="Raspberry Pi" pt="Raspberry Pi"/>
   <translation tag="Raspberry Pi (32-bit)" pt="Raspberry Pi (32-bit)"/>
@@ -2550,6 +2565,7 @@
   <translation tag="Reset to Default" pt="Restaurar Padrão"/>
   <translation tag="Reset to defaults" pt="Restaurar padrões"/>
   <translation tag="Reset to original values" pt="Restaurar valores originais"/>
+  <translation tag="Reset {}?" pt="Resetar {}?"/>
   <translation tag="Resetting" pt="Restaurando"/>
   <translation tag="Resetting system" pt="Redefinindo o sistema"/>
   <translation tag="Resetting..." pt="Resetando..."/>
@@ -2704,6 +2720,7 @@
   <translation tag="Screen Dim" pt="Escurecimento da Tela"/>
   <translation tag="Screen Rotation" pt="Rotação da tela"/>
   <translation tag="Screen dims to lower brightness after period of inactivity" pt="A tela escurece para menor brilho após período de inatividade"/>
+  <translation tag="Screen is not permitted to shut down or reboot. Restart HelixScreen to fix it." pt="A tela não tem permissão para desligar ou reiniciar. Reinicie o HelixScreen para corrigir."/>
   <translation tag="Screen lock and PIN settings" pt="Configurações de bloqueio de tela e PIN"/>
   <translation tag="Screen reboot failed" pt="Falha ao reiniciar a tela"/>
   <translation tag="Screen shutdown failed" pt="Falha ao desligar a tela"/>
@@ -2776,6 +2793,7 @@
   <translation tag="Sensors" pt="Sensores"/>
   <translation tag="Separate on/off macros. HelixScreen tracks the state." pt="Macros ligado/desligado separadas. HelixScreen rastreia o estado."/>
   <translation tag="Server Setup" pt="Configuração do Servidor"/>
+  <translation tag="Service hours for the filter, nozzle, and rails" pt="Horas de serviço do filtro, bico e trilhos"/>
   <translation tag="Servo" pt="Servo"/>
   <translation tag="Servo Down" pt="Servo para baixo"/>
   <translation tag="Servo Move" pt="Mover o servo"/>
@@ -2905,8 +2923,10 @@
   <translation tag="Spoolman removed." pt="Spoolman removido."/>
   <translation tag="Spoolman unavailable — filament weights may be stale" pt="Spoolman indisponível — os pesos do filamento podem estar desatualizados"/>
   <translation tag="Spoolman was not configured." pt="Spoolman não estava configurado."/>
-  <translation tag="Spoolman: %zu Spool%s" pt="Spoolman: %zu Bobina%s"/>
-  <translation tag="Spoolman: %zu/%zu Spool%s" pt="Spoolman: %zu/%zu Bobina%s"/>
+  <translation tag="Spoolman: %zu Spool" pt="Spoolman: %zu Bobina"/>
+  <translation tag="Spoolman: %zu Spools" pt="Spoolman: %zu Bobinas"/>
+  <translation tag="Spoolman: %zu/%zu Spool" pt="Spoolman: %zu/%zu Bobina"/>
+  <translation tag="Spoolman: %zu/%zu Spools" pt="Spoolman: %zu/%zu Bobinas"/>
   <translation tag="SpoolmanDB search failed" pt="Falha na busca no SpoolmanDB"/>
   <translation tag="Spools are off" pt="Carretéis retirados"/>
   <translation tag="Spools are on the bed: remove them and confirm before moving the printer" pt="Há carretéis na mesa: remova-os e confirme antes de mover a impressora"/>
@@ -2928,6 +2948,7 @@
   <translation tag="Start Drying" pt="Iniciar secagem"/>
   <translation tag="Start Print" pt="Iniciar Impressão"/>
   <translation tag="Start Probing" pt="Iniciar Sondagem"/>
+  <translation tag="Start a new {} h interval? The hours counted so far are discarded." pt="Iniciar um novo intervalo de {} h? As horas contadas até agora são descartadas."/>
   <translation tag="Start anyway?" pt="Iniciar mesmo assim?"/>
   <translation tag="Start at" pt="Começar em"/>
   <translation tag="Start drying" pt="Iniciar secagem"/>
@@ -3255,6 +3276,7 @@
   <translation tag="Tools Used" pt="Ferramentas Usadas"/>
   <translation tag="Tools: " pt="Ferramentas: "/>
   <translation tag="Total Prints" pt="Total de Impressões"/>
+  <translation tag="Total print time: {} h" pt="Tempo total de impressão: {} h"/>
   <translation tag="Touch &amp; Input" pt="Toque e entrada"/>
   <translation tag="Touch Cal" pt="Cal de Toque"/>
   <translation tag="Touch Calibration" pt="Calibração de Toque"/>
@@ -3614,6 +3636,7 @@
   <translation tag="remaining" pt="restante"/>
   <translation tag="remaining before clog detection triggers" pt="restante antes da detecção de obstrução ser acionada"/>
   <translation tag="rendering" pt="renderizando"/>
+  <translation tag="reset at {} h" pt="resetado em {} h"/>
   <translation tag="sleep {} min" pt="suspender em {} min"/>
   <translation tag="slots)" pt="slots)"/>
   <translation tag="started" pt="iniciado"/>
@@ -3657,9 +3680,11 @@
   <translation tag="{} filament • {}" pt="{} de filamento • {}"/>
   <translation tag="{} firmware" pt="Firmware de {}"/>
   <translation tag="{} h" pt="{} h"/>
+  <translation tag="{} h of {} h" pt="{} h de {} h"/>
   <translation tag="{} heater turned off" pt="Aquecedor {} desligado"/>
   <translation tag="{} is asking to connect to this printer." pt="{} quer conectar-se a esta impressora."/>
   <translation tag="{} is blocked — manual intervention required" pt="{}: bloqueio — intervenção manual necessária"/>
+  <translation tag="{} is due: {} h reached" pt="{} precisa de manutenção: {} h atingidas"/>
   <translation tag="{} is feeding the current print. Clear it after the print ends." pt="{}: alimenta a impressão atual. Remova a bobina após o fim da impressão."/>
   <translation tag="{} is installed but its backup-spool switching is turned off, so no automatic swap will happen." pt="{} está instalado mas sua troca para carretel reserva está desligada, então não haverá troca automática."/>
   <translation tag="{} is installed, but its backup-spool setting could not be read - do not count on an automatic swap." pt="{} está instalado, mas não foi possível ler sua configuração de carretel reserva - não conte com uma troca automática."/>
@@ -3673,6 +3698,7 @@
   <translation tag="{} macro not configured" pt="Macro {} não configurado"/>
   <translation tag="{} matches." pt="{} corresponde."/>
   <translation tag="{} may cause unintended changes. Are you sure?" pt="{} pode causar alterações não intencionais. Tem certeza?"/>
+  <translation tag="{} meter reset" pt="Contador de {} resetado"/>
   <translation tag="{} min" pt="{} min"/>
   <translation tag="{} min ago" pt="há {} min"/>
   <translation tag="{} missing" pt="{} ausente(s)"/>
@@ -3681,7 +3707,8 @@
   <translation tag="{} new" pt="{} novo(s)"/>
   <translation tag="{} new hardware available" pt="{} novo hardware disponível"/>
   <translation tag="{} new plugins available. Enable them in Settings &gt; Plugins." pt="{} novos plugins disponíveis. Ative-os em Configurações &gt; Plugins."/>
-  <translation tag="{} preset{}" pt="{} predefinição{}"/>
+  <translation tag="{} preset" pt="{} predefinição"/>
+  <translation tag="{} presets" pt="{} predefinições"/>
   <translation tag="{} prints" pt="{} impressões"/>
   <translation tag="{} queued" pt="{} na fila"/>
   <translation tag="{} serial" pt="N.º de série de {}"/>
@@ -3698,5 +3725,6 @@
   <translation tag="{} · {} · {}" pt="{} · {} · {}"/>
   <translation tag="{} — response timed out" pt="{} — tempo esgotado"/>
   <translation tag="{} → {}: no filament loaded." pt="{} → {}: nenhum filamento carregado."/>
+  <translation tag="{}% left" pt="{}% restante"/>
   <translation tag="{}:{:02} elapsed" pt="{}:{:02} decorrido"/>
 </translations>

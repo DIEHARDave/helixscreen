@@ -12,7 +12,7 @@ LIB="$ROOT/scripts/lib/build_hosts.sh"
 
 setup() {
     load helpers
-    cd "$ROOT"
+    cd "$(scratch_tree)" || return 1
     mock_command_script ssh 'touch "$BATS_TEST_TMPDIR/ssh-called"; exit 255'
     # A makefile that prints what a recipe under mk/remote.mk sees.
     SHOW="$BATS_TEST_TMPDIR/show.mk"

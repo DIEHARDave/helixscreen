@@ -2412,20 +2412,49 @@ const std::vector<Persona> kPersonas = {
      {{"temperature", 0, 0, 2, 2}, {"bed_temperature", 2, 0, 2, 2}, {"ams", 4, 0, 2, 2},
       {"notifications", 6, 0, 2, 2}, {"print_status", 0, 2, 8, 4}},
      {"printer_image", "fan_stack", "filament", "led", "temp_graph"}},
-    {"u1 tiny: the tool tile lists all four tools", "tiny", 10, 8, {},
-     {{"ams_slot_count", 4}, {"led_controllable", 1}, {"filament_sensor_count", 1}},
+    {"u1 tiny: the tool switcher takes the spool slot", "tiny", 10, 8, {},
+     {{"ams_slot_count", 4}, {"ams_is_tool_changer", 1}, {"led_controllable", 1},
+      {"filament_sensor_count", 1}},
      {{"printer_image", 0, 0, 4, 4}, {"temperature", 4, 0, 2, 2}, {"bed_temperature", 6, 0, 2, 2},
-      {"notifications", 8, 0, 2, 2}, {"fan_stack", 4, 2, 2, 2}, {"ams", 6, 2, 4, 2},
+      {"notifications", 8, 0, 2, 2}, {"fan_stack", 4, 2, 2, 2}, {"tool_switcher", 6, 2, 4, 2},
       {"print_status", 0, 4, 10, 4}},
-     {"led", "filament"}},
-    {"voron toolchanger medium: the tool tile takes the spool slot, no toolhead", "medium", 12, 8, {},
-     {{"ams_slot_count", 4}, {"printer_has_chamber", 1}, {"printer_is_enclosed", 1},
-      {"led_controllable", 1}, {"filament_sensor_count", 1}, {"printer_has_bed_mesh", 1}},
+     {"ams", "led", "filament"}},
+    {"voron toolchanger medium: the tool switcher takes the spool slot, no toolhead", "medium", 12,
+     8, {},
+     {{"ams_slot_count", 4}, {"ams_is_tool_changer", 1}, {"printer_has_chamber", 1},
+      {"printer_is_enclosed", 1}, {"led_controllable", 1}, {"filament_sensor_count", 1},
+      {"printer_has_bed_mesh", 1}},
      {{"printer_image", 0, 0, 4, 4}, {"temperature", 4, 0, 2, 2}, {"bed_temperature", 6, 0, 2, 2},
-      {"fan_stack", 8, 0, 2, 2}, {"notifications", 10, 0, 2, 2}, {"ams", 4, 2, 4, 2},
+      {"fan_stack", 8, 0, 2, 2}, {"notifications", 10, 0, 2, 2}, {"tool_switcher", 4, 2, 4, 2},
       {"temp_graph", 8, 2, 4, 6}, {"print_status", 0, 4, 8, 4}},
-     {"toolhead", "chamber_temperature", "led", "filament", "bed_mesh_tile"},
-     {{"ams_is_tool_changer", 1}}},
+     {"ams", "toolhead", "chamber_temperature", "led", "filament", "bed_mesh_tile"}},
+    {"voron toolchanger micro: the tool switcher takes the spool slot", "micro", 12, 8, {},
+     {{"ams_slot_count", 4}, {"ams_is_tool_changer", 1}, {"led_controllable", 1},
+      {"filament_sensor_count", 1}},
+     {{"printer_image", 0, 0, 6, 4}, {"temperature", 6, 0, 2, 2}, {"bed_temperature", 8, 0, 2, 2},
+      {"notifications", 10, 0, 2, 2}, {"fan_stack", 6, 2, 2, 2}, {"tool_switcher", 8, 2, 4, 2},
+      {"print_status", 0, 4, 8, 4}, {"temp_graph", 8, 4, 4, 4}},
+     {"ams", "led", "filament"}},
+    {"voron toolchanger large: the eight-track strip under the readout band, the AMS kept",
+     "large", 16, 10, {},
+     {{"ams_slot_count", 4}, {"ams_is_tool_changer", 1}, {"printer_has_chamber", 1},
+      {"printer_is_enclosed", 1}, {"led_controllable", 1}, {"filament_sensor_count", 1},
+      {"printer_has_bed_mesh", 1}},
+     {{"printer_image", 0, 0, 4, 4}, {"temperature", 4, 0, 2, 2}, {"bed_temperature", 6, 0, 2, 2},
+      {"ams", 8, 0, 4, 2}, {"fan_stack", 12, 0, 2, 2}, {"notifications", 14, 0, 2, 2},
+      {"tool_switcher", 8, 2, 8, 2}, {"print_status", 0, 4, 8, 4},
+      {"bed_mesh_tile", 8, 6, 4, 4}, {"temp_graph", 12, 6, 4, 4}, {"tips", 0, 8, 8, 2}},
+     {"toolhead", "chamber_temperature", "led", "filament"}},
+    {"voron toolchanger xxlarge: the eight-track strip above the declared block", "xxlarge", 24,
+     14, {},
+     {{"ams_slot_count", 4}, {"ams_is_tool_changer", 1}, {"led_controllable", 1},
+      {"filament_sensor_count", 1}},
+     {{"printer_image", 0, 0, 6, 6}, {"print_status", 6, 0, 10, 6}, {"temperature", 16, 0, 2, 2},
+      {"bed_temperature", 18, 0, 2, 2}, {"fan_stack", 20, 0, 2, 2},
+      {"notifications", 22, 0, 2, 2}, {"ams", 16, 2, 4, 2}, {"filament", 20, 2, 2, 2},
+      {"led", 22, 2, 2, 2}, {"tool_switcher", 16, 8, 8, 2}, {"temp_graph", 0, 6, 16, 6},
+      {"tips", 0, 12, 16, 2}},
+     {"toolhead", "bed_mesh_tile"}},
     {"voron_24 large: one readout band on top, the bed mesh beside the graph", "large", 16, 10, {},
      {{"printer_has_chamber", 1}, {"printer_is_enclosed", 1}, {"led_controllable", 1},
       {"filament_sensor_count", 1}, {"printer_has_bed_mesh", 1}},
@@ -2757,4 +2786,85 @@ TEST_CASE("default_layout: every declared gap is whole cells on its grid",
         }
     }
     CHECK(gaps > 0);
+}
+
+namespace {
+
+/// @p layout with every tool_switcher candidate taken out: the slot that holds
+/// only the switcher, and each alternative whose lead cell names it.
+nlohmann::json without_tool_switcher(nlohmann::json layout) {
+    auto names_switcher = [](const nlohmann::json& cell) {
+        const auto it = cell.find("candidates");
+        if (it == cell.end() || !it->is_array())
+            return false;
+        for (const auto& c : *it) {
+            if ((c.is_string() && c == "tool_switcher") ||
+                (c.is_object() && c.value("id", "") == "tool_switcher"))
+                return true;
+        }
+        return false;
+    };
+    auto& anchors = layout["anchors"];
+    nlohmann::json kept = nlohmann::json::array();
+    for (auto anchor : anchors) {
+        if (anchor.contains("alternatives")) {
+            nlohmann::json alts = nlohmann::json::array();
+            for (const auto& alt : anchor["alternatives"]) {
+                if (!names_switcher(alt["cells"][0]))
+                    alts.push_back(alt);
+            }
+            if (alts.empty())
+                continue;
+            anchor["alternatives"] = alts;
+        }
+        kept.push_back(anchor);
+    }
+    anchors = kept;
+    return layout;
+}
+
+} // namespace
+
+TEST_CASE("default_layout: a printer that is not a tool changer gets the layout it had",
+          "[default_layout][shipped][tool_switcher]") {
+    // The tool switcher only ever takes space a tool changer has: every other
+    // printer resolves to the same tiles, in the same order, as the table
+    // with no switcher in it.
+    const auto layout = load_shipped_layout();
+    const auto baseline = without_tool_switcher(layout);
+    REQUIRE(baseline.dump() != layout.dump());
+    CapabilitySnapshot closed = all_closed(layout);
+    CapabilitySnapshot open = closed;
+    for (auto& [subject, value] : open.subjects) {
+        value = subject == "ams_slot_count" ? 4 : 1;
+    }
+    open.subjects["ams_is_tool_changer"] = 0;
+    CapabilitySnapshot open_no_ams = open;
+    open_no_ams.subjects["ams_slot_count"] = 0;
+
+    for (const auto& g : helix::test::kMeasuredGrids) {
+        LayoutTypeGuard layout_type(g.panel_w, g.panel_h);
+        const std::vector<std::string> chain = helix::LayoutManager::instance().variant_chain();
+        const int bp = static_cast<int>(breakpoint_for(std::min(g.panel_w, g.panel_h)));
+        for (const CapabilitySnapshot* caps : {&open, &open_no_ams, &closed}) {
+            INFO(g.name << ", gates " << (caps == &closed ? "closed" : "open"));
+            const ResolvedDefault now = helix::layout::resolve_default_layout(
+                layout, nullptr, kBpNames[bp], g.cols, g.rows, chain, "", *caps);
+            const ResolvedDefault before = helix::layout::resolve_default_layout(
+                baseline, nullptr, kBpNames[bp], g.cols, g.rows, chain, "", *caps);
+            REQUIRE(now.ok);
+            REQUIRE(now.placed.size() == before.placed.size());
+            for (size_t i = 0; i < now.placed.size(); ++i) {
+                const auto& a = now.placed[i];
+                const auto& b = before.placed[i];
+                INFO("entry " << i << ": " << a.id << " vs " << b.id);
+                CHECK(a.id == b.id);
+                CHECK(a.col == b.col);
+                CHECK(a.row == b.row);
+                CHECK(a.colspan == b.colspan);
+                CHECK(a.rowspan == b.rowspan);
+                CHECK(a.config == b.config);
+            }
+        }
+    }
 }

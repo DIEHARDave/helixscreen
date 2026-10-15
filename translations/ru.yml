@@ -7,21 +7,54 @@ translations:
   ' left': ' осталось'
   ' · was {:.0f}%': ' · было {:.0f}%'
   '"%s" failed to load': Не удалось загрузить «%s»
-  '%d additional fan%s': '%d дополнительный вентилятор%s'
-  '%d feeders': '%d фидеров'
-  '%d gates': '%d шлюзов'
-  '%d lanes': '%d каналов'
+  '%d additional fan': '%d дополнительный вентилятор'
+  '%d additional fans':
+    one: '%d дополнительный вентилятор'
+    few: '%d дополнительных вентилятора'
+    many: '%d дополнительных вентиляторов'
+    other: '%d дополнительных вентилятора'
+  '%d feeders':
+    one: '%d фидер'
+    few: '%d фидера'
+    many: '%d фидеров'
+    other: '%d фидера'
+  '%d gates':
+    one: '%d шлюз'
+    few: '%d шлюза'
+    many: '%d шлюзов'
+    other: '%d шлюза'
+  '%d lanes':
+    one: '%d канал'
+    few: '%d канала'
+    many: '%d каналов'
+    other: '%d канала'
   '%d min': '%d мин'
   '%d min left': 'осталось %d мин'
   '%d mm/s': '%d mm/s'
-  '%d more sensors': Ещё %d датчиков
+  '%d more sensors':
+    one: 'Ещё %d датчик'
+    few: 'Ещё %d датчика'
+    many: 'Ещё %d датчиков'
+    other: 'Ещё %d датчика'
   '%d objects': 'Объектов: %d'
   '%d of %d printing': '%d из %d печатается'
   '%d skipped': 'Пропущено: %d'
   '%d profiles': 'Профилей: %d'
-  '%d slots': '%d слотов'
-  '%d toolheads': '%d печатающих головок'
-  '%d tools': '%d инструментов'
+  '%d slots':
+    one: '%d слот'
+    few: '%d слота'
+    many: '%d слотов'
+    other: '%d слота'
+  '%d toolheads':
+    one: '%d печатающая головка'
+    few: '%d печатающие головки'
+    many: '%d печатающих головок'
+    other: '%d печатающие головки'
+  '%d tools':
+    one: '%d инструмент'
+    few: '%d инструмента'
+    many: '%d инструментов'
+    other: '%d инструмента'
   '%d units': '%d ед.'
   '%d:%02d left': 'осталось %d:%02d'
   '%dh': '%d ч'
@@ -30,7 +63,11 @@ translations:
   '%dm': '%d мин'
   '%dm %02ds': '%d мин %02d с'
   '%ds': '%d с'
-  '%lu days ago': '%lu дн. назад'
+  '%lu days ago':
+    one: '%lu день назад'
+    few: '%lu дня назад'
+    many: '%lu дней назад'
+    other: '%lu дня назад'
   '%lu hours ago': '%lu ч. назад'
   '%lu min ago': '%lu мин. назад'
   '%s Filament': '%s: Филамент'
@@ -40,8 +77,16 @@ translations:
   '%s unsaved': '%s не сохранено'
   '%s uses %s, which has filament but no material set — the printer will not start until you set it.': '%s использует %s, где есть филамент, но не задан материал — принтер не начнёт печать, пока вы его не зададите.'
   '%s: %.0fg of %.0fg needed': '%s: %.0fг из %.0fг'
-  '%u layers': '%u слоёв'
-  '%zu events queued': '%zu событий в очереди'
+  '%u layers':
+    one: '%u слой'
+    few: '%u слоя'
+    many: '%u слоёв'
+    other: '%u слоя'
+  '%zu events queued':
+    one: '%zu событие в очереди'
+    few: '%zu события в очереди'
+    many: '%zu событий в очереди'
+    other: '%zu события в очереди'
   '%zu plugins failed to load': Не удалось загрузить %zu плагинов
   "'{}' already exists. Replace the stored mesh?": "'{}' уже существует. Заменить сохранённую сетку?"
   "'{}' and '{}' already exist. Replace the stored meshes?": "'{}' и '{}' уже существуют. Заменить сохранённые сетки?"
@@ -287,7 +332,11 @@ translations:
   Assisting: Помощь
   At least {} lines in helixscreen.env were ignored: 'В helixscreen.env проигнорировано не менее {} строк'
   At target: Цель достигнута
-  At {}°C, about {} minutes.: 'При {}°C около {} минут.'
+  'At {}°C, about {} minutes.':
+    one: 'При {}°C около {} минуты.'
+    few: 'При {}°C около {} минут.'
+    many: 'При {}°C около {} минут.'
+    other: 'При {}°C около {} минуты.'
   Authentication failed: Ошибка аутентификации
   Auto: Авто
   Auto Bed Mesh: Авто сетка стола
@@ -330,7 +379,11 @@ translations:
   BLUETOOTH PRINTERS: BLUETOOTH-ПРИНТЕРЫ
   BLUETOOTH SCANNERS: BLUETOOTH-СКАНЕРЫ
   Back: Назад
-  'Backtrace: {} frames': 'Трассировка: {} кадров'
+  'Backtrace: {} frames':
+    one: 'Трассировка: {} кадр'
+    few: 'Трассировка: {} кадра'
+    many: 'Трассировка: {} кадров'
+    other: 'Трассировка: {} кадра'
   Backup lane name contains invalid characters: 'Имя резервного канала содержит недопустимые символы'
   Backup spool switching state unknown: 'Резервная катушка: состояние неизвестно'
   Balanced: Сбалансирован
@@ -528,6 +581,7 @@ translations:
     временная директория недоступна'
   'Cannot modify G-code: scan result not available': 'Невозможно изменить G-code:
     результат сканирования недоступен'
+  Cannot open or close the feeder while a print is active: 'Нельзя открыть или закрыть фидер во время печати'
   Cannot park while a print is active: 'Нельзя припарковать во время печати'
   Cannot perform this action now: Сейчас это действие выполнить нельзя
   'Cannot remap G-code: no temp directory available': 'Не удалось переназначить G-code:
@@ -696,7 +750,12 @@ translations:
   Complete: Завершено
   Complete!: Готово!
   Completed: Завершено
-  Completed in %d probe%s: Завершено за %d измерени%s
+  'Completed in %d probe': 'Завершено за %d измерение'
+  'Completed in %d probes':
+    one: 'Завершено за %d измерение'
+    few: 'Завершено за %d измерения'
+    many: 'Завершено за %d измерений'
+    other: 'Завершено за %d измерения'
   Completed just now: 'Завершено только что'
   Completed prints will appear here: Завершённые печати появятся здесь
   Completed {}d ago: 'Завершено {} дн назад'
@@ -814,6 +873,9 @@ translations:
     быть недоступны.
   Could not answer the connection request: 'Не удалось ответить на запрос подключения'
   'Could not check {} - it stays in the queue': 'Не удалось проверить {} – остаётся в очереди'
+  Print hours between filter changes. Off hides this meter.: 'Часы печати между заменами фильтра. «Выкл» скрывает этот счётчик.'
+  Print hours between nozzle changes. Off hides this meter.: 'Часы печати между заменами сопла. «Выкл» скрывает этот счётчик.'
+  Print hours between rail cleaning and lubrication. Off hides this meter.: 'Часы печати между чисткой и смазкой направляющих. «Выкл» скрывает этот счётчик.'
   Print hours this week and lifetime totals: 'Часы печати за неделю и общие итоги'
   '{} could not be checked from Home - review it and tap Print': 'Не удалось проверить {} с главного экрана – проверьте файл и нажмите «Печать»'
   ? "Could not check webcam status.\nCheck printer connection."
@@ -1430,7 +1492,11 @@ translations:
   Forming Tip: Формирование кончика
   Forming tip...: Формирование кончика...
   Forward Multiplier: 'Множитель прямого хода'
-  Found %zu printers: Найдено %zu принтеров
+  'Found %zu printers':
+    one: 'Найден %zu принтер'
+    few: 'Найдено %zu принтера'
+    many: 'Найдено %zu принтеров'
+    other: 'Найдено %zu принтера'
   Found 1 printer: Найден 1 принтер
   Found {} at {}.: '{} найден по адресу {}.'
   Framerate: Частота кадров
@@ -1468,6 +1534,9 @@ translations:
   Guides and reference: Руководства и справка
   H: Х
   HELIXSCREEN: HELIXSCREEN
+  HEPA: 'HEPA'
+  HEPA filter: 'HEPA-фильтр'
+  HEPA filter interval: 'Интервал HEPA-фильтра'
   HOST: Хост
   HTTP Code: Код HTTP
   'HTTP error: {} {}': 'Ошибка HTTP: {} {}'
@@ -1834,6 +1903,8 @@ translations:
   Line the nozzle up with the purge chute so purged filament drops straight in.: Выровняйте сопло над жёлобом продувки, чтобы продутый филамент падал прямо внутрь.
 
   Line {} calls {}, which this printer treats as an emergency stop. Re-slice the file with a profile made for this printer.: 'Строка {} вызывает {}, что этот принтер считает аварийной остановкой. Нарежьте файл заново с профилем для этого принтера.'
+  Linear rails: 'Линейные направляющие'
+  Linear rails interval: 'Интервал линейных направляющих'
   Listen to all theme sounds: Прослушать все звуки темы
   Live Z-offset, with baby steps and Save: Z-смещение в реальном времени, с подстройкой и сохранением
   Live view from your webcam: Прямая трансляция с веб-камеры
@@ -2244,6 +2315,7 @@ translations:
   Nozzle clean complete: Очистка сопла завершена
   Nozzle clog detected: Обнаружено засорение сопла
   Nozzle did not reach {}°C — {} cancelled: Сопло не нагрелось до {}°C — «{}» отменено
+  Nozzle interval: 'Интервал сопла'
   Nozzle min cannot exceed max: Минимум сопла не может превышать максимум
   Nozzle target set to {}°C: Целевая температура сопла {}°C
   Nozzle temp must be 100-%d°C: Температура сопла должна быть 100-%d°C
@@ -2436,7 +2508,11 @@ translations:
   Preheat Macro: Макрос преднагрева
   Preheat PLA: Преднагрев PLA
   Preheat cancelled: Предварительный нагрев отменён
-  'Preheat: all {} tools + bed set': 'Преднагрев: все {} инструменты + стол заданы'
+  'Preheat: all {} tools + bed set':
+    one: 'Преднагрев: все {} инструмент + стол заданы'
+    few: 'Преднагрев: все {} инструмента + стол заданы'
+    many: 'Преднагрев: все {} инструментов + стол заданы'
+    other: 'Преднагрев: все {} инструмента + стол заданы'
   'Preheat: {} + bed set': 'Преднагрев: {} + стол заданы'
   Preload: 'Предзагрузка'
   Preload failed: Ошибка предварительной загрузки
@@ -2508,6 +2584,12 @@ translations:
     ошибка'
   Print status: Статус печати
   Print timed out waiting for completion: Время ожидания завершения печати истекло
+  'Printed %d time': 'Напечатано %d раз'
+  'Printed %d times':
+    one: 'Напечатано %d раз'
+    few: 'Напечатано %d раза'
+    many: 'Напечатано %d раз'
+    other: 'Напечатано %d раза'
   Printer: Принтер
   Printer Error: Ошибка принтера
   Printer Firmware Disconnected: Прошивка принтера отключена
@@ -2585,7 +2667,11 @@ translations:
   Probing Z...: Зондирование Z...
   Checking Bed Mesh...: Проверка сетки стола...
   Probing point {} of {}: 'Точка замера {} из {}'
-  Probing... ({} points): 'Замер... ({} точек)'
+  'Probing... ({} points)':
+    one: 'Замер... ({} точка)'
+    few: 'Замер... ({} точки)'
+    many: 'Замер... ({} точек)'
+    other: 'Замер... ({} точки)'
   Problem found: Обнаружена проблема
   Proceed: Продолжить
   # Source: abort_progress_modal.xml:20
@@ -2653,6 +2739,7 @@ translations:
   RH: RH
   RSS: RSS
   'RSS:': 'RSS:'
+  Rails: 'Направл.'
   Ramming Volume: 'Объём рэмминга'
   Raspberry Pi: Raspberry Pi
   Raspberry Pi (32-bit): Raspberry Pi (32-bit)
@@ -2786,6 +2873,7 @@ translations:
   Reset to Default: Сбросить до умолчания
   Reset to defaults: Сбросить по умолчанию
   Reset to original values: Сбросить к исходным значениям
+  Reset {}?: 'Сбросить {}?'
   Resetting: Сброс
   Resetting system: 'Сброс системы'
   Resetting...: Сброс...
@@ -2964,6 +3052,7 @@ translations:
   Screen dims to lower brightness after period of inactivity: Экран затемняется после
     периода простоя
   Screen lock and PIN settings: Блокировка экрана и настройки PIN
+  Screen is not permitted to shut down or reboot. Restart HelixScreen to fix it.: Экрану не разрешено выключаться или перезагружаться. Перезапустите HelixScreen, чтобы исправить это.
   Screen reboot failed: Ошибка перезагрузки экрана
   Screen shutdown failed: Ошибка выключения экрана
   Screen sleeps after the selected period of inactivity: Экран затемнится после выбранного
@@ -3043,6 +3132,7 @@ translations:
   Separate on/off macros. HelixScreen tracks the state.: Отдельные макросы вкл/выкл.
     HelixScreen отслеживает состояние.
   Server Setup: Настройка сервера
+  Service hours for the filter, nozzle, and rails: 'Моточасы фильтра, сопла и направляющих'
   Servo: Сервопривод
   Servo Down: 'Сервопривод вниз'
   Servo Move: 'Переместить сервопривод'
@@ -3189,8 +3279,18 @@ translations:
   Spoolman unavailable — filament weights may be stale: Spoolman недоступен — вес
     филамента может быть устаревшим
   Spoolman was not configured.: Spoolman не был настроен.
-  'Spoolman: %zu Spool%s': 'Spoolman: %zu катушк%s'
-  'Spoolman: %zu/%zu Spool%s': 'Spoolman: %zu/%zu катушк%s'
+  'Spoolman: %zu Spool': 'Spoolman: %zu катушка'
+  'Spoolman: %zu Spools':
+    one: 'Spoolman: %zu катушка'
+    few: 'Spoolman: %zu катушки'
+    many: 'Spoolman: %zu катушек'
+    other: 'Spoolman: %zu катушки'
+  'Spoolman: %zu/%zu Spool': 'Spoolman: %zu/%zu катушка'
+  'Spoolman: %zu/%zu Spools':
+    one: 'Spoolman: %zu/%zu катушка'
+    few: 'Spoolman: %zu/%zu катушки'
+    many: 'Spoolman: %zu/%zu катушек'
+    other: 'Spoolman: %zu/%zu катушки'
   SpoolmanDB search failed: 'Ошибка поиска в SpoolmanDB'
   Spools are off: "Катушки сняты"
   'Spools are on the bed: remove them and confirm before moving the printer': 'На столе лежат катушки: уберите их и подтвердите, прежде чем двигать принтер'
@@ -3214,6 +3314,7 @@ translations:
   Start Drying: Начать сушку
   Start Print: Начать печать
   Start Probing: Начать зондирование
+  Start a new {} h interval? The hours counted so far are discarded.: 'Начать новый интервал {} ч? Отсчитанные часы будут сброшены.'
   Start anyway?: 'Всё равно начать?'
   Start at: Начать с
   Start Check: Начать проверку
@@ -3615,6 +3716,7 @@ translations:
   Tools Used: Использовано инструментов
   'Tools: ': 'Инструменты: '
   Total Prints: Всего печатей
+  'Total print time: {} h': 'Общее время печати: {} ч'
   Touch & Input: Касание и ввод
   Touch Cal: Кал. касания
   Touch Calibration: Калибровка касания
@@ -3951,7 +4053,11 @@ translations:
   'exact: same material and color. material: same material. next: any ready slot, even a different material': 'exact: тот же материал и цвет. material: тот же материал. next: любой готовый слот, даже с другим материалом'
   extruder: экструдер
   extruder(s): экструдер(ы)
-  extruders: экструдеры
+  'extruders':
+    one: 'экструдер'
+    few: 'экструдера'
+    many: 'экструдеров'
+    other: 'экструдера'
   fans: вентиляторы
   faulted: сбой
   feeder error: 'ошибка фидера'
@@ -4001,6 +4107,7 @@ translations:
   remaining: осталось
   remaining before clog detection triggers: осталось до срабатывания обнаружения засора
   rendering: рендеринг
+  reset at {} h: 'сброс на {} ч'
   sleep {} min: сон через {} мин
   slots): слотов)
   started: запущено
@@ -4032,9 +4139,17 @@ translations:
   '{} command timed out': Время команды {} истекло
   '{} complete': '{} завершено'
   '{} configured item not found': Не найден {} настроенный элемент
-  '{} configured items not found': Не найдено {} настроенных элементов
+  '{} configured items not found':
+    one: 'Не найден {} настроенный элемент'
+    few: 'Не найдено {} настроенных элемента'
+    many: 'Не найдено {} настроенных элементов'
+    other: 'Не найдено {} настроенных элемента'
   '{} critical': 'критических: {}'
-  '{} critical hardware issues': '{} критических проблем с оборудованием'
+  '{} critical hardware issues':
+    one: '{} критическая проблема с оборудованием'
+    few: '{} критические проблемы с оборудованием'
+    many: '{} критических проблем с оборудованием'
+    other: '{} критические проблемы с оборудованием'
   '{} disabled': '{} выключено'
   '{} enabled': '{} включено'
   '{} failed: {}': 'Ошибка {}: {}'
@@ -4043,9 +4158,11 @@ translations:
   '{} filament • {}': '{} филамента • {}'
   '{} firmware': 'Прошивка {}'
   '{} h': '{} ч'
+  '{} h of {} h': '{} ч из {} ч'
   '{} heater turned off': Нагреватель {} выключен
   '{} is asking to connect to this printer.': '{} запрашивает подключение к этому принтеру.'
   '{} is blocked — manual intervention required': '{}: блокировка — требуется ручное вмешательство'
+  '{} is due: {} h reached': '{}: пора обслуживать, {} ч достигнуто'
   '{} is feeding the current print. Clear it after the print ends.': '{}: подаёт филамент для текущей печати. Удалите катушку после завершения печати.'
   '{} is installed but its backup-spool switching is turned off, so no automatic swap will happen.': '{} установлен, но переключение на резервную катушку выключено, поэтому автоматической замены не будет.'
   '{} is installed, but its backup-spool setting could not be read - do not count on an automatic swap.': '{} установлен, но прочитать его настройку резервной катушки не удалось - не рассчитывайте на автоматическую замену.'
@@ -4060,21 +4177,39 @@ translations:
   '{} matches.': '{} подходит.'
   '{} may cause unintended changes. Are you sure?': '{} может привести к непреднамеренным
     изменениям. Вы уверены?'
+  '{} meter reset': 'Счётчик «{}» сброшен'
   '{} min': '{} мин'
   '{} min ago': '{} мин. назад'
   '{} missing': 'отсутствует: {}'
-  '{} more taps to {} beta features': '{} нажатий до {} бета-функций'
+  '{} more taps to {} beta features':
+    one: '{} нажатие до {} бета-функций'
+    few: '{} нажатия до {} бета-функций'
+    many: '{} нажатий до {} бета-функций'
+    other: '{} нажатия до {} бета-функций'
   '{} needs the HelixPrint plugin. Printing original file.': 'Для {} нужен плагин HelixPrint. Печатается исходный файл.'
   '{} new': 'новых: {}'
   '{} new hardware available': 'Доступно нового оборудования: {}'
   '{} new plugins available. Enable them in Settings > Plugins.': 'Доступно новых плагинов: {}. Включите их в разделе Настройки > Плагины.'
-  '{} preset{}': '{} пресет{}'
-  '{} prints': '{} печатей'
+  '{} preset': '{} пресет'
+  '{} presets':
+    one: '{} пресет'
+    few: '{} пресета'
+    many: '{} пресетов'
+    other: '{} пресета'
+  '{} prints':
+    one: '{} печать'
+    few: '{} печати'
+    many: '{} печатей'
+    other: '{} печати'
   '{} queued': 'В очереди: {}'
   '{} serial': 'Серийный номер {}'
   '{} set to {}': '{} установлено на {}'
   '{} set to {} {}': '{} установлено на {} {}'
-  '{} slots': '{} слотов'
+  '{} slots':
+    one: '{} слот'
+    few: '{} слота'
+    many: '{} слотов'
+    other: '{} слота'
   '{} spool cleared': '{}: катушка удалена'
   '{} started': '{} запущено'
   '{} target set to {}°C': Целевая температура {} — {}°C
@@ -4086,4 +4221,5 @@ translations:
   '{} · {} · {}': '{} · {} · {}'
   '{} — response timed out': '{} — время ожидания ответа истекло'
   '{} → {}: no filament loaded.': '{} → {}: филамент не загружен.'
+  '{}% left': 'Осталось {}%'
   '{}:{:02} elapsed': прошло {}:{:02}

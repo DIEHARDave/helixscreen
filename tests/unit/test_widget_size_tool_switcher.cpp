@@ -24,6 +24,7 @@
 #include "../test_helpers/panel_widget_size_harness.h"
 #include "../test_helpers/tool_switcher_rig.h"
 #include "../test_helpers/tool_switcher_test_access.h"
+#include "../test_helpers/tool_topologies.h"
 #include "../test_helpers/update_queue_test_access.h"
 #include "ams_backend_mock.h"
 #include "ams_state.h"
@@ -65,21 +66,14 @@ void configure_tools(int count, int active_index = 0) {
     ToolState& ts = ToolState::instance();
     ts.deinit_subjects();
     ts.init_subjects(false);
-
-    ToolTopology topo;
-    topo.tool_count = count;
-    topo.active_tool = active_index;
-    ts.set_ams_topology(topo);
+    ts.set_ams_topology(helix::test::make_head_topology(count, active_index));
 }
 
 /// Re-applies the topology with a new tool_count/active_tool so a later
 /// call only flips the ONE subject the test cares about (tool_count_ or
 /// active_tool_), isolating which observer fires.
 void update_tools(int count, int active_index) {
-    ToolTopology topo;
-    topo.tool_count = count;
-    topo.active_tool = active_index;
-    ToolState::instance().set_ams_topology(topo);
+    ToolState::instance().set_ams_topology(helix::test::make_head_topology(count, active_index));
 }
 
 int subject_int(const char* name) {
@@ -252,7 +246,7 @@ TEST_CASE_METHOD(ToolSwitcherFixture,
     // One row of four wide segments.
     resize_content(h, 600, 60);
     process_lvgl(30);
-    REQUIRE(mode() == static_cast<int>(ToolSwitcherMode::RailWithPark));
+    REQUIRE(mode() == static_cast<int>(ToolSwitcherMode::RailWithActions));
     REQUIRE(ui::text_width("Tool 4", body) <= subject_int("tool_switcher_cell_w") - pad);
     CHECK(subject_int("tool_switcher_label_form") == static_cast<int>(ui::ToolLabelForm::Full));
     CHECK(subject_string(seg(0, "label")) == "Tool 1");
@@ -284,7 +278,7 @@ TEST_CASE_METHOD(ToolSwitcherFixture,
     // Two heads and Park in three cells on the 48 px floor.
     resize_content(h, 3 * 48 + 2 * 2, 60);
     process_lvgl(30);
-    REQUIRE(mode() == static_cast<int>(ToolSwitcherMode::RailWithPark));
+    REQUIRE(mode() == static_cast<int>(ToolSwitcherMode::RailWithActions));
     REQUIRE(subject_int("tool_switcher_cell_w") == 48);
 
     // "Left Extruder" does not fit, so every segment reads the G-code name its
@@ -303,7 +297,7 @@ TEST_CASE_METHOD(ToolSwitcherFixture,
     // widget measures the configured name, so the segments stay on the code.
     resize_content(h, 3 * 80 + 2 * 2, 60);
     process_lvgl(30);
-    REQUIRE(mode() == static_cast<int>(ToolSwitcherMode::RailWithPark));
+    REQUIRE(mode() == static_cast<int>(ToolSwitcherMode::RailWithActions));
     room = subject_int("tool_switcher_cell_w") - pad;
     REQUIRE(ui::text_width("Tool 1", body) <= room);
     REQUIRE(ui::text_width("Right Extruder", body) > room);
@@ -332,9 +326,7 @@ TEST_CASE_METHOD(ToolSwitcherFixture,
     ToolState& ts = ToolState::instance();
     ts.deinit_subjects();
     ts.init_subjects(false);
-    ToolTopology topo;
-    topo.tool_count = 4;
-    topo.active_tool = 0;
+    ToolTopology topo = helix::test::make_head_topology(4);
     topo.backend_index = 0;
     // Head 3 has no slot: nothing knows what it holds.
     topo.tool_to_slot = {0, 1, 2, -1};
@@ -401,7 +393,7 @@ TEST_CASE_METHOD(ToolSwitcherFixture,
     update_tools(2, 0);
     process_lvgl(30);
     CHECK(lv_subject_get_int(ToolState::instance().get_tool_count_subject()) == 2);
-    CHECK(mode() == static_cast<int>(ToolSwitcherMode::RailWithPark));
+    CHECK(mode() == static_cast<int>(ToolSwitcherMode::RailWithActions));
     CHECK(subject_string(seg(0, "label")) == expected_seg_label(0));
     CHECK(subject_string(seg(1, "label")) == expected_seg_label(1));
 
@@ -413,23 +405,19 @@ TEST_CASE_METHOD(ToolSwitcherFixture,
     CHECK(subject_string(seg(4, "label")) == expected_seg_label(4));
     CHECK(subject_string(seg(5, "label")) == expected_seg_label(5));
 
-    // The pools are sized once, whatever the count, and never past it.
-    CHECK(lv_xml_get_subject(nullptr, seg(ToolSwitcherWidget::kPoolSize - 1, "label").c_str()) !=
-          nullptr);
-    CHECK(lv_xml_get_subject(nullptr, seg(ToolSwitcherWidget::kPoolSize, "label").c_str()) ==
-          nullptr);
-
-    // More heads than the pools hold: the last slot is filled, nothing past
-    // it is touched, and the tile shows the face, whose sheet lists every head.
-    update_tools(ToolSwitcherWidget::kPoolSize + 4, 0);
+    // More heads than the rail draws: the pools grow to every head, the last
+    // is filled, and the tile shows the face, whose picker lists them all.
+    constexpr int kHeads = ToolSwitcherWidget::kMaxRailHeads + 4;
+    update_tools(kHeads, 0);
     process_lvgl(30);
     resize_content(h, 2000, 400);
     process_lvgl(30);
     CHECK(mode() != static_cast<int>(ToolSwitcherMode::Rail));
-    CHECK(mode() != static_cast<int>(ToolSwitcherMode::RailWithPark));
-    CHECK(subject_string(seg(ToolSwitcherWidget::kPoolSize - 1, "label")) ==
-          expected_seg_label(ToolSwitcherWidget::kPoolSize - 1));
-    CHECK(subject_int("tool_switcher_detail_rows") <= ToolSwitcherWidget::kPoolSize);
+    CHECK(mode() != static_cast<int>(ToolSwitcherMode::RailWithActions));
+    CHECK(subject_int("tool_switcher_heads") == kHeads);
+    CHECK(subject_int("tool_switcher_rail_heads") == 0);
+    REQUIRE(lv_xml_get_subject(nullptr, seg(kHeads - 1, "label").c_str()) != nullptr);
+    CHECK(subject_string(seg(kHeads - 1, "label")) == expected_seg_label(kHeads - 1));
 }
 
 // ============================================================================
@@ -489,9 +477,7 @@ TEST_CASE_METHOD(ToolSwitcherFixture,
     ToolState& ts = ToolState::instance();
     ts.deinit_subjects();
     ts.init_subjects(false);
-    ToolTopology topo;
-    topo.tool_count = 3;
-    topo.active_tool = -1;
+    ToolTopology topo = helix::test::make_head_topology(3, -1);
     topo.allows_empty_carriage = true;
     ts.set_ams_topology(topo);
     REQUIRE(ts.active_tool_index() == -1);
@@ -540,15 +526,16 @@ TEST_CASE_METHOD(ToolSwitcherFixture, "tool_switcher: the face marks an unknown 
 
 namespace {
 
-/// The label a picker row shows: whichever of its two forms is not hidden.
-std::string picker_row_text(lv_obj_t* row) {
-    for (const char* name : {"tool_btn_label", "tool_btn_code_label"}) {
-        lv_obj_t* label = lv_obj_find_by_name(row, name);
-        if (label && !lv_obj_has_flag(label, LV_OBJ_FLAG_HIDDEN)) {
-            return lv_label_get_text(label);
-        }
-    }
-    return {};
+/// The label a picker cell shows on its first line.
+std::string picker_row_text(lv_obj_t* cell) {
+    lv_obj_t* label = lv_obj_find_by_name(cell, "tool_switcher_seg_label");
+    return label ? lv_label_get_text(label) : std::string();
+}
+
+/// The picker cell's second line.
+std::string picker_row_sub(lv_obj_t* cell) {
+    lv_obj_t* label = lv_obj_find_by_name(cell, "tool_switcher_seg_sub");
+    return label ? lv_label_get_text(label) : std::string();
 }
 
 } // namespace
@@ -615,36 +602,41 @@ TEST_CASE_METHOD(ToolSwitcherFixture, "tool_switcher: a configured tool name is 
 }
 
 TEST_CASE_METHOD(ToolSwitcherFixture,
-                 "tool_switcher: the picker rows read in the form the card has room for",
+                 "tool_switcher: the picker cells read in the form every cell has room for",
                  "[widget_size][tool_switcher][1769]") {
-    configure_tools(3);
-    PanelWidgetHarness<ToolSwitcherWidget> h(test_screen(), state());
-    process_lvgl(30);
-
-    auto rows_after_opening_at = [&](int w, int hpx) {
-        h.resize(1, 1, w, hpx);
+    auto cells_after_opening = [&](PanelWidgetHarness<ToolSwitcherWidget>& h, size_t heads) {
+        h.resize(1, 1, 60, 60);
         process_lvgl(30);
-        REQUIRE(h.child("tool_switcher_face_view") != nullptr);
-        REQUIRE_FALSE(lv_obj_has_flag(h.child("tool_switcher_face_view"), LV_OBJ_FLAG_HIDDEN));
         ToolSwitcherTestAccess::show_picker(h.widget());
         lv_obj_t* list = ToolSwitcherTestAccess::picker_list(h.widget());
         REQUIRE(list != nullptr);
-        REQUIRE(lv_obj_get_child_count(list) == 3);
-        std::vector<std::string> texts;
-        for (uint32_t i = 0; i < 3; ++i) {
-            texts.push_back(picker_row_text(lv_obj_get_child(list, static_cast<int32_t>(i))));
+        REQUIRE(lv_obj_get_child_count(list) == heads);
+        std::vector<std::pair<std::string, std::string>> lines;
+        for (uint32_t i = 0; i < heads; ++i) {
+            lv_obj_t* cell = lv_obj_get_child(list, static_cast<int32_t>(i));
+            lines.emplace_back(picker_row_text(cell), picker_row_sub(cell));
         }
         ToolSwitcherTestAccess::hide_picker(h.widget());
         process_lvgl(30);
-        return texts;
+        return lines;
     };
 
-    // Short but wide: the card hangs off this tile at its
-    // width, so the rows have room for the full form.
-    CHECK(rows_after_opening_at(300, 30) ==
-          std::vector<std::string>{"Tool 1 (T0)", "Tool 2 (T1)", "Tool 3 (T2)"});
-    // A one-cell tile: the card is too narrow, so every row reads the G-code name.
-    CHECK(rows_after_opening_at(60, 60) == std::vector<std::string>{"T0", "T1", "T2"});
+    SECTION("generated names fit: the full form over two lines, whatever the tile") {
+        configure_tools(3);
+        PanelWidgetHarness<ToolSwitcherWidget> h(test_screen(), state());
+        process_lvgl(30);
+        CHECK(cells_after_opening(h, 3) ==
+              std::vector<std::pair<std::string, std::string>>{
+                  {"Tool 1", "T0"}, {"Tool 2", "T1"}, {"Tool 3", "T2"}});
+    }
+    SECTION("one name too long for its cell: every cell reads the G-code name") {
+        configure_named_tools({"Left Extruder", "Right Extruder"});
+        PanelWidgetHarness<ToolSwitcherWidget> h(test_screen(), state());
+        process_lvgl(30);
+        const auto lines = cells_after_opening(h, 2);
+        CHECK(lines[0].first == "T0");
+        CHECK(lines[1].first == "T1");
+    }
 }
 
 // ============================================================================
@@ -692,14 +684,16 @@ TEST_CASE_METHOD(ToolSwitcherFixture,
     REQUIRE(subject_int("tool_switcher_detail_rows") >= 2);
     CHECK(subject_string(detail(1, "text")).rfind("T2", 0) == 0);
 
-    // A one-cell tile: the segment-less face, whose sheet reads G-code names.
+    // A one-cell tile: the segment-less face, whose picker names the head by
+    // its G-code name too.
     h.resize(1, 1, 60, 60);
     process_lvgl(30);
     ToolSwitcherTestAccess::show_picker(h.widget());
     lv_obj_t* list = ToolSwitcherTestAccess::picker_list(h.widget());
     REQUIRE(list != nullptr);
     REQUIRE(lv_obj_get_child_count(list) == 2);
-    CHECK(picker_row_text(lv_obj_get_child(list, 1)) == "T2");
+    // The picker splits the full form like the rail: the name over "T2".
+    CHECK(picker_row_sub(lv_obj_get_child(list, 1)) == "T2");
     ToolSwitcherTestAccess::hide_picker(h.widget());
     process_lvgl(30);
 }

@@ -4137,7 +4137,8 @@ bool AmsBackendAd5xIfs::on_gcode_response_line(const std::string& line) {
         line.find("CHANGE_ZCOLOR") != std::string::npos) {
         // Menu-definition echo vs. executed command (#1065, bundle 482NB943).
         // zmod renders every COLOR dialog by echoing its buttons down the
-        // console as `// action:prompt_button <label>|<gcode>|<style>[|<hex>]`.
+        // console as `// action:prompt_button <label>|<gcode>|<hex>`, or in the
+        // older form `<label>|<gcode>|<style>|<hex>`.
         // Those payloads are the menu's OFFER LIST, not a record of anything
         // the firmware did — the "Select color" grid alone carries 24 distinct
         // CHANGE_ZCOLOR candidates. Running them through the extractor below

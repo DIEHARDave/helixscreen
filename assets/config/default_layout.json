@@ -394,6 +394,51 @@
       }
     },
     {
+      "slot": "tool_strip",
+      "placements": {
+        "large": {
+          "col": 8,
+          "row": 2,
+          "colspan": 8,
+          "rowspan": 2
+        },
+        "xlarge": {
+          "col": 8,
+          "row": 2,
+          "colspan": 8,
+          "rowspan": 2
+        },
+        "xxlarge": {
+          "col": 16,
+          "row": 8,
+          "colspan": 8,
+          "rowspan": 2
+        }
+      },
+      "alternatives": [
+        {
+          "cells": [
+            {
+              "candidates": [
+                {
+                  "id": "tool_switcher",
+                  "requires": [
+                    "ams_is_tool_changer"
+                  ]
+                }
+              ],
+              "at": [
+                0,
+                0,
+                8,
+                2
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
       "slot": "spool_env",
       "placements": {
         "micro": {
@@ -440,6 +485,26 @@
         }
       },
       "alternatives": [
+        {
+          "cells": [
+            {
+              "candidates": [
+                {
+                  "id": "tool_switcher",
+                  "requires": [
+                    "ams_is_tool_changer"
+                  ]
+                }
+              ],
+              "at": [
+                0,
+                0,
+                4,
+                2
+              ]
+            }
+          ]
+        },
         {
           "cells": [
             {
@@ -520,6 +585,26 @@
         }
       },
       "alternatives": [
+        {
+          "cells": [
+            {
+              "candidates": [
+                {
+                  "id": "tool_switcher",
+                  "requires": [
+                    "ams_is_tool_changer"
+                  ]
+                }
+              ],
+              "at": [
+                0,
+                0,
+                4,
+                2
+              ]
+            }
+          ]
+        },
         {
           "cells": [
             {
@@ -713,9 +798,9 @@
       ],
       [
         8,
-        2,
+        4,
         8,
-        4
+        2
       ]
     ],
     "xlarge": [
@@ -727,17 +812,17 @@
       ],
       [
         8,
-        2,
+        4,
         8,
-        4
+        2
       ]
     ],
     "xxlarge": [
       [
         16,
+        10,
         8,
-        8,
-        6
+        4
       ]
     ]
   },

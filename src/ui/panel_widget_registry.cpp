@@ -43,6 +43,7 @@ void register_job_queue_widget();
 void register_clog_detection_widget();
 void register_filament_buffer_widget();
 void register_print_stats_widget();
+void register_maintenance_widget();
 void register_gcode_console_widget();
 void register_bed_temperature_widget();
 void register_chamber_temperature_widget();
@@ -107,7 +108,7 @@ static std::vector<PanelWidgetDef> s_widget_defs = {
     {"power_device",     TR_NOOP("Power"),            "power_cycle",      TR_NOOP("Switch a power device on or off"),            "power_device_count", "Requires Moonraker power device",     CAT_CONTROLS, false, 2, 2, 1, 1, BAND_COLSPAN, BAND_COLSPAN, true, true, true},
     {"network",          TR_NOOP("Network"),          "wifi_strength_4",  TR_NOOP("Wi-Fi or ethernet connection status"),          nullptr,              nullptr,                               CAT_SYSTEM,   false, 2, 2, 1, 1, BAND_COLSPAN, BAND_COLSPAN, false, true, true},
     {"firmware_restart", TR_NOOP("Firmware Restart"),  "cog_refresh",      TR_NOOP("Restart Klipper without rebooting"), nullptr,              nullptr,                               CAT_SYSTEM,   false, 2, 2, 1, 1, BAND_COLSPAN, BAND_COLSPAN, false, true, true},
-    {"tool_switcher",    TR_NOOP("Tool Switcher"),     "arrow_left_right", TR_NOOP("Switch the active tool or extruder"),    nullptr,              nullptr,                               CAT_CONTROLS, false, 2, 2, 1, 1, 4, 4, false, true, true},
+    {"tool_switcher",    TR_NOOP("Tool Switcher"),     "arrow_left_right", TR_NOOP("Switch the active tool or extruder"),    nullptr,              nullptr,                               CAT_CONTROLS, false, 2, 2, 1, 1, 8, 4, false, true, true},
     {"led",              TR_NOOP("LED Light"),         "lightbulb_outline",TR_NOOP("Turn the printer's lights on or off"),        "led_controllable",   "No LED strips detected",              CAT_CONTROLS, true,  2, 2, 1, 1, BAND_COLSPAN, BAND_COLSPAN, true, true, true},
     {"led_controls",     TR_NOOP("LED Controls"),      "led_strip",        TR_NOOP("Open color and brightness controls"),     "led_has_devices",    "No LED strips detected",              CAT_CONTROLS, false, 2, 2, 1, 1, BAND_COLSPAN, BAND_COLSPAN, false, true, true},
     {"fan_stack",        TR_NOOP("Fan Speeds"),        "fan",              TR_NOOP("Part, hotend, and auxiliary fan speeds"),       nullptr,              nullptr,                               CAT_TEMP,     true,  2, 2, 2, 2, 6, 4, true, true, true},
@@ -149,6 +150,7 @@ static std::vector<PanelWidgetDef> s_widget_defs = {
     {"clog_detection",   TR_NOOP("Clog Detection"),    "gauge",            TR_NOOP("Clog and flow health while printing"),   "clog_meter_mode",    "Requires clog detection hardware",    CAT_FILAMENT, false, 4, 2, 4, 2, 8, 4, false, true, true},
     {"filament_buffer",  TR_NOOP("Filament Buffer"),   "arrow_up_down",    TR_NOOP("Filament buffer position against its target"), "buffer_present", "Requires a filament pressure sensor or sync feedback", CAT_FILAMENT, false, 2, 2, 2, 2, 4, 2, false, false, false},
     {"print_stats",      TR_NOOP("Print Stats"),       "printer_3d",       TR_NOOP("Print hours this week and lifetime totals"),      nullptr,              nullptr,                               CAT_PRINT,    false, 4, 4, 2, 1, 6, 4, false, true, true},
+    {"maintenance",      TR_NOOP("Maintenance"),       "wrench",           TR_NOOP("Service hours for the filter, nozzle, and rails"), nullptr,           nullptr,                               CAT_SYSTEM,   false, 2, 2, 1, 1, 8, 4, false, true, true},
     // Two cells square by default: at two cells tall the tile shows a live tail
     // of the console output, and below that it is the icon tile.
     {"gcode_console",    TR_NOOP("GCode Console"),     "console",          TR_NOOP("Send G-code and read the replies"),    nullptr,              nullptr,                               CAT_CONTROLS, false, 4, 4, 1, 2, BAND_COLSPAN, BAND_COLSPAN, false, true, true},
@@ -380,6 +382,7 @@ void init_widget_registrations() {
     register_clog_detection_widget();
     register_filament_buffer_widget();
     register_print_stats_widget();
+    register_maintenance_widget();
     register_gcode_console_widget();
     register_macros_widget();
     register_motion_widget();

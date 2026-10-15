@@ -379,6 +379,31 @@ bool SettingsManager::clear_bed_drying_record() {
 }
 
 // =============================================================================
+// MAINTENANCE METERS
+// =============================================================================
+
+std::optional<helix::maintenance::State>
+SettingsManager::get_maintenance_record(const std::string& printer_prefix) const {
+    Config* config = Config::get_instance();
+    const json j = config->get<json>(printer_prefix + "maintenance", json());
+    if (!j.is_object()) {
+        return std::nullopt;
+    }
+    return helix::maintenance::from_json(j);
+}
+
+bool SettingsManager::set_maintenance_record(const std::string& printer_prefix,
+                                             const helix::maintenance::State& state) {
+    Config* config = Config::get_instance();
+    config->set<json>(printer_prefix + "maintenance", helix::maintenance::to_json(state));
+    if (!config->save()) {
+        spdlog::error("[SettingsManager] Could not save the maintenance meters");
+        return false;
+    }
+    return true;
+}
+
+// =============================================================================
 // TOOLHEAD STYLE
 // =============================================================================
 

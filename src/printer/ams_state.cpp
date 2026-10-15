@@ -423,6 +423,7 @@ void AmsState::reset_backend_subjects() {
     lv_subject_set_int(&filament_runout_, 0);
     lv_subject_set_int(&bypass_active_, 0);
     lv_subject_set_int(&supports_bypass_, 0);
+    lv_subject_set_int(&ams_feeder_open_, 0);
     lv_subject_set_int(&ams_slot_count_, 0);
     lv_subject_set_int(&active_tool_port_present_, 1);
 
@@ -597,9 +598,10 @@ void AmsState::sync_from_backend() {
     const AmsSystemInfo& info = *snapshot;
 
     sync_system_subjects(info);
-    sync_tool_topology(backend);
+    sync_tool_topology(backend, info);
     sync_filament_runout(info);
     sync_bypass(backend, info);
+    sync_feeder(backend);
     lv_subject_set_int(&ams_slot_count_, info.total_slots);
 
     // Update tool change progress raw data (text formatting in UI layer)
@@ -756,11 +758,11 @@ void AmsState::sync_system_subjects(const AmsSystemInfo& info) {
     lv_subject_set_int(&ams_current_tool_, info.current_tool);
 }
 
-void AmsState::sync_tool_topology(AmsBackend* backend) {
+void AmsState::sync_tool_topology(AmsBackend* backend, const AmsSystemInfo& info) {
     // Push tool topology to ToolState when the active backend multiplexes tools.
     // Otherwise leave ToolState in its extruder-enumerated state.
     auto& tool_state = helix::ToolState::instance();
-    if (auto topo = helix::build_ams_topology(backend, 0)) {
+    if (auto topo = helix::build_ams_topology(backend, 0, info)) {
         tool_state.clear_backend_active_tool();
         tool_state.set_ams_topology(*topo);
         return;
@@ -846,6 +848,14 @@ void AmsState::sync_filament_runout(const AmsSystemInfo& info) {
     // removal this unload caused, and anything after a reload is a new event.
     if (info.filament_loaded) {
         runout_grace_.on_filament_loaded();
+    }
+}
+
+void AmsState::sync_feeder(AmsBackend* backend) {
+    const int open = backend->supports_feeder_control() && backend->feeder_open() ? 1 : 0;
+    if (lv_subject_get_int(&ams_feeder_open_) != open) {
+        spdlog::debug("[AmsState] feeder open -> {}", open);
+        lv_subject_set_int(&ams_feeder_open_, open);
     }
 }
 

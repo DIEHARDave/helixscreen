@@ -24,6 +24,13 @@ using ams_state_detail::assert_main_thread;
 
 // Declared in ams_tool_topology.h; see there for what nullopt means to callers.
 std::optional<helix::ToolTopology> build_ams_topology(AmsBackend* backend, int backend_index) {
+    if (!backend || !backend->owns_tool_mapping_table())
+        return std::nullopt;
+    return build_ams_topology(backend, backend_index, backend->get_system_info());
+}
+
+std::optional<helix::ToolTopology> build_ams_topology(AmsBackend* backend, int backend_index,
+                                                      const AmsSystemInfo& info) {
     if (!backend)
         return std::nullopt;
     // Table ownership, NOT remap capability. Two different questions that part
@@ -34,7 +41,7 @@ std::optional<helix::ToolTopology> build_ams_topology(AmsBackend* backend, int b
     std::vector<int> mapping = backend->get_tool_mapping();
     if (mapping.empty()) {
         // Fallback: default 1:1 from slot count
-        int n = backend->get_system_info().total_slots;
+        int n = info.total_slots;
         mapping.resize(static_cast<size_t>(n));
         for (int i = 0; i < n; ++i)
             mapping[static_cast<size_t>(i)] = i;
@@ -42,6 +49,12 @@ std::optional<helix::ToolTopology> build_ams_topology(AmsBackend* backend, int b
 
     helix::ToolTopology topo;
     topo.tool_count = static_cast<int>(mapping.size());
+    // Which head each tool prints through: the extruder its slot feeds.
+    topo.tool_extruder.reserve(mapping.size());
+    for (const int slot : mapping) {
+        const SlotInfo* info_slot = slot >= 0 ? info.get_slot_global(slot) : nullptr;
+        topo.tool_extruder.push_back(info_slot ? info_slot->extruder_name : std::string());
+    }
     topo.tool_to_slot = std::move(mapping);
     topo.active_tool = backend->get_current_tool();
     topo.allows_empty_carriage = backend->carriage_can_be_empty();

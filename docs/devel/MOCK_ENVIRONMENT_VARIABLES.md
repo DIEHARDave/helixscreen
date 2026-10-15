@@ -487,6 +487,10 @@ separate status frames rather than collapsing into one update. `SELECT_TOOL`,
 The default `mmu` object is suppressed in these modes - it would detect Happy Hare and
 stand a second AMS backend up alongside the changer.
 
+`HELIX_MOCK_MEDUSA_SENSOR_ERROR=1` latches the dock-sensor fault into every MedusaHC frame
+(`current_tool: -2`, and `sensor_error: true` in the controller schema), so the backend
+raises the changer fault the tool switcher draws on every head but the mounted one.
+
 #### `ifs-module` - mock hardware, real backend
 
 Same rule as the MedusaHC modes: no `AmsBackendMock` is built. The mock publishes the

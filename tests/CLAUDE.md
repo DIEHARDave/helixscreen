@@ -475,11 +475,32 @@ passes straight through the host's jobpool shim and no test draws from or reads 
 machine's build pool. A test of pool handling names a fake through `HELIX_JOBPOOL` and
 unsets `JOBPOOL` (`test_helix_claim_jobs.bats`).
 
+**No test runs make in the tree under test.** A gate runs this suite while its own lanes
+build there, and a second make in that tree deletes the test binary they are about to run
+(`prune-orphan-test-objs`). `make -n` is no safer: it still runs every recipe line that
+names `$(MAKE)`, and parsing the Makefile writes stamps under `build/`. The sandbox puts a
+guard in front of `make` and `gmake` (shim plus exported function, deferring to a test's
+own make mock) that blocks and records any make whose directory is the tree or inside it,
+reading `-C` alone or in a cluster (`-sC`), `--directory` and its prefixes (`--dir=`). A
+make that never meets either layer passes no guard: one called by absolute path
+(`/usr/bin/make`), and one a non-bash callee runs under a replaced PATH (`env
+PATH=/usr/bin:/bin make -C ...`, or `env PATH=... sh -c 'make ...'`), since neither
+the shim nor the exported function reaches it. Those shapes are left to review, and
+`test_sandbox_gate.bats` lints the source for a make pointed at a repo-root
+variable or `$BATS_TEST_DIRNAME/../..` (exception: `# REAL_TREE_MAKE_OK: <reason>` inside
+the @test). A test that needs the real Makefile runs it in `scratch_tree` (helpers.bash):
+every top-level entry symlinked, with a `build/` of its own, safe for parsing, print-style
+targets and recipes that write only under `build/` or to paths the test overrides.
+`scratch_make` runs make there, `make_db [vars]` prints the database parsed there, and
+`run_mk_fragment` runs one target's fragment of an `mk/` file as a scratch Makefile.
+`path_without_jobpool` drops the host's jobpool from PATH and keeps the guard. The suite also unsets what an enclosing make hands down (`MAKEFLAGS`,
+`MAKELEVEL`, `BATS_REQUIRED`, the Makefile's exports), so a test behaves the same under
+`make test-shell` as under bare `bats`.
+
 On a host whose bare `make` is older than the Makefile's GNU make 4.2 floor (Apple's
-/usr/bin/make is 3.81; Homebrew's 4.x installs as `gmake`), the sandbox also forwards
-`make` to `gmake` for the whole run — shim plus exported function, like the blocked
-commands, and deferring to a test's own make mock. A Linux make, and the jobpool shim,
-parse as 4.2+ and are left untouched (`test_sandbox_gate.bats`).
+/usr/bin/make is 3.81; Homebrew's 4.x installs as `gmake`), that guard hands make calls to
+`gmake`. A Linux make, and the jobpool shim, parse as 4.2+ and are used as found
+(`test_sandbox_gate.bats`).
 
 To use one of those commands, mock it: `mock_command_script "killall" 'exit 0'` in
 `setup()`. A mock is found first, so the sandbox never sees the call.

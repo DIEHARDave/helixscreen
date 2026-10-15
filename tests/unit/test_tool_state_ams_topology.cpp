@@ -7,6 +7,7 @@
 #include "ams_backend.h"
 #include "ams_backend_ace.h"
 #include "ams_backend_afc.h"
+#include "ams_backend_mock.h"
 #include "ams_backend_snapmaker.h"
 #include "ams_backend_toolchanger.h"
 #include "ams_state.h"
@@ -18,6 +19,7 @@
 #include "test_helpers/log_capture.h"
 #include "test_helpers/registered_backend.h"
 #include "test_helpers/snapmaker_test_access.h"
+#include "test_helpers/tool_topologies.h"
 #include "tool_state.h"
 
 #include <string>
@@ -972,4 +974,144 @@ TEST_CASE("A lane backend's topology does not allow an empty carriage",
     auto topo = helix::build_ams_topology(&afc, 0);
     REQUIRE(topo.has_value());
     CHECK_FALSE(topo->allows_empty_carriage);
+}
+
+// =============================================================================
+// Physical heads on a hub-fed rig. A StealthChanger whose AFC units feed some
+// heads through hubs publishes one tool per lane, so the tool list is longer
+// than the head list, and each lane tool must keep the extruder it prints
+// through.
+// =============================================================================
+
+namespace {
+
+/// Seven heads, as klipper-toolchanger enumerates them.
+helix::PrinterDiscovery make_seven_head_discovery() {
+    nlohmann::json objects = nlohmann::json::array({"toolchanger"});
+    for (int i = 0; i < 7; ++i) {
+        objects.push_back("tool T" + std::to_string(i));
+        objects.push_back(i == 0 ? std::string("extruder") : "extruder" + std::to_string(i));
+    }
+    helix::PrinterDiscovery disc;
+    disc.parse_objects(objects);
+    return disc;
+}
+
+} // namespace
+
+TEST_CASE_METHOD(ToolStateFixture, "A hub-fed lane tool keeps the extruder its lane feeds",
+                 "[tool-state][ams-topology][physical-heads]") {
+    auto& ts = helix::ToolState::instance();
+    ts.init_tools(make_seven_head_discovery());
+    REQUIRE(ts.tool_count() == 7);
+
+    ts.set_ams_topology(helix::test::make_hub_topology());
+    UpdateQueue::instance().drain();
+
+    REQUIRE(ts.tool_count() == 18);
+    const auto& tools = ts.tools();
+    CHECK(tools[5].extruder_name == std::optional<std::string>("extruder4"));
+    CHECK(tools[8].extruder_name == std::optional<std::string>("extruder5"));
+    CHECK(tools[12].extruder_name == std::optional<std::string>("extruder6"));
+    CHECK(tools[17].extruder_name == std::optional<std::string>("extruder6"));
+    // A lane tool takes its head's fan, not the fan of the tool its index
+    // happened to land on.
+    CHECK(tools[5].fan_name == tools[4].fan_name);
+    CHECK(ts.extruder_count() == 7);
+
+    ts.clear_ams_topology();
+    UpdateQueue::instance().drain();
+}
+
+TEST_CASE_METHOD(ToolStateFixture, "physical_heads collapses hub lanes onto their head",
+                 "[tool-state][ams-topology][physical-heads]") {
+    auto& ts = helix::ToolState::instance();
+    ts.init_tools(make_seven_head_discovery());
+    ts.set_ams_topology(helix::test::make_hub_topology());
+    UpdateQueue::instance().drain();
+
+    const auto heads = ts.physical_heads();
+    REQUIRE(heads.size() == 7);
+    CHECK(heads[0].tool_indices == std::vector<int>{0});
+    CHECK(heads[4].extruder_name == std::optional<std::string>("extruder4"));
+    CHECK(heads[4].tool_indices == std::vector<int>{4, 5, 6, 7});
+    CHECK(heads[5].tool_indices == std::vector<int>{8, 9, 10, 11});
+    CHECK(heads[6].extruder_name == std::optional<std::string>("extruder6"));
+    CHECK(heads[6].tool_indices == std::vector<int>{12, 13, 14, 15, 16, 17});
+
+    // A head stands for its mounted lane while mounted, else its lowest.
+    CHECK(heads[5].representative_tool(9) == 9);
+    CHECK(heads[5].representative_tool(0) == 8);
+    CHECK(heads[5].representative_tool(-1) == 8);
+    CHECK(helix::head_index_for_tool(heads, 14) == 6);
+    CHECK(helix::head_index_for_tool(heads, 18) == -1);
+
+    ts.clear_ams_topology();
+    UpdateQueue::instance().drain();
+}
+
+TEST_CASE("physical_heads keeps a tool naming no extruder as a head of its own",
+          "[tool-state][physical-heads]") {
+    std::vector<helix::ToolInfo> tools(3);
+    tools[0].extruder_name = "extruder";
+    tools[1].extruder_name = std::nullopt;
+    tools[2].extruder_name = std::nullopt;
+    const auto heads = helix::physical_heads(tools);
+    REQUIRE(heads.size() == 3);
+    CHECK_FALSE(heads[1].extruder_name.has_value());
+    CHECK(heads[2].tool_indices == std::vector<int>{2});
+}
+
+TEST_CASE("build_ams_topology carries each lane's extruder",
+          "[tool-state][ams-topology][physical-heads]") {
+    helix::AmsBackendMock mock(4);
+    mock.set_stealth_mode(true);
+    auto topo = helix::build_ams_topology(&mock, 0);
+    REQUIRE(topo.has_value());
+    REQUIRE(topo->tool_count == 18);
+    REQUIRE(topo->tool_extruder.size() == 18);
+    CHECK(topo->tool_extruder[0] == "extruder");
+    CHECK(topo->tool_extruder[7] == "extruder4");
+    CHECK(topo->tool_extruder[12] == "extruder6");
+}
+
+TEST_CASE_METHOD(ToolStateFixture,
+                 "A lane naming an extruder no tool carries keeps its tool's own extruder",
+                 "[tool-state][ams-topology][physical-heads]") {
+    auto& ts = helix::ToolState::instance();
+    ts.init_tools(make_seven_head_discovery());
+    REQUIRE(ts.tools()[1].extruder_name == std::optional<std::string>("extruder1"));
+
+    // A backend reporting its own section name rather than the Klipper
+    // extruder's: nothing heats under that name.
+    auto topo = helix::test::make_head_topology(7);
+    topo.tool_extruder[1] = "AFC_extruder_left";
+    ts.set_ams_topology(topo);
+    UpdateQueue::instance().drain();
+
+    REQUIRE(ts.tool_count() == 7);
+    CHECK(ts.tools()[1].extruder_name == std::optional<std::string>("extruder1"));
+    CHECK(ts.tools()[1].effective_heater() == "extruder1");
+    CHECK(ts.extruder_count() == 7);
+
+    ts.clear_ams_topology();
+    UpdateQueue::instance().drain();
+}
+
+TEST_CASE_METHOD(ToolStateFixture, "physical_heads follows a tool's extruder changing in status",
+                 "[tool-state][physical-heads]") {
+    auto& ts = helix::ToolState::instance();
+    ts.init_tools(make_seven_head_discovery());
+    REQUIRE(ts.physical_heads().size() == 7);
+
+    // T1 reports that it prints through T0's extruder: one head fewer.
+    ts.update_from_status({{"tool T1", {{"extruder", "extruder"}}}});
+    CHECK(ts.physical_heads().size() == 6);
+    CHECK(ts.physical_heads()[0].tool_indices == std::vector<int>{0, 1});
+    CHECK(ts.heated_heads().size() == 6);
+
+    // And a tool that reports none is a head of its own, with no heater.
+    ts.update_from_status({{"tool T1", {{"extruder", ""}}}});
+    CHECK(ts.physical_heads().size() == 7);
+    CHECK(ts.heated_heads().size() == 6);
 }

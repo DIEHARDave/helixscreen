@@ -17,29 +17,39 @@
   <view name="tool_switcher_root"
         extends="lv_obj" width="100%" height="100%" style_pad_all="#space_md" scrollable="false" style_bg_opa="0"
         style_border_width="0">
-    <!-- Rail and RailWithPark: a segment per head, then the detail block when
-         the tile is tall enough for one. -->
+    <!-- Rail and RailWithActions: a segment per head, then the detail block
+         when the tile is tall enough for one. -->
     <!-- SIZE_OK: the 2 px gap is kRailGap, which the widget measures cells with -->
     <lv_obj name="tool_switcher_rail_view"
             width="100%" height="100%" flex_flow="column" style_flex_cross_place="center" style_pad_all="0"
             style_pad_gap="2" style_bg_opa="0" style_border_width="0" scrollable="false">
       <bind_flag_if_gt subject="tool_switcher_mode" flag="hidden" ref_value="1"/>
       <!-- The repeat is the rail's only child: a rebuilt expansion is appended
-           to the end of its parent. So Park rides in every iteration and shows
-           only after the last head. -->
+           to the end of its parent. So the action cells (Park, then the feeder)
+           ride in every iteration and show only after the last head, each on a
+           backend that offers it. -->
       <!-- SIZE_OK: kRailGap -->
       <lv_obj name="tool_switcher_rail"
               width="100%" height="content" flex_flow="row_wrap" style_pad_all="0" style_pad_gap="2"
               style_radius="#border_radius" style_clip_corner="true" style_bg_opa="0" style_border_width="0"
               scrollable="false">
-        <repeat count="tool_count">
+        <repeat count="tool_switcher_rail_heads">
           <tool_switcher_segment name="tool_switcher_seg_${i}" index="${i}"/>
           <lv_obj name="tool_switcher_rail_park_${i}"
                   style_pad_all="0" style_bg_opa="0" style_border_width="0" scrollable="false">
-            <bind_flag_if cond="tool_switcher_mode ne 0 or tool_count ne ${i + 1}" flag="hidden"/>
+            <bind_flag_if cond="tool_switcher_mode ne 0 or tool_switcher_rail_heads ne ${i + 1} or tool_switcher_park_supported eq 0"
+                          flag="hidden"/>
             <bind_style_prop prop="width" subject="tool_switcher_cell_w"/>
             <bind_style_prop prop="height" subject="tool_switcher_cell_h"/>
             <tool_switcher_park_segment name="tool_switcher_rail_park_btn_${i}" width="100%" height="100%"/>
+          </lv_obj>
+          <lv_obj name="tool_switcher_rail_feeder_${i}"
+                  style_pad_all="0" style_bg_opa="0" style_border_width="0" scrollable="false">
+            <bind_flag_if cond="tool_switcher_mode ne 0 or tool_switcher_rail_heads ne ${i + 1} or tool_switcher_feeder_supported eq 0"
+                          flag="hidden"/>
+            <bind_style_prop prop="width" subject="tool_switcher_cell_w"/>
+            <bind_style_prop prop="height" subject="tool_switcher_cell_h"/>
+            <tool_switcher_feeder_segment name="tool_switcher_rail_feeder_btn_${i}" width="100%" height="100%"/>
           </lv_obj>
         </repeat>
       </lv_obj>

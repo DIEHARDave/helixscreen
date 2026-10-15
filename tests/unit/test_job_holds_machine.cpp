@@ -344,7 +344,7 @@ constexpr GuardedFile kGuardedFiles[] = {
     {"ui_xml/probe_bltouch_panel.xml", 2},
     {"ui_xml/probe_beacon_panel.xml", 2},
     {"ui_xml/temp_graph_overlay.xml", 2},
-    {"ui_xml/tool_switcher_picker.xml", 1},
+    {"ui_xml/components/tool_switcher_feeder_segment.xml", 1},
     {"ui_xml/components/tool_switcher_park_segment.xml", 1},
 };
 
@@ -433,6 +433,7 @@ constexpr const char* kNoMachineControlFiles[] = {
     "ui_xml/components/panel_widget_led.xml",
     "ui_xml/components/panel_widget_led_controls.xml",
     "ui_xml/components/panel_widget_lock.xml",
+    "ui_xml/components/panel_widget_maintenance.xml",
     "ui_xml/components/panel_widget_macros.xml",
     "ui_xml/components/panel_widget_motion.xml",
     "ui_xml/components/panel_widget_network.xml",
@@ -471,7 +472,6 @@ constexpr const char* kNoMachineControlFiles[] = {
     // refuses the change, or spools on the bed) rather than moves_machine,
     // which also holds through a pause, where the change is offered behind a
     // confirmation.
-    "ui_xml/components/tool_picker_button.xml",
     "ui_xml/components/tool_switcher_face.xml",
     "ui_xml/components/tool_switcher_segment.xml",
     "ui_xml/components/upgrade_banner.xml",
@@ -514,6 +514,7 @@ constexpr const char* kNoMachineControlFiles[] = {
     "ui_xml/led_white_tone.xml",
     "ui_xml/machine_limits_overlay.xml",
     "ui_xml/macro_buttons_overlay.xml",
+    "ui_xml/maintenance_overlay.xml",
     "ui_xml/macro_card.xml",
     "ui_xml/macro_panel.xml",
     "ui_xml/macro_param_modal.xml",
