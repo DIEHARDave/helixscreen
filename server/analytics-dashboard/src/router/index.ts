@@ -52,6 +52,18 @@ export const router = createRouter({
       component: PrintsView,
       meta: { requiresAuth: true }
     },
+    {
+      path: '/devices',
+      name: 'devices',
+      component: () => import('@/views/DevicesView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/device/:id',
+      name: 'device',
+      component: () => import('@/views/DeviceView.vue'),
+      meta: { requiresAuth: true }
+    },
     // Old bookmarks land on the tab that holds their content, filters intact.
     ...LEGACY_ROUTES.map((path): RouteRecordRaw => ({
       path,

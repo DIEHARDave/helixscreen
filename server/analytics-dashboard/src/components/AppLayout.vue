@@ -22,6 +22,7 @@
     <main class="content">
       <div class="content-header">
         <FilterBar />
+        <router-link :to="navTo('/devices')" class="devices-link">Devices</router-link>
       </div>
       <div class="content-body">
         <Breadcrumb class="content-breadcrumb" />
@@ -160,6 +161,19 @@ function handleLogout() {
   padding: 16px 32px;
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
+}
+
+.content-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.devices-link {
+  color: var(--accent-blue);
+  font-size: 13px;
+  white-space: nowrap;
 }
 
 .content-body {
