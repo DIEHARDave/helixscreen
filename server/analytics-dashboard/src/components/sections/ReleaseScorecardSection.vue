@@ -54,16 +54,26 @@
         <button v-if="selected !== null" class="reset" @click="emit('reset')">Show newest</button>
       </h3>
       <div class="version-pills">
-        <button
-          v-for="v in available"
-          :key="v"
-          class="version-pill"
-          :class="{ active: shown.has(v), disabled: !shown.has(v) && shown.size >= MAX_VERSIONS }"
-          :disabled="!shown.has(v) && shown.size >= MAX_VERSIONS"
-          @click="emit('toggle', v)"
-        >
-          {{ v }}
-        </button>
+        <template v-for="chip in chips" :key="chip.key">
+          <button
+            v-if="chip.expandable"
+            class="version-pill group"
+            :class="{ open: chip.expanded, 'has-selection': !chip.expanded && chip.shown > 0 }"
+            :title="rowHint(chip)"
+            @click="filters.toggleExpand(chip.key)"
+          >
+            {{ rowLabel(chip) }}<span v-if="!chip.expanded && chip.shown > 0" class="group-shown">{{ chip.shown }} shown</span>
+          </button>
+          <button
+            v-else
+            class="version-pill"
+            :class="{ active: chip.shown > 0, disabled: atLimit(chip) }"
+            :disabled="atLimit(chip)"
+            @click="emit('toggle', chip.key)"
+          >
+            {{ chip.label }}
+          </button>
+        </template>
       </div>
     </div>
   </DashSection>
@@ -78,9 +88,11 @@ import NoData from '@/components/NoData.vue'
 import { useDashData } from '@/composables/useDashData'
 import { api } from '@/services/api'
 import type { ReleasesData } from '@/services/api'
-import { compareVersions } from '@/utils/chart'
+import { useFiltersStore } from '@/stores/filters'
+import { rowHint, rowLabel } from '@/utils/drill'
 import { formatMB, formatRate, ppChange, unreportedNote } from '@/utils/format'
 import { seriesColor } from '@/utils/series'
+import { versionChips, type Grouped } from '@/utils/versions'
 
 type Release = ReleasesData['versions'][number]
 
@@ -101,12 +113,20 @@ const props = defineProps<{
 const emit = defineEmits<{ toggle: [version: string]; reset: [] }>()
 
 const { data: adoption, span } = useDashData(api.getAdoption)
-
-const available = computed(() =>
-  (adoption.value?.versions ?? []).map((v) => v.name).sort((a, b) => compareVersions(b, a))
-)
+const filters = useFiltersStore()
 
 const shown = computed(() => new Set(props.rows.map((r) => r.version)))
+
+// Older lines and unreleased betas collapse to one chip that opens in place,
+// as on the version charts; the open groups live in the URL.
+const chips = computed(() =>
+  versionChips(adoption.value?.versions ?? [], new Set(filters.expand), shown.value)
+)
+
+/** A version not shown cannot be added once the worker's limit is reached. */
+function atLimit(chip: Grouped & { shown: number }): boolean {
+  return chip.shown === 0 && shown.value.size >= MAX_VERSIONS
+}
 
 const note = computed(() => {
   const na = props.notApplicable
@@ -233,6 +253,29 @@ function successRateClass(rate: number | null): string {
   background: rgba(59, 130, 246, 0.15);
   border-color: var(--accent-blue);
   color: var(--accent-blue);
+}
+
+.version-pill.group {
+  border-style: dashed;
+}
+
+.version-pill.group.open {
+  border-style: solid;
+  color: var(--text-primary);
+}
+
+.version-pill.has-selection {
+  border-style: solid;
+  border-color: var(--accent-blue);
+  color: var(--accent-blue);
+}
+
+.group-shown {
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 8px;
+  background: rgba(59, 130, 246, 0.15);
+  font-size: 11px;
 }
 
 .version-pill.disabled {

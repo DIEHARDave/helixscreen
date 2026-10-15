@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { groupVersionRates, groupVersions, olderLines, ungrouped } from '../../../analytics-dashboard/src/utils/versions'
+import { groupVersionRates, groupVersions, olderLines, ungrouped, versionChips } from '../../../analytics-dashboard/src/utils/versions'
 import { planActivation, rowAction, rowHint, rowLabel, single } from '../../../analytics-dashboard/src/utils/drill'
 import { mergeOptions, rateAxis } from '../../../analytics-dashboard/src/utils/chart'
 import { emptyPlaceholder, notReportedPer, ppChange, rangeLabel, unreportedNote } from '../../../analytics-dashboard/src/utils/format'
@@ -359,5 +359,26 @@ describe('isRenderError', () => {
     ]) {
       expect(isRenderError(info), String(info)).toBe(false)
     }
+  })
+})
+
+describe('versionChips', () => {
+  it('groups the picker like the charts and counts shown members per chip', () => {
+    const chips = versionChips(rows(LIVE), new Set(), new Set(['1.0.5', '0.99.30']))
+    expect(chips.map((c) => [c.label, c.shown])).toEqual([
+      ['1.1.0 betas (2)', 0],
+      ['1.0.5', 1],
+      ['1.0.4', 0],
+      ['1.0.0', 0],
+      ['0.99.x (2 versions)', 1]
+    ])
+  })
+  it('lists an open line as its header and its members, each counted on its own', () => {
+    const chips = versionChips(rows(LIVE), new Set(['line:0.99']), new Set(['0.99.30']))
+    expect(chips.slice(-3).map((c) => [c.label, c.expanded ?? false, c.shown])).toEqual([
+      ['0.99.x ▾', true, 1],
+      ['0.99.118', false, 0],
+      ['0.99.30', false, 1]
+    ])
   })
 })
