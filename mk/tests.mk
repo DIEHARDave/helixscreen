@@ -308,7 +308,6 @@ DNS_RESOLV_OBJ := $(OBJ_DIR)/tests/dns_resolv.o
 # Group 2: Files where ui_test_utils.o provides stub implementations
 # - ui_notification.o: ui_test_utils.o stubs the ui_notification_* entry points
 # - ui_toast.o, ui_toast_manager.o: ui_test_utils.o provides stub toast functions
-# - ui_notification_manager.o: ui_test_utils.o stubs notification functions
 # ui_text_input.o WAS here too, stubbed by a hand-written copy in ui_test_utils.cpp
 # that registered its own <text_input> widget. Same drift as ui_emergency_stop.o:
 # the copy never grew bind_text two-way binding, the multiline pre-scan,
@@ -370,7 +369,6 @@ TEST_APP_OBJS := $(filter-out \
     $(OBJ_DIR)/ui/ui_notification.o \
     $(OBJ_DIR)/ui/ui_toast.o \
     $(OBJ_DIR)/ui/ui_toast_manager.o \
-    $(OBJ_DIR)/ui/ui_notification_manager.o \
     $(OBJ_DIR)/ui/ui_switch.o \
     $(OBJ_DIR)/ui/ui_button.o \
     $(OBJ_DIR)/remote/remote_client.o \
@@ -1602,9 +1600,9 @@ TAUTOLOGY_MAX ?= 0
 # One ratchet per signal, so fixing one kind cannot buy slack for another. Each
 # may fall, never rise; an unnamed signal (shadow-include, mirror-comment)
 # allows 0. stub-logic is tests/ui_test_utils.cpp standing in for
-# ui_notification.o, ui_notification_manager.o and ui_toast_manager.o.
+# ui_notification.o and ui_toast_manager.o.
 MIRROR_MAX_REDEFINED_SYMBOL ?= 0
-MIRROR_MAX_STUB_LOGIC ?= 18
+MIRROR_MAX_STUB_LOGIC ?= 15
 MIRROR_MAX_ARGS = --max redefined-symbol=$(MIRROR_MAX_REDEFINED_SYMBOL) \
 	--max stub-logic=$(MIRROR_MAX_STUB_LOGIC)
 

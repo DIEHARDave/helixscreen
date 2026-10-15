@@ -791,6 +791,7 @@ bool ToastManager::is_visible() const {
 // Text input widget implementation for tests
 // This is a full implementation, not a stub, because tests need to actually
 // test the text_input widget's placeholder and max_length attributes.
+#include "ui_notification.h"
 #include "ui_text_input.h"
 
 #include "helix-xml/src/xml/lv_xml.h"
@@ -799,42 +800,10 @@ bool ToastManager::is_visible() const {
 #include "helix-xml/src/xml/lv_xml_widget.h"
 #include "helix-xml/src/xml/parsers/lv_xml_textarea_parser.h"
 
-// Stub for notification manager functions (tests don't have notification UI)
-#include "ui_notification.h"
-#include "ui_notification_history.h"
-#include "ui_notification_manager.h"
-#include "ui_printer_status_icon.h"
-
-void helix::ui::notification_update(NotificationStatus /* status */) {
-    // No-op in tests
-}
-
-void helix::ui::notification_update_count(size_t /* count */) {
-    // No-op in tests
-}
-
-// PrinterSession::tear_down_printer_state() calls both of these; ui_notification.o and
-// ui_notification_manager.o stay out of the test link (see mk/tests.mk Group 2).
+// PrinterSession::tear_down_printer_state() calls this; ui_notification.o stays
+// out of the test link (see mk/tests.mk Group 2).
 void ui_notification_deinit() {
     spdlog::debug("[Test Stub] ui_notification_deinit: no-op in tests");
-}
-
-static lv_subject_t s_test_notification_history_version_subject;
-static int32_t s_test_last_published_history_version = 0;
-static bool s_test_notification_subjects_initialized = false;
-
-// Mirrors NotificationManager::publish_history_version(): the real object is
-// out of the test link, but the panel's observer contract (bump revision on
-// add/clear, never on mark_all_read) is what the notification panel tests pin.
-void helix::ui::notification_refresh_from_history() {
-    if (!s_test_notification_subjects_initialized) {
-        return;
-    }
-    const int32_t narrowed = static_cast<int32_t>(NotificationHistory::instance().version());
-    if (narrowed != s_test_last_published_history_version) {
-        s_test_last_published_history_version = narrowed;
-        lv_subject_set_int(&s_test_notification_history_version_subject, narrowed);
-    }
 }
 
 #include "app_globals.h"
@@ -849,51 +818,4 @@ __attribute__((constructor)) static void helix_disable_test_sudo_probe() {
 class TemperatureHistoryManager;
 void set_test_temperature_history_manager(TemperatureHistoryManager* mgr) {
     set_temperature_history_manager(mgr);
-}
-
-// Stub for ui_notification_init_subjects (creates test subjects for notification badge)
-static lv_subject_t s_test_notification_count_subject;
-
-void helix::ui::notification_init_subjects() {
-    if (!s_test_notification_subjects_initialized) {
-        lv_subject_init_int(&s_test_notification_count_subject, 0);
-        lv_subject_init_int(&s_test_notification_history_version_subject, 0);
-        s_test_notification_subjects_initialized = true;
-        spdlog::debug("[Test Stub] ui_notification_init_subjects: subjects initialized");
-    }
-}
-
-void helix::ui::notification_deinit_subjects() {
-    if (s_test_notification_subjects_initialized) {
-        NotificationManager::instance().deinit_subjects();
-        lv_subject_deinit(&s_test_notification_count_subject);
-        lv_subject_deinit(&s_test_notification_history_version_subject);
-        s_test_notification_subjects_initialized = false;
-        spdlog::debug("[Test Stub] ui_notification_deinit_subjects: subjects deinitialized");
-    }
-}
-
-lv_subject_t* helix::ui::notification_history_version_subject() {
-    return &s_test_notification_history_version_subject;
-}
-
-// The real NotificationManager object is out of the test link; the singleton
-// itself is real, so panels can fetch its subjects' death signal. Its
-// deinit_subjects() is the production body over an empty SubjectManager:
-// expire_subjects_lifetime() inside deinit_all() is the whole effect.
-NotificationManager& NotificationManager::instance() {
-    static NotificationManager instance;
-    return instance;
-}
-
-void NotificationManager::deinit_subjects() {
-    subjects_.deinit_all();
-}
-
-void helix::ui::notification_register_callbacks() {
-    spdlog::debug("[Test Stub] ui_notification_register_callbacks: no-op in tests");
-}
-
-void helix::ui::notification_manager_init() {
-    spdlog::debug("[Test Stub] ui_notification_manager_init: no-op in tests");
 }
