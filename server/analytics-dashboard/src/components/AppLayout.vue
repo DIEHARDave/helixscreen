@@ -5,38 +5,38 @@
         <h1>HelixScreen Analytics</h1>
       </div>
       <nav class="sidebar-nav">
-        <router-link to="/" class="nav-link" :class="{ active: route.path === '/' }">
+        <router-link :to="navTo('/')" class="nav-link" :class="{ active: route.path === '/' }">
           Overview
         </router-link>
-        <router-link to="/adoption" class="nav-link" :class="{ active: route.path === '/adoption' }">
+        <router-link :to="navTo('/adoption')" class="nav-link" :class="{ active: route.path === '/adoption' }">
           Adoption
         </router-link>
-        <router-link to="/prints" class="nav-link" :class="{ active: route.path === '/prints' }">
+        <router-link :to="navTo('/prints')" class="nav-link" :class="{ active: route.path === '/prints' }">
           Prints
         </router-link>
-        <router-link to="/stability" class="nav-link" :class="{ active: route.path === '/stability' }">
+        <router-link :to="navTo('/stability')" class="nav-link" :class="{ active: route.path === '/stability' }">
           Stability
         </router-link>
-        <router-link to="/releases" class="nav-link" :class="{ active: route.path === '/releases' }">
+        <router-link :to="navTo('/releases')" class="nav-link" :class="{ active: route.path === '/releases' }">
           Releases
         </router-link>
         <div class="nav-separator"></div>
-        <router-link to="/memory" class="nav-link" :class="{ active: route.path === '/memory' }">
+        <router-link :to="navTo('/memory')" class="nav-link" :class="{ active: route.path === '/memory' }">
           Memory
         </router-link>
-        <router-link to="/hardware" class="nav-link" :class="{ active: route.path === '/hardware' }">
+        <router-link :to="navTo('/hardware')" class="nav-link" :class="{ active: route.path === '/hardware' }">
           Hardware
         </router-link>
-        <router-link to="/engagement" class="nav-link" :class="{ active: route.path === '/engagement' }">
+        <router-link :to="navTo('/engagement')" class="nav-link" :class="{ active: route.path === '/engagement' }">
           Engagement
         </router-link>
-        <router-link to="/performance" class="nav-link" :class="{ active: route.path === '/performance' }">
+        <router-link :to="navTo('/performance')" class="nav-link" :class="{ active: route.path === '/performance' }">
           Performance
         </router-link>
-        <router-link to="/features" class="nav-link" :class="{ active: route.path === '/features' }">
+        <router-link :to="navTo('/features')" class="nav-link" :class="{ active: route.path === '/features' }">
           Features
         </router-link>
-        <router-link to="/ux" class="nav-link" :class="{ active: route.path === '/ux' }">
+        <router-link :to="navTo('/ux')" class="nav-link" :class="{ active: route.path === '/ux' }">
           UX Insights
         </router-link>
       </nav>
@@ -69,6 +69,11 @@ const filters = useFiltersStore()
 
 // The URL is the source of truth: route changes (links, back/forward) feed the
 // store, and store edits are written back with replace.
+// A deliberate nav click carries the active filters; history entries stay as recorded.
+function navTo(path: string) {
+  return { path, query: filters.queryParams }
+}
+
 watch(() => route.query, (q) => filters.syncFromRoute(q), { immediate: true })
 watch(
   () => [filters.range, filters.platform, filters.version, filters.model, filters.board, filters.expand],
