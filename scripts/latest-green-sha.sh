@@ -11,11 +11,16 @@
 # the first one still on origin/B where
 #   - every push-triggered workflow run on B for that commit has completed,
 #   - each one concluded success or skipped, and
-#   - every workflow named in --require ran at all (default "Build,Code Quality",
-#     the two that run on every push; path-filtered workflows such as XML Lint
-#     count when they ran and are not required).
+#   - every workflow named in --require ran and concluded success (default
+#     "Build,Code Quality", the two that run on every push); path-filtered
+#     workflows such as XML Lint count when they ran and are not required.
 # A commit that fails a rule is named on stderr with the reason, so the caller
 # sees what was passed over. Exit 1 when no commit in the window qualifies.
+#
+# When the newest candidate fails only because runs were cancelled (a newer
+# push superseded them), it has no verdict rather than a red one, and a rerun
+# gives it one: the script prints `gh run rerun <id>` for each and exits 3
+# instead of walking back to an older commit. --walk-past-cancelled walks back.
 #
 # It reads origin/B as it is locally: `git fetch origin` first.
 set -uo pipefail
@@ -24,12 +29,14 @@ GH=${GH:-gh}
 BRANCH=main
 DEPTH=30
 REQUIRE="Build,Code Quality"
+WALK_PAST_CANCELLED=0
 
 while [ $# -gt 0 ]; do
     case "$1" in
         --branch)  BRANCH=${2:?--branch needs a value}; shift 2 ;;
         --depth)   DEPTH=${2:?--depth needs a value}; shift 2 ;;
         --require) REQUIRE=${2?--require needs a value}; shift 2 ;;
+        --walk-past-cancelled) WALK_PAST_CANCELLED=1; shift ;;
         -h | --help) awk 'NR > 2 && /^set -uo/ { exit } NR > 2' "$0" | sed 's/^# \?//'; exit 0 ;;
         *) echo "✗ unknown argument '$1'" >&2; exit 2 ;;
     esac
@@ -50,33 +57,41 @@ shas=$("$GH" run list --branch "$BRANCH" --event push --limit "$DEPTH" \
     exit 2
 }
 
-# verdict <sha>: empty when green, else the reason it is not.
+# verdict <sha>: empty when green, else the reason it is not. Sets CANCELLED to
+# the ids of cancelled runs and OTHER_BAD=1 when anything else disqualifies it.
 verdict() {
-    local runs name status conclusion req seen=$'\n' bad=""
+    local runs name status conclusion id req seen=$'\n' bad=""
+    CANCELLED="" OTHER_BAD=0
     runs=$("$GH" run list --commit "$1" --branch "$BRANCH" --event push --limit 100 \
-        --json workflowName,status,conclusion \
-        --jq '.[] | [.workflowName, .status, .conclusion] | @tsv') || {
-        echo "gh run list failed"
+        --json workflowName,status,conclusion,databaseId \
+        --jq '.[] | [.workflowName, .status, .conclusion, .databaseId] | @tsv') || {
+        OTHER_BAD=1; printf "gh run list failed"
         return
     }
-    [ -n "$runs" ] || { echo "no CI runs"; return; }
-    while IFS=$'\t' read -r name status conclusion; do
+    [ -n "$runs" ] || { OTHER_BAD=1; printf "no CI runs"; return; }
+    IFS=, read -ra req <<<"$REQUIRE"
+    while IFS=$'\t' read -r name status conclusion id; do
         seen+="$name"$'\n'
         if [ "$status" != completed ]; then
-            bad+="${bad:+, }$name $status"
-        else
-            case "$conclusion" in
-                success | skipped) ;;
-                *) bad+="${bad:+, }$name $conclusion" ;;
-            esac
+            bad+="${bad:+, }$name $status"; OTHER_BAD=1
+            continue
         fi
+        case "$conclusion" in
+            success) ;;
+            skipped)
+                # A required workflow that skipped proved nothing.
+                case $'\n'"$(printf '%s\n' "${req[@]}")"$'\n' in
+                    *$'\n'"$name"$'\n'*) bad+="${bad:+, }$name skipped"; OTHER_BAD=1 ;;
+                esac ;;
+            cancelled) bad+="${bad:+, }$name cancelled"; CANCELLED+="${CANCELLED:+ }$id" ;;
+            *) bad+="${bad:+, }$name $conclusion"; OTHER_BAD=1 ;;
+        esac
     done <<<"$runs"
-    IFS=, read -ra req <<<"$REQUIRE"
     for name in "${req[@]}"; do
         [ -z "$name" ] && continue
-        case "$seen" in *$'\n'"$name"$'\n'*) ;; *) bad+="${bad:+, }$name never ran" ;; esac
+        case "$seen" in *$'\n'"$name"$'\n'*) ;; *) bad+="${bad:+, }$name never ran"; OTHER_BAD=1 ;; esac
     done
-    echo "$bad"
+    printf "%s" "$bad"
 }
 
 tried=" "
@@ -88,12 +103,21 @@ for sha in $shas; do
         echo "  skip ${sha:0:9}: not on origin/$BRANCH" >&2
         continue
     }
-    why=$(verdict "$sha")
+    why=$(verdict "$sha"; printf '\037%s\037%s' "$CANCELLED" "$OTHER_BAD")
+    IFS=$'\037' read -r why cancelled other_bad <<<"$why"
     if [ -z "$why" ]; then
         echo "$sha"
         exit 0
     fi
     echo "  skip ${sha:0:9} $(git log -1 --format=%s "$sha" | cut -c1-60): $why" >&2
+    if [ -z "${first_done:-}" ] && [ -n "$cancelled" ] && [ "$other_bad" = 0 ] &&
+        [ "$WALK_PAST_CANCELLED" = 0 ]; then
+        echo "✗ the newest push ${sha:0:9} has no verdict, only cancelled runs. Rerun them:" >&2
+        for id in $cancelled; do echo "    gh run rerun $id" >&2; done
+        echo "  then run this again once they finish (--walk-past-cancelled takes an older commit)" >&2
+        exit 3
+    fi
+    first_done=1
 done
 echo "✗ none of the last $DEPTH pushes to $BRANCH has fully green CI" >&2
 exit 1

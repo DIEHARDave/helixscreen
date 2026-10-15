@@ -84,3 +84,24 @@ green() { printf 'Build\tcompleted\tsuccess\nCode Quality\tcompleted\tsuccess\n'
     [ "$status" -eq 1 ]
     contains "none of the last 30 pushes to main" "$output"
 }
+
+@test "a required workflow that only skipped is not green" {
+    printf 'Build\tcompleted\tskipped\t11\nCode Quality\tcompleted\tsuccess\t12\n' >"$RUNS/$C3"
+    green "$C2"
+    run "$SCRIPT"
+    [ "$status" -eq 0 ]
+    [ "${lines[-1]}" = "$C2" ]
+    contains "Build skipped" "$output"
+}
+
+@test "a newest push with only cancelled runs asks for a rerun instead of walking back" {
+    printf 'Build\tcompleted\tcancelled\t4242\nCode Quality\tcompleted\tsuccess\t4243\n' >"$RUNS/$C3"
+    green "$C2"
+    run "$SCRIPT"
+    [ "$status" -eq 3 ]
+    contains "gh run rerun 4242" "$output"
+    lacks "$C2" "$output"
+    run "$SCRIPT" --walk-past-cancelled
+    [ "$status" -eq 0 ]
+    [ "${lines[-1]}" = "$C2" ]
+}

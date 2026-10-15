@@ -161,11 +161,14 @@ shortest target name is the one people type, so it must not start a full run.
 `make land-gate` is the gate a branch passes before it reaches main, and it is the one a
 batch landing runs on the combined result. It runs `full-test-run`'s sweep and bats, the
 sweep again in CI's 8-shard layout (a use-after-free can crash only next to the neighbours
-CI's layout gives it), CI's exact `tests/ui` pytest slice and the moonraker plugin tests
-(`make test-ui-ci`, `make test-plugin`), and the generated-artefact checks
+CI's layout gives it), CI's exact `tests/ui` pytest slice, the moonraker plugin tests and
+`tests/python` (`make test-ui-ci`, `make test-plugin`, `make test-python`), and the
+generated-artefact checks
 (`check-theme-tokens`, `check-xml-schema`, `lint-xml`, `check-lvgl-event-codes`). The C++
 sweeps go to the test host when `full-test-run`'s would (`TEST_HOST`); everything else runs
-here in parallel, and it ends with a PASS/FAIL table with durations
+here in parallel, and it ends with a PASS/FAIL/TIMEOUT table with durations, naming the
+commit it judged (`+dirty` when uncommitted changes were in the tree). It holds
+`build:<tree>` while it runs and refuses a missing bats rather than skipping it
 (`scripts/land-gate.sh`, logs in `build/land-gate/`). `full-test-run` alone misses
 `tests/ui` and CI's shard layout, which is how a branch goes green here and red on CI.
 

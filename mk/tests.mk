@@ -671,22 +671,27 @@ test-kiauh:
 # scripts/parallel-jobs-file.sh as its parallel, which hands GNU parallel the
 # file instead; parallel re-reads it as the suite runs. With no file, one
 # slot runs serially and more run at the fixed count.
+# BATS_REQUIRED=1 turns a missing bats into a failure instead of a skip, for a
+# gate that must not report a suite it never ran; BATS_BIN names the bats to run.
+BATS_BIN ?= bats
+BATS_REQUIRED ?=
+
 test-shell:
 	$(ECHO) "$(CYAN)$(BOLD)Running shell tests (bats)...$(RESET)"
-	@if command -v bats >/dev/null 2>&1; then \
+	@if command -v "$(BATS_BIN)" >/dev/null 2>&1; then \
 		START_TIME=$$(date +%s); \
 		if command -v parallel >/dev/null 2>&1; then \
 			jobs_dir=$$(mktemp -d); \
-			HELIX_JOBS_FILE=$$jobs_dir/slots scripts/helix-claim hold --grow "$$jobs_dir/slots" -- \
+			BATS_BIN="$(BATS_BIN)" HELIX_JOBS_FILE=$$jobs_dir/slots scripts/helix-claim hold --grow "$$jobs_dir/slots" -- \
 				sh -c 'if [ -f "$$HELIX_JOBS_FILE" ]; then \
-					exec bats --jobs 2 --parallel-binary-name "$$PWD/scripts/parallel-jobs-file.sh" \
+					exec "$$BATS_BIN" --jobs 2 --parallel-binary-name "$$PWD/scripts/parallel-jobs-file.sh" \
 						--no-parallelize-within-files "$$@"; fi; \
-				[ "$$JOBPOOL_SLOTS" -gt 1 ] || exec bats "$$@"; \
-				exec bats --jobs "$$JOBPOOL_SLOTS" --no-parallelize-within-files "$$@"' bats tests/shell/; \
+				[ "$$JOBPOOL_SLOTS" -gt 1 ] || exec "$$BATS_BIN" "$$@"; \
+				exec "$$BATS_BIN" --jobs "$$JOBPOOL_SLOTS" --no-parallelize-within-files "$$@"' bats tests/shell/; \
 			STATUS=$$?; \
 			rm -f "$$jobs_dir"/*; rmdir "$$jobs_dir"; \
 		else \
-			bats tests/shell/; \
+			"$(BATS_BIN)" tests/shell/; \
 			STATUS=$$?; \
 		fi; \
 		END_TIME=$$(date +%s); \
@@ -696,6 +701,10 @@ test-shell:
 			exit $$STATUS; \
 		fi; \
 		echo "$(GREEN)$(BOLD)✓ Shell tests passed in $${DURATION}s$(RESET)"; \
+	elif [ "$(BATS_REQUIRED)" = 1 ]; then \
+		echo "$(RED)$(BOLD)✗ $(BATS_BIN) not found, and BATS_REQUIRED=1: a gate cannot pass a suite it never ran$(RESET)"; \
+		echo "  Install with: brew install bats-core (macOS) or apt install bats (Linux)"; \
+		exit 1; \
 	else \
 		echo "$(YELLOW)⚠ bats not found - skipping shell tests$(RESET)"; \
 		echo "  Install with: brew install bats-core (macOS) or apt install bats (Linux)"; \
@@ -827,6 +836,18 @@ test-plugin:
 	@START_TIME=$$(date +%s); \
 	$(VENV_PYTHON) -m pytest moonraker-plugin/tests/ -v; \
 	$(call report_test_result,Moonraker plugin tests)
+
+# The script-side tooling's pytest suite, as quality.yml's "Run Python script
+# tests" step runs it.
+test-python:
+	$(ECHO) "$(CYAN)$(BOLD)Running Python script tests (pytest, tests/python/)...$(RESET)"
+	@if [ ! -x "$(VENV_PYTHON)" ]; then \
+		echo "$(RED)$(BOLD)✗ Python venv not found — run 'make venv-setup' first$(RESET)"; \
+		exit 1; \
+	fi
+	@START_TIME=$$(date +%s); \
+	$(VENV_PYTHON) -m pytest tests/python/ -v --tb=short; \
+	$(call report_test_result,Python script tests)
 
 # ============================================================================
 # Convenience Test Targets - Run tests by component
@@ -1517,7 +1538,7 @@ tsan-app:
 # Test Help
 # ============================================================================
 
-.PHONY: help-test test-kiauh test-shell test-xml test-ui-pytest test-ui-ci test-plugin test-serial test-hidden test-hidden-list test-asan test-asan-build test-tsan test-tsan-build test-asan-one test-tsan-one clean-sanitizers
+.PHONY: help-test test-kiauh test-shell test-xml test-ui-pytest test-ui-ci test-plugin test-python test-serial test-hidden test-hidden-list test-asan test-asan-build test-tsan test-tsan-build test-asan-one test-tsan-one clean-sanitizers
 help-test:
 	@if [ -t 1 ] && [ -n "$(TERM)" ] && [ "$(TERM)" != "dumb" ]; then \
 		B='$(BOLD)'; G='$(GREEN)'; Y='$(YELLOW)'; C='$(CYAN)'; X='$(RESET)'; \
@@ -1549,6 +1570,7 @@ help-test:
 	echo "  $${G}dev-timing$${X}           - Measured cost of every build and suite"; \
 	echo "  $${G}test-plugin$${X}          - Moonraker plugin tests (pytest)"; \
 	echo "  $${G}test-ui-ci$${X}           - Out-of-process UI tests, CI's slice (pytest)"; \
+	echo "  $${G}test-python$${X}          - Python script tests (pytest, tests/python/)"; \
 	echo ""; \
 	echo "$${C}Geometry Tests:$${X}"; \
 	echo ""; \

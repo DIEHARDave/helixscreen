@@ -49,9 +49,11 @@ All of these must pass. If ANY fails, STOP and tell the user why.
 **Why a green SHA, and what counts as green.** `scripts/latest-green-sha.sh` takes the
 commits CI ran on for the last 30 pushes to `$BRANCH`, newest first, and prints the first
 one still on `origin/$BRANCH` whose push-triggered runs have all completed as `success` or
-`skipped`, with `Build` and `Code Quality` (the two that run on every push) among them. A
-run still in progress, failed or cancelled (a newer push supersedes one) disqualifies the
-commit; path-filtered workflows such as `XML Lint` count when they ran. `--require` changes
+`skipped`, with `Build` and `Code Quality` (the two that run on every push) among them as
+`success`. A run still in progress, failed or cancelled disqualifies the commit. When the
+newest push has only cancelled runs, it exits 3 and prints `gh run rerun <id>` for each:
+rerun them and resolve again once they finish (`--walk-past-cancelled` takes an older
+commit instead); path-filtered workflows such as `XML Lint` count when they ran. `--require` changes
 the required set, `--depth` the window. The release then never waits on the tip: it ships
 what CI has already proven, and whatever landed since rides the next release.
 
@@ -380,29 +382,68 @@ Use AskUserQuestion:
   - "Undo" — reset the commit and delete the tag
 
 ### If "Push it":
-First merge the release commit back into `$BRANCH`, then push the branch and the tag.
+First merge the release commit back into `$BRANCH` and publish it, then push the tag.
 `$BRANCH` has usually moved past `RELEASE_SHA`, so this is a real merge; the only files it
 can conflict on are `VERSION.txt` and `CHANGELOG.md`, and a conflict there is a peer who
 edited them, which means STOP and ask them, not resolve it for them.
 
-```bash
-# In the release worktree: bring the branch's newer commits in, so main only fast-forwards.
-git fetch origin
-git -c merge.autoStash=false merge --no-edit "origin/$BRANCH"
-make land-gate          # only when the merge brought in commits whose CI is not yet green;
-                        # skip it when every one of them already passed CI on $BRANCH
+`$BRANCH` is updated by pushing the release branch from the release worktree straight to
+`refs/heads/$BRANCH`, so the same steps serve `main` and a `release/X.Y` line whatever the
+main tree has checked out. The tag is pushed only after `origin/$BRANCH` is verified to
+hold the release commit, so a rejected push can never leave a tag on an unpublished commit.
 
-# Then move $BRANCH, under its claim (CLAUDE.md § Sharing This Tree):
-scripts/helix-claim take "worktree:$BRANCH" "release v{NEW_VERSION}: merge back" --pid $$
-git -C <main tree> -c merge.autoStash=false merge --ff-only "release-prep/v{NEW_VERSION}"
-#   Test this command's own exit status; never pipe it. A refusal means $BRANCH moved
-#   again: fetch, merge origin/$BRANCH into the release branch once more, retry.
-git -C <main tree> push origin "$BRANCH"
-git push origin "v{NEW_VERSION}"
-git -C <main tree> rev-parse "$BRANCH" "origin/$BRANCH"   # must match
-scripts/helix-claim release "worktree:$BRANCH"
-scripts/teardown-worktree.sh "v{NEW_VERSION}"
+Run the whole block as ONE script, from the release worktree (`bash -c '...'` or a file in
+the scratchpad): the claim is owned by that script's pid for exactly as long as it runs,
+and every step stops the script on failure.
+
+```bash
+set -u
+BRANCH=...; VER=v{NEW_VERSION}; PREP=release-prep/$VER; MAIN_TREE=<main tree path>
+stop() { echo "STOP: $*" >&2; exit 1; }
+
+# 1. Local $BRANCH must hold nothing origin lacks. Peers' unpushed commits there would be
+#    stranded behind the published release, and are not ours to push: STOP and ask whose.
+git fetch origin || stop "fetch failed"
+if git -C "$MAIN_TREE" rev-parse -q --verify "refs/heads/$BRANCH" >/dev/null; then
+    ahead=$(git -C "$MAIN_TREE" log --oneline "origin/$BRANCH..$BRANCH")
+    [ -z "$ahead" ] || stop "local $BRANCH has unpushed commits; ask their owners first:
+$ahead"
+fi
+
+# 2. Claim $BRANCH for this script's life; never pipe take, test its own status.
+scripts/helix-claim take "worktree:$BRANCH" "release $VER: merge back" --pid $$ ||
+    stop "worktree:$BRANCH is held; ask its holder"
+trap 'scripts/helix-claim release-if-owned-by $$ "worktree:$BRANCH"' EXIT
+
+# 3. Merge origin/$BRANCH in and push, until the push is accepted. A rejection means
+#    $BRANCH moved again: fetch, merge, push once more.
+for attempt in 1 2 3 4 5; do
+    git -c merge.autoStash=false merge --no-edit "origin/$BRANCH" ||
+        stop "merge of origin/$BRANCH conflicts: a peer edited VERSION.txt or CHANGELOG.md"
+    git push origin "$PREP:refs/heads/$BRANCH" && break
+    [ "$attempt" -lt 5 ] || stop "push to $BRANCH rejected 5 times; $BRANCH is too busy, retry later"
+    git fetch origin || stop "fetch failed"
+done
+
+# 4. Verify, then tag. Only now is the release commit public.
+git fetch origin || stop "fetch failed"
+[ "$(git rev-parse "origin/$BRANCH")" = "$(git rev-parse "$PREP")" ] ||
+    stop "origin/$BRANCH is not the release branch tip; do NOT push the tag"
+git merge-base --is-ancestor "$VER" "origin/$BRANCH" || stop "$VER is not on origin/$BRANCH"
+git push origin "$VER" || stop "tag push failed; origin/$BRANCH is published, push $VER by hand"
+
+# 5. Bring a checked-out local $BRANCH up to date (a plain fast-forward: step 1 proved it
+#    holds nothing of its own), then tear down.
+if [ "$(git -C "$MAIN_TREE" rev-parse --abbrev-ref HEAD)" = "$BRANCH" ]; then
+    git -C "$MAIN_TREE" -c merge.autoStash=false merge --ff-only "origin/$BRANCH" ||
+        echo "note: local $BRANCH did not fast-forward (a peer committed meanwhile); it merges on their next pull" >&2
+fi
 ```
+
+If the merge in step 3 brought in commits whose CI is not yet green, run `make land-gate`
+in the release worktree before pushing (step 3 then becomes merge, gate, push); skip it
+when every one of them already passed CI on `$BRANCH`. After the script succeeds:
+`scripts/teardown-worktree.sh "v{NEW_VERSION}"`.
 
 The tag push is what starts the Release workflow, and the tagged commit is the release
 commit, now reachable from `$BRANCH` through the merge. Then show: "Pushed! Watch the
@@ -428,8 +469,8 @@ exists and the workflow uploads on its own.
 
 ### If "Keep local":
 Show: "Release commit and tag created locally on release-prep/v{NEW_VERSION}. When ready,
-run STEP 7's merge-back block: merge origin/$BRANCH in, fast-forward $BRANCH, push it, then
-`git push origin v{NEW_VERSION}`."
+run STEP 7's merge-back script from the release worktree: it merges origin/$BRANCH in,
+pushes the release branch to $BRANCH, verifies it, and only then pushes the tag."
 
 ### If "Undo":
 **Ask for explicit confirmation** before running destructive commands:
@@ -453,7 +494,8 @@ worktree removed; $BRANCH was never touched."
 | Quality checks fail | STOP with the `❌` output — do not release on a red branch |
 | Land gate fails | STOP with its PASS/FAIL table and the failing step's log tail |
 | Merge back conflicts | STOP: a peer edited VERSION.txt or CHANGELOG.md; ask them, do not resolve it for them |
-| `--ff-only` refuses | `$BRANCH` moved again: fetch, merge `origin/$BRANCH` into the release branch, retry |
+| Push to `$BRANCH` rejected | `$BRANCH` moved again: the merge-back loop fetches, merges and pushes again; after 5 tries, STOP and retry later. The tag is never pushed before `origin/$BRANCH` holds the release commit |
+| Local `$BRANCH` has unpushed commits | STOP before claiming: they are a peer's, and pushing past them strands them. Ask whose they are |
 | Release gate fails | STOP with the PASS/FAIL table and the failing step's log tail |
 | Version not greater | STOP: "v{NEW_VERSION} is not greater than v{LAST_TAG}" |
 | User aborts at any checkpoint | STOP cleanly, no partial state |
