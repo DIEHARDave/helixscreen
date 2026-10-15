@@ -701,7 +701,7 @@ The hash reads libhv's **source** headers (`lib/libhv/evpp/TcpClient.h` and so o
 only libhv's own build creates them, from those same sources, before any object that includes
 them compiles. Hashing them would give a cold tree (fresh clone, new worktree, test-host mirror)
 one hash on its first `make` and another on its second, and the second would recompile every
-object with no ccache hit. A cold tree's second `make` compiles nothing.
+object with no ccache hit. In a tree whose patches are already applied (every `setup-worktree.sh` tree, every test-host mirror), a cold tree's second `make` compiles nothing. A fresh clone that runs `make` before `make apply-patches` still compiles twice, because the first parse hashes the unpatched headers; so does the build after any patch edit.
 
 Editing any `patches/*.patch` still rebuilds every object: `build/.patches-applied` is a
 prerequisite of all of them, independent of this hash.
