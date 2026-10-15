@@ -20,6 +20,7 @@
 #include "../lvgl_ui_test_fixture.h"
 #include "../test_helpers/config_test_access.h"
 #include "../test_helpers/update_queue_test_access.h"
+#include "../ui_test_utils.h"
 #include "config.h"
 #include "panel_widget_manager.h"
 #include "printer_state.h"
@@ -52,13 +53,11 @@ struct MaintenanceModelFixture : public LVGLUITestFixture {
         StaticSubjectRegistry::instance().deinit_one("MaintenanceModelSubjects");
         erase_record();
         restart_model();
-        ToastManager::instance().set_observer([this](const ToastManager::Event& e) {
-            if (e.kind == ToastManager::Event::Kind::Show)
-                toasts.push_back(e.message);
-        });
+        helix::ui::set_test_toast_hook(
+            [this](ToastSeverity, const std::string& msg, uint32_t) { toasts.push_back(msg); });
     }
     ~MaintenanceModelFixture() override {
-        ToastManager::instance().set_observer({});
+        helix::ui::set_test_toast_hook(nullptr);
         // The teardown saves into this test's config, which the next fixture discards.
         StaticSubjectRegistry::instance().deinit_one("MaintenanceModelSubjects");
         drain();
