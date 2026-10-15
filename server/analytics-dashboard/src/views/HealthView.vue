@@ -55,7 +55,7 @@
                 <tr
                   v-for="r in data.releases"
                   :key="r.version"
-                  class="clickable"
+                  class="clickable-row"
                   title="click to open this release"
                   @click="filters.go(router, '/releases', [['version', single(r.version)]])"
                 >
@@ -63,9 +63,7 @@
                   <td class="mono">{{ r.cur.devices.toLocaleString() }}</td>
                   <td v-for="m in METRICS" :key="m.key" class="mono">
                     {{ formatRate(r.cur[m.key]) }}
-                    <span v-if="change(r.cur[m.key], r.prev[m.key])" class="delta" :class="changeClass(r.cur[m.key], r.prev[m.key], m.upIsGood)">
-                      {{ change(r.cur[m.key], r.prev[m.key]) }}
-                    </span>
+                    <DeltaTag :change="ppChange(r.cur[m.key], r.prev[m.key], m.upIsGood)" />
                   </td>
                 </tr>
               </tbody>
@@ -94,7 +92,7 @@
                 <tr
                   v-for="e in data.errors"
                   :key="`${e.category}|${e.code}`"
-                  class="clickable"
+                  class="clickable-row"
                   title="click to see this code on the Stability tab"
                   @click="filters.go(router, '/stability', [], `#${errorAnchor(e.code)}`)"
                 >
@@ -132,7 +130,7 @@
                 <tr
                   v-for="(c, i) in data.crash_clusters"
                   :key="i"
-                  class="clickable"
+                  class="clickable-row"
                   :title="activationHint(clusterEntries(c))"
                   @click="filters.go(router, '/stability', clusterEntries(c))"
                 >
@@ -171,6 +169,7 @@ import { useRouter } from 'vue-router'
 import AppLayout from '@/components/AppLayout.vue'
 import DashSection from '@/components/DashSection.vue'
 import ChartCaption from '@/components/ChartCaption.vue'
+import DeltaTag from '@/components/DeltaTag.vue'
 import MetricCard from '@/components/MetricCard.vue'
 import NoData from '@/components/NoData.vue'
 import { useDashData } from '@/composables/useDashData'
@@ -178,7 +177,7 @@ import { api } from '@/services/api'
 import type { HealthData } from '@/services/api'
 import { errorAnchor } from '@/utils/anchors'
 import { activationHint, single } from '@/utils/drill'
-import { formatRate, notReportedPer, unreportedNote } from '@/utils/format'
+import { formatRate, notReportedPer, ppChange, unreportedNote } from '@/utils/format'
 import type { DashFilterKey } from '@/utils/urlState'
 import type { Grouped } from '@/utils/versions'
 
@@ -213,19 +212,6 @@ const activesDelta = computed(() => {
   return `${sign}${diff.toLocaleString()}${pct} vs last week`
 })
 
-/** The signed change in percentage points with an arrow; empty when either window has no rate. */
-function change(cur: number | null, prev: number | null): string {
-  if (cur === null || prev === null) return ''
-  const pp = (cur - prev) * 100
-  if (Math.abs(pp) < 0.05) return '= 0.0pp'
-  return `${pp > 0 ? '↑ +' : '↓ '}${pp.toFixed(1)}pp`
-}
-
-function changeClass(cur: number | null, prev: number | null, upIsGood: boolean): string {
-  if (cur === null || prev === null || Math.abs(cur - prev) * 100 < 0.05) return ''
-  return cur > prev === upIsGood ? 'delta-good' : 'delta-bad'
-}
-
 function clusterEntries(c: HealthData['crash_clusters'][number]): [DashFilterKey, Grouped][] {
   return [
     ['version', single(c.version)],
@@ -235,25 +221,6 @@ function clusterEntries(c: HealthData['crash_clusters'][number]): [DashFilterKey
 </script>
 
 <style scoped>
-.clickable {
-  cursor: pointer;
-}
-
-.delta {
-  display: block;
-  font-size: 11px;
-  font-weight: 500;
-  margin-top: 2px;
-}
-
-.delta-good {
-  color: var(--accent-green);
-}
-
-.delta-bad {
-  color: var(--accent-red);
-}
-
 .badge.status-new {
   background: rgba(239, 68, 68, 0.15);
   color: #f87171;

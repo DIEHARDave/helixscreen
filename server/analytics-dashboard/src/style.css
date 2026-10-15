@@ -182,13 +182,13 @@ input {
   color: #a78bfa;
 }
 
-/* Per-event lists (recent crashes, warnings, anomalies) scroll inside a fixed
-   height with the header row pinned; distributions never use this. */
 /* A table row that opens something when clicked. */
 .clickable-row {
   cursor: pointer;
 }
 
+/* Per-event lists (recent crashes, warnings, anomalies) scroll inside a fixed
+   height with the header row pinned; distributions never use this. */
 .event-log {
   max-height: 480px;
   overflow-y: auto;

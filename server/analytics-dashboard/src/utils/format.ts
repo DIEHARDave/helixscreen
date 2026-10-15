@@ -69,6 +69,28 @@ export function formatRate(rate: number | null, digits = 1): string {
   return rate === null ? 'n/a' : `${(rate * 100).toFixed(digits)}%`
 }
 
+/** A change smaller than this many percentage points reads as no change. */
+const PP_ZERO = 0.05
+
+/**
+ * The change from `prev` to `cur`, two 0-1 rates, in percentage points: its
+ * label ("↑ +1.2pp", "↓ -0.4pp", "= 0.0pp") and its tone given which direction
+ * is good. Null when either rate is null.
+ */
+export function ppChange(
+  cur: number | null,
+  prev: number | null,
+  upIsGood: boolean
+): { text: string; tone: 'good' | 'bad' | 'flat' } | null {
+  if (cur === null || prev === null) return null
+  const pp = (cur - prev) * 100
+  if (Math.abs(pp) < PP_ZERO) return { text: '= 0.0pp', tone: 'flat' }
+  return {
+    text: `${pp > 0 ? '↑ +' : '↓ '}${pp.toFixed(1)}pp`,
+    tone: pp > 0 === upIsGood ? 'good' : 'bad'
+  }
+}
+
 /** The filter window as a caption phrase: '30d' is "last 30 days". */
 export function rangeLabel(range: string): string {
   const days = Number(range.replace(/d$/, ''))

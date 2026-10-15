@@ -31,16 +31,12 @@
             <td class="mono">{{ formatRate(ver.crash_free_devices) }}</td>
             <td class="mono" :class="crashRateClass(ver.crash_rate)">
               {{ formatRate(ver.crash_rate) }}
-              <span v-if="delta(i, 'crash_rate') !== null" class="delta" :class="delta(i, 'crash_rate')! > 0 ? 'delta-bad' : 'delta-good'">
-                {{ delta(i, 'crash_rate')! > 0 ? '+' : '' }}{{ delta(i, 'crash_rate')!.toFixed(1) }}pp
-              </span>
+              <DeltaTag :change="changeFromOlder(i, 'crash_rate', false)" />
             </td>
             <td class="mono">{{ formatRate(ver.update_failure_rate) }}</td>
             <td class="mono" :class="successRateClass(ver.print_success_rate)">
               {{ formatRate(ver.print_success_rate) }}
-              <span v-if="delta(i, 'print_success_rate') !== null" class="delta" :class="delta(i, 'print_success_rate')! > 0 ? 'delta-good' : 'delta-bad'">
-                {{ delta(i, 'print_success_rate')! > 0 ? '+' : '' }}{{ delta(i, 'print_success_rate')!.toFixed(1) }}pp
-              </span>
+              <DeltaTag :change="changeFromOlder(i, 'print_success_rate', true)" />
             </td>
             <td class="mono">{{ ver.p95_frame_ms === null ? 'n/a' : `${ver.p95_frame_ms.toFixed(1)} ms` }}</td>
             <td class="mono">{{ ver.p95_rss_kb === null ? 'n/a' : formatMB(ver.p95_rss_kb) }}</td>
@@ -77,12 +73,13 @@
 import { computed } from 'vue'
 import DashSection from '@/components/DashSection.vue'
 import ChartCaption from '@/components/ChartCaption.vue'
+import DeltaTag from '@/components/DeltaTag.vue'
 import NoData from '@/components/NoData.vue'
 import { useDashData } from '@/composables/useDashData'
 import { api } from '@/services/api'
 import type { ReleasesData } from '@/services/api'
 import { compareVersions } from '@/utils/chart'
-import { formatMB, formatRate, unreportedNote } from '@/utils/format'
+import { formatMB, formatRate, ppChange, unreportedNote } from '@/utils/format'
 import { seriesColor } from '@/utils/series'
 
 type Release = ReleasesData['versions'][number]
@@ -125,12 +122,10 @@ const note = computed(() => {
   ])
 })
 
-// Change from the next older version in the table, in percentage points.
-function delta(i: number, key: 'crash_rate' | 'print_success_rate'): number | null {
+// Change from the next older version in the table.
+function changeFromOlder(i: number, key: 'crash_rate' | 'print_success_rate', upIsGood: boolean) {
   const older = props.rows[i + 1]
-  const cur = props.rows[i][key]
-  if (!older || cur === null || older[key] === null) return null
-  return (cur - older[key]!) * 100
+  return older ? ppChange(props.rows[i][key], older[key], upIsGood) : null
 }
 
 function crashRateClass(rate: number | null): string {
@@ -181,21 +176,6 @@ function successRateClass(rate: number | null): string {
 }
 
 .rate-bad {
-  color: var(--accent-red);
-}
-
-.delta {
-  display: block;
-  font-size: 11px;
-  font-weight: 500;
-  margin-top: 2px;
-}
-
-.delta-good {
-  color: var(--accent-green);
-}
-
-.delta-bad {
   color: var(--accent-red);
 }
 

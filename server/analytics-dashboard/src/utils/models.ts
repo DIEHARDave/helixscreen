@@ -45,11 +45,12 @@ export function canonicalModels(rows: { name: string; count: number }[]): Groupe
 }
 
 /**
- * False when the worker's filter sanitizer would alter the value or the comma
- * list syntax would split it, so a click could only return an empty page.
- * The character set is the one in telemetry-worker/src/queries.ts
- * sanitizeFilterValue; change both together.
+ * False when the worker's filter parsing would not hand the value back intact
+ * (it splits on commas, trims, sanitizes and drops empties), so a click could
+ * only return an empty page. The character set is the one in
+ * telemetry-worker/src/queries.ts sanitizeFilterValue; a parity test in the
+ * worker suite pins the two together.
  */
 export function isFilterable(raw: string): boolean {
-  return raw === raw.replace(/[^a-zA-Z0-9 .\-_()/+]/g, '') && !raw.includes(',')
+  return raw !== '' && !raw.includes(',') && raw === raw.trim().replace(/[^a-zA-Z0-9 .\-_()/+]/g, '')
 }

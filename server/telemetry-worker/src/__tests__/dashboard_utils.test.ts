@@ -3,9 +3,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { groupVersionRates, groupVersions, olderLines, ungrouped } from '../../../analytics-dashboard/src/utils/versions'
 import { planActivation, rowAction, rowHint, rowLabel, single } from '../../../analytics-dashboard/src/utils/drill'
 import { mergeOptions, rateAxis } from '../../../analytics-dashboard/src/utils/chart'
-import { emptyPlaceholder, notReportedPer, rangeLabel, unreportedNote } from '../../../analytics-dashboard/src/utils/format'
+import { emptyPlaceholder, notReportedPer, ppChange, rangeLabel, unreportedNote } from '../../../analytics-dashboard/src/utils/format'
 import { canonicalModelKey, canonicalModels, isFilterable } from '../../../analytics-dashboard/src/utils/models'
 import { groupMaterialSets, materialSet } from '../../../analytics-dashboard/src/utils/materials'
+import { sanitizeFilterValue } from '../queries'
 import { barChartHeight, seriesColor, todayUtc, trimPartialDays } from '../../../analytics-dashboard/src/utils/series'
 
 const rows = (names: string[]) => names.map((name, i) => ({ name, count: i + 1 }))
@@ -92,6 +93,25 @@ describe('isFilterable', () => {
     expect(isFilterable("CdO - Cubo dell'Odio")).toBe(false)
     expect(isFilterable('Voron 2.4')).toBe(true)
     expect(isFilterable('a,b')).toBe(false)
+    expect(isFilterable(' Voron 2.4')).toBe(false)
+    expect(isFilterable('Voron 2.4 ')).toBe(false)
+    expect(isFilterable('')).toBe(false)
+  })
+
+  // Filterable exactly when the worker's parse of the value (split on commas,
+  // trim, sanitize, drop empties) gives back the value itself.
+  const workerKeeps = (raw: string) => {
+    const parsed = raw.split(',').map((v) => sanitizeFilterValue(v.trim())).filter(Boolean)
+    return parsed.length === 1 && parsed[0] === raw
+  }
+  const printable = Array.from({ length: 95 }, (_, i) => String.fromCharCode(32 + i))
+  const cases = [
+    ...printable.map((c) => `a${c}b`),
+    ...printable,
+    'Voron 2.4', ' Voron', 'Voron ', '\tVoron', '', ',', 'a,b', "CdO - Cubo dell'Odio", 'Prusa MK4\u00e9', 'K1 (Max)/SE+',
+  ]
+  it.each(cases.map((c) => [JSON.stringify(c), c]))('agrees with the worker on %s', (_label, raw) => {
+    expect(isFilterable(raw)).toBe(workerKeeps(raw))
   })
 })
 
@@ -113,6 +133,9 @@ describe('groupMaterialSets', () => {
     expect(out).toHaveLength(1)
     expect(out[0]).toMatchObject({ key: 'set:PLA', label: 'PLA', count: 100, members: ['PLA;PLA', 'PLA'] })
     expect(out[0].success_rate).toBeCloseTo(0.788, 3)
+  })
+  it('gives a null rate, not 0, to a set with no prints', () => {
+    expect(groupMaterialSets([{ type: 'PLA', count: 0, success_rate: 0 }])[0].success_rate).toBeNull()
   })
 })
 
@@ -181,6 +204,23 @@ describe('emptyPlaceholder', () => {
   })
   it('blames the range when no filter is active', () => {
     expect(emptyPlaceholder(null, [])).toBe('No data in this range')
+  })
+})
+
+describe('ppChange', () => {
+  it('is null when either rate is missing', () => {
+    expect(ppChange(null, 0.5, true)).toBeNull()
+    expect(ppChange(0.5, null, true)).toBeNull()
+  })
+  it('signs the change in percentage points and judges it by the good direction', () => {
+    expect(ppChange(0.92, 0.9, true)).toEqual({ text: '↑ +2.0pp', tone: 'good' })
+    expect(ppChange(0.92, 0.9, false)).toEqual({ text: '↑ +2.0pp', tone: 'bad' })
+    expect(ppChange(0.05, 0.08, false)).toEqual({ text: '↓ -3.0pp', tone: 'good' })
+  })
+  it('reads a change under 0.05pp as flat on both sides of zero', () => {
+    expect(ppChange(0.5004, 0.5, true)).toEqual({ text: '= 0.0pp', tone: 'flat' })
+    expect(ppChange(0.4996, 0.5, true)).toEqual({ text: '= 0.0pp', tone: 'flat' })
+    expect(ppChange(0.5006, 0.5, true)?.tone).toBe('good')
   })
 })
 
