@@ -19,6 +19,7 @@
 #include "printer_detector.h"
 #include "printer_state.h"
 #include "thermal_rate_model.h"
+#include "versioned_lru.h"
 
 #include <functional>
 #include <lvgl.h>
@@ -304,7 +305,8 @@ class PrintPreparationManager {
     [[nodiscard]] helix::PrinterStopCheck printer_stop_check_for(const std::string& key) const;
 
     /// Whether the scan kept under @p key (a scan_key()) has answered for the
-    /// printer's current macros, whatever the answer.
+    /// printer's current macros, whatever the answer: an answer computed
+    /// before the macros were last read says nothing about this printer.
     [[nodiscard]] bool has_printer_stop_answer_for(const std::string& key) const;
 
     /// Called on the main thread each time a scan answers, success or failure.
@@ -609,18 +611,15 @@ class PrintPreparationManager {
     /// printer-stopping command answer (absent until one is given).
     struct KeptScan {
         std::string filename;
-        FileVersion version;
         std::optional<gcode::ScanResult> result;
         std::optional<helix::PrinterStopCheck> printer_stop;
-        uint64_t last_used = 0;
     };
-    std::map<std::string, KeptScan> kept_scans_; ///< By scan_key()
+    VersionedLru<KeptScan> kept_scans_; ///< By scan_key()
     /// Keys whose read is under way, with the file version each reads.
     std::map<std::string, FileVersion> scans_in_flight_;
     std::string current_scan_key_; ///< The file the detail view shows
     /// A start's file, kept from when_ready_to_start() until start_print().
     std::string start_pin_key_;
-    uint64_t scan_use_counter_ = 0;
     /// Bumped by clear_scan_cache(); a read started before it is dropped.
     uint64_t scan_epoch_ = 0;
     std::function<void()> on_scan_answered_;
@@ -633,7 +632,10 @@ class PrintPreparationManager {
     /// Keep a scan's answer under @p key and report it.
     void keep_scan(const std::string& key, const std::string& filename, FileVersion version,
                    std::optional<gcode::ScanResult> result, helix::PrinterStopCheck printer_stop);
-    void evict_kept_scans();
+    /// Keep @p scan under @p key, then evict down to kMaxKeptScans. The file
+    /// the detail view shows and the file a start is on are never evicted:
+    /// neither may lose its scan to the other.
+    void store_kept_scan(const std::string& key, FileVersion version, KeptScan scan);
 
     /// The scan this start checked was its own file's, copied at start_print()
     /// so every later step (the modify and upload) reads it, never whatever the
@@ -673,8 +675,6 @@ class PrintPreparationManager {
         StartReadyCallback ready;
     };
     std::optional<StartWaiter> start_waiter_;
-    /// The printer-stop answer kept for @p key is still current.
-    [[nodiscard]] bool scan_answered_for(const std::string& key) const;
     void request_start_waiter_scan();
     /// A scan answered for @p key: resolve, re-request or give up the waiter.
     void on_scan_answered_for_waiter(const std::string& key);

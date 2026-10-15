@@ -574,12 +574,9 @@ void PrintPreparationManager::publish_macro_option_count() {
 void PrintPreparationManager::set_cached_scan_result(const gcode::ScanResult& scan,
                                                      const std::string& filename) {
     current_scan_key_ = filename;
-    KeptScan& kept = kept_scans_[filename];
-    kept.filename = filename;
-    kept.result = scan;
-    kept.printer_stop.reset();
-    kept.last_used = ++scan_use_counter_;
-    evict_kept_scans();
+    const auto* kept = kept_scans_.find(filename);
+    store_kept_scan(filename, kept ? kept->version : FileVersion{},
+                    KeptScan{filename, scan, std::nullopt});
 }
 
 // ============================================================================
@@ -607,8 +604,8 @@ void PrintPreparationManager::scan_file_for_operations(const std::string& filena
 
 const PrintPreparationManager::KeptScan*
 PrintPreparationManager::kept_scan(const std::string& key) const {
-    const auto it = kept_scans_.find(key);
-    return it == kept_scans_.end() ? nullptr : &it->second;
+    const auto* kept = kept_scans_.find(key);
+    return kept ? &kept->value : nullptr;
 }
 
 void PrintPreparationManager::request_scan(const std::string& filename,
@@ -616,20 +613,20 @@ void PrintPreparationManager::request_scan(const std::string& filename,
                                            const std::string& local_path, FileVersion version) {
     const std::string file_path = scan_key(filename, current_path);
     const std::string key = scan_key(filename, current_path, local_path);
-    if (auto it = kept_scans_.find(key); it != kept_scans_.end()) {
+    if (const auto* kept = kept_scans_.find(key)) {
         // A scan of another version of the file (re-sliced under the same
         // name) has the wrong line numbers for this one, so it is dropped.
-        if (it->second.version != version) {
+        if (kept->version != version) {
             spdlog::info("[PrintPreparationManager] {} changed since its scan - scanning again",
                          key);
-            kept_scans_.erase(it);
-        } else if (it->second.result && scan_answered_for(key)) {
+            kept_scans_.erase(key);
+        } else if (kept->value.result && has_printer_stop_answer_for(key)) {
             // Reusable only while its printer-stopping command answer still
             // holds: one computed before the printer's macros were read, or
             // against a macro set since replaced, says nothing about this
             // printer.
             spdlog::debug("[PrintPreparationManager] Using kept scan result for {}", key);
-            it->second.last_used = ++scan_use_counter_;
+            kept_scans_.mark_used(key);
             return;
         }
     }
@@ -746,36 +743,19 @@ void PrintPreparationManager::keep_scan(const std::string& key, const std::strin
                                         std::optional<gcode::ScanResult> result,
                                         helix::PrinterStopCheck printer_stop) {
     scans_in_flight_.erase(key);
-    KeptScan& kept = kept_scans_[key];
-    kept.filename = filename;
-    kept.version = version;
-    kept.result = std::move(result);
-    kept.printer_stop = std::move(printer_stop);
-    kept.last_used = ++scan_use_counter_;
-    evict_kept_scans();
+    store_kept_scan(key, version, KeptScan{filename, std::move(result), std::move(printer_stop)});
     if (on_scan_answered_) {
         on_scan_answered_();
     }
     on_scan_answered_for_waiter(key);
 }
 
-void PrintPreparationManager::evict_kept_scans() {
-    // The file the detail view shows and the file a start is on are never
-    // evicted: neither may lose its scan to the other.
-    while (kept_scans_.size() > kMaxKeptScans) {
-        auto oldest = kept_scans_.end();
-        for (auto it = kept_scans_.begin(); it != kept_scans_.end(); ++it) {
-            const bool held = it->first == current_scan_key_ || it->first == start_pin_key_;
-            if (!held &&
-                (oldest == kept_scans_.end() || it->second.last_used < oldest->second.last_used)) {
-                oldest = it;
-            }
-        }
-        if (oldest == kept_scans_.end()) {
-            return;
-        }
-        kept_scans_.erase(oldest);
-    }
+void PrintPreparationManager::store_kept_scan(const std::string& key, FileVersion version,
+                                              KeptScan scan) {
+    kept_scans_.put(key, version, std::move(scan));
+    kept_scans_.evict(kMaxKeptScans, [this](const std::string& k) {
+        return k == current_scan_key_ || k == start_pin_key_;
+    });
 }
 
 void PrintPreparationManager::clear_scan_cache() {
@@ -789,22 +769,18 @@ void PrintPreparationManager::clear_scan_cache() {
 
 helix::PrinterStopCheck
 PrintPreparationManager::printer_stop_check_for(const std::string& key) const {
-    if (scan_answered_for(key)) {
+    if (has_printer_stop_answer_for(key)) {
         return *kept_scan(key)->printer_stop;
     }
     return helix::printer_stop_not_run(
         "the file scan has not answered for the printer's current macros");
 }
 
-bool PrintPreparationManager::has_printer_stop_answer_for(const std::string& key) const {
-    return scan_answered_for(key);
-}
-
 void PrintPreparationManager::set_on_scan_answered(std::function<void()> cb) {
     on_scan_answered_ = std::move(cb);
 }
 
-bool PrintPreparationManager::scan_answered_for(const std::string& key) const {
+bool PrintPreparationManager::has_printer_stop_answer_for(const std::string& key) const {
     const KeptScan* kept = kept_scan(key);
     return kept && kept->printer_stop &&
            kept->printer_stop->macro_generation == helix::MacroParamCache::instance().generation();
@@ -830,7 +806,7 @@ void PrintPreparationManager::request_start_waiter_scan() {
     // Never through scan_file_for_operations(): this file is not the one the
     // detail view shows, and must not become it.
     request_scan(start_waiter_->filename, start_waiter_->current_path, {}, start_waiter_->version);
-    if (start_waiter_ && start_waiter_->key == key && scan_answered_for(key)) {
+    if (start_waiter_ && start_waiter_->key == key && has_printer_stop_answer_for(key)) {
         start_waiter_->answered = true;
     }
 }
@@ -846,7 +822,7 @@ void PrintPreparationManager::notify_start_waiter() {
     if (!start_waiter_ || !start_waiter_->answered || macro_analysis_in_progress_) {
         return;
     }
-    if (!scan_answered_for(start_waiter_->key)) {
+    if (!has_printer_stop_answer_for(start_waiter_->key)) {
         // The macros were read again since the answer: it no longer describes
         // this printer. Scan once more, then give up.
         if (start_waiter_->rescans_left-- > 0) {
@@ -1059,8 +1035,8 @@ void PrintPreparationManager::start_print(const std::string& filename,
                       filename_to_print, start_key);
         // A read that failed is read again, so the retry the message offers
         // can succeed.
-        if (const KeptScan* kept = kept_scan(start_key); kept && !kept->result) {
-            const std::string scanned_name = kept->filename;
+        if (const auto* kept = kept_scans_.find(start_key); kept && !kept->value.result) {
+            const std::string scanned_name = kept->value.filename;
             const FileVersion version = kept->version;
             const std::string local_path =
                 start_key == scan_key(filename, current_path) ? std::string() : start_key;

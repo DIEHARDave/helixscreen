@@ -3,10 +3,10 @@
 #pragma once
 
 #include "file_version.h"
+#include "versioned_lru.h"
 
 #include <cstdint>
 #include <ctime>
-#include <map>
 #include <optional>
 #include <set>
 #include <string>
@@ -43,16 +43,10 @@ class ToolsUsedCache {
     }
 
   private:
-    struct Entry {
-        FileVersion version;
-        std::set<int> tools;
-        uint64_t last_used_ctr = 0; // higher = more recent
-    };
     bool load_from_disk();
     void save_to_disk();
 
-    std::map<std::string, Entry> entries_;
-    uint64_t next_ctr_ = 1;
+    VersionedLru<std::set<int>> entries_;
     bool loaded_ = false;
 };
 
