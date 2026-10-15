@@ -287,16 +287,27 @@ exit 0'
 # A gate launched detached (`( make land-gate ) &` from a shell that exits) is
 # reparented to init, so the session holding worktree:<tree> is no ancestor of
 # it; only the session id it inherited ties it to that claim. The holder here is
-# an unrelated sleep for the same reason: no ancestor of the gate can match it.
+# no ancestor of the gate either, so only the id can match it.
 detached_gate_fixture() {
     T="$BATS_TEST_TMPDIR/tree"
     git init -q "$T"
     echo a >"$T/f"; git -C "$T" add f
     git -C "$T" -c user.email=t@t -c user.name=t commit -q -m init
     export HELIX_CLAIM="$REPO_ROOT/scripts/helix-claim" HELIX_CLAIM_DIR="$BATS_TEST_TMPDIR/claims"
-    sleep 120 &
+    # The session's own claim: taken with --session by a stand-in `claude`
+    # process that outlives the take.
+    mkdir -p "$BATS_TEST_TMPDIR/fakebin"
+    ln -sf "$(command -v bash)" "$BATS_TEST_TMPDIR/fakebin/claude"
+    (cd "$T" && exec env HELIX_SESSION_ID=sess-a "$BATS_TEST_TMPDIR/fakebin/claude" -c \
+        '"$1" take worktree:tree "session edit" --session >/dev/null || exit 1; exec sleep 120' \
+        _ "$HELIX_CLAIM") &
     HOLDER=$!
-    (cd "$T" && HELIX_SESSION_ID=sess-a "$HELIX_CLAIM" take worktree:tree "session edit" --pid "$HOLDER" >/dev/null)
+    local i
+    for i in $(seq 100); do
+        (cd "$T" && "$HELIX_CLAIM" check worktree:tree >/dev/null 2>&1) || return 0
+        sleep 0.05
+    done
+    return 1
 }
 
 teardown() {
