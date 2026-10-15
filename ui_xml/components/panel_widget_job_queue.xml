@@ -30,10 +30,9 @@
     <!-- Not loaded, empty, or no job_queue component: a muted icon over a caption that
          wraps rather than cut a word. A Strip has one line: no icon, and the caption
          ellipsizes there rather than outgrow it. -->
-    <lv_obj name="jq_quiet"
-            width="100%" height="content" flex_flow="column" style_flex_main_place="center"
-            style_flex_cross_place="center" style_flex_track_place="center" style_pad_all="0" style_pad_row="#space_xxs"
-            style_bg_opa="0" style_border_width="0" scrollable="false" clickable="false" event_bubble="true">
+    <pass_through name="jq_quiet"
+                  width="100%" height="content" flex_flow="column" style_flex_main_place="center"
+                  style_flex_cross_place="center" style_flex_track_place="center" style_pad_row="#space_xxs">
       <bind_flag_if cond="jq_tile_state ge 3" flag="hidden"/>
       <icon name="jq_quiet_icon" src="progress_clock" size="xs" variant="muted" clickable="false" event_bubble="true">
         <bind_flag_if_eq subject="jq_tile_rung" flag="hidden" ref_value="1"/>
@@ -51,13 +50,12 @@
                   style_text_align="center" clickable="false" event_bubble="true">
         <bind_flag_if cond="jq_tile_state eq 1 or jq_tile_rung ne 1" flag="hidden"/>
       </text_small>
-    </lv_obj>
+    </pass_through>
 
     <!-- Strip: the queue icon and the count, and the start button while a job waits. -->
-    <lv_obj name="jq_strip"
-            width="100%" height="content" flex_flow="row" style_flex_main_place="start" style_flex_cross_place="center"
-            style_flex_track_place="center" style_pad_all="0" style_pad_gap="#space_xs" style_bg_opa="0"
-            style_border_width="0" scrollable="false" clickable="false" event_bubble="true">
+    <pass_through name="jq_strip"
+                  width="100%" height="content" flex_flow="row" style_flex_main_place="start"
+                  style_flex_cross_place="center" style_flex_track_place="center" style_pad_gap="#space_xs">
       <bind_flag_if cond="jq_tile_rung ne 1 or jq_tile_state lt 3" flag="hidden"/>
       <icon name="jq_strip_icon" src="progress_clock" size="xs" variant="muted" clickable="false" event_bubble="true"/>
       <text_heading name="jq_count" flex_grow="1" bind_text="jq_tile_count" clickable="false" event_bubble="true"/>
@@ -66,23 +64,21 @@
         <event_cb trigger="clicked" callback="on_job_queue_tile_action"/>
         <bind_flag_if_eq subject="jq_tile_action" flag="hidden" ref_value="0"/>
       </ui_button>
-    </lv_obj>
+    </pass_through>
 
     <!-- Cell and up: the thumbnail beside the name or count and its lines. -->
-    <lv_obj name="jq_body"
-            width="100%" height="content" flex_flow="row" style_flex_main_place="start" style_flex_cross_place="center"
-            style_flex_track_place="center" style_pad_all="0" style_pad_gap="#space_xs" style_bg_opa="0"
-            style_border_width="0" scrollable="false" clickable="false" event_bubble="true">
+    <pass_through name="jq_body"
+                  width="100%" height="content" flex_flow="row" style_flex_main_place="start"
+                  style_flex_cross_place="center" style_flex_track_place="center" style_pad_gap="#space_xs">
       <bind_flag_if cond="jq_tile_rung eq 1 or jq_tile_state lt 3" flag="hidden"/>
       <lv_image name="jq_thumb"
                 width="#button_height_sm" height="#button_height_sm" bind_src="job_queue_next_thumbnail"
                 inner_align="contain" clickable="false" event_bubble="true">
         <bind_flag_if_not_eq subject="jq_tile_show_thumb" flag="hidden" ref_value="1"/>
       </lv_image>
-      <lv_obj name="jq_text"
-              height="content" flex_grow="1" flex_flow="column" style_flex_main_place="center"
-              style_flex_cross_place="start" style_pad_all="0" style_pad_row="0" style_bg_opa="0" style_border_width="0"
-              scrollable="false" clickable="false" event_bubble="true">
+      <pass_through name="jq_text"
+                    height="content" flex_grow="1" flex_flow="column" style_flex_main_place="center"
+                    style_flex_cross_place="start" style_pad_row="0">
         <text_heading name="jq_hero"
                       width="100%" bind_text="jq_tile_hero" long_mode="dots" clickable="false" event_bubble="true">
           <bind_style_if_eq name="jq_hero_cell" subject="jq_tile_rung" ref_value="3"/>
@@ -98,10 +94,9 @@
                     clickable="false" event_bubble="true">
           <bind_flag_if cond="jq_tile_rung ne 3 or jq_tile_show_detail eq 0" flag="hidden"/>
         </text_small>
-        <lv_obj name="jq_meta"
-                width="100%" height="content" flex_flow="row" style_flex_cross_place="center" style_pad_all="0"
-                style_pad_column="#space_xs" style_bg_opa="0" style_border_width="0" scrollable="false"
-                clickable="false" event_bubble="true">
+        <pass_through name="jq_meta"
+                      width="100%" height="content" flex_flow="row" style_flex_cross_place="center"
+                      style_pad_column="#space_xs">
           <bind_flag_if cond="jq_tile_show_more eq 0 and (jq_tile_show_detail eq 0 or jq_tile_rung eq 3)" flag="hidden"/>
           <text_small name="jq_detail"
                       flex_grow="1" bind_text="jq_tile_detail" long_mode="dots" style_text_color="#text_muted"
@@ -112,14 +107,14 @@
                       bind_text="jq_tile_more" style_text_color="#text_muted" clickable="false" event_bubble="true">
             <bind_flag_if_not_eq subject="jq_tile_show_more" flag="hidden" ref_value="1"/>
           </text_small>
-        </lv_obj>
+        </pass_through>
         <text_small name="jq_auto"
                     width="100%" text="Starts automatically" long_mode="wrap" style_text_color="#text_muted"
                     clickable="false" event_bubble="true">
           <bind_flag_if_not_eq subject="jq_tile_show_auto" flag="hidden" ref_value="1"/>
         </text_small>
-      </lv_obj>
-    </lv_obj>
+      </pass_through>
+    </pass_through>
 
     <ui_button name="jq_action"
                width="100%" height="#button_height_sm" style_pad_ver="0" style_pad_hor="#space_xs"
@@ -128,15 +123,13 @@
       <bind_flag_if cond="jq_tile_rung lt 3 or jq_tile_action eq 0" flag="hidden"/>
     </ui_button>
 
-    <lv_obj name="jq_list"
-            width="100%" height="content" flex_flow="column" style_pad_all="0" style_pad_row="#space_xxs"
-            style_bg_opa="0" style_border_width="0" scrollable="false" clickable="false" event_bubble="true">
+    <pass_through name="jq_list" width="100%" height="content" flex_flow="column" style_pad_row="#space_xxs">
       <bind_flag_if_eq subject="jq_tile_list_rows" flag="hidden" ref_value="0"/>
       <repeat count="3">
         <job_queue_row name="jq_after_${i}" hide_delete="true" row_clickable="false" name_subject="jq_tile_after_${i}">
           <bind_flag_if cond="jq_tile_list_rows le ${i}" flag="hidden"/>
         </job_queue_row>
       </repeat>
-    </lv_obj>
+    </pass_through>
   </view>
 </component>

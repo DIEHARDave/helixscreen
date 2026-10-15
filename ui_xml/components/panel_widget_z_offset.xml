@@ -24,22 +24,17 @@
   <view name="panel_widget_z_offset"
         extends="lv_obj" width="100%" height="100%" style_pad_all="#space_xxs" scrollable="false">
     <event_cb trigger="clicked" callback="z_offset_clicked_cb"/>
-    <lv_obj name="z_offset_body"
-            width="100%" height="100%" flex_flow="column" style_flex_main_place="center" style_flex_cross_place="center"
-            style_pad_all="0" style_pad_row="#space_xxs" style_pad_column="0" style_bg_opa="0" style_border_width="0"
-            scrollable="false" clickable="false" event_bubble="true">
-      <lv_obj name="z_offset_top"
-              width="100%" flex_grow="1" flex_flow="row" style_flex_main_place="space_evenly"
-              style_flex_cross_place="center" style_flex_track_place="center" style_pad_all="0"
-              style_pad_column="#space_xs" style_bg_opa="0" style_border_width="0" scrollable="false" clickable="false"
-              event_bubble="true">
-        <lv_obj name="z_offset_block"
-                width="content" height="content" flex_flow="column" style_flex_main_place="center"
-                style_flex_cross_place="center" style_pad_all="0" style_pad_row="#space_xxs" style_bg_opa="0"
-                style_border_width="0" scrollable="false" clickable="false" event_bubble="true">
-          <lv_obj name="z_offset_valuerow"
-                  width="content" height="content" style_pad_all="0" style_pad_row="0" style_pad_column="#space_xs"
-                  style_bg_opa="0" style_border_width="0" scrollable="false" clickable="false" event_bubble="true">
+    <pass_through name="z_offset_body"
+                  width="100%" height="100%" flex_flow="column" style_flex_main_place="center"
+                  style_flex_cross_place="center" style_pad_row="#space_xxs" style_pad_column="0">
+      <pass_through name="z_offset_top"
+                    width="100%" flex_grow="1" flex_flow="row" style_flex_main_place="space_evenly"
+                    style_flex_cross_place="center" style_flex_track_place="center" style_pad_column="#space_xs">
+        <pass_through name="z_offset_block"
+                      width="content" height="content" flex_flow="column" style_flex_main_place="center"
+                      style_flex_cross_place="center" style_pad_row="#space_xxs">
+          <pass_through name="z_offset_valuerow"
+                        width="content" height="content" style_pad_row="0" style_pad_column="#space_xs">
             <bind_style_if name="zo_stacked" cond="z_offset_rung eq 0 or z_offset_rung eq 2"/>
             <bind_style_if name="zo_inline" cond="z_offset_rung eq 1 or z_offset_rung gt 2"/>
             <icon name="z_offset_icon"
@@ -49,7 +44,7 @@
               <bind_style_if_ge name="zo_font_heading" subject="z_offset_rung" ref_value="5"/>
               <bind_style_if_eq name="zo_warn" subject="z_offset_status" ref_value="1"/>
             </text_body>
-          </lv_obj>
+          </pass_through>
           <text_tiny name="z_offset_unit" text="mm" style_text_color="#text_muted" clickable="false" event_bubble="true">
             <bind_flag_if_not_eq subject="z_offset_rung" flag="hidden" ref_value="2"/>
           </text_tiny>
@@ -63,7 +58,7 @@
                       event_bubble="true">
             <bind_flag_if_eq subject="z_offset_show_tool_label" flag="hidden" ref_value="0"/>
           </text_small>
-        </lv_obj>
+        </pass_through>
         <z_offset_indicator name="z_offset_indicator" height="100%" flex_grow="1">
           <bind_flag_if_lt subject="z_offset_rung" flag="hidden" ref_value="4"/>
         </z_offset_indicator>
@@ -74,11 +69,10 @@
                         flag="hidden"/>
           <event_cb trigger="clicked" callback="z_offset_save_cb"/>
         </ui_button>
-      </lv_obj>
-      <lv_obj name="z_offset_steppers"
-              width="100%" height="content" flex_flow="row" style_flex_main_place="space_between"
-              style_flex_cross_place="center" style_pad_all="0" style_pad_column="#space_xs" style_bg_opa="0"
-              style_border_width="0" scrollable="false" clickable="false" event_bubble="true">
+      </pass_through>
+      <pass_through name="z_offset_steppers"
+                    width="100%" height="content" flex_flow="row" style_flex_main_place="space_between"
+                    style_flex_cross_place="center" style_pad_column="#space_xs">
         <bind_flag_if_eq subject="z_offset_show_steppers" flag="hidden" ref_value="0"/>
         <ui_button name="z_offset_closer" width="#button_height_sm" height="#button_height_sm" icon="arrow_down">
           <event_cb trigger="clicked" callback="z_offset_step_cb" user_data="-1"/>
@@ -89,13 +83,13 @@
         <ui_button name="z_offset_farther" width="#button_height_sm" height="#button_height_sm" icon="arrow_up">
           <event_cb trigger="clicked" callback="z_offset_step_cb" user_data="1"/>
         </ui_button>
-      </lv_obj>
+      </pass_through>
       <ui_button name="z_offset_save_full"
                  width="100%" height="#button_height_sm" variant="success" icon="check" text="Save" hidden="true"
                  moves_machine="true">
         <bind_flag_if cond="z_offset_save_available eq 0 or z_offset_show_save eq 0 or z_offset_rung ne 5" flag="hidden"/>
         <event_cb trigger="clicked" callback="z_offset_save_cb"/>
       </ui_button>
-    </lv_obj>
+    </pass_through>
   </view>
 </component>

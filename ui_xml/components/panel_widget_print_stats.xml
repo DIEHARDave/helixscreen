@@ -39,17 +39,13 @@
     <event_cb trigger="clicked" callback="print_stats_clicked_cb"/>
     <style name="styles.press_wash" selector="pressed"/>
 
-    <lv_obj name="ps_main"
-            width="100%" height="content" style_pad_all="0" style_pad_row="#space_xxs" style_pad_column="#space_xs"
-            style_bg_opa="0" style_border_width="0" scrollable="false" clickable="false" event_bubble="true">
+    <pass_through name="ps_main" width="100%" height="content" style_pad_row="#space_xxs" style_pad_column="#space_xs">
       <bind_style_if_eq name="ps_main_row" subject="print_stats_side_by_side" ref_value="1"/>
       <bind_style_if_eq name="ps_main_column" subject="print_stats_side_by_side" ref_value="0"/>
       <!-- With the bars showing, the chart takes the height the lines leave. -->
       <bind_style_if_eq name="styles.tile_fill" subject="print_stats_show_bars" ref_value="1"/>
 
-      <lv_obj name="ps_hero_block"
-              height="content" style_pad_all="0" style_pad_row="0" style_pad_column="#space_xs" style_bg_opa="0"
-              style_border_width="0" scrollable="false" clickable="false" event_bubble="true">
+      <pass_through name="ps_hero_block" height="content" style_pad_row="0" style_pad_column="#space_xs">
         <bind_style_if_eq name="ps_hero_inline" subject="print_stats_rung" ref_value="1"/>
         <bind_style_if_not_eq name="ps_hero_stacked" subject="print_stats_rung" ref_value="1"/>
         <text_heading name="ps_hero" bind_text="print_stats_hero" clickable="false" event_bubble="true">
@@ -65,17 +61,14 @@
           <bind_style_if name="ps_font_xs"
                          cond="print_stats_strip_text eq 2 or print_stats_strip_text eq 3 or print_stats_strip_text eq 6 or print_stats_strip_text eq 7"/>
         </text_small>
-      </lv_obj>
+      </pass_through>
 
       <!-- Seven bars on a baseline, today on the right, initials under them at Full. -->
-      <lv_obj name="ps_chart"
-              width="100%" height="100%" flex_grow="1" flex_flow="column" style_pad_all="0" style_pad_row="0"
-              style_bg_opa="0" style_border_width="0" scrollable="false" clickable="false" event_bubble="true">
+      <pass_through name="ps_chart" width="100%" height="100%" flex_grow="1" flex_flow="column" style_pad_row="0">
         <bind_flag_if_not_eq subject="print_stats_show_bars" flag="hidden" ref_value="1"/>
-        <lv_obj name="ps_bars"
-                width="100%" flex_grow="1" flex_flow="row" style_flex_main_place="start" style_flex_cross_place="end"
-                style_pad_all="0" style_pad_column="#space_xs" style_bg_opa="0" style_border_width="0"
-                scrollable="false" clickable="false" event_bubble="true">
+        <pass_through name="ps_bars"
+                      width="100%" flex_grow="1" flex_flow="row" style_flex_main_place="start"
+                      style_flex_cross_place="end" style_pad_column="#space_xs">
           <repeat count="7">
             <lv_bar name="ps_bar_${i}"
                     height="100%" flex_grow="1" style_min_width="#space_xs" orientation="vertical" min_value="0"
@@ -83,20 +76,18 @@
                     style_bg_color-indicator="#primary" style_bg_opa-indicator="255" style_radius="0"
                     style_radius-indicator="#border_radius" clickable="false" event_bubble="true"/>
           </repeat>
-        </lv_obj>
+        </pass_through>
         <divider_horizontal name="ps_baseline" color="#text_muted" opacity="102"/>
-        <lv_obj name="ps_day_labels"
-                width="100%" height="content" flex_flow="row" style_pad_all="0" style_pad_column="#space_xs"
-                style_bg_opa="0" style_border_width="0" scrollable="false" clickable="false" event_bubble="true">
+        <pass_through name="ps_day_labels" width="100%" height="content" flex_flow="row" style_pad_column="#space_xs">
           <bind_flag_if_not_eq subject="print_stats_show_day_labels" flag="hidden" ref_value="1"/>
           <repeat count="7">
             <text_tiny name="ps_day_label_${i}"
                        flex_grow="1" style_min_width="#space_xs" bind_text="print_stats_day_label_${i}"
                        style_text_align="center" style_text_color="#text_muted" clickable="false" event_bubble="true"/>
           </repeat>
-        </lv_obj>
-      </lv_obj>
-    </lv_obj>
+        </pass_through>
+      </pass_through>
+    </pass_through>
 
     <text_small name="ps_support"
                 width="100%" bind_text="print_stats_support_text" long_mode="dots" style_text_color="#text_muted"

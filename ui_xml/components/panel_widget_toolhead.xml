@@ -37,15 +37,13 @@
   <view name="panel_widget_toolhead"
         extends="lv_obj" width="100%" height="100%" style_pad_all="#space_xxs" scrollable="false">
     <event_cb trigger="clicked" callback="toolhead_clicked_cb"/>
-    <lv_obj name="toolhead_body"
-            width="100%" height="100%" flex_flow="column" style_flex_main_place="center" style_flex_cross_place="center"
-            style_pad_all="0" style_pad_row="0" style_pad_column="0" style_bg_opa="0" style_border_width="0"
-            scrollable="false" clickable="false" event_bubble="true">
+    <pass_through name="toolhead_body"
+                  width="100%" height="100%" flex_flow="column" style_flex_main_place="center"
+                  style_flex_cross_place="center" style_pad_row="0" style_pad_column="0">
       <!-- Glance and strip while idle: X, Y and Z, green when the axis is homed. -->
-      <lv_obj name="toolhead_letters"
-              width="100%" height="content" flex_flow="row" style_flex_main_place="center"
-              style_flex_cross_place="center" style_pad_all="0" style_pad_column="#space_xs" style_bg_opa="0"
-              style_border_width="0" scrollable="false" clickable="false" event_bubble="true">
+      <pass_through name="toolhead_letters"
+                    width="100%" height="content" flex_flow="row" style_flex_main_place="center"
+                    style_flex_cross_place="center" style_pad_column="#space_xs">
         <bind_flag_if_eq subject="toolhead_show_letters" flag="hidden" ref_value="0"/>
         <text_body name="toolhead_letter_x" text="X" clickable="false" event_bubble="true">
           <bind_style_if_eq name="th_ok" subject="toolhead_homed_x" ref_value="1"/>
@@ -59,11 +57,9 @@
           <bind_style_if_eq name="th_ok" subject="toolhead_homed_z" ref_value="1"/>
           <bind_style_if_eq name="th_bad" subject="toolhead_homed_z" ref_value="0"/>
         </text_body>
-      </lv_obj>
+      </pass_through>
       <!-- Glance and strip while printing: the Z height. -->
-      <lv_obj name="toolhead_zonly"
-              width="100%" height="content" style_pad_all="0" style_pad_row="0" style_pad_column="#space_xs"
-              style_bg_opa="0" style_border_width="0" scrollable="false" clickable="false" event_bubble="true">
+      <pass_through name="toolhead_zonly" width="100%" height="content" style_pad_row="0" style_pad_column="#space_xs">
         <bind_flag_if_eq subject="toolhead_z_only" flag="hidden" ref_value="0"/>
         <bind_style_if name="th_stacked" cond="toolhead_rung eq 0"/>
         <bind_style_if name="th_inline" cond="toolhead_rung ne 0"/>
@@ -72,17 +68,15 @@
         <text_body name="toolhead_zonly_value" bind_text="toolhead_z_text" clickable="false" event_bubble="true">
           <style name="th_font_xs"/>
         </text_body>
-      </lv_obj>
+      </pass_through>
       <!-- Column and cell: one row per axis, with the Controls card's homed dot at cell. -->
-      <lv_obj name="toolhead_rows"
-              width="100%" height="content" flex_flow="column" style_flex_main_place="center"
-              style_flex_cross_place="center" style_pad_all="0" style_pad_row="#space_xxs" style_bg_opa="0"
-              style_border_width="0" scrollable="false" clickable="false" event_bubble="true">
+      <pass_through name="toolhead_rows"
+                    width="100%" height="content" flex_flow="column" style_flex_main_place="center"
+                    style_flex_cross_place="center" style_pad_row="#space_xxs">
         <bind_flag_if_eq subject="toolhead_show_rows" flag="hidden" ref_value="0"/>
-        <lv_obj name="toolhead_row_x"
-                width="100%" height="content" flex_flow="row" style_flex_cross_place="center" style_pad_all="0"
-                style_pad_column="#space_xxs" style_bg_opa="0" style_border_width="0" scrollable="false"
-                clickable="false" event_bubble="true">
+        <pass_through name="toolhead_row_x"
+                      width="100%" height="content" flex_flow="row" style_flex_cross_place="center"
+                      style_pad_column="#space_xxs">
           <text_muted name="toolhead_row_x_letter" text="X" clickable="false" event_bubble="true">
             <bind_style_if_eq name="th_font_xs" subject="toolhead_rung" ref_value="2"/>
           </text_muted>
@@ -98,11 +92,10 @@
             <bind_style_if_eq name="th_dot_off" subject="toolhead_homed_x" ref_value="0"/>
             <bind_flag_if_eq subject="toolhead_rung" flag="hidden" ref_value="2"/>
           </lv_obj>
-        </lv_obj>
-        <lv_obj name="toolhead_row_y"
-                width="100%" height="content" flex_flow="row" style_flex_cross_place="center" style_pad_all="0"
-                style_pad_column="#space_xxs" style_bg_opa="0" style_border_width="0" scrollable="false"
-                clickable="false" event_bubble="true">
+        </pass_through>
+        <pass_through name="toolhead_row_y"
+                      width="100%" height="content" flex_flow="row" style_flex_cross_place="center"
+                      style_pad_column="#space_xxs">
           <text_muted name="toolhead_row_y_letter" text="Y" clickable="false" event_bubble="true">
             <bind_style_if_eq name="th_font_xs" subject="toolhead_rung" ref_value="2"/>
           </text_muted>
@@ -118,11 +111,10 @@
             <bind_style_if_eq name="th_dot_off" subject="toolhead_homed_y" ref_value="0"/>
             <bind_flag_if_eq subject="toolhead_rung" flag="hidden" ref_value="2"/>
           </lv_obj>
-        </lv_obj>
-        <lv_obj name="toolhead_row_z"
-                width="100%" height="content" flex_flow="row" style_flex_cross_place="center" style_pad_all="0"
-                style_pad_column="#space_xxs" style_bg_opa="0" style_border_width="0" scrollable="false"
-                clickable="false" event_bubble="true">
+        </pass_through>
+        <pass_through name="toolhead_row_z"
+                      width="100%" height="content" flex_flow="row" style_flex_cross_place="center"
+                      style_pad_column="#space_xxs">
           <text_muted name="toolhead_row_z_letter" text="Z" clickable="false" event_bubble="true">
             <bind_style_if_eq name="th_font_xs" subject="toolhead_rung" ref_value="2"/>
           </text_muted>
@@ -138,31 +130,25 @@
             <bind_style_if_eq name="th_dot_off" subject="toolhead_homed_z" ref_value="0"/>
             <bind_flag_if_eq subject="toolhead_rung" flag="hidden" ref_value="2"/>
           </lv_obj>
-        </lv_obj>
-      </lv_obj>
+        </pass_through>
+      </pass_through>
       <!-- Wide and full: the plate canvas, the axis values, and the footer. -->
-      <lv_obj name="toolhead_map"
-              width="100%" height="100%" style_pad_all="0" style_pad_row="#space_xxs" style_pad_column="#space_xs"
-              style_bg_opa="0" style_border_width="0" scrollable="false" clickable="false" event_bubble="true">
+      <pass_through name="toolhead_map"
+                    width="100%" height="100%" style_pad_row="#space_xxs" style_pad_column="#space_xs">
         <bind_flag_if_eq subject="toolhead_show_plate" flag="hidden" ref_value="0"/>
         <bind_style_if name="th_map_wide" cond="toolhead_rung eq 4"/>
         <bind_style_if name="th_map_full" cond="toolhead_rung gt 4"/>
-        <lv_obj name="toolhead_plate"
-                flex_grow="1" style_pad_all="0" style_bg_opa="0" style_border_width="0" scrollable="false"
-                clickable="false" event_bubble="true">
+        <pass_through name="toolhead_plate" flex_grow="1">
           <bind_style_if name="th_plate_wide" cond="toolhead_rung eq 4"/>
           <bind_style_if name="th_plate_full" cond="toolhead_rung gt 4"/>
-        </lv_obj>
-        <lv_obj name="toolhead_values"
-                width="content" height="content" style_pad_all="0" style_pad_row="#space_xxs"
-                style_pad_column="#space_sm" style_bg_opa="0" style_border_width="0" scrollable="false"
-                clickable="false" event_bubble="true">
+        </pass_through>
+        <pass_through name="toolhead_values"
+                      width="content" height="content" style_pad_row="#space_xxs" style_pad_column="#space_sm">
           <bind_style_if name="th_values_wide" cond="toolhead_rung eq 4"/>
           <bind_style_if name="th_values_full" cond="toolhead_rung gt 4"/>
-          <lv_obj name="toolhead_value_x"
-                  width="content" height="content" flex_flow="row" style_flex_cross_place="center" style_pad_all="0"
-                  style_pad_column="#space_xxs" style_bg_opa="0" style_border_width="0" scrollable="false"
-                  clickable="false" event_bubble="true">
+          <pass_through name="toolhead_value_x"
+                        width="content" height="content" flex_flow="row" style_flex_cross_place="center"
+                        style_pad_column="#space_xxs">
             <text_body text="X" clickable="false" event_bubble="true">
               <bind_style_if_eq name="th_font_small" subject="toolhead_rung" ref_value="5"/>
               <bind_style_if_eq name="th_ok" subject="toolhead_homed_x" ref_value="1"/>
@@ -171,11 +157,10 @@
             <text_body name="toolhead_value_x_text" bind_text="toolhead_x_text" clickable="false" event_bubble="true">
               <bind_style_if_eq name="th_font_small" subject="toolhead_rung" ref_value="5"/>
             </text_body>
-          </lv_obj>
-          <lv_obj name="toolhead_value_y"
-                  width="content" height="content" flex_flow="row" style_flex_cross_place="center" style_pad_all="0"
-                  style_pad_column="#space_xxs" style_bg_opa="0" style_border_width="0" scrollable="false"
-                  clickable="false" event_bubble="true">
+          </pass_through>
+          <pass_through name="toolhead_value_y"
+                        width="content" height="content" flex_flow="row" style_flex_cross_place="center"
+                        style_pad_column="#space_xxs">
             <text_body text="Y" clickable="false" event_bubble="true">
               <bind_style_if_eq name="th_font_small" subject="toolhead_rung" ref_value="5"/>
               <bind_style_if_eq name="th_ok" subject="toolhead_homed_y" ref_value="1"/>
@@ -184,11 +169,10 @@
             <text_body name="toolhead_value_y_text" bind_text="toolhead_y_text" clickable="false" event_bubble="true">
               <bind_style_if_eq name="th_font_small" subject="toolhead_rung" ref_value="5"/>
             </text_body>
-          </lv_obj>
-          <lv_obj name="toolhead_value_z"
-                  width="content" height="content" flex_flow="row" style_flex_cross_place="center" style_pad_all="0"
-                  style_pad_column="#space_xxs" style_bg_opa="0" style_border_width="0" scrollable="false"
-                  clickable="false" event_bubble="true">
+          </pass_through>
+          <pass_through name="toolhead_value_z"
+                        width="content" height="content" flex_flow="row" style_flex_cross_place="center"
+                        style_pad_column="#space_xxs">
             <text_body text="Z" clickable="false" event_bubble="true">
               <bind_style_if_eq name="th_font_small" subject="toolhead_rung" ref_value="5"/>
               <bind_style_if_eq name="th_ok" subject="toolhead_homed_z" ref_value="1"/>
@@ -197,13 +181,12 @@
             <text_body name="toolhead_value_z_text" bind_text="toolhead_z_text" clickable="false" event_bubble="true">
               <bind_style_if_eq name="th_font_small" subject="toolhead_rung" ref_value="5"/>
             </text_body>
-          </lv_obj>
-        </lv_obj>
+          </pass_through>
+        </pass_through>
         <!-- Full, idle, an axis not homed: the position is unknown and Home All sends G28. -->
-        <lv_obj name="toolhead_footer_home"
-                width="100%" height="content" flex_flow="column" style_flex_cross_place="center" style_pad_all="0"
-                style_pad_row="#space_xxs" style_bg_opa="0" style_border_width="0" scrollable="false" clickable="false"
-                event_bubble="true">
+        <pass_through name="toolhead_footer_home"
+                      width="100%" height="content" flex_flow="column" style_flex_cross_place="center"
+                      style_pad_row="#space_xxs">
           <bind_flag_if_eq subject="toolhead_show_home" flag="hidden" ref_value="0"/>
           <text_small name="toolhead_unknown"
                       text="Position unknown" style_text_color="#text_muted" clickable="false" event_bubble="true"/>
@@ -212,12 +195,11 @@
                      moves_machine="true">
             <event_cb trigger="clicked" callback="toolhead_home_all_cb"/>
           </ui_button>
-        </lv_obj>
+        </pass_through>
         <!-- Full, printing: the active tool and the measured speed. -->
-        <lv_obj name="toolhead_footer_status"
-                width="100%" height="content" flex_flow="row" style_flex_main_place="space_between"
-                style_flex_cross_place="center" style_pad_all="0" style_pad_column="#space_xs" style_bg_opa="0"
-                style_border_width="0" scrollable="false" clickable="false" event_bubble="true">
+        <pass_through name="toolhead_footer_status"
+                      width="100%" height="content" flex_flow="row" style_flex_main_place="space_between"
+                      style_flex_cross_place="center" style_pad_column="#space_xs">
           <bind_flag_if_eq subject="toolhead_show_status" flag="hidden" ref_value="0"/>
           <text_small name="toolhead_tool"
                       bind_text="toolhead_tool_text" style_text_color="#text_muted" clickable="false"
@@ -225,8 +207,8 @@
           <text_small name="toolhead_speed"
                       bind_text="toolhead_speed_text" style_text_color="#text_muted" clickable="false"
                       event_bubble="true"/>
-        </lv_obj>
-      </lv_obj>
-    </lv_obj>
+        </pass_through>
+      </pass_through>
+    </pass_through>
   </view>
 </component>
