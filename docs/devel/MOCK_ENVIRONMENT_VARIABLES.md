@@ -644,6 +644,45 @@ Speed multiplier for dryer simulation (for faster testing).
 HELIX_MOCK_DRYER=1 HELIX_MOCK_DRYER_SPEED=10 ./build/bin/helix-screen --test
 ```
 
+### `HELIX_MOCK_DRYER_HUMIDITY_TARGET`
+
+Make the mock dryer take a humidity target, the way a Happy Hare 4 dryer does
+(`DryerInfo::supports_humidity_target`). The environment overlay then shows its
+optional **Target RH** field beside Minutes; unset, the field stays hidden, as on
+Happy Hare 3 and every other dryer. The mock logs the target and runs its normal
+timed cycle.
+
+| Property | Value |
+|----------|-------|
+| **Values** | `1` / `true` to enable; `0` / `false` or unset to disable |
+| **Default** | unset (no humidity target) |
+| **File** | `src/printer/ams_backend.cpp` |
+
+```bash
+HELIX_MOCK_DRYER=1 HELIX_MOCK_DRYER_HUMIDITY_TARGET=1 ./build/bin/helix-screen --test
+```
+
+Reach the field from the AMS panel's environment indicator (`ctl demo ams`, then
+`ctl click env_indicator`). Blank, it sends no target and the printer's own
+default applies; the placeholder shows that default when the mock reports one
+(`HELIX_MOCK_DRYER_DEFAULT_HUMIDITY`), else `auto`.
+
+### `HELIX_MOCK_DRYER_DEFAULT_HUMIDITY`
+
+The target, in %RH, the mock dryer reports applying to a start that names none
+(`DryerInfo::default_humidity_target`), the way Happy Hare 4 reports
+`heater_default_dry_humidity`. Only shown with `HELIX_MOCK_DRYER_HUMIDITY_TARGET`.
+
+| Property | Value |
+|----------|-------|
+| **Values** | a positive number, e.g. `25` |
+| **Default** | unset (the field's placeholder reads `auto`) |
+| **File** | `src/printer/ams_backend.cpp` |
+
+```bash
+HELIX_MOCK_DRYER=1 HELIX_MOCK_DRYER_HUMIDITY_TARGET=1 HELIX_MOCK_DRYER_DEFAULT_HUMIDITY=25 ./build/bin/helix-screen --test
+```
+
 ### `HELIX_MOCK_DRYING`
 
 Start a live *active* drying session at boot (55 °C target, 6 h session already 2 h in,

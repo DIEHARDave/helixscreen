@@ -37,6 +37,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <optional>
 
 namespace helix::ui {
 
@@ -82,6 +83,8 @@ void AmsEnvironmentOverlay::init_subjects() {
                                subjects_);
         UI_MANAGED_SUBJECT_INT(no_dryer_visible_subject_, 0, "ams_env_overlay_no_dryer_visible",
                                subjects_);
+        UI_MANAGED_SUBJECT_INT(humidity_target_visible_subject_, 0,
+                               "ams_env_overlay_humidity_target_visible", subjects_);
         UI_MANAGED_SUBJECT_INT(drying_active_subject_, 0, "ams_env_overlay_drying_active",
                                subjects_);
         UI_MANAGED_SUBJECT_STRING(drying_text_subject_, drying_text_buf_, "",
@@ -155,6 +158,10 @@ void AmsEnvironmentOverlay::register_callbacks() {
          [](lv_event_t*) {
              get_ams_environment_overlay().show_dryer_keypad(DryerField::Duration);
          }},
+        {"on_ams_env_humidity_target_clicked",
+         [](lv_event_t*) {
+             get_ams_environment_overlay().show_dryer_keypad(DryerField::HumidityTarget);
+         }},
     });
 
     // Both components must be registered before ams_environment_overlay.xml is parsed:
@@ -186,12 +193,15 @@ lv_obj_t* AmsEnvironmentOverlay::create(lv_obj_t* parent) {
     preset_dropdown_ = helix::ui::find_required(overlay_root_, "preset_dropdown", get_name());
     temp_input_ = helix::ui::find_required(overlay_root_, "temp_input", get_name());
     duration_input_ = helix::ui::find_required(overlay_root_, "duration_input", get_name());
+    humidity_target_input_ =
+        helix::ui::find_required(overlay_root_, "humidity_target_input", get_name());
 
-    // Both fields are filled by the numeric keypad, so they opt out of the software
+    // These fields are filled by the numeric keypad, so they opt out of the software
     // keyboard <text_input> gives every textarea by default. Without this a tap raises
     // both at once.
     KeyboardManager::instance().unregister_textarea(temp_input_);
     KeyboardManager::instance().unregister_textarea(duration_input_);
+    KeyboardManager::instance().unregister_textarea(humidity_target_input_);
 
     // The dropdown carries no XML event_cb, so the change handler is attached here.
     if (preset_dropdown_) {
@@ -252,6 +262,11 @@ void AmsEnvironmentOverlay::restore_remembered_dryer_inputs() {
                  config->get<int>(config->df() + "ams/dryer_last_duration", 240));
         lv_textarea_set_text(duration_input_, buf);
     }
+    // Blank leaves the target to the printer's own default; a chosen target applies to
+    // one start only.
+    if (humidity_target_input_) {
+        lv_textarea_set_text(humidity_target_input_, "");
+    }
 }
 
 void AmsEnvironmentOverlay::on_dryer_keypad_confirmed(float value, void* user_data) {
@@ -262,6 +277,35 @@ void AmsEnvironmentOverlay::on_dryer_keypad_confirmed(float value, void* user_da
     self->apply_dryer_keypad_value(self->keypad_field_, value);
 }
 
+void AmsEnvironmentOverlay::publish_humidity_target_placeholder(const DryerInfo& dryer) {
+    if (!humidity_target_input_) {
+        return;
+    }
+    // Blank sends no target, so the field shows the one the dryer applies instead.
+    char buf[16];
+    if (dryer.default_humidity_target) {
+        snprintf(buf, sizeof(buf), "%.0f%%", *dryer.default_humidity_target);
+    } else {
+        snprintf(buf, sizeof(buf), "%s", lv_tr("auto"));
+    }
+    // DECLARATIVE_OK: the XML engine has no placeholder binding. The XML's
+    // placeholder_tag carries the same fallback through a language change, and every
+    // publish re-asserts the dryer's own default.
+    lv_textarea_set_placeholder_text(humidity_target_input_, buf);
+}
+
+lv_obj_t* AmsEnvironmentOverlay::dryer_input(DryerField field) const {
+    switch (field) {
+    case DryerField::Temperature:
+        return temp_input_;
+    case DryerField::Duration:
+        return duration_input_;
+    case DryerField::HumidityTarget:
+        return humidity_target_input_;
+    }
+    return nullptr;
+}
+
 void AmsEnvironmentOverlay::show_dryer_keypad(DryerField field) {
     if (zones_.empty()) {
         return;
@@ -270,8 +314,11 @@ void AmsEnvironmentOverlay::show_dryer_keypad(DryerField field) {
     if (!dryer.supported) {
         return;
     }
+    if (field == DryerField::HumidityTarget && !dryer.supports_humidity_target) {
+        return;
+    }
 
-    lv_obj_t* input = (field == DryerField::Temperature) ? temp_input_ : duration_input_;
+    lv_obj_t* input = dryer_input(field);
     if (!input) {
         return;
     }
@@ -285,33 +332,51 @@ void AmsEnvironmentOverlay::show_dryer_keypad(DryerField field) {
 
     // The keypad clamps to this range itself, which is the same range Start Drying
     // clamps to. Bounding the entry means the field cannot show a number the
-    // command would silently replace.
-    ui_keypad_config_t config = {
-        .initial_value = initial,
-        .min_value = (field == DryerField::Temperature) ? dryer.min_temp_c : 1.0f,
-        .max_value = (field == DryerField::Temperature)
-                         ? dryer.max_temp_c
-                         : static_cast<float>(dryer.max_duration_min),
-        // Both titles are strings the card already declares, so no new keys.
-        .title_label = (field == DryerField::Temperature) ? lv_tr("Temperature") : lv_tr("Minutes"),
-        .unit_label = (field == DryerField::Temperature) ? "\xC2\xB0"
-                                                           "C"
-                                                         : "",
-        .allow_decimal = false,
-        .allow_negative = false,
-        .callback = on_dryer_keypad_confirmed,
-        .user_data = this};
+    // command would silently replace. A humidity target of 0 clears the field.
+    float min_value = 1.0f;
+    float max_value = static_cast<float>(dryer.max_duration_min);
+    const char* title = lv_tr("Minutes");
+    const char* unit = "";
+    switch (field) {
+    case DryerField::Temperature:
+        min_value = dryer.min_temp_c;
+        max_value = dryer.max_temp_c;
+        title = lv_tr("Temperature");
+        unit = "\xC2\xB0"
+               "C";
+        break;
+    case DryerField::Duration:
+        break;
+    case DryerField::HumidityTarget:
+        min_value = 0.0f;
+        max_value = DryerInfo::kMaxHumidityTargetPct;
+        title = lv_tr("Target humidity");
+        unit = "%";
+        break;
+    }
+
+    ui_keypad_config_t config = {.initial_value = initial,
+                                 .min_value = min_value,
+                                 .max_value = max_value,
+                                 .title_label = title,
+                                 .unit_label = unit,
+                                 .allow_decimal = false,
+                                 .allow_negative = false,
+                                 .callback = on_dryer_keypad_confirmed,
+                                 .user_data = this};
 
     ui_keypad_show(&config);
 }
 
 void AmsEnvironmentOverlay::apply_dryer_keypad_value(DryerField field, float value) {
-    lv_obj_t* input = (field == DryerField::Temperature) ? temp_input_ : duration_input_;
+    lv_obj_t* input = dryer_input(field);
     if (!input) {
         return;
     }
-    char buf[8];
-    snprintf(buf, sizeof(buf), "%d", static_cast<int>(value));
+    char buf[8] = "";
+    if (field != DryerField::HumidityTarget || value > 0.0f) {
+        snprintf(buf, sizeof(buf), "%d", static_cast<int>(value));
+    }
     lv_textarea_set_text(input, buf);
     dryer_inputs_edited_ = true;
 }
@@ -448,6 +513,7 @@ void AmsEnvironmentOverlay::on_ui_destroyed() {
     preset_dropdown_ = nullptr;
     temp_input_ = nullptr;
     duration_input_ = nullptr;
+    humidity_target_input_ = nullptr;
     tab_label_pool_.reclaim();
     tab_state_pool_.reclaim();
     tab_active_pool_.reclaim();
@@ -494,6 +560,7 @@ void AmsEnvironmentOverlay::publish_selected_zone() {
         lv_subject_copy_string(&title_text_subject_, title_text_buf_);
         lv_subject_set_int(&dryer_visible_subject_, 0);
         lv_subject_set_int(&no_dryer_visible_subject_, 1);
+        lv_subject_set_int(&humidity_target_visible_subject_, 0);
         lv_subject_set_int(&drying_active_subject_, 0);
         lv_subject_set_int(&humidity_visible_subject_, 0);
         lv_subject_set_int(&all_zones_visible_subject_, 0);
@@ -614,6 +681,9 @@ void AmsEnvironmentOverlay::publish_selected_zone() {
     // Dryer visibility
     lv_subject_set_int(&dryer_visible_subject_, dryer.supported ? 1 : 0);
     lv_subject_set_int(&no_dryer_visible_subject_, dryer.supported ? 0 : 1);
+    lv_subject_set_int(&humidity_target_visible_subject_,
+                       dryer.supported && dryer.supports_humidity_target ? 1 : 0);
+    publish_humidity_target_placeholder(dryer);
 
     // Drying active state
     lv_subject_set_int(&drying_active_subject_, dryer.active ? 1 : 0);
@@ -950,6 +1020,15 @@ void AmsEnvironmentOverlay::handle_start_stop() {
                 if (text && text[0])
                     duration_min = atoi(text);
             }
+            // Blank, or a dryer that takes no target, sends the plain temp + time command,
+            // and the printer applies its own default target, if it has one.
+            float humidity_pct = 0.0f;
+            if (humidity_target_input_) {
+                const char* text = lv_textarea_get_text(humidity_target_input_);
+                if (text && text[0])
+                    humidity_pct = static_cast<float>(atoi(text));
+            }
+            const std::optional<float> humidity_target = dryer.humidity_target(humidity_pct);
 
             // Clamp temperature to backend-reported limits
             if (temp_c < dryer.min_temp_c)
@@ -968,10 +1047,14 @@ void AmsEnvironmentOverlay::handle_start_stop() {
                              "attributed to a unit",
                              zone_id);
             } else {
-                spdlog::info("[AmsEnvironmentOverlay] Starting drying: {}°C for {}min", temp_c,
-                             duration_min);
+                spdlog::info("[AmsEnvironmentOverlay] Starting drying: {}°C for {}min, humidity "
+                             "target {}",
+                             temp_c, duration_min, humidity_target ? *humidity_target : 0.0f);
 
-                AmsError result = backend->start_drying(temp_c, duration_min, -1, unit);
+                AmsError result =
+                    humidity_target ? backend->start_drying_to_humidity(temp_c, duration_min,
+                                                                        *humidity_target, -1, unit)
+                                    : backend->start_drying(temp_c, duration_min, -1, unit);
                 if (result.success()) {
                     // Remember the chosen values so the next open restores them.
                     config->set<int>(config->df() + "ams/dryer_last_temp",

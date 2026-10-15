@@ -3031,8 +3031,10 @@
   <translation tag="Tap the part cooling fan" de="Auf den Teile-Kühllüfter tippen"/>
   <translation tag="Tap to assign" de="Zum Zuweisen tippen"/>
   <translation tag="Target" de="Ziel"/>
+  <translation tag="Target RH" de="Ziel-RF"/>
   <translation tag="Target Temperature" de="Zieltemperatur"/>
   <translation tag="Target Version" de="Zielversion"/>
+  <translation tag="Target humidity" de="Zielfeuchtigkeit"/>
   <translation tag="Telemetry" de="Telemetrie"/>
   <translation tag="Telemetry Data" de="Telemetriedaten"/>
   <translation tag="Telemetry Disabled" de="Telemetrie deaktiviert"/>
@@ -3542,6 +3544,7 @@
   <translation tag="Z: 0.000" de="Z: 0.000"/>
   <translation tag="already loaded" de="bereits geladen"/>
   <translation tag="attempt {}" de="Versuch {}"/>
+  <translation tag="auto" de="auto"/>
   <translation tag="bed" de="Bett"/>
   <translation tag="busy" de="belegt"/>
   <translation tag="by" de="von"/>

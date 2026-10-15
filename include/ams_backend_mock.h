@@ -220,6 +220,9 @@ class AmsBackendMock : public AmsBackend {
     // Dryer
     [[nodiscard]] DryerInfo get_dryer_info(int unit = 0) const override;
     AmsError start_drying(float temp_c, int duration_min, int fan_pct = -1, int unit = 0) override;
+    /// Runs the same simulated cycle as start_drying(); the target is logged, not simulated.
+    AmsError start_drying_to_humidity(float temp_c, int duration_min, float humidity_pct,
+                                      int fan_pct = -1, int unit = 0) override;
     AmsError stop_drying(int unit = 0) override;
 
     /**
@@ -465,6 +468,22 @@ class AmsBackendMock : public AmsBackend {
      * - Support start_drying() and stop_drying() commands
      */
     void set_dryer_enabled(bool enabled);
+
+    /**
+     * @brief Whether the simulated dryers take a humidity target
+     *
+     * Off by default, the answer every dryer gives that has no humidity-terminated
+     * cycle. Can also be set via HELIX_MOCK_DRYER_HUMIDITY_TARGET=1.
+     */
+    void set_dryer_humidity_target(bool enabled);
+
+    /**
+     * @brief The target a start with none applies, reported as
+     *        DryerInfo::default_humidity_target while the dryers take a target
+     *
+     * Unset by default. Can also be set via HELIX_MOCK_DRYER_DEFAULT_HUMIDITY=<pct>.
+     */
+    void set_dryer_default_humidity(std::optional<float> pct);
 
     /**
      * @brief Set dryer simulation speed multiplier
@@ -1029,9 +1048,11 @@ class AmsBackendMock : public AmsBackend {
     std::string environment_mode_; ///< "passive", "dryer", "slot", or "" (auto)
 
     // Dryer simulation state
-    bool dryer_enabled_ = false;        ///< Whether dryer is simulated
-    int dryer_initial_elapsed_min_ = 0; ///< One-shot head start for next start_drying()
-    DryerInfo dryer_state_;             ///< Current dryer state
+    bool dryer_enabled_ = false;                  ///< Whether dryer is simulated
+    int dryer_initial_elapsed_min_ = 0;           ///< One-shot head start for next start_drying()
+    bool dryer_humidity_target_ = false;          ///< Dryers report supports_humidity_target
+    std::optional<float> dryer_default_humidity_; ///< Reported default humidity target
+    DryerInfo dryer_state_;                       ///< Current dryer state
     /// Per-unit dryer overrides. Empty = every unit reports dryer_state_, which is the
     /// single-enclosure shape. A rig with a heated box beside a passive one fills this.
     std::vector<DryerInfo> unit_dryers_;

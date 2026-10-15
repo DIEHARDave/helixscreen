@@ -3031,8 +3031,10 @@
   <translation tag="Tap the part cooling fan" zh="点击零件冷却风扇"/>
   <translation tag="Tap to assign" zh="点击分配"/>
   <translation tag="Target" zh="目标"/>
+  <translation tag="Target RH" zh="目标湿度"/>
   <translation tag="Target Temperature" zh="目标温度"/>
   <translation tag="Target Version" zh="目标版本"/>
+  <translation tag="Target humidity" zh="目标湿度"/>
   <translation tag="Telemetry" zh="遥测"/>
   <translation tag="Telemetry Data" zh="遥测数据"/>
   <translation tag="Telemetry Disabled" zh="遥测已禁用"/>
@@ -3542,6 +3544,7 @@
   <translation tag="Z: 0.000" zh="Z: 0.000"/>
   <translation tag="already loaded" zh="已加载"/>
   <translation tag="attempt {}" zh="第 {} 次尝试"/>
+  <translation tag="auto" zh="自动"/>
   <translation tag="bed" zh="热床"/>
   <translation tag="busy" zh="正忙"/>
   <translation tag="by" zh="作者："/>

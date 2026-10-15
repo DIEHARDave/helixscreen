@@ -3031,8 +3031,10 @@
   <translation tag="Tap the part cooling fan" ru="Нажмите на вентилятор охлаждения детали"/>
   <translation tag="Tap to assign" ru="Нажмите для назначения"/>
   <translation tag="Target" ru="Цель"/>
+  <translation tag="Target RH" ru="Цель ОВ"/>
   <translation tag="Target Temperature" ru="Целевая температура"/>
   <translation tag="Target Version" ru="Целевая версия"/>
+  <translation tag="Target humidity" ru="Целевая влажность"/>
   <translation tag="Telemetry" ru="Телеметрия"/>
   <translation tag="Telemetry Data" ru="Данные телеметрии"/>
   <translation tag="Telemetry Disabled" ru="Телеметрия отключена"/>
@@ -3542,6 +3544,7 @@
   <translation tag="Z: 0.000" ru="Z: 0.000"/>
   <translation tag="already loaded" ru="уже загружен"/>
   <translation tag="attempt {}" ru="попытка {}"/>
+  <translation tag="auto" ru="авто"/>
   <translation tag="bed" ru="стол"/>
   <translation tag="busy" ru="занят"/>
   <translation tag="by" ru="автор:"/>

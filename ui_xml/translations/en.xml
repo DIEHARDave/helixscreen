@@ -3031,8 +3031,10 @@
   <translation tag="Tap the part cooling fan" en="Tap the part cooling fan"/>
   <translation tag="Tap to assign" en="Tap to assign"/>
   <translation tag="Target" en="Target"/>
+  <translation tag="Target RH" en="Target RH"/>
   <translation tag="Target Temperature" en="Target Temperature"/>
   <translation tag="Target Version" en="Target Version"/>
+  <translation tag="Target humidity" en="Target humidity"/>
   <translation tag="Telemetry" en="Telemetry"/>
   <translation tag="Telemetry Data" en="Telemetry Data"/>
   <translation tag="Telemetry Disabled" en="Telemetry Disabled"/>
@@ -3542,6 +3544,7 @@
   <translation tag="Z: 0.000" en="Z: 0.000"/>
   <translation tag="already loaded" en="already loaded"/>
   <translation tag="attempt {}" en="attempt {}"/>
+  <translation tag="auto" en="auto"/>
   <translation tag="bed" en="bed"/>
   <translation tag="busy" en="busy"/>
   <translation tag="by" en="by"/>

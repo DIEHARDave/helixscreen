@@ -3153,8 +3153,10 @@ translations:
   Tap the part cooling fan: パーツ冷却ファンをタップ
   Tap to assign: タップして割当
   Target: '目標'
+  Target RH: 目標湿度
   Target Temperature: 目標温度
   Target Version: 目標バージョン
+  Target humidity: 目標湿度
   Telemetry: テレメトリ
   Telemetry Data: テレメトリデータ
   Telemetry Disabled: テレメトリー無効
@@ -3708,6 +3710,7 @@ translations:
   'Z: 0.000': 'Z: 0.000'
   already loaded: '装填済み'
   attempt {}: '試行 {}'
+  auto: 自動
   bed: ベッド
   busy: 'ビジー状態'
   by: '作成者:'

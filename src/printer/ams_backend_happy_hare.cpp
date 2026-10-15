@@ -1968,6 +1968,15 @@ void AmsBackendHappyHare::apply_heater_config(const nlohmann::json& settings,
             spdlog::warn("[AMS HappyHare] Could not parse heater_max_temp");
         }
     }
+
+    // heater_default_dry_humidity: v4's unit parameters only. Klipper reports the
+    // configured default too, so a v4 install always carries it.
+    if (const auto humidity = happy_hare::read_config_number(
+            happy_hare::find_config_param(settings, layout, "heater_default_dry_humidity"))) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        dryer_info_.default_humidity_target = *humidity;
+        spdlog::info("[AMS HappyHare] Default drying humidity target: {:.1f}%", *humidity);
+    }
 }
 
 // ============================================================================
@@ -3327,10 +3336,20 @@ std::vector<int> AmsBackendHappyHare::get_tool_mapping() const {
 // Dryer Control (v4 - KMS/EMU hardware)
 // ============================================================================
 
+DryerInfo AmsBackendHappyHare::dryer_capabilities_locked() const {
+    DryerInfo out = dryer_info_;
+    // MMU_HEATER takes HUMIDITY= from Happy Hare 4 on.
+    out.supports_humidity_target = out.supported && is_v4_locked();
+    if (!out.supports_humidity_target) {
+        out.default_humidity_target.reset();
+    }
+    return out;
+}
+
 DryerInfo AmsBackendHappyHare::get_dryer_info(int unit) const {
     (void)unit; // single-unit
     std::lock_guard<std::mutex> lock(mutex_);
-    DryerInfo out = dryer_info_;
+    DryerInfo out = dryer_capabilities_locked();
     if (dry_end_epoch_ > 0) {
         const int remaining = static_cast<int>((dry_end_epoch_ - now_fn_()) / 60);
         out.remaining_min = remaining > 0 ? remaining : 0;
@@ -3566,6 +3585,25 @@ AmsError AmsBackendHappyHare::send_heater_command(const std::string& command, in
 
 AmsError AmsBackendHappyHare::start_drying(float temp_c, int duration_min, int fan_pct, int unit) {
     (void)fan_pct; // Happy Hare MMU_HEATER does not accept a FAN parameter
+    return start_drying_cycle(temp_c, duration_min, std::nullopt, unit);
+}
+
+AmsError AmsBackendHappyHare::start_drying_to_humidity(float temp_c, int duration_min,
+                                                       float humidity_pct, int fan_pct, int unit) {
+    (void)fan_pct; // Happy Hare MMU_HEATER does not accept a FAN parameter
+    std::optional<float> target;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        target = dryer_capabilities_locked().humidity_target(humidity_pct);
+    }
+    if (!target) {
+        return AmsErrorHelper::not_supported("Dryer humidity target");
+    }
+    return start_drying_cycle(temp_c, duration_min, target, unit);
+}
+
+AmsError AmsBackendHappyHare::start_drying_cycle(float temp_c, int duration_min,
+                                                 std::optional<float> humidity_pct, int unit) {
     {
         std::lock_guard<std::mutex> lock(mutex_);
         if (!dryer_info_.supported) {
@@ -3574,19 +3612,26 @@ AmsError AmsBackendHappyHare::start_drying(float temp_c, int duration_min, int f
     }
 
     // Happy Hare uses TIMER= (minutes) not DURATION=, and has no FAN parameter.
+    // HUMIDITY= ends the cycle early once the box reads at or below it; TIMER still
+    // bounds it. Left out, Happy Hare applies its own heater_default_dry_humidity.
     // send_heater_command() names the unit and its gates; it locks internally,
     // so it is called with no lock held.
-    const std::string cmd =
-        fmt::format("MMU_HEATER DRY=1 TEMP={:.0f} TIMER={}", temp_c, duration_min);
+    std::string cmd = fmt::format("MMU_HEATER DRY=1 TEMP={:.0f} TIMER={}", temp_c, duration_min);
+    if (humidity_pct) {
+        cmd += fmt::format(" HUMIDITY={:.0f}", *humidity_pct);
+    }
 
     {
         std::lock_guard<std::mutex> lock(mutex_);
         dryer_info_.duration_min = duration_min;
         dry_end_epoch_ = now_fn_() + static_cast<std::time_t>(duration_min) * 60;
+        dry_humidity_target_ = humidity_pct;
     }
 
-    spdlog::info("[AMS HappyHare] Starting dryer: {:.0f}°C for {} min (unit {})", temp_c,
-                 duration_min, unit);
+    spdlog::info(
+        "[AMS HappyHare] Starting dryer: {:.0f}°C for {} min, humidity target {} (unit {})", temp_c,
+        duration_min, humidity_pct ? fmt::format("{:.0f}%", *humidity_pct) : std::string("none"),
+        unit);
     return send_heater_command(cmd, unit);
 }
 
@@ -3597,6 +3642,7 @@ AmsError AmsBackendHappyHare::stop_drying(int unit) {
             return AmsErrorHelper::not_supported("Dryer not available on this hardware");
         }
         dry_end_epoch_ = 0;
+        dry_humidity_target_.reset();
         dryer_info_.active = false;
         dryer_info_.remaining_min = 0;
         dryer_info_.duration_min = 0;
@@ -3617,17 +3663,22 @@ AmsError AmsBackendHappyHare::update_drying(float temp_c, int duration_min, int 
 
     // TIMER is read only on the DRY=1 path and DRY=1 mid-cycle is refused, so moving the
     // clock means a fresh cycle. Carry the running target when only the duration changed.
+    // The restarted cycle keeps the running one's humidity target.
     if (want_duration) {
         float target = temp_c;
-        if (!want_temp) {
+        std::optional<float> humidity;
+        {
             std::lock_guard<std::mutex> lock(mutex_);
-            target = dryer_info_.target_temp_c;
+            if (!want_temp) {
+                target = dryer_info_.target_temp_c;
+            }
+            humidity = dry_humidity_target_;
         }
         auto stopped = stop_drying(unit);
         if (!stopped.success()) {
             return stopped;
         }
-        return start_drying(target, duration_min, fan_pct, unit);
+        return start_drying_cycle(target, duration_min, humidity, unit);
     }
 
     // Temperature alone re-sends the setpoint and leaves the cycle and its timer alone.

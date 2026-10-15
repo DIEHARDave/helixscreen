@@ -195,15 +195,32 @@
                     <event_cb trigger="clicked" callback="on_ams_env_duration_clicked"/>
                   </text_input>
                 </lv_obj>
+                <!-- Optional humidity target: the cycle also ends once the box reads at or
+                     below it. Only for a dryer that takes one; blank leaves the target to the
+                     printer's own default, which C++ shows as the placeholder when known. -->
+                <lv_obj name="humidity_target_column"
+                        width="1" height="content" flex_grow="1" style_pad_all="0" flex_flow="column"
+                        style_pad_gap="#space_xxs" scrollable="false" hidden="true">
+                  <bind_flag_if_eq subject="ams_env_overlay_humidity_target_visible" flag="hidden" ref_value="0"/>
+                  <text_small text="Target RH" style_text_color="#text_muted"/>
+                  <text_input name="humidity_target_input"
+                              width="100%" text="" placeholder_text="auto" placeholder_tag="auto" one_line="true"
+                              max_length="2">
+                    <event_cb trigger="clicked" callback="on_ams_env_humidity_target_clicked"/>
+                  </text_input>
+                </lv_obj>
               </lv_obj>
 
               <!-- Start/Stop button. Height is the responsive token, not a
                    fixed 44: this section is height="100%" and centers its
                    overflow, so 18 too-tall pixels at Micro get split evenly
                    and slice both the dropdown above and this button's own
-                   label (#1192). -->
+                   label (#1192). No vertical padding: the label centers
+                   itself, and at Micro the button is too short to fit it
+                   inside the default padding. -->
               <ui_button name="btn_start_stop"
-                         width="100%" height="#button_height" bind_text="ams_env_overlay_start_stop_text">
+                         width="100%" height="#button_height" style_pad_ver="0"
+                         bind_text="ams_env_overlay_start_stop_text">
                 <event_cb trigger="clicked" callback="on_ams_env_start_stop_clicked"/>
               </ui_button>
             </lv_obj>

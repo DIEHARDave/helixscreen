@@ -3031,8 +3031,10 @@
   <translation tag="Tap the part cooling fan" ja="パーツ冷却ファンをタップ"/>
   <translation tag="Tap to assign" ja="タップして割当"/>
   <translation tag="Target" ja="目標"/>
+  <translation tag="Target RH" ja="目標湿度"/>
   <translation tag="Target Temperature" ja="目標温度"/>
   <translation tag="Target Version" ja="目標バージョン"/>
+  <translation tag="Target humidity" ja="目標湿度"/>
   <translation tag="Telemetry" ja="テレメトリ"/>
   <translation tag="Telemetry Data" ja="テレメトリデータ"/>
   <translation tag="Telemetry Disabled" ja="テレメトリー無効"/>
@@ -3542,6 +3544,7 @@
   <translation tag="Z: 0.000" ja="Z: 0.000"/>
   <translation tag="already loaded" ja="装填済み"/>
   <translation tag="attempt {}" ja="試行 {}"/>
+  <translation tag="auto" ja="自動"/>
   <translation tag="bed" ja="ベッド"/>
   <translation tag="busy" ja="ビジー状態"/>
   <translation tag="by" ja="作成者:"/>

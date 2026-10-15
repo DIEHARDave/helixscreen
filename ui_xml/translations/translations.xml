@@ -3031,8 +3031,10 @@
   <translation tag="Tap the part cooling fan" de="Auf den Teile-Kühllüfter tippen" en="Tap the part cooling fan" es="Toque el ventilador de enfriamiento de pieza" fr="Touchez le ventilateur de refroidissement pièce" it="Tocca la ventola raffreddamento pezzo" ja="パーツ冷却ファンをタップ" pt="Toque na ventoinha de resfriamento da peça" ru="Нажмите на вентилятор охлаждения детали" zh="点击零件冷却风扇"/>
   <translation tag="Tap to assign" de="Zum Zuweisen tippen" en="Tap to assign" es="Toca para asignar" fr="Appuyez pour assigner" it="Tocca per assegnare" ja="タップして割当" pt="Toque para atribuir" ru="Нажмите для назначения" zh="点击分配"/>
   <translation tag="Target" de="Ziel" en="Target" es="Objetivo" fr="Cible" it="Target" ja="目標" pt="Alvo" ru="Цель" zh="目标"/>
+  <translation tag="Target RH" de="Ziel-RF" en="Target RH" es="HR obj." fr="HR cible" it="UR target" ja="目標湿度" pt="UR alvo" ru="Цель ОВ" zh="目标湿度"/>
   <translation tag="Target Temperature" de="Zieltemperatur" en="Target Temperature" es="Temperatura Objetivo" fr="Température cible" it="Temperatura target" ja="目標温度" pt="Temperatura Alvo" ru="Целевая температура" zh="目标温度"/>
   <translation tag="Target Version" de="Zielversion" en="Target Version" es="Versión objetivo" fr="Version cible" it="Versione obiettivo" ja="目標バージョン" pt="Versão Alvo" ru="Целевая версия" zh="目标版本"/>
+  <translation tag="Target humidity" de="Zielfeuchtigkeit" en="Target humidity" es="Humedad objetivo" fr="Humidité cible" it="Umidità target" ja="目標湿度" pt="Umidade alvo" ru="Целевая влажность" zh="目标湿度"/>
   <translation tag="Telemetry" de="Telemetrie" en="Telemetry" es="Telemetría" fr="Télémétrie" it="Telemetria" ja="テレメトリ" pt="Telemetria" ru="Телеметрия" zh="遥测"/>
   <translation tag="Telemetry Data" de="Telemetriedaten" en="Telemetry Data" es="Datos de telemetría" fr="Données de télémétrie" it="Dati di telemetria" ja="テレメトリデータ" pt="Dados de Telemetria" ru="Данные телеметрии" zh="遥测数据"/>
   <translation tag="Telemetry Disabled" de="Telemetrie deaktiviert" en="Telemetry Disabled" es="Telemetría desactivada" fr="Télémétrie désactivée" it="Telemetria disabilitata" ja="テレメトリー無効" pt="Telemetria Desativada" ru="Телеметрия отключена" zh="遥测已禁用"/>
@@ -3542,6 +3544,7 @@
   <translation tag="Z: 0.000" de="Z: 0.000" en="Z: 0.000" es="Z: 0.000" fr="Z: 0.000" it="Z: 0.000" ja="Z: 0.000" pt="Z: 0.000" ru="Z: 0.000" zh="Z: 0.000"/>
   <translation tag="already loaded" de="bereits geladen" en="already loaded" es="ya cargado" fr="déjà chargé" it="già caricato" ja="装填済み" pt="já carregado" ru="уже загружен" zh="已加载"/>
   <translation tag="attempt {}" de="Versuch {}" en="attempt {}" es="intento {}" fr="essai {}" it="tentativo {}" ja="試行 {}" pt="tentativa {}" ru="попытка {}" zh="第 {} 次尝试"/>
+  <translation tag="auto" de="auto" en="auto" es="auto" fr="auto" it="auto" ja="自動" pt="auto" ru="авто" zh="自动"/>
   <translation tag="bed" de="Bett" en="bed" es="cama" fr="plateau" it="piano" ja="ベッド" pt="mesa" ru="стол" zh="热床"/>
   <translation tag="busy" de="belegt" en="busy" es="ocupado" fr="occupé" it="occupato" ja="ビジー状態" pt="ocupado" ru="занят" zh="正忙"/>
   <translation tag="by" de="von" en="by" es="de" fr="par" it="di" ja="作成者:" pt="por" ru="автор:" zh="作者："/>

@@ -3265,8 +3265,10 @@ translations:
   Tap the part cooling fan: Tap the part cooling fan
   Tap to assign: Tap to assign
   Target: Target
+  Target RH: Target RH
   Target Temperature: Target Temperature
   Target Version: Target Version
+  Target humidity: Target humidity
   Telemetry: Telemetry
   Telemetry Data: Telemetry Data
   Telemetry Disabled: Telemetry Disabled
@@ -3852,6 +3854,7 @@ translations:
   'Z: 0.000': 'Z: 0.000'
   already loaded: already loaded
   attempt {}: attempt {}
+  auto: auto
   bed: bed
   busy: busy
   by: by

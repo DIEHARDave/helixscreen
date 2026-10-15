@@ -3330,8 +3330,10 @@ translations:
   Tap the part cooling fan: Нажмите на вентилятор охлаждения детали
   Tap to assign: Нажмите для назначения
   Target: 'Цель'
+  Target RH: Цель ОВ
   Target Temperature: Целевая температура
   Target Version: Целевая версия
+  Target humidity: Целевая влажность
   Telemetry: Телеметрия
   Telemetry Data: Данные телеметрии
   Telemetry Disabled: Телеметрия отключена
@@ -3923,6 +3925,7 @@ translations:
   'Z: 0.000': 'Z: 0.000'
   already loaded: 'уже загружен'
   attempt {}: 'попытка {}'
+  auto: авто
   bed: стол
   busy: 'занят'
   by: 'автор:'

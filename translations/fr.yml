@@ -3384,8 +3384,10 @@ translations:
   Tap the part cooling fan: Touchez le ventilateur de refroidissement pièce
   Tap to assign: Appuyez pour assigner
   Target: 'Cible'
+  Target RH: HR cible
   Target Temperature: Température cible
   Target Version: Version cible
+  Target humidity: Humidité cible
   Telemetry: Télémétrie
   Telemetry Data: Données de télémétrie
   Telemetry Disabled: Télémétrie désactivée
@@ -3999,6 +4001,7 @@ translations:
   'Z: 0.000': 'Z: 0.000'
   already loaded: 'déjà chargé'
   attempt {}: 'essai {}'
+  auto: auto
   bed: plateau
   busy: 'occupé'
   by: 'par'
