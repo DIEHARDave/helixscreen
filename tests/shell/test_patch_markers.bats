@@ -225,7 +225,7 @@ EOF
         | while IFS= read -r f; do [ -f "$f" ] || printf '%s ' "$f"; done)
     [ -z "$missing" ] || { printf 'watched files absent, graph incomplete: %s\n' "$missing"; return 1; }
     graph="$BATS_TEST_TMPDIR/pi-graph.log"
-    (cd "$(scratch_tree)" && make PLATFORM_TARGET=pi SKIP_OPTIONAL_DEPS=1 -n -B build/pi/.patch-markers-verified) \
+    scratch_make PLATFORM_TARGET=pi SKIP_OPTIONAL_DEPS=1 -n -B build/pi/.patch-markers-verified \
         > "$graph" 2>&1 || true
     grep -q 'patch-markers-verified' "$graph" \
         || { printf 'dry run never walked the marker stamp\n'; head -5 "$graph"; return 1; }

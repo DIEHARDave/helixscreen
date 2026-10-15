@@ -65,16 +65,6 @@ EOF
     chmod +x "$FAKE"
 }
 
-path_without_jobpool() {
-    local d p=""
-    local IFS=:
-    for d in $PATH; do
-        [ -e "$d/jobpool" ] && continue
-        p=${p:+$p:}$d
-    done
-    printf '%s' "$p"
-}
-
 no_pool() {
     unset HELIX_JOBPOOL
     unset -f jobpool 2>/dev/null || true

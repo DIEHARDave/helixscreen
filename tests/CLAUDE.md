@@ -479,12 +479,18 @@ unsets `JOBPOOL` (`test_helix_claim_jobs.bats`).
 build there, and a second make in that tree deletes the test binary they are about to run
 (`prune-orphan-test-objs`). `make -n` is no safer: it still runs every recipe line that
 names `$(MAKE)`, and parsing the Makefile writes stamps under `build/`. The sandbox puts a
-guard in front of `make` (shim plus exported function, deferring to a test's own make
-mock) that blocks and records any make whose directory, after `-C`, is the tree or inside
-it. A test that needs the real Makefile runs it in `scratch_tree` (helpers.bash): every
-top-level entry symlinked, with a `build/` of its own. `make_db [vars]` prints the database
-parsed there; `run_mk_fragment` runs one target's fragment of an `mk/` file as a scratch
-Makefile. The suite also unsets what an enclosing make hands down (`MAKEFLAGS`,
+guard in front of `make` and `gmake` (shim plus exported function, deferring to a test's
+own make mock) that blocks and records any make whose directory is the tree or inside it,
+reading `-C` alone or in a cluster (`-sC`), `--directory` and its prefixes (`--dir=`). A
+make called by absolute path (`/usr/bin/make`) passes no guard; that is the one shape left
+to review, and `test_sandbox_gate.bats` lints the source for a make pointed at a repo-root
+variable or `$BATS_TEST_DIRNAME/../..` (exception: `# REAL_TREE_MAKE_OK: <reason>` inside
+the @test). A test that needs the real Makefile runs it in `scratch_tree` (helpers.bash):
+every top-level entry symlinked, with a `build/` of its own, safe for parsing, print-style
+targets and recipes that write only under `build/` or to paths the test overrides.
+`scratch_make` runs make there, `make_db [vars]` prints the database parsed there, and
+`run_mk_fragment` runs one target's fragment of an `mk/` file as a scratch Makefile.
+`path_without_jobpool` drops the host's jobpool from PATH and keeps the guard. The suite also unsets what an enclosing make hands down (`MAKEFLAGS`,
 `MAKELEVEL`, `BATS_REQUIRED`, the Makefile's exports), so a test behaves the same under
 `make test-shell` as under bare `bats`.
 

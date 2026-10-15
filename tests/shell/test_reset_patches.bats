@@ -28,7 +28,7 @@ setup() {
 
     # The reset loop for each submodule is emitted as one shell line, so the
     # libhv loop can be isolated by the submodule path inside it.
-    DRYRUN="$(cd "$(scratch_tree)" && make -n reset-patches 2>/dev/null)"
+    DRYRUN="$(scratch_make -n reset-patches 2>/dev/null)"
     LIBHV_LOOP="$(printf '%s\n' "$DRYRUN" | grep 'for file in' | grep 'lib/libhv' || true)"
 }
 
@@ -110,7 +110,7 @@ declared_libhv_files() {
     # reset half is restoring. Both spellings satisfy the invariant, so only the
     # resulting order is worth pinning.
     local dryrun reset_at apply_at
-    dryrun="$(cd "$(scratch_tree)" && make -n reapply-patches 2>/dev/null)"
+    dryrun="$(scratch_make -n reapply-patches 2>/dev/null)"
 
     # Reset half: the libhv restore loop, the same anchor setup() keys on.
     reset_at="$(printf '%s\n' "$dryrun" | grep -n 'for file in' | grep 'lib/libhv' |

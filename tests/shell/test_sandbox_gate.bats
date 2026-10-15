@@ -89,26 +89,65 @@ escape() {
     done
 }
 
+# Each shape here reaches the tree on purpose, so each test carries the
+# lint's reviewed-exception marker.
 @test "sandbox: a make in the tree under test is blocked and recorded" {
-    run escape bash -c 'cd "$HELIX_TEST_REPO_ROOT" && make -n help'
+    # REAL_TREE_MAKE_OK: deliberate escapes, each recorded in a private ledger
+    # Started from outside the tree, so only the directory make is given counts.
+    cd "$BATS_TEST_TMPDIR" || return 1
+    local root="$HELIX_TEST_REPO_ROOT" n=0 shape
+    run escape bash -c 'cd "$1" && make -n help' _ "$root"
     [ "$status" -ne 0 ]
     contains "blocked make in the tree under test" "$output"
-    run escape make -C "$HELIX_TEST_REPO_ROOT" -n help
+    n=1
+    for shape in "-C $root" "-C$root" "--directory=$root/mk" "--directory $root" \
+        "--dir=$root" "--di $root" "-sC $root" "-sC$root" "-ksC $root" "-f Makefile -C $root"; do
+        # shellcheck disable=SC2086  # each shape is its own word list
+        run escape make $shape -n help
+        [ "$status" -ne 0 ] || fail "make $shape -n help was not blocked"
+        n=$((n + 1))
+    done
+    run escape sh -c 'cd /tmp && make -C"$1" -n help' _ "$root"
     [ "$status" -ne 0 ]
-    run escape make --directory="$HELIX_TEST_REPO_ROOT/mk" -n help
+    n=$((n + 1))
+    [ "$(grep -c 'make .*-n help' "$PRIVATE_LEDGER")" -eq "$n" ]
+}
+
+@test "sandbox: an option argument that only looks like -C is not a directory" {
+    # REAL_TREE_MAKE_OK: the -f argument names a file in the tree, the run is not there
+    run escape make -C "$(scratch_tree)" --no-print-directory -f "$HELIX_TEST_REPO_ROOT/Makefile" -W -C print-var-LVGL_DIR
+    [ "$status" -eq 0 ]
+    [ ! -s "$PRIVATE_LEDGER" ]
+}
+
+@test "sandbox: gmake in the tree under test is blocked too" {
+    # REAL_TREE_MAKE_OK: deliberate escape, recorded in a private ledger
+    # Started from outside the tree, so only the directory make is given counts.
+    cd "$BATS_TEST_TMPDIR" || return 1
+    [ -x "$HELIX_TEST_SANDBOX_BIN/gmake" ] || skip "no gmake on this host"
+    run escape gmake -C "$HELIX_TEST_REPO_ROOT" -n help
     [ "$status" -ne 0 ]
-    run escape sh -c 'cd /tmp && make -C"$HELIX_TEST_REPO_ROOT" -n help'
+    run escape sh -c 'gmake -C "$1" -n help' _ "$HELIX_TEST_REPO_ROOT"
     [ "$status" -ne 0 ]
-    [ "$(grep -c 'make .*-n help' "$PRIVATE_LEDGER")" -eq 4 ]
+    [ "$(grep -c 'gmake .*-n help' "$PRIVATE_LEDGER")" -eq 2 ]
 }
 
 @test "sandbox: a make in the tree survives a callee that REPLACES PATH" {
-    run escape env PATH="/usr/bin:/bin" bash -c 'cd "$HELIX_TEST_REPO_ROOT" && make -n help'
+    # REAL_TREE_MAKE_OK: deliberate escapes, recorded in a private ledger
+    # Started from outside the tree, so only the directory make is given counts.
+    cd "$BATS_TEST_TMPDIR" || return 1
+    run escape env PATH="/usr/bin:/bin" bash -c 'cd "$1" && make -n help' _ "$HELIX_TEST_REPO_ROOT"
     [ "$status" -ne 0 ]
-    grep -q 'make -n help' "$PRIVATE_LEDGER"
+    # path_without_jobpool keeps the guard while it drops the jobpool blocker.
+    run escape env PATH="$(path_without_jobpool)" make -C "$HELIX_TEST_REPO_ROOT" -n help
+    [ "$status" -ne 0 ]
+    PATH="$(path_without_jobpool)" run type -P jobpool
+    [ "$status" -ne 0 ]
+    [ "$(grep -c 'make .*-n help' "$PRIVATE_LEDGER")" -eq 2 ]
 }
 
 @test "sandbox: a make in scratch_tree, or asking make about itself, runs" {
+    # REAL_TREE_MAKE_OK: make --version in the tree is allowed, and asserted here
     run escape make -C "$(scratch_tree)" --no-print-directory print-var-LVGL_DIR
     [ "$status" -eq 0 ]
     [ "$output" = lib/lvgl ]
@@ -124,19 +163,43 @@ escape() {
     [ -d "$tree/build" ] && [ ! -L "$tree/build" ]
     [ ! -e "$tree/.git" ]
     [ "$(readlink "$tree/Makefile")" = "$HELIX_TEST_REPO_ROOT/Makefile" ]
+    if [ -e "$HELIX_TEST_REPO_ROOT/.fonts.stamp" ]; then
+        [ -f "$tree/.fonts.stamp" ] && [ ! -L "$tree/.fonts.stamp" ]
+        [ "$(stat_mtime "$tree/.fonts.stamp")" = "$(stat_mtime "$HELIX_TEST_REPO_ROOT/.fonts.stamp")" ]
+    fi
+}
+
+@test "sandbox: tests racing for scratch_tree all get the whole tree" {
+    local i
+    # A file directory of its own, so the tree is built here, under the race.
+    BATS_FILE_TMPDIR="$BATS_TEST_TMPDIR/race-file"
+    mkdir -p "$BATS_FILE_TMPDIR"
+    for i in 1 2 3 4 5 6 7 8; do
+        (t="$(scratch_tree)" && [ -e "$t/Makefile" ] && [ -d "$t/build" ] && echo ok) \
+            > "$BATS_TEST_TMPDIR/race.$i" 2>&1 &
+    done
+    wait
+    [ "$(cat "$BATS_TEST_TMPDIR"/race.* | grep -c '^ok$')" -eq 8 ]
+    [ "$(find "$BATS_FILE_TMPDIR" -maxdepth 1 -name 'scratch-tree.*' | wc -l)" -eq 1 ]
 }
 
 # The guard is a PATH shim plus a bash function, so `env PATH=<no sandbox>
 # make` run from a directory named by a variable holding the tree escapes both.
-# This catches that shape in the source. A reviewed exception carries
-# `# REAL_TREE_MAKE_OK: <reason>` on the line.
+# This catches that shape in the source. A reviewed exception writes
+# `# REAL_TREE_MAKE_OK: <reason>` inside the @test that needs it, which exempts
+# that test and nothing else.
 @test "sandbox: no test runs make in the tree through a repo-root variable" {
     local offenders
-    offenders=$(awk '
-        /^[[:space:]]*#/ || /REAL_TREE_MAKE_OK:/ { next }
-        /(^|[^A-Za-z_-])make[[:space:]]/ {
-            if ($0 ~ /cd "?\$\{?(REPO|REPO_ROOT|ROOT|WORKTREE_ROOT)\}?"?[^|;]*&&.*(^|[^A-Za-z_-])make[[:space:]]/ ||
-                $0 ~ /(^|[^A-Za-z_-])make[[:space:]].*(-C|--directory=?)[[:space:]]*"?\$\{?(REPO|REPO_ROOT|ROOT|WORKTREE_ROOT|BATS_TEST_DIRNAME)/)
+    # A directory naming the tree: a repo-root variable, or the path up from
+    # the test file.
+    local tree='"?\\$\\{?((REPO|REPO_ROOT|ROOT|WORKTREE_ROOT|HELIX_TEST_REPO_ROOT)\\}?"?|BATS_TEST_DIRNAME\\}?/\\.\\./\\.\\.)'
+    offenders=$(awk -v tree="$tree" '
+        FNR == 1 || /^@test/ { reviewed = 0 }
+        /REAL_TREE_MAKE_OK:/ { reviewed = 1 }
+        /^[[:space:]]*#/ || reviewed { next }
+        /(^|[^A-Za-z_-])g?make[[:space:]]/ {
+            if ($0 ~ "cd " tree "[^|;]*&&.*(^|[^A-Za-z_-])g?make[[:space:]]" ||
+                $0 ~ "(^|[^A-Za-z_-])g?make[[:space:]].*(-[A-Za-z]*C|--di[a-z]*=?)[[:space:]]*" tree)
                 printf "%s:%d:%s\n", FILENAME, FNR, $0
         }
     ' "$BATS_TEST_DIRNAME"/*.bats "$BATS_TEST_DIRNAME/helpers.bash")

@@ -40,17 +40,6 @@ FAKE_EOF
     chmod +x "$FAKE"
 }
 
-# A PATH holding no jobpool at all, for the box that never installed it.
-path_without_jobpool() {
-    local d p=""
-    local IFS=:
-    for d in $PATH; do
-        [ -e "$d/jobpool" ] && continue
-        p=${p:+$p:}$d
-    done
-    printf '%s' "$p"
-}
-
 @test "a live pool is the answer, and -v names it" {
     fake_pool 30 4
     run --separate-stderr "$CLAIM" jobs -v

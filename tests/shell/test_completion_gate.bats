@@ -58,7 +58,7 @@ recipe_of() {
 }
 
 @test "test-run refuses, exits non-zero, and names both gates" {
-    run make -C "$(scratch_tree)" --no-print-directory test-run
+    run scratch_make test-run
     [ "$status" -eq 2 ]
     contains "unit-sweep" "$output"
     contains "full-test-run" "$output"

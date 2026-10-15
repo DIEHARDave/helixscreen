@@ -121,50 +121,72 @@ SHIM
         command -v gmake >/dev/null 2>&1; then
         real_make="$(command -v gmake)"
     fi
-    cat > "$HELIX_TEST_SANDBOX_BIN/make" <<SHIM
+    # One guard behind both names a test can call make by. It finds the
+    # directory make would run in from -C (alone, or last in a cluster such as
+    # -sC), --directory and any prefix of it make accepts (--dir=), each taken
+    # relative to the one before.
+    export HELIX_TEST_MAKE_GUARD="$BATS_SUITE_TMPDIR/make-guard.sh"
+    cat > "$HELIX_TEST_MAKE_GUARD" <<'GUARD'
 #!/bin/sh
-dir=\$(pwd -P)
-info=
-prev=
-for a in "\$@"; do
-    case "\$prev" in
-        -C|--directory) dir=\$(cd "\$dir" && cd "\$a" 2>/dev/null && pwd -P) || dir= ;;
+# make-guard.sh <real make> <name it was called by> [make args...]
+real=$1 name=$2
+shift 2
+dir=$(pwd -P)
+info= want= skip=
+chdir() { dir=$(cd "$dir" 2>/dev/null && cd "$1" 2>/dev/null && pwd -P) || dir=; }
+for a in "$@"; do
+    if [ -n "$want" ]; then chdir "$a"; want=; continue; fi
+    if [ -n "$skip" ]; then skip=; continue; fi
+    case "$a" in
+        --) break ;;
+        --version | --help) info=1 ;;
+        --di*=*) case --directory in "${a%%=*}"*) chdir "${a#*=}" ;; esac ;;
+        --di*) case --directory in "$a"*) want=1 ;; esac ;;
+        --*) ;;
+        -?*)
+            c=${a#-}
+            while [ -n "$c" ]; do
+                f=${c%"${c#?}"}
+                c=${c#?}
+                case "$f" in
+                    C) if [ -n "$c" ]; then chdir "$c"; else want=1; fi; break ;;
+                    v | h) info=1 ;;
+                    # Options whose argument is the rest of the cluster or the next word.
+                    [fIoWE]) [ -n "$c" ] || skip=1; break ;;
+                esac
+            done ;;
     esac
-    case "\$a" in
-        -C?*) dir=\$(cd "\$dir" && cd "\${a#-C}" 2>/dev/null && pwd -P) || dir= ;;
-        --directory=*) dir=\$(cd "\$dir" && cd "\${a#--directory=}" 2>/dev/null && pwd -P) || dir= ;;
-        --version|-v|--help|-h) info=1 ;;
-    esac
-    prev=\$a
 done
-case "\$dir/" in
-    "\$HELIX_TEST_REPO_ROOT"/*)
-        if [ -z "\$info" ]; then
-            printf '%s\t%s\tmake %s (in %s)\n' \
-                "\${BATS_TEST_FILENAME##*/}" "\${BATS_TEST_NAME:-(file setup)}" "\$*" "\$dir" \
-                >> "\$HELIX_TEST_SANDBOX_LEDGER"
-            printf 'helix sandbox: blocked make in the tree under test (%s): run it in scratch_tree\n' "\$dir" >&2
-            [ "\$HELIX_TEST_SANDBOX_MODE" = permissive ] && exit 0
+case "$dir/" in
+    "$HELIX_TEST_REPO_ROOT"/*)
+        if [ -z "$info" ]; then
+            printf '%s\t%s\t%s %s (in %s)\n' \
+                "${BATS_TEST_FILENAME##*/}" "${BATS_TEST_NAME:-(file setup)}" "$name" "$*" "$dir" \
+                >> "$HELIX_TEST_SANDBOX_LEDGER"
+            printf 'helix sandbox: blocked %s in the tree under test (%s): run it in scratch_tree\n' "$name" "$dir" >&2
+            [ "$HELIX_TEST_SANDBOX_MODE" = permissive ] && exit 0
             exit 1
         fi ;;
 esac
-exec '$real_make' "\$@"
-SHIM
+exec "$real" "$@"
+GUARD
+    chmod +x "$HELIX_TEST_MAKE_GUARD"
+    printf '#!/bin/sh\nexec "$HELIX_TEST_MAKE_GUARD" %s make "$@"\n' "'$real_make'" \
+        > "$HELIX_TEST_SANDBOX_BIN/make"
     chmod +x "$HELIX_TEST_SANDBOX_BIN/make"
     # The function layer, for the same reason as the blocked commands: a
-    # callee that REPLACES PATH loses the shim. It hands control back to a
-    # test's own make mock, as _helix_sandbox_dispatch below does.
-    make() {
-        local resolved
-        resolved="$(type -P make 2>/dev/null)"
-        if [ -n "$resolved" ] && [ "$resolved" != "$HELIX_TEST_SANDBOX_BIN/make" ] &&
-           [ "${resolved#"$BATS_RUN_TMPDIR"/}" != "$resolved" ]; then
-            "$resolved" "$@"
-        else
-            "$HELIX_TEST_SANDBOX_BIN/make" "$@"
-        fi
-    }
+    # callee that REPLACES PATH loses the shim.
+    make() { _helix_sandbox_dispatch make "$@"; }
     export -f make
+    local real_gmake
+    real_gmake="$(PATH="${PATH#"$HELIX_TEST_SANDBOX_BIN:"}" command -v gmake)" || real_gmake=""
+    if [ -n "$real_gmake" ]; then
+        printf '#!/bin/sh\nexec "$HELIX_TEST_MAKE_GUARD" %s gmake "$@"\n' "'$real_gmake'" \
+            > "$HELIX_TEST_SANDBOX_BIN/gmake"
+        chmod +x "$HELIX_TEST_SANDBOX_BIN/gmake"
+        gmake() { _helix_sandbox_dispatch gmake "$@"; }
+        export -f gmake
+    fi
 
     # The host's build pool is shared with every other session on the box. A
     # make the suite runs bypasses it (JOBPOOL=0 turns the shim into a plain
