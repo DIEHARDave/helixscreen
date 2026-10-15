@@ -2330,8 +2330,7 @@ void PrintSelectDetailView::load_gcode_for_preview() {
     // streaming-safety gate against the authoritative size; in thumbnail mode
     // its show_gcode_viewer(false) calls leave the thumbnail as it is. A USB
     // file has no Moonraker metadata to fetch until it is printed.
-    const std::string file_path =
-        current_path_.empty() ? current_filename_ : current_path_ + "/" + current_filename_;
+    const std::string file_path = helix::gcode::join_gcode_path(current_path_, current_filename_);
 
     if (current_local_path_.empty()) {
         api_->files().get_file_metadata(

@@ -36,6 +36,19 @@ std::string get_filename_basename(const std::string& path);
  */
 std::string join_gcode_path(const std::string& dir, const std::string& filename);
 
+/// A Moonraker-relative path's directory and filename.
+struct GcodePathParts {
+    std::string dir;      ///< "" for the gcodes root
+    std::string filename; ///< bare filename
+};
+
+/**
+ * @brief The inverse of join_gcode_path(): split at the last '/'.
+ *
+ * A bare filename has the root ("") as its directory.
+ */
+GcodePathParts split_gcode_path(const std::string& path);
+
 /**
  * @brief Does this filename carry an extension we treat as printable?
  *

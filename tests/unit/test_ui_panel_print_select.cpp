@@ -808,6 +808,23 @@ TEST_CASE("Print Select: Metadata path construction", "[ui][metadata]") {
     }
 }
 
+TEST_CASE("split_gcode_path undoes join_gcode_path", "[ui][metadata]") {
+    using helix::gcode::join_gcode_path;
+    using helix::gcode::split_gcode_path;
+
+    SECTION("A bare filename sits in the root") {
+        const auto parts = split_gcode_path("benchy.gcode");
+        CHECK(parts.dir.empty());
+        CHECK(parts.filename == "benchy.gcode");
+    }
+    SECTION("A nested path splits at its last slash") {
+        const auto parts = split_gcode_path("projects/voron/toolhead.gcode");
+        CHECK(parts.dir == "projects/voron");
+        CHECK(parts.filename == "toolhead.gcode");
+        CHECK(join_gcode_path(parts.dir, parts.filename) == "projects/voron/toolhead.gcode");
+    }
+}
+
 TEST_CASE("thumbnail_subject_value never publishes an empty buffer",
           "[ui][print_select][thumbnail]") {
     // LVGL's lv_image_src_get_type classifies a buffer whose first byte is < 0x20

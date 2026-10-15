@@ -54,6 +54,14 @@ std::string join_gcode_path(const std::string& dir, const std::string& filename)
     return dir.empty() ? filename : dir + "/" + filename;
 }
 
+GcodePathParts split_gcode_path(const std::string& path) {
+    const size_t slash = path.rfind('/');
+    if (slash == std::string::npos) {
+        return {std::string(), path};
+    }
+    return {path.substr(0, slash), path.substr(slash + 1)};
+}
+
 std::string get_filename_basename(const std::string& path) {
     if (path.empty()) {
         return path;

@@ -652,9 +652,7 @@ void PrintSelectPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
                     // separates a server-side phantom (fresh listing offered it) from
                     // navigation into a stale index (listing is old or lacks it).
                     const std::string& failed_path = self->current_path_;
-                    const size_t slash = failed_path.find_last_of('/');
-                    const std::string leaf =
-                        slash == std::string::npos ? failed_path : failed_path.substr(slash + 1);
+                    const std::string leaf = helix::gcode::split_gcode_path(failed_path).filename;
                     const bool offered_by_listing = std::any_of(
                         self->file_list_.begin(), self->file_list_.end(),
                         [&leaf](const PrintFileData& f) { return f.is_dir && f.filename == leaf; });
@@ -1540,10 +1538,8 @@ void PrintSelectPanel::process_metadata_result(size_t i, const std::string& file
                     std::string filename_copy = d->filename;
 
                     // Build the full gcode path for download
-                    std::string gcode_path = filename_copy;
-                    if (!self->current_path_.empty()) {
-                        gcode_path = self->current_path_ + "/" + filename_copy;
-                    }
+                    std::string gcode_path =
+                        helix::gcode::join_gcode_path(self->current_path_, filename_copy);
 
                     spdlog::debug("[{}] No thumbnail in metadata for {}, extracting from gcode",
                                   self->get_name(), gcode_path);
@@ -2882,9 +2878,8 @@ void PrintSelectPanel::start_print(bool force) {
         copy_usb_file_to_printer([this, colors = std::move(colors),
                                   thumbnail = std::move(thumbnail), exclude_picks,
                                   scan_key](const std::string& dest) {
-            const size_t slash = dest.rfind('/');
-            dispatch_print(dest.substr(slash + 1), dest.substr(0, slash), colors, thumbnail,
-                           exclude_picks, scan_key);
+            auto parts = helix::gcode::split_gcode_path(dest);
+            dispatch_print(parts.filename, parts.dir, colors, thumbnail, exclude_picks, scan_key);
         });
         return;
     }
@@ -2920,7 +2915,7 @@ void PrintSelectPanel::dispatch_print(const std::string& filename, const std::st
     // past the reach of hide_detail_view(): from here only a confirmed start
     // (finish_pending_queued_job) or the user opening a different file
     // clears it.
-    const std::string composed = dir.empty() ? filename : dir + "/" + filename;
+    const std::string composed = helix::gcode::join_gcode_path(dir, filename);
     if (pending_queued_start_ && pending_queued_start_->filename == composed) {
         pending_queued_start_->start_attempted = true;
     }
@@ -3170,8 +3165,7 @@ void PrintSelectPanel::queue_file(const std::string& filename, const std::string
 }
 
 std::string PrintSelectPanel::composed_selected_filename() const {
-    return current_path_.empty() ? std::string(selected_filename_buffer_)
-                                 : current_path_ + "/" + selected_filename_buffer_;
+    return helix::gcode::join_gcode_path(current_path_, selected_filename_buffer_);
 }
 
 void PrintSelectPanel::start_queued_job(const JobQueueEntry& job) {
@@ -3190,21 +3184,10 @@ void PrintSelectPanel::start_queued_job(const JobQueueEntry& job) {
         usb_source_->select_printer_source();
     }
     path_navigator_.reset();
-    const size_t dir_end = job.filename.rfind('/');
-    if (dir_end != std::string::npos) {
-        const std::string dir = job.filename.substr(0, dir_end);
-        size_t start = 0;
-        while (start <= dir.size()) {
-            const size_t slash = dir.find('/', start);
-            const std::string segment =
-                dir.substr(start, slash == std::string::npos ? std::string::npos : slash - start);
-            if (!segment.empty()) {
-                path_navigator_.navigate_to(segment);
-            }
-            if (slash == std::string::npos) {
-                break;
-            }
-            start = slash + 1;
+    const std::string job_dir = helix::gcode::split_gcode_path(job.filename).dir;
+    for (std::string_view segment : tio::lines(job_dir, '/')) {
+        if (!segment.empty()) {
+            path_navigator_.navigate_to(std::string(segment));
         }
     }
     current_path_ = path_navigator_.current_path();
@@ -3244,8 +3227,7 @@ void PrintSelectPanel::try_open_pending_queued_job() {
     // in start_queued_job put that path at the queued file's directory, so a
     // hit composes to exactly the queued filename.
     const std::string& queued = pending_queued_start_->filename;
-    const size_t slash = queued.rfind('/');
-    const std::string name = slash == std::string::npos ? queued : queued.substr(slash + 1);
+    const std::string name = helix::gcode::split_gcode_path(queued).filename;
 
     if (select_file_by_name(name)) {
         return; // handle_file_click() opened (and seeded) the detail view
@@ -3490,12 +3472,8 @@ void PrintSelectPanel::delete_file() {
     if (api_) {
         // Construct full path: gcodes/<current_path>/<filename>
         // Moonraker's delete_file requires the full path including root
-        std::string full_path;
-        if (current_path_.empty()) {
-            full_path = "gcodes/" + filename_to_delete;
-        } else {
-            full_path = "gcodes/" + current_path_ + "/" + filename_to_delete;
-        }
+        const std::string full_path =
+            "gcodes/" + helix::gcode::join_gcode_path(current_path_, filename_to_delete);
 
         spdlog::info("[{}] Deleting file: {}", get_name(), full_path);
 

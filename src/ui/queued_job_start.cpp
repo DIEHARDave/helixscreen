@@ -232,10 +232,9 @@ void QueuedJobStarter::gather(const JobQueueEntry& job, QueuedJobOptions saved) 
 
     auto pending = std::make_unique<Pending>();
     pending->job = job;
-    pending->name = gcode::get_filename_basename(job.filename);
-    if (pending->name.size() < job.filename.size()) {
-        pending->dir = job.filename.substr(0, job.filename.size() - pending->name.size() - 1);
-    }
+    auto parts = gcode::split_gcode_path(job.filename);
+    pending->name = std::move(parts.filename);
+    pending->dir = std::move(parts.dir);
     pending_ = std::move(pending);
 
     prep_ = prep_source_();

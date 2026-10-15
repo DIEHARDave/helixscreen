@@ -981,7 +981,7 @@ void PrintPreparationManager::start_print(const std::string& filename,
     PrintCompletionCallback wrapped_completion = on_completion;
 
     // Build full path for print
-    std::string filename_to_print = current_path.empty() ? filename : current_path + "/" + filename;
+    std::string filename_to_print = gcode::join_gcode_path(current_path, filename);
 
     // Read checkbox states for logging and timelapse
     PrePrintOptions options = read_options_from_subjects();
