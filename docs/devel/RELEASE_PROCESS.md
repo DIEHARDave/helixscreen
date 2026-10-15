@@ -250,6 +250,8 @@ The workflow auto-generates basic release notes if no annotation is provided.
 - [ ] Documentation updated for new features
 - [ ] Tested on real hardware (Pi and/or AD5M)
 
+`scripts/release-gate.sh fast` also runs `scripts/release-health.sh`, which compares the newest beta of `VERSION.txt`'s release against the current stable release in telemetry (releases endpoint, 14 days): crash-free devices, crash rate, update failure rate, print success rate, and p95 frame time and memory. It prints a table and a `WARN` line per metric that trails stable, and notes a candidate seen on fewer than 10 devices. It is informational and never fails the gate; with no admin key, no network or no beta in telemetry it prints one line saying so. The table is in `build/release-gate/release-health.log`; `RELEASE_HEALTH=0` skips the step. The thresholds are `RELEASE_WARN` in `server/telemetry-worker/scripts/releaseHealth.ts`.
+
 ### After Release
 
 - [ ] Release workflow completed successfully
