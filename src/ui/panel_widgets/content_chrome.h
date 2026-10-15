@@ -38,7 +38,14 @@ inline int button_label_chrome_w(const char* pad_token = "button_padding") {
 /// since a measured-exact fit renders as an overlap by a pixel or two.
 /// `row_inset_px` is a side inset charged to row candidates alone, so it is not
 /// chrome of a container whose flow is already a row.
-inline ContentChrome measure_content_chrome(lv_obj_t* root, int reserve_px, int row_inset_px = 0) {
+/// Whether measure_content_chrome() charges the branching container's gap.
+enum class BranchGap {
+    Charged,  ///< the gap flex draws between the parts visible now
+    Excluded, ///< none: the caller's content needs count every gap for the layout they measure
+};
+
+inline ContentChrome measure_content_chrome(lv_obj_t* root, int reserve_px, int row_inset_px = 0,
+                                            BranchGap branch_gap = BranchGap::Charged) {
     ContentChrome chrome{2 * reserve_px, 2 * reserve_px};
     for (lv_obj_t* o = root; o != nullptr; o = lv_obj_get_child(o, 0)) {
         int side_pads = static_cast<int>(lv_obj_get_style_pad_left(o, LV_PART_MAIN)) +
@@ -51,6 +58,8 @@ inline ContentChrome measure_content_chrome(lv_obj_t* root, int reserve_px, int 
                     static_cast<int>(lv_obj_get_style_pad_bottom(o, LV_PART_MAIN));
         const uint32_t children = lv_obj_get_child_count(o);
         if (children != 1) {
+            if (branch_gap == BranchGap::Excluded)
+                break;
             uint32_t visible = 0;
             for (uint32_t i = 0; i < children; ++i) {
                 if (!lv_obj_has_flag(lv_obj_get_child(o, static_cast<int32_t>(i)),
@@ -81,6 +90,17 @@ inline ContentChrome content_chrome_or_estimate(lv_obj_t* root, const char* pad_
     }
     const auto px = [](const char* token) { return token ? theme_manager_get_spacing(token) : 0; };
     return {2 * px(pad_hor_token) + px(col_gap_token), 2 * px(pad_ver_token) + px(row_gap_token)};
+}
+
+/// content_chrome_or_estimate() with no gap, for a root whose visible parts change with
+/// the rung: the caller's needs count every gap of the layout they measure, so charging
+/// the gap of the parts showing now would make the verdict depend on the last one.
+inline ContentChrome content_padding_or_estimate(lv_obj_t* root, const char* pad_hor_token,
+                                                 const char* pad_ver_token) {
+    if (root) {
+        return measure_content_chrome(root, 0, 0, BranchGap::Excluded);
+    }
+    return content_chrome_or_estimate(nullptr, pad_hor_token, pad_ver_token);
 }
 
 } // namespace helix

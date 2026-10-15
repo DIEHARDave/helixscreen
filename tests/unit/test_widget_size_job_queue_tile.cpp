@@ -143,13 +143,14 @@ Parts parts_of(PanelWidgetHarness<JobQueueWidget>& h) {
     return p;
 }
 
-/// The expected parts of one state at the four rungs, in Strip, Cell, Wide, Full order.
+/// The expected parts and rung of one state in the Strip, Cell, Wide and Full boxes, in
+/// that order. A state whose content is small enough draws a larger rung in a smaller box.
 struct Expect {
     Parts at[4];
+    SizeRung rung[4] = {SizeRung::Strip, SizeRung::Cell, SizeRung::Wide, SizeRung::Full};
 };
 
-/// @p check_rung is false for the quiet states, whose caption is small enough to draw a
-/// larger rung in a smaller tile.
+/// @p check_rung is false for the quiet states, whose rung follows their caption's width.
 void check_parts(PanelWidgetHarness<JobQueueWidget>& h, const Expect& expect,
                  bool check_rung = true) {
     const Box boxes[] = {kStrip, kCell, kWide, kFull};
@@ -157,7 +158,7 @@ void check_parts(PanelWidgetHarness<JobQueueWidget>& h, const Expect& expect,
         INFO(boxes[i].w << "x" << boxes[i].h);
         h.resize(1, 1, boxes[i].w, boxes[i].h);
         if (check_rung)
-            CHECK(subject_int("jq_tile_rung") == static_cast<int>(boxes[i].rung));
+            CHECK(subject_int("jq_tile_rung") == static_cast<int>(expect.rung[i]));
         CHECK(parts_of(h) == expect.at[i]);
     }
 }
@@ -218,18 +219,21 @@ TEST_CASE_METHOD(JobQueueTileFixture,
     CHECK(subject_int("jq_tile_action") == static_cast<int>(JobQueueTileAction::None));
     CHECK(subject_text("jq_tile_hero") == "3 queued");
     CHECK(subject_text("jq_tile_detail") == "Next: file-0");
-    check_parts(h, {{parts(false, false, false, false, false, false, 0),
+    check_parts(h, {{parts(false, false, true, false, false, false, 0),
                      parts(false, false, true, false, false, false, 0),
                      parts(false, false, true, false, false, false, 0),
-                     parts(false, false, true, false, false, false, 2)}});
+                     parts(false, false, true, false, false, false, 2)},
+                    // "N queued" over the next name fits the Strip box.
+                    {SizeRung::Cell, SizeRung::Cell, SizeRung::Wide, SizeRung::Full}});
     for (const Box& b : {kCell, kWide, kFull}) {
         INFO(b.w << "x" << b.h);
         h.resize(1, 1, b.w, b.h);
         CHECK(shown(h, "jq_auto"));
     }
+    // The Strip box's Cell has no line left for it.
     h.resize(1, 1, kStrip.w, kStrip.h);
     CHECK_FALSE(shown(h, "jq_auto"));
-    CHECK(shown(h, "jq_count"));
+    CHECK(shown(h, "jq_hero"));
 }
 
 TEST_CASE_METHOD(JobQueueTileFixture, "job queue tile: printing shows what is next",
@@ -241,11 +245,32 @@ TEST_CASE_METHOD(JobQueueTileFixture, "job queue tile: printing shows what is ne
     CHECK(subject_int("jq_tile_state") == static_cast<int>(JobQueueTileState::Printing));
     CHECK(subject_text("jq_tile_hero") == "3 queued");
     CHECK(subject_text("jq_tile_detail") == "Next: file-0");
-    check_parts(h, {{parts(false, false, false, false, false, false, 0),
+    check_parts(h, {{parts(false, false, true, false, false, false, 0),
                      parts(false, false, true, false, false, false, 0),
                      parts(false, false, true, false, false, false, 0),
-                     parts(false, false, true, false, false, false, 2)}});
+                     parts(false, false, true, false, false, false, 2)},
+                    // "N queued" over the next name fits the Strip box.
+                    {SizeRung::Cell, SizeRung::Cell, SizeRung::Wide, SizeRung::Full}});
     CHECK_FALSE(shown(h, "jq_auto"));
+}
+
+TEST_CASE_METHOD(JobQueueTileFixture,
+                 "job queue tile: a box's rung does not depend on the rung shown before it",
+                 "[widget_size][job_queue]") {
+    // Full shows the list under the body, Wide the body alone, so the parts visible when
+    // the Strip box is decided differ.
+    deliver(3);
+    set_print_active(true);
+    PanelWidgetHarness<JobQueueWidget> h(test_screen());
+    h.resize(1, 1, kFull.w, kFull.h);
+    REQUIRE(shown(h, "jq_after_0"));
+    h.resize(1, 1, kStrip.w, kStrip.h);
+    const int after_full = subject_int("jq_tile_rung");
+    h.resize(1, 1, kWide.w, kWide.h);
+    REQUIRE_FALSE(shown(h, "jq_after_0"));
+    h.resize(1, 1, kStrip.w, kStrip.h);
+    CHECK(after_full == subject_int("jq_tile_rung"));
+    CHECK(after_full == static_cast<int>(SizeRung::Cell));
 }
 
 TEST_CASE_METHOD(JobQueueTileFixture, "job queue tile: a job being loaded shows its thumbnail",

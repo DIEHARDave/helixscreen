@@ -264,9 +264,9 @@ JobQueueTileVerdict JobQueueWidget::decide(int width_px, int height_px,
                                            std::string* cell_name) const {
     if (cell_name)
         cell_name->clear();
-    // The root's padding and row gap, as panel_widget_job_queue.xml sets them.
-    const ContentChrome chrome =
-        content_chrome_or_estimate(root(), "space_sm", "space_xxs", "space_xxs");
+    // The root's padding, as panel_widget_job_queue.xml sets it. measure_needs() counts
+    // the gaps between the root's parts, which differ by rung.
+    const ContentChrome chrome = content_padding_or_estimate(root(), "space_sm", "space_xxs");
     const TileMetrics m;
     JobQueueTileLayoutInput li;
     li.content_w = width_px - chrome.w;
