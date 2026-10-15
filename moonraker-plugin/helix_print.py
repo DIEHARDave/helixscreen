@@ -33,11 +33,17 @@ Configuration (moonraker.conf):
     temp_dir: .helix_temp
     symlink_dir: .helix_print
     cleanup_delay: 86400
+    convert_3mf: True
+    start_3mf_on_upload: False
+
+The .3mf converter lives in helix_3mf.py beside this file (README.md,
+".3mf Conversion").
 """
 
 from __future__ import annotations
 
 import glob as glob_module
+import importlib.util
 import json
 import logging
 import sys
@@ -57,13 +63,39 @@ HELIX_TEMP_TABLE = "helix_temp_files"
 DB_RECORD_MAX_AGE = 30 * 86400
 
 # Plugin version - used for API version detection by clients
-PLUGIN_VERSION = "1.1.0"
+PLUGIN_VERSION = "1.2.0"
 
 # Namespace for key-value storage fallback (Moonraker v0.8.x)
 HELIX_NAMESPACE = "helix_temp_files"
 
 # Provider name stamped on our entry in a history job's auxiliary_data
 HELIX_AUX_PROVIDER = "helix_print"
+
+
+def _load_helix_3mf() -> Optional[Any]:
+    """Load helix_3mf.py from beside this file.
+
+    Moonraker imports this component through a symlink in its components
+    directory, where no sibling module exists, so the import follows the link
+    to the plugin's own directory. None when the file is missing: the plugin
+    then runs without the .3mf converter.
+    """
+    path = Path(__file__).resolve().parent / "helix_3mf.py"
+    if not path.is_file():
+        return None
+    spec = importlib.util.spec_from_file_location("helix_3mf", str(path))
+    if spec is None or spec.loader is None:
+        return None
+    module = importlib.util.module_from_spec(spec)
+    try:
+        spec.loader.exec_module(module)
+    except Exception:
+        logging.exception("HelixPrint: helix_3mf.py failed to load")
+        return None
+    return module
+
+
+helix_3mf = _load_helix_3mf()
 
 
 class PrintInfo:
@@ -106,6 +138,9 @@ class HelixPrint:
         self.symlink_dir = config.get("symlink_dir", ".helix_print")
         self.cleanup_delay = config.getint("cleanup_delay", 86400)  # 24 hours
         self.enabled = config.getboolean("enabled", True)
+        self.convert_3mf = config.getboolean("convert_3mf", True)
+        self.start_3mf_on_upload = config.getboolean("start_3mf_on_upload", False)
+        self.converter: Optional[Any] = None
 
         # Validate directory names don't contain path separators
         if "/" in self.temp_dir:
@@ -137,6 +172,11 @@ class HelixPrint:
             "/server/helix/status",
             ["GET"],
             self._handle_status,
+        )
+        self.server.register_endpoint(
+            "/server/helix/3mf_conversions",
+            ["GET"],
+            self._handle_3mf_conversions,
         )
 
         # Register event handlers
@@ -234,6 +274,34 @@ class HelixPrint:
         # Schedule startup cleanup
         self.eventloop.register_callback(self._startup_cleanup)
 
+        await self._start_3mf_converter()
+
+    async def _start_3mf_converter(self) -> None:
+        if not (self.enabled and self.convert_3mf):
+            return
+        if helix_3mf is None:
+            logging.warning("HelixPrint: helix_3mf.py not found, .3mf conversion off")
+            return
+        self.converter = helix_3mf.Helix3mfConverter(
+            self.server,
+            self.file_manager,
+            self.database,
+            self.klippy_apis,
+            self.gc_path,
+            self.temp_dir,
+            self.start_3mf_on_upload,
+        )
+        try:
+            await self.converter.start()
+        except Exception:
+            logging.exception("HelixPrint: .3mf converter failed to start")
+            await self.converter.close()
+            self.converter.active = False
+
+    async def close(self) -> None:
+        if self.converter is not None:
+            await self.converter.close()
+
     async def _ensure_directories(self) -> None:
         """Ensure temp and symlink directories exist."""
         if self.gc_path is None:
@@ -306,7 +374,17 @@ class HelixPrint:
             "cleanup_delay": self.cleanup_delay,
             "active_prints": len(self.active_prints),
             "version": PLUGIN_VERSION,
+            "convert_3mf": self.converter is not None and self.converter.active,
+            "start_3mf_on_upload": (
+                self.converter is not None and self.converter.hook_installed
+            ),
         }
+
+    async def _handle_3mf_conversions(self, web_request: WebRequest) -> Dict[str, Any]:
+        """List .3mf conversions (README.md, "List .3mf Conversions")."""
+        if self.converter is None:
+            return {"conversions": []}
+        return await self.converter.handle_conversions(web_request)
 
     async def _handle_print_modified(
         self, web_request: WebRequest
@@ -383,7 +461,14 @@ class HelixPrint:
         # `full/` segment, so the filename Klipper reports names the original on
         # its own. The segment tells clients this shape from the bare-filename
         # links earlier plugin versions made directly in the symlink directory.
-        symlink_filename = f"{self.symlink_dir}/full/{original_filename}"
+        # Klipper only opens .gcode/.g/.gco names, so a .3mf original is linked
+        # under the .gcode name it stands for.
+        link_name = original_filename
+        if link_name.lower().endswith(".3mf"):
+            link_name = link_name[: -len(".3mf")]
+            if not link_name.lower().endswith(".gcode"):
+                link_name += ".gcode"
+        symlink_filename = f"{self.symlink_dir}/full/{link_name}"
         symlink_path = self.gc_path / symlink_filename
 
         # Validate symlink path: it must land inside the symlink directory.

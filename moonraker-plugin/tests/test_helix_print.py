@@ -82,6 +82,9 @@ class MockEventLoop:
     def delay_callback(self, delay: float, callback, *args):
         pass
 
+    def run_in_thread(self, callback, *args):
+        return asyncio.get_event_loop().run_in_executor(None, callback, *args)
+
 
 class MockFileManager:
     """Mock file manager for testing."""
@@ -424,7 +427,7 @@ class TestStatusAPI:
         assert result["temp_dir"] == ".helix_temp"
         assert result["symlink_dir"] == ".helix_print"
         assert result["cleanup_delay"] == 3600
-        assert result["version"] == "1.1.0"
+        assert result["version"] == "1.2.0"
         assert result["active_prints"] == 0
 
 
@@ -771,6 +774,38 @@ class TestPathValidation:
 
         assert result["print_filename"] == ".helix_print/full/prints/2024/benchy.gcode"
         assert (Path(temp_gcodes_dir) / result["print_filename"]).is_symlink()
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("original,link", [
+        ("prints/benchy.gcode.3mf", ".helix_print/full/prints/benchy.gcode"),
+        ("prints/benchy.3MF", ".helix_print/full/prints/benchy.gcode"),
+    ])
+    async def test_a_3mf_original_links_under_a_gcode_name(
+        self, helix_print_component, mock_server, temp_gcodes_dir, original, link
+    ):
+        """Klipper's virtual_sdcard opens only .gcode/.g/.gco names, so the
+        link for a .3mf original carries the .gcode name it stands for, while
+        the original keeps its own name for history."""
+        gcodes = Path(temp_gcodes_dir)
+        (gcodes / "prints").mkdir()
+        (gcodes / original).write_bytes(b"PK\x03\x04")
+        (gcodes / ".helix_temp").mkdir()
+        (gcodes / ".helix_temp" / "plate.gcode").write_text("G28\n")
+        await helix_print_component.component_init()
+
+        result = await mock_server.endpoints["/server/helix/print_modified"](
+            MockWebRequest({
+                "original_filename": original,
+                "temp_file_path": ".helix_temp/plate.gcode",
+                "modifications": [],
+            })
+        )
+
+        assert result["print_filename"] == link
+        assert result["original_filename"] == original
+        assert (gcodes / link).is_symlink()
+        apis = mock_server.components["klippy_apis"]
+        apis.run_gcode.assert_awaited_with(f'SDCARD_PRINT_FILE FILENAME="{link}"')
 
     @pytest.mark.asyncio
     async def test_rejects_a_symlink_path_that_escapes(
