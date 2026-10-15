@@ -26,12 +26,8 @@ char g_cache_sandbox[256];
 
 /// Pin every cache rung a test can reach into a per-run sandbox.
 ///
-/// get_helix_cache_dir() used to be stubbed out of the test link by
-/// tests/ui_test_utils.cpp, so a test could not reach the developer's real
-/// cache no matter what it asked for. The real cascade is linked now
-/// (src/system/helix_cache_dir.cpp) — which is the point, since the stub was a
-/// two-rung fake that left rungs 2-7 untested — but it also means an unpinned
-/// run resolves to $HOME/.cache/helix and writes there.
+/// The real cache cascade (src/system/helix_cache_dir.cpp) is linked, so an
+/// unpinned run resolves to $HOME/.cache/helix and writes there.
 ///
 /// WHY A CONSTRUCTOR AND NOT A CATCH2 LISTENER: the cache directory is latched
 /// by a Meyer's singleton, and tests/unit/test_isolation_listener.cpp reaches it

@@ -218,12 +218,10 @@ const PanelWidgetEntry& find_entry(const std::vector<PanelWidgetEntry>& entries,
 
 /// Records every user-visible warning toast raised while installed.
 ///
-/// `ui_notification.o` is excluded from the test binary (mk/tests.mk
-/// TEST_APP_OBJS) and tests/ui_test_utils.cpp stubs ui_notification_warning()
-/// to a log-only no-op, so this hook is the ONLY way a test can see that a
-/// toast was raised. Watching any other channel (the toast stack,
-/// PendingStartupWarnings) records nothing and turns every "…must be silent"
-/// assertion into a vacuous pass.
+/// The warning hook sees every warning raised, before the toast threshold or
+/// the pre-init startup queue decide how it is shown. The toast stack stays
+/// empty until ToastManager::init(), so watching it instead would turn every
+/// "…must be silent" assertion into a vacuous pass.
 struct WarningSpy {
     WarningSpy() {
         helix::ui::set_test_notification_warning_hook(
