@@ -10,6 +10,7 @@
 <script setup lang="ts">
 import { onErrorCaptured, ref, watch } from 'vue'
 import RenderBoundary from './RenderBoundary.vue'
+import { isRenderError } from '../utils/renderError'
 
 const props = defineProps<{
   title: string
@@ -19,6 +20,8 @@ const props = defineProps<{
 
 // A section whose content throws while rendering shows the message in place of
 // its content; the rest of the page keeps rendering. A new load clears it.
+// Errors from click handlers, watchers and lifecycle hooks leave the content
+// in place and propagate to the app's handler.
 const renderError = ref('')
 watch(
   () => props.loading,
@@ -26,7 +29,8 @@ watch(
     if (loading) renderError.value = ''
   }
 )
-onErrorCaptured((err) => {
+onErrorCaptured((err, _instance, info) => {
+  if (!isRenderError(info)) return
   renderError.value = `Failed to render: ${err instanceof Error ? err.message : String(err)}`
   return false
 })

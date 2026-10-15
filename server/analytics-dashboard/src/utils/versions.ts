@@ -154,3 +154,20 @@ export function groupVersionRates(
     return { ...g, numerator, denominator, rate: applies && denominator > 0 ? numerator / denominator : null }
   })
 }
+
+/**
+ * Version-picker chips: versions grouped as groupVersions does, each with how
+ * many of its members are in `shown`. A closed group whose `shown` is above 0
+ * holds a picked version the picker does not list on its own.
+ */
+export function versionChips(
+  rows: { name: string; count: number }[],
+  expanded: ReadonlySet<string>,
+  shown: ReadonlySet<string>,
+  keepLines = 2
+): (Grouped & { shown: number })[] {
+  return groupVersions(rows, expanded, keepLines).map((g) => ({
+    ...g,
+    shown: g.members.filter((m) => shown.has(m)).length
+  }))
+}

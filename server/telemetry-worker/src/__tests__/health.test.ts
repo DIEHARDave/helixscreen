@@ -6,7 +6,7 @@ import { HEALTH_WINDOWS, filterFor, healthQueries, versionInClause, windowClause
 const KEYS: HealthQueryKey[] = [
   "actives_cur", "actives_prev", "top_versions", "release_cur", "release_prev",
   "release_devices_cur", "release_devices_prev", "prints_cur", "prints_prev",
-  "errors_cur", "errors_prev", "errors_baseline", "crashes_cur", "crashes_prev",
+  "print_sessions_cur", "print_sessions_prev", "errors_cur", "errors_prev", "errors_baseline", "crashes_cur", "crashes_prev",
   "cdn_latest", "kind_days",
 ];
 
@@ -39,7 +39,8 @@ describe("healthQueries", () => {
 
   it("puts each window in every windowed query", () => {
     for (const k of KEYS) {
-      if (k === "cdn_latest" || k === "kind_days") continue;
+      // The session lookup reads up to its window's end; prints.test.ts covers it.
+      if (k === "cdn_latest" || k === "kind_days" || k.startsWith("print_sessions")) continue;
       expect(q[k], k).toContain(win(k));
     }
   });
@@ -154,6 +155,7 @@ describe("buildHealth", () => {
     expect(rel.cur.crash_free).toBeCloseTo(0.96);
     expect(rel.cur.crash_rate).toBeCloseTo(0.05);
     expect(rel.cur.update_failure_rate).toBeCloseTo(0.25);
+    expect([rel.cur.update_failures, rel.cur.update_successes]).toEqual([1, 3]);
     expect(rel.cur.print_success).toBeCloseTo(0.9);
   });
 
@@ -164,7 +166,10 @@ describe("buildHealth", () => {
     r.prints_cur = [{ ver: "1.0.4", print_successes: 0, print_total: 0 }];
     const rel = buildHealth(r, "2026-10-15").releases[0];
     for (const w of [rel.cur, rel.prev]) {
-      expect(w).toEqual({ devices: 0, crash_free: null, crash_rate: null, update_failure_rate: null, print_success: null });
+      expect(w).toEqual({
+        devices: 0, update_failures: 0, update_successes: 0,
+        crash_free: null, crash_rate: null, update_failure_rate: null, print_success: null,
+      });
     }
     expect(JSON.stringify(buildHealth(r, "2026-10-15"))).not.toContain("NaN");
   });

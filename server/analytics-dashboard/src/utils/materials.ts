@@ -14,6 +14,13 @@ export function materialSet(filamentType: string): { set: string; materials: str
   return { set: materials.join(' + '), materials, multi: materials.length >= 2 }
 }
 
+/** A material set with fewer prints than this is drawn dimmed: its rate rests on too few prints to compare. */
+export const LOW_COUNT_PRINTS = 5
+
+export function isLowCount(count: number): boolean {
+  return count < LOW_COUNT_PRINTS
+}
+
 /**
  * Sums rows that share a material set; success_rate is the count-weighted
  * mean, or null for a set with no prints. Ordered by count descending.

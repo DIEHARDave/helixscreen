@@ -1886,9 +1886,11 @@ describe("Dashboard endpoints", () => {
       rss?: unknown[];
       adoption?: unknown[];
       top?: unknown[];
+      sessions?: unknown[];
     }) {
       mockExecuteQuery.mockImplementation(async (_c, sql: string) => {
         if (sql.includes("LIMIT 8")) return { data: rows.top ?? [] };
+        if (sql.includes("argMax") && sql.includes("as model")) return { data: rows.sessions ?? [] };
         if (sql.includes("as update_successes")) return { data: rows.stats ?? [] };
         if (sql.includes("as active_devices")) return { data: rows.actives ?? [] };
         if (sql.includes("as print_successes")) return { data: rows.prints ?? [] };
@@ -1929,6 +1931,22 @@ describe("Dashboard endpoints", () => {
       expect(v.update_successes).toBe(0);
       expect(v.update_failure_rate).toBeNull();
       expect(data.adoption).toEqual([{ date: "2026-10-01", version: "0.9.19", devices: 12 }]);
+    });
+
+    it("attributes prints without a version to each device's session version", async () => {
+      scorecardMock({
+        stats: [{ ver: "0.9.19", sessions: 10 }, { ver: "0.9.18", sessions: 10 }],
+        prints: [
+          { device_id: "a", ver: "", print_successes: 3, print_total: 4 },
+          { device_id: "b", ver: "0.9.18", print_successes: 1, print_total: 2 },
+          { device_id: "z", ver: "", print_successes: 0, print_total: 9 },
+        ],
+        sessions: [{ device_id: "a", model: "K1", ver: "0.9.19" }, { device_id: "b", model: "K1", ver: "0.9.19" }],
+      });
+      const res = await worker.fetch(dashboardRequest("/v1/dashboard/releases?versions=0.9.19,0.9.18"), env as never);
+      const rate = Object.fromEntries(((await res.json()) as any).versions.map((v: any) => [v.version, v.print_success_rate]));
+      expect(rate["0.9.19"]).toBeCloseTo(0.75);
+      expect(rate["0.9.18"]).toBeCloseTo(0.5);
     });
 
     it("picks the versions itself when the param is absent", async () => {
@@ -2031,20 +2049,17 @@ describe("Dashboard endpoints", () => {
   });
 
   describe("prints and performance additions", () => {
-    it("prints sums per-device outcomes into models through the session join", async () => {
+    it("prints sums per-device outcomes into models and versions through the session join", async () => {
       mockExecuteQuery.mockImplementation(async (_c, sql: string) => {
         if (sql.includes("argMax") && sql.includes("as model")) {
-          return { data: [{ device_id: "a", model: "Voron 2.4" }, { device_id: "b", model: "Voron 2.4" }] };
+          return { data: [{ device_id: "a", model: "Voron 2.4", ver: "1.0.0" }, { device_id: "b", model: "Voron 2.4", ver: "1.0.1" }] };
         }
-        if (sql.includes("as device_id") && sql.includes("as successes")) {
+        if (sql.includes("as device_id") && sql.includes("as print_successes")) {
           return { data: [
-            { device_id: "a", successes: 8, total: 10 },
-            { device_id: "b", successes: 2, total: 10 },
-            { device_id: "z", successes: 1, total: 4 },
+            { device_id: "a", ver: "", print_successes: 8, print_total: 10 },
+            { device_id: "b", ver: "1.0.0", print_successes: 2, print_total: 10 },
+            { device_id: "z", ver: "", print_successes: 1, print_total: 4 },
           ] };
-        }
-        if (sql.includes("as version") && sql.includes("as successes")) {
-          return { data: [{ version: "1.0.0", successes: "11", total: "24" }] };
         }
         return { data: [] };
       });
@@ -2054,7 +2069,7 @@ describe("Dashboard endpoints", () => {
       const byModel = Object.fromEntries(body.by_model.map((m: any) => [m.model, m]));
       expect(byModel["Voron 2.4"]).toEqual({ model: "Voron 2.4", successes: 10, total: 20, rate: 0.5 });
       expect(byModel["Unknown"]).toEqual({ model: "Unknown", successes: 1, total: 4, rate: 0.25 });
-      expect(body.by_version).toEqual([{ version: "1.0.0", successes: 11, total: 24, rate: 11 / 24 }]);
+      expect(body.by_version).toEqual([{ version: "1.0.0", successes: 10, total: 20, rate: 0.5 }]);
     });
 
     it("performance returns per-platform version and panel breakdowns", async () => {
