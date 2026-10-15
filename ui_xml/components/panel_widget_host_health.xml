@@ -28,7 +28,6 @@
     <style name="hh_danger" text_color="#danger"/>
     <style name="hh_line_warn" line_color="#warning"/>
     <style name="hh_line_danger" line_color="#danger"/>
-    <style name="hh_font_body" text_font="#font_body"/>
   </styles>
   <view name="panel_widget_host_health"
         extends="lv_obj" width="100%" height="100%" style_pad_all="#space_xxs" scrollable="false">
