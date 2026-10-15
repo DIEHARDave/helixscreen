@@ -54,6 +54,18 @@ static lv_subject_t keypad_allow_decimal_subject;
 /// it covered what it failed to dim.
 static lv_obj_t* keypad_backdrop = nullptr;
 
+/// The backdrop can die without this file knowing: deleting the screen it hangs off takes
+/// it along. A pointer left behind then names freed memory, and once the allocator hands
+/// that memory to a new object, lv_obj_is_valid() vouches for it and the next show's
+/// destroy_keypad_backdrop() deletes that unrelated object (a display layer, say).
+/// Cleared only while it still names the dying object: a deferred delete of an old
+/// backdrop lands after the next show has stored its replacement.
+static void forget_keypad_backdrop_cb(lv_event_t* e) {
+    if (keypad_backdrop == lv_event_get_target_obj(e)) {
+        keypad_backdrop = nullptr;
+    }
+}
+
 static void destroy_keypad_backdrop() {
     if (keypad_backdrop) {
         helix::ui::safe_delete_deferred(keypad_backdrop);
@@ -236,6 +248,8 @@ void ui_keypad_show(const ui_keypad_config_t* config) {
         // surroundings exactly as much as any other layer does.
         keypad_backdrop = helix::ui::create_fullscreen_backdrop(screen, 40);
         if (keypad_backdrop) {
+            lv_obj_add_event_cb(keypad_backdrop, forget_keypad_backdrop_cb, LV_EVENT_DELETE,
+                                nullptr);
             helix::ui::bring_to_front(keypad_backdrop);
         }
     }
