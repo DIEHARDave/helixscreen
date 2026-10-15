@@ -108,6 +108,15 @@ class PanelWidgetManager {
         shared_resources_.erase(type_tag<T>());
     }
 
+    /// Remove T's slot only while it still names `owner`. An owner about to free
+    /// its object empties the slot first, and leaves alone a slot a newer owner
+    /// has taken since.
+    template <typename T> void unregister_shared_resource(const T* owner) {
+        auto it = shared_resources_.find(type_tag<T>());
+        if (it != shared_resources_.end() && it->second.get() == static_cast<const void*>(owner))
+            shared_resources_.erase(it);
+    }
+
     void clear_shared_resources();
 
     // -- Per-panel rebuild callbacks --
