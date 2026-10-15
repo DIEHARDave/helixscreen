@@ -136,13 +136,15 @@ LUA_PATCHED_FILES := \
 # a real change should cost a rebuild. cksum is POSIX, so this also works on
 # the BusyBox and Buildroot hosts.
 #
-# The list is spelled out rather than globbed. libhv's own build installs the
-# include/hv/ copies our -isystem path resolves to, so on a checkout that has
-# not been built they do not exist yet, and a glob would silently stop watching
-# the very headers the objects compile against.
+# Only the source headers are listed, never the include/hv/ copies our
+# -isystem path resolves to. libhv's build installs those copies from these
+# sources, and $(LIBHV_LIB) reruns that build whenever a patched source moves,
+# before any object that includes them compiles, so the sources already decide
+# their content. The copies exist only once libhv has been built: a hash that
+# read them would differ between a cold tree's first make and its second, and
+# through the -D below would recompile every object twice.
 ABI_HEADERS := \
 	$(addprefix $(LIBHV_DIR)/,$(filter %.h,$(LIBHV_PATCHED_FILES))) \
-	$(addprefix $(LIBHV_DIR)/include/hv/,$(notdir $(filter %.h,$(LIBHV_PATCHED_FILES)))) \
 	$(addprefix $(LVGL_DIR)/,$(filter %.h,$(LVGL_PATCHED_FILES))) \
 	$(addprefix $(LUA_DIR)/,$(filter %.h,$(LUA_PATCHED_FILES)))
 ABI_STAMP := $(BUILD_DIR)/.thirdparty-abi

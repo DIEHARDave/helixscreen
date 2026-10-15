@@ -112,13 +112,10 @@ make_database() {
     grep -q 'check_abi_unchanged' mk/tests.mk
 }
 
-@test "ABI_HEADERS covers the layout-bearing libhv headers in both locations" {
+@test "ABI_HEADERS covers the layout-bearing libhv headers at their source paths" {
     local line missing=""
     line="$(make_database | grep -m1 '^ABI_HEADERS :=')"
-    # The patch rewrites evpp/TcpClient.h; -isystem lib/libhv/include resolves
-    # to the copy libhv installs beside it. Both have to be watched.
     for header in lib/libhv/evpp/TcpClient.h \
-                  lib/libhv/include/hv/TcpClient.h \
                   lib/libhv/http/client/WebSocketClient.h; do
         case "$line" in
             *"$header"*) ;;
@@ -126,6 +123,74 @@ make_database() {
         esac
     done
     [ -z "$missing" ] || { echo "ABI_HEADERS does not cover: $missing"; false; }
+}
+
+# A fixture holding the real ABI_HEADERS definition and the lists it is built
+# from, lifted out of mk/patches.mk, over a fake libhv/lvgl/lua tree. Each
+# definition runs from its `NAME :=` line to the first line without a trailing
+# backslash.
+write_hash_fixture() {
+    local work="$1"
+    rm -rf "$work" && mkdir -p "$work"
+
+    awk '
+        /^(LVGL_PATCHED_FILES|LIBHV_PATCHED_FILES|LUA_PATCHED_FILES|ABI_HEADERS) :=/ { r = 1 }
+        /^ABI_HASH_CMD = / { print; next }
+        r { print; if ($0 !~ /\\$/) r = 0 }
+    ' mk/patches.mk > "$work/abi.mk"
+    grep -q '^ABI_HEADERS :=' "$work/abi.mk" || fail "ABI_HEADERS not found in mk/patches.mk"
+    grep -q '^ABI_HASH_CMD = ' "$work/abi.mk" || fail "ABI_HASH_CMD not found in mk/patches.mk"
+
+    cat > "$work/Makefile" <<'MK'
+ifneq ($(MAKELEVEL),0)
+$(error the ABI hash fixture must not run inside another make)
+endif
+LVGL_DIR := lvgl
+LIBHV_DIR := libhv
+LUA_DIR := lua
+PATCH_FILES :=
+include abi.mk
+print-hash:
+	@$(ABI_HASH_CMD)
+MK
+
+    # Every tracked source header gets distinct content, so the hash notices
+    # any one of them going missing. include/hv/ is left to the case: it is
+    # what libhv's build installs.
+    local f
+    for f in $(make -s -C "$work" -f - print-headers <<'MK'
+include Makefile
+print-headers:
+	@echo $(ABI_HEADERS)
+MK
+    ); do
+        [[ "$f" == */include/hv/* ]] && continue
+        mkdir -p "$work/$(dirname "$f")"
+        printf 'header %s\n' "$f" > "$work/$f"
+    done
+}
+
+# libhv's own build installs include/hv/ copies of its headers, and only that
+# build creates them, so a cold tree parses without them and a built tree with
+# them. A hash that read them would differ between the first make and the
+# second, and the -D it feeds would recompile every object a second time.
+@test "the ABI hash is the same whether or not libhv's installed include/hv exists" {
+    local work="${BATS_TEST_TMPDIR:-$(mktemp -d)}/abi-cold"
+    [[ "$work" == "$BATS_TEST_TMPDIR"/* ]] || fail "fixture escaped BATS_TEST_TMPDIR: $work"
+    export JOBPOOL=0 MAKEFLAGS= MAKELEVEL=
+    write_hash_fixture "$work"
+
+    local cold built
+    cold="$(make -s -C "$work" print-hash)"
+
+    # What libhv's install leaves behind: a copy of every libhv header.
+    mkdir -p "$work/libhv/include/hv"
+    find "$work/libhv" -path "$work/libhv/include" -prune -o -name '*.h' -print \
+        | while read -r h; do cp "$h" "$work/libhv/include/hv/"; done
+    built="$(make -s -C "$work" print-hash)"
+
+    [ -n "$cold" ] || fail "empty hash"
+    [ "$cold" = "$built" ] || fail "hash moved from '$cold' to '$built' once include/hv existed"
 }
 
 # A stamp left over from an earlier header revision is what lets stale objects
@@ -251,22 +316,18 @@ MK
     [ -z "$problems" ] || { echo "$problems"; echo "$output"; false; }
 }
 
-# Which is only true while the two recipes that move these headers inside the
-# build still record it. The patch step rewrites them; libhv's build installs
-# the include/hv/ copies. Drop either call and every clean checkout fails at the
-# link again.
-@test "the recipes that change the tracked headers re-record the stamp" {
+# Which is only true while the recipe that moves these headers inside the build
+# still records it: the patch step rewrites them. Drop the call and every clean
+# checkout fails at the link again.
+@test "the recipe that changes the tracked headers re-records the stamp" {
     local problems=""
 
-    # Each range runs from the target line to the recipe's own last line, so a
+    # The range runs from the target line to the recipe's own last line, so a
     # call that moved out of the recipe and into a comment or a neighbouring
     # rule reads as missing, which is what it would be.
     awk '/^\$\(PATCHES_STAMP\):/{r=1} r{print} r && index($0,"\t@touch $@")==1{exit}' mk/patches.mk \
         | grep -q 'call record_abi_stamp' \
-        || problems="the patch-stamp recipe does not re-record the ABI stamp; "
-    awk '/^libhv-build:/{r=1} r{print} r && /libhv built/{exit}' mk/deps.mk \
-        | grep -q 'call record_abi_stamp' \
-        || problems="${problems}libhv-build does not re-record the ABI stamp"
+        || problems="the patch-stamp recipe does not re-record the ABI stamp"
 
     [ -z "$problems" ] || { echo "$problems"; false; }
 }

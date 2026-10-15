@@ -686,6 +686,26 @@ ccache -s        # "Hits" should climb sharply on the 2nd+ worktree build
 ccache -p | grep -E 'base_dir|hash_dir|max_size'
 ```
 
+### The third-party header ABI stamp
+
+Our objects reach the patched LVGL, libhv and Lua headers through `-isystem`, which `-MMD` leaves
+out of the `.d` files, so a patch that moves a struct member would otherwise invalidate nothing.
+`mk/patches.mk` hashes those headers plus `patches/*.patch` with `cksum` into
+`build/.thirdparty-abi` (a prerequisite of every compile rule) and onto every compile line as
+`-DHELIX_TP_ABI=<hash>`, so ccache keys on it too. The patch step re-records the stamp after it
+rewrites the headers, and both links run `check_abi_unchanged`, which fails a link whose headers
+moved under it after the stamp was recorded.
+
+The hash reads libhv's **source** headers (`lib/libhv/evpp/TcpClient.h` and so on), never the
+`lib/libhv/include/hv/` copies the compiler actually resolves. Those copies are gitignored and
+only libhv's own build creates them, from those same sources, before any object that includes
+them compiles. Hashing them would give a cold tree (fresh clone, new worktree, test-host mirror)
+one hash on its first `make` and another on its second, and the second would recompile every
+object with no ccache hit. A cold tree's second `make` compiles nothing.
+
+Editing any `patches/*.patch` still rebuilds every object: `build/.patches-applied` is a
+prerequisite of all of them, independent of this hash.
+
 ### Typical worktree workflow
 
 ```bash
