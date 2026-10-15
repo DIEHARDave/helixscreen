@@ -22,8 +22,18 @@ describe("buildRetention", () => {
     for (const c of buildRetention([], TODAY)) {
       expect(c.size).toBe(0);
       expect(c.survival).toHaveLength(13);
-      expect(c.survival.every((s) => s === 0)).toBe(true);
+      expect(c.survival.filter((s) => s === 0)).toHaveLength(c.survival.filter((s) => s !== null).length);
     }
+  });
+
+  it("leaves weeks that have not begun null", () => {
+    const cohorts = buildRetention([{ first_day: dayOffset(-3), last_day: TODAY }], TODAY);
+    const newest = cohorts[12];
+    expect(newest.survival[0]).toBe(1);
+    expect(newest.survival.slice(1).every((s) => s === null)).toBe(true);
+    cohorts.forEach((c, i) => {
+      expect(c.survival.filter((s) => s !== null)).toHaveLength(13 - i);
+    });
   });
 
   it("counts a device seen days 0 to 30 in weeks 0..4 but not week 5", () => {

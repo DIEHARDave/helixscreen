@@ -1854,6 +1854,23 @@ describe("Dashboard endpoints", () => {
       expect(v.p95_rss_kb).toBeNull();
     });
 
+    it("clamps crash-free devices at 0 when more devices crashed than were active", async () => {
+      scorecardMock({
+        stats: [{ ver: "1.0.0", total_sessions: 10, total_crashes: 9 }],
+        actives: [{ ver: "1.0.0", active_devices: 2 }],
+        crashers: [{ ver: "1.0.0", crashing_devices: 5 }],
+      });
+      const res = await worker.fetch(dashboardRequest("/v1/dashboard/releases?versions=1.0.0"), env as never);
+      expect(((await res.json()) as any).versions[0].crash_free_devices).toBe(0);
+    });
+
+    it("returns empty lists when no version has sessions", async () => {
+      scorecardMock({ top: [] });
+      const res = await worker.fetch(dashboardRequest("/v1/dashboard/releases"), env as never);
+      expect(await res.json()).toEqual({ versions: [], adoption: [] });
+      expect(mockExecuteQuery).toHaveBeenCalledTimes(1);
+    });
+
     it("reports self-update health per running version", async () => {
       scorecardMock({
         stats: [{ ver: "0.99.97", total_sessions: 100, total_crashes: 1, update_failures: 9, update_successes: 1 }],
@@ -1917,7 +1934,7 @@ describe("Dashboard endpoints", () => {
           ] };
         }
         if (sql.includes("as version") && sql.includes("as successes")) {
-          return { data: [{ version: "1.0.0", successes: 11, total: 24 }] };
+          return { data: [{ version: "1.0.0", successes: "11", total: "24" }] };
         }
         return { data: [] };
       });

@@ -7,8 +7,12 @@ export interface RetentionCohort {
   start: string;
   label: string;
   size: number;
-  /** survival[k] is the share of the cohort still seen on or after week k. */
-  survival: number[];
+  /**
+   * survival[k] is the share of the cohort still seen on or after week k, or
+   * null when week k has not begun yet (the cohort's start plus 7k days is not
+   * before today). A cohort counted k weeks back has k + 1 non-null entries.
+   */
+  survival: (number | null)[];
 }
 
 const DAY_MS = 86400000;
@@ -23,7 +27,8 @@ function dayString(n: number): string {
 }
 
 /**
- * Cohort k (counted back from `today`) covers [today - 7(k+1), today - 7k).
+ * Cohort k (counted back from `today`) covers [today - 7(k+1), today - 7k);
+ * the newest cohort (k = 0) also takes devices first seen today.
  * The oldest cohort also takes every device first seen before its start, since
  * those were already running when the window opened. Cohorts are oldest first.
  */
@@ -46,7 +51,7 @@ export function buildRetention(
     const k = weeks - 1 - index;
     const startN = todayN - WEEK_DAYS * (k + 1);
     const survival = Array.from({ length: weeks }, (_, week) =>
-      lasts.length === 0 ? 0 : lasts.filter((l) => Math.max(l, startN) >= startN + WEEK_DAYS * week).length / lasts.length,
+      week > k ? null : lasts.length === 0 ? 0 : lasts.filter((l) => Math.max(l, startN) >= startN + WEEK_DAYS * week).length / lasts.length,
     );
     return {
       start: dayString(startN),

@@ -639,9 +639,9 @@ export default {
             })(),
             by_version: (outcomeByVersion.data ?? []).map((r) => ({
               version: r.version,
-              successes: r.successes,
-              total: r.total,
-              rate: r.total > 0 ? r.successes / r.total : null,
+              successes: Number(r.successes),
+              total: Number(r.total),
+              rate: Number(r.total) > 0 ? Number(r.successes) / Number(r.total) : null,
             })),
             start_context: {
               slicers: (slicerData.data ?? []).map((r) => ({ name: r.name, count: r.count })),
@@ -1302,6 +1302,7 @@ export default {
               data?: Array<{ ver: string }>;
             };
             versions = (topRes.data ?? []).map((r) => String(r.ver));
+            if (versions.length === 0) return json({ versions: [], adoption: [] });
           } else {
             versions = versionsParam.split(",").map((v) => v.trim()).filter(Boolean);
             if (versions.length === 0 || versions.length > 20) {
@@ -1340,7 +1341,7 @@ export default {
                 version: r.ver,
                 active_devices: active,
                 crash_rate: r.total_sessions > 0 ? r.total_crashes / r.total_sessions : null,
-                crash_free_devices: active > 0 ? 1 - crashing / active : null,
+                crash_free_devices: active > 0 ? Math.min(1, Math.max(0, 1 - crashing / active)) : null,
                 p95_frame_ms: frame ?? null,
                 p95_rss_kb: rss ?? null,
                 print_success_rate: printTotal > 0 ? (prints?.print_successes ?? 0) / printTotal : null,
