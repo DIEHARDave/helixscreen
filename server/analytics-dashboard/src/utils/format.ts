@@ -62,3 +62,7 @@ export function emptyPlaceholder(era: DeltaEra | null, activeFilters: FilterKey[
   if (era?.filter_not_applicable) return deltaEraPlaceholder(era)
   return activeFilters.length > 0 ? 'No data for this filter' : 'No data in this range'
 }
+
+export function formatMB(kb: number): string {
+  return `${(kb / 1024).toFixed(1)} MB`
+}
