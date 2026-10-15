@@ -68,7 +68,10 @@ run_fragment() { # <first-line-regex> <target> <make args...>
     { printf 'ECHO := @echo\nQ := @\n'; mk_fragment "$1" "$2"; } >"$dir/Makefile"
     grep -q "^$2:" "$dir/Makefile" || { echo "no $2 recipe in the fragment" >&2; return 1; }
     shift
-    (cd "$dir" && JOBPOOL=0 make --no-print-directory -f Makefile "$@")
+    # A suite run from `make test-shell BATS_REQUIRED=1` exports that variable
+    # through MAKEFLAGS, which would reach this make and override the test's own.
+    (cd "$dir" && env -u MAKEFLAGS -u MFLAGS -u MAKELEVEL -u MAKEOVERRIDES \
+        JOBPOOL=0 make --no-print-directory -f Makefile "$@")
 }
 
 row() { # <status> <step>: the table row for step has that status
