@@ -181,9 +181,14 @@ void BedMeshPanel::init_subjects() {
                                   helix::bed_mesh::DEFAULT_PROFILE, "bed_mesh_calibrate_name",
                                   subjects_);
 
-        // Self-register cleanup — ensures deinit runs before lv_deinit()
-        StaticPanelRegistry::instance().register_destroy(
-            "BedMeshPanelSubjects", []() { get_global_bed_mesh_panel().deinit_subjects(); });
+        // Self-register cleanup — ensures deinit runs before lv_deinit(). The
+        // hook peeks: an absent panel has no subjects to deinit, and building
+        // one here would construct a panel mid-teardown.
+        StaticPanelRegistry::instance().register_destroy("BedMeshPanelSubjects", []() {
+            if (auto* panel = helix::lazy_global_if_exists<BedMeshPanel>()) {
+                panel->deinit_subjects();
+            }
+        });
 
         spdlog::debug("[{}] Subjects registered", get_name());
     });
