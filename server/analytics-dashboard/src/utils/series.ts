@@ -31,6 +31,11 @@ export function seriesColor(index: number): string {
   return SERIES_PALETTE[index % SERIES_PALETTE.length]
 }
 
+/** A '#rrggbb' color at 35% opacity, for a row drawn but played down. */
+export function dimmed(color: string): string {
+  return `${color}59`
+}
+
 /** Pixel height for a horizontal bar chart so every row keeps a readable label. */
 export function barChartHeight(rows: number): number {
   return Math.max(300, rows * 22 + 60)

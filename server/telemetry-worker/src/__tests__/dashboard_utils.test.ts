@@ -1,14 +1,15 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { groupVersionRates, groupVersions, olderLines, ungrouped } from '../../../analytics-dashboard/src/utils/versions'
+import { groupVersionRates, groupVersions, olderLines, ungrouped, versionChips } from '../../../analytics-dashboard/src/utils/versions'
 import { planActivation, rowAction, rowHint, rowLabel, single } from '../../../analytics-dashboard/src/utils/drill'
 import { mergeOptions, rateAxis } from '../../../analytics-dashboard/src/utils/chart'
-import { emptyPlaceholder, notReportedPer, ppChange, rangeLabel, unreportedNote } from '../../../analytics-dashboard/src/utils/format'
+import { emptyPlaceholder, formatRate, formatRateOf, notReportedPer, ppChange, rangeLabel, unreportedNote } from '../../../analytics-dashboard/src/utils/format'
 import { canonicalModelKey, canonicalModels, isFilterable } from '../../../analytics-dashboard/src/utils/models'
-import { groupMaterialSets, materialSet } from '../../../analytics-dashboard/src/utils/materials'
+import { LOW_COUNT_PRINTS, groupMaterialSets, isLowCount, materialSet } from '../../../analytics-dashboard/src/utils/materials'
 import { filterValues } from '../queries'
 import { withNotApplicable } from '../../../analytics-dashboard/src/utils/notApplicable'
-import { barChartHeight, seriesColor, todayUtc, trimPartialDays } from '../../../analytics-dashboard/src/utils/series'
+import { isRenderError } from '../../../analytics-dashboard/src/utils/renderError'
+import { barChartHeight, dimmed, seriesColor, todayUtc, trimPartialDays } from '../../../analytics-dashboard/src/utils/series'
 
 const rows = (names: string[]) => names.map((name, i) => ({ name, count: i + 1 }))
 const LIVE = ['1.1.0-beta.9', '1.1.0-beta.8', '1.0.5', '1.0.4', '1.0.0', '0.99.118', '0.99.30']
@@ -339,5 +340,81 @@ describe('planActivation', () => {
       filters: { version: ['1.0.5'] }
     })
     expect(planActivation([['board', single('')]])).toBeNull()
+  })
+})
+
+describe('isRenderError', () => {
+  it('matches the render function in a development build and a production build', () => {
+    expect(isRenderError('render function')).toBe(true)
+    expect(isRenderError('https://vuejs.org/error-reference/#runtime-1')).toBe(true)
+    expect(isRenderError(1)).toBe(true)
+  })
+  it('leaves handler, watcher and lifecycle errors alone', () => {
+    for (const info of [
+      'component event handler', 'native event handler', 'watcher callback', 'watcher getter',
+      'mounted hook', 'setup function', 'scheduler flush',
+      'https://vuejs.org/error-reference/#runtime-5', 'https://vuejs.org/error-reference/#runtime-6',
+      'https://vuejs.org/error-reference/#runtime-14', 'https://vuejs.org/error-reference/#runtime-m',
+      6, 0, undefined, ''
+    ]) {
+      expect(isRenderError(info), String(info)).toBe(false)
+    }
+  })
+})
+
+describe('versionChips', () => {
+  it('groups the picker like the charts and counts shown members per chip', () => {
+    const chips = versionChips(rows(LIVE), new Set(), new Set(['1.0.5', '0.99.30']))
+    expect(chips.map((c) => [c.label, c.shown])).toEqual([
+      ['1.1.0 betas (2)', 0],
+      ['1.0.5', 1],
+      ['1.0.4', 0],
+      ['1.0.0', 0],
+      ['0.99.x (2 versions)', 1]
+    ])
+  })
+  it('lists an open line as its header and its members, each counted on its own', () => {
+    const chips = versionChips(rows(LIVE), new Set(['line:0.99']), new Set(['0.99.30']))
+    expect(chips.slice(-3).map((c) => [c.label, c.expanded ?? false, c.shown])).toEqual([
+      ['0.99.x ▾', true, 1],
+      ['0.99.118', false, 0],
+      ['0.99.30', false, 1]
+    ])
+  })
+})
+
+describe('low-count material sets', () => {
+  it('dims a set with fewer than five prints and keeps five or more', () => {
+    expect(LOW_COUNT_PRINTS).toBe(5)
+    expect(isLowCount(4)).toBe(true)
+    expect(isLowCount(4.9)).toBe(true)
+    expect(isLowCount(0)).toBe(true)
+    expect(isLowCount(5)).toBe(false)
+    expect(isLowCount(120)).toBe(false)
+  })
+  it('dims a series color by giving it an alpha', () => {
+    expect(dimmed('#3b82f6')).toBe('#3b82f659')
+    expect(dimmed(seriesColor(1))).toBe(`${seriesColor(1)}59`)
+  })
+})
+
+describe('formatRateOf', () => {
+  it('shows the counts a rate rests on beside it', () => {
+    expect(formatRateOf(1, 1, 1)).toBe('100.0% (1/1)')
+    expect(formatRateOf(0.25, 1, 4)).toBe('25.0% (1/4)')
+    expect(formatRateOf(0.5, 1200, 2400)).toBe('50.0% (1,200/2,400)')
+  })
+  it('rounds weighted counts and reads n/a with no denominator', () => {
+    expect(formatRateOf(0.5, 1.6, 3.2)).toBe('50.0% (2/3)')
+    expect(formatRateOf(null, 0, 0)).toBe('n/a')
+  })
+  it('reads n/a for a missing or non-finite rate, in both formatters', () => {
+    expect(formatRate(undefined as never)).toBe('n/a')
+    expect(formatRate(NaN)).toBe('n/a')
+    expect(formatRateOf(undefined as never, 1, 1)).toBe('n/a')
+    expect(formatRateOf(NaN, 1, 1)).toBe('n/a')
+  })
+  it('shows the rate alone when the payload carries no counts', () => {
+    expect(formatRateOf(0.5, undefined as unknown as number, NaN)).toBe('50.0%')
   })
 })

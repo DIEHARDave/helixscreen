@@ -16,6 +16,7 @@
 #include "lvgl_test_fixture.h"
 #include "printer_discovery.h"
 #include "static_subject_registry.h"
+#include "test_helpers/ams_backend_probes.h"
 #include "test_helpers/log_capture.h"
 #include "test_helpers/registered_backend.h"
 #include "test_helpers/snapmaker_test_access.h"
@@ -987,14 +988,7 @@ namespace {
 
 /// Seven heads, as klipper-toolchanger enumerates them.
 helix::PrinterDiscovery make_seven_head_discovery() {
-    nlohmann::json objects = nlohmann::json::array({"toolchanger"});
-    for (int i = 0; i < 7; ++i) {
-        objects.push_back("tool T" + std::to_string(i));
-        objects.push_back(i == 0 ? std::string("extruder") : "extruder" + std::to_string(i));
-    }
-    helix::PrinterDiscovery disc;
-    disc.parse_objects(objects);
-    return disc;
+    return helix::test::make_head_discovery(7);
 }
 
 } // namespace
@@ -1114,4 +1108,87 @@ TEST_CASE_METHOD(ToolStateFixture, "physical_heads follows a tool's extruder cha
     ts.update_from_status({{"tool T1", {{"extruder", ""}}}});
     CHECK(ts.physical_heads().size() == 7);
     CHECK(ts.heated_heads().size() == 6);
+}
+
+TEST_CASE_METHOD(ToolStateFixture,
+                 "A topology that moves a lane to another head rebuilds the tools",
+                 "[tool-state][ams-topology][physical-heads]") {
+    auto& ts = helix::ToolState::instance();
+    ts.init_tools(make_seven_head_discovery());
+    ts.set_ams_topology(helix::test::make_head_topology(7));
+    UpdateQueue::instance().drain();
+    REQUIRE(ts.physical_heads().size() == 7);
+    REQUIRE(ts.tools()[1].extruder_name == std::optional<std::string>("extruder1"));
+
+    // The same tools on the same lanes, but T1's lane now feeds T0's head.
+    auto topo = helix::test::make_head_topology(7);
+    topo.tool_extruder[1] = "extruder";
+    ts.set_ams_topology(topo);
+    UpdateQueue::instance().drain();
+
+    CHECK(ts.tools()[1].extruder_name == std::optional<std::string>("extruder"));
+    CHECK(ts.tools()[1].effective_heater() == "extruder");
+    REQUIRE(ts.physical_heads().size() == 6);
+    CHECK(ts.physical_heads()[0].tool_indices == std::vector<int>{0, 1});
+
+    ts.clear_ams_topology();
+    UpdateQueue::instance().drain();
+}
+
+TEST_CASE_METHOD(ToolStateFixture, "clear_ams_topology leaves no heads behind",
+                 "[tool-state][ams-topology][physical-heads]") {
+    auto& ts = helix::ToolState::instance();
+    ts.init_tools(make_seven_head_discovery());
+    ts.set_ams_topology(helix::test::make_hub_topology());
+    UpdateQueue::instance().drain();
+    REQUIRE(ts.physical_heads().size() == 7);
+
+    ts.clear_ams_topology();
+    UpdateQueue::instance().drain();
+
+    REQUIRE(ts.tool_count() == 0);
+    CHECK(ts.physical_heads().empty());
+    CHECK(ts.extruder_count() == 0);
+}
+
+TEST_CASE_METHOD(ToolStateFixture, "A changer listing an extruder twice maps each tool to its own",
+                 "[tool-state][toolchanger][physical-heads]") {
+    helix::PrinterDiscovery disc;
+    disc.parse_objects(nlohmann::json::array({"toolchanger", "tool T0", "tool T1", "tool T2",
+                                              "extruder", "extruder", "extruder1", "extruder2"}));
+    auto& ts = helix::ToolState::instance();
+    ts.init_tools(disc);
+
+    REQUIRE(ts.tool_count() == 3);
+    CHECK(ts.tools()[0].extruder_name == std::optional<std::string>("extruder"));
+    CHECK(ts.tools()[1].extruder_name == std::optional<std::string>("extruder1"));
+    CHECK(ts.tools()[2].extruder_name == std::optional<std::string>("extruder2"));
+    CHECK(ts.physical_heads().size() == 3);
+}
+
+TEST_CASE("build_ams_topology's 1:1 fallback counts the slots in the snapshot it is given",
+          "[tool-state][ams-topology][physical-heads]") {
+    // An AFC with no lanes yet: it owns the table but has no mapping to give.
+    AfcProbe afc;
+    REQUIRE(afc.get_tool_mapping().empty());
+    REQUIRE(afc.get_system_info().total_slots == 0);
+
+    helix::AmsSystemInfo info;
+    helix::AmsUnit unit;
+    for (int i = 0; i < 3; ++i) {
+        helix::SlotInfo slot;
+        slot.slot_index = i;
+        slot.global_index = i;
+        slot.extruder_name = i == 2 ? "extruder1" : "extruder";
+        unit.slots.push_back(slot);
+    }
+    unit.slot_count = 3;
+    info.units.push_back(unit);
+    info.total_slots = 3;
+
+    auto topo = helix::build_ams_topology(&afc, 0, info);
+    REQUIRE(topo.has_value());
+    CHECK(topo->tool_count == 3);
+    CHECK(topo->tool_to_slot == std::vector<int>{0, 1, 2});
+    CHECK(topo->tool_extruder == std::vector<std::string>{"extruder", "extruder", "extruder1"});
 }

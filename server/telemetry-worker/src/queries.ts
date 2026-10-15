@@ -305,6 +305,7 @@ const printStart = colsOf("print_start_context");
 const perf = colsOf("performance_snapshot");
 const settingsChange = colsOf("settings_change");
 const cdnFleet = colsOf("cdn_fleet_daily");
+const updateFailed = colsOf("update_failed");
 
 const DATASET = "helixscreen_telemetry";
 
@@ -518,22 +519,10 @@ export function printsQueries(days: number, filters?: FilterParams): string[] {
     ORDER BY count DESC`,
     // Average duration
     `SELECT ${wAvg(printOutcome("duration_sec"))} as avg_duration_sec FROM ${dataset} WHERE timestamp >= NOW() - INTERVAL '${days}' DAY AND index1 = 'print_outcome'${f}`,
-    // print_outcome carries no printer_model: the handler joins this per-device
-    // model onto the per-device outcomes below.
-    `SELECT ${session("device_id")} as device_id, argMax(${session("printer_model")}, timestamp) as model
-    FROM ${dataset}
-    WHERE ${inRange(days)} AND index1 = 'session'${filterFor("session", filters)}
-    GROUP BY device_id`,
-    // Outcomes per device
-    `SELECT ${printOutcome("device_id")} as device_id, ${success} as successes, ${wCount()} as total
-    FROM ${dataset}
-    WHERE ${inRange(days)} AND index1 = 'print_outcome'${f}
-    GROUP BY device_id`,
-    // Outcomes per version
-    `SELECT ${printOutcome("app_version")} as version, ${success} as successes, ${wCount()} as total
-    FROM ${dataset}
-    WHERE ${inRange(days)} AND index1 = 'print_outcome' AND ${printOutcome("app_version")} != ''${f}
-    GROUP BY version`,
+    // Outcomes per device and version, attributed to versions and models
+    // through the session rows below (prints.ts).
+    releasePrintsSql(inRange(days), undefined, filters),
+    deviceSessionsSql(0, filters),
   ];
 }
 
@@ -1119,6 +1108,13 @@ export function topVersionsQuery(days: number, filters?: FilterParams, limit = S
 }
 
 /**
+ * The update_failed reason the updater sends when it defers an update because a
+ * print is running (src/system/update_checker.cpp). It is not a failure, so the
+ * release update failure count leaves it out.
+ */
+const UPDATE_DEFERRED_REASON = "print_in_progress";
+
+/**
  * Sessions, crashes and self-update outcomes per version in the window `when`
  * (a timestamp predicate), as rows { ver, sessions, crashes, update_failures,
  * update_successes }. Every kind groups by the version the device was RUNNING:
@@ -1134,22 +1130,51 @@ export function releaseStatsSql(when: string, versions: string[], filters?: Filt
       ${running} as ver,
       ${wCountIf("index1 = 'session'")} as sessions,
       ${wCountIf("index1 = 'crash'")} as crashes,
-      ${wCountIf("index1 = 'update_failed'")} as update_failures,
+      ${wCountIf(`index1 = 'update_failed' AND ${updateFailed("reason")} != '${UPDATE_DEFERRED_REASON}'`)} as update_failures,
       ${wCountIf("index1 = 'update_success'")} as update_successes
     FROM ${DATASET}
     WHERE ${when} AND index1 IN (${kindList}) AND ${versionInClause(running, versions)} AND (${perKind})
     GROUP BY ver`;
 }
 
-/** Print outcomes per version in the window `when`, as rows { ver, print_successes, print_total }. */
-export function releasePrintsSql(when: string, versions: string[], filters?: FilterParams): string {
+/**
+ * Print outcomes per device and per the version the rows carry, in the window
+ * `when`, as rows { device_id, ver, print_successes, print_total }. With
+ * `versions`, rows outside them are dropped, but rows with an empty version
+ * stay: prints.ts attributes those through deviceSessionsSql.
+ */
+export function releasePrintsSql(when: string, versions?: string[], filters?: FilterParams): string {
+  const ver = printOutcome("app_version");
+  const inVersions = versions ? ` AND (${versionInClause(ver, versions)} OR ${ver} = '')` : "";
   return `SELECT
-      ${printOutcome("app_version")} as ver,
+      ${printOutcome("device_id")} as device_id,
+      ${ver} as ver,
       ${wCountIf(`${printOutcome("outcome")} = 'success'`)} as print_successes,
       ${wCount()} as print_total
     FROM ${DATASET}
-    WHERE ${when} AND index1 = 'print_outcome' AND ${versionInClause(printOutcome("app_version"), versions)}${filterFor("print_outcome", filters)}
-    GROUP BY ver`;
+    WHERE ${when} AND index1 = 'print_outcome'${inVersions}${filterFor("print_outcome", filters)}
+    GROUP BY device_id, ver`;
+}
+
+/** Analytics Engine keeps 90 days of rows. */
+const AE_RETENTION_DAYS = 90;
+
+/**
+ * Each device's latest session printer model and version before a window
+ * ends, `endDaysAgo` days ago (0: now), as rows { device_id, model, ver }.
+ * A session is sent only on connect, so a device connected all through a
+ * window has none inside it; it cannot change version without restarting,
+ * which sends one, so its latest session before the window's end, over all of
+ * AE's retention, names the version it ran.
+ */
+export function deviceSessionsSql(endDaysAgo: number, filters?: FilterParams): string {
+  return `SELECT
+      ${session("device_id")} as device_id,
+      argMax(${session("printer_model")}, timestamp) as model,
+      argMax(${session("app_version")}, timestamp) as ver
+    FROM ${DATASET}
+    WHERE ${windowClause([endDaysAgo, AE_RETENTION_DAYS])} AND index1 = 'session'${filterFor("session", filters)}
+    GROUP BY device_id`;
 }
 
 /** Per-version release scorecard over the last `days` days. */
@@ -1198,6 +1223,8 @@ export function releaseScorecardQueries(versions: string[], days: number, filter
     WHERE ${inRange(days)} AND index1 = 'session' AND ${inVersions(session("app_version"))}${sessF}
     GROUP BY date, ver
     ORDER BY date`,
+    // 7: each device's session version, to attribute print outcomes (2)
+    deviceSessionsSql(0, filters),
   ];
 }
 
@@ -1356,6 +1383,7 @@ export function healthQueries(filters?: FilterParams, versions: string[] = []): 
     WHERE ${windowClause(w)} AND ${crashSessionKinds} AND ${inVersions(crashSession)} AND ${crashSessionFilter}
     GROUP BY ver, event`;
   const prints = (w: readonly [number, number]) => releasePrintsSql(windowClause(w), versions, filters);
+  const printSessions = (w: readonly [number, number]) => deviceSessionsSql(w[0], filters);
   const errors = (w: readonly [number, number]) => errorCodesSql(w, filters);
   const crashes = (w: readonly [number, number]) => crashClustersSql(w, filters);
 
@@ -1370,6 +1398,8 @@ export function healthQueries(filters?: FilterParams, versions: string[] = []): 
     release_devices_prev: releaseDevices(prev),
     prints_cur: prints(cur),
     prints_prev: prints(prev),
+    print_sessions_cur: printSessions(cur),
+    print_sessions_prev: printSessions(prev),
     errors_cur: errors(cur),
     errors_prev: errors(prev),
     errors_baseline: errors(baseline),

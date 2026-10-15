@@ -33,9 +33,12 @@
 
 #include "ui_update_queue.h"
 
+#include "../lvgl_test_fixture.h"
+#include "../test_helpers/scoped_env.h"
 #include "../test_helpers/toolchanger_test_helper.h"
 #include "ams_state.h"
 #include "error_event.h"
+#include "moonraker_client_mock.h"
 #include "printer_discovery.h"
 #include "toolchanger_addon.h"
 
@@ -988,4 +991,28 @@ TEST_CASE("An ejected tool draws no filament in its tube", "[ams][toolchanger][m
     // A docked tool carries its own hot end and its own strand, so it keeps one.
     CHECK(tc.get_slot_filament_segment(1) == PathSegment::NOZZLE);
     CHECK(tc.get_slot_filament_segment(0) == PathSegment::NOZZLE);
+}
+
+// ============================================================================
+// The mock's dock-sensor fault
+// ============================================================================
+
+TEST_CASE_METHOD(LVGLTestFixture,
+                 "HELIX_MOCK_MEDUSA_SENSOR_ERROR makes the mock's docks report no tool",
+                 "[ams][toolchanger][medusahc][mock]") {
+    ScopedEnv ams_env("HELIX_MOCK_AMS", "medusahc");
+    ScopedEnv printer_env("HELIX_MOCK_PRINTER", nullptr);
+    const bool fault = GENERATE(true, false);
+    CAPTURE(fault);
+    ScopedEnv fault_env("HELIX_MOCK_MEDUSA_SENSOR_ERROR", fault ? "1" : nullptr);
+
+    MoonrakerClientMock mock(MoonrakerClientMock::PrinterType::VORON_24);
+    REQUIRE(mock.is_mock_medusahc());
+
+    // -2 is the schema's "the docks cannot tell", distinct from -1, nothing
+    // mounted.
+    const json status = mock.medusa_status_json();
+    REQUIRE(status.contains("current_tool"));
+    CHECK((status["current_tool"].get<int>() == -2) == fault);
+    CHECK((mock.pin_watch_status_json()["current_tool"].get<int>() == -2) == fault);
 }
