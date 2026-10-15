@@ -1398,8 +1398,8 @@ is seeded before its first sync: the run copies the mirror whose recorded HEAD
 is fewest commits away from yours (each run writes the HEAD it synced to
 `.helix-mirror-head` in its mirror; a mirror qualifies once it has linked
 `helix-tests` and is not mid-run), then syncs over it, and make rebuilds only
-what differs. On zeus that turns a first `sweep` from about 14 minutes into a
-couple. The copy is `cp -a --reflink=auto`: on a ZFS (2.2 or later, with
+what differs. On zeus a fresh worktree's first `sweep` took 15 minutes cold and
+2 minutes 20 seeded (a 28 s copy). The copy is `cp -a --reflink=auto`: on a ZFS (2.2 or later, with
 `feature@block_cloning`) or btrfs host the copy shares blocks and takes
 seconds, elsewhere it is a plain copy. A per-mirror ZFS dataset and `zfs clone`
 would cost the same, but would tie each clone to its origin's snapshot, so the
