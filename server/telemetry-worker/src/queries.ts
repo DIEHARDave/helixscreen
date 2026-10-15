@@ -105,6 +105,37 @@ export async function executeQuery(
   return result;
 }
 
+const AE_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** True for a real calendar date written as YYYY-MM-DD. */
+export function isIsoDate(date: string): boolean {
+  if (!AE_DATE_RE.test(date)) return false;
+  const parsed = new Date(`${date}T00:00:00Z`);
+  return !isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === date;
+}
+
+/**
+ * Per-kind row counts for one UTC day of Analytics Engine, for reconciling
+ * against R2. `rows` is the raw count() next to `weighted`, the
+ * _sample_interval-weighted count: their gap is how much AE sampled away, and
+ * that comparison is this query's whole purpose. The date is validated before
+ * it reaches the SQL string.
+ */
+export function aeCountsQuery(date: string): string {
+  if (!isIsoDate(date)) {
+    throw new Error(`date must be YYYY-MM-DD, got ${JSON.stringify(date)}`);
+  }
+  return `SELECT
+      index1 AS kind,
+      count() AS rows,
+      sum(_sample_interval) AS weighted,
+      count(DISTINCT blob1) AS devices
+    FROM helixscreen_telemetry
+    WHERE toDate(timestamp) = '${date}'
+    GROUP BY index1
+    ORDER BY index1`;
+}
+
 // SQL query builders for each dashboard endpoint
 
 export function overviewQueries(days: number, filters?: FilterParams): string[] {

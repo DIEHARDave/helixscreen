@@ -6,6 +6,7 @@ import worker, { toYesNo } from "../index";
 import { mapEventToDataPoints } from "../analytics";
 import * as queries from "../queries";
 import { parseRange, buildFilterClause } from "../queries";
+import { buildReconcileTable, countR2Points } from "../../scripts/reconcile";
 import { compareVersions } from "../versions";
 import { compareVersions as dashboardCompareVersions } from "../../../analytics-dashboard/src/utils/chart";
 
@@ -1577,153 +1578,150 @@ describe("Dashboard endpoints", () => {
   });
 });
 
-// ---------- Backfill endpoint tests ----------
+// ---------- Removed admin routes ----------
 
 describe("POST /v1/admin/backfill", () => {
-  let env: ReturnType<typeof createEnv>;
+  it("is gone: even an authenticated request gets 404", async () => {
+    const res = await worker.fetch(
+      makeRequest("/v1/admin/backfill", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-API-Key": "test-admin-key" },
+        body: JSON.stringify({ events: [validEvent()] }),
+      }),
+      createEnv(),
+    );
+    expect(res.status).toBe(404);
+  });
+});
 
-  function backfillRequest(body: unknown, apiKey = "test-admin-key") {
-    return makeRequest("/v1/admin/backfill", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-API-Key": apiKey,
-      },
-      body: JSON.stringify(body),
+// ---------- AE per-kind counts ----------
+
+describe("aeCountsQuery", () => {
+  it("groups by index1 and filters on the given date", () => {
+    const sql = queries.aeCountsQuery("2026-10-12");
+    expect(sql).toContain("toDate(timestamp) = '2026-10-12'");
+    expect(sql).toContain("GROUP BY index1");
+    expect(sql).toContain("count() AS rows");
+    expect(sql).toContain("sum(_sample_interval) AS weighted");
+    expect(sql).toContain("count(DISTINCT blob1) AS devices");
+    expect(sql).not.toContain("uniqExact");
+  });
+
+  it.each(["2026-10-12'; --", "2026-10-1", "20261012", "", "2026-13-45", "2026-02-30"])(
+    "rejects %j before building any SQL",
+    (bad) => {
+      expect(() => queries.aeCountsQuery(bad)).toThrow();
+    },
+  );
+});
+
+describe("GET /v1/admin/ae-counts", () => {
+  function aeCountsRequest(search: string, apiKey?: string) {
+    return makeRequest(`/v1/admin/ae-counts${search}`, {
+      headers: apiKey ? { "X-API-Key": apiKey } : {},
     });
   }
 
   beforeEach(() => {
-    env = createEnv();
+    mockExecuteQuery.mockReset();
   });
 
-  // -- Auth --
-
-  it("rejects unauthenticated requests", async () => {
-    const req = makeRequest("/v1/admin/backfill", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ events: [] }),
-    });
-    const res = await worker.fetch(req, env);
+  it("rejects a request without the admin key", async () => {
+    const res = await worker.fetch(aeCountsRequest("?date=2026-10-12"), createEnv());
     expect(res.status).toBe(401);
+    expect(mockExecuteQuery).not.toHaveBeenCalled();
   });
 
-  it("rejects INGEST key", async () => {
+  it("rejects the ingest key", async () => {
     const res = await worker.fetch(
-      backfillRequest({ events: [validEvent()] }, "test-ingest-key"),
-      env,
+      aeCountsRequest("?date=2026-10-12", "test-ingest-key"),
+      createEnv(),
     );
     expect(res.status).toBe(401);
   });
 
-  // -- Validation --
+  it.each(["", "?date=nope", "?date=2026-10-12'; --"])(
+    "returns 400 for a bad date (%j)",
+    async (search) => {
+      const res = await worker.fetch(aeCountsRequest(search, "test-admin-key"), createEnv());
+      expect(res.status).toBe(400);
+      expect(mockExecuteQuery).not.toHaveBeenCalled();
+    },
+  );
 
-  it("rejects non-JSON content type", async () => {
-    const req = makeRequest("/v1/admin/backfill", {
-      method: "POST",
-      headers: {
-        "Content-Type": "text/plain",
-        "X-API-Key": "test-admin-key",
-      },
-      body: "not json",
-    });
-    const res = await worker.fetch(req, env);
-    expect(res.status).toBe(400);
-    const data = await res.json();
-    expect(data.error).toContain("application/json");
-  });
-
-  it("rejects invalid JSON", async () => {
-    const req = makeRequest("/v1/admin/backfill", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-API-Key": "test-admin-key",
-      },
-      body: "not json{{{",
-    });
-    const res = await worker.fetch(req, env);
-    expect(res.status).toBe(400);
-    const data = await res.json();
-    expect(data.error).toContain("Invalid JSON");
-  });
-
-  it("rejects array body (must be object)", async () => {
-    const res = await worker.fetch(backfillRequest([validEvent()]), env);
-    expect(res.status).toBe(400);
-    const data = await res.json();
-    expect(data.error).toContain("object");
-  });
-
-  it("rejects body without events array", async () => {
-    const res = await worker.fetch(backfillRequest({ events: "not array" }), env);
-    expect(res.status).toBe(400);
-    const data = await res.json();
-    expect(data.error).toContain("events must be an array");
-  });
-
-  it("rejects empty events array", async () => {
-    const res = await worker.fetch(backfillRequest({ events: [] }), env);
-    expect(res.status).toBe(400);
-    const data = await res.json();
-    expect(data.error).toContain("empty");
-  });
-
-  it("returns 503 when Analytics Engine is not configured", async () => {
-    const noAnalyticsEnv = createEnv();
-    (noAnalyticsEnv as Record<string, unknown>).TELEMETRY_ANALYTICS = undefined;
+  it("returns the per-kind rows for the date", async () => {
+    mockExecuteQuery.mockResolvedValue({
+      data: [
+        { kind: "session", rows: 10, weighted: 12, devices: 7 },
+        { kind: "panel_usage", rows: 40, weighted: 40, devices: 5 },
+      ],
+    } as never);
     const res = await worker.fetch(
-      backfillRequest({ events: [validEvent()] }),
-      noAnalyticsEnv,
+      aeCountsRequest("?date=2026-10-12", "test-admin-key"),
+      createEnv(),
     );
-    expect(res.status).toBe(503);
-    const data = await res.json();
-    expect(data.error).toContain("not configured");
-  });
-
-  // -- Happy path --
-
-  it("writes events to Analytics Engine and returns count", async () => {
-    const events = [
-      { event: "session", device_id: "dev-1", version: "0.9.19" },
-      { event: "crash", device_id: "dev-2", signal_name: "SIGSEGV" },
-      { event: "print_outcome", device_id: "dev-3", outcome: "success" },
-    ];
-    const res = await worker.fetch(backfillRequest({ events }), env);
     expect(res.status).toBe(200);
-    const data = await res.json();
-    expect(data.status).toBe("ok");
-    expect(data.written).toBe(3);
-    expect(env.TELEMETRY_ANALYTICS.writeDataPoint).toHaveBeenCalledTimes(3);
-  });
-
-  it("continues backfilling when individual events fail", async () => {
-    const analytics = createMockAnalyticsEngine();
-    let callCount = 0;
-    analytics.writeDataPoint = vi.fn(() => {
-      callCount++;
-      if (callCount === 2) throw new Error("bad event");
+    expect(await res.json()).toEqual({
+      date: "2026-10-12",
+      kinds: [
+        { kind: "session", rows: 10, weighted: 12, devices: 7 },
+        { kind: "panel_usage", rows: 40, weighted: 40, devices: 5 },
+      ],
     });
-    const failEnv = createEnv({ TELEMETRY_ANALYTICS: analytics });
-
-    const events = [
-      { event: "session", device_id: "dev-1" },
-      { event: "bad", device_id: "dev-2" },
-      { event: "session", device_id: "dev-3" },
-    ];
-    const res = await worker.fetch(backfillRequest({ events }), failEnv);
-    expect(res.status).toBe(200);
-    const data = await res.json();
-    expect(data.written).toBe(2); // 1st and 3rd succeed
-    expect(analytics.writeDataPoint).toHaveBeenCalledTimes(3);
+    expect(mockExecuteQuery.mock.calls[0][1]).toBe(queries.aeCountsQuery("2026-10-12"));
   });
 
-  it("does not write to R2 (backfill is Analytics Engine only)", async () => {
-    const putSpy = vi.spyOn(env.TELEMETRY_BUCKET, "put");
-    const events = [{ event: "session", device_id: "dev-1" }];
-    await worker.fetch(backfillRequest({ events }), env);
-    expect(putSpy).not.toHaveBeenCalled();
+  it("returns 502 when the SQL API fails", async () => {
+    mockExecuteQuery.mockRejectedValue(new Error("SQL API down"));
+    const res = await worker.fetch(
+      aeCountsRequest("?date=2026-10-12", "test-admin-key"),
+      createEnv(),
+    );
+    expect(res.status).toBe(502);
+  });
+});
+
+// ---------- reconcile script ----------
+
+describe("buildReconcileTable", () => {
+  it("joins R2 point counts with AE rows and computes kept%", () => {
+    const table = buildReconcileTable(
+      { session: 10, panel_usage: 4, crash: 2 },
+      [
+        { kind: "session", rows: 9, weighted: 10, devices: 5 },
+        { kind: "panel_usage", rows: 1, weighted: 2, devices: 1 },
+        { kind: "ae_only", rows: 3, weighted: 3, devices: 1 },
+      ],
+    );
+    expect(table).toEqual([
+      { kind: "crash", r2_points: 2, ae_rows: 0, ae_weighted: 0, "kept%": "0.0" },
+      { kind: "panel_usage", r2_points: 4, ae_rows: 1, ae_weighted: 2, "kept%": "50.0" },
+      { kind: "session", r2_points: 10, ae_rows: 9, ae_weighted: 10, "kept%": "100.0" },
+      { kind: "ae_only", r2_points: 0, ae_rows: 3, ae_weighted: 3, "kept%": "n/a" },
+    ]);
+  });
+
+  it("sorts kinds present in R2 alphabetically, then AE-only kinds", () => {
+    const table = buildReconcileTable({ b: 1, a: 1 }, [{ kind: "z", rows: 1, weighted: 1, devices: 1 }]);
+    expect(table.map((r) => r.kind)).toEqual(["a", "b", "z"]);
+  });
+});
+
+describe("countR2Points", () => {
+  it("counts mapped data points per event kind across batches", () => {
+    const counts = countR2Points([
+      [
+        { event: "session", device_id: "d1" },
+        { event: "crash", device_id: "d1", signal_name: "SIGSEGV" },
+      ],
+      [{ event: "session", device_id: "d2" }],
+    ]);
+    expect(counts).toEqual({ session: 2, crash: 1 });
+  });
+
+  it("tolerates a batch shaped as {events: [...]} and skips non-objects", () => {
+    const counts = countR2Points([{ events: [{ event: "session", device_id: "d1" }, null, 7] }, "junk"]);
+    expect(counts).toEqual({ session: 1 });
   });
 });
 
@@ -1762,7 +1760,7 @@ describe("client field names reach the right Analytics Engine slot", () => {
 
 describe("SQL builders", () => {
   it("never emit uniqExact", () => {
-    const builders = Object.entries(queries).filter(([name]) => /Quer(y|ies)$/.test(name) && name !== "executeQuery");
+    const builders = Object.entries(queries).filter(([name]) => /Quer(y|ies)$/.test(name) && name !== "executeQuery" && name !== "aeCountsQuery");
     expect(builders.length).toBeGreaterThan(10);
     for (const [name, fn] of builders) {
       const out =

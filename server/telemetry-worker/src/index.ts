@@ -4,6 +4,8 @@
 import { mapEventToDataPoints } from "./analytics";
 import {
   executeQuery,
+  aeCountsQuery,
+  isIsoDate,
   parseRange,
   overviewQueries,
   adoptionQueries,
@@ -193,7 +195,7 @@ async function captureCdnFleetDay(env: Env, date: string): Promise<FleetDaySnaps
         env.TELEMETRY_ANALYTICS.writeDataPoint(point);
       }
     } catch {
-      // R2 already holds the day; a failed AE write is recoverable by backfill.
+      // R2 already holds the day; re-running the snapshot for the day rewrites the AE rows.
     }
   }
 
@@ -1343,57 +1345,42 @@ export default {
       }
     }
 
-    // ---------- Backfill endpoint (admin only) ----------
-    // POST /v1/admin/backfill — writes historical events to Analytics Engine
-    if (url.pathname === "/v1/admin/backfill" && request.method === "POST") {
+    // Per-kind Analytics Engine row counts for one UTC day, for reconciling
+    // against R2 (scripts/reconcile.ts).
+    // GET /v1/admin/ae-counts?date=YYYY-MM-DD
+    if (url.pathname === "/v1/admin/ae-counts" && request.method === "GET") {
       const apiKey = request.headers.get("x-api-key") ?? "";
       if (!env.ADMIN_API_KEY || apiKey !== env.ADMIN_API_KEY) {
         return json({ error: "Unauthorized" }, 401);
       }
 
-      if (!env.TELEMETRY_ANALYTICS) {
+      const date = url.searchParams.get("date") ?? "";
+      if (!isIsoDate(date)) {
+        return json({ error: "date must be YYYY-MM-DD" }, 400);
+      }
+
+      if (!env.CLOUDFLARE_ACCOUNT_ID || !env.HELIX_ANALYTICS_READ_TOKEN) {
         return json({ error: "Analytics Engine not configured" }, 503);
       }
 
-      const contentType = request.headers.get("content-type") ?? "";
-      if (!contentType.includes("application/json")) {
-        return json({ error: "Content-Type must be application/json" }, 400);
-      }
-
-      let body: unknown;
       try {
-        body = await request.json();
-      } catch {
-        return json({ error: "Invalid JSON body" }, 400);
+        const res = (await executeQuery(
+          { accountId: env.CLOUDFLARE_ACCOUNT_ID, apiToken: env.HELIX_ANALYTICS_READ_TOKEN },
+          aeCountsQuery(date),
+        )) as { data?: Array<{ kind: string; rows: number; weighted: number; devices: number }> };
+        return json({
+          date,
+          kinds: (res.data ?? []).map((r) => ({
+            kind: r.kind,
+            rows: r.rows,
+            weighted: r.weighted,
+            devices: r.devices,
+          })),
+        });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Unknown error";
+        return json({ error: `Analytics query failed: ${message}` }, 502);
       }
-
-      if (typeof body !== "object" || body === null || Array.isArray(body)) {
-        return json({ error: "Body must be an object with events array" }, 400);
-      }
-
-      const events = (body as Record<string, unknown>).events;
-      if (!Array.isArray(events)) {
-        return json({ error: "events must be an array" }, 400);
-      }
-
-      if (events.length === 0) {
-        return json({ error: "events array must not be empty" }, 400);
-      }
-
-      let written = 0;
-      for (const evt of events) {
-        try {
-          const points = mapEventToDataPoints(evt as Record<string, unknown>);
-          for (const point of points) {
-            env.TELEMETRY_ANALYTICS.writeDataPoint(point);
-            written++;
-          }
-        } catch {
-          // Skip individual failures, continue backfilling
-        }
-      }
-
-      return json({ status: "ok", written });
     }
 
     // Symbol map listing — returns available platforms for a version

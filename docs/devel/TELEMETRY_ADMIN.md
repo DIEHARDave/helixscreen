@@ -120,7 +120,7 @@ matters more than it does today.
 | Secret | Purpose |
 |--------|---------|
 | `INGEST_API_KEY` | Baked into the HelixScreen binary. Write-only ingest access. |
-| `ADMIN_API_KEY` | Server-side secret. Read access to events, dashboard queries, backfill. |
+| `ADMIN_API_KEY` | Server-side secret. Read access to events, dashboard queries, AE counts. |
 | `HELIX_ANALYTICS_READ_TOKEN` | Cloudflare API token for Analytics Engine SQL queries. |
 | `CF_ZONE_ANALYTICS_TOKEN` | Optional. Cloudflare API token with **Zone Analytics:Read** on `helixscreen.org`, for the daily CDN fleet snapshot. Falls back to `HELIX_ANALYTICS_READ_TOKEN` if unset - which works only if that token also carries zone analytics scope (Account Analytics:Read alone is not enough). |
 
@@ -138,7 +138,7 @@ Create `.env.telemetry` in the project root (gitignored):
 HELIX_TELEMETRY_ADMIN_KEY=your-admin-api-key-here
 ```
 
-This is auto-loaded by `telemetry-pull.sh` and `telemetry-backfill.sh`.
+This is auto-loaded by `telemetry-pull.sh`.
 
 ## Dashboard
 
@@ -162,6 +162,32 @@ Enter the `ADMIN_API_KEY` value. Stored in browser sessionStorage (clears when t
 
 All views support 7d / 30d / 90d time range selection.
 
+## Reconciling AE against R2
+
+R2 keeps every accepted batch; Analytics Engine can shed or sample writes, so a
+day's AE rows may be fewer than the points its R2 events map to. To measure the
+gap for one UTC day:
+
+```bash
+source .env.telemetry   # HELIX_TELEMETRY_ADMIN_KEY
+(cd server/telemetry-worker && npx vite-node scripts/reconcile.ts 2026-10-12)
+```
+
+The script lists and fetches that day's R2 batches over the admin API, maps
+them with the worker's own `mapEventToDataPoints`, fetches `/v1/admin/ae-counts`
+for the same day, and prints one row per kind:
+
+| Column | Meaning |
+|--------|---------|
+| `r2_points` | Analytics Engine points the day's R2 events map to |
+| `ae_rows` | Raw `count()` of rows AE holds for the kind |
+| `ae_weighted` | `sum(_sample_interval)`: rows after correcting for AE sampling |
+| `kept%` | `ae_weighted / r2_points`; well below 100 means AE dropped writes |
+
+`ae_rows` next to `ae_weighted` shows how much AE sampled; `r2_points` next to
+`ae_weighted` shows how much was lost outright. Lost AE rows are not
+re-written: R2 stays the source of truth for the day.
+
 ## Worker API Endpoints
 
 ### Ingest (client binary)
@@ -184,7 +210,7 @@ Content-Type: application/json
 |----------|--------|-------------|
 | `/v1/events/list?prefix=events/2026/01/` | GET | List R2 event files |
 | `/v1/events/get?key=events/2026/01/15/...json` | GET | Download a single event file |
-| `/v1/admin/backfill` | POST | Write events to Analytics Engine (for backfill) |
+| `/v1/admin/ae-counts?date=2026-10-12` | GET | Per-kind Analytics Engine row counts for one UTC day (`kind`, `rows`, `weighted`, `devices`) |
 | `/v1/dashboard/overview?range=30d` | GET | Dashboard overview metrics |
 | `/v1/dashboard/adoption?range=7d` | GET | Adoption/distribution metrics |
 | `/v1/dashboard/prints?range=30d` | GET | Print reliability metrics |
@@ -218,21 +244,6 @@ Pull raw event data from R2 to local disk for offline analysis.
 ```
 
 Downloaded to `.telemetry-data/events/` (gitignored).
-
-### telemetry-backfill.sh
-
-Backfill Analytics Engine from existing R2 data. Use after first enabling Analytics Engine, or if data gets out of sync.
-
-```bash
-# Backfill last 90 days (default, max Analytics Engine retention)
-./scripts/telemetry-backfill.sh
-
-# Backfill specific range
-./scripts/telemetry-backfill.sh --since 2025-12-01 --until 2026-02-13
-
-# Preview without writing
-./scripts/telemetry-backfill.sh --dry-run
-```
 
 ### telemetry-analyze.py / telemetry-crashes.py
 
