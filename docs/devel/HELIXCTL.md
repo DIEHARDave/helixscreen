@@ -780,7 +780,8 @@ reads the resolved value, so it shows which one is really in effect.
 state, constructed with representative sample data and the real lifecycle:
 `preflight-check`, `color-mismatch`, `runout-modal`, `lock-screen`,
 `print-status`, `print-tune`, `ams`, `camera`, `ams-error-toast`,
-`action-prompt-worst`, `action-prompt-many`, `action-prompt-hex`, `spaghetti-detection`.
+`action-prompt-worst`, `action-prompt-many`, `action-prompt-hex`, `spaghetti-detection`,
+`bed-check` (the modal a printer bed check raises when it stops a print).
 `spaghetti-detection` fetches its camera still from the mock's unreachable webcam, so set
 `HELIX_DEMO_SNAPSHOT_URL` to a JPEG URL to see the preview.
 

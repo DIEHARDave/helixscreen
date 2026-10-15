@@ -289,6 +289,18 @@ bool show_demo_overlay(const std::string& name) {
         return Modal::show_owned(std::move(modal), screen);
     }
 
+    if (name == "bed-check") {
+        // The modal a U1 dirty-bed pause raises, through the real presenter.
+        helix::detection::DetectionEvent e;
+        e.source_id = "u1_stock";
+        e.kind = helix::detection::DetectionKind::DirtyBed;
+        e.attributable = true;
+        e.already_paused = true;
+        e.message = "detected dirty bed";
+        helix::detection::present_detection(e, helix::detection::DetectionPolicy::DeferToSource);
+        return true;
+    }
+
     if (name == "ams-error-toast") {
         // The widest thing the AMS error renderer ever has to lay out: the
         // longest suggestion any backend produces (96 chars) under a 44-char

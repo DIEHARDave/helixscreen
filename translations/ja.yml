@@ -325,6 +325,7 @@ translations:
   Beacon calibrate sent: Beaconキャリブレーション送信済み
   Bed: ベッド
   Bed (°C): ベッド (°C)
+  Bed Clear Check: 'ベッド上の異物チェック'
   Bed Heater: ベッドヒーター
   Bed Level: ベッドレベル
   Bed Leveling: ベッドレベリング
@@ -340,6 +341,7 @@ translations:
   Bed Screws: ベッドネジ
   Bed Temp: ベッド温度
   Bed Temperature: ベッド温度
+  Bed check turned off: 'ベッドチェックをオフにしました'
   Bed clear · Start next: 'ベッド空き · 次を開始'
   'Bed cooling, spools still on the bed:': 'ベッド冷却中、スプールはまだベッドの上です:'
 
@@ -480,6 +482,7 @@ translations:
   Calibration, LED, and system configuration: 'キャリブレーション、LED、システム設定'
   Cam: カメラ
   Camera: カメラ
+  Camera checks the bed is empty before each print: '印刷を始める前にカメラでベッドが空か確認します'
   Can't connect — try forgetting and re-pairing the printer: 接続できません — プリンターの登録を解除して再ペアリングしてください
   Can't move filament while the print is paused: 印刷の一時停止中はフィラメントを動かせません
   Can't read filament RFID tag: フィラメントの RFID タグを読み取れません
@@ -488,6 +491,7 @@ translations:
   Cancel Escalation: エスカレーションをキャンセル
   Cancel Print: 印刷をキャンセル
   Cancel macro not configured: キャンセルマクロが未設定です
+  Cancel print: '印刷をキャンセル'
   Cancelled: キャンセル済み
   'Cannot add to queue: internal error': 'キューに追加できません: 内部エラー'
   Cannot be changed from here on a multi-unit MMU: マルチユニット MMU ではここから変更できません
@@ -2683,6 +2687,7 @@ translations:
   'Restart failed: {}': '再起動に失敗しました: {}'
   Restart from the beginning to recover: 復旧するには最初からやり直してください
   Restart pending: '再起動保留中'
+  Restart print: '印刷を再開始'
   Restart the display application: ディスプレイアプリケーションを再起動
   Restart the printer or screen: プリンターまたは画面を再起動します
   Restarting HelixScreen...: HelixScreenを再起動中...
@@ -2991,6 +2996,7 @@ translations:
   Some filaments don't match the slicer's intent.: 一部のフィラメントがスライサーの意図と一致しません。
   'Some mapped slots are short on filament:': '一部の割り当て済みスロットのフィラメントが不足しています:'
   Some settings will take effect after restart.: 一部の設定は再起動後に有効になります。
+  Something on the bed?: 'ベッドに何かありますか？'
   Sound: サウンド
   Sound Theme: サウンドテーマ
   Sounds: サウンド
@@ -3236,6 +3242,8 @@ translations:
   The bed was reported dirty, so this print cannot resume.: 'ベッドが汚れていると報告されたため、この印刷を再開できません。'
   The buffer may be disconnected, stuck, or faulty. Check it before retrying: バッファーが未接続、固着、または故障している可能性があります。再試行前に確認してください
   The buffer saw no movement for 16 seconds. Check for a blockage between the CFS and the extruder, or a stuck buffer: バッファーが 16 秒間動きを検出しませんでした。CFS とエクストルーダーの間の詰まり、またはバッファーの固着を確認してください
+  ? The camera thought it saw something on the bed, so the printer stopped before printing. If the bed is clear, it was a false alarm.
+  : 'カメラがベッド上に何かを検出したため、プリンターは印刷前に停止しました。ベッドに何もなければ誤検出です。'
   The cutter blade didn't return — check for filament wrapped around the cutting mechanism: カッターの刃が戻りませんでした。切断機構にフィラメントが巻き付いていないか確認してください
   The cutter is out of alignment — recalibrate with CALIBRATE_CUT_POS: カッターの位置がずれています。CALIBRATE_CUT_POS で再校正してください
   The extruder cannot pull it smoothly. Check the spool for a tangle or knot, and the PTFE tube for a severe bend: エクストルーダーがスムーズに引き込めません。スプールの絡まりや結び目、PTFE チューブの急な曲がりを確認してください
@@ -3255,6 +3263,7 @@ translations:
   ? The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes.
   : 印刷は一時停止中です。ここでツールを交換すると、ツールヘッドが移動してノズルのフィラメントが入れ替わります。交換が完了したら印刷を再開してください。
   The printer applied this value and keeps it for this tool.: 'プリンターはこの値を適用し、このツールに保存しました。'
+  The printer did not change its bed check: 'プリンターはベッドチェックを変更しませんでした'
   The printer extrudes in a corner and repeats until the readings agree. You do not judge anything by eye.: 'プリンターは隅で押出しを行い、測定値が一致するまで繰り返します。目視での判断は不要です。'
   The printer finishes this measurement on its own.: 'この測定はプリンターが最後まで行います。'
   The printer halted this print and cannot resume it. Restart from the beginning?: プリンターはこの印刷を停止し、再開できません。最初からやり直しますか？
@@ -3335,6 +3344,7 @@ translations:
   This may take up to 30 seconds: 最大30秒かかる場合があります
   This plugin asks for no special permissions.: 'このプラグインは特別な権限を要求しません。'
   This plugin lets HelixScreen control print start options like bed mesh and QGL.: 'このプラグインにより、HelixScreen がベッドメッシュや QGL などの印刷開始オプションを制御できます。'
+  This print can't be resumed. Restart it, or turn off the bed check if it keeps happening.: 'この印刷は再開できません。印刷をやり直すか、繰り返し起きる場合はベッドチェックをオフにしてください。'
   This print needs about %.0fg but the spool has about %.0fg remaining. Start anyway?: この印刷には約
     %.0fg 必要ですが、スプールの残量は約 %.0fg です。それでも開始しますか？
   This printer cannot calibrate tool offsets automatically: このプリンターはツールオフセットを自動でキャリブレートできません
@@ -3463,6 +3473,7 @@ translations:
   Turn On: オンにする
   Turn On LEDs: 'LEDを点灯'
   Turn endless spool on, then set the backup gate: 'エンドレススプールを有効にしてから、バックアップゲートを設定してください'
+  Turn off bed check: 'ベッドチェックをオフにする'
   Turn off detection: 検出をオフにする
   Turn on the lights your light buttons control: ライトボタンが操作するライトを点灯します
   Turn the extruder heater off after a load or unload finishes: 装填または排出の完了後にエクストルーダーヒーターをオフにします

@@ -33,10 +33,12 @@
 #include "ams_backend_snapmaker.h"
 #include "ams_state.h"
 #include "app_globals.h"
+#include "detection_manager.h"
 #include "filament_sensor_manager.h"
 #include "filament_sensor_types.h"
 #include "runtime_config.h"
 #include "test_helpers/registered_backend.h"
+#include "u1_stock_detection_source.h"
 
 #include <memory>
 #include <string>
@@ -253,4 +255,44 @@ TEST_CASE_METHOD(RunoutGuidanceFixture,
     transition(::PrintState::Printing, ::PrintState::Paused);
     CHECK(handler->is_modal_shown_for_pause());
     CHECK(handler->is_modal_visible());
+}
+
+// The U1's bed check pauses with exception 532 code 1. That pause is the
+// detection's to explain: the runout dialog stays away even while a runout
+// sensor reads empty.
+TEST_CASE_METHOD(RunoutGuidanceFixture, "a pause a detection explains shows no runout dialog",
+                 "[runout_guidance][gate][bed_check]") {
+    auto& dm = helix::detection::DetectionManager::instance();
+    dm.reset_for_test();
+    auto source = std::make_unique<helix::detection::U1StockSource>(&get_printer_state());
+    auto* u1 = source.get();
+    u1->start();
+    dm.register_source(std::move(source));
+    u1->set_capable(true);
+
+    set_filament_present(false);
+    REQUIRE(FilamentSensorManager::instance().has_real_runout());
+    get_printer_state().update_from_status(nlohmann::json{
+        {"print_stats",
+         {{"state", "paused"},
+          {"exception",
+           {{"id", 532}, {"index", 0}, {"code", 1}, {"message", "detected dirty bed"}}}}}});
+    settle();
+    REQUIRE(dm.pause_explained_by_detection());
+
+    transition(::PrintState::Preparing, ::PrintState::Paused);
+    CHECK_FALSE(handler->is_modal_shown_for_pause());
+    CHECK_FALSE(handler->is_modal_visible());
+
+    // The same empty sensor on a pause nothing else explains still asks.
+    get_printer_state().update_from_status(nlohmann::json{
+        {"print_stats", {{"state", "paused"}, {"exception", nlohmann::json::object()}}}});
+    settle();
+    REQUIRE_FALSE(dm.pause_explained_by_detection());
+    transition(::PrintState::Printing, ::PrintState::Paused);
+    CHECK(handler->is_modal_visible());
+
+    get_printer_state().update_from_status(nlohmann::json{{"print_stats", {{"state", "standby"}}}});
+    settle();
+    dm.reset_for_test();
 }

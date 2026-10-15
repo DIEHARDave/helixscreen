@@ -350,6 +350,7 @@ translations:
   Beacon calibrate sent: Beacon calibrazione inviata
   Bed: Piano
   Bed (°C): Piatto (°C)
+  Bed Clear Check: 'Controllo piano libero'
   Bed Heater: Riscaldatore piano
   Bed Level: Livellamento piano
   Bed Leveling: Livellamento piano
@@ -365,6 +366,7 @@ translations:
   Bed Screws: Viti piano
   Bed Temp: Temp. piatto
   Bed Temperature: Temperatura del piano
+  Bed check turned off: 'Controllo del piano disattivato'
   Bed clear · Start next: 'Piano libero · Avvia il prossimo'
   'Bed cooling, spools still on the bed:': 'Il piano si sta raffreddando, le bobine sono ancora sopra:'
 
@@ -514,6 +516,7 @@ translations:
   Calibration, LED, and system configuration: 'Calibrazione, LED e configurazione di sistema'
   Cam: Cam
   Camera: Telecamera
+  Camera checks the bed is empty before each print: 'La telecamera controlla che il piano sia vuoto prima di ogni stampa'
   Can't connect — try forgetting and re-pairing the printer: Impossibile connettersi
     — prova a dimenticare e associare di nuovo la stampante
   Can't move filament while the print is paused: Impossibile muovere il filamento con la stampa in pausa
@@ -523,6 +526,7 @@ translations:
   Cancel Escalation: Annulla escalation
   Cancel Print: Annulla stampa
   Cancel macro not configured: Macro annullamento non configurata
+  Cancel print: 'Annulla stampa'
   Cancelled: Annullato
   'Cannot add to queue: internal error': 'Impossibile aggiungere alla coda: errore interno'
   Cannot be changed from here on a multi-unit MMU: Non modificabile da qui su un MMU multi-unità
@@ -2843,6 +2847,7 @@ translations:
   'Restart failed: {}': 'Riavvio fallito: {}'
   Restart from the beginning to recover: Riavvia dall'inizio per ripristinare la stampa
   Restart pending: 'Riavvio in attesa'
+  Restart print: 'Riavvia stampa'
   Restart the display application: Riavvia l'applicazione display
   Restart the printer or screen: Riavvia la stampante o lo schermo
   Restarting HelixScreen...: Riavvio HelixScreen...
@@ -3186,6 +3191,7 @@ translations:
   'Some mapped slots are short on filament:': 'Alcuni slot assegnati hanno poco filamento:'
   Some settings will take effect after restart.: Alcune impostazioni avranno effetto
     dopo il riavvio.
+  Something on the bed?: 'Qualcosa sul piano?'
   Sound: Suono
   Sound Theme: Tema sonoro
   Sounds: Suoni
@@ -3445,6 +3451,8 @@ translations:
   The bed was reported dirty, so this print cannot resume.: 'Il piano è stato segnalato come sporco, quindi questa stampa non può riprendere.'
   The buffer may be disconnected, stuck, or faulty. Check it before retrying: Il buffer potrebbe essere scollegato, bloccato o guasto. Controllarlo prima di riprovare
   The buffer saw no movement for 16 seconds. Check for a blockage between the CFS and the extruder, or a stuck buffer: Il buffer non ha rilevato movimento per 16 secondi. Verificare un'ostruzione tra CFS ed estrusore, o un buffer bloccato
+  ? The camera thought it saw something on the bed, so the printer stopped before printing. If the bed is clear, it was a false alarm.
+  : 'La telecamera ha creduto di vedere qualcosa sul piano, quindi la stampante si è fermata prima di stampare. Se il piano è libero, era un falso allarme.'
   The cutter blade didn't return — check for filament wrapped around the cutting mechanism: La lama non è rientrata. Verificare che non ci sia filamento avvolto attorno al meccanismo di taglio
   The cutter is out of alignment — recalibrate with CALIBRATE_CUT_POS: La taglierina è disallineata. Ricalibrare con CALIBRATE_CUT_POS
   The extruder cannot pull it smoothly. Check the spool for a tangle or knot, and the PTFE tube for a severe bend: L'estrusore non riesce a tirare in modo uniforme. Controllare la bobina per aggrovigliamenti o nodi e il tubo PTFE per curve troppo strette
@@ -3466,6 +3474,7 @@ translations:
   : La stampa è in pausa. Cambiare utensile ora muove la testina e sostituisce il
     filamento all'ugello. Riprendi la stampa al termine del cambio.
   The printer applied this value and keeps it for this tool.: 'La stampante ha applicato questo valore e lo conserva per questo strumento.'
+  The printer did not change its bed check: 'La stampante non ha modificato il controllo del piano'
   The printer extrudes in a corner and repeats until the readings agree. You do not judge anything by eye.: 'La stampante estrude in un angolo e ripete finché le letture concordano. Non giudichi nulla a occhio.'
   The printer finishes this measurement on its own.: 'La stampante completa questa misurazione da sola.'
   The printer halted this print and cannot resume it. Restart from the beginning?: La
@@ -3561,6 +3570,7 @@ translations:
   This may take up to 30 seconds: Questo potrebbe richiedere fino a 30 secondi
   This plugin asks for no special permissions.: 'Questo plugin non richiede permessi speciali.'
   This plugin lets HelixScreen control print start options like bed mesh and QGL.: 'Questo plugin permette a HelixScreen di controllare opzioni avvio stampa come mesh piano e QGL.'
+  This print can't be resumed. Restart it, or turn off the bed check if it keeps happening.: 'Questa stampa non può essere ripresa. Riavviala, oppure disattiva il controllo del piano se continua a succedere.'
   This print needs about %.0fg but the spool has about %.0fg remaining. Start anyway?: Questa
     stampa richiede circa %.0fg ma la bobina ne ha circa %.0fg rimanenti. Avviare
     comunque?
@@ -3704,6 +3714,7 @@ translations:
   Turn On: Accendi
   Turn On LEDs: 'Accendi i LED'
   Turn endless spool on, then set the backup gate: 'Attiva la bobina infinita, poi imposta il Gate di riserva'
+  Turn off bed check: 'Disattiva controllo piano'
   Turn off detection: Disattiva rilevamento
   Turn on the lights your light buttons control: Accende le luci controllate dai pulsanti luce
   Turn the extruder heater off after a load or unload finishes: Spegni il riscaldatore dell'estrusore al termine di un caricamento o scaricamento

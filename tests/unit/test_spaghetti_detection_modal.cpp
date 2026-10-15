@@ -17,6 +17,7 @@
 #include "moonraker_api.h"
 #include "moonraker_client_mock.h"
 #include "settings_manager.h"
+#include "u1_stock_detection_source.h"
 
 #include <fstream>
 #include <iterator>
@@ -383,4 +384,66 @@ TEST_CASE_METHOD(PresenterFixture, "present_detection response ladder",
         CHECK(modal_text("detection_text") == "noodle detected");
         ModalStack::instance().clear();
     }
+}
+
+// A dirty bed stopped a print the printer cannot resume: it always gets the
+// bed check modal, whatever the spaghetti settings say, and never the
+// spaghetti one.
+TEST_CASE_METHOD(PresenterFixture, "a dirty bed shows the bed check modal",
+                 "[detection][modal][presenter][bed_check]") {
+    auto& sm = SettingsManager::instance();
+    sm.set_detection_enabled(false);
+    MoonrakerClientMock u1(MoonrakerClientMock::PrinterType::SNAPMAKER_U1);
+    set_moonraker_client(&u1);
+    auto& m = helix::detection::DetectionManager::instance();
+    m.register_source(std::make_unique<helix::detection::U1StockSource>(nullptr));
+    m.apply_objects_list_for_test(nlohmann::json::array({"defect_detection"}));
+
+    helix::detection::DetectionEvent e = spaghetti_event(true);
+    e.kind = helix::detection::DetectionKind::DirtyBed;
+    e.message = "detected dirty bed";
+    helix::detection::present_detection(e, helix::detection::DetectionPolicy::DeferToSource);
+    process_lvgl(20);
+
+    REQUIRE(ModalStack::instance().top_component_name() == "bed_check_modal");
+    CHECK(toasts.empty());
+    lv_obj_t* dialog = ModalStack::instance().top_dialog();
+    lv_obj_t* turn_off = lv_obj_find_by_name(dialog, "btn_tertiary");
+    REQUIRE(turn_off != nullptr);
+    REQUIRE_FALSE(lv_obj_has_flag(turn_off, LV_OBJ_FLAG_HIDDEN));
+
+    // Turn off bed check: the printer is told, the button goes, and the
+    // print's Restart/Cancel decision stays on screen.
+    lv_obj_send_event(turn_off, LV_EVENT_CLICKED, nullptr);
+    helix::ui::UpdateQueue::instance().drain();
+    process_lvgl(20);
+    CHECK(u1.last_send_script() == "DEFECT_DETECTION_CONFIG CLEAN_BED_ENABLE=0");
+    CHECK(ModalStack::instance().top_component_name() == "bed_check_modal");
+    CHECK(lv_obj_has_flag(turn_off, LV_OBJ_FLAG_HIDDEN));
+    REQUIRE(toasts.size() == 1);
+    CHECK(toasts[0].second == "Bed check turned off");
+
+    // Restart print: the job the printer cannot resume is dropped and its
+    // file started again.
+    get_printer_state().update_from_status(
+        nlohmann::json{{"print_stats", {{"filename", "3DBenchy.gcode"}}}});
+    helix::ui::UpdateQueue::instance().drain();
+    lv_obj_t* restart = lv_obj_find_by_name(dialog, "btn_primary");
+    REQUIRE(restart != nullptr);
+    mock_client.clear_gcode_script_history();
+    lv_obj_send_event(restart, LV_EVENT_CLICKED, nullptr);
+    helix::ui::UpdateQueue::instance().drain();
+    process_lvgl(20);
+    const auto& sent = mock_client.gcode_script_history();
+    REQUIRE(sent.size() >= 2);
+    CHECK(sent[0] == "SDCARD_RESET_FILE");
+    CHECK(sent[1] == "CANCEL_PRINT_BASE");
+    CHECK(mock_client.get_print_phase() != MoonrakerClientMock::MockPrintPhase::IDLE);
+    CHECK(ModalStack::instance().top_component_name() != "bed_check_modal");
+
+    ModalStack::instance().clear();
+    process_lvgl(20);
+    set_moonraker_client(nullptr);
+    m.reset_for_test();
+    sm.set_detection_enabled(true);
 }

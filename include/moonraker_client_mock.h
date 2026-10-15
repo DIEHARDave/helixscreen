@@ -1290,6 +1290,15 @@ class MoonrakerClientMock : public helix::MoonrakerClient {
      */
     nlohmann::json pin_watch_status_json() const;
 
+    /**
+     * @brief U1 `defect_detection` status: the module's stored config, which
+     *        is what its get_status() returns.
+     *
+     * Empty object for every persona but the U1. clean_bed.enable follows
+     * DEFECT_DETECTION_CONFIG CLEAN_BED_ENABLE=0|1.
+     */
+    nlohmann::json defect_detection_status() const;
+
   private:
     // Test visibility into the chamber-key cache and the synchronous initial
     // state dispatch (see tests/test_helpers/moonraker_client_mock_test_access.h).
@@ -2229,6 +2238,8 @@ class MoonrakerClientMock : public helix::MoonrakerClient {
         "load_finish", "preload_finish", "load_finish", "preload_finish"};
     std::array<bool, static_cast<size_t>(U1_CHANNELS)> u1_filament_detected_{true, true, true,
                                                                              true};
+    /// defect_detection clean_bed.enable, switched by DEFECT_DETECTION_CONFIG.
+    std::atomic<bool> u1_clean_bed_enable_{true};
 
     /// One feeder command line: walk the named channel through its states.
     /// HELIX_MOCK_BATCH_FAIL_SLOT=<n> swaps that channel's terminal for its

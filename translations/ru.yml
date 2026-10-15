@@ -396,6 +396,7 @@ translations:
   Beacon calibrate sent: Beacon калибровка отправлена
   Bed: Стол
   Bed (°C): Стол (°C)
+  Bed Clear Check: 'Проверка чистоты стола'
   Bed Heater: Нагреватель стола
   Bed Level: Уровень стола
   Bed Leveling: Выравнивание стола
@@ -411,6 +412,7 @@ translations:
   Bed Screws: Винты стола
   Bed Temp: Темп. стола
   Bed Temperature: Температура стола
+  Bed check turned off: 'Проверка стола отключена'
   Bed clear · Start next: 'Стол свободен · Запустить следующую'
   'Bed cooling, spools still on the bed:': 'Стол остывает, катушки всё ещё на нём:'
 
@@ -561,6 +563,7 @@ translations:
   Calibration, LED, and system configuration: 'Калибровка, LED и настройка системы'
   Cam: Кам
   Camera: Камера
+  Camera checks the bed is empty before each print: 'Камера проверяет, что стол пуст, перед каждой печатью'
   Can't connect — try forgetting and re-pairing the printer: Не удаётся подключиться
     — забудьте принтер и выполните сопряжение заново
   Can't move filament while the print is paused: Невозможно перемещать филамент, пока печать на паузе
@@ -570,6 +573,7 @@ translations:
   Cancel Escalation: Отменить эскалацию
   Cancel Print: Отменить печать
   Cancel macro not configured: Макрос отмены не настроен
+  Cancel print: 'Отменить печать'
   Cancelled: Отменено
   'Cannot add to queue: internal error': 'Не удалось добавить в очередь: внутренняя ошибка'
   Cannot be changed from here on a multi-unit MMU: Нельзя изменить здесь на MMU с несколькими блоками
@@ -2892,6 +2896,7 @@ translations:
   'Restart failed: {}': 'Ошибка перезапуска: {}'
   Restart from the beginning to recover: Чтобы восстановить печать, запустите её с начала
   Restart pending: 'Ожидается перезапуск'
+  Restart print: 'Перезапустить печать'
   Restart the display application: Перезапустить приложение дисплея
   Restart the printer or screen: Перезапустить принтер или экран
   Restarting HelixScreen...: Перезапуск HelixScreen...
@@ -3231,6 +3236,7 @@ translations:
   'Some mapped slots are short on filament:': 'В некоторых назначенных слотах мало филамента:'
   Some settings will take effect after restart.: Некоторые настройки вступят в силу
     после перезапуска.
+  Something on the bed?: 'Что-то на столе?'
   Sound: Звук
   Sound Theme: Звуковая тема
   Sounds: Звуки
@@ -3496,6 +3502,8 @@ translations:
   The bed was reported dirty, so this print cannot resume.: 'Стол помечен как загрязнённый, поэтому печать не может быть продолжена.'
   The buffer may be disconnected, stuck, or faulty. Check it before retrying: Буфер может быть отключён, заклинен или неисправен. Проверьте его перед повтором
   The buffer saw no movement for 16 seconds. Check for a blockage between the CFS and the extruder, or a stuck buffer: Буфер не фиксировал движение 16 секунд. Проверьте засор между CFS и экструдером или заклинивший буфер
+  ? The camera thought it saw something on the bed, so the printer stopped before printing. If the bed is clear, it was a false alarm.
+  : 'Камере показалось, что на столе что-то есть, поэтому принтер остановился до начала печати. Если стол чист, это ложная тревога.'
   The cutter blade didn't return — check for filament wrapped around the cutting mechanism: Лезвие не вернулось. Проверьте, не намотался ли филамент на режущий механизм
   The cutter is out of alignment — recalibrate with CALIBRATE_CUT_POS: Резак смещён. Выполните повторную калибровку командой CALIBRATE_CUT_POS
   The extruder cannot pull it smoothly. Check the spool for a tangle or knot, and the PTFE tube for a severe bend: Экструдер не может тянуть равномерно. Проверьте катушку на запутывание или узел, а трубку PTFE на резкий изгиб
@@ -3516,6 +3524,7 @@ translations:
   ? The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes.
   : Печать на паузе. Смена инструмента сейчас переместит печатающую головку и заменит филамент в сопле. Возобновите печать после завершения смены.
   The printer applied this value and keeps it for this tool.: 'Принтер применил это значение и сохранил его для этого инструмента.'
+  The printer did not change its bed check: 'Принтер не изменил проверку стола'
   The printer extrudes in a corner and repeats until the readings agree. You do not judge anything by eye.: 'Принтер выдавливает пластик в углу и повторяет, пока показания не сойдутся. Ничего не нужно оценивать на глаз.'
   The printer finishes this measurement on its own.: 'Принтер завершит это измерение сам.'
   The printer halted this print and cannot resume it. Restart from the beginning?: Принтер
@@ -3607,6 +3616,7 @@ translations:
   This may take up to 30 seconds: Это может занять до 30 секунд
   This plugin asks for no special permissions.: 'Этот плагин не запрашивает специальных разрешений.'
   This plugin lets HelixScreen control print start options like bed mesh and QGL.: 'Этот плагин позволяет HelixScreen управлять опциями начала печати, такими как сетка стола и QGL.'
+  This print can't be resumed. Restart it, or turn off the bed check if it keeps happening.: 'Эту печать нельзя продолжить. Перезапустите её или отключите проверку стола, если это повторяется.'
   This print needs about %.0fg but the spool has about %.0fg remaining. Start anyway?: Для
     этой печати нужно около %.0fг, но на катушке осталось около %.0fг. Всё равно начать?
   This printer cannot calibrate tool offsets automatically: Этот принтер не может калибровать смещения инструментов автоматически
@@ -3745,6 +3755,7 @@ translations:
   Turn On: Включить
   Turn On LEDs: 'Включить LED'
   Turn endless spool on, then set the backup gate: 'Включите бесконечную катушку, затем задайте резервный шлюз'
+  Turn off bed check: 'Отключить проверку стола'
   Turn off detection: Отключить обнаружение
   Turn on the lights your light buttons control: Включает свет, которым управляют кнопки света
   Turn the extruder heater off after a load or unload finishes: Выключать нагреватель экструдера после загрузки или выгрузки

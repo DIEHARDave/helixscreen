@@ -16,7 +16,9 @@ namespace helix::detection {
 
 /// Present one detection to the user per the response ladder: nothing when
 /// Suppressed, a warning toast when WarnOnly, and for PauseAndRespond the
-/// pause the source did not do itself plus the response modal.
+/// pause the source did not do itself plus the response modal. A dirty-bed
+/// detection skips the ladder: the printer stopped a print it cannot resume,
+/// so the bed check modal always shows.
 void present_detection(const DetectionEvent& e, DetectionPolicy p);
 
 } // namespace helix::detection
@@ -144,3 +146,64 @@ class SpaghettiDetectionModal : public Modal {
     void show_preview(lv_obj_t* preview);
     Action on_resume_, on_abort_, on_tune_, on_disable_;
 };
+
+namespace helix::detection {
+
+/**
+ * @brief The printer's pre-print bed check stopped the print
+ *
+ * The camera saw something on the bed (often a false alarm) and the firmware
+ * stopped a print it cannot resume. Three actions:
+ *   - Restart print (primary / on_ok): drop the job and print its file again
+ *   - Cancel print (secondary / on_cancel)
+ *   - Turn off bed check (tertiary / on_tertiary): leaves the modal open, so
+ *     the print still gets its Restart/Cancel decision. The button rides
+ *     detection_bed_check_enabled and hides once the check is off.
+ */
+class BedCheckModal : public Modal {
+  public:
+    using Action = std::function<void()>;
+
+    const char* get_name() const override {
+        return "Bed Check";
+    }
+    const char* component_name() const override {
+        return "bed_check_modal";
+    }
+
+    void set_on_restart(Action a) {
+        on_restart_ = std::move(a);
+    }
+    void set_on_cancel_print(Action a) {
+        on_cancel_print_ = std::move(a);
+    }
+    void set_on_disable_check(Action a) {
+        on_disable_check_ = std::move(a);
+    }
+
+  protected:
+    void on_show() override {
+        wire_ok_button("btn_primary");
+        wire_cancel_button("btn_secondary");
+        wire_tertiary_button("btn_tertiary");
+    }
+    void on_ok() override {
+        if (on_restart_)
+            on_restart_();
+        hide();
+    }
+    void on_cancel() override {
+        if (on_cancel_print_)
+            on_cancel_print_();
+        hide();
+    }
+    void on_tertiary() override {
+        if (on_disable_check_)
+            on_disable_check_();
+    }
+
+  private:
+    Action on_restart_, on_cancel_print_, on_disable_check_;
+};
+
+} // namespace helix::detection

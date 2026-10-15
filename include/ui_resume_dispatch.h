@@ -80,6 +80,14 @@ void dispatch_prepared_resume(IMoonrakerAPI* api, std::string log_prefix,
 void dispatch_cancel_print(IMoonrakerAPI* api, std::string log_prefix,
                            std::function<void()> on_confirmed = {});
 
+/// Start the paused print's file over: SDCARD_RESET_FILE + CANCEL_PRINT_BASE
+/// to drop the job the printer cannot resume, then start_print(@p filename).
+/// For a pause whose virtual_sdcard is gone, where RESUME silently does nothing.
+/// Failures toast and run @p on_failure (may be null) on the main thread.
+void restart_print_from_beginning(IMoonrakerAPI* api, const std::string& filename,
+                                  const std::string& log_prefix,
+                                  const std::function<void()>& on_failure);
+
 /// Show the "Print Was Terminated — Restart from the beginning?" modal.
 /// Exposed so post-resume backstops (e.g. AmsBackendSnapmaker) can surface it
 /// after a silent RESUME no-op, not just the up-front prepare_for_resume gate.

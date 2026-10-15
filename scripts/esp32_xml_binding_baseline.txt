@@ -40,6 +40,7 @@ callback:input_shaper_save_cb
 callback:on_ams_spoolman_interval_changed
 callback:on_ams_spoolman_sync_toggled
 callback:on_barcode_scanner_clicked
+callback:on_bed_check_changed
 callback:on_bed_heater_dropdown_changed
 callback:on_bed_mesh_calibrate_cancel
 callback:on_bed_mesh_calibrate_clicked
@@ -239,6 +240,8 @@ subject:crash_report_details
 subject:crash_report_show_qr
 subject:crash_report_status
 subject:detection_available
+subject:detection_bed_check_available
+subject:detection_bed_check_enabled
 subject:detection_pause_applicable
 subject:error_message_text
 subject:ethernet_mac

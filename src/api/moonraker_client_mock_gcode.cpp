@@ -209,11 +209,21 @@ MoonrakerClientMock::GcodeResult MoonrakerClientMock::gcode_openams_line(const s
     return std::nullopt;
 }
 
-// Snapmaker U1 commands. Unconditional: AUTO_FEEDING and PARK_EXTRUDER are
-// U1-only vocabulary, so no mock printer mode needs to arm them, and no other
-// printer's script can contain the tokens.
+// Snapmaker U1 commands. Unconditional: AUTO_FEEDING, PARK_EXTRUDER and
+// DEFECT_DETECTION_CONFIG are U1-only vocabulary, so no mock printer mode needs to arm them, and no
+// other printer's script can contain the tokens.
 MoonrakerClientMock::GcodeResult MoonrakerClientMock::gcode_u1_feeding(const std::string& gcode) {
     if (apply_u1_feeding_gcode(gcode)) {
+        return 0;
+    }
+    if (is_command(gcode, "DEFECT_DETECTION_CONFIG")) {
+        if (has_token(gcode, "CLEAN_BED_ENABLE=0")) {
+            u1_clean_bed_enable_ = false;
+        } else if (has_token(gcode, "CLEAN_BED_ENABLE=1")) {
+            u1_clean_bed_enable_ = true;
+        }
+        spdlog::info("[MoonrakerClientMock] U1 DEFECT_DETECTION_CONFIG: clean_bed.enable={}",
+                     u1_clean_bed_enable_.load());
         return 0;
     }
     // "Detach Toolhead": the head goes back to its dock and nothing is

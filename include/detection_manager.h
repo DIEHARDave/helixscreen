@@ -77,6 +77,30 @@ class DetectionManager {
         return &detection_pause_applicable_subject_;
     }
 
+    /// "A capable source has a switchable pre-print bed check" (integer 0/1),
+    /// bindable from XML to gate the bed-check row.
+    lv_subject_t* subject_bed_check_available() {
+        return &bed_check_available_subject_;
+    }
+
+    /// The bed check's state as the printer last reported or accepted it
+    /// (integer 0/1). Bound two-way by the settings row's toggle.
+    lv_subject_t* subject_bed_check_enabled() {
+        return &bed_check_enabled_subject_;
+    }
+
+    /// Switch the printer's bed check. The subject follows at once and goes
+    /// back, with a toast, if the printer refuses. Main thread.
+    /// @return false when no capable source has a bed check, so nothing was sent
+    bool set_bed_check_enabled(bool enabled);
+
+    /// Ask the capable source for the bed check's state and publish it.
+    void refresh_bed_check();
+
+    /// Whether the print is paused because a capable source detected
+    /// something (DetectionSource::explains_current_pause()).
+    bool pause_explained_by_detection() const;
+
     /// Whether the named registered source exposes tuning
     /// (DetectionSource::can_tune()). Lets generic presenters offer a Tune
     /// button without naming any vendor's source id.
@@ -118,8 +142,13 @@ class DetectionManager {
     /// settings, the first start where a capable source exists.
     void maybe_seed_settings();
 
+    /// The capable source with a bed check, or nullptr.
+    DetectionSource* bed_check_source() const;
+
     lv_subject_t detection_available_subject_{};
     lv_subject_t detection_pause_applicable_subject_{};
+    lv_subject_t bed_check_available_subject_{};
+    lv_subject_t bed_check_enabled_subject_{};
     bool availability_subject_ready_ = false;
 
     helix::IMoonrakerClient* client_ = nullptr;

@@ -3,12 +3,15 @@
 
 #include "ui_spaghetti_detection_modal.h"
 
+#include "ui_panel_print_status.h"
+#include "ui_resume_dispatch.h"
 #include "ui_toast_manager.h"
 
 #include "abort_manager.h"
 #include "app_globals.h"
 #include "display_manager.h"
 #include "i_moonraker_api.h"
+#include "printer_state.h"
 #include "settings_manager.h"
 #include "static_subject_registry.h"
 
@@ -113,7 +116,40 @@ void SpaghettiDetectionModal::request_camera_frame(const helix::CameraFrameSourc
 
 namespace helix::detection {
 
+namespace {
+void present_bed_check(const DetectionEvent& e) {
+    spdlog::info("[Detection] bed check stopped the print: {}", e.message);
+    if (auto* dm = DisplayManager::instance()) {
+        dm->wake_display();
+    }
+    // This pause has its explanation; a runout dialog raised for it before
+    // the detection arrived would put a second, wrong one on top.
+    get_global_print_status_panel().dismiss_runout_guidance();
+
+    auto modal = std::make_unique<BedCheckModal>();
+    // The file is read when the user answers, not when the modal opens: the
+    // job's identity is what the printer reports at that moment.
+    modal->set_on_restart([] {
+        const std::string filename =
+            lv_subject_get_string(get_printer_state().print_state().get_print_filename_subject());
+        helix::ui::restart_print_from_beginning(get_moonraker_api(), filename, "[BedCheck]",
+                                                nullptr);
+    });
+    modal->set_on_cancel_print([] { helix::AbortManager::instance().start_abort(); });
+    modal->set_on_disable_check([] {
+        if (DetectionManager::instance().set_bed_check_enabled(false)) {
+            ToastManager::instance().show(ToastSeverity::INFO, lv_tr("Bed check turned off"), 4000);
+        }
+    });
+    Modal::show_owned(std::move(modal), lv_screen_active());
+}
+} // namespace
+
 void present_detection(const DetectionEvent& e, DetectionPolicy p) {
+    if (e.kind == DetectionKind::DirtyBed) {
+        present_bed_check(e);
+        return;
+    }
     using DetectionResponse = helix::detection::DetectionResponse;
     const auto response = DetectionManager::instance().response_for(p);
     if (response == DetectionResponse::Suppressed)

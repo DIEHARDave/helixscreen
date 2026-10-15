@@ -321,6 +321,7 @@
   <translation tag="Beacon calibrate sent" it="Beacon calibrazione inviata"/>
   <translation tag="Bed" it="Piano"/>
   <translation tag="Bed (°C)" it="Piatto (°C)"/>
+  <translation tag="Bed Clear Check" it="Controllo piano libero"/>
   <translation tag="Bed Heater" it="Riscaldatore piano"/>
   <translation tag="Bed Level" it="Livellamento piano"/>
   <translation tag="Bed Leveling" it="Livellamento piano"/>
@@ -336,6 +337,7 @@
   <translation tag="Bed Screws" it="Viti piano"/>
   <translation tag="Bed Temp" it="Temp. piatto"/>
   <translation tag="Bed Temperature" it="Temperatura del piano"/>
+  <translation tag="Bed check turned off" it="Controllo del piano disattivato"/>
   <translation tag="Bed clear · Start next" it="Piano libero · Avvia il prossimo"/>
   <translation tag="Bed cooling, spools still on the bed:" it="Il piano si sta raffreddando, le bobine sono ancora sopra:"/>
   <translation tag="Bed is Level!" it="Piano livellato!"/>
@@ -473,6 +475,7 @@
   <translation tag="Calibration, LED, and system configuration" it="Calibrazione, LED e configurazione di sistema"/>
   <translation tag="Cam" it="Cam"/>
   <translation tag="Camera" it="Telecamera"/>
+  <translation tag="Camera checks the bed is empty before each print" it="La telecamera controlla che il piano sia vuoto prima di ogni stampa"/>
   <translation tag="Can&apos;t connect — try forgetting and re-pairing the printer" it="Impossibile connettersi — prova a dimenticare e associare di nuovo la stampante"/>
   <translation tag="Can&apos;t move filament while the print is paused" it="Impossibile muovere il filamento con la stampa in pausa"/>
   <translation tag="Can&apos;t reach this printer. Save anyway?" it="Stampante non raggiungibile. Salvare comunque?"/>
@@ -481,6 +484,7 @@
   <translation tag="Cancel Escalation" it="Annulla escalation"/>
   <translation tag="Cancel Print" it="Annulla stampa"/>
   <translation tag="Cancel macro not configured" it="Macro annullamento non configurata"/>
+  <translation tag="Cancel print" it="Annulla stampa"/>
   <translation tag="Cancelled" it="Annullato"/>
   <translation tag="Cannot add to queue: internal error" it="Impossibile aggiungere alla coda: errore interno"/>
   <translation tag="Cannot be changed from here on a multi-unit MMU" it="Non modificabile da qui su un MMU multi-unità"/>
@@ -2584,6 +2588,7 @@
   <translation tag="Restart failed: {}" it="Riavvio fallito: {}"/>
   <translation tag="Restart from the beginning to recover" it="Riavvia dall&apos;inizio per ripristinare la stampa"/>
   <translation tag="Restart pending" it="Riavvio in attesa"/>
+  <translation tag="Restart print" it="Riavvia stampa"/>
   <translation tag="Restart the display application" it="Riavvia l&apos;applicazione display"/>
   <translation tag="Restart the printer or screen" it="Riavvia la stampante o lo schermo"/>
   <translation tag="Restarting HelixScreen..." it="Riavvio HelixScreen..."/>
@@ -2878,6 +2883,7 @@
   <translation tag="Some filaments don&apos;t match the slicer&apos;s intent." it="Alcuni filamenti non corrispondono alle intenzioni dello slicer."/>
   <translation tag="Some mapped slots are short on filament:" it="Alcuni slot assegnati hanno poco filamento:"/>
   <translation tag="Some settings will take effect after restart." it="Alcune impostazioni avranno effetto dopo il riavvio."/>
+  <translation tag="Something on the bed?" it="Qualcosa sul piano?"/>
   <translation tag="Sound" it="Suono"/>
   <translation tag="Sound Theme" it="Tema sonoro"/>
   <translation tag="Sounds" it="Suoni"/>
@@ -3104,6 +3110,7 @@
   <translation tag="The bed was reported dirty, so this print cannot resume." it="Il piano è stato segnalato come sporco, quindi questa stampa non può riprendere."/>
   <translation tag="The buffer may be disconnected, stuck, or faulty. Check it before retrying" it="Il buffer potrebbe essere scollegato, bloccato o guasto. Controllarlo prima di riprovare"/>
   <translation tag="The buffer saw no movement for 16 seconds. Check for a blockage between the CFS and the extruder, or a stuck buffer" it="Il buffer non ha rilevato movimento per 16 secondi. Verificare un&apos;ostruzione tra CFS ed estrusore, o un buffer bloccato"/>
+  <translation tag="The camera thought it saw something on the bed, so the printer stopped before printing. If the bed is clear, it was a false alarm." it="La telecamera ha creduto di vedere qualcosa sul piano, quindi la stampante si è fermata prima di stampare. Se il piano è libero, era un falso allarme."/>
   <translation tag="The cutter blade didn&apos;t return — check for filament wrapped around the cutting mechanism" it="La lama non è rientrata. Verificare che non ci sia filamento avvolto attorno al meccanismo di taglio"/>
   <translation tag="The cutter is out of alignment — recalibrate with CALIBRATE_CUT_POS" it="La taglierina è disallineata. Ricalibrare con CALIBRATE_CUT_POS"/>
   <translation tag="The extruder cannot pull it smoothly. Check the spool for a tangle or knot, and the PTFE tube for a severe bend" it="L&apos;estrusore non riesce a tirare in modo uniforme. Controllare la bobina per aggrovigliamenti o nodi e il tubo PTFE per curve troppo strette"/>
@@ -3119,6 +3126,7 @@
   <translation tag="The plate finishes its current move, but drying will not start." it="Il piano termina lo spostamento in corso, ma l&apos;essiccazione non partirà."/>
   <translation tag="The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes." it="La stampa è in pausa. Cambiare utensile ora muove la testina e sostituisce il filamento all&apos;ugello. Riprendi la stampa al termine del cambio."/>
   <translation tag="The printer applied this value and keeps it for this tool." it="La stampante ha applicato questo valore e lo conserva per questo strumento."/>
+  <translation tag="The printer did not change its bed check" it="La stampante non ha modificato il controllo del piano"/>
   <translation tag="The printer extrudes in a corner and repeats until the readings agree. You do not judge anything by eye." it="La stampante estrude in un angolo e ripete finché le letture concordano. Non giudichi nulla a occhio."/>
   <translation tag="The printer finishes this measurement on its own." it="La stampante completa questa misurazione da sola."/>
   <translation tag="The printer halted this print and cannot resume it. Restart from the beginning?" it="La stampante ha interrotto questa stampa e non può riprenderla. Riavviare dall&apos;inizio?"/>
@@ -3188,6 +3196,7 @@
   <translation tag="This may take up to 30 seconds" it="Questo potrebbe richiedere fino a 30 secondi"/>
   <translation tag="This plugin asks for no special permissions." it="Questo plugin non richiede permessi speciali."/>
   <translation tag="This plugin lets HelixScreen control print start options like bed mesh and QGL." it="Questo plugin permette a HelixScreen di controllare opzioni avvio stampa come mesh piano e QGL."/>
+  <translation tag="This print can&apos;t be resumed. Restart it, or turn off the bed check if it keeps happening." it="Questa stampa non può essere ripresa. Riavviala, oppure disattiva il controllo del piano se continua a succedere."/>
   <translation tag="This print needs about %.0fg but the spool has about %.0fg remaining. Start anyway?" it="Questa stampa richiede circa %.0fg ma la bobina ne ha circa %.0fg rimanenti. Avviare comunque?"/>
   <translation tag="This printer cannot calibrate tool offsets automatically" it="Questa stampante non può calibrare automaticamente gli offset degli strumenti"/>
   <translation tag="This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman." it="Questa stampante riempie i suoi gate da Spoolman. HelixScreen ha svuotato la propria copia; rimuovi la bobina in Spoolman."/>
@@ -3303,6 +3312,7 @@
   <translation tag="Turn On" it="Accendi"/>
   <translation tag="Turn On LEDs" it="Accendi i LED"/>
   <translation tag="Turn endless spool on, then set the backup gate" it="Attiva la bobina infinita, poi imposta il Gate di riserva"/>
+  <translation tag="Turn off bed check" it="Disattiva controllo piano"/>
   <translation tag="Turn off detection" it="Disattiva rilevamento"/>
   <translation tag="Turn on the lights your light buttons control" it="Accende le luci controllate dai pulsanti luce"/>
   <translation tag="Turn the extruder heater off after a load or unload finishes" it="Spegni il riscaldatore dell&apos;estrusore al termine di un caricamento o scaricamento"/>

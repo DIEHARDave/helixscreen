@@ -535,6 +535,12 @@ void register_object_handlers(std::unordered_map<std::string, MethodHandler>& re
             if (objects.contains("zmod_color")) {
                 status_obj["zmod_color"] = self->zmod_color_status();
             }
+            // The U1 defect_detection module's stored config.
+            if (objects.contains("defect_detection")) {
+                if (auto dd = self->defect_detection_status(); !dd.empty()) {
+                    status_obj["defect_detection"] = dd;
+                }
+            }
             for (auto it = objects.begin(); it != objects.end(); ++it) {
                 if (it.key() != "pin_watch" && it.key().rfind("pin_watch ", 0) != 0) {
                     continue;
@@ -797,6 +803,12 @@ void register_object_handlers(std::unordered_map<std::string, MethodHandler>& re
             // Z-Mod's colour registry (creator5_zmod persona).
             if (objects.contains("zmod_color")) {
                 status_obj["zmod_color"] = self->zmod_color_status();
+            }
+            // The U1 defect_detection module's stored config.
+            if (objects.contains("defect_detection")) {
+                if (auto dd = self->defect_detection_status(); !dd.empty()) {
+                    status_obj["defect_detection"] = dd;
+                }
             }
             for (auto it = objects.begin(); it != objects.end(); ++it) {
                 if (it.key() != "pin_watch" && it.key().rfind("pin_watch ", 0) != 0) {

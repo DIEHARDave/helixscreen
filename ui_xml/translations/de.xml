@@ -321,6 +321,7 @@
   <translation tag="Beacon calibrate sent" de="Beacon Kalibrierung gesendet"/>
   <translation tag="Bed" de="Heizbett"/>
   <translation tag="Bed (°C)" de="Bett (°C)"/>
+  <translation tag="Bed Clear Check" de="Bett-frei-Prüfung"/>
   <translation tag="Bed Heater" de="Bettheizung"/>
   <translation tag="Bed Level" de="Bettnivellierung"/>
   <translation tag="Bed Leveling" de="Bettnivellierung"/>
@@ -336,6 +337,7 @@
   <translation tag="Bed Screws" de="Bettschrauben"/>
   <translation tag="Bed Temp" de="Betttemperatur"/>
   <translation tag="Bed Temperature" de="Betttemperatur"/>
+  <translation tag="Bed check turned off" de="Bettprüfung ausgeschaltet"/>
   <translation tag="Bed clear · Start next" de="Bett frei · Nächstes starten"/>
   <translation tag="Bed cooling, spools still on the bed:" de="Heizbett kühlt ab, Spulen liegen noch darauf:"/>
   <translation tag="Bed is Level!" de="Bett ist nivelliert!"/>
@@ -473,6 +475,7 @@
   <translation tag="Calibration, LED, and system configuration" de="Kalibrierung, LED und Systemkonfiguration"/>
   <translation tag="Cam" de="Kam."/>
   <translation tag="Camera" de="Kamera"/>
+  <translation tag="Camera checks the bed is empty before each print" de="Die Kamera prüft vor jedem Druck, ob das Heizbett leer ist"/>
   <translation tag="Can&apos;t connect — try forgetting and re-pairing the printer" de="Verbindung nicht möglich — versuchen Sie, den Drucker zu vergessen und erneut zu koppeln"/>
   <translation tag="Can&apos;t move filament while the print is paused" de="Filament kann bei pausiertem Druck nicht bewegt werden"/>
   <translation tag="Can&apos;t reach this printer. Save anyway?" de="Drucker nicht erreichbar. Trotzdem speichern?"/>
@@ -481,6 +484,7 @@
   <translation tag="Cancel Escalation" de="Eskalation abbrechen"/>
   <translation tag="Cancel Print" de="Druck abbrechen"/>
   <translation tag="Cancel macro not configured" de="Abbruch-Makro nicht konfiguriert"/>
+  <translation tag="Cancel print" de="Druck abbrechen"/>
   <translation tag="Cancelled" de="Abgebrochen"/>
   <translation tag="Cannot add to queue: internal error" de="Zur Warteschlange hinzufügen nicht möglich: interner Fehler"/>
   <translation tag="Cannot be changed from here on a multi-unit MMU" de="Bei einer MMU mit mehreren Einheiten hier nicht änderbar"/>
@@ -2584,6 +2588,7 @@
   <translation tag="Restart failed: {}" de="Neustart fehlgeschlagen: {}"/>
   <translation tag="Restart from the beginning to recover" de="Starten Sie zum Wiederherstellen von vorne neu"/>
   <translation tag="Restart pending" de="Neustart ausstehend"/>
+  <translation tag="Restart print" de="Druck neu starten"/>
   <translation tag="Restart the display application" de="Anzeigeanwendung neu starten"/>
   <translation tag="Restart the printer or screen" de="Drucker oder Bildschirm neu starten"/>
   <translation tag="Restarting HelixScreen..." de="HelixScreen wird neu gestartet..."/>
@@ -2878,6 +2883,7 @@
   <translation tag="Some filaments don&apos;t match the slicer&apos;s intent." de="Einige Filamente stimmen nicht mit der Vorgabe des Slicers überein."/>
   <translation tag="Some mapped slots are short on filament:" de="Einige zugeordnete Slots haben zu wenig Filament:"/>
   <translation tag="Some settings will take effect after restart." de="Einige Einstellungen werden nach dem Neustart wirksam."/>
+  <translation tag="Something on the bed?" de="Etwas auf dem Heizbett?"/>
   <translation tag="Sound" de="Ton"/>
   <translation tag="Sound Theme" de="Klangthema"/>
   <translation tag="Sounds" de="Töne"/>
@@ -3104,6 +3110,7 @@
   <translation tag="The bed was reported dirty, so this print cannot resume." de="Das Heizbett wurde als verschmutzt gemeldet, daher kann dieser Druck nicht fortgesetzt werden."/>
   <translation tag="The buffer may be disconnected, stuck, or faulty. Check it before retrying" de="Der Puffer ist möglicherweise nicht angeschlossen, klemmt oder ist defekt. Vor dem erneuten Versuch prüfen"/>
   <translation tag="The buffer saw no movement for 16 seconds. Check for a blockage between the CFS and the extruder, or a stuck buffer" de="Der Puffer hat 16 Sekunden lang keine Bewegung erkannt. Auf eine Blockade zwischen CFS und Extruder oder einen klemmenden Puffer prüfen"/>
+  <translation tag="The camera thought it saw something on the bed, so the printer stopped before printing. If the bed is clear, it was a false alarm." de="Die Kamera hat etwas auf dem Heizbett erkannt, daher hat der Drucker vor dem Drucken angehalten. Wenn das Heizbett frei ist, war es ein Fehlalarm."/>
   <translation tag="The cutter blade didn&apos;t return — check for filament wrapped around the cutting mechanism" de="Die Schneidklinge ist nicht zurückgefahren. Prüfen, ob Filament um den Schneidmechanismus gewickelt ist"/>
   <translation tag="The cutter is out of alignment — recalibrate with CALIBRATE_CUT_POS" de="Der Schneider ist verstellt. Mit CALIBRATE_CUT_POS neu kalibrieren"/>
   <translation tag="The extruder cannot pull it smoothly. Check the spool for a tangle or knot, and the PTFE tube for a severe bend" de="Der Extruder kann es nicht gleichmäßig fördern. Spule auf Verheddern oder Knoten prüfen und den PTFE-Schlauch auf starke Biegungen"/>
@@ -3119,6 +3126,7 @@
   <translation tag="The plate finishes its current move, but drying will not start." de="Das Heizbett beendet die laufende Bewegung, aber die Trocknung startet nicht."/>
   <translation tag="The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes." de="Der Druck ist pausiert. Ein Werkzeugwechsel bewegt jetzt den Werkzeugkopf und tauscht das Filament an der Düse. Setzen Sie den Druck fort, sobald der Wechsel abgeschlossen ist."/>
   <translation tag="The printer applied this value and keeps it for this tool." de="Der Drucker hat diesen Wert übernommen und behält ihn für dieses Werkzeug."/>
+  <translation tag="The printer did not change its bed check" de="Der Drucker hat seine Bettprüfung nicht geändert"/>
   <translation tag="The printer extrudes in a corner and repeats until the readings agree. You do not judge anything by eye." de="Der Drucker extrudiert in einer Ecke und wiederholt, bis die Messwerte übereinstimmen. Du beurteilst nichts mit dem Auge."/>
   <translation tag="The printer finishes this measurement on its own." de="Der Drucker beendet diese Messung selbst."/>
   <translation tag="The printer halted this print and cannot resume it. Restart from the beginning?" de="Der Drucker hat diesen Druck angehalten und kann ihn nicht fortsetzen. Von vorne neu starten?"/>
@@ -3188,6 +3196,7 @@
   <translation tag="This may take up to 30 seconds" de="Dies kann bis zu 30 Sekunden dauern"/>
   <translation tag="This plugin asks for no special permissions." de="Dieses Plugin fragt nach keinen besonderen Berechtigungen."/>
   <translation tag="This plugin lets HelixScreen control print start options like bed mesh and QGL." de="Dieses Plugin ermöglicht HelixScreen die Steuerung von Druckstartoptionen wie Bettnetz und QGL."/>
+  <translation tag="This print can&apos;t be resumed. Restart it, or turn off the bed check if it keeps happening." de="Dieser Druck kann nicht fortgesetzt werden. Starten Sie ihn neu oder schalten Sie die Bettprüfung aus, wenn das wiederholt passiert."/>
   <translation tag="This print needs about %.0fg but the spool has about %.0fg remaining. Start anyway?" de="Dieser Druck benötigt etwa %.0fg, aber die Spule hat noch etwa %.0fg übrig. Trotzdem starten?"/>
   <translation tag="This printer cannot calibrate tool offsets automatically" de="Dieser Drucker kann Werkzeug-Offsets nicht automatisch kalibrieren"/>
   <translation tag="This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman." de="Dieser Drucker füllt seine Gates aus Spoolman. HelixScreen hat seine eigene Kopie gelöscht; entferne die Spule in Spoolman."/>
@@ -3303,6 +3312,7 @@
   <translation tag="Turn On" de="Einschalten"/>
   <translation tag="Turn On LEDs" de="LEDs einschalten"/>
   <translation tag="Turn endless spool on, then set the backup gate" de="Aktivieren Sie die Endlosspule und legen Sie dann das Backup-Gate fest"/>
+  <translation tag="Turn off bed check" de="Bettprüfung ausschalten"/>
   <translation tag="Turn off detection" de="Erkennung ausschalten"/>
   <translation tag="Turn on the lights your light buttons control" de="Schaltet die Lichter ein, die Ihre Lichttasten steuern"/>
   <translation tag="Turn the extruder heater off after a load or unload finishes" de="Extruder-Heizung nach Laden oder Entladen ausschalten"/>

@@ -321,6 +321,7 @@
   <translation tag="Beacon calibrate sent" es="Beacon calibración enviada"/>
   <translation tag="Bed" es="Cama"/>
   <translation tag="Bed (°C)" es="Cama (°C)"/>
+  <translation tag="Bed Clear Check" es="Comprobación de cama libre"/>
   <translation tag="Bed Heater" es="Calentador de Cama"/>
   <translation tag="Bed Level" es="Nivel de Cama"/>
   <translation tag="Bed Leveling" es="Nivelación de Cama"/>
@@ -336,6 +337,7 @@
   <translation tag="Bed Screws" es="Tornillos de Cama"/>
   <translation tag="Bed Temp" es="Temp. Cama"/>
   <translation tag="Bed Temperature" es="Temperatura de Cama"/>
+  <translation tag="Bed check turned off" es="Comprobación de cama desactivada"/>
   <translation tag="Bed clear · Start next" es="Cama libre · Iniciar siguiente"/>
   <translation tag="Bed cooling, spools still on the bed:" es="La cama se enfría, las bobinas siguen encima:"/>
   <translation tag="Bed is Level!" es="¡La Cama está Nivelada!"/>
@@ -473,6 +475,7 @@
   <translation tag="Calibration, LED, and system configuration" es="Calibración, LED y configuración del sistema"/>
   <translation tag="Cam" es="Cám."/>
   <translation tag="Camera" es="Cámara"/>
+  <translation tag="Camera checks the bed is empty before each print" es="La cámara comprueba que la cama esté vacía antes de cada impresión"/>
   <translation tag="Can&apos;t connect — try forgetting and re-pairing the printer" es="No se puede conectar — prueba a olvidar y volver a emparejar la impresora"/>
   <translation tag="Can&apos;t move filament while the print is paused" es="No se puede mover el filamento con la impresión en pausa"/>
   <translation tag="Can&apos;t reach this printer. Save anyway?" es="No se puede conectar con esta impresora. ¿Guardar de todos modos?"/>
@@ -481,6 +484,7 @@
   <translation tag="Cancel Escalation" es="Cancelar Escalado"/>
   <translation tag="Cancel Print" es="Cancelar Impresión"/>
   <translation tag="Cancel macro not configured" es="Macro de cancelar no configurado"/>
+  <translation tag="Cancel print" es="Cancelar impresión"/>
   <translation tag="Cancelled" es="Cancelado"/>
   <translation tag="Cannot add to queue: internal error" es="No se puede añadir a la cola: error interno"/>
   <translation tag="Cannot be changed from here on a multi-unit MMU" es="No se puede cambiar aquí en un MMU de varias unidades"/>
@@ -2584,6 +2588,7 @@
   <translation tag="Restart failed: {}" es="Reinicio fallido: {}"/>
   <translation tag="Restart from the beginning to recover" es="Reinicie desde el principio para recuperar la impresión"/>
   <translation tag="Restart pending" es="Reinicio pendiente"/>
+  <translation tag="Restart print" es="Reiniciar impresión"/>
   <translation tag="Restart the display application" es="Reiniciar la aplicación de pantalla"/>
   <translation tag="Restart the printer or screen" es="Reiniciar la impresora o pantalla"/>
   <translation tag="Restarting HelixScreen..." es="Reiniciando HelixScreen..."/>
@@ -2878,6 +2883,7 @@
   <translation tag="Some filaments don&apos;t match the slicer&apos;s intent." es="Algunos filamentos no coinciden con la intención del laminador."/>
   <translation tag="Some mapped slots are short on filament:" es="Algunas ranuras asignadas tienen poco filamento:"/>
   <translation tag="Some settings will take effect after restart." es="Algunos ajustes tendrán efecto después de reiniciar."/>
+  <translation tag="Something on the bed?" es="¿Algo en la cama?"/>
   <translation tag="Sound" es="Sonido"/>
   <translation tag="Sound Theme" es="Tema de sonido"/>
   <translation tag="Sounds" es="Sonidos"/>
@@ -3104,6 +3110,7 @@
   <translation tag="The bed was reported dirty, so this print cannot resume." es="La cama se ha notificado como sucia, por lo que esta impresión no puede reanudarse."/>
   <translation tag="The buffer may be disconnected, stuck, or faulty. Check it before retrying" es="Puede que el búfer esté desconectado, atascado o averiado. Compruébelo antes de reintentar"/>
   <translation tag="The buffer saw no movement for 16 seconds. Check for a blockage between the CFS and the extruder, or a stuck buffer" es="El búfer no detectó movimiento durante 16 segundos. Compruebe si hay una obstrucción entre el CFS y el extrusor, o un búfer atascado"/>
+  <translation tag="The camera thought it saw something on the bed, so the printer stopped before printing. If the bed is clear, it was a false alarm." es="La cámara creyó ver algo en la cama, así que la impresora se detuvo antes de imprimir. Si la cama está libre, fue una falsa alarma."/>
   <translation tag="The cutter blade didn&apos;t return — check for filament wrapped around the cutting mechanism" es="La cuchilla no regresó. Compruebe si hay filamento enrollado en el mecanismo de corte"/>
   <translation tag="The cutter is out of alignment — recalibrate with CALIBRATE_CUT_POS" es="El cortador está desalineado. Recalíbrelo con CALIBRATE_CUT_POS"/>
   <translation tag="The extruder cannot pull it smoothly. Check the spool for a tangle or knot, and the PTFE tube for a severe bend" es="El extrusor no puede tirar con suavidad. Revise la bobina por si hay enredos o nudos, y el tubo PTFE por si tiene una curva pronunciada"/>
@@ -3119,6 +3126,7 @@
   <translation tag="The plate finishes its current move, but drying will not start." es="La cama termina su movimiento actual, pero el secado no empezará."/>
   <translation tag="The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes." es="La impresión está pausada. Cambiar de herramienta ahora mueve el cabezal y cambia el filamento en la boquilla. Reanude la impresión una vez que el cambio termine."/>
   <translation tag="The printer applied this value and keeps it for this tool." es="La impresora aplicó este valor y lo conserva para esta herramienta."/>
+  <translation tag="The printer did not change its bed check" es="La impresora no cambió su comprobación de cama"/>
   <translation tag="The printer extrudes in a corner and repeats until the readings agree. You do not judge anything by eye." es="La impresora extruye en una esquina y repite hasta que las lecturas coinciden. Tú no juzgas nada a ojo."/>
   <translation tag="The printer finishes this measurement on its own." es="La impresora termina esta medición por su cuenta."/>
   <translation tag="The printer halted this print and cannot resume it. Restart from the beginning?" es="La impresora detuvo esta impresión y no puede reanudarla. ¿Reiniciar desde el principio?"/>
@@ -3188,6 +3196,7 @@
   <translation tag="This may take up to 30 seconds" es="Esto puede tardar hasta 30 segundos"/>
   <translation tag="This plugin asks for no special permissions." es="Este plugin no pide permisos especiales."/>
   <translation tag="This plugin lets HelixScreen control print start options like bed mesh and QGL." es="Este plugin permite que HelixScreen controle opciones de inicio de impresión como malla de cama y QGL."/>
+  <translation tag="This print can&apos;t be resumed. Restart it, or turn off the bed check if it keeps happening." es="Esta impresión no se puede reanudar. Reiníciala o desactiva la comprobación de cama si sigue ocurriendo."/>
   <translation tag="This print needs about %.0fg but the spool has about %.0fg remaining. Start anyway?" es="Esta impresión necesita aproximadamente %.0fg pero la bobina tiene aproximadamente %.0fg restantes. ¿Iniciar de todos modos?"/>
   <translation tag="This printer cannot calibrate tool offsets automatically" es="Esta impresora no puede calibrar los offsets de herramienta automáticamente"/>
   <translation tag="This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman." es="Esta impresora llena sus gates desde Spoolman. HelixScreen borró su propia copia; quita la bobina en Spoolman."/>
@@ -3303,6 +3312,7 @@
   <translation tag="Turn On" es="Encender"/>
   <translation tag="Turn On LEDs" es="Encender los LED"/>
   <translation tag="Turn endless spool on, then set the backup gate" es="Active la bobina infinita y luego configure el Gate de respaldo"/>
+  <translation tag="Turn off bed check" es="Desactivar comprobación de cama"/>
   <translation tag="Turn off detection" es="Desactivar detección"/>
   <translation tag="Turn on the lights your light buttons control" es="Enciende las luces que controlan tus botones de luz"/>
   <translation tag="Turn the extruder heater off after a load or unload finishes" es="Apagar el calentador del extrusor al terminar una carga o descarga"/>
