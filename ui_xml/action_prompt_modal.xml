@@ -12,7 +12,10 @@
      640x400 298/340, 800x480 397/408, 1024x600 483/510. Headroom is thinnest at
      480x272 (5px) and 800x480 (11px) — any growth in the button rows needs
      re-measuring, not arithmetic. `ctl demo action-prompt-many` is the many-wrap
-     shape (seven presets over three rows, card 193 at 480x272). -->
+     shape (seven presets over three rows, card 193 at 480x272). Rows of label-less
+     swatches are sized in C++ (ActionPromptModal::fit_swatch_rows) to the height
+     left under the 85% cap, and scroll rather than push the footer off the card:
+     `ctl demo action-prompt-zmod` fills the 480x272 card to 229 of 231. -->
 <component>
   <!-- Dialog card (backdrop created programmatically) -->
   <view name="action_prompt_modal"

@@ -191,6 +191,15 @@ class ActionPromptManager {
         }
     }
 
+    /**
+     * @brief The manager registered with set_instance(), or nullptr
+     *
+     * Main thread only: process_line() and the rest of the instance API are.
+     */
+    [[nodiscard]] static ActionPromptManager* instance() {
+        return s_instance.load(std::memory_order_acquire);
+    }
+
     // Non-copyable, non-movable: make_line_sink() hands out callables bound to `this`
     ActionPromptManager(const ActionPromptManager&) = delete;
     ActionPromptManager& operator=(const ActionPromptManager&) = delete;

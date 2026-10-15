@@ -140,6 +140,16 @@ class ActionPromptModal : public Modal {
     void populate_content();
     void create_text_lines();
     void create_buttons();
+
+    /**
+     * @brief Size the card and the swatch rows to the room the screen has
+     *
+     * @param button_container Parent of the rows; scrolls when they cannot fit
+     * @param rows Rows holding only swatch tiles, laid out as equal-width cells
+     * @param cols Most swatches in any of those rows
+     */
+    void fit_swatch_rows(lv_obj_t* button_container, const std::vector<lv_obj_t*>& rows,
+                         int32_t cols);
     /**
      * @brief Create a single button inside @p container.
      *
