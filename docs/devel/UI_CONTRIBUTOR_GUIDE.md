@@ -401,6 +401,8 @@ All of these support `bind_text="subject_name"` for dynamic content and `text="s
 
 With `long_mode="dots"` and no explicit height, a `text_*` label holds exactly one line and ellipsizes; it still needs a width bound (`width="100%"`, or `flex_grow` in a row). A px/% height or `style_max_height` opts out. Text meant to wrap must not use `dots`. See `LVGL9_XML_GUIDE.md`, "One-line labels: `long_mode="dots"`".
 
+Button labels grow in translation, so size buttons by their text rather than cutting it. A lone button takes `width="content"` with its width token as `style_min_width`. Buttons sharing a row with `flex_grow="1"` add `style_min_width="content"`: the row splits evenly while every label fits, and a longer label takes its room from shorter neighbours. A smaller `style_pad_hor` keeps that minimum under the even share where English already fits. A row that cannot hold its labels even then needs a layout decision (wrapping, stacking icon over label with `stacked_if_bp_lte`), not an ellipsis.
+
 ```xml
 <text_heading text="Temperature"/>
 <text_body bind_text="nozzle_temp_display"/>

@@ -165,7 +165,9 @@
                   height="content" style_pad_all="0" scrollable="false" flex_flow="row" style_flex_main_place="center"
                   style_flex_cross_place="center" style_pad_gap="#space_sm">
             <bind_style_if_lt name="ps_action_row_grow" subject="ui_breakpoint" ref_value="2"/>
-            <ui_button name="btn_tune" flex_grow="1" icon="tune" text="Tune" stacked_if_bp_lte="1">
+            <ui_button name="btn_tune"
+                       style_min_width="content" style_pad_hor="#space_sm" flex_grow="1" icon="tune" text="Tune"
+                       stacked_if_bp_lte="1">
               <event_cb trigger="clicked" callback="on_print_status_tune"/>
               <bind_state_if_eq subject="print_controls_enabled" state="disabled" ref_value="0"/>
             </ui_button>
@@ -182,7 +184,9 @@
               <event_cb trigger="clicked" callback="on_print_status_camera"/>
             </ui_button>
             <!-- Cancel button: visible only during active print (outcome == NONE/0) -->
-            <ui_button name="btn_cancel" flex_grow="1" variant="danger" icon="stop" text="Cancel" stacked_if_bp_lte="1">
+            <ui_button name="btn_cancel"
+                       style_min_width="content" style_pad_hor="#space_sm" flex_grow="1" variant="danger" icon="stop"
+                       text="Cancel" stacked_if_bp_lte="1">
               <bind_flag_if_not_eq subject="print_outcome" flag="hidden" ref_value="0"/>
               <bind_state_if_eq subject="print_control_stop_enabled" state="disabled" ref_value="0"/>
               <event_cb trigger="clicked" callback="on_print_control_stop"/>

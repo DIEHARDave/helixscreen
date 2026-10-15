@@ -60,6 +60,12 @@ struct UiButtonData {
     // never reflows. op_idle_glyph caches the original icon codepoint so the idle
     // glyph can be restored after busy/done.
     lv_obj_t* op_spinner{nullptr};
+
+    // The height the button declares in XML, which the row layout returns to
+    // when a stacked button unstacks. A button sized by its container
+    // (height="100%") keeps that instead of the fixed button_height.
+    int32_t row_height{0};
+    bool row_height_set{false};
     char op_idle_glyph[8]{}; // MDI glyph is 4-byte UTF-8 + NUL; 8 is generous
 
     // long_mode was given: the label is bounded so it can ellipsize or wrap.
@@ -495,6 +501,19 @@ void button_clicked_sound_cb(lv_event_t* e) {
     SoundManager::instance().play("button_tap");
 }
 
+/// A flex_grow button with style_min_width="content" takes at least its
+/// label's width from its row. The row only reruns its layout when one of its
+/// own children resizes, and a grow item keeps the width the row gave it, so a
+/// label that grows (a language switch, a bound text) asks the row directly.
+void label_resized_cb(lv_event_t* e) {
+    auto* label = static_cast<lv_obj_t*>(lv_event_get_current_target(e));
+    lv_obj_t* btn = lv_obj_get_parent(label);
+    lv_obj_t* row = btn ? lv_obj_get_parent(btn) : nullptr;
+    if (row && lv_obj_get_style_min_width(btn, LV_PART_MAIN) == LV_SIZE_CONTENT) {
+        lv_obj_mark_layout_as_dirty(row);
+    }
+}
+
 /**
  * @brief Event callback for LV_EVENT_DELETE
  *
@@ -780,6 +799,11 @@ void* ui_button_create(lv_xml_parser_state_t* state, const char** attrs) {
         }
     }
     // else: No icon, no text, no layout - leave button empty for XML children
+
+    if (data->label) {
+        // DECLARATIVE_OK: the widget's own label relays its size to the row (see label_resized_cb)
+        lv_obj_add_event_cb(data->label, label_resized_cb, LV_EVENT_SIZE_CHANGED, nullptr);
+    }
 
     // Apply translation tag if provided (for i18n hot-reload support)
     if (translation_tag && strlen(translation_tag) > 0 && data->label) {
@@ -1262,6 +1286,11 @@ void ui_button_apply(lv_xml_parser_state_t* state, const char** attrs) {
     // icon_position="top" recipe) instead of hiding it. Above N the button
     // returns to the row layout it declared at create time.
     const char* stacked_bp = lv_xml_get_value_of(attrs, "stacked_if_bp_lte");
+    if ((stacked_bp || lv_xml_get_value_of(attrs, "stacked_subject")) && data &&
+        data->magic == UiButtonData::MAGIC) {
+        data->row_height = lv_obj_get_style_height(btn, LV_PART_MAIN);
+        data->row_height_set = true;
+    }
     if (stacked_bp && data && data->magic == UiButtonData::MAGIC && data->icon && data->label) {
         lv_subject_t* bp_subject = lv_xml_get_subject(&state->scope, "ui_breakpoint");
         if (bp_subject) {
@@ -1427,13 +1456,16 @@ void ui_button_set_stacked(lv_obj_t* btn, bool stacked) {
         if (data->label_bounded)
             apply_label_bound(data, false);
     } else {
-        // Icon beside label, the create-time row recipe, at the fixed
-        // button_height the row layout expects.
+        // Icon beside label, the create-time row recipe, at the height the
+        // button declared.
         lv_obj_set_flex_flow(btn, LV_FLEX_FLOW_ROW);
         lv_obj_set_flex_align(btn, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER,
                               LV_FLEX_ALIGN_CENTER);
         lv_obj_set_style_pad_column(btn, theme_manager_get_spacing("space_xs"), LV_PART_MAIN);
-        lv_obj_set_style_height(btn, theme_manager_get_spacing("button_height"), LV_PART_MAIN);
+        lv_obj_set_style_height(btn,
+                                data->row_height_set ? data->row_height
+                                                     : theme_manager_get_spacing("button_height"),
+                                LV_PART_MAIN);
         lv_obj_move_to_index(data->icon, data->icon_on_right ? -1 : 0);
         lv_obj_remove_local_style_prop(data->label, LV_STYLE_TEXT_FONT, LV_PART_MAIN);
         lv_obj_remove_local_style_prop(data->label, LV_STYLE_PAD_TOP, LV_PART_MAIN);
