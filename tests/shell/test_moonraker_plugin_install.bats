@@ -558,3 +558,29 @@ FORGEX_PLUGIN=/opt/config/mod_data/helixscreen/moonraker-plugin
     grep -q -- '-X POST http://localhost:7125/server/restart' "$log" \
         || fail "no self-restart request: $(cat "$log")"
 }
+
+@test "with only wget, as outside Forge-X's chroot, the auto install restarts and waits" {
+    local root="$BATS_TEST_TMPDIR/fx"
+    setup_forgex_layout "$root"
+    local chroot="$root/data/.mod/.forge-x"
+    local log="$BATS_TEST_TMPDIR/wget.log"
+    mock_command_script "wget" "printf '%s\\n' \"\$*\" >> '$log'; exit 0"
+    mock_command_script "systemctl" 'exit 1'
+
+    local bin="$BATS_TEST_TMPDIR/wget-only-path"
+    mkdir -p "$bin"
+    local tool p
+    for tool in sh dirname basename cp mv rm ln grep awk sed tail tr cat date sleep readlink; do
+        p="$(command -v "$tool")" && ln -sf "$p" "$bin/$tool"
+    done
+    ln -sf "$BATS_TEST_TMPDIR/bin/wget" "$bin/wget"
+    ln -sf "$BATS_TEST_TMPDIR/bin/systemctl" "$bin/systemctl"
+
+    run env HOME="$root/home" HELIX_PROC_ROOT="$root/proc" PATH="$bin:$HELIX_TEST_SANDBOX_BIN" \
+        sh "$chroot$FORGEX_PLUGIN/install.sh" --auto
+    [ "$status" -eq 0 ] || fail "install failed: $output"
+    grep -q -- "--post-data= http://localhost:7125/server/restart" "$log" \
+        || fail "no self-restart request: $(cat "$log")"
+    grep -q "http://localhost:7125/server/info" "$log" || fail "never waited for Moonraker"
+    contains "Moonraker is ready" "$output"
+}

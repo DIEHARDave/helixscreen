@@ -343,6 +343,18 @@ uninstall() {
     return "$exit_status"
 }
 
+# Whether a GET of the URL succeeds. BusyBox systems (Forge-X outside its
+# chroot) carry wget but no curl.
+moonraker_answers() {
+    if command -v curl > /dev/null 2>&1; then
+        curl -s --max-time 2 "$1" > /dev/null 2>&1
+    elif command -v wget > /dev/null 2>&1; then
+        wget -q -T 2 -O /dev/null "$1" > /dev/null 2>&1
+    else
+        return 1
+    fi
+}
+
 # Wait for Moonraker to become available after restart
 wait_for_moonraker() {
     [ "$NO_RESTART" = "true" ] && return 0
@@ -353,7 +365,7 @@ wait_for_moonraker() {
     info "Waiting for Moonraker to become available..."
 
     while [ "$attempt" -lt "$max_attempts" ]; do
-        if curl -s --max-time 2 "$moonraker_url/server/info" > /dev/null 2>&1; then
+        if moonraker_answers "$moonraker_url/server/info"; then
             info "Moonraker is ready!"
             return 0
         fi
