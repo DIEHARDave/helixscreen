@@ -28,11 +28,13 @@ import {
   CONFIGURED_FEATURE_FLAGS,
   uxInsightsQueries,
   devicesQueries,
+  healthQueries,
   deviceQueries,
   type QueryConfig,
   type FilterParams,
 } from "./queries";
 import { buildDeviceList, buildDevicePage, isDeviceId } from "./devices";
+import { buildHealth, type HealthRowKey } from "./health";
 import {
   snapshotDay,
   snapshotToDataPoints,
@@ -1422,6 +1424,23 @@ export default {
               devices_changed: r.devices_changed,
             })),
           });
+        }
+
+        // GET /v1/dashboard/health
+        if (url.pathname === "/v1/dashboard/health") {
+          // top_versions first: the per-release queries are restricted to its versions.
+          const topRes = (await executeQuery(queryConfig, healthQueries(filters).top_versions)) as {
+            data?: Array<{ ver: string }>;
+          };
+          const versions = (topRes.data ?? []).map((r) => String(r.ver));
+          const queries = healthQueries(filters, versions);
+          const rest = Object.keys(queries).filter((k) => k !== "top_versions") as HealthRowKey[];
+          const results = await Promise.all(rest.map((k) => executeQuery(queryConfig, queries[k])));
+          const rows = { top_versions: topRes.data ?? [] } as Record<HealthRowKey, unknown[]>;
+          rest.forEach((k, i) => {
+            rows[k] = (results[i] as { data?: unknown[] } | null)?.data ?? [];
+          });
+          return json(buildHealth(rows, new Date().toISOString().slice(0, 10)));
         }
 
         // GET /v1/dashboard/devices

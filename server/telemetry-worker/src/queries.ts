@@ -4,6 +4,7 @@
 
 import { EVENT_FANOUT, MAX_SLOT, POINT_KINDS, col, hasCol, hasKind } from "./schema";
 import { isDeviceId } from "./devices";
+import type { HealthRowKey } from "./health";
 
 export interface QueryConfig {
   accountId: string;
@@ -1121,4 +1122,128 @@ export function deviceQueries(id: string): string[] {
     WHERE ${inRange(DEVICE_WINDOW_DAYS)} AND index1 = 'session' AND ${session("device_id")} = '${id}'
     GROUP BY version`,
   ];
+}
+
+// ---------- Health ----------
+
+/** Health windows as [newerDaysAgo, olderDaysAgo]; baseline holds the 28 days before cur and contains prev. */
+export const HEALTH_WINDOWS = { cur: [0, 7], prev: [7, 14], baseline: [7, 35] } as const;
+
+export type HealthQueryKey = HealthRowKey;
+
+/** The timestamp predicate for one [newerDaysAgo, olderDaysAgo] window. */
+export function windowClause(w: readonly [number, number]): string {
+  const [newer, older] = w;
+  const from = `timestamp >= NOW() - INTERVAL '${older}' DAY`;
+  return newer === 0 ? from : `${from} AND timestamp < NOW() - INTERVAL '${newer}' DAY`;
+}
+
+/** Versions shown on the Health tab. */
+const HEALTH_TOP_VERSIONS = 8;
+
+/** Complete days read for the data-health block: today's partial day, the latest day, and the 7 before it. */
+const HEALTH_KIND_DAYS = 9;
+
+/**
+ * Every Health tab query. `versions` restricts the per-release queries and
+ * comes from running `top_versions` first; filters apply per kind, while
+ * `cdn_latest` and `kind_days` ignore them.
+ */
+export function healthQueries(filters?: FilterParams, versions: string[] = []): Record<HealthQueryKey, string> {
+  const clean = versions.map((v) => sanitizeFilterValue(v.trim().replace(/^v/, ""))).filter(Boolean);
+  const inVersions = (column: string) =>
+    clean.length > 0 ? `${column} IN (${clean.map((v) => `'${v}'`).join(", ")})` : SQL_FALSE;
+  const sessF = filterFor("session", filters);
+  const crashF = filterFor("crash", filters);
+  const running = sharedCol(RELEASE_KINDS, runningVersionField);
+  const kindList = RELEASE_KINDS.map((k) => `'${k}'`).join(", ");
+  const perKind = RELEASE_KINDS.map((k) => `(index1 = '${k}'${filterFor(k, filters)})`).join(" OR ");
+  const crashSession = sharedCol(["session", "crash"], () => "app_version");
+  const crashSessionDevice = sharedCol(["session", "crash"], () => "device_id");
+  const crashSessionKinds = `index1 IN ('session', 'crash')`;
+  const crashSessionFilter = `((index1 = 'session'${sessF}) OR (index1 = 'crash'${crashF}))`;
+
+  const actives = (w: readonly [number, number]) =>
+    `SELECT count(DISTINCT ${session("device_id")}) as actives FROM ${DATASET} WHERE ${windowClause(w)} AND index1 = 'session'${sessF}`;
+  const release = (w: readonly [number, number]) =>
+    `SELECT
+      ${running} as ver,
+      ${wCountIf("index1 = 'session'")} as sessions,
+      ${wCountIf("index1 = 'crash'")} as crashes,
+      ${wCountIf("index1 = 'update_failed'")} as update_failures,
+      ${wCountIf("index1 = 'update_success'")} as update_successes
+    FROM ${DATASET}
+    WHERE ${windowClause(w)} AND index1 IN (${kindList}) AND ${inVersions(running)} AND (${perKind})
+    GROUP BY ver`;
+  const releaseDevices = (w: readonly [number, number]) =>
+    `SELECT
+      ${crashSession} as ver,
+      index1 as event,
+      count(DISTINCT ${crashSessionDevice}) as devices
+    FROM ${DATASET}
+    WHERE ${windowClause(w)} AND ${crashSessionKinds} AND ${inVersions(crashSession)} AND ${crashSessionFilter}
+    GROUP BY ver, event`;
+  const prints = (w: readonly [number, number]) =>
+    `SELECT
+      ${printOutcome("app_version")} as ver,
+      ${wCountIf(`${printOutcome("outcome")} = 'success'`)} as successes,
+      ${wCount()} as total
+    FROM ${DATASET}
+    WHERE ${windowClause(w)} AND index1 = 'print_outcome' AND ${inVersions(printOutcome("app_version"))}${filterFor("print_outcome", filters)}
+    GROUP BY ver`;
+  const errors = (w: readonly [number, number]) =>
+    `SELECT
+      ${errorEnc("category")} as category,
+      ${errorEnc("code")} as code,
+      ${wCount()} as count,
+      count(DISTINCT ${errorEnc("device_id")}) as devices
+    FROM ${DATASET}
+    WHERE ${windowClause(w)} AND index1 = 'error_encountered'${filterFor("error_encountered", filters)}
+    GROUP BY category, code`;
+  const crashes = (w: readonly [number, number]) =>
+    `SELECT
+      ${crash("signal_name")} as sig,
+      ${crash("fault_code_name")} as fault,
+      ${crash("app_version")} as ver,
+      ${crash("app_board")} as board,
+      ${wCount()} as count,
+      count(DISTINCT ${crash("device_id")}) as devices
+    FROM ${DATASET}
+    WHERE ${windowClause(w)} AND index1 = 'crash'${crashF}
+    GROUP BY sig, fault, ver, board`;
+
+  const { cur, prev, baseline } = HEALTH_WINDOWS;
+  return {
+    actives_cur: actives(cur),
+    actives_prev: actives(prev),
+    top_versions: `SELECT ${session("app_version")} as ver, count(DISTINCT ${session("device_id")}) as devices
+    FROM ${DATASET}
+    WHERE ${windowClause(cur)} AND index1 = 'session' AND ${session("app_version")} != ''${sessF}
+    GROUP BY ver
+    ORDER BY devices DESC
+    LIMIT ${HEALTH_TOP_VERSIONS}`,
+    release_cur: release(cur),
+    release_prev: release(prev),
+    release_devices_cur: releaseDevices(cur),
+    release_devices_prev: releaseDevices(prev),
+    prints_cur: prints(cur),
+    prints_prev: prints(prev),
+    errors_cur: errors(cur),
+    errors_prev: errors(prev),
+    errors_baseline: errors(baseline),
+    crashes_cur: crashes(cur),
+    crashes_prev: crashes(prev),
+    // The newest daily row; the window is wider than a day because the row's
+    // timestamp is the snapshot time, after the day it describes.
+    cdn_latest: `SELECT ${cdnFleet("date")} as date, max(${cdnFleet("sources")}) as sources
+    FROM ${DATASET}
+    WHERE ${inRange(HEALTH_KIND_DAYS)} AND index1 = 'cdn_fleet_daily' AND ${cdnFleet("channel")} = 'stable'
+    GROUP BY date
+    ORDER BY date DESC
+    LIMIT 1`,
+    kind_days: `SELECT toDate(timestamp) as day, index1 as event, ${wCount()} as count
+    FROM ${DATASET}
+    WHERE ${inRange(HEALTH_KIND_DAYS)} AND index1 != 'cdn_fleet_daily'
+    GROUP BY day, event`,
+  };
 }

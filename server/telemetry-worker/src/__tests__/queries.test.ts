@@ -182,6 +182,9 @@ describe("query builders", () => {
   );
 
   function run(name: string, fn: unknown, filters?: FilterParams): string[] {
+    if (name === "healthQueries") {
+      return Object.values((fn as (f?: FilterParams, v?: string[]) => Record<string, string>)(filters, ["1.0.0", "v1.1.0"]));
+    }
     const out =
       name === "crashListQuery"
         ? (fn as (d: number, l: number, f?: FilterParams) => string)(30, 10, filters)
@@ -327,7 +330,7 @@ describe("deltaSource", () => {
 });
 
 describe("queries over delta kinds", () => {
-  const SKIP = new Set(["overviewQueries", "releasesQueries", "aeCountsQuery", "executeQuery", "deviceQueries"]);
+  const SKIP = new Set(["overviewQueries", "releasesQueries", "aeCountsQuery", "executeQuery", "deviceQueries", "healthQueries"]);
   const builders = Object.entries(queries).filter(
     ([name]) => /Quer(y|ies)$/.test(name) && !SKIP.has(name),
   ) as Array<[string, (d: number, l: number | undefined) => string | string[]]>;
@@ -395,7 +398,7 @@ describe("constant predicates", () => {
   ];
   it("never emit a bare integer as a boolean", () => {
     const builders = Object.entries(queries).filter(
-      ([name, fn]) => name.endsWith("Queries") && name !== "releasesQueries" && name !== "deviceQueries" && typeof fn === "function",
+      ([name, fn]) => name.endsWith("Queries") && name !== "releasesQueries" && name !== "deviceQueries" && name !== "healthQueries" && typeof fn === "function",
     ) as [string, (days: number, f?: FilterParams) => string[]][];
     expect(builders.length).toBeGreaterThan(5);
     for (const [name, build] of builders) {
@@ -406,5 +409,10 @@ describe("constant predicates", () => {
       }
     }
     for (const sql of releasesQueries([])) expect(sql).not.toMatch(/AND 0\b|OR 0\b|AND 1\b(?! =)|\bWHERE 0\b/);
+    for (const f of filterSets) {
+      for (const [k, sql] of Object.entries(queries.healthQueries(f, ["1.0.0"]))) {
+        expect(sql, `healthQueries.${k} ${JSON.stringify(f)}`).not.toMatch(/AND 0\b|OR 0\b|AND 1\b(?! =)|\bWHERE 0\b/);
+      }
+    }
   });
 });

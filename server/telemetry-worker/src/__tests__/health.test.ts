@@ -1,0 +1,228 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+import { describe, it, expect } from "vitest";
+import { buildHealth, type HealthPayload } from "../health";
+import { HEALTH_WINDOWS, filterFor, healthQueries, windowClause, type HealthQueryKey } from "../queries";
+
+const KEYS: HealthQueryKey[] = [
+  "actives_cur", "actives_prev", "top_versions", "release_cur", "release_prev",
+  "release_devices_cur", "release_devices_prev", "prints_cur", "prints_prev",
+  "errors_cur", "errors_prev", "errors_baseline", "crashes_cur", "crashes_prev",
+  "cdn_latest", "kind_days",
+];
+
+function emptyRows(): Record<HealthQueryKey, unknown[]> {
+  return Object.fromEntries(KEYS.map((k) => [k, []])) as unknown as Record<HealthQueryKey, unknown[]>;
+}
+
+describe("windowClause", () => {
+  it("is open-ended for the current window", () => {
+    expect(windowClause(HEALTH_WINDOWS.cur)).toBe("timestamp >= NOW() - INTERVAL '7' DAY");
+  });
+  it("is bounded on both sides for an earlier window", () => {
+    expect(windowClause(HEALTH_WINDOWS.prev)).toBe(
+      "timestamp >= NOW() - INTERVAL '14' DAY AND timestamp < NOW() - INTERVAL '7' DAY",
+    );
+  });
+  it("covers the 28 days before cur for the baseline", () => {
+    expect(windowClause(HEALTH_WINDOWS.baseline)).toContain("INTERVAL '35' DAY");
+    expect(windowClause(HEALTH_WINDOWS.baseline)).toContain("< NOW() - INTERVAL '7' DAY");
+  });
+});
+
+describe("healthQueries", () => {
+  const q = healthQueries({ version: "1.0.4" }, ["1.0.4", "v1.0.3", "x'; DROP"]);
+  const win = (k: HealthQueryKey): string => {
+    if (k.endsWith("_prev")) return windowClause(HEALTH_WINDOWS.prev);
+    if (k.endsWith("_baseline")) return windowClause(HEALTH_WINDOWS.baseline);
+    return windowClause(HEALTH_WINDOWS.cur);
+  };
+
+  it("puts each window in every windowed query", () => {
+    for (const k of KEYS) {
+      if (k === "cdn_latest" || k === "kind_days") continue;
+      expect(q[k], k).toContain(win(k));
+    }
+  });
+  it("applies the session filter to sessions, actives and top versions", () => {
+    const f = filterFor("session", { version: "1.0.4" });
+    expect(q.actives_cur).toContain(f);
+    expect(q.top_versions).toContain(f);
+    expect(q.release_cur).toContain(f);
+    expect(q.release_devices_cur).toContain(f);
+  });
+  it("applies the kind's own filter to prints, errors and crashes", () => {
+    expect(q.prints_cur).toContain(filterFor("print_outcome", { version: "1.0.4" }));
+    expect(q.errors_cur).toContain(filterFor("error_encountered", { version: "1.0.4" }));
+    expect(q.crashes_cur).toContain(filterFor("crash", { version: "1.0.4" }));
+  });
+  it("limits top_versions to 8", () => {
+    expect(q.top_versions).toMatch(/LIMIT 8/);
+  });
+  it("restricts release queries to sanitized versions", () => {
+    expect(q.release_cur).toContain("'1.0.3'");
+    expect(q.release_cur).not.toContain("'v1.0.3'");
+    expect(q.release_cur).not.toContain("';");
+  });
+  it("matches nothing when there are no versions", () => {
+    expect(healthQueries().release_cur).toContain("1 = 0");
+  });
+  it("ignores filters for cdn_latest and kind_days", () => {
+    expect(q.cdn_latest).not.toContain("IN ('1.0.4')");
+    expect(q.kind_days).not.toContain("IN ('1.0.4')");
+    expect(q.cdn_latest).toContain("cdn_fleet_daily");
+  });
+  it("uses row_count and aliases that are not column names", () => {
+    for (const k of KEYS) {
+      expect(q[k], k).not.toMatch(/\bas rows\b/i);
+      expect(q[k], k).not.toMatch(/GROUP BY[^\n]*\bblob\d+/);
+    }
+  });
+});
+
+describe("buildHealth", () => {
+  it("gives empty arrays and zero actives for no rows", () => {
+    const h = buildHealth(emptyRows(), "2026-10-15");
+    expect(h.fleet).toEqual({ actives_cur: 0, actives_prev: 0, cdn_sources: null, cdn_date: null });
+    expect(h.releases).toEqual([]);
+    expect(h.errors).toEqual([]);
+    expect(h.crash_clusters).toEqual([]);
+    expect(h.data_health).toEqual([]);
+  });
+
+  it("computes crash-free and the rates", () => {
+    const r = emptyRows();
+    r.top_versions = [{ ver: "1.0.4", devices: 100 }];
+    r.release_cur = [{ ver: "1.0.4", sessions: 200, crashes: 10, update_failures: 1, update_successes: 3 }];
+    r.release_devices_cur = [
+      { ver: "1.0.4", event: "session", devices: 100 },
+      { ver: "1.0.4", event: "crash", devices: 4 },
+    ];
+    r.prints_cur = [{ ver: "1.0.4", successes: 90, total: 100 }];
+    const rel = buildHealth(r, "2026-10-15").releases[0];
+    expect(rel.version).toBe("1.0.4");
+    expect(rel.cur.devices).toBe(100);
+    expect(rel.cur.crash_free).toBeCloseTo(0.96);
+    expect(rel.cur.crash_rate).toBeCloseTo(0.05);
+    expect(rel.cur.update_failure_rate).toBeCloseTo(0.25);
+    expect(rel.cur.print_success).toBeCloseTo(0.9);
+  });
+
+  it("gives null rates, never NaN, for an all-zero window", () => {
+    const r = emptyRows();
+    r.top_versions = [{ ver: "1.0.4", devices: 3 }];
+    r.release_cur = [{ ver: "1.0.4", sessions: 0, crashes: 0, update_failures: 0, update_successes: 0 }];
+    r.prints_cur = [{ ver: "1.0.4", successes: 0, total: 0 }];
+    const rel = buildHealth(r, "2026-10-15").releases[0];
+    for (const w of [rel.cur, rel.prev]) {
+      expect(w).toEqual({ devices: 0, crash_free: null, crash_rate: null, update_failure_rate: null, print_success: null });
+    }
+    expect(JSON.stringify(buildHealth(r, "2026-10-15"))).not.toContain("NaN");
+  });
+
+  it("orders releases newest first", () => {
+    const r = emptyRows();
+    r.top_versions = [
+      { ver: "1.0.3", devices: 9 },
+      { ver: "1.0.4-beta.2", devices: 5 },
+      { ver: "1.0.4", devices: 7 },
+    ];
+    expect(buildHealth(r, "2026-10-15").releases.map((x) => x.version)).toEqual(["1.0.4", "1.0.4-beta.2", "1.0.3"]);
+  });
+
+  describe("error status", () => {
+    const err = (cur: number, prev: number, inBaseline: boolean): HealthPayload["errors"] => {
+      const r = emptyRows();
+      r.errors_cur = [{ category: "net", code: "E1", count: cur, devices: 2 }];
+      r.errors_prev = prev ? [{ category: "net", code: "E1", count: prev, devices: 1 }] : [];
+      r.errors_baseline = inBaseline ? [{ category: "net", code: "E1", count: prev, devices: 1 }] : [];
+      return buildHealth(r, "2026-10-15").errors;
+    };
+    it("is new when baseline has no row", () => {
+      expect(err(3, 0, false)[0].status).toBe("new");
+    });
+    it("is steady at cur 4, prev 1 (under 5)", () => {
+      expect(err(4, 1, true)[0].status).toBe("steady");
+    });
+    it("is rising at cur 10, prev 5", () => {
+      expect(err(10, 5, true)[0].status).toBe("rising");
+    });
+    it("is steady when cur is under double prev", () => {
+      expect(err(9, 5, true)[0].status).toBe("steady");
+    });
+    it("drops rows with cur 0", () => {
+      expect(err(0, 4, true)).toEqual([]);
+    });
+    it("orders new, rising, steady, then by cur", () => {
+      const r = emptyRows();
+      r.errors_cur = [
+        { category: "a", code: "steady_big", count: 50, devices: 1 },
+        { category: "a", code: "new_small", count: 1, devices: 1 },
+        { category: "a", code: "rising", count: 12, devices: 1 },
+        { category: "a", code: "steady_small", count: 6, devices: 1 },
+        { category: "a", code: "new_big", count: 3, devices: 1 },
+      ];
+      r.errors_prev = [
+        { category: "a", code: "steady_big", count: 40, devices: 1 },
+        { category: "a", code: "rising", count: 5, devices: 1 },
+        { category: "a", code: "steady_small", count: 6, devices: 1 },
+      ];
+      r.errors_baseline = r.errors_prev;
+      expect(buildHealth(r, "2026-10-15").errors.map((e) => e.code)).toEqual([
+        "new_big", "new_small", "rising", "steady_big", "steady_small",
+      ]);
+    });
+  });
+
+  it("lists crash clusters with cur > 0, largest first", () => {
+    const r = emptyRows();
+    r.crashes_cur = [
+      { sig: "SIGSEGV", fault: "", ver: "1.0.4", board: "pi", count: 2, devices: 2 },
+      { sig: "SIGABRT", fault: "x", ver: "1.0.4", board: "pi", count: 9, devices: 3 },
+      { sig: "SIGBUS", fault: "", ver: "1.0.4", board: "pi", count: 0, devices: 0 },
+    ];
+    r.crashes_prev = [{ sig: "SIGSEGV", fault: "", ver: "1.0.4", board: "pi", count: 1, devices: 1 }];
+    const c = buildHealth(r, "2026-10-15").crash_clusters;
+    expect(c.map((x) => x.signal)).toEqual(["SIGABRT", "SIGSEGV"]);
+    expect(c[1]).toEqual({ signal: "SIGSEGV", fault_code: "", version: "1.0.4", board: "pi", cur: 2, prev: 1, devices: 2 });
+  });
+
+  describe("data health", () => {
+    const days = (kind: string, counts: number[]) =>
+      counts.map((count, i) => ({ day: `2026-10-${String(14 - i).padStart(2, "0")}`, event: kind, count }));
+    const run = (rows: unknown[]) => {
+      const r = emptyRows();
+      r.kind_days = rows;
+      return buildHealth(r, "2026-10-15").data_health;
+    };
+    it("flags 40 against a median of 100", () => {
+      const h = run(days("session", [40, 100, 100, 100, 100, 100, 100, 100]));
+      expect(h).toEqual([{ kind: "session", latest: 40, median: 100, low: true }]);
+    });
+    it("does not flag 60 against a median of 100", () => {
+      expect(run(days("session", [60, 100, 100, 100, 100, 100, 100, 100]))[0].low).toBe(false);
+    });
+    it("excludes today's partial row", () => {
+      const rows = [{ day: "2026-10-15", event: "session", count: 1 }, ...days("session", [100, 100, 100])];
+      expect(run(rows)[0].latest).toBe(100);
+    });
+    it("never flags a kind with no history", () => {
+      expect(run(days("crash", [3]))[0]).toEqual({ kind: "crash", latest: 3, median: 0, low: false });
+    });
+    it("leaves out cdn_fleet_daily", () => {
+      expect(run(days("cdn_fleet_daily", [1, 5, 5]))).toEqual([]);
+    });
+  });
+
+  it("reads the newest cdn row", () => {
+    const r = emptyRows();
+    r.cdn_latest = [{ date: "2026-10-14", sources: 321 }];
+    expect(buildHealth(r, "2026-10-15").fleet).toMatchObject({ cdn_sources: 321, cdn_date: "2026-10-14" });
+  });
+
+  it("carries both active counts", () => {
+    const r = emptyRows();
+    r.actives_cur = [{ actives: 50 }];
+    r.actives_prev = [{ actives: 40 }];
+    expect(buildHealth(r, "2026-10-15").fleet).toMatchObject({ actives_cur: 50, actives_prev: 40 });
+  });
+});

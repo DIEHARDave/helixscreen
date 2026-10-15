@@ -1645,6 +1645,31 @@ describe("Dashboard endpoints", () => {
     });
   });
 
+  // -- GET /v1/dashboard/health --
+
+  describe("GET /v1/dashboard/health", () => {
+    it("runs top_versions first, then the rest with those versions, and returns all five blocks", async () => {
+      mockExecuteQuery.mockImplementation(async (_c, sql) => {
+        if (sql.includes("LIMIT 8")) return { data: [{ ver: "1.0.4", devices: 10 }] };
+        if (sql.includes("'cdn_fleet_daily'") && sql.includes("LIMIT 1")) return { data: [{ date: "2026-10-14", sources: 7 }] };
+        if (sql.includes("index1 IN ('session', 'crash', 'update_failed'")) {
+          return { data: [{ ver: "1.0.4", sessions: 20, crashes: 1, update_failures: 0, update_successes: 0 }] };
+        }
+        return { data: [] };
+      });
+      const res = await worker.fetch(dashboardRequest("/v1/dashboard/health?version=1.0.4"), env as never);
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as any;
+      expect(Object.keys(body).sort()).toEqual(["crash_clusters", "data_health", "errors", "fleet", "releases"]);
+      expect(body.releases[0].version).toBe("1.0.4");
+      expect(body.releases[0].cur.crash_rate).toBeCloseTo(0.05);
+      expect(body.fleet.cdn_sources).toBe(7);
+      const sqls = mockExecuteQuery.mock.calls.map((c) => c[1] as string);
+      expect(sqls[0]).toContain("LIMIT 8");
+      expect(sqls.slice(1).some((s) => s.includes("'1.0.4'"))).toBe(true);
+    });
+  });
+
   // -- GET /v1/dashboard/crash-list --
 
   describe("GET /v1/dashboard/crash-list", () => {
