@@ -28,7 +28,7 @@ Every event starts with the same few fields, so we can tell which release, platf
 | `device_id` | Anonymized device identifier (see below) | `"a3f8c1..."` (64-char hex) |
 | `timestamp` | ISO 8601 UTC timestamp | `"2026-02-08T14:30:00Z"` |
 | `app_version` | HelixScreen version that sent it | `"1.1.0"` |
-| `app_platform` | Hardware platform | `"rpi4"`, `"mips"` |
+| `app_platform` | Hardware platform | `"pi"`, `"mips"` |
 | `app_board` | Printer board, where HelixScreen can tell | `"ad5x"` |
 | `boot_id` | Random ID for this run of HelixScreen | `"9f2c41d07ab3e855"` |
 
@@ -135,7 +135,7 @@ Each report covers only the time since the previous one, not a running total, so
 | `session_duration_sec` | Length of the period this report covers | `14400` |
 | `panel_time_sec` | Time spent on each panel in that period (seconds) | `{"home": 8000, "controls": 3200}` |
 | `panel_visits` | Visit count per panel | `{"home": 42, "controls": 18}` |
-| `overlay_visits` | How many times each pop-up screen was opened | `{"settings_sound": 2}` |
+| `overlay_visits` | How many times each pop-up screen was opened | `{"settings_sound_overlay": 2}` |
 | `widget_interactions` | How many times each home-screen widget was tapped | `{"temperature": 5}` |
 
 Only screen and widget names are recorded, never what you did on them.
@@ -302,7 +302,7 @@ This permanently removes all queued events from your device. Events that have al
 
 ### Local Queue
 - Events are stored locally in telemetry_queue.json in your config directory
-- Maximum **100 events** in the queue; when the limit is reached the oldest other events are dropped first, and the periodic usage and connection reports are combined with the newest queued one instead of being dropped
+- Maximum **100 events** in the queue; when the limit is reached, a new usage or connection report is first combined with a report of the same kind already waiting, and otherwise the oldest other event is dropped to make room. Only if the queue holds nothing else that can be dropped is the new report discarded
 - Queue persists across application restarts
 - Activity that has been counted but not yet put in a report is saved to telemetry_snapshot.json in your config directory about once an hour and deleted when HelixScreen closes normally
 

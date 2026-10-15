@@ -191,8 +191,9 @@ position. Two things read it, so they cannot disagree about where a field lives:
 point per change). `server/telemetry-worker/src/schema.ts#R2_ONLY` lists fields kept out of Analytics Engine on purpose.
 
 **Slots are append-only.** Analytics Engine rows are read by position for 90 days, so a
-field never changes its `blobN` / `doubleN`. A new field takes a free slot (blobs 13-20,
-doubles 9-20); a retired field leaves its slot empty. `server/telemetry-worker/src/__tests__/schema.test.ts`
+field never changes its `blobN` / `doubleN`. A new field takes the next unused slot of its
+own kind (blobs 13-20, doubles 9-20; delta kinds already hold blob 13 and doubles 9-10);
+a retired field leaves its slot empty. `server/telemetry-worker/src/__tests__/schema.test.ts`
 ("keeps every column in its slot") pins every existing position.
 
 To add a field: add a `blob(slot, field)` or `dbl(slot, field)` entry to the kind, add a
@@ -200,10 +201,9 @@ reader if the event nests it, add the key to the client builder, and use `col(ki
 in the query. A client field the table neither maps nor lists in `R2_ONLY` never reaches
 a query.
 
-Events that stored no `app_version` / `app_platform` / `app_board` before the envelope
-existed (`print_outcome`, `print_start_context`, `error_encountered`,
-`connection_stability`, `hardware_profile`) carry them in free slots (13 and up), so older
-rows read empty there.
+`print_outcome`, `print_start_context`, `error_encountered`, `connection_stability` and
+`hardware_profile` keep their original slots and carry `app_platform` and `app_board` in
+slots 13 and up, so rows written before those fields were added read empty there.
 
 ## Filters
 
@@ -274,10 +274,12 @@ Client delivery (`src/system/telemetry_manager.cpp#fire_periodic_snapshot`, `#on
 - The accumulator is also rewritten hourly by the auto-send timer. After an unclean exit the next boot sends it
   under its original `boot_id` and `snapshot_seq`, so the window is neither lost nor
   counted twice.
-- At the queue cap (`MAX_QUEUE_SIZE`) delta events are never the ones dropped: a new delta
-  of the same kind and boot merges into the newest queued one that no send has attempted,
-  adding counts and extending the window. A delta that is already in flight is left alone,
-  since the server may hold it.
+- At the queue cap (`MAX_QUEUE_SIZE`) a new delta first tries to merge into the newest
+  queued row of the same kind and the same `boot_id` that no send has attempted, adding
+  counts and extending the window. Rows a send has attempted are never merge targets, since
+  the server may already hold them. With no merge target, the oldest non-delta event is
+  evicted instead. Only when the queue holds nothing evictable is the incoming delta
+  dropped, with a warning that its window is lost.
 
 Rows from clients before schema 3 hold lifetime totals that were resent every 4h and
 carried over unclean exits. They are excluded from delta queries, not salvaged.
@@ -303,7 +305,7 @@ placeholder reads "Not reported per <filter>" instead.
 
 ### Feature adoption
 
-The client no longer sends a `feature_adoption` event. Adoption is derived: a feature counts as adopted on
+The client sends no `feature_adoption` event. Adoption is derived: a feature counts as adopted on
 a device when its overlay or widget has a count above 0 in the window, over
 `delta_era_devices` (`server/telemetry-worker/src/index.ts#deriveFeatureAdoption`, served at `/v1/dashboard/features`). Overlays are
 identified by the overlay root's object name, falling back to the lifecycle name only when
@@ -537,8 +539,7 @@ those explicitly, so the stamped `app_version` never overwrites the update's tar
 | `update_success` | Next boot after update | Once per update |
 
 `panel_usage` and `connection_stability` are the delta events: see [Delta snapshots and
-the idempotency key](#delta-snapshots-and-the-idempotency-key). `feature_adoption` is no
-longer sent. Adoption is derived from the `overlay_visit` and `widget_interaction` points
+the idempotency key](#delta-snapshots-and-the-idempotency-key). The client sends no `feature_adoption` event. Adoption is derived from the `overlay_visit` and `widget_interaction` points
 that `panel_usage` fans out to (see [Feature adoption](#feature-adoption)).
 
 ### settings_snapshot adoption flags
