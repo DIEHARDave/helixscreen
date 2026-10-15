@@ -42,9 +42,25 @@ const FILTER_LABEL: Record<DashFilterKey, string> = {
   board: 'board',
 }
 
+/** What a block shows when an active filter names a field its rows do not carry. */
+export function notReportedPer(key: DashFilterKey): string {
+  return `Not reported per ${FILTER_LABEL[key]}`
+}
+
+/**
+ * One line naming the table columns an active filter leaves unreported, grouped
+ * by filter: "Crash-free, Crash rate: Not reported per printer model". Empty
+ * when every column is reported.
+ */
+export function unreportedNote(columns: [label: string, key: DashFilterKey | null][]): string {
+  const byKey = new Map<DashFilterKey, string[]>()
+  for (const [label, key] of columns) if (key) byKey.set(key, [...(byKey.get(key) ?? []), label])
+  return [...byKey].map(([key, labels]) => `${labels.join(', ')}: ${notReportedPer(key)}`).join('; ')
+}
+
 /** What a view shows in place of a delta-era value it has no number for. */
 export function deltaEraPlaceholder(era: EraFields): string {
-  if (era.filter_not_applicable) return `Not reported per ${FILTER_LABEL[era.filter_not_applicable]}`
+  if (era.filter_not_applicable) return notReportedPer(era.filter_not_applicable)
   return `Waiting for devices on the new client (${era.delta_era_devices} so far)`
 }
 

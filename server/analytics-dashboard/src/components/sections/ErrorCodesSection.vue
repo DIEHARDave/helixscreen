@@ -13,7 +13,7 @@
       <div class="chart-section">
         <h3>Error Hotspots</h3>
         <ChartCaption :text="`Sample-weighted error reports per category, ${span}`" />
-        <NoData v-if="data.error_categories.length === 0" />
+        <NoData v-if="data.error_categories.length === 0" :not-applicable="data.not_applicable.errors" />
         <BarChart
           v-else
           :data="errorCategoryChartData"
@@ -25,7 +25,7 @@
       <div class="chart-section">
         <h3>Error Codes</h3>
         <ChartCaption :text="`Sample-weighted error reports per category and code, ${span}`" />
-        <NoData v-if="data.error_codes.length === 0" />
+        <NoData v-if="data.error_codes.length === 0" :not-applicable="data.not_applicable.errors" />
         <div v-else class="table-wrapper">
           <table class="data-table">
             <thead>
@@ -49,7 +49,7 @@
       <div class="chart-section">
         <h3>Error Codes by Version</h3>
         <ChartCaption :text="`Sample-weighted error reports per code and version, ${span}; older lines and unreleased betas are grouped, click a version to expand or filter`" />
-        <NoData v-if="codeRows.length === 0" />
+        <NoData v-if="codeRows.length === 0" :not-applicable="data.not_applicable.errors" />
         <div v-else class="table-wrapper">
           <table class="data-table matrix">
             <thead>

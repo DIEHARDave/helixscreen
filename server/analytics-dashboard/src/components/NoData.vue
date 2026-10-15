@@ -6,13 +6,22 @@
 import { computed } from 'vue'
 import type { DeltaEra } from '@/services/api'
 import { useFiltersStore } from '@/stores/filters'
-import { DASH_FILTER_KEYS } from '@/utils/urlState'
-import { emptyPlaceholder } from '@/utils/format'
+import { DASH_FILTER_KEYS, type DashFilterKey } from '@/utils/urlState'
+import { emptyPlaceholder, notReportedPer } from '@/utils/format'
 
-const props = withDefaults(defineProps<{ era?: DeltaEra | null }>(), { era: null })
+const props = withDefaults(
+  defineProps<{
+    era?: DeltaEra | null
+    /** The active filter this block's rows do not carry, from the endpoint's `not_applicable`. */
+    notApplicable?: DashFilterKey | null
+  }>(),
+  { era: null, notApplicable: null }
+)
 
 const filters = useFiltersStore()
 const text = computed(() =>
-  emptyPlaceholder(props.era, DASH_FILTER_KEYS.filter((key) => filters[key].length > 0))
+  props.notApplicable
+    ? notReportedPer(props.notApplicable)
+    : emptyPlaceholder(props.era, DASH_FILTER_KEYS.filter((key) => filters[key].length > 0))
 )
 </script>

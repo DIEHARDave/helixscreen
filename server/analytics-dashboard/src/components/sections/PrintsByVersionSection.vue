@@ -2,7 +2,7 @@
   <DashSection title="Success by version" :loading="loading" :error="error">
     <template v-if="data">
       <ChartCaption :text="`Sample-weighted print outcomes per HelixScreen version, ${span}; older lines and unreleased betas are grouped, their rate recombined from counts; click a bar to expand or filter`" />
-      <NoData v-if="rows.length === 0" />
+      <NoData v-if="rows.length === 0" :not-applicable="data.not_applicable.prints" />
       <BarChart
         v-else
         :data="chartData"

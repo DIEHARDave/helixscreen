@@ -13,7 +13,7 @@
       <div class="chart-section">
         <h3>Success by Material Set</h3>
         <ChartCaption :text="`Sample-weighted print outcomes per set of distinct materials loaded, ${span}`" />
-        <NoData v-if="rows.length === 0" />
+        <NoData v-if="rows.length === 0" :not-applicable="data.not_applicable.prints" />
         <BarChart
           v-else
           :data="chartData"

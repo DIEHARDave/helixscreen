@@ -2,7 +2,7 @@
   <DashSection title="Success by printer model" :loading="loading" :error="error">
     <template v-if="data">
       <ChartCaption :text="`Sample-weighted print outcomes per printer model, ${span}; spellings of one model are merged; click a bar to filter`" />
-      <NoData v-if="rows.length === 0" />
+      <NoData v-if="rows.length === 0" :not-applicable="data.not_applicable.prints" />
       <BarChart
         v-else
         :data="chartData"

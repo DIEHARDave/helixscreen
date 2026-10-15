@@ -38,8 +38,8 @@
                   <td>{{ d.board || '-' }}</td>
                   <td>{{ d.model || '-' }}</td>
                   <td class="mono">{{ d.sessions.toLocaleString() }}</td>
-                  <td class="mono" :title="countTitle('crash_count')">{{ count(d.crashes, 'crash_count') }}</td>
-                  <td class="mono" :title="countTitle('print_count')">{{ count(d.prints, 'print_count') }}</td>
+                  <td class="mono" :title="countTitle('crashes')">{{ count(d.crashes, 'crashes') }}</td>
+                  <td class="mono" :title="countTitle('prints')">{{ count(d.prints, 'prints') }}</td>
                 </tr>
               </tbody>
             </table>
@@ -54,8 +54,9 @@
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from '@/services/api'
+import type { DeviceListData } from '@/services/api'
 import { useDashData } from '@/composables/useDashData'
-import { formatTimestamp, shortDeviceId } from '@/utils/format'
+import { formatTimestamp, notReportedPer, shortDeviceId } from '@/utils/format'
 import AppLayout from '@/components/AppLayout.vue'
 import ChartCaption from '@/components/ChartCaption.vue'
 import DashSection from '@/components/DashSection.vue'
@@ -63,13 +64,7 @@ import NoData from '@/components/NoData.vue'
 
 const LIST_LIMIT = 200
 
-// Filter keys that the crash and print rows do not carry; a count under one of
-// them is not a zero, it is unknown.
-const UNREPORTED_FILTERS = {
-  crash_count: ['model'],
-  print_count: ['model']
-} as const
-type CountColumn = keyof typeof UNREPORTED_FILTERS
+type CountColumn = keyof DeviceListData['not_applicable']
 
 const router = useRouter()
 const { data, loading, error, span, filters } = useDashData(api.getDevices)
@@ -82,17 +77,14 @@ const caption = computed(() => {
   return `${head}, active in the ${span.value}; click a row for its timeline`
 })
 
-function blockingFilter(column: CountColumn): string | null {
-  return UNREPORTED_FILTERS[column].find((key) => filters[key].length > 0) ?? null
-}
-
+// A count under a filter its kind does not carry is unknown, not zero.
 function count(value: number, column: CountColumn): string {
-  return blockingFilter(column) ? 'n/a' : value.toLocaleString()
+  return data.value?.not_applicable[column] ? 'n/a' : value.toLocaleString()
 }
 
 function countTitle(column: CountColumn): string | undefined {
-  const key = blockingFilter(column)
-  return key ? `not reported per ${key}` : undefined
+  const key = data.value?.not_applicable[column]
+  return key ? notReportedPer(key) : undefined
 }
 
 function open(id: string) {

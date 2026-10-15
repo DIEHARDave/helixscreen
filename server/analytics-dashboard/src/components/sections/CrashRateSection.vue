@@ -76,14 +76,14 @@
       <div class="chart-section">
         <h3>Crash Rate Over Time</h3>
         <ChartCaption :text="`Sample-weighted crashes over sessions per day, ${span}; first and current day omitted`" />
-        <NoData v-if="trend.length === 0" />
+        <NoData v-if="crashesUnreported || trend.length === 0" :not-applicable="crashesUnreported" />
         <LineChart v-else :data="crashRateChartData" :options="crashRateOpts" />
       </div>
 
       <div class="chart-section">
         <h3>Crash Rate by Version</h3>
         <ChartCaption :text="`Sample-weighted crashes over sessions per version, ${span}; older lines and unreleased betas are grouped, their rate recombined from counts; click a bar to expand or filter`" />
-        <NoData v-if="byVersion.length === 0" />
+        <NoData v-if="byVersion.length === 0" :not-applicable="crashesUnreported" />
         <BarChart
           v-else
           :data="versionChartData"
@@ -133,13 +133,17 @@ function drillVersion(row: Grouped | undefined) {
   if (row) filters.activate(router, [['version', row]])
 }
 
-// 0-1 over the whole window, or null when the filters make the crash rate inapplicable.
+/** The active filter crash rows do not carry, or null. */
+const crashesUnreported = computed(() => stability.value?.not_applicable.crashes ?? null)
+
+// 0-1 over the whole window, or null when the filters make the crash rate
+// inapplicable or there are no sessions to divide by.
 const overallCrashRate = computed((): number | null => {
   const all = stability.value?.crash_rate_trend ?? []
   if (all.some(d => d.rate === null)) return null
   const crashCount = all.reduce((sum, d) => sum + d.crashes, 0)
   const sessions = all.reduce((sum, d) => sum + d.sessions, 0)
-  return sessions > 0 ? crashCount / sessions : 0
+  return sessions > 0 ? crashCount / sessions : null
 })
 
 const trend = computed(() => trimPartialDays(stability.value?.crash_rate_trend ?? [], todayUtc()))

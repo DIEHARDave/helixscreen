@@ -22,8 +22,8 @@
             />
             <MetricCard
               title="New error codes"
-              :value="newErrors.length"
-              subtitle="not seen in the previous weeks"
+              :value="data.not_applicable.errors ? 'n/a' : newErrors.length"
+              :subtitle="data.not_applicable.errors ? notReportedPer(data.not_applicable.errors) : 'not seen in the previous weeks'"
               :color="newErrors.length > 0 ? '#ef4444' : '#10b981'"
             />
             <MetricCard
@@ -40,6 +40,7 @@
       <DashSection title="Releases" :loading="loading" :error="error">
         <template v-if="data">
           <ChartCaption :text="`${WINDOW}; arrows show the change against the earlier week, click a version for its release page`" />
+          <ChartCaption v-if="releaseNote" :text="releaseNote" />
           <NoData v-if="data.releases.length === 0" />
           <div v-else class="table-wrapper">
             <table class="data-table">
@@ -47,10 +48,7 @@
                 <tr>
                   <th>Version</th>
                   <th>Devices</th>
-                  <th>Crash-free</th>
-                  <th>Crash rate</th>
-                  <th>Update failure</th>
-                  <th>Print success</th>
+                  <th v-for="m in METRICS" :key="m.key">{{ m.label }}</th>
                 </tr>
               </thead>
               <tbody>
@@ -79,7 +77,7 @@
       <DashSection title="Errors" :loading="loading" :error="error">
         <template v-if="data">
           <ChartCaption :text="`${WINDOW}; click a row to find the code on the Stability tab`" />
-          <NoData v-if="data.errors.length === 0" />
+          <NoData v-if="data.errors.length === 0" :not-applicable="data.not_applicable.errors" />
           <div v-else class="table-wrapper event-log">
             <table class="data-table">
               <thead>
@@ -116,7 +114,7 @@
       <DashSection title="Crash clusters" :loading="loading" :error="error">
         <template v-if="data">
           <ChartCaption :text="`${WINDOW}; click a row to filter on its version and board and open Stability`" />
-          <NoData v-if="data.crash_clusters.length === 0" />
+          <NoData v-if="data.crash_clusters.length === 0" :not-applicable="data.not_applicable.crashes" />
           <div v-else class="table-wrapper event-log">
             <table class="data-table">
               <thead>
@@ -180,22 +178,28 @@ import { api } from '@/services/api'
 import type { HealthData } from '@/services/api'
 import { errorAnchor } from '@/utils/anchors'
 import { activationHint, single } from '@/utils/drill'
-import { formatRate } from '@/utils/format'
+import { formatRate, notReportedPer, unreportedNote } from '@/utils/format'
 import type { DashFilterKey } from '@/utils/urlState'
 import type { Grouped } from '@/utils/versions'
 
 const WINDOW = 'Last 7 days vs the 7 before'
 
 type RateKey = 'crash_free' | 'crash_rate' | 'update_failure_rate' | 'print_success'
-const METRICS: { key: RateKey; upIsGood: boolean }[] = [
-  { key: 'crash_free', upIsGood: true },
-  { key: 'crash_rate', upIsGood: false },
-  { key: 'update_failure_rate', upIsGood: false },
-  { key: 'print_success', upIsGood: true }
+type Block = keyof HealthData['not_applicable']
+const METRICS: { key: RateKey; label: string; block: Block; upIsGood: boolean }[] = [
+  { key: 'crash_free', label: 'Crash-free', block: 'crashes', upIsGood: true },
+  { key: 'crash_rate', label: 'Crash rate', block: 'crashes', upIsGood: false },
+  { key: 'update_failure_rate', label: 'Update failure', block: 'updates', upIsGood: false },
+  { key: 'print_success', label: 'Print success', block: 'prints', upIsGood: true }
 ]
 
 const { data, loading, error, filters } = useDashData(api.getHealth)
 const router = useRouter()
+
+const releaseNote = computed(() => {
+  const na = data.value?.not_applicable
+  return na ? unreportedNote(METRICS.map((m) => [m.label, na[m.block]])) : ''
+})
 
 const newErrors = computed(() => (data.value?.errors ?? []).filter((e) => e.status === 'new'))
 const lowKinds = computed(() => (data.value?.data_health ?? []).filter((k) => k.low))

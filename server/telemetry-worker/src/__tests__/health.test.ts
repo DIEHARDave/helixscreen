@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { describe, it, expect } from "vitest";
-import { buildHealth, type HealthPayload } from "../health";
+import { buildHealth, releaseRates, type HealthPayload, type ReleaseCounts } from "../health";
 import { HEALTH_WINDOWS, filterFor, healthQueries, versionInClause, windowClause, type HealthQueryKey } from "../queries";
 
 const KEYS: HealthQueryKey[] = [
@@ -79,6 +79,42 @@ describe("healthQueries", () => {
   });
 });
 
+describe("releaseRates", () => {
+  const counts: ReleaseCounts = {
+    sessions: 200, crashes: 10, session_devices: 100, crash_devices: 4,
+    update_failures: 1, update_successes: 3, print_successes: 90, print_total: 100,
+  };
+
+  it("computes every rate from its own numerator and denominator", () => {
+    const r = releaseRates(counts);
+    expect(r.crash_free).toBeCloseTo(0.96);
+    expect(r.crash_rate).toBeCloseTo(0.05);
+    expect(r.update_failure_rate).toBeCloseTo(0.25);
+    expect(r.print_success).toBeCloseTo(0.9);
+  });
+
+  it("clamps crash-free to [0, 1]", () => {
+    expect(releaseRates({ ...counts, session_devices: 2, crash_devices: 5 }).crash_free).toBe(0);
+    expect(releaseRates({ ...counts, session_devices: 2, crash_devices: -1 }).crash_free).toBe(1);
+  });
+
+  it("is null, never 0 or NaN, at a zero denominator", () => {
+    const zero: ReleaseCounts = {
+      sessions: 0, crashes: 0, session_devices: 0, crash_devices: 0,
+      update_failures: 0, update_successes: 0, print_successes: 0, print_total: 0,
+    };
+    expect(releaseRates(zero)).toEqual({ crash_free: null, crash_rate: null, update_failure_rate: null, print_success: null });
+  });
+
+  it("nulls only the crash rates when crashes are not reported", () => {
+    const r = releaseRates({ ...counts, crashes: 0, crash_devices: 0 }, false);
+    expect(r.crash_free).toBeNull();
+    expect(r.crash_rate).toBeNull();
+    expect(r.update_failure_rate).toBeCloseTo(0.25);
+    expect(r.print_success).toBeCloseTo(0.9);
+  });
+});
+
 describe("buildHealth", () => {
   it("gives empty arrays and zero actives for no rows", () => {
     const h = buildHealth(emptyRows(), "2026-10-15");
@@ -87,6 +123,20 @@ describe("buildHealth", () => {
     expect(h.errors).toEqual([]);
     expect(h.crash_clusters).toEqual([]);
     expect(h.data_health).toEqual([]);
+    expect(h.not_applicable).toEqual({ crashes: null, errors: null, prints: null, updates: null });
+  });
+
+  it("gives null crash rates when the filter leaves crashes unreported", () => {
+    const r = emptyRows();
+    r.top_versions = [{ ver: "1.0.4", devices: 100 }];
+    r.release_cur = [{ ver: "1.0.4", sessions: 200, crashes: 0, update_failures: 0, update_successes: 0 }];
+    r.release_devices_cur = [{ ver: "1.0.4", event: "session", devices: 100 }];
+    const na = { crashes: "model", errors: "model", prints: "model", updates: "model" } as const;
+    const h = buildHealth(r, "2026-10-15", na);
+    expect(h.releases[0].cur.crash_free).toBeNull();
+    expect(h.releases[0].cur.crash_rate).toBeNull();
+    expect(h.releases[0].cur.devices).toBe(100);
+    expect(h.not_applicable).toEqual(na);
   });
 
   it("computes crash-free and the rates", () => {
@@ -97,7 +147,7 @@ describe("buildHealth", () => {
       { ver: "1.0.4", event: "session", devices: 100 },
       { ver: "1.0.4", event: "crash", devices: 4 },
     ];
-    r.prints_cur = [{ ver: "1.0.4", successes: 90, total: 100 }];
+    r.prints_cur = [{ ver: "1.0.4", print_successes: 90, print_total: 100 }];
     const rel = buildHealth(r, "2026-10-15").releases[0];
     expect(rel.version).toBe("1.0.4");
     expect(rel.cur.devices).toBe(100);
@@ -111,7 +161,7 @@ describe("buildHealth", () => {
     const r = emptyRows();
     r.top_versions = [{ ver: "1.0.4", devices: 3 }];
     r.release_cur = [{ ver: "1.0.4", sessions: 0, crashes: 0, update_failures: 0, update_successes: 0 }];
-    r.prints_cur = [{ ver: "1.0.4", successes: 0, total: 0 }];
+    r.prints_cur = [{ ver: "1.0.4", print_successes: 0, print_total: 0 }];
     const rel = buildHealth(r, "2026-10-15").releases[0];
     for (const w of [rel.cur, rel.prev]) {
       expect(w).toEqual({ devices: 0, crash_free: null, crash_rate: null, update_failure_rate: null, print_success: null });

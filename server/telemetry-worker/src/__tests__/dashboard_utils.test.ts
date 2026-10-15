@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { groupVersionRates, groupVersions, olderLines, ungrouped } from '../../../analytics-dashboard/src/utils/versions'
 import { planActivation, rowAction, rowHint, rowLabel, single } from '../../../analytics-dashboard/src/utils/drill'
 import { mergeOptions, rateAxis } from '../../../analytics-dashboard/src/utils/chart'
-import { emptyPlaceholder, rangeLabel } from '../../../analytics-dashboard/src/utils/format'
+import { emptyPlaceholder, notReportedPer, rangeLabel, unreportedNote } from '../../../analytics-dashboard/src/utils/format'
 import { canonicalModelKey, canonicalModels, isFilterable } from '../../../analytics-dashboard/src/utils/models'
 import { groupMaterialSets, materialSet } from '../../../analytics-dashboard/src/utils/materials'
 import { barChartHeight, seriesColor, todayUtc, trimPartialDays } from '../../../analytics-dashboard/src/utils/series'
@@ -181,6 +181,23 @@ describe('emptyPlaceholder', () => {
   })
   it('blames the range when no filter is active', () => {
     expect(emptyPlaceholder(null, [])).toBe('No data in this range')
+  })
+})
+
+describe('unreportedNote', () => {
+  it('is empty when every column is reported', () => {
+    expect(unreportedNote([['Crash rate', null], ['Print success', null]])).toBe('')
+  })
+  it('groups the unreported columns by filter', () => {
+    expect(notReportedPer('model')).toBe('Not reported per printer model')
+    expect(
+      unreportedNote([
+        ['Crash-free', 'model'],
+        ['Crash rate', 'model'],
+        ['Devices', null],
+        ['p95 frame', 'board'],
+      ])
+    ).toBe('Crash-free, Crash rate: Not reported per printer model; p95 frame: Not reported per board')
   })
 })
 

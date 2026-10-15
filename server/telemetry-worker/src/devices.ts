@@ -3,7 +3,7 @@
 // builds them. SQL lives in queries.ts. Imports only versions and schema so
 // the dashboard can import these types without Worker runtime types.
 
-import { decodeRow, type RawRow } from "./schema";
+import { decodeRow, num, rowsOf, str, type NotApplicable } from "./schema";
 import { compareVersions } from "./versions";
 
 const DEVICE_ID_RE = /^[0-9a-f]{64}$/;
@@ -39,10 +39,16 @@ export interface DevicePage {
   timeline: { timestamp: string; kind: string; fields: Record<string, string | number> }[];
 }
 
-const rowsOf = (res: unknown): RawRow[] => ((res as { data?: RawRow[] } | null)?.data ?? []) as RawRow[];
+/** The device list's count columns that a filter can leave unreported. */
+export type DeviceCountColumn = "crashes" | "prints";
 
-const str = (v: unknown): string => String(v ?? "");
-const num = (v: unknown): number => Number(v ?? 0) || 0;
+export interface DeviceList {
+  /** Distinct devices matching the filters, which can exceed the listed rows. */
+  total: number;
+  devices: DeviceListRow[];
+  /** Per count column, the active filter its kind cannot carry: the column is unknown, not 0. */
+  not_applicable: NotApplicable<DeviceCountColumn>;
+}
 
 /** Per-device counts keyed by device_id. */
 function countsByDevice(res: unknown, field: string): Map<string, number> {
@@ -61,7 +67,8 @@ export function buildDeviceList(
   crashes: unknown,
   prints: unknown,
   totalRes?: unknown,
-): { total: number; devices: DeviceListRow[] } {
+  notApplicable: NotApplicable<DeviceCountColumn> = { crashes: null, prints: null },
+): DeviceList {
   const crashBy = countsByDevice(crashes, "crashes");
   const printBy = countsByDevice(prints, "prints");
   const devices = rowsOf(sessions).map((r) => ({
@@ -76,7 +83,7 @@ export function buildDeviceList(
     prints: printBy.get(str(r.device_id)) ?? 0,
   }));
   const reported = rowsOf(totalRes)[0]?.total;
-  return { total: reported === undefined ? devices.length : num(reported), devices };
+  return { total: reported === undefined ? devices.length : num(reported), devices, not_applicable: notApplicable };
 }
 
 /** The first non-empty value of `field` among decoded rows, newest first. */
@@ -86,6 +93,11 @@ function latestOf(decoded: Record<string, string | number>[], field: string): st
     if (typeof v === "string" && v !== "") return v;
   }
   return "";
+}
+
+/** A decoded row's fields worth showing: without device_id (the page's own) and without empty or zero values. */
+function shownFields(decoded: Record<string, string | number>): Record<string, string | number> {
+  return Object.fromEntries(Object.entries(decoded).filter(([k, v]) => k !== "device_id" && v !== "" && v !== 0));
 }
 
 /** Builds one device's page from its newest-first event rows; null when it has none. */
@@ -98,7 +110,10 @@ export function buildDevicePage(id: string, rows: unknown, versionRows: unknown)
     return { timestamp: str(r.timestamp), kind, decoded: decodeRow(kind, r) };
   });
   const decoded = entries.map((e) => e.decoded);
-  const latestKind = (kind: string) => entries.find((e) => e.kind === kind)?.decoded ?? null;
+  const latestKind = (kind: string) => {
+    const found = entries.find((e) => e.kind === kind);
+    return found ? shownFields(found.decoded) : null;
+  };
 
   const versions = rowsOf(versionRows)
     .map((r) => ({ version: str(r.version), first_seen: str(r.first_seen), last_seen: str(r.last_seen) }))
@@ -122,9 +137,7 @@ export function buildDevicePage(id: string, rows: unknown, versionRows: unknown)
     timeline: entries.map((e) => ({
       timestamp: e.timestamp,
       kind: e.kind,
-      fields: Object.fromEntries(
-        Object.entries(e.decoded).filter(([k, v]) => k !== "device_id" && v !== "" && v !== 0),
-      ),
+      fields: shownFields(e.decoded),
     })),
   };
 }

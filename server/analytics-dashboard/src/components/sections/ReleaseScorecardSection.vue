@@ -3,6 +3,7 @@
     <ChartCaption
       :text="`Per version, ${span}: rates are sample-weighted; crash-free is the share of active devices with no crash`"
     />
+    <ChartCaption v-if="note" :text="note" />
     <NoData v-if="rows.length === 0" />
     <div v-else class="table-wrapper">
       <table class="data-table scorecard">
@@ -34,7 +35,7 @@
                 {{ delta(i, 'crash_rate')! > 0 ? '+' : '' }}{{ delta(i, 'crash_rate')!.toFixed(1) }}pp
               </span>
             </td>
-            <td class="mono">{{ formatRate(updateFailureRate(ver)) }}</td>
+            <td class="mono">{{ formatRate(ver.update_failure_rate) }}</td>
             <td class="mono" :class="successRateClass(ver.print_success_rate)">
               {{ formatRate(ver.print_success_rate) }}
               <span v-if="delta(i, 'print_success_rate') !== null" class="delta" :class="delta(i, 'print_success_rate')! > 0 ? 'delta-good' : 'delta-bad'">
@@ -44,7 +45,7 @@
             <td class="mono">{{ ver.p95_frame_ms === null ? 'n/a' : `${ver.p95_frame_ms.toFixed(1)} ms` }}</td>
             <td class="mono">{{ ver.p95_rss_kb === null ? 'n/a' : formatMB(ver.p95_rss_kb) }}</td>
             <td class="mono">{{ ver.total_sessions.toLocaleString() }}</td>
-            <td class="mono crashes">{{ ver.total_crashes.toLocaleString() }}</td>
+            <td class="mono crashes">{{ notApplicable?.crashes ? 'n/a' : ver.total_crashes.toLocaleString() }}</td>
           </tr>
         </tbody>
       </table>
@@ -81,7 +82,7 @@ import { useDashData } from '@/composables/useDashData'
 import { api } from '@/services/api'
 import type { ReleasesData } from '@/services/api'
 import { compareVersions } from '@/utils/chart'
-import { formatMB, formatRate } from '@/utils/format'
+import { formatMB, formatRate, unreportedNote } from '@/utils/format'
 import { seriesColor } from '@/utils/series'
 
 type Release = ReleasesData['versions'][number]
@@ -96,6 +97,8 @@ const props = defineProps<{
   error: string
   /** Versions picked by hand, or null for the worker's default set. */
   selected: string[] | null
+  /** Per block, the active filter its rows do not carry; null before the first load. */
+  notApplicable: ReleasesData['not_applicable'] | null
 }>()
 
 const emit = defineEmits<{ toggle: [version: string]; reset: [] }>()
@@ -108,9 +111,19 @@ const available = computed(() =>
 
 const shown = computed(() => new Set(props.rows.map((r) => r.version)))
 
-function updateFailureRate(ver: Release): number | null {
-  return ver.update_success_rate === null ? null : 1 - ver.update_success_rate
-}
+const note = computed(() => {
+  const na = props.notApplicable
+  if (!na) return ''
+  return unreportedNote([
+    ['Crash-free devices', na.crashes],
+    ['Crash rate', na.crashes],
+    ['Crashes', na.crashes],
+    ['Update failure', na.updates],
+    ['Print success', na.prints],
+    ['p95 frame', na.performance],
+    ['p95 RSS', na.performance]
+  ])
+})
 
 // Change from the next older version in the table, in percentage points.
 function delta(i: number, key: 'crash_rate' | 'print_success_rate'): number | null {

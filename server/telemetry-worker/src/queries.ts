@@ -2,7 +2,17 @@
 // SQL query builders for Analytics Engine dashboard endpoints. Every column is
 // named through the schema table (col), never by position.
 
-import { EVENT_FANOUT, MAX_SLOT, POINT_KINDS, col, hasCol, hasKind } from "./schema";
+import {
+  EVENT_FANOUT,
+  FILTER_KEYS,
+  MAX_SLOT,
+  POINT_KINDS,
+  col,
+  hasCol,
+  hasKind,
+  type FilterKey,
+  type NotApplicable,
+} from "./schema";
 import { isDeviceId } from "./devices";
 import type { HealthRowKey } from "./health";
 
@@ -64,8 +74,7 @@ export function wCountIf(cond: string, weight = SAMPLE_WEIGHT): string {
 
 // ---------- Filters ----------
 
-const FILTER_KEYS = ["platform", "version", "model", "board"] as const;
-export type FilterKey = (typeof FILTER_KEYS)[number];
+export type { FilterKey };
 
 /**
  * Update events carry two versions. The one a version filter, or a per-version
@@ -132,6 +141,23 @@ export function filterNotApplicable(kinds: string[], filters?: FilterParams): Fi
     if (kinds.every((kind) => !hasCol(kind, FILTER_FIELD[key](kind)))) return key;
   }
   return null;
+}
+
+/** The point kinds behind each payload block that a filter can leave unreported. */
+export const BLOCK_KINDS = {
+  crashes: ["crash"],
+  errors: ["error_encountered"],
+  prints: ["print_outcome"],
+  updates: ["update_failed", "update_success"],
+  performance: ["performance_snapshot", "memory_snapshot"],
+} as const satisfies Record<string, readonly string[]>;
+export type Block = keyof typeof BLOCK_KINDS;
+
+/** filterNotApplicable for each named block, as a payload's `not_applicable` field. */
+export function notApplicableFor<K extends Block>(blocks: readonly K[], filters?: FilterParams): NotApplicable<K> {
+  return Object.fromEntries(
+    blocks.map((b) => [b, filterNotApplicable([...BLOCK_KINDS[b]], filters)]),
+  ) as NotApplicable<K>;
 }
 
 /** True when the active filters name a field this kind does not have, so none of its rows can match. */
@@ -1092,29 +1118,46 @@ export function topVersionsQuery(days: number, filters?: FilterParams, limit = S
 }
 
 /**
- * Per-version release scorecard over the last `days` days. Stats group every
- * kind by the version the device was RUNNING: for update_failed that is
- * from_version, because keying on the target would bucket every failure under
- * the newest release and hide which deployed versions are broken
- * (prestonbrown/helixscreen#993).
+ * Sessions, crashes and self-update outcomes per version in the window `when`
+ * (a timestamp predicate), as rows { ver, sessions, crashes, update_failures,
+ * update_successes }. Every kind groups by the version the device was RUNNING:
+ * for update_failed that is from_version, because keying on the target would
+ * bucket every failure under the newest release and hide which deployed
+ * versions are broken (prestonbrown/helixscreen#993).
  */
-export function releaseScorecardQueries(versions: string[], days: number, filters?: FilterParams): string[] {
-  const inVersions = (column: string) => versionInClause(column, versions);
+export function releaseStatsSql(when: string, versions: string[], filters?: FilterParams): string {
   const running = sharedCol(RELEASE_KINDS, runningVersionField);
   const kindList = RELEASE_KINDS.map((k) => `'${k}'`).join(", ");
   const perKind = RELEASE_KINDS.map((k) => `(index1 = '${k}'${filterFor(k, filters)})`).join(" OR ");
-  const sessF = filterFor("session", filters);
-  return [
-    // 0: sessions, crashes, self-update outcomes
-    `SELECT
+  return `SELECT
       ${running} as ver,
-      ${wCountIf("index1 = 'session'")} as total_sessions,
-      ${wCountIf("index1 = 'crash'")} as total_crashes,
+      ${wCountIf("index1 = 'session'")} as sessions,
+      ${wCountIf("index1 = 'crash'")} as crashes,
       ${wCountIf("index1 = 'update_failed'")} as update_failures,
       ${wCountIf("index1 = 'update_success'")} as update_successes
     FROM ${DATASET}
-    WHERE ${inRange(days)} AND index1 IN (${kindList}) AND ${inVersions(running)} AND (${perKind})
-    GROUP BY ver`,
+    WHERE ${when} AND index1 IN (${kindList}) AND ${versionInClause(running, versions)} AND (${perKind})
+    GROUP BY ver`;
+}
+
+/** Print outcomes per version in the window `when`, as rows { ver, print_successes, print_total }. */
+export function releasePrintsSql(when: string, versions: string[], filters?: FilterParams): string {
+  return `SELECT
+      ${printOutcome("app_version")} as ver,
+      ${wCountIf(`${printOutcome("outcome")} = 'success'`)} as print_successes,
+      ${wCount()} as print_total
+    FROM ${DATASET}
+    WHERE ${when} AND index1 = 'print_outcome' AND ${versionInClause(printOutcome("app_version"), versions)}${filterFor("print_outcome", filters)}
+    GROUP BY ver`;
+}
+
+/** Per-version release scorecard over the last `days` days. */
+export function releaseScorecardQueries(versions: string[], days: number, filters?: FilterParams): string[] {
+  const inVersions = (column: string) => versionInClause(column, versions);
+  const sessF = filterFor("session", filters);
+  return [
+    // 0: sessions, crashes, self-update outcomes
+    releaseStatsSql(inRange(days), versions, filters),
     // 1: active devices
     `SELECT
       ${session("app_version")} as ver,
@@ -1123,13 +1166,7 @@ export function releaseScorecardQueries(versions: string[], days: number, filter
     WHERE ${inRange(days)} AND index1 = 'session' AND ${inVersions(session("app_version"))}${sessF}
     GROUP BY ver`,
     // 2: print outcomes
-    `SELECT
-      ${printOutcome("app_version")} as ver,
-      ${wCountIf(`${printOutcome("outcome")} = 'success'`)} as print_successes,
-      ${wCount()} as print_total
-    FROM ${DATASET}
-    WHERE ${inRange(days)} AND index1 = 'print_outcome' AND ${inVersions(printOutcome("app_version"))}${filterFor("print_outcome", filters)}
-    GROUP BY ver`,
+    releasePrintsSql(inRange(days), versions, filters),
     // 3: devices that crashed
     `SELECT
       ${crash("app_version")} as ver,
@@ -1301,9 +1338,6 @@ export function healthQueries(filters?: FilterParams, versions: string[] = []): 
   const inVersions = (column: string) => versionInClause(column, versions);
   const sessF = filterFor("session", filters);
   const crashF = filterFor("crash", filters);
-  const running = sharedCol(RELEASE_KINDS, runningVersionField);
-  const kindList = RELEASE_KINDS.map((k) => `'${k}'`).join(", ");
-  const perKind = RELEASE_KINDS.map((k) => `(index1 = '${k}'${filterFor(k, filters)})`).join(" OR ");
   const crashSession = sharedCol(["session", "crash"], () => "app_version");
   const crashSessionDevice = sharedCol(["session", "crash"], () => "device_id");
   const crashSessionKinds = `index1 IN ('session', 'crash')`;
@@ -1311,16 +1345,7 @@ export function healthQueries(filters?: FilterParams, versions: string[] = []): 
 
   const actives = (w: readonly [number, number]) =>
     `SELECT count(DISTINCT ${session("device_id")}) as actives FROM ${DATASET} WHERE ${windowClause(w)} AND index1 = 'session'${sessF}`;
-  const release = (w: readonly [number, number]) =>
-    `SELECT
-      ${running} as ver,
-      ${wCountIf("index1 = 'session'")} as sessions,
-      ${wCountIf("index1 = 'crash'")} as crashes,
-      ${wCountIf("index1 = 'update_failed'")} as update_failures,
-      ${wCountIf("index1 = 'update_success'")} as update_successes
-    FROM ${DATASET}
-    WHERE ${windowClause(w)} AND index1 IN (${kindList}) AND ${inVersions(running)} AND (${perKind})
-    GROUP BY ver`;
+  const release = (w: readonly [number, number]) => releaseStatsSql(windowClause(w), versions, filters);
   const releaseDevices = (w: readonly [number, number]) =>
     `SELECT
       ${crashSession} as ver,
@@ -1329,14 +1354,7 @@ export function healthQueries(filters?: FilterParams, versions: string[] = []): 
     FROM ${DATASET}
     WHERE ${windowClause(w)} AND ${crashSessionKinds} AND ${inVersions(crashSession)} AND ${crashSessionFilter}
     GROUP BY ver, event`;
-  const prints = (w: readonly [number, number]) =>
-    `SELECT
-      ${printOutcome("app_version")} as ver,
-      ${wCountIf(`${printOutcome("outcome")} = 'success'`)} as successes,
-      ${wCount()} as total
-    FROM ${DATASET}
-    WHERE ${windowClause(w)} AND index1 = 'print_outcome' AND ${inVersions(printOutcome("app_version"))}${filterFor("print_outcome", filters)}
-    GROUP BY ver`;
+  const prints = (w: readonly [number, number]) => releasePrintsSql(windowClause(w), versions, filters);
   const errors = (w: readonly [number, number]) => errorCodesSql(w, filters);
   const crashes = (w: readonly [number, number]) => crashClustersSql(w, filters);
 

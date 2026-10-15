@@ -1,7 +1,8 @@
 import { useAuthStore } from '@/stores/auth'
 import { router } from '@/router'
 import type { HealthPayload } from '../../../telemetry-worker/src/health'
-import type { DeviceListRow, DevicePage } from '../../../telemetry-worker/src/devices'
+import type { DeviceList, DevicePage } from '../../../telemetry-worker/src/devices'
+import type { NotApplicable } from '../../../telemetry-worker/src/schema'
 import type { RetentionCohort } from '../../../telemetry-worker/src/retention'
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'https://telemetry.helixscreen.org'
@@ -55,6 +56,7 @@ export interface PrintsData {
   by_model: { model: string; successes: number; total: number; rate: number | null }[]
   by_version: { version: string; successes: number; total: number; rate: number | null }[]
   start_context?: PrintStartData
+  not_applicable: NotApplicable<'prints'>
 }
 
 export interface CrashesData {
@@ -95,17 +97,15 @@ export interface ReleasesData {
     total_crashes: number
     update_failures: number
     update_successes: number
-    update_success_rate: number | null
+    update_failure_rate: number | null
   }[]
   adoption: { date: string; version: string; devices: number }[]
+  not_applicable: NotApplicable<'crashes' | 'prints' | 'updates' | 'performance'>
 }
 
 export type HealthData = HealthPayload
 export type DevicePageData = DevicePage
-export interface DeviceListData {
-  total: number
-  devices: DeviceListRow[]
-}
+export type DeviceListData = DeviceList
 export interface RetentionData {
   cohorts: RetentionCohort[]
 }
@@ -199,6 +199,8 @@ export interface StabilityData extends DeltaEra {
   /** Error reports per category, code and version over the range; sample-weighted count, largest first. */
   errors_by_version: { category: string; code: string; version: string; count: number; devices: number }[]
   display_anomalies?: DisplayAnomalyData
+  /** Crash and error blocks a filter leaves unreported; `filter_not_applicable` covers only the delta kinds. */
+  not_applicable: NotApplicable<'crashes' | 'errors'>
 }
 
 export interface PrintStartData {

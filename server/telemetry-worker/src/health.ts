@@ -3,16 +3,41 @@
 // queries.ts. Imports only versions and schema so the dashboard can import
 // these types without Worker runtime types.
 
-import type { RawRow } from "./schema";
+import { num, str, type NotApplicable, type RawRow } from "./schema";
 import { compareVersions } from "./versions";
 
-export interface ReleaseWindow {
-  devices: number;
+/** The counts one release's rates are computed from, over one window. */
+export interface ReleaseCounts {
+  sessions: number;
+  crashes: number;
+  /** Distinct devices with a session. */
+  session_devices: number;
+  /** Distinct devices with a crash. */
+  crash_devices: number;
+  update_failures: number;
+  update_successes: number;
+  print_successes: number;
+  print_total: number;
+}
+
+/** A release's rates; each is null when its denominator is 0. */
+export interface ReleaseRates {
+  /** Share of session devices with no crash, in [0, 1]. */
   crash_free: number | null;
+  /** Crashes per session. */
   crash_rate: number | null;
+  /** Failed share of self-update attempts by devices running the release. */
   update_failure_rate: number | null;
+  /** Successful share of finished prints. */
   print_success: number | null;
 }
+
+export interface ReleaseWindow extends ReleaseRates {
+  devices: number;
+}
+
+/** The Health payload blocks a filter can leave unreported. */
+export type HealthBlock = "crashes" | "errors" | "prints" | "updates";
 
 export interface HealthPayload {
   fleet: { actives_cur: number; actives_prev: number; cdn_sources: number | null; cdn_date: string | null };
@@ -20,6 +45,7 @@ export interface HealthPayload {
   errors: { category: string; code: string; cur: number; prev: number; devices: number; status: "new" | "rising" | "steady" }[];
   crash_clusters: { signal: string; fault_code: string; version: string; board: string; cur: number; prev: number; devices: number }[];
   data_health: { kind: string; latest: number; median: number; low: boolean }[];
+  not_applicable: NotApplicable<HealthBlock>;
 }
 
 /** The query keys buildHealth reads; the Worker's healthQueries returns one SQL string per key. */
@@ -45,8 +71,6 @@ const MEDIAN_DAYS = 7;
 /** Kinds written by cron rather than by devices; their daily count says nothing about ingest. */
 const CRON_KINDS = new Set(["cdn_fleet_daily"]);
 
-const num = (v: unknown): number => Number(v ?? 0) || 0;
-const str = (v: unknown): string => String(v ?? "");
 const ratio = (n: number, d: number): number | null => (d > 0 ? n / d : null);
 
 /** The UTC day `delta` days from `day` (YYYY-MM-DD). */
@@ -62,35 +86,65 @@ function median(values: number[]): number {
   return s.length === 0 ? 0 : s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
 }
 
+/**
+ * The release rates both the Health and Releases tabs show. With
+ * `crashesReported` false the active filters exclude every crash row, so the
+ * crash rates are null rather than a clean 0% and 100%.
+ */
+export function releaseRates(c: ReleaseCounts, crashesReported = true): ReleaseRates {
+  const crashFree = ratio(c.session_devices - c.crash_devices, c.session_devices);
+  return {
+    crash_free: crashesReported && crashFree !== null ? Math.min(1, Math.max(0, crashFree)) : null,
+    crash_rate: crashesReported ? ratio(c.crashes, c.sessions) : null,
+    update_failure_rate: ratio(c.update_failures, c.update_failures + c.update_successes),
+    print_success: ratio(c.print_successes, c.print_total),
+  };
+}
+
 function releaseWindow(
   ver: string,
   stats: RawRow[],
   devices: RawRow[],
   prints: RawRow[],
+  crashesReported: boolean,
 ): ReleaseWindow {
   const st = stats.find((r) => str(r.ver) === ver);
   const pr = prints.find((r) => str(r.ver) === ver);
-  const sessionDevices = num(devices.find((r) => str(r.ver) === ver && str(r.event) === "session")?.devices);
-  const crashDevices = num(devices.find((r) => str(r.ver) === ver && str(r.event) === "crash")?.devices);
-  const failures = num(st?.update_failures);
-  const successes = num(st?.update_successes);
-  return {
-    devices: sessionDevices,
-    crash_free: sessionDevices > 0 ? Math.max(0, 1 - crashDevices / sessionDevices) : null,
-    crash_rate: ratio(num(st?.crashes), num(st?.sessions)),
-    update_failure_rate: ratio(failures, failures + successes),
-    print_success: ratio(num(pr?.successes), num(pr?.total)),
-  };
+  const deviceCount = (event: string) =>
+    num(devices.find((r) => str(r.ver) === ver && str(r.event) === event)?.devices);
+  const session_devices = deviceCount("session");
+  const rates = releaseRates(
+    {
+      sessions: num(st?.sessions),
+      crashes: num(st?.crashes),
+      session_devices,
+      crash_devices: deviceCount("crash"),
+      update_failures: num(st?.update_failures),
+      update_successes: num(st?.update_successes),
+      print_successes: num(pr?.print_successes),
+      print_total: num(pr?.print_total),
+    },
+    crashesReported,
+  );
+  return { devices: session_devices, ...rates };
 }
 
 const STATUS_ORDER = { new: 0, rising: 1, steady: 2 } as const;
 
+const ALL_REPORTED: NotApplicable<HealthBlock> = { crashes: null, errors: null, prints: null, updates: null };
+
 /**
  * Folds the health query rows into the payload. `today` is the UTC day
- * (YYYY-MM-DD) whose partial row the data-health block ignores.
+ * (YYYY-MM-DD) whose partial row the data-health block ignores;
+ * `notApplicable` names, per block, a filter its kinds cannot carry.
  */
-export function buildHealth(rows: Record<HealthRowKey, unknown[]>, today: string): HealthPayload {
+export function buildHealth(
+  rows: Record<HealthRowKey, unknown[]>,
+  today: string,
+  notApplicable: NotApplicable<HealthBlock> = ALL_REPORTED,
+): HealthPayload {
   const r = (k: HealthRowKey): RawRow[] => (rows[k] ?? []) as RawRow[];
+  const crashesReported = notApplicable.crashes === null;
 
   const releases = r("top_versions")
     .map((t) => str(t.ver))
@@ -98,8 +152,8 @@ export function buildHealth(rows: Record<HealthRowKey, unknown[]>, today: string
     .sort((a, b) => compareVersions(b, a))
     .map((version) => ({
       version,
-      cur: releaseWindow(version, r("release_cur"), r("release_devices_cur"), r("prints_cur")),
-      prev: releaseWindow(version, r("release_prev"), r("release_devices_prev"), r("prints_prev")),
+      cur: releaseWindow(version, r("release_cur"), r("release_devices_cur"), r("prints_cur"), crashesReported),
+      prev: releaseWindow(version, r("release_prev"), r("release_devices_prev"), r("prints_prev"), crashesReported),
     }));
 
   const errKey = (x: RawRow) => `${str(x.category)}\u0000${str(x.code)}`;
@@ -166,5 +220,6 @@ export function buildHealth(rows: Record<HealthRowKey, unknown[]>, today: string
     errors,
     crash_clusters,
     data_health,
+    not_applicable: notApplicable,
   };
 }

@@ -87,7 +87,15 @@ describe("buildDeviceList", () => {
     expect(r.devices.map((d) => [d.device_id, d.crashes, d.prints])).toEqual([["d1", 3, 0], ["d2", 0, 7]]);
   });
   it("handles empty results", () => {
-    expect(buildDeviceList({}, undefined, null)).toEqual({ total: 0, devices: [] });
+    expect(buildDeviceList({}, undefined, null)).toEqual({
+      total: 0,
+      devices: [],
+      not_applicable: { crashes: null, prints: null },
+    });
+  });
+  it("carries the columns a filter leaves unreported", () => {
+    const na = { crashes: "model", prints: "model" } as const;
+    expect(buildDeviceList({}, undefined, null, undefined, na).not_applicable).toEqual(na);
   });
 });
 
@@ -124,6 +132,14 @@ describe("buildDevicePage", () => {
     expect(p.hardware?.printer_model).toBe("Voron 2.4");
     expect(p.settings?.brightness_pct).toBe(80);
     expect(p.versions.map((v) => v.version)).toEqual(["1.0.0-beta.10", "1.0.0-beta.9", "0.9.0"]);
+  });
+  it("drops device_id and empty or zero fields from the hardware and settings tables", () => {
+    const p = buildDevicePage(ID, rows, versions)!;
+    for (const table of [p.hardware!, p.settings!]) {
+      expect(table).not.toHaveProperty("device_id");
+      expect(Object.values(table).filter((v) => v === "" || v === 0)).toEqual([]);
+    }
+    expect(p.hardware).toEqual({ app_version: "0.9.0", app_platform: "pi", printer_model: "Voron 2.4", extruder_count: 1 });
   });
   it("lists newest first with empty and zero fields and device_id dropped", () => {
     const p = buildDevicePage(ID, rows, versions)!;

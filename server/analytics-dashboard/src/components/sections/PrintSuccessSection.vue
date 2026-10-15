@@ -12,7 +12,7 @@
       <div class="chart-section">
         <h3>Success Rate Over Time</h3>
         <ChartCaption :text="`Sample-weighted print outcomes per day, ${span}; first and current day omitted`" />
-        <NoData v-if="trend.length === 0" />
+        <NoData v-if="trend.length === 0" :not-applicable="data.not_applicable.prints" />
         <LineChart v-else :data="successRateChartData" :options="rateOpts" />
       </div>
     </template>

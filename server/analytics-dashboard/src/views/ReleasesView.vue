@@ -10,6 +10,7 @@
         :loading="loading"
         :error="error"
         :selected="selected"
+        :not-applicable="data?.not_applicable ?? null"
         @toggle="toggleVersion"
         @reset="selected = null"
       />

@@ -4,7 +4,7 @@
       <div class="chart-section">
         <h3>Crash Clusters</h3>
         <ChartCaption :text="`Sample-weighted crash reports grouped by signal, fault code, version and board, ${span}, largest first; click a row to filter on its version and board`" />
-        <NoData v-if="data.crash_clusters.length === 0" />
+        <NoData v-if="data.crash_clusters.length === 0" :not-applicable="data.not_applicable.crashes" />
         <div v-else class="table-wrapper">
           <table class="data-table">
             <thead>
@@ -41,12 +41,12 @@
         <div class="chart-section">
           <h3>Crashes by Signal</h3>
           <ChartCaption :text="`Sample-weighted crash reports, ${span}`" />
-          <NoData v-if="data.by_signal.length === 0" />
+          <NoData v-if="data.by_signal.length === 0" :not-applicable="data.not_applicable.crashes" />
           <PieChart v-else :data="signalChartData" />
         </div>
         <MetricCard
           title="Avg Uptime Before Crash"
-          :value="formatDuration(data.avg_uptime_sec)"
+          :value="data.not_applicable.crashes ? 'n/a' : formatDuration(data.avg_uptime_sec)"
           :subtitle="`sample-weighted, ${span}`"
           color="var(--accent-yellow)"
         />
@@ -55,7 +55,7 @@
       <div class="chart-section">
         <h3>Recent Crashes</h3>
         <ChartCaption :text="`Newest crash reports, ${span}; repeats of one crash collapse into a count`" />
-        <NoData v-if="data.recent_crashes.length === 0" />
+        <NoData v-if="data.recent_crashes.length === 0" :not-applicable="data.not_applicable.crashes" />
         <div v-else class="table-wrapper event-log">
           <table class="data-table">
             <thead>

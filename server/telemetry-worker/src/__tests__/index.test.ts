@@ -1626,6 +1626,67 @@ describe("Dashboard endpoints", () => {
     });
   });
 
+  describe("a model filter, which crash, error and print rows do not carry", () => {
+    it("health reports n/a crash rates and names the unreported blocks", async () => {
+      mockBySql([
+        ["LIMIT 8", [{ ver: "1.0.4", devices: 10 }]],
+        ["as update_successes", [{ ver: "1.0.4", sessions: 20, crashes: 0, update_failures: 0, update_successes: 0 }]],
+        ["index1 as event", [{ ver: "1.0.4", event: "session", devices: 10 }]],
+      ]);
+      const data = await dashboard("/v1/dashboard/health?model=Voron");
+      expect(data.releases[0].cur.devices).toBe(10);
+      expect(data.releases[0].cur.crash_rate).toBeNull();
+      expect(data.releases[0].cur.crash_free).toBeNull();
+      expect(data.not_applicable).toEqual({ crashes: "model", errors: "model", prints: "model", updates: "model" });
+    });
+
+    it("health keeps real crash rates under a filter crashes carry", async () => {
+      mockBySql([
+        ["LIMIT 8", [{ ver: "1.0.4", devices: 10 }]],
+        ["as update_successes", [{ ver: "1.0.4", sessions: 20, crashes: 0, update_failures: 0, update_successes: 0 }]],
+        ["index1 as event", [{ ver: "1.0.4", event: "session", devices: 10 }]],
+      ]);
+      const data = await dashboard("/v1/dashboard/health?platform=pi");
+      expect(data.releases[0].cur.crash_rate).toBe(0);
+      expect(data.releases[0].cur.crash_free).toBe(1);
+      expect(data.not_applicable.crashes).toBeNull();
+    });
+
+    it("releases reports n/a crash rates and names the unreported blocks", async () => {
+      mockBySql([
+        ["as update_successes", [{ ver: "1.0.4", sessions: 20, crashes: 0 }]],
+        ["as active_devices", [{ ver: "1.0.4", active_devices: 10 }]],
+      ]);
+      const data = await dashboard("/v1/dashboard/releases?versions=1.0.4&model=Voron");
+      const v = data.versions[0];
+      expect(v.active_devices).toBe(10);
+      expect(v.crash_rate).toBeNull();
+      expect(v.crash_free_devices).toBeNull();
+      expect(data.not_applicable).toEqual({ crashes: "model", prints: "model", updates: "model", performance: "model" });
+    });
+
+    it("stability names crashes and errors as unreported", async () => {
+      mockBySql([]);
+      expect((await dashboard("/v1/dashboard/stability?model=Voron")).not_applicable).toEqual({ crashes: "model", errors: "model" });
+      mockBySql([]);
+      expect((await dashboard("/v1/dashboard/stability?board=k1")).not_applicable).toEqual({ crashes: null, errors: null });
+    });
+
+    it("prints names prints as unreported", async () => {
+      mockBySql([]);
+      expect((await dashboard("/v1/dashboard/prints?model=Voron")).not_applicable).toEqual({ prints: "model" });
+      mockBySql([]);
+      expect((await dashboard("/v1/dashboard/prints")).not_applicable).toEqual({ prints: null });
+    });
+
+    it("devices names the crash and print columns as unreported", async () => {
+      mockBySql([]);
+      expect((await dashboard("/v1/dashboard/devices?model=Voron")).not_applicable).toEqual({ crashes: "model", prints: "model" });
+      mockBySql([]);
+      expect((await dashboard("/v1/dashboard/devices?platform=pi")).not_applicable).toEqual({ crashes: null, prints: null });
+    });
+  });
+
   // -- GET /v1/dashboard/devices and /device/<id> --
 
   describe("device endpoints", () => {
@@ -1704,7 +1765,8 @@ describe("Dashboard endpoints", () => {
       const res = await worker.fetch(dashboardRequest("/v1/dashboard/health?version=1.0.4"), env as never);
       expect(res.status).toBe(200);
       const body = (await res.json()) as any;
-      expect(Object.keys(body).sort()).toEqual(["crash_clusters", "data_health", "errors", "fleet", "releases"]);
+      expect(Object.keys(body).sort()).toEqual(["crash_clusters", "data_health", "errors", "fleet", "not_applicable", "releases"]);
+      expect(body.not_applicable).toEqual({ crashes: null, errors: null, prints: null, updates: null });
       expect(body.releases[0].version).toBe("1.0.4");
       expect(body.releases[0].cur.crash_rate).toBeCloseTo(0.05);
       expect(body.fleet.cdn_sources).toBe(7);
@@ -1827,7 +1889,7 @@ describe("Dashboard endpoints", () => {
     }) {
       mockExecuteQuery.mockImplementation(async (_c, sql: string) => {
         if (sql.includes("LIMIT 8")) return { data: rows.top ?? [] };
-        if (sql.includes("as total_sessions")) return { data: rows.stats ?? [] };
+        if (sql.includes("as update_successes")) return { data: rows.stats ?? [] };
         if (sql.includes("as active_devices")) return { data: rows.actives ?? [] };
         if (sql.includes("as print_successes")) return { data: rows.prints ?? [] };
         if (sql.includes("as crashing_devices")) return { data: rows.crashers ?? [] };
@@ -1840,7 +1902,7 @@ describe("Dashboard endpoints", () => {
 
     it("returns release comparison data", async () => {
       scorecardMock({
-        stats: [{ ver: "0.9.19", total_sessions: 200, total_crashes: 4 }],
+        stats: [{ ver: "0.9.19", sessions: 200, crashes: 4 }],
         actives: [{ ver: "0.9.19", active_devices: 50 }],
         prints: [{ ver: "0.9.19", print_successes: 88, print_total: 100 }],
         crashers: [{ ver: "0.9.19", crashing_devices: 5 }],
@@ -1865,14 +1927,14 @@ describe("Dashboard endpoints", () => {
       expect(v.total_crashes).toBe(4);
       expect(v.update_failures).toBe(0);
       expect(v.update_successes).toBe(0);
-      expect(v.update_success_rate).toBeNull();
+      expect(v.update_failure_rate).toBeNull();
       expect(data.adoption).toEqual([{ date: "2026-10-01", version: "0.9.19", devices: 12 }]);
     });
 
     it("picks the versions itself when the param is absent", async () => {
       scorecardMock({
         top: [{ ver: "1.0.4", devices: 9 }],
-        stats: [{ ver: "1.0.4", total_sessions: 10, total_crashes: 1 }],
+        stats: [{ ver: "1.0.4", sessions: 10, crashes: 1 }],
         actives: [{ ver: "1.0.4", active_devices: 9 }],
       });
       const res = await worker.fetch(dashboardRequest("/v1/dashboard/releases"), env as never);
@@ -1886,7 +1948,7 @@ describe("Dashboard endpoints", () => {
 
     it("reports a null crash rate and crash-free share with no sessions or devices", async () => {
       scorecardMock({
-        stats: [{ ver: "0.9.18", total_sessions: 0, total_crashes: 0 }],
+        stats: [{ ver: "0.9.18", sessions: 0, crashes: 0 }],
         actives: [],
       });
       const res = await worker.fetch(dashboardRequest("/v1/dashboard/releases?versions=v0.9.18"), env as never);
@@ -1900,7 +1962,7 @@ describe("Dashboard endpoints", () => {
 
     it("clamps crash-free devices at 0 when more devices crashed than were active", async () => {
       scorecardMock({
-        stats: [{ ver: "1.0.0", total_sessions: 10, total_crashes: 9 }],
+        stats: [{ ver: "1.0.0", sessions: 10, crashes: 9 }],
         actives: [{ ver: "1.0.0", active_devices: 2 }],
         crashers: [{ ver: "1.0.0", crashing_devices: 5 }],
       });
@@ -1911,13 +1973,17 @@ describe("Dashboard endpoints", () => {
     it("returns empty lists when no version has sessions", async () => {
       scorecardMock({ top: [] });
       const res = await worker.fetch(dashboardRequest("/v1/dashboard/releases"), env as never);
-      expect(await res.json()).toEqual({ versions: [], adoption: [] });
+      expect(await res.json()).toEqual({
+        versions: [],
+        adoption: [],
+        not_applicable: { crashes: null, prints: null, updates: null, performance: null },
+      });
       expect(mockExecuteQuery).toHaveBeenCalledTimes(1);
     });
 
     it("reports self-update health per running version", async () => {
       scorecardMock({
-        stats: [{ ver: "0.99.97", total_sessions: 100, total_crashes: 1, update_failures: 9, update_successes: 1 }],
+        stats: [{ ver: "0.99.97", sessions: 100, crashes: 1, update_failures: 9, update_successes: 1 }],
         actives: [{ ver: "0.99.97", active_devices: 40 }],
         prints: [{ ver: "0.99.97", print_successes: 10, print_total: 10 }],
       });
@@ -1926,12 +1992,12 @@ describe("Dashboard endpoints", () => {
       const data = (await res.json()) as any;
       expect(data.versions[0].update_failures).toBe(9);
       expect(data.versions[0].update_successes).toBe(1);
-      expect(data.versions[0].update_success_rate).toBeCloseTo(0.1);
+      expect(data.versions[0].update_failure_rate).toBeCloseTo(0.9);
     });
 
     it("reports a null print success rate for a version with no prints", async () => {
       scorecardMock({
-        stats: [{ ver: "0.9.18", total_sessions: 10, total_crashes: 0 }],
+        stats: [{ ver: "0.9.18", sessions: 10, crashes: 0 }],
         actives: [{ ver: "0.9.18", active_devices: 5 }],
       });
       const res = await worker.fetch(dashboardRequest("/v1/dashboard/releases?versions=v0.9.18"), env as never);

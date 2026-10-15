@@ -32,11 +32,13 @@ import {
   devicesQueries,
   healthQueries,
   deviceQueries,
+  notApplicableFor,
   type QueryConfig,
   type FilterParams,
 } from "./queries";
-import { buildDeviceList, buildDevicePage, isDeviceId } from "./devices";
-import { buildHealth, type HealthRowKey } from "./health";
+import { buildDeviceList, buildDevicePage, isDeviceId, type DeviceCountColumn } from "./devices";
+import { buildHealth, releaseRates, type HealthBlock, type HealthRowKey } from "./health";
+import { num, rowsOf } from "./schema";
 import { buildRetention } from "./retention";
 import {
   snapshotDay,
@@ -125,6 +127,15 @@ function crashRate(crashes: number, sessions: number, applies: boolean): number 
   if (!applies) return null;
   return sessions > 0 ? crashes / sessions : 0;
 }
+
+/** The scorecard blocks a filter can leave unreported. */
+const RELEASE_BLOCKS = ["crashes", "prints", "updates", "performance"] as const;
+
+/** The Health blocks a filter can leave unreported. */
+const HEALTH_BLOCKS = ["crashes", "errors", "prints", "updates"] as const satisfies readonly HealthBlock[];
+
+/** Device list count columns a filter can leave unreported. */
+const DEVICE_LIST_BLOCKS = ["crashes", "prints"] as const satisfies readonly DeviceCountColumn[];
 
 /** Devices that used one overlay or widget id in the window. */
 export interface FeatureUse {
@@ -621,6 +632,7 @@ export default {
                 }))
                 .sort((a, b) => b.count - a.count);
             })(),
+            not_applicable: notApplicableFor(["prints"], filters),
             avg_duration_sec: avgDurData.data?.[0]?.avg_duration_sec ?? 0,
             by_model: (() => {
               const modelOf = new Map<string, string>();
@@ -1243,6 +1255,7 @@ export default {
 
           return json({
             ...deltaEraFields("stability", deltaEraDevices, filters),
+            not_applicable: notApplicableFor(["crashes", "errors"], filters),
             crash_rate_trend,
             by_version,
             by_signal,
@@ -1330,7 +1343,9 @@ export default {
               data?: Array<{ ver: string }>;
             };
             versions = (topRes.data ?? []).map((r) => String(r.ver));
-            if (versions.length === 0) return json({ versions: [], adoption: [] });
+            if (versions.length === 0) {
+              return json({ versions: [], adoption: [], not_applicable: notApplicableFor(RELEASE_BLOCKS, filters) });
+            }
           } else {
             versions = versionsParam.split(",").map((v) => v.trim()).filter(Boolean);
             if (versions.length === 0 || versions.length > 20) {
@@ -1341,57 +1356,55 @@ export default {
           const [statsRes, devicesRes, printStatsRes, crashingRes, frameRes, rssRes, adoptionRes] =
             await Promise.all(releaseScorecardQueries(versions, days, filters).map((q) => executeQuery(queryConfig, q)));
 
-          const rows = <T>(res: unknown): T[] => (res as { data?: T[] } | null)?.data ?? [];
-          const statsData = rows<{
-            ver: string;
-            total_sessions: number;
-            total_crashes: number;
-            update_failures: number;
-            update_successes: number;
-          }>(statsRes);
-          const byVersion = <T extends { ver: string }>(res: unknown) =>
-            new Map(rows<T>(res).map((r) => [r.ver, r]));
-          const deviceMap = byVersion<{ ver: string; active_devices: number }>(devicesRes);
-          const printMap = byVersion<{ ver: string; print_successes: number; print_total: number }>(printStatsRes);
-          const crashingMap = byVersion<{ ver: string; crashing_devices: number }>(crashingRes);
-          const frameMap = byVersion<{ ver: string; p95_frame_ms: number }>(frameRes);
-          const rssMap = byVersion<{ ver: string; p95_rss_kb: number }>(rssRes);
+          const not_applicable = notApplicableFor(RELEASE_BLOCKS, filters);
+          const byVersion = (res: unknown) => new Map(rowsOf(res).map((r) => [String(r.ver), r]));
+          const deviceMap = byVersion(devicesRes);
+          const printMap = byVersion(printStatsRes);
+          const crashingMap = byVersion(crashingRes);
+          const frameMap = byVersion(frameRes);
+          const rssMap = byVersion(rssRes);
+          const nullable = (v: unknown): number | null => (v === undefined || v === null ? null : num(v));
 
           return json({
-            versions: statsData.map((r) => {
-              const prints = printMap.get(r.ver);
-              const printTotal = prints?.print_total ?? 0;
-              const active = deviceMap.get(r.ver)?.active_devices ?? 0;
-              const crashing = crashingMap.get(r.ver)?.crashing_devices ?? 0;
-              const frame = frameMap.get(r.ver)?.p95_frame_ms;
-              const rss = rssMap.get(r.ver)?.p95_rss_kb;
+            versions: rowsOf(statsRes).map((r) => {
+              const ver = String(r.ver);
+              const prints = printMap.get(ver);
+              const active = num(deviceMap.get(ver)?.active_devices);
+              const counts = {
+                sessions: num(r.sessions),
+                crashes: num(r.crashes),
+                session_devices: active,
+                crash_devices: num(crashingMap.get(ver)?.crashing_devices),
+                update_failures: num(r.update_failures),
+                update_successes: num(r.update_successes),
+                print_successes: num(prints?.print_successes),
+                print_total: num(prints?.print_total),
+              };
+              const rates = releaseRates(counts, not_applicable.crashes === null);
               return {
-                version: r.ver,
+                version: ver,
                 active_devices: active,
-                crash_rate: r.total_sessions > 0 ? r.total_crashes / r.total_sessions : null,
-                crash_free_devices: active > 0 ? Math.min(1, Math.max(0, 1 - crashing / active)) : null,
-                p95_frame_ms: frame ?? null,
-                p95_rss_kb: rss ?? null,
-                print_success_rate: printTotal > 0 ? (prints?.print_successes ?? 0) / printTotal : null,
-                total_sessions: r.total_sessions,
-                total_crashes: r.total_crashes,
+                crash_rate: rates.crash_rate,
+                crash_free_devices: rates.crash_free,
+                p95_frame_ms: nullable(frameMap.get(ver)?.p95_frame_ms),
+                p95_rss_kb: nullable(rssMap.get(ver)?.p95_rss_kb),
+                print_success_rate: rates.print_success,
+                total_sessions: counts.sessions,
+                total_crashes: counts.crashes,
                 // Self-update health for devices RUNNING this version. A version
-                // whose update_success_rate collapses is one that cannot upgrade
+                // whose update_failure_rate climbs is one that cannot upgrade
                 // itself (prestonbrown/helixscreen#993).
-                update_failures: r.update_failures ?? 0,
-                update_successes: r.update_successes ?? 0,
-                update_success_rate:
-                  (r.update_successes ?? 0) + (r.update_failures ?? 0) > 0
-                    ? (r.update_successes ?? 0) /
-                      ((r.update_successes ?? 0) + (r.update_failures ?? 0))
-                    : null,
+                update_failures: counts.update_failures,
+                update_successes: counts.update_successes,
+                update_failure_rate: rates.update_failure_rate,
               };
             }),
-            adoption: rows<{ date: string; ver: string; devices: number }>(adoptionRes).map((r) => ({
+            adoption: rowsOf(adoptionRes).map((r) => ({
               date: r.date,
               version: r.ver,
               devices: r.devices,
             })),
+            not_applicable,
           });
         }
 
@@ -1524,7 +1537,7 @@ export default {
           rest.forEach((k, i) => {
             rows[k] = (results[i] as { data?: unknown[] } | null)?.data ?? [];
           });
-          return json(buildHealth(rows, new Date().toISOString().slice(0, 10)));
+          return json(buildHealth(rows, new Date().toISOString().slice(0, 10), notApplicableFor(HEALTH_BLOCKS, filters)));
         }
 
         // GET /v1/dashboard/devices
@@ -1532,7 +1545,9 @@ export default {
           const [sessionsRes, totalRes, crashesRes, printsRes] = await Promise.all(
             devicesQueries(days, filters).map((q) => executeQuery(queryConfig, q)),
           );
-          return json(buildDeviceList(sessionsRes, crashesRes, printsRes, totalRes));
+          return json(
+            buildDeviceList(sessionsRes, crashesRes, printsRes, totalRes, notApplicableFor(DEVICE_LIST_BLOCKS, filters)),
+          );
         }
 
         // GET /v1/dashboard/device/<64 hex id>
