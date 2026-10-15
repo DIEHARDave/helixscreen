@@ -437,4 +437,32 @@ std::pair<int, int> grow_span_to_fit(const std::function<bool(int, int)>& fits, 
     return {c, r};
 }
 
+TrackRect seat_grown_span(const TrackRect& saved, int grown_colspan, int grown_rowspan, int cols,
+                          int rows, int step_c, int step_r,
+                          const std::function<bool(const TrackRect&)>& available) {
+    const int gc = std::max(grown_colspan, saved.colspan);
+    const int gr = std::max(grown_rowspan, saved.rowspan);
+    if (gc == saved.colspan && gr == saved.rowspan) {
+        return saved;
+    }
+    const int sc = std::max(step_c, 1);
+    const int sr = std::max(step_r, 1);
+
+    // Every candidate covers the saved rectangle, so the widget only ever adds
+    // tracks around where the user put it. Smallest shift first: right and down
+    // before the origin moves at all.
+    for (int dr = 0; dr <= gr - saved.rowspan; dr += sr) {
+        for (int dc = 0; dc <= gc - saved.colspan; dc += sc) {
+            const TrackRect cand{saved.col - dc, saved.row - dr, gc, gr};
+            if (cand.col < 0 || cand.row < 0 || cand.col + gc > cols || cand.row + gr > rows) {
+                continue;
+            }
+            if (available(cand)) {
+                return cand;
+            }
+        }
+    }
+    return saved;
+}
+
 } // namespace helix

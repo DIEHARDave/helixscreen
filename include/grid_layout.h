@@ -70,6 +70,29 @@ std::pair<int, int> grow_span_to_fit(const std::function<bool(int, int)>& fits, 
                                      int rowspan, int max_colspan, int max_rowspan, int step_c,
                                      int step_r, const CellMetrics& metrics);
 
+/// A rectangle of grid tracks.
+struct TrackRect {
+    int col = 0;
+    int row = 0;
+    int colspan = 1;
+    int rowspan = 1;
+};
+
+/// Where a widget saved at @p saved can sit once grown to @p grown_colspan x
+/// @p grown_rowspan (from grow_span_to_fit), on a @p cols x @p rows grid.
+///
+/// Growth may only take tracks @p available accepts: the grown rectangle
+/// always covers the saved one, extending right/down first and shifting its
+/// origin left/up by the widget's snap steps when that side is free. When no
+/// such rectangle is available the saved one comes back unchanged, so a
+/// widget that cannot draw its saved span keeps it rather than taking a
+/// neighbour's place.
+///
+/// @param available  answers whether a candidate rectangle may be taken
+TrackRect seat_grown_span(const TrackRect& saved, int grown_colspan, int grown_rowspan, int cols,
+                          int rows, int step_c, int step_r,
+                          const std::function<bool(const TrackRect&)>& available);
+
 /// Number of tracks in an LVGL grid descriptor array.
 ///
 /// The array is terminated by LV_GRID_TEMPLATE_LAST. LVGL's own counter is

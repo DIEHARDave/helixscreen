@@ -959,12 +959,38 @@ PanelWidgetManager::populate_widgets(const std::string& panel_id, lv_obj_t* cont
     std::vector<PlacedSlot> placed;
     std::vector<size_t> auto_place_indices; // Widgets needing dynamic placement
 
+    // Every saved rectangle this pass will anchor, keyed by slot. A widget
+    // growing to draw its content may take free tracks only: a track another
+    // saved widget holds is that widget's, whichever of the two is placed first.
+    auto find_entry = [&](const std::string& widget_id) {
+        return std::find_if(entries.begin(), entries.end(),
+                            [&](const PanelWidgetEntry& e) { return e.id == widget_id; });
+    };
+    std::vector<std::pair<size_t, TrackRect>> saved_rects;
+    for (size_t i = 0; i < enabled_widgets.size(); ++i) {
+        const auto it = find_entry(enabled_widgets[i].widget_id);
+        if (it == entries.end() || !it->is_placed()) {
+            continue;
+        }
+        const auto [cs, rs] = GridEditMode::snap_step_for(enabled_widgets[i].widget_id);
+        const auto f = clamp_to_grid(it->col, it->row, it->colspan, it->rowspan, grid.cols(),
+                                     grid.rows(), cs, rs);
+        saved_rects.push_back({i, TrackRect{f.col, f.row, f.colspan, f.rowspan}});
+    }
+    auto clear_of_saved = [&](size_t self, const TrackRect& r) {
+        for (const auto& [idx, o] : saved_rects) {
+            if (idx != self && r.col < o.col + o.colspan && o.col < r.col + r.colspan &&
+                r.row < o.row + o.rowspan && o.row < r.row + r.rowspan) {
+                return false;
+            }
+        }
+        return true;
+    };
+
     for (size_t i = 0; i < enabled_widgets.size(); ++i) {
         auto& slot = enabled_widgets[i];
 
-        auto entry_it =
-            std::find_if(entries.begin(), entries.end(),
-                         [&](const PanelWidgetEntry& e) { return e.id == slot.widget_id; });
+        auto entry_it = find_entry(slot.widget_id);
 
         // enabled_widgets is built from enabled entries only, so this is a guard
         // on that invariant rather than a live filter. A disabled entry keeps
@@ -998,9 +1024,10 @@ PanelWidgetManager::populate_widgets(const std::string& panel_id, lv_obj_t* cont
             // A span saved against a different panel, language or theme can be
             // smaller than this widget can draw. Grow the PLACEMENT request
             // only: want_colspan below stays the saved span, so the #1216 guard
-            // keeps a size this panel forced out of serialize_pages(). Growing
-            // before place() means a grown span that collides is refused here
-            // and falls through to auto-place, as any other span would.
+            // keeps a size this panel forced out of serialize_pages(). Growth
+            // takes free tracks only, shifting the origin toward a free side
+            // when the far one is a neighbour's; boxed in, the widget keeps its
+            // saved span and every neighbour keeps its own place.
             if (slot.instance) {
                 const auto* grow_def = find_widget_def(slot.widget_id);
                 const auto [grown_c, grown_r] = grow_span_to_fit(
@@ -1008,8 +1035,16 @@ PanelWidgetManager::populate_widgets(const std::string& panel_id, lv_obj_t* cont
                     grow_def ? grow_def->effective_max_colspan() : colspan,
                     grow_def ? grow_def->effective_max_rowspan() : rowspan, anchor_col_step,
                     anchor_row_step, place_metrics);
-                colspan = grown_c;
-                rowspan = grown_r;
+                const TrackRect seated = seat_grown_span(
+                    TrackRect{col, row, colspan, rowspan}, grown_c, grown_r, grid.cols(),
+                    grid.rows(), anchor_col_step, anchor_row_step, [&](const TrackRect& r) {
+                        return clear_of_saved(i, r) &&
+                               grid.can_place(r.col, r.row, r.colspan, r.rowspan);
+                    });
+                col = seated.col;
+                row = seated.row;
+                colspan = seated.colspan;
+                rowspan = seated.rowspan;
             }
 
             if (grid.place({slot.widget_id, col, row, colspan, rowspan})) {
