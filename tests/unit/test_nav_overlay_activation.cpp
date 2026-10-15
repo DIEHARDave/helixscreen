@@ -42,8 +42,14 @@
 #include "panel_lifecycle.h"
 #include "platform_capabilities.h"
 #include "printer_state.h"
+#include "system/telemetry_manager.h"
 
 #include <spdlog/spdlog.h>
+
+#include <algorithm>
+#include <chrono>
+#include <filesystem>
+#include <string>
 
 #include "../catch_amalgamated.hpp"
 
@@ -868,4 +874,35 @@ TEST_CASE_METHOD(OverlayActivationFixture, "Overlay slides follow the tier's sty
         process_lvgl(500);
         CHECK(closes == 1);
     }
+}
+
+TEST_CASE_METHOD(OverlayActivationFixture,
+                 "push_overlay reports the root's object name to telemetry, not the display name",
+                 "[navigation][overlay][telemetry]") {
+    auto& tm = TelemetryManager::instance();
+    const auto dir = std::filesystem::temp_directory_path() /
+                     ("helix_nav_telemetry_" +
+                      std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
+    std::filesystem::create_directories(dir);
+    tm.shutdown();
+    tm.init(dir.string());
+    tm.set_enabled(true);
+    tm.clear_queue();
+
+    lv_obj_set_name(overlay_, "recording_overlay");
+    open_overlay();
+    tm.record_panel_usage();
+
+    auto queue = tm.get_queue_snapshot();
+    tm.set_enabled(false);
+    tm.shutdown();
+    std::filesystem::remove_all(dir);
+
+    auto it = std::find_if(queue.begin(), queue.end(), [](const nlohmann::json& e) {
+        return e.value("event", "") == "panel_usage";
+    });
+    REQUIRE(it != queue.end());
+    const auto& visits = (*it)["overlay_visits"];
+    CHECK(visits.value("recording_overlay", 0) == 1);
+    CHECK_FALSE(visits.contains("RecordingOverlay"));
 }
