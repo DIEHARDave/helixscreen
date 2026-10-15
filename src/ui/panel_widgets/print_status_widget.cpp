@@ -1152,22 +1152,14 @@ void PrintStatusWidget::reset_print_card_to_idle() {
     // before it ever reaches this callback.
     req.api = api;
 
-    auto token = lifetime_.token();
-
+    // fetch() delivers on the main thread and only while ctx is still current,
+    // so the callback may touch members directly.
     get_thumbnail_cache().fetch(
         req, ctx,
-        [this, token, ctx, key = req.key, stamp = req.source_modified](const std::string& lvgl_path,
-                                                                       bool /*degraded*/) {
-            // Marshal first, then touch members — a bare expired() check
-            // followed by a `this` dereference is L081 Mechanism C.
-            token.defer(
-                "PrintStatusWidget::apply_idle_thumb", [this, ctx, key, stamp, lvgl_path]() {
-                    // A later resolve can land in the hop this defer adds.
-                    if (!ctx.is_valid())
-                        return;
-                    publish_idle_render(key, stamp, lvgl_path);
-                    spdlog::info("[PrintStatusWidget] Idle thumbnail loaded: {}", lvgl_path);
-                });
+        [this, key = req.key, stamp = req.source_modified](const std::string& lvgl_path,
+                                                           bool /*degraded*/) {
+            publish_idle_render(key, stamp, lvgl_path);
+            spdlog::info("[PrintStatusWidget] Idle thumbnail loaded: {}", lvgl_path);
         },
         [](const std::string& error) {
             spdlog::debug("[PrintStatusWidget] Idle thumbnail fetch failed: {}", error);

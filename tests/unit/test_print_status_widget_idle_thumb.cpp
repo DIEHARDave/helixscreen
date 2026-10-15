@@ -527,9 +527,7 @@ TEST_CASE_METHOD(PrintStatusIdleThumbHistoryFixture,
     REQUIRE(subject_value() == path_b);
     REQUIRE(get_idle_thumb_src(container) == path_b);
 
-    // A's parked completion lands now. Two drains: the fetch callback itself,
-    // then the tok.defer hop it schedules.
-    queue.drain();
+    // A's parked completion lands now.
     queue.drain();
 
     CHECK(subject_value() == path_b);
@@ -539,10 +537,10 @@ TEST_CASE_METHOD(PrintStatusIdleThumbHistoryFixture,
     cache.invalidate(key);
 }
 
-// The staleness check runs where the cache delivers, and applying the result
-// takes one more queue hop. A newer resolve landing in that hop must still win.
+// The cache delivers on the main thread and checks staleness there, so the
+// widget applies the result in the same delivery with no hop of its own.
 TEST_CASE_METHOD(PrintStatusIdleThumbHistoryFixture,
-                 "PrintStatusWidget: a load superseded during its apply hop cannot overwrite",
+                 "PrintStatusWidget: an async idle load applies in the delivery that carries it",
                  "[print_status_widget][idle_thumb][thumbnail]") {
     auto& cache = get_thumbnail_cache();
     const std::string key = head_thumbnail_key();
@@ -553,7 +551,40 @@ TEST_CASE_METHOD(PrintStatusIdleThumbHistoryFixture,
     widget.attach(container, test_screen());
     process_lvgl(200);
 
-    const helix::ThumbnailTarget target_a = size_thumb(container, 100, 100);
+    const helix::ThumbnailTarget target = size_thumb(container, 100, 100);
+    plant_cached_png(cache, key);
+    set_moonraker_api(api_.get());
+    auto& queue = helix::ui::UpdateQueue::instance();
+    queue.drain();
+
+    PrintStatusWidgetTestAccess::reset_to_idle(widget);
+    REQUIRE(subject_value() == BENCHY_PATH);
+    REQUIRE(park_pool_result());
+    const std::string path = cached_bin(cache, key, target);
+    REQUIRE_FALSE(path.empty());
+
+    queue.drain();
+    CHECK(subject_value() == path);
+    CHECK(get_idle_thumb_src(container) == path);
+    CHECK(helix::ui::UpdateQueueTestAccess::queue_empty(queue));
+
+    widget.detach();
+    cache.invalidate(key);
+}
+
+TEST_CASE_METHOD(PrintStatusIdleThumbHistoryFixture,
+                 "PrintStatusWidget: an async idle load landing after detach publishes nothing",
+                 "[print_status_widget][idle_thumb][thumbnail]") {
+    auto& cache = get_thumbnail_cache();
+    const std::string key = head_thumbnail_key();
+    cache.invalidate(key);
+
+    PrintStatusWidget widget;
+    lv_obj_t* container = create_mock_print_card(test_screen());
+    widget.attach(container, test_screen());
+    process_lvgl(200);
+
+    const helix::ThumbnailTarget target = size_thumb(container, 100, 100);
     plant_cached_png(cache, key);
     set_moonraker_api(api_.get());
     auto& queue = helix::ui::UpdateQueue::instance();
@@ -561,26 +592,12 @@ TEST_CASE_METHOD(PrintStatusIdleThumbHistoryFixture,
 
     PrintStatusWidgetTestAccess::reset_to_idle(widget);
     REQUIRE(park_pool_result());
-    const std::string path_a = cached_bin(cache, key, target_a);
-    REQUIRE_FALSE(path_a.empty());
-
-    // A's delivery passes the staleness check and queues its apply.
-    queue.drain();
-    REQUIRE_FALSE(helix::ui::UpdateQueueTestAccess::queue_empty(queue));
-
-    // B resolves synchronously from cache in between.
-    const helix::ThumbnailTarget target_b = size_thumb(container, 900, 900);
-    const auto planted_b =
-        helix::ThumbnailProcessor::instance().process_sync(TINY_PNG, key, target_b);
-    REQUIRE(planted_b.success);
-    PrintStatusWidgetTestAccess::reset_to_idle(widget);
-    REQUIRE(subject_value() == planted_b.output_path);
-
-    queue.drain();
-    CHECK(subject_value() == planted_b.output_path);
-    CHECK(get_idle_thumb_src(container) == planted_b.output_path);
+    REQUIRE_FALSE(cached_bin(cache, key, target).empty());
 
     widget.detach();
+    queue.drain();
+    CHECK(subject_value() == BENCHY_PATH);
+
     cache.invalidate(key);
 }
 
