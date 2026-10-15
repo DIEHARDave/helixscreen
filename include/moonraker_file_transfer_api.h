@@ -125,6 +125,10 @@ class MoonrakerFileTransferAPI : public helix::ITransfersAPI {
                                StringCallback on_success, ErrorCallback on_error,
                                CancelFlag cancelled = nullptr) override;
 
+    void download_file_range(const std::string& root, const std::string& path, uint64_t offset,
+                             size_t len, StringCallback on_success, ErrorCallback on_error,
+                             CancelFlag cancelled = nullptr) override;
+
     /**
      * @brief Download a file directly to disk (streaming, low memory)
      *
@@ -150,6 +154,7 @@ class MoonrakerFileTransferAPI : public helix::ITransfersAPI {
     /// reads suffix ranges; the ESP32 lane does neither.
     bool supports_local_copies() const override;
     bool supports_tail_reads() const override;
+    bool supports_range_reads() const override;
 
     /**
      * @brief Download a thumbnail image and cache it locally

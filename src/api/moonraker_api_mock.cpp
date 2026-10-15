@@ -450,21 +450,39 @@ void MoonrakerFileTransferAPIMock::download_file_partial(const std::string& root
                                                          StringCallback on_success,
                                                          ErrorCallback on_error,
                                                          CancelFlag /*cancelled*/) {
-    spdlog::debug("[MoonrakerAPIMock] download_file_partial: root='{}', path='{}', max_bytes={}",
-                  root, path, max_bytes);
+    read_range(root, path, 0, max_bytes, "download_file_partial", std::move(on_success),
+               std::move(on_error));
+}
+
+void MoonrakerFileTransferAPIMock::download_file_range(const std::string& root,
+                                                       const std::string& path, uint64_t offset,
+                                                       size_t len, StringCallback on_success,
+                                                       ErrorCallback on_error,
+                                                       CancelFlag /*cancelled*/) {
+    ++range_reads_;
+    read_range(root, path, offset, len, "download_file_range", std::move(on_success),
+               std::move(on_error));
+}
+
+void MoonrakerFileTransferAPIMock::read_range(const std::string& root, const std::string& path,
+                                              uint64_t offset, size_t len, const char* op,
+                                              StringCallback on_success, ErrorCallback on_error) {
+    spdlog::debug("[MoonrakerAPIMock] {}: root='{}', path='{}', {} bytes at {}", op, root, path,
+                  len, offset);
 
     // Config root: serve HELIX_MOCK_PLUGINS_DIR and the injected config root by full path,
-    // mirroring the real partial download's head-range contract.
+    // mirroring the real ranged download's contract.
     const ConfigRootFile config = lookup_config_root(root, path);
     if (config.owned) {
         if (!config.content) {
             if (on_error)
-                on_error(MoonrakerError::file_not_found("download_file_partial",
-                                                        "Mock config file not found: " + path));
+                on_error(MoonrakerError::file_not_found(op, "Mock config file not found: " + path));
             return;
         }
         if (on_success)
-            on_success(config.content->substr(0, max_bytes));
+            on_success(offset < config.content->size()
+                           ? config.content->substr(static_cast<size_t>(offset), len)
+                           : std::string());
         return;
     }
 
@@ -477,24 +495,25 @@ void MoonrakerFileTransferAPIMock::download_file_partial(const std::string& root
     if (local_path.empty()) {
         spdlog::warn("[MoonrakerAPIMock] File not found in test directories: {}", filename);
         if (on_error) {
-            MoonrakerError err = MoonrakerError::file_not_found("download_file_partial",
-                                                                "Mock file not found: " + filename);
-            on_error(err);
+            on_error(MoonrakerError::file_not_found(op, "Mock file not found: " + filename));
         }
         return;
     }
 
-    // Read up to max_bytes from the local file
+    // Read up to len bytes from offset in the local file
     std::ifstream file(local_path, std::ios::binary);
     if (file) {
         std::string content;
-        content.resize(max_bytes);
-        file.read(&content[0], static_cast<std::streamsize>(max_bytes));
-        content.resize(static_cast<size_t>(file.gcount()));
+        file.seekg(static_cast<std::streamoff>(offset), std::ios::beg);
+        if (file) {
+            content.resize(len);
+            file.read(&content[0], static_cast<std::streamsize>(len));
+            content.resize(static_cast<size_t>(file.gcount()));
+        }
         file.close();
 
-        spdlog::debug("[MoonrakerAPIMock] Partial download {} ({} of {} bytes)", filename,
-                      content.size(), max_bytes);
+        spdlog::debug("[MoonrakerAPIMock] Ranged read {} ({} of {} bytes at {})", filename,
+                      content.size(), len, offset);
 
         if (on_success) {
             on_success(content);
@@ -502,9 +521,7 @@ void MoonrakerFileTransferAPIMock::download_file_partial(const std::string& root
     } else {
         spdlog::error("[MoonrakerAPIMock] Failed to read file: {}", local_path);
         if (on_error) {
-            MoonrakerError err = MoonrakerError::file_not_found(
-                "download_file_partial", "Failed to read test file: " + filename);
-            on_error(err);
+            on_error(MoonrakerError::file_not_found(op, "Failed to read test file: " + filename));
         }
     }
 }

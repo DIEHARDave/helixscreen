@@ -503,10 +503,27 @@ class ITransfersAPI {
                                     size_t max_bytes, StringCallback on_success,
                                     ErrorCallback on_error) = 0;
 
+    /// Download @p len bytes of a file starting at @p offset (HTTP byte range):
+    /// how a ZIP entry is read out of an archive on the printer without
+    /// fetching the archive.
+    ///
+    /// Hands on exactly the bytes from @p offset, fewer when the file ends
+    /// first. A server that ignores Range and sends the whole file still
+    /// yields the right bytes: the leading @p offset are skipped and the
+    /// transfer stops once @p len have arrived.
+    virtual void download_file_range(const std::string& root, const std::string& path,
+                                     uint64_t offset, size_t len, StringCallback on_success,
+                                     ErrorCallback on_error, CancelFlag cancelled = nullptr) = 0;
+
     virtual void download_file_to_path(const std::string& root, const std::string& path,
                                        const std::string& dest_path, StringCallback on_success,
                                        ErrorCallback on_error,
                                        ProgressCallback on_progress = nullptr) = 0;
+
+    /// Whether download_file_range() can fetch bytes from inside a file.
+    virtual bool supports_range_reads() const {
+        return true;
+    }
 
     /// Whether download_file_to_path() can write a local copy. A transport with
     /// nowhere to keep one answers false, and callers skip the request.

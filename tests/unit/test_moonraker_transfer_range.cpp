@@ -343,6 +343,52 @@ TEST_CASE("range-honouring 206 responses pass through unclamped", "[api][transfe
     REQUIRE(out.body == payload.substr(0, PARTIAL_BYTES));
 }
 
+TEST_CASE("a ranged download returns the bytes at the offset whether or not the server slices",
+          "[api][transfer][range]") {
+    const std::string payload = make_payload(PAYLOAD_SIZE);
+    const bool honour = GENERATE(true, false);
+    CAPTURE(honour);
+    RangeResponder server(honour, payload);
+    TransferHarness harness(server.base_url());
+
+    // Offsets off the payload's 256-byte period, one inside the first body
+    // chunk and one several chunks in, so a skipped or misplaced skip shows.
+    const uint64_t offset = GENERATE(uint64_t{12345}, uint64_t{40001});
+    CAPTURE(offset);
+    const auto out = await([&](auto ok, auto err) {
+        harness.api->download_file_range("gcodes", "a.gcode.3mf", offset, 3000, ok, err);
+    });
+
+    REQUIRE(out.ok);
+    REQUIRE(out.body.size() == 3000);
+    CHECK(out.body == payload.substr(static_cast<size_t>(offset), 3000));
+}
+
+TEST_CASE("a ranged download that runs past the end returns what the file has",
+          "[api][transfer][range]") {
+    const std::string payload = make_payload(PAYLOAD_SIZE);
+    const bool honour = GENERATE(true, false);
+    CAPTURE(honour);
+    RangeResponder server(honour, payload);
+    TransferHarness harness(server.base_url());
+
+    const auto out = await([&](auto ok, auto err) {
+        harness.api->download_file_range("gcodes", "a.gcode.3mf", PAYLOAD_SIZE - 100, 1000, ok,
+                                         err);
+    });
+    REQUIRE(out.ok);
+    CHECK(out.body == payload.substr(PAYLOAD_SIZE - 100));
+}
+
+TEST_CASE("a ranged download of nothing is refused before it is sent", "[api][transfer][range]") {
+    RangeResponder server(true, make_payload(1024));
+    TransferHarness harness(server.base_url());
+    const auto out = await([&](auto ok, auto err) {
+        harness.api->download_file_range("gcodes", "a.gcode.3mf", 10, 0, ok, err);
+    });
+    CHECK_FALSE(out.ok);
+}
+
 TEST_CASE("transfer callbacks run on the executor, not the caller", "[api][transfer][range]") {
     const std::string payload = make_payload(1024);
     RangeResponder server(/*honour_range=*/true, payload);
