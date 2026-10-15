@@ -215,9 +215,12 @@
                    fixed 44: this section is height="100%" and centers its
                    overflow, so 18 too-tall pixels at Micro get split evenly
                    and slice both the dropdown above and this button's own
-                   label (#1192). -->
+                   label (#1192). No vertical padding: the label centers
+                   itself, and at Micro the button is too short to fit it
+                   inside the default padding. -->
               <ui_button name="btn_start_stop"
-                         width="100%" height="#button_height" bind_text="ams_env_overlay_start_stop_text">
+                         width="100%" height="#button_height" style_pad_ver="0"
+                         bind_text="ams_env_overlay_start_stop_text">
                 <event_cb trigger="clicked" callback="on_ams_env_start_stop_clicked"/>
               </ui_button>
             </lv_obj>
