@@ -618,6 +618,7 @@ void DisplayManager::shutdown() {
 
     m_sleep.abandon_lvgl_state();
     m_brightness_reassert_timer.reset();
+    m_resize_debounce_timer.reset();
 
     // Release backends
     m_backlight.reset();
@@ -1200,7 +1201,9 @@ void DisplayManager::settle_display_rotation(lv_display_rotation_t rot, int phys
 
 void DisplayManager::resize_timer_cb(lv_timer_t* timer) {
     auto* self = static_cast<DisplayManager*>(lv_timer_get_user_data(timer));
-    if (!self || self->m_shutting_down) {
+    // One-shot: LVGL deletes it after this call on the paths that do not delete it here.
+    self->m_resize_debounce_timer.release();
+    if (self->m_shutting_down) {
         return;
     }
 
@@ -1210,7 +1213,6 @@ void DisplayManager::resize_timer_cb(lv_timer_t* timer) {
     if (self->m_resize_fanout_suspended) {
         spdlog::debug("[DisplayManager] Resize fanout suspended - dropping pending debounce");
         lv_timer_delete(timer);
-        self->m_resize_debounce_timer = nullptr;
         return;
     }
 
@@ -1227,7 +1229,6 @@ void DisplayManager::resize_timer_cb(lv_timer_t* timer) {
 
     // Delete one-shot timer
     lv_timer_delete(timer);
-    self->m_resize_debounce_timer = nullptr;
 }
 
 void DisplayManager::resize_event_cb(lv_event_t* e) {
@@ -1255,11 +1256,11 @@ void DisplayManager::resize_event_cb(lv_event_t* e) {
 
         // Reset or create debounce timer
         if (self->m_resize_debounce_timer) {
-            lv_timer_reset(self->m_resize_debounce_timer);
+            lv_timer_reset(self->m_resize_debounce_timer.get());
         } else {
-            self->m_resize_debounce_timer =
-                lv_timer_create(resize_timer_cb, RESIZE_DEBOUNCE_MS, self);
-            lv_timer_set_repeat_count(self->m_resize_debounce_timer, 1); // One-shot
+            self->m_resize_debounce_timer.reset(
+                lv_timer_create(resize_timer_cb, RESIZE_DEBOUNCE_MS, self));
+            lv_timer_set_repeat_count(self->m_resize_debounce_timer.get(), 1); // One-shot
         }
     }
 }
