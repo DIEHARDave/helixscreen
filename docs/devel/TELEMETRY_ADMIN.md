@@ -553,7 +553,7 @@ The workflow pulls the last 28 days of telemetry with `HELIX_TELEMETRY_ADMIN_KEY
 
 ### Release check
 
-`scripts/release-health.sh` compares the newest beta of the `VERSION.txt` release with the current stable in telemetry and prints a table plus a `WARN` line per trailing metric. `scripts/release-gate.sh fast` runs it; see `docs/devel/RELEASE_PROCESS.md`. It is informational, always exits 0, and prints one line saying why when there is nothing to compare. It reads the admin key from `HELIX_TELEMETRY_ADMIN_KEY` or `.env.telemetry`.
+`scripts/release-health.sh` compares the newest prerelease of the `VERSION.txt` release seen in the adoption list with the current stable in telemetry and prints a table plus a `WARN` line per metric that is past its threshold. `scripts/release-gate.sh fast` runs it and its row shows the warning count (`PASS ... (N warnings)`); it never fails the gate, and prints one line saying why when there is nothing to compare. It reads the admin key from `HELIX_TELEMETRY_ADMIN_KEY` or `.env.telemetry`. See `docs/devel/RELEASE_PROCESS.md`.
 
 ### Operating it
 
@@ -579,9 +579,9 @@ The response carries `findings`, `issues` (each `created`, `commented`, `reopene
 
 **First run.** Deploy, then dry-run `weekly` and `daily` and read the issues and email they would produce. Fix thresholds if they are noisy. Set the secrets, run `weekly&dry=0` once, and check the issues, the email and the stored report. Leave `TELEMETRY_PRINTER_ISSUES_LIVE` unset until a manual `workflow_dispatch` dry run of the printer workflow looks right.
 
-**Re-running a week.** The weekly run returns a stored report unchanged (`reused: true`) and does not file, comment or email again. To regenerate a week, delete `reports/<YYYY-Www>.json` from the bucket first (`wrangler r2 object delete helixscreen-telemetry/reports/<YYYY-Www>.json`), then run `weekly&dry=0`. The week is the ISO week before the run's date.
+**Re-running a week.** The weekly run returns a stored report unchanged (`reused: true`) and does not file, comment or email again. To regenerate a week, delete its report first, from `server/telemetry-worker` (the bucket is in the EU jurisdiction): `npx wrangler r2 object delete helixscreen-telemetry/reports/<YYYY-Www>.json --remote -J eu`. Then run `weekly&dry=0`. The week is the ISO week before the run's date.
 
-**Silencing a finding.** Close its issue. The Worker will not touch a closed issue until the finding appears again, then it reopens it with a comment. To silence an alert, there is no switch: it repeats at most every `ALERT_REPEAT_DAYS`, and the real lever is the threshold. A closed printer issue stays closed.
+**Silencing a finding.** Closing a telemetry issue only silences a finding that has gone away: while the finding is still over its threshold, the next weekly run reopens the issue with a comment. To silence a persistent finding, fix it or raise its threshold in `thresholds.ts`. Alerts have no switch; each repeats at most every `ALERT_REPEAT_DAYS`. Printer-database issues are the exception: a closed one stays closed.
 
 **Where things live.** State and reports are in the `helixscreen-telemetry` R2 bucket under `loop/` and `reports/`. Cron and run failures log with a `[loop]` prefix in the Worker logs (`wrangler tail`).
 
