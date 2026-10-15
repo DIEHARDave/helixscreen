@@ -34,6 +34,9 @@ setup() {
 
     # Mock systemctl to prevent restarting real services (e.g., polkit) on dev machines
     mock_command "systemctl" ""
+    # ensure-polkit-rule.sh picks .rules or .pkla from `pkaction --version`; the
+    # host's polkit (0.105 on Ubuntu 22.04 runners) must not choose for the test.
+    mock_command "pkaction" "pkaction version 124"
 }
 
 # Helper: create a SUDO wrapper that rewrites system paths to tmpdir
@@ -46,17 +49,11 @@ setup_sudo_redirect() {
 new_args=""
 for arg in "$@"; do
     case "$arg" in
-        /etc/udev/rules.d/*)
-            basename="${arg##*/}"
-            arg="${BATS_TEST_TMPDIR}/etc/udev/rules.d/${basename}"
-            ;;
-        /etc/polkit-1/localauthority/50-local.d/*)
-            basename="${arg##*/}"
-            arg="${BATS_TEST_TMPDIR}/etc/polkit-1/localauthority/50-local.d/${basename}"
-            ;;
-        /etc/polkit-1/rules.d/*)
-            basename="${arg##*/}"
-            arg="${BATS_TEST_TMPDIR}/etc/polkit-1/rules.d/${basename}"
+        # The rule directories themselves too: `$SUDO test -d /etc/polkit-1/rules.d`
+        # must ask the sandbox, not whether this host happens to run polkit.
+        /etc/udev/rules.d | /etc/udev/rules.d/* | /etc/polkit-1/rules.d | /etc/polkit-1/rules.d/* | \
+        /etc/polkit-1/localauthority/50-local.d | /etc/polkit-1/localauthority/50-local.d/*)
+            arg="${BATS_TEST_TMPDIR}${arg}"
             ;;
     esac
     new_args="$new_args \"$arg\""
