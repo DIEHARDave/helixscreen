@@ -1317,7 +1317,9 @@ Two kinds of remote machine help here, and both are optional:
   directory whose `build/` persists, so a warm run rebuilds only what changed.
   With one configured, `make full-test-run` runs the C++ sweep there while bats
   runs locally whenever the link makes that pay (`TEST_HOST=1` forces it,
-  `TEST_HOST=0` or `HELIX_TEST_HOST_AUTO=0` keeps both local).
+  `TEST_HOST=0` or `HELIX_TEST_HOST_AUTO=0` keeps both local). `make land-gate`
+  makes the same choice for its two C++ sweeps (`scripts/lib/sweep_location.sh`
+  holds it for both gates).
 - a **remote build host** builds natively or for the cross targets:
   `make remote-native`, `make remote-test`, `make remote-pi` and siblings
   (`mk/remote.mk`, `scripts/remote-build.sh`).
@@ -1350,14 +1352,14 @@ host simply runs both suites locally, without a word.
 
 | Variable | Used by | Meaning (default) |
 |----------|---------|-------------------|
-| `HELIX_TEST_HOST` | `test-host-run.sh`, `full-test-run`, `helix-claim resources`, teardown | ssh name of the test host (none) |
+| `HELIX_TEST_HOST` | `test-host-run.sh`, `full-test-run`, `land-gate`, `helix-claim resources`, teardown | ssh name of the test host (none) |
 | `HELIX_TEST_CONTAINER` | same | container name (`helix-test`) |
 | `HELIX_TEST_TREES_HOST` | same | mirror root on the host, relative to the ssh user's home unless absolute (`helix-test/trees`) |
 | `HELIX_TEST_TREES` | same | the same directory inside the container (`/work/trees`) |
 | `HELIX_TEST_CCACHE` | same | ccache dir inside the container (`/work/ccache`) |
 | `HELIX_TEST_WORKDIR` | `test-host-run.sh --commit`, `mutate` | git checkout inside the container (`/work/helixscreen`) |
 | `HELIX_TEST_LOCK_DIR` | `test-host-run.sh` | lock directory on the host (`/tmp`) |
-| `HELIX_TEST_HOST_AUTO` | `full-test-run` | `0` keeps an unforced gate local even with a test host configured (`1`) |
+| `HELIX_TEST_HOST_AUTO` | `full-test-run`, `land-gate` | `0` keeps an unforced gate local even with a test host configured (`1`) |
 | `REMOTE_HOST`, `REMOTE_USER` | `mk/remote.mk`, `remote-build.sh` | remote build host and optional user (none) |
 | `REMOTE_DIR` | `mk/remote.mk` | rsync target on the remote for the cross targets (none). `remote-sync` rsyncs `--delete` into it, so give it a directory of its own, never a checkout you work in |
 | `REMOTE_BUILD_DIR` | `remote-build.sh` | its own clone on the remote (`~/helix-remote`), which it hard-resets and cleans every run. It works only in a directory it created (marked `.helix-remote-build`) and refuses any other |
