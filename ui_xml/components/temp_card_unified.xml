@@ -10,12 +10,21 @@
          style defined there resolves #space_xs to nothing. -->
     <style name="temp_row_gap_standard" pad_column="#space_xs"/>
     <style name="temp_row_gap_tiny" pad_column="#space_md"/>
+    <!-- Status column: glyph plus the widest duty ("100%"). Below MEDIUM the
+         card is narrow and the label column is hidden, so the status column
+         takes a larger share. -->
+    <style name="temp_status_col_compact"/>
+    <style name="temp_status_col_wide" width="22%"/>
   </styles>
   <view name="temp_card_unified"
         extends="ui_card" width="100%" height="content" style_radius="#border_radius" flex_flow="column"
         style_pad_top="#space_sm" style_pad_bottom="#space_sm" style_pad_left="#space_md" style_pad_right="#space_md"
         style_pad_gap="#space_md" clickable="true">
     <event_cb trigger="clicked" callback="on_temp_card_clicked"/>
+
+    <!-- Every row splits into the same columns: icon, label (MEDIUM+), temps
+         left-aligned in the remainder, and a status column whose width is
+         reserved even when it shows nothing, so values line up row to row. -->
 
     <!-- Nozzle row -->
     <lv_obj name="nozzle_row"
@@ -26,13 +35,17 @@
       <!-- Icon is always shown; the text label joins it at MEDIUM+ breakpoints -->
       <nozzle_icon size="sm"/>
       <!-- Text label for MEDIUM+ breakpoints -->
-      <text_small text="Nozzle" clickable="false" event_bubble="true">
+      <text_small width="27%" text="Nozzle" long_mode="dots" clickable="false" event_bubble="true">
         <bind_flag_if_lt subject="ui_breakpoint" flag="hidden" ref_value="3"/>
       </text_small>
       <temp_display name="nozzle_temp"
                     size="md" show_target="true" bind_current="extruder_temp" bind_target="extruder_target"
-                    flex_grow="1" clickable="false" event_bubble="true"/>
-      <heater_status name="nozzle_status" state_subject="print_nozzle_status_state" duty_subject="print_nozzle_status"/>
+                    flex_grow="1" style_flex_main_place="start" clickable="false" event_bubble="true"/>
+      <lv_obj height="content" style_pad_all="0" scrollable="false" clickable="false" event_bubble="true">
+        <bind_style_if_lt name="temp_status_col_compact" subject="ui_breakpoint" ref_value="3"/>
+        <bind_style_if_ge name="temp_status_col_wide" subject="ui_breakpoint" ref_value="3"/>
+        <heater_status name="nozzle_status" state_subject="print_nozzle_status_state" duty_subject="print_nozzle_status"/>
+      </lv_obj>
     </lv_obj>
 
     <!-- Bed row -->
@@ -44,13 +57,17 @@
       <!-- Icon is always shown; the text label joins it at MEDIUM+ breakpoints -->
       <heater_icon src="radiator" glyph_name="bed_icon_glyph" size="sm"/>
       <!-- Text label for MEDIUM+ breakpoints -->
-      <text_small text="Bed" clickable="false" event_bubble="true">
+      <text_small width="27%" text="Bed" long_mode="dots" clickable="false" event_bubble="true">
         <bind_flag_if_lt subject="ui_breakpoint" flag="hidden" ref_value="3"/>
       </text_small>
       <temp_display name="bed_temp"
                     size="md" show_target="true" bind_current="bed_temp" bind_target="bed_target" flex_grow="1"
-                    clickable="false" event_bubble="true"/>
-      <heater_status name="bed_status" state_subject="print_bed_status_state" duty_subject="print_bed_status"/>
+                    style_flex_main_place="start" clickable="false" event_bubble="true"/>
+      <lv_obj height="content" style_pad_all="0" scrollable="false" clickable="false" event_bubble="true">
+        <bind_style_if_lt name="temp_status_col_compact" subject="ui_breakpoint" ref_value="3"/>
+        <bind_style_if_ge name="temp_status_col_wide" subject="ui_breakpoint" ref_value="3"/>
+        <heater_status name="bed_status" state_subject="print_bed_status_state" duty_subject="print_bed_status"/>
+      </lv_obj>
     </lv_obj>
 
     <!-- Chamber row (hidden when no chamber sensor/heater) -->
@@ -63,14 +80,19 @@
       <!-- Icon is always shown; the text label joins it at MEDIUM+ breakpoints -->
       <heater_icon src="fridge_industrial" glyph_name="chamber_icon_glyph" size="sm"/>
       <!-- Text label for MEDIUM+ breakpoints -->
-      <text_small text="Chamber" clickable="false" event_bubble="true">
+      <text_small width="27%" text="Chamber" long_mode="dots" clickable="false" event_bubble="true">
         <bind_flag_if_lt subject="ui_breakpoint" flag="hidden" ref_value="3"/>
       </text_small>
       <temp_display name="chamber_temp_display"
                     size="md" show_target="true" bind_current="chamber_temp" bind_target="chamber_effective_target"
-                    bind_mode="chamber_mode" flex_grow="1" clickable="false" event_bubble="true"/>
-      <heater_status name="chamber_status"
-                     state_subject="print_chamber_status_state" duty_subject="print_chamber_status"/>
+                    bind_mode="chamber_mode" flex_grow="1" style_flex_main_place="start" clickable="false"
+                    event_bubble="true"/>
+      <lv_obj height="content" style_pad_all="0" scrollable="false" clickable="false" event_bubble="true">
+        <bind_style_if_lt name="temp_status_col_compact" subject="ui_breakpoint" ref_value="3"/>
+        <bind_style_if_ge name="temp_status_col_wide" subject="ui_breakpoint" ref_value="3"/>
+        <heater_status name="chamber_status"
+                       state_subject="print_chamber_status_state" duty_subject="print_chamber_status"/>
+      </lv_obj>
     </lv_obj>
 
   </view>
