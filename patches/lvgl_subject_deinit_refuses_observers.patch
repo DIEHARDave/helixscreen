@@ -56,14 +56,37 @@ diff --git a/src/core/lv_observer.c b/src/core/lv_observer.c
      lv_observer_t * observer = lv_ll_ins_tail(&(subject->subs_ll));
      LV_ASSERT_MALLOC(observer);
      if(observer == NULL) return NULL;
+@@ -918,6 +932,9 @@
+     lv_observer_t * observable = bind_to_bitfield(subject, obj, obj_state_observer_cb, LV_STATE_CHECKED, 0, true,
+                                                   FLAG_COND_EQ);
+ 
++    /* A refused bind must not write the widget's state back into a subject it does not observe. */
++    if(observable == NULL) return NULL;
++
+     lv_obj_add_event_cb(obj, obj_value_changed_event_cb, LV_EVENT_VALUE_CHANGED, subject);
+ 
+     return observable;
+@@ -1058,6 +1075,10 @@
+     p->cond = cond;
+ 
+     lv_observer_t * observable = lv_subject_add_observer_obj(subject, cb, obj, p);
++    if(observable == NULL) {
++        lv_free(p);
++        return NULL;
++    }
+     observable->auto_free_user_data = 1;
+ 
+     return observable;
 diff --git a/src/core/lv_obj_style.c b/src/core/lv_obj_style.c
 --- a/src/core/lv_obj_style.c
 +++ b/src/core/lv_obj_style.c
-@@ -707,6 +707,11 @@
+@@ -707,6 +707,13 @@
      p->value = ref_value;
  
      lv_observer_t * observable = lv_subject_add_observer_obj(subject, bind_style_observer_cb, obj, p);
 +    if(observable == NULL) {
++        /* Undoes the add above. lv_obj_remove_style() drops every copy of this style at
++         * this selector, so a second bind of the same style there loses it too. */
 +        lv_obj_remove_style(obj, style, selector);
 +        lv_free(p);
 +        return NULL;
@@ -71,7 +94,7 @@ diff --git a/src/core/lv_obj_style.c b/src/core/lv_obj_style.c
      observable->auto_free_user_data = 1;
      return observable;
  }
-@@ -734,6 +739,10 @@
+@@ -734,6 +741,10 @@
      p->selector = selector;
  
      lv_observer_t * observable = lv_subject_add_observer_obj(subject, bind_style_prop_observer_cb, obj, p);

@@ -15,6 +15,7 @@
 #include "ui_observer_guard.h"
 
 #include "../lvgl_test_fixture.h"
+#include "../test_fixtures.h"
 #include "observer_factory.h"
 
 #include <string>
@@ -201,6 +202,20 @@ TEST_CASE_METHOD(LVGLTestFixture, "Style and span binders survive a deinitialize
     SECTION("lv_obj_bind_style_prop") {
         CHECK(lv_obj_bind_style_prop(obj, LV_STYLE_BG_OPA, LV_PART_MAIN, &subject) == nullptr);
     }
+    SECTION("lv_obj_bind_flag_if_eq") {
+        CHECK(lv_obj_bind_flag_if_eq(obj, &subject, LV_OBJ_FLAG_HIDDEN, 1) == nullptr);
+        CHECK_FALSE(lv_obj_has_flag(obj, LV_OBJ_FLAG_HIDDEN));
+    }
+    SECTION("lv_obj_bind_state_if_eq") {
+        CHECK(lv_obj_bind_state_if_eq(obj, &subject, LV_STATE_DISABLED, 1) == nullptr);
+        CHECK_FALSE(lv_obj_has_state(obj, LV_STATE_DISABLED));
+    }
+    SECTION("lv_obj_bind_checked") {
+        const uint32_t events_before = lv_obj_get_event_count(obj);
+        CHECK(lv_obj_bind_checked(obj, &subject) == nullptr);
+        // No write-back handler into a subject the widget does not observe.
+        CHECK(lv_obj_get_event_count(obj) == events_before);
+    }
     SECTION("lv_spangroup_bind_span_text") {
         lv_obj_t* group = lv_spangroup_create(test_screen());
         lv_span_t* span = lv_spangroup_add_span(group);
@@ -211,4 +226,63 @@ TEST_CASE_METHOD(LVGLTestFixture, "Style and span binders survive a deinitialize
 
     lv_obj_delete(obj);
     lv_style_reset(&style);
+}
+
+namespace {
+
+constexpr const char* BIND_STYLE_XML = R"(<component>
+  <styles>
+    <style name="deinit_probe_style" bg_opa="77"/>
+  </styles>
+  <view name="root" extends="lv_obj">
+    <lv_obj name="target">
+      <bind_style_if_eq name="deinit_probe_style" subject="deinit_probe_subject" ref_value="0"/>
+    </lv_obj>
+  </view>
+</component>)";
+
+lv_subject_t& deinit_probe_subject() {
+    static lv_subject_t subject;
+    static bool registered = false;
+    if (!registered) {
+        lv_subject_init_int(&subject, 0);
+        lv_xml_register_subject(nullptr, "deinit_probe_subject", &subject);
+        registered = true;
+    }
+    return subject;
+}
+
+lv_obj_t* create_bind_style_probe(lv_obj_t* parent) {
+    static bool registered = false;
+    if (!registered) {
+        REQUIRE(lv_xml_register_component_from_data("deinit_bind_style_probe", BIND_STYLE_XML) ==
+                LV_RESULT_OK);
+        registered = true;
+    }
+    auto* root = static_cast<lv_obj_t*>(lv_xml_create(parent, "deinit_bind_style_probe", nullptr));
+    REQUIRE(root != nullptr);
+    lv_obj_t* target = lv_obj_find_by_name(root, "target");
+    REQUIRE(target != nullptr);
+    return target;
+}
+
+} // namespace
+
+TEST_CASE("XML bind_style_if_eq on a deinitialized subject leaves the style off",
+          "[observer][subject_lifetime][xml][1279]") {
+    XMLTestFixture fixture;
+    lv_subject_t& subject = deinit_probe_subject();
+
+    // The binding applies the style while its subject is live, so the refusal case
+    // below is the one that decides the outcome.
+    lv_subject_init_int(&subject, 0);
+    lv_obj_t* live = create_bind_style_probe(fixture.test_screen());
+    REQUIRE(lv_obj_get_style_bg_opa(live, LV_PART_MAIN) == 77);
+
+    lv_subject_deinit(&subject);
+    lv_obj_t* refused = create_bind_style_probe(fixture.test_screen());
+    CHECK(lv_obj_get_style_bg_opa(refused, LV_PART_MAIN) != 77);
+    CHECK(lv_ll_get_len(&subject.subs_ll) == 0);
+
+    lv_subject_init_int(&subject, 0);
 }
