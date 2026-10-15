@@ -46,3 +46,19 @@ export function deltaEraPlaceholder(era: DeltaEra): string {
 export function formatRate(rate: number | null, digits = 1): string {
   return rate === null ? 'n/a' : `${(rate * 100).toFixed(digits)}%`
 }
+
+/** The filter window as a caption phrase: '30d' is "last 30 days". */
+export function rangeLabel(range: string): string {
+  const days = Number(range.replace(/d$/, ''))
+  if (!Number.isFinite(days) || days <= 0) return range
+  return days === 1 ? 'last day' : `last ${days} days`
+}
+
+/**
+ * What a section shows when its endpoint returned no rows: the filter the
+ * endpoint says it cannot apply, else whether any filter is active.
+ */
+export function emptyPlaceholder(era: DeltaEra | null, activeFilters: FilterKey[]): string {
+  if (era?.filter_not_applicable) return deltaEraPlaceholder(era)
+  return activeFilters.length > 0 ? 'No data for this filter' : 'No data in this range'
+}

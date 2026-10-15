@@ -1,8 +1,48 @@
-import type { ChartOptions } from 'chart.js'
+import type { ActiveElement, Chart, ChartEvent, ChartOptions } from 'chart.js'
+import { formatRate } from './format'
 
 export const horizontalBarOpts: ChartOptions<'bar'> = {
   indexAxis: 'y',
   scales: { y: { ticks: { autoSkip: false } } }
+}
+
+const AXIS_STYLE = {
+  ticks: { color: '#94a3b8' },
+  grid: { color: 'rgba(45, 51, 72, 0.5)' }
+}
+
+/** An axis whose values are 0-1 ratios, labelled as percentages. */
+export function rateAxis(digits = 0) {
+  return {
+    ...AXIS_STYLE,
+    min: 0,
+    ticks: { ...AXIS_STYLE.ticks, callback: (value: string | number) => formatRate(Number(value), digits) }
+  }
+}
+
+function isPlainObject(v: unknown): v is Record<string, unknown> {
+  return typeof v === 'object' && v !== null && Object.getPrototypeOf(v) === Object.prototype
+}
+
+/**
+ * Overlays `over` on `base`: plain objects merge key by key, anything else
+ * (arrays, functions, numbers) from `over` replaces what `base` had. A chart
+ * that sets one tooltip callback keeps the theme's tooltip colors.
+ */
+export function mergeOptions<T>(base: T, over: unknown): T {
+  if (!isPlainObject(base) || !isPlainObject(over)) return (over === undefined ? base : over) as T
+  const out: Record<string, unknown> = { ...base }
+  for (const [key, value] of Object.entries(over)) out[key] = mergeOptions(out[key], value)
+  return out as T
+}
+
+/** A chart.js onClick that reports the element under the pointer; a click on empty space reports nothing. */
+export function selectOnClick(report: (index: number, label: string) => void) {
+  return (evt: ChartEvent, _elements: ActiveElement[], chart: Chart) => {
+    if (!evt.native) return
+    const hit = chart.getElementsAtEventForMode(evt.native, 'nearest', { intersect: true }, true)[0]
+    if (hit) report(hit.index, String(chart.data.labels?.[hit.index] ?? ''))
+  }
 }
 
 // Identical semantics to telemetry-worker/src/versions.ts; change both together.

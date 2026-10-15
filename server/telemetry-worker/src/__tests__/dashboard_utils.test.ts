@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { groupVersions } from '../../../analytics-dashboard/src/utils/versions'
+import { groupVersions, ungrouped } from '../../../analytics-dashboard/src/utils/versions'
+import { mergeOptions, rateAxis } from '../../../analytics-dashboard/src/utils/chart'
+import { emptyPlaceholder, rangeLabel } from '../../../analytics-dashboard/src/utils/format'
 import { canonicalModelKey, canonicalModels, isFilterable } from '../../../analytics-dashboard/src/utils/models'
 import { groupMaterialSets, materialSet } from '../../../analytics-dashboard/src/utils/materials'
 import { barChartHeight, seriesColor, todayUtc, trimPartialDays } from '../../../analytics-dashboard/src/utils/series'
@@ -139,5 +141,60 @@ describe('todayUtc', () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-10-15T23:59:59Z'))
     expect(todayUtc()).toBe('2026-10-15')
+  })
+})
+
+describe('ungrouped', () => {
+  it('gives each raw value its own filterable row', () => {
+    expect(ungrouped([{ name: 'pi', count: 4 }])).toEqual([
+      { key: 'pi', label: 'pi', count: 4, members: ['pi'], expandable: false }
+    ])
+  })
+})
+
+describe('rangeLabel', () => {
+  it('names the window', () => {
+    expect(rangeLabel('30d')).toBe('last 30 days')
+    expect(rangeLabel('1d')).toBe('last day')
+    expect(rangeLabel('bogus')).toBe('bogus')
+  })
+})
+
+describe('emptyPlaceholder', () => {
+  const era = { delta_era_devices: 3, filter_not_applicable: null }
+  it('names a filter the endpoint cannot apply', () => {
+    expect(emptyPlaceholder({ ...era, filter_not_applicable: 'model' }, ['model'])).toBe(
+      'Not reported per printer model'
+    )
+  })
+  it('blames an active filter when the endpoint does not say', () => {
+    expect(emptyPlaceholder(null, ['board'])).toBe('No data for this filter')
+    expect(emptyPlaceholder(era, ['model'])).toBe('No data for this filter')
+  })
+  it('blames the range when no filter is active', () => {
+    expect(emptyPlaceholder(null, [])).toBe('No data in this range')
+  })
+})
+
+describe('mergeOptions', () => {
+  it('merges nested objects and lets the override replace leaves', () => {
+    const base = { plugins: { tooltip: { backgroundColor: '#111', borderWidth: 1 } }, scales: { x: { min: 0 } } }
+    const over = { plugins: { tooltip: { borderWidth: 2 } }, scales: { x: { min: 5 } } }
+    expect(mergeOptions(base, over)).toEqual({
+      plugins: { tooltip: { backgroundColor: '#111', borderWidth: 2 } },
+      scales: { x: { min: 5 } }
+    })
+    expect(base.plugins.tooltip.borderWidth).toBe(1)
+  })
+  it('keeps the base when there is no override and replaces arrays whole', () => {
+    expect(mergeOptions({ a: [1, 2] }, undefined)).toEqual({ a: [1, 2] })
+    expect(mergeOptions({ a: [1, 2] }, { a: [3] })).toEqual({ a: [3] })
+  })
+})
+
+describe('rateAxis', () => {
+  it('labels 0-1 ticks as percentages', () => {
+    expect(rateAxis(1).ticks.callback(0.025)).toBe('2.5%')
+    expect(rateAxis().ticks.callback('0.5')).toBe('50%')
   })
 })

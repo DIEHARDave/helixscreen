@@ -95,3 +95,8 @@ export function groupVersions(
   }
   return out
 }
+
+/** One row per raw value, for a dimension that needs no grouping (platforms, boards). */
+export function ungrouped(rows: { name: string; count: number }[]): Grouped[] {
+  return rows.map((r) => ({ key: r.name, label: r.name, count: r.count, members: [r.name], expandable: false }))
+}
