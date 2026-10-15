@@ -5,8 +5,9 @@
  * @brief Implementation of BeltTensionCalibrator
  *
  * One measure_path() call homes if needed, then sweeps one belt path through
- * IAdvancedAPI::test_belt_resonance(), marshalling every off-thread API
- * callback onto the LVGL thread via lifetime_.bg_cb().
+ * IAdvancedAPI::test_belt_resonance(); settle() homes if needed, then runs the
+ * settling laps. Every off-thread API callback reaches the LVGL thread via
+ * lifetime_.bg_cb().
  */
 
 #include "belt_tension_calibrator.h"
@@ -137,6 +138,80 @@ void BeltTensionCalibrator::measure_path(
                                         on_error(err.message);
                                 }),
                 window);
+        },
+        [this, generation, on_error](const MoonrakerError& err) {
+            if (generation != run_generation_)
+                return;
+            state_.store(State::ERROR);
+            spdlog::error("[BeltTension] Homing failed: {}", err.message);
+            if (on_error)
+                on_error(err.message);
+        });
+}
+
+// ============================================================================
+// settle() - home, then run the settling laps
+// ============================================================================
+
+void BeltTensionCalibrator::settle(BeltSettleInputs inputs, std::function<void()> on_done,
+                                   std::function<void(BeltSettleRefusal)> on_refused,
+                                   BeltErrorCallback on_error) {
+    if (!api_) {
+        spdlog::warn("[BeltTension] settle called without API");
+        if (on_error) {
+            on_error("No printer connection");
+        }
+        return;
+    }
+
+    cancel();
+    const uint32_t generation = ++run_generation_;
+
+    // A G28 homes every axis, so the laps are always planned as homed. Planning
+    // once before homing keeps a refusal from sending anything at all.
+    inputs.xy_homed = true;
+    const BeltSettlePlan plan = plan_belt_settle(inputs);
+    if (plan.refusal != BeltSettleRefusal::NONE) {
+        spdlog::warn("[BeltTension] Settling refused: {}", static_cast<int>(plan.refusal));
+        if (on_refused) {
+            on_refused(plan.refusal);
+        }
+        return;
+    }
+
+    state_.store(State::HOMING);
+    spdlog::info("[BeltTension] Settling belts: {} laps at {:.0f} mm/s, about {:.0f} s",
+                 belt_settle::LAPS, plan.speed_mm_s, plan.seconds);
+
+    ensure_homed_then(
+        api_, lifetime_,
+        [this, generation, plan, on_done, on_error]() {
+            if (generation != run_generation_) {
+                spdlog::debug("[BeltTension] Cancelled while homing; not settling");
+                return;
+            }
+            state_.store(State::SETTLING);
+            api_->execute_gcode(
+                plan.gcode,
+                lifetime_.bg_cb("BeltTensionCalibrator::settle_done",
+                                [this, generation, on_done]() {
+                                    if (generation != run_generation_)
+                                        return;
+                                    state_.store(State::IDLE);
+                                    if (on_done)
+                                        on_done();
+                                }),
+                lifetime_.bg_cb("BeltTensionCalibrator::settle_error",
+                                [this, generation, on_error](const MoonrakerError& err) {
+                                    if (generation != run_generation_)
+                                        return;
+                                    state_.store(State::ERROR);
+                                    spdlog::error("[BeltTension] Settling failed: {}", err.message);
+                                    if (on_error)
+                                        on_error(err.message);
+                                }),
+                plan.timeout_ms, /*silent=*/false, /*on_queued=*/nullptr,
+                /*caller_surfaces_errors=*/true);
         },
         [this, generation, on_error](const MoonrakerError& err) {
             if (generation != run_generation_)
