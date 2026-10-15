@@ -104,6 +104,16 @@ export const useFiltersStore = defineStore('filters', () => {
     else if (plan?.kind === 'drill') return router.push({ query: buildDashQuery(applyDrills(state.value, plan.filters)) })
   }
 
+  /**
+   * Opens another tab with the current filters, each drillable entry applied on
+   * top; `hash` names an element on the target page to scroll to.
+   */
+  function go(router: Router, path: string, entries: [DashFilterKey, Grouped][] = [], hash = '') {
+    const plan = planActivation(entries)
+    const next = plan?.kind === 'drill' ? applyDrills(state.value, plan.filters) : state.value
+    return router.push({ path, query: buildDashQuery({ ...next, expand: [] }), hash })
+  }
+
   function toggleExpand(groupKey: string) {
     const i = expand.value.indexOf(groupKey)
     expand.value =
@@ -133,6 +143,7 @@ export const useFiltersStore = defineStore('filters', () => {
     syncToRoute,
     drill,
     activate,
+    go,
     toggleExpand,
     remove
   }

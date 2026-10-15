@@ -2,7 +2,7 @@ import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { LEGACY_ROUTES, legacyLocation } from '@/utils/urlState'
 import LoginView from '@/views/LoginView.vue'
-import OverviewView from '@/views/OverviewView.vue'
+import HealthView from '@/views/HealthView.vue'
 import PrintsView from '@/views/PrintsView.vue'
 import ReleasesView from '@/views/ReleasesView.vue'
 
@@ -12,8 +12,8 @@ export const router = createRouter({
     { path: '/login', name: 'login', component: LoginView },
     {
       path: '/',
-      name: 'overview',
-      component: OverviewView,
+      name: 'health',
+      component: HealthView,
       meta: { requiresAuth: true }
     },
     {

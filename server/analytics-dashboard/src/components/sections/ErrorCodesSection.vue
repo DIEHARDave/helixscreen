@@ -36,7 +36,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="(row, i) in data.error_codes" :key="i">
+              <tr v-for="(row, i) in data.error_codes" :key="i" :id="errorAnchor(row.code)">
                 <td><span class="badge category">{{ row.category }}</span></td>
                 <td class="mono">{{ row.code }}</td>
                 <td class="mono">{{ row.count.toLocaleString() }}</td>
@@ -107,6 +107,7 @@ import { useDashData } from '@/composables/useDashData'
 import { api } from '@/services/api'
 import { horizontalBarOpts } from '@/utils/chart'
 import { deltaEraPlaceholder } from '@/utils/format'
+import { errorAnchor } from '@/utils/anchors'
 import { rowHint, rowLabel } from '@/utils/drill'
 import { barChartHeight, todayUtc, trimPartialDays } from '@/utils/series'
 import { groupVersions, type Grouped } from '@/utils/versions'
