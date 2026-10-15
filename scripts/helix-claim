@@ -115,18 +115,28 @@ pid_comm() {
     fi
 }
 
-# A Bash tool call is a transient shell, so its own pid is useless as an owner.
-# Walk to the nearest `claude` ancestor, which lives as long as the session.
-session_pid() {
-    local p=$$ ppid comm hops=0 pgid
+# Nearest `claude` ancestor of this process: it lives as long as the session,
+# unlike the transient shell a Bash tool call runs in. Fails when the chain
+# holds none.
+SESSION_COMM=${HELIX_CLAIM_SESSION_COMM:-claude}
+claude_ancestor() {
+    local p=$$ ppid comm hops=0
     while [ "$p" -gt 1 ] && [ "$hops" -lt 40 ]; do
         comm=$(pid_comm "$p") || break
-        [ "$comm" = "claude" ] && { printf '%s' "$p"; return 0; }
+        [ "$comm" = "$SESSION_COMM" ] && { printf '%s' "$p"; return 0; }
         ppid=$(pid_ppid "$p")
         case "$ppid" in ''|*[!0-9]*) break;; esac
         [ "$ppid" = "$p" ] && break
         p=$ppid; hops=$((hops+1))
     done
+    return 1
+}
+
+# The default owner of a claim: the session's `claude` process when there is
+# one, else a stand-in that is stable across the commands of one run.
+session_pid() {
+    local pgid
+    claude_ancestor && return 0
     # Outside a Claude session $PPID names whichever shell happened to invoke
     # this, so a take and a release in the same run can derive different owners
     # and the claim becomes unreleasable by the run that took it. Every process
@@ -308,15 +318,21 @@ case "$cmd" in
 take)
     res=${1:-}; op=${2:-}; shift 2 2>/dev/null || true
     res=$(canon "$res")
-    [ -n "$res" ] && [ -n "$op" ] || die "usage: helix-claim take <resource> <op> [--note X] [--pid N]"
+    [ -n "$res" ] && [ -n "$op" ] || die "usage: helix-claim take <resource> <op> [--note X] [--pid N|auto|--session]"
     note=""; pid=""
     while [ $# -gt 0 ]; do
         case $1 in
             --note) [ $# -ge 2 ] || die "--note needs a value"; note=$2; shift 2;;
             --pid)  [ $# -ge 2 ] || die "--pid needs a value";  pid=$2;  shift 2;;
+            --session) pid=auto; shift;;
             *) die "unknown option: $1";;
         esac
     done
+    if [ "$pid" = auto ]; then
+        pid=$(claude_ancestor) ||
+            die "--pid auto: found no process named '$SESSION_COMM' among the ancestors of this command (searched up to 40 parents); pass --pid <long-lived owner> instead"
+    fi
+    case "$pid" in *[!0-9]*) die "--pid needs a number or 'auto', got: $pid";; esac
     [ -n "$pid" ] || pid=$(session_pid)
     mkdir -p "$CLAIM_DIR" || die "cannot create $CLAIM_DIR"
     f="$CLAIM_DIR/$(slug "$res").json"
@@ -659,7 +675,10 @@ release)
     cat <<'USAGE'
 helix-claim - advisory claims on resources shared between agent sessions
 
-  take <resource> <op> [--note X] [--pid N]   claim; refuses if a LIVE claim exists
+  take <resource> <op> [--note X] [--pid N | --session]
+                                              claim; refuses if a LIVE claim exists.
+                                              --session (= --pid auto) owns it by the
+                                              nearest `claude` ancestor (errors if none)
   check <resource>                            FREE | LIVE | STALE (exit 1 if LIVE)
   list                                        all claims with derived liveness
   release <resource> [--force]                drop your claim; refuses one another
