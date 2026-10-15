@@ -1031,6 +1031,12 @@ TEST_CASE_METHOD(LVGLUITestFixture,
                  "tool_switcher: a changer fault marks every head but the mounted one",
                  "[tool_switcher][band]") {
     ToolChangerRig rig(3);
+    // A machine whose heads dock, against a shared toolhead whose filament
+    // system errors: only the first has heads that can be out of place.
+    const bool docked_heads = GENERATE(true, false);
+    CAPTURE(docked_heads);
+    rig.backend->set_tool_changer_mode(docked_heads);
+    REQUIRE(rig.backend->carriage_can_be_empty() == docked_heads);
     PanelWidgetHarness<ToolSwitcherWidget> h(test_screen(), state());
     process_lvgl(30);
     resize_content(h, 214, 93);
@@ -1046,14 +1052,28 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     lv_subject_set_int(AmsState::instance().get_ams_action_subject(),
                        static_cast<int>(AmsAction::ERROR));
     process_lvgl(30);
+    const S others = docked_heads ? S::Fault : S::Idle;
     CHECK(state_of(0) == static_cast<int>(S::Mounted));
-    CHECK(state_of(1) == static_cast<int>(S::Fault));
-    CHECK(state_of(2) == static_cast<int>(S::Fault));
+    CHECK(state_of(1) == static_cast<int>(others));
+    CHECK(state_of(2) == static_cast<int>(others));
+
+    // The faulted cell fills its text area red and rules it off from the band
+    // in the cell's own background, so a red band still reads.
+    lv_obj_t* area = lv_obj_find_by_name(named(h, "tool_switcher_seg_1"), "tool_switcher_seg_text");
+    REQUIRE(area != nullptr);
     const uint32_t danger = lv_color_to_u32(theme_manager_get_color("danger"));
-    CHECK(lv_color_to_u32(
-              lv_obj_get_style_bg_color(named(h, "tool_switcher_seg_1"), LV_PART_MAIN)) == danger);
-    CHECK(lv_color_to_u32(
-              lv_obj_get_style_bg_color(named(h, "tool_switcher_seg_0"), LV_PART_MAIN)) != danger);
+    const bool red = lv_obj_get_style_bg_opa(area, LV_PART_MAIN) == LV_OPA_COVER &&
+                     lv_color_to_u32(lv_obj_get_style_bg_color(area, LV_PART_MAIN)) == danger;
+    CHECK(red == docked_heads);
+    if (docked_heads) {
+        CHECK(lv_obj_get_style_border_width(area, LV_PART_MAIN) == 2);
+        CHECK(lv_obj_get_style_border_side(area, LV_PART_MAIN) == LV_BORDER_SIDE_BOTTOM);
+        CHECK(lv_color_to_u32(lv_obj_get_style_border_color(area, LV_PART_MAIN)) ==
+              lv_color_to_u32(theme_manager_get_color("elevated_bg")));
+    }
+    lv_obj_t* mounted_area =
+        lv_obj_find_by_name(named(h, "tool_switcher_seg_0"), "tool_switcher_seg_text");
+    CHECK(lv_obj_get_style_bg_opa(mounted_area, LV_PART_MAIN) == LV_OPA_TRANSP);
 
     lv_subject_set_int(AmsState::instance().get_ams_action_subject(),
                        static_cast<int>(AmsAction::IDLE));

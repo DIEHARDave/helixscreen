@@ -210,8 +210,8 @@ class ToolSwitcherWidget : public PanelWidget {
     /// Publish actions_offered() for the rail's action cells and the picker's
     /// footer.
     void refresh_action_support();
-    /// Whether the changer reports a fault, which marks every head but the
-    /// mounted one.
+    /// Whether a changer whose heads dock reports a fault, which marks every
+    /// head but the mounted one.
     static bool changer_fault();
     /// Whether a job holding the machine or spools on the bed refuse an action
     /// that moves it, telling the user so when they do. @p technical is the

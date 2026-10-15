@@ -484,9 +484,12 @@ TEST_CASE("Tool switcher layout: no action offered decides exactly as before",
 // The picker grid
 // ============================================================================
 
-TEST_CASE("Tool picker: three columns up to six heads, four beyond", "[tool_switcher][picker]") {
+TEST_CASE("Tool picker: at most three columns up to six heads, four beyond, rows balanced",
+          "[tool_switcher][picker]") {
     using helix::tool_picker_columns;
-    const int want[13] = {0, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4};
+    // The fewest rows the cap allows, then the fewest columns that fill them:
+    // 4 is 2x2 rather than 3+1, 9 is 3x3 rather than 4+4+1.
+    const int want[13] = {0, 1, 2, 3, 2, 3, 3, 4, 4, 3, 4, 4, 4};
     for (int heads = 1; heads <= 12; heads++) {
         INFO(heads << " heads");
         CHECK(tool_picker_columns(heads) == want[heads]);
@@ -613,4 +616,24 @@ TEST_CASE("Tool picker: the preferred cell labels its band", "[tool_switcher][pi
     CHECK(grown > 72);
     CHECK(tool_switcher_band(grown, 22, 2).labelled);
     CHECK_FALSE(tool_switcher_band(grown - 1, 22, 2).labelled);
+}
+
+TEST_CASE("Tool picker: balancing never adds a row and uses the fewest columns that fill them",
+          "[tool_switcher][picker]") {
+    using helix::tool_picker_balanced_columns;
+    for (int cap = 1; cap <= 4; cap++) {
+        for (int heads = 1; heads <= 16; heads++) {
+            const int cols = tool_picker_balanced_columns(heads, cap);
+            const int rows = (heads + cols - 1) / cols;
+            INFO(heads << " heads under " << cap << ": " << cols << " columns");
+            CHECK(cols <= cap);
+            CHECK(rows == (heads + cap - 1) / cap);
+            // One column fewer could not hold every head in those rows.
+            CHECK((cols - 1) * rows < heads);
+        }
+    }
+    // A screen too narrow for the cap balances under the columns it has.
+    const auto g = helix::fit_tool_picker_grid(5, 2 * kMin + kGap, 400, kMin, kGap, 72);
+    CHECK(g.cols == 2);
+    CHECK(g.rows == 3);
 }

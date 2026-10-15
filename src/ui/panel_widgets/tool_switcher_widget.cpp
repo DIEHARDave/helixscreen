@@ -931,9 +931,15 @@ void ToolSwitcherWidget::ToolPicker::on_created(lv_obj_t* backdrop) {
         ui::copy_string_if_changed(s_seg_pick_sub.at(i), sub.c_str());
     }
 
-    // The card is as wide as its grid, and the footer's two buttons share it.
-    lv_obj_set_width(menu_card, fit.width + pad_w);
-    const int footer_room = (fit.width - kRailGap) / 2 - 2 * resolve_px_token("space_xxs", 2);
+    // The card is as wide as its grid, or as the footer's buttons at a grid
+    // cell each where a narrow grid (one or two heads) would squeeze them.
+    const ToolSwitcherActions actions = actions_offered();
+    const int buttons = actions.cells();
+    const int footer_w = buttons > 0 ? buttons * fit.cell + (buttons - 1) * kRailGap : 0;
+    const int inner_w = std::max(fit.width, footer_w);
+    lv_obj_set_width(menu_card, inner_w + pad_w);
+    const int footer_room = (inner_w - (buttons > 1 ? kRailGap : 0)) / std::max(buttons, 1) -
+                            2 * resolve_px_token("space_xxs", 2);
     set_int_if_changed(&s_picker_feeder_long_subject, feeder_label_fits(footer_room) ? 1 : 0);
 
     // Scroll the mounted head into view when the grid scrolls.
@@ -1020,8 +1026,12 @@ void ToolSwitcherWidget::refresh_action_support() {
 }
 
 bool ToolSwitcherWidget::changer_fault() {
-    return lv_subject_get_int(AmsState::instance().get_ams_action_subject()) ==
-           static_cast<int>(AmsAction::ERROR);
+    // Only a machine whose heads dock can have one out of place; a shared
+    // toolhead's filament-system error says nothing about the heads.
+    const AmsBackend* backend = AmsState::instance().get_backend();
+    return backend && backend->carriage_can_be_empty() &&
+           lv_subject_get_int(AmsState::instance().get_ams_action_subject()) ==
+               static_cast<int>(AmsAction::ERROR);
 }
 
 bool ToolSwitcherWidget::refuse_while_spools_on_bed() const {

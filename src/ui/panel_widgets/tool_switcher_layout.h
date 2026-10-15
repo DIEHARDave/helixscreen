@@ -200,10 +200,26 @@ enum class ToolSwitcherCellState : int { Idle = 0, Mounted = 1, Fault = 2 };
     return changer_fault ? ToolSwitcherCellState::Fault : ToolSwitcherCellState::Idle;
 }
 
-/// The picker grid's columns for @p heads: three up to six heads, four from
-/// seven on, so eight heads take two rows and only a ninth starts a third.
-[[nodiscard]] inline int tool_picker_columns(int heads) {
+/// The most columns the picker grid takes for @p heads: three up to six heads,
+/// four from seven on, so eight heads take two rows and only a ninth starts a
+/// third.
+[[nodiscard]] inline int tool_picker_max_columns(int heads) {
     return heads <= 6 ? 3 : 4;
+}
+
+/// Columns for @p heads under a cap of @p max_cols: the fewest rows the cap
+/// allows, then as few columns as fill those rows, so the rows balance (four
+/// heads are 2x2, not 3+1).
+[[nodiscard]] inline int tool_picker_balanced_columns(int heads, int max_cols) {
+    if (heads < 1 || max_cols < 1)
+        return 1;
+    const int rows = (heads + max_cols - 1) / max_cols;
+    return (heads + rows - 1) / rows;
+}
+
+/// The picker grid's columns for @p heads on a screen with room for the cap.
+[[nodiscard]] inline int tool_picker_columns(int heads) {
+    return tool_picker_balanced_columns(heads, tool_picker_max_columns(heads));
 }
 
 /// The picker's grid of square head cells.
@@ -218,8 +234,9 @@ struct ToolPickerGrid {
 };
 
 /// Lay @p heads square cells of up to @p preferred px into @p avail_w x
-/// @p avail_h. Starts at tool_picker_columns() and drops columns only while
-/// even floor-sized cells would not fit the width; shrinks the cells toward
+/// @p avail_h. Starts at tool_picker_max_columns(), drops columns only while
+/// even floor-sized cells would not fit the width, then balances the rows
+/// under that cap (tool_picker_balanced_columns()); shrinks the cells toward
 /// @p min_target until every row fits the height, and scrolls what still does
 /// not. No cell is ever under @p min_target.
 [[nodiscard]] inline ToolPickerGrid fit_tool_picker_grid(int heads, int avail_w, int avail_h,
@@ -227,9 +244,10 @@ struct ToolPickerGrid {
     ToolPickerGrid g;
     if (heads < 1)
         return g;
-    int cols = tool_picker_columns(heads);
+    int cols = tool_picker_max_columns(heads);
     while (cols > 1 && cols * min_target + (cols - 1) * gap > avail_w)
         cols--;
+    cols = tool_picker_balanced_columns(heads, cols);
     const int rows = (heads + cols - 1) / cols;
     int cell = std::min(preferred, (avail_w - (cols - 1) * gap) / cols);
     const int fit_h = (avail_h - (rows - 1) * gap) / rows;
