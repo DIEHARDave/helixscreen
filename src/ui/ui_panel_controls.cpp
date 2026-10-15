@@ -28,6 +28,7 @@
 #include "app_globals.h"
 #include "format_utils.h"
 #include "hardware_role_registry.h"
+#include "i18n_plural.h"
 #include "lvgl/src/others/translation/lv_translation.h"
 #include "moonraker_api.h"
 #include "observer_factory.h"
@@ -823,9 +824,11 @@ void ControlsPanel::populate_secondary_fans() {
     // Show "N additional fans >" row if there are more fans than visible
     int additional = static_cast<int>(secondary_fans.size()) - visible_count;
     if (additional > 0) {
-        char more_buf[32];
-        std::snprintf(more_buf, sizeof(more_buf), lv_tr("%d additional fan%s"), additional,
-                      additional == 1 ? "" : "s");
+        char more_buf[96];
+        std::snprintf(more_buf, sizeof(more_buf),
+                      helix::ui::tr_plural("%d additional fan", "%d additional fans",
+                                           static_cast<uint64_t>(additional)),
+                      additional);
         const char* attrs[] = {"caption", more_buf, nullptr};
         lv_xml_create(secondary_fans_list_, "controls_fan_more_row", attrs);
     }

@@ -156,17 +156,18 @@ This is a significant undertaking — realistically 10–20 hours for a solo tra
 
 Most entries are flat `"key": "value"` pairs. But for entries that describe a count of something, some languages need plural variants. HelixScreen supports the [CLDR plural categories](https://cldr.unicode.org/index/cldr-spec/plural-rules) (`zero`, `one`, `two`, `few`, `many`, `other`).
 
-Russian example from `translations/ru.yml`:
+Count strings come as an English pair: a singular key (`"1 print"`) used for exactly one, and a plural key (`"{} prints"`) for every other count. Russian example from `translations/ru.yml`:
 
 ```yaml
-"items_selected":
-  one: "{count} элемент выбран"       # 1, 21, 31...
-  few: "{count} элемента выбрано"     # 2-4, 22-24...
-  many: "{count} элементов выбрано"   # 5-20, 25-30...
-  other: "{count} элемента выбрано"   # decimals
+"1 print": "1 печать"
+"{} prints":
+  one: "{} печать"     # 21, 31, 101...
+  few: "{} печати"     # 2-4, 22-24...
+  many: "{} печатей"   # 0, 5-20, 25-30...
+  other: "{} печати"   # required: used for any category you leave out
 ```
 
-If your language has plural variation and the string is count-dependent, convert it from a flat string to the nested form above. See [TRANSLATION_SYSTEM.md § Plural Rules](TRANSLATION_SYSTEM.md#plural-rules) for which categories apply to your language.
+If your language has plural variation and the string is count-dependent, convert the plural key's value from a flat string to the nested form above. Only keys the code passes to `helix::ui::tr_plural()` read the nested forms; ask in your PR if a count string you need is still a plain `lv_tr()`. See [TRANSLATION_SYSTEM.md § Plural Rules](TRANSLATION_SYSTEM.md#plural-rules) for which categories apply to your language.
 
 Languages that need this most heavily: Russian, Polish, Arabic, Czech, and most Slavic languages. English, German, Spanish, French, and Italian get away with `one`/`other` only. Japanese and Chinese have no plural inflection at all — flat strings are fine.
 

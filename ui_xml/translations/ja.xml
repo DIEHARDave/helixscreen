@@ -5,7 +5,8 @@
   <translation tag=" left" ja=" 残り"/>
   <translation tag=" · was {:.0f}%" ja=" · 以前は {:.0f}%"/>
   <translation tag="&quot;%s&quot; failed to load" ja="&quot;%s&quot; の読み込みに失敗しました"/>
-  <translation tag="%d additional fan%s" ja="追加ファン %d 個%s"/>
+  <translation tag="%d additional fan" ja="追加ファン %d 個"/>
+  <translation tag="%d additional fans" ja="追加ファン %d 個"/>
   <translation tag="%d feeders" ja="%d フィーダー"/>
   <translation tag="%d gates" ja="%d ゲート"/>
   <translation tag="%d lanes" ja="%d レーン"/>
@@ -634,7 +635,8 @@
   <translation tag="Complete" ja="完了"/>
   <translation tag="Complete!" ja="完了！"/>
   <translation tag="Completed" ja="完了"/>
-  <translation tag="Completed in %d probe%s" ja="%d 回のプローブ%sで完了"/>
+  <translation tag="Completed in %d probe" ja="%d 回のプローブで完了"/>
+  <translation tag="Completed in %d probes" ja="%d 回のプローブで完了"/>
   <translation tag="Completed just now" ja="たった今完了しました"/>
   <translation tag="Completed prints will appear here" ja="完了した印刷がここに表示されます"/>
   <translation tag="Completed {}d ago" ja="{} 日前に完了"/>
@@ -2296,6 +2298,8 @@
   <translation tag="Print setup failed: internal error" ja="印刷のセットアップに失敗しました: 内部エラー"/>
   <translation tag="Print status" ja="印刷ステータス"/>
   <translation tag="Print timed out waiting for completion" ja="印刷の完了待ちでタイムアウトしました"/>
+  <translation tag="Printed %d time" ja="%d 回印刷済み"/>
+  <translation tag="Printed %d times" ja="%d 回印刷済み"/>
   <translation tag="Printer" ja="プリンター"/>
   <translation tag="Printer Error" ja="プリンターエラー"/>
   <translation tag="Printer Firmware Disconnected" ja="プリンターファームウェア切断"/>
@@ -2905,8 +2909,10 @@
   <translation tag="Spoolman removed." ja="Spoolman を削除しました。"/>
   <translation tag="Spoolman unavailable — filament weights may be stale" ja="Spoolmanが利用できません — フィラメント重量が古い可能性があります"/>
   <translation tag="Spoolman was not configured." ja="Spoolman は設定されていませんでした。"/>
-  <translation tag="Spoolman: %zu Spool%s" ja="Spoolman: %zu 個のスプール%s"/>
-  <translation tag="Spoolman: %zu/%zu Spool%s" ja="Spoolman: %zu/%zu 個のスプール%s"/>
+  <translation tag="Spoolman: %zu Spool" ja="Spoolman: %zu 個のスプール"/>
+  <translation tag="Spoolman: %zu Spools" ja="Spoolman: %zu 個のスプール"/>
+  <translation tag="Spoolman: %zu/%zu Spool" ja="Spoolman: %zu/%zu 個のスプール"/>
+  <translation tag="Spoolman: %zu/%zu Spools" ja="Spoolman: %zu/%zu 個のスプール"/>
   <translation tag="SpoolmanDB search failed" ja="SpoolmanDB の検索に失敗しました"/>
   <translation tag="Spools are off" ja="スプールを取り出しました"/>
   <translation tag="Spools are on the bed: remove them and confirm before moving the printer" ja="ベッドにスプールがあります: 取り除いて確認してからプリンターを動かしてください"/>
@@ -3681,7 +3687,8 @@
   <translation tag="{} new" ja="新規 {} 件"/>
   <translation tag="{} new hardware available" ja="{} 個の新しいハードウェアが利用可能です"/>
   <translation tag="{} new plugins available. Enable them in Settings &gt; Plugins." ja="{} 個の新しいプラグインが利用可能です。設定 &gt; プラグインで有効化してください。"/>
-  <translation tag="{} preset{}" ja="{} 個のプリセット{}"/>
+  <translation tag="{} preset" ja="{} 個のプリセット"/>
+  <translation tag="{} presets" ja="{} 個のプリセット"/>
   <translation tag="{} prints" ja="{} 件"/>
   <translation tag="{} queued" ja="{} 件キュー中"/>
   <translation tag="{} serial" ja="{} シリアル番号"/>

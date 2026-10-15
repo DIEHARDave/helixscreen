@@ -7,7 +7,8 @@ translations:
   ' left': ' left'
   ' · was {:.0f}%': ' · was {:.0f}%'
   '"%s" failed to load': '"%s" failed to load'
-  '%d additional fan%s': '%d additional fan%s'
+  '%d additional fan': '%d additional fan'
+  '%d additional fans': '%d additional fans'
   '%d feeders': '%d feeders'
   '%d gates': '%d gates'
   '%d lanes': '%d lanes'
@@ -680,7 +681,8 @@ translations:
   Complete: Complete
   Complete!: Complete!
   Completed: Completed
-  Completed in %d probe%s: Completed in %d probe%s
+  Completed in %d probe: Completed in %d probe
+  Completed in %d probes: Completed in %d probes
   Completed just now: Completed just now
   Completed prints will appear here: Completed prints will appear here
   Completed {}d ago: Completed {}d ago
@@ -2460,6 +2462,8 @@ translations:
   'Print setup failed: internal error': 'Print setup failed: internal error'
   Print status: Print status
   Print timed out waiting for completion: Print timed out waiting for completion
+  Printed %d time: Printed %d time
+  Printed %d times: Printed %d times
   Printer: Printer
   Printer Error: Printer Error
   Printer Firmware Disconnected: Printer Firmware Disconnected
@@ -3129,8 +3133,10 @@ translations:
   Spoolman unavailable — filament weights may be stale: Spoolman unavailable — filament
     weights may be stale
   Spoolman was not configured.: Spoolman was not configured.
-  'Spoolman: %zu Spool%s': 'Spoolman: %zu Spool%s'
-  'Spoolman: %zu/%zu Spool%s': 'Spoolman: %zu/%zu Spool%s'
+  'Spoolman: %zu Spool': 'Spoolman: %zu Spool'
+  'Spoolman: %zu Spools': 'Spoolman: %zu Spools'
+  'Spoolman: %zu/%zu Spool': 'Spoolman: %zu/%zu Spool'
+  'Spoolman: %zu/%zu Spools': 'Spoolman: %zu/%zu Spools'
   SpoolmanDB search failed: SpoolmanDB search failed
   Spools are off: Spools are off
   'Spools are on the bed: remove them and confirm before moving the printer': 'Spools are on the bed: remove them and confirm before moving the printer'
@@ -3991,7 +3997,8 @@ translations:
   '{} new': '{} new'
   '{} new hardware available': '{} new hardware available'
   '{} new plugins available. Enable them in Settings > Plugins.': '{} new plugins available. Enable them in Settings > Plugins.'
-  '{} preset{}': '{} preset{}'
+  '{} preset': '{} preset'
+  '{} presets': '{} presets'
   '{} prints': '{} prints'
   '{} queued': '{} queued'
   '{} serial': '{} serial'

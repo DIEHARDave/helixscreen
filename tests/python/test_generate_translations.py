@@ -15,7 +15,7 @@ The generator script will:
 import pytest
 import sys
 from pathlib import Path
-from textwrap import dedent
+from textwrap import dedent, indent
 
 # Add scripts directory to path for importing the module under test
 scripts_dir = Path(__file__).parent.parent.parent / "scripts"
@@ -660,6 +660,102 @@ class TestIntegration:
         assert "Missing 'Home' in de" in result.warnings
         assert "Missing 'Cancel' in de" in result.warnings
         assert not any("Settings" in w for w in result.warnings)
+
+
+class TestPluralVariantTags:
+    """A YAML plural mapping becomes runtime tags helix::ui::tr_plural() reads."""
+
+    @staticmethod
+    def _write(tmp_path, ru_body):
+        yaml_dir = tmp_path / "translations"
+        yaml_dir.mkdir()
+        (yaml_dir / "en.yml").write_text(dedent("""\
+            locale: en
+            translations:
+              "%d gadgets": "%d gadgets"
+              "Home": Home
+        """))
+        (yaml_dir / "ru.yml").write_text(
+            "locale: ru\ntranslations:\n" + indent(dedent(ru_body), "  "), encoding="utf-8"
+        )
+        return yaml_dir
+
+    def test_categories_become_suffixed_tags_and_other_the_plain_tag(self, tmp_path):
+        from generate_translations import generate_all
+
+        yaml_dir = self._write(tmp_path, """\
+              "%d gadgets":
+                one: "%d штуковина"
+                few: "%d штуковины"
+                many: "%d штуковин"
+                other: "%d штуковины"
+              "Home": Главная
+        """)
+        xml_dir = tmp_path / "xml"
+        result = generate_all(yaml_dir=yaml_dir, xml_output_dir=xml_dir,
+                              c_output_dir=tmp_path / "c")
+        assert result.success, result.errors
+        assert not any("gadgets" in w for w in result.warnings)
+
+        ru = (xml_dir / "ru.xml").read_text(encoding="utf-8")
+        assert '<translation tag="%d gadgets" ru="%d штуковины"/>' in ru
+        assert '<translation tag="%d gadgets_one" ru="%d штуковина"/>' in ru
+        assert '<translation tag="%d gadgets_few" ru="%d штуковины"/>' in ru
+        assert '<translation tag="%d gadgets_many" ru="%d штуковин"/>' in ru
+        assert "gadgets_other" not in ru
+
+        master = (xml_dir / "translations.xml").read_text(encoding="utf-8")
+        assert 'tag="%d gadgets_many" ru="%d штуковин"' in master
+        # English stays flat: no variant tags for a locale without a mapping.
+        en = (xml_dir / "en.xml").read_text(encoding="utf-8")
+        assert "gadgets_" not in en
+
+    def test_absent_category_emits_no_tag(self, tmp_path):
+        from generate_translations import generate_all
+
+        yaml_dir = self._write(tmp_path, """\
+              "%d gadgets":
+                one: "%d штуковина"
+                other: "%d штуковины"
+              "Home": Главная
+        """)
+        xml_dir = tmp_path / "xml"
+        assert generate_all(yaml_dir=yaml_dir, xml_output_dir=xml_dir,
+                            c_output_dir=tmp_path / "c").success
+        ru = (xml_dir / "ru.xml").read_text(encoding="utf-8")
+        assert "gadgets_one" in ru
+        assert "gadgets_few" not in ru
+        assert "gadgets_many" not in ru
+
+    def test_mapping_without_other_fails(self, tmp_path):
+        from generate_translations import generate_all
+
+        yaml_dir = self._write(tmp_path, """\
+              "%d gadgets":
+                one: "%d штуковина"
+                few: "%d штуковины"
+              "Home": Главная
+        """)
+        result = generate_all(yaml_dir=yaml_dir, xml_output_dir=tmp_path / "xml",
+                              c_output_dir=tmp_path / "c")
+        assert not result.success
+        assert any("'%d gadgets'" in e and "other" in e for e in result.errors)
+        assert not (tmp_path / "xml" / "translations.xml").exists()
+
+    def test_unknown_category_fails(self, tmp_path):
+        from generate_translations import generate_all
+
+        yaml_dir = self._write(tmp_path, """\
+              "%d gadgets":
+                one: "%d штуковина"
+                lots: "%d штуковин"
+                other: "%d штуковины"
+              "Home": Главная
+        """)
+        result = generate_all(yaml_dir=yaml_dir, xml_output_dir=tmp_path / "xml",
+                              c_output_dir=tmp_path / "c")
+        assert not result.success
+        assert any("lots" in e for e in result.errors)
 
 
 # =============================================================================

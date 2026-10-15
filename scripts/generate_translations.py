@@ -55,6 +55,59 @@ def is_plural_entry(value: Any) -> bool:
     return isinstance(value, dict)
 
 
+# CLDR plural categories a YAML plural mapping may name.
+PLURAL_CATEGORIES = ("zero", "one", "two", "few", "many", "other")
+
+
+def plural_variant_tag(key: str, category: str) -> str:
+    """The runtime tag carrying ``key``'s form for ``category``.
+
+    The C++ twin is helix::ui::plural_variant_tag() (include/i18n_plural.h);
+    tests/unit/test_i18n_plural.cpp pins the same spelling.
+    """
+    return key if category == "other" else f"{key}_{category}"
+
+
+def expand_plural_entries(
+    locale: str, translations: dict[str, Any]
+) -> tuple[dict[str, str], list[str]]:
+    """Flatten one locale's plural mappings into plain runtime tags.
+
+    A plural entry is a mapping of CLDR categories to strings. Its ``other``
+    form becomes the plain tag, so every lookup that knows nothing of plurals
+    still finds a translation, and each remaining category becomes
+    ``<key>_<category>`` (see plural_variant_tag), which
+    helix::ui::tr_plural() looks up for a count in that category.
+
+    Returns:
+        (flat {tag: text} dict, list of error strings)
+    """
+    flat: dict[str, str] = {}
+    errors: list[str] = []
+    for key, value in translations.items():
+        if not is_plural_entry(value):
+            flat[key] = value
+            continue
+        unknown = sorted(set(value) - set(PLURAL_CATEGORIES))
+        if unknown:
+            errors.append(
+                f"{locale}: plural entry '{key}' has unknown categor"
+                f"{'y' if len(unknown) == 1 else 'ies'} {', '.join(unknown)}; "
+                f"use {', '.join(PLURAL_CATEGORIES)}"
+            )
+            continue
+        if not value.get("other"):
+            errors.append(
+                f"{locale}: plural entry '{key}' has no 'other' form, which every "
+                f"count without its own form falls back to"
+            )
+            continue
+        for category, text in value.items():
+            if text:
+                flat[plural_variant_tag(key, category)] = text
+    return flat, errors
+
+
 # =============================================================================
 # XML Generation
 # =============================================================================
@@ -784,6 +837,7 @@ def generate_all(
     # Separate singulars and plurals
     singulars: dict[str, dict[str, str]] = {}
     plurals: dict[str, dict[str, dict[str, str]]] = {}
+    runtime_tags: dict[str, dict[str, str]] = {}
 
     for locale, locale_translations in translations.items():
         singulars[locale] = {}
@@ -795,8 +849,17 @@ def generate_all(
             else:
                 singulars[locale][key] = value
 
+        runtime_tags[locale], plural_errors = expand_plural_entries(
+            locale, locale_translations
+        )
+        result.errors.extend(plural_errors)
+
+    if result.errors:
+        result.success = False
+        return result
+
     # Check for missing translations
-    missing = find_missing_translations(singulars, base_locale)
+    missing = find_missing_translations(translations, base_locale)
     if missing:
         for locale, keys in missing.items():
             for key in keys:
@@ -807,11 +870,11 @@ def generate_all(
     result.warnings.extend(issues)
 
     # Generate XML
-    write_xml_file(singulars, xml_output_dir / "translations.xml")
+    write_xml_file(runtime_tags, xml_output_dir / "translations.xml")
 
     # Also emit per-locale XMLs so the app can load only the current language
     # at runtime. See write_per_locale_xml() for the rationale.
-    write_per_locale_xml(singulars, xml_output_dir)
+    write_per_locale_xml(runtime_tags, xml_output_dir)
 
     # Legacy lv_i18n C/H table: not compiled or linked (see emit_lv_i18n note).
     # Skipped by default to avoid a large churn diff on every regeneration.

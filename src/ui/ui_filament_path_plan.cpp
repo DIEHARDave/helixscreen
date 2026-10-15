@@ -8,6 +8,7 @@
 
 #include "ui_icon_codepoints.h"
 
+#include "i18n_plural.h"
 #include "lvgl/src/others/translation/lv_translation.h"
 #include "theme_manager.h"
 
@@ -40,10 +41,9 @@ TubePalette tube_palette(const FilamentPathData& data) {
 }
 
 std::string offpage_label_text(int count) {
-    if (count == 1)
-        return lv_tr("1 unit");
     char buf[48];
-    snprintf(buf, sizeof(buf), lv_tr("%d units"), count);
+    snprintf(buf, sizeof(buf), tr_plural("1 unit", "%d units", static_cast<uint64_t>(count)),
+             count);
     return buf;
 }
 

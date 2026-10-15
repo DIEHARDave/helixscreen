@@ -21,6 +21,7 @@
 #include "label_printer_utils.h"
 #endif
 #include "format_utils.h"
+#include "i18n_plural.h"
 #include "i_moonraker_api.h"
 #include "lvgl/src/others/translation/lv_translation.h"
 #include "printer_state.h"
@@ -339,13 +340,17 @@ void SpoolmanPanel::update_spool_count() {
     } else if (filtered_spools_.size() != cached_spools_.size()) {
         // Show filtered count: "Spoolman: 5/19 Spools"
         char buf[64];
-        snprintf(buf, sizeof(buf), lv_tr("Spoolman: %zu/%zu Spool%s"), filtered_spools_.size(),
-                 cached_spools_.size(), cached_spools_.size() == 1 ? "" : "s");
+        snprintf(buf, sizeof(buf),
+                 helix::ui::tr_plural("Spoolman: %zu/%zu Spool", "Spoolman: %zu/%zu Spools",
+                                      cached_spools_.size()),
+                 filtered_spools_.size(), cached_spools_.size());
         lv_subject_copy_string(&header_title_subject_, buf);
     } else {
         char buf[64];
-        snprintf(buf, sizeof(buf), lv_tr("Spoolman: %zu Spool%s"), cached_spools_.size(),
-                 cached_spools_.size() == 1 ? "" : "s");
+        snprintf(buf, sizeof(buf),
+                 helix::ui::tr_plural("Spoolman: %zu Spool", "Spoolman: %zu Spools",
+                                      cached_spools_.size()),
+                 cached_spools_.size());
         lv_subject_copy_string(&header_title_subject_, buf);
     }
 }
