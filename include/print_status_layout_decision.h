@@ -332,4 +332,27 @@ inline constexpr SideListGeometry exclude_side_list_geometry(bool portrait, int3
                             portrait_side_list_height(controls_h, content_h, gap, room_h), true};
 }
 
+/**
+ * @brief Do the action row's buttons fit with each icon beside its label?
+ *
+ * When they do not, the row stacks every icon over its label instead, which
+ * needs only the wider of the two per button. Each width is what the button
+ * needs laid out side by side (icon, gap, label text, side padding, border),
+ * measured from its text rather than its current geometry, so the decision
+ * does not depend on which way the row is laid out now.
+ *
+ * @param row_w   The row's content width.
+ * @param gap     The row's gap between buttons.
+ * @param needed  Side-by-side width of each visible button.
+ * @param count   Number of entries in @p needed.
+ */
+inline constexpr bool action_row_fits(int32_t row_w, int32_t gap, const int32_t* needed,
+                                      int32_t count) {
+    int32_t total = count > 1 ? gap * (count - 1) : 0;
+    for (int32_t i = 0; i < count; ++i) {
+        total += needed[i];
+    }
+    return total <= row_w;
+}
+
 } // namespace helix::ui

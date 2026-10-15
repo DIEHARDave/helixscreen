@@ -3,13 +3,17 @@
 
 #include "print_status_layout_fitter.h"
 
+#include "ui_breakpoint.h"
+#include "ui_button.h"
 #include "ui_next_tick.h"
 #include "ui_overlay_temp_graph.h"
 
+#include "helix/ui/text_metrics.h"
 #include "layout_manager.h"
 #include "lvgl/src/others/translation/lv_translation.h"
 #include "print_status_layout_decision.h"
 #include "temp_graph_controller.h"
+#include "theme_manager.h"
 
 #include <spdlog/spdlog.h>
 
@@ -37,8 +41,125 @@ void PrintStatusLayoutFitter::pause_temp_graph() {
 void PrintStatusLayoutFitter::on_tree_destroyed() {
     destroy_temp_graph();
     preview_slack_h_ = 0;
+    watched_action_rows_[0] = nullptr;
+    watched_action_rows_[1] = nullptr;
     if (host_.subjects_ready()) {
         lv_subject_set_int(subjects_.graph_fits, 0);
+    }
+}
+
+namespace {
+
+/// The text label of a ui_button: its lv_label child that is not the icon.
+lv_obj_t* button_text_label(lv_obj_t* btn) {
+    lv_obj_t* icon = ui_button_get_icon(btn);
+    const uint32_t n = lv_obj_get_child_count(btn);
+    for (uint32_t i = 0; i < n; ++i) {
+        lv_obj_t* child = lv_obj_get_child(btn, static_cast<int32_t>(i));
+        if (child != icon && lv_obj_check_type(child, &lv_label_class)) {
+            return child;
+        }
+    }
+    return nullptr;
+}
+
+/// Width @p btn needs with its icon beside its label and @p inset of room on
+/// each side, from the label's text in the button's own font: a stacked label
+/// carries a smaller local font, so its current width would understate the
+/// side-by-side need. The button's own padding is left out because a row of
+/// these shares its width by content and can give that padding up.
+int32_t side_by_side_width(lv_obj_t* btn, int32_t inset) {
+    int32_t w = lv_obj_get_style_space_left(btn, LV_PART_MAIN) -
+                lv_obj_get_style_pad_left(btn, LV_PART_MAIN) +
+                lv_obj_get_style_space_right(btn, LV_PART_MAIN) -
+                lv_obj_get_style_pad_right(btn, LV_PART_MAIN) + 2 * inset;
+    lv_obj_t* icon = ui_button_get_icon(btn);
+    lv_obj_t* label = button_text_label(btn);
+    const bool has_icon = icon && !lv_obj_has_flag(icon, LV_OBJ_FLAG_HIDDEN);
+    const bool has_label = label && !lv_obj_has_flag(label, LV_OBJ_FLAG_HIDDEN);
+    if (has_icon) {
+        w += lv_obj_get_width(icon);
+    }
+    if (has_label) {
+        const char* text = lv_label_get_text(label);
+        const lv_font_t* font = lv_obj_get_style_text_font(btn, LV_PART_MAIN);
+        if (text && font) {
+            w += text_width(text, font, lv_obj_get_style_text_letter_space(btn, LV_PART_MAIN));
+        }
+    }
+    if (has_icon && has_label) {
+        w += lv_obj_get_style_pad_column(btn, LV_PART_MAIN);
+    }
+    return w;
+}
+
+} // namespace
+
+void PrintStatusLayoutFitter::action_label_resized_cb(lv_event_t* e) {
+    auto* self = static_cast<PrintStatusLayoutFitter*>(lv_event_get_user_data(e));
+    // Publishing restacks the row, which must not happen mid-layout.
+    auto token = self->lifetime_.token();
+    token.defer("PrintStatusLayoutFitter::recompute_actions_crowded",
+                [self]() { self->recompute_actions_crowded(); });
+}
+
+void PrintStatusLayoutFitter::recompute_actions_crowded() {
+    if (!host_.root() || !host_.subjects_ready()) {
+        return;
+    }
+    // Tiny and below always stack: their rows grow into the grid instead.
+    lv_subject_t* bp = lv_xml_get_subject(nullptr, "ui_breakpoint");
+    const bool tiny = bp && lv_subject_get_int(bp) <= static_cast<int>(UiBreakpoint::Tiny);
+    fit_action_row(0, "btn_pause", tiny, subjects_.row1_stacked, subjects_.row1_tall);
+    fit_action_row(1, "btn_tune", tiny, subjects_.row2_stacked, subjects_.row2_tall);
+}
+
+void PrintStatusLayoutFitter::fit_action_row(int index, const char* anchor, bool tiny,
+                                             lv_subject_t* stacked_subject,
+                                             lv_subject_t* tall_subject) {
+    lv_obj_t* member = lv_obj_find_by_name(host_.root(), anchor);
+    lv_obj_t* row = member ? lv_obj_get_parent(member) : nullptr;
+    if (!row) {
+        return;
+    }
+    if (watched_action_rows_[index] != row) {
+        watched_action_rows_[index] = row;
+        // DECLARATIVE_OK: a button shown or hidden in the row re-decides the fit
+        lv_obj_add_event_cb(row, action_label_resized_cb, LV_EVENT_LAYOUT_CHANGED, this);
+        const uint32_t n = lv_obj_get_child_count(row);
+        for (uint32_t i = 0; i < n; ++i) {
+            lv_obj_t* label = button_text_label(lv_obj_get_child(row, static_cast<int32_t>(i)));
+            if (label) {
+                // DECLARATIVE_OK: a label's measured width feeds this layout decision
+                lv_obj_add_event_cb(label, action_label_resized_cb, LV_EVENT_SIZE_CHANGED, this);
+            }
+        }
+    }
+    const int32_t row_w = lv_obj_get_content_width(row);
+    if (row_w <= 0) {
+        return; // not laid out yet; the activation recompute runs again once it is
+    }
+    constexpr int32_t kMaxButtons = 8;
+    const int32_t inset = theme_manager_get_spacing("space_xs");
+    int32_t needed[kMaxButtons] = {};
+    int32_t count = 0;
+    const uint32_t n = lv_obj_get_child_count(row);
+    for (uint32_t i = 0; i < n && count < kMaxButtons; ++i) {
+        lv_obj_t* btn = lv_obj_get_child(row, static_cast<int32_t>(i));
+        if (!lv_obj_has_flag(btn, LV_OBJ_FLAG_HIDDEN) && ui_button_owns_user_data(btn)) {
+            needed[count++] = side_by_side_width(btn, inset);
+        }
+    }
+    const bool crowded =
+        !action_row_fits(row_w, lv_obj_get_style_pad_column(row, LV_PART_MAIN), needed, count);
+    const int stacked = (tiny || crowded) ? 1 : 0;
+    const int tall = (!tiny && crowded) ? 1 : 0;
+    if (lv_subject_get_int(stacked_subject) != stacked ||
+        lv_subject_get_int(tall_subject) != tall) {
+        spdlog::debug("[{}] action row {} {}px, {} buttons: crowded={} stacked={}", log_tag_,
+                      index + 1, row_w, count, crowded, stacked);
+        lv_subject_set_int(tall_subject, tall);
+        lv_subject_set_int(stacked_subject, stacked);
     }
 }
 

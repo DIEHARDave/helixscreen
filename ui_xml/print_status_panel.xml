@@ -35,7 +35,13 @@
          MEDIUM so micro's rows still fit icon over label. Small and up keep
          the content-height rows and fixed-height buttons. -->
     <style name="ps_action_row_grow" flex_grow="1"/>
+    <!-- Small and up, when an action row's labels do not fit beside their
+         icons (print_status_rowN_tall, measured in C++), that row stacks icon
+         over label at a fixed height instead of growing into the grid. -->
+    <style name="ps_action_row_content" height="content"/>
+    <style name="ps_action_row_tall" height="#button_height_lg"/>
   </styles>
+
   <!-- Print Status Panel - Active print monitoring with G-code 3D viewer -->
   <!-- Uses same sizing as print_file_detail: overlay_width_transient_large, 5:4 flex ratio -->
   <view name="print_status_panel"
@@ -136,25 +142,31 @@
                 style_flex_main_place="end" style_flex_cross_place="center" style_pad_gap="#space_sm">
           <!-- Row 1: Light, Timelapse (conditional), Pause -->
           <lv_obj width="100%"
-                  height="content" style_pad_all="0" scrollable="false" flex_flow="row" style_flex_main_place="center"
+                  style_pad_all="0" scrollable="false" flex_flow="row" style_flex_main_place="center"
                   style_flex_cross_place="center" style_pad_gap="#space_sm">
             <bind_style_if_lt name="ps_action_row_grow" subject="ui_breakpoint" ref_value="2"/>
-            <ui_button name="btn_light" flex_grow="1" text="Light" bind_icon="light_button_icon" stacked_if_bp_lte="1">
+            <bind_style_if name="ps_action_row_tall" cond="print_status_row1_tall eq 1"/>
+            <bind_style_if name="ps_action_row_content" cond="print_status_row1_tall eq 1" invert="true"/>
+            <ui_button name="btn_light"
+                       style_min_width="content" style_pad_hor="#space_xs" flex_grow="1" text="Light"
+                       bind_icon="light_button_icon" stacked_subject="print_status_row1_stacked" stacked_if_eq="1">
               <event_cb trigger="clicked" callback="on_print_status_light"/>
               <bind_flag_if_eq subject="led_controllable" flag="hidden" ref_value="0"/>
               <bind_state_if_eq subject="led_command_in_flight" state="disabled" ref_value="1"/>
             </ui_button>
             <!-- Timelapse button: only visible when Moonraker-Timelapse plugin installed -->
             <ui_button name="btn_timelapse"
-                       flex_grow="1" bind_icon="timelapse_button_icon" bind_text="timelapse_button_label"
-                       stacked_if_bp_lte="1">
+                       style_min_width="content" style_pad_hor="#space_xs" flex_grow="1"
+                       bind_icon="timelapse_button_icon" bind_text="timelapse_button_label"
+                       stacked_subject="print_status_row1_stacked" stacked_if_eq="1">
               <event_cb trigger="clicked" callback="on_print_status_timelapse"/>
               <bind_flag_if_eq subject="printer_has_timelapse" flag="hidden" ref_value="0"/>
               <bind_state_if_eq subject="print_controls_enabled" state="disabled" ref_value="0"/>
             </ui_button>
             <ui_button name="btn_pause"
-                       flex_grow="1" style_max_width="50%" bind_icon="print_control_primary_icon"
-                       bind_text="print_control_primary_label" stacked_if_bp_lte="1">
+                       style_min_width="content" style_pad_hor="#space_xs" flex_grow="1" style_max_width="50%"
+                       bind_icon="print_control_primary_icon" bind_text="print_control_primary_label"
+                       stacked_subject="print_status_row1_stacked" stacked_if_eq="1">
               <event_cb trigger="clicked" callback="on_print_control_primary"/>
               <bind_state_if_eq subject="print_control_primary_enabled" state="disabled" ref_value="0"/>
             </ui_button>
@@ -162,12 +174,14 @@
 
           <!-- Row 2: Tune, Cancel -->
           <lv_obj width="100%"
-                  height="content" style_pad_all="0" scrollable="false" flex_flow="row" style_flex_main_place="center"
+                  style_pad_all="0" scrollable="false" flex_flow="row" style_flex_main_place="center"
                   style_flex_cross_place="center" style_pad_gap="#space_sm">
             <bind_style_if_lt name="ps_action_row_grow" subject="ui_breakpoint" ref_value="2"/>
+            <bind_style_if name="ps_action_row_tall" cond="print_status_row2_tall eq 1"/>
+            <bind_style_if name="ps_action_row_content" cond="print_status_row2_tall eq 1" invert="true"/>
             <ui_button name="btn_tune"
                        style_min_width="content" style_pad_hor="#space_sm" flex_grow="1" icon="tune" text="Tune"
-                       stacked_if_bp_lte="1">
+                       stacked_subject="print_status_row2_stacked" stacked_if_eq="1">
               <event_cb trigger="clicked" callback="on_print_status_tune"/>
               <bind_state_if_eq subject="print_controls_enabled" state="disabled" ref_value="0"/>
             </ui_button>
@@ -178,7 +192,8 @@
                  (platform_extras_available gates the ESP32 v1 cut). Label is a
                  subject: "Cam" where Row 2 is tight, "Camera" from LARGE up. -->
             <ui_button name="btn_camera"
-                       flex_grow="1" icon="webcam" bind_text="camera_button_label" stacked_if_bp_lte="1">
+                       flex_grow="1" icon="webcam" bind_text="camera_button_label"
+                       stacked_subject="print_status_row2_stacked" stacked_if_eq="1">
               <bind_flag_if cond="printer_has_webcam and moonraker_is_remote and platform_extras_available"
                             flag="hidden" invert="true"/>
               <event_cb trigger="clicked" callback="on_print_status_camera"/>
@@ -186,14 +201,15 @@
             <!-- Cancel button: visible only during active print (outcome == NONE/0) -->
             <ui_button name="btn_cancel"
                        style_min_width="content" style_pad_hor="#space_sm" flex_grow="1" variant="danger" icon="stop"
-                       text="Cancel" stacked_if_bp_lte="1">
+                       text="Cancel" stacked_subject="print_status_row2_stacked" stacked_if_eq="1">
               <bind_flag_if_not_eq subject="print_outcome" flag="hidden" ref_value="0"/>
               <bind_state_if_eq subject="print_control_stop_enabled" state="disabled" ref_value="0"/>
               <event_cb trigger="clicked" callback="on_print_control_stop"/>
             </ui_button>
             <!-- Reprint button: shown for any terminal state (complete/cancelled/error) -->
             <ui_button name="btn_reprint"
-                       flex_grow="1" icon="refresh" text="Reprint" hidden="true" stacked_if_bp_lte="1">
+                       flex_grow="1" icon="refresh" text="Reprint" hidden="true"
+                       stacked_subject="print_status_row2_stacked" stacked_if_eq="1">
               <bind_flag_if_eq subject="print_outcome" flag="hidden" ref_value="0"/>
               <event_cb trigger="clicked" callback="on_print_status_reprint"/>
             </ui_button>

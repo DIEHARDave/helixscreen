@@ -66,6 +66,9 @@ struct UiButtonData {
     // (height="100%") keeps that instead of the fixed button_height.
     int32_t row_height{0};
     bool row_height_set{false};
+    // style_min_width="content", replaced by a measured width while the button
+    // is stacked (see apply_stacked_min_width).
+    bool min_width_content{false};
     char op_idle_glyph[8]{}; // MDI glyph is 4-byte UTF-8 + NUL; 8 is generous
 
     // long_mode was given: the label is bounded so it can ellipsize or wrap.
@@ -505,11 +508,40 @@ void button_clicked_sound_cb(lv_event_t* e) {
 /// label's width from its row. The row only reruns its layout when one of its
 /// own children resizes, and a grow item keeps the width the row gave it, so a
 /// label that grows (a language switch, a bound text) asks the row directly.
+/// A stacked button that asked for style_min_width="content" holds the wider
+/// of its icon and label instead, measured from the parts themselves. A column
+/// measures its content from where its centered items sit, which moves as the
+/// button resizes, so a content minimum there feeds back into itself.
+void apply_stacked_min_width(lv_obj_t* btn, UiButtonData* data) {
+    int32_t inner = 0;
+    if (data->icon && !lv_obj_has_flag(data->icon, LV_OBJ_FLAG_HIDDEN)) {
+        inner = lv_obj_get_width(data->icon);
+    }
+    if (data->label && !lv_obj_has_flag(data->label, LV_OBJ_FLAG_HIDDEN)) {
+        inner = LV_MAX(inner, lv_obj_get_width(data->label));
+    }
+    const int32_t min_w = inner + lv_obj_get_style_space_left(btn, LV_PART_MAIN) +
+                          lv_obj_get_style_space_right(btn, LV_PART_MAIN);
+    if (lv_obj_get_style_min_width(btn, LV_PART_MAIN) != min_w) {
+        // DECLARATIVE_OK: measured from the stacked label, which XML cannot name
+        lv_obj_set_style_min_width(btn, min_w, LV_PART_MAIN);
+    }
+}
+
 void label_resized_cb(lv_event_t* e) {
     auto* label = static_cast<lv_obj_t*>(lv_event_get_current_target(e));
     lv_obj_t* btn = lv_obj_get_parent(label);
     lv_obj_t* row = btn ? lv_obj_get_parent(btn) : nullptr;
-    if (row && lv_obj_get_style_min_width(btn, LV_PART_MAIN) == LV_SIZE_CONTENT) {
+    if (!row) {
+        return;
+    }
+    auto* data = static_cast<UiButtonData*>(lv_obj_get_user_data(btn));
+    if (data && data->magic == UiButtonData::MAGIC && data->min_width_content &&
+        data->label == label &&
+        lv_obj_get_style_flex_flow(btn, LV_PART_MAIN) == LV_FLEX_FLOW_COLUMN) {
+        apply_stacked_min_width(btn, data);
+        lv_obj_mark_layout_as_dirty(row);
+    } else if (lv_obj_get_style_min_width(btn, LV_PART_MAIN) == LV_SIZE_CONTENT) {
         lv_obj_mark_layout_as_dirty(row);
     }
 }
@@ -1450,6 +1482,12 @@ void ui_button_set_stacked(lv_obj_t* btn, bool stacked) {
         // No pad_row - the label carries pad_top instead
         lv_obj_set_style_pad_row(btn, 0, LV_PART_MAIN);
         lv_obj_set_style_height(btn, lv_pct(100), LV_PART_MAIN);
+        if (lv_obj_get_style_min_width(btn, LV_PART_MAIN) == LV_SIZE_CONTENT) {
+            data->min_width_content = true;
+        }
+        if (data->min_width_content) {
+            apply_stacked_min_width(btn, data);
+        }
         lv_obj_move_to_index(data->icon, data->icon_on_bottom ? -1 : 0);
         lv_obj_set_style_text_font(data->label, theme_manager_get_font("font_small"), LV_PART_MAIN);
         lv_obj_set_style_pad_top(data->label, theme_manager_get_spacing("space_xxs"), LV_PART_MAIN);
@@ -1467,6 +1505,9 @@ void ui_button_set_stacked(lv_obj_t* btn, bool stacked) {
                                                      : theme_manager_get_spacing("button_height"),
                                 LV_PART_MAIN);
         lv_obj_move_to_index(data->icon, data->icon_on_right ? -1 : 0);
+        if (data->min_width_content) {
+            lv_obj_set_style_min_width(btn, LV_SIZE_CONTENT, LV_PART_MAIN);
+        }
         lv_obj_remove_local_style_prop(data->label, LV_STYLE_TEXT_FONT, LV_PART_MAIN);
         lv_obj_remove_local_style_prop(data->label, LV_STYLE_PAD_TOP, LV_PART_MAIN);
         if (data->label_bounded)

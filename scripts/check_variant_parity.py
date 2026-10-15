@@ -92,6 +92,12 @@ ALLOWED_OMISSIONS: dict[str, dict[str, dict[str, str]]] = {
             "filament+AMS cluster into ONE row that fits at every portrait width, so there is "
             "nothing left to hide — the row is rendered unconditionally, not dropped.",
         },
+        "condition": {
+            "bind_style_if@cond": "the base's two action rows take a fixed height when "
+            "print_status_rowN_tall says their labels must stack. Portrait has ONE action row "
+            "whose buttons are always icon over label at button_height, so it has no height to "
+            "switch.",
+        },
     },
 }
 

@@ -996,3 +996,50 @@ TEST_CASE_METHOD(UiButtonTestFixture, "ui_button unstacks to its declared height
     lv_obj_delete(box);
     lv_subject_deinit(&stack_when);
 }
+
+// A stacked button that asked for a content minimum holds the wider of its
+// icon and label as a measured width (a column cannot measure its own content
+// without feeding its width back in), and returns to the content minimum when
+// it unstacks.
+TEST_CASE_METHOD(UiButtonTestFixture, "ui_button stacked keeps a measured minimum width",
+                 "[ui_button][xml][quick]") {
+    static lv_subject_t stack_when;
+    lv_subject_init_int(&stack_when, 0);
+    lv_xml_register_subject(nullptr, "test_button_stack_min", &stack_when);
+    lv_obj_t* row = make_button_row(test_screen(), 300);
+    const char* attrs[] = {"width",
+                           "0",
+                           "flex_grow",
+                           "1",
+                           "style_min_width",
+                           "content",
+                           "icon",
+                           "tune",
+                           "text",
+                           "Firmware Restart Now",
+                           "stacked_subject",
+                           "test_button_stack_min",
+                           "stacked_if_eq",
+                           "1",
+                           nullptr};
+    lv_obj_t* btn = static_cast<lv_obj_t*>(lv_xml_create(row, "ui_button", attrs));
+    make_sharing_button(row, "X");
+    make_sharing_button(row, "Y");
+    REQUIRE(btn != nullptr);
+
+    lv_subject_set_int(&stack_when, 1);
+    lv_obj_update_layout(test_screen());
+    lv_obj_t* label = UITest::button_label(btn);
+    const int32_t expected = lv_obj_get_width(label) +
+                             lv_obj_get_style_space_left(btn, LV_PART_MAIN) +
+                             lv_obj_get_style_space_right(btn, LV_PART_MAIN);
+    CHECK(lv_obj_get_style_min_width(btn, LV_PART_MAIN) == expected);
+    CHECK(lv_obj_get_width(btn) >= expected);
+    CHECK(label_inside(btn));
+
+    lv_subject_set_int(&stack_when, 0);
+    lv_obj_update_layout(test_screen());
+    CHECK(lv_obj_get_style_min_width(btn, LV_PART_MAIN) == LV_SIZE_CONTENT);
+    lv_obj_delete(row);
+    lv_subject_deinit(&stack_when);
+}
