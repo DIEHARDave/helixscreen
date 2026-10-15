@@ -22,7 +22,6 @@
 #include "../test_helpers/config_test_access.h"
 #include "../test_helpers/home_panel_test_access.h"
 #include "../test_helpers/panel_widget_size_harness.h"
-#include "../test_helpers/scope_exit.h"
 #include "../test_helpers/scoped_config_write_counter.h"
 #include "../test_helpers/scoped_int_subject.h"
 #include "../test_helpers/scoped_runtime_config.h"
@@ -40,6 +39,7 @@
 #include "panel_widget_registry.h"
 #include "printer_state.h"
 #include "runtime_config.h"
+#include "scope_exit.h"
 #include "src/ui/panel_widgets/print_status_widget.h"
 #include "theme_manager.h"
 #include "tool_state.h"
@@ -570,7 +570,7 @@ TEST_CASE_METHOD(LiveDefaultFixture,
     Config* cfg = Config::get_instance();
     std::string& active = ConfigTestAccess::active_printer_id(*cfg);
     const std::string saved_active = active;
-    helix::test::ScopeExit restore_active([&] { active = saved_active; });
+    helix::ScopeExit restore_active([&] { active = saved_active; });
 
     // Printer A has an AMS.
     const std::string panel = "live_default_switch";
@@ -731,7 +731,7 @@ TEST_CASE_METHOD(
         def.id = "live_default-plug_tile";
         def.display_name = "Plug";
         def.icon = "puzzle_outline";
-        helix::test::ScopeExit unregister(
+        helix::ScopeExit unregister(
             [] { unregister_runtime_widget_def("live_default-plug_tile"); });
         REQUIRE(register_runtime_widget_def(def));
         REQUIRE(config(panel).place_entry("live_default-plug_tile", 0, 0, 0, 2, 2) >= 0);
@@ -931,7 +931,7 @@ TEST_CASE_METHOD(LiveDefaultFixture,
     REQUIRE_FALSE(path.empty());
     struct stat before {};
     REQUIRE(::stat(path.c_str(), &before) == 0);
-    auto restore = helix::test::ScopeExit([&]() {
+    auto restore = helix::ScopeExit([&]() {
         struct timespec times[2] = {before.st_atim, before.st_mtim};
         ::utimensat(AT_FDCWD, path.c_str(), times, 0);
     });
@@ -1101,7 +1101,7 @@ TEST_CASE_METHOD(LiveDefaultFixture,
     const std::string panel = fresh_panel("home");
     HomePanel& home = get_global_home_panel();
     HomePanelTestAccess::set_single_page_container(home, container_);
-    helix::test::ScopeExit detach([&home] {
+    helix::ScopeExit detach([&home] {
         PanelWidgetManager::clear_gate_observers("home");
         HomePanelTestAccess::clear_page_containers(home);
     });

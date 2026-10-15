@@ -8,8 +8,10 @@
 #include "ui_insert_notice.h"
 #include "ui_modal.h"
 #include "ui_nav_manager.h"
+#include "ui_notification_history.h"
 #include "ui_observer_guard.h"
 #include "ui_test_utils.h"
+#include "ui_toast_manager.h"
 #include "ui_update_queue.h"
 
 #include "ams_state.h"
@@ -30,6 +32,7 @@
 #include "logging_init.h"
 #include "lvgl_log_handler.h"
 #include "panel_widget_manager.h"
+#include "pending_startup_warnings.h"
 #include "rpc_error_correlation.h"
 #include "runtime_config.h"
 #include "safety_settings_manager.h"
@@ -433,6 +436,15 @@ void HelixTestFixture::reset_all() {
 
     // Delete any tracked modal widgets and clear the modal stack.
     ModalStack::instance().clear();
+
+    // Toasts, notifications and their test hooks are process-wide. A test that
+    // initialized the toast system would otherwise have every later test build
+    // real toast widgets, a notification row one test raised would read back in
+    // the next, and a hook capturing a finished test's locals would still run.
+    ToastManager::instance().deinit_subjects();
+    helix::ui::clear_test_hooks();
+    helix::PendingStartupWarnings::instance().clear();
+    NotificationHistory::instance().clear();
 
     // Lane source records are process-wide and are written by backends, so a
     // lane one test populated would read back in the next as a reading nobody

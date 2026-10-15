@@ -66,7 +66,8 @@ _helix_preset_dir() {
 # Args: $1 = printer_id
 _record_seeded_settings() {
     local printer_id="$1"
-    local state_file="${INSTALL_DIR}/config/.seeded_settings"
+    local state_file
+    state_file="$(_ledger_path .seeded_settings)"
 
     if [ -n "${INSTALL_DIR:-}" ] && [ ! -d "${INSTALL_DIR}/config" ]; then
         $(file_sudo "${INSTALL_DIR}") mkdir -p "${INSTALL_DIR}/config"

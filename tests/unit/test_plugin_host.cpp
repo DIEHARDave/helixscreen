@@ -11,7 +11,6 @@
 #include "../test_helpers/home_panel_test_access.h"
 #include "../test_helpers/plugin_host_test_support.h"
 #include "../test_helpers/process_async_timers.h"
-#include "../test_helpers/scope_exit.h"
 #include "config.h"
 #include "helix-xml/src/xml/lv_xml_component.h"
 #include "helix-xml/src/xml/lv_xml_translation.h"
@@ -21,6 +20,7 @@
 #include "panel_widget_manager.h"
 #include "panel_widget_registry.h"
 #include "plugin_host.h"
+#include "scope_exit.h"
 #include "translation_loader.h"
 
 #include <filesystem>
@@ -78,7 +78,7 @@ void write_i18n_plugin(const std::filesystem::path& root, const std::string& id,
 
 TEST_CASE_METHOD(LVGLTestFixture, "a plugin pack never overrides the app's own translation",
                  "[plugin][host][i18n]") {
-    helix::test::ScopeExit restore([] { lv_translation_set_language("en"); });
+    helix::ScopeExit restore([] { lv_translation_set_language("en"); });
     // The boot language: the app's pack is registered before any plugin loads.
     helix::ui::ensure_translation_loaded("de");
     lv_translation_set_language("de");
@@ -120,7 +120,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "a plugin pack never overrides the app's own t
 
 TEST_CASE_METHOD(LVGLTestFixture, "a plugin pack past the size cap is not registered",
                  "[plugin][host][i18n]") {
-    helix::test::ScopeExit restore([] { lv_translation_set_language("en"); });
+    helix::ScopeExit restore([] { lv_translation_set_language("en"); });
     TempDir tmp;
     const std::string body = "<translation tag=\"i18n-big only string\" de=\"Gross\"/>";
     const std::string pad(300 * 1024, ' ');
@@ -276,7 +276,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "a plugin component that shadows an app compon
     REQUIRE(lv_xml_register_component_from_data(
         "shadow__panel", "<component><view extends=\"lv_obj\" width=\"content\" height=\"content\">"
                          "<lv_label name=\"app_child\"/></view></component>"));
-    helix::test::ScopeExit cleanup([] { lv_xml_component_unregister("shadow__panel"); });
+    helix::ScopeExit cleanup([] { lv_xml_component_unregister("shadow__panel"); });
     HostRig rig(enabled("shadow", {}));
     rig.host->load_from("tests/fixtures/plugins");
     REQUIRE(rig.info("shadow"));
@@ -299,7 +299,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "unload leaves an app component that took the 
     REQUIRE(lv_xml_register_component_from_data(
         "hello__panel", "<component><view extends=\"lv_obj\" width=\"content\" height=\"content\">"
                         "<lv_label name=\"app_child\"/></view></component>"));
-    helix::test::ScopeExit cleanup([] { lv_xml_component_unregister("hello__panel"); });
+    helix::ScopeExit cleanup([] { lv_xml_component_unregister("hello__panel"); });
     rig.host->disable("hello");
 
     auto* panel =

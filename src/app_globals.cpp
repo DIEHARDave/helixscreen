@@ -436,10 +436,8 @@ std::function<void()> get_wizard_cancel_callback() {
 // CACHE DIRECTORY HELPER
 // ============================================================================
 //
-// The resolution cascade lives in src/system/helix_cache_dir.cpp so the test
-// binary can link it — app_globals.o is excluded from that link (mk/tests.mk)
-// and the cascade was being stubbed out from under the tests. Declarations are
-// still in app_globals.h.
+// The resolution cascade itself lives in src/system/helix_cache_dir.cpp;
+// its declarations are in app_globals.h.
 
 std::string app_get_install_root() {
     static const std::string cached = []() {
@@ -574,12 +572,19 @@ static bool probe_passwordless_sudo() {
     return false;
 }
 
+static bool (*g_escalation_probe)() = probe_passwordless_sudo;
+
+// NAMESPACE_OK: definition of a file-scope declaration in app_globals.h
+void set_root_escalation_probe(bool (*probe)()) {
+    g_escalation_probe = probe ? probe : probe_passwordless_sudo;
+}
+
 bool root_escalation_available() {
     static const bool cached = []() {
         if (geteuid() == 0) {
             return true; // already root — every embedded platform runs this way
         }
-        const bool ok = probe_passwordless_sudo();
+        const bool ok = g_escalation_probe();
         spdlog::info("[Updates] Passwordless sudo {}", ok ? "available" : "unavailable");
         return ok;
     }();

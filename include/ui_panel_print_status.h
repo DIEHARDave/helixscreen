@@ -388,6 +388,16 @@ class PrintStatusPanel : public OverlayBase {
     // every size where the cap does not bind.
     lv_subject_t graph_fits_subject_{};
 
+    // Each action row's layout (row 1 Light/Timelapse/Pause, row 2
+    // Tune/Cancel): stacked icon over label (always at tiny and below, and
+    // wherever a long translation cannot sit beside its icon), and tall when
+    // that stacking happens from small up. Set by
+    // PrintStatusLayoutFitter::recompute_actions_crowded().
+    lv_subject_t row1_stacked_subject_{};
+    lv_subject_t row1_tall_subject_{};
+    lv_subject_t row2_stacked_subject_{};
+    lv_subject_t row2_tall_subject_{};
+
     // Aux fan present subject (1=aux cluster visible, 0=hidden).
     // Set by bind_fan_speeds() when an aux fan is discovered.
     lv_subject_t aux_fan_present_subject_{};

@@ -687,7 +687,7 @@ std::vector<LaneWeightShortfall> insufficient_lane_weights_in(const PrintStartCo
 std::vector<MaterialMismatchDetail> material_mismatches_in(const PrintStartContext& ctx) {
     std::vector<MaterialMismatchDetail> mismatches;
 
-    if (!ctx.has_detail_view) {
+    if (!ctx.has_file_facts) {
         return mismatches;
     }
 

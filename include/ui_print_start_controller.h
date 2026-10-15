@@ -9,11 +9,13 @@
 #include "async_lifetime_guard.h"
 #include "filament_mapper.h"
 #include "print_start_checks.h"
+#include "print_start_inputs.h"
 
 #include <functional>
 #include <lvgl.h>
 #include <map>
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <utility>
@@ -31,6 +33,7 @@ class PrintStartControllerTestAccess; // test-only friend (global scope)
 namespace helix::ui {
 
 class PrintSelectDetailView;
+class PrintPreparationManager;
 
 /**
  * @brief Controller for print initiation workflow
@@ -42,7 +45,10 @@ class PrintSelectDetailView;
  *
  * This controller does NOT own the file selection state or the detail view.
  * It receives file information via set_file() and delegates the actual
- * print start to PrintPreparationManager (owned by the detail view).
+ * print start to PrintPreparationManager: the detail view's, or for a start
+ * with no detail view, the one set_prep_manager() names, with the file half of
+ * the gates from set_file_facts(). Every way initiate() ends without a print
+ * calls the cancelled callback.
  *
  * @pattern Extracted controller pattern - separates print initiation workflow
  *          from the larger PrintSelectPanel.
@@ -82,6 +88,14 @@ class PrintStartController {
      */
     void set_detail_view(PrintSelectDetailView* detail_view);
 
+    /// The prep manager a start with no detail view uses. Ignored while a
+    /// detail view is set: the view owns the manager its rows feed.
+    void set_prep_manager(PrintPreparationManager* prep);
+
+    /// The file half of the gates for a start with no detail view. Ignored
+    /// while a detail view is set.
+    void set_file_facts(helix::FileStartFacts facts);
+
     /**
      * @brief Set the file to print
      *
@@ -93,6 +107,20 @@ class PrintStartController {
     void set_file(const std::string& filename, const std::string& path,
                   const std::vector<std::string>& filament_colors,
                   const std::string& thumbnail_path = "");
+
+    /// The key the prep manager keeps this file's scan under, when it is not
+    /// the file's own path (a stick file printed from its copy). set_file()
+    /// clears it.
+    void set_scan_key(std::string key) {
+        scan_key_ = std::move(key);
+    }
+
+    /// Runs when a start with no detail view meets a printer-stopping command
+    /// check that did not run: the start ends there (then the cancelled
+    /// callback), since nothing on screen can stand in for that check.
+    void set_on_file_unchecked(std::function<void()> cb) {
+        on_file_unchecked_ = std::move(cb);
+    }
 
     /// Objects to skip in the next start, captured at the Print tap. Consumed
     /// by that start; a reprint never reads them.
@@ -140,7 +168,7 @@ class PrintStartController {
     /**
      * @brief Check if controller is ready to start a print
      *
-     * @return true if filename is set and detail view is available
+     * @return true if a filename is set and a detail view or a prep manager is available
      */
     [[nodiscard]] bool is_ready() const;
 
@@ -231,10 +259,21 @@ class PrintStartController {
     void on_gate_proceed();
     void on_gate_cancel();
 
+    /// The detail view's prep manager when a view is set, else set_prep_manager()'s.
+    [[nodiscard]] PrintPreparationManager* active_prep_manager() const;
+
+    /// A start ended without a print: the button comes back and the owner hears.
+    void end_without_print();
+
+    /// The key this file's scan is kept under: set_scan_key()'s, else its path.
+    [[nodiscard]] std::string file_scan_key() const;
+
     // === Dependencies ===
     PrinterState& printer_state_;
     IMoonrakerAPI* api_ = nullptr;
     PrintSelectDetailView* detail_view_ = nullptr;
+    PrintPreparationManager* prep_manager_ = nullptr;
+    std::optional<helix::FileStartFacts> file_facts_;
     lv_subject_t* can_print_subject_ = nullptr;
 
     // Guards background-thread API callbacks (Snapmaker U1 pre-print send) so a
@@ -248,6 +287,8 @@ class PrintStartController {
     std::vector<std::string> filament_colors_;
     std::vector<std::string> exclude_picks_;
     std::string thumbnail_path_; ///< Pre-extracted thumbnail for USB/embedded files
+    std::string scan_key_;
+    std::function<void()> on_file_unchecked_;
 
     // === Gate Pipeline State ===
     std::vector<helix::PrintStartGate> gate_list_; ///< ctor-seeded; overridable in tests

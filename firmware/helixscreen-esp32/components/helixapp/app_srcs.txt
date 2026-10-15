@@ -117,6 +117,7 @@ src/print/print_eta_estimator.cpp
 src/print/thumbnail_write_journal.cpp
 src/print/print_completion.cpp
 src/print/print_file_data.cpp
+src/print/print_activity.cpp
 src/print/print_history_manager.cpp
 src/print/print_start_analyzer.cpp
 src/print/print_start_navigation.cpp
@@ -197,6 +198,7 @@ src/printer/pre_print_preferences.cpp
 src/printer/preflight_validator.cpp
 src/printer/print_lifecycle_state.cpp
 src/printer/print_start_checks.cpp
+src/printer/print_start_inputs.cpp
 src/printer/queued_job_options.cpp
 src/printer/printer_calibration_state.cpp
 src/printer/printer_capabilities_state.cpp
@@ -328,6 +330,7 @@ src/ui/grid_layout.cpp
 src/ui/helix_sparkline.cpp
 src/ui/job_queue_state.cpp
 src/ui/job_queue_start.cpp
+src/ui/queued_job_start.cpp
 src/ui/keyboard_layout_provider.cpp
 src/ui/layout_port.cpp
 src/ui/light_button_config.cpp

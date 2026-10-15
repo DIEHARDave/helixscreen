@@ -15,6 +15,7 @@
 #include "ui_text_input.h"
 #include "ui_tile_rung.h"
 
+#include "app_globals.h"
 #include "material_settings_manager.h"
 #include "preset_materials.h"
 #include "spdlog/spdlog.h"
@@ -126,6 +127,11 @@ XMLTestFixture::XMLTestFixture() : LVGLTestFixture() {
     // global LVGL XML scope, overwriting any prior test's entries with valid
     // pointers for the duration of this test.
     m_state.init_subjects(true);
+
+    // The app's global subjects (home_edit_mode, platform gates, ...) are live before
+    // any XML is built. A fixture that tore them down leaves the names registered
+    // against deinitialized subjects, which refuse the bindings built here.
+    app_globals_init_subjects();
 
     // Quick-preset material subjects (preset_material_N_name/_temps). The
     // filament panel, all three temp panels, the temp graph overlay and the PID
@@ -303,19 +309,3 @@ lv_obj_t* XMLTestFixture::create_component(const char* component_name, const cha
     }
     return obj;
 }
-
-// ============================================================================
-// Stubs for application globals used by display_manager.cpp
-// ============================================================================
-// These stubs provide test-safe no-op implementations of app_globals functions
-// that are referenced by display_manager.cpp but not needed in unit tests.
-
-void app_request_quit() {
-    // No-op for tests - display manager calls this on window close
-    spdlog::debug("[TestStub] app_request_quit() called - no-op in tests");
-}
-
-// NOTE: helix_notify_app_backgrounded() / helix_notify_app_foregrounded() used to be
-// stubbed here because application.o was excluded from the test link. It no longer is
-// (see mk/tests.mk), so the real implementations are linked and these stubs are gone —
-// they would be duplicate definitions. Both real functions only flip an atomic and log.

@@ -884,3 +884,220 @@ TEST_CASE_METHOD(UiButtonTestFixture,
 
     CHECK(s_invalidations == 0);
 }
+
+// ============================================================================
+// Rows that share space by content (prestonbrown/helixscreen#1307)
+// ============================================================================
+
+namespace {
+/// A flex row of fixed width, the shape of the Home and filament-op rows.
+lv_obj_t* make_button_row(lv_obj_t* parent, int32_t width) {
+    lv_obj_t* row = lv_obj_create(parent);
+    lv_obj_set_size(row, width, LV_SIZE_CONTENT);
+    lv_obj_set_style_pad_all(row, 0, LV_PART_MAIN);
+    lv_obj_set_style_pad_column(row, 0, LV_PART_MAIN);
+    lv_obj_set_style_border_width(row, 0, LV_PART_MAIN);
+    lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
+    return row;
+}
+
+lv_obj_t* make_sharing_button(lv_obj_t* row, const char* text) {
+    const char* attrs[] = {"width",   "0",    "flex_grow", "1",    "style_min_width",
+                           "content", "text", text,        nullptr};
+    return static_cast<lv_obj_t*>(lv_xml_create(row, "ui_button", attrs));
+}
+
+bool label_inside(lv_obj_t* btn) {
+    lv_area_t b;
+    lv_area_t l;
+    lv_obj_get_coords(btn, &b);
+    lv_obj_get_coords(UITest::button_label(btn), &l);
+    return l.x1 >= b.x1 && l.x2 <= b.x2;
+}
+} // namespace
+
+// Labels that fit split the row evenly, exactly as plain flex_grow buttons.
+TEST_CASE_METHOD(UiButtonTestFixture, "ui_button row shares evenly while every label fits",
+                 "[ui_button][xml][quick]") {
+    lv_obj_t* row = make_button_row(test_screen(), 300);
+    lv_obj_t* a = make_sharing_button(row, "Go");
+    lv_obj_t* b = make_sharing_button(row, "Stop");
+    lv_obj_t* c = make_sharing_button(row, "X");
+    lv_obj_update_layout(test_screen());
+    CHECK(lv_obj_get_width(a) == 100);
+    CHECK(lv_obj_get_width(b) == 100);
+    CHECK(lv_obj_get_width(c) == 100);
+}
+
+// A label longer than its even share takes its width from the row, and the
+// short neighbours give it up, so no label crosses its button's border.
+TEST_CASE_METHOD(UiButtonTestFixture, "ui_button row gives a long label room from short neighbours",
+                 "[ui_button][xml][quick]") {
+    lv_obj_t* row = make_button_row(test_screen(), 420);
+    lv_obj_t* a = make_sharing_button(row, "Go");
+    lv_obj_t* b = make_sharing_button(row, "Firmware Restart Now");
+    lv_obj_t* c = make_sharing_button(row, "X");
+    lv_obj_update_layout(test_screen());
+    REQUIRE(lv_obj_get_width(UITest::button_label(b)) > 140);
+    CHECK(lv_obj_get_width(b) > 140);
+    CHECK(label_inside(a));
+    CHECK(label_inside(b));
+    CHECK(label_inside(c));
+    CHECK(lv_obj_get_width(a) < 140);
+    CHECK(lv_obj_get_width(a) + lv_obj_get_width(b) + lv_obj_get_width(c) == 420);
+}
+
+// The row re-shares when a label grows after layout (a language switch, a
+// bound text), not only when it is first built.
+TEST_CASE_METHOD(UiButtonTestFixture, "ui_button row re-shares when a label grows",
+                 "[ui_button][xml][quick]") {
+    lv_obj_t* row = make_button_row(test_screen(), 420);
+    lv_obj_t* a = make_sharing_button(row, "Go");
+    lv_obj_t* b = make_sharing_button(row, "Stop");
+    make_sharing_button(row, "X");
+    lv_obj_update_layout(test_screen());
+    REQUIRE(lv_obj_get_width(b) == 140);
+
+    ui_button_set_text(b, "Firmware Restart Now");
+    lv_obj_update_layout(test_screen());
+    CHECK(lv_obj_get_width(b) > 140);
+    CHECK(label_inside(b));
+    CHECK(lv_obj_get_width(a) < 140);
+}
+
+// Unstacking returns a container-sized button to the height it declared,
+// not the fixed button_height.
+TEST_CASE_METHOD(UiButtonTestFixture, "ui_button unstacks to its declared height",
+                 "[ui_button][xml][quick]") {
+    static lv_subject_t stack_when;
+    lv_subject_init_int(&stack_when, 0);
+    lv_xml_register_subject(nullptr, "test_button_stack_height", &stack_when);
+    lv_obj_t* box = lv_obj_create(test_screen());
+    lv_obj_set_size(box, 200, 90);
+    const char* attrs[] = {"icon",
+                           "tune",
+                           "text",
+                           "Load",
+                           "height",
+                           "100%",
+                           "stacked_subject",
+                           "test_button_stack_height",
+                           "stacked_if_eq",
+                           "1",
+                           nullptr};
+    lv_obj_t* btn = static_cast<lv_obj_t*>(lv_xml_create(box, "ui_button", attrs));
+    REQUIRE(btn != nullptr);
+    CHECK(lv_obj_get_style_height(btn, LV_PART_MAIN) == lv_pct(100));
+
+    lv_subject_set_int(&stack_when, 1);
+    lv_subject_set_int(&stack_when, 0);
+    CHECK(lv_obj_get_style_flex_flow(btn, LV_PART_MAIN) == LV_FLEX_FLOW_ROW);
+    CHECK(lv_obj_get_style_height(btn, LV_PART_MAIN) == lv_pct(100));
+    lv_obj_delete(box);
+    lv_subject_deinit(&stack_when);
+}
+
+// A stacked button that asked for a content minimum holds the wider of its
+// icon and label as a measured width (a column cannot measure its own content
+// without feeding its width back in), and returns to the content minimum when
+// it unstacks.
+TEST_CASE_METHOD(UiButtonTestFixture, "ui_button stacked keeps a measured minimum width",
+                 "[ui_button][xml][quick]") {
+    static lv_subject_t stack_when;
+    lv_subject_init_int(&stack_when, 0);
+    lv_xml_register_subject(nullptr, "test_button_stack_min", &stack_when);
+    lv_obj_t* row = make_button_row(test_screen(), 300);
+    const char* attrs[] = {"width",
+                           "0",
+                           "flex_grow",
+                           "1",
+                           "style_min_width",
+                           "content",
+                           "icon",
+                           "tune",
+                           "text",
+                           "Firmware Restart Now",
+                           "stacked_subject",
+                           "test_button_stack_min",
+                           "stacked_if_eq",
+                           "1",
+                           nullptr};
+    lv_obj_t* btn = static_cast<lv_obj_t*>(lv_xml_create(row, "ui_button", attrs));
+    make_sharing_button(row, "X");
+    make_sharing_button(row, "Y");
+    REQUIRE(btn != nullptr);
+
+    lv_subject_set_int(&stack_when, 1);
+    lv_obj_update_layout(test_screen());
+    lv_obj_t* label = UITest::button_label(btn);
+    const int32_t expected = lv_obj_get_width(label) +
+                             lv_obj_get_style_space_left(btn, LV_PART_MAIN) +
+                             lv_obj_get_style_space_right(btn, LV_PART_MAIN);
+    CHECK(lv_obj_get_style_min_width(btn, LV_PART_MAIN) == expected);
+    CHECK(lv_obj_get_width(btn) >= expected);
+    CHECK(label_inside(btn));
+
+    lv_subject_set_int(&stack_when, 0);
+    lv_obj_update_layout(test_screen());
+    CHECK(lv_obj_get_style_min_width(btn, LV_PART_MAIN) == LV_SIZE_CONTENT);
+    lv_obj_delete(row);
+    lv_subject_deinit(&stack_when);
+}
+
+// A column button cannot hold style_min_width="content" (LVGL measures a
+// column's content from its centered items, which feeds back into the width).
+// However the minimum arrives, at create or from a style added later, the
+// button holds the wider of its icon and label plus its padding instead.
+TEST_CASE_METHOD(UiButtonTestFixture, "ui_button column holds a measured minimum, not content",
+                 "[ui_button][xml][quick]") {
+    lv_obj_t* row = make_button_row(test_screen(), 300);
+    const auto measured = [](lv_obj_t* btn) {
+        return lv_obj_get_width(UITest::button_label(btn)) +
+               lv_obj_get_style_space_left(btn, LV_PART_MAIN) +
+               lv_obj_get_style_space_right(btn, LV_PART_MAIN);
+    };
+
+    SECTION("from the XML attribute") {
+        const char* attrs[] = {"width",
+                               "0",
+                               "flex_grow",
+                               "1",
+                               "icon",
+                               "tune",
+                               "icon_position",
+                               "top",
+                               "text",
+                               "Firmware Restart Now",
+                               "style_min_width",
+                               "content",
+                               nullptr};
+        lv_obj_t* btn = static_cast<lv_obj_t*>(lv_xml_create(row, "ui_button", attrs));
+        make_sharing_button(row, "X");
+        lv_obj_update_layout(test_screen());
+        CHECK(lv_obj_get_style_min_width(btn, LV_PART_MAIN) == measured(btn));
+        CHECK(label_inside(btn));
+    }
+
+    SECTION("from a style added after create") {
+        const char* attrs[] = {"width",         "0",
+                               "flex_grow",     "1",
+                               "icon",          "tune",
+                               "icon_position", "top",
+                               "text",          "Firmware Restart Now",
+                               nullptr};
+        lv_obj_t* btn = static_cast<lv_obj_t*>(lv_xml_create(row, "ui_button", attrs));
+        make_sharing_button(row, "X");
+        lv_obj_update_layout(test_screen());
+        static lv_style_t content_min;
+        lv_style_init(&content_min);
+        lv_style_set_min_width(&content_min, LV_SIZE_CONTENT);
+        lv_obj_add_style(btn, &content_min, LV_PART_MAIN);
+        helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
+        lv_refr_now(nullptr);
+        lv_obj_update_layout(test_screen());
+        CHECK(lv_obj_get_style_min_width(btn, LV_PART_MAIN) == measured(btn));
+        CHECK(label_inside(btn));
+        lv_obj_remove_style(btn, &content_min, LV_PART_MAIN);
+    }
+    lv_obj_delete(row);
+}

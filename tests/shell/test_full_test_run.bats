@@ -11,10 +11,15 @@ GATE="$(cd "$BATS_TEST_DIRNAME/../.." && pwd)/scripts/full-test-run.sh"
 
 setup() {
     load helpers
+    # The make stub never reaches the real make or the jobpool shim, and refuses to nest.
+    export JOBPOOL=0
+    unset FAKE_MAKE_DEPTH
     export TMPDIR="$BATS_TEST_TMPDIR"
     export CALLS="$BATS_TEST_TMPDIR/calls"
     # <target> exits with $MAKE_<target>_RC (unit_sweep, test_shell), default 0.
     mock_command_script fake-make '
+[ "${FAKE_MAKE_DEPTH:-0}" -lt 1 ] || { echo "fake-make re-entered" >&2; exit 97; }
+export FAKE_MAKE_DEPTH=$((${FAKE_MAKE_DEPTH:-0} + 1))
 for a in "$@"; do case "$a" in -*) ;; *) t=$a ;; esac; done
 echo "make $t" >> "$CALLS"
 case "$t" in

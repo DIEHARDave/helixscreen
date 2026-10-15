@@ -18,6 +18,7 @@
 #include "ui_timer_guard.h"
 
 #include "ams_backend.h"
+#include "app_constants.h"
 #include "async_lifetime_guard.h"
 #include "connection_state.h"
 #include "gcode_ops_detector.h"
@@ -580,7 +581,7 @@ class PrintSelectPanel : public PanelBase {
     static constexpr const char* kUsbCopyDir = "usb_prints";
 
     /// A USB copy whose transfer reports no progress for this long is abandoned.
-    static constexpr uint32_t kUsbCopyStallMs = 30000;
+    static constexpr uint32_t kUsbCopyStallMs = helix::app_constants::transfer::STALL_MS;
 
     /**
      * @brief Queue the selected file instead of starting it.
@@ -609,6 +610,16 @@ class PrintSelectPanel : public PanelBase {
      * @param job The queue entry to start (job_id + queued filename)
      */
     void start_queued_job(const helix::JobQueueEntry& job);
+
+    /**
+     * @brief The app's one PrintPreparationManager.
+     *
+     * Owned by this panel's detail-view model, which exists from setup() so
+     * the PRINT_START analysis runs on connect. A start with no file view
+     * (the home tile's QueuedJobStarter) drives this same instance, so there
+     * is one analysis per connect and one owner of the skip-pending handler.
+     */
+    [[nodiscard]] helix::ui::PrintPreparationManager* print_preparation_manager();
 
     /**
      * @brief Show the enriched pre-flight filament check modal.
@@ -1073,10 +1084,15 @@ class PrintSelectPanel : public PanelBase {
     void upload_usb_copy(UsbCopyRequest req, const std::map<std::string, uint64_t>& existing);
 
     /// Hand the controller @p filename in Moonraker directory @p dir, with the
-    /// tool colors, thumbnail and object picks read when Print was tapped, and start.
+    /// tool colors, thumbnail, object picks and @p scan_key (the key its scan
+    /// is kept under) read when Print was tapped, and start.
     void dispatch_print(const std::string& filename, const std::string& dir,
                         const std::vector<std::string>& filament_colors,
-                        const std::string& thumbnail, std::vector<std::string> exclude_picks);
+                        const std::string& thumbnail, std::vector<std::string> exclude_picks,
+                        std::string scan_key);
+
+    /// The key the prep manager keeps the selected file's scan under.
+    [[nodiscard]] std::string selected_scan_key() const;
 
     /// True, after a toast, when every object is picked and nothing would print.
     bool refuse_start_with_every_object_picked();

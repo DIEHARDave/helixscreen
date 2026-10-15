@@ -925,6 +925,8 @@ make libs-clean     # Clean all library artifacts at once
 
 `helix-tests` links through a response file: make's `$(file ...)` function writes the object list to `$(OBJ_DIR)/<binary>.objs` (for the plain build, `build/obj/helix-tests.objs`) and the compiler reads it as `@<that file>`. Inline, the list passes Linux's 128 KiB per-argument limit once object paths grow, as the ASAN build's do, and bash refuses the recipe with "Argument list too long".
 
+The link also compiles in `helix_build_tree_stamp`, the output of `scripts/tree_stamp.sh` taken when the test build's make starts, before anything compiles: the HEAD commit and a hash of every file the binary is built from whose content differs from it, tracked or untracked. "Built from" is the list `scripts/test_link_sources.py` derives from the link's objects and their `.d` files (`$(OBJ_DIR)/<binary>.stamp-paths`), so an app-only source such as `src/main.cpp` never marks the binary stale. At startup the binary runs `scripts/tree_stamp.sh --paths <that list> <that commit>` from its working directory and prints `WARNING: helix-tests is stale` when the answer differs, so running `./build/bin/helix-tests` after an edit without `make test` says so instead of quietly reporting the previous build's results. Measuring against the recorded commit keeps a commit of already-built edits from reading as stale. A source saved while the build ran leaves the binary stamped with the tree as the build started, and the link dates the binary back so the next `make test` relinks it. The stamp never forces a relink by itself, and `tree_stamp.sh` never writes the index (a refresh there would take `index.lock` in a shared tree). `HELIX_TESTS_NO_STALE_CHECK=1` skips the check, and `mk/tests.mk` exports it for every run make starts. `helix-screen` carries no stamp: its link rule is shared by every cross and packaging target, and `scripts/check_link_parity.py` requires the fbdev and EGL variant links to carry every object the main link has.
+
 ### Test Harness
 
 The dependency system includes a comprehensive test suite:
@@ -1010,10 +1012,29 @@ Formatting is automatically checked by the pre-commit hook (`.git/hooks/pre-comm
 3. **Prevents commit** if a formatted file could not be re-staged (partially staged hunks)
 4. **Full sweeps (pre-push, CI) fail** on any unformatted file outside `CLANG_FORMAT_BASELINE`, the list of files that predate the gate; an entry leaves the list once the file is auto-formatted on its next staging
 
+After the commit, `.githooks/post-commit` runs `.githooks/lib/sync-index-to-head.sh`.
+`git commit -- <paths>` commits from a temporary index, so a file the hook
+reformatted lands formatted in HEAD and on disk while the real index keeps the
+pre-format blob, and `git status` reads `MM`. For each committed path whose working
+tree equals HEAD but whose index entry does not, the step points the entry at HEAD's
+own blob. It never hashes the working tree, so nothing that is not already committed
+reaches the index.
+
 To bypass (not recommended):
 ```bash
 git commit --no-verify
 ```
+
+### Staged-input checks that would otherwise wait for a full run
+
+Each is path-gated, so a commit staging none of its inputs pays nothing:
+
+| Gate | Staged trigger | Cost | Catches |
+|------|----------------|------|---------|
+| `qc_esp32_compile` | a `.c`/`.cpp`/`.h`/`.hpp` under `src/`, `include/` or the firmware | ~6s for two units | host-green, ESP32-red code: `scripts/esp32_syntax_check.py --staged` compiles the staged firmware sources and one includer per staged header in the IDF image, from an index overlay (`git checkout-index` of `src/`, `include/` and the firmware, ~0.25s), so the commit's content decides and not the working tree. Never configures (pre-push does, once per CMake change); advisory skip without docker or the image |
+| `qc_toolhead_census` | `ui_xml/**/*.xml`, the census test | ~0.2s | all five XML cases of `tests/unit/test_job_holds_machine.cpp`: an unclassified control-bearing file, a stale row, a drifted or misspelled guard count, a guard in a no-machine file, a `<bind_state_*>` disabling on `print_active`, and XML naming `job_holds_machine` (`scripts/check_toolhead_census.py`) |
+| `qc_theme_artifacts` | top-level `ui_xml/*.xml`, the two artefacts | ~0.1s | `src/generated/theme_token_table.cpp` not matching the staged tokens (`make regen-tokens`), and a `tests/fixtures/theme_const_golden.txt` the token change provably invalidates (`scripts/check_theme_artifacts.py`; the fix needs the test binary, so it prints the regen command; when regenerating leaves the golden unchanged, `HELIX_GOLDEN_CURRENT=1 git commit ...` says it is current) |
+| `qc_xml_linter` | also `src/**/*.cpp`, theme defaults, `lib/helix-xml`, `mk/tools.mk` | ~0.7s when it lints; silent when nothing it reads is staged | `tools/xml-linter/schema/schema.json` stale against any extractor input |
 
 ### Pre-push Integration
 
@@ -1337,7 +1358,9 @@ Two kinds of remote machine help here, and both are optional:
   directory whose `build/` persists, so a warm run rebuilds only what changed.
   With one configured, `make full-test-run` runs the C++ sweep there while bats
   runs locally whenever the link makes that pay (`TEST_HOST=1` forces it,
-  `TEST_HOST=0` or `HELIX_TEST_HOST_AUTO=0` keeps both local).
+  `TEST_HOST=0` or `HELIX_TEST_HOST_AUTO=0` keeps both local). `make land-gate`
+  makes the same choice for its two C++ sweeps (`scripts/lib/sweep_location.sh`
+  holds it for both gates).
 - a **remote build host** builds natively or for the cross targets:
   `make remote-native`, `make remote-test`, `make remote-pi` and siblings
   (`mk/remote.mk`, `scripts/remote-build.sh`).
@@ -1370,14 +1393,14 @@ host simply runs both suites locally, without a word.
 
 | Variable | Used by | Meaning (default) |
 |----------|---------|-------------------|
-| `HELIX_TEST_HOST` | `test-host-run.sh`, `full-test-run`, `helix-claim resources`, teardown | ssh name of the test host (none) |
+| `HELIX_TEST_HOST` | `test-host-run.sh`, `full-test-run`, `land-gate`, `helix-claim resources`, teardown | ssh name of the test host (none) |
 | `HELIX_TEST_CONTAINER` | same | container name (`helix-test`) |
 | `HELIX_TEST_TREES_HOST` | same | mirror root on the host, relative to the ssh user's home unless absolute (`helix-test/trees`) |
 | `HELIX_TEST_TREES` | same | the same directory inside the container (`/work/trees`) |
 | `HELIX_TEST_CCACHE` | same | ccache dir inside the container (`/work/ccache`) |
 | `HELIX_TEST_WORKDIR` | `test-host-run.sh --commit`, `mutate` | git checkout inside the container (`/work/helixscreen`) |
 | `HELIX_TEST_LOCK_DIR` | `test-host-run.sh` | lock directory on the host (`/tmp`) |
-| `HELIX_TEST_HOST_AUTO` | `full-test-run` | `0` keeps an unforced gate local even with a test host configured (`1`) |
+| `HELIX_TEST_HOST_AUTO` | `full-test-run`, `land-gate` | `0` keeps an unforced gate local even with a test host configured (`1`) |
 | `REMOTE_HOST`, `REMOTE_USER` | `mk/remote.mk`, `remote-build.sh` | remote build host and optional user (none) |
 | `REMOTE_DIR` | `mk/remote.mk` | rsync target on the remote for the cross targets (none). `remote-sync` rsyncs `--delete` into it, so give it a directory of its own, never a checkout you work in |
 | `REMOTE_BUILD_DIR` | `remote-build.sh` | its own clone on the remote (`~/helix-remote`), which it hard-resets and cleans every run. It works only in a directory it created (marked `.helix-remote-build`) and refuses any other |

@@ -16,6 +16,7 @@
 #include "ui_modal.h"
 #include "ui_nav.h"
 #include "ui_panel_print_status.h"
+#include "ui_print_preparation_manager.h"
 #include "ui_print_select_detail_view.h"
 #include "ui_update_queue.h"
 
@@ -99,6 +100,27 @@ void PrintStartController::set_detail_view(PrintSelectDetailView* detail_view) {
     detail_view_ = detail_view;
 }
 
+void PrintStartController::set_prep_manager(PrintPreparationManager* prep) {
+    prep_manager_ = prep;
+}
+
+void PrintStartController::set_file_facts(helix::FileStartFacts facts) {
+    file_facts_ = std::move(facts);
+}
+
+PrintPreparationManager* PrintStartController::active_prep_manager() const {
+    return detail_view_ ? detail_view_->get_prep_manager() : prep_manager_;
+}
+
+void PrintStartController::end_without_print() {
+    if (update_print_button_) {
+        update_print_button_();
+    }
+    if (on_print_cancelled_) {
+        on_print_cancelled_();
+    }
+}
+
 void PrintStartController::set_file(const std::string& filename, const std::string& path,
                                     const std::vector<std::string>& filament_colors,
                                     const std::string& thumbnail_path) {
@@ -106,10 +128,15 @@ void PrintStartController::set_file(const std::string& filename, const std::stri
     path_ = path;
     filament_colors_ = filament_colors;
     thumbnail_path_ = thumbnail_path;
+    scan_key_.clear();
+}
+
+std::string PrintStartController::file_scan_key() const {
+    return scan_key_.empty() ? PrintPreparationManager::scan_key(filename_, path_) : scan_key_;
 }
 
 bool PrintStartController::is_ready() const {
-    return !filename_.empty() && detail_view_ != nullptr;
+    return !filename_.empty() && (detail_view_ != nullptr || prep_manager_ != nullptr);
 }
 
 // ============================================================================
@@ -126,16 +153,12 @@ void PrintStartController::initiate() {
         spdlog::warn("[PrintStartController] Rejected print start during startup grace period "
                      "({}s < {}s)",
                      secs, app_constants::startup::PRINT_START_GRACE_PERIOD.count());
-        if (update_print_button_) {
-            update_print_button_(); // Re-enable button
-        }
+        end_without_print();
         return;
     }
 
     if (divert_to_spool_removal()) {
-        if (update_print_button_) {
-            update_print_button_();
-        }
+        end_without_print();
         return;
     }
 
@@ -155,9 +178,7 @@ void PrintStartController::initiate() {
         NOTIFY_ERROR(lv_tr("Cannot start print: printer is {}"), state_str);
         spdlog::warn("[PrintStartController] Attempted to start print while printer is in {} state",
                      state_str);
-        if (update_print_button_) {
-            update_print_button_(); // Re-enable button on early failure
-        }
+        end_without_print();
         return;
     }
 
@@ -175,13 +196,11 @@ void PrintStartController::execute_print_start() {
         lv_subject_set_int(can_print_subject_, 0);
     }
 
-    auto* prep_manager = detail_view_ ? detail_view_->get_prep_manager() : nullptr;
+    auto* prep_manager = active_prep_manager();
     if (!prep_manager) {
         spdlog::error("[PrintStartController] Cannot start print - prep manager not initialized");
         NOTIFY_ERROR(lv_tr("Cannot start print: internal error"));
-        if (update_print_button_) {
-            update_print_button_(); // Re-enable button on early failure
-        }
+        end_without_print();
         return;
     }
 
@@ -228,7 +247,8 @@ void PrintStartController::execute_print_start() {
     PrinterState* ps = &printer_state_;
 
     auto start_now = [this, ps, prep_manager, filename_to_print, path = path_, thumbnail_path,
-                      on_started, update_button, show_detail, exclude_picks]() {
+                      on_started, on_cancelled, update_button, show_detail, exclude_picks,
+                      scan_key = file_scan_key()]() {
         // Navigate to print status panel IMMEDIATELY (optimistic navigation)
         // The busy overlay will show on top during download/upload operations.
         // On failure, we'll navigate back to the detail overlay.
@@ -257,8 +277,7 @@ void PrintStartController::execute_print_start() {
             helix::ui::with_pre_start_exclusions(
                 [filename_to_print, path, thumbnail_path, on_started]() {
                     // Construct full path for metadata lookup (e.g., usb/flowrate_0.gcode)
-                    std::string full_path =
-                        path.empty() ? filename_to_print : path + "/" + filename_to_print;
+                    std::string full_path = gcode::join_gcode_path(path, filename_to_print);
                     helix::ui::queue_update(
                         "PrintStartController::execute_print_start",
                         [full_path, thumbnail_path, on_started]() {
@@ -294,55 +313,64 @@ void PrintStartController::execute_print_start() {
                 exclude_picks),
             // Completion callback
             // NOTE: Called from background HTTP thread - must defer LVGL calls to main thread
-            [update_button, show_detail, ps](bool success, const std::string& error) {
-                helix::ui::queue_update("PrintStartController::execute_print_start", [success,
-                                                                                      error,
-                                                                                      update_button,
-                                                                                      show_detail,
-                                                                                      ps]() {
-                    if (success) {
-                        // Deliberately does NOT end preparation: the RPC
-                        // succeeding is when PRINT_START BEGINS. The printer's
-                        // own PRINTING report retires the claim (Confirmed).
-                        spdlog::debug("[PrintStartController] Print started successfully");
-                    } else if (!error.empty()) {
-                        NOTIFY_ERROR(lv_tr("Print preparation failed: {}"), error);
-                        LOG_ERROR_INTERNAL("[PrintStartController] Print preparation failed: {}",
-                                           error);
-                        ps->print_state().retire_preparing(helix::PreparingExit::Failed);
+            [update_button, show_detail, on_cancelled, ps](bool success, const std::string& error) {
+                helix::ui::queue_update(
+                    "PrintStartController::execute_print_start",
+                    [success, error, update_button, show_detail, on_cancelled, ps]() {
+                        // Not end_without_print(): that runs before any navigation, and
+                        // refreshes the button and reports the cancel together. Here every
+                        // failure reports the cancel, an abandoned start (no error) included,
+                        // while the button refresh waits for a failure with an error to
+                        // unwind the navigation and re-show the file view it belongs to.
+                        if (!success && on_cancelled) {
+                            on_cancelled();
+                        }
+                        if (success) {
+                            // Deliberately does NOT end preparation: the RPC
+                            // succeeding is when PRINT_START BEGINS. The printer's
+                            // own PRINTING report retires the claim (Confirmed).
+                            spdlog::debug("[PrintStartController] Print started successfully");
+                        } else if (!error.empty()) {
+                            NOTIFY_ERROR(lv_tr("Print preparation failed: {}"), error);
+                            LOG_ERROR_INTERNAL(
+                                "[PrintStartController] Print preparation failed: {}", error);
+                            ps->print_state().retire_preparing(helix::PreparingExit::Failed);
 
-                        // Only unwind the optimistic navigation if the print
-                        // status overlay is still what the user is looking at.
-                        // Preparation can fail a full minute after we pushed it
-                        // (upload/prep timeout), by which point they may have
-                        // navigated several overlays on — popping blind then
-                        // closes THEIR screen, and the re-show below rebuilds
-                        // widgets that same pop just destroyed (#1221).
-                        // get_cached_overlay() is the widget push_overlay()
-                        // actually put on the stack, and it goes null with
-                        // destroy-on-close — the same handle the auto-nav gate
-                        // checks membership with (print_start_navigation.cpp).
-                        if (helix::nav::is_on_top(PrintStatusPanel::get_cached_overlay())) {
-                            spdlog::info("[PrintStartController] Navigating back to print select "
-                                         "after failure");
-                            helix::nav::go_back(); // Pop print status overlay
+                            // Only unwind the optimistic navigation if the print
+                            // status overlay is still what the user is looking at.
+                            // Preparation can fail a full minute after we pushed it
+                            // (upload/prep timeout), by which point they may have
+                            // navigated several overlays on — popping blind then
+                            // closes THEIR screen, and the re-show below rebuilds
+                            // widgets that same pop just destroyed (#1221).
+                            // get_cached_overlay() is the widget push_overlay()
+                            // actually put on the stack, and it goes null with
+                            // destroy-on-close — the same handle the auto-nav gate
+                            // checks membership with (print_start_navigation.cpp).
+                            if (helix::nav::is_on_top(PrintStatusPanel::get_cached_overlay())) {
+                                spdlog::info(
+                                    "[PrintStartController] Navigating back to print select "
+                                    "after failure");
+                                helix::nav::go_back(); // Pop print status overlay
 
-                            // Re-show the detail view so user can retry
-                            if (show_detail) {
-                                show_detail();
+                                // Re-show the detail view so user can retry
+                                if (show_detail) {
+                                    show_detail();
+                                }
+                            } else {
+                                spdlog::info(
+                                    "[PrintStartController] Print status no longer on top — "
+                                    "leaving navigation alone after failure");
                             }
-                        } else {
-                            spdlog::info("[PrintStartController] Print status no longer on top — "
-                                         "leaving navigation alone after failure");
-                        }
 
-                        // Re-enable button on failure
-                        if (update_button) {
-                            update_button();
+                            // Re-enable button on failure
+                            if (update_button) {
+                                update_button();
+                            }
                         }
-                    }
-                });
-            });
+                    });
+            },
+            scan_key);
     };
 
     // Some backends (Snapmaker U1) must emit firmware-native print_task_config
@@ -354,17 +382,9 @@ void PrintStartController::execute_print_start() {
     // the unchanged synchronous start path below.
     if (AmsBackend* backend = AmsState::instance().get_backend();
         backend && backend->requires_preprint_send()) {
-        send_backend_preprint_then(detail_view_ ? detail_view_->get_tools_used() : std::set<int>{},
-                                   detail_view_ ? detail_view_->get_effective_remap()
-                                                : std::map<int, int>{},
-                                   start_now, [this]() {
-                                       if (update_print_button_) {
-                                           update_print_button_();
-                                       }
-                                       if (on_print_cancelled_) {
-                                           on_print_cancelled_();
-                                       }
-                                   });
+        const auto file = gather_print_start_context();
+        send_backend_preprint_then(file.tools_used, file.effective_remap, start_now,
+                                   [this]() { end_without_print(); });
         return; // start_now fires from the send continuation — do NOT also start here
     }
 
@@ -584,7 +604,7 @@ helix::PrintStartContext PrintStartController::gather_print_start_context() cons
     }
 
     if (detail_view_) {
-        ctx.has_detail_view = true;
+        ctx.has_file_facts = true;
         ctx.metadata = detail_view_->get_file_metadata();
         ctx.mappings = detail_view_->get_filament_mappings();
         ctx.tool_info = detail_view_->get_filament_tool_info();
@@ -593,13 +613,15 @@ helix::PrintStartContext PrintStartController::gather_print_start_context() cons
         ctx.tools_used = detail_view_->get_tools_used();
         ctx.effective_remap = detail_view_->get_effective_remap();
         ctx.tool_grams = detail_view_->get_tool_grams();
-        if (auto* prep = detail_view_->get_prep_manager()) {
-            ctx.printer_stop = prep->printer_stop_check_for(filename_);
-        } else {
-            ctx.printer_stop.not_run_reason = "no file scanner";
-        }
-    } else {
+    } else if (file_facts_) {
+        helix::fill_file_context(ctx, *file_facts_);
+    }
+    if (!ctx.has_file_facts) {
         ctx.printer_stop.not_run_reason = "no file detail view";
+    } else if (auto* prep = active_prep_manager()) {
+        ctx.printer_stop = prep->printer_stop_check_for(file_scan_key());
+    } else {
+        ctx.printer_stop.not_run_reason = "no file scanner";
     }
     if (ctx.ams_manages_filament && ctx.has_active_backend) {
         ctx.empty_required_lanes =
@@ -616,9 +638,24 @@ helix::PrintStartContext PrintStartController::gather_print_start_context() cons
 
 void PrintStartController::run_gates_from(size_t index) {
     const auto ctx = gather_print_start_context();
+    // A start with no detail view has no screen that read the file, so an
+    // unrun printer-stopping command check ends it, at every (re-)entry: the
+    // macros can be read again while a dialog waits.
+    if (!detail_view_ && file_facts_ &&
+        ctx.printer_stop.state == helix::PrinterStopCheck::State::NotRun) {
+        spdlog::warn("[PrintStartController] Not starting {}: printer-stopping command check "
+                     "did not run ({})",
+                     filename_, ctx.printer_stop.not_run_reason);
+        if (on_file_unchecked_) {
+            on_file_unchecked_();
+        }
+        end_without_print();
+        return;
+    }
     if (index == 0 && ctx.printer_stop.state == helix::PrinterStopCheck::State::NotRun) {
-        helix::warn_printer_stop_check_skipped("the print select panel", filename_,
-                                               ctx.printer_stop.not_run_reason);
+        helix::warn_printer_stop_check_skipped(detail_view_ ? "the print select panel"
+                                                            : "a queued job start",
+                                               filename_, ctx.printer_stop.not_run_reason);
     }
     for (size_t i = index; i < gate_list_.size(); ++i) {
         const auto result = gate_list_[i].evaluate(ctx);
@@ -650,9 +687,7 @@ void PrintStartController::run_gates_from(size_t index) {
             if (!print_gate_modal_) {
                 spdlog::error("[PrintStartController] Failed to create gate dialog for '{}'",
                               gate_list_[i].name);
-                if (update_print_button_) {
-                    update_print_button_();
-                }
+                end_without_print();
             }
             return;
         }
@@ -670,9 +705,7 @@ void PrintStartController::run_gates_from(size_t index) {
         if (!print_gate_modal_) {
             spdlog::error("[PrintStartController] Failed to create gate dialog for '{}'",
                           gate_list_[i].name);
-            if (update_print_button_) {
-                update_print_button_();
-            }
+            end_without_print();
             return;
         }
         spdlog::debug("[PrintStartController] Gate '{}' warned - showing dialog",
@@ -689,12 +722,7 @@ void PrintStartController::on_gate_proceed() {
 
 void PrintStartController::on_gate_cancel() {
     print_gate_modal_ = nullptr;
-    if (update_print_button_) {
-        update_print_button_();
-    }
-    if (on_print_cancelled_) {
-        on_print_cancelled_();
-    }
+    end_without_print();
     spdlog::debug("[PrintStartController] Print cancelled by user (gate: {})",
                   gate_list_[gate_resume_index_].name);
 }
@@ -719,11 +747,7 @@ bool PrintStartController::should_warn_remap_unsupported(const AmsBackend& backe
 }
 
 bool PrintStartController::apply_filament_remaps() {
-    if (!detail_view_) {
-        return false;
-    }
-
-    auto mappings = detail_view_->get_filament_mappings();
+    const auto mappings = gather_print_start_context().mappings;
     if (mappings.empty()) {
         return false;
     }

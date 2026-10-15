@@ -54,6 +54,7 @@ translations:
   + Add Preset: + Agregar Preajuste
   + Add Printer: + Agregar Impresora
   + New: + Nuevo
+  +{} more: '+{} más'
   '- Check [resonance_tester] in printer.cfg': '- Verifique [resonance_tester] en
     printer.cfg'
   '- Ensure ADXL345 is connected': '- Asegúrese de que el ADXL345 esté conectado'
@@ -64,6 +65,7 @@ translations:
   -- kWh: -- kWh
   --°C: --°C
   '...': '...'
+  /wk: '/sem.'
   0 = computed: 0 = calculado
   0 events queued: 0 eventos en cola
   0 slots: 0 ranuras
@@ -80,6 +82,7 @@ translations:
   1 min ago: hace 1 min
   1 minute: 1 minuto
   1 more tap to {} beta features: 1 toque más para {} funciones beta
+  1 print: '1 impresión'
   1 profile: '1 perfil'
   '1 unit': '1 unidad'
   1. Printer homes all axes (~1 minute): 1. La impresora referencia todos los ejes (~1 minuto)
@@ -360,6 +363,7 @@ translations:
   Bed Screws: Tornillos de Cama
   Bed Temp: Temp. Cama
   Bed Temperature: Temperatura de Cama
+  Bed clear · Start next: 'Cama libre · Iniciar siguiente'
   'Bed cooling, spools still on the bed:': 'La cama se enfría, las bobinas siguen encima:'
 
   Bed is Level!: ¡La Cama está Nivelada!
@@ -545,6 +549,7 @@ translations:
     no conectado a la impresora'
   'Cannot start print: printer is {}': 'No se puede iniciar impresión: la impresora
     está {}'
+  'Cannot start {}: the file could not be checked yet for the steps you turned off. Try again in a moment.': 'No se puede iniciar {}: aún no se pudo comprobar el archivo para los pasos que desactivaste. Inténtalo de nuevo en un momento.'
   Cannot save offsets while printing: No se pueden guardar los offsets durante la impresión
   Cannot unload while a print is active: No se puede descargar mientras hay una impresión activa
   'Capabilities: ': 'Capacidades: '
@@ -618,6 +623,7 @@ translations:
   Checking Spoolman server...: Verificando servidor Spoolman...
   Checking accelerometer...: Verificando acelerómetro...
   Checking extruders...: Comprobando extrusores...
+  Checking file…: 'Comprobando archivo…'
   Checking filament...: Comprobando filamento...
   Checking for plugin...: Buscando plugin...
   Checking for webcam...: Comprobando webcam...
@@ -819,6 +825,9 @@ translations:
     se pudo analizar la macro PRINT_START. Algunas opciones de impresión pueden no
     estar disponibles.
   Could not answer the connection request: 'No se pudo responder a la solicitud de conexión'
+  'Could not check {} - it stays in the queue': 'No se pudo comprobar {}: permanece en la cola'
+  Print hours this week and lifetime totals: 'Horas de impresión de esta semana y totales históricos'
+  '{} could not be checked from Home - review it and tap Print': 'No se pudo comprobar {} desde Inicio: revísalo y toca Imprimir'
   ? "Could not check webcam status.\nCheck printer connection."
   : "No se pudo verificar la webcam.\nCompruebe la conexión."
   Could not confirm cancel: No se pudo confirmar la cancelación
@@ -1725,6 +1734,7 @@ translations:
   It's a new spool: Es una bobina nueva
   Jammed at the Toolhead: Atascado en el cabezal
   Job Queue: Cola de trabajos
+  Job queue not enabled in Moonraker: 'Cola de trabajos no habilitada en Moonraker'
   Jog: Jog
   Jog Speed XY: Velocidad de movimiento XY
   Jog Speed Z: Velocidad de movimiento Z
@@ -1805,7 +1815,6 @@ translations:
   Lanes: Carriles
   Language: Idioma
   Language & Time: Idioma y hora
-  Last: Última
   # Source: history_dashboard_panel.xml:114
   Last 12 months: 'Últimos 12 meses'
   Last 24 hours: 'Últimas 24 horas'
@@ -1834,7 +1843,6 @@ translations:
   Level: Nivel
   Leveling Gantry...: Nivelando pórtico...
   Library: Biblioteca
-  Lifetime Print Stats: Estadísticas de impresión totales
   Light: Claro
   Light Mode: Modo Claro
   Light will switch when the current operation finishes: La luz cambiará cuando termine
@@ -2098,6 +2106,7 @@ translations:
   New printer successfully added: Nueva impresora añadida correctamente
   New profile name: Nombre del nuevo perfil
   Next: Siguiente
+  'Next: {}': 'Siguiente: {}'
   Niimbot (Bluetooth): Niimbot (Bluetooth)
   'No': 'No'
   No AMS Detected: 'No se detectó AMS'
@@ -2175,6 +2184,7 @@ translations:
     los ajustes de la impresora
   No printer connection: Sin conexión a impresora
   No printers found: No se encontraron impresoras
+  No prints this week: Sin impresiones esta semana
   No prints yet: Sin impresiones aún
   No profiles available: No hay perfiles disponibles
   No sensors detected: No se detectaron sensores
@@ -2645,6 +2655,7 @@ translations:
   Quad Gantry Level: Nivelación de Pórtico Cuádruple
   Quad Gantry Level complete: QGL completado
   Quad Gantry Level started...: QGL iniciado...
+  Queue empty: 'Cola vacía'
   'Queue: Paused': 'Cola: Pausada'
   'Queue: Ready': 'Cola: Lista'
   Queued {}h {}m ago: 'En cola desde hace {} h {} min'
@@ -3237,6 +3248,7 @@ translations:
   Start drying: Iniciar secado
 
   Start failed: Inicio fallido
+  Start next: 'Iniciar siguiente'
   'Start next: {}': 'Iniciar siguiente: {}'
   Start print anyway?: ¿Iniciar la impresión de todos modos?
   Started: Iniciado
@@ -3244,8 +3256,10 @@ translations:
   Starting download...: Iniciando descarga...
   Starting nozzle clean...: Iniciando limpieza de boquilla...
   Starting print...: Iniciando impresión...
+  Starting {}…: 'Iniciando {}…'
   Starting...: Iniciando...
   Starts after the current print: Comienza cuando termine la impresión actual
+  Starts automatically: 'Se inicia automáticamente'
   Startup Brightness: Brillo de inicio
   Startup, auto-control, and macro devices: Inicio, control automático y dispositivos
     de macro
@@ -3346,8 +3360,10 @@ translations:
   Tap the part cooling fan: Toque el ventilador de enfriamiento de pieza
   Tap to assign: Toca para asignar
   Target: 'Objetivo'
+  Target RH: HR obj.
   Target Temperature: Temperatura Objetivo
   Target Version: Versión objetivo
+  Target humidity: Humedad objetivo
   Telemetry: Telemetría
   Telemetry Data: Datos de telemetría
   Telemetry Disabled: Telemetría desactivada
@@ -3638,7 +3654,6 @@ translations:
   Tools Used: Herramientas usadas
   'Tools: ': 'Herramientas: '
   Total Prints: Total de Impresiones
-  Total prints, success rate, and time: Impresiones, tasa de éxito y tiempo
   Touch & Input: Toque y entrada
   Touch Cal: Cal Táctil
   Touch Calibration: Calibración Táctil
@@ -3836,7 +3851,6 @@ translations:
   Webcam: Webcam
   Website (optional): Sitio Web (opcional)
   Week: Semana
-  Weekly Print Stats: Estadísticas de impresión semanales
   ? Weight data is synced from Spoolman to display remaining filament. Changes are
     also synced when prints start, pause, or complete.
   : Los datos de peso se sincronizan desde Spoolman para mostrar el filamento restante.
@@ -3952,6 +3966,7 @@ translations:
   'Z: 0.000': 'Z: 0.000'
   already loaded: 'ya cargado'
   attempt {}: 'intento {}'
+  auto: auto
   bed: cama
   busy: 'ocupado'
   by: 'de'
@@ -4036,6 +4051,7 @@ translations:
   tall: de alto
   target {}%: 'objetivo {}%'
   target {}°: 'objetivo {}°'
+  this week: esta semana
   too slow: demasiado lento
   tool(s): herramienta(s)
   used: usado
@@ -4068,6 +4084,7 @@ translations:
   '{} filament sensors available': '{} sensores de filamento disponibles'
   '{} filament • {}': '{} de filamento • {}'
   '{} firmware': 'Firmware de {}'
+  '{} h': '{} h'
   '{} heater turned off': Calentador {} apagado
   '{} is asking to connect to this printer.': '{} quiere conectarse a esta impresora.'
   '{} is blocked — manual intervention required': '{}: bloqueo — se requiere intervención manual'
@@ -4080,10 +4097,12 @@ translations:
   '{} lines in helixscreen.env were ignored': '{} líneas de helixscreen.env fueron ignoradas'
   '{} kept crashing the panel; switched back to {}': '{} bloqueó la pantalla repetidamente; se volvió a {}'
   '{} kept crashing the panel; pick a printer to connect': '{} bloqueó la pantalla repetidamente; elige una impresora para conectar'
+  '{} m': '{} m'
   '{} macro not configured': Macro {} no configurado
   '{} matches.': '{} coincide.'
   '{} may cause unintended changes. Are you sure?': '{} puede causar cambios no deseados.
     ¿Estás seguro?'
+  '{} min': '{} min'
   '{} min ago': hace {} min
   '{} missing': '{} faltante(s)'
   '{} more taps to {} beta features': '{} toques más para {} funciones beta'
@@ -4092,6 +4111,8 @@ translations:
   '{} new hardware available': '{} nuevo hardware disponible'
   '{} new plugins available. Enable them in Settings > Plugins.': '{} nuevos plugins disponibles. Actívalos en Ajustes > Plugins.'
   '{} preset{}': '{} preajuste{}'
+  '{} prints': '{} impresiones'
+  '{} queued': '{} en cola'
   '{} serial': 'N.º de serie de {}'
   '{} set to {}': '{} ajustado a {}'
   '{} set to {} {}': '{} ajustado a {} {}'

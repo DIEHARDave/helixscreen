@@ -238,6 +238,17 @@ inline std::string_view utf8_prefix(std::string_view s, size_t max_bytes) {
     return s.substr(0, end);
 }
 
+/// The first UTF-8 codepoint of `s`, its length read from the lead byte; ""
+/// when `s` is empty. The view points into `s`.
+inline std::string_view utf8_first_codepoint(std::string_view s) {
+    if (s.empty()) {
+        return {};
+    }
+    const auto lead = static_cast<unsigned char>(s.front());
+    const size_t length = lead >= 0xF0 ? 4 : lead >= 0xE0 ? 3 : lead >= 0xC0 ? 2 : 1;
+    return s.substr(0, length);
+}
+
 /// ASCII-only case mapping: bytes outside A-Z / a-z pass through untouched,
 /// whatever the process locale.
 inline std::string to_lower(std::string_view s) {

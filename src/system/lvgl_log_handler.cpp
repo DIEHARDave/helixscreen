@@ -399,40 +399,7 @@ void lvgl_log_callback(lv_log_level_t level, const char* buf) {
             // near-crash that was prevented — report via helix_lvgl_anomaly so
             // the event includes a backtrace (frame PCs). Distinct codes let us
             // tell failure modes apart in telemetry queries.
-            const char* code = nullptr;
-            if (msg.find("NULL dest_buf") != std::string::npos ||
-                msg.find("draw_buf is NULL") != std::string::npos ||
-                msg.find("NULL draw descriptor") != std::string::npos) {
-                code = "null_dest_buf";
-            } else if (msg.find("NULL font") != std::string::npos) {
-                code = "null_font";
-            } else if (msg.find("goto_xy returned NULL") != std::string::npos ||
-                       msg.find("Skipping glyph draw") != std::string::npos) {
-                code = "glyph_draw_skip";
-            } else if (msg.find("subject is NULL") != std::string::npos) {
-                code = "null_subject";
-            } else if (msg.find("Subject type is not") != std::string::npos) {
-                // XML binding wired wrong subject type — real bug in panel XML.
-                code = "subject_type_mismatch";
-            } else if (msg.find("coordinates out of range") != std::string::npos) {
-                code = "coord_out_of_range";
-            } else if (msg.find("duplicate schedule") != std::string::npos) {
-                // Redundant with helix_lvgl_anomaly from lv_obj_delete_async,
-                // but kept so the log + telemetry paths stay in sync if either
-                // is ever missed.
-                code = "obj_delete_async_dup";
-            } else if (msg.find("skipping invalid obj") != std::string::npos) {
-                code = "obj_delete_async_cb_invalid";
-            } else if (msg.find("observer->subject is NULL") != std::string::npos) {
-                // XML component scope tore down subject before the observing
-                // widget's delete event fired — real ordering bug.
-                code = "observer_subject_freed";
-            } else if (msg.find("arc_value_changed_event_cb: subject is NULL") !=
-                       std::string::npos) {
-                // Arc event still wired to a subject that was freed (stale
-                // user_data binding).
-                code = "arc_event_null_subject";
-            }
+            const char* code = helix::logging::anomaly_code_for_warning(msg);
             if (code) {
                 helix_lvgl_anomaly(code, msg.c_str());
             }
@@ -504,6 +471,48 @@ void retire_lvgl_log_handler() {
 
 void set_suppress_translation_warnings(bool suppress) {
     s_suppress_translation_warnings = suppress;
+}
+
+const char* anomaly_code_for_warning(std::string_view msg) {
+    if (msg.find("Subject is deinitialized; observer refused") != std::string_view::npos) {
+        // Something attached before the subject's owner re-initialized it, so the
+        // observer it wanted is missing. The message carries the subject's address;
+        // the code does not, so every occurrence lands in one bucket.
+        return "observer_refused_deinit_subject";
+    }
+    if (msg.find("NULL dest_buf") != std::string_view::npos ||
+        msg.find("draw_buf is NULL") != std::string_view::npos ||
+        msg.find("NULL draw descriptor") != std::string_view::npos) {
+        return "null_dest_buf";
+    } else if (msg.find("NULL font") != std::string_view::npos) {
+        return "null_font";
+    } else if (msg.find("goto_xy returned NULL") != std::string_view::npos ||
+               msg.find("Skipping glyph draw") != std::string_view::npos) {
+        return "glyph_draw_skip";
+    } else if (msg.find("subject is NULL") != std::string_view::npos) {
+        return "null_subject";
+    } else if (msg.find("Subject type is not") != std::string_view::npos) {
+        // XML binding wired wrong subject type — real bug in panel XML.
+        return "subject_type_mismatch";
+    } else if (msg.find("coordinates out of range") != std::string_view::npos) {
+        return "coord_out_of_range";
+    } else if (msg.find("duplicate schedule") != std::string_view::npos) {
+        // Redundant with helix_lvgl_anomaly from lv_obj_delete_async,
+        // but kept so the log + telemetry paths stay in sync if either
+        // is ever missed.
+        return "obj_delete_async_dup";
+    } else if (msg.find("skipping invalid obj") != std::string_view::npos) {
+        return "obj_delete_async_cb_invalid";
+    } else if (msg.find("observer->subject is NULL") != std::string_view::npos) {
+        // XML component scope tore down subject before the observing
+        // widget's delete event fired — real ordering bug.
+        return "observer_subject_freed";
+    } else if (msg.find("arc_value_changed_event_cb: subject is NULL") != std::string_view::npos) {
+        // Arc event still wired to a subject that was freed (stale
+        // user_data binding).
+        return "arc_event_null_subject";
+    }
+    return nullptr;
 }
 
 void reset_lvgl_log_dedupe() {

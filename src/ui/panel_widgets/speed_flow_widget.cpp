@@ -144,9 +144,7 @@ Fonts load_fonts() {
             theme_manager_get_font("icon_font_xs")};
 }
 
-int line_px(const lv_font_t* font) {
-    return font ? static_cast<int>(lv_font_get_line_height(font)) : 0;
-}
+using helix::line_px;
 
 int widest(const std::string& a, const std::string& b, const lv_font_t* font) {
     return std::max(measure_text_px(a.c_str(), font), measure_text_px(b.c_str(), font));
@@ -265,14 +263,10 @@ SpeedFlowWidget::LiveState SpeedFlowWidget::read_live() const {
 SpeedFlowVerdict SpeedFlowWidget::decide(int width_px, int height_px, bool printing,
                                          bool physical) const {
     // The tree's own padding where it exists; before it does (the load path asks
-    // fits_at then) the root's padding on each side plus the body's gap.
-    ContentChrome chrome;
-    if (root()) {
-        chrome = measure_content_chrome(root(), 0);
-    } else {
-        const int pad = theme_manager_get_spacing("space_xxs");
-        chrome = {3 * pad, 3 * pad};
-    }
+    // fits_at then) the root's padding on each side. The body's gap is charged whether
+    // or not Glance hides the second axis, so the verdict does not follow the last one.
+    const ContentChrome chrome = content_chrome_or_estimate(
+        root(), "space_xxs", "space_xxs", "space_xxs", "space_xxs", BranchGap::Always);
     SpeedFlowInput in;
     in.content_w = width_px - chrome.w;
     in.content_h = height_px - chrome.h;

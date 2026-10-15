@@ -446,3 +446,17 @@ TEST_CASE("the aspect cap is one constant, and it actually caps",
         CHECK(portrait_preview_card_max_height(w, 0) == w * MAX_PREVIEW_ASPECT_PCT / 100);
     }
 }
+
+TEST_CASE("action_row_fits: side-by-side widths and gaps against the row",
+          "[print_status][layout]") {
+    const int32_t three[] = {100, 80, 90};
+    // 100 + 80 + 90 + 2 gaps of 7 = 284
+    CHECK(action_row_fits(284, 7, three, 3));
+    CHECK_FALSE(action_row_fits(283, 7, three, 3));
+    // One button needs no gap.
+    const int32_t one[] = {120};
+    CHECK(action_row_fits(120, 50, one, 1));
+    CHECK_FALSE(action_row_fits(119, 50, one, 1));
+    // An empty row always fits.
+    CHECK(action_row_fits(0, 7, nullptr, 0));
+}

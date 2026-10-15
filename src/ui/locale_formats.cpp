@@ -240,6 +240,13 @@ void locale_set_language(const std::string& lang_code) {
         fn(lang_code);
 }
 
+std::string format_localized_weekday_abbr(const struct tm* tm_info) {
+    if (!tm_info) {
+        return {};
+    }
+    return get_day_name(tm_info);
+}
+
 std::string format_localized_date(const struct tm* tm_info) {
     if (!tm_info) {
         return helix::format::UNAVAILABLE;

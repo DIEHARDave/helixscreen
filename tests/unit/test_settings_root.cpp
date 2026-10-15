@@ -51,9 +51,9 @@ struct RootFixture : LVGLUITestFixture {
         get_runtime_config()->use_real_wifi = false;
         get_runtime_config()->use_real_ethernet = false;
 
-        // The test binary's stub app_globals_init_subjects() (tests/ui_test_utils.cpp)
-        // never runs PrinterCapabilitiesState::init_subjects(), so printer_has_speaker
-        // is otherwise absent and the Sound row's gate resolves to nothing.
+        // Nothing in this fixture runs PrinterCapabilitiesState::init_subjects(),
+        // so printer_has_speaker is otherwise absent and the Sound row's gate
+        // resolves to nothing.
         static lv_subject_t speaker_subject;
         if (!lv_xml_get_subject(nullptr, "printer_has_speaker")) {
             lv_subject_init_int(&speaker_subject, 1);

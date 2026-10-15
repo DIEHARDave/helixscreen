@@ -54,6 +54,7 @@ translations:
   + Add Preset: + Добавить пресет
   + Add Printer: + Добавить принтер
   + New: + Новый
+  +{} more: '+ещё {}'
   '- Check [resonance_tester] in printer.cfg': '- Проверьте блок [resonance_tester]
     в printer.cfg'
   '- Ensure ADXL345 is connected': '- Убедитесь, что ADXL345 подключен'
@@ -64,6 +65,7 @@ translations:
   -- kWh: -- кВт·ч
   --°C: --°C
   '...': '...'
+  /wk: '/нед.'
   0 = computed: 0 = вычислено
   0 events queued: 0 событий в очереди
   0 slots: '{0} Слотов'
@@ -80,6 +82,7 @@ translations:
   1 min ago: 1 мин. назад
   1 minute: 1 минута
   1 more tap to {} beta features: 1 нажатие до {} бета-функций
+  1 print: '1 печать'
   1 profile: '1 профиль'
   '1 unit': '1 ед.'
   1. Printer homes all axes (~1 minute): 1. Принтер ищет ноль по всем осям (~1 минута)
@@ -355,6 +358,7 @@ translations:
   Bed Screws: Винты стола
   Bed Temp: Темп. стола
   Bed Temperature: Температура стола
+  Bed clear · Start next: 'Стол свободен · Запустить следующую'
   'Bed cooling, spools still on the bed:': 'Стол остывает, катушки всё ещё на нём:'
 
   Bed is Level!: Стол выровнен!
@@ -537,6 +541,7 @@ translations:
   'Cannot start print: not connected to printer': 'Невозможно начать печать: не подключено
     к принтеру'
   'Cannot start print: printer is {}': 'Невозможно начать печать: принтер {}'
+  'Cannot start {}: the file could not be checked yet for the steps you turned off. Try again in a moment.': 'Не удалось запустить {}: файл ещё не удалось проверить на отключённые шаги. Повторите попытку через мгновение.'
   Cannot save offsets while printing: Нельзя сохранить смещения во время печати
   Cannot unload while a print is active: Нельзя выгрузить во время печати
   'Capabilities: ': 'Возможности: '
@@ -609,6 +614,7 @@ translations:
   Checking Spoolman server...: Проверка сервера Spoolman...
   Checking accelerometer...: Проверка акселерометра...
   Checking extruders...: Проверка экструдеров...
+  Checking file…: 'Проверка файла…'
   Checking filament...: Проверка филамента...
   Checking for plugin...: Поиск плагина...
   Checking for webcam...: Проверка веб-камеры...
@@ -807,6 +813,9 @@ translations:
     удалось проанализировать макрос PRINT_START. Некоторые параметры печати могут
     быть недоступны.
   Could not answer the connection request: 'Не удалось ответить на запрос подключения'
+  'Could not check {} - it stays in the queue': 'Не удалось проверить {} – остаётся в очереди'
+  Print hours this week and lifetime totals: 'Часы печати за неделю и общие итоги'
+  '{} could not be checked from Home - review it and tap Print': 'Не удалось проверить {} с главного экрана – проверьте файл и нажмите «Печать»'
   ? "Could not check webcam status.\nCheck printer connection."
   : "Не удалось проверить статус веб-камеры.\nПроверьте подключение принтера."
   Could not confirm cancel: Не удалось подтвердить отмену
@@ -1707,6 +1716,7 @@ translations:
   It's a new spool: Это новая катушка
   Jammed at the Toolhead: Замятие в печатающей головке
   Job Queue: Очередь заданий
+  Job queue not enabled in Moonraker: 'Очередь заданий не включена в Moonraker'
   Jog: 'Джог'
   Jog Speed XY: Скорость перемещения XY
   Jog Speed Z: Скорость перемещения Z
@@ -1787,7 +1797,6 @@ translations:
   Lanes: Каналы
   Language: Язык
   Language & Time: Язык и время
-  Last: Последняя
   # Source: history_dashboard_panel.xml:114
   Last 12 months: 'Последние 12 месяцев'
   Last 24 hours: 'Последние 24 часа'
@@ -1817,7 +1826,6 @@ translations:
   Level: Уровень
   Leveling Gantry...: Выравнивание портала...
   Library: Библиотека
-  Lifetime Print Stats: Статистика за всё время
   Light: Подсветка
   Light Mode: Светлый режим
   Light will switch when the current operation finishes: Подсветка переключится после
@@ -2079,6 +2087,7 @@ translations:
   New printer successfully added: Новый принтер успешно добавлен
   New profile name: Новое имя профиля
   Next: Далее
+  'Next: {}': 'Далее: {}'
   Niimbot (Bluetooth): Niimbot (Bluetooth)
   'No': Нет
   No AMS Detected: 'AMS не обнаружен'
@@ -2155,6 +2164,7 @@ translations:
     настройки принтера
   No printer connection: Нет подключения к принтеру
   No printers found: Принтеры не найдены
+  No prints this week: Нет печатей за неделю
   No prints yet: Нет печатей
   No profiles available: Профили недоступны
   No sensors detected: Датчики не обнаружены
@@ -2621,6 +2631,7 @@ translations:
   Quad Gantry Level: Выравнивание портала
   Quad Gantry Level complete: QGL завершён
   Quad Gantry Level started...: QGL запущен...
+  Queue empty: 'Очередь пуста'
   'Queue: Paused': 'Очередь: Пауза'
   'Queue: Ready': 'Очередь: Готово'
   Queued {}h {}m ago: 'В очереди {} ч {} мин'
@@ -3209,6 +3220,7 @@ translations:
   Start drying: Начать сушку
 
   Start failed: Ошибка запуска
+  Start next: 'Запустить следующую'
   'Start next: {}': 'Запустить следующую: {}'
   Start print anyway?: Всё равно начать печать?
   Started: Начато
@@ -3216,8 +3228,10 @@ translations:
   Starting download...: Начало загрузки...
   Starting nozzle clean...: Запуск очистки сопла...
   Starting print...: Запуск печати...
+  Starting {}…: 'Запуск {}…'
   Starting...: Запуск...
   Starts after the current print: Начнётся после текущей печати
+  Starts automatically: 'Запустится автоматически'
   Startup Brightness: Яркость при запуске
   Startup, auto-control, and macro devices: Запуск, автоуправление и макро-устройства
   State: Состояние
@@ -3316,8 +3330,10 @@ translations:
   Tap the part cooling fan: Нажмите на вентилятор охлаждения детали
   Tap to assign: Нажмите для назначения
   Target: 'Цель'
+  Target RH: Цель ОВ
   Target Temperature: Целевая температура
   Target Version: Целевая версия
+  Target humidity: Целевая влажность
   Telemetry: Телеметрия
   Telemetry Data: Данные телеметрии
   Telemetry Disabled: Телеметрия отключена
@@ -3599,7 +3615,6 @@ translations:
   Tools Used: Использовано инструментов
   'Tools: ': 'Инструменты: '
   Total Prints: Всего печатей
-  Total prints, success rate, and time: Всего печатей, процент успеха и время
   Touch & Input: Касание и ввод
   Touch Cal: Кал. касания
   Touch Calibration: Калибровка касания
@@ -3795,7 +3810,6 @@ translations:
   Webcam: Веб-камера
   Website (optional): Веб-сайт (необязательно)
   Week: Неделя
-  Weekly Print Stats: Статистика за неделю
   ? Weight data is synced from Spoolman to display remaining filament. Changes are
     also synced when prints start, pause, or complete.
   : Данные о весе синхронизируются из Spoolman для отображения оставшегося филамента.
@@ -3911,6 +3925,7 @@ translations:
   'Z: 0.000': 'Z: 0.000'
   already loaded: 'уже загружен'
   attempt {}: 'попытка {}'
+  auto: авто
   bed: стол
   busy: 'занят'
   by: 'автор:'
@@ -3994,6 +4009,7 @@ translations:
   tall: высотой
   target {}%: 'цель {}%'
   target {}°: 'цель {}°'
+  this week: за неделю
   too slow: слишком медленно
   tool(s): инструмент(ы)
   used: использ.
@@ -4026,6 +4042,7 @@ translations:
   '{} filament sensors available': 'Доступно датчиков филамента: {}'
   '{} filament • {}': '{} филамента • {}'
   '{} firmware': 'Прошивка {}'
+  '{} h': '{} ч'
   '{} heater turned off': Нагреватель {} выключен
   '{} is asking to connect to this printer.': '{} запрашивает подключение к этому принтеру.'
   '{} is blocked — manual intervention required': '{}: блокировка — требуется ручное вмешательство'
@@ -4038,10 +4055,12 @@ translations:
   '{} lines in helixscreen.env were ignored': 'В helixscreen.env проигнорировано строк: {}'
   '{} kept crashing the panel; switched back to {}': '{} постоянно вызывал сбой экрана; возврат к {}'
   '{} kept crashing the panel; pick a printer to connect': '{} постоянно вызывал сбой экрана; выберите принтер для подключения'
+  '{} m': '{} м'
   '{} macro not configured': Макрос {} не настроен
   '{} matches.': '{} подходит.'
   '{} may cause unintended changes. Are you sure?': '{} может привести к непреднамеренным
     изменениям. Вы уверены?'
+  '{} min': '{} мин'
   '{} min ago': '{} мин. назад'
   '{} missing': 'отсутствует: {}'
   '{} more taps to {} beta features': '{} нажатий до {} бета-функций'
@@ -4050,6 +4069,8 @@ translations:
   '{} new hardware available': 'Доступно нового оборудования: {}'
   '{} new plugins available. Enable them in Settings > Plugins.': 'Доступно новых плагинов: {}. Включите их в разделе Настройки > Плагины.'
   '{} preset{}': '{} пресет{}'
+  '{} prints': '{} печатей'
+  '{} queued': 'В очереди: {}'
   '{} serial': 'Серийный номер {}'
   '{} set to {}': '{} установлено на {}'
   '{} set to {} {}': '{} установлено на {} {}'

@@ -54,6 +54,7 @@ translations:
   + Add Preset: + Add Preset
   + Add Printer: + Add Printer
   + New: + New
+  +{} more: +{} more
   '- Check [resonance_tester] in printer.cfg': '- Check [resonance_tester] in printer.cfg'
   '- Ensure ADXL345 is connected': '- Ensure ADXL345 is connected'
   '- Try Measure Noise first': '- Try Measure Noise first'
@@ -63,6 +64,7 @@ translations:
   -- kWh: -- kWh
   --°C: --°C
   '...': '...'
+  /wk: '/wk'
   0 = computed: 0 = computed
   0 events queued: 0 events queued
   0 slots: 0 slots
@@ -79,6 +81,7 @@ translations:
   1 min ago: 1 min ago
   1 minute: 1 minute
   1 more tap to {} beta features: 1 more tap to {} beta features
+  1 print: 1 print
   1 profile: 1 profile
   1 unit: 1 unit
   1. Printer homes all axes (~1 minute): 1. Printer homes all axes (~1 minute)
@@ -349,6 +352,7 @@ translations:
   Bed Screws: Bed Screws
   Bed Temp: Bed Temp
   Bed Temperature: Bed Temperature
+  Bed clear · Start next: Bed clear · Start next
   'Bed cooling, spools still on the bed:': 'Bed cooling, spools still on the bed:'
   Bed is Level!: Bed is Level!
   'Bed mesh calibration failed: {}': 'Bed mesh calibration failed: {}'
@@ -526,6 +530,7 @@ translations:
   'Cannot start print: not connected to printer': 'Cannot start print: not connected
     to printer'
   'Cannot start print: printer is {}': 'Cannot start print: printer is {}'
+  'Cannot start {}: the file could not be checked yet for the steps you turned off. Try again in a moment.': 'Cannot start {}: the file could not be checked yet for the steps you turned off. Try again in a moment.'
   Cannot save offsets while printing: Cannot save offsets while printing
   Cannot unload while a print is active: Cannot unload while a print is active
   'Capabilities: ': 'Capabilities: '
@@ -598,6 +603,7 @@ translations:
   Checking Spoolman server...: Checking Spoolman server...
   Checking accelerometer...: Checking accelerometer...
   'Checking extruders...': 'Checking extruders...'
+  Checking file…: 'Checking file…'
   Checking filament...: Checking filament...
   Checking for plugin...: Checking for plugin...
   Checking for webcam...: Checking for webcam...
@@ -790,6 +796,9 @@ translations:
   Could not analyze PRINT_START macro. Some print options may be unavailable.: Could
     not analyze PRINT_START macro. Some print options may be unavailable.
   Could not answer the connection request: Could not answer the connection request
+  'Could not check {} - it stays in the queue': 'Could not check {} - it stays in the queue'
+  Print hours this week and lifetime totals: Print hours this week and lifetime totals
+  '{} could not be checked from Home - review it and tap Print': '{} could not be checked from Home - review it and tap Print'
   ? "Could not check webcam status.\nCheck printer connection."
   : "Could not check webcam status.\nCheck printer connection."
   Could not confirm cancel: Could not confirm cancel
@@ -1672,6 +1681,7 @@ translations:
   It's a new spool: It's a new spool
   Jammed at the Toolhead: Jammed at the Toolhead
   Job Queue: Job Queue
+  Job queue not enabled in Moonraker: Job queue not enabled in Moonraker
   Jog: Jog
   Jog Speed XY: Jog Speed XY
   Jog Speed Z: Jog Speed Z
@@ -1748,7 +1758,6 @@ translations:
   Lanes: Lanes
   Language: Language
   Language & Time: Language & Time
-  Last: Last
   # Source: history_dashboard_panel.xml:114
   Last 12 months: Last 12 months
   Last 24 hours: Last 24 hours
@@ -1777,7 +1786,6 @@ translations:
   Level: Level
   Leveling Gantry...: Leveling Gantry...
   Library: Library
-  Lifetime Print Stats: Lifetime Print Stats
   Light: Light
   Light Mode: Light Mode
   Light will switch when the current operation finishes: Light will switch when the
@@ -2038,6 +2046,7 @@ translations:
   New printer successfully added: New printer successfully added
   New profile name: New profile name
   Next: Next
+  'Next: {}': 'Next: {}'
   Niimbot (Bluetooth): Niimbot (Bluetooth)
   'No': 'No'
   No AMS Detected: No AMS Detected
@@ -2112,6 +2121,7 @@ translations:
     settings
   No printer connection: No printer connection
   No printers found: No printers found
+  No prints this week: No prints this week
   No prints yet: No prints yet
   No profiles available: No profiles available
   No sensors detected: No sensors detected
@@ -2570,6 +2580,7 @@ translations:
   Quad Gantry Level: Quad Gantry Level
   Quad Gantry Level complete: Quad Gantry Level complete
   Quad Gantry Level started...: Quad Gantry Level started...
+  Queue empty: Queue empty
   'Queue: Paused': 'Queue: Paused'
   'Queue: Ready': 'Queue: Ready'
   Queued {}h {}m ago: Queued {}h {}m ago
@@ -3145,6 +3156,7 @@ translations:
   Start Check: Start Check
   Start drying: Start drying
   Start failed: Start failed
+  Start next: Start next
   'Start next: {}': 'Start next: {}'
   Start print anyway?: Start print anyway?
   Started: Started
@@ -3152,8 +3164,10 @@ translations:
   Starting download...: Starting download...
   'Starting nozzle clean...': 'Starting nozzle clean...'
   'Starting print...': 'Starting print...'
+  Starting {}…: Starting {}…
   Starting...: Starting...
   Starts after the current print: Starts after the current print
+  Starts automatically: Starts automatically
   Startup Brightness: Startup Brightness
   Startup, auto-control, and macro devices: Startup, auto-control, and macro devices
   State: State
@@ -3251,8 +3265,10 @@ translations:
   Tap the part cooling fan: Tap the part cooling fan
   Tap to assign: Tap to assign
   Target: Target
+  Target RH: Target RH
   Target Temperature: Target Temperature
   Target Version: Target Version
+  Target humidity: Target humidity
   Telemetry: Telemetry
   Telemetry Data: Telemetry Data
   Telemetry Disabled: Telemetry Disabled
@@ -3529,7 +3545,6 @@ translations:
   Tools Used: Tools Used
   'Tools: ': 'Tools: '
   Total Prints: Total Prints
-  Total prints, success rate, and time: Total prints, success rate, and time
   Touch & Input: Touch & Input
   Touch Cal: Touch Cal
   Touch Calibration: Touch Calibration
@@ -3725,7 +3740,6 @@ translations:
   Webcam: Webcam
   Website (optional): Website (optional)
   Week: Week
-  Weekly Print Stats: Weekly Print Stats
   ? Weight data is synced from Spoolman to display remaining filament. Changes are
     also synced when prints start, pause, or complete.
   : Weight data is synced from Spoolman to display remaining filament. Changes are
@@ -3840,6 +3854,7 @@ translations:
   'Z: 0.000': 'Z: 0.000'
   already loaded: already loaded
   attempt {}: attempt {}
+  auto: auto
   bed: bed
   busy: busy
   by: by
@@ -3917,6 +3932,7 @@ translations:
   tall: tall
   target {}%: target {}%
   target {}°: target {}°
+  this week: this week
   too slow: too slow
   tool(s): tool(s)
   used: used
@@ -3949,6 +3965,7 @@ translations:
   '{} filament sensors available': '{} filament sensors available'
   '{} filament • {}': '{} filament • {}'
   '{} firmware': '{} firmware'
+  '{} h': '{} h'
   '{} heater turned off': '{} heater turned off'
   '{} is asking to connect to this printer.': '{} is asking to connect to this printer.'
   '{} is blocked — manual intervention required': '{} is blocked — manual intervention required'
@@ -3961,10 +3978,12 @@ translations:
   '{} lines in helixscreen.env were ignored': '{} lines in helixscreen.env were ignored'
   '{} kept crashing the panel; switched back to {}': '{} kept crashing the panel; switched back to {}'
   '{} kept crashing the panel; pick a printer to connect': '{} kept crashing the panel; pick a printer to connect'
+  '{} m': '{} m'
   '{} macro not configured': '{} macro not configured'
   '{} matches.': '{} matches.'
   '{} may cause unintended changes. Are you sure?': '{} may cause unintended changes.
     Are you sure?'
+  '{} min': '{} min'
   '{} min ago': '{} min ago'
   '{} missing': '{} missing'
   '{} more taps to {} beta features': '{} more taps to {} beta features'
@@ -3973,6 +3992,8 @@ translations:
   '{} new hardware available': '{} new hardware available'
   '{} new plugins available. Enable them in Settings > Plugins.': '{} new plugins available. Enable them in Settings > Plugins.'
   '{} preset{}': '{} preset{}'
+  '{} prints': '{} prints'
+  '{} queued': '{} queued'
   '{} serial': '{} serial'
   '{} set to {}': '{} set to {}'
   '{} set to {} {}': '{} set to {} {}'

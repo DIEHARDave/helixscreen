@@ -285,6 +285,9 @@ class AmsBackendHappyHare : public AmsSubscriptionBackend {
     [[nodiscard]] std::vector<helix::printer::EnvironmentZone>
     get_environment_zones(int unit = -1) const override;
     AmsError start_drying(float temp_c, int duration_min, int fan_pct = -1, int unit = 0) override;
+    /// v4 only: MMU_HEATER HUMIDITY= ends the cycle once the box reads at or below the target.
+    AmsError start_drying_to_humidity(float temp_c, int duration_min, float humidity_pct,
+                                      int fan_pct = -1, int unit = 0) override;
     AmsError stop_drying(int unit = 0) override;
     AmsError update_drying(float temp_c = -1, int duration_min = -1, int fan_pct = -1,
                            int unit = 0) override;
@@ -438,6 +441,11 @@ class AmsBackendHappyHare : public AmsSubscriptionBackend {
     [[nodiscard]] std::vector<std::string> heater_targets_for_unit(int unit) const;
     /// @p command once per heater target; the first failure stops it.
     AmsError send_heater_command(const std::string& command, int unit);
+    /// dryer_info_ with the capabilities derived from the detected version. Caller holds mutex_.
+    [[nodiscard]] DryerInfo dryer_capabilities_locked() const;
+    /// MMU_HEATER DRY=1 with TEMP and TIMER, plus HUMIDITY when @p humidity_pct is set.
+    AmsError start_drying_cycle(float temp_c, int duration_min, std::optional<float> humidity_pct,
+                                int unit);
 
     /// UNIT value naming every unit; v4 takes UNIT=ALL on its per-unit commands.
     static constexpr int kAllUnits = -1;
@@ -726,6 +734,8 @@ class AmsBackendHappyHare : public AmsSubscriptionBackend {
     // Dryer state (v4 - KMS/EMU hardware)
     DryerInfo dryer_info_;
     std::time_t dry_end_epoch_ = 0; ///< HelixScreen-initiated drying end (epoch s), 0 = none
+    /// Humidity target of the cycle HelixScreen started, carried across a restart
+    std::optional<float> dry_humidity_target_;
     std::function<std::time_t()> now_fn_ = [] { return std::time(nullptr); };
     // Dryer enclosure heaters + environment sensors. Happy Hare supports either a
     // single shared enclosure (scalar filament_heater / environment_sensor) OR a

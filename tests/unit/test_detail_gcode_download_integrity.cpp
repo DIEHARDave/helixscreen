@@ -41,7 +41,10 @@
 #include "ui_update_queue.h"
 
 #include "../lvgl_ui_test_fixture.h"
+#include "../test_helpers/delayed_file_transfers.h"
 #include "../test_helpers/planted_gcode.h"
+#include "../test_helpers/scoped_cache_dir.h"
+#include "../test_helpers/scoped_macros_read.h"
 #include "../test_helpers/update_queue_test_access.h"
 #include "gcode_ops_detector.h"
 #include "gcode_preview_fetcher.h"
@@ -76,33 +79,7 @@ namespace {
 /// that panel, but the XML references them at create() time).
 void detail_noop_cb(lv_event_t* /*e*/) {}
 
-/// Per-test temp cache dir for HELIX_CACHE_DIR — keeps ToolsUsedCache disk
-/// state and the shared gcode download out of the real user cache.
-/// Saves/restores the env var so later tests in this binary are unaffected.
-struct CacheDirGuard {
-    std::filesystem::path dir;
-    std::string prev_env_;
-    bool had_prev_ = false;
-    CacheDirGuard()
-        : dir(std::filesystem::temp_directory_path() /
-              ("detail_gcode_integrity_" + std::to_string(::getpid()))) {
-        std::filesystem::create_directories(dir);
-        if (const char* old = ::getenv("HELIX_CACHE_DIR")) {
-            prev_env_ = old;
-            had_prev_ = true;
-        }
-        ::setenv("HELIX_CACHE_DIR", dir.c_str(), 1);
-    }
-    ~CacheDirGuard() {
-        if (had_prev_) {
-            ::setenv("HELIX_CACHE_DIR", prev_env_.c_str(), 1);
-        } else {
-            ::unsetenv("HELIX_CACHE_DIR");
-        }
-        std::error_code ec;
-        std::filesystem::remove_all(dir, ec);
-    }
-};
+using CacheDirGuard = helix::test::ScopedCacheDir;
 
 /// Resolve a test gcode asset the way MoonrakerAPIMock does (repo root,
 /// build/, build/bin/ cwd fallbacks) so the test works from any of them.
@@ -115,129 +92,6 @@ std::string find_test_asset(const std::string& filename) {
     }
     return {};
 }
-
-/// MoonrakerFileTransferAPIMock with an opt-in transfer HOLD. While
-/// hold_transfers is set, download_file_to_path captures the request instead
-/// of resolving it; the test later releases the queue to simulate a slow
-/// network finishing. Lets the preflight timeout fire genuinely mid-download
-/// — the exact compound race the settlement gate guards against.
-class DelayedFileTransfers : public MoonrakerFileTransferAPIMock {
-  public:
-    using MoonrakerFileTransferAPIMock::MoonrakerFileTransferAPIMock;
-
-    void download_file_to_path(const std::string& root, const std::string& path,
-                               const std::string& dest_path, StringCallback on_success,
-                               ErrorCallback on_error, ProgressCallback on_progress) override {
-        (void)on_progress;
-        ++download_count;
-        if (!hold_transfers) {
-            MoonrakerFileTransferAPIMock::download_file_to_path(
-                root, path, dest_path, std::move(on_success), std::move(on_error));
-            return;
-        }
-        held_.push_back([this, root, path, dest_path, on_success = std::move(on_success),
-                         on_error = std::move(on_error)]() {
-            MoonrakerFileTransferAPIMock::download_file_to_path(root, path, dest_path, on_success,
-                                                                on_error);
-        });
-    }
-
-    /// When set, every footer read reports failure. The detail view then
-    /// falls back to the whole-file download + Tn scan — the path these
-    /// cache-poisoning tests were written against, and the one a slicer that
-    /// writes no per-tool usage line still takes in production.
-    void download_file_tail(const std::string& root, const std::string& path, size_t max_bytes,
-                            StringCallback on_success, ErrorCallback on_error) override {
-        ++tail_read_count;
-        if (fail_tail_reads) {
-            if (on_error) {
-                on_error(MoonrakerError::file_not_found("download_file_tail",
-                                                        "footer read disabled by test"));
-            }
-            return;
-        }
-        MoonrakerFileTransferAPIMock::download_file_tail(
-            root, path, max_bytes, std::move(on_success), std::move(on_error));
-    }
-
-    /// Holds the preamble read the operations scan makes, the way hold_transfers
-    /// holds the whole-file download.
-    void download_file_partial(const std::string& root, const std::string& path, size_t max_bytes,
-                               StringCallback on_success, ErrorCallback on_error,
-                               CancelFlag = nullptr) override {
-        ++partial_read_count;
-        if (!hold_partials) {
-            MoonrakerFileTransferAPIMock::download_file_partial(
-                root, path, max_bytes, std::move(on_success), std::move(on_error));
-            return;
-        }
-        held_partials_.push_back([this, root, path, max_bytes, on_success = std::move(on_success),
-                                  on_error = std::move(on_error)]() {
-            MoonrakerFileTransferAPIMock::download_file_partial(root, path, max_bytes, on_success,
-                                                                on_error);
-        });
-    }
-
-    void release_held_partials() {
-        auto held = std::move(held_partials_);
-        held_partials_.clear();
-        for (auto& h : held) {
-            h();
-        }
-    }
-
-    bool hold_transfers = false;
-    bool hold_partials = false;
-    bool fail_tail_reads = false;
-
-    /// A transport that writes no local copies and reads no tails, as on the ESP32.
-    bool local_copies = true;
-    bool tail_reads = true;
-    bool supports_local_copies() const override {
-        return local_copies;
-    }
-    bool supports_tail_reads() const override {
-        return tail_reads;
-    }
-
-    /// How many footer reads the view has asked for. The tools-used cache
-    /// persists only the used-tool set, so a cache hit must NOT suppress the
-    /// read that also answers the palette and the per-tool grams.
-    int tail_read_count = 0;
-    /// Whole-file downloads and preamble reads, counted the same way.
-    int download_count = 0;
-    int partial_read_count = 0;
-
-    /// Resolve every held transfer (copies the real asset, fires callbacks
-    /// synchronously — same as an unheld call).
-    void release_held() {
-        auto held = std::move(held_);
-        held_.clear();
-        for (auto& h : held) {
-            h();
-        }
-    }
-
-  private:
-    std::vector<std::function<void()>> held_;
-    std::vector<std::function<void()>> held_partials_;
-};
-
-/// MoonrakerAPIMock whose transfers() serves the holdable DelayedFileTransfers
-/// instance (everything else behaves identically to the plain mock).
-class DelayedMoonrakerAPIMock : public MoonrakerAPIMock {
-  public:
-    DelayedMoonrakerAPIMock(helix::MoonrakerClient& client, helix::PrinterState& state,
-                            DelayedFileTransfers& transfers)
-        : MoonrakerAPIMock(client, state), transfers_(transfers) {}
-
-    MoonrakerFileTransferAPI& transfers() override {
-        return transfers_;
-    }
-
-  private:
-    DelayedFileTransfers& transfers_;
-};
 
 /// LVGL UI fixture + the mock API stack the detail view talks to (mirrors
 /// MoonrakerAPIMockTestFixture in test_moonraker_api_mock.cpp), with an
@@ -328,8 +182,8 @@ TEST_CASE_METHOD(DetailDownloadFixture,
 
     // …but the empty set is NOT an answer about this file: nothing may be
     // persisted under its (path, size, mtime) key.
-    helix::ToolsUsedCache fresh;
-    REQUIRE(fresh.lookup("no_such_mock_file.gcode", kSize, kMtime) == std::nullopt);
+    auto& fresh = helix::tools_used_cache();
+    REQUIRE(fresh.lookup("no_such_mock_file.gcode", {kSize, kMtime}) == std::nullopt);
 
     pop_and_drain();
 }
@@ -357,8 +211,8 @@ TEST_CASE_METHOD(DetailDownloadFixture,
     // so finish_scan's deferred body publishes readiness.
     REQUIRE(wait_until([this]() { return ready(); }, 15000));
 
-    helix::ToolsUsedCache fresh;
-    const auto got = fresh.lookup("3DBenchy.gcode", benchy_size, kMtime);
+    auto& fresh = helix::tools_used_cache();
+    const auto got = fresh.lookup("3DBenchy.gcode", {benchy_size, kMtime});
     // The empty set must be a HIT, not a miss — else every open of every
     // single-extruder file re-scans, and the fix over-corrected.
     REQUIRE(got.has_value());
@@ -427,8 +281,8 @@ TEST_CASE_METHOD(DetailDownloadFixture,
     // download serves the viewer alone — the reprint-of-an-oversize-file
     // leak scenario (every open re-downloads, viewer rejects, file lingers).
     {
-        helix::ToolsUsedCache warmer;
-        warmer.store("3DBenchy.gcode", benchy_size, kMtime, {0});
+        auto& warmer = helix::tools_used_cache();
+        warmer.store("3DBenchy.gcode", {benchy_size, kMtime}, {0});
     }
 
     view_.show("3DBenchy.gcode", "", "PLA", {"#FF0000"}, {}, benchy_size, kMtime);
@@ -503,12 +357,12 @@ TEST_CASE_METHOD(DetailDownloadFixture,
     // The late scan runs against the INTACT file and persists the real set.
     REQUIRE(wait_until(
         [&]() {
-            helix::ToolsUsedCache fresh;
-            return fresh.lookup(key, file_size, kMtime).has_value();
+            auto& fresh = helix::tools_used_cache();
+            return fresh.lookup(key, {file_size, kMtime}).has_value();
         },
         15000));
-    helix::ToolsUsedCache fresh;
-    const auto got = fresh.lookup(key, file_size, kMtime);
+    auto& fresh = helix::tools_used_cache();
+    const auto got = fresh.lookup(key, {file_size, kMtime});
     REQUIRE(got.has_value());
     REQUIRE(*got == std::set<int>{0, 1, 2, 3});
 
@@ -547,8 +401,8 @@ TEST_CASE_METHOD(DetailDownloadFixture,
     REQUIRE_FALSE(std::filesystem::exists(canonical_path_for(key)));
 
     // Authoritative: the next open of this file renders final chips instantly.
-    helix::ToolsUsedCache fresh;
-    const auto cached = fresh.lookup(key, size, kMtime);
+    auto& fresh = helix::tools_used_cache();
+    const auto cached = fresh.lookup(key, {size, kMtime});
     REQUIRE(cached.has_value());
     REQUIRE(*cached == std::set<int>{4});
 
@@ -678,8 +532,8 @@ TEST_CASE_METHOD(DetailDownloadFixture,
     // Warm the cache so the used-tool question is settled before show() runs —
     // exactly what a second open of an already-viewed file sees.
     {
-        helix::ToolsUsedCache warmer;
-        warmer.store("3DBenchy.gcode", size, kMtime, {0});
+        auto& warmer = helix::tools_used_cache();
+        warmer.store("3DBenchy.gcode", {size, kMtime}, {0});
     }
 
     REQUIRE(transfers_.tail_read_count == 0);
@@ -735,16 +589,11 @@ TEST_CASE_METHOD(DetailDownloadFixture, "nothing outstanding issues no footer re
 namespace {
 
 /// This printer's M729 is a macro that shuts it down.
-struct StopMacroCache {
-    StopMacroCache() {
-        nlohmann::json config;
-        config["gcode_macro M729"] = {
-            {"gcode", "{action_emergency_stop(\"M729 is not supported\")}"}};
-        helix::MacroParamCache::instance().populate_from_configfile(config, {"M729"});
-    }
-    ~StopMacroCache() {
-        helix::MacroParamCache::instance().clear();
-    }
+struct StopMacroCache : helix::test::ScopedMacrosRead {
+    StopMacroCache()
+        : ScopedMacrosRead({{"gcode_macro M729",
+                             {{"gcode", "{action_emergency_stop(\"M729 is not supported\")}"}}}},
+                           {"M729"}) {}
 };
 
 } // namespace
@@ -969,7 +818,10 @@ TEST_CASE_METHOD(DetailDownloadFixture, "A USB file is read from the stick, neve
     auto* prep = view_.get_prep_manager();
     REQUIRE(prep != nullptr);
     REQUIRE(wait_until(
-        [&]() { return view_.is_gcode_loaded() && ready() && prep->has_scan_result_for(name); },
+        [&]() {
+            return view_.is_gcode_loaded() && ready() &&
+                   prep->has_scan_result_for(stick.path.string());
+        },
         15000));
     drain_queue_chain();
 
@@ -993,13 +845,13 @@ TEST_CASE_METHOD(DetailDownloadFixture, "An unreadable USB file asks Moonraker f
     auto* prep = view_.get_prep_manager();
     REQUIRE(prep != nullptr);
     REQUIRE(
-        wait_until([&]() { return ready() && prep->has_printer_stop_answer_for(name); }, 15000));
+        wait_until([&]() { return ready() && prep->has_printer_stop_answer_for(missing); }, 15000));
     drain_queue_chain();
 
     CHECK(transfers_.download_count == 0);
     CHECK(transfers_.tail_read_count == 0);
     CHECK(transfers_.partial_read_count == 0);
-    CHECK(prep->printer_stop_check_for(name).state == helix::PrinterStopCheck::State::NotRun);
+    CHECK(prep->printer_stop_check_for(missing).state == helix::PrinterStopCheck::State::NotRun);
 
     pop_and_drain();
 }
@@ -1024,7 +876,7 @@ TEST_CASE_METHOD(DetailDownloadFixture,
     StickFile stick(name, stick_gcode);
     view_.show(name, "", "PLA", {"#FF0000"}, {}, stick_gcode.size(), 42, 0, stick.path.string());
     prep = view_.get_prep_manager();
-    REQUIRE(wait_until([&]() { return prep->has_scan_result_for(name); }, 15000));
+    REQUIRE(wait_until([&]() { return prep->has_scan_result_for(stick.path.string()); }, 15000));
     drain_queue_chain();
 
     CHECK_FALSE(prep->get_scan_result()->has_operation(helix::gcode::OperationType::BED_MESH));
@@ -1049,7 +901,8 @@ TEST_CASE_METHOD(DetailDownloadFixture,
     view_.show(name, "", "PLA", {"#FF0000"}, {}, content.size(), 42, 0, stick.path.string());
     auto* prep = view_.get_prep_manager();
     REQUIRE(prep != nullptr);
-    CHECK(wait_until([&]() { return prep->has_printer_stop_answer_for(name); }, 5000));
+    CHECK(
+        wait_until([&]() { return prep->has_printer_stop_answer_for(stick.path.string()); }, 5000));
 
     release.set_value();
     REQUIRE(wait_until([this]() { return ready(); }, 15000));

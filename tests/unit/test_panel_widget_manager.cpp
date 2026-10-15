@@ -6,6 +6,7 @@
 #include "../test_fixtures.h"
 #include "../test_helpers/panel_widget_manager_test_access.h"
 #include "../test_helpers/process_async_timers.h"
+#include "../test_helpers/scoped_xml_component_stub.h"
 #include "../ui_test_utils.h"
 #include "config.h"
 #include "grid_layout.h"
@@ -709,9 +710,7 @@ TEST_CASE_METHOD(XMLTestFixture,
     lv_xml_register_component_from_data(
         "test_grid_spy_widget",
         "<component><view extends=\"lv_obj\" width=\"100%\" height=\"100%\"/></component>");
-    lv_xml_register_component_from_data(
-        "panel_widget_firmware_restart",
-        "<component><view extends=\"lv_obj\" width=\"100%\" height=\"100%\"/></component>");
+    helix::test::ScopedXmlComponentStub firmware_restart_stub("panel_widget_firmware_restart");
 
     // Route the two widgets we use through the dependency-free spy factory.
     auto override_factory = [](const char* id) -> WidgetFactory {
@@ -804,9 +803,7 @@ TEST_CASE_METHOD(XMLTestFixture,
     lv_xml_register_component_from_data(
         "test_grid_spy_widget",
         "<component><view extends=\"lv_obj\" width=\"100%\" height=\"100%\"/></component>");
-    lv_xml_register_component_from_data(
-        "panel_widget_firmware_restart",
-        "<component><view extends=\"lv_obj\" width=\"100%\" height=\"100%\"/></component>");
+    helix::test::ScopedXmlComponentStub firmware_restart_stub("panel_widget_firmware_restart");
 
     auto override_factory = [](const char* id) -> WidgetFactory {
         const auto* def = helix::find_widget_def(id);

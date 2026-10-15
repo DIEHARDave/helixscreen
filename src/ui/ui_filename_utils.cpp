@@ -55,17 +55,8 @@ std::string join_gcode_path(const std::string& dir, const std::string& filename)
 }
 
 std::string get_filename_basename(const std::string& path) {
-    if (path.empty()) {
-        return path;
-    }
-
-    // Find last path separator
-    size_t last_sep = path.find_last_of("/\\");
-    if (last_sep == std::string::npos) {
-        return path; // No separator, already just a filename
-    }
-
-    return path.substr(last_sep + 1);
+    const size_t last_sep = last_path_separator(path);
+    return last_sep == std::string::npos ? path : path.substr(last_sep + 1);
 }
 
 std::string strip_gcode_extension(const std::string& filename) {
@@ -225,11 +216,6 @@ std::optional<std::string> trusted_original_path(const std::string& path) {
     return std::move(parsed->original);
 }
 
-static std::string basename_of(const std::string& path) {
-    const size_t slash = path.find_last_of('/');
-    return slash == std::string::npos ? path : path.substr(slash + 1);
-}
-
 bool thumbnail_source_describes(const std::string& raw, const std::string& source) {
     if (raw == source) {
         return true;
@@ -245,7 +231,7 @@ bool thumbnail_source_describes(const std::string& raw, const std::string& sourc
     if (resolved == source) {
         return true;
     }
-    return basename_of(resolved) == basename_of(source);
+    return get_filename_basename(resolved) == get_filename_basename(source);
 }
 
 bool is_native_3mf_shadow(const std::string& name) {
@@ -263,7 +249,7 @@ bool is_native_3mf_shadow(const std::string& name) {
 }
 
 std::string qidi_3mf_extract_name(const std::string& print_filename) {
-    std::string name = basename_of(print_filename);
+    std::string name = get_filename_basename(print_filename);
     if (is_3mf(name)) {
         name.resize(name.size() - 4);
     }
@@ -296,7 +282,7 @@ std::string make_rewritten_gcode_path(const std::string& original_path) {
     // Too long to carry the whole path: a bare filename, which
     // trusted_original_path() refuses to read as the original's location.
     staged = helix_temp_prefix + stamp + "_";
-    std::string name = basename_of(original_path);
+    std::string name = get_filename_basename(original_path);
     const size_t room = name_max - (staged.size() - staging_dir.size());
     if (name.size() > room) {
         // Keep the extension, and start on a UTF-8 lead byte: a name cut inside

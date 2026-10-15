@@ -197,6 +197,47 @@ TEST_CASE("find_by_tool_index: full palette resolves each tool to its own entry"
 // ============================================================================
 
 TEST_CASE_METHOD(MappingCardRenderFixture,
+                 "FilamentMappingCard holds what compute_mapping answers for the file",
+                 "[filament_mapping][compute_mapping]") {
+    const std::vector<std::string> colors = {"#FF0000", "#00FF00", "#0000FF"};
+    const std::vector<std::string> materials = {"PLA", "PETG", "PLA"};
+    const std::optional<std::set<int>> used = std::set<int>{0, 2};
+
+    const auto m = FilamentMappingCard::compute_mapping(colors, materials, used);
+    REQUIRE(m.shows);
+    CHECK(m.palette_colour_count == 3);
+    CHECK(m.palette_tool_count == 3);
+    // Seeded from the whole palette, then narrowed to the used tools.
+    REQUIRE(m.tool_info.size() == 2);
+    CHECK(m.tool_info[1].tool_index == 2);
+    REQUIRE(m.mappings.size() == 2);
+    CHECK(m.mappings[1].tool_index == 2);
+    CHECK_FALSE(m.slots.empty());
+
+    // The used set arriving before the palette, or after it: the same answer.
+    SECTION("used tools first") {
+        card.set_used_tools(used);
+        card.update(colors, materials);
+    }
+    SECTION("palette first") {
+        card.update(colors, materials);
+        card.set_used_tools(used);
+    }
+    REQUIRE(card.should_show());
+    const auto tools = card.get_tool_info();
+    const auto mappings = card.get_mappings();
+    REQUIRE(tools.size() == m.tool_info.size());
+    REQUIRE(mappings.size() == m.mappings.size());
+    for (size_t i = 0; i < tools.size(); ++i) {
+        CHECK(tools[i].tool_index == m.tool_info[i].tool_index);
+        CHECK(mappings[i].tool_index == m.mappings[i].tool_index);
+        CHECK(mappings[i].mapped_slot == m.mappings[i].mapped_slot);
+    }
+    CHECK(card.get_available_slots().size() == m.slots.size());
+    process_lvgl(100);
+}
+
+TEST_CASE_METHOD(MappingCardRenderFixture,
                  "FilamentMappingCard rebuild is idempotent on identical input",
                  "[filament_mapping][idempotent]") {
     const std::vector<std::string> colors = {"#FF0000", "#00FF00"};

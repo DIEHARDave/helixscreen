@@ -38,6 +38,10 @@ class PrintStatusLayoutFitter {
         lv_subject_t* aux_short_visible;
         lv_subject_t* fans_fit;
         lv_subject_t* graph_fits;
+        lv_subject_t* row1_stacked;
+        lv_subject_t* row1_tall;
+        lv_subject_t* row2_stacked;
+        lv_subject_t* row2_tall;
     };
 
     /// What the panel answers on the fitter's behalf.
@@ -66,6 +70,14 @@ class PrintStatusLayoutFitter {
     /// The same derivation for an assumed density and aux presence, used while
     /// measuring each tier.
     void recompute_aux_composites_for_measurement(int density, bool aux_present);
+
+    /// Whether each action row (Light/Timelapse/Pause, then Tune/Cancel) stacks
+    /// its icons over their labels: always at tiny and below, and from small up
+    /// when the labels do not fit beside their icons (rowN_stacked; rowN_tall
+    /// gives that row a fixed height there). Also watches each row's labels,
+    /// whose text changes with the language and the print state, and the row
+    /// itself, whose buttons come and go.
+    void recompute_actions_crowded();
 
     /// Resume the mini-graph and backfill what landed while off-screen.
     void resume_temp_graph();
@@ -100,6 +112,15 @@ class PrintStatusLayoutFitter {
     /// already live. Idempotent; no-op when the widget tree is gone.
     void ensure_temp_graph();
 
+    static void action_label_resized_cb(lv_event_t* e);
+    /// Hook @p row's layout and its labels' sizes to recompute_actions_crowded().
+    /// The hooks hold `this`, which outlives every widget tree (the panel owns
+    /// the fitter for the process), and die with the widgets they sit on.
+    void watch_action_row(int index, lv_obj_t* row);
+    /// One row of recompute_actions_crowded(): the row holding @p anchor.
+    void fit_action_row(int index, const char* anchor, bool tiny, lv_subject_t* stacked_subject,
+                        lv_subject_t* tall_subject);
+
     std::string log_tag_;
     PrinterState& printer_state_;
     Subjects subjects_;
@@ -125,6 +146,9 @@ class PrintStatusLayoutFitter {
     /// The XML container the controller drew into. Nulled when the tree goes so a
     /// rebuilt one is never populated through a stale pointer.
     lv_obj_t* temp_graph_container_ = nullptr;
+    /// The action rows whose labels carry action_label_resized_cb. Nulled with
+    /// the tree so a rebuilt row gets the hook again.
+    lv_obj_t* watched_action_rows_[2] = {nullptr, nullptr};
 };
 
 } // namespace helix::ui

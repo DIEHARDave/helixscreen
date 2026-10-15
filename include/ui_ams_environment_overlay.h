@@ -141,10 +141,14 @@ class AmsEnvironmentOverlay : public OverlayBase {
     void handle_start_stop();
 
     /// Which of the two dryer inputs a keypad session is filling.
-    enum class DryerField { Temperature, Duration };
+    enum class DryerField { Temperature, Duration, HumidityTarget };
 
     /// Open the numeric keypad over one input, ranged by what the shown box accepts.
     void show_dryer_keypad(DryerField field);
+    /// Show, in the blank humidity target field, the target a start without one gets.
+    void publish_humidity_target_placeholder(const DryerInfo& dryer);
+    /// The text field @p field edits.
+    [[nodiscard]] lv_obj_t* dryer_input(DryerField field) const;
     /// Write a confirmed keypad value back into its input.
     void apply_dryer_keypad_value(DryerField field, float value);
     static void on_dryer_keypad_confirmed(float value, void* user_data);
@@ -201,6 +205,7 @@ class AmsEnvironmentOverlay : public OverlayBase {
     lv_obj_t* preset_dropdown_ = nullptr;
     lv_obj_t* temp_input_ = nullptr;
     lv_obj_t* duration_input_ = nullptr;
+    lv_obj_t* humidity_target_input_ = nullptr; ///< Blank = the printer's default target
 
     // === Subjects (managed by SubjectManager) ===
 
@@ -225,6 +230,8 @@ class AmsEnvironmentOverlay : public OverlayBase {
     char title_text_buf_[96] = {};
 
     lv_subject_t dryer_visible_subject_{};
+    /// 1 when the shown zone's dryer takes a humidity target
+    lv_subject_t humidity_target_visible_subject_{};
     lv_subject_t no_dryer_visible_subject_{};
     lv_subject_t drying_active_subject_{};
 

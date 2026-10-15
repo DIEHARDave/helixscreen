@@ -56,6 +56,14 @@ void count_resize() {
     g_resize_calls++;
 }
 
+int timers_pointing_at(const void* owner) {
+    int n = 0;
+    for (lv_timer_t* t = lv_timer_get_next(nullptr); t != nullptr; t = lv_timer_get_next(t)) {
+        n += lv_timer_get_user_data(t) == owner ? 1 : 0;
+    }
+    return n;
+}
+
 } // namespace
 
 /**
@@ -240,4 +248,22 @@ TEST_CASE_METHOD(ResizeFixture, "A debounce armed before suspension does not fan
     REQUIRE(g_resize_calls == 1);
 
     lv_obj_delete(screen);
+}
+
+TEST_CASE_METHOD(ResizeFixture, "a destroyed DisplayManager leaves no resize debounce armed",
+                 "[display][rotation_probe][resize]") {
+    // The debounce's callback dereferences its DisplayManager, so a timer that survives
+    // the manager fires into freed memory, in whichever test is running then.
+    const void* mgr_addr = nullptr;
+    {
+        DisplayManager mgr;
+        mgr_addr = &mgr;
+        lv_obj_t* screen = attach_resize_handler(mgr);
+        lv_obj_send_event(screen, LV_EVENT_SIZE_CHANGED, nullptr);
+        process_lvgl(50); // timer armed, not yet expired
+        REQUIRE(timers_pointing_at(mgr_addr) == 1);
+        lv_obj_delete(screen);
+    }
+    process_lvgl(1); // a cancelled timer is reaped on the next handler pass
+    CHECK(timers_pointing_at(mgr_addr) == 0);
 }

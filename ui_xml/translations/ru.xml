@@ -54,6 +54,7 @@
   <translation tag="+ Add Preset" ru="+ Добавить пресет"/>
   <translation tag="+ Add Printer" ru="+ Добавить принтер"/>
   <translation tag="+ New" ru="+ Новый"/>
+  <translation tag="+{} more" ru="+ещё {}"/>
   <translation tag="- Check [resonance_tester] in printer.cfg" ru="- Проверьте блок [resonance_tester] в printer.cfg"/>
   <translation tag="- Ensure ADXL345 is connected" ru="- Убедитесь, что ADXL345 подключен"/>
   <translation tag="- Try Measure Noise first" ru="- Сначала попробуйте измерить шум акселерометра"/>
@@ -63,6 +64,7 @@
   <translation tag="-- kWh" ru="-- кВт·ч"/>
   <translation tag="--°C" ru="--°C"/>
   <translation tag="..." ru="..."/>
+  <translation tag="/wk" ru="/нед."/>
   <translation tag="0 = computed" ru="0 = вычислено"/>
   <translation tag="0 events queued" ru="0 событий в очереди"/>
   <translation tag="0 slots" ru="{0} Слотов"/>
@@ -79,6 +81,7 @@
   <translation tag="1 min ago" ru="1 мин. назад"/>
   <translation tag="1 minute" ru="1 минута"/>
   <translation tag="1 more tap to {} beta features" ru="1 нажатие до {} бета-функций"/>
+  <translation tag="1 print" ru="1 печать"/>
   <translation tag="1 profile" ru="1 профиль"/>
   <translation tag="1 unit" ru="1 ед."/>
   <translation tag="1. Printer homes all axes (~1 minute)" ru="1. Принтер ищет ноль по всем осям (~1 минута)"/>
@@ -332,6 +335,7 @@
   <translation tag="Bed Screws" ru="Винты стола"/>
   <translation tag="Bed Temp" ru="Темп. стола"/>
   <translation tag="Bed Temperature" ru="Температура стола"/>
+  <translation tag="Bed clear · Start next" ru="Стол свободен · Запустить следующую"/>
   <translation tag="Bed cooling, spools still on the bed:" ru="Стол остывает, катушки всё ещё на нём:"/>
   <translation tag="Bed is Level!" ru="Стол выровнен!"/>
   <translation tag="Bed mesh calibration failed: {}" ru="Ошибка калибровки сетки стола: {}"/>
@@ -494,6 +498,7 @@
   <translation tag="Cannot start print: internal error" ru="Невозможно начать печать: внутренняя ошибка"/>
   <translation tag="Cannot start print: not connected to printer" ru="Невозможно начать печать: не подключено к принтеру"/>
   <translation tag="Cannot start print: printer is {}" ru="Невозможно начать печать: принтер {}"/>
+  <translation tag="Cannot start {}: the file could not be checked yet for the steps you turned off. Try again in a moment." ru="Не удалось запустить {}: файл ещё не удалось проверить на отключённые шаги. Повторите попытку через мгновение."/>
   <translation tag="Cannot unload while a print is active" ru="Нельзя выгрузить во время печати"/>
   <translation tag="Capabilities: " ru="Возможности: "/>
   <translation tag="Carriage empty" ru="Каретка пуста"/>
@@ -560,6 +565,7 @@
   <translation tag="Checking accelerometer..." ru="Проверка акселерометра..."/>
   <translation tag="Checking extruders..." ru="Проверка экструдеров..."/>
   <translation tag="Checking filament..." ru="Проверка филамента..."/>
+  <translation tag="Checking file…" ru="Проверка файла…"/>
   <translation tag="Checking for plugin..." ru="Поиск плагина..."/>
   <translation tag="Checking for webcam..." ru="Проверка веб-камеры..."/>
   <translation tag="Checking plugin" ru="Проверка плагина"/>
@@ -735,6 +741,7 @@
   <translation tag="Could not analyze PRINT_START macro. Some print options may be unavailable." ru="Не удалось проанализировать макрос PRINT_START. Некоторые параметры печати могут быть недоступны."/>
   <translation tag="Could not answer the connection request" ru="Не удалось ответить на запрос подключения"/>
   <translation tag="Could not check webcam status.&#10;Check printer connection." ru="Не удалось проверить статус веб-камеры.&#10;Проверьте подключение принтера."/>
+  <translation tag="Could not check {} - it stays in the queue" ru="Не удалось проверить {} – остаётся в очереди"/>
   <translation tag="Could not confirm cancel" ru="Не удалось подтвердить отмену"/>
   <translation tag="Could not copy {} from USB: {}" ru="Не удалось скопировать {} с USB: {}"/>
   <translation tag="Could not disconnect from WiFi" ru="Не удалось отключиться от WiFi"/>
@@ -1560,6 +1567,7 @@
   <translation tag="It&apos;s a new spool" ru="Это новая катушка"/>
   <translation tag="Jammed at the Toolhead" ru="Замятие в печатающей головке"/>
   <translation tag="Job Queue" ru="Очередь заданий"/>
+  <translation tag="Job queue not enabled in Moonraker" ru="Очередь заданий не включена в Moonraker"/>
   <translation tag="Jog" ru="Джог"/>
   <translation tag="Jog Speed XY" ru="Скорость перемещения XY"/>
   <translation tag="Jog Speed Z" ru="Скорость перемещения Z"/>
@@ -1626,7 +1634,6 @@
   <translation tag="Lanes" ru="Каналы"/>
   <translation tag="Language" ru="Язык"/>
   <translation tag="Language &amp; Time" ru="Язык и время"/>
-  <translation tag="Last" ru="Последняя"/>
   <translation tag="Last 12 months" ru="Последние 12 месяцев"/>
   <translation tag="Last 24 hours" ru="Последние 24 часа"/>
   <translation tag="Last 30 days" ru="Последние 30 дней"/>
@@ -1652,7 +1659,6 @@
   <translation tag="Level" ru="Уровень"/>
   <translation tag="Leveling Gantry..." ru="Выравнивание портала..."/>
   <translation tag="Library" ru="Библиотека"/>
-  <translation tag="Lifetime Print Stats" ru="Статистика за всё время"/>
   <translation tag="Light" ru="Подсветка"/>
   <translation tag="Light Mode" ru="Светлый режим"/>
   <translation tag="Light will switch when the current operation finishes" ru="Подсветка переключится после завершения текущей операции"/>
@@ -1899,6 +1905,7 @@
   <translation tag="New printer successfully added" ru="Новый принтер успешно добавлен"/>
   <translation tag="New profile name" ru="Новое имя профиля"/>
   <translation tag="Next" ru="Далее"/>
+  <translation tag="Next: {}" ru="Далее: {}"/>
   <translation tag="Niimbot (Bluetooth)" ru="Niimbot (Bluetooth)"/>
   <translation tag="No" ru="Нет"/>
   <translation tag="No AMS Detected" ru="AMS не обнаружен"/>
@@ -1968,6 +1975,7 @@
   <translation tag="No printer configured — check printer settings" ru="Принтер не настроен — проверьте настройки принтера"/>
   <translation tag="No printer connection" ru="Нет подключения к принтеру"/>
   <translation tag="No printers found" ru="Принтеры не найдены"/>
+  <translation tag="No prints this week" ru="Нет печатей за неделю"/>
   <translation tag="No prints yet" ru="Нет печатей"/>
   <translation tag="No profiles available" ru="Профили недоступны"/>
   <translation tag="No sensors detected" ru="Датчики не обнаружены"/>
@@ -2279,6 +2287,7 @@
   <translation tag="Print error" ru="Ошибка печати"/>
   <translation tag="Print failed" ru="Печать не удалась"/>
   <translation tag="Print history will show the rewritten name" ru="История печати покажет изменённое имя"/>
+  <translation tag="Print hours this week and lifetime totals" ru="Часы печати за неделю и общие итоги"/>
   <translation tag="Print issue detected" ru="Обнаружена проблема печати"/>
   <translation tag="Print jobs waiting to run" ru="Задания печати в очереди"/>
   <translation tag="Print preparation failed: {}" ru="Ошибка подготовки печати: {}"/>
@@ -2398,6 +2407,7 @@
   <translation tag="Quad Gantry Level" ru="Выравнивание портала"/>
   <translation tag="Quad Gantry Level complete" ru="QGL завершён"/>
   <translation tag="Quad Gantry Level started..." ru="QGL запущен..."/>
+  <translation tag="Queue empty" ru="Очередь пуста"/>
   <translation tag="Queue: Paused" ru="Очередь: Пауза"/>
   <translation tag="Queue: Ready" ru="Очередь: Готово"/>
   <translation tag="Queued {}h {}m ago" ru="В очереди {} ч {} мин"/>
@@ -2922,6 +2932,7 @@
   <translation tag="Start at" ru="Начать с"/>
   <translation tag="Start drying" ru="Начать сушку"/>
   <translation tag="Start failed" ru="Ошибка запуска"/>
+  <translation tag="Start next" ru="Запустить следующую"/>
   <translation tag="Start next: {}" ru="Запустить следующую: {}"/>
   <translation tag="Start print anyway?" ru="Всё равно начать печать?"/>
   <translation tag="Started" ru="Начато"/>
@@ -2929,8 +2940,10 @@
   <translation tag="Starting download..." ru="Начало загрузки..."/>
   <translation tag="Starting nozzle clean..." ru="Запуск очистки сопла..."/>
   <translation tag="Starting print..." ru="Запуск печати..."/>
+  <translation tag="Starting {}…" ru="Запуск {}…"/>
   <translation tag="Starting..." ru="Запуск..."/>
   <translation tag="Starts after the current print" ru="Начнётся после текущей печати"/>
+  <translation tag="Starts automatically" ru="Запустится автоматически"/>
   <translation tag="Startup Brightness" ru="Яркость при запуске"/>
   <translation tag="Startup, auto-control, and macro devices" ru="Запуск, автоуправление и макро-устройства"/>
   <translation tag="State" ru="Состояние"/>
@@ -3018,8 +3031,10 @@
   <translation tag="Tap the part cooling fan" ru="Нажмите на вентилятор охлаждения детали"/>
   <translation tag="Tap to assign" ru="Нажмите для назначения"/>
   <translation tag="Target" ru="Цель"/>
+  <translation tag="Target RH" ru="Цель ОВ"/>
   <translation tag="Target Temperature" ru="Целевая температура"/>
   <translation tag="Target Version" ru="Целевая версия"/>
+  <translation tag="Target humidity" ru="Целевая влажность"/>
   <translation tag="Telemetry" ru="Телеметрия"/>
   <translation tag="Telemetry Data" ru="Данные телеметрии"/>
   <translation tag="Telemetry Disabled" ru="Телеметрия отключена"/>
@@ -3240,7 +3255,6 @@
   <translation tag="Tools Used" ru="Использовано инструментов"/>
   <translation tag="Tools: " ru="Инструменты: "/>
   <translation tag="Total Prints" ru="Всего печатей"/>
-  <translation tag="Total prints, success rate, and time" ru="Всего печатей, процент успеха и время"/>
   <translation tag="Touch &amp; Input" ru="Касание и ввод"/>
   <translation tag="Touch Cal" ru="Кал. касания"/>
   <translation tag="Touch Calibration" ru="Калибровка касания"/>
@@ -3428,7 +3442,6 @@
   <translation tag="Webcam" ru="Веб-камера"/>
   <translation tag="Website (optional)" ru="Веб-сайт (необязательно)"/>
   <translation tag="Week" ru="Неделя"/>
-  <translation tag="Weekly Print Stats" ru="Статистика за неделю"/>
   <translation tag="Weight data is synced from Spoolman to display remaining filament. Changes are also synced when prints start, pause, or complete." ru="Данные о весе синхронизируются из Spoolman для отображения оставшегося филамента. Изменения также синхронизируются при начале, паузе или завершении печати."/>
   <translation tag="Welcome to HelixScreen" ru="Добро пожаловать в HelixScreen"/>
   <translation tag="What We Collect" ru="Что мы собираем"/>
@@ -3531,6 +3544,7 @@
   <translation tag="Z: 0.000" ru="Z: 0.000"/>
   <translation tag="already loaded" ru="уже загружен"/>
   <translation tag="attempt {}" ru="попытка {}"/>
+  <translation tag="auto" ru="авто"/>
   <translation tag="bed" ru="стол"/>
   <translation tag="busy" ru="занят"/>
   <translation tag="by" ru="автор:"/>
@@ -3608,6 +3622,7 @@
   <translation tag="tall" ru="высотой"/>
   <translation tag="target {}%" ru="цель {}%"/>
   <translation tag="target {}°" ru="цель {}°"/>
+  <translation tag="this week" ru="за неделю"/>
   <translation tag="too slow" ru="слишком медленно"/>
   <translation tag="tool(s)" ru="инструмент(ы)"/>
   <translation tag="used" ru="использ."/>
@@ -3631,6 +3646,7 @@
   <translation tag="{} complete" ru="{} завершено"/>
   <translation tag="{} configured item not found" ru="Не найден {} настроенный элемент"/>
   <translation tag="{} configured items not found" ru="Не найдено {} настроенных элементов"/>
+  <translation tag="{} could not be checked from Home - review it and tap Print" ru="Не удалось проверить {} с главного экрана – проверьте файл и нажмите «Печать»"/>
   <translation tag="{} critical" ru="критических: {}"/>
   <translation tag="{} critical hardware issues" ru="{} критических проблем с оборудованием"/>
   <translation tag="{} disabled" ru="{} выключено"/>
@@ -3640,6 +3656,7 @@
   <translation tag="{} filament sensors available" ru="Доступно датчиков филамента: {}"/>
   <translation tag="{} filament • {}" ru="{} филамента • {}"/>
   <translation tag="{} firmware" ru="Прошивка {}"/>
+  <translation tag="{} h" ru="{} ч"/>
   <translation tag="{} heater turned off" ru="Нагреватель {} выключен"/>
   <translation tag="{} is asking to connect to this printer." ru="{} запрашивает подключение к этому принтеру."/>
   <translation tag="{} is blocked — manual intervention required" ru="{}: блокировка — требуется ручное вмешательство"/>
@@ -3652,9 +3669,11 @@
   <translation tag="{} kept crashing the panel; pick a printer to connect" ru="{} постоянно вызывал сбой экрана; выберите принтер для подключения"/>
   <translation tag="{} kept crashing the panel; switched back to {}" ru="{} постоянно вызывал сбой экрана; возврат к {}"/>
   <translation tag="{} lines in helixscreen.env were ignored" ru="В helixscreen.env проигнорировано строк: {}"/>
+  <translation tag="{} m" ru="{} м"/>
   <translation tag="{} macro not configured" ru="Макрос {} не настроен"/>
   <translation tag="{} matches." ru="{} подходит."/>
   <translation tag="{} may cause unintended changes. Are you sure?" ru="{} может привести к непреднамеренным изменениям. Вы уверены?"/>
+  <translation tag="{} min" ru="{} мин"/>
   <translation tag="{} min ago" ru="{} мин. назад"/>
   <translation tag="{} missing" ru="отсутствует: {}"/>
   <translation tag="{} more taps to {} beta features" ru="{} нажатий до {} бета-функций"/>
@@ -3663,6 +3682,8 @@
   <translation tag="{} new hardware available" ru="Доступно нового оборудования: {}"/>
   <translation tag="{} new plugins available. Enable them in Settings &gt; Plugins." ru="Доступно новых плагинов: {}. Включите их в разделе Настройки &gt; Плагины."/>
   <translation tag="{} preset{}" ru="{} пресет{}"/>
+  <translation tag="{} prints" ru="{} печатей"/>
+  <translation tag="{} queued" ru="В очереди: {}"/>
   <translation tag="{} serial" ru="Серийный номер {}"/>
   <translation tag="{} set to {}" ru="{} установлено на {}"/>
   <translation tag="{} set to {} {}" ru="{} установлено на {} {}"/>

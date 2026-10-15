@@ -60,6 +60,11 @@ class PreflightCheckModal : public Modal {
     void set_on_remap(Action a) {
         on_remap_ = std::move(a);
     }
+    /// Runs once the modal closes, however it closed, after any Print Anyway
+    /// or Remap callback.
+    void set_on_closed(Action a) {
+        on_closed_ = std::move(a);
+    }
 
   protected:
     void on_show() override;
@@ -76,6 +81,12 @@ class PreflightCheckModal : public Modal {
             on_remap_();
         hide();
     }
+    void on_hide() override {
+        if (auto closed = std::move(on_closed_)) {
+            on_closed_ = nullptr;
+            closed();
+        }
+    }
 
   private:
     void build_rows(lv_obj_t* list);
@@ -83,7 +94,7 @@ class PreflightCheckModal : public Modal {
                               const std::vector<helix::AvailableSlot>& slots);
 
     helix::PreflightResult result_;
-    Action on_force_, on_remap_;
+    Action on_force_, on_remap_, on_closed_;
 };
 
 } // namespace helix::ui

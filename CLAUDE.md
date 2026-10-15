@@ -60,6 +60,7 @@ make t F='[tag]'                     # Build, then run ONE tag or case (the inne
 #   Correct only when you have not edited code since the last `make test`:
 #   `make -j` builds the app alone, so after an edit the bare binary reports the
 #   PREVIOUS build's numbers. `make t` costs 5-18s and buys exactly that guarantee.
+#   A stale binary prints `WARNING: helix-tests is stale` on stderr first: believe it.
 make unit-sweep                      # C++ unit tests only, sharded (~50s idle)
 make full-test-run                   # unit-sweep + the bats suite (~2m) - the completion gate
 #   Nothing else runs bats locally: not the commit hook, not test-xml. Without this
@@ -67,6 +68,13 @@ make full-test-run                   # unit-sweep + the bats suite (~2m) - the c
 #   quality-checks.sh runs [.] on any staged code change, nightly CI runs [slow].
 #   `make test-run` runs nothing: it prints which of these fits the question
 #   you have and exits non-zero. Cadence table: tests/CLAUDE.md.
+make land-gate                       # THE pre-landing gate (~10m): run it before anything reaches main
+#   full-test-run, plus the sweep in CI's 8-shard layout, CI's tests/ui pytest
+#   slice (headless), the moonraker plugin tests, and the generated-artefact
+#   checks (theme token table, xml schema + lint-xml, lvgl event codes). C++ on
+#   the test host as full-test-run's sweep goes; the rest here in parallel; a
+#   PASS/FAIL table with durations at the end. full-test-run alone is NOT a
+#   landing gate: it skips tests/ui and CI's shard layout, both of which red CI.
 
 make dev-timing                      # What the dev loop costs, measured (ledger from transcripts)
 #   Medians for every build, suite and test run, so "is this worth running" is
@@ -219,7 +227,7 @@ What is shared here:
   an unpushed main stalls every merge behind it until its owner is found.
 - **Land in batches and gate once.** Before taking main, message whoever holds it or is
   queued and fold your ready branch into one landing: one session merges every ready branch
-  and runs ONE `make full-test-run` on the combined result. A full gate per branch turns N
+  and runs ONE `make land-gate` on the combined result. A full gate per branch turns N
   landings into N serial 10-minute gates, and parallel gates leave thelio's CPU spinning on
   the same suite. Run the full gate once per branch, at the end: a review fix gets its tags
   (`make t F=...`), and the batch gate covers the rest.
@@ -227,7 +235,8 @@ What is shared here:
   `git diff HEAD -- <path>`. Empty means the committed content is what is on disk, only the
   INDEX holds an older copy, and nothing is in flight. A `git commit -- <paths>` whose
   pre-commit hook reformats the file leaves exactly that: the pre-format copy stranded in the
-  index. Clear it with `git add <path>`: index becomes HEAD, so there is nothing unpublished
+  index. The post-commit hook clears that case itself; one left by a commit made without
+  the hook clears with `git add <path>`: index becomes HEAD, so there is nothing unpublished
   for a peer to sweep, and it discards nothing. A non-empty `git diff HEAD` is the case worth
   waiting on; confirm with `pgrep -x git` plus each pid's cwd and `helix-claim check
   worktree:main` before concluding anything about who owns it.
@@ -249,6 +258,8 @@ What is shared here:
   scripts/helix-claim check worktree:main        # FREE | LIVE | STALE  (exit 1 if LIVE)
   if scripts/helix-claim take device:k2plus deploy --pid $$ --note 192.168.1.50; then  # gate on the exit code; never pipe take
       trap 'scripts/helix-claim release-if-owned-by $$ device:k2plus' EXIT; make deploy-k2plus; fi
+  scripts/helix-claim take worktree:main edit --session   # owner = this session's `claude` process (--pid auto); errors if none is an ancestor
+  scripts/helix-claim take worktree:main edit --ack-red-main   # worktree:main is refused while Build / Code Quality is red on origin/main; fails open without gh; the merge hook always acks
   scripts/helix-claim list                       # everything, with derived liveness
   scripts/helix-claim resources                  # memory, load, claims, top RSS, test host: before heavy work
   scripts/helix-claim run heavy:sweep -- make unit-sweep   # claimed while it runs
@@ -285,7 +296,7 @@ What is shared here:
   | Hook | Behaviour |
   |------|-----------|
   | `pre-commit` | If `MERGE_HEAD` exists, claims this tree under the **git process's** pid so the merge announces itself. Prints nothing unless another session already holds the tree. Then runs the existing quality checks unchanged. |
-  | `post-commit` | Releases that claim **only if the claim names this commit's own pid**, so a session claim spanning several commits survives. |
+  | `post-commit` | Points any committed path's stale index entry back at HEAD's blob (the `MM` a reformatting hook leaves after `git commit -- <paths>`; `.githooks/lib/sync-index-to-head.sh`), then releases that claim **only if the claim names this commit's own pid**, so a session claim spanning several commits survives. |
 
   Ordinary human git use stays silent: the hooks speak only on a real conflict. Advisory by
   design; `HELIX_CLAIM_STRICT=1` makes `pre-commit` refuse instead of warn. `--no-verify`

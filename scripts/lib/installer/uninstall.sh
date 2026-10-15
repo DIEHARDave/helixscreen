@@ -103,21 +103,7 @@ _newest_timestamped_install_backup() {
 # A location this run cannot resolve (no Klipper config dir known) is omitted
 # rather than probed with an empty prefix.
 _disabled_services_ledger_candidates() {
-    local _pd_config="" _newest_old _rollback_mount
-    if type klipper_config_dir >/dev/null 2>&1; then
-        _pd_config="$(klipper_config_dir)"
-    fi
-    echo "${INSTALL_DIR}/config/.disabled_services"
-    if [ -n "$_pd_config" ]; then
-        echo "${_pd_config}/helixscreen/.disabled_services"
-        echo "${_pd_config}/.disabled_services.clean-keep"
-    fi
-    echo "${INSTALL_DIR}.old/config/.disabled_services"
-    _newest_old="$(_newest_timestamped_install_backup)"
-    [ -n "$_newest_old" ] && echo "${_newest_old}/config/.disabled_services"
-    for _rollback_mount in ${HELIX_ROLLBACK_CANDIDATES:-$HELIX_ROLLBACK_CANDIDATES_DEFAULT}; do
-        echo "${_rollback_mount}/helixscreen-rollback/helixscreen/config/.disabled_services"
-    done
+    _ledger_candidates .disabled_services wide
 }
 
 # Enable a unit for the next boot. A failure is reported with the command that
@@ -227,7 +213,8 @@ reenable_disabled_services() {
 # Must run BEFORE $INSTALL_DIR is removed (the state file lives in it) and
 # touches printer_data files that live outside $INSTALL_DIR.
 undo_klipper_includes() {
-    local state_file="${INSTALL_DIR}/config/.klipper_includes"
+    local state_file
+    state_file="$(_ledger_path .klipper_includes)"
     [ -f "$state_file" ] || return 0
 
     log_info "Reverting HelixScreen Klipper config includes..."
@@ -267,6 +254,7 @@ undo_klipper_includes() {
                 ;;
         esac
     done < "$state_file"
+    remove_state_file "$state_file"
 }
 
 # Undo per-printer settings seeding recorded at install time (#986).
@@ -279,7 +267,8 @@ undo_klipper_includes() {
 # defaults therefore REMAIN in settings.json; we only remove the marker file.
 # Must run BEFORE $INSTALL_DIR is removed (the state file lives in it).
 undo_seeded_settings() {
-    local state_file="${INSTALL_DIR}/config/.seeded_settings"
+    local state_file
+    state_file="$(_ledger_path .seeded_settings)"
     [ -f "$state_file" ] || return 0
 
     log_info "Reviewing HelixScreen settings seeds..."
@@ -297,7 +286,7 @@ undo_seeded_settings() {
     done < "$state_file"
 
     # Remove only the marker; settings.json is left untouched on purpose.
-    $(path_sudo "$state_file") rm -f "$state_file" 2>/dev/null || true
+    remove_state_file "$state_file"
 }
 
 # Restore whatever screen UI HelixScreen displaced at install time, for the
@@ -811,6 +800,10 @@ uninstall() {
     # Must run before $INSTALL_DIR (which holds the .seeded_settings state file)
     # is removed.
     undo_seeded_settings
+
+    # The hook key lets the update script re-deploy platform/hooks.sh; with the
+    # install gone there is nothing left for it to restore.
+    remove_state_file "$(_ledger_path .platform_hook)"
 
     # --mod-payload: this uninstall's one install target is the mod's payload
     # root (HELIX_INSTALL_DIRS gains it via helix_install_dirs_for_run below).

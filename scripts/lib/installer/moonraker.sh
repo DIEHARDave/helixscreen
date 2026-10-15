@@ -435,10 +435,16 @@ disable_system_updates_on_buildroot() {
     log_note "Disabled OS package updates in $conf (no OS package manager)"
 }
 
-# Remove unsupported options from the helixscreen update_manager section.
-# type: web only supports: type, channel, repo, path.
-# Options like persistent_files, managed_services, and install_script are
-# not supported and cause Moonraker to log "unparsed config option" warnings.
+# Remove options that do not belong in the helixscreen update_manager section.
+# managed_services and install_script are not read by a type: web stanza, so
+# Moonraker logs an "unparsed config option" warning for each.
+# persistent_files IS read by type: web, but Moonraker matches it against
+# top-level entry names of path: only (no globs, no nested paths), and our
+# release zip ships a top-level config/. Listing config would restore the saved
+# directory to config/config after extraction; a nested entry such as
+# config/settings.json never matches. It therefore cannot preserve anything
+# useful and is removed. User config survives through the symlinks into
+# printer_data/config/helixscreen/ instead (setup_config_symlink).
 # Args: $1 = moonraker.conf path
 # Point an existing stanza's `path:` at INSTALL_DIR.
 # The value is interpolated once, when the section is first added, and nothing
@@ -881,9 +887,9 @@ configure_moonraker_updates() {
 
     # --auto-update is refused for every payload install, wherever the root
     # sits. Moonraker's type:web updater rmtree()s `path:` before extracting
-    # and the generated stanza carries no persistent_files, so it destroys the
-    # config/ and platform/ preservation the payload contract exists to
-    # provide - and config/ lives inside the root. Where the root sits changes
+    # persistent_files matches only top-level names of path:, so nothing can
+    # keep the config/ and platform/ preservation the payload contract exists
+    # to provide - and config/ lives inside the root. Where the root sits changes
     # nothing: a payload's lifecycle belongs to the mod's OTA, not to a second
     # updater that cannot see the contract. The option is refused, not the
     # install; completing without the updater armed is the safe outcome,
@@ -895,8 +901,6 @@ configure_moonraker_updates() {
         log_error "Moonraker's type:web updater replaces the whole root on update, destroying"
         log_error "the config/ and platform/ preservation the payload contract provides."
         log_error "The mod's own OTA updates a payload install; arm nothing else against it."
-        # TODO(#1505): a persistent_files-aware stanza could make a payload
-        # root safe for --auto-update; refused until that is decided.
         return 0
     fi
 
@@ -1000,8 +1004,9 @@ configure_moonraker_updates() {
         sync_update_manager_path "$conf"
         # channel: likewise — rewrite it to whatever this update resolved to.
         sync_update_manager_channel "$conf"
-        # Remove options not supported by type: web (persistent_files,
-        # managed_services, install_script) that cause Moonraker warnings.
+        # Remove managed_services and install_script (unread by type: web,
+        # warned about as unparsed) and persistent_files (read, but it matches
+        # top-level names only and cannot preserve our config/ layout).
         cleanup_unsupported_options "$conf"
         # Where the OS has no package manager, silence the provider warnings.
         disable_system_updates_on_buildroot "$conf"

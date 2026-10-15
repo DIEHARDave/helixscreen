@@ -183,7 +183,7 @@ Widgets place and resize in half-cell steps. What varies is which axes a widget 
 
 On the smallest panels (480x272 and 480x320), widgets that show a reading snap to whole cells, because half a cell cannot carry an icon and a reading side by side. Icon-only tiles such as LED Light, Notifications, Lock Screen and Firmware Restart still go down to half a cell; they drop their caption to fit.
 
-The floor across the grid: no widget goes below half a cell wide by one cell tall, and the height floor is one whole cell for every widget. Some of the bigger widgets - **Preheat**, **Print Status**, **Print Controls**, **Job Queue**, **Clog Detection** - have a two-cell minimum width.
+The floor across the grid: no widget goes below half a cell wide by one cell tall, and the height floor is one whole cell for every widget. Some of the bigger widgets - **Preheat**, **Print Status**, **Print Controls**, **Clog Detection** - have a two-cell minimum width.
 
 You don't have to remember which is which. The dot grid tells you: **whole-cell dots are always drawn, and the smaller, fainter half-cell dots in between appear only while a widget that can use them is selected** - and only on the axis it can use them on. If you see the extra dots, you can snap to them. If you don't, the widget you have selected snaps to whole cells.
 
@@ -291,8 +291,8 @@ These are the same 5 groups the Widget Catalog uses on the device.
 | **Printer Image** | Your printer's photo, with live chips for the heaters, part fan and light while they are in use (see [Status Chips on the Printer Image](#status-chips-on-the-printer-image)). Tap a chip for that part's controls (the light bulb switches the light), or the picture itself to open the Printer Manager overlay where you can change the name, image, and see hardware info. | 2x2 | 1x1 | 4x3 | Yes | — |
 | **Print Status** | Tracks the print job in all three of its states - idle (pick a file), preparing (pre-print steps with a progress bar), and printing (filename, percentage, ETA, elapsed time). Pauses scheduled in the G-code (M600, PAUSE and friends) show as ticks on the progress bar and arc, so you can see a filament change coming. Tap opens the full Print Status overlay whenever a job is preparing or printing, or the file browser when idle. | 2x2 | 2x1 | Full width x3 | Yes | — |
 | **Print Controls** | Pause, resume, and stop buttons for the running print, right on the dashboard. | 2x1 | 2x1 | 2x1 | No | — |
-| **Print Stats** | Print history statistics — total prints, success rate, and total print time. Tap to open the full print history overlay. | 2x2 | 2x1 | 3x2 | Yes | — |
-| **Job Queue** | Shows the number of queued print jobs. Tap to open the Job Queue Manager modal (see [Job Queue Manager](#job-queue-manager) below). | 2x2 | 2x2 | 4x3 | Yes | — |
+| **Print Stats** | The hours you have printed this week. Wider and taller sizes add a bar for each of the last seven days (with the weekday's initial under each at the largest size) and a line of lifetime totals: prints, hours and filament in meters. At its smallest size it is one line, the hours and "this week" (shortened to "/wk" on the smallest screens). Tap to open the full print history overlay. | 2x2 | 1x0.5 | 3x2 | Yes | — |
+| **Job Queue** | The next queued job and how many wait behind it, with a one-tap start when the printer is free. Tap anywhere else on the widget to open the Job Queue Manager modal (see [Job Queue widget](#job-queue-widget) and [Job Queue Manager](#job-queue-manager) below). | 2x2 | 1x0.5 | 4x3 | Yes | Moonraker `[job_queue]` |
 | **Speed / Flow** | The speed and flow override percentages, each shown in the warning color whenever it is not 100%. During a print it adds the live toolhead speed (mm/s) and volumetric flow (mm³/s) wherever there is room for them. At its smallest size, 0.5x0.5, it shows speed alone. Below 1x1 there is room for only one number per reading: if you chose mm/s in the Print Tune overlay (see [Percent or mm/s](printing.md#print-tune-overlay)), the live readings take the percentages' place there. At its largest sizes during a print, **-** and **+** buttons change each value by 5%, and a long press on a value sets it back to 100%. Tap anywhere else on the widget to open the Print Tune overlay. | 2x1 | 0.5x0.5 | 4x2 | Yes | — |
 | **Exclude Objects** | During a print with two or more objects, how many are still printing and how many you have skipped. From 0.5x1 up it draws a small map of the objects: the one printing now in the accent color, skipped ones faded and hatched. Wider sizes name the object printing now, and 2x2 adds a **Skip objects...** button. The widget never skips anything itself: a tap opens the full objects map on the Print Status screen, where you confirm. See [Exclude Objects Widget](#exclude-objects-widget) below. | 2x2 | 0.5x0.5 | 4x3 | Yes | Klipper `[exclude_object]` |
 
@@ -427,7 +427,7 @@ While **not** in Edit Mode, widgets respond to taps and other gestures:
 | Print Status | Opens Print Status overlay (preparing or printing) or File Browser (idle) |
 | Print Controls | Pauses, resumes, or stops the print — one button each |
 | Print Stats | Opens print history overlay |
-| Job Queue | Opens Job Queue Manager modal |
+| Job Queue | Opens Job Queue Manager modal; the **Start next** button starts the next job instead |
 | Speed / Flow | Opens the Print Tune overlay. At its largest sizes during a print, the **-** and **+** buttons change speed or flow by 5% without opening anything, and a long press on a value sets it back to 100% |
 | Z-Offset | Opens the Print Tune overlay. At 2x2 and larger, the arrow buttons nudge the offset and the step button cycles the step size. From 2x1 up, **Save** appears while there is an unsaved offset |
 | Exclude Objects | Opens the Print Status screen with its objects map. Does nothing when there is no print or only one object |
@@ -501,6 +501,23 @@ Two things it does not change:
   time, leave confirmation on.
 
 ---
+
+## Job Queue widget
+
+The **Job Queue** widget is available when Moonraker has its `[job_queue]` component. What it shows depends on the queue and the printer:
+
+- **Printer free, jobs waiting** - the name of the next job and a **Bed clear · Start next** button. From the Wide size up it also shows the job's picture and its time estimate; larger sizes list the jobs behind it. At small sizes the button is shortened to **Start next**, and at the smallest to an icon.
+- **A print running** - how many jobs are queued and **Next:** with the first one's name. "Starts automatically" appears only while a print runs and Moonraker's `automatic_transition` is on in `moonraker.conf`; otherwise you start each job yourself.
+- **Queue starting a job** - "Starting" and the job's name while Moonraker loads it, and from the moment you tap **Start next** while the widget checks the job. The button is gone until the start ends.
+- **Empty queue** - a short note that nothing is queued.
+
+**Start next** starts the job in one tap, with the pre-print options it was queued with, or the defaults when it has none. The job leaves the queue only once the print has started. The same checks run as when you press Print in the file view: a material or spool warning asks you first, and a printer that is busy says so and keeps the job queued.
+
+Two cases open the job in the file view instead, with a notice saying why: a job the widget cannot check (for example a file it cannot read), and a job where a tool has no loaded slot, where you pick the **Remap** choice. In the file view, the Print button reads **Checking file…** while the scan it needs is still running.
+
+Tap anywhere else on the widget to open the [Job Queue Manager](#job-queue-manager).
+
+![Job Queue widget at 2x1 - the next job, its time estimate, how many wait behind it, and the Bed clear · Start next button](../../images/user/home-job-queue-tile.png)
 
 ## Job Queue Manager
 
