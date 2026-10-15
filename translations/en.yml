@@ -797,6 +797,9 @@ translations:
     not analyze PRINT_START macro. Some print options may be unavailable.
   Could not answer the connection request: Could not answer the connection request
   'Could not check {} - it stays in the queue': 'Could not check {} - it stays in the queue'
+  Print hours between filter changes. Off hides this meter.: Print hours between filter changes. Off hides this meter.
+  Print hours between nozzle changes. Off hides this meter.: Print hours between nozzle changes. Off hides this meter.
+  Print hours between rail cleaning and lubrication. Off hides this meter.: Print hours between rail cleaning and lubrication. Off hides this meter.
   Print hours this week and lifetime totals: Print hours this week and lifetime totals
   '{} could not be checked from Home - review it and tap Print': '{} could not be checked from Home - review it and tap Print'
   ? "Could not check webcam status.\nCheck printer connection."
@@ -1436,6 +1439,9 @@ translations:
   Guides and reference: Guides and reference
   H: H
   HELIXSCREEN: HELIXSCREEN
+  HEPA: HEPA
+  HEPA filter: HEPA filter
+  HEPA filter interval: HEPA filter interval
   HOST: HOST
   HTTP Code: HTTP Code
   'HTTP error: {} {}': 'HTTP error: {} {}'
@@ -1793,6 +1799,8 @@ translations:
   Lights that follow the printer's state: Lights that follow the printer's state
   Line the nozzle up with the purge chute so purged filament drops straight in.: Line the nozzle up with the purge chute so purged filament drops straight in.
   Line {} calls {}, which this printer treats as an emergency stop. Re-slice the file with a profile made for this printer.: Line {} calls {}, which this printer treats as an emergency stop. Re-slice the file with a profile made for this printer.
+  Linear rails: Linear rails
+  Linear rails interval: Linear rails interval
   Listen to all theme sounds: Listen to all theme sounds
   Live Z-offset, with baby steps and Save: Live Z-offset, with baby steps and Save
   Live view from your webcam: Live view from your webcam
@@ -2199,6 +2207,7 @@ translations:
   'Nozzle clean complete': 'Nozzle clean complete'
   Nozzle clog detected: Nozzle clog detected
   Nozzle did not reach {}°C — {} cancelled: Nozzle did not reach {}°C — {} cancelled
+  Nozzle interval: Nozzle interval
   Nozzle min cannot exceed max: Nozzle min cannot exceed max
   Nozzle target set to {}°C: Nozzle target set to {}°C
   Nozzle temp must be 100-%d°C: Nozzle temp must be 100-%d°C
@@ -2602,6 +2611,7 @@ translations:
   RH: RH
   RSS: RSS
   'RSS:': 'RSS:'
+  Rails: Rails
   Ramming Volume: Ramming Volume
   Raspberry Pi: Raspberry Pi
   Raspberry Pi (32-bit): Raspberry Pi (32-bit)
@@ -2732,6 +2742,7 @@ translations:
   Reset to Default: Reset to Default
   Reset to defaults: Reset to defaults
   Reset to original values: Reset to original values
+  Reset {}?: Reset {}?
   Resetting: Resetting
   Resetting system: Resetting system
   Resetting...: Resetting...
@@ -2986,6 +2997,7 @@ translations:
   Separate on/off macros. HelixScreen tracks the state.: Separate on/off macros. HelixScreen
     tracks the state.
   Server Setup: Server Setup
+  Service hours for the filter, nozzle, and rails: Service hours for the filter, nozzle, and rails
   Servo: Servo
   Servo Down: Servo Down
   Servo Move: Servo Move
@@ -3151,6 +3163,7 @@ translations:
   Start Drying: Start Drying
   Start Print: Start Print
   Start Probing: Start Probing
+  Start a new {} h interval? The hours counted so far are discarded.: Start a new {} h interval? The hours counted so far are discarded.
   Start anyway?: Start anyway?
   Start at: Start at
   Start Check: Start Check
@@ -3545,6 +3558,7 @@ translations:
   Tools Used: Tools Used
   'Tools: ': 'Tools: '
   Total Prints: Total Prints
+  'Total print time: {} h': 'Total print time: {} h'
   Touch & Input: Touch & Input
   Touch Cal: Touch Cal
   Touch Calibration: Touch Calibration
@@ -3924,6 +3938,7 @@ translations:
   remaining: remaining
   remaining before clog detection triggers: remaining before clog detection triggers
   rendering: rendering
+  reset at {} h: reset at {} h
   sleep {} min: sleep {} min
   slots): slots)
   started: started
@@ -3966,9 +3981,11 @@ translations:
   '{} filament • {}': '{} filament • {}'
   '{} firmware': '{} firmware'
   '{} h': '{} h'
+  '{} h of {} h': '{} h of {} h'
   '{} heater turned off': '{} heater turned off'
   '{} is asking to connect to this printer.': '{} is asking to connect to this printer.'
   '{} is blocked — manual intervention required': '{} is blocked — manual intervention required'
+  '{} is due: {} h reached': '{} is due: {} h reached'
   '{} is feeding the current print. Clear it after the print ends.': '{} is feeding the current print. Clear it after the print ends.'
   '{} is installed but its backup-spool switching is turned off, so no automatic swap will happen.': '{} is installed but its backup-spool switching is turned off, so no automatic swap will happen.'
   '{} is installed, but its backup-spool setting could not be read - do not count on an automatic swap.': '{} is installed, but its backup-spool setting could not be read - do not count on an automatic swap.'
@@ -3983,6 +4000,7 @@ translations:
   '{} matches.': '{} matches.'
   '{} may cause unintended changes. Are you sure?': '{} may cause unintended changes.
     Are you sure?'
+  '{} meter reset': '{} meter reset'
   '{} min': '{} min'
   '{} min ago': '{} min ago'
   '{} missing': '{} missing'
@@ -4009,4 +4027,5 @@ translations:
   '{} · {} · {}': '{} · {} · {}'
   '{} — response timed out': '{} — response timed out'
   '{} → {}: no filament loaded.': '{} → {}: no filament loaded.'
+  '{}% left': '{}% left'
   '{}:{:02} elapsed': '{}:{:02} elapsed'

@@ -1350,6 +1350,9 @@
   <translation tag="Guides and reference" zh="指南与参考"/>
   <translation tag="H" zh="头"/>
   <translation tag="HELIXSCREEN" zh="HELIXSCREEN"/>
+  <translation tag="HEPA" zh="HEPA"/>
+  <translation tag="HEPA filter" zh="HEPA 过滤器"/>
+  <translation tag="HEPA filter interval" zh="HEPA 过滤器间隔"/>
   <translation tag="HOST" zh="主机"/>
   <translation tag="HTTP Code" zh="HTTP 代码"/>
   <translation tag="HTTP error: {} {}" zh="HTTP 错误: {} {}"/>
@@ -1665,6 +1668,8 @@
   <translation tag="Lights that follow the printer&apos;s state" zh="跟随打印机状态变化的灯光"/>
   <translation tag="Line the nozzle up with the purge chute so purged filament drops straight in." zh="将喷嘴对准排料口上方，使排出的料丝垂直落入。"/>
   <translation tag="Line {} calls {}, which this printer treats as an emergency stop. Re-slice the file with a profile made for this printer." zh="第 {} 行调用 {}，此打印机将其视为紧急停止。请使用为此打印机制作的配置重新切片该文件。"/>
+  <translation tag="Linear rails" zh="直线导轨"/>
+  <translation tag="Linear rails interval" zh="直线导轨间隔"/>
   <translation tag="Listen to all theme sounds" zh="试听所有主题声音"/>
   <translation tag="Live Z-offset, with baby steps and Save" zh="实时 Z 偏移，支持微调与保存"/>
   <translation tag="Live view from your webcam" zh="摄像头实时画面"/>
@@ -2050,6 +2055,7 @@
   <translation tag="Nozzle clean complete" zh="喷嘴清洁完成"/>
   <translation tag="Nozzle clog detected" zh="检测到喷嘴堵塞"/>
   <translation tag="Nozzle did not reach {}°C — {} cancelled" zh="喷嘴未达到 {}°C — {} 已取消"/>
+  <translation tag="Nozzle interval" zh="喷嘴间隔"/>
   <translation tag="Nozzle min cannot exceed max" zh="喷嘴最低温度不能超过最高温度"/>
   <translation tag="Nozzle target set to {}°C" zh="喷嘴目标已设为 {}°C"/>
   <translation tag="Nozzle temp must be 100-%d°C" zh="喷嘴温度必须为 100-%d°C"/>
@@ -2287,6 +2293,9 @@
   <translation tag="Print error" zh="打印错误"/>
   <translation tag="Print failed" zh="打印失败"/>
   <translation tag="Print history will show the rewritten name" zh="打印历史将显示改写后的名称"/>
+  <translation tag="Print hours between filter changes. Off hides this meter." zh="两次更换过滤器之间的打印小时数。关闭则隐藏此计数器。"/>
+  <translation tag="Print hours between nozzle changes. Off hides this meter." zh="两次更换喷嘴之间的打印小时数。关闭则隐藏此计数器。"/>
+  <translation tag="Print hours between rail cleaning and lubrication. Off hides this meter." zh="两次清洁和润滑导轨之间的打印小时数。关闭则隐藏此计数器。"/>
   <translation tag="Print hours this week and lifetime totals" zh="本周打印时长和累计总数"/>
   <translation tag="Print issue detected" zh="检测到打印问题"/>
   <translation tag="Print jobs waiting to run" zh="等待执行的打印任务"/>
@@ -2429,6 +2438,7 @@
   <translation tag="RH" zh="RH"/>
   <translation tag="RSS" zh="RSS"/>
   <translation tag="RSS:" zh="RSS："/>
+  <translation tag="Rails" zh="导轨"/>
   <translation tag="Ramming Volume" zh="填充体积"/>
   <translation tag="Raspberry Pi" zh="Raspberry Pi"/>
   <translation tag="Raspberry Pi (32-bit)" zh="Raspberry Pi (32-bit)"/>
@@ -2550,6 +2560,7 @@
   <translation tag="Reset to Default" zh="重置为默认"/>
   <translation tag="Reset to defaults" zh="重置为默认值"/>
   <translation tag="Reset to original values" zh="重置为原始值"/>
+  <translation tag="Reset {}?" zh="重置{}？"/>
   <translation tag="Resetting" zh="重置中"/>
   <translation tag="Resetting system" zh="正在重置系统"/>
   <translation tag="Resetting..." zh="正在重置..."/>
@@ -2776,6 +2787,7 @@
   <translation tag="Sensors" zh="传感器"/>
   <translation tag="Separate on/off macros. HelixScreen tracks the state." zh="独立的开/关宏。HelixScreen 跟踪状态。"/>
   <translation tag="Server Setup" zh="服务器设置"/>
+  <translation tag="Service hours for the filter, nozzle, and rails" zh="过滤器、喷嘴和导轨的使用小时数"/>
   <translation tag="Servo" zh="舵机"/>
   <translation tag="Servo Down" zh="舵机落下"/>
   <translation tag="Servo Move" zh="移动舵机"/>
@@ -2928,6 +2940,7 @@
   <translation tag="Start Drying" zh="开始烘干"/>
   <translation tag="Start Print" zh="开始打印"/>
   <translation tag="Start Probing" zh="开始探测"/>
+  <translation tag="Start a new {} h interval? The hours counted so far are discarded." zh="开始新的 {} 小时间隔？目前累计的小时数将被清除。"/>
   <translation tag="Start anyway?" zh="仍要开始吗？"/>
   <translation tag="Start at" zh="从第"/>
   <translation tag="Start drying" zh="开始烘干"/>
@@ -3255,6 +3268,7 @@
   <translation tag="Tools Used" zh="已使用工具"/>
   <translation tag="Tools: " zh="工具: "/>
   <translation tag="Total Prints" zh="总打印数"/>
+  <translation tag="Total print time: {} h" zh="总打印时间：{} 小时"/>
   <translation tag="Touch &amp; Input" zh="触摸和输入"/>
   <translation tag="Touch Cal" zh="触摸校准"/>
   <translation tag="Touch Calibration" zh="触摸校准"/>
@@ -3614,6 +3628,7 @@
   <translation tag="remaining" zh="剩余"/>
   <translation tag="remaining before clog detection triggers" zh="剩余即触发堵料检测"/>
   <translation tag="rendering" zh="渲染中"/>
+  <translation tag="reset at {} h" zh="于 {} 小时时重置"/>
   <translation tag="sleep {} min" zh="{} 分钟后休眠"/>
   <translation tag="slots)" zh="个槽位)"/>
   <translation tag="started" zh="已启动"/>
@@ -3657,9 +3672,11 @@
   <translation tag="{} filament • {}" zh="耗材 {} • {}"/>
   <translation tag="{} firmware" zh="{} 固件"/>
   <translation tag="{} h" zh="{} 小时"/>
+  <translation tag="{} h of {} h" zh="{} / {} 小时"/>
   <translation tag="{} heater turned off" zh="{} 加热器已关闭"/>
   <translation tag="{} is asking to connect to this printer." zh="{} 请求连接到此打印机。"/>
   <translation tag="{} is blocked — manual intervention required" zh="{} 被阻塞 — 需要手动干预"/>
+  <translation tag="{} is due: {} h reached" zh="{}需要维护：已达 {} 小时"/>
   <translation tag="{} is feeding the current print. Clear it after the print ends." zh="{} 正在为当前打印供料。请在打印结束后清除。"/>
   <translation tag="{} is installed but its backup-spool switching is turned off, so no automatic swap will happen." zh="{} 已安装，但其备用料盘切换已关闭，因此不会自动切换。"/>
   <translation tag="{} is installed, but its backup-spool setting could not be read - do not count on an automatic swap." zh="{} 已安装，但无法读取其备用料盘设置 - 请勿指望自动切换。"/>
@@ -3673,6 +3690,7 @@
   <translation tag="{} macro not configured" zh="{} 宏未配置"/>
   <translation tag="{} matches." zh="{} 匹配。"/>
   <translation tag="{} may cause unintended changes. Are you sure?" zh="{} 可能导致意外更改。确定吗？"/>
+  <translation tag="{} meter reset" zh="{}计数器已重置"/>
   <translation tag="{} min" zh="{} 分钟"/>
   <translation tag="{} min ago" zh="{} 分钟前"/>
   <translation tag="{} missing" zh="{} 个缺失"/>
@@ -3698,5 +3716,6 @@
   <translation tag="{} · {} · {}" zh="{} · {} · {}"/>
   <translation tag="{} — response timed out" zh="{} — 响应超时"/>
   <translation tag="{} → {}: no filament loaded." zh="{} → {}: 未加载耗材。"/>
+  <translation tag="{}% left" zh="剩余 {}%"/>
   <translation tag="{}:{:02} elapsed" zh="已用时 {}:{:02}"/>
 </translations>

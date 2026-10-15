@@ -1350,6 +1350,9 @@
   <translation tag="Guides and reference" it="Guide e riferimenti"/>
   <translation tag="H" it="H"/>
   <translation tag="HELIXSCREEN" it="HELIXSCREEN"/>
+  <translation tag="HEPA" it="HEPA"/>
+  <translation tag="HEPA filter" it="Filtro HEPA"/>
+  <translation tag="HEPA filter interval" it="Intervallo filtro HEPA"/>
   <translation tag="HOST" it="Host"/>
   <translation tag="HTTP Code" it="Codice HTTP"/>
   <translation tag="HTTP error: {} {}" it="Errore HTTP: {} {}"/>
@@ -1665,6 +1668,8 @@
   <translation tag="Lights that follow the printer&apos;s state" it="Luci che seguono lo stato della stampante"/>
   <translation tag="Line the nozzle up with the purge chute so purged filament drops straight in." it="Allinea l&apos;ugello sopra il condotto di spurgo in modo che il filamento di spurgo cada dritto dentro."/>
   <translation tag="Line {} calls {}, which this printer treats as an emergency stop. Re-slice the file with a profile made for this printer." it="La riga {} chiama {}, che questa stampante tratta come un arresto di emergenza. Sezionare di nuovo il file con un profilo creato per questa stampante."/>
+  <translation tag="Linear rails" it="Guide lineari"/>
+  <translation tag="Linear rails interval" it="Intervallo guide lineari"/>
   <translation tag="Listen to all theme sounds" it="Ascolta tutti i suoni del tema"/>
   <translation tag="Live Z-offset, with baby steps and Save" it="Z-Offset in tempo reale, con micro-passi e Salva"/>
   <translation tag="Live view from your webcam" it="Vista live dalla webcam"/>
@@ -2050,6 +2055,7 @@
   <translation tag="Nozzle clean complete" it="Pulizia ugello completata"/>
   <translation tag="Nozzle clog detected" it="Rilevata ostruzione dell&apos;ugello"/>
   <translation tag="Nozzle did not reach {}°C — {} cancelled" it="L&apos;ugello non ha raggiunto {}°C — {} annullato"/>
+  <translation tag="Nozzle interval" it="Intervallo ugello"/>
   <translation tag="Nozzle min cannot exceed max" it="Il minimo dell’ugello non può superare il massimo"/>
   <translation tag="Nozzle target set to {}°C" it="Obiettivo ugello impostato a {}°C"/>
   <translation tag="Nozzle temp must be 100-%d°C" it="La temperatura dell’ugello deve essere 100-%d°C"/>
@@ -2287,6 +2293,9 @@
   <translation tag="Print error" it="Errore di stampa"/>
   <translation tag="Print failed" it="Stampa fallita"/>
   <translation tag="Print history will show the rewritten name" it="La cronologia di stampa mostrerà il nome riscritto"/>
+  <translation tag="Print hours between filter changes. Off hides this meter." it="Ore di stampa tra un cambio filtro e l’altro. Spento nasconde questo contatore."/>
+  <translation tag="Print hours between nozzle changes. Off hides this meter." it="Ore di stampa tra un cambio ugello e l’altro. Spento nasconde questo contatore."/>
+  <translation tag="Print hours between rail cleaning and lubrication. Off hides this meter." it="Ore di stampa tra una pulizia e lubrificazione delle guide e l’altra. Spento nasconde questo contatore."/>
   <translation tag="Print hours this week and lifetime totals" it="Ore di stampa di questa settimana e totali complessivi"/>
   <translation tag="Print issue detected" it="Problema di stampa rilevato"/>
   <translation tag="Print jobs waiting to run" it="Lavori di stampa in attesa"/>
@@ -2429,6 +2438,7 @@
   <translation tag="RH" it="UR"/>
   <translation tag="RSS" it="RSS"/>
   <translation tag="RSS:" it="RSS:"/>
+  <translation tag="Rails" it="Guide"/>
   <translation tag="Ramming Volume" it="Volume di compattazione"/>
   <translation tag="Raspberry Pi" it="Raspberry Pi"/>
   <translation tag="Raspberry Pi (32-bit)" it="Raspberry Pi (32-bit)"/>
@@ -2550,6 +2560,7 @@
   <translation tag="Reset to Default" it="Ripristina predefinito"/>
   <translation tag="Reset to defaults" it="Ripristina predefiniti"/>
   <translation tag="Reset to original values" it="Ripristina valori originali"/>
+  <translation tag="Reset {}?" it="Ripristinare {}?"/>
   <translation tag="Resetting" it="Reset"/>
   <translation tag="Resetting system" it="Ripristino del sistema"/>
   <translation tag="Resetting..." it="Ripristino..."/>
@@ -2776,6 +2787,7 @@
   <translation tag="Sensors" it="Sensori"/>
   <translation tag="Separate on/off macros. HelixScreen tracks the state." it="Macro on/off separate. HelixScreen traccia lo stato."/>
   <translation tag="Server Setup" it="Configurazione server"/>
+  <translation tag="Service hours for the filter, nozzle, and rails" it="Ore di servizio di filtro, ugello e guide"/>
   <translation tag="Servo" it="Servo"/>
   <translation tag="Servo Down" it="Servo giù"/>
   <translation tag="Servo Move" it="Muovi il servo"/>
@@ -2928,6 +2940,7 @@
   <translation tag="Start Drying" it="Avvia essiccazione"/>
   <translation tag="Start Print" it="Avvia stampa"/>
   <translation tag="Start Probing" it="Avvia sondaggio"/>
+  <translation tag="Start a new {} h interval? The hours counted so far are discarded." it="Iniziare un nuovo intervallo di {} h? Le ore contate finora vengono scartate."/>
   <translation tag="Start anyway?" it="Avviare comunque?"/>
   <translation tag="Start at" it="Inizia da"/>
   <translation tag="Start drying" it="Avvia essiccazione"/>
@@ -3255,6 +3268,7 @@
   <translation tag="Tools Used" it="Utensili usati"/>
   <translation tag="Tools: " it="Utensili: "/>
   <translation tag="Total Prints" it="Stampe totali"/>
+  <translation tag="Total print time: {} h" it="Tempo di stampa totale: {} h"/>
   <translation tag="Touch &amp; Input" it="Tocco e input"/>
   <translation tag="Touch Cal" it="Cal. touch"/>
   <translation tag="Touch Calibration" it="Calibrazione touch"/>
@@ -3614,6 +3628,7 @@
   <translation tag="remaining" it="rimanente"/>
   <translation tag="remaining before clog detection triggers" it="rimanente prima che si attivi il rilevamento intasamento"/>
   <translation tag="rendering" it="rendering"/>
+  <translation tag="reset at {} h" it="ripristinato a {} h"/>
   <translation tag="sleep {} min" it="sospensione tra {} min"/>
   <translation tag="slots)" it="slot)"/>
   <translation tag="started" it="avviato"/>
@@ -3657,9 +3672,11 @@
   <translation tag="{} filament • {}" it="{} di filamento • {}"/>
   <translation tag="{} firmware" it="Firmware {}"/>
   <translation tag="{} h" it="{} h"/>
+  <translation tag="{} h of {} h" it="{} h su {} h"/>
   <translation tag="{} heater turned off" it="Riscaldatore {} spento"/>
   <translation tag="{} is asking to connect to this printer." it="{} chiede di connettersi a questa stampante."/>
   <translation tag="{} is blocked — manual intervention required" it="{}: blocco — intervento manuale richiesto"/>
+  <translation tag="{} is due: {} h reached" it="{} da sostituire: raggiunte {} h"/>
   <translation tag="{} is feeding the current print. Clear it after the print ends." it="{}: alimenta la stampa in corso. Rimuovi la bobina al termine della stampa."/>
   <translation tag="{} is installed but its backup-spool switching is turned off, so no automatic swap will happen." it="{} è installato ma il passaggio alla bobina di riserva è disattivato, quindi non avverrà alcun cambio automatico."/>
   <translation tag="{} is installed, but its backup-spool setting could not be read - do not count on an automatic swap." it="{} è installato, ma non è stato possibile leggere la sua impostazione della bobina di riserva - non contare su un cambio automatico."/>
@@ -3673,6 +3690,7 @@
   <translation tag="{} macro not configured" it="Macro {} non configurata"/>
   <translation tag="{} matches." it="{} corrisponde."/>
   <translation tag="{} may cause unintended changes. Are you sure?" it="{} potrebbe causare modifiche indesiderate. Sei sicuro?"/>
+  <translation tag="{} meter reset" it="Contatore {} ripristinato"/>
   <translation tag="{} min" it="{} min"/>
   <translation tag="{} min ago" it="{} min fa"/>
   <translation tag="{} missing" it="{} mancanti"/>
@@ -3698,5 +3716,6 @@
   <translation tag="{} · {} · {}" it="{} · {} · {}"/>
   <translation tag="{} — response timed out" it="{} — tempo scaduto"/>
   <translation tag="{} → {}: no filament loaded." it="{} → {}: nessun filamento caricato."/>
+  <translation tag="{}% left" it="{}% rimanente"/>
   <translation tag="{}:{:02} elapsed" it="{}:{:02} trascorso"/>
 </translations>

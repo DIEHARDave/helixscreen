@@ -814,6 +814,9 @@ translations:
     быть недоступны.
   Could not answer the connection request: 'Не удалось ответить на запрос подключения'
   'Could not check {} - it stays in the queue': 'Не удалось проверить {} – остаётся в очереди'
+  Print hours between filter changes. Off hides this meter.: 'Часы печати между заменами фильтра. «Выкл» скрывает этот счётчик.'
+  Print hours between nozzle changes. Off hides this meter.: 'Часы печати между заменами сопла. «Выкл» скрывает этот счётчик.'
+  Print hours between rail cleaning and lubrication. Off hides this meter.: 'Часы печати между чисткой и смазкой направляющих. «Выкл» скрывает этот счётчик.'
   Print hours this week and lifetime totals: 'Часы печати за неделю и общие итоги'
   '{} could not be checked from Home - review it and tap Print': 'Не удалось проверить {} с главного экрана – проверьте файл и нажмите «Печать»'
   ? "Could not check webcam status.\nCheck printer connection."
@@ -1468,6 +1471,9 @@ translations:
   Guides and reference: Руководства и справка
   H: Х
   HELIXSCREEN: HELIXSCREEN
+  HEPA: 'HEPA'
+  HEPA filter: 'HEPA-фильтр'
+  HEPA filter interval: 'Интервал HEPA-фильтра'
   HOST: Хост
   HTTP Code: Код HTTP
   'HTTP error: {} {}': 'Ошибка HTTP: {} {}'
@@ -1834,6 +1840,8 @@ translations:
   Line the nozzle up with the purge chute so purged filament drops straight in.: Выровняйте сопло над жёлобом продувки, чтобы продутый филамент падал прямо внутрь.
 
   Line {} calls {}, which this printer treats as an emergency stop. Re-slice the file with a profile made for this printer.: 'Строка {} вызывает {}, что этот принтер считает аварийной остановкой. Нарежьте файл заново с профилем для этого принтера.'
+  Linear rails: 'Линейные направляющие'
+  Linear rails interval: 'Интервал линейных направляющих'
   Listen to all theme sounds: Прослушать все звуки темы
   Live Z-offset, with baby steps and Save: Z-смещение в реальном времени, с подстройкой и сохранением
   Live view from your webcam: Прямая трансляция с веб-камеры
@@ -2244,6 +2252,7 @@ translations:
   Nozzle clean complete: Очистка сопла завершена
   Nozzle clog detected: Обнаружено засорение сопла
   Nozzle did not reach {}°C — {} cancelled: Сопло не нагрелось до {}°C — «{}» отменено
+  Nozzle interval: 'Интервал сопла'
   Nozzle min cannot exceed max: Минимум сопла не может превышать максимум
   Nozzle target set to {}°C: Целевая температура сопла {}°C
   Nozzle temp must be 100-%d°C: Температура сопла должна быть 100-%d°C
@@ -2653,6 +2662,7 @@ translations:
   RH: RH
   RSS: RSS
   'RSS:': 'RSS:'
+  Rails: 'Направл.'
   Ramming Volume: 'Объём рэмминга'
   Raspberry Pi: Raspberry Pi
   Raspberry Pi (32-bit): Raspberry Pi (32-bit)
@@ -2786,6 +2796,7 @@ translations:
   Reset to Default: Сбросить до умолчания
   Reset to defaults: Сбросить по умолчанию
   Reset to original values: Сбросить к исходным значениям
+  Reset {}?: 'Сбросить {}?'
   Resetting: Сброс
   Resetting system: 'Сброс системы'
   Resetting...: Сброс...
@@ -3043,6 +3054,7 @@ translations:
   Separate on/off macros. HelixScreen tracks the state.: Отдельные макросы вкл/выкл.
     HelixScreen отслеживает состояние.
   Server Setup: Настройка сервера
+  Service hours for the filter, nozzle, and rails: 'Моточасы фильтра, сопла и направляющих'
   Servo: Сервопривод
   Servo Down: 'Сервопривод вниз'
   Servo Move: 'Переместить сервопривод'
@@ -3214,6 +3226,7 @@ translations:
   Start Drying: Начать сушку
   Start Print: Начать печать
   Start Probing: Начать зондирование
+  Start a new {} h interval? The hours counted so far are discarded.: 'Начать новый интервал {} ч? Отсчитанные часы будут сброшены.'
   Start anyway?: 'Всё равно начать?'
   Start at: Начать с
   Start Check: Начать проверку
@@ -3615,6 +3628,7 @@ translations:
   Tools Used: Использовано инструментов
   'Tools: ': 'Инструменты: '
   Total Prints: Всего печатей
+  'Total print time: {} h': 'Общее время печати: {} ч'
   Touch & Input: Касание и ввод
   Touch Cal: Кал. касания
   Touch Calibration: Калибровка касания
@@ -4001,6 +4015,7 @@ translations:
   remaining: осталось
   remaining before clog detection triggers: осталось до срабатывания обнаружения засора
   rendering: рендеринг
+  reset at {} h: 'сброс на {} ч'
   sleep {} min: сон через {} мин
   slots): слотов)
   started: запущено
@@ -4043,9 +4058,11 @@ translations:
   '{} filament • {}': '{} филамента • {}'
   '{} firmware': 'Прошивка {}'
   '{} h': '{} ч'
+  '{} h of {} h': '{} ч из {} ч'
   '{} heater turned off': Нагреватель {} выключен
   '{} is asking to connect to this printer.': '{} запрашивает подключение к этому принтеру.'
   '{} is blocked — manual intervention required': '{}: блокировка — требуется ручное вмешательство'
+  '{} is due: {} h reached': '{}: пора обслуживать, {} ч достигнуто'
   '{} is feeding the current print. Clear it after the print ends.': '{}: подаёт филамент для текущей печати. Удалите катушку после завершения печати.'
   '{} is installed but its backup-spool switching is turned off, so no automatic swap will happen.': '{} установлен, но переключение на резервную катушку выключено, поэтому автоматической замены не будет.'
   '{} is installed, but its backup-spool setting could not be read - do not count on an automatic swap.': '{} установлен, но прочитать его настройку резервной катушки не удалось - не рассчитывайте на автоматическую замену.'
@@ -4060,6 +4077,7 @@ translations:
   '{} matches.': '{} подходит.'
   '{} may cause unintended changes. Are you sure?': '{} может привести к непреднамеренным
     изменениям. Вы уверены?'
+  '{} meter reset': 'Счётчик «{}» сброшен'
   '{} min': '{} мин'
   '{} min ago': '{} мин. назад'
   '{} missing': 'отсутствует: {}'
@@ -4086,4 +4104,5 @@ translations:
   '{} · {} · {}': '{} · {} · {}'
   '{} — response timed out': '{} — время ожидания ответа истекло'
   '{} → {}: no filament loaded.': '{} → {}: филамент не загружен.'
+  '{}% left': 'Осталось {}%'
   '{}:{:02} elapsed': прошло {}:{:02}

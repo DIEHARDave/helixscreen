@@ -1350,6 +1350,9 @@
   <translation tag="Guides and reference" ru="Руководства и справка"/>
   <translation tag="H" ru="Х"/>
   <translation tag="HELIXSCREEN" ru="HELIXSCREEN"/>
+  <translation tag="HEPA" ru="HEPA"/>
+  <translation tag="HEPA filter" ru="HEPA-фильтр"/>
+  <translation tag="HEPA filter interval" ru="Интервал HEPA-фильтра"/>
   <translation tag="HOST" ru="Хост"/>
   <translation tag="HTTP Code" ru="Код HTTP"/>
   <translation tag="HTTP error: {} {}" ru="Ошибка HTTP: {} {}"/>
@@ -1665,6 +1668,8 @@
   <translation tag="Lights that follow the printer&apos;s state" ru="Подсветка, которая меняется в зависимости от состояния принтера"/>
   <translation tag="Line the nozzle up with the purge chute so purged filament drops straight in." ru="Выровняйте сопло над жёлобом продувки, чтобы продутый филамент падал прямо внутрь."/>
   <translation tag="Line {} calls {}, which this printer treats as an emergency stop. Re-slice the file with a profile made for this printer." ru="Строка {} вызывает {}, что этот принтер считает аварийной остановкой. Нарежьте файл заново с профилем для этого принтера."/>
+  <translation tag="Linear rails" ru="Линейные направляющие"/>
+  <translation tag="Linear rails interval" ru="Интервал линейных направляющих"/>
   <translation tag="Listen to all theme sounds" ru="Прослушать все звуки темы"/>
   <translation tag="Live Z-offset, with baby steps and Save" ru="Z-смещение в реальном времени, с подстройкой и сохранением"/>
   <translation tag="Live view from your webcam" ru="Прямая трансляция с веб-камеры"/>
@@ -2050,6 +2055,7 @@
   <translation tag="Nozzle clean complete" ru="Очистка сопла завершена"/>
   <translation tag="Nozzle clog detected" ru="Обнаружено засорение сопла"/>
   <translation tag="Nozzle did not reach {}°C — {} cancelled" ru="Сопло не нагрелось до {}°C — «{}» отменено"/>
+  <translation tag="Nozzle interval" ru="Интервал сопла"/>
   <translation tag="Nozzle min cannot exceed max" ru="Минимум сопла не может превышать максимум"/>
   <translation tag="Nozzle target set to {}°C" ru="Целевая температура сопла {}°C"/>
   <translation tag="Nozzle temp must be 100-%d°C" ru="Температура сопла должна быть 100-%d°C"/>
@@ -2287,6 +2293,9 @@
   <translation tag="Print error" ru="Ошибка печати"/>
   <translation tag="Print failed" ru="Печать не удалась"/>
   <translation tag="Print history will show the rewritten name" ru="История печати покажет изменённое имя"/>
+  <translation tag="Print hours between filter changes. Off hides this meter." ru="Часы печати между заменами фильтра. «Выкл» скрывает этот счётчик."/>
+  <translation tag="Print hours between nozzle changes. Off hides this meter." ru="Часы печати между заменами сопла. «Выкл» скрывает этот счётчик."/>
+  <translation tag="Print hours between rail cleaning and lubrication. Off hides this meter." ru="Часы печати между чисткой и смазкой направляющих. «Выкл» скрывает этот счётчик."/>
   <translation tag="Print hours this week and lifetime totals" ru="Часы печати за неделю и общие итоги"/>
   <translation tag="Print issue detected" ru="Обнаружена проблема печати"/>
   <translation tag="Print jobs waiting to run" ru="Задания печати в очереди"/>
@@ -2429,6 +2438,7 @@
   <translation tag="RH" ru="RH"/>
   <translation tag="RSS" ru="RSS"/>
   <translation tag="RSS:" ru="RSS:"/>
+  <translation tag="Rails" ru="Направл."/>
   <translation tag="Ramming Volume" ru="Объём рэмминга"/>
   <translation tag="Raspberry Pi" ru="Raspberry Pi"/>
   <translation tag="Raspberry Pi (32-bit)" ru="Raspberry Pi (32-bit)"/>
@@ -2550,6 +2560,7 @@
   <translation tag="Reset to Default" ru="Сбросить до умолчания"/>
   <translation tag="Reset to defaults" ru="Сбросить по умолчанию"/>
   <translation tag="Reset to original values" ru="Сбросить к исходным значениям"/>
+  <translation tag="Reset {}?" ru="Сбросить {}?"/>
   <translation tag="Resetting" ru="Сброс"/>
   <translation tag="Resetting system" ru="Сброс системы"/>
   <translation tag="Resetting..." ru="Сброс..."/>
@@ -2776,6 +2787,7 @@
   <translation tag="Sensors" ru="Датчики"/>
   <translation tag="Separate on/off macros. HelixScreen tracks the state." ru="Отдельные макросы вкл/выкл. HelixScreen отслеживает состояние."/>
   <translation tag="Server Setup" ru="Настройка сервера"/>
+  <translation tag="Service hours for the filter, nozzle, and rails" ru="Моточасы фильтра, сопла и направляющих"/>
   <translation tag="Servo" ru="Сервопривод"/>
   <translation tag="Servo Down" ru="Сервопривод вниз"/>
   <translation tag="Servo Move" ru="Переместить сервопривод"/>
@@ -2928,6 +2940,7 @@
   <translation tag="Start Drying" ru="Начать сушку"/>
   <translation tag="Start Print" ru="Начать печать"/>
   <translation tag="Start Probing" ru="Начать зондирование"/>
+  <translation tag="Start a new {} h interval? The hours counted so far are discarded." ru="Начать новый интервал {} ч? Отсчитанные часы будут сброшены."/>
   <translation tag="Start anyway?" ru="Всё равно начать?"/>
   <translation tag="Start at" ru="Начать с"/>
   <translation tag="Start drying" ru="Начать сушку"/>
@@ -3255,6 +3268,7 @@
   <translation tag="Tools Used" ru="Использовано инструментов"/>
   <translation tag="Tools: " ru="Инструменты: "/>
   <translation tag="Total Prints" ru="Всего печатей"/>
+  <translation tag="Total print time: {} h" ru="Общее время печати: {} ч"/>
   <translation tag="Touch &amp; Input" ru="Касание и ввод"/>
   <translation tag="Touch Cal" ru="Кал. касания"/>
   <translation tag="Touch Calibration" ru="Калибровка касания"/>
@@ -3614,6 +3628,7 @@
   <translation tag="remaining" ru="осталось"/>
   <translation tag="remaining before clog detection triggers" ru="осталось до срабатывания обнаружения засора"/>
   <translation tag="rendering" ru="рендеринг"/>
+  <translation tag="reset at {} h" ru="сброс на {} ч"/>
   <translation tag="sleep {} min" ru="сон через {} мин"/>
   <translation tag="slots)" ru="слотов)"/>
   <translation tag="started" ru="запущено"/>
@@ -3657,9 +3672,11 @@
   <translation tag="{} filament • {}" ru="{} филамента • {}"/>
   <translation tag="{} firmware" ru="Прошивка {}"/>
   <translation tag="{} h" ru="{} ч"/>
+  <translation tag="{} h of {} h" ru="{} ч из {} ч"/>
   <translation tag="{} heater turned off" ru="Нагреватель {} выключен"/>
   <translation tag="{} is asking to connect to this printer." ru="{} запрашивает подключение к этому принтеру."/>
   <translation tag="{} is blocked — manual intervention required" ru="{}: блокировка — требуется ручное вмешательство"/>
+  <translation tag="{} is due: {} h reached" ru="{}: пора обслуживать, {} ч достигнуто"/>
   <translation tag="{} is feeding the current print. Clear it after the print ends." ru="{}: подаёт филамент для текущей печати. Удалите катушку после завершения печати."/>
   <translation tag="{} is installed but its backup-spool switching is turned off, so no automatic swap will happen." ru="{} установлен, но переключение на резервную катушку выключено, поэтому автоматической замены не будет."/>
   <translation tag="{} is installed, but its backup-spool setting could not be read - do not count on an automatic swap." ru="{} установлен, но прочитать его настройку резервной катушки не удалось - не рассчитывайте на автоматическую замену."/>
@@ -3673,6 +3690,7 @@
   <translation tag="{} macro not configured" ru="Макрос {} не настроен"/>
   <translation tag="{} matches." ru="{} подходит."/>
   <translation tag="{} may cause unintended changes. Are you sure?" ru="{} может привести к непреднамеренным изменениям. Вы уверены?"/>
+  <translation tag="{} meter reset" ru="Счётчик «{}» сброшен"/>
   <translation tag="{} min" ru="{} мин"/>
   <translation tag="{} min ago" ru="{} мин. назад"/>
   <translation tag="{} missing" ru="отсутствует: {}"/>
@@ -3698,5 +3716,6 @@
   <translation tag="{} · {} · {}" ru="{} · {} · {}"/>
   <translation tag="{} — response timed out" ru="{} — время ожидания ответа истекло"/>
   <translation tag="{} → {}: no filament loaded." ru="{} → {}: филамент не загружен."/>
+  <translation tag="{}% left" ru="Осталось {}%"/>
   <translation tag="{}:{:02} elapsed" ru="прошло {}:{:02}"/>
 </translations>
