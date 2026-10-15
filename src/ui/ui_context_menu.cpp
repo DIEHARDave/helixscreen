@@ -280,11 +280,12 @@ void ContextMenu::apply_fit_card_width(lv_obj_t* menu_card) {
         return;
     }
     const int32_t screen_w = lv_obj_get_width(backdrop);
-    const int32_t content_w = content_width() +
+    // A measured-exact fit can still render a pixel or two over (text_metrics.h),
+    // so the rows get a comfort margin before the card is sized to them.
+    const int32_t content_w = content_width() + theme_manager_get_spacing("space_xs") +
                               lv_obj_get_style_space_left(menu_card, LV_PART_MAIN) +
                               lv_obj_get_style_space_right(menu_card, LV_PART_MAIN);
-    const bool portrait =
-        helix::is_portrait_layout(helix::detect_layout_type(screen_w, lv_obj_get_height(backdrop)));
+    const bool portrait = helix::app_layout_is_portrait(screen_w, lv_obj_get_height(backdrop));
     const int32_t width = compute_card_width(policy, screen_w, content_w,
                                              theme_manager_get_spacing("space_md"), portrait);
     // DECLARATIVE_OK: measured layout — the width of the rows' own text
@@ -297,8 +298,6 @@ int32_t ContextMenu::row_width_for_text(lv_obj_t* row, lv_obj_t* label, const ch
     if (!row || !label) {
         return 0;
     }
-    lv_obj_update_layout(row);
-
     const lv_font_t* font = lv_obj_get_style_text_font(label, LV_PART_MAIN);
     const int32_t letter_space = lv_obj_get_style_text_letter_space(label, LV_PART_MAIN);
     int32_t width = lv_obj_get_style_space_left(row, LV_PART_MAIN) +

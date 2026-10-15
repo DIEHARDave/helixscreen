@@ -7,6 +7,8 @@
 
 #include <functional>
 #include <string>
+#include <utility>
+#include <vector>
 
 namespace helix::ui {
 
@@ -57,6 +59,9 @@ class PrinterSwitchMenu : public ContextMenu {
 
   private:
     void populate_printer_list();
+    /// Sets widest_row_ from the printer rows, the header and the Add button, laid out once
+    void measure_rows(lv_obj_t* printer_list,
+                      const std::vector<std::pair<lv_obj_t*, std::string>>& rows);
     void handle_printer_selected(const std::string& printer_id);
     void handle_add_printer();
     void dispatch_switch_action(MenuAction action, const std::string& printer_id = "");

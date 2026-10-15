@@ -10,14 +10,19 @@
  * card has to be told how wide its names are.
  */
 
+#include "ui_button.h"
 #include "ui_context_menu.h"
 #include "ui_printer_switch_menu.h"
 
 #include "../lvgl_test_fixture.h"
 #include "../test_fixtures.h"
 #include "../test_helpers/config_test_access.h"
+#include "../test_helpers/layout_manager_test_access.h"
 #include "config.h"
+#include "layout_manager.h"
+#include "lvgl/src/others/translation/lv_translation.h"
 #include "theme_manager.h"
+#include "translation_loader.h"
 
 #include <string>
 #include <vector>
@@ -97,6 +102,9 @@ class SwitchMenuFixture : public XMLTestFixture {
         REQUIRE(register_component("components/printer_switch_row"));
         REQUIRE(register_component("printer_switch_menu"));
 
+        // Placement follows the app's layout, so no other test's layout may leak in.
+        LayoutManagerTestAccess::reset(helix::LayoutManager::instance());
+
         cfg_ = helix::Config::get_instance();
         saved_data_ = helix::ConfigTestAccess::data(*cfg_);
         saved_active_ = helix::ConfigTestAccess::active_printer_id(*cfg_);
@@ -111,6 +119,18 @@ class SwitchMenuFixture : public XMLTestFixture {
         process_lvgl(20);
         helix::ConfigTestAccess::data(*cfg_) = saved_data_;
         helix::ConfigTestAccess::active_printer_id(*cfg_) = saved_active_;
+        LayoutManagerTestAccess::reset(helix::LayoutManager::instance());
+        lv_translation_set_language(helix::ui::kIdentityLocale);
+    }
+
+    /// Initialise LayoutManager as Application does, optionally under a --layout override.
+    static void set_layout(int w, int h, const char* override_name = "") {
+        helix::LayoutManager::instance().set_override(override_name);
+        helix::LayoutManager::instance().init(w, h);
+    }
+
+    static int32_t margin() {
+        return theme_manager_get_spacing("space_md");
     }
 
     void set_printers(const std::vector<std::string>& names) {
@@ -168,12 +188,15 @@ class SwitchMenuFixture : public XMLTestFixture {
 
 } // namespace
 
-TEST_CASE_METHOD(SwitchMenuFixture, "Printer switch menu: short names keep the minimum width",
+TEST_CASE_METHOD(SwitchMenuFixture,
+                 "Printer switch menu: short names leave the card as narrow as its header",
                  "[context_menu][fit][printer_switch]") {
     set_printers({"K1", "U1"});
     lv_obj_set_pos(badge_, 10, 400);
     lv_obj_t* card = show();
-    CHECK(lv_obj_get_width(card) == 160);
+    // The header (title + close) and the Add button set the width, not two-letter names.
+    CHECK(lv_obj_get_width(card) >= 160);
+    CHECK(lv_obj_get_width(card) < 200);
     CHECK(drawn_name("p0") == "K1");
 }
 
@@ -233,7 +256,86 @@ TEST_CASE_METHOD(SwitchMenuFixture,
     set_printers({name});
     lv_obj_set_pos(badge_, 410, 730);
     lv_obj_t* card = show();
-    CHECK(lv_obj_get_width(card) == 480 - 2 * theme_manager_get_spacing("space_md"));
+    CHECK(lv_obj_get_width(card) == 480 - 2 * margin());
     CHECK(drawn_name("p0") != name);
     check_on_screen(card);
+}
+
+TEST_CASE_METHOD(SwitchMenuFixture,
+                 "Printer switch menu: a badge in the left half of a bottom navbar opens above it",
+                 "[context_menu][fit][printer_switch]") {
+    ScopedResolution portrait(lv_display_get_default(), 480, 800);
+    lv_obj_set_size(test_screen(), 480, 800);
+    set_layout(480, 800);
+    set_printers({"Voron 2.4 350 (Enclosure Build)"});
+    lv_obj_set_pos(badge_, 10, 730);
+    lv_obj_t* card = show();
+    check_on_screen(card);
+
+    lv_area_t c;
+    lv_area_t b;
+    lv_obj_get_coords(card, &c);
+    lv_obj_get_coords(badge_, &b);
+    CHECK(c.y2 < b.y1);
+}
+
+TEST_CASE_METHOD(SwitchMenuFixture,
+                 "Printer switch menu: a portrait --layout override on a landscape screen opens "
+                 "above the badge and uses the portrait cap",
+                 "[context_menu][fit][printer_switch]") {
+    set_layout(TEST_DISPLAY_WIDTH, TEST_DISPLAY_HEIGHT, "portrait");
+    REQUIRE(helix::app_layout_is_portrait(TEST_DISPLAY_WIDTH, TEST_DISPLAY_HEIGHT));
+    const std::string name(120, 'W');
+    set_printers({name});
+    lv_obj_set_pos(badge_, 700, 400);
+    lv_obj_t* card = show();
+    CHECK(lv_obj_get_width(card) == TEST_DISPLAY_WIDTH - 2 * margin());
+    check_on_screen(card);
+
+    lv_area_t c;
+    lv_area_t b;
+    lv_obj_get_coords(card, &c);
+    lv_obj_get_coords(badge_, &b);
+    CHECK(c.y2 < b.y1);
+}
+
+TEST_CASE_METHOD(SwitchMenuFixture,
+                 "Printer switch menu: a standard --layout override on a portrait screen keeps "
+                 "the half-screen cap beside the badge",
+                 "[context_menu][fit][printer_switch]") {
+    ScopedResolution portrait(lv_display_get_default(), 480, 800);
+    lv_obj_set_size(test_screen(), 480, 800);
+    set_layout(480, 800, "standard");
+    REQUIRE_FALSE(helix::app_layout_is_portrait(480, 800));
+    const std::string name(120, 'W');
+    set_printers({name});
+    lv_obj_set_pos(badge_, 10, 400);
+    lv_obj_t* card = show();
+    CHECK(lv_obj_get_width(card) == 240);
+
+    // Beside: the card hangs off the badge's right edge rather than above it.
+    lv_area_t c;
+    lv_area_t b;
+    lv_obj_get_coords(card, &c);
+    lv_obj_get_coords(badge_, &b);
+    CHECK(c.x1 >= b.x2 - margin());
+}
+
+TEST_CASE_METHOD(SwitchMenuFixture,
+                 "Printer switch menu: a translated Add Printer button fits on one line",
+                 "[context_menu][fit][printer_switch]") {
+    helix::ui::ensure_translation_loaded("fr");
+    lv_translation_set_language("fr");
+    REQUIRE(std::string(lv_tr("+ Add Printer")) != "+ Add Printer");
+
+    set_printers({"K1"});
+    lv_obj_set_pos(badge_, 10, 400);
+    lv_obj_t* card = show();
+    lv_obj_t* add_label = ui_button_get_label(lv_obj_find_by_name(card, "btn_add_printer"));
+    REQUIRE(add_label != nullptr);
+    REQUIRE(std::string(lv_label_get_text(add_label)) == lv_tr("+ Add Printer"));
+    const lv_font_t* font = lv_obj_get_style_text_font(add_label, LV_PART_MAIN);
+    REQUIRE(font != nullptr);
+    CHECK(lv_obj_get_height(add_label) == lv_font_get_line_height(font));
+    CHECK(lv_obj_get_width(card) > 160);
 }

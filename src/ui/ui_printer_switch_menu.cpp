@@ -3,6 +3,7 @@
 
 #include "ui_printer_switch_menu.h"
 
+#include "ui_button.h"
 #include "ui_callback_helpers.h"
 #include "ui_change_host_modal.h"
 #include "ui_event_safety.h"
@@ -11,11 +12,14 @@
 #include "ui_update_queue.h"
 
 #include "config.h"
+#include "layout_manager.h"
 #include "ui/ui_widget_helpers.h"
 
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
+#include <utility>
+#include <vector>
 
 namespace helix::ui {
 
@@ -30,17 +34,16 @@ void PrinterSwitchMenu::show(lv_obj_t* parent, lv_obj_t* near_widget) {
     register_callbacks();
 
     // Both paths below also claim the active-menu slot the static callbacks resolve
-    // through. A badge with room to its right (the side navbar) hangs the card off its
-    // right edge; one at the right end of the bottom navbar has none, so the card
-    // sits above it instead and grows leftward from the screen edge.
-    lv_area_t badge;
-    lv_obj_get_coords(near_widget, &badge);
-    const int32_t screen_w = lv_obj_get_width(parent);
-    if (screen_w - badge.x2 >= badge.x1) {
+    // through. The navbar is a bottom strip in a portrait layout and a side strip
+    // otherwise: above a bottom-strip badge the card covers no navbar, and beside a
+    // side-strip badge it hangs off the badge's right edge.
+    if (helix::app_layout_is_portrait(lv_obj_get_width(parent), lv_obj_get_height(parent))) {
+        show_below_widget(parent, 0, near_widget);
+    } else {
+        lv_area_t badge;
+        lv_obj_get_coords(near_widget, &badge);
         set_click_point({badge.x2, (badge.y1 + badge.y2) / 2});
         show_near_widget(parent, 0, near_widget);
-    } else {
-        show_below_widget(parent, 0, near_widget);
     }
 
     spdlog::debug("[PrinterSwitchMenu] Shown");
@@ -81,10 +84,7 @@ void PrinterSwitchMenu::populate_printer_list() {
     // Get check icon codepoint from our icon system
     const char* check_codepoint = helix::ui::icon::lookup_codepoint("check");
 
-    widest_row_ = 0;
-    const int32_t list_space = lv_obj_get_style_space_left(printer_list, LV_PART_MAIN) +
-                               lv_obj_get_style_space_right(printer_list, LV_PART_MAIN);
-
+    std::vector<std::pair<lv_obj_t*, std::string>> rows;
     for (const auto& id : printer_ids) {
         bool is_active = (id == active_id);
         std::string name = cfg->get_printer_display_name(id, id);
@@ -100,10 +100,7 @@ void PrinterSwitchMenu::populate_printer_list() {
             continue;
         }
         helix::ui::set_row_label_text(row, "printer_name", name.c_str());
-        widest_row_ =
-            std::max(widest_row_,
-                     list_space + row_width_for_text(row, lv_obj_find_by_name(row, "printer_name"),
-                                                     name.c_str()));
+        rows.emplace_back(row, std::move(name));
 
         // Store printer ID for click handler
         lv_obj_set_name(row, id.c_str());
@@ -111,8 +108,43 @@ void PrinterSwitchMenu::populate_printer_list() {
         lv_obj_add_event_cb(row, on_printer_row_cb, LV_EVENT_CLICKED, nullptr);
     }
 
+    measure_rows(printer_list, rows);
+
     spdlog::debug("[PrinterSwitchMenu] Populated {} printers (active: {})", printer_ids.size(),
                   active_id);
+}
+
+void PrinterSwitchMenu::measure_rows(lv_obj_t* printer_list,
+                                     const std::vector<std::pair<lv_obj_t*, std::string>>& rows) {
+    lv_obj_t* card = this->card();
+    if (!card) {
+        return;
+    }
+    lv_obj_update_layout(card);
+
+    // Printer names come from the caller's copy: a dotted label's own text may
+    // already carry the dots.
+    widest_row_ = 0;
+    const int32_t list_space = lv_obj_get_style_space_left(printer_list, LV_PART_MAIN) +
+                               lv_obj_get_style_space_right(printer_list, LV_PART_MAIN);
+    for (const auto& [row, name] : rows) {
+        widest_row_ =
+            std::max(widest_row_,
+                     list_space + row_width_for_text(row, lv_obj_find_by_name(row, "printer_name"),
+                                                     name.c_str()));
+    }
+
+    // The header and the Add button carry translated text, which can outgrow every
+    // name. Neither label ellipsizes, so its own text is the whole string.
+    if (lv_obj_t* title = lv_obj_find_by_name(card, "card_title")) {
+        widest_row_ = std::max(widest_row_, row_width_for_text(lv_obj_get_parent(title), title,
+                                                               lv_label_get_text(title)));
+    }
+    lv_obj_t* add_btn = lv_obj_find_by_name(card, "btn_add_printer");
+    if (lv_obj_t* add_label = ui_button_get_label(add_btn)) {
+        widest_row_ = std::max(
+            widest_row_, row_width_for_text(add_btn, add_label, lv_label_get_text(add_label)));
+    }
 }
 
 // ============================================================================
