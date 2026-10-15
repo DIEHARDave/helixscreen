@@ -219,10 +219,12 @@ if (( GIT_POINTER_OK )); then
     DIRTY="$(printf '%s' "$STATUS_PORCELAIN" | grep -c . || true)"
     # A tree whose files are gone but whose .git survives (an earlier teardown
     # that stopped partway) reads as one big uncommitted deletion. With nothing
-    # modified or untracked and every commit already in $INTO, nothing is lost
-    # by finishing the removal.
+    # modified or untracked, every tracked file gone, and every commit already
+    # in $INTO, nothing is lost by finishing the removal. A live tree with a few
+    # files deleted still has the rest of its files and is refused.
     if [[ "$DIRTY" != "0" ]] && (( ! FORCE )) &&
        ! printf '%s\n' "$STATUS_PORCELAIN" | grep -qv '^ D ' &&
+       [[ "$DIRTY" == "$(git -C "$WT_ABS" ls-files | wc -l | tr -d ' ')" ]] &&
        [[ -n "$BRANCH" ]] &&
        git -C "$MAIN_ABS" merge-base --is-ancestor "$BRANCH" "$INTO" 2>/dev/null; then
         say "${YELLOW}! $DIRTY tracked file(s) are deleted and nothing else differs; '$BRANCH' is contained in $INTO.${RESET}"
@@ -242,20 +244,30 @@ if (( GIT_POINTER_OK )); then
 
     # The private submodules are the ones that can hold work nothing else has.
     # lvgl, libhv and lua are routinely dirty from patches/ and that is reproducible;
-    # helix-xml is our own repo and is edited directly, so unpushed commits there
-    # are real work that this script must not silently delete.
-    for sub in helix-xml libhv lua lvgl; do
-        [[ -d "$WT_ABS/lib/$sub/.git" || -f "$WT_ABS/lib/$sub/.git" ]] || continue
-        # No upstream configured is a git fatal, not an error here: a submodule with
-        # no remote tracking branch simply has nothing that could be unpushed.
-        unpushed="$( { git -C "$WT_ABS/lib/$sub" log --oneline '@{u}..' 2>/dev/null || true; } | wc -l | tr -d ' ')"
-        if [[ "$unpushed" != "0" ]]; then
-            say "${RED}Error: lib/$sub has $unpushed unpushed commit(s).${RESET}"
-            { git -C "$WT_ABS/lib/$sub" log --oneline '@{u}..' 2>/dev/null || true; } | head -5 | sed 's/^/    /'
-            say "Push them from ${CYAN}$WT_ABS/lib/$sub${RESET} first; this script will not discard them."
+    # helix-xml is our own repo and is edited directly, so commits there that no
+    # remote has are real work this script must not silently delete. Their git
+    # directories live under the worktree's admin dir, not in its checkout, so
+    # they are inspected whether or not lib/<sub> still exists on disk, and
+    # `git worktree prune` is what finally deletes them.
+    ADMIN_DIR="$(sed -n 's/^gitdir: //p' "$WT_ABS/.git" 2>/dev/null | head -1)"
+    if [[ -n "$ADMIN_DIR" && -d "$ADMIN_DIR/modules" ]]; then
+        for modgit in "$ADMIN_DIR"/modules/lib/*/; do
+            modgit="${modgit%/}"
+            [[ -f "$modgit/HEAD" ]] || continue
+            # A module with no remote has nothing it could be behind.
+            [[ -n "$(git --git-dir="$modgit" for-each-ref --count=1 refs/remotes 2>/dev/null)" ]] || continue
+            unpushed="$( { git --git-dir="$modgit" log --oneline HEAD --branches --not --remotes 2>/dev/null || true; } | wc -l | tr -d ' ')"
+            [[ "$unpushed" != "0" ]] || continue
+            if (( FORCE )); then
+                say "${YELLOW}! lib/$(basename "$modgit") has $unpushed commit(s) no remote has; they will be DISCARDED (--force).${RESET}"
+                continue
+            fi
+            say "${RED}Error: lib/$(basename "$modgit") has $unpushed commit(s) no remote has.${RESET}"
+            { git --git-dir="$modgit" log --oneline HEAD --branches --not --remotes 2>/dev/null || true; } | head -5 | sed 's/^/    /'
+            say "Push them from the worktree's lib/$(basename "$modgit") first (or pass ${CYAN}--force${RESET} to discard them); this script will not discard them silently."
             exit 1
-        fi
-    done
+        done
+    fi
 fi
 
 # --- branch containment -------------------------------------------------------
@@ -307,12 +319,15 @@ else
     # .cache/ is the tree's own disposable tool state, and a running clangd keeps
     # writing its index into it mid-removal. Remove it last and retry until it
     # stays gone.
+    cache_rounds=0
     for _ in $(seq 20); do
         [[ -e "$WT_ABS/.cache" ]] || break
         rm -rf "$WT_ABS/.cache" 2>/dev/null || true
+        cache_rounds=$((cache_rounds + 1))
         sleep "${HELIX_TEARDOWN_CACHE_RETRY_SLEEP:-0.25}"
         [[ -e "$WT_ABS/.cache" ]] || break
     done
+    (( cache_rounds < 2 )) || say "  .cache/ was still being written; removed it on attempt $cache_rounds."
     LEFTOVER="$(find "$WT_ABS" -mindepth 1 -not -name '.git' 2>/dev/null || true)"
     if [[ -n "$LEFTOVER" ]]; then
         say ""

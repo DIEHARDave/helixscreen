@@ -28,7 +28,8 @@ setup() {
     git config user.email t@example.com
     git config user.name tester
     echo hello > README.md
-    git add README.md
+    echo '.cache/' > .gitignore
+    git add README.md .gitignore
     git commit -qm base --no-verify
 }
 
@@ -413,6 +414,7 @@ stub_test_host_run() { # <exit code>
     [ "$status" -eq 0 ]
     contains "Teardown complete" "$output"
     lacks "files remain" "$output"
+    contains ".cache/ was still being written" "$output"
     [ ! -d "$wt" ]
 }
 
@@ -457,4 +459,86 @@ half_remove() {
     [ "$status" -ne 0 ]
     contains "uncommitted change" "$output"
     [ -f "$wt/untracked.txt" ]
+}
+
+@test "a half-removed tree with a lone deleted file among live ones is refused" {
+    make_worktree live
+    local wt="$MAIN/.worktrees/live"
+    echo second > "$wt/second.txt"
+    git -C "$wt" add second.txt
+    git -C "$wt" commit -qm second --no-verify
+    git -C "$MAIN" merge -q feature/live
+    rm "$wt/README.md"
+    run "$SCRIPT" live --into master
+    [ "$status" -ne 0 ]
+    contains "uncommitted change" "$output"
+    [ -f "$wt/second.txt" ]
+}
+
+@test "deletions mixed with a staged modification are refused" {
+    make_worktree mixed
+    local wt="$MAIN/.worktrees/mixed"
+    rm "$wt/.gitignore"
+    echo more >> "$wt/README.md"
+    git -C "$wt" add README.md
+    run "$SCRIPT" mixed --into master
+    [ "$status" -ne 0 ]
+    contains "uncommitted change" "$output"
+}
+
+# A private submodule's git directory lives under the worktree's admin dir and
+# outlives the deleted checkout; the commits in it are what a prune destroys.
+# Builds one with a pushed commit (on a remote-tracking ref) and one on top.
+make_module_gitdir() {
+    local name="$1" unpushed="$2" admin src
+    admin="$(git -C "$MAIN" rev-parse --path-format=absolute --git-common-dir)/worktrees/$name"
+    src="$BATS_TEST_TMPDIR/modsrc-$name"
+    mkdir -p "$src"
+    git -C "$src" init -q -b main .
+    git -C "$src" config user.email t@example.com
+    git -C "$src" config user.name tester
+    echo a > "$src/a.txt"; git -C "$src" add a.txt; git -C "$src" commit -qm pushed --no-verify
+    git -C "$src" update-ref refs/remotes/origin/main HEAD
+    if [ "$unpushed" = yes ]; then
+        echo b > "$src/b.txt"; git -C "$src" add b.txt; git -C "$src" commit -qm unpushed-work --no-verify
+    fi
+    mkdir -p "$admin/modules/lib"
+    mv "$src/.git" "$admin/modules/lib/helix-xml"
+}
+
+@test "unpushed commits in a submodule gitdir refuse the teardown while the checkout exists" {
+    make_worktree withmod
+    make_module_gitdir withmod yes
+    run "$SCRIPT" withmod --into master
+    [ "$status" -ne 0 ]
+    contains "lib/helix-xml has 1 commit" "$output"
+    contains "unpushed-work" "$output"
+    [ -d "$MAIN/.worktrees/withmod" ]
+}
+
+@test "a half-removed tree cannot finish while its submodule gitdir holds unpushed commits" {
+    make_worktree halfmod
+    make_module_gitdir halfmod yes
+    half_remove "$MAIN/.worktrees/halfmod"
+    run "$SCRIPT" halfmod --into master
+    [ "$status" -ne 0 ]
+    contains "unpushed-work" "$output"
+    [ -e "$MAIN/.worktrees/halfmod/.git" ]
+}
+
+@test "--force discards the submodule commits it listed" {
+    make_worktree forcemod
+    make_module_gitdir forcemod yes
+    run "$SCRIPT" forcemod --into master --force
+    [ "$status" -eq 0 ]
+    contains "DISCARDED" "$output"
+    [ ! -d "$MAIN/.worktrees/forcemod" ]
+}
+
+@test "a submodule gitdir with everything pushed does not block" {
+    make_worktree pushedmod
+    make_module_gitdir pushedmod no
+    run "$SCRIPT" pushedmod --into master
+    [ "$status" -eq 0 ]
+    contains "Teardown complete" "$output"
 }
