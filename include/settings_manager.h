@@ -82,6 +82,9 @@ class SettingsManager {
      */
     static SettingsManager& instance();
 
+    /// The static PersistedSetting table this manager is built from.
+    static settings::TableView persisted_table();
+
     // Prevent copying
     SettingsManager(const SettingsManager&) = delete;
     SettingsManager& operator=(const SettingsManager&) = delete;

@@ -26,6 +26,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
+#include <iterator>
 
 #ifdef __ANDROID__
 #include "system/android_jni.h"
@@ -218,6 +219,10 @@ static constexpr settings::PersistedSetting DISPLAY_SETTINGS[] = {
 DisplaySettingsManager& DisplaySettingsManager::instance() {
     static DisplaySettingsManager instance;
     return instance;
+}
+
+settings::TableView DisplaySettingsManager::persisted_table() {
+    return {DISPLAY_SETTINGS, std::size(DISPLAY_SETTINGS)};
 }
 
 DisplaySettingsManager::DisplaySettingsManager() : settings_(DISPLAY_SETTINGS) {

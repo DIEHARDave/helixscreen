@@ -10,6 +10,7 @@
 #include "static_subject_registry.h"
 
 #include <algorithm>
+#include <iterator>
 
 using namespace helix;
 
@@ -28,6 +29,10 @@ static constexpr settings::PersistedSetting AUDIO_SETTINGS[] = {
 AudioSettingsManager& AudioSettingsManager::instance() {
     static AudioSettingsManager instance;
     return instance;
+}
+
+settings::TableView AudioSettingsManager::persisted_table() {
+    return {AUDIO_SETTINGS, std::size(AUDIO_SETTINGS)};
 }
 
 AudioSettingsManager::AudioSettingsManager() : settings_(AUDIO_SETTINGS) {

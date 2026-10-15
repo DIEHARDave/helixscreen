@@ -30,6 +30,18 @@ struct PersistedSetting {
     const char* telemetry_key;
 };
 
+/// A read-only view of a manager's static table, for tests and diagnostics.
+struct TableView {
+    const PersistedSetting* rows;
+    size_t size;
+    const PersistedSetting* begin() const {
+        return rows;
+    }
+    const PersistedSetting* end() const {
+        return rows + size;
+    }
+};
+
 namespace detail {
 void init_setting(const PersistedSetting& s, lv_subject_t& subject, SubjectManager& subjects);
 void reload_setting(const PersistedSetting& s, lv_subject_t& subject);

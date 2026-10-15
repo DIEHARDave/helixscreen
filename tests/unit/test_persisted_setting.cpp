@@ -116,6 +116,9 @@ const std::vector<Row>& rows() {
         {"settings_home_edit_mode_enabled", Mgr::Input, false, "/input/home_edit_mode_enabled",
          true, 1, 0, 1, "home_edit_mode_enabled", true, SETB(im().set_home_edit_mode_enabled),
          GET(im().get_home_edit_mode_enabled), SUBJ(im().subject_home_edit_mode_enabled)},
+        {"settings_keypad_layout", Mgr::Input, false, "/input/keypad_layout", false, 0, 0, 1,
+         "keypad_layout", true, [](int v) { im().set_keypad_layout(static_cast<KeypadLayout>(v)); },
+         GET(im().get_keypad_layout), SUBJ(im().subject_keypad_layout)},
 
         // AudioSettingsManager
         {"settings_sounds_enabled", Mgr::Audio, false, "/sounds_enabled", true, 0, 0, 1,
@@ -196,6 +199,9 @@ const std::vector<Row>& rows() {
         {"settings_motion_show_actual_position", Mgr::Settings, true, "motion/show_actual_position",
          true, 0, 0, 1, "show_actual_position", true, SETB(sm().set_motion_show_actual_position),
          GET(sm().get_motion_show_actual_position), SUBJ(sm().subject_motion_show_actual_position)},
+        {"settings_bed_map_clearance", Mgr::Settings, true, "motion/bed_map_clearance", false, 5,
+         BED_MAP_CLEARANCE_MIN_MM, BED_MAP_CLEARANCE_MAX_MM, "bed_map_clearance", true,
+         SETI(sm().set_bed_map_clearance_mm), GET(sm().get_bed_map_clearance_mm), NOSUBJ},
         {"settings_qidi_eject_distance", Mgr::Settings, true, "ams/qidi_eject_distance", false, 878,
          100, 2000, "qidi_eject_distance", true, SETI(sm().set_qidi_eject_distance),
          GET(sm().get_qidi_eject_distance), SUBJ(sm().subject_qidi_eject_distance)},
@@ -451,7 +457,16 @@ TEST_CASE_METHOD(LVGLTestFixture, "Persisted settings: exactly the telemetry-key
     fs::remove_all(dir, ec);
 }
 
-TEST_CASE("Persisted settings: every row has a unique telemetry key unless exempt",
+namespace {
+/// Every manager's real static table, in the order the managers are listed.
+std::vector<settings::TableView> real_tables() {
+    return {SettingsManager::persisted_table(),       DisplaySettingsManager::persisted_table(),
+            SystemSettingsManager::persisted_table(), InputSettingsManager::persisted_table(),
+            AudioSettingsManager::persisted_table(),  SafetySettingsManager::persisted_table()};
+}
+} // namespace
+
+TEST_CASE("Persisted settings: every real row has a unique telemetry key unless exempt",
           "[persisted_setting][telemetry]") {
     // Settings that are deliberately not reported. Every PersistedSetting is an int or a bool,
     // so none of them can carry free text; a row lands here only when reporting its change
@@ -462,23 +477,52 @@ TEST_CASE("Persisted settings: every row has a unique telemetry key unless exemp
     };
 
     std::set<std::string> seen;
-    size_t keyed = 0;
-    for (const auto& row : rows()) {
-        INFO(row.xml);
-        if (exempt.count(row.xml) != 0) {
-            CHECK(row.telemetry == nullptr);
-            continue;
+    size_t total = 0;
+    size_t exempted = 0;
+    for (const auto& table : real_tables()) {
+        for (const auto& row : table) {
+            INFO(row.xml_name);
+            ++total;
+            if (exempt.count(row.xml_name) != 0) {
+                CHECK(row.telemetry_key == nullptr);
+                ++exempted;
+                continue;
+            }
+            REQUIRE(row.telemetry_key != nullptr);
+            const std::string key = row.telemetry_key;
+            CHECK_FALSE(key.empty());
+            CHECK(std::all_of(key.begin(), key.end(), [](char c) {
+                return (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_';
+            }));
+            CHECK(seen.insert(key).second);
         }
-        REQUIRE(row.telemetry != nullptr);
-        const std::string key = row.telemetry;
-        CHECK_FALSE(key.empty());
-        CHECK(std::all_of(key.begin(), key.end(), [](char c) {
-            return (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_';
-        }));
-        CHECK(seen.insert(key).second);
-        ++keyed;
     }
-    CHECK(keyed == rows().size() - exempt.size());
+    CHECK(exempted == exempt.size());
+    CHECK(seen.size() == total - exempt.size());
+}
+
+TEST_CASE("Persisted settings: the test mirror matches the real tables",
+          "[persisted_setting][telemetry]") {
+    size_t total = 0;
+    for (const auto& table : real_tables()) {
+        for (const auto& real : table) {
+            INFO(real.xml_name);
+            ++total;
+            const auto it = std::find_if(rows().begin(), rows().end(), [&](const Row& r) {
+                return std::string(r.xml) == real.xml_name;
+            });
+            REQUIRE(it != rows().end());
+            CHECK(std::string(it->path) == real.json_path);
+            CHECK(it->per_printer == (real.scope == settings::Scope::PerPrinter));
+            CHECK(it->is_bool == real.is_bool);
+            CHECK(it->def == real.def);
+            CHECK(it->min == real.min);
+            CHECK(it->max == real.max);
+            CHECK(std::string(it->telemetry ? it->telemetry : "") ==
+                  std::string(real.telemetry_key ? real.telemetry_key : ""));
+        }
+    }
+    CHECK(rows().size() == total);
 }
 
 TEST_CASE("PersistedSettings: get before init returns the row default", "[persisted_setting]") {

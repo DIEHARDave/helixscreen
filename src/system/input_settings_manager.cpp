@@ -9,6 +9,8 @@
 #include "spdlog/spdlog.h"
 #include "static_subject_registry.h"
 
+#include <iterator>
+
 using namespace helix;
 
 using settings::Scope;
@@ -33,6 +35,10 @@ static constexpr settings::PersistedSetting INPUT_SETTINGS[] = {
 InputSettingsManager& InputSettingsManager::instance() {
     static InputSettingsManager instance;
     return instance;
+}
+
+settings::TableView InputSettingsManager::persisted_table() {
+    return {INPUT_SETTINGS, std::size(INPUT_SETTINGS)};
 }
 
 InputSettingsManager::InputSettingsManager() : settings_(INPUT_SETTINGS) {

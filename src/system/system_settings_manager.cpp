@@ -16,6 +16,7 @@
 #include "translation_loader.h"
 
 #include <algorithm>
+#include <iterator>
 #include <string_view>
 
 using namespace helix;
@@ -72,6 +73,10 @@ static constexpr settings::PersistedSetting SYSTEM_SETTINGS[] = {
 SystemSettingsManager& SystemSettingsManager::instance() {
     static SystemSettingsManager instance;
     return instance;
+}
+
+settings::TableView SystemSettingsManager::persisted_table() {
+    return {SYSTEM_SETTINGS, std::size(SYSTEM_SETTINGS)};
 }
 
 SystemSettingsManager::SystemSettingsManager() : settings_(SYSTEM_SETTINGS) {

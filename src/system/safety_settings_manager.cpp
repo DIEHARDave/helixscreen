@@ -10,6 +10,7 @@
 #include "static_subject_registry.h"
 
 #include <algorithm>
+#include <iterator>
 
 using namespace helix;
 
@@ -31,6 +32,10 @@ static constexpr settings::PersistedSetting SAFETY_SETTINGS[] = {
 SafetySettingsManager& SafetySettingsManager::instance() {
     static SafetySettingsManager instance;
     return instance;
+}
+
+settings::TableView SafetySettingsManager::persisted_table() {
+    return {SAFETY_SETTINGS, std::size(SAFETY_SETTINGS)};
 }
 
 SafetySettingsManager::SafetySettingsManager() : settings_(SAFETY_SETTINGS) {

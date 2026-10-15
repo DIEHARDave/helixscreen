@@ -28,6 +28,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <iterator>
 
 using namespace helix;
 
@@ -182,6 +183,10 @@ static constexpr settings::PersistedSetting SETTINGS[] = {
 SettingsManager& SettingsManager::instance() {
     static SettingsManager instance;
     return instance;
+}
+
+settings::TableView SettingsManager::persisted_table() {
+    return {SETTINGS, std::size(SETTINGS)};
 }
 
 SettingsManager::SettingsManager() : settings_(SETTINGS) {
