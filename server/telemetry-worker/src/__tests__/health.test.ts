@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { describe, it, expect } from "vitest";
 import { buildHealth, type HealthPayload } from "../health";
-import { HEALTH_WINDOWS, filterFor, healthQueries, windowClause, type HealthQueryKey } from "../queries";
+import { HEALTH_WINDOWS, filterFor, healthQueries, versionInClause, windowClause, type HealthQueryKey } from "../queries";
 
 const KEYS: HealthQueryKey[] = [
   "actives_cur", "actives_prev", "top_versions", "release_cur", "release_prev",
@@ -187,29 +187,42 @@ describe("buildHealth", () => {
   });
 
   describe("data health", () => {
-    const days = (kind: string, counts: number[]) =>
-      counts.map((count, i) => ({ day: `2026-10-${String(14 - i).padStart(2, "0")}`, event: kind, count }));
+    // today is 2026-10-15: latest is 10-14, the median covers 10-07 .. 10-13.
+    const day = (n: number) => `2026-10-${String(n).padStart(2, "0")}`;
+    const rowsFor = (kind: string, byDay: Record<number, number>) =>
+      Object.entries(byDay).map(([d, count]) => ({ day: day(Number(d)), event: kind, count }));
+    const steady = (latest: number) => ({ 14: latest, 13: 100, 12: 100, 11: 100, 10: 100, 9: 100, 8: 100, 7: 100 });
     const run = (rows: unknown[]) => {
       const r = emptyRows();
       r.kind_days = rows;
       return buildHealth(r, "2026-10-15").data_health;
     };
     it("flags 40 against a median of 100", () => {
-      const h = run(days("session", [40, 100, 100, 100, 100, 100, 100, 100]));
-      expect(h).toEqual([{ kind: "session", latest: 40, median: 100, low: true }]);
+      expect(run(rowsFor("session", steady(40)))).toEqual([{ kind: "session", latest: 40, median: 100, low: true }]);
     });
     it("does not flag 60 against a median of 100", () => {
-      expect(run(days("session", [60, 100, 100, 100, 100, 100, 100, 100]))[0].low).toBe(false);
+      expect(run(rowsFor("session", steady(60)))[0].low).toBe(false);
     });
-    it("excludes today's partial row", () => {
-      const rows = [{ day: "2026-10-15", event: "session", count: 1 }, ...days("session", [100, 100, 100])];
-      expect(run(rows)[0].latest).toBe(100);
+    it("flags a kind with rows on the 7 prior days and none yesterday, latest 0", () => {
+      const { 14: _y, ...prior } = steady(0);
+      expect(run(rowsFor("session", prior))).toEqual([{ kind: "session", latest: 0, median: 100, low: true }]);
     });
-    it("never flags a kind with no history", () => {
-      expect(run(days("crash", [3]))[0]).toEqual({ kind: "crash", latest: 3, median: 0, low: false });
+    it("never flags a kind with sporadic rows (median 0)", () => {
+      expect(run(rowsFor("crash", { 14: 1, 9: 2 }))[0]).toEqual({ kind: "crash", latest: 1, median: 0, low: false });
+      expect(run(rowsFor("crash", { 13: 5 }))[0].low).toBe(false);
+    });
+    it("ignores today's partial row and the partial today-9 row", () => {
+      const rows = [...rowsFor("session", steady(100)), ...rowsFor("session", { 15: 1, 6: 1 })];
+      expect(run(rows)).toEqual([{ kind: "session", latest: 100, median: 100, low: false }]);
+    });
+    it("counts a missing day inside the median window as 0", () => {
+      // 10-07 .. 10-13 holds 3 days of 100 and 4 missing: median 0
+      const h = run(rowsFor("session", { 14: 1, 13: 100, 12: 100, 11: 100 }));
+      expect(h[0].median).toBe(0);
+      expect(h[0].low).toBe(false);
     });
     it("leaves out cdn_fleet_daily", () => {
-      expect(run(days("cdn_fleet_daily", [1, 5, 5]))).toEqual([]);
+      expect(run(rowsFor("cdn_fleet_daily", steady(1)))).toEqual([]);
     });
   });
 
@@ -224,5 +237,18 @@ describe("buildHealth", () => {
     r.actives_cur = [{ actives: 50 }];
     r.actives_prev = [{ actives: 40 }];
     expect(buildHealth(r, "2026-10-15").fleet).toMatchObject({ actives_cur: 50, actives_prev: 40 });
+  });
+});
+
+describe("versionInClause", () => {
+  it("strips a v prefix and quotes each version", () => {
+    expect(versionInClause("blob2", ["1.0.4", "v1.0.3"])).toBe("blob2 IN ('1.0.4', '1.0.3')");
+  });
+  it("drops quotes and semicolons", () => {
+    expect(versionInClause("blob2", ["1.0';x"])).toBe("blob2 IN ('1.0x')");
+  });
+  it("is SQL_FALSE for an empty or all-empty list", () => {
+    expect(versionInClause("blob2", [])).toBe("1 = 0");
+    expect(versionInClause("blob2", ["';"])).toBe("1 = 0");
   });
 });

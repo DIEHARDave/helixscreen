@@ -49,6 +49,13 @@ const num = (v: unknown): number => Number(v ?? 0) || 0;
 const str = (v: unknown): string => String(v ?? "");
 const ratio = (n: number, d: number): number | null => (d > 0 ? n / d : null);
 
+/** The UTC day `delta` days from `day` (YYYY-MM-DD). */
+function shiftDay(day: string, delta: number): string {
+  const d = new Date(`${day}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + delta);
+  return d.toISOString().slice(0, 10);
+}
+
 function median(values: number[]): number {
   const s = [...values].sort((a, b) => a - b);
   const mid = Math.floor(s.length / 2);
@@ -127,20 +134,22 @@ export function buildHealth(rows: Record<HealthRowKey, unknown[]>, today: string
     }))
     .sort((a, b) => b.cur - a.cur);
 
-  const daysByKind = new Map<string, { day: string; count: number }[]>();
+  // Closed days only: latest is today-1, the median covers today-8 .. today-2,
+  // and a day with no row counts 0. Rows outside those 8 days are ignored.
+  const closedDays = Array.from({ length: MEDIAN_DAYS + 1 }, (_, i) => shiftDay(today, -(i + 1)));
+  const countsByKind = new Map<string, Map<string, number>>();
   for (const x of r("kind_days")) {
     const kind = str(x.event);
     const day = str(x.day).slice(0, 10);
-    if (CRON_KINDS.has(kind) || day === today) continue;
-    const list = daysByKind.get(kind) ?? [];
-    list.push({ day, count: num(x.count) });
-    daysByKind.set(kind, list);
+    if (CRON_KINDS.has(kind) || !closedDays.includes(day)) continue;
+    const byDay = countsByKind.get(kind) ?? new Map<string, number>();
+    byDay.set(day, (byDay.get(day) ?? 0) + num(x.count));
+    countsByKind.set(kind, byDay);
   }
-  const data_health = [...daysByKind]
-    .map(([kind, days]) => {
-      days.sort((a, b) => (a.day < b.day ? 1 : a.day > b.day ? -1 : 0));
-      const latest = days[0].count;
-      const med = median(days.slice(1, 1 + MEDIAN_DAYS).map((d) => d.count));
+  const data_health = [...countsByKind]
+    .map(([kind, byDay]) => {
+      const latest = byDay.get(closedDays[0]) ?? 0;
+      const med = median(closedDays.slice(1).map((d) => byDay.get(d) ?? 0));
       return { kind, latest, median: med, low: med > 0 && latest < med * LOW_SHARE };
     })
     .sort((a, b) => a.kind.localeCompare(b.kind));

@@ -1020,14 +1020,22 @@ export function uxInsightsQueries(days: number, filters?: FilterParams): string[
   ];
 }
 
+/**
+ * "<column> IN ('a', 'b')" over the sanitized versions (a leading 'v' is
+ * stripped; a version that sanitizes to nothing is dropped), or SQL_FALSE
+ * when none remain.
+ */
+export function versionInClause(column: string, versions: string[]): string {
+  const clean = versions.map((v) => sanitizeFilterValue(v.trim().replace(/^v/, ""))).filter(Boolean);
+  return clean.length > 0 ? `${column} IN (${clean.map((v) => `'${v}'`).join(", ")})` : SQL_FALSE;
+}
+
 const RELEASE_KINDS = ["session", "crash", "update_failed", "update_success"];
 
 export function releasesQueries(versions: string[]): string[] {
   const dataset = "helixscreen_telemetry";
   // Strip a 'v' prefix for matching; a version that sanitizes to nothing is dropped.
-  const clean = versions.map((v) => sanitizeFilterValue(v.trim().replace(/^v/, ""))).filter(Boolean);
-  const inVersions = (column: string) =>
-    clean.length > 0 ? `${column} IN (${clean.map((v) => `'${v}'`).join(", ")})` : SQL_FALSE;
+  const inVersions = (column: string) => versionInClause(column, versions);
   // Per-version stats group every kind by the version the device was RUNNING:
   // for update_failed that is from_version, because keying on the target
   // would bucket every failure under the newest release and hide which
@@ -1150,9 +1158,7 @@ const HEALTH_KIND_DAYS = 9;
  * `cdn_latest` and `kind_days` ignore them.
  */
 export function healthQueries(filters?: FilterParams, versions: string[] = []): Record<HealthQueryKey, string> {
-  const clean = versions.map((v) => sanitizeFilterValue(v.trim().replace(/^v/, ""))).filter(Boolean);
-  const inVersions = (column: string) =>
-    clean.length > 0 ? `${column} IN (${clean.map((v) => `'${v}'`).join(", ")})` : SQL_FALSE;
+  const inVersions = (column: string) => versionInClause(column, versions);
   const sessF = filterFor("session", filters);
   const crashF = filterFor("crash", filters);
   const running = sharedCol(RELEASE_KINDS, runningVersionField);
