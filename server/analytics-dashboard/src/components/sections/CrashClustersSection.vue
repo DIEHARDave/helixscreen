@@ -1,6 +1,42 @@
 <template>
   <DashSection title="Crashes" :loading="loading" :error="error">
     <template v-if="data">
+      <div class="chart-section">
+        <h3>Crash Clusters</h3>
+        <ChartCaption :text="`Sample-weighted crash reports grouped by signal, fault code, version and board, ${span}, largest first; click a row to filter on its version and board`" />
+        <NoData v-if="data.crash_clusters.length === 0" />
+        <div v-else class="table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Signal</th>
+                <th>Fault code</th>
+                <th>Version</th>
+                <th>Board</th>
+                <th>Crashes</th>
+                <th>Devices</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="(c, i) in data.crash_clusters"
+                :key="i"
+                class="cluster-row"
+                :title="activationHint(clusterEntries(c))"
+                @click="filters.activate(router, clusterEntries(c))"
+              >
+                <td><span class="badge" :class="signalClass(c.signal)">{{ c.signal || '-' }}</span></td>
+                <td class="mono">{{ c.fault_code || '-' }}</td>
+                <td><span class="badge version">{{ c.version || '-' }}</span></td>
+                <td>{{ c.board || '-' }}</td>
+                <td class="mono">{{ c.count.toLocaleString() }}</td>
+                <td class="mono">{{ c.devices.toLocaleString() }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <div class="grid-2col">
         <div class="chart-section">
           <h3>Crashes by Signal</h3>
@@ -56,6 +92,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useRouter } from 'vue-router'
 import DashSection from '@/components/DashSection.vue'
 import ChartCaption from '@/components/ChartCaption.vue'
 import MetricCard from '@/components/MetricCard.vue'
@@ -63,10 +100,22 @@ import NoData from '@/components/NoData.vue'
 import PieChart from '@/components/PieChart.vue'
 import { useDashData } from '@/composables/useDashData'
 import { api } from '@/services/api'
+import type { StabilityData } from '@/services/api'
+import { activationHint, single } from '@/utils/drill'
+import type { DashFilterKey } from '@/utils/urlState'
+import type { Grouped } from '@/utils/versions'
 import { formatDuration, formatTimestamp, shortDeviceId } from '@/utils/format'
 import { seriesColor } from '@/utils/series'
 
-const { data, loading, error, span } = useDashData(api.getStability)
+const { data, loading, error, span, filters } = useDashData(api.getStability)
+const router = useRouter()
+
+function clusterEntries(c: StabilityData['crash_clusters'][number]): [DashFilterKey, Grouped][] {
+  return [
+    ['version', single(c.version)],
+    ['board', single(c.board)]
+  ]
+}
 
 function signalClass(signal: string): string {
   if (signal === 'SIGSEGV') return 'signal-segv'
@@ -84,6 +133,10 @@ const signalChartData = computed(() => ({
 </script>
 
 <style scoped>
+.cluster-row {
+  cursor: pointer;
+}
+
 .badge.signal-segv {
   background: rgba(239, 68, 68, 0.15);
   color: #f87171;

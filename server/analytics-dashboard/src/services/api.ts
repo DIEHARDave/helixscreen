@@ -82,18 +82,6 @@ export interface CrashesData {
   }
 }
 
-export interface CrashListData {
-  crashes: {
-    timestamp: string
-    device_id: string
-    version: string
-    signal: string
-    platform: string
-    uptime_sec: number
-    occurrences: number
-  }[]
-}
-
 export interface ReleasesData {
   versions: {
     version: string
@@ -206,6 +194,10 @@ export interface StabilityData extends DeltaEra {
   error_categories: { category: string; count: number }[]
   error_codes: { category: string; code: string; count: number }[]
   recent_crashes: { timestamp: string; device_id: string; version: string; signal: string; platform: string; uptime_sec: number; occurrences: number }[]
+  /** Crashes grouped by signal, fault code, version and board over the range; sample-weighted count, largest first. */
+  crash_clusters: { signal: string; fault_code: string; version: string; board: string; count: number; devices: number }[]
+  /** Error reports per category, code and version over the range; sample-weighted count, largest first. */
+  errors_by_version: { category: string; code: string; version: string; count: number; devices: number }[]
   display_anomalies?: DisplayAnomalyData
 }
 
@@ -298,10 +290,6 @@ export const api = {
 
   getCrashes(queryString: string): Promise<CrashesData> {
     return apiFetch(`/v1/dashboard/crashes?${queryString}`)
-  },
-
-  getCrashList(queryString: string, limit = 50): Promise<CrashListData> {
-    return apiFetch(`/v1/dashboard/crash-list?${queryString}&limit=${limit}`)
   },
 
   // Without `versions` the worker picks the most active releases itself.
