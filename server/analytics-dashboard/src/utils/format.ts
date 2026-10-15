@@ -26,3 +26,13 @@ export function shortDeviceId(id: string): string {
 export function titleCase(snakeId: string): string {
   return snakeId.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
 }
+
+/** What a view shows in place of a delta-era value no device has reported yet. */
+export function waitingForNewClient(devices: number): string {
+  return `Waiting for devices on the new client (${devices} so far)`
+}
+
+/** A 0-1 rate as a percentage, or "n/a" when the filters make it inapplicable. */
+export function formatRate(rate: number | null, digits = 1): string {
+  return rate === null ? 'n/a' : `${(rate * 100).toFixed(digits)}%`
+}

@@ -4,8 +4,14 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import * as queries from "../queries";
 import {
+  DELTA_KINDS,
+  deltaSource,
+  engagementQueries,
+  excludedBy,
+  featuresQueries,
   filterFor,
   filterForKinds,
+  adoptionQueries,
   releasesQueries,
   overviewQueries,
   wAvg,
@@ -98,8 +104,9 @@ describe("filterForKinds", () => {
     expect(filterForKinds(["memory_warning", "crash"], { model: "Voron 2.4" })).toBe(" AND 0");
   });
 
-  it("still restricts to the listed kinds with no filters", () => {
-    expect(filterForKinds(["crash", "session"])).toBe(" AND ((index1 = 'crash') OR (index1 = 'session'))");
+  it("restricts to the listed kinds with one IN list when no filter is active", () => {
+    expect(filterForKinds(["crash", "session"])).toBe(" AND index1 IN ('crash', 'session')");
+    expect(filterForKinds(["crash", "session"], { model: " , '" })).toBe(" AND index1 IN ('crash', 'session')");
   });
 });
 
@@ -134,7 +141,7 @@ function parenBody(sql: string, open: number): string {
   throw new Error(`unbalanced parenthesis at ${open}: ${sql.slice(open, open + 40)}`);
 }
 
-const WEIGHTS = ["_sample_interval", "device_weight"];
+const WEIGHTS = ["_sample_interval", "device_weight", "delta_weight"];
 
 /** Every count, sum and avg in `sql` that is not one of the weighted forms. */
 function unweightedAggregates(sql: string): string[] {
@@ -228,8 +235,8 @@ describe("releasesQueries", () => {
 describe("overviewQueries", () => {
   it("counts every event-written kind and leaves the CDN fleet rows out of total events", () => {
     const total = overviewQueries(30)[1];
-    expect(total).toContain("index1 = 'session'");
-    expect(total).toContain("index1 = 'crash'");
+    expect(total).toMatch(/index1 IN \(.*'session'.*\)/);
+    expect(total).toMatch(/index1 IN \(.*'crash'.*\)/);
     expect(total).not.toContain("cdn_fleet_daily");
   });
 
@@ -239,5 +246,106 @@ describe("overviewQueries", () => {
       expect(sql).toContain(`index1 = 'session' AND ${col("session", "printer_model")} IN ('Voron 2.4')`);
       expect(sql).not.toContain("index1 = 'crash'");
     }
+  });
+});
+
+describe("excludedBy", () => {
+  it("is true only when a filter names a field the kind lacks", () => {
+    expect(excludedBy("crash", { model: "Voron 2.4" })).toBe(true);
+    expect(excludedBy("session", { model: "Voron 2.4" })).toBe(false);
+    expect(excludedBy("crash", { platform: "pi" })).toBe(false);
+    expect(excludedBy("crash")).toBe(false);
+  });
+});
+
+describe("deltaSource", () => {
+  const key = ["device_id", "boot_id", "snapshot_seq"].map((f) => col("panel_usage", f));
+
+  it("names the four delta point kinds", () => {
+    expect([...DELTA_KINDS].sort()).toEqual(
+      ["connection_stability", "overlay_visit", "panel_usage", "widget_interaction"],
+    );
+  });
+
+  it("reads schema-3 rows of its kind only", () => {
+    const sql = deltaSource("panel_usage", ["panel_name"], 30);
+    expect(sql).toContain(`${col("panel_usage", "schema_version")} >= 3`);
+    expect(sql).toContain("index1 = 'panel_usage'");
+    expect(sql).toContain("INTERVAL '30' DAY");
+  });
+
+  it("groups on device, boot, sequence and the dimensions", () => {
+    expect(deltaSource("panel_usage", ["panel_name"], 30)).toContain(
+      `GROUP BY ${[...key, col("panel_usage", "panel_name")].join(", ")}`,
+    );
+    expect(deltaSource("panel_usage", [], 30)).toMatch(new RegExp(`GROUP BY ${key.join(", ")}$`));
+  });
+
+  it("carries one copy of every metric and the sample interval through the dedup", () => {
+    const sql = deltaSource("panel_usage", ["panel_name"], 30);
+    expect(sql).toContain(`argMax(${col("panel_usage", "time_sec")}, timestamp) as time_sec`);
+    expect(sql).toContain(`argMax(${col("panel_usage", "session_duration_sec")}, timestamp) as session_duration_sec`);
+    expect(sql).toContain("argMax(_sample_interval, timestamp) as delta_weight");
+    expect(sql).toContain(`${col("panel_usage", "panel_name")} as panel_name`);
+    expect(sql).not.toContain("schema_version,");
+  });
+
+  it("applies the kind's own filter columns", () => {
+    expect(deltaSource("connection_stability", [], 7, { board: "k1" })).toContain(
+      ` AND ${col("connection_stability", "app_board")} IN ('k1')`,
+    );
+  });
+
+  it("refuses a kind with no idempotency key", () => {
+    expect(() => deltaSource("session", [], 30)).toThrow(/not a delta kind/);
+  });
+});
+
+describe("queries over delta kinds", () => {
+  const SKIP = new Set(["overviewQueries", "releasesQueries", "aeCountsQuery", "executeQuery"]);
+  const builders = Object.entries(queries).filter(
+    ([name]) => /Quer(y|ies)$/.test(name) && !SKIP.has(name),
+  ) as Array<[string, (d: number, l: number | undefined) => string | string[]]>;
+
+  it("read only deduplicated schema-3 rows", () => {
+    let checked = 0;
+    for (const [name, fn] of builders) {
+      const out = name === "crashListQuery" ? fn(30, 10) : fn(30, undefined);
+      for (const sql of Array.isArray(out) ? out : [out]) {
+        for (const kind of DELTA_KINDS) {
+          if (!sql.includes(`'${kind}'`)) continue;
+          checked++;
+          expect(sql, `${name}: ${sql}`).toContain(`${col(kind, "schema_version")} >= 3`);
+          if (!sql.includes("as delta_era_devices")) {
+            const key = ["device_id", "boot_id", "snapshot_seq"].map((f) => col(kind, f)).join(", ");
+            expect(sql, `${name}: ${sql}`).toContain(`GROUP BY ${key}`);
+            expect(sql, `${name}: ${sql}`).toMatch(/FROM \(\s*SELECT/);
+          }
+        }
+      }
+    }
+    expect(checked).toBeGreaterThan(10);
+  });
+
+  it("no longer read the feature_adoption kind", () => {
+    for (const sql of featuresQueries(30)) expect(sql).not.toContain("feature_adoption");
+  });
+
+  it("average session length over boots, not over rows", () => {
+    const sql = engagementQueries(30)[2];
+    expect(sql).toContain("count(DISTINCT boot_id)");
+    expect(sql).toContain("sum((session_duration_sec) * delta_weight)");
+    // One row per snapshot: the per-panel rows of one snapshot carry the same duration.
+    expect(sql).not.toContain(`${col("panel_usage", "panel_name")} as panel_name`);
+  });
+});
+
+describe("distinct devices per field", () => {
+  it("renders the shared template for each distribution", () => {
+    expect(adoptionQueries(7)[0]).toBe(
+      `SELECT ${col("session", "app_platform")} as name, count(DISTINCT ${col("session", "device_id")}) as count` +
+        ` FROM helixscreen_telemetry WHERE timestamp >= NOW() - INTERVAL '7' DAY AND index1 = 'session'` +
+        ` AND ${col("session", "app_platform")} != '' GROUP BY name ORDER BY count DESC`,
+    );
   });
 });

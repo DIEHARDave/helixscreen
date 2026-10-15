@@ -4,6 +4,7 @@
 import { mapEventToDataPoints } from "./analytics";
 import {
   executeQuery,
+  excludedBy,
   aeCountsQuery,
   isIsoDate,
   parseRange,
@@ -74,6 +75,61 @@ export function toYesNo(res: unknown, yesKey: string, noKey: string) {
   const yes = rows.find((r) => String(r.name) === "1")?.count ?? 0;
   const no = rows.find((r) => String(r.name) === "0")?.count ?? 0;
   return { [yesKey]: yes, [noKey]: no, reported: yes + no };
+}
+
+/** The `delta_era_devices` count a query returned; no row means none. */
+function deltaEraCount(res: unknown): number {
+  const d = res as { data?: Array<{ delta_era_devices?: number }> };
+  return Number(d.data?.[0]?.delta_era_devices ?? 0);
+}
+
+/**
+ * A value aggregated from delta rows. Before any device on a delta-era client
+ * has reported there is nothing to aggregate, and 0 would read as a
+ * measurement, so it is null.
+ */
+function deltaValue(deltaEraDevices: number, value: number | undefined): number | null {
+  return deltaEraDevices > 0 ? Number(value ?? 0) : null;
+}
+
+/**
+ * crashes / sessions, or null when the filters exclude every crash or every
+ * session row: a model filter matches no crash, so 0% would read as a
+ * measurement.
+ */
+function crashRate(crashes: number, sessions: number, applies: boolean): number | null {
+  if (!applies) return null;
+  return sessions > 0 ? crashes / sessions : 0;
+}
+
+/** Devices that used one overlay or widget id in the window. */
+export interface FeatureUse {
+  id: string;
+  devices: number;
+}
+
+/**
+ * Adoption per feature id, highest first: devices that used it over the
+ * delta-era device count. Empty until a delta-era device has reported. An id
+ * reported as both an overlay and a widget appears once; the larger device
+ * count is the closest lower bound of their union available without the
+ * device lists.
+ */
+export function deriveFeatureAdoption(
+  overlays: FeatureUse[],
+  widgets: FeatureUse[],
+  deltaEraDevices: number,
+): Array<FeatureUse & { adoption_rate: number }> {
+  if (deltaEraDevices <= 0) return [];
+  const devices = new Map<string, number>();
+  for (const row of [...overlays, ...widgets]) {
+    const id = String(row.id ?? "");
+    if (!id) continue;
+    devices.set(id, Math.max(devices.get(id) ?? 0, Number(row.devices ?? 0)));
+  }
+  return [...devices]
+    .map(([id, n]) => ({ id, devices: n, adoption_rate: n / deltaEraDevices }))
+    .sort((a, b) => b.adoption_rate - a.adoption_rate || a.id.localeCompare(b.id));
 }
 
 const CORS_HEADERS: Record<string, string> = {
@@ -376,6 +432,7 @@ export default {
       const range = url.searchParams.get("range");
       const days = parseRange(range);
       const filters = parseFilters(url.searchParams);
+      const crashRateApplies = !excludedBy("crash", filters) && !excludedBy("session", filters);
 
       try {
         // GET /v1/dashboard/overview
@@ -417,7 +474,7 @@ export default {
           return json({
             active_devices: devicesData.data?.[0]?.active_devices ?? 0,
             total_events: totalData.data?.[0]?.total_events ?? 0,
-            crash_rate: crashRow.session_count > 0 ? crashRow.crash_count / crashRow.session_count : 0,
+            crash_rate: crashRate(crashRow.crash_count, crashRow.session_count, crashRateApplies),
             print_success_rate: printRow.total > 0 ? printRow.successes / printRow.total : 0,
             events_over_time: (timeData.data ?? []).map((r) => ({
               date: r.date,
@@ -629,7 +686,7 @@ export default {
                 version: r.ver,
                 crash_count: r.crash_count,
                 session_count: sessionCount,
-                rate: sessionCount > 0 ? r.crash_count / sessionCount : 0,
+                rate: crashRate(r.crash_count, sessionCount, crashRateApplies),
               };
             }),
             by_signal: (signalData.data ?? []).map((r) => ({
@@ -640,19 +697,19 @@ export default {
             by_platform: Array.from(platMap.values())
               .map((p) => ({
                 ...p,
-                rate: p.session_count > 0 ? p.crash_count / p.session_count : 0,
+                rate: crashRate(p.crash_count, p.session_count, crashRateApplies),
               }))
               .sort((a, b) => b.session_count - a.session_count),
             trailing_14d: {
               crash_count: overall14Crash,
               session_count: overall14Session,
-              rate: overall14Session > 0 ? overall14Crash / overall14Session : 0,
+              rate: crashRate(overall14Crash, overall14Session, crashRateApplies),
               by_platform: Array.from(platMap14.entries())
                 .map(([platform, v]) => ({
                   platform,
                   crash_count: v.crash_count,
                   session_count: v.session_count,
-                  rate: v.session_count > 0 ? v.crash_count / v.session_count : 0,
+                  rate: crashRate(v.crash_count, v.session_count, crashRateApplies),
                 }))
                 .sort((a, b) => b.session_count - a.session_count),
             },
@@ -885,8 +942,10 @@ export default {
         // GET /v1/dashboard/engagement
         if (url.pathname === "/v1/dashboard/engagement") {
           const queries = engagementQueries(days, filters);
-          const [panelTimeRes, panelVisitsRes, sessionTrendRes, themeRes, localeRes, brightnessRes, darkLightRes, widgetPlacementRes, widgetInteractionRes, overlayVisitsRes] =
+          const [panelTimeRes, panelVisitsRes, sessionTrendRes, themeRes, localeRes, brightnessRes, darkLightRes, widgetPlacementRes, widgetInteractionRes, overlayVisitsRes, avgSessionRes, deltaEraRes] =
             await Promise.all(queries.map((q) => executeQuery(queryConfig, q)));
+          const deltaEraDevices = deltaEraCount(deltaEraRes);
+          const avgSession = avgSessionRes as { data: Array<{ avg_session_sec: number }> };
 
           const toList = (res: unknown) => {
             const d = res as { data: Array<{ name: string; count: number }> };
@@ -919,6 +978,8 @@ export default {
           const overlayVisitsData = overlayVisitsRes as { data: Array<{ overlay: string; total_visits: number }> };
 
           return json({
+            delta_era_devices: deltaEraDevices,
+            avg_session_sec: deltaValue(deltaEraDevices, avgSession.data?.[0]?.avg_session_sec),
             panel_time: (panelTimeData.data ?? []).map((r) => ({
               panel: r.panel,
               total_time_sec: r.total_time_sec,
@@ -957,8 +1018,9 @@ export default {
         // GET /v1/dashboard/reliability
         if (url.pathname === "/v1/dashboard/reliability") {
           const queries = reliabilityQueries(days, filters);
-          const [uptimeRes, disconnectRes, longestRes, errorCatsRes, errorCodesRes] =
+          const [uptimeRes, disconnectRes, longestRes, errorCatsRes, errorCodesRes, deltaEraRes] =
             await Promise.all(queries.map((q) => executeQuery(queryConfig, q)));
+          const deltaEraDevices = deltaEraCount(deltaEraRes);
 
           const uptimeData = uptimeRes as { data: Array<{ date: string; avg_uptime_pct: number }> };
           const disconnectData = disconnectRes as { data: Array<{ date: string; avg_disconnects: number }> };
@@ -967,6 +1029,7 @@ export default {
           const errorCodesData = errorCodesRes as { data: Array<{ category: string; code: string; count: number }> };
 
           return json({
+            delta_era_devices: deltaEraDevices,
             uptime_trend: (uptimeData.data ?? []).map((r) => ({
               date: r.date,
               avg_uptime_pct: r.avg_uptime_pct,
@@ -975,7 +1038,7 @@ export default {
               date: r.date,
               avg_disconnects: r.avg_disconnects,
             })),
-            max_disconnect_sec: longestData.data?.[0]?.max_disconnect_sec ?? 0,
+            max_disconnect_sec: deltaValue(deltaEraDevices, longestData.data?.[0]?.max_disconnect_sec),
             error_categories: (errorCatsData.data ?? []).map((r) => ({
               category: r.category,
               count: r.count,
@@ -1013,7 +1076,9 @@ export default {
             executeQuery(queryConfig, queries[12]), // display anomaly by version
             executeQuery(queryConfig, queries[13]), // recent display anomalies
             executeQuery(queryConfig, queries[14]), // display affected devices
+            executeQuery(queryConfig, queries[15]), // delta-era devices
           ]);
+          const deltaEraDevices = deltaEraCount(allResults[12]);
 
           const sessionTimeRes = allResults[0] as { data: Array<{ date: string; session_count: number }> };
           const sessionByVerRes = allResults[1] as { data: Array<{ ver: string; session_count: number }> };
@@ -1066,7 +1131,7 @@ export default {
           const crash_rate_trend = [...allDates].sort().map((date) => {
             const crashes = crashByDate.get(date) ?? 0;
             const sessions = sessionByDate.get(date) ?? 0;
-            return { date, crashes, sessions, rate: sessions > 0 ? crashes / sessions : 0 };
+            return { date, crashes, sessions, rate: crashRate(crashes, sessions, crashRateApplies) };
           });
 
           // Crash count by version (from deduped list)
@@ -1086,7 +1151,7 @@ export default {
                 version: ver,
                 crash_count: crashes,
                 session_count: sessionCount,
-                rate: sessionCount > 0 ? crashes / sessionCount : 0,
+                rate: crashRate(crashes, sessionCount, crashRateApplies),
               };
             });
 
@@ -1105,6 +1170,7 @@ export default {
             : 0;
 
           return json({
+            delta_era_devices: deltaEraDevices,
             crash_rate_trend,
             by_version,
             by_signal,
@@ -1270,34 +1336,14 @@ export default {
         // GET /v1/dashboard/features
         if (url.pathname === "/v1/dashboard/features") {
           const queries = featuresQueries(days, filters);
-          const [adoptionRes, byVersionRes, totalRes] =
+          const [overlayRes, widgetRes, deltaEraRes] =
             await Promise.all(queries.map((q) => executeQuery(queryConfig, q)));
-
-          const adoptionData = adoptionRes as { data: Array<Record<string, number>> };
-          const byVersionData = byVersionRes as { data: Array<Record<string, unknown>> };
-          const totalData = totalRes as { data: Array<{ total_devices: number }> };
-
-          const row = adoptionData.data?.[0] ?? {};
-          const totalDevices = totalData.data?.[0]?.total_devices ?? 0;
-
-          const featureNames = ["macros", "camera", "bed_mesh", "console_gcode",
-            "input_shaper", "filament_management", "manual_probe"];
-
-          const features = featureNames.map(name => ({
-            name,
-            adoption_rate: Number(row[name] ?? 0),
-          }));
+          const deltaEraDevices = deltaEraCount(deltaEraRes);
+          const uses = (res: unknown) => ((res as { data?: FeatureUse[] }).data ?? []);
 
           return json({
-            total_devices: totalDevices,
-            features: features.sort((a, b) => b.adoption_rate - a.adoption_rate),
-            by_version: (byVersionData.data ?? []).map(r => ({
-              version: String(r.version ?? ""),
-              devices: Number(r.devices ?? 0),
-              macros: Number(r.macros ?? 0),
-              camera: Number(r.camera ?? 0),
-              bed_mesh: Number(r.bed_mesh ?? 0),
-            })),
+            delta_era_devices: deltaEraDevices,
+            features: deriveFeatureAdoption(uses(overlayRes), uses(widgetRes), deltaEraDevices),
           });
         }
 
@@ -1305,8 +1351,9 @@ export default {
         if (url.pathname === "/v1/dashboard/ux") {
           const queries = uxInsightsQueries(days, filters);
           const [panelTimeRes, panelVisitRes, settingsFreqRes, settingsDefaultsRes,
-                 totalDevicesRes, avgSessionRes, changeRateRes] =
+                 totalDevicesRes, avgSessionRes, changeRateRes, deltaEraRes] =
             await Promise.all(queries.map((q) => executeQuery(queryConfig, q)));
+          const deltaEraDevices = deltaEraCount(deltaEraRes);
 
           const panelTime = panelTimeRes as { data: Array<{ panel: string; total_time_sec: number }> };
           const panelVisits = panelVisitRes as { data: Array<{ panel: string; total_visits: number; devices: number }> };
@@ -1323,7 +1370,8 @@ export default {
           const leastVisited = panels.length > 0 ? panels[panels.length - 1].panel : "";
 
           return json({
-            avg_session_sec: avgSession.data?.[0]?.avg_session_sec ?? 0,
+            delta_era_devices: deltaEraDevices,
+            avg_session_sec: deltaValue(deltaEraDevices, avgSession.data?.[0]?.avg_session_sec),
             most_visited_panel: mostVisited,
             least_visited_panel: leastVisited,
             settings_change_rate_per_device_per_week:

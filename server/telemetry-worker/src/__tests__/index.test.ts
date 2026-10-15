@@ -2,7 +2,7 @@
 // Tests for telemetry worker endpoints.
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import worker, { toYesNo } from "../index";
+import worker, { deriveFeatureAdoption, toYesNo } from "../index";
 import { mapEventToDataPoints } from "../analytics";
 import * as queries from "../queries";
 import { parseRange } from "../queries";
@@ -1385,6 +1385,145 @@ describe("Dashboard endpoints", () => {
     });
   });
 
+  /** Answers each query by the first rule whose text the SQL contains; anything else is empty. */
+  function mockBySql(rules: Array<[string, Array<Record<string, unknown>>]>) {
+    mockExecuteQuery.mockImplementation(async (_config, sql) => {
+      for (const [needle, data] of rules) if (sql.includes(needle)) return { data };
+      return { data: [] };
+    });
+  }
+
+  // `any`: each test reads its own endpoint's response shape.
+  async function dashboard(path: string): Promise<any> {
+    const res = await worker.fetch(dashboardRequest(path), env);
+    expect(res.status).toBe(200);
+    return res.json();
+  }
+
+  // -- Delta-era endpoints --
+
+  describe("delta-era values", () => {
+    it("engagement is null with a device count until a schema-3 client reports", async () => {
+      mockBySql([
+        ["as delta_era_devices", [{ delta_era_devices: 0 }]],
+        ["as avg_session_sec", [{ avg_session_sec: 120 }]],
+      ]);
+      const data = await dashboard("/v1/dashboard/engagement");
+      expect(data.avg_session_sec).toBeNull();
+      expect(data.delta_era_devices).toBe(0);
+    });
+
+    it("engagement reports the boot-average session once devices report", async () => {
+      mockBySql([
+        ["as delta_era_devices", [{ delta_era_devices: 3 }]],
+        ["toDate(written_at)", [{ date: "2026-10-14", avg_session_sec: 90 }]],
+        ["as avg_session_sec", [{ avg_session_sec: 120 }]],
+      ]);
+      const data = await dashboard("/v1/dashboard/engagement");
+      expect(data.avg_session_sec).toBe(120);
+      expect(data.delta_era_devices).toBe(3);
+      expect(data.session_duration_trend).toEqual([{ date: "2026-10-14", avg_session_sec: 90 }]);
+    });
+
+    it("a resent snapshot reaches the panel totals once", async () => {
+      // AE stores the resend as a second identical row; the dedup subquery
+      // returns the panel once, and the endpoint passes that through.
+      mockBySql([
+        ["as delta_era_devices", [{ delta_era_devices: 1 }]],
+        ["as total_time_sec", [{ panel: "controls", total_time_sec: 60 }]],
+      ]);
+      const data = await dashboard("/v1/dashboard/engagement");
+      expect(data.panel_time).toEqual([{ panel: "controls", total_time_sec: 60 }]);
+      const panelSql = mockExecuteQuery.mock.calls
+        .map((c) => c[1] as string)
+        .find((sql) => sql.includes("as total_time_sec"))!;
+      expect(panelSql).toMatch(/FROM \(\s*SELECT .* GROUP BY \S+, \S+, \S+, \S+\s*\)/s);
+    });
+
+    it("ux insights is null until a schema-3 client reports", async () => {
+      mockBySql([
+        ["as delta_era_devices", [{ delta_era_devices: 0 }]],
+        ["as avg_session_sec", [{ avg_session_sec: 120 }]],
+      ]);
+      const data = await dashboard("/v1/dashboard/ux");
+      expect(data.avg_session_sec).toBeNull();
+      expect(data.delta_era_devices).toBe(0);
+    });
+
+    it("reliability's longest outage is null until a schema-3 client reports", async () => {
+      mockBySql([
+        ["as delta_era_devices", [{ delta_era_devices: 0 }]],
+        ["as max_disconnect_sec", [{ max_disconnect_sec: 30 }]],
+      ]);
+      const data = await dashboard("/v1/dashboard/reliability");
+      expect(data.max_disconnect_sec).toBeNull();
+      expect(data.delta_era_devices).toBe(0);
+    });
+
+    it("reliability reports the longest outage once devices report", async () => {
+      mockBySql([
+        ["as delta_era_devices", [{ delta_era_devices: 2 }]],
+        ["as max_disconnect_sec", [{ max_disconnect_sec: 30 }]],
+      ]);
+      const data = await dashboard("/v1/dashboard/reliability");
+      expect(data.max_disconnect_sec).toBe(30);
+    });
+
+    it("stability carries the device count beside the klippy trend", async () => {
+      mockBySql([
+        ["as delta_era_devices", [{ delta_era_devices: 4 }]],
+        ["as shutdowns", [{ date: "2026-10-14", errors: 2, shutdowns: 1 }]],
+      ]);
+      const data = await dashboard("/v1/dashboard/stability");
+      expect(data.delta_era_devices).toBe(4);
+      expect(data.klippy_trend).toEqual([{ date: "2026-10-14", errors: 2, shutdowns: 1 }]);
+    });
+
+    it("features are adoption derived from overlay and widget deltas", async () => {
+      mockBySql([
+        ["as delta_era_devices", [{ delta_era_devices: 4 }]],
+        ["as overlay_name", [{ id: "fan_control_overlay", devices: 2 }]],
+        ["as widget_id", [{ id: "temperature", devices: 1 }]],
+      ]);
+      const data = await dashboard("/v1/dashboard/features");
+      expect(data.delta_era_devices).toBe(4);
+      expect(data.features).toEqual([
+        { id: "fan_control_overlay", devices: 2, adoption_rate: 0.5 },
+        { id: "temperature", devices: 1, adoption_rate: 0.25 },
+      ]);
+      for (const [, sql] of mockExecuteQuery.mock.calls) expect(sql).not.toContain("feature_adoption");
+    });
+  });
+
+  describe("crash rate under a filter that excludes crashes", () => {
+    const crashRows: Array<[string, Array<Record<string, unknown>>]> = [
+      ["as crash_count", [{ crash_count: 0, session_count: 10 }]],
+      ["as session_count", [{ date: "2026-10-14", ver: "1.0.0", platform: "pi", session_count: 10, device_count: 2 }]],
+    ];
+
+    it("overview reads n/a, not 0%", async () => {
+      mockBySql(crashRows);
+      expect((await dashboard("/v1/dashboard/overview?model=Voron")).crash_rate).toBeNull();
+      mockBySql(crashRows);
+      expect((await dashboard("/v1/dashboard/overview?platform=pi")).crash_rate).toBe(0);
+    });
+
+    it("crashes reads n/a on every rate", async () => {
+      mockBySql(crashRows);
+      const data = await dashboard("/v1/dashboard/crashes?model=Voron");
+      expect(data.trailing_14d.rate).toBeNull();
+      expect(data.by_platform.length).toBeGreaterThan(0);
+      for (const p of data.by_platform) expect(p.rate).toBeNull();
+    });
+
+    it("stability's crash rate trend reads n/a", async () => {
+      mockBySql(crashRows);
+      const data = await dashboard("/v1/dashboard/stability?model=Voron");
+      expect(data.crash_rate_trend.length).toBeGreaterThan(0);
+      for (const d of data.crash_rate_trend) expect(d.rate).toBeNull();
+    });
+  });
+
   // -- GET /v1/dashboard/crash-list --
 
   describe("GET /v1/dashboard/crash-list", () => {
@@ -1880,4 +2019,29 @@ describe("compareVersions", () => {
       });
     });
   }
+});
+
+describe("deriveFeatureAdoption", () => {
+  it("rates each id against the delta-era devices, highest first", () => {
+    expect(
+      deriveFeatureAdoption([{ id: "a_overlay", devices: 1 }], [{ id: "b", devices: 3 }], 4),
+    ).toEqual([
+      { id: "b", devices: 3, adoption_rate: 0.75 },
+      { id: "a_overlay", devices: 1, adoption_rate: 0.25 },
+    ]);
+  });
+
+  it("is empty before any schema-3 device reports", () => {
+    expect(deriveFeatureAdoption([{ id: "a", devices: 1 }], [], 0)).toEqual([]);
+  });
+
+  it("an id reported as both overlay and widget appears once", () => {
+    expect(deriveFeatureAdoption([{ id: "x", devices: 2 }], [{ id: "x", devices: 3 }], 4)).toEqual([
+      { id: "x", devices: 3, adoption_rate: 0.75 },
+    ]);
+  });
+
+  it("drops empty ids", () => {
+    expect(deriveFeatureAdoption([{ id: "", devices: 2 }], [], 4)).toEqual([]);
+  });
 });

@@ -2,7 +2,7 @@
 // SQL query builders for Analytics Engine dashboard endpoints. Every column is
 // named through the schema table (col), never by position.
 
-import { EVENT_FANOUT, POINT_KINDS, col, hasCol } from "./schema";
+import { EVENT_FANOUT, POINT_KINDS, col, hasCol, hasKind } from "./schema";
 
 export interface QueryConfig {
   accountId: string;
@@ -40,6 +40,9 @@ const SAMPLE_WEIGHT = "_sample_interval";
  */
 const DEVICE_WEIGHT = "device_weight";
 const deviceWeight = `argMax(${SAMPLE_WEIGHT}, timestamp) as ${DEVICE_WEIGHT}`;
+
+/** The weight column deltaSource exposes: the sample interval of one deduplicated snapshot row. */
+const DELTA_WEIGHT = "delta_weight";
 
 export function wCount(weight = SAMPLE_WEIGHT): string {
   return `sum(${weight})`;
@@ -92,12 +95,6 @@ function filterValues(raw?: string): string[] {
     .filter(Boolean);
 }
 
-function requireKind(kind: string): void {
-  if (!Object.prototype.hasOwnProperty.call(POINT_KINDS, kind)) {
-    throw new Error(`unknown point kind: ${kind}`);
-  }
-}
-
 const EXCLUDED = " AND 0";
 
 /**
@@ -106,7 +103,7 @@ const EXCLUDED = " AND 0";
  * " AND 0": it cannot be matched against a column that means something else.
  */
 export function filterFor(kind: string, filters?: FilterParams): string {
-  requireKind(kind);
+  if (!hasKind(kind)) throw new Error(`unknown point kind: ${kind}`);
   let clause = "";
   for (const key of FILTER_KEYS) {
     const values = filterValues(filters?.[key]);
@@ -118,17 +115,23 @@ export function filterFor(kind: string, filters?: FilterParams): string {
   return clause;
 }
 
+/** True when the active filters name a field this kind does not have, so none of its rows can match. */
+export function excludedBy(kind: string, filters?: FilterParams): boolean {
+  return filterFor(kind, filters) === EXCLUDED;
+}
+
 /**
  * The filter clause for a query over several point kinds, whose columns differ:
  * " AND ((index1 = 'a' AND ...) OR (index1 = 'b' AND ...))". A kind the
- * filters exclude drops out of the OR; when every kind does, " AND 0".
+ * filters exclude drops out of the OR; when every kind does, " AND 0". With
+ * no active filter it is the plain " AND index1 IN ('a', 'b')".
  */
 export function filterForKinds(kinds: string[], filters?: FilterParams): string {
-  const branches: string[] = [];
-  for (const kind of kinds) {
-    const f = filterFor(kind, filters);
-    if (f !== EXCLUDED) branches.push(`(index1 = '${kind}'${f})`);
+  const clauses = kinds.map((kind) => [kind, filterFor(kind, filters)] as const);
+  if (clauses.every(([, f]) => f === "")) {
+    return ` AND index1 IN (${kinds.map((k) => `'${k}'`).join(", ")})`;
   }
+  const branches = clauses.filter(([, f]) => f !== EXCLUDED).map(([kind, f]) => `(index1 = '${kind}'${f})`);
   return branches.length === 0 ? EXCLUDED : ` AND (${branches.join(" OR ")})`;
 }
 
@@ -251,14 +254,90 @@ const memSnap = colsOf("memory_snapshot");
 const memWarn = colsOf("memory_warning");
 const hardware = colsOf("hardware_profile");
 const settings = colsOf("settings_snapshot");
-const panelUsage = colsOf("panel_usage");
-const connection = colsOf("connection_stability");
 const errorEnc = colsOf("error_encountered");
 const printStart = colsOf("print_start_context");
 const perf = colsOf("performance_snapshot");
-const features = colsOf("feature_adoption");
 const settingsChange = colsOf("settings_change");
 const cdnFleet = colsOf("cdn_fleet_daily");
+
+const DATASET = "helixscreen_telemetry";
+
+/** "timestamp >= NOW() - INTERVAL 'N' DAY": the query window on AE write time. */
+const inRange = (days: number) => `timestamp >= NOW() - INTERVAL '${days}' DAY`;
+
+/**
+ * Distinct devices per non-empty value of one field of one kind, as
+ * (name, count) rows, most devices first.
+ */
+function distinctDevicesBy(kind: string, field: string, days: number, filters?: FilterParams, limit = ""): string {
+  const c = colsOf(kind);
+  return `SELECT ${c(field)} as name, count(DISTINCT ${c("device_id")}) as count FROM ${DATASET} WHERE ${inRange(days)} AND index1 = '${kind}' AND ${c(field)} != ''${filterFor(kind, filters)} GROUP BY name ORDER BY count DESC${limit}`;
+}
+
+// ---------- Delta-era sources ----------
+
+/** Delta-era client events carry this schema_version or later. */
+const DELTA_SCHEMA = 3;
+
+const DELTA_KEY = ["device_id", "boot_id", "snapshot_seq"];
+
+/**
+ * Point kinds that report per-window deltas: they carry the idempotency key
+ * (device_id, boot_id, snapshot_seq) and a schema_version to gate on.
+ */
+export const DELTA_KINDS: readonly string[] = Object.keys(POINT_KINDS).filter((kind) =>
+  [...DELTA_KEY, "schema_version"].every((field) => hasCol(kind, field)),
+);
+
+/** The kinds the panel_usage event writes; a device with any of them reported UI activity. */
+const PANEL_EVENT_KINDS = EVENT_FANOUT.panel_usage;
+
+/** The time the snapshot was first written, as deltaSource exposes it. */
+const WRITTEN_AT = "written_at";
+
+/**
+ * A subquery over the schema-3 rows of one delta kind with resends removed:
+ * one row per (device, boot, snapshot_seq, ...dims). A resent batch stores an
+ * identical second row, so every other column keeps one copy (argMax on write
+ * time). Exposes the key and dims under their field names, each metric double
+ * under its field name, `written_at` (first write) and `delta_weight` (the
+ * row's _sample_interval). Rows from older clients are cumulative, never
+ * deltas, so they are left out rather than summed.
+ */
+export function deltaSource(kind: string, dims: string[], days: number, filters?: FilterParams): string {
+  if (!DELTA_KINDS.includes(kind)) throw new Error(`${kind} is not a delta kind`);
+  const c = colsOf(kind);
+  const key = [...DELTA_KEY, ...dims];
+  const metrics = POINT_KINDS[kind].columns
+    .filter((def) => def.type === "double" && !key.includes(def.field) && def.field !== "schema_version")
+    .map((def) => `argMax(${c(def.field)}, timestamp) as ${def.field}`);
+  const select = [
+    ...key.map((field) => `${c(field)} as ${field}`),
+    ...metrics,
+    `min(timestamp) as ${WRITTEN_AT}`,
+    `argMax(${SAMPLE_WEIGHT}, timestamp) as ${DELTA_WEIGHT}`,
+  ];
+  return `SELECT ${select.join(", ")}
+      FROM ${DATASET}
+      WHERE ${inRange(days)} AND index1 = '${kind}' AND ${c("schema_version")} >= ${DELTA_SCHEMA}${filterFor(kind, filters)}
+      GROUP BY ${key.map(c).join(", ")}`;
+}
+
+/** Distinct devices with schema-3 rows of any of `kinds` in the window, as `delta_era_devices`. */
+function deltaEraDevices(kinds: string[], days: number, filters?: FilterParams): string {
+  const schema = sharedCol(kinds, () => "schema_version");
+  return `SELECT count(DISTINCT ${DEVICE_ID}) as delta_era_devices FROM ${DATASET} WHERE ${inRange(days)} AND ${schema} >= ${DELTA_SCHEMA}${filterForKinds(kinds, filters)}`;
+}
+
+/**
+ * Average over boots of a deltaSource field summed per boot, for use over
+ * deltaSource rows. A boot is a session: each snapshot's session_duration_sec
+ * is the window it covers, so a boot's length is the sum over its snapshots.
+ * boot_id is random per process start, so it identifies a boot on its own.
+ */
+function perBootAvg(field: string): string {
+  return `${wSum(field, DELTA_WEIGHT)} / count(DISTINCT boot_id)`;
+}
 
 export function overviewQueries(days: number, filters?: FilterParams): string[] {
   const dataset = "helixscreen_telemetry";
@@ -330,10 +409,7 @@ export function overviewQueries(days: number, filters?: FilterParams): string[] 
 }
 
 export function adoptionQueries(days: number, filters?: FilterParams): string[] {
-  const dataset = "helixscreen_telemetry";
-  const f = filterFor("session", filters);
-  const distribution = (field: string) =>
-    `SELECT ${session(field)} as name, count(DISTINCT ${session("device_id")}) as count FROM ${dataset} WHERE timestamp >= NOW() - INTERVAL '${days}' DAY AND index1 = 'session' AND ${session(field)} != ''${f} GROUP BY name ORDER BY count DESC`;
+  const distribution = (field: string) => distinctDevicesBy("session", field, days, filters);
   return [
     // Platforms
     distribution("app_platform"),
@@ -549,9 +625,8 @@ export function hardwareQueries(days: number, filters?: FilterParams): string[] 
   const dataset = "helixscreen_telemetry";
   const f = filterFor("hardware_profile", filters);
   const dev = hardware("device_id");
-  // Distinct devices per value of one hardware_profile field, empty excluded.
   const distribution = (field: string, limit = "") =>
-    `SELECT ${hardware(field)} as name, count(DISTINCT ${dev}) as count FROM ${dataset} WHERE timestamp >= NOW() - INTERVAL '${days}' DAY AND index1 = 'hardware_profile' AND ${hardware(field)} != ''${f} GROUP BY name ORDER BY count DESC${limit}`;
+    distinctDevicesBy("hardware_profile", field, days, filters, limit);
   const capBits = Array.from(
     { length: 13 },
     (_, i) => `      ${wSum(`toUInt32(bitAnd(toUInt32(caps), ${1 << i}) > 0)`, DEVICE_WEIGHT)} as cap_${i},`,
@@ -623,81 +698,79 @@ ${capBits}
 
 export function engagementQueries(days: number, filters?: FilterParams): string[] {
   const dataset = "helixscreen_telemetry";
-  const panel = panelUsage("panel_name");
-  const widgetInteraction = colsOf("widget_interaction");
-  const overlay = colsOf("overlay_visit");
   const widgetPlacement = colsOf("widget_placement");
-  const panelF = filterFor("panel_usage", filters);
   const settingsF = filterFor("settings_snapshot", filters);
-  // Distinct devices per value of one settings_snapshot field, empty excluded.
-  const settingsDistribution = (field: string) =>
-    `SELECT ${settings(field)} as name, count(DISTINCT ${settings("device_id")}) as count FROM ${dataset} WHERE timestamp >= NOW() - INTERVAL '${days}' DAY AND index1 = 'settings_snapshot' AND ${settings(field)} != ''${settingsF} GROUP BY name ORDER BY count DESC`;
+  const settingsDistribution = (field: string) => distinctDevicesBy("settings_snapshot", field, days, filters);
   const brightness = settings("brightness_pct");
+  const panels = deltaSource("panel_usage", ["panel_name"], days, filters);
+  const snapshots = deltaSource("panel_usage", [], days, filters);
+  const shownPanel = "panel_name != '' AND panel_name != 'home'";
   return [
-    // Panel time (exclude "home")
-    `SELECT ${panel} as panel, ${wSum(panelUsage("time_sec"))} as total_time_sec FROM ${dataset} WHERE timestamp >= NOW() - INTERVAL '${days}' DAY AND index1 = 'panel_usage' AND ${panel} != '' AND ${panel} != 'home'${panelF} GROUP BY panel ORDER BY total_time_sec DESC`,
-    // Panel visits (exclude "home")
-    `SELECT ${panel} as panel, ${wSum(panelUsage("visits"))} as total_visits FROM ${dataset} WHERE timestamp >= NOW() - INTERVAL '${days}' DAY AND index1 = 'panel_usage' AND ${panel} != '' AND ${panel} != 'home'${panelF} GROUP BY panel ORDER BY total_visits DESC`,
-    // Session duration trend (avg by date)
+    // 0: Panel time (exclude "home")
+    `SELECT panel_name as panel, ${wSum("time_sec", DELTA_WEIGHT)} as total_time_sec FROM (${panels}) WHERE ${shownPanel} GROUP BY panel ORDER BY total_time_sec DESC`,
+    // 1: Panel visits (exclude "home")
+    `SELECT panel_name as panel, ${wSum("visits", DELTA_WEIGHT)} as total_visits FROM (${panels}) WHERE ${shownPanel} GROUP BY panel ORDER BY total_visits DESC`,
+    // 2: Session duration trend: per-boot average of the time each boot reported that day
     `SELECT
-      toDate(timestamp) as date,
-      ${wAvg(panelUsage("session_duration_sec"))} as avg_session_sec
-    FROM ${dataset}
-    WHERE timestamp >= NOW() - INTERVAL '${days}' DAY AND index1 = 'panel_usage'${panelF}
+      toDate(${WRITTEN_AT}) as date,
+      ${perBootAvg("session_duration_sec")} as avg_session_sec
+    FROM (${snapshots})
     GROUP BY date
     ORDER BY date`,
-    // Theme distribution (deduplicated by device_id)
+    // 3: Theme distribution (deduplicated by device_id)
     settingsDistribution("theme_name"),
-    // Locale distribution (deduplicated by device_id)
+    // 4: Locale distribution (deduplicated by device_id)
     settingsDistribution("locale"),
-    // Brightness quantiles
+    // 5: Brightness quantiles
     `SELECT
       quantileExactWeighted(0.25)(${brightness}, _sample_interval) as p25,
       quantileExactWeighted(0.5)(${brightness}, _sample_interval) as p50,
       quantileExactWeighted(0.75)(${brightness}, _sample_interval) as p75
     FROM ${dataset}
     WHERE timestamp >= NOW() - INTERVAL '${days}' DAY AND index1 = 'settings_snapshot'${settingsF}`,
-    // Dark vs Light mode distribution (deduplicated by device_id)
+    // 6: Dark vs Light mode distribution (deduplicated by device_id)
     settingsDistribution("theme"),
-    // Widget placement (unique per device)
+    // 7: Widget placement (unique per device)
     `SELECT ${widgetPlacement("widget_id")} as widget, count(DISTINCT ${widgetPlacement("device_id")}) as devices FROM ${dataset} WHERE timestamp >= NOW() - INTERVAL '${days}' DAY AND index1 = 'widget_placement' AND ${widgetPlacement("widget_id")} != ''${filterFor("widget_placement", filters)} GROUP BY widget ORDER BY devices DESC`,
-    // Widget interactions
-    `SELECT ${widgetInteraction("widget_id")} as widget, ${wSum(widgetInteraction("count"))} as interactions FROM ${dataset} WHERE timestamp >= NOW() - INTERVAL '${days}' DAY AND index1 = 'widget_interaction' AND ${widgetInteraction("widget_id")} != ''${filterFor("widget_interaction", filters)} GROUP BY widget ORDER BY interactions DESC`,
-    // Overlay visits
-    `SELECT ${overlay("overlay_name")} as overlay, ${wSum(overlay("count"))} as total_visits FROM ${dataset} WHERE timestamp >= NOW() - INTERVAL '${days}' DAY AND index1 = 'overlay_visit' AND ${overlay("overlay_name")} != ''${filterFor("overlay_visit", filters)} GROUP BY overlay ORDER BY total_visits DESC`,
+    // 8: Widget interactions
+    `SELECT widget_id as widget, ${wSum("count", DELTA_WEIGHT)} as interactions FROM (${deltaSource("widget_interaction", ["widget_id"], days, filters)}) WHERE widget_id != '' GROUP BY widget ORDER BY interactions DESC`,
+    // 9: Overlay visits
+    `SELECT overlay_name as overlay, ${wSum("count", DELTA_WEIGHT)} as total_visits FROM (${deltaSource("overlay_visit", ["overlay_name"], days, filters)}) WHERE overlay_name != '' GROUP BY overlay ORDER BY total_visits DESC`,
+    // 10: Avg session duration over the whole window
+    `SELECT ${perBootAvg("session_duration_sec")} as avg_session_sec FROM (${snapshots})`,
+    // 11: Devices on a delta-era client
+    deltaEraDevices(PANEL_EVENT_KINDS, days, filters),
   ];
 }
 
 export function reliabilityQueries(days: number, filters?: FilterParams): string[] {
   const dataset = "helixscreen_telemetry";
-  const connF = filterFor("connection_stability", filters);
   const errF = filterFor("error_encountered", filters);
-  const connected = connection("total_connected_sec");
-  const disconnected = connection("total_disconnected_sec");
   const category = errorEnc("category");
+  const windows = deltaSource("connection_stability", [], days, filters);
   return [
-    // Uptime % (avg connected/(connected+disconnected) by date)
+    // 0: Uptime %: connected time over observed time, per day
     `SELECT
-      toDate(timestamp) as date,
-      ${wAvg(`${connected} / (${connected} + ${disconnected} + 0.001)`)} as avg_uptime_pct
-    FROM ${dataset}
-    WHERE timestamp >= NOW() - INTERVAL '${days}' DAY AND index1 = 'connection_stability'${connF}
+      toDate(${WRITTEN_AT}) as date,
+      100 * ${wSum("total_connected_sec", DELTA_WEIGHT)} / (${wSum("total_connected_sec + total_disconnected_sec", DELTA_WEIGHT)} + 0.001) as avg_uptime_pct
+    FROM (${windows})
     GROUP BY date
     ORDER BY date`,
-    // Disconnect frequency (avg by date)
+    // 1: Disconnects per boot, per day
     `SELECT
-      toDate(timestamp) as date,
-      ${wAvg(connection("disconnect_count"))} as avg_disconnects
-    FROM ${dataset}
-    WHERE timestamp >= NOW() - INTERVAL '${days}' DAY AND index1 = 'connection_stability'${connF}
+      toDate(${WRITTEN_AT}) as date,
+      ${perBootAvg("disconnect_count")} as avg_disconnects
+    FROM (${windows})
     GROUP BY date
     ORDER BY date`,
-    // Longest outage
-    `SELECT max(${connection("longest_disconnect_sec")}) as max_disconnect_sec FROM ${dataset} WHERE timestamp >= NOW() - INTERVAL '${days}' DAY AND index1 = 'connection_stability'${connF}`,
-    // Top error categories
+    // 2: Longest outage (an outage spanning snapshots keeps its start, so max is the real one)
+    `SELECT max(longest_disconnect_sec) as max_disconnect_sec FROM (${windows})`,
+    // 3: Top error categories
     `SELECT ${category} as category, ${wCount()} as count FROM ${dataset} WHERE timestamp >= NOW() - INTERVAL '${days}' DAY AND index1 = 'error_encountered' AND ${category} != ''${errF} GROUP BY category ORDER BY count DESC LIMIT 20`,
-    // Error codes
+    // 4: Error codes
     `SELECT ${category} as category, ${errorEnc("code")} as code, ${wCount()} as count FROM ${dataset} WHERE timestamp >= NOW() - INTERVAL '${days}' DAY AND index1 = 'error_encountered' AND ${category} != ''${errF} GROUP BY category, code ORDER BY count DESC LIMIT 50`,
+    // 5: Devices on a delta-era client
+    deltaEraDevices(["connection_stability"], days, filters),
   ];
 }
 
@@ -705,7 +778,6 @@ export function stabilityQueries(days: number, filters?: FilterParams): string[]
   const dataset = "helixscreen_telemetry";
   const crashF = filterFor("crash", filters);
   const sessF = filterFor("session", filters);
-  const connF = filterFor("connection_stability", filters);
   const errF = filterFor("error_encountered", filters);
   const category = errorEnc("category");
   const code = errorEnc("code");
@@ -724,7 +796,7 @@ export function stabilityQueries(days: number, filters?: FilterParams): string[]
     // 5: Average uptime before crash
     `SELECT ${wAvg(crash("uptime_sec"))} as avg_uptime_sec FROM ${dataset} WHERE timestamp >= NOW() - INTERVAL '${days}' DAY AND index1 = 'crash'${crashF}`,
     // 6: Klippy errors and shutdowns over time
-    `SELECT toDate(timestamp) as date, ${wSum(connection("klippy_error_count"))} as errors, ${wSum(connection("klippy_shutdown_count"))} as shutdowns FROM ${dataset} WHERE timestamp >= NOW() - INTERVAL '${days}' DAY AND index1 = 'connection_stability'${connF} GROUP BY date ORDER BY date`,
+    `SELECT toDate(${WRITTEN_AT}) as date, ${wSum("klippy_error_count", DELTA_WEIGHT)} as errors, ${wSum("klippy_shutdown_count", DELTA_WEIGHT)} as shutdowns FROM (${deltaSource("connection_stability", [], days, filters)}) GROUP BY date ORDER BY date`,
     // 7: Memory warning count over time
     `SELECT toDate(timestamp) as date, ${wCount()} as count FROM ${dataset} WHERE timestamp >= NOW() - INTERVAL '${days}' DAY AND index1 = 'memory_warning'${filterFor("memory_warning", filters)} GROUP BY date ORDER BY date`,
     // 8: Error hotspots (categories)
@@ -741,6 +813,8 @@ export function stabilityQueries(days: number, filters?: FilterParams): string[]
     `SELECT timestamp, ${errorEnc("device_id")} as device_id, ${errorEnc("app_version")} as version, ${errorEnc("app_platform")} as platform, ${code} as code, ${errorEnc("context")} as context, ${errorEnc("uptime_sec")} as uptime_sec FROM ${dataset} WHERE timestamp >= NOW() - INTERVAL '${days}' DAY AND ${display}${errF} ORDER BY timestamp DESC LIMIT 50`,
     // 14: Display anomaly affected devices count
     `SELECT count(DISTINCT ${errorEnc("device_id")}) as affected_devices FROM ${dataset} WHERE timestamp >= NOW() - INTERVAL '${days}' DAY AND ${display}${errF}`,
+    // 15: Devices on a delta-era client
+    deltaEraDevices(["connection_stability"], days, filters),
   ];
 }
 
@@ -830,68 +904,42 @@ export function performanceQueries(days: number, filters?: FilterParams): string
   ];
 }
 
+/**
+ * Feature adoption from overlay and widget deltas: per id, the devices that
+ * used it at least once in the window, as (id, devices) rows. The denominator
+ * is the delta-era device count (query 2). AE has no UNION, so overlays and
+ * widgets are two queries.
+ */
 export function featuresQueries(days: number, filters?: FilterParams): string[] {
-  const dataset = "helixscreen_telemetry";
-  const f = filterFor("feature_adoption", filters);
-  const dev = features("device_id");
-  // [response alias, feature_adoption field]
-  const FEATURES: Array<[string, string]> = [
-    ["macros", "macros"],
-    ["camera", "camera"],
-    ["bed_mesh", "bed_mesh"],
-    ["console_gcode", "console_gcode"],
-    ["input_shaper", "input_shaper"],
-    ["filament_management", "filament_management"],
-    ["manual_probe", "manual_probe"],
-    ["extra_bitmask_avg", "feature_bitmask"],
-  ];
-  const latest = FEATURES.map(([alias, field]) => `argMax(${features(field)}, timestamp) as latest_${alias}`).join(", ");
-  const latestAvgs = FEATURES.map(([alias]) => `${wAvg(`latest_${alias}`, DEVICE_WEIGHT)} as ${alias}`).join(", ");
-  const rowAvgs = FEATURES.map(([alias, field]) => `${wAvg(features(field))} as ${alias}`).join(", ");
+  const usedBy = (kind: string, idField: string) =>
+    `SELECT ${idField} as id, count(DISTINCT device_id) as devices FROM (${deltaSource(kind, [idField], days, filters)}) WHERE ${idField} != '' AND count > 0 GROUP BY id ORDER BY devices DESC`;
   return [
-    // 0: Per-feature adoption rate (deduplicated by device)
-    `SELECT
-      ${latestAvgs},
-      ${wCount(DEVICE_WEIGHT)} as total_devices
-    FROM (
-      SELECT ${dev}, ${latest}, ${deviceWeight}
-      FROM ${dataset}
-      WHERE timestamp >= NOW() - INTERVAL '${days}' DAY AND index1 = 'feature_adoption'${f}
-      GROUP BY ${dev}
-    )`,
-    // 1: Feature adoption by version
-    `SELECT
-      ${features("app_version")} as version,
-      ${rowAvgs},
-      count(DISTINCT ${dev}) as devices
-    FROM ${dataset}
-    WHERE timestamp >= NOW() - INTERVAL '${days}' DAY AND index1 = 'feature_adoption' AND ${features("app_version")} != ''${f}
-    GROUP BY version
-    ORDER BY version`,
-    // 2: Total tracked devices
-    `SELECT count(DISTINCT ${dev}) as total_devices
-    FROM ${dataset}
-    WHERE timestamp >= NOW() - INTERVAL '${days}' DAY AND index1 = 'feature_adoption'${f}`,
+    // 0: Overlays, by stable overlay id
+    usedBy("overlay_visit", "overlay_name"),
+    // 1: Home widgets, by widget id
+    usedBy("widget_interaction", "widget_id"),
+    // 2: Devices on a delta-era client
+    deltaEraDevices(PANEL_EVENT_KINDS, days, filters),
   ];
 }
 
 export function uxInsightsQueries(days: number, filters?: FilterParams): string[] {
   const dataset = "helixscreen_telemetry";
-  const panelF = filterFor("panel_usage", filters);
   const changeF = filterFor("settings_change", filters);
-  const panel = panelUsage("panel_name");
   const setting = settingsChange("setting");
+  const panels = deltaSource("panel_usage", ["panel_name"], days, filters);
+  const shownPanel = "panel_name != '' AND panel_name != 'home'";
   return [
     // 0: Panel time distribution
-    `SELECT ${panel} as panel, ${wSum(panelUsage("time_sec"))} as total_time_sec
-    FROM ${dataset}
-    WHERE timestamp >= NOW() - INTERVAL '${days}' DAY AND index1 = 'panel_usage' AND ${panel} != '' AND ${panel} != 'home'${panelF}
+    `SELECT panel_name as panel, ${wSum("time_sec", DELTA_WEIGHT)} as total_time_sec
+    FROM (${panels})
+    WHERE ${shownPanel}
     GROUP BY panel
     ORDER BY total_time_sec DESC`,
     // 1: Panel visit frequency
-    `SELECT ${panel} as panel, ${wSum(panelUsage("visits"))} as total_visits, count(DISTINCT ${panelUsage("device_id")}) as devices
-    FROM ${dataset}
-    WHERE timestamp >= NOW() - INTERVAL '${days}' DAY AND index1 = 'panel_usage' AND ${panel} != '' AND ${panel} != 'home'${panelF}
+    `SELECT panel_name as panel, ${wSum("visits", DELTA_WEIGHT)} as total_visits, count(DISTINCT device_id) as devices
+    FROM (${panels})
+    WHERE ${shownPanel}
     GROUP BY panel
     ORDER BY total_visits DESC`,
     // 2: Settings change frequency
@@ -910,14 +958,15 @@ export function uxInsightsQueries(days: number, filters?: FilterParams): string[
     `SELECT count(DISTINCT ${session("device_id")}) as total_devices
     FROM ${dataset}
     WHERE timestamp >= NOW() - INTERVAL '${days}' DAY AND index1 = 'session'${filterFor("session", filters)}`,
-    // 5: Avg session duration
-    `SELECT ${wAvg(panelUsage("session_duration_sec"))} as avg_session_sec
-    FROM ${dataset}
-    WHERE timestamp >= NOW() - INTERVAL '${days}' DAY AND index1 = 'panel_usage'${panelF}`,
+    // 5: Avg session duration: per-boot average
+    `SELECT ${perBootAvg("session_duration_sec")} as avg_session_sec
+    FROM (${deltaSource("panel_usage", [], days, filters)})`,
     // 6: Settings change rate
     `SELECT ${wCount()} as total_changes, count(DISTINCT ${settingsChange("device_id")}) as devices
     FROM ${dataset}
     WHERE timestamp >= NOW() - INTERVAL '${days}' DAY AND index1 = 'settings_change'${changeF}`,
+    // 7: Devices on a delta-era client
+    deltaEraDevices(["panel_usage"], days, filters),
   ];
 }
 

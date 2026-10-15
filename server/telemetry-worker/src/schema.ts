@@ -511,7 +511,7 @@ export const R2_ONLY: Record<string, string[]> = {
 
 // ---------- Lookup ----------
 
-function hasKind(kindName: string): boolean {
+export function hasKind(kindName: string): boolean {
   return Object.prototype.hasOwnProperty.call(POINT_KINDS, kindName);
 }
 

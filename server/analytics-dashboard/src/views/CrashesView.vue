@@ -12,7 +12,7 @@
         <div v-if="data.trailing_14d" class="gauge-section">
           <div class="gauge-card" :class="gaugeStatus">
             <div class="gauge-label">Trailing 14-day session crash rate</div>
-            <div class="gauge-value">{{ (data.trailing_14d.rate * 100).toFixed(2) }}%</div>
+            <div class="gauge-value">{{ formatRate(data.trailing_14d.rate, 2) }}</div>
             <div class="gauge-sub">
               {{ data.trailing_14d.crash_count.toLocaleString() }} crashes
               /
@@ -35,7 +35,7 @@
               :class="platformRateClass(p.rate)"
             >
               <div class="platform-name">{{ p.platform }}</div>
-              <div class="platform-rate">{{ (p.rate * 100).toFixed(2) }}%</div>
+              <div class="platform-rate">{{ formatRate(p.rate, 2) }}</div>
               <div class="platform-sub">
                 {{ p.crash_count }} crashes / {{ p.session_count.toLocaleString() }} sessions
                 <br>
@@ -56,7 +56,7 @@
               class="platform-card limited"
             >
               <div class="platform-name">{{ p.platform }}</div>
-              <div class="platform-rate">{{ (p.rate * 100).toFixed(1) }}%</div>
+              <div class="platform-rate">{{ formatRate(p.rate) }}</div>
               <div class="platform-sub">
                 {{ p.crash_count }} crashes / {{ p.session_count }} sessions
                 <br>
@@ -133,7 +133,7 @@ import { useFiltersStore } from '@/stores/filters'
 import { api } from '@/services/api'
 import type { CrashesData, CrashListData } from '@/services/api'
 import type { ChartOptions } from 'chart.js'
-import { formatDuration, formatTimestamp, shortDeviceId } from '@/utils/format'
+import { formatDuration, formatRate, formatTimestamp, shortDeviceId } from '@/utils/format'
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16']
 
@@ -170,7 +170,7 @@ const versionChartData = computed(() => ({
   labels: data.value?.by_version.map(v => v.version) ?? [],
   datasets: [{
     label: 'Crash Rate %',
-    data: data.value?.by_version.map(v => v.rate * 100) ?? [],
+    data: data.value?.by_version.map(v => (v.rate === null ? null : v.rate * 100)) ?? [],
     backgroundColor: '#ef4444'
   }]
 }))
@@ -188,13 +188,15 @@ const GAUGE_GREEN = 0.015 // < 1.5% sessions → green
 const GAUGE_YELLOW = 0.03 // 1.5%–3% sessions → yellow, above → red
 
 const gaugeStatus = computed(() => {
-  const r = data.value?.trailing_14d?.rate ?? 0
+  const r = data.value?.trailing_14d?.rate ?? null
+  if (r === null) return ''
   if (r < GAUGE_GREEN) return 'gauge-green'
   if (r < GAUGE_YELLOW) return 'gauge-yellow'
   return 'gauge-red'
 })
 
-function platformRateClass(rate: number): string {
+function platformRateClass(rate: number | null): string {
+  if (rate === null) return ''
   if (rate < GAUGE_GREEN) return 'rate-green'
   if (rate < GAUGE_YELLOW) return 'rate-yellow'
   return 'rate-red'
