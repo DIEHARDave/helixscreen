@@ -36,18 +36,13 @@ std::string get_filename_basename(const std::string& path);
  */
 std::string join_gcode_path(const std::string& dir, const std::string& filename);
 
-/// A Moonraker-relative path's directory and filename.
-struct GcodePathParts {
-    std::string dir;      ///< "" for the gcodes root
-    std::string filename; ///< bare filename
-};
-
-/**
- * @brief The inverse of join_gcode_path(): split at the last '/'.
- *
- * A bare filename has the root ("") as its directory.
- */
-GcodePathParts split_gcode_path(const std::string& path);
+/// Where a path's directory part ends: its last '/', or npos for a bare name.
+/// Moonraker and USB paths separate with '/' alone, so a backslash is part of
+/// a name. gcode_dir_of() and get_filename_basename() both split here, so the
+/// two halves of a path always come from one split.
+[[nodiscard]] inline size_t last_path_separator(const std::string& path) {
+    return path.rfind('/');
+}
 
 /**
  * @brief Does this filename carry an extension we treat as printable?
@@ -230,3 +225,14 @@ bool is_qidi_3mf_extract(const std::string& entry, const std::string& print_file
 bool is_3mf(const std::string& name);
 
 } // namespace helix::gcode
+
+namespace helix {
+
+/// The directory a gcodes-root path sits in: "sub/dir/Foo.gcode" -> "sub/dir", "Foo.gcode" -> "".
+/// The inverse of gcode::join_gcode_path() together with gcode::get_filename_basename().
+[[nodiscard]] inline std::string gcode_dir_of(const std::string& gcode_path) {
+    const auto slash = gcode::last_path_separator(gcode_path);
+    return slash == std::string::npos ? std::string() : gcode_path.substr(0, slash);
+}
+
+} // namespace helix

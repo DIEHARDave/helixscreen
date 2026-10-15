@@ -1943,7 +1943,7 @@ void PrintPreparationManager::modify_and_print_with_remap(
     // between the download and the delete below otherwise leaves a full copy of
     // the job on a board that has no room for one and no sweeper that sees it.
     const std::string local_download_path = gcode::GCodeFileModifier::generate_temp_path(
-        "remap_dl_" + gcode::split_gcode_path(file_path).filename);
+        "remap_dl_" + gcode::get_filename_basename(file_path));
     if (local_download_path.empty()) {
         NOTIFY_ERROR(lv_tr("Cannot remap G-code: no temp directory available"));
         abandon_start("remap_no_temp_dir", on_completion);

@@ -652,7 +652,7 @@ void PrintSelectPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
                     // separates a server-side phantom (fresh listing offered it) from
                     // navigation into a stale index (listing is old or lacks it).
                     const std::string& failed_path = self->current_path_;
-                    const std::string leaf = helix::gcode::split_gcode_path(failed_path).filename;
+                    const std::string leaf = helix::gcode::get_filename_basename(failed_path);
                     const bool offered_by_listing = std::any_of(
                         self->file_list_.begin(), self->file_list_.end(),
                         [&leaf](const PrintFileData& f) { return f.is_dir && f.filename == leaf; });
@@ -2878,8 +2878,8 @@ void PrintSelectPanel::start_print(bool force) {
         copy_usb_file_to_printer([this, colors = std::move(colors),
                                   thumbnail = std::move(thumbnail), exclude_picks,
                                   scan_key](const std::string& dest) {
-            auto parts = helix::gcode::split_gcode_path(dest);
-            dispatch_print(parts.filename, parts.dir, colors, thumbnail, exclude_picks, scan_key);
+            dispatch_print(helix::gcode::get_filename_basename(dest), helix::gcode_dir_of(dest),
+                           colors, thumbnail, exclude_picks, scan_key);
         });
         return;
     }
@@ -3184,7 +3184,7 @@ void PrintSelectPanel::start_queued_job(const JobQueueEntry& job) {
         usb_source_->select_printer_source();
     }
     path_navigator_.reset();
-    const std::string job_dir = helix::gcode::split_gcode_path(job.filename).dir;
+    const std::string job_dir = helix::gcode_dir_of(job.filename);
     for (std::string_view segment : tio::lines(job_dir, '/')) {
         if (!segment.empty()) {
             path_navigator_.navigate_to(std::string(segment));
@@ -3227,7 +3227,7 @@ void PrintSelectPanel::try_open_pending_queued_job() {
     // in start_queued_job put that path at the queued file's directory, so a
     // hit composes to exactly the queued filename.
     const std::string& queued = pending_queued_start_->filename;
-    const std::string name = helix::gcode::split_gcode_path(queued).filename;
+    const std::string name = helix::gcode::get_filename_basename(queued);
 
     if (select_file_by_name(name)) {
         return; // handle_file_click() opened (and seeded) the detail view

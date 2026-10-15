@@ -119,11 +119,7 @@ void QueuedJobStarter::abandon() {
         spdlog::info("[QueuedJobStart] Dropping the start of queued job {}: the printer is going",
                      job_.job_id);
     }
-    in_flight_ = false;
-    ++start_generation_;
-    stall_watchdog_.reset();
-    pending_.reset();
-    facts_loader_.cancel();
+    end_start();
     // Answers still owed by the old API (the options read, the queue removal)
     // must not land.
     lifetime_.invalidate();
@@ -232,9 +228,8 @@ void QueuedJobStarter::gather(const JobQueueEntry& job, QueuedJobOptions saved) 
 
     auto pending = std::make_unique<Pending>();
     pending->job = job;
-    auto parts = gcode::split_gcode_path(job.filename);
-    pending->name = std::move(parts.filename);
-    pending->dir = std::move(parts.dir);
+    pending->name = gcode::get_filename_basename(job.filename);
+    pending->dir = gcode_dir_of(job.filename);
     pending_ = std::move(pending);
 
     prep_ = prep_source_();
@@ -351,15 +346,19 @@ void QueuedJobStarter::run_checks(const Pending& pending, FileStartFacts facts) 
     }
 }
 
-void QueuedJobStarter::finish(Outcome outcome) {
-    if (!in_flight_) {
-        return;
-    }
+void QueuedJobStarter::end_start() {
     in_flight_ = false;
     ++start_generation_;
     stall_watchdog_.reset();
     pending_.reset();
     facts_loader_.cancel();
+}
+
+void QueuedJobStarter::finish(Outcome outcome) {
+    if (!in_flight_) {
+        return;
+    }
+    end_start();
     release_prep();
     publish_in_flight();
     auto done = std::move(done_);

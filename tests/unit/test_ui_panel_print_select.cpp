@@ -808,20 +808,25 @@ TEST_CASE("Print Select: Metadata path construction", "[ui][metadata]") {
     }
 }
 
-TEST_CASE("split_gcode_path undoes join_gcode_path", "[ui][metadata]") {
+TEST_CASE("gcode_dir_of and get_filename_basename undo join_gcode_path", "[ui][metadata]") {
+    using helix::gcode_dir_of;
+    using helix::gcode::get_filename_basename;
     using helix::gcode::join_gcode_path;
-    using helix::gcode::split_gcode_path;
 
     SECTION("A bare filename sits in the root") {
-        const auto parts = split_gcode_path("benchy.gcode");
-        CHECK(parts.dir.empty());
-        CHECK(parts.filename == "benchy.gcode");
+        CHECK(gcode_dir_of("benchy.gcode").empty());
+        CHECK(get_filename_basename("benchy.gcode") == "benchy.gcode");
     }
     SECTION("A nested path splits at its last slash") {
-        const auto parts = split_gcode_path("projects/voron/toolhead.gcode");
-        CHECK(parts.dir == "projects/voron");
-        CHECK(parts.filename == "toolhead.gcode");
-        CHECK(join_gcode_path(parts.dir, parts.filename) == "projects/voron/toolhead.gcode");
+        const std::string path = "projects/voron/toolhead.gcode";
+        CHECK(gcode_dir_of(path) == "projects/voron");
+        CHECK(get_filename_basename(path) == "toolhead.gcode");
+        CHECK(join_gcode_path(gcode_dir_of(path), get_filename_basename(path)) == path);
+    }
+    SECTION("A backslash is part of a name, for both halves") {
+        const std::string path = "dir/odd\\name.gcode";
+        CHECK(gcode_dir_of(path) == "dir");
+        CHECK(get_filename_basename(path) == "odd\\name.gcode");
     }
 }
 
