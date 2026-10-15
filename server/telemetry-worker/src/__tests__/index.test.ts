@@ -795,7 +795,7 @@ describe("mapEventToDataPoints", () => {
     expect(dp.blobs![1]).toBe("success");
     expect(dp.blobs![2]).toBe("PLA");
     expect(dp.blobs![3]).toBe("0.9.19");
-    expect(dp.blobs).toHaveLength(12);
+    expect(dp.blobs).toHaveLength(14);
     expect(dp.doubles![0]).toBe(3600);
     expect(dp.doubles![1]).toBe(210);
     expect(dp.doubles![2]).toBe(60);
@@ -906,7 +906,7 @@ describe("mapEventToDataPoints", () => {
     expect(dp.blobs![5]).toBe("stm32f446");
     expect(dp.blobs![6]).toBe("beacon");
     expect(dp.blobs![7]).toBe("afc");
-    expect(dp.blobs).toHaveLength(12);
+    expect(dp.blobs).toHaveLength(13);
     expect(dp.doubles![3]).toBe(42);
     expect(dp.doubles).toHaveLength(8);
   });
