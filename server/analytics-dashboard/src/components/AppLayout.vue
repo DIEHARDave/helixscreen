@@ -8,8 +8,8 @@
         <router-link :to="navTo('/')" class="nav-link" :class="{ active: route.path === '/' }">
           Overview
         </router-link>
-        <router-link :to="navTo('/adoption')" class="nav-link" :class="{ active: route.path === '/adoption' }">
-          Adoption
+        <router-link :to="navTo('/fleet')" class="nav-link" :class="{ active: route.path === '/fleet' }">
+          Fleet
         </router-link>
         <router-link :to="navTo('/prints')" class="nav-link" :class="{ active: route.path === '/prints' }">
           Prints
@@ -23,9 +23,6 @@
         <div class="nav-separator"></div>
         <router-link :to="navTo('/memory')" class="nav-link" :class="{ active: route.path === '/memory' }">
           Memory
-        </router-link>
-        <router-link :to="navTo('/hardware')" class="nav-link" :class="{ active: route.path === '/hardware' }">
-          Hardware
         </router-link>
         <router-link :to="navTo('/engagement')" class="nav-link" :class="{ active: route.path === '/engagement' }">
           Engagement

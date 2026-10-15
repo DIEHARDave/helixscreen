@@ -1,8 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { legacyRedirect } from '@/utils/urlState'
 import LoginView from '@/views/LoginView.vue'
 import OverviewView from '@/views/OverviewView.vue'
-import AdoptionView from '@/views/AdoptionView.vue'
 import PrintsView from '@/views/PrintsView.vue'
 import ReleasesView from '@/views/ReleasesView.vue'
 
@@ -17,11 +17,13 @@ export const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
-      path: '/adoption',
-      name: 'adoption',
-      component: AdoptionView,
+      path: '/fleet',
+      name: 'fleet',
+      component: () => import('@/views/FleetView.vue'),
       meta: { requiresAuth: true }
     },
+    { path: '/adoption', redirect: (to) => ({ path: legacyRedirect(to.path)!, query: to.query }) },
+    { path: '/hardware', redirect: (to) => ({ path: legacyRedirect(to.path)!, query: to.query }) },
     {
       path: '/prints',
       name: 'prints',
@@ -48,12 +50,6 @@ export const router = createRouter({
       path: '/memory',
       name: 'memory',
       component: () => import('@/views/MemoryView.vue'),
-      meta: { requiresAuth: true }
-    },
-    {
-      path: '/hardware',
-      name: 'hardware',
-      component: () => import('@/views/HardwareView.vue'),
       meta: { requiresAuth: true }
     },
     {
