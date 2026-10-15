@@ -681,10 +681,6 @@ The installer configures Moonraker to enable one-click updates from Mainsail/Flu
    channel: stable
    repo: prestonbrown/helixscreen
    path: /home/biqu/helixscreen
-   persistent_files:
-       config/settings.json
-       config/helixscreen.env
-       config/.disabled_services
    ```
 
 2. **release_info.json** written to `$INSTALL_DIR/` -- Moonraker `type:web` needs this to detect the installed version
@@ -693,13 +689,13 @@ The installer configures Moonraker to enable one-click updates from Mainsail/Flu
 
 ### Config Survival on Updates
 
-Moonraker's `type: web` updater wipes the install directory (`shutil.rmtree`) before extracting each update. Config is preserved via three layers:
+Moonraker's `type: web` updater moves any `persistent_files` entries aside, `shutil.rmtree`s the install directory, extracts the zip and moves the saved entries back. `persistent_files` is read for `type: web`, but entries match only top-level names of `path:`: there are no globs and a nested entry such as `config/settings.json` never matches. The release zip ships a top-level `config/`, so listing `config` would restore the saved directory to `config/config` after extraction. The installer therefore writes no `persistent_files` and removes one from an existing stanza (`cleanup_unsupported_options`, which also drops `managed_services` and `install_script`, options a `type: web` stanza does not read). Config is preserved by three layers:
 
-1. **`persistent_files`** in moonraker.conf -- Moonraker backs up listed files before rmtree and restores them after extraction
-2. **Rolling backups** -- `Config::save()` maintains backups in `/var/lib/helixscreen/` (systemd `StateDirectory`) and `$HOME/.helixscreen/` (fallback). `Config::init()` auto-restores from these if the config file is missing after an update.
+1. **Config symlinks** -- user-owned files live in `printer_data/config/helixscreen/` (outside the managed path) and `$INSTALL_DIR/config/<file>` are symlinks into it (`setup_config_symlink`). `rmtree` unlinks the symlinks and leaves the targets. After the zip extracts, `config/refresh-service-units.sh` (run by the `helixscreen-update.path` watcher and on every service start) re-creates the symlinks (`restore_config_symlinks`). Which files and directories qualify is `HELIX_USER_CONFIG_FILES` / `HELIX_USER_CONFIG_DIRS`; the two copies are kept in sync by hand.
+2. **Rolling backups** -- `Config::save()` maintains backups in `/var/lib/helixscreen/` (systemd `StateDirectory`) and `$HOME/.helixscreen/` (fallback). `Config::init()` auto-restores from these if the config file is missing, or is the packaged default, after an update.
 3. **SysV init script** -- On BusyBox systems (K1, AD5M) where systemd isn't available, the init script exports `HOME=/root` and creates `/var/lib/helixscreen/` so backup paths are persistent (not volatile `/tmp/`).
 
-The installer also runs `ensure_persistent_files()` on every upgrade to add `persistent_files` to existing Moonraker configs that predate this feature.
+Files the installer writes under `$INSTALL_DIR/config/` that are in neither list (the Klipper-includes, seeded-settings, camera-migration, webcam-backup and K2 camera state files) are not preserved by a Moonraker web update.
 
 ### Migration
 
@@ -741,7 +737,7 @@ sysv-chmod:/etc/init.d/S80klipperscreen
 sysv-chmod:/etc/init.d/S40xorg
 ```
 
-The uninstaller reads this file and reverses each action (systemd enable, chmod +x). This is listed in `persistent_files` in the Moonraker config so it survives zip updates.
+The uninstaller reads this file and reverses each action (systemd enable, chmod +x). It is in `HELIX_USER_CONFIG_FILES`, so it lives in `printer_data/config/helixscreen/` and survives zip updates through the config symlink.
 
 ---
 

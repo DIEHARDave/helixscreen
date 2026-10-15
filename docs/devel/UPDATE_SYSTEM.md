@@ -513,8 +513,8 @@ path: /opt/helixscreen
 
 Key points:
 - `type: web` -- Moonraker downloads ZIP assets from GitHub releases (workaround for mainsail-crew/mainsail#2444 where `type: zip` always shows UP-TO-DATE)
-- `type: web` does **not** support `install_script`, `managed_services`, or `persistent_files` -- do not add these options (Moonraker will warn about unparsed config)
-- User config files live in `printer_data/config/helixscreen/` (outside the managed path), so they survive Moonraker's `shutil.rmtree` without needing `persistent_files`
+- Do not add `install_script` or `managed_services`: a `type: web` stanza does not read them and Moonraker warns about unparsed config. Do not add `persistent_files` either: it is read, but it matches top-level names of `path:` only and the release zip ships a top-level `config/`, so it cannot preserve anything useful (listing `config` restores it to `config/config`, nested entries never match)
+- User config files live in `printer_data/config/helixscreen/` (outside the managed path) and `$INSTALL_DIR/config/<file>` are symlinks into it, so the targets survive Moonraker's `shutil.rmtree`; `refresh-service-units.sh` re-creates the symlinks after extraction
 - release_info.json -- Written to the install directory so Moonraker can detect the installed version
 - A systemd path unit (`helixscreen-update.path`) watches release_info.json and restarts the service after Moonraker extracts an update
 - As a self-healing fallback, `helixscreen.service` runs `refresh-service-units.sh` on every start to re-template systemd units and install missing watcher units
@@ -541,7 +541,7 @@ The installer also adds `helixscreen` to `moonraker.asvc` (the service managemen
 
 ### Migration
 
-The installer detects and migrates old `type: git_repo` and `type: zip` configurations to `type: web`, cleaning up any leftover sparse clone directories. Existing `type: web` sections are cleaned of unsupported options (`persistent_files`, `managed_services`, `install_script`) that cause Moonraker warnings.
+The installer detects and migrates old `type: git_repo` and `type: zip` configurations to `type: web`, cleaning up any leftover sparse clone directories. Existing `type: web` sections are stripped of `managed_services` and `install_script` (unread, so Moonraker warns) and of `persistent_files` (read, but unable to match our layout).
 
 ### Platform Scope
 

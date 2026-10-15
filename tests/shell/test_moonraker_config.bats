@@ -733,7 +733,7 @@ BINEOF
     MOONRAKER_CONF_PATHS="$conf"
     rm -f "$INSTALL_DIR/bin/helix-screen"
 
-    # Fixture has persistent_files — ensure_persistent_files should remove them
+    # Fixture has persistent_files — the update path should remove them
     grep -q 'persistent_files:' "$conf"
 
     configure_moonraker_updates "pi"
