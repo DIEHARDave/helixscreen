@@ -2829,6 +2829,7 @@ translations:
   Screen Rotation: 画面の回転
   Screen dims to lower brightness after period of inactivity: 一定時間操作がないと画面の明るさが下がります
   Screen lock and PIN settings: 画面ロックと PIN の設定
+  Screen is not permitted to shut down or reboot. Restart HelixScreen to fix it.: 画面にはシャットダウンや再起動の権限がありません。HelixScreen を再起動すると修正されます。
   Screen reboot failed: 画面の再起動に失敗しました
   Screen shutdown failed: 画面のシャットダウンに失敗しました
   Screen sleeps after the selected period of inactivity: 選択した時間操作がないと画面が減光します

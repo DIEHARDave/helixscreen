@@ -3008,6 +3008,7 @@ translations:
   Screen dims to lower brightness after period of inactivity: A tela escurece para
     menor brilho após período de inatividade
   Screen lock and PIN settings: Configurações de bloqueio de tela e PIN
+  Screen is not permitted to shut down or reboot. Restart HelixScreen to fix it.: A tela não tem permissão para desligar ou reiniciar. Reinicie o HelixScreen para corrigir.
   Screen reboot failed: Falha ao reiniciar a tela
   Screen shutdown failed: Falha ao desligar a tela
   Screen sleeps after the selected period of inactivity: A tela escurecerá após o

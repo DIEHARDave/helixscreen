@@ -3004,6 +3004,7 @@ translations:
   Screen dims to lower brightness after period of inactivity: Lo schermo si attenua
     dopo un periodo di inattività
   Screen lock and PIN settings: Blocco schermo e impostazioni PIN
+  Screen is not permitted to shut down or reboot. Restart HelixScreen to fix it.: Lo schermo non ha il permesso di spegnersi o riavviarsi. Riavvia HelixScreen per risolvere.
   Screen reboot failed: Riavvio schermo fallito
   Screen shutdown failed: Spegnimento schermo fallito
   Screen sleeps after the selected period of inactivity: Lo schermo si attenuerà dopo

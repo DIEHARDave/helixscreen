@@ -2719,6 +2719,7 @@
   <translation tag="Screen Dim" ja="画面減光"/>
   <translation tag="Screen Rotation" ja="画面の回転"/>
   <translation tag="Screen dims to lower brightness after period of inactivity" ja="一定時間操作がないと画面の明るさが下がります"/>
+  <translation tag="Screen is not permitted to shut down or reboot. Restart HelixScreen to fix it." ja="画面にはシャットダウンや再起動の権限がありません。HelixScreen を再起動すると修正されます。"/>
   <translation tag="Screen lock and PIN settings" ja="画面ロックと PIN の設定"/>
   <translation tag="Screen reboot failed" ja="画面の再起動に失敗しました"/>
   <translation tag="Screen shutdown failed" ja="画面のシャットダウンに失敗しました"/>
