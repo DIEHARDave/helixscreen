@@ -77,12 +77,15 @@ class ContextMenu {
      * plus the card's own padding), never narrower than `min`, and `pct` of the
      * screen becomes the ceiling, along with `max` when set and the screen less a
      * margin each side. Text wider than the ceiling ellipsizes in its row.
+     * A portrait screen is narrow enough that a menu may want a larger share
+     * there: a nonzero `portrait_pct` replaces `pct` as the ceiling in portrait.
      */
     struct CardWidth {
         int pct = 0;
         int min = 0;
         int max = 0;
         bool fit_content = false;
+        int portrait_pct = 0;
 
         [[nodiscard]] bool is_set() const {
             return pct > 0;
@@ -420,12 +423,13 @@ class ContextMenu {
      * @brief Card width for @p policy, factored out so it can be tested
      *
      * Without `fit_content`: `pct` of @p screen_w clamped to [min, max].
-     * With it: @p content_w, raised to `min`, then capped at `pct` of the screen,
-     * at `max` when set, and at the screen less @p margin each side. The cap wins
-     * over `min`, so the card never leaves the screen.
+     * With it: @p content_w, raised to `min`, then capped at `pct` of the screen
+     * (`portrait_pct` when @p portrait and it is set), at `max` when set, and at
+     * the screen less @p margin each side. The cap wins over `min`, so the card
+     * never leaves the screen.
      */
     static int32_t compute_card_width(const CardWidth& policy, int32_t screen_w, int32_t content_w,
-                                      int32_t margin);
+                                      int32_t margin, bool portrait);
 
     /**
      * @brief Geometry of position_card(), factored out so it can be tested

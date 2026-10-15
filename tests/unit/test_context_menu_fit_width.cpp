@@ -34,39 +34,55 @@ using CardWidth = ContextMenu::CardWidth;
 
 TEST_CASE("compute_card_width: fitted card takes its content width", "[context_menu][fit]") {
     const CardWidth fit{50, 160, 0, true};
-    CHECK(ContextMenu::compute_card_width(fit, 800, 250, 10) == 250);
+    CHECK(ContextMenu::compute_card_width(fit, 800, 250, 10, false) == 250);
 }
 
 TEST_CASE("compute_card_width: fitted card never drops below min", "[context_menu][fit]") {
     const CardWidth fit{50, 160, 0, true};
-    CHECK(ContextMenu::compute_card_width(fit, 800, 90, 10) == 160);
+    CHECK(ContextMenu::compute_card_width(fit, 800, 90, 10, false) == 160);
 }
 
 TEST_CASE("compute_card_width: fitted card stops at its share of the screen",
           "[context_menu][fit]") {
     const CardWidth fit{50, 160, 0, true};
-    CHECK(ContextMenu::compute_card_width(fit, 800, 600, 10) == 400);
-    CHECK(ContextMenu::compute_card_width(fit, 480, 600, 10) == 240);
+    CHECK(ContextMenu::compute_card_width(fit, 800, 600, 10, false) == 400);
+    CHECK(ContextMenu::compute_card_width(fit, 480, 600, 10, false) == 240);
 }
 
 TEST_CASE("compute_card_width: fitted card honours max when it is tighter", "[context_menu][fit]") {
     const CardWidth fit{50, 160, 300, true};
-    CHECK(ContextMenu::compute_card_width(fit, 800, 600, 10) == 300);
-    CHECK(ContextMenu::compute_card_width(fit, 800, 250, 10) == 250);
+    CHECK(ContextMenu::compute_card_width(fit, 800, 600, 10, false) == 300);
+    CHECK(ContextMenu::compute_card_width(fit, 800, 250, 10, false) == 250);
 }
 
 TEST_CASE("compute_card_width: the screen margin beats min and the share", "[context_menu][fit]") {
     // A 100% share on a 200px screen would touch both edges; min would overflow it.
     const CardWidth fit{100, 260, 0, true};
-    CHECK(ContextMenu::compute_card_width(fit, 200, 600, 10) == 180);
+    CHECK(ContextMenu::compute_card_width(fit, 200, 600, 10, false) == 180);
+}
+
+TEST_CASE("compute_card_width: portrait_pct replaces the share on a portrait screen only",
+          "[context_menu][fit]") {
+    const CardWidth fit{50, 160, 0, true, 100};
+    // Portrait: the whole width less a margin each side.
+    CHECK(ContextMenu::compute_card_width(fit, 480, 600, 16, true) == 448);
+    CHECK(ContextMenu::compute_card_width(fit, 480, 300, 16, true) == 300);
+    // Landscape keeps half the screen.
+    CHECK(ContextMenu::compute_card_width(fit, 800, 600, 16, false) == 400);
+}
+
+TEST_CASE("compute_card_width: without portrait_pct a portrait screen keeps the share",
+          "[context_menu][fit]") {
+    const CardWidth fit{50, 160, 0, true};
+    CHECK(ContextMenu::compute_card_width(fit, 480, 600, 16, true) == 240);
 }
 
 TEST_CASE("compute_card_width: a share policy without fit clamps the share to [min,max]",
           "[context_menu][fit]") {
     const CardWidth share{40, 200, 320, false};
-    CHECK(ContextMenu::compute_card_width(share, 800, 0, 10) == 320);
-    CHECK(ContextMenu::compute_card_width(share, 400, 0, 10) == 200);
-    CHECK(ContextMenu::compute_card_width(share, 600, 999, 10) == 240);
+    CHECK(ContextMenu::compute_card_width(share, 800, 0, 10, false) == 320);
+    CHECK(ContextMenu::compute_card_width(share, 400, 0, 10, false) == 200);
+    CHECK(ContextMenu::compute_card_width(share, 600, 999, 10, false) == 240);
 }
 
 // ============================================================================
@@ -190,7 +206,8 @@ TEST_CASE_METHOD(SwitchMenuFixture,
                  "[context_menu][fit][printer_switch]") {
     ScopedResolution portrait(lv_display_get_default(), 480, 800);
     lv_obj_set_size(test_screen(), 480, 800);
-    set_printers({"Voron 2.4 350 (Enclosure Build)", "FlashForge Adventurer 5M Pro"});
+    const std::string name = "Voron 2.4 350 (Enclosure Build)";
+    set_printers({name, "FlashForge Adventurer 5M Pro"});
     lv_obj_set_pos(badge_, 410, 730);
     lv_obj_t* card = show();
     check_on_screen(card);
@@ -201,5 +218,22 @@ TEST_CASE_METHOD(SwitchMenuFixture,
     lv_obj_get_coords(badge_, &b);
     CHECK(c.y2 < b.y1);
     CHECK(c.x2 >= b.x1);
-    CHECK(lv_obj_get_width(card) <= 240);
+    // Past half the portrait width, which would have dotted both names.
+    CHECK(lv_obj_get_width(card) > 240);
+    CHECK(drawn_name("p0") == name);
+    CHECK(drawn_name("p1") == "FlashForge Adventurer 5M Pro");
+}
+
+TEST_CASE_METHOD(SwitchMenuFixture,
+                 "Printer switch menu: on a portrait screen a long name stops at the side margins",
+                 "[context_menu][fit][printer_switch]") {
+    ScopedResolution portrait(lv_display_get_default(), 480, 800);
+    lv_obj_set_size(test_screen(), 480, 800);
+    const std::string name(90, 'W');
+    set_printers({name});
+    lv_obj_set_pos(badge_, 410, 730);
+    lv_obj_t* card = show();
+    CHECK(lv_obj_get_width(card) == 480 - 2 * theme_manager_get_spacing("space_md"));
+    CHECK(drawn_name("p0") != name);
+    check_on_screen(card);
 }

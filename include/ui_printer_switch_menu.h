@@ -46,9 +46,10 @@ class PrinterSwitchMenu : public ContextMenu {
     void on_created(lv_obj_t* menu) override;
     void on_backdrop_clicked() override;
 
-    /// As wide as the longest printer name, up to half the screen; past that, names ellipsize.
+    /// As wide as the longest printer name, up to half a landscape screen or the whole
+    /// width of a portrait one less its margins; past that, names ellipsize.
     CardWidth card_width() const override {
-        return {50, 160, 0, true};
+        return {50, 160, 0, true, 100};
     }
     int32_t content_width() const override {
         return widest_row_;
