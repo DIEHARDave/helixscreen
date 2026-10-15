@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #pragma once
 
+#include <array>
 #include <functional>
 #include <optional>
 #include <string>
@@ -21,13 +22,17 @@ struct ResonanceTesterConfig {
     float max_freq = 135.0f;   ///< Klipper default
     float hz_per_sec = 1.0f;   ///< Klipper default
     bool from_printer = false; ///< true when read from configfile, false = defaults
+    /// The first probe_points entry (x, y, z), machine coordinates. nullopt
+    /// when absent or unparseable; that alone does not reject the range.
+    std::optional<std::array<float, 3>> probe_point;
 
     /// Seconds one sweep takes: (max - min) / hz_per_sec.
     [[nodiscard]] float sweep_seconds() const;
 };
 
 /// Parse `configfile.settings.resonance_tester` (values may be numbers or
-/// strings). Missing keys keep their defaults.
+/// strings). Missing keys keep their defaults. `probe_points` is read as a
+/// list of [x, y, z] lists or an "x, y, z" string, first point only.
 [[nodiscard]] ResonanceTesterConfig parse_resonance_tester_config(const nlohmann::json& settings);
 
 /// Ask the printer what [resonance_tester] range it will actually sweep.

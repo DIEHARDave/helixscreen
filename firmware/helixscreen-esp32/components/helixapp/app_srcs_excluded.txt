@@ -112,6 +112,7 @@ src/calibration/belt_capture.cpp  # not in the v1 Core+AMS cut
 src/calibration/belt_dsp_probe.cpp  # not in the v1 Core+AMS cut
 src/calibration/belt_gating.cpp  # not in the v1 Core+AMS cut
 src/calibration/belt_listen_session.cpp  # not in the v1 Core+AMS cut
+src/calibration/belt_settle.cpp  # not in the v1 Core+AMS cut
 src/calibration/belt_live_data.cpp  # not in the v1 Core+AMS cut
 src/calibration/belt_stream_client.cpp  # not in the v1 Core+AMS cut
 src/calibration/belt_tension_calibrator.cpp  # not in the v1 Core+AMS cut

@@ -49,3 +49,40 @@ TEST_CASE("sweep percent follows the configured range", "[resonance_console]") {
     CHECK(sweep_percent(0.0f, cfg) == 0);
     CHECK(sweep_percent(500.0f, cfg) == 100);
 }
+
+TEST_CASE("resonance_tester config reads the first probe point", "[resonance_console][settle]") {
+    const auto parse = [](const char* text) {
+        return parse_resonance_tester_config(nlohmann::json::parse(text));
+    };
+
+    SECTION("configfile's nested array") {
+        auto cfg = parse(R"({"resonance_tester": {"probe_points": [[175.0, 175.0, 20.0]]}})");
+        REQUIRE(cfg.probe_point.has_value());
+        CHECK((*cfg.probe_point)[0] == Catch::Approx(175.0f));
+        CHECK((*cfg.probe_point)[1] == Catch::Approx(175.0f));
+        CHECK((*cfg.probe_point)[2] == Catch::Approx(20.0f));
+    }
+    SECTION("a string, first line only") {
+        auto cfg = parse(R"({"resonance_tester": {"probe_points": "175, 175, 20\n10, 10, 5"}})");
+        REQUIRE(cfg.probe_point.has_value());
+        CHECK((*cfg.probe_point)[0] == Catch::Approx(175.0f));
+        CHECK((*cfg.probe_point)[1] == Catch::Approx(175.0f));
+        CHECK((*cfg.probe_point)[2] == Catch::Approx(20.0f));
+    }
+    SECTION("two coordinates are not a point, and keep the range") {
+        auto cfg = parse(R"({"resonance_tester": {"probe_points": [[1, 2]], "max_freq": 100}})");
+        CHECK_FALSE(cfg.probe_point.has_value());
+        CHECK(cfg.from_printer);
+        CHECK(cfg.max_freq == Catch::Approx(100.0f));
+    }
+    SECTION("an unparseable string") {
+        auto cfg = parse(R"({"resonance_tester": {"probe_points": "abc"}})");
+        CHECK_FALSE(cfg.probe_point.has_value());
+        CHECK(cfg.from_printer);
+    }
+    SECTION("absent") {
+        auto cfg = parse(R"({"resonance_tester": {"min_freq": 5}})");
+        CHECK_FALSE(cfg.probe_point.has_value());
+        CHECK(cfg.from_printer);
+    }
+}

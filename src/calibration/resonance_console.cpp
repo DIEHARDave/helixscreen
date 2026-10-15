@@ -33,6 +33,66 @@ void query_resonance_tester_config(IMoonrakerClient& client,
         [on_done](const MoonrakerError&) { on_done(ResonanceTesterConfig{}); });
 }
 
+namespace {
+
+/// "x, y, z" from the first non-empty line of a probe_points string.
+std::optional<std::array<float, 3>> parse_probe_point_text(const std::string& text) {
+    size_t start = 0;
+    std::string line;
+    while (start <= text.size()) {
+        const size_t end = std::min(text.find('\n', start), text.size());
+        line = text.substr(start, end - start);
+        if (line.find_first_not_of(" \t\r") != std::string::npos) {
+            break;
+        }
+        line.clear();
+        start = end + 1;
+    }
+    std::array<float, 3> point{};
+    size_t field_start = 0;
+    for (size_t i = 0; i < point.size(); ++i) {
+        if (field_start > line.size()) {
+            return std::nullopt;
+        }
+        const size_t comma = std::min(line.find(',', field_start), line.size());
+        const auto value =
+            text_io::parse_leading<float>(line.substr(field_start, comma - field_start));
+        if (!value) {
+            return std::nullopt;
+        }
+        point[i] = *value;
+        field_start = comma + 1;
+    }
+    return point;
+}
+
+/// The first point of configfile's probe_points: [[x, y, z], ...] or a string.
+std::optional<std::array<float, 3>> parse_probe_point(const nlohmann::json& value) {
+    if (value.is_string()) {
+        return parse_probe_point_text(value.get_ref<const std::string&>());
+    }
+    if (!value.is_array() || value.empty()) {
+        return std::nullopt;
+    }
+    const auto& first = value[0];
+    if (first.is_string()) {
+        return parse_probe_point_text(first.get_ref<const std::string&>());
+    }
+    if (!first.is_array() || first.size() != 3) {
+        return std::nullopt;
+    }
+    std::array<float, 3> point{};
+    for (size_t i = 0; i < point.size(); ++i) {
+        if (!first[i].is_number()) {
+            return std::nullopt;
+        }
+        point[i] = first[i].get<float>();
+    }
+    return point;
+}
+
+} // namespace
+
 ResonanceTesterConfig parse_resonance_tester_config(const nlohmann::json& settings) {
     ResonanceTesterConfig cfg;
     const auto rt = settings.find("resonance_tester");
@@ -67,6 +127,9 @@ ResonanceTesterConfig parse_resonance_tester_config(const nlohmann::json& settin
     cfg.max_freq = *max_freq;
     cfg.hz_per_sec = *hz_per_sec;
     cfg.from_printer = true;
+    if (const auto pp = rt->find("probe_points"); pp != rt->end()) {
+        cfg.probe_point = parse_probe_point(*pp);
+    }
     return cfg;
 }
 
