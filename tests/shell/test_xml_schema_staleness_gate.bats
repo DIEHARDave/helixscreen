@@ -272,7 +272,7 @@ EOF
 
     run_block true true
 
-    refute output_has "No XML linter inputs staged"
+    output_has "Running helix-xml-linter"
     output_has "helix-xml-linter passed"
 }
 
@@ -286,7 +286,7 @@ EOF
 
     run_block true true
 
-    refute output_has "No XML linter inputs staged"
+    output_has "Running helix-xml-linter"
 }
 
 @test "a staged lv_xml_register_const() anywhere under src/ reaches the check" {
@@ -297,7 +297,7 @@ EOF
 
     run_block true true
 
-    refute output_has "No XML linter inputs staged"
+    output_has "Running helix-xml-linter"
 }
 
 @test "a staged mk/tools.mk reaches the check" {
@@ -310,7 +310,7 @@ EOF
 
     run_block true true
 
-    refute output_has "No XML linter inputs staged"
+    output_has "Running helix-xml-linter"
 }
 
 @test "a staged theme default reaches the check" {
@@ -321,7 +321,7 @@ EOF
 
     run_block true true
 
-    refute output_has "No XML linter inputs staged"
+    output_has "Running helix-xml-linter"
 }
 
 @test "a staged lib/helix-xml pointer bump reaches the check" {
@@ -345,7 +345,7 @@ EOF
     git -C "$FIX" diff --cached --name-only | grep -qx 'lib/helix-xml'
     run_block true true
 
-    refute output_has "No XML linter inputs staged"
+    output_has "Running helix-xml-linter"
 }
 
 # ---------------------------------------------------------------------------
@@ -361,7 +361,7 @@ EOF
 
     run_block true true
 
-    output_has "No XML linter inputs staged"
+    [ "$output" = "BLOCK_EXIT_CODE=0" ] || fail "the gate spoke with nothing to do: $output"
 }
 
 @test "a src/ file merely USING a registered widget does not reach the check" {
@@ -373,7 +373,7 @@ EOF
 
     run_block true true
 
-    output_has "No XML linter inputs staged"
+    [ "$output" = "BLOCK_EXIT_CODE=0" ] || fail "the gate spoke with nothing to do: $output"
 }
 
 @test "a docs-only commit does not reach the check" {
@@ -383,7 +383,7 @@ EOF
 
     run_block true true
 
-    output_has "No XML linter inputs staged"
+    [ "$output" = "BLOCK_EXIT_CODE=0" ] || fail "the gate spoke with nothing to do: $output"
 }
 
 # ---------------------------------------------------------------------------
@@ -452,6 +452,22 @@ trigger_re() {
     grep -q 'mk/tools\\\.mk\$' "$QC" || fail "$QC lost the mk/tools.mk trigger"
     grep -q 'assets/config/themes/defaults/' "$QC" || fail "$QC lost the theme-defaults trigger"
     grep -q "ui_xml/.*\\\\.xml\\$" "$QC" || fail "$QC lost the ui_xml path trigger"
+}
+
+@test "the driver's path trigger admits every schema input the block tests for" {
+    # --staged-only skips a gate whose QC_TRIGGER matches no staged path before
+    # the block runs, so an input the block handles but the trigger omits is
+    # never checked at commit time.
+    re="$(qc_trigger xml_linter)"
+    [ -n "$re" ]
+    for p in ui_xml/globals.xml tools/xml-linter/src/x.py src/ui/ui_widget.cpp \
+             src/printer/registers_const.cpp assets/config/themes/defaults/nord.json \
+             lib/helix-xml mk/tools.mk; do
+        echo "$p" | grep -qE "$re" || fail "$p does not reach qc_xml_linter"
+    done
+    for p in docs/devel/README.md include/printer_state.h scripts/foo.py; do
+        if echo "$p" | grep -qE "$re"; then fail "$p should not reach qc_xml_linter"; fi
+    done
 }
 
 @test "extract_schema.py still parses the calls the trigger keys on" {
