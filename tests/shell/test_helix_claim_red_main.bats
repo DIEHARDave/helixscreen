@@ -106,6 +106,53 @@ TAB=$'\t'
     [ ! -e "$GH_ARGS" ]
 }
 
+@test "startup_failure counts as red" {
+    mock_gh_runs "Build${TAB}startup_failure${TAB}abc123456"
+    run "$CLAIM" take worktree:main edit --pid "$OWNER"
+    [ "$status" -eq 1 ]
+    contains "Build abc123456" "$output"
+}
+
+@test "the query is limited to push runs" {
+    mock_gh_runs "Build${TAB}success${TAB}abc123456"
+    run "$CLAIM" take worktree:main edit --pid "$OWNER"
+    [ "$status" -eq 0 ]
+    contains "--event push" "$(cat "$GH_ARGS")"
+}
+
+@test "a failed run whose commit is not on origin/main (fork PR) is ignored" {
+    git update-ref refs/remotes/origin/main HEAD
+    git checkout -q -b forkpr
+    echo x > x.txt; git add x.txt; git commit -qm fork --no-verify
+    forksha=$(git rev-parse HEAD)
+    git checkout -q main
+    mock_gh_runs "Build${TAB}failure${TAB}${forksha}"
+    run "$CLAIM" take worktree:main edit --pid "$OWNER"
+    [ "$status" -eq 0 ]
+}
+
+@test "a failed run whose commit is on origin/main still blocks" {
+    git update-ref refs/remotes/origin/main HEAD
+    mainsha=$(git rev-parse HEAD)
+    mock_gh_runs "Build${TAB}failure${TAB}${mainsha}"
+    run "$CLAIM" take worktree:main edit --pid "$OWNER"
+    [ "$status" -eq 1 ]
+}
+
+@test "without timeout or gtimeout gh still runs, with no warning" {
+    mock_gh_runs "Build${TAB}success${TAB}abc123456"
+    # A PATH holding only the mock gh plus the tools the script needs, minus timeout.
+    mkdir -p "$BATS_TEST_TMPDIR/nobin"
+    for t in git sed awk tr cat grep paste basename dirname date sleep mkdir mv rm head cut ps hostname kill id stat wc sort uniq env bash sh; do
+        p=$(command -v "$t") && ln -sf "$p" "$BATS_TEST_TMPDIR/nobin/$t"
+    done
+    ln -sf "$BATS_TEST_TMPDIR/bin/gh" "$BATS_TEST_TMPDIR/nobin/gh"
+    PATH="$BATS_TEST_TMPDIR/nobin" run "$CLAIM" take worktree:main edit --pid "$OWNER"
+    [ "$status" -eq 0 ]
+    lacks "skipping" "$output"
+    [ -e "$GH_ARGS" ]
+}
+
 @test "the pre-commit merge claim never asks about CI" {
     grep -q -- '--ack-red-main' "$BATS_TEST_DIRNAME/../../.githooks/lib/claim-tree.sh"
 }
