@@ -8,6 +8,7 @@ import { canonicalModelKey, canonicalModels, isFilterable } from '../../../analy
 import { groupMaterialSets, materialSet } from '../../../analytics-dashboard/src/utils/materials'
 import { filterValues } from '../queries'
 import { withNotApplicable } from '../../../analytics-dashboard/src/utils/notApplicable'
+import { isRenderError } from '../../../analytics-dashboard/src/utils/renderError'
 import { barChartHeight, seriesColor, todayUtc, trimPartialDays } from '../../../analytics-dashboard/src/utils/series'
 
 const rows = (names: string[]) => names.map((name, i) => ({ name, count: i + 1 }))
@@ -339,5 +340,24 @@ describe('planActivation', () => {
       filters: { version: ['1.0.5'] }
     })
     expect(planActivation([['board', single('')]])).toBeNull()
+  })
+})
+
+describe('isRenderError', () => {
+  it('matches the render function in a development build and a production build', () => {
+    expect(isRenderError('render function')).toBe(true)
+    expect(isRenderError('https://vuejs.org/error-reference/#runtime-1')).toBe(true)
+    expect(isRenderError(1)).toBe(true)
+  })
+  it('leaves handler, watcher and lifecycle errors alone', () => {
+    for (const info of [
+      'component event handler', 'native event handler', 'watcher callback', 'watcher getter',
+      'mounted hook', 'setup function', 'scheduler flush',
+      'https://vuejs.org/error-reference/#runtime-5', 'https://vuejs.org/error-reference/#runtime-6',
+      'https://vuejs.org/error-reference/#runtime-14', 'https://vuejs.org/error-reference/#runtime-m',
+      6, 0, undefined, ''
+    ]) {
+      expect(isRenderError(info), String(info)).toBe(false)
+    }
   })
 })
