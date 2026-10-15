@@ -190,20 +190,24 @@ PKLA_EOF
 }
 
 # Install the logind power-off/reboot rule for <user> through the payload's
-# ensure-polkit-rule.sh. HELIX_POLKIT_DIR reaches it only when SUDO passes the
-# environment through (tests); real sudo resets it to /etc/polkit-1.
+# ensure-polkit-rule.sh. That script always exits 0 so it can never block a
+# service start, so success is judged by the rule file being there after.
+# HELIX_POLKIT_DIR reaches the script only when SUDO passes the environment
+# through (tests); real sudo resets it to /etc/polkit-1.
 install_power_polkit_rule() {
     local helix_user="$1"
     local ensure_script="${INSTALL_DIR}/config/ensure-polkit-rule.sh"
+    local polkit_dir="${HELIX_POLKIT_DIR:-/etc/polkit-1}"
 
     if [ ! -f "$ensure_script" ]; then
         log_warn "ensure-polkit-rule.sh not found, so screen Shutdown/Reboot may be refused"
         return 0
     fi
-    if $SUDO sh "$ensure_script" "$helix_user" >/dev/null; then
+    $SUDO sh "$ensure_script" "$helix_user" >/dev/null || true
+    if $SUDO test -f "${polkit_dir}/rules.d/49-helixscreen-power.rules" ||
+        $SUDO test -f "${polkit_dir}/localauthority/50-local.d/helixscreen-power.pkla"; then
         log_info "Installed power-off/reboot polkit rule (for ${helix_user})"
     else
         log_warn "Failed to install power-off/reboot polkit rule, so screen Shutdown/Reboot may be refused"
     fi
 }
-

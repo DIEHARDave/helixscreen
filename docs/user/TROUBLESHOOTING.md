@@ -403,10 +403,13 @@ curl -fsSL https://releases.helixscreen.org/install.sh | bash
 
 **Verify polkit rules are installed:**
 ```bash
-# Check for HelixScreen polkit rules (one of these should exist)
-ls -la /etc/polkit-1/rules.d/50-helixscreen-network.rules
+# Check for HelixScreen polkit rules (one of these should exist;
+# older installs may have 50-helixscreen-network.rules instead of 49-)
+ls -la /etc/polkit-1/rules.d/49-helixscreen-network.rules
 ls -la /etc/polkit-1/localauthority/50-local.d/helixscreen-network.pkla
 ```
+
+HelixScreen also installs a second polkit rule, `49-helixscreen-power.rules` (or `helixscreen-power.pkla` on older systems), which lets the screen shut down and reboot its own computer. See [Screen Shutdown/Reboot is not permitted](#screen-shutdownreboot-is-not-permitted).
 
 **Check NetworkManager permissions:**
 ```bash
@@ -430,6 +433,34 @@ sudo systemctl restart helixscreen
 > **Note:** The manual fix disables permission checks for all users. The installer method is preferred as it only grants access to the HelixScreen service user.
 
 ---
+
+### Screen Shutdown/Reboot is not permitted
+
+**Symptoms:**
+- Shutting down or rebooting the screen shows "Screen is not permitted to shut down or reboot. Restart HelixScreen to fix it."
+- The log shows `Interactive authentication required` from `[SystemPower]`
+
+**Cause:**
+When HelixScreen runs as a normal user (as on a Raspberry Pi), the system only lets it power off or reboot the computer if a polkit rule allows it. HelixScreen installs that rule itself, and reinstalls it every time it starts:
+- `/etc/polkit-1/rules.d/49-helixscreen-power.rules` (polkit 0.106 and newer, Debian 12+)
+- `/etc/polkit-1/localauthority/50-local.d/helixscreen-power.pkla` (older polkit, Debian 11)
+
+The rule allows power off and reboot only. It does not override a shutdown block held by another program, such as a package upgrade in progress.
+
+**Solutions:**
+
+**Restart HelixScreen**, which installs the rule:
+```bash
+sudo systemctl restart helixscreen
+ls -la /etc/polkit-1/rules.d/49-helixscreen-power.rules
+```
+
+**Check that it works** without powering anything off (replace `pi` with the user HelixScreen runs as):
+```bash
+sudo systemd-run --uid=pi --pipe --wait busctl call org.freedesktop.login1 \
+  /org/freedesktop/login1 org.freedesktop.login1.Manager CanPowerOff
+```
+`s "yes"` means the rule is working; `s "challenge"` means it is missing.
 
 ### SSL/TLS certificate errors
 

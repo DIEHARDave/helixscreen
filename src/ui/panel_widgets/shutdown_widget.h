@@ -105,11 +105,17 @@ void show_shutdown_dialog(IMoonrakerAPI* api, ShutdownModal& modal, AsyncLifetim
 /// @param allow_local_fallback True only when Moonraker runs on THIS host, so
 ///                             powering down locally is the same act the user
 ///                             asked for. Never set it for a remote printer.
-/// @param local_action         Performs the local power action; returns success.
-/// @return true if the local fallback ran and succeeded. Otherwise an error
-///         toast is shown and false is returned.
-bool handle_machine_power_failure(const std::string& err_message, bool is_reboot,
-                                  bool allow_local_fallback,
-                                  const std::function<bool()>& local_action);
+/// @param local_action         Performs the local power action.
+/// @return Dispatched if the local fallback ran and succeeded. Otherwise the
+///         local result (Failed when no fallback ran), and the toast from
+///         machine_power_failure_message() is shown.
+PowerResult handle_machine_power_failure(const std::string& err_message, bool is_reboot,
+                                         bool allow_local_fallback,
+                                         const std::function<PowerResult()>& local_action);
+
+/// Translated toast text for a failed printer-host power action, given what
+/// the local fallback returned (Failed when none ran), or nullptr when it was
+/// Dispatched. An authorization refusal gets the same text as the screen path.
+const char* machine_power_failure_message(PowerResult local_result, bool is_reboot);
 
 } // namespace helix

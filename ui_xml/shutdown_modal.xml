@@ -112,9 +112,10 @@
     </lv_obj>
 
     <!-- Dual-scope buttons: two split buttons (Restart, Shutdown), each with a
-         Both/Printer/Screen dropdown. They open on Screen (ShutdownModal::on_show
-         sets it from plan_shutdown_dialog); the dropdown widens the scope to the
-         printer when the user means it. -->
+         Both/Printer/Screen dropdown. ShutdownModal::on_show applies the default
+         scope passed to set_dual_callbacks (plan_shutdown_dialog picks Screen);
+         selected="2" here only matches it at parse time. The dropdown widens the
+         scope to the printer when the user means it. -->
     <lv_obj width="100%"
             height="content" flex_flow="row" style_pad_gap="#space_sm" style_pad_left="#space_lg"
             style_pad_right="#space_lg" style_pad_top="0" style_pad_bottom="#space_lg">

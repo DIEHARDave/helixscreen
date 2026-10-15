@@ -122,12 +122,12 @@ PowerResult invoke_local_power(bool is_reboot) {
 void queue_machine_power_failure(const MoonrakerError& err, bool is_reboot,
                                  bool allow_local_fallback) {
     const std::string message = err.message;
-    helix::ui::queue_update(
-        "ShutdownDialog::power_failed", [message, is_reboot, allow_local_fallback]() {
-            helix::handle_machine_power_failure(
-                message, is_reboot, allow_local_fallback,
-                [is_reboot]() { return invoke_local_power(is_reboot) == PowerResult::Dispatched; });
-        });
+    helix::ui::queue_update("ShutdownDialog::power_failed",
+                            [message, is_reboot, allow_local_fallback]() {
+                                helix::handle_machine_power_failure(
+                                    message, is_reboot, allow_local_fallback,
+                                    [is_reboot]() { return invoke_local_power(is_reboot); });
+                            });
 }
 
 // @p allow_local_fallback is set only when Moonraker runs on this same host —
@@ -351,12 +351,13 @@ void ShutdownWidget::handle_click() {
     show_shutdown_dialog(api_, shutdown_modal_, lifetime_, lv_screen_active());
 }
 
-bool handle_machine_power_failure(const std::string& err_message, bool is_reboot,
-                                  bool allow_local_fallback,
-                                  const std::function<bool()>& local_action) {
+PowerResult handle_machine_power_failure(const std::string& err_message, bool is_reboot,
+                                         bool allow_local_fallback,
+                                         const std::function<PowerResult()>& local_action) {
     const char* action = is_reboot ? "reboot" : "shutdown";
     spdlog::error("[ShutdownDialog] Machine {} failed: {}", action, err_message);
 
+    PowerResult local_result = PowerResult::Failed;
     if (allow_local_fallback && local_action) {
         // Moonraker is on this host, so its machine.reboot and our local power
         // action mean the same thing. Moonraker's `provider: none` path shells
@@ -364,15 +365,28 @@ bool handle_machine_power_failure(const std::string& err_message, bool is_reboot
         // SystemPower falls through to busybox /sbin/reboot, which they do.
         spdlog::info("[ShutdownDialog] Moonraker cannot {} this host — falling back to SystemPower",
                      action);
-        if (local_action()) {
-            return true;
+        local_result = local_action();
+        if (local_result == PowerResult::Dispatched) {
+            return local_result;
         }
         spdlog::error("[ShutdownDialog] Local {} fallback also failed", action);
     }
 
-    ToastManager::instance().show(
-        ToastSeverity::ERROR, is_reboot ? lv_tr("Reboot failed") : lv_tr("Shutdown failed"), 6000);
-    return false;
+    ToastManager::instance().show(ToastSeverity::ERROR,
+                                  machine_power_failure_message(local_result, is_reboot), 6000);
+    return local_result;
+}
+
+const char* machine_power_failure_message(PowerResult local_result, bool is_reboot) {
+    switch (local_result) {
+    case PowerResult::Dispatched:
+        return nullptr;
+    case PowerResult::NotAuthorized:
+        return screen_power_failure_message(local_result, is_reboot);
+    case PowerResult::Failed:
+        break;
+    }
+    return is_reboot ? lv_tr("Reboot failed") : lv_tr("Shutdown failed");
 }
 
 const char* screen_power_failure_message(PowerResult result, bool is_reboot) {

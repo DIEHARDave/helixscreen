@@ -109,6 +109,32 @@ TEST_CASE_METHOD(XMLTestFixture, "Dual-scope shutdown modal opens on the request
     process_lvgl(10);
 }
 
+TEST_CASE_METHOD(XMLTestFixture, "Dual-scope shutdown modal applies a non-XML default scope",
+                 "[shutdown][power]") {
+    // The XML parses with Screen selected, so only on_show() can put the
+    // buttons on any other scope.
+    REQUIRE(register_component("shutdown_modal"));
+    ui_split_button_init();
+
+    for (const ShutdownScope scope : {ShutdownScope::Printer, ShutdownScope::Both}) {
+        ShutdownModal modal;
+        auto noop = []() {};
+        modal.set_dual_callbacks(noop, noop, noop, noop, noop, noop, scope);
+        REQUIRE(modal.show(test_screen()));
+        process_lvgl(10);
+
+        lv_obj_t* restart = lv_obj_find_by_name(modal.dialog(), "split_restart");
+        lv_obj_t* shutdown = lv_obj_find_by_name(modal.dialog(), "split_shutdown");
+        REQUIRE(restart != nullptr);
+        REQUIRE(shutdown != nullptr);
+        CHECK(ui_split_button_get_selected(restart) == static_cast<uint32_t>(scope));
+        CHECK(ui_split_button_get_selected(shutdown) == static_cast<uint32_t>(scope));
+
+        modal.hide();
+        process_lvgl(10);
+    }
+}
+
 TEST_CASE("logind authorization errors are recognised", "[shutdown][power]") {
     CHECK(is_authorization_error("org.freedesktop.DBus.Error.InteractiveAuthorizationRequired"));
     CHECK(is_authorization_error("org.freedesktop.DBus.Error.AccessDenied"));
