@@ -39,6 +39,10 @@ class PrinterImageManager {
     /// Initialize with config directory (creates custom_images/ subdir)
     void init(const std::string& config_dir = "config");
 
+    /// Bring up the image-changed subject on its own. Idempotent; init() calls it too.
+    /// Panels observe the subject from their constructors, so it must exist before them.
+    void init_subjects();
+
     // --- Active image resolution ---
 
     /// Get the active image ID from config ("shipped:name", "custom:name", or "" for auto)

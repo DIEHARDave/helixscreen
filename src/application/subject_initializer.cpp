@@ -57,6 +57,7 @@
 #include "print_completion.h"
 #include "print_control_buttons.h"
 #include "print_start_navigation.h"
+#include "printer_image_manager.h"
 #include "printer_state.h"
 #include "runtime_config.h"
 #include "sensor_managers.h"
@@ -170,6 +171,8 @@ void SubjectInitializer::init_core_subjects() {
     PrinterStatusIcon::instance().init_subjects();  // Printer icon state
     helix::ui::notification_init_subjects();        // Notification badge subjects
     helix::LockManager::instance().init_subjects(); // Lock screen pin_set subject
+    // HomePanel observes it from its constructor, which runs in init_panels().
+    helix::PrinterImageManager::instance().init_subjects();
 
     // Quick-preset material name/temperature subjects. MUST be here in core
     // init: the filament panel, the three temp panels and the temp graph
