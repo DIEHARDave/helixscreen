@@ -224,11 +224,9 @@
 
     <!-- PREPARING OVERLAY: Shown during pre-print operations (homing, etc).
          Declared AFTER metadata_clip so it draws over the strip. Whether it
-         RESERVES the strip depends on how much height there is to stack into:
-         its stack (spinner + phase heading + progress + ETA) needs 112px.
-         At 240x320 the strip is 94px of a 154px card, so reserving would leave
-         50px and clip everything below the spinner. At 480x272 reserving leaves
-         114px - a 2px margin, so that size stays on the non-reserving side too.
+         RESERVES the strip depends on how much height there is to stack into
+         (phase heading + progress + ETA): at 240x320 the strip is 94px of a
+         154px card, and 480x272 has little more, so those stay non-reserving.
          From 272x480 up there is 166px or more, and reserving is what centres
          the stack on the ART rather than on the dimmed strip 47-71px too low.
          The cut is the VERTICAL tier, not the cramped one: a tall panel is not
@@ -242,17 +240,12 @@
             style_bg_opa="220" style_radius="0" style_pad_all="#space_lg" flex_flow="column"
             style_flex_main_place="center" style_flex_cross_place="center" style_pad_gap="#space_md" scrollable="false">
       <bind_flag_if_eq subject="preparing_visible" flag="hidden" ref_value="0"/>
-      <spinner name="preparing_spinner" size="lg"/>
       <text_heading name="preparing_operation_label"
                     width="100%" bind_text="print_start_message" text="Preparing..." translation_tag="Preparing..."
                     style_text_color="#text" style_text_align="center"/>
-      <!-- Costs 12px + a gap even at 0, and its track is #overlay_bg - the same
-           colour as the overlay behind it - so an empty bar reads as void. Hidden
-           children leave the flex pass entirely, size AND gap, which is what keeps
-           240x320 comfortable while it is NOT reserving the strip. -->
-      <progress_bar name="preparing_progress_bar" width="80%" bind_value="preparing_progress">
-        <bind_flag_if cond="preparing_progress le 0" flag="hidden"/>
-      </progress_bar>
+      <!-- The only liveness cue: its sweep runs at every value, 0 included,
+           because the value is an estimate that can stall through a long phase. -->
+      <progress_bar_estimate name="preparing_progress_bar" width="80%" bind_value="preparing_progress"/>
       <text_small name="preparing_eta" bind_text="print_start_time_left" style_text_color="#text" style_text_opa="180"/>
       <!-- Stands in for the metadata strip so the stack centres on the ART, not
            on the whole card. A trailing child in a centre-placed column shifts
