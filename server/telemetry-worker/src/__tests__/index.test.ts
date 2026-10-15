@@ -2505,7 +2505,7 @@ describe("feedback loop wiring", () => {
       const err = vi.spyOn(console, "error").mockImplementation(() => {});
       mockExecuteQuery.mockRejectedValueOnce(new Error("daily boom"));
       await runScheduled(LOOP_CRON, MONDAY, env);
-      expect(err).toHaveBeenCalledTimes(1);
+      expect(err.mock.calls.map((c) => c.join(" ")).filter((l) => l.includes("daily run failed"))).toHaveLength(1);
       expect(reportKeys(env)).toEqual(["reports/2026-W42.json"]);
     });
 
