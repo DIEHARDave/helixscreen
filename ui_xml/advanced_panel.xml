@@ -286,19 +286,20 @@
       <bind_style_if name="estop_bar_column" cond="ui_is_portrait"/>
       <bind_style_if name="estop_bar_row" cond="ui_is_portrait" invert="true"/>
       <ui_button name="advanced_estop_btn"
-                 height="#button_height_sm" icon="alert_octagon" text="E-Stop (M112)" variant="danger">
+                 height="#button_height_sm" label_fit="true" icon="alert_octagon" text="E-Stop (M112)" variant="danger">
         <bind_style_if name="estop_btn_stacked" cond="ui_is_portrait"/>
         <bind_style_if name="estop_btn_inline" cond="ui_is_portrait" invert="true"/>
         <event_cb trigger="clicked" callback="advanced_estop_clicked"/>
       </ui_button>
       <ui_button name="advanced_restart_klipper_btn"
-                 height="#button_height_sm" icon="refresh" text="Restart Klipper" variant="warning">
+                 height="#button_height_sm" label_fit="true" icon="refresh" text="Restart Klipper" variant="warning">
         <bind_style_if name="estop_btn_stacked" cond="ui_is_portrait"/>
         <bind_style_if name="estop_btn_inline" cond="ui_is_portrait" invert="true"/>
         <event_cb trigger="clicked" callback="advanced_restart_klipper_clicked"/>
       </ui_button>
       <ui_button name="advanced_firmware_restart_btn"
-                 height="#button_height_sm" icon="cog_refresh" text="Firmware Restart" variant="secondary">
+                 height="#button_height_sm" label_fit="true" icon="cog_refresh" text="Firmware Restart"
+                 variant="secondary">
         <bind_style_if name="estop_btn_stacked" cond="ui_is_portrait"/>
         <bind_style_if name="estop_btn_inline" cond="ui_is_portrait" invert="true"/>
         <event_cb trigger="clicked" callback="advanced_firmware_restart_clicked"/>

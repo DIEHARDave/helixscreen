@@ -884,3 +884,126 @@ TEST_CASE_METHOD(UiButtonTestFixture,
 
     CHECK(s_invalidations == 0);
 }
+
+// ============================================================================
+// label_fit
+// ============================================================================
+
+namespace {
+struct Box {
+    int32_t x1, y1, x2, y2;
+    bool operator==(const Box& o) const {
+        return x1 == o.x1 && y1 == o.y1 && x2 == o.x2 && y2 == o.y2;
+    }
+};
+Box box_of(lv_obj_t* obj) {
+    lv_area_t a;
+    lv_obj_get_coords(obj, &a);
+    return {a.x1, a.y1, a.x2, a.y2};
+}
+} // namespace
+
+// A label wider than its fixed-width button stays one line at the button's
+// height and ellipsizes inside the button, with the icon untouched.
+TEST_CASE_METHOD(UiButtonTestFixture,
+                 "ui_button label_fit truncates a too-long label on one line inside the button",
+                 "[ui_button][xml][quick]") {
+    const char* text = "Re Firmwarerestartrightnow";
+    const char* plain_attrs[] = {"width", "120", "icon", "refresh", "text", text, nullptr};
+    const char* fit_attrs[] = {"width", "120",       "icon", "refresh", "text",
+                               text,    "label_fit", "true", nullptr};
+    lv_obj_t* plain = create_button(plain_attrs);
+    lv_obj_t* btn = create_button(fit_attrs);
+    REQUIRE(plain != nullptr);
+    REQUIRE(btn != nullptr);
+    lv_obj_update_layout(test_screen());
+
+    lv_obj_t* label = UITest::button_label(btn);
+    lv_obj_t* icon = ui_button_get_icon(btn);
+    REQUIRE(label != nullptr);
+    REQUIRE(icon != nullptr);
+
+    // Without label_fit the label runs past the button's edge.
+    REQUIRE(box_of(UITest::button_label(plain)).x2 > box_of(plain).x2);
+
+    const Box b = box_of(btn);
+    const Box l = box_of(label);
+    CHECK(lv_obj_get_height(btn) == theme_manager_get_spacing("button_height"));
+    CHECK(lv_obj_get_height(label) ==
+          lv_font_get_line_height(lv_obj_get_style_text_font(label, LV_PART_MAIN)));
+    CHECK(l.x1 >= b.x1);
+    CHECK(l.x2 <= b.x2);
+    CHECK(l.y1 >= b.y1);
+    CHECK(l.y2 <= b.y2);
+    // The label fills the room the icon leaves, so the dots fall at the end of
+    // that room rather than after the first word that fits.
+    lv_area_t content;
+    lv_obj_get_content_coords(btn, &content);
+    CHECK(l.x2 == content.x2);
+    CHECK(lv_obj_get_width(icon) == lv_obj_get_width(ui_button_get_icon(plain)));
+    CHECK(box_of(icon).x1 >= b.x1);
+    CHECK(strstr(lv_label_get_text(label), "...") != nullptr);
+}
+
+// A label that fits renders exactly as it would without label_fit: same
+// label and icon boxes, same button padding.
+TEST_CASE_METHOD(UiButtonTestFixture,
+                 "ui_button label_fit leaves a label that fits pixel-identical",
+                 "[ui_button][xml][quick]") {
+    for (const char* text : {"Go", "Restart"}) {
+        CAPTURE(text);
+        const char* plain_attrs[] = {"width", "120", "icon", "refresh", "text", text, nullptr};
+        const char* fit_attrs[] = {"width", "120",       "icon", "refresh", "text",
+                                   text,    "label_fit", "true", nullptr};
+        lv_obj_t* plain = create_button(plain_attrs);
+        lv_obj_t* btn = create_button(fit_attrs);
+        REQUIRE(plain != nullptr);
+        REQUIRE(btn != nullptr);
+        lv_obj_update_layout(test_screen());
+
+        const Box pb = box_of(plain);
+        const Box fb = box_of(btn);
+        auto rel = [](Box child, Box parent) {
+            return Box{child.x1 - parent.x1, child.y1 - parent.y1, child.x2 - parent.x1,
+                       child.y2 - parent.y1};
+        };
+        CHECK(rel(box_of(UITest::button_label(btn)), fb) ==
+              rel(box_of(UITest::button_label(plain)), pb));
+        CHECK(rel(box_of(ui_button_get_icon(btn)), fb) ==
+              rel(box_of(ui_button_get_icon(plain)), pb));
+        CHECK(lv_obj_get_style_pad_left(btn, LV_PART_MAIN) ==
+              lv_obj_get_style_pad_left(plain, LV_PART_MAIN));
+        CHECK(lv_obj_get_style_pad_right(btn, LV_PART_MAIN) ==
+              lv_obj_get_style_pad_right(plain, LV_PART_MAIN));
+        CHECK(strcmp(lv_label_get_text(UITest::button_label(btn)), text) == 0);
+        lv_obj_delete(plain);
+        lv_obj_delete(btn);
+    }
+}
+
+// The bound follows the text: a label that stops being too long returns to
+// its natural width and the button to its own padding.
+TEST_CASE_METHOD(UiButtonTestFixture,
+                 "ui_button label_fit returns to natural width when the text shortens",
+                 "[ui_button][xml][quick]") {
+    const char* fit_attrs[] = {"width",     "120",  "text", "Abtasten starten bitte jetzt",
+                               "label_fit", "true", nullptr};
+    lv_obj_t* btn = create_button(fit_attrs);
+    REQUIRE(btn != nullptr);
+    lv_obj_update_layout(test_screen());
+    const int32_t pad = lv_obj_get_style_pad_left(btn, LV_PART_MAIN);
+    lv_obj_t* label = UITest::button_label(btn);
+    REQUIRE(box_of(label).x2 <= box_of(btn).x2);
+
+    ui_button_set_text(btn, "Go");
+    lv_obj_update_layout(test_screen());
+
+    const char* plain_attrs[] = {"width", "120", "text", "Go", nullptr};
+    lv_obj_t* plain = create_button(plain_attrs);
+    REQUIRE(plain != nullptr);
+    lv_obj_update_layout(test_screen());
+    CHECK(lv_obj_get_width(label) == lv_obj_get_width(UITest::button_label(plain)));
+    CHECK(lv_obj_get_style_pad_left(btn, LV_PART_MAIN) ==
+          lv_obj_get_style_pad_left(plain, LV_PART_MAIN));
+    CHECK(pad < lv_obj_get_style_pad_left(plain, LV_PART_MAIN));
+}

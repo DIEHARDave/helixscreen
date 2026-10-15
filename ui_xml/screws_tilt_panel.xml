@@ -62,7 +62,7 @@
           <text_small width="100%" text="4. Repeat until bed is level"/>
         </lv_obj>
         <!-- Start Button -->
-        <ui_button name="btn_start" width="#panel_button_width" text="Start Probing">
+        <ui_button name="btn_start" width="#panel_button_width" label_fit="true" text="Start Probing">
           <event_cb trigger="clicked" callback="screws_tilt_start_cb"/>
         </ui_button>
       </lv_obj>

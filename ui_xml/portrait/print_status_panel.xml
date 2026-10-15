@@ -200,26 +200,30 @@
                   height="content" style_pad_all="0" scrollable="false" flex_flow="row" style_flex_main_place="center"
                   style_flex_cross_place="center" style_pad_gap="#space_sm">
             <ui_button name="btn_light"
-                       height="#button_height" flex_grow="1" text="Light" icon="lightbulb_outline"
+                       height="#button_height" label_fit="true" flex_grow="1" text="Light" icon="lightbulb_outline"
                        bind_icon="light_button_icon" icon_position="top">
               <event_cb trigger="clicked" callback="on_print_status_light"/>
               <bind_flag_if_eq subject="led_controllable" flag="hidden" ref_value="0"/>
               <bind_state_if_eq subject="led_command_in_flight" state="disabled" ref_value="1"/>
             </ui_button>
             <ui_button name="btn_timelapse"
-                       height="#button_height" flex_grow="1" icon="video_off" bind_icon="timelapse_button_icon"
-                       text="Off" bind_text="timelapse_button_label" icon_position="top">
+                       height="#button_height" label_fit="true" flex_grow="1" icon="video_off"
+                       bind_icon="timelapse_button_icon" text="Off" bind_text="timelapse_button_label"
+                       icon_position="top">
               <event_cb trigger="clicked" callback="on_print_status_timelapse"/>
               <bind_flag_if_eq subject="printer_has_timelapse" flag="hidden" ref_value="0"/>
               <bind_state_if_eq subject="print_controls_enabled" state="disabled" ref_value="0"/>
             </ui_button>
             <ui_button name="btn_pause"
-                       height="#button_height" flex_grow="1" icon="pause" bind_icon="print_control_primary_icon"
-                       text="Pause" bind_text="print_control_primary_label" icon_position="top">
+                       height="#button_height" label_fit="true" flex_grow="1" icon="pause"
+                       bind_icon="print_control_primary_icon" text="Pause" bind_text="print_control_primary_label"
+                       icon_position="top">
               <event_cb trigger="clicked" callback="on_print_control_primary"/>
               <bind_state_if_eq subject="print_control_primary_enabled" state="disabled" ref_value="0"/>
             </ui_button>
-            <ui_button name="btn_tune" height="#button_height" flex_grow="1" icon="tune" text="Tune" icon_position="top">
+            <ui_button name="btn_tune"
+                       height="#button_height" label_fit="true" flex_grow="1" icon="tune" text="Tune"
+                       icon_position="top">
               <event_cb trigger="clicked" callback="on_print_status_tune"/>
               <bind_state_if_eq subject="print_controls_enabled" state="disabled" ref_value="0"/>
             </ui_button>
@@ -236,7 +240,7 @@
               <event_cb trigger="clicked" callback="on_print_status_camera"/>
             </ui_button>
             <ui_button name="btn_cancel"
-                       height="#button_height" flex_grow="1" variant="danger" icon="stop" text="Cancel"
+                       height="#button_height" label_fit="true" flex_grow="1" variant="danger" icon="stop" text="Cancel"
                        icon_position="top">
               <bind_flag_if_not_eq subject="print_outcome" flag="hidden" ref_value="0"/>
               <bind_state_if_eq subject="print_control_stop_enabled" state="disabled" ref_value="0"/>

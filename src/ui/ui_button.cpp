@@ -115,6 +115,120 @@ void apply_label_bound(UiButtonData* data, bool beside_icon) {
     }
 }
 
+/// A label_fit button's own state, kept apart from UiButtonData because a
+/// modal overwrites the button's user data when it wires its buttons.
+struct LabelFit {
+    lv_obj_t* btn;
+    lv_obj_t* label;
+    bool trimmed; // the label is truncated and the button's side padding dropped
+};
+
+/// The width a label_fit label may take: the button less its border and every
+/// other visible child beside it in a row (the icon, a busy spinner) with the
+/// gap to each. A content-sized button grows with its label instead, and a
+/// bound measured from it would freeze the label at its first width.
+int32_t fit_label_width(const LabelFit& fit) {
+    lv_obj_t* btn = fit.btn;
+    if (lv_obj_get_style_width(btn, LV_PART_MAIN) == LV_SIZE_CONTENT &&
+        lv_obj_get_style_flex_grow(btn, LV_PART_MAIN) == 0) {
+        return LV_COORD_MAX;
+    }
+    if (lv_obj_get_width(btn) <= 0) {
+        return LV_COORD_MAX; // not laid out yet
+    }
+    // The border sits inside the button's width, outside its padding.
+    const int32_t border = lv_obj_get_style_space_left(btn, LV_PART_MAIN) -
+                           lv_obj_get_style_pad_left(btn, LV_PART_MAIN) +
+                           lv_obj_get_style_space_right(btn, LV_PART_MAIN) -
+                           lv_obj_get_style_pad_right(btn, LV_PART_MAIN);
+    int32_t width = lv_obj_get_width(btn) - border;
+    if (lv_obj_get_style_flex_flow(btn, LV_PART_MAIN) == LV_FLEX_FLOW_ROW) {
+        const int32_t gap = lv_obj_get_style_pad_column(btn, LV_PART_MAIN);
+        const uint32_t n = lv_obj_get_child_count(btn);
+        for (uint32_t i = 0; i < n; ++i) {
+            lv_obj_t* child = lv_obj_get_child(btn, static_cast<int32_t>(i));
+            if (child != fit.label && !lv_obj_has_flag(child, LV_OBJ_FLAG_HIDDEN)) {
+                width -= lv_obj_get_width(child) + gap;
+            }
+        }
+    }
+    return LV_MAX(width, 0);
+}
+
+/// Whether the label's text runs past one line at its current bound, which is
+/// what a dots-mode label cuts.
+bool label_wraps(lv_obj_t* label, int32_t text_height) {
+    const lv_font_t* font = lv_obj_get_style_text_font(label, LV_PART_MAIN);
+    return font && text_height > lv_font_get_line_height(font);
+}
+
+/// A label wraps its text at a word, so a label wider than its bound measures
+/// only as wide as its first line and its dots would land after that word.
+/// Reporting the whole bound as its width puts the dots at the end of the
+/// space it has. It stays content-sized, so a shorter text shrinks it back.
+void label_fit_self_size_cb(lv_event_t* e) {
+    auto* label = static_cast<lv_obj_t*>(lv_event_get_current_target(e));
+    auto* size = static_cast<lv_point_t*>(lv_event_get_param(e));
+    const int32_t bound = lv_obj_get_style_max_width(label, LV_PART_MAIN);
+    if (bound != LV_COORD_MAX && label_wraps(label, size->y)) {
+        size->x = LV_MAX(size->x, bound);
+    }
+}
+
+/// Bound the label to what the button leaves it. A truncated label's content
+/// spans the button inside its border, so the side padding drops to hold it.
+/// A label that fits keeps its natural width and the button its own padding,
+/// so it renders pixel for pixel as without label_fit, even when it reaches
+/// into that padding.
+void refit_label(LabelFit& fit) {
+    lv_obj_t* label = fit.label;
+    const int32_t bound = fit_label_width(fit);
+    if (lv_obj_get_style_max_width(label, LV_PART_MAIN) != bound) {
+        // DECLARATIVE_OK: measured from the laid-out button, which XML cannot name
+        lv_obj_set_style_max_width(label, bound, LV_PART_MAIN);
+    }
+    const bool truncated =
+        bound != LV_COORD_MAX && label_wraps(label, lv_obj_get_self_height(label));
+    if (truncated == fit.trimmed) {
+        return;
+    }
+    fit.trimmed = truncated;
+    if (truncated) {
+        // DECLARATIVE_OK: the widget's fit mode trades padding for label room
+        lv_obj_set_style_pad_left(fit.btn, 0, LV_PART_MAIN);
+        lv_obj_set_style_pad_right(fit.btn, 0, LV_PART_MAIN);
+    } else {
+        lv_obj_remove_local_style_prop(fit.btn, LV_STYLE_PAD_LEFT, LV_PART_MAIN);
+        lv_obj_remove_local_style_prop(fit.btn, LV_STYLE_PAD_RIGHT, LV_PART_MAIN);
+    }
+}
+
+void label_fit_cb(lv_event_t* e) {
+    auto* fit = static_cast<LabelFit*>(lv_event_get_user_data(e));
+    if (lv_event_get_code(e) == LV_EVENT_DELETE) {
+        delete fit;
+        return;
+    }
+    refit_label(*fit);
+}
+
+/// label_fit: the label keeps its natural width and one line of its font, so
+/// a label that fits inside the button renders exactly as without it. One
+/// wider than the button ellipsizes on that line at the button's border, and
+/// the icon keeps its size.
+void apply_label_fit(lv_obj_t* btn, lv_obj_t* label) {
+    auto* fit = new LabelFit{btn, label, false};
+    lv_label_set_long_mode(label, LV_LABEL_LONG_MODE_DOTS);
+    helix::ui::label_hold_one_line(label);
+    // DECLARATIVE_OK: the bound follows the button's measured size and row
+    lv_obj_add_event_cb(btn, label_fit_cb, LV_EVENT_SIZE_CHANGED, fit);
+    lv_obj_add_event_cb(btn, label_fit_cb, LV_EVENT_LAYOUT_CHANGED, fit);
+    lv_obj_add_event_cb(label, label_fit_cb, LV_EVENT_SIZE_CHANGED, fit);
+    lv_obj_add_event_cb(label, label_fit_self_size_cb, LV_EVENT_GET_SELF_SIZE, nullptr);
+    lv_obj_add_event_cb(btn, label_fit_cb, LV_EVENT_DELETE, fit);
+    refit_label(*fit);
+}
+
 /// Hide one part of @p btn while @p subject_name equals @p ref: the observer
 /// behind label_hidden_subject and icon_hidden_subject.
 void bind_part_hidden(lv_xml_parser_state_t* state, lv_obj_t* btn, const char* subject_name,
@@ -1105,7 +1219,7 @@ void ui_button_apply(lv_xml_parser_state_t* state, const char** attrs) {
                             data->label, theme_manager_get_spacing("space_xxs"), LV_PART_MAIN);
                     } else {
                         lv_obj_set_flex_flow(btn, LV_FLEX_FLOW_ROW);
-                        lv_obj_set_style_pad_column(btn, theme_manager_get_spacing("space_xs"),
+                        lv_obj_set_style_pad_column(btn, theme_manager_get_spacing("space_xxs"),
                                                     LV_PART_MAIN);
                         // Position icon before or after text based on icon_on_right
                         lv_obj_move_to_index(data->icon, data->icon_on_right ? -1 : 0);
@@ -1207,6 +1321,12 @@ void ui_button_apply(lv_xml_parser_state_t* state, const char** attrs) {
         lv_obj_set_style_text_align(data->label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
         helix::ui::label_hold_one_line_if_dotted(data->label);
         spdlog::trace("[ui_button] Set long_mode to '{}'", long_mode);
+    }
+
+    const char* label_fit = lv_xml_get_value_of(attrs, "label_fit");
+    if (label_fit && lv_xml_to_bool(label_fit) && data && data->magic == UiButtonData::MAGIC &&
+        data->label) {
+        apply_label_fit(btn, data->label);
     }
 
     // If button has a name, give icon a derived name so it can be found
