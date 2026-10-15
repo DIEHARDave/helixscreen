@@ -31,6 +31,7 @@
 #include "camera_stream.h"
 #include "color_utils.h"
 #include "data_root_resolver.h"
+#include "demo_prompt_lines.h"
 #include "helix-xml/src/xml/lv_xml.h"
 #include "led/ui_led_control_overlay.h"
 #include "preflight_validator.h"
@@ -58,7 +59,7 @@ namespace helix {
 // active print) or configured state (lock PIN), so mock-mode navigation can't
 // reach them — the remote-control `demo` command uses this to capture them for
 // screenshots with the real widget lifecycle. Must run on the UI thread.
-bool show_demo_overlay(const std::string& name) {
+bool show_demo_overlay(const std::string& name, std::string* error) {
     lv_obj_t* screen = lv_screen_active();
 
     if (name == "preflight-check") {
@@ -254,6 +255,25 @@ bool show_demo_overlay(const std::string& name) {
         data.buttons.push_back(ActionPromptManager::parse_button_spec("Back||secondary"));
         data.buttons.back().is_footer = true;
         helix::ui::ActionPromptModal::show_owned_prompt(screen, data);
+        return true;
+    }
+
+    if (name == "action-prompt-zmod") {
+        // The lines go through the app's ActionPromptManager, the same path a
+        // printer's response takes, so this is exactly what Z-Mod's macro shows.
+        auto* manager = helix::ActionPromptManager::instance();
+        if (manager == nullptr) {
+            const std::string reason =
+                "action-prompt-zmod: no ActionPromptManager is registered (no printer session)";
+            spdlog::warn("[Demo] {}", reason);
+            if (error != nullptr) {
+                *error = reason;
+            }
+            return false;
+        }
+        for (const std::string& line : helix::demo::zmod_color_picker_lines()) {
+            manager->process_line(line);
+        }
         return true;
     }
 

@@ -507,7 +507,10 @@
     <px name="button_height_sm_xxlarge" value="56"/>
 
     <!-- touch_target_min: the least height a tappable control may have, whatever
-         the breakpoint; a compact layout trades width or rows, never this. -->
+         the breakpoint; a compact layout trades width or rows, never this.
+         One exception: an action prompt's swatch grid keeps every color visible,
+         so its tiles hold this width but let height drop toward button_height
+         before the grid scrolls (prestonbrown/helixscreen#1806). -->
     <px name="touch_target_min" value="48"/>
 
     <!-- button_height is responsive: _small/_medium/_large registered as button_height based on screen size -->

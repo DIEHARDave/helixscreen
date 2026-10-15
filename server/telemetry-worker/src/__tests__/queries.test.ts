@@ -14,6 +14,7 @@ import {
   filterForKinds,
   adoptionQueries,
   releaseScorecardQueries,
+  releaseStatsSql,
   retentionQuery,
   topVersionsQuery,
   performanceQueries,
@@ -245,10 +246,11 @@ describe("releaseScorecardQueries", () => {
     }
   });
 
-  it("returns the seven scorecard queries, windowed by days", () => {
+  it("returns the eight scorecard queries, windowed by days except the session lookup", () => {
     const sqls = releaseScorecardQueries(["1.0.0"], 14);
-    expect(sqls).toHaveLength(7);
-    for (const sql of sqls) expect(sql).toContain("INTERVAL '14' DAY");
+    expect(sqls).toHaveLength(8);
+    for (const sql of sqls.slice(0, 7)) expect(sql).toContain("INTERVAL '14' DAY");
+    expect(sqls[7]).toContain("INTERVAL '90' DAY");
   });
 
   it("applies the filters per kind", () => {
@@ -287,12 +289,11 @@ describe("appended performance and prints queries", () => {
     expect(sqls[8]).toContain("memory_snapshot");
   });
 
-  it("printsQueries keeps its three and appends three", () => {
+  it("printsQueries keeps its three and appends the device prints and sessions", () => {
     const sqls = printsQueries(30);
-    expect(sqls).toHaveLength(6);
-    expect(sqls[3]).toContain("argMax");
-    expect(sqls[4]).toContain("print_outcome");
-    expect(sqls[5]).toContain("GROUP BY version");
+    expect(sqls).toHaveLength(5);
+    expect(sqls[3]).toContain("GROUP BY device_id, ver");
+    expect(sqls[4]).toContain("argMax");
   });
 });
 
@@ -477,5 +478,13 @@ describe("constant predicates", () => {
         expect(sql, `healthQueries.${k} ${JSON.stringify(f)}`).not.toMatch(/AND 0\b|OR 0\b|AND 1\b(?! =)|\bWHERE 0\b/);
       }
     }
+  });
+});
+
+describe("release update failures", () => {
+  it("does not count an update deferred because a print is running", () => {
+    const sql = releaseStatsSql("timestamp >= NOW() - INTERVAL '7' DAY", ["1.0.4"]);
+    const reason = col("update_failed", "reason");
+    expect(sql).toContain(`sumIf(_sample_interval, index1 = 'update_failed' AND ${reason} != 'print_in_progress') as update_failures`);
   });
 });

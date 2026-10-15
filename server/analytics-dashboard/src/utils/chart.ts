@@ -8,8 +8,11 @@ export const horizontalBarOpts: ChartOptions<'bar'> = {
   scales: { y: { ticks: { autoSkip: false } } }
 }
 
+/** Axis label color on every chart. */
+export const TICK_COLOR = '#94a3b8'
+
 const AXIS_STYLE = {
-  ticks: { color: '#94a3b8' },
+  ticks: { color: TICK_COLOR },
   grid: { color: 'rgba(45, 51, 72, 0.5)' }
 }
 

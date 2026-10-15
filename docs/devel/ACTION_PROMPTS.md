@@ -30,7 +30,7 @@ protocol itself is Klipper's: [G-Codes: action commands](https://www.klipper3d.o
 | `ui_xml/action_prompt_button_row.xml` | One row of regular buttons: a button group, or a run of ungrouped buttons |
 | `src/application/gcode_response_routing.cpp#attach` | Wiring: creates manager and modal, registers the `notify_gcode_response` handler, sends button gcode and `prompt_end` |
 | `src/application/application_sdl_shortcuts.cpp` | `A` and `N` keys raise a test prompt and a test notification in `--test` |
-| `src/application/demo_overlays.cpp` | `ctl demo action-prompt-worst`, `action-prompt-many` and `action-prompt-hex` |
+| `src/application/demo_overlays.cpp` | `ctl demo action-prompt-worst`, `action-prompt-many`, `action-prompt-hex` and `action-prompt-zmod` |
 | `src/printer/ams_backend_mock.cpp#execute_device_action` | Mock AFC calibration wizard that injects a full prompt sequence |
 | `tests/unit/test_action_prompt.cpp` | Parser, button spec, state machine, callbacks, static accessors, line sink, `closed_on_screen()` for every close kind |
 | `tests/unit/test_action_prompt_dismiss.cpp` | Empty-gcode button closes without sending; which closes reach the dismiss callback |
@@ -349,6 +349,7 @@ In a running mock (`--test`):
 | `helix-screen ctl -s "$HELIX_SOCK" demo action-prompt-worst` | Tallest shape: AFC diagram, three wrapping text lines, three buttons and a footer, error severity. Used for the chrome budget in `ui_xml/action_prompt_modal.xml` |
 | `helix-screen ctl -s "$HELIX_SOCK" demo action-prompt-many` | Seven long-label buttons that must wrap |
 | `helix-screen ctl -s "$HELIX_SOCK" demo action-prompt-hex` | Third-field hex buttons and a Z-Mod swatch grid, built through `parse_button_spec` |
+| `helix-screen ctl -s "$HELIX_SOCK" demo action-prompt-zmod` | Z-Mod's real color picker (#1806): its `// action:` lines, verbatim, fed through `ActionPromptManager::process_line` |
 
 The `ctl demo` screens construct `PromptData` directly and skip the manager. `HELIX_MOCK_AMS` is
 documented in [MOCK_ENVIRONMENT_VARIABLES.md](MOCK_ENVIRONMENT_VARIABLES.md); `ctl` in

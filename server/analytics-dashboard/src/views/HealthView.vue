@@ -62,7 +62,7 @@
                   <td><span class="badge version">{{ r.version }}</span></td>
                   <td class="mono">{{ r.cur.devices.toLocaleString() }}</td>
                   <td v-for="m in METRICS" :key="m.key" class="mono">
-                    {{ formatRate(r.cur[m.key]) }}
+                    {{ rateText(r.cur, m.key) }}
                     <DeltaTag :change="ppChange(r.cur[m.key], r.prev[m.key], m.upIsGood)" />
                   </td>
                 </tr>
@@ -177,7 +177,7 @@ import { api } from '@/services/api'
 import type { HealthData } from '@/services/api'
 import { errorAnchor } from '@/utils/anchors'
 import { activationHint, single } from '@/utils/drill'
-import { formatRate, notReportedPer, ppChange, unreportedNote } from '@/utils/format'
+import { formatRate, formatRateOf, notReportedPer, ppChange, unreportedNote } from '@/utils/format'
 import type { DashFilterKey } from '@/utils/urlState'
 import type { Grouped } from '@/utils/versions'
 
@@ -193,6 +193,15 @@ const METRICS: { key: RateKey; label: string; block: Block; upIsGood: boolean }[
 ]
 
 const { data, loading, error, filters } = useDashData(api.getHealth)
+
+type ReleaseWindow = HealthData['releases'][number]['cur']
+
+// Update failure rests on few attempts per release, so it shows its counts.
+function rateText(w: ReleaseWindow, key: RateKey): string {
+  return key === 'update_failure_rate'
+    ? formatRateOf(w[key], w.update_failures, w.update_failures + w.update_successes)
+    : formatRate(w[key])
+}
 const router = useRouter()
 
 const releaseNote = computed(() => {

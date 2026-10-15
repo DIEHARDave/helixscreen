@@ -5,10 +5,13 @@ import { describe, expect, it } from "vitest";
 import {
   FILTERED_ENDPOINTS,
   filterSets,
+  DEFAULT_DELAY_MS,
   formatSmokeTable,
+  parseSmokeArgs,
   passed,
   pickMatrix,
   releasesVersionsPath,
+  shouldRetry,
 } from "../../scripts/smoke";
 
 describe("formatSmokeTable", () => {
@@ -81,5 +84,51 @@ describe("smoke endpoint coverage", () => {
     const covered = new Set([...FILTERED_ENDPOINTS, "device/"]);
     for (const route of served) expect(covered.has(route), route).toBe(true);
     expect(src).toContain('startsWith("/v1/dashboard/device/")');
+  });
+});
+
+describe("parseSmokeArgs", () => {
+  it("defaults to the production worker and the default delay", () => {
+    expect(parseSmokeArgs([])).toEqual({ base: "https://telemetry.helixscreen.org", delayMs: DEFAULT_DELAY_MS });
+    expect(DEFAULT_DELAY_MS).toBe(300);
+  });
+
+  it("takes a base URL, trailing slash dropped, and --delay-ms in either order", () => {
+    expect(parseSmokeArgs(["http://localhost:8787/", "--delay-ms", "50"])).toEqual({ base: "http://localhost:8787", delayMs: 50 });
+    expect(parseSmokeArgs(["--delay-ms", "0", "http://x"])).toEqual({ base: "http://x", delayMs: 0 });
+  });
+
+  it.each([[["--delay-ms"]], [["--delay-ms", "-1"]], [["--delay-ms", "fast"]], [["--delay-ms", "1.5"]], [["--bogus"]]])(
+    "rejects %j",
+    (argv) => {
+      expect(() => parseSmokeArgs(argv)).toThrow();
+    },
+  );
+});
+
+describe("shouldRetry", () => {
+  it("retries a 5xx the request did not expect", () => {
+    expect(shouldRetry(502, 200)).toBe(true);
+    expect(shouldRetry(500, 200)).toBe(true);
+    expect(shouldRetry(599, 404)).toBe(true);
+  });
+
+  it("does not retry a pass, a 4xx or a transport error", () => {
+    expect(shouldRetry(200, 200)).toBe(false);
+    expect(shouldRetry(404, 200)).toBe(false);
+    expect(shouldRetry(600, 200)).toBe(false);
+    expect(shouldRetry("fetch failed", 200)).toBe(false);
+  });
+});
+
+describe("formatSmokeTable retries", () => {
+  it("reports a pass on the retry as PASS (retry)", () => {
+    const r = { label: "health 7d", path: "/p", expected: 200, status: 200, retried: true };
+    expect(formatSmokeTable([r]).split("\n")[0]).toMatch(/^PASS \(retry\) +200 +health 7d/);
+  });
+
+  it("reports a failed retry as FAIL", () => {
+    const r = { label: "health 7d", path: "/p", expected: 200, status: 502, retried: true };
+    expect(formatSmokeTable([r]).split("\n")[0]).toMatch(/^FAIL +502/);
   });
 });
