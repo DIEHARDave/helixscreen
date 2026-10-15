@@ -216,6 +216,7 @@ bool PrintStartProfile::match_pattern_list(const std::vector<ResponsePattern>& p
             result.progress = rp.weight; // Caller interprets based on progress_mode
             result.hold_seconds = 0;
             result.narrates = rp.narrates;
+            result.counts_probes = rp.counts_probes;
             if (rp.hold_minutes_group > 0 &&
                 static_cast<size_t>(rp.hold_minutes_group) < match.size()) {
                 // Firmware prints the number with a '.' whatever the UI locale.
@@ -550,6 +551,16 @@ void PrintStartProfile::parse_pattern_array(const nlohmann::json& array,
             } else {
                 spdlog::warn("[PrintStartProfile] Ignoring non-boolean narrates for {} '{}' in {}",
                              kind, pattern_str, source_path);
+            }
+        }
+
+        if (rp_json.contains("counts_probes")) {
+            if (rp_json["counts_probes"].is_boolean()) {
+                rp.counts_probes = rp_json["counts_probes"].get<bool>();
+            } else {
+                spdlog::warn(
+                    "[PrintStartProfile] Ignoring non-boolean counts_probes for {} '{}' in {}",
+                    kind, pattern_str, source_path);
             }
         }
 

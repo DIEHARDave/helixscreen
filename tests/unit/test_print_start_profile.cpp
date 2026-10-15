@@ -1509,6 +1509,29 @@ TEST_CASE("PrintStartProfile: a phase object without a context field matches bar
     CHECK(get_default_profile()->phase_object_context_field().empty());
 }
 
+TEST_CASE("PrintStartProfile: a pattern may say its probes are not mesh points",
+          "[profile][print][phase_object]") {
+    auto profile = PrintStartProfileTestAccess::parse(
+        nlohmann::json::parse(R"({"name":"cp","state_patterns":[)"
+                              R"({"pattern":"^check$","phase":"BED_MESH","counts_probes":false},)"
+                              R"({"pattern":"^mesh$","phase":"BED_MESH"},)"
+                              R"({"pattern":"^odd$","phase":"BED_MESH","counts_probes":"no"}]})"));
+    REQUIRE(profile != nullptr);
+    PrintStartProfile::MatchResult result;
+    REQUIRE(profile->try_match_state("check", result));
+    CHECK_FALSE(result.counts_probes);
+    REQUIRE(profile->try_match_state("mesh", result));
+    CHECK(result.counts_probes);
+    // A non-boolean keeps the default.
+    REQUIRE(profile->try_match_state("odd", result));
+    CHECK(result.counts_probes);
+
+    REQUIRE(get_forge_x_profile()->try_match_state("mesh_validation/CHECKING MESH", result));
+    CHECK_FALSE(result.counts_probes);
+    REQUIRE(get_forge_x_profile()->try_match_state("kamp/LEVELING", result));
+    CHECK(result.counts_probes);
+}
+
 TEST_CASE("PrintStartProfile: a malformed context field drops the phase object",
           "[profile][print][phase_object]") {
     for (const char* cf : {R"("")", "3", "null", R"(["context_types"])"}) {

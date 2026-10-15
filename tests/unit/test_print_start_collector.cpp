@@ -5465,6 +5465,42 @@ TEST_CASE_METHOD(ForgeXCollectorFixture,
     REQUIRE(get_current_phase() == PrintStartPhase::BED_MESH);
 }
 
+TEST_CASE_METHOD(ForgeXCollectorFixture, "Bed mesh validation names no point count",
+                 "[print][collector][phase_object][forge_x][mesh]") {
+    // _CHECK_BED_MESH probes five points against the loaded 25-point mesh,
+    // so a count would read "(5/25)" and end there.
+    client().set_config_bed_mesh_probe_count(5, 5);
+    collector().start();
+    drain_async_updates();
+
+    context({{"context_types", {"print", "mesh_validation"}}, {"current_state", "CHECKING MESH"}});
+    REQUIRE(get_current_phase() == PrintStartPhase::BED_MESH);
+    const double points[][2] = {{-110, 60}, {-110, -110}, {60, -110}, {110, -110}, {110, 60}};
+    for (const auto& p : points) {
+        for (int sample = 0; sample < 3; ++sample) {
+            char line[96];
+            std::snprintf(line, sizeof(line), "// probe at %.3f,%.3f is z=-2.100000", p[0], p[1]);
+            send_gcode_response(line);
+        }
+    }
+    drain_async_updates();
+    CHECK(get_current_message() == "Validating bed mesh...");
+    CHECK(PrintStartCollectorTestAccess::get_mesh_probe_total(collector()) == 0);
+    CHECK(PrintStartCollectorTestAccess::get_mesh_probe_current(collector()) == 0);
+}
+
+TEST_CASE_METHOD(ForgeXCollectorFixture, "A KAMP mesh counts its points against the total",
+                 "[print][collector][phase_object][forge_x][mesh]") {
+    client().set_config_bed_mesh_probe_count(5, 5);
+    client().gcode_script("BED_MESH_CLEAR");
+    collector().start();
+    drain_async_updates();
+    context({{"context_types", {"print", "kamp"}}, {"current_state", "LEVELING"}});
+    send_gcode_response("// probe at -105.000,-105.000 is z=-2.025000");
+    drain_async_updates();
+    CHECK(get_current_message() == "Creating bed mesh (1/25)");
+}
+
 TEST_CASE_METHOD(ForgeXCollectorFixture, "A live pre-print step holds the deadline timeouts",
                  "[print][collector][phase_object][forge_x][timeout]") {
     // Heaters at target, the printer silent past the quiet gate and the

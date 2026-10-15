@@ -39,7 +39,7 @@
     { "pattern": "^print/CHECKING FILE$", "phase": "INITIALIZING", "message": "Verifying file...", "weight": 3 },
     { "pattern": "^[a-z_]+/HOMING$", "phase": "HOMING", "message": "Homing...", "weight": 5 },
     { "pattern": "^(kamp|bed_level)/LEVELING$", "phase": "BED_MESH", "message": "Creating bed mesh...", "weight": 25 },
-    { "pattern": "^mesh_validation/CHECKING MESH$", "phase": "BED_MESH", "message": "Validating bed mesh...", "weight": 25 },
+    { "pattern": "^mesh_validation/CHECKING MESH$", "phase": "BED_MESH", "message": "Validating bed mesh...", "weight": 25, "counts_probes": false },
     { "pattern": "^nozzle_clean/PREPARING TO CLEAN$", "phase": "CLEANING", "message": "Preparing to clean...", "weight": 20 },
     { "pattern": "^nozzle_clean/CLEANING$", "phase": "CLEANING", "message": "Cleaning nozzle...", "weight": 20 },
     { "pattern": "^nozzle_clean/COOLING NOZZLE$", "phase": "CLEANING", "message": "Cooling for probing...", "weight": 20 },

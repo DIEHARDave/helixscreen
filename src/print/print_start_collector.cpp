@@ -413,6 +413,7 @@ void PrintStartCollector::reset_run_locked() {
     mesh_seconds_per_probe_ = 0.0f;
     mesh_extrapolation_armed_ = false;
     mesh_entry_ext_target_ = 0;
+    mesh_counts_probes_ = true;
     pre_mesh_points_.reset();
     pre_mesh_last_probe_time_ = {};
     current_mesh_message_.clear();
@@ -1276,6 +1277,16 @@ void PrintStartCollector::on_gcode_response(const json& msg) {
             return;
         }
 
+        bool counting = true;
+        {
+            std::lock_guard<std::mutex> lock(state_mutex_);
+            counting = mesh_counts_probes_;
+        }
+        if (in_mesh && !counting &&
+            (helix::parse_probe_progress(line) || helix::is_probe_result_line(line))) {
+            return; // a check of a stored mesh: activity, not points to count
+        }
+
         if (in_mesh) {
             if (auto pp = helix::parse_probe_progress(line)) {
                 // "Probing point X/Y" — firmware provides current and total
@@ -1511,7 +1522,7 @@ void PrintStartCollector::apply_profile_match(const PrintStartProfile::MatchResu
         if (profile_->progress_mode() == PrintStartProfile::ProgressMode::SEQUENTIAL) {
             update_phase(match.phase, match.message, match.progress);
         } else {
-            update_phase(match.phase, match.message.c_str());
+            update_phase(match.phase, match.message.c_str(), match.counts_probes);
         }
         spdlog::debug("[PrintStartCollector] Detected phase: {}", static_cast<int>(match.phase));
     }
@@ -1809,7 +1820,8 @@ bool PrintStartCollector::check_k2_cfs_signal(const std::string& line) {
 /// Snapmaker U1: Inspecting bed → Detecting plate → Bed mesh). Caller must
 /// hold state_mutex_.
 void PrintStartCollector::maybe_reset_for_mesh_subphase_locked(PrintStartPhase next_phase,
-                                                               const std::string& next_message) {
+                                                               const std::string& next_message,
+                                                               bool counts_probes) {
     if (next_phase != PrintStartPhase::BED_MESH) {
         if (current_phase_ == PrintStartPhase::BED_MESH) {
             current_mesh_message_.clear();
@@ -1826,6 +1838,7 @@ void PrintStartCollector::maybe_reset_for_mesh_subphase_locked(PrintStartPhase n
         return;
     }
     current_mesh_message_ = next_message;
+    mesh_counts_probes_ = counts_probes;
     mesh_probe_current_ = 0;
     mesh_probe_total_ = 0;
     mesh_points_.reset();
@@ -1889,7 +1902,8 @@ void PrintStartCollector::enter_bed_mesh_with_buffer(const char* message) {
                   count);
 }
 
-void PrintStartCollector::update_phase(PrintStartPhase phase, const char* message) {
+void PrintStartCollector::update_phase(PrintStartPhase phase, const char* message,
+                                       bool counts_mesh_probes) {
     int progress;
     bool should_save = false;
     bool has_predictions = false;
@@ -1920,7 +1934,8 @@ void PrintStartCollector::update_phase(PrintStartPhase phase, const char* messag
             current_phase_ != phase) {
             pre_mesh_points_.reset();
         }
-        maybe_reset_for_mesh_subphase_locked(phase, message ? message : "");
+        maybe_reset_for_mesh_subphase_locked(phase, message ? message : "", counts_mesh_probes);
+        entering_mesh = entering_mesh && mesh_counts_probes_;
         current_phase_ = phase;
         current_message_ = message ? message : "";
         // A phase signal means the queue moved on from any heater wait.

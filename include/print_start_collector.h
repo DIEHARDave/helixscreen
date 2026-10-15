@@ -448,14 +448,22 @@ class PrintStartCollector : public std::enable_shared_from_this<PrintStartCollec
      * Inspecting Bed). The probe counters need to reset between sub-phases
      * so the displayed "(N/M)" doesn't roll past M. Caller must hold
      * state_mutex_.
+     *
+     * @param counts_probes Whether the new BED_MESH step's probe lines are
+     *        mesh points to count (mesh_counts_probes_).
      */
     void maybe_reset_for_mesh_subphase_locked(helix::PrintStartPhase next_phase,
-                                              const std::string& next_message);
+                                              const std::string& next_message,
+                                              bool counts_probes = true);
 
     /**
      * @brief Update phase and recalculate progress (weighted mode)
+     *
+     * @param counts_mesh_probes For BED_MESH: whether its probe lines count
+     *        against a point total (see PrintStartProfile::MatchResult).
      */
-    void update_phase(helix::PrintStartPhase phase, const char* message);
+    void update_phase(helix::PrintStartPhase phase, const char* message,
+                      bool counts_mesh_probes = true);
 
     /**
      * @brief Update phase with explicit progress value (sequential mode)
@@ -741,6 +749,12 @@ class PrintStartCollector : public std::enable_shared_from_this<PrintStartCollec
     /// notifies on every field change in the object, so the same state
     /// re-arrives; it must not re-fire the phase. Cleared in start()/reset().
     std::string last_phase_object_state_;
+
+    /// Whether the current BED_MESH step's probe lines are mesh points to
+    /// count. False for a step that only checks a stored mesh: its probes
+    /// still show the printer working, but no "(N/M)" is shown and no point
+    /// total is fetched. Guarded by state_mutex_.
+    bool mesh_counts_probes_ = true;
 
     /// Last value of the phase object's state and context fields seen in
     /// any frame; nullopt until one arrives. A null or absent-in-firmware

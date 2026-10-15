@@ -40,6 +40,10 @@ class PrintStartProfile {
         /// that only names a target ("Bed: 90c") says nothing about what runs
         /// next, so it must not silence the collector's own inference.
         bool narrates = true;
+        /// For a BED_MESH match: whether its probe lines are a mesh to count
+        /// against the mesh's point total. A validation that probes a few
+        /// points of a stored mesh is not.
+        bool counts_probes = true;
     };
 
     /**
@@ -63,6 +67,8 @@ class PrintStartProfile {
         int hold_minutes_group = 0;
         /// False for a label that states a target rather than narrating a step
         bool narrates = true;
+        /// False for a BED_MESH step whose probes are not the mesh's points
+        bool counts_probes = true;
     };
 
     /**
