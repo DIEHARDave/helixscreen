@@ -115,18 +115,28 @@ pid_comm() {
     fi
 }
 
-# A Bash tool call is a transient shell, so its own pid is useless as an owner.
-# Walk to the nearest `claude` ancestor, which lives as long as the session.
-session_pid() {
-    local p=$$ ppid comm hops=0 pgid
+# Nearest `claude` ancestor of this process: it lives as long as the session,
+# unlike the transient shell a Bash tool call runs in. Fails when the chain
+# holds none.
+SESSION_COMM=${HELIX_CLAIM_SESSION_COMM:-claude}
+claude_ancestor() {
+    local p=$$ ppid comm hops=0
     while [ "$p" -gt 1 ] && [ "$hops" -lt 40 ]; do
         comm=$(pid_comm "$p") || break
-        [ "$comm" = "claude" ] && { printf '%s' "$p"; return 0; }
+        [ "$comm" = "$SESSION_COMM" ] && { printf '%s' "$p"; return 0; }
         ppid=$(pid_ppid "$p")
         case "$ppid" in ''|*[!0-9]*) break;; esac
         [ "$ppid" = "$p" ] && break
         p=$ppid; hops=$((hops+1))
     done
+    return 1
+}
+
+# The default owner of a claim: the session's `claude` process when there is
+# one, else a stand-in that is stable across the commands of one run.
+session_pid() {
+    local pgid
+    claude_ancestor && return 0
     # Outside a Claude session $PPID names whichever shell happened to invoke
     # this, so a take and a release in the same run can derive different owners
     # and the claim becomes unreleasable by the run that took it. Every process
@@ -170,13 +180,33 @@ sibling_file() {
     printf '%s/%s.json' "$CLAIM_DIR" "$(slug "$other:$name")"
 }
 
+# True when pid is this process or one of its ancestors: a subagent running under
+# its parent session's claim is the same owner as that session.
+is_self_or_ancestor() {
+    local p=$$ ppid hops=0
+    while [ "$p" -gt 1 ] && [ "$hops" -lt 40 ]; do
+        [ "$p" = "$1" ] && return 0
+        ppid=$(pid_ppid "$p")
+        case "$ppid" in ''|*[!0-9]*) return 1;; esac
+        [ "$ppid" = "$p" ] && return 1
+        p=$ppid; hops=$((hops+1))
+    done
+    return 1
+}
+
+# One ownership rule for every holder-versus-caller question: the holder is the
+# caller's own session, or an ancestor of it.
+same_owner() { [ "$1" = "$2" ] || is_self_or_ancestor "$1"; }
+
 # Echoes the sibling's file when a DIFFERENT live session holds the same tree.
+# A holder that is an ancestor of the caller counts as the same session.
 blocking_sibling() {
     local f; f=$(sibling_file "$1") || return 1
     [ -f "$f" ] || return 1
     [ "$(state_of "$f")" = "LIVE" ] || return 1
     local body; body=$(tr -d '\n' < "$f")
-    [ "$(json_get "$body" pid)" = "$2" ] && return 1
+    local owner; owner=$(json_get "$body" pid)
+    same_owner "$owner" "$2" && return 1
     printf '%s' "$f"
 }
 
@@ -303,26 +333,88 @@ unpooled_runners() {
     done
 }
 
+# The main tree is the first entry of the worktree list.
+is_main_tree_resource() {
+    local main
+    main=$(git worktree list --porcelain 2>/dev/null | sed -n '1s/^worktree //p')
+    [ -n "$main" ] && [ "${1#*:}" = "$(basename "$main")" ]
+}
+
+# Workflows whose failure on main means main is red; others (nightly, release,
+# cache jobs) fail for reasons that do not block landing.
+RED_MAIN_WORKFLOWS=${HELIX_CLAIM_CI_WORKFLOWS:-Build|Code Quality}
+
+# Prints "<workflow> <sha>" for each main-CI workflow whose latest completed,
+# non-cancelled push run on origin/main failed (failure, timed_out or
+# startup_failure). Runs still in progress are ignored. A run whose commit is
+# known locally but is not on origin/main (a fork PR from its main branch) is
+# ignored. Prints nothing when green or when the state cannot be read: an
+# advisory lock must not wedge on a flaky network, so a gh that is missing,
+# unauthenticated or slow warns once and lets the take go on.
+red_main_workflows() {
+    git remote get-url origin >/dev/null 2>&1 || return 0
+    local out limit="" wf concl sha
+    if ! command -v gh >/dev/null 2>&1; then
+        printf 'helix-claim: gh not installed; skipping the red-main check\n' >&2; return 0
+    fi
+    if command -v timeout >/dev/null 2>&1; then limit="timeout 10"
+    elif command -v gtimeout >/dev/null 2>&1; then limit="gtimeout 10"; fi
+    out=$(${HELIX_CLAIM_TIMEOUT-$limit} gh run list --branch main --event push --limit 40 \
+            --json conclusion,status,workflowName,headSha \
+            --jq '.[] | select(.status=="completed" and .conclusion!="cancelled" and .conclusion!="skipped") | [.workflowName,.conclusion,.headSha] | @tsv' 2>/dev/null) || {
+        printf 'helix-claim: could not read CI state from gh; skipping the red-main check\n' >&2; return 0
+    }
+    local have_ref=0
+    git rev-parse --verify --quiet refs/remotes/origin/main >/dev/null && have_ref=1
+    while IFS=$'\t' read -r wf concl sha; do
+        [ -n "$wf" ] || continue
+        if (( have_ref )) && git cat-file -e "$sha^{commit}" 2>/dev/null &&
+           ! git merge-base --is-ancestor "$sha" refs/remotes/origin/main 2>/dev/null; then
+            continue
+        fi
+        printf '%s\t%s\t%s\n' "$wf" "$concl" "${sha:0:9}"
+    done <<<"$out" | awk -F'\t' -v want="$RED_MAIN_WORKFLOWS" '
+        BEGIN { n = split(want, w, "|"); for (i = 1; i <= n; i++) wf[w[i]] = 1 }
+        ($1 in wf) && !($1 in seen) { seen[$1] = 1; if ($2 == "failure" || $2 == "timed_out" || $2 == "startup_failure") print $1 " " $3 }'
+}
+
 cmd=${1:-}; shift 2>/dev/null || true
 case "$cmd" in
 take)
     res=${1:-}; op=${2:-}; shift 2 2>/dev/null || true
     res=$(canon "$res")
-    [ -n "$res" ] && [ -n "$op" ] || die "usage: helix-claim take <resource> <op> [--note X] [--pid N]"
-    note=""; pid=""
+    [ -n "$res" ] && [ -n "$op" ] || die "usage: helix-claim take <resource> <op> [--note X] [--pid N|auto|--session]"
+    note=""; pid=""; ack_red=0
     while [ $# -gt 0 ]; do
         case $1 in
+            --ack-red-main) ack_red=1; shift;;
             --note) [ $# -ge 2 ] || die "--note needs a value"; note=$2; shift 2;;
             --pid)  [ $# -ge 2 ] || die "--pid needs a value";  pid=$2;  shift 2;;
+            --session) pid=auto; shift;;
             *) die "unknown option: $1";;
         esac
     done
+    if [ "$pid" = auto ]; then
+        pid=$(claude_ancestor) ||
+            die "--pid auto: found no process named '$SESSION_COMM' among the ancestors of this command (searched up to 40 parents); pass --pid <long-lived owner> instead"
+    fi
+    case "$pid" in *[!0-9]*) die "--pid needs a number or 'auto', got: $pid";; esac
     [ -n "$pid" ] || pid=$(session_pid)
     mkdir -p "$CLAIM_DIR" || die "cannot create $CLAIM_DIR"
     f="$CLAIM_DIR/$(slug "$res").json"
     if [ "$(state_of "$f")" = "LIVE" ]; then
         printf 'REFUSED: already claimed\n'; describe "$f"; exit 1
     fi
+    case "$res" in worktree:*)
+        if (( ! ack_red )) && is_main_tree_resource "$res"; then
+            red=$(red_main_workflows)
+            if [ -n "$red" ]; then
+                printf 'REFUSED: CI on origin/main is red (%s)\n' "$(paste -sd, - <<<"$red" | sed 's/,/, /g')"
+                printf '  fix or revert main first, or pass --ack-red-main to work in it anyway\n'
+                exit 1
+            fi
+        fi;;
+    esac
     if sib=$(blocking_sibling "$res" "$pid"); then
         printf 'REFUSED: another session holds the same tree\n'; describe "$sib"; exit 1
     fi
@@ -613,7 +705,7 @@ held-by-other)
     f="$CLAIM_DIR/$(slug "$res").json"
     if [ -f "$f" ] && [ "$(state_of "$f")" = "LIVE" ]; then
         body=$(tr -d '\n' < "$f")
-        [ "$(json_get "$body" pid)" != "$me" ] && { describe "$f"; exit 0; }
+        same_owner "$(json_get "$body" pid)" "$me" || { describe "$f"; exit 0; }
     fi
     if sib=$(blocking_sibling "$res" "$me"); then describe "$sib"; exit 0; fi
     exit 1
@@ -659,7 +751,15 @@ release)
     cat <<'USAGE'
 helix-claim - advisory claims on resources shared between agent sessions
 
-  take <resource> <op> [--note X] [--pid N]   claim; refuses if a LIVE claim exists
+  take <resource> <op> [--note X] [--pid N | --session]
+                                              claim; refuses if a LIVE claim exists.
+                                              --session (= --pid auto) owns it by the
+                                              nearest `claude` ancestor (errors if none)
+                                              worktree:<main> is refused while the latest
+                                              Build / Code Quality push run on origin/main
+                                              failed (failure, timed_out, startup_failure),
+                                              unless --ack-red-main; runs still in
+                                              progress are ignored
   check <resource>                            FREE | LIVE | STALE (exit 1 if LIVE)
   list                                        all claims with derived liveness
   release <resource> [--force]                drop your claim; refuses one another
