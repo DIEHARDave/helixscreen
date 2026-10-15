@@ -427,7 +427,7 @@ test: test-build
 # the reflex this target exists to replace, so a typo must not reach it. The
 # guard is a parse-time conditional so a bare `make t` fails without first
 # building a binary it has no filter to run.
-.PHONY: t unit-sweep full-test-run test-run
+.PHONY: t unit-sweep full-test-run land-gate test-run
 ifeq ($(strip $(F)),)
 t:
 	@echo "$(YELLOW)make t needs a filter.$(RESET)"; \
@@ -467,6 +467,18 @@ unit-sweep: test-build
 full-test-run:
 	$(Q)TEST_HOST="$(TEST_HOST)" MAKE="$(MAKE)" scripts/full-test-run.sh
 
+# land-gate: the pre-landing gate - what CI will judge the branch on, run before
+# it reaches main. full-test-run's sweep and bats, plus the sweep again in CI's
+# shard layout (CI_SHARDS, build.yml's nproc*2 on its 4-core runners: which tests
+# share a process decides what a use-after-free corrupts), CI's tests/ui slice
+# and the moonraker plugin tests, and the generated-artefact freshness checks.
+# The C++ lane goes to the test host as full-test-run's does (TEST_HOST); the
+# rest run here in parallel. Prints a PASS/FAIL table; scripts/land-gate.sh.
+CI_SHARDS ?= 8
+
+land-gate:
+	$(Q)TEST_HOST="$(TEST_HOST)" CI_SHARDS="$(CI_SHARDS)" MAKE="$(MAKE)" scripts/land-gate.sh
+
 # ----------------------------------------------------------------------------
 # test-run: a signpost that refuses
 # ----------------------------------------------------------------------------
@@ -495,6 +507,9 @@ test-run:
 	echo "      make full-test-run     unit sweep + bats shell suite, ~2m"; \
 	echo "         25s idle, minutes on a loaded box, and only worth asking once"; \
 	echo "         the feature is finished."; \
+	echo ""; \
+	echo "  $(CYAN)May this land on main - will CI go green?$(RESET)"; \
+	echo "      make land-gate         full-test-run + CI's shard layout + tests/ui + freshness, ~10m"; \
 	echo ""; \
 	echo "A full run cannot tell you your feature works, only that something else broke."; \
 	echo "Cadence table: tests/CLAUDE.md, 'What to run when'."; \
@@ -604,22 +619,27 @@ test-kiauh:
 # scripts/parallel-jobs-file.sh as its parallel, which hands GNU parallel the
 # file instead; parallel re-reads it as the suite runs. With no file, one
 # slot runs serially and more run at the fixed count.
+# BATS_REQUIRED=1 turns a missing bats into a failure instead of a skip, for a
+# gate that must not report a suite it never ran; BATS_BIN names the bats to run.
+BATS_BIN ?= bats
+BATS_REQUIRED ?=
+
 test-shell:
 	$(ECHO) "$(CYAN)$(BOLD)Running shell tests (bats)...$(RESET)"
-	@if command -v bats >/dev/null 2>&1; then \
+	@if command -v "$(BATS_BIN)" >/dev/null 2>&1; then \
 		START_TIME=$$(date +%s); \
 		if command -v parallel >/dev/null 2>&1; then \
 			jobs_dir=$$(mktemp -d); \
-			HELIX_JOBS_FILE=$$jobs_dir/slots scripts/helix-claim hold --grow "$$jobs_dir/slots" -- \
+			BATS_BIN="$(BATS_BIN)" HELIX_JOBS_FILE=$$jobs_dir/slots scripts/helix-claim hold --grow "$$jobs_dir/slots" -- \
 				sh -c 'if [ -f "$$HELIX_JOBS_FILE" ]; then \
-					exec bats --jobs 2 --parallel-binary-name "$$PWD/scripts/parallel-jobs-file.sh" \
+					exec "$$BATS_BIN" --jobs 2 --parallel-binary-name "$$PWD/scripts/parallel-jobs-file.sh" \
 						--no-parallelize-within-files "$$@"; fi; \
-				[ "$$JOBPOOL_SLOTS" -gt 1 ] || exec bats "$$@"; \
-				exec bats --jobs "$$JOBPOOL_SLOTS" --no-parallelize-within-files "$$@"' bats tests/shell/; \
+				[ "$$JOBPOOL_SLOTS" -gt 1 ] || exec "$$BATS_BIN" "$$@"; \
+				exec "$$BATS_BIN" --jobs "$$JOBPOOL_SLOTS" --no-parallelize-within-files "$$@"' bats tests/shell/; \
 			STATUS=$$?; \
 			rm -f "$$jobs_dir"/*; rmdir "$$jobs_dir"; \
 		else \
-			bats tests/shell/; \
+			"$(BATS_BIN)" tests/shell/; \
 			STATUS=$$?; \
 		fi; \
 		END_TIME=$$(date +%s); \
@@ -629,6 +649,10 @@ test-shell:
 			exit $$STATUS; \
 		fi; \
 		echo "$(GREEN)$(BOLD)✓ Shell tests passed in $${DURATION}s$(RESET)"; \
+	elif [ "$(BATS_REQUIRED)" = 1 ]; then \
+		echo "$(RED)$(BOLD)✗ $(BATS_BIN) not found, and BATS_REQUIRED=1: a gate cannot pass a suite it never ran$(RESET)"; \
+		echo "  Install with: brew install bats-core (macOS) or apt install bats (Linux)"; \
+		exit 1; \
 	else \
 		echo "$(YELLOW)⚠ bats not found - skipping shell tests$(RESET)"; \
 		echo "  Install with: brew install bats-core (macOS) or apt install bats (Linux)"; \
@@ -722,6 +746,28 @@ test-ui-pytest:
 	$(VENV_PYTHON) -m pytest tests/ui/ -v; \
 	$(call report_test_result,Out-of-process UI tests)
 
+# CI's slice of the same suite, exactly as .github/workflows/build.yml's
+# "Run out-of-process UI tests" step runs it: no goldens (machine-sensitive
+# pixels) and no [slow] screen sweeps (nightly). tests/shell/test_land_gate.bats
+# fails when the two invocations drift apart. Headless, so no window or sound
+# reaches the desktop; one pool slot, since the cases boot one app at a time.
+UI_CI_PYTEST_ARGS := tests/ui/ -v --ignore=tests/ui/test_screens.py -m "not slow"
+
+test-ui-ci:
+	$(ECHO) "$(CYAN)$(BOLD)Running out-of-process UI tests, CI's slice (pytest $(UI_CI_PYTEST_ARGS))...$(RESET)"
+	@if [ ! -x "$(VENV_PYTHON)" ]; then \
+		echo "$(RED)$(BOLD)✗ Python venv not found — run 'make venv-setup' first$(RESET)"; \
+		exit 1; \
+	fi
+	@if [ ! -x "$(BIN_DIR)/helix-screen" ]; then \
+		echo "$(RED)$(BOLD)✗ $(BIN_DIR)/helix-screen not built — run 'make' first$(RESET)"; \
+		exit 1; \
+	fi
+	@START_TIME=$$(date +%s); \
+	HELIX_HEADLESS=1 SDL_VIDEODRIVER=dummy scripts/helix-claim hold -n 1 -- \
+		$(VENV_PYTHON) -m pytest $(UI_CI_PYTEST_ARGS); \
+	$(call report_test_result,Out-of-process UI tests (CI slice))
+
 # ============================================================================
 # Moonraker Plugin Tests (pytest, moonraker-plugin/tests/)
 # ============================================================================
@@ -738,6 +784,18 @@ test-plugin:
 	@START_TIME=$$(date +%s); \
 	$(VENV_PYTHON) -m pytest moonraker-plugin/tests/ -v; \
 	$(call report_test_result,Moonraker plugin tests)
+
+# The script-side tooling's pytest suite, as quality.yml's "Run Python script
+# tests" step runs it.
+test-python:
+	$(ECHO) "$(CYAN)$(BOLD)Running Python script tests (pytest, tests/python/)...$(RESET)"
+	@if [ ! -x "$(VENV_PYTHON)" ]; then \
+		echo "$(RED)$(BOLD)✗ Python venv not found — run 'make venv-setup' first$(RESET)"; \
+		exit 1; \
+	fi
+	@START_TIME=$$(date +%s); \
+	$(VENV_PYTHON) -m pytest tests/python/ -v --tb=short; \
+	$(call report_test_result,Python script tests)
 
 # ============================================================================
 # Convenience Test Targets - Run tests by component
@@ -1428,7 +1486,7 @@ tsan-app:
 # Test Help
 # ============================================================================
 
-.PHONY: help-test test-kiauh test-shell test-xml test-ui-pytest test-plugin test-serial test-hidden test-hidden-list test-asan test-asan-build test-tsan test-tsan-build test-asan-one test-tsan-one clean-sanitizers
+.PHONY: help-test test-kiauh test-shell test-xml test-ui-pytest test-ui-ci test-plugin test-python test-serial test-hidden test-hidden-list test-asan test-asan-build test-tsan test-tsan-build test-asan-one test-tsan-one clean-sanitizers
 help-test:
 	@if [ -t 1 ] && [ -n "$(TERM)" ] && [ "$(TERM)" != "dumb" ]; then \
 		B='$(BOLD)'; G='$(GREEN)'; Y='$(YELLOW)'; C='$(CYAN)'; X='$(RESET)'; \
@@ -1442,6 +1500,7 @@ help-test:
 	echo "  $${G}test$${X}                 - Build tests (does not run)"; \
 	echo "  $${G}unit-sweep$${X}           - C++ unit tests, sharded in PARALLEL"; \
 	echo "  $${G}full-test-run$${X}        - unit-sweep + bats shell suite (the completion gate)"; \
+	echo "  $${G}land-gate$${X}            - full-test-run + CI's 8-shard layout + tests/ui + freshness (before landing)"; \
 	echo "  $${G}test-run$${X}             - Signpost only: refuses, names the target that fits"; \
 	echo "  $${G}test-serial$${X}          - Run tests sequentially (for debugging)"; \
 	echo "  $${G}test-smoke$${X}           - Quick smoke test (~30s) for rapid iteration"; \
@@ -1458,6 +1517,8 @@ help-test:
 	echo "  $${G}test-shell$${X}           - Shell/installer tests (bats)"; \
 	echo "  $${G}dev-timing$${X}           - Measured cost of every build and suite"; \
 	echo "  $${G}test-plugin$${X}          - Moonraker plugin tests (pytest)"; \
+	echo "  $${G}test-ui-ci$${X}           - Out-of-process UI tests, CI's slice (pytest)"; \
+	echo "  $${G}test-python$${X}          - Python script tests (pytest, tests/python/)"; \
 	echo ""; \
 	echo "$${C}Geometry Tests:$${X}"; \
 	echo ""; \

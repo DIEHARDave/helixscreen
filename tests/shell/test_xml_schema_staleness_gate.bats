@@ -439,9 +439,16 @@ trigger_re() {
     # The trigger set is only correct while it mirrors the extractor's argument
     # list. Adding an input there without a trigger here is exactly the silence
     # this check exists to remove.
-    local recipe
+    local recipe args
     recipe=$(sed -n '/^regen-xml-schema:/,/^$/p' mk/tools.mk)
     [ -n "$recipe" ] || fail "regen-xml-schema recipe not found in mk/tools.mk"
+    # The recipe names its inputs through XML_LINTER_EXTRACT_ARGS, shared with
+    # check-xml-schema; read the definition in its place.
+    if [[ "$recipe" == *'$(XML_LINTER_EXTRACT_ARGS)'* ]]; then
+        args=$(sed -n '/^XML_LINTER_EXTRACT_ARGS :=/,/[^\\]$/p' mk/tools.mk)
+        [ -n "$args" ] || fail "XML_LINTER_EXTRACT_ARGS definition not found in mk/tools.mk"
+        recipe+=$'\n'"$args"
+    fi
     for input in "lib/helix-xml/src/xml" "--cpp-src src/ui" "--cpp-const-dirs src" \
                  "--xml-roots ui_xml" "--theme-dirs assets/config/themes/defaults"; do
         [[ "$recipe" == *"$input"* ]] \

@@ -67,6 +67,13 @@ make full-test-run                   # unit-sweep + the bats suite (~2m) - the c
 #   quality-checks.sh runs [.] on any staged code change, nightly CI runs [slow].
 #   `make test-run` runs nothing: it prints which of these fits the question
 #   you have and exits non-zero. Cadence table: tests/CLAUDE.md.
+make land-gate                       # THE pre-landing gate (~10m): run it before anything reaches main
+#   full-test-run, plus the sweep in CI's 8-shard layout, CI's tests/ui pytest
+#   slice (headless), the moonraker plugin tests, and the generated-artefact
+#   checks (theme token table, xml schema + lint-xml, lvgl event codes). C++ on
+#   the test host as full-test-run's sweep goes; the rest here in parallel; a
+#   PASS/FAIL table with durations at the end. full-test-run alone is NOT a
+#   landing gate: it skips tests/ui and CI's shard layout, both of which red CI.
 
 make dev-timing                      # What the dev loop costs, measured (ledger from transcripts)
 #   Medians for every build, suite and test run, so "is this worth running" is
@@ -219,7 +226,7 @@ What is shared here:
   an unpushed main stalls every merge behind it until its owner is found.
 - **Land in batches and gate once.** Before taking main, message whoever holds it or is
   queued and fold your ready branch into one landing: one session merges every ready branch
-  and runs ONE `make full-test-run` on the combined result. A full gate per branch turns N
+  and runs ONE `make land-gate` on the combined result. A full gate per branch turns N
   landings into N serial 10-minute gates, and parallel gates leave thelio's CPU spinning on
   the same suite. Run the full gate once per branch, at the end: a review fix gets its tags
   (`make t F=...`), and the batch gate covers the rest.
