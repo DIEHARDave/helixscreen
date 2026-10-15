@@ -1,6 +1,6 @@
 <template>
   <nav class="breadcrumb" aria-label="Current view">
-    <span class="crumb crumb-tab">{{ trail }}</span>
+    <span v-if="!deviceId" class="crumb crumb-tab">{{ tabLabel }}</span>
     <template v-for="key in DASH_FILTER_KEYS" :key="key">
       <button
         v-for="value in filtersStore[key]"
@@ -11,6 +11,11 @@
       >
         {{ key }} = {{ value }} <span class="chip-x" aria-hidden="true">&times;</span>
       </button>
+    </template>
+    <template v-if="deviceId">
+      <router-link :to="{ path: '/devices', query: filtersStore.queryParams }" class="crumb crumb-link">Devices</router-link>
+      <span class="crumb-sep" aria-hidden="true">›</span>
+      <span class="crumb crumb-tab">{{ deviceId.slice(0, 8) }}…</span>
     </template>
   </nav>
 </template>
@@ -29,22 +34,17 @@ const TAB_LABELS: Record<string, string> = {
   fleet: 'Fleet',
   usage: 'Usage',
   prints: 'Prints',
-  devices: 'Devices',
-  device: 'Devices'
+  devices: 'Devices'
 }
 
 const route = useRoute()
 const filtersStore = useFiltersStore()
 
-const trail = computed(() => {
-  const name = typeof route.name === 'string' ? route.name : ''
-  const label = TAB_LABELS[name] ?? route.path
-  if (name === 'device') {
-    const id = String(route.params.id ?? '')
-    return `${label} › ${id.slice(0, 8)}…`
-  }
-  return label
-})
+const routeName = computed(() => (typeof route.name === 'string' ? route.name : ''))
+const tabLabel = computed(() => TAB_LABELS[routeName.value] ?? route.path)
+
+// On a device page the trail ends in a link back to the filtered device list, then the device.
+const deviceId = computed(() => (routeName.value === 'device' ? String(route.params.id ?? '') : ''))
 </script>
 
 <style scoped>
@@ -60,6 +60,20 @@ const trail = computed(() => {
   color: var(--text-primary);
   font-weight: 500;
   margin-right: 4px;
+}
+
+.crumb-link {
+  color: var(--accent-blue);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.crumb-link:hover {
+  text-decoration: underline;
+}
+
+.crumb-sep {
+  color: var(--text-secondary);
 }
 
 .chip {

@@ -158,9 +158,9 @@ Seven tabs, each built around one question. Health is the home tab.
 |-----|---------------------|-------|
 | **Health** (`/`) | Is anything getting worse this week? | This week against last week: fleet size (opt-in actives and CDN sources), a scorecard delta per release, new and rising error codes, crash clusters, and a data-health line that flags a point kind whose newest day dropped under half its prior 7-day median |
 | **Releases** (`/releases`) | Is the newest release better than the one before it? | Scorecard per version (active devices, crash-free devices, crash rate, update failure rate, print success, p95 frame time, p95 RSS), the adoption curve, devices stuck on old versions. Opens on the newest eight versions with traffic in the range; the picker adds others |
-| **Stability** (`/stability`) | What crashes and errors, and where? | Crash clusters (signal, fault code, version, board), crash rate by version and platform, error codes by version, memory warnings by platform, connection stability, recent crashes |
+| **Stability** (`/stability`) | What crashes and errors, and where? | Crash clusters (signal, fault code, version, board), crash rate by version and platform, error codes by version, memory warnings by platform, connection stability, recent crashes, display anomalies |
 | **Performance** (`/performance`) | Is the UI fast enough on each platform? | Frame time p50 and p95 trend, drop rate by platform, p95 frame time and RSS per platform and version, jankiest panels per platform, RSS trend |
-| **Fleet** (`/fleet`) | Who runs it, on what? | Platforms, boards, printer models, kinematics, MCUs, AMS backends, host RAM, capabilities, CDN fleet, daily actives, 30 and 90 day retention |
+| **Fleet** (`/fleet`) | Who runs it, on what? | Platforms, boards, printer models, kinematics, MCUs, AMS backends, host RAM, capabilities, CDN fleet, daily actives, weekly retention cohorts over 90 days |
 | **Usage** (`/usage`) | What do people use and change? | Panels, overlays and widgets per device, settings changed from default, configured features, themes and locales |
 | **Prints** (`/prints`) | Do prints succeed, and with what? | Success rate trend, success by model, version and material set, multi-material share, slicer, thumbnails, print source |
 
@@ -181,7 +181,7 @@ Every step is a URL, so back and forward walk the path and a link reproduces a v
    version line or a canonical model, filters on every raw value in the group.
    A model whose raw name contains a character the filter sanitizer strips
    renders as not filterable.
-2. **Devices link** in each tab header opens `/devices?<filters>`: the devices
+2. **Devices link**, one link in the page header, opens `/devices?<filters>`: the devices
    matching the current filters, with short id, last seen, version, platform,
    board, model, and sessions, crashes and prints within the range. It is sorted
    by last seen, capped at 200 rows, and shows the true total above the table.
@@ -191,8 +191,9 @@ Every step is a URL, so back and forward walk the path and a link reproduces a v
    events with each kind's non-empty fields by schema name. The id is the hashed
    device id; the page shows nothing the device did not send.
 
-A breadcrumb above each tab lists the active filters, each removable, and the
-drill path.
+A breadcrumb above each tab shows the tab and the active filters, each removable. On a
+device page it shows the filters, a "Devices" link back to the filtered device list, and
+the device's short id. It does not record which tab a drill started from.
 
 ### Readability rules
 
@@ -287,7 +288,11 @@ whatever column shares that slot. A query over several kinds gets
 
 When a filter excludes every kind an endpoint reads, the endpoint's `filter_not_applicable`
 names it and the view says "Not reported per printer model" (or platform, version,
-board) instead of showing 0. Filter values keep spaces, so `model=Voron 2.4` matches; only
+board) instead of showing 0. Endpoints whose blocks read different kinds say it per block
+in `not_applicable`: `health` (crashes, errors, prints, updates), `releases` (crashes,
+prints, updates, performance), `stability` (crashes, errors), `prints` (prints) and
+`devices` (the crashes and prints columns). Under such a filter a crash rate or crash-free
+share is `null`, never 0% or 100%. Filter values keep spaces, so `model=Voron 2.4` matches; only
 characters outside letters, digits, space and `. - _ ( ) / +` are stripped.
 
 ## Weighted counts
@@ -379,7 +384,8 @@ schema table so rows stored by older clients remain readable.
 
 `server/telemetry-worker/scripts/smoke.ts` hits every `/v1/dashboard/` endpoint across the
 ranges `7d`, `30d` and `90d` with no filter, then `platform=pi`, the newest version and top model
-from `adoption`, and `board=rpi4`. It then requests `devices`, `device/<first id>`, and checks that
+from `adoption`, and `board=rpi4`. It also requests `releases?versions=` with the two newest
+versions from `adoption`, then `devices`, `device/<first id>`, and checks that
 `device/<64 zeros>` is 404 and `device/xyz` is 400. It prints a PASS/FAIL table and exits non-zero on
 any unexpected status. Run it after every worker deploy:
 

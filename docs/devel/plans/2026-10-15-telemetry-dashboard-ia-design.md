@@ -31,9 +31,9 @@ string: `/adoption` and `/hardware` to `/fleet`; `/memory`, `/crashes` and
 |-----|---------------------|---------|
 | Health | Is anything getting worse this week? | This week vs last week: fleet size (opt-in actives and CDN sources), per-release scorecard deltas, new and rising error codes, crash clusters, data-health line |
 | Releases | Is the newest release better than the one before it? | Scorecard per version (active devices, crash-free devices, crash rate, update failure rate, print success, p95 frame time, p95 RSS), adoption curve, devices stuck on old versions |
-| Stability | What crashes and errors, where? | Crash clusters (signal, fault code, version, board), crash rate by version and platform, error codes by version, memory warnings by platform, connection stability |
+| Stability | What crashes and errors, where? | Crash clusters (signal, fault code, version, board), crash rate by version and platform, error codes by version, memory warnings by platform, connection stability, display anomalies |
 | Performance | Is the UI fast enough on each platform? | Frame time p50/p95 trend, drop rate by platform, p95 frame time and RSS per platform × version, jankiest panels per platform, RSS trend |
-| Fleet | Who runs it, on what? | Platforms, boards, printer models (canonical), kinematics, MCUs, AMS, RAM, capabilities, CDN fleet, daily actives, 30/90-day retention |
+| Fleet | Who runs it, on what? | Platforms, boards, printer models (canonical), kinematics, MCUs, AMS, RAM, capabilities, CDN fleet, daily actives, weekly retention cohorts over 90 days |
 | Usage | What do people use and change? | Panels, overlays and widgets per device, settings changed from default, configured features, themes and locales |
 | Prints | Do prints succeed, and with what? | Success rate trend, success by model, by version and by material set, multi-material share, slicer, thumbnails, print source |
 
@@ -45,6 +45,7 @@ sections. Nothing an old view showed is dropped unless it is listed under
 
 - Overview's `total_events` card: an event count measures client chattiness,
   not use.
+- Overview's "Events Over Time" chart, for the same reason.
 - Releases' manual version picker as the only way in: the tab opens on the
   newest eight versions with traffic in the range, and the picker stays for
   adding others.
@@ -55,7 +56,7 @@ sections. Nothing an old view showed is dropped unless it is listed under
    filter (platform, version, model or board), written to the URL. A grouped
    bar (a version line, a canonical model) filters on every raw value in the
    group.
-2. **"Devices" link** on every tab header: `/devices?<filters>` lists the
+2. **"Devices" link**, one link in the page header: `/devices?<filters>` lists the
    devices matching the current filters. Columns: short id, last seen, version,
    platform, board, model, sessions, crashes, prints (all within the range).
    Sorted by last seen, 200 rows max, with the true total shown above the
@@ -66,8 +67,10 @@ sections. Nothing an old view showed is dropped unless it is listed under
    seen), and a timeline of the newest 500 events, newest first, each row
    showing its kind and its non-empty fields by schema name.
 
-A breadcrumb above every tab shows the active filters, each removable, and the
-drill path (`Fleet › model = Voron 2.4 › Devices › 3f2a…`). Browser back and
+A breadcrumb above every tab shows the tab and the active filters, each
+removable. On a device page it shows the filters, a "Devices" link back to the
+filtered list, and the device (`model = Voron 2.4 · Devices › 3f2a…`); the tab
+a drill started from is not tracked. Browser back and
 forward walk the same path because every step is a URL.
 
 The device page is admin-key only like every dashboard route. It shows the
