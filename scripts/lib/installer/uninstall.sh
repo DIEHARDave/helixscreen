@@ -10,6 +10,23 @@
 [ -n "${_HELIX_UNINSTALL_SOURCED:-}" ] && return 0
 _HELIX_UNINSTALL_SOURCED=1
 
+# Every polkit rule file HelixScreen has installed, any version, either format.
+HELIX_POLKIT_RULE_FILES="/etc/polkit-1/localauthority/50-local.d/helixscreen-network.pkla
+/etc/polkit-1/localauthority/50-local.d/helixscreen-power.pkla
+/etc/polkit-1/rules.d/49-helixscreen-network.rules
+/etc/polkit-1/rules.d/50-helixscreen-network.rules
+/etc/polkit-1/rules.d/49-helixscreen-power.rules"
+
+# Remove the udev and polkit rules that permissions.sh and
+# config/ensure-polkit-rule.sh install.
+remove_permission_rules() {
+    local f
+    $SUDO rm -f /etc/udev/rules.d/99-helixscreen-backlight.rules
+    for f in $HELIX_POLKIT_RULE_FILES; do
+        $SUDO rm -f "$f"
+    done
+}
+
 # Sentinel paths checked by helixscreen-update.service so it refuses to fire
 # while an uninstall is in progress (closes a race where the update path unit
 # could trigger a restart between stop_service and rm -rf $INSTALL_DIR).
@@ -733,11 +750,7 @@ uninstall() {
         $SUDO rm -f /etc/systemd/system/helixscreen-update.path
         $SUDO rm -f /etc/systemd/system/helixscreen-update.service
         uninstall_qidi_3mf_thumbs
-        # Remove permission rules (udev, polkit)
-        $SUDO rm -f /etc/udev/rules.d/99-helixscreen-backlight.rules
-        $SUDO rm -f /etc/polkit-1/localauthority/50-local.d/helixscreen-network.pkla
-        $SUDO rm -f /etc/polkit-1/rules.d/49-helixscreen-network.rules
-        $SUDO rm -f /etc/polkit-1/rules.d/50-helixscreen-network.rules
+        remove_permission_rules
         $SUDO systemctl daemon-reload
     else
         # Stop and remove SysV init scripts (check all possible locations)
@@ -1026,11 +1039,7 @@ clean_old_installation() {
     $SUDO rm -f /etc/systemd/system/helixscreen-update.path
     $SUDO rm -f /etc/systemd/system/helixscreen-update.service
     uninstall_qidi_3mf_thumbs
-    # Remove permission rules (udev, polkit)
-    $SUDO rm -f /etc/udev/rules.d/99-helixscreen-backlight.rules
-    $SUDO rm -f /etc/polkit-1/localauthority/50-local.d/helixscreen-network.pkla
-    $SUDO rm -f /etc/polkit-1/rules.d/49-helixscreen-network.rules
-    $SUDO rm -f /etc/polkit-1/rules.d/50-helixscreen-network.rules
+    remove_permission_rules
     $SUDO systemctl daemon-reload 2>/dev/null || true
 
     # Remove <klipper config dir>/helixscreen/ (user config) in clean mode.

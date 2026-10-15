@@ -2720,6 +2720,7 @@
   <translation tag="Screen Dim" es="Atenuación de Pantalla"/>
   <translation tag="Screen Rotation" es="Rotación de pantalla"/>
   <translation tag="Screen dims to lower brightness after period of inactivity" es="La pantalla atenúa el brillo después de un período de inactividad"/>
+  <translation tag="Screen is not permitted to shut down or reboot. Restart HelixScreen to fix it." es="La pantalla no tiene permiso para apagarse ni reiniciarse. Reinicia HelixScreen para solucionarlo."/>
   <translation tag="Screen lock and PIN settings" es="Bloqueo de pantalla y configuración de PIN"/>
   <translation tag="Screen reboot failed" es="Error al reiniciar la pantalla"/>
   <translation tag="Screen shutdown failed" es="Error al apagar la pantalla"/>

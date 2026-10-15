@@ -3015,6 +3015,7 @@ translations:
   Screen dims to lower brightness after period of inactivity: Bildschirm dimmt nach
     Inaktivitätszeitraum auf niedrigere Helligkeit
   Screen lock and PIN settings: Bildschirmsperre und PIN-Einstellungen
+  Screen is not permitted to shut down or reboot. Restart HelixScreen to fix it.: Der Bildschirm darf nicht herunterfahren oder neu starten. HelixScreen neu starten, um das zu beheben.
   Screen reboot failed: Neustart des Bildschirms fehlgeschlagen
   Screen shutdown failed: Herunterfahren des Bildschirms fehlgeschlagen
   Screen sleeps after the selected period of inactivity: Bildschirm dimmt nach dem

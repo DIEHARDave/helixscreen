@@ -2923,6 +2923,7 @@ translations:
   Screen dims to lower brightness after period of inactivity: Screen dims to lower
     brightness after period of inactivity
   Screen lock and PIN settings: Screen lock and PIN settings
+  Screen is not permitted to shut down or reboot. Restart HelixScreen to fix it.: Screen is not permitted to shut down or reboot. Restart HelixScreen to fix it.
   Screen reboot failed: Screen reboot failed
   Screen shutdown failed: Screen shutdown failed
   Screen sleeps after the selected period of inactivity: Screen sleeps after the selected

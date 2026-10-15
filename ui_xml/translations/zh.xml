@@ -2720,6 +2720,7 @@
   <translation tag="Screen Dim" zh="屏幕变暗"/>
   <translation tag="Screen Rotation" zh="屏幕旋转"/>
   <translation tag="Screen dims to lower brightness after period of inactivity" zh="一段时间不活动后屏幕会降低亮度"/>
+  <translation tag="Screen is not permitted to shut down or reboot. Restart HelixScreen to fix it." zh="屏幕没有关机或重启的权限。重启 HelixScreen 即可修复。"/>
   <translation tag="Screen lock and PIN settings" zh="屏幕锁定和 PIN 设置"/>
   <translation tag="Screen reboot failed" zh="屏幕重启失败"/>
   <translation tag="Screen shutdown failed" zh="屏幕关机失败"/>
