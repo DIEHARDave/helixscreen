@@ -7,7 +7,6 @@ translations:
   ' left': ' rimanente'
   ' · Tuned in {} round': " · Regolato in {} giro"
   ' · Tuned in {} rounds': " · Regolato in {} giri"
-  ' · was {:.0f}%': ' · era {:.0f}%'
   ' · {} loosened about {}': " · {} allentata di circa {}"
   ' · {} tightened about {}': " · {} tesa di circa {}"
   '"%s" failed to load': Caricamento di "%s" non riuscito
@@ -1473,7 +1472,7 @@ translations:
   Global: Globale
   Good: Buono
   Good Accuracy: Buona precisione
-  Good enough: "Va bene così"
+  Good Enough: "Va bene così"
   Good match: "Buona corrispondenza"
   Got it: Capito
   Gray: Grigio
@@ -1758,7 +1757,7 @@ translations:
 
   Keep its own data on this screen (up to 256 KB).: 'Conserva i propri dati su questo schermo (fino a 256 KB).'
   Keep the bypass spool visible when bypass is off: Mantieni visibile la bobina di bypass quando il bypass è disabilitato
-  Keep tuning: Continua
+  Keep Tuning: Continua
   Kick away: 'Espelli'
   Kinematics: Cinematica
   Klipper: Klipper
@@ -2115,8 +2114,8 @@ translations:
   New printer successfully added: Nuova stampante aggiunta con successo
   New profile name: Nome nuovo profilo
   Next: Avanti
-  Next zone: "Zona successiva"
-  Next zone (~{} min): "Zona succ. (~{} min)"
+  Next Zone: "Zona successiva"
+  Next Zone (~{} min): "Zona succ. (~{} min)"
   Niimbot (Bluetooth): Niimbot (Bluetooth)
   'No': 'No'
   No AMS Detected: 'Nessun AMS rilevato'
@@ -3697,7 +3696,7 @@ translations:
   Try Again: 'Riprova'
   Try the operation again. If it persists, check for mechanical issues.: Riprova l'operazione. Se il problema persiste, controlla eventuali problemi meccanici.
   Tune: Regola
-  Tune belts: "Regola cinghie"
+  Tune Belts: "Regola cinghie"
   Tuning tower enabled - start a print to test: Torre di regolazione abilitata - avvia
     una stampa per testare
   Turbo: Turbo
@@ -4010,6 +4009,7 @@ translations:
   direct drive: direct drive
   disable: disabilita
   disabled: disabilitato
+  done: 'fatto'
   done at {} · {}%: "finisce alle {} · {}%"
   drying: in essiccazione
   e.g. Jet Black: es. Nero intenso
@@ -4092,6 +4092,7 @@ translations:
   v%s has no build for the %s, so it can't be installed here. Pick a channel with a newer release.: v%s non ha una build per %s, quindi non può essere installata qui. Scegli un canale aggiornamenti con una versione più recente.
   v{} installed! Restarting...: v{} installata! Riavvio in corso...
   v{} is available. Tap to update.: v{} disponibile. Tocca per aggiornare.
+  was {:.0f}%: 'era {:.0f}%'
   what you turned: "quanto hai girato"
   within one bin: "entro un bin"
   wpa_supplicant is not running. WiFi features unavailable.: wpa_supplicant non è in esecuzione. Le funzioni WiFi non sono disponibili.

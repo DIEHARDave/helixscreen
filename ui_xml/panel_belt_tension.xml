@@ -127,6 +127,9 @@
                   <bind_flag_if_eq subject="ui_breakpoint" flag="hidden" ref_value="0"/>
                 </text_small>
                 <lv_label name="bt_similarity" bind_text="bt_similarity" style_text_font="#font_display"/>
+                <text_small name="bt_similarity_was" bind_text="bt_similarity_was" style_text_color="#text_muted">
+                  <bind_flag_if_eq subject="bt_has_similarity_was" flag="hidden" ref_value="0"/>
+                </text_small>
               </lv_obj>
               <lv_obj name="bt_verdict_chip"
                       width="content" height="content" style_radius="#space_xl" style_border_width="1" style_bg_opa="40"
@@ -566,7 +569,7 @@
               </ui_button>
             </lv_obj>
             <ui_button name="btn_tune_done"
-                       width="0" height="#button_height" flex_grow="1" text="Good enough" variant="secondary">
+                       width="0" height="#button_height" flex_grow="1" text="Good Enough" variant="secondary">
               <event_cb trigger="clicked" callback="belt_tension_tune_done_cb"/>
             </ui_button>
             <ui_button name="btn_tune_swap"
@@ -615,7 +618,7 @@
             <bind_style_if name="bt_flow_row" cond="ui_is_portrait eq 0"/>
             <bind_style_if name="bt_flow_row_wrap" cond="ui_is_portrait eq 1"/>
             <ui_button name="btn_tune_keep"
-                       width="0" height="#button_height" flex_grow="1" text="Keep tuning" variant="secondary">
+                       width="0" height="#button_height" flex_grow="1" text="Keep Tuning" variant="secondary">
               <bind_flag_if_eq subject="bt_tune_has_zone" flag="hidden" ref_value="0"/>
               <event_cb trigger="clicked" callback="belt_tension_tune_keep_cb"/>
             </ui_button>
@@ -628,7 +631,7 @@
               <event_cb trigger="clicked" callback="belt_tension_tune_next_zone_cb"/>
             </ui_button>
             <ui_button name="btn_tune_next_zone_short"
-                       width="0" height="#button_height" flex_grow="1" text="Next zone" variant="secondary">
+                       width="0" height="#button_height" flex_grow="1" text="Next Zone" variant="secondary">
               <bind_flag_if cond="bt_tune_has_next_zone eq 0 or ui_breakpoint gt 2 and ui_is_portrait eq 0 or ui_is_ultrawide eq 1"
                             flag="hidden"/>
               <bind_state_if_eq subject="bt_can_start" state="disabled" ref_value="0"/>

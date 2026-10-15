@@ -5,7 +5,6 @@
   <translation tag=" left" ja=" 残り"/>
   <translation tag=" · Tuned in {} round" ja=" · {} ラウンドで調整"/>
   <translation tag=" · Tuned in {} rounds" ja=" · {} ラウンドで調整"/>
-  <translation tag=" · was {:.0f}%" ja=" · 以前は {:.0f}%"/>
   <translation tag=" · {} loosened about {}" ja=" · {}を約{}緩めた"/>
   <translation tag=" · {} tightened about {}" ja=" · {}を約{}締めた"/>
   <translation tag="&quot;%s&quot; failed to load" ja="&quot;%s&quot; の読み込みに失敗しました"/>
@@ -1343,7 +1342,7 @@
   <translation tag="Global" ja="グローバル"/>
   <translation tag="Good" ja="良好"/>
   <translation tag="Good Accuracy" ja="良好な精度"/>
-  <translation tag="Good enough" ja="これで十分"/>
+  <translation tag="Good Enough" ja="これで十分"/>
   <translation tag="Good match" ja="良好な一致"/>
   <translation tag="Got it" ja="了解"/>
   <translation tag="Gray" ja="グレー"/>
@@ -1586,12 +1585,12 @@
   <translation tag="Keep Navigation Bar" ja="ナビゲーションバーを維持"/>
   <translation tag="Keep Printing" ja="印刷を続行"/>
   <translation tag="Keep Spool Info on Eject" ja="取り出し時にスプール情報を保持"/>
+  <translation tag="Keep Tuning" ja="調整を続ける"/>
   <translation tag="Keep clear of the printer while the toolhead is moving" ja="ツールヘッドが動いている間はプリンターから離れてください"/>
   <translation tag="Keep current" ja="現状維持"/>
   <translation tag="Keep hands clear. The printer moves on its own." ja="手を近づけないでください。プリンターは自動で動きます。"/>
   <translation tag="Keep its own data on this screen (up to 256 KB)." ja="この画面に独自のデータを保存します（最大256 KB）。"/>
   <translation tag="Keep the bypass spool visible when bypass is off" ja="バイパスオフ時もバイパススプールの表示を維持"/>
-  <translation tag="Keep tuning" ja="調整を続ける"/>
   <translation tag="Kick away" ja="かき出し"/>
   <translation tag="Kinematics" ja="キネマティクス"/>
   <translation tag="Klipper" ja="Klipper"/>
@@ -1915,8 +1914,8 @@
   <translation tag="New printer successfully added" ja="新しいプリンターを追加しました"/>
   <translation tag="New profile name" ja="新しいプロファイル名"/>
   <translation tag="Next" ja="次へ"/>
-  <translation tag="Next zone" ja="次のゾーン"/>
-  <translation tag="Next zone (~{} min)" ja="次のゾーン(約{}分)"/>
+  <translation tag="Next Zone" ja="次のゾーン"/>
+  <translation tag="Next Zone (~{} min)" ja="次のゾーン(約{}分)"/>
   <translation tag="Niimbot (Bluetooth)" ja="Niimbot (Bluetooth)"/>
   <translation tag="No" ja="いいえ"/>
   <translation tag="No AMS Detected" ja="AMS が検出されません"/>
@@ -3297,7 +3296,7 @@
   <translation tag="Try adjusting your search or filters" ja="検索やフィルターを調整してみてください"/>
   <translation tag="Try the operation again. If it persists, check for mechanical issues." ja="もう一度お試しください。解決しない場合は機械的な問題がないか確認してください。"/>
   <translation tag="Tune" ja="チューニング"/>
-  <translation tag="Tune belts" ja="ベルトを調整"/>
+  <translation tag="Tune Belts" ja="ベルトを調整"/>
   <translation tag="Tuning tower enabled - start a print to test" ja="チューニングタワー有効 - 印刷を開始してテストしてください"/>
   <translation tag="Turbo" ja="ターボ"/>
   <translation tag="Turbo Inner" ja="ターボ・内側"/>
@@ -3587,6 +3586,7 @@
   <translation tag="direct drive" ja="ダイレクトドライブ"/>
   <translation tag="disable" ja="無効化"/>
   <translation tag="disabled" ja="無効"/>
+  <translation tag="done" ja="完了"/>
   <translation tag="done at {} · {}%" ja="{} に完了 · {}%"/>
   <translation tag="drying" ja="乾燥中"/>
   <translation tag="e.g. Jet Black" ja="例：ジェットブラック"/>
@@ -3662,6 +3662,7 @@
   <translation tag="v%s has no build for the %s, so it can&apos;t be installed here. Pick a channel with a newer release." ja="v%s には %s 用のビルドがないため、ここにはインストールできません。より新しいリリースがある更新チャンネルを選んでください。"/>
   <translation tag="v{} installed! Restarting..." ja="v{} をインストールしました！再起動中..."/>
   <translation tag="v{} is available. Tap to update." ja="v{} が利用可能です。タップして更新してください。"/>
+  <translation tag="was {:.0f}%" ja="以前は {:.0f}%"/>
   <translation tag="what you turned" ja="回した量"/>
   <translation tag="within one bin" ja="1ビン以内"/>
   <translation tag="wpa_supplicant is not running. WiFi features unavailable." ja="wpa_supplicant が動作していません。WiFi 機能は利用できません。"/>

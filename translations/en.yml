@@ -7,7 +7,6 @@ translations:
   ' left': ' left'
   ' · Tuned in {} round': ' · Tuned in {} round'
   ' · Tuned in {} rounds': ' · Tuned in {} rounds'
-  ' · was {:.0f}%': ' · was {:.0f}%'
   ' · {} loosened about {}': ' · {} loosened about {}'
   ' · {} tightened about {}': ' · {} tightened about {}'
   '"%s" failed to load': '"%s" failed to load'
@@ -1427,7 +1426,7 @@ translations:
   Global: Global
   Good: Good
   Good Accuracy: Good Accuracy
-  Good enough: Good enough
+  Good Enough: Good Enough
   Good match: Good match
   Got it: Got it
   Gray: Gray
@@ -1705,7 +1704,7 @@ translations:
   Keep hands clear. The printer moves on its own.: Keep hands clear. The printer moves on its own.
   Keep its own data on this screen (up to 256 KB).: Keep its own data on this screen (up to 256 KB).
   Keep the bypass spool visible when bypass is off: Keep the bypass spool visible when bypass is off
-  Keep tuning: Keep tuning
+  Keep Tuning: Keep Tuning
   Kick away: Kick away
   Kinematics: Kinematics
   Klipper: Klipper
@@ -2055,8 +2054,8 @@ translations:
   New printer successfully added: New printer successfully added
   New profile name: New profile name
   Next: Next
-  Next zone: Next zone
-  Next zone (~{} min): Next zone (~{} min)
+  Next Zone: Next Zone
+  Next Zone (~{} min): Next Zone (~{} min)
   Niimbot (Bluetooth): Niimbot (Bluetooth)
   'No': 'No'
   No AMS Detected: No AMS Detected
@@ -3588,7 +3587,7 @@ translations:
   Try Again: Try Again
   Try the operation again. If it persists, check for mechanical issues.: Try the operation again. If it persists, check for mechanical issues.
   Tune: Tune
-  Tune belts: Tune belts
+  Tune Belts: Tune Belts
   Tuning tower enabled - start a print to test: Tuning tower enabled - start a print
     to test
   Turbo: Turbo
@@ -3897,6 +3896,7 @@ translations:
   direct drive: direct drive
   disable: disable
   disabled: disabled
+  done: done
   done at {} · {}%: done at {} · {}%
   drying: drying
   e.g. Jet Black: e.g. Jet Black
@@ -3972,6 +3972,7 @@ translations:
   v%s has no build for the %s, so it can't be installed here. Pick a channel with a newer release.: v%s has no build for the %s, so it can't be installed here. Pick a channel with a newer release.
   v{} installed! Restarting...: v{} installed! Restarting...
   v{} is available. Tap to update.: v{} is available. Tap to update.
+  was {:.0f}%: was {:.0f}%
   what you turned: what you turned
   within one bin: within one bin
   wpa_supplicant is not running. WiFi features unavailable.: wpa_supplicant is not running. WiFi features unavailable.

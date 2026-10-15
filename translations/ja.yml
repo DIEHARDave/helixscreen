@@ -7,7 +7,6 @@ translations:
   ' left': ' 残り'
   ' · Tuned in {} round': " · {} ラウンドで調整"
   ' · Tuned in {} rounds': " · {} ラウンドで調整"
-  ' · was {:.0f}%': ' · 以前は {:.0f}%'
   ' · {} loosened about {}': " · {}を約{}緩めた"
   ' · {} tightened about {}': " · {}を約{}締めた"
   '"%s" failed to load': '"%s" の読み込みに失敗しました'
@@ -1386,7 +1385,7 @@ translations:
   Global: グローバル
   Good: 良好
   Good Accuracy: 良好な精度
-  Good enough: "これで十分"
+  Good Enough: "これで十分"
   Good match: "良好な一致"
   Got it: 了解
   Gray: グレー
@@ -1648,7 +1647,7 @@ translations:
 
   Keep its own data on this screen (up to 256 KB).: 'この画面に独自のデータを保存します（最大256 KB）。'
   Keep the bypass spool visible when bypass is off: バイパスオフ時もバイパススプールの表示を維持
-  Keep tuning: "調整を続ける"
+  Keep Tuning: "調整を続ける"
   Kick away: 'かき出し'
   Kinematics: キネマティクス
   Klipper: Klipper
@@ -1985,8 +1984,8 @@ translations:
   New printer successfully added: 新しいプリンターを追加しました
   New profile name: 新しいプロファイル名
   Next: 次へ
-  Next zone: "次のゾーン"
-  Next zone (~{} min): "次のゾーン(約{}分)"
+  Next Zone: "次のゾーン"
+  Next Zone (~{} min): "次のゾーン(約{}分)"
   Niimbot (Bluetooth): Niimbot (Bluetooth)
   'No': いいえ
   No AMS Detected: 'AMS が検出されません'
@@ -3457,7 +3456,7 @@ translations:
   Try Again: '再試行'
   Try the operation again. If it persists, check for mechanical issues.: もう一度お試しください。解決しない場合は機械的な問題がないか確認してください。
   Tune: チューニング
-  Tune belts: "ベルトを調整"
+  Tune Belts: "ベルトを調整"
   Tuning tower enabled - start a print to test: チューニングタワー有効 - 印刷を開始してテストしてください
   Turbo: ターボ
   Turbo Inner: ターボ・内側
@@ -3753,6 +3752,7 @@ translations:
   direct drive: ダイレクトドライブ
   disable: 無効化
   disabled: 無効
+  done: '完了'
   done at {} · {}%: "{} に完了 · {}%"
   drying: 乾燥中
   e.g. Jet Black: 例：ジェットブラック
@@ -3834,6 +3834,7 @@ translations:
   v%s has no build for the %s, so it can't be installed here. Pick a channel with a newer release.: v%s には %s 用のビルドがないため、ここにはインストールできません。より新しいリリースがある更新チャンネルを選んでください。
   v{} installed! Restarting...: v{} をインストールしました！再起動中...
   v{} is available. Tap to update.: v{} が利用可能です。タップして更新してください。
+  was {:.0f}%: '以前は {:.0f}%'
   what you turned: "回した量"
   within one bin: "1ビン以内"
   wpa_supplicant is not running. WiFi features unavailable.: wpa_supplicant が動作していません。WiFi 機能は利用できません。

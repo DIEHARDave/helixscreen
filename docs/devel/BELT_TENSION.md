@@ -198,10 +198,13 @@ correlates only the swept band.
 
 ## The RESULTS screen
 
-- Centre: `bt_similarity` ("48%") and the verdict chip.
-- Sides: the path labels with their `bt_note_a` / `bt_note_b` status ("just now", "sweeping",
-  "N min ago"); after a single-path re-test the note carries the similarity the comparison
-  showed before (" · was 48%").
+- Centre: `bt_similarity` ("48%") and the verdict chip; after a re-test or Confirm,
+  `bt_similarity_was` under the number carries the similarity the comparison showed before
+  ("was 48%").
+- Sides: the path labels with their `bt_note_a` / `bt_note_b` status: "sweeping" for the
+  running path and "done" for one this run already measured; on RESULTS an age ("just now",
+  "N min ago") that a 30 s timer keeps current. Ghost curves are drawn on their own scale;
+  the two current curves share one.
 - Under the chart: `bt_facts`, up to `MAX_LISTED_PEAKS` pairs strongest first as A/B
   ("Peaks 36/35 · 132/133 Hz"), and `bt_unpaired` ("Only on B: 120, 129 Hz"), hidden by
   `bt_has_unpaired` when empty.
@@ -211,7 +214,7 @@ correlates only the swept band.
 
 ## Tuning loop
 
-The RESULTS screen offers **Tune belts** (**Fine-tune** when the verdict is already MATCHED). The button opens the TUNING view
+The RESULTS screen offers **Tune Belts** (**Fine-tune** when the verdict is already MATCHED). The button opens the TUNING view
 (`BeltTensionPanel::handle_tune_clicked`), which walks the user through adjusting one belt at
 a time and re-measuring only the part of the spectrum that moves. The logic is
 `BeltTuneSession` (`include/belt_tune_session.h`), which is pure (no LVGL, no I/O): the panel
@@ -246,13 +249,13 @@ reads exactly those bins as the belt's unexcited floor.
 Windowing needs `FREQ_START` / `FREQ_END` on `TEST_RESONANCES`. Hardware confirmation that
 each firmware honours them is pending (see Thresholds).
 
-**Next zone** and **Confirm** are the other two exits. Confirm runs a full two-path check
+**Next Zone** and **Confirm** are the other two exits. Confirm runs a full two-path check
 (`handle_tune_confirm_clicked`) with the pre-tuning curves ghosted, and the facts line
 carries " · Tuned in N rounds" plus, on SCREW printers, the net turns per path
 (`BeltTuneSession::total_turns`).
 
 Start is gated at every sweep, not only at Start: `gate_allows_sweep` re-checks the Start
-gate on **Re-measure**, **Next zone** and **Confirm**, so a print that began, a klippy that
+gate on **Re-measure**, **Next Zone** and **Confirm**, so a print that began, a klippy that
 dropped or an accelerometer that vanished mid-tuning refuses the sweep with the gate's own
 message. `begin_run` checks it again, and so does Continue on the low-RAM warning, so a print
 that starts while that warning is up still refuses the sweep. On a low-RAM board the warning
@@ -264,7 +267,7 @@ run and the session, and the wake's `on_activate` refreshes the gate and the sub
 returning to START or re-detecting hardware. A confirmed **Stop** acts only while a sweep is
 still running; a short round can finish while the dialog is up.
 
-**Next zone** sweeps at once (a baseline round over the next zone's window), so its button
+**Next Zone** sweeps at once (a baseline round over the next zone's window), so its button
 shows that round's duration the way Re-measure does (`peek_next_zone`), except on compact
 layouts.
 
@@ -397,11 +400,11 @@ Below the medium breakpoint, or in portrait (`ui_breakpoint le 2 or ui_is_portra
 becomes one line (the instruction, the amount and a thin `bt_tune_line_gauge`; tapping it
 adjusts the other path), the two Re-test buttons on RESULTS fold into one menu, and Confirm
 drops its duration when the button row holds three buttons or the layout is compact.
-Re-measure and Next zone drop theirs on compact layouts. The wide layout and the compact one are the same subjects
+Re-measure and Next Zone drop theirs on compact layouts. The wide layout and the compact one are the same subjects
 bound to different widgets, so `refresh_tune` feeds both.
 
 Portrait adds two rules of its own, because there width is scarce and height spare. The
-button rows wrap: the turn stepper, Tune belts and Confirm each take a line, so the other
+button rows wrap: the turn stepper, Tune Belts and Confirm each take a line, so the other
 buttons keep room for their labels in every locale. The charts grow into the spare height
 only up to `belt_chart_max_h` (about the content width of each tier), so a tall screen
 leaves space under the controls rather than drawing a chart taller than it is wide. START

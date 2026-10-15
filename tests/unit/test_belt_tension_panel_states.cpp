@@ -18,7 +18,7 @@
  * 5. Start is disabled while klippy is not READY, and re-arms.
  * 6. EMBEDDED tier never creates a chart.
  * 7. Tune walks the guided tuning loop: windowed rounds of both paths, advice
- *    and outcome lines from BeltTuneSession, then Confirm or Good enough.
+ *    and outcome lines from BeltTuneSession, then Confirm or Good Enough.
  *
  * The XML side (containers, buttons, subject bindings) is pinned in the
  * container/binding cases below.
@@ -186,6 +186,9 @@ class BeltPanelFixture : public XMLTestFixture {
         }
         return static_cast<int>(
             std::lround(*t->advice().turns / helix::calibration::belt_tune::TURN_STEP));
+    }
+    lv_timer_t* panel_note_age_timer() {
+        return panel_->note_age_timer_.get();
     }
     bool panel_detection_pending() {
         return panel_->detection_pending_;
@@ -436,8 +439,12 @@ TEST_CASE("Re-test A keeps B and ghosts the old A", "[belt][panel][chart]") {
     // A re-measure walks A toward B by at most 4 Hz: 110 -> 106, now 8 Hz from
     // B, inside the cap: the belt-hump pair outranks the 42 Hz one.
     REQUIRE(fx.pump_until_state(static_cast<int>(BeltTensionPanel::ViewState::RESULTS)));
-    // "was" repeats the similarity the comparison showed before the re-measure.
-    CHECK(fx.text("bt_note_a").find("was " + similarity_before) != std::string::npos);
+    // "was" under the similarity repeats the one shown before the re-measure;
+    // the notes carry no history.
+    CHECK(fx.text("bt_similarity_was") == "was " + similarity_before);
+    CHECK(fx.state_int("bt_has_similarity_was") == 1);
+    CHECK(fx.text("bt_note_a").find("was") == std::string::npos);
+    CHECK(fx.text("bt_note_b").find("was") == std::string::npos);
     CHECK(fx.state_int("bt_has_unpaired") == 0);
 
     auto* chart = fx.panel_chart();
@@ -822,7 +829,7 @@ std::pair<int, int> zone_range(const std::string& zone) {
 } // namespace
 
 TEST_CASE("the Tune button names the job by verdict", "[belt][panel][tune]") {
-    SECTION("Fair match: Tune belts") {
+    SECTION("Fair match: Tune Belts") {
         BeltPanelFixture fx;
         fx.mock().set_belt_peaks_hz(104.0f, 98.0f);
         REQUIRE(fx.wait_gate_open());
@@ -830,7 +837,7 @@ TEST_CASE("the Tune button names the job by verdict", "[belt][panel][tune]") {
         REQUIRE(fx.pump_until_state(RESULTS));
         REQUIRE(fx.state_int("bt_verdict") !=
                 static_cast<int>(helix::calibration::BeltVerdict::MATCHED));
-        CHECK(fx.text("bt_tune_cta") == "Tune belts");
+        CHECK(fx.text("bt_tune_cta") == "Tune Belts");
     }
     SECTION("Good match: Fine-tune") {
         BeltPanelFixture fx;
@@ -1058,12 +1065,10 @@ TEST_CASE("Confirm runs one full pair and reports the tuning", "[belt][panel][tu
     for (const auto& l : lines) {
         CHECK(l.find("FREQ_START") == std::string::npos);
     }
-    const std::string suffix = " · was " + round0;
+    CHECK(fx.text("bt_similarity_was") == "was " + round0);
     for (const char* note : {"bt_note_a", "bt_note_b"}) {
-        const std::string n = fx.text(note);
-        INFO(note << ": " << n);
-        REQUIRE(n.size() >= suffix.size());
-        CHECK(n.compare(n.size() - suffix.size(), suffix.size(), suffix) == 0);
+        INFO(note << ": " << fx.text(note));
+        CHECK(fx.text(note).find("was") == std::string::npos);
     }
     INFO("facts: " << fx.text("bt_facts"));
     CHECK(fx.text("bt_facts").find("Tuned in 3 rounds") != std::string::npos);
@@ -1625,7 +1630,7 @@ TEST_CASE("Next zone names how long its sweep takes", "[belt][panel][tune]") {
     tune_round(fx);
     REQUIRE(fx.state_int("bt_tune_has_next_zone") == 1);
     // The 56/60 zone is 46-70 Hz: two 24 Hz sweeps at the mock's 1 Hz/s.
-    CHECK(fx.text("bt_tune_next_zone_label") == "Next zone (~1 min)");
+    CHECK(fx.text("bt_tune_next_zone_label") == "Next Zone (~1 min)");
 
     fx.panel().handle_tune_next_zone_clicked();
     const auto [lo, hi] = zone_range(fx.text("bt_tune_zone"));
@@ -1653,7 +1658,7 @@ TEST_CASE("every locale's tuning strings fit their buffers", "[belt][panel][tune
         if (std::string(lang) != "en") {
             helix::ui::ensure_translation_loaded(lang);
             lv_translation_set_language(lang);
-            REQUIRE(std::string(lv_tr("Next zone")) != "Next zone");
+            REQUIRE(std::string(lv_tr("Next Zone")) != "Next Zone");
         }
         const auto f = [](const char* tag, auto... args) {
             return fmt::format(fmt::runtime(lv_tr(tag)), args...);
@@ -1673,9 +1678,12 @@ TEST_CASE("every locale's tuning strings fit their buffers", "[belt][panel][tune
                                         "Tighten {}", "Loosen {}"}) {
             CHECK(f(instruction, 'A').size() < fx.instruction_buf_size());
         }
+        for (const char* instruction : {"Tighten {0} {1}", "Loosen {0} {1}"}) {
+            CHECK(f(instruction, 'A', turns).size() < fx.instruction_buf_size());
+        }
         CHECK(f("Matched at {:.1f} Hz", 133.3).size() < fx.instruction_buf_size());
         CHECK(f("Confirm (full, ~{} min)", 99).size() < fx.confirm_label_buf_size());
-        CHECK(f("Next zone (~{} min)", 99).size() < fx.next_zone_label_buf_size());
+        CHECK(f("Next Zone (~{} min)", 99).size() < fx.next_zone_label_buf_size());
         for (const char* last :
              {"The gap grew after tightening {0}. Check you turned Path {0}'s tensioner.",
               "The gap grew after loosening {0}. Check you turned Path {0}'s tensioner."}) {
@@ -2511,4 +2519,132 @@ TEST_CASE("a tool changer's laps keep to the central half", "[belt][panel][settl
         fmt::format("G1 X{:.1f} Y{:.1f} F18000", axis_max.x / 4.0, axis_max.y / 4.0);
     const auto history = std::vector<std::string>(fx.mock().gcode_script_history());
     CHECK(std::find(history.begin(), history.end(), first_corner) != history.end());
+}
+
+// ============================================================================
+// Notes, similarity history, ghost scale, labels
+// ============================================================================
+
+TEST_CASE("a path measured earlier in this run reads done", "[belt][panel]") {
+    BeltPanelFixture fx;
+    REQUIRE(fx.wait_gate_open());
+    fx.panel().handle_start_clicked();
+    REQUIRE(fx.pump_until_text("bt_run_title", "Measuring Path B"));
+    CHECK(fx.text("bt_note_a") == "done");
+    CHECK(fx.text("bt_note_b") == "sweeping");
+}
+
+TEST_CASE("ages refresh on RESULTS", "[belt][panel]") {
+    BeltPanelFixture fx;
+    REQUIRE(fx.wait_gate_open());
+    fx.panel().handle_start_clicked();
+    REQUIRE(fx.pump_until_state(RESULTS));
+    REQUIRE(fx.text("bt_note_a") == "just now");
+    lv_timer_t* timer = fx.panel_note_age_timer();
+    REQUIRE(timer != nullptr);
+    // The harness runs only timers with a finite repeat count: lend it one
+    // firing, then make it periodic again.
+    lv_tick_inc(90000);
+    lv_timer_set_repeat_count(timer, 2);
+    lv_timer_handler_safe();
+    lv_timer_set_repeat_count(timer, -1);
+    CHECK(fx.text("bt_note_a") == "1 min ago");
+    CHECK(fx.text("bt_note_b") == "1 min ago");
+
+    // Only RESULTS shows ages: leaving it stops the timer.
+    fx.panel().handle_start_clicked();
+    CHECK(fx.panel_note_age_timer() == nullptr);
+}
+
+TEST_CASE("was N% sits under the similarity only after a re-test", "[belt][panel]") {
+    BeltPanelFixture fx;
+    REQUIRE(fx.wait_gate_open());
+    fx.panel().handle_start_clicked();
+    REQUIRE(fx.pump_until_state(RESULTS));
+    // A fresh check replaced nothing.
+    CHECK(fx.text("bt_similarity_was").empty());
+    CHECK(fx.state_int("bt_has_similarity_was") == 0);
+    lv_obj_t* was = lv_obj_find_by_name(fx.view(), "bt_similarity_was");
+    REQUIRE(was != nullptr);
+    CHECK(lv_hidden(was));
+
+    const std::string before = fx.text("bt_similarity");
+    fx.panel().handle_retest_clicked(helix::calibration::BeltPath::PATH_B);
+    REQUIRE(fx.pump_until_state(RESULTS));
+    CHECK(fx.text("bt_similarity_was") == "was " + before);
+    CHECK_FALSE(lv_hidden(was));
+
+    // A fresh Start drops the history again.
+    fx.panel().handle_start_clicked();
+    REQUIRE(fx.pump_until_state(RESULTS));
+    CHECK(fx.text("bt_similarity_was").empty());
+    CHECK(lv_hidden(was));
+}
+
+TEST_CASE("a ghost keeps its own scale", "[belt][panel][chart]") {
+    // Path A's first sweep replays a capture a tenth the height of the mock's
+    // own curve; its re-test is the mock's, so the ghost is the quiet one.
+    const std::string csv_a = "/tmp/helix-belt-quiet-" + std::to_string(getpid()) + ".csv";
+    {
+        std::ofstream out(csv_a);
+        out << "freq,psd_x,psd_y,psd_z,psd_xyz\n";
+        for (double freq = 5.0; freq <= 135.0; freq += 3200.0 / 4096.0) {
+            const double df = freq - 104.0;
+            const double psd = 15.0 + 3.0e3 / (1.0 + df * df / 100.0);
+            out << freq << ',' << psd * 0.45 << ',' << psd * 0.45 << ',' << psd * 0.1 << ',' << psd
+                << '\n';
+        }
+    }
+    BeltPanelFixture fx;
+    REQUIRE(fx.wait_gate_open());
+    {
+        helix::ScopedEnv replay("HELIX_MOCK_BELT_CSV_A", csv_a.c_str());
+        fx.panel().handle_start_clicked();
+        REQUIRE(fx.pump_until_state(RESULTS));
+    }
+    std::remove(csv_a.c_str());
+    fx.panel().handle_retest_clicked(helix::calibration::BeltPath::PATH_A);
+    REQUIRE(fx.pump_until_state(RESULTS));
+
+    auto* chart = fx.panel_chart();
+    REQUIRE(chart != nullptr);
+    const auto peak = [chart](int id) {
+        const auto amps = ui_frequency_response_chart_get_series_amplitudes(chart, id);
+        REQUIRE_FALSE(amps.empty());
+        return *std::max_element(amps.begin(), amps.end());
+    };
+    REQUIRE(ui_frequency_response_chart_is_series_visible(chart, fx.panel_ghost_id(0)));
+    CHECK(peak(fx.panel_ghost_id(0)) == Catch::Approx(100.0f).margin(0.5f));
+    // The current curves still share one scale: the taller reads 100%.
+    CHECK(std::max(peak(fx.panel_series_id(0)), peak(fx.panel_series_id(1))) ==
+          Catch::Approx(100.0f).margin(0.5f));
+}
+
+namespace {
+
+/// Every label's text under @p obj.
+void collect_label_texts(lv_obj_t* obj, std::vector<std::string>& out) {
+    if (lv_obj_check_type(obj, &lv_label_class)) {
+        out.emplace_back(lv_label_get_text(obj));
+    }
+    for (uint32_t i = 0; i < lv_obj_get_child_count(obj); ++i) {
+        collect_label_texts(lv_obj_get_child(obj, static_cast<int32_t>(i)), out);
+    }
+}
+
+} // namespace
+
+TEST_CASE("the tuning buttons read in Title Case", "[belt][panel][tune]") {
+    BeltPanelFixture fx;
+    enter_tuning(fx);
+    std::vector<std::string> labels;
+    collect_label_texts(fx.view(), labels);
+    for (const char* text : {"Good Enough", "Next Zone", "Keep Tuning"}) {
+        INFO(text);
+        CHECK(std::find(labels.begin(), labels.end(), text) != labels.end());
+    }
+    for (const char* text : {"Good enough", "Next zone", "Keep tuning", "Tune belts"}) {
+        INFO(text);
+        CHECK(std::find(labels.begin(), labels.end(), text) == labels.end());
+    }
 }

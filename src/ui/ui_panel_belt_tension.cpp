@@ -55,6 +55,15 @@ BeltPath other_path(BeltPath path) {
     return path == BeltPath::PATH_A ? BeltPath::PATH_B : BeltPath::PATH_A;
 }
 
+/// A curve's tallest bin; 0 when empty.
+float tallest_bin(const helix::calibration::BeltCurve& curve) {
+    float tallest = 0.0f;
+    for (const auto& bin : curve) {
+        tallest = std::max(tallest, bin.second);
+    }
+    return tallest;
+}
+
 /// Why the settling laps cannot run, for the ERROR view.
 const char* settle_refusal_message(helix::calibration::BeltSettleRefusal refusal) {
     using helix::calibration::BeltSettleRefusal;
@@ -247,6 +256,9 @@ void BeltTensionPanel::init_subjects() {
                               subjects_);
     UI_MANAGED_SUBJECT_STRING(similarity_subject_, similarity_buf_, "--", "bt_similarity",
                               subjects_);
+    UI_MANAGED_SUBJECT_STRING(similarity_was_subject_, similarity_was_buf_, "", "bt_similarity_was",
+                              subjects_);
+    UI_MANAGED_SUBJECT_INT(has_similarity_was_subject_, 0, "bt_has_similarity_was", subjects_);
     UI_MANAGED_SUBJECT_STRING(facts_subject_, facts_buf_, "", "bt_facts", subjects_);
     UI_MANAGED_SUBJECT_STRING(unpaired_subject_, unpaired_buf_, "", "bt_unpaired", subjects_);
     UI_MANAGED_SUBJECT_INT(has_unpaired_subject_, 0, "bt_has_unpaired", subjects_);
@@ -405,12 +417,14 @@ void BeltTensionPanel::on_activate() {
         }
         refresh_gate();
         refresh_notes();
+        push_chart_data();
         refresh_tune();
         return;
     }
 
     set_view_state(ViewState::START);
     refresh_notes();
+    push_chart_data();
 
     // Re-evaluate the gate on every entry, and probe co-location once here
     // rather than on each gate refresh - the gate recomputes on every subject
@@ -504,6 +518,7 @@ void BeltTensionPanel::cleanup() {
 
     cancel_run();
     hide_retest_menu();
+    note_age_timer_.reset();
 
     // Expire all outstanding async tokens
     lifetime_.invalidate();
@@ -546,6 +561,14 @@ void BeltTensionPanel::set_view_state(ViewState state) {
 
     // Update subject - XML bindings handle visibility automatically
     lv_subject_set_int(&s_belt_tension_state, static_cast<int>(state));
+
+    // RESULTS keeps its notes' ages current; nothing else shows an age.
+    if (state == ViewState::RESULTS) {
+        refresh_notes(); // "done" belongs to RUNNING; RESULTS shows ages
+        start_note_age_timer();
+    } else {
+        note_age_timer_.reset();
+    }
 
     place_chart(state);
 }
@@ -825,6 +848,7 @@ void BeltTensionPanel::begin_run(const std::vector<helix::calibration::BeltPath>
         set_view_state(ViewState::RUNNING);
     }
     refresh_notes();
+    push_chart_data();
     start_elapsed_timer();
     start_settle();
 }
@@ -994,6 +1018,7 @@ void BeltTensionPanel::on_sweep_complete(helix::calibration::BeltPath path,
     }
 
     refresh_notes();
+    push_chart_data();
 
     if (queue_.empty()) {
         finish_run();
@@ -1121,10 +1146,12 @@ void BeltTensionPanel::populate_results(const helix::calibration::BeltComparison
     lv_subject_copy_string(&tune_cta_subject_,
                            cmp.verdict == helix::calibration::BeltVerdict::MATCHED
                                ? lv_tr("Fine-tune")
-                               : lv_tr("Tune belts"));
+                               : lv_tr("Tune Belts"));
 
     push_chart_markers(cmp);
     refresh_notes();
+    refresh_similarity_was();
+    push_chart_data();
 }
 
 void BeltTensionPanel::push_chart_markers(const helix::calibration::BeltComparison& cmp) {
@@ -1202,20 +1229,38 @@ void BeltTensionPanel::refresh_notes() {
         std::string note = "--";
         if (running && !settling_ && !queue_.empty() && queue_.front() == path_at(idx)) {
             note = lv_tr("sweeping");
+        } else if (running && run.has && run.measured_at_ms >= run_started_ms_) {
+            note = lv_tr("done");
         } else if (run.has) {
             const uint32_t age_s = (lv_tick_get() - run.measured_at_ms) / 1000;
             note = age_s < 60 ? lv_tr("just now")
                               : fmt::format(fmt::runtime(lv_tr("{} min ago")), age_s / 60);
-        }
-        if (run.has_previous) {
-            note += fmt::format(fmt::runtime(lv_tr(" · was {:.0f}%")), was_similarity_percent_);
         }
 
         snprintf(note_buf, idx == 0 ? sizeof(note_a_buf_) : sizeof(note_b_buf_), "%s",
                  note.c_str());
         lv_subject_copy_string(&note_subject, note_buf);
     }
-    push_chart_data();
+}
+
+void BeltTensionPanel::refresh_similarity_was() {
+    const bool replaced = runs_[0].has_previous || runs_[1].has_previous;
+    std::string was;
+    if (replaced && was_similarity_percent_ > 0.0f) {
+        was = fmt::format(fmt::runtime(lv_tr("was {:.0f}%")), was_similarity_percent_);
+    }
+    snprintf(similarity_was_buf_, sizeof(similarity_was_buf_), "%s", was.c_str());
+    lv_subject_copy_string(&similarity_was_subject_, similarity_was_buf_);
+    lv_subject_set_int(&has_similarity_was_subject_, was.empty() ? 0 : 1);
+}
+
+void BeltTensionPanel::start_note_age_timer() {
+    note_age_timer_.reset(lv_timer_create(
+        [](lv_timer_t* t) {
+            auto* self = static_cast<BeltTensionPanel*>(lv_timer_get_user_data(t));
+            self->refresh_notes();
+        },
+        NOTE_AGE_REFRESH_MS, this));
 }
 
 void BeltTensionPanel::refresh_run_detail() {
@@ -1581,7 +1626,7 @@ void BeltTensionPanel::refresh_tune() {
     const auto next = t.peek_next_zone();
     lv_subject_copy_string(
         &tune_next_zone_label_subject_,
-        next ? fmt::format(fmt::runtime(lv_tr("Next zone (~{} min)")), round_minutes(next->window))
+        next ? fmt::format(fmt::runtime(lv_tr("Next Zone (~{} min)")), round_minutes(next->window))
                    .c_str()
              : "");
     lv_subject_copy_string(
@@ -1917,8 +1962,9 @@ void BeltTensionPanel::push_chart_data() {
     };
 
     // The chart shows the sweep band only (bins past the ceiling carry no
-    // excitation) as a percentage of the tallest in-band point of any curve on
-    // screen, so the two paths share one scale and the axis reads 0-100%.
+    // excitation) as a percentage: the two current curves share the scale of
+    // the taller, so their heights compare, and each ghost has its own, so a
+    // quieter earlier sweep still shows its shape.
     helix::calibration::BeltCurve current[2], previous[2];
     float tallest = 0.0f;
     for (int idx = 0; idx < 2; ++idx) {
@@ -1928,11 +1974,7 @@ void BeltTensionPanel::push_chart_data() {
         if (runs_[idx].has_previous) {
             previous[idx] = in_band(runs_[idx].previous);
         }
-        for (const auto* curve : {&current[idx], &previous[idx]}) {
-            for (const auto& bin : *curve) {
-                tallest = std::max(tallest, bin.second);
-            }
-        }
+        tallest = std::max(tallest, tallest_bin(current[idx]));
     }
 
     // Points are placed by index across the plot, so the axis must span
@@ -1952,7 +1994,7 @@ void BeltTensionPanel::push_chart_data() {
 
     for (int idx = 0; idx < 2; ++idx) {
         push_series_data(series_[idx], current[idx], tallest);
-        push_series_data(ghost_series_[idx], previous[idx], tallest);
+        push_series_data(ghost_series_[idx], previous[idx], tallest_bin(previous[idx]));
     }
 }
 
@@ -1982,20 +2024,15 @@ void BeltTensionPanel::push_tune_chart_data() {
 
     helix::calibration::BeltCurve current[2];
     float tallest = 0.0f;
-    const auto track = [&tallest](const helix::calibration::BeltCurve& curve) {
-        for (const auto& bin : curve) {
-            tallest = std::max(tallest, bin.second);
-        }
-    };
     for (int idx = 0; idx < 2; ++idx) {
         current[idx] = helix::calibration::curve_in_band(
             tune_has_curves_ ? tune_curves_[idx] : runs_[idx].curve, lo, hi);
-        track(current[idx]);
+        tallest = std::max(tallest, tallest_bin(current[idx]));
     }
+    // Earlier rounds are ghosts on their own scale, as on RESULTS.
     std::vector<helix::calibration::BeltCurve> earlier;
     for (const auto& curve : tune_adj_history_) {
         earlier.push_back(helix::calibration::curve_in_band(curve, lo, hi));
-        track(earlier.back());
     }
 
     // Points are placed by index, so the axis spans the data's own bins.
@@ -2017,7 +2054,7 @@ void BeltTensionPanel::push_tune_chart_data() {
         for (size_t k = 0; k < 2; ++k) {
             const int id = tune_ghost_series_[idx][k];
             if (idx == adj && k < earlier.size()) {
-                push_series_data(id, earlier[k], tallest);
+                push_series_data(id, earlier[k], tallest_bin(earlier[k]));
             } else {
                 ui_frequency_response_chart_show_series(chart_, id, false);
             }

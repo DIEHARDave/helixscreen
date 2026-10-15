@@ -97,6 +97,9 @@ class BeltTensionPanel : public OverlayBase {
     /// chart, strongest first.
     static constexpr size_t MAX_LISTED_PEAKS = 3;
 
+    /// How often RESULTS refreshes the notes' ages.
+    static constexpr uint32_t NOTE_AGE_REFRESH_MS = 30000;
+
     BeltTensionPanel() = default;
     ~BeltTensionPanel() override;
 
@@ -152,7 +155,7 @@ class BeltTensionPanel : public OverlayBase {
     // Tuning loop
     void handle_tune_clicked();
     void handle_tune_measure_clicked();
-    /// "Good enough": back to RESULTS as last shown, no sweep.
+    /// "Good Enough": back to RESULTS as last shown, no sweep.
     void handle_tune_done_clicked();
     void handle_tune_swap_clicked();
     /// The turn stepper: +1 / -1 steps of belt_tune::TURN_STEP, clamped to
@@ -242,10 +245,14 @@ class BeltTensionPanel : public OverlayBase {
     // === Subject refresh ===
     //
 
-    /// bt_note_* from the runs. Notes read "sweeping" for the running path, an
-    /// age ("just now", "3 min ago") plus " · was N%" when a previous curve
-    /// exists.
+    /// bt_note_* from the runs: "sweeping" for the running path, "done" for a
+    /// path this run already measured, else an age ("just now", "3 min ago").
+    /// Touches no chart.
     void refresh_notes();
+    /// bt_similarity_was: "was N%" after a re-test or Confirm, else empty.
+    void refresh_similarity_was();
+    /// RESULTS keeps the notes' ages current on this timer.
+    void start_note_age_timer();
     void refresh_run_detail();
     void start_elapsed_timer();
 
@@ -340,6 +347,9 @@ class BeltTensionPanel : public OverlayBase {
     lv_subject_t has_unpaired_subject_{};
     lv_subject_t similarity_subject_{};
     char similarity_buf_[16] = {};
+    lv_subject_t similarity_was_subject_{};
+    char similarity_was_buf_[32] = {};
+    lv_subject_t has_similarity_was_subject_{};
     lv_subject_t chart_available_subject_{};
     lv_subject_t error_message_subject_{};
     char error_message_buf_[256] = {};
@@ -466,6 +476,7 @@ class BeltTensionPanel : public OverlayBase {
     /// only while it still holds the current value.
     uint32_t settle_generation_ = 0;
     helix::ui::LvglTimerGuard elapsed_timer_;
+    helix::ui::LvglTimerGuard note_age_timer_;
     OperationTimeoutGuard stall_guard_;
     /// The window of the tuning round in flight; nullopt for a full check.
     std::optional<helix::calibration::BeltSweepWindow> run_window_;

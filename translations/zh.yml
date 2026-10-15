@@ -7,7 +7,6 @@ translations:
   ' left': ' 剩余'
   ' · Tuned in {} round': " · 用 {} 轮调好"
   ' · Tuned in {} rounds': " · 用 {} 轮调好"
-  ' · was {:.0f}%': ' · 原为 {:.0f}%'
   ' · {} loosened about {}': " · {} 放松约 {}"
   ' · {} tightened about {}': " · {} 拉紧约 {}"
   '"%s" failed to load': '"%s" 加载失败'
@@ -1382,7 +1381,7 @@ translations:
   Global: 全局
   Good: 良好
   Good Accuracy: 精度良好
-  Good enough: "足够了"
+  Good Enough: "足够了"
   Good match: "匹配良好"
   Got it: 知道了
   Gray: 灰色
@@ -1643,7 +1642,7 @@ translations:
 
   Keep its own data on this screen (up to 256 KB).: '在此屏幕上保存自己的数据（最多256 KB）。'
   Keep the bypass spool visible when bypass is off: 旁路关闭时保持料盘可见
-  Keep tuning: "继续调整"
+  Keep Tuning: "继续调整"
   Kick away: '拨除废料'
   Kinematics: 运动学
   Klipper: Klipper
@@ -1979,8 +1978,8 @@ translations:
   New printer successfully added: 新打印机已成功添加
   New profile name: 新配置名称
   Next: 下一步
-  Next zone: "下一区间"
-  Next zone (~{} min): "下一区间(约 {} 分钟)"
+  Next Zone: "下一区间"
+  Next Zone (~{} min): "下一区间(约 {} 分钟)"
   Niimbot (Bluetooth): Niimbot（蓝牙）
   'No': 否
   No AMS Detected: '未检测到 AMS'
@@ -3448,7 +3447,7 @@ translations:
   Try Again: '重试'
   Try the operation again. If it persists, check for mechanical issues.: 请重试该操作。如果问题持续存在，请检查是否有机械故障。
   Tune: 调优
-  Tune belts: "调整皮带"
+  Tune Belts: "调整皮带"
   Tuning tower enabled - start a print to test: 调优塔已启用 - 开始打印以测试
   Turbo: 极速
   Turbo Inner: 极速内圈
@@ -3743,6 +3742,7 @@ translations:
   direct drive: 直驱
   disable: 禁用
   disabled: 已禁用
+  done: '完成'
   done at {} · {}%: "{} 完成 · {}%"
   drying: 烘干中
   e.g. Jet Black: 例如 炭黑
@@ -3824,6 +3824,7 @@ translations:
   v%s has no build for the %s, so it can't be installed here. Pick a channel with a newer release.: v%s 没有适用于 %s 的版本，因此无法在此安装。请选择有更新版本的更新通道。
   v{} installed! Restarting...: 已安装 v{}！正在重启...
   v{} is available. Tap to update.: v{} 可用。点击以更新。
+  was {:.0f}%: '原为 {:.0f}%'
   what you turned: "你转动的量"
   within one bin: "在一个频点内"
   wpa_supplicant is not running. WiFi features unavailable.: wpa_supplicant 未运行。WiFi 功能不可用。

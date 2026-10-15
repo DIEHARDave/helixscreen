@@ -5,7 +5,6 @@
   <translation tag=" left" ru=" осталось"/>
   <translation tag=" · Tuned in {} round" ru=" · Настроено за {} раунд(ов)"/>
   <translation tag=" · Tuned in {} rounds" ru=" · Настроено за {} раунд(ов)"/>
-  <translation tag=" · was {:.0f}%" ru=" · было {:.0f}%"/>
   <translation tag=" · {} loosened about {}" ru=" · {} ослаблен примерно на {}"/>
   <translation tag=" · {} tightened about {}" ru=" · {} натянут примерно на {}"/>
   <translation tag="&quot;%s&quot; failed to load" ru="Не удалось загрузить «%s»"/>
@@ -1343,7 +1342,7 @@
   <translation tag="Global" ru="Общий"/>
   <translation tag="Good" ru="Хорошо"/>
   <translation tag="Good Accuracy" ru="Хорошая точность"/>
-  <translation tag="Good enough" ru="Достаточно"/>
+  <translation tag="Good Enough" ru="Достаточно"/>
   <translation tag="Good match" ru="Хорошее совпадение"/>
   <translation tag="Got it" ru="Понятно"/>
   <translation tag="Gray" ru="Серый"/>
@@ -1586,12 +1585,12 @@
   <translation tag="Keep Navigation Bar" ru="Сохранить панель навигации"/>
   <translation tag="Keep Printing" ru="Продолжить печать"/>
   <translation tag="Keep Spool Info on Eject" ru="Сохранять данные катушки при извлечении"/>
+  <translation tag="Keep Tuning" ru="Продолжить"/>
   <translation tag="Keep clear of the printer while the toolhead is moving" ru="Не приближайтесь к принтеру, пока перемещается печатающая головка"/>
   <translation tag="Keep current" ru="Оставить текущую"/>
   <translation tag="Keep hands clear. The printer moves on its own." ru="Держите руки подальше. Принтер двигается сам."/>
   <translation tag="Keep its own data on this screen (up to 256 KB)." ru="Хранит собственные данные на этом экране (до 256 КБ)."/>
   <translation tag="Keep the bypass spool visible when bypass is off" ru="Показывать катушку байпаса, даже когда байпас выключен"/>
-  <translation tag="Keep tuning" ru="Продолжить"/>
   <translation tag="Kick away" ru="Сброс остатка"/>
   <translation tag="Kinematics" ru="Кинематика"/>
   <translation tag="Klipper" ru="Klipper"/>
@@ -1915,8 +1914,8 @@
   <translation tag="New printer successfully added" ru="Новый принтер успешно добавлен"/>
   <translation tag="New profile name" ru="Новое имя профиля"/>
   <translation tag="Next" ru="Далее"/>
-  <translation tag="Next zone" ru="Следующая зона"/>
-  <translation tag="Next zone (~{} min)" ru="След. зона (~{} мин)"/>
+  <translation tag="Next Zone" ru="Следующая зона"/>
+  <translation tag="Next Zone (~{} min)" ru="След. зона (~{} мин)"/>
   <translation tag="Niimbot (Bluetooth)" ru="Niimbot (Bluetooth)"/>
   <translation tag="No" ru="Нет"/>
   <translation tag="No AMS Detected" ru="AMS не обнаружен"/>
@@ -3297,7 +3296,7 @@
   <translation tag="Try adjusting your search or filters" ru="Попробуйте изменить поиск или фильтры"/>
   <translation tag="Try the operation again. If it persists, check for mechanical issues." ru="Повторите операцию. Если проблема не исчезает, проверьте механические неисправности."/>
   <translation tag="Tune" ru="Настройка"/>
-  <translation tag="Tune belts" ru="Настроить"/>
+  <translation tag="Tune Belts" ru="Настроить"/>
   <translation tag="Tuning tower enabled - start a print to test" ru="Башня настройки включена — начните печать для теста"/>
   <translation tag="Turbo" ru="Турбо"/>
   <translation tag="Turbo Inner" ru="Турбо (внутренний)"/>
@@ -3587,6 +3586,7 @@
   <translation tag="direct drive" ru="с прямой подачей"/>
   <translation tag="disable" ru="отключить"/>
   <translation tag="disabled" ru="отключено"/>
+  <translation tag="done" ru="готово"/>
   <translation tag="done at {} · {}%" ru="готово в {} · {}%"/>
   <translation tag="drying" ru="сушатся"/>
   <translation tag="e.g. Jet Black" ru="напр. Чёрный"/>
@@ -3662,6 +3662,7 @@
   <translation tag="v%s has no build for the %s, so it can&apos;t be installed here. Pick a channel with a newer release." ru="Для v%s нет сборки для %s, поэтому её нельзя установить здесь. Выберите канал обновлений с более новым выпуском."/>
   <translation tag="v{} installed! Restarting..." ru="v{} установлена! Перезапуск..."/>
   <translation tag="v{} is available. Tap to update." ru="v{} доступна. Нажмите для обновления."/>
+  <translation tag="was {:.0f}%" ru="было {:.0f}%"/>
   <translation tag="what you turned" ru="сколько повернули"/>
   <translation tag="within one bin" ru="в пределах одного бина"/>
   <translation tag="wpa_supplicant is not running. WiFi features unavailable." ru="wpa_supplicant не запущен. Функции WiFi недоступны."/>

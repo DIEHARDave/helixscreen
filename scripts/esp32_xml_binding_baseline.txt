@@ -208,6 +208,7 @@ subject:bt_chart_available
 subject:bt_error_message
 subject:bt_facts
 subject:bt_gate_message
+subject:bt_has_similarity_was
 subject:bt_has_unpaired
 subject:bt_hw_accel
 subject:bt_hw_kinematics
@@ -219,6 +220,7 @@ subject:bt_run_title
 subject:bt_running_path
 subject:bt_scanning
 subject:bt_similarity
+subject:bt_similarity_was
 subject:bt_tune_amount
 subject:bt_tune_baseline
 subject:bt_tune_confirm_label

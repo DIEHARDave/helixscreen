@@ -5,7 +5,6 @@
   <translation tag=" left" zh=" 剩余"/>
   <translation tag=" · Tuned in {} round" zh=" · 用 {} 轮调好"/>
   <translation tag=" · Tuned in {} rounds" zh=" · 用 {} 轮调好"/>
-  <translation tag=" · was {:.0f}%" zh=" · 原为 {:.0f}%"/>
   <translation tag=" · {} loosened about {}" zh=" · {} 放松约 {}"/>
   <translation tag=" · {} tightened about {}" zh=" · {} 拉紧约 {}"/>
   <translation tag="&quot;%s&quot; failed to load" zh="&quot;%s&quot; 加载失败"/>
@@ -1343,7 +1342,7 @@
   <translation tag="Global" zh="全局"/>
   <translation tag="Good" zh="良好"/>
   <translation tag="Good Accuracy" zh="精度良好"/>
-  <translation tag="Good enough" zh="足够了"/>
+  <translation tag="Good Enough" zh="足够了"/>
   <translation tag="Good match" zh="匹配良好"/>
   <translation tag="Got it" zh="知道了"/>
   <translation tag="Gray" zh="灰色"/>
@@ -1586,12 +1585,12 @@
   <translation tag="Keep Navigation Bar" zh="保留导航栏"/>
   <translation tag="Keep Printing" zh="继续打印"/>
   <translation tag="Keep Spool Info on Eject" zh="弹出时保留料盘信息"/>
+  <translation tag="Keep Tuning" zh="继续调整"/>
   <translation tag="Keep clear of the printer while the toolhead is moving" zh="工具头移动时请远离打印机"/>
   <translation tag="Keep current" zh="保留当前"/>
   <translation tag="Keep hands clear. The printer moves on its own." zh="请勿将手靠近。打印机会自行移动。"/>
   <translation tag="Keep its own data on this screen (up to 256 KB)." zh="在此屏幕上保存自己的数据（最多256 KB）。"/>
   <translation tag="Keep the bypass spool visible when bypass is off" zh="旁路关闭时保持料盘可见"/>
-  <translation tag="Keep tuning" zh="继续调整"/>
   <translation tag="Kick away" zh="拨除废料"/>
   <translation tag="Kinematics" zh="运动学"/>
   <translation tag="Klipper" zh="Klipper"/>
@@ -1915,8 +1914,8 @@
   <translation tag="New printer successfully added" zh="新打印机已成功添加"/>
   <translation tag="New profile name" zh="新配置名称"/>
   <translation tag="Next" zh="下一步"/>
-  <translation tag="Next zone" zh="下一区间"/>
-  <translation tag="Next zone (~{} min)" zh="下一区间(约 {} 分钟)"/>
+  <translation tag="Next Zone" zh="下一区间"/>
+  <translation tag="Next Zone (~{} min)" zh="下一区间(约 {} 分钟)"/>
   <translation tag="Niimbot (Bluetooth)" zh="Niimbot（蓝牙）"/>
   <translation tag="No" zh="否"/>
   <translation tag="No AMS Detected" zh="未检测到 AMS"/>
@@ -3297,7 +3296,7 @@
   <translation tag="Try adjusting your search or filters" zh="尝试调整搜索或筛选条件"/>
   <translation tag="Try the operation again. If it persists, check for mechanical issues." zh="请重试该操作。如果问题持续存在，请检查是否有机械故障。"/>
   <translation tag="Tune" zh="调优"/>
-  <translation tag="Tune belts" zh="调整皮带"/>
+  <translation tag="Tune Belts" zh="调整皮带"/>
   <translation tag="Tuning tower enabled - start a print to test" zh="调优塔已启用 - 开始打印以测试"/>
   <translation tag="Turbo" zh="极速"/>
   <translation tag="Turbo Inner" zh="极速内圈"/>
@@ -3587,6 +3586,7 @@
   <translation tag="direct drive" zh="直驱"/>
   <translation tag="disable" zh="禁用"/>
   <translation tag="disabled" zh="已禁用"/>
+  <translation tag="done" zh="完成"/>
   <translation tag="done at {} · {}%" zh="{} 完成 · {}%"/>
   <translation tag="drying" zh="烘干中"/>
   <translation tag="e.g. Jet Black" zh="例如 炭黑"/>
@@ -3662,6 +3662,7 @@
   <translation tag="v%s has no build for the %s, so it can&apos;t be installed here. Pick a channel with a newer release." zh="v%s 没有适用于 %s 的版本，因此无法在此安装。请选择有更新版本的更新通道。"/>
   <translation tag="v{} installed! Restarting..." zh="已安装 v{}！正在重启..."/>
   <translation tag="v{} is available. Tap to update." zh="v{} 可用。点击以更新。"/>
+  <translation tag="was {:.0f}%" zh="原为 {:.0f}%"/>
   <translation tag="what you turned" zh="你转动的量"/>
   <translation tag="within one bin" zh="在一个频点内"/>
   <translation tag="wpa_supplicant is not running. WiFi features unavailable." zh="wpa_supplicant 未运行。WiFi 功能不可用。"/>

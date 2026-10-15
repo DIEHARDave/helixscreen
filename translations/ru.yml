@@ -7,7 +7,6 @@ translations:
   ' left': ' осталось'
   ' · Tuned in {} round': " · Настроено за {} раунд(ов)"
   ' · Tuned in {} rounds': " · Настроено за {} раунд(ов)"
-  ' · was {:.0f}%': ' · было {:.0f}%'
   ' · {} loosened about {}': " · {} ослаблен примерно на {}"
   ' · {} tightened about {}': " · {} натянут примерно на {}"
   '"%s" failed to load': Не удалось загрузить «%s»
@@ -1459,7 +1458,7 @@ translations:
   Global: Общий
   Good: Хорошо
   Good Accuracy: Хорошая точность
-  Good enough: "Достаточно"
+  Good Enough: "Достаточно"
   Good match: "Хорошее совпадение"
   Got it: Понятно
   Gray: Серый
@@ -1742,7 +1741,7 @@ translations:
 
   Keep its own data on this screen (up to 256 KB).: 'Хранит собственные данные на этом экране (до 256 КБ).'
   Keep the bypass spool visible when bypass is off: Показывать катушку байпаса, даже когда байпас выключен
-  Keep tuning: Продолжить
+  Keep Tuning: Продолжить
   Kick away: 'Сброс остатка'
   Kinematics: Кинематика
   Klipper: Klipper
@@ -2096,8 +2095,8 @@ translations:
   New printer successfully added: Новый принтер успешно добавлен
   New profile name: Новое имя профиля
   Next: Далее
-  Next zone: "Следующая зона"
-  Next zone (~{} min): "След. зона (~{} мин)"
+  Next Zone: "Следующая зона"
+  Next Zone (~{} min): "След. зона (~{} мин)"
   Niimbot (Bluetooth): Niimbot (Bluetooth)
   'No': Нет
   No AMS Detected: 'AMS не обнаружен'
@@ -3658,7 +3657,7 @@ translations:
   Try Again: 'Повторить'
   Try the operation again. If it persists, check for mechanical issues.: Повторите операцию. Если проблема не исчезает, проверьте механические неисправности.
   Tune: Настройка
-  Tune belts: "Настроить"
+  Tune Belts: "Настроить"
   Tuning tower enabled - start a print to test: Башня настройки включена — начните
     печать для теста
   Turbo: Турбо
@@ -3968,6 +3967,7 @@ translations:
   direct drive: с прямой подачей
   disable: отключить
   disabled: отключено
+  done: 'готово'
   done at {} · {}%: "готово в {} · {}%"
   drying: сушатся
   e.g. Jet Black: напр. Чёрный
@@ -4049,6 +4049,7 @@ translations:
   v%s has no build for the %s, so it can't be installed here. Pick a channel with a newer release.: Для v%s нет сборки для %s, поэтому её нельзя установить здесь. Выберите канал обновлений с более новым выпуском.
   v{} installed! Restarting...: v{} установлена! Перезапуск...
   v{} is available. Tap to update.: v{} доступна. Нажмите для обновления.
+  was {:.0f}%: 'было {:.0f}%'
   what you turned: "сколько повернули"
   within one bin: "в пределах одного бина"
   wpa_supplicant is not running. WiFi features unavailable.: wpa_supplicant не запущен. Функции WiFi недоступны.

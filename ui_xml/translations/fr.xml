@@ -5,7 +5,6 @@
   <translation tag=" left" fr=" restant"/>
   <translation tag=" · Tuned in {} round" fr=" · Réglé en {} tour"/>
   <translation tag=" · Tuned in {} rounds" fr=" · Réglé en {} tours"/>
-  <translation tag=" · was {:.0f}%" fr=" · était {:.0f}%"/>
   <translation tag=" · {} loosened about {}" fr=" · {} détendue d&apos;environ {}"/>
   <translation tag=" · {} tightened about {}" fr=" · {} tendue d&apos;environ {}"/>
   <translation tag="&quot;%s&quot; failed to load" fr="&quot;%s&quot; n&apos;a pas pu se charger"/>
@@ -1343,7 +1342,7 @@
   <translation tag="Global" fr="Global"/>
   <translation tag="Good" fr="Bon"/>
   <translation tag="Good Accuracy" fr="Bonne précision"/>
-  <translation tag="Good enough" fr="Suffisant"/>
+  <translation tag="Good Enough" fr="Suffisant"/>
   <translation tag="Good match" fr="Bonne correspondance"/>
   <translation tag="Got it" fr="Compris"/>
   <translation tag="Gray" fr="Gris"/>
@@ -1586,12 +1585,12 @@
   <translation tag="Keep Navigation Bar" fr="Conserver la barre de navigation"/>
   <translation tag="Keep Printing" fr="Continuer l&apos;impression"/>
   <translation tag="Keep Spool Info on Eject" fr="Garder les informations de bobine lors de l&apos;éjection"/>
+  <translation tag="Keep Tuning" fr="Continuer"/>
   <translation tag="Keep clear of the printer while the toolhead is moving" fr="Restez à l&apos;écart de l&apos;imprimante pendant que la tête d&apos;outil se déplace"/>
   <translation tag="Keep current" fr="Garder l&apos;actuel"/>
   <translation tag="Keep hands clear. The printer moves on its own." fr="Tenez vos mains à distance. L&apos;imprimante bouge seule."/>
   <translation tag="Keep its own data on this screen (up to 256 KB)." fr="Conserve ses propres données sur cet écran (jusqu&apos;à 256 Ko)."/>
   <translation tag="Keep the bypass spool visible when bypass is off" fr="Garder la bobine de bypass visible lorsque le bypass est désactivé"/>
-  <translation tag="Keep tuning" fr="Continuer"/>
   <translation tag="Kick away" fr="Éjecter"/>
   <translation tag="Kinematics" fr="Cinématique"/>
   <translation tag="Klipper" fr="Klipper"/>
@@ -1915,8 +1914,8 @@
   <translation tag="New printer successfully added" fr="Nouvelle imprimante ajoutée avec succès"/>
   <translation tag="New profile name" fr="Nouveau nom de profil"/>
   <translation tag="Next" fr="Suivant"/>
-  <translation tag="Next zone" fr="Zone suivante"/>
-  <translation tag="Next zone (~{} min)" fr="Zone suiv. (~{} min)"/>
+  <translation tag="Next Zone" fr="Zone suivante"/>
+  <translation tag="Next Zone (~{} min)" fr="Zone suiv. (~{} min)"/>
   <translation tag="Niimbot (Bluetooth)" fr="Niimbot (Bluetooth)"/>
   <translation tag="No" fr="Non"/>
   <translation tag="No AMS Detected" fr="Aucun AMS détecté"/>
@@ -3297,7 +3296,7 @@
   <translation tag="Try adjusting your search or filters" fr="Essayez d&apos;ajuster votre recherche ou vos filtres"/>
   <translation tag="Try the operation again. If it persists, check for mechanical issues." fr="Réessayez l&apos;opération. Si le problème persiste, vérifiez s&apos;il y a des problèmes mécaniques."/>
   <translation tag="Tune" fr="Régler"/>
-  <translation tag="Tune belts" fr="Régler"/>
+  <translation tag="Tune Belts" fr="Régler"/>
   <translation tag="Tuning tower enabled - start a print to test" fr="Tour de réglage activée - lancez une impression pour tester"/>
   <translation tag="Turbo" fr="Turbo"/>
   <translation tag="Turbo Inner" fr="Turbo intérieur"/>
@@ -3587,6 +3586,7 @@
   <translation tag="direct drive" fr="à entraînement direct"/>
   <translation tag="disable" fr="désactiver"/>
   <translation tag="disabled" fr="désactivé"/>
+  <translation tag="done" fr="terminé"/>
   <translation tag="done at {} · {}%" fr="fin à {} · {}%"/>
   <translation tag="drying" fr="en séchage"/>
   <translation tag="e.g. Jet Black" fr="p. ex. Noir profond"/>
@@ -3662,6 +3662,7 @@
   <translation tag="v%s has no build for the %s, so it can&apos;t be installed here. Pick a channel with a newer release." fr="v%s n&apos;a pas de version pour %s et ne peut donc pas être installée ici. Choisissez un canal de mise à jour avec une version plus récente."/>
   <translation tag="v{} installed! Restarting..." fr="v{} installée ! Redémarrage..."/>
   <translation tag="v{} is available. Tap to update." fr="v{} est disponible. Appuyez pour mettre à jour."/>
+  <translation tag="was {:.0f}%" fr="était {:.0f}%"/>
   <translation tag="what you turned" fr="ce que vous avez tourné"/>
   <translation tag="within one bin" fr="à moins d&apos;un bin"/>
   <translation tag="wpa_supplicant is not running. WiFi features unavailable." fr="wpa_supplicant ne fonctionne pas. Les fonctions WiFi sont indisponibles."/>

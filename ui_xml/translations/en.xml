@@ -5,7 +5,6 @@
   <translation tag=" left" en=" left"/>
   <translation tag=" · Tuned in {} round" en=" · Tuned in {} round"/>
   <translation tag=" · Tuned in {} rounds" en=" · Tuned in {} rounds"/>
-  <translation tag=" · was {:.0f}%" en=" · was {:.0f}%"/>
   <translation tag=" · {} loosened about {}" en=" · {} loosened about {}"/>
   <translation tag=" · {} tightened about {}" en=" · {} tightened about {}"/>
   <translation tag="&quot;%s&quot; failed to load" en="&quot;%s&quot; failed to load"/>
@@ -1343,7 +1342,7 @@
   <translation tag="Global" en="Global"/>
   <translation tag="Good" en="Good"/>
   <translation tag="Good Accuracy" en="Good Accuracy"/>
-  <translation tag="Good enough" en="Good enough"/>
+  <translation tag="Good Enough" en="Good Enough"/>
   <translation tag="Good match" en="Good match"/>
   <translation tag="Got it" en="Got it"/>
   <translation tag="Gray" en="Gray"/>
@@ -1586,12 +1585,12 @@
   <translation tag="Keep Navigation Bar" en="Keep Navigation Bar"/>
   <translation tag="Keep Printing" en="Keep Printing"/>
   <translation tag="Keep Spool Info on Eject" en="Keep Spool Info on Eject"/>
+  <translation tag="Keep Tuning" en="Keep Tuning"/>
   <translation tag="Keep clear of the printer while the toolhead is moving" en="Keep clear of the printer while the toolhead is moving"/>
   <translation tag="Keep current" en="Keep current"/>
   <translation tag="Keep hands clear. The printer moves on its own." en="Keep hands clear. The printer moves on its own."/>
   <translation tag="Keep its own data on this screen (up to 256 KB)." en="Keep its own data on this screen (up to 256 KB)."/>
   <translation tag="Keep the bypass spool visible when bypass is off" en="Keep the bypass spool visible when bypass is off"/>
-  <translation tag="Keep tuning" en="Keep tuning"/>
   <translation tag="Kick away" en="Kick away"/>
   <translation tag="Kinematics" en="Kinematics"/>
   <translation tag="Klipper" en="Klipper"/>
@@ -1915,8 +1914,8 @@
   <translation tag="New printer successfully added" en="New printer successfully added"/>
   <translation tag="New profile name" en="New profile name"/>
   <translation tag="Next" en="Next"/>
-  <translation tag="Next zone" en="Next zone"/>
-  <translation tag="Next zone (~{} min)" en="Next zone (~{} min)"/>
+  <translation tag="Next Zone" en="Next Zone"/>
+  <translation tag="Next Zone (~{} min)" en="Next Zone (~{} min)"/>
   <translation tag="Niimbot (Bluetooth)" en="Niimbot (Bluetooth)"/>
   <translation tag="No" en="No"/>
   <translation tag="No AMS Detected" en="No AMS Detected"/>
@@ -3297,7 +3296,7 @@
   <translation tag="Try adjusting your search or filters" en="Try adjusting your search or filters"/>
   <translation tag="Try the operation again. If it persists, check for mechanical issues." en="Try the operation again. If it persists, check for mechanical issues."/>
   <translation tag="Tune" en="Tune"/>
-  <translation tag="Tune belts" en="Tune belts"/>
+  <translation tag="Tune Belts" en="Tune Belts"/>
   <translation tag="Tuning tower enabled - start a print to test" en="Tuning tower enabled - start a print to test"/>
   <translation tag="Turbo" en="Turbo"/>
   <translation tag="Turbo Inner" en="Turbo Inner"/>
@@ -3587,6 +3586,7 @@
   <translation tag="direct drive" en="direct drive"/>
   <translation tag="disable" en="disable"/>
   <translation tag="disabled" en="disabled"/>
+  <translation tag="done" en="done"/>
   <translation tag="done at {} · {}%" en="done at {} · {}%"/>
   <translation tag="drying" en="drying"/>
   <translation tag="e.g. Jet Black" en="e.g. Jet Black"/>
@@ -3662,6 +3662,7 @@
   <translation tag="v%s has no build for the %s, so it can&apos;t be installed here. Pick a channel with a newer release." en="v%s has no build for the %s, so it can&apos;t be installed here. Pick a channel with a newer release."/>
   <translation tag="v{} installed! Restarting..." en="v{} installed! Restarting..."/>
   <translation tag="v{} is available. Tap to update." en="v{} is available. Tap to update."/>
+  <translation tag="was {:.0f}%" en="was {:.0f}%"/>
   <translation tag="what you turned" en="what you turned"/>
   <translation tag="within one bin" en="within one bin"/>
   <translation tag="wpa_supplicant is not running. WiFi features unavailable." en="wpa_supplicant is not running. WiFi features unavailable."/>
