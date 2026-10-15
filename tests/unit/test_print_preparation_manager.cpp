@@ -3835,6 +3835,34 @@ TEST_CASE_METHOD(HelixTestFixture,
 }
 
 TEST_CASE_METHOD(HelixTestFixture,
+                 "PrintPreparationManager: a failed remap start answers its completion",
+                 "[print_preparation][remap]") {
+    // The completion is how the caller learns to re-enable Print: a remap that
+    // dies on the way must answer it, once, as a failure.
+    lv_init_safe();
+    MockPrinter mock_printer;
+    auto& state = mock_printer.state;
+    auto& api = mock_printer.api;
+
+    PrintPreparationManager manager;
+    manager.set_dependencies(&api, &state);
+    state.print_state().begin_preparing(PrintJobRef{"no_such_file.gcode", "gcodes", ""});
+
+    int answers = 0;
+    bool answered_success = true;
+    manager.modify_and_print_with_remap("no_such_file.gcode", {{1, 2}}, nullptr,
+                                        [&](bool success, const std::string& /*error*/) {
+                                            ++answers;
+                                            answered_success = success;
+                                        });
+    drain_until_quiet();
+
+    CHECK(answers == 1);
+    CHECK_FALSE(answered_success);
+    CHECK_FALSE(state.print_state().has_preparing_job());
+}
+
+TEST_CASE_METHOD(HelixTestFixture,
                  "PrintPreparationManager: the remap download lands where the sweeper reaps it",
                  "[print_preparation][remap]") {
     // A crash between the download and its delete leaves a full copy of the job

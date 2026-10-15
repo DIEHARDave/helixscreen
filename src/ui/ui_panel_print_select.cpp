@@ -3417,7 +3417,14 @@ void PrintSelectPanel::apply_remap(const std::vector<helix::ToolMapping>& update
                 object_lifetime_.bg_cb(
                     "PrintSelectPanel::remap_print_started",
                     [this]() { PrintStatusPanel::push_overlay(parent_screen_); }),
-                detail_view_ ? detail_view_->exclude_picks() : std::vector<std::string>{}));
+                detail_view_ ? detail_view_->exclude_picks() : std::vector<std::string>{}),
+            // A start that dies re-decides Print, as a failed tap's does.
+            object_lifetime_.bg_cb("PrintSelectPanel::remap_print_done",
+                                   [this](bool success, const std::string& /*error*/) {
+                                       if (!success) {
+                                           update_print_button_state();
+                                       }
+                                   }));
         break;
     }
 

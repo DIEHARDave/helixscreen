@@ -317,6 +317,11 @@ void PrintStartController::execute_print_start() {
                 helix::ui::queue_update(
                     "PrintStartController::execute_print_start",
                     [success, error, update_button, show_detail, on_cancelled, ps]() {
+                        // Not end_without_print(): that runs before any navigation, and
+                        // refreshes the button and reports the cancel together. Here every
+                        // failure reports the cancel, an abandoned start (no error) included,
+                        // while the button refresh waits for a failure with an error to
+                        // unwind the navigation and re-show the file view it belongs to.
                         if (!success && on_cancelled) {
                             on_cancelled();
                         }

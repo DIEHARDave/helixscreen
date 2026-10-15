@@ -480,9 +480,12 @@ class PrintPreparationManager {
      *                  (e.g. "usb/multicolor.gcode")
      * @param remap Logical tool index -> physical head index
      * @param on_navigate_to_status Callback to navigate to the print status panel
+     * @param on_completion Answers (false, "") when the attempt dies here, and
+     *        the start's own answer when an identity remap prints the original
      */
     void modify_and_print_with_remap(const std::string& file_path, const std::map<int, int>& remap,
-                                     NavigateToStatusCallback on_navigate_to_status);
+                                     NavigateToStatusCallback on_navigate_to_status,
+                                     PrintCompletionCallback on_completion = nullptr);
 
     /**
      * @brief Would DISABLING this pre-print option require the HelixPrint plugin?
@@ -817,31 +820,39 @@ class PrintPreparationManager {
                           NavigateToStatusCallback on_navigate_to_status,
                           PrintCompletionCallback on_completion);
 
+    /// What a rewrite route made of the downloaded file.
+    struct RewriteResult {
+        enum class Kind {
+            Rewritten, ///< modified_path holds the copy to upload
+            Unchanged, ///< nothing to rewrite: the original prints as it is
+            Failed,    ///< the rewrite has told the user why
+        };
+        Kind kind = Kind::Failed;
+        std::string modified_path;
+    };
+
+    /// One G-code rewrite start: the file, its local download, and the rewrite.
+    struct RewriteRoute {
+        std::string file_path;           ///< relative to the gcodes root
+        std::string local_download_path; ///< where the original downloads to
+        std::vector<std::string> mod_names;
+        bool use_plugin = false; ///< start through the HelixPrint plugin
+        /// Runs on the HTTP thread with the downloaded file, which it removes.
+        std::function<RewriteResult(const std::string& local_download_path)> rewrite;
+        const char* download_error = nullptr; ///< toast format, given the error
+        const char* upload_error = nullptr;   ///< toast format, given the error
+    };
+
     /**
-     * @brief Unified streaming modification and print flow
+     * @brief Download, rewrite, upload and start one route (modify or remap)
      *
-     * Downloads file to disk, applies streaming modification (file-to-file),
-     * then uploads from disk. This is the single path for all G-code modifications,
-     * avoiding memory spikes that cause TTC errors on constrained devices.
-     *
-     * If use_plugin is true and helix_print plugin is available, the plugin's
-     * path-based API is used after upload for symlink creation and history patching.
-     *
-     * @param file_path Full path to original file relative to gcodes root
-     * @param display_filename Filename for display purposes
-     * @param ops_to_disable Operations to comment out in the file
-     * @param macro_skip_params Skip params to append to PRINT_START call
-     * @param mod_names Modification identifiers for tracking
-     * @param on_navigate_to_status Callback to navigate to print status panel
-     * @param use_plugin Whether to use helix_print plugin for print start
-     * @param on_completion Answers (false, "") when the attempt dies here
+     * File to file at every step, so the whole job is never in memory. The
+     * rewritten copy starts under the original name through the plugin when
+     * @p route says so, else as itself. Every failure ends in abandon_start()
+     * with @p on_completion.
      */
-    void modify_and_print_streaming(
-        const std::string& file_path, const std::string& display_filename,
-        const std::vector<gcode::OperationType>& ops_to_disable,
-        const std::vector<std::pair<std::string, std::string>>& macro_skip_params,
-        const std::vector<std::string>& mod_names, NavigateToStatusCallback on_navigate_to_status,
-        bool use_plugin, PrintCompletionCallback on_completion);
+    void rewrite_and_print(RewriteRoute route, NavigateToStatusCallback on_navigate_to_status,
+                           PrintCompletionCallback on_completion);
 
     /**
      * @brief Start print directly (no pre-print operations)
