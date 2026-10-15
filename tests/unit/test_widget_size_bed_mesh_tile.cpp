@@ -213,6 +213,15 @@ TEST_CASE_METHOD(BedMeshTileFixture, "bed_mesh_tile: with no mesh the budgets st
 }
 
 TEST_CASE_METHOD(BedMeshTileFixture,
+                 "bed_mesh_tile: with no mesh a box draws the same parts whatever it was before",
+                 "[widget_size][bed_mesh_tile]") {
+    Harness h(test_screen(), state());
+    CHECK(h.unsettled_boxes(box_sweep(114, 114, 40, 240)) == std::vector<std::string>{});
+    CHECK(h.unsettled_boxes(box_sweep(234, 234, 40, 240)) == std::vector<std::string>{});
+    CHECK(h.unsettled_boxes(box_sweep(20, 300, 113, 113)) == std::vector<std::string>{});
+}
+
+TEST_CASE_METHOD(BedMeshTileFixture,
                  "bed_mesh_tile: each rung shows exactly its parts, mesh loaded",
                  "[widget_size][bed_mesh_tile]") {
     load_mesh(0.10f);

@@ -263,9 +263,10 @@ SpeedFlowWidget::LiveState SpeedFlowWidget::read_live() const {
 SpeedFlowVerdict SpeedFlowWidget::decide(int width_px, int height_px, bool printing,
                                          bool physical) const {
     // The tree's own padding where it exists; before it does (the load path asks
-    // fits_at then) the root's padding on each side plus the body's gap.
-    const ContentChrome chrome =
-        content_chrome_or_estimate(root(), "space_xxs", "space_xxs", "space_xxs", "space_xxs");
+    // fits_at then) the root's padding on each side. The body's gap is charged whether
+    // or not Glance hides the second axis, so the verdict does not follow the last one.
+    const ContentChrome chrome = content_chrome_or_estimate(
+        root(), "space_xxs", "space_xxs", "space_xxs", "space_xxs", BranchGap::Always);
     SpeedFlowInput in;
     in.content_w = width_px - chrome.w;
     in.content_h = height_px - chrome.h;

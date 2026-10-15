@@ -196,6 +196,13 @@ TEST_CASE_METHOD(ZOffsetFixture, "z_offset: medium-tier budgets land on their ru
     }
 }
 
+TEST_CASE_METHOD(ZOffsetFixture, "z_offset: a box draws the same parts whatever it was before",
+                 "[widget_size][z_offset]") {
+    PanelWidgetHarness<ZOffsetWidget> h(test_screen(), state());
+    CHECK(h.unsettled_boxes(box_sweep(234, 234, 40, 260)) == std::vector<std::string>{});
+    CHECK(h.unsettled_boxes(box_sweep(20, 300, 113, 113)) == std::vector<std::string>{});
+}
+
 TEST_CASE_METHOD(ZOffsetFixture, "z_offset: each rung shows exactly its parts",
                  "[widget_size][z_offset]") {
     set_offset_microns(-100); // something to save, so Save may show

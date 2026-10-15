@@ -180,9 +180,9 @@ PrintStatsTileVerdict PrintStatsWidget::decide(int width_px, int height_px,
                                                PrintStatsContent content, bool lifetime_known,
                                                const std::string& hero,
                                                const std::string& label) const {
-    // The root's padding and row gap, as panel_widget_print_stats.xml sets them.
-    const ContentChrome chrome =
-        content_chrome_or_estimate(root(), "space_sm", "space_xxs", "space_xxs");
+    // The root's padding, as panel_widget_print_stats.xml sets it. The needs and the
+    // support line's height count the gap above the support line.
+    const ContentChrome chrome = content_padding_or_estimate(root(), "space_sm", "space_xxs");
     const lv_font_t* small = theme_manager_get_font("font_small");
     PrintStatsTileLayoutInput li;
     li.content_w = width_px - chrome.w;

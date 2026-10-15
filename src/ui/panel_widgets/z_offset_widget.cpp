@@ -242,10 +242,9 @@ ZOffsetWidget::LiveState ZOffsetWidget::read_live() const {
 }
 
 ZOffsetVerdict ZOffsetWidget::decide(int width_px, int height_px, bool tool_changer) const {
-    // The tree's own padding where it exists; before it does (the load path asks
-    // fits_at then) the root's padding on each side plus the body's gap.
-    const ContentChrome chrome =
-        content_chrome_or_estimate(root(), "space_xxs", "space_xxs", "space_xxs", "space_xxs");
+    // The tree's own padding where it exists, and before it does (the load path asks
+    // fits_at then) the root's. measure_needs() counts the gaps between the body's parts.
+    const ContentChrome chrome = content_padding_or_estimate(root(), "space_xxs", "space_xxs");
     ZOffsetInput in;
     in.content_w = width_px - chrome.w;
     in.content_h = height_px - chrome.h;

@@ -31,6 +31,18 @@ struct HarnessConfig {
     nlohmann::json value;
 };
 
+/// Every box from @p w_from x @p h_from to @p w_to x @p h_to, a pixel apart. Hold one
+/// axis (from == to) to sweep the other.
+inline std::vector<std::pair<int, int>> box_sweep(int w_from, int w_to, int h_from, int h_to) {
+    std::vector<std::pair<int, int>> boxes;
+    for (int w = w_from; w <= w_to; ++w) {
+        for (int h = h_from; h <= h_to; ++h) {
+            boxes.emplace_back(w, h);
+        }
+    }
+    return boxes;
+}
+
 /// The XML-component + resize half of a harness, without the widget instance.
 ///
 /// Split out so the registry-driven harness below reuses the create/attach and
@@ -77,7 +89,37 @@ class PanelWidgetHarnessBase {
         return obj_;
     }
 
+    /// Each of @p boxes, as "WxH", whose drawn parts change when it is decided a second
+    /// time. A verdict that reads the parts the last one left visible settles only there.
+    std::vector<std::string> unsettled_boxes(const std::vector<std::pair<int, int>>& boxes) {
+        std::vector<std::string> unsettled;
+        for (const auto& [w, h] : boxes) {
+            resize(1, 1, w, h);
+            const std::string first = drawn_parts(obj_);
+            resize(1, 1, w, h);
+            if (drawn_parts(obj_) != first) {
+                unsettled.push_back(std::to_string(w) + "x" + std::to_string(h));
+            }
+        }
+        return unsettled;
+    }
+
   protected:
+    /// The names of @p obj's drawn descendants, depth first.
+    static std::string drawn_parts(lv_obj_t* obj) {
+        std::string parts;
+        const uint32_t count = lv_obj_get_child_count(obj);
+        for (uint32_t i = 0; i < count; ++i) {
+            lv_obj_t* child = lv_obj_get_child(obj, static_cast<int32_t>(i));
+            if (lv_obj_has_flag(child, LV_OBJ_FLAG_HIDDEN))
+                continue;
+            if (const char* name = lv_obj_get_name(child))
+                parts.append(name).append(" ");
+            parts += drawn_parts(child);
+        }
+        return parts;
+    }
+
     /// Resolve the component name from the widget, build it from XML, and
     /// attach. From the widget, not "panel_widget_" + id(): fan_stack selects
     /// between stack and carousel components, and favorite_macro's id carries

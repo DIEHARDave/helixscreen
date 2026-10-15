@@ -26,10 +26,22 @@ inline int button_label_chrome_w(const char* pad_token = "button_padding") {
     return 2 * (theme_manager_get_spacing(pad_token) + 1);
 }
 
+/// Which gap of the branching container measure_content_chrome() charges.
+enum class BranchGap {
+    /// The gap flex draws between the parts visible now. Visibility that follows the
+    /// verdict makes the next verdict follow the last one.
+    Visible,
+    /// The gap whenever the container holds more than one part, visible or not, for
+    /// needs that leave the gap between the parts to the chrome.
+    Always,
+    /// None, for needs that count every gap of the layout they measure.
+    None,
+};
+
 /// The chrome of the single-child chain from `root` down to the first container
 /// that holds more than one child: the padding of every container on the way, and
-/// the flex gap of that branching container. Flex leaves hidden children out, so a
-/// container with at most one visible child draws no gap and its gap is not chrome.
+/// the flex gap of that branching container as @p branch_gap says. Flex leaves hidden
+/// children out, so a container with at most one visible child draws no gap.
 ///
 /// Measured from the tree because container padding is a theme value that varies by
 /// widget and by breakpoint; a constant guess is either too small, and the content
@@ -38,14 +50,8 @@ inline int button_label_chrome_w(const char* pad_token = "button_padding") {
 /// since a measured-exact fit renders as an overlap by a pixel or two.
 /// `row_inset_px` is a side inset charged to row candidates alone, so it is not
 /// chrome of a container whose flow is already a row.
-/// Whether measure_content_chrome() charges the branching container's gap.
-enum class BranchGap {
-    Charged,  ///< the gap flex draws between the parts visible now
-    Excluded, ///< none: the caller's content needs count every gap for the layout they measure
-};
-
 inline ContentChrome measure_content_chrome(lv_obj_t* root, int reserve_px, int row_inset_px = 0,
-                                            BranchGap branch_gap = BranchGap::Charged) {
+                                            BranchGap branch_gap = BranchGap::Visible) {
     ContentChrome chrome{2 * reserve_px, 2 * reserve_px};
     for (lv_obj_t* o = root; o != nullptr; o = lv_obj_get_child(o, 0)) {
         int side_pads = static_cast<int>(lv_obj_get_style_pad_left(o, LV_PART_MAIN)) +
@@ -58,16 +64,19 @@ inline ContentChrome measure_content_chrome(lv_obj_t* root, int reserve_px, int 
                     static_cast<int>(lv_obj_get_style_pad_bottom(o, LV_PART_MAIN));
         const uint32_t children = lv_obj_get_child_count(o);
         if (children != 1) {
-            if (branch_gap == BranchGap::Excluded)
+            if (branch_gap == BranchGap::None)
                 break;
-            uint32_t visible = 0;
-            for (uint32_t i = 0; i < children; ++i) {
-                if (!lv_obj_has_flag(lv_obj_get_child(o, static_cast<int32_t>(i)),
-                                     LV_OBJ_FLAG_HIDDEN)) {
-                    ++visible;
+            uint32_t parts = children;
+            if (branch_gap == BranchGap::Visible) {
+                parts = 0;
+                for (uint32_t i = 0; i < children; ++i) {
+                    if (!lv_obj_has_flag(lv_obj_get_child(o, static_cast<int32_t>(i)),
+                                         LV_OBJ_FLAG_HIDDEN)) {
+                        ++parts;
+                    }
                 }
             }
-            if (visible > 1) {
+            if (parts > 1) {
                 chrome.w += static_cast<int>(lv_obj_get_style_pad_column(o, LV_PART_MAIN));
                 chrome.h += static_cast<int>(lv_obj_get_style_pad_row(o, LV_PART_MAIN));
             }
@@ -84,23 +93,21 @@ inline ContentChrome measure_content_chrome(lv_obj_t* root, int reserve_px, int 
 inline ContentChrome content_chrome_or_estimate(lv_obj_t* root, const char* pad_hor_token,
                                                 const char* pad_ver_token,
                                                 const char* row_gap_token = nullptr,
-                                                const char* col_gap_token = nullptr) {
+                                                const char* col_gap_token = nullptr,
+                                                BranchGap branch_gap = BranchGap::Visible) {
     if (root) {
-        return measure_content_chrome(root, 0);
+        return measure_content_chrome(root, 0, 0, branch_gap);
     }
     const auto px = [](const char* token) { return token ? theme_manager_get_spacing(token) : 0; };
     return {2 * px(pad_hor_token) + px(col_gap_token), 2 * px(pad_ver_token) + px(row_gap_token)};
 }
 
-/// content_chrome_or_estimate() with no gap, for a root whose visible parts change with
-/// the rung: the caller's needs count every gap of the layout they measure, so charging
-/// the gap of the parts showing now would make the verdict depend on the last one.
+/// content_chrome_or_estimate() with no gap (BranchGap::None), for needs that count
+/// every gap of the layout they measure.
 inline ContentChrome content_padding_or_estimate(lv_obj_t* root, const char* pad_hor_token,
                                                  const char* pad_ver_token) {
-    if (root) {
-        return measure_content_chrome(root, 0, 0, BranchGap::Excluded);
-    }
-    return content_chrome_or_estimate(nullptr, pad_hor_token, pad_ver_token);
+    return content_chrome_or_estimate(root, pad_hor_token, pad_ver_token, nullptr, nullptr,
+                                      BranchGap::None);
 }
 
 } // namespace helix

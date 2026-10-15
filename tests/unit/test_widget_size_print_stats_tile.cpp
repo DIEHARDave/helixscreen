@@ -121,6 +121,21 @@ TEST_CASE_METHOD(PrintStatsTileFixture, "print stats tile: medium-tier budgets l
 }
 
 TEST_CASE_METHOD(PrintStatsTileFixture,
+                 "print stats tile: a box draws the same parts whatever it was before",
+                 "[widget_size][print_stats]") {
+    seed({job(0, 3600)});
+    PanelWidgetHarness<PrintStatsWidget> h(test_screen());
+    h.resize(1, 1, kWide.w, kWide.h);
+    h.widget().on_activate();
+    settle();
+    REQUIRE(shown(h, "ps_support"));
+    for (int w : {test::kTileCellW, test::kTileWideW}) {
+        INFO(w);
+        CHECK(h.unsettled_boxes(box_sweep(w, w, 40, 240)) == std::vector<std::string>{});
+    }
+}
+
+TEST_CASE_METHOD(PrintStatsTileFixture,
                  "print stats tile: the hero sums print_duration over the seven bars",
                  "[widget_size][print_stats]") {
     seed({job(0, 3600, 99999), job(0, 5400, 99999)});
