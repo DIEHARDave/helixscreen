@@ -164,7 +164,7 @@ Enter the `ADMIN_API_KEY` value. Stored in browser sessionStorage (clears when t
 | **Engagement** | Panel time and visits, overlay visits, widget placement and interactions, themes, locales, brightness |
 | **Reliability** | Uptime, disconnects per boot, longest outage, error categories and codes |
 | **Performance** | Frame-time percentiles, dropped frames, worst panels |
-| **Features** | Feature adoption derived from overlay and widget use |
+| **Features** | Feature adoption derived from overlay and widget use, and the `settings_snapshot` flags for features that are configured rather than visited |
 | **UX Insights** | Most and least visited panels, settings change rate, settings left at default |
 
 All views support 7d / 30d / 90d time range selection. Platform, version, printer
@@ -200,6 +200,24 @@ To add a field: add a `blob(slot, field)` or `dbl(slot, field)` entry to the kin
 reader if the event nests it, add the key to the client builder, and use `col(kind, field)`
 in the query. A client field the table neither maps nor lists in `R2_ONLY` never reaches
 a query.
+
+**The client and the table are checked against each other.** Each column records the client
+fields it is written from (`ColumnDef.paths`: the field itself, or what its reader reads).
+`tests/fixtures/telemetry/<event>.json` holds one event of each type as the client builds
+it, and two tests share those files:
+
+- `tests/unit/test_telemetry_contract.cpp` (`[telemetry][contract]`) rebuilds every event
+  from fixed inputs and compares it to its file. Values from the clock, the host or the
+  build (timestamps, ids, memory figures, version strings) are pinned to placeholders.
+  After a deliberate client change, `HELIX_UPDATE_GOLDENS=1 ./build/bin/helix-tests
+  "[telemetry][contract]"` rewrites the files.
+- `server/telemetry-worker/src/__tests__/contract.test.ts` requires every field in each file
+  to match a column path of the event's kinds or an `R2_ONLY` entry, and every `R2_ONLY`
+  entry to match a field the event carries.
+
+So any change to what the client sends fails the golden test until its file is rewritten.
+The rewritten file then fails the worker test if it carries a field the table neither maps
+nor lists in `R2_ONLY`, or if an `R2_ONLY` entry names a field the client no longer sends.
 
 `print_outcome`, `print_start_context`, `error_encountered`, `connection_stability` and
 `hardware_profile` keep their original slots and carry `app_platform` and `app_board` in
@@ -310,7 +328,7 @@ a device when its overlay or widget has a count above 0 in the window, over
 `delta_era_devices` (`server/telemetry-worker/src/index.ts#deriveFeatureAdoption`, served at `/v1/dashboard/features`). Overlays are
 identified by the overlay root's object name, falling back to the lifecycle name only when
 the root has none; widgets by their id. Flags with no overlay or widget to visit are
-fields on `settings_snapshot` (see below). The `feature_adoption` point kind stays in the
+fields on `settings_snapshot` (see below), reported beside the derived adoption. The `feature_adoption` point kind stays in the
 schema table so rows stored by older clients remain readable.
 
 ## Reconciling AE against R2
@@ -552,9 +570,10 @@ Three booleans cover features with no overlay or widget to visit:
 | `theme_changed` | The active theme is not the default |
 | `multi_printer` | The config holds more than one printer |
 
-They are sent in the event and archived in R2. The schema table does not give them
-Analytics Engine columns yet, so no dashboard view reads them; add them as new
-`settings_snapshot` columns in free slots when a view needs them.
+Each is a tri-state `settings_snapshot` column (blobs 13-15): `"1"`, `"0"`, or empty for a
+client too old to send it. The Features view lists them under `configured`: devices that
+reported the flag on over devices that reported it at all
+(`server/telemetry-worker/src/index.ts#configuredFeature`).
 
 ### hardware_profile Event Details
 

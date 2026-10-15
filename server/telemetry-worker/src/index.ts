@@ -25,6 +25,7 @@ import {
   printStartQueries,
   performanceQueries,
   featuresQueries,
+  CONFIGURED_FEATURE_FLAGS,
   uxInsightsQueries,
   type QueryConfig,
   type FilterParams,
@@ -145,6 +146,17 @@ export function deriveFeatureAdoption(
   return [...devices]
     .map(([id, n]) => ({ id, devices: n, adoption_rate: n / deltaEraDevices }))
     .sort((a, b) => b.adoption_rate - a.adoption_rate || a.id.localeCompare(b.id));
+}
+
+/**
+ * One configured-feature flag: devices whose settings snapshots reported it
+ * on in the window, over devices that reported it on or off (a device that
+ * changed it in the window counts on both sides, as in toYesNo). The rate is
+ * null until a device has reported, since 0% would read as a measurement.
+ */
+export function configuredFeature(id: string, res: unknown) {
+  const { devices, reported } = toYesNo(res, "devices", "off");
+  return { id, devices, reported, adoption_rate: reported > 0 ? Number(devices) / reported : null };
 }
 
 const CORS_HEADERS: Record<string, string> = {
@@ -1351,7 +1363,7 @@ export default {
         // GET /v1/dashboard/features
         if (url.pathname === "/v1/dashboard/features") {
           const queries = featuresQueries(days, filters);
-          const [overlayRes, widgetRes, deltaEraRes] =
+          const [overlayRes, widgetRes, deltaEraRes, ...flagRes] =
             await Promise.all(queries.map((q) => executeQuery(queryConfig, q)));
           const deltaEraDevices = deltaEraCount(deltaEraRes);
           const uses = (res: unknown) => ((res as { data?: FeatureUse[] }).data ?? []);
@@ -1359,6 +1371,7 @@ export default {
           return json({
             ...deltaEraFields("features", deltaEraDevices, filters),
             features: deriveFeatureAdoption(uses(overlayRes), uses(widgetRes), deltaEraDevices),
+            configured: CONFIGURED_FEATURE_FLAGS.map((id, i) => configuredFeature(id, flagRes[i])),
           });
         }
 

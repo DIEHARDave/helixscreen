@@ -352,6 +352,17 @@ describe("queries over delta kinds", () => {
     for (const sql of featuresQueries(30)) expect(sql).not.toContain("feature_adoption");
   });
 
+  it("features read each configured flag from its settings_snapshot column, excluding unreported", () => {
+    const sqls = featuresQueries(30);
+    for (const flag of ["spoolman_configured", "theme_changed", "multi_printer"]) {
+      const c = col("settings_snapshot", flag);
+      const sql = sqls.find((q) => q.includes(`${c} as name`));
+      expect(sql, flag).toBeDefined();
+      expect(sql).toContain("index1 = 'settings_snapshot'");
+      expect(sql).toContain(`${c} != ''`);
+    }
+  });
+
   it("average session length over boots, not over rows", () => {
     const sql = engagementQueries(30)[2];
     expect(sql).toContain("count(DISTINCT boot_id)");

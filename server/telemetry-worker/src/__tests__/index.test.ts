@@ -2,7 +2,8 @@
 // Tests for telemetry worker endpoints.
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import worker, { deriveFeatureAdoption, toYesNo } from "../index";
+import worker, { configuredFeature, deriveFeatureAdoption, toYesNo } from "../index";
+import { col } from "../schema";
 import { mapEventToDataPoints } from "../analytics";
 import * as queries from "../queries";
 import { parseRange } from "../queries";
@@ -1493,6 +1494,21 @@ describe("Dashboard endpoints", () => {
       ]);
       for (const [, sql] of mockExecuteQuery.mock.calls) expect(sql).not.toContain("feature_adoption");
     });
+
+    it("features report the configured flags beside derived adoption", async () => {
+      const flag = (f: string) => `${col("settings_snapshot", f)} as name`;
+      mockBySql([
+        ["as delta_era_devices", [{ delta_era_devices: 4 }]],
+        [flag("spoolman_configured"), [{ name: "1", count: 1 }, { name: "0", count: 3 }]],
+        [flag("multi_printer"), [{ name: 0, count: 2 }]],
+      ]);
+      const data = await dashboard("/v1/dashboard/features");
+      expect(data.configured).toEqual([
+        { id: "spoolman_configured", devices: 1, reported: 4, adoption_rate: 0.25 },
+        { id: "theme_changed", devices: 0, reported: 0, adoption_rate: null },
+        { id: "multi_printer", devices: 0, reported: 2, adoption_rate: 0 },
+      ]);
+    });
   });
 
   describe("a filter the delta kinds do not carry", () => {
@@ -2050,6 +2066,21 @@ describe("compareVersions", () => {
       });
     });
   }
+});
+
+describe("configuredFeature", () => {
+  it("is the share of reporting devices with the flag on", () => {
+    expect(configuredFeature("x", { data: [{ name: "1", count: 3 }, { name: "0", count: 1 }] })).toEqual({
+      id: "x",
+      devices: 3,
+      reported: 4,
+      adoption_rate: 0.75,
+    });
+  });
+
+  it("has no rate before any device reports", () => {
+    expect(configuredFeature("x", { data: [] }).adoption_rate).toBeNull();
+  });
 });
 
 describe("deriveFeatureAdoption", () => {

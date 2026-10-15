@@ -941,11 +941,15 @@ export function performanceQueries(days: number, filters?: FilterParams): string
   ];
 }
 
+/** settings_snapshot flags for features that are configured rather than visited. */
+export const CONFIGURED_FEATURE_FLAGS = ["spoolman_configured", "theme_changed", "multi_printer"] as const;
+
 /**
  * Feature adoption from overlay and widget deltas: per id, the devices that
  * used it at least once in the window, as (id, devices) rows. The denominator
  * is the delta-era device count (query 2). AE has no UNION, so overlays and
- * widgets are two queries.
+ * widgets are two queries. Queries 3 onward are the configured-feature flags,
+ * one per CONFIGURED_FEATURE_FLAGS entry, as ("1"/"0", devices) rows.
  */
 export function featuresQueries(days: number, filters?: FilterParams): string[] {
   const usedBy = (kind: string, idField: string) =>
@@ -957,6 +961,8 @@ export function featuresQueries(days: number, filters?: FilterParams): string[] 
     usedBy("widget_interaction", "widget_id"),
     // 2: Devices on a delta-era client
     deltaEraDevices(ENDPOINT_DELTA_KINDS.features, days, filters),
+    // 3+: Configured-feature flags; empty (a client too old to send one) is excluded
+    ...CONFIGURED_FEATURE_FLAGS.map((flag) => distinctDevicesBy("settings_snapshot", flag, days, filters)),
   ];
 }
 

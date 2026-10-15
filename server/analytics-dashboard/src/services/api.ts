@@ -211,6 +211,8 @@ export interface PerformanceData {
 // until a delta-era device has reported.
 export interface FeaturesData extends DeltaEra {
   features: { id: string; devices: number; adoption_rate: number }[]
+  /** Settings flags: devices with it on over devices reporting it; null rate before any report. */
+  configured: { id: string; devices: number; reported: number; adoption_rate: number | null }[]
 }
 
 export interface UxInsightsData extends DeltaEra {

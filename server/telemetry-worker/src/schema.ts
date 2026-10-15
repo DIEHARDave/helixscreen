@@ -11,11 +11,14 @@ export type FieldType = "blob" | "double";
 
 export type EventRecord = Record<string, unknown>;
 
+type ReadFn = (event: EventRecord, item?: EventRecord) => unknown;
+
 /**
  * Pulls one column's raw value out of an event. `item` is the element a
  * fan-out kind iterates over (a panel, a widget, one settings change).
+ * `paths` are the client fields it reads, in ColumnDef.paths notation.
  */
-export type Reader = (event: EventRecord, item?: EventRecord) => unknown;
+export type Reader = ReadFn & { readonly paths: readonly string[] };
 
 export interface ColumnDef {
   /** Stable logical name used by col(); the client's JSON key where one exists. */
@@ -25,6 +28,14 @@ export interface ColumnDef {
   slot: number;
   /** Accessor for columns that are not a plain `event[field]`. */
   read?: Reader;
+  /**
+   * The client JSON fields this column is written from, as dotted paths: `*`
+   * stands for every key of a map (panel names, overlay ids) and `[]` for
+   * every element of an array. A reader declares its own; a plain column
+   * reads `[field]`. The contract test holds the client's event fixtures to
+   * these and to R2_ONLY.
+   */
+  paths: readonly string[];
 }
 
 export interface PointKind {
@@ -37,39 +48,38 @@ export const MAX_SLOT = 20;
 
 // ---------- Readers ----------
 
+const reads = (paths: readonly string[], fn: ReadFn): Reader => Object.assign(fn, { paths });
+
 const section = (v: unknown): EventRecord => (v ?? {}) as EventRecord;
 
 /** `event[sec][key]`, then each flat key in order; null and undefined fall through. */
-const nested =
-  (sec: string, key: string, ...flatKeys: string[]): Reader =>
-  (e) => {
+const nested = (sec: string, key: string, ...flatKeys: string[]): Reader =>
+  reads([`${sec}.${key}`, ...flatKeys], (e) => {
     const v = section(e[sec])[key];
     if (v !== undefined && v !== null) return v;
     for (const k of flatKeys) {
       if (e[k] !== undefined && e[k] !== null) return e[k];
     }
     return undefined;
-  };
+  });
 
-const firstOf =
-  (...readers: Reader[]): Reader =>
-  (e, item) => {
-    for (const r of readers) {
-      const v = r(e, item);
-      if (v !== undefined && v !== null) return v;
-    }
-    return undefined;
-  };
+const firstOf = (...readers: Reader[]): Reader =>
+  reads(
+    readers.flatMap((r) => r.paths),
+    (e, item) => {
+      for (const r of readers) {
+        const v = r(e, item);
+        if (v !== undefined && v !== null) return v;
+      }
+      return undefined;
+    },
+  );
 
-const flat =
-  (key: string): Reader =>
-  (e) =>
-    e[key];
+const flat = (key: string): Reader => reads([key], (e) => e[key]);
 
-const fromItem =
-  (key: string): Reader =>
-  (_e, item) =>
-    item?.[key];
+/** `item[key]`, where the fan-out built the item from the client fields `paths`. */
+const fromItem = (key: string, ...paths: string[]): Reader =>
+  reads(paths, (_e, item) => item?.[key]);
 
 const appVersion = nested("app", "version", "app_version", "version");
 const appPlatform = nested("app", "platform", "app_platform", "platform");
@@ -79,24 +89,32 @@ const appBoard = nested("app", "board", "app_board", "board");
 const targetVersion = flat("version");
 const fromVersion = flat("from_version");
 
-const themeName: Reader = (e) =>
-  firstOf(flat("theme_name"), nested("app", "theme", "theme"))(e) ?? "";
+const themeNameSource = firstOf(flat("theme_name"), nested("app", "theme", "theme"));
+const themeName: Reader = reads(themeNameSource.paths, (e) => themeNameSource(e) ?? "");
 
-const darkLightTheme: Reader = (e) => {
+const darkLightTheme: Reader = reads(["theme", ...themeName.paths], (e) => {
   if (e.theme !== undefined && e.theme !== null) return e.theme;
   const name = String(themeName(e));
   return name.includes("(Dark)") ? "dark" : name.includes("(Light)") ? "light" : "";
-};
+});
 
 /** "1" / "0" / "": a boolean that is "" for clients too old to report it. */
-const triState =
-  (read: Reader): Reader =>
-  (e, item) => {
+const triState = (read: Reader): Reader =>
+  reads(read.paths, (e, item) => {
     const v = read(e, item);
     return v === undefined || v === null ? "" : v ? "1" : "0";
-  };
+  });
 
-const hardwareSensorCount: Reader = (e) => {
+const SENSOR_COUNT_PATHS = [
+  "sensors.filament",
+  "sensors.temperature_extra",
+  "sensors.color",
+  "sensors.accel",
+  "sensors.count",
+  "sensor_count",
+];
+
+const hardwareSensorCount: Reader = reads(SENSOR_COUNT_PATHS, (e) => {
   const sensors = section(e.sensors);
   const sum =
     Number(sensors.filament ?? 0) +
@@ -104,7 +122,7 @@ const hardwareSensorCount: Reader = (e) => {
     Number(sensors.color ?? 0) +
     Number(sensors.accel ?? 0);
   return sum || Number(sensors.count ?? e.sensor_count ?? 0);
-};
+});
 
 // Bit order: 0=chamber, 1=accelerometer, 2=firmware_retraction,
 // 3=exclude_object, 4=timelapse, 5=klippain_shaketune, 6=speaker, 7=probe,
@@ -119,7 +137,19 @@ const CAPABILITY_BITS = [
   "has_speaker",
 ];
 
-const hardwareCapabilitiesBitmask: Reader = (e) => {
+const CAPABILITY_PATHS = [
+  ...CAPABILITY_BITS.map((k) => `capabilities.${k}`),
+  "capabilities_bitmask",
+  "probe.has_probe",
+  "leds.count",
+  "sensors.filament",
+  "tools.is_multi_tool",
+  "extruders.count",
+  "ams",
+  "extruders.has_heater_bed",
+];
+
+const hardwareCapabilitiesBitmask: Reader = reads(CAPABILITY_PATHS, (e) => {
   const caps = section(e.capabilities);
   let mask = Number(e.capabilities_bitmask ?? 0);
   if (typeof caps === "object" && caps !== null && Object.keys(caps).length > 0) {
@@ -140,7 +170,7 @@ const hardwareCapabilitiesBitmask: Reader = (e) => {
     if (extruders.has_heater_bed) mask |= 1 << 12;
   }
   return mask;
-};
+});
 
 // The first seven features get their own double; the rest share a bitmask.
 const FEATURE_DOUBLES = [
@@ -165,30 +195,34 @@ const FEATURE_BITMASK_ORDER = [
   "firmware_retraction",
 ];
 
-const featureFlag =
-  (name: string): Reader =>
-  (e) =>
-    section(e.features)[name] ? 1 : 0;
+const featureFlag = (name: string): Reader =>
+  reads([`features.${name}`], (e) => (section(e.features)[name] ? 1 : 0));
 
-const featureBitmask: Reader = (e) => {
-  const features = section(e.features);
-  let mask = 0;
-  for (let i = 0; i < FEATURE_BITMASK_ORDER.length; i++) {
-    if (features[FEATURE_BITMASK_ORDER[i]]) mask |= 1 << i;
-  }
-  return mask;
-};
+const featureBitmask: Reader = reads(
+  FEATURE_BITMASK_ORDER.map((name) => `features.${name}`),
+  (e) => {
+    const features = section(e.features);
+    let mask = 0;
+    for (let i = 0; i < FEATURE_BITMASK_ORDER.length; i++) {
+      if (features[FEATURE_BITMASK_ORDER[i]]) mask |= 1 << i;
+    }
+    return mask;
+  },
+);
 
-const crashBacktraceDepth: Reader = (e) =>
-  e.backtrace_depth ?? (Array.isArray(e.backtrace) ? e.backtrace.length : 0);
+// Counts the backtrace; the addresses themselves are R2-only.
+const crashBacktraceDepth: Reader = reads(["backtrace_depth", "backtrace"], (e) =>
+  e.backtrace_depth ?? (Array.isArray(e.backtrace) ? e.backtrace.length : 0),
+);
 
 // ---------- Column constructors ----------
 
-const blob = (slot: number, field: string, read?: Reader): ColumnDef =>
-  read ? { field, type: "blob", slot, read } : { field, type: "blob", slot };
+const column = (type: FieldType, slot: number, field: string, read?: Reader): ColumnDef =>
+  read ? { field, type, slot, read, paths: read.paths } : { field, type, slot, paths: [field] };
 
-const dbl = (slot: number, field: string, read?: Reader): ColumnDef =>
-  read ? { field, type: "double", slot, read } : { field, type: "double", slot };
+const blob = (slot: number, field: string, read?: Reader): ColumnDef => column("blob", slot, field, read);
+
+const dbl = (slot: number, field: string, read?: Reader): ColumnDef => column("double", slot, field, read);
 
 const device = blob(1, "device_id");
 const versionPlatform = [
@@ -220,7 +254,7 @@ const KINDS: PointKind[] = [
     blob(9, "arch", nested("host", "arch", "arch")),
     blob(10, "zip_tool", nested("app", "zip_tool", "zip_tool")),
     // Resolved printer board; splits the unified "mips" platform key.
-    blob(11, "app_board", nested("app", "board", "board")),
+    blob(11, "app_board", appBoard),
     dbl(1, "ram_total_mb", nested("host", "ram_total_mb", "ram_total_mb")),
     dbl(2, "cpu_cores", nested("host", "cpu_cores", "cpu_cores")),
     dbl(3, "extruder_count", nested("printer", "extruder_count", "extruder_count")),
@@ -343,44 +377,48 @@ const KINDS: PointKind[] = [
     dbl(3, "screen_blank_timeout_sec"),
     dbl(4, "sound_enabled"),
     dbl(5, "animations_enabled"),
+    // Adoption flags no overlay or widget visit can show; "" is a client too old to send them.
+    blob(13, "spoolman_configured", triState(flat("spoolman_configured"))),
+    blob(14, "theme_changed", triState(flat("theme_changed"))),
+    blob(15, "multi_printer", triState(flat("multi_printer"))),
   ]),
 
   // One point per distinct home widget id; `count` is how many times it is placed.
   kind("widget_placement", [
     device,
     ...versionPlatform,
-    blob(4, "widget_id", fromItem("widget_id")),
-    dbl(1, "count", fromItem("count")),
+    blob(4, "widget_id", fromItem("widget_id", "home_widgets[]")),
+    dbl(1, "count", fromItem("count", "home_widgets[]")),
   ]),
 
   // One point per panel in the event's panel maps.
   kind("panel_usage", [
     device,
     ...versionPlatform,
-    blob(4, "panel_name", fromItem("panel_name")),
+    blob(4, "panel_name", fromItem("panel_name", "panel_time_sec.*", "panel_visits.*", "panel_name")),
     ...deltaColumns,
     dbl(1, "session_duration_sec"),
-    dbl(2, "time_sec", fromItem("time_sec")),
-    dbl(3, "visits", fromItem("visits")),
+    dbl(2, "time_sec", fromItem("time_sec", "panel_time_sec.*", "time_sec")),
+    dbl(3, "visits", fromItem("visits", "panel_visits.*", "visits")),
     dbl(4, "overlay_open_count"),
   ]),
 
   kind("widget_interaction", [
     device,
     ...versionPlatform,
-    blob(4, "widget_id", fromItem("widget_id")),
+    blob(4, "widget_id", fromItem("widget_id", "widget_interactions.*")),
     ...deltaColumns,
     dbl(1, "session_duration_sec"),
-    dbl(2, "count", fromItem("count")),
+    dbl(2, "count", fromItem("count", "widget_interactions.*")),
   ]),
 
   kind("overlay_visit", [
     device,
     ...versionPlatform,
-    blob(4, "overlay_name", fromItem("overlay_name")),
+    blob(4, "overlay_name", fromItem("overlay_name", "overlay_visits.*")),
     ...deltaColumns,
     dbl(1, "session_duration_sec"),
-    dbl(2, "count", fromItem("count")),
+    dbl(2, "count", fromItem("count", "overlay_visits.*")),
   ]),
 
   kind("connection_stability", [
@@ -449,13 +487,13 @@ const KINDS: PointKind[] = [
   kind("settings_change", [
     device,
     ...versionPlatform,
-    blob(4, "setting", fromItem("setting")),
-    blob(5, "old_value", fromItem("old_value")),
-    blob(6, "new_value", fromItem("new_value")),
-    dbl(1, "change_count", (_e, item) => (item ? 1 : 0)),
+    blob(4, "setting", fromItem("setting", "changes[].setting")),
+    blob(5, "old_value", fromItem("old_value", "changes[].old_value")),
+    blob(6, "new_value", fromItem("new_value", "changes[].new_value")),
+    dbl(1, "change_count", reads(["changes[]"], (_e, item) => (item ? 1 : 0))),
   ]),
 
-  // The per-tag breakdown stays in R2 (see R2_ONLY); these are the window totals.
+  // Window totals; the per-tag breakdown is R2-only.
   kind("async_lifetime_skips", [
     device,
     ...versionPlatform,
@@ -504,10 +542,139 @@ export const EVENT_FANOUT: Record<string, string[]> = {
   async_lifetime_skips: ["async_lifetime_skips"],
 };
 
-/** Event type -> dotted field paths that are deliberately kept out of Analytics Engine. */
-export const R2_ONLY: Record<string, string[]> = {
-  async_lifetime_skips: ["tags"],
-};
+function mergeLists(...groups: Array<Record<string, string[]>>): Record<string, string[]> {
+  const out: Record<string, string[]> = {};
+  for (const group of groups) {
+    for (const [event, paths] of Object.entries(group)) (out[event] ??= []).push(...paths);
+  }
+  return out;
+}
+
+/**
+ * Event type -> client fields deliberately kept out of Analytics Engine, in
+ * ColumnDef.paths notation. An entry keeps its whole subtree: R2 still holds
+ * the raw event. Every field the client sends is either read by a column of
+ * the event's kinds or listed here (src/__tests__/contract.test.ts).
+ */
+export const R2_ONLY: Record<string, string[]> = mergeLists(
+  // AE write time is the time axis, so the client's clock is never a column.
+  Object.fromEntries(Object.keys(EVENT_FANOUT).map((event) => [event, ["timestamp"]])),
+  // Envelope fields a kind has no column for. boot_id and schema_version are
+  // columns on the delta kinds only, where they key and gate the deltas.
+  {
+    session: ["boot_id", "schema_version"],
+    print_outcome: ["boot_id", "schema_version"],
+    crash: ["boot_id", "schema_version"],
+    update_failed: ["boot_id", "schema_version", "app_board"],
+    update_success: ["boot_id", "schema_version", "app_board"],
+    memory_snapshot: ["boot_id", "schema_version", "app_board"],
+    memory_warning: ["boot_id", "schema_version", "app_board"],
+    hardware_profile: ["boot_id", "schema_version"],
+    settings_snapshot: ["boot_id", "schema_version", "app_board"],
+    panel_usage: ["app_board"],
+    print_start_context: ["boot_id", "schema_version"],
+    error_encountered: ["boot_id", "schema_version"],
+    performance_snapshot: ["boot_id", "schema_version", "app_board"],
+    settings_changes: ["boot_id", "schema_version", "app_board"],
+    async_lifetime_skips: ["boot_id", "schema_version", "app_board"],
+  },
+  // Update events store the two versions they move between; app_version repeats one.
+  { update_failed: ["app_version"], update_success: ["app_version"] },
+  // Marks a snapshot taken at shutdown, which describes the sender rather than the window.
+  { panel_usage: ["is_shutdown"], connection_stability: ["is_shutdown"], performance_snapshot: ["is_shutdown"] },
+  // Session detail the hardware_profile kind stores in queryable form (model, MCU,
+  // volume, capability bits), or that no dashboard view reads.
+  {
+    session: [
+      "features",
+      "host.cpu_model",
+      "host.os",
+      "host.screen_locality",
+      "printer.build_volume",
+      "printer.has_chamber",
+      "printer.has_heated_bed",
+      "printer.klipper_version",
+      "printer.moonraker_version",
+      "printer.mcu",
+      "printer.mcu_count",
+    ],
+  },
+  // Name-level hardware lists, read from R2 for printer-detection analysis.
+  {
+    hardware_profile: [
+      "printer_objects",
+      "mcus.chips",
+      "fans.names",
+      "leds.names",
+      "macros.names",
+      "sensors.filament_names",
+      "sensors.temperature_names",
+      "steppers.names",
+    ],
+  },
+  // Hardware detail beyond the counts and capability bits the Hardware view charts.
+  {
+    hardware_profile: [
+      "mcus.count",
+      "extruders.has_chamber_heater",
+      "fans.part_cooling",
+      "fans.heater_fan",
+      "fans.controller_fan",
+      "fans.generic",
+      "steppers.count",
+      "leds.has_led_effects",
+      "sensors.load_cell",
+      "probe.has_bed_mesh",
+      "probe.has_qgl",
+      "probe.has_z_tilt",
+      "probe.has_screws_tilt",
+      "ams.unit_count",
+      "ams.total_slots",
+      "tools.count",
+      "macros.has_print_start",
+      "macros.has_nozzle_clean",
+      "macros.has_heat_soak",
+      "macros.has_purge_line",
+      "macros.led_macro_count",
+      "plugins.helix_plugin_installed",
+    ],
+  },
+  // Process memory breakdown for one-off investigations; the kinds store the RSS and VM series.
+  {
+    memory_snapshot: [
+      "vm_data_kb",
+      "vm_swap_kb",
+      "private_dirty_kb",
+      "private_clean_kb",
+      "shared_clean_kb",
+      "pss_kb",
+      "system_total_mb",
+      "system_available_mb",
+      "malloc_arena_kb",
+      "malloc_uordblks_kb",
+      "malloc_fordblks_kb",
+      "malloc_hblks",
+      "malloc_hblkhd_kb",
+    ],
+    memory_warning: [
+      "vm_hwm_kb",
+      "vm_swap_kb",
+      "private_clean_kb",
+      "shared_clean_kb",
+      "shared_dirty_kb",
+      "swap_pss_kb",
+      "print_state",
+      "active_panel",
+      "gcode_renderer_loaded",
+    ],
+  },
+  // Crash forensics for symbolizing one crash; AE keeps the fields crashes are grouped and counted by.
+  { crash: ["backtrace", "memory_map", "fault_code", "reg_pc", "reg_sp", "reg_lr", "reg_bp"] },
+  // Per-panel frame breakdown; the kind stores the worst panel and its p95.
+  { performance_snapshot: ["panels"] },
+  // Per-tag skip counts; the kind stores the window totals.
+  { async_lifetime_skips: ["tags"] },
+);
 
 // ---------- Lookup ----------
 

@@ -268,10 +268,13 @@ describe("POINT_KINDS table", () => {
           "brightness_pct": "double1",
           "device_id": "blob1",
           "locale": "blob5",
+          "multi_printer": "blob15",
           "screen_blank_timeout_sec": "double3",
           "screensaver_timeout_sec": "double2",
           "sound_enabled": "double4",
+          "spoolman_configured": "blob13",
           "theme": "blob8",
+          "theme_changed": "blob14",
           "theme_name": "blob4",
           "time_format": "blob7",
         },
@@ -469,6 +472,22 @@ describe("table-driven writer", () => {
     expect(dp.doubles![Number(col("connection_stability", "snapshot_seq").slice(6)) - 1]).toBe(4);
     expect(dp.doubles![Number(col("connection_stability", "schema_version").slice(6)) - 1]).toBe(3);
     expect(dp.doubles![3]).toBe(100);
+  });
+
+  it("writes the settings adoption flags as 1, 0, or empty for a client that sends none", () => {
+    const flags = ["spoolman_configured", "theme_changed", "multi_printer"];
+    const at = (dp: { blobs?: string[] }, f: string) =>
+      dp.blobs![Number(col("settings_snapshot", f).slice(4)) - 1];
+    const [sent] = mapEventToDataPoints({
+      event: "settings_snapshot",
+      device_id: "d",
+      spoolman_configured: true,
+      theme_changed: false,
+      multi_printer: true,
+    });
+    expect(flags.map((f) => at(sent, f))).toEqual(["1", "0", "1"]);
+    const [old] = mapEventToDataPoints({ event: "settings_snapshot", device_id: "d" });
+    expect(flags.map((f) => at(old, f))).toEqual(["", "", ""]);
   });
 
   it("writes widget placement and settings changes one point per element", () => {

@@ -39,6 +39,23 @@
         </div>
 
         <div class="chart-section">
+          <h3>Configured in Settings (% of devices reporting each)</h3>
+          <table class="data-table">
+            <thead>
+              <tr><th>Setting</th><th>Adoption %</th><th>Devices On</th><th>Devices Reporting</th></tr>
+            </thead>
+            <tbody>
+              <tr v-for="f in data.configured" :key="f.id">
+                <td>{{ titleCase(f.id) }}</td>
+                <td>{{ f.adoption_rate === null ? 'No reports yet' : `${(f.adoption_rate * 100).toFixed(1)}%` }}</td>
+                <td>{{ f.devices }}</td>
+                <td>{{ f.reported }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="chart-section">
           <h3>Least Adopted</h3>
           <table class="data-table">
             <thead>
