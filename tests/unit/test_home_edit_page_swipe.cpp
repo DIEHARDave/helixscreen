@@ -1616,7 +1616,7 @@ TEST_CASE_METHOD(EditHomeFixture,
     const helix::PanelWidgetEntry origin = entry_on_page(0, "temperature");
     lv_point_t pointer = drag_one_cell(widget);
 
-    // Toast teardown resets this way; the test binary stubs ToastManager.
+    // Toast teardown resets input this way, scoped to the dying toast.
     lv_obj_t* other = lv_obj_create(test_screen());
     lv_obj_add_flag(other, LV_OBJ_FLAG_HIDDEN);
     helix::ui::reset_input_within(other);

@@ -9,9 +9,9 @@
 // dismiss. These pin both the firing and the silence: a READY with nothing
 // expected, like the first one at app start, must stay quiet.
 //
-// ToastManager is stubbed in the test binary (tests/ui_test_utils.cpp), so the
-// toast is captured through the stub's test hook - the same mechanism the
-// runout toast-suppression tests use at the ui_notification_* layer.
+// The toast is captured through the toast hook (tests/ui_test_utils.h) - the
+// same mechanism the runout toast-suppression tests use at the
+// ui_notification_* layer.
 
 #include "ui_emergency_stop.h"
 #include "ui_toast_manager.h"

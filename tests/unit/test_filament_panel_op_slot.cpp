@@ -387,8 +387,7 @@ TEST_CASE_METHOD(LVGLUITestFixture,
 
     REQUIRE(h.mock->change_tool_calls == 1);
     CHECK(h.mock->last_change_tool == 1);
-    // NOTIFY_SUCCESS logs once itself and the test stub's ui_notification_success
-    // echoes it a second time, so at least one line is the assertion, not exactly one.
+    // NOTIFY_SUCCESS logs the text of the toast it raises.
     // The toast names the tool the user tapped, never the 0-based G-code form.
     CHECK(log.count_containing("Switched to Tool 2") >= 1);
     CHECK(log.count_containing("Switched to T1") == 0);
