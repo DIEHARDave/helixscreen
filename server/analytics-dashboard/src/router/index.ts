@@ -56,13 +56,13 @@ export const router = createRouter({
       path: '/reports',
       name: 'reports',
       component: () => import('@/views/ReportsView.vue'),
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true, noFilters: true }
     },
     {
       path: '/reports/:week',
       name: 'report',
       component: () => import('@/views/ReportView.vue'),
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true, noFilters: true }
     },
     {
       path: '/devices',

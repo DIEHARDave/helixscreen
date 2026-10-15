@@ -21,7 +21,7 @@
     </aside>
     <main class="content">
       <div class="content-header">
-        <FilterBar />
+        <FilterBar v-if="!route.meta.noFilters" />
         <router-link :to="navTo('/devices')" class="devices-link">Devices</router-link>
       </div>
       <div class="content-body">

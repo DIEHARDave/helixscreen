@@ -78,7 +78,7 @@ import { api } from '@/services/api'
 
 const route = useRoute()
 const week = computed(() => String(route.params.week))
-const { data: report, loading, error, missing } = useLoaded(() => api.getReport(week.value), () => week.value)
+const { data: report, loading, error, missing } = useLoaded((w: string) => api.getReport(w), () => week.value)
 
 const titles = computed(() => new Map((report.value?.findings ?? []).map((f) => [f.fingerprint, f.title])))
 

@@ -3,11 +3,11 @@ import { ref, watch, type Ref } from 'vue'
 import { ApiError } from '@/services/api'
 
 /**
- * Loads one resource that no dashboard filter applies to and reloads it when
- * `key` changes. A 404 sets `missing` instead of `error`; a response that
- * arrives after a newer load started is dropped.
+ * Loads one resource and reloads it when `key` changes. A 404 sets `missing`
+ * instead of `error`; a response that arrives after a newer load started is
+ * dropped, and the previous data stays until the new load lands.
  */
-export function useLoaded<T>(load: () => Promise<T>, key: () => unknown = () => null) {
+export function useLoaded<T, K = null>(load: (key: K) => Promise<T>, key: () => K = () => null as K) {
   const data = ref(null) as Ref<T | null>
   const loading = ref(true)
   const error = ref('')
@@ -16,14 +16,13 @@ export function useLoaded<T>(load: () => Promise<T>, key: () => unknown = () => 
 
   watch(
     key,
-    async () => {
+    async (k) => {
       const ticket = ++latest
       loading.value = true
       error.value = ''
       missing.value = false
-      data.value = null
       try {
-        const result = await load()
+        const result = await load(k)
         if (ticket === latest) data.value = result
       } catch (e) {
         if (ticket !== latest) return
