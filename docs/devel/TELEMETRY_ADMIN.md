@@ -404,12 +404,16 @@ versions from `adoption`, then `devices`, `device/<first id>`, and checks that
 any unexpected status. Run it after every worker deploy:
 
 ```bash
-(cd server/telemetry-worker && npx vite-node scripts/smoke.ts [base-url])
+(cd server/telemetry-worker && npx vite-node scripts/smoke.ts [base-url] [--delay-ms N])
 ```
 
 The base URL defaults to `https://telemetry.helixscreen.org`. The admin key comes from
 `HELIX_TELEMETRY_ADMIN_KEY` or `.env.telemetry`, as for `reconcile.ts`. A 200 proves the
 endpoint's SQL runs under every filter; it does not prove the numbers are right.
+
+Requests run one at a time with a pause between them (`--delay-ms`, default 300), because a
+full run sent back to back trips Analytics Engine's rate limits and returns 502s. A 5xx is
+retried once after 5 seconds; a pass on that retry reads `PASS (retry)`.
 
 ## Reconciling AE against R2
 
