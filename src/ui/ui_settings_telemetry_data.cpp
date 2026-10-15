@@ -379,8 +379,11 @@ void TelemetryDataOverlay::populate_events() {
             add_field_str("app_version", lv_tr("Version"));
             add_field_num("uptime_sec", lv_tr("Uptime"), "s");
             if (event.contains("backtrace") && event["backtrace"].is_array()) {
+                const size_t frames = event["backtrace"].size();
                 make_label(card,
-                           fmt::format(lv_tr("Backtrace: {} frames"), event["backtrace"].size()),
+                           fmt::format(fmt::runtime(helix::ui::tr_plural(
+                                           nullptr, "Backtrace: {} frames", frames)),
+                                       frames),
                            "text_subtle");
             }
 

@@ -10,6 +10,7 @@
 #include "ui_format_utils.h"
 
 #include "../lvgl_test_fixture.h"
+#include "display_numbering.h"
 #include "i18n_plural.h"
 #include "lvgl/src/others/translation/lv_translation.h"
 #include "translation_loader.h"
@@ -179,4 +180,22 @@ TEST_CASE_METHOD(LVGLTestFixture,
     CHECK(helix::ui::format_relative_time(11 * kDayMs) == "11 дней назад");
     CHECK(helix::ui::format_relative_time(21 * kDayMs) == "21 день назад");
     CHECK(helix::ui::format_relative_time(22 * kDayMs) == "22 дня назад");
+}
+
+TEST_CASE_METHOD(LVGLTestFixture,
+                 "lane_count_label agrees with the count in the shipped Russian pack",
+                 "[i18n][plural]") {
+    using helix::ui::lane_count_label;
+    using helix::ui::LaneNoun;
+    ScopedLanguage restore_lang;
+    helix::ui::ensure_translation_loaded("ru");
+    lv_translation_set_language("ru");
+
+    CHECK(lane_count_label(LaneNoun::Slot, 1) == "1 слот");
+    CHECK(lane_count_label(LaneNoun::Slot, 4) == "4 слота");
+    CHECK(lane_count_label(LaneNoun::Slot, 8) == "8 слотов");
+    CHECK(lane_count_label(LaneNoun::Slot, 12) == "12 слотов");
+    CHECK(lane_count_label(LaneNoun::Lane, 21) == "21 канал");
+    CHECK(lane_count_label(LaneNoun::Toolhead, 2) == "2 печатающие головки");
+    CHECK(lane_count_label(LaneNoun::Toolhead, 5) == "5 печатающих головок");
 }

@@ -10,20 +10,41 @@
   <translation tag="%d additional fans_few" ru="%d дополнительных вентилятора"/>
   <translation tag="%d additional fans_many" ru="%d дополнительных вентиляторов"/>
   <translation tag="%d additional fans_one" ru="%d дополнительный вентилятор"/>
-  <translation tag="%d feeders" ru="%d фидеров"/>
-  <translation tag="%d gates" ru="%d шлюзов"/>
-  <translation tag="%d lanes" ru="%d каналов"/>
+  <translation tag="%d feeders" ru="%d фидера"/>
+  <translation tag="%d feeders_few" ru="%d фидера"/>
+  <translation tag="%d feeders_many" ru="%d фидеров"/>
+  <translation tag="%d feeders_one" ru="%d фидер"/>
+  <translation tag="%d gates" ru="%d шлюза"/>
+  <translation tag="%d gates_few" ru="%d шлюза"/>
+  <translation tag="%d gates_many" ru="%d шлюзов"/>
+  <translation tag="%d gates_one" ru="%d шлюз"/>
+  <translation tag="%d lanes" ru="%d канала"/>
+  <translation tag="%d lanes_few" ru="%d канала"/>
+  <translation tag="%d lanes_many" ru="%d каналов"/>
+  <translation tag="%d lanes_one" ru="%d канал"/>
   <translation tag="%d min" ru="%d мин"/>
   <translation tag="%d min left" ru="осталось %d мин"/>
   <translation tag="%d mm/s" ru="%d mm/s"/>
-  <translation tag="%d more sensors" ru="Ещё %d датчиков"/>
+  <translation tag="%d more sensors" ru="Ещё %d датчика"/>
+  <translation tag="%d more sensors_few" ru="Ещё %d датчика"/>
+  <translation tag="%d more sensors_many" ru="Ещё %d датчиков"/>
+  <translation tag="%d more sensors_one" ru="Ещё %d датчик"/>
   <translation tag="%d objects" ru="Объектов: %d"/>
   <translation tag="%d of %d printing" ru="%d из %d печатается"/>
   <translation tag="%d profiles" ru="Профилей: %d"/>
   <translation tag="%d skipped" ru="Пропущено: %d"/>
-  <translation tag="%d slots" ru="%d слотов"/>
-  <translation tag="%d toolheads" ru="%d печатающих головок"/>
-  <translation tag="%d tools" ru="%d инструментов"/>
+  <translation tag="%d slots" ru="%d слота"/>
+  <translation tag="%d slots_few" ru="%d слота"/>
+  <translation tag="%d slots_many" ru="%d слотов"/>
+  <translation tag="%d slots_one" ru="%d слот"/>
+  <translation tag="%d toolheads" ru="%d печатающие головки"/>
+  <translation tag="%d toolheads_few" ru="%d печатающие головки"/>
+  <translation tag="%d toolheads_many" ru="%d печатающих головок"/>
+  <translation tag="%d toolheads_one" ru="%d печатающая головка"/>
+  <translation tag="%d tools" ru="%d инструмента"/>
+  <translation tag="%d tools_few" ru="%d инструмента"/>
+  <translation tag="%d tools_many" ru="%d инструментов"/>
+  <translation tag="%d tools_one" ru="%d инструмент"/>
   <translation tag="%d units" ru="%d ед."/>
   <translation tag="%d-%d" ru="%d-%d"/>
   <translation tag="%d-%d°C" ru="%d-%d°C"/>
@@ -280,7 +301,10 @@
   <translation tag="Assisting" ru="Помощь"/>
   <translation tag="At least {} lines in helixscreen.env were ignored" ru="В helixscreen.env проигнорировано не менее {} строк"/>
   <translation tag="At target" ru="Цель достигнута"/>
-  <translation tag="At {}°C, about {} minutes." ru="При {}°C около {} минут."/>
+  <translation tag="At {}°C, about {} minutes." ru="При {}°C около {} минуты."/>
+  <translation tag="At {}°C, about {} minutes._few" ru="При {}°C около {} минут."/>
+  <translation tag="At {}°C, about {} minutes._many" ru="При {}°C около {} минут."/>
+  <translation tag="At {}°C, about {} minutes._one" ru="При {}°C около {} минуты."/>
   <translation tag="Authentication failed" ru="Ошибка аутентификации"/>
   <translation tag="Auto" ru="Авто"/>
   <translation tag="Auto Bed Mesh" ru="Авто сетка стола"/>
@@ -320,7 +344,10 @@
   <translation tag="BLUETOOTH PRINTERS" ru="BLUETOOTH-ПРИНТЕРЫ"/>
   <translation tag="BLUETOOTH SCANNERS" ru="BLUETOOTH-СКАНЕРЫ"/>
   <translation tag="Back" ru="Назад"/>
-  <translation tag="Backtrace: {} frames" ru="Трассировка: {} кадров"/>
+  <translation tag="Backtrace: {} frames" ru="Трассировка: {} кадра"/>
+  <translation tag="Backtrace: {} frames_few" ru="Трассировка: {} кадра"/>
+  <translation tag="Backtrace: {} frames_many" ru="Трассировка: {} кадров"/>
+  <translation tag="Backtrace: {} frames_one" ru="Трассировка: {} кадр"/>
   <translation tag="Backup lane name contains invalid characters" ru="Имя резервного канала содержит недопустимые символы"/>
   <translation tag="Backup spool switching state unknown" ru="Резервная катушка: состояние неизвестно"/>
   <translation tag="Balanced" ru="Сбалансирован"/>
@@ -2247,7 +2274,10 @@
   <translation tag="Preheat Macro" ru="Макрос преднагрева"/>
   <translation tag="Preheat PLA" ru="Преднагрев PLA"/>
   <translation tag="Preheat cancelled" ru="Предварительный нагрев отменён"/>
-  <translation tag="Preheat: all {} tools + bed set" ru="Преднагрев: все {} инструменты + стол заданы"/>
+  <translation tag="Preheat: all {} tools + bed set" ru="Преднагрев: все {} инструмента + стол заданы"/>
+  <translation tag="Preheat: all {} tools + bed set_few" ru="Преднагрев: все {} инструмента + стол заданы"/>
+  <translation tag="Preheat: all {} tools + bed set_many" ru="Преднагрев: все {} инструментов + стол заданы"/>
+  <translation tag="Preheat: all {} tools + bed set_one" ru="Преднагрев: все {} инструмент + стол заданы"/>
   <translation tag="Preheat: {} + bed set" ru="Преднагрев: {} + стол заданы"/>
   <translation tag="Preload" ru="Предзагрузка"/>
   <translation tag="Preload failed" ru="Ошибка предварительной загрузки"/>
@@ -2390,7 +2420,10 @@
   <translation tag="Probing Failed" ru="Ошибка зондирования"/>
   <translation tag="Probing Z..." ru="Зондирование Z..."/>
   <translation tag="Probing point {} of {}" ru="Точка замера {} из {}"/>
-  <translation tag="Probing... ({} points)" ru="Замер... ({} точек)"/>
+  <translation tag="Probing... ({} points)" ru="Замер... ({} точки)"/>
+  <translation tag="Probing... ({} points)_few" ru="Замер... ({} точки)"/>
+  <translation tag="Probing... ({} points)_many" ru="Замер... ({} точек)"/>
+  <translation tag="Probing... ({} points)_one" ru="Замер... ({} точка)"/>
   <translation tag="Problem found" ru="Обнаружена проблема"/>
   <translation tag="Proceed" ru="Продолжить"/>
   <translation tag="Processing..." ru="Обработка..."/>
@@ -3739,7 +3772,10 @@
   <translation tag="{} serial" ru="Серийный номер {}"/>
   <translation tag="{} set to {}" ru="{} установлено на {}"/>
   <translation tag="{} set to {} {}" ru="{} установлено на {} {}"/>
-  <translation tag="{} slots" ru="{} слотов"/>
+  <translation tag="{} slots" ru="{} слота"/>
+  <translation tag="{} slots_few" ru="{} слота"/>
+  <translation tag="{} slots_many" ru="{} слотов"/>
+  <translation tag="{} slots_one" ru="{} слот"/>
   <translation tag="{} spool cleared" ru="{}: катушка удалена"/>
   <translation tag="{} started" ru="{} запущено"/>
   <translation tag="{} target set to {}°C" ru="Целевая температура {} — {}°C"/>

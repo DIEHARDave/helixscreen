@@ -664,7 +664,9 @@ void ControlsPanel::update_more_sensors() {
             ++count;
         }
     }
-    std::snprintf(more_sensors_buf_, sizeof(more_sensors_buf_), lv_tr("%d more sensors"), count);
+    std::snprintf(more_sensors_buf_, sizeof(more_sensors_buf_),
+                  helix::ui::tr_plural(nullptr, "%d more sensors", static_cast<uint64_t>(count)),
+                  count);
     lv_subject_copy_string(&more_sensors_subject_, more_sensors_buf_);
     lv_subject_set_int(&more_sensors_count_, count);
 }

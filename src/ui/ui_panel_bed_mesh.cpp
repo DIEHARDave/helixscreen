@@ -34,6 +34,7 @@
 #include "bed_mesh_stats.h"
 #include "display_settings_manager.h"
 #include "format_utils.h"
+#include "i18n_plural.h"
 #include "i_moonraker_api.h"
 #include "layout_manager.h"
 #include "lvgl/src/others/translation/lv_translation.h"
@@ -1556,7 +1557,10 @@ void BedMeshPanel::on_probe_progress(int current, int total) {
     } else {
         // Fallback: firmware didn't report total — show spinner instead of bar
         lv_subject_set_int(&bed_mesh_probe_indeterminate_, 1);
-        const std::string text = fmt::format(lv_tr("Probing... ({} points)"), current);
+        const std::string text =
+            fmt::format(fmt::runtime(helix::ui::tr_plural(nullptr, "Probing... ({} points)",
+                                                          static_cast<uint64_t>(current))),
+                        current);
         std::snprintf(probe_text_buf_, sizeof(probe_text_buf_), "%s", text.c_str());
         spdlog::debug("[BedMeshPanel] Probe progress: {} points (total unknown)", current);
     }

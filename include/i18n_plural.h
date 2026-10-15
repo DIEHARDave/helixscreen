@@ -66,7 +66,16 @@ std::string plural_variant_tag(std::string_view other_key, PluralCategory c);
 const char* tr_plural_in(std::string_view lang, const char* one_key, const char* other_key,
                          uint64_t n);
 
-/** @brief tr_plural_in() for the language LVGL is translating into. Main thread. */
+/**
+ * @brief tr_plural_in() for the language LVGL is translating into.
+ *
+ * Main thread only. It reads lv_translation_get_language() without the
+ * translation lock (LVGL exposes no locked accessor), and
+ * lv_translation_set_language() frees that string on the main thread, so a
+ * call from another thread can read freed memory during a language switch.
+ * lv_tr() itself is safe from any thread; off the main thread, pass the
+ * language to tr_plural_in() instead.
+ */
 const char* tr_plural(const char* one_key, const char* other_key, uint64_t n);
 
 } // namespace helix::ui

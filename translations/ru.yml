@@ -13,20 +13,48 @@ translations:
     few: '%d дополнительных вентилятора'
     many: '%d дополнительных вентиляторов'
     other: '%d дополнительных вентилятора'
-  '%d feeders': '%d фидеров'
-  '%d gates': '%d шлюзов'
-  '%d lanes': '%d каналов'
+  '%d feeders':
+    one: '%d фидер'
+    few: '%d фидера'
+    many: '%d фидеров'
+    other: '%d фидера'
+  '%d gates':
+    one: '%d шлюз'
+    few: '%d шлюза'
+    many: '%d шлюзов'
+    other: '%d шлюза'
+  '%d lanes':
+    one: '%d канал'
+    few: '%d канала'
+    many: '%d каналов'
+    other: '%d канала'
   '%d min': '%d мин'
   '%d min left': 'осталось %d мин'
   '%d mm/s': '%d mm/s'
-  '%d more sensors': Ещё %d датчиков
+  '%d more sensors':
+    one: 'Ещё %d датчик'
+    few: 'Ещё %d датчика'
+    many: 'Ещё %d датчиков'
+    other: 'Ещё %d датчика'
   '%d objects': 'Объектов: %d'
   '%d of %d printing': '%d из %d печатается'
   '%d skipped': 'Пропущено: %d'
   '%d profiles': 'Профилей: %d'
-  '%d slots': '%d слотов'
-  '%d toolheads': '%d печатающих головок'
-  '%d tools': '%d инструментов'
+  '%d slots':
+    one: '%d слот'
+    few: '%d слота'
+    many: '%d слотов'
+    other: '%d слота'
+  '%d toolheads':
+    one: '%d печатающая головка'
+    few: '%d печатающие головки'
+    many: '%d печатающих головок'
+    other: '%d печатающие головки'
+  '%d tools':
+    one: '%d инструмент'
+    few: '%d инструмента'
+    many: '%d инструментов'
+    other: '%d инструмента'
   '%d units': '%d ед.'
   '%d:%02d left': 'осталось %d:%02d'
   '%dh': '%d ч'
@@ -304,7 +332,11 @@ translations:
   Assisting: Помощь
   At least {} lines in helixscreen.env were ignored: 'В helixscreen.env проигнорировано не менее {} строк'
   At target: Цель достигнута
-  At {}°C, about {} minutes.: 'При {}°C около {} минут.'
+  'At {}°C, about {} minutes.':
+    one: 'При {}°C около {} минуты.'
+    few: 'При {}°C около {} минут.'
+    many: 'При {}°C около {} минут.'
+    other: 'При {}°C около {} минуты.'
   Authentication failed: Ошибка аутентификации
   Auto: Авто
   Auto Bed Mesh: Авто сетка стола
@@ -347,7 +379,11 @@ translations:
   BLUETOOTH PRINTERS: BLUETOOTH-ПРИНТЕРЫ
   BLUETOOTH SCANNERS: BLUETOOTH-СКАНЕРЫ
   Back: Назад
-  'Backtrace: {} frames': 'Трассировка: {} кадров'
+  'Backtrace: {} frames':
+    one: 'Трассировка: {} кадр'
+    few: 'Трассировка: {} кадра'
+    many: 'Трассировка: {} кадров'
+    other: 'Трассировка: {} кадра'
   Backup lane name contains invalid characters: 'Имя резервного канала содержит недопустимые символы'
   Backup spool switching state unknown: 'Резервная катушка: состояние неизвестно'
   Balanced: Сбалансирован
@@ -2462,7 +2498,11 @@ translations:
   Preheat Macro: Макрос преднагрева
   Preheat PLA: Преднагрев PLA
   Preheat cancelled: Предварительный нагрев отменён
-  'Preheat: all {} tools + bed set': 'Преднагрев: все {} инструменты + стол заданы'
+  'Preheat: all {} tools + bed set':
+    one: 'Преднагрев: все {} инструмент + стол заданы'
+    few: 'Преднагрев: все {} инструмента + стол заданы'
+    many: 'Преднагрев: все {} инструментов + стол заданы'
+    other: 'Преднагрев: все {} инструмента + стол заданы'
   'Preheat: {} + bed set': 'Преднагрев: {} + стол заданы'
   Preload: 'Предзагрузка'
   Preload failed: Ошибка предварительной загрузки
@@ -2617,7 +2657,11 @@ translations:
   Probing Z...: Зондирование Z...
   Checking Bed Mesh...: Проверка сетки стола...
   Probing point {} of {}: 'Точка замера {} из {}'
-  Probing... ({} points): 'Замер... ({} точек)'
+  'Probing... ({} points)':
+    one: 'Замер... ({} точка)'
+    few: 'Замер... ({} точки)'
+    many: 'Замер... ({} точек)'
+    other: 'Замер... ({} точки)'
   Problem found: Обнаружена проблема
   Proceed: Продолжить
   # Source: abort_progress_modal.xml:20
@@ -4141,7 +4185,11 @@ translations:
   '{} serial': 'Серийный номер {}'
   '{} set to {}': '{} установлено на {}'
   '{} set to {} {}': '{} установлено на {} {}'
-  '{} slots': '{} слотов'
+  '{} slots':
+    one: '{} слот'
+    few: '{} слота'
+    many: '{} слотов'
+    other: '{} слота'
   '{} spool cleared': '{}: катушка удалена'
   '{} started': '{} запущено'
   '{} target set to {}°C': Целевая температура {} — {}°C
