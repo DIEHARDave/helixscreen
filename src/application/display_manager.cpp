@@ -1219,9 +1219,12 @@ void DisplayManager::fan_out_resize() {
         width(), height(), m_resize_callbacks.size());
 
     // The debounce is disarmed before this runs, so a SIZE_CHANGED raised by a
-    // callback arms a fresh one.
-    for (auto callback : m_resize_callbacks) {
-        if (callback) {
+    // callback arms a fresh one. A callback may register another (panels do so
+    // lazily), which can reallocate the vector: index it, and stop at the count
+    // this resize started with so a newcomer runs from the next resize on.
+    const size_t count = m_resize_callbacks.size();
+    for (size_t i = 0; i < count; i++) {
+        if (ResizeCallback callback = m_resize_callbacks[i]) {
             callback();
         }
     }
@@ -1248,12 +1251,20 @@ void DisplayManager::on_screen_size_changed(lv_obj_t* screen) {
 }
 
 void DisplayManager::resize_event_cb(lv_event_t* e) {
-    if (lv_event_get_code(e) != LV_EVENT_SIZE_CHANGED) {
+    auto* self = static_cast<DisplayManager*>(lv_event_get_user_data(e));
+    if (!self) {
         return;
     }
-    auto* self = static_cast<DisplayManager*>(lv_event_get_user_data(e));
-    if (self) {
+    switch (lv_event_get_code(e)) {
+    case LV_EVENT_SIZE_CHANGED:
         self->on_screen_size_changed(static_cast<lv_obj_t*>(lv_event_get_target(e)));
+        break;
+    case LV_EVENT_DELETE:
+        // LVGL drops the screen's callbacks with it, so there is nothing left to detach.
+        self->m_resize_screen = nullptr;
+        break;
+    default:
+        break;
     }
 }
 
@@ -1265,6 +1276,7 @@ void DisplayManager::init_resize_handler(lv_obj_t* screen) {
 
     remove_resize_handler();
     lv_obj_add_event_cb(screen, resize_event_cb, LV_EVENT_SIZE_CHANGED, this);
+    lv_obj_add_event_cb(screen, resize_event_cb, LV_EVENT_DELETE, this);
     m_resize_screen = screen;
 
     spdlog::trace("[DisplayManager] Resize handler initialized on screen");
@@ -1272,9 +1284,8 @@ void DisplayManager::init_resize_handler(lv_obj_t* screen) {
 
 void DisplayManager::remove_resize_handler() {
     m_resize_debounce.cancel();
-    // The screen may already be gone (deleted by its owner, or by lv_deinit()), and
-    // lv_obj_is_valid() finds it without dereferencing the pointer.
-    if (m_resize_screen && lv_is_initialized() && lv_obj_is_valid(m_resize_screen)) {
+    // m_resize_screen is cleared when the screen is deleted, so a non-null one is live.
+    if (m_resize_screen && lv_is_initialized()) {
         lv_obj_remove_event_cb_with_user_data(m_resize_screen, resize_event_cb, this);
     }
     m_resize_screen = nullptr;

@@ -635,7 +635,8 @@ class DisplayManager : public helix::ICalibrationSink {
     // Trailing-edge: every SIZE_CHANGED pushes the fan-out RESIZE_DEBOUNCE_MS past it.
     // Its callback dereferences this manager; the member cancels it on destruction.
     helix::ui::CoalescedTimer m_resize_debounce{RESIZE_DEBOUNCE_MS};
-    // The object carrying resize_event_cb with this manager as its user data.
+    // The object carrying resize_event_cb with this manager as its user data;
+    // cleared when that object is deleted.
     lv_obj_t* m_resize_screen = nullptr;
     // Its callback dereferences this manager, so it must not outlive it.
     helix::ui::LvglTimerGuard m_brightness_reassert_timer;
@@ -644,6 +645,7 @@ class DisplayManager : public helix::ICalibrationSink {
     void on_screen_size_changed(lv_obj_t* screen);
     void fan_out_resize();
     /// Cancels the pending debounce and detaches resize_event_cb from m_resize_screen.
+    /// Its SIZE_CHANGED and DELETE registrations both go.
     void remove_resize_handler();
 
     /**

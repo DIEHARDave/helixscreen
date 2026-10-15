@@ -19,6 +19,7 @@
  */
 
 #include "../lvgl_test_fixture.h"
+#include "../test_helpers/display_manager_test_access.h"
 #include "display_manager.h"
 #include "tap_latch.h"
 
@@ -75,6 +76,53 @@ int event_cbs_pointing_at(lv_obj_t* obj, const void* owner) {
         n += lv_event_dsc_get_user_data(lv_obj_get_event_dsc(obj, i)) == owner ? 1 : 0;
     }
     return n;
+}
+
+// Callbacks for the register-during-fan-out test. ResizeCallback is a plain
+// function pointer, so each distinct callback needs its own function.
+DisplayManager* g_registering_mgr = nullptr;
+int g_registering_calls = 0;
+int g_late_calls = 0;
+
+void cb_a() {
+    g_resize_calls++;
+}
+void cb_b() {
+    g_resize_calls++;
+}
+void cb_c() {
+    g_resize_calls++;
+}
+void late_1() {
+    g_late_calls++;
+}
+void late_2() {
+    g_late_calls++;
+}
+void late_3() {
+    g_late_calls++;
+}
+void late_4() {
+    g_late_calls++;
+}
+void late_5() {
+    g_late_calls++;
+}
+void late_6() {
+    g_late_calls++;
+}
+void late_7() {
+    g_late_calls++;
+}
+void late_8() {
+    g_late_calls++;
+}
+
+void register_late_callbacks() {
+    g_registering_calls++;
+    for (auto cb : {late_1, late_2, late_3, late_4, late_5, late_6, late_7, late_8}) {
+        g_registering_mgr->register_resize_callback(cb);
+    }
 }
 
 // A resize callback that raises one more SIZE_CHANGED on g_reentrant_target from
@@ -302,7 +350,7 @@ TEST_CASE_METHOD(ResizeFixture, "a destroyed DisplayManager is detached from its
         DisplayManager mgr;
         mgr_addr = &mgr;
         screen = attach_resize_handler(mgr);
-        REQUIRE(event_cbs_pointing_at(screen, mgr_addr) == 1);
+        REQUIRE(event_cbs_pointing_at(screen, mgr_addr) == 2); // SIZE_CHANGED + DELETE
     }
     CHECK(event_cbs_pointing_at(screen, mgr_addr) == 0);
 
@@ -335,10 +383,40 @@ TEST_CASE_METHOD(ResizeFixture, "shutdown after the screen is deleted is safe",
                  "[display][rotation_probe][resize]") {
     DisplayManager mgr;
     lv_obj_t* screen = attach_resize_handler(mgr);
+    REQUIRE(DisplayManagerTestAccess::resize_screen(mgr) == screen);
+
     lv_obj_delete(screen);
+    CHECK(DisplayManagerTestAccess::resize_screen(mgr) == nullptr);
 
     mgr.shutdown();
-    SUCCEED("shutdown did not touch the deleted screen");
+}
+
+TEST_CASE_METHOD(ResizeFixture, "A resize callback may register another during the fan-out",
+                 "[display][rotation_probe][resize]") {
+    DisplayManager mgr;
+    lv_obj_t* screen = attach_resize_handler(mgr);
+    g_registering_mgr = &mgr;
+    g_registering_calls = 0;
+    g_late_calls = 0;
+    // The registering callback sits mid-vector and adds enough that the vector
+    // reallocates, so the walk still has entries to read after it returns.
+    for (auto cb : {cb_a, register_late_callbacks, cb_b, cb_c}) {
+        mgr.register_resize_callback(cb);
+    }
+
+    lv_obj_send_event(screen, LV_EVENT_SIZE_CHANGED, nullptr);
+    process_lvgl(400);
+    CHECK(g_registering_calls == 1);
+    CHECK(g_resize_calls == 4); // count_resize + cb_a..cb_c
+    CHECK(g_late_calls == 0);   // registered mid-fan-out: runs from the next resize
+
+    lv_obj_send_event(screen, LV_EVENT_SIZE_CHANGED, nullptr);
+    process_lvgl(400);
+    CHECK(g_registering_calls == 2);
+    CHECK(g_late_calls == 8);
+
+    g_registering_mgr = nullptr;
+    lv_obj_delete(screen);
 }
 
 TEST_CASE_METHOD(ResizeFixture,
