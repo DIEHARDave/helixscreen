@@ -46,7 +46,7 @@ echo "claim $*" >> "$CALLS"
 case "$1" in take) exit "${CLAIM_TAKE_RC:-0}" ;; esac'
     export MAKE=fake-make TEST_HOST_RUN=fake-test-host-run HELIX_CLAIM=fake-claim
     export HELIX_TEST_HOST=testhost.invalid HELIX_BUILD_HOSTS_FILE=/nonexistent
-    unset CI_SHARDS
+    unset CI_SHARDS CI_SHARD_TIMEOUT
     export TEST_HOST=0
 }
 
@@ -74,10 +74,20 @@ row() { # <status> <step>: the table row for step has that status
 @test "the second sweep runs in CI's 8-shard layout, and CI_SHARDS changes it" {
     run "$GATE"
     [ "$status" -eq 0 ]
-    grep -qx "make unit-sweep NPROCS=8" "$CALLS"
+    grep -qx "make unit-sweep NPROCS=8 SHARD_TIMEOUT=600" "$CALLS"
     : >"$CALLS"
     CI_SHARDS=12 run "$GATE"
-    grep -qx "make unit-sweep NPROCS=12" "$CALLS"
+    grep -qx "make unit-sweep NPROCS=12 SHARD_TIMEOUT=600" "$CALLS"
+}
+
+@test "a CI-layout shard gets CI's step budget, not the sweep's 300s, and CI_SHARD_TIMEOUT changes it" {
+    [ "$(sed -n '/name: Run unit tests/,/run:/s/.*timeout-minutes: *//p' "$REPO_ROOT/.github/workflows/build.yml")" = 10 ]
+    TEST_HOST=1 run "$GATE"
+    grep -qx "host-run sweep NPROCS=8 SHARD_TIMEOUT=600" "$CALLS"
+    : >"$CALLS"
+    CI_SHARD_TIMEOUT=900 run "$GATE"
+    grep -qx "make unit-sweep NPROCS=8 SHARD_TIMEOUT=900" "$CALLS"
+    refute_grep "make unit-sweep SHARD_TIMEOUT" "$CALLS"
 }
 
 @test "each failing step fails the gate and shows FAIL in its own row" {
@@ -117,7 +127,7 @@ row() { # <status> <step>: the table row for step has that status
     TEST_HOST=1 run "$GATE"
     [ "$status" -eq 0 ]
     grep -qx "host-run sweep" "$CALLS"
-    grep -qx "host-run sweep NPROCS=8" "$CALLS"
+    grep -qx "host-run sweep NPROCS=8 SHARD_TIMEOUT=600" "$CALLS"
     refute_grep "make unit-sweep" "$CALLS"
     grep -qx "make test-shell BATS_REQUIRED=1" "$CALLS"
     grep -qx "make test-ui-ci" "$CALLS"

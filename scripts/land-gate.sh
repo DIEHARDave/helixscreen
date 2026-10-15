@@ -10,6 +10,10 @@
 #                     nproc*2 on 4-core runners). Which tests share a process
 #                     decides what a use-after-free corrupts, so a layout nobody
 #                     ran locally can crash where the local one passed.
+#                     Each shard gets CI_SHARD_TIMEOUT seconds (default 600,
+#                     build.yml's 10-minute test step): an eighth of the suite
+#                     runs past the sweep's 300s SHARD_TIMEOUT on a slower host
+#                     without hanging.
 #   bats              make test-shell BATS_REQUIRED=1 (a missing bats fails the row)
 #   ui                make test-ui-ci: CI's exact tests/ui pytest slice, headless
 #   plugin            make test-plugin: the moonraker plugin pytest, also in CI's job
@@ -40,6 +44,7 @@ SELF="${BASH_SOURCE[0]}"
 TEST_HOST_RUN=${TEST_HOST_RUN:-$(dirname "$SELF")/test-host-run.sh}
 HELIX_CLAIM=${HELIX_CLAIM:-$(dirname "$SELF")/helix-claim}
 CI_SHARDS=${CI_SHARDS:-8}
+CI_SHARD_TIMEOUT=${CI_SHARD_TIMEOUT:-600}
 LAND_GATE_LOGDIR=${LAND_GATE_LOGDIR:-build/land-gate}
 LAND_GATE_STEP_TIMEOUT=${LAND_GATE_STEP_TIMEOUT:-3600}
 ROWS_DIR="$LAND_GATE_LOGDIR/rows"
@@ -79,10 +84,10 @@ lane() {
         unit)
             if [ "$SWEEP_WHERE" = remote ]; then
                 step sweep "$TEST_HOST_RUN" sweep
-                step ci-shards "$TEST_HOST_RUN" sweep "NPROCS=$CI_SHARDS"
+                step ci-shards "$TEST_HOST_RUN" sweep "NPROCS=$CI_SHARDS" "SHARD_TIMEOUT=$CI_SHARD_TIMEOUT"
             else
                 step sweep "${mk[@]}" unit-sweep
-                step ci-shards "${mk[@]}" unit-sweep "NPROCS=$CI_SHARDS"
+                step ci-shards "${mk[@]}" unit-sweep "NPROCS=$CI_SHARDS" "SHARD_TIMEOUT=$CI_SHARD_TIMEOUT"
             fi ;;
         app)
             if step app-build "${mk[@]}"; then
@@ -123,7 +128,7 @@ export LAND_GATE_ACTIVE=$$
 # shellcheck source-path=SCRIPTDIR source=lib/sweep_location.sh
 . "$(dirname "$SELF")/lib/sweep_location.sh"
 resolve_sweep_location || exit $?
-export SWEEP_WHERE MAKE TEST_HOST_RUN CI_SHARDS LAND_GATE_LOGDIR LAND_GATE_STEP_TIMEOUT ROWS_DIR
+export SWEEP_WHERE MAKE TEST_HOST_RUN CI_SHARDS CI_SHARD_TIMEOUT LAND_GATE_LOGDIR LAND_GATE_STEP_TIMEOUT ROWS_DIR
 
 # build:<tree> is taken for this run's pid. A session holding worktree:<tree>
 # while it runs the gate would refuse that take, since the two claims exclude
