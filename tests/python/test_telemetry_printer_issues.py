@@ -90,15 +90,16 @@ def test_cluster_already_covered_by_the_database_is_skipped():
 class FakeGh:
     """Stands in for issues.gh: records writes, answers the two reads."""
 
+    FP = "printer:corexy|stm32h723|350x350x350"
+
     def __init__(self, found=None, comments=()):
-        self.found = found or []
+        self.found = [dict(f, body=issues.marker_for(self.FP)) for f in (found or [])]
         self.comments = list(comments)
         self.writes = []
 
     def __call__(self, args):
         if args[:2] == ["issue", "list"]:
-            body = issues.marker_for("printer:corexy|stm32h723|350x350x350")
-            return json.dumps([dict(f, body=body) for f in self.found])
+            return json.dumps(self.found)
         if args[:2] == ["issue", "view"]:
             return json.dumps({"comments": [{"body": c} for c in self.comments]})
         self.writes.append(args)
@@ -117,10 +118,13 @@ def run_main(monkeypatch, tmp_path, fake, *extra):
 def test_new_finding_creates_one_issue(monkeypatch, tmp_path):
     fake = FakeGh()
     assert run_main(monkeypatch, tmp_path, fake) == 0
-    assert len(fake.writes) == 1
-    args = fake.writes[0]
-    assert args[:2] == ["issue", "create"]
-    assert "telemetry,printer-db" in args
+    creates = [w for w in fake.writes if w[:2] == ["issue", "create"]]
+    assert len(creates) == 1
+    assert "telemetry,printer-db" in creates[0]
+    labels = [w[2] for w in fake.writes if w[:2] == ["label", "create"]]
+    assert labels == ["telemetry", "printer-db"]
+    assert fake.writes.index(["label", "create", "telemetry", "--force", "--description",
+                              issues.LABEL_DESCRIPTIONS["telemetry"]]) < fake.writes.index(creates[0])
 
 
 def test_dry_run_prints_and_writes_nothing(monkeypatch, tmp_path, capsys):
@@ -133,7 +137,7 @@ def test_dry_run_prints_and_writes_nothing(monkeypatch, tmp_path, capsys):
 def test_closed_issue_is_not_reopened(monkeypatch, tmp_path, capsys):
     fake = FakeGh(found=[{"number": 7, "state": "CLOSED"}])
     assert run_main(monkeypatch, tmp_path, fake) == 0
-    assert fake.writes == []
+    assert [w for w in fake.writes if w[0] == "issue"] == []
     assert "closed, not reopened" in capsys.readouterr().out
 
 
@@ -141,9 +145,54 @@ def test_open_issue_gets_one_comment_per_iso_week(monkeypatch, tmp_path):
     week = issues.iso_week_label()
     fake = FakeGh(found=[{"number": 7, "state": "OPEN"}])
     assert run_main(monkeypatch, tmp_path, fake) == 0
-    assert fake.writes[0][:3] == ["issue", "comment", "7"]
-    assert f"Week {week}" in fake.writes[0][-1]
+    comment = [w for w in fake.writes if w[:2] == ["issue", "comment"]]
+    assert comment[0][2] == "7"
+    assert f"Week {week}" in comment[0][-1]
 
     again = FakeGh(found=[{"number": 7, "state": "OPEN"}], comments=[f"Week {week}: 6 devices"])
     assert run_main(monkeypatch, tmp_path, again) == 0
-    assert again.writes == []
+    assert [w for w in again.writes if w[0] == "issue"] == []
+
+
+def test_dry_run_makes_no_gh_calls_at_all(monkeypatch, tmp_path):
+    fake = FakeGh()
+    run_main(monkeypatch, tmp_path, fake, "--dry-run")
+    assert fake.writes == []
+
+
+def test_issue_index_matches_marker_exactly(monkeypatch):
+    fp = "printer:corexy|stm32h723|350x350x350"
+    listing = [
+        {"number": 1, "state": "OPEN", "body": "x\n" + issues.marker_for(fp)},
+        {"number": 2, "state": "CLOSED", "body": issues.marker_for("printer:other")},
+        {"number": 3, "state": "OPEN", "body": issues.marker_for(fp + "x")},
+        {"number": 4, "state": "OPEN", "body": "no marker"},
+    ]
+    monkeypatch.setattr(issues, "gh", lambda args: json.dumps(listing))
+    index = issues.load_issue_index()
+    assert index[fp]["number"] == 1
+    assert index["printer:other"]["state"] == "CLOSED"
+    assert index[fp + "x"]["number"] == 3
+    assert len(index) == 3
+
+
+def test_new_issue_cap_holds_back_the_sixth(monkeypatch, tmp_path, capsys):
+    a = analysis()
+    template = a["candidate_heuristics_clusters"][0]
+    detail = a["undetected_clusters"][0]
+    a["candidate_heuristics_clusters"], a["undetected_clusters"] = [], []
+    for i in range(6):
+        c = dict(template, mcu=f"mcu{i}")
+        d = dict(detail, mcu=f"mcu{i}")
+        a["candidate_heuristics_clusters"].append(c)
+        a["undetected_clusters"].append(d)
+    path = tmp_path / "a.json"
+    path.write_text(json.dumps(a))
+    db = tmp_path / "db.json"
+    db.write_text(json.dumps(EMPTY_DB))
+    fake = FakeGh()
+    fake.found = []
+    monkeypatch.setattr(issues, "gh", fake)
+    assert issues.main(["--analysis", str(path), "--db", str(db)]) == 0
+    assert len([w for w in fake.writes if w[:2] == ["issue", "create"]]) == issues.MAX_NEW_ISSUES
+    assert capsys.readouterr().out.count("Held for next run") == 1

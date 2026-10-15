@@ -157,16 +157,33 @@ def gh(args: list[str]) -> str:
     ).stdout
 
 
-def _find_issue(fp: str):
+LABEL_DESCRIPTIONS = {
+    "telemetry": "Filed from telemetry analysis",
+    "printer-db": "Printer database entry candidate",
+}
+
+
+def load_issue_index() -> dict[str, dict]:
+    """Every telemetry issue by fingerprint, from one listing.
+
+    GitHub search does not index the text of an HTML comment, so the marker is
+    matched locally against each body.
+    """
     raw = gh(
         ["issue", "list", "--label", "telemetry", "--state", "all",
-         "--search", f"telemetry-fp: {fp} in:body",
-         "--json", "number,state,body"]
+         "--limit", "500", "--json", "number,state,body"]
     )
+    index: dict[str, dict] = {}
     for item in json.loads(raw or "[]"):
-        if fingerprint_in_body(item.get("body", "")) == fp:
-            return item
-    return None
+        fp = fingerprint_in_body(item.get("body", ""))
+        if fp is not None:
+            index[fp] = item
+    return index
+
+
+def ensure_labels() -> None:
+    for name, description in LABEL_DESCRIPTIONS.items():
+        gh(["label", "create", name, "--force", "--description", description])
 
 
 def _already_commented_this_week(number: int, week: str) -> bool:
@@ -195,11 +212,14 @@ def main(argv=None) -> int:
 
     week = iso_week_label()
     created = 0
+    index = {} if args.dry_run else load_issue_index()
+    if not args.dry_run:
+        ensure_labels()
     for issue in found:
         if args.dry_run:
             print(f"[dry-run] {issue['title']}\n\n{issue['body']}")
             continue
-        existing = _find_issue(issue["fingerprint"])
+        existing = index.get(issue["fingerprint"])
         if existing is None:
             if created >= MAX_NEW_ISSUES:
                 print(f"Held for next run (cap {MAX_NEW_ISSUES}): {issue['title']}")

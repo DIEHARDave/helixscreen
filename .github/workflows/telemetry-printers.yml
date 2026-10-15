@@ -23,11 +23,12 @@ jobs:
     name: File printer-database candidate issues
     runs-on: ubuntu-latest
     env:
-      HELIX_TELEMETRY_ADMIN_KEY: ${{ secrets.HELIX_TELEMETRY_ADMIN_KEY }}
       GH_TOKEN: ${{ github.token }}
     steps:
       - name: Check for the telemetry key
         id: key
+        env:
+          HELIX_TELEMETRY_ADMIN_KEY: ${{ secrets.HELIX_TELEMETRY_ADMIN_KEY }}
         run: |
           if [ -z "$HELIX_TELEMETRY_ADMIN_KEY" ]; then
             echo "::notice::HELIX_TELEMETRY_ADMIN_KEY is not set; skipping."
@@ -50,6 +51,8 @@ jobs:
 
       - name: Pull telemetry
         if: steps.key.outputs.present == 'true'
+        env:
+          HELIX_TELEMETRY_ADMIN_KEY: ${{ secrets.HELIX_TELEMETRY_ADMIN_KEY }}
         run: scripts/telemetry-pull.sh --since "$(date -u -d '28 days ago' +%F)"
 
       - name: Analyze printers
@@ -59,9 +62,18 @@ jobs:
       - name: File issues
         if: steps.key.outputs.present == 'true'
         env:
-          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
+          LIVE_SCHEDULED: ${{ vars.TELEMETRY_PRINTER_ISSUES_LIVE }}
+          DISPATCH_DRY_RUN: ${{ inputs.dry_run }}
         run: |
+          dry=true
+          if [ "$GITHUB_EVENT_NAME" = "schedule" ]; then
+            if [ "$LIVE_SCHEDULED" = "true" ]; then dry=false; else
+              echo "::notice::Scheduled run is dry. Set the repository variable TELEMETRY_PRINTER_ISSUES_LIVE to true to file issues."
+            fi
+          elif [ "$DISPATCH_DRY_RUN" = "false" ]; then
+            dry=false
+          fi
           flags=""
-          if [ "$DRY_RUN" = "true" ]; then flags="--dry-run"; fi
+          if [ "$dry" = "true" ]; then flags="--dry-run"; fi
           scripts/telemetry-printer-issues.py --analysis analysis.json \
             --db assets/config/printer_database.json $flags
