@@ -25,6 +25,7 @@
 #include "../test_helpers/scoped_geometry.h"
 #include "action_prompt_manager.h"
 #include "action_prompt_modal.h"
+#include "demo_prompt_lines.h"
 #include "display_settings_manager.h"
 #include "lvgl/src/misc/lv_area_private.h" // lv_area_is_in
 #include "theme_manager.h"
@@ -58,29 +59,15 @@ helix::PromptData make_regular_prompt(int n_buttons) {
     return data;
 }
 
-// Z-Mod's color picker as its CHANGE_ZCOLOR macro sends it (#1806): a text
-// line, three groups of eight label-less swatches and a footer Cancel.
+// Z-Mod's color picker, parsed from the same wire lines the ctl demo sends.
 helix::PromptData make_zmod_color_prompt() {
-    using helix::ActionPromptManager;
-    static const char* const kGroups[3][8] = {
-        {"ffffff", "fff245", "def578", "21cc3d", "167a4b", "156682", "24e4a0", "7bd9f0"},
-        {"4caaf8", "2e54dd", "48358c", "a341f7", "f435f6", "d584de", "fa6173", "f82d29"},
-        {"805003", "f9903b", "fcebd7", "d5c5a1", "b17c38", "8c8c89", "bebebe", "1b1b1b"},
-    };
-    helix::PromptData data;
-    data.title = "Select color";
-    data.text_lines.push_back("Spool 1: PETG-CF/");
-    for (int g = 0; g < 3; ++g) {
-        for (const char* hex : kGroups[g]) {
-            auto btn = ActionPromptManager::parse_button_spec(
-                std::string("_ |CHANGE_ZCOLOR SLOT=1 HEX=") + hex + "|" + hex);
-            btn.group_id = g + 1;
-            data.buttons.push_back(std::move(btn));
-        }
+    helix::ActionPromptManager manager;
+    helix::PromptData shown;
+    manager.set_on_show([&shown](const helix::PromptData& data) { shown = data; });
+    for (const std::string& line : helix::demo::zmod_color_picker_lines()) {
+        manager.process_line(line);
     }
-    data.buttons.push_back(ActionPromptManager::parse_button_spec("Cancel|RESPOND|primary"));
-    data.buttons.back().is_footer = true;
-    return data;
+    return shown;
 }
 
 class ActionPromptLayoutFixture : public LVGLUITestFixture {
@@ -422,14 +409,19 @@ TEST_CASE_METHOD(ActionPromptLayoutFixture,
     lv_obj_get_coords(test_screen(), &screen);
     CHECK(lv_area_is_in(&card, &screen, 0));
 
+    // Width holds the touch target. Height may drop below it so every color
+    // stays visible, but tiles must grow into the free room: taller than
+    // button_height, which is all an unfitted tile gets here.
     const int32_t touch_min = theme_manager_get_spacing("touch_target_min");
+    const int32_t button_h = theme_manager_get_spacing("button_height");
     REQUIRE(touch_min > 0);
+    REQUIRE(button_h > 0);
     for (size_t i = 0; i < 24; ++i) {
         lv_area_t a;
         lv_obj_get_coords(btns[i], &a);
-        CAPTURE(i, lv_area_get_width(&a), lv_area_get_height(&a));
+        CAPTURE(i, lv_area_get_width(&a), lv_area_get_height(&a), touch_min, button_h);
         CHECK(lv_area_get_width(&a) >= touch_min);
-        CHECK(lv_area_get_height(&a) >= 38);
+        CHECK(lv_area_get_height(&a) > button_h);
         CHECK(lv_area_is_in(&a, &card, 0));
     }
     lv_area_t footer;
@@ -452,10 +444,12 @@ TEST_CASE_METHOD(ActionPromptLayoutFixture,
     CHECK(lv_obj_get_width(dialog) == 480);
     const auto& btns = ActionPromptModalTestAccess::buttons(modal_);
     REQUIRE(btns.size() == 25);
+    const int32_t touch_min = theme_manager_get_spacing("touch_target_min");
+    const int32_t button_h = theme_manager_get_spacing("button_height");
     for (size_t i = 0; i < 24; ++i) {
-        CAPTURE(i);
-        CHECK(lv_obj_get_height(btns[i]) == theme_manager_get_spacing("button_height"));
-        CHECK(lv_obj_get_width(btns[i]) >= 51);
+        CAPTURE(i, touch_min, button_h);
+        CHECK(lv_obj_get_height(btns[i]) == button_h);
+        CHECK(lv_obj_get_width(btns[i]) >= touch_min);
     }
 
     modal_.hide();

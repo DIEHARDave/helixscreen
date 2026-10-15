@@ -431,8 +431,10 @@ void ActionPromptModal::fit_swatch_rows(lv_obj_t* button_container,
     }
     if (fit.scroll) {
         const int32_t container_h = lv_obj_get_height(button_container);
-        lv_obj_set_style_max_height(button_container, container_h - rows_h + g.free_h,
-                                    LV_PART_MAIN);
+        // The free height can be negative when the rest of the prompt already
+        // fills the card; one row stays visible so the grid can still scroll.
+        const int32_t free_h = std::max(g.free_h, fit.swatch_h);
+        lv_obj_set_style_max_height(button_container, container_h - rows_h + free_h, LV_PART_MAIN);
         lv_obj_add_flag(button_container, LV_OBJ_FLAG_SCROLLABLE);
     }
     spdlog::debug("[ActionPromptModal] Swatch grid: {} rows x {}, card {}px, tiles {}px tall{}",
