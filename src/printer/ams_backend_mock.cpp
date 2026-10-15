@@ -1809,12 +1809,28 @@ void AmsBackendMock::set_dryer_speed(int speed_x) {
     spdlog::info("[AmsBackendMock] Dryer speed set to {}x", dryer_speed_x_);
 }
 
+void AmsBackendMock::set_dryer_humidity_target(bool enabled) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    dryer_humidity_target_ = enabled;
+    spdlog::info("[AmsBackendMock] Dryer humidity target {}", enabled ? "enabled" : "disabled");
+}
+
 DryerInfo AmsBackendMock::get_dryer_info(int unit) const {
     std::lock_guard<std::mutex> lock(mutex_);
-    if (unit >= 0 && static_cast<size_t>(unit) < unit_dryers_.size()) {
-        return unit_dryers_[static_cast<size_t>(unit)];
+    DryerInfo out = (unit >= 0 && static_cast<size_t>(unit) < unit_dryers_.size())
+                        ? unit_dryers_[static_cast<size_t>(unit)]
+                        : dryer_state_;
+    out.supports_humidity_target = out.supported && dryer_humidity_target_;
+    return out;
+}
+
+AmsError AmsBackendMock::start_drying_to_humidity(float temp_c, int duration_min,
+                                                  float humidity_pct, int fan_pct, int unit) {
+    if (!get_dryer_info(unit).humidity_target(humidity_pct)) {
+        return AmsError{AmsResult::NOT_SUPPORTED, "Dryer humidity target not available"};
     }
-    return dryer_state_;
+    spdlog::info("[AmsBackendMock] start_drying_to_humidity: target {}%", humidity_pct);
+    return start_drying(temp_c, duration_min, fan_pct, unit);
 }
 
 std::vector<helix::printer::EnvironmentZone> AmsBackendMock::get_environment_zones(int unit) const {

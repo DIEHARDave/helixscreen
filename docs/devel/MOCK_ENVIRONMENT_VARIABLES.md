@@ -644,6 +644,24 @@ Speed multiplier for dryer simulation (for faster testing).
 HELIX_MOCK_DRYER=1 HELIX_MOCK_DRYER_SPEED=10 ./build/bin/helix-screen --test
 ```
 
+### `HELIX_MOCK_DRYER_HUMIDITY_TARGET`
+
+Make the mock dryer take a humidity target, the way a Happy Hare 4 dryer does
+(`DryerInfo::supports_humidity_target`). The environment overlay then shows its
+optional **Target RH** field beside Minutes; unset, the field stays hidden, as on
+Happy Hare 3 and every other dryer. The mock logs the target and runs its normal
+timed cycle.
+
+| Property | Value |
+|----------|-------|
+| **Values** | `1` / `true` to enable; `0` / `false` or unset to disable |
+| **Default** | unset (no humidity target) |
+| **File** | `src/printer/ams_backend.cpp` |
+
+```bash
+HELIX_MOCK_DRYER_HUMIDITY_TARGET=1 ./build/bin/helix-screen --test --ams-environment
+```
+
 ### `HELIX_MOCK_DRYING`
 
 Start a live *active* drying session at boot (55 °C target, 6 h session already 2 h in,
