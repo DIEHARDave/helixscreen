@@ -187,4 +187,7 @@ echo ""
   return $EXIT_CODE
 }
 
-QC_TRIGGER_qc_xml_linter="$QC_TRIGGER_XML"
+# The XML half of the trigger plus every schema input SCHEMA_INPUT_STAGED reads:
+# without them here the driver skips the gate before that test can see them.
+# A src/ .cpp reaches the gate only for the two cheap content greps above.
+QC_TRIGGER_qc_xml_linter="$QC_TRIGGER_XML"'|^src/.*\.cpp$|^assets/config/themes/defaults/|^lib/helix-xml$|^mk/tools\.mk$'

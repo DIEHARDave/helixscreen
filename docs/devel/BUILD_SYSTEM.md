@@ -990,10 +990,29 @@ Formatting is automatically checked by the pre-commit hook (`.git/hooks/pre-comm
 3. **Prevents commit** if a formatted file could not be re-staged (partially staged hunks)
 4. **Full sweeps (pre-push, CI) fail** on any unformatted file outside `CLANG_FORMAT_BASELINE`, the list of files that predate the gate; an entry leaves the list once the file is auto-formatted on its next staging
 
+After the commit, `.githooks/post-commit` runs `.githooks/lib/sync-index-to-head.sh`.
+`git commit -- <paths>` commits from a temporary index, so a file the hook
+reformatted lands formatted in HEAD and on disk while the real index keeps the
+pre-format blob, and `git status` reads `MM`. For each committed path whose working
+tree equals HEAD but whose index entry does not, the step points the entry at HEAD's
+own blob. It never hashes the working tree, so nothing that is not already committed
+reaches the index.
+
 To bypass (not recommended):
 ```bash
 git commit --no-verify
 ```
+
+### Staged-input checks that would otherwise wait for a full run
+
+Each is path-gated, so a commit staging none of its inputs pays nothing:
+
+| Gate | Staged trigger | Cost | Catches |
+|------|----------------|------|---------|
+| `qc_esp32_compile` | a `.c`/`.cpp`/`.h`/`.hpp` under `src/`, `include/` or the firmware | ~6s for two units | host-green, ESP32-red code: `scripts/esp32_syntax_check.py --staged` compiles the staged firmware sources and one includer per staged header in the IDF image. Never configures (pre-push does, once per CMake change); advisory skip without docker or the image |
+| `qc_toolhead_census` | `ui_xml/**/*.xml`, the census test | ~0.2s | a control-bearing XML file missing from `tests/unit/test_job_holds_machine.cpp`'s census tables, a stale row, a drifted guard count (`scripts/check_toolhead_census.py`) |
+| `qc_theme_artifacts` | top-level `ui_xml/*.xml`, the two artefacts | ~0.1s | `src/generated/theme_token_table.cpp` not matching the staged tokens (`make regen-tokens`), and a `tests/fixtures/theme_const_golden.txt` the token change provably invalidates (`scripts/check_theme_artifacts.py`; the fix needs the test binary, so it prints the regen command) |
+| `qc_xml_linter` | also `src/**/*.cpp`, theme defaults, `lib/helix-xml`, `mk/tools.mk` | ~0.7s when it lints | `tools/xml-linter/schema/schema.json` stale against any extractor input |
 
 ### Pre-push Integration
 

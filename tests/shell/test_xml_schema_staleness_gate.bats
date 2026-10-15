@@ -454,6 +454,22 @@ trigger_re() {
     grep -q "ui_xml/.*\\\\.xml\\$" "$QC" || fail "$QC lost the ui_xml path trigger"
 }
 
+@test "the driver's path trigger admits every schema input the block tests for" {
+    # --staged-only skips a gate whose QC_TRIGGER matches no staged path before
+    # the block runs, so an input the block handles but the trigger omits is
+    # never checked at commit time.
+    re="$(qc_trigger xml_linter)"
+    [ -n "$re" ]
+    for p in ui_xml/globals.xml tools/xml-linter/src/x.py src/ui/ui_widget.cpp \
+             src/printer/registers_const.cpp assets/config/themes/defaults/nord.json \
+             lib/helix-xml mk/tools.mk; do
+        echo "$p" | grep -qE "$re" || fail "$p does not reach qc_xml_linter"
+    done
+    for p in docs/devel/README.md include/printer_state.h scripts/foo.py; do
+        if echo "$p" | grep -qE "$re"; then fail "$p should not reach qc_xml_linter"; fi
+    done
+}
+
 @test "extract_schema.py still parses the calls the trigger keys on" {
     # Derived from the extractor, not guessed: these are the two regexes whose
     # call shapes the hook mirrors.
