@@ -303,19 +303,3 @@ lv_obj_t* XMLTestFixture::create_component(const char* component_name, const cha
     }
     return obj;
 }
-
-// ============================================================================
-// Stubs for application globals used by display_manager.cpp
-// ============================================================================
-// These stubs provide test-safe no-op implementations of app_globals functions
-// that are referenced by display_manager.cpp but not needed in unit tests.
-
-void app_request_quit() {
-    // No-op for tests - display manager calls this on window close
-    spdlog::debug("[TestStub] app_request_quit() called - no-op in tests");
-}
-
-// NOTE: helix_notify_app_backgrounded() / helix_notify_app_foregrounded() used to be
-// stubbed here because application.o was excluded from the test link. It no longer is
-// (see mk/tests.mk), so the real implementations are linked and these stubs are gone —
-// they would be duplicate definitions. Both real functions only flip an atomic and log.

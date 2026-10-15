@@ -63,7 +63,10 @@ TEST_CASE("FirstRunTour gate: re-triggers when last_seen_version is behind TOUR_
     REQUIRE(FirstRunTour::should_auto_start() == true);
 }
 
-TEST_CASE("FirstRunTour gate: blocks while home grid edit mode is active", "[tour]") {
+// The edit-mode subject is owned by app_globals_init_subjects(), which the UI
+// fixture runs; without it the subject has no value to set.
+TEST_CASE_METHOD(LVGLUITestFixture, "FirstRunTour gate: blocks while home grid edit mode is active",
+                 "[tour]") {
     reset_tour_settings();
     // Pin that the gate is otherwise open, so a gate stuck at false cannot pass.
     REQUIRE(FirstRunTour::should_auto_start() == true);

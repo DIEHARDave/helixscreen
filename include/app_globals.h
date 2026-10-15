@@ -528,6 +528,13 @@ bool updates_externally_managed();
 // (network-backed sudoers) cannot stall the caller.
 bool root_escalation_available();
 
+// Replaces the passwordless-sudo probe root_escalation_available() runs when the
+// process is not already root; nullptr restores the real one. The test binary
+// installs a probe that answers without forking sudo. Only a call made before
+// the first root_escalation_available() matters, since that answer is cached.
+// NAMESPACE_OK: joins root_escalation_available(), this header's file-scope API
+void set_root_escalation_probe(bool (*probe)());
+
 // Pure predicate: can an in-app self-update PHYSICALLY be applied to this install
 // tree? It must recognise BOTH of the routes install.sh implements, since hiding
 // the updater is permanent — the fix for a false negative can only ship inside an

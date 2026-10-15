@@ -302,12 +302,11 @@ DNS_RESOLV_OBJ := $(OBJ_DIR)/tests/dns_resolv.o
 #
 # Exclusions (add files here ONLY if they cause linker conflicts):
 #
-# Group 1: App entry point and globals
+# Group 1: App entry point
 # - main.o: Has main() function, tests have their own entry point
-# - app_globals.o: Contains global subjects/state, ui_test_utils.o provides stubs
 #
 # Group 2: Files where ui_test_utils.o provides stub implementations
-# - ui_notification.o: Needs get_notification_subject() from app_globals.o
+# - ui_notification.o: ui_test_utils.o stubs the ui_notification_* entry points
 # - ui_toast.o, ui_toast_manager.o: ui_test_utils.o provides stub toast functions
 # - ui_notification_manager.o: ui_test_utils.o stubs notification functions
 # ui_text_input.o WAS here too, stubbed by a hand-written copy in ui_test_utils.cpp
@@ -358,9 +357,8 @@ DNS_RESOLV_OBJ := $(OBJ_DIR)/tests/dns_resolv.o
 #   SubjectInitializer, PanelFactory and RemoteControlServer and the link needs
 #   their definitions.
 #
-#   Un-excluding them leaves 8 symbols that application.o pulls in from objects
-#   still on this list (app_globals.o, ui_notification.o); ui_test_utils.cpp now
-#   stubs those alongside its existing app_globals stubs.
+#   application.o also pulls in symbols from ui_notification.o, still on this
+#   list; ui_test_utils.cpp stubs those.
 #
 #   lvgl_initializer.o was also removed: no such source or object has ever
 #   existed in the tree, so the entry filtered nothing.
@@ -369,7 +367,6 @@ DNS_RESOLV_OBJ := $(OBJ_DIR)/tests/dns_resolv.o
 
 TEST_APP_OBJS := $(filter-out \
     $(OBJ_DIR)/main.o \
-    $(OBJ_DIR)/app_globals.o \
     $(OBJ_DIR)/ui/ui_notification.o \
     $(OBJ_DIR)/ui/ui_toast.o \
     $(OBJ_DIR)/ui/ui_toast_manager.o \
@@ -1604,10 +1601,10 @@ check-tautology:
 TAUTOLOGY_MAX ?= 0
 # One ratchet per signal, so fixing one kind cannot buy slack for another. Each
 # may fall, never rise; an unnamed signal (shadow-include, mirror-comment)
-# allows 0. stub-logic is tests/ui_test_utils.cpp standing in for app_globals.o,
-# ui_notification.o and ui_toast_manager.o.
+# allows 0. stub-logic is tests/ui_test_utils.cpp standing in for
+# ui_notification.o, ui_notification_manager.o and ui_toast_manager.o.
 MIRROR_MAX_REDEFINED_SYMBOL ?= 0
-MIRROR_MAX_STUB_LOGIC ?= 27
+MIRROR_MAX_STUB_LOGIC ?= 18
 MIRROR_MAX_ARGS = --max redefined-symbol=$(MIRROR_MAX_REDEFINED_SYMBOL) \
 	--max stub-logic=$(MIRROR_MAX_STUB_LOGIC)
 
