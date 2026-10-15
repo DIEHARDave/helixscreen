@@ -36,10 +36,7 @@ export const router = createRouter({
       component: () => import('@/views/StabilityView.vue'),
       meta: { requiresAuth: true }
     },
-    {
-      path: '/crashes',
-      redirect: '/stability'
-    },
+    { path: '/crashes', redirect: (to) => ({ path: legacyRedirect(to.path)!, query: to.query }) },
     {
       path: '/releases',
       name: 'releases',
@@ -58,10 +55,7 @@ export const router = createRouter({
       component: () => import('@/views/EngagementView.vue'),
       meta: { requiresAuth: true }
     },
-    {
-      path: '/reliability',
-      redirect: '/stability'
-    },
+    { path: '/reliability', redirect: (to) => ({ path: legacyRedirect(to.path)!, query: to.query }) },
     {
       path: '/performance',
       name: 'performance',
