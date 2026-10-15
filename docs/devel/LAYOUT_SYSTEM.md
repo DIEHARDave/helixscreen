@@ -822,8 +822,11 @@ default without asking, which is safe only because every definition holds that d
 or above its own minimum. A widget authored around whole cells keeps a whole-cell floor on
 both axes.
 
-Half a cell is declined outright at the micro and tiny tiers, where a track is 31-40px and
-the glyph already fills it, and a tile of one cell or less is capped to the authored face
+At the micro and tiny tiers, where a track is 31-40px, a tile that shows a reading declines
+half a cell outright: no rung carries a glyph and a value there. An icon-only tile is left to
+`decide()`, which drops the caption and measures its own glyph against the box, so most take
+half a cell on both axes and a tile whose caption is its identity (which fan, which sensor)
+still refuses. A tile of one cell or less is capped to the authored face
 there so those screens keep the proportions they were designed with. A tile given more
 than a cell on both axes grows on every tier. A glyph that sits in a disc
 (`power_device`, `favorite_macro`) uses `ui_xml/components/tile_badge.xml`, whose disc

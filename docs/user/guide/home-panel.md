@@ -162,7 +162,7 @@ Almost every widget is resizable. **Print Controls** keeps its fixed 2x1 size an
    - Resizing stops if it would overlap another widget
 6. **Release** to apply the new size — the widget rebuilds at its new dimensions
 
-Some widgets adapt their content based on size. For example, the Digital Clock shows just the time at 1x1, adds the date at 2x1, and shows uptime too at 2x2 or larger.
+Some widgets adapt their content based on size. For example, the Digital Clock shows just the time when the date does not fit, adds the date as soon as it does (1.5x1 is usually enough), and shows uptime too at 2x2 or larger.
 
 ### Snapping and half cells
 
@@ -176,7 +176,7 @@ Widgets place and resize in half-cell steps. What varies is which axes a widget 
 | **Power** | Resizes in half-cell steps like the tiles above, but never below one whole cell - its round device badge does not shrink |
 | **Humidity**, **Width Sensor** | Snap to whole cells in both directions (1x1 up to 2x2) |
 
-On the smallest panels (about 480 pixels wide or less), half-cell steps are not offered at all: every widget snaps to whole cells there, because half a cell cannot carry an icon and a reading side by side.
+On the smallest panels (480x272 and 480x320), widgets that show a reading snap to whole cells, because half a cell cannot carry an icon and a reading side by side. Icon-only tiles such as LED Light, Notifications, Lock Screen and Firmware Restart still go down to half a cell; they drop their caption to fit.
 
 The floor across the grid: no widget goes below half a cell wide by one cell tall, and the height floor is one whole cell for every widget. Some of the bigger widgets - **Preheat**, **Print Status**, **Print Controls**, **Job Queue**, **Clog Detection** - have a two-cell minimum width.
 
@@ -346,11 +346,11 @@ These are the same 5 groups the Widget Catalog uses on the device.
 | **Network** | Current network connection status - WiFi signal strength (with bar indicator) or Ethernet. | 1x1 | 0.5x1 | Full grid | Yes | — |
 | **Host Health** | How hard the computer running Klipper and your printer's controller boards are working: CPU load and temperature, memory, and the busiest board. It turns amber or red when something needs attention (see [Host Health Widget](#host-health-widget) below). Tap to open the Performance screen. | 2x1 | 0.5x0.5 | 4x4 | Yes | Performance readings |
 | **Notifications** | Shows pending notification count with a severity badge (info/warning/error). Tap to open the notification history overlay. | 1x1 | 0.5x1 | Full grid | Yes | — |
-| **Digital Clock** | Current time and date. Respects your 12/24-hour preference from display settings. Content adapts to size: time only at 1x1, time + date at 2x1, time + date + system uptime at 2x2+. Resizes in half-cell steps — see [Snapping and half cells](#snapping-and-half-cells). | 2x1 | 1x1 | 3x3 | Yes | — |
+| **Digital Clock** | Current time and date. Respects your 12/24-hour preference from display settings. Content adapts to size: time only when the date does not fit, time + date once it does (about 1.5x1), time + date + system uptime at 2x2+. Resizes in half-cell steps — see [Snapping and half cells](#snapping-and-half-cells). | 2x1 | 1x1 | 3x3 | Yes | — |
 | **Tips** | Rotating helpful tips about 3D printing and HelixScreen features. Tap any tip to see the full article. Tips rotate automatically. | 4x2 | 2x1 | Full width x2 | Horizontal only | — |
 | **Shutdown/Reboot** | Shutdown or reboot your printer's host system. Shows a confirmation dialog before acting. | 1x1 | 0.5x1 | Full grid | Yes | — |
 | **Firmware Restart** | Restart the Klipper firmware. Useful when Klipper enters SHUTDOWN state. This widget automatically appears during firmware errors even if disabled. | 1x1 | 0.5x1 | Full grid | Yes | — |
-| **Lock Screen** | Locks the screen immediately. Set a PIN in Settings > System > Security first, otherwise there is nothing to unlock with. | 1x1 | 0.5x1 | Full grid | Yes | — |
+| **Lock Screen** | Locks the screen immediately. With no PIN set the lock icon is greyed out and tapping it opens Settings > System > Security so you can set one. | 1x1 | 0.5x1 | Full grid | Yes | — |
 
 #### Shutdown/Reboot Widget
 

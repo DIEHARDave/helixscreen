@@ -121,7 +121,10 @@ and the state is part of what `needs` was measured for.
 **`src/ui/panel_widgets/content_chrome.h`** measures the box the content really draws in.
 `helix::measure_content_chrome(root, reserve_px)` walks the single-child chain from the
 widget's root down to the first container that holds more than one child and sums the
-padding of every container on the way, plus the flex gap of that branching container. The
+padding of every container on the way, plus the flex gap of that branching container. That
+gap is also returned on its own (`branch_gap_w`/`branch_gap_h`): a widget whose branching
+container is its own stack of parts, as TileSizing's glyph-over-label is, takes it back out
+and prices it per candidate, so a hidden part's gap never costs the parts that are drawn. The
 widget subtracts the result from the span's pixel size and decides on what is left, so a
 theme or breakpoint that changes the tile's padding moves the boundaries with it. The
 tree does not exist yet when the load path asks `fits_at()`, so each widget's `decide()`
