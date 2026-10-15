@@ -33,8 +33,9 @@ function countsTable(f: Finding): string {
   return ['| Field | Value |', '| --- | --- |', ...rows].join('\n')
 }
 
-function dashboardLink(f: Finding, dashboardUrl: string): string {
-  return `${dashboardUrl.replace(/\/+$/, '')}${f.dashboardPath}`
+/** A dashboard route under the configured base URL, whether or not the base ends in "/". */
+export function dashboardLink(dashboardUrl: string, path: string): string {
+  return `${dashboardUrl.replace(/\/+$/, '')}${path}`
 }
 
 /** Marker first, then the counts, the dashboard link and the ISO week the counts cover. */
@@ -46,13 +47,13 @@ export function issueBody(f: Finding, dashboardUrl: string, week: string): strin
     '',
     countsTable(f),
     '',
-    `Dashboard: ${dashboardLink(f, dashboardUrl)}`,
+    `Dashboard: ${dashboardLink(dashboardUrl, f.dashboardPath)}`,
   ].join('\n')
 }
 
 function commentBody(f: Finding, dashboardUrl: string, week: string, returned: boolean): string {
   const lead = returned ? `This returned in ${week}.` : `Still seen in ${week}.`
-  return [lead, '', countsTable(f), '', `Dashboard: ${dashboardLink(f, dashboardUrl)}`].join('\n')
+  return [lead, '', countsTable(f), '', `Dashboard: ${dashboardLink(dashboardUrl, f.dashboardPath)}`].join('\n')
 }
 
 /**

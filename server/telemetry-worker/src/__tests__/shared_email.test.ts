@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, it, expect } from "vitest";
-import { sendEmail } from "../../../shared/email";
+import { escapeHtml, sendEmail } from "../../../shared/email";
 
 const config = { apiKey: "re_key", from: "HelixScreen <noreply@example.org>", to: "me@example.org" };
 const message = { subject: "Subj", html: "<p>hi</p>", text: "hi" };
@@ -36,5 +36,11 @@ describe("sendEmail", () => {
   it("throws with the status and body on a non-2xx", async () => {
     const f = fakeFetch(422, "bad from address");
     await expect(sendEmail(config, message, f.impl)).rejects.toThrow(/422.*bad from address/);
+  });
+});
+
+describe("escapeHtml", () => {
+  it("escapes the five HTML-significant characters", () => {
+    expect(escapeHtml(`<a href="x" title='y'>&</a>`)).toBe("&lt;a href=&quot;x&quot; title=&#39;y&#39;&gt;&amp;&lt;/a&gt;");
   });
 });

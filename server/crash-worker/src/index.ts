@@ -22,7 +22,7 @@
 //   RESEND_API_KEY          - Resend API key for email notifications
 
 import { getInstallationToken } from "../../shared/github";
-import { sendEmail } from "../../shared/email";
+import { escapeHtml, sendEmail } from "../../shared/email";
 import {
   crashFingerprint,
   findExistingIssue,
@@ -86,16 +86,6 @@ interface BundleListEntry {
     klipper_version: string;
     user_note: string;
   };
-}
-
-/** Escape HTML special characters to prevent XSS in email templates. */
-function escapeHtml(str: string): string {
-  return str
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
 }
 
 export default {

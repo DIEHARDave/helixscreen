@@ -17,10 +17,14 @@ export class FakeTracker implements IssueTracker {
   calls: TrackerCall[] = []
   /** When set, every call rejects with it. */
   failWith: Error | null = null
+  /** When it returns an error for a call, that call rejects with it after being recorded. */
+  failWhen: ((call: TrackerCall) => Error | null) | null = null
   private nextNumber = 1
 
   private check(): void {
     if (this.failWith) throw this.failWith
+    const err = this.failWhen?.(this.calls[this.calls.length - 1])
+    if (err) throw err
   }
 
   /** Seeds an existing issue, as if filed by an earlier run. */
@@ -75,11 +79,14 @@ export class FakeTracker implements IssueTracker {
 }
 
 export class FakeMailer implements Mailer {
+  /** Every send, including the ones that failed. */
+  attempts: EmailMessage[] = []
   sent: EmailMessage[] = []
   /** When set, send rejects with it and nothing is recorded as sent. */
   failWith: Error | null = null
 
   async send(message: EmailMessage): Promise<void> {
+    this.attempts.push(message)
     if (this.failWith) throw this.failWith
     this.sent.push(message)
   }
@@ -90,14 +97,20 @@ export type StoreCall = { op: 'get' | 'put' | 'list'; key: string }
 export class FakeStore implements ObjectStore {
   data = new Map<string, string>()
   calls: StoreCall[] = []
+  /** When it returns true for a key, get rejects for that key after being recorded. */
+  failGet: (key: string) => boolean = () => false
+  /** When it returns true for a key, put rejects for that key and stores nothing. */
+  failPut: (key: string) => boolean = () => false
 
   async get(key: string): Promise<string | null> {
     this.calls.push({ op: 'get', key })
+    if (this.failGet(key)) throw new Error(`injected get failure: ${key}`)
     return this.data.get(key) ?? null
   }
 
   async put(key: string, value: string): Promise<void> {
     this.calls.push({ op: 'put', key })
+    if (this.failPut(key)) throw new Error(`injected put failure: ${key}`)
     this.data.set(key, value)
   }
 

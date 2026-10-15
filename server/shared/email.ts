@@ -8,6 +8,16 @@ export interface EmailConfig {
   to: string;
 }
 
+/** Escape the HTML-significant characters of a value interpolated into an email body. */
+export function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 export interface EmailMessage {
   subject: string;
   html: string;
