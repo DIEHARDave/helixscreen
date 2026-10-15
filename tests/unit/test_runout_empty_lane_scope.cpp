@@ -26,6 +26,7 @@
 
 #include "../helix_test_fixture.h"
 #include "../test_helpers/update_queue_test_access.h"
+#include "ams_backend_mock.h"
 #include "ams_backend_snapmaker.h"
 #include "ams_state.h"
 #include "ams_subscription_backend.h"
@@ -329,6 +330,55 @@ TEST_CASE("has_real_runout: with no current lane every present lane still counts
     // Nothing names the lane being fed, so a present lane's empty switch is
     // taken at its word.
     CHECK(fsm.has_real_runout());
+}
+
+namespace {
+
+// The shape of a multi-extruder lane system (AFC feeding several toolheads):
+// eight lanes, four toolheads with their own e<N>_filament switch. The
+// current slot counts lanes (lane 4 feeds tool 1), while each toolhead
+// sensor's lane is its tool index.
+class MultiExtruderLanes : public AmsBackendMock {
+  public:
+    MultiExtruderLanes() : AmsBackendMock(8) {}
+    [[nodiscard]] SlotInfo get_slot_info(int slot) const override {
+        SlotInfo info;
+        if (slot >= 0 && slot < 8) {
+            info.slot_index = slot;
+            info.global_index = slot;
+            info.status = SlotStatus::AVAILABLE;
+        }
+        return info;
+    }
+    [[nodiscard]] int get_current_slot() const override {
+        return 4;
+    }
+    [[nodiscard]] int get_current_tool() const override {
+        return 1;
+    }
+};
+
+} // namespace
+
+TEST_CASE("has_real_runout: a toolhead sensor on a multi-extruder lane system follows the tool",
+          "[runout][scope]") {
+    HelixTestFixture fx;
+    AmsState::instance().set_backend(std::make_unique<MultiExtruderLanes>());
+    auto& fsm = FilamentSensorManager::instance();
+    setup_four_lane_sensors(fsm);
+
+    SECTION("the active toolhead running out is a runout, though its index is no slot's") {
+        fsm.update_from_status(make_sensor_status(1, false));
+        drain();
+        CHECK(fsm.has_real_runout());
+    }
+    SECTION("an idle toolhead's empty switch is not") {
+        fsm.update_from_status(make_sensor_status(2, false));
+        drain();
+        CHECK(fsm.has_any_runout());
+        CHECK_FALSE(fsm.has_real_runout());
+    }
+    AmsState::instance().set_backend(nullptr);
 }
 
 TEST_CASE("has_real_runout: no AMS backend -> behaves like has_any_runout", "[runout][scope]") {
