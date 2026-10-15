@@ -66,31 +66,50 @@ def _edit(old: str, new: str) -> str:
 
 DECLARATION_ONLY = {
     "member function": _edit("    int get() const;\n", "    int get() const;\n    void set(int v);\n"),
-    "private plain member": _edit("    int n_;\n", "    int n_;\n    bool flag_;\n"),
-    "private std member": _edit("    int n_;\n", "    int n_;\n    std::function<void(int)> cb_;\n"),
-    "include": _edit("#include <string>\n", "#include <string>\n#include <vector>\n"),
+    "destructor": _edit("    Foo();\n", "    Foo();\n    ~Foo();\n"),
+    "deleted copy": _edit("    Foo();\n", "    Foo();\n    Foo(const Foo&) = delete;\n"),
+    "noexcept added": _edit("int get() const;", "int get() const noexcept;"),
+    "const added": _edit("int get() const;", "int get();"),
+    "pragma once": HEADER.replace("#pragma once\n", ""),
     "forward declaration": _edit("class Foo {", "class Bar;\nclass Foo {"),
-    "lone prototype": _edit("class Foo {", "void free_fn(int);\nclass Foo {"),
+    "opaque enum": _edit("class Foo {", "enum class E : int;\nclass Foo {"),
+    "friend class": _edit("  private:\n", "    friend class Peer;\n  private:\n"),
+    "access specifier": _edit("    Foo();\n", "  protected:\n    Foo();\n"),
     "static_assert": _edit("    int n_;\n", '    int n_;\n    static_assert(sizeof(int) == 4, "x");\n'),
-    "pure virtual": _edit("    int get() const;\n", "    int get() const;\n    virtual void tick() = 0;\n"),
     "signature change": _edit("int get() const;", "int get(int k) const;"),
     "new class, no base": _edit("class Foo {", "class Baz {\n  public:\n    void go();\n};\nclass Foo {"),
 }
 
 BEHAVIOURAL = {
+    "include added": _edit("#include <string>\n", "#include <string>\n#include <cmath>\n"),
     "member initializer": _edit("    int n_;\n", "    int n_;\n    bool flag_ = false;\n"),
     "brace initializer": _edit("    int n_;\n", "    int n_;\n    int m_{3};\n"),
+    "private plain member": _edit("    int n_;\n", "    int n_;\n    bool flag_;\n"),
+    "static data member": _edit("    int n_;\n", "    int n_;\n    static int count_;\n"),
     "member type change": _edit("int n_;", "long n_;"),
+    "member in a derived class": _edit("class Foo {", "class Foo : public Base {").replace("    int n_;\n", "    int n_;\n    int x_;\n"),
     "virtual added": _edit("int get() const;", "virtual int get() const;"),
+    "standalone virtual line": _edit("    int get() const;\n", "    virtual\n    int get() const;\n"),
+    "standalone static line": _edit("    int get() const;\n", "    static\n    int get();\n"),
+    "new virtual function": _edit("    int get() const;\n", "    int get() const;\n    virtual void tick();\n"),
+    "pure virtual": _edit("    int get() const;\n", "    int get() const;\n    virtual void tick() = 0;\n"),
+    "class to struct": _edit("class Foo {", "struct Foo {"),
+    "alignas": _edit("class Foo {", "class alignas(16) Foo {"),
+    "alignas on a new class": _edit("class Foo {", "class alignas(16) Bar {\n  public:\n    void go();\n};\nclass Foo {"),
+    "friend operator": _edit("  private:\n", "    friend bool operator==(const Foo&, const Foo&);\n  private:\n"),
+    "explicit specialisation": _edit("    int get() const;\n", "    int get() const;\n    template <> void put<int>(int);\n"),
+    "explicit instantiation": _edit("class Foo {", "template class Box<int>;\nclass Foo {"),
     "#define": _edit("#include <string>\n", "#include <string>\n#define X 1\n"),
     "inline body": _edit("    int get() const;\n", "    int get() const;\n    int twice() const { return 2 * n_; }\n"),
     "default argument": _edit("    int get() const;\n", "    int get() const;\n    void set(int v = 3);\n"),
     "macro at class scope": _edit("    Foo();\n", "    Foo();\n    HELIX_KIND(foo);\n"),
-    "user-typed member": _edit("    int n_;\n", "    int n_;\n    Logger log_;\n"),
     "public aggregate field": _edit("class Foo {", "struct P {\n    int a;\n};\nclass Foo {"),
     "enumerator": _edit("class Foo {", "enum class E { A, B };\nclass Foo {"),
     "class with a base": _edit("class Foo {", "class Baz : public Foo2 {\n  public:\n    void go();\n};\nclass Foo {"),
-    "overloaded prototype": _edit("class Foo {", "void f(int);\nvoid f(double);\nclass Foo {"),
+    "namespace prototype": _edit("class Foo {", "void free_fn(int);\nclass Foo {"),
+    "namespace alias": _edit("class Foo {", "using Id = int;\nclass Foo {"),
+    "class alias": _edit("    int n_;\n", "    int n_;\n    using value_type = int;\n"),
+    "extern": _edit("class Foo {", "extern int g_counter;\nclass Foo {"),
     "namespace variable": _edit("class Foo {", "int g_counter;\nclass Foo {"),
     "using-declaration": _edit("    int get() const;\n", "    int get() const;\n    using Base::get;\n"),
 }
@@ -119,19 +138,14 @@ def test_explicit_added_to_an_existing_constructor_is_mutated():
 
 
 def test_a_whole_new_header_of_declarations_is_skipped():
-    assert _reason("", HEADER)
+    hdr = HEADER.replace("#include <string>\n", "").replace("  private:\n    int n_;\n", "")
+    assert _reason("", hdr)
 
 
 def test_a_declaration_beside_a_body_change_is_mutated():
     pre = "int f(int n) {\n    return n + 1;\n}\n"
-    post = "void g(int);\nint f(int n) {\n    return n + 2;\n}\n"
+    post = "class G;\nint f(int n) {\n    return n + 2;\n}\n"
     assert _reason(pre, post) is None
-
-
-def test_moving_a_data_member_is_mutated():
-    # Declaration order is initialisation order, so a moved member is behaviour.
-    moved = HEADER.replace("  private:\n    int n_;\n", "    int n_;\n  private:\n")
-    assert _reason(HEADER, moved) is None
 
 
 # ---------------------------------------------------------------------------
@@ -161,7 +175,7 @@ grep -q NEW_BEHAVIOR src/feature.cpp || {
     echo "assertions: 1 | 1 failed"
     exit 1
 }
-grep -q NEW_TOO src/other.cpp 2>/dev/null || [ ! -e src/other.cpp ] || {
+[ ! -e .mutant-expect-other ] || grep -q NEW_TOO src/other.cpp 2>/dev/null || {
     echo "tests/unit/test_other.cpp:3: FAILED:"
     echo "assertions: 1 | 1 failed"
     exit 1
@@ -367,8 +381,8 @@ def test_declaration_only_hunks_are_reported_and_keep_the_run_clean(tmp_path):
     assert r.returncode == 0, r.stdout
     assert "skipped (declaration-only): member function declaration" in r.stdout
     assert "1 hunk(s) skipped (declaration-only)" in r.stdout
-    assert "VERDICT: CLEAN" in r.stdout
-    assert "every behavioural hunk was mutated" in r.stdout
+    assert "VERDICT: CLEAN (1 hunk(s) not built: declaration-only, unexamined)" in r.stdout
+    assert "every other hunk was mutated" in r.stdout
     # Never counted as a kill.
     assert "1 hunk(s) mutated: killed=1" in r.stdout
 
@@ -429,13 +443,19 @@ def test_no_record_writes_nothing(tmp_path):
     assert _proven(work) == set()
 
 
+def _commit_other_fix(work, msg="the fix"):
+    """Commit a new src/other.cpp the stub suite checks for."""
+    (work / ".mutant-expect-other").write_text("1\n")
+    (work / "src" / "other.cpp").write_text("int g() { return 2; }  // NEW_TOO\n")
+    _git(work, "add", "src/other.cpp")
+    _git(work, "commit", "-qm", msg)
+
+
 def _proven_then_new_change(tmp_path):
     work = _fixture(tmp_path)
     _git(work, "commit", "-qam", "change")
     assert _mutate(work).returncode == 0
-    (work / "src" / "other.cpp").write_text("int g() { return 2; }  // NEW_TOO\n")
-    _git(work, "add", "src/other.cpp")
-    _git(work, "commit", "-qm", "the fix")
+    _commit_other_fix(work)
     return work
 
 
@@ -490,3 +510,84 @@ def test_a_delta_that_edits_a_test_falls_back_to_the_fork_point(tmp_path):
     assert "not used: tests/ has lines removed or edited" in r.stdout
     assert "merge-base with main" in r.stdout
     assert "src/feature.cpp:1" in r.stdout
+
+
+def test_since_a_commit_nobody_proved_records_nothing(tmp_path):
+    work = _fixture(tmp_path)
+    _git(work, "commit", "-qam", "change")
+    _commit_other_fix(work, "more")
+    r = _mutate(work, "--since", "HEAD~1")
+    assert r.returncode == 0, r.stdout
+    assert "is not a proven commit" in r.stdout
+    assert _proven(work) == set()
+
+
+def test_an_arbitrary_base_records_nothing(tmp_path):
+    work = _fixture(tmp_path)
+    _git(work, "commit", "-qam", "change")
+    _commit_other_fix(work, "more")
+    r = _mutate(work, "--base", "HEAD~1")
+    assert "neither the fork point nor a proven commit" in r.stdout, r.stdout
+    assert _proven(work) == set()
+
+
+def test_a_base_naming_the_fork_point_records(tmp_path):
+    work = _fixture(tmp_path)
+    _git(work, "commit", "-qam", "change")
+    assert _mutate(work, "--base", "main").returncode == 0
+    assert _proven(work) == {_git(work, "rev-parse", "HEAD").strip()}
+
+
+def test_since_a_proven_commit_records(tmp_path):
+    work = _proven_then_new_change(tmp_path)
+    (proven,) = _proven(work)
+    r = _mutate(work, "--since", proven)
+    assert r.returncode == 0, r.stdout
+    assert _git(work, "rev-parse", "HEAD").strip() in _proven(work)
+
+
+def test_head_moving_during_the_run_records_nothing(tmp_path):
+    drift = FAST_MAKEFILE.replace(
+        "test-build:\n", "test-build:\n\t@grep -q NEW_BEHAVIOR src/feature.cpp || "
+                         "git commit -q --allow-empty -m drift\n")
+    work = _fixture(tmp_path, drift)
+    _git(work, "commit", "-qam", "change")
+    r = _mutate(work)
+    assert r.returncode == 0, r.stdout
+    assert "HEAD moved during the run" in r.stdout
+    assert _proven(work) == set()
+
+
+def test_an_untracked_test_file_records_nothing(tmp_path):
+    work = _fixture(tmp_path)
+    _git(work, "commit", "-qam", "change")
+    (work / "tests").mkdir()
+    (work / "tests" / "test_local.cpp").write_text("CHECK(f(0) == 2);\n")
+    r = _mutate(work)
+    assert "untracked files under tests/, src/ or include/" in r.stdout, r.stdout
+    assert _proven(work) == set()
+
+
+def test_not_covered_paths_ride_along_with_the_proof(tmp_path):
+    work = _fixture(tmp_path)
+    (work / "tests").mkdir()
+    (work / "tests" / "test_feature.cpp").write_text("CHECK(f(0) == 2);\n")
+    _git(work, "add", ".")
+    _git(work, "commit", "-qm", "change + test")
+    assert _mutate(work).returncode == 3
+    proven = _git(work, "rev-parse", "HEAD").strip()
+    note = _git(work, "notes", "--ref", md.PROOF_REF, "show", proven)
+    assert "not-covered: tests/test_feature.cpp" in note
+    _commit_other_fix(work)
+    r = _mutate(work)
+    assert "last commit proven by mutate-diff" in r.stdout
+    assert f"NOT COVERED tests/test_feature.cpp - not covered when {proven[:12]} was proven" in r.stdout
+    assert r.returncode == 3, r.stdout
+    assert "VERDICT: CLEAN" not in r.stdout
+
+
+def test_a_tracked_child_does_not_start_with_stop_signals_blocked(tmp_path):
+    rc, out = md.run_tracked(["grep", "^SigBlk", "/proc/self/status"], str(tmp_path))
+    mask = int(out.split()[1], 16)
+    for sig in md.STOP_SIGNALS:
+        assert not mask & (1 << (sig - 1)), out

@@ -1027,10 +1027,9 @@ reset_to() {
     [ "$cpp_at" -lt "$hdr_at" ]
 }
 
-@test "an include-only hunk is skipped, not reported as a survivor" {
-    # An include has no behaviour to detect, and reverting one usually still
-    # compiles because the symbol arrives transitively - the one hunk shape
-    # guaranteed to cost a full build and come back SURVIVED.
+@test "an include-only hunk is mutated, not skipped" {
+    # A dropped include can flip an #if, change which overload a call picks
+    # (<cmath> abs) or lose a specialisation, and still compile.
     stub_tests_that_ignore
     reset_to 'int f(int n) {
     return n + 1;
@@ -1041,9 +1040,8 @@ int f(int n) {
 }
 '
     run mutate
-    [ "$status" -eq 0 ]
-    contains "skipped (declaration-only): include" "$output"
-    [[ "$output" != *"SURVIVED"* ]]
+    [[ "$output" != *"declaration-only"* ]] || false
+    contains "SURVIVED" "$output"
 }
 
 @test "an include riding along with a code change is still mutated" {

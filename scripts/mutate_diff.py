@@ -74,17 +74,15 @@
 #                --no-skip-comments mutates them anyway.
 #   skipped (declaration-only)
 #                every changed line of a C/C++ hunk is a declaration whose
-#                revert can only fail to compile or do nothing: an #include,
-#                a forward declaration, a member function declaration, a
-#                private data member of a plain type with no initializer, a
-#                prototype with no overload beside it. A build would spend
-#                minutes to reach `uncompilable`, which judges nothing; the
-#                behaviour lives in the definition, whose own hunk is mutated.
-#                Never a kill. These hunks do not stop a run being CLEAN, and
-#                the CLEAN line names how many there were: what they leave
-#                unexamined is the compiler's question, not a test's. See
-#                DECLARATION-ONLY below for what does not qualify.
-#                --no-skip-declarations mutates them anyway.
+#                revert can only fail to compile: a forward declaration, a
+#                non-virtual member function or destructor declaration, an
+#                access specifier, a static_assert, #pragma once. A build
+#                would spend minutes to reach `uncompilable`, which judges
+#                nothing; the behaviour lives in the definition, whose own
+#                hunk is mutated. Never a kill. These hunks do not stop a run
+#                being CLEAN, and the CLEAN line says how many were not built
+#                and so are unexamined. See DECLARATION-ONLY below for the
+#                exact list. --no-skip-declarations mutates them anyway.
 #   EXCLUDED     scripts/untestable_paths.txt names the file, with a reason.
 #                A reviewed, in-tree decision rather than an omission.
 #
@@ -116,16 +114,21 @@
 #
 # THE DELTA SINCE A PROVEN COMMIT
 #
-# A run that finds nothing unexamined (every mutatable hunk killed or skipped;
-# NOT COVERED paths aside, since no rerun would examine them either) records the
-# HEAD it proved as a git note under refs/notes/mutate-proven, when the tracked
-# tree matches HEAD. The next run with no --base starts from the newest proven
+# A run that finds nothing unexamined (every mutatable hunk killed or skipped)
+# records the HEAD it proved as a git note under refs/notes/mutate-proven. Only
+# when its base is the fork point or itself a proven commit, so nothing before
+# the base goes uncertified; only when HEAD is still the commit the hunks came
+# from, the tracked tree matches it, and nothing untracked sits under tests/,
+# src/ or include/. The note lists the run's NOT COVERED paths, and a run that
+# starts from that proof reports them again, so a CLEAN delta cannot stand in for
+# the whole branch. The next run with no --base starts from the newest proven
 # commit on the branch instead of the fork point, so landing a fix mutates the
 # fix rather than the whole branch again. The proof holds only while the tests
 # that killed those mutants do, so a delta that removes or edits a line under
 # tests/ falls back to the fork point and says why. --since <sha> names the
-# proven commit by hand (it must be an ancestor of HEAD); --whole-branch ignores
-# the record; --no-record writes none.
+# proven commit by hand (it must be an ancestor of HEAD, and a commit no run
+# proved is accepted but records nothing); --whole-branch ignores the record;
+# --no-record writes none.
 #
 # SAFETY
 #
@@ -645,38 +648,36 @@ def hunk_is_comment_only(root, base, h, cache):
 # CODE. The same rule as the comment scanner: a wrong "code" costs one build,
 # a wrong "declaration" drops a behavioural change unexamined.
 #
-# Declarations, and why each is compile-or-nothing:
+# The only shapes skipped, and why each is compile-or-nothing:
 #
-#   #include, #pragma once    no behaviour; a symbol that was needed stops
-#                             resolving
-#   forward declaration       `class X;` is a name; its absence is a compile error
-#   member function decl      the out-of-line definition needs its declaration,
-#                             and a changed signature no longer matches it.
-#                             Not when virtual/explicit/static/constexpr/inline
-#                             change between the sides: dropping `virtual`
-#                             or `explicit` compiles and changes dispatch or
-#                             conversions
-#   access specifier, friend  access only gates what compiles
+#   #pragma once              no behaviour
+#   forward declaration       `class X;`, `enum class E : int;`: a name, whose
+#                             absence is a compile error
+#   access specifier,         access only gates what compiles
+#   friend class
 #   static_assert             a compile-time check by definition
-#   private/protected data    removing an unused one changes nothing; a used
-#   member, no initializer    one stops compiling. Only for pointers,
-#                             references, fundamental types, `*_t` and std::
-#                             types: a user-defined type's default constructor
-#                             can have effects. Only private or protected,
-#                             because a public member of an aggregate shifts
-#                             what positional brace-initialisation assigns
-#   prototype, alias, extern  at namespace scope, only when no other
-#                             declaration of the same name is in the file: a
-#                             removed overload can let a call resolve to another
-#   class head, no bases      the block that holds the declarations above
+#   member function or        the out-of-line definition needs a matching
+#   destructor declaration    declaration, so removing one or changing its
+#                             signature, `const` or `noexcept` fails to compile.
+#                             `= delete` included. Never when it is `virtual`
+#                             (pure or not) or `explicit`, which compile without
+#                             it into different dispatch or conversions, nor when
+#                             its static/constexpr/inline differ from the same
+#                             declaration on the other side, touched or not
+#   class head                no alignas, no base clause, and not changed
+#                             between the sides (class <-> struct moves default
+#                             access and aggregate-ness)
 #
-# A data member, prototype or alias whose NAME appears on both sides of the hunk
-# is a changed declaration rather than an added or removed one (a type change,
-# a reordering that moves initialisation order), and that is CODE.
-# Initialisers, default arguments, `= default`, inline bodies, enumerators,
-# #define and every other preprocessor line are CODE.
+# Everything else is CODE, including: every #include (a dropped one can flip an
+# #if, change which overload a call picks, or lose a specialisation), data
+# members of any kind (a removed member lets an outer name take over in member
+# bodies, and a base class's can shadow), namespace-scope prototypes, aliases
+# and externs (another file's overload or outer alias can take over), friend
+# functions and operators (found by ADL), explicit specialisations and
+# instantiations, initialisers, default arguments, `= default`, inline bodies,
+# enumerators and every other preprocessor line.
 # ---------------------------------------------------------------------------
-_PP_DECL = re.compile(r'^#\s*(?:include\b|pragma\s+once\s*$)')
+_PP_DECL = re.compile(r'^#\s*pragma\s+once\s*$')
 _ACCESS = ('public', 'private', 'protected')
 _FUNC_SPECS = frozenset(('virtual', 'explicit', 'static', 'constexpr', 'consteval', 'inline'))
 _FUNDAMENTAL = frozenset((
@@ -694,13 +695,14 @@ _IDENT = re.compile(r'[A-Za-z_]\w*')
 
 class DeclAtom:
     """One statement, block head or brace, and whether it is a pure declaration."""
-    __slots__ = ('first', 'last', 'ok', 'what', 'name', 'group', 'specs')
+    __slots__ = ('first', 'last', 'ok', 'what', 'name', 'group', 'specs', 'scope')
 
-    def __init__(self, first, last, ok, what, name=None, group=None, specs=frozenset()):
+    def __init__(self, first, last, ok, what, name=None, group=None, specs=frozenset(),
+                 scope=None):
         self.first, self.last, self.ok, self.what = first, last, ok, what
-        # group 'func': a function declaration (modification rule on specs);
-        # group 'named': a data member, prototype or alias (the name rule).
-        self.name, self.group, self.specs = name, group, specs
+        # group 'func': a member function declaration (the specifier rule);
+        # group 'named': a class head (the name rule).
+        self.name, self.group, self.specs, self.scope = name, group, specs, scope
 
 
 def _strip_angles(t):
@@ -733,6 +735,10 @@ def _strip_prefixes(t):
 
 def _classify_statement(text, block, first, last):
     """DeclAtom for one `;`-terminated statement in a class or namespace scope."""
+    # `template <>` and `template class X<int>;`: an explicit specialisation or
+    # instantiation chooses which definition a call gets.
+    if re.match(r'^\s*(?:\[\[.*?\]\]\s*)*template\s*(?:<\s*>|(?!<))', text, re.S):
+        return DeclAtom(first, last, False, 'explicit specialisation or instantiation')
     t = _strip_prefixes(text.strip().rstrip(';'))
     if t is None:
         return DeclAtom(first, last, False, 'unbalanced template header')
@@ -741,18 +747,18 @@ def _classify_statement(text, block, first, last):
         return DeclAtom(first, last, True, 'empty statement')
     if t.startswith('static_assert'):
         return DeclAtom(first, last, True, 'static_assert')
-    if in_class and re.match(r'^friend\b[^{]*$', t) and '=' not in t:
-        return DeclAtom(first, last, True, 'friend declaration')
-    m = re.match(r'^(?:class|struct|union)\s+([A-Za-z_]\w*)$', t)
-    if m:
+    if t.startswith('friend'):
+        # A friend function or operator is found by ADL; removing it can hand
+        # the call to another overload. A friend class only gates access.
+        if in_class and re.match(r'^friend\s+(?:class|struct|union)\s+[\w:]+$', t):
+            return DeclAtom(first, last, True, 'access specifier')
+        return DeclAtom(first, last, False, 'friend function')
+    if re.match(r'^(?:class|struct|union)\s+[A-Za-z_]\w*$', t) or \
+            re.match(r'^enum(?:\s+(?:class|struct))?\s+[A-Za-z_]\w*\s*:\s*[\w:\s]+$', t):
         return DeclAtom(first, last, True, 'forward declaration')
-    if re.match(r'^enum(?:\s+(?:class|struct))?\s+[A-Za-z_]\w*\s*:\s*[\w:\s]+$', t):
-        return DeclAtom(first, last, True, 'opaque enum declaration')
-    m = re.match(r'^using\s+([A-Za-z_]\w*)\s*=', t)
-    if m:
-        return DeclAtom(first, last, True, 'alias', m.group(1), 'named')
     if t.startswith(('using ', 'namespace ', 'typedef ')):
-        return DeclAtom(first, last, False, 'using-declaration or typedef')
+        # An alias or using-declaration removed lets an outer one take over.
+        return DeclAtom(first, last, False, 'alias or using-declaration')
 
     t2 = _strip_angles(_OPERATOR.sub('operator_', t))
     if t2 is None or '?' in t2 or '{' in t2:
@@ -774,34 +780,20 @@ def _classify_statement(text, block, first, last):
                 return DeclAtom(first, last, False, 'macro invocation')
         elif not all(re.match(r'^(?:[A-Za-z_][\w:]*|\*|&|&&)$', w) for w in typed):
             return DeclAtom(first, last, False, 'not a plain function declaration')
-        if in_class:
-            return DeclAtom(first, last, True, 'member function declaration', name, 'func', specs)
-        return DeclAtom(first, last, True, 'function prototype', name, 'named', specs)
-    if '=' in t2:
-        return DeclAtom(first, last, False, 'initializer')
-
-    words = re.sub(r'\[[^\]]*\]', ' ', t2)
-    words = re.sub(r'(?<!:):(?!:).*$', ' ', words)          # bit-field width
-    words = words.replace('*', ' * ').replace('&', ' & ').split()
-    if len(words) < 2 or not _IDENT.fullmatch(words[-1]) or ',' in t2:
-        return DeclAtom(first, last, False, 'not a single declaration')
-    name, type_words = words[-1], words[:-1]
-    if not in_class:
-        if type_words[0] == 'extern':
-            return DeclAtom(first, last, True, 'extern declaration', name, 'named')
-        return DeclAtom(first, last, False, 'variable definition')
-    if 'static' in type_words:
-        return DeclAtom(first, last, True, 'static data member declaration', name, 'named')
-    if block['access'] not in ('private', 'protected'):
-        return DeclAtom(first, last, False, 'public data member (aggregate initialisation)')
-    plain = ('*' in type_words or '&' in type_words
-             or all(w in _FUNDAMENTAL for w in type_words)
-             or (len([w for w in type_words if w not in _FUNDAMENTAL]) == 1
-                 and re.match(r'^(?:std::[\w:]+|[A-Za-z_]\w*_t)$',
-                              next(w for w in type_words if w not in _FUNDAMENTAL))))
-    if not plain:
-        return DeclAtom(first, last, False, 'data member of a type that may construct with effects')
-    return DeclAtom(first, last, True, 'private data member without an initializer', name, 'named')
+        if not in_class:
+            # Removing a prototype can let a call compile against an overload
+            # declared somewhere else.
+            return DeclAtom(first, last, False, 'namespace-scope prototype')
+        if specs & {'virtual', 'explicit'}:
+            # Dispatch and implicit conversion: dropping either still compiles.
+            return DeclAtom(first, last, False, 'virtual or explicit declaration')
+        if re.search(r'=\s*0$', m.group('post')):
+            return DeclAtom(first, last, False, 'pure virtual declaration')
+        what = ('deleted function declaration' if re.search(r'=\s*delete$', m.group('post'))
+                else 'destructor declaration' if name.startswith('~')
+                else 'member function declaration')
+        return DeclAtom(first, last, True, what, name, 'func', specs, block.get('name'))
+    return DeclAtom(first, last, False, 'data or variable declaration')
 
 
 def _classify_block_head(head, first, last):
@@ -811,13 +803,15 @@ def _classify_block_head(head, first, last):
         return 'code', None, DeclAtom(first, last, False, 'unbalanced template header')
     if re.match(r'^(?:inline\s+)?namespace(?:\s+[\w:]+)?$', t) or re.match(r'^extern\s+"C(?:\+\+)?"$', t):
         return 'namespace', None, DeclAtom(first, last, True, 'namespace')
-    m = re.match(r'^(class|struct|union)(?:\s+alignas\s*\([^()]*\))?(?:\s+([A-Za-z_]\w*))?'
+    m = re.match(r'^(class|struct|union)(\s+alignas\s*\([^()]*\))?(?:\s+([A-Za-z_]\w*))?'
                  r'(?:\s+final)?\s*(:(?!:).*)?$', t)
     if m:
-        kind = m.group(1)
-        if m.group(3):
-            return 'class:' + kind, m.group(2), DeclAtom(first, last, False, 'class head with a base clause')
-        return 'class:' + kind, m.group(2), DeclAtom(first, last, True, 'class head')
+        kind, name = m.group(1), m.group(3)
+        if m.group(2) or m.group(4):
+            return 'class:' + kind, name, DeclAtom(first, last, False, 'class head with alignas or a base')
+        # Named, so a head changed between class and struct (default access,
+        # aggregate-ness) meets itself on both sides and is mutated.
+        return 'class:' + kind, name, DeclAtom(first, last, True, 'class head', name, 'named')
     return 'code', None, DeclAtom(first, last, False, 'code block')
 
 
@@ -991,20 +985,18 @@ def declaration_only_reason(pre, post, removed, added, path=''):
 
     named = lambda atoms: {a.name for a in atoms if a.group == 'named'}
     if named(old) & named(new):
-        return None                         # a declaration that changed form
-    funcs = lambda atoms: {}.fromkeys(a.name for a in atoms if a.group == 'func')
-    for name in set(funcs(old)) & set(funcs(new)):
-        specs_old = {a.specs for a in old if a.group == 'func' and a.name == name}
-        specs_new = {a.specs for a in new if a.group == 'func' and a.name == name}
-        if specs_old != specs_new:
-            return None                     # virtual/explicit/static changed
-    # A prototype with an overload beside it: removing it can let a call
-    # compile against the other one.
-    for side, all_atoms in ((old, pre_atoms), (new, post_atoms)):
+        return None                         # a class head that changed form
+    # A member function declaration whose specifiers differ from its
+    # counterpart on the other side, touched by the hunk or not: a lone
+    # `static` or `constexpr` line changes the declaration it belongs to.
+    for side, other in ((old, post_atoms), (new, pre_atoms)):
         for a in side:
-            if a.group == 'named' and a.what == 'function prototype':
-                if sum(1 for b in all_atoms if b.name == a.name and b.group) > 1:
-                    return None
+            if a.group != 'func':
+                continue
+            twins = {b.specs for b in other
+                     if b.group == 'func' and b.name == a.name and b.scope == a.scope}
+            if twins and a.specs not in twins:
+                return None
     kinds = sorted({a.what for a in old + new
                     if a.what not in ('empty statement', 'closing brace', 'namespace', 'class head')})
     return ', '.join(kinds) if kinds else 'declaration scaffolding'
@@ -1174,7 +1166,25 @@ def tracked_proc(cmd, cwd, stdin=False):
     """
     if RUN_STATE.out_of_time:
         raise OutOfTime()
-    p = subprocess.Popen(
+    # A stop signal between Popen returning and the append would leave a child
+    # the handler cannot see, still writing after the restore. The signals are
+    # held across both; the child unblocks them before exec, or it would start
+    # deaf to the SIGTERM a stop sends it.
+    old_mask = signal.pthread_sigmask(signal.SIG_BLOCK, STOP_SIGNALS)
+    try:
+        p = _popen_tracked(cmd, cwd, stdin)
+        _live_procs.append(p)
+    finally:
+        signal.pthread_sigmask(signal.SIG_SETMASK, old_mask)
+    return p
+
+
+def _unblock_stop_signals():
+    signal.pthread_sigmask(signal.SIG_UNBLOCK, STOP_SIGNALS)
+
+
+def _popen_tracked(cmd, cwd, stdin):
+    return subprocess.Popen(
         cmd,
         # errors='replace': a mutant can make the code under test dump raw
         # bytes into a Catch2 failure message, and a strict decode turns that
@@ -1182,9 +1192,7 @@ def tracked_proc(cmd, cwd, stdin=False):
         # to be killed. A compiler quoting a source line can do the same.
         cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
         stdin=subprocess.PIPE if stdin else subprocess.DEVNULL,
-        errors='replace', start_new_session=True)
-    _live_procs.append(p)
-    return p
+        errors='replace', start_new_session=True, preexec_fn=_unblock_stop_signals)
 
 
 def untrack_proc(p):
@@ -1671,11 +1679,42 @@ def tests_weakened_since(root, sha):
                for ln in r.stdout.splitlines())
 
 
-def record_proof(root, message):
-    """(recorded, why not) for noting HEAD as proven."""
+NOTE_UNCOVERED = 'not-covered: '
+
+
+def proof_uncovered(root, sha):
+    """The NOT COVERED paths a proof was recorded with, from its note."""
+    r = run(['git', 'notes', '--ref', PROOF_REF, 'show', sha], cwd=root)
+    if r.returncode != 0:
+        return []
+    return [ln[len(NOTE_UNCOVERED):].strip() for ln in r.stdout.splitlines()
+            if ln.startswith(NOTE_UNCOVERED)]
+
+
+def proof_message(summary, uncovered_paths):
+    """A note body: the summary line, then one line per NOT COVERED path."""
+    return '\n'.join([summary] + [NOTE_UNCOVERED + p_ for p_ in sorted(set(uncovered_paths))])
+
+
+def record_proof(root, message, head):
+    """(recorded, why not) for noting `head`, the commit the hunks came from.
+
+    Refused when HEAD moved during the run (the hunks were not that commit's),
+    when the tracked tree differs from it, or when an untracked file sits where
+    a build or a suite would read it: any of those means what was proven is not
+    the commit the note would name.
+    """
+    now = run(['git', 'rev-parse', 'HEAD'], cwd=root).stdout.strip()
+    if now != head:
+        return False, f'HEAD moved during the run ({head[:12]} -> {now[:12]})'
     if run(['git', 'diff', '--quiet', '--ignore-submodules=all', 'HEAD'], cwd=root).returncode != 0:
         return False, 'the tracked tree differs from HEAD, so HEAD is not what was proven'
-    r = run(['git', 'notes', '--ref', PROOF_REF, 'add', '-f', '-m', message, 'HEAD'], cwd=root)
+    untracked = run(['git', 'ls-files', '--others', '--exclude-standard', '--',
+                     'tests', 'src', 'include'], cwd=root).stdout.split()
+    if untracked:
+        return False, (f'untracked files under tests/, src/ or include/ ({untracked[0]}'
+                       f'{" ..." if len(untracked) > 1 else ""}) were part of what ran')
+    r = run(['git', 'notes', '--ref', PROOF_REF, 'add', '-f', '-m', message, head], cwd=root)
     if r.returncode != 0:
         return False, (r.stdout.strip().splitlines() or ['git notes failed'])[-1]
     return True, ''
@@ -1766,32 +1805,78 @@ def disarm_deadline():
     signal.setitimer(signal.ITIMER_REAL, 0)
 
 
+class RunBase:
+    """What a run measures against, and whether its result may be recorded.
+
+    A proof certifies HEAD, so it may only be written when everything before
+    the base is already certified: the base is the fork point, or itself a
+    proven commit. Anything else (an arbitrary --base, a --since nobody proved)
+    would certify commits the run never mutated.
+    """
+
+    def __init__(self, base, why, auto, recordable=True, not_recordable='', carried=()):
+        self.base, self.why, self.auto = base, why, auto
+        self.recordable, self.not_recordable = recordable, not_recordable
+        # NOT COVERED paths the proof this run starts from was recorded with:
+        # still unexamined, so they are reported again rather than dropped.
+        self.carried = list(carried)
+
+
+def _same_commit(root, a, b):
+    ra = run(['git', 'rev-parse', '--verify', '-q', f'{a}^{{commit}}'], cwd=root).stdout.strip()
+    rb = run(['git', 'rev-parse', '--verify', '-q', f'{b}^{{commit}}'], cwd=root).stdout.strip()
+    return bool(ra) and ra == rb
+
+
 def resolve_run_base(root, args):
-    """(base, why, auto) for this run, or (None, error, False).
+    """RunBase for this run, or (None, error) when the arguments cannot stand.
 
     `auto` is whether nothing the author typed chose the base, which is what the
     --max-hunks guard asks.
     """
+    fork, fork_why = resolve_base(root, None)
+    fork_ok = fork != 'HEAD'
+    no_fork = 'no fork point resolved, so the run cannot cover the branch'
+    proven_set = proven_commits(root)
+
+    def proven_sha(ref):
+        sha = run(['git', 'rev-parse', '--verify', '-q', f'{ref}^{{commit}}'], cwd=root).stdout.strip()
+        return sha if sha in proven_set else None
+
     if args.since:
         if run(['git', 'merge-base', '--is-ancestor', args.since, 'HEAD'],
                cwd=root).returncode != 0:
             return None, (f'--since {args.since} is not an ancestor of HEAD, so the '
                           f'delta since it is not this branch\'s change. Pass the '
-                          f'commit the last clean run proved, or --base.'), False
-        return args.since, f'--since {args.since} (only what changed after it)', False
-    base, why = resolve_base(root, args.base)
-    if args.base or args.whole_branch:
-        return base, why, not args.base
-    proven = latest_proven(root, base)
+                          f'commit the last clean run proved, or --base.')
+        why = f'--since {args.since} (only what changed after it)'
+        sha = proven_sha(args.since)
+        if sha:
+            return RunBase(args.since, why, False, carried=proof_uncovered(root, sha))
+        return RunBase(args.since, why, False, False,
+                       f'--since {args.since} is not a proven commit, so the commits '
+                       f'before it were never mutated')
+    if args.base:
+        base, why = resolve_base(root, args.base)
+        sha = proven_sha(base)
+        if sha:
+            return RunBase(base, why, False, carried=proof_uncovered(root, sha))
+        if fork_ok and _same_commit(root, base, fork):
+            return RunBase(base, why, False)
+        return RunBase(base, why, False, False,
+                       f'--base {args.base} is neither the fork point nor a proven commit')
+    if args.whole_branch or not fork_ok:
+        return RunBase(fork, fork_why, True, fork_ok, no_fork)
+    proven = latest_proven(root, fork)
     if not proven:
-        return base, why, True
-    fork = short_sha(root, base)
+        return RunBase(fork, fork_why, True)
     if tests_weakened_since(root, proven):
         print(f'proven commit {short_sha(root, proven)} not used: tests/ has lines removed '
               f'or edited since it, which can undo the kills it recorded')
-        return base, why, True
-    return proven, (f'last commit proven by mutate-diff on this branch '
-                    f'(--whole-branch for everything since {fork})'), True
+        return RunBase(fork, fork_why, True)
+    return RunBase(proven, (f'last commit proven by mutate-diff on this branch '
+                            f'(--whole-branch for everything since {short_sha(root, fork)})'),
+                   True, carried=proof_uncovered(root, proven))
 
 
 def main():
@@ -1856,10 +1941,13 @@ def main():
     parent = os.getppid()
     started = time.monotonic()
 
-    base, base_why, auto_base_ = resolve_run_base(root, args)
-    if base is None:
-        print(f'FAIL: {base_why}', file=sys.stderr)
+    rb = resolve_run_base(root, args)
+    if isinstance(rb, tuple):
+        print(f'FAIL: {rb[1]}', file=sys.stderr)
         return 2
+    base, base_why, auto_base_ = rb.base, rb.why, rb.auto
+    # The commit a proof would name: the one the hunks are computed against.
+    head_at_start = run(['git', 'rev-parse', 'HEAD'], cwd=root).stdout.strip()
     hunks = collect_hunks(root, base)
     files = changed_files(root, base)
     untestable = load_untestable(root)
@@ -1961,6 +2049,11 @@ def main():
             continue
         needed.update(STRATEGIES[strategy]['suites'])
     uncovered += [(label, 1, why) for label, why in unrunnable]
+    # What the proof this run starts from left unexamined is still unexamined:
+    # a delta run must not read as clean about the whole branch.
+    seen = {path for path, _, _ in uncovered}
+    uncovered += [(path, 0, f'not covered when {base[:12]} was proven')
+                  for path in rb.carried if path not in seen]
 
     for label, reason in skipped_untestable:
         print(f'  EXCLUDED    {label} - {reason}')
@@ -1992,12 +2085,18 @@ def main():
         if unrunnable:
             print('not recorded as proven: some hunks had no suite installed to judge them')
             return
+        if not rb.recordable:
+            print(f'not recorded as proven: {rb.not_recordable}')
+            return
         ok, why = record_proof(
-            root, f'mutate-diff: every mutatable hunk vs {base[:12]} killed or skipped '
-                  f'({n_killed} killed, {len(skipped_decl)} declaration-only, '
-                  f'{len(uncovered)} path(s) not covered); tests {args.tests!r}')
+            root, proof_message(
+                f'mutate-diff: every mutatable hunk vs {base[:12]} killed or skipped '
+                f'({n_killed} killed, {len(skipped_decl)} declaration-only, '
+                f'{len(uncovered)} path(s) not covered); tests {args.tests!r}',
+                [path for path, _, _ in uncovered]),
+            head_at_start)
         if ok:
-            print(f'proven: HEAD {short_sha(root, "HEAD")} recorded in {PROOF_REF}; '
+            print(f'proven: HEAD {head_at_start[:12]} recorded in {PROOF_REF}; '
                   f'the next run starts from it (--whole-branch to override)')
         else:
             print(f'not recorded as proven: {why}')
@@ -2014,8 +2113,8 @@ def main():
             return 0 if args.allow_incomplete else 3
         print('\nVERDICT: nothing in this change is mutatable, and nothing was skipped.'
               if not skipped_decl else
-              f'\nVERDICT: CLEAN - nothing behavioural to mutate; '
-              f'{len(skipped_decl)} hunk(s) skipped (declaration-only).')
+              f'\nVERDICT: CLEAN ({len(skipped_decl)} hunk(s) not built: declaration-only, '
+              f'unexamined) - no other hunk to mutate.')
         return 0
 
     # A count far above the size of the change means the base is wrong, and the
@@ -2225,9 +2324,9 @@ def main():
     timeout_note = (f' ({n_by_timeout} by timeout: re-confirmed hang)'
                     if n_by_timeout else '')
     if skipped_decl:
-        print(f'\nVERDICT: CLEAN{timeout_note} - every behavioural hunk was mutated and '
-              f'every mutant was killed; {len(skipped_decl)} hunk(s) skipped '
-              f'(declaration-only).')
+        print(f'\nVERDICT: CLEAN ({len(skipped_decl)} hunk(s) not built: declaration-only, '
+              f'unexamined){timeout_note} - every other hunk was mutated and every '
+              f'mutant was killed.')
     else:
         print(f'\nVERDICT: CLEAN{timeout_note} - every changed hunk was mutated and '
               f'every mutant was killed.')
