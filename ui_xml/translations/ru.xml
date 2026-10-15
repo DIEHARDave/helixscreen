@@ -5,21 +5,46 @@
   <translation tag=" left" ru=" осталось"/>
   <translation tag=" · was {:.0f}%" ru=" · было {:.0f}%"/>
   <translation tag="&quot;%s&quot; failed to load" ru="Не удалось загрузить «%s»"/>
-  <translation tag="%d additional fan%s" ru="%d дополнительный вентилятор%s"/>
-  <translation tag="%d feeders" ru="%d фидеров"/>
-  <translation tag="%d gates" ru="%d шлюзов"/>
-  <translation tag="%d lanes" ru="%d каналов"/>
+  <translation tag="%d additional fan" ru="%d дополнительный вентилятор"/>
+  <translation tag="%d additional fans" ru="%d дополнительных вентилятора"/>
+  <translation tag="%d additional fans_few" ru="%d дополнительных вентилятора"/>
+  <translation tag="%d additional fans_many" ru="%d дополнительных вентиляторов"/>
+  <translation tag="%d additional fans_one" ru="%d дополнительный вентилятор"/>
+  <translation tag="%d feeders" ru="%d фидера"/>
+  <translation tag="%d feeders_few" ru="%d фидера"/>
+  <translation tag="%d feeders_many" ru="%d фидеров"/>
+  <translation tag="%d feeders_one" ru="%d фидер"/>
+  <translation tag="%d gates" ru="%d шлюза"/>
+  <translation tag="%d gates_few" ru="%d шлюза"/>
+  <translation tag="%d gates_many" ru="%d шлюзов"/>
+  <translation tag="%d gates_one" ru="%d шлюз"/>
+  <translation tag="%d lanes" ru="%d канала"/>
+  <translation tag="%d lanes_few" ru="%d канала"/>
+  <translation tag="%d lanes_many" ru="%d каналов"/>
+  <translation tag="%d lanes_one" ru="%d канал"/>
   <translation tag="%d min" ru="%d мин"/>
   <translation tag="%d min left" ru="осталось %d мин"/>
   <translation tag="%d mm/s" ru="%d mm/s"/>
-  <translation tag="%d more sensors" ru="Ещё %d датчиков"/>
+  <translation tag="%d more sensors" ru="Ещё %d датчика"/>
+  <translation tag="%d more sensors_few" ru="Ещё %d датчика"/>
+  <translation tag="%d more sensors_many" ru="Ещё %d датчиков"/>
+  <translation tag="%d more sensors_one" ru="Ещё %d датчик"/>
   <translation tag="%d objects" ru="Объектов: %d"/>
   <translation tag="%d of %d printing" ru="%d из %d печатается"/>
   <translation tag="%d profiles" ru="Профилей: %d"/>
   <translation tag="%d skipped" ru="Пропущено: %d"/>
-  <translation tag="%d slots" ru="%d слотов"/>
-  <translation tag="%d toolheads" ru="%d печатающих головок"/>
-  <translation tag="%d tools" ru="%d инструментов"/>
+  <translation tag="%d slots" ru="%d слота"/>
+  <translation tag="%d slots_few" ru="%d слота"/>
+  <translation tag="%d slots_many" ru="%d слотов"/>
+  <translation tag="%d slots_one" ru="%d слот"/>
+  <translation tag="%d toolheads" ru="%d печатающие головки"/>
+  <translation tag="%d toolheads_few" ru="%d печатающие головки"/>
+  <translation tag="%d toolheads_many" ru="%d печатающих головок"/>
+  <translation tag="%d toolheads_one" ru="%d печатающая головка"/>
+  <translation tag="%d tools" ru="%d инструмента"/>
+  <translation tag="%d tools_few" ru="%d инструмента"/>
+  <translation tag="%d tools_many" ru="%d инструментов"/>
+  <translation tag="%d tools_one" ru="%d инструмент"/>
   <translation tag="%d units" ru="%d ед."/>
   <translation tag="%d-%d" ru="%d-%d"/>
   <translation tag="%d-%d°C" ru="%d-%d°C"/>
@@ -30,7 +55,10 @@
   <translation tag="%dm" ru="%d мин"/>
   <translation tag="%dm %02ds" ru="%d мин %02d с"/>
   <translation tag="%ds" ru="%d с"/>
-  <translation tag="%lu days ago" ru="%lu дн. назад"/>
+  <translation tag="%lu days ago" ru="%lu дня назад"/>
+  <translation tag="%lu days ago_few" ru="%lu дня назад"/>
+  <translation tag="%lu days ago_many" ru="%lu дней назад"/>
+  <translation tag="%lu days ago_one" ru="%lu день назад"/>
   <translation tag="%lu hours ago" ru="%lu ч. назад"/>
   <translation tag="%lu min ago" ru="%lu мин. назад"/>
   <translation tag="%s Filament" ru="%s: Филамент"/>
@@ -40,8 +68,14 @@
   <translation tag="%s unsaved" ru="%s не сохранено"/>
   <translation tag="%s uses %s, which has filament but no material set — the printer will not start until you set it." ru="%s использует %s, где есть филамент, но не задан материал — принтер не начнёт печать, пока вы его не зададите."/>
   <translation tag="%s: %.0fg of %.0fg needed" ru="%s: %.0fг из %.0fг"/>
-  <translation tag="%u layers" ru="%u слоёв"/>
-  <translation tag="%zu events queued" ru="%zu событий в очереди"/>
+  <translation tag="%u layers" ru="%u слоя"/>
+  <translation tag="%u layers_few" ru="%u слоя"/>
+  <translation tag="%u layers_many" ru="%u слоёв"/>
+  <translation tag="%u layers_one" ru="%u слой"/>
+  <translation tag="%zu events queued" ru="%zu события в очереди"/>
+  <translation tag="%zu events queued_few" ru="%zu события в очереди"/>
+  <translation tag="%zu events queued_many" ru="%zu событий в очереди"/>
+  <translation tag="%zu events queued_one" ru="%zu событие в очереди"/>
   <translation tag="%zu plugins failed to load" ru="Не удалось загрузить %zu плагинов"/>
   <translation tag="&apos;{}&apos; already exists. Replace the stored mesh?" ru="&apos;{}&apos; уже существует. Заменить сохранённую сетку?"/>
   <translation tag="&apos;{}&apos; and &apos;{}&apos; already exist. Replace the stored meshes?" ru="&apos;{}&apos; и &apos;{}&apos; уже существуют. Заменить сохранённые сетки?"/>
@@ -267,7 +301,10 @@
   <translation tag="Assisting" ru="Помощь"/>
   <translation tag="At least {} lines in helixscreen.env were ignored" ru="В helixscreen.env проигнорировано не менее {} строк"/>
   <translation tag="At target" ru="Цель достигнута"/>
-  <translation tag="At {}°C, about {} minutes." ru="При {}°C около {} минут."/>
+  <translation tag="At {}°C, about {} minutes." ru="При {}°C около {} минуты."/>
+  <translation tag="At {}°C, about {} minutes._few" ru="При {}°C около {} минут."/>
+  <translation tag="At {}°C, about {} minutes._many" ru="При {}°C около {} минут."/>
+  <translation tag="At {}°C, about {} minutes._one" ru="При {}°C около {} минуты."/>
   <translation tag="Authentication failed" ru="Ошибка аутентификации"/>
   <translation tag="Auto" ru="Авто"/>
   <translation tag="Auto Bed Mesh" ru="Авто сетка стола"/>
@@ -307,7 +344,10 @@
   <translation tag="BLUETOOTH PRINTERS" ru="BLUETOOTH-ПРИНТЕРЫ"/>
   <translation tag="BLUETOOTH SCANNERS" ru="BLUETOOTH-СКАНЕРЫ"/>
   <translation tag="Back" ru="Назад"/>
-  <translation tag="Backtrace: {} frames" ru="Трассировка: {} кадров"/>
+  <translation tag="Backtrace: {} frames" ru="Трассировка: {} кадра"/>
+  <translation tag="Backtrace: {} frames_few" ru="Трассировка: {} кадра"/>
+  <translation tag="Backtrace: {} frames_many" ru="Трассировка: {} кадров"/>
+  <translation tag="Backtrace: {} frames_one" ru="Трассировка: {} кадр"/>
   <translation tag="Backup lane name contains invalid characters" ru="Имя резервного канала содержит недопустимые символы"/>
   <translation tag="Backup spool switching state unknown" ru="Резервная катушка: состояние неизвестно"/>
   <translation tag="Balanced" ru="Сбалансирован"/>
@@ -634,7 +674,11 @@
   <translation tag="Complete" ru="Завершено"/>
   <translation tag="Complete!" ru="Готово!"/>
   <translation tag="Completed" ru="Завершено"/>
-  <translation tag="Completed in %d probe%s" ru="Завершено за %d измерени%s"/>
+  <translation tag="Completed in %d probe" ru="Завершено за %d измерение"/>
+  <translation tag="Completed in %d probes" ru="Завершено за %d измерения"/>
+  <translation tag="Completed in %d probes_few" ru="Завершено за %d измерения"/>
+  <translation tag="Completed in %d probes_many" ru="Завершено за %d измерений"/>
+  <translation tag="Completed in %d probes_one" ru="Завершено за %d измерение"/>
   <translation tag="Completed just now" ru="Завершено только что"/>
   <translation tag="Completed prints will appear here" ru="Завершённые печати появятся здесь"/>
   <translation tag="Completed {}d ago" ru="Завершено {} дн назад"/>
@@ -1313,7 +1357,10 @@
   <translation tag="Forming Tip" ru="Формирование кончика"/>
   <translation tag="Forming tip..." ru="Формирование кончика..."/>
   <translation tag="Forward Multiplier" ru="Множитель прямого хода"/>
-  <translation tag="Found %zu printers" ru="Найдено %zu принтеров"/>
+  <translation tag="Found %zu printers" ru="Найдено %zu принтера"/>
+  <translation tag="Found %zu printers_few" ru="Найдено %zu принтера"/>
+  <translation tag="Found %zu printers_many" ru="Найдено %zu принтеров"/>
+  <translation tag="Found %zu printers_one" ru="Найден %zu принтер"/>
   <translation tag="Found 1 printer" ru="Найден 1 принтер"/>
   <translation tag="Found {} at {}." ru="{} найден по адресу {}."/>
   <translation tag="Framerate" ru="Частота кадров"/>
@@ -2233,7 +2280,10 @@
   <translation tag="Preheat Macro" ru="Макрос преднагрева"/>
   <translation tag="Preheat PLA" ru="Преднагрев PLA"/>
   <translation tag="Preheat cancelled" ru="Предварительный нагрев отменён"/>
-  <translation tag="Preheat: all {} tools + bed set" ru="Преднагрев: все {} инструменты + стол заданы"/>
+  <translation tag="Preheat: all {} tools + bed set" ru="Преднагрев: все {} инструмента + стол заданы"/>
+  <translation tag="Preheat: all {} tools + bed set_few" ru="Преднагрев: все {} инструмента + стол заданы"/>
+  <translation tag="Preheat: all {} tools + bed set_many" ru="Преднагрев: все {} инструментов + стол заданы"/>
+  <translation tag="Preheat: all {} tools + bed set_one" ru="Преднагрев: все {} инструмент + стол заданы"/>
   <translation tag="Preheat: {} + bed set" ru="Преднагрев: {} + стол заданы"/>
   <translation tag="Preload" ru="Предзагрузка"/>
   <translation tag="Preload failed" ru="Ошибка предварительной загрузки"/>
@@ -2305,6 +2355,11 @@
   <translation tag="Print setup failed: internal error" ru="Не удалось подготовить печать: внутренняя ошибка"/>
   <translation tag="Print status" ru="Статус печати"/>
   <translation tag="Print timed out waiting for completion" ru="Время ожидания завершения печати истекло"/>
+  <translation tag="Printed %d time" ru="Напечатано %d раз"/>
+  <translation tag="Printed %d times" ru="Напечатано %d раза"/>
+  <translation tag="Printed %d times_few" ru="Напечатано %d раза"/>
+  <translation tag="Printed %d times_many" ru="Напечатано %d раз"/>
+  <translation tag="Printed %d times_one" ru="Напечатано %d раз"/>
   <translation tag="Printer" ru="Принтер"/>
   <translation tag="Printer Error" ru="Ошибка принтера"/>
   <translation tag="Printer Firmware Disconnected" ru="Прошивка принтера отключена"/>
@@ -2374,7 +2429,10 @@
   <translation tag="Probing Failed" ru="Ошибка зондирования"/>
   <translation tag="Probing Z..." ru="Зондирование Z..."/>
   <translation tag="Probing point {} of {}" ru="Точка замера {} из {}"/>
-  <translation tag="Probing... ({} points)" ru="Замер... ({} точек)"/>
+  <translation tag="Probing... ({} points)" ru="Замер... ({} точки)"/>
+  <translation tag="Probing... ({} points)_few" ru="Замер... ({} точки)"/>
+  <translation tag="Probing... ({} points)_many" ru="Замер... ({} точек)"/>
+  <translation tag="Probing... ({} points)_one" ru="Замер... ({} точка)"/>
   <translation tag="Problem found" ru="Обнаружена проблема"/>
   <translation tag="Proceed" ru="Продолжить"/>
   <translation tag="Processing..." ru="Обработка..."/>
@@ -2917,8 +2975,16 @@
   <translation tag="Spoolman removed." ru="Spoolman удалён."/>
   <translation tag="Spoolman unavailable — filament weights may be stale" ru="Spoolman недоступен — вес филамента может быть устаревшим"/>
   <translation tag="Spoolman was not configured." ru="Spoolman не был настроен."/>
-  <translation tag="Spoolman: %zu Spool%s" ru="Spoolman: %zu катушк%s"/>
-  <translation tag="Spoolman: %zu/%zu Spool%s" ru="Spoolman: %zu/%zu катушк%s"/>
+  <translation tag="Spoolman: %zu Spool" ru="Spoolman: %zu катушка"/>
+  <translation tag="Spoolman: %zu Spools" ru="Spoolman: %zu катушки"/>
+  <translation tag="Spoolman: %zu Spools_few" ru="Spoolman: %zu катушки"/>
+  <translation tag="Spoolman: %zu Spools_many" ru="Spoolman: %zu катушек"/>
+  <translation tag="Spoolman: %zu Spools_one" ru="Spoolman: %zu катушка"/>
+  <translation tag="Spoolman: %zu/%zu Spool" ru="Spoolman: %zu/%zu катушка"/>
+  <translation tag="Spoolman: %zu/%zu Spools" ru="Spoolman: %zu/%zu катушки"/>
+  <translation tag="Spoolman: %zu/%zu Spools_few" ru="Spoolman: %zu/%zu катушки"/>
+  <translation tag="Spoolman: %zu/%zu Spools_many" ru="Spoolman: %zu/%zu катушек"/>
+  <translation tag="Spoolman: %zu/%zu Spools_one" ru="Spoolman: %zu/%zu катушка"/>
   <translation tag="SpoolmanDB search failed" ru="Ошибка поиска в SpoolmanDB"/>
   <translation tag="Spools are off" ru="Катушки сняты"/>
   <translation tag="Spools are on the bed: remove them and confirm before moving the printer" ru="На столе лежат катушки: уберите их и подтвердите, прежде чем двигать принтер"/>
@@ -3584,7 +3650,10 @@
   <translation tag="exact: same material and color. material: same material. next: any ready slot, even a different material" ru="exact: тот же материал и цвет. material: тот же материал. next: любой готовый слот, даже с другим материалом"/>
   <translation tag="extruder" ru="экструдер"/>
   <translation tag="extruder(s)" ru="экструдер(ы)"/>
-  <translation tag="extruders" ru="экструдеры"/>
+  <translation tag="extruders" ru="экструдера"/>
+  <translation tag="extruders_few" ru="экструдера"/>
+  <translation tag="extruders_many" ru="экструдеров"/>
+  <translation tag="extruders_one" ru="экструдер"/>
   <translation tag="fans" ru="вентиляторы"/>
   <translation tag="faulted" ru="сбой"/>
   <translation tag="feeder error" ru="ошибка фидера"/>
@@ -3660,10 +3729,16 @@
   <translation tag="{} command timed out" ru="Время команды {} истекло"/>
   <translation tag="{} complete" ru="{} завершено"/>
   <translation tag="{} configured item not found" ru="Не найден {} настроенный элемент"/>
-  <translation tag="{} configured items not found" ru="Не найдено {} настроенных элементов"/>
+  <translation tag="{} configured items not found" ru="Не найдено {} настроенных элемента"/>
+  <translation tag="{} configured items not found_few" ru="Не найдено {} настроенных элемента"/>
+  <translation tag="{} configured items not found_many" ru="Не найдено {} настроенных элементов"/>
+  <translation tag="{} configured items not found_one" ru="Не найден {} настроенный элемент"/>
   <translation tag="{} could not be checked from Home - review it and tap Print" ru="Не удалось проверить {} с главного экрана – проверьте файл и нажмите «Печать»"/>
   <translation tag="{} critical" ru="критических: {}"/>
-  <translation tag="{} critical hardware issues" ru="{} критических проблем с оборудованием"/>
+  <translation tag="{} critical hardware issues" ru="{} критические проблемы с оборудованием"/>
+  <translation tag="{} critical hardware issues_few" ru="{} критические проблемы с оборудованием"/>
+  <translation tag="{} critical hardware issues_many" ru="{} критических проблем с оборудованием"/>
+  <translation tag="{} critical hardware issues_one" ru="{} критическая проблема с оборудованием"/>
   <translation tag="{} disabled" ru="{} выключено"/>
   <translation tag="{} enabled" ru="{} включено"/>
   <translation tag="{} failed: {}" ru="Ошибка {}: {}"/>
@@ -3694,18 +3769,31 @@
   <translation tag="{} min" ru="{} мин"/>
   <translation tag="{} min ago" ru="{} мин. назад"/>
   <translation tag="{} missing" ru="отсутствует: {}"/>
-  <translation tag="{} more taps to {} beta features" ru="{} нажатий до {} бета-функций"/>
+  <translation tag="{} more taps to {} beta features" ru="{} нажатия до {} бета-функций"/>
+  <translation tag="{} more taps to {} beta features_few" ru="{} нажатия до {} бета-функций"/>
+  <translation tag="{} more taps to {} beta features_many" ru="{} нажатий до {} бета-функций"/>
+  <translation tag="{} more taps to {} beta features_one" ru="{} нажатие до {} бета-функций"/>
   <translation tag="{} needs the HelixPrint plugin. Printing original file." ru="Для {} нужен плагин HelixPrint. Печатается исходный файл."/>
   <translation tag="{} new" ru="новых: {}"/>
   <translation tag="{} new hardware available" ru="Доступно нового оборудования: {}"/>
   <translation tag="{} new plugins available. Enable them in Settings &gt; Plugins." ru="Доступно новых плагинов: {}. Включите их в разделе Настройки &gt; Плагины."/>
-  <translation tag="{} preset{}" ru="{} пресет{}"/>
-  <translation tag="{} prints" ru="{} печатей"/>
+  <translation tag="{} preset" ru="{} пресет"/>
+  <translation tag="{} presets" ru="{} пресета"/>
+  <translation tag="{} presets_few" ru="{} пресета"/>
+  <translation tag="{} presets_many" ru="{} пресетов"/>
+  <translation tag="{} presets_one" ru="{} пресет"/>
+  <translation tag="{} prints" ru="{} печати"/>
+  <translation tag="{} prints_few" ru="{} печати"/>
+  <translation tag="{} prints_many" ru="{} печатей"/>
+  <translation tag="{} prints_one" ru="{} печать"/>
   <translation tag="{} queued" ru="В очереди: {}"/>
   <translation tag="{} serial" ru="Серийный номер {}"/>
   <translation tag="{} set to {}" ru="{} установлено на {}"/>
   <translation tag="{} set to {} {}" ru="{} установлено на {} {}"/>
-  <translation tag="{} slots" ru="{} слотов"/>
+  <translation tag="{} slots" ru="{} слота"/>
+  <translation tag="{} slots_few" ru="{} слота"/>
+  <translation tag="{} slots_many" ru="{} слотов"/>
+  <translation tag="{} slots_one" ru="{} слот"/>
   <translation tag="{} spool cleared" ru="{}: катушка удалена"/>
   <translation tag="{} started" ru="{} запущено"/>
   <translation tag="{} target set to {}°C" ru="Целевая температура {} — {}°C"/>

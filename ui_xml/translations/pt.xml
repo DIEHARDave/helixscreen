@@ -5,7 +5,8 @@
   <translation tag=" left" pt=" restante"/>
   <translation tag=" · was {:.0f}%" pt=" · era {:.0f}%"/>
   <translation tag="&quot;%s&quot; failed to load" pt="&quot;%s&quot; falhou ao carregar"/>
-  <translation tag="%d additional fan%s" pt="%d ventoinha%s adicional"/>
+  <translation tag="%d additional fan" pt="%d ventoinha adicional"/>
+  <translation tag="%d additional fans" pt="%d ventoinhas adicionais"/>
   <translation tag="%d feeders" pt="%d alimentadores"/>
   <translation tag="%d gates" pt="%d Gates"/>
   <translation tag="%d lanes" pt="%d lanes"/>
@@ -634,7 +635,8 @@
   <translation tag="Complete" pt="Concluído"/>
   <translation tag="Complete!" pt="Concluído!"/>
   <translation tag="Completed" pt="Concluído"/>
-  <translation tag="Completed in %d probe%s" pt="Concluído em %d sondagem%s"/>
+  <translation tag="Completed in %d probe" pt="Concluído em %d sondagem"/>
+  <translation tag="Completed in %d probes" pt="Concluído em %d sondagens"/>
   <translation tag="Completed just now" pt="Concluído agora mesmo"/>
   <translation tag="Completed prints will appear here" pt="Impressões concluídas aparecerão aqui"/>
   <translation tag="Completed {}d ago" pt="Concluído há {} dias"/>
@@ -2305,6 +2307,8 @@
   <translation tag="Print setup failed: internal error" pt="Falha na configuração da impressão: erro interno"/>
   <translation tag="Print status" pt="Status da impressão"/>
   <translation tag="Print timed out waiting for completion" pt="A impressão — tempo esgotado aguardando a conclusão"/>
+  <translation tag="Printed %d time" pt="Impresso %d vez"/>
+  <translation tag="Printed %d times" pt="Impresso %d vezes"/>
   <translation tag="Printer" pt="Impressora"/>
   <translation tag="Printer Error" pt="Erro da Impressora"/>
   <translation tag="Printer Firmware Disconnected" pt="Firmware da Impressora Desconectado"/>
@@ -2917,8 +2921,10 @@
   <translation tag="Spoolman removed." pt="Spoolman removido."/>
   <translation tag="Spoolman unavailable — filament weights may be stale" pt="Spoolman indisponível — os pesos do filamento podem estar desatualizados"/>
   <translation tag="Spoolman was not configured." pt="Spoolman não estava configurado."/>
-  <translation tag="Spoolman: %zu Spool%s" pt="Spoolman: %zu Bobina%s"/>
-  <translation tag="Spoolman: %zu/%zu Spool%s" pt="Spoolman: %zu/%zu Bobina%s"/>
+  <translation tag="Spoolman: %zu Spool" pt="Spoolman: %zu Bobina"/>
+  <translation tag="Spoolman: %zu Spools" pt="Spoolman: %zu Bobinas"/>
+  <translation tag="Spoolman: %zu/%zu Spool" pt="Spoolman: %zu/%zu Bobina"/>
+  <translation tag="Spoolman: %zu/%zu Spools" pt="Spoolman: %zu/%zu Bobinas"/>
   <translation tag="SpoolmanDB search failed" pt="Falha na busca no SpoolmanDB"/>
   <translation tag="Spools are off" pt="Carretéis retirados"/>
   <translation tag="Spools are on the bed: remove them and confirm before moving the printer" pt="Há carretéis na mesa: remova-os e confirme antes de mover a impressora"/>
@@ -3699,7 +3705,8 @@
   <translation tag="{} new" pt="{} novo(s)"/>
   <translation tag="{} new hardware available" pt="{} novo hardware disponível"/>
   <translation tag="{} new plugins available. Enable them in Settings &gt; Plugins." pt="{} novos plugins disponíveis. Ative-os em Configurações &gt; Plugins."/>
-  <translation tag="{} preset{}" pt="{} predefinição{}"/>
+  <translation tag="{} preset" pt="{} predefinição"/>
+  <translation tag="{} presets" pt="{} predefinições"/>
   <translation tag="{} prints" pt="{} impressões"/>
   <translation tag="{} queued" pt="{} na fila"/>
   <translation tag="{} serial" pt="N.º de série de {}"/>

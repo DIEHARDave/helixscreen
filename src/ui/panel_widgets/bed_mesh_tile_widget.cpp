@@ -18,6 +18,7 @@
 #include "bed_mesh_state.h"
 #include "bed_mesh_stats.h"
 #include "helix_psram_attr.h"
+#include "i18n_plural.h"
 #include "lvgl/src/others/translation/lv_translation.h"
 #include "moonraker_error.h"
 #include "observe_language.h"
@@ -113,10 +114,10 @@ void bed_mesh_tile_init_subjects() {
 }
 
 std::string profile_count_text(int count) {
-    if (count == 1)
-        return lv_tr("1 profile");
-    char buf[32];
-    std::snprintf(buf, sizeof(buf), lv_tr("%d profiles"), count);
+    char buf[48];
+    std::snprintf(buf, sizeof(buf),
+                  helix::ui::tr_plural("1 profile", "%d profiles", static_cast<uint64_t>(count)),
+                  count);
     return buf;
 }
 

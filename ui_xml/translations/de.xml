@@ -5,7 +5,8 @@
   <translation tag=" left" de=" übrig"/>
   <translation tag=" · was {:.0f}%" de=" · war {:.0f}%"/>
   <translation tag="&quot;%s&quot; failed to load" de="&quot;%s&quot; konnte nicht geladen werden"/>
-  <translation tag="%d additional fan%s" de="%d zusätzliche%s Lüfter"/>
+  <translation tag="%d additional fan" de="%d zusätzlicher Lüfter"/>
+  <translation tag="%d additional fans" de="%d zusätzliche Lüfter"/>
   <translation tag="%d feeders" de="%d Zuführungen"/>
   <translation tag="%d gates" de="%d Gates"/>
   <translation tag="%d lanes" de="%d Spuren"/>
@@ -634,7 +635,8 @@
   <translation tag="Complete" de="Abgeschlossen"/>
   <translation tag="Complete!" de="Abgeschlossen!"/>
   <translation tag="Completed" de="Abgeschlossen"/>
-  <translation tag="Completed in %d probe%s" de="Abgeschlossen in %d Messung%s"/>
+  <translation tag="Completed in %d probe" de="Abgeschlossen in %d Messung"/>
+  <translation tag="Completed in %d probes" de="Abgeschlossen in %d Messungen"/>
   <translation tag="Completed just now" de="Gerade eben abgeschlossen"/>
   <translation tag="Completed prints will appear here" de="Abgeschlossene Drucke erscheinen hier"/>
   <translation tag="Completed {}d ago" de="Vor {} Tagen abgeschlossen"/>
@@ -2305,6 +2307,8 @@
   <translation tag="Print setup failed: internal error" de="Druckvorbereitung fehlgeschlagen: interner Fehler"/>
   <translation tag="Print status" de="Druckstatus"/>
   <translation tag="Print timed out waiting for completion" de="Druck – Zeitüberschreitung beim Warten auf Fertigstellung"/>
+  <translation tag="Printed %d time" de="%d-mal gedruckt"/>
+  <translation tag="Printed %d times" de="%d-mal gedruckt"/>
   <translation tag="Printer" de="Drucker"/>
   <translation tag="Printer Error" de="Druckerfehler"/>
   <translation tag="Printer Firmware Disconnected" de="Drucker-Firmware getrennt"/>
@@ -2917,8 +2921,10 @@
   <translation tag="Spoolman removed." de="Spoolman entfernt."/>
   <translation tag="Spoolman unavailable — filament weights may be stale" de="Spoolman nicht verfügbar — Filamentgewichte können veraltet sein"/>
   <translation tag="Spoolman was not configured." de="Spoolman war nicht konfiguriert."/>
-  <translation tag="Spoolman: %zu Spool%s" de="Spoolman: %zu Spule%s"/>
-  <translation tag="Spoolman: %zu/%zu Spool%s" de="Spoolman: %zu/%zu Spule%s"/>
+  <translation tag="Spoolman: %zu Spool" de="Spoolman: %zu Spule"/>
+  <translation tag="Spoolman: %zu Spools" de="Spoolman: %zu Spulen"/>
+  <translation tag="Spoolman: %zu/%zu Spool" de="Spoolman: %zu/%zu Spule"/>
+  <translation tag="Spoolman: %zu/%zu Spools" de="Spoolman: %zu/%zu Spulen"/>
   <translation tag="SpoolmanDB search failed" de="SpoolmanDB-Suche fehlgeschlagen"/>
   <translation tag="Spools are off" de="Spulen sind entnommen"/>
   <translation tag="Spools are on the bed: remove them and confirm before moving the printer" de="Spulen liegen auf dem Heizbett: entferne sie und bestätige, bevor der Drucker bewegt wird"/>
@@ -3699,7 +3705,8 @@
   <translation tag="{} new" de="{} neu"/>
   <translation tag="{} new hardware available" de="{} neue Hardware verfügbar"/>
   <translation tag="{} new plugins available. Enable them in Settings &gt; Plugins." de="{} neue Plugins verfügbar. Aktivieren Sie sie unter Einstellungen &gt; Plugins."/>
-  <translation tag="{} preset{}" de="{} Voreinstellung{}"/>
+  <translation tag="{} preset" de="{} Voreinstellung"/>
+  <translation tag="{} presets" de="{} Voreinstellungen"/>
   <translation tag="{} prints" de="{} Drucke"/>
   <translation tag="{} queued" de="{} in der Warteschlange"/>
   <translation tag="{} serial" de="{} Seriennummer"/>

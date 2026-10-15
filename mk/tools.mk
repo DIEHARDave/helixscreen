@@ -113,8 +113,8 @@ VALIDATE_XML_OBJ := $(OBJ_DIR)/tools/validate_xml_constants.o
 # server, so those objects are live here.
 VALIDATE_XML_APP_OBJS := $(filter-out $(OBJ_DIR)/main.o $(OBJ_DIR)/remote/remote_client.o,$(APP_OBJS) $(APP_C_OBJS) $(OBJCPP_OBJS))
 
-# Full dependencies (app objects + LVGL + fonts + lv_markdown + quirc + lua + translations)
-# Note: lv_markdown, quirc, lua, and translations are needed because app objects may reference them
+# Full dependencies (app objects + LVGL + fonts + lv_markdown + quirc + lua)
+# Note: lv_markdown, quirc and lua are needed because app objects may reference them
 VALIDATE_XML_DEPS := \
 	$(VALIDATE_XML_APP_OBJS) \
 	$(LVGL_OBJS) \
@@ -124,8 +124,7 @@ VALIDATE_XML_DEPS := \
 	$(LV_MARKDOWN_OBJS) \
 	$(QUIRC_OBJS) \
 	$(LUA_OBJS) \
-	$(FONT_OBJS) \
-	$(TRANS_OBJS)
+	$(FONT_OBJS)
 
 # Linker flags (same as main app for full compatibility)
 VALIDATE_XML_LDFLAGS := $(LDFLAGS)

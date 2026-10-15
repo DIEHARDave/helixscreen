@@ -7,21 +7,54 @@ translations:
   ' left': ' осталось'
   ' · was {:.0f}%': ' · было {:.0f}%'
   '"%s" failed to load': Не удалось загрузить «%s»
-  '%d additional fan%s': '%d дополнительный вентилятор%s'
-  '%d feeders': '%d фидеров'
-  '%d gates': '%d шлюзов'
-  '%d lanes': '%d каналов'
+  '%d additional fan': '%d дополнительный вентилятор'
+  '%d additional fans':
+    one: '%d дополнительный вентилятор'
+    few: '%d дополнительных вентилятора'
+    many: '%d дополнительных вентиляторов'
+    other: '%d дополнительных вентилятора'
+  '%d feeders':
+    one: '%d фидер'
+    few: '%d фидера'
+    many: '%d фидеров'
+    other: '%d фидера'
+  '%d gates':
+    one: '%d шлюз'
+    few: '%d шлюза'
+    many: '%d шлюзов'
+    other: '%d шлюза'
+  '%d lanes':
+    one: '%d канал'
+    few: '%d канала'
+    many: '%d каналов'
+    other: '%d канала'
   '%d min': '%d мин'
   '%d min left': 'осталось %d мин'
   '%d mm/s': '%d mm/s'
-  '%d more sensors': Ещё %d датчиков
+  '%d more sensors':
+    one: 'Ещё %d датчик'
+    few: 'Ещё %d датчика'
+    many: 'Ещё %d датчиков'
+    other: 'Ещё %d датчика'
   '%d objects': 'Объектов: %d'
   '%d of %d printing': '%d из %d печатается'
   '%d skipped': 'Пропущено: %d'
   '%d profiles': 'Профилей: %d'
-  '%d slots': '%d слотов'
-  '%d toolheads': '%d печатающих головок'
-  '%d tools': '%d инструментов'
+  '%d slots':
+    one: '%d слот'
+    few: '%d слота'
+    many: '%d слотов'
+    other: '%d слота'
+  '%d toolheads':
+    one: '%d печатающая головка'
+    few: '%d печатающие головки'
+    many: '%d печатающих головок'
+    other: '%d печатающие головки'
+  '%d tools':
+    one: '%d инструмент'
+    few: '%d инструмента'
+    many: '%d инструментов'
+    other: '%d инструмента'
   '%d units': '%d ед.'
   '%d:%02d left': 'осталось %d:%02d'
   '%dh': '%d ч'
@@ -30,7 +63,11 @@ translations:
   '%dm': '%d мин'
   '%dm %02ds': '%d мин %02d с'
   '%ds': '%d с'
-  '%lu days ago': '%lu дн. назад'
+  '%lu days ago':
+    one: '%lu день назад'
+    few: '%lu дня назад'
+    many: '%lu дней назад'
+    other: '%lu дня назад'
   '%lu hours ago': '%lu ч. назад'
   '%lu min ago': '%lu мин. назад'
   '%s Filament': '%s: Филамент'
@@ -40,8 +77,16 @@ translations:
   '%s unsaved': '%s не сохранено'
   '%s uses %s, which has filament but no material set — the printer will not start until you set it.': '%s использует %s, где есть филамент, но не задан материал — принтер не начнёт печать, пока вы его не зададите.'
   '%s: %.0fg of %.0fg needed': '%s: %.0fг из %.0fг'
-  '%u layers': '%u слоёв'
-  '%zu events queued': '%zu событий в очереди'
+  '%u layers':
+    one: '%u слой'
+    few: '%u слоя'
+    many: '%u слоёв'
+    other: '%u слоя'
+  '%zu events queued':
+    one: '%zu событие в очереди'
+    few: '%zu события в очереди'
+    many: '%zu событий в очереди'
+    other: '%zu события в очереди'
   '%zu plugins failed to load': Не удалось загрузить %zu плагинов
   "'{}' already exists. Replace the stored mesh?": "'{}' уже существует. Заменить сохранённую сетку?"
   "'{}' and '{}' already exist. Replace the stored meshes?": "'{}' и '{}' уже существуют. Заменить сохранённые сетки?"
@@ -287,7 +332,11 @@ translations:
   Assisting: Помощь
   At least {} lines in helixscreen.env were ignored: 'В helixscreen.env проигнорировано не менее {} строк'
   At target: Цель достигнута
-  At {}°C, about {} minutes.: 'При {}°C около {} минут.'
+  'At {}°C, about {} minutes.':
+    one: 'При {}°C около {} минуты.'
+    few: 'При {}°C около {} минут.'
+    many: 'При {}°C около {} минут.'
+    other: 'При {}°C около {} минуты.'
   Authentication failed: Ошибка аутентификации
   Auto: Авто
   Auto Bed Mesh: Авто сетка стола
@@ -330,7 +379,11 @@ translations:
   BLUETOOTH PRINTERS: BLUETOOTH-ПРИНТЕРЫ
   BLUETOOTH SCANNERS: BLUETOOTH-СКАНЕРЫ
   Back: Назад
-  'Backtrace: {} frames': 'Трассировка: {} кадров'
+  'Backtrace: {} frames':
+    one: 'Трассировка: {} кадр'
+    few: 'Трассировка: {} кадра'
+    many: 'Трассировка: {} кадров'
+    other: 'Трассировка: {} кадра'
   Backup lane name contains invalid characters: 'Имя резервного канала содержит недопустимые символы'
   Backup spool switching state unknown: 'Резервная катушка: состояние неизвестно'
   Balanced: Сбалансирован
@@ -696,7 +749,12 @@ translations:
   Complete: Завершено
   Complete!: Готово!
   Completed: Завершено
-  Completed in %d probe%s: Завершено за %d измерени%s
+  'Completed in %d probe': 'Завершено за %d измерение'
+  'Completed in %d probes':
+    one: 'Завершено за %d измерение'
+    few: 'Завершено за %d измерения'
+    many: 'Завершено за %d измерений'
+    other: 'Завершено за %d измерения'
   Completed just now: 'Завершено только что'
   Completed prints will appear here: Завершённые печати появятся здесь
   Completed {}d ago: 'Завершено {} дн назад'
@@ -1433,7 +1491,11 @@ translations:
   Forming Tip: Формирование кончика
   Forming tip...: Формирование кончика...
   Forward Multiplier: 'Множитель прямого хода'
-  Found %zu printers: Найдено %zu принтеров
+  'Found %zu printers':
+    one: 'Найден %zu принтер'
+    few: 'Найдено %zu принтера'
+    many: 'Найдено %zu принтеров'
+    other: 'Найдено %zu принтера'
   Found 1 printer: Найден 1 принтер
   Found {} at {}.: '{} найден по адресу {}.'
   Framerate: Частота кадров
@@ -2445,7 +2507,11 @@ translations:
   Preheat Macro: Макрос преднагрева
   Preheat PLA: Преднагрев PLA
   Preheat cancelled: Предварительный нагрев отменён
-  'Preheat: all {} tools + bed set': 'Преднагрев: все {} инструменты + стол заданы'
+  'Preheat: all {} tools + bed set':
+    one: 'Преднагрев: все {} инструмент + стол заданы'
+    few: 'Преднагрев: все {} инструмента + стол заданы'
+    many: 'Преднагрев: все {} инструментов + стол заданы'
+    other: 'Преднагрев: все {} инструмента + стол заданы'
   'Preheat: {} + bed set': 'Преднагрев: {} + стол заданы'
   Preload: 'Предзагрузка'
   Preload failed: Ошибка предварительной загрузки
@@ -2517,6 +2583,12 @@ translations:
     ошибка'
   Print status: Статус печати
   Print timed out waiting for completion: Время ожидания завершения печати истекло
+  'Printed %d time': 'Напечатано %d раз'
+  'Printed %d times':
+    one: 'Напечатано %d раз'
+    few: 'Напечатано %d раза'
+    many: 'Напечатано %d раз'
+    other: 'Напечатано %d раза'
   Printer: Принтер
   Printer Error: Ошибка принтера
   Printer Firmware Disconnected: Прошивка принтера отключена
@@ -2594,7 +2666,11 @@ translations:
   Probing Z...: Зондирование Z...
   Checking Bed Mesh...: Проверка сетки стола...
   Probing point {} of {}: 'Точка замера {} из {}'
-  Probing... ({} points): 'Замер... ({} точек)'
+  'Probing... ({} points)':
+    one: 'Замер... ({} точка)'
+    few: 'Замер... ({} точки)'
+    many: 'Замер... ({} точек)'
+    other: 'Замер... ({} точки)'
   Problem found: Обнаружена проблема
   Proceed: Продолжить
   # Source: abort_progress_modal.xml:20
@@ -3201,8 +3277,18 @@ translations:
   Spoolman unavailable — filament weights may be stale: Spoolman недоступен — вес
     филамента может быть устаревшим
   Spoolman was not configured.: Spoolman не был настроен.
-  'Spoolman: %zu Spool%s': 'Spoolman: %zu катушк%s'
-  'Spoolman: %zu/%zu Spool%s': 'Spoolman: %zu/%zu катушк%s'
+  'Spoolman: %zu Spool': 'Spoolman: %zu катушка'
+  'Spoolman: %zu Spools':
+    one: 'Spoolman: %zu катушка'
+    few: 'Spoolman: %zu катушки'
+    many: 'Spoolman: %zu катушек'
+    other: 'Spoolman: %zu катушки'
+  'Spoolman: %zu/%zu Spool': 'Spoolman: %zu/%zu катушка'
+  'Spoolman: %zu/%zu Spools':
+    one: 'Spoolman: %zu/%zu катушка'
+    few: 'Spoolman: %zu/%zu катушки'
+    many: 'Spoolman: %zu/%zu катушек'
+    other: 'Spoolman: %zu/%zu катушки'
   SpoolmanDB search failed: 'Ошибка поиска в SpoolmanDB'
   Spools are off: "Катушки сняты"
   'Spools are on the bed: remove them and confirm before moving the printer': 'На столе лежат катушки: уберите их и подтвердите, прежде чем двигать принтер'
@@ -3965,7 +4051,11 @@ translations:
   'exact: same material and color. material: same material. next: any ready slot, even a different material': 'exact: тот же материал и цвет. material: тот же материал. next: любой готовый слот, даже с другим материалом'
   extruder: экструдер
   extruder(s): экструдер(ы)
-  extruders: экструдеры
+  'extruders':
+    one: 'экструдер'
+    few: 'экструдера'
+    many: 'экструдеров'
+    other: 'экструдера'
   fans: вентиляторы
   faulted: сбой
   feeder error: 'ошибка фидера'
@@ -4047,9 +4137,17 @@ translations:
   '{} command timed out': Время команды {} истекло
   '{} complete': '{} завершено'
   '{} configured item not found': Не найден {} настроенный элемент
-  '{} configured items not found': Не найдено {} настроенных элементов
+  '{} configured items not found':
+    one: 'Не найден {} настроенный элемент'
+    few: 'Не найдено {} настроенных элемента'
+    many: 'Не найдено {} настроенных элементов'
+    other: 'Не найдено {} настроенных элемента'
   '{} critical': 'критических: {}'
-  '{} critical hardware issues': '{} критических проблем с оборудованием'
+  '{} critical hardware issues':
+    one: '{} критическая проблема с оборудованием'
+    few: '{} критические проблемы с оборудованием'
+    many: '{} критических проблем с оборудованием'
+    other: '{} критические проблемы с оборудованием'
   '{} disabled': '{} выключено'
   '{} enabled': '{} включено'
   '{} failed: {}': 'Ошибка {}: {}'
@@ -4081,18 +4179,35 @@ translations:
   '{} min': '{} мин'
   '{} min ago': '{} мин. назад'
   '{} missing': 'отсутствует: {}'
-  '{} more taps to {} beta features': '{} нажатий до {} бета-функций'
+  '{} more taps to {} beta features':
+    one: '{} нажатие до {} бета-функций'
+    few: '{} нажатия до {} бета-функций'
+    many: '{} нажатий до {} бета-функций'
+    other: '{} нажатия до {} бета-функций'
   '{} needs the HelixPrint plugin. Printing original file.': 'Для {} нужен плагин HelixPrint. Печатается исходный файл.'
   '{} new': 'новых: {}'
   '{} new hardware available': 'Доступно нового оборудования: {}'
   '{} new plugins available. Enable them in Settings > Plugins.': 'Доступно новых плагинов: {}. Включите их в разделе Настройки > Плагины.'
-  '{} preset{}': '{} пресет{}'
-  '{} prints': '{} печатей'
+  '{} preset': '{} пресет'
+  '{} presets':
+    one: '{} пресет'
+    few: '{} пресета'
+    many: '{} пресетов'
+    other: '{} пресета'
+  '{} prints':
+    one: '{} печать'
+    few: '{} печати'
+    many: '{} печатей'
+    other: '{} печати'
   '{} queued': 'В очереди: {}'
   '{} serial': 'Серийный номер {}'
   '{} set to {}': '{} установлено на {}'
   '{} set to {} {}': '{} установлено на {} {}'
-  '{} slots': '{} слотов'
+  '{} slots':
+    one: '{} слот'
+    few: '{} слота'
+    many: '{} слотов'
+    other: '{} слота'
   '{} spool cleared': '{}: катушка удалена'
   '{} started': '{} запущено'
   '{} target set to {}°C': Целевая температура {} — {}°C

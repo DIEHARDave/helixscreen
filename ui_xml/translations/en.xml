@@ -5,7 +5,8 @@
   <translation tag=" left" en=" left"/>
   <translation tag=" · was {:.0f}%" en=" · was {:.0f}%"/>
   <translation tag="&quot;%s&quot; failed to load" en="&quot;%s&quot; failed to load"/>
-  <translation tag="%d additional fan%s" en="%d additional fan%s"/>
+  <translation tag="%d additional fan" en="%d additional fan"/>
+  <translation tag="%d additional fans" en="%d additional fans"/>
   <translation tag="%d feeders" en="%d feeders"/>
   <translation tag="%d gates" en="%d gates"/>
   <translation tag="%d lanes" en="%d lanes"/>
@@ -634,7 +635,8 @@
   <translation tag="Complete" en="Complete"/>
   <translation tag="Complete!" en="Complete!"/>
   <translation tag="Completed" en="Completed"/>
-  <translation tag="Completed in %d probe%s" en="Completed in %d probe%s"/>
+  <translation tag="Completed in %d probe" en="Completed in %d probe"/>
+  <translation tag="Completed in %d probes" en="Completed in %d probes"/>
   <translation tag="Completed just now" en="Completed just now"/>
   <translation tag="Completed prints will appear here" en="Completed prints will appear here"/>
   <translation tag="Completed {}d ago" en="Completed {}d ago"/>
@@ -2305,6 +2307,8 @@
   <translation tag="Print setup failed: internal error" en="Print setup failed: internal error"/>
   <translation tag="Print status" en="Print status"/>
   <translation tag="Print timed out waiting for completion" en="Print timed out waiting for completion"/>
+  <translation tag="Printed %d time" en="Printed %d time"/>
+  <translation tag="Printed %d times" en="Printed %d times"/>
   <translation tag="Printer" en="Printer"/>
   <translation tag="Printer Error" en="Printer Error"/>
   <translation tag="Printer Firmware Disconnected" en="Printer Firmware Disconnected"/>
@@ -2917,8 +2921,10 @@
   <translation tag="Spoolman removed." en="Spoolman removed."/>
   <translation tag="Spoolman unavailable — filament weights may be stale" en="Spoolman unavailable — filament weights may be stale"/>
   <translation tag="Spoolman was not configured." en="Spoolman was not configured."/>
-  <translation tag="Spoolman: %zu Spool%s" en="Spoolman: %zu Spool%s"/>
-  <translation tag="Spoolman: %zu/%zu Spool%s" en="Spoolman: %zu/%zu Spool%s"/>
+  <translation tag="Spoolman: %zu Spool" en="Spoolman: %zu Spool"/>
+  <translation tag="Spoolman: %zu Spools" en="Spoolman: %zu Spools"/>
+  <translation tag="Spoolman: %zu/%zu Spool" en="Spoolman: %zu/%zu Spool"/>
+  <translation tag="Spoolman: %zu/%zu Spools" en="Spoolman: %zu/%zu Spools"/>
   <translation tag="SpoolmanDB search failed" en="SpoolmanDB search failed"/>
   <translation tag="Spools are off" en="Spools are off"/>
   <translation tag="Spools are on the bed: remove them and confirm before moving the printer" en="Spools are on the bed: remove them and confirm before moving the printer"/>
@@ -3699,7 +3705,8 @@
   <translation tag="{} new" en="{} new"/>
   <translation tag="{} new hardware available" en="{} new hardware available"/>
   <translation tag="{} new plugins available. Enable them in Settings &gt; Plugins." en="{} new plugins available. Enable them in Settings &gt; Plugins."/>
-  <translation tag="{} preset{}" en="{} preset{}"/>
+  <translation tag="{} preset" en="{} preset"/>
+  <translation tag="{} presets" en="{} presets"/>
   <translation tag="{} prints" en="{} prints"/>
   <translation tag="{} queued" en="{} queued"/>
   <translation tag="{} serial" en="{} serial"/>

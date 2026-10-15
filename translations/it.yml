@@ -7,7 +7,8 @@ translations:
   ' left': ' rimanente'
   ' · was {:.0f}%': ' · era {:.0f}%'
   '"%s" failed to load': Caricamento di "%s" non riuscito
-  '%d additional fan%s': '%d ventola%s aggiuntiva'
+  '%d additional fan': '%d ventola aggiuntiva'
+  '%d additional fans': '%d ventole aggiuntive'
   '%d feeders': '%d alimentatori'
   '%d gates': '%d Gate'
   '%d lanes': '%d corsie'
@@ -702,7 +703,8 @@ translations:
   Complete: Completato
   Complete!: Completato!
   Completed: Completato
-  Completed in %d probe%s: Completato in %d sonda%s
+  'Completed in %d probe': 'Completato in %d sonda'
+  'Completed in %d probes': 'Completato in %d sonde'
   Completed just now: 'Completato adesso'
   Completed prints will appear here: Le stampe completate appariranno qui
   Completed {}d ago: 'Completato {} g fa'
@@ -2539,6 +2541,8 @@ translations:
   'Print setup failed: internal error': 'Configurazione stampa fallita: errore interno'
   Print status: Stato stampa
   Print timed out waiting for completion: Stampa scaduta in attesa del completamento
+  'Printed %d time': 'Stampato %d volta'
+  'Printed %d times': 'Stampato %d volte'
   Printer: Stampante
   Printer Error: Errore stampante
   Printer Firmware Disconnected: Firmware stampante disconnesso
@@ -3229,8 +3233,10 @@ translations:
   Spoolman unavailable — filament weights may be stale: Spoolman non disponibile —
     i pesi del filamento potrebbero non essere aggiornati
   Spoolman was not configured.: Spoolman non era configurato.
-  'Spoolman: %zu Spool%s': 'Spoolman: %zu bobina%s'
-  'Spoolman: %zu/%zu Spool%s': 'Spoolman: %zu/%zu bobina%s'
+  'Spoolman: %zu Spool': 'Spoolman: %zu bobina'
+  'Spoolman: %zu Spools': 'Spoolman: %zu bobine'
+  'Spoolman: %zu/%zu Spool': 'Spoolman: %zu/%zu bobina'
+  'Spoolman: %zu/%zu Spools': 'Spoolman: %zu/%zu bobine'
   SpoolmanDB search failed: 'Ricerca in SpoolmanDB non riuscita'
   Spools are off: "Bobine tolte"
   'Spools are on the bed: remove them and confirm before moving the printer': 'Ci sono bobine sul piano: rimuovile e conferma prima di muovere la stampante'
@@ -4129,7 +4135,8 @@ translations:
   '{} new': '{} nuovi'
   '{} new hardware available': '{} nuovo hardware disponibile'
   '{} new plugins available. Enable them in Settings > Plugins.': '{} nuovi plugin disponibili. Abilitali in Impostazioni > Plugin.'
-  '{} preset{}': '{} preset{}'
+  '{} preset': '{} preset'
+  '{} presets': '{} preset'
   '{} prints': '{} stampe'
   '{} queued': '{} in coda'
   '{} serial': 'Numero di serie {}'

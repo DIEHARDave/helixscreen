@@ -5,7 +5,8 @@
   <translation tag=" left" zh=" 剩余"/>
   <translation tag=" · was {:.0f}%" zh=" · 原为 {:.0f}%"/>
   <translation tag="&quot;%s&quot; failed to load" zh="&quot;%s&quot; 加载失败"/>
-  <translation tag="%d additional fan%s" zh="%d 个额外风扇%s"/>
+  <translation tag="%d additional fan" zh="%d 个额外风扇"/>
+  <translation tag="%d additional fans" zh="%d 个额外风扇"/>
   <translation tag="%d feeders" zh="%d 个送料器"/>
   <translation tag="%d gates" zh="%d 个通道"/>
   <translation tag="%d lanes" zh="%d 个耗材通道"/>
@@ -634,7 +635,8 @@
   <translation tag="Complete" zh="完成"/>
   <translation tag="Complete!" zh="完成！"/>
   <translation tag="Completed" zh="已完成"/>
-  <translation tag="Completed in %d probe%s" zh="在 %d 次探测%s内完成"/>
+  <translation tag="Completed in %d probe" zh="在 %d 次探测内完成"/>
+  <translation tag="Completed in %d probes" zh="在 %d 次探测内完成"/>
   <translation tag="Completed just now" zh="刚刚完成"/>
   <translation tag="Completed prints will appear here" zh="已完成的打印将显示在这里"/>
   <translation tag="Completed {}d ago" zh="{} 天前完成"/>
@@ -2305,6 +2307,8 @@
   <translation tag="Print setup failed: internal error" zh="打印设置失败：内部错误"/>
   <translation tag="Print status" zh="打印状态"/>
   <translation tag="Print timed out waiting for completion" zh="等待打印完成超时"/>
+  <translation tag="Printed %d time" zh="已打印 %d 次"/>
+  <translation tag="Printed %d times" zh="已打印 %d 次"/>
   <translation tag="Printer" zh="打印机"/>
   <translation tag="Printer Error" zh="打印机错误"/>
   <translation tag="Printer Firmware Disconnected" zh="打印机固件已断开"/>
@@ -2917,8 +2921,10 @@
   <translation tag="Spoolman removed." zh="Spoolman 已移除。"/>
   <translation tag="Spoolman unavailable — filament weights may be stale" zh="Spoolman不可用 — 耗材重量可能已过期"/>
   <translation tag="Spoolman was not configured." zh="Spoolman 未配置。"/>
-  <translation tag="Spoolman: %zu Spool%s" zh="Spoolman: %zu 个线轴%s"/>
-  <translation tag="Spoolman: %zu/%zu Spool%s" zh="Spoolman: %zu/%zu 个线轴%s"/>
+  <translation tag="Spoolman: %zu Spool" zh="Spoolman: %zu 个线轴"/>
+  <translation tag="Spoolman: %zu Spools" zh="Spoolman: %zu 个线轴"/>
+  <translation tag="Spoolman: %zu/%zu Spool" zh="Spoolman: %zu/%zu 个线轴"/>
+  <translation tag="Spoolman: %zu/%zu Spools" zh="Spoolman: %zu/%zu 个线轴"/>
   <translation tag="SpoolmanDB search failed" zh="SpoolmanDB 搜索失败"/>
   <translation tag="Spools are off" zh="料盘已取下"/>
   <translation tag="Spools are on the bed: remove them and confirm before moving the printer" zh="热床上有料盘：请先移除并确认，再移动打印机"/>
@@ -3699,7 +3705,8 @@
   <translation tag="{} new" zh="{} 个新增"/>
   <translation tag="{} new hardware available" zh="{} 个新硬件可用"/>
   <translation tag="{} new plugins available. Enable them in Settings &gt; Plugins." zh="{} 个新插件可用。请在设置 &gt; 插件中启用。"/>
-  <translation tag="{} preset{}" zh="{} 个预设{}"/>
+  <translation tag="{} preset" zh="{} 个预设"/>
+  <translation tag="{} presets" zh="{} 个预设"/>
   <translation tag="{} prints" zh="{} 次打印"/>
   <translation tag="{} queued" zh="{} 个在队列中"/>
   <translation tag="{} serial" zh="{} 序列号"/>

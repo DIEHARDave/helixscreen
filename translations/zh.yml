@@ -7,7 +7,8 @@ translations:
   ' left': ' 剩余'
   ' · was {:.0f}%': ' · 原为 {:.0f}%'
   '"%s" failed to load': '"%s" 加载失败'
-  '%d additional fan%s': '%d 个额外风扇%s'
+  '%d additional fan': '%d 个额外风扇'
+  '%d additional fans': '%d 个额外风扇'
   '%d feeders': '%d 个送料器'
   '%d gates': '%d 个通道'
   '%d lanes': '%d 个耗材通道'
@@ -646,7 +647,8 @@ translations:
   Complete: 完成
   Complete!: 完成！
   Completed: 已完成
-  Completed in %d probe%s: 在 %d 次探测%s内完成
+  'Completed in %d probe': '在 %d 次探测内完成'
+  'Completed in %d probes': '在 %d 次探测内完成'
   Completed just now: '刚刚完成'
   Completed prints will appear here: 已完成的打印将显示在这里
   Completed {}d ago: '{} 天前完成'
@@ -2385,6 +2387,8 @@ translations:
   'Print setup failed: internal error': 打印设置失败：内部错误
   Print status: 打印状态
   Print timed out waiting for completion: 等待打印完成超时
+  'Printed %d time': '已打印 %d 次'
+  'Printed %d times': '已打印 %d 次'
   Printer: 打印机
   Printer Error: 打印机错误
   Printer Firmware Disconnected: 打印机固件已断开
@@ -3022,8 +3026,10 @@ translations:
   Spoolman removed.: Spoolman 已移除。
   Spoolman unavailable — filament weights may be stale: Spoolman不可用 — 耗材重量可能已过期
   Spoolman was not configured.: Spoolman 未配置。
-  'Spoolman: %zu Spool%s': 'Spoolman: %zu 个线轴%s'
-  'Spoolman: %zu/%zu Spool%s': 'Spoolman: %zu/%zu 个线轴%s'
+  'Spoolman: %zu Spool': 'Spoolman: %zu 个线轴'
+  'Spoolman: %zu Spools': 'Spoolman: %zu 个线轴'
+  'Spoolman: %zu/%zu Spool': 'Spoolman: %zu/%zu 个线轴'
+  'Spoolman: %zu/%zu Spools': 'Spoolman: %zu/%zu 个线轴'
   SpoolmanDB search failed: 'SpoolmanDB 搜索失败'
   Spools are off: "料盘已取下"
   'Spools are on the bed: remove them and confirm before moving the printer': 热床上有料盘：请先移除并确认，再移动打印机
@@ -3860,7 +3866,8 @@ translations:
   '{} new': '{} 个新增'
   '{} new hardware available': '{} 个新硬件可用'
   '{} new plugins available. Enable them in Settings > Plugins.': '{} 个新插件可用。请在设置 > 插件中启用。'
-  '{} preset{}': '{} 个预设{}'
+  '{} preset': '{} 个预设'
+  '{} presets': '{} 个预设'
   '{} prints': '{} 次打印'
   '{} queued': '{} 个在队列中'
   '{} serial': '{} 序列号'

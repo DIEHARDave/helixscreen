@@ -7,7 +7,8 @@ translations:
   ' left': ' übrig'
   ' · was {:.0f}%': ' · war {:.0f}%'
   '"%s" failed to load': '"%s" konnte nicht geladen werden'
-  '%d additional fan%s': '%d zusätzliche%s Lüfter'
+  '%d additional fan': '%d zusätzlicher Lüfter'
+  '%d additional fans': '%d zusätzliche Lüfter'
   '%d feeders': '%d Zuführungen'
   '%d gates': '%d Gates'
   '%d lanes': '%d Spuren'
@@ -711,7 +712,8 @@ translations:
   Complete: Abgeschlossen
   Complete!: Abgeschlossen!
   Completed: Abgeschlossen
-  Completed in %d probe%s: Abgeschlossen in %d Messung%s
+  'Completed in %d probe': 'Abgeschlossen in %d Messung'
+  'Completed in %d probes': 'Abgeschlossen in %d Messungen'
   Completed just now: 'Gerade eben abgeschlossen'
   Completed prints will appear here: Abgeschlossene Drucke erscheinen hier
   Completed {}d ago: 'Vor {} Tagen abgeschlossen'
@@ -2550,6 +2552,8 @@ translations:
   Print status: Druckstatus
   Print timed out waiting for completion: Druck – Zeitüberschreitung beim Warten auf
     Fertigstellung
+  'Printed %d time': '%d-mal gedruckt'
+  'Printed %d times': '%d-mal gedruckt'
   Printer: Drucker
   Printer Error: Druckerfehler
   Printer Firmware Disconnected: Drucker-Firmware getrennt
@@ -3239,8 +3243,10 @@ translations:
   Spoolman unavailable — filament weights may be stale: Spoolman nicht verfügbar —
     Filamentgewichte können veraltet sein
   Spoolman was not configured.: Spoolman war nicht konfiguriert.
-  'Spoolman: %zu Spool%s': 'Spoolman: %zu Spule%s'
-  'Spoolman: %zu/%zu Spool%s': 'Spoolman: %zu/%zu Spule%s'
+  'Spoolman: %zu Spool': 'Spoolman: %zu Spule'
+  'Spoolman: %zu Spools': 'Spoolman: %zu Spulen'
+  'Spoolman: %zu/%zu Spool': 'Spoolman: %zu/%zu Spule'
+  'Spoolman: %zu/%zu Spools': 'Spoolman: %zu/%zu Spulen'
   SpoolmanDB search failed: 'SpoolmanDB-Suche fehlgeschlagen'
   Spools are off: "Spulen sind entnommen"
   'Spools are on the bed: remove them and confirm before moving the printer': 'Spulen liegen auf dem Heizbett: entferne sie und bestätige, bevor der Drucker bewegt wird'
@@ -4139,7 +4145,8 @@ translations:
   '{} new': '{} neu'
   '{} new hardware available': '{} neue Hardware verfügbar'
   '{} new plugins available. Enable them in Settings > Plugins.': '{} neue Plugins verfügbar. Aktivieren Sie sie unter Einstellungen > Plugins.'
-  '{} preset{}': '{} Voreinstellung{}'
+  '{} preset': '{} Voreinstellung'
+  '{} presets': '{} Voreinstellungen'
   '{} prints': '{} Drucke'
   '{} queued': '{} in der Warteschlange'
   '{} serial': '{} Seriennummer'

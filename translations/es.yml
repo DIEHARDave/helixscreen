@@ -7,7 +7,8 @@ translations:
   ' left': ' restante'
   ' · was {:.0f}%': ' · era {:.0f}%'
   '"%s" failed to load': '"%s" no se pudo cargar'
-  '%d additional fan%s': '%d ventilador%s adicional'
+  '%d additional fan': '%d ventilador adicional'
+  '%d additional fans': '%d ventiladores adicionales'
   '%d feeders': '%d alimentadores'
   '%d gates': '%d Gates'
   '%d lanes': '%d carriles'
@@ -705,7 +706,8 @@ translations:
   Complete: Completo
   Complete!: ¡Completo!
   Completed: Completado
-  Completed in %d probe%s: Completado en %d sondeo%s
+  'Completed in %d probe': 'Completado en %d sondeo'
+  'Completed in %d probes': 'Completado en %d sondeos'
   Completed just now: 'Completado justo ahora'
   Completed prints will appear here: Los impresiones completadas aparecerán aquí
   Completed {}d ago: 'Completado hace {} días'
@@ -2541,6 +2543,8 @@ translations:
   Print status: Estado de impresión
   Print timed out waiting for completion: La impresión agotó el tiempo de espera de
     finalización
+  'Printed %d time': 'Impreso %d vez'
+  'Printed %d times': 'Impreso %d veces'
   Printer: Impresora
   Printer Error: Error de Impresora
   Printer Firmware Disconnected: Firmware de Impresora Desconectado
@@ -3229,8 +3233,10 @@ translations:
   Spoolman unavailable — filament weights may be stale: Spoolman no disponible — los
     pesos del filamento pueden estar desactualizados
   Spoolman was not configured.: Spoolman no estaba configurado.
-  'Spoolman: %zu Spool%s': 'Spoolman: %zu bobina%s'
-  'Spoolman: %zu/%zu Spool%s': 'Spoolman: %zu/%zu bobina%s'
+  'Spoolman: %zu Spool': 'Spoolman: %zu bobina'
+  'Spoolman: %zu Spools': 'Spoolman: %zu bobinas'
+  'Spoolman: %zu/%zu Spool': 'Spoolman: %zu/%zu bobina'
+  'Spoolman: %zu/%zu Spools': 'Spoolman: %zu/%zu bobinas'
   SpoolmanDB search failed: 'Falló la búsqueda en SpoolmanDB'
   Spools are off: "Bobinas retiradas"
   'Spools are on the bed: remove them and confirm before moving the printer': 'Hay bobinas sobre la cama: retíralas y confirma antes de mover la impresora'
@@ -4128,7 +4134,8 @@ translations:
   '{} new': '{} nuevo(s)'
   '{} new hardware available': '{} nuevo hardware disponible'
   '{} new plugins available. Enable them in Settings > Plugins.': '{} nuevos plugins disponibles. Actívalos en Ajustes > Plugins.'
-  '{} preset{}': '{} preajuste{}'
+  '{} preset': '{} preajuste'
+  '{} presets': '{} preajustes'
   '{} prints': '{} impresiones'
   '{} queued': '{} en cola'
   '{} serial': 'N.º de serie de {}'

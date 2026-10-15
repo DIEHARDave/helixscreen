@@ -7,7 +7,8 @@ translations:
   ' left': ' 残り'
   ' · was {:.0f}%': ' · 以前は {:.0f}%'
   '"%s" failed to load': '"%s" の読み込みに失敗しました'
-  '%d additional fan%s': 追加ファン %d 個%s
+  '%d additional fan': '追加ファン %d 個'
+  '%d additional fans': '追加ファン %d 個'
   '%d feeders': '%d フィーダー'
   '%d gates': '%d ゲート'
   '%d lanes': '%d レーン'
@@ -648,7 +649,8 @@ translations:
   Complete: 完了
   Complete!: 完了！
   Completed: 完了
-  Completed in %d probe%s: '%d 回のプローブ%sで完了'
+  'Completed in %d probe': '%d 回のプローブで完了'
+  'Completed in %d probes': '%d 回のプローブで完了'
   Completed just now: 'たった今完了しました'
   Completed prints will appear here: 完了した印刷がここに表示されます
   Completed {}d ago: '{} 日前に完了'
@@ -2393,6 +2395,8 @@ translations:
   'Print setup failed: internal error': '印刷のセットアップに失敗しました: 内部エラー'
   Print status: 印刷ステータス
   Print timed out waiting for completion: 印刷の完了待ちでタイムアウトしました
+  'Printed %d time': '%d 回印刷済み'
+  'Printed %d times': '%d 回印刷済み'
   Printer: プリンター
   Printer Error: プリンターエラー
   Printer Firmware Disconnected: プリンターファームウェア切断
@@ -3031,8 +3035,10 @@ translations:
   Spoolman removed.: Spoolman を削除しました。
   Spoolman unavailable — filament weights may be stale: Spoolmanが利用できません — フィラメント重量が古い可能性があります
   Spoolman was not configured.: Spoolman は設定されていませんでした。
-  'Spoolman: %zu Spool%s': 'Spoolman: %zu 個のスプール%s'
-  'Spoolman: %zu/%zu Spool%s': 'Spoolman: %zu/%zu 個のスプール%s'
+  'Spoolman: %zu Spool': 'Spoolman: %zu 個のスプール'
+  'Spoolman: %zu Spools': 'Spoolman: %zu 個のスプール'
+  'Spoolman: %zu/%zu Spool': 'Spoolman: %zu/%zu 個のスプール'
+  'Spoolman: %zu/%zu Spools': 'Spoolman: %zu/%zu 個のスプール'
   SpoolmanDB search failed: 'SpoolmanDB の検索に失敗しました'
   Spools are off: "スプールを取り出しました"
   'Spools are on the bed: remove them and confirm before moving the printer': 'ベッドにスプールがあります: 取り除いて確認してからプリンターを動かしてください'
@@ -3870,7 +3876,8 @@ translations:
   '{} new': '新規 {} 件'
   '{} new hardware available': '{} 個の新しいハードウェアが利用可能です'
   '{} new plugins available. Enable them in Settings > Plugins.': '{} 個の新しいプラグインが利用可能です。設定 > プラグインで有効化してください。'
-  '{} preset{}': '{} 個のプリセット{}'
+  '{} preset': '{} 個のプリセット'
+  '{} presets': '{} 個のプリセット'
   '{} prints': '{} 件'
   '{} queued': '{} 件キュー中'
   '{} serial': '{} シリアル番号'

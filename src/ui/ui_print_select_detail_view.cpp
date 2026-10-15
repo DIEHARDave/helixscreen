@@ -31,6 +31,7 @@
 #include "gcode_temp_reclaim.h"
 #include "host_identity.h"
 #include "http_executor.h"
+#include "i18n_plural.h"
 #include "i_moonraker_api.h"
 #include "lvgl/src/others/translation/lv_translation.h"
 #include "memory_utils.h"
@@ -1275,10 +1276,11 @@ void PrintSelectDetailView::update_history_status(FileHistoryStatus status, int 
         lv_obj_remove_flag(history_status_row_, LV_OBJ_FLAG_HIDDEN);
         helix::ui::icon::set_source(history_status_icon_, "check");
         helix::ui::icon::set_variant(history_status_icon_, "success");
-        // Format: "Printed N time(s)"
         char buf[64];
-        snprintf(buf, sizeof(buf),
-                 lv_tr(success_count == 1 ? "Printed %d time" : "Printed %d times"), success_count);
+        snprintf(
+            buf, sizeof(buf),
+            tr_plural("Printed %d time", "Printed %d times", static_cast<uint64_t>(success_count)),
+            success_count);
         lv_label_set_text(history_status_label_, buf);
         break;
     }
