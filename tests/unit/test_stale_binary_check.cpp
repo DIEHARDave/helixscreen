@@ -3,7 +3,7 @@
 // TEST_MIRROR_OK: the code under test is the test binary's own startup check
 // (tests/test_helpers/stale_binary_check.h), which ships in no product.
 
-#include "test_helpers/scope_exit.h"
+#include "scope_exit.h"
 #include "test_helpers/scoped_env.h"
 #include "test_helpers/stale_binary_check.h"
 #include "test_helpers/unique_temp_dir.h"
@@ -64,7 +64,7 @@ template <typename Fn> std::string capture_stderr(Fn fn) {
     REQUIRE(saved >= 0);
     REQUIRE(freopen(path.c_str(), "w", stderr) != nullptr);
     {
-        helix::test::ScopeExit restore([&] {
+        helix::ScopeExit restore([&] {
             fflush(stderr);
             dup2(saved, fileno(stderr));
             close(saved);
