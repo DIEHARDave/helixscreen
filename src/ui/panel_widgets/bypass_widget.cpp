@@ -58,11 +58,25 @@ void BypassWidget::attach(lv_obj_t* widget_obj, lv_obj_t* parent_screen) {
         },
         AmsState::instance().get_subjects_lifetime());
 
+    // The spool row under the caption is drawn only while bypass is engaged, so
+    // the tile is measured with it exactly then. Immediate, so the re-measure
+    // lands in the same turn the row's own binding shows it, never a frame later.
+    bypass_active_observer_ = helix::ui::observe<int>(
+        AmsState::instance().get_bypass_active_subject(), this,
+        [](BypassWidget* self, int active) {
+            TileSizing::Content content = self->sizing_.content();
+            content.detail_font = active != 0 ? "font_xs" : nullptr;
+            self->sizing_.set_content(std::move(content));
+            self->sizing_.remeasure();
+        },
+        AmsState::instance().get_subjects_lifetime(), helix::ui::Dispatch::Immediate);
+
     spdlog::debug("[BypassWidget] attached");
 }
 
 void BypassWidget::detach() {
     spool_color_observer_.reset();
+    bypass_active_observer_.reset();
     // The menu holds a callback capturing this widget, and the tile is going
     // away (recycled or torn down).
     context_menu_.reset();

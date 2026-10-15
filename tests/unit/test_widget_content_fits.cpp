@@ -43,6 +43,7 @@
 #include "../lvgl_ui_test_fixture.h"
 #include "../test_helpers/ams_state_test_access.h"
 #include "../test_helpers/buffer_infos.h"
+#include "../test_helpers/bypass_engaged_seed.h"
 #include "../test_helpers/job_queue_tile_seed.h"
 #include "../test_helpers/panel_widget_size_harness.h"
 #include "../test_helpers/print_history_seed.h"
@@ -732,6 +733,9 @@ TEST_CASE_METHOD(ContentFitsFixture,
             std::optional<ClogReadingSeed> clog_seed;
             if (std::string_view(def.id) == "clog_detection")
                 clog_seed.emplace();
+            std::optional<test::BypassEngagedSeed> bypass_seed;
+            if (std::string_view(def.id) == "bypass")
+                bypass_seed.emplace();
             std::optional<QueueTileSeed> queue_seed;
             if (std::string_view(def.id) == "job_queue") {
                 queue_seed.emplace([this] { settle_updates(); });
@@ -957,6 +961,9 @@ TEST_CASE_METHOD(ContentFitsFixture, "every icon tile renders its content grown 
             }
             const int c = std::min({kTwoCells, def.effective_max_colspan(), dims.cols});
             const int r = std::min({kTwoCells, def.effective_max_rowspan(), dims.rows});
+            std::optional<test::BypassEngagedSeed> bypass_seed;
+            if (std::string_view(def.id) == "bypass")
+                bypass_seed.emplace();
             const Rendered rendered = render_at(test_screen(), def, m, c, r);
             REQUIRE(rendered.built);
             ++checked;
