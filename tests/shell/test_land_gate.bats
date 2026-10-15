@@ -283,3 +283,39 @@ exit 0'
     grep -q "fake-make re-entered" "$LAND_GATE_LOGDIR/lint-xml.log"
     [ "$(grep -c '^make' "$CALLS")" -lt 20 ]
 }
+
+# A gate launched detached (`( make land-gate ) &` from a shell that exits) is
+# reparented to init, so the session holding worktree:<tree> is no ancestor of
+# it; only the session id it inherited ties it to that claim. The holder here is
+# an unrelated sleep for the same reason: no ancestor of the gate can match it.
+detached_gate_fixture() {
+    T="$BATS_TEST_TMPDIR/tree"
+    git init -q "$T"
+    echo a >"$T/f"; git -C "$T" add f
+    git -C "$T" -c user.email=t@t -c user.name=t commit -q -m init
+    export HELIX_CLAIM="$REPO_ROOT/scripts/helix-claim" HELIX_CLAIM_DIR="$BATS_TEST_TMPDIR/claims"
+    sleep 120 &
+    HOLDER=$!
+    (cd "$T" && HELIX_SESSION_ID=sess-a "$HELIX_CLAIM" take worktree:tree "session edit" --pid "$HOLDER" >/dev/null)
+}
+
+teardown() {
+    [ -n "${HOLDER:-}" ] && kill "$HOLDER" 2>/dev/null
+    return 0
+}
+
+@test "a detached gate runs under its own session's worktree: claim" {
+    detached_gate_fixture
+    run env HELIX_SESSION_ID=sess-a bash -c "cd '$T' && '$GATE'"
+    [ "$status" -eq 0 ]
+    contains "LAND GATE: PASS" "$output"
+}
+
+@test "a detached gate outside any session is refused, and says why" {
+    detached_gate_fixture
+    run env -u HELIX_SESSION_ID -u CLAUDE_CODE_SESSION_ID bash -c "cd '$T' && '$GATE'"
+    [ "$status" -eq 2 ]
+    contains "is held by another session" "$output"
+    contains "outside a session" "$output"
+    refute_grep "^make" "$CALLS"
+}

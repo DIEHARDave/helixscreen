@@ -130,17 +130,24 @@ export LAND_GATE_ACTIVE=$$
 resolve_sweep_location || exit $?
 export SWEEP_WHERE MAKE TEST_HOST_RUN CI_SHARDS CI_SHARD_TIMEOUT LAND_GATE_LOGDIR LAND_GATE_STEP_TIMEOUT ROWS_DIR
 
-# build:<tree> is taken for this run's pid. A session holding worktree:<tree>
-# while it runs the gate would refuse that take, since the two claims exclude
-# each other across owners; so on a refusal the take is retried as each
-# ancestor in turn, and succeeds only when the holder is the session that
-# started this gate. A peer's claim matches no ancestor and still refuses.
+# build:<tree> is taken for this run's pid. The two claims exclude each other
+# across owners, so a worktree:<tree> holder running the gate must read as the
+# same owner. helix-claim matches a holder recorded under the session id this
+# gate inherited, which survives a detached launch reparented to init. A caller
+# with no session id (a plain shell that took the claim with --pid $$) is
+# matched by retrying the take as each ancestor in turn; a peer's claim matches
+# neither and still refuses.
 tree=$(basename "$(git rev-parse --show-toplevel 2>/dev/null || pwd)")
 claim_pid=$$
 until "$HELIX_CLAIM" take "build:$tree" "make land-gate" --pid "$claim_pid" >/dev/null 2>&1; do
     claim_pid=$(ps -o ppid= -p "$claim_pid" 2>/dev/null | tr -d ' ')
     if [ -z "$claim_pid" ] || [ "$claim_pid" -le 1 ]; then
         echo "✗ build:$tree is held by another session: a gate or build is running in this tree" >&2
+        if [ -z "${HELIX_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-}}" ]; then
+            echo "  If that claim is your own: a gate launched detached outside a session" >&2
+            echo "  is no descendant of the holder and carries no session id, so it cannot" >&2
+            echo "  be matched to it. Run it in the foreground, or set HELIX_SESSION_ID." >&2
+        fi
         "$HELIX_CLAIM" check "build:$tree" >&2
         exit 2
     fi

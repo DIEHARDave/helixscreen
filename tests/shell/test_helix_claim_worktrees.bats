@@ -291,3 +291,48 @@ teardown() {
     run bash -c '"$1" held-by-other build:mainrepo' _ "$CLAIM"
     [ "$status" -eq 0 ]
 }
+
+# A process reparented to init (a detached `( make land-gate ) &` whose shell
+# exited) has no ancestor to match, but it still carries its session's id.
+
+@test "a holder with another session id refuses a non-ancestor" {
+    HELIX_SESSION_ID=sess-x "$CLAIM" take worktree:mainrepo "held" --pid "$OWNER" >/dev/null
+    run env HELIX_SESSION_ID=sess-y "$CLAIM" take build:mainrepo "gate" --pid 1
+    [ "$status" -ne 0 ]
+    contains "REFUSED" "$output"
+}
+
+@test "a non-ancestor carrying the holder's session id is the same owner" {
+    HELIX_SESSION_ID=sess-x "$CLAIM" take worktree:mainrepo "held" --pid "$OWNER" >/dev/null
+    run env HELIX_SESSION_ID=sess-x "$CLAIM" take build:mainrepo "gate" --pid 1
+    [ "$status" -eq 0 ]
+    contains "CLAIMED build:" "$output"
+}
+
+@test "the session id matches across HELIX_SESSION_ID and CLAUDE_CODE_SESSION_ID" {
+    CLAUDE_CODE_SESSION_ID=sess-x "$CLAIM" take worktree:mainrepo "held" --pid "$OWNER" >/dev/null
+    run env HELIX_SESSION_ID=sess-x "$CLAIM" take build:mainrepo "gate" --pid 1
+    [ "$status" -eq 0 ]
+}
+
+@test "two claims with no session id are not one owner" {
+    env -u HELIX_SESSION_ID -u CLAUDE_CODE_SESSION_ID \
+        "$CLAIM" take worktree:mainrepo "held" --pid "$OWNER" >/dev/null
+    run env -u HELIX_SESSION_ID -u CLAUDE_CODE_SESSION_ID \
+        "$CLAIM" take build:mainrepo "gate" --pid 1
+    [ "$status" -ne 0 ]
+    contains "REFUSED" "$output"
+}
+
+@test "held-by-other and check treat a matching session id as the same owner" {
+    HELIX_SESSION_ID=sess-x "$CLAIM" take worktree:mainrepo "held" --pid "$OWNER" >/dev/null
+    run env HELIX_SESSION_ID=sess-x "$CLAIM" held-by-other worktree:mainrepo
+    [ "$status" -eq 1 ]
+    run env HELIX_SESSION_ID=sess-x "$CLAIM" held-by-other build:mainrepo
+    [ "$status" -eq 1 ]
+    run env HELIX_SESSION_ID=sess-x "$CLAIM" check build:mainrepo
+    [ "$status" -eq 0 ]
+    contains "FREE" "$output"
+    run env HELIX_SESSION_ID=sess-y "$CLAIM" held-by-other build:mainrepo
+    [ "$status" -eq 0 ]
+}

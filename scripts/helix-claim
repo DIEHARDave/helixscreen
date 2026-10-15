@@ -194,19 +194,30 @@ is_self_or_ancestor() {
     return 1
 }
 
-# One ownership rule for every holder-versus-caller question: the holder is the
-# caller's own session, or an ancestor of it.
-same_owner() { [ "$1" = "$2" ] || is_self_or_ancestor "$1"; }
+# The session this command runs for, as a claim records it. Empty outside one.
+caller_session_id() { printf '%s' "${HELIX_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-}}"; }
 
-# Echoes the sibling's file when a DIFFERENT live session holds the same tree.
-# A holder that is an ancestor of the caller counts as the same session.
+# One ownership rule for every holder-versus-caller question, given the holder
+# claim's body and the caller's pid: the holder is the caller's own pid, an
+# ancestor of it, or a claim recorded under the caller's session id. The id is
+# what still ties a process reparented to init (a detached launch whose shell
+# exited) to its session; two claims with no id are never one owner by it.
+same_owner() {
+    local holder sid
+    holder=$(json_get "$1" pid)
+    [ "$holder" = "$2" ] && return 0
+    is_self_or_ancestor "$holder" && return 0
+    sid=$(json_get "$1" session_id)
+    [ -n "$sid" ] && [ "$sid" = "$(caller_session_id)" ]
+}
+
+# Echoes the sibling's file when a DIFFERENT live session holds the same tree,
+# as same_owner judges it.
 blocking_sibling() {
     local f; f=$(sibling_file "$1") || return 1
     [ -f "$f" ] || return 1
     [ "$(state_of "$f")" = "LIVE" ] || return 1
-    local body; body=$(tr -d '\n' < "$f")
-    local owner; owner=$(json_get "$body" pid)
-    same_owner "$owner" "$2" && return 1
+    same_owner "$(tr -d '\n' < "$f")" "$2" && return 1
     printf '%s' "$f"
 }
 
@@ -428,7 +439,7 @@ take)
   "resource": "$res",
   "op": "$op",
   "session": "${HELIX_SESSION_NAME:-$(hostname)-$pid}",
-  "session_id": "${HELIX_SESSION_ID:-${CLAUDE_CODE_SESSION_ID:-}}",
+  "session_id": "$(caller_session_id)",
   "socket": "${HELIX_SESSION_SOCKET:-${CLAUDE_CODE_MESSAGING_SOCKET:-}}",
   "pid": $pid,
   "pid_start": "$(pid_starttime "$pid")",
@@ -704,8 +715,7 @@ held-by-other)
     me=$(session_pid)
     f="$CLAIM_DIR/$(slug "$res").json"
     if [ -f "$f" ] && [ "$(state_of "$f")" = "LIVE" ]; then
-        body=$(tr -d '\n' < "$f")
-        same_owner "$(json_get "$body" pid)" "$me" || { describe "$f"; exit 0; }
+        same_owner "$(tr -d '\n' < "$f")" "$me" || { describe "$f"; exit 0; }
     fi
     if sib=$(blocking_sibling "$res" "$me"); then describe "$sib"; exit 0; fi
     exit 1
