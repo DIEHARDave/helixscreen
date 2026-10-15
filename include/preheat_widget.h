@@ -74,7 +74,7 @@ class PreheatWidget : public PanelWidget {
     int cached_extruder_target_ = 0;
     int cached_bed_target_ = 0;
 
-    int tool_target_ = -1; // -1 = all heads, 0..N = an index into ToolState::physical_heads()
+    int tool_target_ = -1; // -1 = all heads, 0..N = an index into ToolState::heated_heads()
 
     /// The tool whose heater tool_target_ aims at, or -1 for every head.
     [[nodiscard]] int target_tool_index() const;

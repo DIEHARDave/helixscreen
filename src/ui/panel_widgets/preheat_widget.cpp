@@ -87,7 +87,7 @@ void PreheatWidget::attach(lv_obj_t* widget_obj, lv_obj_t* parent_screen) {
     // Clamp tool_target_ to prevent a stale index when the printer's extruder
     // count changes between sessions. PanelWidget instances are recycled across
     // home-panel rebuilds, so tool_target_ outlives any one attach.
-    if (tool_target_ >= static_cast<int>(ToolState::instance().physical_heads().size())) {
+    if (tool_target_ >= static_cast<int>(ToolState::instance().heated_heads().size())) {
         tool_target_ = -1; // Reset to "all" if stale
     }
 
@@ -441,15 +441,16 @@ void PreheatWidget::set_temperatures_multi(int nozzle, int bed) {
 int PreheatWidget::target_tool_index() const {
     if (tool_target_ < 0)
         return -1;
-    const auto heads = ToolState::instance().physical_heads();
+    const auto heads = ToolState::instance().heated_heads();
     if (tool_target_ >= static_cast<int>(heads.size()))
         return -1;
     return heads[static_cast<size_t>(tool_target_)].tool_indices.front();
 }
 
 void PreheatWidget::cycle_tool_target() {
-    // Cycles over nozzles, not lanes: tool_target_ indexes the physical heads.
-    int tool_count = static_cast<int>(ToolState::instance().physical_heads().size());
+    // Cycles over heated nozzles, not lanes: tool_target_ indexes the heads a
+    // heater target can be aimed at.
+    int tool_count = static_cast<int>(ToolState::instance().heated_heads().size());
     if (tool_count <= 1) {
         tool_target_ = -1; // Single nozzle, always "all"
         return;

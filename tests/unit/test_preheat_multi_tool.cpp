@@ -453,3 +453,68 @@ TEST_CASE_METHOD(LVGLTestFixture,
     helix::PanelWidgetManager::instance().register_shared_resource<helix::TemperatureController>(
         std::shared_ptr<TemperatureController>{});
 }
+
+// ============================================================================
+// Heads with no heater: a changer with more tools than enumerated extruders
+// ============================================================================
+
+namespace {
+
+/// Four tools on a tool changer whose last two name no extruder, so they are
+/// heads (ToolState::physical_heads()) with nothing to heat.
+void seed_tools_without_heaters() {
+    auto& ts = ToolState::instance();
+    ts.deinit_subjects();
+    ts.init_subjects(false);
+    helix::PrinterDiscovery disc;
+    disc.parse_objects(nlohmann::json::array(
+        {"toolchanger", "tool T0", "tool T1", "tool T2", "tool T3", "extruder", "extruder1"}));
+    ts.init_tools(disc);
+    helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
+    REQUIRE(ts.physical_heads().size() == 4);
+    REQUIRE(ts.extruder_count() == 2);
+}
+
+} // namespace
+
+TEST_CASE_METHOD(LVGLTestFixture, "PreheatWidget: cycle_tool_target skips heads with no heater",
+                 "[preheat][panel_widget]") {
+    seed_tools_without_heaters();
+    PreheatWidget widget(get_printer_state());
+
+    std::vector<int> seen;
+    for (int i = 0; i < 3; ++i) {
+        PreheatWidgetTestAccess::cycle(widget);
+        seen.push_back(PreheatWidgetTestAccess::tool_target(widget));
+    }
+    CHECK(seen == std::vector<int>{0, 1, -1});
+}
+
+TEST_CASE_METHOD(LVGLTestFixture,
+                 "PreheatWidget: a target on a head with no heater announces no tool",
+                 "[preheat][panel_widget]") {
+    seed_tools_without_heaters();
+
+    MoonrakerClientMock client(MoonrakerClientMock::PrinterType::VORON_24);
+    MoonrakerAPI api(client, get_printer_state());
+    TemperatureController controller(get_printer_state(), &api);
+    get_printer_state().set_klippy_state_sync(helix::KlippyState::READY);
+    helix::PanelWidgetManager::instance().register_shared_resource<helix::TemperatureController>(
+        &controller);
+
+    PreheatWidget widget(get_printer_state());
+    // A target carried over from a list where index 2 was a head.
+    PreheatWidgetTestAccess::set_tool_target(widget, 2);
+
+    helix::LogCapture log(64);
+    PreheatWidgetTestAccess::set_temperatures_multi(widget, 200, 60);
+    CHECK(log.count_containing("Preheat: Tool 3 + bed set") == 0);
+
+    // A heated head still announces itself.
+    PreheatWidgetTestAccess::set_tool_target(widget, 1);
+    PreheatWidgetTestAccess::set_temperatures_multi(widget, 200, 60);
+    CHECK(log.count_containing("Preheat: Tool 2 + bed set") >= 1);
+
+    helix::PanelWidgetManager::instance().register_shared_resource<helix::TemperatureController>(
+        std::shared_ptr<TemperatureController>{});
+}
