@@ -1114,7 +1114,6 @@ CPP_WIDGET_FILES: dict[str, dict[str, Any]] = {
             "bind_icon": {"type": "string"},
             "bind_op_state": {"type": "string"},
             "long_mode": {"type": "enum", "enum": "label_long_mode"},
-            "label_fit": {"type": "bool"},
             "label_hidden_if_bp_eq": {"type": "int"},
             "label_hidden_subject": {"type": "string"},
             "label_hidden_if_eq": {"type": "int"},

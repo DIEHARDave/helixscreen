@@ -1534,9 +1534,6 @@
           "type": "enum",
           "enum": "label_long_mode"
         },
-        "label_fit": {
-          "type": "bool"
-        },
         "label_hidden_if_bp_eq": {
           "type": "int"
         },

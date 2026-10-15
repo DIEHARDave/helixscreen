@@ -104,24 +104,19 @@
                   height="content" flex_flow="row" style_pad_all="0" style_pad_gap="#space_sm"
                   style_flex_cross_place="center" scrollable="false">
             <ui_button name="example_btn_primary"
-                       width="0" height="#button_height_sm" label_fit="true" text="Primary" variant="primary"
-                       flex_grow="1"/>
+                       width="0" height="#button_height_sm" text="Primary" variant="primary" flex_grow="1"/>
             <ui_button name="example_btn_secondary"
-                       width="0" height="#button_height_sm" label_fit="true" text="Secondary" variant="secondary"
-                       flex_grow="1"/>
+                       width="0" height="#button_height_sm" text="Secondary" variant="secondary" flex_grow="1"/>
           </lv_obj>
           <lv_obj width="100%"
                   height="content" flex_flow="row" style_pad_all="0" style_pad_gap="#space_sm"
                   style_flex_cross_place="center" scrollable="false">
             <ui_button name="example_btn_tertiary"
-                       width="0" height="#button_height_sm" label_fit="true" text="Tertiary" variant="tertiary"
-                       flex_grow="1"/>
+                       width="0" height="#button_height_sm" text="Tertiary" variant="tertiary" flex_grow="1"/>
             <ui_button name="example_btn_warning"
-                       width="0" height="#button_height_sm" label_fit="true" text="Warning" variant="warning"
-                       flex_grow="1"/>
+                       width="0" height="#button_height_sm" text="Warning" variant="warning" flex_grow="1"/>
           </lv_obj>
-          <ui_button name="example_btn_danger"
-                     width="100%" height="#button_height_sm" label_fit="true" text="Danger" variant="danger"/>
+          <ui_button name="example_btn_danger" width="100%" height="#button_height_sm" text="Danger" variant="danger"/>
           <divider_horizontal/>
           <lv_obj width="100%"
                   height="content" flex_flow="row_wrap" style_pad_all="0" style_pad_gap="#space_sm"

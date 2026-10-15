@@ -401,8 +401,6 @@ All of these support `bind_text="subject_name"` for dynamic content and `text="s
 
 With `long_mode="dots"` and no explicit height, a `text_*` label holds exactly one line and ellipsizes; it still needs a width bound (`width="100%"`, or `flex_grow` in a row). A px/% height or `style_max_height` opts out. Text meant to wrap must not use `dots`. See `LVGL9_XML_GUIDE.md`, "One-line labels: `long_mode="dots"`".
 
-A `<ui_button>` with a fixed or `flex_grow` width takes `label_fit="true"` instead: its label stays one line at the button's height, a label that fits renders exactly as without it, and one wider than the button (a German or Russian translation, usually) ellipsizes at the button's border while the icon keeps its size. `long_mode` on a `ui_button` stretches the label across the button, which moves the icon even when the English text fits.
-
 ```xml
 <text_heading text="Temperature"/>
 <text_body bind_text="nozzle_temp_display"/>

@@ -55,12 +55,6 @@ typedef struct _lv_obj_t lv_obj_t;
  *   Applies to icons from the static icon= attribute and to icons created later
  *   by a bind_icon subject alike.
  *
- * - label_fit: "true" holds the label to one line at the button's height. A
- *   label that fits renders exactly as without it; one wider than a fixed or
- *   flex_grow button ellipsizes at the button's border, and the icon keeps its
- *   size. For fixed-width buttons whose translated labels can outgrow them
- *   (prestonbrown/helixscreen#1307).
- *
  * Layout:
  * - Icon + text: Horizontal flex layout with small gap between
  * - Icon only: Centered icon
