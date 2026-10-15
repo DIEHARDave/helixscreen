@@ -21,8 +21,9 @@
 //   ADMIN_API_KEY           - Admin API key for retrieving debug bundles
 //   RESEND_API_KEY          - Resend API key for email notifications
 
+import { getInstallationToken } from "../../shared/github";
+import { sendEmail } from "../../shared/email";
 import {
-  getInstallationToken,
   crashFingerprint,
   findExistingIssue,
   addDuplicateComment,
@@ -992,19 +993,7 @@ Time: ${metadata.timestamp}${metadata.user_note ? `\nUser Note: ${metadata.user_
 
 Retrieve: curl --compressed -H "X-Admin-Key: $HELIX_ADMIN_KEY" https://crash.helixscreen.org/v1/debug-bundle/${shareCode}`;
 
-  const response = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${env.RESEND_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ from, to: [to], subject, html, text }),
-  });
-
-  if (!response.ok) {
-    const err = await response.text();
-    throw new Error(`Resend API ${response.status}: ${err}`);
-  }
+  await sendEmail({ apiKey: env.RESEND_API_KEY, from, to }, { subject, html, text });
 }
 
 /**
