@@ -16,6 +16,7 @@
 
 #include "../lvgl_test_fixture.h"
 #include "../test_fixtures.h"
+#include "lvgl_log_handler.h"
 #include "observer_factory.h"
 
 #include <string>
@@ -285,4 +286,21 @@ TEST_CASE("XML bind_style_if_eq on a deinitialized subject leaves the style off"
     CHECK(lv_ll_get_len(&subject.subs_ll) == 0);
 
     lv_subject_init_int(&subject, 0);
+}
+
+TEST_CASE("A refused observer maps to one anomaly code whatever subject it names",
+          "[observer][subject_lifetime][logging][1279]") {
+    using helix::logging::anomaly_code_for_warning;
+    const char* a = anomaly_code_for_warning(
+        "lv_subject_add_observer_obj: Subject is deinitialized; observer refused "
+        "(ptr=0x64ecf0c754d0, type=2) lv_observer.c:514");
+    const char* b = anomaly_code_for_warning(
+        "lv_subject_add_observer_with_target: Subject is deinitialized; observer refused "
+        "(ptr=0x7f00000010, type=3) lv_observer.c:556");
+    REQUIRE(a != nullptr);
+    REQUIRE(b != nullptr);
+    CHECK(std::string(a) == "observer_refused_deinit_subject");
+    CHECK(std::string(b) == "observer_refused_deinit_subject");
+    CHECK(anomaly_code_for_warning("lv_subject_add_observer_obj: Subject not initialized yet") ==
+          nullptr);
 }
