@@ -913,7 +913,7 @@ else
 # repeating it changes link order.
 TEST_LINK_INPUTS = $(TEST_CORE_DEPS) $(TEST_LVGL_DEPS) $(TEST_APP_OBJS) $(TEST_TOOL_OBJS) \
                    $(DNS_RESOLV_OBJ) $(MOCK_OBJS) $(LV_MARKDOWN_OBJS) $(QUIRC_OBJS) \
-                   $(LUA_OBJS) $(FONT_OBJS) $(TRANS_OBJS) $(OBJCPP_OBJS) \
+                   $(LUA_OBJS) $(FONT_OBJS) $(OBJCPP_OBJS) \
                    $(LIBHV_LIB) $(LIBHV_JSON_HEADER) $(TEST_PLATFORM_DEPS)
 
 # The source tree this build compiles, measured once as this make starts and

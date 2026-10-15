@@ -163,8 +163,14 @@ void BeltTensionPanel::init_subjects() {
 
     subjects_initialized_ = true;
 
-    StaticSubjectRegistry::instance().register_deinit(
-        "BeltTensionPanel", []() { get_global_belt_tension_panel().deinit_subjects(); });
+    // Subject deinit runs after StaticPanelRegistry::destroy_all() has freed the
+    // panel (its destructor deinits these subjects), so the hook peeks rather
+    // than building a replacement panel during shutdown.
+    StaticSubjectRegistry::instance().register_deinit("BeltTensionPanel", []() {
+        if (auto* panel = helix::lazy_global_if_exists<BeltTensionPanel>()) {
+            panel->deinit_subjects();
+        }
+    });
 }
 
 void BeltTensionPanel::deinit_subjects() {

@@ -19,7 +19,7 @@
 load helpers
 
 setup() {
-    cd "$BATS_TEST_DIRNAME/../.." || return 1
+    cd "$(scratch_tree)" || return 1
 }
 
 # Every makefile that compiles a translation unit against these headers. The
@@ -41,16 +41,6 @@ compile_rule_targets() {
         /^[^\t #]/ && /:/ { target = $0 }
         /-c \$</ && target != "" { print target; target = "" }
     ' $ABI_MAKEFILES
-}
-
-# The make database, without asking make whether the default goal is buildable.
-# What these cases pin is wiring, and they run wherever bats runs, a host with
-# no SDL2, no libnl and no compiled dependencies included. `help` has no
-# prerequisites, so make prints the database and stops; the bare default goal
-# walks the whole graph first and exits 2 on the first prerequisite the host
-# cannot supply, taking the case down with it under bats' `set -e`.
-make_database() {
-    make -pn help "$@" 2>/dev/null
 }
 
 @test "every rule compiling a translation unit depends on ABI_STAMP" {
@@ -75,7 +65,7 @@ make_database() {
 # Every rule pinned above draws its flags from one of these four variables.
 @test "the ABI hash is on the compiler command line, not only in the dependency graph" {
     local db missing=""
-    db="$(make_database)"
+    db="$(make_db)"
     for var in CFLAGS CXXFLAGS SUBMODULE_CFLAGS SUBMODULE_CXXFLAGS; do
         printf '%s\n' "$db" | grep -m1 "^${var} :\{0,1\}= " | grep -q -- '-DHELIX_TP_ABI=' \
             || missing="${missing}${var} "
@@ -91,7 +81,7 @@ make_database() {
 
     define_for() {
         printf '%s' "$1" > "$work/tracked.h"
-        make_database BUILD_DIR="$work" ABI_HEADERS="$work/tracked.h" \
+        make_db BUILD_DIR="$work" ABI_HEADERS="$work/tracked.h" \
             | grep -m1 '^ABI_DEFINE :\{0,1\}= ' | cut -d= -f2-
     }
 
@@ -114,7 +104,7 @@ make_database() {
 
 @test "ABI_HEADERS covers the layout-bearing libhv headers at their source paths" {
     local line missing=""
-    line="$(make_database | grep -m1 '^ABI_HEADERS :=')"
+    line="$(make_db | grep -m1 '^ABI_HEADERS :=')"
     for header in lib/libhv/evpp/TcpClient.h \
                   lib/libhv/http/client/WebSocketClient.h; do
         case "$line" in
@@ -205,7 +195,7 @@ MK
     printf 'not-a-hash' > "$sandbox/.thirdparty-abi"
 
     local hash problems=""
-    hash="$(make_database BUILD_DIR="$sandbox" | grep -m1 '^ABI_HASH :=' | cut -d' ' -f3-)"
+    hash="$(make_db BUILD_DIR="$sandbox" | grep -m1 '^ABI_HASH :=' | cut -d' ' -f3-)"
     [ -n "$hash" ] || problems="ABI_HASH is empty; "
     [ "$(cat "$sandbox/.thirdparty-abi")" = "$hash" ] \
         || problems="${problems}stamp still reads '$(cat "$sandbox/.thirdparty-abi")', want '$hash'"
@@ -225,12 +215,12 @@ MK
     local problems=""
 
     printf 'not-a-hash' > "$sandbox/.thirdparty-abi"
-    env ABI_STAMPED_FOR="$sandbox" make -pn help BUILD_DIR="$sandbox" >/dev/null 2>&1
+    ABI_STAMPED_FOR="$sandbox" make_db BUILD_DIR="$sandbox" >/dev/null
     [ "$(cat "$sandbox/.thirdparty-abi")" = "not-a-hash" ] \
         || problems="a make inside this BUILD_DIR's own build re-stamped it; "
 
     printf 'not-a-hash' > "$sandbox/.thirdparty-abi"
-    env ABI_STAMPED_FOR="$sandbox/other" make -pn help BUILD_DIR="$sandbox" >/dev/null 2>&1
+    ABI_STAMPED_FOR="$sandbox/other" make_db BUILD_DIR="$sandbox" >/dev/null
     [ "$(cat "$sandbox/.thirdparty-abi")" != "not-a-hash" ] \
         || problems="${problems}a make starting a different BUILD_DIR left the stale stamp"
 

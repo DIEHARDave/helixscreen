@@ -9085,6 +9085,25 @@ TEST_CASE("AD5X IFS COLOR-menu slot row is a firmware snapshot (#1065 bundle 482
     CHECK(Ad5xIfsTestAccess::last_firmware_material(backend, 0).value_or("") == "SILK");
 }
 
+// Current Z-Mod puts the button color in the third field and drops the fourth;
+// the slot row reads the same (prestonbrown/helixscreen#1806).
+TEST_CASE("AD5X IFS COLOR-menu slot row with the color in the third field",
+          "[ams][ad5x_ifs][1806]") {
+    TestableAd5xIfsBackend backend;
+    Ad5xIfsTestAccess::set_running(backend, true);
+    Ad5xIfsTestAccess::set_zcolor_supported(backend, false);
+    Ad5xIfsTestAccess::set_port_presence(backend, 0, true);
+    Ad5xIfsTestAccess::set_color(backend, 0, "F330F9");
+    Ad5xIfsTestAccess::set_material(backend, 0, "PETG");
+
+    REQUIRE_FALSE(Ad5xIfsTestAccess::on_gcode_response_line(
+        backend, "// action:prompt_button 1: SILK|RUN_ZCOLOR SLOT=1 HEX=21CC3D TYPE=SILK|21CC3D"));
+
+    SlotInfo info = backend.get_slot_info(0);
+    CHECK(info.material == "SILK");
+    CHECK(info.color_rgb == 0x21CC3D);
+}
+
 namespace {
 
 // The exact swatch grid zmod renders for "Select color" (bundle 482NB943,

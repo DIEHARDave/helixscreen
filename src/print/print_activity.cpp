@@ -3,6 +3,7 @@
 
 #include "print_activity.h"
 
+#include "i18n_plural.h"
 #include "lvgl/src/others/translation/lv_translation.h"
 #include "text_io.h"
 
@@ -105,10 +106,7 @@ std::string format_print_hours(double hours) {
 }
 
 std::string format_print_count(uint64_t prints) {
-    if (prints == 1) {
-        return lv_tr("1 print");
-    }
-    return fmt::format(lv_tr("{} prints"), prints);
+    return fmt::format(fmt::runtime(ui::tr_plural("1 print", "{} prints", prints)), prints);
 }
 
 std::string format_filament_meters(double mm) {

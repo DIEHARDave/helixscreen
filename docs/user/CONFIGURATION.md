@@ -1412,6 +1412,7 @@ For what each widget does and how big it can get, see the [Home Panel guide](gui
 | `host_health` | Host Health | No | Performance readings |
 | `notifications` | Notifications | Yes | No |
 | `clock` | Digital Clock | No | No |
+| `maintenance` | Maintenance | No | No |
 | `tips` | Tips | Yes | No |
 | `shutdown` | Shutdown/Reboot | No | No |
 | `firmware_restart` | Firmware Restart | No | No |

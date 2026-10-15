@@ -5,7 +5,8 @@
   <translation tag=" left" en=" left"/>
   <translation tag=" · was {:.0f}%" en=" · was {:.0f}%"/>
   <translation tag="&quot;%s&quot; failed to load" en="&quot;%s&quot; failed to load"/>
-  <translation tag="%d additional fan%s" en="%d additional fan%s"/>
+  <translation tag="%d additional fan" en="%d additional fan"/>
+  <translation tag="%d additional fans" en="%d additional fans"/>
   <translation tag="%d feeders" en="%d feeders"/>
   <translation tag="%d gates" en="%d gates"/>
   <translation tag="%d lanes" en="%d lanes"/>
@@ -635,7 +636,8 @@
   <translation tag="Complete" en="Complete"/>
   <translation tag="Complete!" en="Complete!"/>
   <translation tag="Completed" en="Completed"/>
-  <translation tag="Completed in %d probe%s" en="Completed in %d probe%s"/>
+  <translation tag="Completed in %d probe" en="Completed in %d probe"/>
+  <translation tag="Completed in %d probes" en="Completed in %d probes"/>
   <translation tag="Completed just now" en="Completed just now"/>
   <translation tag="Completed prints will appear here" en="Completed prints will appear here"/>
   <translation tag="Completed {}d ago" en="Completed {}d ago"/>
@@ -1351,6 +1353,9 @@
   <translation tag="Guides and reference" en="Guides and reference"/>
   <translation tag="H" en="H"/>
   <translation tag="HELIXSCREEN" en="HELIXSCREEN"/>
+  <translation tag="HEPA" en="HEPA"/>
+  <translation tag="HEPA filter" en="HEPA filter"/>
+  <translation tag="HEPA filter interval" en="HEPA filter interval"/>
   <translation tag="HOST" en="HOST"/>
   <translation tag="HTTP Code" en="HTTP Code"/>
   <translation tag="HTTP error: {} {}" en="HTTP error: {} {}"/>
@@ -1666,6 +1671,8 @@
   <translation tag="Lights that follow the printer&apos;s state" en="Lights that follow the printer&apos;s state"/>
   <translation tag="Line the nozzle up with the purge chute so purged filament drops straight in." en="Line the nozzle up with the purge chute so purged filament drops straight in."/>
   <translation tag="Line {} calls {}, which this printer treats as an emergency stop. Re-slice the file with a profile made for this printer." en="Line {} calls {}, which this printer treats as an emergency stop. Re-slice the file with a profile made for this printer."/>
+  <translation tag="Linear rails" en="Linear rails"/>
+  <translation tag="Linear rails interval" en="Linear rails interval"/>
   <translation tag="Listen to all theme sounds" en="Listen to all theme sounds"/>
   <translation tag="Live Z-offset, with baby steps and Save" en="Live Z-offset, with baby steps and Save"/>
   <translation tag="Live view from your webcam" en="Live view from your webcam"/>
@@ -2051,6 +2058,7 @@
   <translation tag="Nozzle clean complete" en="Nozzle clean complete"/>
   <translation tag="Nozzle clog detected" en="Nozzle clog detected"/>
   <translation tag="Nozzle did not reach {}°C — {} cancelled" en="Nozzle did not reach {}°C — {} cancelled"/>
+  <translation tag="Nozzle interval" en="Nozzle interval"/>
   <translation tag="Nozzle min cannot exceed max" en="Nozzle min cannot exceed max"/>
   <translation tag="Nozzle target set to {}°C" en="Nozzle target set to {}°C"/>
   <translation tag="Nozzle temp must be 100-%d°C" en="Nozzle temp must be 100-%d°C"/>
@@ -2288,6 +2296,9 @@
   <translation tag="Print error" en="Print error"/>
   <translation tag="Print failed" en="Print failed"/>
   <translation tag="Print history will show the rewritten name" en="Print history will show the rewritten name"/>
+  <translation tag="Print hours between filter changes. Off hides this meter." en="Print hours between filter changes. Off hides this meter."/>
+  <translation tag="Print hours between nozzle changes. Off hides this meter." en="Print hours between nozzle changes. Off hides this meter."/>
+  <translation tag="Print hours between rail cleaning and lubrication. Off hides this meter." en="Print hours between rail cleaning and lubrication. Off hides this meter."/>
   <translation tag="Print hours this week and lifetime totals" en="Print hours this week and lifetime totals"/>
   <translation tag="Print issue detected" en="Print issue detected"/>
   <translation tag="Print jobs waiting to run" en="Print jobs waiting to run"/>
@@ -2297,6 +2308,8 @@
   <translation tag="Print setup failed: internal error" en="Print setup failed: internal error"/>
   <translation tag="Print status" en="Print status"/>
   <translation tag="Print timed out waiting for completion" en="Print timed out waiting for completion"/>
+  <translation tag="Printed %d time" en="Printed %d time"/>
+  <translation tag="Printed %d times" en="Printed %d times"/>
   <translation tag="Printer" en="Printer"/>
   <translation tag="Printer Error" en="Printer Error"/>
   <translation tag="Printer Firmware Disconnected" en="Printer Firmware Disconnected"/>
@@ -2430,6 +2443,7 @@
   <translation tag="RH" en="RH"/>
   <translation tag="RSS" en="RSS"/>
   <translation tag="RSS:" en="RSS:"/>
+  <translation tag="Rails" en="Rails"/>
   <translation tag="Ramming Volume" en="Ramming Volume"/>
   <translation tag="Raspberry Pi" en="Raspberry Pi"/>
   <translation tag="Raspberry Pi (32-bit)" en="Raspberry Pi (32-bit)"/>
@@ -2551,6 +2565,7 @@
   <translation tag="Reset to Default" en="Reset to Default"/>
   <translation tag="Reset to defaults" en="Reset to defaults"/>
   <translation tag="Reset to original values" en="Reset to original values"/>
+  <translation tag="Reset {}?" en="Reset {}?"/>
   <translation tag="Resetting" en="Resetting"/>
   <translation tag="Resetting system" en="Resetting system"/>
   <translation tag="Resetting..." en="Resetting..."/>
@@ -2777,6 +2792,7 @@
   <translation tag="Sensors" en="Sensors"/>
   <translation tag="Separate on/off macros. HelixScreen tracks the state." en="Separate on/off macros. HelixScreen tracks the state."/>
   <translation tag="Server Setup" en="Server Setup"/>
+  <translation tag="Service hours for the filter, nozzle, and rails" en="Service hours for the filter, nozzle, and rails"/>
   <translation tag="Servo" en="Servo"/>
   <translation tag="Servo Down" en="Servo Down"/>
   <translation tag="Servo Move" en="Servo Move"/>
@@ -2906,8 +2922,10 @@
   <translation tag="Spoolman removed." en="Spoolman removed."/>
   <translation tag="Spoolman unavailable — filament weights may be stale" en="Spoolman unavailable — filament weights may be stale"/>
   <translation tag="Spoolman was not configured." en="Spoolman was not configured."/>
-  <translation tag="Spoolman: %zu Spool%s" en="Spoolman: %zu Spool%s"/>
-  <translation tag="Spoolman: %zu/%zu Spool%s" en="Spoolman: %zu/%zu Spool%s"/>
+  <translation tag="Spoolman: %zu Spool" en="Spoolman: %zu Spool"/>
+  <translation tag="Spoolman: %zu Spools" en="Spoolman: %zu Spools"/>
+  <translation tag="Spoolman: %zu/%zu Spool" en="Spoolman: %zu/%zu Spool"/>
+  <translation tag="Spoolman: %zu/%zu Spools" en="Spoolman: %zu/%zu Spools"/>
   <translation tag="SpoolmanDB search failed" en="SpoolmanDB search failed"/>
   <translation tag="Spools are off" en="Spools are off"/>
   <translation tag="Spools are on the bed: remove them and confirm before moving the printer" en="Spools are on the bed: remove them and confirm before moving the printer"/>
@@ -2929,6 +2947,7 @@
   <translation tag="Start Drying" en="Start Drying"/>
   <translation tag="Start Print" en="Start Print"/>
   <translation tag="Start Probing" en="Start Probing"/>
+  <translation tag="Start a new {} h interval? The hours counted so far are discarded." en="Start a new {} h interval? The hours counted so far are discarded."/>
   <translation tag="Start anyway?" en="Start anyway?"/>
   <translation tag="Start at" en="Start at"/>
   <translation tag="Start drying" en="Start drying"/>
@@ -3256,6 +3275,7 @@
   <translation tag="Tools Used" en="Tools Used"/>
   <translation tag="Tools: " en="Tools: "/>
   <translation tag="Total Prints" en="Total Prints"/>
+  <translation tag="Total print time: {} h" en="Total print time: {} h"/>
   <translation tag="Touch &amp; Input" en="Touch &amp; Input"/>
   <translation tag="Touch Cal" en="Touch Cal"/>
   <translation tag="Touch Calibration" en="Touch Calibration"/>
@@ -3615,6 +3635,7 @@
   <translation tag="remaining" en="remaining"/>
   <translation tag="remaining before clog detection triggers" en="remaining before clog detection triggers"/>
   <translation tag="rendering" en="rendering"/>
+  <translation tag="reset at {} h" en="reset at {} h"/>
   <translation tag="sleep {} min" en="sleep {} min"/>
   <translation tag="slots)" en="slots)"/>
   <translation tag="started" en="started"/>
@@ -3658,9 +3679,11 @@
   <translation tag="{} filament • {}" en="{} filament • {}"/>
   <translation tag="{} firmware" en="{} firmware"/>
   <translation tag="{} h" en="{} h"/>
+  <translation tag="{} h of {} h" en="{} h of {} h"/>
   <translation tag="{} heater turned off" en="{} heater turned off"/>
   <translation tag="{} is asking to connect to this printer." en="{} is asking to connect to this printer."/>
   <translation tag="{} is blocked — manual intervention required" en="{} is blocked — manual intervention required"/>
+  <translation tag="{} is due: {} h reached" en="{} is due: {} h reached"/>
   <translation tag="{} is feeding the current print. Clear it after the print ends." en="{} is feeding the current print. Clear it after the print ends."/>
   <translation tag="{} is installed but its backup-spool switching is turned off, so no automatic swap will happen." en="{} is installed but its backup-spool switching is turned off, so no automatic swap will happen."/>
   <translation tag="{} is installed, but its backup-spool setting could not be read - do not count on an automatic swap." en="{} is installed, but its backup-spool setting could not be read - do not count on an automatic swap."/>
@@ -3674,6 +3697,7 @@
   <translation tag="{} macro not configured" en="{} macro not configured"/>
   <translation tag="{} matches." en="{} matches."/>
   <translation tag="{} may cause unintended changes. Are you sure?" en="{} may cause unintended changes. Are you sure?"/>
+  <translation tag="{} meter reset" en="{} meter reset"/>
   <translation tag="{} min" en="{} min"/>
   <translation tag="{} min ago" en="{} min ago"/>
   <translation tag="{} missing" en="{} missing"/>
@@ -3682,7 +3706,8 @@
   <translation tag="{} new" en="{} new"/>
   <translation tag="{} new hardware available" en="{} new hardware available"/>
   <translation tag="{} new plugins available. Enable them in Settings &gt; Plugins." en="{} new plugins available. Enable them in Settings &gt; Plugins."/>
-  <translation tag="{} preset{}" en="{} preset{}"/>
+  <translation tag="{} preset" en="{} preset"/>
+  <translation tag="{} presets" en="{} presets"/>
   <translation tag="{} prints" en="{} prints"/>
   <translation tag="{} queued" en="{} queued"/>
   <translation tag="{} serial" en="{} serial"/>
@@ -3699,5 +3724,6 @@
   <translation tag="{} · {} · {}" en="{} · {} · {}"/>
   <translation tag="{} — response timed out" en="{} — response timed out"/>
   <translation tag="{} → {}: no filament loaded." en="{} → {}: no filament loaded."/>
+  <translation tag="{}% left" en="{}% left"/>
   <translation tag="{}:{:02} elapsed" en="{}:{:02} elapsed"/>
 </translations>

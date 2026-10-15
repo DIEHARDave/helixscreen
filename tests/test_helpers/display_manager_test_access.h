@@ -42,6 +42,11 @@ class DisplayManagerTestAccess {
         dm.m_height = height;
     }
 
+    /// The screen the resize handler is installed on, or null once it is deleted.
+    static lv_obj_t* resize_screen(const DisplayManager& dm) {
+        return dm.m_resize_screen;
+    }
+
     static void set_backlight(DisplayManager& dm, std::unique_ptr<BacklightBackend> backlight) {
         dm.m_backlight = std::move(backlight);
     }

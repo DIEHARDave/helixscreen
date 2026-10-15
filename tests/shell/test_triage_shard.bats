@@ -244,7 +244,7 @@ triage() {
 }
 
 @test "the sweep's diagnostics run the triage on a failing shard" {
-    FAKE_MODE=alone run make --no-print-directory TEST_BIN="$FAKE" SHARD_RETRIES=1 \
+    FAKE_MODE=alone run scratch_make TEST_BIN="$FAKE" SHARD_RETRIES=1 \
         --eval 'triage-under-test: ; @$(call diagnose_shards,'"$DIR"',5,"~[.]",12,)' \
         triage-under-test
     [ "$status" -eq 0 ]

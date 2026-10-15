@@ -54,18 +54,6 @@ static lv_subject_t keypad_allow_decimal_subject;
 /// it covered what it failed to dim.
 static lv_obj_t* keypad_backdrop = nullptr;
 
-/// The backdrop can die without this file knowing: deleting the screen it hangs off takes
-/// it along. A pointer left behind then names freed memory, and once the allocator hands
-/// that memory to a new object, lv_obj_is_valid() vouches for it and the next show's
-/// destroy_keypad_backdrop() deletes that unrelated object (a display layer, say).
-/// Cleared only while it still names the dying object: a deferred delete of an old
-/// backdrop lands after the next show has stored its replacement.
-static void forget_keypad_backdrop_cb(lv_event_t* e) {
-    if (keypad_backdrop == lv_event_get_target_obj(e)) {
-        keypad_backdrop = nullptr;
-    }
-}
-
 static void destroy_keypad_backdrop() {
     if (keypad_backdrop) {
         helix::ui::safe_delete_deferred(keypad_backdrop);
@@ -157,7 +145,7 @@ void ui_keypad_init(lv_obj_t* parent) {
     // it is built. Only the widget tree is deferred.
     ui_keypad_init_subjects();
 
-    keypad_parent = parent;
+    helix::ui::store_until_deleted(&keypad_parent, parent);
     // The in-pad confirm key (phone layout, integer fields) does what the header's Set does.
     register_xml_callbacks({
         {"on_keypad_confirm",
@@ -175,11 +163,13 @@ static bool ensure_keypad_built() {
         return true;
     }
     if (!keypad_parent) {
-        spdlog::error("[Keypad] Cannot build keypad: never initialized with a parent");
+        spdlog::error(
+            "[Keypad] Cannot build keypad: no parent (never initialized, or it was deleted)");
         return false;
     }
 
-    keypad_widget = (lv_obj_t*)lv_xml_create(keypad_parent, "numeric_keypad_panel", nullptr);
+    helix::ui::store_until_deleted(
+        &keypad_widget, (lv_obj_t*)lv_xml_create(keypad_parent, "numeric_keypad_panel", nullptr));
     if (!keypad_widget) {
         spdlog::error("[Keypad] Failed to create keypad from XML");
         return false;
@@ -246,10 +236,9 @@ void ui_keypad_show(const ui_keypad_config_t* config) {
         // Blur when the platform can afford it, a plain dim when it cannot - the same
         // 40/255 the navigation layer uses for a first overlay, so the pad dims its
         // surroundings exactly as much as any other layer does.
-        keypad_backdrop = helix::ui::create_fullscreen_backdrop(screen, 40);
+        helix::ui::store_until_deleted(&keypad_backdrop,
+                                       helix::ui::create_fullscreen_backdrop(screen, 40));
         if (keypad_backdrop) {
-            lv_obj_add_event_cb(keypad_backdrop, forget_keypad_backdrop_cb, LV_EVENT_DELETE,
-                                nullptr);
             helix::ui::bring_to_front(keypad_backdrop);
         }
     }

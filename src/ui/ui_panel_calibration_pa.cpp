@@ -15,6 +15,7 @@
 #include "app_globals.h"
 #include "filament_database.h"
 #include "filament_op_slot_resolver.h"
+#include "i18n_plural.h"
 #include "i_moonraker_api.h"
 #include "lvgl/src/others/translation/lv_translation.h"
 #include "observer_factory.h"
@@ -430,14 +431,15 @@ void PACalibrationPanel::confirm_and_start() {
     // cannot check for itself. The plate must be ON - the opposite of the tool
     // offset screen, which is a real source of confusion for anyone who used
     // that one, so it is stated rather than implied.
-    const std::string msg =
-        fmt::format("{}\n\n{}\n\n{}",
-                    lv_tr("Filament must be loaded in the extruder, and the "
-                          "build plate on with nothing in the way of the head."),
-                    lv_tr("The nozzle extrudes a few short test moves in a corner, away from the "
-                          "print area, and repeats until it agrees with itself."),
-                    fmt::format(fmt::runtime(lv_tr("At {}°C, about {} minutes.")), target_temp_,
-                                estimate_minutes()));
+    const std::string msg = fmt::format(
+        "{}\n\n{}\n\n{}",
+        lv_tr("Filament must be loaded in the extruder, and the "
+              "build plate on with nothing in the way of the head."),
+        lv_tr("The nozzle extrudes a few short test moves in a corner, away from the "
+              "print area, and repeats until it agrees with itself."),
+        fmt::format(fmt::runtime(helix::ui::tr_plural(nullptr, "At {}°C, about {} minutes.",
+                                                      static_cast<uint64_t>(estimate_minutes()))),
+                    target_temp_, estimate_minutes()));
 
     modal_confirm(lv_tr("Before starting"), msg.c_str(), ModalSeverity::Warning, lv_tr("Start"),
                   []() { get_global_pa_cal_panel().begin_run(); });

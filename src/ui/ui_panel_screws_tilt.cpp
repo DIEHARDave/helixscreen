@@ -11,6 +11,7 @@
 #include "ui_utils.h"
 
 #include "app_globals.h"
+#include "i18n_plural.h"
 #include "i_moonraker_api.h"
 #include "i_moonraker_client.h"
 #include "printer_state.h"
@@ -399,8 +400,10 @@ void ScrewsTiltPanel::on_screws_tilt_results(const std::vector<ScrewTiltResult>&
 
     if (all_level) {
         char buf[64];
-        snprintf(buf, sizeof(buf), lv_tr("Completed in %d probe%s"), probe_count_,
-                 probe_count_ == 1 ? "" : "s");
+        snprintf(buf, sizeof(buf),
+                 helix::ui::tr_plural("Completed in %d probe", "Completed in %d probes",
+                                      static_cast<uint64_t>(probe_count_)),
+                 probe_count_);
         lv_subject_copy_string(&probe_count_subject_, buf);
     }
 

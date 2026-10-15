@@ -5,7 +5,8 @@
   <translation tag=" left" ja=" 残り"/>
   <translation tag=" · was {:.0f}%" ja=" · 以前は {:.0f}%"/>
   <translation tag="&quot;%s&quot; failed to load" ja="&quot;%s&quot; の読み込みに失敗しました"/>
-  <translation tag="%d additional fan%s" ja="追加ファン %d 個%s"/>
+  <translation tag="%d additional fan" ja="追加ファン %d 個"/>
+  <translation tag="%d additional fans" ja="追加ファン %d 個"/>
   <translation tag="%d feeders" ja="%d フィーダー"/>
   <translation tag="%d gates" ja="%d ゲート"/>
   <translation tag="%d lanes" ja="%d レーン"/>
@@ -635,7 +636,8 @@
   <translation tag="Complete" ja="完了"/>
   <translation tag="Complete!" ja="完了！"/>
   <translation tag="Completed" ja="完了"/>
-  <translation tag="Completed in %d probe%s" ja="%d 回のプローブ%sで完了"/>
+  <translation tag="Completed in %d probe" ja="%d 回のプローブで完了"/>
+  <translation tag="Completed in %d probes" ja="%d 回のプローブで完了"/>
   <translation tag="Completed just now" ja="たった今完了しました"/>
   <translation tag="Completed prints will appear here" ja="完了した印刷がここに表示されます"/>
   <translation tag="Completed {}d ago" ja="{} 日前に完了"/>
@@ -1351,6 +1353,9 @@
   <translation tag="Guides and reference" ja="ガイドとリファレンス"/>
   <translation tag="H" ja="H"/>
   <translation tag="HELIXSCREEN" ja="HELIXSCREEN"/>
+  <translation tag="HEPA" ja="HEPA"/>
+  <translation tag="HEPA filter" ja="HEPAフィルター"/>
+  <translation tag="HEPA filter interval" ja="HEPAフィルターの間隔"/>
   <translation tag="HOST" ja="ホスト"/>
   <translation tag="HTTP Code" ja="HTTP コード"/>
   <translation tag="HTTP error: {} {}" ja="HTTP エラー: {} {}"/>
@@ -1666,6 +1671,8 @@
   <translation tag="Lights that follow the printer&apos;s state" ja="プリンターの状態に応じて変わるライト"/>
   <translation tag="Line the nozzle up with the purge chute so purged filament drops straight in." ja="パージシュートにノズルを合わせ、パージされたフィラメントがまっすぐ落ちるようにします。"/>
   <translation tag="Line {} calls {}, which this printer treats as an emergency stop. Re-slice the file with a profile made for this printer." ja="{} 行目で {} を実行します。このプリンターでは緊急停止とみなされます。このプリンター用のプロファイルでファイルを再スライスしてください。"/>
+  <translation tag="Linear rails" ja="リニアレール"/>
+  <translation tag="Linear rails interval" ja="リニアレールの間隔"/>
   <translation tag="Listen to all theme sounds" ja="すべてのテーマサウンドを試聴"/>
   <translation tag="Live Z-offset, with baby steps and Save" ja="ライブ Z-Offset、微調整と保存つき"/>
   <translation tag="Live view from your webcam" ja="ウェブカメラのライブ表示"/>
@@ -2051,6 +2058,7 @@
   <translation tag="Nozzle clean complete" ja="ノズル清掃完了"/>
   <translation tag="Nozzle clog detected" ja="ノズルの詰まりを検出しました"/>
   <translation tag="Nozzle did not reach {}°C — {} cancelled" ja="ノズルが{}°Cに達しませんでした — {}を中止しました"/>
+  <translation tag="Nozzle interval" ja="ノズルの間隔"/>
   <translation tag="Nozzle min cannot exceed max" ja="ノズル温度の最小値は最大値を超えられません"/>
   <translation tag="Nozzle target set to {}°C" ja="ノズル目標温度を {}°C に設定しました"/>
   <translation tag="Nozzle temp must be 100-%d°C" ja="ノズル温度は 100〜%d°C にしてください"/>
@@ -2288,6 +2296,9 @@
   <translation tag="Print error" ja="印刷エラー"/>
   <translation tag="Print failed" ja="印刷失敗"/>
   <translation tag="Print history will show the rewritten name" ja="印刷履歴には書き換え後の名前が表示されます"/>
+  <translation tag="Print hours between filter changes. Off hides this meter." ja="フィルター交換までの印刷時間。オフにするとこのメーターを非表示にします。"/>
+  <translation tag="Print hours between nozzle changes. Off hides this meter." ja="ノズル交換までの印刷時間。オフにするとこのメーターを非表示にします。"/>
+  <translation tag="Print hours between rail cleaning and lubrication. Off hides this meter." ja="レールの清掃と給油までの印刷時間。オフにするとこのメーターを非表示にします。"/>
   <translation tag="Print hours this week and lifetime totals" ja="今週の印刷時間と累計"/>
   <translation tag="Print issue detected" ja="印刷の問題を検出しました"/>
   <translation tag="Print jobs waiting to run" ja="実行待ちの印刷ジョブ"/>
@@ -2297,6 +2308,8 @@
   <translation tag="Print setup failed: internal error" ja="印刷のセットアップに失敗しました: 内部エラー"/>
   <translation tag="Print status" ja="印刷ステータス"/>
   <translation tag="Print timed out waiting for completion" ja="印刷の完了待ちでタイムアウトしました"/>
+  <translation tag="Printed %d time" ja="%d 回印刷済み"/>
+  <translation tag="Printed %d times" ja="%d 回印刷済み"/>
   <translation tag="Printer" ja="プリンター"/>
   <translation tag="Printer Error" ja="プリンターエラー"/>
   <translation tag="Printer Firmware Disconnected" ja="プリンターファームウェア切断"/>
@@ -2430,6 +2443,7 @@
   <translation tag="RH" ja="RH"/>
   <translation tag="RSS" ja="RSS"/>
   <translation tag="RSS:" ja="RSS:"/>
+  <translation tag="Rails" ja="レール"/>
   <translation tag="Ramming Volume" ja="ラミング量"/>
   <translation tag="Raspberry Pi" ja="Raspberry Pi"/>
   <translation tag="Raspberry Pi (32-bit)" ja="Raspberry Pi (32-bit)"/>
@@ -2551,6 +2565,7 @@
   <translation tag="Reset to Default" ja="デフォルトにリセット"/>
   <translation tag="Reset to defaults" ja="デフォルトに戻す"/>
   <translation tag="Reset to original values" ja="元の値にリセット"/>
+  <translation tag="Reset {}?" ja="{}をリセットしますか？"/>
   <translation tag="Resetting" ja="リセット中"/>
   <translation tag="Resetting system" ja="システムをリセットしています"/>
   <translation tag="Resetting..." ja="リセット中..."/>
@@ -2777,6 +2792,7 @@
   <translation tag="Sensors" ja="センサー"/>
   <translation tag="Separate on/off macros. HelixScreen tracks the state." ja="個別のオン/オフマクロ。HelixScreenが状態を追跡します。"/>
   <translation tag="Server Setup" ja="サーバー設定"/>
+  <translation tag="Service hours for the filter, nozzle, and rails" ja="フィルター、ノズル、レールの稼働時間"/>
   <translation tag="Servo" ja="サーボ"/>
   <translation tag="Servo Down" ja="サーボを下げる"/>
   <translation tag="Servo Move" ja="サーボを移動"/>
@@ -2906,8 +2922,10 @@
   <translation tag="Spoolman removed." ja="Spoolman を削除しました。"/>
   <translation tag="Spoolman unavailable — filament weights may be stale" ja="Spoolmanが利用できません — フィラメント重量が古い可能性があります"/>
   <translation tag="Spoolman was not configured." ja="Spoolman は設定されていませんでした。"/>
-  <translation tag="Spoolman: %zu Spool%s" ja="Spoolman: %zu 個のスプール%s"/>
-  <translation tag="Spoolman: %zu/%zu Spool%s" ja="Spoolman: %zu/%zu 個のスプール%s"/>
+  <translation tag="Spoolman: %zu Spool" ja="Spoolman: %zu 個のスプール"/>
+  <translation tag="Spoolman: %zu Spools" ja="Spoolman: %zu 個のスプール"/>
+  <translation tag="Spoolman: %zu/%zu Spool" ja="Spoolman: %zu/%zu 個のスプール"/>
+  <translation tag="Spoolman: %zu/%zu Spools" ja="Spoolman: %zu/%zu 個のスプール"/>
   <translation tag="SpoolmanDB search failed" ja="SpoolmanDB の検索に失敗しました"/>
   <translation tag="Spools are off" ja="スプールを取り出しました"/>
   <translation tag="Spools are on the bed: remove them and confirm before moving the printer" ja="ベッドにスプールがあります: 取り除いて確認してからプリンターを動かしてください"/>
@@ -2929,6 +2947,7 @@
   <translation tag="Start Drying" ja="乾燥開始"/>
   <translation tag="Start Print" ja="印刷を開始"/>
   <translation tag="Start Probing" ja="プローブ開始"/>
+  <translation tag="Start a new {} h interval? The hours counted so far are discarded." ja="新しい {} 時間の間隔を開始しますか？これまでの時間は破棄されます。"/>
   <translation tag="Start anyway?" ja="それでも開始しますか？"/>
   <translation tag="Start at" ja="開始位置"/>
   <translation tag="Start drying" ja="乾燥開始"/>
@@ -3256,6 +3275,7 @@
   <translation tag="Tools Used" ja="使用したツール"/>
   <translation tag="Tools: " ja="ツール: "/>
   <translation tag="Total Prints" ja="総印刷数"/>
+  <translation tag="Total print time: {} h" ja="総印刷時間: {} 時間"/>
   <translation tag="Touch &amp; Input" ja="タッチと入力"/>
   <translation tag="Touch Cal" ja="タッチキャリブレーション"/>
   <translation tag="Touch Calibration" ja="タッチキャリブレーション"/>
@@ -3615,6 +3635,7 @@
   <translation tag="remaining" ja="残り"/>
   <translation tag="remaining before clog detection triggers" ja="残りで詰まり検出が作動します"/>
   <translation tag="rendering" ja="レンダリング中"/>
+  <translation tag="reset at {} h" ja="{} 時間時点でリセット"/>
   <translation tag="sleep {} min" ja="{}分でスリープ"/>
   <translation tag="slots)" ja="スロット)"/>
   <translation tag="started" ja="開始"/>
@@ -3658,9 +3679,11 @@
   <translation tag="{} filament • {}" ja="フィラメント {} • {}"/>
   <translation tag="{} firmware" ja="{} ファームウェア"/>
   <translation tag="{} h" ja="{} 時間"/>
+  <translation tag="{} h of {} h" ja="{} / {} 時間"/>
   <translation tag="{} heater turned off" ja="{} ヒーターをオフにしました"/>
   <translation tag="{} is asking to connect to this printer." ja="{} がこのプリンターへの接続を求めています。"/>
   <translation tag="{} is blocked — manual intervention required" ja="{} がブロックされています — 手動での対応が必要です"/>
+  <translation tag="{} is due: {} h reached" ja="{}の交換時期です: {} 時間に到達"/>
   <translation tag="{} is feeding the current print. Clear it after the print ends." ja="{} は現在の印刷に給紙中です。印刷終了後にクリアしてください。"/>
   <translation tag="{} is installed but its backup-spool switching is turned off, so no automatic swap will happen." ja="{} はインストールされていますが、予備スプールへの切り替えがオフになっているため、自動切り替えは行われません。"/>
   <translation tag="{} is installed, but its backup-spool setting could not be read - do not count on an automatic swap." ja="{} はインストールされていますが、予備スプールの設定を読み取れませんでした - 自動切り替えを当てにしないでください。"/>
@@ -3674,6 +3697,7 @@
   <translation tag="{} macro not configured" ja="{} マクロが未設定です"/>
   <translation tag="{} matches." ja="{} が一致します。"/>
   <translation tag="{} may cause unintended changes. Are you sure?" ja="{} は意図しない変更を引き起こす可能性があります。よろしいですか？"/>
+  <translation tag="{} meter reset" ja="{}のメーターをリセットしました"/>
   <translation tag="{} min" ja="{} 分"/>
   <translation tag="{} min ago" ja="{}分前"/>
   <translation tag="{} missing" ja="未検出 {} 件"/>
@@ -3682,7 +3706,8 @@
   <translation tag="{} new" ja="新規 {} 件"/>
   <translation tag="{} new hardware available" ja="{} 個の新しいハードウェアが利用可能です"/>
   <translation tag="{} new plugins available. Enable them in Settings &gt; Plugins." ja="{} 個の新しいプラグインが利用可能です。設定 &gt; プラグインで有効化してください。"/>
-  <translation tag="{} preset{}" ja="{} 個のプリセット{}"/>
+  <translation tag="{} preset" ja="{} 個のプリセット"/>
+  <translation tag="{} presets" ja="{} 個のプリセット"/>
   <translation tag="{} prints" ja="{} 件"/>
   <translation tag="{} queued" ja="{} 件キュー中"/>
   <translation tag="{} serial" ja="{} シリアル番号"/>
@@ -3699,5 +3724,6 @@
   <translation tag="{} · {} · {}" ja="{} · {} · {}"/>
   <translation tag="{} — response timed out" ja="{} — 応答タイムアウト"/>
   <translation tag="{} → {}: no filament loaded." ja="{} → {}: フィラメントが装填されていません。"/>
+  <translation tag="{}% left" ja="残り {}%"/>
   <translation tag="{}:{:02} elapsed" ja="経過 {}:{:02}"/>
 </translations>

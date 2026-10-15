@@ -1192,7 +1192,7 @@ bool PrintSelectPanel::refetch_after_connection_loss(size_t i, const std::string
  */
 void PrintSelectPanel::process_metadata_result(size_t i, const std::string& filename,
                                                const FileMetadata& metadata) {
-    // Extract all values (this runs on background thread - metadata is const ref)
+    // Main thread: every caller runs this inside a tok.defer() body (fetch_metadata_range).
     int print_time_minutes = static_cast<int>(metadata.estimated_time / 60.0);
     float filament_grams = static_cast<float>(metadata.filament_weight_total);
     std::string filament_name_raw = metadata.filament_name;
@@ -1225,18 +1225,17 @@ void PrintSelectPanel::process_metadata_result(size_t i, const std::string& file
     spdlog::debug("[{}] Metadata thumbnails for {}: count={}, selected '{}'", get_name(), filename,
                   metadata.thumbnails.size(), thumb_path);
 
-    // Format strings on background thread (uses standalone helper functions)
+    // Formatting translates (tr_plural reads the active language), so it stays on this thread.
     std::string print_time_str = format_print_time(card_total_minutes(print_time_minutes));
     std::string filament_str = format_filament_weight(filament_grams);
     std::string layer_count_str = format_layer_count(layer_count);
     std::string print_height_str = format_print_height(object_height, /*tall_suffix=*/true);
     std::string layer_height_str = format_layer_height(layer_height);
 
-    // Check if thumbnail is a local file (background thread - filesystem OK)
+    // Check if thumbnail is a local file
     bool thumb_is_local = !thumb_path.empty() && hfs::exists(thumb_path);
 
-    // CRITICAL: Dispatch file_list_ modifications to main thread to avoid race
-    // conditions with populate_card_view/populate_list_view reading file_list_
+    // Everything the apply step writes into file_list_ and the thumbnail fetch it chains.
     struct MetadataUpdate {
         PrintSelectPanel* panel;
         size_t index;
@@ -1263,14 +1262,8 @@ void PrintSelectPanel::process_metadata_result(size_t i, const std::string& file
         std::vector<std::string> filament_colors;
     };
 
-    // process_metadata_result already runs on the main thread (every caller is
-    // inside a `tok.defer(...)` body — see fetch_metadata_range). The original
-    // code wrapped the apply-and-fetch step in queue_update<MetadataUpdate> to
-    // marshal back to main from the bg thread that used to run this function.
-    // Post-L081 sweep that's redundant: just call the apply lambda directly.
-    // The MetadataUpdate struct is preserved as a parameter bag so the
-    // ~260-line existing apply body (chains the guarded thumbnail fetch +
-    // download_file_partial) stays unchanged.
+    // Already on the main thread, so the apply step runs directly; MetadataUpdate is its
+    // parameter bag.
     {
         auto d_owned = std::make_unique<MetadataUpdate>(MetadataUpdate{this,
                                                                        i,

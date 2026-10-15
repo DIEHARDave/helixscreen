@@ -5,6 +5,7 @@
 
 #include "display_settings_manager.h"
 #include "format_utils.h"
+#include "i18n_plural.h"
 #include "locale_formats.h"
 #include "lvgl/src/others/translation/lv_translation.h"
 
@@ -71,12 +72,8 @@ std::string format_layer_count(uint32_t layer_count) {
     if (layer_count == 0) {
         return helix::format::UNAVAILABLE;
     }
-    char buf[32];
-    if (layer_count == 1) {
-        snprintf(buf, sizeof(buf), "%s", lv_tr("1 layer"));
-    } else {
-        snprintf(buf, sizeof(buf), lv_tr("%u layers"), layer_count);
-    }
+    char buf[48];
+    snprintf(buf, sizeof(buf), tr_plural("1 layer", "%u layers", layer_count), layer_count);
     return std::string(buf);
 }
 
@@ -199,29 +196,20 @@ std::string format_relative_time(uint64_t elapsed_ms) {
         return lv_tr("Just now");
     }
     if (elapsed_ms < 3600000) { // < 1 hour
-        uint64_t mins = elapsed_ms / 60000;
-        if (mins == 1) {
-            return lv_tr("1 min ago");
-        }
-        char buf[32];
-        snprintf(buf, sizeof(buf), lv_tr("%lu min ago"), static_cast<unsigned long>(mins));
+        const auto mins = static_cast<unsigned long>(elapsed_ms / 60000);
+        char buf[48];
+        snprintf(buf, sizeof(buf), tr_plural("1 min ago", "%lu min ago", mins), mins);
         return buf;
     }
     if (elapsed_ms < 86400000) { // < 1 day
-        uint64_t hours = elapsed_ms / 3600000;
-        if (hours == 1) {
-            return lv_tr("1 hour ago");
-        }
-        char buf[32];
-        snprintf(buf, sizeof(buf), lv_tr("%lu hours ago"), static_cast<unsigned long>(hours));
+        const auto hours = static_cast<unsigned long>(elapsed_ms / 3600000);
+        char buf[48];
+        snprintf(buf, sizeof(buf), tr_plural("1 hour ago", "%lu hours ago", hours), hours);
         return buf;
     }
-    uint64_t days = elapsed_ms / 86400000;
-    if (days == 1) {
-        return lv_tr("1 day ago");
-    }
-    char buf[32];
-    snprintf(buf, sizeof(buf), lv_tr("%lu days ago"), static_cast<unsigned long>(days));
+    const auto days = static_cast<unsigned long>(elapsed_ms / 86400000);
+    char buf[48];
+    snprintf(buf, sizeof(buf), tr_plural("1 day ago", "%lu days ago", days), days);
     return buf;
 }
 

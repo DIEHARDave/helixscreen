@@ -7,7 +7,8 @@ translations:
   ' left': ' 残り'
   ' · was {:.0f}%': ' · 以前は {:.0f}%'
   '"%s" failed to load': '"%s" の読み込みに失敗しました'
-  '%d additional fan%s': 追加ファン %d 個%s
+  '%d additional fan': '追加ファン %d 個'
+  '%d additional fans': '追加ファン %d 個'
   '%d feeders': '%d フィーダー'
   '%d gates': '%d ゲート'
   '%d lanes': '%d レーン'
@@ -649,7 +650,8 @@ translations:
   Complete: 完了
   Complete!: 完了！
   Completed: 完了
-  Completed in %d probe%s: '%d 回のプローブ%sで完了'
+  'Completed in %d probe': '%d 回のプローブで完了'
+  'Completed in %d probes': '%d 回のプローブで完了'
   Completed just now: 'たった今完了しました'
   Completed prints will appear here: 完了した印刷がここに表示されます
   Completed {}d ago: '{} 日前に完了'
@@ -759,6 +761,9 @@ translations:
     マクロを分析できませんでした。一部の印刷オプションが利用できない場合があります。
   Could not answer the connection request: '接続リクエストに応答できませんでした'
   'Could not check {} - it stays in the queue': '{} を確認できませんでした – キューに残ります'
+  Print hours between filter changes. Off hides this meter.: 'フィルター交換までの印刷時間。オフにするとこのメーターを非表示にします。'
+  Print hours between nozzle changes. Off hides this meter.: 'ノズル交換までの印刷時間。オフにするとこのメーターを非表示にします。'
+  Print hours between rail cleaning and lubrication. Off hides this meter.: 'レールの清掃と給油までの印刷時間。オフにするとこのメーターを非表示にします。'
   Print hours this week and lifetime totals: '今週の印刷時間と累計'
   '{} could not be checked from Home - review it and tap Print': '{} をホームから確認できませんでした – 内容を確認して印刷をタップしてください'
   ? "Could not check webcam status.\nCheck printer connection."
@@ -1396,6 +1401,9 @@ translations:
   Guides and reference: ガイドとリファレンス
   H: H
   HELIXSCREEN: HELIXSCREEN
+  HEPA: 'HEPA'
+  HEPA filter: 'HEPAフィルター'
+  HEPA filter interval: 'HEPAフィルターの間隔'
   HOST: ホスト
   HTTP Code: HTTP コード
   'HTTP error: {} {}': 'HTTP エラー: {} {}'
@@ -1733,6 +1741,8 @@ translations:
   Line the nozzle up with the purge chute so purged filament drops straight in.: パージシュートにノズルを合わせ、パージされたフィラメントがまっすぐ落ちるようにします。
 
   Line {} calls {}, which this printer treats as an emergency stop. Re-slice the file with a profile made for this printer.: '{} 行目で {} を実行します。このプリンターでは緊急停止とみなされます。このプリンター用のプロファイルでファイルを再スライスしてください。'
+  Linear rails: 'リニアレール'
+  Linear rails interval: 'リニアレールの間隔'
   Listen to all theme sounds: すべてのテーマサウンドを試聴
   Live Z-offset, with baby steps and Save: ライブ Z-Offset、微調整と保存つき
   Live view from your webcam: ウェブカメラのライブ表示
@@ -2129,6 +2139,7 @@ translations:
   Nozzle clean complete: ノズル清掃完了
   Nozzle clog detected: ノズルの詰まりを検出しました
   Nozzle did not reach {}°C — {} cancelled: ノズルが{}°Cに達しませんでした — {}を中止しました
+  Nozzle interval: 'ノズルの間隔'
   Nozzle min cannot exceed max: ノズル温度の最小値は最大値を超えられません
   Nozzle target set to {}°C: ノズル目標温度を {}°C に設定しました
   Nozzle temp must be 100-%d°C: ノズル温度は 100〜%d°C にしてください
@@ -2385,6 +2396,8 @@ translations:
   'Print setup failed: internal error': '印刷のセットアップに失敗しました: 内部エラー'
   Print status: 印刷ステータス
   Print timed out waiting for completion: 印刷の完了待ちでタイムアウトしました
+  'Printed %d time': '%d 回印刷済み'
+  'Printed %d times': '%d 回印刷済み'
   Printer: プリンター
   Printer Error: プリンターエラー
   Printer Firmware Disconnected: プリンターファームウェア切断
@@ -2523,6 +2536,7 @@ translations:
   RH: RH
   RSS: RSS
   'RSS:': 'RSS:'
+  Rails: 'レール'
   Ramming Volume: 'ラミング量'
   Raspberry Pi: Raspberry Pi
   Raspberry Pi (32-bit): Raspberry Pi (32-bit)
@@ -2650,6 +2664,7 @@ translations:
   Reset to Default: デフォルトにリセット
   Reset to defaults: デフォルトに戻す
   Reset to original values: 元の値にリセット
+  Reset {}?: '{}をリセットしますか？'
   Resetting: リセット中
   Resetting system: 'システムをリセットしています'
   Resetting...: リセット中...
@@ -2887,6 +2902,7 @@ translations:
   Sensors: センサー
   Separate on/off macros. HelixScreen tracks the state.: 個別のオン/オフマクロ。HelixScreenが状態を追跡します。
   Server Setup: サーバー設定
+  Service hours for the filter, nozzle, and rails: 'フィルター、ノズル、レールの稼働時間'
   Servo: サーボ
   Servo Down: 'サーボを下げる'
   Servo Move: 'サーボを移動'
@@ -3020,8 +3036,10 @@ translations:
   Spoolman removed.: Spoolman を削除しました。
   Spoolman unavailable — filament weights may be stale: Spoolmanが利用できません — フィラメント重量が古い可能性があります
   Spoolman was not configured.: Spoolman は設定されていませんでした。
-  'Spoolman: %zu Spool%s': 'Spoolman: %zu 個のスプール%s'
-  'Spoolman: %zu/%zu Spool%s': 'Spoolman: %zu/%zu 個のスプール%s'
+  'Spoolman: %zu Spool': 'Spoolman: %zu 個のスプール'
+  'Spoolman: %zu Spools': 'Spoolman: %zu 個のスプール'
+  'Spoolman: %zu/%zu Spool': 'Spoolman: %zu/%zu 個のスプール'
+  'Spoolman: %zu/%zu Spools': 'Spoolman: %zu/%zu 個のスプール'
   SpoolmanDB search failed: 'SpoolmanDB の検索に失敗しました'
   Spools are off: "スプールを取り出しました"
   'Spools are on the bed: remove them and confirm before moving the printer': 'ベッドにスプールがあります: 取り除いて確認してからプリンターを動かしてください'
@@ -3045,6 +3063,7 @@ translations:
   Start Drying: 乾燥開始
   Start Print: 印刷を開始
   Start Probing: プローブ開始
+  Start a new {} h interval? The hours counted so far are discarded.: '新しい {} 時間の間隔を開始しますか？これまでの時間は破棄されます。'
   Start anyway?: 'それでも開始しますか？'
   Start at: 開始位置
   Start Check: チェック開始
@@ -3415,6 +3434,7 @@ translations:
   Tools Used: 使用したツール
   'Tools: ': 'ツール: '
   Total Prints: 総印刷数
+  'Total print time: {} h': '総印刷時間: {} 時間'
   Touch & Input: タッチと入力
   Touch Cal: タッチキャリブレーション
   Touch Calibration: タッチキャリブレーション
@@ -3787,6 +3807,7 @@ translations:
   remaining: 残り
   remaining before clog detection triggers: 残りで詰まり検出が作動します
   rendering: レンダリング中
+  reset at {} h: '{} 時間時点でリセット'
   sleep {} min: '{}分でスリープ'
   slots): スロット)
   started: 開始
@@ -3829,9 +3850,11 @@ translations:
   '{} filament • {}': 'フィラメント {} • {}'
   '{} firmware': '{} ファームウェア'
   '{} h': '{} 時間'
+  '{} h of {} h': '{} / {} 時間'
   '{} heater turned off': '{} ヒーターをオフにしました'
   '{} is asking to connect to this printer.': '{} がこのプリンターへの接続を求めています。'
   '{} is blocked — manual intervention required': '{} がブロックされています — 手動での対応が必要です'
+  '{} is due: {} h reached': '{}の交換時期です: {} 時間に到達'
   '{} is feeding the current print. Clear it after the print ends.': '{} は現在の印刷に給紙中です。印刷終了後にクリアしてください。'
   '{} is installed but its backup-spool switching is turned off, so no automatic swap will happen.': '{} はインストールされていますが、予備スプールへの切り替えがオフになっているため、自動切り替えは行われません。'
   '{} is installed, but its backup-spool setting could not be read - do not count on an automatic swap.': '{} はインストールされていますが、予備スプールの設定を読み取れませんでした - 自動切り替えを当てにしないでください。'
@@ -3845,6 +3868,7 @@ translations:
   '{} macro not configured': '{} マクロが未設定です'
   '{} matches.': '{} が一致します。'
   '{} may cause unintended changes. Are you sure?': '{} は意図しない変更を引き起こす可能性があります。よろしいですか？'
+  '{} meter reset': '{}のメーターをリセットしました'
   '{} min': '{} 分'
   '{} min ago': '{}分前'
   '{} missing': '未検出 {} 件'
@@ -3853,7 +3877,8 @@ translations:
   '{} new': '新規 {} 件'
   '{} new hardware available': '{} 個の新しいハードウェアが利用可能です'
   '{} new plugins available. Enable them in Settings > Plugins.': '{} 個の新しいプラグインが利用可能です。設定 > プラグインで有効化してください。'
-  '{} preset{}': '{} 個のプリセット{}'
+  '{} preset': '{} 個のプリセット'
+  '{} presets': '{} 個のプリセット'
   '{} prints': '{} 件'
   '{} queued': '{} 件キュー中'
   '{} serial': '{} シリアル番号'
@@ -3871,4 +3896,5 @@ translations:
   '{} · {} · {}': '{} · {} · {}'
   '{} — response timed out': '{} — 応答タイムアウト'
   '{} → {}: no filament loaded.': '{} → {}: フィラメントが装填されていません。'
+  '{}% left': '残り {}%'
   '{}:{:02} elapsed': 経過 {}:{:02}
