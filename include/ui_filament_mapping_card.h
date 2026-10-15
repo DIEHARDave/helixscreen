@@ -208,6 +208,17 @@ class FilamentMappingCard {
         return should_show_;
     }
 
+    /// The visibility rule should_show() answers, without the card's widgets:
+    /// AMS availability, the bypass single-lane rule and the lane count. A
+    /// start with no file view asks it to know whether the view's card would
+    /// hold a mapping for the same file.
+    /// @param palette_colour_count Slicer colors in the palette
+    /// @param palette_tool_count   max(colors, materials), build_tool_info()'s count
+    /// @param used_tools           The scan's used tools; empty or nullopt reads as unknown
+    [[nodiscard]] static bool shows_mapping_for(size_t palette_colour_count,
+                                                size_t palette_tool_count,
+                                                const std::optional<std::set<int>>& used_tools);
+
     /**
      * @brief Null widget pointers (called during destroy-on-close)
      */
@@ -222,6 +233,25 @@ class FilamentMappingCard {
      * native-routing backends rather than duplicating it.
      */
     void open_mapping_modal();
+
+    /// What the card holds for a file whose mapping the user has not edited.
+    struct Mapping {
+        size_t palette_colour_count = 0; ///< colors.size()
+        size_t palette_tool_count = 0;   ///< max(colors, materials), build_tool_info()'s count
+        bool shows = false;              ///< shows_mapping_for() those counts and the used set
+        std::vector<helix::GcodeToolInfo> tool_info; ///< narrowed to the used tools
+        std::vector<helix::AvailableSlot> slots;     ///< empty unless shows
+        std::vector<helix::ToolMapping> mappings;    ///< seeded, then narrowed; empty unless shows
+    };
+
+    /// The card's rule for a file, in its order: the tools from the palette,
+    /// the visibility rule, the slots and the seeded mappings when it shows,
+    /// then the used-tools filter. update() assigns from it, and a start with
+    /// no file view (print_start_inputs.cpp) asks it, so the two cannot reach
+    /// different gates for one file. Reads AmsState; no card state.
+    [[nodiscard]] static Mapping compute_mapping(const std::vector<std::string>& colors,
+                                                 const std::vector<std::string>& materials,
+                                                 const std::optional<std::set<int>>& used_tools);
 
     /// Build GcodeToolInfo list from color/material strings.
     ///

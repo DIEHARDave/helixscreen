@@ -54,6 +54,7 @@
   <translation tag="+ Add Preset" zh="+ 添加预设"/>
   <translation tag="+ Add Printer" zh="+ 添加打印机"/>
   <translation tag="+ New" zh="+ 新建"/>
+  <translation tag="+{} more" zh="还有 {} 个"/>
   <translation tag="- Check [resonance_tester] in printer.cfg" zh="- 检查 printer.cfg 中的 [resonance_tester]"/>
   <translation tag="- Ensure ADXL345 is connected" zh="- 确保 ADXL345 已连接"/>
   <translation tag="- Try Measure Noise first" zh="- 先尝试测量噪声"/>
@@ -63,6 +64,7 @@
   <translation tag="-- kWh" zh="-- kWh"/>
   <translation tag="--°C" zh="--°C"/>
   <translation tag="..." zh="..."/>
+  <translation tag="/wk" zh="/周"/>
   <translation tag="0 = computed" zh="0 = 自动计算"/>
   <translation tag="0 events queued" zh="0 个事件已排队"/>
   <translation tag="0 slots" zh="{0} 个槽位"/>
@@ -79,6 +81,7 @@
   <translation tag="1 min ago" zh="1分钟前"/>
   <translation tag="1 minute" zh="1 分钟"/>
   <translation tag="1 more tap to {} beta features" zh="再点击 1 次以{}测试功能"/>
+  <translation tag="1 print" zh="1 次打印"/>
   <translation tag="1 profile" zh="1 个配置"/>
   <translation tag="1 unit" zh="1 个单元"/>
   <translation tag="1. Printer homes all axes (~1 minute)" zh="1. 打印机全部轴归零（约1分钟）"/>
@@ -332,6 +335,7 @@
   <translation tag="Bed Screws" zh="热床螺丝"/>
   <translation tag="Bed Temp" zh="热床温度"/>
   <translation tag="Bed Temperature" zh="热床温度"/>
+  <translation tag="Bed clear · Start next" zh="热床已清空 · 开始下一个"/>
   <translation tag="Bed cooling, spools still on the bed:" zh="热床正在冷却,料盘仍在上面:"/>
   <translation tag="Bed is Level!" zh="热床已水平！"/>
   <translation tag="Bed mesh calibration failed: {}" zh="热床网格校准失败：{}"/>
@@ -494,6 +498,7 @@
   <translation tag="Cannot start print: internal error" zh="无法开始打印: 内部错误"/>
   <translation tag="Cannot start print: not connected to printer" zh="无法开始打印: 未连接打印机"/>
   <translation tag="Cannot start print: printer is {}" zh="无法开始打印: 打印机状态为 {}"/>
+  <translation tag="Cannot start {}: the file could not be checked yet for the steps you turned off. Try again in a moment." zh="无法启动 {}：尚未能针对您关闭的步骤检查该文件。请稍后再试。"/>
   <translation tag="Cannot unload while a print is active" zh="打印时无法卸载"/>
   <translation tag="Capabilities: " zh="功能: "/>
   <translation tag="Carriage empty" zh="未装载打印头"/>
@@ -560,6 +565,7 @@
   <translation tag="Checking accelerometer..." zh="正在检查加速度计..."/>
   <translation tag="Checking extruders..." zh="正在检查挤出机..."/>
   <translation tag="Checking filament..." zh="正在检查耗材……"/>
+  <translation tag="Checking file…" zh="正在检查文件…"/>
   <translation tag="Checking for plugin..." zh="正在检查插件..."/>
   <translation tag="Checking for webcam..." zh="正在检查摄像头..."/>
   <translation tag="Checking plugin" zh="正在检查插件"/>
@@ -735,6 +741,7 @@
   <translation tag="Could not analyze PRINT_START macro. Some print options may be unavailable." zh="无法分析 PRINT_START 宏。部分打印选项可能不可用。"/>
   <translation tag="Could not answer the connection request" zh="无法响应连接请求"/>
   <translation tag="Could not check webcam status.&#10;Check printer connection." zh="无法检查摄像头状态。&#10;请检查打印机连接。"/>
+  <translation tag="Could not check {} - it stays in the queue" zh="无法检查 {} – 保留在队列中"/>
   <translation tag="Could not confirm cancel" zh="无法确认取消"/>
   <translation tag="Could not copy {} from USB: {}" zh="无法从 USB 复制 {}：{}"/>
   <translation tag="Could not disconnect from WiFi" zh="无法断开 WiFi 连接"/>
@@ -1560,6 +1567,7 @@
   <translation tag="It&apos;s a new spool" zh="这是新料盘"/>
   <translation tag="Jammed at the Toolhead" zh="工具头处堵塞"/>
   <translation tag="Job Queue" zh="任务队列"/>
+  <translation tag="Job queue not enabled in Moonraker" zh="Moonraker 未启用任务队列"/>
   <translation tag="Jog" zh="点动"/>
   <translation tag="Jog Speed XY" zh="XY 移动速度"/>
   <translation tag="Jog Speed Z" zh="Z 移动速度"/>
@@ -1626,7 +1634,6 @@
   <translation tag="Lanes" zh="耗材通道"/>
   <translation tag="Language" zh="语言"/>
   <translation tag="Language &amp; Time" zh="语言与时间"/>
-  <translation tag="Last" zh="最近"/>
   <translation tag="Last 12 months" zh="最近 12 个月"/>
   <translation tag="Last 24 hours" zh="最近 24 小时"/>
   <translation tag="Last 30 days" zh="最近 30 天"/>
@@ -1652,7 +1659,6 @@
   <translation tag="Level" zh="级别"/>
   <translation tag="Leveling Gantry..." zh="正在调平龙门..."/>
   <translation tag="Library" zh="库"/>
-  <translation tag="Lifetime Print Stats" zh="累计打印统计"/>
   <translation tag="Light" zh="浅色"/>
   <translation tag="Light Mode" zh="浅色模式"/>
   <translation tag="Light will switch when the current operation finishes" zh="灯光将在当前操作完成后切换"/>
@@ -1899,6 +1905,7 @@
   <translation tag="New printer successfully added" zh="新打印机已成功添加"/>
   <translation tag="New profile name" zh="新配置名称"/>
   <translation tag="Next" zh="下一步"/>
+  <translation tag="Next: {}" zh="下一个：{}"/>
   <translation tag="Niimbot (Bluetooth)" zh="Niimbot（蓝牙）"/>
   <translation tag="No" zh="否"/>
   <translation tag="No AMS Detected" zh="未检测到 AMS"/>
@@ -1968,6 +1975,7 @@
   <translation tag="No printer configured — check printer settings" zh="未配置打印机 — 请检查打印机设置"/>
   <translation tag="No printer connection" zh="无打印机连接"/>
   <translation tag="No printers found" zh="未找到打印机"/>
+  <translation tag="No prints this week" zh="本周暂无打印"/>
   <translation tag="No prints yet" zh="暂无打印记录"/>
   <translation tag="No profiles available" zh="无可用配置"/>
   <translation tag="No sensors detected" zh="未检测到传感器"/>
@@ -2279,6 +2287,7 @@
   <translation tag="Print error" zh="打印错误"/>
   <translation tag="Print failed" zh="打印失败"/>
   <translation tag="Print history will show the rewritten name" zh="打印历史将显示改写后的名称"/>
+  <translation tag="Print hours this week and lifetime totals" zh="本周打印时长和累计总数"/>
   <translation tag="Print issue detected" zh="检测到打印问题"/>
   <translation tag="Print jobs waiting to run" zh="等待执行的打印任务"/>
   <translation tag="Print preparation failed: {}" zh="打印准备失败: {}"/>
@@ -2398,6 +2407,7 @@
   <translation tag="Quad Gantry Level" zh="四角龙门调平"/>
   <translation tag="Quad Gantry Level complete" zh="QGL 完成"/>
   <translation tag="Quad Gantry Level started..." zh="QGL 已开始..."/>
+  <translation tag="Queue empty" zh="队列为空"/>
   <translation tag="Queue: Paused" zh="队列：已暂停"/>
   <translation tag="Queue: Ready" zh="队列：就绪"/>
   <translation tag="Queued {}h {}m ago" zh="{} 小时 {} 分钟前加入队列"/>
@@ -2922,6 +2932,7 @@
   <translation tag="Start at" zh="从第"/>
   <translation tag="Start drying" zh="开始烘干"/>
   <translation tag="Start failed" zh="启动失败"/>
+  <translation tag="Start next" zh="开始下一个"/>
   <translation tag="Start next: {}" zh="开始下一个：{}"/>
   <translation tag="Start print anyway?" zh="仍要开始打印吗？"/>
   <translation tag="Started" zh="已开始"/>
@@ -2929,8 +2940,10 @@
   <translation tag="Starting download..." zh="正在开始下载..."/>
   <translation tag="Starting nozzle clean..." zh="正在开始清洁喷嘴..."/>
   <translation tag="Starting print..." zh="正在启动打印..."/>
+  <translation tag="Starting {}…" zh="正在开始 {}…"/>
   <translation tag="Starting..." zh="正在启动..."/>
   <translation tag="Starts after the current print" zh="当前打印完成后开始"/>
+  <translation tag="Starts automatically" zh="自动开始"/>
   <translation tag="Startup Brightness" zh="启动亮度"/>
   <translation tag="Startup, auto-control, and macro devices" zh="启动、自动控制和宏设备"/>
   <translation tag="State" zh="状态"/>
@@ -3240,7 +3253,6 @@
   <translation tag="Tools Used" zh="已使用工具"/>
   <translation tag="Tools: " zh="工具: "/>
   <translation tag="Total Prints" zh="总打印数"/>
-  <translation tag="Total prints, success rate, and time" zh="总打印数、成功率和时间"/>
   <translation tag="Touch &amp; Input" zh="触摸和输入"/>
   <translation tag="Touch Cal" zh="触摸校准"/>
   <translation tag="Touch Calibration" zh="触摸校准"/>
@@ -3428,7 +3440,6 @@
   <translation tag="Webcam" zh="摄像头"/>
   <translation tag="Website (optional)" zh="网站（可选）"/>
   <translation tag="Week" zh="周"/>
-  <translation tag="Weekly Print Stats" zh="本周打印统计"/>
   <translation tag="Weight data is synced from Spoolman to display remaining filament. Changes are also synced when prints start, pause, or complete." zh="重量数据从 Spoolman 同步以显示剩余耗材。打印开始、暂停或完成时也会同步更改。"/>
   <translation tag="Welcome to HelixScreen" zh="欢迎使用 HelixScreen"/>
   <translation tag="What We Collect" zh="我们收集的内容"/>
@@ -3608,6 +3619,7 @@
   <translation tag="tall" zh="高"/>
   <translation tag="target {}%" zh="目标 {}%"/>
   <translation tag="target {}°" zh="目标 {}°"/>
+  <translation tag="this week" zh="本周"/>
   <translation tag="too slow" zh="太慢"/>
   <translation tag="tool(s)" zh="工具"/>
   <translation tag="used" zh="已使用"/>
@@ -3631,6 +3643,7 @@
   <translation tag="{} complete" zh="{} 完成"/>
   <translation tag="{} configured item not found" zh="未找到 {} 个已配置的项目"/>
   <translation tag="{} configured items not found" zh="未找到 {} 个已配置的项目"/>
+  <translation tag="{} could not be checked from Home - review it and tap Print" zh="无法从主页检查 {} – 请查看后点按打印"/>
   <translation tag="{} critical" zh="{} 个严重"/>
   <translation tag="{} critical hardware issues" zh="{} 个关键硬件问题"/>
   <translation tag="{} disabled" zh="已停用{}"/>
@@ -3640,6 +3653,7 @@
   <translation tag="{} filament sensors available" zh="{} 个耗材传感器可用"/>
   <translation tag="{} filament • {}" zh="耗材 {} • {}"/>
   <translation tag="{} firmware" zh="{} 固件"/>
+  <translation tag="{} h" zh="{} 小时"/>
   <translation tag="{} heater turned off" zh="{} 加热器已关闭"/>
   <translation tag="{} is asking to connect to this printer." zh="{} 请求连接到此打印机。"/>
   <translation tag="{} is blocked — manual intervention required" zh="{} 被阻塞 — 需要手动干预"/>
@@ -3652,9 +3666,11 @@
   <translation tag="{} kept crashing the panel; pick a printer to connect" zh="{} 反复导致屏幕崩溃，请选择要连接的打印机"/>
   <translation tag="{} kept crashing the panel; switched back to {}" zh="{} 反复导致屏幕崩溃，已切换回 {}"/>
   <translation tag="{} lines in helixscreen.env were ignored" zh="helixscreen.env 中有 {} 行被忽略"/>
+  <translation tag="{} m" zh="{} 米"/>
   <translation tag="{} macro not configured" zh="{} 宏未配置"/>
   <translation tag="{} matches." zh="{} 匹配。"/>
   <translation tag="{} may cause unintended changes. Are you sure?" zh="{} 可能导致意外更改。确定吗？"/>
+  <translation tag="{} min" zh="{} 分钟"/>
   <translation tag="{} min ago" zh="{} 分钟前"/>
   <translation tag="{} missing" zh="{} 个缺失"/>
   <translation tag="{} more taps to {} beta features" zh="再点击 {} 次以{}测试功能"/>
@@ -3663,6 +3679,8 @@
   <translation tag="{} new hardware available" zh="{} 个新硬件可用"/>
   <translation tag="{} new plugins available. Enable them in Settings &gt; Plugins." zh="{} 个新插件可用。请在设置 &gt; 插件中启用。"/>
   <translation tag="{} preset{}" zh="{} 个预设{}"/>
+  <translation tag="{} prints" zh="{} 次打印"/>
+  <translation tag="{} queued" zh="{} 个在队列中"/>
   <translation tag="{} serial" zh="{} 序列号"/>
   <translation tag="{} set to {}" zh="{} 已设为 {}"/>
   <translation tag="{} set to {} {}" zh="{} 已设为 {} {}"/>

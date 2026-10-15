@@ -434,6 +434,20 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
   is idle opens the file in the file view with its saved options already set - check the
   bed is clear, tap Print, and the job leaves the queue only once the print actually
   starts.
+- **The Job Queue home widget shows what runs next** - the next job's name, how many wait
+  behind it, and a **Bed clear · Start next** button while the printer is free. From a wider
+  size it adds the job's picture and time estimate, and the largest size lists the jobs
+  behind it. While a print runs it shows the queue count and the next job, and says "Starts
+  automatically" only when Moonraker will really start it. Start next uses the pre-print
+  options the job was queued with and runs the same checks as the file view, so a material
+  or spool warning still asks first; a job the widget cannot check, or one that needs you to
+  choose a filament remap, opens in the file view with a notice. The widget needs Moonraker's
+  `[job_queue]` and can be shrunk to 1x0.5. In the file view, Print reads "Checking file..."
+  while a check it needs is still running.
+- **The Print Stats home widget is a week at a glance** - the hours printed this week, with a
+  bar for each of the last seven days and weekday initials at the largest size, and a line of
+  lifetime prints, hours and filament in meters where there is room. At its smallest it is one
+  line, and it can be shrunk to 1x0.5.
 - **Spaghetti detection, built in (#1378)** - installing HelixScreen on a K2 Plus stops the
   stock AI failure-detection loop along with the stock UI, so HelixScreen ships its own
   detector: during a print it runs Creality's own `/usr/bin/detection` on camera snapshots at

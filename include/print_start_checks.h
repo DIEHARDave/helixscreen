@@ -92,8 +92,8 @@ inline constexpr size_t PRINTER_STOP_SCAN_BYTES = 200 * 1024;
 /// Everything a gate may read. Gathered fresh by the controller per pipeline
 /// (re-)entry; gates never fetch singleton state themselves.
 struct PrintStartContext {
-    // ---- file (from PrintSelectDetailView; valid only when has_detail_view) ----
-    bool has_detail_view = false;
+    // ---- file (from PrintSelectDetailView or FileStartFacts; valid only when has_file_facts) ----
+    bool has_file_facts = false;
     std::optional<FileMetadata> metadata;
     std::vector<ToolMapping> mappings;
     std::vector<GcodeToolInfo> tool_info;

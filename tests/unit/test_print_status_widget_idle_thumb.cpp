@@ -7,6 +7,7 @@
 #include "../test_helpers/log_capture.h"
 #include "../test_helpers/print_history_manager_test_access.h"
 #include "../test_helpers/print_status_widget_test_access.h"
+#include "../test_helpers/thumbnail_test_png.h"
 #include "../test_helpers/update_queue_test_access.h"
 #include "app_globals.h"
 #include "moonraker_api.h"
@@ -302,34 +303,6 @@ TEST_CASE_METHOD(PrintStatusIdleThumbFixture,
 // =============================================================================
 
 namespace {
-
-/// Smallest PNG the cache and the processor will both accept: a 10x10 solid
-/// square, 75 bytes. Same bytes as tests/unit/test_thumbnail_cache_request.cpp.
-// clang-format off
-const std::vector<uint8_t> TINY_PNG = {
-    0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D,
-    0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x0A, 0x00, 0x00, 0x00, 0x0A,
-    0x08, 0x02, 0x00, 0x00, 0x00, 0x02, 0x50, 0x58, 0xEA, 0x00, 0x00, 0x00,
-    0x12, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9C, 0x63, 0x68, 0x70, 0x50, 0xC0,
-    0x83, 0x18, 0x46, 0xA5, 0xB1, 0x21, 0x00, 0x24, 0x51, 0x57, 0x81, 0xF7,
-    0xEC, 0xA3, 0x23, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE,
-    0x42, 0x60, 0x82};
-// clang-format on
-
-/// Drop a raw PNG into the cache's PNG slot for `key` WITHOUT a pre-scaled
-/// .bin. That is the one cache state that sends fetch_optimized down its
-/// "PNG is cached, queue the pre-scale" branch, which resolves on the processor
-/// pool and delivers through the UpdateQueue — i.e. asynchronously, which is
-/// the whole point.
-void plant_cached_png(const ThumbnailCache& cache, const std::string& key) {
-    const std::string path = cache.get_cache_path(key);
-    std::ofstream out(path, std::ios::binary | std::ios::trunc);
-    REQUIRE(out.good());
-    out.write(reinterpret_cast<const char*>(TINY_PNG.data()),
-              static_cast<std::streamsize>(TINY_PNG.size()));
-    out.close();
-    REQUIRE(std::filesystem::exists(path));
-}
 
 /// The pre-scaled lookup the widget performs, freshness-blind: source_modified
 /// stays 0, so this answers "is the .bin present at all" regardless of mtime.

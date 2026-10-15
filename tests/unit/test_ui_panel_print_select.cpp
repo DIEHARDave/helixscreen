@@ -808,6 +808,28 @@ TEST_CASE("Print Select: Metadata path construction", "[ui][metadata]") {
     }
 }
 
+TEST_CASE("gcode_dir_of and get_filename_basename undo join_gcode_path", "[ui][metadata]") {
+    using helix::gcode_dir_of;
+    using helix::gcode::get_filename_basename;
+    using helix::gcode::join_gcode_path;
+
+    SECTION("A bare filename sits in the root") {
+        CHECK(gcode_dir_of("benchy.gcode").empty());
+        CHECK(get_filename_basename("benchy.gcode") == "benchy.gcode");
+    }
+    SECTION("A nested path splits at its last slash") {
+        const std::string path = "projects/voron/toolhead.gcode";
+        CHECK(gcode_dir_of(path) == "projects/voron");
+        CHECK(get_filename_basename(path) == "toolhead.gcode");
+        CHECK(join_gcode_path(gcode_dir_of(path), get_filename_basename(path)) == path);
+    }
+    SECTION("A backslash is part of a name, for both halves") {
+        const std::string path = "dir/odd\\name.gcode";
+        CHECK(gcode_dir_of(path) == "dir");
+        CHECK(get_filename_basename(path) == "odd\\name.gcode");
+    }
+}
+
 TEST_CASE("thumbnail_subject_value never publishes an empty buffer",
           "[ui][print_select][thumbnail]") {
     // LVGL's lv_image_src_get_type classifies a buffer whose first byte is < 0x20

@@ -22,8 +22,6 @@
 #include <vector>
 
 using helix::ui::GcodePreviewFetcher;
-using print_status_preview_test::HeldFileTransfers;
-using print_status_preview_test::HeldTransfersAPIMock;
 
 namespace {
 
@@ -63,11 +61,11 @@ class HeldFileListing : public MoonrakerFileAPIMock {
     ErrorCallback pending_error_;
 };
 
-class HeldListingAPIMock : public HeldTransfersAPIMock {
+class HeldListingAPIMock : public DelayedMoonrakerAPIMock {
   public:
     HeldListingAPIMock(helix::MoonrakerClient& client, helix::PrinterState& state,
-                       HeldFileTransfers& transfers, HeldFileListing& listing)
-        : HeldTransfersAPIMock(client, state, transfers), listing_(listing) {}
+                       DelayedFileTransfers& transfers, HeldFileListing& listing)
+        : DelayedMoonrakerAPIMock(client, state, transfers), listing_(listing) {}
 
     MoonrakerFileAPI& files() override {
         return listing_;
@@ -81,7 +79,8 @@ class FetcherFixture : public HelixTestFixture {
   public:
     FetcherFixture() : client_(MoonrakerClientMock::PrinterType::VORON_24) {
         state_.init_subjects(false);
-        api_ = std::make_unique<HeldTransfersAPIMock>(client_, state_, transfers_);
+        transfers_.hold_transfers = true;
+        api_ = std::make_unique<DelayedMoonrakerAPIMock>(client_, state_, transfers_);
         fetcher_.set_api(api_.get());
         local_ = (cache_.dir / "copy.gcode").string();
     }
@@ -106,10 +105,10 @@ class FetcherFixture : public HelixTestFixture {
             [&](GcodePreviewFetcher::Unavailable) { ++failed; });
     }
 
-    print_status_preview_test::FreshCacheDir cache_;
+    helix::test::ScopedCacheDir cache_;
     MoonrakerClientMock client_;
     helix::PrinterState state_;
-    HeldFileTransfers transfers_{client_, ""};
+    DelayedFileTransfers transfers_{client_, ""};
     std::unique_ptr<MoonrakerAPIMock> api_;
     GcodePreviewFetcher fetcher_{"FetcherTest"};
     std::string local_;

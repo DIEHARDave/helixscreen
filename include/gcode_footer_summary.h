@@ -193,4 +193,24 @@ struct FooterReadNeed {
     return FooterReadNeed{!tools_known, !have_palette, !have_grams};
 }
 
+/**
+ * @brief Take from a footer what the file's other sources left unknown.
+ *
+ * The footer's colours fill @p colors only when no palette is known, and its
+ * grams fill @p grams only when none are: an earlier source always wins.
+ *
+ * @return True when colours arrived.
+ */
+inline bool backfill_from_footer(const GcodeFooterSummary& summary,
+                                 std::vector<std::string>& colors, std::vector<double>& grams) {
+    if (grams.empty()) {
+        grams = summary.grams_per_tool;
+    }
+    if (!colors.empty() || summary.colours.empty()) {
+        return false;
+    }
+    colors = summary.colours;
+    return true;
+}
+
 } // namespace helix::gcode

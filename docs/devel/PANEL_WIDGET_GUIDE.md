@@ -121,9 +121,15 @@ and the state is part of what `needs` was measured for.
 **`src/ui/panel_widgets/content_chrome.h`** measures the box the content really draws in.
 `helix::measure_content_chrome(root, reserve_px)` walks the single-child chain from the
 widget's root down to the first container that holds more than one child and sums the
-padding of every container on the way, plus the flex gap of that branching container when
-it has more than one visible child. Flex leaves hidden children out, so a tile whose caption
-is hidden is not charged the gap between glyph and caption. The
+padding of every container on the way, plus the flex gap of that branching container as its
+`BranchGap` says. `Visible` (the default, which TileSizing uses) charges the gap when more
+than one child is visible: flex leaves hidden children out, so a tile whose caption is hidden
+is not charged the gap between glyph and caption. Visibility is the last verdict's, though, so
+a ladder whose parts change by rung decides on padding alone (`content_padding_or_estimate()`,
+`BranchGap::None`) and counts each rung's gaps in its needs, or charges the gap whatever is
+visible (`BranchGap::Always`, speed/flow); otherwise a box near a boundary decides one rung
+from below and the other from above. `PanelWidgetHarnessBase::unsettled_boxes()` finds those
+boxes in a test. The
 widget subtracts the result from the span's pixel size and decides on what is left, so a
 theme or breakpoint that changes the tile's padding moves the boundaries with it. The
 tree does not exist yet when the load path asks `fits_at()`, so each widget's `decide()`
@@ -197,8 +203,10 @@ is pure and has a boundary test; the widget measures, decides and publishes.
 | `toolhead` | `toolhead_layout.h`, `toolhead_plate.h` | - | homed letters (Z height while printing) at Glance and Strip; axis rows at Column and Cell; a top-down plate with crosshair and Z bar from Wide; Home All at Full while idle with an axis unhomed |
 | `bed_mesh_tile` | `bed_mesh_tile_layout.h` | `printer_has_bed_mesh` | a grid glyph and Z range at Glance; the heatmap from Strip; profile details at Wide; colour scale, footer, Calibrate and Load profile from Full; a static 3D render at Large on a full-tier board |
 | `exclude_map` | `exclude_map_layout.h` | `printer_has_exclude_object` | counts of skipped and remaining objects; the mini exclude-object map from Column up; the object printing now at Wide and above; a "Skip objects..." button at Full |
+| `job_queue` | `job_queue_tile_layout.h`, `include/job_queue_tile_state.h` | `printer_has_job_queue` | the next job and the queued count; Start next from Strip (icon only at Strip), with the thumbnail and estimate from Wide, and up to three following jobs at Full; "Starts automatically" only while a print runs under `automatic_transition` |
+| `print_stats` | `print_stats_tile_layout.h`, `include/print_activity.h` | - | this week's hours on one line at Strip; hours stacked over "this week" at Cell; seven day bars beside the hours at Wide; bars with weekday initials under them at Full; a lifetime line (prints, hours, filament in meters) where it fits whole |
 
-All seven offer half-cell spans: their registry rows in `src/ui/panel_widget_registry.cpp`
+All nine offer half-cell spans: their registry rows in `src/ui/panel_widget_registry.cpp`
 set `supports_half_col` and `supports_half_row` and a one-track minimum, which is the
 combination `PanelWidgetDef` requires for a minimum below a whole cell (the flag on that
 axis AND a `fits_at()` that can refuse). A Glance tile is therefore a legal 0.5x0.5

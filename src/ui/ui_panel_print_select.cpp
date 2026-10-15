@@ -56,9 +56,11 @@
 #include "print_history_manager.h"
 #include "print_lifecycle_state.h" // job_holds_machine()
 #include "print_start_analyzer.h"
+#include "print_start_inputs.h"
 #include "printer_state.h"
 #include "published_hold.h"
 #include "queued_job_options.h"
+#include "queued_job_start.h"
 #include "runtime_config.h"
 #include "static_panel_registry.h"
 #include "text_io.h"
@@ -650,9 +652,7 @@ void PrintSelectPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
                     // separates a server-side phantom (fresh listing offered it) from
                     // navigation into a stale index (listing is old or lacks it).
                     const std::string& failed_path = self->current_path_;
-                    const size_t slash = failed_path.find_last_of('/');
-                    const std::string leaf =
-                        slash == std::string::npos ? failed_path : failed_path.substr(slash + 1);
+                    const std::string leaf = helix::gcode::get_filename_basename(failed_path);
                     const bool offered_by_listing = std::any_of(
                         self->file_list_.begin(), self->file_list_.end(),
                         [&leaf](const PrintFileData& f) { return f.is_dir && f.filename == leaf; });
@@ -1195,17 +1195,12 @@ void PrintSelectPanel::process_metadata_result(size_t i, const std::string& file
     // Extract all values (this runs on background thread - metadata is const ref)
     int print_time_minutes = static_cast<int>(metadata.estimated_time / 60.0);
     float filament_grams = static_cast<float>(metadata.filament_weight_total);
-    std::string filament_type_raw = metadata.filament_type;
     std::string filament_name_raw = metadata.filament_name;
 
-    // Parse per-tool filament types and names from semicolon-separated metadata
-    // (e.g., "PLA;PLA;PETG" → ["PLA", "PLA", "PETG"])
-    std::vector<std::string> filament_types;
-    if (!filament_type_raw.empty()) {
-        for (std::string_view sv : tio::lines(filament_type_raw, ';')) {
-            filament_types.emplace_back(sv);
-        }
-    }
+    // Per-tool materials and colors: the same palette a queued start reads.
+    helix::FilePalette palette = helix::file_palette_from_metadata(metadata);
+    std::vector<std::string> filament_types = std::move(palette.materials);
+    // Per-tool filament names from semicolon-separated metadata
     std::vector<std::string> filament_names;
     if (!filament_name_raw.empty()) {
         for (std::string_view sv : tio::lines(filament_name_raw, ';')) {
@@ -1217,8 +1212,7 @@ void PrintSelectPanel::process_metadata_result(size_t i, const std::string& file
     std::string filament_type = filament_types.empty() ? "" : filament_types.front();
     std::string filament_name = filament_names.empty() ? "" : filament_names.front();
 
-    // Copy filament colors (per-tool hex colors parsed from Moonraker)
-    std::vector<std::string> filament_colors = metadata.filament_colors;
+    std::vector<std::string> filament_colors = std::move(palette.colors);
     uint32_t layer_count = metadata.layer_count;
     uint64_t gcode_end_byte = metadata.gcode_end_byte;
     double object_height = metadata.object_height;
@@ -1544,10 +1538,8 @@ void PrintSelectPanel::process_metadata_result(size_t i, const std::string& file
                     std::string filename_copy = d->filename;
 
                     // Build the full gcode path for download
-                    std::string gcode_path = filename_copy;
-                    if (!self->current_path_.empty()) {
-                        gcode_path = self->current_path_ + "/" + filename_copy;
-                    }
+                    std::string gcode_path =
+                        helix::gcode::join_gcode_path(self->current_path_, filename_copy);
 
                     spdlog::debug("[{}] No thumbnail in metadata for {}, extracting from gcode",
                                   self->get_name(), gcode_path);
@@ -2092,7 +2084,7 @@ void PrintSelectPanel::show_detail_view() {
         // render, and the job stays queued for its own row tap.
         if (pending_queued_start_) {
             if (pending_queued_start_->filename == composed_selected_filename()) {
-                detail_view_->seed_option_states(pending_queued_start_->saved.options);
+                detail_view_->seed_option_states(pending_queued_start_->saved);
                 pending_queued_start_->start_attempted = false;
             } else {
                 pending_queued_start_.reset();
@@ -2465,6 +2457,7 @@ void PrintSelectPanel::update_print_button_state() {
         if (auto* prep_mgr = detail_view_->get_prep_manager()) {
             inputs.macro_analysis_running = prep_mgr->is_macro_analysis_in_progress();
         }
+        inputs.file_check_pending = detail_view_->file_check_pending();
     }
 
     const auto view = helix::ui::compute_print_select_button_view(inputs);
@@ -2631,6 +2624,11 @@ void PrintSelectPanel::create_print_controller() {
     print_controller_->recover_pending_remap();
 }
 
+helix::ui::PrintPreparationManager* PrintSelectPanel::print_preparation_manager() {
+    ensure_detail_view_model();
+    return detail_view_->get_prep_manager();
+}
+
 void PrintSelectPanel::ensure_detail_view_model() {
     if (detail_view_) {
         return;
@@ -2648,6 +2646,8 @@ void PrintSelectPanel::ensure_detail_view_model() {
     // Re-enable the print button when macro analysis completes.
     detail_view_->set_on_macro_analysis(
         [this](const helix::PrintStartAnalysis& /*analysis*/) { update_print_button_state(); });
+    // Print waits while the shown file's scan reads, when an option needs it.
+    detail_view_->set_on_print_readiness_changed([this]() { update_print_button_state(); });
 }
 
 void PrintSelectPanel::create_detail_view() {
@@ -2872,17 +2872,19 @@ void PrintSelectPanel::start_print(bool force) {
     std::string thumbnail = selected_detail_thumbnail_buffer_;
     std::vector<std::string> exclude_picks =
         detail_view_ ? detail_view_->exclude_picks() : std::vector<std::string>{};
+    // The copy a stick file prints from has another path; its scan is the stick file's.
+    std::string scan_key = selected_scan_key();
     if (!selected_local_path_.empty()) {
         copy_usb_file_to_printer([this, colors = std::move(colors),
-                                  thumbnail = std::move(thumbnail),
-                                  exclude_picks](const std::string& dest) {
-            const size_t slash = dest.rfind('/');
-            dispatch_print(dest.substr(slash + 1), dest.substr(0, slash), colors, thumbnail,
-                           exclude_picks);
+                                  thumbnail = std::move(thumbnail), exclude_picks,
+                                  scan_key](const std::string& dest) {
+            dispatch_print(helix::gcode::get_filename_basename(dest), helix::gcode_dir_of(dest),
+                           colors, thumbnail, exclude_picks, scan_key);
         });
         return;
     }
-    dispatch_print(filename, current_path_, colors, thumbnail, std::move(exclude_picks));
+    dispatch_print(filename, current_path_, colors, thumbnail, std::move(exclude_picks),
+                   std::move(scan_key));
 }
 
 bool PrintSelectPanel::refuse_start_with_every_object_picked() {
@@ -2893,12 +2895,19 @@ bool PrintSelectPanel::refuse_start_with_every_object_picked() {
     return true;
 }
 
+std::string PrintSelectPanel::selected_scan_key() const {
+    return helix::ui::PrintPreparationManager::scan_key(selected_filename_buffer_, current_path_,
+                                                        selected_local_path_);
+}
+
 void PrintSelectPanel::dispatch_print(const std::string& filename, const std::string& dir,
                                       const std::vector<std::string>& filament_colors,
                                       const std::string& thumbnail,
-                                      std::vector<std::string> exclude_picks) {
+                                      std::vector<std::string> exclude_picks,
+                                      std::string scan_key) {
     // Pass extracted thumbnail path so USB/embedded thumbnails propagate to print status
     print_controller_->set_file(filename, dir, filament_colors, thumbnail);
+    print_controller_->set_scan_key(std::move(scan_key));
     // The picks seen at the tap: a USB copy can land after another file opened.
     print_controller_->set_exclude_picks(std::move(exclude_picks));
 
@@ -2906,7 +2915,7 @@ void PrintSelectPanel::dispatch_print(const std::string& filename, const std::st
     // past the reach of hide_detail_view(): from here only a confirmed start
     // (finish_pending_queued_job) or the user opening a different file
     // clears it.
-    const std::string composed = dir.empty() ? filename : dir + "/" + filename;
+    const std::string composed = helix::gcode::join_gcode_path(dir, filename);
     if (pending_queued_start_ && pending_queued_start_->filename == composed) {
         pending_queued_start_->start_attempted = true;
     }
@@ -3156,13 +3165,11 @@ void PrintSelectPanel::queue_file(const std::string& filename, const std::string
 }
 
 std::string PrintSelectPanel::composed_selected_filename() const {
-    return current_path_.empty() ? std::string(selected_filename_buffer_)
-                                 : current_path_ + "/" + selected_filename_buffer_;
+    return helix::gcode::join_gcode_path(current_path_, selected_filename_buffer_);
 }
 
 void PrintSelectPanel::start_queued_job(const JobQueueEntry& job) {
-    if (!printer_state_.print_state().can_start_new_print()) {
-        NOTIFY_WARNING(lv_tr("Printer is busy - {} stays in the queue"), job.filename);
+    if (helix::queue::refuse_queued_start_while_busy(printer_state_, job.filename)) {
         return;
     }
 
@@ -3177,21 +3184,10 @@ void PrintSelectPanel::start_queued_job(const JobQueueEntry& job) {
         usb_source_->select_printer_source();
     }
     path_navigator_.reset();
-    const size_t dir_end = job.filename.rfind('/');
-    if (dir_end != std::string::npos) {
-        const std::string dir = job.filename.substr(0, dir_end);
-        size_t start = 0;
-        while (start <= dir.size()) {
-            const size_t slash = dir.find('/', start);
-            const std::string segment =
-                dir.substr(start, slash == std::string::npos ? std::string::npos : slash - start);
-            if (!segment.empty()) {
-                path_navigator_.navigate_to(segment);
-            }
-            if (slash == std::string::npos) {
-                break;
-            }
-            start = slash + 1;
+    const std::string job_dir = helix::gcode_dir_of(job.filename);
+    for (std::string_view segment : tio::lines(job_dir, '/')) {
+        if (!segment.empty()) {
+            path_navigator_.navigate_to(std::string(segment));
         }
     }
     current_path_ = path_navigator_.current_path();
@@ -3231,8 +3227,7 @@ void PrintSelectPanel::try_open_pending_queued_job() {
     // in start_queued_job put that path at the queued file's directory, so a
     // hit composes to exactly the queued filename.
     const std::string& queued = pending_queued_start_->filename;
-    const size_t slash = queued.rfind('/');
-    const std::string name = slash == std::string::npos ? queued : queued.substr(slash + 1);
+    const std::string name = helix::gcode::get_filename_basename(queued);
 
     if (select_file_by_name(name)) {
         return; // handle_file_click() opened (and seeded) the detail view
@@ -3254,32 +3249,7 @@ void PrintSelectPanel::finish_pending_queued_job() {
     }
     const std::string job_id = pending_queued_start_->job_id;
     pending_queued_start_.reset();
-    if (!api_) {
-        return;
-    }
-
-    spdlog::info("[{}] Print started for queued job {} - removing from queue", get_name(), job_id);
-    api_->queue().remove_jobs(
-        {job_id},
-        object_lifetime_.bg_cb("PrintSelectPanel::queued_job_started",
-                               [this, job_id]() {
-                                   // Options are deleted only once Moonraker confirms the removal:
-                                   // a refusal (or a stale id after a Moonraker restart) leaves the
-                                   // job queued, and Start next must still find its saved options.
-                                   helix::queue::delete_queued_job_options(api_, job_id);
-                                   if (auto* jqs = get_job_queue_state()) {
-                                       jqs->fetch();
-                                   }
-                               }),
-        object_lifetime_.bg_cb(
-            "PrintSelectPanel::queued_job_removal_failed", [job_id](const MoonrakerError& err) {
-                spdlog::warn("[PrintSelectPanel] Removing queued job {} failed: {}", job_id,
-                             err.message);
-                NOTIFY_WARNING(lv_tr("Could not remove the job from the queue"));
-                if (auto* jqs = get_job_queue_state()) {
-                    jqs->fetch();
-                }
-            }));
+    helix::queue::finish_started_queued_job(object_lifetime_, api_, job_id);
 }
 
 void PrintSelectPanel::show_preflight_modal(const helix::PreflightResult& pf) {
@@ -3377,7 +3347,7 @@ void PrintSelectPanel::open_remap_modal() {
     auto* prep = detail_view_->get_prep_manager();
     remap_modal_.set_start_macro_note(
         start_macro_remap_note(backend->get_remap_strategy(),
-                               prep ? prep->print_start_for(selected_filename_buffer_) : nullptr));
+                               prep ? prep->print_start_for(selected_scan_key()) : nullptr));
     remap_modal_.show(lv_screen_active());
 }
 
@@ -3447,7 +3417,14 @@ void PrintSelectPanel::apply_remap(const std::vector<helix::ToolMapping>& update
                 object_lifetime_.bg_cb(
                     "PrintSelectPanel::remap_print_started",
                     [this]() { PrintStatusPanel::push_overlay(parent_screen_); }),
-                detail_view_ ? detail_view_->exclude_picks() : std::vector<std::string>{}));
+                detail_view_ ? detail_view_->exclude_picks() : std::vector<std::string>{}),
+            // A start that dies re-decides Print, as a failed tap's does.
+            object_lifetime_.bg_cb("PrintSelectPanel::remap_print_done",
+                                   [this](bool success, const std::string& /*error*/) {
+                                       if (!success) {
+                                           update_print_button_state();
+                                       }
+                                   }));
         break;
     }
 
@@ -3502,12 +3479,8 @@ void PrintSelectPanel::delete_file() {
     if (api_) {
         // Construct full path: gcodes/<current_path>/<filename>
         // Moonraker's delete_file requires the full path including root
-        std::string full_path;
-        if (current_path_.empty()) {
-            full_path = "gcodes/" + filename_to_delete;
-        } else {
-            full_path = "gcodes/" + current_path_ + "/" + filename_to_delete;
-        }
+        const std::string full_path =
+            "gcodes/" + helix::gcode::join_gcode_path(current_path_, filename_to_delete);
 
         spdlog::info("[{}] Deleting file: {}", get_name(), full_path);
 

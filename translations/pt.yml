@@ -54,6 +54,7 @@ translations:
   + Add Preset: + Adicionar Predefinição
   + Add Printer: + Adicionar Impressora
   + New: + Novo
+  +{} more: '+{} mais'
   '- Check [resonance_tester] in printer.cfg': '- Verifique [resonance_tester] no
     printer.cfg'
   '- Ensure ADXL345 is connected': '- Certifique-se de que o ADXL345 está conectado'
@@ -64,6 +65,7 @@ translations:
   -- kWh: -- kWh
   --°C: --°C
   '...': '...'
+  /wk: '/sem.'
   0 = computed: 0 = calculado
   0 events queued: 0 eventos na fila
   0 slots: '{0} Slots'
@@ -80,6 +82,7 @@ translations:
   1 min ago: há 1 min
   1 minute: 1 minuto
   1 more tap to {} beta features: Mais 1 toque para {} recursos beta
+  1 print: '1 impressão'
   1 profile: '1 perfil'
   '1 unit': '1 unidade'
   1. Printer homes all axes (~1 minute): 1. A impressora referencia todos os eixos (~1 minuto)
@@ -360,6 +363,7 @@ translations:
   Bed Screws: Parafusos da Mesa
   Bed Temp: Temp. Mesa
   Bed Temperature: Temperatura da Mesa
+  Bed clear · Start next: 'Mesa livre · Iniciar próximo'
   'Bed cooling, spools still on the bed:': 'A mesa está esfriando, os carretéis ainda estão sobre ela:'
 
   Bed is Level!: Mesa Nivelada!
@@ -544,6 +548,7 @@ translations:
     não conectado à impressora'
   'Cannot start print: printer is {}': 'Não é possível iniciar impressão: impressora
     está {}'
+  'Cannot start {}: the file could not be checked yet for the steps you turned off. Try again in a moment.': 'Não é possível iniciar {}: ainda não foi possível verificar o arquivo para as etapas desativadas. Tente novamente em instantes.'
   Cannot save offsets while printing: Não é possível salvar offsets durante a impressão
   Cannot unload while a print is active: Não é possível descarregar enquanto uma impressão está ativa
   'Capabilities: ': 'Capacidades: '
@@ -617,6 +622,7 @@ translations:
   Checking Spoolman server...: Verificando servidor Spoolman...
   Checking accelerometer...: Verificando acelerômetro...
   Checking extruders...: Verificando extrusores...
+  Checking file…: 'Verificando arquivo…'
   Checking filament...: Verificando filamento...
   Checking for plugin...: Verificando plugin...
   Checking for webcam...: Verificando webcam...
@@ -819,6 +825,9 @@ translations:
     foi possível analisar a macro PRINT_START. Algumas opções de impressão podem estar
     indisponíveis.
   Could not answer the connection request: 'Não foi possível responder à solicitação de conexão'
+  'Could not check {} - it stays in the queue': 'Não foi possível verificar {} – permanece na fila'
+  Print hours this week and lifetime totals: 'Horas de impressão desta semana e totais acumulados'
+  '{} could not be checked from Home - review it and tap Print': 'Não foi possível verificar {} pela tela inicial – revise e toque em Imprimir'
   ? "Could not check webcam status.\nCheck printer connection."
   : "Não foi possível verificar status da webcam.\nVerifique a conexão da impressora."
   Could not confirm cancel: Não foi possível confirmar o cancelamento
@@ -1727,6 +1736,7 @@ translations:
   It's a new spool: É um carretel novo
   Jammed at the Toolhead: Atolado no cabeçote
   Job Queue: Fila de Trabalhos
+  Job queue not enabled in Moonraker: 'Fila de trabalhos não ativada no Moonraker'
   Jog: Jog
   Jog Speed XY: Velocidade de movimento XY
   Jog Speed Z: Velocidade de movimento Z
@@ -1808,7 +1818,6 @@ translations:
   Lanes: Lanes
   Language: Idioma
   Language & Time: Idioma e hora
-  Last: Última
   # Source: history_dashboard_panel.xml:114
   Last 12 months: 'Últimos 12 meses'
   Last 24 hours: 'Últimas 24 horas'
@@ -1837,7 +1846,6 @@ translations:
   Level: Nível
   Leveling Gantry...: Nivelando pórtico...
   Library: Biblioteca
-  Lifetime Print Stats: Estatísticas de Impressão Totais
   Light: Claro
   Light Mode: Modo Claro
   Light will switch when the current operation finishes: A luz será alternada quando
@@ -2100,6 +2108,7 @@ translations:
   New printer successfully added: Nova impressora adicionada com sucesso
   New profile name: Novo nome do perfil
   Next: Próximo
+  'Next: {}': 'A seguir: {}'
   Niimbot (Bluetooth): Niimbot (Bluetooth)
   'No': Não
   No AMS Detected: 'Nenhum AMS detectado'
@@ -2177,6 +2186,7 @@ translations:
     verifique as configurações da impressora
   No printer connection: Sem conexão com a impressora
   No printers found: Nenhuma impressora encontrada
+  No prints this week: Sem impressões esta semana
   No prints yet: Sem impressões ainda
   No profiles available: Nenhum perfil disponível
   No sensors detected: Nenhum sensor detectado
@@ -2646,6 +2656,7 @@ translations:
   Quad Gantry Level: Nivelamento Quad Gantry
   Quad Gantry Level complete: QGL concluído
   Quad Gantry Level started...: QGL iniciado...
+  Queue empty: 'Fila vazia'
   'Queue: Paused': 'Fila: Pausada'
   'Queue: Ready': 'Fila: Pronta'
   Queued {}h {}m ago: 'Na fila há {} h {} min'
@@ -3242,6 +3253,7 @@ translations:
   Start drying: Iniciar secagem
 
   Start failed: Falha ao iniciar
+  Start next: 'Iniciar próximo'
   'Start next: {}': 'Iniciar próximo: {}'
   Start print anyway?: Iniciar impressão mesmo assim?
   Started: Iniciado
@@ -3249,8 +3261,10 @@ translations:
   Starting download...: Iniciando download...
   Starting nozzle clean...: Iniciando limpeza do bico...
   Starting print...: Iniciando impressão...
+  Starting {}…: 'Iniciando {}…'
   Starting...: Iniciando...
   Starts after the current print: Começa depois da impressão atual
+  Starts automatically: 'Inicia automaticamente'
   Startup Brightness: Brilho na inicialização
   Startup, auto-control, and macro devices: Inicialização, controle automático e dispositivos
     de macro
@@ -3642,7 +3656,6 @@ translations:
   Tools Used: Ferramentas Usadas
   'Tools: ': 'Ferramentas: '
   Total Prints: Total de Impressões
-  Total prints, success rate, and time: Impressões, taxa de sucesso e tempo
   Touch & Input: Toque e entrada
   Touch Cal: Cal de Toque
   Touch Calibration: Calibração de Toque
@@ -3840,7 +3853,6 @@ translations:
   Webcam: Webcam
   Website (optional): Site (opcional)
   Week: Semana
-  Weekly Print Stats: Estatísticas Semanais de Impressão
   ? Weight data is synced from Spoolman to display remaining filament. Changes are
     also synced when prints start, pause, or complete.
   : Dados de peso são sincronizados do Spoolman para exibir filamento restante. Alterações
@@ -4040,6 +4052,7 @@ translations:
   tall: de altura
   target {}%: 'alvo {}%'
   target {}°: 'alvo {}°'
+  this week: esta semana
   too slow: lento demais
   tool(s): ferramenta(s)
   used: usado
@@ -4072,6 +4085,7 @@ translations:
   '{} filament sensors available': '{} sensores de filamento disponíveis'
   '{} filament • {}': '{} de filamento • {}'
   '{} firmware': 'Firmware de {}'
+  '{} h': '{} h'
   '{} heater turned off': Aquecedor {} desligado
   '{} is asking to connect to this printer.': '{} quer conectar-se a esta impressora.'
   '{} is blocked — manual intervention required': '{}: bloqueio — intervenção manual necessária'
@@ -4084,10 +4098,12 @@ translations:
   '{} lines in helixscreen.env were ignored': '{} linhas do helixscreen.env foram ignoradas'
   '{} kept crashing the panel; switched back to {}': '{} travou a tela repetidamente; voltou para {}'
   '{} kept crashing the panel; pick a printer to connect': '{} travou a tela repetidamente; escolha uma impressora para conectar'
+  '{} m': '{} m'
   '{} macro not configured': Macro {} não configurado
   '{} matches.': '{} corresponde.'
   '{} may cause unintended changes. Are you sure?': '{} pode causar alterações não
     intencionais. Tem certeza?'
+  '{} min': '{} min'
   '{} min ago': há {} min
   '{} missing': '{} ausente(s)'
   '{} more taps to {} beta features': Mais {} toques para {} recursos beta
@@ -4096,6 +4112,8 @@ translations:
   '{} new hardware available': '{} novo hardware disponível'
   '{} new plugins available. Enable them in Settings > Plugins.': '{} novos plugins disponíveis. Ative-os em Configurações > Plugins.'
   '{} preset{}': '{} predefinição{}'
+  '{} prints': '{} impressões'
+  '{} queued': '{} na fila'
   '{} serial': 'N.º de série de {}'
   '{} set to {}': '{} definido para {}'
   '{} set to {} {}': '{} definido para {} {}'

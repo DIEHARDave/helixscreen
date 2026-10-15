@@ -8,6 +8,7 @@
 #include "ui_icon.h"
 #include "ui_icon_codepoints.h"
 #include "ui_panel_print_status.h"
+#include "ui_subject_registry.h"
 #include "ui_utils.h"
 
 #include "app_globals.h"
@@ -97,16 +98,6 @@ void exclude_map_init_subjects() {
     });
 }
 
-void set_int(lv_subject_t* subject, int value) {
-    if (lv_subject_get_int(subject) != value)
-        lv_subject_set_int(subject, value);
-}
-
-void set_text(lv_subject_t* subject, const std::string& text) {
-    if (text != lv_subject_get_string(subject))
-        lv_subject_copy_string(subject, text.c_str());
-}
-
 // The texts, composed once for the labels and the measurement alike.
 std::string count_text(const helix::ExcludeCounts& c) {
     char buf[24];
@@ -155,13 +146,7 @@ Fonts load_fonts() {
             theme_manager_get_font("icon_font_xs")};
 }
 
-int line_px(const lv_font_t* font) {
-    return font ? static_cast<int>(lv_font_get_line_height(font)) : 0;
-}
-
-int text_px(const std::string& text, const lv_font_t* font) {
-    return measure_text_px(text.c_str(), font);
-}
+using helix::line_px;
 
 /// The minimum content box each rung draws in. Mirrors panel_widget_exclude_map.xml:
 /// spacing is the XML's pad_row (space_xxs) and pad_column (space_xs), and the text
@@ -176,7 +161,8 @@ helix::RungNeeds measure_needs(helix::ExcludeMapState state, int digits) {
     const int comfort = theme_manager_get_spacing("space_xs");
     const int tight = std::max<int>(2, theme_manager_get_spacing("space_xxs") / 2);
 
-    const int icon_w = text_px(helix::ui::icon::lookup_codepoint("debug_step_over"), f.icon);
+    const int icon_w =
+        measure_text_px(helix::ui::icon::lookup_codepoint("debug_step_over"), f.icon);
     const int icon_h = line_px(f.icon);
     const int xs_h = line_px(f.xs);
     const int small_h = line_px(f.small);
@@ -185,19 +171,19 @@ helix::RungNeeds measure_needs(helix::ExcludeMapState state, int digits) {
 
     helix::RungNeeds needs;
     if (state != helix::ExcludeMapState::Objects) {
-        const int caption_w =
-            std::max(text_px(lv_tr("No objects"), f.xs), text_px(lv_tr("Single object"), f.xs));
+        const int caption_w = std::max(measure_text_px(lv_tr("No objects"), f.xs),
+                                       measure_text_px(lv_tr("Single object"), f.xs));
         needs.glance = rung_box(icon_w + tight, icon_h + 1);
         needs.strip = rung_box(std::max(icon_w, caption_w) + tight, icon_h + row_gap + xs_h + 1);
         return needs;
     }
 
     const helix::ExcludeCounts widest = widest_counts(digits);
-    const int count_w = text_px(count_text(widest), f.xs);
-    const int objects_w = text_px(objects_text(widest.total), f.xs);
-    const int skipped_w = text_px(skipped_text(widest.skipped), f.xs);
-    const int printing_w = text_px(printing_text(widest), f.xs);
-    const int now_w = text_px(lv_tr("Now printing"), f.xs);
+    const int count_w = measure_text_px(count_text(widest), f.xs);
+    const int objects_w = measure_text_px(objects_text(widest.total), f.xs);
+    const int skipped_w = measure_text_px(skipped_text(widest.skipped), f.xs);
+    const int printing_w = measure_text_px(printing_text(widest), f.xs);
+    const int now_w = measure_text_px(lv_tr("Now printing"), f.xs);
 
     needs.glance = rung_box(std::max(icon_w, count_w) + tight, icon_h + row_gap + xs_h + 1);
     needs.strip = rung_box(std::max(objects_w, skipped_w) + tight, 2 * xs_h + row_gap + 1);
@@ -211,7 +197,7 @@ helix::RungNeeds measure_needs(helix::ExcludeMapState state, int digits) {
             rung_box(map_min + col_gap + 2 * text_w + comfort, std::max(map_min, text_h) + 1);
     }
     {
-        const int button_w = text_px(lv_tr("Skip Objects..."), f.small) + icon_w +
+        const int button_w = measure_text_px(lv_tr("Skip Objects..."), f.small) + icon_w +
                              2 * theme_manager_get_spacing("space_md");
         const int text_w = std::max({now_w, printing_w, button_w});
         // The map over caption, name, counts, the skipped line and the button.
@@ -253,13 +239,7 @@ ExcludeMapVerdict ExcludeMapWidget::decide(int width_px, int height_px, ExcludeM
                                            int digits) const {
     // The tree's own padding where it exists; before it does (the load path asks
     // fits_at then) the root's padding on each side.
-    ContentChrome chrome;
-    if (root()) {
-        chrome = measure_content_chrome(root(), 0);
-    } else {
-        const int pad = theme_manager_get_spacing("space_xxs");
-        chrome = {2 * pad, 2 * pad};
-    }
+    const ContentChrome chrome = content_chrome_or_estimate(root(), "space_xxs", "space_xxs");
     ExcludeMapLayoutInput in;
     in.content_w = width_px - chrome.w;
     in.content_h = height_px - chrome.h;
@@ -372,36 +352,43 @@ bool ExcludeMapWidget::fits_at(int width_px, int height_px) const {
 }
 
 void ExcludeMapWidget::publish(const Live& live) {
-    set_int(&s_placeholder_subject, verdict_.placeholder ? 1 : 0);
-    set_int(&s_show_map_subject, verdict_.show_map ? 1 : 0);
-    set_int(&s_show_skip_subject, verdict_.show_skip_button ? 1 : 0);
-    set_int(&s_show_name_subject, verdict_.show_name ? 1 : 0);
-    set_int(&s_has_current_subject, live.current.empty() ? 0 : 1);
-    set_int(&s_rung_subject, static_cast<int>(verdict_.rung));
+    helix::ui::set_int_if_changed(&s_placeholder_subject, verdict_.placeholder ? 1 : 0);
+    helix::ui::set_int_if_changed(&s_show_map_subject, verdict_.show_map ? 1 : 0);
+    helix::ui::set_int_if_changed(&s_show_skip_subject, verdict_.show_skip_button ? 1 : 0);
+    helix::ui::set_int_if_changed(&s_show_name_subject, verdict_.show_name ? 1 : 0);
+    helix::ui::set_int_if_changed(&s_has_current_subject, live.current.empty() ? 0 : 1);
+    helix::ui::set_int_if_changed(&s_rung_subject, static_cast<int>(verdict_.rung));
 
     if (verdict_.placeholder) {
-        set_text(&s_placeholder_text_subject, placeholder_text(live.state));
+        helix::ui::copy_string_if_changed(&s_placeholder_text_subject,
+                                          std::string(placeholder_text(live.state)).c_str());
         return;
     }
     // Only the texts the rung shows are composed.
     switch (verdict_.rung) {
     case SizeRung::Glance:
     case SizeRung::Column:
-        set_text(&s_count_text_subject, count_text(live.counts));
+        helix::ui::copy_string_if_changed(&s_count_text_subject,
+                                          std::string(count_text(live.counts)).c_str());
         break;
     case SizeRung::Strip:
-        set_text(&s_objects_text_subject, objects_text(live.counts.total));
-        set_text(&s_skipped_text_subject, skipped_text(live.counts.skipped));
+        helix::ui::copy_string_if_changed(&s_objects_text_subject,
+                                          std::string(objects_text(live.counts.total)).c_str());
+        helix::ui::copy_string_if_changed(&s_skipped_text_subject,
+                                          std::string(skipped_text(live.counts.skipped)).c_str());
         break;
     case SizeRung::Cell:
-        set_text(&s_printing_text_subject, printing_text(live.counts));
+        helix::ui::copy_string_if_changed(&s_printing_text_subject,
+                                          std::string(printing_text(live.counts)).c_str());
         break;
     case SizeRung::Wide:
     case SizeRung::Full:
     case SizeRung::Large:
-        set_text(&s_printing_text_subject, printing_text(live.counts));
-        set_text(&s_skipped_text_subject, skipped_text(live.counts.skipped));
-        set_text(&s_current_name_subject, live.current);
+        helix::ui::copy_string_if_changed(&s_printing_text_subject,
+                                          std::string(printing_text(live.counts)).c_str());
+        helix::ui::copy_string_if_changed(&s_skipped_text_subject,
+                                          std::string(skipped_text(live.counts.skipped)).c_str());
+        helix::ui::copy_string_if_changed(&s_current_name_subject, live.current.c_str());
         break;
     }
 }

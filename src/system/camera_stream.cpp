@@ -11,6 +11,7 @@
 #include "hv/requests.h"
 #include "i_moonraker_api.h"
 #include "printer_state.h"
+#include "scope_exit.h"
 #include "spdlog/spdlog.h"
 #include "stb_image.h"
 #include "webcam_selection.h"
@@ -26,25 +27,6 @@ static constexpr int TJ_PIXELFORMAT_BGR = 1;
 static constexpr int TJ_FLAG_FASTDCT = 2048;
 
 namespace helix {
-
-namespace {
-
-/// Runs a callable when the enclosing scope unwinds, on every path including
-/// exceptions. Local to this file — nothing else in the tree needs one yet.
-template <typename F> class ScopeExit {
-  public:
-    explicit ScopeExit(F fn) : fn_(std::move(fn)) {}
-    ~ScopeExit() {
-        fn_();
-    }
-    ScopeExit(const ScopeExit&) = delete;
-    ScopeExit& operator=(const ScopeExit&) = delete;
-
-  private:
-    F fn_;
-};
-
-} // namespace
 
 // ============================================================================
 // Construction / Destruction

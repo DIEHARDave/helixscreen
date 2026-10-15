@@ -54,6 +54,7 @@
   <translation tag="+ Add Preset" ja="+ プリセットを追加"/>
   <translation tag="+ Add Printer" ja="+ プリンターを追加"/>
   <translation tag="+ New" ja="+ 新規"/>
+  <translation tag="+{} more" ja="他{}件"/>
   <translation tag="- Check [resonance_tester] in printer.cfg" ja="- printer.cfg の [resonance_tester] を確認してください"/>
   <translation tag="- Ensure ADXL345 is connected" ja="- ADXL345 が接続されていることを確認してください"/>
   <translation tag="- Try Measure Noise first" ja="- まず「ノイズ測定」をお試しください"/>
@@ -63,6 +64,7 @@
   <translation tag="-- kWh" ja="-- kWh"/>
   <translation tag="--°C" ja="--°C"/>
   <translation tag="..." ja="..."/>
+  <translation tag="/wk" ja="/週"/>
   <translation tag="0 = computed" ja="0 = 自動計算"/>
   <translation tag="0 events queued" ja="待機中のイベントなし"/>
   <translation tag="0 slots" ja="{0} スロット"/>
@@ -79,6 +81,7 @@
   <translation tag="1 min ago" ja="1分前"/>
   <translation tag="1 minute" ja="1分"/>
   <translation tag="1 more tap to {} beta features" ja="あと1回タップでベータ機能を{}"/>
+  <translation tag="1 print" ja="1 件"/>
   <translation tag="1 profile" ja="1 個のプロファイル"/>
   <translation tag="1 unit" ja="1ユニット"/>
   <translation tag="1. Printer homes all axes (~1 minute)" ja="1. プリンターが全軸の原点復帰を行います（約1分）"/>
@@ -332,6 +335,7 @@
   <translation tag="Bed Screws" ja="ベッドネジ"/>
   <translation tag="Bed Temp" ja="ベッド温度"/>
   <translation tag="Bed Temperature" ja="ベッド温度"/>
+  <translation tag="Bed clear · Start next" ja="ベッド空き · 次を開始"/>
   <translation tag="Bed cooling, spools still on the bed:" ja="ベッド冷却中、スプールはまだベッドの上です:"/>
   <translation tag="Bed is Level!" ja="ベッドが水平です！"/>
   <translation tag="Bed mesh calibration failed: {}" ja="ベッドメッシュのキャリブレーションに失敗しました: {}"/>
@@ -494,6 +498,7 @@
   <translation tag="Cannot start print: internal error" ja="印刷を開始できません: 内部エラー"/>
   <translation tag="Cannot start print: not connected to printer" ja="印刷を開始できません: プリンター未接続"/>
   <translation tag="Cannot start print: printer is {}" ja="印刷を開始できません: プリンターは {} 状態です"/>
+  <translation tag="Cannot start {}: the file could not be checked yet for the steps you turned off. Try again in a moment." ja="{} を開始できません: オフにした手順についてファイルをまだ確認できていません。少し待ってからもう一度お試しください。"/>
   <translation tag="Cannot unload while a print is active" ja="印刷中は排出できません"/>
   <translation tag="Capabilities: " ja="機能: "/>
   <translation tag="Carriage empty" ja="キャリッジが空"/>
@@ -560,6 +565,7 @@
   <translation tag="Checking accelerometer..." ja="加速度センサーを確認中..."/>
   <translation tag="Checking extruders..." ja="エクストルーダーを確認中..."/>
   <translation tag="Checking filament..." ja="フィラメントを確認中..."/>
+  <translation tag="Checking file…" ja="ファイルを確認中…"/>
   <translation tag="Checking for plugin..." ja="プラグインを確認中..."/>
   <translation tag="Checking for webcam..." ja="ウェブカメラを確認中..."/>
   <translation tag="Checking plugin" ja="プラグインを確認中"/>
@@ -735,6 +741,7 @@
   <translation tag="Could not analyze PRINT_START macro. Some print options may be unavailable." ja="PRINT_START マクロを分析できませんでした。一部の印刷オプションが利用できない場合があります。"/>
   <translation tag="Could not answer the connection request" ja="接続リクエストに応答できませんでした"/>
   <translation tag="Could not check webcam status.&#10;Check printer connection." ja="ウェブカメラの状態を確認できませんでした。&#10;プリンター接続を確認してください。"/>
+  <translation tag="Could not check {} - it stays in the queue" ja="{} を確認できませんでした – キューに残ります"/>
   <translation tag="Could not confirm cancel" ja="キャンセルを確認できませんでした"/>
   <translation tag="Could not copy {} from USB: {}" ja="{} を USB からコピーできませんでした: {}"/>
   <translation tag="Could not disconnect from WiFi" ja="WiFi から切断できませんでした"/>
@@ -1560,6 +1567,7 @@
   <translation tag="It&apos;s a new spool" ja="新しいスプールです"/>
   <translation tag="Jammed at the Toolhead" ja="ツールヘッドで詰まり"/>
   <translation tag="Job Queue" ja="ジョブキュー"/>
+  <translation tag="Job queue not enabled in Moonraker" ja="Moonraker でジョブキューが有効になっていません"/>
   <translation tag="Jog" ja="ジョグ"/>
   <translation tag="Jog Speed XY" ja="XY ジョグ速度"/>
   <translation tag="Jog Speed Z" ja="Z ジョグ速度"/>
@@ -1626,7 +1634,6 @@
   <translation tag="Lanes" ja="レーン"/>
   <translation tag="Language" ja="言語"/>
   <translation tag="Language &amp; Time" ja="言語と時刻"/>
-  <translation tag="Last" ja="最後"/>
   <translation tag="Last 12 months" ja="過去12か月"/>
   <translation tag="Last 24 hours" ja="過去24時間"/>
   <translation tag="Last 30 days" ja="過去30日間"/>
@@ -1652,7 +1659,6 @@
   <translation tag="Level" ja="レベル"/>
   <translation tag="Leveling Gantry..." ja="ガントリーレベリング中..."/>
   <translation tag="Library" ja="ライブラリ"/>
-  <translation tag="Lifetime Print Stats" ja="累計印刷統計"/>
   <translation tag="Light" ja="ライト"/>
   <translation tag="Light Mode" ja="ライトモード"/>
   <translation tag="Light will switch when the current operation finishes" ja="現在の操作が完了したらライトを切り替えます"/>
@@ -1899,6 +1905,7 @@
   <translation tag="New printer successfully added" ja="新しいプリンターを追加しました"/>
   <translation tag="New profile name" ja="新しいプロファイル名"/>
   <translation tag="Next" ja="次へ"/>
+  <translation tag="Next: {}" ja="次の印刷：{}"/>
   <translation tag="Niimbot (Bluetooth)" ja="Niimbot (Bluetooth)"/>
   <translation tag="No" ja="いいえ"/>
   <translation tag="No AMS Detected" ja="AMS が検出されません"/>
@@ -1968,6 +1975,7 @@
   <translation tag="No printer configured — check printer settings" ja="プリンターが設定されていません — プリンター設定を確認してください"/>
   <translation tag="No printer connection" ja="プリンター未接続"/>
   <translation tag="No printers found" ja="プリンターが見つかりません"/>
+  <translation tag="No prints this week" ja="今週の印刷なし"/>
   <translation tag="No prints yet" ja="印刷履歴なし"/>
   <translation tag="No profiles available" ja="利用可能なプロファイルがありません"/>
   <translation tag="No sensors detected" ja="センサーが検出されませんでした"/>
@@ -2279,6 +2287,7 @@
   <translation tag="Print error" ja="印刷エラー"/>
   <translation tag="Print failed" ja="印刷失敗"/>
   <translation tag="Print history will show the rewritten name" ja="印刷履歴には書き換え後の名前が表示されます"/>
+  <translation tag="Print hours this week and lifetime totals" ja="今週の印刷時間と累計"/>
   <translation tag="Print issue detected" ja="印刷の問題を検出しました"/>
   <translation tag="Print jobs waiting to run" ja="実行待ちの印刷ジョブ"/>
   <translation tag="Print preparation failed: {}" ja="印刷準備に失敗しました: {}"/>
@@ -2398,6 +2407,7 @@
   <translation tag="Quad Gantry Level" ja="クアッドガントリーレベル"/>
   <translation tag="Quad Gantry Level complete" ja="QGL 完了"/>
   <translation tag="Quad Gantry Level started..." ja="QGL を開始しました..."/>
+  <translation tag="Queue empty" ja="キューは空です"/>
   <translation tag="Queue: Paused" ja="キュー: 一時停止"/>
   <translation tag="Queue: Ready" ja="キュー: 準備完了"/>
   <translation tag="Queued {}h {}m ago" ja="{} 時間 {} 分前にキューへ追加"/>
@@ -2922,6 +2932,7 @@
   <translation tag="Start at" ja="開始位置"/>
   <translation tag="Start drying" ja="乾燥開始"/>
   <translation tag="Start failed" ja="開始に失敗"/>
+  <translation tag="Start next" ja="次を開始"/>
   <translation tag="Start next: {}" ja="次を開始：{}"/>
   <translation tag="Start print anyway?" ja="それでも印刷を開始しますか？"/>
   <translation tag="Started" ja="開始"/>
@@ -2929,8 +2940,10 @@
   <translation tag="Starting download..." ja="ダウンロードを開始中..."/>
   <translation tag="Starting nozzle clean..." ja="ノズル清掃を開始中..."/>
   <translation tag="Starting print..." ja="印刷開始中..."/>
+  <translation tag="Starting {}…" ja="{} を開始中…"/>
   <translation tag="Starting..." ja="開始中..."/>
   <translation tag="Starts after the current print" ja="現在の印刷が終わったら開始します"/>
+  <translation tag="Starts automatically" ja="自動で開始"/>
   <translation tag="Startup Brightness" ja="起動時の明るさ"/>
   <translation tag="Startup, auto-control, and macro devices" ja="起動、自動制御、マクロデバイス"/>
   <translation tag="State" ja="状態"/>
@@ -3240,7 +3253,6 @@
   <translation tag="Tools Used" ja="使用したツール"/>
   <translation tag="Tools: " ja="ツール: "/>
   <translation tag="Total Prints" ja="総印刷数"/>
-  <translation tag="Total prints, success rate, and time" ja="総印刷数、成功率、印刷時間"/>
   <translation tag="Touch &amp; Input" ja="タッチと入力"/>
   <translation tag="Touch Cal" ja="タッチキャリブレーション"/>
   <translation tag="Touch Calibration" ja="タッチキャリブレーション"/>
@@ -3428,7 +3440,6 @@
   <translation tag="Webcam" ja="ウェブカメラ"/>
   <translation tag="Website (optional)" ja="ウェブサイト（オプション）"/>
   <translation tag="Week" ja="週"/>
-  <translation tag="Weekly Print Stats" ja="週間印刷統計"/>
   <translation tag="Weight data is synced from Spoolman to display remaining filament. Changes are also synced when prints start, pause, or complete." ja="残りのフィラメントを表示するために、重量データが Spoolman から同期されます。印刷の開始、一時停止、完了時にも変更が同期されます。"/>
   <translation tag="Welcome to HelixScreen" ja="HelixScreen へようこそ"/>
   <translation tag="What We Collect" ja="収集する情報"/>
@@ -3608,6 +3619,7 @@
   <translation tag="tall" ja="高さ"/>
   <translation tag="target {}%" ja="目標 {}%"/>
   <translation tag="target {}°" ja="目標 {}°"/>
+  <translation tag="this week" ja="今週"/>
   <translation tag="too slow" ja="遅すぎ"/>
   <translation tag="tool(s)" ja="ツール"/>
   <translation tag="used" ja="使用"/>
@@ -3631,6 +3643,7 @@
   <translation tag="{} complete" ja="{} 完了"/>
   <translation tag="{} configured item not found" ja="設定された項目 {} 個が見つかりません"/>
   <translation tag="{} configured items not found" ja="設定された項目 {} 個が見つかりません"/>
+  <translation tag="{} could not be checked from Home - review it and tap Print" ja="{} をホームから確認できませんでした – 内容を確認して印刷をタップしてください"/>
   <translation tag="{} critical" ja="重大 {} 件"/>
   <translation tag="{} critical hardware issues" ja="{} 個の重要なハードウェアの問題"/>
   <translation tag="{} disabled" ja="{} を無効にしました"/>
@@ -3640,6 +3653,7 @@
   <translation tag="{} filament sensors available" ja="{} 個のフィラメントセンサーが利用可能です"/>
   <translation tag="{} filament • {}" ja="フィラメント {} • {}"/>
   <translation tag="{} firmware" ja="{} ファームウェア"/>
+  <translation tag="{} h" ja="{} 時間"/>
   <translation tag="{} heater turned off" ja="{} ヒーターをオフにしました"/>
   <translation tag="{} is asking to connect to this printer." ja="{} がこのプリンターへの接続を求めています。"/>
   <translation tag="{} is blocked — manual intervention required" ja="{} がブロックされています — 手動での対応が必要です"/>
@@ -3652,9 +3666,11 @@
   <translation tag="{} kept crashing the panel; pick a printer to connect" ja="{} で画面のクラッシュが繰り返されました。接続するプリンターを選んでください"/>
   <translation tag="{} kept crashing the panel; switched back to {}" ja="{} で画面のクラッシュが繰り返されたため、{} に戻しました"/>
   <translation tag="{} lines in helixscreen.env were ignored" ja="helixscreen.env の{}行が無視されました"/>
+  <translation tag="{} m" ja="{} m"/>
   <translation tag="{} macro not configured" ja="{} マクロが未設定です"/>
   <translation tag="{} matches." ja="{} が一致します。"/>
   <translation tag="{} may cause unintended changes. Are you sure?" ja="{} は意図しない変更を引き起こす可能性があります。よろしいですか？"/>
+  <translation tag="{} min" ja="{} 分"/>
   <translation tag="{} min ago" ja="{}分前"/>
   <translation tag="{} missing" ja="未検出 {} 件"/>
   <translation tag="{} more taps to {} beta features" ja="あと{}回タップでベータ機能を{}"/>
@@ -3663,6 +3679,8 @@
   <translation tag="{} new hardware available" ja="{} 個の新しいハードウェアが利用可能です"/>
   <translation tag="{} new plugins available. Enable them in Settings &gt; Plugins." ja="{} 個の新しいプラグインが利用可能です。設定 &gt; プラグインで有効化してください。"/>
   <translation tag="{} preset{}" ja="{} 個のプリセット{}"/>
+  <translation tag="{} prints" ja="{} 件"/>
+  <translation tag="{} queued" ja="{} 件キュー中"/>
   <translation tag="{} serial" ja="{} シリアル番号"/>
   <translation tag="{} set to {}" ja="{} を {} に設定しました"/>
   <translation tag="{} set to {} {}" ja="{} を {} {} に設定しました"/>

@@ -16,6 +16,11 @@
 // pre-start send state.
 class PrintPreparationManagerTestAccess {
   public:
+    /// Whether a start's option override is set (set_start_option_override()).
+    static bool has_start_option_override(const helix::ui::PrintPreparationManager& m) {
+        return static_cast<bool>(m.start_option_override_);
+    }
+
     /// What a reconnect or a Klipper restart runs.
     static void refresh_macro_analysis(helix::ui::PrintPreparationManager& m) {
         m.refresh_macro_analysis();
@@ -27,12 +32,22 @@ class PrintPreparationManagerTestAccess {
     }
     static std::vector<std::string>
     get_pre_start_gcode_lines(const helix::ui::PrintPreparationManager& m,
-                              const std::string& filename = {}) {
-        return m.collect_pre_start_gcode_lines(filename);
+                              const std::string& filename = {},
+                              const helix::gcode::PrintStartCallInfo* job_start = nullptr) {
+        return m.collect_pre_start_gcode_lines(filename, true, job_start);
+    }
+    /// A scan neither the detail view nor a start asked for: it holds no file.
+    static void request_scan(helix::ui::PrintPreparationManager& m, const std::string& filename,
+                             helix::FileVersion version = {}) {
+        m.request_scan(filename, "", "", version);
+    }
+    static size_t kept_scan_count(const helix::ui::PrintPreparationManager& m) {
+        return m.kept_scans_.size();
     }
     static std::vector<helix::gcode::OperationType>
     get_ops_to_disable(const helix::ui::PrintPreparationManager& m) {
-        return m.collect_ops_to_disable();
+        const auto& shown = m.get_scan_result();
+        return m.collect_ops_to_disable(shown ? &*shown : nullptr);
     }
     static std::string build_pre_start_gcode_block(const std::string& setup_gcode,
                                                    const std::vector<std::string>& lines,
@@ -45,8 +60,13 @@ class PrintPreparationManagerTestAccess {
     /// failure exit and every other one retires the job the same way.
     static void modify_and_print(helix::ui::PrintPreparationManager& m,
                                  const std::string& file_path,
-                                 std::function<void()> on_navigate_to_status = nullptr) {
-        m.modify_and_print(file_path, {}, {}, std::move(on_navigate_to_status));
+                                 std::function<void()> on_navigate_to_status = nullptr,
+                                 helix::ui::PrintCompletionCallback on_completion = nullptr) {
+        // start_print() hands its verified scan to the modify step; a test
+        // entering at the modify step hands it the cached one the same way.
+        m.start_scan_ = m.get_scan_result();
+        m.modify_and_print(file_path, {}, {}, std::move(on_navigate_to_status),
+                           std::move(on_completion));
     }
     /// Age the pre-start send timestamp. Production stamps it when the
     /// pre-start gcode RPC leaves; a test models a backed-up ack by winding

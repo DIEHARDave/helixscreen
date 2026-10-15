@@ -54,6 +54,7 @@ translations:
   + Add Preset: + 添加预设
   + Add Printer: + 添加打印机
   + New: + 新建
+  +{} more: '还有 {} 个'
   '- Check [resonance_tester] in printer.cfg': '- 检查 printer.cfg 中的 [resonance_tester]'
   '- Ensure ADXL345 is connected': '- 确保 ADXL345 已连接'
   '- Try Measure Noise first': '- 先尝试测量噪声'
@@ -63,6 +64,7 @@ translations:
   -- kWh: -- kWh
   --°C: --°C
   '...': '...'
+  /wk: '/周'
   0 = computed: 0 = 自动计算
   0 events queued: 0 个事件已排队
   0 slots: '{0} 个槽位'
@@ -79,6 +81,7 @@ translations:
   1 min ago: 1分钟前
   1 minute: 1 分钟
   1 more tap to {} beta features: 再点击 1 次以{}测试功能
+  1 print: '1 次打印'
   1 profile: '1 个配置'
   '1 unit': '1 个单元'
   1. Printer homes all axes (~1 minute): 1. 打印机全部轴归零（约1分钟）
@@ -335,6 +338,7 @@ translations:
   Bed Screws: 热床螺丝
   Bed Temp: 热床温度
   Bed Temperature: 热床温度
+  Bed clear · Start next: '热床已清空 · 开始下一个'
   'Bed cooling, spools still on the bed:': '热床正在冷却,料盘仍在上面:'
 
   Bed is Level!: 热床已水平！
@@ -499,6 +503,7 @@ translations:
   'Cannot start print: internal error': '无法开始打印: 内部错误'
   'Cannot start print: not connected to printer': '无法开始打印: 未连接打印机'
   'Cannot start print: printer is {}': '无法开始打印: 打印机状态为 {}'
+  'Cannot start {}: the file could not be checked yet for the steps you turned off. Try again in a moment.': '无法启动 {}：尚未能针对您关闭的步骤检查该文件。请稍后再试。'
   Cannot save offsets while printing: 打印时无法保存偏移
   Cannot unload while a print is active: 打印时无法卸载
   'Capabilities: ': '功能: '
@@ -567,6 +572,7 @@ translations:
   Checking Spoolman server...: 正在检查 Spoolman 服务器...
   Checking accelerometer...: 正在检查加速度计...
   Checking extruders...: 正在检查挤出机...
+  Checking file…: '正在检查文件…'
   Checking filament...: 正在检查耗材……
   Checking for plugin...: 正在检查插件...
   Checking for webcam...: 正在检查摄像头...
@@ -749,6 +755,9 @@ translations:
   Could not analyze PRINT_START macro. Some print options may be unavailable.: 无法分析
     PRINT_START 宏。部分打印选项可能不可用。
   Could not answer the connection request: '无法响应连接请求'
+  'Could not check {} - it stays in the queue': '无法检查 {} – 保留在队列中'
+  Print hours this week and lifetime totals: '本周打印时长和累计总数'
+  '{} could not be checked from Home - review it and tap Print': '无法从主页检查 {} – 请查看后点按打印'
   ? "Could not check webcam status.\nCheck printer connection."
   : "无法检查摄像头状态。\n请检查打印机连接。"
   Could not confirm cancel: 无法确认取消
@@ -1609,6 +1618,7 @@ translations:
   It's a new spool: 这是新料盘
   Jammed at the Toolhead: 工具头处堵塞
   Job Queue: 任务队列
+  Job queue not enabled in Moonraker: 'Moonraker 未启用任务队列'
   Jog: '点动'
   Jog Speed XY: XY 移动速度
   Jog Speed Z: Z 移动速度
@@ -1683,7 +1693,6 @@ translations:
   Lanes: 耗材通道
   Language: 语言
   Language & Time: 语言与时间
-  Last: 最近
   # Source: history_dashboard_panel.xml:114
   Last 12 months: '最近 12 个月'
   Last 24 hours: '最近 24 小时'
@@ -1710,7 +1719,6 @@ translations:
   Level: 级别
   Leveling Gantry...: 正在调平龙门...
   Library: 库
-  Lifetime Print Stats: 累计打印统计
   Light: 浅色
   Light Mode: 浅色模式
   Light will switch when the current operation finishes: 灯光将在当前操作完成后切换
@@ -1962,6 +1970,7 @@ translations:
   New printer successfully added: 新打印机已成功添加
   New profile name: 新配置名称
   Next: 下一步
+  'Next: {}': '下一个：{}'
   Niimbot (Bluetooth): Niimbot（蓝牙）
   'No': 否
   No AMS Detected: '未检测到 AMS'
@@ -2032,6 +2041,7 @@ translations:
   No printer configured — check printer settings: 未配置打印机 — 请检查打印机设置
   No printer connection: 无打印机连接
   No printers found: 未找到打印机
+  No prints this week: 本周暂无打印
   No prints yet: 暂无打印记录
   No profiles available: 无可用配置
   No sensors detected: 未检测到传感器
@@ -2481,6 +2491,7 @@ translations:
   Quad Gantry Level: 四角龙门调平
   Quad Gantry Level complete: QGL 完成
   Quad Gantry Level started...: QGL 已开始...
+  Queue empty: '队列为空'
   'Queue: Paused': '队列：已暂停'
   'Queue: Ready': 队列：就绪
   Queued {}h {}m ago: '{} 小时 {} 分钟前加入队列'
@@ -3030,6 +3041,7 @@ translations:
   Start drying: 开始烘干
 
   Start failed: 启动失败
+  Start next: '开始下一个'
   'Start next: {}': '开始下一个：{}'
   Start print anyway?: 仍要开始打印吗？
   Started: 已开始
@@ -3037,8 +3049,10 @@ translations:
   Starting download...: 正在开始下载...
   Starting nozzle clean...: 正在开始清洁喷嘴...
   Starting print...: 正在启动打印...
+  Starting {}…: '正在开始 {}…'
   Starting...: 正在启动...
   Starts after the current print: 当前打印完成后开始
+  Starts automatically: '自动开始'
   Startup Brightness: 启动亮度
   Startup, auto-control, and macro devices: 启动、自动控制和宏设备
   State: 状态
@@ -3389,7 +3403,6 @@ translations:
   Tools Used: 已使用工具
   'Tools: ': '工具: '
   Total Prints: 总打印数
-  Total prints, success rate, and time: 总打印数、成功率和时间
   Touch & Input: 触摸和输入
   Touch Cal: 触摸校准
   Touch Calibration: 触摸校准
@@ -3579,7 +3592,6 @@ translations:
   Webcam: 摄像头
   Website (optional): 网站（可选）
   Week: 周
-  Weekly Print Stats: 本周打印统计
   ? Weight data is synced from Spoolman to display remaining filament. Changes are
     also synced when prints start, pause, or complete.
   : 重量数据从 Spoolman 同步以显示剩余耗材。打印开始、暂停或完成时也会同步更改。
@@ -3769,6 +3781,7 @@ translations:
   tall: 高
   target {}%: '目标 {}%'
   target {}°: '目标 {}°'
+  this week: 本周
   too slow: 太慢
   tool(s): 工具
   used: 已使用
@@ -3801,6 +3814,7 @@ translations:
   '{} filament sensors available': '{} 个耗材传感器可用'
   '{} filament • {}': '耗材 {} • {}'
   '{} firmware': '{} 固件'
+  '{} h': '{} 小时'
   '{} heater turned off': '{} 加热器已关闭'
   '{} is asking to connect to this printer.': '{} 请求连接到此打印机。'
   '{} is blocked — manual intervention required': '{} 被阻塞 — 需要手动干预'
@@ -3813,9 +3827,11 @@ translations:
   '{} lines in helixscreen.env were ignored': 'helixscreen.env 中有 {} 行被忽略'
   '{} kept crashing the panel; switched back to {}': '{} 反复导致屏幕崩溃，已切换回 {}'
   '{} kept crashing the panel; pick a printer to connect': '{} 反复导致屏幕崩溃，请选择要连接的打印机'
+  '{} m': '{} 米'
   '{} macro not configured': '{} 宏未配置'
   '{} matches.': '{} 匹配。'
   '{} may cause unintended changes. Are you sure?': '{} 可能导致意外更改。确定吗？'
+  '{} min': '{} 分钟'
   '{} min ago': '{} 分钟前'
   '{} missing': '{} 个缺失'
   '{} more taps to {} beta features': 再点击 {} 次以{}测试功能
@@ -3824,6 +3840,8 @@ translations:
   '{} new hardware available': '{} 个新硬件可用'
   '{} new plugins available. Enable them in Settings > Plugins.': '{} 个新插件可用。请在设置 > 插件中启用。'
   '{} preset{}': '{} 个预设{}'
+  '{} prints': '{} 次打印'
+  '{} queued': '{} 个在队列中'
   '{} serial': '{} 序列号'
   '{} set to {}': '{} 已设为 {}'
   '{} set to {} {}': '{} 已设为 {} {}'

@@ -1926,7 +1926,8 @@ SubjectLifetime gate_subject_lifetime(const char* name) {
         std::strcmp(name, "printer_connection_state") == 0 ||
         std::strcmp(name, "klippy_state") == 0 ||
         std::strcmp(name, "printer_has_exclude_object") == 0 ||
-        std::strcmp(name, "printer_has_bed_mesh") == 0) {
+        std::strcmp(name, "printer_has_bed_mesh") == 0 ||
+        std::strcmp(name, "printer_has_job_queue") == 0) {
         return get_printer_state().get_subjects_lifetime();
     }
     if (std::strcmp(name, "home_dryer_available") == 0) {

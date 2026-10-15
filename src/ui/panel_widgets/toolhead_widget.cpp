@@ -38,6 +38,7 @@
 #include <cstdio>
 #include <string>
 
+using helix::ui::copy_string_if_changed;
 using helix::ui::measure_text_px;
 using helix::ui::set_int_if_changed;
 
@@ -106,11 +107,6 @@ void toolhead_init_subjects() {
     });
 }
 
-void set_text_if_changed(lv_subject_t* subject, const std::string& text) {
-    if (text != lv_subject_get_string(subject))
-        lv_subject_copy_string(subject, text.c_str());
-}
-
 struct Fonts {
     const lv_font_t* xs;
     const lv_font_t* small;
@@ -123,19 +119,14 @@ Fonts load_fonts() {
             theme_manager_get_font("font_body"), theme_manager_get_font("icon_font_xs")};
 }
 
-int line_px(const lv_font_t* font) {
-    return font ? static_cast<int>(lv_font_get_line_height(font)) : 0;
-}
-
-int text_px(const std::string& text, const lv_font_t* font) {
-    return measure_text_px(text.c_str(), font);
-}
+using helix::line_px;
 
 /// The widest value any axis can show, so the rung does not change as the numbers do.
 int widest_value_px(const lv_font_t* font, bool compact = false) {
     using helix::Axis;
-    return std::max({text_px(helix::format_toolhead_axis(Axis::X, -88888, true, compact), font),
-                     text_px(helix::format_toolhead_axis(Axis::Z, 88888, true, compact), font)});
+    return std::max(
+        {measure_text_px(helix::format_toolhead_axis(Axis::X, -88888, true, compact), font),
+         measure_text_px(helix::format_toolhead_axis(Axis::Z, 88888, true, compact), font)});
 }
 
 /// The minimum content box each rung draws in. Mirrors panel_widget_toolhead.xml:
@@ -155,15 +146,16 @@ helix::RungNeeds measure_needs() {
     const int button_px = theme_manager_get_spacing("button_height_sm");
     const int dot_px = theme_manager_get_spacing("space_sm");
 
-    const int icon_w = text_px(helix::ui::icon::lookup_codepoint("axis_z_arrow"), f.icon);
+    const int icon_w = measure_text_px(helix::ui::icon::lookup_codepoint("axis_z_arrow"), f.icon);
     const int icon_h = line_px(f.icon);
     const int xs_h = line_px(f.xs);
     const int small_h = line_px(f.small);
     const int body_h = line_px(f.body);
 
-    const int letters_w =
-        text_px("X", f.body) + text_px("Y", f.body) + text_px("Z", f.body) + 2 * col_gap;
-    const int z_xs_w = text_px(helix::format_toolhead_axis(helix::Axis::Z, 88888, true), f.xs);
+    const int letters_w = measure_text_px("X", f.body) + measure_text_px("Y", f.body) +
+                          measure_text_px("Z", f.body) + 2 * col_gap;
+    const int z_xs_w =
+        measure_text_px(helix::format_toolhead_axis(helix::Axis::Z, 88888, true), f.xs);
 
     helix::RungNeeds needs;
     // Glance holds either the letters or the Z height stacked under its glyph.
@@ -172,11 +164,11 @@ helix::RungNeeds measure_needs() {
     needs.strip = rung_box(std::max(letters_w, icon_w + col_gap + z_xs_w) + comfort,
                            std::max({body_h, icon_h, xs_h}) + kSlackPx);
 
-    const int letter_xs_w = text_px("X", f.xs);
+    const int letter_xs_w = measure_text_px("X", f.xs);
     needs.column = rung_box(letter_xs_w + row_gap + widest_value_px(f.xs, true) + tight,
                             3 * xs_h + 2 * row_gap + comfort + kSlackPx);
 
-    const int letter_w = text_px("X", f.body);
+    const int letter_w = measure_text_px("X", f.body);
     needs.cell = rung_box(letter_w + row_gap + widest_value_px(f.body) + row_gap + dot_px + comfort,
                           3 * body_h + 2 * row_gap + comfort + kSlackPx);
 
@@ -188,7 +180,7 @@ helix::RungNeeds measure_needs() {
                           std::max(plate_min, 3 * body_h + 2 * row_gap) + comfort + kSlackPx);
 
     // Full lays the three axes in a row under the plate, in the small face.
-    const int full_row_w = text_px("X", f.small) + row_gap + widest_value_px(f.small);
+    const int full_row_w = measure_text_px("X", f.small) + row_gap + widest_value_px(f.small);
     const int footer_h = small_h + row_gap + button_px;
     const int values_row_w = 3 * full_row_w + 2 * theme_manager_get_spacing("space_sm");
     needs.full = rung_box(std::max(values_row_w, plate_min + bar_w + col_gap) + comfort,
@@ -420,13 +412,7 @@ ToolheadVerdict ToolheadWidget::decide(int width_px, int height_px, bool printin
                                        bool homed) const {
     // The tree's own padding where it exists; before it does (the load path asks
     // fits_at then) the root's padding on each side.
-    ContentChrome chrome;
-    if (root()) {
-        chrome = measure_content_chrome(root(), 0);
-    } else {
-        const int pad = theme_manager_get_spacing("space_xxs");
-        chrome = {2 * pad, 2 * pad};
-    }
+    const ContentChrome chrome = content_chrome_or_estimate(root(), "space_xxs", "space_xxs");
     ToolheadInput in;
     in.content_w = width_px - chrome.w;
     in.content_h = height_px - chrome.h;
@@ -612,23 +598,29 @@ void ToolheadWidget::publish_state(const LiveState& live) {
 
 void ToolheadWidget::publish_values(const LiveState& live) {
     if (verdict_.show_rows || verdict_.show_plate) {
-        set_text_if_changed(
+        copy_string_if_changed(
             &s_x_text_subject,
-            format_toolhead_axis(Axis::X, live.centimm[0], live.homed[0], verdict_.compact_values));
-        set_text_if_changed(
+            std::string(format_toolhead_axis(Axis::X, live.centimm[0], live.homed[0],
+                                             verdict_.compact_values))
+                .c_str());
+        copy_string_if_changed(
             &s_y_text_subject,
-            format_toolhead_axis(Axis::Y, live.centimm[1], live.homed[1], verdict_.compact_values));
+            std::string(format_toolhead_axis(Axis::Y, live.centimm[1], live.homed[1],
+                                             verdict_.compact_values))
+                .c_str());
     }
     if (verdict_.show_rows || verdict_.show_plate || verdict_.show_z_only) {
-        set_text_if_changed(
+        copy_string_if_changed(
             &s_z_text_subject,
-            format_toolhead_axis(Axis::Z, live.centimm[2], live.homed[2], verdict_.compact_values));
+            std::string(format_toolhead_axis(Axis::Z, live.centimm[2], live.homed[2],
+                                             verdict_.compact_values))
+                .c_str());
     }
     if (verdict_.show_status_row) {
-        set_text_if_changed(&s_tool_text_subject, live.tool_label);
+        copy_string_if_changed(&s_tool_text_subject, live.tool_label.c_str());
         char speed[24];
         std::snprintf(speed, sizeof(speed), lv_tr("%d mm/s"), live.velocity_mm_s);
-        set_text_if_changed(&s_speed_text_subject, speed);
+        copy_string_if_changed(&s_speed_text_subject, speed);
     }
 }
 

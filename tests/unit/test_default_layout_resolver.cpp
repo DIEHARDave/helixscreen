@@ -1,9 +1,9 @@
 // Copyright (C) 2025-2026 356C LLC
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include "../test_helpers/scope_exit.h"
 #include "default_layout_resolver.h"
 #include "panel_widget_registry.h"
+#include "scope_exit.h"
 
 #include <algorithm>
 #include <string>
@@ -610,7 +610,7 @@ TEST_CASE("resolver: arrangement_hash covers the arrangement only", "[default_la
         helix::RuntimeWidgetDef def;
         def.id = "resolver_test_plugin";
         def.display_name = "Resolver Test";
-        helix::test::ScopeExit cleanup(
+        helix::ScopeExit cleanup(
             [] { helix::unregister_runtime_widget_def("resolver_test_plugin"); });
         REQUIRE(helix::register_runtime_widget_def(def));
         REQUIRE(helix::find_widget_def("resolver_test_plugin") != nullptr);

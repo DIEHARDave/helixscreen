@@ -54,6 +54,7 @@ translations:
   + Add Preset: + プリセットを追加
   + Add Printer: + プリンターを追加
   + New: + 新規
+  +{} more: '他{}件'
   '- Check [resonance_tester] in printer.cfg': '- printer.cfg の [resonance_tester]
     を確認してください'
   '- Ensure ADXL345 is connected': '- ADXL345 が接続されていることを確認してください'
@@ -64,6 +65,7 @@ translations:
   -- kWh: -- kWh
   --°C: --°C
   '...': '...'
+  /wk: '/週'
   0 = computed: 0 = 自動計算
   0 events queued: 待機中のイベントなし
   0 slots: '{0} スロット'
@@ -80,6 +82,7 @@ translations:
   1 min ago: 1分前
   1 minute: 1分
   1 more tap to {} beta features: あと1回タップでベータ機能を{}
+  1 print: '1 件'
   1 profile: '1 個のプロファイル'
   '1 unit': '1ユニット'
   1. Printer homes all axes (~1 minute): 1. プリンターが全軸の原点復帰を行います（約1分）
@@ -336,6 +339,7 @@ translations:
   Bed Screws: ベッドネジ
   Bed Temp: ベッド温度
   Bed Temperature: ベッド温度
+  Bed clear · Start next: 'ベッド空き · 次を開始'
   'Bed cooling, spools still on the bed:': 'ベッド冷却中、スプールはまだベッドの上です:'
 
   Bed is Level!: ベッドが水平です！
@@ -500,6 +504,7 @@ translations:
   'Cannot start print: internal error': '印刷を開始できません: 内部エラー'
   'Cannot start print: not connected to printer': '印刷を開始できません: プリンター未接続'
   'Cannot start print: printer is {}': '印刷を開始できません: プリンターは {} 状態です'
+  'Cannot start {}: the file could not be checked yet for the steps you turned off. Try again in a moment.': '{} を開始できません: オフにした手順についてファイルをまだ確認できていません。少し待ってからもう一度お試しください。'
   Cannot save offsets while printing: 印刷中はオフセットを保存できません
   Cannot unload while a print is active: 印刷中は排出できません
   'Capabilities: ': '機能: '
@@ -568,6 +573,7 @@ translations:
   Checking Spoolman server...: Spoolman サーバーを確認中...
   Checking accelerometer...: 加速度センサーを確認中...
   Checking extruders...: エクストルーダーを確認中...
+  Checking file…: 'ファイルを確認中…'
   Checking filament...: フィラメントを確認中...
   Checking for plugin...: プラグインを確認中...
   Checking for webcam...: ウェブカメラを確認中...
@@ -751,6 +757,9 @@ translations:
   Could not analyze PRINT_START macro. Some print options may be unavailable.: PRINT_START
     マクロを分析できませんでした。一部の印刷オプションが利用できない場合があります。
   Could not answer the connection request: '接続リクエストに応答できませんでした'
+  'Could not check {} - it stays in the queue': '{} を確認できませんでした – キューに残ります'
+  Print hours this week and lifetime totals: '今週の印刷時間と累計'
+  '{} could not be checked from Home - review it and tap Print': '{} をホームから確認できませんでした – 内容を確認して印刷をタップしてください'
   ? "Could not check webcam status.\nCheck printer connection."
   : "ウェブカメラの状態を確認できませんでした。\nプリンター接続を確認してください。"
   Could not confirm cancel: キャンセルを確認できませんでした
@@ -1614,6 +1623,7 @@ translations:
   It's a new spool: 新しいスプールです
   Jammed at the Toolhead: ツールヘッドで詰まり
   Job Queue: ジョブキュー
+  Job queue not enabled in Moonraker: 'Moonraker でジョブキューが有効になっていません'
   Jog: 'ジョグ'
   Jog Speed XY: XY ジョグ速度
   Jog Speed Z: Z ジョグ速度
@@ -1688,7 +1698,6 @@ translations:
   Lanes: レーン
   Language: 言語
   Language & Time: 言語と時刻
-  Last: 最後
   # Source: history_dashboard_panel.xml:114
   Last 12 months: '過去12か月'
   Last 24 hours: '過去24時間'
@@ -1716,7 +1725,6 @@ translations:
   Level: レベル
   Leveling Gantry...: ガントリーレベリング中...
   Library: ライブラリ
-  Lifetime Print Stats: 累計印刷統計
   Light: ライト
   Light Mode: ライトモード
   Light will switch when the current operation finishes: 現在の操作が完了したらライトを切り替えます
@@ -1968,6 +1976,7 @@ translations:
   New printer successfully added: 新しいプリンターを追加しました
   New profile name: 新しいプロファイル名
   Next: 次へ
+  'Next: {}': '次の印刷：{}'
   Niimbot (Bluetooth): Niimbot (Bluetooth)
   'No': いいえ
   No AMS Detected: 'AMS が検出されません'
@@ -2039,6 +2048,7 @@ translations:
   No printer configured — check printer settings: プリンターが設定されていません — プリンター設定を確認してください
   No printer connection: プリンター未接続
   No printers found: プリンターが見つかりません
+  No prints this week: 今週の印刷なし
   No prints yet: 印刷履歴なし
   No profiles available: 利用可能なプロファイルがありません
   No sensors detected: センサーが検出されませんでした
@@ -2490,6 +2500,7 @@ translations:
   Quad Gantry Level: クアッドガントリーレベル
   Quad Gantry Level complete: QGL 完了
   Quad Gantry Level started...: QGL を開始しました...
+  Queue empty: 'キューは空です'
   'Queue: Paused': 'キュー: 一時停止'
   'Queue: Ready': 'キュー: 準備完了'
   Queued {}h {}m ago: '{} 時間 {} 分前にキューへ追加'
@@ -3039,6 +3050,7 @@ translations:
   Start drying: 乾燥開始
 
   Start failed: 開始に失敗
+  Start next: '次を開始'
   'Start next: {}': '次を開始：{}'
   Start print anyway?: それでも印刷を開始しますか？
   Started: 開始
@@ -3046,8 +3058,10 @@ translations:
   Starting download...: ダウンロードを開始中...
   Starting nozzle clean...: ノズル清掃を開始中...
   Starting print...: 印刷開始中...
+  Starting {}…: '{} を開始中…'
   Starting...: 開始中...
   Starts after the current print: 現在の印刷が終わったら開始します
+  Starts automatically: '自動で開始'
   Startup Brightness: 起動時の明るさ
   Startup, auto-control, and macro devices: 起動、自動制御、マクロデバイス
   State: 状態
@@ -3398,7 +3412,6 @@ translations:
   Tools Used: 使用したツール
   'Tools: ': 'ツール: '
   Total Prints: 総印刷数
-  Total prints, success rate, and time: 総印刷数、成功率、印刷時間
   Touch & Input: タッチと入力
   Touch Cal: タッチキャリブレーション
   Touch Calibration: タッチキャリブレーション
@@ -3588,7 +3601,6 @@ translations:
   Webcam: ウェブカメラ
   Website (optional): ウェブサイト（オプション）
   Week: 週
-  Weekly Print Stats: 週間印刷統計
   ? Weight data is synced from Spoolman to display remaining filament. Changes are
     also synced when prints start, pause, or complete.
   : 残りのフィラメントを表示するために、重量データが Spoolman から同期されます。印刷の開始、一時停止、完了時にも変更が同期されます。
@@ -3779,6 +3791,7 @@ translations:
   tall: 高さ
   target {}%: '目標 {}%'
   target {}°: '目標 {}°'
+  this week: 今週
   too slow: 遅すぎ
   tool(s): ツール
   used: 使用
@@ -3811,6 +3824,7 @@ translations:
   '{} filament sensors available': '{} 個のフィラメントセンサーが利用可能です'
   '{} filament • {}': 'フィラメント {} • {}'
   '{} firmware': '{} ファームウェア'
+  '{} h': '{} 時間'
   '{} heater turned off': '{} ヒーターをオフにしました'
   '{} is asking to connect to this printer.': '{} がこのプリンターへの接続を求めています。'
   '{} is blocked — manual intervention required': '{} がブロックされています — 手動での対応が必要です'
@@ -3823,9 +3837,11 @@ translations:
   '{} lines in helixscreen.env were ignored': 'helixscreen.env の{}行が無視されました'
   '{} kept crashing the panel; switched back to {}': '{} で画面のクラッシュが繰り返されたため、{} に戻しました'
   '{} kept crashing the panel; pick a printer to connect': '{} で画面のクラッシュが繰り返されました。接続するプリンターを選んでください'
+  '{} m': '{} m'
   '{} macro not configured': '{} マクロが未設定です'
   '{} matches.': '{} が一致します。'
   '{} may cause unintended changes. Are you sure?': '{} は意図しない変更を引き起こす可能性があります。よろしいですか？'
+  '{} min': '{} 分'
   '{} min ago': '{}分前'
   '{} missing': '未検出 {} 件'
   '{} more taps to {} beta features': あと{}回タップでベータ機能を{}
@@ -3834,6 +3850,8 @@ translations:
   '{} new hardware available': '{} 個の新しいハードウェアが利用可能です'
   '{} new plugins available. Enable them in Settings > Plugins.': '{} 個の新しいプラグインが利用可能です。設定 > プラグインで有効化してください。'
   '{} preset{}': '{} 個のプリセット{}'
+  '{} prints': '{} 件'
+  '{} queued': '{} 件キュー中'
   '{} serial': '{} シリアル番号'
   '{} set to {}': '{} を {} に設定しました'
   '{} set to {} {}': '{} を {} {} に設定しました'

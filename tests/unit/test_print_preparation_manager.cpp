@@ -46,6 +46,7 @@
 #include <functional>
 #include <map>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <thread>
 #include <vector>
@@ -3088,20 +3089,19 @@ TEST_CASE_METHOD(HelixTestFixture,
     SECTION("job temps come from the file's own START_PRINT call") {
         // The gcode file's START_PRINT line is the source of truth for temps
         // (Moonraker metadata lies on multi-material files). The scanner
-        // extracts them into print_start; the pre-start renderer must use
-        // them when the scanned file is the file being printed.
+        // extracts them into print_start, and the start hands the renderer
+        // its own file's call.
         gcode::ScanResult scan;
         scan.print_start.found = true;
         scan.print_start.macro_name = "START_PRINT";
         scan.print_start.raw_line = "START_PRINT EXTRUDER_TEMP=260 BED_TEMP=105";
         scan.print_start.extruder_temp = 260;
         scan.print_start.bed_temp = 105;
-        manager.set_cached_scan_result(scan, "part.gcode");
 
         manager.set_option_state_provider(
             [](const std::string& id) { return id == "bed_mesh" ? 1 : -1; });
-        auto lines =
-            PrintPreparationManagerTestAccess::get_pre_start_gcode_lines(manager, "part.gcode");
+        auto lines = PrintPreparationManagerTestAccess::get_pre_start_gcode_lines(
+            manager, "part.gcode", &scan.print_start);
         bool found = false;
         for (const auto& l : lines) {
             if (l.find("BED_MESH_CALIBRATE_START_PRINT") != std::string::npos) {
@@ -3113,12 +3113,13 @@ TEST_CASE_METHOD(HelixTestFixture,
         REQUIRE(found);
     }
 
-    SECTION("temps render 0 when the scan cache is for a different file") {
+    SECTION("temps render 0 when the start has no START_PRINT call of its own") {
+        // The shown file's scan is not the started file's.
         gcode::ScanResult scan;
         scan.print_start.found = true;
         scan.print_start.bed_temp = 105;
         scan.print_start.extruder_temp = 260;
-        manager.set_cached_scan_result(scan, "other.gcode");
+        manager.set_cached_scan_result(scan, "part.gcode");
 
         manager.set_option_state_provider(
             [](const std::string& id) { return id == "bed_mesh" ? 1 : -1; });
@@ -3548,13 +3549,12 @@ TEST_CASE_METHOD(HelixTestFixture,
 // ============================================================================
 // A start that dies inside the manager must retire the preparing job
 //
-// The modify and remap routes take NO completion callback — continue_print_start()
-// calls modify_and_print() and returns — so PrintStartController's
-// retire_preparing(Failed) is unreachable from them. Nothing else can retire the
-// job, and `print_in_progress` is now PUBLISHED from that job rather than set by
-// hand, so a leak latches the flag until the 1800s watchdog: can_start_new_print()
-// refuses every later print, job_holds_machine stays 1 (greying jog, levelling,
-// macros and the bypass tile), and the panel sits on "Preparing".
+// The modify and remap routes end without an error message, so
+// PrintStartController's retire_preparing(Failed) is unreachable from them.
+// Nothing else can retire the job, and `print_in_progress` is PUBLISHED from that
+// job rather than set by hand, so a leak latches the flag until the 1800s watchdog:
+// can_start_new_print() refuses every later print, job_holds_machine stays 1 (greying jog,
+// levelling, macros and the bypass tile), and the panel sits on "Preparing".
 //
 // Mutation check: delete the abandon_start() call from the exit this drives and
 // the REQUIRE_FALSE below fails.
@@ -3583,11 +3583,17 @@ TEST_CASE_METHOD(HelixTestFixture,
     // Mutation-verified: deleting abandon_start("modify_no_api") fails the
     // REQUIRE_FALSE below. (Deleting the OTHER guard's call does not, which is
     // the point of naming which exit this drives rather than guessing.)
-    PrintPreparationManagerTestAccess::modify_and_print(manager, "doomed.gcode");
+    std::optional<bool> completed;
+    PrintPreparationManagerTestAccess::modify_and_print(
+        manager, "doomed.gcode", nullptr,
+        [&completed](bool success, const std::string&) { completed = success; });
 
     REQUIRE_FALSE(state.print_state().has_preparing_job());
     REQUIRE(lv_subject_get_int(state.print_state().get_print_in_progress_subject()) == 0);
     REQUIRE(state.print_state().last_preparing_exit() == helix::PreparingExit::Failed);
+    // The caller waiting on the start learns it ended.
+    REQUIRE(completed.has_value());
+    CHECK_FALSE(*completed);
 
     // And the machine is released — this is the user-visible half of the latch.
     REQUIRE(lv_subject_get_int(state.print_state().get_job_holds_machine_subject()) == 0);
@@ -3818,6 +3824,34 @@ TEST_CASE_METHOD(HelixTestFixture,
     drain_until_quiet();
     CHECK_FALSE(BusyOverlay::is_pending());
     CHECK_FALSE(BusyOverlay::is_visible());
+}
+
+TEST_CASE_METHOD(HelixTestFixture,
+                 "PrintPreparationManager: a failed remap start answers its completion",
+                 "[print_preparation][remap]") {
+    // The completion is how the caller learns to re-enable Print: a remap that
+    // dies on the way must answer it, once, as a failure.
+    lv_init_safe();
+    MockPrinter mock_printer;
+    auto& state = mock_printer.state;
+    auto& api = mock_printer.api;
+
+    PrintPreparationManager manager;
+    manager.set_dependencies(&api, &state);
+    state.print_state().begin_preparing(PrintJobRef{"no_such_file.gcode", "gcodes", ""});
+
+    int answers = 0;
+    bool answered_success = true;
+    manager.modify_and_print_with_remap("no_such_file.gcode", {{1, 2}}, nullptr,
+                                        [&](bool success, const std::string& /*error*/) {
+                                            ++answers;
+                                            answered_success = success;
+                                        });
+    drain_until_quiet();
+
+    CHECK(answers == 1);
+    CHECK_FALSE(answered_success);
+    CHECK_FALSE(state.print_state().has_preparing_job());
 }
 
 TEST_CASE_METHOD(HelixTestFixture,

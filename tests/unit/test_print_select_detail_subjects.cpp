@@ -33,6 +33,7 @@
 #include "../test_helpers/mock_bypass.h"
 #include "../test_helpers/mock_printer.h"
 #include "../test_helpers/printer_state_test_access.h"
+#include "../test_helpers/scoped_cache_dir.h"
 #include "../test_helpers/scoped_portrait_layout.h"
 #include "../test_helpers/update_queue_test_access.h"
 #include "../ui_test_utils.h"
@@ -126,33 +127,7 @@ namespace {
 /// at create() time; the handlers themselves don't matter to this subject.
 void detail_noop_cb(lv_event_t* /*e*/) {}
 
-/// Per-test temp cache dir for HELIX_CACHE_DIR — keeps ToolsUsedCache disk
-/// state out of the real user cache. Saves/restores the env var so later
-/// tests in this binary are unaffected (tests share the process env).
-struct CacheDirGuard {
-    std::filesystem::path dir;
-    std::string prev_env_;
-    bool had_prev_ = false;
-    CacheDirGuard()
-        : dir(std::filesystem::temp_directory_path() /
-              ("detail_subjects_test_" + std::to_string(::getpid()))) {
-        std::filesystem::create_directories(dir);
-        if (const char* old = ::getenv("HELIX_CACHE_DIR")) {
-            prev_env_ = old;
-            had_prev_ = true;
-        }
-        ::setenv("HELIX_CACHE_DIR", dir.c_str(), 1);
-    }
-    ~CacheDirGuard() {
-        if (had_prev_) {
-            ::setenv("HELIX_CACHE_DIR", prev_env_.c_str(), 1);
-        } else {
-            ::unsetenv("HELIX_CACHE_DIR");
-        }
-        std::error_code ec;
-        std::filesystem::remove_all(dir, ec);
-    }
-};
+using CacheDirGuard = helix::test::ScopedCacheDir;
 
 } // namespace
 
@@ -196,7 +171,8 @@ TEST_CASE_METHOD(LVGLUITestFixture,
 
     // Saved states for a queued job: bed_mesh flipped off, timelapse flipped
     // on, plus an id no option set has ever defined.
-    view.seed_option_states({{"bed_mesh", false}, {"timelapse", true}, {"ghost_option", true}});
+    view.seed_option_states(
+        {"queued.gcode", {{"bed_mesh", false}, {"timelapse", true}, {"ghost_option", true}}});
     view.show("queued.gcode", "", "PLA");
     helix::ui::UpdateQueue::instance().drain();
 
@@ -433,8 +409,8 @@ TEST_CASE_METHOD(LVGLUITestFixture, "detail_mapping_ready tracks cache seed and 
     };
 
     SECTION("warmed cache: ready=1 and tools_used seeded before activation") {
-        helix::ToolsUsedCache warmer;
-        warmer.store("sub/flash.gcode", kSize, kMtime, {0, 2});
+        auto& warmer = helix::tools_used_cache();
+        warmer.store("sub/flash.gcode", {kSize, kMtime}, {0, 2});
 
         view.show("flash.gcode", "sub", "PLA", colors, {}, kSize, kMtime);
 
@@ -473,8 +449,8 @@ TEST_CASE_METHOD(LVGLUITestFixture, "detail_mapping_ready tracks cache seed and 
         // "non-empty": with no API nothing can ever read the file, so the
         // degrade path settles it and the latch still opens rather than
         // hanging on the skeleton forever.
-        helix::ToolsUsedCache warmer;
-        warmer.store("sub/flash.gcode", kSize, kMtime, {0, 2});
+        auto& warmer = helix::tools_used_cache();
+        warmer.store("sub/flash.gcode", {kSize, kMtime}, {0, 2});
 
         view.show("flash.gcode", "sub", "PLA", /*filament_colors=*/{}, {}, kSize, kMtime);
 
@@ -495,8 +471,8 @@ TEST_CASE_METHOD(LVGLUITestFixture, "detail_mapping_ready tracks cache seed and 
         // Guards the common path against the change above: metadata that
         // carried colors settles the palette question during show(), so a
         // re-print still renders final chips on the first frame.
-        helix::ToolsUsedCache warmer;
-        warmer.store("sub/flash.gcode", kSize, kMtime, {0, 2});
+        auto& warmer = helix::tools_used_cache();
+        warmer.store("sub/flash.gcode", {kSize, kMtime}, {0, 2});
 
         view.show("flash.gcode", "sub", "PLA", colors, {}, kSize, kMtime);
         REQUIRE(lv_subject_get_int(ready) == 1);
@@ -505,8 +481,8 @@ TEST_CASE_METHOD(LVGLUITestFixture, "detail_mapping_ready tracks cache seed and 
     }
 
     SECTION("stale cache entry (mtime changed) is a miss") {
-        helix::ToolsUsedCache warmer;
-        warmer.store("sub/flash.gcode", kSize, kMtime, {0, 2});
+        auto& warmer = helix::tools_used_cache();
+        warmer.store("sub/flash.gcode", {kSize, kMtime}, {0, 2});
 
         view.show("flash.gcode", "sub", "PLA", colors, {}, kSize, kMtime + 1);
         REQUIRE(lv_subject_get_int(ready) == 0); // re-sliced file → skeleton
@@ -794,8 +770,8 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     // it is a no-op until either the viewer has parsed or a headless scan landed.
     constexpr size_t kSize = 4321;
     constexpr time_t kMtime = 8765;
-    helix::ToolsUsedCache warmer;
-    warmer.store("sub/one_tool.gcode", kSize, kMtime, {0});
+    auto& warmer = helix::tools_used_cache();
+    warmer.store("sub/one_tool.gcode", {kSize, kMtime}, {0});
 
     // T0 prints red PLA, per the slicer palette show() is handed.
     const std::vector<std::string> colors{"#FF0000"};
@@ -959,8 +935,8 @@ TEST_CASE_METHOD(LVGLUITestFixture, "A bypassed single-lane print renders no fil
     // the visibility rules did.
     constexpr size_t kSize = 999;
     constexpr time_t kMtime = 1111;
-    helix::ToolsUsedCache warmer;
-    warmer.store("sub/bypass_one.gcode", kSize, kMtime, {0});
+    auto& warmer = helix::tools_used_cache();
+    warmer.store("sub/bypass_one.gcode", {kSize, kMtime}, {0});
 
     // THREE palette entries against ONE used tool, deliberately. The card
     // decides visibility from print_lane_requirement(), which prefers the used
@@ -1049,9 +1025,9 @@ TEST_CASE_METHOD(LVGLUITestFixture, "The tap chevron tracks the card, and the ba
 
     constexpr size_t kSize = 2468;
     constexpr time_t kMtime = 1357;
-    helix::ToolsUsedCache warmer;
-    warmer.store("sub/two_tools.gcode", kSize, kMtime, {0, 1});
-    warmer.store("sub/no_palette.gcode", kSize, kMtime, {0});
+    auto& warmer = helix::tools_used_cache();
+    warmer.store("sub/two_tools.gcode", {kSize, kMtime}, {0, 1});
+    warmer.store("sub/no_palette.gcode", {kSize, kMtime}, {0});
 
     lv_subject_t* const visible = lv_xml_get_subject(nullptr, "filament_mapping_visible");
     lv_subject_t* const remappable = lv_xml_get_subject(nullptr, "color_card_remappable");
@@ -1261,8 +1237,8 @@ TEST_CASE_METHOD(LVGLUITestFixture, "A tap on the filament card opens the remap 
 
     constexpr size_t kSize = 1122;
     constexpr time_t kMtime = 3344;
-    helix::ToolsUsedCache warmer;
-    warmer.store("sub/two_tools.gcode", kSize, kMtime, {0, 1});
+    auto& warmer = helix::tools_used_cache();
+    warmer.store("sub/two_tools.gcode", {kSize, kMtime}, {0, 1});
     view.show("two_tools.gcode", "sub", "PLA", {"#FF0000", "#00FF00"}, {"PLA", "PETG"}, kSize,
               kMtime);
 

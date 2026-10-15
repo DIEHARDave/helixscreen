@@ -84,7 +84,8 @@ const std::vector<std::pair<std::string, Owner>>& owners() {
                             [] { get_printer_state().deinit_subjects(); }};
         for (const char* n :
              {"power_device_count", "printer_has_chamber", "printer_has_exclude_object",
-              "printer_has_bed_mesh", "printer_has_spoolman", "printer_is_enclosed"})
+              "printer_has_bed_mesh", "printer_has_spoolman", "printer_is_enclosed",
+              "printer_has_job_queue"})
             t.emplace_back(n, printer);
         return t;
     }();

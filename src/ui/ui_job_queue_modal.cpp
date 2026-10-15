@@ -180,8 +180,7 @@ void JobQueueModal::update_queue_state_ui() {
     if (!jqs)
         return;
 
-    const auto& state = jqs->get_queue_state();
-    bool is_paused = (state == "paused");
+    const bool is_paused = jqs->run_state() == helix::QueueRunState::Paused;
 
     // Whole strings, not "Queue: %s" over an untranslated state word.
     lv_label_set_text(state_label, is_paused ? lv_tr("Queue: Paused") : lv_tr("Queue: Ready"));
@@ -272,7 +271,7 @@ void JobQueueModal::toggle_queue() {
     if (!jqs)
         return;
 
-    bool is_paused = (jqs->get_queue_state() == "paused");
+    const bool is_paused = jqs->run_state() == helix::QueueRunState::Paused;
     auto token = lifetime_.token();
 
     auto on_success = [token, this]() {
