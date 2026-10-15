@@ -206,6 +206,8 @@ Pure functions in `server/analytics-dashboard/src/utils/`, shared by every chart
 - **Material sets.** `filament_type` is a `;`-separated slot list. A set is the
   distinct materials, uppercased, sorted and joined with ` + `, so
   `PLA;PLA;PETG;PLA` is `PETG + PLA`. Two or more materials is multi-material.
+  Every set is listed; one with fewer than 5 prints (`LOW_COUNT_PRINTS` in
+  `utils/materials.ts`) is drawn dimmed, bar and label.
 - **Canonical models.** Names are lowercased, a trailing parenthesized variant
   removed, runs of space, `-` and `_` folded, then mapped through a small alias
   table. The label is the most common raw spelling.

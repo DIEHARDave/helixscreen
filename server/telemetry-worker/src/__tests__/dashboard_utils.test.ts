@@ -5,11 +5,11 @@ import { planActivation, rowAction, rowHint, rowLabel, single } from '../../../a
 import { mergeOptions, rateAxis } from '../../../analytics-dashboard/src/utils/chart'
 import { emptyPlaceholder, notReportedPer, ppChange, rangeLabel, unreportedNote } from '../../../analytics-dashboard/src/utils/format'
 import { canonicalModelKey, canonicalModels, isFilterable } from '../../../analytics-dashboard/src/utils/models'
-import { groupMaterialSets, materialSet } from '../../../analytics-dashboard/src/utils/materials'
+import { LOW_COUNT_PRINTS, groupMaterialSets, isLowCount, materialSet } from '../../../analytics-dashboard/src/utils/materials'
 import { filterValues } from '../queries'
 import { withNotApplicable } from '../../../analytics-dashboard/src/utils/notApplicable'
 import { isRenderError } from '../../../analytics-dashboard/src/utils/renderError'
-import { barChartHeight, seriesColor, todayUtc, trimPartialDays } from '../../../analytics-dashboard/src/utils/series'
+import { barChartHeight, dimmed, seriesColor, todayUtc, trimPartialDays } from '../../../analytics-dashboard/src/utils/series'
 
 const rows = (names: string[]) => names.map((name, i) => ({ name, count: i + 1 }))
 const LIVE = ['1.1.0-beta.9', '1.1.0-beta.8', '1.0.5', '1.0.4', '1.0.0', '0.99.118', '0.99.30']
@@ -380,5 +380,20 @@ describe('versionChips', () => {
       ['0.99.118', false, 0],
       ['0.99.30', false, 1]
     ])
+  })
+})
+
+describe('low-count material sets', () => {
+  it('dims a set with fewer than five prints and keeps five or more', () => {
+    expect(LOW_COUNT_PRINTS).toBe(5)
+    expect(isLowCount(4)).toBe(true)
+    expect(isLowCount(4.9)).toBe(true)
+    expect(isLowCount(0)).toBe(true)
+    expect(isLowCount(5)).toBe(false)
+    expect(isLowCount(120)).toBe(false)
+  })
+  it('dims a series color by giving it an alpha', () => {
+    expect(dimmed('#3b82f6')).toBe('#3b82f659')
+    expect(dimmed(seriesColor(1))).toBe(`${seriesColor(1)}59`)
   })
 })

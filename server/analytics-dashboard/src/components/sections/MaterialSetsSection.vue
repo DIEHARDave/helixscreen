@@ -12,12 +12,14 @@
 
       <div class="chart-section">
         <h3>Success by Material Set</h3>
-        <ChartCaption :text="`Sample-weighted print outcomes per set of distinct materials loaded, ${span}`" />
+        <ChartCaption
+          :text="`Sample-weighted print outcomes per set of distinct materials loaded, ${span}; sets with fewer than ${LOW_COUNT_PRINTS} prints are dimmed`"
+        />
         <NoData v-if="rows.length === 0" :not-applicable="data.not_applicable.prints" />
         <BarChart
           v-else
           :data="chartData"
-          :options="successBarOpts(rows, false)"
+          :options="options"
           :height="barChartHeight(rows.length)"
         />
       </div>
@@ -34,10 +36,11 @@ import MetricCard from '@/components/MetricCard.vue'
 import NoData from '@/components/NoData.vue'
 import { useDashData } from '@/composables/useDashData'
 import { api } from '@/services/api'
-import { successBarOpts, type SuccessRow } from '@/utils/chart'
+import type { ChartOptions } from 'chart.js'
+import { TICK_COLOR, mergeOptions, successBarOpts, type SuccessRow } from '@/utils/chart'
 import { formatRate } from '@/utils/format'
-import { groupMaterialSets } from '@/utils/materials'
-import { barChartHeight, seriesColor } from '@/utils/series'
+import { LOW_COUNT_PRINTS, groupMaterialSets, isLowCount } from '@/utils/materials'
+import { barChartHeight, dimmed, seriesColor } from '@/utils/series'
 
 const { data, loading, error, span } = useDashData(api.getPrints)
 
@@ -56,7 +59,24 @@ const chartData = computed(() => ({
   datasets: [{
     label: 'Success rate',
     data: rows.value.map((r) => r.rate),
-    backgroundColor: rows.value.map((_, i) => seriesColor(i))
+    backgroundColor: rows.value.map((r, i) => (isLowCount(r.count) ? dimmed(seriesColor(i)) : seriesColor(i)))
   }]
 }))
+
+// Every set is listed; one with few prints is drawn dimmed, bar and label.
+const options = computed(
+  (): ChartOptions<'bar'> =>
+    mergeOptions(successBarOpts(rows.value, false), {
+      scales: {
+        y: {
+          ticks: {
+            color: (ctx: { index: number }) => {
+              const row = rows.value[ctx.index]
+              return row && isLowCount(row.count) ? dimmed(TICK_COLOR) : TICK_COLOR
+            }
+          }
+        }
+      }
+    })
+)
 </script>
