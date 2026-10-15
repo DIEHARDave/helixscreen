@@ -5,6 +5,7 @@
 
 #include "../lvgl_test_fixture.h"
 #include "../test_helpers/config_dir_guard.h"
+#include "../test_helpers/update_queue_test_access.h"
 #include "macro_manager.h"
 #include "moonraker_api.h"
 #include "moonraker_api_mock.h"
@@ -417,9 +418,7 @@ class MacroStageFixture : public LVGLTestFixture {
 
     // A drained step can queue the next one; pump until quiet.
     void settle() {
-        for (int i = 0; i < 12; ++i) {
-            helix::ui::UpdateQueue::instance().drain();
-        }
+        helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance(), 12);
     }
 
     std::map<std::string, std::string> config_files() {
@@ -458,9 +457,7 @@ class MacroUploadFixture : public LVGLTestFixture {
     }
 
     void settle() {
-        for (int i = 0; i < 4; ++i) {
-            helix::ui::UpdateQueue::instance().drain();
-        }
+        helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
     }
 
   protected:

@@ -5,6 +5,7 @@
 
 #include "ui_format_utils.h"
 
+#include "helix/ui/text_metrics.h"
 #include "locale_formats.h"
 #include "panel_widget_registry.h"
 #include "panel_widget_size.h"
@@ -15,6 +16,7 @@
 
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
 #include <cstdio>
 #include <ctime>
 
@@ -170,14 +172,69 @@ void ClockWidget::on_deactivate() {
     }
 }
 
+namespace {
+
+/// The widest the time ever renders in @p font, over every hour, so whether the
+/// date fits does not change as the clock ticks.
+int widest_time_px(const lv_font_t* font) {
+    struct tm t {};
+    t.tm_min = 58;
+    int widest = 0;
+    for (int hour = 0; hour < 24; ++hour) {
+        t.tm_hour = hour;
+        widest = std::max(widest, static_cast<int>(helix::ui::text_width(
+                                      helix::ui::format_time(&t).c_str(), font)));
+    }
+    return widest;
+}
+
+/// The widest the date ever renders in @p font: every weekday against every
+/// month, on a two-digit day.
+int widest_date_px(const lv_font_t* font) {
+    struct tm t {};
+    t.tm_mday = 28;
+    int widest = 0;
+    for (int mon = 0; mon < 12; ++mon) {
+        for (int wday = 0; wday < 7; ++wday) {
+            t.tm_mon = mon;
+            t.tm_wday = wday;
+            widest = std::max(widest, static_cast<int>(helix::ui::text_width(
+                                          helix::ui::format_localized_date(&t).c_str(), font)));
+        }
+    }
+    return widest;
+}
+
+int line_height_px(const lv_font_t* font) {
+    return font ? static_cast<int>(lv_font_get_line_height(font)) : 0;
+}
+
+} // namespace
+
+bool ClockWidget::time_and_date_fit(int width_px, int height_px) const {
+    const lv_font_t* time_font = theme_manager_get_font("font_heading");
+    const lv_font_t* date_font = theme_manager_get_font("font_body");
+    int chrome_w = 0;
+    int chrome_h = 0;
+    if (widget_obj_) {
+        chrome_w = static_cast<int>(lv_obj_get_style_pad_left(widget_obj_, LV_PART_MAIN) +
+                                    lv_obj_get_style_pad_right(widget_obj_, LV_PART_MAIN));
+        chrome_h = static_cast<int>(lv_obj_get_style_pad_top(widget_obj_, LV_PART_MAIN) +
+                                    lv_obj_get_style_pad_bottom(widget_obj_, LV_PART_MAIN) +
+                                    lv_obj_get_style_pad_row(widget_obj_, LV_PART_MAIN));
+    }
+    const int need_w = std::max(widest_time_px(time_font), widest_date_px(date_font));
+    const int need_h = line_height_px(time_font) + line_height_px(date_font);
+    return width_px - chrome_w >= need_w && height_px - chrome_h >= need_h;
+}
+
 void ClockWidget::on_size_changed(int colspan, int rowspan, int width_px, int height_px) {
     // Determine size mode from physical pixels: 0=compact, 1=normal,
     // 2=expanded, 3=large
     int mode;
-    if (width_px < widget_size::w_normal() && height_px < widget_size::h_tall()) {
-        mode = 0; // compact: time only
-    } else if (height_px < widget_size::h_tall()) {
-        mode = 1; // normal: time + date
+    if (height_px < widget_size::h_tall()) {
+        // A short box shows the date wherever the time and date measurably fit.
+        mode = time_and_date_fit(width_px, height_px) ? 1 : 0;
     } else if (width_px >= widget_size::w_wide()) {
         mode = 3; // large: big time + date + uptime
     } else {

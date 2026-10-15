@@ -28,6 +28,7 @@
 #include "../lvgl_test_fixture.h"
 #include "../test_helpers/plr_offer_controller_test_access.h"
 #include "../test_helpers/print_state_test_drivers.h"
+#include "../test_helpers/update_queue_test_access.h"
 #include "app_globals.h"
 #include "connection_state.h"
 #include "plr_offer_controller.h"
@@ -81,9 +82,7 @@ class PlrOfferPreparingFixture : public LVGLTestFixture {
 
     /// set_print_start_state defers, and its callback republishes the lifecycle.
     static void settle() {
-        for (int i = 0; i < 8; ++i) {
-            helix::ui::UpdateQueue::instance().drain();
-        }
+        helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
     }
 
     /// Put the app in the state it is in while running the user's own pre-start
@@ -191,9 +190,7 @@ class QidiPlrOfferFixture : public LVGLTestFixture {
     }
 
     static void settle() {
-        for (int i = 0; i < 8; ++i) {
-            helix::ui::UpdateQueue::instance().drain();
-        }
+        helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
     }
 };
 

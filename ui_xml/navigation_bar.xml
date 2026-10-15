@@ -26,15 +26,23 @@
     <string name="icon_size_nav_inactive_xxlarge" value="md"/>
 
     <!-- Navbar E-stop diameter: the larger of #button_height and 44px, so the
-         target never shrinks below the circles it stands in for. micro is
-         capped at the 42px navbar width. -->
-    <px name="nav_estop_size_micro" value="42"/>
+         target never shrinks below the circles it stands in for. micro's 42px
+         navbar cannot fit that with a margin, so its disc is 34px and
+         nav_estop_reach extends the tap target back to the full 42px. -->
+    <px name="nav_estop_size_micro" value="34"/>
     <px name="nav_estop_size_tiny" value="44"/>
     <px name="nav_estop_size_small" value="48"/>
     <px name="nav_estop_size_medium" value="52"/>
     <px name="nav_estop_size_large" value="72"/>
     <px name="nav_estop_size_xlarge" value="80"/>
     <px name="nav_estop_size_xxlarge" value="96"/>
+    <px name="nav_estop_reach_micro" value="4"/>
+    <px name="nav_estop_reach_tiny" value="0"/>
+    <px name="nav_estop_reach_small" value="0"/>
+    <px name="nav_estop_reach_medium" value="0"/>
+    <px name="nav_estop_reach_large" value="0"/>
+    <px name="nav_estop_reach_xlarge" value="0"/>
+    <px name="nav_estop_reach_xxlarge" value="0"/>
   </consts>
   <styles>
     <!-- One bar, two axes. Each pair is bound complementarily on ui_is_portrait

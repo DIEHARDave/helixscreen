@@ -14,6 +14,7 @@
 #include "ui_utils.h"
 
 #include "../lvgl_ui_test_fixture.h"
+#include "../test_helpers/update_queue_test_access.h"
 #include "ams_backend_mock.h"
 #include "ams_state.h"
 #include "static_panel_registry.h"
@@ -61,9 +62,7 @@ class EjectParamsFixture : public LVGLUITestFixture {
     }
 
     void settle() {
-        for (int i = 0; i < 4; ++i) {
-            helix::ui::UpdateQueue::instance().drain();
-        }
+        helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
         process_lvgl(10);
     }
 

@@ -3,6 +3,7 @@
 
 #include "../test_helpers/config_test_access.h"
 #include "../test_helpers/printer_capture.h"
+#include "../test_helpers/scoped_env.h"
 #include "app_globals.h"
 #include "config.h"
 #include "data_root_resolver.h"
@@ -4055,27 +4056,6 @@ TEST_CASE_METHOD(PrinterDetectorFixture, "PrinterDetector: Generic printer has e
 
 namespace {
 
-/// RAII guard that restores an env var on destruction.
-struct EnvGuard {
-    std::string name;
-    std::string original;
-    bool was_set;
-
-    explicit EnvGuard(const char* n) : name(n) {
-        const char* v = std::getenv(n);
-        was_set = (v != nullptr);
-        if (was_set)
-            original = v;
-        unsetenv(n);
-    }
-    ~EnvGuard() {
-        if (was_set)
-            setenv(name.c_str(), original.c_str(), 1);
-        else
-            unsetenv(name.c_str());
-    }
-};
-
 /// Restores cwd on destruction so failed/early-exiting tests don't pollute.
 struct CwdGuard {
     std::string original;
@@ -4102,8 +4082,8 @@ TEST_CASE("PrinterDetector: loads printer_database.json from HELIX_DATA_DIR/asse
     // Use a nested scope so guards (cwd + env) restore BEFORE the final
     // reload that puts the singleton back to its real-database state.
     {
-        EnvGuard data_g("HELIX_DATA_DIR");
-        EnvGuard config_g("HELIX_CONFIG_DIR");
+        helix::ScopedEnv data_g("HELIX_DATA_DIR", nullptr);
+        helix::ScopedEnv config_g("HELIX_CONFIG_DIR", nullptr);
         CwdGuard cwd_g;
 
         fs::remove_all(temp_root);
@@ -4172,8 +4152,8 @@ TEST_CASE("PrinterDetector: preset_default survives database array order, not ju
         fs::temp_directory_path() / ("test_printer_detector_order_" + std::to_string(getpid()));
 
     {
-        EnvGuard data_g("HELIX_DATA_DIR");
-        EnvGuard config_g("HELIX_CONFIG_DIR");
+        helix::ScopedEnv data_g("HELIX_DATA_DIR", nullptr);
+        helix::ScopedEnv config_g("HELIX_CONFIG_DIR", nullptr);
         CwdGuard cwd_g;
 
         fs::remove_all(temp_root);
@@ -4234,8 +4214,8 @@ TEST_CASE("PrinterDetector: hide_manual_z_calibration reads the database field",
         fs::temp_directory_path() / ("test_printer_detector_toolcal_" + std::to_string(getpid()));
 
     {
-        EnvGuard data_g("HELIX_DATA_DIR");
-        EnvGuard config_g("HELIX_CONFIG_DIR");
+        helix::ScopedEnv data_g("HELIX_DATA_DIR", nullptr);
+        helix::ScopedEnv config_g("HELIX_CONFIG_DIR", nullptr);
         CwdGuard cwd_g;
 
         fs::remove_all(temp_root);
@@ -4314,8 +4294,8 @@ TEST_CASE("PrinterDetector: pre-print lookups share one entry, and rates name kn
         }
     } restore{temp_root};
     {
-        EnvGuard data_g("HELIX_DATA_DIR");
-        EnvGuard config_g("HELIX_CONFIG_DIR");
+        helix::ScopedEnv data_g("HELIX_DATA_DIR", nullptr);
+        helix::ScopedEnv config_g("HELIX_CONFIG_DIR", nullptr);
         CwdGuard cwd_g;
 
         fs::remove_all(temp_root);
@@ -4398,8 +4378,8 @@ TEST_CASE("PrinterDetector: a malformed database degrades without throwing",
     }
 
     {
-        EnvGuard data_g("HELIX_DATA_DIR");
-        EnvGuard config_g("HELIX_CONFIG_DIR");
+        helix::ScopedEnv data_g("HELIX_DATA_DIR", nullptr);
+        helix::ScopedEnv config_g("HELIX_CONFIG_DIR", nullptr);
         CwdGuard cwd_g;
 
         fs::remove_all(temp_root);
@@ -4432,8 +4412,8 @@ TEST_CASE("PrinterDetector: an unchanged broken database is read once, not once 
         }
     } restore{temp_root};
     {
-        EnvGuard data_g("HELIX_DATA_DIR");
-        EnvGuard config_g("HELIX_CONFIG_DIR");
+        helix::ScopedEnv data_g("HELIX_DATA_DIR", nullptr);
+        helix::ScopedEnv config_g("HELIX_CONFIG_DIR", nullptr);
         CwdGuard cwd_g;
 
         fs::remove_all(temp_root);
@@ -4474,8 +4454,8 @@ TEST_CASE("PrinterDetector: wrong-typed entry fields read as absent", "[printer]
         }
     } restore{temp_root};
     {
-        EnvGuard data_g("HELIX_DATA_DIR");
-        EnvGuard config_g("HELIX_CONFIG_DIR");
+        helix::ScopedEnv data_g("HELIX_DATA_DIR", nullptr);
+        helix::ScopedEnv config_g("HELIX_CONFIG_DIR", nullptr);
         CwdGuard cwd_g;
 
         fs::remove_all(temp_root);

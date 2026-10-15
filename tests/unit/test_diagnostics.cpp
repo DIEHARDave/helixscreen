@@ -9,6 +9,7 @@
 // of the three layouts one platform key is serving, does a board with a partial
 // /proc degrade or crash, and does the LAN address leave the machine.
 
+#include "../test_helpers/scoped_env.h"
 #include "platform_info.h"
 #include "system/debug_bundle_collector.h"
 #include "system/diagnostics.h"
@@ -43,31 +44,6 @@ struct TempDir {
     }
 };
 
-/// Sets an environment variable for the duration of a scope and puts the
-/// previous value (or its absence) back.
-struct EnvGuard {
-    std::string name;
-    bool had_value = false;
-    std::string previous;
-
-    EnvGuard(const char* var, const char* value) : name(var) {
-        if (const char* old = std::getenv(var)) {
-            had_value = true;
-            previous = old;
-        }
-        if (value)
-            ::setenv(var, value, 1);
-        else
-            ::unsetenv(var);
-    }
-    ~EnvGuard() {
-        if (had_value)
-            ::setenv(name.c_str(), previous.c_str(), 1);
-        else
-            ::unsetenv(name.c_str());
-    }
-};
-
 void write_file(const fs::path& p, const std::string& body) {
     std::ofstream(p) << body;
 }
@@ -81,7 +57,7 @@ void write_file(const fs::path& p, const std::string& body) {
 TEST_CASE("diagnostics reports an overridden cache dir, not the platform default",
           "[diagnostics]") {
     TempDir tmp;
-    EnvGuard cache_override("HELIX_CACHE_DIR", tmp.path.c_str());
+    helix::ScopedEnv cache_override("HELIX_CACHE_DIR", tmp.path.c_str());
 
     const auto diag = helix::diagnostics::collect();
 
@@ -91,12 +67,12 @@ TEST_CASE("diagnostics reports an overridden cache dir, not the platform default
 TEST_CASE("diagnostics names the cache rung that won", "[diagnostics]") {
     SECTION("the env override announces itself") {
         TempDir tmp;
-        EnvGuard cache_override("HELIX_CACHE_DIR", tmp.path.c_str());
+        helix::ScopedEnv cache_override("HELIX_CACHE_DIR", tmp.path.c_str());
         REQUIRE(helix::diagnostics::collect().paths.cache_tier == "HELIX_CACHE_DIR");
     }
 
     SECTION("a fall-through rung is not attributed to the override") {
-        EnvGuard cache_override("HELIX_CACHE_DIR", nullptr);
+        helix::ScopedEnv cache_override("HELIX_CACHE_DIR", nullptr);
         REQUIRE(helix::diagnostics::collect().paths.cache_tier != "HELIX_CACHE_DIR");
     }
 }
@@ -104,7 +80,7 @@ TEST_CASE("diagnostics names the cache rung that won", "[diagnostics]") {
 TEST_CASE("collect() reports the cache without creating it", "[diagnostics]") {
     TempDir tmp;
     const fs::path base = tmp.path / "not-yet-mounted";
-    EnvGuard cache_override("HELIX_CACHE_DIR", base.c_str());
+    helix::ScopedEnv cache_override("HELIX_CACHE_DIR", base.c_str());
 
     const auto d = helix::diagnostics::collect();
 
@@ -123,7 +99,7 @@ TEST_CASE("the reported cache path and tier name the same rung", "[diagnostics]"
     // succeed — the split that lets a resolved path and a peeked tier drift.
     const fs::path blocked = tmp.path / "blocked";
     write_file(blocked, "not a directory");
-    EnvGuard cache_override("HELIX_CACHE_DIR", blocked.c_str());
+    helix::ScopedEnv cache_override("HELIX_CACHE_DIR", blocked.c_str());
 
     const auto d = helix::diagnostics::collect();
 

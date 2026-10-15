@@ -16,8 +16,8 @@ struct ContentChrome {
 
 /// The chrome of the single-child chain from `root` down to the first container
 /// that holds more than one child: the padding of every container on the way, and
-/// the flex gap of that branching container. A container with one child draws no
-/// gap, so its gap is not chrome.
+/// the flex gap of that branching container. Flex leaves hidden children out, so a
+/// container with at most one visible child draws no gap and its gap is not chrome.
 ///
 /// Measured from the tree because container padding is a theme value that varies by
 /// widget and by breakpoint; a constant guess is either too small, and the content
@@ -37,9 +37,19 @@ inline ContentChrome measure_content_chrome(lv_obj_t* root, int reserve_px, int 
         chrome.w += side_pads;
         chrome.h += static_cast<int>(lv_obj_get_style_pad_top(o, LV_PART_MAIN)) +
                     static_cast<int>(lv_obj_get_style_pad_bottom(o, LV_PART_MAIN));
-        if (lv_obj_get_child_count(o) != 1) {
-            chrome.w += static_cast<int>(lv_obj_get_style_pad_column(o, LV_PART_MAIN));
-            chrome.h += static_cast<int>(lv_obj_get_style_pad_row(o, LV_PART_MAIN));
+        const uint32_t children = lv_obj_get_child_count(o);
+        if (children != 1) {
+            uint32_t visible = 0;
+            for (uint32_t i = 0; i < children; ++i) {
+                if (!lv_obj_has_flag(lv_obj_get_child(o, static_cast<int32_t>(i)),
+                                     LV_OBJ_FLAG_HIDDEN)) {
+                    ++visible;
+                }
+            }
+            if (visible > 1) {
+                chrome.w += static_cast<int>(lv_obj_get_style_pad_column(o, LV_PART_MAIN));
+                chrome.h += static_cast<int>(lv_obj_get_style_pad_row(o, LV_PART_MAIN));
+            }
             break;
         }
     }

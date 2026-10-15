@@ -59,7 +59,19 @@ class FireworksSim {
     /// Faint fixed stars in the sky.
     static constexpr int STAR_COUNT = 80;
 
-    enum class BurstKind : uint8_t { PEONY, CHRYSANTHEMUM, WILLOW, RING };
+    /// PALM throws a few heavy gold comets that arc and droop like fronds; CROSSETTE's stars
+    /// each split into a cross of four; STROBE's stars hang and blink white.
+    enum class BurstKind : uint8_t {
+        PEONY,
+        CHRYSANTHEMUM,
+        WILLOW,
+        RING,
+        PALM,
+        CROSSETTE,
+        STROBE,
+    };
+    static constexpr uint8_t BURST_KIND_COUNT = 7;
+    static constexpr uint8_t ALL_KINDS = (1u << BURST_KIND_COUNT) - 1;
 
     /**
      * @brief Lays out the sky for `frame`, sizes the spark pool for `level`, and paints the sky
@@ -81,6 +93,12 @@ class FireworksSim {
 
     /// Runs at `level` (clamped to the ladder) from the next shell launch on.
     void request_level(size_t level);
+
+    /// Shells launch only as kinds whose bit (1 << BurstKind) is set in `mask`; an empty mask
+    /// means every kind.
+    void set_kinds(uint8_t mask) {
+        kinds_ = (mask & ALL_KINDS) != 0 ? static_cast<uint8_t>(mask & ALL_KINDS) : ALL_KINDS;
+    }
 
     /// Level the show runs at now.
     size_t level() const {
@@ -106,6 +124,7 @@ class FireworksSim {
         SPARK_ALIVE = 1u << 0,
         SPARK_DRAWN = 1u << 1,     ///< drawn in the last frame, so the next frame erases it
         SPARK_DRAWN_BIG = 1u << 2, ///< drawn 2x2 in the last frame
+        SPARK_SPLIT = 1u << 3,     ///< a crossette fragment, which never splits again
     };
 
     struct Spark {
@@ -155,6 +174,8 @@ class FireworksSim {
     void advance(uint32_t step_ms, std::minstd_rand& rng);
     void launch(std::minstd_rand& rng);
     void burst(const Rocket& rocket, std::minstd_rand& rng);
+    void split(Spark& spark, std::minstd_rand& rng);
+    BurstKind pick_kind(std::minstd_rand& rng) const;
     Spark* take_spark();
     size_t in_flight() const;
     int32_t next_gap_ms(std::minstd_rand& rng) const;
@@ -174,6 +195,7 @@ class FireworksSim {
     FireworksPacing pacing_{};
     size_t level_ = 0;
     size_t pending_level_ = 0;
+    uint8_t kinds_ = ALL_KINDS;
     int32_t w_ = 0;
     int32_t h_ = 0;
     float scale_ = 1.0f;

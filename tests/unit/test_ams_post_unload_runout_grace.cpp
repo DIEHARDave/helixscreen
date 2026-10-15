@@ -38,6 +38,7 @@
 #include "../test_helpers/post_unload_grace_test_access.h"
 #include "../test_helpers/print_state_test_drivers.h"
 #include "../test_helpers/print_status_widget_test_access.h"
+#include "../test_helpers/update_queue_test_access.h"
 #include "ams_backend_mock.h"
 #include "ams_state.h"
 #include "ams_types.h"
@@ -402,9 +403,7 @@ class IdleRunoutGraceFixture : public LVGLTestFixture {
     /// re-evaluates, so the assertion would fail as if the guard were missing.
     static void set_print_state(PrintJobState s) {
         helix::test::set_wire_state(get_printer_state(), s);
-        for (int i = 0; i < 8; ++i) {
-            helix::ui::UpdateQueue::instance().drain();
-        }
+        helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
     }
 
     static constexpr const char* SENSOR = "filament_switch_sensor runout_sensor";

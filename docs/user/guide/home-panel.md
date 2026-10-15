@@ -4,8 +4,6 @@
 
 The Home Panel is your printer dashboard — a fully customizable grid of widgets spread across multiple pages, like home screens on a phone. You choose what appears, where it goes, how big each widget is, and can rearrange everything with drag-and-drop.
 
-<!-- Screenshot: default home panel layout, idle printer -->
-
 ---
 
 ## The Widget Grid
@@ -21,7 +19,14 @@ Your dashboard is built from **widgets** — individual cards that display print
 
 Most widgets don't draw their own box. Instead, neighbouring widgets sit on one **shared card background** that flows around the whole group, so a cluster of small readouts reads as a single panel rather than a row of separate tiles. A few widgets bring their own surface and stay visually distinct — Print Status, Camera, Nozzle Temperatures and the AMS spool view — and Printer Image and Tips deliberately float on the bare background. Move a widget and the card reshapes itself around wherever it lands.
 
-When you first launch HelixScreen, a default layout is created with your printer image, print status, temperatures, and other commonly used widgets, arranged to suit your screen. From there, you can customize everything.
+When you first launch HelixScreen, a default layout is created with your printer image, print status, temperatures, and other commonly used widgets, arranged to suit your screen and what your printer can do. Every screen size gets one, from the small 320x240 panels up to large desktop windows. From there, you can customize everything.
+
+A few things about the default layout that are on purpose:
+
+- **Notifications always sit in a corner** of the screen, so the bell is in the same place on every printer.
+- **Only hardware you have is shown.** The chamber temperature tile, for instance, appears only on enclosed printers. If your printer has no chamber, or no filament box, that spot is left empty rather than filled with a tile that does nothing.
+- **Empty cells are intentional.** The default never pads a layout with filler tiles. A gap means the printer has nothing for that cell, and you can put any widget from the Widget Catalog there.
+- **Room to breathe.** The printer image has a margin around it, and from 1024x600 up the space between widgets is wider too.
 
 ### On ultrawide and portrait screens
 
@@ -35,7 +40,7 @@ same square cell, so an unusually shaped screen simply gets an unusually shaped 
 Ultrawide and portrait screens each start from **their own default layout**, not a stretched
 landscape one. **Tips** is part of the portrait layout, running full width above the print
 status card; it is left out only on the shortest portrait panels, where a band of rotating
-hints costs more of the screen than it earns. Any widget left out of a default layout is
+hints costs more of the screen than it earns. The ultrawide default is two bands: the printer image and the readouts on top, with Print Status and the temperature graph sharing the bottom. Any widget left out of a default layout is
 still in the Widget Catalog if you want it.
 
 Buttons, input fields, and headers are sized from the screen's *height* on portrait panels, so a tall screen gets taller, easier-to-hit controls rather than the cramped ones its narrow width would otherwise imply.
@@ -162,7 +167,7 @@ Almost every widget is resizable. **Print Controls** keeps its fixed 2x1 size an
    - Resizing stops if it would overlap another widget
 6. **Release** to apply the new size — the widget rebuilds at its new dimensions
 
-Some widgets adapt their content based on size. For example, the Digital Clock shows just the time at 1x1, adds the date at 2x1, and shows uptime too at 2x2 or larger.
+Some widgets adapt their content based on size. For example, the Digital Clock shows just the time when the date does not fit, adds the date as soon as it does (1.5x1 is usually enough), and shows uptime too at 2x2 or larger.
 
 ### Snapping and half cells
 
@@ -176,7 +181,7 @@ Widgets place and resize in half-cell steps. What varies is which axes a widget 
 | **Power** | Resizes in half-cell steps like the tiles above, but never below one whole cell - its round device badge does not shrink |
 | **Humidity**, **Width Sensor** | Snap to whole cells in both directions (1x1 up to 2x2) |
 
-On the smallest panels (about 480 pixels wide or less), half-cell steps are not offered at all: every widget snaps to whole cells there, because half a cell cannot carry an icon and a reading side by side.
+On the smallest panels (480x272 and 480x320), widgets that show a reading snap to whole cells, because half a cell cannot carry an icon and a reading side by side. Icon-only tiles such as LED Light, Notifications, Lock Screen and Firmware Restart still go down to half a cell; they drop their caption to fit.
 
 The floor across the grid: no widget goes below half a cell wide by one cell tall, and the height floor is one whole cell for every widget. Some of the bigger widgets - **Preheat**, **Print Status**, **Print Controls**, **Job Queue**, **Clog Detection** - have a two-cell minimum width.
 
@@ -264,7 +269,7 @@ This is a full reset, so be sure before you confirm it:
 - Widget positions, sizes, and the set of enabled widgets all go back to defaults
 - **Per-widget settings go too** — display modes, the fan each Fan widget watches, the macro on each Macro Button. The layout is rebuilt from scratch, not adjusted
 
-The default layout is authored per screen shape rather than being one arrangement stretched to fit, so what you get depends on your panel. On a typical 800x480 landscape screen: **Printer Image** in the top-left, a block of small readouts (nozzle, bed, LED, notifications, fan, filament) to its right, the **Temperature Graph** down the right side, and **Print Status** as a wide band across the bottom. Bigger screens get the same shape with more room, and add **Tips** as a footer band. Portrait and ultrawide screens have their own layouts. Anything not placed by the default layout auto-fills the leftover cells.
+The default layout is made for your screen and your printer rather than being one arrangement stretched to fit, so what you get depends on both. On a typical 800x480 landscape screen: **Printer Image** in the top-left, a row of nozzle and bed temperatures, fans and **Notifications** (in the corner) to its right, your filament system or humidity readout below that, the **Temperature Graph** down the right side, and **Print Status** as a wide band across the bottom. Bigger screens get the same shape with more room, and add **Tips** as a footer band. Portrait and ultrawide screens have their own layouts, and so do the very small ones: the 320x240 panel on the Creality Hi drops the printer image to make room for a taller Print Status card. Widgets your printer has no hardware for are left out, and cells nothing fits are left empty. Anything the default layout does not place is still in the Widget Catalog.
 
 ### Exiting Edit Mode
 
@@ -283,7 +288,7 @@ These are the same 5 groups the Widget Catalog uses on the device.
 
 | Widget | Description | Default | Min | Max | Resizable | Hardware Required |
 |--------|-------------|---------|-----|-----|-----------|-------------------|
-| **Printer Image** | Your printer's photo, with live chips for the heaters, part fan and light while they are in use (see [Status Chips on the Printer Image](#status-chips-on-the-printer-image)). Tap a chip for that part's controls, or the picture itself to open the Printer Manager overlay where you can change the name, image, and see hardware info. | 2x2 | 1x1 | 4x3 | Yes | — |
+| **Printer Image** | Your printer's photo, with live chips for the heaters, part fan and light while they are in use (see [Status Chips on the Printer Image](#status-chips-on-the-printer-image)). Tap a chip for that part's controls (the light bulb switches the light), or the picture itself to open the Printer Manager overlay where you can change the name, image, and see hardware info. | 2x2 | 1x1 | 4x3 | Yes | — |
 | **Print Status** | Tracks the print job in all three of its states - idle (pick a file), preparing (pre-print steps with a progress bar), and printing (filename, percentage, ETA, elapsed time). Pauses scheduled in the G-code (M600, PAUSE and friends) show as ticks on the progress bar and arc, so you can see a filament change coming. Tap opens the full Print Status overlay whenever a job is preparing or printing, or the file browser when idle. | 2x2 | 2x1 | Full width x3 | Yes | — |
 | **Print Controls** | Pause, resume, and stop buttons for the running print, right on the dashboard. | 2x1 | 2x1 | 2x1 | No | — |
 | **Print Stats** | Print history statistics — total prints, success rate, and total print time. Tap to open the full print history overlay. | 2x2 | 2x1 | 3x2 | Yes | — |
@@ -346,11 +351,11 @@ These are the same 5 groups the Widget Catalog uses on the device.
 | **Network** | Current network connection status - WiFi signal strength (with bar indicator) or Ethernet. | 1x1 | 0.5x1 | Full grid | Yes | — |
 | **Host Health** | How hard the computer running Klipper and your printer's controller boards are working: CPU load and temperature, memory, and the busiest board. It turns amber or red when something needs attention (see [Host Health Widget](#host-health-widget) below). Tap to open the Performance screen. | 2x1 | 0.5x0.5 | 4x4 | Yes | Performance readings |
 | **Notifications** | Shows pending notification count with a severity badge (info/warning/error). Tap to open the notification history overlay. | 1x1 | 0.5x1 | Full grid | Yes | — |
-| **Digital Clock** | Current time and date. Respects your 12/24-hour preference from display settings. Content adapts to size: time only at 1x1, time + date at 2x1, time + date + system uptime at 2x2+. Resizes in half-cell steps — see [Snapping and half cells](#snapping-and-half-cells). | 2x1 | 1x1 | 3x3 | Yes | — |
+| **Digital Clock** | Current time and date. Respects your 12/24-hour preference from display settings. Content adapts to size: time only when the date does not fit, time + date once it does (about 1.5x1), time + date + system uptime at 2x2+. Resizes in half-cell steps — see [Snapping and half cells](#snapping-and-half-cells). | 2x1 | 1x1 | 3x3 | Yes | — |
 | **Tips** | Rotating helpful tips about 3D printing and HelixScreen features. Tap any tip to see the full article. Tips rotate automatically. | 4x2 | 2x1 | Full width x2 | Horizontal only | — |
 | **Shutdown/Reboot** | Shutdown or reboot your printer's host system. Shows a confirmation dialog before acting. | 1x1 | 0.5x1 | Full grid | Yes | — |
 | **Firmware Restart** | Restart the Klipper firmware. Useful when Klipper enters SHUTDOWN state. This widget automatically appears during firmware errors even if disabled. | 1x1 | 0.5x1 | Full grid | Yes | — |
-| **Lock Screen** | Locks the screen immediately. Set a PIN in Settings > System > Security first, otherwise there is nothing to unlock with. | 1x1 | 0.5x1 | Full grid | Yes | — |
+| **Lock Screen** | Locks the screen immediately. With no PIN set the lock icon is greyed out and tapping it opens Settings > System > Security so you can set one. | 1x1 | 0.5x1 | Full grid | Yes | — |
 
 #### Shutdown/Reboot Widget
 
@@ -1088,9 +1093,9 @@ While the printer is working, small chips on the printer image show what each pa
 
 - **Nozzle, bed and chamber** - a temperature chip appears while the heater has a target, and stays, greyed, until a heater you turned off has cooled below 50°C. The chamber chip appears only on printers with a chamber heater.
 - **Part fan** - shows its speed while it is running.
-- **Light** - shows while your chamber light is on.
+- **Light** - a small light bulb at the top of the picture, shown whenever your printer has a light HelixScreen can switch. It is lit while the light is on and dark while it is off.
 
-Tap a heater chip for its temperature graph, the fan chip for the fan controls, or the light chip for the chamber light's page in the LEDs overlay.
+Tap a heater chip for its temperature graph or the fan chip for the fan controls. **Tap the light bulb to switch the light on or off.** Press and hold it to open the light's page in the LEDs overlay instead.
 
 On the most common printers the shipped pictures know where each part is, so each chip points at its part: beside the picture with a line to it on a wide tile, or on top of it on a small one. On other pictures, including your own photos, the chips sit along the edge of the picture until you tag its parts.
 

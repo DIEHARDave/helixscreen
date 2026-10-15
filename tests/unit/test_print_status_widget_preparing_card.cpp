@@ -32,6 +32,7 @@
 #include "../test_helpers/print_state_test_drivers.h"
 #include "../test_helpers/print_status_widget_test_access.h"
 #include "../test_helpers/printer_state_test_access.h"
+#include "../test_helpers/update_queue_test_access.h"
 #include "ams_state.h"
 #include "app_globals.h"
 #include "filament_sensor_manager.h"
@@ -91,9 +92,7 @@ class PreparingCardFixture : public LVGLTestFixture {
 
     /// One drain is not enough - a handler running during a drain queues more.
     static void settle() {
-        for (int i = 0; i < 8; ++i) {
-            helix::ui::UpdateQueue::instance().drain();
-        }
+        helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
     }
 
     /// PHASE FIRST, then the wire. update_from_status() republishes the lifecycle

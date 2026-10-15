@@ -94,6 +94,7 @@ static const IconMapping ICON_MAP[] = {
     {"code_tags",          "\xF3\xB0\x85\xB4"},  // F0174 code-tags
     {"cog",                "\xF3\xB0\x92\x93"},  // F0493 cog/settings
     {"cog_outline",        "\xF3\xB0\xA2\xBB"},  // F08BB cog-outline
+    {"cog_refresh",        "\xF3\xB1\x91\x9E"},  // F145E cog-refresh
     {"console",            "\xF3\xB0\x86\x8D"},  // F018D console/terminal
     {"content_copy",       "\xF3\xB0\x86\x8F"},  // F018F content-copy (duplicate)
     {"coolant_temperature","\xF3\xB0\x8F\x88"},  // F03C8 coolant-temperature

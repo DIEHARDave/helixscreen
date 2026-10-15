@@ -9,6 +9,7 @@
  * config, platform, XDG, HOME, /var/tmp, /tmp fallbacks.
  */
 
+#include "../test_helpers/scoped_env.h"
 #include "app_globals.h"
 
 #include <cstdlib>
@@ -32,36 +33,12 @@ static void cleanup_dir(const std::string& path) {
     std::filesystem::remove_all(path, ec);
 }
 
-// RAII guard for env vars - restores original value on destruction
-namespace {
-struct EnvGuard {
-    std::string name;
-    std::string original;
-    bool was_set;
-
-    explicit EnvGuard(const char* env_name) : name(env_name) {
-        const char* val = std::getenv(env_name);
-        was_set = (val != nullptr);
-        if (was_set)
-            original = val;
-    }
-
-    ~EnvGuard() {
-        if (was_set) {
-            setenv(name.c_str(), original.c_str(), 1);
-        } else {
-            unsetenv(name.c_str());
-        }
-    }
-};
-} // namespace
-
 // ============================================================================
 // get_helix_cache_dir() Tests
 // ============================================================================
 
 TEST_CASE("get_helix_cache_dir HELIX_CACHE_DIR override", "[cache]") {
-    EnvGuard guard("HELIX_CACHE_DIR");
+    helix::ScopedEnv guard("HELIX_CACHE_DIR");
     std::string tmpdir = make_test_tmpdir("env_override");
 
     SECTION("Uses HELIX_CACHE_DIR when set") {
@@ -88,7 +65,7 @@ TEST_CASE("get_helix_cache_dir HELIX_CACHE_DIR override", "[cache]") {
 }
 
 TEST_CASE("get_helix_cache_dir falls through on empty env", "[cache]") {
-    EnvGuard helix_guard("HELIX_CACHE_DIR");
+    helix::ScopedEnv helix_guard("HELIX_CACHE_DIR");
     unsetenv("HELIX_CACHE_DIR");
 
     std::string result = get_helix_cache_dir("fallthrough_test");
@@ -101,7 +78,7 @@ TEST_CASE("get_helix_cache_dir falls through on empty env", "[cache]") {
 }
 
 TEST_CASE("get_helix_cache_dir falls through on invalid env path", "[cache]") {
-    EnvGuard guard("HELIX_CACHE_DIR");
+    helix::ScopedEnv guard("HELIX_CACHE_DIR");
     // Set to a path that can't be created (nested under /nonexistent)
     setenv("HELIX_CACHE_DIR", "/nonexistent/readonly/cache", 1);
 
@@ -161,7 +138,7 @@ static std::string unique_subdir(const std::string& label) {
 }
 
 TEST_CASE("peek_helix_cache_dir resolves without creating", "[cache]") {
-    EnvGuard guard("HELIX_CACHE_DIR");
+    helix::ScopedEnv guard("HELIX_CACHE_DIR");
     std::string tmpdir = make_test_tmpdir("peek_nocreate");
     setenv("HELIX_CACHE_DIR", tmpdir.c_str(), 1);
     const std::string sub = unique_subdir("nocreate");
@@ -180,7 +157,7 @@ TEST_CASE("peek_helix_cache_dir resolves without creating", "[cache]") {
 }
 
 TEST_CASE("peek agrees with get, and only get creates", "[cache]") {
-    EnvGuard guard("HELIX_CACHE_DIR");
+    helix::ScopedEnv guard("HELIX_CACHE_DIR");
     std::string tmpdir = make_test_tmpdir("peek_agrees");
     setenv("HELIX_CACHE_DIR", tmpdir.c_str(), 1);
     const std::string sub = unique_subdir("agrees");
@@ -200,7 +177,7 @@ TEST_CASE("peek agrees with get, and only get creates", "[cache]") {
 }
 
 TEST_CASE("get_helix_cache_dir creates only the winning tier", "[cache]") {
-    EnvGuard guard("HELIX_CACHE_DIR");
+    helix::ScopedEnv guard("HELIX_CACHE_DIR");
     std::string tmpdir = make_test_tmpdir("only_winner");
     setenv("HELIX_CACHE_DIR", tmpdir.c_str(), 1);
     const std::string sub = unique_subdir("winner");
@@ -223,7 +200,7 @@ TEST_CASE("a candidate under an unwritable parent is skipped, not created", "[ca
         return;
     }
 
-    EnvGuard guard("HELIX_CACHE_DIR");
+    helix::ScopedEnv guard("HELIX_CACHE_DIR");
     std::string locked = make_test_tmpdir("locked_parent");
     std::filesystem::permissions(locked, std::filesystem::perms::owner_read |
                                              std::filesystem::perms::owner_exec);
@@ -343,8 +320,8 @@ TEST_CASE("the sweep reclaims NOTHING on a host build", "[cache]") {
     // rung defined, the XDG/HOME rung IS the live cache, so a sweep that ran
     // here would treat a developer's real ~/.cache/helix as stale. Seed every
     // lower rung and require all of them to survive.
-    EnvGuard cache_guard("HELIX_CACHE_DIR");
-    EnvGuard xdg_guard("XDG_CACHE_HOME");
+    helix::ScopedEnv cache_guard("HELIX_CACHE_DIR");
+    helix::ScopedEnv xdg_guard("XDG_CACHE_HOME");
 
     std::string root = make_test_tmpdir("sweep_noop");
     setenv("HELIX_CACHE_DIR", (root + "/pinned").c_str(), 1);

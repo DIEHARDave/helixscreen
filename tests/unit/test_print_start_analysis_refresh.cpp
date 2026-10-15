@@ -18,6 +18,7 @@
 
 #include "../lvgl_ui_test_fixture.h"
 #include "../test_helpers/print_select_panel_test_access.h"
+#include "../test_helpers/update_queue_test_access.h"
 #include "helix-xml/src/xml/lv_xml.h"
 #include "moonraker_api_mock.h"
 #include "moonraker_client_mock.h"
@@ -71,9 +72,7 @@ class AnalysisRefreshFixture : public LVGLUITestFixture {
     }
 
     void settle() {
-        for (int i = 0; i < 4; ++i) {
-            UpdateQueue::instance().drain();
-        }
+        helix::ui::UpdateQueueTestAccess::drain_all(UpdateQueue::instance());
     }
 
     bool analysis_has(PrintStartOpCategory category) const {

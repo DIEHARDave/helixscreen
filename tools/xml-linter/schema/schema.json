@@ -1740,6 +1740,9 @@
         "hide_target_when_off": {
           "type": "bool"
         },
+        "align_current": {
+          "type": "string"
+        },
         "hide_target_below_bp": {
           "type": "string"
         },
@@ -3732,6 +3735,14 @@
     "motion_z_col_w_micro",
     "motion_z_col_w_small",
     "motion_z_col_w_tiny",
+    "nav_estop_reach",
+    "nav_estop_reach_large",
+    "nav_estop_reach_medium",
+    "nav_estop_reach_micro",
+    "nav_estop_reach_small",
+    "nav_estop_reach_tiny",
+    "nav_estop_reach_xlarge",
+    "nav_estop_reach_xxlarge",
     "nav_estop_size",
     "nav_estop_size_large",
     "nav_estop_size_medium",

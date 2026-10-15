@@ -152,6 +152,7 @@ MDI_ICONS+=",0xF0479"    # sd (SD card)
 MDI_ICONS+=",0xF048A"    # send (for console input)
 MDI_ICONS+=",0xF0493"    # cog (settings)
 MDI_ICONS+=",0xF08BB"    # cog-outline (settings nav inactive state)
+MDI_ICONS+=",0xF145E"    # cog-refresh (firmware restart)
 MDI_ICONS+=",0xF04B2"    # sleep (moon/zzz)
 MDI_ICONS+=",0xF04C5"    # speedometer
 MDI_ICONS+=",0xF04DB"    # stop

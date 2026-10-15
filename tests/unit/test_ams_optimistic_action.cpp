@@ -20,6 +20,7 @@
 #include "ui_update_queue.h"
 
 #include "../test_fixtures.h"
+#include "../test_helpers/update_queue_test_access.h"
 #include "ams_backend_afc.h"
 #include "ams_backend_cfs.h"
 #include "ams_backend_happy_hare.h"
@@ -212,9 +213,7 @@ struct OptimisticSidebarFixture : public XMLTestFixture {
     /// found by its owner and fired directly.
     void let_watchdog_run() {
         // A deferred callback can queue another, so drain until quiet.
-        for (int i = 0; i < 4; ++i) {
-            helix::ui::UpdateQueue::instance().drain();
-        }
+        helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
         int fired = 0;
         for (lv_timer_t* t = lv_timer_get_next(nullptr); t; t = lv_timer_get_next(t)) {
             if (lv_timer_get_user_data(t) == sidebar_.get()) {

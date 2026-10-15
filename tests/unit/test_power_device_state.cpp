@@ -5,6 +5,7 @@
 
 #include "../lvgl_test_fixture.h"
 #include "../test_helpers/print_state_test_drivers.h"
+#include "../test_helpers/update_queue_test_access.h"
 #include "app_globals.h"
 #include "moonraker_types.h"
 #include "power_device_state.h"
@@ -95,9 +96,7 @@ TEST_CASE_METHOD(LVGLTestFixture, "PowerDeviceState deinit clears all subjects",
 namespace {
 
 void drain_queue() {
-    for (int i = 0; i < 8; ++i) {
-        helix::ui::UpdateQueue::instance().drain();
-    }
+    helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
 }
 
 int effective_status(PowerDeviceState& st, const char* name) {
