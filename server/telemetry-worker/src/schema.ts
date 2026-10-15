@@ -16,9 +16,10 @@ type ReadFn = (event: EventRecord, item?: EventRecord) => unknown;
 /**
  * Pulls one column's raw value out of an event. `item` is the element a
  * fan-out kind iterates over (a panel, a widget, one settings change).
- * `paths` are the client fields it reads, in ColumnDef.paths notation.
+ * `paths` are the client fields it reads, in ColumnDef.paths notation, and
+ * `fallback` says they are tried in order (see ColumnDef.fallback).
  */
-export type Reader = ReadFn & { readonly paths: readonly string[] };
+export type Reader = ReadFn & { readonly paths: readonly string[]; readonly fallback: boolean };
 
 export interface ColumnDef {
   /** Stable logical name used by col(); the client's JSON key where one exists. */
@@ -36,6 +37,12 @@ export interface ColumnDef {
    * these and to R2_ONLY.
    */
   paths: readonly string[];
+  /**
+   * True when `paths` is a precedence list: a later path is read only while
+   * every earlier one is absent, so an event carrying an earlier path does not
+   * have the later ones written. False when every path feeds the value.
+   */
+  fallback: boolean;
 }
 
 export interface PointKind {
@@ -48,20 +55,25 @@ export const MAX_SLOT = 20;
 
 // ---------- Readers ----------
 
-const reads = (paths: readonly string[], fn: ReadFn): Reader => Object.assign(fn, { paths });
+const reads = (paths: readonly string[], fn: ReadFn, fallback = false): Reader =>
+  Object.assign(fn, { paths, fallback });
 
 const section = (v: unknown): EventRecord => (v ?? {}) as EventRecord;
 
 /** `event[sec][key]`, then each flat key in order; null and undefined fall through. */
 const nested = (sec: string, key: string, ...flatKeys: string[]): Reader =>
-  reads([`${sec}.${key}`, ...flatKeys], (e) => {
-    const v = section(e[sec])[key];
-    if (v !== undefined && v !== null) return v;
-    for (const k of flatKeys) {
-      if (e[k] !== undefined && e[k] !== null) return e[k];
-    }
-    return undefined;
-  });
+  reads(
+    [`${sec}.${key}`, ...flatKeys],
+    (e) => {
+      const v = section(e[sec])[key];
+      if (v !== undefined && v !== null) return v;
+      for (const k of flatKeys) {
+        if (e[k] !== undefined && e[k] !== null) return e[k];
+      }
+      return undefined;
+    },
+    true,
+  );
 
 const firstOf = (...readers: Reader[]): Reader =>
   reads(
@@ -73,9 +85,10 @@ const firstOf = (...readers: Reader[]): Reader =>
       }
       return undefined;
     },
+    readers.every((r) => r.fallback),
   );
 
-const flat = (key: string): Reader => reads([key], (e) => e[key]);
+const flat = (key: string): Reader => reads([key], (e) => e[key], true);
 
 /** `item[key]`, where the fan-out built the item from the client fields `paths`. */
 const fromItem = (key: string, ...paths: string[]): Reader =>
@@ -90,20 +103,28 @@ const targetVersion = flat("version");
 const fromVersion = flat("from_version");
 
 const themeNameSource = firstOf(flat("theme_name"), nested("app", "theme", "theme"));
-const themeName: Reader = reads(themeNameSource.paths, (e) => themeNameSource(e) ?? "");
+const themeName: Reader = reads(themeNameSource.paths, (e) => themeNameSource(e) ?? "", true);
 
-const darkLightTheme: Reader = reads(["theme", ...themeName.paths], (e) => {
-  if (e.theme !== undefined && e.theme !== null) return e.theme;
-  const name = String(themeName(e));
-  return name.includes("(Dark)") ? "dark" : name.includes("(Light)") ? "light" : "";
-});
+const darkLightTheme: Reader = reads(
+  ["theme", ...themeName.paths],
+  (e) => {
+    if (e.theme !== undefined && e.theme !== null) return e.theme;
+    const name = String(themeName(e));
+    return name.includes("(Dark)") ? "dark" : name.includes("(Light)") ? "light" : "";
+  },
+  true,
+);
 
 /** "1" / "0" / "": a boolean that is "" for clients too old to report it. */
 const triState = (read: Reader): Reader =>
-  reads(read.paths, (e, item) => {
-    const v = read(e, item);
-    return v === undefined || v === null ? "" : v ? "1" : "0";
-  });
+  reads(
+    read.paths,
+    (e, item) => {
+      const v = read(e, item);
+      return v === undefined || v === null ? "" : v ? "1" : "0";
+    },
+    read.fallback,
+  );
 
 const SENSOR_COUNT_PATHS = [
   "sensors.filament",
@@ -210,15 +231,19 @@ const featureBitmask: Reader = reads(
   },
 );
 
-// Counts the backtrace; the addresses themselves are R2-only.
-const crashBacktraceDepth: Reader = reads(["backtrace_depth", "backtrace"], (e) =>
-  e.backtrace_depth ?? (Array.isArray(e.backtrace) ? e.backtrace.length : 0),
+// Stores how many frames the backtrace has; the addresses stay in R2.
+const crashBacktraceDepth: Reader = reads(
+  ["backtrace_depth", "backtrace[]"],
+  (e) => e.backtrace_depth ?? (Array.isArray(e.backtrace) ? e.backtrace.length : 0),
+  true,
 );
 
 // ---------- Column constructors ----------
 
 const column = (type: FieldType, slot: number, field: string, read?: Reader): ColumnDef =>
-  read ? { field, type, slot, read, paths: read.paths } : { field, type, slot, paths: [field] };
+  read
+    ? { field, type, slot, read, paths: read.paths, fallback: read.fallback }
+    : { field, type, slot, paths: [field], fallback: false };
 
 const blob = (slot: number, field: string, read?: Reader): ColumnDef => column("blob", slot, field, read);
 
@@ -341,6 +366,7 @@ const KINDS: PointKind[] = [
     blob(4, "printer_model", nested("printer", "detected_model", "printer_model")),
     blob(5, "kinematics", nested("printer", "kinematics", "kinematics")),
     blob(6, "mcu_chip", nested("mcus", "primary", "mcu_chip")),
+    // No current client sends probe.type; kept so stored rows stay readable.
     blob(7, "probe_type", nested("probe", "type", "probe_type")),
     blob(8, "ams_type", nested("ams", "type")),
     // Tri-state strings: a bitmask bit cannot tell false from "client too old".
@@ -472,6 +498,7 @@ const KINDS: PointKind[] = [
     dbl(5, "dropped_frame_count"),
     dbl(6, "total_frame_count"),
     dbl(7, "worst_panel_p95_ms"),
+    // No current client sends it; kept so stored rows stay readable.
     dbl(8, "task_handler_max_ms"),
   ]),
 
@@ -490,7 +517,11 @@ const KINDS: PointKind[] = [
     blob(4, "setting", fromItem("setting", "changes[].setting")),
     blob(5, "old_value", fromItem("old_value", "changes[].old_value")),
     blob(6, "new_value", fromItem("new_value", "changes[].new_value")),
-    dbl(1, "change_count", reads(["changes[]"], (_e, item) => (item ? 1 : 0))),
+    dbl(
+      1,
+      "change_count",
+      reads(["changes[].setting", "changes[].old_value", "changes[].new_value"], (_e, item) => (item ? 1 : 0)),
+    ),
   ]),
 
   // Window totals; the per-tag breakdown is R2-only.
@@ -578,8 +609,11 @@ export const R2_ONLY: Record<string, string[]> = mergeLists(
     settings_changes: ["boot_id", "schema_version", "app_board"],
     async_lifetime_skips: ["boot_id", "schema_version", "app_board"],
   },
-  // Update events store the two versions they move between; app_version repeats one.
-  { update_failed: ["app_version"], update_success: ["app_version"] },
+  // Update events store the two versions they move between, and app_platform;
+  // app_version repeats one version and `platform` names the release's target.
+  { update_failed: ["app_version", "platform"], update_success: ["app_version", "platform"] },
+  // The session kind reads its app section, which repeats these envelope fields.
+  { session: ["app_version", "app_platform", "app_board"] },
   // Marks a snapshot taken at shutdown, which describes the sender rather than the window.
   { panel_usage: ["is_shutdown"], connection_stability: ["is_shutdown"], performance_snapshot: ["is_shutdown"] },
   // Session detail the hardware_profile kind stores in queryable form (model, MCU,
@@ -598,6 +632,11 @@ export const R2_ONLY: Record<string, string[]> = mergeLists(
       "printer.mcu",
       "printer.mcu_count",
     ],
+  },
+  // Display hardware no view charts; the session kind stores the resolution.
+  {
+    session: ["app.display_backend", "app.input_type", "app.has_backlight", "app.has_hw_blank"],
+    hardware_profile: ["display_backend"],
   },
   // Name-level hardware lists, read from R2 for printer-detection analysis.
   {

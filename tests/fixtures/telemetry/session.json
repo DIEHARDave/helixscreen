@@ -1,6 +1,11 @@
 {
   "app": {
     "board": "<build>",
+    "display": "800x480",
+    "display_backend": "DRM/KMS",
+    "has_backlight": true,
+    "has_hw_blank": true,
+    "input_type": "touch",
     "locale": "<state>",
     "platform": "<build>",
     "theme": "<state>",

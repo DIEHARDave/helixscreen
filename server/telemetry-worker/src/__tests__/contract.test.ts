@@ -9,7 +9,9 @@
 // Paths are dotted, with `[]` for the elements of an array; an empty array is
 // the single path `name[]` and an empty object its own path. A field matches:
 //   - a column path segment for segment, where `*` matches any one segment
-//     (map keys such as panel names and overlay ids: `panel_time_sec.*`);
+//     (map keys such as panel names and overlay ids: `panel_time_sec.*`). For
+//     a fallback column only the paths up to the first one the event carries
+//     count: the later ones are never read for that event;
 //   - an R2_ONLY entry the same way, or as a prefix: an entry keeps its whole
 //     subtree in R2 (`tags` covers `tags[].tag`).
 // The `event` field is the point's index, not a column.
@@ -56,14 +58,23 @@ const columnMatches = (pattern: string, path: string): boolean =>
 
 const r2Covers = (entry: string, path: string): boolean => matchesFrom(segments(entry), segments(path));
 
-function columnPaths(eventType: string): string[] {
-  return EVENT_FANOUT[eventType].flatMap((kind) => POINT_KINDS[kind].columns.flatMap((c) => c.paths));
+/** The column paths this event's fields are actually written from. */
+function columnPaths(eventType: string, leaves: string[]): string[] {
+  const carried = (p: string) => leaves.some((leaf) => columnMatches(p, leaf));
+  return EVENT_FANOUT[eventType].flatMap((kind) =>
+    POINT_KINDS[kind].columns.flatMap((c) => {
+      if (!c.fallback) return [...c.paths];
+      const first = c.paths.findIndex(carried);
+      return first < 0 ? [] : c.paths.slice(0, first + 1);
+    }),
+  );
 }
 
 function unaccounted(eventType: string, event: EventRecord): string[] {
-  const mapped = columnPaths(eventType);
+  const leaves = leafPaths(event, "");
+  const mapped = columnPaths(eventType, leaves);
   const r2 = R2_ONLY[eventType] ?? [];
-  return leafPaths(event, "").filter(
+  return leaves.filter(
     (path) =>
       path !== "event" &&
       !mapped.some((p) => columnMatches(p, path)) &&
