@@ -55,7 +55,7 @@ export const router = createRouter({
     // Old bookmarks land on the tab that holds their content, filters intact.
     ...LEGACY_ROUTES.map((path): RouteRecordRaw => ({
       path,
-      redirect: (to) => legacyLocation(to.path, to.query)!
+      redirect: (to) => legacyLocation(path, to.query)!
     }))
   ]
 })
