@@ -1187,6 +1187,23 @@ TEST_CASE_METHOD(LVGLUITestFixture,
         CHECK(rig.backend->change_tool_calls == 1);
         CHECK(rig.backend->last_tool == 8);
     }
+    SECTION("a parked head is mounted by the lane already seated in it") {
+        // A seat moving changes that lane's loaded state too, so the same sync
+        // that pushes the topology bumps the slot version.
+        ToolState::instance().set_ams_topology(helix::test::make_hub_topology(0, {0, 10}));
+        AmsState::instance().bump_slots_version();
+        process_lvgl(30);
+        const std::string label =
+            std::string(
+                lv_subject_get_string(lv_xml_get_subject(nullptr, "tool_switcher_seg_5_label"))) +
+            "|" + lv_subject_get_string(lv_xml_get_subject(nullptr, "tool_switcher_seg_5_sub"));
+        CAPTURE(label);
+        CHECK(label.find("T10") != std::string::npos);
+        tap(named(h, "tool_switcher_seg_5"));
+        process_lvgl(30);
+        CHECK(rig.backend->change_tool_calls == 1);
+        CHECK(rig.backend->last_tool == 10);
+    }
     SECTION("the head a lane is mounted on reads mounted, and its tap opens the sheet") {
         ToolState::instance().set_ams_topology(helix::test::make_hub_topology(9));
         process_lvgl(30);

@@ -447,7 +447,10 @@ int PreheatWidget::target_tool_index() const {
     const auto heads = ToolState::instance().heated_heads();
     if (tool_target_ >= static_cast<int>(heads.size()))
         return -1;
-    return heads[static_cast<size_t>(tool_target_)].tool_indices.front();
+    // The same tool a tap on the head in the tool switcher sends, so a hub-fed
+    // head heats and announces through the lane it holds.
+    return heads[static_cast<size_t>(tool_target_)].representative_tool(
+        ToolState::instance().active_tool_index());
 }
 
 void PreheatWidget::cycle_tool_target() {

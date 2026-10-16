@@ -41,6 +41,7 @@
 #include <cmath>
 #include <cstdio>
 #include <cstring>
+#include <iterator>
 
 namespace helix {
 
@@ -435,6 +436,20 @@ void ToolState::set_ams_topology(const ToolTopology& topo) {
                      version);
     }
 
+    // Which lane a head holds moves with every load and unload, without the
+    // shape changing, so it is applied on every push and bumps no version.
+    bool seated_changed = false;
+    for (size_t i = 0; i < tools_.size(); ++i) {
+        const bool seated = i < topo.tool_seated.size() && topo.tool_seated[i];
+        if (tools_[i].lane_seated != seated) {
+            tools_[i].lane_seated = seated;
+            seated_changed = true;
+        }
+    }
+    if (seated_changed) {
+        heads_cache_.reset();
+    }
+
     int new_active = topo.active_tool;
     const bool empty_carriage = topo.allows_empty_carriage && new_active == -1;
     if (!empty_carriage && (new_active < 0 || new_active >= static_cast<int>(tools_.size()))) {
@@ -787,7 +802,10 @@ bool PhysicalHead::holds_tool(int tool_index) const {
 }
 
 int PhysicalHead::representative_tool(int active_tool) const {
-    return holds_tool(active_tool) ? active_tool : tool_indices.front();
+    if (holds_tool(active_tool)) {
+        return active_tool;
+    }
+    return seated_tool >= 0 ? seated_tool : tool_indices.front();
 }
 
 std::vector<PhysicalHead> physical_heads(const std::vector<ToolInfo>& tools) {
@@ -801,10 +819,22 @@ std::vector<PhysicalHead> physical_heads(const std::vector<ToolInfo>& tools) {
                 return h.extruder_name == extruder;
             });
         }
-        if (shared != heads.end()) {
-            shared->tool_indices.push_back(static_cast<int>(i));
-        } else {
-            heads.push_back({named ? extruder : std::nullopt, {static_cast<int>(i)}});
+        if (shared == heads.end()) {
+            heads.push_back({named ? extruder : std::nullopt, {}});
+            shared = std::prev(heads.end());
+        }
+        shared->tool_indices.push_back(static_cast<int>(i));
+    }
+    for (PhysicalHead& head : heads) {
+        int seated_count = 0;
+        for (const int t : head.tool_indices) {
+            if (tools[static_cast<size_t>(t)].lane_seated) {
+                head.seated_tool = t;
+                ++seated_count;
+            }
+        }
+        if (seated_count > 1) {
+            head.seated_tool = -1;
         }
     }
     return heads;

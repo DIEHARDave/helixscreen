@@ -521,13 +521,15 @@ TEST_CASE_METHOD(LVGLTestFixture,
 }
 
 TEST_CASE_METHOD(LVGLTestFixture,
-                 "PreheatWidget: a target on a hub-fed head names that head's lane",
-                 "[preheat][panel_widget][physical-heads]") {
+                 "PreheatWidget: a target on a hub-fed head names the lane seated in it",
+                 "[preheat][panel_widget][physical-heads][seated-lane]") {
     auto& ts = ToolState::instance();
     ts.deinit_subjects();
     ts.init_subjects(false);
     ts.init_tools(helix::test::make_head_discovery(7));
-    ts.set_ams_topology(helix::test::make_hub_topology());
+    // Head 5 (extruder5, lanes 8 to 11) holds lane 10; head 6 (extruder6,
+    // lanes 12 to 17) holds nothing.
+    ts.set_ams_topology(helix::test::make_hub_topology(0, {0, 10}));
     helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
     REQUIRE(ts.tool_count() == 18);
     REQUIRE(ts.heated_heads().size() == 7);
@@ -535,17 +537,25 @@ TEST_CASE_METHOD(LVGLTestFixture,
     PreheatWidget widget(get_printer_state());
     lv_obj_t* label = lv_label_create(test_screen());
 
-    // The target counts heads, and head 5 is extruder5, fed by lanes 8 to 11:
-    // tool 5 is a lane of extruder4.
+    // The target counts heads, and head 5 is extruder5: tool 5 is a lane of
+    // extruder4, and lane 8 is the head's lowest, not the one it holds.
     PreheatWidgetTestAccess::set_tool_target(widget, 5);
     const std::string head5 = PreheatWidgetTestAccess::tool_target_caption(widget, label);
-    CHECK(head5 == ts.tools()[8].display_label);
+    CHECK(head5 == ts.tools()[10].display_label);
+    CHECK(head5 != ts.tools()[8].display_label);
     CHECK(head5 != ts.tools()[5].display_label);
 
-    // Head 6 is extruder6, whose first lane is 12.
+    // With no lane seated, a head falls back to its lowest lane.
     PreheatWidgetTestAccess::set_tool_target(widget, 6);
     CHECK(PreheatWidgetTestAccess::tool_target_caption(widget, label) ==
           ts.tools()[12].display_label);
+
+    // The mounted head names the lane it prints through.
+    ts.set_ams_topology(helix::test::make_hub_topology(9, {9}));
+    helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());
+    PreheatWidgetTestAccess::set_tool_target(widget, 5);
+    CHECK(PreheatWidgetTestAccess::tool_target_caption(widget, label) ==
+          ts.tools()[9].display_label);
 
     ts.clear_ams_topology();
     helix::ui::UpdateQueueTestAccess::drain_all(helix::ui::UpdateQueue::instance());

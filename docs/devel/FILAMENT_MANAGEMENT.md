@@ -174,6 +174,15 @@ AFC's opt-in rests on `AFC_stepper.<lane>.tool_loaded`, which upstream's `set_lo
 hub*, not to the toolhead — only `tool_loaded` answers the toolhead question, which is why
 `parse_afc_stepper` maps `"Loaded"` to `AVAILABLE`.
 
+**Which lane a parked head holds.** `build_ams_topology()` asks `slot_is_actively_loaded()`
+of every tool's lane and hands the answers to ToolState as `ToolTopology::tool_seated`.
+Where a hub feeds several lanes into one head, `PhysicalHead::seated_tool` is the lane that
+head holds, and `PhysicalHead::representative_tool()` prefers it over the head's lowest
+lane. The home tool switcher's head tap and the preheat widget's head target both resolve
+through it, so selecting a parked head keeps its filament instead of swapping lanes on the
+way (prestonbrown/helixscreen#1811). Two lanes claiming one head decide nothing, and the
+lowest lane stands.
+
 AD5X IFS derives its stamp from the same two inputs `system_info_.filament_loaded` is
 assigned from, so the two cannot disagree — but only after dropping the lane's own port
 sensor from the condition. A runout clears `port_presence_` while the filament that lane

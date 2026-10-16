@@ -1044,6 +1044,53 @@ TEST_CASE_METHOD(ToolStateFixture, "physical_heads collapses hub lanes onto thei
     UpdateQueue::instance().drain();
 }
 
+TEST_CASE_METHOD(ToolStateFixture, "a parked hub head stands for the lane seated in it",
+                 "[tool-state][ams-topology][physical-heads][seated-lane]") {
+    auto& ts = helix::ToolState::instance();
+    ts.init_tools(make_seven_head_discovery());
+
+    SECTION("the seated lane, not the lowest") {
+        ts.set_ams_topology(helix::test::make_hub_topology(0, {0, 10, 14}));
+        const auto& heads = ts.physical_heads();
+        REQUIRE(heads.size() == 7);
+        CHECK(heads[5].seated_tool == 10);
+        CHECK(heads[5].representative_tool(0) == 10);
+        CHECK(heads[5].representative_tool(-1) == 10);
+        CHECK(heads[6].representative_tool(0) == 14);
+        // The mounted head keeps the lane it prints through.
+        CHECK(heads[5].representative_tool(9) == 9);
+        // A head with nothing seated falls back to its lowest lane.
+        CHECK(heads[4].seated_tool == -1);
+        CHECK(heads[4].representative_tool(0) == 4);
+    }
+
+    SECTION("two lanes claiming one head decide nothing") {
+        ts.set_ams_topology(helix::test::make_hub_topology(0, {9, 11}));
+        const auto& heads = ts.physical_heads();
+        CHECK(heads[5].seated_tool == -1);
+        CHECK(heads[5].representative_tool(0) == 8);
+    }
+
+    SECTION("a seat moving without the shape changing reaches the heads") {
+        ts.set_ams_topology(helix::test::make_hub_topology(0, {10}));
+        REQUIRE(ts.physical_heads()[5].representative_tool(0) == 10);
+        const int version = lv_subject_get_int(ts.get_tools_version_subject());
+
+        ts.set_ams_topology(helix::test::make_hub_topology(0, {11}));
+        CHECK(ts.physical_heads()[5].representative_tool(0) == 11);
+        CHECK(ts.tools()[11].lane_seated);
+        CHECK_FALSE(ts.tools()[10].lane_seated);
+
+        // A backend that stops saying leaves no lane seated.
+        ts.set_ams_topology(helix::test::make_hub_topology(0));
+        CHECK(ts.physical_heads()[5].representative_tool(0) == 8);
+        CHECK(lv_subject_get_int(ts.get_tools_version_subject()) == version);
+    }
+
+    ts.clear_ams_topology();
+    UpdateQueue::instance().drain();
+}
+
 TEST_CASE("physical_heads keeps a tool naming no extruder as a head of its own",
           "[tool-state][physical-heads]") {
     std::vector<helix::ToolInfo> tools(3);
