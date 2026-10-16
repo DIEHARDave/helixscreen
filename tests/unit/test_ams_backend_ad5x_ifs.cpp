@@ -12945,6 +12945,37 @@ TEST_CASE("AD5X IFS a lock release waits on the lane_data re-read",
     helix::ui::UpdateQueue::instance().drain();
 }
 
+TEST_CASE("AD5X IFS a failed lane_data re-read publishes what it held",
+          "[ams][ad5x][ad5x_ifs][lane_data][1632]") {
+    // A read that never lands took no slot, so the firmware change's save goes
+    // out as if the tool had written nothing, and nothing after it waits.
+    Ad5xIfsTmpCacheDir tmp("failed_reread_publishes");
+    MockPrinter mock_printer;
+    mock_printer.client.mock_db_set("lane_data", "lane1",
+                                    outside_lane_record(0, "#FF0000", "PLA", "Red PLA", 0));
+
+    helix::test::RegisteredBackend<AmsBackendAd5xIfs> backend_reg(&mock_printer.api, nullptr);
+    AmsBackendAd5xIfs& backend = *backend_reg;
+    Ad5xIfsTestAccess::set_running(backend, true);
+    Ad5xIfsTestAccess::set_zcolor_supported(backend, false);
+    boot_from_lane_data(backend, mock_printer, tmp.path);
+    firmware_states_slot0(backend, "FF0000", "PLA");
+
+    REQUIRE_FALSE(Ad5xIfsTestAccess::on_gcode_response_line(
+        backend, "CHANGE_ZCOLOR SLOT=1 HEX=0055FF TYPE=PETG"));
+    REQUIRE(mock_printer.client.mock_db_get("lane_data", "lane1") ==
+            outside_lane_record(0, "#FF0000", "PLA", "Red PLA", 0));
+
+    mock_printer.client.fail_next("server.database.get_item");
+    lane_record_reread_lands(backend);
+
+    const auto db = mock_printer.client.mock_db_get("lane_data", "lane1");
+    CHECK(db.value("material", "") == "PETG");
+    CHECK(db.value("color", "") == "#0055FF");
+    CHECK_FALSE(Ad5xIfsTestAccess::lane_reread_owed(backend));
+    helix::ui::UpdateQueue::instance().drain();
+}
+
 TEST_CASE("AD5X IFS boot reads the binding an outside tool left in lane_data",
           "[ams][ad5x][ad5x_ifs][lane_data][1632]") {
     Ad5xIfsTmpCacheDir tmp("outside_binding_at_boot");

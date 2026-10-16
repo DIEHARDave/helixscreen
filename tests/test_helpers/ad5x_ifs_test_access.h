@@ -361,6 +361,9 @@ class Ad5xIfsTestAccess {
     static bool lane_reread_pending(const AmsBackendAd5xIfs& b) {
         return b.lane_reread_pending_.load();
     }
+    static bool lane_reread_owed(const AmsBackendAd5xIfs& b) {
+        return b.lane_reread_owed_.load();
+    }
     // Read the override currently staged for a slot (empty optional if none).
     // Lets tests assert what set_slot_info(persist=true) wrote into the
     // in-memory map without going through get_slot_info (which also layers

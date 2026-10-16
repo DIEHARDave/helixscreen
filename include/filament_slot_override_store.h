@@ -164,9 +164,11 @@ class FilamentSlotOverrideStore {
     /// several writers share can ask for one at any time.
     ///
     /// @p cb is never called on failure: a re-read that could not reach the
-    /// database must leave what a lane already knows standing. @p cb runs on
-    /// the API's callback thread; marshal from there.
-    void reload_async(ReloadCallback cb);
+    /// database must leave what a lane already knows standing. @p on_failure,
+    /// when given, is called instead, for a caller holding work until the read
+    /// lands. Exactly one of the two runs, on the API's callback thread;
+    /// marshal from there.
+    void reload_async(ReloadCallback cb, std::function<void()> on_failure = nullptr);
 
     using SaveCallback = std::function<void(bool success, std::string error)>;
     void save_async(int slot_index, const FilamentSlotOverride& override, SaveCallback cb);

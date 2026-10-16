@@ -472,7 +472,7 @@ void AmsBackendAd5xIfs::adopt_loaded_override_store(helix::ams::LoadedOverrideSt
 
 void AmsBackendAd5xIfs::publish_override_locked(int slot_index, const char* reason) {
     if (lane_reread_owed_.load()) {
-        lane_saves_held_.insert(slot_index);
+        lane_saves_held_[slot_index] = reason;
         return;
     }
     auto it = overrides_.find(slot_index);
@@ -503,13 +503,23 @@ void AmsBackendAd5xIfs::reread_lane_records() {
         std::lock_guard<std::mutex> lock(mutex_);
         store = override_store_.get();
     }
-    if (!store)
+    if (!store) {
+        release_held_lane_saves({});
         return;
+    }
     auto token = lifetime_.token();
-    store->reload_async([this, token](std::unordered_map<int, helix::ams::LaneDataRecord> records) {
-        token.defer("Ad5xIfsBackend::apply_lane_records",
-                    [this, records = std::move(records)]() { apply_reread_lane_records(records); });
-    });
+    // A read that never lands took no slot, so what it held publishes as if
+    // the tool had written nothing: a held save outlives no failed read.
+    store->reload_async(
+        [this, token](std::unordered_map<int, helix::ams::LaneDataRecord> records) {
+            token.defer(
+                "Ad5xIfsBackend::apply_lane_records",
+                [this, records = std::move(records)]() { apply_reread_lane_records(records); });
+        },
+        [this, token]() {
+            token.defer("Ad5xIfsBackend::lane_reread_failed",
+                        [this]() { release_held_lane_saves({}); });
+        });
 }
 
 void AmsBackendAd5xIfs::apply_reread_lane_records(
@@ -554,17 +564,21 @@ void AmsBackendAd5xIfs::apply_reread_lane_records(
         emit_event(EVENT_SLOT_CHANGED, std::to_string(slot));
     }
 
+    release_held_lane_saves(taken);
+}
+
+void AmsBackendAd5xIfs::release_held_lane_saves(const std::unordered_set<int>& taken) {
     // What a firmware change held back publishes now, unless the tool's record
     // took the slot: that record is already what lane_data says.
     if (lane_reread_pending_.load())
         return; // a newer read is coming, and it publishes
     std::lock_guard<std::mutex> lock(mutex_);
     lane_reread_owed_.store(false);
-    std::unordered_set<int> held;
+    std::unordered_map<int, std::string> held;
     held.swap(lane_saves_held_);
-    for (int slot : held) {
+    for (const auto& [slot, reason] : held) {
         if (taken.count(slot) == 0) {
-            publish_override_locked(slot, "auto-mirror");
+            publish_override_locked(slot, reason.c_str());
         }
     }
 }

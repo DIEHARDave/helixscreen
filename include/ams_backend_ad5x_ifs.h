@@ -943,6 +943,10 @@ class AmsBackendAd5xIfs : public AmsSubscriptionBackend {
     // slot's override onto it. Main thread.
     void
     apply_reread_lane_records(const std::unordered_map<int, helix::ams::LaneDataRecord>& records);
+    // Publish the saves the owed re-read held, except for a slot in @p taken,
+    // which took the tool's record. Runs when the read lands and when it
+    // fails. Main thread; takes mutex_.
+    void release_held_lane_saves(const std::unordered_set<int>& taken);
     // True when `content` differs from the last observed Adventurer5M.json
     // body. Updates last_json_content_ on change. Single source of truth for
     // the "did the JSON change?" decision used by both the initial read and
@@ -1480,8 +1484,9 @@ class AmsBackendAd5xIfs : public AmsSubscriptionBackend {
     // A re-read is scheduled and has not yet run, so lane_data may hold a
     // newer record than anything we would publish over it.
     std::atomic<bool> lane_reread_owed_{false};
-    // Slots whose save waits on that re-read. Under mutex_.
-    std::unordered_set<int> lane_saves_held_;
+    // Slots whose save waits on that re-read, with the reason each save was
+    // made for the log when it publishes. Under mutex_.
+    std::unordered_map<int, std::string> lane_saves_held_;
     // Each slot's lane_data document as last read, so a re-read files only a
     // record that changed since: an unchanged document says nothing new, and
     // an outside record carries no stamp to order it by. Under mutex_.
