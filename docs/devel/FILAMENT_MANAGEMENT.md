@@ -1879,10 +1879,13 @@ Two consequences worth naming, because they look like bugs and are not:
   heat sequence (the backend claims `supports_auto_heat_on_load`, so `preheat_skip_reason()`
   skips) and the backend sets `SELECTING` at dispatch, resolving on the macro ack (#1183);
   an optimistic `HEATING` stepper would fight it. Only the *decision* is shared.
-- **A preheat outlives the surface that asked.** The tile's dialog closes on the tap and the
-  AMS panel can close mid-heat; `FilamentOpHeater` runs the op once the nozzle is hot either
-  way. The same request again (op, slot and owning surface) while it waits cancels it (the
-  heater goes back off if it was off); any other request replaces it. A surface whose user
+- **A preheat outlives the surface that asked.** A dialog can be dismissed and the AMS panel
+  closed mid-heat; `FilamentOpHeater` runs the op once the nozzle is hot either way. The same
+  request again (op, slot and owning surface) while it waits cancels it (the heater goes back
+  off if it was off); a different op from the same surface is refused with a toast, since the
+  runout dialog stays open after Load offering Purge; a request from another surface replaces
+  it. A reload asked for during a pause is dropped when the pause ends (Resume sits on the
+  same open dialog), so it never runs into the resumed print. A surface whose user
   waits on the op's end sets `FilamentOpSurface::on_preheat_ended` (bed drying does), which
   also fires when its own request is not run. The cooldown afterwards turns off the
   extruder that was heated, which need not be the active one.

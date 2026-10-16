@@ -6,9 +6,12 @@
  * @brief The nozzle heat around a filament operation: heat before it, cool after it.
  *
  * Every Load / Unload / Purge / Extrude / Retract needs a hotend above Klipper's
- * min_extrude_temp, and the surface that asked for one is often gone before the
- * nozzle gets there: the home tile's dialog closes the moment Load is pressed.
- * So the wait belongs to an app-lifetime service, not to a panel.
+ * min_extrude_temp, and the surface that asked for one can be closed or torn
+ * down before the nozzle gets there: a dialog can be dismissed, a panel left.
+ * So the wait belongs to an app-lifetime service, not to a panel. A dialog
+ * that stays open (the runout guidance dialog offers Purge after Load, and
+ * Resume beside both) is why a surface gets one op at a time and why a pause
+ * ending drops a reload asked for during it.
  *
  * Three layers:
  *   - decide_preheat(): the pure rule. Hot enough, or heat to what and wait for what.
@@ -105,7 +108,8 @@ enum class PreheatPhase {
     Heating,   ///< Target sent, waiting. Repeats as the temperature moves.
     Reached,   ///< Hot; the op runs immediately after this report
     Cancelled, ///< Withdrawn: the user re-tapped, or another op replaced it
-    Abandoned, ///< It cannot complete: target taken away, timed out, or a job started
+    Abandoned, ///< It cannot complete: target taken away, timed out, a job started,
+               ///< or the pause it was asked in ended
 };
 
 struct PreheatProgress {
@@ -165,15 +169,19 @@ struct PreheatRequest {
  * Main thread only. One preheat at a time, because there is one nozzle:
  *   - the SAME request again (op, slot and owner) while it waits is the user
  *     changing their mind, so it cancels the pending one and runs nothing;
- *   - any other request replaces it: the pending one is reported Cancelled to
- *     its surface and the new one proceeds.
+ *   - a different op from the same owner is refused with a toast and the
+ *     pending one carries on: a dialog that stays open offers its next step
+ *     (Purge after Load) while the first still heats;
+ *   - a request from another owner replaces it: the pending one is reported
+ *     Cancelled to its surface and the new one proceeds.
  *
  * A preheat ends without running its op when the target it sent never lands,
  * when that target is taken away, when it runs past PREHEAT_TIMEOUT, when the
- * extruder it heats goes away, or, for a request made while no job held the
- * machine, when a job takes it. Heat it commanded for a preheat that ends unrun
- * is put back the way it found it, except when a print took the machine, which
- * then owns the heater.
+ * extruder it heats goes away, for a request made while no job held the
+ * machine when a job takes it, and for a request made during a pause when the
+ * pause ends. Heat it commanded for a preheat that ends unrun is put back the
+ * way it found it, except while a print holds the machine, which then owns the
+ * heater.
  */
 class FilamentOpHeater {
   public:
@@ -196,8 +204,9 @@ class FilamentOpHeater {
     enum class Outcome {
         Ran,       ///< No heat needed (or skipped); run() has returned
         Heating,   ///< run() waits for the nozzle
-        Cancelled, ///< Not run: a re-tap withdrew the pending request, or this one
-                   ///< could not take the heater. run() never runs.
+        Cancelled, ///< Not run: a re-tap withdrew the pending request, this
+                   ///< surface's other op is still heating, or this one could not
+                   ///< take the heater. run() never runs.
     };
 
     /// Run @p req.run now, or heat first and run it once hot.
@@ -247,6 +256,7 @@ class FilamentOpHeater {
         int prior_target_c = 0; ///< That extruder's target before we sent ours
         bool target_seen = false;
         bool job_free_at_request = true;
+        bool paused_at_request = false; ///< Asked for while the print was paused
         TimePoint started{};
     };
 
@@ -279,6 +289,10 @@ class FilamentOpHeater {
     void on_temperature();
     void on_target(int target_deci);
     void on_lifecycle();
+    /// Whether the print lifecycle moved out from under the pending request: a
+    /// print started after an idle request, or the pause a request was made in
+    /// ended (resumed, cancelled, finished).
+    [[nodiscard]] bool lifecycle_lost() const;
     void on_ams_action(int action);
     void check_deadlines();
     /// Take the pending preheat out, stop watching the nozzle, then report @p phase

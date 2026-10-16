@@ -571,7 +571,8 @@ TEST_CASE_METHOD(HeaterFixture, "A replacement that runs on the replaced heat ke
     REQUIRE(heater->get().pending());
     client.clear_gcode_script_history();
 
-    FilamentSensorWidgetTestAccess::dispatch_purge(tile);
+    helix::ui::FilamentRunoutHandler handler(api.get()); // another surface
+    helix::ui::FilamentRunoutHandlerTestAccess::dispatch_purge(handler);
     drain_all();
     REQUIRE_FALSE(heater->get().pending());
     REQUIRE(count_starting("PURGE") == 1);
@@ -775,7 +776,7 @@ TEST_CASE_METHOD(HeaterFixture, "Never runs below the extrusion floor",
     CHECK(sent("LOAD_FILAMENT"));
 }
 
-TEST_CASE_METHOD(HeaterFixture, "A different op replaces a pending preheat rather than cancel it",
+TEST_CASE_METHOD(HeaterFixture, "Another surface's different op replaces a pending preheat",
                  "[filament][preheat][heater][cancel]") {
     feed_nozzle(25, 0);
     FilamentSensorWidgetTestAccess::dispatch_load(tile);
@@ -783,7 +784,8 @@ TEST_CASE_METHOD(HeaterFixture, "A different op replaces a pending preheat rathe
     REQUIRE(heater->get().pending());
     client.clear_gcode_script_history();
 
-    FilamentSensorWidgetTestAccess::dispatch_unload(tile);
+    helix::ui::FilamentRunoutHandler handler(api.get());
+    helix::ui::FilamentRunoutHandlerTestAccess::dispatch_unload(handler);
     drain_all();
     REQUIRE(heater->get().pending());
     CHECK_FALSE(sent(std::string(HEAT_GCODE) + "0"));
@@ -1083,6 +1085,7 @@ TEST_CASE_METHOD(HeaterFixture, "A request that cannot take the heater is told s
     int third_ran = 0;
     helix::ui::PreheatRequest first;
     first.op = helix::ui::FilamentHeatOp::Load;
+    first.owner = "first";
     first.run = [](helix::ui::FilamentOpTicket) {};
     first.on_progress = [this, &third_ran](const helix::ui::PreheatProgress& p) {
         if (p.phase != helix::ui::PreheatPhase::Cancelled) {
@@ -1099,6 +1102,7 @@ TEST_CASE_METHOD(HeaterFixture, "A request that cannot take the heater is told s
     bool second_ran = false;
     helix::ui::PreheatRequest second;
     second.op = helix::ui::FilamentHeatOp::Unload;
+    second.owner = "second";
     second.run = [&second_ran](helix::ui::FilamentOpTicket) { second_ran = true; };
     CHECK(heater->get().run_after_preheat(std::move(second)) ==
           FilamentOpHeater::Outcome::Cancelled);
@@ -1126,7 +1130,8 @@ TEST_CASE_METHOD(HeaterFixture, "A replace that skips its preheat takes the heat
     // The replacing op skips its preheat on the same nozzle: the load's heat is
     // its to cool down after, not to take away while it runs.
     helix::SafetySettingsManager::instance().set_allow_cold_extrude(true);
-    FilamentSensorWidgetTestAccess::dispatch_unload(tile);
+    helix::ui::FilamentRunoutHandler handler(api.get()); // another surface
+    helix::ui::FilamentRunoutHandlerTestAccess::dispatch_unload(handler);
     drain_all();
 
     CHECK_FALSE(heater->get().pending());
@@ -1384,4 +1389,103 @@ TEST_CASE_METHOD(HeaterFixture, "A CFS bypass unload on a cold nozzle preheats f
     CHECK(heater->get().pending());
     CHECK(sent(HEAT_GCODE));
     CHECK(cfs->dispatched.empty());
+}
+
+// ============================================================================
+// One surface, one op at a time
+// ============================================================================
+
+TEST_CASE_METHOD(HeaterFixture, "A second op from the same dialog waits its turn: it is refused",
+                 "[filament][preheat][heater][cancel][runout]") {
+    // The runout dialog stays open after Load so the user can purge next. A
+    // Purge tapped while the Load heats must not drop the Load.
+    set_print_state("paused");
+    feed_nozzle(25, 0);
+    helix::ui::FilamentRunoutHandler handler(api.get());
+    helix::ui::FilamentRunoutHandlerTestAccess::dispatch_load(handler);
+    drain_all();
+    REQUIRE(heater->get().pending());
+
+    helix::ui::FilamentRunoutHandlerTestAccess::dispatch_purge(handler);
+    drain_all();
+    REQUIRE(heater->get().pending()); // the load still waits
+
+    feed_nozzle(220, 220);
+    CHECK(count_starting("LOAD_FILAMENT") == 1);
+    CHECK_FALSE(sent("PURGE"));
+}
+
+TEST_CASE_METHOD(HeaterFixture, "A refused request hears that it was not run",
+                 "[filament][preheat][heater][cancel]") {
+    feed_nozzle(25, 0);
+    int ended = 0;
+    helix::ui::FilamentOpSurface surface;
+    surface.log_tag = "[Test]";
+    surface.on_preheat_ended = [&ended]() { ++ended; };
+    helix::ui::execute_filament_load(nullptr, -1, surface);
+    drain_all();
+    REQUIRE(heater->get().pending());
+
+    helix::ui::execute_filament_unload(nullptr, -1, true, surface);
+    drain_all();
+    CHECK(heater->get().pending());
+    CHECK(ended == 1); // the unload; the load is still coming
+
+    feed_nozzle(220, 220);
+    CHECK(count_starting("LOAD_FILAMENT") == 1);
+    CHECK(count_starting("UNLOAD_FILAMENT") == 0);
+}
+
+// ============================================================================
+// A paused print resuming under a pending preheat
+// ============================================================================
+
+TEST_CASE_METHOD(HeaterFixture,
+                 "A reload requested during a pause is abandoned when the print resumes",
+                 "[filament][preheat][heater][print_guard][runout]") {
+    // The dialog stays open after Load, with Resume beside it. A load queued
+    // into a resumed print would run mid-print.
+    set_print_state("paused");
+    feed_nozzle(25, 0);
+    helix::ui::FilamentRunoutHandler handler(api.get());
+
+    SECTION("load") {
+        helix::ui::FilamentRunoutHandlerTestAccess::dispatch_load(handler);
+    }
+    SECTION("unload") {
+        helix::ui::FilamentRunoutHandlerTestAccess::dispatch_unload(handler);
+    }
+    SECTION("purge") {
+        helix::ui::FilamentRunoutHandlerTestAccess::dispatch_purge(handler);
+    }
+    drain_all();
+    REQUIRE(heater->get().pending());
+
+    set_print_state("printing");
+    CHECK_FALSE(heater->get().pending());
+
+    feed_nozzle(220, 220);
+    CHECK(count_starting("LOAD_FILAMENT") == 0);
+    CHECK(count_starting("UNLOAD_FILAMENT") == 0);
+    CHECK_FALSE(sent("PURGE"));
+}
+
+TEST_CASE_METHOD(HeaterFixture,
+                 "A reload requested during a pause is abandoned when the print ends",
+                 "[filament][preheat][heater][print_guard][runout]") {
+    set_print_state("paused");
+    feed_nozzle(25, 0);
+    helix::ui::FilamentRunoutHandler handler(api.get());
+    helix::ui::FilamentRunoutHandlerTestAccess::dispatch_load(handler);
+    drain_all();
+    REQUIRE(heater->get().pending());
+    client.clear_gcode_script_history();
+
+    set_print_state("cancelled");
+    CHECK_FALSE(heater->get().pending());
+    // The print no longer owns the heater, and it was off before the request.
+    CHECK(sent(std::string(HEAT_GCODE) + "0"));
+
+    feed_nozzle(220, 220);
+    CHECK(count_starting("LOAD_FILAMENT") == 0);
 }

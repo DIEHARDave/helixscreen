@@ -229,6 +229,15 @@ FilamentOpHeater::Outcome FilamentOpHeater::run_after_preheat(PreheatRequest req
             cancel();
             return Outcome::Cancelled;
         }
+        if (waiting.owner == req.owner && waiting.op != req.op) {
+            // One surface, one op at a time: a dialog that stays open after Load
+            // offers Purge next, and a Purge tapped while the Load heats must
+            // not drop the Load the user is waiting on.
+            spdlog::info("{} {} refused — this surface's {} is still heating", req.log_tag,
+                         filament_heat_op_name(req.op), filament_heat_op_name(waiting.op));
+            NOTIFY_WARNING(lv_tr("Wait for the current filament operation to finish"));
+            return Outcome::Cancelled;
+        }
         spdlog::info("{} {} replaces the pending {} preheat", req.log_tag,
                      filament_heat_op_name(req.op), filament_heat_op_name(waiting.op));
         // Whoever takes the heater next (this request, or one the replaced
@@ -314,6 +323,7 @@ FilamentOpHeater::Outcome FilamentOpHeater::run_after_preheat(PreheatRequest req
     // target read just now is heat this heater sent.
     p.prior_target_c = inherited ? *inherited : in.target_c;
     p.job_free_at_request = !job_holds;
+    p.paused_at_request = state_.print_state().get_print_lifecycle() == PrintState::Paused;
     p.started = now();
     p.req = std::move(req);
     start_heating(std::move(p), decision.send_c,
@@ -451,9 +461,7 @@ void FilamentOpHeater::on_temperature() {
         report_heating();
         return;
     }
-    // A job that took the machine while we heated owns the nozzle now.
-    if (pending_->job_free_at_request &&
-        job_holds_machine(state_.print_state().get_print_lifecycle())) {
+    if (lifecycle_lost()) {
         on_lifecycle();
         return;
     }
@@ -487,15 +495,29 @@ void FilamentOpHeater::on_target(int target_deci) {
     }
 }
 
+bool FilamentOpHeater::lifecycle_lost() const {
+    if (!pending_) {
+        return false;
+    }
+    const PrintState now = state_.print_state().get_print_lifecycle();
+    if (pending_->job_free_at_request) {
+        return job_holds_machine(now); // a print started
+    }
+    // Asked for during a pause (a runout reload): the op belongs to that pause,
+    // and once the print resumes or ends it would run into whatever comes next.
+    return pending_->paused_at_request && now != PrintState::Paused;
+}
+
 void FilamentOpHeater::on_lifecycle() {
-    if (!pending_ || !pending_->job_free_at_request) {
+    if (!lifecycle_lost()) {
         return;
     }
-    if (job_holds_machine(state_.print_state().get_print_lifecycle())) {
-        // The print owns the heater now.
-        abandon("A print took the machine during the preheat", lv_tr("Preheat cancelled"),
-                /*restore=*/false);
-    }
+    // A print that holds the machine owns the heater now; one that has ended
+    // leaves it to the restore rule.
+    const bool restore = !job_holds_machine(state_.print_state().get_print_lifecycle());
+    abandon(pending_->job_free_at_request ? "A print took the machine during the preheat"
+                                          : "The pause ended during the preheat",
+            lv_tr("Preheat cancelled"), restore);
 }
 
 void FilamentOpHeater::check_deadlines() {
