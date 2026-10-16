@@ -46,6 +46,17 @@ so the first lookup never parses the asset on a WebSocket background thread. See
 [`FILAMENT_MANAGEMENT.md`](FILAMENT_MANAGEMENT.md) § "Two-string identity" for
 the full resolution order and the OrcaSlicer fallback mechanism.
 
+**What OrcaSlicer reads.** Orca's `MoonrakerPrinterAgent` (2.3.2 through
+2.5.0-alpha) reads five fields per record: `lane` (a string, 0-based tool
+index), `color`, `material`, `bed_temp` and `nozzle_temp`, and picks the first
+visible preset whose `filament_type` equals `material`. Every other field is
+HelixScreen's or AFC's own. The library-type table is regenerated with
+`make regen-filaments ORCA_TAG=<tag>`, and a newer tag can add types the older
+Orca releases in the field lack (2.5 adds `PLA Silk`, `PETG HF`, `PA6`,
+`PE-CF`, `TPU-AMS`). Mapping a precise type onto one of those makes it match on
+the new release and stop matching on the old ones, so `orca_type_overrides`
+targets only types every supported Orca release carries.
+
 ---
 
 ## 2. Architecture
