@@ -112,9 +112,11 @@ simulate_web_update() {
 }
 
 @test "main.sh relocates ledgers after the steps that write them" {
-    local seed_line reloc_line
-    seed_line="$(grep -n 'seed_update_channel$' "$WORKTREE_ROOT/scripts/lib/installer/main.sh" | tail -1 | cut -d: -f1)"
-    reloc_line="$(grep -n 'setup_config_symlink quiet' "$WORKTREE_ROOT/scripts/lib/installer/main.sh" | cut -d: -f1)"
+    # The kiosk flow's apply_install, the one with a printer_data relocation.
+    local body seed_line reloc_line
+    body="$(awk '/^apply_install\(\) *\{/{on=1} on{print NR": "$0} on && /^\}/{exit}' "$WORKTREE_ROOT/scripts/lib/installer/main.sh")"
+    seed_line="$(printf '%s\n' "$body" | grep 'seed_update_channel$' | tail -1 | cut -d: -f1)"
+    reloc_line="$(printf '%s\n' "$body" | grep 'setup_config_symlink quiet' | cut -d: -f1)"
     [ -n "$seed_line" ] && [ -n "$reloc_line" ]
     [ "$reloc_line" -gt "$seed_line" ]
 }

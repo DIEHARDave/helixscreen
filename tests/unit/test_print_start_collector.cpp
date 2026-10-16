@@ -513,10 +513,12 @@ TEST_CASE("PrintStart: typical noise lines should not match phases", "[print][ne
 #include "ui_update_queue.h"
 
 #include "../lvgl_test_fixture.h"
+#include "../test_helpers/archive_transfers.h"
 #include "../test_helpers/preprint_config_scope.h"
 #include "../test_helpers/print_start_collector_test_access.h"
 #include "../test_helpers/print_start_profile_test_access.h"
 #include "../test_helpers/update_queue_test_access.h"
+#include "app_globals.h"
 #include "moonraker_client_mock.h"
 #include "print_start_collector.h"
 #include "print_start_profile.h"
@@ -4161,8 +4163,8 @@ TEST_CASE_METHOD(SnapmakerHeaterWaitFixture,
 
     SECTION("the line names the chamber heater") {
         PrintStartCollectorTestAccess::answer_chamber_wait_line(
-            collector(),
-            {helix::ChamberWaitKind::TemperatureWait, 35, "heater_generic dragonbreath"});
+            collector(), helix::classify_wait_line(
+                             "TEMPERATURE_WAIT SENSOR=\"heater_generic dragonbreath\" MINIMUM=35"));
         report_for(2);
         CHECK(get_current_phase() == PrintStartPhase::SOAKING);
         CHECK(get_current_message() == "Waiting for chamber 28°C");
@@ -4172,8 +4174,8 @@ TEST_CASE_METHOD(SnapmakerHeaterWaitFixture,
     SECTION("a passive soak on a separate chamber sensor is not a heater stall") {
         state().temperature_state().set_chamber_sensor_name("temperature_sensor chamber");
         PrintStartCollectorTestAccess::answer_chamber_wait_line(
-            collector(),
-            {helix::ChamberWaitKind::TemperatureWait, 40, "temperature_sensor chamber"});
+            collector(), helix::classify_wait_line(
+                             "TEMPERATURE_WAIT SENSOR=\"temperature_sensor chamber\" MINIMUM=40"));
         report_for(2);
         CHECK(get_current_phase() == PrintStartPhase::BED_MESH);
         CHECK(chamber_wait_flag() == 0);
@@ -4182,11 +4184,47 @@ TEST_CASE_METHOD(SnapmakerHeaterWaitFixture,
     SECTION("a probe coil's wait is not the chamber's") {
         PrintStartCollectorTestAccess::answer_chamber_wait_line(
             collector(),
-            {helix::ChamberWaitKind::TemperatureWait, 40, "temperature_probe beacon_coil"});
+            helix::classify_wait_line(
+                "TEMPERATURE_WAIT SENSOR=\"temperature_probe beacon_coil\" MINIMUM=40"));
         report_for(2);
         CHECK(get_current_phase() == PrintStartPhase::BED_MESH);
         CHECK(chamber_wait_flag() == 0);
     }
+}
+
+// The read goes through the real query and ranged download. Klipper reports
+// file_position at the START of a line until its command returns, so the
+// waiting line is the one that starts there, not the one that ends there.
+TEST_CASE_METHOD(SnapmakerHeaterWaitFixture,
+                 "the chamber wait line is read at the print position, not before it",
+                 "[print][collector][heater_wait][chamber_wait][wait_line]") {
+    const std::string file = "G28\nM106 S0\n"
+                             "TEMPERATURE_WAIT SENSOR=\"heater_generic dragonbreath\" MINIMUM=35 "
+                             "; comment\nG90\n";
+    const size_t pos = file.find("TEMPERATURE_WAIT");
+    ArchiveTransfers transfers{client(), ""};
+    transfers.put("u1_print.gcode", file);
+    ArchiveMoonrakerAPIMock api{client(), state(), transfers};
+    IMoonrakerAPI* const previous_api = get_moonraker_api();
+    set_moonraker_api(&api);
+    struct RestoreApi {
+        IMoonrakerAPI* api;
+        ~RestoreApi() {
+            set_moonraker_api(api);
+        }
+    } restore{previous_api};
+    lv_subject_copy_string(state().print_state().get_print_filename_subject(), "u1_print.gcode");
+    client().set_object_status("virtual_sdcard", {{"file_position", pos}});
+
+    use_appliance_chamber();
+    set_chamber(280, 0);
+    set_all_temps(/*bed*/ 1000, 1000, /*ext*/ 2100, 2100);
+    report_for(6);
+    REQUIRE(PrintStartCollectorTestAccess::chamber_wait_line_requested(collector()));
+    REQUIRE(transfers.ranges == 1);
+    report_for(2);
+    CHECK(get_current_phase() == PrintStartPhase::SOAKING);
+    CHECK(chamber_wait_flag() == 1);
 }
 
 TEST_CASE_METHOD(SnapmakerHeaterWaitFixture,

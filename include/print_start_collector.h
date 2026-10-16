@@ -504,7 +504,7 @@ class PrintStartCollector : public std::enable_shared_from_this<PrintStartCollec
     /// Read the command at the print position for wait @p gen. Main thread.
     void request_chamber_wait_line(uint64_t gen);
     /// Store a read's answer if it is for the current wait. Any thread.
-    void apply_chamber_wait_line(uint64_t gen, const helix::ChamberWaitLine& line);
+    void apply_chamber_wait_line(uint64_t gen, const helix::WaitLine& line);
     /// Drop the current wait's line. Caller holds state_mutex_.
     void forget_chamber_wait_line_locked();
 
@@ -767,7 +767,7 @@ class PrintStartCollector : public std::enable_shared_from_this<PrintStartCollec
 
     /// The command an unheated chamber-heater wait is running, read once per
     /// wait from the file at the print position. Guarded by state_mutex_.
-    helix::ChamberWaitLine chamber_line_;
+    helix::WaitLine chamber_line_;
     bool chamber_line_requested_ = false;
     uint64_t chamber_line_gen_ = 0;
 

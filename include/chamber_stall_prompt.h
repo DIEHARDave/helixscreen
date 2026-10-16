@@ -59,7 +59,7 @@ class ChamberStallArbiter {
 /// An unknown command (a macro holding the wait, an unreadable file) takes
 /// the M191 path: the target cleared in case it is one, then the cancel.
 enum class ChamberCancelPath { ClearTargetThenCancel, EmergencyStop };
-ChamberCancelPath chamber_cancel_path(ChamberWaitKind kind);
+ChamberCancelPath chamber_cancel_path(WaitKind kind);
 
 namespace ui {
 
@@ -86,7 +86,7 @@ class ChamberStallPrompt {
 
     /// End the print the way @p kind's wait allows (chamber_cancel_path). The
     /// emergency-stop path asks for confirmation and acts only on it.
-    static void cancel_print(ChamberWaitKind kind);
+    static void cancel_print(WaitKind kind);
 
     /// The emergency-stop confirmation cancel_print() raised is open.
     static bool emergency_stop_confirm_open();
@@ -103,10 +103,10 @@ class ChamberStallPrompt {
     void probe_wait_line();
     /// The device's own report of its wait (M191) when it gives one, else
     /// what the line at the print position said.
-    ChamberWaitLine current_wait() const;
+    WaitLine current_wait() const;
     void on_try_again();
     void on_cancel();
-    void on_wait_line(uint32_t gen, std::optional<ChamberWaitLine> line);
+    void on_wait_line(uint32_t gen, std::optional<WaitLine> line);
     void reset_wait_line();
     void run_pending_cancel();
     friend class ChamberStallModalAccess;
@@ -124,7 +124,7 @@ class ChamberStallPrompt {
     ChamberStallArbiter arbiter_;
     AsyncLifetimeGuard lifetime_;
 
-    ChamberWaitLine wait_line_;
+    WaitLine wait_line_;
     bool wait_line_probed_ = false;
     bool wait_line_pending_ = false; ///< the read is in flight
     uint32_t wait_line_gen_ = 0;     ///< bumps per read, so a stale answer is dropped
