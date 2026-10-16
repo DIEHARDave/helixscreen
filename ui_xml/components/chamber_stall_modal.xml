@@ -2,9 +2,11 @@
 <!-- Copyright (C) 2025-2026 356C LLC -->
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <!-- A print is held by a wait on the chamber, and the chamber heater is not
-     heating. The message (wait target, the heater's reason) is composed in
-     ChamberStallPrompt and bound here; Try again hides when there is nothing
-     to resend or no route around the blocked gcode queue. -->
+     heating. The message (wait target, the heater's reason, the last Try
+     Again's outcome) and the cancel hint for the waiting command are composed
+     in ChamberStallPrompt and bound here. Try Again hides when there is
+     nothing to resend or no route around the blocked gcode queue, and is
+     disabled while a retry is in flight. -->
 <!-- NOTE: Backdrop is created programmatically by the Modal class in C++. -->
 <!-- Buttons are wired programmatically in ChamberStallModal::on_show(). -->
 <component>
@@ -17,9 +19,7 @@
             height="content" style_pad_left="#space_lg" style_pad_right="#space_lg" style_pad_top="#space_sm"
             style_pad_bottom="#space_lg" flex_flow="column" style_pad_gap="#space_sm">
       <text_body name="chamber_stall_text" width="100%" long_mode="wrap" bind_text="chamber_stall_message"/>
-      <text_muted name="chamber_stall_cancel_hint"
-                  width="100%" long_mode="wrap"
-                  text="The printer is busy waiting, so cancelling may take an emergency stop and a firmware restart."/>
+      <text_muted name="chamber_stall_cancel_hint" width="100%" long_mode="wrap" bind_text="chamber_stall_cancel_hint"/>
     </lv_obj>
 
     <!-- Left to right: Cancel print (btn_quaternary), Keep waiting (btn_secondary,
@@ -29,6 +29,6 @@
     <modal_button_row hide_quaternary="false"
                       quaternary_name="btn_quaternary" quaternary_variant="danger" quaternary_text="Cancel print"
                       secondary_text="Keep waiting" primary_text="Try Again"
-                      primary_hide_subject="chamber_stall_no_retry"/>
+                      primary_hide_subject="chamber_stall_no_retry" primary_disable_subject="chamber_stall_busy"/>
   </view>
 </component>

@@ -1,5 +1,5 @@
 {
- "description": "Snapmaker U1 + DragonBreath chamber heater: the start gcode's M141 S60 refused with a revision conflict (module zeroed the target), then the slicer's TEMPERATURE_WAIT on the chamber holds the job. The mock's heaters warm to the bed/nozzle targets on their own while the wait reports run; the chamber stays at target 0, so the pre-print shows the chamber wait and the chamber prompt opens. Pair with HELIX_MOCK_PRINTER=snapmaker_u1 and the dragonbreath HELIX_MOCK_OBJECTS trio.",
+ "description": "Snapmaker U1 + DragonBreath chamber heater: the start gcode's M141 S60 refused after its conflict retries ran out (module zeroed the target), then the slicer's TEMPERATURE_WAIT on the chamber holds the job. The mock's heaters warm to the bed/nozzle targets on their own while the wait reports run; the chamber stays at target 0, so the pre-print shows the chamber wait and the chamber prompt opens. Pair with HELIX_MOCK_PRINTER=snapmaker_u1 and the dragonbreath HELIX_MOCK_OBJECTS trio.",
  "events": [
   {
    "t": 0,
@@ -54,9 +54,11 @@
    "object": "dragonbreath",
    "payload": {
     "protocol_error": "revision_conflict",
-    "protocol_error_code": "revision_conflict",
+    "protocol_error_code": "conflict_retries_exhausted",
+    "protocol_error_message": "revision conflict after 3 retries",
     "protocol_error_seq": 1,
-    "protocol_error_target": 60.0
+    "protocol_error_target": 60.0,
+    "event_stream_live": true
    }
   },
   {

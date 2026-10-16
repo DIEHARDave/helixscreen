@@ -15,6 +15,8 @@
 #include <string>
 #include <vector>
 
+#include "hv/json.hpp"
+
 namespace helix {
 class PrinterState;
 struct DryerInfo;
@@ -59,6 +61,28 @@ struct SendOptions {
     std::function<void()> on_success = nullptr;
     std::function<void(const MoonrakerError&)> on_error = nullptr;
 };
+
+/// What a chamber backend's set-target route answered. Superseded: a newer
+/// target replaced this one, which then governs. Pending: the device has not
+/// answered yet and the route is still trying. Unavailable: no route, or the
+/// request never reached it.
+enum class ChamberRouteOutcome {
+    Accepted,
+    Pending,
+    Superseded,
+    Refused,
+    PrinterShutdown,
+    Unavailable
+};
+
+struct ChamberRouteReply {
+    ChamberRouteOutcome outcome = ChamberRouteOutcome::Unavailable;
+    std::string reason; ///< the route's reason code, or the transport error
+};
+
+/// Read the route's reply, {"accepted": true|false|null, "pending": bool,
+/// "reason": str|null, ...}, with or without the JSON-RPC "result" wrapper.
+ChamberRouteReply parse_chamber_route_reply(const nlohmann::json& resp);
 
 struct KeypadRange {
     float min = 0.0f;
@@ -141,7 +165,8 @@ class TemperatureController {
     /// Send a chamber target only by the route around the gcode queue. A gcode
     /// fallback would queue behind the wait it is meant to release, so with no
     /// route this fails through @p opts instead of sending anything.
-    void retry_chamber_target(double celsius, SendOptions opts = {});
+    void retry_chamber_target(double celsius,
+                              std::function<void(const ChamberRouteReply&)> done = nullptr);
 
     /// The last nonzero chamber target sent through this controller, °C; 0
     /// when none has been.
@@ -197,8 +222,11 @@ class TemperatureController {
     void send_gcode_target(const std::string& klipper_name, double celsius, SendOptions opts);
     /// @p gcode_fallback resends through gcode when the printer reports the
     /// route does not exist.
-    void send_chamber_target_direct(const std::string& klipper_name, double celsius,
-                                    SendOptions opts, bool gcode_fallback);
+    /// @p on_reply, when given, hears every outcome on the main thread.
+    void
+    send_chamber_target_direct(const std::string& klipper_name, double celsius, SendOptions opts,
+                               bool gcode_fallback,
+                               std::function<void(const ChamberRouteReply&)> on_reply = nullptr);
 
     struct HeaterModel {
         float keypad_min = 0.0f;

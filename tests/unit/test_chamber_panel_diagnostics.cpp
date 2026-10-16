@@ -428,7 +428,7 @@ TEST_CASE_METHOD(ChamberOverlayFixture,
         set_xml_int("chamber_heater_fault", 0);
         set_xml_int("chamber_heater_inhibited", 0);
         set_xml_int("chamber_heater_offline", 0);
-        set_xml_string("chamber_heater_rejection_text", "The heater refused the command.");
+        set_xml_string("chamber_heater_rejection_text", "The heater didn't accept the command.");
         set_xml_int("chamber_heater_command_rejected", 1);
         helix::ui::UpdateQueue::instance().drain();
 
@@ -436,7 +436,7 @@ TEST_CASE_METHOD(ChamberOverlayFixture,
         lv_obj_t* reason = lv_obj_find_by_name(overlay_, "rejection_reason_label");
         REQUIRE(reason != nullptr);
         CHECK_FALSE(hidden(reason));
-        CHECK(std::string(lv_label_get_text(reason)) == "The heater refused the command.");
+        CHECK(std::string(lv_label_get_text(reason)) == "The heater didn't accept the command.");
         CHECK_FALSE(hidden(lv_obj_find_by_name(overlay_, "retry_target_button")));
         CHECK(hidden(lv_obj_find_by_name(overlay_, "reset_fault_button")));
         CHECK(hidden(lv_obj_find_by_name(overlay_, "fault_reason_label")));

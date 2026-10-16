@@ -5,17 +5,22 @@
 #include "abort_manager.h"
 #include "app_globals.h"
 #include "chamber_stall_prompt.h"
+#include "i_moonraker_api.h"
 #include "lvgl/src/others/translation/lv_translation.h"
 #include "observer_factory.h"
 #include "printer_state.h"
 #include "static_subject_registry.h"
 #include "temperature_controller.h"
+#include "text_io.h"
 
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
 #include <cmath>
 #include <memory>
+
+#include "hv/json.hpp"
 
 namespace helix {
 
@@ -46,10 +51,73 @@ ChamberStallAction ChamberStallArbiter::decide(const ChamberStallInputs& in) {
     return ChamberStallAction::Prompt;
 }
 
+bool ChamberStallArbiter::should_close(const ChamberStallInputs& in) {
+    return !in.job_active || !in.chamber_wait || (!in.rejected && in.chamber_target_deci > 0);
+}
+
+namespace {
+
+/// The value of a KEY=VALUE word or a letter-prefixed word (S60) in an
+/// upper-cased gcode line; 0 when absent or unreadable.
+double gcode_param(const std::string& line, const std::string& key) {
+    size_t pos = 0;
+    while ((pos = line.find(key, pos)) != std::string::npos) {
+        const bool word_start = pos == 0 || line[pos - 1] == ' ' || line[pos - 1] == '\t';
+        if (word_start) {
+            const auto value = text_io::parse_leading<double>(line.substr(pos + key.size()));
+            return value ? *value : 0.0;
+        }
+        pos += key.size();
+    }
+    return 0.0;
+}
+
+} // namespace
+
+ChamberWaitLine classify_chamber_wait_line(std::string_view chunk) {
+    std::string text(chunk);
+    while (!text.empty() && (text.back() == '\n' || text.back() == '\r' || text.back() == ' ')) {
+        text.pop_back();
+    }
+    const size_t start = text.find_last_of('\n');
+    std::string line = start == std::string::npos ? text : text.substr(start + 1);
+    if (const size_t comment = line.find(';'); comment != std::string::npos) {
+        line.resize(comment);
+    }
+    line = text_io::to_upper(line);
+    const size_t first = line.find_first_not_of(" \t\r");
+    if (first == std::string::npos) {
+        return {};
+    }
+    line.erase(0, first);
+    if (line.rfind("M191", 0) == 0 && (line.size() == 4 || line[4] == ' ')) {
+        const double s = gcode_param(line, "S");
+        return {ChamberWaitKind::M191, s > 0 ? s : gcode_param(line, "R")};
+    }
+    if (line.rfind("TEMPERATURE_WAIT", 0) == 0) {
+        return {ChamberWaitKind::TemperatureWait, gcode_param(line, "MINIMUM=")};
+    }
+    return {};
+}
+
+ChamberCancelPath chamber_cancel_path(ChamberWaitKind kind) {
+    switch (kind) {
+    case ChamberWaitKind::M191:
+        return ChamberCancelPath::ClearTargetThenCancel;
+    case ChamberWaitKind::TemperatureWait:
+        return ChamberCancelPath::EmergencyStop;
+    case ChamberWaitKind::Unknown:
+        break;
+    }
+    return ChamberCancelPath::ClearTargetThenAbort;
+}
+
 namespace ui {
 namespace {
 
-/// The chamber prompt. Its two subjects are global so the nested
+ChamberStallPrompt* g_prompt = nullptr;
+
+/// The chamber prompt. Its subjects are global so the nested
 /// modal_button_row resolves them, and static so they outlive any one show.
 class ChamberStallModal : public Modal {
   public:
@@ -66,25 +134,40 @@ class ChamberStallModal : public Modal {
         }
         subjects_initialized_ = true;
         lv_subject_init_string(&message_subject_, message_buf_, nullptr, sizeof(message_buf_), "");
+        lv_subject_init_string(&hint_subject_, hint_buf_, nullptr, sizeof(hint_buf_), "");
         lv_subject_init_int(&no_retry_subject_, 0);
+        lv_subject_init_int(&busy_subject_, 0);
         lv_xml_register_subject(nullptr, "chamber_stall_message", &message_subject_);
+        lv_xml_register_subject(nullptr, "chamber_stall_cancel_hint", &hint_subject_);
         lv_xml_register_subject(nullptr, "chamber_stall_no_retry", &no_retry_subject_);
+        lv_xml_register_subject(nullptr, "chamber_stall_busy", &busy_subject_);
         StaticSubjectRegistry::instance().register_deinit("ChamberStallModal", []() {
             if (!subjects_initialized_) {
                 return;
             }
             lv_xml_unregister_subject(nullptr, "chamber_stall_message");
+            lv_xml_unregister_subject(nullptr, "chamber_stall_cancel_hint");
             lv_xml_unregister_subject(nullptr, "chamber_stall_no_retry");
+            lv_xml_unregister_subject(nullptr, "chamber_stall_busy");
             lv_subject_deinit(&message_subject_);
+            lv_subject_deinit(&hint_subject_);
             lv_subject_deinit(&no_retry_subject_);
+            lv_subject_deinit(&busy_subject_);
             subjects_initialized_ = false;
         });
     }
 
-    static void set_content(const std::string& message, bool can_retry) {
+    static void set_content(const std::string& message, const std::string& hint, bool can_retry,
+                            bool busy) {
         init_subjects();
         lv_subject_copy_string(&message_subject_, message.c_str());
+        lv_subject_copy_string(&hint_subject_, hint.c_str());
         lv_subject_set_int(&no_retry_subject_, can_retry ? 0 : 1);
+        lv_subject_set_int(&busy_subject_, busy ? 1 : 0);
+    }
+
+    static bool showing() {
+        return ModalStack::instance().top_component_name() == "chamber_stall_modal";
     }
 
   protected:
@@ -93,20 +176,18 @@ class ChamberStallModal : public Modal {
         wire_cancel_button("btn_secondary");
         wire_quaternary_button("btn_quaternary");
     }
-    void on_ok() override {
-        ChamberStallPrompt::retry();
-        hide();
-    }
-    void on_quaternary() override {
-        spdlog::info("[ChamberStall] Cancel print chosen while the chamber wait holds the queue");
-        AbortManager::instance().start_abort();
-        hide();
-    }
+    // Try Again stays open: the outcome shows here, and the prompt closes on
+    // its own once the heater takes the target or the wait ends.
+    void on_ok() override;
+    void on_quaternary() override;
 
   private:
     static inline lv_subject_t message_subject_{};
     static inline char message_buf_[384] = {};
+    static inline lv_subject_t hint_subject_{};
+    static inline char hint_buf_[192] = {};
     static inline lv_subject_t no_retry_subject_{};
+    static inline lv_subject_t busy_subject_{};
     static inline bool subjects_initialized_ = false;
 };
 
@@ -117,8 +198,35 @@ bool job_holds_machine() {
 
 } // namespace
 
+class ChamberStallModalAccess {
+  public:
+    static void try_again() {
+        if (g_prompt) {
+            g_prompt->on_try_again();
+        }
+    }
+    static void cancel() {
+        if (g_prompt) {
+            g_prompt->on_cancel();
+        } else {
+            ChamberStallPrompt::cancel_print(ChamberWaitKind::Unknown);
+        }
+    }
+};
+
+namespace {
+void ChamberStallModal::on_ok() {
+    ChamberStallModalAccess::try_again();
+}
+void ChamberStallModal::on_quaternary() {
+    hide();
+    ChamberStallModalAccess::cancel();
+}
+} // namespace
+
 ChamberStallPrompt::ChamberStallPrompt() {
     ChamberStallModal::init_subjects();
+    g_prompt = this;
     auto& state = get_printer_state();
     auto& temps = state.temperature_state();
     const auto& lifetime = state.get_subjects_lifetime();
@@ -130,6 +238,11 @@ ChamberStallPrompt::ChamberStallPrompt() {
     SubjectLifetime seq_lifetime;
     lv_subject_t* seq = temps.get_chamber_heater_rejection_seq_subject(seq_lifetime);
     seq_observer_ = observe<int>(seq, this, on_change, seq_lifetime);
+    // The reason can change under a latch that stays set (a later code on the
+    // same rejection), and an open prompt shows it.
+    text_observer_ = observe<const char*>(
+        temps.get_chamber_heater_rejection_text_subject(), this,
+        [](ChamberStallPrompt* self, const char*) { self->evaluate(); }, lifetime);
     SubjectLifetime target_lifetime;
     lv_subject_t* target = temps.get_chamber_target_subject(target_lifetime);
     target_observer_ = observe<int>(target, this, on_change, target_lifetime);
@@ -139,29 +252,104 @@ ChamberStallPrompt::ChamberStallPrompt() {
                                  on_change, lifetime);
 }
 
-ChamberStallPrompt::~ChamberStallPrompt() = default;
+ChamberStallPrompt::~ChamberStallPrompt() {
+    if (g_prompt == this) {
+        g_prompt = nullptr;
+    }
+}
 
-double ChamberStallPrompt::retry_target_c() {
+double ChamberStallPrompt::retry_target_c(double wait_target_c) {
     const auto rejection = get_printer_state().temperature_state().chamber_command_rejection();
     if (rejection.requested_target_c > 0) {
         return rejection.requested_target_c;
     }
     const auto* controller = get_temperature_controller();
-    return controller ? controller->last_chamber_target_c() : 0.0;
+    if (controller && controller->last_chamber_target_c() > 0) {
+        return controller->last_chamber_target_c();
+    }
+    return wait_target_c > 0 ? wait_target_c : 0.0;
 }
 
 bool ChamberStallPrompt::retry() {
     auto* controller = get_temperature_controller();
-    const double target = retry_target_c();
+    const double target = retry_target_c(g_prompt ? g_prompt->wait_line_.target_c : 0);
     if (!controller || target <= 0 || !controller->chamber_has_direct_route()) {
         spdlog::info("[ChamberStall] Retry unavailable (target={}°C, route={})", target,
                      controller && controller->chamber_has_direct_route());
         return false;
     }
-    SendOptions opts;
-    opts.toast = true;
-    controller->retry_chamber_target(target, std::move(opts));
+    controller->retry_chamber_target(target);
     return true;
+}
+
+void ChamberStallPrompt::cancel_print(ChamberWaitKind kind) {
+    auto* controller = get_temperature_controller();
+    const ChamberCancelPath path = chamber_cancel_path(kind);
+    spdlog::info("[ChamberStall] Cancel print: wait kind {}, path {}", static_cast<int>(kind),
+                 static_cast<int>(path));
+    if (path == ChamberCancelPath::EmergencyStop) {
+        helix::ui::modal_confirm(
+            lv_tr("Stop with an emergency stop?"),
+            lv_tr("The printer is waiting for the chamber to reach a temperature, and only an "
+                  "emergency stop and a firmware restart end that wait. The print stops at once "
+                  "and cannot be resumed."),
+            ModalSeverity::Error, lv_tr("Emergency stop"), []() {
+                spdlog::warn("[ChamberStall] Emergency stop confirmed to end a chamber wait");
+                AbortManager::instance().start_abort(AbortManager::Entry::EmergencyStop);
+            });
+        return;
+    }
+    // A target of 0 ends an M191 wait; the cancel then reaches a free queue.
+    if (controller && controller->chamber_has_direct_route()) {
+        controller->retry_chamber_target(0.0);
+    }
+    AbortManager::instance().start_abort(path == ChamberCancelPath::ClearTargetThenCancel
+                                             ? AbortManager::Entry::Cancel
+                                             : AbortManager::Entry::Probe);
+}
+
+void ChamberStallPrompt::on_cancel() {
+    cancel_print(wait_line_.kind);
+}
+
+void ChamberStallPrompt::on_try_again() {
+    auto* controller = get_temperature_controller();
+    const double target = retry_target_c(wait_line_.target_c);
+    if (!controller || target <= 0 || !controller->chamber_has_direct_route()) {
+        note_ = lv_tr("The heater can't be changed while the printer is waiting.");
+        refresh_content();
+        return;
+    }
+    retry_busy_ = true;
+    note_ = lv_tr("Trying again...");
+    refresh_content();
+    auto tok = lifetime_.token();
+    controller->retry_chamber_target(target, [this, tok](const ChamberRouteReply& reply) {
+        if (tok.expired()) {
+            return;
+        }
+        retry_busy_ = false;
+        switch (reply.outcome) {
+        case ChamberRouteOutcome::Accepted:
+        case ChamberRouteOutcome::Superseded:
+            note_ = lv_tr("The heater took the target.");
+            break;
+        case ChamberRouteOutcome::Pending:
+            note_ = lv_tr("The heater hasn't answered yet. Still trying.");
+            break;
+        case ChamberRouteOutcome::PrinterShutdown:
+            note_ = lv_tr("The printer is shut down.");
+            break;
+        case ChamberRouteOutcome::Refused:
+            // The status frames bring the reason; the sentence above it says it.
+            note_.clear();
+            break;
+        case ChamberRouteOutcome::Unavailable:
+            note_ = lv_tr("The heater can't be changed while the printer is waiting.");
+            break;
+        }
+        refresh_content();
+    });
 }
 
 void ChamberStallPrompt::evaluate() {
@@ -174,6 +362,15 @@ void ChamberStallPrompt::evaluate() {
     in.rejected = lv_subject_get_int(temps.get_chamber_heater_command_rejected_subject()) != 0;
     in.rejection_seq = lv_subject_get_int(temps.get_chamber_heater_rejection_seq_subject());
     in.chamber_target_deci = lv_subject_get_int(temps.get_chamber_target_subject());
+    if (!in.job_active) {
+        wait_line_ = {};
+        wait_line_probed_ = false;
+    }
+    if (ChamberStallModal::showing() && ChamberStallArbiter::should_close(in)) {
+        spdlog::info("[ChamberStall] Closing the prompt: job={} wait={} rejected={} target={}",
+                     in.job_active, in.chamber_wait, in.rejected, in.chamber_target_deci);
+        Modal::hide(ModalStack::instance().top_dialog());
+    }
     switch (arbiter_.decide(in)) {
     case ChamberStallAction::Prompt:
         show_prompt();
@@ -186,20 +383,25 @@ void ChamberStallPrompt::evaluate() {
         break;
     }
     case ChamberStallAction::None:
+        if (ChamberStallModal::showing()) {
+            refresh_content();
+        }
         break;
     }
 }
 
-void ChamberStallPrompt::show_prompt() {
+void ChamberStallPrompt::refresh_content() {
     auto& temps = get_printer_state().temperature_state();
     const auto* controller = get_temperature_controller();
-    const double target = retry_target_c();
-    const bool can_retry = target > 0 && controller && controller->chamber_has_direct_route();
+    const double wait_c =
+        wait_line_.target_c > 0 ? wait_line_.target_c : retry_target_c(wait_line_.target_c);
+    const bool can_retry = retry_target_c(wait_line_.target_c) > 0 && controller &&
+                           controller->chamber_has_direct_route();
 
     std::string message =
-        target > 0 ? fmt::format(fmt::runtime(lv_tr("The print is waiting for the chamber to "
+        wait_c > 0 ? fmt::format(fmt::runtime(lv_tr("The print is waiting for the chamber to "
                                                     "reach {}°C, but the heater is not heating.")),
-                                 static_cast<int>(std::lround(target)))
+                                 static_cast<int>(std::lround(wait_c)))
                    : std::string(lv_tr("The print is waiting for the chamber, but the heater is "
                                        "not heating."));
     const char* reason = lv_subject_get_string(temps.get_chamber_heater_rejection_text_subject());
@@ -210,11 +412,98 @@ void ChamberStallPrompt::show_prompt() {
     if (!can_retry) {
         message += "\n";
         message += lv_tr("The heater can't be changed while the printer is waiting.");
+    } else if (!note_.empty()) {
+        message += "\n";
+        message += note_;
     }
-    spdlog::warn("[ChamberStall] Prompting: target={}°C retry={}", target, can_retry);
-    ChamberStallModal::set_content(message, can_retry);
+
+    std::string hint;
+    switch (chamber_cancel_path(wait_line_.kind)) {
+    case ChamberCancelPath::ClearTargetThenCancel:
+        hint = lv_tr("Cancelling turns the chamber target off so the wait ends, then stops the "
+                     "print.");
+        break;
+    case ChamberCancelPath::EmergencyStop:
+        hint = lv_tr("This wait ends only at its temperature: cancelling takes an emergency stop "
+                     "and a firmware restart.");
+        break;
+    case ChamberCancelPath::ClearTargetThenAbort:
+        hint = lv_tr("The printer is busy waiting, so cancelling may take an emergency stop and a "
+                     "firmware restart.");
+        break;
+    }
+    ChamberStallModal::set_content(message, hint, can_retry, retry_busy_);
+}
+
+// The command holding the queue decides how Cancel ends it. Read the line the
+// print is executing: virtual_sdcard.file_position, then the bytes before it.
+void ChamberStallPrompt::probe_wait_line() {
+    if (wait_line_probed_) {
+        return;
+    }
+    wait_line_probed_ = true;
+    IMoonrakerAPI* api = get_moonraker_api();
+    const char* file =
+        lv_subject_get_string(get_printer_state().print_state().get_print_filename_subject());
+    if (!api || !file || !file[0] || !api->transfers().supports_range_reads()) {
+        spdlog::info("[ChamberStall] Wait line not read: no api, file or ranged reads");
+        return;
+    }
+    const std::string filename = file;
+    auto tok = lifetime_.token();
+    api->get_client().send_jsonrpc(
+        "printer.objects.query", {{"objects", {{"virtual_sdcard", {"file_position"}}}}},
+        [tok, filename](const nlohmann::json& resp) {
+            // WebSocket thread: parse only; the download starts on the main thread.
+            const nlohmann::json& result = resp.contains("result") ? resp["result"] : resp;
+            if (!result.contains("status") || !result["status"].contains("virtual_sdcard") ||
+                !result["status"]["virtual_sdcard"].contains("file_position") ||
+                !result["status"]["virtual_sdcard"]["file_position"].is_number()) {
+                return;
+            }
+            const auto pos = result["status"]["virtual_sdcard"]["file_position"].get<uint64_t>();
+            tok.defer("ChamberStallPrompt::read_wait_line", [tok, filename, pos]() {
+                IMoonrakerAPI* api = get_moonraker_api();
+                if (!api) {
+                    return;
+                }
+                constexpr uint64_t kWindow = 256;
+                const uint64_t from = pos > kWindow ? pos - kWindow : 0;
+                api->transfers().download_file_range(
+                    "gcodes", filename, from, static_cast<size_t>(pos - from),
+                    [tok](const std::string& bytes) {
+                        const ChamberWaitLine line = classify_chamber_wait_line(bytes);
+                        tok.defer("ChamberStallPrompt::wait_line", [line]() {
+                            if (!g_prompt) {
+                                return;
+                            }
+                            spdlog::info("[ChamberStall] Waiting command: kind {}, {}°C",
+                                         static_cast<int>(line.kind), line.target_c);
+                            g_prompt->wait_line_ = line;
+                            if (ChamberStallModal::showing()) {
+                                g_prompt->refresh_content();
+                            }
+                        });
+                    },
+                    [](const MoonrakerError& e) {
+                        spdlog::info("[ChamberStall] Wait line not read: {}", e.message);
+                    });
+            });
+        },
+        [](const MoonrakerError& e) {
+            spdlog::info("[ChamberStall] virtual_sdcard not read: {}", e.message);
+        });
+}
+
+void ChamberStallPrompt::show_prompt() {
+    note_.clear();
+    retry_busy_ = false;
+    probe_wait_line();
+    refresh_content();
+    spdlog::warn("[ChamberStall] Prompting: wait kind {}, retry target {}°C",
+                 static_cast<int>(wait_line_.kind), retry_target_c(wait_line_.target_c));
     // A prompt already up shows the new rejection through its bound text.
-    if (ModalStack::instance().top_component_name() == "chamber_stall_modal") {
+    if (ChamberStallModal::showing()) {
         return;
     }
     auto modal = std::make_unique<ChamberStallModal>();

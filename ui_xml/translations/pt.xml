@@ -251,7 +251,6 @@
   <translation tag="Anonymous data to help improve HelixScreen" pt="Dados anônimos para melhorar o HelixScreen"/>
   <translation tag="Anonymous stats — no personal data, ever." pt="Estatísticas anônimas — sem dados pessoais, nunca."/>
   <translation tag="Anonymous usage statistics" pt="Estatísticas de uso anônimas"/>
-  <translation tag="Another controller changed the heater at the same time." pt="Outro controlador alterou o aquecedor ao mesmo tempo."/>
   <translation tag="Any notes..." pt="Alguma nota..."/>
   <translation tag="App Background" pt="Fundo do Aplicativo"/>
   <translation tag="App startup encountered an error. Some features may be unavailable." pt="A inicialização do aplicativo encontrou um erro. Alguns recursos podem estar indisponíveis."/>
@@ -487,6 +486,7 @@
   <translation tag="Cancel macro not configured" pt="Macro de cancelar não configurado"/>
   <translation tag="Cancel print" pt="Cancelar impressão"/>
   <translation tag="Cancelled" pt="Cancelado"/>
+  <translation tag="Cancelling turns the chamber target off so the wait ends, then stops the print." pt="Cancelar desliga o alvo da câmara para que a espera termine e depois para a impressão."/>
   <translation tag="Cannot add to queue: internal error" pt="Não foi possível adicionar à fila: erro interno"/>
   <translation tag="Cannot be changed from here on a multi-unit MMU" pt="Não pode ser alterado aqui em um MMU de várias unidades"/>
   <translation tag="Cannot control timelapse: printer not connected" pt="Não é possível controlar timelapse: impressora não conectada"/>
@@ -963,6 +963,7 @@
   <translation tag="Element" pt="Elemento"/>
   <translation tag="Emergency Stop" pt="Parada de Emergência"/>
   <translation tag="Emergency Stop?" pt="Parada de Emergência?"/>
+  <translation tag="Emergency stop" pt="Parada de emergência"/>
   <translation tag="Emergency stop activated" pt="Parada de emergência ativada"/>
   <translation tag="Emergency stop failed: not connected" pt="Parada de emergência falhou: não conectado"/>
   <translation tag="Emergency stop failed: {}" pt="Falha na parada de emergência: {}"/>
@@ -2999,6 +3000,7 @@
   <translation tag="Stop printing &quot;{}&quot;?&#10;&#10;This cannot be undone after 5 seconds." pt="Parar a impressão de &quot;{}&quot;?&#10;&#10;Isso não pode ser desfeito após 5 segundos."/>
   <translation tag="Stop the check?" pt="Parar a verificação?"/>
   <translation tag="Stop the running cycle before starting another" pt="Pare o ciclo em andamento antes de iniciar outro"/>
+  <translation tag="Stop with an emergency stop?" pt="Parar com uma parada de emergência?"/>
   <translation tag="Stopped" pt="Parado"/>
   <translation tag="Stopped between Hub and Toolhead" pt="Parado entre o Hub e o cabeçote"/>
   <translation tag="Stopped between Lane and Hub" pt="Parado entre a Lane e o Hub"/>
@@ -3131,9 +3133,12 @@
   <translation tag="The filament system reported an error" pt="O sistema de filamento reportou um erro"/>
   <translation tag="The heater can&apos;t be changed while the printer is waiting." pt="O aquecedor não pode ser alterado enquanto a impressora aguarda."/>
   <translation tag="The heater did not accept the printer&apos;s credentials." pt="O aquecedor não aceitou as credenciais da impressora."/>
-  <translation tag="The heater refused the command." pt="O aquecedor recusou o comando."/>
+  <translation tag="The heater didn&apos;t accept the command." pt="O aquecedor não aceitou o comando."/>
+  <translation tag="The heater hasn&apos;t answered yet. Still trying." pt="O aquecedor ainda não respondeu. Tentando novamente."/>
+  <translation tag="The heater is inhibited." pt="O aquecedor está inibido."/>
   <translation tag="The heater reports a fault." pt="O aquecedor relata uma falha."/>
   <translation tag="The heater reports a fault: {}." pt="O aquecedor relata uma falha: {}."/>
+  <translation tag="The heater took the target." pt="O aquecedor aceitou o alvo."/>
   <translation tag="The heater was turned off at the heater." pt="O aquecedor foi desligado no próprio aquecedor."/>
   <translation tag="The heater will cycle on and off several times." pt="O aquecedor ligará e desligará várias vezes."/>
   <translation tag="The helper macros are installed and activate after Klipper restarts." pt="As macros de ajuda estão instaladas e são ativadas após reiniciar o Klipper."/>
@@ -3156,6 +3161,8 @@
   <translation tag="The printer homes, then moves the plate as far from the nozzle as it goes. Some spools are not heat-resistant enough and can deform. Nothing moves from this screen until you confirm the spools are off the bed; Mainsail, macros and prints sent from a slicer are not blocked." pt="A impressora faz o home e depois afasta a mesa do bico o máximo possível. Alguns carretéis não resistem ao calor o suficiente e podem deformar. Nada se move a partir desta tela até você confirmar que os carretéis saíram da mesa; Mainsail, macros e impressões enviadas por um fatiador não são bloqueados."/>
   <translation tag="The printer is busy waiting, so cancelling may take an emergency stop and a firmware restart." pt="A impressora está ocupada aguardando, então cancelar pode exigir uma parada de emergência e uma reinicialização do firmware."/>
   <translation tag="The printer is not homed. Continuing will home all axes, moving the toolhead. Make sure the bed is clear." pt="A impressora não fez home. Continuar fará home em todos os eixos, movendo o cabeçote. Certifique-se de que a mesa esteja livre."/>
+  <translation tag="The printer is shut down." pt="A impressora está desligada."/>
+  <translation tag="The printer is waiting for the chamber to reach a temperature, and only an emergency stop and a firmware restart end that wait. The print stops at once and cannot be resumed." pt="A impressora aguarda a câmara atingir uma temperatura, e só uma parada de emergência e uma reinicialização do firmware encerram essa espera. A impressão para imediatamente e não pode ser retomada."/>
   <translation tag="The printer isn&apos;t detecting that any filament is currently loaded. What would you like to do?" pt="A impressora não está detectando nenhum filamento carregado. O que você deseja fazer?"/>
   <translation tag="The printer lost power during a print. It can resume where it left off." pt="A impressora perdeu energia durante uma impressão. Ela pode retomar de onde parou."/>
   <translation tag="The printer lost power during a print. The resumed layer may not line up exactly." pt="A impressora perdeu energia durante uma impressão. A camada retomada pode não se alinhar exatamente."/>
@@ -3236,6 +3243,7 @@
   <translation tag="This system does not support bypass mode" pt="Este sistema não oferece suporte ao modo bypass"/>
   <translation tag="This tool probes each bed screw and tells you how much to adjust." pt="Esta ferramenta sonda cada parafuso da mesa e informa quanto ajustar."/>
   <translation tag="This update asks for new permissions:" pt="Esta atualização pede novas permissões:"/>
+  <translation tag="This wait ends only at its temperature: cancelling takes an emergency stop and a firmware restart." pt="Esta espera só termina na sua temperatura: cancelar exige uma parada de emergência e uma reinicialização do firmware."/>
   <translation tag="This will apply the Z-offset to your endstop and restart Klipper to save the configuration. The printer will briefly disconnect." pt="Isso aplicará o Z-offset ao seu endstop e reiniciará o Klipper para salvar a configuração. A impressora será brevemente desconectada."/>
   <translation tag="This will apply the Z-offset to your probe and restart Klipper to save the configuration. The printer will briefly disconnect." pt="Isso aplicará o Z-offset à sua sonda e reiniciará o Klipper para salvar a configuração. A impressora será brevemente desconectada."/>
   <translation tag="This will collect system info, logs, settings, and printer data to help diagnose issues. No passwords or sensitive data will be included." pt="Isso coletará informações do sistema, logs, configurações e dados da impressora para ajudar a diagnosticar problemas. Nenhuma senha ou dado sensível será incluído."/>
@@ -3326,6 +3334,7 @@
   <translation tag="Try Again" pt="Tentar novamente"/>
   <translation tag="Try adjusting your search or filters" pt="Tente ajustar sua busca ou filtros"/>
   <translation tag="Try the operation again. If it persists, check for mechanical issues." pt="Tente a operação novamente. Se persistir, verifique problemas mecânicos."/>
+  <translation tag="Trying again..." pt="Tentando novamente..."/>
   <translation tag="Tune" pt="Ajustar"/>
   <translation tag="Tuning tower enabled - start a print to test" pt="Torre de ajuste habilitada - inicie uma impressão para testar"/>
   <translation tag="Turbo" pt="Turbo"/>

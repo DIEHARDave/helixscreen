@@ -228,10 +228,13 @@ follows with `TEMPERATURE_WAIT` on the chamber waits forever.
 
 - **Border.** `parse_diagnostics()` fills `rejection` (`CommandRejection`: None, Conflict,
   Refused, Auth), `refusal_cause` (`RefusalCause`: TurnedOff, Fault, Inhibited,
-  Unspecified), `rejection_seq` (one per rejection) and `rejection_target_c`. DragonBreath
-  reads `protocol_error_code`, `protocol_error_seq` and `protocol_error_target`; a glue that
-  sends only the free-text `protocol_error` never raises a rejection, but its clearing to
-  `""` does report none outstanding.
+  Unspecified), `rejection_seq` (one per rejection, never reset) and `rejection_target_c`.
+  DragonBreath reads `protocol_error_code` (stable codes: `countermanded`, `fault_latched`,
+  `inhibited`, `auth_failed`, `conflict_retries_exhausted`, `invalid_command`,
+  `missing_lease_id`, `lease_lost`, `heater_busy`, or a raw firmware code),
+  `protocol_error_seq` and `protocol_error_target`; the glue clears them on the next target
+  intent. A glue that sends only the free-text `protocol_error` never raises a rejection,
+  but its clearing does report none outstanding.
 - **Latch.** `PrinterTemperatureState` sets `chamber_heater_command_rejected` on the first
   report (logged at warn), bumps an internal event count on every later `seq`, and clears
   when the device reports none outstanding or the heater target follows the requested one
@@ -239,22 +242,35 @@ follows with `TEMPERATURE_WAIT` on the chamber waits forever.
 - **Route around the queue.** `set_target_method()` names a JSON-RPC method taking
   `{"target": °C}` that does not wait on the gcode mutex (DragonBreath:
   `printer.dragonbreath.set_target`). `TemperatureController` sends chamber targets through
-  it; a "method not found" answer switches chamber targets to gcode for the session. A
-  retry (`retry_chamber_target()`) never falls back to gcode, since that would queue behind
-  the wait it is meant to release.
+  it; a "method not found" answer switches chamber targets to gcode for the session.
+  `parse_chamber_route_reply()` reads the answer: `accepted` true, false or null, with
+  `pending` true when the route stopped waiting on the device (still trying, not a failure),
+  reason `superseded` (a newer target governs, not a failure) and `klipper_shutdown` (the
+  printer is shut down). A retry (`retry_chamber_target()`) never falls back to gcode, since
+  that would queue behind the wait it is meant to release.
 - **Pre-print label.** While a heater wait keeps reporting with the nozzle and bed at
   target, `PrintStartCollector` labels it "Waiting for chamber <cur> / <target>°C" (the
   chamber with a target), or "Waiting for chamber <cur>°C" once an unheated chamber wait
   has outlasted `CHAMBER_WAIT_SETTLE` (M109 settling). It raises
-  `print_start_chamber_wait` on `PrinterPrintState` while that label shows. The
-  `TEMPERATURE_WAIT MINIMUM` itself is not read: the report lines do not name the chamber.
+  `print_start_chamber_wait` on `PrinterPrintState` while that label shows.
 - **Prompt.** `ChamberStallPrompt` (`include/chamber_stall_prompt.h`) asks the pure
   `ChamberStallArbiter`: a chamber wait while rejected prompts once per rejection; a chamber
   wait at target 0 with no rejection prompts once per job; a rejection with no job toasts.
-  The modal (`chamber_stall_modal.xml`) offers Try Again (resends the reported target, else
-  the last chamber target this app sent; hidden without a target or a route), Keep waiting,
-  and Cancel print through `AbortManager`, which escalates to M112 + FIRMWARE_RESTART when
-  the queue does not answer.
+  The prompt closes itself when the job ends, the wait clears (the chamber reached its
+  temperature from any source) or the heater takes a target. Try Again resends the
+  reported target (else the last chamber target this app sent, else the waiting command's
+  own temperature), stays open and shows the route's outcome; it is hidden without a target
+  or a route. Keep waiting dismisses.
+- **Which wait, which cancel.** The prompt reads the line the print is executing
+  (`virtual_sdcard.file_position`, then a 256-byte range before it) with
+  `classify_chamber_wait_line()`. They end differently, so `chamber_cancel_path()` picks
+  Cancel print's sequence:
+
+  | Waiting command | Cancel print |
+  |-----------------|--------------|
+  | `M191` | target 0 by the route (the module's wait loop ends on it), then `printer.print.cancel` (`AbortManager::Entry::Cancel`, no queue probe, no emergency stop) |
+  | `TEMPERATURE_WAIT ... MINIMUM=` | only M112 + FIRMWARE_RESTART end it: a confirmation saying so, then `AbortManager::Entry::EmergencyStop` |
+  | anything else (a macro holding the wait, an unreadable file) | target 0 by the route in case it is M191, then the usual abort, which escalates only per the user's cancel-escalation setting |
 - **Banner.** `chamber_fault_banner` shows the rejection with Retry when nothing faulted is
   behind it, and is on the print-status panel at MEDIUM and up.
 

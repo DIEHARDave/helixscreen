@@ -565,6 +565,14 @@ TEST_CASE("dragonbreath rejection codes classify at the border", "[chamber][back
             RefusalCause cause;
         };
         const Row rows[] = {
+            {"countermanded", CommandRejection::Refused, RefusalCause::TurnedOff},
+            {"fault_latched", CommandRejection::Refused, RefusalCause::Fault},
+            {"inhibited", CommandRejection::Refused, RefusalCause::Inhibited},
+            {"conflict_retries_exhausted", CommandRejection::Conflict, RefusalCause::Unspecified},
+            {"missing_lease_id", CommandRejection::Refused, RefusalCause::Unspecified},
+            {"lease_lost", CommandRejection::Refused, RefusalCause::Unspecified},
+            {"heater_busy", CommandRejection::Refused, RefusalCause::Unspecified},
+            {"invalid_command", CommandRejection::Refused, RefusalCause::Unspecified},
             {"revision_conflict", CommandRejection::Conflict, RefusalCause::Unspecified},
             {"auth_failed", CommandRejection::Auth, RefusalCause::Unspecified},
             {"heater_inhibited", CommandRejection::Refused, RefusalCause::Inhibited},

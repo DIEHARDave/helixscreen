@@ -311,26 +311,62 @@ bool TemperatureController::chamber_has_direct_route() const {
     return !chamber_set_target_method_.empty() && !chamber_route_absent_;
 }
 
-void TemperatureController::retry_chamber_target(double celsius, SendOptions opts) {
+ChamberRouteReply parse_chamber_route_reply(const nlohmann::json& resp) {
+    const nlohmann::json& result = resp.contains("result") ? resp["result"] : resp;
+    if (!result.is_object()) {
+        return {ChamberRouteOutcome::Accepted, {}};
+    }
+    std::string reason;
+    if (result.contains("reason") && result["reason"].is_string()) {
+        reason = result["reason"].get<std::string>();
+    }
+    if (reason == "superseded") {
+        return {ChamberRouteOutcome::Superseded, reason};
+    }
+    if (reason == "klipper_shutdown") {
+        return {ChamberRouteOutcome::PrinterShutdown, reason};
+    }
+    const nlohmann::json* accepted = result.contains("accepted") ? &result["accepted"] : nullptr;
+    if (accepted && accepted->is_boolean()) {
+        return {accepted->get<bool>() ? ChamberRouteOutcome::Accepted
+                                      : ChamberRouteOutcome::Refused,
+                reason};
+    }
+    // accepted null: the route stopped waiting on the device, which may yet
+    // take the target. The status frames carry what it does.
+    if (accepted || (result.contains("pending") && result["pending"].is_boolean() &&
+                     result["pending"].get<bool>())) {
+        return {ChamberRouteOutcome::Pending, reason};
+    }
+    return {ChamberRouteOutcome::Accepted, reason};
+}
+
+void TemperatureController::retry_chamber_target(
+    double celsius, std::function<void(const ChamberRouteReply&)> done) {
     const std::string name = resolved_name(HeaterType::Chamber);
     if (!api_ || name.empty() || !chamber_has_direct_route()) {
         spdlog::info("[TemperatureController] Chamber retry refused: no route around the queue");
-        if (opts.on_error) {
-            MoonrakerError err;
-            err.type = MoonrakerErrorType::VALIDATION_ERROR;
-            err.message = "The chamber heater can't be changed while the printer is waiting";
-            opts.on_error(err);
+        if (done) {
+            done({ChamberRouteOutcome::Unavailable, "no route"});
         }
         return;
     }
     spdlog::info("[TemperatureController] Chamber retry: target {}°C", celsius);
-    send_chamber_target_direct(name, celsius, std::move(opts), /*gcode_fallback=*/false);
+    SendOptions opts;
+    opts.toast = false;
+    send_chamber_target_direct(name, celsius, std::move(opts), /*gcode_fallback=*/false,
+                               std::move(done));
 }
 
-void TemperatureController::send_chamber_target_direct(const std::string& klipper_name,
-                                                       double celsius, SendOptions opts,
-                                                       bool gcode_fallback) {
+void TemperatureController::send_chamber_target_direct(
+    const std::string& klipper_name, double celsius, SendOptions opts, bool gcode_fallback,
+    std::function<void(const ChamberRouteReply&)> on_reply) {
     auto tok = lifetime_.token();
+    auto report = [on_reply](ChamberRouteReply reply) {
+        if (on_reply)
+            helix::ui::run_on_main("TemperatureController::chamber_reply",
+                                   [on_reply, reply]() { on_reply(reply); });
+    };
     auto fail = [opts](const MoonrakerError& e) {
         if (opts.on_error)
             helix::ui::run_on_main("TemperatureController::on_error",
@@ -339,36 +375,52 @@ void TemperatureController::send_chamber_target_direct(const std::string& klippe
             helix::ui::notify_error_tr(TR_NOOP("Failed to set temperature: {}"), e);
         }
     };
-    // The route answers {"accepted": bool, "reason": str}; a refusal is a
-    // reply, not a transport error, so it is turned into one here. The status
-    // frames carry the same refusal to the rejection latch.
-    auto on_reply = [opts, fail, method = chamber_set_target_method_](const nlohmann::json& resp) {
-        const nlohmann::json* result = resp.contains("result") ? &resp["result"] : &resp;
-        if (result->is_object() && result->contains("accepted") &&
-            (*result)["accepted"].is_boolean() && !(*result)["accepted"].get<bool>()) {
+    // A refusal is a reply, not a transport error, so it is turned into one
+    // here. The status frames carry the same refusal to the rejection latch.
+    auto on_answer = [opts, fail, report, celsius,
+                      method = chamber_set_target_method_](const nlohmann::json& resp) {
+        const ChamberRouteReply reply = parse_chamber_route_reply(resp);
+        switch (reply.outcome) {
+        case ChamberRouteOutcome::Accepted:
+        case ChamberRouteOutcome::Superseded:
+        case ChamberRouteOutcome::Pending:
+            spdlog::info("[TemperatureController] Chamber target {}°C: {}{}", celsius,
+                         reply.outcome == ChamberRouteOutcome::Accepted     ? "accepted"
+                         : reply.outcome == ChamberRouteOutcome::Superseded ? "superseded"
+                                                                            : "still pending",
+                         reply.reason.empty() ? "" : " (" + reply.reason + ")");
+            if (opts.on_success)
+                helix::ui::run_on_main("TemperatureController::on_success", opts.on_success);
+            break;
+        case ChamberRouteOutcome::Refused:
+        case ChamberRouteOutcome::PrinterShutdown:
+        case ChamberRouteOutcome::Unavailable: {
             MoonrakerError err;
             err.type = MoonrakerErrorType::JSON_RPC_ERROR;
             err.method = method;
-            err.message = (*result).contains("reason") && (*result)["reason"].is_string()
-                              ? (*result)["reason"].get<std::string>()
-                              : std::string("rejected");
-            spdlog::info("[TemperatureController] Chamber target refused: {}", err.message);
+            err.message = reply.outcome == ChamberRouteOutcome::PrinterShutdown
+                              ? std::string("printer is shut down")
+                          : reply.reason.empty() ? std::string("rejected")
+                                                 : reply.reason;
+            spdlog::info("[TemperatureController] Chamber target {}°C refused: {}", celsius,
+                         err.message);
             fail(err);
-            return;
+            break;
         }
-        if (opts.on_success)
-            helix::ui::run_on_main("TemperatureController::on_success", opts.on_success);
+        }
+        report(reply);
     };
-    auto on_err = [this, tok, opts, fail, klipper_name, celsius,
+    auto on_err = [this, tok, opts, fail, report, klipper_name, celsius,
                    gcode_fallback](const MoonrakerError& e) {
         // JSON-RPC "method not found": a glue without the route.
         const bool route_missing = e.code == -32601 || e.code == 404;
         if (!route_missing) {
             fail(e);
+            report({ChamberRouteOutcome::Unavailable, e.message});
             return;
         }
         tok.defer("TemperatureController::chamber_route_missing",
-                  [this, opts, fail, e, klipper_name, celsius, gcode_fallback]() {
+                  [this, opts, fail, report, e, klipper_name, celsius, gcode_fallback]() {
                       spdlog::info("[TemperatureController] Chamber target route {} not found; "
                                    "chamber targets go through gcode",
                                    chamber_set_target_method_);
@@ -377,11 +429,12 @@ void TemperatureController::send_chamber_target_direct(const std::string& klippe
                           send_gcode_target(klipper_name, celsius, opts);
                       } else {
                           fail(e);
+                          report({ChamberRouteOutcome::Unavailable, e.message});
                       }
                   });
     };
     api_->get_client().send_jsonrpc(chamber_set_target_method_, {{"target", celsius}},
-                                    std::move(on_reply), std::move(on_err));
+                                    std::move(on_answer), std::move(on_err));
 }
 
 void TemperatureController::reset_chamber_fault() {

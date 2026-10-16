@@ -54,9 +54,12 @@ FilterFanDriver classify_filter_fan_driver(const std::string& raw) {
     return FilterFanDriver::Device;
 }
 
-/// Vendor rejection code -> generic kind and, for a refusal, its cause. The
-/// glue's codes are open-ended strings, so this matches on the words they are
-/// built from. A code we cannot place is still the heater declining: Refused.
+/// Vendor rejection code -> generic kind and, for a refusal, its cause, by the
+/// words the code is built from. The glue's stable codes (countermanded,
+/// fault_latched, inhibited, auth_failed, conflict_retries_exhausted,
+/// invalid_command, missing_lease_id, lease_lost, heater_busy) and any raw
+/// firmware code it passes through all land this way. A code we cannot place
+/// is still the heater declining: Refused.
 struct ClassifiedRejection {
     CommandRejection kind = CommandRejection::None;
     RefusalCause cause = RefusalCause::Unspecified;
@@ -88,7 +91,7 @@ ClassifiedRejection classify_rejection(const std::string& raw) {
     if (has("offline") || has("unreachable") || has("timeout")) {
         return {CommandRejection::Refused, RefusalCause::Unspecified};
     }
-    if (has("off") || has("disabled") || has("manual") || has("standby")) {
+    if (has("countermand") || has("off") || has("disabled") || has("manual") || has("standby")) {
         return {CommandRejection::Refused, RefusalCause::TurnedOff};
     }
     return {CommandRejection::Refused, RefusalCause::Unspecified};

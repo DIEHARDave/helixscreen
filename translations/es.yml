@@ -271,7 +271,6 @@ translations:
   Anonymous stats — no personal data, ever.: Estadísticas anónimas — sin datos personales,
     nunca.
   Anonymous usage statistics: Estadísticas de uso anónimas
-  Another controller changed the heater at the same time.: 'Otro controlador cambió el calentador al mismo tiempo.'
   Any notes...: Notas...
   App Background: Fondo de la Aplicación
   App startup encountered an error. Some features may be unavailable.: El inicio de
@@ -531,6 +530,7 @@ translations:
   Cancel macro not configured: Macro de cancelar no configurado
   Cancel print: 'Cancelar impresión'
   Cancelled: Cancelado
+  Cancelling turns the chamber target off so the wait ends, then stops the print.: 'Cancelar apaga el objetivo de la cámara para que termine la espera y luego detiene la impresión.'
   'Cannot add to queue: internal error': 'No se puede añadir a la cola: error interno'
   Cannot be changed from here on a multi-unit MMU: No se puede cambiar aquí en un MMU de varias unidades
   'Cannot control timelapse: printer not connected': 'No se puede controlar timelapse:
@@ -1070,6 +1070,7 @@ translations:
   Element: Elemento
   Emergency Stop: Parada de Emergencia
   Emergency Stop?: ¿Parada de Emergencia?
+  Emergency stop: 'Parada de emergencia'
   Emergency stop activated: Parada de emergencia activada
   'Emergency stop failed: not connected': 'Parada de emergencia fallida: no conectado'
   'Emergency stop failed: {}': 'Parada de emergencia fallida: {}'
@@ -3319,6 +3320,7 @@ translations:
   : "¿Detener la impresión de \"{}\"?\n\nEsto no se puede deshacer después de 5 segundos."
   Stop the check?: ¿Detener la comprobación?
   Stop the running cycle before starting another: 'Detenga el ciclo en curso antes de iniciar otro'
+  Stop with an emergency stop?: '¿Detener con una parada de emergencia?'
   Stopped: Detenido
   Stopped between Hub and Toolhead: Detenido entre el Hub y el cabezal
   Stopped between Lane and Hub: Detenido entre el carril y el Hub
@@ -3475,9 +3477,12 @@ translations:
   The filament system reported an error: El sistema de filamento informó un error
   The heater can't be changed while the printer is waiting.: 'No se puede cambiar el calentador mientras la impresora espera.'
   The heater did not accept the printer's credentials.: 'El calentador no aceptó las credenciales de la impresora.'
-  The heater refused the command.: 'El calentador rechazó el comando.'
+  The heater didn't accept the command.: 'El calentador no aceptó el comando.'
+  The heater hasn't answered yet. Still trying.: 'El calentador aún no ha respondido. Sigue intentándolo.'
+  The heater is inhibited.: 'El calentador está inhibido.'
   The heater reports a fault.: 'El calentador informa de un fallo.'
   'The heater reports a fault: {}.': 'El calentador informa de un fallo: {}.'
+  The heater took the target.: 'El calentador aceptó el objetivo.'
   The heater was turned off at the heater.: 'El calentador se apagó desde el propio calentador.'
   The heater will cycle on and off several times.: El calentador se encenderá y apagará
     varias veces.
@@ -3510,6 +3515,9 @@ translations:
 
   The printer is busy waiting, so cancelling may take an emergency stop and a firmware restart.: 'La impresora está ocupada esperando, así que cancelar puede requerir una parada de emergencia y un reinicio del firmware.'
   The printer is not homed. Continuing will home all axes, moving the toolhead. Make sure the bed is clear.: La impresora no está referenciada. Si continúa, se referenciarán todos los ejes y el cabezal se moverá. Asegúrese de que la cama esté despejada.
+  The printer is shut down.: 'La impresora está apagada.'
+  ? The printer is waiting for the chamber to reach a temperature, and only an emergency stop and a firmware restart end that wait. The print stops at once and cannot be resumed.
+  : 'La impresora espera a que la cámara alcance una temperatura, y solo una parada de emergencia y un reinicio del firmware terminan esa espera. La impresión se detiene al instante y no se puede reanudar.'
   The printer isn't detecting that any filament is currently loaded. What would you like to do?: La impresora no detecta ningún filamento cargado. ¿Qué desea hacer?
   The printer lost power during a print. It can resume where it left off.: La impresora
     perdió corriente durante una impresión. Puede reanudar donde se quedó.
@@ -3618,6 +3626,7 @@ translations:
   This tool probes each bed screw and tells you how much to adjust.: Esta herramienta
     sondea cada tornillo de cama y le indica cuánto ajustar.
   'This update asks for new permissions:': 'Esta actualización pide nuevos permisos:'
+  'This wait ends only at its temperature: cancelling takes an emergency stop and a firmware restart.': 'Esta espera solo termina al alcanzar su temperatura: cancelar requiere una parada de emergencia y un reinicio del firmware.'
   ? This will apply the Z-offset to your endstop and restart Klipper to save the configuration.
     The printer will briefly disconnect.
   : Esto aplicará el Z-offset a su endstop y reiniciará Klipper para guardar la configuración.
@@ -3727,6 +3736,7 @@ translations:
   Try adjusting your search or filters: Intente ajustar su búsqueda o filtros
   Try Again: 'Reintentar'
   Try the operation again. If it persists, check for mechanical issues.: Intente la operación de nuevo. Si persiste, compruebe si hay problemas mecánicos.
+  Trying again...: 'Reintentando...'
   Tune: Ajustar
   Tuning tower enabled - start a print to test: Torre de ajuste activada - inicie
     una impresión para probar

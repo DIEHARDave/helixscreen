@@ -4608,7 +4608,11 @@ json MoonrakerClientMock::chamber_route_set_target(double target) {
             status[key] = {{"target", 0.0}};
         }
         dispatch_status_update(status);
-        return {{"accepted", false}, {"reason", dragonbreath_reject_code_}, {"seq", seq}};
+        return {{"accepted", false},
+                {"pending", false},
+                {"reason", dragonbreath_reject_code_},
+                {"seq", seq},
+                {"target", target}};
     }
     set_chamber_target(target);
     reset_idle_timeout();
@@ -4621,7 +4625,11 @@ json MoonrakerClientMock::chamber_route_set_target(double target) {
         status["dragonbreath"] = {{"protocol_error", ""}, {"protocol_error_code", ""}};
     }
     dispatch_status_update(status);
-    return {{"accepted", true}, {"reason", ""}, {"seq", dragonbreath_reject_seq_.load()}};
+    return {{"accepted", true},
+            {"pending", false},
+            {"reason", nullptr},
+            {"seq", dragonbreath_reject_seq_.load()},
+            {"target", target}};
 }
 
 void MoonrakerClientMock::dispatch_method_callback(const std::string& method, const json& msg) {

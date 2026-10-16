@@ -251,7 +251,6 @@
   <translation tag="Anonymous data to help improve HelixScreen" fr="Données anonymes pour améliorer HelixScreen"/>
   <translation tag="Anonymous stats — no personal data, ever." fr="Statistiques anonymes — jamais de données personnelles."/>
   <translation tag="Anonymous usage statistics" fr="Statistiques d&apos;utilisation anonymes"/>
-  <translation tag="Another controller changed the heater at the same time." fr="Un autre contrôleur a modifié le chauffage au même moment."/>
   <translation tag="Any notes..." fr="Des notes..."/>
   <translation tag="App Background" fr="Arrière-plan de l&apos;application"/>
   <translation tag="App startup encountered an error. Some features may be unavailable." fr="Le démarrage de l&apos;application a rencontré une erreur. Certaines fonctionnalités peuvent être indisponibles."/>
@@ -487,6 +486,7 @@
   <translation tag="Cancel macro not configured" fr="Macro d&apos;annulation non configurée"/>
   <translation tag="Cancel print" fr="Annuler l&apos;impression"/>
   <translation tag="Cancelled" fr="Annulé"/>
+  <translation tag="Cancelling turns the chamber target off so the wait ends, then stops the print." fr="L&apos;annulation coupe la consigne de la chambre pour mettre fin à l&apos;attente, puis arrête l&apos;impression."/>
   <translation tag="Cannot add to queue: internal error" fr="Impossible d&apos;ajouter à la file : erreur interne"/>
   <translation tag="Cannot be changed from here on a multi-unit MMU" fr="Non modifiable ici sur un MMU multi-unités"/>
   <translation tag="Cannot control timelapse: printer not connected" fr="Impossible de contrôler le timelapse : imprimante non connectée"/>
@@ -963,6 +963,7 @@
   <translation tag="Element" fr="Élément"/>
   <translation tag="Emergency Stop" fr="Arrêt d&apos;urgence"/>
   <translation tag="Emergency Stop?" fr="Arrêt d&apos;urgence ?"/>
+  <translation tag="Emergency stop" fr="Arrêt d&apos;urgence"/>
   <translation tag="Emergency stop activated" fr="Arrêt d&apos;urgence activé"/>
   <translation tag="Emergency stop failed: not connected" fr="Échec de l&apos;arrêt d&apos;urgence : non connecté"/>
   <translation tag="Emergency stop failed: {}" fr="Échec de l&apos;arrêt d&apos;urgence : {}"/>
@@ -2999,6 +3000,7 @@
   <translation tag="Stop printing &quot;{}&quot;?&#10;&#10;This cannot be undone after 5 seconds." fr="Arrêter l&apos;impression de &quot;{}&quot; ?&#10;&#10;Cette action sera irréversible après 5 secondes."/>
   <translation tag="Stop the check?" fr="Arrêter la vérification ?"/>
   <translation tag="Stop the running cycle before starting another" fr="Arrêtez le cycle en cours avant d&apos;en lancer un autre"/>
+  <translation tag="Stop with an emergency stop?" fr="Arrêter par un arrêt d&apos;urgence ?"/>
   <translation tag="Stopped" fr="Arrêté"/>
   <translation tag="Stopped between Hub and Toolhead" fr="Arrêté entre le Hub et la tête d&apos;outil"/>
   <translation tag="Stopped between Lane and Hub" fr="Arrêté entre la voie et le Hub"/>
@@ -3131,9 +3133,12 @@
   <translation tag="The filament system reported an error" fr="Le système de filament a signalé une erreur"/>
   <translation tag="The heater can&apos;t be changed while the printer is waiting." fr="Le chauffage ne peut pas être modifié pendant que l&apos;imprimante attend."/>
   <translation tag="The heater did not accept the printer&apos;s credentials." fr="Le chauffage n&apos;a pas accepté les identifiants de l&apos;imprimante."/>
-  <translation tag="The heater refused the command." fr="Le chauffage a refusé la commande."/>
+  <translation tag="The heater didn&apos;t accept the command." fr="Le chauffage n&apos;a pas accepté la commande."/>
+  <translation tag="The heater hasn&apos;t answered yet. Still trying." fr="Le chauffage n&apos;a pas encore répondu. Nouvelle tentative en cours."/>
+  <translation tag="The heater is inhibited." fr="Le chauffage est bloqué."/>
   <translation tag="The heater reports a fault." fr="Le chauffage signale un défaut."/>
   <translation tag="The heater reports a fault: {}." fr="Le chauffage signale un défaut : {}."/>
+  <translation tag="The heater took the target." fr="Le chauffage a accepté la consigne."/>
   <translation tag="The heater was turned off at the heater." fr="Le chauffage a été éteint sur l&apos;appareil lui-même."/>
   <translation tag="The heater will cycle on and off several times." fr="Le chauffage s&apos;allumera et s&apos;éteindra plusieurs fois."/>
   <translation tag="The helper macros are installed and activate after Klipper restarts." fr="Les macros d&apos;aide sont installées et s&apos;activent après un redémarrage de Klipper."/>
@@ -3156,6 +3161,8 @@
   <translation tag="The printer homes, then moves the plate as far from the nozzle as it goes. Some spools are not heat-resistant enough and can deform. Nothing moves from this screen until you confirm the spools are off the bed; Mainsail, macros and prints sent from a slicer are not blocked." fr="L&apos;imprimante fait sa prise d&apos;origine, puis éloigne le plateau de la buse autant que possible. Certaines bobines ne supportent pas assez la chaleur et peuvent se déformer. Rien ne bouge depuis cet écran tant que vous n&apos;avez pas confirmé que les bobines ne sont plus sur le plateau ; Mainsail, les macros et les impressions envoyées depuis un slicer ne sont pas bloqués."/>
   <translation tag="The printer is busy waiting, so cancelling may take an emergency stop and a firmware restart." fr="L&apos;imprimante est occupée à attendre : l&apos;annulation peut nécessiter un arrêt d&apos;urgence et un redémarrage du firmware."/>
   <translation tag="The printer is not homed. Continuing will home all axes, moving the toolhead. Make sure the bed is clear." fr="L&apos;imprimante n&apos;est pas référencée. Continuer référencera tous les axes et déplacera la tête d&apos;outil. Assurez-vous que le plateau est dégagé."/>
+  <translation tag="The printer is shut down." fr="L&apos;imprimante est arrêtée."/>
+  <translation tag="The printer is waiting for the chamber to reach a temperature, and only an emergency stop and a firmware restart end that wait. The print stops at once and cannot be resumed." fr="L&apos;imprimante attend que la chambre atteigne une température, et seuls un arrêt d&apos;urgence et un redémarrage du firmware mettent fin à cette attente. L&apos;impression s&apos;arrête immédiatement et ne peut pas être reprise."/>
   <translation tag="The printer isn&apos;t detecting that any filament is currently loaded. What would you like to do?" fr="L&apos;imprimante ne détecte aucun filament chargé. Que voulez-vous faire ?"/>
   <translation tag="The printer lost power during a print. It can resume where it left off." fr="L&apos;imprimante a été mise hors tension pendant une impression. Elle peut reprendre là où elle s&apos;est arrêtée."/>
   <translation tag="The printer lost power during a print. The resumed layer may not line up exactly." fr="L&apos;imprimante a été mise hors tension pendant une impression. La couche reprise peut ne pas s&apos;aligner exactement."/>
@@ -3236,6 +3243,7 @@
   <translation tag="This system does not support bypass mode" fr="Ce système ne prend pas en charge le mode bypass"/>
   <translation tag="This tool probes each bed screw and tells you how much to adjust." fr="Cet outil palpe chaque vis du plateau et vous indique combien ajuster."/>
   <translation tag="This update asks for new permissions:" fr="Cette mise à jour demande de nouvelles autorisations :"/>
+  <translation tag="This wait ends only at its temperature: cancelling takes an emergency stop and a firmware restart." fr="Cette attente ne se termine qu&apos;à sa température : l&apos;annulation nécessite un arrêt d&apos;urgence et un redémarrage du firmware."/>
   <translation tag="This will apply the Z-offset to your endstop and restart Klipper to save the configuration. The printer will briefly disconnect." fr="Cela appliquera le Z-offset à votre butée et redémarrera Klipper pour enregistrer la configuration. L&apos;imprimante se déconnectera brièvement."/>
   <translation tag="This will apply the Z-offset to your probe and restart Klipper to save the configuration. The printer will briefly disconnect." fr="Cela appliquera le Z-offset à votre sonde et redémarrera Klipper pour enregistrer la configuration. L&apos;imprimante se déconnectera brièvement."/>
   <translation tag="This will collect system info, logs, settings, and printer data to help diagnose issues. No passwords or sensitive data will be included." fr="Cela collectera les infos système, journaux, paramètres et données de l&apos;imprimante pour aider à diagnostiquer les problèmes. Aucun mot de passe ni donnée sensible ne sera inclus."/>
@@ -3326,6 +3334,7 @@
   <translation tag="Try Again" fr="Réessayer"/>
   <translation tag="Try adjusting your search or filters" fr="Essayez d&apos;ajuster votre recherche ou vos filtres"/>
   <translation tag="Try the operation again. If it persists, check for mechanical issues." fr="Réessayez l&apos;opération. Si le problème persiste, vérifiez s&apos;il y a des problèmes mécaniques."/>
+  <translation tag="Trying again..." fr="Nouvelle tentative..."/>
   <translation tag="Tune" fr="Régler"/>
   <translation tag="Tuning tower enabled - start a print to test" fr="Tour de réglage activée - lancez une impression pour tester"/>
   <translation tag="Turbo" fr="Turbo"/>

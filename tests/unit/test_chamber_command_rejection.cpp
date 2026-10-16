@@ -4,10 +4,14 @@
 // PrinterTemperatureState, the route around the gcode queue that
 // TemperatureController takes when the backend has one, and the arbiter that
 // decides when a print held by an unheated chamber is put to the user.
+#include "ui_modal.h"
+
 #include "../lvgl_test_fixture.h"
+#include "../test_helpers/abort_manager_test_access.h"
 #include "../test_helpers/printer_state_test_access.h"
 #include "../test_helpers/scoped_shared_resource.h"
 #include "../test_helpers/update_queue_test_access.h"
+#include "abort_manager.h"
 #include "app_globals.h"
 #include "chamber_heater_backend.h"
 #include "chamber_stall_prompt.h"
@@ -85,7 +89,7 @@ TEST_CASE_METHOD(RejectionStateFixture,
     frame(conflict_frame(1));
     CHECK(rejected() == 1);
     CHECK(seq() == 1);
-    CHECK(text() == lv_tr("Another controller changed the heater at the same time."));
+    CHECK(text() == lv_tr("The heater didn't accept the command."));
     CHECK(ts.chamber_command_rejection().kind == CommandRejection::Conflict);
     CHECK(ts.chamber_command_rejection().requested_target_c == Catch::Approx(60.0));
 
@@ -137,7 +141,7 @@ TEST_CASE_METHOD(RejectionStateFixture,
            {"dragonbreath",
             {{"protocol_error_code", "heater_inhibited"}, {"protocol_error_seq", 1}}}});
     REQUIRE(rejected() == 1);
-    CHECK(text() == lv_tr("The heater refused the command."));
+    CHECK(text() == lv_tr("The heater is inhibited."));
     frame({{"heater_generic dragonbreath", {{"target", 45.0}}}});
     CHECK(rejected() == 0);
 }
@@ -193,6 +197,8 @@ class RouteMockClient : public MoonrakerClientMock {
     enum class Mode { Accept, Refuse, Missing };
     Mode mode = Mode::Accept;
     std::vector<double> route_targets;
+    /// When set, the route answers this "result" instead of the mode's.
+    nlohmann::json reply;
 
     helix::RequestId send_jsonrpc(
         const std::string& method, const nlohmann::json& params,
@@ -209,6 +215,8 @@ class RouteMockClient : public MoonrakerClientMock {
                 err.message = "Method not found";
                 if (error_cb)
                     error_cb(err);
+            } else if (success_cb && !reply.is_null()) {
+                success_cb({{"result", reply}});
             } else if (success_cb) {
                 success_cb({{"result",
                              {{"accepted", mode == Mode::Accept},
@@ -321,35 +329,111 @@ TEST_CASE_METHOD(RouteFixture, "chamber targets take the backend's route around 
 TEST_CASE_METHOD(RouteFixture,
                  "a chamber retry never queues behind the wait it is meant to release",
                  "[chamber][rejection][route]") {
-    bool failed = false;
-    helix::SendOptions opts;
-    opts.toast = false;
-    opts.on_error = [&failed](const MoonrakerError&) { failed = true; };
+    std::vector<helix::ChamberRouteOutcome> outcomes;
+    auto done = [&outcomes](const helix::ChamberRouteReply& r) { outcomes.push_back(r.outcome); };
 
     SECTION("with the route, the retry goes by it") {
-        controller->retry_chamber_target(60.0, opts);
+        controller->retry_chamber_target(60.0, done);
         drain();
         CHECK(client.route_targets == std::vector<double>{60.0});
-        CHECK_FALSE(failed);
+        CHECK(outcomes == std::vector{helix::ChamberRouteOutcome::Accepted});
     }
 
     SECTION("a missing route fails the retry instead of sending gcode") {
         client.mode = RouteMockClient::Mode::Missing;
-        controller->retry_chamber_target(60.0, opts);
+        controller->retry_chamber_target(60.0, done);
         drain();
-        CHECK(failed);
+        CHECK(outcomes == std::vector{helix::ChamberRouteOutcome::Unavailable});
         CHECK(client.heater_gcode().empty());
         CHECK_FALSE(controller->chamber_has_direct_route());
     }
 
     SECTION("a backend with no route sends nothing at all") {
         controller->set_chamber_actions("", "", 0.0, "");
-        controller->retry_chamber_target(60.0, opts);
+        controller->retry_chamber_target(60.0, done);
         drain();
-        CHECK(failed);
+        CHECK(outcomes == std::vector{helix::ChamberRouteOutcome::Unavailable});
         CHECK(client.route_targets.empty());
         CHECK(client.heater_gcode().empty());
     }
+
+    SECTION("a reply still pending is not a failure") {
+        client.reply = {{"accepted", nullptr},
+                        {"pending", true},
+                        {"reason", nullptr},
+                        {"seq", nullptr},
+                        {"target", 60.0}};
+        controller->retry_chamber_target(60.0, done);
+        drain();
+        CHECK(outcomes == std::vector{helix::ChamberRouteOutcome::Pending});
+    }
+}
+
+TEST_CASE_METHOD(RouteFixture, "what the route answers reaches a plain chamber set",
+                 "[chamber][rejection][route]") {
+    std::string error;
+    bool succeeded = false;
+    helix::SendOptions opts;
+    opts.toast = false;
+    opts.on_error = [&error](const MoonrakerError& e) { error = e.message; };
+    opts.on_success = [&succeeded]() { succeeded = true; };
+
+    SECTION("superseded: the newer target governs, nothing failed") {
+        client.reply = {{"accepted", false},
+                        {"pending", false},
+                        {"reason", "superseded"},
+                        {"seq", 4},
+                        {"target", 50.0}};
+        controller->set_target(helix::HeaterType::Chamber, 50.0, opts);
+        drain();
+        CHECK(succeeded);
+        CHECK(error.empty());
+    }
+
+    SECTION("a shut-down printer is said so") {
+        client.reply = {{"accepted", false},
+                        {"pending", false},
+                        {"reason", "klipper_shutdown"},
+                        {"seq", nullptr},
+                        {"target", 50.0}};
+        controller->set_target(helix::HeaterType::Chamber, 50.0, opts);
+        drain();
+        CHECK_FALSE(succeeded);
+        CHECK(error == "printer is shut down");
+    }
+
+    SECTION("still pending after the route's wait counts as sent") {
+        client.reply = {{"accepted", nullptr},
+                        {"pending", true},
+                        {"reason", nullptr},
+                        {"seq", nullptr},
+                        {"target", 50.0}};
+        controller->set_target(helix::HeaterType::Chamber, 50.0, opts);
+        drain();
+        CHECK(succeeded);
+        CHECK(error.empty());
+    }
+}
+
+TEST_CASE("the route's reply parses with or without the result wrapper",
+          "[chamber][rejection][route]") {
+    using helix::ChamberRouteOutcome;
+    using helix::parse_chamber_route_reply;
+    const nlohmann::json accepted = {{"accepted", true}, {"pending", false}, {"reason", nullptr}};
+    CHECK(parse_chamber_route_reply(accepted).outcome == ChamberRouteOutcome::Accepted);
+    CHECK(parse_chamber_route_reply({{"result", accepted}}).outcome ==
+          ChamberRouteOutcome::Accepted);
+    const auto refused = parse_chamber_route_reply(
+        {{"result", {{"accepted", false}, {"pending", false}, {"reason", "countermanded"}}}});
+    CHECK(refused.outcome == ChamberRouteOutcome::Refused);
+    CHECK(refused.reason == "countermanded");
+    CHECK(parse_chamber_route_reply({{"accepted", nullptr}, {"pending", true}}).outcome ==
+          ChamberRouteOutcome::Pending);
+    CHECK(parse_chamber_route_reply({{"accepted", false}, {"reason", "superseded"}}).outcome ==
+          ChamberRouteOutcome::Superseded);
+    CHECK(parse_chamber_route_reply({{"accepted", nullptr}, {"reason", "klipper_shutdown"}})
+              .outcome == ChamberRouteOutcome::PrinterShutdown);
+    CHECK(parse_chamber_route_reply({{"result", "ok"}}).outcome == ChamberRouteOutcome::Accepted);
 }
 
 TEST_CASE_METHOD(RouteFixture, "Try again resends the target the heater turned down",
@@ -447,4 +531,98 @@ TEST_CASE("the chamber prompt arms once per rejection", "[chamber][rejection][pr
         in.job_active = false;
         CHECK(arbiter.decide(in) == ChamberStallAction::None);
     }
+}
+
+TEST_CASE("the prompt closes once there is nothing left to ask", "[chamber][rejection][prompt]") {
+    ChamberStallInputs in;
+    in.job_active = true;
+    in.chamber_wait = true;
+    in.rejected = true;
+    CHECK_FALSE(ChamberStallArbiter::should_close(in));
+    in.chamber_target_deci = 600; // the heater took the retry, but the latch has not cleared
+    CHECK_FALSE(ChamberStallArbiter::should_close(in));
+    in.rejected = false;
+    CHECK(ChamberStallArbiter::should_close(in));
+
+    in = {};
+    in.job_active = true;
+    in.chamber_wait = true;
+    CHECK_FALSE(ChamberStallArbiter::should_close(in));
+    in.chamber_wait = false; // the chamber reached the wait's temperature from any source
+    CHECK(ChamberStallArbiter::should_close(in));
+    in.chamber_wait = true;
+    in.job_active = false;
+    CHECK(ChamberStallArbiter::should_close(in));
+}
+
+TEST_CASE("the line at the print position names the waiting command",
+          "[chamber][rejection][wait_line]") {
+    using helix::ChamberWaitKind;
+    using helix::classify_chamber_wait_line;
+    auto check = [](const char* chunk, ChamberWaitKind kind, double target) {
+        INFO("chunk=" << chunk);
+        const auto line = classify_chamber_wait_line(chunk);
+        CHECK(line.kind == kind);
+        CHECK(line.target_c == Catch::Approx(target));
+    };
+    check("M190 S100\nM191 S60\n", ChamberWaitKind::M191, 60);
+    check("G28\nm191 r45 ; chamber\r\n", ChamberWaitKind::M191, 45);
+    check("rtial line\nTEMPERATURE_WAIT SENSOR=\"heater_generic dragonbreath\" MINIMUM=35\n",
+          ChamberWaitKind::TemperatureWait, 35);
+    check("TEMPERATURE_WAIT SENSOR=chamber MAXIMUM=80\n", ChamberWaitKind::TemperatureWait, 0);
+    check("PRINT_START BED=100 CHAMBER=60\n", ChamberWaitKind::Unknown, 0);
+    check("M1910 S5\n", ChamberWaitKind::Unknown, 0);
+    check("", ChamberWaitKind::Unknown, 0);
+    check("; just a comment\n", ChamberWaitKind::Unknown, 0);
+}
+
+TEST_CASE("each chamber wait gets the cancel that ends it", "[chamber][rejection][cancel]") {
+    using helix::ChamberCancelPath;
+    using helix::ChamberWaitKind;
+    CHECK(helix::chamber_cancel_path(ChamberWaitKind::M191) ==
+          ChamberCancelPath::ClearTargetThenCancel);
+    CHECK(helix::chamber_cancel_path(ChamberWaitKind::TemperatureWait) ==
+          ChamberCancelPath::EmergencyStop);
+    CHECK(helix::chamber_cancel_path(ChamberWaitKind::Unknown) ==
+          ChamberCancelPath::ClearTargetThenAbort);
+}
+
+TEST_CASE_METHOD(RouteFixture, "Cancel print ends the chamber wait the way it can end",
+                 "[chamber][rejection][cancel]") {
+    using helix::AbortManager;
+    AbortManagerTestAccess::reset(AbortManager::instance());
+    AbortManager::instance().init(nullptr, &state);
+    // A finished print completes a cancel at once; this one is still running.
+    state.update_from_status({{"print_stats", {{"state", "printing"}}}});
+    drain();
+
+    SECTION("M191: clear the target by the route, then cancel without probing") {
+        helix::ui::ChamberStallPrompt::cancel_print(helix::ChamberWaitKind::M191);
+        drain();
+        CHECK(client.route_targets == std::vector<double>{0.0});
+        CHECK(AbortManager::instance().get_state() == AbortManager::State::SENT_CANCEL);
+    }
+
+    SECTION("TEMPERATURE_WAIT: nothing happens before the user confirms the emergency stop") {
+        helix::ui::ChamberStallPrompt::cancel_print(helix::ChamberWaitKind::TemperatureWait);
+        drain();
+        CHECK(client.route_targets.empty());
+        CHECK(AbortManager::instance().get_state() == AbortManager::State::IDLE);
+    }
+
+    SECTION("a confirmed emergency stop goes straight to M112") {
+        AbortManager::instance().start_abort(AbortManager::Entry::EmergencyStop);
+        CHECK(AbortManager::instance().get_state() == AbortManager::State::SENT_ESTOP);
+    }
+
+    SECTION("an unknown wait clears the target, then aborts the usual way") {
+        helix::ui::ChamberStallPrompt::cancel_print(helix::ChamberWaitKind::Unknown);
+        drain();
+        CHECK(client.route_targets == std::vector<double>{0.0});
+        const auto st = AbortManager::instance().get_state();
+        CHECK((st == AbortManager::State::PROBE_QUEUE ||
+               st == AbortManager::State::TRY_HEATER_INTERRUPT));
+    }
+
+    AbortManagerTestAccess::reset(AbortManager::instance());
 }

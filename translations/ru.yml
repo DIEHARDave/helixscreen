@@ -311,7 +311,6 @@ translations:
   Anonymous stats — no personal data, ever.: Анонимная статистика — никаких личных
     данных.
   Anonymous usage statistics: Анонимная статистика использования
-  Another controller changed the heater at the same time.: 'Другой контроллер изменил нагреватель в то же время.'
   Any notes...: Заметки...
   App Background: Фон приложения
   App startup encountered an error. Some features may be unavailable.: При запуске
@@ -576,6 +575,7 @@ translations:
   Cancel macro not configured: Макрос отмены не настроен
   Cancel print: 'Отменить печать'
   Cancelled: Отменено
+  Cancelling turns the chamber target off so the wait ends, then stops the print.: 'Отмена выключит целевую температуру камеры, чтобы ожидание закончилось, затем остановит печать.'
   'Cannot add to queue: internal error': 'Не удалось добавить в очередь: внутренняя ошибка'
   Cannot be changed from here on a multi-unit MMU: Нельзя изменить здесь на MMU с несколькими блоками
   'Cannot control timelapse: printer not connected': 'Невозможно управлять таймлапсом:
@@ -1113,6 +1113,7 @@ translations:
   Element: Элемент
   Emergency Stop: Аварийная остановка
   Emergency Stop?: Аварийная остановка?
+  Emergency stop: 'Аварийная остановка'
   Emergency stop activated: Аварийная остановка активирована
   'Emergency stop failed: not connected': 'Аварийная остановка не удалась: нет подключения'
   'Emergency stop failed: {}': 'Ошибка аварийной остановки: {}'
@@ -3369,6 +3370,7 @@ translations:
   : "Остановить печать \"{}\"?\n\nЭто нельзя будет отменить через 5 секунд."
   Stop the check?: Остановить проверку?
   Stop the running cycle before starting another: 'Остановите текущий цикл, прежде чем запускать новый'
+  Stop with an emergency stop?: 'Остановить аварийной остановкой?'
   Stopped: Остановлено
   Stopped between Hub and Toolhead: Остановка между хабом и печатающей головкой
   Stopped between Lane and Hub: Остановка между каналом и хабом
@@ -3525,9 +3527,12 @@ translations:
   The filament system reported an error: Система филамента сообщила об ошибке
   The heater can't be changed while the printer is waiting.: 'Нагреватель нельзя изменить, пока принтер ожидает.'
   The heater did not accept the printer's credentials.: 'Нагреватель не принял учётные данные принтера.'
-  The heater refused the command.: 'Нагреватель отклонил команду.'
+  The heater didn't accept the command.: 'Нагреватель не принял команду.'
+  The heater hasn't answered yet. Still trying.: 'Нагреватель ещё не ответил. Продолжаем попытки.'
+  The heater is inhibited.: 'Нагреватель заблокирован.'
   The heater reports a fault.: 'Нагреватель сообщает о неисправности.'
   'The heater reports a fault: {}.': 'Нагреватель сообщает о неисправности: {}.'
+  The heater took the target.: 'Нагреватель принял целевую температуру.'
   The heater was turned off at the heater.: 'Нагреватель был выключен на самом нагревателе.'
   The heater will cycle on and off several times.: Нагреватель будет несколько раз
     включаться и выключаться.
@@ -3559,6 +3564,9 @@ translations:
 
   The printer is busy waiting, so cancelling may take an emergency stop and a firmware restart.: 'Принтер занят ожиданием, поэтому отмена может потребовать аварийной остановки и перезапуска прошивки.'
   The printer is not homed. Continuing will home all axes, moving the toolhead. Make sure the bed is clear.: Принтер не запаркован. Продолжение выполнит парковку всех осей, печатающая головка переместится. Убедитесь, что стол свободен.
+  The printer is shut down.: 'Принтер выключен.'
+  ? The printer is waiting for the chamber to reach a temperature, and only an emergency stop and a firmware restart end that wait. The print stops at once and cannot be resumed.
+  : 'Принтер ждёт, пока камера достигнет температуры, и прервать это ожидание могут только аварийная остановка и перезапуск прошивки. Печать остановится сразу, продолжить её будет нельзя.'
   The printer isn't detecting that any filament is currently loaded. What would you like to do?: Принтер не обнаруживает загруженный филамент. Что вы хотите сделать?
   The printer lost power during a print. It can resume where it left off.: Принтер потерял питание во время печати. Он может продолжить с места остановки.
   The printer lost power during a print. The resumed layer may not line up exactly.: Принтер потерял питание во время печати. Возобновлённый слой может не совпасть точно.
@@ -3661,6 +3669,7 @@ translations:
   This tool probes each bed screw and tells you how much to adjust.: Этот инструмент
     проверяет каждый винт стола и показывает, насколько его нужно отрегулировать.
   'This update asks for new permissions:': 'Это обновление запрашивает новые разрешения:'
+  'This wait ends only at its temperature: cancelling takes an emergency stop and a firmware restart.': 'Это ожидание заканчивается только по достижении температуры: для отмены нужны аварийная остановка и перезапуск прошивки.'
   ? This will apply the Z-offset to your endstop and restart Klipper to save the configuration.
     The printer will briefly disconnect.
   : Z-offset будет применён к вашему концевику, и Klipper перезапустится для сохранения
@@ -3768,6 +3777,7 @@ translations:
   Try adjusting your search or filters: Попробуйте изменить поиск или фильтры
   Try Again: 'Повторить'
   Try the operation again. If it persists, check for mechanical issues.: Повторите операцию. Если проблема не исчезает, проверьте механические неисправности.
+  Trying again...: 'Повторная попытка...'
   Tune: Настройка
   Tuning tower enabled - start a print to test: Башня настройки включена — начните
     печать для теста

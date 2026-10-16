@@ -51,7 +51,7 @@ static std::string chamber_rejection_text(chamber::CommandRejection kind,
                                           chamber::RefusalCause cause, const char* fault_text) {
     switch (kind) {
     case chamber::CommandRejection::Conflict:
-        return lv_tr("Another controller changed the heater at the same time.");
+        return lv_tr("The heater didn't accept the command.");
     case chamber::CommandRejection::Auth:
         return lv_tr("The heater did not accept the printer's credentials.");
     case chamber::CommandRejection::Refused:
@@ -64,10 +64,11 @@ static std::string chamber_rejection_text(chamber::CommandRejection kind,
                                      fault_text)
                        : std::string(lv_tr("The heater reports a fault."));
         case chamber::RefusalCause::Inhibited:
+            return lv_tr("The heater is inhibited.");
         case chamber::RefusalCause::Unspecified:
             break;
         }
-        return lv_tr("The heater refused the command.");
+        return lv_tr("The heater didn't accept the command.");
     case chamber::CommandRejection::None:
         break;
     }

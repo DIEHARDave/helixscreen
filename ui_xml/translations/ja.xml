@@ -251,7 +251,6 @@
   <translation tag="Anonymous data to help improve HelixScreen" ja="HelixScreen改善のための匿名データ"/>
   <translation tag="Anonymous stats — no personal data, ever." ja="匿名の統計情報 — 個人データは一切収集しません。"/>
   <translation tag="Anonymous usage statistics" ja="匿名の使用統計"/>
-  <translation tag="Another controller changed the heater at the same time." ja="別のコントローラーが同時にヒーターを変更しました。"/>
   <translation tag="Any notes..." ja="メモ..."/>
   <translation tag="App Background" ja="アプリ背景"/>
   <translation tag="App startup encountered an error. Some features may be unavailable." ja="アプリの起動中にエラーが発生しました。一部の機能が利用できない場合があります。"/>
@@ -487,6 +486,7 @@
   <translation tag="Cancel macro not configured" ja="キャンセルマクロが未設定です"/>
   <translation tag="Cancel print" ja="印刷をキャンセル"/>
   <translation tag="Cancelled" ja="キャンセル済み"/>
+  <translation tag="Cancelling turns the chamber target off so the wait ends, then stops the print." ja="キャンセルするとチャンバーの目標温度をオフにして待機を終了し、その後印刷を停止します。"/>
   <translation tag="Cannot add to queue: internal error" ja="キューに追加できません: 内部エラー"/>
   <translation tag="Cannot be changed from here on a multi-unit MMU" ja="マルチユニット MMU ではここから変更できません"/>
   <translation tag="Cannot control timelapse: printer not connected" ja="タイムラプスを制御できません: プリンター未接続"/>
@@ -963,6 +963,7 @@
   <translation tag="Element" ja="発熱体"/>
   <translation tag="Emergency Stop" ja="緊急停止"/>
   <translation tag="Emergency Stop?" ja="緊急停止しますか？"/>
+  <translation tag="Emergency stop" ja="緊急停止"/>
   <translation tag="Emergency stop activated" ja="緊急停止が作動しました"/>
   <translation tag="Emergency stop failed: not connected" ja="緊急停止に失敗: 未接続"/>
   <translation tag="Emergency stop failed: {}" ja="緊急停止に失敗しました: {}"/>
@@ -2999,6 +3000,7 @@
   <translation tag="Stop printing &quot;{}&quot;?&#10;&#10;This cannot be undone after 5 seconds." ja="&quot;{}&quot; の印刷を停止しますか？&#10;&#10;5秒後は取り消せません。"/>
   <translation tag="Stop the check?" ja="チェックを停止しますか？"/>
   <translation tag="Stop the running cycle before starting another" ja="新しく開始する前に、実行中のサイクルを停止してください"/>
+  <translation tag="Stop with an emergency stop?" ja="緊急停止で停止しますか？"/>
   <translation tag="Stopped" ja="停止しました"/>
   <translation tag="Stopped between Hub and Toolhead" ja="ハブとツールヘッドの間で停止"/>
   <translation tag="Stopped between Lane and Hub" ja="レーンとハブの間で停止"/>
@@ -3131,9 +3133,12 @@
   <translation tag="The filament system reported an error" ja="フィラメントシステムがエラーを報告しました"/>
   <translation tag="The heater can&apos;t be changed while the printer is waiting." ja="プリンターの待機中はヒーターを変更できません。"/>
   <translation tag="The heater did not accept the printer&apos;s credentials." ja="ヒーターがプリンターの認証情報を受け付けませんでした。"/>
-  <translation tag="The heater refused the command." ja="ヒーターがコマンドを拒否しました。"/>
+  <translation tag="The heater didn&apos;t accept the command." ja="ヒーターがコマンドを受け付けませんでした。"/>
+  <translation tag="The heater hasn&apos;t answered yet. Still trying." ja="ヒーターからまだ応答がありません。試行を続けています。"/>
+  <translation tag="The heater is inhibited." ja="ヒーターが抑止されています。"/>
   <translation tag="The heater reports a fault." ja="ヒーターが異常を報告しています。"/>
   <translation tag="The heater reports a fault: {}." ja="ヒーターが異常を報告しています: {}。"/>
+  <translation tag="The heater took the target." ja="ヒーターが目標温度を受け付けました。"/>
   <translation tag="The heater was turned off at the heater." ja="ヒーター本体で電源がオフにされました。"/>
   <translation tag="The heater will cycle on and off several times." ja="ヒーターは数回オン/オフを繰り返します。"/>
   <translation tag="The helper macros are installed and activate after Klipper restarts." ja="ヘルパーマクロはインストール済みで、Klipper の再起動後に有効になります。"/>
@@ -3156,6 +3161,8 @@
   <translation tag="The printer homes, then moves the plate as far from the nozzle as it goes. Some spools are not heat-resistant enough and can deform. Nothing moves from this screen until you confirm the spools are off the bed; Mainsail, macros and prints sent from a slicer are not blocked." ja="プリンターはホームに戻ってから、ベッドをノズルからできるだけ離します。耐熱性が足りずに変形するスプールもあります。スプールをベッドから取り出したことを確認するまで、この画面からは何も動きません。Mainsail、マクロ、スライサーから送られた印刷はブロックされません。"/>
   <translation tag="The printer is busy waiting, so cancelling may take an emergency stop and a firmware restart." ja="プリンターは待機中のため、キャンセルには緊急停止とファームウェアの再起動が必要になる場合があります。"/>
   <translation tag="The printer is not homed. Continuing will home all axes, moving the toolhead. Make sure the bed is clear." ja="プリンターがホーミングされていません。続行すると全軸がホーミングされ、ツールヘッドが移動します。ベッドに物がないことを確認してください。"/>
+  <translation tag="The printer is shut down." ja="プリンターはシャットダウンしています。"/>
+  <translation tag="The printer is waiting for the chamber to reach a temperature, and only an emergency stop and a firmware restart end that wait. The print stops at once and cannot be resumed." ja="プリンターはチャンバーが温度に達するのを待っており、この待機を終わらせるには緊急停止とファームウェアの再起動しかありません。印刷はすぐに停止し、再開できません。"/>
   <translation tag="The printer isn&apos;t detecting that any filament is currently loaded. What would you like to do?" ja="プリンターは現在フィラメントが装填されていることを検出していません。どうしますか？"/>
   <translation tag="The printer lost power during a print. It can resume where it left off." ja="印刷中にプリンターの電源が失われました。中断した箇所から再開できます。"/>
   <translation tag="The printer lost power during a print. The resumed layer may not line up exactly." ja="印刷中にプリンターの電源が失われました。再開したレイヤーがわずかにずれる可能性があります。"/>
@@ -3236,6 +3243,7 @@
   <translation tag="This system does not support bypass mode" ja="このシステムはバイパスモードに対応していません"/>
   <translation tag="This tool probes each bed screw and tells you how much to adjust." ja="このツールは各ベッドネジをプローブし、どのくらい調整が必要かを教えます。"/>
   <translation tag="This update asks for new permissions:" ja="この更新は新しい権限を要求します："/>
+  <translation tag="This wait ends only at its temperature: cancelling takes an emergency stop and a firmware restart." ja="この待機は温度に達するまで終わりません。キャンセルには緊急停止とファームウェアの再起動が必要です。"/>
   <translation tag="This will apply the Z-offset to your endstop and restart Klipper to save the configuration. The printer will briefly disconnect." ja="Z-offset をエンドストップに適用し、設定を保存するために Klipper を再起動します。プリンターは一時的に切断されます。"/>
   <translation tag="This will apply the Z-offset to your probe and restart Klipper to save the configuration. The printer will briefly disconnect." ja="Z-offset をプローブに適用し、設定を保存するために Klipper を再起動します。プリンターは一時的に切断されます。"/>
   <translation tag="This will collect system info, logs, settings, and printer data to help diagnose issues. No passwords or sensitive data will be included." ja="システム情報、ログ、設定、プリンターデータを収集して問題の診断に役立てます。パスワードや個人情報は含まれません。"/>
@@ -3326,6 +3334,7 @@
   <translation tag="Try Again" ja="再試行"/>
   <translation tag="Try adjusting your search or filters" ja="検索やフィルターを調整してみてください"/>
   <translation tag="Try the operation again. If it persists, check for mechanical issues." ja="もう一度お試しください。解決しない場合は機械的な問題がないか確認してください。"/>
+  <translation tag="Trying again..." ja="再試行中..."/>
   <translation tag="Tune" ja="チューニング"/>
   <translation tag="Tuning tower enabled - start a print to test" ja="チューニングタワー有効 - 印刷を開始してテストしてください"/>
   <translation tag="Turbo" ja="ターボ"/>
