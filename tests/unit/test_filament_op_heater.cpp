@@ -1492,3 +1492,29 @@ TEST_CASE_METHOD(HeaterFixture,
     feed_nozzle(220, 220);
     CHECK(count_starting("LOAD_FILAMENT") == 0);
 }
+
+TEST_CASE_METHOD(HeaterFixture, "A request made while printing is not dropped by the pause rule",
+                 "[filament][preheat][heater][print_guard]") {
+    // Only a pause ending drops a request; one made while the job already runs
+    // (or is starting) belongs to that job, which never "leaves" a pause.
+    const char* state = GENERATE("printing", "standby");
+    CAPTURE(state);
+    set_print_state("printing");
+    if (std::string(state) == "standby") {
+        // Preparing: the host-side start block, with print_stats still standby.
+        set_print_state("standby");
+        this->state.print_state().set_print_start_state(helix::PrintStartPhase::BED_MESH, "", 0);
+        drain_all();
+    }
+    feed_nozzle(25, 0);
+    bool ran = false;
+    helix::ui::PreheatRequest req;
+    req.op = helix::ui::FilamentHeatOp::Extrude;
+    req.owner = "printing-test";
+    req.run = [&ran](helix::ui::FilamentOpTicket) { ran = true; };
+    REQUIRE(heater->get().run_after_preheat(std::move(req)) == FilamentOpHeater::Outcome::Heating);
+
+    feed_nozzle(220, 220);
+    CHECK(ran);
+    this->state.print_state().set_print_start_state(helix::PrintStartPhase::IDLE, "", 0);
+}

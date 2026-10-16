@@ -2753,6 +2753,9 @@ void FilamentPanel::execute_unload() {
     }
 
     helix::ui::FilamentOpSurface surface = op_surface(FilamentOp::Unload);
+    // An unload the heater ends unrun (refused, withdrawn, replaced) completes
+    // nothing that would disarm the prompt armed for it above.
+    surface.on_preheat_ended = []() { helix::ui::disarm_manual_pull_prompt(); };
     surface.on_refused = [this](const helix::ui::FilamentOpPlan& refused) {
         const helix::ui::FilamentPanelOutcome refusal =
             helix::ui::panel_unload_outcome(refused, false, -1);

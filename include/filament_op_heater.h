@@ -224,6 +224,13 @@ class FilamentOpHeater {
     /// cancel(), but only a preheat @p owner asked for. False otherwise.
     bool cancel_owned(const void* owner);
 
+    /// Whether a request for @p op from @p owner would be refused because a
+    /// different op of the same owner is still heating; toasts the refusal when
+    /// it would. run_after_preheat() applies it, and a surface that arms its own
+    /// state before asking checks it first, so the refusal leaves that state to
+    /// the op that is heating.
+    bool refuse_while_heating(FilamentHeatOp op, const void* owner, const char* log_tag) const;
+
     /// The op @p ticket names finished. Schedules the post-op cooldown of the
     /// extruder it heated when this heater heated for it, no job holds the
     /// machine and no preheat waits; anything else (a hand preheat, a backend

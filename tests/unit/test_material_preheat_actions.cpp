@@ -1,6 +1,7 @@
 // Copyright (C) 2025-2026 356C LLC
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include "ui_manual_pull_prompt.h"
 #include "ui_nav_manager.h"
 
 #include "../lvgl_ui_test_fixture.h"
@@ -8,6 +9,7 @@
 #include "../test_helpers/filament_panel_test_access.h"
 #include "../test_helpers/preheat_widget_test_access.h"
 #include "../test_helpers/scoped_shared_resource.h"
+#include "../ui_test_utils.h"
 #include "filament_catalog.h"
 #include "filament_op_heater.h"
 #include "filament_op_router.h"
@@ -564,4 +566,39 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     CHECK(prompts == 0);
     helix::ui::set_filament_param_prompter({});
     helix::MacroParamCache::instance().clear();
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "A panel Unload the heater does not run leaves no manual-pull prompt armed",
+                 "[material_preheat][preheat][filament][heater]") {
+    // Extrude is heating; the user taps Unload, which the heater refuses. The
+    // manual-pull prompt armed for that unload would otherwise fire on the next
+    // unrelated toolhead-sensor edge, or on the next unload's end.
+    Harness h;
+    helix::PrinterDiscovery bare;
+    bare.parse_objects(nlohmann::json{"extruder"});
+    StandardMacros::instance().reset();
+    StandardMacros::instance().init(bare);
+    helix_test::ScopedSharedResource<helix::TemperatureController> controller(
+        std::make_shared<helix::TemperatureController>(h.state, &h.api));
+    helix_test::ScopedSharedResource<helix::ui::FilamentOpHeater> heater(
+        std::make_shared<helix::ui::FilamentOpHeater>(h.state));
+    helix::SafetySettingsManager::instance().set_allow_cold_extrude(false);
+    h.state.update_from_status({{"extruder", {{"temperature", 25.0}, {"target", 0.0}}}});
+    helix::ui::UpdateQueue::instance().drain();
+
+    PanelAccess::handle_extrude_button(*h.panel);
+    helix::ui::UpdateQueue::instance().drain();
+    REQUIRE(heater.get().pending());
+
+    PanelAccess::execute_unload(*h.panel);
+    helix::ui::UpdateQueue::instance().drain();
+    REQUIRE(heater.get().pending()); // refused: the extrude still heats
+
+    std::vector<std::string> toasts;
+    helix::ui::set_test_notification_info_hook(
+        [&toasts](const std::string& msg) { toasts.push_back(msg); });
+    helix::ui::manual_pull_unload_finished(); // speaks only when armed
+    helix::ui::set_test_notification_info_hook(nullptr);
+    CHECK(toasts.empty());
 }

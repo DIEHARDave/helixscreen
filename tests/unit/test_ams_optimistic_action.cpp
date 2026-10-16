@@ -604,3 +604,25 @@ TEST_CASE_METHOD(OptimisticSidebarFixture,
     CHECK(std::string(lv_subject_get_string(
               AmsState::instance().get_ams_action_detail_subject())) != heating);
 }
+
+TEST_CASE_METHOD(OptimisticSidebarFixture,
+                 "Happy Hare: a load refused while an unload heats leaves the unload's step",
+                 "[ams][optimistic_action][happy_hare][preheat]") {
+    // The context menu reaches handle_load_with_preheat() with no busy check of
+    // its own, so a Load can arrive while this sidebar's Unload heats.
+    auto& hh = build_hh();
+    hh.seat(1);
+    AmsState::instance().sync_from_backend();
+    set_nozzle(25, 0);
+    sidebar_->handle_unload(1);
+    REQUIRE(heater_.get().pending());
+    REQUIRE(held());
+
+    sidebar_->handle_load_with_preheat(2);
+    CHECK(heater_.get().pending());
+    CHECK(held());
+    CHECK(shown_action() == AmsAction::HEATING);
+
+    set_nozzle(220, 220);
+    CHECK(api_.sent == std::vector<std::string>{"MMU_UNLOAD"});
+}

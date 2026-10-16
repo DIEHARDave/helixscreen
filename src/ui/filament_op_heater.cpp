@@ -229,13 +229,7 @@ FilamentOpHeater::Outcome FilamentOpHeater::run_after_preheat(PreheatRequest req
             cancel();
             return Outcome::Cancelled;
         }
-        if (waiting.owner == req.owner && waiting.op != req.op) {
-            // One surface, one op at a time: a dialog that stays open after Load
-            // offers Purge next, and a Purge tapped while the Load heats must
-            // not drop the Load the user is waiting on.
-            spdlog::info("{} {} refused — this surface's {} is still heating", req.log_tag,
-                         filament_heat_op_name(req.op), filament_heat_op_name(waiting.op));
-            NOTIFY_WARNING(lv_tr("Wait for the current filament operation to finish"));
+        if (refuse_while_heating(req.op, req.owner, req.log_tag)) {
             return Outcome::Cancelled;
         }
         spdlog::info("{} {} replaces the pending {} preheat", req.log_tag,
@@ -553,6 +547,20 @@ bool FilamentOpHeater::cancel() {
     restore_prior(pending_->heater, pending_->prior_target_c);
     NOTIFY_INFO(lv_tr("Preheat cancelled"));
     end_pending(PreheatPhase::Cancelled);
+    return true;
+}
+
+bool FilamentOpHeater::refuse_while_heating(FilamentHeatOp op, const void* owner,
+                                            const char* log_tag) const {
+    if (!pending_ || pending_->req.owner != owner || pending_->req.op == op) {
+        return false;
+    }
+    // One surface, one op at a time: a dialog that stays open after Load offers
+    // Purge next, and a Purge tapped while the Load heats must not drop the Load
+    // the user is waiting on.
+    spdlog::info("{} {} refused — this surface's {} is still heating", log_tag,
+                 filament_heat_op_name(op), filament_heat_op_name(pending_->req.op));
+    NOTIFY_WARNING(lv_tr("Wait for the current filament operation to finish"));
     return true;
 }
 

@@ -1550,6 +1550,12 @@ void AmsOperationSidebar::handle_unload(int slot_index, bool lane_in_toolhead) {
         return;
     }
 
+    // Asked before the stepper is armed: a refusal leaves it to the op heating.
+    if (auto* heater = get_filament_op_heater();
+        heater && heater->refuse_while_heating(FilamentHeatOp::Unload, this, "[AmsSidebar]")) {
+        return;
+    }
+
     // Build the UNLOAD stepper first (HEATING + correct step list).
     if (target_slot >= 0) {
         start_operation(StepOperationType::UNLOAD, target_slot);
@@ -1714,6 +1720,11 @@ void AmsOperationSidebar::handle_load_with_preheat(int slot_index) {
     // the UI and backend agree — K1 CFS reports a preloaded cassette slot with an
     // empty nozzle and a SWAP there would cut nothing and stall at the cut step,
     // #968).
+    // Asked before the stepper is armed: a refusal leaves it to the op heating.
+    if (auto* heater = get_filament_op_heater();
+        heater && heater->refuse_while_heating(FilamentHeatOp::Load, this, "[AmsSidebar]")) {
+        return;
+    }
     if (!caps.is_tool_changer) {
         start_operation(plan.ams_call == helix::ui::AmsCall::Load ? StepOperationType::LOAD_FRESH
                                                                   : StepOperationType::LOAD_SWAP,
