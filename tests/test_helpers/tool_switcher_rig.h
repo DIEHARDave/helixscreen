@@ -63,6 +63,17 @@ class GateBackend : public AmsBackendMock {
     /// Slot reads, which take the backend's mutex: what a widget refresh costs it.
     mutable int slot_info_calls = 0;
 
+    /// Report a load in progress, as a backend mid-operation does.
+    bool report_busy = false;
+
+    AmsSystemInfo get_system_info() const override {
+        AmsSystemInfo info = AmsBackendMock::get_system_info();
+        if (report_busy) {
+            info.action = AmsAction::LOADING;
+        }
+        return info;
+    }
+
     SlotInfo get_slot_info(int slot_index) const override {
         ++slot_info_calls;
         return AmsBackendMock::get_slot_info(slot_index);

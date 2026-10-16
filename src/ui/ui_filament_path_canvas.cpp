@@ -161,6 +161,31 @@ bool helix::ui::recorded_box_hit(lv_point_t p, const lv_area_t& box, lv_point_t 
                        box.y2 - box.y1, margin);
 }
 
+helix::ui::ParallelTap helix::ui::parallel_tap_at(lv_point_t p, int32_t toolhead_y,
+                                                  int32_t sensor_y, int32_t tool_scale,
+                                                  const int32_t* slot_x, int slot_count) {
+    const int32_t hit_radius_x = LV_MAX(20, tool_scale * 3);
+    auto column = [&]() {
+        for (int i = 0; i < slot_count; i++) {
+            if (abs(p.x - slot_x[i]) < hit_radius_x) {
+                return i;
+            }
+        }
+        return -1;
+    };
+    if (abs(p.y - toolhead_y) < tool_scale * 4) {
+        if (const int i = column(); i >= 0) {
+            return {ParallelTapTarget::Toolhead, i};
+        }
+    }
+    if (p.y < sensor_y) {
+        if (const int i = column(); i >= 0) {
+            return {ParallelTapTarget::Lane, i};
+        }
+    }
+    return {};
+}
+
 // ============================================================================
 // Event handlers
 // ============================================================================
@@ -204,35 +229,26 @@ static void filament_path_click_cb(lv_event_t* e) {
     // filament line/spool area (top half of canvas, above the sensor dots)
     if (data->topology == static_cast<int>(helix::PathTopology::PARALLEL) && data->slot_callback) {
         const ParallelRows rows = parallel_rows(*data, compute_base_geometry(obj, data));
-        int32_t toolhead_y = rows.toolhead_y;
-        int32_t sensor_y = rows.sensor_y;
-        int32_t tool_scale = rows.tool_scale;
-
-        // Toolhead click area (bottom half)
-        int32_t hit_radius_y = tool_scale * 4;
-        if (abs(point.y - toolhead_y) < hit_radius_y) {
-            for (int i = 0; i < data->slot_count; i++) {
-                int32_t slot_x = x_off + get_slot_x(data, i, x_off);
-                int32_t hit_radius_x = LV_MAX(20, tool_scale * 3);
-                if (abs(point.x - slot_x) < hit_radius_x) {
-                    spdlog::debug("[FilamentPath] Toolhead {} clicked (parallel topology)", i);
-                    data->slot_callback(i, data->slot_user_data);
-                    return;
-                }
-            }
+        int32_t slot_x[FilamentPathData::MAX_SLOTS];
+        const int count = LV_MIN(data->slot_count, FilamentPathData::MAX_SLOTS);
+        for (int i = 0; i < count; i++) {
+            slot_x[i] = x_off + get_slot_x(data, i, x_off);
         }
-
-        // Spool/filament line click area (top of canvas down to sensor dots)
-        if (point.y < sensor_y) {
-            for (int i = 0; i < data->slot_count; i++) {
-                int32_t slot_x = x_off + get_slot_x(data, i, x_off);
-                int32_t hit_radius_x = LV_MAX(20, tool_scale * 3);
-                if (abs(point.x - slot_x) < hit_radius_x) {
-                    spdlog::debug("[FilamentPath] Spool {} clicked (parallel topology)", i);
-                    data->slot_callback(i, data->slot_user_data);
-                    return;
-                }
+        const helix::ui::ParallelTap tap = helix::ui::parallel_tap_at(
+            point, rows.toolhead_y, rows.sensor_y, rows.tool_scale, slot_x, count);
+        if (tap.target == helix::ui::ParallelTapTarget::Toolhead) {
+            spdlog::debug("[FilamentPath] Toolhead {} clicked (parallel topology)", tap.slot);
+            if (data->toolhead_callback) {
+                data->toolhead_callback(tap.slot, data->toolhead_user_data);
+            } else {
+                data->slot_callback(tap.slot, data->slot_user_data);
             }
+            return;
+        }
+        if (tap.target == helix::ui::ParallelTapTarget::Lane) {
+            spdlog::debug("[FilamentPath] Spool {} clicked (parallel topology)", tap.slot);
+            data->slot_callback(tap.slot, data->slot_user_data);
+            return;
         }
     }
 
@@ -659,6 +675,16 @@ void ui_filament_path_canvas_set_slot_callback(lv_obj_t* obj, filament_path_slot
     if (data) {
         data->slot_callback = cb;
         data->slot_user_data = user_data;
+    }
+}
+
+void helix::ui::filament_path_canvas_set_toolhead_callback(lv_obj_t* obj,
+                                                           filament_path_slot_cb_t cb,
+                                                           void* user_data) {
+    auto* data = get_data(obj);
+    if (data) {
+        data->toolhead_callback = cb;
+        data->toolhead_user_data = user_data;
     }
 }
 

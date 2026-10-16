@@ -587,6 +587,20 @@ int filament_path_canvas_buffer_fault_state(lv_obj_t* obj);
 void filament_path_canvas_release_buffer(lv_obj_t* obj);
 
 /**
+ * @brief Set click callback for a toolhead on a PARALLEL (one head per tool) path
+ *
+ * A tap on a head reaches this callback; a tap on its filament tube or spool
+ * still reaches the slot callback. With none set, a head tap reaches the slot
+ * callback too.
+ *
+ * @param obj The filament_path_canvas widget
+ * @param cb Callback function (slot_index, user_data)
+ * @param user_data User data passed to callback
+ */
+void filament_path_canvas_set_toolhead_callback(lv_obj_t* obj, filament_path_slot_cb_t cb,
+                                                void* user_data);
+
+/**
  * @brief Pure coordinate hit-test for an axis-aligned box.
  *
  * Returns true when point @p p falls within the box centered at (@p cx, @p cy)
@@ -606,5 +620,30 @@ bool hub_box_hit(lv_point_t p, int32_t cx, int32_t cy, int32_t w, int32_t h, int
  */
 bool recorded_box_hit(lv_point_t p, const lv_area_t& box, lv_point_t rendered_origin,
                       lv_point_t current_origin, int32_t margin);
+
+/// What a tap on a PARALLEL path landed on.
+enum class ParallelTapTarget : uint8_t {
+    None,
+    Toolhead, ///< A tool's head glyph
+    Lane,     ///< A tool's filament tube or spool, above its entry sensor
+};
+
+struct ParallelTap {
+    ParallelTapTarget target = ParallelTapTarget::None;
+    int slot = -1;
+};
+
+/**
+ * @brief Pure hit-test for a tap on a PARALLEL path.
+ *
+ * A head owns a band of 4 * @p tool_scale either side of @p toolhead_y; a lane
+ * owns everything above @p sensor_y. Each column is LV_MAX(20, 3 * @p tool_scale)
+ * either side of its entry in @p slot_x. The head band is tested first, so a
+ * head drawn up into the lane area still answers as the head.
+ *
+ * @param slot_x each slot's center x, in the same space as @p p
+ */
+ParallelTap parallel_tap_at(lv_point_t p, int32_t toolhead_y, int32_t sensor_y, int32_t tool_scale,
+                            const int32_t* slot_x, int slot_count);
 } // namespace helix::ui
 #endif
