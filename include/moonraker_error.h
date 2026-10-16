@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "error_event.h"
+#include "firmware_error_envelope.h"
 #include "format_utils.h"
 #include "json_fwd.h"
 #include "translation_loader.h"
@@ -177,9 +179,26 @@ struct MoonrakerError {
      *
      * Klipper errors often arrive as Python dict repr strings like:
      *   {'error': 'WebRequestError', 'message': 'Must home axis first'}
-     * This extracts just the 'message' value for user-friendly display.
+     * This extracts just the 'message' value for user-friendly display, then
+     * replaces any firmware JSON error envelope in it with the envelope's
+     * message (firmware_error_envelope.h).
      */
     static std::string extract_friendly_message(const std::string& raw) {
+        return helix::decode_firmware_error_text(extract_message_field(raw));
+    }
+
+    /// extract_friendly_message() of an error line that may still carry its
+    /// `!!` / `Error:` prefix, with that prefix and leading whitespace removed.
+    static std::string friendly_error_line(const std::string& raw) {
+        const auto parsed = helix::parse_gcode_error_line(raw);
+        std::string text = parsed.prefix == helix::GcodeErrorPrefix::None ? raw : parsed.text;
+        const auto start = text.find_first_not_of(" \t");
+        text.erase(0, start == std::string::npos ? text.size() : start);
+        return extract_friendly_message(text);
+    }
+
+    /// The 'message' value of a Python-repr or JSON error dict, or `raw`.
+    static std::string extract_message_field(const std::string& raw) {
         // Look for 'message': '...' pattern (Python dict repr with single quotes)
         static constexpr const char* key = "'message': '";
         auto pos = raw.find(key);
@@ -208,19 +227,6 @@ struct MoonrakerError {
             auto end = raw.find('"', start);
             if (end != std::string::npos && end > start) {
                 return raw.substr(start, end - start);
-            }
-        }
-        // Creality/Klipper key-error envelope uses "msg" instead of "message":
-        //   {"code":"keyNNN","msg":"...","values":[...]}
-        // Checked last so an explicit "message" is preferred when both exist.
-        for (const char* msg_key : {"\"msg\": \"", "\"msg\":\""}) {
-            pos = raw.find(msg_key);
-            if (pos != std::string::npos) {
-                auto start = pos + std::char_traits<char>::length(msg_key);
-                auto end = raw.find('"', start);
-                if (end != std::string::npos && end > start) {
-                    return raw.substr(start, end - start);
-                }
             }
         }
         return raw;
@@ -408,7 +414,8 @@ struct MoonrakerError {
         MoonrakerError err;
         err.type = MoonrakerErrorType::JSON_RPC_ERROR;
         err.method = method;
-        err.message = message;
+        // Callers hand over raw `!!` lines, which can carry a firmware envelope.
+        err.message = helix::decode_firmware_error_text(message);
         err.details = details;
         return err;
     }

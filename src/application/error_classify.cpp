@@ -6,16 +6,6 @@
 
 namespace helix::error_classify {
 
-namespace {
-
-ErrorSource source_for_code(const std::string& code) {
-    if (code.rfind("key", 0) == 0)
-        return ErrorSource::CFS; // Creality CFS codes
-    return ErrorSource::GENERIC;
-}
-
-} // namespace
-
 std::optional<ErrorEvent> classify(const std::string& raw_line, const ClassifyContext& ctx) {
     const GcodeErrorLine parsed = parse_gcode_error_line(raw_line);
     if (parsed.prefix == GcodeErrorPrefix::None)
@@ -31,15 +21,19 @@ std::optional<ErrorEvent> classify(const std::string& raw_line, const ClassifyCo
     e.raw_detail = text;
 
     std::string code;
-    GcodeErrorRouter::clean_error_text(text, code);
+    FirmwareCodeScheme scheme = FirmwareCodeScheme::Opaque;
+    GcodeErrorRouter::clean_error_text(text, code, &scheme);
     e.detail = text;
     e.code = code;
 
+    // Only error-table codes carry severity rules. Any other firmware code is
+    // shown to the user but classifies like an uncoded `!!`, so a fault raised
+    // mid-print still blocks rather than reading as a transient toast.
     if (!is_bang) { // "Error:" command error
         e.source = ErrorSource::KLIPPER;
         e.severity = ErrorSeverity::WARNING;
-    } else if (!code.empty()) {
-        e.source = source_for_code(code);
+    } else if (!code.empty() && scheme == FirmwareCodeScheme::ErrorTable) {
+        e.source = ErrorSource::CFS; // the error table's codes are the CFS family
         if (code.rfind("key8", 0) == 0) {
             e.severity = ErrorSeverity::CRITICAL;
             if (code == "key840") {

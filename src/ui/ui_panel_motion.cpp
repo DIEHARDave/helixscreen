@@ -22,6 +22,7 @@
 #include "i_moonraker_api.h"
 #include "jog_coalescer.h"
 #include "lvgl/src/others/translation/lv_translation.h"
+#include "moonraker_error.h"
 #include "observe_language.h"
 #include "observer_factory.h"
 #include "printer_state.h"
@@ -42,8 +43,6 @@
 #include <cstring>
 #include <functional>
 #include <memory>
-
-#include "hv/json.hpp"
 
 using namespace helix;
 using helix::ui::find_required;
@@ -124,25 +123,10 @@ bool helix::z_direction_blocked(bool z_homed, bool bounds_known, double z, doubl
     return z <= z_min + tolerance;
 }
 
-// Strip Klipper error prefixes, parse JSON error objects, and truncate for toast display.
-// Some Klipper builds (e.g. K1C) send errors as JSON:
-//   {"code":"key585","msg":"Move out of range: ...","values":[...]}
+// Strip Klipper error prefixes and firmware JSON error envelopes, and truncate
+// for toast display.
 static std::string clean_gcode_error(const std::string& msg) {
-    std::string cleaned = msg;
-
-    // Strip Klipper "!! " error prefix
-    if (cleaned.size() > 3 && cleaned.substr(0, 3) == "!! ") {
-        cleaned = cleaned.substr(3);
-    }
-
-    // Parse JSON error objects - extract the "msg" field; anything that does
-    // not parse or lacks a string "msg" is used as-is
-    if (!cleaned.empty() && cleaned[0] == '{') {
-        auto j = nlohmann::json::parse(cleaned, nullptr, false);
-        if (!j.is_discarded() && j.contains("msg") && j["msg"].is_string()) {
-            cleaned = j["msg"].get<std::string>();
-        }
-    }
+    std::string cleaned = MoonrakerError::friendly_error_line(msg);
 
     // Provide friendly messages for common error patterns
     if (cleaned.find("Must home axis") != std::string::npos ||

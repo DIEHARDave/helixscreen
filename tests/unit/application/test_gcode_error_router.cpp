@@ -26,9 +26,7 @@ struct GcodeErrorRouterTest : public HelixTestFixture {};
 //   `Once the underlying issue is corrected, use the "RESTART"...`
 //
 // Both shapes must surface `code` so process_line can route to the
-// right modal/recovery branch. Shape 2 was missed by the v1 extractor
-// (which only parsed when `text[0] == '{'`); user hit it and got a
-// generic "Klipper Error" toast instead of the Recover button.
+// right modal/recovery branch.
 
 TEST_CASE_METHOD(GcodeErrorRouterTest, "clean_error_text extracts pure JSON shape",
                  "[gcode_error_router]") {
@@ -91,6 +89,55 @@ TEST_CASE_METHOD(GcodeErrorRouterTest,
     // Brace-balance must terminate at the JSON's close brace and ignore
     // the trailing comment lines.
     REQUIRE(code == "key298");
+    // The footer and the prose prefix survive around the decoded text.
+    REQUIRE(text.rfind("Internal error during connect: ", 0) == 0);
+    REQUIRE(text.find("MCU bridge") != std::string::npos);
+    REQUIRE(text.find("Once the underlying issue is corrected") != std::string::npos);
+    REQUIRE(text.find('{') == std::string::npos);
+}
+
+TEST_CASE_METHOD(GcodeErrorRouterTest, "clean_error_text decodes a U1 shutdown envelope",
+                 "[gcode_error_router][firmware_error_envelope]") {
+    std::string text =
+        R"({"coded": "0003-0522-0002-0008", "oneshot": 0, "msg":"Lost communication with MCU 'e0'"})"
+        "\nOnce the underlying issue is corrected, use the\n"
+        "\"FIRMWARE_RESTART\" command to reset the firmware, reload the\n"
+        "config, and restart the host software.\n"
+        "Printer is shutdown\n";
+    std::string code;
+    helix::FirmwareCodeScheme scheme = helix::FirmwareCodeScheme::ErrorTable;
+    GcodeErrorRouter::clean_error_text(text, code, &scheme);
+
+    REQUIRE(code == "0003-0522-0002-0008");
+    REQUIRE(scheme == helix::FirmwareCodeScheme::Opaque);
+    REQUIRE(text.rfind("Lost communication with MCU 'e0'\nOnce the underlying issue", 0) == 0);
+    REQUIRE(text.find("Printer is shutdown") != std::string::npos);
+    REQUIRE(text.find('{') == std::string::npos);
+}
+
+TEST_CASE_METHOD(GcodeErrorRouterTest, "clean_error_text tolerates spaces in a K2 envelope",
+                 "[gcode_error_router][firmware_error_envelope]") {
+    std::string text = R"({ "code" : "key9001", "msg" : "MCU 'mcu' shutdown" })";
+    std::string code;
+    helix::FirmwareCodeScheme scheme = helix::FirmwareCodeScheme::Opaque;
+    GcodeErrorRouter::clean_error_text(text, code, &scheme);
+
+    REQUIRE(code == "key9001");
+    REQUIRE(scheme == helix::FirmwareCodeScheme::ErrorTable);
+    REQUIRE(text == "MCU 'mcu' shutdown");
+}
+
+TEST_CASE_METHOD(GcodeErrorRouterTest,
+                 "clean_error_text never looks an opaque code up in the error table",
+                 "[gcode_error_router][firmware_error_envelope]") {
+    // A dashed code that happened to spell a table key must still show the
+    // firmware's own msg: only an error-table envelope indexes the table.
+    std::string text = R"({"coded":"key298","msg":"firmware wording"})";
+    std::string code;
+    GcodeErrorRouter::clean_error_text(text, code);
+
+    REQUIRE(code == "key298");
+    REQUIRE(text == "firmware wording");
 }
 
 TEST_CASE_METHOD(GcodeErrorRouterTest, "clean_error_text falls through when text has no code",
