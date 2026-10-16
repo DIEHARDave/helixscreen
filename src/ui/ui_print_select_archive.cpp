@@ -52,7 +52,7 @@ void PrintSelectPanel::load_archive(size_t i, const std::string& filename, bool 
                   extract ? "no printer metadata" : "render only");
 
     archive_reader_->read_summary(
-        path, file.file_size_bytes, static_cast<double>(file.modified_timestamp),
+        path, file.file_size_bytes, file.modified,
         [this, token, i, filename, extract, gen](const three_mf::ArchiveSummary& summary) {
             auto shared = std::make_shared<const three_mf::ArchiveSummary>(summary);
             token.defer("PrintSelectPanel::archive_summary", [this, i, filename, extract, gen,
@@ -246,11 +246,16 @@ void PrintSelectPanel::sync_archive_scan_source() {
                             ? three_mf::find_plate(*it->archive, it->archive_plate)
                             : nullptr;
     if (plate && plate->gcode) {
-        source.emplace();
-        source->plate_gcode = *plate->gcode;
-        if (const auto out = it->archive_outputs.find(plate->index);
-            out != it->archive_outputs.end()) {
-            source->converted_output = out->second;
+        const auto out = it->archive_outputs.find(plate->index);
+        const bool converted = out != it->archive_outputs.end();
+        // A plate that has to be extracted here cannot print over a transport
+        // with no local copies, so nothing that prints is there to scan.
+        if (converted || ui::PrintPreparationManager::keeps_local_copies(api_)) {
+            source.emplace();
+            source->plate_gcode = *plate->gcode;
+            if (converted) {
+                source->converted_output = out->second;
+            }
         }
     }
     prep->set_archive_scan_source(it->filename, current_path_,

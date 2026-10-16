@@ -106,11 +106,14 @@ class ThreeMfReader {
      * @brief The first @p max_bytes of @p entry, inflated, read with one range.
      *
      * What a preamble scan of a plate's G-code reads without fetching the
-     * whole archive. Fewer bytes when the entry is shorter; never more.
+     * whole archive. Fewer bytes when the entry is shorter; never more. A read
+     * that does not hold the bytes asked for, or bytes that do not inflate, is
+     * an error. Once @p cancelled is set neither callback runs.
      */
     static void read_entry_head(ITransfersAPI& transfers, const std::string& path,
                                 const zip::ZipEntry& entry, size_t max_bytes, BytesCallback on_done,
-                                ErrorCallback on_error);
+                                ErrorCallback on_error,
+                                ITransfersAPI::CancelFlag cancelled = nullptr);
 
     /**
      * @brief Writes plate @p plate's G-code from the local archive @p local_zip to @p local_gcode.

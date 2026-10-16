@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "ui_filename_utils.h"
+#include "ui_panel_print_status.h"
 #include "ui_print_preparation_manager.h"
 #include "ui_print_start_controller.h"
 
@@ -10,6 +11,7 @@
 #include "../test_helpers/mock_printer.h"
 #include "../test_helpers/planted_gcode.h"
 #include "../test_helpers/print_preparation_manager_test_access.h"
+#include "../test_helpers/print_status_panel_test_access.h"
 #include "../test_helpers/printer_state_test_access.h"
 #include "../test_helpers/scoped_env.h"
 #include "../test_helpers/update_queue_test_access.h"
@@ -352,6 +354,14 @@ TEST_CASE_METHOD(ArchiveStart,
     CHECK(printer.api.job_mock().started_prints()[0] == uploads[0].dest_path);
     CHECK_FALSE(errored);
 
+    SECTION("with nothing to extract it, a plate is refused, never started as the .3mf") {
+        PrintStartController bare{printer.state, &printer.api};
+        bool bare_errored = false;
+        bare.initiate_reprint(kArchive, "", {}, [] {}, [&bare_errored] { bare_errored = true; }, 9);
+        drain_until_quiet();
+        CHECK(bare_errored);
+        CHECK(printer.api.job_mock().started_prints().size() == 1);
+    }
     SECTION("without a plate it starts the file as it is") {
         PrintStartController plain{printer.state, &printer.api};
         plain.set_prep_manager(&manager);
@@ -462,4 +472,78 @@ TEST_CASE("read_entry_head inflates just the start of a plate", "[three_mf][read
         CHECK(got == plate.substr(0, n));
     }
     CHECK(transfers.ranges == 2);
+}
+
+TEST_CASE("read_entry_head refuses bytes it cannot inflate as the entry",
+          "[three_mf][reader][scan]") {
+    MoonrakerClientMock client{MoonrakerClientMock::PrinterType::VORON_24};
+    ArchiveTransfers transfers{client, ""};
+    std::string zip = disk_bytes(fixture_dir() + "single_plate.gcode.3mf");
+    const auto entry = plate_entry("single_plate.gcode.3mf", 9);
+    REQUIRE(entry.method == 8);
+    const size_t lh = static_cast<size_t>(entry.lh_offset);
+    const size_t extra = static_cast<uint8_t>(zip[lh + 28]) |
+                         static_cast<size_t>(static_cast<uint8_t>(zip[lh + 29])) << 8;
+    const size_t data = lh + helix::zip::ZIP_LOCAL_HEADER_BYTES + entry.name.size() + extra;
+    // Every byte asked for, so a whole entry is checked as it ends.
+    size_t max_bytes = static_cast<size_t>(entry.usize) + 1;
+
+    SECTION("a local extra field longer than the read allows for") {
+        // The entry's own bytes, intact, behind a longer extra field.
+        const size_t grown = extra + helix::zip::ZIP_LOCAL_EXTRA_SLACK + 500;
+        zip[lh + 28] = static_cast<char>(grown & 0xff);
+        zip[lh + 29] = static_cast<char>(grown >> 8);
+        zip.insert(data, grown - extra, '\0');
+        // Just the head, which nothing at the entry's end checks.
+        max_bytes = 8000;
+    }
+    SECTION("compressed bytes that inflate to other G-code") {
+        // One flipped bit that still inflates, to the entry's length: only
+        // its checksum tells.
+        zip[data + 6000] = static_cast<char>(zip[data + 6000] ^ 0x01);
+    }
+    transfers.put("a.gcode.3mf", zip);
+    bool done = false;
+    std::string error;
+    helix::three_mf::ThreeMfReader::read_entry_head(
+        transfers, "a.gcode.3mf", entry, max_bytes, [&done](const std::string&) { done = true; },
+        [&error](const std::string& e) { error = e; });
+    CHECK_FALSE(done);
+    CHECK_FALSE(error.empty());
+}
+
+TEST_CASE("a cancelled read_entry_head answers nothing", "[three_mf][reader][scan]") {
+    MoonrakerClientMock client{MoonrakerClientMock::PrinterType::VORON_24};
+    ArchiveTransfers transfers{client, ""};
+    transfers.put("a.gcode.3mf", disk_bytes(fixture_dir() + "single_plate.gcode.3mf"));
+    const auto entry = plate_entry("single_plate.gcode.3mf", 9);
+    const bool fail = GENERATE(false, true);
+    transfers.hold_from = 1;
+    auto cancelled = std::make_shared<std::atomic<bool>>(false);
+    bool answered = false;
+    helix::three_mf::ThreeMfReader::read_entry_head(
+        transfers, "a.gcode.3mf", entry, 1000, [&answered](const std::string&) { answered = true; },
+        [&answered](const std::string&) { answered = true; }, cancelled);
+    cancelled->store(true);
+    transfers.release_held(fail);
+    CHECK_FALSE(answered);
+}
+
+TEST_CASE_METHOD(ArchiveStart, "a plate reprint with no print controller is refused",
+                 "[print_status][reprint][three_mf]") {
+    PrintStatusPanel panel{printer.state, &printer.api};
+    panel.init_subjects();
+    PrintStatusPanelTestAccess::reprint_without_controller(
+        panel, helix::gcode::ReprintTarget{kArchive, 9});
+    drain_until_quiet();
+    CHECK(printer.api.job_mock().started_prints().empty());
+
+    SECTION("a plain file still starts directly") {
+        PrintStatusPanelTestAccess::reprint_without_controller(
+            panel, helix::gcode::ReprintTarget{"benchy.gcode", 0});
+        drain_until_quiet();
+        REQUIRE(printer.api.job_mock().started_prints().size() == 1);
+        CHECK(printer.api.job_mock().started_prints()[0] == "benchy.gcode");
+    }
+    panel.deinit_subjects();
 }

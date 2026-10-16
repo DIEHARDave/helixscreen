@@ -2362,6 +2362,7 @@ translations:
   Open frame: Открытая рама
 
   Open motion controls for jogging: Управление перемещением осей
+  Open the .3mf in Print Files to print this plate again.: 'Откройте .3mf в разделе «Файлы Gcode», чтобы снова напечатать эту пластину.'
   Open the CFS unit and remove the broken filament from the slot: Откройте блок CFS и извлеките сломанный филамент из слота
   Open the slot editor when you load a new spool: 'Открывать редактор слота при установке новой катушки'
   Operation already in progress: Операция уже выполняется

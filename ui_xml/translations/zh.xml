@@ -2103,6 +2103,7 @@
   <translation tag="Open feeder macro" zh="打开送料器宏"/>
   <translation tag="Open frame" zh="开放式机架"/>
   <translation tag="Open motion controls for jogging" zh="打开手动移动控制"/>
+  <translation tag="Open the .3mf in Print Files to print this plate again." zh="请在打印文件中打开该 .3mf 以再次打印此板。"/>
   <translation tag="Open the CFS unit and remove the broken filament from the slot" zh="请打开 CFS 单元并从槽位中取出断裂的耗材"/>
   <translation tag="Open the slot editor when you load a new spool" zh="装入新料盘时打开槽位编辑器"/>
   <translation tag="Operation already in progress" zh="操作正在进行中"/>

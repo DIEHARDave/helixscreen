@@ -639,8 +639,10 @@ void PrintPreparationManager::request_scan(const std::string& filename,
     }
     // A read under way of another version, or of other G-code, is answered
     // into nothing: only this request's answer is kept.
+    drop_scan_in_flight(key);
     const uint64_t request = ++scan_requests_;
-    scans_in_flight_[key] = InFlightScan{version, request};
+    const auto cancel = std::make_shared<std::atomic<bool>>(false);
+    scans_in_flight_[key] = InFlightScan{version, request, cancel};
     const uint64_t epoch = scan_epoch_;
 
     if (!api_) {
@@ -745,18 +747,18 @@ void PrintPreparationManager::request_scan(const std::string& filename,
         if (!source.converted_output.empty()) {
             api_->transfers().download_file_partial(
                 "gcodes", source.converted_output, helix::PRINTER_STOP_SCAN_BYTES, on_content,
-                [on_failure](const MoonrakerError& error) { on_failure(error.message); });
+                [on_failure](const MoonrakerError& error) { on_failure(error.message); }, cancel);
         } else {
             three_mf::ThreeMfReader::read_entry_head(
                 api_->transfers(), file_path, source.plate_gcode, helix::PRINTER_STOP_SCAN_BYTES,
-                on_content, on_failure);
+                on_content, on_failure, cancel);
         }
         return;
     }
 
     api_->transfers().download_file_partial(
         "gcodes", file_path, helix::PRINTER_STOP_SCAN_BYTES, on_content,
-        [on_failure](const MoonrakerError& error) { on_failure(error.message); });
+        [on_failure](const MoonrakerError& error) { on_failure(error.message); }, cancel);
 }
 
 void PrintPreparationManager::set_archive_scan_source(const std::string& filename,
@@ -771,13 +773,20 @@ void PrintPreparationManager::set_archive_scan_source(const std::string& filenam
     }
     if (source) {
         archive_scan_sources_[key] = std::move(*source);
+        // Only the archive shown, the one a start waits on, and the one being
+        // named are scanned again.
+        for (auto s = archive_scan_sources_.begin(); s != archive_scan_sources_.end();) {
+            const bool wanted =
+                s->first == key || s->first == current_scan_key_ || s->first == start_pin_key_;
+            s = wanted ? std::next(s) : archive_scan_sources_.erase(s);
+        }
     } else {
         archive_scan_sources_.erase(key);
     }
     // The kept answer was for other G-code: its line numbers describe nothing
     // that prints now.
     kept_scans_.erase(key);
-    scans_in_flight_.erase(key);
+    drop_scan_in_flight(key);
     if (key == current_scan_key_) {
         request_scan(filename, current_path, "", version);
     }
@@ -803,8 +812,22 @@ void PrintPreparationManager::store_kept_scan(const std::string& key, FileVersio
     });
 }
 
+void PrintPreparationManager::drop_scan_in_flight(const std::string& key) {
+    if (const auto it = scans_in_flight_.find(key); it != scans_in_flight_.end()) {
+        if (it->second.cancel) {
+            it->second.cancel->store(true);
+        }
+        scans_in_flight_.erase(it);
+    }
+}
+
 void PrintPreparationManager::clear_scan_cache() {
     kept_scans_.clear();
+    for (auto& [key, scan] : scans_in_flight_) {
+        if (scan.cancel) {
+            scan.cancel->store(true);
+        }
+    }
     scans_in_flight_.clear();
     current_scan_key_.clear();
     start_pin_key_.clear();

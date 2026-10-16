@@ -13,9 +13,11 @@
 #include "printer_state.h"
 
 #include <fstream>
+#include <functional>
 #include <map>
 #include <string>
 #include <utility>
+#include <vector>
 
 /// Serves the files put() into it, synchronously; anything else falls through
 /// to the plain mock's test files.
@@ -38,14 +40,34 @@ class ArchiveTransfers : public MoonrakerFileTransferAPIMock {
             return;
         }
         ++ranges;
-        if (fail_ranges) {
+        if (fail_ranges || (fail_from > 0 && ranges >= fail_from)) {
             on_error(MoonrakerError::file_not_found("download_file_range", "failed by test"));
             return;
         }
         const std::string& f = it->second;
         std::string out = offset < f.size() ? f.substr(static_cast<size_t>(offset), len) : "";
         range_bytes += out.size();
+        if (hold_from > 0 && ranges >= hold_from) {
+            held.push_back([out = std::move(out), on_success, on_error](bool fail) {
+                if (fail) {
+                    on_error(
+                        MoonrakerError::file_not_found("download_file_range", "failed by test"));
+                } else {
+                    on_success(out);
+                }
+            });
+            return;
+        }
         on_success(out);
+    }
+
+    /// Answers every held ranged read, in order: with its bytes, or as failed.
+    void release_held(bool fail = false) {
+        auto reads = std::move(held);
+        held.clear();
+        for (auto& read : reads) {
+            read(fail);
+        }
     }
 
     void download_file_tail(const std::string& root, const std::string& path, size_t max_bytes,
@@ -84,6 +106,9 @@ class ArchiveTransfers : public MoonrakerFileTransferAPIMock {
     size_t range_bytes = 0;
     int whole_downloads = 0;
     bool fail_ranges = false;
+    int fail_from = 0; ///< Ranged reads from this one on (1-based) fail; 0 = none
+    int hold_from = 0; ///< Ranged reads from this one on wait for release_held(); 0 = none
+    std::vector<std::function<void(bool)>> held;
     std::vector<std::string> downloaded_to;
 
   private:

@@ -22,6 +22,7 @@
 #include "versioned_lru.h"
 #include "zip_reader.h"
 
+#include <atomic>
 #include <functional>
 #include <lvgl.h>
 #include <map>
@@ -679,9 +680,12 @@ class PrintPreparationManager {
     struct InFlightScan {
         FileVersion version;
         uint64_t request = 0;
+        std::shared_ptr<std::atomic<bool>> cancel; ///< Set when its answer is no longer wanted
     };
     /// Keys whose read is under way.
     std::map<std::string, InFlightScan> scans_in_flight_;
+    /// Stops the read under way for @p key, if any: its answer is wanted no more.
+    void drop_scan_in_flight(const std::string& key);
     uint64_t scan_requests_ = 0;
     std::string current_scan_key_; ///< The file the detail view shows
     /// A start's file, kept from when_ready_to_start() until start_print().

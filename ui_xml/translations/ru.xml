@@ -2148,6 +2148,7 @@
   <translation tag="Open feeder macro" ru="Макрос для открытия фидера"/>
   <translation tag="Open frame" ru="Открытая рама"/>
   <translation tag="Open motion controls for jogging" ru="Управление перемещением осей"/>
+  <translation tag="Open the .3mf in Print Files to print this plate again." ru="Откройте .3mf в разделе «Файлы Gcode», чтобы снова напечатать эту пластину."/>
   <translation tag="Open the CFS unit and remove the broken filament from the slot" ru="Откройте блок CFS и извлеките сломанный филамент из слота"/>
   <translation tag="Open the slot editor when you load a new spool" ru="Открывать редактор слота при установке новой катушки"/>
   <translation tag="Operation already in progress" ru="Операция уже выполняется"/>

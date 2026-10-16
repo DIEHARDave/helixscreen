@@ -1006,6 +1006,10 @@ void PrintSelectPanel::refresh_files(bool force) {
                      get_name(), refresh_guard_.stuck_threshold().count());
     }
 
+    // The listing coming back may order the files differently: a read under
+    // way would answer for a card that has moved.
+    cancel_archive_reads();
+
     spdlog::trace("[{}] refresh_files() called for path='{}', existing_count={}{}", get_name(),
                   current_path_.empty() ? "/" : current_path_, file_list_.size(),
                   force ? " (forced)" : "");
@@ -1649,6 +1653,14 @@ void PrintSelectPanel::process_metadata_result(size_t i, const std::string& file
 void PrintSelectPanel::cancel_archive_reads() {
     archive_cancel_->store(true);
     archive_cancel_ = std::make_shared<std::atomic<bool>>(false);
+    // A read stopped here is asked for again when its card next shows, by the
+    // metadata fetch that asked for it the first time.
+    for (auto& f : file_list_) {
+        if (!f.archive && f.archive_requested) {
+            f.archive_requested = false;
+            f.metadata_fetched = false;
+        }
+    }
 }
 
 void PrintSelectPanel::show_file_in_detail(const PrintFileData& file) {
@@ -2003,6 +2015,12 @@ void PrintSelectPanel::on_deactivating(DeactivateReason) {
     // survives to finish_pending_queued_job(). Opening the detail view itself
     // deactivates this panel (push_overlay covers it), and that deactivation
     // is mid-open, not a leave — the overlay flag is what tells them apart.
+    // Leaving stops the archive reads; opening the detail view over the list
+    // is not leaving.
+    if (!NavigationManager::instance().main_panel_deactivated_for_overlay()) {
+        cancel_archive_reads();
+    }
+
     if (pending_queued_start_ && !pending_queued_start_->start_attempted &&
         !NavigationManager::instance().main_panel_deactivated_for_overlay()) {
         pending_queued_start_.reset();

@@ -6,7 +6,9 @@
 #include "moonraker_api.h"
 #include "moonraker_client.h"
 
+#include <algorithm>
 #include <atomic>
+#include <cstdint>
 #include <functional>
 #include <map>
 #include <memory>
@@ -424,13 +426,20 @@ class MoonrakerFileTransferAPIMock : public MoonrakerFileTransferAPI {
         hold_range_reads_ = hold;
     }
 
-    /// Answer every held ranged read, in the order they were asked.
-    void release_held_range_reads() {
-        auto held = std::move(held_range_reads_);
-        held_range_reads_.clear();
-        for (auto& read : held) {
+    /// Answer the first @p n held ranged reads (all of them by default), in
+    /// the order they were asked.
+    void release_held_range_reads(size_t n = SIZE_MAX) {
+        n = std::min(n, held_range_reads_.size());
+        std::vector<std::function<void()>> reads(held_range_reads_.begin(),
+                                                 held_range_reads_.begin() + n);
+        held_range_reads_.erase(held_range_reads_.begin(), held_range_reads_.begin() + n);
+        for (auto& read : reads) {
             read();
         }
+    }
+
+    [[nodiscard]] size_t held_range_reads() const {
+        return held_range_reads_.size();
     }
 
     /// Complete every held upload with success.

@@ -2103,6 +2103,7 @@
   <translation tag="Open feeder macro" ja="フィーダーを開くマクロ"/>
   <translation tag="Open frame" ja="オープンフレーム"/>
   <translation tag="Open motion controls for jogging" ja="ジョグ操作を開く"/>
+  <translation tag="Open the .3mf in Print Files to print this plate again." ja="このプレートを再印刷するには、印刷ファイルで .3mf を開いてください。"/>
   <translation tag="Open the CFS unit and remove the broken filament from the slot" ja="CFS ユニットを開け、スロットから折れたフィラメントを取り除いてください"/>
   <translation tag="Open the slot editor when you load a new spool" ja="新しいスプールを装填したときにスロットエディタを開く"/>
   <translation tag="Operation already in progress" ja="操作がすでに進行中です"/>

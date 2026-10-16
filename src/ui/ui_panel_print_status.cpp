@@ -1842,27 +1842,39 @@ void PrintStatusPanel::handle_reprint_button() {
             },
             target.archive_plate);
     } else {
-        // Fallback: controller unreachable — keep the existing direct path so reprint
-        // still works (no U1 pre-send).
-        spdlog::warn("[{}] No print controller for reprint — using direct start (no U1 pre-send)",
-                     get_name());
-        helix::warn_printer_stop_check_skipped("a reprint", filename,
-                                               "a reprint does not scan the file");
-        api_->job().start_print(
-            filename,
-            lifetime_.bg_cb("PrintStatusPanel::reprint_ok",
-                            [this, filename]() {
-                                spdlog::info("[{}] Reprint started: {}", get_name(), filename);
-                            }),
-            [this, token = lifetime_.token()](const MoonrakerError& err) {
-                // Runs on libhv WS event loop — marshal LVGL work to main.
-                token.defer("PrintStatusPanel::reprint_err", [this, err]() {
-                    spdlog::error("[{}] Failed to reprint: {}", get_name(), err.message);
-                    helix::ui::notify_error_tr(TR_NOOP("Failed to reprint: {}"), err);
-                    ui_set_button_enabled(btn_cancel_, true);
-                });
-            });
+        reprint_without_controller(target);
     }
+}
+
+void PrintStatusPanel::reprint_without_controller(const helix::gcode::ReprintTarget& target) {
+    const std::string& filename = target.file;
+    if (target.archive_plate > 0) {
+        // A plate prints only extracted, which takes the controller; started
+        // directly, the printer would print the .3mf instead.
+        spdlog::warn("[{}] Not reprinting plate {} of {}: no print controller", get_name(),
+                     target.archive_plate, filename);
+        NOTIFY_WARNING(lv_tr("Open the .3mf in Print Files to print this plate again."));
+        ui_set_button_enabled(btn_cancel_, true);
+        return;
+    }
+    // Controller unreachable: a direct start (no U1 pre-send).
+    spdlog::warn("[{}] No print controller for reprint — using direct start (no U1 pre-send)",
+                 get_name());
+    helix::warn_printer_stop_check_skipped("a reprint", filename,
+                                           "a reprint does not scan the file");
+    api_->job().start_print(
+        filename,
+        lifetime_.bg_cb(
+            "PrintStatusPanel::reprint_ok",
+            [this, filename]() { spdlog::info("[{}] Reprint started: {}", get_name(), filename); }),
+        [this, token = lifetime_.token()](const MoonrakerError& err) {
+            // Runs on libhv WS event loop — marshal LVGL work to main.
+            token.defer("PrintStatusPanel::reprint_err", [this, err]() {
+                spdlog::error("[{}] Failed to reprint: {}", get_name(), err.message);
+                helix::ui::notify_error_tr(TR_NOOP("Failed to reprint: {}"), err);
+                ui_set_button_enabled(btn_cancel_, true);
+            });
+        });
 }
 
 void PrintStatusPanel::handle_files_click() {
