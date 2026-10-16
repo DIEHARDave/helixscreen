@@ -417,7 +417,7 @@ AmsError AmsBackendSnapmaker::do_load_filament(int slot_index) {
     //      which can be all-false on a partially-extruded paused print.
     // The firmware's cmd_FEED_AUTO is the definitive reference; see
     // /home/lava/klipper/klippy/extras/filament_feed.py around line 1681.
-    return execute_gcode(fmt::format("AUTO_FEEDING EXTRUDER={} LOAD=1", slot_index));
+    return dispatch_feed(fmt::format("AUTO_FEEDING EXTRUDER={} LOAD=1", slot_index));
 }
 
 bool AmsBackendSnapmaker::unload_heats_hotend(int slot_index) const {
@@ -454,14 +454,25 @@ AmsError AmsBackendSnapmaker::do_unload_filament(int slot_index) {
         extruder = system_info_.current_slot;
     }
     if (extruder < 0) {
-        return execute_gcode("INNER_FILAMENT_UNLOAD");
+        return dispatch_feed("INNER_FILAMENT_UNLOAD");
     }
 
     auto err = validate_slot_index(extruder);
     if (err.result != AmsResult::SUCCESS)
         return err;
 
-    return execute_gcode(fmt::format("AUTO_FEEDING EXTRUDER={} UNLOAD=1", extruder));
+    return dispatch_feed(fmt::format("AUTO_FEEDING EXTRUDER={} UNLOAD=1", extruder));
+}
+
+AmsError AmsBackendSnapmaker::dispatch_feed(const std::string& gcode) {
+    auto tok = lifetime_.token();
+    return execute_gcode(gcode, nullptr, [this, tok](const MoonrakerError& err) {
+        if (err.type == MoonrakerErrorType::TIMEOUT) {
+            return;
+        }
+        tok.defer("AmsBackendSnapmaker::dispatch_feed.error",
+                  [this, msg = err.message] { emit_event(EVENT_ERROR, msg); });
+    });
 }
 
 AmsError AmsBackendSnapmaker::do_filament_batch(const std::vector<int>& slots, bool load) {

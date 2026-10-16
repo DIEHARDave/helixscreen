@@ -103,6 +103,7 @@ struct BackendTraits {
     bool recovers_filament_on_resume = false;
     bool has_environment_sensors = false;
     bool holds_optimistic_action = false;
+    bool unloads_stand_alone = false;
     bool raises_runout_fault = false;
     bool raises_runout_fault_during_job = false;
     bool unloads_to_hub_between_prints = false;
@@ -3111,6 +3112,21 @@ class AmsBackend {
      */
     [[nodiscard]] bool holds_optimistic_action() const {
         return traits().holds_optimistic_action;
+    }
+
+    /**
+     * @brief Whether an unload here is always a whole operation, never the
+     *        first half of a swap
+     *
+     * A swap pulls one lane out of a shared toolhead and pushes another in, so
+     * an UNLOADING seen from IDLE with filament loaded usually starts one. On a
+     * machine where every lane has its own toolhead and the firmware runs load
+     * and unload as separate commands, nothing follows an unload, and the step
+     * bar must show the unload's own steps. A tool changer's dock is UNLOADING
+     * too, but its pick follows as one swap, so it leaves this false.
+     */
+    [[nodiscard]] bool unloads_stand_alone() const {
+        return traits().unloads_stand_alone;
     }
 
     /**

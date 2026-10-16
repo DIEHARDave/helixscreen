@@ -237,7 +237,13 @@ conservative prefix/suffix fallback for unknown future states
   Feed and preload stops at Feed. UNLOAD uses 4 steps (Home -> Select -> Heat ->
   Retract). The Heat step shows a live nozzle temperature. The current index is published through the
   shared `ams_operation_phase` subject, which the sidebar consumes generically
-  (`src/printer/ams_backend_snapmaker.cpp`).
+  (`src/printer/ams_backend_snapmaker.cpp`). Two traits keep the bar on the right list:
+  `holds_optimistic_action`, because `channel_state` stays idle between the firmware
+  accepting `AUTO_FEEDING` and its first homing step, and `unloads_stand_alone`, because
+  an unload started anywhere else (Filament panel, batch picker, a macro) would otherwise
+  read as the first half of a swap and draw the 6-step load list. A gcode error from a
+  single-head `AUTO_FEEDING` raises `EVENT_ERROR`, which ends the held action
+  (`src/printer/ams_backend_snapmaker.cpp#dispatch_feed`).
 - **The per-tool "loaded at toolhead" latch.** Set on `load_finish`; cleared on
   `unload_finish` / `wait_insert` / `preload_finish`; left unchanged on transient and
   fail states. This latch — not the motion sensor — is the authority for

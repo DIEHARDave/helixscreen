@@ -162,6 +162,12 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
         // firmware sequences per-extruder AUTO_FEEDING itself. Gates the batch
         // Load/Unload affordance in the UI.
         t.supports_batch_filament_ops = true;
+        // channel_state stays idle between AUTO_FEEDING being accepted and the
+        // firmware's first homing step.
+        t.holds_optimistic_action = true;
+        // Each head has its own lane and AUTO_FEEDING runs one direction, so
+        // an unload is never the first half of a swap.
+        t.unloads_stand_alone = true;
         return t;
     }();
     [[nodiscard]] BackendTraits traits() const override {
@@ -431,6 +437,12 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     /// cleared. No-op when use_batch_macro_ is false: firmware without the
     /// macro has no interlock, and the command would be bogus there.
     void end_firmware_batch();
+
+    /// Sends a single-head feed command. The firmware publishes nothing for an
+    /// AUTO_FEEDING it refuses, so a gcode error raises EVENT_ERROR, which
+    /// ends the operation the UI is holding for it. A timeout does not: the
+    /// feed may still be running, and channel_state reports its end.
+    AmsError dispatch_feed(const std::string& gcode);
 
     /// Applied logical-tool -> physical-head routing for the CURRENT print.
     ///

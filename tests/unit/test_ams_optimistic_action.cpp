@@ -24,7 +24,9 @@
 #include "ams_backend_afc.h"
 #include "ams_backend_cfs.h"
 #include "ams_backend_happy_hare.h"
+#include "ams_backend_snapmaker.h"
 #include "ams_state.h"
+#include "ams_step_operation.h"
 #include "ams_types.h"
 #include "filament_op_heater.h"
 #include "helix-xml/src/xml/lv_xml.h"
@@ -38,6 +40,7 @@
 #include "test_helpers/gcode_recording_api.h"
 #include "test_helpers/happy_hare_test_access.h"
 #include "test_helpers/scoped_shared_resource.h"
+#include "test_helpers/snapmaker_test_access.h"
 
 #include <chrono>
 #include <memory>
@@ -150,6 +153,33 @@ class AfcOptimisticBackend : public AmsBackendAfc {
     std::vector<std::string> sent;
 };
 
+/// Snapmaker U1, running, sending through @p api. The firmware publishes
+/// nothing for an AUTO_FEEDING it has accepted until its channel_state moves.
+class U1OptimisticBackend : public AmsBackendSnapmaker {
+  public:
+    explicit U1OptimisticBackend(IMoonrakerAPI* api) : AmsBackendSnapmaker(api, nullptr) {
+        running_.store(true);
+    }
+
+    /// One head's filament_feed channel through the real status parser.
+    void feed(int extruder, const std::string& channel_state) {
+        const char* feed_key = (extruder <= 1) ? "filament_feed left" : "filament_feed right";
+        nlohmann::json status = {{feed_key,
+                                  {{"extruder" + std::to_string(extruder),
+                                    {{"filament_detected", true},
+                                     {"channel_state", channel_state},
+                                     {"channel_error", "ok"}}}}}};
+        SnapmakerTestAccess::handle_status(*this, status);
+    }
+
+    /// Head @p extruder loaded to its nozzle and active.
+    void seat(int extruder) {
+        feed(extruder, "load_finish");
+        SnapmakerTestAccess::set_current_slot(*this, extruder);
+        SnapmakerTestAccess::set_current_tool(*this, extruder);
+    }
+};
+
 namespace printer {
 
 /// CFS, running, with the action script captured instead of sent.
@@ -228,6 +258,20 @@ struct OptimisticSidebarFixture : public XMLTestFixture {
 
     [[nodiscard]] helix::HhOptimisticBackend& build_hh() {
         return build<helix::HhOptimisticBackend>(&api_);
+    }
+
+    [[nodiscard]] helix::U1OptimisticBackend& build_u1() {
+        return build<helix::U1OptimisticBackend>(&api_);
+    }
+
+    [[nodiscard]] bool steps_shown() const {
+        lv_obj_t* container = lv_obj_find_by_name(panel_, "progress_stepper_container");
+        REQUIRE(container != nullptr);
+        return !lv_obj_has_flag(container, LV_OBJ_FLAG_HIDDEN);
+    }
+
+    [[nodiscard]] static helix::StepOperationType shown_steps() {
+        return AmsState::instance().get_active_step_operation();
     }
 
     [[nodiscard]] static bool held() {
@@ -625,4 +669,98 @@ TEST_CASE_METHOD(OptimisticSidebarFixture,
 
     set_nozzle(220, 220);
     CHECK(api_.sent == std::vector<std::string>{"MMU_UNLOAD"});
+}
+
+// =============================================================================
+// Snapmaker U1: silent until its firmware starts, one toolhead per lane
+// =============================================================================
+
+TEST_CASE_METHOD(OptimisticSidebarFixture,
+                 "Snapmaker U1 unload: the gap before channel_state moves keeps the unload steps",
+                 "[ams][optimistic_action][snapmaker]") {
+    auto& u1 = build_u1();
+    u1.seat(1);
+    AmsState::instance().sync_from_backend();
+    hot_nozzle();
+
+    sidebar_->handle_unload(1);
+    REQUIRE(api_.sent == std::vector<std::string>{"AUTO_FEEDING EXTRUDER=1 UNLOAD=1"});
+    REQUIRE(shown_steps() == helix::StepOperationType::UNLOAD);
+
+    // The firmware has accepted the command and not started it yet.
+    let_watchdog_run();
+    CHECK(shown_action() == AmsAction::UNLOADING);
+    CHECK(steps_shown());
+
+    u1.feed(1, "unload_homing");
+    let_watchdog_run();
+    CHECK(shown_action() == AmsAction::UNLOADING);
+    CHECK(shown_steps() == helix::StepOperationType::UNLOAD);
+    CHECK(steps_shown());
+
+    u1.feed(1, "unload_heating");
+    let_watchdog_run();
+    CHECK(shown_steps() == helix::StepOperationType::UNLOAD);
+    CHECK(lv_subject_get_int(AmsState::instance().get_ams_operation_phase_subject()) == 2);
+
+    u1.feed(1, "unload_finish");
+    let_watchdog_run();
+    CHECK(shown_action() == AmsAction::IDLE);
+    CHECK_FALSE(steps_shown());
+}
+
+TEST_CASE_METHOD(OptimisticSidebarFixture,
+                 "Snapmaker U1 load: the gap before channel_state moves keeps the load steps",
+                 "[ams][optimistic_action][snapmaker]") {
+    auto& u1 = build_u1();
+    u1.feed(2, "preload_finish");
+    AmsState::instance().sync_from_backend();
+    hot_nozzle();
+
+    sidebar_->handle_load_with_preheat(2);
+    REQUIRE(api_.sent == std::vector<std::string>{"AUTO_FEEDING EXTRUDER=2 LOAD=1"});
+
+    let_watchdog_run();
+    CHECK(shown_action() != AmsAction::IDLE);
+    CHECK(steps_shown());
+
+    u1.feed(2, "load_homing");
+    let_watchdog_run();
+    CHECK(shown_steps() == helix::StepOperationType::LOAD_FRESH);
+    CHECK(steps_shown());
+}
+
+TEST_CASE_METHOD(OptimisticSidebarFixture,
+                 "Snapmaker U1: an unload started elsewhere shows the unload steps",
+                 "[ams][optimistic_action][snapmaker]") {
+    // The Filament panel, the batch picker, a macro or Fluidd: the sidebar did
+    // not start it, and the head it empties is loaded.
+    auto& u1 = build_u1();
+    u1.seat(0);
+    AmsState::instance().sync_from_backend();
+    let_watchdog_run();
+    REQUIRE_FALSE(steps_shown());
+
+    u1.feed(0, "unload_homing");
+    let_watchdog_run();
+    CHECK(shown_steps() == helix::StepOperationType::UNLOAD);
+    CHECK(steps_shown());
+}
+
+TEST_CASE_METHOD(OptimisticSidebarFixture,
+                 "Snapmaker U1: a refused AUTO_FEEDING ends the held action",
+                 "[ams][optimistic_action][snapmaker]") {
+    auto& u1 = build_u1();
+    u1.seat(1);
+    AmsState::instance().sync_from_backend();
+    // The firmware answers with an error and its channel_state never moves.
+    api_.fail = {"AUTO_FEEDING EXTRUDER=1 UNLOAD=1"};
+    hot_nozzle();
+
+    sidebar_->handle_unload(1);
+    REQUIRE(api_.sent == std::vector<std::string>{"AUTO_FEEDING EXTRUDER=1 UNLOAD=1"});
+    let_watchdog_run();
+    CHECK_FALSE(held());
+    CHECK(shown_action() == AmsAction::IDLE);
+    CHECK_FALSE(steps_shown());
 }
