@@ -432,3 +432,48 @@ TEST_CASE("plan_material_preheat flags a macro this printer does not define",
     CHECK(plan.mode == helix::MaterialPreheatMode::MACRO_MISSING);
     CHECK(plan.macro == "HEAT_ABS");
 }
+
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "Extrude, retract and purge heat a cold nozzle before they move filament",
+                 "[material_preheat][preheat][filament][heater]") {
+    enum class Button { Extrude, Retract, Purge };
+    const Button button = GENERATE(Button::Extrude, Button::Retract, Button::Purge);
+    CAPTURE(static_cast<int>(button));
+    Harness h;
+    // No purge macro: the panel's purge is its built-in extrude sequence.
+    helix::PrinterDiscovery bare;
+    bare.parse_objects(nlohmann::json{"extruder"});
+    StandardMacros::instance().reset();
+    StandardMacros::instance().init(bare);
+    helix_test::ScopedSharedResource<helix::TemperatureController> controller(
+        std::make_shared<helix::TemperatureController>(h.state, &h.api));
+    helix_test::ScopedSharedResource<helix::ui::FilamentOpHeater> heater(
+        std::make_shared<helix::ui::FilamentOpHeater>(h.state));
+    helix::SafetySettingsManager::instance().set_allow_cold_extrude(false);
+    h.state.update_from_status({{"extruder", {{"temperature", 25.0}, {"target", 0.0}}}});
+    helix::ui::UpdateQueue::instance().drain();
+    h.client.clear_gcode_script_history();
+
+    switch (button) {
+    case Button::Extrude:
+        PanelAccess::handle_extrude_button(*h.panel);
+        break;
+    case Button::Retract:
+        PanelAccess::handle_retract_button(*h.panel);
+        break;
+    case Button::Purge:
+        PanelAccess::handle_purge_button(*h.panel);
+        break;
+    }
+    helix::ui::UpdateQueue::instance().drain();
+
+    REQUIRE(heater.get().pending());
+    const auto& before = h.client.gcode_script_history();
+    REQUIRE(before.size() == 1);
+    CHECK(before[0].rfind("SET_HEATER_TEMPERATURE HEATER=extruder TARGET=", 0) == 0);
+
+    h.state.update_from_status({{"extruder", {{"temperature", 220.0}, {"target", 220.0}}}});
+    helix::ui::UpdateQueue::instance().drain();
+    CHECK_FALSE(heater.get().pending());
+    CHECK(h.client.gcode_script_history().size() > 1); // the op itself went out
+}

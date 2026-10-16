@@ -152,6 +152,13 @@ void unload_before_drying(BedDryingController& ctrl, std::function<void()> then)
         ctrl.cancel_unload_wait();
     };
     surface.on_async_success = then;
+    // A preheat that ends without unloading leaves the flow with nothing to wait
+    // on, so say so rather than stall.
+    surface.on_preheat_ended = []() {
+        ToastManager::instance().show(
+            ToastSeverity::ERROR,
+            lv_tr("The unload did not start: unload by hand, then start again"), 6000);
+    };
     surface.on_refused = [then](const FilamentOpPlan&) {
         ToastManager::instance().show(ToastSeverity::INFO, lv_tr("No filament loaded to unload"),
                                       3000);

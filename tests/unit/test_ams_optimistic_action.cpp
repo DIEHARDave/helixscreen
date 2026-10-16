@@ -486,3 +486,80 @@ TEST_CASE_METHOD(OptimisticSidebarFixture,
     cd.cancel();
     helix::ui::UpdateQueue::instance().drain();
 }
+
+// =============================================================================
+// The sidebar on a cold nozzle: FilamentOpHeater runs the wait
+// =============================================================================
+
+TEST_CASE_METHOD(OptimisticSidebarFixture,
+                 "Happy Hare cold load: the Heat step follows the heater, then the load runs",
+                 "[ams][optimistic_action][happy_hare][preheat]") {
+    build_hh();
+    set_nozzle(25, 0);
+
+    sidebar_->handle_load_with_preheat(1);
+    REQUIRE(heater_.get().pending());
+    REQUIRE(shown_action() == AmsAction::HEATING);
+    REQUIRE(api_.sent.empty());
+
+    // The heater's progress reports reach the status line while it climbs.
+    set_nozzle(150, 220);
+    const std::string detail =
+        lv_subject_get_string(AmsState::instance().get_ams_action_detail_subject());
+    CHECK_FALSE(detail.empty());
+
+    set_nozzle(220, 220);
+    CHECK_FALSE(heater_.get().pending());
+    REQUIRE(api_.sent.size() == 1);
+    CHECK(api_.sent[0].find("MMU_LOAD") != std::string::npos);
+}
+
+TEST_CASE_METHOD(OptimisticSidebarFixture,
+                 "Happy Hare cold load: a second tap withdraws the preheat and unwinds the step",
+                 "[ams][optimistic_action][happy_hare][preheat]") {
+    build_hh();
+    set_nozzle(25, 0);
+
+    sidebar_->handle_load_with_preheat(1);
+    REQUIRE(held());
+
+    sidebar_->handle_load_with_preheat(1);
+    CHECK_FALSE(heater_.get().pending());
+    CHECK_FALSE(held());
+    CHECK(shown_action() == AmsAction::IDLE);
+
+    set_nozzle(220, 220);
+    CHECK(api_.sent.empty());
+}
+
+TEST_CASE_METHOD(OptimisticSidebarFixture, "Happy Hare cold unload: heats first, then unloads",
+                 "[ams][optimistic_action][happy_hare][preheat]") {
+    auto& hh = build_hh();
+    hh.seat(1);
+    AmsState::instance().sync_from_backend();
+    set_nozzle(25, 0);
+
+    sidebar_->handle_unload(1);
+    REQUIRE(heater_.get().pending());
+    REQUIRE(api_.sent.empty());
+    REQUIRE(shown_action() == AmsAction::HEATING);
+
+    set_nozzle(220, 220);
+    CHECK(api_.sent == std::vector<std::string>{"MMU_UNLOAD"});
+}
+
+TEST_CASE_METHOD(OptimisticSidebarFixture,
+                 "Happy Hare: the load still runs after the sidebar closes mid-preheat",
+                 "[ams][optimistic_action][happy_hare][preheat]") {
+    build_hh();
+    set_nozzle(25, 0);
+    sidebar_->handle_load_with_preheat(1);
+    REQUIRE(heater_.get().pending());
+
+    sidebar_->cleanup();
+    sidebar_.reset();
+
+    set_nozzle(220, 220);
+    REQUIRE(api_.sent.size() == 1);
+    CHECK(api_.sent[0].find("MMU_LOAD") != std::string::npos);
+}

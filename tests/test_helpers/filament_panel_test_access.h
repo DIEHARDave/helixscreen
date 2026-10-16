@@ -59,6 +59,17 @@ struct FilamentPanelTestAccess {
         p.execute_purge();
     }
 
+    /// The Extrude / Retract / Purge buttons, preheat and all.
+    static void handle_extrude_button(FilamentPanel& p) {
+        p.handle_extrude_button();
+    }
+    static void handle_retract_button(FilamentPanel& p) {
+        p.handle_retract_button();
+    }
+    static void handle_purge_button(FilamentPanel& p) {
+        p.handle_purge_button();
+    }
+
     /// The preset index the material buttons select (-1 = none), set without
     /// the heater commands a real preset press also sends.
     static void set_selected_material(FilamentPanel& p, int preset) {

@@ -640,19 +640,20 @@ class FilamentPanel : public PanelBase {
     void defer_temps_update(); ///< Queues update_all_temps() behind the cached values
     /// A tap on any op button while a preheat waits withdraws it. True when one did.
     bool cancel_pending_preheat();
-    struct PreheatTempResult {
-        int temp = 0;
-        std::string material_name;
-    };
     /// The material an op acting on @p target_slot heats for: that slot, the
     /// external spool (only when the slot names nothing), then the panel's
     /// material preset. nullopt when none names one.
-    std::optional<PreheatTempResult> resolve_material_preheat_temp(int target_slot) const;
+    std::optional<helix::ui::PreheatTarget> resolve_material_preheat_temp(int target_slot) const;
     /// The panel's material preset, offered to FilamentOpHeater as the material
     /// to heat for when neither the lane nor the external spool names one.
     std::optional<helix::ui::PreheatTarget> preset_preheat_material() const;
     /// Heat for @p op as FilamentOpHeater decides, then run @p execute.
     void run_after_preheat(helix::ui::FilamentHeatOp op, void (FilamentPanel::*execute)());
+    /// The heater's ticket for the extrude / retract / purge in flight, so its
+    /// success cools down what the heater heated for it. 0 for none.
+    helix::ui::FilamentOpTicket op_heat_ticket_ = 0;
+    /// That op succeeded: hand its ticket back to the heater.
+    void heat_op_succeeded();
     /// Nozzle-temperature parameter values for @p op's macro, from the live target of
     /// the extruder the op heats and the material resolve_material_preheat_temp()
     /// names, held above that extruder's extrusion minimum and at most its max_temp
@@ -662,9 +663,6 @@ class FilamentPanel : public PanelBase {
     /// dropdown selection (selected_op_slot); Extrude/Retract/Purge follow the
     /// LOADED lane, since they push what is already in the melt zone.
     int preheat_slot_for_op(helix::ui::FilamentHeatOp op) const;
-    /// The material @p target_slot names, else the external spool's
-    /// (helix::ui::resolve_load_preheat_material()). No panel preset tail.
-    std::optional<PreheatTempResult> slot_preheat_material(int target_slot) const;
     /// Whether every slot a cold-nozzle op would preheat for names a material:
     /// the selected slot (Load/Unload) and the loaded lane (Purge/Extrude/Retract).
     bool has_known_op_material() const;

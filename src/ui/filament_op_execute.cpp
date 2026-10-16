@@ -117,12 +117,15 @@ PreheatSkip preheat_skip_reason(const FilamentOpPlan& plan, StandardMacroSlot sl
 
     switch (plan.tier) {
     case FilamentTier::AmsBackend:
-        // supports_auto_heat_on_load() is a claim about LOADS only. ChangeTool
-        // counts as one — a seated machine loads by swapping, and the backend
-        // heats for that the same way — but AmsCall::Unload does not, and no
-        // backend claims to heat for it.
+        // supports_auto_heat_on_load() is a claim about LOADS, and ChangeTool
+        // counts as one: a seated machine loads by swapping, and the backend
+        // heats for that the same way. An unload has its own claim.
         if (backend && (plan.ams_call == AmsCall::Load || plan.ams_call == AmsCall::ChangeTool) &&
             backend->supports_auto_heat_on_load()) {
+            return PreheatSkip::BackendSelfHeats;
+        }
+        if (backend && plan.ams_call == AmsCall::Unload &&
+            backend->supports_auto_heat_on_unload()) {
             return PreheatSkip::BackendSelfHeats;
         }
         return PreheatSkip::None;
@@ -213,9 +216,23 @@ std::map<std::string, std::string> known_values(const FilamentOpSurface& surface
     return surface.macro_prefill ? surface.macro_prefill(op) : std::map<std::string, std::string>{};
 }
 
+/// The op @p ticket names failed: the heater leaves the nozzle hot. Marshalled,
+/// because the failure can arrive on a network thread.
+void heat_failed(FilamentOpTicket ticket) {
+    if (ticket == 0) {
+        return;
+    }
+    helix::ui::queue_update("filament_op_execute::heat_failed", [ticket]() {
+        if (auto* heater = get_filament_op_heater()) {
+            heater->op_failed(ticket);
+        }
+    });
+}
+
 /// Tier-1 rejection: let the surface unwind, and report unless it did.
 void unwind_backend(const FilamentOpSurface& surface, const FilamentOpPlan& plan,
-                    const AmsError& err) {
+                    const AmsError& err, FilamentOpTicket ticket) {
+    heat_failed(ticket);
     bool reported = false;
     if (surface.on_failed) {
         surface.on_failed(plan, err, reported);
@@ -227,7 +244,9 @@ void unwind_backend(const FilamentOpSurface& surface, const FilamentOpPlan& plan
 
 /// Macro / raw-gcode failure: bookkeeping only, the caller has reported.
 /// Marshalled — see FilamentOpSurface::on_async_success.
-void unwind_async(const FilamentOpSurface& surface, const FilamentOpPlan& plan) {
+void unwind_async(const FilamentOpSurface& surface, const FilamentOpPlan& plan,
+                  FilamentOpTicket ticket) {
+    heat_failed(ticket);
     if (!surface.on_async_failed) {
         return;
     }
@@ -238,12 +257,13 @@ void unwind_async(const FilamentOpSurface& surface, const FilamentOpPlan& plan) 
     });
 }
 
-/// The op completed: the heater schedules its cooldown, then the surface's hook
-/// runs. Marshalled to the main thread, and the hook guarded.
-void finished(const FilamentOpSurface& surface, const std::function<void()>& hook) {
-    helix::ui::queue_update("filament_op_execute::finished", [s = surface, hook]() {
+/// The op completed: the heater cools down what it heated, then the surface's
+/// hook runs. Marshalled to the main thread, and the hook guarded.
+void finished(const FilamentOpSurface& surface, const std::function<void()>& hook,
+              FilamentOpTicket ticket) {
+    helix::ui::queue_update("filament_op_execute::finished", [s = surface, hook, ticket]() {
         if (auto* heater = get_filament_op_heater()) {
-            heater->op_succeeded();
+            heater->op_succeeded(ticket);
         }
         if (hook) {
             guarded(s, hook);
@@ -251,23 +271,41 @@ void finished(const FilamentOpSurface& surface, const std::function<void()>& hoo
     });
 }
 
-/// A tier-1 dispatch the backend accepted completes on the action feed, which
-/// the heater watches for its cooldown.
-void backend_dispatched() {
+/// A tier-1 dispatch completes on the action feed, which the heater watches for
+/// its cooldown. Armed before the backend is asked, so a fast op is not missed.
+void watch_backend(FilamentOpTicket ticket) {
     if (auto* heater = get_filament_op_heater()) {
-        heater->watch_backend_completion();
+        heater->watch_backend_completion(ticket);
     }
 }
 
 /// @p surface for a dispatch that runs after a preheat: the surface that asked
-/// may be gone by then, so its inline hooks go through its guard like the
-/// async ones do. A guard-less surface outlives every dispatch already.
+/// may be gone by then, so nothing reaches it except through its guard. A
+/// guard-less surface outlives every dispatch already.
+///
+/// The macro prefill is read now, at request time, since its answer is needed
+/// synchronously. A before_macro hook runs through the guard: once the surface
+/// is gone, the macro that needed it is not sent.
 FilamentOpSurface deferred_surface(const FilamentOpSurface& surface) {
     if (!surface.guard) {
         return surface;
     }
     FilamentOpSurface s = surface;
     const auto guard = surface.guard;
+    if (surface.macro_prefill) {
+        const auto load = surface.macro_prefill(FilamentMacroOp::Load);
+        const auto unload = surface.macro_prefill(FilamentMacroOp::Unload);
+        s.macro_prefill = [load, unload](FilamentMacroOp op) {
+            return op == FilamentMacroOp::Unload ? unload : load;
+        };
+    }
+    if (surface.before_macro) {
+        s.before_macro = [guard, hook = surface.before_macro](
+                             std::function<void()> send,
+                             std::function<void(const MoonrakerError&)> fail) {
+            guard([hook, send = std::move(send), fail = std::move(fail)]() { hook(send, fail); });
+        };
+    }
     if (surface.on_begin) {
         s.on_begin = [guard, hook = surface.on_begin](const FilamentOpPlan& plan) {
             guard([hook, plan]() { hook(plan); });
@@ -293,14 +331,17 @@ FilamentOpSurface deferred_surface(const FilamentOpSurface& surface) {
 }
 
 /// Run @p now through the app's FilamentOpHeater, which calls it at once on a
-/// hot nozzle; once the nozzle is hot it calls @p later instead.
+/// hot nozzle; once the nozzle is hot it calls @p later instead. Either gets the
+/// request's ticket. A preheat that ends without running reaches the surface's
+/// on_preheat_ended.
 void preheat_then(FilamentHeatOp op, PreheatSkip skip, int slot, const FilamentOpSurface& surface,
-                  std::function<void()> now, std::function<void()> later) {
+                  std::function<void(FilamentOpTicket)> now,
+                  std::function<void(FilamentOpTicket)> later) {
     FilamentOpHeater* heater = get_filament_op_heater();
     if (!heater) {
         spdlog::warn("{} No FilamentOpHeater — running {} with no preheat", surface.log_tag,
                      filament_heat_op_name(op));
-        now();
+        now(0);
         return;
     }
     PreheatRequest req;
@@ -314,13 +355,21 @@ void preheat_then(FilamentHeatOp op, PreheatSkip skip, int slot, const FilamentO
     // The heater runs the op inline or later through one callback; this flag,
     // flipped once run_after_preheat() has returned, tells the two apart.
     auto deferred = std::make_shared<bool>(false);
-    req.run = [deferred, now = std::move(now), later = std::move(later)]() {
+    req.run = [deferred, now = std::move(now), later = std::move(later)](FilamentOpTicket ticket) {
         if (*deferred) {
-            later();
+            later(ticket);
         } else {
-            now();
+            now(ticket);
         }
     };
+    if (surface.on_preheat_ended) {
+        req.on_progress = [s = surface](const PreheatProgress& progress) {
+            if (progress.phase == PreheatPhase::Cancelled ||
+                progress.phase == PreheatPhase::Abandoned) {
+                guarded(s, s.on_preheat_ended);
+            }
+        };
+    }
     heater->run_after_preheat(std::move(req));
     *deferred = true;
 }
@@ -350,15 +399,16 @@ void report_op_error(const MoonrakerError& error, const char* what) {
 /// failure unwinds and reports the op like a failed macro, and nothing is sent.
 /// @p what has static storage duration, like log_tag.
 void send_after_before_macro(const FilamentOpSurface& surface, const FilamentOpPlan& plan,
-                             const char* what, std::function<void()> send) {
+                             const char* what, FilamentOpTicket ticket,
+                             std::function<void()> send) {
     if (!surface.before_macro) {
         send();
         return;
     }
     const FilamentOpSurface s = surface;
-    surface.before_macro(std::move(send), [s, plan, what](const MoonrakerError& err) {
+    surface.before_macro(std::move(send), [s, plan, what, ticket](const MoonrakerError& err) {
         spdlog::error("{} Not sending the {} macro: {}", s.log_tag, what, err.message);
-        unwind_async(s, plan);
+        unwind_async(s, plan, ticket);
         report_op_error(err, what);
     });
 }
@@ -380,7 +430,7 @@ void execute_filament_load(AmsBackend* backend, int slot, const char* log_tag) {
 namespace {
 
 void dispatch_load(AmsBackend* backend, int slot, const FilamentOpSurface& surface,
-                   const FilamentOpPlan& plan) {
+                   const FilamentOpPlan& plan, FilamentOpTicket ticket) {
     const char* log_tag = surface.log_tag;
     const auto& load_info = StandardMacros::instance().get(StandardMacroSlot::LoadFilament);
 
@@ -388,17 +438,17 @@ void dispatch_load(AmsBackend* backend, int slot, const FilamentOpSurface& surfa
     case helix::ui::FilamentTier::AmsBackend: {
         spdlog::info("{} Load via AMS backend (slot {})", log_tag, slot);
         begin(surface, plan);
+        watch_backend(ticket);
         AmsError err = (plan.ams_call == helix::ui::AmsCall::ChangeTool)
                            ? backend->change_tool(plan.ams_arg)
                            : backend->load_filament(plan.ams_arg);
         if (!err.success()) {
             spdlog::error("{} Load filament failed: {}", log_tag, err.technical_msg);
-            unwind_backend(surface, plan, err);
+            unwind_backend(surface, plan, err, ticket);
             return;
         }
         // Success is NOT reported here: a backend load is fire-and-forget and
         // completes on the action feed, which is why on_async_* skips tier 1.
-        backend_dispatched();
         return;
     }
 
@@ -435,34 +485,35 @@ void dispatch_load(AmsBackend* backend, int slot, const FilamentOpSurface& surfa
         const FilamentOpSurface s = surface;
         helix::ui::dispatch_filament_macro(
             macro_name, surface.param_policy,
-            [api, s, plan](const helix::MacroParamResult& result) {
+            [api, s, plan, ticket](const helix::MacroParamResult& result) {
                 // Under ParamPolicy::Prompt this lands whenever the user presses
                 // Run, which can be after the asking surface is gone.
-                guarded(s, [api, s, plan, params = result.params]() {
+                guarded(s, [api, s, plan, ticket, params = result.params]() {
                     begin(s, plan);
-                    send_after_before_macro(s, plan, "load", [api, s, plan, params]() {
-                        // execute_macro()'s reply lands when the script has RUN, so
-                        // these are completion callbacks, not "started" ones.
-                        const bool dispatched = StandardMacros::instance().execute(
-                            StandardMacroSlot::LoadFilament, api, params,
-                            [s]() {
-                                spdlog::info("{} Load filament finished", s.log_tag);
-                                finished(s, s.on_async_success);
-                            },
-                            [s, plan](const MoonrakerError& err) {
-                                spdlog::error("{} Failed to load filament: {}", s.log_tag,
-                                              err.message);
-                                unwind_async(s, plan);
-                                report_op_error(err, "load");
-                            },
-                            IMoonrakerAPI::EXTRUSION_TIMEOUT_MS);
-                        if (!dispatched) {
-                            // Empty slot or no API: neither callback will ever fire,
-                            // so nothing else would release what begin() armed.
-                            spdlog::warn("{} Load macro did not dispatch", s.log_tag);
-                            unwind_async(s, plan);
-                        }
-                    });
+                    send_after_before_macro(
+                        s, plan, "load", ticket, [api, s, plan, ticket, params]() {
+                            // execute_macro()'s reply lands when the script has RUN, so
+                            // these are completion callbacks, not "started" ones.
+                            const bool dispatched = StandardMacros::instance().execute(
+                                StandardMacroSlot::LoadFilament, api, params,
+                                [s, ticket]() {
+                                    spdlog::info("{} Load filament finished", s.log_tag);
+                                    finished(s, s.on_async_success, ticket);
+                                },
+                                [s, plan, ticket](const MoonrakerError& err) {
+                                    spdlog::error("{} Failed to load filament: {}", s.log_tag,
+                                                  err.message);
+                                    unwind_async(s, plan, ticket);
+                                    report_op_error(err, "load");
+                                },
+                                IMoonrakerAPI::EXTRUSION_TIMEOUT_MS);
+                            if (!dispatched) {
+                                // Empty slot or no API: neither callback will ever fire,
+                                // so nothing else would release what begin() armed.
+                                spdlog::warn("{} Load macro did not dispatch", s.log_tag);
+                                unwind_async(s, plan, ticket);
+                            }
+                        });
                 });
             },
             known_values(surface, FilamentMacroOp::Load));
@@ -481,13 +532,13 @@ void dispatch_load(AmsBackend* backend, int slot, const FilamentOpSurface& surfa
         const FilamentOpSurface s = surface;
         api->execute_gcode(
             helix::ui::filament_load_fallback_gcode(),
-            [s]() {
+            [s, ticket]() {
                 spdlog::info("{} Load fallback gcode sent", s.log_tag);
-                finished(s, s.on_async_success);
+                finished(s, s.on_async_success, ticket);
             },
-            [s, plan](const MoonrakerError& err) {
+            [s, plan, ticket](const MoonrakerError& err) {
                 spdlog::error("{} Load fallback failed: {}", s.log_tag, err.message);
-                unwind_async(s, plan);
+                unwind_async(s, plan, ticket);
                 report_op_error(err, "load");
             },
             IMoonrakerAPI::EXTRUSION_TIMEOUT_MS, /*silent=*/false, /*on_queued=*/nullptr,
@@ -505,18 +556,20 @@ void execute_filament_load(AmsBackend* backend, int slot, const FilamentOpSurfac
     const FilamentOpPlan plan = plan_live_load(sys, caps, slot);
     if (plan.tier == FilamentTier::Refused) {
         // Nothing heats for an op that will not run.
-        dispatch_load(backend, slot, surface, plan);
+        dispatch_load(backend, slot, surface, plan, 0);
         return;
     }
     const PreheatSkip skip = preheat_skip_reason(plan, StandardMacroSlot::LoadFilament, backend);
     preheat_then(
         FilamentHeatOp::Load, skip, slot, surface,
-        [backend, slot, surface, plan]() { dispatch_load(backend, slot, surface, plan); },
-        [slot, s = deferred_surface(surface)]() {
+        [backend, slot, surface, plan](FilamentOpTicket ticket) {
+            dispatch_load(backend, slot, surface, plan, ticket);
+        },
+        [slot, s = deferred_surface(surface)](FilamentOpTicket ticket) {
             AmsBackend* live = AmsState::instance().get_backend();
             AmsSystemInfo live_sys;
             const BackendCaps live_caps = read_backend_caps(live, live_sys, slot);
-            dispatch_load(live, slot, s, plan_live_load(live_sys, live_caps, slot));
+            dispatch_load(live, slot, s, plan_live_load(live_sys, live_caps, slot), ticket);
         });
 }
 
@@ -547,7 +600,7 @@ FilamentOpPlan plan_unload_on(AmsBackend* backend, int slot, bool target_is_load
 }
 
 void dispatch_unload(AmsBackend* backend, int slot, const FilamentOpSurface& surface,
-                     const FilamentOpPlan& plan) {
+                     const FilamentOpPlan& plan, FilamentOpTicket ticket) {
     const char* log_tag = surface.log_tag;
     const auto& unload_info = StandardMacros::instance().get(StandardMacroSlot::UnloadFilament);
 
@@ -564,13 +617,13 @@ void dispatch_unload(AmsBackend* backend, int slot, const FilamentOpSurface& sur
         // says so, rather than letting the backend re-resolve current_slot (the
         // U1 wrong-tool unload bug).
         begin(surface, plan);
+        watch_backend(ticket);
         AmsError err = backend->unload_filament(plan.ams_arg);
         if (!err.success()) {
             spdlog::error("{} Unload filament failed: {}", log_tag, err.technical_msg);
-            unwind_backend(surface, plan, err);
+            unwind_backend(surface, plan, err, ticket);
             return;
         }
-        backend_dispatched();
         return;
     }
 
@@ -596,28 +649,29 @@ void dispatch_unload(AmsBackend* backend, int slot, const FilamentOpSurface& sur
         const FilamentOpSurface s = surface;
         helix::ui::dispatch_filament_macro(
             macro_name, surface.param_policy,
-            [api, s, plan](const helix::MacroParamResult& result) {
-                guarded(s, [api, s, plan, params = result.params]() {
+            [api, s, plan, ticket](const helix::MacroParamResult& result) {
+                guarded(s, [api, s, plan, ticket, params = result.params]() {
                     begin(s, plan);
-                    send_after_before_macro(s, plan, "unload", [api, s, plan, params]() {
-                        const bool dispatched = StandardMacros::instance().execute(
-                            StandardMacroSlot::UnloadFilament, api, params,
-                            [s]() {
-                                spdlog::info("{} Unload filament finished", s.log_tag);
-                                finished(s, s.on_async_success);
-                            },
-                            [s, plan](const MoonrakerError& err) {
-                                spdlog::error("{} Failed to unload filament: {}", s.log_tag,
-                                              err.message);
-                                unwind_async(s, plan);
-                                report_op_error(err, "unload");
-                            },
-                            IMoonrakerAPI::EXTRUSION_TIMEOUT_MS);
-                        if (!dispatched) {
-                            spdlog::warn("{} Unload macro did not dispatch", s.log_tag);
-                            unwind_async(s, plan);
-                        }
-                    });
+                    send_after_before_macro(
+                        s, plan, "unload", ticket, [api, s, plan, ticket, params]() {
+                            const bool dispatched = StandardMacros::instance().execute(
+                                StandardMacroSlot::UnloadFilament, api, params,
+                                [s, ticket]() {
+                                    spdlog::info("{} Unload filament finished", s.log_tag);
+                                    finished(s, s.on_async_success, ticket);
+                                },
+                                [s, plan, ticket](const MoonrakerError& err) {
+                                    spdlog::error("{} Failed to unload filament: {}", s.log_tag,
+                                                  err.message);
+                                    unwind_async(s, plan, ticket);
+                                    report_op_error(err, "unload");
+                                },
+                                IMoonrakerAPI::EXTRUSION_TIMEOUT_MS);
+                            if (!dispatched) {
+                                spdlog::warn("{} Unload macro did not dispatch", s.log_tag);
+                                unwind_async(s, plan, ticket);
+                            }
+                        });
                 });
             },
             known_values(surface, FilamentMacroOp::Unload));
@@ -636,13 +690,13 @@ void dispatch_unload(AmsBackend* backend, int slot, const FilamentOpSurface& sur
         const FilamentOpSurface s = surface;
         api->execute_gcode(
             helix::ui::filament_unload_fallback_gcode(),
-            [s]() {
+            [s, ticket]() {
                 spdlog::info("{} Unload fallback gcode sent", s.log_tag);
-                finished(s, s.on_async_success);
+                finished(s, s.on_async_success, ticket);
             },
-            [s, plan](const MoonrakerError& err) {
+            [s, plan, ticket](const MoonrakerError& err) {
                 spdlog::error("{} Unload fallback failed: {}", s.log_tag, err.message);
-                unwind_async(s, plan);
+                unwind_async(s, plan, ticket);
                 report_op_error(err, "unload");
             },
             IMoonrakerAPI::EXTRUSION_TIMEOUT_MS, /*silent=*/false, /*on_queued=*/nullptr,
@@ -663,16 +717,18 @@ void execute_filament_unload(AmsBackend* backend, int slot, bool target_is_loade
     }
     const FilamentOpPlan plan = plan_unload_on(backend, slot, target_is_loaded);
     if (plan.tier == FilamentTier::Refused) {
-        dispatch_unload(backend, slot, surface, plan);
+        dispatch_unload(backend, slot, surface, plan, 0);
         return;
     }
     const PreheatSkip skip = preheat_skip_reason(plan, StandardMacroSlot::UnloadFilament, backend);
     preheat_then(
         FilamentHeatOp::Unload, skip, slot, surface,
-        [backend, slot, surface, plan]() { dispatch_unload(backend, slot, surface, plan); },
-        [slot, target_is_loaded, s = deferred_surface(surface)]() {
+        [backend, slot, surface, plan](FilamentOpTicket ticket) {
+            dispatch_unload(backend, slot, surface, plan, ticket);
+        },
+        [slot, target_is_loaded, s = deferred_surface(surface)](FilamentOpTicket ticket) {
             AmsBackend* live = AmsState::instance().get_backend();
-            dispatch_unload(live, slot, s, plan_unload_on(live, slot, target_is_loaded));
+            dispatch_unload(live, slot, s, plan_unload_on(live, slot, target_is_loaded), ticket);
         });
 }
 
@@ -682,7 +738,7 @@ void execute_filament_unload(AmsBackend* backend, int slot, bool target_is_loade
 
 namespace {
 
-void dispatch_purge(const char* log_tag) {
+void dispatch_purge(const char* log_tag, FilamentOpTicket ticket) {
     auto* api = get_moonraker_api();
     if (!api) {
         return;
@@ -697,14 +753,15 @@ void dispatch_purge(const char* log_tag) {
         spdlog::info("{} Using StandardMacros purge: {}", log_tag, macro_name);
         helix::ui::dispatch_filament_macro(
             macro_name, helix::ui::ParamPolicy::Suppress,
-            [api, log_tag](const helix::MacroParamResult& result) {
+            [api, log_tag, ticket](const helix::MacroParamResult& result) {
                 StandardMacros::instance().execute(
                     StandardMacroSlot::Purge, api, result.params,
-                    [log_tag]() {
+                    [log_tag, ticket]() {
                         spdlog::info("{} Purge finished", log_tag);
-                        finished(FilamentOpSurface{}, nullptr);
+                        finished(FilamentOpSurface{}, nullptr, ticket);
                     },
-                    [log_tag](const MoonrakerError& err) {
+                    [log_tag, ticket](const MoonrakerError& err) {
+                        heat_failed(ticket);
                         spdlog::error("{} Failed to purge: {}", log_tag, err.message);
                         helix::ui::notify_error_tr(TR_NOOP("Failed to purge: {}"), err);
                     });
@@ -715,11 +772,12 @@ void dispatch_purge(const char* log_tag) {
     spdlog::info("{} No purge macro configured — raw gcode fallback", log_tag);
     api->execute_gcode(
         helix::ui::filament_purge_fallback_gcode(),
-        [log_tag]() {
+        [log_tag, ticket]() {
             spdlog::info("{} Purge fallback gcode sent", log_tag);
-            finished(FilamentOpSurface{}, nullptr);
+            finished(FilamentOpSurface{}, nullptr, ticket);
         },
-        [log_tag](const MoonrakerError& err) {
+        [log_tag, ticket](const MoonrakerError& err) {
+            heat_failed(ticket);
             spdlog::error("{} Purge fallback failed: {}", log_tag, err.message);
             helix::ui::notify_error_tr(TR_NOOP("Failed to purge: {}"), err);
         },
@@ -739,7 +797,8 @@ void execute_filament_purge(const char* log_tag) {
     preheat_then(
         FilamentHeatOp::Purge, preheat_skip_reason_unplanned(),
         backend ? backend->get_current_slot() : -1, surface,
-        [log_tag]() { dispatch_purge(log_tag); }, [log_tag]() { dispatch_purge(log_tag); });
+        [log_tag](FilamentOpTicket ticket) { dispatch_purge(log_tag, ticket); },
+        [log_tag](FilamentOpTicket ticket) { dispatch_purge(log_tag, ticket); });
 }
 
 } // namespace helix::ui

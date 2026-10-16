@@ -1625,6 +1625,7 @@ void FilamentPanel::execute_extrude() {
         object_lifetime_.bg_cb("FilamentPanel::extrude_ok",
                                [this]() {
                                    operation_guard_.end();
+                                   heat_op_succeeded();
                                    op_succeeded(FilamentOp::Extrude); // checkmark, then auto-revert
                                }),
         object_lifetime_.bg_cb(
@@ -1686,6 +1687,7 @@ void FilamentPanel::execute_purge() {
                         object_lifetime_.bg_cb("FilamentPanel::purge_ok",
                                                [this]() {
                                                    operation_guard_.end();
+                                                   heat_op_succeeded();
                                                    op_succeeded(FilamentOp::Purge);
                                                }),
                         object_lifetime_.bg_cb(
@@ -1735,6 +1737,7 @@ void FilamentPanel::execute_retract() {
         object_lifetime_.bg_cb("FilamentPanel::retract_ok",
                                [this]() {
                                    operation_guard_.end();
+                                   heat_op_succeeded();
                                    op_succeeded(FilamentOp::Retract);
                                }),
         object_lifetime_.bg_cb(
@@ -2369,8 +2372,9 @@ bool FilamentPanel::has_known_op_material() const {
     // loaded one, and all of them share the warning.
     const int selected = selected_op_slot();
     const int loaded = preheat_slot_for_op(helix::ui::FilamentHeatOp::Purge);
-    return slot_preheat_material(selected).has_value() &&
-           (loaded < 0 || loaded == selected || slot_preheat_material(loaded).has_value());
+    return helix::ui::preheat_material_for_slot(selected).has_value() &&
+           (loaded < 0 || loaded == selected ||
+            helix::ui::preheat_material_for_slot(loaded).has_value());
 }
 
 int FilamentPanel::preheat_slot_for_op(helix::ui::FilamentHeatOp op) const {
@@ -2393,32 +2397,12 @@ int FilamentPanel::preheat_slot_for_op(helix::ui::FilamentHeatOp op) const {
     return -1;
 }
 
-std::optional<FilamentPanel::PreheatTempResult>
-FilamentPanel::slot_preheat_material(int target_slot) const {
-    AmsBackend* backend = AmsState::instance().get_backend();
-    SlotInfo slot;
-    const SlotInfo* slot_ptr = nullptr;
-    if (backend && target_slot >= 0) {
-        slot = backend->get_slot_info(target_slot);
-        slot_ptr = &slot;
-    }
-    auto ext = AmsState::instance().get_external_spool_info();
-    if (auto resolved = helix::ui::resolve_load_preheat_material(
-            target_slot, slot_ptr, ext.has_value() ? &ext.value() : nullptr)) {
-        return PreheatTempResult{resolved->temp_c, resolved->material_name};
-    }
-    return std::nullopt;
-}
-
-std::optional<FilamentPanel::PreheatTempResult>
+std::optional<helix::ui::PreheatTarget>
 FilamentPanel::resolve_material_preheat_temp(int target_slot) const {
-    if (auto resolved = slot_preheat_material(target_slot)) {
+    if (auto resolved = helix::ui::preheat_material_for_slot(target_slot)) {
         return resolved;
     }
-    if (auto preset = preset_preheat_material()) {
-        return PreheatTempResult{preset->temp_c, preset->material_name};
-    }
-    return std::nullopt;
+    return preset_preheat_material();
 }
 
 std::optional<helix::ui::PreheatTarget> FilamentPanel::preset_preheat_material() const {
@@ -2454,7 +2438,7 @@ FilamentPanel::macro_temp_prefill(helix::ui::FilamentMacroOp op) const {
     const helix::ui::OpNozzle nozzle = helix::ui::resolve_op_nozzle(
         AmsState::instance().get_backend(), slot, printer_state_, limits_);
     return helix::ui::nozzle_temp_prefill(
-        op, nozzle.target_c, material ? std::optional<int>(material->temp) : std::nullopt,
+        op, nozzle.target_c, material ? std::optional<int>(material->temp_c) : std::nullopt,
         nozzle.floor_c, nozzle.ceiling_c);
 }
 
@@ -2477,8 +2461,19 @@ void FilamentPanel::run_after_preheat(helix::ui::FilamentHeatOp op,
     req.slot = preheat_slot_for_op(op);
     req.fallback_material = preset_preheat_material();
     // FilamentPanel is an immortal singleton [L012], so the op may capture it.
-    req.run = [this, execute]() { (this->*execute)(); };
+    req.run = [this, execute](helix::ui::FilamentOpTicket ticket) {
+        op_heat_ticket_ = ticket;
+        (this->*execute)();
+    };
     heater->run_after_preheat(std::move(req));
+}
+
+void FilamentPanel::heat_op_succeeded() {
+    const helix::ui::FilamentOpTicket ticket = op_heat_ticket_;
+    op_heat_ticket_ = 0;
+    if (auto* heater = helix::ui::get_filament_op_heater()) {
+        heater->op_succeeded(ticket);
+    }
 }
 
 void FilamentPanel::set_limits(const SafetyLimits& limits) {
@@ -2778,32 +2773,30 @@ void FilamentPanel::run_filament_macro(const std::string& macro_name, const std:
     }
 
     std::string gcode = helix::build_macro_gcode(macro_name, params);
-    api_->execute_gcode(
-        gcode,
-        object_lifetime_.bg_cb("FilamentPanel::macro_ok",
-                               [this]() {
-                                   operation_guard_.end();
-                                   if (auto* heater = helix::ui::get_filament_op_heater()) {
-                                       heater->op_succeeded();
-                                   }
-                                   if (op_in_flight_) {
-                                       op_succeeded(*op_in_flight_);
-                                   }
-                               }),
-        object_lifetime_.bg_cb(
-            "FilamentPanel::macro_err",
-            [this](const MoonrakerError& error) {
-                operation_guard_.end();
-                if (op_in_flight_) {
-                    op_failed(*op_in_flight_);
-                }
-                if (error.type == MoonrakerErrorType::TIMEOUT) {
-                    NOTIFY_WARNING(lv_tr("Macro may still be running — response timed out"));
-                } else {
-                    helix::ui::notify_error_tr(TR_NOOP("Macro failed: {}"), error);
-                }
-            }),
-        IMoonrakerAPI::EXTRUSION_TIMEOUT_MS);
+    api_->execute_gcode(gcode,
+                        object_lifetime_.bg_cb("FilamentPanel::macro_ok",
+                                               [this]() {
+                                                   operation_guard_.end();
+                                                   heat_op_succeeded();
+                                                   if (op_in_flight_) {
+                                                       op_succeeded(*op_in_flight_);
+                                                   }
+                                               }),
+                        object_lifetime_.bg_cb(
+                            "FilamentPanel::macro_err",
+                            [this](const MoonrakerError& error) {
+                                operation_guard_.end();
+                                if (op_in_flight_) {
+                                    op_failed(*op_in_flight_);
+                                }
+                                if (error.type == MoonrakerErrorType::TIMEOUT) {
+                                    NOTIFY_WARNING(
+                                        lv_tr("Macro may still be running — response timed out"));
+                                } else {
+                                    helix::ui::notify_error_tr(TR_NOOP("Macro failed: {}"), error);
+                                }
+                            }),
+                        IMoonrakerAPI::EXTRUSION_TIMEOUT_MS);
 }
 
 void FilamentPanel::show_load_warning() {

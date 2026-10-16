@@ -108,7 +108,7 @@ struct OpNozzle {
 enum class PreheatSkip {
     None,             ///< Preheat as usual
     UserOverride,     ///< "Allow cold load/unload" — the user's macros do their own heating
-    BackendSelfHeats, ///< AmsBackend::supports_auto_heat_on_load()
+    BackendSelfHeats, ///< AmsBackend::supports_auto_heat_on_load() / _on_unload()
     MacroSelfHeats,   ///< helix::filament_macros::macro_heats_hotend()
 };
 
@@ -245,6 +245,14 @@ struct FilamentOpSurface {
     /// spool names one (a material preset the surface offers). Asked once, when
     /// the op is requested. Unset heats to DEFAULT_LOAD_PREHEAT_TEMP there.
     std::function<std::optional<PreheatTarget>()> preheat_fallback_material;
+
+    /// The preheat this op waited on ended without running it: the user
+    /// withdrew it, another op replaced it, or it could not complete. Unset is
+    /// right for a surface whose user saw the heater's toast and has nothing
+    /// waiting on the op; a surface with a continuation (a flow that moves on
+    /// once the op finishes) must set it, or that flow stalls silently. Runs on
+    /// the main thread, through the guard.
+    std::function<void()> on_preheat_ended;
 };
 
 /// @note **`log_tag` must have static storage duration.** All three functions
