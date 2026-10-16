@@ -18,7 +18,25 @@ TYPE_MAP = {
     "PET-CF": "PET-CF", "PET-GF": "PET-GF", "ABS": "ABS", "ABS-CF": "ABS-CF",
     "ASA": "ASA", "PC": "PC", "PA": "PA", "PA-CF": "PA-CF", "PA6": "PA6",
     "TPU": "TPU", "PVA": "PVA", "HIPS": "HIPS", "PPS-CF": "PPS-CF",
+    "PLA Silk": "Silk PLA",
 }
+
+# Orca vendor packs (resources/profiles/<vendor>/filament) whose filament
+# profiles become catalog products alongside the OrcaFilamentLibrary. Each pack
+# resolves inheritance within its own directory, never across packs.
+VENDOR_PACKS = ("Eryone",)
+
+# Per-material facts a vendor-pack profile inherits from its template only when
+# both are the same material (resolve_vendor_profile).
+_MATERIAL_FACT_KEYS = (
+    "nozzle_temperature",
+    "nozzle_temperature_range_low",
+    "nozzle_temperature_range_high",
+    "filament_density",
+    "textured_plate_temp",
+    "hot_plate_temp",
+    "cool_plate_temp",
+)
 
 BED_PRIORITY = ("textured_plate_temp", "hot_plate_temp", "cool_plate_temp")
 
@@ -187,7 +205,44 @@ def _display_name(profile_name: str, brand: str) -> str:
     return name or profile_name
 
 
-def build_catalog(orca_root, cfs_seed, type_ranges, library_marker="OrcaFilamentLibrary"):
+def _add_product(products, seen, resolved, profile_name, type_ranges):
+    """Build one product from a resolved profile, collapsing per-color duplicates."""
+    brand = first_scalar(resolved.get("filament_vendor")) or "Generic"
+    resolved["_product_name"] = _display_name(profile_name, brand)
+    orca_type = first_scalar(resolved.get("filament_type")) or ""
+    product = build_product(resolved, type_ranges.get(map_type(orca_type)))
+    key = (product["brand"], product["name"])
+    if key in seen:
+        return
+    seen.add(key)
+    products.append(product)
+
+
+def resolve_vendor_profile(profile: dict, by_name: dict) -> dict:
+    """resolve_inherits() for a vendor pack, keeping only facts about this material.
+
+    Vendor packs derive every material from one template (Eryone's ABS, ASA, PA and
+    TPU all inherit "Eryone Standard PLA"). A profile that changes `filament_type`
+    keeps only the material facts it sets itself: the template's range, density and
+    plate temps describe the template's material, not this one.
+    """
+    resolved = resolve_inherits(profile, by_name)
+    parent = by_name.get(profile.get("inherits") or "")
+    if parent is None:
+        return resolved
+    parent_type = first_scalar(resolve_inherits(parent, by_name).get("filament_type"))
+    if first_scalar(resolved.get("filament_type")) == parent_type:
+        return resolved
+    for key in _MATERIAL_FACT_KEYS:
+        if key not in profile:
+            resolved.pop(key, None)
+    return resolved
+
+
+def build_catalog(orca_root, cfs_seed, type_ranges, library_marker="OrcaFilamentLibrary",
+                  vendor_packs=None):
+    if vendor_packs is None:
+        vendor_packs = VENDOR_PACKS
     # The OrcaFilamentLibrary is self-contained (its own base/ dir). Resolve
     # inheritance ONLY within it: loading the ~30 other vendor packs clobbers
     # same-named bases (e.g. fdm_filament_pc) in the flat name->profile map and
@@ -204,20 +259,27 @@ def build_catalog(orca_root, cfs_seed, type_ranges, library_marker="OrcaFilament
         if library_marker and library_marker not in profile.get("_src", ""):
             continue  # skip printer-specific profiles outside the library
         resolved = resolve_inherits(profile, by_name)
-        brand = first_scalar(resolved.get("filament_vendor")) or "Generic"
-        resolved["_product_name"] = _display_name(pname, brand)
         orca_type = first_scalar(resolved.get("filament_type")) or ""
         # RAW type — this is the vocabulary Orca matches on. Must NOT be
         # map_type()'d: our catalog deliberately carries finer types than Orca.
         if orca_type:
             library_types.add(orca_type)
-        base_range = type_ranges.get(map_type(orca_type))
-        product = build_product(resolved, base_range)
-        key = (product["brand"], product["name"])
-        if key in seen:
-            continue  # collapse per-color duplicates
-        seen.add(key)
-        products.append(product)
+        _add_product(products, seen, resolved, pname, type_ranges)
+    # Vendor packs add products only. Their types are not library types: Orca
+    # shows a vendor pack's presets on that vendor's printers alone, so a lane
+    # material matched against them would miss on every other printer.
+    for vendor in vendor_packs:
+        vendor_root = os.path.join(orca_root, vendor, "filament")
+        if not os.path.isdir(vendor_root):
+            continue
+        vendor_by_name = load_profiles(vendor_root)
+        for pname, profile in vendor_by_name.items():
+            # "@<nozzle>" / "@<printer>" variants retune a base profile for one
+            # machine; the base profile is the product.
+            if profile.get("instantiation") != "true" or "@" in pname:
+                continue
+            resolved = resolve_vendor_profile(profile, vendor_by_name)
+            _add_product(products, seen, resolved, pname, type_ranges)
     _merge_cfs_seed(products, cfs_seed)
     _dedupe_ids(products)
     _assert_no_degenerate_ranges(products)

@@ -19,6 +19,7 @@ import import_orca_filaments as imp  # noqa: E402
 
 FIX = str(scripts_dir / "fixtures" / "orca")
 FIX_COLLISION = str(scripts_dir / "fixtures" / "orca_collision")
+FIX_VENDOR_PACK = str(scripts_dir / "fixtures" / "orca_vendor_pack")
 
 
 def load_fixtures():
@@ -43,12 +44,11 @@ def test_first_scalar_handles_nil_and_arrays():
 def test_map_type_known_and_unknown(monkeypatch):
     """map_type() looks the type up, and falls back to the raw value.
 
-    Every one of TYPE_MAP's 17 entries is currently an identity mapping (X: X),
-    so asserting map_type("PLA") == "PLA" passes whether the lookup happened or
-    the function simply returned its argument -- the two branches are
-    indistinguishable against the real table. Patch in one genuinely
-    non-identity entry (same technique as test_build_catalog_returns_raw_
-    library_types) so the remap and the fallback produce different answers.
+    Most of TYPE_MAP's entries are identity mappings (X: X), so asserting
+    map_type("PLA") == "PLA" passes whether the lookup happened or the function
+    simply returned its argument. Patch in a non-identity entry (same technique
+    as test_build_catalog_returns_raw_library_types) so the remap and the
+    fallback produce different answers without depending on the real table.
     """
     monkeypatch.setitem(imp.TYPE_MAP, "PET-CF", "CARBON-PET")
 
@@ -160,6 +160,64 @@ def test_build_catalog_scopes_inherits_to_library_avoiding_vendor_base_collision
     product = cat[0]
     assert product["brand"] == "Generic"
     assert product["nozzle"] == 280
+
+
+def _vendor_pack_catalog():
+    cat, library_types = imp.build_catalog(
+        FIX_VENDOR_PACK, [], type_ranges={"ASA": (240, 270), "Silk PLA": (200, 230)},
+        vendor_packs=("Eryone",))
+    return {(p["brand"], p["name"]): p for p in cat}, library_types
+
+
+def test_build_catalog_imports_listed_vendor_pack_only():
+    by_key, _ = _vendor_pack_catalog()
+    assert ("Eryone", "PLA") in by_key
+    assert ("Eryone", "ASA") in by_key
+    assert ("Generic", "PLA") in by_key                 # the library still imports
+    assert not any(brand == "Qidi" for brand, _ in by_key)  # unlisted pack stays out
+    # Templates are not products.
+    assert ("Eryone", "Standard PLA") not in by_key
+
+
+def test_vendor_pack_skips_printer_and_nozzle_variants():
+    by_key, _ = _vendor_pack_catalog()
+    eryone = [k for k in by_key if k[0] == "Eryone"]
+    assert len(eryone) == len(set(eryone))
+    # The base profile's 265, not the "@0.2 nozzle" variant's 250.
+    assert by_key[("Eryone", "ASA")]["nozzle"] == 265
+
+
+def test_vendor_pack_same_type_child_keeps_parent_material_facts():
+    by_key, _ = _vendor_pack_catalog()
+    pla = by_key[("Eryone", "PLA")]
+    assert pla["type"] == "PLA"
+    assert pla["nozzle"] == 220
+    assert (pla["nozzle_min"], pla["nozzle_max"]) == (180, 260)
+    assert pla["density"] == 1.24
+    assert pla["orca_id"] == "EFL90"
+
+
+def test_vendor_pack_retyped_child_drops_parent_material_facts():
+    # Eryone ASA inherits a PLA template. Its own nozzle and bed temps stand, but
+    # the PLA range, density and textured-plate temp are facts about PLA.
+    by_key, _ = _vendor_pack_catalog()
+    asa = by_key[("Eryone", "ASA")]
+    assert asa["type"] == "ASA"
+    assert asa["bed"] == 110                            # not the PLA textured 60
+    assert "density" not in asa                         # not PLA's 1.24
+    assert (asa.get("nozzle_min"), asa.get("nozzle_max")) == (None, None)  # thin: ASA type range
+
+
+def test_vendor_pack_silk_maps_to_catalog_silk_type():
+    by_key, _ = _vendor_pack_catalog()
+    assert by_key[("Eryone", "Silk PLA")]["type"] == "Silk PLA"
+
+
+def test_vendor_pack_types_stay_out_of_library_types():
+    # orca_library_types is what Orca can match a lane's material against on any
+    # printer; a vendor pack's types are only visible on that vendor's printers.
+    _, library_types = _vendor_pack_catalog()
+    assert library_types == ["PLA"]
 
 
 def test_build_catalog_guards_against_id_collisions():
