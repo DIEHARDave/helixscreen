@@ -1460,9 +1460,12 @@ TEST_CASE_METHOD(HeaterFixture,
     }
     drain_all();
     REQUIRE(heater->get().pending());
+    client.clear_gcode_script_history();
 
     set_print_state("printing");
     CHECK_FALSE(heater->get().pending());
+    // The resumed print owns the heater: no TARGET=0 into a running print.
+    CHECK_FALSE(sent(std::string(HEAT_GCODE) + "0"));
 
     feed_nozzle(220, 220);
     CHECK(count_starting("LOAD_FILAMENT") == 0);
