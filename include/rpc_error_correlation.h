@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <functional>
 #include <string>
 
 /**
@@ -51,5 +52,22 @@ bool was_recently_handled(const std::string& message);
 
 /// Clear all recorded messages — for tests.
 void clear_for_test();
+
+/// Answers whether the `!!` broadcast copy of an RPC error carrying `message`
+/// is one the gcode error router will explain itself.
+using BroadcastExplainer = std::function<bool(const std::string& message)>;
+
+/// Install the router's explainer; `owner` identifies it for the matching
+/// clear. Main thread only.
+void set_broadcast_explainer(const void* owner, BroadcastExplainer explainer);
+
+/// Remove the explainer, if `owner` installed the current one. Main thread only.
+void clear_broadcast_explainer(const void* owner);
+
+/// True when the router will present a classifier's own explanation for the
+/// `!!` copy of an RPC error carrying `message`, so the RPC caller's report of
+/// the same rejection would be a second, rawer message. False when no router is
+/// attached: then the caller's report is the only one. Main thread only.
+bool broadcast_explains(const std::string& message);
 
 } // namespace helix::rpc_error_correlation

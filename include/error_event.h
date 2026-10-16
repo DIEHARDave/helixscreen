@@ -66,6 +66,12 @@ struct ErrorEvent {
     std::string code; ///< Klipper error code if any ("key840"), else ""
     std::vector<RecoveryAction> recovery_actions;
     bool sticky = false;
+    /// The firmware refused a command the user just sent, and this event says
+    /// why. The router presents it even when the command's RPC caller recorded
+    /// the same rejection, and that caller stands its own report down
+    /// (rpc_error_correlation::broadcast_explains). Each refusal answers a fresh
+    /// command, so it shows again even if the user dismissed an identical one.
+    bool command_refusal = false;
 };
 
 /// Inputs the classifier needs beyond the raw line. Kept as a plain struct

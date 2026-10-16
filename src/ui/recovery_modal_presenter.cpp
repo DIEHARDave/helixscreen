@@ -23,6 +23,7 @@
 #include "moonraker_error.h"
 #include "moonraker_types.h"
 #include "printer_state.h"
+#include "rpc_error_correlation.h"
 #include "safety_settings_manager.h"
 #include "temperature_controller.h"
 
@@ -266,6 +267,11 @@ void RecoveryModalPresenter::dispatch_recovery(const std::string& gcode, const s
             spdlog::error("[Recovery] {} failed: {}", tag, err.message);
             // The callback can run on the WebSocket thread; the toast is main-thread only.
             helix::ui::run_on_main("error_toast", [err]() {
+                // A refusal its classifier explains reaches the user as that
+                // explanation, from Klipper's `!!` copy.
+                if (rpc_error_correlation::broadcast_explains(err.message)) {
+                    return;
+                }
                 ToastManager::instance().show(
                     ToastSeverity::ERROR,
                     fmt::format(fmt::runtime(lv_tr("Recovery failed: {}")), err.localized_message())

@@ -2780,6 +2780,8 @@ AmsBackendSnapmaker::classify_error(const std::string& raw_line,
     // make_ams_fault_event leaves raw_detail empty; the router's cross-source
     // dedup matches on the firmware's untranslated wording, not our sentence.
     e.raw_detail = detail;
+    // The resume caller's own report would be the raw firmware words.
+    e.command_refusal = true;
     return e;
 }
 

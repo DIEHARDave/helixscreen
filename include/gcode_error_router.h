@@ -168,6 +168,14 @@ class GcodeErrorRouter {
     /// toast.
     void process_line(const std::string& line, bool firmware_reported = false);
 
+    /// Classify context read from the live printer state. Main thread only.
+    static ClassifyContext current_classify_context();
+
+    /// The broadcast explainer installed into rpc_error_correlation: true when
+    /// the active backend classifies the `!!` copy of an RPC error carrying
+    /// `message` as a command refusal this router presents.
+    [[nodiscard]] bool explains_rpc_error(const std::string& message) const;
+
     /// CRITICAL error that carries a recovery action: delegates to the
     /// shared RecoveryModalPresenter.
     void present_recovery_modal(const ErrorEvent& e);

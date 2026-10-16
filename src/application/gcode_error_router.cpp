@@ -115,6 +115,11 @@ struct GcodeErrorRouter::DeferredCtx {
 GcodeErrorRouter::GcodeErrorRouter(IMoonrakerAPI* api, IMoonrakerClient* client,
                                    helix::ui::RecoveryModalPresenter& presenter)
     : api_(api), client_(client), presenter_(presenter) {
+    // Callers ask this on the main thread, where the router is built and
+    // destroyed, so `this` outlives every call.
+    rpc_error_correlation::set_broadcast_explainer(
+        this, [this](const std::string& message) { return explains_rpc_error(message); });
+
     if (!client_) {
         spdlog::warn("[GcodeErrorRouter] Null client -- handlers not registered");
         return;
@@ -175,6 +180,8 @@ GcodeErrorRouter::GcodeErrorRouter(IMoonrakerAPI* api, IMoonrakerClient* client,
 }
 
 GcodeErrorRouter::~GcodeErrorRouter() {
+    rpc_error_correlation::clear_broadcast_explainer(this);
+
     // Held presentations carry a pointer back to this router; cancel every
     // still-pending one so a fire after teardown cannot reach freed members.
     for (lv_timer_t* timer : pending_deferred_) {
@@ -245,10 +252,38 @@ std::string GcodeErrorRouter::truncate_for_toast(std::string text) {
 // (the AMS backends, whose detail already IS the raw text). The match remains
 // exact-string on both arms — see include/rpc_error_correlation.h for why
 // substring matching is deliberately avoided.
-static bool already_reported_via_rpc(const std::string& raw_detail, const std::string& detail) {
-    if (!raw_detail.empty() && rpc_error_correlation::was_recently_handled(raw_detail))
+//
+// A command refusal is never "already reported": its caller stands its own
+// report down in favour of this explanation (broadcast_explains).
+static bool already_reported_via_rpc(const ErrorEvent& ev) {
+    if (ev.command_refusal)
+        return false;
+    if (!ev.raw_detail.empty() && rpc_error_correlation::was_recently_handled(ev.raw_detail))
         return true;
-    return rpc_error_correlation::was_recently_handled(detail);
+    return rpc_error_correlation::was_recently_handled(ev.detail);
+}
+
+ClassifyContext GcodeErrorRouter::current_classify_context() {
+    // Main thread only: these synchronous getters read printer state.
+    ClassifyContext ctx;
+    ctx.is_paused = get_printer_state().is_paused();
+    // RAW_PRINT_STATE_OK: classifiers offer resume/retry actions off this flag.
+    // A failure inside a host-side pre-start block is PrintPreparationManager's
+    // to report, and claiming a print is running would offer a Resume that has
+    // nothing to resume.
+    ctx.is_printing =
+        get_printer_state().print_state().get_print_job_state() == PrintJobState::PRINTING;
+    return ctx;
+}
+
+bool GcodeErrorRouter::explains_rpc_error(const std::string& message) const {
+    auto* backend = AmsState::instance().get_backend();
+    if (!backend)
+        return false;
+    // Klipper mirrors a gcode.script rejection onto the console as `!! <message>`;
+    // this is the line process_line will classify when that copy arrives.
+    const auto ev = backend->classify_error("!! " + message, current_classify_context());
+    return ev && ev->command_refusal && decide_presentation(*ev) != PresentAs::NONE;
 }
 
 PresentAs decide_presentation(const ErrorEvent& e) {
@@ -420,7 +455,7 @@ void GcodeErrorRouter::present_deferred(const ErrorEvent& e, PresentAs how) {
             // c->owner is alive: the dtor cancels every pending timer before
             // the member state goes away.
             GcodeErrorRouter* r = c->owner;
-            if (already_reported_via_rpc(c->ev.raw_detail, c->ev.detail)) {
+            if (already_reported_via_rpc(c->ev)) {
                 spdlog::info("[GcodeError] Suppressing held `!!` presentation "
                              "(caller-handled RPC error arrived after): {}",
                              c->ev.detail);
@@ -491,17 +526,9 @@ void GcodeErrorRouter::process_line(const std::string& line, bool firmware_repor
     if (line.empty())
         return;
 
-    // Build classify context from current printer state. process_line runs
-    // on the MAIN thread (the ctor's lifetime_.bg_cb wrapper defers the
-    // notify body to main), so these synchronous getters are safe.
-    ClassifyContext ctx;
-    ctx.is_paused = get_printer_state().is_paused();
-    // RAW_PRINT_STATE_OK: classifiers offer resume/retry actions off this flag.
-    // A failure inside a host-side pre-start block is PrintPreparationManager's
-    // to report, and claiming a print is running would offer a Resume that has
-    // nothing to resume.
-    ctx.is_printing =
-        get_printer_state().print_state().get_print_job_state() == PrintJobState::PRINTING;
+    // process_line runs on the MAIN thread (the ctor's lifetime_.bg_cb wrapper
+    // defers the notify body to main), so reading printer state is safe.
+    const ClassifyContext ctx = current_classify_context();
 
     // Ask the active AMS backend first (domain-aware), then any firmware that
     // reports faults as structured codes, else the generic classifier.
@@ -558,9 +585,14 @@ void GcodeErrorRouter::process_line(const std::string& line, bool firmware_repor
     // contextual toast. Skipping our generic surfacing avoids double-
     // notification for the same root cause. (The deferred-toast path
     // re-checks at fire time for late-arriving RPC responses.)
-    if (already_reported_via_rpc(ev->raw_detail, ev->detail)) {
+    if (already_reported_via_rpc(*ev)) {
         spdlog::info("[GcodeError] Suppressing duplicate (RPC-handled): {}", ev->detail);
         return;
+    }
+    if (ev->command_refusal) {
+        // It answers the command just sent: an identical refusal the user
+        // dismissed earlier must not hide this one.
+        presenter_.forget_handled_fault();
     }
 
     const PresentAs how = decide_presentation(*ev);
