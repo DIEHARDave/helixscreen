@@ -733,6 +733,17 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     /// Written only from handle_status (the single writer).
     std::array<int, NUM_TOOLS> pending_insert_passes_{{0, 0, 0, 0}};
 
+    /// What each channel's firmware last said about the spool's identity:
+    /// whether filament_detect.info named one, and print_task_config's vendor
+    /// and official flag. Unset until the first frame carrying each.
+    std::array<std::optional<bool>, NUM_TOOLS> tag_names_identity_{};
+    std::array<std::optional<std::string>, NUM_TOOLS> task_vendor_{};
+    std::array<std::optional<bool>, NUM_TOOLS> task_official_{};
+
+    /// On a channel whose firmware states no identity at all, drop the brand
+    /// and product line the lane only remembers. Caller holds mutex_.
+    void retract_unbacked_identity_locked(int slot_index, SlotInfo& slot);
+
     /// Last filament_feed frame's raw per-channel fields (channel_state,
     /// channel_error, filament_detected, module_exist, disable_auto), written
     /// by handle_status before classification. Each write replaces the

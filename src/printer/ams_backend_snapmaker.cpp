@@ -40,6 +40,7 @@
 #include <lvgl.h>
 #include <optional>
 #include <string_view>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -1438,6 +1439,8 @@ void AmsBackendSnapmaker::apply_rfid_entry_locked(int i, const SnapmakerRfidInfo
     // is three indistinguishable states - reader disabled,
     // untagged spool, empty channel - so it files no evidence
     // at all and the fingerprint comes out empty (no signal).
+    tag_names_identity_[static_cast<size_t>(i)] =
+        rfid.main_type != "NONE" || (!rfid.sub_type.empty() && rfid.sub_type != "NONE");
     helix::ams::SpoolEvidence& evidence = fx.observed_evidence[i];
     evidence.tag_uid = rfid.uid;
     if (!rfid.uid.empty()) {
@@ -2038,8 +2041,14 @@ void AmsBackendSnapmaker::apply_task_slot_identity_locked(
             fx.changed = true;
         }
         if (ptc.filament_vendor[i]) {
-            slot->brand = *ptc.filament_vendor[i];
+            task_vendor_[static_cast<size_t>(i)] = *ptc.filament_vendor[i];
+            // "NONE" is firmware's spelling of no vendor, not a brand.
+            slot->brand =
+                *ptc.filament_vendor[i] == "NONE" ? std::string{} : *ptc.filament_vendor[i];
             fx.changed = true;
+        }
+        if (ptc.filament_official[i]) {
+            task_official_[static_cast<size_t>(i)] = *ptc.filament_official[i];
         }
         if (ptc.filament_color_rgba[i]) {
             if (const auto rgb = snapmaker::rgb_from_rgba_hex(*ptc.filament_color_rgba[i])) {
@@ -2212,7 +2221,76 @@ void AmsBackendSnapmaker::converge_lanes_locked(FrameEffects& fx) {
             helix::ams::ingest(lane_id(i), sensed);
         }
 
+        retract_unbacked_identity_locked(i, *slot);
         apply_resolved_lane(*slot, i);
+    }
+}
+
+void AmsBackendSnapmaker::retract_unbacked_identity_locked(int slot_index, SlotInfo& slot) {
+    // The channel has to be silent in both places firmware keeps identity:
+    // the tag names nothing, and print_task_config names no vendor and no
+    // official spool. Either one speaking is the firmware standing behind a
+    // spool, and a source not heard from yet is no verdict.
+    const auto i = static_cast<size_t>(slot_index);
+    const bool tag_silent = tag_names_identity_[i].has_value() && !*tag_names_identity_[i];
+    const bool task_silent = task_vendor_[i].has_value() &&
+                             (task_vendor_[i]->empty() || *task_vendor_[i] == "NONE") &&
+                             !task_official_[i].value_or(false);
+    if (!tag_silent || !task_silent) {
+        return;
+    }
+
+    // Only what the lane merely remembers retracts: a stored record's
+    // undeclared brand and product line, left from whatever firmware said
+    // when it was written. The same rule the vendor-cache brand follows when a
+    // tag stops naming a vendor. A declared field is the user's and stands,
+    // and so does a brand beside the user's catalog pick, which names it.
+    const helix::ams::LaneId lane = lane_id(slot_index);
+    const helix::ams::LaneSources sources = helix::ams::lane_sources(lane);
+    if (!sources.remembered.has_value()) {
+        return;
+    }
+    helix::ams::Observation kept = *sources.remembered;
+    const bool picked =
+        sources.local_user.has_value() && sources.local_user->catalog_id.has_value();
+    const bool drop_brand = kept.brand.has_value() && !picked;
+    const bool drop_line = kept.spool_name.has_value() || kept.product_name.has_value();
+    if (!drop_brand && !drop_line) {
+        return;
+    }
+    if (drop_brand) {
+        kept.brand.reset();
+        slot.brand.clear();
+    }
+    if (drop_line) {
+        kept.spool_name.reset();
+        kept.product_name.reset();
+        slot.spool_name.clear();
+    }
+    helix::ams::drop_lane_source(lane, helix::ams::ObservationSource::Remembered);
+    const bool kept_any =
+        std::apply([](const auto&... f) { return (f.has_value() || ...); }, kept.fields());
+    if (kept_any) {
+        helix::ams::ingest(lane, kept);
+    }
+
+    auto ovr = overrides_.find(slot_index);
+    if (ovr == overrides_.end()) {
+        return;
+    }
+    spdlog::info("{} Slot {} firmware states no spool; retracting remembered{}{}",
+                 backend_log_tag(), slot_index,
+                 drop_brand ? " brand '" + ovr->second.brand + "'" : "",
+                 drop_line ? " name '" + ovr->second.spool_name + "'" : "");
+    if (drop_brand) {
+        ovr->second.brand.clear();
+    }
+    if (drop_line) {
+        ovr->second.spool_name.clear();
+    }
+    if (override_store_) {
+        helix::ams::save_override_async(override_store_.get(), slot_index, ovr->second,
+                                        backend_log_tag(), "Retraction");
     }
 }
 

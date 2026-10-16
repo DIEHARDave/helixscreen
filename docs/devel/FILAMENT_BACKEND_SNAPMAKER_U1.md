@@ -140,7 +140,11 @@ through `filament_detect.info` looking like a tag read. `spool_name` follows the
 record after the own-write echo guard, so a `NONE` SUB_TYPE blanks it and our echo is
 never learned as the spool's name (`src/printer/ams_backend_snapmaker.cpp#apply_rfid_entry_locked`).
 On load, a stored product line beside a non-Snapmaker brand is dropped and the record
-saved back (`src/printer/ams_backend_snapmaker.cpp#on_started`).
+saved back (`src/printer/ams_backend_snapmaker.cpp#on_started`). A channel whose firmware states no
+identity at all (tag `MAIN_TYPE`/`SUB_TYPE` NONE, `print_task_config` vendor NONE and not
+official) retracts the brand and product line its stored record only remembers, and saves
+the record back; declared fields and a brand beside a catalog pick stay
+(`src/printer/ams_backend_snapmaker.cpp#retract_unbacked_identity_locked`).
 
 Every row above is code-verified against `parse_rfid_info()` and the apply loop
 (`src/printer/snapmaker_status_parse.cpp#parse_rfid_info`, `src/printer/ams_backend_snapmaker.cpp#apply_rfid_entry_locked`): tag identity rides
