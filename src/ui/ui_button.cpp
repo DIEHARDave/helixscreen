@@ -74,23 +74,27 @@ struct UiButtonData {
 
     // long_mode was given: the label is bounded so it can ellipsize or wrap.
     bool label_bounded{false};
-    // A bounded label beside the icon is one line of whatever font it ends up
-    // with; label_line_cb keeps that height in step as styles land.
-    bool label_beside{false};
+    // A bounded label beside the icon, or a dotted one under it, is one line of
+    // whatever font it ends up with; label_line_cb keeps that height in step as
+    // styles land.
+    bool label_one_line{false};
     bool label_line_cb{false};
 };
 
 void fit_column_min_width(lv_obj_t* btn, UiButtonData* data);
 void part_resized_cb(lv_event_t* e);
 
-/// One line of the label's current font, the height a bounded label in a row
-/// keeps so its text stays centred and ellipsizes on that line.
+/// One line of the label's current font plus its own vertical padding, the
+/// height a bounded label keeps so its text stays centred and ellipsizes on
+/// that line.
 void fit_label_line(lv_obj_t* label) {
     const lv_font_t* font = lv_obj_get_style_text_font(label, LV_PART_MAIN);
     if (!font) {
         return;
     }
-    const int32_t line = lv_font_get_line_height(font);
+    const int32_t line = lv_font_get_line_height(font) +
+                         lv_obj_get_style_space_top(label, LV_PART_MAIN) +
+                         lv_obj_get_style_space_bottom(label, LV_PART_MAIN);
     if (lv_obj_get_style_height(label, LV_PART_MAIN) != line) {
         lv_obj_set_height(label, line);
     }
@@ -102,21 +106,24 @@ void label_line_style_cb(lv_event_t* e) {
     auto* label = static_cast<lv_obj_t*>(lv_event_get_target(e));
     lv_obj_t* btn = lv_obj_get_parent(label);
     auto* data = btn ? static_cast<UiButtonData*>(lv_obj_get_user_data(btn)) : nullptr;
-    if (data && data->magic == UiButtonData::MAGIC && data->label == label && data->label_beside) {
+    if (data && data->magic == UiButtonData::MAGIC && data->label == label &&
+        data->label_one_line) {
         fit_label_line(label);
     }
 }
 
 /// Bound the label of a long_mode button. Stacked or text-only, it spans the
 /// button. Beside an icon it takes what the icon leaves (a flex grow item, whose
-/// width the row decides) and one line of its font, so a label too long for
-/// that ellipsizes inside the button instead of pushing past its edge: a
-/// label's dots mode only cuts text that overruns its height.
+/// width the row decides). Beside an icon, or under one in dots mode, it holds
+/// one line of its font, so a label too long for that ellipsizes inside the
+/// button instead of pushing past its edge: a label's dots mode only cuts text
+/// that overruns its height. A stacked label in wrap mode keeps its own height.
 void apply_label_bound(UiButtonData* data, bool beside_icon) {
-    data->label_beside = beside_icon;
+    data->label_one_line =
+        beside_icon || lv_label_get_long_mode(data->label) == LV_LABEL_LONG_MODE_DOTS;
     lv_obj_set_flex_grow(data->label, beside_icon ? 1 : 0);
     lv_obj_set_width(data->label, lv_pct(100));
-    if (beside_icon) {
+    if (data->label_one_line) {
         if (!data->label_line_cb) {
             // DECLARATIVE_OK: the widget's own label tracks its inherited font
             lv_obj_add_event_cb(data->label, label_line_style_cb, LV_EVENT_STYLE_CHANGED, nullptr);

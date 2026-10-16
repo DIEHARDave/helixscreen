@@ -997,6 +997,34 @@ TEST_CASE_METHOD(UiButtonTestFixture, "ui_button unstacks to its declared height
     lv_subject_deinit(&stack_when);
 }
 
+// A dotted label under its icon holds one line of its font, so text too long
+// for the button ellipsizes there instead of wrapping out of the bottom.
+TEST_CASE_METHOD(UiButtonTestFixture, "ui_button stacked dotted label stays one line",
+                 "[ui_button][xml][quick]") {
+    static lv_subject_t stack_when;
+    lv_subject_init_int(&stack_when, 0);
+    lv_xml_register_subject(nullptr, "test_button_stack_dots", &stack_when);
+    lv_obj_t* box = lv_obj_create(test_screen());
+    lv_obj_set_size(box, 60, 90);
+    const char* attrs[] = {
+        "icon",          "tune",      "text", "Firmware Restart Now", "width",
+        "100%",          "long_mode", "dots", "stacked_subject",      "test_button_stack_dots",
+        "stacked_if_eq", "1",         nullptr};
+    lv_obj_t* btn = static_cast<lv_obj_t*>(lv_xml_create(box, "ui_button", attrs));
+    REQUIRE(btn != nullptr);
+
+    lv_subject_set_int(&stack_when, 1);
+    lv_obj_update_layout(test_screen());
+    lv_obj_t* label = UITest::button_label(btn);
+    const lv_font_t* font = lv_obj_get_style_text_font(label, LV_PART_MAIN);
+    CHECK(lv_obj_get_height(label) == lv_font_get_line_height(font) +
+                                          lv_obj_get_style_space_top(label, LV_PART_MAIN) +
+                                          lv_obj_get_style_space_bottom(label, LV_PART_MAIN));
+    CHECK(label_inside(btn));
+    lv_obj_delete(box);
+    lv_subject_deinit(&stack_when);
+}
+
 // A stacked button that asked for a content minimum holds the wider of its
 // icon and label as a measured width (a column cannot measure its own content
 // without feeding its width back in), and returns to the content minimum when
