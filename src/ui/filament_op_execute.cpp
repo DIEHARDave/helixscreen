@@ -396,7 +396,7 @@ void preheat_then(FilamentHeatOp op, PreheatSkip skip, int slot, const FilamentO
 FilamentOpSurface at_dispatch(const FilamentOpSurface& deferred) {
     FilamentOpSurface s = deferred;
     if (s.alive && !s.alive() && s.param_policy == ParamPolicy::Prompt) {
-        s.param_policy = ParamPolicy::Suppress;
+        s.param_policy = ParamPolicy::Unattended;
     }
     return s;
 }

@@ -13,6 +13,9 @@
 
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
+#include <vector>
+
 PostOpCooldownManager& PostOpCooldownManager::instance() {
     static PostOpCooldownManager inst;
     return inst;
@@ -53,42 +56,48 @@ void PostOpCooldownManager::schedule(std::string heater) {
     // Reach the manager through instance() rather than a captured `this`, for the
     // same reason the timer callback below does: it keeps the queued lambda from
     // holding a pointer whose validity it cannot check (#1165).
-    helix::ui::queue_update(
-        "PostOpCooldownManager::schedule", [delay_seconds, heater = std::move(heater)]() {
-            auto& self = PostOpCooldownManager::instance();
-            self.heater_ = heater;
+    helix::ui::queue_update("PostOpCooldownManager::schedule", [delay_seconds,
+                                                                heater = std::move(heater)]() {
+        auto& self = PostOpCooldownManager::instance();
+        // One timer for every heater owed a cooldown: a later op restarts the
+        // delay but never drops a heater an earlier one left on.
+        if (std::find(self.heaters_.begin(), self.heaters_.end(), heater) == self.heaters_.end()) {
+            self.heaters_.push_back(heater);
+        }
 
-            // Delete existing timer if any
-            if (self.timer_) {
-                lv_timer_delete(self.timer_);
+        // Delete existing timer if any
+        if (self.timer_) {
+            lv_timer_delete(self.timer_);
+            self.timer_ = nullptr;
+        }
+
+        self.timer_ = lv_timer_create(
+            [](lv_timer_t* /*t*/) {
+                auto& self = PostOpCooldownManager::instance();
                 self.timer_ = nullptr;
-            }
+                const std::vector<std::string> heaters = std::move(self.heaters_);
+                self.heaters_.clear();
 
-            self.timer_ = lv_timer_create(
-                [](lv_timer_t* /*t*/) {
-                    auto& self = PostOpCooldownManager::instance();
-                    self.timer_ = nullptr;
+                auto& state = get_printer_state();
 
-                    auto& state = get_printer_state();
+                // Skip while a job owns the toolhead. Preparing counts: a
+                // print that is starting will heat the nozzle itself, so cooling
+                // it down now is work the pre-start block immediately undoes.
+                const auto lifecycle = state.print_state().get_print_lifecycle();
+                if (job_holds_machine(lifecycle)) {
+                    spdlog::info("[PostOpCooldown] Skipping cooldown — print active");
+                    return;
+                }
 
-                    // Skip while a job owns the toolhead. Preparing counts: a
-                    // print that is starting will heat the nozzle itself, so cooling
-                    // it down now is work the pre-start block immediately undoes.
-                    const auto lifecycle = state.print_state().get_print_lifecycle();
-                    if (job_holds_machine(lifecycle)) {
-                        spdlog::info("[PostOpCooldown] Skipping cooldown — print active");
-                        return;
-                    }
-
+                auto& temps = state.temperature_state();
+                for (const std::string& heater : heaters) {
                     // Check extruder target (decidegrees, > 0 means heater is on)
-                    const std::string heater = std::move(self.heater_);
-                    self.heater_.clear();
-                    auto& temps = state.temperature_state();
                     auto* target_subj = heater.empty() ? temps.get_active_extruder_target_subject()
                                                        : temps.get_extruder_target_subject(heater);
                     if (!target_subj || lv_subject_get_int(target_subj) == 0) {
-                        spdlog::debug("[PostOpCooldown] Skipping cooldown — extruder already off");
-                        return;
+                        spdlog::debug("[PostOpCooldown] Skipping {} — already off",
+                                      heater.empty() ? temps.active_extruder_name() : heater);
+                        continue;
                     }
 
                     spdlog::info("[PostOpCooldown] Turning off extruder heater ({})",
@@ -100,10 +109,11 @@ void PostOpCooldownManager::schedule(std::string heater) {
                             c->set_target(heater, 0, {.toast = false});
                         }
                     }
-                },
-                static_cast<uint32_t>(delay_seconds) * 1000, nullptr);
-            lv_timer_set_repeat_count(self.timer_, 1);
-        });
+                }
+            },
+            static_cast<uint32_t>(delay_seconds) * 1000, nullptr);
+        lv_timer_set_repeat_count(self.timer_, 1);
+    });
 }
 
 void PostOpCooldownManager::cancel() {
@@ -118,7 +128,24 @@ void PostOpCooldownManager::cancel() {
             lv_timer_delete(self.timer_);
             self.timer_ = nullptr;
         }
-        self.heater_.clear();
+        self.heaters_.clear();
+    });
+}
+
+void PostOpCooldownManager::cancel(std::string heater) {
+    if (!initialized_)
+        return;
+
+    spdlog::debug("[PostOpCooldown] Cancelling the cooldown of {}", heater);
+
+    helix::ui::queue_update("PostOpCooldownManager::cancel_heater", [heater = std::move(heater)]() {
+        auto& self = PostOpCooldownManager::instance();
+        self.heaters_.erase(std::remove(self.heaters_.begin(), self.heaters_.end(), heater),
+                            self.heaters_.end());
+        if (self.heaters_.empty() && self.timer_) {
+            lv_timer_delete(self.timer_);
+            self.timer_ = nullptr;
+        }
     });
 }
 

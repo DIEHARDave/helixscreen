@@ -259,10 +259,10 @@ struct FilamentOpSurface {
     /// literal naming its surface.
     const void* owner = nullptr;
 
-    /// Whether the surface still exists, for a dispatch that runs after a
-    /// preheat. A surface that is gone raises no parameter prompt: the dispatch
-    /// downgrades ParamPolicy::Prompt to Suppress, and the prefill read at
-    /// request time carries the temperature. Unset counts as alive.
+    /// Whether the surface is still there for the user, for a dispatch that runs
+    /// after a preheat. One that is not raises no parameter prompt: the dispatch
+    /// downgrades ParamPolicy::Prompt to Unattended, which sends the prefill read
+    /// at request time. Unset counts as alive.
     std::function<bool()> alive;
 };
 

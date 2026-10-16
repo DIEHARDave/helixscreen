@@ -239,7 +239,8 @@ class FilamentOpHeater {
     struct Pending {
         PreheatRequest req;
         FilamentOpTicket ticket = 0;
-        std::string extruder;              ///< Empty for the active extruder
+        std::string heater;   ///< The extruder heated, always by name
+        std::string extruder; ///< Empty when that is the active one (whose subjects differ)
         std::weak_ptr<bool> extruder_life; ///< The mapped extruder's subjects
         int wait_c = 0;
         int floor_c = 0;
@@ -251,7 +252,19 @@ class FilamentOpHeater {
 
     struct Heated {
         FilamentOpTicket ticket = 0;
-        std::string extruder; ///< Empty for the active extruder
+        std::string extruder; ///< The extruder heated, by name
+        TimePoint at{};
+    };
+
+    /// A replaced preheat's heat, waiting for whoever takes the heater next.
+    struct Handoff {
+        std::string heater;
+        int prior_target_c = 0;
+    };
+
+    /// A cooldown this heater scheduled, owed on @p heater until it fires.
+    struct Owed {
+        std::string heater;
         TimePoint at{};
     };
 
@@ -275,8 +288,15 @@ class FilamentOpHeater {
     /// End the pending preheat unrun: toast, put the heater back as it was when
     /// @p restore, report Abandoned.
     void abandon(const char* why, const char* toast, bool restore);
-    /// Turn @p extruder back off when it was off before we heated it.
-    void restore_prior(const std::string& extruder, int prior_target_c);
+    /// Turn @p heater back off when it was off before we heated it.
+    void restore_prior(const std::string& heater, int prior_target_c);
+    /// Whatever earlier requests and ops left on @p heater passes to the request
+    /// that works it now: a replaced preheat's heat and a cooldown owed on it.
+    /// Heat left on another heater is put back. Returns the target @p heater had
+    /// before this heater heated it, when this heater did.
+    std::optional<int> take_over(const std::string& heater);
+    /// How long a scheduled cooldown is owed before its timer has fired.
+    [[nodiscard]] std::chrono::seconds owed_window() const;
     void report_heating();
     void cancel_deadline_timer();
     [[nodiscard]] TimePoint now() const;
@@ -291,6 +311,8 @@ class FilamentOpHeater {
     std::optional<Pending> pending_;
     FilamentOpTicket next_ticket_ = 0;
     std::vector<Heated> heated_;
+    std::optional<Handoff> handoff_;
+    std::vector<Owed> owed_;
     std::vector<Watch> watches_;
     ObserverGuard temp_observer_;
     ObserverGuard target_observer_;

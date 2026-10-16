@@ -583,3 +583,24 @@ TEST_CASE_METHOD(OptimisticSidebarFixture,
     REQUIRE(api_.sent.size() == 1);
     CHECK(api_.sent[0].find("GATE=2") != std::string::npos);
 }
+
+TEST_CASE_METHOD(OptimisticSidebarFixture,
+                 "Happy Hare: a withdrawn preheat leaves no Heat step to redraw",
+                 "[ams][optimistic_action][happy_hare][preheat]") {
+    build_hh();
+    set_nozzle(25, 0);
+    sidebar_->handle_load_with_preheat(1);
+    REQUIRE(heater_.get().pending());
+    const std::string heating =
+        lv_subject_get_string(AmsState::instance().get_ams_action_detail_subject());
+    REQUIRE_FALSE(heating.empty());
+
+    sidebar_->handle_load_with_preheat(1); // re-tap withdraws it
+    REQUIRE_FALSE(heater_.get().pending());
+    AmsState::instance().set_action_detail("");
+
+    // Reactivating the panel redraws a preheat only if one is waiting.
+    sidebar_->sync_from_state();
+    CHECK(std::string(lv_subject_get_string(
+              AmsState::instance().get_ams_action_detail_subject())) != heating);
+}

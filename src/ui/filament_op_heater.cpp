@@ -11,6 +11,7 @@
 #include "ams_state.h"
 #include "app_constants.h"
 #include "app_globals.h"
+#include "config.h"
 #include "i_moonraker_api.h"
 #include "lvgl/src/others/translation/lv_translation.h"
 #include "observer_factory.h"
@@ -166,24 +167,60 @@ void FilamentOpHeater::forget(FilamentOpTicket ticket) {
     }
 }
 
-void FilamentOpHeater::restore_prior(const std::string& extruder, int prior_target_c) {
+void FilamentOpHeater::restore_prior(const std::string& heater, int prior_target_c) {
     // Back off only if it was off: a target someone else set stays theirs.
     if (prior_target_c != 0) {
         return;
     }
     if (auto* c = get_temperature_controller()) {
-        if (extruder.empty()) {
-            c->set_target(HeaterType::Nozzle, 0.0, {.toast = false});
-        } else {
-            c->set_target(extruder, 0.0, {.toast = false});
-        }
+        c->set_target(heater, 0.0, {.toast = false});
     }
 }
 
+std::optional<int> FilamentOpHeater::take_over(const std::string& heater) {
+    std::optional<int> inherited;
+    if (handoff_) {
+        // A replaced preheat's heat: this request's if it works the same heater,
+        // put back otherwise.
+        if (handoff_->heater == heater) {
+            inherited = handoff_->prior_target_c;
+        } else {
+            restore_prior(handoff_->heater, handoff_->prior_target_c);
+        }
+        handoff_.reset();
+    }
+    // A cooldown owed on this heater: the op that runs now takes it over, both so
+    // the timer cannot cool the nozzle mid-op and so the heat is still cooled after.
+    auto& cooldown = PostOpCooldownManager::instance();
+    const auto& scheduled = cooldown.pending_heaters();
+    const auto owed = std::find_if(owed_.begin(), owed_.end(), [this, &heater](const Owed& o) {
+        return o.heater == heater && now() - o.at < owed_window();
+    });
+    const bool on_timer = std::find(scheduled.begin(), scheduled.end(), heater) != scheduled.end();
+    if (owed != owed_.end() || on_timer) {
+        cooldown.cancel(heater);
+        inherited = 0;
+    }
+    owed_.erase(std::remove_if(owed_.begin(), owed_.end(),
+                               [this, &heater](const Owed& o) {
+                                   return o.heater == heater || now() - o.at >= owed_window();
+                               }),
+                owed_.end());
+    // A cooldown some backend scheduled for the active extruder.
+    if (heater == state_.temperature_state().active_extruder_name() &&
+        std::find(scheduled.begin(), scheduled.end(), std::string()) != scheduled.end()) {
+        cooldown.cancel(std::string());
+    }
+    return inherited;
+}
+
+std::chrono::seconds FilamentOpHeater::owed_window() const {
+    auto* cfg = Config::get_instance();
+    const int delay = cfg ? cfg->get<int>(cfg->df() + "filament/cooldown_delay_seconds", 120) : 120;
+    return std::chrono::seconds(std::max(delay, 0));
+}
+
 FilamentOpHeater::Outcome FilamentOpHeater::run_after_preheat(PreheatRequest req) {
-    // The preheat this request replaces, so its heat can be put back if the
-    // newcomer does not take over that extruder.
-    std::optional<std::pair<std::string, int>> replaced;
     if (pending_) {
         const PreheatRequest& waiting = pending_->req;
         if (waiting.op == req.op && waiting.slot == req.slot && waiting.owner == req.owner) {
@@ -194,47 +231,48 @@ FilamentOpHeater::Outcome FilamentOpHeater::run_after_preheat(PreheatRequest req
         }
         spdlog::info("{} {} replaces the pending {} preheat", req.log_tag,
                      filament_heat_op_name(req.op), filament_heat_op_name(waiting.op));
-        replaced.emplace(pending_->extruder, pending_->prior_target_c);
+        // Whoever takes the heater next (this request, or one the replaced
+        // request's surface starts from its report) takes over its heat.
+        handoff_ = Handoff{pending_->heater, pending_->prior_target_c};
         end_pending(PreheatPhase::Cancelled);
         if (pending_) {
-            // The replaced request's surface started another op from its report;
-            // that one holds the heater now.
             spdlog::info("{} {} not run — another preheat took the heater", req.log_tag,
                          filament_heat_op_name(req.op));
             return Outcome::Cancelled;
         }
     }
-    // Whatever runs now must not be cooled down mid-op by the previous op's timer.
-    PostOpCooldownManager::instance().cancel();
 
     const FilamentOpTicket ticket = ++next_ticket_;
-
-    // Put back the replaced request's heat unless this one heats that same extruder.
-    auto settle_replaced = [this, &replaced](const std::string* now_heating) {
-        if (replaced && (!now_heating || *now_heating != replaced->first)) {
-            restore_prior(replaced->first, replaced->second);
-        }
-    };
-
-    if (req.skip != PreheatSkip::None) {
-        spdlog::info("{} Skipping preheat for {} — {}", req.log_tag, filament_heat_op_name(req.op),
-                     preheat_skip_name(req.skip));
-        settle_replaced(nullptr);
-        req.run(ticket);
-        return Outcome::Ran;
-    }
 
     SafetyLimits limits;
     if (auto* api = get_moonraker_api()) {
         limits = api->get_safety_limits();
     }
     // The lane's mapped tool names the extruder that heats; with no mapping it is
-    // the active one.
+    // the active one. `heater` always names it; `extruder` is empty for the active
+    // one, whose subjects and swap latch are read through the active accessors.
     const OpNozzle nozzle =
         resolve_op_nozzle(AmsState::instance().get_backend(), req.slot, state_, limits);
     auto& temps = state_.temperature_state();
-    const std::string extruder =
-        nozzle.extruder == temps.active_extruder_name() ? std::string() : nozzle.extruder;
+    const std::string heater =
+        nozzle.extruder.empty() ? temps.active_extruder_name() : nozzle.extruder;
+    const std::string extruder = heater == temps.active_extruder_name() ? std::string() : heater;
+    const std::optional<int> inherited = take_over(heater);
+    // An op that runs on heat this heater sent, with the heater off before that,
+    // is the op that heat is cooled down after.
+    auto adopt_heat = [this, &inherited, &heater](FilamentOpTicket t) {
+        if (inherited && *inherited == 0) {
+            heated_.push_back(Heated{t, heater, now()});
+        }
+    };
+
+    if (req.skip != PreheatSkip::None) {
+        spdlog::info("{} Skipping preheat for {} — {}", req.log_tag, filament_heat_op_name(req.op),
+                     preheat_skip_name(req.skip));
+        adopt_heat(ticket);
+        req.run(ticket);
+        return Outcome::Ran;
+    }
 
     std::optional<PreheatTarget> material = preheat_material_for_slot(req.slot);
     if (!material) {
@@ -261,31 +299,23 @@ FilamentOpHeater::Outcome FilamentOpHeater::run_after_preheat(PreheatRequest req
     if (!decision.heat) {
         spdlog::info("{} Nozzle hot enough for {} ({}°C, target {}°C) — no preheat", req.log_tag,
                      filament_heat_op_name(req.op), in.current_c, in.target_c);
-        if (replaced && replaced->first == extruder) {
-            // It runs on the heat the replaced request sent, so that heat is
-            // this op's to cool down afterwards, and not to take away now.
-            if (replaced->second == 0) {
-                heated_.push_back(Heated{ticket, extruder, now()});
-            }
-            replaced.reset();
-        }
-        settle_replaced(nullptr);
+        adopt_heat(ticket);
         req.run(ticket);
         return Outcome::Ran;
     }
 
     Pending p;
     p.ticket = ticket;
+    p.heater = heater;
     p.extruder = extruder;
     p.wait_c = decision.wait_c;
     p.floor_c = in.floor_c;
-    // Taking over the replaced request's extruder, its "was it off" carries over:
-    // the target read just now is the heat that request sent.
-    p.prior_target_c = replaced && replaced->first == extruder ? replaced->second : in.target_c;
+    // Heat taken over from an earlier request or op keeps its "was it off": the
+    // target read just now is heat this heater sent.
+    p.prior_target_c = inherited ? *inherited : in.target_c;
     p.job_free_at_request = !job_holds;
     p.started = now();
     p.req = std::move(req);
-    settle_replaced(&extruder);
     start_heating(std::move(p), decision.send_c,
                   material ? material->material_name : std::string());
     return Outcome::Heating;
@@ -305,7 +335,7 @@ void FilamentOpHeater::start_heating(Pending p, int send_c, const std::string& m
     heated_.erase(std::remove_if(heated_.begin(), heated_.end(),
                                  [stale](const Heated& h) { return h.at < stale; }),
                   heated_.end());
-    heated_.push_back(Heated{p.ticket, extruder, now()});
+    heated_.push_back(Heated{p.ticket, p.heater, now()});
 
     auto& temps = state_.temperature_state();
     SubjectLifetime temp_life;
@@ -402,7 +432,7 @@ void FilamentOpHeater::abandon(const char* why, const char* toast, bool restore)
                  filament_heat_op_name(pending_->req.op));
     NOTIFY_WARNING("{}", toast);
     if (restore) {
-        restore_prior(pending_->extruder, pending_->prior_target_c);
+        restore_prior(pending_->heater, pending_->prior_target_c);
     }
     end_pending(PreheatPhase::Abandoned);
 }
@@ -498,8 +528,7 @@ bool FilamentOpHeater::cancel() {
     }
     spdlog::info("{} Preheat for {} cancelled", pending_->req.log_tag,
                  filament_heat_op_name(pending_->req.op));
-    PostOpCooldownManager::instance().cancel();
-    restore_prior(pending_->extruder, pending_->prior_target_c);
+    restore_prior(pending_->heater, pending_->prior_target_c);
     NOTIFY_INFO(lv_tr("Preheat cancelled"));
     end_pending(PreheatPhase::Cancelled);
     return true;
@@ -517,11 +546,16 @@ void FilamentOpHeater::op_succeeded(FilamentOpTicket ticket) {
     if (!heated) {
         return;
     }
-    const std::string extruder = heated->extruder;
+    const std::string heater = heated->extruder;
     forget(ticket);
-    // A preheat waiting now wants the nozzle hot.
-    if (pending_) {
-        spdlog::debug("[FilamentOpHeater] Op finished while a preheat waits — no cooldown");
+    // A preheat waiting on the same heater wants it hot: the cooldown owed here
+    // passes to it, so its cancel or abandon turns the heater off and its own op
+    // is cooled down after.
+    if (pending_ && pending_->heater == heater) {
+        spdlog::debug("[FilamentOpHeater] Op finished while a preheat waits on {} — the "
+                      "cooldown passes to it",
+                      heater);
+        pending_->prior_target_c = 0;
         return;
     }
     // A job that is starting is about to heat the nozzle itself, and a paused
@@ -530,8 +564,9 @@ void FilamentOpHeater::op_succeeded(FilamentOpTicket ticket) {
         spdlog::debug("[FilamentOpHeater] Op finished during a job — no cooldown");
         return;
     }
-    spdlog::info("[FilamentOpHeater] Op finished — scheduling the post-op cooldown");
-    PostOpCooldownManager::instance().schedule(extruder);
+    spdlog::info("[FilamentOpHeater] Op finished — scheduling the post-op cooldown of {}", heater);
+    owed_.push_back(Owed{heater, now()});
+    PostOpCooldownManager::instance().schedule(heater);
 }
 
 void FilamentOpHeater::op_failed(FilamentOpTicket ticket) {

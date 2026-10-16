@@ -3087,9 +3087,12 @@ class AmsBackend {
      * @brief Whether unload_filament(@p slot_index) brings the hotend up itself
      *
      * Per call, because one backend can send a self-heating command for one
-     * unload and a bare retract for another. True only for a command whose
-     * heating is shown in what we send: a wrong true runs a cold extrude, a
-     * wrong false costs a second wait. Defaults to the trait.
+     * unload and a bare retract for another. True only where the heat is shown:
+     * in the gcode we send for that unload (QIDI's M109), or in the documented
+     * behaviour of the firmware command we send on that path (AFC TOOL_UNLOAD,
+     * the IFS toolhead unload, the U1's AUTO_FEEDING unload), cited where the
+     * backend sets it. A wrong true runs a cold extrude; a wrong false costs a
+     * second wait. Defaults to the trait.
      */
     [[nodiscard]] virtual bool unload_heats_hotend(int slot_index) const {
         (void)slot_index;

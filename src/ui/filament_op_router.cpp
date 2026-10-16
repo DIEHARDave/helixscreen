@@ -61,7 +61,7 @@ bool dispatch_filament_macro(const std::string& macro_name, ParamPolicy policy,
         helix::MacroParamDefaults::instance().get(macro_name);
 
     helix::MacroRunRequest req;
-    req.prompt_for_params = policy != ParamPolicy::Suppress && defaults.ask_for_params;
+    req.prompt_for_params = policy == ParamPolicy::Prompt && defaults.ask_for_params;
     // Suppress must keep sending exactly what it did before saved defaults:
     // the saved values only, and nothing without a record. Passing the
     // computed values through would make it a sender it never was.

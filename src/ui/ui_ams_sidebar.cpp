@@ -1747,12 +1747,12 @@ void AmsOperationSidebar::run_backend_op_after_preheat(FilamentHeatOp op, Prehea
     req.announce = false; // the Heat step shows it
     req.run = std::move(run);
     // The op this request is for owns the stepper until a later one arms it, so
-    // a report for a superseded request leaves the stepper alone.
+    // a superseded request's end leaves the stepper alone.
     const uint64_t mine = ++stepper_owner_;
     auto token = lifetime_.token();
     req.on_progress = [this, token, slot_index, mine](const PreheatProgress& progress) {
-        if (token.expired() || mine != stepper_owner_) {
-            return; // main thread: the sidebar closed or moved on; the heater carries on
+        if (token.expired()) {
+            return; // main thread: the sidebar closed, the heater carries on
         }
         switch (progress.phase) {
         case PreheatPhase::Heating:
@@ -1774,9 +1774,13 @@ void AmsOperationSidebar::run_backend_op_after_preheat(FilamentHeatOp op, Prehea
             return;
         case PreheatPhase::Cancelled:
         case PreheatPhase::Abandoned:
+            // The preheat this mirrors is over either way; only the stepper may
+            // since belong to a newer request.
             pending_load_slot_ = -1;
             pending_load_target_temp_ = 0;
-            abandon_started_operation();
+            if (mine == stepper_owner_) {
+                abandon_started_operation();
+            }
             return;
         }
     };

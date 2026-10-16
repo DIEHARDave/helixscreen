@@ -1,6 +1,8 @@
 // Copyright (C) 2025-2026 356C LLC
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include "ui_nav_manager.h"
+
 #include "../lvgl_ui_test_fixture.h"
 #include "../test_helpers/filament_panel_macro_harness.h"
 #include "../test_helpers/filament_panel_test_access.h"
@@ -10,11 +12,13 @@
 #include "filament_op_heater.h"
 #include "filament_op_router.h"
 #include "macro_executor.h"
+#include "macro_param_cache.h"
 #include "material_settings_manager.h"
 #include "preheat_widget.h"
 #include "preset_materials.h"
 #include "safety_settings_manager.h"
 #include "settings_manager.h"
+#include "standard_macros.h"
 #include "temperature_controller.h"
 
 #include <algorithm>
@@ -517,4 +521,47 @@ TEST_CASE_METHOD(LVGLUITestFixture, "A panel Purge replaces another surface's pe
     };
     CHECK(has("G1 E50 F600"));
     CHECK_FALSE(has("G1 E56 F1200"));
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture,
+                 "A panel load that waited raises no prompt once the user has left the panel",
+                 "[material_preheat][preheat][filament][heater]") {
+    Harness h;
+    discover_macros(h, {"extruder", "heater_bed", "gcode_macro LOAD_FILAMENT"});
+    helix::PrinterDiscovery hardware;
+    hardware.parse_objects(nlohmann::json{"extruder", "gcode_macro LOAD_FILAMENT"});
+    StandardMacros::instance().reset();
+    StandardMacros::instance().init(hardware);
+    nlohmann::json config;
+    // LENGTH is a parameter nothing prefills, so a prompting dispatch would ask.
+    config["gcode_macro LOAD_FILAMENT"]["gcode"] =
+        "{% set t = params.TEMP|default(220)|int %}\n{% set l = params.LENGTH|default(50)|int "
+        "%}\nM109 S{t}\nG1 E{l} F300";
+    helix::MacroParamCache::instance().populate_from_configfile(config, {"LOAD_FILAMENT"});
+    int prompts = 0;
+    helix::ui::set_filament_param_prompter([&prompts](const std::string&,
+                                                      const helix::CachedMacroInfo&,
+                                                      const std::map<std::string, std::string>&,
+                                                      helix::MacroExecuteCallback) { ++prompts; });
+    helix_test::ScopedSharedResource<helix::TemperatureController> controller(
+        std::make_shared<helix::TemperatureController>(h.state, &h.api));
+    helix_test::ScopedSharedResource<helix::ui::FilamentOpHeater> heater(
+        std::make_shared<helix::ui::FilamentOpHeater>(h.state));
+    helix::SafetySettingsManager::instance().set_allow_cold_extrude(false);
+    h.state.update_from_status({{"extruder", {{"temperature", 25.0}, {"target", 0.0}}},
+                                {"toolhead", {{"homed_axes", "xyz"}}}});
+    helix::ui::UpdateQueue::instance().drain();
+    // The tap happened on the panel; the user is elsewhere when the nozzle is hot.
+    REQUIRE(NavigationManager::instance().get_active() != helix::PanelId::Filament);
+
+    PanelAccess::execute_load(*h.panel);
+    helix::ui::UpdateQueue::instance().drain();
+    REQUIRE(heater.get().pending());
+
+    h.state.update_from_status({{"extruder", {{"temperature", 290.0}, {"target", 290.0}}}});
+    helix::ui::UpdateQueue::instance().drain();
+    CHECK_FALSE(heater.get().pending());
+    CHECK(prompts == 0);
+    helix::ui::set_filament_param_prompter({});
+    helix::MacroParamCache::instance().clear();
 }
