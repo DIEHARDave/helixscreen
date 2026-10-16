@@ -2760,8 +2760,8 @@ AmsBackendSnapmaker::classify_error(const std::string& raw_line,
     }
     const int slot = *parsed_slot_no + 1;
 
-    spdlog::warn("{} Resume refused: extruder {} has no filament type assigned", backend_log_tag(),
-                 digits);
+    // No log here: the router asks this ahead of the `!!` copy too, and logs
+    // the classified event when it presents it.
 
     // No gcode fixes this in one tap: SET_PRINT_FILAMENT_CONFIG needs a vendor,
     // type and subtype the user has to choose. So the action set is a plain

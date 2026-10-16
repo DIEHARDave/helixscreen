@@ -50,6 +50,8 @@ namespace {
 
 constexpr const char* kRefusal = "e1 not edit filament";
 constexpr const char* kRefusalLine = "!! e1 not edit filament";
+/// The Snapmaker classifier's explanation for e1, the machine's slot 2.
+constexpr const char* kExplanation = "Slot 2 has no filament type set";
 
 class ResumeRefusalFixture : public LVGLUITestFixture {
   public:
@@ -123,10 +125,18 @@ class ResumeRefusalFixture : public LVGLUITestFixture {
         ui::UpdateQueue::instance().drain();
     }
 
+    /// Past the window in which a claimed report waits for the explanation.
+    void settle_past_claim() {
+        settle();
+        process_lvgl(1500);
+        ui::UpdateQueue::instance().drain();
+    }
+
     /// The router put the classifier's explanation of the refusal on screen.
     [[nodiscard]] bool explanation_on_screen() const {
         return presenter && presenter->is_visible() &&
-               fault_surface_correlation::was_recently_surfaced(kRefusal);
+               RecoveryModalPresenterTestAccess::shown_detail(*presenter).find(kExplanation) !=
+                   std::string::npos;
     }
 
     MoonrakerClientMock mock;
@@ -148,7 +158,7 @@ TEST_CASE_METHOD(ResumeRefusalFixture,
     refuse_next_resume(kRefusal, /*echo=*/true);
 
     press_resume();
-    settle();
+    settle_past_claim();
 
     INFO("toasts: " << toasts.size());
     CHECK(toasts.empty());
@@ -168,7 +178,7 @@ TEST_CASE_METHOD(ResumeRefusalFixture,
 
     // Klipper's `!!` copy, reaching the router after the caller already ran.
     GcodeErrorRouterTestAccess::process_line(*router, kRefusalLine);
-    settle();
+    settle_past_claim();
 
     CHECK(toasts.empty());
     REQUIRE(explanation_on_screen());
@@ -193,7 +203,7 @@ TEST_CASE_METHOD(ResumeRefusalFixture,
 
     refuse_next_resume(kRefusal, /*echo=*/true);
     press_resume();
-    settle();
+    settle_past_claim();
 
     CHECK(toasts.empty());
     REQUIRE(explanation_on_screen());
@@ -243,9 +253,63 @@ TEST_CASE_METHOD(ResumeRefusalFixture,
 
     refuse_next_resume(kRefusal, /*echo=*/true);
     RecoveryModalPresenterTestAccess::tap(*presenter, "RESUME");
-    settle();
+    settle_past_claim();
 
     CHECK(recovery_toasts.empty());
     CHECK(toasts.empty());
     REQUIRE(explanation_on_screen());
+}
+
+TEST_CASE_METHOD(ResumeRefusalFixture, "a refusal whose console copy is lost still toasts",
+                 "[resume][error-router][snapmaker]") {
+    attach_router();
+    // The RPC error arrives; the `!!` copy never does.
+    refuse_next_resume(kRefusal, /*echo=*/false);
+
+    press_resume();
+    settle();
+    // Inside the window the explanation may still be on its way.
+    CHECK(toasts.empty());
+
+    settle_past_claim();
+    REQUIRE(toasts.size() == 1);
+    CHECK(toasts[0].find(kRefusal) != std::string::npos);
+    CHECK_FALSE(explanation_on_screen());
+}
+
+TEST_CASE_METHOD(ResumeRefusalFixture, "a re-press inside the correlation window explains again",
+                 "[resume][error-router][snapmaker]") {
+    attach_router();
+    refuse_next_resume(kRefusal, /*echo=*/true);
+    press_resume();
+    settle();
+    REQUIRE(explanation_on_screen());
+
+    RecoveryModalPresenterTestAccess::user_dismiss(*presenter);
+    settle();
+    REQUIRE_FALSE(presenter->is_visible());
+
+    // Both correlation buffers still hold the first refusal.
+    refuse_next_resume(kRefusal, /*echo=*/true);
+    press_resume();
+    settle_past_claim();
+
+    CHECK(toasts.empty());
+    REQUIRE(explanation_on_screen());
+    CHECK(failures == 2);
+}
+
+TEST_CASE_METHOD(ResumeRefusalFixture, "a refusal on a printer that is not paused keeps the toast",
+                 "[resume][error-router][snapmaker]") {
+    // The classifier only owns the refusal against a job being continued.
+    get_printer_state().update_from_status({{"pause_resume", {{"is_paused", false}}}});
+    attach_router();
+    refuse_next_resume(kRefusal, /*echo=*/true);
+
+    press_resume();
+    settle_past_claim();
+
+    REQUIRE(toasts.size() == 1);
+    CHECK(toasts[0].rfind("Failed to resume: ", 0) == 0);
+    CHECK_FALSE(explanation_on_screen());
 }

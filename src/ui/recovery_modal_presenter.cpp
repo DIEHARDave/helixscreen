@@ -269,14 +269,14 @@ void RecoveryModalPresenter::dispatch_recovery(const std::string& gcode, const s
             helix::ui::run_on_main("error_toast", [err]() {
                 // A refusal its classifier explains reaches the user as that
                 // explanation, from Klipper's `!!` copy.
-                if (rpc_error_correlation::broadcast_explains(err.message)) {
-                    return;
-                }
-                ToastManager::instance().show(
-                    ToastSeverity::ERROR,
-                    fmt::format(fmt::runtime(lv_tr("Recovery failed: {}")), err.localized_message())
-                        .c_str(),
-                    6000);
+                rpc_error_correlation::report_unless_explained(err.message, [err]() {
+                    ToastManager::instance().show(
+                        ToastSeverity::ERROR,
+                        fmt::format(fmt::runtime(lv_tr("Recovery failed: {}")),
+                                    err.localized_message())
+                            .c_str(),
+                        6000);
+                });
             });
         },
         IMoonrakerAPI::AMS_OPERATION_TIMEOUT_MS);

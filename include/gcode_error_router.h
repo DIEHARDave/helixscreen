@@ -11,6 +11,7 @@
 #include "lvgl.h"               // lv_timer_t (held presentations)
 
 #include <cstddef>
+#include <functional>
 #include <memory>
 #include <mutex>
 #include <set>
@@ -171,10 +172,21 @@ class GcodeErrorRouter {
     /// Classify context read from the live printer state. Main thread only.
     static ClassifyContext current_classify_context();
 
-    /// The broadcast explainer installed into rpc_error_correlation: true when
-    /// the active backend classifies the `!!` copy of an RPC error carrying
-    /// `message` as a command refusal this router presents.
+    /// True when the active backend classifies the `!!` copy of an RPC error
+    /// carrying `message` as a command refusal this router presents.
     [[nodiscard]] bool explains_rpc_error(const std::string& message) const;
+
+    /// The broadcast claimant installed into rpc_error_correlation: when
+    /// explains_rpc_error(), take `report` and run it after
+    /// RPC_REPORT_CLAIM_MS unless the explanation has surfaced by then.
+    bool claim_rpc_report(const std::string& message, std::function<void()>& report);
+
+    /// Context carried by one claimed report's timer. Defined in the .cpp.
+    struct ClaimCtx;
+
+    /// Claimed reports' timers, cancelled in the dtor like pending_deferred_.
+    /// Main-thread only.
+    std::vector<lv_timer_t*> pending_claims_;
 
     /// CRITICAL error that carries a recovery action: delegates to the
     /// shared RecoveryModalPresenter.

@@ -38,14 +38,14 @@ std::deque<Entry>& entries() {
 }
 
 // Main-thread only, so no lock.
-struct Explainer {
+struct Claimant {
     const void* owner = nullptr;
-    BroadcastExplainer fn;
+    BroadcastClaimant fn;
 };
 
-Explainer& explainer() {
-    static Explainer e;
-    return e;
+Claimant& claimant() {
+    static Claimant c;
+    return c;
 }
 
 // Caller must hold mu().
@@ -83,19 +83,24 @@ void clear_for_test() {
     entries().clear();
 }
 
-void set_broadcast_explainer(const void* owner, BroadcastExplainer fn) {
-    explainer() = Explainer{owner, std::move(fn)};
+void set_broadcast_claimant(const void* owner, BroadcastClaimant fn) {
+    claimant() = Claimant{owner, std::move(fn)};
 }
 
-void clear_broadcast_explainer(const void* owner) {
-    if (explainer().owner == owner) {
-        explainer() = Explainer{};
+void clear_broadcast_claimant(const void* owner) {
+    if (claimant().owner == owner) {
+        claimant() = Claimant{};
     }
 }
 
-bool broadcast_explains(const std::string& message) {
-    const auto& e = explainer();
-    return !message.empty() && e.fn && e.fn(message);
+void report_unless_explained(const std::string& message, std::function<void()> report) {
+    const auto& c = claimant();
+    if (!message.empty() && c.fn && c.fn(message, report)) {
+        return;
+    }
+    if (report) {
+        report();
+    }
 }
 
 } // namespace helix::rpc_error_correlation

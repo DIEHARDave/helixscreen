@@ -66,6 +66,11 @@ constexpr double DISPLACED_PROSE_WINDOW_SECONDS = 2.0;
 /// empty gcode alone is not a reliable signal — see present_recover_toast().
 constexpr const char* KEY298_RECOVER_TAG = "error_classify::key298_recover";
 
+/// How long a claimed RPC report waits for the router's own explanation of
+/// the same refusal before the caller's report runs after all. Matches the
+/// RPC correlation window: both channels leave Klipper together.
+constexpr uint32_t RPC_REPORT_CLAIM_MS = 1500;
+
 /// How long a recover toast stays tappable. Longer than a plain toast: the
 /// user has to read the fault and decide, not just notice it.
 constexpr uint32_t RECOVER_TOAST_MS = 15000;
@@ -112,13 +117,23 @@ struct GcodeErrorRouter::DeferredCtx {
     std::string short_form;
 };
 
+/// One claimed RPC report: the caller's report to run if the router's
+/// explanation of `message` has not surfaced when the timer fires.
+struct GcodeErrorRouter::ClaimCtx {
+    GcodeErrorRouter* owner;
+    std::string message;
+    std::function<void()> report;
+};
+
 GcodeErrorRouter::GcodeErrorRouter(IMoonrakerAPI* api, IMoonrakerClient* client,
                                    helix::ui::RecoveryModalPresenter& presenter)
     : api_(api), client_(client), presenter_(presenter) {
     // Callers ask this on the main thread, where the router is built and
     // destroyed, so `this` outlives every call.
-    rpc_error_correlation::set_broadcast_explainer(
-        this, [this](const std::string& message) { return explains_rpc_error(message); });
+    rpc_error_correlation::set_broadcast_claimant(
+        this, [this](const std::string& message, std::function<void()>& report) {
+            return claim_rpc_report(message, report);
+        });
 
     if (!client_) {
         spdlog::warn("[GcodeErrorRouter] Null client -- handlers not registered");
@@ -180,7 +195,14 @@ GcodeErrorRouter::GcodeErrorRouter(IMoonrakerAPI* api, IMoonrakerClient* client,
 }
 
 GcodeErrorRouter::~GcodeErrorRouter() {
-    rpc_error_correlation::clear_broadcast_explainer(this);
+    rpc_error_correlation::clear_broadcast_claimant(this);
+    // A claimed report still waiting belongs to a printer scope that is going
+    // away; it is dropped with the router.
+    for (lv_timer_t* timer : pending_claims_) {
+        delete static_cast<ClaimCtx*>(lv_timer_get_user_data(timer));
+        lv_timer_delete(timer);
+    }
+    pending_claims_.clear();
 
     // Held presentations carry a pointer back to this router; cancel every
     // still-pending one so a fire after teardown cannot reach freed members.
@@ -253,8 +275,8 @@ std::string GcodeErrorRouter::truncate_for_toast(std::string text) {
 // exact-string on both arms — see include/rpc_error_correlation.h for why
 // substring matching is deliberately avoided.
 //
-// A command refusal is never "already reported": its caller stands its own
-// report down in favour of this explanation (broadcast_explains).
+// A command refusal is never "already reported": its caller hands its own
+// report to this router instead (report_unless_explained).
 static bool already_reported_via_rpc(const ErrorEvent& ev) {
     if (ev.command_refusal)
         return false;
@@ -286,6 +308,35 @@ bool GcodeErrorRouter::explains_rpc_error(const std::string& message) const {
     return ev && ev->command_refusal && decide_presentation(*ev) != PresentAs::NONE;
 }
 
+bool GcodeErrorRouter::claim_rpc_report(const std::string& message, std::function<void()>& report) {
+    if (!explains_rpc_error(message))
+        return false;
+    // process_line records the refusal's raw wording when it presents it, and
+    // that wording is this RPC error's message.
+    auto* cctx = new ClaimCtx{this, message, std::move(report)};
+    auto* t = lv_timer_create(
+        [](lv_timer_t* timer) {
+            auto* c = static_cast<ClaimCtx*>(lv_timer_get_user_data(timer));
+            // c->owner is alive: the dtor cancels every pending claim.
+            GcodeErrorRouter* r = c->owner;
+            if (!fault_surface_correlation::was_recently_surfaced(c->message)) {
+                spdlog::warn("[GcodeError] Explanation never surfaced; caller reports: {}",
+                             c->message);
+                if (c->report)
+                    c->report();
+            }
+            r->pending_claims_.erase(
+                std::remove(r->pending_claims_.begin(), r->pending_claims_.end(), timer),
+                r->pending_claims_.end());
+            delete c;
+            lv_timer_delete(timer);
+        },
+        RPC_REPORT_CLAIM_MS, cctx);
+    lv_timer_set_repeat_count(t, 1);
+    pending_claims_.push_back(t);
+    return true;
+}
+
 PresentAs decide_presentation(const ErrorEvent& e) {
     const bool has_recover = !e.recovery_actions.empty();
     if (e.severity == ErrorSeverity::CRITICAL)
@@ -311,6 +362,11 @@ PromptData build_recovery_prompt(const ErrorEvent& e) {
 }
 
 void GcodeErrorRouter::present_recovery_modal(const ErrorEvent& e) {
+    if (e.command_refusal) {
+        // It answers the command just sent: an identical refusal the user
+        // dismissed earlier must not hide this one.
+        presenter_.forget_handled_fault();
+    }
     presenter_.present(e);
 }
 
@@ -588,11 +644,6 @@ void GcodeErrorRouter::process_line(const std::string& line, bool firmware_repor
     if (already_reported_via_rpc(*ev)) {
         spdlog::info("[GcodeError] Suppressing duplicate (RPC-handled): {}", ev->detail);
         return;
-    }
-    if (ev->command_refusal) {
-        // It answers the command just sent: an identical refusal the user
-        // dismissed earlier must not hide this one.
-        presenter_.forget_handled_fault();
     }
 
     const PresentAs how = decide_presentation(*ev);

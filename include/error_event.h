@@ -68,8 +68,8 @@ struct ErrorEvent {
     bool sticky = false;
     /// The firmware refused a command the user just sent, and this event says
     /// why. The router presents it even when the command's RPC caller recorded
-    /// the same rejection, and that caller stands its own report down
-    /// (rpc_error_correlation::broadcast_explains). Each refusal answers a fresh
+    /// the same rejection, and that caller hands its own report to the router
+    /// (rpc_error_correlation::report_unless_explained). Each refusal answers a fresh
     /// command, so it shows again even if the user dismissed an identical one.
     bool command_refusal = false;
 };
