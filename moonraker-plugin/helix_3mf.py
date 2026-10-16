@@ -37,6 +37,9 @@ DB_NAMESPACE = "helix_3mf"
 DB_DEFERRED_NAMESPACE = "helix_3mf_deferred"
 DB_DEFERRED_KEY = "outputs"
 
+# Error of a plate whose conversion is under way.
+_CONVERTING = "converting"
+
 # Error of a plate whose planned name was taken during extraction; it is
 # converted again straight away, under whatever name is free by then.
 _RACE_ERROR = "a file arrived at the output name during conversion; converting again"
@@ -558,6 +561,17 @@ class Helix3mfConverter:
             await self._save(source)
             logging.info(f"HelixPrint: {source}: {e}")
             return _print_result()
+
+        # One pending entry per sliced plate before any plate is written: a
+        # client deciding from the listing whether every plate of this archive
+        # has a current output must never see some plates done and the rest
+        # missing. The final entries replace these once all plates are through.
+        self.records[source] = [
+            Conversion(source, st.st_mtime, st.st_size, plate, plate_md5,
+                       state=STATE_PENDING, error=_CONVERTING)
+            for plate, plate_md5, _usize in plan
+        ]
+        await self._save(source)
 
         multi = len(plan) > 1
         results: List[Conversion] = []

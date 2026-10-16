@@ -212,6 +212,13 @@ project .3mf) gets one `failed` entry with `plate: 0`. Every path is relative to
 the gcodes root. `source_mtime` / `source_size` are the source file's as
 converted: an entry whose values differ from the file's current ones is stale.
 
+A source's entries always cover every sliced plate it holds. When a conversion
+starts, every plate's entry is written as `pending` (with the source's current
+mtime and size) before any plate is converted, and the finished entries replace
+them together. A listing therefore never shows some plates `done` with others
+missing: "every entry for this source is current and `done`" means every plate
+has its output.
+
 | `state` | Meaning |
 |---------|---------|
 | `done` | `output` holds the plate's G-code, md5 `output_md5` (equal to `plate_md5`) |

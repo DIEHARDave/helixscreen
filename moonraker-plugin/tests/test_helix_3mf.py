@@ -1078,3 +1078,50 @@ class TestStartOnUploadQueueing:
 
         assert result["print_started"] is True
         assert order.index("new.gcode.3mf") <= 1
+
+
+class TestPendingUpFront:
+    @pytest.mark.asyncio
+    async def test_every_plate_is_listed_pending_before_any_is_written(self, env, monkeypatch):
+        conv = await started(env)
+        make_3mf(env.gc / "a.gcode.3mf", {1: plate_gcode(1), 2: plate_gcode(2), 3: plate_gcode(3)})
+        real_extract = Helix3mfConverter._extract
+        seen: Dict[int, Any] = {}
+
+        def extract_and_look(full, plate, dest):
+            # What the endpoint and the database hold while this plate converts.
+            seen[plate] = (
+                [(c.plate, c.state) for c in conv.records["a.gcode.3mf"]],
+                [(r["plate"], r["state"]) for r in env.db.ns["helix_3mf"]["a.gcode.3mf"]],
+            )
+            return real_extract(full, plate, dest)
+
+        monkeypatch.setattr(Helix3mfConverter, "_extract", staticmethod(extract_and_look))
+        await notify(conv, "create_file", "a.gcode.3mf")
+
+        all_pending = [(1, "pending"), (2, "pending"), (3, "pending")]
+        for plate in (1, 2, 3):
+            listed, stored = seen[plate]
+            assert listed == all_pending, f"while converting plate {plate}: {listed}"
+            assert stored == all_pending
+        assert [(e["plate"], e["state"]) for e in await listing(conv)] == [
+            (1, "done"), (2, "done"), (3, "done")]
+
+    @pytest.mark.asyncio
+    async def test_a_conversion_cut_short_leaves_pending_entries_that_retry(
+        self, env, monkeypatch
+    ):
+        make_3mf(env.gc / "a.gcode.3mf", {1: plate_gcode(1), 2: plate_gcode(2)})
+        conv = env.make()
+
+        def crash(full, plate, dest):
+            raise SystemError("moonraker stopped")
+
+        monkeypatch.setattr(Helix3mfConverter, "_extract", staticmethod(crash))
+        await conv.start()
+        await conv.wait_idle()
+        assert [e["state"] for e in await listing(conv)] == ["pending", "pending"]
+
+        monkeypatch.undo()
+        again = await started(env)
+        assert [e["state"] for e in await listing(again)] == ["done", "done"]
