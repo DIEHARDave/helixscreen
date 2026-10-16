@@ -66,3 +66,22 @@ TEST_CASE("PrinterProfileState synthesizes the timelapse option only while avail
     profile.apply_dynamic_options(false, false);
     CHECK(profile.pre_print_option_set().find("timelapse") == nullptr);
 }
+
+TEST_CASE("PrinterProfileState knows which printers cannot print from a dot-directory",
+          "[printer_state][profile][staging]") {
+    LVGLTestFixture fixture;
+    PrinterProfileState profile;
+    profile.init_subjects(false);
+
+    REQUIRE(profile.set_printer_type("FlashForge Adventurer 5M (ForgeX)", true, false, false));
+    CHECK(profile.klipper_hides_dot_dirs());
+    REQUIRE(profile.set_printer_type("FlashForge Adventurer 5M Pro (ForgeX)", true, false, false));
+    CHECK(profile.klipper_hides_dot_dirs());
+    REQUIRE(profile.set_printer_type("FlashForge Adventurer 5X", true, false, false));
+    CHECK(profile.klipper_hides_dot_dirs());
+    // Stock firmware and everything else print from .helix_temp as before.
+    REQUIRE(profile.set_printer_type("FlashForge Adventurer 5M", true, false, false));
+    CHECK_FALSE(profile.klipper_hides_dot_dirs());
+    REQUIRE(profile.set_printer_type("Unknown Printer", true, false, false));
+    CHECK_FALSE(profile.klipper_hides_dot_dirs());
+}

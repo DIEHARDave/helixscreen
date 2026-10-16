@@ -49,28 +49,65 @@ std::vector<Conversion> parse_conversions(const nlohmann::json& result) {
     return out;
 }
 
-std::set<std::string> converted_archives(const std::vector<Conversion>& conversions,
-                                         const std::vector<ListedFile>& listed) {
+namespace {
+
+/// Whether @p c is a finished conversion of exactly the archive listed now,
+/// whose output is listed too.
+bool current_and_listed(const Conversion& c,
+                        const std::map<std::string, const ListedFile*>& by_path) {
+    if (c.state != "done" || c.output.empty()) {
+        return false;
+    }
+    const auto source = by_path.find(c.source);
+    if (source == by_path.end() || by_path.find(c.output) == by_path.end()) {
+        return false;
+    }
+    return source->second->size == c.source_size &&
+           std::fabs(source->second->modified - c.source_mtime) <= MTIME_TOLERANCE_S;
+}
+
+std::map<std::string, const ListedFile*> index_listing(const std::vector<ListedFile>& listed) {
     std::map<std::string, const ListedFile*> by_path;
     for (const auto& f : listed) {
         by_path[f.path] = &f;
     }
-    std::set<std::string> hidden;
+    return by_path;
+}
+
+} // namespace
+
+std::set<std::string> converted_archives(const std::vector<Conversion>& conversions,
+                                         const std::vector<ListedFile>& listed) {
+    const auto by_path = index_listing(listed);
+    // One entry per sliced plate: the archive hides only when every plate's is current.
+    std::map<std::string, bool> all_current;
     for (const auto& c : conversions) {
-        if (c.state != "done" || c.output.empty()) {
-            continue;
+        const bool ok = current_and_listed(c, by_path);
+        auto [it, inserted] = all_current.emplace(c.source, ok);
+        if (!inserted) {
+            it->second = it->second && ok;
         }
-        const auto source = by_path.find(c.source);
-        if (source == by_path.end() || by_path.find(c.output) == by_path.end()) {
-            continue;
+    }
+    std::set<std::string> hidden;
+    for (const auto& [source, ok] : all_current) {
+        if (ok) {
+            hidden.insert(source);
         }
-        if (source->second->size != c.source_size ||
-            std::fabs(source->second->modified - c.source_mtime) > MTIME_TOLERANCE_S) {
-            continue;
-        }
-        hidden.insert(c.source);
     }
     return hidden;
+}
+
+std::map<int, std::string> current_outputs(const std::vector<Conversion>& conversions,
+                                           const std::vector<ListedFile>& listed,
+                                           const std::string& source) {
+    const auto by_path = index_listing(listed);
+    std::map<int, std::string> outputs;
+    for (const auto& c : conversions) {
+        if (c.source == source && c.plate > 0 && current_and_listed(c, by_path)) {
+            outputs[c.plate] = c.output;
+        }
+    }
+    return outputs;
 }
 
 } // namespace helix::three_mf

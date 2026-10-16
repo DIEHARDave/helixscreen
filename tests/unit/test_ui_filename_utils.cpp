@@ -410,3 +410,46 @@ TEST_CASE("get_filename_basename() and gcode_dir_of() split at the last slash on
         CHECK(helix::gcode_dir_of(path) == inline_dir(path));
     }
 }
+
+TEST_CASE("a visible staging root stages where dot-directory-blind Klipper can print",
+          "[filename_utils][identity][staging]") {
+    using helix::gcode::StagingRoot;
+    const std::string rewritten =
+        helix::gcode::make_rewritten_gcode_path("parts/benchy.gcode", StagingRoot::Visible);
+    const std::string extracted =
+        helix::gcode::make_extracted_plate_path("X.gcode.3mf", 9, StagingRoot::Visible);
+    for (const auto& staged : {rewritten, extracted}) {
+        INFO(staged);
+        CHECK(staged.rfind("helix_staging/modified_", 0) == 0);
+        CHECK(helix::gcode::is_uploaded_rewrite_path(staged));
+        CHECK(helix::gcode::is_rewritten_gcode_path(staged));
+    }
+    CHECK(resolve_gcode_filename(rewritten) == "parts/benchy.gcode");
+    CHECK(helix::gcode::trusted_original_path(rewritten) == "parts/benchy.gcode");
+    CHECK(helix::gcode::trusted_original_path(extracted) == "X.gcode.3mf");
+    CHECK(helix::gcode::rewritten_archive_plate(extracted) == 9);
+    CHECK(helix::gcode::make_rewritten_gcode_path("a.gcode").rfind(".helix_temp/modified_", 0) ==
+          0);
+
+    // A user folder that merely ends in the name is not the staging directory.
+    CHECK_FALSE(helix::gcode::is_uploaded_rewrite_path("myhelix_staging/modified_1p_a.gcode"));
+    CHECK_FALSE(helix::gcode::is_uploaded_rewrite_path("x.helix_temp/modified_1p_a.gcode"));
+}
+
+TEST_CASE("the plugin's visible link directory unwraps like the hidden one",
+          "[filename_utils][identity][staging]") {
+    CHECK(resolve_gcode_filename("helix_print/full/parts/benchy.gcode") == "parts/benchy.gcode");
+    CHECK(helix::gcode::trusted_original_path("helix_print/full/parts/benchy.gcode") ==
+          "parts/benchy.gcode");
+    CHECK(helix::gcode::is_rewritten_gcode_path("helix_print/benchy.gcode"));
+    CHECK_FALSE(helix::gcode::is_uploaded_rewrite_path("helix_print/benchy.gcode"));
+}
+
+TEST_CASE("the app's own gcodes directories are named once", "[filename_utils][staging]") {
+    const auto dirs = helix::gcode::staging_dirs();
+    CHECK(dirs == std::vector<std::string>{".helix_temp", "helix_staging"});
+    CHECK(helix::gcode::is_app_managed_directory("helix_staging"));
+    CHECK(helix::gcode::is_app_managed_directory("helix_print"));
+    CHECK_FALSE(helix::gcode::is_app_managed_directory("parts"));
+    CHECK_FALSE(helix::gcode::is_app_managed_directory(".helix_temp"));
+}

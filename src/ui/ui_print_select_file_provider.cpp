@@ -129,6 +129,12 @@ void PrintSelectFileProvider::refresh_files(const std::string& current_path,
                 if (!file.filename.empty() && file.filename[0] == '.') {
                     continue;
                 }
+                // Nor the directories the app stages its copies in where the
+                // printer cannot print from a dot-directory.
+                if (file.is_dir && path_copy.empty() &&
+                    gcode::is_app_managed_directory(file.filename)) {
+                    continue;
+                }
 
                 // Check if we have existing data for this file
                 auto it = existing_data.find(file.filename);
@@ -237,6 +243,12 @@ void PrintSelectFileProvider::refresh_files(const std::string& current_path,
                         spdlog::debug("[FileProvider] Hiding {} converted .3mf archive(s)",
                                       hidden.size());
                     }
+                    for (auto& f : list) {
+                        if (!f.is_dir && gcode::is_3mf(f.filename)) {
+                            f.archive_outputs = three_mf::current_outputs(
+                                conversions, listed, gcode::join_gcode_path(path_copy, f.filename));
+                        }
+                    }
                     on_ready(std::move(list));
                 },
                 [self, shared_list, on_ready, gen](const MoonrakerError& error) {
@@ -245,6 +257,9 @@ void PrintSelectFileProvider::refresh_files(const std::string& current_path,
                     }
                     // No converter on this printer: every archive shows.
                     spdlog::trace("[FileProvider] No .3mf conversions: {}", error.message);
+                    for (auto& f : *shared_list) {
+                        f.archive_outputs.clear();
+                    }
                     on_ready(std::move(*shared_list));
                 });
         },

@@ -5,6 +5,7 @@
 
 #include <optional>
 #include <string>
+#include <vector>
 
 namespace helix::gcode {
 
@@ -137,6 +138,19 @@ std::optional<std::string> trusted_original_path(const std::string& path);
  */
 bool is_rewritten_gcode_path(const std::string& path);
 
+/// Which staging directory a copy the app uploads goes to. Hidden (.helix_temp)
+/// everywhere Klipper prints from a dot-directory; Visible (helix_staging) where
+/// its file list skips them, since a print it cannot list fails to open.
+enum class StagingRoot { Hidden, Visible };
+
+/// Every staging directory, relative to the gcodes root: the startup sweep
+/// empties each.
+std::vector<std::string> staging_dirs();
+
+/// A gcodes-root directory the app owns (visible staging, the plugin's visible
+/// link directory), which the file list leaves out as it does dot-directories.
+bool is_app_managed_directory(const std::string& name);
+
 /**
  * @brief Build the gcodes-root-relative path a rewritten copy is uploaded to.
  *
@@ -153,9 +167,11 @@ bool is_rewritten_gcode_path(const std::string& path);
  * trusted_original_path() then declines to vouch for.
  *
  * @param original_path The original's gcodes-root-relative path
+ * @param root Which staging directory (StagingRoot)
  * @return e.g. "<staging dir>/modified_1766807545p_parts~sbenchy.gcode"
  */
-std::string make_rewritten_gcode_path(const std::string& original_path);
+std::string make_rewritten_gcode_path(const std::string& original_path,
+                                      StagingRoot root = StagingRoot::Hidden);
 
 /**
  * @brief The staged path for plate @p plate's G-code, extracted from @p archive_path.
@@ -167,7 +183,8 @@ std::string make_rewritten_gcode_path(const std::string& original_path);
  *
  * @return e.g. "<staging dir>/modified_1766807545p_parts~sX.gcode.3mf~p9.gcode"
  */
-std::string make_extracted_plate_path(const std::string& archive_path, int plate);
+std::string make_extracted_plate_path(const std::string& archive_path, int plate,
+                                      StagingRoot root = StagingRoot::Hidden);
 
 /// The plate a staged copy was extracted from (make_extracted_plate_path()), or 0.
 int rewritten_archive_plate(const std::string& path);

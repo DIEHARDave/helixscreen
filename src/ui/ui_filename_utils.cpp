@@ -88,11 +88,16 @@ std::string get_display_filename(const std::string& path) {
 // producers build paths through make_rewritten_gcode_path() and consumers
 // recognise them through is_uploaded_rewrite_path(), so neither side can spell
 // it differently from the other.
-static const std::string helix_temp_prefix = ".helix_temp/modified_";
-// Where the HelixPrint plugin links a staged copy. Under its `full/` segment
-// the remainder IS the original's gcodes-relative path; directly under the
-// directory sits only a bare filename.
-static const std::string helix_print_prefix = ".helix_print/";
+// A printer whose Klipper skips dot-directories when it resolves a print gets
+// the visible directory; every other printer, the hidden one.
+static const std::string hidden_staging_dir = ".helix_temp";
+static const std::string visible_staging_dir = "helix_staging";
+static const std::string staged_name_prefix = "modified_";
+// Where the HelixPrint plugin links a staged copy: hidden by default, visible
+// where Klipper skips dot-directories. Under its `full/` segment the remainder
+// IS the original's gcodes-relative path; directly under the directory sits
+// only a bare filename.
+static const std::string helix_print_prefixes[] = {".helix_print/", "helix_print/"};
 static const std::string helix_print_full_segment = "full/";
 static const std::string gcode_mod_prefix = "/gcode_mod/mod_";
 static const std::string legacy_prefix = "/tmp/helixscreen_mod_";
@@ -101,15 +106,41 @@ static const std::string legacy_prefix = "/tmp/helixscreen_mod_";
 // reports gcodes-relative paths, so the plugin's directory is only ever the
 // leading segment; a user folder of that name deeper down is not a link.
 static size_t helix_print_original_pos(const std::string& path) {
-    if (path.size() <= helix_print_prefix.size() ||
-        path.compare(0, helix_print_prefix.size(), helix_print_prefix) != 0) {
-        return std::string::npos;
+    for (const auto& prefix : helix_print_prefixes) {
+        if (path.size() > prefix.size() && path.compare(0, prefix.size(), prefix) == 0) {
+            return prefix.size();
+        }
     }
-    return helix_print_prefix.size();
+    return std::string::npos;
+}
+
+static const std::string& staging_dir(StagingRoot root) {
+    return root == StagingRoot::Visible ? visible_staging_dir : hidden_staging_dir;
+}
+
+/// Where "<staging dir>/modified_" sits in @p path, and where the name after it
+/// starts; npos when @p path is not under either staging directory.
+static std::pair<size_t, size_t> find_staged_prefix(const std::string& path) {
+    for (const auto root : {StagingRoot::Hidden, StagingRoot::Visible}) {
+        const std::string prefix = staging_dir(root) + "/" + staged_name_prefix;
+        if (const size_t pos = path.find(prefix);
+            pos != std::string::npos && (pos == 0 || path[pos - 1] == '/')) {
+            return {pos, pos + prefix.size()};
+        }
+    }
+    return {std::string::npos, std::string::npos};
+}
+
+std::vector<std::string> staging_dirs() {
+    return {hidden_staging_dir, visible_staging_dir};
+}
+
+bool is_app_managed_directory(const std::string& name) {
+    return name == visible_staging_dir || name == "helix_print";
 }
 
 bool is_rewritten_gcode_path(const std::string& path) {
-    return path.find(helix_temp_prefix) != std::string::npos ||
+    return find_staged_prefix(path).first != std::string::npos ||
            helix_print_original_pos(path) != std::string::npos ||
            path.find(gcode_mod_prefix) != std::string::npos ||
            path.find(legacy_prefix) != std::string::npos;
@@ -212,10 +243,10 @@ static std::optional<ParsedRewrite> parse_rewrite(const std::string& path) {
     }
 
     size_t prefix_end = std::string::npos;
-    if (const size_t pos = path.find(helix_temp_prefix); pos != std::string::npos) {
+    if (const auto [pos, name_start] = find_staged_prefix(path); pos != std::string::npos) {
         // .helix_temp/modified_<ts>p_parts~sbenchy.gcode -> parts/benchy.gcode
         // .helix_temp/modified_<ts>_benchy.gcode         -> benchy.gcode
-        prefix_end = pos + helix_temp_prefix.size();
+        prefix_end = name_start;
         const size_t underscore = path.find('_', prefix_end);
         if (underscore != std::string::npos && underscore > prefix_end &&
             path[underscore - 1] == path_marker && underscore + 1 < path.size()) {
@@ -307,22 +338,23 @@ bool is_qidi_3mf_extract(const std::string& entry, const std::string& print_file
 }
 
 // The staged name for @p original_path, ending in @p suffix (empty, or a plate suffix).
-static std::string staged_path(const std::string& original_path, const std::string& suffix) {
+static std::string staged_path(const std::string& original_path, const std::string& suffix,
+                               StagingRoot root) {
     // One path component on the printer's filesystem, so it must fit NAME_MAX.
     constexpr size_t name_max = 255;
-    static const std::string staging_dir = ".helix_temp/";
+    const std::string dir = staging_dir(root) + "/";
+    const std::string prefix = dir + staged_name_prefix;
     const std::string stamp = std::to_string(static_cast<long long>(std::time(nullptr)));
 
-    std::string staged =
-        helix_temp_prefix + stamp + path_marker + "_" + escape_path(original_path) + suffix;
-    if (staged.size() - staging_dir.size() <= name_max) {
+    std::string staged = prefix + stamp + path_marker + "_" + escape_path(original_path) + suffix;
+    if (staged.size() - dir.size() <= name_max) {
         return staged;
     }
     // Too long to carry the whole path: a bare filename, which
     // trusted_original_path() refuses to read as the original's location.
-    staged = helix_temp_prefix + stamp + "_";
+    staged = prefix + stamp + "_";
     std::string name = get_filename_basename(original_path);
-    const size_t room = name_max - (staged.size() - staging_dir.size()) - suffix.size();
+    const size_t room = name_max - (staged.size() - dir.size()) - suffix.size();
     if (name.size() > room) {
         // Keep the extension, and start on a UTF-8 lead byte: a name cut inside
         // a multibyte character is not a valid filename to upload.
@@ -335,12 +367,13 @@ static std::string staged_path(const std::string& original_path, const std::stri
     return staged + name + suffix;
 }
 
-std::string make_rewritten_gcode_path(const std::string& original_path) {
-    return staged_path(original_path, "");
+std::string make_rewritten_gcode_path(const std::string& original_path, StagingRoot root) {
+    return staged_path(original_path, "", root);
 }
 
-std::string make_extracted_plate_path(const std::string& archive_path, int plate) {
-    return staged_path(archive_path, plate_suffix(plate));
+std::string make_extracted_plate_path(const std::string& archive_path, int plate,
+                                      StagingRoot root) {
+    return staged_path(archive_path, plate_suffix(plate), root);
 }
 
 int rewritten_archive_plate(const std::string& path) {
@@ -349,7 +382,7 @@ int rewritten_archive_plate(const std::string& path) {
 }
 
 bool is_uploaded_rewrite_path(const std::string& path) {
-    return path.find(helix_temp_prefix) != std::string::npos;
+    return find_staged_prefix(path).first != std::string::npos;
 }
 
 bool is_3mf(const std::string& name) {

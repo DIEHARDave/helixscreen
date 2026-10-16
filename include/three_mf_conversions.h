@@ -7,6 +7,7 @@
 // because the G-code converted from them sits beside them, unchanged.
 
 #include <cstdint>
+#include <map>
 #include <set>
 #include <string>
 #include <vector>
@@ -43,13 +44,19 @@ struct ListedFile {
 /**
  * @brief The archives in @p listed the list can hide.
  *
- * An archive is hidden only when a conversion of it is done, was made from
- * exactly the archive listed now (same size, same modification time), and
- * its output is listed too. Anything less (pending, failed, the archive
- * re-uploaded since, the output deleted or elsewhere) leaves the archive
- * showing, because then it is the only way to print that job.
+ * An archive is hidden only when the conversion of every sliced plate in it
+ * (one entry each) is done, was made from exactly the archive listed now (same
+ * size, same modification time), and has its output listed too. Anything less (pending, failed, the
+ * archive re-uploaded since, the output deleted or elsewhere) leaves the archive showing, because
+ * then it is the only way to print that job.
  */
 std::set<std::string> converted_archives(const std::vector<Conversion>& conversions,
                                          const std::vector<ListedFile>& listed);
+
+/// The plates of the archive @p source whose conversion is finished, current
+/// and listed, each with its output: those plates print from the output.
+std::map<int, std::string> current_outputs(const std::vector<Conversion>& conversions,
+                                           const std::vector<ListedFile>& listed,
+                                           const std::string& source);
 
 } // namespace helix::three_mf

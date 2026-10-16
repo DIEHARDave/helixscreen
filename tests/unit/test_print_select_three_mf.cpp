@@ -245,3 +245,44 @@ TEST_CASE_METHOD(ArchivePanel, "a second size of a .3mf render keeps the card's 
     // Prescaled from the cached PNG, not read again.
     CHECK(mock().transfers_mock().range_reads() == reads);
 }
+
+TEST_CASE_METHOD(ArchivePanel, "a plate the printer already converted prints from its output",
+                 "[print_select][three_mf][conversions]") {
+    PlantedGcode archive("Set.gcode.3mf", "", fixture_bytes("multi_plate.gcode.3mf"));
+    PlantedGcode output("Set_plate2.gcode", "", "; converted\nG28\n");
+    struct stat st {};
+    REQUIRE(::stat(archive.path().c_str(), &st) == 0);
+    const std::string json_path = std::filesystem::temp_directory_path().string() +
+                                  "/helix_3mf_outputs_" + std::to_string(::getpid()) + ".json";
+    {
+        const std::string mtime = std::to_string(static_cast<double>(st.st_mtime));
+        const std::string size = std::to_string(st.st_size);
+        std::ofstream out(json_path);
+        out << R"({"conversions":[{"source":"Set.gcode.3mf","source_mtime":)" << mtime
+            << R"(,"source_size":)" << size
+            << R"(,"plate":2,"output":"Set_plate2.gcode","state":"done"},)"
+            << R"({"source":"Set.gcode.3mf","source_mtime":)" << mtime << R"(,"source_size":)"
+            << size << R"(,"plate":5,"output":"","state":"pending"}]})";
+    }
+    ScopedEnv conversions("HELIX_MOCK_3MF_CONVERSIONS", json_path.c_str());
+
+    // Plate 5 is not converted yet, so the archive stays listed.
+    load(archive.name());
+    PrintSelectPanelTestAccess::select_file(*panel_, archive.name());
+    auto* prep = PrintSelectPanelTestAccess::prep_manager(*panel_);
+    REQUIRE(prep);
+
+    SECTION("the converted plate needs no local copy") {
+        mock().transfers_mock().mock_no_local_copies();
+        REQUIRE(PrintSelectPanelTestAccess::prepare_archive_start(*panel_));
+        CHECK(prep->printable_path(archive.name()) == "Set_plate2.gcode");
+        CHECK(prep->archive_plate_for(archive.name()) == 0);
+    }
+    SECTION("the plate still pending is extracted") {
+        PrintSelectPanelTestAccess::step_plate(*panel_, 1);
+        REQUIRE(PrintSelectPanelTestAccess::prepare_archive_start(*panel_));
+        CHECK(prep->printable_path(archive.name()) == archive.name());
+        CHECK(prep->archive_plate_for(archive.name()) == 5);
+    }
+    std::remove(json_path.c_str());
+}

@@ -1878,7 +1878,7 @@ void PrintPreparationManager::modify_and_print(
     }
 
     RewriteRoute route;
-    route.file_path = file_path;
+    route.file_path = printable_path(file_path);
     route.local_download_path =
         temp_dir + "/helix_download_" + std::to_string(std::time(nullptr)) + ".gcode";
     route.mod_names = std::move(mod_names);
@@ -1956,7 +1956,7 @@ void PrintPreparationManager::modify_and_print_with_remap(
                  remap.size(), file_path);
 
     RewriteRoute route;
-    route.file_path = file_path;
+    route.file_path = printable_path(file_path);
     route.local_download_path = local_download_path;
     for (const auto& [logical, physical] : remap) {
         route.mod_names.push_back("remap_T" + std::to_string(logical) + "_to_T" +
@@ -2027,8 +2027,8 @@ void PrintPreparationManager::rewrite_and_print(RewriteRoute route,
     const auto job = std::make_shared<const RewriteRoute>(std::move(route));
     const std::string remote_temp_path =
         job->archive_plate > 0
-            ? gcode::make_extracted_plate_path(job->file_path, job->archive_plate)
-            : gcode::make_rewritten_gcode_path(job->file_path);
+            ? gcode::make_extracted_plate_path(job->file_path, job->archive_plate, staging_root())
+            : gcode::make_rewritten_gcode_path(job->file_path, staging_root());
 
     spdlog::info("[PrintPreparationManager] Streaming modification: downloading {} to {} "
                  "(plugin: {})",
@@ -2211,13 +2211,26 @@ void PrintPreparationManager::rewrite_and_print(RewriteRoute route,
         download_progress);
 }
 
-void PrintPreparationManager::set_archive_plate(const std::string& file_path, int plate) {
-    archive_path_ = plate > 0 ? file_path : std::string();
-    archive_plate_ = plate > 0 ? plate : 0;
+void PrintPreparationManager::set_archive_plate(const std::string& file_path, int plate,
+                                                const std::string& converted_output) {
+    const bool marked = plate > 0 || !converted_output.empty();
+    archive_path_ = marked ? file_path : std::string();
+    archive_plate_ = marked && converted_output.empty() ? std::max(plate, 0) : 0;
+    archive_output_ = marked ? converted_output : std::string();
 }
 
 int PrintPreparationManager::archive_plate_for(const std::string& file_path) const {
     return !archive_path_.empty() && file_path == archive_path_ ? archive_plate_ : 0;
+}
+
+std::string PrintPreparationManager::printable_path(const std::string& file_path) const {
+    return !archive_output_.empty() && file_path == archive_path_ ? archive_output_ : file_path;
+}
+
+gcode::StagingRoot PrintPreparationManager::staging_root() const {
+    return printer_state_ && printer_state_->profile_state().klipper_hides_dot_dirs()
+               ? gcode::StagingRoot::Visible
+               : gcode::StagingRoot::Hidden;
 }
 
 PrintPreparationManager::RewriteResult
@@ -2307,6 +2320,12 @@ void PrintPreparationManager::start_print_directly(const std::string& filename,
     if (const int plate = archive_plate_for(filename); plate > 0) {
         print_archive_plate(filename, plate, std::move(on_navigate_to_status),
                             std::move(on_completion));
+        return;
+    }
+    if (const std::string printable = printable_path(filename); printable != filename) {
+        spdlog::info("[PrintPreparationManager] Printing the printer's conversion {} of {}",
+                     printable, filename);
+        start_print_directly(printable, std::move(on_navigate_to_status), std::move(on_completion));
         return;
     }
     api_->job().start_print(

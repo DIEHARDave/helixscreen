@@ -2940,6 +2940,13 @@ bool PrintSelectPanel::prepare_archive_start() {
         NOTIFY_WARNING(lv_tr("This .3mf has no sliced plate to print."));
         return false;
     }
+    // The printer already converted this plate: its G-code prints as it is.
+    if (const auto out = it->archive_outputs.find(plate->index); out != it->archive_outputs.end()) {
+        if (prep) {
+            prep->set_archive_plate(path, plate->index, out->second);
+        }
+        return true;
+    }
     if (!helix::ui::PrintPreparationManager::keeps_local_copies(api_)) {
         NOTIFY_WARNING(lv_tr("This .3mf has to be converted to G-code on the printer before it "
                              "can print."));

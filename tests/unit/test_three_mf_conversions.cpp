@@ -3,6 +3,8 @@
 
 #include "three_mf_conversions.h"
 
+#include <map>
+
 #include "../catch_amalgamated.hpp"
 
 using helix::three_mf::Conversion;
@@ -86,4 +88,34 @@ TEST_CASE("an archive hides only behind a finished conversion of exactly itself"
     SECTION("no converter answered") {
         CHECK(converted_archives({}, listing()).empty());
     }
+}
+
+TEST_CASE("an archive with several plates hides only when every plate is converted",
+          "[three_mf][conversions]") {
+    auto plate = [](int n, const char* state, const char* output) {
+        nlohmann::json e = one(state);
+        e["plate"] = n;
+        e["output"] = output;
+        return e;
+    };
+    auto files = listing();
+    files.push_back({"dir/X_plate5.gcode", 10, 1760000200.0});
+    const auto both_done = parse_conversions(
+        {{"conversions",
+          {plate(2, "done", "dir/X.gcode"), plate(5, "done", "dir/X_plate5.gcode")}}});
+    CHECK(converted_archives(both_done, files).size() == 1);
+
+    const auto one_pending = parse_conversions(
+        {{"conversions",
+          {plate(2, "done", "dir/X.gcode"), plate(5, "pending", "dir/X_plate5.gcode")}}});
+    CHECK(converted_archives(one_pending, files).empty());
+    // The finished plate still prints from its output; the pending one does not.
+    const auto outputs = helix::three_mf::current_outputs(one_pending, files, "dir/X.gcode.3mf");
+    CHECK(outputs == std::map<int, std::string>{{2, "dir/X.gcode"}});
+    CHECK(helix::three_mf::current_outputs(one_pending, files, "dir/Other.gcode.3mf").empty());
+
+    // A project with nothing sliced: one failed entry, plate 0, no output.
+    const auto project = parse_conversions({{"conversions", {plate(0, "failed", "")}}});
+    CHECK(converted_archives(project, files).empty());
+    CHECK(helix::three_mf::current_outputs(project, files, "dir/X.gcode.3mf").empty());
 }

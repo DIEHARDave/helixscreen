@@ -95,6 +95,9 @@ struct PrintFileData {
     bool archive_requested = false;
     /// The plate the card and the detail view show and Print prints (0 = the first).
     int archive_plate = 0;
+    /// Plates the printer-side converter has already turned into a current,
+    /// listed G-code, with that output: those print from it, not by extraction.
+    std::map<int, std::string> archive_outputs;
 
     // Print history status (from PrintHistoryManager)
     FileHistoryStatus history_status = FileHistoryStatus::NEVER_PRINTED;

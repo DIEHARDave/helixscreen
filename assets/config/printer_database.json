@@ -234,6 +234,7 @@
     },
     {
       "id": "flashforge_adventurer_5m_forgex",
+      "klipper_hides_dot_dirs": true,
       "name": "FlashForge Adventurer 5M (ForgeX)",
       "manufacturer": "FlashForge",
       "image": "flashforge-adventurer-5m.png",
@@ -474,6 +475,7 @@
     },
     {
       "id": "flashforge_ad5m_pro_forgex",
+      "klipper_hides_dot_dirs": true,
       "enclosed": true,
       "name": "FlashForge Adventurer 5M Pro (ForgeX)",
       "manufacturer": "FlashForge",
@@ -611,6 +613,7 @@
     },
     {
       "id": "flashforge_ad5x",
+      "klipper_hides_dot_dirs": true,
       "name": "FlashForge Adventurer 5X",
       "manufacturer": "FlashForge",
       "image": "flashforge-adventurer-5x.png",

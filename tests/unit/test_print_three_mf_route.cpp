@@ -199,3 +199,36 @@ TEST_CASE_METHOD(ArchiveStart, "a modified .3mf plate starts as itself even with
     REQUIRE(printer.api.job_mock().started_prints().size() == 1);
     CHECK(printer.api.job_mock().started_prints()[0] == uploads[0].dest_path);
 }
+
+TEST_CASE_METHOD(ArchiveStart, "a plate the printer already converted prints from its output",
+                 "[print_preparation][three_mf]") {
+    plant("single_plate.gcode.3mf");
+    manager.set_archive_plate(kArchive, 9, "Door_plate9.gcode");
+    CHECK(manager.archive_plate_for(kArchive) == 0);
+    CHECK(manager.printable_path(kArchive) == "Door_plate9.gcode");
+    start();
+
+    // Nothing is fetched, extracted or uploaded: the output starts as it is.
+    CHECK(printer.api.transfers_mock().download_destinations().empty());
+    CHECK(printer.api.transfers_mock().path_uploads().empty());
+    REQUIRE(printer.api.job_mock().started_prints().size() == 1);
+    CHECK(printer.api.job_mock().started_prints()[0] == "Door_plate9.gcode");
+}
+
+TEST_CASE_METHOD(ArchiveStart, "staged copies go where the printer's Klipper can print them",
+                 "[print_preparation][three_mf][staging]") {
+    plant("single_plate.gcode.3mf");
+    const bool forgex = GENERATE(true, false);
+    CAPTURE(forgex);
+    REQUIRE(printer.state.profile_state().set_printer_type(
+        forgex ? "FlashForge Adventurer 5M (ForgeX)" : "FlashForge Adventurer 5M", true, false,
+        false));
+    const std::string root = forgex ? "helix_staging/modified_" : ".helix_temp/modified_";
+    manager.set_archive_plate(kArchive, 9);
+    start();
+    const auto& uploads = printer.api.transfers_mock().path_uploads();
+    REQUIRE(uploads.size() == 1);
+    CHECK(uploads[0].dest_path.rfind(root, 0) == 0);
+    REQUIRE(printer.api.job_mock().started_prints().size() == 1);
+    CHECK(printer.api.job_mock().started_prints()[0] == uploads[0].dest_path);
+}

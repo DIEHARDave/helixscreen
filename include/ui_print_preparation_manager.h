@@ -465,11 +465,21 @@ class PrintPreparationManager {
      * (gcode::make_extracted_plate_path()) whether or not anything rewrites it.
      * A plate of 0 forgets the file, and it starts as itself again, which is
      * how a .3mf the printer reads natively prints. Needs local copies.
+     *
+     * @p converted_output, when the printer-side converter has already turned
+     * this plate into a current, listed G-code: that file starts instead, as
+     * any G-code does, and nothing is extracted.
      */
-    void set_archive_plate(const std::string& file_path, int plate);
+    void set_archive_plate(const std::string& file_path, int plate,
+                           const std::string& converted_output = {});
 
-    /// The plate set_archive_plate() named for @p file_path, or 0.
+    /// The plate set_archive_plate() named for @p file_path, or 0. Also 0 when
+    /// the printer already converted it: that output prints instead.
     [[nodiscard]] int archive_plate_for(const std::string& file_path) const;
+
+    /// What a start of @p file_path prints: the printer's own conversion of
+    /// the archive when set_archive_plate() named one, else @p file_path.
+    [[nodiscard]] std::string printable_path(const std::string& file_path) const;
 
     /**
      * @brief Rewrite tool commands in a G-code file and print the modified copy.
@@ -730,6 +740,7 @@ class PrintPreparationManager {
     /// set_archive_plate(): the .3mf that prints as an extracted plate, and the plate.
     std::string archive_path_;
     int archive_plate_ = 0;
+    std::string archive_output_;   ///< the printer's own conversion, which prints instead
     bool skip_reset_sent_ = false; ///< One reset per pending skip, until it reads clear
     void reset_pending_skips();
 
@@ -873,6 +884,10 @@ class PrintPreparationManager {
      */
     void rewrite_and_print(RewriteRoute route, NavigateToStatusCallback on_navigate_to_status,
                            PrintCompletionCallback on_completion);
+
+    /// Where this printer's staged copies go (StagingRoot): visible when its
+    /// Klipper cannot print from a dot-directory.
+    [[nodiscard]] gcode::StagingRoot staging_root() const;
 
     /// Extracts the route's plate from its downloaded archive and runs the
     /// route's rewrite on it. HTTP thread; removes the archive.
