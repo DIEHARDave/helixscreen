@@ -56,13 +56,15 @@ _archive_tmp_path() {
     esac
 }
 
-# Detect whether curl supports the flags we need (not BusyBox curl).
-# BusyBox curl lacks -S, -L, --connect-timeout, --max-time, --progress-bar, etc.
-# Cache the result so we only probe once.
+# Detect whether `curl` is curl proper, with the flags we pass it. Creality K1
+# firmware ships libhv's example client as /usr/bin/curl: it answers to the name,
+# prints "curl version 1.0.0" and rejects -s, -S, -L, -o and -f. Real curl's first
+# --version line is "curl <digit>...". Cache the result so we only probe once.
 _REAL_CURL=""
 _has_real_curl() {
     if [ -z "$_REAL_CURL" ]; then
-        if command -v curl >/dev/null 2>&1 && curl --version 2>/dev/null | grep -qi "curl"; then
+        if command -v curl >/dev/null 2>&1 &&
+            curl --version 2>/dev/null | head -n 1 | grep -q '^curl [0-9]'; then
             _REAL_CURL=yes
         else
             _REAL_CURL=no
