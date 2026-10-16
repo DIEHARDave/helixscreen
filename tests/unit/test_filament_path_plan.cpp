@@ -1141,6 +1141,22 @@ TEST_CASE_METHOD(LVGLTestFixture,
     CHECK(get_data(w)->filament_segment == static_cast<int>(PathSegment::PREP));
 }
 
+TEST_CASE("FilamentPath plan: a PARALLEL unit without a toolhead sensor draws no band there",
+          "[filament-path][plan][parallel]") {
+    auto d = make_data(helix::PathTopology::PARALLEL);
+    d->has_toolhead_sensor = false;
+    load_active(*d, 1, PathSegment::NOZZLE);
+    const PathPlan& plan = parallel_plan(*d);
+    CHECK(plan.band_count == 0);
+    // The tube still runs unbroken from its spool to its nozzle.
+    for (int i = 0; i < 4; i++) {
+        CAPTURE(i);
+        const Route& r = plan.routes[i];
+        CHECK(contiguous(r.path));
+        CHECK(near(seg_end(r.path.segs[r.path.count - 1]), 50.0f + 100 * i, 268));
+    }
+}
+
 TEST_CASE("FilamentPath plan: the mounted PARALLEL tool is one active stroke",
           "[filament-path][plan][parallel]") {
     auto d = make_data(helix::PathTopology::PARALLEL);
@@ -1340,13 +1356,10 @@ TEST_CASE("FilamentPath plan: PARALLEL and MIXED show an error on the mounted la
     }
 }
 
-TEST_CASE("FilamentPath plan: PARALLEL and MIXED bands do not wait on a toolhead sensor",
+TEST_CASE("FilamentPath plan: MIXED lane bands do not wait on a toolhead sensor",
           "[filament-path][plan]") {
-    auto d = make_data(helix::PathTopology::PARALLEL);
+    auto d = make_data(helix::PathTopology::MIXED);
     d->has_toolhead_sensor = false;
-    CHECK(parallel_plan(*d).band_count == 4);
-
-    d->topology = static_cast<int>(helix::PathTopology::MIXED);
     d->slot_is_hub_routed[2] = true;
     d->slot_is_hub_routed[3] = true;
     CHECK(mixed_plan(*d).band_count == 4);

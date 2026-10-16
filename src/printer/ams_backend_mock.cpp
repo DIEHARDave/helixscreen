@@ -2072,6 +2072,8 @@ void AmsBackendMock::set_tool_changer_mode(bool enabled) {
 
         // Rename unit to reflect tool changer nature
         if (!system_info_.units.empty()) {
+            // klipper-toolchanger publishes no per-tool filament sensor.
+            system_info_.units[0].has_toolhead_sensor = false;
             system_info_.units[0].name = "Mock Tool Changer";
         }
 

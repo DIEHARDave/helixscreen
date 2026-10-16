@@ -382,8 +382,9 @@ the hub and buffer stack above the toolhead glyph (`glyph_top` is
 - **Bands.** Clamp bands replace the sensor dots: prep (per slot with a prep
   sensor), hub entry (HUB), output (hub bottom, not on-toolhead), bypass merge
   (bypass shown) and toolhead (whenever the unit reports a toolhead sensor,
-  `FilamentPathData::has_toolhead_sensor`). PARALLEL and MIXED lanes each get
-  one band at their sensor, read as `TOOLHEAD`. A PARALLEL lane whose backend
+  `FilamentPathData::has_toolhead_sensor`). MIXED lanes each get one band at
+  their sensor, read as `TOOLHEAD`; PARALLEL lanes get it only when the unit
+  publishes a toolhead sensor, so a tool changer's tubes run unbanded. A PARALLEL lane whose backend
   publishes an entry sensor (`slot_has_prep_sensor`) gets a second band three
   tube gauges below its cap, read as `PREP`; the run between the two bands is
   `LANE`, so filament only the entry sensor sees fills the tube to that band. `band_state()`: Error on the active

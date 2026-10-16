@@ -704,12 +704,14 @@ Lane lane_of(const SlotRenderState& s, PathSegment error, lv_color_t bg) {
             lane_error(s, s.is_mounted, error), s.color, bg};
 }
 
-// Spool entry down to the lane's sensor, with its band. The sensor reads
-// filament once it has reached the toolhead segment.
-Route& start_lane(PathPlan& out, const Lane& lane, float x, int32_t entry_y, int32_t sensor_y) {
+// Spool entry down to the lane's sensor, with its band where the unit has
+// one. The sensor reads filament once it has reached the toolhead segment.
+Route& start_lane(PathPlan& out, const Lane& lane, float x, int32_t entry_y, int32_t sensor_y,
+                  bool has_sensor = true) {
     Route& r = new_route(out);
     append_line(r, x, (float)entry_y, x, (float)sensor_y, lane.style(PathSegment::SPOOL));
-    add_band_at_end(out, BandKind::Lane, r, lane.band(PathSegment::TOOLHEAD), lane.color);
+    if (has_sensor)
+        add_band_at_end(out, BandKind::Lane, r, lane.band(PathSegment::TOOLHEAD), lane.color);
     return r;
 }
 
@@ -737,9 +739,11 @@ void plan_parallel(const FilamentPathData& data, const BaseGeometry& g, PathPlan
             add_band_at_end(out, BandKind::Lane, *r, lane.band(PathSegment::PREP), lane.color);
             append_line(*r, x, (float)rows.prep_y, x, (float)sensor_y,
                         lane.style(PathSegment::LANE));
-            add_band_at_end(out, BandKind::Lane, *r, lane.band(PathSegment::TOOLHEAD), lane.color);
+            if (data.has_toolhead_sensor)
+                add_band_at_end(out, BandKind::Lane, *r, lane.band(PathSegment::TOOLHEAD),
+                                lane.color);
         } else {
-            r = &start_lane(out, lane, x, entry_y, sensor_y);
+            r = &start_lane(out, lane, x, entry_y, sensor_y, data.has_toolhead_sensor);
         }
         append_line(*r, x, (float)sensor_y, x, nozzle_top, lane.style(PathSegment::NOZZLE));
         if (lane.on)

@@ -243,3 +243,17 @@ TEST_CASE("Mock tool changer publishes no entry sensor", "[ams][mock][entry_sens
     for (int i = 0; i < 4; i++)
         CHECK_FALSE(mock.slot_has_prep_sensor(i));
 }
+
+TEST_CASE("Mock toolhead sensors match the backends they stand in for",
+          "[ams][snapmaker][mock][entry_sensor]") {
+    AmsBackendMock u1(4);
+    u1.set_snapmaker_mode(true);
+    SnapmakerProbe real;
+    REQUIRE(real.get_system_info().units[0].has_toolhead_sensor);
+    CHECK(u1.get_system_info().units[0].has_toolhead_sensor);
+
+    // klipper-toolchanger publishes no per-tool filament sensor.
+    AmsBackendMock tc(4);
+    tc.set_tool_changer_mode(true);
+    CHECK_FALSE(tc.get_system_info().units[0].has_toolhead_sensor);
+}

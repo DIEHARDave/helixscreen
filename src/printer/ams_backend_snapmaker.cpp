@@ -193,6 +193,8 @@ AmsBackendSnapmaker::AmsBackendSnapmaker(IMoonrakerAPI* api, helix::IMoonrakerCl
     unit.first_slot_global_index = 0;
     unit.connected = true;
     unit.topology = PathTopology::PARALLEL;
+    // Every toolhead carries its own filament switch (e{N}_filament).
+    unit.has_toolhead_sensor = true;
 
     for (int i = 0; i < NUM_TOOLS; i++) {
         SlotInfo slot;
