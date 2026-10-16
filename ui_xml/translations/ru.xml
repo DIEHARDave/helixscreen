@@ -294,6 +294,8 @@
   <translation tag="Archive Spool?" ru="Архивировать катушку?"/>
   <translation tag="Are you sure you want to cancel this print? All progress will be lost." ru="Вы уверены, что хотите отменить печать? Весь прогресс будет потерян."/>
   <translation tag="Are you sure? This will power off or restart this device." ru="Вы уверены? Это выключит или перезагрузит данное устройство."/>
+  <translation tag="Arrows" ru="Стрелки"/>
+  <translation tag="Arrows + Home" ru="Стрелки + Домой"/>
   <translation tag="Ask for parameters" ru="Спрашивать параметры"/>
   <translation tag="Assign Klipper macros to control LEDs via on/off, toggle, or presets" ru="Назначьте макросы Klipper для управления LED через вкл/выкл, переключение или пресеты"/>
   <translation tag="Assign a role to enable sensor monitoring" ru="Назначьте роль для мониторинга датчика"/>
@@ -332,6 +334,7 @@
   <translation tag="Available Networks" ru="Доступные сети"/>
   <translation tag="Available networks" ru="Доступные сети"/>
   <translation tag="Average" ru="Среднее"/>
+  <translation tag="Axis Rows" ru="Ряды по осям"/>
   <translation tag="Axis limits unknown" ru="Границы оси неизвестны"/>
   <translation tag="B · 1,1" ru="B · 1,1"/>
   <translation tag="BACK" ru="ЗАД"/>
@@ -945,6 +948,7 @@
   <translation tag="Distance from lane extruder to hub" ru="Расстояние от канала экструдера до хаба"/>
   <translation tag="Distance from toolhead sensor to nozzle tip" ru="Расстояние от датчика печатающей головки до кончика сопла"/>
   <translation tag="Distance moved per jog button tap" ru="Расстояние за одно нажатие кнопки перемещения"/>
+  <translation tag="Distance moved per jog button tap. The arrow layouts offer every distance as a step." ru="Расстояние за одно нажатие кнопки перемещения. Раскладки со стрелками предлагают каждое расстояние как шаг."/>
   <translation tag="Do not power off your printer." ru="Не выключайте принтер."/>
   <translation tag="Do not touch the printer during calibration" ru="Не трогайте принтер во время калибровки"/>
   <translation tag="Dock" ru="Парковать"/>
@@ -1532,6 +1536,7 @@
   <translation tag="How far filament is pushed back into the box on eject (mm)" ru="Насколько глубоко филамент задвигается обратно в коробку при извлечении (мм)"/>
   <translation tag="How long to hold before a press counts as a long-press, in ms (raise if edit mode or other long-press actions trigger by accident)" ru="Сколько удерживать, чтобы нажатие считалось долгим, в мс (увеличьте, если режим редактирования срабатывает случайно)"/>
   <translation tag="How many labels to print" ru="Сколько этикеток напечатать"/>
+  <translation tag="How the Jog tab arranges its buttons" ru="Как вкладка «Джог» располагает кнопки"/>
   <translation tag="How the toolhead icon appears" ru="Как отображается значок печатающей головки"/>
   <translation tag="Hub" ru="Хаб"/>
   <translation tag="Hub &amp; Cutter" ru="Хаб и резак"/>
@@ -1632,10 +1637,12 @@
   <translation tag="Job Queue" ru="Очередь заданий"/>
   <translation tag="Job queue not enabled in Moonraker" ru="Очередь заданий не включена в Moonraker"/>
   <translation tag="Jog" ru="Джог"/>
+  <translation tag="Jog Pad" ru="Джог-панель"/>
   <translation tag="Jog Speed XY" ru="Скорость перемещения XY"/>
   <translation tag="Jog Speed Z" ru="Скорость перемещения Z"/>
   <translation tag="Jog Y until the nozzle is centered over the chute opening, then tap Save." ru="Двигайте Y, пока сопло не встанет по центру отверстия жёлоба, затем нажмите «Сохранить»."/>
   <translation tag="Jog failed: {}" ru="Перемещение не удалось: {}"/>
+  <translation tag="Jog layout, speeds and step distances" ru="Раскладка, скорости и шаги перемещения"/>
   <translation tag="Jog speeds and step distances" ru="Скорости и шаги перемещения"/>
   <translation tag="Join the HelixScreen community on Discord for discussion, tips, troubleshooting help, and feature requests." ru="Присоединяйтесь к сообществу HelixScreen в Discord для обсуждений, советов, помощи в устранении неполадок и предложений новых функций."/>
   <translation tag="Joining Wi-Fi disconnects the wired network." ru="Подключение к Wi-Fi отключает проводную сеть."/>

@@ -338,6 +338,13 @@ constexpr GuardedFile kGuardedFiles[] = {
     {"ui_xml/motion_panel.xml", 8},
     {"ui_xml/components/move_preset_grid.xml", 11},
     {"ui_xml/components/motion_bed_map.xml", 2},
+    {"ui_xml/components/motion_jog_arrows.xml", 4},
+    {"ui_xml/components/motion_jog_arrows_home.xml", 5},
+    {"ui_xml/components/motion_jog_rows.xml", 4},
+    {"ui_xml/components/motion_leveling_row.xml", 2},
+    // Jog keys stay live through a print, as the pad layout's Z column does;
+    // the layouts' home keys carry the guards.
+    {"ui_xml/components/motion_jog_button.xml", 0},
     {"ui_xml/probe_generic_panel.xml", 2},
     {"ui_xml/probe_eddy_panel.xml", 2},
     {"ui_xml/probe_cartographer_panel.xml", 2},
@@ -413,6 +420,7 @@ constexpr const char* kNoMachineControlFiles[] = {
     "ui_xml/components/job_queue_row.xml",
     "ui_xml/components/lock_screen.xml",
     "ui_xml/components/material_temps_row.xml",
+    "ui_xml/components/motion_step_bar.xml",
     "ui_xml/components/navbar_drying.xml",
     "ui_xml/components/navbar_estop.xml",
     "ui_xml/components/option_tile.xml",

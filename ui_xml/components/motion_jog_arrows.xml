@@ -1,0 +1,116 @@
+<?xml version="1.0"?>
+<!-- Copyright (C) 2025-2026 356C LLC -->
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<component>
+  <!-- Arrows layout: an XY cross of arrow keys, a Z pair beside it and the
+       home and leveling buttons on the right, with one step selector under
+       all of them. Every arrow moves the selected step. The Z arrows carry the
+       kinematics-aware icons and limit states the pad layout's Z column does. -->
+  <view name="motion_jog_arrows"
+        extends="lv_obj" width="100%" height="100%" style_pad_all="0" style_border_opa="0" style_bg_opa="0"
+        scrollable="false" flex_flow="column" style_pad_gap="#space_sm">
+    <lv_obj name="arrows_body"
+            width="100%" height="0" flex_grow="1" style_pad_all="0" style_border_opa="0" style_bg_opa="0"
+            scrollable="false" flex_flow="row" style_pad_gap="#space_sm">
+      <!-- XY cross, three columns: X- in the middle of the left one, Y+ over
+           Y- in the centre one, X+ in the middle of the right one. -->
+      <lv_obj name="arrows_xy"
+              width="0" height="100%" flex_grow="3" style_pad_all="0" style_border_opa="0" style_bg_opa="0"
+              scrollable="false" flex_flow="row" style_pad_gap="#space_xs">
+        <lv_obj width="0"
+                height="100%" flex_grow="1" style_pad_all="0" style_border_opa="0" style_bg_opa="0" scrollable="false"
+                flex_flow="column" style_pad_gap="#space_xs">
+          <lv_obj width="100%"
+                  height="0" flex_grow="1" style_pad_all="0" style_border_opa="0" style_bg_opa="0" scrollable="false"
+                  clickable="false"/>
+          <motion_jog_button name="arrows_x_minus"
+                             width="100%" height="0" jog="x_minus_step" flex_grow="1" icon="arrow_left"
+                             variant="secondary"/>
+          <lv_obj width="100%"
+                  height="0" flex_grow="1" style_pad_all="0" style_border_opa="0" style_bg_opa="0" scrollable="false"
+                  clickable="false"/>
+        </lv_obj>
+        <lv_obj width="0"
+                height="100%" flex_grow="1" style_pad_all="0" style_border_opa="0" style_bg_opa="0" scrollable="false"
+                flex_flow="column" style_pad_gap="#space_xs">
+          <motion_jog_button name="arrows_y_plus"
+                             width="100%" height="0" jog="y_plus_step" flex_grow="1" icon="arrow_up" variant="secondary"/>
+          <lv_obj width="100%"
+                  height="0" flex_grow="1" style_pad_all="0" style_border_opa="0" style_bg_opa="0" scrollable="false"
+                  clickable="false"/>
+          <motion_jog_button name="arrows_y_minus"
+                             width="100%" height="0" jog="y_minus_step" flex_grow="1" icon="arrow_down"
+                             variant="secondary"/>
+        </lv_obj>
+        <lv_obj width="0"
+                height="100%" flex_grow="1" style_pad_all="0" style_border_opa="0" style_bg_opa="0" scrollable="false"
+                flex_flow="column" style_pad_gap="#space_xs">
+          <lv_obj width="100%"
+                  height="0" flex_grow="1" style_pad_all="0" style_border_opa="0" style_bg_opa="0" scrollable="false"
+                  clickable="false"/>
+          <motion_jog_button name="arrows_x_plus"
+                             width="100%" height="0" jog="x_plus_step" flex_grow="1" icon="arrow_right"
+                             variant="secondary"/>
+          <lv_obj width="100%"
+                  height="0" flex_grow="1" style_pad_all="0" style_border_opa="0" style_bg_opa="0" scrollable="false"
+                  clickable="false"/>
+        </lv_obj>
+      </lv_obj>
+      <!-- Z pair: same icon, label and limit bindings as the pad layout's Z
+           column. -->
+      <lv_obj name="arrows_z"
+              width="0" height="100%" flex_grow="1" style_pad_all="0" style_border_opa="0" style_bg_opa="0"
+              scrollable="false" flex_flow="column" style_pad_gap="#space_xs" style_flex_cross_place="center">
+        <motion_jog_button name="arrows_z_up"
+                           width="100%" height="0" jog="z_up_step" flex_grow="1" icon="arrow_up"
+                           bind_icon="motion_z_up_icon" variant="secondary">
+          <bind_state_if_eq subject="motion_z_up_blocked" state="disabled" ref_value="1"/>
+        </motion_jog_button>
+        <text_small name="arrows_z_label" width="100%" bind_text="motion_z_axis_label" style_text_align="center"/>
+        <motion_jog_button name="arrows_z_down"
+                           width="100%" height="0" jog="z_down_step" flex_grow="1" icon="arrow_down"
+                           bind_icon="motion_z_down_icon" variant="secondary">
+          <bind_state_if_eq subject="motion_z_down_blocked" state="disabled" ref_value="1"/>
+        </motion_jog_button>
+      </lv_obj>
+      <!-- Home and leveling. A home button is solid while its axis (any
+           axis, for All) still needs homing. -->
+      <lv_obj name="arrows_home"
+              width="0" height="100%" flex_grow="2" style_pad_all="0" style_border_opa="0" style_bg_opa="0"
+              scrollable="false" flex_flow="column" style_pad_gap="#space_xs">
+        <ui_button name="arrows_home_all"
+                   width="100%" height="0" flex_grow="1" style_min_width="0" icon="home" text="All" moves_machine="true">
+          <bind_style_if name="styles.choice_selected"
+                         cond="motion_x_homed eq 0 or motion_y_homed eq 0 or motion_z_homed eq 0"/>
+          <bind_style_if name="styles.choice_idle"
+                         cond="motion_x_homed eq 1 and motion_y_homed eq 1 and motion_z_homed eq 1"/>
+          <event_cb trigger="clicked" callback="on_motion_home" user_data="all"/>
+        </ui_button>
+        <lv_obj width="100%"
+                height="0" flex_grow="1" style_pad_all="0" style_border_opa="0" style_bg_opa="0" scrollable="false"
+                flex_flow="row" style_pad_gap="#space_xs">
+          <ui_button name="arrows_home_x"
+                     width="0" height="100%" flex_grow="1" style_min_width="0" text="X" moves_machine="true">
+            <bind_style name="styles.choice_selected" subject="motion_x_homed" ref_value="0"/>
+            <bind_style name="styles.choice_idle" subject="motion_x_homed" ref_value="1"/>
+            <event_cb trigger="clicked" callback="on_motion_home" user_data="X"/>
+          </ui_button>
+          <ui_button name="arrows_home_y"
+                     width="0" height="100%" flex_grow="1" style_min_width="0" text="Y" moves_machine="true">
+            <bind_style name="styles.choice_selected" subject="motion_y_homed" ref_value="0"/>
+            <bind_style name="styles.choice_idle" subject="motion_y_homed" ref_value="1"/>
+            <event_cb trigger="clicked" callback="on_motion_home" user_data="Y"/>
+          </ui_button>
+          <ui_button name="arrows_home_z"
+                     width="0" height="100%" flex_grow="1" style_min_width="0" text="Z" moves_machine="true">
+            <bind_style name="styles.choice_selected" subject="motion_z_homed" ref_value="0"/>
+            <bind_style name="styles.choice_idle" subject="motion_z_homed" ref_value="1"/>
+            <event_cb trigger="clicked" callback="on_motion_home" user_data="Z"/>
+          </ui_button>
+        </lv_obj>
+        <motion_leveling_row name="arrows_leveling"/>
+      </lv_obj>
+    </lv_obj>
+    <motion_step_bar name="arrows_steps"/>
+  </view>
+</component>

@@ -9,6 +9,14 @@
     <lv_obj name="overlay_content"
             width="100%" flex_grow="1" style_pad_top="0" style_pad_left="#space_lg" style_pad_right="#space_lg"
             style_pad_bottom="#space_lg" scrollable="true" flex_flow="column">
+      <!-- Jog-tab arrangement: MotionLayout order (Pad, Arrows, Arrows + Home,
+           Axis Rows). -->
+      <setting_dropdown_row name="row_motion_layout"
+                            label="Layout" icon="view_grid" description="How the Jog tab arranges its buttons"
+                            options="Jog Pad&#10;Arrows&#10;Arrows + Home&#10;Axis Rows"
+                            options_tag="Jog Pad&#10;Arrows&#10;Arrows + Home&#10;Axis Rows"
+                            bind_selected="settings_motion_layout" callback="on_motion_layout_changed"/>
+      <divider_horizontal/>
       <!-- ================================================================== -->
       <!-- JOG SPEED XY -->
       <!-- ================================================================== -->
@@ -92,7 +100,9 @@
               style_pad_top="#space_md" style_pad_bottom="#space_xs" flex_flow="row" style_flex_cross_place="center"
               style_pad_gap="#space_sm">
         <icon src="cursor_move" size="xs" variant="secondary"/>
-        <text_small text="Distance moved per jog button tap"/>
+        <text_small width="0"
+                    text="Distance moved per jog button tap. The arrow layouts offer every distance as a step."
+                    flex_grow="1" long_mode="wrap"/>
       </lv_obj>
       <!-- Each distance row is one tappable setting_value_field carrying the
            row name; the container beside it is unnamed scaffolding. -->

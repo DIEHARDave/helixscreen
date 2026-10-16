@@ -20,7 +20,7 @@
                             label="Machine Limits" icon="dashboard" description="Velocity and acceleration limits"
                             callback="on_machine_limits_clicked"/>
         <setting_action_row name="row_motion"
-                            label="Motion" icon="axis_arrow" description="Jog speeds and step distances"
+                            label="Motion" icon="axis_arrow" description="Jog layout, speeds and step distances"
                             callback="on_motion_settings_clicked"/>
         <!-- RETRACTION SETTINGS (conditional) -->
         <lv_obj name="container_firmware_retraction" width="100%" style_pad_all="0" scrollable="false">

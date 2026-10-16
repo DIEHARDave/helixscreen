@@ -901,7 +901,7 @@ TEST_CASE_METHOD(MoveTabFixture, "motion: a Z frame landing before its ack is no
 
     // Z down 10. Klipper can report the new position before acking the G0
     // (a move that waits on a full lookahead buffer), so the frame comes first.
-    REQUIRE(panel.handle_z_button("z_down_large"));
+    REQUIRE(panel.handle_jog_button("z_down_large"));
     REQUIRE(motion.held_relative.size() == 1);
     REQUIRE(motion.held_relative[0].dz == Catch::Approx(-10.0));
     get_printer_state().update_from_status(

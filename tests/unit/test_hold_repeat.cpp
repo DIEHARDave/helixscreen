@@ -232,30 +232,30 @@ TEST_CASE_METHOD(LVGLUITestFixture, "a Z jog blocked at the ceiling cancels the 
 
     // Press arms the repeat (this is the XML pressed event's whole job).
     lv_obj_send_event(z_up, LV_EVENT_PRESSED, nullptr);
-    REQUIRE(panel.z_hold_timer().ticking());
+    REQUIRE(panel.jog_hold_timer().ticking());
 
     // Before the delay: no repeat, no jog attempt, no toast.
-    CHECK_FALSE(panel.z_hold_timer().poll(HoldRepeat::DELAY_MS - 1));
+    CHECK_FALSE(panel.jog_hold_timer().poll(HoldRepeat::DELAY_MS - 1));
     CHECK(warnings.empty());
 
     // First repeat at the delay is the press's INITIAL jog: a fresh press
     // already at the limit warns every time, and the refusal stops the repeat.
-    CHECK(panel.z_hold_timer().poll(HoldRepeat::DELAY_MS));
-    CHECK_FALSE(panel.z_hold_timer().ticking());
+    CHECK(panel.jog_hold_timer().poll(HoldRepeat::DELAY_MS));
+    CHECK_FALSE(panel.jog_hold_timer().ticking());
     REQUIRE(warnings.size() == 1);
     CHECK(warnings.front().find("Z is at its limit") != std::string::npos);
     CHECK(warnings.front().find("250.00mm") != std::string::npos);
 
     // Repeat ticks into the wall can never raise a toast (and none fire: the
     // refusal already stopped the timer).
-    CHECK_FALSE(panel.z_hold_timer().poll(HoldRepeat::DELAY_MS + HoldRepeat::INTERVAL_MS));
+    CHECK_FALSE(panel.jog_hold_timer().poll(HoldRepeat::DELAY_MS + HoldRepeat::INTERVAL_MS));
     CHECK(warnings.size() == 1);
 
     // The release click is swallowed (a repeat fired): no extra jog, no toast.
     lv_obj_send_event(z_up, LV_EVENT_RELEASED, nullptr);
     lv_obj_send_event(z_up, LV_EVENT_CLICKED, nullptr);
     CHECK(warnings.size() == 1);
-    CHECK_FALSE(panel.z_hold_timer().ticking());
+    CHECK_FALSE(panel.jog_hold_timer().ticking());
 
     helix::ui::set_test_notification_warning_hook(nullptr);
     StaticPanelRegistry::instance().destroy_all();
@@ -300,7 +300,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "a hold that repeated jogs exactly once on r
     set_moonraker_api(&api);
     client.clear_gcode_script_history();
 
-    // handle_z_button() logs one line per accepted jog decision, before any
+    // handle_jog_button() logs one line per accepted jog decision, before any
     // coalescing: the count stays honest whether or not the move acked yet.
     helix::TextLogCapture log;
     const auto jog_decisions = [&log] {
@@ -323,9 +323,9 @@ TEST_CASE_METHOD(LVGLUITestFixture, "a hold that repeated jogs exactly once on r
     };
 
     lv_obj_send_event(z_up, LV_EVENT_PRESSED, nullptr);
-    REQUIRE(panel.z_hold_timer().ticking());
+    REQUIRE(panel.jog_hold_timer().ticking());
     // Exactly one repeat fires inside the delay window, and it dispatches.
-    REQUIRE(panel.z_hold_timer().poll(HoldRepeat::DELAY_MS));
+    REQUIRE(panel.jog_hold_timer().poll(HoldRepeat::DELAY_MS));
     REQUIRE(jog_decisions() == 1);
 
     // Release after a repeated hold: the CLICKED must be swallowed, adding
@@ -334,7 +334,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "a hold that repeated jogs exactly once on r
     lv_obj_send_event(z_up, LV_EVENT_CLICKED, nullptr);
     CHECK(jog_decisions() == 1);
     CHECK(jog_scripts() == 1);
-    CHECK_FALSE(panel.z_hold_timer().ticking());
+    CHECK_FALSE(panel.jog_hold_timer().ticking());
 
     set_moonraker_api(previous_api);
     helix::ui::UpdateQueue::instance().drain();
@@ -399,10 +399,10 @@ TEST_CASE_METHOD(LVGLUITestFixture, "two taps at the Z limit warn twice", "[moti
         [&warnings](const std::string& msg) { warnings.push_back(msg); });
 
     // Each tap is a fresh press: both warn, with the limit it hit.
-    CHECK_FALSE(panel.handle_z_button("z_up_large"));
+    CHECK_FALSE(panel.handle_jog_button("z_up_large"));
     REQUIRE(warnings.size() == 1);
     CHECK(warnings.front().find("Z is at its limit (250.00mm)") != std::string::npos);
-    CHECK_FALSE(panel.handle_z_button("z_up_large"));
+    CHECK_FALSE(panel.handle_jog_button("z_up_large"));
     REQUIRE(warnings.size() == 2);
     CHECK(warnings[1].find("Z is at its limit (250.00mm)") != std::string::npos);
 
@@ -460,16 +460,16 @@ TEST_CASE_METHOD(LVGLUITestFixture, "a hold that moves then hits the ceiling sto
         [&warnings](const std::string& msg) { warnings.push_back(msg); });
 
     lv_obj_send_event(z_up, LV_EVENT_PRESSED, nullptr);
-    REQUIRE(panel.z_hold_timer().ticking());
+    REQUIRE(panel.jog_hold_timer().ticking());
 
     // Partial first tick: moves 5 of the requested 10, no toast, keeps ticking.
-    CHECK(panel.z_hold_timer().poll(HoldRepeat::DELAY_MS));
-    CHECK(panel.z_hold_timer().ticking());
+    CHECK(panel.jog_hold_timer().poll(HoldRepeat::DELAY_MS));
+    CHECK(panel.jog_hold_timer().ticking());
     CHECK(warnings.empty());
 
     // Repeat tick into the ceiling: fully clamped, stops the repeat, no toast.
-    CHECK(panel.z_hold_timer().poll(HoldRepeat::DELAY_MS + HoldRepeat::INTERVAL_MS));
-    CHECK_FALSE(panel.z_hold_timer().ticking());
+    CHECK(panel.jog_hold_timer().poll(HoldRepeat::DELAY_MS + HoldRepeat::INTERVAL_MS));
+    CHECK_FALSE(panel.jog_hold_timer().ticking());
     CHECK(warnings.empty());
 
     helix::ui::set_test_notification_warning_hook(nullptr);
@@ -698,7 +698,7 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     // A real finger sets PRESSED through the input device; the test sets it.
     lv_obj_add_state(z_up, LV_STATE_PRESSED);
     lv_obj_send_event(z_up, LV_EVENT_PRESSED, nullptr);
-    REQUIRE(panel.z_hold_timer().poll(HoldRepeat::DELAY_MS)); // moves the last 5mm
+    REQUIRE(panel.jog_hold_timer().poll(HoldRepeat::DELAY_MS)); // moves the last 5mm
 
     // Any recompute before the head reports 250 reads commanded Z, so the up
     // buttons stay live even while the move toward the ceiling is in flight.
@@ -712,8 +712,8 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     lv_subject_set_int(get_printer_state().motion_state().get_gcode_position_z_subject(), 25'000);
     helix::ui::UpdateQueue::instance().drain();
     REQUIRE(lv_obj_has_state(z_up, LV_STATE_DISABLED));
-    CHECK(panel.z_hold_timer().poll(HoldRepeat::DELAY_MS + HoldRepeat::INTERVAL_MS));
-    CHECK_FALSE(panel.z_hold_timer().ticking());
+    CHECK(panel.jog_hold_timer().poll(HoldRepeat::DELAY_MS + HoldRepeat::INTERVAL_MS));
+    CHECK_FALSE(panel.jog_hold_timer().ticking());
     CHECK_FALSE(lv_obj_has_state(z_up, LV_STATE_PRESSED));
 
     set_moonraker_api(previous_api);

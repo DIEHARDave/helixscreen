@@ -26,6 +26,14 @@ enum class JogMode;
 /** @brief Z movement style override (Auto=detect from kinematics, or force) */
 enum class ZMovementStyle { AUTO = 0, BED_MOVES = 1, NOZZLE_MOVES = 2 };
 
+/// Motion panel Jog-tab arrangement. Pad is the circular two-ring pad with a
+/// Z column; Arrows and ArrowsHome are arrow keys with one shared step
+/// selector (home buttons beside the arrows, or in the centre of each cross);
+/// AxisRows gives each axis a row of minus/plus buttons at the jog mode's two
+/// distances.
+enum class MotionLayout { Pad = 0, Arrows = 1, ArrowsHome = 2, AxisRows = 3 };
+inline constexpr int MOTION_LAYOUT_COUNT = 4;
+
 /** @brief Toolhead rendering style (Auto=detect from printer type, or force) */
 enum class ToolheadStyle {
     AUTO = 0,
@@ -312,6 +320,21 @@ class SettingsManager {
     /** @brief Set the Bed-tab clearance height in mm (clamped, persisted) */
     void set_bed_map_clearance_mm(int mm) {
         settings_.set(Key::BedMapClearance, mm);
+    }
+
+    /** @brief Motion panel Jog-tab layout (default Pad) */
+    MotionLayout get_motion_layout() const {
+        return static_cast<MotionLayout>(settings_.get(Key::MotionLayout));
+    }
+
+    /** @brief Set the motion panel Jog-tab layout (clamped, persisted) */
+    void set_motion_layout(MotionLayout layout) {
+        settings_.set(Key::MotionLayout, static_cast<int>(layout));
+    }
+
+    /** @brief Motion layout subject (integer, MotionLayout values) */
+    lv_subject_t* subject_motion_layout() {
+        return settings_.subject(Key::MotionLayout);
     }
 
     // =========================================================================
@@ -822,6 +845,7 @@ class SettingsManager {
         JogSpeedZ,
         MotionShowActualPosition,
         BedMapClearance,
+        MotionLayout,
         QidiEjectDistance,
         QidiEjectVelocity,
         ToolheadStyle,

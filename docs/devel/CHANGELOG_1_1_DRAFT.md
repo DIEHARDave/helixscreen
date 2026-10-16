@@ -260,6 +260,12 @@ git log --no-merges --oneline 2ad32dc6e..main --not release/1.0
   buttons) take any value you type. Speeds are capped at the printer's own speed limit,
   including one the printer reports after you set them, and Reset Distances asks before
   wiping your values.
+- **Pick a Jog-tab layout (#865)** - Settings > Printing > Motion > Layout offers the jog
+  pad, Arrows (an XY cross, a Z pair, home buttons and one step selector, the Mainsail
+  arrangement), Arrows + Home (a home key in the centre of each cross, the Fluidd
+  arrangement) and Axis Rows (a row of minus and plus keys per axis at the jog mode's two
+  distances). The arrow layouts' step selector offers every distance you set, so changing
+  Turbo to 25 and 100 puts 25 and 100 on it. Home keys stay solid until their axis is homed.
 
 **Tool changers and multi-toolhead printers**
 

@@ -261,6 +261,8 @@
   <translation tag="Archive Spool?" it="Archiviare bobina?"/>
   <translation tag="Are you sure you want to cancel this print? All progress will be lost." it="Sei sicuro di voler annullare questa stampa? Tutto il progresso verrà perso."/>
   <translation tag="Are you sure? This will power off or restart this device." it="Sei sicuro? Questo spegnerà o riavvierà questo dispositivo."/>
+  <translation tag="Arrows" it="Frecce"/>
+  <translation tag="Arrows + Home" it="Frecce + Home"/>
   <translation tag="Ask for parameters" it="Chiedi i parametri"/>
   <translation tag="Assign Klipper macros to control LEDs via on/off, toggle, or presets" it="Assegna macro Klipper per controllare LED tramite on/off, alternanza o preset"/>
   <translation tag="Assign a role to enable sensor monitoring" it="Assegna un ruolo per abilitare il monitoraggio del sensore"/>
@@ -296,6 +298,7 @@
   <translation tag="Available Networks" it="Reti disponibili"/>
   <translation tag="Available networks" it="Reti disponibili"/>
   <translation tag="Average" it="Media"/>
+  <translation tag="Axis Rows" it="Righe per asse"/>
   <translation tag="Axis limits unknown" it="Limiti dell&apos;asse sconosciuti"/>
   <translation tag="B · 1,1" it="B · 1,1"/>
   <translation tag="BACK" it="RETRO"/>
@@ -903,6 +906,7 @@
   <translation tag="Distance from lane extruder to hub" it="Distanza dall&apos;estrusore della corsia all&apos;hub"/>
   <translation tag="Distance from toolhead sensor to nozzle tip" it="Distanza dal sensore della testina alla punta dell&apos;ugello"/>
   <translation tag="Distance moved per jog button tap" it="Distanza percorsa a ogni tocco di un pulsante di movimento"/>
+  <translation tag="Distance moved per jog button tap. The arrow layouts offer every distance as a step." it="Distanza percorsa a ogni tocco di un pulsante di movimento. I layout a frecce offrono ogni distanza come passo."/>
   <translation tag="Do not power off your printer." it="Non spegnere la stampante."/>
   <translation tag="Do not touch the printer during calibration" it="Non toccare la stampante durante la calibrazione"/>
   <translation tag="Dock" it="Aggancia"/>
@@ -1487,6 +1491,7 @@
   <translation tag="How far filament is pushed back into the box on eject (mm)" it="Quanto il filamento viene spinto indietro nella scatola durante l&apos;espulsione (mm)"/>
   <translation tag="How long to hold before a press counts as a long-press, in ms (raise if edit mode or other long-press actions trigger by accident)" it="Per quanto tempo tenere premuto perché conti come pressione prolungata, in ms (aumenta se la modalità di modifica o altre azioni si attivano per sbaglio)"/>
   <translation tag="How many labels to print" it="Quante etichette stampare"/>
+  <translation tag="How the Jog tab arranges its buttons" it="Come la scheda Jog dispone i suoi pulsanti"/>
   <translation tag="How the toolhead icon appears" it="Aspetto dell&apos;icona della testina"/>
   <translation tag="Hub" it="Hub"/>
   <translation tag="Hub &amp; Cutter" it="Hub e taglierina"/>
@@ -1587,10 +1592,12 @@
   <translation tag="Job Queue" it="Coda lavori"/>
   <translation tag="Job queue not enabled in Moonraker" it="Coda lavori non abilitata in Moonraker"/>
   <translation tag="Jog" it="Jog"/>
+  <translation tag="Jog Pad" it="Pad di jog"/>
   <translation tag="Jog Speed XY" it="Velocità di movimento XY"/>
   <translation tag="Jog Speed Z" it="Velocità di movimento Z"/>
   <translation tag="Jog Y until the nozzle is centered over the chute opening, then tap Save." it="Muovi Y finché l&apos;ugello non è centrato sull&apos;apertura del condotto, poi tocca Salva."/>
   <translation tag="Jog failed: {}" it="Movimento fallito: {}"/>
+  <translation tag="Jog layout, speeds and step distances" it="Layout, velocità e distanze di passo del movimento"/>
   <translation tag="Jog speeds and step distances" it="Velocità di movimento e distanze di passo"/>
   <translation tag="Join the HelixScreen community on Discord for discussion, tips, troubleshooting help, and feature requests." it="Unisciti alla community di HelixScreen su Discord per discussioni, consigli, aiuto nella risoluzione dei problemi e richieste di funzionalità."/>
   <translation tag="Joining Wi-Fi disconnects the wired network." it="Connettersi al Wi-Fi disconnette la rete cablata."/>

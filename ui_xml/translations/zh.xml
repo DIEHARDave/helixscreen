@@ -261,6 +261,8 @@
   <translation tag="Archive Spool?" zh="归档料盘？"/>
   <translation tag="Are you sure you want to cancel this print? All progress will be lost." zh="确定要取消此打印吗？所有进度将丢失。"/>
   <translation tag="Are you sure? This will power off or restart this device." zh="确定吗？这将关闭或重启此设备。"/>
+  <translation tag="Arrows" zh="方向键"/>
+  <translation tag="Arrows + Home" zh="方向键 + 归位"/>
   <translation tag="Ask for parameters" zh="询问参数"/>
   <translation tag="Assign Klipper macros to control LEDs via on/off, toggle, or presets" zh="分配 Klipper 宏通过开/关、切换或预设控制 LED"/>
   <translation tag="Assign a role to enable sensor monitoring" zh="分配角色以启用传感器监控"/>
@@ -296,6 +298,7 @@
   <translation tag="Available Networks" zh="可用网络"/>
   <translation tag="Available networks" zh="可用网络"/>
   <translation tag="Average" zh="平均值"/>
+  <translation tag="Axis Rows" zh="按轴分行"/>
   <translation tag="Axis limits unknown" zh="轴限位未知"/>
   <translation tag="B · 1,1" zh="B · 1,1"/>
   <translation tag="BACK" zh="后侧"/>
@@ -903,6 +906,7 @@
   <translation tag="Distance from lane extruder to hub" zh="从耗材通道挤出机到集线器的距离"/>
   <translation tag="Distance from toolhead sensor to nozzle tip" zh="从工具头传感器到喷嘴尖端的距离"/>
   <translation tag="Distance moved per jog button tap" zh="每按一次移动按钮移动的距离"/>
+  <translation tag="Distance moved per jog button tap. The arrow layouts offer every distance as a step." zh="每按一次移动按钮移动的距离。方向键布局将每个距离作为步进提供。"/>
   <translation tag="Do not power off your printer." zh="请勿关闭打印机电源。"/>
   <translation tag="Do not touch the printer during calibration" zh="校准期间请勿触碰打印机"/>
   <translation tag="Dock" zh="归位"/>
@@ -1487,6 +1491,7 @@
   <translation tag="How far filament is pushed back into the box on eject (mm)" zh="弹出时耗材被推回料盒的距离（mm）"/>
   <translation tag="How long to hold before a press counts as a long-press, in ms (raise if edit mode or other long-press actions trigger by accident)" zh="按住多久才算长按（毫秒）。若编辑模式等误触发，请调大"/>
   <translation tag="How many labels to print" zh="打印多少张标签"/>
+  <translation tag="How the Jog tab arranges its buttons" zh="点动页按钮的排列方式"/>
   <translation tag="How the toolhead icon appears" zh="工具头图标的显示方式"/>
   <translation tag="Hub" zh="集线器"/>
   <translation tag="Hub &amp; Cutter" zh="集线器与切刀"/>
@@ -1587,10 +1592,12 @@
   <translation tag="Job Queue" zh="任务队列"/>
   <translation tag="Job queue not enabled in Moonraker" zh="Moonraker 未启用任务队列"/>
   <translation tag="Jog" zh="点动"/>
+  <translation tag="Jog Pad" zh="点动盘"/>
   <translation tag="Jog Speed XY" zh="XY 移动速度"/>
   <translation tag="Jog Speed Z" zh="Z 移动速度"/>
   <translation tag="Jog Y until the nozzle is centered over the chute opening, then tap Save." zh="点动 Y 轴，直到喷嘴位于排料口开口中心，然后点击保存。"/>
   <translation tag="Jog failed: {}" zh="移动失败: {}"/>
+  <translation tag="Jog layout, speeds and step distances" zh="点动布局、速度与步进距离"/>
   <translation tag="Jog speeds and step distances" zh="移动速度与步进距离"/>
   <translation tag="Join the HelixScreen community on Discord for discussion, tips, troubleshooting help, and feature requests." zh="加入 HelixScreen 的 Discord 社区，参与讨论、获取技巧、故障排除帮助和功能请求。"/>
   <translation tag="Joining Wi-Fi disconnects the wired network." zh="加入 WiFi 会断开有线网络连接。"/>

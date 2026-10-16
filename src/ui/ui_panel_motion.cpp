@@ -82,6 +82,96 @@ helix::JogModeDistances helix::get_jog_mode_distances(JogMode mode) {
     return d;
 }
 
+std::vector<float> helix::unique_sorted_steps(std::vector<float> distances) {
+    // Settings store floats typed on a keypad, so two "equal" distances can
+    // differ in the last bits; a step button per bit pattern would repeat.
+    constexpr float SAME_STEP_MM = 0.001f;
+    std::sort(distances.begin(), distances.end());
+    std::vector<float> steps;
+    for (float mm : distances) {
+        if (steps.empty() || mm - steps.back() > SAME_STEP_MM) {
+            steps.push_back(mm);
+        }
+    }
+    return steps;
+}
+
+std::vector<float> helix::jog_step_list() {
+    auto& settings = SettingsManager::instance();
+    std::vector<float> distances;
+    distances.reserve(JOG_STEP_MAX);
+    for (int m = 0; m < JOG_MODE_COUNT; ++m) {
+        const auto mode = static_cast<JogMode>(m);
+        distances.push_back(settings.get_jog_distance(mode, /*outer=*/false));
+        distances.push_back(settings.get_jog_distance(mode, /*outer=*/true));
+    }
+    return unique_sorted_steps(std::move(distances));
+}
+
+size_t helix::nearest_step_index(const std::vector<float>& steps, float mm) {
+    size_t best = 0;
+    for (size_t i = 1; i < steps.size(); ++i) {
+        if (std::abs(steps[i] - mm) < std::abs(steps[best] - mm)) {
+            best = i;
+        }
+    }
+    return best;
+}
+
+std::optional<helix::JogButton> helix::parse_jog_button(const char* name) {
+    if (!name) {
+        return std::nullopt;
+    }
+    const char* dir = std::strchr(name, '_');
+    if (!dir || dir - name != 1) {
+        return std::nullopt;
+    }
+    ++dir;
+    const char* size = std::strchr(dir, '_');
+    if (!size) {
+        return std::nullopt;
+    }
+    const std::string direction(dir, static_cast<size_t>(size - dir));
+    ++size;
+
+    JogButton button{};
+    switch (name[0]) {
+    case 'x':
+        button.axis = Axis::X;
+        break;
+    case 'y':
+        button.axis = Axis::Y;
+        break;
+    case 'z':
+        button.axis = Axis::Z;
+        break;
+    default:
+        return std::nullopt;
+    }
+
+    // X and Y read in G-code terms; Z reads as the arrow on screen, which the
+    // bed_moves inversion maps to a G-code direction at jog time.
+    const bool is_z = button.axis == Axis::Z;
+    if (direction == (is_z ? "up" : "plus")) {
+        button.sign = 1;
+    } else if (direction == (is_z ? "down" : "minus")) {
+        button.sign = -1;
+    } else {
+        return std::nullopt;
+    }
+
+    if (std::strcmp(size, "small") == 0) {
+        button.step = JogButtonStep::Inner;
+    } else if (std::strcmp(size, "large") == 0) {
+        button.step = JogButtonStep::Outer;
+    } else if (std::strcmp(size, "step") == 0) {
+        button.step = JogButtonStep::Selected;
+    } else {
+        return std::nullopt;
+    }
+    return button;
+}
+
 std::optional<helix::AxisKeypadParams>
 helix::keypad_params_for_axis(const AxisBounds& bounds, Axis axis, double commanded_mm) {
     float min = 0.0f, max = 0.0f;
@@ -177,8 +267,9 @@ MotionPanel::MotionPanel() {
     std::strcpy(z_axis_label_buf_, "Z Axis"); // Default before kinematics detected
     std::strcpy(z_up_icon_buf_, "arrow_up");
     std::strcpy(z_down_icon_buf_, "arrow_down");
-    std::strcpy(z_large_label_buf_, "10mm");
-    std::strcpy(z_small_label_buf_, "1mm");
+    std::strcpy(jog_outer_label_buf_, "10mm");
+    std::strcpy(jog_inner_label_buf_, "1mm");
+    std::memset(step_label_buf_, 0, sizeof(step_label_buf_));
 
     // Load persisted jog mode (default: coarse)
     // Migrate from old bool /motion/jog_mode_fine to new int /motion/jog_mode
@@ -193,6 +284,7 @@ MotionPanel::MotionPanel() {
         cfg->set("/motion/jog_mode", static_cast<int>(current_mode_));
         cfg->save();
     }
+    step_mm_ = cfg->get<float>("/motion/jog_step", 1.0f);
 }
 
 MotionPanel::~MotionPanel() {
@@ -231,14 +323,27 @@ void MotionPanel::init_subjects() {
     UI_MANAGED_SUBJECT_STRING(z_down_icon_subject_, z_down_icon_buf_, "arrow_down",
                               "motion_z_down_icon", subjects_);
 
-    // Z button labels — dynamic based on jog mode
+    // The jog mode's two distances: the Z column and the axis rows label
+    // their buttons with them.
     const auto& mode_dist = get_jog_mode_distances(current_mode_);
-    snprintf(z_large_label_buf_, sizeof(z_large_label_buf_), "%smm", mode_dist.outer_label);
-    snprintf(z_small_label_buf_, sizeof(z_small_label_buf_), "%smm", mode_dist.inner_label);
-    UI_MANAGED_SUBJECT_STRING(z_large_label_subject_, z_large_label_buf_, z_large_label_buf_,
-                              "motion_z_large_label", subjects_);
-    UI_MANAGED_SUBJECT_STRING(z_small_label_subject_, z_small_label_buf_, z_small_label_buf_,
-                              "motion_z_small_label", subjects_);
+    snprintf(jog_outer_label_buf_, sizeof(jog_outer_label_buf_), "%smm", mode_dist.outer_label);
+    snprintf(jog_inner_label_buf_, sizeof(jog_inner_label_buf_), "%smm", mode_dist.inner_label);
+    UI_MANAGED_SUBJECT_STRING(jog_outer_label_subject_, jog_outer_label_buf_, jog_outer_label_buf_,
+                              "motion_jog_outer_label", subjects_);
+    UI_MANAGED_SUBJECT_STRING(jog_inner_label_subject_, jog_inner_label_buf_, jog_inner_label_buf_,
+                              "motion_jog_inner_label", subjects_);
+
+    // Arrow layouts' step selector: one label and one active flag per slot;
+    // the count drives how many slots the XML repeat builds.
+    UI_MANAGED_SUBJECT_INT(step_count_subject_, 0, "motion_step_count", subjects_);
+    for (int i = 0; i < JOG_STEP_MAX; ++i) {
+        char subject_name[32];
+        snprintf(subject_name, sizeof(subject_name), "motion_step_label_%d", i);
+        UI_MANAGED_SUBJECT_STRING(step_label_subject_[i], step_label_buf_[i], "", subject_name,
+                                  subjects_);
+        snprintf(subject_name, sizeof(subject_name), "motion_step_active_%d", i);
+        UI_MANAGED_SUBJECT_INT(step_active_subject_[i], 0, subject_name, subjects_);
+    }
 
     // Jog mode toggle subjects for button styling
     UI_MANAGED_SUBJECT_INT(jog_mode_fine_active_, (current_mode_ == JogMode::Fine) ? 1 : 0,
@@ -281,6 +386,8 @@ void MotionPanel::init_subjects() {
     register_position_observers();
 
     subjects_initialized_ = true;
+
+    refresh_step_list();
 
     // Sync initial position values (observers only fire on change, not on subscribe)
     // Without this, panel shows dashes until next position update even if printer is homed
@@ -347,33 +454,48 @@ static void on_bed_touch_event(lv_event_t* e, helix::BedTouch phase) {
 
 void MotionPanel::register_callbacks() {
     register_xml_callbacks({
-        // Unified Z-axis button callback (user_data from XML distinguishes buttons)
-        {"on_motion_z_button",
+        // Every jog button (Z column, arrows, axis rows) shares one callback set;
+        // user_data names the button in parse_jog_button() form.
+        {"on_motion_jog_button",
          [](lv_event_t* e) {
              MotionPanel& panel = get_global_motion_panel();
-             // A hold that repeated must not add one extra jog on release; a plain
-             // tap (no repeat) jogs exactly once through this path as before.
-             const bool swallow = panel.z_hold_timer().swallow_click();
-             panel.z_hold_timer().cancel();
+             // A hold that repeated must not add one extra jog on release; a
+             // plain tap (no repeat) jogs exactly once through this path.
+             const bool swallow = panel.jog_hold_timer().swallow_click();
+             panel.jog_hold_timer().cancel();
              if (swallow) {
-                 spdlog::debug("[MotionPanel] Z click swallowed after hold repeat");
+                 spdlog::debug("[MotionPanel] Jog click swallowed after hold repeat");
              } else if (const char* button_id =
                             static_cast<const char*>(lv_event_get_user_data(e))) {
-                 panel.handle_z_button(button_id);
+                 panel.handle_jog_button(button_id);
              }
          }},
         // Hold-to-repeat arms on press and stops on release / press lost
-        {"on_motion_z_button_pressed",
+        {"on_motion_jog_button_pressed",
          [](lv_event_t* e) {
              if (const char* button_id = static_cast<const char*>(lv_event_get_user_data(e))) {
-                 get_global_motion_panel().begin_z_hold(
+                 get_global_motion_panel().begin_jog_hold(
                      button_id, static_cast<lv_obj_t*>(lv_event_get_current_target(e)));
              }
          }},
-        {"on_motion_z_button_released",
-         [](lv_event_t*) { get_global_motion_panel().z_hold_timer().release(); }},
-        {"on_motion_z_button_press_lost",
-         [](lv_event_t*) { get_global_motion_panel().z_hold_timer().cancel(); }},
+        {"on_motion_jog_button_released",
+         [](lv_event_t*) { get_global_motion_panel().jog_hold_timer().release(); }},
+        {"on_motion_jog_button_press_lost",
+         [](lv_event_t*) { get_global_motion_panel().jog_hold_timer().cancel(); }},
+        // Arrow layouts: the step selector (user_data is the step index).
+        {"on_motion_step_clicked",
+         [](lv_event_t* e) {
+             if (auto index = helix::ui::event_user_int(e))
+                 get_global_motion_panel().select_jog_step(*index);
+         }},
+        // Layout home buttons: user_data names the axes, "all" homes everything.
+        {"on_motion_home",
+         [](lv_event_t* e) {
+             const char* axes = static_cast<const char*>(lv_event_get_user_data(e));
+             if (axes) {
+                 get_global_motion_panel().home_axes(lv_streq(axes, "all") ? "" : axes);
+             }
+         }},
         // Leveling buttons delegate to the ControlsPanel singleton
         {"on_motion_qgl", [](lv_event_t*) { get_global_controls_panel().handle_qgl(); }},
         {"on_motion_z_tilt", [](lv_event_t*) { get_global_controls_panel().handle_z_tilt(); }},
@@ -467,8 +589,9 @@ void MotionPanel::on_activate() {
         lv_obj_invalidate(jog_pad_);
     }
 
-    // The Z button labels are subject-bound and have no repaint to ride in on.
-    update_z_button_labels();
+    // The button labels are subject-bound and have no repaint to ride in on.
+    update_jog_distance_labels();
+    refresh_step_list();
     // The clearance setting can change while this panel sits on the stack.
     refresh_bed_readout();
 }
@@ -500,22 +623,22 @@ void MotionPanel::on_ui_destroyed() {
 // Hold-to-Repeat (Z buttons; the pad owns its own repeat)
 // ============================================================================
 
-void MotionPanel::begin_z_hold(const char* button_name, lv_obj_t* button) {
+void MotionPanel::begin_jog_hold(const char* button_name, lv_obj_t* button) {
     if (!button_name)
         return;
-    snprintf(z_hold_button_, sizeof(z_hold_button_), "%s", button_name);
-    z_hold_obj_ = button;
-    z_hold_repeated_ = false;
-    z_hold_timer_.begin(&MotionPanel::z_hold_fire, this);
+    snprintf(jog_hold_button_, sizeof(jog_hold_button_), "%s", button_name);
+    jog_hold_obj_ = button;
+    jog_hold_repeated_ = false;
+    jog_hold_timer_.begin(&MotionPanel::jog_hold_fire, this);
 }
 
-bool MotionPanel::z_hold_fire(void* user_data) {
+bool MotionPanel::jog_hold_fire(void* user_data) {
     auto* self = static_cast<MotionPanel*>(user_data);
     // The first tick is this press's initial jog; later ones are repeats.
-    const bool is_repeat = self->z_hold_repeated_;
-    self->z_hold_repeated_ = true;
-    const bool keep_going = self->handle_z_button(self->z_hold_button_, is_repeat);
-    lv_obj_t* held = self->z_hold_obj_.get();
+    const bool is_repeat = self->jog_hold_repeated_;
+    self->jog_hold_repeated_ = true;
+    const bool keep_going = self->handle_jog_button(self->jog_hold_button_, is_repeat);
+    lv_obj_t* held = self->jog_hold_obj_.get();
     if (!keep_going && held && lv_obj_has_state(held, LV_STATE_DISABLED)) {
         lv_obj_remove_state(held, LV_STATE_PRESSED);
     }
@@ -523,7 +646,7 @@ bool MotionPanel::z_hold_fire(void* user_data) {
 }
 
 void MotionPanel::stop_hold_repeat() {
-    z_hold_timer_.cancel();
+    jog_hold_timer_.cancel();
     if (jog_pad_)
         ui_jog_pad_stop_repeat(jog_pad_);
 }
@@ -849,35 +972,33 @@ void MotionPanel::refresh_position_display() {
 }
 
 // ============================================================================
-// Z Button Handler
+// Jog Button Handler
 // ============================================================================
 
-bool MotionPanel::handle_z_button(const char* name, bool is_repeat) {
-    spdlog::debug("[{}] Z button callback fired! Button name: '{}'", get_name(),
-                  name ? name : "(null)");
-
-    if (!name) {
-        spdlog::error("[{}] Button has no name!", get_name());
+bool MotionPanel::handle_jog_button(const char* name, bool is_repeat) {
+    const auto button = parse_jog_button(name);
+    if (!button) {
+        spdlog::error("[{}] Unknown jog button: '{}'", get_name(), name ? name : "(null)");
         return false;
     }
 
-    // Z distance from current jog mode (Fine: 0.1/1, Coarse: 1/10, Turbo: 10/50)
-    const auto& mode_dist = get_jog_mode_distances(current_mode_);
-    double large_dist = static_cast<double>(mode_dist.outer);
-    double small_dist = static_cast<double>(mode_dist.inner);
-
     double distance = 0.0;
-    if (strcmp(name, "z_up_large") == 0) {
-        distance = large_dist;
-    } else if (strcmp(name, "z_up_small") == 0) {
-        distance = small_dist;
-    } else if (strcmp(name, "z_down_small") == 0) {
-        distance = -small_dist;
-    } else if (strcmp(name, "z_down_large") == 0) {
-        distance = -large_dist;
+    if (button->step == JogButtonStep::Selected) {
+        distance = static_cast<double>(selected_jog_step());
     } else {
-        spdlog::error("[{}] Unknown button name: '{}'", get_name(), name);
-        return false;
+        const auto& mode_dist = get_jog_mode_distances(current_mode_);
+        distance = static_cast<double>(button->step == JogButtonStep::Outer ? mode_dist.outer
+                                                                            : mode_dist.inner);
+    }
+    distance *= button->sign;
+
+    if (button->axis == helix::Axis::X) {
+        return jog(button->sign > 0 ? JogDirection::E : JogDirection::W,
+                   static_cast<float>(std::abs(distance)), is_repeat);
+    }
+    if (button->axis == helix::Axis::Y) {
+        return jog(button->sign > 0 ? JogDirection::N : JogDirection::S,
+                   static_cast<float>(std::abs(distance)), is_repeat);
     }
 
     // For bed-moves printers (CoreXY etc), invert direction so arrows match physical motion:
@@ -1142,35 +1263,33 @@ bool MotionPanel::send_jog_move(const helix::JogCoalescer::CoalescedMove& move) 
 }
 
 void MotionPanel::home(char axis) {
-    spdlog::debug("[{}] Home command: {} axis", get_name(), axis);
+    // 'A' homes every axis; the API takes an empty axis list for that.
+    home_axes(axis == 'A' ? std::string() : std::string(1, axis));
+}
+
+void MotionPanel::home_axes(const std::string& axes) {
+    spdlog::debug("[{}] Home command: '{}'", get_name(), axes.empty() ? "all" : axes);
 
     IMoonrakerAPI* api = get_moonraker_api();
-    if (api) {
-        // Convert axis char to string for API ("" for all, "X", "Y", "Z", or "XY")
-        std::string axes_str;
-        if (axis == 'A') {
-            axes_str = ""; // Empty string = home all
-        } else {
-            axes_str = std::string(1, axis);
-        }
-
-        api->motion().home_axes(
-            axes_str,
-            [axis]() {
-                if (axis == 'A') {
-                    helix::ui::notify_tr(ToastSeverity::SUCCESS, TR_NOOP("All axes homed"));
-                } else {
-                    helix::ui::notify_tr(ToastSeverity::SUCCESS, TR_NOOP("{} axis homed"), axis);
-                }
-            },
-            [](const MoonrakerError& err) {
-                // home_axes() answers on the WebSocket thread; the toast is main-thread only.
-                helix::ui::run_on_main("MotionPanel::home_failed", [err]() {
-                    NOTIFY_ERROR(lv_tr("Homing failed: {}"),
-                                 clean_gcode_error(err.localized_message()));
-                });
-            });
+    if (!api) {
+        return;
     }
+    api->motion().home_axes(
+        axes,
+        [axes]() {
+            if (axes.empty()) {
+                helix::ui::notify_tr(ToastSeverity::SUCCESS, TR_NOOP("All axes homed"));
+            } else {
+                helix::ui::notify_tr(ToastSeverity::SUCCESS, TR_NOOP("{} axis homed"), axes);
+            }
+        },
+        [](const MoonrakerError& err) {
+            // home_axes() answers on the WebSocket thread; the toast is main-thread only.
+            helix::ui::run_on_main("MotionPanel::home_failed", [err]() {
+                NOTIFY_ERROR(lv_tr("Homing failed: {}"),
+                             clean_gcode_error(err.localized_message()));
+            });
+        });
 }
 
 // ============================================================================
@@ -1741,8 +1860,7 @@ void MotionPanel::set_jog_mode(JogMode mode) {
         lv_subject_set_int(&jog_mode_turbo_active_, (mode == JogMode::Turbo) ? 1 : 0);
     }
 
-    // Update Z button labels
-    update_z_button_labels();
+    update_jog_distance_labels();
 
     // Persist setting
     auto* cfg = Config::get_instance();
@@ -1752,14 +1870,62 @@ void MotionPanel::set_jog_mode(JogMode mode) {
     spdlog::info("[MotionPanel] Jog mode: {}", jog_mode_name(mode));
 }
 
-void MotionPanel::update_z_button_labels() {
+void MotionPanel::update_jog_distance_labels() {
     if (!subjects_initialized_)
         return;
 
     const auto& mode_dist = get_jog_mode_distances(current_mode_);
-    snprintf(z_large_label_buf_, sizeof(z_large_label_buf_), "%smm", mode_dist.outer_label);
-    lv_subject_copy_string(&z_large_label_subject_, z_large_label_buf_);
+    snprintf(jog_outer_label_buf_, sizeof(jog_outer_label_buf_), "%smm", mode_dist.outer_label);
+    lv_subject_copy_string(&jog_outer_label_subject_, jog_outer_label_buf_);
 
-    snprintf(z_small_label_buf_, sizeof(z_small_label_buf_), "%smm", mode_dist.inner_label);
-    lv_subject_copy_string(&z_small_label_subject_, z_small_label_buf_);
+    snprintf(jog_inner_label_buf_, sizeof(jog_inner_label_buf_), "%smm", mode_dist.inner_label);
+    lv_subject_copy_string(&jog_inner_label_subject_, jog_inner_label_buf_);
+}
+
+// ============================================================================
+// Step Selector (arrow layouts)
+// ============================================================================
+
+void MotionPanel::refresh_step_list() {
+    steps_ = jog_step_list();
+    step_index_ = nearest_step_index(steps_, step_mm_);
+    if (!subjects_initialized_)
+        return;
+
+    const int count = static_cast<int>(std::min<size_t>(steps_.size(), JOG_STEP_MAX));
+    for (int i = 0; i < count; ++i) {
+        format_distance_label(step_label_buf_[i], sizeof(step_label_buf_[i]), steps_[i]);
+        lv_subject_copy_string(&step_label_subject_[i], step_label_buf_[i]);
+    }
+    for (int i = 0; i < JOG_STEP_MAX; ++i) {
+        lv_subject_set_int(&step_active_subject_[i], i == static_cast<int>(step_index_) ? 1 : 0);
+    }
+    // Last: a changed count rebuilds the selector, whose new buttons bind the
+    // labels and flags already in place.
+    if (lv_subject_get_int(&step_count_subject_) != count) {
+        lv_subject_set_int(&step_count_subject_, count);
+    }
+}
+
+void MotionPanel::select_jog_step(int index) {
+    if (index < 0 || static_cast<size_t>(index) >= steps_.size()) {
+        spdlog::warn("[{}] Ignoring out-of-range step index {}", get_name(), index);
+        return;
+    }
+    step_index_ = static_cast<size_t>(index);
+    step_mm_ = steps_[step_index_];
+    if (subjects_initialized_) {
+        for (int i = 0; i < JOG_STEP_MAX; ++i) {
+            lv_subject_set_int(&step_active_subject_[i], i == index ? 1 : 0);
+        }
+    }
+
+    auto* cfg = Config::get_instance();
+    cfg->set("/motion/jog_step", step_mm_);
+    cfg->save();
+    spdlog::info("[MotionPanel] Jog step: {}mm", step_mm_);
+}
+
+float MotionPanel::selected_jog_step() const {
+    return steps_.empty() ? step_mm_ : steps_[step_index_];
 }
