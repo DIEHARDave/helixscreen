@@ -27,3 +27,35 @@ CMAKE="android/app/jni/CMakeLists.txt"
     grep -qE "^[[:space:]]+${g}=1\b" "$CMAKE"
   done
 }
+
+@test "the Android app keeps label printing" {
+  grep -qE "^[[:space:]]+HELIX_HAS_LABEL_PRINTER=1\b" "$CMAKE"
+}
+
+@test "the Android app builds the screensavers" {
+  grep -qE "^[[:space:]]+HELIX_ENABLE_SCREENSAVER$" "$CMAKE"
+}
+
+@test "every non-Debug Android config is a release build, on every target" {
+  # lv_conf.h derives LV_USE_ASSERT_STYLE from HELIX_RELEASE_BUILD, and that
+  # assert adds a member to lv_style_t, so every target including lv_conf.h must
+  # agree: one directory-scope definition, ahead of the first target, and no other.
+  def=$(grep -nE '^add_compile_definitions\(\$<\$<NOT:\$<CONFIG:Debug>>:HELIX_RELEASE_BUILD>\)$' "$CMAKE" | cut -d: -f1)
+  [ -n "$def" ]
+  first_target=$(grep -nE '^(add_library|add_subdirectory|ExternalProject_Add)\(' "$CMAKE" | head -1 | cut -d: -f1)
+  [ "$def" -lt "$first_target" ]
+  [ "$(grep -c 'HELIX_RELEASE_BUILD' "$CMAKE")" -eq "$(grep -cE '^add_compile_definitions\(.*HELIX_RELEASE_BUILD' "$CMAKE")" ]
+}
+
+@test "the Android app builds the Lua plugin runtime from the Makefile's Lua sources" {
+  grep -qE "^[[:space:]]+HELIX_HAS_PLUGINS=1\b" "$CMAKE"
+  grep -qE '^add_library\(lua STATIC \$\{LUA_SOURCES\}\)' "$CMAKE"
+  grep -qE '^set_source_files_properties\(\$\{LUA_SOURCES\} PROPERTIES LANGUAGE CXX\)' "$CMAKE"
+  # main links the interpreter
+  sed -n '/^target_link_libraries(main$/,/^)/p' "$CMAKE" | grep -qE '^[[:space:]]+lua$'
+  # Same exclusions as the Makefile, so the io/os/package/debug libraries stay out.
+  make_excl=$(sed -nE 's/^LUA_EXCLUDED := //p' Makefile | tr ' ' '\n' | sort)
+  cmake_excl=$(sed -nE 's/^foreach\(_excluded (.*)\)$/\1/p' "$CMAKE" | tr ' ' '\n' | sort)
+  [ -n "$make_excl" ]
+  [ "$make_excl" = "$cmake_excl" ]
+}

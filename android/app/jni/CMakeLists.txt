@@ -4,6 +4,16 @@ project(HelixScreen)
 # Project root is three levels up from android/app/jni/
 get_filename_component(PROJECT_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../.." ABSOLUTE)
 
+# Every config but Debug is a release build, as every cross target in mk/cross.mk
+# is: XML hot reload defaults off, the theme token table is on, and LVGL's style
+# asserts are off. AGP builds its release buildType as RelWithDebInfo, so this
+# names the one config it excludes rather than the ones it includes. lv_conf.h
+# derives LV_USE_ASSERT_STYLE from it and lv_style_t has a sentinel member only
+# under that assert, so the define is set here at directory scope, ahead of
+# every target: two targets that disagree about it disagree about the layout of
+# every style they share, and nothing at link time notices.
+add_compile_definitions($<$<NOT:$<CONFIG:Debug>>:HELIX_RELEASE_BUILD>)
+
 # ============================================================================
 # SDL2
 # ============================================================================
@@ -215,6 +225,20 @@ file(GLOB TRANS_SOURCES "${PROJECT_ROOT}/src/generated/*.c")
 # Quirc QR decoder library (vendored)
 file(GLOB QUIRC_SOURCES "${PROJECT_ROOT}/lib/quirc/lib/*.c")
 
+# Lua 5.4 for the plugin runtime, built as the Makefile's LUA_SRCS: compiled as
+# C++ so a Lua error unwinds as an exception and a binding's destructors run, and
+# without the io, os, package and debug libraries, which keeps them out of every
+# plugin's reach. A library of its own because main's precompiled header would
+# otherwise be forced into these sources.
+set(LUA_DIR "${PROJECT_ROOT}/lib/lua")
+file(GLOB LUA_SOURCES "${LUA_DIR}/*.c")
+foreach(_excluded lua.c onelua.c ltests.c linit.c liolib.c loslib.c loadlib.c ldblib.c)
+    list(REMOVE_ITEM LUA_SOURCES "${LUA_DIR}/${_excluded}")
+endforeach()
+set_source_files_properties(${LUA_SOURCES} PROPERTIES LANGUAGE CXX)
+add_library(lua STATIC ${LUA_SOURCES})
+target_compile_options(lua PRIVATE -std=c++17 -w)
+
 add_library(main SHARED ${HELIX_SOURCES} ${FONT_SOURCES} ${TRANS_SOURCES} ${QUIRC_SOURCES})
 
 # Generated git-hash header, required by src/system/helix_version.cpp. Gradle
@@ -295,8 +319,9 @@ target_compile_definitions(main PRIVATE
     # stub implementation.
     HELIX_HAS_GCODE_VIEWER=1
     HELIX_HAS_BED_MESH_3D=1
-    # The Lua plugin runtime is not built for Android.
-    HELIX_HAS_PLUGINS=0
+    # Plugins sync from the printer into app storage, so the app runs them
+    # like any other host; the lua target above supplies the interpreter.
+    HELIX_HAS_PLUGINS=1
     HELIX_HAS_TIMELAPSE_VIEWER=1
     # The app drives an arbitrary printer over the network, like the pi/x86
     # hosts, so every vendor filament system stays on.
@@ -305,8 +330,11 @@ target_compile_definitions(main PRIVATE
     HELIX_HAS_ACE=1
     HELIX_HAS_QIDI=1
     HELIX_HAS_SNAPMAKER=1
-    # Label printing has not been built or tested on Android.
-    HELIX_HAS_LABEL_PRINTER=0
+    # Label printing reaches network (IPP and raw) printers. The Bluetooth
+    # backends compile but find no libhelix-bluetooth.so to load, so
+    # BluetoothLoader reports Bluetooth unavailable and the settings never
+    # offer it; USB lp nodes do not exist for an app to open.
+    HELIX_HAS_LABEL_PRINTER=1
     # The Belt Tension panel reads Klipper's /tmp results, so it needs the
     # screen co-located with Klipper.
     HELIX_HAS_BELT_TUNER=0
@@ -322,6 +350,11 @@ target_compile_definitions(main PRIVATE
     HELIX_MAX_FONT_TIER=6
     HELIX_HAS_HIDPI_FONTS=1
     ENABLE_GLES_3D
+    # The Makefile's ENABLE_SCREENSAVER default; idle handling already
+    # covers Android's own panel sleep.
+    HELIX_ENABLE_SCREENSAVER
+    # Crash reports name the build they came from, as each cross target does.
+    HELIX_BINARY_VARIANT="android"
     $<$<CONFIG:Debug>:HELIX_ENABLE_MOCKS>
     $<$<BOOL:${HELIX_DIAGNOSTIC_UPLOADS}>:HELIX_ENABLE_DIAGNOSTIC_UPLOADS>
     LV_CONF_INCLUDE_SIMPLE
@@ -370,6 +403,7 @@ target_link_libraries(main
     lvgl
     helix_xml
     lv_markdown
+    lua
     hv_static
     GLESv2
     ${log-lib}
