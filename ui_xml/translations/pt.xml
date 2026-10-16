@@ -3167,6 +3167,7 @@
   <translation tag="These tools have no filament loaded:" pt="Estas ferramentas não têm filamento carregado:"/>
   <translation tag="These tools have no matching filament loaded:" pt="Estas ferramentas não têm filamento correspondente carregado:"/>
   <translation tag="This .3mf has no sliced plate to print." pt="Este .3mf não tem nenhuma placa fatiada para imprimir."/>
+  <translation tag="This .3mf has to be converted to G-code before it can be queued. Print it from here instead." pt="Este .3mf precisa ser convertido em G-code antes de entrar na fila. Imprima-o daqui."/>
   <translation tag="This .3mf has to be converted to G-code on the printer before it can print." pt="Este .3mf precisa ser convertido em G-code na impressora antes de poder imprimir."/>
   <translation tag="This AFC system does not support bypass mode" pt="Este sistema AFC não oferece suporte ao modo bypass"/>
   <translation tag="This CFS firmware exposes no external spool slot" pt="Este firmware do CFS não expõe um slot para carretel externo"/>

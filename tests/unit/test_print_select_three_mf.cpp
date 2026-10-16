@@ -290,6 +290,12 @@ TEST_CASE_METHOD(ArchivePanel, "a plate the printer already converted prints fro
         CHECK(prep->printable_path(archive.name()) == archive.name());
         CHECK(prep->archive_plate_for(archive.name()) == 5);
     }
+    SECTION("the queue takes the converted plate's output, and refuses the pending one") {
+        CHECK(PrintSelectPanelTestAccess::queueable_path(*panel_) ==
+              std::optional<std::string>("Set_plate2.gcode"));
+        PrintSelectPanelTestAccess::step_plate(*panel_, 1);
+        CHECK_FALSE(PrintSelectPanelTestAccess::queueable_path(*panel_));
+    }
     std::remove(json_path.c_str());
 }
 
@@ -354,4 +360,29 @@ TEST_CASE_METHOD(ArchivePanel,
     REQUIRE(prep);
     CHECK(prep->archive_plate_for(file.name()) == 0);
     CHECK(prep->printable_path(file.name()) == file.name());
+}
+
+TEST_CASE_METHOD(ArchivePanel, "a .3mf with no conversion is not queued; any other file is",
+                 "[print_select][three_mf][queue]") {
+    PlantedGcode archive("Door.gcode.3mf", "", fixture_bytes("single_plate.gcode.3mf"));
+    load(archive.name());
+    PrintSelectPanelTestAccess::select_file(*panel_, archive.name());
+    CHECK_FALSE(PrintSelectPanelTestAccess::queueable_path(*panel_));
+
+    PlantedGcode plain("plain.gcode");
+    panel_->refresh_files(true);
+    drain();
+    PrintSelectPanelTestAccess::select_file(*panel_, plain.name());
+    CHECK(PrintSelectPanelTestAccess::queueable_path(*panel_) ==
+          std::optional<std::string>(plain.name()));
+}
+
+TEST_CASE_METHOD(ArchivePanel, "a .3mf the printer reads itself queues as itself",
+                 "[print_select][three_mf][queue]") {
+    ScopedEnv native("HELIX_MOCK_3MF_METADATA", "1");
+    PlantedGcode archive("Q2.gcode.3mf", "", fixture_bytes("single_plate.gcode.3mf"));
+    load(archive.name());
+    PrintSelectPanelTestAccess::select_file(*panel_, archive.name());
+    CHECK(PrintSelectPanelTestAccess::queueable_path(*panel_) ==
+          std::optional<std::string>(archive.name()));
 }

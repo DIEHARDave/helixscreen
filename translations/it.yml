@@ -3532,6 +3532,7 @@ translations:
   'These tools have no matching filament loaded:': 'Questi strumenti non hanno filamento
     corrispondente caricato:'
   This .3mf has no sliced plate to print.: 'Questo .3mf non contiene alcun piatto sezionato da stampare.'
+  This .3mf has to be converted to G-code before it can be queued. Print it from here instead.: 'Questo .3mf deve essere convertito in G-code prima di poter essere messo in coda. Stampalo da qui.'
   This .3mf has to be converted to G-code on the printer before it can print.: 'Questo .3mf deve essere convertito in G-code sulla stampante prima di poter essere stampato.'
   This AFC system does not support bypass mode: 'Questo sistema AFC non supporta la modalità bypass'
   This CFS firmware exposes no external spool slot: 'Questo firmware CFS non offre uno slot per bobine esterne'

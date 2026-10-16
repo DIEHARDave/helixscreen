@@ -97,6 +97,10 @@ struct PrintSelectPanelTestAccess {
         return panel.prepare_archive_start();
     }
 
+    static std::optional<std::string> queueable_path(PrintSelectPanel& panel) {
+        return panel.queueable_path();
+    }
+
     static int plate_count(PrintSelectPanel& panel) {
         return lv_subject_get_int(&panel.selected_plate_count_subject_);
     }

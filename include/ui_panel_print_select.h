@@ -430,6 +430,11 @@ class PrintSelectPanel : public PanelBase {
     /// print here at all.
     bool prepare_archive_start();
 
+    /// What Add to Queue queues for the selected file: itself, the printer's
+    /// conversion of a .3mf's shown plate, or nothing (with a toast) for a
+    /// .3mf that has to be extracted first, which the queue cannot do.
+    std::optional<std::string> queueable_path();
+
     /**
      * @brief Navigate into a subdirectory
      *

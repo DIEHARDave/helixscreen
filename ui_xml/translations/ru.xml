@@ -3227,6 +3227,7 @@
   <translation tag="These tools have no filament loaded:" ru="В эти инструменты не загружен филамент:"/>
   <translation tag="These tools have no matching filament loaded:" ru="В этих инструментах нет подходящего филамента:"/>
   <translation tag="This .3mf has no sliced plate to print." ru="В этом .3mf нет нарезанной пластины для печати."/>
+  <translation tag="This .3mf has to be converted to G-code before it can be queued. Print it from here instead." ru="Этот .3mf нужно преобразовать в G-code, прежде чем ставить в очередь. Напечатайте его отсюда."/>
   <translation tag="This .3mf has to be converted to G-code on the printer before it can print." ru="Этот .3mf нужно преобразовать в G-code на принтере, прежде чем его можно будет напечатать."/>
   <translation tag="This AFC system does not support bypass mode" ru="Эта система AFC не поддерживает режим обхода"/>
   <translation tag="This CFS firmware exposes no external spool slot" ru="Эта прошивка CFS не предоставляет слот для внешней катушки"/>

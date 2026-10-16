@@ -3230,7 +3230,34 @@ void PrintSelectPanel::add_to_queue() {
                                      const std::string& dest) { queue_file(dest, tapped); });
         return;
     }
-    queue_file(composed_selected_filename(), composed_selected_filename());
+    const std::optional<std::string> queued = queueable_path();
+    if (!queued) {
+        return;
+    }
+    queue_file(*queued, composed_selected_filename());
+}
+
+std::optional<std::string> PrintSelectPanel::queueable_path() {
+    const std::string tapped = composed_selected_filename();
+    const auto it = std::find_if(file_list_.begin(), file_list_.end(), [this](const auto& f) {
+        return !f.is_dir && f.filename == selected_filename_buffer_;
+    });
+    if (it == file_list_.end() || !it->archive_extract) {
+        return tapped;
+    }
+    // The queue starts a job on the printer's side, with no extraction step:
+    // only the printer's own conversion of the plate can wait there.
+    const auto* plate =
+        it->archive ? three_mf::find_plate(*it->archive, it->archive_plate) : nullptr;
+    if (plate) {
+        if (const auto out = it->archive_outputs.find(plate->index);
+            out != it->archive_outputs.end()) {
+            return out->second;
+        }
+    }
+    NOTIFY_WARNING(lv_tr("This .3mf has to be converted to G-code before it can be queued. "
+                         "Print it from here instead."));
+    return std::nullopt;
 }
 
 void PrintSelectPanel::queue_file(const std::string& filename, const std::string& tapped) {
