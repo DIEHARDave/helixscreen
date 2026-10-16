@@ -615,3 +615,55 @@ TEST_CASE_METHOD(AmsTrayPanelFixture,
     CHECK(wa.y1 < pa.y2);
     CHECK(wa.y2 > pa.y1);
 }
+
+TEST_CASE_METHOD(AmsTrayPanelFixture,
+                 "AMS unit: one named lane among unnamed ones keeps every spool level",
+                 "[ams][tray][ui_integration][slot_name]") {
+    build("passive");
+    auto clear_name = [](int i) {
+        lv_subject_t* s = AmsState::instance().get_slot_name_subject(0, i);
+        REQUIRE(s != nullptr);
+        lv_subject_copy_string(s, "");
+    };
+    auto spool_tops = [&]() {
+        lv_obj_update_layout(test_screen());
+        std::vector<int32_t> tops;
+        for (int i = 0; i < 4; ++i) {
+            lv_obj_t* spool = lv_obj_find_by_name(slot(i), "spool_container");
+            REQUIRE(spool != nullptr);
+            lv_area_t a;
+            lv_obj_get_coords(spool, &a);
+            tops.push_back(a.y1);
+        }
+        return tops;
+    };
+    auto name_lines_shown = [&]() {
+        int shown = 0;
+        for (int i = 0; i < 4; ++i)
+            if (!lv_obj_has_flag(lv_obj_find_by_name(slot(i), "name_label"), LV_OBJ_FLAG_HIDDEN))
+                ++shown;
+        return shown;
+    };
+    const std::vector<int32_t> all_named = spool_tops();
+    REQUIRE(name_lines_shown() == 4);
+
+    for (int i : {0, 2, 3})
+        clear_name(i);
+    process_lvgl(20);
+    const std::vector<int32_t> one_named = spool_tops();
+    CAPTURE(one_named);
+    CHECK(name_lines_shown() == 4);
+    for (int i = 1; i < 4; ++i)
+        CHECK(one_named[i] == one_named[0]);
+    CHECK(one_named[0] == all_named[0]);
+
+    // With no name in the row, no slot keeps the line.
+    clear_name(1);
+    process_lvgl(20);
+    const std::vector<int32_t> none_named = spool_tops();
+    CAPTURE(none_named);
+    CHECK(name_lines_shown() == 0);
+    for (int i = 1; i < 4; ++i)
+        CHECK(none_named[i] == none_named[0]);
+    CHECK(none_named[0] < all_named[0]);
+}

@@ -235,9 +235,7 @@ static void cleanup_all_slot_data() {
  * Reads both subjects rather than taking an observer's value, because either
  * one changing changes what both lines read.
  */
-static void apply_slot_label(AmsSlotData* data) {
-    if (!data || data->slot_index < 0)
-        return;
+static helix::SlotCardLines slot_lines(const AmsSlotData* data) {
     AmsState& state = AmsState::instance();
     lv_subject_t* material_subject =
         state.get_slot_material_subject(data->backend_index, data->slot_index);
@@ -245,19 +243,48 @@ static void apply_slot_label(AmsSlotData* data) {
     const char* material = material_subject ? lv_subject_get_string(material_subject) : "";
     const char* name = name_subject ? lv_subject_get_string(name_subject) : "";
 
-    const helix::SlotCardLines lines = helix::slot_card_lines(
+    return helix::slot_card_lines(
         name, material, helix::ui::lane_material_text(data->last_lane_state, material),
         data->total_count, data->last_lane_state == helix::ui::LaneState::Empty);
+}
+
+/**
+ * The name line takes its row's space in every slot of the row or in none. The
+ * spools stand below the label lines, so one slot laid out with the line and
+ * its neighbours without it puts that slot's spool a line lower than theirs.
+ */
+static void apply_row_name_lines(lv_obj_t* row) {
+    if (!row)
+        return;
+    bool any_name = false;
+    const uint32_t count = lv_obj_get_child_count(row);
+    for (uint32_t i = 0; i < count && !any_name; ++i) {
+        const AmsSlotData* d = get_slot_data(lv_obj_get_child(row, (int32_t)i));
+        any_name = d && d->slot_index >= 0 && d->name_label && !slot_lines(d).name.empty();
+    }
+    for (uint32_t i = 0; i < count; ++i) {
+        const AmsSlotData* d = get_slot_data(lv_obj_get_child(row, (int32_t)i));
+        if (!d || !d->name_label)
+            continue;
+        // DECLARATIVE_OK: a row-wide decision over per-slot subjects
+        if (any_name)
+            lv_obj_remove_flag(d->name_label, LV_OBJ_FLAG_HIDDEN);
+        else
+            lv_obj_add_flag(d->name_label, LV_OBJ_FLAG_HIDDEN);
+    }
+}
+
+static void apply_slot_label(AmsSlotData* data) {
+    if (!data || data->slot_index < 0)
+        return;
+    const helix::SlotCardLines lines = slot_lines(data);
 
     if (data->material_label)
         lv_label_set_text(data->material_label, lines.lower.c_str());
     if (data->name_label) {
         // DECLARATIVE_OK: per-slot subjects whose index arrives after view creation
         lv_label_set_text(data->name_label, lines.name.c_str());
-        if (lines.name.empty())
-            lv_obj_add_flag(data->name_label, LV_OBJ_FLAG_HIDDEN);
-        else
-            lv_obj_remove_flag(data->name_label, LV_OBJ_FLAG_HIDDEN);
+        apply_row_name_lines(data->container ? lv_obj_get_parent(data->container) : nullptr);
     }
 }
 
