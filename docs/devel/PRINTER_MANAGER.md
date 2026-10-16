@@ -40,12 +40,14 @@ It follows the standard OverlayBase lifecycle and uses the `overlay_panel` XML c
 ## Architecture
 
 ```
-PrinterManagerOverlay (overlay_panel)
+PrinterManagerOverlay (overlay_panel; header: Manage Printers, a text button in landscape, an icon in portrait)
   |
-  +-- Section 1: Printer Identity
+  +-- Section 1: Printer Identity (pm_identity_card)
   |     +-- Printer image (lv_image, clickable -> PrinterImageOverlay)
-  |     +-- Printer name (text_heading, clickable -> inline edit)
+  |     +-- Printer name (text_heading, max_lines="2": wraps, then dots; clickable -> inline edit)
   |     +-- Printer model (text_muted + pencil icon, clickable -> PrinterTypeOverlay)
+  |
+  +-- pm_details: Sections 2 and 3
   |
   +-- Section 2: Software Versions
   |     +-- Klipper version (bound to klipper_version subject)
@@ -56,6 +58,13 @@ PrinterManagerOverlay (overlay_panel)
         +-- Capability chips (flow-wrapped, subject-bound visibility)
         +-- Clickable chips navigate to feature overlays
 ```
+
+Landscape is two columns: the identity card on the left (`#pm_identity_width` wide,
+image over name over model) and `pm_details` filling the rest and scrolling on its own.
+Portrait stacks an identity header card (a `#pm_image_size_portrait` image beside the
+name and model) over the two groups, and the whole body scrolls. One tree serves both:
+the orientation-dependent properties are `bind_style_if_eq` pairs keyed on
+`ui_is_portrait`, so none of them may also be set inline.
 
 The model row is clickable because detection can decline to guess or land on a wrong
 near-neighbour; picking a model in `PrinterTypeOverlay` goes through
@@ -489,6 +498,6 @@ Tests cover:
 
 ## Multi-Printer Management
 
-When beta features are enabled and multiple printers are configured, a **Manage Printers** button appears at the bottom of the Printer Manager overlay. This navigates to the Printer List overlay for switching, adding, and deleting printers.
+A **Manage Printers** button always appears in the Printer Manager overlay's header bar: the labelled `action_button` in landscape, the round `printer_3d` icon `action_button_2` in portrait, where the label would crowd out the title. This navigates to the Printer List overlay for switching, adding, and deleting printers.
 
 See [Multi-Printer Management](MULTI_PRINTER.md) for the full developer guide on the multi-printer system.

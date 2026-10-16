@@ -1,11 +1,16 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "detection_manager.h"
 
+#include "ui_callback_helpers.h"
+#include "ui_toast_manager.h"
+
 #include "helix/xml/scoped_subject_registry.h"
 #include "i_moonraker_client.h"
+#include "non_filament_pause.h"
 #include "settings_manager.h"
 #include "u1_stock_detection_source.h"
 
+#include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
 
 #include "hv/json.hpp"
@@ -27,6 +32,24 @@ void DetectionManager::ensure_availability_subject() {
     lv_subject_init_int(&detection_pause_applicable_subject_, any_pause_applicable() ? 1 : 0);
     helix::xml::register_subject_in_current_scope("detection_pause_applicable",
                                                   &detection_pause_applicable_subject_);
+    lv_subject_init_int(&bed_check_available_subject_, bed_check_source() ? 1 : 0);
+    helix::xml::register_subject_in_current_scope("detection_bed_check_available",
+                                                  &bed_check_available_subject_);
+    // The firmware's default until the printer answers.
+    lv_subject_init_int(&bed_check_enabled_subject_, 1);
+    helix::xml::register_subject_in_current_scope("detection_bed_check_enabled",
+                                                  &bed_check_enabled_subject_);
+    lv_subject_init_int(&bed_check_switchable_subject_, 1);
+    helix::xml::register_subject_in_current_scope("detection_bed_check_switchable",
+                                                  &bed_check_switchable_subject_);
+    // The Safety & Alerts row's toggle. Registered with its subject so the
+    // row and what it drives exist together.
+    register_xml_callbacks({
+        {"on_bed_check_changed",
+         [](lv_event_t* e) {
+             DetectionManager::instance().set_bed_check_enabled(helix::ui::event_checked(e));
+         }},
+    });
     availability_subject_ready_ = true;
 }
 
@@ -34,8 +57,78 @@ void DetectionManager::update_availability() {
     if (availability_subject_ready_) {
         lv_subject_set_int(&detection_available_subject_, any_available() ? 1 : 0);
         lv_subject_set_int(&detection_pause_applicable_subject_, any_pause_applicable() ? 1 : 0);
+        lv_subject_set_int(&bed_check_available_subject_, bed_check_source() ? 1 : 0);
     }
     maybe_seed_settings();
+}
+
+DetectionSource* DetectionManager::bed_check_source() const {
+    for (const auto& src : sources_) {
+        if (src && src->available() && src->has_bed_check()) {
+            return src.get();
+        }
+    }
+    return nullptr;
+}
+
+void DetectionManager::refresh_bed_check() {
+    DetectionSource* src = bed_check_source();
+    if (!src) {
+        return;
+    }
+    src->read_bed_check(lifetime_.bg_cb(
+        "DetectionManager::on_bed_check_read",
+        [this](std::optional<DetectionSource::BedCheckState> state) {
+            if (!state || !availability_subject_ready_) {
+                return;
+            }
+            // With the module off, the check is off and its own switch does nothing.
+            lv_subject_set_int(&bed_check_enabled_subject_,
+                               state->enabled && state->module_enabled ? 1 : 0);
+            lv_subject_set_int(&bed_check_switchable_subject_, state->module_enabled ? 1 : 0);
+        }));
+}
+
+bool DetectionManager::set_bed_check_enabled(bool enabled, std::function<void()> on_accepted) {
+    DetectionSource* src = bed_check_source();
+    if (!src) {
+        spdlog::warn("DetectionManager: no bed check to switch");
+        return false;
+    }
+    const int before = lv_subject_get_int(&bed_check_enabled_subject_);
+    lv_subject_set_int(&bed_check_enabled_subject_, enabled ? 1 : 0);
+    spdlog::info("DetectionManager: bed check -> {}", enabled ? "on" : "off");
+    src->set_bed_check(
+        enabled,
+        lifetime_.bg_cb("DetectionManager::on_bed_check_set",
+                        [this, before, on_accepted](bool accepted, const std::string& refusal) {
+                            if (accepted) {
+                                if (on_accepted) {
+                                    on_accepted();
+                                }
+                                return;
+                            }
+                            lv_subject_set_int(&bed_check_enabled_subject_, before);
+                            show_bed_check_refusal(refusal);
+                        }));
+    return true;
+}
+
+void DetectionManager::show_bed_check_refusal(const std::string& refusal) {
+    const std::string text =
+        refusal.empty()
+            ? std::string(lv_tr("The printer did not change its bed check"))
+            : fmt::format(lv_tr("The printer did not change its bed check: {}"), refusal);
+    ToastManager::instance().show(ToastSeverity::ERROR, text.c_str(), 6000);
+}
+
+bool DetectionManager::pause_explained_by_detection() const {
+    for (const auto& src : sources_) {
+        if (src && src->available() && src->explains_current_pause()) {
+            return true;
+        }
+    }
+    return false;
 }
 
 void DetectionManager::maybe_seed_settings() {
@@ -94,6 +187,7 @@ void DetectionManager::register_source(std::unique_ptr<DetectionSource> src) {
         policies_[id] = DetectionPolicy::DeferToSource;
     }
     sources_.push_back(std::move(src));
+    helix::non_filament_pause::set_explainer([this]() { return pause_explained_by_detection(); });
     ensure_availability_subject();
     update_availability();
     spdlog::debug("DetectionManager: registered source '{}'", id);
@@ -159,8 +253,15 @@ void DetectionManager::tune_source(const std::string& source_id) {
 }
 
 void DetectionManager::on_event(const DetectionEvent& e) {
+    if (e.already_paused) {
+        // The pause is this detection's, whatever the policy shows of it: a
+        // runout surface that answered it first stands down.
+        helix::non_filament_pause::announce();
+    }
     DetectionPolicy p = policy(e.source_id);
-    if (p == DetectionPolicy::Off) {
+    // A dirty bed stops a print the printer cannot resume: the user owes it a
+    // decision whatever the policy says about defects found mid-print.
+    if (p == DetectionPolicy::Off && e.kind != DetectionKind::DirtyBed) {
         spdlog::debug("DetectionManager: event from '{}' suppressed (policy Off)", e.source_id);
         return;
     }
@@ -226,6 +327,7 @@ void DetectionManager::refresh_capabilities() {
                                 }
                             }
                             apply_capability(has);
+                            refresh_bed_check();
                         }),
         [](const MoonrakerError& err) {
             spdlog::warn("DetectionManager: capability probe failed: {}", err.message);
@@ -239,6 +341,7 @@ bool DetectionManager::apply_objects_list_for_test(const nlohmann::json& objects
 }
 
 void DetectionManager::reset_for_test() {
+    helix::non_filament_pause::set_explainer(nullptr);
     sources_.clear();
     policies_.clear();
     presenter_ = nullptr;
@@ -251,6 +354,9 @@ void DetectionManager::reset_for_test() {
     if (availability_subject_ready_) {
         lv_subject_set_int(&detection_available_subject_, 0);
         lv_subject_set_int(&detection_pause_applicable_subject_, 0);
+        lv_subject_set_int(&bed_check_available_subject_, 0);
+        lv_subject_set_int(&bed_check_enabled_subject_, 1);
+        lv_subject_set_int(&bed_check_switchable_subject_, 1);
     }
 }
 

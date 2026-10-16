@@ -324,6 +324,7 @@ translations:
   Beacon calibrate sent: Beacon校准已发送
   Bed: 热床
   Bed (°C): 热床 (°C)
+  Bed Clear Check: '热床清空检查'
   Bed Heater: 热床加热器
   Bed Level: 热床调平
   Bed Leveling: 热床调平
@@ -339,6 +340,7 @@ translations:
   Bed Screws: 热床螺丝
   Bed Temp: 热床温度
   Bed Temperature: 热床温度
+  Bed check turned off: '热床检查已关闭'
   Bed clear · Start next: '热床已清空 · 开始下一个'
   'Bed cooling, spools still on the bed:': '热床正在冷却,料盘仍在上面:'
 
@@ -479,6 +481,7 @@ translations:
   Calibration, LED, and system configuration: '校准、LED 与系统配置'
   Cam: 摄像
   Camera: 摄像头
+  Camera checks the bed is empty before each print: '每次打印前用摄像头检查热床是否为空'
   Can't connect — try forgetting and re-pairing the printer: 无法连接 — 请尝试忘记并重新配对打印机
   Can't move filament while the print is paused: 打印暂停期间无法移动耗材
   Can't read filament RFID tag: 无法读取耗材 RFID 标签
@@ -487,6 +490,7 @@ translations:
   Cancel Escalation: 取消升级
   Cancel Print: 取消打印
   Cancel macro not configured: 取消宏未配置
+  Cancel print: '取消打印'
   Cancelled: 已取消
   'Cannot add to queue: internal error': '无法添加到队列：内部错误'
   Cannot be changed from here on a multi-unit MMU: 多单元 MMU 无法在此处更改
@@ -2674,6 +2678,7 @@ translations:
   'Restart failed: {}': '重启失败: {}'
   Restart from the beginning to recover: 请从头重新开始以恢复打印
   Restart pending: '重启待执行'
+  Restart print: '重新开始打印'
   Restart the display application: 重启显示应用程序
   Restart the printer or screen: 重启打印机或屏幕
   Restarting HelixScreen...: 正在重启 HelixScreen…
@@ -2982,6 +2987,7 @@ translations:
   Some filaments don't match the slicer's intent.: 部分耗材与切片软件的意图不符。
   'Some mapped slots are short on filament:': '部分已映射槽位耗材不足：'
   Some settings will take effect after restart.: 某些设置将在重启后生效。
+  Something on the bed?: '热床上有东西？'
   Sound: 声音
   Sound Theme: 声音主题
   Sounds: 声音
@@ -3209,6 +3215,7 @@ translations:
   Thanks! Anonymous usage data helps improve HelixScreen.: 感谢！匿名使用数据有助于改进 HelixScreen。
   Thanks! TOTALLY anonymous usage data helps improve HelixScreen.: 感谢！完全匿名的使用数据有助于改进
     HelixScreen。
+  That print is no longer paused: '该打印已不再暂停'
   'That setting cannot be changed while a print is running': '打印进行中无法更改该设置'
   That slot cannot stand in for this one: 该槽位无法替代当前槽位
   That tool is already loaded: 该工具已加载耗材
@@ -3227,6 +3234,8 @@ translations:
   The bed was reported dirty, so this print cannot resume.: '热床被报告为脏污，因此无法恢复此次打印。'
   The buffer may be disconnected, stuck, or faulty. Check it before retrying: 缓冲器可能未连接、卡住或损坏。请检查后重试
   The buffer saw no movement for 16 seconds. Check for a blockage between the CFS and the extruder, or a stuck buffer: 缓冲器已 16 秒未检测到运动。请检查 CFS 与挤出机之间是否堵塞，或缓冲器是否卡住
+  ? The camera thought it saw something on the bed, so the printer stopped before printing. If the bed is clear, it was a false alarm.
+  : '摄像头认为热床上有东西，因此打印机在打印前停止了。如果热床是空的，这是误报。'
   The cutter blade didn't return — check for filament wrapped around the cutting mechanism: 切刀未复位。请检查切刀机构上是否缠绕耗材
   The cutter is out of alignment — recalibrate with CALIBRATE_CUT_POS: 切刀未对准。请使用 CALIBRATE_CUT_POS 重新校准
   The extruder cannot pull it smoothly. Check the spool for a tangle or knot, and the PTFE tube for a severe bend: 挤出机无法顺畅拉动。请检查料盘是否缠绕或打结，以及 PTFE 管是否严重弯折
@@ -3246,6 +3255,8 @@ translations:
   ? The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes.
   : 打印已暂停。现在切换工具会移动工具头并更换喷嘴处的耗材。切换完成后请恢复打印。
   The printer applied this value and keeps it for this tool.: '打印机已应用此值，并为该工具保存。'
+  The printer did not change its bed check: '打印机未更改热床检查'
+  'The printer did not change its bed check: {}': '打印机未更改热床检查：{}'
   The printer extrudes in a corner and repeats until the readings agree. You do not judge anything by eye.: '打印机在角落挤出并重复，直到读数一致为止。你无需用肉眼判断任何东西。'
   The printer finishes this measurement on its own.: '打印机会自行完成这次测量。'
   The printer halted this print and cannot resume it. Restart from the beginning?: 打印机已停止此打印且无法恢复。从头重新开始？
@@ -3326,6 +3337,7 @@ translations:
   This may take up to 30 seconds: 这可能需要 30 秒
   This plugin asks for no special permissions.: '此插件不请求任何特殊权限。'
   This plugin lets HelixScreen control print start options like bed mesh and QGL.: '此插件让 HelixScreen 控制打印启动选项，如热床网格和 QGL。'
+  This print can't be resumed. Restart it, or turn off the bed check if it keeps happening.: '此打印无法继续。请重新开始打印；如果反复出现，可关闭热床检查。'
   This print needs about %.0fg but the spool has about %.0fg remaining. Start anyway?: 本次打印需要约
     %.0fg，但料盘仅剩约 %.0fg。仍要开始吗？
   This printer cannot calibrate tool offsets automatically: 此打印机无法自动校准工具偏移
@@ -3454,6 +3466,7 @@ translations:
   Turn On: 开启
   Turn On LEDs: '打开 LED'
   Turn endless spool on, then set the backup gate: '请先开启无限料盘，再设置备用通道'
+  Turn off bed check: '关闭热床检查'
   Turn off detection: 关闭检测
   Turn on the lights your light buttons control: 开启灯光按钮所控制的灯光
   Turn the extruder heater off after a load or unload finishes: 加载或卸载完成后关闭挤出机加热器

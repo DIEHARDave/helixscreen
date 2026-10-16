@@ -352,7 +352,7 @@ If detection falls all the way through to a timeout:
 1. **Add HELIX_READY**: The most reliable option
 2. **Check if your slicer sets layer info**: Look for `SET_PRINT_STATS_INFO` in your G-code
 3. **Verify macro object subscriptions**: HelixScreen subscribes to `gcode_macro _HELIX_STATE`, `gcode_macro _START_PRINT`, and `gcode_macro START_PRINT`
-4. **ForgeX users**: Detection should be instant via the Forge-X profile (`// State:` signals) and `START_PRINT.preparation_done` macro variable
+4. **ForgeX users**: Detection should be instant via the Forge-X profile (the `operation_context` status object on 1.4.x, `// State:` lines on older versions), the `_START_PRINT.print_started` and `START_PRINT.preparation_done` macro variables
 
 ## Files
 

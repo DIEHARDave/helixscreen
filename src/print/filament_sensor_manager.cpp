@@ -675,6 +675,14 @@ bool FilamentSensorManager::has_real_runout() const {
     }
 
     AmsBackend* backend = AmsState::instance().get_backend();
+    // The lane being fed. A backend that cannot name one (none picked, a
+    // bypass, more than one current lane) reports a negative value.
+    const int current_slot = backend ? backend->get_current_slot() : -1;
+    // A sensor's lane is a slot index for a lane sensor, but a tool index for
+    // a per-toolhead sensor on a multi-extruder system whose slots outnumber
+    // its tools. Matching either index counts as being fed, so a sensor is set
+    // aside only when it can be neither.
+    const int current_tool = backend ? backend->get_current_tool() : -1;
 
     for (const auto& sensor : candidates) {
         // This sensor reports no filament. Decide whether it is a real runout.
@@ -693,10 +701,21 @@ bool FilamentSensorManager::has_real_runout() const {
                 continue;
             }
 
-            // A stood-down sensor counts only for the lane it ran out on. Once
-            // the firmware has moved the print to another lane, the empty one
-            // it left behind is not what a later pause is about.
-            if (sensor.stood_down && backend->get_current_slot() != lane) {
+            // A runout is about the lane being fed. Every other lane's sensor
+            // is idle, whatever the backend says sits in that lane: a head
+            // whose filament waits in its feeder, never loaded to the nozzle,
+            // reads empty at its own switch without anything running out.
+            const bool fed = lane == current_slot || lane == current_tool;
+            if (current_slot >= 0 && !fed) {
+                spdlog::debug("[FilamentSensorManager] has_real_runout: ignoring {} - lane {} "
+                              "is not the one being fed (slot {}, tool {})",
+                              sensor.sensor_name, lane, current_slot, current_tool);
+                continue;
+            }
+
+            // A stood-down sensor counts only while its lane is the one being
+            // fed. With no lane named, nothing says it still is.
+            if (sensor.stood_down && !fed) {
                 spdlog::debug("[FilamentSensorManager] has_real_runout: ignoring {} - stood "
                               "down, and lane {} is no longer the current one",
                               sensor.sensor_name, lane);

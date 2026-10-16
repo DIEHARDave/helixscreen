@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "snapmaker_resume.h"
 
+#include "detection_source.h"
+
 #include "hv/json.hpp"
 
 namespace helix {
@@ -20,8 +22,10 @@ std::vector<TerminalMatcher> snapmaker_terminal_matchers() {
     return {
         TerminalMatcher{/*message_substr=*/"dirty bed", /*exception_id=*/-1,
                         /*require_sdcard_inactive=*/false},
-        TerminalMatcher{/*message_substr=*/"", /*exception_id=*/532,
-                        /*require_sdcard_inactive=*/false, /*exception_code=*/1},
+        TerminalMatcher{/*message_substr=*/"",
+                        /*exception_id=*/detection::U1_DEFECT_EXCEPTION_ID,
+                        /*require_sdcard_inactive=*/false,
+                        /*exception_code=*/detection::U1_DEFECT_CODE_DIRTY_BED},
     };
 }
 
