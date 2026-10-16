@@ -139,8 +139,9 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
         // there.
         t.has_physical_tray = false;
         t.supports_auto_heat_on_load = true;
-        // The firmware's unload runs unload_homing / unload_heating itself
-        // (FILAMENT_BACKEND_SNAPMAKER_U1.md).
+        // AUTO_FEEDING ... UNLOAD=1 runs the firmware's unload state machine,
+        // whose unload_heating stage heats (FILAMENT_BACKEND_SNAPMAKER_U1.md).
+        // unload_heats_hotend() excludes the bare INNER_FILAMENT_UNLOAD fallback.
         t.supports_auto_heat_on_unload = true;
         // Snapmaker U1's Resume runs AUTO_FEEDING (loads filament to the nozzle)
         // before RESUME, so Resume alone recovers a runout. The runout dialog uses
@@ -242,6 +243,13 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
     AmsError do_load_filament(int slot_index) override;
     AmsError do_unload_filament(int slot_index) override;
     AmsError do_select_slot(int slot_index) override;
+
+  public:
+    /// The AUTO_FEEDING unload heats; the bare INNER_FILAMENT_UNLOAD leaf, sent
+    /// when no slot resolves, skips the state machine that does.
+    [[nodiscard]] bool unload_heats_hotend(int slot_index) const override;
+
+  protected:
     AmsError do_change_tool(int tool_number) override;
     /// PARK_EXTRUDER: the firmware's "Detach Toolhead", back to its dock.
     AmsError do_park_active_tool() override;

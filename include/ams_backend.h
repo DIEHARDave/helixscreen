@@ -3076,10 +3076,24 @@ class AmsBackend {
      *
      * The unload counterpart of supports_auto_heat_on_load(): the command the
      * backend sends heats the hotend itself, or moves no filament through it.
-     * Each backend sets it from what its own unload command does.
+     * Each backend sets it from what its own unload command does. Ask
+     * unload_heats_hotend() for a particular unload.
      */
     [[nodiscard]] bool supports_auto_heat_on_unload() const {
         return traits().supports_auto_heat_on_unload;
+    }
+
+    /**
+     * @brief Whether unload_filament(@p slot_index) brings the hotend up itself
+     *
+     * Per call, because one backend can send a self-heating command for one
+     * unload and a bare retract for another. True only for a command whose
+     * heating is shown in what we send: a wrong true runs a cold extrude, a
+     * wrong false costs a second wait. Defaults to the trait.
+     */
+    [[nodiscard]] virtual bool unload_heats_hotend(int slot_index) const {
+        (void)slot_index;
+        return supports_auto_heat_on_unload();
     }
 
     /**

@@ -22,7 +22,9 @@
 
 #include "../lvgl_test_fixture.h"
 #include "ams_backend_afc.h"
+#include "ams_backend_cfs.h"
 #include "ams_backend_happy_hare.h"
+#include "ams_backend_snapmaker.h"
 #include "ams_backend_toolchanger.h"
 #include "filament_macro_profiles.h"
 #include "filament_op_dispatch.h"
@@ -296,5 +298,29 @@ TEST_CASE_METHOD(PreheatSkipFixture, "preheat_skip_reason: an unload answers to 
     // The load claim alone is no reason to skip an unload.
     FilamentOpPlan load = plan_at(FilamentTier::AmsBackend);
     CHECK(helix::ui::preheat_skip_reason(load, StandardMacroSlot::LoadFilament, &changer) ==
+          PreheatSkip::None);
+}
+
+TEST_CASE_METHOD(PreheatSkipFixture, "preheat_skip_reason: an unload claim is per unload",
+                 "[filament][preheat][skip]") {
+    FilamentOpPlan unload = plan_at(FilamentTier::AmsBackend);
+    unload.ams_call = helix::ui::AmsCall::Unload;
+
+    // No CFS unload script we send heats; the bypass one ends in a raw retract.
+    helix::printer::AmsBackendCfs cfs(nullptr, nullptr);
+    unload.ams_arg = helix::ui::EXTERNAL_SPOOL_SLOT;
+    CHECK(helix::ui::preheat_skip_reason(unload, StandardMacroSlot::UnloadFilament, &cfs) ==
+          PreheatSkip::None);
+    unload.ams_arg = 0;
+    CHECK(helix::ui::preheat_skip_reason(unload, StandardMacroSlot::UnloadFilament, &cfs) ==
+          PreheatSkip::None);
+
+    // The U1's AUTO_FEEDING unload heats; with no slot to name it falls back to
+    // the bare INNER_FILAMENT_UNLOAD leaf, which does not.
+    helix::AmsBackendSnapmaker u1(nullptr, nullptr);
+    CHECK(u1.unload_heats_hotend(0));
+    CHECK_FALSE(u1.unload_heats_hotend(-1)); // nothing loaded to resolve
+    unload.ams_arg = -1;
+    CHECK(helix::ui::preheat_skip_reason(unload, StandardMacroSlot::UnloadFilament, &u1) ==
           PreheatSkip::None);
 }
