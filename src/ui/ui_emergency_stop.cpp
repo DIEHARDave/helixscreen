@@ -141,6 +141,7 @@ void EmergencyStopOverlay::init_subjects() {
     // Register click callbacks for XML event binding
     register_xml_callbacks({
         {"emergency_stop_clicked", emergency_stop_clicked},
+        {"lock_screen_estop_clicked", lock_screen_estop_clicked},
         {"estop_dialog_cancel_clicked", estop_dialog_cancel_clicked},
         {"estop_dialog_confirm_clicked", estop_dialog_confirm_clicked},
         {"recovery_restart_klipper_clicked", recovery_restart_klipper_clicked},
@@ -347,16 +348,11 @@ void EmergencyStopOverlay::create() {
 
                     // Guard against async callback firing after display destruction
                     if (inst.recovery_dialog_) {
-                        if (!ModalStack::instance().backdrop_for(inst.recovery_dialog_)) {
-                            // Dialog was dismissed externally — clear stale pointer
-                            inst.recovery_dialog_ = nullptr;
-                        } else {
-                            spdlog::info("[KlipperRecovery] Klipper is READY, dismissing recovery "
-                                         "dialog");
-                            inst.dismiss_recovery_dialog();
-                            helix::ui::notifications::show_transient_success(lv_tr("Printer ready"),
-                                                                             3000);
-                        }
+                        spdlog::info("[KlipperRecovery] Klipper is READY, dismissing recovery "
+                                     "dialog");
+                        inst.dismiss_recovery_dialog();
+                        helix::ui::notifications::show_transient_success(lv_tr("Printer ready"),
+                                                                         3000);
                     } else if (expected_restart) {
                         // The restart completed with the dialog suppressed
                         // by its initiating flow, so still say so. A transient
@@ -409,11 +405,21 @@ void EmergencyStopOverlay::update_visibility() {
 void EmergencyStopOverlay::handle_click() {
     spdlog::info("[EmergencyStop] Button clicked");
 
-    if (require_confirmation_) {
-        show_confirmation_dialog();
-    } else {
+    if (!require_confirmation_) {
         execute_emergency_stop();
+    } else if (confirmation_dialog_) {
+        // The navbar E-Stop stays above modal backdrops, so it can be pressed
+        // again while its own confirmation is up. Pressing it twice means it.
+        spdlog::info("[EmergencyStop] Second press while confirming - stopping");
+        confirm_emergency_stop();
+    } else {
+        show_confirmation_dialog();
     }
+}
+
+void EmergencyStopOverlay::confirm_emergency_stop() {
+    dismiss_confirmation_dialog();
+    execute_emergency_stop();
 }
 
 void EmergencyStopOverlay::execute_emergency_stop() {
@@ -455,7 +461,6 @@ void EmergencyStopOverlay::execute_emergency_stop() {
 }
 
 void EmergencyStopOverlay::show_confirmation_dialog() {
-    // Don't show if already visible
     if (confirmation_dialog_) {
         spdlog::debug("[EmergencyStop] Confirmation dialog already visible");
         return;
@@ -463,8 +468,12 @@ void EmergencyStopOverlay::show_confirmation_dialog() {
 
     spdlog::debug("[EmergencyStop] Showing confirmation dialog");
 
-    // Create dialog via Modal system (handles backdrop, z-order, animations)
-    confirmation_dialog_ = helix::ui::modal_show("estop_confirmation_dialog");
+    // Create dialog via Modal system (handles backdrop, z-order, animations).
+    // The bare factory never reports a backdrop tap or ESC back here, so the
+    // handle clears itself when the dialog is freed; a handle left set would
+    // read as "already visible" and swallow every later press.
+    helix::ui::store_until_deleted(&confirmation_dialog_,
+                                   helix::ui::modal_show("estop_confirmation_dialog"));
 
     if (!confirmation_dialog_) {
         spdlog::error("[EmergencyStop] Failed to create confirmation dialog, executing directly");
@@ -495,8 +504,10 @@ void EmergencyStopOverlay::show_recovery_dialog() {
     spdlog::info("[KlipperRecovery] Creating recovery dialog (reason: {})",
                  recovery_reason_str(recovery_reason_));
 
-    // Use Modal system — backdrop is created programmatically
-    recovery_dialog_ = helix::ui::modal_show("klipper_recovery_dialog");
+    // Use Modal system — backdrop is created programmatically. Cleared when freed,
+    // like confirmation_dialog_, so a manual dismiss never blocks the next one.
+    helix::ui::store_until_deleted(&recovery_dialog_,
+                                   helix::ui::modal_show("klipper_recovery_dialog"));
     spdlog::debug("[KlipperRecovery] Dialog created, recovery_dialog_={}",
                   static_cast<void*>(recovery_dialog_));
 
@@ -578,18 +589,6 @@ bool EmergencyStopOverlay::show_recovery_for_main(RecoveryReason reason) {
         return false;
     }
 
-    // A backdrop tap dismisses the dialog through Modal::hide() without going
-    // through dismiss_recovery_dialog(), so recovery_dialog_ can still point at a
-    // modal that already left the stack. Drop the stale pointer first and let the
-    // rest of this function build a fresh dialog — the next SHUTDOWN or
-    // DISCONNECTED after a manual dismiss must still reach the user.
-    if (recovery_dialog_ && !ModalStack::instance().backdrop_for(recovery_dialog_)) {
-        spdlog::debug("[KlipperRecovery] Previous dialog was dismissed externally, "
-                      "clearing stale reference");
-        recovery_dialog_ = nullptr;
-        recovery_reason_ = RecoveryReason::NONE;
-    }
-
     // If dialog is still showing, update reason if it's worse (SHUTDOWN -> DISCONNECTED means
     // can't restart)
     if (recovery_dialog_) {
@@ -623,11 +622,7 @@ bool EmergencyStopOverlay::show_recovery_for_main(RecoveryReason reason) {
         auto& inst = EmergencyStopOverlay::instance();
         // Guard: dialog may have been shown by another deferred call in the meantime
         if (inst.recovery_dialog_) {
-            if (ModalStack::instance().backdrop_for(inst.recovery_dialog_)) {
-                return;
-            }
-            // Dialog was dismissed externally — clear stale pointer
-            inst.recovery_dialog_ = nullptr;
+            return;
         }
         spdlog::info("[KlipperRecovery] Showing recovery dialog (reason: {})",
                      recovery_reason_str(inst.recovery_reason_));
@@ -888,6 +883,15 @@ void EmergencyStopOverlay::emergency_stop_clicked(lv_event_t* e) {
     EmergencyStopOverlay::instance().handle_click();
 }
 
+void EmergencyStopOverlay::lock_screen_estop_clicked(lv_event_t* e) {
+    LV_UNUSED(e);
+    // The lock screen sits on lv_layer_top, above any modal, so a confirmation
+    // dialog would open hidden behind it. The lock guards against casual input,
+    // not an emergency: stop at once.
+    spdlog::info("[EmergencyStop] E-Stop clicked from lock screen - skipping confirmation");
+    EmergencyStopOverlay::instance().execute_emergency_stop();
+}
+
 void EmergencyStopOverlay::estop_dialog_cancel_clicked(lv_event_t* e) {
     LV_UNUSED(e);
     spdlog::debug("[EmergencyStop] Cancel clicked - aborting E-Stop");
@@ -897,9 +901,7 @@ void EmergencyStopOverlay::estop_dialog_cancel_clicked(lv_event_t* e) {
 void EmergencyStopOverlay::estop_dialog_confirm_clicked(lv_event_t* e) {
     LV_UNUSED(e);
     spdlog::debug("[EmergencyStop] Confirm clicked - executing E-Stop");
-    auto& instance = EmergencyStopOverlay::instance();
-    instance.dismiss_confirmation_dialog();
-    instance.execute_emergency_stop();
+    EmergencyStopOverlay::instance().confirm_emergency_stop();
 }
 
 void EmergencyStopOverlay::recovery_restart_klipper_clicked(lv_event_t* e) {
