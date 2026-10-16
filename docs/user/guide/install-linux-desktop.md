@@ -28,7 +28,13 @@ Open a terminal **on your desktop PC** (not on the printer) and run:
 curl -sSL https://releases.helixscreen.org/install.sh | R2_CHANNEL=beta sh -s -- --desktop
 ```
 
-This installs the newest beta. To install one particular release instead, name it with `--version`, for example `sh -s -- --desktop --version v1.1.0-beta.9` (or any newer version from the [releases page](https://github.com/prestonbrown/helixscreen/releases)).
+This installs the newest beta. To install one particular release instead, name it with `--version` (`v1.1.0-beta.9` or any newer version from the [releases page](https://github.com/prestonbrown/helixscreen/releases)):
+
+```bash
+curl -sSL https://releases.helixscreen.org/install.sh | sh -s -- --desktop --version v1.1.0-beta.9
+```
+
+Either way the app stays on the Beta update channel, so it tells you about each new beta.
 
 Do not use `sudo`. Run as root without `--desktop`, the installer sets up the full-screen kiosk instead, which replaces your login screen at boot; with `--desktop`, it stops with an error and changes nothing. The installer puts HelixScreen in `~/.local/share/helixscreen` and adds **HelixScreen** to your applications menu.
 

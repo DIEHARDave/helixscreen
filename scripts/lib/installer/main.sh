@@ -1232,6 +1232,7 @@ apply_desktop_install() {
     fi
     extract_release "$platform"
     verify_binary_deps "$platform"
+    seed_update_channel
     step_done "$(display_path "$INSTALL_DIR")"
 
     step "Adding HelixScreen to the app menu" "Added HelixScreen to the app menu"

@@ -123,7 +123,8 @@ x86_desktop_present() {
 # (always the kiosk), then the install already on disk (the flavour is
 # decided at the first install and never re-asked), then the package beside
 # the installer (detect_package_beside_installer), then a fresh install asks
-# when a desktop session is present and a terminal can answer, else infers it. X86_FLAVOUR_REASON says which, for the plan.
+# when a desktop session is present and a terminal can answer, else infers it.
+# X86_FLAVOUR_REASON says which, for the plan.
 resolve_x86_flavour() {
     X86_FLAVOUR_REASON=""
     if [ "$platform" != "x86" ]; then

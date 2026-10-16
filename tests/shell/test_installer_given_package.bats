@@ -42,7 +42,7 @@ exec /usr/bin/id \"\$@\""
 
     local bats_traps
     bats_traps="$(trap -p EXIT INT TERM HUP)"
-    for m in common logo host_profile platform permissions requirements competing_uis desktop release service moonraker kiauh plan uninstall main; do
+    for m in common logo host_profile platform permissions requirements competing_uis desktop release service moonraker kiauh printer_seed plan uninstall main; do
         . "$LIB/$m.sh"
     done
     trap - ERR EXIT INT TERM HUP
@@ -366,4 +366,98 @@ for r,_,fs in os.walk("."):
     [ "$status" -eq 0 ] || fail "dry run failed ($status): $output"
     lacks "Update channel: beta" "$output"
     contains "local (stable)" "$output"
+}
+
+# ---------------------------------------------------------------------------
+# What is and is not a package
+# ---------------------------------------------------------------------------
+
+@test "a flat zip unpacked among other files is not a package" {
+    # The release zip has no top-level directory: unzipped in place, its
+    # payload lands among whatever else the directory holds.
+    make_payload "$DL" helixscreen-x86-desktop.zip
+    echo mine > "$DL/tax-return.pdf"
+    installer_self_dir() { printf '%s\n' "$DL"; }
+    detect_package_beside_installer
+    [ -z "$package_dir" ]
+
+    run_main_from "$DL" --desktop --dry-run
+    [ "$status" -eq 0 ] || fail "dry run failed ($status): $output"
+    lacks "next to this installer" "$output"
+    called "NETWORK get_latest_version" || fail "did not resolve online: $(calls)"
+}
+
+@test "the tar layout's helixscreen directory is a package" {
+    make_payload "$DL/helixscreen" helixscreen-x86-desktop.zip
+    installer_self_dir() { printf '%s\n' "$DL/helixscreen"; }
+    detect_package_beside_installer
+    [ "$package_dir" = "$DL/helixscreen" ]
+}
+
+@test "the copy keeps the package's symlinks and executable bits" {
+    make_payload "$DL/helixscreen" helixscreen-x86-desktop.zip
+    ln -s helix-screen "$DL/helixscreen/bin/helix-screen-link"
+    run_main_from "$DL/helixscreen" --desktop
+    [ "$status" -eq 0 ] || fail "main failed ($status): $output"
+    [ -L "$DESK/bin/helix-screen-link" ]
+    [ -x "$DESK/bin/helix-screen" ]
+}
+
+@test "a package whose size cannot be measured is refused, not sized as zero" {
+    make_payload "$DL/helixscreen" helixscreen-x86-desktop.zip
+    TMP_DIR="$BATS_TEST_TMPDIR/stage"
+    INSTALL_DIR="$DESK"
+    use_package_tree "$DL/helixscreen"
+    _tree_size_mb() { :; }
+    run extract_release x86-desktop
+    [ "$status" -eq 1 ]
+    contains "Could not measure the package" "$output"
+    [ ! -e "$DESK" ]
+}
+
+# ---------------------------------------------------------------------------
+# A channel named in the environment
+# ---------------------------------------------------------------------------
+
+env_channel() { R2_CHANNEL=$1; _R2_CHANNEL_FROM_ENV=yes; }
+
+@test "R2_CHANNEL=beta on a fresh desktop install is recorded for the app" {
+    export HELIX_STATE_VAR_LIB="$BATS_TEST_TMPDIR/var-lib" HELIX_STATE_ROOT_HOME="$BATS_TEST_TMPDIR/root-home"
+    make_archive helixscreen-x86-desktop.zip helixscreen-x86-desktop-v1.2.3.tar.gz
+    env_channel beta
+    run_main_from "$BATS_TEST_TMPDIR/elsewhere" --desktop "$DL/helixscreen-x86-desktop-v1.2.3.tar.gz"
+    [ "$status" -eq 0 ] || fail "main failed ($status): $output"
+    [ "$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["update"]["channel"])' "$DESK/config/settings.json")" = 1 ] \
+        || fail "no beta channel recorded: $(cat "$DESK/config/settings.json" 2>&1)"
+    [ ! -e "$HELIX_STATE_VAR_LIB" ]
+    [ ! -e "$HELIX_STATE_ROOT_HOME" ]
+}
+
+@test "R2_CHANNEL=beta never replaces the channel an existing install chose" {
+    export HELIX_STATE_VAR_LIB="$BATS_TEST_TMPDIR/var-lib" HELIX_STATE_ROOT_HOME="$BATS_TEST_TMPDIR/root-home"
+    make_payload "$DESK" helixscreen-x86-desktop.zip 1.2.2
+    printf '{"config_version":3,"update":{"channel":0}}\n' > "$DESK/config/settings.json"
+    make_archive helixscreen-x86-desktop.zip helixscreen-x86-desktop-v1.2.3.tar.gz
+    env_channel beta
+    run_main_from "$BATS_TEST_TMPDIR/elsewhere" --desktop "$DL/helixscreen-x86-desktop-v1.2.3.tar.gz"
+    [ "$status" -eq 0 ] || fail "main failed ($status): $output"
+    [ "$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["update"]["channel"])' "$DESK/config/settings.json")" = 0 ]
+}
+
+@test "R2_CHANNEL=beta reaches the desktop's own settings backup" {
+    mkdir -p "$HOME/.helixscreen"
+    printf '{"config_version":3}\n' > "$HOME/.helixscreen/settings.json.backup"
+    platform=x86-desktop
+    INSTALL_DIR="$DESK"
+    mkdir -p "$DESK/config"
+    env_channel beta
+    match_channel_to_version v1.2.3
+    seed_update_channel
+    [ "$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["update"]["channel"])' "$HOME/.helixscreen/settings.json.backup")" = 1 ]
+}
+
+@test "R2_CHANNEL=stable records nothing" {
+    env_channel stable
+    match_channel_to_version v1.2.3
+    [ -z "${_R2_CHANNEL_TO_SEED:-}" ]
 }

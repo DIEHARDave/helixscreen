@@ -100,8 +100,10 @@ A handed-over archive is the version installed: `parse_tarball_version` reads it
 filename for the plan (an unversioned zip shows `local`), and nothing consults the channel or
 the network for it. A prerelease archive (or package, below) moves the install to the beta
 channel exactly as a prerelease `--version` does, through `match_channel_to_version`: the plan
-reads `(beta)` and `seed_update_channel` records it for the app, unless `R2_CHANNEL` was set or
-an existing install's settings.json names a channel, which wins. A stable archive and an
+reads `(beta)` and `seed_update_channel` records it for the app (the desktop flavour included,
+into its user's `~/.helixscreen` backup as well), unless an existing install's settings.json
+names a channel, which wins. A `beta` or `dev` `R2_CHANNEL` from the environment wins over the
+version and is recorded the same way. A stable archive and an
 unversioned zip move nothing.
 
 ### 2a. The Package Beside the Installer
@@ -112,9 +114,11 @@ installs the package it sits in (`detect_package_beside_installer` and
 `settle_package_beside_installer` in `scripts/lib/installer/release.sh#detect_package_beside_installer`):
 
 - **What counts as a package.** `installer_self_dir` (the directory `$0` lives in; none under
-  `curl | sh`) holds `bin/helix-screen`, `ui_xml/`, `assets/` and a release_info.json with a
+  `curl | sh`) is named `helixscreen`, the tar layout's top directory, and holds `bin/helix-screen`, `ui_xml/`, `assets/` and a release_info.json with a
   `version` and an `asset_name` of the form `helixscreen-<platform>.zip`, which the packaging
-  bakes (`write-release-info` in `mk/cross.mk`). The plan says `Installing the package next to
+  bakes (`write-release-info` in `mk/cross.mk`). The release zip is flat, so unzipped in place
+  its payload sits among the directory's other files; that directory never counts, or copying
+  it would install everything beside the payload. The plan says `Installing the package next to
   this installer: <version> (<platform>)`.
 - **Never an installed tree.** An install ships the same `install.sh` (for offline updates), and
   installing a tree onto itself means nothing, so that copy keeps resolving online. The package
@@ -128,7 +132,8 @@ installs the package it sits in (`detect_package_beside_installer` and
 - **Flavour.** On x86 with no flag and no install on disk, an `x86-desktop` package picks the
   desktop flavour and an `x86` package the kiosk (`X86_FLAVOUR_REASON` "the package").
 - **Install path.** `use_package_tree` stages the directory as `_ARCHIVE_FORMAT=tree`, and
-  `extract_release` copies it (`cp -a`) where it would unpack an archive; validation, the
+  `extract_release` copies it (`cp -R`, so the copy belongs to whoever runs the install, as the
+  tar path's `-o` gives) where it would unpack an archive; validation, the
   backup/swap and the config restore are the archive's. The user's tree is only read.
 
 ### 3. KIAUH Extension

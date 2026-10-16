@@ -430,19 +430,26 @@ resolve_update_channel() {
     log_info "Update channel: ${R2_CHANNEL} (read from ${settings})"
 }
 
-# An explicit --version decides the channel when nothing else has: a
-# prerelease (any '-' suffix, the same test scripts/release-channel.sh applies
-# to tags) pinned on a fresh install or one with no settings.json is a beta
-# install, and the channel written into moonraker.conf must follow it.
-# _R2_CHANNEL_FROM_VERSION tells seed_update_channel to persist it for the app.
-# Args: the requested version tag
+# The channel this run installs onto, when nothing else has decided it: a
+# prerelease version (any '-' suffix, the same test scripts/release-channel.sh
+# applies to tags) on a fresh install or one with no settings.json is a beta
+# install, and the channel written into moonraker.conf must follow it. A beta
+# or dev R2_CHANNEL from the environment is the operator naming it outright.
+# _R2_CHANNEL_TO_SEED tells seed_update_channel to persist it for the app,
+# which never replaces a channel settings.json already names.
+# Args: the version tag this run settled on
 match_channel_to_version() {
-    [ "${_R2_CHANNEL_FROM_ENV:-}" = "yes" ] && return 0
+    if [ "${_R2_CHANNEL_FROM_ENV:-}" = "yes" ]; then
+        case "$R2_CHANNEL" in
+            beta | dev) _R2_CHANNEL_TO_SEED=yes ;;
+        esac
+        return 0
+    fi
     [ "${_R2_CHANNEL_FROM_SETTINGS:-}" = "yes" ] && return 0
     case "$1" in
         *-*)
             R2_CHANNEL=beta
-            _R2_CHANNEL_FROM_VERSION=yes
+            _R2_CHANNEL_TO_SEED=yes
             log_info "Update channel: beta (${1} is a prerelease)"
             ;;
     esac
@@ -1349,6 +1356,10 @@ detect_package_beside_installer() {
         "$(desktop_install_root 2>/dev/null || true)"; do
         _same_dir "$dir" "$root" && return 0
     done
+    # The tar layout's top directory. The release zip is flat, so unpacked in
+    # place its payload sits among whatever else that directory holds, and
+    # copying the directory would install all of it.
+    [ "${dir##*/}" = helixscreen ] || return 0
     [ -f "$dir/bin/helix-screen" ] && [ -d "$dir/ui_xml" ] && [ -d "$dir/assets" ] || return 0
     [ -f "$dir/release_info.json" ] || return 0
     asset=$(parse_json_string_field asset_name < "$dir/release_info.json")
@@ -1855,7 +1866,13 @@ extract_release() {
     if [ "${_ARCHIVE_FORMAT:-}" = tree ]; then
         # Already extracted: the copy needs the tree's own size.
         archive_mb=$(_tree_size_mb "$archive")
-        extract_required_mb=$(( ${archive_mb:-0} + 20 ))
+        case "$archive_mb" in
+            '' | *[!0-9]*)
+                log_error "Could not measure the package at $archive; nothing was copied."
+                exit 1
+                ;;
+        esac
+        extract_required_mb=$(( archive_mb + 20 ))
     else
         archive_mb=$(du -m "$archive" 2>/dev/null | awk '{print $1}')
         [ -z "$archive_mb" ] && archive_mb=$(ls -l "$archive" | awk '{print int($5/1048576)}')
@@ -1886,7 +1903,9 @@ extract_release() {
     case "${_ARCHIVE_FORMAT:-tar.gz}" in
         tree)
             # A copy, never a move: the tree is the user's extracted package.
-            cp -a "$archive" "${extract_dir}/helixscreen" && extract_ok=true
+            # -R without -p: the copy belongs to whoever runs the install, as
+            # the tar path's -o does, and symlinks stay symlinks (BusyBox too).
+            cp -R "$archive" "${extract_dir}/helixscreen" && extract_ok=true
             ;;
         zip)
             # The zip has a FLAT layout (no top-level helixscreen/ dir). That's

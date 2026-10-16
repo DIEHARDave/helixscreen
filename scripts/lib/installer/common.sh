@@ -1137,9 +1137,15 @@ retire_legacy_config_backups() {
 
 # The directories Config::init searches for a rolling settings backup, one per
 # line: the StateDirectory, then each HOME/.helixscreen the service may run with
-# (config_backup_primary/fallback, include/app_constants.h).
-# Reads: KLIPPER_HOME, HELIX_STATE_VAR_LIB, HELIX_STATE_ROOT_HOME
+# (config_backup_primary/fallback, include/app_constants.h). A desktop install
+# has only its user's.
+# Reads: platform, HOME, KLIPPER_HOME, HELIX_STATE_VAR_LIB, HELIX_STATE_ROOT_HOME
 config_backup_tiers() {
+    # The desktop app runs as the user, so its backup is that user's.
+    if [ "${platform:-}" = "x86-desktop" ]; then
+        [ -n "${HOME:-}" ] && echo "${HOME%/}/.helixscreen"
+        return 0
+    fi
     echo "${HELIX_STATE_VAR_LIB:-/var/lib/helixscreen}"
     echo "${HELIX_STATE_ROOT_HOME:-/root/.helixscreen}"
     [ -n "${KLIPPER_HOME:-}" ] && echo "${KLIPPER_HOME}/.helixscreen"
