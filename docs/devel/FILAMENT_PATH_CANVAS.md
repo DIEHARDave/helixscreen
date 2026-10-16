@@ -423,6 +423,10 @@ NOZZLE`.
 Per-slot render state (color, segment, mounted-ness, at-sensor, at-nozzle) is
 derived once into `SlotRenderStates` by `compute_slot_render_states()` and read
 by the topology bodies, so the same state isn't re-derived across phases.
+The active slot takes the system's filament segment over its own, except that
+a bare `SPOOL` (no strand in the path) never makes an empty slot look loaded:
+filament presence is the slot's own report, so an empty active lane draws no
+fill and no glow. Its toolhead still draws as mounted.
 
 ---
 
