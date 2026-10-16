@@ -604,9 +604,11 @@ FORGEX_PLUGIN=/opt/config/mod_data/helixscreen/moonraker-plugin
     contains "Moonraker is ready" "$output"
 }
 
-# Klipper running outside the chroot, as on Forge-X. With $2 = hides, its
-# virtual_sdcard carries Forge-X's filter that drops dot-directories from the
-# files SDCARD_PRINT_FILE can open; otherwise it lists every directory.
+# Klipper running outside the chroot, as on Forge-X. $2 picks its
+# virtual_sdcard: "hides" carries Forge-X's filter dropping dot-directories
+# from the files SDCARD_PRINT_FILE can open (its d[0] == '.' spelling),
+# "hides-startswith" the same filter spelled with str.startswith, and
+# anything else lists every directory.
 add_running_klipper() {
     local root="$1" mode="$2"
     local extras="$root/opt/klipper/klippy/extras"
@@ -615,11 +617,16 @@ add_running_klipper() {
     {
         printf '            for root, dirs, files in os.walk(\n'
         printf '                    self.sdcard_dirname, followlinks=True, topdown=True):\n'
-        if [ "$mode" = hides ]; then
-            printf '                # Ignore hidden files and directories\n'
-            printf "                files = [f for f in files if not f[0] == '.']\n"
-            printf "                dirs[:] = [d for d in dirs if not d[0] == '.']\n"
-        fi
+        case "$mode" in
+            hides)
+                printf '                # Ignore hidden files and directories\n'
+                printf "                files = [f for f in files if not f[0] == '.']\n"
+                printf "                dirs[:] = [d for d in dirs if not d[0] == '.']\n"
+                ;;
+            hides-startswith)
+                printf "                dirs[:] = [d for d in dirs if not d.startswith('.')]\n"
+                ;;
+        esac
         printf '                for name in files:\n'
     } > "$extras/virtual_sdcard.py"
     printf '%s\0' /opt/Python-3.7.11/bin/python3.7 "$root/opt/klipper/klippy/klippy.py" \
@@ -739,4 +746,23 @@ exit 0'
         || fail "section not in user.moonraker.conf"
     cmp -s "$BATS_TEST_TMPDIR/mod.conf.before" "$cfg/mod/moonraker.conf" \
         || fail "the mod's own moonraker.conf was edited"
+}
+
+@test "a Klipper pruning dot-directories with startswith gets a visible symlink_dir too" {
+    local root="$BATS_TEST_TMPDIR/fx"
+    setup_forgex_layout "$root"
+    add_running_klipper "$root" hides-startswith
+
+    forgex_install "$root"
+
+    grep -qx 'symlink_dir: helix_print' "$(user_conf_of "$root")"
+}
+
+@test "with no Klipper running the default hidden symlink_dir stays" {
+    local root="$BATS_TEST_TMPDIR/fx"
+    setup_forgex_layout "$root"
+
+    forgex_install "$root"
+
+    ! grep -q 'symlink_dir' "$(user_conf_of "$root")"
 }

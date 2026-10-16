@@ -228,11 +228,9 @@ helix_conf_file() {
     printf '%s' "$conf"
 }
 
-# Whether the running Klipper's virtual_sdcard skips dot-directories when it
-# resolves SDCARD_PRINT_FILE (Forge-X's Klipper does). There, a print started
-# through the plugin's symlink under a hidden directory fails with "Unable to
-# open file", so the symlink directory has to be a visible one.
-klipper_hides_dot_dirs() {
+# Print the running Klipper's extras/virtual_sdcard.py, the code that decides
+# which files SDCARD_PRINT_FILE can open. Empty when no Klipper runs here.
+running_klipper_sdcard_source() {
     for f in "$PROC_ROOT"/[0-9]*/cmdline; do
         [ -r "$f" ] || continue
         klippy=$(tr '\000' '\n' < "$f" 2>/dev/null | awk '/klippy\/klippy\.py$/ { print; exit }')
@@ -241,11 +239,36 @@ klipper_hides_dot_dirs() {
         [ "$root" = "/" ] && root=""
         for sdcard in "${root%/}$(dirname "$klippy")/extras/virtual_sdcard.py" \
                       "$(dirname "$klippy")/extras/virtual_sdcard.py"; do
-            [ -f "$sdcard" ] || continue
-            grep -Eq "dirs\[:\] *= *\[d for d in dirs if not d(\[0\] *== *['\"]\.['\"]|\.startswith\(['\"]\.['\"]\))" "$sdcard"
-            return
+            if [ -f "$sdcard" ]; then
+                printf '%s' "$sdcard"
+                return 0
+            fi
         done
-        return 1
+        return 0
+    done
+}
+
+# Generic probe: a virtual_sdcard that prunes dot-directories from its walk
+# with str.startswith, the idiomatic spelling of the filter.
+sdcard_prunes_dot_dirs_generic() {
+    grep -Eq "dirs\[:\] *= *\[d for d in dirs if not d\.startswith\(['\"]\.['\"]\)" "$1"
+}
+
+# Vendor probe, Forge-X: its Klipper patch "Ignore hidden files and
+# directories" (ff5m commit aab9d340) spells the filter as an index compare.
+sdcard_prunes_dot_dirs_forgex() {
+    grep -Eq "dirs\[:\] *= *\[d for d in dirs if not d\[0\] *== *['\"]\.['\"]" "$1"
+}
+
+# Capability: whether the running Klipper hides dot-directories from
+# SDCARD_PRINT_FILE. There a print started through the plugin's symlink under
+# a hidden directory fails with "Unable to open file", so the symlink directory
+# has to be a visible one.
+klipper_hides_dot_dirs() {
+    sdcard=$(running_klipper_sdcard_source)
+    [ -n "$sdcard" ] || return 1
+    for probe in sdcard_prunes_dot_dirs_generic sdcard_prunes_dot_dirs_forgex; do
+        "$probe" "$sdcard" && return 0
     done
     return 1
 }

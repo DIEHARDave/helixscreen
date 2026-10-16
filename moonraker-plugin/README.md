@@ -49,8 +49,16 @@ cd /path/to/helixscreen/moonraker-plugin
 ```
 
 The installer creates a symlink from Moonraker's components directory to `helix_print.py`.
-`helix_3mf.py` must stay beside `helix_print.py`: the plugin loads it from the link's target
-directory, and runs without .3mf conversion when it is missing.
+`helix_3mf.py` and `helix_capabilities.py` must stay beside `helix_print.py`: the plugin
+loads them from the link's target directory, and runs without .3mf conversion when either
+is missing.
+
+Vendor knowledge sits behind capability probes. The plugin asks "does this Moonraker print
+.3mf natively?" through `helix_capabilities.prints_3mf_natively`, which combines a generic
+probe (`VALID_GCODE_EXTS`) with one probe per vendor fork that adds .3mf printing (QIDI's).
+`install.sh` asks "does this Klipper hide dot-directories?" through `klipper_hides_dot_dirs`,
+which combines a generic probe with Forge-X's spelling of the filter. A new vendor gets a
+new probe in that list, never a branch in the generic code.
 
 When Moonraker runs in a chroot (Forge-X), the installer finds it through
 `/proc/<pid>/root` and links the plugin by the path Moonraker sees. When `moonraker.conf`

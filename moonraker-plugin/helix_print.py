@@ -36,8 +36,8 @@ Configuration (moonraker.conf):
     convert_3mf: True
     start_3mf_on_upload: False
 
-The .3mf converter lives in helix_3mf.py beside this file (README.md,
-".3mf Conversion").
+The .3mf converter lives in helix_3mf.py and the capability probes in
+helix_capabilities.py, both beside this file (README.md, ".3mf Conversion").
 """
 
 from __future__ import annotations
@@ -98,30 +98,31 @@ def _legacy_records(value: Any, depth: int = 0) -> List[Dict[str, Any]]:
 HELIX_AUX_PROVIDER = "helix_print"
 
 
-def _load_helix_3mf() -> Optional[Any]:
-    """Load helix_3mf.py from beside this file.
+def _load_sibling(name: str) -> Optional[Any]:
+    """Load <name>.py from beside this file.
 
     Moonraker imports this component through a symlink in its components
     directory, where no sibling module exists, so the import follows the link
-    to the plugin's own directory. None when the file is missing: the plugin
-    then runs without the .3mf converter.
+    to the plugin's own directory. None when the file is missing or fails to
+    load: the plugin then runs without what it provides.
     """
-    path = Path(__file__).resolve().parent / "helix_3mf.py"
+    path = Path(__file__).resolve().parent / f"{name}.py"
     if not path.is_file():
         return None
-    spec = importlib.util.spec_from_file_location("helix_3mf", str(path))
+    spec = importlib.util.spec_from_file_location(name, str(path))
     if spec is None or spec.loader is None:
         return None
     module = importlib.util.module_from_spec(spec)
     try:
         spec.loader.exec_module(module)
     except Exception:
-        logging.exception("HelixPrint: helix_3mf.py failed to load")
+        logging.exception(f"HelixPrint: {name}.py failed to load")
         return None
     return module
 
 
-helix_3mf = _load_helix_3mf()
+helix_capabilities = _load_sibling("helix_capabilities")
+helix_3mf = _load_sibling("helix_3mf")
 
 
 class PrintInfo:
@@ -305,8 +306,10 @@ class HelixPrint:
     async def _start_3mf_converter(self) -> None:
         if not (self.enabled and self.convert_3mf):
             return
-        if helix_3mf is None:
-            logging.warning("HelixPrint: helix_3mf.py not found, .3mf conversion off")
+        if helix_3mf is None or helix_capabilities is None:
+            logging.warning(
+                "HelixPrint: helix_3mf.py or helix_capabilities.py not found, .3mf conversion off"
+            )
             return
         self.converter = helix_3mf.Helix3mfConverter(
             self.server,
@@ -316,6 +319,7 @@ class HelixPrint:
             self.gc_path,
             self.temp_dir,
             self.start_3mf_on_upload,
+            helix_capabilities.prints_3mf_natively,
         )
         try:
             await self.converter.start()

@@ -25,6 +25,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import helix_3mf
+import helix_capabilities
 from helix_3mf import (
     Conversion,
     ConversionError,
@@ -202,7 +203,8 @@ def env(gc):
     apis = FakeKlippyApis()
 
     def make(start_on_upload=False):
-        return Helix3mfConverter(server, fm, db, apis, gc, ".helix_temp", start_on_upload)
+        return Helix3mfConverter(server, fm, db, apis, gc, ".helix_temp", start_on_upload,
+                                 helix_capabilities.prints_3mf_natively)
 
     return types.SimpleNamespace(server=server, fm=fm, db=db, apis=apis, gc=gc, make=make)
 
@@ -487,6 +489,65 @@ class TestNativeAndDisabled:
         assert await listing(conv) == []
         assert "file_manager:filelist_changed" not in env.server.event_handlers
         assert env.fm.uploads == []
+
+
+def load_fake_moonraker(name: str, source: str) -> types.ModuleType:
+    """Import @p source as a module named @p name, as Moonraker imports its
+    file_manager: the probes read the module the FileManager class lives in."""
+    module = types.ModuleType(name)
+    exec(compile(source, name, "exec"), module.__dict__)
+    sys.modules[name] = module
+    return module
+
+
+# QIDI's Moonraker fork (Q2/Max 4 file_manager.py), cut to the parts the
+# probes read: the extension list beside FileManager, the .3mf upload method,
+# and MetadataStorage's .3mf thumbnail parser.
+QIDI_FILE_MANAGER = """
+VALID_GCODE_EXTS = ['.gcode', '.g', '.gco', '.ufp', '.nc', '.3mf']
+
+class FileManager:
+    def __init__(self, gc_path):
+        self.gc_path = gc_path
+        self.gcode_metadata = MetadataStorage()
+    async def _finish_3mf_upload(self, upload_info):
+        return {}
+
+class MetadataStorage:
+    def parse_3mf_thumbnail(self, path):
+        return None
+"""
+
+# A fork that kept upstream's extension list but finishes .3mf uploads itself.
+METHOD_ONLY_FILE_MANAGER = """
+VALID_GCODE_EXTS = ['.gcode', '.g', '.gco', '.ufp', '.nc']
+
+class FileManager:
+    def __init__(self, gc_path):
+        self.gc_path = gc_path
+    async def _finish_3mf_upload(self, upload_info):
+        return {}
+"""
+
+
+class TestNativeForks:
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("name,source", [
+        ("fake_qidi_file_manager", QIDI_FILE_MANAGER),
+        ("fake_method_only_file_manager", METHOD_ONLY_FILE_MANAGER),
+    ])
+    async def test_a_native_3mf_fork_converts_nothing(self, env, name, source):
+        module = load_fake_moonraker(name, source)
+        fork_fm = module.FileManager(env.gc)
+        make_3mf(env.gc / "a.gcode.3mf", {1: plate_gcode(1)})
+        conv = Helix3mfConverter(env.server, fork_fm, env.db, env.apis, env.gc,
+                                 ".helix_temp", True, helix_capabilities.prints_3mf_natively)
+        await conv.start()
+        await conv.wait_idle()
+
+        assert not conv.active and not conv.hook_installed
+        assert not (env.gc / "a.gcode").exists()
+        assert await listing(conv) == []
 
 
 class TestOverwriteAndDelete:

@@ -24,7 +24,6 @@ import inspect
 import logging
 import os
 import shutil
-import sys
 import uuid
 import zipfile
 import zlib
@@ -274,19 +273,6 @@ def plan_output(
     return "taken", "", False
 
 
-def native_3mf_support(file_manager: Any) -> Optional[bool]:
-    """Whether this Moonraker treats .3mf as G-code itself (QIDI's does).
-
-    Read from the file manager module's VALID_GCODE_EXTS; None when the module
-    does not expose one, so the caller cannot tell.
-    """
-    module = sys.modules.get(type(file_manager).__module__)
-    exts = getattr(module, "VALID_GCODE_EXTS", None)
-    if exts is None:
-        return None
-    return ".3mf" in exts
-
-
 def upload_hook_shape_ok(method: Any) -> bool:
     """Whether finalize_upload looks like the `async (form_args) -> dict` we wrap."""
     if method is None or not inspect.iscoroutinefunction(method):
@@ -331,8 +317,13 @@ class Helix3mfConverter:
         gc_path: Path,
         temp_dir: str,
         start_on_upload: bool,
+        prints_3mf_natively: Callable[[Any], Optional[bool]],
     ) -> None:
+        """@p prints_3mf_natively answers the capability question for this
+        Moonraker (helix_capabilities.prints_3mf_natively): True, False or
+        None when it cannot tell."""
         self.server = server
+        self._prints_3mf_natively = prints_3mf_natively
         self.eventloop = server.get_event_loop()
         self.file_manager = file_manager
         self.database = database
@@ -352,7 +343,7 @@ class Helix3mfConverter:
     # -- lifecycle -----------------------------------------------------------
 
     async def start(self) -> None:
-        native = native_3mf_support(self.file_manager)
+        native = self._prints_3mf_natively(self.file_manager)
         if native:
             logging.info("HelixPrint: Moonraker prints .3mf natively, .3mf conversion off")
             return
