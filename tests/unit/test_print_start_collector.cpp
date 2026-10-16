@@ -4127,6 +4127,8 @@ TEST_CASE_METHOD(SnapmakerHeaterWaitFixture,
     set_chamber(300, 0);
     set_all_temps(/*bed*/ 1000, 1000, /*ext*/ 2100, 2100);
     report_for(15);
+    // With no chamber heater there is nothing to read the wait for.
+    CHECK_FALSE(PrintStartCollectorTestAccess::chamber_wait_line_requested(collector()));
     CHECK(get_current_phase() == PrintStartPhase::BED_MESH);
     CHECK(chamber_wait_flag() == 0);
 }
@@ -4142,6 +4144,38 @@ TEST_CASE_METHOD(SnapmakerHeaterWaitFixture,
     report_for(15);
     CHECK(get_current_phase() == PrintStartPhase::BED_MESH);
     CHECK(chamber_wait_flag() == 0);
+}
+
+// A slicer that sends no M141, or a glue that reports no refusal: the heater
+// sits at 0 and TEMPERATURE_WAIT SENSOR="heater_generic dragonbreath" waits.
+TEST_CASE_METHOD(SnapmakerHeaterWaitFixture,
+                 "a TEMPERATURE_WAIT on the chamber heater at target 0 is a chamber stall",
+                 "[print][collector][heater_wait][chamber_wait]") {
+    use_appliance_chamber();
+    set_chamber(280, 0);
+    set_all_temps(/*bed*/ 1000, 1000, /*ext*/ 2100, 2100);
+    report_for(6);
+    REQUIRE(PrintStartCollectorTestAccess::chamber_wait_line_requested(collector()));
+    CHECK(get_current_phase() == PrintStartPhase::BED_MESH);
+
+    SECTION("the line names the chamber heater") {
+        PrintStartCollectorTestAccess::answer_chamber_wait_line(
+            collector(),
+            {helix::ChamberWaitKind::TemperatureWait, 35, "heater_generic dragonbreath"});
+        report_for(2);
+        CHECK(get_current_phase() == PrintStartPhase::SOAKING);
+        CHECK(get_current_message() == "Waiting for chamber 28°C");
+        CHECK(chamber_wait_flag() == 1);
+    }
+
+    SECTION("a probe coil's wait is not the chamber's") {
+        PrintStartCollectorTestAccess::answer_chamber_wait_line(
+            collector(),
+            {helix::ChamberWaitKind::TemperatureWait, 40, "temperature_probe beacon_coil"});
+        report_for(2);
+        CHECK(get_current_phase() == PrintStartPhase::BED_MESH);
+        CHECK(chamber_wait_flag() == 0);
+    }
 }
 
 TEST_CASE_METHOD(SnapmakerHeaterWaitFixture,

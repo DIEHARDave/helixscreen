@@ -5,6 +5,7 @@
 #include "ui_timer_guard.h"
 
 #include "async_lifetime_guard.h"
+#include "chamber_wait_line.h"
 
 #include <cstdint>
 #include <optional>
@@ -49,21 +50,6 @@ class ChamberStallArbiter {
     int prompted_seq_ = 0;
     bool prompted_unheated_ = false;
 };
-
-/// Which command holds the queue. They end differently: M191 returns on a
-/// target of 0 or a print cancel, while TEMPERATURE_WAIT on a sensor's
-/// MINIMUM ends only at that temperature or at a shutdown.
-enum class ChamberWaitKind { Unknown, M191, TemperatureWait };
-
-struct ChamberWaitLine {
-    ChamberWaitKind kind = ChamberWaitKind::Unknown;
-    double target_c = 0; ///< M191's S/R or TEMPERATURE_WAIT's MINIMUM; 0 = none
-};
-
-/// Read the command the print is executing from the file bytes that end at
-/// virtual_sdcard.file_position (the last complete line). Anything else,
-/// such as a macro whose body holds the wait, is Unknown.
-ChamberWaitLine classify_chamber_wait_line(std::string_view chunk_ending_at_position);
 
 /// How Cancel print ends a print held by a chamber wait.
 /// - ClearTargetThenCancel (M191): a target of 0 by the route around the

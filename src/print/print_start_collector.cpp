@@ -7,8 +7,10 @@
 #include "ui_update_queue.h"
 
 #include "ams_state.h"
+#include "app_globals.h"
 #include "config.h"
 #include "format_utils.h"
+#include "i_moonraker_api.h"
 #include "json_utils.h"
 #include "lvgl/src/others/translation/lv_translation.h"
 #include "memory_monitor.h"
@@ -424,6 +426,7 @@ void PrintStartCollector::reset_run_locked() {
     heater_wait_shown_ = false;
     wait_heater_arrived_at_ = helix::sim::SimulatedClock::time_point::min();
     heaters_ready_wait_since_ = helix::sim::SimulatedClock::time_point::min();
+    forget_chamber_wait_line_locked();
     pre_wait_phase_ = PrintStartPhase::IDLE;
     pre_wait_message_.clear();
     last_phase_object_state_.clear();
@@ -899,6 +902,10 @@ void PrintStartCollector::check_fallback_completion() {
             bed_short = !heating_target_reached_locked(PrintStartPhase::HEATING_BED);
         }
         if (!waiting) {
+            {
+                std::lock_guard<std::mutex> lock(state_mutex_);
+                forget_chamber_wait_line_locked();
+            }
             end_heater_wait();
         } else {
             const int chamber_temp =
@@ -921,20 +928,40 @@ void PrintStartCollector::check_fallback_completion() {
             const bool heater_refused =
                 !temps.chamber_heater_name().empty() &&
                 temps.chamber_command_rejection().kind != chamber::CommandRejection::None;
+            // Without a refusal (a slicer that sends no M141, a glue that
+            // reports none), the command at the print position settles it:
+            // a TEMPERATURE_WAIT whose SENSOR is the chamber heater.
+            const std::string& chamber_heater = temps.chamber_heater_name();
             bool chamber_unheated = false;
+            uint64_t read_gen = 0;
             {
                 std::lock_guard<std::mutex> lock(state_mutex_);
                 const auto now = helix::sim::SimulatedClock::now();
                 if (!heaters_ready) {
                     heaters_ready_wait_since_ = helix::sim::SimulatedClock::time_point::min();
+                    forget_chamber_wait_line_locked();
                 } else if (heaters_ready_wait_since_ ==
                            helix::sim::SimulatedClock::time_point::min()) {
                     heaters_ready_wait_since_ = now;
                 }
-                chamber_unheated =
-                    heaters_ready && chamber_target <= 0 &&
+                const bool settled =
+                    heaters_ready &&
                     heaters_ready_wait_since_ != helix::sim::SimulatedClock::time_point::min() &&
-                    now - heaters_ready_wait_since_ >= CHAMBER_WAIT_SETTLE && heater_refused;
+                    now - heaters_ready_wait_since_ >= CHAMBER_WAIT_SETTLE;
+                const bool unheated_heater =
+                    settled && chamber_target <= 0 && !chamber_heater.empty();
+                if (unheated_heater && !heater_refused && !device_wait &&
+                    !chamber_line_requested_) {
+                    chamber_line_requested_ = true;
+                    read_gen = ++chamber_line_gen_;
+                }
+                chamber_unheated = unheated_heater &&
+                                   (heater_refused ||
+                                    wait_names_chamber_heater(chamber_line_, chamber_heater,
+                                                              temps.chamber_temperature_source()));
+            }
+            if (read_gen != 0) {
+                request_chamber_wait_line(read_gen);
             }
             const PrintStartPhase waited_on = nozzle_short ? PrintStartPhase::HEATING_NOZZLE
                                               : bed_short  ? PrintStartPhase::HEATING_BED
@@ -2101,6 +2128,66 @@ void PrintStartCollector::update_phase(PrintStartPhase phase, const std::string&
     if (should_save) {
         save_prediction_entry();
     }
+}
+
+void PrintStartCollector::forget_chamber_wait_line_locked() {
+    chamber_line_ = {};
+    chamber_line_requested_ = false;
+    ++chamber_line_gen_;
+}
+
+// The command at the print position: virtual_sdcard.file_position, then the
+// bytes before it. Main thread; the answer lands under state_mutex_ and is
+// read on the next tick.
+void PrintStartCollector::request_chamber_wait_line(uint64_t gen) {
+    const char* file = lv_subject_get_string(state_.print_state().get_print_filename_subject());
+    if (!file || !file[0]) {
+        return;
+    }
+    auto self = shared_from_this();
+    const std::string filename = file;
+    client_.send_jsonrpc(
+        "printer.objects.query", {{"objects", {{"virtual_sdcard", {"file_position"}}}}},
+        [self, gen, filename](const json& resp) {
+            const json& result = resp.contains("result") ? resp["result"] : resp;
+            if (!result.contains("status") || !result["status"].contains("virtual_sdcard") ||
+                !result["status"]["virtual_sdcard"].contains("file_position") ||
+                !result["status"]["virtual_sdcard"]["file_position"].is_number()) {
+                return;
+            }
+            const auto pos = result["status"]["virtual_sdcard"]["file_position"].get<uint64_t>();
+            helix::ui::queue_update(
+                "PrintStartCollector::read_chamber_wait_line", [self, gen, filename, pos]() {
+                    IMoonrakerAPI* api = get_moonraker_api();
+                    if (!api || !api->transfers().supports_range_reads()) {
+                        return;
+                    }
+                    constexpr uint64_t kWindow = 256;
+                    const uint64_t from = pos > kWindow ? pos - kWindow : 0;
+                    api->transfers().download_file_range(
+                        "gcodes", filename, from, static_cast<size_t>(pos - from),
+                        [self, gen](const std::string& bytes) {
+                            self->apply_chamber_wait_line(gen, classify_chamber_wait_line(bytes));
+                        },
+                        [](const MoonrakerError& e) {
+                            spdlog::debug("[PrintStartCollector] Chamber wait line not read: {}",
+                                          e.message);
+                        });
+                });
+        },
+        [](const MoonrakerError& e) {
+            spdlog::debug("[PrintStartCollector] virtual_sdcard not read: {}", e.message);
+        });
+}
+
+void PrintStartCollector::apply_chamber_wait_line(uint64_t gen, const ChamberWaitLine& line) {
+    std::lock_guard<std::mutex> lock(state_mutex_);
+    if (gen != chamber_line_gen_) {
+        return; // read for a wait that has since ended
+    }
+    spdlog::info("[PrintStartCollector] Waiting command: kind {}, sensor '{}'",
+                 static_cast<int>(line.kind), line.sensor);
+    chamber_line_ = line;
 }
 
 std::string PrintStartCollector::chamber_wait_message(int temp_deci, int target_deci) {

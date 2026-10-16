@@ -601,6 +601,12 @@ TEST_CASE("the line at the print position names the waiting command",
     check("rtial line\nTEMPERATURE_WAIT SENSOR=\"heater_generic dragonbreath\" MINIMUM=35\n",
           ChamberWaitKind::TemperatureWait, 35);
     check("TEMPERATURE_WAIT SENSOR=chamber MAXIMUM=80\n", ChamberWaitKind::TemperatureWait, 0);
+    CHECK(classify_chamber_wait_line(
+              "TEMPERATURE_WAIT SENSOR=\"heater_generic DragonBreath\" MINIMUM=35\n")
+              .sensor == "heater_generic dragonbreath");
+    CHECK(classify_chamber_wait_line("TEMPERATURE_WAIT SENSOR=temperature_sensor MINIMUM=35\n")
+              .sensor == "temperature_sensor");
+    CHECK(classify_chamber_wait_line("M191 S60\n").sensor.empty());
     check("PRINT_START BED=100 CHAMBER=60\n", ChamberWaitKind::Unknown, 0);
     check("M1910 S5\n", ChamberWaitKind::Unknown, 0);
     check("", ChamberWaitKind::Unknown, 0);
@@ -908,4 +914,31 @@ TEST_CASE_METHOD(PromptFixture, "Cancel tapped while the waiting command is read
         CHECK(helix::AbortManager::instance().get_state() ==
               helix::AbortManager::State::SENT_CANCEL);
     }
+}
+
+TEST_CASE("a TEMPERATURE_WAIT names the chamber heater only by its own names",
+          "[chamber][rejection][wait_line]") {
+    using helix::ChamberWaitKind;
+    using helix::ChamberWaitLine;
+    using helix::wait_names_chamber_heater;
+    const std::string heater = "heater_generic dragonbreath";
+    const ChamberWaitLine on_heater{ChamberWaitKind::TemperatureWait, 35, heater};
+    CHECK(wait_names_chamber_heater(on_heater, heater, heater));
+    CHECK(wait_names_chamber_heater(on_heater, "heater_generic DragonBreath", ""));
+    // The chamber reading's own sensor counts while a heater exists.
+    const ChamberWaitLine on_reading{ChamberWaitKind::TemperatureWait, 35,
+                                     "temperature_sensor cavity"};
+    CHECK(wait_names_chamber_heater(on_reading, heater, "temperature_sensor cavity"));
+    // A sensor-only printer has no chamber heater to name.
+    CHECK_FALSE(wait_names_chamber_heater(on_reading, "", "temperature_sensor cavity"));
+    // A probe coil, and anything that is not a TEMPERATURE_WAIT.
+    CHECK_FALSE(wait_names_chamber_heater(
+        {ChamberWaitKind::TemperatureWait, 40, "temperature_probe beacon_coil"}, heater, heater));
+    CHECK_FALSE(wait_names_chamber_heater({ChamberWaitKind::M191, 60, heater}, heater, heater));
+}
+
+TEST_CASE_METHOD(PromptFixture, "an unheated chamber-heater wait with nothing refused prompts",
+                 "[chamber][rejection][prompt][prompt_ui]") {
+    chamber_wait(true);
+    CHECK(dialog() != nullptr);
 }
