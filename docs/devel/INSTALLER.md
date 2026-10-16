@@ -82,6 +82,7 @@ curl -sSL https://releases.helixscreen.org/install.sh | sh
 | `--clean` | Remove old installation completely, then fresh install |
 | `--version VER` | Install specific version (e.g., `--version v1.1.0`) |
 | `--local FILE` | Install from a local archive (.zip or .tar.gz, skip download) |
+| `FILE` | An existing `.zip`, `.tar.gz` or `.tgz` named on its own is `--local FILE`; any other bare word stays `Unknown option`. Two different archives are refused |
 
 ### 2. Local Archive Install
 
@@ -94,6 +95,37 @@ sh /data/install.sh --local /data/helixscreen-ad5m.zip
 ```
 
 The installer auto-detects when HTTPS is unavailable and prints manual download instructions.
+
+A handed-over archive is the version installed: `parse_tarball_version` reads it from the
+filename for the plan (an unversioned zip shows `local`), and nothing consults the channel or
+the network for it.
+
+### 2a. The Package Beside the Installer
+
+Every release package ships `install.sh` at its root, so `tar -xzf ... && ./helixscreen/install.sh`
+is a natural thing for a user to run. With no `--version`, `--local` or `--update`, that
+installs the package it sits in (`detect_package_beside_installer` and
+`settle_package_beside_installer` in `scripts/lib/installer/release.sh#detect_package_beside_installer`):
+
+- **What counts as a package.** `installer_self_dir` (the directory `$0` lives in; none under
+  `curl | sh`) holds `bin/helix-screen`, `ui_xml/`, `assets/` and a release_info.json with a
+  `version` and an `asset_name` of the form `helixscreen-<platform>.zip`, which the packaging
+  bakes (`write-release-info` in `mk/cross.mk`). The plan says `Installing the package next to
+  this installer: <version> (<platform>)`.
+- **Never an installed tree.** An install ships the same `install.sh` (for offline updates), and
+  installing a tree onto itself means nothing, so that copy keeps resolving online. The package
+  is dropped when its directory is a known install root (`_HELIX_KNOWN_INSTALL_DIRS`,
+  `$KLIPPER_HOME/helixscreen`, the desktop root) or, once `set_install_paths` has run, this
+  run's `INSTALL_DIR`. Uninstall runs and the in-app updater (`HELIX_SELF_UPDATE=1`) never look.
+- **Platform match.** The package's asset must be the one `helix_self_update_asset` names for
+  this host, the same name its self-update would fetch, or the run stops before the pre-flight
+  checks with both platforms named (and `--desktop`/`--kiosk` suggested for the two x86
+  flavours). The ELF check in `extract_release` still runs after that.
+- **Flavour.** On x86 with no flag and no install on disk, an `x86-desktop` package picks the
+  desktop flavour and an `x86` package the kiosk (`X86_FLAVOUR_REASON` "the package").
+- **Install path.** `use_package_tree` stages the directory as `_ARCHIVE_FORMAT=tree`, and
+  `extract_release` copies it (`cp -a`) where it would unpack an archive; validation, the
+  backup/swap and the config restore are the archive's. The user's tree is only read.
 
 ### 3. KIAUH Extension
 
@@ -117,14 +149,14 @@ From a repo checkout, the modular installer sources modules directly:
 
 ### Before the confirm point (read-only)
 
-1. **Host probe and arguments** -- `host_profile_probe`, `parse_installer_args`, `mod_payload_autodetect`
+1. **Host probe and arguments** -- `host_profile_probe`, `parse_installer_args`, `mod_payload_autodetect`, `detect_package_beside_installer` (before platform detection, since an x86 package's flavour feeds `resolve_x86_flavour`)
 2. **Guards** -- refuse an uninstall run from the install dir; refuse to install over a firmware-managed HelixScreen
 3. **Platform detection** -- `detect_platform()` returns one of `cc1`, `k2`, `ad5m`, `ad5x`, `k1`, `snapmaker-u1`, `m1`, `pi`, `pi32`, `x86`, or `unsupported` (plus zmod/guilouz sub-detectors); `unsupported` exits. On `x86`, `resolve_x86_flavour` then settles desktop vs kiosk, and a desktop install is platform `x86-desktop` from there on (see [x86: Desktop Window or Kiosk](#x86-desktop-window-or-kiosk-x86-x86-desktop))
 4. **Firmware detection** -- AD5M/AD5X: `detect_mod_flavor`; K1: `detect_k1_firmware`
-5. **Path configuration** -- `set_install_paths()` sets `INSTALL_DIR`, `INIT_SCRIPT_DEST`, `PREVIOUS_UI_SCRIPT`, `TMP_DIR`; `mod_payload_mode_block` settles payload mode
+5. **Path configuration** -- `set_install_paths()` sets `INSTALL_DIR`, `INIT_SCRIPT_DEST`, `PREVIOUS_UI_SCRIPT`, `TMP_DIR`; `mod_payload_mode_block` settles payload mode; `settle_package_beside_installer` drops a package that is the install itself and refuses one for another platform
 6. **Permission check** -- Root required on AD5M/K1; sudo on Pi; refused on `x86-desktop`, which installs as the user and also refuses a directory at its root that is not a desktop install. `--uninstall` branches off here and exits, so it never reaches the confirm point; `parse_installer_args` refuses `--uninstall --dry-run`
 7. **Pre-flight checks** -- `detect_missing_unzip`, `check_requirements`, `detect_missing_runtime_deps`, `check_disk_space`, `detect_init_system`, `check_klipper_ecosystem`
-8. **Version and release** -- `resolve_update_channel` (update or existing install), then `--local` filename, `--version` or `get_latest_version`; `probe_release` HEADs the archive so the plan only offers a release that exists
+8. **Version and release** -- `resolve_update_channel` (update or existing install), then the `--local` filename, the package beside the installer, `--version` or `get_latest_version`; `probe_release` HEADs the archive so the plan only offers a release that exists. When every candidate answers 404, `print_release_with_platform_hint` reads the stable, beta and dev manifests in that order and prints the `--version` command for the first release that lists this platform (with `--desktop` for the desktop flavour), or a generic `--version` hint when none can be read. It never installs that release on its own
 9. **Detection for the plan** -- `detect_competing_uis` (only stock UIs that are running or would start at boot; one an earlier install already disabled is not listed), `detect_moonraker_integration`, `detect_kiauh` (no Add when the extension is already installed)
 
 ### The confirm point
@@ -581,11 +613,12 @@ prints it):
 | 4 | A provable desktop install **and** a kiosk install | exit 1, asking for a flag |
 | 5 | A provable desktop install | desktop |
 | 6 | A kiosk install: the service unit or init script, or a `bin/helix-screen` under a kiosk root that is not a desktop payload | kiosk |
-| 7 | `--uninstall` with nothing found | kiosk (the unchanged sweep) |
-| 8 | Running as root | kiosk: a desktop install refuses root |
-| 9 | No desktop present (`_in_graphical_session`, or a display manager active or enabled) | kiosk |
-| 10 | `--update`, `--dry-run`, `--yes`, or no terminal to answer | desktop, inferred |
-| 11 | Otherwise | asks `Run HelixScreen in a window on this desktop? [Y/n]`; end of input exits with nothing changed, since "no" takes over the screen |
+| 7 | The package beside the installer is an `x86-desktop` or `x86` build | that package's flavour |
+| 8 | `--uninstall` with nothing found | kiosk (the unchanged sweep) |
+| 9 | Running as root | kiosk: a desktop install refuses root |
+| 10 | No desktop present (`_in_graphical_session`, or a display manager active or enabled) | kiosk |
+| 11 | `--update`, `--dry-run`, `--yes`, or no terminal to answer | desktop, inferred |
+| 12 | Otherwise | asks `Run HelixScreen in a window on this desktop? [Y/n]`; end of input exits with nothing changed, since "no" takes over the screen |
 
 **Proof of ownership.** A desktop install is recognised by its payload, not its path:
 `desktop_payload_is_ours` needs `bin/helix-screen` and a release_info.json naming
@@ -604,7 +637,7 @@ No home-relative path is on `HELIX_INSTALL_DIRS`, whose sweep removes without ch
 | **Updates** | The app only announces them (Install Update opens the release page, and `UpdateChecker::start_download()` refuses on this build); `install.sh --update` finds the install and keeps `config/` |
 | **Uninstall** | `uninstall_desktop`: the root after the ownership proof, its `.old` backups, the menu entry when it launches this root, the install log. Nothing outside the user's home |
 
-Tests: `tests/shell/test_x86_desktop_flavour.bats`.
+Tests: `tests/shell/test_x86_desktop_flavour.bats`, and `tests/shell/test_installer_given_package.bats` for an archive or package handed to the installer.
 
 ### K2 / Other Platforms
 

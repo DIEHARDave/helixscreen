@@ -20,15 +20,36 @@ Nothing else needs installing. The 3D G-code preview uses your graphics driver's
 
 ## Install
 
+> **The desktop package is on the 1.1 beta line.** There is no desktop build of 1.0, so until 1.1 is a stable release the commands on this page ask for the beta channel (`R2_CHANNEL=beta`). Once 1.1 is stable, the commands work without it.
+
 Open a terminal **on your desktop PC** (not on the printer) and run:
 
 ```bash
-curl -sSL https://releases.helixscreen.org/install.sh | sh -s -- --desktop
+curl -sSL https://releases.helixscreen.org/install.sh | R2_CHANNEL=beta sh -s -- --desktop
 ```
+
+This installs the newest beta. To install one particular release instead, name it with `--version`, for example `sh -s -- --desktop --version v1.1.0-beta.9` (or any newer version from the [releases page](https://github.com/prestonbrown/helixscreen/releases)).
 
 Do not use `sudo`. Run as root without `--desktop`, the installer sets up the full-screen kiosk instead, which replaces your login screen at boot; with `--desktop`, it stops with an error and changes nothing. The installer puts HelixScreen in `~/.local/share/helixscreen` and adds **HelixScreen** to your applications menu.
 
 > **Without `--desktop`:** on a PC with a desktop session, the installer asks whether you want HelixScreen in a window (the default) or as a full-screen kiosk. The kiosk option is meant for a dedicated printer screen; it replaces your login screen, so pick the window unless that is what you want. Passing `--desktop` skips the question.
+
+### Installing from a downloaded package
+
+If you downloaded `helixscreen-x86-desktop-<version>.tar.gz` from the [releases page](https://github.com/prestonbrown/helixscreen/releases), the installer installs that package and downloads nothing. Extract it and run the installer inside it:
+
+```bash
+tar -xzf helixscreen-x86-desktop-*.tar.gz
+./helixscreen/install.sh --desktop
+```
+
+Or hand the archive to any copy of the installer:
+
+```bash
+./install.sh --desktop helixscreen-x86-desktop-<version>.tar.gz
+```
+
+The installer copies the package into `~/.local/share/helixscreen`, so you can delete the extracted folder and the archive afterwards. A kiosk package (`helixscreen-x86-<version>.tar.gz`) is refused here with a message saying so.
 
 ---
 
@@ -78,10 +99,10 @@ Close the window to quit.
 When a new version is out, HelixScreen tells you in the app. **Install Update** opens the release page in your web browser. To install it, close HelixScreen and run:
 
 ```bash
-curl -sSL https://releases.helixscreen.org/install.sh | sh -s -- --update
+curl -sSL https://releases.helixscreen.org/install.sh | R2_CHANNEL=beta sh -s -- --update
 ```
 
-The installer finds your desktop install by itself and keeps your settings.
+The installer finds your desktop install by itself and keeps your settings. Leave out `R2_CHANNEL=beta` once 1.1 is a stable release. Installing a newer downloaded package the way shown under [Installing from a downloaded package](#installing-from-a-downloaded-package) updates it too, settings included.
 
 ---
 

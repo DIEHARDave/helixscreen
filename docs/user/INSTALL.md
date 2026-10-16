@@ -228,6 +228,23 @@ The full log is saved either way, to `~/printer_data/logs/helixscreen-install.lo
 
 > **Where does it install?** The installer puts HelixScreen in your home directory when it runs as a normal user (with or without a Klipper ecosystem alongside), and in `/opt` when it runs as root. Override with `INSTALL_DIR=/custom/path/helixscreen` (the directory name must contain `helixscreen`).
 
+#### Installing from a downloaded package
+
+If you already downloaded a release from the [releases page](https://github.com/prestonbrown/helixscreen/releases), the installer installs exactly that release and does not download anything. Either name the archive:
+
+```bash
+sh install.sh helixscreen-pi-v1.1.0.tar.gz
+```
+
+(`--local helixscreen-pi-v1.1.0.tar.gz` does the same), or extract it and run the installer that comes inside it:
+
+```bash
+tar -xzf helixscreen-pi-v1.1.0.tar.gz
+./helixscreen/install.sh
+```
+
+The installer says `Installing the package next to this installer` and shows the package's version in its plan. If the package was built for a different kind of printer or computer, it stops and changes nothing. Adding `--version` or `--update` makes it download from the internet instead.
+
 ### Step 3: Complete the Setup Wizard
 
 After installation, HelixScreen starts automatically. The on-screen wizard guides you through:
