@@ -489,3 +489,16 @@ TEST_CASE("the app's own gcodes directories are named once", "[filename_utils][s
     CHECK_FALSE(helix::gcode::is_app_managed_directory("parts"));
     CHECK_FALSE(helix::gcode::is_app_managed_directory(".helix_temp"));
 }
+
+TEST_CASE("only the root's staging directories hold the app's copies",
+          "[filename_utils][staging]") {
+    using helix::gcode::is_uploaded_rewrite_path;
+    CHECK(is_uploaded_rewrite_path(".helix_temp/modified_1p_a.gcode"));
+    CHECK(is_uploaded_rewrite_path("gcodes/.helix_temp/modified_1p_a.gcode"));
+    CHECK(is_uploaded_rewrite_path("helix_staging/modified_1p_a.gcode"));
+    // A user folder of that name deeper down is the user's: never deleted.
+    CHECK_FALSE(is_uploaded_rewrite_path("jobs/helix_staging/modified_1p_a.gcode"));
+    CHECK_FALSE(is_uploaded_rewrite_path("jobs/.helix_temp/modified_1p_a.gcode"));
+    CHECK(resolve_gcode_filename("jobs/helix_staging/modified_1p_a.gcode") ==
+          "jobs/helix_staging/modified_1p_a.gcode");
+}

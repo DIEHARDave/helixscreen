@@ -298,18 +298,23 @@ void ActivePrintMediaManager::self_serve_from_gcode(const std::string& filename,
         three_mf::ThreeMfReader(api_->transfers())
             .read_summary(
                 gcode_path, 0, 0.0,
-                [api = api_, gcode_path, plate, target, ctx, on_success,
-                 on_error](const three_mf::ArchiveSummary& summary) {
-                    const auto* shown = three_mf::find_plate(summary, plate);
-                    const zip::ZipEntry* entry =
-                        shown ? three_mf::plate_thumbnail(*shown) : nullptr;
-                    if (!entry) {
-                        on_error(std::string(helix::GCODE_THUMBNAIL_NONE_EMBEDDED) + gcode_path);
-                        return;
-                    }
-                    helix::fetch_thumbnail_from_archive(gcode_path, *entry, 0, api, target, ctx,
-                                                        on_success, on_error);
-                },
+                // On the main thread, and only while this manager lives: the
+                // API it fetches through is read there, never carried along.
+                lifetime_.bg_cb("ActivePrintMediaManager::archive_summary",
+                                [this, gcode_path, plate, target, ctx, on_success,
+                                 on_error](const three_mf::ArchiveSummary& summary) {
+                                    const auto* shown = three_mf::find_plate(summary, plate);
+                                    const zip::ZipEntry* entry =
+                                        shown ? three_mf::plate_thumbnail(*shown) : nullptr;
+                                    if (!entry || !api_) {
+                                        on_error(std::string(helix::GCODE_THUMBNAIL_NONE_EMBEDDED) +
+                                                 gcode_path);
+                                        return;
+                                    }
+                                    helix::fetch_thumbnail_from_archive(gcode_path, *entry, 0, api_,
+                                                                        target, ctx, on_success,
+                                                                        on_error);
+                                }),
                 on_error);
         return;
     }

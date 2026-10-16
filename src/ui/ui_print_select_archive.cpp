@@ -101,7 +101,8 @@ void PrintSelectPanel::load_archive(size_t i, const std::string& filename, bool 
                 file_list_[i].archive_extract = true;
                 process_metadata_result(i, filename, FileMetadata{});
             });
-        });
+        },
+        archive_cancel_);
 }
 
 void PrintSelectPanel::fetch_archive_thumbnail(size_t i) {

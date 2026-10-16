@@ -4,6 +4,7 @@
 #include "../test_helpers/archive_transfers.h"
 #include "three_mf_reader.h"
 
+#include <atomic>
 #include <cstdio>
 #include <fstream>
 #include <iterator>
@@ -393,4 +394,19 @@ TEST_CASE_METHOD(ReaderFixture, "the summary cache drops the least recently used
     CHECK(transfers.ranges == after_new);
     REQUIRE(summarise(name(1)).ok);
     CHECK(transfers.ranges > after_new);
+}
+
+TEST_CASE_METHOD(ReaderFixture, "a cancelled summary asks for nothing and answers nothing",
+                 "[three_mf][reader]") {
+    put("a.gcode.3mf", fixture("single_plate.gcode.3mf"));
+    auto cancelled = std::make_shared<std::atomic<bool>>(true);
+    bool answered = false;
+    for (uint64_t size : {sizes["a.gcode.3mf"], uint64_t{0}}) {
+        reader.read_summary(
+            "a.gcode.3mf", size, 7.0, [&answered](const ArchiveSummary&) { answered = true; },
+            [&answered](const std::string&) { answered = true; }, cancelled);
+    }
+    CHECK_FALSE(answered);
+    CHECK(transfers.ranges == 0);
+    CHECK(transfers.tails == 0);
 }

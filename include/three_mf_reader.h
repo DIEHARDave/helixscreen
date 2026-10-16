@@ -88,6 +88,8 @@ class ThreeMfReader {
      * (path, modified, size) and answered from memory, synchronously, until
      * the file changes. A @p size of 0 (not known) reads the tail as a suffix
      * range instead, where the transport supports_tail_reads(), and keeps nothing.
+     * Once @p cancelled is set no further read is asked for and neither
+     * callback runs.
      */
     void read_summary(const std::string& path, uint64_t size, double modified,
                       SummaryCallback on_done, ErrorCallback on_error,

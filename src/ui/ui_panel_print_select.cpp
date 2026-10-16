@@ -1645,6 +1645,11 @@ void PrintSelectPanel::process_metadata_result(size_t i, const std::string& file
     }
 }
 
+void PrintSelectPanel::cancel_archive_reads() {
+    archive_cancel_->store(true);
+    archive_cancel_ = std::make_shared<std::atomic<bool>>(false);
+}
+
 void PrintSelectPanel::show_file_in_detail(const PrintFileData& file) {
     const std::string& filament_display =
         file.filament_name.empty() ? file.filament_type : file.filament_name;
@@ -2021,6 +2026,7 @@ void PrintSelectPanel::navigate_to_directory(const std::string& dirname) {
     hide_context_banner();
 
     // Increment generation counter to invalidate in-flight metadata callbacks
+    cancel_archive_reads();
     uint32_t gen = ++nav_generation_;
     spdlog::debug("[{}] Navigation generation incremented to {} (entering {})", get_name(), gen,
                   dirname);
@@ -2039,6 +2045,7 @@ void PrintSelectPanel::navigate_up() {
     }
 
     // Increment generation counter to invalidate in-flight metadata callbacks
+    cancel_archive_reads();
     uint32_t gen = ++nav_generation_;
     spdlog::debug("[{}] Navigation generation incremented to {} (going up)", get_name(), gen);
 
@@ -3369,6 +3376,7 @@ void PrintSelectPanel::start_queued_job(const JobQueueEntry& job) {
     // In-flight metadata callbacks addressed the directory we just left;
     // retargeting without bumping the generation lets them land on files
     // that are no longer listed.
+    cancel_archive_reads();
     ++nav_generation_;
 
     const std::string job_id = job.job_id;

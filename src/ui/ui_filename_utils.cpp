@@ -152,9 +152,17 @@ static const std::string& staging_dir(StagingRoot root) {
 static std::pair<size_t, size_t> find_staged_prefix(const std::string& path) {
     for (const auto root : {StagingRoot::Hidden, StagingRoot::Visible}) {
         const std::string prefix = staging_dir(root) + "/" + staged_name_prefix;
-        if (const size_t pos = path.find(prefix);
-            pos != std::string::npos && (pos == 0 || path[pos - 1] == '/')) {
-            return {pos, pos + prefix.size()};
+        // Root-only: the staging directories sit at the top of the gcodes
+        // root, as the printer reports a path, perhaps behind that root's
+        // name. A user folder of the same name deeper down is the user's own.
+        static const std::string gcodes_root = "gcodes/";
+        for (const size_t pos : {size_t{0}, gcodes_root.size()}) {
+            if (pos > 0 && path.compare(0, gcodes_root.size(), gcodes_root) != 0) {
+                continue;
+            }
+            if (path.compare(pos, prefix.size(), prefix) == 0) {
+                return {pos, pos + prefix.size()};
+            }
         }
     }
     return {std::string::npos, std::string::npos};

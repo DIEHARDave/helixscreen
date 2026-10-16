@@ -42,6 +42,7 @@
 #include <memory>
 #include <optional>
 #include <set>
+#include <unistd.h>
 
 // Forward declaration for global print status panel (declared in ui_panel_print_status.h)
 PrintStatusPanel& get_global_print_status_panel();
@@ -2269,13 +2270,27 @@ PrintPreparationManager::rewrite_archive_plate(const RewriteRoute& job) {
     }
     spdlog::info("[PrintPreparationManager] Extracted plate {} of {} to {}", job.archive_plate,
                  job.file_path, extracted);
+
+    // A rewrite that changes nothing consumes its input, and the archive
+    // itself cannot print, so the plate must outlive the rewrite. A hard link
+    // keeps it at no cost in space, so the archive goes now and the disk never
+    // holds both; where links are unavailable the archive stays until the
+    // rewrite has answered, to extract the plate again from.
+    const std::string kept = extracted + ".keep";
+    const bool linked = ::link(extracted.c_str(), kept.c_str()) == 0;
+    if (linked) {
+        hfs::remove(job.local_download_path);
+    }
     RewriteResult rewritten = job.rewrite(extracted);
     if (rewritten.kind == RewriteResult::Kind::Unchanged) {
-        // The rewrite consumed its input; the archive itself cannot print, so
-        // the plate goes up as extracted.
+        if (linked) {
+            return RewriteResult{RewriteResult::Kind::Rewritten, kept};
+        }
         const std::string again = extract();
         rewritten = again.empty() ? RewriteResult{RewriteResult::Kind::Failed, {}}
                                   : RewriteResult{RewriteResult::Kind::Rewritten, again};
+    } else if (linked) {
+        hfs::remove(kept);
     }
     return rewritten;
 }

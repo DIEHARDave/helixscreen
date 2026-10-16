@@ -52,6 +52,12 @@ struct SummaryJob {
 
 void read_tail(const std::shared_ptr<SummaryJob>& job, uint64_t len, bool may_grow);
 
+/// Whether the reader of @p job has stopped wanting it: nothing more is asked
+/// for, and no callback runs.
+bool abandoned(const std::shared_ptr<SummaryJob>& job) {
+    return job->cancelled && job->cancelled->load();
+}
+
 void finish(const std::shared_ptr<SummaryJob>& job) {
     job->remember(job->summary);
     job->on_done(job->summary);
@@ -77,6 +83,9 @@ void apply_slice_info(const std::shared_ptr<SummaryJob>& job, const zip::ZipEntr
 }
 
 void read_plates(const std::shared_ptr<SummaryJob>& job) {
+    if (abandoned(job)) {
+        return;
+    }
     for (const auto& p : sliced_plates(job->entries)) {
         PlateSummary plate;
         plate.index = p.index;
@@ -114,6 +123,9 @@ void read_plates(const std::shared_ptr<SummaryJob>& job) {
     job->transfers->download_file_range(
         ROOT, job->path, entry.lh_offset, static_cast<size_t>(zip::entry_read_span(entry)),
         [job, entry](const std::string& bytes) {
+            if (abandoned(job)) {
+                return;
+            }
             apply_slice_info(job, entry, bytes_of(bytes), bytes.size());
             finish(job);
         },
@@ -130,9 +142,15 @@ void parse_tail(const std::shared_ptr<SummaryJob>& job, uint64_t len, bool may_g
 // A tail read for an archive whose size is not known: a suffix range, sized
 // afterwards from the end record.
 void read_tail_unsized(const std::shared_ptr<SummaryJob>& job) {
+    if (abandoned(job)) {
+        return;
+    }
     job->transfers->download_file_tail(
         ROOT, job->path, zip::ZIP_TAIL_READ_BYTES,
         [job](const std::string& bytes) {
+            if (abandoned(job)) {
+                return;
+            }
             const auto size = zip::archive_size_from_tail(bytes_of(bytes), bytes.size());
             if (!size) {
                 job->on_error(error_text(job->path, zip::ZipError::NotZip));
@@ -147,10 +165,16 @@ void read_tail_unsized(const std::shared_ptr<SummaryJob>& job) {
 }
 
 void read_tail(const std::shared_ptr<SummaryJob>& job, uint64_t len, bool may_grow) {
+    if (abandoned(job)) {
+        return;
+    }
     job->tail_offset = job->size - len;
     job->transfers->download_file_range(
         ROOT, job->path, job->tail_offset, static_cast<size_t>(len),
         [job, len, may_grow](const std::string& bytes) {
+            if (abandoned(job)) {
+                return;
+            }
             if (bytes.size() != len) {
                 job->on_error(error_text(job->path, zip::ZipError::Truncated));
                 return;

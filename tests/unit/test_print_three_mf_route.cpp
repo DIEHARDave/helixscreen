@@ -21,6 +21,7 @@
 #include <iterator>
 #include <optional>
 #include <string>
+#include <unistd.h>
 
 #include "../catch_amalgamated.hpp"
 
@@ -276,5 +277,40 @@ TEST_CASE("the plugin's status carries its link directory", "[print_preparation]
                                              [](const MoonrakerError&) {});
         REQUIRE(info);
         CHECK(info->symlink_dir == ".helix_print");
+    }
+}
+
+TEST_CASE("an extracted plate's archive is gone before the rewrite runs",
+          "[print_preparation][three_mf][disk]") {
+    const std::string dir = std::filesystem::temp_directory_path().string();
+    const std::string zip = dir + "/helix_rewrite_archive_" + std::to_string(::getpid()) + ".3mf";
+    const std::string plate = disk_bytes(fixture_dir() + "src/plate.gcode");
+    auto copy_archive = [&zip]() {
+        std::ofstream out(zip, std::ios::binary);
+        out << disk_bytes(fixture_dir() + "single_plate.gcode.3mf");
+    };
+
+    SECTION("a rewrite that changes the plate") {
+        copy_archive();
+        bool archive_during_rewrite = true;
+        const std::string out = PrintPreparationManagerTestAccess::rewrite_archive_plate(
+            "Door.gcode.3mf", zip, 9, [&](const std::string&) {
+                archive_during_rewrite = std::filesystem::exists(zip);
+                return true;
+            });
+        CHECK_FALSE(archive_during_rewrite);
+        REQUIRE_FALSE(out.empty());
+        CHECK(disk_bytes(out) == plate);
+        CHECK_FALSE(std::filesystem::exists(out + ".keep"));
+        std::remove(out.c_str());
+    }
+    SECTION("a rewrite that changes nothing still uploads the plate") {
+        copy_archive();
+        const std::string out = PrintPreparationManagerTestAccess::rewrite_archive_plate(
+            "Door.gcode.3mf", zip, 9, [](const std::string&) { return false; });
+        REQUIRE_FALSE(out.empty());
+        CHECK(disk_bytes(out) == plate);
+        CHECK_FALSE(std::filesystem::exists(zip));
+        std::remove(out.c_str());
     }
 }

@@ -914,6 +914,9 @@ class PrintSelectPanel : public PanelBase {
 
     // Reads sliced .3mf archives on the printer; set with the API.
     std::unique_ptr<helix::three_mf::ThreeMfReader> archive_reader_;
+    /// Set when the listing the archive reads under way belong to goes away.
+    std::shared_ptr<std::atomic<bool>> archive_cancel_ = std::make_shared<std::atomic<bool>>(false);
+    void cancel_archive_reads();
 
     // Print start controller (handles print initiation workflow, warnings)
     std::unique_ptr<helix::ui::PrintStartController> print_controller_;
