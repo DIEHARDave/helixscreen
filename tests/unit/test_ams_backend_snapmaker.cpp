@@ -3638,6 +3638,12 @@ TEST_CASE_METHOD(SnapmakerFixture, "Snapmaker claims the not-edit-filament resum
                           .has_value());
     }
 
+    SECTION("marks the refusal as the answer to the user's command") {
+        auto ev = backend.classify_error("!! e2 not edit filament", paused);
+        REQUIRE(ev.has_value());
+        REQUIRE(ev->command_refusal);
+    }
+
     SECTION("keeps the firmware wording for cross-channel dedup") {
         auto ev = backend.classify_error("!! e2 not edit filament", paused);
         REQUIRE(ev.has_value());
