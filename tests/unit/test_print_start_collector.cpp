@@ -3850,6 +3850,30 @@ class SnapmakerHeaterWaitFixture : public SnapmakerCollectorFixture {
                            target_decideg);
     }
 
+    /// A chamber heater whose backend reports refusals and its own waits.
+    void use_appliance_chamber() {
+        auto& temps = state().temperature_state();
+        temps.set_chamber_heater_name("heater_generic dragonbreath");
+        temps.set_chamber_diagnostics_source("dragonbreath", "dragonbreath", "");
+    }
+    void refuse_chamber_target() {
+        state().temperature_state().update_from_status({{"dragonbreath",
+                                                         {{"protocol_error_code", "countermanded"},
+                                                          {"protocol_error_seq", 1},
+                                                          {"protocol_error_target", 60.0}}}});
+    }
+    void report_for(int seconds) {
+        for (int t = 0; t < seconds; ++t) {
+            clock_.advance(std::chrono::seconds(1));
+            feed_gcode("B:100.0 /100.0 T0:210.0 /210.0");
+            tick();
+        }
+    }
+
+    int chamber_wait_flag() {
+        return lv_subject_get_int(state().print_state().get_print_start_chamber_wait_subject());
+    }
+
     helix::sim::SimulatedClock::ManualScope clock_{helix::sim::SimSpeed::of(1.0)};
 };
 } // namespace
@@ -4014,11 +4038,175 @@ TEST_CASE_METHOD(SnapmakerHeaterWaitFixture,
     feed_gcode("B:100.0 /100.0 T0:210.0 /210.0");
     tick();
     REQUIRE(get_current_phase() == PrintStartPhase::SOAKING);
-    REQUIRE(get_current_message() == "Heating chamber...");
+    REQUIRE(get_current_message() == "Waiting for chamber 30 / 60°C");
+    CHECK(chamber_wait_flag() == 1);
 
     clock_.advance(std::chrono::seconds(5));
     tick();
     REQUIRE(get_current_phase() == PrintStartPhase::BED_MESH);
+    CHECK(chamber_wait_flag() == 0);
+}
+
+// The U1 sequence behind the chamber prompt: M109 waits for the nozzle, then
+// the slicer's TEMPERATURE_WAIT SENSOR="heater_generic dragonbreath"
+// MINIMUM=35 waits on a chamber whose heater target the box zeroed. The
+// reports never name the chamber, and nothing sets a chamber target.
+TEST_CASE_METHOD(
+    SnapmakerHeaterWaitFixture,
+    "Snapmaker U1: a chamber wait with the heater off shows the chamber and not the nozzle",
+    "[print][collector][snapmaker][heater_wait][chamber_wait]") {
+    use_appliance_chamber();
+    refuse_chamber_target();
+    set_chamber(280, 0);
+    set_all_temps(/*bed*/ 1000, 1000, /*ext*/ 1500, 2100);
+    for (int t = 0; t < 3; ++t) {
+        clock_.advance(std::chrono::seconds(1));
+        feed_gcode("B:100.0 /100.0 T0:150.0 /210.0");
+        tick();
+    }
+    REQUIRE(get_current_phase() == PrintStartPhase::HEATING_NOZZLE);
+
+    // The nozzle arrives; M109 settles and the chamber wait takes over the
+    // same once-a-second report.
+    set_all_temps(/*bed*/ 1000, 1000, /*ext*/ 2100, 2100);
+    for (int t = 0; t < 3; ++t) {
+        clock_.advance(std::chrono::seconds(1));
+        feed_gcode("B:100.0 /100.0 T0:210.0 /210.0");
+        tick();
+    }
+    INFO("message=" << get_current_message());
+    CHECK(get_current_phase() == PrintStartPhase::HEATING_NOZZLE);
+    CHECK(chamber_wait_flag() == 0);
+
+    for (int t = 0; t < 4; ++t) {
+        clock_.advance(std::chrono::seconds(1));
+        feed_gcode("B:100.0 /100.0 T0:210.0 /210.0");
+        tick();
+    }
+    REQUIRE(get_current_phase() == PrintStartPhase::SOAKING);
+    CHECK(get_current_message() == "Waiting for chamber 28°C");
+    CHECK(chamber_wait_flag() == 1);
+
+    SECTION("the label follows the chamber") {
+        set_chamber(291, 0);
+        clock_.advance(std::chrono::seconds(1));
+        feed_gcode("B:100.0 /100.0 T0:210.0 /210.0");
+        tick();
+        CHECK(get_current_message() == "Waiting for chamber 29°C");
+        CHECK(get_current_phase() == PrintStartPhase::SOAKING);
+    }
+
+    SECTION("the reports stopping gives the announced phase back") {
+        clock_.advance(std::chrono::seconds(5));
+        tick();
+        CHECK(get_current_phase() == PrintStartPhase::BED_MESH);
+        CHECK(chamber_wait_flag() == 0);
+    }
+}
+
+TEST_CASE_METHOD(
+    SnapmakerHeaterWaitFixture,
+    "Snapmaker U1: a wait past the nozzle and bed on a printer with no chamber is not one",
+    "[print][collector][snapmaker][heater_wait][chamber_wait]") {
+    set_all_temps(/*bed*/ 1000, 1000, /*ext*/ 2100, 2100);
+    for (int t = 0; t < 10; ++t) {
+        clock_.advance(std::chrono::seconds(1));
+        feed_gcode("B:100.0 /100.0 T0:210.0 /210.0");
+        tick();
+    }
+    CHECK(get_current_phase() == PrintStartPhase::BED_MESH);
+    CHECK(chamber_wait_flag() == 0);
+}
+
+TEST_CASE_METHOD(SnapmakerHeaterWaitFixture,
+                 "a sensor-only chamber soak is a wait and never the chamber heater's",
+                 "[print][collector][heater_wait][chamber_wait]") {
+    // A Voron heat soak: TEMPERATURE_WAIT SENSOR="temperature_sensor chamber"
+    // MINIMUM=40 with no chamber heater at all.
+    state().temperature_state().set_chamber_sensor_name("temperature_sensor chamber");
+    set_chamber(300, 0);
+    set_all_temps(/*bed*/ 1000, 1000, /*ext*/ 2100, 2100);
+    report_for(15);
+    // With no chamber heater there is nothing to read the wait for.
+    CHECK_FALSE(PrintStartCollectorTestAccess::chamber_wait_line_requested(collector()));
+    CHECK(get_current_phase() == PrintStartPhase::BED_MESH);
+    CHECK(chamber_wait_flag() == 0);
+}
+
+TEST_CASE_METHOD(SnapmakerHeaterWaitFixture,
+                 "another wait on a printer with a healthy chamber heater is not the chamber's",
+                 "[print][collector][heater_wait][chamber_wait]") {
+    // A probe coil warming (TEMPERATURE_WAIT on the probe's sensor) while the
+    // chamber heater sits idle with nothing refused.
+    use_appliance_chamber();
+    set_chamber(300, 0);
+    set_all_temps(/*bed*/ 1000, 1000, /*ext*/ 2100, 2100);
+    report_for(15);
+    CHECK(get_current_phase() == PrintStartPhase::BED_MESH);
+    CHECK(chamber_wait_flag() == 0);
+}
+
+// A slicer that sends no M141, or a glue that reports no refusal: the heater
+// sits at 0 and TEMPERATURE_WAIT SENSOR="heater_generic dragonbreath" waits.
+TEST_CASE_METHOD(SnapmakerHeaterWaitFixture,
+                 "a TEMPERATURE_WAIT on the chamber heater at target 0 is a chamber stall",
+                 "[print][collector][heater_wait][chamber_wait]") {
+    use_appliance_chamber();
+    set_chamber(280, 0);
+    set_all_temps(/*bed*/ 1000, 1000, /*ext*/ 2100, 2100);
+    report_for(6);
+    REQUIRE(PrintStartCollectorTestAccess::chamber_wait_line_requested(collector()));
+    CHECK(get_current_phase() == PrintStartPhase::BED_MESH);
+
+    SECTION("the line names the chamber heater") {
+        PrintStartCollectorTestAccess::answer_chamber_wait_line(
+            collector(),
+            {helix::ChamberWaitKind::TemperatureWait, 35, "heater_generic dragonbreath"});
+        report_for(2);
+        CHECK(get_current_phase() == PrintStartPhase::SOAKING);
+        CHECK(get_current_message() == "Waiting for chamber 28°C");
+        CHECK(chamber_wait_flag() == 1);
+    }
+
+    SECTION("a passive soak on a separate chamber sensor is not a heater stall") {
+        state().temperature_state().set_chamber_sensor_name("temperature_sensor chamber");
+        PrintStartCollectorTestAccess::answer_chamber_wait_line(
+            collector(),
+            {helix::ChamberWaitKind::TemperatureWait, 40, "temperature_sensor chamber"});
+        report_for(2);
+        CHECK(get_current_phase() == PrintStartPhase::BED_MESH);
+        CHECK(chamber_wait_flag() == 0);
+    }
+
+    SECTION("a probe coil's wait is not the chamber's") {
+        PrintStartCollectorTestAccess::answer_chamber_wait_line(
+            collector(),
+            {helix::ChamberWaitKind::TemperatureWait, 40, "temperature_probe beacon_coil"});
+        report_for(2);
+        CHECK(get_current_phase() == PrintStartPhase::BED_MESH);
+        CHECK(chamber_wait_flag() == 0);
+    }
+}
+
+TEST_CASE_METHOD(SnapmakerHeaterWaitFixture,
+                 "the chamber device's own wait labels the chamber and ends with it",
+                 "[print][collector][heater_wait][chamber_wait]") {
+    use_appliance_chamber();
+    set_chamber(280, 0);
+    set_all_temps(/*bed*/ 1000, 1000, /*ext*/ 2100, 2100);
+    state().temperature_state().update_from_status(
+        {{"dragonbreath", {{"wait_active", true}, {"wait_target", 60.0}}}});
+    report_for(2);
+    REQUIRE(get_current_phase() == PrintStartPhase::SOAKING);
+    CHECK(get_current_message() == "Waiting for chamber 28 / 60°C");
+    CHECK(chamber_wait_flag() == 1);
+
+    // The wait ends (the chamber got hot, or the target was cleared) while
+    // the next wait goes on reporting: the chamber is no longer why.
+    state().temperature_state().update_from_status(
+        {{"dragonbreath", {{"wait_active", false}, {"wait_target", nullptr}}}});
+    report_for(1);
+    CHECK(chamber_wait_flag() == 0);
 }
 
 TEST_CASE_METHOD(SnapmakerHeaterWaitFixture,

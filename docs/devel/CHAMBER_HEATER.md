@@ -191,6 +191,9 @@ generic kinds above; they are deliberately not subjects, so nothing can bind a v
 | `chamber_dryer_active` | int 0/1 | A drying cycle is running on the appliance |
 | `chamber_dryer_text` | string | The running cycle's readout, "41/55°C  3:12 left" ("" when idle): live chamber temp against the cycle's target, then the appliance's own countdown |
 | `printer_has_chamber_dryer` | int 0/1 | Capability: the dryer row, from the backend's `dryer_capabilities().supported` |
+| `chamber_heater_command_rejected` | int 0/1 | The heater turned down the last target we sent and has not taken one since (see "Refused Targets") |
+| `printer_has_chamber_target_route` | int 0/1 | Capability: the backend names a set-target route around the gcode queue (`set_target_method()`) |
+| `chamber_heater_rejection_text` | string | Translated sentence for the classified rejection ("" when none): what the banner and the chamber prompt show |
 
 Capability setters round-trip through `PrinterCapabilitiesState`; `set_hardware` raises them exactly when the backend provides the corresponding surface. Backends differ in what they publish, so each readout column on the card follows its own capability — a permanently blank row tells the user nothing. The External badge sits in its own Mode column rather than beside the element temperature, so it survives a backend that reports no element.
 
@@ -214,6 +217,79 @@ Two distinct mechanisms, both informational in v1 — HelixScreen never fights a
 
 - **DragonBreath lease semantics.** SET_HEATER_TEMPERATURE commands round-trip with a lease: while our lease is held the status reports `lease_owned` / `source: klipper`. When another controller (device web UI, physical button) takes over, the firmware invalidates our lease and the status keeps reporting authoritative state. `parse_diagnostics()` derives `externally_controlled = (mode == power_on) && !(lease_owned || source == klipper)` — heating that is neither ours nor Klipper's. The UI shows this as an annotation only.
 - **Stock-firmware autonomous mode (Panda Breath).** `device_autonomous_control()` returns true: the device's own Auto mode follows the bed temperature with no host involvement. The binding publishes which loop is holding the heater as `work_mode` (1 = the appliance's own auto cycle, 2 = the target Klipper set, 3 = a filament-drying run) alongside `work_on` for its output stage, so `parse_diagnostics()` derives `externally_controlled = work_on && work_mode != 2`. `work_mode` latches at its last value after the output stops, which is why `work_on` is what makes the answer present-tense. Beyond the badge this is still informational — no policy (e.g. dimming the setpoint UI) acts on it.
+
+---
+
+## Refused Targets
+
+An appliance can turn a target down: another controller changed it between our read and
+our write, it was switched off on the unit, it is faulted or inhibited, or it rejected the
+printer's credentials. The glue then zeroes the heater target, and a start gcode that
+follows with `TEMPERATURE_WAIT` on the chamber waits forever.
+
+- **Border.** `parse_diagnostics()` fills `rejection` (`CommandRejection`: None, Conflict,
+  Refused, Auth), `refusal_cause` (`RefusalCause`: TurnedOff, Fault, Inhibited,
+  Unspecified), `rejection_seq` (one per rejection, never reset) and `rejection_target_c`.
+  DragonBreath reads `protocol_error_code` (stable codes: `countermanded`, `fault_latched`,
+  `inhibited`, `auth_failed`, `conflict_retries_exhausted`, `invalid_command`,
+  `missing_lease_id`, `lease_lost`, `heater_busy`, or a raw firmware code),
+  `protocol_error_seq` and `protocol_error_target`; the glue clears them on the next target
+  intent. A glue that sends only the free-text `protocol_error` never raises a rejection,
+  but its clearing does report none outstanding.
+- **Latch.** `PrinterTemperatureState` sets `chamber_heater_command_rejected` on the first
+  report (logged at warn), bumps an internal event count on every later `seq`, and clears
+  when the device reports none outstanding or the heater target follows the requested one
+  (any new nonzero target when none was reported).
+- **Route around the queue.** `set_target_method()` names a JSON-RPC method taking
+  `{"target": °C}` that does not wait on the gcode mutex (DragonBreath:
+  `printer.dragonbreath.set_target`). `TemperatureController` sends chamber targets through
+  it; a "method not found" answer switches chamber targets to gcode for the session.
+  `parse_chamber_route_reply()` reads the answer: `accepted` true, false or null, with
+  `pending` true when the route stopped waiting on the device (still trying, not a failure),
+  reason `superseded` (a newer target governs, not a failure) and `klipper_shutdown` (the
+  printer is shut down). A retry (`retry_chamber_target()`) never falls back to gcode, since
+  that would queue behind the wait it is meant to release.
+- **Device wait.** A backend may report the device's own wait on the chamber
+  (`wait_active`, `wait_target_c`; DragonBreath's `wait_active` / `wait_target`, set
+  while its M191 waits and cleared on every exit). `PrinterTemperatureState` exposes them
+  as `chamber_wait_active()` / `chamber_wait_target_c()`.
+- **Pre-print label.** While a heater wait keeps reporting with the nozzle and bed at
+  target, `PrintStartCollector` labels it "Waiting for chamber <cur> / <target>°C" when the
+  wait is the chamber's: the device reports its own wait (its target), the chamber heater
+  is heating toward a target, or, once the wait has outlasted `CHAMBER_WAIT_SETTLE` (M109
+  settling) with the chamber heater at 0 ("Waiting for chamber <cur>°C"), the heater refused
+  its target or the command at the print position is a `TEMPERATURE_WAIT` whose `SENSOR`
+  is the chamber heater itself (`wait_names_chamber_heater()`,
+  `include/chamber_wait_line.h`; read once per wait). Any other wait (a heat soak on a
+  chamber sensor, with or without a heater beside it, or a probe coil) keeps the announced
+  phase. It raises
+  `print_start_chamber_wait` on `PrinterPrintState` while this tick reads the wait as the
+  chamber's.
+- **Prompt.** `ChamberStallPrompt` (`include/chamber_stall_prompt.h`) asks the pure
+  `ChamberStallArbiter`: a chamber wait while rejected prompts once per rejection; a chamber
+  wait at target 0 with no rejection prompts once per job; a rejection with no job toasts.
+  The prompt closes itself when the job ends, the wait clears (the chamber reached its
+  temperature from any source) or the heater takes a target. Try Again resends the
+  reported target (else the last chamber target this app sent, else the waiting command's
+  own temperature), stays open and shows the route's outcome; it is hidden without a target
+  or a route. Keep waiting dismisses.
+- **Which wait, which cancel.** The prompt reads the line the print is executing
+  (`virtual_sdcard.file_position`, then a 256-byte range before it) with
+  `classify_chamber_wait_line()`. They end differently, so `chamber_cancel_path()` picks
+  Cancel print's sequence:
+
+  | Waiting command | Cancel print |
+  |-----------------|--------------|
+  | `M191` | target 0 by the route (the module's wait loop ends on it), then `printer.print.cancel` (`AbortManager::Entry::Cancel`, no queue probe, no emergency stop) |
+  | `TEMPERATURE_WAIT ... MINIMUM=` | only M112 + FIRMWARE_RESTART end it: a confirmation saying so, then `AbortManager::Entry::EmergencyStop` |
+  | anything else (a macro holding the wait, an unreadable file) | as M191; if the cancel then times out, `AbortManager` escalates only per the user's cancel-escalation setting |
+
+  The device's own wait report, when present, counts as `M191` with its target and needs
+  no file read.
+- **Banner.** `chamber_fault_banner` shows the rejection when nothing faulted is behind it,
+  with Retry when the backend has a route (`printer_has_chamber_target_route`). Retry sends
+  by the route; gcode only when no job holds the machine. The banner is on the
+  print-status panel at MEDIUM and up.
 
 ---
 

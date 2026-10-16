@@ -42,6 +42,7 @@ enum class Capability : uint8_t {
     HasChamberHeater,       ///< active chamber heater
     HasChamberHeaterDiagnostics, ///< chamber heater exposes backend diagnostics
     HasChamberFilterFan,         ///< chamber filter fan (output_pin)
+    HasChamberTargetRoute,       ///< chamber target settable around the gcode queue
     HasChamberElementTemp,       ///< backend reports the heating element's temperature
     HasChamberDryer,             ///< backend runs a filament-drying cycle
     HasChamber,                  ///< chamber sensor OR heater
@@ -222,6 +223,9 @@ class PrinterCapabilitiesState {
 
     /** @brief Set chamber filter-fan capability (backend filter pin resolved) */
     void set_has_chamber_filter_fan(bool available);
+
+    /** @brief Set chamber target-route capability (backend names a set-target method) */
+    void set_has_chamber_target_route(bool available);
 
     /** @brief Set chamber element-temperature capability (backend reports one) */
     void set_has_chamber_element_temp(bool available);

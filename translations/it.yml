@@ -528,6 +528,7 @@ translations:
   Cancel macro not configured: Macro annullamento non configurata
   Cancel print: 'Annulla stampa'
   Cancelled: Annullato
+  Cancelling turns the chamber target off so the wait ends, then stops the print.: 'L''annullamento spegne il target della camera per terminare l''attesa, poi ferma la stampa.'
   'Cannot add to queue: internal error': 'Impossibile aggiungere alla coda: errore interno'
   Cannot be changed from here on a multi-unit MMU: Non modificabile da qui su un MMU multi-unità
   'Cannot control timelapse: printer not connected': 'Impossibile controllare timelapse:
@@ -576,6 +577,8 @@ translations:
   Chamber Temperature: Temperatura camera
   Chamber and dryer humidity monitoring: Monitoraggio umidità camera ed essiccatore
   Chamber at %d°C: Camera a %d°C
+  Chamber heater didn't start: 'Il riscaldatore della camera non si è avviato'
+  Chamber heater didn't start. {}: 'Il riscaldatore della camera non si è avviato. {}'
   Chamber heating to %d°C...: Riscaldamento camera a %d°C...
   Chamber target set to {}°C: Target camera impostato a {}°C
   Chamber temp must be 0-%d°C: La temperatura della camera deve essere 0-%d°C
@@ -1064,6 +1067,7 @@ translations:
   Element: Elemento
   Emergency Stop: Arresto emergenza
   Emergency Stop?: Arresto emergenza?
+  Emergency stop: 'Arresto di emergenza'
   Emergency stop activated: Arresto emergenza attivato
   'Emergency stop failed: not connected': 'Arresto emergenza fallito: non connesso'
   'Emergency stop failed: {}': 'Arresto di emergenza fallito: {}'
@@ -1775,6 +1779,7 @@ translations:
 
   Keep its own data on this screen (up to 256 KB).: 'Conserva i propri dati su questo schermo (fino a 256 KB).'
   Keep the bypass spool visible when bypass is off: Mantieni visibile la bobina di bypass quando il bypass è disabilitato
+  Keep waiting: 'Continua ad attendere'
   Kick away: 'Espelli'
   Kinematics: Cinematica
   Klipper: Klipper
@@ -3315,6 +3320,7 @@ translations:
   : "Interrompere la stampa di \"{}\"?\n\nNon sarà possibile annullare dopo 5 secondi."
   Stop the check?: Fermare il controllo?
   Stop the running cycle before starting another: 'Interrompi il ciclo in corso prima di avviarne un altro'
+  Stop with an emergency stop?: 'Fermare con un arresto di emergenza?'
   Stopped: Fermato
   Stopped between Hub and Toolhead: Fermo tra Hub e testina
   Stopped between Lane and Hub: Fermo tra corsia e Hub
@@ -3461,6 +3467,7 @@ translations:
   The buffer saw no movement for 16 seconds. Check for a blockage between the CFS and the extruder, or a stuck buffer: Il buffer non ha rilevato movimento per 16 secondi. Verificare un'ostruzione tra CFS ed estrusore, o un buffer bloccato
   ? The camera thought it saw something on the bed, so the printer stopped before printing. If the bed is clear, it was a false alarm.
   : 'La telecamera ha creduto di vedere qualcosa sul piano, quindi la stampante si è fermata prima di stampare. Se il piano è libero, era un falso allarme.'
+  The chamber wait already ended; nothing was stopped.: 'L''attesa della camera è già terminata; non è stato fermato nulla.'
   The cutter blade didn't return — check for filament wrapped around the cutting mechanism: La lama non è rientrata. Verificare che non ci sia filamento avvolto attorno al meccanismo di taglio
   The cutter is out of alignment — recalibrate with CALIBRATE_CUT_POS: La taglierina è disallineata. Ricalibrare con CALIBRATE_CUT_POS
   The extruder cannot pull it smoothly. Check the spool for a tangle or knot, and the PTFE tube for a severe bend: L'estrusore non riesce a tirare in modo uniforme. Controllare la bobina per aggrovigliamenti o nodi e il tubo PTFE per curve troppo strette
@@ -3468,6 +3475,15 @@ translations:
   : Il filamento non ha raggiunto l'ugello. Il CFS non ha segnalato errori, ma il sensore della testina ancora non rileva filamento. Verifica che la bobina sia ben inserita e che il percorso sia libero, poi riprova.
   The filament may not have fully retracted — try again or manually pull: Il filamento potrebbe non essersi ritratto completamente. Riprovare o estrarlo a mano
   The filament system reported an error: Il sistema filamento ha segnalato un errore
+  The heater can't be changed while the printer is waiting.: 'Il riscaldatore non può essere modificato mentre la stampante è in attesa.'
+  The heater did not accept the printer's credentials.: 'Il riscaldatore non ha accettato le credenziali della stampante.'
+  The heater didn't accept the command.: 'Il riscaldatore non ha accettato il comando.'
+  The heater hasn't answered yet. Still trying.: 'Il riscaldatore non ha ancora risposto. Nuovo tentativo in corso.'
+  The heater is inhibited.: 'Il riscaldatore è inibito.'
+  The heater reports a fault.: 'Il riscaldatore segnala un guasto.'
+  'The heater reports a fault: {}.': 'Il riscaldatore segnala un guasto: {}.'
+  The heater took the target.: 'Il riscaldatore ha accettato il target.'
+  The heater was turned off at the heater.: 'Il riscaldatore è stato spento dal riscaldatore stesso.'
   The heater will cycle on and off several times.: Il riscaldatore si accenderà e
     spegnerà diverse volte.
   The helper macros are installed and activate after Klipper restarts.: 'Le macro di ausilio sono installate e si attivano dopo il riavvio di Klipper.'
@@ -3481,6 +3497,8 @@ translations:
   ? The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes.
   : La stampa è in pausa. Cambiare utensile ora muove la testina e sostituisce il
     filamento all'ugello. Riprendi la stampa al termine del cambio.
+  The print is waiting for the chamber to reach {}°C, but the heater is not heating.: 'La stampa attende che la camera raggiunga {}°C, ma il riscaldatore non sta scaldando.'
+  The print is waiting for the chamber, but the heater is not heating.: 'La stampa attende la camera, ma il riscaldatore non sta scaldando.'
   The printer applied this value and keeps it for this tool.: 'La stampante ha applicato questo valore e lo conserva per questo strumento.'
   The printer did not change its bed check: 'La stampante non ha modificato il controllo del piano'
   'The printer did not change its bed check: {}': 'La stampante non ha modificato il controllo del piano: {}'
@@ -3496,6 +3514,9 @@ translations:
   : La stampante esegue l'homing, poi allontana il piano dall'ugello il più possibile. Alcune bobine non resistono abbastanza al calore e possono deformarsi. Da questa schermata non si muove nulla finché non confermi che le bobine non sono più sul piano; Mainsail, le macro e le stampe inviate da uno slicer non vengono bloccati.
 
   The printer is not homed. Continuing will home all axes, moving the toolhead. Make sure the bed is clear.: La stampante non ha eseguito l'homing. Continuando verrà eseguito l'homing di tutti gli assi, muovendo la testina. Assicurarsi che il piano sia libero.
+  The printer is shut down.: 'La stampante è spenta.'
+  ? The printer is waiting for the chamber to reach a temperature, and only an emergency stop and a firmware restart end that wait. The print stops at once and cannot be resumed.
+  : 'La stampante attende che la camera raggiunga una temperatura, e solo un arresto di emergenza con riavvio del firmware termina l''attesa. La stampa si ferma subito e non può essere ripresa.'
   The printer isn't detecting that any filament is currently loaded. What would you like to do?: La stampante non rileva alcun filamento caricato. Cosa vuoi fare?
   The printer lost power during a print. It can resume where it left off.: La stampante
     ha perso l'alimentazione durante una stampa. Può riprendere da dove si è interrotta.
@@ -3603,6 +3624,7 @@ translations:
   This tool probes each bed screw and tells you how much to adjust.: Questo strumento
     sonda ogni vite del piano e indica quanto regolare.
   'This update asks for new permissions:': 'Questo aggiornamento richiede nuovi permessi:'
+  'This wait ends only at its temperature: cancelling takes an emergency stop and a firmware restart.': 'Questa attesa termina solo alla sua temperatura: l''annullamento richiede un arresto di emergenza e un riavvio del firmware.'
   ? This will apply the Z-offset to your endstop and restart Klipper to save the configuration.
     The printer will briefly disconnect.
   : Questo applicherà lo Z-offset al tuo endstop e riavvierà Klipper per salvare la
@@ -3714,6 +3736,7 @@ translations:
   Try adjusting your search or filters: Prova a modificare la ricerca o i filtri
   Try Again: 'Riprova'
   Try the operation again. If it persists, check for mechanical issues.: Riprova l'operazione. Se il problema persiste, controlla eventuali problemi meccanici.
+  Trying again...: 'Nuovo tentativo...'
   Tune: Regola
   Tuning tower enabled - start a print to test: Torre di regolazione abilitata - avvia
     una stampa per testare
@@ -3883,6 +3906,8 @@ translations:
   Waiting for another box to finish.: In attesa che un'altra scatola finisca.
   Waiting for bed to reach temperature for accurate calibration.: In attesa che il
     piano raggiunga la temperatura per una calibrazione precisa.
+  Waiting for chamber {} / {}°C: 'In attesa della camera {} / {}°C'
+  Waiting for chamber {}°C: 'In attesa della camera {}°C'
   Waiting for the filament system to report its state: In attesa dello stato del sistema filamento
   Warm: Caldo
   Warm Bed: Preriscalda piano

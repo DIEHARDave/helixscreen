@@ -103,7 +103,7 @@ void AbortManager::deinit_subjects() {
 // Public API
 // ============================================================================
 
-void AbortManager::start_abort() {
+void AbortManager::start_abort(Entry entry) {
     // Ignore if already aborting
     if (is_aborting()) {
         spdlog::debug("[AbortManager] Already aborting, ignoring start_abort()");
@@ -117,6 +117,19 @@ void AbortManager::start_abort() {
     {
         std::lock_guard<std::mutex> lock(message_mutex_);
         last_result_message_.clear();
+    }
+
+    if (entry == Entry::Cancel) {
+        spdlog::info("[AbortManager] Caller ended the queue's wait; cancelling directly");
+        set_state(State::SENT_CANCEL);
+        set_progress_message("Stopping print...");
+        send_cancel_print();
+        return;
+    }
+    if (entry == Entry::EmergencyStop) {
+        spdlog::info("[AbortManager] Caller confirmed an emergency stop");
+        escalate_to_estop();
+        return;
     }
 
     // Ask the capability instead of probing: sending HEATER_INTERRUPT to firmware without it

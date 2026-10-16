@@ -515,6 +515,17 @@ class MoonrakerClientMock : public helix::MoonrakerClient {
      */
     void set_chamber_target(double target);
 
+    /**
+     * @brief A chamber target arriving by the appliance's route around the
+     *        gcode queue (or by gcode, for the same heater)
+     *
+     * With HELIX_MOCK_DRAGONBREATH_REJECT set, the appliance turns every target
+     * down: the heater target stays 0 and the status object reports the
+     * rejection. Otherwise the target is taken and any rejection cleared.
+     * @return the route's reply, {"accepted", "reason", "seq"}
+     */
+    json chamber_route_set_target(double target);
+
     // ========== Test Helpers ==========
 
     /**
@@ -2428,6 +2439,12 @@ class MoonrakerClientMock : public helix::MoonrakerClient {
     std::atomic<bool> dragonbreath_fault_{false};
     std::atomic<bool> dragonbreath_offline_{false};
     std::atomic<bool> dragonbreath_external_{false};
+    /// HELIX_MOCK_DRAGONBREATH_REJECT: the vendor code every chamber target is
+    /// refused with ("" = targets are accepted). Written once at construction.
+    std::string dragonbreath_reject_code_;
+    std::atomic<int> dragonbreath_reject_seq_{0};
+    std::atomic<double> dragonbreath_reject_target_{0.0};
+    std::atomic<bool> dragonbreath_rejection_outstanding_{false};
     std::atomic<bool> panda_breath_offline_{false};
     std::atomic<bool> panda_breath_auto_{false};
 
