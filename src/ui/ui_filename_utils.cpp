@@ -424,6 +424,13 @@ bool is_uploaded_rewrite_path(const std::string& path) {
     return find_staged_prefix(path).first != std::string::npos;
 }
 
+std::string preview_gcode_for(const std::string& effective, const std::string& raw) {
+    if (is_3mf(effective) && !raw.empty() && !is_3mf(raw) && has_printable_extension(raw)) {
+        return raw;
+    }
+    return effective;
+}
+
 bool is_3mf(const std::string& name) {
     return ends_with_ci(name, ".3mf");
 }

@@ -265,6 +265,17 @@ std::string qidi_3mf_extract_name(const std::string& print_filename);
 bool is_qidi_3mf_extract(const std::string& entry, const std::string& print_filename);
 
 /**
+ * @brief The G-code a print's preview reads.
+ *
+ * A print the user started from a .3mf (@p effective, its identity) runs as
+ * G-code the printer reports instead (@p raw): a plate extracted and staged,
+ * or the printer's own conversion of it. That G-code is what is printing, so
+ * it is what the preview shows; a .3mf the printer runs itself (raw is the
+ * .3mf) and every ordinary print keep @p effective.
+ */
+std::string preview_gcode_for(const std::string& effective, const std::string& raw);
+
+/**
  * @brief Test whether a filename names a `.3mf` project file (case-insensitive).
  *
  * A `.3mf` is a zip archive, not G-code: there are no layers to parse and no

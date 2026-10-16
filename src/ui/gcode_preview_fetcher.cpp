@@ -74,7 +74,13 @@ void GcodePreviewFetcher::fetch(const std::string& filename, ReadyCb on_ready,
     }
     // Metadata gives the size, which decides whether to download at all. This
     // prevents OOM on memory-constrained devices like AD5M.
-    lookup_metadata(req, resolve_gcode_filename(filename), "gcodes", filename);
+    // A staged plate has its own metadata; the archive it maps back to has none
+    // for G-code.
+    lookup_metadata(req,
+                    helix::gcode::rewritten_archive_plate(filename) > 0
+                        ? filename
+                        : resolve_gcode_filename(filename),
+                    "gcodes", filename);
 }
 
 std::string GcodePreviewFetcher::cache_file_name(const char* prefix, const std::string& file_key) {
