@@ -135,6 +135,76 @@ setup() {
     [[ "$output" == *"Refusing to rm -rf"* ]]
 }
 
+# A PATH holding only what _safe_remove_tmp_dir needs besides the probes, so
+# neither mountpoint nor stat exists: Forge-X's BusyBox has neither applet.
+no_mount_tools() {
+    mkdir -p "$BATS_TEST_TMPDIR/minbin"
+    ln -sf "$(command -v sed)" "$BATS_TEST_TMPDIR/minbin/sed"
+    ln -sf "$(command -v rm)" "$BATS_TEST_TMPDIR/minbin/rm"
+    mkdir -p "$BATS_TEST_TMPDIR/proc"
+}
+
+# _safe_remove_tmp_dir DIR with no mountpoint or stat, reading the mount
+# table from $BATS_TEST_TMPDIR/proc/mounts.
+remove_without_mount_tools() {
+    PATH="$BATS_TEST_TMPDIR/minbin" HELIX_PROC_ROOT="$BATS_TEST_TMPDIR/proc" \
+        _safe_remove_tmp_dir "$1"
+}
+
+@test "_safe_remove_tmp_dir: with no mountpoint or stat, a dir the mount table lists is refused" {
+    no_mount_tools
+    # A space in the path: the table spells it \040, never a literal space.
+    local d="$BATS_TEST_TMPDIR/data part/helixscreen-install"
+    mkdir -p "$d"
+    touch "$d/payload"
+    local phys
+    phys=$(cd "$d" && pwd -P)
+    {
+        echo "/dev/root / ext4 rw 0 0"
+        printf '/dev/mmcblk0p7 %s ext4 rw 0 0\n' "$(printf '%s' "$phys" | sed 's/ /\\040/g')"
+    } > "$BATS_TEST_TMPDIR/proc/mounts"
+    run remove_without_mount_tools "$d"
+    [ "$status" -eq 0 ]
+    [ -f "$d/payload" ]
+    contains "Refusing to rm -rf mountpoint" "$output"
+}
+
+@test "_safe_remove_tmp_dir: with no mountpoint or stat, a dir the mount table does not list is removed" {
+    no_mount_tools
+    local d="$BATS_TEST_TMPDIR/data part/helixscreen-install"
+    mkdir -p "$d"
+    touch "$d/payload"
+    local phys
+    phys=$(cd "$d" && pwd -P)
+    # The parent is a mount and an unescaped spelling of the dir itself is
+    # present: neither is the dir as the table writes it.
+    {
+        echo "/dev/root / ext4 rw 0 0"
+        printf '/dev/mmcblk0p7 %s ext4 rw 0 0\n' "$(printf '%s' "${phys%/*}" | sed 's/ /\\040/g')"
+        printf 'tmpfs %s tmpfs rw 0 0\n' "$phys"
+    } > "$BATS_TEST_TMPDIR/proc/mounts"
+    run remove_without_mount_tools "$d"
+    [ "$status" -eq 0 ]
+    [ ! -d "$d" ]
+}
+
+@test "_safe_remove_tmp_dir: with no mountpoint, stat or readable mount table, the dir is kept" {
+    no_mount_tools
+    local d="$BATS_TEST_TMPDIR/helixscreen-install"
+    mkdir -p "$d"
+    touch "$d/payload"
+    # No $BATS_TEST_TMPDIR/proc/mounts at all.
+    run remove_without_mount_tools "$d"
+    [ "$status" -eq 0 ]
+    [ -f "$d/payload" ]
+    contains "cannot tell whether it is a mountpoint" "$output"
+    # An empty table judges nothing either.
+    : > "$BATS_TEST_TMPDIR/proc/mounts"
+    run remove_without_mount_tools "$d"
+    [ -f "$d/payload" ]
+    contains "cannot tell whether it is a mountpoint" "$output"
+}
+
 # ===========================================================================
 # Wiring: the guards actually gate the code paths that honour the overrides
 # ===========================================================================

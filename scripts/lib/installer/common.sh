@@ -921,23 +921,60 @@ _safe_remove_tmp_dir() {
         log_warn "Refusing to rm -rf TMP_DIR='$d' (name is not an installer scratch dir); leaving it in place."
         return 0
     fi
-    # Mountpoint detection: prefer mountpoint(1); else compare the device id of
-    # the dir against its parent (differs at a mount boundary). BusyBox-safe.
+    # Mountpoint detection: mountpoint(1) when present, else the mount table
+    # and the device ids. A dir neither can judge stays in place.
+    local _mount_state=plain
     if command -v mountpoint >/dev/null 2>&1; then
-        if mountpoint -q "$d"; then
-            log_warn "Refusing to rm -rf mountpoint TMP_DIR='$d' (would wipe a live partition); leaving it in place."
-            return 0
-        fi
+        mountpoint -q "$d" && _mount_state=mount
     else
-        local _ddev _pdev
-        _ddev=$(stat -c '%d' "$d" 2>/dev/null)
-        _pdev=$(stat -c '%d' "$d/.." 2>/dev/null)
-        if [ -n "$_ddev" ] && [ -n "$_pdev" ] && [ "$_ddev" != "$_pdev" ]; then
+        _mount_state=$(_dir_mount_state "$d")
+    fi
+    case "$_mount_state" in
+        plain) ;;
+        mount)
             log_warn "Refusing to rm -rf mountpoint TMP_DIR='$d' (would wipe a live partition); leaving it in place."
             return 0
-        fi
-    fi
+            ;;
+        *)
+            log_warn "Refusing to rm -rf TMP_DIR='$d' (cannot tell whether it is a mountpoint: no mountpoint, stat or readable mount table); leaving it in place."
+            return 0
+            ;;
+    esac
     rm -rf "$d"
+}
+
+# Whether DIR is a mount point, for a system without mountpoint(1): prints
+# "mount", "plain", or "unknown" when nothing could judge it. Forge-X's
+# BusyBox has neither mountpoint nor stat, so the mount table is read first:
+# DIR's physical path matched exactly against field 2, which escapes space,
+# tab and backslash as \040, \011 and \134. The device id of DIR against its
+# parent backs it up where stat exists, and also catches a mount the table
+# spells through another path. An empty or unreadable table judges nothing.
+_dir_mount_state() {
+    local d="$1" mounts="${HELIX_PROC_ROOT:-/proc}/mounts" known=0
+    local phys esc lines=0 _dev _mnt _rest _ddev _pdev
+    phys=$(cd "$d" 2>/dev/null && pwd -P) || phys=""
+    if [ -n "$phys" ] && [ -r "$mounts" ]; then
+        esc=$(printf '%s\n' "$phys" | sed -e 's/\\/\\134/g' -e 's/ /\\040/g' -e 's/	/\\011/g')
+        while read -r _dev _mnt _rest; do
+            lines=$((lines + 1))
+            if [ "$_mnt" = "$esc" ]; then
+                echo mount
+                return 0
+            fi
+        done < "$mounts"
+        [ "$lines" -gt 0 ] && known=1
+    fi
+    _ddev=$(stat -c '%d' "$d" 2>/dev/null) || _ddev=""
+    _pdev=$(stat -c '%d' "$d/.." 2>/dev/null) || _pdev=""
+    if [ -n "$_ddev" ] && [ -n "$_pdev" ]; then
+        if [ "$_ddev" != "$_pdev" ]; then
+            echo mount
+            return 0
+        fi
+        known=1
+    fi
+    if [ "$known" = 1 ]; then echo plain; else echo unknown; fi
 }
 
 # Cleanup function for normal exit
