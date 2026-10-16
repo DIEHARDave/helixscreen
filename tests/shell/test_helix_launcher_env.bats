@@ -1000,6 +1000,42 @@ print_env_from_file() {
     [ -z "$missing" ] || fail "template keys the parse refuses:$missing"
 }
 
+@test "every env-file setting the user docs name is on the allowlist" {
+    # A documented setting the parse refuses is one users write to no effect.
+    # docs/user names a setting as `NAME=value` or as the first cell of a
+    # variable table; gcode macro names in JSON examples are neither.
+    local keys k missing=""
+    keys=$(grep -rhoE '(\b(HELIX|MOONRAKER|MALLOC)_[A-Z0-9_]*[A-Z0-9]=|^\| *`(HELIX|MOONRAKER|MALLOC)_[A-Z0-9_]*[A-Z0-9]`)' \
+        "$WORKTREE_ROOT/docs/user" | sed 's/^| *`//; s/`$//; s/=$//' | sort -u)
+    [ -n "$keys" ] || fail "no keys extracted from docs/user"
+    echo "$keys" | grep -qx HELIX_TOUCH_MIN_X || fail "extraction missed a table key"
+    echo "$keys" | grep -qx HELIX_DPI || fail "extraction missed a NAME= key"
+    for k in $keys; do
+        sh -c ". '$BATS_TEST_TMPDIR/env_parse.sh'; helix_env_key_allowed '$k'" ||
+            missing="$missing $k"
+    done
+    [ -z "$missing" ] || fail "documented settings the parse refuses:$missing"
+}
+
+@test "the touch calibration settings the user docs list load" {
+    local kv k
+    for kv in HELIX_TOUCH_MIN_X=500 HELIX_TOUCH_MAX_X=3580 HELIX_TOUCH_MIN_Y=3200 \
+        HELIX_TOUCH_MAX_Y=900 HELIX_DEBUG_TOUCHES=1; do
+        k="${kv%%=*}"
+        [ "$(print_env_from_file "$k" "$kv")" = "${kv#*=}" ] || fail "$k was not exported"
+    done
+}
+
+@test "HELIX_OOM_SCORE_ADJ takes 0-1000, never a negative score" {
+    [ "$(print_env_from_file HELIX_OOM_SCORE_ADJ 'HELIX_OOM_SCORE_ADJ=0')" = "0" ] || fail "0 refused"
+    [ "$(print_env_from_file HELIX_OOM_SCORE_ADJ 'HELIX_OOM_SCORE_ADJ=500')" = "500" ] || fail "500 refused"
+    [ "$(print_env_from_file HELIX_OOM_SCORE_ADJ 'HELIX_OOM_SCORE_ADJ=1000')" = "1000" ] || fail "1000 refused"
+    [ "$(print_env_from_file HELIX_OOM_SCORE_ADJ 'HELIX_OOM_SCORE_ADJ=-500')" = "" ] || fail "-500 exported"
+    grep -q "HELIX_OOM_SCORE_ADJ must be 0-1000" "$BATS_TEST_TMPDIR/parse.log" || fail "no refusal logged"
+    [ "$(print_env_from_file HELIX_OOM_SCORE_ADJ 'HELIX_OOM_SCORE_ADJ=1001')" = "" ] || fail "1001 exported"
+    [ "$(print_env_from_file HELIX_OOM_SCORE_ADJ 'HELIX_OOM_SCORE_ADJ=050')" = "" ]
+}
+
 @test "--print-env takes the same names the file parse does" {
     cp "$LAUNCHER" "$MOCK_INSTALL/bin/helix-launcher.sh"
     run "$MOCK_INSTALL/bin/helix-launcher.sh" --print-env 1BAD

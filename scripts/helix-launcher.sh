@@ -252,8 +252,9 @@ EOF
 # Keys the env file may set: exactly the settings it is meant to carry - every
 # key config/helixscreen.env names (a bats lint keeps the two in step), the
 # env-file settings the user docs list, the keys deploys and the init script
-# write or query, and the glibc knobs the heap-diagnostic and arena blocks
-# document as overrides. A positive list on purpose: directory keys such as
+# write or query, the glibc knobs the heap-diagnostic and arena blocks
+# document as overrides, and HELIX_OOM_SCORE_ADJ, which the co-hosted block
+# below tells users to set here. A positive list on purpose: directory keys such as
 # HELIX_DATA_DIR (the app chdirs there and dlopens plugins from it) and
 # HELIX_CONFIG_DIR stay off it, as does every other name (LD_*, PATH, IFS,
 # HOME, SHELL, ENV, BASH_ENV, PYTHON*, ...).
@@ -261,18 +262,19 @@ helix_env_key_allowed() {
     case "$1" in
         HELIX_ALSA_DEVICE | HELIX_AUTO_QUIT_MS | HELIX_AUTO_SCREENSHOT | \
             HELIX_BACKLIGHT_DEVICE | HELIX_COLOR_SWAP_RB | HELIX_DEBUG | \
-            HELIX_DEBUG_TOUCH | HELIX_DIAGNOSTIC_UPLOADS | \
+            HELIX_DEBUG_TOUCH | HELIX_DEBUG_TOUCHES | HELIX_DIAGNOSTIC_UPLOADS | \
             HELIX_DISABLE_AUTO_UPDATES | HELIX_DISPLAY_BACKEND | \
             HELIX_DISPLAY_ROTATION | HELIX_DPI | HELIX_DRM_DEVICE | \
             HELIX_FB_DEVICE | HELIX_GCODE_MODE | \
             HELIX_GCODE_STREAMING | HELIX_KEYBOARD_DEVICE | HELIX_LOG_DEST | \
             HELIX_LOG_FILE | HELIX_LOG_LEVEL | HELIX_MOUSE_DEVICE | \
-            HELIX_NICE | HELIX_NO_SPLASH | HELIX_PWM_SOUND | HELIX_REMOTE_CONTROL | \
+            HELIX_NICE | HELIX_NO_SPLASH | HELIX_OOM_SCORE_ADJ | HELIX_PWM_SOUND | HELIX_REMOTE_CONTROL | \
             HELIX_REMOTE_HTTP_TOKEN | HELIX_REMOTE_SOCKET | \
             HELIX_REQUIRE_POINTER | HELIX_SCREEN_SIZE | HELIX_SCROLL_GUARD | \
             HELIX_SCROLL_GUARD_COOLDOWN_MS | HELIX_SKIP_SPLASH | HELIX_SSAO | \
             HELIX_THEME | HELIX_TOUCH_CALIBRATE | HELIX_TOUCH_DEVICE | \
-            HELIX_TOUCH_SWAP_AXES | HELIX_USB_AUTOMOUNT | \
+            HELIX_TOUCH_MAX_X | HELIX_TOUCH_MAX_Y | HELIX_TOUCH_MIN_X | \
+            HELIX_TOUCH_MIN_Y | HELIX_TOUCH_SWAP_AXES | HELIX_USB_AUTOMOUNT | \
             MALLOC_ARENA_MAX | MALLOC_CHECK_ | MALLOC_PERTURB_ | \
             MOONRAKER_HOST | MOONRAKER_PORT)
             return 0
@@ -325,6 +327,13 @@ helix_env_value_refusal() {
                 [0-9] | 1[0-9]) return 1 ;;
             esac
             echo "must be 0-19 (a negative nice would let the UI starve Klipper)"
+            return 0
+            ;;
+        HELIX_OOM_SCORE_ADJ)
+            case "$2" in
+                [0-9] | [1-9][0-9] | [1-9][0-9][0-9] | 1000) return 1 ;;
+            esac
+            echo "must be 0-1000 (a negative score would have the OOM killer take Klipper before the UI)"
             return 0
             ;;
         HELIX_PWM_SOUND)
