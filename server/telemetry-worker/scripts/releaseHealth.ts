@@ -172,8 +172,17 @@ function loadFixture(spec: string): Fixture {
   return JSON.parse(existsSync(spec) ? readFileSync(spec, "utf8") : spec) as Fixture;
 }
 
-async function getJson(url: string, key?: string): Promise<unknown> {
-  const res = await fetch(url, { headers: key ? { "X-API-Key": key } : {} });
+/** A stalled connection would otherwise hold the release gate for minutes. */
+export const FETCH_TIMEOUT_MS = 20_000;
+
+export async function getJson(url: string, key?: string, fetchImpl: typeof fetch = fetch, timeoutMs = FETCH_TIMEOUT_MS): Promise<unknown> {
+  let res: Response;
+  try {
+    res = await fetchImpl(url, { headers: key ? { "X-API-Key": key } : {}, signal: AbortSignal.timeout(timeoutMs) });
+  } catch (err) {
+    if (err instanceof Error && err.name === "TimeoutError") throw new Error(`${url} timed out after ${timeoutMs / 1000}s`);
+    throw err;
+  }
   if (!res.ok) throw new Error(`${url} returned ${res.status}`);
   return res.json();
 }

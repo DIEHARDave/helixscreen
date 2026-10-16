@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import { describe, expect, it } from "vitest";
-import { RELEASE_WARN, compareRelease, formatTable, pickCandidate, type ReleaseRow } from "../../scripts/releaseHealth";
+import { FETCH_TIMEOUT_MS, RELEASE_WARN, compareRelease, formatTable, getJson, pickCandidate, type ReleaseRow } from "../../scripts/releaseHealth";
 
 const row = (over: Partial<ReleaseRow> = {}): ReleaseRow => ({
   version: "1.0.3",
@@ -117,5 +117,28 @@ describe("formatTable", () => {
     for (const v of compareRelease(c, row())) {
       expect(out.split("\n").find((l) => l.startsWith(v.metric))).toContain(v.threshold);
     }
+  });
+});
+
+describe("getJson", () => {
+  /** A fetch that never answers, and rejects the way fetch does when its signal aborts. */
+  const stalled = (async (_url: string, init: RequestInit = {}) =>
+    new Promise((_resolve, reject) => {
+      init.signal?.addEventListener("abort", () => reject(init.signal!.reason));
+    })) as unknown as typeof fetch;
+
+  it("gives up on a stalled connection with a one-line reason", async () => {
+    await expect(getJson("https://x.test/a", undefined, stalled, 10)).rejects.toThrow("https://x.test/a timed out after 0.01s");
+  });
+
+  it("bounds every request by FETCH_TIMEOUT_MS by default", async () => {
+    let signal: AbortSignal | null | undefined;
+    const ok = (async (_url: string, init: RequestInit = {}) => {
+      signal = init.signal;
+      return new Response("{}");
+    }) as unknown as typeof fetch;
+    await getJson("https://x.test/b", "k", ok);
+    expect(signal).toBeInstanceOf(AbortSignal);
+    expect(FETCH_TIMEOUT_MS).toBe(20_000);
   });
 });
