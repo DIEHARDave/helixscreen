@@ -74,13 +74,14 @@ TEST_CASE_METHOD(XMLTestFixture,
 
     FilamentCatalogSelector sel;
     sel.attach(root);
-    // Seed the vendor to a brand absent from the bundled catalog. Without the
-    // additional-vendor merge the seed can't resolve, so it snaps to Generic.
+    // Seed the vendor to a brand absent from the bundled catalog. The seed is
+    // the slot's own brand, so it lists itself before any merge arrives.
     sel.configure(std::nullopt, std::nullopt, std::string("PolyTerra"));
     sel.populate();
-    REQUIRE(sel.current_vendor() == "Generic"); // not in the catalog yet
+    REQUIRE(sel.current_vendor() == "PolyTerra");
 
-    // The host supplies the live (e.g. Spoolman) vendor list; the seed resolves.
+    // The host supplies the live (e.g. Spoolman) vendor list; the seed still
+    // resolves.
     sel.set_additional_vendors({"PolyTerra"});
     CHECK(sel.current_vendor() == "PolyTerra");
 

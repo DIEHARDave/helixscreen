@@ -238,6 +238,7 @@ PrintTaskConfigDelta parse_print_task_config(const nlohmann::json& status) {
     d.filament_exist = ams::read_indexed<bool, kToolCount>(ptc, "filament_exist");
     d.filament_type = ams::read_indexed<std::string, kToolCount>(ptc, "filament_type");
     d.filament_vendor = ams::read_indexed<std::string, kToolCount>(ptc, "filament_vendor");
+    d.filament_official = ams::read_indexed<bool, kToolCount>(ptc, "filament_official");
     d.filament_color_rgba = ams::read_indexed<std::string, kToolCount>(ptc, "filament_color_rgba");
     return d;
 }

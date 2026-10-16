@@ -931,6 +931,13 @@ void AmsEditOverlay::handle_spool_edit_save(bool finish) {
         }
     }
 
+    // A spool name, a product line or one the user typed, describes the spool
+    // it was given to, not the one just picked in its place.
+    if (helix::ams::drop_stale_spool_name(original_info_, working_info_)) {
+        spdlog::info("[AmsEditOverlay] Spool-edit dropped spool name '{}' with the old identity",
+                     original_info_.spool_name);
+    }
+
     // Apply pending color (catalog carries no color — spec §3.3).
     if (details_color_set_) {
         working_info_.color_rgb = details_color_;

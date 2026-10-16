@@ -131,8 +131,22 @@ The active tool is detected from extruder pin state or `toolhead.extruder`, and
 The RFID tag exposes no color *name* — `color_name` stays firmware-unset and is
 user-editable only. `SUB_TYPE` is recognized as a product line only when it matches one
 of eight known literals ("Basic", "Matte", "SnapSpeed", "Silk", "Support", "HF", "95A",
-"95A HF"); a free-form user `spool_name` is never round-tripped to firmware as a
-SUB_TYPE (`src/printer/ams_backend_snapmaker.cpp`, `src/printer/ams_backend_snapmaker.cpp#apply_user_edit`).
+"95A HF"), and those lines name Snapmaker spools: a free-form user `spool_name` is never
+round-tripped to firmware as a SUB_TYPE, and neither is a product line beside another
+vendor's brand (`src/printer/ams_backend_snapmaker.cpp#apply_user_edit`). Paxx firmware
+marks any `filament_detect/set` with fields as OFFICIAL and builds the entry fresh from
+the body, so a SUB_TYPE the POST omits is stored as `NONE`, and one it sends comes back
+through `filament_detect.info` looking like a tag read. `spool_name` follows the tag
+record after the own-write echo guard, so a `NONE` SUB_TYPE blanks it and our echo is
+never learned as the spool's name (`src/printer/ams_backend_snapmaker.cpp#apply_rfid_entry_locked`).
+On load, a stored product line the record does not declare, beside a non-Snapmaker
+brand, is dropped and the record saved back (`src/printer/ams_backend_snapmaker.cpp#on_started`). A channel whose firmware states no
+identity at all (tag `MAIN_TYPE`/`SUB_TYPE` NONE, `print_task_config` vendor NONE and not
+official) retracts a Snapmaker product line its stored record only remembers, and the
+Snapmaker brand beside it, and saves the record back. Nothing else is touched: declared
+fields, any other remembered name or brand, a brand beside a catalog pick, and a record
+bound to a Spoolman spool all stay
+(`src/printer/ams_backend_snapmaker.cpp#retract_unbacked_identity_locked`).
 
 Every row above is code-verified against `parse_rfid_info()` and the apply loop
 (`src/printer/snapmaker_status_parse.cpp#parse_rfid_info`, `src/printer/ams_backend_snapmaker.cpp#apply_rfid_entry_locked`): tag identity rides
@@ -365,9 +379,10 @@ observation only sets the baseline), then `mirror_firmware_to_lane_data()` under
 Because the UID is a hardware identifier the UI cannot write, this backend registers no
 expected-echo value with the fingerprint tracker — user edits can never masquerade as a
 hardware swap (`include/ams_backend_snapmaker.h#AmsBackendSnapmaker`). Clears preserve
-firmware-populated fields (`brand`, `spool_name`, `total_weight_g`) and reset only
-override-exclusive ones (`spoolman_*`, `remaining_weight_g`, `color_name`, catalog
-identity) (`src/printer/ams_backend_snapmaker.cpp#clear_override_fields`).
+firmware-populated fields (`brand`, `total_weight_g`) and reset override-exclusive ones
+(`spoolman_*`, `remaining_weight_g`, `color_name`, catalog identity)
+(`src/printer/ams_backend_snapmaker.cpp#clear_override_fields`); `spool_name` is reset to
+the product line the tag itself states, or blank.
 
 User edits round-trip to firmware through `POST /printer/filament_detect/set`
 (`channel` + `info` with `VENDOR`/`MAIN_TYPE`/`SUB_TYPE`/`RGB_1`/`ALPHA`/temps) — an
