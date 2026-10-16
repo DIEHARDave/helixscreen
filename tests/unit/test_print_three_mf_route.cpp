@@ -7,6 +7,7 @@
 #include "../helix_test_fixture.h"
 #include "../test_helpers/mock_printer.h"
 #include "../test_helpers/planted_gcode.h"
+#include "../test_helpers/print_preparation_manager_test_access.h"
 #include "../test_helpers/printer_state_test_access.h"
 #include "../test_helpers/update_queue_test_access.h"
 #include "../ui_test_utils.h"
@@ -176,4 +177,25 @@ TEST_CASE_METHOD(ArchiveStart, "a .3mf plate on a transport without local copies
     CHECK(printer.api.job_mock().started_prints().empty());
     CHECK_FALSE(succeeded);
     CHECK_FALSE(printer.state.print_state().has_preparing_job());
+}
+
+TEST_CASE_METHOD(ArchiveStart, "a modified .3mf plate starts as itself even with the plugin",
+                 "[print_preparation][three_mf]") {
+    plant("single_plate.gcode.3mf");
+    // The plugin would link the copy under the archive's name, which Klipper
+    // does not print.
+    printer.state.set_helix_plugin_installed(true);
+    drain_until_quiet();
+    REQUIRE(printer.state.plugin_status_state().service_has_helix_plugin());
+    manager.set_archive_plate(kArchive, 9);
+    manager.set_cached_scan_result(gcode::ScanResult{}, kArchive);
+    PrintPreparationManagerTestAccess::modify_and_print(manager, kArchive);
+    drain_until_quiet();
+
+    const auto& uploads = printer.api.transfers_mock().path_uploads();
+    REQUIRE(uploads.size() == 1);
+    CHECK(gcode::rewritten_archive_plate(uploads[0].dest_path) == 9);
+    CHECK(printer.api.job_mock().modified_prints().empty());
+    REQUIRE(printer.api.job_mock().started_prints().size() == 1);
+    CHECK(printer.api.job_mock().started_prints()[0] == uploads[0].dest_path);
 }

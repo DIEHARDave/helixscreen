@@ -207,11 +207,9 @@ template <class Inflate> class ZipEntryInflater {
             if (status_ == 0) {
                 return true;
             }
+            // Out of input: a stream that ends short of its end block is
+            // caught by finish(), which finds the inflater not done.
             if (status_ == 1 && left == 0) {
-                if (!more) {
-                    error_ = ZipError::Inflate; // the stream ends short of its end block
-                    return false;
-                }
                 return true;
             }
         }

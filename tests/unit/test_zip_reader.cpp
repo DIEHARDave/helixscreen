@@ -135,6 +135,23 @@ TEST_CASE("the end record is found behind an archive comment", "[zip]") {
     CHECK(commented.back().crc32 == plain.back().crc32);
 }
 
+TEST_CASE("an end-record signature inside the comment is not taken for the record", "[zip]") {
+    auto zip = archive("single_plate.gcode.3mf");
+    const size_t eocd = eocd_of(zip);
+    // A 30-byte comment that opens with the end-record signature, its own
+    // "comment length" field reading 0xFFFF.
+    std::string comment("PK\x05\x06", 4);
+    comment += std::string(26, '\xFF');
+    zip[eocd + 20] = static_cast<uint8_t>(comment.size());
+    zip[eocd + 21] = 0;
+    zip.insert(zip.end(), comment.begin(), comment.end());
+
+    std::vector<ZipEntry> entries;
+    ZipError err = ZipError::None;
+    REQUIRE(parse_central_directory(zip.data(), zip.size(), zip.size(), entries, err));
+    CHECK(entries.size() == 7);
+}
+
 TEST_CASE("a tail read that misses part of the central directory says how much it needs", "[zip]") {
     const auto zip = archive("single_plate.gcode.3mf");
     std::vector<ZipEntry> entries;
