@@ -924,6 +924,21 @@ class AmsBackendAd5xIfs : public AmsSubscriptionBackend {
     void recheck_ifs_vars_macro();
     void unregister_moonraker_listeners();
     void schedule_json_reread();
+    // Install the store on_started() loaded: file its records onto the lanes,
+    // remember each slot's document as read, then take the store and map.
+    void adopt_loaded_override_store(helix::ams::LoadedOverrideStore loaded);
+    // Re-read lane_data once a burst of firmware colour/type changes settles.
+    // A tool that changes a slot from outside writes its lane record beside
+    // the firmware change, and nothing else reads lane_data after boot
+    // (prestonbrown/helixscreen#1632). Debounced like schedule_json_reread(),
+    // so a burst issues one read.
+    void schedule_lane_record_reread();
+    void reread_lane_records();
+    // File each record that changed since it was last read as another tool's
+    // edit when it is one and newer (file_reread_outside_edit()), and move the
+    // slot's override onto it. Main thread.
+    void
+    apply_reread_lane_records(const std::unordered_map<int, helix::ams::LaneDataRecord>& records);
     // True when `content` differs from the last observed Adventurer5M.json
     // body. Updates last_json_content_ on change. Single source of truth for
     // the "did the JSON change?" decision used by both the initial read and
@@ -1457,6 +1472,11 @@ class AmsBackendAd5xIfs : public AmsSubscriptionBackend {
     bool ifs_vars_repair_staged_ = false;
 
     std::atomic<bool> reread_pending_{false};
+    std::atomic<bool> lane_reread_pending_{false};
+    // Each slot's lane_data document as last read, so a re-read files only a
+    // record that changed since: an unchanged document says nothing new, and
+    // an outside record carries no stamp to order it by. Under mutex_.
+    std::unordered_map<int, nlohmann::json> lane_wire_seen_;
 
     // Main-thread-only: counts CHANGE_ZCOLOR trigger lines seen in the gcode
     // stream since the last coalesced re-read fired. zmod re-emits CHANGE_ZCOLOR

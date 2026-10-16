@@ -247,17 +247,8 @@ void AmsBackendAd5xIfs::on_started() {
     // on this (main) thread; the Moonraker DB callback fires on the libhv
     // event loop, so the two threads don't interfere.
     if (api_) {
-        auto loaded =
-            helix::ams::make_loaded_override_store(api_, "ifs", get_type(), backend_log_tag());
-        if (loaded.store) {
-            helix::ams::ingest_legacy_records(*loaded.store, helix::ams::LegacyLockKeys::LaneData,
-                                              backend_index());
-        }
-        {
-            std::lock_guard<std::mutex> lock(mutex_);
-            override_store_ = std::move(loaded.store);
-            overrides_ = std::move(loaded.overrides);
-        }
+        adopt_loaded_override_store(
+            helix::ams::make_loaded_override_store(api_, "ifs", get_type(), backend_log_tag()));
 
         // Restore the last-known seated lane (#1065 power-cycle floor). The
         // firmware forgets the seated channel across a reboot, so this is the only
@@ -461,6 +452,84 @@ void AmsBackendAd5xIfs::on_started() {
                             }
                         });
         });
+}
+
+void AmsBackendAd5xIfs::adopt_loaded_override_store(helix::ams::LoadedOverrideStore loaded) {
+    if (loaded.store) {
+        helix::ams::ingest_legacy_records(*loaded.store, helix::ams::LegacyLockKeys::LaneData,
+                                          backend_index());
+    }
+    std::lock_guard<std::mutex> lock(mutex_);
+    lane_wire_seen_.clear();
+    if (loaded.store) {
+        for (const auto& [slot, entry] : loaded.store->last_lane_data_records()) {
+            lane_wire_seen_[slot] = entry.wire;
+        }
+    }
+    override_store_ = std::move(loaded.store);
+    overrides_ = std::move(loaded.overrides);
+}
+
+void AmsBackendAd5xIfs::schedule_lane_record_reread() {
+    if (lane_reread_pending_.exchange(true))
+        return;
+    auto token = lifetime_.token();
+    helix::http::HttpExecutor::fast().submit([this, token]() {
+        // BG THREAD: only the debounce sleep.
+        std::this_thread::sleep_for(std::chrono::seconds(2));
+        token.defer("Ad5xIfsBackend::lane_record_reread", [this]() {
+            lane_reread_pending_.store(false);
+            reread_lane_records();
+        });
+    });
+}
+
+void AmsBackendAd5xIfs::reread_lane_records() {
+    helix::ams::FilamentSlotOverrideStore* store = nullptr;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        store = override_store_.get();
+    }
+    if (!store)
+        return;
+    auto token = lifetime_.token();
+    store->reload_async([this, token](std::unordered_map<int, helix::ams::LaneDataRecord> records) {
+        token.defer("Ad5xIfsBackend::apply_lane_records",
+                    [this, records = std::move(records)]() { apply_reread_lane_records(records); });
+    });
+}
+
+void AmsBackendAd5xIfs::apply_reread_lane_records(
+    const std::unordered_map<int, helix::ams::LaneDataRecord>& records) {
+    for (const auto& [slot, entry] : records) {
+        if (slot < 0 || slot >= NUM_PORTS)
+            continue;
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            auto seen = lane_wire_seen_.find(slot);
+            const bool unchanged = seen != lane_wire_seen_.end() && seen->second == entry.wire;
+            lane_wire_seen_[slot] = entry.wire;
+            if (unchanged)
+                continue;
+        }
+        helix::ams::Observation obs = helix::ams::declared_from_record(entry.record);
+        if (!file_reread_outside_edit(lane_id(slot), slot, entry, obs))
+            continue;
+        spdlog::info("{} Slot {} lane_data rewritten by another tool; taking its record",
+                     backend_log_tag(), slot);
+        {
+            // The lane stands on the tool's record now, so the override does
+            // too: a later save must not republish what the tool replaced.
+            std::lock_guard<std::mutex> lock(mutex_);
+            auto& ovr = overrides_[slot];
+            helix::ams::FilamentSlotOverride adopted = entry.record;
+            adopted.fingerprint = ovr.fingerprint;
+            adopted.unlinked_spool_id = ovr.unlinked_spool_id;
+            ovr = std::move(adopted);
+        }
+        repaint_slot_from_lane(slot);
+        emit_event(EVENT_SLOT_CHANGED, std::to_string(slot));
+    }
 }
 
 void AmsBackendAd5xIfs::on_stopping() {
@@ -1520,6 +1589,10 @@ bool AmsBackendAd5xIfs::sync_override_to_firmware_locked(int slot_index, uint32_
     // yields to (prestonbrown/helixscreen#1632): it guards nothing, and the
     // spool name that described it goes with it. Linking a spool drops the
     // statement, so a linked lane never holds one.
+    // The tool that restated the firmware may have rewritten the lane's
+    // record beside it.
+    schedule_lane_record_reread();
+
     auto it = overrides_.find(slot_index);
     helix::ams::FilamentSlotOverride* record = it == overrides_.end() ? nullptr : &it->second;
     const auto lane = lane_id(slot_index);
@@ -4389,6 +4462,9 @@ bool AmsBackendAd5xIfs::on_gcode_response_line(const std::string& line) {
                 }
                 if (mutated) {
                     emit_event(EVENT_SLOT_CHANGED, std::to_string(slot0));
+                    // A slot with no override reaches no sync, and the baselines
+                    // advanced above keep the next parse from firing one.
+                    schedule_lane_record_reread();
                 }
             }
         }

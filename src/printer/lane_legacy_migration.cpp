@@ -3,6 +3,8 @@
 #include "lane_legacy_migration.h"
 
 #include "filament_slot_override_store.h"
+#include "lane_apply.h"
+#include "lane_binding.h"
 #include "lane_source_store.h"
 
 #include <spdlog/spdlog.h>
@@ -43,6 +45,12 @@ bool file_outside_edit_if_newer(LaneId lane, const LaneDataRecord& entry, Observ
         wire_authored_by_firmware(entry.wire) ||
         !outside_edit_wins(entry.record, lane_sources(lane).local_user)) {
         return false;
+    }
+    // A record naming a spool the lane does not hold is a rebinding, and what
+    // described the old spool no longer describes the lane: the same drop a
+    // rebind made here takes, before the filing, which amends.
+    if (obs.spoolman_id.has_value() && resolved_lane(lane).spoolman_id != obs.spoolman_id) {
+        drop_previous_spool_declarations(lane);
     }
     obs.source = ObservationSource::LocalUser;
     obs.remaining_weight_g.reset();
