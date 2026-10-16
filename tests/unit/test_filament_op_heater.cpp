@@ -23,11 +23,14 @@
 #include "../test_helpers/filament_sensor_widget_test_access.h"
 #include "../test_helpers/scoped_shared_resource.h"
 #include "../test_helpers/update_queue_test_access.h"
+#include "ams_backend_cfs.h"
 #include "ams_backend_mock.h"
 #include "ams_state.h"
 #include "app_globals.h"
 #include "async_lifetime_guard.h"
 #include "filament_op_heater.h"
+#include "filament_op_router.h"
+#include "macro_executor.h"
 #include "macro_param_cache.h"
 #include "moonraker_api.h"
 #include "moonraker_client_mock.h"
@@ -37,6 +40,7 @@
 #include "safety_settings_manager.h"
 #include "standard_macros.h"
 #include "temperature_controller.h"
+#include "tool_state.h"
 
 #include <chrono>
 #include <memory>
@@ -269,6 +273,16 @@ class HeaterFixture : public LVGLTestFixture {
             }
         }
         return -1;
+    }
+    /// Scripts that start with @p prefix: "LOAD_FILAMENT" without "UNLOAD_FILAMENT".
+    [[nodiscard]] int count_starting(const std::string& prefix) const {
+        int n = 0;
+        for (const auto& script : client.gcode_script_history()) {
+            if (script.rfind(prefix, 0) == 0) {
+                ++n;
+            }
+        }
+        return n;
     }
     [[nodiscard]] bool sent(const std::string& needle) const {
         return sent_at(needle) >= 0;
@@ -600,7 +614,7 @@ TEST_CASE_METHOD(HeaterFixture, "A backend op's end on the action feed schedules
 }
 
 // ============================================================================
-// Ending a preheat that never completes (F2, F4)
+// Ending a preheat that never completes
 // ============================================================================
 
 TEST_CASE_METHOD(HeaterFixture, "A print started during an idle preheat abandons it",
@@ -611,8 +625,10 @@ TEST_CASE_METHOD(HeaterFixture, "A print started during an idle preheat abandons
     drain_all();
     REQUIRE(heater->get().pending());
 
+    client.clear_gcode_script_history();
     set_print_state("printing");
     CHECK_FALSE(heater->get().pending());
+    CHECK_FALSE(sent(std::string(HEAT_GCODE) + "0")); // the print owns the heater now
 
     feed_nozzle(220, 220); // PRINT_START heats the nozzle
     CHECK_FALSE(sent("LOAD_FILAMENT"));
@@ -627,6 +643,7 @@ TEST_CASE_METHOD(HeaterFixture, "A print started during an idle purge preheat ab
     REQUIRE(heater->get().pending());
 
     set_print_state("printing");
+    CHECK_FALSE(heater->get().pending());
     feed_nozzle(220, 220);
     CHECK_FALSE(sent("PURGE"));
 }
@@ -655,9 +672,12 @@ TEST_CASE_METHOD(HeaterFixture, "A target that never lands times the preheat out
     fire_deadline_timer(); // within the window: still waiting
     REQUIRE(heater->get().pending());
 
+    client.clear_gcode_script_history();
     fake_now += FilamentOpHeater::TARGET_LAND_TIMEOUT + std::chrono::seconds(1);
     fire_deadline_timer();
     CHECK_FALSE(heater->get().pending());
+    // The heat it sent is taken back: the heater was off before the request.
+    CHECK(sent(std::string(HEAT_GCODE) + "0"));
 
     feed_nozzle(220, 220);
     CHECK_FALSE(sent("LOAD_FILAMENT"));
@@ -675,9 +695,11 @@ TEST_CASE_METHOD(HeaterFixture, "A nozzle that never gets hot times the preheat 
     fire_deadline_timer();
     REQUIRE(heater->get().pending()); // a seen target is not the short timeout
 
+    client.clear_gcode_script_history();
     fake_now += FilamentOpHeater::PREHEAT_TIMEOUT;
     fire_deadline_timer();
     CHECK_FALSE(heater->get().pending());
+    CHECK(sent(std::string(HEAT_GCODE) + "0"));
 }
 
 TEST_CASE_METHOD(HeaterFixture, "Never runs below the extrusion floor",
@@ -715,8 +737,7 @@ TEST_CASE_METHOD(HeaterFixture, "A different op replaces a pending preheat rathe
 
     feed_nozzle(220, 220);
     REQUIRE(sent("UNLOAD_FILAMENT"));
-    // The replaced load never runs: the only script naming LOAD_FILAMENT is the unload.
-    CHECK(sent_at("LOAD_FILAMENT") == sent_at("UNLOAD_FILAMENT"));
+    CHECK(count_starting("LOAD_FILAMENT") == 0); // the replaced load never runs
 }
 
 TEST_CASE_METHOD(HeaterFixture, "A surface waiting on the op hears when its preheat ends unrun",
@@ -820,7 +841,7 @@ TEST_CASE_METHOD(HeaterFixture, "A load that waited re-plans against the backend
 }
 
 // ============================================================================
-// A guarded surface closed mid-preheat (F1)
+// A guarded surface closed mid-preheat
 // ============================================================================
 
 namespace {
@@ -838,9 +859,10 @@ uint64_t sidebar_skips() {
 
 } // namespace
 
-TEST_CASE_METHOD(HeaterFixture,
-                 "A sidebar closed mid-preheat on the macro tier still loads, with no call into it",
-                 "[filament][preheat][heater][threading]") {
+TEST_CASE_METHOD(
+    HeaterFixture,
+    "A sidebar closed mid-preheat: its macro-tier load still runs, with no hook into it",
+    "[filament][preheat][heater][threading]") {
     // No filament system: the sidebar's load is the LOAD_FILAMENT macro, which
     // takes no parameters, so nothing prompts.
     nlohmann::json config;
@@ -869,4 +891,349 @@ TEST_CASE_METHOD(HeaterFixture,
         CHECK(sidebar_skips() == 0);
         CHECK(sent("LOAD_FILAMENT"));
     }
+}
+
+TEST_CASE_METHOD(HeaterFixture, "A closed surface's deferred macro dispatch raises no prompt",
+                 "[filament][preheat][heater][threading]") {
+    // LOAD_FILAMENT takes parameters, and the sidebar asks for them. Once the
+    // AMS panel is closed, a prompt would land on whatever screen is up.
+    nlohmann::json config;
+    config["gcode_macro LOAD_FILAMENT"]["gcode"] =
+        "{% set t = params.TEMP|default(220)|int %}\nM109 S{t}\nG1 E50 F300";
+    helix::MacroParamCache::instance().populate_from_configfile(config, {"LOAD_FILAMENT"});
+    int prompts = 0;
+    helix::ui::set_filament_param_prompter([&prompts](const std::string&,
+                                                      const helix::CachedMacroInfo&,
+                                                      const std::map<std::string, std::string>&,
+                                                      helix::MacroExecuteCallback on_execute) {
+        ++prompts;
+        on_execute({});
+    });
+    feed_nozzle(25, 0);
+
+    auto sidebar = std::make_unique<helix::ui::AmsOperationSidebar>(state);
+    sidebar->handle_load_with_preheat(0);
+    drain_all();
+    REQUIRE(heater->get().pending());
+
+    SECTION("closed: the macro goes out with its prefill, unprompted") {
+        sidebar.reset();
+        feed_nozzle(220, 220);
+        drain_all();
+        CHECK(prompts == 0);
+        CHECK(count_starting("LOAD_FILAMENT") == 1);
+    }
+    SECTION("open: the user is asked, as on any tap") {
+        feed_nozzle(220, 220);
+        drain_all();
+        CHECK(prompts == 1);
+    }
+    helix::ui::set_filament_param_prompter({});
+}
+
+// ============================================================================
+// Which request is a re-tap
+// ============================================================================
+
+TEST_CASE_METHOD(HeaterFixture, "A load on another lane replaces the pending one",
+                 "[filament][preheat][heater][cancel]") {
+    feed_nozzle(25, 0);
+    auto owned = std::make_unique<LoadRecordingBackend>();
+    LoadRecordingBackend* backend = owned.get();
+    helix::AmsState::instance().set_backend(std::move(owned));
+
+    helix::ui::execute_filament_load(backend, 2, "[FilamentSensorWidget]");
+    drain_all();
+    REQUIRE(heater->get().pending());
+    helix::ui::execute_filament_load(backend, 3, "[FilamentSensorWidget]");
+    drain_all();
+    REQUIRE(heater->get().pending()); // replaced, not withdrawn
+
+    feed_nozzle(280, 280); // the mock's lanes name a hot material
+    CHECK(backend->loads == std::vector<int>{3});
+}
+
+TEST_CASE_METHOD(HeaterFixture, "A runout reload replaces a tile load waiting during the pause",
+                 "[filament][preheat][heater][cancel][runout]") {
+    set_print_state("paused");
+    feed_nozzle(25, 0);
+    FilamentSensorWidgetTestAccess::dispatch_load(tile);
+    drain_all();
+    REQUIRE(heater->get().pending());
+
+    helix::ui::FilamentRunoutHandler handler(api.get());
+    helix::ui::FilamentRunoutHandlerTestAccess::dispatch_load(handler);
+    drain_all();
+    REQUIRE(heater->get().pending());
+
+    feed_nozzle(220, 220);
+    CHECK(count_starting("LOAD_FILAMENT") == 1);
+}
+
+TEST_CASE_METHOD(HeaterFixture, "A second surface's unload proceeds, and the first hears it ended",
+                 "[filament][preheat][heater][cancel]") {
+    // Bed drying asking for an unload while another surface's waits.
+    feed_nozzle(25, 0);
+    int first_ended = 0;
+    int second_ended = 0;
+    helix::ui::FilamentOpSurface first;
+    first.log_tag = "[First]";
+    first.on_preheat_ended = [&first_ended]() { ++first_ended; };
+    helix::ui::FilamentOpSurface second;
+    second.log_tag = "[Second]";
+    second.on_preheat_ended = [&second_ended]() { ++second_ended; };
+
+    helix::ui::execute_filament_unload(nullptr, -1, true, first);
+    drain_all();
+    helix::ui::execute_filament_unload(nullptr, -1, true, second);
+    drain_all();
+    CHECK(first_ended == 1);
+    REQUIRE(heater->get().pending());
+
+    feed_nozzle(220, 220);
+    CHECK(count_starting("UNLOAD_FILAMENT") == 1);
+    CHECK(second_ended == 0);
+}
+
+TEST_CASE_METHOD(HeaterFixture, "A re-tap's own request hears that it was not run",
+                 "[filament][preheat][heater][cancel]") {
+    feed_nozzle(25, 0);
+    int ended = 0;
+    helix::ui::FilamentOpSurface surface;
+    surface.log_tag = "[Test]";
+    surface.on_preheat_ended = [&ended]() { ++ended; };
+
+    helix::ui::execute_filament_unload(nullptr, -1, true, surface);
+    drain_all();
+    helix::ui::execute_filament_unload(nullptr, -1, true, surface);
+    drain_all();
+
+    CHECK_FALSE(heater->get().pending());
+    CHECK(ended == 2); // the withdrawn request, and the tap that withdrew it
+}
+
+TEST_CASE_METHOD(HeaterFixture, "A request that cannot take the heater is told so",
+                 "[filament][preheat][heater][cancel]") {
+    // The replaced request's surface starts another op from its report; that
+    // one holds the heater, and the newcomer is not run.
+    feed_nozzle(25, 0);
+    int third_ran = 0;
+    helix::ui::PreheatRequest first;
+    first.op = helix::ui::FilamentHeatOp::Load;
+    first.run = [](helix::ui::FilamentOpTicket) {};
+    first.on_progress = [this, &third_ran](const helix::ui::PreheatProgress& p) {
+        if (p.phase != helix::ui::PreheatPhase::Cancelled) {
+            return;
+        }
+        helix::ui::PreheatRequest third;
+        third.op = helix::ui::FilamentHeatOp::Purge;
+        third.run = [&third_ran](helix::ui::FilamentOpTicket) { ++third_ran; };
+        heater->get().run_after_preheat(std::move(third));
+    };
+    REQUIRE(heater->get().run_after_preheat(std::move(first)) ==
+            FilamentOpHeater::Outcome::Heating);
+
+    bool second_ran = false;
+    helix::ui::PreheatRequest second;
+    second.op = helix::ui::FilamentHeatOp::Unload;
+    second.run = [&second_ran](helix::ui::FilamentOpTicket) { second_ran = true; };
+    CHECK(heater->get().run_after_preheat(std::move(second)) ==
+          FilamentOpHeater::Outcome::Cancelled);
+    REQUIRE(heater->get().pending());
+
+    feed_nozzle(220, 220);
+    CHECK(third_ran == 1);
+    CHECK_FALSE(second_ran);
+}
+
+// ============================================================================
+// Heat that a preheat ending unrun leaves behind
+// ============================================================================
+
+TEST_CASE_METHOD(HeaterFixture, "A replace that does not heat puts the replaced heat back",
+                 "[filament][preheat][heater][cancel]") {
+    feed_nozzle(25, 0);
+    FilamentSensorWidgetTestAccess::dispatch_load(tile);
+    drain_all();
+    REQUIRE(heater->get().pending());
+    client.clear_gcode_script_history();
+
+    // The replacing op skips its preheat: the load's heat is nobody's now.
+    helix::SafetySettingsManager::instance().set_allow_cold_extrude(true);
+    FilamentSensorWidgetTestAccess::dispatch_unload(tile);
+    drain_all();
+
+    CHECK_FALSE(heater->get().pending());
+    CHECK(sent("UNLOAD_FILAMENT"));
+    CHECK(sent(std::string(HEAT_GCODE) + "0"));
+}
+
+// ============================================================================
+// The cooldown and the backend watch
+// ============================================================================
+
+TEST_CASE_METHOD(HeaterFixture, "An op that runs at once cancels the previous op's cooldown",
+                 "[filament][preheat][heater][cooldown]") {
+    auto& cd = PostOpCooldownManager::instance();
+    cd.schedule();
+    drain_all();
+    REQUIRE(cd.has_pending_timer());
+
+    feed_nozzle(215, 215);
+    FilamentSensorWidgetTestAccess::dispatch_load(tile);
+    drain_all();
+    REQUIRE(sent("LOAD_FILAMENT"));
+    CHECK_FALSE(cd.has_pending_timer());
+}
+
+TEST_CASE_METHOD(HeaterFixture, "An op finishing while a preheat waits schedules no cooldown",
+                 "[filament][preheat][heater][cooldown]") {
+    auto& cd = PostOpCooldownManager::instance();
+    set_print_state("standby");
+    const auto ticket = heated_ticket();
+
+    feed_nozzle(25, 0);
+    FilamentSensorWidgetTestAccess::dispatch_load(tile);
+    drain_all();
+    REQUIRE(heater->get().pending());
+
+    heater->get().op_succeeded(ticket);
+    drain_all();
+    CHECK_FALSE(cd.has_pending_timer());
+}
+
+TEST_CASE_METHOD(HeaterFixture, "A backend watch does not take a busy from before its dispatch",
+                 "[filament][preheat][heater][cooldown]") {
+    auto& cd = PostOpCooldownManager::instance();
+    set_print_state("standby");
+    lv_subject_t* action = helix::AmsState::instance().get_ams_action_subject();
+    const auto ticket = heated_ticket();
+
+    // The previous op is still busy when this one is dispatched.
+    lv_subject_set_int(action, static_cast<int>(helix::AmsAction::LOADING));
+    drain_all();
+    heater->get().watch_backend_completion(ticket);
+    drain_all();
+
+    lv_subject_set_int(action, static_cast<int>(helix::AmsAction::IDLE)); // the previous op ends
+    drain_all();
+    CHECK_FALSE(cd.has_pending_timer());
+
+    lv_subject_set_int(action, static_cast<int>(helix::AmsAction::LOADING)); // this one
+    drain_all();
+    lv_subject_set_int(action, static_cast<int>(helix::AmsAction::IDLE));
+    drain_all();
+    CHECK(cd.has_pending_timer());
+}
+
+// ============================================================================
+// A lane mapped to another extruder
+// ============================================================================
+
+namespace {
+
+/// Lane 1 feeds tool 1.
+class MappedLaneBackend : public LoadRecordingBackend {
+  public:
+    helix::SlotInfo get_slot_info(int slot_index) const override {
+        helix::SlotInfo info = LoadRecordingBackend::get_slot_info(slot_index);
+        if (slot_index == 1) {
+            info.mapped_tool = 1;
+        }
+        return info;
+    }
+};
+
+} // namespace
+
+TEST_CASE_METHOD(HeaterFixture, "A lane on extruder1 heats and cools extruder1, not the active one",
+                 "[filament][preheat][heater][multi_extruder]") {
+    state.temperature_state().init_extruders({"extruder", "extruder1"});
+    helix::PrinterDiscovery hardware;
+    hardware.parse_objects(nlohmann::json{"extruder", "extruder1"});
+    helix::ToolState::instance().init_tools(hardware);
+    REQUIRE(helix::ToolState::instance().extruder_name_for_tool(1) == "extruder1");
+    set_print_state("standby");
+    state.update_from_status({{"extruder", {{"temperature", 200.0}, {"target", 200.0}}},
+                              {"extruder1", {{"temperature", 25.0}, {"target", 0.0}}}});
+    drain_all();
+
+    auto owned = std::make_unique<MappedLaneBackend>();
+    MappedLaneBackend* backend = owned.get();
+    helix::AmsState::instance().set_backend(std::move(owned));
+    client.clear_gcode_script_history();
+
+    helix::ui::execute_filament_load(backend, 1, "[Test]");
+    drain_all();
+    REQUIRE(heater->get().pending());
+    CHECK(sent("SET_HEATER_TEMPERATURE HEATER=extruder1 TARGET="));
+    CHECK_FALSE(sent("SET_HEATER_TEMPERATURE HEATER=extruder TARGET="));
+
+    SECTION("it loads once extruder1 is hot, and cools extruder1 after") {
+        state.update_from_status({{"extruder1", {{"temperature", 220.0}, {"target", 220.0}}}});
+        drain_all();
+        REQUIRE(backend->loads == std::vector<int>{1});
+
+        lv_subject_t* action = helix::AmsState::instance().get_ams_action_subject();
+        lv_subject_set_int(action, static_cast<int>(helix::AmsAction::LOADING));
+        drain_all();
+        lv_subject_set_int(action, static_cast<int>(helix::AmsAction::IDLE));
+        drain_all();
+        auto& cd = PostOpCooldownManager::instance();
+        REQUIRE(cd.has_pending_timer());
+        CHECK(cd.pending_heater() == "extruder1");
+    }
+    SECTION("extruder1 going away mid-preheat abandons it") {
+        state.temperature_state().init_extruders({"extruder"});
+        fire_deadline_timer();
+        CHECK_FALSE(heater->get().pending());
+    }
+
+    helix::PrinterDiscovery single;
+    single.parse_objects(nlohmann::json{"extruder"});
+    helix::ToolState::instance().init_tools(single);
+}
+
+// ============================================================================
+// A CFS bypass unload
+// ============================================================================
+
+namespace {
+
+/// CFS, running, with the action script captured instead of sent.
+class CfsCapture : public helix::printer::AmsBackendCfs {
+  public:
+    CfsCapture() : AmsBackendCfs(nullptr, nullptr) {
+        running_ = true;
+    }
+    bool toolhead_homed() const override {
+        return true;
+    }
+    std::vector<std::string> dispatched;
+
+  private:
+    helix::AmsError dispatch_action_script(std::string gcode) override {
+        dispatched.push_back(std::move(gcode));
+        return helix::AmsErrorHelper::success();
+    }
+};
+
+} // namespace
+
+TEST_CASE_METHOD(HeaterFixture, "A CFS bypass unload on a cold nozzle preheats first",
+                 "[filament][preheat][heater][cfs]") {
+    // The bypass unload ends in a raw extruder retract, which Klipper refuses on
+    // a cold nozzle: nothing may skip the preheat in front of it.
+    feed_nozzle(25, 0);
+    auto owned = std::make_unique<CfsCapture>();
+    CfsCapture* cfs = owned.get();
+    helix::AmsState::instance().set_backend(std::move(owned));
+
+    helix::ui::execute_filament_unload(cfs, helix::ui::EXTERNAL_SPOOL_SLOT,
+                                       /*target_is_loaded=*/true, "[Test]");
+    drain_all();
+
+    CHECK(heater->get().pending());
+    CHECK(sent(HEAT_GCODE));
+    CHECK(cfs->dispatched.empty());
 }

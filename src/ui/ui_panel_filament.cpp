@@ -1632,6 +1632,7 @@ void FilamentPanel::execute_extrude() {
             "FilamentPanel::extrude_err",
             [this](const MoonrakerError& error) {
                 operation_guard_.end();
+                heat_op_failed();
                 op_failed(FilamentOp::Extrude);
                 if (error.type == MoonrakerErrorType::TIMEOUT) {
                     NOTIFY_WARNING(lv_tr("Extrude may still be running — response timed out"));
@@ -1694,6 +1695,7 @@ void FilamentPanel::execute_purge() {
                             "FilamentPanel::purge_err",
                             [this](const MoonrakerError& error) {
                                 operation_guard_.end();
+                                heat_op_failed();
                                 op_failed(FilamentOp::Purge);
                                 if (error.type == MoonrakerErrorType::TIMEOUT) {
                                     NOTIFY_WARNING(
@@ -1744,6 +1746,7 @@ void FilamentPanel::execute_retract() {
             "FilamentPanel::retract_err",
             [this](const MoonrakerError& error) {
                 operation_guard_.end();
+                heat_op_failed();
                 op_failed(FilamentOp::Retract);
                 if (error.type == MoonrakerErrorType::TIMEOUT) {
                     NOTIFY_WARNING(lv_tr("Retract may still be running — response timed out"));
@@ -2444,7 +2447,7 @@ FilamentPanel::macro_temp_prefill(helix::ui::FilamentMacroOp op) const {
 
 bool FilamentPanel::cancel_pending_preheat() {
     auto* heater = helix::ui::get_filament_op_heater();
-    return heater && heater->cancel();
+    return heater && heater->cancel_owned(this);
 }
 
 void FilamentPanel::run_after_preheat(helix::ui::FilamentHeatOp op,
@@ -2457,6 +2460,7 @@ void FilamentPanel::run_after_preheat(helix::ui::FilamentHeatOp op,
     helix::ui::PreheatRequest req;
     req.op = op;
     req.log_tag = "[FilamentPanel]";
+    req.owner = this;
     req.skip = helix::ui::preheat_skip_reason_unplanned();
     req.slot = preheat_slot_for_op(op);
     req.fallback_material = preset_preheat_material();
@@ -2466,6 +2470,14 @@ void FilamentPanel::run_after_preheat(helix::ui::FilamentHeatOp op,
         (this->*execute)();
     };
     heater->run_after_preheat(std::move(req));
+}
+
+void FilamentPanel::heat_op_failed() {
+    const helix::ui::FilamentOpTicket ticket = op_heat_ticket_;
+    op_heat_ticket_ = 0;
+    if (auto* heater = helix::ui::get_filament_op_heater()) {
+        heater->op_failed(ticket);
+    }
 }
 
 void FilamentPanel::heat_op_succeeded() {
@@ -2652,6 +2664,7 @@ helix::ui::FilamentOpSurface FilamentPanel::op_surface(FilamentOp op) {
     };
 
     surface.preheat_fallback_material = [this]() { return preset_preheat_material(); };
+    surface.owner = this;
 
     // No guard: FilamentPanel is an immortal singleton [L012], so a macro
     // parameter modal answered arbitrarily later still finds a live panel.
@@ -2786,6 +2799,7 @@ void FilamentPanel::run_filament_macro(const std::string& macro_name, const std:
                             "FilamentPanel::macro_err",
                             [this](const MoonrakerError& error) {
                                 operation_guard_.end();
+                                heat_op_failed();
                                 if (op_in_flight_) {
                                     op_failed(*op_in_flight_);
                                 }

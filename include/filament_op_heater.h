@@ -129,6 +129,10 @@ struct PreheatRequest {
     /// for an op with no plan. Anything but None runs the op with no heat.
     PreheatSkip skip = PreheatSkip::None;
 
+    /// Who asked: a surface's address (or a static tag). With @p op and @p slot it
+    /// names the request, so the same request again is a re-tap.
+    const void* owner = nullptr;
+
     /// The lane whose material sets the temperature, and whose mapped extruder
     /// heats: the lane a load or unload targets, the loaded lane for a purge /
     /// extrude / retract. Negative for none, which heats the active extruder.
@@ -159,14 +163,17 @@ struct PreheatRequest {
  * @brief The one pending preheat, and the cooldown after a filament op it heated for.
  *
  * Main thread only. One preheat at a time, because there is one nozzle:
- *   - a second request for the SAME op while one waits is the user changing their
- *     mind, so it cancels the pending one and runs nothing;
- *   - a request for a DIFFERENT op replaces it: the pending one is reported
- *     Cancelled to its surface and the new one proceeds.
+ *   - the SAME request again (op, slot and owner) while it waits is the user
+ *     changing their mind, so it cancels the pending one and runs nothing;
+ *   - any other request replaces it: the pending one is reported Cancelled to
+ *     its surface and the new one proceeds.
  *
  * A preheat ends without running its op when the target it sent never lands,
- * when that target is taken away, when it runs past PREHEAT_TIMEOUT, or, for a
- * request made while no job held the machine, when a job takes it.
+ * when that target is taken away, when it runs past PREHEAT_TIMEOUT, when the
+ * extruder it heats goes away, or, for a request made while no job held the
+ * machine, when a job takes it. Heat it commanded for a preheat that ends unrun
+ * is put back the way it found it, except when a print took the machine, which
+ * then owns the heater.
  */
 class FilamentOpHeater {
   public:
@@ -189,7 +196,8 @@ class FilamentOpHeater {
     enum class Outcome {
         Ran,       ///< No heat needed (or skipped); run() has returned
         Heating,   ///< run() waits for the nozzle
-        Cancelled, ///< The same op was pending; it is cancelled and run() never runs
+        Cancelled, ///< Not run: a re-tap withdrew the pending request, or this one
+                   ///< could not take the heater. run() never runs.
     };
 
     /// Run @p req.run now, or heat first and run it once hot.
@@ -204,9 +212,13 @@ class FilamentOpHeater {
     /// the request arrived, and the op never runs. False when nothing was pending.
     bool cancel();
 
-    /// The op @p ticket names finished. Schedules the post-op cooldown when this
-    /// heater heated for it and no job holds the machine; anything else (a hand
-    /// preheat, a backend that heats for itself) is not ours to cool.
+    /// cancel(), but only a preheat @p owner asked for. False otherwise.
+    bool cancel_owned(const void* owner);
+
+    /// The op @p ticket names finished. Schedules the post-op cooldown of the
+    /// extruder it heated when this heater heated for it, no job holds the
+    /// machine and no preheat waits; anything else (a hand preheat, a backend
+    /// that heats for itself) is not ours to cool.
     void op_succeeded(FilamentOpTicket ticket);
 
     /// The op @p ticket names failed: the heater stays where the user can see
@@ -214,11 +226,11 @@ class FilamentOpHeater {
     void op_failed(FilamentOpTicket ticket);
 
     /// A backend op for @p ticket is about to be dispatched and completes on the
-    /// AMS action feed: op_succeeded() when the action goes busy and returns to
-    /// IDLE, op_failed() on ERROR, forgotten after BACKEND_WATCH_TIMEOUT. Arm it
-    /// BEFORE the dispatch so a fast backend cannot finish unseen; call
-    /// op_failed() if the dispatch is refused. Does nothing for a ticket the heater
-    /// did not heat for.
+    /// AMS action feed: op_succeeded() when the action moves to busy after this
+    /// call and then returns to IDLE, op_failed() on ERROR, forgotten after
+    /// BACKEND_WATCH_TIMEOUT. Arm it BEFORE the dispatch so a fast backend cannot
+    /// finish unseen; call op_failed() if the dispatch is refused. Does nothing
+    /// for a ticket the heater did not heat for.
     void watch_backend_completion(FilamentOpTicket ticket);
 
   private:
@@ -227,17 +239,25 @@ class FilamentOpHeater {
     struct Pending {
         PreheatRequest req;
         FilamentOpTicket ticket = 0;
-        std::string extruder; ///< Empty for the active extruder
+        std::string extruder;              ///< Empty for the active extruder
+        std::weak_ptr<bool> extruder_life; ///< The mapped extruder's subjects
         int wait_c = 0;
         int floor_c = 0;
-        int prior_target_c = 0; ///< Live target when the first request arrived
+        int prior_target_c = 0; ///< That extruder's target before we sent ours
         bool target_seen = false;
         bool job_free_at_request = true;
         TimePoint started{};
     };
 
+    struct Heated {
+        FilamentOpTicket ticket = 0;
+        std::string extruder; ///< Empty for the active extruder
+        TimePoint at{};
+    };
+
     struct Watch {
         FilamentOpTicket ticket = 0;
+        int last_action = -1; ///< The action as it stood when last seen
         bool seen_busy = false;
         TimePoint deadline{};
     };
@@ -252,21 +272,25 @@ class FilamentOpHeater {
     /// to its surface: the report runs with the heater already idle, so it may
     /// start another op.
     void end_pending(PreheatPhase phase);
-    void abandon(const char* why, const char* toast);
+    /// End the pending preheat unrun: toast, put the heater back as it was when
+    /// @p restore, report Abandoned.
+    void abandon(const char* why, const char* toast, bool restore);
+    /// Turn @p extruder back off when it was off before we heated it.
+    void restore_prior(const std::string& extruder, int prior_target_c);
     void report_heating();
     void cancel_deadline_timer();
     [[nodiscard]] TimePoint now() const;
     [[nodiscard]] lv_subject_t* temp_subject(const std::string& extruder) const;
     [[nodiscard]] lv_subject_t* target_subject(const std::string& extruder) const;
     [[nodiscard]] int read_c(lv_subject_t* subject) const;
-    [[nodiscard]] bool heated_for(FilamentOpTicket ticket) const;
+    [[nodiscard]] const Heated* heated_for(FilamentOpTicket ticket) const;
     void forget(FilamentOpTicket ticket);
 
     PrinterState& state_;
     Clock clock_;
     std::optional<Pending> pending_;
     FilamentOpTicket next_ticket_ = 0;
-    std::vector<std::pair<FilamentOpTicket, TimePoint>> heated_;
+    std::vector<Heated> heated_;
     std::vector<Watch> watches_;
     ObserverGuard temp_observer_;
     ObserverGuard target_observer_;

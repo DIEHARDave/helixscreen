@@ -740,7 +740,7 @@ void AmsOperationSidebar::sync_from_state() {
 
     // If we're in a UI-managed preheat, restore visual feedback
     if (pending_load_slot_ >= 0 && pending_load_target_temp_ > 0) {
-        show_preheat_feedback(pending_load_slot_, pending_load_target_temp_);
+        show_preheat_feedback(pending_load_current_temp_, pending_load_target_temp_);
     }
 
     // Sync loaded card display
@@ -1743,19 +1743,25 @@ void AmsOperationSidebar::run_backend_op_after_preheat(FilamentHeatOp op, Prehea
     req.log_tag = "[AmsSidebar]";
     req.skip = skip;
     req.slot = slot_index;
+    req.owner = this;
     req.announce = false; // the Heat step shows it
     req.run = std::move(run);
+    // The op this request is for owns the stepper until a later one arms it, so
+    // a report for a superseded request leaves the stepper alone.
+    const uint64_t mine = ++stepper_owner_;
     auto token = lifetime_.token();
-    req.on_progress = [this, token, slot_index](const PreheatProgress& progress) {
-        if (token.expired()) {
-            return; // main thread: the sidebar closed, the heater carries on
+    req.on_progress = [this, token, slot_index, mine](const PreheatProgress& progress) {
+        if (token.expired() || mine != stepper_owner_) {
+            return; // main thread: the sidebar closed or moved on; the heater carries on
         }
         switch (progress.phase) {
         case PreheatPhase::Heating:
+            // The reading is the heated extruder's, which need not be the active one.
+            pending_load_current_temp_ = progress.current_c;
             if (pending_load_slot_ < 0) {
                 pending_load_slot_ = slot_index;
                 pending_load_target_temp_ = progress.target_c;
-                show_preheat_feedback(slot_index, progress.target_c);
+                show_preheat_feedback(progress.current_c, progress.target_c);
             } else {
                 // Only the reading moves; the Heat step is already showing.
                 AmsState::instance().set_action_detail(preheat_status_text(
@@ -1775,8 +1781,8 @@ void AmsOperationSidebar::run_backend_op_after_preheat(FilamentHeatOp op, Prehea
         }
     };
     if (heater->run_after_preheat(std::move(req)) == FilamentOpHeater::Outcome::Cancelled) {
-        // This tap withdrew a preheat already waiting; the stepper armed for it
-        // goes too.
+        // This request was not run (a re-tap withdrew the one waiting, or it
+        // could not take the heater); the stepper armed for it goes too.
         abandon_started_operation();
     }
 }
@@ -1819,6 +1825,8 @@ helix::ui::FilamentOpSurface AmsOperationSidebar::op_surface(const char* tag, in
     surface.guard = [token](std::function<void()> fn) mutable {
         token.defer(LOAD_MACRO_TAG, std::move(fn));
     };
+    surface.owner = this;
+    surface.alive = [token]() { return !token.expired(); };
     // A dispatch after a preheat reads this at request time, and the token keeps
     // a closed sidebar from ever being asked.
     surface.macro_prefill = [this, token, slot_index](helix::ui::FilamentMacroOp op) {
@@ -1836,13 +1844,7 @@ std::string preheat_status_text(bool step_list_shows_temp, int current_c, int ta
     return temp_buf;
 }
 
-void AmsOperationSidebar::show_preheat_feedback(int slot_index, int target_temp) {
-    LV_UNUSED(slot_index);
-
-    int current_deci =
-        lv_subject_get_int(printer_state_.temperature_state().get_active_extruder_temp_subject());
-    int current_temp = temperature::deci_to_degrees(current_deci);
-
+void AmsOperationSidebar::show_preheat_feedback(int current_temp, int target_temp) {
     const std::string status =
         preheat_status_text(step_progress_ != nullptr, current_temp, target_temp);
     AmsState::instance().set_action_detail(status);

@@ -563,3 +563,23 @@ TEST_CASE_METHOD(OptimisticSidebarFixture,
     REQUIRE(api_.sent.size() == 1);
     CHECK(api_.sent[0].find("MMU_LOAD") != std::string::npos);
 }
+
+TEST_CASE_METHOD(OptimisticSidebarFixture,
+                 "Happy Hare: a load on another lane keeps the step the new load armed",
+                 "[ams][optimistic_action][happy_hare][preheat]") {
+    build_hh();
+    set_nozzle(25, 0);
+    sidebar_->handle_load_with_preheat(1);
+    REQUIRE(held());
+
+    // The second load replaces the first; the first's Cancelled must not tear
+    // down the step the second has just armed.
+    sidebar_->handle_load_with_preheat(2);
+    CHECK(heater_.get().pending());
+    CHECK(held());
+    CHECK(shown_action() == AmsAction::HEATING);
+
+    set_nozzle(220, 220);
+    REQUIRE(api_.sent.size() == 1);
+    CHECK(api_.sent[0].find("GATE=2") != std::string::npos);
+}

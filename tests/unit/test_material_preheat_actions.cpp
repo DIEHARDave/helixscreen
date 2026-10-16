@@ -8,6 +8,7 @@
 #include "../test_helpers/scoped_shared_resource.h"
 #include "filament_catalog.h"
 #include "filament_op_heater.h"
+#include "filament_op_router.h"
 #include "macro_executor.h"
 #include "material_settings_manager.h"
 #include "preheat_widget.h"
@@ -16,6 +17,7 @@
 #include "settings_manager.h"
 #include "temperature_controller.h"
 
+#include <algorithm>
 #include <memory>
 #include <optional>
 #include <string>
@@ -476,4 +478,43 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     helix::ui::UpdateQueue::instance().drain();
     CHECK_FALSE(heater.get().pending());
     CHECK(h.client.gcode_script_history().size() > 1); // the op itself went out
+}
+
+TEST_CASE_METHOD(LVGLUITestFixture, "A panel Purge replaces another surface's pending load",
+                 "[material_preheat][preheat][filament][heater]") {
+    Harness h;
+    helix::PrinterDiscovery bare;
+    bare.parse_objects(nlohmann::json{"extruder"});
+    StandardMacros::instance().reset();
+    StandardMacros::instance().init(bare);
+    helix_test::ScopedSharedResource<helix::TemperatureController> controller(
+        std::make_shared<helix::TemperatureController>(h.state, &h.api));
+    helix_test::ScopedSharedResource<helix::ui::FilamentOpHeater> heater(
+        std::make_shared<helix::ui::FilamentOpHeater>(h.state));
+    helix::SafetySettingsManager::instance().set_allow_cold_extrude(false);
+    h.state.update_from_status({{"extruder", {{"temperature", 25.0}, {"target", 0.0}}}});
+    helix::ui::UpdateQueue::instance().drain();
+
+    // The home tile's load is waiting on the nozzle.
+    helix::ui::execute_filament_load(nullptr, -1, "[FilamentSensorWidget]");
+    helix::ui::UpdateQueue::instance().drain();
+    REQUIRE(heater.get().pending());
+
+    PanelAccess::handle_purge_button(*h.panel);
+    helix::ui::UpdateQueue::instance().drain();
+    REQUIRE(heater.get().pending()); // replaced, not withdrawn
+    h.client.clear_gcode_script_history();
+
+    // Hot enough for whatever material the panel's preset names.
+    h.state.update_from_status({{"extruder", {{"temperature", 290.0}, {"target", 290.0}}}});
+    helix::ui::UpdateQueue::instance().drain();
+    REQUIRE_FALSE(heater.get().pending());
+    // The mock records each line of a script on its own: the purge fallback's
+    // extrude is G1 E50, the load fallback's first move G1 E56.
+    const auto& sent = h.client.gcode_script_history();
+    const auto has = [&sent](const std::string& line) {
+        return std::find(sent.begin(), sent.end(), line) != sent.end();
+    };
+    CHECK(has("G1 E50 F600"));
+    CHECK_FALSE(has("G1 E56 F1200"));
 }

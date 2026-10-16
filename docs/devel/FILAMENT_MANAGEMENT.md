@@ -1881,9 +1881,11 @@ Two consequences worth naming, because they look like bugs and are not:
   an optimistic `HEATING` stepper would fight it. Only the *decision* is shared.
 - **A preheat outlives the surface that asked.** The tile's dialog closes on the tap and the
   AMS panel can close mid-heat; `FilamentOpHeater` runs the op once the nozzle is hot either
-  way. A second request for the same op while one waits cancels it (the heater goes back off
-  if it was off); a request for a different op replaces it. A surface whose user waits on
-  the op's end sets `FilamentOpSurface::on_preheat_ended` (bed drying does).
+  way. The same request again (op, slot and owning surface) while it waits cancels it (the
+  heater goes back off if it was off); any other request replaces it. A surface whose user
+  waits on the op's end sets `FilamentOpSurface::on_preheat_ended` (bed drying does), which
+  also fires when its own request is not run. The cooldown afterwards turns off the
+  extruder that was heated, which need not be the active one.
 - **The optimistic action outlives backend silence.** A backend that declares
   `BackendTraits::holds_optimistic_action` (Happy Hare) sets no action at dispatch and
   reports `IDLE` through the UI preheat and until its firmware starts, and every sync (the
@@ -3051,7 +3053,7 @@ static constexpr BackendTraits kTraits = [] {
 - `get_remap_strategy()`, `remap_ready()`, `owns_tool_mapping_table()`, `get_tool_mapping()` -- Tool mapping. **Three questions, one spelling each.** `get_remap_strategy()` says HOW a user's tool->lane pick is carried out (`Native` writes your table, `GcodeRewrite` rewrites the job, `PrePrintSend` is a firmware pre-print send, `None` means it cannot be). `remap_ready()` says whether that route is usable YET -- default true, override only where discovery gates it, as AD5X IFS does on `_IFS_VARS`. `owns_tool_mapping_table()` says whether you hold a tool->slot table for `ToolState` to adopt; the Snapmaker U1 answers **no** and still honors every pick, through its pre-print send, which is why this is not the same question as the first two. Ask them through `ams_remap.h` -- never by combining them at a call site, which is how one question came to have six answers that could disagree. Three named predicates there, and the difference between them is `GcodeRewrite`: `can_remap()` asks whether the user's pick will be honored at all (yes), `remap_is_persistent()` whether the answer outlives the send (yes, it is in the job file), `can_write_mapping_table()` whether a `set_tool_mapping()` write lands (no, there is no table).
 - `get_device_sections()`, `get_device_actions()`, `execute_device_action()` -- Device-specific actions
 - `set_discovery()` -- Discovery configuration: pull and resolve what this backend needs from the `PrinterDiscovery` snapshot, before `start()`
-- `supports_auto_heat_on_unload` (`kTraits`) -- The unload counterpart: the backend's unload command heats the hotend itself, or (a tool changer's unmount) moves no filament through it. Set from what each backend's unload actually sends; read through `preheat_skip_reason()` like the load claim.
+- `supports_auto_heat_on_unload` (`kTraits`) -- The unload counterpart: the backend's unload command heats the hotend itself, or (a tool changer's unmount) moves no filament through it. Set only where what the backend sends provably heats: a wrong claim runs a cold extrude, a missing one costs a second wait. A backend whose unloads differ answers per call through `unload_heats_hotend(slot)` (Snapmaker's bare fallback does not heat); CFS makes no claim. Read through `preheat_skip_reason()` like the load claim.
 - `supports_auto_heat_on_load` (`kTraits`) -- Auto-heat capability. It is one of three reasons a surface skips its own preheat, and **no surface should read it directly**: ask `helix::ui::preheat_skip_reason()` (`include/filament_op_execute.h`), which also covers the "Allow cold load/unload" setting and a stock macro that heats in its own body (`helix::filament_macros::macro_heats_hotend()`, `include/filament_macro_profiles.h`). The AMS sidebar reading only this one is what left that setting ignored on the AMS panel (prestonbrown/helixscreen#1494).
 - `supports_lane_eject()` + `eject_lane()` -- Cold retract of a lane's filament back to the spool. Without the predicate the context menu never offers Eject, whatever `eject_lane()` does.
 - `has_per_slot_loaded_authority` (`kTraits`) -- Set true only when the firmware reports load state **per slot**. Leave it false when your per-slot answer is derived from an aggregate "current slot" pointer, or a mid-toolchange null will drop the highlight.

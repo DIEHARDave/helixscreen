@@ -125,7 +125,7 @@ PreheatSkip preheat_skip_reason(const FilamentOpPlan& plan, StandardMacroSlot sl
             return PreheatSkip::BackendSelfHeats;
         }
         if (backend && plan.ams_call == AmsCall::Unload &&
-            backend->supports_auto_heat_on_unload()) {
+            backend->unload_heats_hotend(plan.ams_arg)) {
             return PreheatSkip::BackendSelfHeats;
         }
         return PreheatSkip::None;
@@ -287,7 +287,7 @@ void watch_backend(FilamentOpTicket ticket) {
 ///
 /// The macro prefill is read now, at request time, since its answer is needed
 /// synchronously. A before_macro hook runs through the guard too, so a surface
-/// that set one and is gone sends no macro; no guarded surface sets one.
+/// that set one and is gone sends no macro.
 FilamentOpSurface deferred_surface(const FilamentOpSurface& surface) {
     if (!surface.guard) {
         return surface;
@@ -361,6 +361,7 @@ void preheat_then(FilamentHeatOp op, PreheatSkip skip, int slot, const FilamentO
     req.log_tag = surface.log_tag;
     req.skip = skip;
     req.slot = slot;
+    req.owner = surface.owner ? surface.owner : surface.log_tag;
     if (surface.preheat_fallback_material) {
         req.fallback_material = surface.preheat_fallback_material();
     }
@@ -382,8 +383,22 @@ void preheat_then(FilamentHeatOp op, PreheatSkip skip, int slot, const FilamentO
             }
         };
     }
-    heater->run_after_preheat(std::move(req));
+    const auto outcome = heater->run_after_preheat(std::move(req));
     *deferred = true;
+    if (outcome == FilamentOpHeater::Outcome::Cancelled && surface.on_preheat_ended) {
+        // This request was not run, which a surface waiting on it must hear too.
+        guarded(surface, surface.on_preheat_ended);
+    }
+}
+
+/// The surface a deferred dispatch acts for, decided at dispatch time: one that
+/// is gone raises no parameter prompt over whatever screen is up now.
+FilamentOpSurface at_dispatch(const FilamentOpSurface& deferred) {
+    FilamentOpSurface s = deferred;
+    if (s.alive && !s.alive() && s.param_policy == ParamPolicy::Prompt) {
+        s.param_policy = ParamPolicy::Suppress;
+    }
+    return s;
 }
 
 /// The error copy a failed macro or fallback raises. A timed-out macro is not a
@@ -581,7 +596,8 @@ void execute_filament_load(AmsBackend* backend, int slot, const FilamentOpSurfac
             AmsBackend* live = AmsState::instance().get_backend();
             AmsSystemInfo live_sys;
             const BackendCaps live_caps = read_backend_caps(live, live_sys, slot);
-            dispatch_load(live, slot, s, plan_live_load(live_sys, live_caps, slot), ticket);
+            dispatch_load(live, slot, at_dispatch(s), plan_live_load(live_sys, live_caps, slot),
+                          ticket);
         });
 }
 
@@ -740,7 +756,8 @@ void execute_filament_unload(AmsBackend* backend, int slot, bool target_is_loade
         },
         [slot, target_is_loaded, s = deferred_surface(surface)](FilamentOpTicket ticket) {
             AmsBackend* live = AmsState::instance().get_backend();
-            dispatch_unload(live, slot, s, plan_unload_on(live, slot, target_is_loaded), ticket);
+            dispatch_unload(live, slot, at_dispatch(s),
+                            plan_unload_on(live, slot, target_is_loaded), ticket);
         });
 }
 
@@ -753,6 +770,7 @@ namespace {
 void dispatch_purge(const char* log_tag, FilamentOpTicket ticket) {
     auto* api = get_moonraker_api();
     if (!api) {
+        heat_failed(ticket);
         return;
     }
 
@@ -766,7 +784,7 @@ void dispatch_purge(const char* log_tag, FilamentOpTicket ticket) {
         helix::ui::dispatch_filament_macro(
             macro_name, helix::ui::ParamPolicy::Suppress,
             [api, log_tag, ticket](const helix::MacroParamResult& result) {
-                StandardMacros::instance().execute(
+                const bool dispatched = StandardMacros::instance().execute(
                     StandardMacroSlot::Purge, api, result.params,
                     [log_tag, ticket]() {
                         spdlog::info("{} Purge finished", log_tag);
@@ -777,6 +795,10 @@ void dispatch_purge(const char* log_tag, FilamentOpTicket ticket) {
                         spdlog::error("{} Failed to purge: {}", log_tag, err.message);
                         helix::ui::notify_error_tr(TR_NOOP("Failed to purge: {}"), err);
                     });
+                if (!dispatched) {
+                    // Neither callback will fire.
+                    heat_failed(ticket);
+                }
             });
         return;
     }

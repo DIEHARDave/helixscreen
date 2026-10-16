@@ -253,6 +253,17 @@ struct FilamentOpSurface {
     /// once the op finishes) must set it, or that flow stalls silently. Runs on
     /// the main thread, through the guard.
     std::function<void()> on_preheat_ended;
+
+    /// Names this surface to the preheat: the same op on the same slot from the
+    /// same owner is a re-tap. Unset uses log_tag, which every caller passes as a
+    /// literal naming its surface.
+    const void* owner = nullptr;
+
+    /// Whether the surface still exists, for a dispatch that runs after a
+    /// preheat. A surface that is gone raises no parameter prompt: the dispatch
+    /// downgrades ParamPolicy::Prompt to Suppress, and the prefill read at
+    /// request time carries the temperature. Unset counts as alive.
+    std::function<bool()> alive;
 };
 
 /// @note **`log_tag` must have static storage duration.** All three functions

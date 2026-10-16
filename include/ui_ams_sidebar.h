@@ -246,6 +246,10 @@ class AmsOperationSidebar {
     // from its progress reports so sync_from_state() can redraw it. -1 for none.
     int pending_load_slot_ = -1;
     int pending_load_target_temp_ = 0;
+    int pending_load_current_temp_ = 0;
+    /// Bumped each time an op hands itself to the heater: only the newest
+    /// request's reports may move the stepper.
+    uint64_t stepper_owner_ = 0;
     AmsAction prev_ams_action_ = AmsAction::IDLE;
 
     // Lifecycle flag — set in setup(), cleared in cleanup().
@@ -320,7 +324,7 @@ class AmsOperationSidebar {
     /// (helix::ui::nozzle_temp_prefill()).
     std::map<std::string, std::string> macro_temp_prefill(helix::ui::FilamentMacroOp op,
                                                           int slot_index);
-    void show_preheat_feedback(int slot_index, int target_temp);
+    void show_preheat_feedback(int current_temp, int target_temp);
     /// Hand a tier-1 op to FilamentOpHeater, which runs @p run now or once the
     /// nozzle is hot. Its progress drives this sidebar's Heat step while the
     /// sidebar lives; @p run must not need the sidebar.

@@ -638,7 +638,9 @@ class FilamentPanel : public PanelBase {
     void apply_preset_pick(int slot, const helix::printer::EffectiveFilament& ef);
     void update_all_temps();   ///< Unified handler for temp observer bundle
     void defer_temps_update(); ///< Queues update_all_temps() behind the cached values
-    /// A tap on any op button while a preheat waits withdraws it. True when one did.
+    /// A tap on any op button while this panel's own preheat waits withdraws it.
+    /// True when one did; a preheat another surface asked for is left to the
+    /// heater, which the tap's own request replaces.
     bool cancel_pending_preheat();
     /// The material an op acting on @p target_slot heats for: that slot, the
     /// external spool (only when the slot names nothing), then the panel's
@@ -654,6 +656,8 @@ class FilamentPanel : public PanelBase {
     helix::ui::FilamentOpTicket op_heat_ticket_ = 0;
     /// That op succeeded: hand its ticket back to the heater.
     void heat_op_succeeded();
+    /// That op failed: the heater forgets its ticket and leaves the nozzle hot.
+    void heat_op_failed();
     /// Nozzle-temperature parameter values for @p op's macro, from the live target of
     /// the extruder the op heats and the material resolve_material_preheat_temp()
     /// names, held above that extruder's extrusion minimum and at most its max_temp
