@@ -262,6 +262,9 @@ class AmsBackendAfc : public AmsSubscriptionBackend {
         t.cold_lane_ops_refused_during_print = true;
         // AFC heats the extruder itself from default_material_temps.
         t.supports_auto_heat_on_load = true;
+        // TOOL_UNLOAD heats the extruder itself: AFC narrates the unload as
+        // heat, cut, unload (toolchange_phase_template() in ams_backend_afc.cpp).
+        t.supports_auto_heat_on_unload = true;
         // AFC uses SET_SPOOL_ID gcode for persistence
         t.has_firmware_spool_persistence = true;
         // AFC publishes a lane spool_id in its status

@@ -181,6 +181,10 @@ class AmsBackendCfs : public AmsSubscriptionBackend {
         // per-slot question (#1199).
         t.has_per_slot_loaded_authority = true;
         t.supports_auto_heat_on_load = true;
+        // Every CFS unload script raises the nozzle target as its first act
+        // (heat, cut, retract; see the sub-phase synthesis in
+        // ams_backend_cfs.cpp), the bypass QUIT_MATERIAL included.
+        t.supports_auto_heat_on_unload = true;
         t.has_environment_sensors = true;
         // True: the CFS clears the toolhead without a lane. bypass_unload_gcode()
         // is exactly that script - QUIT_MATERIAL (heat, cut, retract) plus the

@@ -108,6 +108,7 @@ TEST_CASE("A backend that sets no traits answers the base defaults", "[ams][trai
     CHECK(t.slot_status_tracks_filament);
     CHECK(t.allows_implicit_chaining);
     CHECK_FALSE(t.supports_auto_heat_on_load);
+    CHECK_FALSE(t.supports_auto_heat_on_unload);
     CHECK_FALSE(t.holds_optimistic_action);
     CHECK_FALSE(t.has_per_slot_loaded_authority);
 }

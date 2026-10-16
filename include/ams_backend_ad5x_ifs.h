@@ -269,6 +269,10 @@ class AmsBackendAd5xIfs : public AmsSubscriptionBackend {
         // backend phase tracker synthesizes the Heat-nozzle step from extruder temp
         // frames, so heat progress still renders in the sidebar.
         t.supports_auto_heat_on_load = true;
+        // The toolhead unload, _IFS_REMOVE_CURRENT_PRUTOK, heats, cuts and
+        // retracts; the cold per-lane eject needs no heat at all
+        // (FILAMENT_BACKEND_AD5X_IFS.md, "Unload routing").
+        t.supports_auto_heat_on_unload = true;
         t.supports_force_eject = true;
         // IFS firmware persists color + material type but NOT spoolman_id,
         // so ToolState must handle spool assignment persistence via Moonraker DB.

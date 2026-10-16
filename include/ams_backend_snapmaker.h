@@ -139,6 +139,9 @@ class AmsBackendSnapmaker : public AmsSubscriptionBackend {
         // there.
         t.has_physical_tray = false;
         t.supports_auto_heat_on_load = true;
+        // The firmware's unload runs unload_homing / unload_heating itself
+        // (FILAMENT_BACKEND_SNAPMAKER_U1.md).
+        t.supports_auto_heat_on_unload = true;
         // Snapmaker U1's Resume runs AUTO_FEEDING (loads filament to the nozzle)
         // before RESUME, so Resume alone recovers a runout. The runout dialog uses
         // this to present Resume as primary and demote manual Load/Unload/Purge.

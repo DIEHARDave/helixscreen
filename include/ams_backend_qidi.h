@@ -95,6 +95,10 @@ class AmsBackendQidi : public AmsSubscriptionBackend {
         // manages hotend temperature itself (heat → load → clear → cool), so the UI
         // must not run its own preheat for QIDI loads.
         t.supports_auto_heat_on_load = true;
+        // Unload is M603, the stock unload that heats before it retracts; the
+        // EXTRUDER_UNLOAD fallback heats to the slot's temperature first
+        // (do_unload_filament()).
+        t.supports_auto_heat_on_unload = true;
         return t;
     }();
     [[nodiscard]] BackendTraits traits() const override {

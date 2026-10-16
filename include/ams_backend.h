@@ -97,6 +97,7 @@ struct BackendTraits {
     bool should_hide_slot_tool_badge = false;
     bool requires_preprint_send = false;
     bool supports_auto_heat_on_load = false;
+    bool supports_auto_heat_on_unload = false;
     bool has_firmware_spool_persistence = false;
     bool printer_reports_spool_ids = false;
     bool recovers_filament_on_resume = false;
@@ -3068,6 +3069,17 @@ class AmsBackend {
      */
     [[nodiscard]] bool supports_auto_heat_on_load() const {
         return traits().supports_auto_heat_on_load;
+    }
+
+    /**
+     * @brief Whether this backend's unload_filament() needs no preheat from the UI
+     *
+     * The unload counterpart of supports_auto_heat_on_load(): the command the
+     * backend sends heats the hotend itself, or moves no filament through it.
+     * Each backend sets it from what its own unload command does.
+     */
+    [[nodiscard]] bool supports_auto_heat_on_unload() const {
+        return traits().supports_auto_heat_on_unload;
     }
 
     /**

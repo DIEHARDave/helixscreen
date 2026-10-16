@@ -111,6 +111,8 @@ class AmsBackendToolChanger : public AmsSubscriptionBackend {
         // Load is SELECT_TOOL and unload is UNSELECT_TOOL: a mount and an unmount,
         // with no filament motion of any kind. See do_load_filament().
         t.load_mounts_tool = true;
+        // So no hot nozzle is needed to unmount one either.
+        t.supports_auto_heat_on_unload = true;
         return t;
     }();
     /// With a firmware feed command (Z-Mod's afclite shim), Load feeds filament
