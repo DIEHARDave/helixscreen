@@ -565,9 +565,10 @@ void ui_filament_path_canvas_set_filament_segment(lv_obj_t* obj, int segment) {
 
     // When not in eject mode and the active slot has a prep sensor, clamp the
     // minimum displayed segment to LANE so the retract animation stops at the
-    // lane sensor instead of overshooting past the slot/prep sensor.
-    if (!data->eject_mode && data->active_slot >= 0 &&
-        data->active_slot < FilamentPathData::MAX_SLOTS &&
+    // lane sensor instead of overshooting past the slot/prep sensor. A PARALLEL
+    // lane is its own path to its own nozzle, so its entry reading stands.
+    if (!data->eject_mode && data->topology != static_cast<int>(helix::PathTopology::PARALLEL) &&
+        data->active_slot >= 0 && data->active_slot < FilamentPathData::MAX_SLOTS &&
         data->slot_has_prep_sensor[data->active_slot] && new_segment > 0 &&
         new_segment < static_cast<int>(helix::PathSegment::LANE)) {
         new_segment = static_cast<int>(helix::PathSegment::LANE);

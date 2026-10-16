@@ -383,7 +383,10 @@ the hub and buffer stack above the toolhead glyph (`glyph_top` is
   sensor), hub entry (HUB), output (hub bottom, not on-toolhead), bypass merge
   (bypass shown) and toolhead (whenever the unit reports a toolhead sensor,
   `FilamentPathData::has_toolhead_sensor`). PARALLEL and MIXED lanes each get
-  one band at their sensor, read as `TOOLHEAD`. `band_state()`: Error on the active
+  one band at their sensor, read as `TOOLHEAD`. A PARALLEL lane whose backend
+  publishes an entry sensor (`slot_has_prep_sensor`) gets a second band three
+  tube gauges below its cap, read as `PREP`; the run between the two bands is
+  `LANE`, so filament only the entry sensor sees fills the tube to that band. `band_state()`: Error on the active
   route at the error segment, Active once triggered on the active route, Loaded
   (the lane's own filament color) once triggered off it, else Empty.
 - **Paint.** `coalesce()` joins adjacent painted segments with equal styles into

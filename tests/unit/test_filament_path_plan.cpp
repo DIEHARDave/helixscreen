@@ -154,7 +154,8 @@ std::unique_ptr<FilamentPathData> make_data(helix::PathTopology topo) {
     d->theme.color_error = lv_color_hex(0xFF0000);
     d->theme.color_bg = BG;
     d->theme.color_accent = lv_color_hex(0x2196F3);
-    for (int i = 0; i < 4; i++) {
+    // PARALLEL lanes start as a tool changer's: no sensor before the toolhead.
+    for (int i = 0; i < 4 && topo != helix::PathTopology::PARALLEL; i++) {
         d->slot_has_prep_sensor[i] = true;
         d->slot_has_load_sensor[i] = true;
     }
@@ -1080,6 +1081,64 @@ TEST_CASE("FilamentPath plan: PARALLEL tubes hang from below their spools",
     // An edge too low to leave room above the sensor is ignored.
     g.lane_entry_y = 190;
     CHECK(parallel_rows(*d, g).entry_y == -48);
+}
+
+TEST_CASE("FilamentPath plan: a PARALLEL entry sensor clamps the tube below its spool",
+          "[filament-path][plan][parallel][lane_entry]") {
+    auto d = make_data(helix::PathTopology::PARALLEL);
+    for (int i = 0; i < 3; i++)
+        d->slot_has_prep_sensor[i] = true;
+    load_active(*d, 0, PathSegment::NOZZLE);                          // mounted, reading
+    d->slot_filament_states[1] = {PathSegment::PREP, SLOT_COLORS[1]}; // at the feeder only
+    d->slot_filament_states[3] = {PathSegment::PREP, SLOT_COLORS[3]}; // no sensor published
+    BaseGeometry g = geometry();
+    g.lane_entry_y = -20;
+    static PathPlan plan;
+    plan_parallel(*d, g, plan);
+    const ParallelRows rows = parallel_rows(*d, g);
+    // Three tube gauges below the cap, well above the toolhead sensor.
+    CHECK(rows.prep_y == rows.entry_y + 3 * d->theme.tube_gauge);
+    REQUIRE(rows.prep_y < rows.sensor_y - 2 * d->theme.tube_gauge);
+
+    const SensorBand* mounted = band_at(plan, 50, (float)rows.prep_y);
+    REQUIRE(mounted != nullptr);
+    CHECK(mounted->state == BandState::Active);
+    const SensorBand* feeder = band_at(plan, 150, (float)rows.prep_y);
+    REQUIRE(feeder != nullptr);
+    CHECK(feeder->state == BandState::Loaded);
+    CHECK(lv_color_eq(feeder->fill, lv_color_hex(SLOT_COLORS[1])));
+    const SensorBand* clear = band_at(plan, 250, (float)rows.prep_y);
+    REQUIRE(clear != nullptr);
+    CHECK(clear->state == BandState::Empty);
+    CHECK(band_at(plan, 350, (float)rows.prep_y) == nullptr);
+
+    // Filament only the entry sensor sees fills the tube down to that band.
+    const Route& r1 = plan.routes[1];
+    REQUIRE(r1.path.count == 3);
+    CHECK(near(seg_end(r1.path.segs[0]), 150, (float)rows.prep_y));
+    CHECK(r1.style[0].filled);
+    CHECK_FALSE(r1.style[1].filled);
+    CHECK_FALSE(r1.style[2].filled);
+    const SensorBand* toolhead = band_at(plan, 150, (float)rows.sensor_y);
+    REQUIRE(toolhead != nullptr);
+    CHECK(toolhead->state == BandState::Empty);
+    // The mounted lane is filled all the way down.
+    for (int k = 0; k < plan.routes[0].path.count; k++)
+        CHECK(plan.routes[0].style[k].filled);
+    // A lane without the sensor keeps one span down to its toolhead sensor.
+    const Route& r3 = plan.routes[3];
+    REQUIRE(r3.path.count == 2);
+    CHECK(r3.style[0].filled);
+}
+
+TEST_CASE_METHOD(LVGLTestFixture,
+                 "FilamentPath: a PARALLEL lane's entry reading is not raised to LANE",
+                 "[filament-path][plan][parallel]") {
+    lv_obj_t* w = make_canvas(test_screen(), static_cast<int>(helix::PathTopology::PARALLEL));
+    ui_filament_path_canvas_set_slot_prep_sensor(w, 1, true);
+    ui_filament_path_canvas_set_active_slot(w, 1);
+    ui_filament_path_canvas_set_filament_segment(w, static_cast<int>(PathSegment::PREP));
+    CHECK(get_data(w)->filament_segment == static_cast<int>(PathSegment::PREP));
 }
 
 TEST_CASE("FilamentPath plan: the mounted PARALLEL tool is one active stroke",
