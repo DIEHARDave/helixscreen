@@ -923,18 +923,18 @@ TEST_CASE("a TEMPERATURE_WAIT names the chamber heater only by its own names",
     using helix::wait_names_chamber_heater;
     const std::string heater = "heater_generic dragonbreath";
     const ChamberWaitLine on_heater{ChamberWaitKind::TemperatureWait, 35, heater};
-    CHECK(wait_names_chamber_heater(on_heater, heater, heater));
-    CHECK(wait_names_chamber_heater(on_heater, "heater_generic DragonBreath", ""));
-    // The chamber reading's own sensor counts while a heater exists.
-    const ChamberWaitLine on_reading{ChamberWaitKind::TemperatureWait, 35,
-                                     "temperature_sensor cavity"};
-    CHECK(wait_names_chamber_heater(on_reading, heater, "temperature_sensor cavity"));
+    CHECK(wait_names_chamber_heater(on_heater, heater));
+    CHECK(wait_names_chamber_heater(on_heater, "heater_generic DragonBreath"));
+    // A separate chamber sensor is a passive soak's, even beside a heater.
+    const ChamberWaitLine on_sensor{ChamberWaitKind::TemperatureWait, 35,
+                                    "temperature_sensor chamber"};
+    CHECK_FALSE(wait_names_chamber_heater(on_sensor, heater));
     // A sensor-only printer has no chamber heater to name.
-    CHECK_FALSE(wait_names_chamber_heater(on_reading, "", "temperature_sensor cavity"));
+    CHECK_FALSE(wait_names_chamber_heater(on_sensor, ""));
     // A probe coil, and anything that is not a TEMPERATURE_WAIT.
     CHECK_FALSE(wait_names_chamber_heater(
-        {ChamberWaitKind::TemperatureWait, 40, "temperature_probe beacon_coil"}, heater, heater));
-    CHECK_FALSE(wait_names_chamber_heater({ChamberWaitKind::M191, 60, heater}, heater, heater));
+        {ChamberWaitKind::TemperatureWait, 40, "temperature_probe beacon_coil"}, heater));
+    CHECK_FALSE(wait_names_chamber_heater({ChamberWaitKind::M191, 60, heater}, heater));
 }
 
 TEST_CASE_METHOD(PromptFixture, "an unheated chamber-heater wait with nothing refused prompts",

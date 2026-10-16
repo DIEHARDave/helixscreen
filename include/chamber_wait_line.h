@@ -22,11 +22,10 @@ struct ChamberWaitLine {
 /// such as a macro whose body holds the wait, is Unknown.
 ChamberWaitLine classify_chamber_wait_line(std::string_view chunk_ending_at_position);
 
-/// The line is a TEMPERATURE_WAIT on the chamber heater: its SENSOR names
-/// @p chamber_heater, or @p chamber_reading (the object the chamber reading
-/// comes from) while a chamber heater exists. A sensor-only soak or a probe
-/// coil's wait names no chamber heater. Names compare case-insensitively.
-bool wait_names_chamber_heater(const ChamberWaitLine& line, const std::string& chamber_heater,
-                               const std::string& chamber_reading);
+/// The line is a TEMPERATURE_WAIT on the chamber heater itself: its SENSOR
+/// is @p chamber_heater's object name, compared case-insensitively. A wait on
+/// any other sensor is not, including a separate chamber sensor: with the
+/// heater at 0 that is a passive heat soak, not a heater that failed to start.
+bool wait_names_chamber_heater(const ChamberWaitLine& line, const std::string& chamber_heater);
 
 } // namespace helix

@@ -4168,6 +4168,16 @@ TEST_CASE_METHOD(SnapmakerHeaterWaitFixture,
         CHECK(chamber_wait_flag() == 1);
     }
 
+    SECTION("a passive soak on a separate chamber sensor is not a heater stall") {
+        state().temperature_state().set_chamber_sensor_name("temperature_sensor chamber");
+        PrintStartCollectorTestAccess::answer_chamber_wait_line(
+            collector(),
+            {helix::ChamberWaitKind::TemperatureWait, 40, "temperature_sensor chamber"});
+        report_for(2);
+        CHECK(get_current_phase() == PrintStartPhase::BED_MESH);
+        CHECK(chamber_wait_flag() == 0);
+    }
+
     SECTION("a probe coil's wait is not the chamber's") {
         PrintStartCollectorTestAccess::answer_chamber_wait_line(
             collector(),

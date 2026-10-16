@@ -72,14 +72,12 @@ ChamberWaitLine classify_chamber_wait_line(std::string_view chunk) {
     return {};
 }
 
-bool wait_names_chamber_heater(const ChamberWaitLine& line, const std::string& chamber_heater,
-                               const std::string& chamber_reading) {
+bool wait_names_chamber_heater(const ChamberWaitLine& line, const std::string& chamber_heater) {
     if (line.kind != ChamberWaitKind::TemperatureWait || line.sensor.empty() ||
         chamber_heater.empty()) {
         return false;
     }
-    return line.sensor == text_io::to_lower(chamber_heater) ||
-           (!chamber_reading.empty() && line.sensor == text_io::to_lower(chamber_reading));
+    return line.sensor == text_io::to_lower(chamber_heater);
 }
 
 } // namespace helix

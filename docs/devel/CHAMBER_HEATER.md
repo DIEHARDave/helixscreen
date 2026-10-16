@@ -259,9 +259,10 @@ follows with `TEMPERATURE_WAIT` on the chamber waits forever.
   is heating toward a target, or, once the wait has outlasted `CHAMBER_WAIT_SETTLE` (M109
   settling) with the chamber heater at 0 ("Waiting for chamber <cur>°C"), the heater refused
   its target or the command at the print position is a `TEMPERATURE_WAIT` whose `SENSOR`
-  names the chamber heater or its reading (`wait_names_chamber_heater()`,
-  `include/chamber_wait_line.h`; read once per wait). Any other wait (a sensor-only heat
-  soak, a probe coil) keeps the announced phase. It raises
+  is the chamber heater itself (`wait_names_chamber_heater()`,
+  `include/chamber_wait_line.h`; read once per wait). Any other wait (a heat soak on a
+  chamber sensor, with or without a heater beside it, or a probe coil) keeps the announced
+  phase. It raises
   `print_start_chamber_wait` on `PrinterPrintState` while this tick reads the wait as the
   chamber's.
 - **Prompt.** `ChamberStallPrompt` (`include/chamber_stall_prompt.h`) asks the pure

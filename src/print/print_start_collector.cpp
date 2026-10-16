@@ -930,7 +930,7 @@ void PrintStartCollector::check_fallback_completion() {
                 temps.chamber_command_rejection().kind != chamber::CommandRejection::None;
             // Without a refusal (a slicer that sends no M141, a glue that
             // reports none), the command at the print position settles it:
-            // a TEMPERATURE_WAIT whose SENSOR is the chamber heater.
+            // a TEMPERATURE_WAIT whose SENSOR is the chamber heater itself.
             const std::string& chamber_heater = temps.chamber_heater_name();
             bool chamber_unheated = false;
             uint64_t read_gen = 0;
@@ -955,10 +955,9 @@ void PrintStartCollector::check_fallback_completion() {
                     chamber_line_requested_ = true;
                     read_gen = ++chamber_line_gen_;
                 }
-                chamber_unheated = unheated_heater &&
-                                   (heater_refused ||
-                                    wait_names_chamber_heater(chamber_line_, chamber_heater,
-                                                              temps.chamber_temperature_source()));
+                chamber_unheated =
+                    unheated_heater &&
+                    (heater_refused || wait_names_chamber_heater(chamber_line_, chamber_heater));
             }
             if (read_gen != 0) {
                 request_chamber_wait_line(read_gen);
