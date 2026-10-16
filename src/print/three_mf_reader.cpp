@@ -58,9 +58,19 @@ bool abandoned(const std::shared_ptr<SummaryJob>& job) {
     return job->cancelled && job->cancelled->load();
 }
 
-void finish(const std::shared_ptr<SummaryJob>& job) {
-    job->remember(job->summary);
+/// Answers @p job with what it found. A summary short of something only a
+/// failed read kept from it is answered but not kept: the next read may get it.
+void finish(const std::shared_ptr<SummaryJob>& job, bool keep = true) {
+    if (keep) {
+        job->remember(job->summary);
+    }
     job->on_done(job->summary);
+}
+
+void fail(const std::shared_ptr<SummaryJob>& job, const std::string& message) {
+    if (!abandoned(job)) {
+        job->on_error(message);
+    }
 }
 
 void apply_slice_info(const std::shared_ptr<SummaryJob>& job, const zip::ZipEntry& entry,
@@ -131,9 +141,12 @@ void read_plates(const std::shared_ptr<SummaryJob>& job) {
             finish(job);
         },
         [job](const MoonrakerError& error) {
+            if (abandoned(job)) {
+                return;
+            }
             spdlog::warn("[ThreeMfReader] slice_info read failed for {}: {}", job->path,
                          error.message);
-            finish(job);
+            finish(job, false);
         },
         job->cancelled);
 }
@@ -154,7 +167,7 @@ void read_tail_unsized(const std::shared_ptr<SummaryJob>& job) {
             }
             const auto size = zip::archive_size_from_tail(bytes_of(bytes), bytes.size());
             if (!size) {
-                job->on_error(error_text(job->path, zip::ZipError::NotZip));
+                fail(job, error_text(job->path, zip::ZipError::NotZip));
                 return;
             }
             job->size = *size;
@@ -162,7 +175,7 @@ void read_tail_unsized(const std::shared_ptr<SummaryJob>& job) {
             job->tail_offset = *size - bytes.size();
             parse_tail(job, bytes.size(), true);
         },
-        [job](const MoonrakerError& error) { job->on_error(job->path + ": " + error.message); });
+        [job](const MoonrakerError& error) { fail(job, job->path + ": " + error.message); });
 }
 
 void read_tail(const std::shared_ptr<SummaryJob>& job, uint64_t len, bool may_grow) {
@@ -177,13 +190,13 @@ void read_tail(const std::shared_ptr<SummaryJob>& job, uint64_t len, bool may_gr
                 return;
             }
             if (bytes.size() != len) {
-                job->on_error(error_text(job->path, zip::ZipError::Truncated));
+                fail(job, error_text(job->path, zip::ZipError::Truncated));
                 return;
             }
             job->tail = bytes;
             parse_tail(job, len, may_grow);
         },
-        [job](const MoonrakerError& error) { job->on_error(job->path + ": " + error.message); },
+        [job](const MoonrakerError& error) { fail(job, job->path + ": " + error.message); },
         job->cancelled);
 }
 
@@ -197,7 +210,7 @@ void parse_tail(const std::shared_ptr<SummaryJob>& job, uint64_t len, bool may_g
             read_tail(job, needed, false);
             return;
         }
-        job->on_error(error_text(job->path, err));
+        fail(job, error_text(job->path, err));
         return;
     }
     read_plates(job);
@@ -346,8 +359,22 @@ zip::ZipError extract_from(FILE* in, uint64_t size, int plate_index, FILE* out) 
 } // namespace
 
 struct ThreeMfReader::Cache {
+    /// One version of an archive: its listed size and its modified time as
+    /// listed, to the fraction of a second, so a rewrite within the same
+    /// second reads again.
+    struct ArchiveVersion {
+        uint64_t size = 0;
+        double modified = 0;
+        bool operator==(const ArchiveVersion& o) const {
+            return size == o.size && modified == o.modified;
+        }
+        bool operator!=(const ArchiveVersion& o) const {
+            return !(*this == o);
+        }
+    };
+
     std::mutex mutex;
-    VersionedLru<ArchiveSummary> summaries; ///< by path, for one version of the file
+    VersionedLru<ArchiveSummary, ArchiveVersion> summaries; ///< by path, for one version
 };
 
 const zip::ZipEntry* plate_thumbnail(const PlateSummary& plate) {
@@ -419,7 +446,7 @@ void ThreeMfReader::clear_cache() {
 void ThreeMfReader::read_summary(const std::string& path, uint64_t size, double modified,
                                  SummaryCallback on_done, ErrorCallback on_error,
                                  ITransfersAPI::CancelFlag cancelled) {
-    const FileVersion version{size, static_cast<time_t>(modified)};
+    const Cache::ArchiveVersion version{size, modified};
     {
         std::lock_guard<std::mutex> lock(cache_->mutex);
         if (const ArchiveSummary* kept = cache_->summaries.lookup(path, version)) {
@@ -437,7 +464,7 @@ void ThreeMfReader::read_summary(const std::string& path, uint64_t size, double 
     job->on_error = std::move(on_error);
     job->cancelled = std::move(cancelled);
     job->remember = [cache = cache_, path, version](const ArchiveSummary& summary) {
-        if (version.size_bytes == 0) {
+        if (version.size == 0) {
             return; // an unsized read names no version of the file to keep it for
         }
         std::lock_guard<std::mutex> lock(cache->mutex);
@@ -460,7 +487,10 @@ void ThreeMfReader::read_entry(ITransfersAPI& transfers, const std::string& path
     }
     transfers.download_file_range(
         ROOT, path, entry.lh_offset, static_cast<size_t>(zip::entry_read_span(entry)),
-        [path, entry, on_done, on_error](const std::string& bytes) {
+        [path, entry, on_done, on_error, cancelled](const std::string& bytes) {
+            if (cancelled && cancelled->load()) {
+                return;
+            }
             zip::ZipError err = zip::ZipError::None;
             std::string out;
             if (!entry_payload(bytes, entry, MAX_ENTRY_BYTES, out, err)) {
@@ -469,44 +499,70 @@ void ThreeMfReader::read_entry(ITransfersAPI& transfers, const std::string& path
             }
             on_done(out);
         },
-        [path, on_error](const MoonrakerError& error) { on_error(path + ": " + error.message); },
-        std::move(cancelled));
+        [path, on_error, cancelled](const MoonrakerError& error) {
+            if (!(cancelled && cancelled->load())) {
+                on_error(path + ": " + error.message);
+            }
+        },
+        cancelled);
 }
 
 void ThreeMfReader::read_entry_head(ITransfersAPI& transfers, const std::string& path,
                                     const zip::ZipEntry& entry, size_t max_bytes,
-                                    BytesCallback on_done, ErrorCallback on_error) {
+                                    BytesCallback on_done, ErrorCallback on_error,
+                                    ITransfersAPI::CancelFlag cancelled) {
     // Deflate rarely shrinks G-code below its own length per byte read, so
     // max_bytes of the compressed stream inflate to at least max_bytes.
     const uint64_t take = std::min<uint64_t>(entry.csize, max_bytes);
     const uint64_t span =
         zip::ZIP_LOCAL_HEADER_BYTES + entry.name.size() + zip::ZIP_LOCAL_EXTRA_SLACK + take;
+    auto stopped = [cancelled]() { return cancelled && cancelled->load(); };
     transfers.download_file_range(
         ROOT, path, entry.lh_offset, static_cast<size_t>(span),
-        [path, entry, max_bytes, take, on_done, on_error](const std::string& bytes) {
-            const auto data = zip::entry_data_offset(bytes_of(bytes), bytes.size(), entry);
-            if (!data) {
-                on_error(error_text(path + "/" + entry.name, zip::ZipError::BadLocalHeader));
+        [path, entry, max_bytes, take, on_done, on_error, stopped](const std::string& bytes) {
+            if (stopped()) {
                 return;
             }
+            const std::string name = path + "/" + entry.name;
+            const auto data = zip::entry_data_offset(bytes_of(bytes), bytes.size(), entry);
+            if (!data) {
+                on_error(error_text(name, zip::ZipError::BadLocalHeader));
+                return;
+            }
+            // A local extra field longer than the slack leaves part of the
+            // compressed bytes asked for outside the read.
             const size_t start = static_cast<size_t>(*data - entry.lh_offset);
-            const size_t have =
-                start < bytes.size() ? std::min<size_t>(bytes.size() - start, take) : 0;
+            if (start > bytes.size() || bytes.size() - start < take) {
+                on_error(error_text(name, zip::ZipError::Truncated));
+                return;
+            }
             std::string out;
             auto sink = [&out, max_bytes](const uint8_t* p, size_t n) {
                 out.append(reinterpret_cast<const char*>(p), std::min(n, max_bytes - out.size()));
                 return out.size() < max_bytes;
             };
             zip::ZipEntryInflater<RawInflate> inflater(entry);
-            inflater.feed(bytes_of(bytes) + start, have, sink);
-            // Stopping at max_bytes is the point; anything else is a failure.
-            if (out.empty() && inflater.error() != zip::ZipError::None) {
-                on_error(error_text(path + "/" + entry.name, inflater.error()));
-                return;
+            inflater.feed(bytes_of(bytes) + start, static_cast<size_t>(take), sink);
+            // Stopping at max_bytes is the point. Short of it, the bytes read
+            // must inflate cleanly, and a whole entry must check out.
+            if (out.size() < max_bytes) {
+                zip::ZipError err = inflater.error();
+                if (err == zip::ZipError::None && take == entry.csize) {
+                    inflater.finish(err);
+                }
+                if (err != zip::ZipError::None) {
+                    on_error(error_text(name, err));
+                    return;
+                }
             }
             on_done(out);
         },
-        [path, on_error](const MoonrakerError& error) { on_error(path + ": " + error.message); });
+        [path, on_error, stopped](const MoonrakerError& error) {
+            if (!stopped()) {
+                on_error(path + ": " + error.message);
+            }
+        },
+        std::move(cancelled));
 }
 
 zip::ZipError ThreeMfReader::extract_plate(const std::string& local_zip, int plate,

@@ -12,6 +12,7 @@
 #include <atomic>
 #include <cstdint>
 #include <functional>
+#include <map>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -478,6 +479,10 @@ class PrintHistoryManager {
     /// Whether the archive @p filename is still listed, for a printer that
     /// keeps no metadata for archives; answers through on_original_answered().
     void look_for_archive(const std::string& filename, uint64_t generation);
+    /// Answers every archive waiting on @p dir's listing from @p listed (name
+    /// to modified time), or as missing when the listing failed (null).
+    void answer_archive_listing(const std::string& dir, uint64_t generation,
+                                const std::unordered_map<std::string, double>* listed);
     void adopt_original(PrintHistoryJob& job);
 
     /// What the original's metadata answered. It reads as missing while the
@@ -547,6 +552,9 @@ class PrintHistoryManager {
     std::unordered_map<std::string, OriginalFile> originals_;
     /// Bumped by invalidate(), so an answer asked for before it is dropped.
     uint64_t originals_generation_ = 0;
+    /// Archives waiting on a directory listing under way, by generation and
+    /// directory: one listing answers every archive in it.
+    std::map<std::pair<uint64_t, std::string>, std::vector<std::string>> archive_listings_;
 
     // Observers (stored as pointers for reliable removal)
     std::vector<helix::HistoryChangedCallback*> observers_;

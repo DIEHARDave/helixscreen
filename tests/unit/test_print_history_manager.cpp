@@ -1631,3 +1631,26 @@ TEST_CASE_METHOD(
         CHECK_FALSE(manager_->get_jobs().front().exists);
     }
 }
+
+TEST_CASE_METHOD(HistoryManagerTestFixture,
+                 "PrintHistoryManager: archives in one directory share one listing",
+                 "[history_manager][reprint][three_mf]") {
+    FileInfo door;
+    door.filename = "Door.gcode.3mf";
+    door.modified = 9.0;
+    FileInfo hinge;
+    hinge.filename = "Hinge.gcode.3mf";
+    hinge.modified = 11.0;
+    api_->metadata_table().directories["parts"] = {door, hinge};
+
+    install_live_cache(
+        {history_job(helix::gcode::make_extracted_plate_path("parts/Door.gcode.3mf", 9), 300.0),
+         history_job(helix::gcode::make_extracted_plate_path("parts/Hinge.gcode.3mf", 2), 200.0)});
+    pump();
+
+    CHECK(api_->metadata_table().listings == 1);
+    for (const auto& job : manager_->get_jobs()) {
+        CAPTURE(job.filename);
+        CHECK(job.exists);
+    }
+}

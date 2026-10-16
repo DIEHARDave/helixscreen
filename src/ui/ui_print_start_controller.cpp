@@ -484,6 +484,18 @@ void PrintStartController::initiate_reprint(const std::string& filename, const s
         return;
     }
 
+    // A plate of an archive prints only extracted, which takes the preparation
+    // manager; started as itself, the printer would print the .3mf instead.
+    if (archive_plate > 0 && !active_prep_manager()) {
+        spdlog::warn("[PrintStartController] Not reprinting plate {} of {}: nothing to extract it",
+                     archive_plate, filename);
+        NOTIFY_WARNING(lv_tr("Open the .3mf in Print Files to print this plate again."));
+        if (on_error) {
+            on_error();
+        }
+        return;
+    }
+
     if (divert_to_spool_removal()) {
         if (on_error) {
             on_error();
@@ -503,7 +515,16 @@ void PrintStartController::initiate_reprint(const std::string& filename, const s
     // the way Print sends it, extracted again through the preparation manager.
     auto start = [this, filename, on_started, on_error, archive_plate]() {
         auto tok = lifetime_.token();
-        if (auto* prep = active_prep_manager(); prep && archive_plate > 0) {
+        if (archive_plate > 0) {
+            auto* prep = active_prep_manager();
+            if (!prep) {
+                printer_state_.print_state().retire_preparing(helix::PreparingExit::Failed);
+                NOTIFY_WARNING(lv_tr("Open the .3mf in Print Files to print this plate again."));
+                if (on_error) {
+                    on_error();
+                }
+                return;
+            }
             prep->start_archive_reprint(
                 filename, archive_plate,
                 [tok, on_started, on_error](bool ok, const std::string&) mutable {

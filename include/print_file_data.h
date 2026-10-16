@@ -55,8 +55,9 @@ struct PrintFileData {
     size_t file_size_bytes;             ///< File size in bytes
     std::string uuid;                   ///< Slicer UUID from metadata (empty if not available)
     time_t modified_timestamp;          ///< Last modified timestamp
-    int print_time_minutes;             ///< Print time in minutes
-    float filament_grams;               ///< Filament weight in grams
+    double modified = 0;       ///< Last modified time as listed, to the fraction of a second
+    int print_time_minutes;    ///< Print time in minutes
+    float filament_grams;      ///< Filament weight in grams
     std::string filament_type; ///< Filament type (e.g., "PLA", "PETG", "ABS") — first tool only
     std::string
         filament_name; ///< Full filament name (e.g., "PolyMaker PolyLite ABS") — first tool only
@@ -267,6 +268,7 @@ inline void carry_forward_print_file_metadata(std::vector<PrintFileData>& files,
             continue;
         }
         const time_t modified = f.modified_timestamp;
+        const double modified_exact = f.modified;
         const size_t size = f.file_size_bytes;
         if (should_carry_forward_print_file_metadata(it->second, size, retry_missing_thumbnails,
                                                      keeps_local_copies)) {
@@ -284,6 +286,7 @@ inline void carry_forward_print_file_metadata(std::vector<PrintFileData>& files,
 #endif
             f = std::move(it->second);
             f.modified_timestamp = modified;
+            f.modified = modified_exact;
             f.file_size_bytes = size;
         } else {
             // The provider may have kept metadata_fetched / thumbnail_path on the

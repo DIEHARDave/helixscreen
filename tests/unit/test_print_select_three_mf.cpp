@@ -144,6 +144,31 @@ TEST_CASE_METHOD(ArchivePanel,
     CHECK(PrintSelectPanelTestAccess::plate_text(*panel_) == "Plate 5 (2 of 2)");
 }
 
+TEST_CASE_METHOD(ArchivePanel, "a reprint of a plate opens the archive already read on that plate",
+                 "[print_select][three_mf][reprint]") {
+    PlantedGcode file("Set.gcode.3mf", "", fixture_bytes("multi_plate.gcode.3mf"));
+    load(file.name());
+    PrintSelectPanelTestAccess::select_file(*panel_, file.name());
+    drain();
+    REQUIRE(PrintSelectPanelTestAccess::plate_text(*panel_) == "Plate 2 (1 of 2)");
+    REQUIRE(PrintSelectPanelTestAccess::selected_colors(*panel_) !=
+            std::vector<std::string>{"#000000", "#FF0000"});
+
+    REQUIRE(panel_->select_file_by_name(file.name(), 5));
+    drain();
+    CHECK(PrintSelectPanelTestAccess::plate_text(*panel_) == "Plate 5 (2 of 2)");
+    CHECK(PrintSelectPanelTestAccess::selected_colors(*panel_) ==
+          std::vector<std::string>{"#000000", "#FF0000"});
+    const PrintFileData* row = PrintSelectPanelTestAccess::find_file(*panel_, file.name());
+    REQUIRE(row);
+    REQUIRE(row->filament_types.size() == 2);
+    CHECK(row->filament_types[1] == "PLA");
+    auto* prep = PrintSelectPanelTestAccess::prep_manager(*panel_);
+    REQUIRE(prep);
+    REQUIRE(PrintSelectPanelTestAccess::prepare_archive_start(*panel_));
+    CHECK(prep->archive_plate_for(file.name()) == 5);
+}
+
 TEST_CASE_METHOD(ArchivePanel, "one sliced plate shows its number and no arrows",
                  "[print_select][three_mf]") {
     PlantedGcode file("Door.gcode.3mf", "", fixture_bytes("single_plate.gcode.3mf"));
@@ -385,4 +410,34 @@ TEST_CASE_METHOD(ArchivePanel, "a .3mf the printer reads itself queues as itself
     PrintSelectPanelTestAccess::select_file(*panel_, archive.name());
     CHECK(PrintSelectPanelTestAccess::queueable_path(*panel_) ==
           std::optional<std::string>(archive.name()));
+}
+
+TEST_CASE_METHOD(ArchivePanel, "a refresh stops the archive reads under way and asks again later",
+                 "[print_select][three_mf][cancel]") {
+    PlantedGcode file("Door.gcode.3mf", "", fixture_bytes("single_plate.gcode.3mf"));
+    auto& transfers = mock().transfers_mock();
+    transfers.mock_hold_range_reads();
+    panel_->refresh_files(true);
+    drain();
+    PrintSelectPanelTestAccess::fetch_metadata(*panel_, file.name());
+    drain();
+    const size_t before = transfers.held_range_reads();
+    REQUIRE(before > 0);
+
+    panel_->refresh_files(true);
+    drain();
+    transfers.release_held_range_reads(before);
+    drain();
+    const PrintFileData* row = PrintSelectPanelTestAccess::find_file(*panel_, file.name());
+    REQUIRE(row);
+    CHECK_FALSE(row->archive);
+
+    // Asked for again, it reads.
+    transfers.mock_hold_range_reads(false);
+    transfers.release_held_range_reads();
+    PrintSelectPanelTestAccess::fetch_metadata(*panel_, file.name());
+    drain();
+    row = PrintSelectPanelTestAccess::find_file(*panel_, file.name());
+    REQUIRE(row);
+    CHECK(row->archive);
 }

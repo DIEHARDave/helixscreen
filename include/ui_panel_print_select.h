@@ -411,6 +411,10 @@ class PrintSelectPanel : public PanelBase {
     /// file's current one, in the detail view and its card.
     void step_archive_plate(int step);
 
+    /// Shows plate @p plate_index of file @p i's archive: its filaments for the
+    /// mapping card and the start, its render, and its stats in the detail view.
+    void show_archive_plate(size_t i, int plate_index);
+
     /// Publishes the selected file's plate stepper: its plate count and label.
     void update_plate_stepper();
 

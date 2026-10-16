@@ -410,3 +410,58 @@ TEST_CASE_METHOD(ReaderFixture, "a cancelled summary asks for nothing and answer
     CHECK(transfers.ranges == 0);
     CHECK(transfers.tails == 0);
 }
+
+TEST_CASE_METHOD(ReaderFixture, "a summary cancelled while a read is out answers nothing",
+                 "[three_mf][reader][cancel]") {
+    put("f.gcode.3mf", fixture("far_info.gcode.3mf"));
+    const bool fail = GENERATE(false, true);
+    // The tail read, or the slice_info read after it.
+    const int held = GENERATE(1, 2);
+    CAPTURE(fail, held);
+    auto cancelled = std::make_shared<std::atomic<bool>>(false);
+    transfers.hold_from = held;
+    bool answered = false;
+    reader.read_summary(
+        "f.gcode.3mf", sizes["f.gcode.3mf"], 3.0,
+        [&answered](const ArchiveSummary&) { answered = true; },
+        [&answered](const std::string&) { answered = true; }, cancelled);
+    REQUIRE(transfers.held.size() == 1);
+    cancelled->store(true);
+    transfers.release_held(fail);
+    CHECK_FALSE(answered);
+
+    // Nothing was kept for the file: the next read reads it, slice_info and all.
+    transfers.hold_from = 0;
+    const auto r = summarise("f.gcode.3mf", 3.0);
+    REQUIRE(r.ok);
+    REQUIRE(r.summary.plates.size() == 1);
+    CHECK(r.summary.plates[0].has_info);
+    CHECK(transfers.ranges == held + 2);
+}
+
+TEST_CASE_METHOD(ReaderFixture, "a slice_info read that fails answers the plates and keeps nothing",
+                 "[three_mf][reader]") {
+    put("f.gcode.3mf", fixture("far_info.gcode.3mf"));
+    transfers.fail_from = 2;
+    auto r = summarise("f.gcode.3mf", 3.0);
+    REQUIRE(r.ok);
+    REQUIRE(r.summary.plates.size() == 1);
+    CHECK_FALSE(r.summary.plates[0].has_info);
+
+    transfers.fail_from = 0;
+    r = summarise("f.gcode.3mf", 3.0);
+    REQUIRE(r.ok);
+    CHECK(r.summary.plates[0].has_info);
+    CHECK(transfers.ranges == 4);
+}
+
+TEST_CASE_METHOD(ReaderFixture,
+                 "a summary is kept for its modified time to the fraction of a second",
+                 "[three_mf][reader]") {
+    put("a.gcode.3mf", fixture("single_plate.gcode.3mf"));
+    REQUIRE(summarise("a.gcode.3mf", 1700000000.25).ok);
+    REQUIRE(summarise("a.gcode.3mf", 1700000000.25).ok);
+    CHECK(transfers.ranges == 1);
+    REQUIRE(summarise("a.gcode.3mf", 1700000000.75).ok);
+    CHECK(transfers.ranges == 2);
+}

@@ -22,6 +22,7 @@
 #include "versioned_lru.h"
 #include "zip_reader.h"
 
+#include <atomic>
 #include <functional>
 #include <lvgl.h>
 #include <map>
@@ -673,8 +674,19 @@ class PrintPreparationManager {
         std::optional<helix::PrinterStopCheck> printer_stop;
     };
     VersionedLru<KeptScan> kept_scans_; ///< By scan_key()
-    /// Keys whose read is under way, with the file version each reads.
-    std::map<std::string, FileVersion> scans_in_flight_;
+    /// One read under way: the file version it reads, and which request it is.
+    /// The request number tells apart two reads of one version that read
+    /// different G-code (an archive's plates, or its conversion).
+    struct InFlightScan {
+        FileVersion version;
+        uint64_t request = 0;
+        std::shared_ptr<std::atomic<bool>> cancel; ///< Set when its answer is no longer wanted
+    };
+    /// Keys whose read is under way.
+    std::map<std::string, InFlightScan> scans_in_flight_;
+    /// Stops the read under way for @p key, if any: its answer is wanted no more.
+    void drop_scan_in_flight(const std::string& key);
+    uint64_t scan_requests_ = 0;
     std::string current_scan_key_; ///< The file the detail view shows
     /// A start's file, kept from when_ready_to_start() until start_print().
     std::string start_pin_key_;
