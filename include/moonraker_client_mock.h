@@ -2341,6 +2341,14 @@ class MoonrakerClientMock : public helix::MoonrakerClient {
         return cfs_loaded_slot_.load() >= 0;
     }
 
+    /// display_status.message as the mock publishes it now: the last M117 once one was
+    /// sent (an empty one included), else the print-start chatter for the current phase,
+    /// else null.
+    [[nodiscard]] json current_display_message() const;
+    /// The M117 a typical PRINT_START macro shows during a simulated print-start step
+    /// (a SimulatedPrintStartPhase value).
+    static const char* print_start_display_message(uint8_t simulated_phase);
+
   private:
     // --- gcode_script() handlers (moonraker_client_mock_gcode*.cpp) -----------
     // One handler per command family. A handler returns a code to end the

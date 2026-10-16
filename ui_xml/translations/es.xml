@@ -1980,6 +1980,7 @@
   <translation tag="No media installed" es="Sin medio instalado"/>
   <translation tag="No mesh data" es="Sin datos de malla"/>
   <translation tag="No mesh loaded" es="No hay malla cargada"/>
+  <translation tag="No message" es="Sin mensaje"/>
   <translation tag="No multi-filament system detected" es="No se detectó ningún sistema multifilamento"/>
   <translation tag="No network. Scan QR code to report on your phone." es="Sin red. Escanee el código QR para reportar desde su teléfono."/>
   <translation tag="No networks found" es="No se encontraron redes"/>
@@ -2331,6 +2332,7 @@
   <translation tag="Printer Firmware Disconnected" es="Firmware de Impresora Desconectado"/>
   <translation tag="Printer Image" es="Imagen de Impresora"/>
   <translation tag="Printer Manager" es="Gestor de Impresora"/>
+  <translation tag="Printer Message" es="Mensaje de la impresora"/>
   <translation tag="Printer Model" es="Modelo de impresora"/>
   <translation tag="Printer Name" es="Nombre de Impresora"/>
   <translation tag="Printer Setup: Connection" es="Config. Impresora: Conexión"/>
@@ -3145,6 +3147,7 @@
   <translation tag="The helper macros are installed and activate after Klipper restarts." es="Las macros de ayuda están instaladas y se activan tras reiniciar Klipper."/>
   <translation tag="The left RFID reader in this CFS unit may need service" es="Puede que el lector RFID izquierdo de esta unidad CFS necesite servicio"/>
   <translation tag="The loaded spool is {}, but this file was sliced for {}. Filled filament runs at a lower flow rate and needs a hardened nozzle." es="La bobina cargada es {}, pero este archivo se laminó para {}. El filamento con relleno funciona con un caudal menor y necesita una boquilla endurecida."/>
+  <translation tag="The message your printer&apos;s macros show (M117)" es="El mensaje que muestran las macros de tu impresora (M117)"/>
   <translation tag="The nozzle extrudes a few short test moves in a corner, away from the print area, and repeats until it agrees with itself." es="La boquilla hace unos movimientos de prueba cortos en una esquina, lejos de la zona de impresión, y repite hasta que los valores coinciden."/>
   <translation tag="The plate and the spools are still hot. Use gloves." es="La cama y las bobinas siguen calientes. Usa guantes."/>
   <translation tag="The plate finishes its current move, but drying will not start." es="La cama termina su movimiento actual, pero el secado no empezará."/>

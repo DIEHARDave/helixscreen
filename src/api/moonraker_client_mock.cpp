@@ -382,6 +382,18 @@ MoonrakerClientMock::MoonrakerClientMock(PrinterType type, double speedup_factor
         }
     }
 
+    // HELIX_MOCK_DISPLAY_MESSAGE=<text> — start with an M117 message already set, as a
+    // printer whose macros left one before the screen connected. It counts as a sent
+    // M117, so it shows until the next M117 replaces or clears it.
+    if (const char* message_env = std::getenv("HELIX_MOCK_DISPLAY_MESSAGE");
+        message_env && message_env[0]) {
+        std::lock_guard<std::mutex> lock(display_message_mutex_);
+        display_message_ = message_env;
+        display_message_set_ = true;
+        spdlog::info("[MoonrakerClientMock] HELIX_MOCK_DISPLAY_MESSAGE — display message \"{}\"",
+                     display_message_);
+    }
+
     // HELIX_MOCK_EXCLUDE_OBJECTS=<n>|1 — publish a synthetic multi-object plate at
     // print start. The stock test G-codes declare a single EXCLUDE_OBJECT_DEFINE,
     // and the objects button is gated on two or more, so without this the
@@ -5114,23 +5126,7 @@ void MoonrakerClientMock::temperature_simulation_loop() {
             // A user-set M117 message (even cleared to "") always wins over the
             // canned phase strings below - those only apply before the user has
             // ever sent an M117.
-            {"display_status",
-             {{"progress", progress},
-              {"message",
-               [&]() -> json {
-                   {
-                       std::lock_guard<std::mutex> lock(display_message_mutex_);
-                       if (display_message_set_)
-                           return display_message_;
-                   }
-                   if (phase == MockPrintPhase::PREHEAT)
-                       return "Heating...";
-                   if (phase == MockPrintPhase::PRINTING && progress < 0.02)
-                       return "Purging nozzle";
-                   if (phase == MockPrintPhase::PRINTING)
-                       return nullptr; // Most of print has no active message
-                   return nullptr;
-               }()}}},
+            {"display_status", {{"progress", progress}, {"message", current_display_message()}}},
             // stepper_enable tracks actual motor driver state (immediate response to M84)
             {"stepper_enable",
              {{"steppers",
@@ -6380,6 +6376,43 @@ void MoonrakerClientMock::dispatch_measure_axes_noise_response() {
         "Axes noise for xy-axis accelerometer: 12.345678 (x), 15.678901 (y), 8.234567 (z)");
 
     spdlog::info("[MoonrakerClientMock] Dispatched MEASURE_AXES_NOISE response");
+}
+
+const char* MoonrakerClientMock::print_start_display_message(uint8_t simulated_phase) {
+    switch (static_cast<SimulatedPrintStartPhase>(simulated_phase)) {
+    case SimulatedPrintStartPhase::PRINT_START_MARKER:
+    case SimulatedPrintStartPhase::HOMING:
+        return "Homing...";
+    case SimulatedPrintStartPhase::HEATING_BED:
+        return "Heating bed...";
+    case SimulatedPrintStartPhase::HEATING_NOZZLE:
+        return "Heating nozzle...";
+    case SimulatedPrintStartPhase::QGL:
+        return "Leveling Gantry...";
+    case SimulatedPrintStartPhase::BED_MESH:
+        return "Calibrating bed mesh...";
+    case SimulatedPrintStartPhase::PURGING:
+    case SimulatedPrintStartPhase::LAYER_1:
+        return "Purging nozzle";
+    case SimulatedPrintStartPhase::NONE:
+        break;
+    }
+    return "Heating...";
+}
+
+json MoonrakerClientMock::current_display_message() const {
+    {
+        std::lock_guard<std::mutex> lock(display_message_mutex_);
+        if (display_message_set_)
+            return display_message_;
+    }
+    const MockPrintPhase phase = print_phase_.load();
+    if (phase == MockPrintPhase::PREHEAT)
+        return print_start_display_message(simulated_print_start_phase_.load());
+    if (phase == MockPrintPhase::PRINTING && print_progress_.load() < 0.02)
+        return "Purging nozzle";
+    // Most of a print, and idle, carry no message.
+    return nullptr;
 }
 
 void MoonrakerClientMock::advance_print_start_simulation() {

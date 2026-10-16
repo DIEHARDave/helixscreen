@@ -2199,6 +2199,7 @@ translations:
   No media installed: Kein Medium eingelegt
   No mesh data: Keine Mesh-Daten
   No mesh loaded: Kein Netz geladen
+  No message: 'Keine Meldung'
   No multi-filament system detected: Kein Multi-Filament-System erkannt
   No network. Scan QR code to report on your phone.: Kein Netzwerk. QR-Code scannen,
     um auf dem Handy zu melden.
@@ -2576,6 +2577,7 @@ translations:
   Printer Firmware Disconnected: Drucker-Firmware getrennt
   Printer Image: Druckerbild
   Printer Manager: Druckerverwaltung
+  Printer Message: 'Druckermeldung'
   Printer Model: Druckermodell
   Printer Name: Druckername
   'Printer Setup: Connection': 'Druckereinrichtung: Verbindung'
@@ -3498,6 +3500,7 @@ translations:
   The left RFID reader in this CFS unit may need service: Der linke RFID-Leser dieser CFS-Einheit muss möglicherweise gewartet werden
   ? The loaded spool is {}, but this file was sliced for {}. Filled filament runs at a lower flow rate and needs a hardened nozzle.
   : Die geladene Spule ist {}, aber diese Datei wurde für {} gesliced. Gefülltes Filament läuft mit einer niedrigeren Flussrate und erfordert eine gehärtete Düse.
+  The message your printer's macros show (M117): 'Die Meldung, die die Makros deines Druckers anzeigen (M117)'
   The nozzle extrudes a few short test moves in a corner, away from the print area, and repeats until it agrees with itself.: 'Die Düse macht ein paar kurze Testbewegungen in einer Ecke, abseits des Druckbereichs, und wiederholt sie, bis die Werte übereinstimmen.'
   The plate and the spools are still hot. Use gloves.: Heizbett und Spulen sind noch heiß. Trage Handschuhe.
 

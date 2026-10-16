@@ -1980,6 +1980,7 @@
   <translation tag="No media installed" zh="未安装介质"/>
   <translation tag="No mesh data" zh="没有网格数据"/>
   <translation tag="No mesh loaded" zh="未加载网格"/>
+  <translation tag="No message" zh="无消息"/>
   <translation tag="No multi-filament system detected" zh="未检测到多耗材系统"/>
   <translation tag="No network. Scan QR code to report on your phone." zh="无网络。扫描二维码在手机上报告。"/>
   <translation tag="No networks found" zh="未找到网络"/>
@@ -2331,6 +2332,7 @@
   <translation tag="Printer Firmware Disconnected" zh="打印机固件已断开"/>
   <translation tag="Printer Image" zh="打印机图片"/>
   <translation tag="Printer Manager" zh="打印机管理"/>
+  <translation tag="Printer Message" zh="打印机消息"/>
   <translation tag="Printer Model" zh="打印机型号"/>
   <translation tag="Printer Name" zh="打印机名称"/>
   <translation tag="Printer Setup: Connection" zh="打印机设置：连接"/>
@@ -3145,6 +3147,7 @@
   <translation tag="The helper macros are installed and activate after Klipper restarts." zh="帮助宏已安装，将在 Klipper 重启后启用。"/>
   <translation tag="The left RFID reader in this CFS unit may need service" zh="此 CFS 单元的左侧 RFID 读取器可能需要维修"/>
   <translation tag="The loaded spool is {}, but this file was sliced for {}. Filled filament runs at a lower flow rate and needs a hardened nozzle." zh="当前装载的料盘是 {}，但此文件为 {} 切片。填充耗材需要以更低的流量运行，且需要硬化喷嘴。"/>
+  <translation tag="The message your printer&apos;s macros show (M117)" zh="打印机宏显示的消息 (M117)"/>
   <translation tag="The nozzle extrudes a few short test moves in a corner, away from the print area, and repeats until it agrees with itself." zh="喷嘴在远离打印区域的角落进行几次短促的测试挤出，并重复直到读数一致。"/>
   <translation tag="The plate and the spools are still hot. Use gloves." zh="热床和料盘仍然很烫。请戴手套。"/>
   <translation tag="The plate finishes its current move, but drying will not start." zh="热床会完成当前移动,但烘干不会开始。"/>

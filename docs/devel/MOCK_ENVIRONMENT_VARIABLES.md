@@ -198,6 +198,20 @@ The mock answers `printer.objects.subscribe` itself, without the real discovery 
 union subscription; that path is covered by the real-sequence unit tests (the `[subscription]`
 tag).
 
+### `HELIX_MOCK_DISPLAY_MESSAGE`
+
+Start the mock printer with a `display_status.message` (M117) already set, as a printer whose macros left one before the screen connected. It counts as a sent M117: it shows until the next M117 replaces it or a bare `M117` clears it, and it takes precedence over the print-start chatter. Without it, an idle mock publishes no message, and a print's preheat publishes what a typical `PRINT_START` macro shows for each step ("Homing...", "Heating bed...", "Heating nozzle...", "Leveling Gantry...", "Calibrating bed mesh...", "Purging nozzle"; `MoonrakerClientMock::print_start_display_message`).
+
+| Property | Value |
+|----------|-------|
+| **Values** | any text; empty sets nothing |
+| **Default** | unset (no message while idle) |
+| **File** | `src/api/moonraker_client_mock.cpp` |
+
+```bash
+HELIX_MOCK_DISPLAY_MESSAGE="Nozzle wiped, ready" ./build/bin/helix-screen --test -vv
+```
+
 ### `HELIX_MOCK_AUTO_PRINT`
 
 Boot the mock printer straight into an active print so print-gated features can be exercised under `--test` without manually driving a print-start flow.

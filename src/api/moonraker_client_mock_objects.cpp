@@ -958,7 +958,8 @@ void register_object_handlers(std::unordered_map<std::string, MethodHandler>& re
 
             // display_status (for progress/message display)
             if (objects.contains("display_status")) {
-                status_obj["display_status"] = {{"progress", 0.0}, {"message", nullptr}};
+                status_obj["display_status"] = {{"progress", 0.0},
+                                                {"message", self->current_display_message()}};
             }
 
             // LED effect objects (for tracking enabled state)

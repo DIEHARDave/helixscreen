@@ -1980,6 +1980,7 @@
   <translation tag="No media installed" de="Kein Medium eingelegt"/>
   <translation tag="No mesh data" de="Keine Mesh-Daten"/>
   <translation tag="No mesh loaded" de="Kein Netz geladen"/>
+  <translation tag="No message" de="Keine Meldung"/>
   <translation tag="No multi-filament system detected" de="Kein Multi-Filament-System erkannt"/>
   <translation tag="No network. Scan QR code to report on your phone." de="Kein Netzwerk. QR-Code scannen, um auf dem Handy zu melden."/>
   <translation tag="No networks found" de="Keine Netzwerke gefunden"/>
@@ -2331,6 +2332,7 @@
   <translation tag="Printer Firmware Disconnected" de="Drucker-Firmware getrennt"/>
   <translation tag="Printer Image" de="Druckerbild"/>
   <translation tag="Printer Manager" de="Druckerverwaltung"/>
+  <translation tag="Printer Message" de="Druckermeldung"/>
   <translation tag="Printer Model" de="Druckermodell"/>
   <translation tag="Printer Name" de="Druckername"/>
   <translation tag="Printer Setup: Connection" de="Druckereinrichtung: Verbindung"/>
@@ -3145,6 +3147,7 @@
   <translation tag="The helper macros are installed and activate after Klipper restarts." de="Die Hilfsmakros sind installiert und werden nach einem Klipper-Neustart aktiv."/>
   <translation tag="The left RFID reader in this CFS unit may need service" de="Der linke RFID-Leser dieser CFS-Einheit muss möglicherweise gewartet werden"/>
   <translation tag="The loaded spool is {}, but this file was sliced for {}. Filled filament runs at a lower flow rate and needs a hardened nozzle." de="Die geladene Spule ist {}, aber diese Datei wurde für {} gesliced. Gefülltes Filament läuft mit einer niedrigeren Flussrate und erfordert eine gehärtete Düse."/>
+  <translation tag="The message your printer&apos;s macros show (M117)" de="Die Meldung, die die Makros deines Druckers anzeigen (M117)"/>
   <translation tag="The nozzle extrudes a few short test moves in a corner, away from the print area, and repeats until it agrees with itself." de="Die Düse macht ein paar kurze Testbewegungen in einer Ecke, abseits des Druckbereichs, und wiederholt sie, bis die Werte übereinstimmen."/>
   <translation tag="The plate and the spools are still hot. Use gloves." de="Heizbett und Spulen sind noch heiß. Trage Handschuhe."/>
   <translation tag="The plate finishes its current move, but drying will not start." de="Das Heizbett beendet die laufende Bewegung, aber die Trocknung startet nicht."/>

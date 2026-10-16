@@ -1980,6 +1980,7 @@
   <translation tag="No media installed" it="Nessun supporto installato"/>
   <translation tag="No mesh data" it="Nessun dato mesh"/>
   <translation tag="No mesh loaded" it="Nessuna mesh caricata"/>
+  <translation tag="No message" it="Nessun messaggio"/>
   <translation tag="No multi-filament system detected" it="Nessun sistema multi-filamento rilevato"/>
   <translation tag="No network. Scan QR code to report on your phone." it="Nessuna rete. Scansiona il QR code per segnalare dal telefono."/>
   <translation tag="No networks found" it="Nessuna rete trovata"/>
@@ -2331,6 +2332,7 @@
   <translation tag="Printer Firmware Disconnected" it="Firmware stampante disconnesso"/>
   <translation tag="Printer Image" it="Immagine stampante"/>
   <translation tag="Printer Manager" it="Gestione stampante"/>
+  <translation tag="Printer Message" it="Messaggio della stampante"/>
   <translation tag="Printer Model" it="Modello stampante"/>
   <translation tag="Printer Name" it="Nome stampante"/>
   <translation tag="Printer Setup: Connection" it="Config. stampante: Connessione"/>
@@ -3145,6 +3147,7 @@
   <translation tag="The helper macros are installed and activate after Klipper restarts." it="Le macro di ausilio sono installate e si attivano dopo il riavvio di Klipper."/>
   <translation tag="The left RFID reader in this CFS unit may need service" it="Il lettore RFID sinistro di questa unità CFS potrebbe richiedere assistenza"/>
   <translation tag="The loaded spool is {}, but this file was sliced for {}. Filled filament runs at a lower flow rate and needs a hardened nozzle." it="La bobina caricata è {}, ma questo file è stato sezionato per {}. Il filamento con cariche richiede un flusso più basso e un ugello indurito."/>
+  <translation tag="The message your printer&apos;s macros show (M117)" it="Il messaggio mostrato dalle macro della stampante (M117)"/>
   <translation tag="The nozzle extrudes a few short test moves in a corner, away from the print area, and repeats until it agrees with itself." it="L&apos;ugello fa alcuni brevi movimenti di prova in un angolo, lontano dall&apos;area di stampa, e ripete finché i valori convergono."/>
   <translation tag="The plate and the spools are still hot. Use gloves." it="Il piano e le bobine sono ancora caldi. Usa i guanti."/>
   <translation tag="The plate finishes its current move, but drying will not start." it="Il piano termina lo spostamento in corso, ma l&apos;essiccazione non partirà."/>
