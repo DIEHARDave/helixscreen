@@ -1263,7 +1263,7 @@ namespace {
 std::function<void(const std::string&)> main_thread_error(const char* tag,
                                                           ThumbnailCache::ErrorCallback on_error) {
     return [tag, on_error](const std::string& message) {
-        helix::ui::queue_update(tag, [on_error, message]() {
+        helix::ui::queue_update(tag, [on_error, message]() { // QUEUE_TAG_OK: callers pass literals
             if (on_error) {
                 on_error(message);
             }
