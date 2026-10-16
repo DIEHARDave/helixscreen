@@ -28,19 +28,26 @@ using helix::ui::ParallelTapTarget;
 // ============================================================================
 // parallel_tap_at(): pure
 //
-// Three columns at x = 100, 200, 300; tool_scale 10, so a column is 30 px
-// either side of its x and the head band 40 px either side of toolhead_y 400.
-// The lanes own everything above sensor_y 250.
+// Three columns at x = 100, 200, 300, each lane 30 px either side of its x and
+// owning everything above sensor_y 250. Each head glyph spans x -12..+12 of
+// its column and y 380..430.
 // ============================================================================
 
 namespace {
 constexpr int32_t kSlotX[] = {100, 200, 300};
-constexpr int32_t kToolheadY = 400;
-constexpr int32_t kSensorY = 250;
-constexpr int32_t kScale = 10;
+
+helix::ui::ParallelTapLayout layout(const int32_t* xs = kSlotX, int count = 3) {
+    helix::ui::ParallelTapLayout l;
+    l.slot_x = xs;
+    l.slot_count = count;
+    l.sensor_y = 250;
+    l.lane_half_width = 30;
+    l.head = {-12, 380, 12, 430};
+    return l;
+}
 
 helix::ui::ParallelTap tap(int32_t x, int32_t y) {
-    return parallel_tap_at({x, y}, kToolheadY, kSensorY, kScale, kSlotX, 3);
+    return parallel_tap_at({x, y}, layout());
 }
 } // namespace
 
@@ -48,8 +55,18 @@ TEST_CASE("parallel_tap_at: a head glyph answers as its toolhead", "[ams][path][
     const auto t = tap(200, 410);
     CHECK(t.target == ParallelTapTarget::Toolhead);
     CHECK(t.slot == 1);
-    CHECK(tap(325, 365).target == ParallelTapTarget::Toolhead);
-    CHECK(tap(325, 365).slot == 2);
+}
+
+TEST_CASE("parallel_tap_at: the glyph's edges are the head, one pixel out is not",
+          "[ams][path][hit_test]") {
+    CHECK(tap(200, 380).target == ParallelTapTarget::Toolhead);
+    CHECK(tap(200, 430).target == ParallelTapTarget::Toolhead);
+    CHECK(tap(188, 400).target == ParallelTapTarget::Toolhead);
+    CHECK(tap(212, 400).target == ParallelTapTarget::Toolhead);
+    CHECK(tap(200, 379).target == ParallelTapTarget::None);
+    CHECK(tap(200, 431).target == ParallelTapTarget::None);
+    CHECK(tap(187, 400).target == ParallelTapTarget::None);
+    CHECK(tap(213, 400).target == ParallelTapTarget::None);
 }
 
 TEST_CASE("parallel_tap_at: a tube or spool answers as its lane", "[ams][path][hit_test]") {
@@ -59,13 +76,7 @@ TEST_CASE("parallel_tap_at: a tube or spool answers as its lane", "[ams][path][h
         CHECK(t.target == ParallelTapTarget::Lane);
         CHECK(t.slot == 0);
     }
-}
-
-TEST_CASE("parallel_tap_at: between the sensor and the head band is nothing",
-          "[ams][path][hit_test]") {
-    CHECK(tap(200, 300).target == ParallelTapTarget::None);
-    CHECK(tap(200, 360).target == ParallelTapTarget::None);
-    CHECK(tap(200, 440).target == ParallelTapTarget::None);
+    CHECK(tap(100, 250).target == ParallelTapTarget::None);
 }
 
 TEST_CASE("parallel_tap_at: between columns is nothing", "[ams][path][hit_test]") {
@@ -73,12 +84,29 @@ TEST_CASE("parallel_tap_at: between columns is nothing", "[ams][path][hit_test]"
     CHECK(tap(150, 100).target == ParallelTapTarget::None);
 }
 
-TEST_CASE("parallel_tap_at: a head reaching above the sensor row still answers as the head",
+TEST_CASE("parallel_tap_at: a glyph reaching above the sensor row leaves the tube to the lane",
           "[ams][path][hit_test]") {
-    // Sensor row inside the head band: the band wins.
-    const auto t = parallel_tap_at({200, 380}, kToolheadY, 390, kScale, kSlotX, 3);
-    CHECK(t.target == ParallelTapTarget::Toolhead);
-    CHECK(t.slot == 1);
+    auto l = layout();
+    l.head = {-12, 200, 12, 430};
+    const auto above = parallel_tap_at({200, 240}, l);
+    CHECK(above.target == ParallelTapTarget::Lane);
+    CHECK(above.slot == 1);
+    const auto below = parallel_tap_at({200, 260}, l);
+    CHECK(below.target == ParallelTapTarget::Toolhead);
+    CHECK(below.slot == 1);
+}
+
+TEST_CASE("parallel_tap_at: overlapping columns answer the nearest", "[ams][path][hit_test]") {
+    // 31 px pitch: every lane reach and head glyph overlaps its neighbours.
+    constexpr int32_t xs[] = {100, 131, 162};
+    auto l = layout(xs, 3);
+    l.head = {-20, 380, 20, 430};
+    for (int32_t y : {100, 400}) {
+        CAPTURE(y);
+        CHECK(parallel_tap_at({120, y}, l).slot == 1); // 11 px from 131, 20 from 100
+        CHECK(parallel_tap_at({115, y}, l).slot == 0); // 15 px from 100, 16 from 131
+        CHECK(parallel_tap_at({150, y}, l).slot == 2); // 12 px from 162, 19 from 131
+    }
 }
 
 // ============================================================================
