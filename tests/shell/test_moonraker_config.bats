@@ -13,12 +13,14 @@ setup() {
     # Source modules (reset source guards so each test gets a fresh load).
     # platform.sh provides helix_self_update_asset(), which write_release_info()
     # calls to resolve the Moonraker self-update asset name.
-    unset _HELIX_COMMON_SOURCED _HELIX_HOST_PROFILE_SOURCED _HELIX_MOONRAKER_SOURCED _HELIX_PLATFORM_SOURCED
+    unset _HELIX_COMMON_SOURCED _HELIX_HOST_PROFILE_SOURCED _HELIX_MOONRAKER_SOURCED _HELIX_PLATFORM_SOURCED _HELIX_RELEASE_SOURCED
     . "$WORKTREE_ROOT/scripts/lib/installer/common.sh" 2>/dev/null || true
     # host_profile.sh: the mod-ownership guard add_update_manager_section calls
     . "$WORKTREE_ROOT/scripts/lib/installer/host_profile.sh"
     . "$WORKTREE_ROOT/scripts/lib/installer/platform.sh"
     . "$WORKTREE_ROOT/scripts/lib/installer/moonraker.sh"
+    # release.sh: _has_real_curl, which request_moonraker_restart calls
+    . "$WORKTREE_ROOT/scripts/lib/installer/release.sh"
 
     # Set required globals
     export INSTALL_DIR="$BATS_TEST_TMPDIR/opt/helixscreen"
@@ -879,7 +881,8 @@ MOONEOF
 
 @test "restart_moonraker: warns and succeeds when no restart mechanism exists" {
     mock_command_script "systemctl" 'exit 1'
-    mock_command_script "curl" 'exit 7'
+    mock_command_script "curl" 'case "$1" in --version) echo "curl 8.5.0"; exit 0;; esac; exit 7'
+    mock_command_script "wget" 'exit 8'
     export HELIX_INITD_DIR="$BATS_TEST_TMPDIR/etc/init.d-empty"
     mkdir -p "$HELIX_INITD_DIR"
 
@@ -894,14 +897,15 @@ MOONEOF
     # Forge-X: Moonraker runs in the mod's chroot under no init script here.
     mock_command_script "systemctl" 'exit 1'
     local log="$BATS_TEST_TMPDIR/curl.log"
-    mock_command_script "curl" "printf '%s\\n' \"\$*\" >> '$log'; exit 0"
+    mock_command_script "curl" "case \"\$1\" in --version) echo 'curl 8.5.0'; exit 0;; esac
+printf '%s\\n' \"\$*\" >> '$log'; exit 0"
     export HELIX_INITD_DIR="$BATS_TEST_TMPDIR/etc/init.d-empty"
     mkdir -p "$HELIX_INITD_DIR"
 
     run restart_moonraker
 
     [ "$status" -eq 0 ]
-    grep -q -- '-X POST http://127.0.0.1:7125/server/restart' "$log"
+    grep -q -- '-sf --max-time 5 -X POST http://127.0.0.1:7125/server/restart' "$log"
     [[ "$output" != *"manually"* ]]
 }
 
@@ -1666,4 +1670,41 @@ CONF
 
     # No persistent_files to remove, so content should be unchanged
     [ "$(cat "$conf")" = "$original_content" ]
+}
+
+@test "request_moonraker_restart: an HTTP error from curl falls through to wget" {
+    # Moonraker answering 401: curl exits 0 unless -f makes that a 22.
+    mock_command_script "curl" 'case "$1" in --version) echo "curl 8.5.0"; exit 0;; esac
+for a in "$@"; do case "$a" in -f|-sf) exit 22;; esac; done
+exit 0'
+    local log="$BATS_TEST_TMPDIR/wget.log"
+    mock_command_script "wget" "printf '%s\\n' \"\$*\" >> '$log'; exit 0"
+
+    run request_moonraker_restart
+
+    [ "$status" -eq 0 ]
+    grep -q -- "--post-data= http://127.0.0.1:7125/server/restart" "$log"
+}
+
+@test "request_moonraker_restart: a curl impostor is never run, wget is used" {
+    # A K1's /usr/bin/curl is libhv's example client: it rejects -s and -f.
+    local curl_log="$BATS_TEST_TMPDIR/curl.log"
+    mock_command_script "curl" "printf '%s\\n' \"\$*\" >> '$curl_log'; case \"\$1\" in --version) echo 'curl version 1.0.0';; esac; exit 0"
+    local log="$BATS_TEST_TMPDIR/wget.log"
+    mock_command_script "wget" "printf '%s\\n' \"\$*\" >> '$log'; exit 0"
+
+    run request_moonraker_restart
+
+    [ "$status" -eq 0 ]
+    grep -q "server/restart" "$log"
+    ! grep -q "server/restart" "$curl_log"
+}
+
+@test "request_moonraker_restart: every way failing is a failure" {
+    mock_command_script "curl" 'case "$1" in --version) echo "curl 8.5.0"; exit 0;; esac; exit 22'
+    mock_command_script "wget" 'exit 8'
+
+    run request_moonraker_restart
+
+    [ "$status" -ne 0 ]
 }

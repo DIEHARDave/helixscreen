@@ -107,6 +107,19 @@ heater_pin: PB1
 EOF
 }
 
+# curl proper (its --version starts "curl <digit>"), exiting $1 for every other
+# call and logging its argv to $2 when given.
+mock_real_curl() {
+    local status="$1" log="${2:-}"
+    local body='case "$1" in --version) echo "curl 8.5.0 (x86_64-pc-linux-gnu)"; exit 0;; esac'
+    if [ -n "$log" ]; then
+        body="$body
+printf '%s\\n' \"\$*\" >> '$log'"
+    fi
+    mock_command_script "curl" "$body
+exit $status"
+}
+
 # Build a scratch HOME shaped like a real printer's: a Moonraker checkout
 # with the plugin symlinked in, and printer_data/config holding an
 # instrumented printer.cfg plus the real helix_macros.cfg. Shims sudo,
@@ -124,9 +137,11 @@ setup_instrumented_home() {
         > "$c/moonraker.conf"
     write_instrumented_printer_cfg "$c/printer.cfg"
 
-    for cmd in sudo service curl; do
+    for cmd in sudo service; do
         mock_command_script "$cmd" 'exit 0'
     done
+    mock_real_curl 0
+    mock_command_script "wget" 'exit 8'
 }
 
 @test "install.sh passes POSIX syntax check" {
@@ -349,7 +364,7 @@ setup_instrumented_home() {
     # clean uninstall into a reported failure.
     local home="$BATS_TEST_TMPDIR/home"
     setup_instrumented_home "$home"
-    mock_command_script "curl" 'exit 1'
+    mock_real_curl 1
     mock_command_script "sleep" 'exit 0'
     local expected="$BATS_TEST_TMPDIR/expected_printer.cfg"
     write_original_printer_cfg "$expected"
@@ -370,7 +385,7 @@ setup_instrumented_home() {
     local c="$home/printer_data/config"
     printf '[gcode_macro PRINT_START]\ngcode:\n    G28\n    # <<< HELIX_TRACKING v2 >>>\n    HELIX_PHASE_HOMING\n' \
         > "$c/printer.cfg"
-    mock_command_script "curl" 'exit 1'
+    mock_real_curl 1
     mock_command_script "sleep" 'exit 0'
 
     run env HOME="$home" sh "$SCRIPT" --uninstall-auto
@@ -412,9 +427,11 @@ setup_creality_k1_layout() {
     printf '[server]\nhost: 0.0.0.0\n' > "$data/config/moonraker.conf"
     printf '%s\0' "$root/usr/data/moonraker/moonraker-env/bin/python" "$pkg/moonraker.py" \
         -d "$data" > "$root/proc/1444/cmdline"
-    for cmd in sudo service curl; do
+    for cmd in sudo service; do
         mock_command_script "$cmd" 'exit 0'
     done
+    mock_real_curl 0
+    mock_command_script "wget" 'exit 8'
 }
 
 @test "auto install finds a Creality K1 Moonraker from its running process" {
@@ -472,9 +489,11 @@ setup_forgex_layout() {
     # The plugin as installed under the bind-mounted /opt/config.
     mkdir -p "$chroot/opt/config/mod_data/helixscreen"
     cp -R "$REPO_ROOT/moonraker-plugin" "$chroot/opt/config/mod_data/helixscreen/"
-    for cmd in sudo service curl; do
+    for cmd in sudo service; do
         mock_command_script "$cmd" 'exit 0'
     done
+    mock_real_curl 0
+    mock_command_script "wget" 'exit 8'
 }
 
 FORGEX_PLUGIN=/opt/config/mod_data/helixscreen/moonraker-plugin
@@ -539,7 +558,7 @@ FORGEX_PLUGIN=/opt/config/mod_data/helixscreen/moonraker-plugin
     setup_forgex_layout "$root"
     local chroot="$root/data/.mod/.forge-x"
     local log="$BATS_TEST_TMPDIR/curl.log"
-    mock_command_script "curl" "printf '%s\n' \"\$*\" >> '$log'; exit 0"
+    mock_real_curl 0 "$log"
 
     local bin="$BATS_TEST_TMPDIR/no-service-path"
     mkdir -p "$bin"
@@ -555,7 +574,7 @@ FORGEX_PLUGIN=/opt/config/mod_data/helixscreen/moonraker-plugin
     run env HOME="$root/home" HELIX_PROC_ROOT="$root/proc" PATH="$bin:$HELIX_TEST_SANDBOX_BIN" \
         sh "$chroot$FORGEX_PLUGIN/install.sh" --auto
     [ "$status" -eq 0 ] || fail "install failed: $output"
-    grep -q -- '-X POST http://localhost:7125/server/restart' "$log" \
+    grep -q -- '-sf --max-time 5 -X POST http://127.0.0.1:7125/server/restart' "$log" \
         || fail "no self-restart request: $(cat "$log")"
 }
 
@@ -579,7 +598,7 @@ FORGEX_PLUGIN=/opt/config/mod_data/helixscreen/moonraker-plugin
     run env HOME="$root/home" HELIX_PROC_ROOT="$root/proc" PATH="$bin:$HELIX_TEST_SANDBOX_BIN" \
         sh "$chroot$FORGEX_PLUGIN/install.sh" --auto
     [ "$status" -eq 0 ] || fail "install failed: $output"
-    grep -q -- "--post-data= http://localhost:7125/server/restart" "$log" \
+    grep -q -- "--post-data= http://127.0.0.1:7125/server/restart" "$log" \
         || fail "no self-restart request: $(cat "$log")"
     grep -q "http://localhost:7125/server/info" "$log" || fail "never waited for Moonraker"
     contains "Moonraker is ready" "$output"
@@ -666,4 +685,58 @@ user_conf_of() {
 
     grep -q '^\[helix_print\]' "$(user_conf_of "$root")"
     ! grep -q 'symlink_dir' "$(user_conf_of "$root")"
+}
+
+@test "install.sh and the main installer carry the same request_moonraker_restart" {
+    local fn='/^request_moonraker_restart() {$/,/^}$/p'
+    local a b
+    a=$(sed -n "$fn" "$SCRIPT")
+    b=$(sed -n "$fn" "$REPO_ROOT/scripts/lib/installer/moonraker.sh")
+    [ -n "$a" ] || fail "no request_moonraker_restart in $SCRIPT"
+    [ "$a" = "$b" ] || fail "the two copies differ"
+}
+
+@test "install.sh carries the main installer's _has_real_curl" {
+    local fn='/^_has_real_curl() {$/,/^}$/p'
+    local a b
+    a=$(sed -n "$fn" "$SCRIPT")
+    b=$(sed -n "$fn" "$REPO_ROOT/scripts/lib/installer/release.sh")
+    [ -n "$a" ] || fail "no _has_real_curl in $SCRIPT"
+    [ "$a" = "$b" ] || fail "the two copies differ"
+}
+
+@test "a curl that answers with an HTTP error does not count as Moonraker being up" {
+    local root="$BATS_TEST_TMPDIR/fx"
+    setup_forgex_layout "$root"
+    local chroot="$root/data/.mod/.forge-x"
+    # Moonraker answering 401: curl exits 0 unless -f makes that a 22.
+    mock_command_script "curl" 'case "$1" in --version) echo "curl 8.5.0"; exit 0;; esac
+for a in "$@"; do case "$a" in -f|-sf) exit 22;; esac; done
+exit 0'
+    mock_command_script "wget" 'exit 8'
+    mock_command_script "sleep" 'exit 0'
+    mock_command_script "systemctl" 'exit 1'
+
+    run env HOME="$root/home" HELIX_PROC_ROOT="$root/proc" \
+        sh "$chroot$FORGEX_PLUGIN/install.sh" --auto
+    contains "did not respond" "$output"
+    ! contains "Moonraker is ready" "$output"
+}
+
+@test "an include line with CRLF and trailing blanks still finds user.moonraker.conf" {
+    local root="$BATS_TEST_TMPDIR/fx"
+    setup_forgex_layout "$root"
+    local cfg="$root/data/.mod/.forge-x/root/printer_data/config"
+    printf '[server]\r\nport: 7125\r\n\r\n[include mod_data/user.moonraker.conf]  \t\r\n' \
+        > "$cfg/mod/moonraker.conf"
+    cp "$cfg/mod/moonraker.conf" "$BATS_TEST_TMPDIR/mod.conf.before"
+
+    run env HOME="$root/home" HELIX_PROC_ROOT="$root/proc" \
+        sh "$root/data/.mod/.forge-x$FORGEX_PLUGIN/install.sh" --no-restart --auto
+    [ "$status" -eq 0 ] || fail "install failed: $output"
+
+    grep -q '^\[helix_print\]' "$cfg/mod_data/user.moonraker.conf" \
+        || fail "section not in user.moonraker.conf"
+    cmp -s "$BATS_TEST_TMPDIR/mod.conf.before" "$cfg/mod/moonraker.conf" \
+        || fail "the mod's own moonraker.conf was edited"
 }

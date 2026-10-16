@@ -870,17 +870,21 @@ restart_moonraker() {
     return 0
 }
 
-# POST /server/restart: Moonraker re-launches itself in place.
+# POST /server/restart: Moonraker re-launches itself in place, the one restart
+# that works where no service manager reaches it (Forge-X's chroot). Real curl
+# first, then wget, which BusyBox carries where curl is absent or an impostor;
+# -sf and wget's own status make an HTTP error (a 401) a failure.
+# Kept identical in moonraker-plugin/install.sh, which runs standalone (piped
+# from GitHub, or from an install tree without scripts/lib) and cannot source
+# this file; a bats test holds the two copies equal.
 # Returns 0 when Moonraker accepted the request.
 request_moonraker_restart() {
-    local url="${MOONRAKER_URL:-http://127.0.0.1:7125}/server/restart"
-    if command -v curl >/dev/null 2>&1; then
-        curl -sf --max-time 5 -X POST "$url" >/dev/null 2>&1
-    elif command -v wget >/dev/null 2>&1; then
-        wget -q -T 5 -O /dev/null --post-data='' "$url" >/dev/null 2>&1
-    else
-        return 1
+    _restart_url="${MOONRAKER_URL:-http://127.0.0.1:7125}/server/restart"
+    if _has_real_curl && curl -sf --max-time 5 -X POST "$_restart_url" >/dev/null 2>&1; then
+        return 0
     fi
+    command -v wget >/dev/null 2>&1 &&
+        wget -q -T 5 -O /dev/null --post-data='' "$_restart_url" >/dev/null 2>&1
 }
 
 # What configure_moonraker_updates would add, for the plan. Read-only: the

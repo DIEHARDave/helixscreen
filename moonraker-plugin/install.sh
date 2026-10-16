@@ -213,7 +213,10 @@ find_config_dir() {
 helix_conf_file() {
     conf="$1/moonraker.conf"
     if [ -L "$conf" ]; then
-        inc=$(sed -n 's/^\[include[[:space:]]\{1,\}\([^]*?]*user\.moonraker\.conf\)[[:space:]]*\]$/\1/p' "$conf" 2>/dev/null | tail -n 1)
+        # Trailing blanks after "]" include the CR of a file saved on Windows;
+        # neither changes what Moonraker includes.
+        inc=$(sed -n 's/^\[include[[:space:]]\{1,\}\([^]*?]*user\.moonraker\.conf\)[[:space:]]*\][[:space:]]*$/\1/p' "$conf" 2>/dev/null |
+            tail -n 1)
         if [ -n "$inc" ]; then
             case "$inc" in
                 /*) printf '%s' "$(running_moonraker_root)$inc" ;;
@@ -380,16 +383,33 @@ uninstall() {
     return "$exit_status"
 }
 
-# Whether a GET of the URL succeeds. BusyBox systems (Forge-X outside its
-# chroot) carry wget but no curl.
-moonraker_answers() {
-    if command -v curl > /dev/null 2>&1; then
-        curl -s --max-time 2 "$1" > /dev/null 2>&1
-    elif command -v wget > /dev/null 2>&1; then
-        wget -q -T 2 -O /dev/null "$1" > /dev/null 2>&1
-    else
-        return 1
+# The same probe as _has_real_curl in scripts/lib/installer/release.sh.
+# Detect whether `curl` is curl proper, with the flags we pass it. Creality K1
+# firmware ships libhv's example client as /usr/bin/curl: it answers to the name,
+# prints "curl version 1.0.0" and rejects -s, -S, -L, -o and -f. Real curl's first
+# --version output starts "curl <digit>...". Shell builtins only, so it holds on
+# a PATH with no head or grep. Cache the result so we only probe once.
+_REAL_CURL=""
+_has_real_curl() {
+    if [ -z "$_REAL_CURL" ]; then
+        _REAL_CURL=no
+        if command -v curl >/dev/null 2>&1; then
+            case "$(curl --version 2>/dev/null)" in
+                "curl "[0-9]*) _REAL_CURL=yes ;;
+            esac
+        fi
     fi
+    [ "$_REAL_CURL" = "yes" ]
+}
+
+# Whether a GET of the URL succeeds: real curl, else wget. BusyBox systems
+# (Forge-X outside its chroot) carry wget but no curl, and a K1's /usr/bin/curl
+# is an impostor that rejects -s and -f.
+moonraker_answers() {
+    if _has_real_curl && curl -sf --max-time 2 "$1" > /dev/null 2>&1; then
+        return 0
+    fi
+    command -v wget > /dev/null 2>&1 && wget -q -T 2 -O /dev/null "$1" > /dev/null 2>&1
 }
 
 # Wait for Moonraker to become available after restart
@@ -434,18 +454,21 @@ restart_moonraker() {
     fi
 }
 
-# Ask Moonraker to restart in place (POST /server/restart): the one restart
-# that works where it runs under no service manager this script can reach,
-# such as Forge-X's chroot.
+# POST /server/restart: Moonraker re-launches itself in place, the one restart
+# that works where no service manager reaches it (Forge-X's chroot). Real curl
+# first, then wget, which BusyBox carries where curl is absent or an impostor;
+# -sf and wget's own status make an HTTP error (a 401) a failure.
+# Kept identical in scripts/lib/installer/moonraker.sh: this script runs
+# standalone (piped from GitHub, or from an install tree without scripts/lib)
+# and cannot source it; a bats test holds the two copies equal.
+# Returns 0 when Moonraker accepted the request.
 request_moonraker_restart() {
-    url="${MOONRAKER_URL:-http://localhost:7125}/server/restart"
-    if command -v curl > /dev/null 2>&1; then
-        curl -s --max-time 5 -X POST "$url" > /dev/null 2>&1
-    elif command -v wget > /dev/null 2>&1; then
-        wget -q -T 5 -O /dev/null --post-data='' "$url" > /dev/null 2>&1
-    else
-        return 1
+    _restart_url="${MOONRAKER_URL:-http://127.0.0.1:7125}/server/restart"
+    if _has_real_curl && curl -sf --max-time 5 -X POST "$_restart_url" >/dev/null 2>&1; then
+        return 0
     fi
+    command -v wget >/dev/null 2>&1 &&
+        wget -q -T 5 -O /dev/null --post-data='' "$_restart_url" >/dev/null 2>&1
 }
 
 # Strip phase-tracking instrumentation from PRINT_START via the bundled
