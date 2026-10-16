@@ -34,11 +34,26 @@ from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
 # Database namespace holding one record list per source .3mf
 DB_NAMESPACE = "helix_3mf"
 
+# Owned outputs whose delete a running print refused, retried at job end.
+DB_DEFERRED_NAMESPACE = "helix_3mf_deferred"
+DB_DEFERRED_KEY = "outputs"
+
+# Error of a plate whose planned name was taken during extraction; it is
+# converted again straight away, under whatever name is free by then.
+_RACE_ERROR = "a file arrived at the output name during conversion; converting again"
+
 PLATE_PREFIX = "Metadata/plate_"
 PLATE_SUFFIX = ".gcode"
 
 # Inflate and hash in pieces this size: the whole plate is never in memory.
 CHUNK_SIZE = 64 * 1024
+
+# An md5 entry holds 32 hex digits; anything much larger is not one, and is
+# not read into memory.
+MD5_ENTRY_MAX = 64
+
+# Extraction scratch files in temp_dir, published by a rename once complete.
+PARTIAL_GLOB = "3mf-*.partial"
 
 STATE_DONE = "done"
 STATE_PENDING = "pending"
@@ -108,9 +123,12 @@ def file_md5(path: Path) -> str:
 def read_plate_md5(zf: zipfile.ZipFile, plate: int) -> Optional[str]:
     """The slicer's own md5 of the plate, from `plate_<N>.gcode.md5`, if any."""
     try:
-        raw = zf.read(plate_entry(plate) + ".md5")
+        info = zf.getinfo(plate_entry(plate) + ".md5")
     except KeyError:
         return None
+    if info.file_size > MD5_ENTRY_MAX:
+        return None
+    raw = zf.read(info)
     text = raw.decode("ascii", errors="ignore").strip().lower()
     if len(text) == 32 and all(c in "0123456789abcdef" for c in text):
         return text
@@ -124,21 +142,28 @@ def extract_plate(zf: zipfile.ZipFile, plate: int, dest: Path) -> str:
     when the archive carries one, is checked on top. On any failure @p dest is
     removed and ConversionError raised.
     """
-    expected = read_plate_md5(zf, plate)
     digest = hashlib.md5()
     try:
+        expected = read_plate_md5(zf, plate)
         with zf.open(plate_entry(plate)) as src, open(dest, "wb") as out:
             for chunk in iter(lambda: src.read(CHUNK_SIZE), b""):
                 digest.update(chunk)
                 out.write(chunk)
-    except (zipfile.BadZipFile, zlib.error, OSError, EOFError) as e:
+    except Exception as e:
+        # zipfile raises RuntimeError for an encrypted entry,
+        # NotImplementedError for a compression method it lacks and KeyError
+        # for a missing one, besides BadZipFile/zlib.error/OSError for damage.
         _unlink_quietly(dest)
-        raise ConversionError(f"plate {plate} could not be extracted: {e}")
+        raise ConversionError(f"plate {plate} could not be extracted: {_describe(e)}")
     md5 = digest.hexdigest()
     if expected is not None and md5 != expected:
         _unlink_quietly(dest)
         raise ConversionError(f"plate {plate} md5 {md5} does not match the slicer's {expected}")
     return md5
+
+
+def _describe(e: BaseException) -> str:
+    return f"{type(e).__name__}: {e}" if str(e) else type(e).__name__
 
 
 def _unlink_quietly(path: Path) -> None:
@@ -226,7 +251,9 @@ def plan_output(
         path = gc_path / name
         if not path.exists() and not path.is_symlink():
             return "write", name, True
-        if not path.is_file():
+        # A symlink is someone else's arrangement: never written through or
+        # claimed, even when it points at an identical file.
+        if path.is_symlink() or not path.is_file():
             continue
         md5 = file_md5(path)
         owner = next(
@@ -286,6 +313,12 @@ class _Request:
         self.waiters: List[asyncio.Future] = []
 
 
+def _print_result(started: bool = False, queued: bool = False) -> Dict[str, bool]:
+    """What a conversion did about a requested print, in the shape of
+    Moonraker's upload response."""
+    return {"print_started": started, "print_queued": queued}
+
+
 class Helix3mfConverter:
     """Converts uploaded .3mf files, one at a time, off Moonraker's event loop."""
 
@@ -313,6 +346,8 @@ class Helix3mfConverter:
         self._queue: Dict[str, _Request] = {}
         self._worker: Optional[asyncio.Task] = None
         self._original_finalize: Optional[Callable] = None
+        # Owned outputs whose delete was refused because a print holds them.
+        self._deferred_deletes: List[Conversion] = []
 
     # -- lifecycle -----------------------------------------------------------
 
@@ -326,6 +361,7 @@ class Helix3mfConverter:
                 "HelixPrint: cannot read Moonraker's G-code extensions, converting .3mf anyway"
             )
         self.active = True
+        await self.eventloop.run_in_thread(self._sweep_partials)
         await self._load_records()
         self.server.register_event_handler(
             "file_manager:filelist_changed", self.on_filelist_changed
@@ -336,6 +372,18 @@ class Helix3mfConverter:
         if self.start_on_upload:
             self.install_upload_hook()
         await self.backfill()
+
+    def _sweep_partials(self) -> int:
+        """Remove extraction scratch files a crash or restart left in temp_dir.
+        Runs before the queue starts, so none of them is in use."""
+        removed = 0
+        for partial in (self.gc_path / self.temp_dir).glob(PARTIAL_GLOB):
+            if partial.is_file() and not partial.is_symlink():
+                _unlink_quietly(partial)
+                removed += 1
+        if removed:
+            logging.info(f"HelixPrint: removed {removed} unfinished .3mf extraction(s)")
+        return removed
 
     def install_upload_hook(self) -> bool:
         method = getattr(self.file_manager, "finalize_upload", None)
@@ -410,17 +458,28 @@ class Helix3mfConverter:
     ) -> None:
         if not self.active or new_stats.get("state", "") not in _IDLE_JOB_STATES:
             return
+        if self._deferred_deletes:
+            deferred, self._deferred_deletes = self._deferred_deletes, []
+            await self._drop_outputs(deferred, keep=())
+            await self._save_deferred()
         for source, group in list(self.records.items()):
             if any(c.state == STATE_PENDING for c in group):
                 self.enqueue(source)
 
     # -- queue ---------------------------------------------------------------
 
-    def enqueue(self, source: str, start_print: bool = False, user: Any = None) -> asyncio.Future:
+    def enqueue(
+        self, source: str, start_print: bool = False, user: Any = None, front: bool = False
+    ) -> asyncio.Future:
+        """Queue @p source; the future resolves to _print_result(). With
+        @p front it goes ahead of everything waiting (a slicer waiting on its
+        upload response should not wait on a startup backfill)."""
         request = self._queue.get(source)
         if request is None:
             request = _Request()
             self._queue[source] = request
+        if front:
+            self._queue = {source: request, **{k: v for k, v in self._queue.items() if k != source}}
         if start_print:
             request.start_print = True
             request.user = user
@@ -434,14 +493,14 @@ class Helix3mfConverter:
         while self._queue:
             source = next(iter(self._queue))
             request = self._queue.pop(source)
-            started = False
+            outcome = _print_result()
             try:
-                started = await self.convert(source, request.start_print, request.user)
+                outcome = await self.convert(source, request.start_print, request.user)
             except Exception:
                 logging.exception(f"HelixPrint: .3mf conversion of {source} failed")
             for waiter in request.waiters:
                 if not waiter.done():
-                    waiter.set_result(started)
+                    waiter.set_result(outcome)
 
     async def wait_idle(self) -> None:
         while self._worker is not None and not self._worker.done():
@@ -478,36 +537,40 @@ class Helix3mfConverter:
                 return False
         return True
 
-    async def convert(self, source: str, start_print: bool = False, user: Any = None) -> bool:
-        """Convert one source; True when a print was started for it."""
+    async def convert(
+        self, source: str, start_print: bool = False, user: Any = None
+    ) -> Dict[str, bool]:
+        """Convert one source; returns _print_result() for a requested print."""
         full = self.gc_path / source
         try:
             st = full.stat()
         except OSError:
             await self.remove_source(source)
-            return False
+            return _print_result()
         if self._up_to_date(source, st.st_mtime, st.st_size):
             self._mark_missing_outputs(source)
             await self._save(source)
             if start_print:
                 return await self._start_existing(source, user)
-            return False
+            return _print_result()
 
         previous = self.records.get(source, [])
         try:
             plan = await self.eventloop.run_in_thread(self._read_plates, full)
         except ConversionError as e:
+            if await self._source_vanished(source, full, []):
+                return _print_result()
             self.records[source] = [
                 Conversion(source, st.st_mtime, st.st_size, state=STATE_FAILED, error=str(e))
             ]
             await self._drop_outputs(previous, keep=())
             await self._save(source)
             logging.info(f"HelixPrint: {source}: {e}")
-            return False
+            return _print_result()
 
         multi = len(plan) > 1
         results: List[Conversion] = []
-        started = False
+        outcome = _print_result()
         for plate, plate_md5, usize in plan:
             conv = Conversion(source, st.st_mtime, st.st_size, plate, plate_md5)
             # Copies: plan_output reads them on a worker thread.
@@ -515,9 +578,8 @@ class Helix3mfConverter:
                 Conversion.from_dict(c.to_dict())
                 for s, g in self.records.items() if s != source for c in g
             ] + [Conversion.from_dict(c.to_dict()) for c in previous]
-            action, output, owned = await self.eventloop.run_in_thread(
-                plan_output, self.gc_path, source, plate, multi, plate_md5, known
-            )
+            plan_args = (self.gc_path, source, plate, multi, plate_md5, known)
+            action, output, owned = await self.eventloop.run_in_thread(plan_output, *plan_args)
             if action == "taken":
                 conv.state = STATE_FAILED
                 conv.error = "every output name holds a file the plugin did not write"
@@ -525,11 +587,14 @@ class Helix3mfConverter:
                 conv.output, conv.output_md5, conv.owned = output, plate_md5, owned
                 conv.state = STATE_DONE
                 if start_print and not multi:
-                    started = await self._start_print(output, user)
+                    outcome = await self._start_print(output, user)
             else:
                 want_start = start_print and not multi
-                started_here = await self._write_output(conv, full, output, usize, want_start, user)
-                started = started or started_here
+                wrote = await self._write_output(
+                    conv, full, output, usize, want_start, user, plan_args
+                )
+                if want_start:
+                    outcome = wrote
             results.append(conv)
             if conv.state == STATE_FAILED:
                 logging.info(f"HelixPrint: {source} plate {plate}: {conv.error}")
@@ -538,15 +603,32 @@ class Helix3mfConverter:
         if start_print and multi:
             logging.info(f"HelixPrint: {source} holds {len(plan)} plates; not starting a print")
 
+        if await self._source_vanished(source, full, results):
+            return _print_result()
         self.records[source] = results
         await self._drop_outputs(previous, keep={c.output for c in results if c.output})
         await self._save(source)
-        return started
+        if any(c.state == STATE_PENDING and c.error == _RACE_ERROR for c in results):
+            self.enqueue(source)
+        return outcome
+
+    async def _source_vanished(self, source: str, full: Path, results: List[Conversion]) -> bool:
+        """After the awaits, whether the source was deleted meanwhile. Then the
+        outputs just written are dropped instead of recorded: the delete event
+        already cleaned up what was recorded before."""
+        if full.exists():
+            return False
+        await self._drop_outputs(results, keep=())
+        self.records.pop(source, None)
+        await self._delete_record(source)
+        logging.info(f"HelixPrint: {source} was deleted while converting")
+        return True
 
     def _read_plates(self, full: Path) -> List[Tuple[int, str, int]]:
         """(plate, md5, uncompressed size) for every sliced plate, md5 from the
-        archive when it carries one. Raises ConversionError for a non-zip or a
-        zip with no sliced plate."""
+        archive when it carries one. Raises ConversionError for anything that
+        stops the archive being read: a non-zip, a zip with no sliced plate,
+        an encrypted md5 entry."""
         try:
             with zipfile.ZipFile(full) as zf:
                 plates = sliced_plates(zf.namelist())
@@ -556,23 +638,40 @@ class Helix3mfConverter:
                     (p, read_plate_md5(zf, p) or "", zf.getinfo(plate_entry(p)).file_size)
                     for p in plates
                 ]
-        except (zipfile.BadZipFile, OSError) as e:
-            raise ConversionError(f"not a readable .3mf: {e}")
+        except ConversionError:
+            raise
+        except Exception as e:
+            raise ConversionError(f"not a readable .3mf: {_describe(e)}")
 
     async def _write_output(
-        self, conv: Conversion, full: Path, output: str, usize: int, start_print: bool, user: Any
-    ) -> bool:
+        self,
+        conv: Conversion,
+        full: Path,
+        output: str,
+        usize: int,
+        start_print: bool,
+        user: Any,
+        plan_args: Tuple[Any, ...],
+    ) -> Dict[str, bool]:
         temp_dir = self.gc_path / self.temp_dir
         temp_dir.mkdir(parents=True, exist_ok=True)
         if shutil.disk_usage(str(temp_dir)).free < 2 * usize:
             conv.state, conv.error = STATE_FAILED, "not enough free space to convert"
-            return False
-        partial = temp_dir / f"3mf-{uuid.uuid4().hex}.partial"
+            return _print_result()
+        partial = temp_dir / PARTIAL_GLOB.replace("*", uuid.uuid4().hex)
         try:
             md5 = await self.eventloop.run_in_thread(self._extract, full, conv.plate, partial)
         except ConversionError as e:
             conv.state, conv.error = STATE_FAILED, str(e)
-            return False
+            return _print_result()
+        # The name was planned before the extraction; a file can have arrived
+        # there since (a user's upload of the same name). Publish only if the
+        # plan still says this name is ours to write.
+        again = await self.eventloop.run_in_thread(plan_output, *plan_args)
+        if again != ("write", output, True):
+            _unlink_quietly(partial)
+            conv.state, conv.error = STATE_PENDING, _RACE_ERROR
+            return _print_result()
         if conv.plate_md5 == "":
             conv.plate_md5 = md5
         directory, filename = os.path.split(output)
@@ -600,33 +699,51 @@ class Helix3mfConverter:
                     conv.output_md5 = await self.eventloop.run_in_thread(file_md5, held)
             else:
                 conv.state, conv.error = STATE_FAILED, f"publishing the output failed: {e}"
-            return False
+            return _print_result()
         conv.output, conv.output_md5, conv.owned = output, md5, True
         conv.state, conv.error = STATE_DONE, ""
-        return bool((result or {}).get("print_started"))
+        result = result or {}
+        return _print_result(
+            bool(result.get("print_started")), bool(result.get("print_queued"))
+        )
 
     @staticmethod
     def _extract(full: Path, plate: int, dest: Path) -> str:
         try:
             with zipfile.ZipFile(full) as zf:
                 return extract_plate(zf, plate, dest)
-        except (zipfile.BadZipFile, OSError) as e:
+        except ConversionError:
+            raise
+        except Exception as e:
             _unlink_quietly(dest)
-            raise ConversionError(f"not a readable .3mf: {e}")
+            raise ConversionError(f"not a readable .3mf: {_describe(e)}")
 
-    async def _start_existing(self, source: str, user: Any) -> bool:
+    async def _start_existing(self, source: str, user: Any) -> Dict[str, bool]:
         group = [c for c in self.records.get(source, []) if c.state == STATE_DONE]
         if len(group) != 1 or len(self.records.get(source, [])) != 1:
-            return False
+            return _print_result()
         return await self._start_print(group[0].output, user)
 
-    async def _start_print(self, output: str, user: Any) -> bool:
+    async def _start_print(self, output: str, user: Any) -> Dict[str, bool]:
+        """Start @p output as Moonraker's own upload path would: start it, and
+        when that is refused (a print running) queue it if the file manager
+        queues uploads."""
         try:
             await self.klippy_apis.start_print(output, user=user)
+            return _print_result(started=True)
         except Exception as e:
             logging.info(f"HelixPrint: not starting {output}: {e}")
-            return False
-        return True
+        if not getattr(self.file_manager, "queue_gcodes", False):
+            return _print_result()
+        job_queue = self.server.lookup_component("job_queue", None)
+        if job_queue is None:
+            return _print_result()
+        try:
+            await job_queue.queue_job(output, check_exists=False, user=user)
+        except Exception as e:
+            logging.info(f"HelixPrint: not queueing {output}: {e}")
+            return _print_result()
+        return _print_result(queued=True)
 
     # -- cleanup -------------------------------------------------------------
 
@@ -666,7 +783,13 @@ class Helix3mfConverter:
                 await self.file_manager.delete_file(f"gcodes/{conv.output}")
                 logging.info(f"HelixPrint: removed {conv.output} (its .3mf is gone)")
             except Exception as e:
-                logging.info(f"HelixPrint: keeping {conv.output}: {e}")
+                if getattr(e, "status_code", None) == 403:
+                    # A print holds it: retried when the job ends.
+                    self._deferred_deletes.append(conv)
+                    await self._save_deferred()
+                    logging.info(f"HelixPrint: {conv.output} is in use, deleting it after the print")
+                else:
+                    logging.info(f"HelixPrint: keeping {conv.output}: {e}")
 
     async def _forget_output(self, output: str) -> None:
         for source, group in self.records.items():
@@ -706,6 +829,11 @@ class Helix3mfConverter:
                 self.records[source] = [Conversion.from_dict(r) for r in group]
             except (TypeError, KeyError):
                 logging.warning(f"HelixPrint: dropping unreadable .3mf record for {source}")
+        try:
+            deferred = await self.database.get_item(DB_DEFERRED_NAMESPACE, [DB_DEFERRED_KEY], [])
+            self._deferred_deletes = [Conversion.from_dict(r) for r in deferred or []]
+        except Exception as e:
+            logging.warning(f"HelixPrint: could not read deferred .3mf output deletes: {e}")
 
     async def _save(self, source: str) -> None:
         if self.database is None or source not in self.records:
@@ -715,6 +843,15 @@ class Helix3mfConverter:
             await self.database.insert_item(DB_NAMESPACE, [source], value)
         except Exception as e:
             logging.warning(f"HelixPrint: could not save .3mf conversion of {source}: {e}")
+
+    async def _save_deferred(self) -> None:
+        if self.database is None:
+            return
+        value = [c.to_dict() for c in self._deferred_deletes]
+        try:
+            await self.database.insert_item(DB_DEFERRED_NAMESPACE, [DB_DEFERRED_KEY], value)
+        except Exception as e:
+            logging.warning(f"HelixPrint: could not save deferred .3mf output deletes: {e}")
 
     async def _delete_record(self, source: str) -> None:
         if self.database is None:
@@ -744,8 +881,9 @@ class Helix3mfConverter:
         source = str(item.get("path", "")).lstrip("/")
         if not source:
             return result
-        started = await self.enqueue(source, start_print=True, user=form_args.get("current_user"))
+        outcome = await self.enqueue(
+            source, start_print=True, user=form_args.get("current_user"), front=True
+        )
         result = dict(result)
-        result["print_started"] = bool(started)
-        result.setdefault("print_queued", False)
+        result.update(outcome)
         return result

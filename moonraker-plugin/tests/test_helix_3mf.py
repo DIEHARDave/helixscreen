@@ -732,3 +732,288 @@ class TestHiddenPaths:
         await notify(conv, "create_file", ".helix_temp/x.gcode.3mf")
         assert await listing(conv) == []
         assert env.fm.uploads == []
+
+
+# ============================================================================
+# Review hardening
+# ============================================================================
+
+def patch_central_entry(archive: Path, name: str, flag_bits: Optional[int] = None,
+                        method: Optional[int] = None) -> None:
+    """Rewrite one entry's flag bits and/or compression method in the zip's
+    headers, the way an encrypted or AES-compressed slicer export carries
+    them. zipfile reads both from the central directory."""
+    raw = bytearray(archive.read_bytes())
+    encoded = name.encode()
+    pos = 0
+    while True:
+        pos = raw.find(b"PK\x01\x02", pos)
+        assert pos >= 0, f"{name} not in central directory"
+        name_len = int.from_bytes(raw[pos + 28:pos + 30], "little")
+        if bytes(raw[pos + 46:pos + 46 + name_len]) == encoded:
+            break
+        pos += 4
+    local = int.from_bytes(raw[pos + 42:pos + 46], "little")
+    if flag_bits is not None:
+        raw[pos + 8:pos + 10] = flag_bits.to_bytes(2, "little")
+        raw[local + 6:local + 8] = flag_bits.to_bytes(2, "little")
+    if method is not None:
+        raw[pos + 10:pos + 12] = method.to_bytes(2, "little")
+        raw[local + 8:local + 10] = method.to_bytes(2, "little")
+    archive.write_bytes(bytes(raw))
+
+
+class TestUnreadableEntries:
+    @pytest.mark.asyncio
+    async def test_an_encrypted_plate_is_a_failed_record(self, env):
+        src = env.gc / "a.gcode.3mf"
+        make_3mf(src, {1: plate_gcode(1)}, thumbnails=False)
+        patch_central_entry(src, "Metadata/plate_1.gcode", flag_bits=0x1)
+        conv = await started(env)
+        [entry] = await listing(conv)
+        assert entry["state"] == "failed"
+        assert "RuntimeError" in entry["error"]
+        assert env.fm.uploads == [] and list((env.gc / ".helix_temp").iterdir()) == []
+
+    @pytest.mark.asyncio
+    async def test_an_encrypted_md5_entry_is_a_failed_record(self, env):
+        src = env.gc / "a.gcode.3mf"
+        make_3mf(src, {1: plate_gcode(1)}, thumbnails=False)
+        patch_central_entry(src, "Metadata/plate_1.gcode.md5", flag_bits=0x1)
+        conv = await started(env)
+        [entry] = await listing(conv)
+        assert entry["state"] == "failed" and "RuntimeError" in entry["error"]
+
+    @pytest.mark.asyncio
+    async def test_an_unsupported_compression_method_is_a_failed_record(self, env):
+        src = env.gc / "a.gcode.3mf"
+        make_3mf(src, {1: plate_gcode(1)}, thumbnails=False)
+        patch_central_entry(src, "Metadata/plate_1.gcode", method=99)
+        conv = await started(env)
+        [entry] = await listing(conv)
+        assert entry["state"] == "failed" and "NotImplementedError" in entry["error"]
+
+    def test_a_plate_missing_from_the_archive_is_a_conversion_error(self, tmp_path):
+        src = tmp_path / "a.gcode.3mf"
+        make_3mf(src, {1: plate_gcode(1)}, thumbnails=False)
+        dest = tmp_path / "out.partial"
+        with pytest.raises(ConversionError, match="KeyError"):
+            Helix3mfConverter._extract(src, 5, dest)
+        assert not dest.exists()
+
+    def test_an_oversized_md5_entry_is_not_read(self, tmp_path):
+        src = tmp_path / "a.gcode.3mf"
+        data = plate_gcode(1)
+        with zipfile.ZipFile(src, "w") as zf:
+            zf.writestr("Metadata/plate_1.gcode", data, zipfile.ZIP_DEFLATED)
+            zf.writestr("Metadata/plate_1.gcode.md5",
+                        md5_of(data) + " " * 1000, zipfile.ZIP_DEFLATED)
+        with zipfile.ZipFile(src) as zf:
+            assert helix_3mf.read_plate_md5(zf, 1) is None
+        small = tmp_path / "b.gcode.3mf"
+        with zipfile.ZipFile(small, "w") as zf:
+            zf.writestr("Metadata/plate_1.gcode", data, zipfile.ZIP_DEFLATED)
+            zf.writestr("Metadata/plate_1.gcode.md5", md5_of(data).upper() + "\r\n",
+                        zipfile.ZIP_DEFLATED)
+        with zipfile.ZipFile(small) as zf:
+            assert helix_3mf.read_plate_md5(zf, 1) == md5_of(data)
+
+
+class TestSymlinkAtTheOutputName:
+    def test_a_symlink_to_an_identical_file_is_foreign(self, gc):
+        data = plate_gcode(9)
+        (gc / "elsewhere.gcode").write_bytes(data)
+        (gc / "a.gcode").symlink_to(gc / "elsewhere.gcode")
+        assert plan_output(gc, "a.gcode.3mf", 9, False, md5_of(data), []) == (
+            "write", "a_plate9.gcode", True)
+
+    def test_a_symlink_named_in_our_own_record_is_still_foreign(self, gc):
+        data = b"old plate"
+        (gc / "elsewhere.gcode").write_bytes(data)
+        (gc / "a.gcode").symlink_to(gc / "elsewhere.gcode")
+        ours = Conversion("a.gcode.3mf", plate=9, output="a.gcode",
+                          output_md5=md5_of(data), state="done", owned=True)
+        assert plan_output(gc, "a.gcode.3mf", 9, False, "new", [ours]) == (
+            "write", "a_plate9.gcode", True)
+        assert (gc / "elsewhere.gcode").read_bytes() == data
+
+
+class TestPartialSweep:
+    @pytest.mark.asyncio
+    async def test_startup_removes_unfinished_extractions(self, env):
+        temp = env.gc / ".helix_temp"
+        (temp / "3mf-0123abcd.partial").write_bytes(b"half a plate")
+        (temp / "modified_1_benchy.gcode").write_text("G28\n")
+        await started(env)
+        assert not (temp / "3mf-0123abcd.partial").exists()
+        assert (temp / "modified_1_benchy.gcode").exists()
+
+
+class TestRaces:
+    @pytest.mark.asyncio
+    async def test_a_user_upload_arriving_mid_extraction_is_never_overwritten(
+        self, env, monkeypatch
+    ):
+        conv = await started(env)
+        data = plate_gcode(9)
+        make_3mf(env.gc / "a.gcode.3mf", {9: data})
+        real_extract = Helix3mfConverter._extract
+        arrivals = []
+
+        def extract_while_user_uploads(full, plate, dest):
+            md5 = real_extract(full, plate, dest)
+            if not arrivals:
+                (env.gc / "a.gcode").write_bytes(b"; the user's own slice\n")
+                arrivals.append(True)
+            return md5
+
+        monkeypatch.setattr(Helix3mfConverter, "_extract",
+                            staticmethod(extract_while_user_uploads))
+        await notify(conv, "create_file", "a.gcode.3mf")
+        await conv.wait_idle()
+
+        assert (env.gc / "a.gcode").read_bytes() == b"; the user's own slice\n"
+        assert [u["filename"] for u in env.fm.uploads] == ["a_plate9.gcode"]
+        [entry] = await listing(conv)
+        assert entry["output"] == "a_plate9.gcode" and entry["state"] == "done"
+        assert conv.records["a.gcode.3mf"][0].owned
+        assert list((env.gc / ".helix_temp").iterdir()) == []
+
+    @pytest.mark.asyncio
+    async def test_a_source_deleted_mid_conversion_leaves_nothing(self, env, monkeypatch):
+        conv = await started(env)
+        src = env.gc / "a.gcode.3mf"
+        make_3mf(src, {1: plate_gcode(1)})
+        real_finalize = env.fm.finalize_upload
+
+        async def finalize_then_user_deletes(form_args):
+            result = await real_finalize(form_args)
+            src.unlink()
+            await conv.on_filelist_changed(
+                {"action": "delete_file", "item": {"root": "gcodes", "path": "a.gcode.3mf"}})
+            return result
+
+        env.fm.finalize_upload = finalize_then_user_deletes
+        await notify(conv, "create_file", "a.gcode.3mf")
+
+        assert await listing(conv) == []
+        assert not (env.gc / "a.gcode").exists()
+        assert "a.gcode.3mf" not in env.db.ns.get("helix_3mf", {})
+
+
+class TestDeferredDelete:
+    @pytest.mark.asyncio
+    async def test_an_output_in_use_is_deleted_when_the_print_ends(self, env):
+        make_3mf(env.gc / "a.gcode.3mf", {1: plate_gcode(1)})
+        conv = await started(env)
+        env.fm.loaded.add("a.gcode")
+        (env.gc / "a.gcode.3mf").unlink()
+        await notify(conv, "delete_file", "a.gcode.3mf")
+        assert (env.gc / "a.gcode").exists()
+        assert env.db.ns["helix_3mf_deferred"]["outputs"][0]["output"] == "a.gcode"
+
+        # A restart in between does not lose it.
+        again = await started(env)
+        env.fm.loaded.clear()
+        await again.on_job_state_changed(None, {"state": "printing"}, {"state": "complete"})
+
+        assert not (env.gc / "a.gcode").exists()
+        assert env.db.ns["helix_3mf_deferred"]["outputs"] == []
+
+    @pytest.mark.asyncio
+    async def test_a_deferred_output_edited_meanwhile_is_kept(self, env):
+        make_3mf(env.gc / "a.gcode.3mf", {1: plate_gcode(1)})
+        conv = await started(env)
+        env.fm.loaded.add("a.gcode")
+        (env.gc / "a.gcode.3mf").unlink()
+        await notify(conv, "delete_file", "a.gcode.3mf")
+        (env.gc / "a.gcode").write_bytes(b"; edited\n")
+        env.fm.loaded.clear()
+        await conv.on_job_state_changed(None, {"state": "printing"}, {"state": "complete"})
+        assert (env.gc / "a.gcode").read_bytes() == b"; edited\n"
+
+
+class FakeJobQueue:
+    def __init__(self):
+        self.queued: List[str] = []
+
+    async def queue_job(self, filenames, check_exists=True, user=None):
+        self.queued.append(filenames)
+
+
+class TestStartOnUploadQueueing:
+    async def upload(self, env, name, plates):
+        tmp = env.gc / ".helix_temp" / "incoming.mru"
+        make_3mf(tmp, plates)
+        return await env.fm.finalize_upload(
+            {"filename": name, "tmp_file_path": str(tmp), "print": "true",
+             "current_user": "orca"})
+
+    @pytest.mark.asyncio
+    async def test_a_busy_printer_queues_a_reused_output(self, env):
+        data = plate_gcode(9)
+        (env.gc / "a.gcode").write_bytes(data)
+        queue = FakeJobQueue()
+        env.server.components = {"job_queue": queue}
+        env.server.lookup_component = lambda name, default=None: env.server.components.get(
+            name, default)
+        env.fm.queue_gcodes = True
+
+        async def refuse(filename, wait_klippy_started=False, user=None):
+            raise ServerError("Printer busy", 409)
+        env.apis.start_print = refuse
+
+        await started(env, start_on_upload=True)
+        result = await self.upload(env, "a.gcode.3mf", {9: data})
+
+        assert result["print_started"] is False and result["print_queued"] is True
+        assert queue.queued == ["a.gcode"]
+
+    @pytest.mark.asyncio
+    async def test_without_queueing_a_refused_start_is_neither(self, env):
+        data = plate_gcode(9)
+        (env.gc / "a.gcode").write_bytes(data)
+
+        async def refuse(filename, wait_klippy_started=False, user=None):
+            raise ServerError("Printer busy", 409)
+        env.apis.start_print = refuse
+
+        await started(env, start_on_upload=True)
+        result = await self.upload(env, "a.gcode.3mf", {9: data})
+
+        assert result["print_started"] is False and result["print_queued"] is False
+
+    @pytest.mark.asyncio
+    async def test_a_published_output_reports_moonrakers_queue_answer(self, env):
+        real = env.fm.finalize_upload
+
+        async def queue_instead(form_args):
+            result = await real(form_args)
+            if form_args.get("print") == "true":
+                result.update(print_started=False, print_queued=True)
+            return result
+
+        env.fm.finalize_upload = queue_instead
+        await started(env, start_on_upload=True)
+        result = await self.upload(env, "a.gcode.3mf", {9: plate_gcode(9)})
+        assert result["print_started"] is False and result["print_queued"] is True
+
+    @pytest.mark.asyncio
+    async def test_the_uploads_conversion_goes_ahead_of_the_backfill(self, env, monkeypatch):
+        for n in range(3):
+            make_3mf(env.gc / f"old{n}.gcode.3mf", {1: plate_gcode(1, str(n))})
+        conv = env.make(start_on_upload=True)
+        order: List[str] = []
+        real_convert = conv.convert
+
+        async def recording(source, start_print=False, user=None):
+            order.append(source)
+            return await real_convert(source, start_print, user)
+
+        conv.convert = recording
+        await conv.start()
+        result = await self.upload(env, "new.gcode.3mf", {9: plate_gcode(9)})
+        await conv.wait_idle()
+
+        assert result["print_started"] is True
+        assert order.index("new.gcode.3mf") <= 1

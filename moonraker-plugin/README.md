@@ -247,16 +247,25 @@ beside it, so Moonraker's metadata, thumbnails and every client work.
   written only if that path is free or holds the plugin's own earlier conversion
   of the same source; a file there already identical to the plate (same md5) is
   reused as it is. Otherwise, and for every plate of a file holding more than one,
-  `<stem>_plate<N>.gcode`. A file the plugin did not write is never overwritten.
+  `<stem>_plate<N>.gcode`. A file the plugin did not write is never overwritten,
+  and a symlink at either name counts as one. The name is checked again after
+  extraction, just before publishing: a file that arrived there meanwhile sends the
+  plate round again under whatever name is free.
 - **Integrity:** the zip's CRC and the plate's `plate_<N>.gcode.md5` are checked
   before the output is published through Moonraker's own upload path.
 - **Cleanup:** deleting the `.3mf` deletes its outputs, and overwriting it
   reconverts and drops outputs for plates no longer in it, in both cases only an
   output the plugin wrote and that is unchanged since. A file being printed is
-  left until the print ends.
+  left until the print ends, then deleted (remembered across restarts). A `.3mf`
+  deleted while it converts leaves no output. Unfinished extractions
+  (`<temp_dir>/3mf-*.partial`) are removed at startup.
+- **Unreadable archives:** an encrypted plate, a compression method Python's
+  zipfile lacks, or a damaged zip gives a `failed` entry naming the error.
 - **Auto-start** (`start_3mf_on_upload: True`): an upload carrying `print=true`
-  starts the converted print through Moonraker's own start/queue rules. A
-  multi-plate file is converted but not started. This hooks Moonraker's upload
+  starts the converted print through Moonraker's own start/queue rules: when the
+  printer is busy and `[file_manager] queue_gcode_uploads` is on, it is queued, and
+  the upload response says `print_queued`. The upload's own conversion goes ahead
+  of any queued backfill. A multi-plate file is converted but not started. This hooks Moonraker's upload
   method; on a Moonraker whose method does not have the expected shape the hook
   stays off with a log line, and conversion still works.
 
