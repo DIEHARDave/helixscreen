@@ -97,6 +97,13 @@ _is_self_update() {
     [ "${HELIX_SELF_UPDATE:-}" = "1" ]
 }
 
+# The directory the running install.sh lives in, or return 1 when it has
+# none: under `curl ... | sh` the script is stdin and $0 names the shell.
+installer_self_dir() {
+    [ -f "$0" ] || return 1
+    (cd "$(dirname "$0")" 2>/dev/null && pwd -P)
+}
+
 # Probe for a usable Python interpreter with urllib (cached). Sets _PY_BIN to
 # the first of python3/python that can import urllib.request — the baseline for
 # downloading over plain HTTP. Used as a download/extraction fallback on

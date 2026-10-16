@@ -121,9 +121,9 @@ x86_desktop_present() {
 # platform: on "desktop", platform becomes x86-desktop, and every later step
 # dispatches on that. Precedence: --desktop/--kiosk, then an in-app update
 # (always the kiosk), then the install already on disk (the flavour is
-# decided at the first install and never re-asked),
-# then a fresh install asks when a desktop session is present and a terminal
-# can answer, else infers it. X86_FLAVOUR_REASON says which, for the plan.
+# decided at the first install and never re-asked), then the package beside
+# the installer (detect_package_beside_installer), then a fresh install asks
+# when a desktop session is present and a terminal can answer, else infers it. X86_FLAVOUR_REASON says which, for the plan.
 resolve_x86_flavour() {
     X86_FLAVOUR_REASON=""
     if [ "$platform" != "x86" ]; then
@@ -162,6 +162,12 @@ resolve_x86_flavour() {
     elif [ "$_rxf_kiosk" = true ]; then
         _rxf_choice=kiosk
         X86_FLAVOUR_REASON="existing install"
+    elif [ "${package_platform:-}" = x86-desktop ] && [ -n "${package_dir:-}" ]; then
+        _rxf_choice=desktop
+        X86_FLAVOUR_REASON="the package"
+    elif [ "${package_platform:-}" = x86 ] && [ -n "${package_dir:-}" ]; then
+        _rxf_choice=kiosk
+        X86_FLAVOUR_REASON="the package"
     elif [ "${uninstall_mode:-false}" = true ]; then
         # Nothing of the desktop flavour to remove: the kiosk uninstall sweeps
         # every root a kiosk install could have used.

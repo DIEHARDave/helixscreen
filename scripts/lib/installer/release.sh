@@ -32,8 +32,10 @@ _R2_MANIFEST_TRANSPORT=""
 # Which archive format is in use for this install. Set by download_release() or
 # use_local_tarball() based on what was found/provided. Consumed by
 # extract_release() and validate_tarball() to dispatch to the right tooling.
-# Values: "zip" (preferred) or "tar.gz" (legacy fallback).
+# Values: "zip" (preferred), "tar.gz" (legacy fallback), or "tree": an
+# already-extracted package (use_package_tree), at _ARCHIVE_TREE.
 _ARCHIVE_FORMAT="tar.gz"
+_ARCHIVE_TREE=""
 
 # Version tag and platform of a DOWNLOADED archive, recorded by download_release()
 # after it normalizes the version. When set, the staged file carries them
@@ -47,6 +49,10 @@ _ARCHIVE_PLATFORM=""
 # only when download_release() has recorded a platform+version; bare otherwise.
 _archive_tmp_path() {
     local stem="helixscreen"
+    if [ "${_ARCHIVE_FORMAT:-}" = tree ]; then
+        echo "$_ARCHIVE_TREE"
+        return 0
+    fi
     if [ -n "${_ARCHIVE_PLATFORM:-}" ] && [ -n "${_ARCHIVE_VERSION:-}" ]; then
         stem="helixscreen-${_ARCHIVE_PLATFORM}-${_ARCHIVE_VERSION}"
     fi
@@ -1047,6 +1053,10 @@ probe_release() {
         PROBE_SIZE_TEXT="local file, $(file_size_text "$local_tarball")"
         return 0
     fi
+    if [ -n "${package_dir:-}" ]; then
+        PROBE_SIZE_TEXT="package next to the installer, $(_tree_size_mb "$package_dir") MB"
+        return 0
+    fi
     local zip_filename tar_filename zip_r2 tar_r2 zip_gh tar_gh zip_http tar_http
     local zip_sha tar_sha manifest_ok url answer unknown=false
     _release_candidates "$(_release_tag "$1")" "$(get_release_platform "$2")"
@@ -1067,7 +1077,45 @@ probe_release() {
         return 0
     fi
     log_error "No HelixScreen $1 release for $2."
+    print_release_with_platform_hint "$1" "$(get_release_platform "$2")"
     exit 1
+}
+
+# The release with a build for a platform, from the channel manifests in
+# stable, beta, dev order, so the least experimental one that has it wins.
+# A manifest describes only its channel's latest release. Prints the release
+# tag, or returns 1 when no manifest that could be read lists the platform.
+# Args: release platform, version tag to skip (the one that just failed)
+find_release_with_platform() {
+    local ch mver
+    for ch in stable beta dev; do
+        _fetch_channel_manifest "$ch" || continue
+        [ -n "$(echo "$_R2_MANIFEST" | parse_manifest_platform_url "$1")" ] || continue
+        mver=$(echo "$_R2_MANIFEST" | parse_manifest_version)
+        [ -n "$mver" ] || continue
+        mver=$(_release_tag "$mver")
+        [ "$mver" = "${2:-}" ] && continue
+        echo "$mver"
+        return 0
+    done
+    return 1
+}
+
+# After "No HelixScreen <v> release for <platform>": the command that installs
+# a release that has one, or the --version hint when none can be named. Only
+# names it: installing a beta the user did not ask for is their call.
+# Args: version tag that failed, release platform
+print_release_with_platform_hint() {
+    local found flags=""
+    [ "${platform:-}" = "x86-desktop" ] && flags="--desktop "
+    if found=$(find_release_with_platform "$2" "$1"); then
+        log_error "$found has a $2 build. Install it with --version $found:"
+        log_error "  curl -sSL https://releases.helixscreen.org/install.sh | sh -s -- ${flags}--version $found"
+    else
+        log_error "Pick a release that has a $2 build and pass it with --version, for example:"
+        log_error "  curl -sSL https://releases.helixscreen.org/install.sh | sh -s -- ${flags}--version vX.Y.Z"
+        log_error "Releases: https://github.com/${GITHUB_REPO}/releases"
+    fi
 }
 
 # Download release archive. Prefers the unversioned .zip (consumed by both this
@@ -1257,6 +1305,91 @@ use_local_tarball() {
     local size
     size=$(ls -lh "$src" | awk '{print $5}')
     log_success "Using local archive (${size}, ${_ARCHIVE_FORMAT})"
+}
+
+# Stage an already-extracted package as use_local_tarball stages an archive:
+# extract_release copies the tree where it would unpack one, and every check
+# after that is the archive's. The tree itself is only read.
+use_package_tree() {
+    log_info "Using the package at $1"
+    _ARCHIVE_FORMAT="tree"
+    _ARCHIVE_TREE="$1"
+    mkdir -p "$TMP_DIR"
+    # shellcheck disable=SC2034  # consumed by common.sh error_handler (sibling module)
+    CLEANUP_TMP=true
+}
+
+# True when both paths name one directory, symlinks resolved.
+_same_dir() {
+    [ -n "$1" ] && [ -n "$2" ] || return 1
+    [ "$(host_canonical_path "$1")" = "$(host_canonical_path "$2")" ]
+}
+
+# The release package this installer was unpacked with: its own directory,
+# when that holds the payload extract_release requires and the
+# release_info.json the packaging bakes. Looked for only when nothing else
+# names what to install (--version, --local, --update, an uninstall, the
+# in-app updater), and never at a root an install lives at: the install.sh
+# inside an installed tree resolves online, since installing a tree onto
+# itself means nothing. settle_package_beside_installer checks INSTALL_DIR
+# once it is known.
+# Sets package_dir, package_version (a release tag) and package_platform (the
+# release platform its asset names); package_dir stays empty otherwise.
+detect_package_beside_installer() {
+    package_dir=""
+    package_version=""
+    package_platform=""
+    [ -z "${version:-}" ] && [ -z "${local_tarball:-}" ] || return 0
+    [ "${update_mode:-false}" != true ] && [ "${uninstall_mode:-false}" != true ] || return 0
+    _is_self_update && return 0
+
+    local dir root asset ver
+    dir=$(installer_self_dir) || return 0
+    for root in $_HELIX_KNOWN_INSTALL_DIRS ${KLIPPER_HOME:+"$KLIPPER_HOME/helixscreen"} \
+        "$(desktop_install_root 2>/dev/null || true)"; do
+        _same_dir "$dir" "$root" && return 0
+    done
+    [ -f "$dir/bin/helix-screen" ] && [ -d "$dir/ui_xml" ] && [ -d "$dir/assets" ] || return 0
+    [ -f "$dir/release_info.json" ] || return 0
+    asset=$(parse_json_string_field asset_name < "$dir/release_info.json")
+    ver=$(parse_json_string_field version < "$dir/release_info.json")
+    case "$asset" in
+        helixscreen-?*.zip) ;;
+        *) return 0 ;;
+    esac
+    [ -n "$ver" ] || return 0
+
+    package_dir="$dir"
+    # shellcheck disable=SC2034  # consumed by main.sh (main)
+    package_version=$(_release_tag "$ver")
+    package_platform="${asset#helixscreen-}"
+    package_platform="${package_platform%.zip}"
+}
+
+# Once INSTALL_DIR is known: forget a package that is the install itself, and
+# refuse one built for another platform before anything is checked or
+# changed. A package's platform is the release asset it names, the one this
+# host's self-update would fetch.
+settle_package_beside_installer() {
+    [ -n "${package_dir:-}" ] || return 0
+    if _same_dir "$package_dir" "${INSTALL_DIR:-}"; then
+        package_dir=""
+        return 0
+    fi
+    local want
+    want=$(helix_self_update_asset "$platform")
+    want="${want#helixscreen-}"
+    want="${want%.zip}"
+    [ "$package_platform" = "$want" ] && return 0
+
+    log_error "This package is for ${package_platform}, but this computer needs ${want}."
+    case "$package_platform" in
+        x86-desktop) [ "$want" = x86 ] && log_error "To install it as a window on this desktop, add --desktop." ;;
+        x86) [ "$want" = x86-desktop ] && log_error "To install it as a kiosk that takes over the screen, add --kiosk." ;;
+    esac
+    log_error "Or download helixscreen-${want} from https://github.com/${GITHUB_REPO}/releases"
+    log_error "Nothing changed."
+    exit 1
 }
 
 # Validate binary architecture matches the current system
@@ -1719,9 +1852,15 @@ extract_release() {
     # Pre-flight: check TMP_DIR has enough space for extraction.
     # Archive expands ~3x, so require 3x archive size + margin.
     local archive_mb extract_required_mb tmp_available_mb
-    archive_mb=$(du -m "$archive" 2>/dev/null | awk '{print $1}')
-    [ -z "$archive_mb" ] && archive_mb=$(ls -l "$archive" | awk '{print int($5/1048576)}')
-    extract_required_mb=$(( (archive_mb * 3) + 20 ))
+    if [ "${_ARCHIVE_FORMAT:-}" = tree ]; then
+        # Already extracted: the copy needs the tree's own size.
+        archive_mb=$(_tree_size_mb "$archive")
+        extract_required_mb=$(( ${archive_mb:-0} + 20 ))
+    else
+        archive_mb=$(du -m "$archive" 2>/dev/null | awk '{print $1}')
+        [ -z "$archive_mb" ] && archive_mb=$(ls -l "$archive" | awk '{print int($5/1048576)}')
+        extract_required_mb=$(( (archive_mb * 3) + 20 ))
+    fi
 
     local tmp_check_dir
     tmp_check_dir=$(dirname "$TMP_DIR")
@@ -1745,6 +1884,10 @@ extract_release() {
 
     local extract_ok=false
     case "${_ARCHIVE_FORMAT:-tar.gz}" in
+        tree)
+            # A copy, never a move: the tree is the user's extracted package.
+            cp -a "$archive" "${extract_dir}/helixscreen" && extract_ok=true
+            ;;
         zip)
             # The zip has a FLAT layout (no top-level helixscreen/ dir). That's
             # the contract with Moonraker Update Manager — it extracts straight

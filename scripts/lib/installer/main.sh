@@ -126,7 +126,12 @@ install_state_line() {
 usage() {
     echo "HelixScreen Installer"
     echo ""
-    echo "Usage: $0 [options]"
+    echo "Usage: $0 [options] [ARCHIVE]"
+    echo ""
+    echo "Given a release archive (.zip or .tar.gz), it installs that archive."
+    echo "Run from inside an extracted release package with no --version,"
+    echo "--local or --update, it installs that package. Otherwise it installs"
+    echo "the latest release for your update channel."
     echo ""
     echo "Options:"
     echo "  --update       Update existing installation (preserves config)"
@@ -144,7 +149,8 @@ usage() {
     echo "  --verbose, -v  Print every detail line and command output as it happens."
     echo "                 The full log is always written either way."
     echo "  --version VER  Install specific version (default: latest)"
-    echo "  --local FILE   Install from local archive (.zip or .tar.gz, skip download)"
+    echo "  --local FILE   Install from local archive (.zip or .tar.gz, skip download)."
+    echo "                 Naming the archive without --local does the same"
     echo "  --skip-kiauh-registration"
     echo "                 Skip KIAUH extension registration (default: install if KIAUH detected)"
     echo "  --standalone   Self-managed install beside your printer's mod"
@@ -175,6 +181,8 @@ usage() {
     echo "  $0 --clean --yes      # Same, without the interactive confirmation"
     echo "  $0 --version v1.1.0   # Install specific version"
     echo "  $0 --local /tmp/helixscreen-ad5m.tar.gz  # Install from local file"
+    echo "  $0 --desktop helixscreen-x86-desktop-v1.1.0.tar.gz  # Same, no --local needed"
+    echo "  ./helixscreen/install.sh --desktop  # Install the package you extracted"
     echo "  $0 --standalone       # Self-managed install beside the mod (mod hosts)"
     echo "  $0 --desktop          # x86_64: a window on your desktop, for your user"
 }
@@ -192,6 +200,7 @@ parse_installer_args() {
     DRY_RUN=false
     version=""
     local_tarball=""
+    package_dir=""
     skip_kiauh_registration=false
     MOD_PAYLOAD_ROOT=""
     HELIX_MOD_PAYLOAD_UPDATES=""
@@ -246,7 +255,7 @@ parse_installer_args() {
                     log_error "--local requires a file path argument"
                     exit 1
                 fi
-                local_tarball="$2"
+                _set_local_archive "$2"
                 shift 2
                 ;;
             --skip-kiauh-registration)
@@ -313,6 +322,16 @@ parse_installer_args() {
                 exit 0
                 ;;
             *)
+                # A release archive named on its own is what --local names.
+                case "$1" in
+                    *.zip | *.tar.gz | *.tgz)
+                        if [ -f "$1" ]; then
+                            _set_local_archive "$1"
+                            shift
+                            continue
+                        fi
+                        ;;
+                esac
                 log_error "Unknown option: $1"
                 usage
                 exit 1
@@ -333,6 +352,15 @@ parse_installer_args() {
         log_error "--dry-run cannot be combined with --uninstall; nothing was removed"
         exit 1
     fi
+}
+
+# Record the archive this run installs; naming two is a mistake, not a choice.
+_set_local_archive() {
+    if [ -n "$local_tarball" ] && [ "$local_tarball" != "$1" ]; then
+        log_error "Only one archive can be installed at a time: $local_tarball and $1"
+        exit 1
+    fi
+    local_tarball="$1"
 }
 
 # Auto-detect the payload contract: a bare install on a host the mod profile
@@ -768,6 +796,8 @@ main() {
     # to write. Autodetect (probe) plus the operator's overrides decide.
     parse_installer_args "$@"
     mod_payload_autodetect
+    # Before the platform settles: an x86 package's flavour feeds that choice.
+    detect_package_beside_installer
 
     # Self-delete safety guard runs as early as possible — before platform
     # detection, which exits on "unsupported" hardware and would otherwise
@@ -833,6 +863,7 @@ main() {
     # --mod-payload mode wiring (root precedence, OTA warning, mod-host
     # notice) - after detection, before the requirements checks.
     mod_payload_mode_block
+    settle_package_beside_installer
 
     # Check permissions
     check_permissions "$platform"
@@ -873,7 +904,7 @@ main() {
         resolve_update_channel
     fi
 
-    # Get version (skip if using local archive)
+    # Get version: a handed-over archive or package names its own.
     if [ -n "$local_tarball" ]; then
         # Validate local file exists
         if [ ! -f "$local_tarball" ]; then
@@ -888,6 +919,13 @@ main() {
             version="local"
         fi
         log_info "Installing from local file: ${BOLD}${local_tarball}${NC}"
+    elif [ -n "$package_dir" ]; then
+        # The package beside the installer is what was handed over, whatever
+        # the channel's latest is.
+        # shellcheck disable=SC2154  # set by release.sh (detect_package_beside_installer)
+        version="$package_version"
+        # shellcheck disable=SC2154  # set by release.sh (detect_package_beside_installer)
+        log_info "Installing the package next to this installer: ${version} (${package_platform})"
     else
         if [ -z "$version" ]; then
             version=$(get_latest_version "$download_platform")
@@ -935,6 +973,9 @@ download_step() {
     if [ -n "$local_tarball" ]; then
         step "Unpacking local archive" "Unpacked local archive"
         use_local_tarball "$local_tarball"
+    elif [ -n "${package_dir:-}" ]; then
+        step "Using the package next to the installer" "Used the package next to the installer"
+        use_package_tree "$package_dir"
     else
         step "Downloading" "Downloaded"
         download_release "$version" "$download_platform"
