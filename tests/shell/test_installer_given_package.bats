@@ -461,3 +461,46 @@ env_channel() { R2_CHANNEL=$1; _R2_CHANNEL_FROM_ENV=yes; }
     match_channel_to_version v1.2.3
     [ -z "${_R2_CHANNEL_TO_SEED:-}" ]
 }
+
+# ---------------------------------------------------------------------------
+# A desktop install of a beta records the beta channel, whichever way it came
+# ---------------------------------------------------------------------------
+
+desk_channel() { python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["update"]["channel"])' "$DESK/config/settings.json"; }
+
+@test "desktop e2e: the beta package beside the installer records the beta channel" {
+    export HELIX_STATE_VAR_LIB="$BATS_TEST_TMPDIR/var-lib" HELIX_STATE_ROOT_HOME="$BATS_TEST_TMPDIR/root-home"
+    make_payload "$DL/helixscreen" helixscreen-x86-desktop.zip 1.2.3-beta.4
+    run_main_from "$DL/helixscreen"
+    [ "$status" -eq 0 ] || fail "main failed ($status): $output"
+    [ "$(desk_channel)" = 1 ] || fail "no beta channel: $(cat "$DESK/config/settings.json" 2>&1)"
+}
+
+@test "desktop e2e: a beta archive named on the command line records the beta channel" {
+    export HELIX_STATE_VAR_LIB="$BATS_TEST_TMPDIR/var-lib" HELIX_STATE_ROOT_HOME="$BATS_TEST_TMPDIR/root-home"
+    make_archive helixscreen-x86-desktop.zip helixscreen-x86-desktop-v1.2.3-beta.4.tar.gz
+    run_main_from "$BATS_TEST_TMPDIR/elsewhere" --desktop "$DL/helixscreen-x86-desktop-v1.2.3-beta.4.tar.gz"
+    [ "$status" -eq 0 ] || fail "main failed ($status): $output"
+    [ "$(desk_channel)" = 1 ] || fail "no beta channel: $(cat "$DESK/config/settings.json" 2>&1)"
+}
+
+@test "desktop e2e: --version of a beta records the beta channel" {
+    export HELIX_STATE_VAR_LIB="$BATS_TEST_TMPDIR/var-lib" HELIX_STATE_ROOT_HOME="$BATS_TEST_TMPDIR/root-home"
+    make_archive helixscreen-x86-desktop.zip helixscreen-x86-desktop-v1.2.3-beta.4.tar.gz
+    # The CDN: the release exists, and downloading it stages the archive.
+    _url_probe() { echo found; }
+    download_release() { use_local_tarball "$DL/helixscreen-x86-desktop-v1.2.3-beta.4.tar.gz"; }
+    run_main_from "$BATS_TEST_TMPDIR/elsewhere" --desktop --version v1.2.3-beta.4
+    [ "$status" -eq 0 ] || fail "main failed ($status): $output"
+    [ "$(desk_channel)" = 1 ] || fail "no beta channel: $(cat "$DESK/config/settings.json" 2>&1)"
+}
+
+@test "desktop e2e: a beta package keeps the channel an existing desktop install saved" {
+    export HELIX_STATE_VAR_LIB="$BATS_TEST_TMPDIR/var-lib" HELIX_STATE_ROOT_HOME="$BATS_TEST_TMPDIR/root-home"
+    make_payload "$DESK" helixscreen-x86-desktop.zip 1.2.2
+    printf '{"config_version":3,"update":{"channel":0}}\n' > "$DESK/config/settings.json"
+    make_payload "$DL/helixscreen" helixscreen-x86-desktop.zip 1.2.3-beta.4
+    run_main_from "$DL/helixscreen"
+    [ "$status" -eq 0 ] || fail "main failed ($status): $output"
+    [ "$(desk_channel)" = 0 ]
+}
