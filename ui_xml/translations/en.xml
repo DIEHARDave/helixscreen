@@ -321,6 +321,7 @@
   <translation tag="Beacon calibrate sent" en="Beacon calibrate sent"/>
   <translation tag="Bed" en="Bed"/>
   <translation tag="Bed (°C)" en="Bed (°C)"/>
+  <translation tag="Bed Clear Check" en="Bed Clear Check"/>
   <translation tag="Bed Heater" en="Bed Heater"/>
   <translation tag="Bed Level" en="Bed Level"/>
   <translation tag="Bed Leveling" en="Bed Leveling"/>
@@ -336,6 +337,7 @@
   <translation tag="Bed Screws" en="Bed Screws"/>
   <translation tag="Bed Temp" en="Bed Temp"/>
   <translation tag="Bed Temperature" en="Bed Temperature"/>
+  <translation tag="Bed check turned off" en="Bed check turned off"/>
   <translation tag="Bed clear · Start next" en="Bed clear · Start next"/>
   <translation tag="Bed cooling, spools still on the bed:" en="Bed cooling, spools still on the bed:"/>
   <translation tag="Bed is Level!" en="Bed is Level!"/>
@@ -473,6 +475,7 @@
   <translation tag="Calibration, LED, and system configuration" en="Calibration, LED, and system configuration"/>
   <translation tag="Cam" en="Cam"/>
   <translation tag="Camera" en="Camera"/>
+  <translation tag="Camera checks the bed is empty before each print" en="Camera checks the bed is empty before each print"/>
   <translation tag="Can&apos;t connect — try forgetting and re-pairing the printer" en="Can&apos;t connect — try forgetting and re-pairing the printer"/>
   <translation tag="Can&apos;t move filament while the print is paused" en="Can&apos;t move filament while the print is paused"/>
   <translation tag="Can&apos;t reach this printer. Save anyway?" en="Can&apos;t reach this printer. Save anyway?"/>
@@ -481,6 +484,7 @@
   <translation tag="Cancel Escalation" en="Cancel Escalation"/>
   <translation tag="Cancel Print" en="Cancel Print"/>
   <translation tag="Cancel macro not configured" en="Cancel macro not configured"/>
+  <translation tag="Cancel print" en="Cancel print"/>
   <translation tag="Cancelled" en="Cancelled"/>
   <translation tag="Cannot add to queue: internal error" en="Cannot add to queue: internal error"/>
   <translation tag="Cannot be changed from here on a multi-unit MMU" en="Cannot be changed from here on a multi-unit MMU"/>
@@ -2584,6 +2588,7 @@
   <translation tag="Restart failed: {}" en="Restart failed: {}"/>
   <translation tag="Restart from the beginning to recover" en="Restart from the beginning to recover"/>
   <translation tag="Restart pending" en="Restart pending"/>
+  <translation tag="Restart print" en="Restart print"/>
   <translation tag="Restart the display application" en="Restart the display application"/>
   <translation tag="Restart the printer or screen" en="Restart the printer or screen"/>
   <translation tag="Restarting HelixScreen..." en="Restarting HelixScreen..."/>
@@ -2878,6 +2883,7 @@
   <translation tag="Some filaments don&apos;t match the slicer&apos;s intent." en="Some filaments don&apos;t match the slicer&apos;s intent."/>
   <translation tag="Some mapped slots are short on filament:" en="Some mapped slots are short on filament:"/>
   <translation tag="Some settings will take effect after restart." en="Some settings will take effect after restart."/>
+  <translation tag="Something on the bed?" en="Something on the bed?"/>
   <translation tag="Sound" en="Sound"/>
   <translation tag="Sound Theme" en="Sound Theme"/>
   <translation tag="Sounds" en="Sounds"/>
@@ -3092,6 +3098,7 @@
   <translation tag="Testing, servo, and motor operations" en="Testing, servo, and motor operations"/>
   <translation tag="Thanks! Anonymous usage data helps improve HelixScreen." en="Thanks! Anonymous usage data helps improve HelixScreen."/>
   <translation tag="Thanks! TOTALLY anonymous usage data helps improve HelixScreen." en="Thanks! TOTALLY anonymous usage data helps improve HelixScreen."/>
+  <translation tag="That print is no longer paused" en="That print is no longer paused"/>
   <translation tag="That setting cannot be changed while a print is running" en="That setting cannot be changed while a print is running"/>
   <translation tag="That slot cannot stand in for this one" en="That slot cannot stand in for this one"/>
   <translation tag="That tool is already loaded" en="That tool is already loaded"/>
@@ -3104,6 +3111,7 @@
   <translation tag="The bed was reported dirty, so this print cannot resume." en="The bed was reported dirty, so this print cannot resume."/>
   <translation tag="The buffer may be disconnected, stuck, or faulty. Check it before retrying" en="The buffer may be disconnected, stuck, or faulty. Check it before retrying"/>
   <translation tag="The buffer saw no movement for 16 seconds. Check for a blockage between the CFS and the extruder, or a stuck buffer" en="The buffer saw no movement for 16 seconds. Check for a blockage between the CFS and the extruder, or a stuck buffer"/>
+  <translation tag="The camera thought it saw something on the bed, so the printer stopped before printing. If the bed is clear, it was a false alarm." en="The camera thought it saw something on the bed, so the printer stopped before printing. If the bed is clear, it was a false alarm."/>
   <translation tag="The cutter blade didn&apos;t return — check for filament wrapped around the cutting mechanism" en="The cutter blade didn&apos;t return — check for filament wrapped around the cutting mechanism"/>
   <translation tag="The cutter is out of alignment — recalibrate with CALIBRATE_CUT_POS" en="The cutter is out of alignment — recalibrate with CALIBRATE_CUT_POS"/>
   <translation tag="The extruder cannot pull it smoothly. Check the spool for a tangle or knot, and the PTFE tube for a severe bend" en="The extruder cannot pull it smoothly. Check the spool for a tangle or knot, and the PTFE tube for a severe bend"/>
@@ -3119,6 +3127,8 @@
   <translation tag="The plate finishes its current move, but drying will not start." en="The plate finishes its current move, but drying will not start."/>
   <translation tag="The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes." en="The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes."/>
   <translation tag="The printer applied this value and keeps it for this tool." en="The printer applied this value and keeps it for this tool."/>
+  <translation tag="The printer did not change its bed check" en="The printer did not change its bed check"/>
+  <translation tag="The printer did not change its bed check: {}" en="The printer did not change its bed check: {}"/>
   <translation tag="The printer extrudes in a corner and repeats until the readings agree. You do not judge anything by eye." en="The printer extrudes in a corner and repeats until the readings agree. You do not judge anything by eye."/>
   <translation tag="The printer finishes this measurement on its own." en="The printer finishes this measurement on its own."/>
   <translation tag="The printer halted this print and cannot resume it. Restart from the beginning?" en="The printer halted this print and cannot resume it. Restart from the beginning?"/>
@@ -3188,6 +3198,7 @@
   <translation tag="This may take up to 30 seconds" en="This may take up to 30 seconds"/>
   <translation tag="This plugin asks for no special permissions." en="This plugin asks for no special permissions."/>
   <translation tag="This plugin lets HelixScreen control print start options like bed mesh and QGL." en="This plugin lets HelixScreen control print start options like bed mesh and QGL."/>
+  <translation tag="This print can&apos;t be resumed. Restart it, or turn off the bed check if it keeps happening." en="This print can&apos;t be resumed. Restart it, or turn off the bed check if it keeps happening."/>
   <translation tag="This print needs about %.0fg but the spool has about %.0fg remaining. Start anyway?" en="This print needs about %.0fg but the spool has about %.0fg remaining. Start anyway?"/>
   <translation tag="This printer cannot calibrate tool offsets automatically" en="This printer cannot calibrate tool offsets automatically"/>
   <translation tag="This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman." en="This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman."/>
@@ -3303,6 +3314,7 @@
   <translation tag="Turn On" en="Turn On"/>
   <translation tag="Turn On LEDs" en="Turn On LEDs"/>
   <translation tag="Turn endless spool on, then set the backup gate" en="Turn endless spool on, then set the backup gate"/>
+  <translation tag="Turn off bed check" en="Turn off bed check"/>
   <translation tag="Turn off detection" en="Turn off detection"/>
   <translation tag="Turn on the lights your light buttons control" en="Turn on the lights your light buttons control"/>
   <translation tag="Turn the extruder heater off after a load or unload finishes" en="Turn the extruder heater off after a load or unload finishes"/>

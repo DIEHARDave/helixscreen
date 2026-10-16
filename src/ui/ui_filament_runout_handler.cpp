@@ -12,6 +12,7 @@
 #include "filament_op_execute.h"
 #include "filament_sensor_manager.h"
 #include "i_moonraker_api.h"
+#include "non_filament_pause.h"
 #include "observer_factory.h"
 #include "print_control_buttons.h"
 #include "print_lifecycle_state.h" // For PrintState enum
@@ -28,10 +29,20 @@ namespace helix::ui {
 // ============================================================================
 
 FilamentRunoutHandler::FilamentRunoutHandler(IMoonrakerAPI* api) : api_(api) {
+    // A pause's other cause can arrive after the pause did, by which time the
+    // guidance may already be up for it.
+    helix::non_filament_pause::add_listener(this, [this]() {
+        if (runout_modal_.is_visible()) {
+            spdlog::info("[FilamentRunoutHandler] Pause has a non-filament cause - closing "
+                         "runout guidance");
+            hide_runout_guidance_modal();
+        }
+    });
     spdlog::debug("[FilamentRunoutHandler] Constructed");
 }
 
 FilamentRunoutHandler::~FilamentRunoutHandler() {
+    helix::non_filament_pause::remove_listener(this);
     // lifetime_ destructor calls invalidate() automatically
     spdlog::trace("[FilamentRunoutHandler] Destroyed");
 }
@@ -70,6 +81,13 @@ void FilamentRunoutHandler::check_and_show_runout_guidance() {
 
     // Skip if AMS/MMU present and not forced (runout during swaps is normal)
     if (!get_runtime_config()->should_show_runout_modal()) {
+        return;
+    }
+
+    // A pause something else already explains (a print-defect detection) is
+    // not a runout, whatever an idle lane's sensor reads.
+    if (helix::non_filament_pause::explained()) {
+        spdlog::info("[FilamentRunoutHandler] Pause has a non-filament cause - no runout guidance");
         return;
     }
 

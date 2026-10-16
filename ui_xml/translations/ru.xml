@@ -360,6 +360,7 @@
   <translation tag="Beacon calibrate sent" ru="Beacon калибровка отправлена"/>
   <translation tag="Bed" ru="Стол"/>
   <translation tag="Bed (°C)" ru="Стол (°C)"/>
+  <translation tag="Bed Clear Check" ru="Проверка чистоты стола"/>
   <translation tag="Bed Heater" ru="Нагреватель стола"/>
   <translation tag="Bed Level" ru="Уровень стола"/>
   <translation tag="Bed Leveling" ru="Выравнивание стола"/>
@@ -375,6 +376,7 @@
   <translation tag="Bed Screws" ru="Винты стола"/>
   <translation tag="Bed Temp" ru="Темп. стола"/>
   <translation tag="Bed Temperature" ru="Температура стола"/>
+  <translation tag="Bed check turned off" ru="Проверка стола отключена"/>
   <translation tag="Bed clear · Start next" ru="Стол свободен · Запустить следующую"/>
   <translation tag="Bed cooling, spools still on the bed:" ru="Стол остывает, катушки всё ещё на нём:"/>
   <translation tag="Bed is Level!" ru="Стол выровнен!"/>
@@ -512,6 +514,7 @@
   <translation tag="Calibration, LED, and system configuration" ru="Калибровка, LED и настройка системы"/>
   <translation tag="Cam" ru="Кам"/>
   <translation tag="Camera" ru="Камера"/>
+  <translation tag="Camera checks the bed is empty before each print" ru="Камера проверяет, что стол пуст, перед каждой печатью"/>
   <translation tag="Can&apos;t connect — try forgetting and re-pairing the printer" ru="Не удаётся подключиться — забудьте принтер и выполните сопряжение заново"/>
   <translation tag="Can&apos;t move filament while the print is paused" ru="Невозможно перемещать филамент, пока печать на паузе"/>
   <translation tag="Can&apos;t reach this printer. Save anyway?" ru="Принтер недоступен. Всё равно сохранить?"/>
@@ -520,6 +523,7 @@
   <translation tag="Cancel Escalation" ru="Отменить эскалацию"/>
   <translation tag="Cancel Print" ru="Отменить печать"/>
   <translation tag="Cancel macro not configured" ru="Макрос отмены не настроен"/>
+  <translation tag="Cancel print" ru="Отменить печать"/>
   <translation tag="Cancelled" ru="Отменено"/>
   <translation tag="Cannot add to queue: internal error" ru="Не удалось добавить в очередь: внутренняя ошибка"/>
   <translation tag="Cannot be changed from here on a multi-unit MMU" ru="Нельзя изменить здесь на MMU с несколькими блоками"/>
@@ -2638,6 +2642,7 @@
   <translation tag="Restart failed: {}" ru="Ошибка перезапуска: {}"/>
   <translation tag="Restart from the beginning to recover" ru="Чтобы восстановить печать, запустите её с начала"/>
   <translation tag="Restart pending" ru="Ожидается перезапуск"/>
+  <translation tag="Restart print" ru="Перезапустить печать"/>
   <translation tag="Restart the display application" ru="Перезапустить приложение дисплея"/>
   <translation tag="Restart the printer or screen" ru="Перезапустить принтер или экран"/>
   <translation tag="Restarting HelixScreen..." ru="Перезапуск HelixScreen..."/>
@@ -2932,6 +2937,7 @@
   <translation tag="Some filaments don&apos;t match the slicer&apos;s intent." ru="Некоторые филаменты не соответствуют замыслу слайсера."/>
   <translation tag="Some mapped slots are short on filament:" ru="В некоторых назначенных слотах мало филамента:"/>
   <translation tag="Some settings will take effect after restart." ru="Некоторые настройки вступят в силу после перезапуска."/>
+  <translation tag="Something on the bed?" ru="Что-то на столе?"/>
   <translation tag="Sound" ru="Звук"/>
   <translation tag="Sound Theme" ru="Звуковая тема"/>
   <translation tag="Sounds" ru="Звуки"/>
@@ -3152,6 +3158,7 @@
   <translation tag="Testing, servo, and motor operations" ru="Тестирование, сервопривод и работа моторов"/>
   <translation tag="Thanks! Anonymous usage data helps improve HelixScreen." ru="Спасибо! Анонимные данные использования помогают улучшить HelixScreen."/>
   <translation tag="Thanks! TOTALLY anonymous usage data helps improve HelixScreen." ru="Спасибо! ПОЛНОСТЬЮ анонимные данные использования помогают улучшить HelixScreen."/>
+  <translation tag="That print is no longer paused" ru="Эта печать больше не приостановлена"/>
   <translation tag="That setting cannot be changed while a print is running" ru="Этот параметр нельзя изменить во время печати"/>
   <translation tag="That slot cannot stand in for this one" ru="Этот слот не может заменить текущий"/>
   <translation tag="That tool is already loaded" ru="Этот инструмент уже загружен"/>
@@ -3164,6 +3171,7 @@
   <translation tag="The bed was reported dirty, so this print cannot resume." ru="Стол помечен как загрязнённый, поэтому печать не может быть продолжена."/>
   <translation tag="The buffer may be disconnected, stuck, or faulty. Check it before retrying" ru="Буфер может быть отключён, заклинен или неисправен. Проверьте его перед повтором"/>
   <translation tag="The buffer saw no movement for 16 seconds. Check for a blockage between the CFS and the extruder, or a stuck buffer" ru="Буфер не фиксировал движение 16 секунд. Проверьте засор между CFS и экструдером или заклинивший буфер"/>
+  <translation tag="The camera thought it saw something on the bed, so the printer stopped before printing. If the bed is clear, it was a false alarm." ru="Камере показалось, что на столе что-то есть, поэтому принтер остановился до начала печати. Если стол чист, это ложная тревога."/>
   <translation tag="The cutter blade didn&apos;t return — check for filament wrapped around the cutting mechanism" ru="Лезвие не вернулось. Проверьте, не намотался ли филамент на режущий механизм"/>
   <translation tag="The cutter is out of alignment — recalibrate with CALIBRATE_CUT_POS" ru="Резак смещён. Выполните повторную калибровку командой CALIBRATE_CUT_POS"/>
   <translation tag="The extruder cannot pull it smoothly. Check the spool for a tangle or knot, and the PTFE tube for a severe bend" ru="Экструдер не может тянуть равномерно. Проверьте катушку на запутывание или узел, а трубку PTFE на резкий изгиб"/>
@@ -3179,6 +3187,8 @@
   <translation tag="The plate finishes its current move, but drying will not start." ru="Стол завершит текущее перемещение, но сушка не начнётся."/>
   <translation tag="The print is paused. Changing tools now moves the toolhead and swaps the filament at the nozzle. Resume the print once the change finishes." ru="Печать на паузе. Смена инструмента сейчас переместит печатающую головку и заменит филамент в сопле. Возобновите печать после завершения смены."/>
   <translation tag="The printer applied this value and keeps it for this tool." ru="Принтер применил это значение и сохранил его для этого инструмента."/>
+  <translation tag="The printer did not change its bed check" ru="Принтер не изменил проверку стола"/>
+  <translation tag="The printer did not change its bed check: {}" ru="Принтер не изменил проверку стола: {}"/>
   <translation tag="The printer extrudes in a corner and repeats until the readings agree. You do not judge anything by eye." ru="Принтер выдавливает пластик в углу и повторяет, пока показания не сойдутся. Ничего не нужно оценивать на глаз."/>
   <translation tag="The printer finishes this measurement on its own." ru="Принтер завершит это измерение сам."/>
   <translation tag="The printer halted this print and cannot resume it. Restart from the beginning?" ru="Принтер остановил эту печать и не может её возобновить. Начать с начала?"/>
@@ -3248,6 +3258,7 @@
   <translation tag="This may take up to 30 seconds" ru="Это может занять до 30 секунд"/>
   <translation tag="This plugin asks for no special permissions." ru="Этот плагин не запрашивает специальных разрешений."/>
   <translation tag="This plugin lets HelixScreen control print start options like bed mesh and QGL." ru="Этот плагин позволяет HelixScreen управлять опциями начала печати, такими как сетка стола и QGL."/>
+  <translation tag="This print can&apos;t be resumed. Restart it, or turn off the bed check if it keeps happening." ru="Эту печать нельзя продолжить. Перезапустите её или отключите проверку стола, если это повторяется."/>
   <translation tag="This print needs about %.0fg but the spool has about %.0fg remaining. Start anyway?" ru="Для этой печати нужно около %.0fг, но на катушке осталось около %.0fг. Всё равно начать?"/>
   <translation tag="This printer cannot calibrate tool offsets automatically" ru="Этот принтер не может калибровать смещения инструментов автоматически"/>
   <translation tag="This printer fills its gates from Spoolman. HelixScreen cleared its own copy; remove the spool in Spoolman." ru="Этот принтер берёт данные шлюзов из Spoolman. HelixScreen очистил свою копию; удалите катушку в Spoolman."/>
@@ -3363,6 +3374,7 @@
   <translation tag="Turn On" ru="Включить"/>
   <translation tag="Turn On LEDs" ru="Включить LED"/>
   <translation tag="Turn endless spool on, then set the backup gate" ru="Включите бесконечную катушку, затем задайте резервный шлюз"/>
+  <translation tag="Turn off bed check" ru="Отключить проверку стола"/>
   <translation tag="Turn off detection" ru="Отключить обнаружение"/>
   <translation tag="Turn on the lights your light buttons control" ru="Включает свет, которым управляют кнопки света"/>
   <translation tag="Turn the extruder heater off after a load or unload finishes" ru="Выключать нагреватель экструдера после загрузки или выгрузки"/>

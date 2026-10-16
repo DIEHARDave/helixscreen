@@ -1179,9 +1179,10 @@ void MoonrakerClientMock::populate_capabilities() {
         // The U1 capture's identifying objects. Not `filament_detect`, which would
         // make discovery stand up the production Snapmaker backend; this persona
         // runs the mock one.
-        for (const char* obj : {"tool", "fm175xx_reader", "tmc2240 stepper_x", "purifier", "camera",
-                                "gcode_macro FILAMENT_DT_UPDATE", "gcode_macro FILAMENT_DT_QUERY",
-                                "gcode_macro EXTRUDER_OFFSET_ACTION_PROBE_CALIBRATE_ALL"}) {
+        for (const char* obj :
+             {"tool", "fm175xx_reader", "tmc2240 stepper_x", "purifier", "camera",
+              "defect_detection", "gcode_macro FILAMENT_DT_UPDATE", "gcode_macro FILAMENT_DT_QUERY",
+              "gcode_macro EXTRUDER_OFFSET_ACTION_PROBE_CALIBRATE_ALL"}) {
             mock_objects.push_back(obj);
         }
         for (int i = 0; i < 4; ++i) {
@@ -2357,6 +2358,20 @@ constexpr std::array<const char*, 17> kZmodValidTypes = {
     "S-MULTI", "PA-CF", "HIPS",   "PVA",     "TPU-90A", "TPU-95A", "TPU-64D", "?"};
 
 } // namespace
+
+nlohmann::json MoonrakerClientMock::defect_detection_status() const {
+    if (printer_type_ != PrinterType::SNAPMAKER_U1) {
+        return nlohmann::json::object();
+    }
+    auto feature = [](bool enable) {
+        return nlohmann::json{{"enable", enable}, {"sensitivity", "low"}};
+    };
+    return nlohmann::json{{"main_enable", u1_defect_main_enable_.load()},
+                          {"clean_bed", feature(u1_clean_bed_enable_.load())},
+                          {"noodle", feature(true)},
+                          {"residue", feature(false)},
+                          {"nozzle", feature(false)}};
+}
 
 json MoonrakerClientMock::zmod_color_status() const {
     std::lock_guard<std::mutex> lock(zmod_mutex_);

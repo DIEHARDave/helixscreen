@@ -51,6 +51,7 @@
 #include "lvgl/src/others/translation/lv_translation.h"
 #include "memory_monitor.h"
 #include "memory_utils.h"
+#include "non_filament_pause.h"
 #include "observer_factory.h"
 #include "pre_start_exclude.h"
 #include "preprint_predictor.h"
@@ -2215,7 +2216,8 @@ void PrintStatusPanel::recompute_paused_overlay_visibility() {
     } else if (pending == helix::ui::PendingAction::Resuming) {
         reason = lv_tr("Resuming...");
     } else if (paused) {
-        if (FilamentSensorManager::instance().has_real_runout()) {
+        if (!helix::non_filament_pause::explained() &&
+            FilamentSensorManager::instance().has_real_runout()) {
             AmsBackend* backend = AmsState::instance().get_backend();
             std::string lane = backend ? helix::ui::lane_label(helix::ui::active_lane_noun(),
                                                                backend->get_current_slot())

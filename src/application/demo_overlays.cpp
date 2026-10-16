@@ -309,6 +309,13 @@ bool show_demo_overlay(const std::string& name, std::string* error) {
         return Modal::show_owned(std::move(modal), screen);
     }
 
+    if (name == "bed-check") {
+        // The modal a printer's bed check raises. Left unbound: the presenter
+        // binds it to the paused job, and a mock with no paused job would
+        // close it at once.
+        return Modal::show_owned(std::make_unique<helix::detection::BedCheckModal>(), screen);
+    }
+
     if (name == "ams-error-toast") {
         // The widest thing the AMS error renderer ever has to lay out: the
         // longest suggestion any backend produces (96 chars) under a 44-char

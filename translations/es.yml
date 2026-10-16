@@ -349,6 +349,7 @@ translations:
   Beacon calibrate sent: Beacon calibración enviada
   Bed: Cama
   Bed (°C): Cama (°C)
+  Bed Clear Check: 'Comprobación de cama libre'
   Bed Heater: Calentador de Cama
   Bed Level: Nivel de Cama
   Bed Leveling: Nivelación de Cama
@@ -364,6 +365,7 @@ translations:
   Bed Screws: Tornillos de Cama
   Bed Temp: Temp. Cama
   Bed Temperature: Temperatura de Cama
+  Bed check turned off: 'Comprobación de cama desactivada'
   Bed clear · Start next: 'Cama libre · Iniciar siguiente'
   'Bed cooling, spools still on the bed:': 'La cama se enfría, las bobinas siguen encima:'
 
@@ -516,6 +518,7 @@ translations:
   Calibration, LED, and system configuration: 'Calibración, LED y configuración del sistema'
   Cam: Cám.
   Camera: Cámara
+  Camera checks the bed is empty before each print: 'La cámara comprueba que la cama esté vacía antes de cada impresión'
   Can't connect — try forgetting and re-pairing the printer: No se puede conectar
     — prueba a olvidar y volver a emparejar la impresora
   Can't move filament while the print is paused: No se puede mover el filamento con la impresión en pausa
@@ -525,6 +528,7 @@ translations:
   Cancel Escalation: Cancelar Escalado
   Cancel Print: Cancelar Impresión
   Cancel macro not configured: Macro de cancelar no configurado
+  Cancel print: 'Cancelar impresión'
   Cancelled: Cancelado
   'Cannot add to queue: internal error': 'No se puede añadir a la cola: error interno'
   Cannot be changed from here on a multi-unit MMU: No se puede cambiar aquí en un MMU de varias unidades
@@ -2846,6 +2850,7 @@ translations:
   'Restart failed: {}': 'Reinicio fallido: {}'
   Restart from the beginning to recover: Reinicie desde el principio para recuperar la impresión
   Restart pending: 'Reinicio pendiente'
+  Restart print: 'Reiniciar impresión'
   Restart the display application: Reiniciar la aplicación de pantalla
   Restart the printer or screen: Reiniciar la impresora o pantalla
   Restarting HelixScreen...: Reiniciando HelixScreen...
@@ -3186,6 +3191,7 @@ translations:
   'Some mapped slots are short on filament:': 'Algunas ranuras asignadas tienen poco filamento:'
   Some settings will take effect after restart.: Algunos ajustes tendrán efecto después
     de reiniciar.
+  Something on the bed?: '¿Algo en la cama?'
   Sound: Sonido
   Sound Theme: Tema de sonido
   Sounds: Sonidos
@@ -3426,6 +3432,7 @@ translations:
     uso anónimos ayudan a mejorar HelixScreen.
   Thanks! TOTALLY anonymous usage data helps improve HelixScreen.: ¡Gracias! Los datos
     de uso TOTALMENTE anónimos ayudan a mejorar HelixScreen.
+  That print is no longer paused: 'Esa impresión ya no está en pausa'
   'That setting cannot be changed while a print is running': 'Ese ajuste no se puede cambiar mientras hay una impresión en curso'
   That slot cannot stand in for this one: Esa ranura no puede sustituir a esta
   That tool is already loaded: Esa herramienta ya está cargada
@@ -3446,6 +3453,8 @@ translations:
   The bed was reported dirty, so this print cannot resume.: 'La cama se ha notificado como sucia, por lo que esta impresión no puede reanudarse.'
   The buffer may be disconnected, stuck, or faulty. Check it before retrying: Puede que el búfer esté desconectado, atascado o averiado. Compruébelo antes de reintentar
   The buffer saw no movement for 16 seconds. Check for a blockage between the CFS and the extruder, or a stuck buffer: El búfer no detectó movimiento durante 16 segundos. Compruebe si hay una obstrucción entre el CFS y el extrusor, o un búfer atascado
+  ? The camera thought it saw something on the bed, so the printer stopped before printing. If the bed is clear, it was a false alarm.
+  : 'La cámara creyó ver algo en la cama, así que la impresora se detuvo antes de imprimir. Si la cama está libre, fue una falsa alarma.'
   The cutter blade didn't return — check for filament wrapped around the cutting mechanism: La cuchilla no regresó. Compruebe si hay filamento enrollado en el mecanismo de corte
   The cutter is out of alignment — recalibrate with CALIBRATE_CUT_POS: El cortador está desalineado. Recalíbrelo con CALIBRATE_CUT_POS
   The extruder cannot pull it smoothly. Check the spool for a tangle or knot, and the PTFE tube for a severe bend: El extrusor no puede tirar con suavidad. Revise la bobina por si hay enredos o nudos, y el tubo PTFE por si tiene una curva pronunciada
@@ -3467,6 +3476,8 @@ translations:
   : La impresión está pausada. Cambiar de herramienta ahora mueve el cabezal y cambia
     el filamento en la boquilla. Reanude la impresión una vez que el cambio termine.
   The printer applied this value and keeps it for this tool.: 'La impresora aplicó este valor y lo conserva para esta herramienta.'
+  The printer did not change its bed check: 'La impresora no cambió su comprobación de cama'
+  'The printer did not change its bed check: {}': 'La impresora no cambió su comprobación de cama: {}'
   The printer extrudes in a corner and repeats until the readings agree. You do not judge anything by eye.: 'La impresora extruye en una esquina y repite hasta que las lecturas coinciden. Tú no juzgas nada a ojo.'
   The printer finishes this measurement on its own.: 'La impresora termina esta medición por su cuenta.'
   The printer halted this print and cannot resume it. Restart from the beginning?: La
@@ -3563,6 +3574,7 @@ translations:
   This may take up to 30 seconds: Esto puede tardar hasta 30 segundos
   This plugin asks for no special permissions.: 'Este plugin no pide permisos especiales.'
   This plugin lets HelixScreen control print start options like bed mesh and QGL.: 'Este plugin permite que HelixScreen controle opciones de inicio de impresión como malla de cama y QGL.'
+  This print can't be resumed. Restart it, or turn off the bed check if it keeps happening.: 'Esta impresión no se puede reanudar. Reiníciala o desactiva la comprobación de cama si sigue ocurriendo.'
   This print needs about %.0fg but the spool has about %.0fg remaining. Start anyway?: Esta
     impresión necesita aproximadamente %.0fg pero la bobina tiene aproximadamente
     %.0fg restantes. ¿Iniciar de todos modos?
@@ -3704,6 +3716,7 @@ translations:
   Turn On: Encender
   Turn On LEDs: 'Encender los LED'
   Turn endless spool on, then set the backup gate: 'Active la bobina infinita y luego configure el Gate de respaldo'
+  Turn off bed check: 'Desactivar comprobación de cama'
   Turn off detection: Desactivar detección
   Turn on the lights your light buttons control: Enciende las luces que controlan tus botones de luz
   Turn the extruder heater off after a load or unload finishes: Apagar el calentador del extrusor al terminar una carga o descarga
