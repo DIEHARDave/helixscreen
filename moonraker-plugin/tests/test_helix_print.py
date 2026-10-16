@@ -13,6 +13,7 @@ import asyncio
 import json
 import os
 import tempfile
+import time
 from pathlib import Path
 from typing import Any, Dict, Optional
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -23,7 +24,13 @@ import pytest
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from helix_print import HelixPrint, PrintInfo, load_component
+from helix_print import (
+    DB_RECORD_MAX_AGE,
+    HELIX_NAMESPACE,
+    HelixPrint,
+    PrintInfo,
+    load_component,
+)
 
 
 # ============================================================================
@@ -1305,3 +1312,200 @@ class TestVisibleSymlinkDir:
         await component._startup_cleanup()
 
         assert (outside / "dangling.gcode").is_symlink()
+
+
+# ============================================================================
+# Namespace persistence on Moonraker 0.9.3's database
+# ============================================================================
+
+class Moonraker093Database:
+    """The namespace half of Moonraker v0.9.3's `database` component, as
+    vendored by Forge-X: no execute_db_command (so the plugin takes the
+    namespace route), no ns_items, string keys split on "." with an empty
+    segment refused, nested inserts for multi-segment keys, and get_item
+    with no key returning the whole namespace."""
+
+    def __init__(self):
+        self.ns: Dict[str, Dict[str, Any]] = {}
+
+    class Error(Exception):
+        def __init__(self, message, status_code=400):
+            super().__init__(message)
+            self.status_code = status_code
+
+    @classmethod
+    def _parse(cls, key):
+        keys = key if isinstance(key, list) else key.split(".")
+        if not keys or "" in keys:
+            raise cls.Error(f"Invalid Key Format: '{key}'")
+        return keys
+
+    async def insert_item(self, namespace, key, value):
+        keys = self._parse(key)
+        store = self.ns.setdefault(namespace, {})
+        if len(keys) == 1:
+            store[keys[0]] = value
+            return
+        record = store.get(keys[0])
+        if not isinstance(record, dict):
+            record = {}
+        item = record
+        for k in keys[1:-1]:
+            item = item.setdefault(k, {})
+        item[keys[-1]] = value
+        store[keys[0]] = record
+
+    async def update_item(self, namespace, key, value):
+        keys = self._parse(key)
+        store = self.ns.get(namespace, {})
+        if keys[0] not in store:
+            raise self.Error(f"Key '{key}' in namespace '{namespace}' not found", 404)
+        if len(keys) == 1 and isinstance(value, dict) and isinstance(store[keys[0]], dict):
+            store[keys[0]].update(value)
+        else:
+            await self.insert_item(namespace, key, value)
+
+    async def get_item(self, namespace, key=None, default=Exception):
+        try:
+            if key is None:
+                if namespace not in self.ns:
+                    raise self.Error(f"Namespace {namespace} not found", 404)
+                return dict(self.ns[namespace])
+            keys = self._parse(key)
+            value = self.ns[namespace][keys[0]]
+            for k in keys[1:]:
+                value = value[k]
+            return value
+        except (KeyError, TypeError, self.Error):
+            if default is not Exception:
+                return default
+            raise self.Error(f"Key '{key}' in namespace '{namespace}' not found", 404)
+
+    async def delete_item(self, namespace, key):
+        keys = self._parse(key)
+        return self.ns.get(namespace, {}).pop(keys[0], None)
+
+
+class TestNamespacePersistence093:
+    @pytest.fixture
+    def db(self):
+        return Moonraker093Database()
+
+    @pytest.fixture
+    def component(self, mock_server, temp_gcodes_dir, db):
+        mock_server.components["file_manager"] = MockFileManager(temp_gcodes_dir)
+        mock_server.components["database"] = db
+        mock_server.components["klippy_connection"] = MockKlippy()
+        mock_server.components["klippy_apis"] = MockKlippyApis()
+        mock_server.components["history"] = MockHistory()
+        return load_component(MockConfigHelper(mock_server, {
+            "temp_dir": ".helix_temp", "symlink_dir": ".helix_print",
+            "cleanup_delay": 3600, "enabled": True,
+        }))
+
+    @staticmethod
+    def _stage(gcodes: Path) -> MockWebRequest:
+        (gcodes / "benchy.gcode").write_text("G28\n")
+        (gcodes / ".helix_temp").mkdir(exist_ok=True)
+        (gcodes / ".helix_temp" / "modified_1_benchy.gcode").write_text("G28\nG1\n")
+        return MockWebRequest({
+            "original_filename": "benchy.gcode",
+            "temp_file_path": ".helix_temp/modified_1_benchy.gcode",
+            "modifications": [],
+        })
+
+    @pytest.mark.asyncio
+    async def test_takes_the_namespace_route(self, component):
+        await component.component_init()
+        assert component._use_namespace and not component._use_sqlite
+
+    @pytest.mark.asyncio
+    async def test_a_dotted_temp_name_stores_as_one_record(
+        self, component, mock_server, temp_gcodes_dir, db
+    ):
+        await component.component_init()
+        await mock_server.endpoints["/server/helix/print_modified"](
+            self._stage(Path(temp_gcodes_dir)))
+
+        record = db.ns[HELIX_NAMESPACE][".helix_temp/modified_1_benchy.gcode"]
+        assert record["status"] == "active"
+        assert record["symlink_filename"] == ".helix_print/full/benchy.gcode"
+
+    @pytest.mark.asyncio
+    async def test_an_overdue_record_is_cleaned_at_startup(
+        self, component, mock_server, temp_gcodes_dir, db
+    ):
+        gcodes = Path(temp_gcodes_dir)
+        await component.component_init()
+        result = await mock_server.endpoints["/server/helix/print_modified"](
+            self._stage(gcodes))
+        info = component.active_prints[result["print_filename"]]
+        await component._schedule_cleanup(info)
+        record = db.ns[HELIX_NAMESPACE][".helix_temp/modified_1_benchy.gcode"]
+        assert record["status"] == "pending_cleanup"
+        record["cleanup_scheduled_at"] = time.time() - 1
+
+        await component._startup_cleanup()
+
+        assert not (gcodes / ".helix_temp" / "modified_1_benchy.gcode").exists()
+        assert db.ns[HELIX_NAMESPACE][".helix_temp/modified_1_benchy.gcode"]["status"] == "cleaned"
+
+    @pytest.mark.asyncio
+    async def test_old_cleaned_records_are_purged(self, component, db):
+        await component.component_init()
+        old = time.time() - DB_RECORD_MAX_AGE - 10
+        await db.insert_item(HELIX_NAMESPACE, [".helix_temp/a.gcode"], {
+            "temp_filename": ".helix_temp/a.gcode", "symlink_filename": "x",
+            "status": "cleaned", "created_at": old})
+        await db.insert_item(HELIX_NAMESPACE, [".helix_temp/b.gcode"], {
+            "temp_filename": ".helix_temp/b.gcode", "symlink_filename": "y",
+            "status": "cleaned", "created_at": time.time()})
+
+        await component._startup_cleanup()
+
+        assert list(db.ns[HELIX_NAMESPACE]) == [".helix_temp/b.gcode"]
+
+    @pytest.mark.asyncio
+    async def test_no_namespace_yet_starts_cleanly(self, component, db):
+        await component.component_init()
+        await component._startup_cleanup()
+        assert HELIX_NAMESPACE not in db.ns
+
+    @pytest.mark.asyncio
+    async def test_a_record_left_nested_by_a_string_key_is_rekeyed_and_cleaned(
+        self, component, temp_gcodes_dir, db
+    ):
+        """A temp dir without a leading dot let a string key store: split on
+        its dots, the record sits nested under the first segment."""
+        gcodes = Path(temp_gcodes_dir)
+        (gcodes / "helix_temp").mkdir()
+        (gcodes / "helix_temp" / "modified_1_benchy.gcode").write_text("G28\n")
+        record = {
+            "temp_filename": "helix_temp/modified_1_benchy.gcode",
+            "symlink_filename": ".helix_print/full/benchy.gcode",
+            "status": "pending_cleanup", "cleanup_scheduled_at": time.time() - 1,
+            "created_at": time.time() - 100,
+        }
+        await db.insert_item(HELIX_NAMESPACE, "helix_temp/modified_1_benchy.gcode", record)
+        assert "helix_temp/modified_1_benchy" in db.ns[HELIX_NAMESPACE]
+        await component.component_init()
+
+        await component._startup_cleanup()
+
+        store = db.ns[HELIX_NAMESPACE]
+        assert "helix_temp/modified_1_benchy" not in store
+        assert store["helix_temp/modified_1_benchy.gcode"]["status"] == "cleaned"
+        assert not (gcodes / "helix_temp" / "modified_1_benchy.gcode").exists()
+
+    @pytest.mark.asyncio
+    async def test_unrelated_values_in_the_namespace_do_not_break_startup(
+        self, component, db
+    ):
+        await db.insert_item(HELIX_NAMESPACE, ["junk"], "not a record")
+        await db.insert_item(HELIX_NAMESPACE, ["nested"], {"a": {"b": 1}})
+        await component.component_init()
+
+        await component._startup_cleanup()
+
+        assert db.ns[HELIX_NAMESPACE]["junk"] == "not a record"
+        assert db.ns[HELIX_NAMESPACE]["nested"] == {"a": {"b": 1}}

@@ -69,6 +69,31 @@ PLUGIN_VERSION = "1.2.0"
 # Namespace for the key-value storage fallback (database without execute_db_command)
 HELIX_NAMESPACE = "helix_temp_files"
 
+def _ns_key(temp_filename: str) -> List[str]:
+    """A namespace key naming one record. Moonraker's database splits a string
+    key on "." into nested keys, and rejects one with an empty segment, which
+    every ".helix_temp/..." name has; a one-element list is taken whole."""
+    return [temp_filename]
+
+
+def _legacy_records(value: Any, depth: int = 0) -> List[Dict[str, Any]]:
+    """Print records nested inside a namespace value.
+
+    A record stored under a dotted string key lands nested by the key's
+    segments ("helix_temp/modified_1_x.gcode" -> {"gcode": record} under
+    "helix_temp/modified_1_x"), so the value at a top-level key is either a
+    record or dicts leading to one.
+    """
+    if not isinstance(value, dict) or depth > 8:
+        return []
+    if "temp_filename" in value:
+        return [value]
+    found: List[Dict[str, Any]] = []
+    for child in value.values():
+        found.extend(_legacy_records(child, depth + 1))
+    return found
+
+
 # Provider name stamped on our entry in a history job's auxiliary_data
 HELIX_AUX_PROVIDER = "helix_print"
 
@@ -634,7 +659,7 @@ class HelixPrint:
                 # Use temp_filename as key (unique per print)
                 await self.database.insert_item(
                     HELIX_NAMESPACE,
-                    print_info.temp_filename,
+                    _ns_key(print_info.temp_filename),
                     record,
                 )
         except Exception as e:
@@ -839,13 +864,13 @@ class HelixPrint:
             elif self._use_namespace:
                 # Update record in namespace storage
                 record = await self.database.get_item(
-                    HELIX_NAMESPACE, print_info.temp_filename
+                    HELIX_NAMESPACE, _ns_key(print_info.temp_filename), None
                 )
                 if record:
                     record["cleanup_scheduled_at"] = cleanup_time
                     record["status"] = "pending_cleanup"
                     await self.database.update_item(
-                        HELIX_NAMESPACE, print_info.temp_filename, record
+                        HELIX_NAMESPACE, _ns_key(print_info.temp_filename), record
                     )
                 else:
                     logging.warning(
@@ -920,11 +945,13 @@ class HelixPrint:
                     ("cleaned", temp_filename),
                 )
             elif self._use_namespace:
-                record = await self.database.get_item(HELIX_NAMESPACE, temp_filename)
+                record = await self.database.get_item(
+                    HELIX_NAMESPACE, _ns_key(temp_filename), None
+                )
                 if record:
                     record["status"] = "cleaned"
                     await self.database.update_item(
-                        HELIX_NAMESPACE, temp_filename, record
+                        HELIX_NAMESPACE, _ns_key(temp_filename), record
                     )
                 else:
                     logging.debug(
@@ -932,6 +959,48 @@ class HelixPrint:
                     )
         except Exception as e:
             logging.warning(f"HelixPrint: Failed to update cleanup status: {e}")
+
+    async def _namespace_items(self) -> List[Any]:
+        """(key, value) pairs of our namespace; empty when it does not exist.
+
+        get_item with no key returns the whole namespace as a dict, and with a
+        default it does not raise for a namespace never written. That is what
+        Moonraker 0.9.3's database offers; ns_items is used where get_item
+        cannot answer that way.
+        """
+        try:
+            whole = await self.database.get_item(HELIX_NAMESPACE, None, {})
+        except Exception:
+            whole = None
+        if isinstance(whole, dict):
+            return list(whole.items())
+        if hasattr(self.database, "ns_items"):
+            try:
+                return list(await self.database.ns_items(HELIX_NAMESPACE))
+            except Exception:
+                return []
+        return []
+
+    async def _migrate_legacy_keys(self) -> None:
+        """Re-store records a dotted string key left nested, one record per key.
+
+        Each is re-inserted under its own temp_filename and the old top-level
+        entry deleted. A value holding no record is left alone.
+        """
+        for key, value in await self._namespace_items():
+            if isinstance(value, dict) and value.get("temp_filename") == key:
+                continue
+            records = _legacy_records(value)
+            if not records:
+                continue
+            for record in records:
+                await self.database.insert_item(
+                    HELIX_NAMESPACE, _ns_key(record["temp_filename"]), record
+                )
+            await self.database.delete_item(HELIX_NAMESPACE, _ns_key(key))
+            logging.info(
+                f"HelixPrint: Re-keyed {len(records)} temp file record(s) stored as {key!r}"
+            )
 
     def _sweep_dangling_links(self) -> int:
         """Remove print links whose temp file is gone, and the directories
@@ -987,13 +1056,8 @@ class HelixPrint:
                     pending_records = [dict(r) for r in rows]
 
             elif self._use_namespace:
-                # Get all items and filter in Python
-                try:
-                    all_items = await self.database.ns_items(HELIX_NAMESPACE)
-                except self.server.error:
-                    # Namespace doesn't exist yet (no records inserted)
-                    all_items = []
-                for key, record in all_items:
+                await self._migrate_legacy_keys()
+                for key, record in await self._namespace_items():
                     if (
                         record.get("status") == "pending_cleanup"
                         and record.get("cleanup_scheduled_at")
@@ -1031,7 +1095,7 @@ class HelixPrint:
                 elif self._use_namespace:
                     record["status"] = "cleaned"
                     await self.database.update_item(
-                        HELIX_NAMESPACE, temp_filename, record
+                        HELIX_NAMESPACE, _ns_key(temp_filename), record
                     )
                 cleaned_count += 1
 
@@ -1056,19 +1120,13 @@ class HelixPrint:
                     purged_count = deleted.rowcount
 
             elif self._use_namespace:
-                # Get all items and delete old ones
-                try:
-                    all_items = await self.database.ns_items(HELIX_NAMESPACE)
-                except self.server.error:
-                    # Namespace doesn't exist yet
-                    all_items = []
-                for key, record in all_items:
+                for key, record in await self._namespace_items():
                     if (
                         record.get("status") == "cleaned"
                         and record.get("created_at")
                         and record["created_at"] < purge_cutoff
                     ):
-                        await self.database.delete_item(HELIX_NAMESPACE, key)
+                        await self.database.delete_item(HELIX_NAMESPACE, _ns_key(key))
                         purged_count += 1
 
             if purged_count > 0:
