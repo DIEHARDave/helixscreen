@@ -21,6 +21,7 @@
 #include "ams_error.h"
 #include "ams_state.h"
 #include "static_panel_registry.h"
+#include "theme_manager.h"
 
 #include <lvgl/lvgl.h>
 
@@ -187,4 +188,24 @@ TEST_CASE_METHOD(GuidedFlowFixture,
     lv_obj_t* btn = open_section_and_find({button("a", "t")}, "a");
     click(btn);
     CHECK(last_executed().empty());
+}
+
+TEST_CASE_METHOD(GuidedFlowFixture, "the section header fits a 480x320 screen",
+                 "[ams][guided-flow][device-section]") {
+    ScopedResolution small(lv_display_get_default(), 480, 320);
+    theme_manager_refresh_layout_constants(lv_display_get_default());
+
+    backend->set_device_sections({DeviceSection{"print_prefs", "Print Behaviour", 0, ""}});
+    backend->set_device_actions({DeviceAction::toggle("t", "t", "print_prefs", false)});
+    auto& overlay = get_ams_device_section_detail_overlay();
+    overlay.init_subjects();
+    overlay.show(test_screen(), "print_prefs", "Print Behaviour");
+    settle();
+
+    lv_obj_t* title = lv_obj_find_by_name(overlay.get_root(), "header_title");
+    REQUIRE(title != nullptr);
+    lv_obj_update_layout(title);
+    CHECK(std::string(lv_label_get_text(title)) == "PRINT BEHAVIOUR");
+    // Positive scroll_right is the width of text clipped past the header's edge.
+    CHECK(lv_obj_get_scroll_right(title) <= 0);
 }
