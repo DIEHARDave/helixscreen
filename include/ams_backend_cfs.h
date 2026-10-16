@@ -444,8 +444,8 @@ class AmsBackendCfs : public AmsSubscriptionBackend {
     /// The schema whose feed builds a fingerprint of this shape, or nullopt
     /// when either could have: stock joins the raw material_type code and
     /// "0RRGGBB" colour_value, flat joins a material name and six hex digits.
-    /// A baseline of one schema's shape says nothing about a reading of the
-    /// other's, so check_hardware_event_clear drops it rather than compare.
+    /// A baseline of one schema's shape never equals a reading of the other's,
+    /// so check_hardware_event_clear compares only their colours across it.
     static std::optional<CfsSchema> fingerprint_schema(const std::string& fingerprint);
 
     /// True when this `box` payload comes from the community box.py, i.e. the

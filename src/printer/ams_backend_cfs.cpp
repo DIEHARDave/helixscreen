@@ -1414,6 +1414,24 @@ std::string AmsBackendCfs::normalize_legacy_flat_fingerprint(const std::string& 
     return head + "|" + stored.substr(start);
 }
 
+// The colour half of a fingerprint as RRGGBB, uppercase: stock's "0RRGGBB"
+// loses its leading pad, so a stock and a flat reading of one colour compare
+// equal. Empty when the fingerprint carries no colour.
+static std::string fingerprint_rgb(const std::string& fingerprint) {
+    const auto pipe = fingerprint.find('|');
+    if (pipe == std::string::npos) {
+        return "";
+    }
+    std::string color = fingerprint.substr(pipe + 1);
+    if (color.size() == 7 && color[0] == '0') {
+        color.erase(0, 1);
+    }
+    for (auto& c : color) {
+        c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+    }
+    return color;
+}
+
 std::optional<CfsSchema> AmsBackendCfs::fingerprint_schema(const std::string& fingerprint) {
     const auto pipe = fingerprint.find('|');
     if (pipe == std::string::npos || fingerprint.find('|', pipe + 1) != std::string::npos) {
@@ -1423,14 +1441,18 @@ std::optional<CfsSchema> AmsBackendCfs::fingerprint_schema(const std::string& fi
     const std::string color = fingerprint.substr(pipe + 1);
     const auto is_digit = [](char c) { return c >= '0' && c <= '9'; };
     const auto is_upper_hex = [&is_digit](char c) { return is_digit(c) || (c >= 'A' && c <= 'F'); };
-    // Stock colour_value is "0RRGGBB"; a stock material_type is a numeric code.
-    if (color.size() == 7 ||
-        (!material.empty() && std::all_of(material.begin(), material.end(), is_digit))) {
+    // Stock colour_value is "0RRGGBB"; compose_cfs_flat_uid writes six
+    // uppercase hex digits. With no colour, a stock material_type is a
+    // numeric code where a flat material is a name.
+    if (color.size() == 7) {
         return CfsSchema::Stock;
     }
-    // compose_cfs_flat_uid writes six uppercase hex digits.
     if (color.size() == 6 && std::all_of(color.begin(), color.end(), is_upper_hex)) {
         return CfsSchema::Flat;
+    }
+    if (color.empty() && !material.empty() &&
+        std::all_of(material.begin(), material.end(), is_digit)) {
+        return CfsSchema::Stock;
     }
     return std::nullopt;
 }
@@ -4777,14 +4799,21 @@ std::map<int, int> AmsBackendCfs::collect_insert_probes_locked(const nlohmann::j
 
 bool AmsBackendCfs::check_hardware_event_clear(SlotInfo& slot, int slot_index,
                                                const std::string& observed_uid) {
-    // A baseline in the other schema's shape describes what the box reported
-    // before it changed schema, not the spool now in the bay, so the reading
-    // is a first observation. The observed side must name the current schema
-    // too: a reading this schema could also have spelled the other way is
-    // compared as usual, which never leaves a slot blind to its own swaps.
+    // A baseline in the other schema's shape cannot equal any reading of this
+    // one, so only the colour, the one field both spell alike, still compares.
+    // A different colour is a swap and stays a Changed comparison; the same
+    // colour, or none on either side, makes the reading a first observation.
+    // The observed side must name the current schema too: a reading this
+    // schema could also have spelled the other way is compared as usual,
+    // which never leaves a slot blind to its own swaps.
     if (const auto base = rfid_tracker_.baseline(slot_index)) {
         const auto base_schema = fingerprint_schema(*base);
-        if (base_schema && *base_schema != schema_ && fingerprint_schema(observed_uid) == schema_) {
+        const std::string base_rgb = fingerprint_rgb(*base);
+        const std::string observed_rgb = fingerprint_rgb(observed_uid);
+        const bool colour_moved =
+            !base_rgb.empty() && !observed_rgb.empty() && base_rgb != observed_rgb;
+        if (base_schema && *base_schema != schema_ && fingerprint_schema(observed_uid) == schema_ &&
+            !colour_moved) {
             spdlog::info("{} Slot {} fingerprint {} is from the other box schema, "
                          "re-baselining on {}",
                          backend_log_tag(), slot_index, *base, observed_uid);

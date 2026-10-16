@@ -944,7 +944,7 @@ slot=0 tool=0 loaded=false runout=false action=Idle bypass=true declared=false e
 flat fork frame
 slot=-1 tool=-1 loaded=false runout=true action=Idle bypass=true declared=false endless=true total=16 variant=2
   ttg=0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15 units=4
-  unit0 absent=false first=0: [Available PLA/Sunlu/Magenta #D75BA7] [Available PLA/Slic3D/Black #111111] [Available PLA/Elegoo/White #F2F2F2] [Available PLA/Elegoo/Grey #6F7379]
+  unit0 absent=false first=0: [Available PLA/Sunlu/ #D75BA7] [Available PLA/Slic3D/ #111111] [Available PLA/Elegoo/ #F2F2F2] [Available PLA/Elegoo/Grey #6F7379]
   unit1 absent=false first=4: [Empty // #808080] [Empty // #808080] [Empty // #808080] [Empty // #808080]
   unit2 absent=false first=8: [Empty // #808080] [Empty // #808080] [Empty // #808080] [Empty // #808080]
   unit3 absent=false first=12: [Empty // #808080] [Empty // #808080] [Empty // #808080] [Empty // #808080]
@@ -952,7 +952,7 @@ slot=-1 tool=-1 loaded=false runout=true action=Idle bypass=true declared=false 
 flat delta: toolhead on
 slot=-1 tool=-1 loaded=true runout=true action=Idle bypass=true declared=false endless=true total=16 variant=2
   ttg=0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15 units=4
-  unit0 absent=false first=0: [Available PLA/Sunlu/Magenta #D75BA7] [Available PLA/Slic3D/Black #111111] [Available PLA/Elegoo/White #F2F2F2] [Available PLA/Elegoo/Grey #6F7379]
+  unit0 absent=false first=0: [Available PLA/Sunlu/ #D75BA7] [Available PLA/Slic3D/ #111111] [Available PLA/Elegoo/ #F2F2F2] [Available PLA/Elegoo/Grey #6F7379]
   unit1 absent=false first=4: [Empty // #808080] [Empty // #808080] [Empty // #808080] [Empty // #808080]
   unit2 absent=false first=8: [Empty // #808080] [Empty // #808080] [Empty // #808080] [Empty // #808080]
   unit3 absent=false first=12: [Empty // #808080] [Empty // #808080] [Empty // #808080] [Empty // #808080]
