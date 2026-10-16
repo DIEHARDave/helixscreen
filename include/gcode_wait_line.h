@@ -1,0 +1,44 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+#pragma once
+
+#include <cstddef>
+#include <optional>
+#include <string>
+#include <string_view>
+
+namespace helix {
+
+/// The blocking temperature wait a gcode line runs. Each ends differently:
+/// M109/M190/M191 return on a target of 0 or a print cancel, while
+/// TEMPERATURE_WAIT ends only at its bound or at a shutdown.
+enum class WaitKind { Other, M109, M190, M191, TemperatureWait };
+
+struct WaitLine {
+    WaitKind kind = WaitKind::Other;
+    /// M109's T, or the extruder a TEMPERATURE_WAIT names (extruder = 0,
+    /// extruderN = N). nullopt for M109 with no T: the active tool.
+    std::optional<int> tool;
+    std::optional<double> target;  ///< M109/M190/M191: S, else R
+    std::string sensor;            ///< TEMPERATURE_WAIT's SENSOR, lower-cased, unquoted; "" = none
+    std::optional<double> minimum; ///< TEMPERATURE_WAIT's MINIMUM
+    std::optional<double> maximum; ///< TEMPERATURE_WAIT's MAXIMUM
+};
+
+/// Classify one gcode line. A comment (`;` onward), leading whitespace and
+/// lower-case commands are allowed; anything that is not one of the waits,
+/// such as a macro whose body holds the wait, is Other.
+WaitLine classify_wait_line(std::string_view line);
+
+/// Bytes read from virtual_sdcard.file_position to find the line there.
+inline constexpr size_t kWaitLineWindow = 256;
+
+/// The line that starts at @p bytes[0], where @p bytes is a read of
+/// @p requested bytes at virtual_sdcard.file_position. Klipper advances
+/// file_position past a line only once its command returns, so during a
+/// blocking wait the position is the START of the waiting line. Fewer bytes
+/// than requested means the file ended, and its last line needs no newline.
+/// nullopt when there is no line, or when the window filled before the
+/// line's newline and before any comment: a command longer than the window.
+std::optional<std::string_view> first_line_at_position(std::string_view bytes, size_t requested);
+
+} // namespace helix

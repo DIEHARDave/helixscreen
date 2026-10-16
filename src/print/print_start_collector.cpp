@@ -18,6 +18,7 @@
 #include "text_io.h"
 #include "thermal_rate_model.h"
 #include "unit_conversions.h"
+#include "wait_line_reader.h"
 
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
@@ -2135,8 +2136,8 @@ void PrintStartCollector::forget_chamber_wait_line_locked() {
     ++chamber_line_gen_;
 }
 
-// The command at the print position: virtual_sdcard.file_position, then the
-// bytes before it. Main thread; the answer lands under state_mutex_ and is
+// The command at the print position: the line starting at
+// virtual_sdcard.file_position. Main thread; the answer lands under state_mutex_ and is
 // read on the next tick.
 void PrintStartCollector::request_chamber_wait_line(uint64_t gen) {
     const char* file = lv_subject_get_string(state_.print_state().get_print_filename_subject());
@@ -2148,25 +2149,21 @@ void PrintStartCollector::request_chamber_wait_line(uint64_t gen) {
     client_.send_jsonrpc(
         "printer.objects.query", {{"objects", {{"virtual_sdcard", {"file_position"}}}}},
         [self, gen, filename](const json& resp) {
-            const json& result = resp.contains("result") ? resp["result"] : resp;
-            if (!result.contains("status") || !result["status"].contains("virtual_sdcard") ||
-                !result["status"]["virtual_sdcard"].contains("file_position") ||
-                !result["status"]["virtual_sdcard"]["file_position"].is_number()) {
+            const std::optional<uint64_t> position = helix::virtual_sdcard_file_position(resp);
+            if (!position) {
                 return;
             }
-            const auto pos = result["status"]["virtual_sdcard"]["file_position"].get<uint64_t>();
+            const uint64_t pos = *position;
             helix::ui::queue_update(
                 "PrintStartCollector::read_chamber_wait_line", [self, gen, filename, pos]() {
                     IMoonrakerAPI* api = get_moonraker_api();
                     if (!api || !api->transfers().supports_range_reads()) {
                         return;
                     }
-                    constexpr uint64_t kWindow = 256;
-                    const uint64_t from = pos > kWindow ? pos - kWindow : 0;
-                    api->transfers().download_file_range(
-                        "gcodes", filename, from, static_cast<size_t>(pos - from),
-                        [self, gen](const std::string& bytes) {
-                            self->apply_chamber_wait_line(gen, classify_chamber_wait_line(bytes));
+                    helix::read_wait_line_at(
+                        api->transfers(), filename, pos,
+                        [self, gen](const helix::WaitLine& line) {
+                            self->apply_chamber_wait_line(gen, line);
                         },
                         [](const MoonrakerError& e) {
                             spdlog::debug("[PrintStartCollector] Chamber wait line not read: {}",
@@ -2179,7 +2176,7 @@ void PrintStartCollector::request_chamber_wait_line(uint64_t gen) {
         });
 }
 
-void PrintStartCollector::apply_chamber_wait_line(uint64_t gen, const ChamberWaitLine& line) {
+void PrintStartCollector::apply_chamber_wait_line(uint64_t gen, const helix::WaitLine& line) {
     std::lock_guard<std::mutex> lock(state_mutex_);
     if (gen != chamber_line_gen_) {
         return; // read for a wait that has since ended

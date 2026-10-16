@@ -12,6 +12,7 @@
 #include "static_subject_registry.h"
 #include "temperature_controller.h"
 #include "text_io.h"
+#include "wait_line_reader.h"
 
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
@@ -55,13 +56,15 @@ bool ChamberStallArbiter::should_close(const ChamberStallInputs& in) {
     return !in.job_active || !in.chamber_wait || (!in.rejected && in.chamber_target_deci > 0);
 }
 
-ChamberCancelPath chamber_cancel_path(ChamberWaitKind kind) {
+ChamberCancelPath chamber_cancel_path(WaitKind kind) {
     switch (kind) {
-    case ChamberWaitKind::M191:
+    case WaitKind::M191:
         return ChamberCancelPath::ClearTargetThenCancel;
-    case ChamberWaitKind::TemperatureWait:
+    case WaitKind::TemperatureWait:
         return ChamberCancelPath::EmergencyStop;
-    case ChamberWaitKind::Unknown:
+    case WaitKind::M109:
+    case WaitKind::M190:
+    case WaitKind::Other:
         break;
     }
     return ChamberCancelPath::ClearTargetThenCancel;
@@ -171,7 +174,7 @@ class ChamberStallModalAccess {
         if (g_prompt) {
             g_prompt->on_cancel();
         } else {
-            ChamberStallPrompt::cancel_print(ChamberWaitKind::Unknown);
+            ChamberStallPrompt::cancel_print(WaitKind::Other);
         }
     }
 };
@@ -234,7 +237,8 @@ double ChamberStallPrompt::retry_target_c(double wait_target_c) {
 
 bool ChamberStallPrompt::retry() {
     auto* controller = get_temperature_controller();
-    const double target = retry_target_c(g_prompt ? g_prompt->current_wait().target_c : 0);
+    const double target =
+        retry_target_c(g_prompt ? chamber_wait_target_c(g_prompt->current_wait()) : 0);
     if (!controller || target <= 0 || !controller->chamber_has_direct_route()) {
         spdlog::info("[ChamberStall] Retry unavailable (target={}°C, route={})", target,
                      controller && controller->chamber_has_direct_route());
@@ -244,7 +248,7 @@ bool ChamberStallPrompt::retry() {
     return true;
 }
 
-void ChamberStallPrompt::cancel_print(ChamberWaitKind kind) {
+void ChamberStallPrompt::cancel_print(WaitKind kind) {
     auto* controller = get_temperature_controller();
     const ChamberCancelPath path = chamber_cancel_path(kind);
     spdlog::info("[ChamberStall] Cancel print: wait kind {}, path {}", static_cast<int>(kind),
@@ -277,10 +281,13 @@ void ChamberStallPrompt::cancel_print(ChamberWaitKind kind) {
     AbortManager::instance().start_abort(AbortManager::Entry::Cancel);
 }
 
-ChamberWaitLine ChamberStallPrompt::current_wait() const {
+WaitLine ChamberStallPrompt::current_wait() const {
     const auto& temps = get_printer_state().temperature_state();
     if (temps.chamber_wait_active()) {
-        return {ChamberWaitKind::M191, temps.chamber_wait_target_c()};
+        WaitLine wait;
+        wait.kind = WaitKind::M191;
+        wait.target = temps.chamber_wait_target_c();
+        return wait;
     }
     return wait_line_;
 }
@@ -331,7 +338,7 @@ void ChamberStallPrompt::on_cancel() {
 
 void ChamberStallPrompt::on_try_again() {
     auto* controller = get_temperature_controller();
-    const double target = retry_target_c(current_wait().target_c);
+    const double target = retry_target_c(chamber_wait_target_c(current_wait()));
     if (!controller || target <= 0 || !controller->chamber_has_direct_route()) {
         note_ = lv_tr("The heater can't be changed while the printer is waiting.");
         refresh_content();
@@ -420,10 +427,11 @@ void ChamberStallPrompt::evaluate() {
 void ChamberStallPrompt::refresh_content() {
     auto& temps = get_printer_state().temperature_state();
     const auto* controller = get_temperature_controller();
-    const ChamberWaitLine wait = current_wait();
-    const double wait_c = wait.target_c > 0 ? wait.target_c : retry_target_c(wait.target_c);
+    const WaitLine wait = current_wait();
+    const double wait_target = chamber_wait_target_c(wait);
+    const double wait_c = wait_target > 0 ? wait_target : retry_target_c(wait_target);
     const bool can_retry =
-        retry_target_c(wait.target_c) > 0 && controller && controller->chamber_has_direct_route();
+        retry_target_c(wait_target) > 0 && controller && controller->chamber_has_direct_route();
 
     std::string message =
         wait_c > 0 ? fmt::format(fmt::runtime(lv_tr("The print is waiting for the chamber to "
@@ -459,7 +467,7 @@ void ChamberStallPrompt::refresh_content() {
 }
 
 // The command holding the queue decides how Cancel ends it. Read the line the
-// print is executing: virtual_sdcard.file_position, then the bytes before it.
+// print is executing: the one starting at virtual_sdcard.file_position.
 void ChamberStallPrompt::probe_wait_line() {
     if (wait_line_probed_) {
         return;
@@ -490,14 +498,12 @@ void ChamberStallPrompt::probe_wait_line() {
         "printer.objects.query", {{"objects", {{"virtual_sdcard", {"file_position"}}}}},
         [tok, filename, gen, give_up](const nlohmann::json& resp) {
             // WebSocket thread: parse only; the download starts on the main thread.
-            const nlohmann::json& result = resp.contains("result") ? resp["result"] : resp;
-            if (!result.contains("status") || !result["status"].contains("virtual_sdcard") ||
-                !result["status"]["virtual_sdcard"].contains("file_position") ||
-                !result["status"]["virtual_sdcard"]["file_position"].is_number()) {
+            const std::optional<uint64_t> position = virtual_sdcard_file_position(resp);
+            if (!position) {
                 give_up("virtual_sdcard.file_position", MoonrakerError{});
                 return;
             }
-            const auto pos = result["status"]["virtual_sdcard"]["file_position"].get<uint64_t>();
+            const uint64_t pos = *position;
             tok.defer("ChamberStallPrompt::read_wait_line", [tok, filename, pos, gen, give_up]() {
                 IMoonrakerAPI* api = get_moonraker_api();
                 if (!api) {
@@ -506,12 +512,9 @@ void ChamberStallPrompt::probe_wait_line() {
                     }
                     return;
                 }
-                constexpr uint64_t kWindow = 256;
-                const uint64_t from = pos > kWindow ? pos - kWindow : 0;
-                api->transfers().download_file_range(
-                    "gcodes", filename, from, static_cast<size_t>(pos - from),
-                    [tok, gen](const std::string& bytes) {
-                        const ChamberWaitLine line = classify_chamber_wait_line(bytes);
+                read_wait_line_at(
+                    api->transfers(), filename, pos,
+                    [tok, gen](const WaitLine& line) {
                         tok.defer("ChamberStallPrompt::wait_line", [line, gen]() {
                             if (g_prompt) {
                                 g_prompt->on_wait_line(gen, line);
@@ -524,14 +527,14 @@ void ChamberStallPrompt::probe_wait_line() {
         [give_up](const MoonrakerError& e) { give_up("virtual_sdcard", e); });
 }
 
-void ChamberStallPrompt::on_wait_line(uint32_t gen, std::optional<ChamberWaitLine> line) {
+void ChamberStallPrompt::on_wait_line(uint32_t gen, std::optional<WaitLine> line) {
     if (gen != wait_line_gen_) {
         return; // a read for a wait that has since ended
     }
     wait_line_pending_ = false;
     if (line) {
         spdlog::info("[ChamberStall] Waiting command: kind {}, {}°C", static_cast<int>(line->kind),
-                     line->target_c);
+                     chamber_wait_target_c(*line));
         wait_line_ = *line;
     }
     if (ChamberStallModal::showing()) {
@@ -561,7 +564,8 @@ void ChamberStallPrompt::show_prompt() {
     probe_wait_line();
     refresh_content();
     spdlog::warn("[ChamberStall] Prompting: wait kind {}, retry target {}°C",
-                 static_cast<int>(current_wait().kind), retry_target_c(current_wait().target_c));
+                 static_cast<int>(current_wait().kind),
+                 retry_target_c(chamber_wait_target_c(current_wait())));
     // A prompt already up shows the new rejection through its bound text.
     if (ChamberStallModal::showing()) {
         return;

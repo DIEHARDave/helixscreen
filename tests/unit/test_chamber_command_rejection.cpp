@@ -586,42 +586,13 @@ TEST_CASE("the prompt closes once there is nothing left to ask", "[chamber][reje
     CHECK(ChamberStallArbiter::should_close(in));
 }
 
-TEST_CASE("the line at the print position names the waiting command",
-          "[chamber][rejection][wait_line]") {
-    using helix::ChamberWaitKind;
-    using helix::classify_chamber_wait_line;
-    auto check = [](const char* chunk, ChamberWaitKind kind, double target) {
-        INFO("chunk=" << chunk);
-        const auto line = classify_chamber_wait_line(chunk);
-        CHECK(line.kind == kind);
-        CHECK(line.target_c == Catch::Approx(target));
-    };
-    check("M190 S100\nM191 S60\n", ChamberWaitKind::M191, 60);
-    check("G28\nm191 r45 ; chamber\r\n", ChamberWaitKind::M191, 45);
-    check("rtial line\nTEMPERATURE_WAIT SENSOR=\"heater_generic dragonbreath\" MINIMUM=35\n",
-          ChamberWaitKind::TemperatureWait, 35);
-    check("TEMPERATURE_WAIT SENSOR=chamber MAXIMUM=80\n", ChamberWaitKind::TemperatureWait, 0);
-    CHECK(classify_chamber_wait_line(
-              "TEMPERATURE_WAIT SENSOR=\"heater_generic DragonBreath\" MINIMUM=35\n")
-              .sensor == "heater_generic dragonbreath");
-    CHECK(classify_chamber_wait_line("TEMPERATURE_WAIT SENSOR=temperature_sensor MINIMUM=35\n")
-              .sensor == "temperature_sensor");
-    CHECK(classify_chamber_wait_line("M191 S60\n").sensor.empty());
-    check("PRINT_START BED=100 CHAMBER=60\n", ChamberWaitKind::Unknown, 0);
-    check("M1910 S5\n", ChamberWaitKind::Unknown, 0);
-    check("", ChamberWaitKind::Unknown, 0);
-    check("; just a comment\n", ChamberWaitKind::Unknown, 0);
-}
-
 TEST_CASE("each chamber wait gets the cancel that ends it", "[chamber][rejection][cancel]") {
     using helix::ChamberCancelPath;
-    using helix::ChamberWaitKind;
-    CHECK(helix::chamber_cancel_path(ChamberWaitKind::M191) ==
-          ChamberCancelPath::ClearTargetThenCancel);
-    CHECK(helix::chamber_cancel_path(ChamberWaitKind::TemperatureWait) ==
+    using helix::WaitKind;
+    CHECK(helix::chamber_cancel_path(WaitKind::M191) == ChamberCancelPath::ClearTargetThenCancel);
+    CHECK(helix::chamber_cancel_path(WaitKind::TemperatureWait) ==
           ChamberCancelPath::EmergencyStop);
-    CHECK(helix::chamber_cancel_path(ChamberWaitKind::Unknown) ==
-          ChamberCancelPath::ClearTargetThenCancel);
+    CHECK(helix::chamber_cancel_path(WaitKind::Other) == ChamberCancelPath::ClearTargetThenCancel);
 }
 
 TEST_CASE_METHOD(RouteFixture, "Cancel print ends the chamber wait the way it can end",
@@ -634,14 +605,14 @@ TEST_CASE_METHOD(RouteFixture, "Cancel print ends the chamber wait the way it ca
     drain();
 
     SECTION("M191: clear the target by the route, then cancel without probing") {
-        helix::ui::ChamberStallPrompt::cancel_print(helix::ChamberWaitKind::M191);
+        helix::ui::ChamberStallPrompt::cancel_print(helix::WaitKind::M191);
         drain();
         CHECK(client.route_targets == std::vector<double>{0.0});
         CHECK(AbortManager::instance().get_state() == AbortManager::State::SENT_CANCEL);
     }
 
     SECTION("TEMPERATURE_WAIT: nothing happens before the user confirms the emergency stop") {
-        helix::ui::ChamberStallPrompt::cancel_print(helix::ChamberWaitKind::TemperatureWait);
+        helix::ui::ChamberStallPrompt::cancel_print(helix::WaitKind::TemperatureWait);
         drain();
         CHECK(client.route_targets.empty());
         CHECK(AbortManager::instance().get_state() == AbortManager::State::IDLE);
@@ -653,14 +624,14 @@ TEST_CASE_METHOD(RouteFixture, "Cancel print ends the chamber wait the way it ca
     }
 
     SECTION("an unknown wait clears the target and cancels without probing the queue") {
-        helix::ui::ChamberStallPrompt::cancel_print(helix::ChamberWaitKind::Unknown);
+        helix::ui::ChamberStallPrompt::cancel_print(helix::WaitKind::Other);
         drain();
         CHECK(client.route_targets == std::vector<double>{0.0});
         CHECK(AbortManager::instance().get_state() == AbortManager::State::SENT_CANCEL);
     }
 
     SECTION("an M191 cancel completes on the print ending, with no emergency stop") {
-        helix::ui::ChamberStallPrompt::cancel_print(helix::ChamberWaitKind::M191);
+        helix::ui::ChamberStallPrompt::cancel_print(helix::WaitKind::M191);
         drain();
         REQUIRE(AbortManager::instance().get_state() == AbortManager::State::SENT_CANCEL);
         // pause_resume:cancel ends the wait and the queued CANCEL_PRINT runs.
@@ -803,10 +774,10 @@ class ChamberStallPromptTestAccess {
         p.wait_line_pending_ = true;
         ++p.wait_line_gen_;
     }
-    static void answer(ChamberStallPrompt& p, std::optional<ChamberWaitLine> line) {
+    static void answer(ChamberStallPrompt& p, std::optional<WaitLine> line) {
         p.on_wait_line(p.wait_line_gen_, line);
     }
-    static ChamberWaitKind kind(const ChamberStallPrompt& p) {
+    static WaitKind kind(const ChamberStallPrompt& p) {
         return p.wait_line_.kind;
     }
     static bool probed(const ChamberStallPrompt& p) {
@@ -827,7 +798,7 @@ TEST_CASE_METHOD(PromptFixture, "the emergency-stop confirmation goes when its w
     refuse(1);
     chamber_wait(true);
     REQUIRE(dialog() != nullptr);
-    helix::ui::ChamberStallPrompt::cancel_print(helix::ChamberWaitKind::TemperatureWait);
+    helix::ui::ChamberStallPrompt::cancel_print(helix::WaitKind::TemperatureWait);
     settle();
     REQUIRE(helix::ui::ChamberStallPrompt::emergency_stop_confirm_open());
 
@@ -874,11 +845,10 @@ TEST_CASE_METHOD(PromptFixture, "each chamber wait in a job has its command read
     chamber_wait(true);
     REQUIRE(dialog() != nullptr);
     ChamberStallPromptTestAccess::begin_read(prompt);
-    ChamberStallPromptTestAccess::answer(prompt,
-                                         helix::ChamberWaitLine{helix::ChamberWaitKind::M191, 60});
-    REQUIRE(ChamberStallPromptTestAccess::kind(prompt) == helix::ChamberWaitKind::M191);
+    ChamberStallPromptTestAccess::answer(prompt, helix::classify_wait_line("M191 S60"));
+    REQUIRE(ChamberStallPromptTestAccess::kind(prompt) == helix::WaitKind::M191);
     chamber_wait(false);
-    CHECK(ChamberStallPromptTestAccess::kind(prompt) == helix::ChamberWaitKind::Unknown);
+    CHECK(ChamberStallPromptTestAccess::kind(prompt) == helix::WaitKind::Other);
     CHECK_FALSE(ChamberStallPromptTestAccess::probed(prompt));
 }
 
@@ -895,15 +865,14 @@ TEST_CASE_METHOD(PromptFixture, "Cancel tapped while the waiting command is read
     REQUIRE(helix::AbortManager::instance().get_state() == helix::AbortManager::State::IDLE);
 
     SECTION("an M191 answer cancels") {
-        ChamberStallPromptTestAccess::answer(
-            prompt, helix::ChamberWaitLine{helix::ChamberWaitKind::M191, 60});
+        ChamberStallPromptTestAccess::answer(prompt, helix::classify_wait_line("M191 S60"));
         settle();
         CHECK(helix::AbortManager::instance().get_state() ==
               helix::AbortManager::State::SENT_CANCEL);
     }
     SECTION("a TEMPERATURE_WAIT answer asks for the emergency stop") {
         ChamberStallPromptTestAccess::answer(
-            prompt, helix::ChamberWaitLine{helix::ChamberWaitKind::TemperatureWait, 35});
+            prompt, helix::classify_wait_line("TEMPERATURE_WAIT SENSOR=chamber MINIMUM=35"));
         settle();
         CHECK(helix::ui::ChamberStallPrompt::emergency_stop_confirm_open());
         CHECK(helix::AbortManager::instance().get_state() == helix::AbortManager::State::IDLE);
@@ -918,23 +887,37 @@ TEST_CASE_METHOD(PromptFixture, "Cancel tapped while the waiting command is read
 
 TEST_CASE("a TEMPERATURE_WAIT names the chamber heater only by its own names",
           "[chamber][rejection][wait_line]") {
-    using helix::ChamberWaitKind;
-    using helix::ChamberWaitLine;
+    using helix::classify_wait_line;
     using helix::wait_names_chamber_heater;
     const std::string heater = "heater_generic dragonbreath";
-    const ChamberWaitLine on_heater{ChamberWaitKind::TemperatureWait, 35, heater};
+    const auto on_heater =
+        classify_wait_line("TEMPERATURE_WAIT SENSOR=\"heater_generic dragonbreath\" MINIMUM=35");
     CHECK(wait_names_chamber_heater(on_heater, heater));
     CHECK(wait_names_chamber_heater(on_heater, "heater_generic DragonBreath"));
     // A separate chamber sensor is a passive soak's, even beside a heater.
-    const ChamberWaitLine on_sensor{ChamberWaitKind::TemperatureWait, 35,
-                                    "temperature_sensor chamber"};
+    const auto on_sensor =
+        classify_wait_line("TEMPERATURE_WAIT SENSOR=\"temperature_sensor chamber\" MINIMUM=35");
     CHECK_FALSE(wait_names_chamber_heater(on_sensor, heater));
     // A sensor-only printer has no chamber heater to name.
     CHECK_FALSE(wait_names_chamber_heater(on_sensor, ""));
     // A probe coil, and anything that is not a TEMPERATURE_WAIT.
     CHECK_FALSE(wait_names_chamber_heater(
-        {ChamberWaitKind::TemperatureWait, 40, "temperature_probe beacon_coil"}, heater));
-    CHECK_FALSE(wait_names_chamber_heater({ChamberWaitKind::M191, 60, heater}, heater));
+        classify_wait_line("TEMPERATURE_WAIT SENSOR=\"temperature_probe beacon_coil\" MINIMUM=40"),
+        heater));
+    CHECK_FALSE(wait_names_chamber_heater(classify_wait_line("M191 S60"), heater));
+}
+
+TEST_CASE("the chamber wait's temperature is M191's target or TEMPERATURE_WAIT's MINIMUM",
+          "[chamber][rejection][wait_line]") {
+    using helix::chamber_wait_target_c;
+    using helix::classify_wait_line;
+    CHECK(chamber_wait_target_c(classify_wait_line("M191 S60")) == Catch::Approx(60));
+    CHECK(chamber_wait_target_c(classify_wait_line("M191 R45")) == Catch::Approx(45));
+    CHECK(chamber_wait_target_c(classify_wait_line("TEMPERATURE_WAIT SENSOR=c MINIMUM=35")) ==
+          Catch::Approx(35));
+    CHECK(chamber_wait_target_c(classify_wait_line("TEMPERATURE_WAIT SENSOR=c MAXIMUM=80")) == 0);
+    CHECK(chamber_wait_target_c(classify_wait_line("M190 S100")) == 0);
+    CHECK(chamber_wait_target_c(classify_wait_line("G28")) == 0);
 }
 
 TEST_CASE_METHOD(PromptFixture, "an unheated chamber-heater wait with nothing refused prompts",
