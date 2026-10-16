@@ -1857,14 +1857,15 @@ carry a comment saying so. Read `include/filament_op_dispatch.h` before "fixing"
 | Is there anything at this slot to unload? | `unload_target_is_loaded()` — actively loaded, **or** filament at the toolhead, **or** it is the current slot (the runout-recovery case, #995 / #1199). The `ACTIVE_HEAD_SLOT` sentinel (-1) counts only while the backend reports the toolhead unaccounted (#1324) |
 | Which slot do this tool's buttons act on? | `resolve_op_button_slot()` |
 | Are Load / Unload enabled right now? | `compute_op_button_gating()` — load state *and* print state |
-| How does a plan actually run? | `filament_op_execute.h` - `execute_filament_load()` / `execute_filament_unload()` / `execute_filament_purge()`, shared by `PrintStatusWidget`, `FilamentRunoutHandler`, and `FilamentSensorWidget` |
+| How does a plan actually run? | `filament_op_execute.h` - `execute_filament_load()` / `execute_filament_unload()` / `execute_filament_purge()`, shared by `PrintStatusWidget`, `FilamentRunoutHandler`, `FilamentSensorWidget`, the external-spool menu, bed drying, and the panel's and sidebar's macro tiers |
+| Must the nozzle heat first, to what, and when is it hot? | `filament_op_heater.h` - `decide_preheat()` (pure rule) and `FilamentOpHeater` (owned by `SubjectInitializer`, `get_filament_op_heater()`). Every `execute_filament_*()` runs through it; the panel's extrude/retract/purge and the sidebar's tier-1 ladder call `run_after_preheat()` directly. It also schedules the post-op cooldown |
 
 **Per-surface — presentation, and correctly different.**
 
 | Surface | Owns |
 |---------|------|
 | `FilamentPanel` | `begin_operation_guard()` / `operation_guard_`, the `backend_op_active_` gate on `ams_action_observer_`, the on-button spinner (`op_started` / `op_succeeded` / `op_failed`), and `navigate_to_ams_panel()` on `SelectSlot` |
-| `AmsOperationSidebar` | The step model (`start_operation(StepOperationType::LOAD_FRESH / LOAD_SWAP / UNLOAD)`, which marks the operation busy with its first step's projected action, `HEATING` for the legacy bar) and the preheat state machine (`get_load_temp_for_slot()`, `pending_load_slot_`, `check_pending_load()`, `ui_initiated_heat_`) |
+| `AmsOperationSidebar` | The step model (`start_operation(StepOperationType::LOAD_FRESH / LOAD_SWAP / UNLOAD)`, which marks the operation busy with its first step's projected action, `HEATING` for the legacy bar) and the Heat step drawn from `FilamentOpHeater`'s progress reports (`run_backend_op_after_preheat()`) |
 | `FilamentRunoutHandler` | Staying put. Every outcome is a toast; navigating would tear down the dialog the user is standing in |
 | `FilamentSensorWidget` (home tile) | No navigation either - toast-only refusals, and the modal stays up for a repeated Purge tap. Also owns the tap-routing decision itself (`decide_tap_destination()` in `filament_widget_tap_policy.h`): disabled sensor vs. printing vs. everything else |
 | All of the above | Toast copy, and whether to toast at all. On a *dispatch* failure that is not purely presentational: the send's `caller_surfaces_errors` says whether this surface's `on_error` really shows the user something, and a surface that claims it silences `GcodeErrorRouter`'s `!!` report of the same rejection. A surface that only logs must pass `false` — see `RPC_ERROR_OWNERSHIP.md` |
@@ -1874,9 +1875,13 @@ Two consequences worth naming, because they look like bugs and are not:
 - **The sidebar is silent on a refusal; the panel toasts.** The AMS grid already highlights
   the mounted slot and greys the unpickable ones, so a toast there narrates what the user
   can see. On the Filament panel the button is the only feedback there is.
-- **Tool changers skip the sidebar's preheat entirely.** `SELECT_TOOL` owns its own heat
-  sequence and the backend sets `SELECTING` at dispatch, resolving on the macro ack (#1183);
+- **Tool changers skip the sidebar's stepper and the preheat.** `SELECT_TOOL` owns its own
+  heat sequence (the backend claims `supports_auto_heat_on_load`, so `preheat_skip_reason()`
+  skips) and the backend sets `SELECTING` at dispatch, resolving on the macro ack (#1183);
   an optimistic `HEATING` stepper would fight it. Only the *decision* is shared.
+- **A preheat outlives the surface that asked.** The tile's dialog closes on the tap and the
+  AMS panel can close mid-heat; `FilamentOpHeater` runs the op once the nozzle is hot either
+  way. A second request while one waits cancels it (the heater goes back off if it was off).
 - **The optimistic action outlives backend silence.** A backend that declares
   `BackendTraits::holds_optimistic_action` (Happy Hare) sets no action at dispatch and
   reports `IDLE` through the UI preheat and until its firmware starts, and every sync (the
@@ -1890,8 +1895,9 @@ Two consequences worth naming, because they look like bugs and are not:
 
 Two more where the surface deliberately does **not** use the plan's value:
 
-- The sidebar **re-plans after preheat** (`check_pending_load()`) instead of replaying the
-  plan it computed before heating — the firmware may have picked up or dropped a tool while
+- An op that waited on a preheat **re-plans** when the nozzle is hot instead of replaying the
+  plan computed before heating (the executor's deferred path, the sidebar's
+  `dispatch_backend_load()`) — the firmware may have picked up or dropped a tool while
   the nozzle came up, which flips load-vs-swap.
 - The sidebar passes its caller's raw `slot_index` to `unload_filament()`, **not**
   `plan.ams_arg`: its own Unload button means "whatever is active" and passes `-1`, which the
@@ -2001,7 +2007,7 @@ load_target = max(new_material_temp, last_nonzero_nozzle_target, current_actual_
 **Latch lifecycle.**
 - **Set:** every status update with `target > 0` (per extruder).
 - **Survives:** cooldown to 0 (the whole point).
-- **Reset:** on **unload only** — the filament is physically pulled, so nothing is left to purge. `FilamentPanel::execute_unload()` and `AmsOperationSidebar::handle_unload()` call `PrinterState::clear_nozzle_load_latch()`.
+- **Reset:** on **unload only** — the filament is physically pulled, so nothing is left to purge. Every unload clears it at dispatch, after any preheat (which heats to it): the executor's `dispatch_unload()` and the sidebar's `dispatch_backend_unload()` call `clear_load_latch()`.
 - **Not persisted** across restart — a power cycle means a cold printer that reheats anyway, and persistence is where staleness would bite.
 
 **Where the guard lives.** `TemperatureController::set_target(HeaterType, celsius, opts)` applies the floor when `opts.keep_previous_hot` is set. Nozzle only — bed/chamber and any send without the flag are untouched, so cooldown-to-0 and deliberate manual keypad lowers still work.
@@ -2010,8 +2016,7 @@ load_target = max(new_material_temp, last_nonzero_nozzle_target, current_actual_
 | Call site | Flag | Rationale |
 |-----------|------|-----------|
 | Material preset tap (`handle_preset_button`, `handle_spool_preset_button`, Home `PreheatWidget`) | ❌ off | a request for that temperature; load/unload apply the floor when the swap happens |
-| Op preheat (`start_preheat_for_op` — load/extrude/purge/etc.) | ✅ on | controller computes the max; replaced the old target-only check |
-| AMS load-with-preheat (`handle_load_with_preheat`) | ✅ on | skip/wait decision also uses `max(actual, latch)` so a cooled nozzle still reheats to purge |
+| Filament-op preheat (`FilamentOpHeater::run_after_preheat` — every load/unload/purge/extrude/retract surface) | ✅ on | controller computes the max; `decide_preheat()` folds the latch into the wait too, so a cooled nozzle still reheats to purge |
 | Manual keypad entry (`handle_custom_nozzle_confirmed`) | ❌ off | deliberate override |
 | Cooldown-to-0 | ❌ off | must still reach 0 |
 

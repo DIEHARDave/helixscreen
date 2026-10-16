@@ -324,6 +324,7 @@ src/ui/console_line.cpp
 src/ui/fan_spin_animation.cpp
 src/ui/fault_modal_registry.cpp
 src/ui/filament_op_execute.cpp
+src/ui/filament_op_heater.cpp
 src/ui/filament_op_router.cpp
 src/ui/filament_path_geometry.cpp
 src/ui/filament_tube_stroker.cpp

@@ -47,6 +47,7 @@
 #include "bed_mesh_state.h"
 #include "filament_catalog.h"
 #include "filament_database.h"
+#include "filament_op_heater.h"
 #include "filament_variants.h"
 #include "lock_manager.h"
 #include "lvgl/lvgl.h"
@@ -88,6 +89,7 @@ SubjectInitializer::~SubjectInitializer() {
     widgets.unregister_shared_resource<TemperatureService>(m_temp_control_panel.get());
     widgets.unregister_shared_resource<helix::BedDryingController>(m_bed_drying.get());
     widgets.unregister_shared_resource<helix::TemperatureController>(m_temp_controller.get());
+    widgets.unregister_shared_resource<helix::ui::FilamentOpHeater>(m_filament_op_heater.get());
 }
 
 void SubjectInitializer::init_core_and_state() {
@@ -364,6 +366,12 @@ void SubjectInitializer::init_temperature_control(helix::IMoonrakerAPI* api) {
     m_temp_controller = std::make_unique<helix::TemperatureController>(get_printer_state(), api);
     helix::PanelWidgetManager::instance().register_shared_resource<helix::TemperatureController>(
         m_temp_controller.get());
+
+    // The nozzle heat around every filament op. Here, not on a panel: the
+    // surface that asks (a tile's dialog) is often gone before the nozzle is hot.
+    m_filament_op_heater = std::make_unique<helix::ui::FilamentOpHeater>(get_printer_state());
+    helix::PanelWidgetManager::instance().register_shared_resource<helix::ui::FilamentOpHeater>(
+        m_filament_op_heater.get());
 
     // Drying on the heated bed (prestonbrown/helixscreen#1730). restore() brings
     // back a persisted spools-on-the-bed latch before any panel can move the

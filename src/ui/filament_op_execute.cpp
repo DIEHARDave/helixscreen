@@ -9,9 +9,11 @@
 #include "ui_update_queue.h"
 
 #include "ams_backend.h"
+#include "ams_state.h"
 #include "app_globals.h"
 #include "filament_macro_profiles.h"
 #include "filament_op_dispatch.h"
+#include "filament_op_heater.h"
 #include "filament_op_router.h"
 #include "lvgl/src/others/translation/lv_translation.h"
 #include "moonraker_api.h"
@@ -23,6 +25,7 @@
 #include <spdlog/spdlog.h>
 
 #include <map>
+#include <memory>
 #include <string>
 
 namespace helix::ui {
@@ -235,13 +238,91 @@ void unwind_async(const FilamentOpSurface& surface, const FilamentOpPlan& plan) 
     });
 }
 
-/// Completion hook, marshalled to the main thread and then guarded.
+/// The op completed: the heater schedules its cooldown, then the surface's hook
+/// runs. Marshalled to the main thread, and the hook guarded.
 void finished(const FilamentOpSurface& surface, const std::function<void()>& hook) {
-    if (!hook) {
+    helix::ui::queue_update("filament_op_execute::finished", [s = surface, hook]() {
+        if (auto* heater = get_filament_op_heater()) {
+            heater->op_succeeded();
+        }
+        if (hook) {
+            guarded(s, hook);
+        }
+    });
+}
+
+/// A tier-1 dispatch the backend accepted completes on the action feed, which
+/// the heater watches for its cooldown.
+void backend_dispatched() {
+    if (auto* heater = get_filament_op_heater()) {
+        heater->watch_backend_completion();
+    }
+}
+
+/// @p surface for a dispatch that runs after a preheat: the surface that asked
+/// may be gone by then, so its inline hooks go through its guard like the
+/// async ones do. A guard-less surface outlives every dispatch already.
+FilamentOpSurface deferred_surface(const FilamentOpSurface& surface) {
+    if (!surface.guard) {
+        return surface;
+    }
+    FilamentOpSurface s = surface;
+    const auto guard = surface.guard;
+    if (surface.on_begin) {
+        s.on_begin = [guard, hook = surface.on_begin](const FilamentOpPlan& plan) {
+            guard([hook, plan]() { hook(plan); });
+        };
+    }
+    if (surface.on_refused) {
+        s.on_refused = [guard, hook = surface.on_refused](const FilamentOpPlan& plan) {
+            guard([hook, plan]() { hook(plan); });
+        };
+    }
+    if (surface.on_failed) {
+        // The guard defers, so the hook cannot claim the report in time; the
+        // executor raises the generic toast.
+        s.on_failed = [guard, hook = surface.on_failed](const FilamentOpPlan& plan,
+                                                        const AmsError& err, bool&) {
+            guard([hook, plan, err]() {
+                bool ignored = false;
+                hook(plan, err, ignored);
+            });
+        };
+    }
+    return s;
+}
+
+/// Run @p now through the app's FilamentOpHeater, which calls it at once on a
+/// hot nozzle; once the nozzle is hot it calls @p later instead.
+void preheat_then(FilamentHeatOp op, PreheatSkip skip, int slot, const FilamentOpSurface& surface,
+                  std::function<void()> now, std::function<void()> later) {
+    FilamentOpHeater* heater = get_filament_op_heater();
+    if (!heater) {
+        spdlog::warn("{} No FilamentOpHeater — running {} with no preheat", surface.log_tag,
+                     filament_heat_op_name(op));
+        now();
         return;
     }
-    helix::ui::queue_update("filament_op_execute::finished",
-                            [s = surface, hook]() { guarded(s, hook); });
+    PreheatRequest req;
+    req.op = op;
+    req.log_tag = surface.log_tag;
+    req.skip = skip;
+    req.slot = slot;
+    if (surface.preheat_fallback_material) {
+        req.fallback_material = surface.preheat_fallback_material();
+    }
+    // The heater runs the op inline or later through one callback; this flag,
+    // flipped once run_after_preheat() has returned, tells the two apart.
+    auto deferred = std::make_shared<bool>(false);
+    req.run = [deferred, now = std::move(now), later = std::move(later)]() {
+        if (*deferred) {
+            later();
+        } else {
+            now();
+        }
+    };
+    heater->run_after_preheat(std::move(req));
+    *deferred = true;
 }
 
 /// The error copy a failed macro or fallback raises. A timed-out macro is not a
@@ -296,13 +377,12 @@ void execute_filament_load(AmsBackend* backend, int slot, const char* log_tag) {
     execute_filament_load(backend, slot, surface);
 }
 
-void execute_filament_load(AmsBackend* backend, int slot, const FilamentOpSurface& surface) {
-    const char* log_tag = surface.log_tag;
-    AmsSystemInfo sys;
-    const helix::ui::BackendCaps caps = read_backend_caps(backend, sys, slot);
+namespace {
 
+void dispatch_load(AmsBackend* backend, int slot, const FilamentOpSurface& surface,
+                   const FilamentOpPlan& plan) {
+    const char* log_tag = surface.log_tag;
     const auto& load_info = StandardMacros::instance().get(StandardMacroSlot::LoadFilament);
-    const helix::ui::FilamentOpPlan plan = plan_live_load(sys, caps, slot);
 
     switch (plan.tier) {
     case helix::ui::FilamentTier::AmsBackend: {
@@ -314,9 +394,11 @@ void execute_filament_load(AmsBackend* backend, int slot, const FilamentOpSurfac
         if (!err.success()) {
             spdlog::error("{} Load filament failed: {}", log_tag, err.technical_msg);
             unwind_backend(surface, plan, err);
+            return;
         }
         // Success is NOT reported here: a backend load is fire-and-forget and
         // completes on the action feed, which is why on_async_* skips tier 1.
+        backend_dispatched();
         return;
     }
 
@@ -415,15 +497,36 @@ void execute_filament_load(AmsBackend* backend, int slot, const FilamentOpSurfac
     }
 }
 
+} // namespace
+
+void execute_filament_load(AmsBackend* backend, int slot, const FilamentOpSurface& surface) {
+    AmsSystemInfo sys;
+    const BackendCaps caps = read_backend_caps(backend, sys, slot);
+    const FilamentOpPlan plan = plan_live_load(sys, caps, slot);
+    if (plan.tier == FilamentTier::Refused) {
+        // Nothing heats for an op that will not run.
+        dispatch_load(backend, slot, surface, plan);
+        return;
+    }
+    const PreheatSkip skip = preheat_skip_reason(plan, StandardMacroSlot::LoadFilament, backend);
+    preheat_then(
+        FilamentHeatOp::Load, skip, slot, surface,
+        [backend, slot, surface, plan]() { dispatch_load(backend, slot, surface, plan); },
+        [slot, s = deferred_surface(surface)]() {
+            AmsBackend* live = AmsState::instance().get_backend();
+            AmsSystemInfo live_sys;
+            const BackendCaps live_caps = read_backend_caps(live, live_sys, slot);
+            dispatch_load(live, slot, s, plan_live_load(live_sys, live_caps, slot));
+        });
+}
+
 // ============================================================================
 // Unload
 // ============================================================================
 
-// Extracted verbatim from FilamentRunoutHandler::dispatch_unload()
-// (ui_filament_runout_handler.cpp), the cleanest of the three pre-existing
-// unload bodies. target_is_loaded is a caller-supplied input rather than
-// recomputed here — see unload_target_is_loaded()'s doc comment for why the
-// three existing callers must not each answer that question inline.
+// target_is_loaded is a caller-supplied input rather than recomputed here — see
+// unload_target_is_loaded()'s doc comment for why callers must not each answer
+// that question inline.
 void execute_filament_unload(AmsBackend* backend, int slot, bool target_is_loaded,
                              const char* log_tag) {
     FilamentOpSurface surface;
@@ -431,23 +534,29 @@ void execute_filament_unload(AmsBackend* backend, int slot, bool target_is_loade
     execute_filament_unload(backend, slot, target_is_loaded, surface);
 }
 
-void execute_filament_unload(AmsBackend* backend, int slot, bool target_is_loaded,
-                             const FilamentOpSurface& surface) {
-    const char* log_tag = surface.log_tag;
-    // Every caller here means "take the filament out". Where that is manual,
-    // saying so is the whole operation: no plan, no spinner, nothing sent.
-    if (helix::ui::notify_if_unload_is_manual(backend)) {
-        return;
-    }
-    // plan_unload() reads only `present` and `toolhead_unaccounted`, so the full
-    // read_backend_caps() call (whose needs_unload_before_load() is a per-lane
-    // backend query) buys nothing here.
-    helix::ui::BackendCaps caps;
+namespace {
+
+/// plan_unload() against @p backend. It reads only `present` and
+/// `toolhead_unaccounted`, so the full read_backend_caps() call (whose
+/// needs_unload_before_load() is a per-lane backend query) buys nothing here.
+FilamentOpPlan plan_unload_on(AmsBackend* backend, int slot, bool target_is_loaded) {
+    BackendCaps caps;
     caps.present = backend != nullptr;
     caps.toolhead_unaccounted = backend && backend->toolhead_filament_unaccounted().value_or(false);
+    return plan_live_unload(caps, slot, target_is_loaded);
+}
 
+void dispatch_unload(AmsBackend* backend, int slot, const FilamentOpSurface& surface,
+                     const FilamentOpPlan& plan) {
+    const char* log_tag = surface.log_tag;
     const auto& unload_info = StandardMacros::instance().get(StandardMacroSlot::UnloadFilament);
-    const helix::ui::FilamentOpPlan plan = plan_live_unload(caps, slot, target_is_loaded);
+
+    if (plan.tier != FilamentTier::Refused) {
+        // Filament is being pulled, so nothing is left to purge: the next load
+        // computes its hold temperature fresh instead of inheriting this one's.
+        // After any preheat, which heats to that latch.
+        get_printer_state().temperature_state().clear_load_latch();
+    }
 
     switch (plan.tier) {
     case helix::ui::FilamentTier::AmsBackend: {
@@ -459,7 +568,9 @@ void execute_filament_unload(AmsBackend* backend, int slot, bool target_is_loade
         if (!err.success()) {
             spdlog::error("{} Unload filament failed: {}", log_tag, err.technical_msg);
             unwind_backend(surface, plan, err);
+            return;
         }
+        backend_dispatched();
         return;
     }
 
@@ -541,17 +652,37 @@ void execute_filament_unload(AmsBackend* backend, int slot, bool target_is_loade
     }
 }
 
+} // namespace
+
+void execute_filament_unload(AmsBackend* backend, int slot, bool target_is_loaded,
+                             const FilamentOpSurface& surface) {
+    // Every caller here means "take the filament out". Where that is manual,
+    // saying so is the whole operation: no plan, no heat, nothing sent.
+    if (helix::ui::notify_if_unload_is_manual(backend)) {
+        return;
+    }
+    const FilamentOpPlan plan = plan_unload_on(backend, slot, target_is_loaded);
+    if (plan.tier == FilamentTier::Refused) {
+        dispatch_unload(backend, slot, surface, plan);
+        return;
+    }
+    const PreheatSkip skip = preheat_skip_reason(plan, StandardMacroSlot::UnloadFilament, backend);
+    preheat_then(
+        FilamentHeatOp::Unload, skip, slot, surface,
+        [backend, slot, surface, plan]() { dispatch_unload(backend, slot, surface, plan); },
+        [slot, target_is_loaded, s = deferred_surface(surface)]() {
+            AmsBackend* live = AmsState::instance().get_backend();
+            dispatch_unload(live, slot, s, plan_unload_on(live, slot, target_is_loaded));
+        });
+}
+
 // ============================================================================
 // Purge
 // ============================================================================
 
-// Modeled on FilamentRunoutHandler::dispatch_purge() (ui_filament_runout_handler.cpp),
-// the one pre-existing purge dispatch NOT entangled with panel UI state.
-// FilamentPanel::execute_purge() (ui_panel_filament.cpp) was deliberately not
-// the source for this extraction: it drives that panel's operation_guard_
-// spinner state and a macro-parameter modal with a nozzle-temperature prefill,
-// neither of which has an equivalent on a home-tile modal.
-void execute_filament_purge(const char* log_tag) {
+namespace {
+
+void dispatch_purge(const char* log_tag) {
     auto* api = get_moonraker_api();
     if (!api) {
         return;
@@ -569,7 +700,10 @@ void execute_filament_purge(const char* log_tag) {
             [api, log_tag](const helix::MacroParamResult& result) {
                 StandardMacros::instance().execute(
                     StandardMacroSlot::Purge, api, result.params,
-                    [log_tag]() { spdlog::info("{} Purge started", log_tag); },
+                    [log_tag]() {
+                        spdlog::info("{} Purge finished", log_tag);
+                        finished(FilamentOpSurface{}, nullptr);
+                    },
                     [log_tag](const MoonrakerError& err) {
                         spdlog::error("{} Failed to purge: {}", log_tag, err.message);
                         helix::ui::notify_error_tr(TR_NOOP("Failed to purge: {}"), err);
@@ -581,12 +715,31 @@ void execute_filament_purge(const char* log_tag) {
     spdlog::info("{} No purge macro configured — raw gcode fallback", log_tag);
     api->execute_gcode(
         helix::ui::filament_purge_fallback_gcode(),
-        [log_tag]() { spdlog::info("{} Purge fallback gcode sent", log_tag); },
+        [log_tag]() {
+            spdlog::info("{} Purge fallback gcode sent", log_tag);
+            finished(FilamentOpSurface{}, nullptr);
+        },
         [log_tag](const MoonrakerError& err) {
             spdlog::error("{} Purge fallback failed: {}", log_tag, err.message);
             helix::ui::notify_error_tr(TR_NOOP("Failed to purge: {}"), err);
         },
         IMoonrakerAPI::EXTRUSION_TIMEOUT_MS);
+}
+
+} // namespace
+
+void execute_filament_purge(const char* log_tag) {
+    if (!get_moonraker_api()) {
+        return;
+    }
+    // A purge pushes whatever is already in the melt zone: the loaded lane names it.
+    AmsBackend* backend = AmsState::instance().get_backend();
+    FilamentOpSurface surface;
+    surface.log_tag = log_tag;
+    preheat_then(
+        FilamentHeatOp::Purge, preheat_skip_reason_unplanned(),
+        backend ? backend->get_current_slot() : -1, surface,
+        [log_tag]() { dispatch_purge(log_tag); }, [log_tag]() { dispatch_purge(log_tag); });
 }
 
 } // namespace helix::ui

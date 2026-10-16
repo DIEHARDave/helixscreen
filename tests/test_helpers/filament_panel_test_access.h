@@ -73,10 +73,6 @@ struct FilamentPanelTestAccess {
         p.handle_extruder_changed();
     }
 
-    static void restore_heater_after_preheat(FilamentPanel& p) {
-        p.restore_heater_after_preheat();
-    }
-
     static lv_obj_t* extruder_dropdown(FilamentPanel& p) {
         return p.extruder_dropdown_;
     }

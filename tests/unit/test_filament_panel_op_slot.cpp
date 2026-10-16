@@ -31,6 +31,7 @@
 #include "../lvgl_ui_test_fixture.h"
 #include "../test_helpers/filament_panel_test_access.h"
 #include "../test_helpers/log_capture.h"
+#include "../test_helpers/scoped_shared_resource.h"
 #include "../test_helpers/update_queue_test_access.h"
 #include "ams_backend_mock.h"
 #include "ams_state.h"
@@ -396,24 +397,24 @@ TEST_CASE_METHOD(LVGLUITestFixture,
 // ============================================================================
 // Bug C guard: after a filament op, the extruder must cool back down. Two halves:
 //
-//   1. restore_heater_after_preheat() schedules the post-op cooldown whenever the
-//      printer is IDLE, and skips it while printing/paused (a real print manages
-//      its own heat — cooling under it would fight the job).
-//   2. Fire-and-forget AMS backend ops (AFC/BoxTurtle) complete via
-//      ams_action_observer_ returning to IDLE — NOT the gcode/macro success
-//      callback that used to be the only caller of restore_heater_after_preheat().
-//      That completion block must reach restore, or the nozzle holds the material
-//      temp indefinitely after a swap (the reported bug).
+//   1. FilamentOpHeater::op_succeeded() schedules the post-op cooldown whenever
+//      the printer is IDLE, and skips it while a job holds the machine (a real
+//      print manages its own heat — cooling under it would fight the job).
+//   2. Fire-and-forget AMS backend ops (AFC/BoxTurtle) complete on the AMS
+//      action feed returning to IDLE, not on a gcode/macro reply. The heater
+//      watches that feed after the panel's dispatch, or the nozzle holds the
+//      material temp indefinitely after a swap.
 //
-// The 120s timer -> M104 S0 machinery itself lives in PostOpCooldownManager and is
-// shared/pre-existing; these tests pin only the panel's NEW scheduling behavior,
-// observed via PostOpCooldownManager::has_pending_timer().
+// The 120s timer -> M104 S0 machinery itself lives in PostOpCooldownManager;
+// these tests pin the scheduling, observed via
+// PostOpCooldownManager::has_pending_timer().
 // ============================================================================
 
-TEST_CASE_METHOD(LVGLUITestFixture,
-                 "Bug C: restore_heater_after_preheat schedules a cooldown when idle",
+TEST_CASE_METHOD(LVGLUITestFixture, "Bug C: a finished filament op schedules a cooldown when idle",
                  "[filament][op_slot][panel]") {
     OpSlotHarness h(*this, boxturtle_sys(), /*loaded_slot=*/3, identity_topo());
+    helix_test::ScopedSharedResource<helix::ui::FilamentOpHeater> heater(
+        std::make_shared<helix::ui::FilamentOpHeater>(state()));
 
     auto& cd = PostOpCooldownManager::instance();
     cd.init();
@@ -423,7 +424,7 @@ TEST_CASE_METHOD(LVGLUITestFixture,
 
     set_wire_state(state(), "standby");
 
-    TA::restore_heater_after_preheat(*h.panel);
+    heater.get().op_succeeded();
     process_lvgl(30); // observer/schedule hops -> queued timer creation
 
     CHECK(cd.has_pending_timer());
@@ -433,9 +434,11 @@ TEST_CASE_METHOD(LVGLUITestFixture,
 }
 
 TEST_CASE_METHOD(LVGLUITestFixture,
-                 "Bug C: restore_heater_after_preheat does NOT schedule while printing",
+                 "Bug C: a finished filament op does NOT schedule while printing",
                  "[filament][op_slot][panel]") {
     OpSlotHarness h(*this, boxturtle_sys(), /*loaded_slot=*/3, identity_topo());
+    helix_test::ScopedSharedResource<helix::ui::FilamentOpHeater> heater(
+        std::make_shared<helix::ui::FilamentOpHeater>(state()));
 
     auto& cd = PostOpCooldownManager::instance();
     cd.init();
@@ -445,7 +448,7 @@ TEST_CASE_METHOD(LVGLUITestFixture,
 
     set_wire_state(state(), "printing");
 
-    TA::restore_heater_after_preheat(*h.panel);
+    heater.get().op_succeeded();
     process_lvgl(30);
 
     CHECK_FALSE(cd.has_pending_timer()); // a print manages its own heat
@@ -455,12 +458,14 @@ TEST_CASE_METHOD(LVGLUITestFixture,
 }
 
 TEST_CASE_METHOD(LVGLUITestFixture,
-                 "Bug C: restore_heater_after_preheat does NOT schedule while PREPARING",
+                 "Bug C: a finished filament op does NOT schedule while PREPARING",
                  "[filament][op_slot][panel][print_guard]") {
     // print_stats reads standby for the whole of a host-side pre-start block, so
     // the old PRINTING||PAUSED test scheduled a cooldown that the block's own
     // heating would immediately undo - and then fight.
     OpSlotHarness h(*this, boxturtle_sys(), /*loaded_slot=*/3, identity_topo());
+    helix_test::ScopedSharedResource<helix::ui::FilamentOpHeater> heater(
+        std::make_shared<helix::ui::FilamentOpHeater>(state()));
 
     auto& cd = PostOpCooldownManager::instance();
     cd.init();
@@ -472,14 +477,14 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     state().print_state().set_print_start_state(helix::PrintStartPhase::BED_MESH, "", 0);
     process_lvgl(10);
 
-    TA::restore_heater_after_preheat(*h.panel);
+    heater.get().op_succeeded();
     process_lvgl(30);
     CHECK_FALSE(cd.has_pending_timer());
 
     // The block ending hands the behaviour back, so the guard cannot latch.
     state().print_state().set_print_start_state(helix::PrintStartPhase::IDLE, "", 0);
     process_lvgl(10);
-    TA::restore_heater_after_preheat(*h.panel);
+    heater.get().op_succeeded();
     process_lvgl(30);
     CHECK(cd.has_pending_timer());
 
@@ -491,12 +496,15 @@ TEST_CASE_METHOD(LVGLUITestFixture,
                  "Bug C: AFC backend load completion schedules the post-op cooldown",
                  "[filament][op_slot][panel]") {
     // End-to-end: an AFC load is dispatched fire-and-forget, then the AMS action
-    // returns to IDLE (backend finished). The ams_action_observer_ completion
-    // block must run restore_heater_after_preheat() and leave a cooldown pending.
-    // Mutation target: delete the restore_heater_after_preheat() call in that block
-    // (ui_panel_filament.cpp) and this fails — no timer pending after completion.
+    // returns to IDLE (backend finished). The heater's completion watch, armed by
+    // the dispatch, must leave a cooldown pending.
     OpSlotHarness h(*this, boxturtle_sys(), /*loaded_slot=*/3, identity_topo());
     h.select_tool(0); // slot 0 is NOT loaded (only slot 3 is) -> load proceeds
+    helix_test::ScopedSharedResource<helix::ui::FilamentOpHeater> heater(
+        std::make_shared<helix::ui::FilamentOpHeater>(state()));
+    // Hot already, so the dispatch is immediate.
+    lv_subject_set_int(state().temperature_state().get_active_extruder_target_subject(), 2500);
+    lv_subject_set_int(state().temperature_state().get_active_extruder_temp_subject(), 2500);
 
     set_wire_state(state(), "standby");
 
@@ -560,6 +568,8 @@ template <typename T> class ScopedConfigValue {
 TEST_CASE_METHOD(LVGLUITestFixture, "Post-op cooldown: disabled in settings schedules nothing",
                  "[filament][op_slot][panel]") {
     OpSlotHarness h(*this, boxturtle_sys(), /*loaded_slot=*/3, identity_topo());
+    helix_test::ScopedSharedResource<helix::ui::FilamentOpHeater> heater(
+        std::make_shared<helix::ui::FilamentOpHeater>(state()));
 
     auto* cfg = helix::Config::get_instance();
     ScopedConfigValue<bool> off(cfg->df() + "filament/auto_cooldown", false, true);
@@ -572,7 +582,7 @@ TEST_CASE_METHOD(LVGLUITestFixture, "Post-op cooldown: disabled in settings sche
 
     set_wire_state(state(), "standby");
 
-    TA::restore_heater_after_preheat(*h.panel);
+    heater.get().op_succeeded();
     process_lvgl(30);
 
     CHECK_FALSE(cd.has_pending_timer()); // the filament system owns the cooldown
@@ -587,6 +597,8 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     // CONFIGURATION.md documents cooldown_delay_seconds=0 as "disable auto-cooldown".
     // A 0ms lv_timer would instead fire on the next tick and cut the heater at once.
     OpSlotHarness h(*this, boxturtle_sys(), /*loaded_slot=*/3, identity_topo());
+    helix_test::ScopedSharedResource<helix::ui::FilamentOpHeater> heater(
+        std::make_shared<helix::ui::FilamentOpHeater>(state()));
 
     auto* cfg = helix::Config::get_instance();
     ScopedConfigValue<bool> on(cfg->df() + "filament/auto_cooldown", true, true);
@@ -600,7 +612,7 @@ TEST_CASE_METHOD(LVGLUITestFixture,
 
     set_wire_state(state(), "standby");
 
-    TA::restore_heater_after_preheat(*h.panel);
+    heater.get().op_succeeded();
 
     // Drain the update queue WITHOUT lv_timer_handler. schedule() creates the timer
     // from a queued lambda, but a 0ms timer would then fire and null itself inside

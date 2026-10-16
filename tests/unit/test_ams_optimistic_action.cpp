@@ -26,6 +26,7 @@
 #include "ams_backend_happy_hare.h"
 #include "ams_state.h"
 #include "ams_types.h"
+#include "filament_op_heater.h"
 #include "helix-xml/src/xml/lv_xml.h"
 #include "lib/lvgl/src/misc/lv_timer_private.h"
 #include "moonraker_client_mock.h"
@@ -36,6 +37,7 @@
 #include "test_helpers/cfs_test_access.h"
 #include "test_helpers/gcode_recording_api.h"
 #include "test_helpers/happy_hare_test_access.h"
+#include "test_helpers/scoped_shared_resource.h"
 
 #include <chrono>
 #include <memory>
@@ -241,8 +243,15 @@ struct OptimisticSidebarFixture : public XMLTestFixture {
         helix::ui::UpdateQueue::instance().drain();
     }
 
+    /// A nozzle already at temperature, so an op dispatches with no preheat.
+    void hot_nozzle() {
+        set_nozzle(250, 250);
+    }
+
     MoonrakerClientMock client_{MoonrakerClientMock::PrinterType::VORON_24};
     helix::test::GcodeRecordingApi api_{client_, state()};
+    helix_test::ScopedSharedResource<helix::ui::FilamentOpHeater> heater_{
+        std::make_shared<helix::ui::FilamentOpHeater>(state())};
     std::unique_ptr<helix::ui::AmsOperationSidebar> sidebar_;
     lv_obj_t* panel_ = nullptr;
 };
@@ -275,6 +284,7 @@ TEST_CASE_METHOD(OptimisticSidebarFixture,
     hh.seat(1);
     AmsState::instance().sync_from_backend();
 
+    hot_nozzle();
     sidebar_->handle_unload(1);
     REQUIRE(api_.sent == std::vector<std::string>{"MMU_UNLOAD"});
     REQUIRE(shown_action() == AmsAction::HEATING);
@@ -300,6 +310,7 @@ TEST_CASE_METHOD(OptimisticSidebarFixture, "AFC unload: AFC's own dispatch actio
     afc.seat(1);
     AmsState::instance().sync_from_backend();
 
+    hot_nozzle();
     sidebar_->handle_unload(1);
     REQUIRE(afc.sent == std::vector<std::string>{"TOOL_UNLOAD LANE=lane2"});
 
@@ -316,6 +327,7 @@ TEST_CASE_METHOD(OptimisticSidebarFixture, "CFS unload: CFS's own dispatch actio
     helix::CfsTestAccess::set_loaded_state(cfs, true, 1);
     AmsState::instance().sync_from_backend();
 
+    hot_nozzle();
     sidebar_->handle_unload(1);
     REQUIRE(cfs.dispatched.size() == 1);
 
@@ -334,6 +346,7 @@ TEST_CASE_METHOD(OptimisticSidebarFixture,
     hh.seat(1);
     AmsState::instance().sync_from_backend();
 
+    hot_nozzle();
     sidebar_->handle_unload(1);
     REQUIRE(held());
     let_watchdog_run();
@@ -354,6 +367,7 @@ TEST_CASE_METHOD(OptimisticSidebarFixture, "Happy Hare: a refused unload does no
     // A stopped backend refuses the op after the sidebar has marked it busy.
     hh.stop_for_test();
 
+    hot_nozzle();
     sidebar_->handle_unload(1);
     REQUIRE(api_.sent.empty());
     CHECK_FALSE(held());
@@ -384,6 +398,7 @@ TEST_CASE_METHOD(OptimisticSidebarFixture,
     // moves mmu.action.
     api_.fail = {"MMU_UNLOAD"};
 
+    hot_nozzle();
     sidebar_->handle_unload(1);
     REQUIRE(api_.sent == std::vector<std::string>{"MMU_UNLOAD"});
     let_watchdog_run();
@@ -399,6 +414,7 @@ TEST_CASE_METHOD(OptimisticSidebarFixture, "Happy Hare: a failed pre-op G28 ends
     AmsState::instance().sync_from_backend();
     api_.fail = {"G28"};
 
+    hot_nozzle();
     sidebar_->handle_unload(1);
     REQUIRE(api_.sent == std::vector<std::string>{"G28"});
     let_watchdog_run();
@@ -443,6 +459,7 @@ TEST_CASE_METHOD(OptimisticSidebarFixture, "Happy Hare: a backend swap ends the 
     auto& hh = build_hh();
     hh.seat(1);
     AmsState::instance().sync_from_backend();
+    hot_nozzle();
     sidebar_->handle_unload(1);
     REQUIRE(held());
 

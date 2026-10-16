@@ -429,19 +429,6 @@ void FilamentPanel::deinit_subjects() {
     op_in_flight_.reset();
     op_showing_busy_.reset();
 
-    // Cancel any pending preheat without notification (panel is being torn down)
-    if (pending_preheat_op_ != PreheatOp::NONE) {
-        pending_preheat_op_ = PreheatOp::NONE;
-        pending_preheat_target_ = 0;
-        home_before_load_macro_ = false;
-        // Don't schedule delayed cooldown during teardown — just cool down immediately
-        if (prior_nozzle_target_ == 0) {
-            if (auto* c = get_temperature_controller()) {
-                c->set_target(helix::HeaterType::Nozzle, 0.0, {.toast = false});
-            }
-        }
-        prior_nozzle_target_ = 0;
-    }
     external_spool_observer_.reset();
     orientation_observer_.reset();
     ams_loaded_observer_.reset();
@@ -539,11 +526,6 @@ void FilamentPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
                     return;
                 }
                 self->op_succeeded(op);
-                // Backend (AFC/etc.) ops complete HERE, not via the gcode/macro
-                // success callbacks that call restore_heater_after_preheat().
-                // Without this the post-op cooldown is never scheduled and the
-                // nozzle holds the material temp indefinitely after a swap.
-                self->restore_heater_after_preheat();
             }
         },
         AmsState::instance().get_subjects_lifetime());
@@ -997,9 +979,6 @@ void FilamentPanel::update_all_temps() {
             PostOpCooldownManager::instance().cancel();
         }
     }
-
-    // Check if pending preheat target has been reached
-    check_pending_preheat();
 }
 
 // ============================================================================
@@ -1532,33 +1511,19 @@ void FilamentPanel::handle_load_button() {
         return;
     }
 
-    // Cancel existing preheat if user taps again
-    if (pending_preheat_op_ != PreheatOp::NONE) {
-        cancel_pending_preheat();
+    if (cancel_pending_preheat()) {
         return;
     }
 
-    snapshot_prior_heater_target();
-
-    // One plan for both questions: they are about the same dispatch, and a
-    // second call could answer them against different backend state.
+    // A backend load homes inside its own ensure_homed_then(); only the macro
+    // tier needs us to send the G28, which execute_load() does right before the
+    // macro, after any preheat.
     const helix::ui::FilamentOpPlan plan = current_load_plan();
-    const bool preheat = needs_ui_preheat(plan, StandardMacroSlot::LoadFilament);
-
-    // Decided independently of the preheat: a backend or macro that heats for us
-    // removes the reason to pause without homing anything. A backend load homes
-    // inside its own ensure_homed_then(); only the macro tier needs us to send the
-    // G28, which execute_load() does right before the macro, after any preheat.
     home_before_load_macro_ =
         plan.tier == helix::ui::FilamentTier::Macro &&
         helix::ui::needs_prerequisite_home(plan, StandardMacroSlot::LoadFilament,
                                            AmsState::instance().get_backend(),
                                            helix::toolhead_is_homed(printer_state_));
-
-    if (preheat) {
-        start_preheat_for_op(PreheatOp::LOAD);
-        return;
-    }
 
     continue_load_after_checks();
 }
@@ -1587,13 +1552,11 @@ void FilamentPanel::handle_unload_button(std::optional<int> chosen_lane) {
         return;
     }
 
-    // Cancel existing preheat if user taps again
-    if (pending_preheat_op_ != PreheatOp::NONE) {
-        cancel_pending_preheat();
+    if (cancel_pending_preheat()) {
         return;
     }
 
-    // Before the preheat: a machine with no automatic unload must not warm up
+    // Before any preheat: a machine with no automatic unload must not warm up
     // for an operation that will not happen.
     if (helix::ui::notify_if_unload_is_manual(AmsState::instance().get_backend())) {
         return;
@@ -1613,13 +1576,6 @@ void FilamentPanel::handle_unload_button(std::optional<int> chosen_lane) {
                                           })) {
             return;
         }
-    }
-
-    snapshot_prior_heater_target();
-
-    if (needs_ui_preheat(current_unload_plan(), StandardMacroSlot::UnloadFilament)) {
-        start_preheat_for_op(PreheatOp::UNLOAD);
-        return;
     }
 
     // Check if toolhead sensor shows no filament (nothing to unload)
@@ -1643,19 +1599,11 @@ void FilamentPanel::handle_extrude_button() {
         return;
     }
 
-    if (pending_preheat_op_ != PreheatOp::NONE) {
-        cancel_pending_preheat();
+    if (cancel_pending_preheat()) {
         return;
     }
 
-    snapshot_prior_heater_target();
-
-    if (!is_extrusion_allowed()) {
-        start_preheat_for_op(PreheatOp::EXTRUDE);
-        return;
-    }
-
-    execute_extrude();
+    run_after_preheat(helix::ui::FilamentHeatOp::Extrude, &FilamentPanel::execute_extrude);
 }
 
 void FilamentPanel::execute_extrude() {
@@ -1699,19 +1647,11 @@ void FilamentPanel::handle_purge_button() {
         return;
     }
 
-    if (pending_preheat_op_ != PreheatOp::NONE) {
-        cancel_pending_preheat();
+    if (cancel_pending_preheat()) {
         return;
     }
 
-    snapshot_prior_heater_target();
-
-    if (!is_extrusion_allowed()) {
-        start_preheat_for_op(PreheatOp::PURGE);
-        return;
-    }
-
-    execute_purge();
+    run_after_preheat(helix::ui::FilamentHeatOp::Purge, &FilamentPanel::execute_purge);
 }
 
 void FilamentPanel::execute_purge() {
@@ -1769,19 +1709,11 @@ void FilamentPanel::handle_retract_button() {
         return;
     }
 
-    if (pending_preheat_op_ != PreheatOp::NONE) {
-        cancel_pending_preheat();
+    if (cancel_pending_preheat()) {
         return;
     }
 
-    snapshot_prior_heater_target();
-
-    if (!is_extrusion_allowed()) {
-        start_preheat_for_op(PreheatOp::RETRACT);
-        return;
-    }
-
-    execute_retract();
+    run_after_preheat(helix::ui::FilamentHeatOp::Retract, &FilamentPanel::execute_retract);
 }
 
 void FilamentPanel::execute_retract() {
@@ -2422,28 +2354,6 @@ void FilamentPanel::set_material(int material_id) {
                  mat->chamber_temp_c);
 }
 
-bool FilamentPanel::needs_ui_preheat(const helix::ui::FilamentOpPlan& plan,
-                                     StandardMacroSlot slot) const {
-    if (is_extrusion_allowed()) {
-        return false;
-    }
-    // The nozzle is cold, but something downstream may bring it up on its own —
-    // an AMS backend that auto-heats, or a stock macro that heats in its body.
-    // Preheating in front of one of those makes the user wait twice, and settles
-    // on OUR material temperature before the macro commands its own
-    // (prestonbrown/helixscreen#1494).
-    //
-    // The plan is what decides: the macro tier's answer is about a macro that
-    // only runs on that tier.
-    const auto skip =
-        helix::ui::preheat_skip_reason(plan, slot, AmsState::instance().get_backend());
-    if (skip != helix::ui::PreheatSkip::None) {
-        spdlog::info("[{}] Skipping preheat — {}", get_name(), helix::ui::preheat_skip_name(skip));
-        return false;
-    }
-    return true;
-}
-
 bool FilamentPanel::is_extrusion_allowed() const {
     // Opt-in override (#978): users whose load/unload macros heat the nozzle
     // themselves — or perform a deliberate cold pull — can bypass the
@@ -2458,30 +2368,29 @@ bool FilamentPanel::has_known_op_material() const {
     // Load/Unload heat for the selected lane, Purge/Extrude/Retract for the
     // loaded one, and all of them share the warning.
     const int selected = selected_op_slot();
-    const int loaded = preheat_slot_for_op(PreheatOp::PURGE);
+    const int loaded = preheat_slot_for_op(helix::ui::FilamentHeatOp::Purge);
     return slot_preheat_material(selected).has_value() &&
            (loaded < 0 || loaded == selected || slot_preheat_material(loaded).has_value());
 }
 
-int FilamentPanel::preheat_slot_for_op(PreheatOp op) const {
+int FilamentPanel::preheat_slot_for_op(helix::ui::FilamentHeatOp op) const {
     switch (op) {
-    case PreheatOp::LOAD:
-    case PreheatOp::UNLOAD:
+    case helix::ui::FilamentHeatOp::Load:
+    case helix::ui::FilamentHeatOp::Unload:
         // The slot the operation acts on — the same resolution execute_load() /
         // execute_unload() use, so the temperature can never belong to a
         // different lane than the op.
         return selected_op_slot();
-    case PreheatOp::EXTRUDE:
-    case PreheatOp::RETRACT:
-    case PreheatOp::PURGE: {
+    case helix::ui::FilamentHeatOp::Extrude:
+    case helix::ui::FilamentHeatOp::Retract:
+    case helix::ui::FilamentHeatOp::Purge: {
         // Not slot-scoped: these push whatever is already in the melt zone, so
         // the loaded lane is the authority, not the dropdown selection.
         AmsBackend* backend = AmsState::instance().get_backend();
         return backend ? backend->get_current_slot() : -1;
     }
-    default:
-        return -1;
     }
+    return -1;
 }
 
 std::optional<FilamentPanel::PreheatTempResult>
@@ -2503,49 +2412,41 @@ FilamentPanel::slot_preheat_material(int target_slot) const {
 
 std::optional<FilamentPanel::PreheatTempResult>
 FilamentPanel::resolve_material_preheat_temp(int target_slot) const {
-    // Priorities 1 and 2 (target slot, then the external spool as the fallback
-    // for a load with no lane of its own) are shared with
-    // AmsOperationSidebar::get_load_temp_for_slot() via
-    // resolve_load_preheat_material().
     if (auto resolved = slot_preheat_material(target_slot)) {
         return resolved;
     }
-
-    // Priority 3: the panel's selected material preset. The sidebar has no
-    // preset UI, so this tail is the panel's alone — it only runs when neither
-    // the target lane nor an external spool names a material, i.e. exactly where
-    // the sidebar would fall back to a blind default.
-    if (selected_material_ >= 0 && selected_material_ < PRESET_COUNT) {
-        auto mat = filament::find_material(helix::presets::name(selected_material_));
-        if (mat) {
-            return PreheatTempResult{helix::ui::load_preheat_temp(*mat),
-                                     helix::presets::name(selected_material_)};
-        }
+    if (auto preset = preset_preheat_material()) {
+        return PreheatTempResult{preset->temp_c, preset->material_name};
     }
-
     return std::nullopt;
 }
 
-FilamentPanel::PreheatTempResult FilamentPanel::resolve_preheat_temp(int target_slot) const {
-    if (auto material = resolve_material_preheat_temp(target_slot)) {
-        return *material;
+std::optional<helix::ui::PreheatTarget> FilamentPanel::preset_preheat_material() const {
+    // The panel's own tail: only reached when neither the target lane nor an
+    // external spool names a material.
+    if (selected_material_ < 0 || selected_material_ >= PRESET_COUNT) {
+        return std::nullopt;
     }
-    // Priority 4: Fallback to min_extrude_temp_
-    return {min_extrude_temp_, ""};
+    auto mat = filament::find_material(helix::presets::name(selected_material_));
+    if (!mat) {
+        return std::nullopt;
+    }
+    return helix::ui::PreheatTarget{helix::ui::load_preheat_temp(*mat),
+                                    helix::presets::name(selected_material_)};
 }
 
 std::map<std::string, std::string>
 FilamentPanel::macro_temp_prefill(helix::ui::FilamentMacroOp op) const {
-    PreheatOp preheat_op = PreheatOp::LOAD;
+    helix::ui::FilamentHeatOp preheat_op = helix::ui::FilamentHeatOp::Load;
     switch (op) {
     case helix::ui::FilamentMacroOp::Load:
-        preheat_op = PreheatOp::LOAD;
+        preheat_op = helix::ui::FilamentHeatOp::Load;
         break;
     case helix::ui::FilamentMacroOp::Unload:
-        preheat_op = PreheatOp::UNLOAD;
+        preheat_op = helix::ui::FilamentHeatOp::Unload;
         break;
     case helix::ui::FilamentMacroOp::Purge:
-        preheat_op = PreheatOp::PURGE;
+        preheat_op = helix::ui::FilamentHeatOp::Purge;
         break;
     }
     const int slot = preheat_slot_for_op(preheat_op);
@@ -2557,146 +2458,27 @@ FilamentPanel::macro_temp_prefill(helix::ui::FilamentMacroOp op) const {
         nozzle.floor_c, nozzle.ceiling_c);
 }
 
-const char* FilamentPanel::preheat_op_name(PreheatOp op) {
-    switch (op) {
-    case PreheatOp::LOAD:
-        return "load";
-    case PreheatOp::UNLOAD:
-        return "unload";
-    case PreheatOp::EXTRUDE:
-        return "extrude";
-    case PreheatOp::RETRACT:
-        return "retract";
-    case PreheatOp::PURGE:
-        return "purge";
-    default:
-        return "unknown";
-    }
+bool FilamentPanel::cancel_pending_preheat() {
+    auto* heater = helix::ui::get_filament_op_heater();
+    return heater && heater->cancel();
 }
 
-// Reads the live extruder target subject rather than the cached
-// nozzle_target_ member — set_material() overwrites nozzle_target_ with
-// the preset's preview temperature, so it's unreliable here.
-int FilamentPanel::current_extruder_target() const {
-    auto* subj = printer_state_.temperature_state().get_active_extruder_target_subject();
-    return subj ? deci_to_degrees(lv_subject_get_int(subj)) : 0;
-}
-
-// Called at op-handler entry (not inside start_preheat_for_op) so the
-// hot-nozzle path that skips preheat still records what the user had
-// commanded; restore_heater_after_preheat() consults this to decide
-// whether to schedule the post-op cooldown.
-void FilamentPanel::snapshot_prior_heater_target() {
-    prior_nozzle_target_ = current_extruder_target();
-}
-
-void FilamentPanel::start_preheat_for_op(PreheatOp op) {
-    auto [target, material_name] = resolve_preheat_temp(preheat_slot_for_op(op));
-
-    pending_preheat_op_ = op;
-    pending_preheat_target_ = target;
-
-    // Send the preheat target and let the controller floor it at the hotter of
-    // the requested temp, the latched previous target, and the current actual
-    // (keep_previous_hot). The controller's own max() avoids the 240→200→240 dip
-    // that a naive lower would cause, while the prior_nozzle_target_ snapshot
-    // guarantees the heater isn't turned off when the op completes.
-    const int real_target = current_extruder_target();
-    if (auto* c = get_temperature_controller()) {
-        c->set_target(helix::HeaterType::Nozzle, static_cast<double>(target),
-                      {.toast = false, .keep_previous_hot = true});
-    }
-
-    if (material_name.empty()) {
-        NOTIFY_INFO(lv_tr("Heating to {}°C..."), target);
-    } else {
-        NOTIFY_INFO(lv_tr("Heating to {}°C for {}..."), target, material_name);
-    }
-
-    spdlog::info("[{}] Starting preheat to {}°C ({}) for {} (prior_target={}, real_target={})",
-                 get_name(), target, material_name.empty() ? "fallback" : material_name,
-                 preheat_op_name(op), prior_nozzle_target_, real_target);
-}
-
-void FilamentPanel::check_pending_preheat() {
-    if (pending_preheat_op_ == PreheatOp::NONE) {
+void FilamentPanel::run_after_preheat(helix::ui::FilamentHeatOp op,
+                                      void (FilamentPanel::*execute)()) {
+    auto* heater = helix::ui::get_filament_op_heater();
+    if (!heater) {
+        (this->*execute)();
         return;
     }
-
-    constexpr int TEMP_THRESHOLD = 5;
-    if (nozzle_current_ < (pending_preheat_target_ - TEMP_THRESHOLD)) {
-        return;
-    }
-
-    PreheatOp op = pending_preheat_op_;
-    pending_preheat_op_ = PreheatOp::NONE;
-    pending_preheat_target_ = 0;
-
-    spdlog::info("[{}] Preheat complete, executing {}", get_name(), preheat_op_name(op));
-
-    switch (op) {
-    case PreheatOp::LOAD:
-        execute_load();
-        break;
-    case PreheatOp::UNLOAD:
-        execute_unload();
-        break;
-    case PreheatOp::EXTRUDE:
-        execute_extrude();
-        break;
-    case PreheatOp::RETRACT:
-        execute_retract();
-        break;
-    case PreheatOp::PURGE:
-        execute_purge();
-        break;
-    default:
-        break;
-    }
-}
-
-void FilamentPanel::cancel_pending_preheat() {
-    if (pending_preheat_op_ == PreheatOp::NONE) {
-        return;
-    }
-
-    spdlog::info("[{}] Preheat cancelled", get_name());
-    pending_preheat_op_ = PreheatOp::NONE;
-    pending_preheat_target_ = 0;
-
-    home_before_load_macro_ = false;
-
-    // Cancel any pending cooldown timer
-    PostOpCooldownManager::instance().cancel();
-
-    // Restore heater to prior state immediately (no delay for cancel)
-    if (prior_nozzle_target_ == 0) {
-        if (auto* c = get_temperature_controller()) {
-            c->set_target(helix::HeaterType::Nozzle, 0.0, {.toast = false});
-        }
-    }
-    prior_nozzle_target_ = 0;
-
-    NOTIFY_INFO(lv_tr("Preheat cancelled"));
-}
-
-void FilamentPanel::restore_heater_after_preheat() {
-    // Schedule the post-op cooldown whenever the printer is idle (not printing or
-    // paused), regardless of the pre-op nozzle target. The old prior_nozzle_target_
-    // == 0 guard was meant to preserve a deliberate manual preheat, but it could not
-    // tell a real user-set target from one left stale by a PRIOR filament op that
-    // never cooled — so after a swap the nozzle held the material temp indefinitely
-    // (AFC's auto-heat on load makes this the common case). A real print re-heats or
-    // cancels the pending cooldown, so cooling 120s after an idle swap is safe.
-    // The lifecycle, so a job that is starting also suppresses the cooldown —
-    // the pre-start block is about to heat the nozzle, and the comment above
-    // already gives "a real print re-heats or cancels the pending cooldown" as
-    // the reason this is safe. Preparing is that case, one step earlier.
-    const auto lifecycle = printer_state_.print_state().get_print_lifecycle();
-    if (!job_holds_machine(lifecycle)) {
-        PostOpCooldownManager::instance().schedule();
-    }
-    prior_nozzle_target_ = 0;
+    helix::ui::PreheatRequest req;
+    req.op = op;
+    req.log_tag = "[FilamentPanel]";
+    req.skip = helix::ui::preheat_skip_reason_unplanned();
+    req.slot = preheat_slot_for_op(op);
+    req.fallback_material = preset_preheat_material();
+    // FilamentPanel is an immortal singleton [L012], so the op may capture it.
+    req.run = [this, execute]() { (this->*execute)(); };
+    heater->run_after_preheat(std::move(req));
 }
 
 void FilamentPanel::set_limits(const SafetyLimits& limits) {
@@ -2866,9 +2648,6 @@ helix::ui::FilamentOpSurface FilamentPanel::op_surface(FilamentOp op) {
 
     surface.on_async_success = [this, op]() {
         operation_guard_.end();
-        // Only on success: a failed op leaves the heater where the user can see
-        // what happened rather than dropping it out from under a retry.
-        restore_heater_after_preheat();
         op_in_flight_.reset();
         op_succeeded(op);
     };
@@ -2876,6 +2655,8 @@ helix::ui::FilamentOpSurface FilamentPanel::op_surface(FilamentOp op) {
     surface.macro_prefill = [this](helix::ui::FilamentMacroOp macro_op) {
         return macro_temp_prefill(macro_op);
     };
+
+    surface.preheat_fallback_material = [this]() { return preset_preheat_material(); };
 
     // No guard: FilamentPanel is an immortal singleton [L012], so a macro
     // parameter modal answered arbitrarily later still finds a live panel.
@@ -2943,11 +2724,6 @@ helix::ui::FilamentOpPlan FilamentPanel::current_unload_plan() const {
 }
 
 void FilamentPanel::execute_unload() {
-    // Filament is being pulled — nothing left to purge, so drop the swap-preheat
-    // latch. The next load computes its hold-temp fresh instead of inheriting this
-    // material's target.
-    printer_state_.temperature_state().clear_load_latch();
-
     AmsBackend* backend = AmsState::instance().get_backend();
     const int slot = chosen_unload_lane_.value_or(selected_op_slot());
     chosen_unload_lane_.reset();
@@ -3002,30 +2778,32 @@ void FilamentPanel::run_filament_macro(const std::string& macro_name, const std:
     }
 
     std::string gcode = helix::build_macro_gcode(macro_name, params);
-    api_->execute_gcode(gcode,
-                        object_lifetime_.bg_cb("FilamentPanel::macro_ok",
-                                               [this]() {
-                                                   operation_guard_.end();
-                                                   restore_heater_after_preheat();
-                                                   if (op_in_flight_) {
-                                                       op_succeeded(*op_in_flight_);
-                                                   }
-                                               }),
-                        object_lifetime_.bg_cb(
-                            "FilamentPanel::macro_err",
-                            [this](const MoonrakerError& error) {
-                                operation_guard_.end();
-                                if (op_in_flight_) {
-                                    op_failed(*op_in_flight_);
-                                }
-                                if (error.type == MoonrakerErrorType::TIMEOUT) {
-                                    NOTIFY_WARNING(
-                                        lv_tr("Macro may still be running — response timed out"));
-                                } else {
-                                    helix::ui::notify_error_tr(TR_NOOP("Macro failed: {}"), error);
-                                }
-                            }),
-                        IMoonrakerAPI::EXTRUSION_TIMEOUT_MS);
+    api_->execute_gcode(
+        gcode,
+        object_lifetime_.bg_cb("FilamentPanel::macro_ok",
+                               [this]() {
+                                   operation_guard_.end();
+                                   if (auto* heater = helix::ui::get_filament_op_heater()) {
+                                       heater->op_succeeded();
+                                   }
+                                   if (op_in_flight_) {
+                                       op_succeeded(*op_in_flight_);
+                                   }
+                               }),
+        object_lifetime_.bg_cb(
+            "FilamentPanel::macro_err",
+            [this](const MoonrakerError& error) {
+                operation_guard_.end();
+                if (op_in_flight_) {
+                    op_failed(*op_in_flight_);
+                }
+                if (error.type == MoonrakerErrorType::TIMEOUT) {
+                    NOTIFY_WARNING(lv_tr("Macro may still be running — response timed out"));
+                } else {
+                    helix::ui::notify_error_tr(TR_NOOP("Macro failed: {}"), error);
+                }
+            }),
+        IMoonrakerAPI::EXTRUSION_TIMEOUT_MS);
 }
 
 void FilamentPanel::show_load_warning() {

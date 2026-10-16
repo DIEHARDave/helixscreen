@@ -7,6 +7,7 @@
 #include "../test_helpers/preheat_widget_test_access.h"
 #include "../test_helpers/scoped_shared_resource.h"
 #include "filament_catalog.h"
+#include "filament_op_heater.h"
 #include "macro_executor.h"
 #include "material_settings_manager.h"
 #include "preheat_widget.h"
@@ -328,6 +329,8 @@ TEST_CASE_METHOD(LVGLUITestFixture,
     discover_macros(h);
     helix_test::ScopedSharedResource<helix::TemperatureController> controller(
         std::make_shared<helix::TemperatureController>(h.state, &h.api));
+    helix_test::ScopedSharedResource<helix::ui::FilamentOpHeater> heater(
+        std::make_shared<helix::ui::FilamentOpHeater>(h.state));
     helix::MaterialSettingsManager::instance().set_override("ABS", abs_override("HEAT_ABS", true));
     helix::SafetySettingsManager::instance().set_allow_cold_extrude(false);
     h.set_safety_limits(170.0);

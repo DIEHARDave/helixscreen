@@ -926,10 +926,10 @@ TEST_CASE_METHOD(DispatchSurfaceFixture,
 }
 
 TEST_CASE_METHOD(DispatchSurfaceFixture,
-                 "Sidebar unload with no printer connection offers its macro no temperature",
+                 "Sidebar unload with no printer connection raises no macro prompt",
                  "[filament][dispatch][wiring][ams][prefill]") {
-    // Unload dispatches its macro inline, so its prefill is read with no printer
-    // connection to take the extrusion limits from.
+    // With no printer to send it to, the shared ladder refuses the macro before
+    // asking for its parameters.
     configure_filament_macros();
     cache_macros({{"UNLOAD_FILAMENT",
                    "{% set t = params.TEMP|default(200)|int %}\nM109 S{t}\nG1 E-60 F600"}});
@@ -940,8 +940,7 @@ TEST_CASE_METHOD(DispatchSurfaceFixture,
     AmsOperationSidebar sidebar(state);
     sidebar.handle_unload(1);
 
-    CHECK(prompt_count == 1);
-    CHECK(prompted_prefill.empty());
+    CHECK(prompt_count == 0);
 }
 
 // -----------------------------------------------------------------------------
