@@ -965,6 +965,20 @@ TEST_CASE("GCodeFileModifier - a line that is not the scanned one is refused",
         REQUIRE_FALSE(modifier.apply(path).success);
     }
 
+    SECTION("a macro parameter is switched off only on the scanned call") {
+        // A scan of other G-code whose START_PRINT, on this file's line 2,
+        // asks for leveling.
+        const auto scan = GCodeOpsDetector{}.scan_content(
+            "G28\nSTART_PRINT BED=110 FORCE_LEVELING=true\nG1 X0 Y0\n");
+        const auto op = scan.get_operation(OperationType::BED_MESH);
+        REQUIRE(op.has_value());
+        REQUIRE(op->embedding == OperationEmbedding::MACRO_PARAMETER);
+        REQUIRE(op->line_number == 2);
+        GCodeFileModifier modifier;
+        REQUIRE(modifier.disable_operation(*op));
+        REQUIRE_FALSE(modifier.apply(path).success);
+    }
+
     SECTION("the START_PRINT rewrite checks the scanned call") {
         // A scan of other G-code whose START_PRINT sits on this file's line 2.
         const auto scan = GCodeOpsDetector{}.scan_content("G28\nPRINT_START BED=110\nG1 X0 Y0\n");
