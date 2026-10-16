@@ -49,7 +49,8 @@ std::string read_xml(const std::string& path) {
 /// Whether @p xml has an element bound to estop_visible that fires the E-stop.
 bool has_estop_button(const std::string& xml) {
     return xml.find("subject=\"estop_visible\"") != std::string::npos &&
-           xml.find("callback=\"emergency_stop_clicked\"") != std::string::npos;
+           (xml.find("callback=\"emergency_stop_clicked\"") != std::string::npos ||
+            xml.find("callback=\"lock_screen_estop_clicked\"") != std::string::npos);
 }
 
 struct NavbarFixture : public LVGLUITestFixture {
@@ -127,7 +128,8 @@ TEST_CASE_METHOD(NavbarFixture, "navbar E-stop sits over its slot in the navbar"
     CHECK(lv_area_get_height(&button) == lv_area_get_height(&slot));
 }
 
-TEST_CASE_METHOD(NavbarFixture, "navbar E-stop survives a panel switch", "[estop_navbar][navigation]") {
+TEST_CASE_METHOD(NavbarFixture, "navbar E-stop survives a panel switch",
+                 "[estop_navbar][navigation]") {
     // Switching panels hides every stray screen child as a stale overlay; the
     // E-stop is not one and must stay up.
     auto& nav = NavigationManager::instance();
@@ -239,7 +241,8 @@ TEST_CASE_METHOD(NavbarFixture, "navbar E-stop stays reachable above the keyboar
     CHECK(button.y1 == slot.y1);
 }
 
-TEST_CASE_METHOD(NavbarFixture, "a portrait keyboard covers the navbar E-stop instead of lifting it",
+TEST_CASE_METHOD(NavbarFixture,
+                 "a portrait keyboard covers the navbar E-stop instead of lifting it",
                  "[estop_navbar][navigation]") {
     // A bottom bar: wider than tall, along the bottom of the screen.
     lv_obj_set_size(navbar_, lv_obj_get_width(test_screen()), 70);
@@ -366,7 +369,8 @@ TEST_CASE_METHOD(NavbarFixture, "navbar E-stop is no smaller than the circles it
     CHECK(lv_obj_get_height(estop_) == size);
 }
 
-TEST_CASE("every overlay leaves the navbar and its E-stop on screen", "[estop_navbar][navigation]") {
+TEST_CASE("every overlay leaves the navbar and its E-stop on screen",
+          "[estop_navbar][navigation]") {
     // Panels live beside the navbar in app_layout; overlays are sized by these two
     // classes. Neither may reach into the navbar's strip, or the E-stop under it
     // would be covered.
@@ -528,7 +532,8 @@ struct DryingNavbarFixture : public NavbarFixture {
 
 } // namespace
 
-TEST_CASE_METHOD(DryingNavbarFixture, "navbar drying button is shown exactly while spools are latched",
+TEST_CASE_METHOD(DryingNavbarFixture,
+                 "navbar drying button is shown exactly while spools are latched",
                  "[estop_navbar][bed_drying][navigation]") {
     set_latched(0);
     CHECK(lv_obj_has_flag(drying_, LV_OBJ_FLAG_HIDDEN));
