@@ -7,8 +7,7 @@
 class PrintStartCollectorTestAccess {
   public:
     /// Answer the current wait's read of the command at the print position.
-    static void answer_chamber_wait_line(PrintStartCollector& c,
-                                         const helix::ChamberWaitLine& line) {
+    static void answer_chamber_wait_line(PrintStartCollector& c, const helix::WaitLine& line) {
         uint64_t gen;
         {
             std::lock_guard<std::mutex> lock(c.state_mutex_);
