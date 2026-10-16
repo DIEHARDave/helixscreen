@@ -921,13 +921,20 @@ _safe_remove_tmp_dir() {
         log_warn "Refusing to rm -rf TMP_DIR='$d' (name is not an installer scratch dir); leaving it in place."
         return 0
     fi
-    # Mountpoint detection: mountpoint(1) when present, else the mount table
-    # and the device ids. A dir neither can judge stays in place.
-    local _mount_state=plain
+    # Mountpoint detection: the mount table and device ids always, mountpoint(1)
+    # on top where it exists. A "mount" from either refuses; a dir nothing can
+    # judge stays in place.
+    local _mount_state _mp_rc=1
+    _mount_state=$(_dir_mount_state "$d")
     if command -v mountpoint >/dev/null 2>&1; then
-        mountpoint -q "$d" && _mount_state=mount
-    else
-        _mount_state=$(_dir_mount_state "$d")
+        mountpoint -q "$d" && _mp_rc=0 || _mp_rc=$?
+        case "$_mp_rc" in
+            0) _mount_state=mount ;;
+            # util-linux answers "not a mountpoint" with 32. Any other status
+            # is an error there, and BusyBox uses 1 for both, so it settles
+            # nothing the table did not.
+            32) [ "$_mount_state" = unknown ] && _mount_state=plain ;;
+        esac
     fi
     case "$_mount_state" in
         plain) ;;
@@ -935,33 +942,45 @@ _safe_remove_tmp_dir() {
             log_warn "Refusing to rm -rf mountpoint TMP_DIR='$d' (would wipe a live partition); leaving it in place."
             return 0
             ;;
+        nested)
+            log_warn "Refusing to rm -rf TMP_DIR='$d' (a filesystem is mounted inside it); leaving it in place."
+            return 0
+            ;;
         *)
-            log_warn "Refusing to rm -rf TMP_DIR='$d' (cannot tell whether it is a mountpoint: no mountpoint, stat or readable mount table); leaving it in place."
+            log_warn "Refusing to rm -rf TMP_DIR='$d' (cannot tell whether it is a mountpoint: no usable mountpoint, stat or mount table); leaving it in place."
             return 0
             ;;
     esac
     rm -rf "$d"
 }
 
-# Whether DIR is a mount point, for a system without mountpoint(1): prints
-# "mount", "plain", or "unknown" when nothing could judge it. Forge-X's
-# BusyBox has neither mountpoint nor stat, so the mount table is read first:
-# DIR's physical path matched exactly against field 2, which escapes space,
-# tab and backslash as \040, \011 and \134. The device id of DIR against its
-# parent backs it up where stat exists, and also catches a mount the table
-# spells through another path. An empty or unreadable table judges nothing.
+# Whether DIR is a mount point: prints "mount", "nested" when a filesystem is
+# mounted somewhere below it, "plain", or "unknown" when nothing could judge
+# it. Forge-X's BusyBox may lack stat, so the mount table is read first: DIR's
+# physical path matched against field 2, which escapes space, tab and
+# backslash as \040, \011 and \134. The device id of DIR against its parent
+# backs it up where stat exists, and also catches a mount the table spells
+# through another path. An empty or unreadable table judges nothing.
 _dir_mount_state() {
     local d="$1" mounts="${HELIX_PROC_ROOT:-/proc}/mounts" known=0
-    local phys esc lines=0 _dev _mnt _rest _ddev _pdev
+    local phys="" esc="" lines=0 _dev _mnt _rest _ddev _pdev
     phys=$(cd "$d" 2>/dev/null && pwd -P) || phys=""
     if [ -n "$phys" ] && [ -r "$mounts" ]; then
-        esc=$(printf '%s\n' "$phys" | sed -e 's/\\/\\134/g' -e 's/ /\\040/g' -e 's/	/\\011/g')
+        esc=$(printf '%s\n' "$phys" | sed -e 's/\\/\\134/g' -e 's/ /\\040/g' -e 's/	/\\011/g') || esc=""
+    fi
+    if [ -n "$esc" ]; then
         while read -r _dev _mnt _rest; do
             lines=$((lines + 1))
-            if [ "$_mnt" = "$esc" ]; then
-                echo mount
-                return 0
-            fi
+            case "$_mnt" in
+                "$esc")
+                    echo mount
+                    return 0
+                    ;;
+                "$esc"/*)
+                    echo nested
+                    return 0
+                    ;;
+            esac
         done < "$mounts"
         [ "$lines" -gt 0 ] && known=1
     fi
