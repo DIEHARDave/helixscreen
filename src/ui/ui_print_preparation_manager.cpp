@@ -2220,6 +2220,12 @@ void PrintPreparationManager::set_archive_plate(const std::string& file_path, in
     archive_output_ = marked ? converted_output : std::string();
 }
 
+void PrintPreparationManager::start_archive_reprint(const std::string& file_path, int plate,
+                                                    PrintCompletionCallback on_completion) {
+    set_archive_plate(file_path, plate);
+    print_archive_plate(file_path, plate, nullptr, std::move(on_completion));
+}
+
 int PrintPreparationManager::archive_plate_for(const std::string& file_path) const {
     return !archive_path_.empty() && file_path == archive_path_ ? archive_plate_ : 0;
 }

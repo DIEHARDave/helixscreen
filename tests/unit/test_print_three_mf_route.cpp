@@ -3,6 +3,7 @@
 
 #include "ui_filename_utils.h"
 #include "ui_print_preparation_manager.h"
+#include "ui_print_start_controller.h"
 
 #include "../helix_test_fixture.h"
 #include "../test_helpers/mock_printer.h"
@@ -312,5 +313,48 @@ TEST_CASE("an extracted plate's archive is gone before the rewrite runs",
         CHECK(disk_bytes(out) == plate);
         CHECK_FALSE(std::filesystem::exists(zip));
         std::remove(out.c_str());
+    }
+}
+
+TEST_CASE_METHOD(ArchiveStart, "a reprint of an archive plate extracts it again",
+                 "[print_preparation][three_mf][reprint]") {
+    plant("multi_plate.gcode.3mf");
+    std::optional<bool> ended;
+    manager.start_archive_reprint(kArchive, 5,
+                                  [&ended](bool ok, const std::string&) { ended = ok; });
+    drain_until_quiet();
+    const auto& uploads = printer.api.transfers_mock().path_uploads();
+    REQUIRE(uploads.size() == 1);
+    CHECK(gcode::rewritten_archive_plate(uploads[0].dest_path) == 5);
+    REQUIRE(printer.api.job_mock().started_prints().size() == 1);
+    CHECK(printer.api.job_mock().started_prints()[0] == uploads[0].dest_path);
+    CHECK(printer.api.job_mock().started_prints()[0] != kArchive);
+}
+
+TEST_CASE_METHOD(ArchiveStart,
+                 "Reprint of an archive plate goes through the extraction, not a direct start",
+                 "[print_preparation][three_mf][reprint]") {
+    plant("single_plate.gcode.3mf");
+    PrintStartController controller{printer.state, &printer.api};
+    controller.set_prep_manager(&manager);
+    bool started = false;
+    bool errored = false;
+    controller.initiate_reprint(
+        kArchive, "", {}, [&started] { started = true; }, [&errored] { errored = true; }, 9);
+    drain_until_quiet();
+
+    const auto& uploads = printer.api.transfers_mock().path_uploads();
+    REQUIRE(uploads.size() == 1);
+    REQUIRE(printer.api.job_mock().started_prints().size() == 1);
+    CHECK(printer.api.job_mock().started_prints()[0] == uploads[0].dest_path);
+    CHECK_FALSE(errored);
+
+    SECTION("without a plate it starts the file as it is") {
+        PrintStartController plain{printer.state, &printer.api};
+        plain.set_prep_manager(&manager);
+        plain.initiate_reprint(kArchive, "", {}, [] {}, [] {});
+        drain_until_quiet();
+        REQUIRE(printer.api.job_mock().started_prints().size() == 2);
+        CHECK(printer.api.job_mock().started_prints()[1] == kArchive);
     }
 }

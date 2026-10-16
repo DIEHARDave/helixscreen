@@ -514,7 +514,7 @@ class PrintSelectPanel : public PanelBase {
      * @param filename File name to select (matches against filename field)
      * @return true if file was found and selected, false otherwise
      */
-    bool select_file_by_name(const std::string& filename);
+    bool select_file_by_name(const std::string& filename, int archive_plate = 0);
 
     /**
      * @brief Set a pending file selection (for --select-file flag)
@@ -824,7 +824,8 @@ class PrintSelectPanel : public PanelBase {
         FileHistoryStatus::NEVER_PRINTED; ///< History status of selected file
     int selected_success_count_ = 0;      ///< Success count of selected file
     std::string
-        pending_file_selection_; ///< File to auto-select when list is populated (--select-file)
+        pending_file_selection_;    ///< File to auto-select when list is populated (--select-file)
+    int pending_archive_plate_ = 0; ///< The plate that selection opens on, for an archive
 
     /// A queued job being walked through the detail view toward a start.
     /// Lives from start_queued_job() until one of:

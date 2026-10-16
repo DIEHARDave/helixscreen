@@ -475,6 +475,9 @@ class PrintHistoryManager {
     /// the original (gcode::trusted_original_path()), present the job as the
     /// original's print: its name, and its existence, mtime and thumbnails from
     /// one metadata request per original. Otherwise it reads as missing.
+    /// Whether the archive @p filename is still listed, for a printer that
+    /// keeps no metadata for archives; answers through on_original_answered().
+    void look_for_archive(const std::string& filename, uint64_t generation);
     void adopt_original(PrintHistoryJob& job);
 
     /// What the original's metadata answered. It reads as missing while the

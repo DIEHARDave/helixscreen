@@ -44,6 +44,9 @@ struct PrintHistoryJob {
     /// Printed from a copy this app rewrote: `filename` and the file fields
     /// below describe the recovered original, not what the printer ran.
     bool from_rewrite = false;
+    /// The plate the job printed when `filename` is an archive the app
+    /// extracted it from (0 otherwise): a reprint extracts that plate again.
+    int archive_plate = 0;
 
     // Metadata from G-code file
     std::string filament_type; ///< PLA, PETG, ABS, etc.

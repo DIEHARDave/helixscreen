@@ -618,7 +618,8 @@ void PrintSelectPanel::setup(lv_obj_t* panel, lv_obj_t* parent_screen) {
                 }
             }
             if (!pending.empty()) {
-                if (!panel->select_file_by_name(pending)) {
+                const int plate = std::exchange(panel->pending_archive_plate_, 0);
+                if (!panel->select_file_by_name(pending, plate)) {
                     spdlog::warn("[{}] Pending file selection '{}' not found in file list",
                                  panel->get_name(), pending);
                     ui_notification_warning("File not found in print list");
@@ -3767,18 +3768,23 @@ void PrintSelectPanel::on_file_clicked_static(lv_event_t* e) {
     }
 }
 
-bool PrintSelectPanel::select_file_by_name(const std::string& filename) {
+bool PrintSelectPanel::select_file_by_name(const std::string& filename, int archive_plate) {
     // Before the first listing arrives the file cannot be found yet; the
     // listing's completion consumes the pending selection.
     if (!file_list_loaded_) {
         set_pending_file_selection(filename);
+        pending_archive_plate_ = archive_plate;
         return true;
     }
 
     // Search for the file in the current file list
     for (size_t i = 0; i < file_list_.size(); ++i) {
-        const auto& file = file_list_[i];
+        auto& file = file_list_[i];
         if (!file.is_dir && file.filename == filename) {
+            // An archive opens on the plate asked for (a reprint of one).
+            if (archive_plate > 0) {
+                file.archive_plate = archive_plate;
+            }
             // Found it - simulate a file click
             spdlog::info("[{}] Programmatically selecting file: {}", get_name(), filename);
             handle_file_click(i);

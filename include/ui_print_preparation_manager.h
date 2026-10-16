@@ -473,6 +473,12 @@ class PrintPreparationManager {
     void set_archive_plate(const std::string& file_path, int plate,
                            const std::string& converted_output = {});
 
+    /// Reprint plate @p plate of the archive @p file_path as Print would:
+    /// extracted, staged and started, the plate named for every later start
+    /// of the archive too. @p on_completion reports how it ended.
+    void start_archive_reprint(const std::string& file_path, int plate,
+                               PrintCompletionCallback on_completion);
+
     /// The plate set_archive_plate() named for @p file_path, or 0. Also 0 when
     /// the printer already converted it: that output prints instead.
     [[nodiscard]] int archive_plate_for(const std::string& file_path) const;

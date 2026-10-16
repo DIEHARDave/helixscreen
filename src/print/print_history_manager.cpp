@@ -504,6 +504,7 @@ void PrintHistoryManager::adopt_original(PrintHistoryJob& job) {
     if (!original) {
         return;
     }
+    job.archive_plate = helix::gcode::rewritten_archive_plate(job.filename);
     job.filename = std::move(*original);
     job.from_rewrite = true;
 
@@ -533,10 +534,41 @@ void PrintHistoryManager::adopt_original(PrintHistoryJob& job) {
         },
         [this, token, filename, generation](const MoonrakerError&) {
             token.defer("PrintHistoryManager::original_missing", [this, filename, generation]() {
+                if (helix::gcode::is_3mf(filename) && api_) {
+                    // A printer that cannot read a .3mf has no metadata for
+                    // one; whether it is still there is the listing's answer.
+                    look_for_archive(filename, generation);
+                    return;
+                }
                 on_original_answered(filename, generation, OriginalFile{});
             });
         },
         /*silent=*/true);
+}
+
+void PrintHistoryManager::look_for_archive(const std::string& filename, uint64_t generation) {
+    auto token = lifetime_.token();
+    const std::string name = helix::gcode::get_filename_basename(filename);
+    api_->files().get_directory(
+        "gcodes", helix::gcode_dir_of(filename),
+        [this, token, filename, generation, name](const std::vector<FileInfo>& files) {
+            OriginalFile answer;
+            for (const auto& f : files) {
+                if (!f.is_dir && (f.filename == name || f.path == name)) {
+                    answer.exists = true;
+                    answer.modified = f.modified;
+                }
+            }
+            token.defer("PrintHistoryManager::archive_listed",
+                        [this, filename, generation, answer = std::move(answer)]() mutable {
+                            on_original_answered(filename, generation, std::move(answer));
+                        });
+        },
+        [this, token, filename, generation](const MoonrakerError&) {
+            token.defer("PrintHistoryManager::archive_unlisted", [this, filename, generation]() {
+                on_original_answered(filename, generation, OriginalFile{});
+            });
+        });
 }
 
 void PrintHistoryManager::on_original_answered(const std::string& filename, uint64_t generation,

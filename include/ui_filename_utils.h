@@ -239,6 +239,25 @@ bool is_uploaded_rewrite_path(const std::string& path);
  */
 bool thumbnail_source_describes(const std::string& raw, const std::string& source);
 
+/// What Reprint starts: a file, and the plate of it to extract when it is an
+/// archive the printer printed as an extracted plate (0 otherwise).
+struct ReprintTarget {
+    std::string file;
+    int archive_plate = 0;
+};
+
+/**
+ * @brief What Reprint starts, from the job identity this session recorded
+ *        (@p recorded, possibly empty) and the name the printer reports (@p raw).
+ *
+ * The original, never a staged copy that is deleted when the print ends: the
+ * recorded identity where the report agrees with it or cannot place one,
+ * else the report itself. A plate staged from an archive comes back as the
+ * archive with its plate, so it extracts again; the printer's own conversion
+ * of one is reported as itself and starts as it is.
+ */
+ReprintTarget reprint_target(const std::string& recorded, const std::string& raw);
+
 /**
  * @brief The G-code a print's preview reads.
  *

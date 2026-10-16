@@ -404,6 +404,17 @@ bool is_uploaded_rewrite_path(const std::string& path) {
     return find_staged_prefix(path).first != std::string::npos;
 }
 
+ReprintTarget reprint_target(const std::string& recorded, const std::string& raw) {
+    const std::optional<std::string> reported = trusted_original_path(raw);
+    ReprintTarget target;
+    target.file = !recorded.empty() && (!reported || *reported == recorded) ? recorded
+                                                                            : reported.value_or("");
+    if (reported && target.file == *reported && is_3mf(target.file)) {
+        target.archive_plate = rewritten_archive_plate(raw);
+    }
+    return target;
+}
+
 std::string preview_gcode_for(const std::string& effective, const std::string& raw) {
     if (is_3mf(effective) && !raw.empty() && !is_3mf(raw) && has_printable_extension(raw)) {
         return raw;
