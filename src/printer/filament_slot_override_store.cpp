@@ -1276,8 +1276,14 @@ bool is_absent_namespace(const MoonrakerError& err) {
 
 } // namespace
 
-void FilamentSlotOverrideStore::reload_async(ReloadCallback cb) {
-    if (!api_ || !cb) {
+void FilamentSlotOverrideStore::reload_async(ReloadCallback cb, std::function<void()> on_failure) {
+    if (!cb) {
+        return;
+    }
+    if (!api_) {
+        if (on_failure) {
+            on_failure();
+        }
         return;
     }
     // Carry everything the callbacks read by value. The store can be destroyed
@@ -1288,19 +1294,25 @@ void FilamentSlotOverrideStore::reload_async(ReloadCallback cb) {
     const std::string ns = namespace_;
     api_->database_get_namespace(
         namespace_,
-        [style, id, cb](const nlohmann::json& value) {
+        [style, id, cb, on_failure](const nlohmann::json& value) {
             if (!value.is_object()) {
+                if (on_failure) {
+                    on_failure();
+                }
                 return;
             }
             cb(parse_namespace_document(value, style, id));
         },
-        [style, id, ns, cb](const MoonrakerError& err) {
+        [style, id, ns, cb, on_failure](const MoonrakerError& err) {
             if (is_absent_namespace(err)) {
                 cb(parse_namespace_document(nlohmann::json::object(), style, id));
                 return;
             }
             spdlog::debug("[FilamentSlotOverrideStore:{}] reload of {} failed: {}", id, ns,
                           err.message);
+            if (on_failure) {
+                on_failure();
+            }
         });
 }
 
@@ -1787,15 +1799,16 @@ std::optional<int> FilamentSlotOverrideStore::load_seated_slot_blocking() {
 // Shared firmware -> lane_data mirror helper
 // =============================================================================
 
-DeclaredOnLane declared_on_lane(LaneId lane) {
+DeclaredOnLane declared_on_lane(LaneId lane, const FilamentSlotOverride* record) {
     const LaneSources sources = lane_sources(lane);
-    const auto held = [&sources](auto field) {
+    const auto held = [&sources](auto field, bool user_declares) {
         return (sources.spoolman.has_value() && ((*sources.spoolman).*field).has_value()) ||
-               (sources.local_user.has_value() && ((*sources.local_user).*field).has_value());
+               (user_declares && sources.local_user.has_value() &&
+                ((*sources.local_user).*field).has_value());
     };
     DeclaredOnLane declared;
-    declared.color = held(&Observation::color_rgb);
-    declared.material = held(&Observation::material);
+    declared.color = held(&Observation::color_rgb, !record || declares_color(*record));
+    declared.material = held(&Observation::material, !record || declares_material(*record));
     return declared;
 }
 

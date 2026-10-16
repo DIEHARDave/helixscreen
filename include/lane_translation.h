@@ -93,6 +93,10 @@ void withdraw_cleared_fields(Observation& standing, const Observation& edit);
 /// Only the fields the record actually carries are observed.
 [[nodiscard]] Observation declared_from_record(const FilamentSlotOverride& record);
 
+/// Write every field @p obs carries onto @p record, leaving the rest standing:
+/// declared_from_record() run backwards. Declarations are untouched.
+void amend_record(FilamentSlotOverride& record, const Observation& obs);
+
 /// Split a stored record into the several sources it may declare independently.
 ///
 /// declared_from_record gives a record ONE verdict, which is right the moment
@@ -238,6 +242,9 @@ inline constexpr std::chrono::system_clock::time_point k_unknown_stamp_before =
 
 /// Whether @p record declares its material as the user's own choice.
 [[nodiscard]] bool declares_material(const FilamentSlotOverride& record);
+
+/// Whether @p record declares its spool name as the user's own choice.
+[[nodiscard]] bool declares_spool_name(const FilamentSlotOverride& record);
 
 /// Withdraw @p record's colour and material declarations, leaving both values
 /// where they are.
