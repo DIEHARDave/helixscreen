@@ -251,6 +251,20 @@ void TemperatureController::set_target(const std::string& klipper_name, double c
     if (!api_ || klipper_name.empty()) {
         return;
     }
+    const bool chamber = klipper_name == resolved_name(HeaterType::Chamber);
+    if (chamber && celsius > 0) {
+        last_chamber_target_c_ = celsius;
+    }
+    if (chamber && chamber_has_direct_route()) {
+        send_chamber_target_direct(klipper_name, celsius, std::move(opts),
+                                   /*gcode_fallback=*/true);
+        return;
+    }
+    send_gcode_target(klipper_name, celsius, std::move(opts));
+}
+
+void TemperatureController::send_gcode_target(const std::string& klipper_name, double celsius,
+                                              SendOptions opts) {
     // Callers' callbacks toast, which is main-thread only; the printer's answer
     // arrives on the WebSocket thread.
     auto on_ok = [opts]() {
@@ -284,10 +298,90 @@ void TemperatureController::apply_material(double nozzle, double bed, double cha
 }
 
 void TemperatureController::set_chamber_actions(std::string reset_gcode, std::string filter_fan_pin,
-                                                double conservative_max) {
+                                                double conservative_max,
+                                                std::string set_target_method) {
     chamber_reset_gcode_ = std::move(reset_gcode);
     chamber_filter_fan_pin_ = std::move(filter_fan_pin);
     conservative_chamber_max_ = conservative_max;
+    chamber_set_target_method_ = std::move(set_target_method);
+    chamber_route_absent_ = false;
+}
+
+bool TemperatureController::chamber_has_direct_route() const {
+    return !chamber_set_target_method_.empty() && !chamber_route_absent_;
+}
+
+void TemperatureController::retry_chamber_target(double celsius, SendOptions opts) {
+    const std::string name = resolved_name(HeaterType::Chamber);
+    if (!api_ || name.empty() || !chamber_has_direct_route()) {
+        spdlog::info("[TemperatureController] Chamber retry refused: no route around the queue");
+        if (opts.on_error) {
+            MoonrakerError err;
+            err.type = MoonrakerErrorType::VALIDATION_ERROR;
+            err.message = "The chamber heater can't be changed while the printer is waiting";
+            opts.on_error(err);
+        }
+        return;
+    }
+    spdlog::info("[TemperatureController] Chamber retry: target {}°C", celsius);
+    send_chamber_target_direct(name, celsius, std::move(opts), /*gcode_fallback=*/false);
+}
+
+void TemperatureController::send_chamber_target_direct(const std::string& klipper_name,
+                                                       double celsius, SendOptions opts,
+                                                       bool gcode_fallback) {
+    auto tok = lifetime_.token();
+    auto fail = [opts](const MoonrakerError& e) {
+        if (opts.on_error)
+            helix::ui::run_on_main("TemperatureController::on_error",
+                                   [cb = opts.on_error, e]() { cb(e); });
+        if (opts.toast) {
+            helix::ui::notify_error_tr(TR_NOOP("Failed to set temperature: {}"), e);
+        }
+    };
+    // The route answers {"accepted": bool, "reason": str}; a refusal is a
+    // reply, not a transport error, so it is turned into one here. The status
+    // frames carry the same refusal to the rejection latch.
+    auto on_reply = [opts, fail, method = chamber_set_target_method_](const nlohmann::json& resp) {
+        const nlohmann::json* result = resp.contains("result") ? &resp["result"] : &resp;
+        if (result->is_object() && result->contains("accepted") &&
+            (*result)["accepted"].is_boolean() && !(*result)["accepted"].get<bool>()) {
+            MoonrakerError err;
+            err.type = MoonrakerErrorType::JSON_RPC_ERROR;
+            err.method = method;
+            err.message = (*result).contains("reason") && (*result)["reason"].is_string()
+                              ? (*result)["reason"].get<std::string>()
+                              : std::string("rejected");
+            spdlog::info("[TemperatureController] Chamber target refused: {}", err.message);
+            fail(err);
+            return;
+        }
+        if (opts.on_success)
+            helix::ui::run_on_main("TemperatureController::on_success", opts.on_success);
+    };
+    auto on_err = [this, tok, opts, fail, klipper_name, celsius,
+                   gcode_fallback](const MoonrakerError& e) {
+        // JSON-RPC "method not found": a glue without the route.
+        const bool route_missing = e.code == -32601 || e.code == 404;
+        if (!route_missing) {
+            fail(e);
+            return;
+        }
+        tok.defer("TemperatureController::chamber_route_missing",
+                  [this, opts, fail, e, klipper_name, celsius, gcode_fallback]() {
+                      spdlog::info("[TemperatureController] Chamber target route {} not found; "
+                                   "chamber targets go through gcode",
+                                   chamber_set_target_method_);
+                      chamber_route_absent_ = true;
+                      if (gcode_fallback) {
+                          send_gcode_target(klipper_name, celsius, opts);
+                      } else {
+                          fail(e);
+                      }
+                  });
+    };
+    api_->get_client().send_jsonrpc(chamber_set_target_method_, {{"target", celsius}},
+                                    std::move(on_reply), std::move(on_err));
 }
 
 void TemperatureController::reset_chamber_fault() {

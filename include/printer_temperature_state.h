@@ -3,8 +3,10 @@
 
 #include "ui_observer_guard.h" // SubjectLifetime
 
+#include "chamber_heater_backend.h"
 #include "subject_managed_panel.h"
 
+#include <cmath>
 #include <lvgl.h>
 #include <memory>
 #include <string>
@@ -302,6 +304,43 @@ class PrinterTemperatureState {
         return &chamber_filter_fan_percent_text_;
     }
 
+    /// The heater turned down the last target we sent and has not accepted
+    /// one since (0/1). Clears when the device reports nothing outstanding or
+    /// the heater's target follows the requested one.
+    lv_subject_t* get_chamber_heater_command_rejected_subject() {
+        return &chamber_heater_command_rejected_;
+    }
+    lv_subject_t* get_chamber_heater_command_rejected_subject(SubjectLifetime& lifetime) {
+        lifetime = chamber_heater_command_rejected_lifetime_;
+        return &chamber_heater_command_rejected_;
+    }
+    /// Counts rejection events: bumps on the first and on every later one
+    /// while latched, so an observer can act once per rejection. Not XML.
+    lv_subject_t* get_chamber_heater_rejection_seq_subject() {
+        return &chamber_heater_rejection_seq_;
+    }
+    lv_subject_t* get_chamber_heater_rejection_seq_subject(SubjectLifetime& lifetime) {
+        lifetime = chamber_heater_rejection_seq_lifetime_;
+        return &chamber_heater_rejection_seq_;
+    }
+    /// Translated sentence saying why the heater did not start ("" when none).
+    lv_subject_t* get_chamber_heater_rejection_text_subject() {
+        return &chamber_heater_rejection_text_;
+    }
+    /// The latched rejection, for callers that act on it (retry, prompt).
+    struct ChamberCommandRejection {
+        chamber::CommandRejection kind = chamber::CommandRejection::None;
+        chamber::RefusalCause cause = chamber::RefusalCause::Unspecified;
+        double requested_target_c = 0; ///< 0 = not reported
+    };
+    ChamberCommandRejection chamber_command_rejection() const {
+        if (!chamber_rejection_latched_) {
+            return {};
+        }
+        return {chamber_rejection_kind_, chamber_refusal_cause_,
+                std::isnan(chamber_rejection_target_c_) ? 0.0 : chamber_rejection_target_c_};
+    }
+
     /// A filament-drying cycle is running on the chamber appliance (0/1).
     lv_subject_t* get_chamber_dryer_active_subject() {
         return &chamber_dryer_active_;
@@ -408,9 +447,14 @@ class PrinterTemperatureState {
         chamber_dryer_remaining_s_ = 0;
         chamber_dryer_remaining_reported_ = false;
         chamber_dryer_target_c_ = 0;
+        chamber_rejection_kind_ = chamber::CommandRejection::None;
+        chamber_refusal_cause_ = chamber::RefusalCause::Unspecified;
+        chamber_rejection_vendor_seq_ = -1;
+        chamber_rejection_target_c_ = NAN;
         if (subjects_initialized_) {
             lv_subject_set_int(&chamber_dryer_reported_, 0);
             publish_chamber_dryer();
+            clear_chamber_rejection();
         }
     }
 
@@ -560,6 +604,23 @@ class PrinterTemperatureState {
     bool chamber_dryer_remaining_reported_ = false;
     int chamber_dryer_target_c_ = 0; ///< 0 = not reported
     void publish_chamber_dryer();
+    lv_subject_t chamber_heater_command_rejected_{}; ///< XML: 0/1
+    lv_subject_t chamber_heater_rejection_seq_{};    ///< Internal: rejection event count
+    lv_subject_t chamber_heater_rejection_text_{};   ///< XML: translated sentence
+    char chamber_heater_rejection_text_buf_[160] = {};
+    SubjectLifetime chamber_heater_command_rejected_lifetime_;
+    SubjectLifetime chamber_heater_rejection_seq_lifetime_;
+    /// Last reported rejection; frames carry only what changed.
+    chamber::CommandRejection chamber_rejection_kind_ = chamber::CommandRejection::None;
+    chamber::RefusalCause chamber_refusal_cause_ = chamber::RefusalCause::Unspecified;
+    int chamber_rejection_vendor_seq_ = -1; ///< -1 = not reported
+    double chamber_rejection_target_c_ = NAN;
+    bool chamber_rejection_latched_ = false;
+    int chamber_target_at_rejection_ = 0; ///< heater target (deci) when the latch set
+    void apply_chamber_rejection(const chamber::ChamberHeaterDiagnostics& d,
+                                 std::string_view backend_id);
+    void release_chamber_rejection_if_target_followed();
+    void clear_chamber_rejection();
     SubjectLifetime chamber_heater_fault_lifetime_;
     SubjectLifetime chamber_heater_inhibited_lifetime_;
     /// The appliance drops a poll periodically and recovers within a frame or
